@@ -1,5 +1,7 @@
 package ch.brickinventoryapp.ui.screens
 
+import ch.brickinventoryapp.ui.normalisiert
+import ch.brickinventoryapp.ui.PlPart
 import ch.brickinventoryapp.ui.theme.farbeAusHex
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.layout.ExperimentalLayoutApi

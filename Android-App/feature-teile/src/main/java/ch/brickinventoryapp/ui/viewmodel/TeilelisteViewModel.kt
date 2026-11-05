@@ -9,9 +9,9 @@ import ch.brickinventoryapp.service.PdfExportService
 import ch.brickinventoryapp.service.PdfExportState
 import ch.brickinventoryapp.ui.TeilelisteUiState
 import ch.brickinventoryapp.ui.TeilelistenQuelle
-import ch.brickinventoryapp.ui.screens.PlPart
-import ch.brickinventoryapp.ui.screens.PlSet
-import ch.brickinventoryapp.ui.screens.normalisiert
+import ch.brickinventoryapp.ui.PlPart
+import ch.brickinventoryapp.ui.PlSet
+import ch.brickinventoryapp.ui.normalisiert
 import dagger.Binds
 import dagger.Module
 import dagger.hilt.InstallIn

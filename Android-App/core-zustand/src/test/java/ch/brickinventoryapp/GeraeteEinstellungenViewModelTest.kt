@@ -1,5 +1,8 @@
 package ch.brickinventoryapp
 
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.CoroutineScope
 import org.junit.Assert.assertTrue
 import ch.brickinventoryapp.util.AblageChiffre
 import ch.brickinventoryapp.data.cache.VorschauSpeicher
@@ -68,16 +71,22 @@ class GeraeteEinstellungenViewModelTest {
     private val wurzel = java.nio.file.Files.createTempDirectory("vorschau").toFile()
     private val vorschau = VorschauSpeicher({ wurzel }, AblageChiffre { ByteArray(32) { 4 } })
     private lateinit var vm: GeraeteEinstellungenViewModel
+    private lateinit var sammler: Job
 
     @Before
     fun auf() {
         Dispatchers.setMain(UnconfinedTestDispatcher())
         vorschau.schreibe("https://brick.example/api/v1/proxy?u=x&thumb=1", ByteArray(500) { 1 })
         vm = GeraeteEinstellungenViewModel(ablage, planer, Saetze, kanal, vorschau)
+        sammler = CoroutineScope(Dispatchers.Main).launch {
+            launch { vm.alarmMeldungenAn.collect {} }
+            launch { vm.vorwaermen.collect {} }
+        }
     }
 
     @After
     fun zu() {
+        sammler.cancel()
         Dispatchers.resetMain()
         wurzel.deleteRecursively()
     }

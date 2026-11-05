@@ -5,7 +5,6 @@ import ch.brickinventoryapp.data.model.BestandTeil
 import ch.brickinventoryapp.data.repository.Result
 import ch.brickinventoryapp.data.repository.SetsRepository
 import ch.brickinventoryapp.data.repository.TeileRepository
-import ch.brickinventoryapp.ui.screens.PlPart
 import ch.brickinventoryapp.ui.screens.comparePartNumbers
 import ch.brickinventoryapp.ui.screens.plColorCollator
 import ch.brickinventoryapp.util.IMG_PROXY

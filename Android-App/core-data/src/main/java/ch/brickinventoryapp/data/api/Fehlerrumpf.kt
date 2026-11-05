@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.data.api
 
+import ch.brickinventoryapp.data.model.Fehlercode
 /**
  * Was der Server bei einem Fehler in den Rumpf legt: `{success:false, error, code}`.
  *
@@ -10,7 +11,7 @@ package ch.brickinventoryapp.data.api
  */
 data class Fehlerrumpf(val text: String?, val code: String?) {
     /** Der Code als Aufzählung; einer, den die App nicht kennt, ist null. */
-    val fehlercode: ch.brickinventoryapp.data.model.Fehlercode? get() = ch.brickinventoryapp.data.model.Fehlercode.aus(code)
+    val fehlercode: Fehlercode? get() = Fehlercode.aus(code)
 
     companion object {
         /** Kein JSON, leerer Rumpf oder fehlende Felder ergeben jeweils null. */

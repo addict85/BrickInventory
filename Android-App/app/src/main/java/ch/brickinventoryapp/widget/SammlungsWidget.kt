@@ -143,7 +143,7 @@ class WidgetArbeiter(context: Context, params: WorkerParameters) : CoroutineWork
 class SammlungsWidget : GlanceAppWidget() {
     override suspend fun provideGlance(context: Context, id: GlanceId) {
         val prefs = runCatching { EntryPointAccessors.fromApplication(context, WidgetArbeiter.Zugang::class.java).prefs() }.getOrNull()
-        val angemeldet = runCatching { prefs?.tokenJetzt()?.isNotBlank() == true }.getOrDefault(false)
+        val angemeldet = fangeAusserAbbruch { prefs?.tokenJetzt()?.isNotBlank() == true }.getOrDefault(false)
         // Geldwerte nur, wenn der Nutzer sie auf dem Startbildschirm erlaubt (sec8 H5).
         val zeigen = prefs?.widgetWerteZeigen() == true
         val zahlen = widgetAnzeige(WidgetAblage.lies(context), angemeldet)

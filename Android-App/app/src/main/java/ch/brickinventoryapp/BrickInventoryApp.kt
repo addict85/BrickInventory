@@ -37,17 +37,17 @@ class BrickInventoryApp : Application(), Configuration.Provider {
         // Hintergrund: Der Lesepfad kommt auch ohne Übernahme an das alte Token.
         bereiche.anwendung.launch {
             // Gutschein-PDFs eines abgebrochenen Laufs: Das Verlassen des Betrachters kam nie.
-            runCatching { raeumeVertraulichePdfsAuf(cacheDir) }
+            fangeAusserAbbruch { raeumeVertraulichePdfsAuf(cacheDir) }
             // Anleitungen älterer Fassungen lagen im Klartext; neu liegen sie verschlüsselt.
-            runCatching { raeumeKlartextAnleitungenAuf(cacheDir) }
+            fangeAusserAbbruch { raeumeKlartextAnleitungenAuf(cacheDir) }
             // Bild-Zwischenspeicher älterer Fassungen (Klartext) und eine abgelaufene Teileliste.
-            runCatching { raeumeKlartextBildcachesAuf(cacheDir) }
-            runCatching { raeumeAlteTeilelisteAuf(filesDir, System.currentTimeMillis()) }
-            runCatching { preferencesManager.uebernehmeAltesToken() }
+            fangeAusserAbbruch { raeumeKlartextBildcachesAuf(cacheDir) }
+            fangeAusserAbbruch { raeumeAlteTeilelisteAuf(filesDir, System.currentTimeMillis()) }
+            fangeAusserAbbruch { preferencesManager.uebernehmeAltesToken() }
             // Den Preisalarm-Abruf wieder einplanen: Zurückgesetzte App-Daten oder ein
             // „Force Stop“ verwerfen die Aufträge, der Schalter stünde sonst auf „an“
             // ohne Wirkung. KEEP lässt einen eingeplanten Auftrag unverändert.
-            runCatching {
+            fangeAusserAbbruch {
                 if (preferencesManager.alarmMeldungenAn.first()) {
                     PreisalarmWorker
                         .einplanen(this@BrickInventoryApp, true)

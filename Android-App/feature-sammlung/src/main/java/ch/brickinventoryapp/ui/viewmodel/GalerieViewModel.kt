@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.ui.viewmodel
 
+import ch.brickinventoryapp.ui.abgeleitet
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.viewModelScope
 import ch.brickinventoryapp.ressourcen.R
@@ -18,9 +19,6 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.SharingStarted
-import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -62,7 +60,7 @@ class GalerieViewModel @Inject constructor(
     data class VorgemerktesLoeschen(val setNumber: String, val name: String)
 
     private val _vorgemerkt = MutableStateFlow<VorgemerktesLoeschen?>(null)
-    val vorgemerkt: StateFlow<VorgemerktesLoeschen?> = _vorgemerkt
+    val vorgemerkt: StateFlow<VorgemerktesLoeschen?> = _vorgemerkt.asStateFlow()
 
     /**
      * Die Galerie ohne das vorgemerkte Set: Kommt die Liste während der Snackbar neu
@@ -70,8 +68,7 @@ class GalerieViewModel @Inject constructor(
      * gelöscht wird.
      */
     val galleryState: StateFlow<GalleryUiState> = galerie.state
-        .combine(_vorgemerkt) { st, v -> if (v == null) st else st.copy(sets = st.sets.filterNot { it.setNumber == v.setNumber }) }
-        .stateIn(viewModelScope, SharingStarted.Eagerly, galerie.state.value)
+        .abgeleitet(_vorgemerkt) { st, v -> if (v == null) st else st.copy(sets = st.sets.filterNot { it.setNumber == v.setNumber }) }
 
     private val _preise = MutableStateFlow<Map<String, KachelPreis>>(emptyMap())
     /** Marktpreis und G&V je Set; eigener Fluss, weil er nach der Liste kommt. */

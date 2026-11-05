@@ -10,7 +10,9 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.transformLatest
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.async
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import ch.brickinventoryapp.di.Rotationsanlass
@@ -104,6 +106,8 @@ class TokenTausch(
     private val pausen: List<Long> = listOf(2_000, 10_000, 30_000),
     /** Für [faellig]: der Anwendungsbereich, damit der Tausch das Verlassen eines Bildschirms überlebt. */
     private val hintergrund: CoroutineScope,
+    /** So lange hält noetig() einen Thread des OkHttp-Dispatchers fest. */
+    private val warten: Long = NOETIG_WARTEN_MS,
 ) : Rotationsanlass {
     private val sperre = Mutex()
 
@@ -120,7 +124,17 @@ class TokenTausch(
      * Herkunft und Generation wie die abgewiesene Anfrage.
      */
     override fun noetig(alterToken: String, herkunft: String?, generation: Long): String? = runBlocking {
-        when (tausche(alterToken)) {
+        noetigWartend(alterToken, herkunft, generation)
+    }
+
+    /**
+     * Der Netz-Thread wartet höchstens [warten]; der Tausch selbst läuft im
+     * Anwendungsbereich weiter, damit ein schon erhaltener Token noch gespeichert wird.
+     */
+    suspend fun noetigWartend(alterToken: String, herkunft: String?, generation: Long): String? {
+        val tausch = hintergrund.async { tausche(alterToken) }
+        return when (withTimeoutOrNull(warten) { tausch.await() }) {
+            null -> null
             Tauschergebnis.GETAUSCHT, Tauschergebnis.SCHON_GETAUSCHT -> stand()
                 .takeIf { herkunft != null && it.herkunft == herkunft && it.generation == generation }
                 ?.token?.takeIf { it != alterToken && it.isNotBlank() }
@@ -161,5 +175,8 @@ class TokenTausch(
     companion object {
         /** So lange gilt der alte Token nach einem Tausch weiter (ueberlappung_sek: 300). */
         const val UEBERLAPPUNG_MS = 300_000L
+
+        /** Kürzer als das Lesezeitlimit des api-Clients (60 s), länger als ein gelungener Tausch. */
+        const val NOETIG_WARTEN_MS = 20_000L
     }
 }

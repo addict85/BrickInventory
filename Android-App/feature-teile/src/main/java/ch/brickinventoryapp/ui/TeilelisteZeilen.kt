@@ -1,4 +1,4 @@
-package ch.brickinventoryapp.ui.screens
+package ch.brickinventoryapp.ui
 
 import ch.brickinventoryapp.ui.model.OHNE_FARBE
 
@@ -8,7 +8,7 @@ import ch.brickinventoryapp.ui.model.OHNE_FARBE
 /** „10294“ heisst „10294-1“ — wie überall, wo eine Setnummer getippt wird. */
 internal fun normalisiert(nr: String): String = if (nr.contains("-")) nr.trim() else "${nr.trim()}-1"
 
-data class PlSet(val setNumber: String, var name: String = "")
+data class PlSet(val setNumber: String, val name: String = "")
 
 data class PlPart(
     val partNumber: String,
@@ -18,7 +18,7 @@ data class PlPart(
     val colorHex: String?,
     val colorId: Int = OHNE_FARBE,
     val blColorId: Int? = null,
-    var quantity: Int,
+    val quantity: Int,
     val imageUrl: String?,
     val imageLocal: String? = null,
     val isFig: Boolean = false,

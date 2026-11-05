@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.data
 
+import ch.brickinventoryapp.util.fangeAusserAbbruch
 import android.content.Context
 import androidx.core.content.edit
 import androidx.datastore.core.DataStore
@@ -263,7 +264,7 @@ class PreferencesManager @Inject constructor(
             try {
                 uebernimmAltenCaStand()
                 // Aufräumen ist Nebensache: Scheitert es, startet die App trotzdem.
-                runCatching { context.dataStore.edit { KlartextReste.entferne(it) } }
+                fangeAusserAbbruch { context.dataStore.edit { KlartextReste.entferne(it) } }
                 designSpiegel.edit { KlartextReste.SPIEGEL.forEach { remove(it) } }
             } finally {
                 startGelesen.countDown()

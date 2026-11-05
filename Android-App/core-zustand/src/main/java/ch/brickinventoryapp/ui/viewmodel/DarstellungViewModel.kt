@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.ui.viewmodel
 
+import ch.brickinventoryapp.ui.abgeleitet
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import ch.brickinventoryapp.data.Darstellungsablage
@@ -10,12 +11,8 @@ import ch.brickinventoryapp.util.LanguageManager
 import ch.brickinventoryapp.util.fangeAusserAbbruch
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.distinctUntilChanged
-import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -38,10 +35,7 @@ class DarstellungViewModel @Inject constructor(
     }
 
     /** Nur das Design, damit MainActivity nicht bei jeder Zustandsänderung neu komponiert. */
-    val appTheme: StateFlow<String> = sitzung.state
-        .map { it.appTheme }
-        .distinctUntilChanged()
-        .stateIn(viewModelScope, SharingStarted.Eagerly, sitzung.state.value.appTheme)
+    val appTheme: StateFlow<String> = sitzung.state.abgeleitet { it.appTheme }
 
     private val _helligkeit = MutableStateFlow(prefs.helligkeit())
     val helligkeit: StateFlow<String> = _helligkeit.asStateFlow()
