@@ -4,7 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import ch.brickinventoryapp.ui.model.KatalogSetAnsicht
 import ch.brickinventoryapp.ui.model.alsAnsicht
-import ch.brickinventoryapp.data.repository.BrickRepository
+import ch.brickinventoryapp.data.repository.KatalogRepository
 import ch.brickinventoryapp.data.repository.Result
 import ch.brickinventoryapp.ui.CatalogUiState
 import ch.brickinventoryapp.ui.retryOnNetwork
@@ -40,7 +40,7 @@ internal const val SICHTFENSTER_RUHE_MS = 150L
  */
 @HiltViewModel
 class CatalogViewModel @Inject constructor(
-    private val repo: BrickRepository,
+    private val katalog: KatalogRepository,
     private val meldungen: MeldungsKanal,
     /** Texte in der Sprache der App und Fehlermeldungen wie überall (AppTexte). */
     private val texte: Texte,
@@ -68,7 +68,7 @@ class CatalogViewModel @Inject constructor(
 
     override fun loadCatalogMeta() {
         viewModelScope.launch {
-            when (val r = retryOnNetwork { repo.katalog.getCatalogMeta() }) {
+            when (val r = retryOnNetwork { katalog.getCatalogMeta() }) {
                 is Result.Success -> if (r.data.success) _catalogState.update {
                     it.copy(
                         themes = r.data.themes.map { t -> t.alsAnsicht() }, yearMin = r.data.yearMin, yearMax = r.data.yearMax
@@ -97,7 +97,7 @@ class CatalogViewModel @Inject constructor(
             ladeJahrVerteilung(gen)
             val s = _catalogState.value
             val r = retryOnNetwork(maxAttempts = CATALOG_RETRIES, delayMs = CATALOG_RETRY_DELAY_MS) {
-                repo.katalog.getCatalogSets(
+                katalog.getCatalogSets(
                     q = s.query.ifBlank { null }, themeId = s.themeId,
                     yearFrom = s.year, yearTo = s.year, sort = s.sort, page = 1
                 )
@@ -137,7 +137,7 @@ class CatalogViewModel @Inject constructor(
         _catalogState.update { it.copy(loadingPages = it.loadingPages + seite) }
         viewModelScope.launch {
             val r = retryOnNetwork(maxAttempts = CATALOG_RETRIES, delayMs = CATALOG_RETRY_DELAY_MS) {
-                repo.katalog.getCatalogSets(
+                katalog.getCatalogSets(
                     q = s.query.ifBlank { null }, themeId = s.themeId,
                     yearFrom = s.year, yearTo = s.year, sort = s.sort, page = seite
                 )
@@ -165,7 +165,7 @@ class CatalogViewModel @Inject constructor(
     private fun ladeJahrVerteilung(gen: Int) {
         viewModelScope.launch {
             val s = _catalogState.value
-            val r = repo.katalog.getCatalogYearVerteilung(
+            val r = katalog.getCatalogYearVerteilung(
                 q = s.query.ifBlank { null }, themeId = s.themeId, sort = s.sort)
             if (gen != catalogGeneration) return@launch
             if (r is Result.Success && r.data.success) {
@@ -228,7 +228,7 @@ class CatalogViewModel @Inject constructor(
         catalogDetailJob?.cancel()
         catalogDetailJob = viewModelScope.launch {
             _catalogState.update { it.copy(detailLoading = true, detail = null) }
-            when (val r = retryOnNetwork(maxAttempts = CATALOG_RETRIES, delayMs = CATALOG_RETRY_DELAY_MS) { repo.katalog.getCatalogSetDetail(setNumber) }) {
+            when (val r = retryOnNetwork(maxAttempts = CATALOG_RETRIES, delayMs = CATALOG_RETRY_DELAY_MS) { katalog.getCatalogSetDetail(setNumber) }) {
                 is Result.Success -> {
                     if (r.data.success && r.data.set != null)
                         _catalogState.update { it.copy(detailLoading = false, detail = r.data.set?.alsAnsicht()) }

@@ -3,7 +3,6 @@ package ch.brickinventoryapp
 import ch.brickinventoryapp.ressourcen.R
 import ch.brickinventoryapp.data.MeldungsKanal
 import ch.brickinventoryapp.data.cache.ResponseCache
-import ch.brickinventoryapp.data.repository.BrickRepository
 import ch.brickinventoryapp.data.repository.FigurenRepository
 import ch.brickinventoryapp.data.repository.FinanzenRepository
 import ch.brickinventoryapp.data.repository.GutscheineRepository
@@ -78,13 +77,7 @@ class HintergrundarbeitenTest {
     private val kanal = MeldungsKanal()
     private val vm = TestApi.fuer(pfade.server).let { api ->
         val cache = ResponseCache { dir }
-        MonitoringViewModel(BrickRepository(
-            sets = SetsRepository(api, cache), teile = TeileRepository(api, cache),
-            finanzen = FinanzenRepository(api, cache), haushalt = HaushaltRepository(api, cache),
-            figuren = FigurenRepository(api, cache), konto = KontoRepository(api, cache),
-            verwaltung = VerwaltungRepository(api, cache), katalog = KatalogRepository(api, cache),
-            gutscheine = GutscheineRepository(api, cache), cache = cache,
-        ), Saetze, kanal)
+        MonitoringViewModel(VerwaltungRepository(api, cache), KontoRepository(api, cache), Saetze, kanal)
     }
 
     @After

@@ -7,7 +7,7 @@ import ch.brickinventoryapp.data.PasswortPflicht
 import ch.brickinventoryapp.data.Sitzungsende
 import ch.brickinventoryapp.data.ZweiterFaktorPflicht
 import ch.brickinventoryapp.data.cache.VorschauSpeicher
-import ch.brickinventoryapp.data.repository.BrickRepository
+import ch.brickinventoryapp.data.repository.KontoDatenLoescher
 import ch.brickinventoryapp.di.BrickDispatchers
 import ch.brickinventoryapp.di.Dispatcher
 import ch.brickinventoryapp.util.fangeAusserAbbruch
@@ -31,7 +31,7 @@ import okhttp3.OkHttpClient
 class Abmelden @Inject constructor(
     @param:ApplicationContext private val ctx: Context,
     private val prefs: Sitzungsende,
-    private val repo: BrickRepository,
+    private val kontoDaten: KontoDatenLoescher,
     private val passwortPflicht: PasswortPflicht,
     private val zweiterFaktorPflicht: ZweiterFaktorPflicht,
     @param:Named("image") private val bildHttpClient: OkHttpClient,
@@ -50,7 +50,7 @@ class Abmelden @Inject constructor(
         prefs.clearSession()
         passwortPflicht.erledigt()
         zweiterFaktorPflicht.erledigt()
-        repo.clearCache()
+        kontoDaten.loesche()
         withContext(io) {
             fangeAusserAbbruch { raeumeVertraulichePdfsAuf(ctx.cacheDir) }
             fangeAusserAbbruch { raeumeAnleitungenAuf(ctx.cacheDir) }

@@ -53,7 +53,7 @@ class CatalogViewModelTest {
         CatalogSetsResponse(success = true, total = 120, sets = nummern.map { CatalogSetItem(setNumber = it, name = "Set $it") })
 
     private fun mitVm(block: suspend TestScope.(CatalogViewModel) -> Unit) = runTest(takt) {
-        val vm = CatalogViewModel(fake.repo(t.cache), t.meldungen, NummernTexte)
+        val vm = CatalogViewModel(KatalogRepository(fake.api, t.cache), t.meldungen, NummernTexte)
         try {
             block(vm)
         } finally {

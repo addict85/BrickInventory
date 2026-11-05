@@ -3,7 +3,7 @@ package ch.brickinventoryapp.service
 import ch.brickinventoryapp.util.fangeAusserAbbruch
 import android.content.Context
 import ch.brickinventoryapp.data.Zugangsdaten
-import ch.brickinventoryapp.data.repository.BrickRepository
+import ch.brickinventoryapp.data.repository.SetsRepository
 import ch.brickinventoryapp.data.repository.Result
 import ch.brickinventoryapp.util.Teilelistentresor
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -48,7 +48,7 @@ sealed class PdfExportState {
  */
 @Singleton
 class PdfExportManager @Inject constructor(
-    private val repo: BrickRepository,
+    private val sets: SetsRepository,
     private val prefs: Zugangsdaten,
     @param:Named("sse") private val sseClient: OkHttpClient,
     private val json: Json,
@@ -89,7 +89,7 @@ class PdfExportManager @Inject constructor(
         repeat(5) { attempt ->
             if (downloadResult !is Result.Success) {
                 if (attempt > 0) { delay(dlDelay); dlDelay = minOf(dlDelay * 2, 30_000L) }
-                downloadResult = repo.sets.downloadPdf(jobId)
+                downloadResult = sets.downloadPdf(jobId)
             }
         }
         return downloadResult
@@ -106,7 +106,7 @@ class PdfExportManager @Inject constructor(
 
         fangeAusserAbbruch {
             // Step 1: Job starten
-            val jobId = when (val r = repo.sets.startPdfJob(body)) {
+            val jobId = when (val r = sets.startPdfJob(body)) {
                 is Result.Success -> r.data
                 is Result.Error   -> { _state.value = PdfExportState.Error(r.message); return }
             }
@@ -232,7 +232,7 @@ class PdfExportManager @Inject constructor(
         val deadline = System.currentTimeMillis() + 10 * 60 * 1000L
         while (System.currentTimeMillis() < deadline) {
             delay(3000)
-            when (val r = repo.sets.getPdfJobStatus(jobId)) {
+            when (val r = sets.getPdfJobStatus(jobId)) {
                 is Result.Success -> {
                     errors = 0
                     setEtaOnce(r.data.etaSeconds)

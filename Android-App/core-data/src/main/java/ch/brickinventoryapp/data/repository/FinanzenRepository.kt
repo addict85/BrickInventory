@@ -1,51 +1,30 @@
 package ch.brickinventoryapp.data.repository
 
-import ch.brickinventoryapp.data.api.FinanzenApi
-import ch.brickinventoryapp.data.cache.ResponseCache
 import ch.brickinventoryapp.data.model.*
-import javax.inject.Inject
-import javax.inject.Singleton
 
 /**
- * Preise, Bewertung, Verlauf und Gewinn/Verlust — eines der Sachgebiete der
- * Datenschicht, erreichbar über `repo.finanzen.…`; die Begründung der Aufteilung
- * steht in RepoBasis.kt.
+ * Preise, Bewertung, Verlauf und Gewinn/Verlust.
+ * Eine Schnittstelle, damit ViewModels und Tests nicht an der Umsetzung mit
+ * Retrofit und Ablage hängen (FinanzenRepositoryImpl).
  */
-@Singleton
-class FinanzenRepository @Inject constructor(
-    api: FinanzenApi,
-    cache: ResponseCache,
-) : RepoBasis<FinanzenApi>(api, cache) {
+interface FinanzenRepository {
+    suspend fun getSetPrice(setNumber: String): Result<SetPriceResponse>
 
-    suspend fun getSetPrice(setNumber: String): Result<SetPriceResponse> =
-        safeCall { api.getSetPrice(setNumber) }
+    suspend fun getSetPriceHistory(setNumber: String): Result<PriceHistoryResponse>
 
-    suspend fun getSetPriceHistory(setNumber: String): Result<PriceHistoryResponse> =
-        safeCall { api.getSetPriceHistory(setNumber) }
+    suspend fun getPartPriceHistory(partNumber: String, colorId: Int): Result<PriceHistoryResponse>
 
-    suspend fun getPartPriceHistory(partNumber: String, colorId: Int): Result<PriceHistoryResponse> =
-        safeCall { api.getPartPriceHistory(partNumber, colorId) }
+    suspend fun getFigPriceHistory(figNumber: String): Result<PriceHistoryResponse>
 
-    suspend fun getFigPriceHistory(figNumber: String): Result<PriceHistoryResponse> =
-        safeCall { api.getFigPriceHistory(figNumber) }
+    suspend fun getPartsValuation(accounts: String? = null): Result<PartsValuationResponse>
 
-    suspend fun getPartsValuation(accounts: String? = null): Result<PartsValuationResponse> =
-        safeCall { api.getPartsValuation(accounts) }
+    suspend fun getMinifigsValuation(accounts: String? = null): Result<FigsValuationResponse>
 
-    suspend fun getMinifigsValuation(accounts: String? = null): Result<FigsValuationResponse> =
-        safeCall { api.getMinifigsValuation(accounts) }
+    suspend fun getValuation(accounts: String? = null): Result<ValuationResponse>
 
-    suspend fun getValuation(accounts: String? = null): Result<ValuationResponse> =
-        safeCall { api.getValuation(accounts) }
+    suspend fun getPnl(accounts: String? = null): Result<PnlResponse>
 
-    suspend fun getPnl(accounts: String? = null): Result<PnlResponse> =
-        safeCall { api.getPnl(accounts) }
+    suspend fun getPortfolioHistory(period: String = "week", accounts: String? = null): Result<PortfolioHistoryResponse>
 
-    suspend fun getPortfolioHistory(period: String = "week", accounts: String? = null): Result<PortfolioHistoryResponse> =
-        safeCall { api.getPortfolioHistory(period, accounts) }
-
-    suspend fun getStats(accounts: String? = null): Result<StatsResponse> =
-        if (accounts == null)
-            cached("stats", StatsResponse.serializer()) { safeCall { api.getStats() } }
-        else safeCall { api.getStats(accounts) }
+    suspend fun getStats(accounts: String? = null): Result<StatsResponse>
 }

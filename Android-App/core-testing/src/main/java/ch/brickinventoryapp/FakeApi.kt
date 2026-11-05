@@ -2,17 +2,6 @@ package ch.brickinventoryapp
 
 import ch.brickinventoryapp.data.Sitzungsablage
 import ch.brickinventoryapp.data.api.BrickApiService
-import ch.brickinventoryapp.data.cache.ResponseCache
-import ch.brickinventoryapp.data.repository.BrickRepository
-import ch.brickinventoryapp.data.repository.FigurenRepository
-import ch.brickinventoryapp.data.repository.FinanzenRepository
-import ch.brickinventoryapp.data.repository.GutscheineRepository
-import ch.brickinventoryapp.data.repository.HaushaltRepository
-import ch.brickinventoryapp.data.repository.KatalogRepository
-import ch.brickinventoryapp.data.repository.KontoRepository
-import ch.brickinventoryapp.data.repository.SetsRepository
-import ch.brickinventoryapp.data.repository.TeileRepository
-import ch.brickinventoryapp.data.repository.VerwaltungRepository
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import okhttp3.MediaType.Companion.toMediaType
@@ -60,12 +49,6 @@ class FakeApi {
         else Response.error(code, """{"success":false}""".toResponseBody("application/json".toMediaType()))
     }
 
-    /** Alle Repositories über diese Api, mit [cache] als Ablage. */
-    fun repo(cache: ResponseCache) = BrickRepository(
-        SetsRepository(api, cache), TeileRepository(api, cache), FinanzenRepository(api, cache),
-        FigurenRepository(api, cache), HaushaltRepository(api, cache), KontoRepository(api, cache),
-        VerwaltungRepository(api, cache), KatalogRepository(api, cache), GutscheineRepository(api, cache), cache,
-    )
 }
 
 /** Die Sitzungsablage im Speicher; was das AppViewModel merkt, steht in den Flüssen. */

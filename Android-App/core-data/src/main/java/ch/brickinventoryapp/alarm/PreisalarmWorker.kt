@@ -18,7 +18,7 @@ import androidx.work.WorkManager
 import androidx.work.WorkerParameters
 import ch.brickinventoryapp.ressourcen.R
 import ch.brickinventoryapp.data.PreferencesManager
-import ch.brickinventoryapp.data.repository.BrickRepository
+import ch.brickinventoryapp.data.repository.SetsRepository
 import dagger.hilt.EntryPoint
 import dagger.hilt.InstallIn
 import dagger.hilt.android.EntryPointAccessors
@@ -43,7 +43,7 @@ class PreisalarmWorker(
     @EntryPoint
     @InstallIn(SingletonComponent::class)
     interface Zugang {
-        fun repo(): BrickRepository
+        fun sets(): SetsRepository
         fun prefs(): PreferencesManager
         fun startziel(): Startziel
     }
@@ -85,8 +85,8 @@ class PreisalarmWorker(
             if (prefs.tokenJetzt().isBlank()) return true
 
             val marke = prefs.alarmMarke.first()
-            val repo = zugang.repo()
-            return when (val e = Alarmabholung.hole(marke) { seit -> repo.sets.getPendingAlerts(seit) }) {
+            val sets = zugang.sets()
+            return when (val e = Alarmabholung.hole(marke) { seit -> sets.getPendingAlerts(seit) }) {
                 is Alarmabholung.Ergebnis.Fehlgeschlagen -> false
 
                 is Alarmabholung.Ergebnis.Markiert -> {

@@ -1,10 +1,6 @@
 package ch.brickinventoryapp.data.repository
 
-import ch.brickinventoryapp.data.cache.ResponseCache
-import ch.brickinventoryapp.data.lokal.Offlineablage
 import ch.brickinventoryapp.data.model.*
-import javax.inject.Inject
-import javax.inject.Singleton
 
 /**
  * Ergebnis eines Serveraufrufs — genau zwei Fälle, damit jedes `when` erschöpfend
@@ -105,35 +101,3 @@ const val MERKLISTE_DEFAULT_SORT = "added_desc"
 /** Status eines PDF-Export-Jobs inkl. geschätzter Restdauer (aus fehlenden Bildern). */
 data class PdfJobStatus(val status: String, val etaSeconds: Int?)
 
-/**
- * Die Anlaufstelle zur Datenschicht, nur noch ein Haltepunkt: Die Funktionen
- * liegen in Klassen nach Sachgebieten, und der Zugriff nennt das Gebiet mit
- * (`repo.sets.getSets(...)`, `repo.teile.getParts(...)`,
- * `repo.finanzen.getPnl(...)`). Keine Weiterreich-Fassade, weil die Klasse sonst
- * ihre 78 Mitglieder behielte.
- */
-@Singleton
-class BrickRepository @Inject constructor(
-    val sets: SetsRepository,
-    val teile: TeileRepository,
-    val finanzen: FinanzenRepository,
-    val figuren: FigurenRepository,
-    val haushalt: HaushaltRepository,
-    val konto: KontoRepository,
-    val verwaltung: VerwaltungRepository,
-    val katalog: KatalogRepository,
-    val gutscheine: GutscheineRepository,
-    private val cache: ResponseCache,
-    private val ablage: Offlineablage,
-) {
-
-    /**
-     * Beim Abmelden aufrufen: Platte, lokale Listen und Ausgang gehören dem
-     * angemeldeten Konto. Was noch im Ausgang wartet, geht dabei verloren — ein
-     * anderes Konto darf es nicht senden.
-     */
-    suspend fun clearCache() {
-        cache.clear()
-        ablage.leere()
-    }
-}

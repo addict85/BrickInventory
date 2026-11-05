@@ -1,5 +1,6 @@
 package ch.brickinventoryapp
 
+import ch.brickinventoryapp.data.repository.GutscheineRepositoryImpl
 import ch.brickinventoryapp.data.lokal.Bearbeitung
 import ch.brickinventoryapp.data.lokal.Faecher
 import ch.brickinventoryapp.data.lokal.Offlineablage
@@ -111,7 +112,7 @@ class OfflineablageTest {
 
     @Test
     fun `ein Gutschein liegt ohne PIN und volle Nummer`() {
-        val g = GutscheineRepository.ohneGeheimnis(Gutschein(id = 1, number = "1234567890123456", pin = "4711", amount = 50.0))
+        val g = GutscheineRepositoryImpl.ohneGeheimnis(Gutschein(id = 1, number = "1234567890123456", pin = "4711", amount = 50.0))
         assertEquals("…3456", g.number)
         assertNull(g.pin)
         assertEquals(50.0, g.amount, 0.0)

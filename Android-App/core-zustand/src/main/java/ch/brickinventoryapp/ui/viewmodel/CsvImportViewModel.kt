@@ -6,7 +6,7 @@ import ch.brickinventoryapp.data.CsvImportSseClient
 import ch.brickinventoryapp.data.CsvImportStrom
 import ch.brickinventoryapp.data.MeldungsKanal
 import ch.brickinventoryapp.data.Zugangsdaten
-import ch.brickinventoryapp.data.repository.BrickRepository
+import ch.brickinventoryapp.data.repository.SetsRepository
 import ch.brickinventoryapp.data.repository.Result
 import ch.brickinventoryapp.ressourcen.R
 import ch.brickinventoryapp.service.CsvImportDienst
@@ -39,7 +39,7 @@ import javax.inject.Inject
 class CsvImportViewModel @Inject constructor(
     private val sseClient: CsvImportStrom,
     private val dienst: CsvImportDienst,
-    private val repo: BrickRepository,
+    private val sets: SetsRepository,
     private val prefs: Zugangsdaten,
     private val texte: Texte,
     private val bestand: Bestandssignal,
@@ -98,7 +98,7 @@ class CsvImportViewModel @Inject constructor(
     /** Abbrechen heisst „ab hier nicht weiter“; angelegte Sets bleiben. */
     fun cancelCsvImport() {
         viewModelScope.launch {
-            when (val r = repo.sets.cancelCsvImport()) {
+            when (val r = sets.cancelCsvImport()) {
                 is Result.Success -> meldungen.zeige(texte.text(R.string.csv_cancel_requested))
                 is Result.Error -> meldungen.zeige(texte.meldungFuerSnackbar(r))
             }
@@ -148,7 +148,7 @@ class CsvImportViewModel @Inject constructor(
             val url = prefs.serverUrlJetzt()
             val token = prefs.tokenJetzt()
             if (token.isBlank() || url.isBlank()) return
-            val resp = repo.sets.getCsvImportStatus(url, token)
+            val resp = sets.getCsvImportStatus(url, token)
             if (resp is Result.Success) handleCsvStatus(resp.data.alsAnsicht())
         }
     }

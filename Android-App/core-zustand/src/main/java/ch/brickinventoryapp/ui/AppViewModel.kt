@@ -9,7 +9,8 @@ import ch.brickinventoryapp.data.RechteSignal
 import ch.brickinventoryapp.data.SessionExpiredSignal
 import ch.brickinventoryapp.data.Sitzungsablage
 import ch.brickinventoryapp.data.ZweiterFaktorPflicht
-import ch.brickinventoryapp.data.repository.BrickRepository
+import ch.brickinventoryapp.data.repository.KontoRepository
+import ch.brickinventoryapp.data.repository.VerwaltungRepository
 import ch.brickinventoryapp.data.repository.Result
 import ch.brickinventoryapp.ressourcen.R
 import ch.brickinventoryapp.ui.model.alsAnsicht
@@ -37,7 +38,8 @@ import javax.inject.Inject
  */
 @HiltViewModel
 class AppViewModel @Inject constructor(
-    private val repo: BrickRepository,
+    private val konto: KontoRepository,
+    private val verwaltung: VerwaltungRepository,
     private val prefs: Sitzungsablage,
     private val sessionExpired: SessionExpiredSignal,
     private val rechte: RechteSignal,
@@ -123,7 +125,7 @@ class AppViewModel @Inject constructor(
         // Ein 403 `nur_admins`: Recht nachziehen; die Meldung nur beim Übergang.
         viewModelScope.launch {
             rechte.entzogen.collect {
-                if (sitzung.rechteNachziehen(repo.konto)) meldungen.zeige(texte.text(R.string.vm_rechte_entzogen))
+                if (sitzung.rechteNachziehen(konto)) meldungen.zeige(texte.text(R.string.vm_rechte_entzogen))
             }
         }
     }
@@ -143,7 +145,7 @@ class AppViewModel @Inject constructor(
                 // dorthin scheiterten nur und füllten die Leiste mit Netzfehlern.
                 if (token.isNotBlank() && url.isNotBlank() &&
                     !NetworkPolicy.klartextAltbestand(url, NetworkPolicy.entwicklung)) {
-                    viewModelScope.launch { sitzung.kontoUebernehmen(repo.konto, zweiterFaktorPflicht) }
+                    viewModelScope.launch { sitzung.kontoUebernehmen(konto, zweiterFaktorPflicht) }
                     nachAnmeldung()
                     loadSettings()
                     vorwaermen.anstossen()
@@ -195,7 +197,7 @@ class AppViewModel @Inject constructor(
 
     /** Einstellungen und Design des Kontos; das Design kommt von /settings/theme. */
     fun loadSettings() {
-        viewModelScope.launch { sitzung.ladeEinstellungen(repo.konto) }
+        viewModelScope.launch { sitzung.ladeEinstellungen(konto) }
         loadAppTheme()
     }
 
@@ -203,7 +205,7 @@ class AppViewModel @Inject constructor(
     private fun loadAppTheme() {
         viewModelScope.launch {
             if (prefs.serverUrlJetzt().isBlank()) return@launch
-            val r = repo.konto.getAppTheme()
+            val r = konto.getAppTheme()
             if (r is Result.Success && r.data.success) sitzung.aendere { it.copy(appTheme = r.data.theme) }
         }
     }
@@ -213,7 +215,7 @@ class AppViewModel @Inject constructor(
         viewModelScope.launch {
             if (prefs.serverUrlJetzt().isBlank()) return@launch
             while (true) {
-                val r = repo.verwaltung.getStartupStatus()
+                val r = verwaltung.getStartupStatus()
                 if (r !is Result.Success || r.data.ready) {
                     sitzung.aendere { it.copy(startupStatus = null) }
                     return@launch

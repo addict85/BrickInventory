@@ -41,9 +41,8 @@ object Alarmabholung {
     }
 
     /**
-     * Einen Durchgang machen. Die Abfrage ist ein Parameter, weil das BrickRepository
-     * über Retrofit und den Plattencache in einem Unit-Test nicht herstellbar ist —
-     * sonst wäre gerade das Entschiedene nur im Betrieb beobachtbar. Wie beim
+     * Einen Durchgang machen. Die Abfrage ist ein Parameter, damit ein Unit-Test sie
+     * ohne Retrofit und Plattencache reichen kann — sonst wäre gerade das Entschiedene nur im Betrieb beobachtbar. Wie beim
      * Mailversand des Servers (utils/preisalarm.ts): Wer entscheidet, bekommt das Wie
      * gereicht.
      *

@@ -13,7 +13,7 @@ import androidx.core.app.ServiceCompat
 import ch.brickinventoryapp.ressourcen.R
 import ch.brickinventoryapp.data.Zugangsdaten
 import ch.brickinventoryapp.data.repository.Result
-import ch.brickinventoryapp.data.repository.BrickRepository
+import ch.brickinventoryapp.data.repository.SetsRepository
 import dagger.hilt.android.AndroidEntryPoint
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.*
@@ -67,7 +67,7 @@ class CsvImportService : Service() {
     }
 
     @Inject lateinit var prefs: Zugangsdaten
-    @Inject lateinit var repo:  BrickRepository
+    @Inject lateinit var sets: SetsRepository
     @Inject lateinit var sseClient: CsvImportSseClient
 
     // Service-Context in der gewählten App-Sprache: setApplicationLocales()
@@ -156,7 +156,7 @@ class CsvImportService : Service() {
         if (token.isBlank()) {
             PollResult.ERROR
         } else {
-            when (val resp = repo.sets.getCsvImportStatus(url, token)) {
+            when (val resp = sets.getCsvImportStatus(url, token)) {
                 is Result.Success ->
                     if (applyStatus(resp.data)) PollResult.RUNNING else PollResult.FINISHED
                 is Result.Error -> PollResult.ERROR

@@ -71,7 +71,7 @@ class AppViewModelTest {
     /** Erzeugt das ViewModel, führt [block] aus und beendet seine Koroutinen. */
     private fun mitVm(block: suspend TestScope.(AppViewModel) -> Unit) = runTest(takt) {
         val vm = AppViewModel(
-            repo = fake.repo(t.cache), prefs = ablage, sessionExpired = abgelaufenSignal, rechte = rechte,
+            konto = KontoRepository(fake.api, t.cache), verwaltung = VerwaltungRepository(fake.api, t.cache), prefs = ablage, sessionExpired = abgelaufenSignal, rechte = rechte,
             meldungen = t.meldungen, texte = NummernTexte, sitzung = t.sitzung, blickfeldDienst = t.blickfeld,
             bestand = t.bestand, scrollMemory = t.scrollMemory,
             ausgangsmelder = Ausgangsmelder(Offlineablage.fluechtig(), t.bestand, t.meldungen, NummernTexte),
