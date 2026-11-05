@@ -754,6 +754,7 @@ window.I18N_EN = {
   'monitor.art.nachlauf': 'Catch-up after start',
   'monitor.art.csv_sync': 'Rebrickable catalog',
   'monitor.art.preise': 'Update prices',
+  'monitor.art.preise_nachladen': 'Fetch missing prices',
   'monitor.art.bild_nachlauf': 'Image download (CDN)',
   'monitor.art.aufraeumen': 'Clean-up (hourly)',
   'monitor.art.aufraeumen_taeglich': 'Clean-up (daily)',
