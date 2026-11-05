@@ -32,7 +32,6 @@ fun NavGraphBuilder.toolsGraph(
     imageLoader: coil3.ImageLoader,
     bottomNavItems: List<Triple<Screen, @Composable () -> Unit, String>>,
     snackbarHostState: SnackbarHostState,
-    activity: android.content.Context,
     /**
      * Scroll-Zustand der Finanz-Liste. Ausserhalb des Ziels gehalten, weil das Ziel
      * beim Öffnen der Detailansicht verworfen wird — ein rememberLazyListState() darin
@@ -111,22 +110,16 @@ fun NavGraphBuilder.toolsGraph(
             val state by vm.state.collectAsStateWithLifecycle()
             val blick by vm.blickfeld.collectAsStateWithLifecycle()
             val erfassung = ch.brickinventoryapp.ui.viewmodel.aktivitaetsViewModel<ch.brickinventoryapp.ui.viewmodel.ErfassungViewModel>()
-            val teileliste = hiltViewModel<ch.brickinventoryapp.ui.viewmodel.TeilelisteViewModel>()
             val barcodeState by erfassung.barcodeState.collectAsStateWithLifecycle()
             ReiterGeruest(stringResource(R.string.nav_partslist), vm, navController, bottomNavItems, snackbarHostState) {
-                PartsListScreen(
+                PartsListRoute(
                     serverUrl = state.serverUrl,
                     authToken = state.authToken,
-                    onExportPdf = { sets, parts -> teileliste.exportPartsPdf(activity, sets, parts) },
-                    pdfStatus = teileliste.pdfExportStatus,
                     imageLoader = imageLoader,
                     onScanBarcode = { erfassung.setScannerSource("partslist"); navController.navigate(Screen.BarcodeScanner.route) },
                     // Erfolgloser Scan → Cursor ins Set-Feld.
                     manuelleErfassungAnfordern = barcodeState.manuelleErfassungAnfordern,
                     onManuelleErfassungQuittiert = { erfassung.manuelleErfassungQuittieren() },
-                    onResolveSet = { setNumber -> teileliste.resolveSetForPartsList(setNumber) },
-                    onLadeBestand = { teile, nurLose, mitUnterkonten ->
-                        teileliste.ladeTeilelisteBestand(teile, nurLose, mitUnterkonten) },
                     // Dieselbe Regel wie in der Webapp (02-gallery.js): Mehr als
                     // ein Mitglied im Haushalt heisst „es gibt Unterkonten".
                     hatUnterkonten = blick.householdMembers.size > 1,

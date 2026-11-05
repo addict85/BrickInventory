@@ -107,6 +107,14 @@ class UnterseitenTest {
         compose.waitForIdle()
     }
 
+    /** Die Bauliste, wie der Graph sie zeigt: Route mit ViewModel, ohne Netz. */
+    @Composable
+    private fun bauliste(vm: ch.brickinventoryapp.ui.viewmodel.TeilelisteViewModel) =
+        ch.brickinventoryapp.ui.screens.PartsListRoute(serverUrl = "", imageLoader = coil3.ImageLoader.Builder(ctx).build(),
+            onScanBarcode = {}, hatUnterkonten = false, barcodeSetNumber = null, onBarcodeConsumed = {},
+            listState = androidx.compose.foundation.lazy.rememberLazyListState(), manuelleErfassungAnfordern = false,
+            onManuelleErfassungQuittiert = {}, vm = vm)
+
     private fun imDialog(text: String) = compose.onNode(hasText(text) and hasClickAction() and hasAnyAncestor(isDialog()))
 
     private fun einstellungen() = welt.t.merke(ch.brickinventoryapp.ui.viewmodel.EinstellungenViewModel(welt.t.dienste,
@@ -200,8 +208,8 @@ class UnterseitenTest {
     @Test
     fun `leere Bauliste steht mittig und bietet kein Zuruecksetzen an`() {
         zeige {
-            ch.brickinventoryapp.ui.screens.PartsListScreen(serverUrl = "", imageLoader = coil3.ImageLoader.Builder(ctx).build(),
-                onScanBarcode = {}, onResolveSet = { error("nichts aufzulösen") })
+            ch.brickinventoryapp.ui.screens.PartsListScreen(ch.brickinventoryapp.ui.TeilelisteUiState(),
+                serverUrl = "", imageLoader = coil3.ImageLoader.Builder(ctx).build(), onScanBarcode = {})
         }
         compose.onAllNodes(hasText(ctx.getString(R.string.partslist_reset)) and hasClickAction()).assertCountEquals(0)
         val dichte = ctx.resources.displayMetrics.density
@@ -339,10 +347,8 @@ class UnterseitenTest {
 
     @Test
     fun `Bauliste nimmt Sets ueber das Plus im Feld und setzt bei ihnen zurueck`() {
-        zeige {
-            ch.brickinventoryapp.ui.screens.PartsListScreen(serverUrl = "", imageLoader = coil3.ImageLoader.Builder(ctx).build(),
-                onScanBarcode = {}, onResolveSet = { error("nichts aufzulösen") })
-        }
+        val vm = welt.bauliste()
+        zeige { bauliste(vm) }
         compose.onNode(hasSetTextAction() and hasText(ctx.getString(R.string.gallery_set_number)))
             .performSemanticsAction(SemanticsActions.SetText) { it(AnnotatedString("21318")) }
         compose.waitForIdle()
@@ -360,10 +366,8 @@ class UnterseitenTest {
     @Test
     fun `Bauliste entsteht in einem Schritt aus der getippten Nummer`() {
         val aufgeloest = mutableListOf<String>()
-        zeige {
-            ch.brickinventoryapp.ui.screens.PartsListScreen(serverUrl = "", imageLoader = coil3.ImageLoader.Builder(ctx).build(),
-                onScanBarcode = {}, onResolveSet = { nr -> aufgeloest += nr; "Baumhaus" to emptyList() })
-        }
+        val vm = welt.bauliste { nr -> aufgeloest += nr; "Baumhaus" to emptyList() }
+        zeige { bauliste(vm) }
         compose.onNode(hasSetTextAction() and hasText(ctx.getString(R.string.gallery_set_number))).performTextInput("21318")
         compose.onNode(hasText(ctx.getString(R.string.partslist_generate)) and hasClickAction()).assertIsEnabled().performClick()
         warte("Bauliste") { aufgeloest.isNotEmpty() }

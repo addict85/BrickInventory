@@ -171,7 +171,6 @@ fun BrickInventoryManagerApp(
         }
     }
 
-    val activity = androidx.compose.ui.platform.LocalContext.current
     // Der gemeinsame Raum für Elementübergänge (Galerie → Set-Detail); das
     // vorhersagbare Zurück spielt denselben Übergang rückwärts.
     ch.brickinventoryapp.ui.components.UebergangsRahmen {
@@ -191,7 +190,7 @@ fun BrickInventoryManagerApp(
         collectionGraph(vm, navController, imageLoader, bottomNavItems, snackbarHostState,
             galleryGridState, partsGridState, minifigsGridState)
         catalogGraph(vm, katalog, navController, imageLoader, bottomNavItems, snackbarHostState)
-        toolsGraph(vm, gutscheine, navController, imageLoader, bottomNavItems, snackbarHostState, activity,
+        toolsGraph(vm, gutscheine, navController, imageLoader, bottomNavItems, snackbarHostState,
             financeListState, partsListState, settingsScrollState)
     }
     }

@@ -567,8 +567,8 @@ class BildschirmFotoVariantenTest {
     @Test
     fun bauliste() {
         zeige("bauliste") {
-            ch.brickinventoryapp.ui.screens.PartsListScreen(serverUrl = "", imageLoader = bilder, onScanBarcode = {},
-                onResolveSet = { error("im Foto wird nichts aufgelöst") })
+            ch.brickinventoryapp.ui.screens.PartsListScreen(ch.brickinventoryapp.ui.TeilelisteUiState(),
+                serverUrl = "", imageLoader = bilder, onScanBarcode = {})
         }
         anhalten()
         foto("bauliste")
