@@ -52,7 +52,7 @@ Danach:
 
 | Befehl | Ergebnis |
 | --- | --- |
-| `./gradlew testDebugUnitTest` | JVM-Unit-Tests, Bericht unter `app/build/reports/tests/` |
+| `./gradlew testDebugUnitTest :core-model:test` | JVM-Unit-Tests aller Module (core-model ist reines Kotlin und hat `test`), Bericht je Modul unter `*/build/reports/tests/` |
 | `./gradlew assembleDebug` | `app/build/outputs/apk/debug/app-debug.apk` — mit dem Debug-Schlüssel signiert, direkt installierbar |
 | `./gradlew assembleRelease` | `app/build/outputs/apk/release/BrickInventory.apk` — minifiziert; signiert nur, wenn die Schlüsselwerte gesetzt sind (siehe unten) |
 | `./gradlew lintRelease` | `app/build/reports/lint-results-release.html` |
@@ -89,11 +89,22 @@ Benötigte Hosts — hinter einem restriktiven Proxy müssen diese erreichbar se
 
 ### Continuous Integration
 
-`.github/workflows/android.yml` im Wurzelverzeichnis des Repositories macht auf
-einem `ubuntu-latest`-Runner dasselbe wie oben beschrieben: prüfen, ob der
-Wrapper vollständig im Repository liegt, dann `testDebugUnitTest`,
-`assembleRelease` und `lintRelease`. Die Test- und Lint-Berichte hängen als
-Artefakt am Lauf (auch bei rotem Lauf — gerade dann werden sie gebraucht).
+`.github/workflows/android.yml` im Wurzelverzeichnis des Repositories läuft auf
+jedem Push, der `Android-App/` berührt. Der Job `build` macht nacheinander:
+
+1. Wrapper und Gradle-Prüfsumme prüfen
+2. `testDebugUnitTest :core-model:test` samt Bildschirmfotos (`verifyRoborazziDebug`,
+   ohne eingecheckte Referenzen `recordRoborazziDebug`)
+3. Room-Schema eingecheckt?
+4. `assembleRelease bundleRelease`, danach `:app:lintRelease`
+5. Warnungen der Test- und Release-Übersetzung zählen (`tools/warnungen-obergrenze.txt`)
+   und Lint-Befunde zählen (`tools/lint-obergrenze.txt`)
+6. `detekt` gegen `config/detekt/baseline.xml`
+7. Rückstand der Abhängigkeiten melden (`tools/fassungen-pruefen.py`)
+
+Daneben misst der Job `gegenproben` die Patches unter `gegenproben/`: auf einem
+Push nur die betroffenen, nachts und von Hand alle. Die Test- und Lint-Berichte
+hängen als Artefakt am Lauf (auch bei rotem Lauf — gerade dann werden sie gebraucht).
 
 Die APK **nicht**: Sie wird als Anhang am Release `apk-neuste` abgelegt und
 ist damit direkt herunterladbar —
@@ -278,12 +289,13 @@ Modulkanten und echte Zusatzabhängigkeiten:
 | `brickinventory.android.compose` | Compose-Übersetzer, `buildFeatures.compose`, BOM und Gruppe `compose` |
 | `brickinventory.android.hilt` | KSP, Hilt, `hilt-android` und `hilt-compiler` |
 | `brickinventory.android.feature` | die vier oben und `core-ktx` — ein Bereich |
-| `brickinventory.detekt` | Aufgabe `detekt` (Regeln in `config/detekt/detekt.yml`, ohne Baseline); kommt mit library/application, `core-model` nennt es selbst |
+| `brickinventory.detekt` | Aufgabe `detekt` (Regeln in `config/detekt/detekt.yml`, Länge und Verzweigung alter Funktionen in `baseline.xml`, Obergrenze `tools/detekt-obergrenze.txt`); kommt mit library/application/jvm.library |
+| `brickinventory.jvm.library` | `org.jetbrains.kotlin.jvm`, Java und Kotlin 17, Testprotokoll, detekt — für `core-model` |
 
 Modulkanten (`project(":…")`) trägt keine Konvention ein; sie stehen im Skript
 des Moduls, wo `ModulgrenzenTest` sie liest. Ein SDK-Sprung ist eine Zeile in
 `build-logic/convention/src/main/kotlin/ch/brickinventoryapp/buildlogic/Sdk.kt`.
-`core-model` bleibt reines Kotlin und braucht ausser detekt keine Konvention.
+`core-model` bleibt reines Kotlin (`brickinventory.jvm.library`).
 
 | Modul | Inhalt |
 | --- | --- |
@@ -316,11 +328,15 @@ Die Tests liegen neben dem Code ihres Moduls; was mehrere Bereiche zusammen
 prüft (Bildschirmfotos, Abläufe, Struktur), liegt in `app/src/test`. Robolectric
 und Roborazzi laufen auf der JVM, ein Gerät braucht kein Test.
 
-- `QuelltextRatscheTest` hält fest, wie viele Testdateien nur Quelltext lesen;
-  die Zahl darf sinken, nie steigen (siehe *Zwei Arten von Tests*).
-- `gegenproben/` enthält je Test einen Patch, der etwas kaputt macht; der
-  CI-Job `gegenproben` misst, dass der genannte Test dann rot wird
-  (`tools/gegenproben.py`).
+- `QuelltextRatscheTest` hält fest, wie viele Testfunktionen Quelltext lesen,
+  wie oft Tests in Echtzeit warten und wie viele Namen voll qualifiziert stehen;
+  jede Zahl steht genau auf dem gemessenen Wert und darf nur sinken.
+- `gegenproben/` enthält Patches, die etwas kaputt machen; der CI-Job
+  `gegenproben` misst, dass der im Kopf genannte Test dann rot wird
+  (`tools/gegenproben.py`). Nicht jede Testklasse hat einen; wer einen Test
+  schreibt, legt seinen dazu.
+- ViewModel- und Oberflächentests laufen im Takt: `PfadServer.imTakt()` antwortet
+  ohne Netz im aufrufenden Faden und liest jede Antwort gegen das DTO der Methode.
 
 ## Abhängigkeiten und Lieferkette
 
@@ -417,7 +433,7 @@ gibt, meldet der CI-Schritt „Sind die Abhängigkeiten auf der neuesten Fassung
 
 ## Zwei Arten von Tests
 
-Seit Nachtrag 117 gibt es beide, und der Unterschied ist wichtig:
+Der Unterschied ist wichtig:
 
 **Verhaltenstests** führen Code aus. `BrickRepositoryErrorMappingTest` startet
 einen echten HTTP-Server (MockWebServer) und prüft, was das Repository aus
@@ -425,16 +441,13 @@ einer Antwort macht — 409 mit Fehlerrumpf, 500 ohne, Zeitüberschreitung,
 Verbindungsabriss. `FehlerTexteTest` ruft die Zuordnung Ursache → Text direkt
 auf. Solche Tests sind die wertvollen: Sie finden, ob eine Regel WIRKT.
 
-**Quelltextlesende Tests** suchen Muster im Code. Sie sind der Behelf für alles,
-was ohne Android-Laufzeit nicht ausführbar ist (Compose-Bildschirme,
-Navigation, DataStore) — und sie finden nur, ob eine Regel im Code STEHT. In
-Nachtrag 48 hat genau das sieben Nachträge lang eine kaputte
-Vorschau-Erzeugung verdeckt: Der Test prüfte, dass „tmp + rename" im Code
-steht, und sah nie nach, ob am Ende eine Datei lag.
+**Quelltextlesende Tests** suchen Muster im Code und finden nur, ob eine Regel im
+Code STEHT, nicht ob sie wirkt. Sie bleiben für Struktur (Dateien, Abhängigkeiten,
+Verbote). Compose-Bildschirme, Navigation und DataStore laufen mit Robolectric und
+der Compose-Testregel auf der JVM und bekommen Verhaltenstests.
 
-Faustregel: Lässt sich etwas ohne `Context` aufrufen, gehört ein
-Verhaltenstest hin. Braucht es Android, ist ein quelltextlesender Test besser
-als keiner — aber die Frage lohnt sich vorher: Was schwer prüfbar ist, ist
+Faustregel: Was sich aufrufen lässt, bekommt einen Verhaltenstest. Die Frage lohnt
+sich auch, wo es schwer scheint: Was schwer prüfbar ist, ist
 meistens nicht zu kompliziert, sondern nur mit etwas verwoben, das es nicht
 braucht. `fehlerTextId()` und der Ordner-Parameter von `ResponseCache` sind
 beides Beispiele dafür.

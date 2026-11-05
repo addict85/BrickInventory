@@ -71,7 +71,7 @@ abstract class LokalModule {
         @Singleton
         fun datenbank(@ApplicationContext context: Context, ablage: Ablageschluessel): BestandDatenbank =
             Room.databaseBuilder(context, BestandDatenbank::class.java, BestandDatenbank.NAME)
-                // Verschlüsselt mit SQLCipher (sec8 N5); ein Klartext-Altbestand wird beim ersten Öffnen übernommen.
+                // Verschlüsselt mit SQLCipher; ein Klartext-Altbestand wird beim ersten Öffnen übernommen.
                 .openHelperFactory(VerschluesselteBestandsfabrik(context, ablage))
                 .addMigrations(*BestandDatenbank.MIGRATIONEN)
                 .build()

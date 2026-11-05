@@ -33,7 +33,7 @@ class ResponseCache(
     /** Ein früherer Ablageort, der beim ersten Zugriff geräumt wird. */
     private val altlast: () -> File? = { null },
     /**
-     * Verschlüsselt jede Datei (sec8 N5): Inventar und Preise liegen sonst bei Root
+     * Verschlüsselt jede Datei: Inventar und Preise liegen sonst bei Root
      * oder einem ausgelesenen Datenverzeichnis offen. Null nur in Tests ohne Keystore.
      */
     private val chiffre: AblageChiffre? = null,

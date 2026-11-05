@@ -59,7 +59,7 @@ class Ablageschluessel(private val datei: File, private val tresor: TokenVerschl
 /**
  * AES-256-GCM für Dateien der App. Format: Kennung ‖ IV ‖ Geheimtext samt Tag. Die
  * Bindung (Zweck und Dateiname) geht als AAD ein: Eine Datei unter fremdem Namen
- * scheitert an der Prüfung, statt als die andere gelesen zu werden (sec10 H7). Ohne
+ * scheitert an der Prüfung, statt als die andere gelesen zu werden. Ohne
  * Kennung gilt eine Datei als Altbestand im Klartext; der Aufrufer verwirft sie.
  */
 class AblageChiffre(private val schluessel: () -> ByteArray) {

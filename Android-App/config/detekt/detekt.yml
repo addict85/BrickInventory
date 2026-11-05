@@ -1,8 +1,8 @@
 # Regeln für detekt (Konvention brickinventory.detekt in build-logic, Detekt.kt).
 #
 # Grundlage ist detekts Vorgabe (buildUponDefaultConfig); hier steht nur, was
-# davon abweicht, und jeweils warum. Es gibt keine Baseline: Was hier aktiv
-# ist, gilt für jede Zeile, auch für die alten.
+# davon abweicht, und jeweils warum. Die Baseline (baseline.xml) hält nur alte
+# Funde zu Länge und Verzweigung; tools/detekt-obergrenze.txt lässt sie schrumpfen.
 
 config:
   validation: true
