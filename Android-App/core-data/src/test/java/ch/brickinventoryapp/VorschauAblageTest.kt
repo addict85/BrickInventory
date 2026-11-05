@@ -162,7 +162,8 @@ class VorschauAblageTest {
         // 150 MB unter filesDir raeumt niemand ausser dem Nutzer. Ohne Anzeige
         // waechst auf dem Telefon etwas, das man nicht findet.
         val vm = quelle("ui/AppViewModel.kt")
-        val ui = quelle("ui/screens/MonitoringSections.kt")
+        // Der Abschnitt nimmt Zustand und Ereignisse, verdrahtet wird in MonitoringScreen.
+        val ui = quelle("ui/screens/MonitoringSections.kt") + quelle("ui/screens/MonitoringScreen.kt")
         assert(vm.contains("fun vorschauAblageBytes()") && vm.contains("fun vorschauAblageLeeren()")) {
             "Die Zugaenge zur Ablage fehlen im ViewModel"
         }
@@ -455,7 +456,8 @@ class VorschauAblageTest {
 
     @Test
     fun `die drei Netze lassen sich einstellen`() {
-        val ui = quelle("ui/screens/MonitoringSections.kt")
+        // Der Abschnitt nimmt Zustand und Ereignisse, verdrahtet wird in MonitoringScreen.
+        val ui = quelle("ui/screens/MonitoringSections.kt") + quelle("ui/screens/MonitoringScreen.kt")
         for (fluss in listOf("vorwaermenWlan", "vorwaermenMobil", "vorwaermenRoaming")) {
             assert(ui.contains("vm.prefs.$fluss")) {
                 "Die Einstellung $fluss wird nicht mehr angezeigt"

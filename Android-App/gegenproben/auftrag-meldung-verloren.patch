@@ -4,11 +4,11 @@ Test: ch.brickinventoryapp.HintergrundarbeitenTest
 Rot: eine Aktion laeuft im ViewModel
 
 diff --git a/Android-App/feature-verwaltung/src/main/java/ch/brickinventoryapp/ui/viewmodel/MonitoringViewModel.kt b/Android-App/feature-verwaltung/src/main/java/ch/brickinventoryapp/ui/viewmodel/MonitoringViewModel.kt
-index 3c1578c..7fb8ad5 100644
+index f1048bd..1276d17 100644
 --- a/Android-App/feature-verwaltung/src/main/java/ch/brickinventoryapp/ui/viewmodel/MonitoringViewModel.kt
 +++ b/Android-App/feature-verwaltung/src/main/java/ch/brickinventoryapp/ui/viewmodel/MonitoringViewModel.kt
-@@ -141,7 +141,7 @@ class MonitoringViewModel @Inject constructor(
-     fun auftragsArtLeeren(art: String) = melde { leereAuftragsArt(art) }
+@@ -176,7 +176,7 @@ class MonitoringViewModel @Inject constructor(
+     }
  
      private fun melde(aktion: suspend () -> String) {
 -        viewModelScope.launch { _meldung.value = aktion() }
