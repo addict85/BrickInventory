@@ -372,14 +372,16 @@ class OberflaechenRegelnTest {
         }
     }
 
-    /** Was beim Erfassen-Knopf mit [beschreibung] unter ihm liegt: die Kacheln mit den [namen]. */
-    private fun erfassenUeber(beschreibung: String, namen: List<String>): List<String> {
+    /**
+     * Erfassen-Knöpfe mit [beschreibung], die auf der Liste liegen statt über ihr. Geprüft wird
+     * die ganze Liste, nicht nur die Kacheln: Bei wenigen Sets bleibt die Ecke unter einem
+     * schwebenden Knopf leer, und er verdeckte erst bei voller Sammlung etwas.
+     */
+    private fun erfassenAufListe(beschreibung: String): List<androidx.compose.ui.geometry.Rect> {
+        val liste = compose.onNode(androidx.compose.ui.test.hasScrollToNodeAction()).fetchSemanticsNode().boundsInRoot
         val knoepfe = compose.onAllNodesWithContentDescription(beschreibung).fetchSemanticsNodes().map { it.boundsInRoot }
         assertTrue("Erfassen ist da", knoepfe.isNotEmpty())
-        return namen.filter { name ->
-            compose.onAllNodes(hasClickAction() and hasText(name, substring = true)).fetchSemanticsNodes()
-                .any { k -> knoepfe.any { it.overlaps(k.boundsInRoot) } }
-        }
+        return knoepfe.filter { it.overlaps(liste) }
     }
 
     /**
@@ -395,8 +397,8 @@ class OberflaechenRegelnTest {
             val namen = listOf("Millennium Falcon", "Titanic", "Baumhaus")
             val ganz = ganzSichtbar(namen)
             assertTrue("Nur $ganz Set(s) ganz sichtbar", ganz >= 2)
-            val verdeckt = erfassenUeber(ctx.getString(R.string.gallery_add_set), namen)
-            assertTrue("Erfassen liegt auf $verdeckt", verdeckt.isEmpty())
+            val aufListe = erfassenAufListe(ctx.getString(R.string.gallery_add_set))
+            assertTrue("Erfassen liegt auf der Liste: $aufListe", aufListe.isEmpty())
         } finally {
             welt.close()
         }
@@ -415,8 +417,8 @@ class OberflaechenRegelnTest {
             assertTrue(namen.size >= 3)
             val ganz = ganzSichtbar(namen)
             assertTrue("Nur $ganz Teil(e) ganz sichtbar", ganz >= 2)
-            val verdeckt = erfassenUeber(ctx.getString(R.string.parts_add), namen)
-            assertTrue("Erfassen liegt auf $verdeckt", verdeckt.isEmpty())
+            val aufListe = erfassenAufListe(ctx.getString(R.string.parts_add))
+            assertTrue("Erfassen liegt auf der Liste: $aufListe", aufListe.isEmpty())
         } finally {
             welt.close()
         }

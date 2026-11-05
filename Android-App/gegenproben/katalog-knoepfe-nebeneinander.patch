@@ -26,13 +26,13 @@ index 8a9deed..1900513 100644
 +            Icon(Icons.Default.Add, null, Modifier.size(ch.brickinventoryapp.ui.components.mitSchrift(18.dp)))
 +            Spacer(Modifier.width(Abstaende.klein))
 +            Text(stringResource(if (detail.owned) R.string.catalog_add_again else R.string.catalog_add_to_gallery),
-+                textAlign = TextAlign.Center, maxLines = 1, overflow = TextOverflow.Ellipsis)
++                textAlign = TextAlign.Center, maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
 +        }
 +        OutlinedButton(onClick = onMerken, modifier = Modifier.weight(1f), colors = nebenKnopfFarben(), border = nebenKnopfRand()) {
 +            Icon(Icons.Default.BookmarkAdd, null, Modifier.size(ch.brickinventoryapp.ui.components.mitSchrift(18.dp)))
 +            Spacer(Modifier.width(Abstaende.klein))
 +            Text(stringResource(R.string.wanted_add_submit), textAlign = TextAlign.Center,
-+                maxLines = 1, overflow = TextOverflow.Ellipsis)
++                maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
 +        }
      }
      if (detail.owned) {
