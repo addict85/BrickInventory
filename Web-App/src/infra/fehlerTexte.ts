@@ -81,7 +81,7 @@ export const FEHLER = {
   import_zeile_unterbrochen:   { de: 'Der Server wurde während dieses Sets neu gestartet — bitte die Menge prüfen.',
                                  en: 'The server restarted while importing this set — please check the quantity.' },
   aktuelles_passwort_falsch:   { de: 'Aktuelles Passwort falsch', en: 'Current password is wrong' },
-  passwort_wechsel_noetig:     { de: 'Bitte zuerst das Startpasswort ändern.', en: 'Please change the initial password first.' },
+  passwort_wechsel_noetig:     { de: 'Bitte zuerst das vorläufige Passwort ändern.', en: 'Please change the temporary password first.' },
   letzter_verwalter:           { de: 'Das letzte Verwalterkonto kann sich nicht selbst löschen. Bitte zuerst ein anderes Konto zum Verwalter machen.',
                                  en: 'The last administrator account cannot delete itself. Please make another account an administrator first.' },
   zweiter_faktor_pflicht:      { de: 'Verwalterkonten brauchen einen zweiten Faktor. Bitte zuerst einen Code-Generator einrichten.',

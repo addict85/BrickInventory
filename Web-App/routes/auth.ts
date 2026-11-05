@@ -92,7 +92,7 @@ async function angemeldetAntworten(req: Request, res: Response, user: Angemeldet
   res.json({ success: true, ...(token ? { token } : {}), ...(token ? { token_info: await tokenAngaben(token) } : {}),
     never_expires: false,
     user: { id: user.id, username: user.username, is_admin: user.is_admin,
-    // Nur beim automatisch erzeugten Admin-Passwort gesetzt (db/database.ts).
+    // Startpasswort (db/database.ts) oder vom Verwalter vergeben (routes/auth/benutzer.ts).
     mustChangePassword: user.must_change_password,
     zweiterFaktorPflicht: verwalter && !await zf.istAktiv(uid) } });
 }

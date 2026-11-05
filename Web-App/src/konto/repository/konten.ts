@@ -121,8 +121,11 @@ export async function aktiveVerwalter(): Promise<number[]> {
     .map(z => z.id);
 }
 
+/** Das Passwort hat der Verwalter vergeben und weitergegeben; es gilt nur bis zur
+ * ersten Anmeldung, danach kennt es allein der Inhaber. */
 export async function fuegeKontoEin(username: string, hash: string, verwalter: boolean): Promise<number | null> {
-  const neu = await db.get<{ id: number }>('INSERT INTO users (username, password_hash, is_admin) VALUES ($1, $2, $3) RETURNING id',
+  const neu = await db.get<{ id: number }>(
+    'INSERT INTO users (username, password_hash, is_admin, must_change_password) VALUES ($1, $2, $3, true) RETURNING id',
     [username, hash, verwalter]);
   return neu ? neu.id : null;
 }
@@ -145,8 +148,11 @@ export async function schreibeAktiv(id: number, ja: boolean): Promise<{ vorher: 
  * der Zeit davor und ginge sonst eine Stunde lang weiter. */
 const OHNE_RUECKSETZLINK = 'reset_token = NULL, reset_token_expires = NULL';
 
+/** Ein fremd gesetztes Passwort kennt auch der Verwalter: Der Inhaber muss es
+ * beim nächsten Anmelden ersetzen, sonst bliebe es ein zweiter Schlüssel. */
 export async function setzePasswortHash(id: number, hash: string): Promise<boolean> {
-  return !!(await db.run(`UPDATE users SET password_hash = $1, ${OHNE_RUECKSETZLINK} WHERE id = $2`, [hash, id])).changes;
+  return !!(await db.run(`UPDATE users SET password_hash = $1, must_change_password = true, ${OHNE_RUECKSETZLINK} WHERE id = $2`,
+    [hash, id])).changes;
 }
 
 /** Eigenes Passwort geändert: auch die Aufforderung dazu ist erledigt. */
