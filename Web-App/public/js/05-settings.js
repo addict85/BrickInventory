@@ -3,6 +3,7 @@ import { loadUsers } from './05-nutzerverwaltung.js';
 import { stelleZielBereit } from './00-ziele.js';
 import { echt, registerActions } from './00-registry.js';
 import { I18N, LANG, applyLang, locale, t, tRaw } from '../i18n.js';
+import { fmtDatum } from './01-format.js';
 import { fehlerMeldung, api } from './01-api.js';
 import { ico, G, knopfBesetzt, setzeHtml } from './01-dom.js';
 import { antwortFehler, feldFehler, passwortRegelText } from './01-formular.js';
@@ -277,7 +278,7 @@ G('btn-gen-qr').onclick = generateQrCode;
  */
 function tokenDatum(wert) {
   if (!wert) return '—';
-  return new Date(wert).toLocaleString(locale());
+  return fmtDatum(wert, 'tagzeit');
 }
 
 export async function loadTokens() {
@@ -537,9 +538,24 @@ export async function loadSettings(){
   applySettings(d.settings);
 }
 
-G('btn-sav-bl').onclick=async()=>{ const d=await speichereEinstellungen(tRaw('settings.api_key_title'),{bricklink_consumer_key:G('bl-ck').value,bricklink_consumer_secret:G('bl-cs').value,bricklink_token:G('bl-tok').value,bricklink_token_secret:G('bl-ts').value}); if(!d) return; if(d.success) await api('PUT','/v1/admin/api-limits',{bricklink:parseInt(G('lim-bl').value)}); toast(d.success?t('settings.bl_saved'):t('settings.error'),d.success?'success':'error'); if(d.success){loadRateLimitStats();} };
-G('btn-sav-rb').onclick=async()=>{ const d=await speichereEinstellungen(tRaw('settings.api_key_title'),{rebrickable_api_key:G('rb-key').value}); if(!d) return; if(d.success) await api('PUT','/v1/admin/api-limits',{rebrickable:parseInt(G('lim-rb').value)}); toast(d.success?t('settings.rb_saved'):t('settings.error'),d.success?'success':'error'); if(d.success){loadRateLimitStats();} };
-G('btn-sav-bs').onclick=async()=>{ const d=await speichereEinstellungen(tRaw('settings.api_key_title'),{brickset_api_key:G('bs-key').value}); if(!d) return; if(d.success) await api('PUT','/v1/admin/api-limits',{brickset:parseInt(G('lim-bs').value)}); toast(d.success?t('settings.bs_saved'):t('settings.error'),d.success?'success':'error'); if(d.success){loadRateLimitStats();} };
+/**
+ * Einen Zugang speichern. Alle Felder leer heisst „Zugang entfernt“, nicht „gespeichert“: Das klang, als sei
+ * ein Schlüssel hinterlegt.
+ * @param {Record<string, string>} werte @param {'bricklink'|'rebrickable'|'brickset'} dienst @param {string} grenze @param {string} okText
+ */
+async function speichereZugang(werte, dienst, grenze, okText) {
+  const d = await speichereEinstellungen(tRaw('settings.api_key_title'), werte);
+  if (!d) return;
+  if (!d.success) { toast(tRaw('settings.error'), 'error'); return; }
+  await api('PUT', '/v1/admin/api-limits', { [dienst]: parseInt(G(grenze).value) });
+  const leer = Object.values(werte).every(w => !String(w).trim());
+  toast(leer ? tRaw('settings.zugang_entfernt') : okText, leer ? 'info' : 'success');
+  loadRateLimitStats();
+}
+G('btn-sav-bl').onclick = () => speichereZugang({ bricklink_consumer_key: G('bl-ck').value, bricklink_consumer_secret: G('bl-cs').value,
+  bricklink_token: G('bl-tok').value, bricklink_token_secret: G('bl-ts').value }, 'bricklink', 'lim-bl', tRaw('settings.bl_saved'));
+G('btn-sav-rb').onclick = () => speichereZugang({ rebrickable_api_key: G('rb-key').value }, 'rebrickable', 'lim-rb', tRaw('settings.rb_saved'));
+G('btn-sav-bs').onclick = () => speichereZugang({ brickset_api_key: G('bs-key').value }, 'brickset', 'lim-bs', tRaw('settings.bs_saved'));
 G('btn-save-theme').onclick=async()=>{
   const theme=G('mon-app-theme')?.value||'classic';
   const d=await api('POST','/v1/settings/admin/theme',{theme});

@@ -192,7 +192,7 @@ export async function merkpostenHinzufuegen() {
     if (!d?.success) { toast(d?.error || tRaw('settings.error'), 'error'); return; }
     // „war schon drauf" ist keine Fehlermeldung, aber auch kein Neuzugang — wer zweimal auf denselben Knopf
     // drückt, soll den Unterschied sehen.
-    toast(tRaw(d.war_neu ? 'wanted.added' : 'wanted.already'), 'success');
+    await merkMeldung(d.war_neu, num);
     G('mk-num').value = '';
     await ladeMerkliste();
   } finally { frei(); }
@@ -225,8 +225,20 @@ export async function katalogAufMerkliste() {
         condition: zustand,
       }).catch(() => null);
     }
-    toast(tRaw(d.war_neu ? 'wanted.added' : 'wanted.already'), 'success');
+    await merkMeldung(d.war_neu, sn);
   } finally { frei(); }
+}
+
+/**
+ * Rückmeldung nach dem Merken. Steht das Set schon in der Sammlung, sagt es der Toast: Das Abzeichen
+ * „schon vorhanden“ sah man erst in der Liste.
+ * @param {boolean | undefined} neu @param {string} num
+ */
+async function merkMeldung(neu, num) {
+  const nr = /-\d+$/.test(num) ? num : num + '-1';
+  const eigen = neu ? await api('GET', `/v1/sets/${encodeURIComponent(nr)}`).catch(() => null) : null;
+  const vorhanden = eigen?.success && eigen.set ? eigen.set : null;
+  toast(vorhanden ? tRaw('wanted.added_schon_da', { n: vorhanden.quantity || 1 }) : tRaw(neu ? 'wanted.added' : 'wanted.already'), 'success');
 }
 
 /** setNumber|condition|user_id — der Schlüssel einer Zeile, wie ihn zeile() baut. */

@@ -217,7 +217,8 @@ export function oeffneSicht(name){
  * @param {boolean} imKopf
  */
 function zeigeSeitenname(flaeche, imKopf){
-  const titel = flaeche?.querySelector('.ptitle')?.textContent.trim() || '';
+  // Ohne weiche Trennstriche: Im Seitentitel und in der Tab-Leiste werden sie sichtbar oder stören die Suche.
+  const titel = (flaeche?.querySelector('.ptitle')?.textContent || '').replace(/\u00AD/g, '').trim();
   const kopf = G('kopf-sicht');
   if (kopf) { kopf.textContent = imKopf ? titel : ''; kopf.hidden = !(imKopf && titel); }
   document.title = titel ? `${titel} – BrickInventory` : 'BrickInventory Manager';

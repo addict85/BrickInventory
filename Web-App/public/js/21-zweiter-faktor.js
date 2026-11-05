@@ -74,7 +74,7 @@ export async function zfEinrichten() {
   const lesbar = (d.geheimnis ?? '').replace(/(.{4})/g, '$1 ').trim();
   zeichne(html`<form class="sform" data-submit="zf-bestaetigen" data-stil="max-width:420px">
       <p data-stil="font-size:var(--fs-2);margin:0">${tRaw('zf.scan')}</p>
-      <div id="zf-qr" data-stil="background:#fff;padding:8px;align-self:flex-start;border-radius:8px"></div>
+      <div id="zf-qr" class="zf-qr"></div>
       <div data-stil="font-size:var(--fs-1);color:var(--mut)">${tRaw('zf.manual')}<br><code data-stil="user-select:all;font-size:var(--fs-3)">${lesbar}</code></div>
       <div class="lerr" id="zf-fehler" role="alert"></div>
       ${CODEFELD(tRaw('zf.confirm_code'), 6)}
@@ -97,7 +97,7 @@ function zeigeCodes(codes) {
   zeichne(html`<div class="sform" data-stil="max-width:420px">
       <p data-stil="font-size:var(--fs-2);margin:0"><strong>${tRaw('zf.codes_title')}</strong><br>${tRaw('zf.codes_hint')}</p>
       <pre id="zf-codes" data-stil="font-size:var(--fs-3);line-height:1.6;background:var(--s50,#f8fafc);border:1px solid var(--bdr);border-radius:8px;padding:.6rem .9rem;margin:0;user-select:all">${ungeprueft(codes.map(esc).join('\n'))}</pre>
-      ${reihe(`${knopf('zfCodesKopieren', tRaw('zf.copy'))}
+      ${reihe(`${knopf('zfCodesKopieren', tRaw('zf.copy'))}${knopf('zfCodesSpeichern', tRaw('zf.codes_datei'))}
         <button type="button" class="btn bp ${knopfArt()}" id="zf-gespeichert" data-click="${pflicht ? 'zfPflichtFertig' : 'ladeZweitenFaktor'}">${t('zf.codes_done')}</button>`)}
     </div>`);
   G('zf-gespeichert')?.focus();
@@ -142,6 +142,16 @@ export async function zfCodesKopieren() {
   catch { toast(tRaw('zf.copy_failed'), 'error'); }
 }
 
+/** Die Codes als Textdatei: Kopieren allein liess sie oft in der Zwischenablage verschwinden. */
+export function zfCodesSpeichern() {
+  const text = G('zf-codes')?.textContent || '';
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([text + '\n'], { type: 'text/plain;charset=utf-8' }));
+  a.download = 'brickinventory-wiederherstellungscodes.txt';
+  document.body.append(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+}
+
 /** Verwalter: den zweiten Faktor eines Kontos entfernen (Telefon und Codes verloren). */
 /** @param {string} uid @param {string} name */
 export async function zfZuruecksetzen(uid, name) {
@@ -157,4 +167,5 @@ export async function zfZuruecksetzen(uid, name) {
 /** Eingerichtet: Mit dem Neuladen öffnet sich die Anwendung. */
 function zfPflichtFertig() { location.reload(); }
 
-registerActions({ ladeZweitenFaktor, zfPflichtFertig, zfEinrichten, zfBestaetigen, zfNeueCodes, zfAbschalten, zfCodesKopieren, zfZuruecksetzen });
+registerActions({ ladeZweitenFaktor, zfPflichtFertig, zfEinrichten, zfBestaetigen, zfNeueCodes, zfAbschalten, zfCodesKopieren,
+  zfCodesSpeichern, zfZuruecksetzen });

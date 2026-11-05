@@ -37,7 +37,17 @@ function faecherTon(s) {
 }
 
 // ── STATS ─────────────────────────────────────────────
+/** Mit „Alle Konten“ im Haushalt zählt die Seite fremde Sets mit; „Meine Sammlung“ stimmte dann nicht. */
+function sammlungTitel() {
+  const titel = G('gallery-titel'), wahl = G('scope-gallery');
+  if (!titel) return;
+  const schluessel = wahl && wahl.style.display !== 'none' && wahl.value === 'all' ? 'gallery.title_haushalt' : 'gallery.title';
+  titel.setAttribute('data-i18n', schluessel);
+  titel.textContent = tRaw(schluessel);
+}
+
 export async function loadStats(){
+  sammlungTitel();
   // Kennzahlen mit demselben Kontofilter wie die Liste: Sonst stand über „nur meine“ weiter die Summe des
   // ganzen Haushalts.
   // Ausführlich: docs/begruendungen/public/js/02-gallery.js.md#d
@@ -48,7 +58,7 @@ export async function loadStats(){
     const stueck = d.stats.total_quantity || d.stats.total_sets;
     G('bstat-sets').textContent     = fmtBig(stueck);
     const verschieden = G('bstat-sets').parentElement?.querySelector('.bstat-s');
-    if (verschieden) verschieden.textContent = stueck !== d.stats.total_sets ? tRaw('gallery.stat.verschieden', { n: d.stats.total_sets }) : '';
+    if (verschieden) verschieden.textContent = stueck !== d.stats.total_sets ? tRaw('gallery.stat.verschieden', { n: fmtBig(d.stats.total_sets) }) : '';
     G('bstat-parts').textContent    = fmtBig(d.stats.total_parts    || 0);
     // 0 Teile trotz Sets heisst: Die Teilelisten fehlen noch. Ohne den Satz sähe es nach einem Fehler aus.
     const ohneListen = !d.stats.total_parts && d.stats.total_sets > 0;
@@ -383,8 +393,8 @@ async function setUnbekannt(num) {
   const eigen = await api('GET', `/v1/sets/${encodeURIComponent(nr)}`);
   if (eigen?.success && eigen.set) {
     G('add-num').dataset.bestaetigt = nr;
-    setzeHtml(box, html`${tRaw('gallery.add.schon_da', { num: nr, name: eigen.set.name || nr, n: eigen.set.quantity || 1 })}
-      <button type="button" class="btn bs btn-sm" data-click="erfassenZumSet" data-arg="${nr}">${ico('set')}${tRaw('gallery.add.zum_set')}</button>`);
+    // Der Hauptknopf heisst jetzt „Set öffnen“; ein zweiter gleichen Namens im Hinweis war einer zu viel.
+    box.textContent = tRaw('gallery.add.schon_da', { num: nr, name: eigen.set.name || nr, n: eigen.set.quantity || 1 });
     box.hidden = false;
     G('btn-add-text').textContent = tRaw('gallery.add.zum_set');
     return true;

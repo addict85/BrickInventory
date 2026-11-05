@@ -1,5 +1,5 @@
 import { echt, registerActions } from './00-registry.js';
-import { locale, t, tRaw } from '../i18n.js';
+import { t, tRaw } from '../i18n.js';
 import { api } from './01-api.js';
 import { ico, G, setzeHtml } from './01-dom.js';
 import { fmtDatum } from './01-format.js';
@@ -45,7 +45,7 @@ const AKTIONEN = {
 async function ladeProtokoll(){
   const d=await api('GET','/v1/admin/protokoll'); if(!d.success) return;
   const eintraege = d.eintraege || [];
-  setzeHtml(G('vw-protokoll'), eintraege.length ? html`<div class="tw"><table class="dt" aria-label="${tRaw('users.protokoll')}"><thead><tr><th>${tRaw('users.protokoll.zeit')}</th><th>${tRaw('users.protokoll.verwalter')}</th><th>${tRaw('users.protokoll.aktion')}</th><th>${tRaw('users.protokoll.konto')}</th></tr></thead><tbody>${eintraege.map(e=>html`<tr><td>${ungeprueft(new Date(String(e.zeit)).toLocaleString(locale()))}</td><td>${e.verwalter_name||'—'}</td>
+  setzeHtml(G('vw-protokoll'), eintraege.length ? html`<div class="tw"><table class="dt" aria-label="${tRaw('users.protokoll')}"><thead><tr><th>${tRaw('users.protokoll.zeit')}</th><th>${tRaw('users.protokoll.verwalter')}</th><th>${tRaw('users.protokoll.aktion')}</th><th>${tRaw('users.protokoll.konto')}</th></tr></thead><tbody>${eintraege.map(e=>html`<tr><td>${fmtDatum(String(e.zeit), 'tagzeit')}</td><td>${e.verwalter_name||'—'}</td>
       <td>${((/** @type {Record<string, () => string>} */ (AKTIONEN))[String(e.aktion)] || (() => String(e.aktion)))()}${e.einzelheiten ? html`: ${e.einzelheiten}` : ''}</td><td>${e.ziel_name||'#'+e.ziel_id}</td></tr>`)}</tbody></table></div>` : html`<p data-stil="color:var(--mut);font-size:var(--fs-2)">${tRaw('users.protokoll.leer')}</p>`);
 }
 /**

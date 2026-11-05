@@ -93,12 +93,13 @@ export function fmtPct(v, o = {}) {
 }
 
 /**
- * Grosse Anzahl kurz in der Sprache der Oberfläche: „1300“ → „1,3 Tsd.“ (de), „1.3K“ (en).
+ * Anzahl in der Sprache der Oberfläche, erst ab einer Million kurz („1,2 Mio.“). Darunter in allen Sprachen
+ * genau: en zeigte „10.8K“, wo de „10.828“ stand.
  * @param {number | string | null | undefined} n
  */
 export function fmtBig(n){
   const v = Number(n) || 0;
-  if (v < 10000) return v.toLocaleString(locale());
+  if (v < 1e6) return v.toLocaleString(locale());
   return new Intl.NumberFormat(locale(), { notation: 'compact', maximumFractionDigits: 1 }).format(v);
 }
 

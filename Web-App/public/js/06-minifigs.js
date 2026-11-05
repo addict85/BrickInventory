@@ -245,7 +245,7 @@ export function renderFigs(list, target) {
             <div class="part-qty">×${f.total_quantity || f.quantity}</div>
             ${ungeprueft(condBadge)}
             ${ungeprueft(besitzer)}
-            ${erfasst ? html`<div data-stil="font-size:var(--fs-0);color:var(--mut)">${ungeprueft(erfasst)}</div>` : ''}
+            ${erfasst ? html`<div data-stil="font-size:var(--fs-0);color:var(--mut)">${tRaw('gallery.card.bought')} ${erfasst}</div>` : ''}
           </div>`;
         })}
       </div>

@@ -147,6 +147,10 @@
 [data-theme="noppe"] nav,[data-theme="hochglanz"] nav{
   background:var(--b600);border-bottom:3px solid var(--ink);
 }
+/* Der rote Stein des Logos lag rot auf rot; auf einer weissen Platte mit dunklem Rand ist er wieder ein Zeichen. */
+[data-theme="noppe"] header .logo-bild,[data-theme="hochglanz"] header .logo-bild{
+  background:#fff;border:2px solid var(--ink);border-radius:8px;padding:2px;box-sizing:content-box;
+}
 /* Dunkel ist --b600 ein helles Rot; Kopf- und Reiterleiste nehmen das tiefe
    Rot, damit die weisse Schrift darauf lesbar bleibt. */
 [data-theme="noppe"][data-dunkel] header,[data-theme="hochglanz"][data-dunkel] header,

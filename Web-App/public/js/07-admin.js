@@ -55,7 +55,7 @@ export async function pollJobStatus() {
     btn.disabled = false;
     if (j.lastRun) {
       dot.style.background = j.lastErrors > 0 ? 'var(--a500)' : 'var(--g500)';
-      stxt.textContent = tRaw('monitor.last_run_at',{time:new Date(j.lastRun).toLocaleString(locale())});
+      stxt.textContent = tRaw('monitor.last_run_at',{time:fmtDatum(j.lastRun, 'tagzeit')});
       const parts = [];
       if (j.lastUpdated) parts.push(`${j.lastUpdated} ${tRaw('common.updated')}`);
       if (j.lastErrors)  parts.push(tRaw('monitor.errors_n',{n:j.lastErrors}));

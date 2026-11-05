@@ -519,6 +519,7 @@
     .fin-suche-zeile{display:flex;margin:0 0 .75rem}
     .fin-suche-zeile .suchfeld{flex:1 1 16rem;max-width:28rem}
     .fin-mehr{display:flex;justify-content:center;margin:1rem 0}
+    .zf-qr{background:#fff;padding:8px;align-self:center;border-radius:8px;line-height:0}
     .preis-mit-waehrung{display:flex;gap:6px;align-items:stretch}
     .preis-mit-waehrung input{flex:1 1 auto;min-width:0}
     .preis-mit-waehrung select{flex:0 0 auto;width:auto}
@@ -1482,7 +1483,7 @@ input.alarm-feld[inputmode=decimal]{width:7.5em}
 .pl-bestand-zeile{display:flex;margin-top:.75rem;align-items:center;gap:.5rem;flex-wrap:wrap}
 .pl-wahl{display:inline-flex;align-items:center;gap:5px;font-size:var(--fs-2);color:var(--mut);flex-shrink:0}
 /* Leere Sammlung und leere Finanzen: keine Nullkarten, Filter und Zeiträume ohne Wirkung. */
-#tab-gallery.sammlung-leer :is(.filterleiste,.brick-stats){display:none}
+.tab.sammlung-leer :is(.filterleiste,.brick-stats){display:none}
 /* Leer: Der Hauptknopf steht im Leerzustand; oben bliebe er doppelt. */
 .tab.sammlung-leer .erfassen-leiste > .btn.bp{display:none}
 .import-mehr,.nur-telefon{display:none}

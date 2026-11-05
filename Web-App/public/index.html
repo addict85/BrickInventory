@@ -38,6 +38,10 @@
 @media (max-width:640px){.sg-leiste{display:none}.sg-inhalt{padding:1rem}.sg-karten{grid-template-columns:repeat(2,1fr)}.sg-kacheln{grid-template-columns:1fr}.sg-kacheln i{aspect-ratio:auto;height:120px}}
 @media (prefers-reduced-motion:no-preference){.sg-inhalt i,.sg-titel{animation:sg-puls 1.4s ease-in-out infinite alternate}}
 @keyframes sg-puls{from{opacity:1}to{opacity:.55}}
+#start-offline{position:fixed;left:50%;top:40%;transform:translate(-50%,-50%);z-index:3;width:min(26rem,calc(100% - 2rem));padding:1.25rem 1.5rem;border-radius:12px;background:#fff;color:#1e293b;border:1px solid #e3e6ea;box-shadow:0 8px 28px rgba(0,0,0,.18);font-family:system-ui,-apple-system,"Segoe UI",sans-serif;text-align:center}
+#start-offline[hidden]{display:none}
+#start-offline p{margin:0 0 .5rem}
+#start-offline button{min-height:44px;padding:.5rem 1.25rem;border-radius:8px;border:0;background:#1d4ed8;color:#fff;font:inherit;font-weight:600;cursor:pointer}
   </style>
 </head>
 <body>
@@ -46,6 +50,11 @@
   <div class="sg-kopf"><svg width="28" height="28" viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false"><rect x="18" y="38" width="84" height="68" rx="3" fill="#e63329"/><polygon points="18,38 30,20 102,20 102,38" fill="#cc2a21"/><polygon points="102,20 118,30 118,86 102,106" fill="#b5231c"/><rect x="24" y="54" width="72" height="40" rx="2" fill="#fff"/><rect x="29" y="58" width="46" height="15" rx="2" fill="#f5a800"/></svg>BrickInventory</div>
   <div class="sg-leiste"><i></i><i></i><i></i><i></i><i></i></div>
   <div class="sg-inhalt"><i class="sg-titel"></i><div class="sg-karten"><i></i><i></i><i></i><i></i></div><div class="sg-kacheln"><i></i><i></i><i></i><i></i><i></i><i></i></div></div>
+</div>
+<div id="start-offline" role="alert" hidden>
+  <p><strong data-i18n="startup.offline_titel">Server nicht erreichbar</strong></p>
+  <p data-i18n="startup.offline_text">Ein neuer Versuch läuft von selbst.</p>
+  <button type="button" id="start-erneut" data-i18n="startup.offline_knopf">Erneut versuchen</button>
 </div>
 <!-- Erst nach dem Startgerüst: Stile und Design-Skript halten nur den Rest der Seite an. -->
   <link rel="stylesheet" href="/vendor/fonts/fonts.css?v=2026.10.27.1901">
@@ -202,7 +211,7 @@
         <span class="text-mut" id="forgot-verwalter" data-i18n="login.forgot_admin" hidden>Passwort vergessen? Der Verwalter kann es zurücksetzen.</span>
         <span id="link-register-wrap" data-stil="display:none"><span data-i18n="login.register_prompt">Neu hier?</span> <a href="#" id="link-register" data-stil="color:var(--b600);font-weight:600" data-i18n="login.register_link">Registrieren</a></span>
       </div>
-      <div class="start-fuss">Build 2026.10.27.1901</div>
+      <div class="start-fuss" data-version></div>
       <div id="verified-msg" role="status" data-stil="display:none;margin-top:.75rem;padding:.65rem .9rem;background:var(--g50);border:1px solid var(--g300);border-radius:7px;font-size:var(--fs-2);color:var(--g700)"><span data-i18n="verify.success" data-ico="ok">E-Mail erfolgreich bestätigt. Du kannst dich jetzt anmelden.</span></div>
     </div>
 
@@ -445,7 +454,7 @@
     <!-- ══ GALERIE ══ -->
     <div class="tab active" id="tab-gallery">
       <div class="ph">
-        <h1 class="ptitle" data-tab-title="gallery"><span class="ptitle-icon"></span><span data-i18n="gallery.title">Meine Sammlung</span></h1>
+        <h1 class="ptitle" data-tab-title="gallery"><span class="ptitle-icon"></span><span id="gallery-titel" data-i18n="gallery.title">Meine Sammlung</span></h1>
         <div class="sammlung-wahl" role="group" aria-label="Sammlung" data-i18n-attr="aria-label" data-i18n="nav.collection"><button type="button" aria-current="page" data-click="oeffneReiter" data-arg="gallery"><svg class="ico" aria-hidden="true"><use href="#i-set"/></svg><span data-i18n="header.sets">Sets</span></button><button type="button" data-click="oeffneReiter" data-arg="parts"><svg class="ico" aria-hidden="true"><use href="#i-teil"/></svg><span data-i18n="nav.parts">Teile</span></button><button type="button" data-click="oeffneReiter" data-arg="minifigs"><svg class="ico" aria-hidden="true"><use href="#i-figur"/></svg><span data-i18n="nav.minifigs">Minifiguren</span></button></div>
       </div>
 
@@ -718,8 +727,8 @@
 
       <!-- Stats (farbig, wie Galerie) -->
       <div class="brick-stats">
-        <div class="bstat bstat-slate"><div class="bstat-l" data-i18n="figs.stat.types">Figurensorten</div><div class="bstat-v" id="mf-unique">—</div></div>
-        <div class="bstat bstat-petrol"><div class="bstat-l" data-i18n="figs.stat.total_qty">Figuren gesamt</div><div class="bstat-v" id="mf-total">—</div></div>
+        <div class="bstat bstat-slate"><div class="bstat-l" data-i18n="figs.stat.total_qty">Figuren gesamt</div><div class="bstat-v" id="mf-total">—</div></div>
+        <div class="bstat bstat-petrol"><div class="bstat-l" data-i18n="figs.stat.types">Figurensorten</div><div class="bstat-v" id="mf-unique">—</div></div>
       </div>
       <span id="mf-val" data-stil="display:none"></span>
 
@@ -943,10 +952,10 @@
         <div class="ssec" id="einst-bl">
           <h2 class="stit"><svg class="ico" aria-hidden="true"><use href="#i-schluessel"/></svg> BrickLink API <span class="ao" id="bl-ao" data-i18n="settings.admins_only" data-ico="warnung">Nur Verwalter</span></h2>
           <div class="sform">
-            <div class="fg"><label for="bl-ck">Consumer Key</label><input type="text" id="bl-ck" autocomplete="off" /></div>
-            <div class="fg"><label for="bl-cs">Consumer Secret</label><div class="geheim-feld"><input type="password" id="bl-cs" autocomplete="off" spellcheck="false" /><button type="button" class="btn bs geheim-knopf" data-click="geheimUmschalten" data-arg="bl-cs" aria-pressed="false" aria-controls="bl-cs" aria-label="Anzeigen" data-i18n="settings.secret_show" data-i18n-attr="aria-label"><svg class="ico" aria-hidden="true"><use href="#i-auge"/></svg></button></div></div>
-            <div class="fg"><label for="bl-tok">Token Value</label><input type="text" id="bl-tok" autocomplete="off" /></div>
-            <div class="fg"><label for="bl-ts">Token Secret</label><div class="geheim-feld"><input type="password" id="bl-ts" autocomplete="off" spellcheck="false" /><button type="button" class="btn bs geheim-knopf" data-click="geheimUmschalten" data-arg="bl-ts" aria-pressed="false" aria-controls="bl-ts" aria-label="Anzeigen" data-i18n="settings.secret_show" data-i18n-attr="aria-label"><svg class="ico" aria-hidden="true"><use href="#i-auge"/></svg></button></div></div>
+            <div class="fg"><label for="bl-ck" data-i18n="settings.bl.ck">Anwendungsschlüssel (Consumer Key)</label><input type="text" id="bl-ck" autocomplete="off" /></div>
+            <div class="fg"><label for="bl-cs" data-i18n="settings.bl.cs">Anwendungsgeheimnis (Consumer Secret)</label><div class="geheim-feld"><input type="password" id="bl-cs" autocomplete="off" spellcheck="false" /><button type="button" class="btn bs geheim-knopf" data-click="geheimUmschalten" data-arg="bl-cs" aria-pressed="false" aria-controls="bl-cs" aria-label="Anzeigen" data-i18n="settings.secret_show" data-i18n-attr="aria-label"><svg class="ico" aria-hidden="true"><use href="#i-auge"/></svg></button></div></div>
+            <div class="fg"><label for="bl-tok" data-i18n="settings.bl.tv">Zugangsschlüssel (Token Value)</label><input type="text" id="bl-tok" autocomplete="off" /></div>
+            <div class="fg"><label for="bl-ts" data-i18n="settings.bl.ts">Zugangsgeheimnis (Token Secret)</label><div class="geheim-feld"><input type="password" id="bl-ts" autocomplete="off" spellcheck="false" /><button type="button" class="btn bs geheim-knopf" data-click="geheimUmschalten" data-arg="bl-ts" aria-pressed="false" aria-controls="bl-ts" aria-label="Anzeigen" data-i18n="settings.secret_show" data-i18n-attr="aria-label"><svg class="ico" aria-hidden="true"><use href="#i-auge"/></svg></button></div></div>
             <div class="fg"><label for="lim-bl"><span data-i18n="settings.max_calls">Max. Aufrufe pro Tag</span> <span class="text-klein" data-i18n="settings.default_n" data-i18n-vars='{"n":"4000"}'>(Standard: 4000)</span></label><input class="max-160" inputmode="numeric" type="number" id="lim-bl" min="1" max="100000" value="4000" /></div>
             <div class="zeile mittig luecke-8 umbruch">
               <button class="btn bp btn-speichern" id="btn-sav-bl" data-i18n="settings.save" data-ico="speichern">Speichern</button>
@@ -958,7 +967,7 @@
         <div class="ssec" id="einst-rb">
           <h2 class="stit"><svg class="ico" aria-hidden="true"><use href="#i-link"/></svg> Rebrickable API <span class="ao" id="rb-ao" data-i18n="settings.admins_only" data-ico="warnung">Nur Verwalter</span></h2>
           <div class="sform">
-            <div class="ibox abstand-u-4"><a href="https://rebrickable.com/api/" target="_blank" rel="noopener noreferrer">rebrickable.com → API → Generate Key</a><br><span class="schrift-1" data-i18n="settings.rebrickable_hint">Set-Infos, Teile &amp; Bilder</span></div>
+            <div class="ibox abstand-u-4"><a href="https://rebrickable.com/api/" target="_blank" rel="noopener noreferrer"><span data-i18n="settings.rebrickable_link">rebrickable.com → API → Schlüssel erzeugen (Generate Key)</span></a><br><span class="schrift-1" data-i18n="settings.rebrickable_hint">Set-Infos, Teile &amp; Bilder</span></div>
             <div class="fg"><label for="rb-key">Rebrickable API Key</label><div class="geheim-feld"><input type="password" id="rb-key" autocomplete="off" spellcheck="false" /><button type="button" class="btn bs geheim-knopf" data-click="geheimUmschalten" data-arg="rb-key" aria-pressed="false" aria-controls="rb-key" aria-label="Anzeigen" data-i18n="settings.secret_show" data-i18n-attr="aria-label"><svg class="ico" aria-hidden="true"><use href="#i-auge"/></svg></button></div></div>
             <div class="fg"><label for="lim-rb"><span data-i18n="settings.max_calls">Max. Aufrufe pro Tag</span> <span class="text-klein" data-i18n="settings.default_n" data-i18n-vars='{"n":"25000"}'>(Standard: 25000)</span></label><input class="max-160" inputmode="numeric" type="number" id="lim-rb" min="1" max="100000" value="25000" /></div>
             <div class="zeile mittig luecke-8 umbruch">
@@ -971,7 +980,7 @@
         <div class="ssec" id="einst-bs">
           <h2 class="stit"><svg class="ico" aria-hidden="true"><use href="#i-katalog"/></svg> Brickset API <span class="ao" id="bs-ao" data-i18n="settings.admins_only" data-ico="warnung">Nur Verwalter</span></h2>
           <div class="sform">
-            <div class="ibox abstand-u-4"><a href="https://brickset.com/tools/webservices/requestkey" target="_blank" rel="noopener noreferrer"><span data-i18n="settings.brickset_link">brickset.com → Tools → API Key anfordern</span></a><br><span class="schrift-1" data-i18n="settings.brickset_hint">Anleitungen, Fallback Set-Infos</span></div>
+            <div class="ibox abstand-u-4"><a href="https://brickset.com/tools/webservices/requestkey" target="_blank" rel="noopener noreferrer"><span data-i18n="settings.brickset_link">brickset.com → Tools → API Key anfordern</span></a><br><span class="schrift-1" data-i18n="settings.brickset_hint">Anleitungen, Ersatzquelle für Set-Infos</span></div>
             <div class="fg"><label for="bs-key">Brickset API Key</label><div class="geheim-feld"><input type="password" id="bs-key" autocomplete="off" spellcheck="false" /><button type="button" class="btn bs geheim-knopf" data-click="geheimUmschalten" data-arg="bs-key" aria-pressed="false" aria-controls="bs-key" aria-label="Anzeigen" data-i18n="settings.secret_show" data-i18n-attr="aria-label"><svg class="ico" aria-hidden="true"><use href="#i-auge"/></svg></button></div></div>
             <div class="fg"><label for="lim-bs"><span data-i18n="settings.max_calls">Max. Aufrufe pro Tag</span> <span class="text-klein" data-i18n="settings.default_n" data-i18n-vars='{"n":"100"}'>(Standard: 100)</span></label><input class="max-160" inputmode="numeric" type="number" id="lim-bs" min="1" max="100000" value="100" /></div>
             <div class="zeile mittig luecke-8 umbruch">
@@ -1024,7 +1033,7 @@
           <div class="sform">
             <div class="ibox abstand-u-075" data-i18n="settings.smtp.hint">Für Registrierungsbestätigungen und Passwort-Rücksetzungen. Ohne SMTP-Konfiguration werden Links in der Server-Konsole ausgegeben.</div>
             <div class="host-port">
-              <div class="fg"><label for="smtp-host">SMTP Host</label><input type="text" id="smtp-host" placeholder="mail.example.com" /></div>
+              <div class="fg"><label for="smtp-host" data-i18n="settings.smtp.host">Mailserver (SMTP-Host)</label><input type="text" id="smtp-host" placeholder="mail.example.com" /></div>
               <div class="fg"><label for="smtp-port">Port</label><input inputmode="numeric" type="number" id="smtp-port" placeholder="587" /></div>
             </div>
             <div class="fg"><label for="smtp-user" data-i18n="settings.smtp.user">Benutzername</label><input type="text" id="smtp-user" autocomplete="off" /></div>
@@ -1052,8 +1061,8 @@
               <div class="admin-only" data-stil="display:none">
                 <p class="hinweis-absatz" data-i18n="settings.cfg_hint">API-Keys und Einstellungen als JSON exportieren/importieren.</p>
                 <div class="zeile luecke-10 umbruch mittig abstand-u-1">
-                  <button class="btn bs" id="btn-cfg-export" data-i18n="settings.cfg_export" data-ico="import">Konfiguration exportieren</button>
-                  <label for="cfg-import-file" class="btn bs zeiger"><span data-i18n="settings.cfg_import" data-ico="export">Konfiguration importieren</span><input type="file" id="cfg-import-file" accept=".json" class="datei-versteckt" data-change="importConfig" /></label>
+                  <button class="btn bs" id="btn-cfg-export" data-i18n="settings.cfg_export" data-ico="export">Konfiguration exportieren</button>
+                  <label for="cfg-import-file" class="btn bs zeiger"><span data-i18n="settings.cfg_import" data-ico="import">Konfiguration importieren</span><input type="file" id="cfg-import-file" accept=".json" class="datei-versteckt" data-change="importConfig" /></label>
                   <span class="text-mittel" id="cfg-import-status" role="status"></span>
                 </div>
               </div>
@@ -1532,7 +1541,7 @@
     <div class="tab" id="tab-app">
       <div class="ph"><h1 class="ptitle"><span class="ptitle-icon"><svg class="ico" aria-hidden="true"><use href="#i-app"/></svg></span><span data-i18n="menu.app">Android-App</span></h1></div>
 
-      <!-- QR-Code für Android App -->
+      <!-- QR-Code für die Android-App -->
 
       <!-- ── Die App holen ────────────────────────────────────────────────────
            Steht VOR dem QR-Code, weil das die Reihenfolge ist: erst die App
@@ -1568,8 +1577,8 @@
         </a>
       </div>
       <div class="ssec abstand-u-125">
-        <h2 class="stit" data-i18n="settings.qr.title" data-ico="app">QR-Code für Android App</h2>
-        <p class="text-mittel abstand-u-1" data-i18n="settings.qr.hint">Scanne diesen Code in der Android App um Server-URL und Login automatisch zu konfigurieren. Der Code ist 5 Minuten gültig und kann nur einmal verwendet werden.</p>
+        <h2 class="stit" data-i18n="settings.qr.title" data-ico="app">QR-Code für die Android-App</h2>
+        <p class="text-mittel abstand-u-1" data-i18n="settings.qr.hint">Scanne diesen Code in der Android-App, um Server-URL und Login automatisch zu konfigurieren. Der Code ist 5 Minuten gültig und kann nur einmal verwendet werden.</p>
         <div id="qr-container" data-stil="display:flex;flex-direction:column;align-items:flex-start;gap:.75rem">
           <!-- Hidden URL field — auto-filled from window.location -->
           <!-- Wie lange soll der Zugang gelten, den DIESER Code eroeffnet?
@@ -2184,10 +2193,10 @@
       <h2 class="ew-titel">BrickLink <span class="ew-pflicht ew-optional" data-i18n="setup.optional">freiwillig</span> <span id="ew-stand-bricklink"></span></h2>
       <p class="schrift-3" data-i18n="setup.bl_hint">BrickLink liefert die Marktpreise für Finanzen und Preisalarme. Dafür braucht es vier Werte aus dem API-Zugang.</p>
       <div class="sgrid2 luecke-05">
-        <div class="fg"><label for="ew-bl-ck">Consumer Key</label><input type="text" id="ew-bl-ck" autocomplete="off" spellcheck="false" /></div>
-        <div class="fg"><label for="ew-bl-cs">Consumer Secret</label><input type="text" id="ew-bl-cs" autocomplete="off" spellcheck="false" /></div>
-        <div class="fg"><label for="ew-bl-tv">Token Value</label><input type="text" id="ew-bl-tv" autocomplete="off" spellcheck="false" /></div>
-        <div class="fg"><label for="ew-bl-ts">Token Secret</label><input type="text" id="ew-bl-ts" autocomplete="off" spellcheck="false" /></div>
+        <div class="fg"><label for="ew-bl-ck" data-i18n="settings.bl.ck">Anwendungsschlüssel (Consumer Key)</label><input type="text" id="ew-bl-ck" autocomplete="off" spellcheck="false" /></div>
+        <div class="fg"><label for="ew-bl-cs" data-i18n="settings.bl.cs">Anwendungsgeheimnis (Consumer Secret)</label><input type="text" id="ew-bl-cs" autocomplete="off" spellcheck="false" /></div>
+        <div class="fg"><label for="ew-bl-tv" data-i18n="settings.bl.tv">Zugangsschlüssel (Token Value)</label><input type="text" id="ew-bl-tv" autocomplete="off" spellcheck="false" /></div>
+        <div class="fg"><label for="ew-bl-ts" data-i18n="settings.bl.ts">Zugangsgeheimnis (Token Secret)</label><input type="text" id="ew-bl-ts" autocomplete="off" spellcheck="false" /></div>
       </div>
       <div class="lerr" id="ew-fehler-bricklink" role="alert"></div>
       <div class="ew-aktion">

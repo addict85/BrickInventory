@@ -92,8 +92,10 @@ export async function initDefaultCondition(){
 export function zeigeBenutzernamen(){
   const el = G('ubadge');
   if (!el || !ME) return;
-  el.textContent = ME.isAdmin
-    ? `${ME.username} (${tRaw('users.admin_badge')})`
+  const rolle = tRaw('users.admin_badge');
+  // „admin (Admin)“ sagte dasselbe zweimal.
+  el.textContent = ME.isAdmin && ME.username.toLocaleLowerCase() !== rolle.toLocaleLowerCase()
+    ? `${ME.username} (${rolle})`
     : ME.username;
 }
 
