@@ -57,7 +57,6 @@ private const val ROTATIONS_PFAD = "/api/v1/auth/token-rotieren"
 private val BESTAETIGUNG_NOETIG = setOf(Fehlercode.AKTUELLES_PASSWORT_FALSCH, Fehlercode.AKTUELLES_PASSWORT_ERFORDERLICH,
     Fehlercode.ZWEITER_FAKTOR_FALSCH, Fehlercode.ZWEITER_FAKTOR_NOETIG, Fehlercode.PASSKEY_UNGUELTIG)
 
-
 /**
  * Token, Sprache und das Klartext-Verbot für alle Anfragen der Server-Clients.
  * Eine Anfrage ohne TLS bricht hier ab, bevor ein Kopf gebaut wird; die

@@ -27,7 +27,6 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.compose.ui.res.stringResource
 import ch.brickinventoryapp.nav.AktivitaetsZustand
-import ch.brickinventoryapp.ui.viewmodel.UpdateViewModel
 import ch.brickinventoryapp.util.NetworkPolicy
 import ch.brickinventoryapp.nav.Reiter
 import ch.brickinventoryapp.nav.Rollzustaende
@@ -36,8 +35,6 @@ import ch.brickinventoryapp.ui.components.UebergangsRahmen
 import ch.brickinventoryapp.ui.dialogs.BarcodeResultRoute
 import ch.brickinventoryapp.ui.dialogs.SetPruefungRoute
 import ch.brickinventoryapp.ui.dialogs.UpdateRoute
-import ch.brickinventoryapp.ui.viewmodel.CsvImportViewModel
-import ch.brickinventoryapp.ui.viewmodel.ErfassungViewModel
 
 // Die Navigationsziele liegen seit der Aufteilung in nav/ (eigenes Paket).
 

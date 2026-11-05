@@ -9,16 +9,16 @@ import java.security.MessageDigest
 import javax.inject.Inject
 import javax.inject.Singleton
 
-/**
- * Dauerhafte Ablage der Vorschaubilder — damit die Tabellen ohne Netz stehen.
- * Ausführlich: docs/begruendungen/core-data/data/cache/VorschauSpeicher.kt.md#vorschauspeicher
- */
 /** Was die Einstellungen von der Vorschau-Ablage brauchen: Belegung zeigen, leeren. */
 interface Vorschauablage {
     fun belegt(): Long
     fun leeren()
 }
 
+/**
+ * Dauerhafte Ablage der Vorschaubilder — damit die Tabellen ohne Netz stehen.
+ * Ausführlich: docs/begruendungen/core-data/data/cache/VorschauSpeicher.kt.md#vorschauspeicher
+ */
 @Singleton
 class VorschauSpeicher(
     /** Der Ablageordner; eine Funktion, damit `context` erst beim ersten Zugriff gefragt wird. */

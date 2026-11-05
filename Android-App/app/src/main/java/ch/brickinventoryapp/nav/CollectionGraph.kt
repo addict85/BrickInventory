@@ -16,7 +16,6 @@ import androidx.compose.ui.res.stringResource
 import androidx.navigation.NavGraphBuilder
 import androidx.navigation.NavHostController
 import ch.brickinventoryapp.*
-import ch.brickinventoryapp.ui.AppViewModel
 import ch.brickinventoryapp.ui.viewmodel.GalerieViewModel
 import ch.brickinventoryapp.ui.viewmodel.TeileViewModel
 import ch.brickinventoryapp.ui.viewmodel.SetDetailViewModel
@@ -29,7 +28,6 @@ import ch.brickinventoryapp.ui.components.LocalOffenesDetail
 import ch.brickinventoryapp.ui.components.MitZiel
 import ch.brickinventoryapp.ui.components.detailSchluessel
 import ch.brickinventoryapp.ui.dialogs.SetItemDetailBereich
-import ch.brickinventoryapp.ui.viewmodel.ErfassungViewModel
 
 /** Navigationsziele des Bestands: Galerie, Teile, Minifiguren und ihre Details. */
 fun NavGraphBuilder.collectionGraph(u: ZielUmgebung) {

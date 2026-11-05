@@ -12,19 +12,15 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.ui.res.stringResource
 import androidx.navigation.NavGraphBuilder
 import ch.brickinventoryapp.*
-import ch.brickinventoryapp.ui.AppViewModel
 import ch.brickinventoryapp.ui.viewmodel.FinanzViewModel
 import ch.brickinventoryapp.ui.viewmodel.EinstellungenViewModel
 import ch.brickinventoryapp.ui.viewmodel.HaushaltViewModel
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.navigation.toRoute
-import ch.brickinventoryapp.ui.viewmodel.GutscheinViewModel
 import ch.brickinventoryapp.ui.ScrollPositionKeeper
 import ch.brickinventoryapp.ui.components.Schrittsperre
 import ch.brickinventoryapp.ui.components.Sichtschutz
 import ch.brickinventoryapp.ui.components.Ueberdeckungsschutz
-import ch.brickinventoryapp.ui.viewmodel.ErfassungViewModel
-import ch.brickinventoryapp.ui.viewmodel.UpdateViewModel
 import ch.brickinventoryapp.ui.viewmodel.gutscheinPdfAdresse
 import ch.brickinventoryapp.ui.viewmodel.zeigtGutscheine
 

@@ -100,4 +100,3 @@ const val MERKLISTE_DEFAULT_SORT = "added_desc"
 
 /** Status eines PDF-Export-Jobs inkl. geschätzter Restdauer (aus fehlenden Bildern). */
 data class PdfJobStatus(val status: String, val etaSeconds: Int?)
-

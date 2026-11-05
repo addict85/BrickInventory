@@ -5,7 +5,6 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import ch.brickinventoryapp.data.Darstellungsablage
 import ch.brickinventoryapp.ui.Sitzung
-import ch.brickinventoryapp.ui.setzeDesign
 import ch.brickinventoryapp.ui.Widgetanstoss
 import ch.brickinventoryapp.util.LanguageManager
 import ch.brickinventoryapp.util.fangeAusserAbbruch

@@ -48,7 +48,6 @@ class FakeApi {
         return if (code in 200..299 && rumpf != null) Response.success(code, rumpf)
         else Response.error(code, """{"success":false}""".toResponseBody("application/json".toMediaType()))
     }
-
 }
 
 /** Die Sitzungsablage im Speicher; was das AppViewModel merkt, steht in den Flüssen. */

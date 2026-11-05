@@ -13,7 +13,6 @@ import androidx.compose.ui.res.stringResource
 import androidx.navigation.NavGraphBuilder
 import androidx.navigation.NavHostController
 import ch.brickinventoryapp.*
-import ch.brickinventoryapp.ui.AppViewModel
 import ch.brickinventoryapp.ui.viewmodel.MerklisteViewModel
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.navigation.NavBackStackEntry
@@ -23,7 +22,6 @@ import ch.brickinventoryapp.ui.viewmodel.CatalogViewModel
 import ch.brickinventoryapp.ui.listeUndDetail
 import ch.brickinventoryapp.ui.screens.MerklisteRoute
 import ch.brickinventoryapp.ui.screens.MerkpostenDetailRoute
-import ch.brickinventoryapp.ui.viewmodel.ErfassungViewModel
 
 /**
  * Liste und Detail des Katalogs als eigener Teilgraph: Beide holen ihr ViewModel

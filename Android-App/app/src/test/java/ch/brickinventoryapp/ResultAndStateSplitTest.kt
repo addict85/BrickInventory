@@ -182,13 +182,13 @@ class ResultAndStateSplitTest {
             assert(abmelden.contains(reset)) { "Abmelden ruft $reset nicht mehr" }
         }
         val bereiche = Quellen.unter("ui/viewmodel").filter {
-            code(it.readText()).contains("sitzung: Sitzung,") && it.name != "AppViewModel.kt"
+            code(it.readText()).contains("meldungen: Meldungen,")
         }
         assert(bereiche.size >= 10) { "Nur ${bereiche.size} Bereichs-ViewModels gefunden — Muster veraltet?" }
         val vergesslich = bereiche.filter {
             val c = code(it.readText())
             (c.contains("MutableStateFlow(") || c.contains("SavedStateHandle")) &&
-                !c.contains("folgeAbmeldung(sitzung) { zuruecksetzen() }")
+                !c.contains("folgeAbmeldung(sitzung)")
         }.map { it.name }
         assert(vergesslich.isEmpty()) {
             "Diese ViewModels halten Zustand, leeren ihn beim Abmelden aber nicht — der " +

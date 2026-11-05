@@ -9,9 +9,7 @@ import ch.brickinventoryapp.ui.*
 import ch.brickinventoryapp.ui.screens.*
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavGraphBuilder
-import androidx.navigation.NavHostController
 import ch.brickinventoryapp.*
-import ch.brickinventoryapp.ui.viewmodel.AnmeldungViewModel
 import ch.brickinventoryapp.ui.CredentialManagerAbfrage
 import ch.brickinventoryapp.ui.screens.ServerStartAnzeige
 

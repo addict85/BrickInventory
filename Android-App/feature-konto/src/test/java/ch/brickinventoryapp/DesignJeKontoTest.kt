@@ -3,7 +3,6 @@ package ch.brickinventoryapp
 import ch.brickinventoryapp.data.repository.KontoRepository
 import ch.brickinventoryapp.ui.DesignWahl
 import ch.brickinventoryapp.ui.ladeEinstellungen
-import ch.brickinventoryapp.ui.setzeDesign
 import ch.brickinventoryapp.ui.viewmodel.KontoViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.runBlocking

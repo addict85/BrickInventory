@@ -64,6 +64,12 @@ class MainActivity : NurLauncherStart() {
     private val anmeldung: AnmeldungViewModel by viewModels()
     private val gutschein: GutscheinViewModel by viewModels()
 
+    /** Einmal hier geholt, damit kein Ziel selbst im ViewModelStore der Activity sucht. */
+    private fun aktivitaetsZustand() = AktivitaetsZustand(
+        app = vm, erfassung = erfassung, update = selbstUpdate, csvImport = csvImport,
+        anmeldung = anmeldung, gutschein = gutschein, darstellung = darstellung, vertrauen = vertrauen,
+    )
+
     // Nur für die Pflichtmasken (Startpasswort, zweiter Faktor), die über allem liegen.
     private val startKontoVm: KontoViewModel by viewModels()
 

@@ -1,6 +1,5 @@
 package ch.brickinventoryapp.data.repository
 
-import ch.brickinventoryapp.data.api.TeileApi
 import ch.brickinventoryapp.data.lokal.Lokal
 import ch.brickinventoryapp.data.model.*
 import kotlinx.coroutines.flow.Flow

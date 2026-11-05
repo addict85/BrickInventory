@@ -1,6 +1,5 @@
 package ch.brickinventoryapp.ui
 
-
 /** Woher die Bauliste ihre Zeilen holt; im ViewModel-Test ein Double ohne Netz. */
 interface TeilelistenQuelle {
     suspend fun loeseSetAuf(setNumber: String, serverUrl: String): Pair<String, List<PlPart>>

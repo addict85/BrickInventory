@@ -35,6 +35,8 @@ import ch.brickinventoryapp.util.AblageChiffre
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import java.io.File
+import ch.brickinventoryapp.ui.SitzungsRepository
+import kotlinx.coroutines.Job
 
 // Testvorgaben gehören nicht in die @Inject-Konstruktoren: Dort bekäme, wer ohne Hilt
 // baut, still eine flüchtige Ablage. Die Fabriken heissen wie die Schnittstellen und
@@ -75,15 +77,15 @@ fun ResponseCache(
  * Der SitzungsDienst für Tests von ViewModels, die abmelden lassen: Er zählt nur
  * mit, damit ein Test prüfen kann, ob und wann abgemeldet wurde.
  */
-class SitzungsAttrappe(private val beimAbmelden: () -> Unit = {}) : ch.brickinventoryapp.ui.SitzungsRepository {
+class SitzungsAttrappe(private val beimAbmelden: () -> Unit = {}) : SitzungsRepository {
     var abmeldungen = 0
         private set
 
     override fun starte() = Unit
-    override fun abmelden(): kotlinx.coroutines.Job {
+    override fun abmelden(): Job {
         abmeldungen++
         beimAbmelden()
-        return kotlinx.coroutines.Job().apply { complete() }
+        return Job().apply { complete() }
     }
     override fun zweiterFaktorEingerichtet() = Unit
     override fun ladeEinstellungen() = Unit

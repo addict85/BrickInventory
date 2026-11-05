@@ -1,6 +1,5 @@
 package ch.brickinventoryapp.ui.viewmodel
 
-
 /**
  * Was das Set-Detail auslöst. Der Bildschirm kennt nur diese Schnittstelle;
  * so lässt er sich mit einem festen Zustand zeigen, ohne Hilt und Server.

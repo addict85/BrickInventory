@@ -28,7 +28,8 @@ const KT_SCOPE  = lies(path.join(__dirname, '..', '..', 'Android-App', 'core-mod
 // Seit dem Schnitt des MainViewModels (28.10.2026) liegt der Lagerortfilter
 // in der Grundlage der Bereichs-ViewModels, die Verwaltung im
 // EinstellungenViewModel und das Laden der eigenen Orte im Blickfeld.
-const KT_HAUS   = lies(path.join(__dirname, '..', '..', 'Android-App', 'core-zustand', 'src', 'main', 'java', 'ch', 'brickinventoryapp', 'ui', 'viewmodel', 'BereichsViewModel.kt'))
+const KT_HAUS   = lies(path.join(__dirname, '..', '..', 'Android-App', 'core-zustand', 'src', 'main', 'java', 'ch', 'brickinventoryapp', 'ui', 'viewmodel', 'Bereichshelfer.kt'))
+               + lies(path.join(__dirname, '..', '..', 'Android-App', 'core-zustand', 'src', 'main', 'java', 'ch', 'brickinventoryapp', 'ui', 'Blickfeld.kt'))
                 + lies(path.join(__dirname, '..', '..', 'Android-App', 'feature-konto', 'src', 'main', 'java', 'ch', 'brickinventoryapp', 'ui', 'viewmodel', 'EinstellungenViewModel.kt'))
                 + lies(path.join(__dirname, '..', '..', 'Android-App', 'core-zustand', 'src', 'main', 'java', 'ch', 'brickinventoryapp', 'ui', 'Blickfeld.kt'));
 const KT_DIALOG = lies(path.join(__dirname, '..', '..', 'Android-App', 'feature-teile', 'src', 'main', 'java', 'ch', 'brickinventoryapp', 'ui', 'dialogs', 'SetItemDetailDialog.kt'));
@@ -155,8 +156,8 @@ test('eine gefilterte Antwort landet nicht im Speicher der vollen Liste', () => 
   // der ganzen Sammlung — und der Reiter zeigte je nach Cache-Zustand mal
   // alles, mal eine Kiste. Genau dafür steht `accounts` dort schon.
   for (const [name, s] of [
-    ['SetsRepository.kt', lies(path.join(__dirname, '..', '..', 'Android-App', 'core-data', 'src', 'main', 'java', 'ch', 'brickinventoryapp', 'data', 'repository', 'SetsRepository.kt'))],
-    ['TeileRepository.kt', lies(path.join(__dirname, '..', '..', 'Android-App', 'core-data', 'src', 'main', 'java', 'ch', 'brickinventoryapp', 'data', 'repository', 'TeileRepository.kt'))],
+    ['SetsRepository.kt', lies(path.join(__dirname, '..', '..', 'Android-App', 'core-data', 'src', 'main', 'java', 'ch', 'brickinventoryapp', 'data', 'repository', 'SetsRepositoryImpl.kt'))],
+    ['TeileRepository.kt', lies(path.join(__dirname, '..', '..', 'Android-App', 'core-data', 'src', 'main', 'java', 'ch', 'brickinventoryapp', 'data', 'repository', 'TeileRepositoryImpl.kt'))],
   ]) {
     assert.match(s, /storage\.isNullOrBlank\(\)/,
       `${name}: der Lagerort fehlt in der Bedingung für „ungefiltert"`);

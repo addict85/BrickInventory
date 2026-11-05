@@ -14,7 +14,6 @@ import ch.brickinventoryapp.data.model.Merkposten
 import ch.brickinventoryapp.data.model.PartValuationItem
 import ch.brickinventoryapp.data.model.SetItem
 import ch.brickinventoryapp.data.model.UpdateManualItemRequest
-import ch.brickinventoryapp.data.repository.GutscheineRepository
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals

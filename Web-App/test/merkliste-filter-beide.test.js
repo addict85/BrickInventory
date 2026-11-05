@@ -138,7 +138,7 @@ test('4. die Vorgabe-Sortierung ist in allen drei Bäumen dieselbe', () => {
   assert.match(feld.slice(0, 200), /<option value="added_desc"/,
     'Die Webapp hat eine andere Vorgabe — das erste <option> ist die Vorauswahl.');
 
-  assert.match(app('data/repository/BrickRepository.kt'),
+  assert.match(app('data/repository/Ergebnis.kt'),
     /MERKLISTE_DEFAULT_SORT = "added_desc"/,
     'Die App hat eine andere Vorgabe.');
 });

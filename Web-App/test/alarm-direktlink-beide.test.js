@@ -48,10 +48,11 @@ const app = (rel) => ohneKommentare(fs.readFileSync(androidDatei(rel), 'utf8'));
 const web = (rel) => ohneKommentare(fs.readFileSync(path.join(ROOT, rel), 'utf8'));
 
 test('1. die Benachrichtigung trägt ein Ziel', () => {
-  const w = app('alarm/PreisalarmWorker.kt');
+  // Seit @HiltWorker baut PreisalarmDurchgang die Meldung, der Worker ruft ihn.
+  const w = app('alarm/PreisalarmWorker.kt') + app('alarm/PreisalarmDurchgang.kt');
   assert.match(w, /\.setContentIntent\(/,
     'Ohne setContentIntent tut ein Antippen NICHTS — die Meldung bleibt stehen.');
-  assert.match(w, /putExtra\(EXTRA_SET, a\.setNumber\)/,
+  assert.match(w, /putExtra\((?:PreisalarmWorker\.)?EXTRA_SET, a\.setNumber\)/,
     'Die Meldung sagt nicht, WELCHES Set sie meint.');
 
   // Die Klasse direkt, nicht ihr Name als Zeichenkette: Ein Name ist für R8

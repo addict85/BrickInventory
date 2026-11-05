@@ -1,5 +1,9 @@
 package ch.brickinventoryapp
 
+import ch.brickinventoryapp.ui.AppUiState
+import ch.brickinventoryapp.ui.Sitzung
+import ch.brickinventoryapp.ui.model.StartzustandAnsicht
+import org.junit.Assert.assertEquals
 import org.junit.Test
 
 /**
@@ -9,6 +13,9 @@ import org.junit.Test
  * er nur über deren benannte Schritte, ein allgemeines `aendere {}` gibt es
  * nicht mehr. Hier steht, welcher Schritt welche Felder setzt; ein neuer
  * Schreiber oder ein neues Feld fällt auf, statt still einen zweiten Weg zu öffnen.
+ *
+ * Der erste Test liest den Quelltext (wer hält den Zustand), der zweite führt
+ * jeden Schritt aus und vergleicht die Felder davor und danach.
  *
  * Gegenproben (05.11.2026, gemessen mit kotlinc lokal):
  *   A  in GalerieViewModel `MutableStateFlow(AppUiState())` ergänzt → rot
@@ -44,26 +51,40 @@ class StateDomainBoundaryTest {
         }
     }
 
+    /** Die Felder von AppUiState, zum Vergleich vor und nach einem Schritt. */
+    private val felder: Map<String, (AppUiState) -> Any?> = mapOf(
+        "serverUrl" to { it.serverUrl }, "isLoggedIn" to { it.isLoggedIn }, "isAdmin" to { it.isAdmin },
+        "currency" to { it.currency }, "priceCondition" to { it.priceCondition },
+        "defaultPriceCondition" to { it.defaultPriceCondition }, "userDefaultCondition" to { it.userDefaultCondition },
+        "appTheme" to { it.appTheme }, "startupStatus" to { it.startupStatus }, "language" to { it.language },
+    )
+
+    /** Jeder Schritt mit Werten, die sich von der Vorgabe unterscheiden. */
+    private val schritte: Map<String, (Sitzung) -> Unit> = mapOf(
+        "angemeldet" to { it.angemeldet(admin = true) },
+        "anmeldungGeaendert" to { it.anmeldungGeaendert("https://brick.example", true) },
+        "verwalterGeaendert" to { it.verwalterGeaendert(true) },
+        "einstellungenGespeichert" to { it.einstellungenGespeichert("CHF", "U") },
+        "einstellungenGeladen" to { it.einstellungenGeladen("CHF", "U", "U", "U") },
+        "waehrungUebernommen" to { it.waehrungUebernommen("CHF") },
+        "spracheGeaendert" to { it.spracheGeaendert("fr") },
+        "setzeDesign" to { it.setzeDesign("noppe") },
+        "serverstartGeaendert" to { it.serverstartGeaendert(StartzustandAnsicht(false, "Katalog", null, 2.0, 8)) },
+    )
+
     @Test
     fun `jeder Schritt der Sitzung setzt nur seine Felder`() {
-        val src = Quellen.ohneKommentare(Quellen.alle().single { it.name == "Sitzung.kt" }.readText())
-        val schritt = Regex("""override fun (\w+)\([^)]*\)\s*=\s*_state\.update\s*\{\s*it\.copy\(""")
+        assertEquals(erlaubt.keys, schritte.keys)
         val fehler = mutableListOf<String>()
-        val gesehen = mutableSetOf<String>()
-        for (m in schritt.findAll(src)) {
-            val name = m.groupValues[1]
-            gesehen += name
-            var i = m.range.last + 1
-            var tiefe = 1
-            while (i < src.length && tiefe > 0) {
-                if (src[i] == '(') tiefe++ else if (src[i] == ')') tiefe--
-                i++
-            }
-            val felder = Regex("""(\w+)\s*=""").findAll(src.substring(m.range.last + 1, i - 1)).map { it.groupValues[1] }
-            val frei = erlaubt[name]
-            if (frei == null) fehler += "$name: neuer Schritt" else felder.filter { it !in frei }.forEach { fehler += "$name setzt $it" }
+        for ((name, schritt) in schritte) {
+            val sitzung = Sitzung()
+            val vorher = sitzung.state.value
+            schritt(sitzung)
+            val nachher = sitzung.state.value
+            val geaendert = felder.filter { (_, f) -> f(vorher) != f(nachher) }.keys
+            if (geaendert.isEmpty()) fehler += "$name ändert nichts"
+            (geaendert - erlaubt.getValue(name)).forEach { fehler += "$name setzt $it" }
         }
-        assert(gesehen.size >= erlaubt.size - 1) { "Nur ${gesehen.size} Schritte gefunden — Muster veraltet?" }
         assert(fehler.isEmpty()) {
             "Die Sitzung schreibt an unerwarteter Stelle:\n  " + fehler.joinToString("\n  ") +
                 "\nGehört das Feld einem Bereich, zieht es in dessen eigenen Zustand; sonst die Liste oben bewusst erweitern."

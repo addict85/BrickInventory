@@ -33,7 +33,6 @@ import androidx.navigation.compose.*
 import ch.brickinventoryapp.ressourcen.R
 import ch.brickinventoryapp.ui.*
 import ch.brickinventoryapp.ui.screens.*
-import ch.brickinventoryapp.ui.viewmodel.UpdateViewModel
 import ch.brickinventoryapp.nav.ZielUmgebung
 import ch.brickinventoryapp.ui.components.AusgangLeiste
 import ch.brickinventoryapp.ui.components.LocalOffeneAenderungen
@@ -44,7 +43,6 @@ import ch.brickinventoryapp.ui.components.SegmentWahl
 import ch.brickinventoryapp.ui.components.UpdatePunkt
 import ch.brickinventoryapp.ui.theme.Abstaende
 import ch.brickinventoryapp.ui.theme.LocalAkzentflaechen
-import ch.brickinventoryapp.ui.viewmodel.CsvImportViewModel
 
 /**
  * Gemeinsames Gerüst aller eingeloggten Screens: obere Leiste mit Titel und
