@@ -230,7 +230,8 @@ private fun Schrittanzeige(aktuell: Int) {
     Column(verticalArrangement = Arrangement.spacedBy(Abstaende.winzig)) {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(Abstaende.winzig)) {
             namen.indices.forEach { i ->
-                val farbe = if (i < aktuell) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant
+                // Offene Schritte in outline: outlineVariant verschwand auf der Fläche (1,13:1).
+                val farbe = if (i < aktuell) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline
                 Box(Modifier.weight(1f).height(Abstaende.winzig).background(farbe, Formen.strich))
             }
         }

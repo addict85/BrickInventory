@@ -42,6 +42,7 @@ import ch.brickinventoryapp.ui.viewmodel.TeilelisteViewModel
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import ch.brickinventoryapp.ui.theme.Abstaende
 import androidx.compose.material.icons.automirrored.filled.ListAlt
+import ch.brickinventoryapp.ui.components.vorgelesenAls
 
 // ── Sortierung wie Webapp und PDF ──
 //
@@ -236,7 +237,7 @@ fun PartsListScreen(
                             AssistChip(
                                 onClick = { onEntferne(i) },
                                 label = { Text(if (s.name != s.setNumber) "${s.setNumber} — ${s.name}" else s.setNumber,
-                                    style = MaterialTheme.typography.labelSmall) },
+                                    style = MaterialTheme.typography.bodySmall) },
                                 trailingIcon = { Icon(Icons.Default.Close, null, Modifier.size(ch.brickinventoryapp.ui.components.mitSchrift(14.dp))) }
                             )
                         }
@@ -414,7 +415,7 @@ private fun FarbGruppenKopf(colorName: String, colorParts: List<PlPart>) {
         // nur ein „×" und kein Wort.
         Text(mengen.getQuantityString(R.plurals.partslist_group_summary,
                 colorParts.size, colorParts.sumOf { it.quantity }, colorParts.size),
-            style = MaterialTheme.typography.labelSmall,
+            style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
     HorizontalDivider(Modifier.padding(top = Abstaende.winzig), color = MaterialTheme.colorScheme.primaryContainer)
@@ -454,10 +455,10 @@ fun PartListRow(
         Column(Modifier.weight(1f)) {
             // BL-ID (primary) and RB-ID (secondary)
             val displayId = part.blPartNumber ?: part.partNumber
-            Text(displayId, style = MaterialTheme.typography.labelSmall,
+            Text(displayId, style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.SemiBold)
             if (part.blPartNumber != null && part.blPartNumber != part.partNumber) {
-                Text(String.format(rbPrefixFmt, part.partNumber), style = MaterialTheme.typography.labelSmall,
+                Text(String.format(rbPrefixFmt, part.partNumber), style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
             Text(ch.brickinventoryapp.ui.components.katalogName(part.partName), style = MaterialTheme.typography.bodySmall,
@@ -467,7 +468,8 @@ fun PartListRow(
         Surface(color = if (part.isFig) MaterialTheme.colorScheme.tertiaryContainer
                         else MaterialTheme.colorScheme.primaryContainer,
                 shape = MaterialTheme.shapes.small) {
-            Text(ch.brickinventoryapp.ui.mengeAusSet(part.quantity), Modifier.padding(horizontal = Abstaende.klein, vertical = Abstaende.winzig),
+            Text(ch.brickinventoryapp.ui.mengeAusSet(part.quantity), Modifier.padding(horizontal = Abstaende.klein, vertical = Abstaende.winzig)
+                .vorgelesenAls(ch.brickinventoryapp.ui.components.stueckzahl(part.quantity)),
                 fontWeight = FontWeight.Bold,
                 color = if (part.isFig) MaterialTheme.colorScheme.onTertiaryContainer
                         else MaterialTheme.colorScheme.onPrimaryContainer)

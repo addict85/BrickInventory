@@ -466,7 +466,10 @@ private fun MerkpostenZeile(
                     // Kein Name heisst: Der Katalog kennt das Set nicht. Der
                     // benannte Preis dafuer, dass die Merkliste keine zweite
                     // Kopie der Stammdaten fuehrt (Migration 0021).
-                    Text(w.name ?: w.setNumber, fontWeight = FontWeight.SemiBold, maxLines = 2)
+                    // Immer zwei Zeilen Platz wie in der Galerie: Im Tablet-Raster stand eine
+                    // Karte mit kurzem Namen niedriger als ihre Nachbarn.
+                    Text(w.name ?: w.setNumber, fontWeight = FontWeight.SemiBold, minLines = 2, maxLines = 2,
+                        overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
                     Text(
                         listOfNotNull(
                             w.setNumber,
@@ -481,8 +484,8 @@ private fun MerkpostenZeile(
                 }
             }
             // FlowRow: Bei grosser Schrift rückt der Preis unter die Plaketten, statt sie zu quetschen.
-            // Mindesthöhe einer Plakette: Karten mit und ohne Plakette sind dann gleich hoch.
-            if (preis != null || w.alarm != null || w.owned) FlowRow(Modifier.heightIn(min = 32.dp),
+            // Mindesthöhe einer Plakette, auch ohne Inhalt: Karten mit und ohne Plakette sind gleich hoch.
+            FlowRow(Modifier.heightIn(min = 32.dp),
                     horizontalArrangement = Arrangement.spacedBy(Abstaende.klein),
                     verticalArrangement = Arrangement.spacedBy(Abstaende.winzig)) {
                 w.alarm?.let { a ->

@@ -31,7 +31,7 @@
     <string name="settings_condition_new">New</string>
     <string name="settings_condition_used">Used</string>
     <string name="settings_save">Save</string>
-    <string name="settings_logout">Log out</string>
+    <string name="settings_logout">Sign out</string>
     <string name="settings_language">Language</string>
     <string name="settings_language_system">Follow system</string>
     <string name="settings_language_en">English</string>
@@ -61,10 +61,10 @@
     <string name="setup_qr_ziel">The QR code points to this server:</string>
     <string name="setup_qr_hinweis">The app will only send your login there. Continue only if this is your server.</string>
     <string name="setup_qr_international" tools:ignore="TypographyDashes">The server name contains characters from other alphabets and is shown in its technical form (xn--…). Such letters can look exactly like familiar ones: compare the name character by character with your server.</string>
-    <string name="setup_qr_anderer_server">This code leads to a different server than the current one (%1$s). If you continue, you will be logged out there and everything you enter from now on goes to the new server.</string>
+    <string name="setup_qr_anderer_server">This code leads to a different server than the current one (%1$s). If you continue, you will be signed out there and everything you enter from now on goes to the new server.</string>
     <string name="setup_url_benutzerangabe">An address with a user name (…@…) is not accepted. Enter only the server address, e.g. https://brick.fritz.box</string>
     <string name="setup_url_zusatz">The address must not contain spaces, line breaks, \\, ? or #. Enter only the server address, e.g. https://brick.fritz.box</string>
-    <string name="setup_qr_uebernehmen">Use and log in</string>
+    <string name="setup_qr_uebernehmen">Use and sign in</string>
 
     <!-- ══════════════ CSV import banner ══════════════ -->
     <string name="csv_ok_count">%1$d OK</string>
@@ -126,11 +126,6 @@
     <string name="setup_qr_scan_hint">Scan the BrickInventory QR code</string>
 
     <!-- ══════════════ Gallery screen ══════════════ -->
-    <string name="gallery_stat_sets">Sets</string>
-    <string name="gallery_stat_units">Copies</string>
-    <string name="gallery_stat_parts">Parts</string>
-    <string name="gallery_stat_minifigs">Minifigures</string>
-    <string name="gallery_stat_instructions">Instructions</string>
     <string name="gallery_search_placeholder">Search…</string>
     <string name="gallery_no_sets">No sets yet</string>
     <string name="gallery_empty_hint">Add your first set by its number or scan the barcode on the box.</string>
@@ -164,9 +159,6 @@
     <string name="gallery_add">Add</string>
 
     <!-- ══════════════ Minifigs screen ══════════════ -->
-    <string name="minifigs_stat_types">Figure types</string>
-    <string name="minifigs_stat_total">Figures in total</string>
-    <string name="minifigs_stat_manual">Added by you</string>
     <string name="minifigs_search_placeholder">Search…</string>
     <string name="minifigs_manual_section">Manually added minifigures</string>
     <string name="minifigs_sets_section">From sets</string>
@@ -323,26 +315,23 @@
     <string name="finance_guv_zeile">Profit/loss: %1$s</string>
     <string name="finance_pnl_needs_prices">needs purchase and market prices</string>
     <plurals name="finance_basis_gerechnet">
-        <item quantity="one">Based on %1$d of %2$d item with purchase and market price.</item>
-        <item quantity="other">Based on %1$d of %2$d items with purchase and market price.</item>
+        <item quantity="one">Based on %1$d of %2$d item with purchase and market price.</item>
+        <item quantity="other">Based on %1$d of %2$d items with purchase and market price.</item>
     </plurals>
     <plurals name="finance_basis_ohne_markt">
-        <item quantity="one">%1$d item without market price not included (total paid %2$s)</item>
-        <item quantity="other">%1$d items without market price not included (total paid %2$s)</item>
+        <item quantity="one">%1$d item without market price not included (total paid %2$s)</item>
+        <item quantity="other">%1$d items without market price not included (total paid %2$s)</item>
     </plurals>
     <plurals name="finance_basis_ohne_kauf">
-        <item quantity="one">%1$d item without purchase price not included (market value %2$s)</item>
-        <item quantity="other">%1$d items without purchase price not included (market value %2$s)</item>
+        <item quantity="one">%1$d item without purchase price not included (market value %2$s)</item>
+        <item quantity="other">%1$d items without purchase price not included (market value %2$s)</item>
     </plurals>
     <plurals name="finance_summe_ohne_markt">
-        <item quantity="one">The total excludes %1$d item without a market price.</item>
-        <item quantity="other">The total excludes %1$d items without a market price.</item>
+        <item quantity="one">The total excludes %1$d item without a market price.</item>
+        <item quantity="other">The total excludes %1$d items without a market price.</item>
     </plurals>
 
     <!-- ══════════════ Parts screen ══════════════ -->
-    <string name="parts_stat_types">Part types</string>
-    <string name="parts_stat_colors">Colors</string>
-    <string name="parts_stat_total">Pieces in total</string>
     <string name="parts_manual_section">Manually added parts</string>
     <string name="parts_sets_section">From sets</string>
     <string name="parts_none">No parts</string>
@@ -438,9 +427,9 @@
     <string name="main_barcode_pieces">Pieces</string>
     <string name="main_barcode_figs">Minifigures</string>
     <string name="main_menu_monitoring">Background work</string>
-    <string name="main_menu_logout">Log out</string>
-    <string name="logout_confirm_title">Log out?</string>
-    <string name="logout_confirm_text">You will be logged out on this device. To continue, log in again with your password.</string>
+    <string name="main_menu_logout">Sign out</string>
+    <string name="logout_confirm_title">Sign out?</string>
+    <string name="logout_confirm_text">You will be signed out on this device. To continue, sign in again with your password.</string>
     <string name="update_badge">Update available</string>
     <string name="main_menu_change_server">Change server</string>
     <string name="vm_settings_saved">Settings saved</string>
@@ -489,8 +478,8 @@
     <string name="vm_set_added_no_catalog">Set %1$s saved — name and image will follow once the catalog is reachable.</string>
     <string name="vm_error">Error: %1$s</string>
     <string name="vm_anmeldung_zu_alt">You signed in more than 180 days ago. Please sign in again.</string>
-    <string name="vm_session_expired">Session expired — please log in again</string>
-    <string name="vm_abmelden_nachgeholt">Logged out. The server could not be reached, so the app will invalidate the login there as soon as it is online. To be sure, check “Signed-in devices” in the web app.</string>
+    <string name="vm_session_expired">Session expired — please sign in again</string>
+    <string name="vm_abmelden_nachgeholt">Signed out. The server could not be reached, so the app will invalidate the login there as soon as it is online. To be sure, check “Signed-in devices” in the web app.</string>
     <string name="abmeldung_kanal">Sign-out</string>
     <string name="abmeldung_gescheitert_titel">Sign-out not confirmed</string>
     <string name="abmeldung_gescheitert_text">This device could not sign out at %1$s. The login may still be valid there: revoke it in the web app under “Signed-in devices”.</string>
@@ -583,8 +572,8 @@
     <string name="catalog_sort_parts_asc">Parts ↑</string>
     <string name="catalog_buy_bricklink">Buy on BrickLink</string>
     <string name="catalog_search_bricklink">Search on BrickLink</string>
-    <string name="finance_purchase_short">Purchase: %1$s</string>
-    <string name="finance_purchase_total">Purchase total: %1$s</string>
+    <string name="finance_purchase_short">Purchase price: %1$s</string>
+    <string name="finance_purchase_total">Total paid: %1$s</string>
     <string name="household_scope_label">Accounts</string>
     <string name="household_scope_all">All accounts</string>
     <string name="household_scope_own">Own</string>
@@ -607,7 +596,7 @@
     <string name="household_former_via">previously via %1$s</string>
     <string name="household_former_dismiss">Dismiss</string>
     <string name="household_invite_create">Create invitation code</string>
-    <string name="household_invite_hint">Enter the code in the other account under “Household”. Valid for 24 hours, usable once.</string>
+    <string name="household_invite_hint">Enter the code in the other account under “Household”. Valid for 24 hours, usable once.</string>
     <string name="household_invite_copy">Copy</string>
     <string name="household_invite_label">Invitation code</string>
     <string name="household_redeem_title">Accept an invitation</string>
@@ -928,7 +917,7 @@
     <string name="schritt_gutschein">Show voucher PIN</string>
     <string name="schritt_codes">Recovery codes</string>
     <string name="schritt_verwaltung">Open administration</string>
-    <string name="schritt_voller_zugriff">Sign in with admin rights</string>
+    <string name="schritt_voller_zugriff">Sign in with administrator rights</string>
     <string name="vouchers_pin_hide">Hide PIN</string>
     <string name="vouchers_delete_confirm">Really delete voucher %1$s? The stored PDF goes with it.</string>
     <string name="vouchers_saved">Voucher saved</string>
@@ -1022,7 +1011,7 @@
     <string name="zert_text_nutzer_ca">The certificate of %1$s is valid only through an authority installed on this device. That may be your own – or one that someone with access to the device slipped in. That is why one tap is not enough here: copy the last 24 characters of the fingerprint from the web app (Settings → Server certificate); this screen only shows its beginning.</string>
     <string name="zert_titel_nutzer_ca">Certificate from an installed authority</string>
     <string name="setup_qr_pin_geaendert">This code names a different certificate than the one confirmed for this server. Continue only if you changed the server yourself – the web app then shows the new fingerprint under Settings → Server certificate; copy its last 24 characters below.</string>
-    <string name="setup_qr_pin_uebernehmen">Accept the new certificate and log in</string>
+    <string name="setup_qr_pin_uebernehmen">Accept the new certificate and sign in</string>
     <string name="setup_qr_pin_wechsel_abgelehnt">The QR code names a different certificate than the confirmed one. Nothing was changed.</string>
     <string name="setup_qr_pin_abtippen">The code also names the certificate of your own authority. From then on the app would trust only this key for this address – but a code from someone else could name theirs just the same. So copy the last 24 characters of the fingerprint from your web app (Settings → Server certificate); this screen only shows its beginning.</string>
     <string name="setup_qr_pin_abtippen_abgelehnt">Without the last 24 characters of the fingerprint from the web app, the certificate from the QR code is not accepted. Nothing was sent.</string>
@@ -1043,7 +1032,7 @@
     <string name="vouchers_cd_copy_number">Copy number %1$s</string>
     <string name="nav_group_account">Account and app</string>
     <string name="nav_group_tools">Tools</string>
-    <string name="detail_pnl_tile">Gain/loss</string>
+    <string name="detail_pnl_tile">Profit/loss</string>
     <string name="chart_change_max">%1$s overall</string>
     <string name="chart_change_year">%1$s this year</string>
     <string name="chart_change_month">%1$s this month</string>
@@ -1139,4 +1128,63 @@
     <string name="zf_share_title">Recovery codes</string>
     <string name="passwort_aendern_fehlt">Enter the current password, the new one and its repetition, then change it.</string>
     <string name="erfassen_nummer_fehlt">Enter a set number first.</string>
+    <string name="zustand_eingeklappt">collapsed</string>
+    <string name="zustand_ausgeklappt">expanded</string>
+    <string name="nav_sets">Sets</string>
+    <plurals name="gallery_stat_sets">
+        <item quantity="one">%1$s set</item>
+        <item quantity="other">%1$s sets</item>
+    </plurals>
+    <plurals name="gallery_stat_units">
+        <item quantity="one">%1$s copy</item>
+        <item quantity="other">%1$s copies</item>
+    </plurals>
+    <plurals name="gallery_stat_parts">
+        <item quantity="one">%1$s part</item>
+        <item quantity="other">%1$s parts</item>
+    </plurals>
+    <plurals name="gallery_stat_minifigs">
+        <item quantity="one">%1$s minifigure</item>
+        <item quantity="other">%1$s minifigures</item>
+    </plurals>
+    <plurals name="gallery_stat_instructions">
+        <item quantity="one">%1$s manual</item>
+        <item quantity="other">%1$s manuals</item>
+    </plurals>
+    <plurals name="minifigs_stat_types">
+        <item quantity="one">%1$s figure type</item>
+        <item quantity="other">%1$s figure types</item>
+    </plurals>
+    <plurals name="minifigs_stat_total">
+        <item quantity="one">%1$s figure in total</item>
+        <item quantity="other">%1$s figures in total</item>
+    </plurals>
+    <plurals name="minifigs_stat_manual">
+        <item quantity="one">%1$s added by you</item>
+        <item quantity="other">%1$s added by you</item>
+    </plurals>
+    <plurals name="parts_stat_types">
+        <item quantity="one">%1$s part type</item>
+        <item quantity="other">%1$s part types</item>
+    </plurals>
+    <plurals name="parts_stat_colors">
+        <item quantity="one">%1$s color</item>
+        <item quantity="other">%1$s colors</item>
+    </plurals>
+    <plurals name="parts_stat_total">
+        <item quantity="one">%1$s piece in total</item>
+        <item quantity="other">%1$s pieces in total</item>
+    </plurals>
+    <plurals name="cd_stueck">
+        <item quantity="one">%1$s piece</item>
+        <item quantity="other">%1$s pieces</item>
+    </plurals>
+    <string name="cd_teil_nummer">Part %1$s</string>
+    <string name="cd_figur_nummer">Minifigure %1$s</string>
+    <string name="cd_set_nummer">Set %1$s</string>
+    <string name="cd_jahr">Year %1$s</string>
+    <plurals name="cd_in_sammlung">
+        <item quantity="one">In the collection, %1$s copy</item>
+        <item quantity="other">In the collection, %1$s copies</item>
+    </plurals>
 </resources>

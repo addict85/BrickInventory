@@ -143,7 +143,8 @@ private fun SetItemDetail(
                             SetItemZeile(stringResource(R.string.setitem_color), farbe(it))
                         }
                         kopf?.categoryName?.let {
-                            SetItemZeile(stringResource(R.string.setitem_category), it)
+                            SetItemZeile(stringResource(R.string.setitem_category),
+                                ch.brickinventoryapp.ui.components.kategorieUebersetzer()(it))
                         }
                         if (kopf?.isSpare == true) {
                             SetItemZeile(stringResource(R.string.parts_spare_tag), "✓")

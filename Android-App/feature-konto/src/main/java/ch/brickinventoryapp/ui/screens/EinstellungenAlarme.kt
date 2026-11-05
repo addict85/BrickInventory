@@ -107,7 +107,7 @@ internal fun PreisalarmeCard(
                             a.zuletztPreis?.let {
                                 Text(stringResource(R.string.alerts_last,
                                         ch.brickinventoryapp.util.fmtMoney(it, a.currencyCode)),
-                                    style = MaterialTheme.typography.labelSmall,
+                                    style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant)
                             }
                         }
@@ -135,7 +135,8 @@ internal fun PreisalarmeCard(
                     singleLine = true,
                     label = { Text(stringResource(if (a.richtung == "unter") R.string.detail_alert_chip_below
                                                   else R.string.detail_alert_chip_above)) },
-                    suffix = { Text(a.currencyCode) },
+                    // Vorangestellt wie jeder Betrag der App („CHF 750.00“).
+                    prefix = { Text(a.currencyCode + "\u00A0") },
                     // Nur „Gespeichert“: Richtung, Betrag und Zustand stehen schon in Feld und
                     // Plakette, die ganze Wiederholung darunter verdoppelte jede Zeile.
                     supportingText = {
@@ -208,7 +209,7 @@ private fun AlarmZustandPlakette(ausgeloest: Boolean) {
         Text(
             text,
             maxLines = 1,
-            style = MaterialTheme.typography.labelSmall,
+            style = MaterialTheme.typography.bodySmall,
             // Auch das Gewicht traegt mit: Ein aktiver Alarm ist der Zustand,
             // auf den es ankommt.
             fontWeight = if (ausgeloest) FontWeight.Normal else FontWeight.SemiBold,

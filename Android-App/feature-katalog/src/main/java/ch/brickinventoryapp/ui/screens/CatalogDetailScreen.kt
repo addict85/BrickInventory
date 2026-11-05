@@ -269,7 +269,8 @@ private fun ColumnScope.KatalogAngaben(
     val bl = detail.bricklink
     val blUrl = bl?.url ?: BrickLinkUrls.searchFor(detail.setNumber)
     val blLabel = if (bl != null && !bl.exact) R.string.catalog_search_bricklink else R.string.catalog_buy_bricklink
-    TextButton(onClick = { onBrickLink(blUrl) }, modifier = Modifier.align(Alignment.CenterHorizontally)) {
+    // So breit wie die Knöpfe darüber: Mittig für sich stand er auf dem Tablet neben ihrer Achse.
+    TextButton(onClick = { onBrickLink(blUrl) }, modifier = knopf) {
         Icon(Icons.Default.ShoppingCart, null, Modifier.size(ch.brickinventoryapp.ui.components.mitSchrift(18.dp)))
         Spacer(Modifier.width(Abstaende.klein))
         Text(stringResource(blLabel))

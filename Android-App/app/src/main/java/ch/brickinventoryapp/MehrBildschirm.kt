@@ -74,7 +74,9 @@ fun MehrBildschirm(
         onAbbrechen = { fragtAbmelden = false },
         symbol = Icons.AutoMirrored.Outlined.Logout,
     )
-    // Je Gruppe ein Block; `trenner` fällt am Kopf einer Spalte weg.
+    // Je Gruppe ein Block; `trenner` fällt am Kopf einer Spalte weg. Eine Gruppe, eine
+    // Art Seite: Werkzeuge behalten die untere Leiste, Preise und Verwalten öffnen
+    // Unterseiten. Gemischt sah „Vergleich“ neben „Gutscheine“ anders aus als erwartet.
     @Composable
     fun Gruppe(nummer: Int, trenner: Boolean) {
         when (nummer) {
@@ -83,17 +85,17 @@ fun MehrBildschirm(
                 // Gutscheine zuerst: Die braucht man im Laden.
                 MehrEintrag(R.string.vouchers_title, Icons.Outlined.Redeem) { onZiel(Screen.Gutscheine) }
                 MehrEintrag(R.string.alerts_group, Icons.Outlined.NotificationsActive) { onZiel(Screen.Preisalarme) }
-                MehrEintrag(R.string.nav_comparison, Icons.AutoMirrored.Outlined.CompareArrows) { onZiel(Screen.Comparison) }
             }
             1 -> {
                 MehrGruppe(R.string.nav_group_tools, trenner)
+                MehrEintrag(R.string.nav_comparison, Icons.AutoMirrored.Outlined.CompareArrows) { onZiel(Screen.Comparison) }
                 MehrEintrag(R.string.nav_partslist, Icons.AutoMirrored.Outlined.ListAlt) { onZiel(Screen.PartsList) }
-                MehrEintrag(R.string.csv_upload_title, Icons.Outlined.UploadFile) { onZiel(Screen.CsvImport) }
             }
             2 -> {
                 MehrGruppe(R.string.nav_group_manage, trenner)
                 MehrEintrag(R.string.storage_manage, Icons.Outlined.Inventory2) { onZiel(Screen.Lagerorte) }
                 MehrEintrag(R.string.household_title, Icons.Outlined.Group) { onZiel(Screen.Haushalt) }
+                MehrEintrag(R.string.csv_upload_title, Icons.Outlined.UploadFile) { onZiel(Screen.CsvImport) }
             }
             3 -> {
                 MehrGruppe(R.string.nav_group_account, trenner)

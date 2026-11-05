@@ -54,6 +54,7 @@ import ch.brickinventoryapp.ui.QrLoginPayload
 import ch.brickinventoryapp.ui.parseQrPayload
 import ch.brickinventoryapp.ui.qrWechseltServer
 import ch.brickinventoryapp.ui.theme.Abstaende
+import ch.brickinventoryapp.ui.components.ausserhalbDerSystemleisten
 
 /**
  * Server einrichten: per QR-Code oder von Hand, nur mit https. Steht noch eine
@@ -80,6 +81,7 @@ fun SetupScreen(
     val keyboard     = LocalSoftwareKeyboardController.current
     val altbestand   = NetworkPolicy.klartextAltbestand(currentUrl, entwicklung)
     val fehler       = if (url.isBlank()) null else NetworkPolicy.adressfehler(url, entwicklung)
+    val adresseBereit = url.isNotBlank() && fehler == null
 
     fun save() {
         if (url.isBlank() || fehler != null) return
@@ -164,8 +166,9 @@ fun SetupScreen(
         Spacer(Modifier.height(Abstaende.riesig))
 
         // Der QR-Code ist der empfohlene Weg (Adresse und Zertifikat in einem Schritt) und
-        // deshalb die gefüllte Hauptaktion; die Eingabe von Hand darunter ist der Ausweg.
-        Button(
+        // deshalb gefüllt, bis eine Adresse von Hand dasteht: Dann ist „Weiter“ der Weg.
+        Hauptknopf(
+            haupt = !adresseBereit,
             onClick = { scanError = null; showScanner = true },
             modifier = Modifier.fillMaxWidth().heightIn(min = 56.dp)
         ) {
@@ -233,10 +236,11 @@ fun SetupScreen(
                     isError = fehler != null,
                 )
                 Spacer(Modifier.height(Abstaende.gross))
-                // Tonal: Neben dem gefüllten QR-Knopf oben gibt es nur EINE Hauptaktion.
-                FilledTonalButton(
-                    onClick = ::save, modifier = Modifier.fillMaxWidth(),
-                    enabled = url.isNotBlank() && fehler == null,
+                // Gefüllt: Tonal lag er auf der Karte fast unsichtbar (1,02:1) und sah aktiv
+                // aus wie gesperrt. Gesperrt bleibt er blass, bis die Adresse taugt.
+                Button(
+                    onClick = ::save, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
+                    enabled = adresseBereit,
                 ) { Text(stringResource(R.string.setup_continue), fontWeight = FontWeight.Bold) }
             }
         }
@@ -256,7 +260,7 @@ fun SetupScreen(
 
     // Rollbar wie die Anmeldung (bei 200 % Schrift reichte die Höhe nicht), mittig
     // solange es passt, und auf dem Tablet nicht breiter als ein Formular.
-    BoxWithConstraints(Modifier.fillMaxSize()) {
+    BoxWithConstraints(Modifier.fillMaxSize().ausserhalbDerSystemleisten()) {
         // In Row- und Column-Lambdas ist der Empfänger von BoxWithConstraints gesperrt (DslMarker).
         val hoehe = maxHeight
         if (maxWidth > hoehe && maxWidth >= QUER_ZWEISPALTIG) {
@@ -285,6 +289,13 @@ fun SetupScreen(
             handlungsTeil()
         }
     }
+}
+
+/** Gefüllt als Hauptaktion, sonst tonal: Es gibt immer nur EINE gefüllte Aktion. */
+@Composable
+private fun Hauptknopf(haupt: Boolean, onClick: () -> Unit, modifier: Modifier, inhalt: @Composable RowScope.() -> Unit) {
+    if (haupt) Button(onClick = onClick, modifier = modifier, content = inhalt)
+    else FilledTonalButton(onClick = onClick, modifier = modifier, content = inhalt)
 }
 
 /**

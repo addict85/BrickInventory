@@ -99,10 +99,10 @@ private fun AuftragZeile(a: AuftragAnsicht, onAbbrechen: () -> Unit, onWiederhol
             Text(kopf, style = MaterialTheme.typography.bodyMedium)
             a.faelligAb?.let { zeit ->
                 Text(stringResource(if (a.geplant) R.string.hintergrund_geplant else R.string.hintergrund_faellig,
-                    ch.brickinventoryapp.util.fmtTag(zeit) ?: zeit), style = MaterialTheme.typography.labelSmall,
+                    ch.brickinventoryapp.util.fmtTag(zeit) ?: zeit), style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
-            a.fehler?.let { Text(it, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.error) }
+            a.fehler?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error) }
         }
         if (a.abbrechbar) TextButton(onClick = onAbbrechen) { Text(stringResource(R.string.common_cancel)) }
         if (a.wiederholbar) TextButton(onClick = onWiederholen) { Text(stringResource(R.string.hintergrund_wiederholen)) }

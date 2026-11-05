@@ -4,15 +4,17 @@ Test: ch.brickinventoryapp.FeinschliffRegelnTest
 Rot: Reiterleiste bricht
 
 diff --git a/Android-App/app/src/main/java/ch/brickinventoryapp/MainScaffold.kt b/Android-App/app/src/main/java/ch/brickinventoryapp/MainScaffold.kt
-index 8a3960b..e5a2527 100644
+index 2c7f40f..179d391 100644
 --- a/Android-App/app/src/main/java/ch/brickinventoryapp/MainScaffold.kt
 +++ b/Android-App/app/src/main/java/ch/brickinventoryapp/MainScaffold.kt
-@@ -272,16 +272,7 @@ private fun ReiterBeschriftung(text: String, groesse: MutableState<TextUnit>, be
+@@ -274,18 +274,7 @@ private fun ReiterBeschriftung(text: String, groesse: MutableState<TextUnit>, be
      val stil = MaterialTheme.typography.labelSmall
      val boden = stil.fontSize / LocalDensity.current.fontScale.coerceAtLeast(1f)
      val aktuell = if (groesse.value.isSpecified) groesse.value else stil.fontSize
 -    Text(
--        text, style = stil.copy(fontSize = aktuell), maxLines = 1, softWrap = false,
+-        // Mindestabstand zum Rand des Ziels: Bei 200 % stand „Sammlung“ 1 dp vor der Kante.
+-        text, Modifier.padding(horizontal = ch.brickinventoryapp.ui.theme.Abstaende.winzig),
+-        style = stil.copy(fontSize = aktuell), maxLines = 1, softWrap = false,
 -        overflow = TextOverflow.Clip,
 -        onTextLayout = { l ->
 -            if (l.hasVisualOverflow) {

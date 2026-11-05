@@ -4,11 +4,11 @@ Test: ch.brickinventoryapp.FeinschliffRegelnTest
 Rot: Reiterleiste schrumpft nie
 
 diff --git a/Android-App/app/src/main/java/ch/brickinventoryapp/MainScaffold.kt b/Android-App/app/src/main/java/ch/brickinventoryapp/MainScaffold.kt
-index 8a3960b..fbefbe4 100644
+index 2c7f40f..2e0bdc8 100644
 --- a/Android-App/app/src/main/java/ch/brickinventoryapp/MainScaffold.kt
 +++ b/Android-App/app/src/main/java/ch/brickinventoryapp/MainScaffold.kt
-@@ -276,10 +276,7 @@ private fun ReiterBeschriftung(text: String, groesse: MutableState<TextUnit>, be
-         text, style = stil.copy(fontSize = aktuell), maxLines = 1, softWrap = false,
+@@ -280,10 +280,7 @@ private fun ReiterBeschriftung(text: String, groesse: MutableState<TextUnit>, be
+         style = stil.copy(fontSize = aktuell), maxLines = 1, softWrap = false,
          overflow = TextOverflow.Clip,
          onTextLayout = { l ->
 -            if (l.hasVisualOverflow) {

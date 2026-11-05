@@ -121,7 +121,7 @@ class BeispieldatenTest {
         val de = ch.brickinventoryapp.ui.lokaleAchse(f.historyPoints, f.historyTage, java.util.Locale.forLanguageTag("de-CH"))
         val en = ch.brickinventoryapp.ui.lokaleAchse(f.historyPoints, f.historyTage, java.util.Locale.forLanguageTag("en-GB"))
         assertEquals(listOf("27.10.", "29.10."), de.map { it.xLabel }.filter { it.isNotBlank() })
-        assertEquals(listOf("27/10", "29/10"), en.map { it.xLabel }.filter { it.isNotBlank() })
+        assertEquals(listOf("27 Oct", "29 Oct"), en.map { it.xLabel }.filter { it.isNotBlank() })
     }
 
     /**

@@ -14,7 +14,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.heading
-import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.text
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
@@ -48,16 +47,13 @@ fun Abschnittstitel(text: String, modifier: Modifier = Modifier, symbol: ImageVe
 }
 
 /**
- * Die Überschrift einer Gruppe in einer Liste ohne Karten (Seite „Mehr“): der
- * Listen-Kopf von Material in der Hauptfarbe, mit Trennlinie davor.
+ * Die Überschrift einer Gruppe in einer Liste ohne Karten (Seite „Mehr“): derselbe
+ * Stil wie [Abschnittstitel], mit Trennlinie davor. Ein eigener Stil in der
+ * Hauptfarbe liess dieselbe Ebene anders aussehen als in Einstellungen und Detail.
  */
 @Composable
 fun Gruppentitel(text: String, modifier: Modifier = Modifier, trenner: Boolean = true) {
     if (trenner) HorizontalDivider(Modifier.padding(top = Abstaende.klein))
-    Text(
-        text, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold,
-        color = MaterialTheme.colorScheme.primary,
-        modifier = modifier.padding(start = Abstaende.gross, end = Abstaende.gross, top = Abstaende.gross,
-            bottom = Abstaende.winzig).semantics { heading() },
-    )
+    Abschnittstitel(text, modifier.padding(start = Abstaende.gross, end = Abstaende.gross, top = Abstaende.gross,
+        bottom = Abstaende.winzig))
 }

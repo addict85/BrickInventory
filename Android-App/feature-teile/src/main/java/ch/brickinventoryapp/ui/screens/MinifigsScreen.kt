@@ -26,7 +26,6 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import ch.brickinventoryapp.util.fmtInt
 import ch.brickinventoryapp.util.rememberTileImageWithFallback
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
@@ -42,6 +41,8 @@ import ch.brickinventoryapp.ui.components.Bewegt
 import ch.brickinventoryapp.ui.components.SkelettRaster
 import ch.brickinventoryapp.ui.components.FehlerHinweis
 import ch.brickinventoryapp.ui.components.ZustandsHinweis
+import ch.brickinventoryapp.ui.components.stueckzahl
+import ch.brickinventoryapp.ui.components.vorgelesenAls
 
 /** Der Figuren-Reiter am Navigationsziel: reicht Zustand und Aktionen an [MinifigsScreen]. */
 @Composable
@@ -252,9 +253,9 @@ private fun FigurenKennzahlen(minifigStats: FigurenKennzahlenAnsicht) {
     KennzahlenReihe {
         // Zahlen vom Server (getMinifigStats): Aus der Liste gerechnet fehlten
         // die manuell erfassten Figuren, die hier ausgefiltert sind.
-        GalleryStatChip(fmtInt(minifigStats.types), stringResource(R.string.minifigs_stat_types))
-        GalleryStatChip(fmtInt(minifigStats.totalQuantity), stringResource(R.string.minifigs_stat_total))
-        GalleryStatChip(fmtInt(minifigStats.manual), stringResource(R.string.minifigs_stat_manual))
+        GalleryStatChip(minifigStats.types, R.plurals.minifigs_stat_types)
+        GalleryStatChip(minifigStats.totalQuantity, R.plurals.minifigs_stat_total)
+        GalleryStatChip(minifigStats.manual, R.plurals.minifigs_stat_manual)
     }
 }
 
@@ -343,7 +344,7 @@ fun AddMinifigDialog(
                 )
                 Text(
                     stringResource(R.string.minifigs_bl_hint),
-                    style = MaterialTheme.typography.labelSmall,
+                    style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 ErfassungsFelder(
@@ -383,7 +384,8 @@ fun MinifigCard(fig: FigurAnsicht, serverUrl: String, imageLoader: ImageLoader,
                 ch.brickinventoryapp.ui.components.ProduktBild(
                     model = figImg,
                     imageLoader = imageLoader,
-                    contentDescription = fig.figName,
+                    // Ohne Beschreibung: Der Name steht darunter, TalkBack las ihn sonst zweimal.
+                    contentDescription = null,
                     onState = { st ->
                         if (st is coil3.compose.AsyncImagePainter.State.Error) onFigImgError()
                     },
@@ -404,7 +406,8 @@ fun MinifigCard(fig: FigurAnsicht, serverUrl: String, imageLoader: ImageLoader,
                         // Die Menge-Plakette: „×N“ auf einer manuell erfassten Kachel, „N×“ auf
                         // einer Kachel aus einem Set — die Regel der Webapp (`man-tile` mit
                         // `qbadge` ×N, `part-card` mit `part-qty` N×).
-                        Text(mengeAusSet(qty), Modifier.padding(horizontal = 5.dp, vertical = Abstaende.haar),
+                        Text(mengeAusSet(qty), Modifier.padding(horizontal = 5.dp, vertical = Abstaende.haar)
+                            .vorgelesenAls(stueckzahl(qty)),
                             color = MaterialTheme.colorScheme.onPrimary,
                             style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold)
                     }
@@ -432,7 +435,8 @@ fun MinifigCard(fig: FigurAnsicht, serverUrl: String, imageLoader: ImageLoader,
                 }
             }
             Column(Modifier.padding(Abstaende.klein), verticalArrangement = Arrangement.spacedBy(1.dp)) {
-                Text(fig.figNumber, style = MaterialTheme.typography.labelSmall,
+                Text(fig.figNumber, Modifier.vorgelesenAls(stringResource(R.string.cd_figur_nummer, fig.figNumber)),
+                    style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.SemiBold)
                 // Die Nummer steht schon darüber; ohne Namen dieselbe Nummer noch einmal sah wie ein Name aus.
                 val figName = fig.figName
@@ -451,7 +455,7 @@ fun MinifigCard(fig: FigurAnsicht, serverUrl: String, imageLoader: ImageLoader,
                     ch.brickinventoryapp.util.fmtTag(fig.setAddedAt, ch.brickinventoryapp.util.DatumJahr.KURZ)
                 }
                 if (dateLabel != null)
-                    Text(dateLabel, style = MaterialTheme.typography.labelSmall,
+                    Text(dateLabel, style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         }

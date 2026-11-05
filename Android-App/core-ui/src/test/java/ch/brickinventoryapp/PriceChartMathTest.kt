@@ -149,7 +149,7 @@ class PriceChartMathTest {
         val de = java.util.Locale.forLanguageTag("de-CH")
         assertEquals("31.01.2026", PriceChartMath.formatDay("2026-01-31", de))
         assertEquals("31.01.2026", PriceChartMath.formatDay("2026-01-31T10:00:00Z", de))
-        assertEquals("31/01/2026", PriceChartMath.formatDay("2026-01-31", java.util.Locale.forLanguageTag("en-GB")))
+        assertEquals("31 Jan 2026", PriceChartMath.formatDay("2026-01-31", java.util.Locale.forLanguageTag("en-GB")))
         assertEquals("kaputt", PriceChartMath.formatDay("kaputt", de))
         val range = PriceChartMath.axisRange(
             PreisDiagrammAnsicht(x = listOf("2026-01-01", "2026-02-01", "2026-03-01")))

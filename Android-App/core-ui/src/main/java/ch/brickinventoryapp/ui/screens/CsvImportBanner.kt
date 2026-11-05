@@ -62,7 +62,7 @@ fun CsvImportBanner(
                     )
                     Text(
                         if (running) "$done/$total" else stringResource(R.string.csv_ok_count, ok),
-                        style = MaterialTheme.typography.labelSmall,
+                        style = MaterialTheme.typography.bodySmall,
                         color = if (running) MaterialTheme.colorScheme.onPrimary
                                 else MaterialTheme.colorScheme.onSecondaryContainer,
                         fontWeight = FontWeight.Bold
@@ -92,7 +92,7 @@ fun CsvImportBanner(
                 if (running && current != null) {
                     Text(
                         current,
-                        style = MaterialTheme.typography.labelSmall,
+                        style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onPrimary,
                         modifier = Modifier.padding(top = Abstaende.haar)
                     )
@@ -120,7 +120,7 @@ fun CsvImportBanner(
                                 Icon(symbol.first, null, Modifier.size(ch.brickinventoryapp.ui.components.mitSchrift(16.dp)), tint = symbol.second)
                                 Text("$v", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.bodyMedium)
                             }
-                            Text(l, style = MaterialTheme.typography.labelSmall,
+                            Text(l, style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
                     }
@@ -128,7 +128,7 @@ fun CsvImportBanner(
                         Spacer(Modifier.weight(1f))
                         Text(
                             stringResource(R.string.csv_import_done),
-                            style = MaterialTheme.typography.labelSmall,
+                            style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier = Modifier.align(Alignment.CenterVertically)
                         )

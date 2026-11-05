@@ -199,13 +199,15 @@
           Affinität dieses Pakets gibt, in die Task der App rutschen oder beim
           Antippen des Symbols statt ihr erscheinen (Task-Hijacking). Gefunden wird
           die laufende App dann über ihre Klasse. Exportiert nur für den Launcher;
-          sie liest keine Extras (MeldungsEinstieg).
+          sie liest keine Extras (MeldungsEinstieg). adjustResize: Erst damit meldet
+          das System die Tastatur auch unter Android 10 als Inset (imePadding).
         -->
         <activity
             android:name=".MainActivity"
             android:exported="true"
             android:launchMode="singleTop"
             android:taskAffinity=""
+            android:windowSoftInputMode="adjustResize"
             android:theme="@style/Theme.BrickInventoryManager.Start">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />

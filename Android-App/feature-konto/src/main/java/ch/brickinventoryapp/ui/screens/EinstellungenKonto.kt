@@ -362,7 +362,7 @@ internal fun GeraeteCard(
                                     color = MaterialTheme.colorScheme.primaryContainer,
                                 ) {
                                     Text(stringResource(R.string.tokens_current),
-                                        style = MaterialTheme.typography.labelSmall,
+                                        style = MaterialTheme.typography.bodySmall,
                                         color = MaterialTheme.colorScheme.onPrimaryContainer,
                                         modifier = Modifier.padding(horizontal = 6.dp, vertical = Abstaende.haar))
                                 }
@@ -372,7 +372,7 @@ internal fun GeraeteCard(
                                     color = MaterialTheme.colorScheme.tertiaryContainer,
                                 ) {
                                     Text(stringResource(R.string.tokens_full_access),
-                                        style = MaterialTheme.typography.labelSmall,
+                                        style = MaterialTheme.typography.bodySmall,
                                         color = MaterialTheme.colorScheme.onTertiaryContainer,
                                         modifier = Modifier.padding(horizontal = 6.dp, vertical = Abstaende.haar))
                                 }
@@ -382,7 +382,7 @@ internal fun GeraeteCard(
                                     ch.brickinventoryapp.util.fmtTag(g.angelegt) ?: "—",
                                     ch.brickinventoryapp.util.fmtTag(g.zuletztBenutzt) ?: stringResource(R.string.tokens_unused),
                                     g.laeuftAb?.let { ch.brickinventoryapp.util.fmtTag(it) ?: "—" } ?: stringResource(R.string.tokens_never)),
-                                style = MaterialTheme.typography.labelSmall,
+                                style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
                         if (!g.aktuell) ch.brickinventoryapp.ui.components.MitTooltip(stringResource(R.string.tokens_revoke_title)) {

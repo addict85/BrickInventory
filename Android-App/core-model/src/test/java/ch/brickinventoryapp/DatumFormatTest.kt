@@ -18,7 +18,8 @@ import org.junit.Test
  * Gegenproben (02.11.2026, kotlinc): in fmtDatum den Zweig `locale.language !=
  * "en"` immer genommen → rot „je Sprache eine Form wie im Web“; im en-Zweig `DatumJahr.OHNE`
  * wie VOLL behandelt → ebenso rot; in fmtStand das Datum wieder fest als
- * dd.MM.yyyy → rot „der Stand folgt derselben Form“.
+ * dd.MM.yyyy → rot „der Stand folgt derselben Form“. Englisch wieder „$t/$m/$jj“
+ * (05.11.2026, kotlinc) → rot „je Sprache eine Form …“.
  */
 class DatumFormatTest {
 
@@ -29,17 +30,25 @@ class DatumFormatTest {
     fun `je Sprache eine Form wie im Web`() {
         val tag = "2026-08-01T10:00:00Z"
         assert(fmtDatum(tag, DE) == "01.08.2026") { fmtDatum(tag, DE).toString() }
-        assert(fmtDatum(tag, java.util.Locale.forLanguageTag("en-GB")) == "01/08/2026")
-        assert(fmtDatum(tag, java.util.Locale.forLanguageTag("en-US")) == "08/01/2026")
+        assert(fmtDatum(tag, java.util.Locale.forLanguageTag("en-GB")) == "1 Aug 2026")
+        assert(fmtDatum(tag, java.util.Locale.forLanguageTag("en-US")) == "Aug 1, 2026")
         assert(fmtDatum(tag, DE, DatumJahr.OHNE) == "01.08.") { fmtDatum(tag, DE, DatumJahr.OHNE).toString() }
-        assert(fmtDatum(tag, java.util.Locale.forLanguageTag("en-GB"), DatumJahr.OHNE) == "01/08")
+        assert(fmtDatum(tag, java.util.Locale.forLanguageTag("en-GB"), DatumJahr.OHNE) == "1 Aug")
+        // Keine Ziffernform „dd/mm“ im Englischen: Sie liest sich je nach Land verschieden.
+        for (land in listOf("en-GB", "en-US")) {
+            val l = java.util.Locale.forLanguageTag(land)
+            for (j in DatumJahr.entries) {
+                val s = fmtDatum(tag, l, j).orEmpty()
+                assert(!Regex("""\d{1,2}/\d{1,2}""").containsMatchIn(s)) { "$land $j: $s" }
+            }
+        }
     }
 
     @Test
     fun `der Stand folgt derselben Form`() {
         val utc = java.time.ZoneOffset.UTC
         val millis = java.time.Instant.parse("2026-08-01T09:05:00Z").toEpochMilli()
-        assert(fmtStand(millis, java.util.Locale.forLanguageTag("en-GB"), utc) == "01/08/2026 09:05") {
+        assert(fmtStand(millis, java.util.Locale.forLanguageTag("en-GB"), utc) == "1 Aug 2026 09:05") {
             fmtStand(millis, java.util.Locale.forLanguageTag("en-GB"), utc)
         }
         assert(fmtStand(millis, DE, utc) == "01.08.2026 09:05")

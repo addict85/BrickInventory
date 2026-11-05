@@ -4,7 +4,7 @@ Test: ch.brickinventoryapp.OberflaechenRegelnTest
 Rot: Teile nennen Farben auf Deutsch
 
 diff --git a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/Katalogtexte.kt b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/Katalogtexte.kt
-index 7e7cd8f..5bb34e1 100644
+index d637de0..853c321 100644
 --- a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/Katalogtexte.kt
 +++ b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/Katalogtexte.kt
 @@ -18,7 +18,7 @@ private fun deutsch(): Boolean = LocalConfiguration.current.locales[0].language
@@ -14,9 +14,9 @@ index 7e7cd8f..5bb34e1 100644
 -    if (deutsch()) FarbeDeutsch::uebersetze else { name -> name }
 +    { name -> name }
  
- /**
-  * Teile- und Figurennamen bleiben englisch: Der Server liefert keine deutschen,
-@@ -28,4 +28,4 @@ fun farbUebersetzer(): (String) -> String =
+ /** Teilekategorien in der Sprache der App, wie die Farben daneben („Steine“ statt „Bricks“). */
+ @Composable
+@@ -33,4 +33,4 @@ fun kategorieUebersetzer(): (String) -> String =
   */
  @Composable
  fun katalogName(name: String): AnnotatedString =
