@@ -1,0 +1,16 @@
+Gegenprobe: Nach dem Abmelden bleibt der Finanzzustand stehen
+Modul: feature-finanzen
+Test: ch.brickinventoryapp.FinanzViewModelTest
+Rot: nach dem Abmelden ist nichts mehr da
+
+diff --git a/Android-App/feature-finanzen/src/main/java/ch/brickinventoryapp/ui/viewmodel/FinanzViewModel.kt b/Android-App/feature-finanzen/src/main/java/ch/brickinventoryapp/ui/viewmodel/FinanzViewModel.kt
+--- a/Android-App/feature-finanzen/src/main/java/ch/brickinventoryapp/ui/viewmodel/FinanzViewModel.kt
++++ b/Android-App/feature-finanzen/src/main/java/ch/brickinventoryapp/ui/viewmodel/FinanzViewModel.kt
+@@ -113,7 +113,6 @@
+     }
+ 
+     override fun zuruecksetzen() {
+-        _financeState.value = FinanceUiState()
+         gemerkt[KATEGORIEN] = ArrayList<String>()
+         gemerkt[ZEITRAUM] = "week"
+     }

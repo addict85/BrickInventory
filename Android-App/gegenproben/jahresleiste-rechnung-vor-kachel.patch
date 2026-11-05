@@ -1,0 +1,18 @@
+Gegenprobe: Die Jahresleiste rechnet, auch wo die Kachel schon geladen ist
+Modul: feature-katalog
+Test: ch.brickinventoryapp.CatalogYearMathTest
+Rot: eine geladene Kachel schlaegt die Rechnung
+
+diff --git a/Android-App/feature-katalog/src/main/java/ch/brickinventoryapp/ui/CatalogYearMath.kt b/Android-App/feature-katalog/src/main/java/ch/brickinventoryapp/ui/CatalogYearMath.kt
+index ca41b51..fb9987e 100644
+--- a/Android-App/feature-katalog/src/main/java/ch/brickinventoryapp/ui/CatalogYearMath.kt
++++ b/Android-App/feature-katalog/src/main/java/ch/brickinventoryapp/ui/CatalogYearMath.kt
+@@ -49,7 +49,7 @@ object CatalogYearMath {
+     fun jahrFuer(
+         anteil: Float, total: Int, verteilung: List<JahrAnzahlAnsicht>,
+         geladen: (Int) -> Int?
+-    ): Int? = geladen(nummerAus(anteil, total)) ?: jahrAnPosition(anteil, total, verteilung)
++    ): Int? = jahrAnPosition(anteil, total, verteilung) ?: geladen(nummerAus(anteil, total))
+ 
+     /**
+      * Welches Jahr liegt an diesem Anteil der Liste? Wie in der Webapp

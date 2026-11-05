@@ -1,0 +1,16 @@
+Gegenprobe: Ein 403 nur_admins setzt zugriffEntzogen nicht
+Modul: feature-verwaltung
+Test: ch.brickinventoryapp.MonitoringViewModelVerhaltenTest
+Rot: ein 403 nur_admins beendet die Abfrage
+
+diff --git a/Android-App/feature-verwaltung/src/main/java/ch/brickinventoryapp/ui/viewmodel/MonitoringViewModel.kt b/Android-App/feature-verwaltung/src/main/java/ch/brickinventoryapp/ui/viewmodel/MonitoringViewModel.kt
+--- a/Android-App/feature-verwaltung/src/main/java/ch/brickinventoryapp/ui/viewmodel/MonitoringViewModel.kt
++++ b/Android-App/feature-verwaltung/src/main/java/ch/brickinventoryapp/ui/viewmodel/MonitoringViewModel.kt
+@@ -98,7 +98,6 @@
+             is Result.Success -> _hintergrund.update { HintergrundUiState(ansicht = r.data.alsAnsicht()) }
+             is Result.Error -> {
+                 _hintergrund.update { it.copy(laedt = false, fehler = texte.meldung(r)) }
+-                if (entzogen(r)) _state.update { it.copy(zugriffEntzogen = true) }
+             }
+         }
+     }

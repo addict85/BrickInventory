@@ -1,0 +1,16 @@
+Gegenprobe: Nach dem Passwortwechsel wird nicht abgemeldet
+Modul: feature-konto
+Test: ch.brickinventoryapp.KontoViewModelTest
+Rot: nach dem Passwortwechsel wird abgemeldet
+
+diff --git a/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/ui/viewmodel/KontoViewModel.kt b/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/ui/viewmodel/KontoViewModel.kt
+--- a/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/ui/viewmodel/KontoViewModel.kt
++++ b/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/ui/viewmodel/KontoViewModel.kt
+@@ -132,7 +132,6 @@
+             when (val r = konto.changePassword(aktuell, neu, code?.trim()?.ifBlank { null })) {
+                 is Result.Success ->
+                     if (r.data.success) {
+-                        abmelden()
+                         meldungen.zeige(texte.text(R.string.konto_password_changed))
+                         _kontoState.value = KontoUiState()
+                     } else {
