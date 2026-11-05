@@ -1,21 +1,18 @@
-Gegenprobe: Reiterbeschriftung schrumpft wieder bis fest 7 sp, ohne Rückfall auf Symbole
+Gegenprobe: Reiterbeschriftung schrumpft wieder bis fest 7 sp
 Modul: app
 Test: ch.brickinventoryapp.FeinschliffRegelnTest
-Rot: Reiterleiste schrumpft nie
+Rot: Reiterleiste schrumpft nie unter die normale Schriftgroesse
 
 diff --git a/Android-App/app/src/main/java/ch/brickinventoryapp/MainScaffold.kt b/Android-App/app/src/main/java/ch/brickinventoryapp/MainScaffold.kt
-index 2c7f40f..2e0bdc8 100644
+index b2ab7a3..f9ae3b5 100644
 --- a/Android-App/app/src/main/java/ch/brickinventoryapp/MainScaffold.kt
 +++ b/Android-App/app/src/main/java/ch/brickinventoryapp/MainScaffold.kt
-@@ -280,10 +280,7 @@ private fun ReiterBeschriftung(text: String, groesse: MutableState<TextUnit>, be
-         style = stil.copy(fontSize = aktuell), maxLines = 1, softWrap = false,
-         overflow = TextOverflow.Clip,
-         onTextLayout = { l ->
--            if (l.hasVisualOverflow) {
--                if (aktuell.value - REITER_SCHRIFT_SCHRITT >= boden.value) groesse.value = (aktuell.value - REITER_SCHRIFT_SCHRITT).sp
--                else beschriftet.value = false
--            }
-+            if (l.hasVisualOverflow && aktuell.value > 7f && boden.value > 0f && beschriftet.value) groesse.value = (aktuell.value - REITER_SCHRIFT_SCHRITT).sp
-         },
-     )
- }
+@@ -355,7 +355,7 @@ internal data class ReiterSatz(val alle: Boolean, val faktor: Float, val gewaehl
+  */
+ internal fun reiterSatz(breiten: List<Float>, gewaehlt: Int, gesamt: Float, rand: Float, minZiel: Float, schrift: Float): ReiterSatz {
+     val anteil = gesamt / breiten.size - rand
+-    val boden = minOf(schrift, REITER_MIN_SKALA) / schrift
++    val boden = 7f / (12f * schrift)
+     val faktor = minOf(1f, anteil / (breiten.maxOrNull() ?: 1f))
+     if (faktor >= boden || gewaehlt < 0 || breiten.size < 2) return ReiterSatz(true, maxOf(faktor, boden), gewaehlt, 1f)
+     val noetig = breiten[gewaehlt] + rand

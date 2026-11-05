@@ -1,0 +1,18 @@
+Gegenprobe: fokusRahmen zeichnet keinen Rahmen
+Modul: app
+Test: ch.brickinventoryapp.BarrierefreiheitBefundeTest
+Rot: M9 Tastaturfokus zeigt einen Rahmen (Fokusrahmen fehlt)
+
+diff --git a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/Fokus.kt b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/Fokus.kt
+index 70a2224..f687901 100644
+--- a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/Fokus.kt
++++ b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/Fokus.kt
+@@ -21,7 +21,7 @@ fun Modifier.fokusRahmen(form: Shape): Modifier = composed {
+     var fokus by remember { mutableStateOf(false) }
+     val farbe = MaterialTheme.colorScheme.primary
+     onFocusChanged { fokus = it.hasFocus }
+-        .then(if (fokus) Modifier.border(FOKUS_RAHMEN, farbe, form) else Modifier)
++        .then(Modifier)
+ }
+ 
+ /** Breite des Fokusrahmens: deutlich breiter als die 1-dp-Ränder der Karten. */

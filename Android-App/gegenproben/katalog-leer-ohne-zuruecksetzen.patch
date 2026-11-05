@@ -1,0 +1,21 @@
+Gegenprobe: Leerer Katalog mit Filter ohne Knopf zum Zurücksetzen
+Modul: app
+Test: ch.brickinventoryapp.AblaufBefundeTest
+Rot: M3 ein leerer Katalog mit Filter bietet Zuruecksetzen
+
+diff --git a/Android-App/feature-katalog/src/main/java/ch/brickinventoryapp/ui/screens/CatalogScreen.kt b/Android-App/feature-katalog/src/main/java/ch/brickinventoryapp/ui/screens/CatalogScreen.kt
+index db4ec14..7fb2316 100644
+--- a/Android-App/feature-katalog/src/main/java/ch/brickinventoryapp/ui/screens/CatalogScreen.kt
++++ b/Android-App/feature-katalog/src/main/java/ch/brickinventoryapp/ui/screens/CatalogScreen.kt
+@@ -213,11 +213,6 @@ fun CatalogScreen(
+                 // Mit Suche oder Filter: sagen, woran es liegt, und den Weg zurück anbieten.
+                 state.total == 0 && gefiltert -> ZustandsHinweis {
+                     KeinTrefferHinweis(stringResource(R.string.catalog_no_results))
+-                    Button(onClick = {
+-                        if (state.query.isNotBlank()) onQueryChange("")
+-                        if (state.themeId != null) onThemeChange(null)
+-                        if (state.year != null) onYearChange(null)
+-                    }) { Text(stringResource(R.string.filter_reset_all)) }
+                 }
+                 state.total == 0 -> ZustandsHinweis {
+                     HinweisText(Icons.AutoMirrored.Filled.MenuBook, stringResource(R.string.catalog_leer_titel),

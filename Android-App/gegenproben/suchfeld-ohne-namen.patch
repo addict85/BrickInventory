@@ -1,0 +1,18 @@
+Gegenprobe: Suchfeld ohne contentDescription: Nach der Eingabe hat es keinen Namen mehr
+Modul: app
+Test: ch.brickinventoryapp.BarrierefreiheitBefundeTest
+Rot: M5 Suchfeld behaelt seinen Namen nach der Eingabe
+
+diff --git a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/screens/TabellenZeile.kt b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/screens/TabellenZeile.kt
+index 4f3d5b5..7b6553a 100644
+--- a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/screens/TabellenZeile.kt
++++ b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/screens/TabellenZeile.kt
+@@ -202,7 +202,7 @@ fun Suchfeld(
+         },
+         // Der Platzhalter verschwindet mit der ersten Eingabe; der Name des Felds bleibt.
+         modifier = modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = Abstaende.klein)
+-            .semantics { contentDescription = platzhalter },
++
+         singleLine = true,
+         shape = Formen.karte,
+     )

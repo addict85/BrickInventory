@@ -4,15 +4,15 @@ Test: ch.brickinventoryapp.UnterseitenTest
 Rot: Preisalarme nennen
 
 diff --git a/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/ui/screens/EinstellungenAlarme.kt b/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/ui/screens/EinstellungenAlarme.kt
-index db7a04c..a585e7b 100644
+index f82fe5e..2513de8 100644
 --- a/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/ui/screens/EinstellungenAlarme.kt
 +++ b/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/ui/screens/EinstellungenAlarme.kt
-@@ -162,7 +162,7 @@ internal fun PreisalarmeCard(
-         AlertDialog(
-             onDismissRequest = { fragtLoeschen = null },
-             title = { Text(stringResource(R.string.alerts_delete)) },
--            text = { Text(stringResource(R.string.alerts_confirm_delete, a.name ?: a.setNumber)) },
-+            text = { Text(stringResource(R.string.alerts_confirm_delete, a.setNumber)) },
-             confirmButton = {
-                 TextButton(onClick = {
-                     fragtLoeschen = null
+@@ -187,7 +187,7 @@ internal fun PreisalarmeCard(
+     fragtLoeschen?.let { a ->
+         Rueckfrage(
+             titel = stringResource(R.string.alerts_delete),
+-            text = stringResource(R.string.alerts_confirm_delete, a.name ?: a.setNumber),
++            text = stringResource(R.string.alerts_confirm_delete, a.setNumber),
+             bestaetigen = stringResource(R.string.common_delete),
+             onBestaetigen = {
+                 fragtLoeschen = null

@@ -1,0 +1,18 @@
+Gegenprobe: Das Katalog-Detail kennt den Merkposten nicht
+Modul: app
+Test: ch.brickinventoryapp.AblaufBefundeTest
+Rot: M6 das Katalog-Detail zeigt den Merkposten (Merkliste nicht genannt)
+
+diff --git a/Android-App/feature-katalog/src/main/java/ch/brickinventoryapp/ui/screens/CatalogDetailScreen.kt b/Android-App/feature-katalog/src/main/java/ch/brickinventoryapp/ui/screens/CatalogDetailScreen.kt
+index 72046c9..539d61c 100644
+--- a/Android-App/feature-katalog/src/main/java/ch/brickinventoryapp/ui/screens/CatalogDetailScreen.kt
++++ b/Android-App/feature-katalog/src/main/java/ch/brickinventoryapp/ui/screens/CatalogDetailScreen.kt
+@@ -140,7 +140,7 @@ fun CatalogDetailScreen(
+                 val angaben: @Composable ColumnScope.() -> Unit = {
+                     KatalogAngaben(
+                         detail = detail,
+-                        gemerkt = gemerkt,
++                        gemerkt = null,
+                         onMerken = { if (gemerkt != null) onOeffneMerkposten(gemerkt.setNumber, gemerkt.condition) else showWishDialog = true },
+                         onAufnehmen = { showAddDialog = true },
+                         onOpenInGallery = onOpenInGallery,

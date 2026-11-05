@@ -1,0 +1,17 @@
+Gegenprobe: Löschen eines Merkpostens geht wieder sofort an den Server
+Modul: feature-sammlung
+Test: ch.brickinventoryapp.MerklisteViewModelTest
+Rot: ein geloeschter Merkposten laesst sich zurueckholen („aus der Liste“; 05.11.2026 kotlinc lokal)
+
+diff --git a/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/ui/viewmodel/MerklisteViewModel.kt b/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/ui/viewmodel/MerklisteViewModel.kt
+index 399d65d..0066390 100644
+--- a/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/ui/viewmodel/MerklisteViewModel.kt
++++ b/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/ui/viewmodel/MerklisteViewModel.kt
+@@ -174,6 +174,7 @@ class MerklisteViewModel @Inject constructor(
+         val name = _merklisteState.value.merkposten
+             .firstOrNull { it.setNumber == setNumber && it.condition == zustand }?.name ?: setNumber
+         _vorgemerkt.value = VorgemerkterMerkposten(setNumber, zustand, besitzer, name)
++        merkpostenLoeschenAusfuehren()
+     }
+ 
+     /** Der vorgemerkte Posten bleibt; die Liste kommt neu vom Server, wo er nie fehlte. */

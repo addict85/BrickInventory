@@ -59,6 +59,7 @@ import ch.brickinventoryapp.util.fmtMoney
  *   reiter-bricht-um          Beschriftung wieder als Text ohne Zeilengrenze → rot „Reiterleiste …“
  *   reiter-schrumpft-bis-7sp  Untergrenze wieder fest 7 sp → rot „Reiterleiste schrumpft nie …“
  *   reiter-boden-normalgroesse  Untergrenze wieder die Normalgrösse → rot „Reiterbeschriftung waechst …“
+ *   reiter-eigene-groesse     alle beschriftet, jede in eigener Grösse → rot „Reiterleiste bricht …“
  *   suche-neben-filtertext    Filterknopf mit Text schon ab 360 dp → rot „Such-Platzhalter …“
  *   verlauf-ab-zwei-punkten   Linie schon ab zwei Punkten → rot „Preisverlauf …“
  *   teile-detail-als-dialog   Teile-Detail auch auf dem Tablet als Dialog → rot „Tablet zeigt Teil …“

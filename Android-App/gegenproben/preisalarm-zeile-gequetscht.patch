@@ -4,12 +4,12 @@ Test: ch.brickinventoryapp.UmbruchWaechterTest
 Rot: Preisalarme bei 100 Prozent
 
 diff --git a/Android-App/core-ressourcen/src/main/res/values-de/strings.xml b/Android-App/core-ressourcen/src/main/res/values-de/strings.xml
-index 09201ae..a265526 100644
+index 775182f..4271719 100644
 --- a/Android-App/core-ressourcen/src/main/res/values-de/strings.xml
 +++ b/Android-App/core-ressourcen/src/main/res/values-de/strings.xml
-@@ -882,7 +882,7 @@
-     <string name="alerts_intro">Hier änderst du die Schwelle eines Alarms oder entfernst ihn.</string>
-     <string name="alerts_empty">Noch kein Preisalarm gesetzt. Du setzt einen in der Detailansicht eines Sets.</string>
+@@ -868,7 +868,7 @@
+     <string name="alerts_intro">Hier legst du Alarme an, änderst Schwelle und Richtung oder entfernst sie.</string>
+     <string name="alerts_empty">Noch kein Preisalarm gesetzt. Lege unten einen an oder in der Detailansicht eines Sets.</string>
      <string name="alerts_armed">Aktiv</string>
 -    <string name="alerts_fired">Ausgelöst</string>
 +    <string name="alerts_fired">Ausgelöst – wartet, bis der Preis zurückkehrt</string>
@@ -17,10 +17,10 @@ index 09201ae..a265526 100644
      <string name="alerts_bad_value">Die Schwelle muss grösser als 0 sein.</string>
      <string name="alerts_delete">Preisalarm entfernen</string>
 diff --git a/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/ui/screens/EinstellungenAlarme.kt b/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/ui/screens/EinstellungenAlarme.kt
-index 0db87fb..5fcef14 100644
+index f82fe5e..8cb9444 100644
 --- a/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/ui/screens/EinstellungenAlarme.kt
 +++ b/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/ui/screens/EinstellungenAlarme.kt
-@@ -107,8 +107,8 @@ internal fun PreisalarmeCard(
+@@ -114,8 +114,8 @@ internal fun PreisalarmeCard(
                              color = MaterialTheme.colorScheme.onSurfaceVariant)
                          // FlowRow: In einer Row nahm die Plakette die ganze Breite, und „zuletzt …“
                          // brach Zeichen für Zeichen um. So rückt der Preis darunter, wenn es eng wird.

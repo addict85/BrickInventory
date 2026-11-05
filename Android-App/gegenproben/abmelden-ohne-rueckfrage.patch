@@ -4,15 +4,15 @@ Test: ch.brickinventoryapp.UnterseitenTest
 Rot: Abmelden fragt
 
 diff --git a/Android-App/app/src/main/java/ch/brickinventoryapp/MehrBildschirm.kt b/Android-App/app/src/main/java/ch/brickinventoryapp/MehrBildschirm.kt
-index 3e1e614..632af7f 100644
+index 25f463e..e79cc18 100644
 --- a/Android-App/app/src/main/java/ch/brickinventoryapp/MehrBildschirm.kt
 +++ b/Android-App/app/src/main/java/ch/brickinventoryapp/MehrBildschirm.kt
-@@ -123,7 +123,7 @@ fun MehrBildschirm(
+@@ -77,7 +77,7 @@ fun MehrBildschirm(
+     // Abmelden steht unter „Konto und App“, wohin es gehört, als letzter Eintrag dort.
      @Composable
-     fun Abmelden() {
-         HorizontalDivider(Modifier.padding(top = Abstaende.klein, bottom = Abstaende.klein))
--        MehrEintrag(R.string.main_menu_logout, Icons.AutoMirrored.Outlined.Logout) { fragtAbmelden = true }
-+        MehrEintrag(R.string.main_menu_logout, Icons.AutoMirrored.Outlined.Logout) { onAbmelden() }
-     }
+     fun Gruppe(nummer: Int, trenner: Boolean) =
+-        MehrGruppeInhalt(nummer, trenner, updateVerfuegbar, onZiel, onAbmelden = { fragtAbmelden = true })
++        MehrGruppeInhalt(nummer, trenner, updateVerfuegbar, onZiel, onAbmelden = onAbmelden)
      // Die Servergruppe nur für Verwalter.
      val gruppen = if (isAdmin) 5 else 4
+     // Auf dem Tablet zwei Spalten, etwa gleich hoch: Preise, Werkzeuge und Server links,
