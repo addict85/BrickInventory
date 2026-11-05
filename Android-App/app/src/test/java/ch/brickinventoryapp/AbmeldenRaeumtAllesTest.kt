@@ -96,6 +96,16 @@ class AbmeldenRaeumtAllesTest {
 
     private fun datei(basis: File, pfad: String) = File(basis, pfad).apply { parentFile?.mkdirs(); writeText("inhalt") }
 
+    /** Teileliste, Update-APK, Anleitung, Widget-Zahlen und eine Preisalarm-Meldung. */
+    private fun legeDateienUndMeldungAn(): Triple<File, File, File> {
+        val dateien = Triple(datei(ctx.filesDir, "pdf/teileliste.bin"), datei(ctx.filesDir, "update/BrickInventory.apk"),
+            datei(ctx.cacheDir, "anleitung_x.bin"))
+        ctx.getSharedPreferences("widget", Context.MODE_PRIVATE).edit().putString("zahlen", "geheim").commit()
+        shadowOf(ctx).grantPermissions(Manifest.permission.POST_NOTIFICATIONS)
+        PreisalarmWorker.zeige(ctx, listOf(Preisalarm(setNumber = "10294-1", schwelle = 500.0, currencyCode = "CHF")))
+        return dateien
+    }
+
     @Test
     fun `nach dem Abmelden ist jede Ablage leer und der alte Schluessel wertlos`() = runBlocking {
         val adresse = server.url("/").toString().trimEnd('/')
@@ -125,12 +135,7 @@ class AbmeldenRaeumtAllesTest {
             .diskCache { DiskCache.Builder().directory(File(ctx.cacheDir, "coil").toOkioPath()).build() }.build()
         val coil = checkNotNull(loader.diskCache)
         coil.openEditor("bild")!!.apply { coil.fileSystem.write(data) { writeUtf8("bild") }; coil.fileSystem.write(metadata) { writeUtf8("m") } }.commit()
-        val teileliste = datei(ctx.filesDir, "pdf/teileliste.bin")
-        val update = datei(ctx.filesDir, "update/BrickInventory.apk")
-        val anleitung = datei(ctx.cacheDir, "anleitung_x.bin")
-        ctx.getSharedPreferences("widget", Context.MODE_PRIVATE).edit().putString("zahlen", "geheim").commit()
-        shadowOf(ctx).grantPermissions(Manifest.permission.POST_NOTIFICATIONS)
-        PreisalarmWorker.zeige(ctx, listOf(Preisalarm(setNumber = "10294-1", schwelle = 500.0, currencyCode = "CHF")))
+        val (teileliste, update, anleitung) = legeDateienUndMeldungAn()
         val meldungen = shadowOf(ctx.getSystemService(NotificationManager::class.java))
         assertEquals("Vorbedingung: eine Meldung steht da", 1, meldungen.allNotifications.size)
         assertTrue("Vorbedingung: Bildcache gefüllt", bildClient.cache!!.urls().hasNext())

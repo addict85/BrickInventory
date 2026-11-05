@@ -186,7 +186,8 @@ class ModulgrenzenTest {
             if (z.isBlank() || z.startsWith("#")) return@forEachIndexed
             val m = eintrag.matchEntire(z.trim())
             assertTrue("Zeile ${i + 1} hat nicht die Form gruppe:name:fassung CVE bis:Datum: $z", m != null)
-            val (gruppe, name, fassung, _, bis) = m!!.destructured
+            val (gruppe, name, fassung) = m!!.destructured
+            val bis = m.groupValues[5]
             n++
             assertTrue("Ohne Grund darüber: $z", i > 0 && zeilen[i - 1].startsWith("# ") && zeilen[i - 1].length > 20)
             assertTrue("Abgelaufen: $z", java.time.LocalDate.parse(bis) >= java.time.LocalDate.now())
