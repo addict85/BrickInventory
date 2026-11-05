@@ -232,7 +232,7 @@ test('QR-Zugang: die Laufzeit waehlt der Erzeuger, nicht der Einloeser',
 
 test('QR-Zugang: die Oberflaeche waehlt beim ERZEUGEN, nicht beim Einloesen', () => {
   const einst = ohneKommentare(
-    fs.readFileSync(path.join(ROOT, 'public/js/05-settings.js'), 'utf8'));
+    require('./helpers/sources').ansichtQuelle('05'));
 
   assert.ok(/api\('POST', '\/v1\/auth\/qr-token', \{ gueltigkeit, password\b/.test(einst),
     'Die Webapp soll die gewaehlte Laufzeit beim Erzeugen des Codes mitschicken');

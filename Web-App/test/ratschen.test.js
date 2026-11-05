@@ -397,9 +397,9 @@ function funktionsLaengen(dateien = oberflaeche()) {
 
 test('keine Funktion der Oberfläche über 100 Zeilen, über 80 werden weniger', () => {
   // Gemessen am 05.11.2026: 13 über 100 (loadFinance 262); nach dem Aufteilen
-  // 0 über 100 und 8 über 80. Gegenprobe: loadFinance wieder in einem Stück
+  // 0 über 100 und 8 über 80, seitdem 6. Gegenprobe: loadFinance wieder in einem Stück
   // (vor dem Aufteilen) → rot mit „04-finance.js … loadFinance“.
-  const SCHRANKE_80 = 8;
+  const SCHRANKE_80 = 6;
   const alle = funktionsLaengen();
   assert.ok(alle.length > 500, `nur ${alle.length} Funktionen gefunden — greift die Suche noch?`);
   const ueber100 = alle.filter(x => x.zeilen > 100).map(x => `${x.ort} (${x.zeilen})`);
@@ -408,6 +408,23 @@ test('keine Funktion der Oberfläche über 100 Zeilen, über 80 werden weniger',
   assert.ok(ueber80.length <= SCHRANKE_80,
     `${ueber80.length} Funktionen über 80 Zeilen, erlaubt sind ${SCHRANKE_80}:\n${ueber80.map(x => x.ort).join('\n')}`);
   if (ueber80.length < SCHRANKE_80) console.log(`  ℹ Funktionen über 80 Zeilen: ${ueber80.length} (Schranke ${SCHRANKE_80}) — Schranke nachziehen`);
+});
+
+test('keine Datei der Oberfläche über 1000 Zeilen, die grossen werden kleiner', () => {
+  // Eine Sammeldatei zieht Neues an, weil es dort schon liegt. Gemessen nach dem Teilen von
+  // 01-core.js, 05-settings.js und 13-acquisition-modals.js: grösste 948, über 600 Zeilen 8.
+  // Gegenprobe: an 13-acquisition-modals.js 60 Leerzeilen-Kommentare gehängt → rot mit 1008.
+  const SCHRANKE_GROESSTE = 948, SCHRANKE_UEBER_600 = 8;
+  const laengen = oberflaeche().map(f => ({ f: path.relative(WEB, f), n: fs.readFileSync(f, 'utf8').split('\n').length }));
+  assert.ok(laengen.length > 40, `nur ${laengen.length} Dateien gefunden — greift die Suche noch?`);
+  const ueber1000 = laengen.filter(x => x.n > 1000).map(x => `${x.f} (${x.n})`);
+  assert.deepEqual(ueber1000, [], 'Eine Datei über 1000 Zeilen: nach Themen teilen');
+  const groesste = Math.max(...laengen.map(x => x.n));
+  const ueber600 = laengen.filter(x => x.n > 600).length;
+  assert.ok(groesste <= SCHRANKE_GROESSTE, `grösste Datei ${groesste} Zeilen, erlaubt sind ${SCHRANKE_GROESSTE}`);
+  assert.ok(ueber600 <= SCHRANKE_UEBER_600, `${ueber600} Dateien über 600 Zeilen, erlaubt sind ${SCHRANKE_UEBER_600}`);
+  if (groesste < SCHRANKE_GROESSTE || ueber600 < SCHRANKE_UEBER_600)
+    console.log(`  ℹ Dateigrösse Oberfläche: grösste ${groesste}, über 600: ${ueber600} — Schranke nachziehen`);
 });
 
 test('Funktionen im Server über 80 und über 150 Zeilen werden weniger, nie mehr', () => {

@@ -37,7 +37,7 @@ const ohneKommentare = (s) =>
 
 test('die Webapp zeigt die Sets als Tabelle mit Bild', () => {
   const src = ohneKommentare(
-    fs.readFileSync(path.join(ROOT, 'public', 'js', '13-acquisition-modals.js'), 'utf8'));
+    require('./helpers/sources').ansichtQuelle('13'));
   const i = src.indexOf("t('setitem.used_in')");
   assert.ok(i > 0, 'Der Abschnitt „Verwendet in" ist nicht mehr da');
   // Der Aufbau steht ÜBER der detailZeile — von dort rückwärts bis zum
@@ -69,7 +69,7 @@ test('die Tabelle beginnt auf einer eigenen Zeile', () => {
   // erste Test schneidet bis zum `t('setitem.used_in')` und hoert damit genau
   // vor der Stelle auf, um die es hier geht.
   const src = ohneKommentare(
-    fs.readFileSync(path.join(ROOT, 'public', 'js', '13-acquisition-modals.js'), 'utf8'));
+    require('./helpers/sources').ansichtQuelle('13'));
   assert.match(src,
     /detailZeile\(t\('setitem\.used_in'\), liste,\s*\{\s*zeilenStil: 'flex-direction:column/,
     'Die Set-Tabelle steht wieder NEBEN der Beschriftung „Verwendet in" — bei ' +

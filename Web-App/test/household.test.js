@@ -123,7 +123,7 @@ test('Webapp und App bekommen dieselben Endpunkte', () => {
 test('die Oberfläche bietet Einladen und Einlösen jedem Konto an', () => {
   // Ein Konto kann mehreren Hauptkonten angehören; jedes braucht seine eigene
   // Einladung. Ein ausgeblendetes Eingabefeld verhinderte genau das.
-  const js = read('public/js/05-settings.js');
+  const js = require('./helpers/sources').ansichtQuelle('05');
   assert.match(js, /inviteEl\.style\.display = ''/);
   assert.match(js, /redeemEl\.style\.display = ''/);
   const kt = read('../Android-App/feature-konto/src/main/java/ch/brickinventoryapp/ui/screens/SettingsScreen.kt')

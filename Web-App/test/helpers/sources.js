@@ -485,3 +485,12 @@ function anmeldeQuelle() {
     .map(f => fs.readFileSync(path.join(ROOT, f), 'utf8')).join('\n');
 }
 module.exports.anmeldeQuelle = anmeldeQuelle;
+
+/** Alle Dateien einer Ansicht (z. B. '05' für 05-*.js) als EIN Text: Wird eine Ansicht geteilt, bleibt die Prüfung gleich. */
+function ansichtQuelle(/** @type {string} */ nummer) {
+  const js = path.join(ROOT, 'public', 'js');
+  const teile = fs.readdirSync(js).filter(f => f.startsWith(nummer + '-') && f.endsWith('.js')).sort();
+  if (!teile.length) throw new Error(`ansichtQuelle(${nummer}): keine Datei gefunden`);
+  return teile.map(f => fs.readFileSync(path.join(js, f), 'utf8')).join('\n');
+}
+module.exports.ansichtQuelle = ansichtQuelle;

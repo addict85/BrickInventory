@@ -142,7 +142,7 @@ test('beide Oberflaechen pruefen vor dem Absenden', () => {
   // Sie schickte ab und zeigte den Serverfehler, waehrend die App den Knopf
   // gar nicht erst freigibt.
   const core = ohneKommentare(read('public/js/01-formular.js'));
-  const settings = ohneKommentare(read('public/js/05-settings.js'));
+  const settings = ohneKommentare(require('./helpers/sources').ansichtQuelle('05'));
   // Anmelden, Registrieren und Zurücksetzen stehen seit dem Umbau in 26-sitzung.js.
   const sitzung = ohneKommentare(read('public/js/26-sitzung.js'));
   const webAufrufe = (core.match(/passwortRegelText\(/g) || []).length

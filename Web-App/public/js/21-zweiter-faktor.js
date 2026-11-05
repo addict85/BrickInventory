@@ -4,7 +4,7 @@ import { api } from './01-api.js';
 import { ico, G } from './01-dom.js';
 import { formularFehler } from './01-formular.js';
 import { toast } from './01-meldungen.js';
-import { loadUsers } from './05-settings.js';
+import { loadUsers } from './05-nutzerverwaltung.js';
 import { esc } from './00-escapen.js';
 import { confirmDelete, bestaetigeMitPasswort, mitZweitemFaktor, mitPasswortBestaetigen } from './01-rueckfrage.js';
 
