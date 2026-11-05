@@ -284,7 +284,7 @@ object Beispiele {
     /** Ein eigener Server je Test; [close] räumt ihn wieder ab. */
     class Welt(texte: ch.brickinventoryapp.ui.viewmodel.Texte = NummernTexte) : AutoCloseable {
         val pfade = PfadServer(*ANTWORTEN)
-        val t = TestDienste(pfade.server, texte).also { d -> d.sitzung.aendere { it.copy(currency = "CHF") } }
+        val t = TestDienste(pfade.server, texte).also { d -> d.sitzung.waehrungUebernommen("CHF") }
 
         fun galerie() = t.merke(GalerieViewModel(t.dienste, SetsRepository(t.api, t.cache),
             FinanzenRepository(t.api, t.cache), SavedStateHandle()))

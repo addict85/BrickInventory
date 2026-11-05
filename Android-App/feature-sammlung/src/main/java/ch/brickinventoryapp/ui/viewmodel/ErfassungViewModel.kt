@@ -74,12 +74,12 @@ class ErfassungViewModel @Inject constructor(
                     is Result.Success -> {
                         val setNum = r.data.setNumber
                         if (setNum.isBlank()) {
-                            _snackbar.value = text(R.string.vm_barcode_no_set, value)
+                            zeigeMeldung(text(R.string.vm_barcode_no_set, value))
                             _barcodeState.update { it.copy(manuelleErfassungAnfordern = true) }
                             return@launch
                         }
                         if (_barcodeState.value.source == "gallery_search" && zeigeVorhandenes(setNum)) return@launch
-                        _snackbar.value = null
+                        quittiereMeldung()
                         _barcodeState.update { it.copy(
                             result = setNum, setName = r.data.name ?: setNum,
                             imageUrl = r.data.imageUrl, imageLocal = r.data.imageLocal,
@@ -90,8 +90,8 @@ class ErfassungViewModel @Inject constructor(
                     is Result.Error -> {
                         // „Nicht gefunden“ nur, wenn der Server das sagt; ein Netzfehler
                         // ist keine Auskunft über den Barcode.
-                        _snackbar.value = if (r.code == "barcode_kein_set") text(R.string.vm_barcode_not_found, value)
-                                          else meldungFuerSnackbar(r)
+                        zeigeMeldung(if (r.code == "barcode_kein_set") text(R.string.vm_barcode_not_found, value)
+                                          else meldungFuerSnackbar(r))
                         _barcodeState.update { it.copy(result = null, manuelleErfassungAnfordern = true) }
                     }
                 }
@@ -118,11 +118,11 @@ class ErfassungViewModel @Inject constructor(
                     is Result.Success -> {
                         val d = r.data.set
                         if (d == null) {
-                            _snackbar.value = text(R.string.vm_barcode_no_set, setNum)
+                            zeigeMeldung(text(R.string.vm_barcode_no_set, setNum))
                             _barcodeState.update { it.copy(manuelleErfassungAnfordern = true) }
                             return@launch
                         }
-                        _snackbar.value = null
+                        quittiereMeldung()
                         _barcodeState.update { it.copy(
                             result = d.setNumber, setName = d.name ?: d.setNumber,
                             imageUrl = d.imageUrl, imageLocal = d.imageLocal,
@@ -131,7 +131,7 @@ class ErfassungViewModel @Inject constructor(
                         ) }
                     }
                     is Result.Error -> {
-                        _snackbar.value = meldungFuerSnackbar(r)
+                        zeigeMeldung(meldungFuerSnackbar(r))
                         _barcodeState.update { it.copy(manuelleErfassungAnfordern = true) }
                     }
                 }
@@ -150,13 +150,13 @@ class ErfassungViewModel @Inject constructor(
         return when (val vorhanden = sets.getSetExists(setNum)) {
             is Result.Success -> {
                 if (vorhanden.data.exists) {
-                    _snackbar.value = null
+                    quittiereMeldung()
                     _barcodeState.update { it.copy(gefundenesSet = vorhanden.data.setNumber) }
                 }
                 vorhanden.data.exists
             }
             is Result.Error -> {
-                _snackbar.value = meldungFuerSnackbar(vorhanden)
+                zeigeMeldung(meldungFuerSnackbar(vorhanden))
                 true
             }
         }
@@ -175,8 +175,8 @@ class ErfassungViewModel @Inject constructor(
         when (stand.source) {
             "wanted" -> {
                 viewModelScope.launch {
-                    _snackbar.value = merkpostenAnlegen(sets, dienste.texte, setNum,
-                                                        if (condition == "U") "U" else "N", ownerUserId)
+                    zeigeMeldung(merkpostenAnlegen(sets, dienste.texte, setNum,
+                                                        if (condition == "U") "U" else "N", ownerUserId))
                     dienste.bestand.melde(Aenderung.Merkliste)
                 }
                 cancelBarcode()
@@ -193,8 +193,8 @@ class ErfassungViewModel @Inject constructor(
                                       storage?.trim()?.takeIf { it.isNotEmpty() })) {
                 is Result.Success -> {
                     // Offline gespeichert: Den Hinweis gibt der Ausgangsmelder, mit Zahl.
-                    if (!r.gepuffert) _snackbar.value = text(
-                        if (r.data.katalogOffen) R.string.vm_set_added_no_catalog else R.string.vm_set_added, setNum)
+                    if (!r.gepuffert) zeigeMeldung(text(
+                        if (r.data.katalogOffen) R.string.vm_set_added_no_catalog else R.string.vm_set_added, setNum))
                     dienste.bestand.melde(Aenderung.Sets)
                 }
                 is Result.Error -> meldeFehlgeschlageneErfassung(setNum, meldung(r))
@@ -267,11 +267,11 @@ class ErfassungViewModel @Inject constructor(
                     r.data.success && r.data.action == "exists" ->
                         _barcodeState.update { it.copy(gefundenesSet = r.data.setNumber ?: sn) }
                     r.data.success -> {
-                        _snackbar.value = text(when {
+                        zeigeMeldung(text(when {
                             r.data.katalogOffen -> R.string.vm_set_added_no_catalog
                             r.data.action == "added" -> R.string.vm_added
                             else -> R.string.vm_updated
-                        }, r.data.setNumber)
+                        }, r.data.setNumber))
                         dienste.bestand.melde(Aenderung.Sets)
                     }
                     else -> meldeFehlgeschlageneErfassung(sn, r.data.error)
@@ -283,7 +283,7 @@ class ErfassungViewModel @Inject constructor(
 
     /** Ein Fehlschlag beim Erfassen nennt Setnummer und Grund — sonst sieht man nur, dass nichts geschah. */
     private fun meldeFehlgeschlageneErfassung(setNumber: String, grund: String?) {
-        _snackbar.value = text(R.string.vm_add_failed, setNumber, grund ?: text(R.string.pdfexp_unknown_error))
+        zeigeMeldung(text(R.string.vm_add_failed, setNumber, grund ?: text(R.string.pdfexp_unknown_error)))
     }
 
     /** Der Abbrechen-Knopf der Prüfanzeige: Ein laufender Scan wird abgebrochen, die Anzeige geräumt. */

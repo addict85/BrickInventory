@@ -288,7 +288,6 @@ fun MarketPriceByCondition(
     }
 }
 
-/** Prozent-Plakette — grün im Plus, Fehlerfarbe im Minus. */
 /**
  * „Preis wird geladen“ — Kringel und Text nebeneinander, eine Fassung für
  * Marktpreis, Preisverlauf und das Detail manueller Teile, damit die nächste
@@ -308,6 +307,7 @@ fun PreisLaedtZeile(modifier: Modifier = Modifier) {
     }
 }
 
+/** Prozent-Plakette — grün im Plus, Fehlerfarbe im Minus. */
 @Composable
 fun PnlBadge(
     pct: Double,

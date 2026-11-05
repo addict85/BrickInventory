@@ -1,0 +1,25 @@
+Gegenprobe: folgeStrom fängt wieder jede Exception und schluckt so das Abbrechen
+Modul: core-data
+Test: ch.brickinventoryapp.AbbruchDurchTest
+Rot: folgeStrom reicht das Abbrechen weiter
+
+diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/service/CsvStrom.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/service/CsvStrom.kt
+index 7088c6d..c10a729 100644
+--- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/service/CsvStrom.kt
++++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/service/CsvStrom.kt
+@@ -16,13 +16,13 @@ internal suspend fun folgeStrom(
+     weiter: (CsvImportStatus) -> Boolean,
+ ): Boolean {
+     var gescheitert = false
+-    fangeAusserAbbruch {
++    try {
+         strom.takeWhile { ev ->
+             when (ev) {
+                 is CsvImportSseClient.Event.Status -> weiter(ev.status)
+                 is CsvImportSseClient.Event.Failed -> { gescheitert = true; false }
+             }
+         }.collect { }
+-    }.onFailure { gescheitert = true }
++    } catch (_: Exception) { gescheitert = true }
+     return !gescheitert
+ }

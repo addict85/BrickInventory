@@ -180,14 +180,6 @@ internal fun KontoCard(
 }
 
 /**
- * Zweiter Faktor: einrichten, abschalten, neue Wiederherstellungscodes.
- *
- * Auf dem Telefon braucht es keinen QR-Code: Der otpauth-Link oeffnet die
- * Authenticator-App. Immer über die Auswahl des Systems: Der Link trägt das
- * Geheimnis, und eine App, die sich als Standard dafür eingetragen hat, bekäme es
- * sonst unbemerkt. Fehlt eine, bleibt der Schluessel zum Kopieren.
- */
-/**
  * Die Notfallcodes an eine App der Wahl (Passwortmanager, Notizen): nur auf Tipp und
  * über die Auswahl des Systems, nicht über die Zwischenablage, deren Verlauf sie behielte.
  */
@@ -207,6 +199,14 @@ internal fun oeffneMitAuswahl(ctx: android.content.Context, uri: String, titel: 
     return runCatching { ctx.startActivity(android.content.Intent.createChooser(ansicht, titel)) }.isSuccess
 }
 
+/**
+ * Zweiter Faktor: einrichten, abschalten, neue Wiederherstellungscodes.
+ *
+ * Auf dem Telefon braucht es keinen QR-Code: Der otpauth-Link oeffnet die
+ * Authenticator-App. Immer über die Auswahl des Systems: Der Link trägt das
+ * Geheimnis, und eine App, die sich als Standard dafür eingetragen hat, bekäme es
+ * sonst unbemerkt. Fehlt eine, bleibt der Schluessel zum Kopieren.
+ */
 @Composable
 internal fun ZweiterFaktorCard(
     zfZustand: ch.brickinventoryapp.ui.ZweiterFaktorUiState,

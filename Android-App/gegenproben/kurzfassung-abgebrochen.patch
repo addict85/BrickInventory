@@ -1,0 +1,18 @@
+Gegenprobe: Eine Kurzfassung vor „Ausführlich“ bricht mitten im Satz ab
+Modul: app
+Test: ch.brickinventoryapp.QuelltextRatscheTest
+Rot: eine Kurzfassung endet mit einem ganzen Satz
+
+diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/util/TokenTresor.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/util/TokenTresor.kt
+index fd343d7..8d4e184 100644
+--- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/util/TokenTresor.kt
++++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/util/TokenTresor.kt
+@@ -11,7 +11,7 @@ import javax.crypto.spec.GCMParameterSpec
+ 
+ /**
+  * Verschlüsselung für das Bearer-Token. Das Token öffnet ein Konto auf dem Server und läuft
+- * erst nach TOKEN_IDLE_DAYS Untätigkeit ab.
++ * erst nach TOKEN_IDLE_DAYS Untätigkeit ab, und
+  * Ausführlich: docs/begruendungen/core-data/util/TokenTresor.kt.md#z12
+  */
+ 

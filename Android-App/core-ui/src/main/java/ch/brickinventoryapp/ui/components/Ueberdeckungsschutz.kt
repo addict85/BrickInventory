@@ -11,10 +11,8 @@ import androidx.compose.ui.window.DialogWindowProvider
 import ch.brickinventoryapp.ressourcen.R
 
 /**
- * Berührungen verwerfen, solange ein fremdes Fenster darüber liegt (Tapjacking;
- * ab Android 12 blockiert das System selbst, betroffen ist Android 11). In einem
- * Dialog gilt es für dessen Fenster, sonst für die Activity, solange der
- * Bildschirm steht — nur dort, wo ein untergeschobener Tipp schadet (Konto,
+ * Berührungen verwerfen, solange ein fremdes Fenster darüber liegt (Tapjacking; ab Android 12
+ * blockiert das System selbst, betroffen ist Android 11).
  * Ausführlich: docs/begruendungen/core-ui/ui/components/Ueberdeckungsschutz.kt.md#ueberdeckungsschutz
  */
 @Composable

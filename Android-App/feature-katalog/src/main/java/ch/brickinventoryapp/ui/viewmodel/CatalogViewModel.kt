@@ -45,7 +45,7 @@ internal const val SICHTFENSTER_RUHE_MS = 150L
 class CatalogViewModel @Inject constructor(
     private val repo: BrickRepository,
     @param:ApplicationContext private val ctx: Context,
-    meldungen: ch.brickinventoryapp.data.MeldungsKanal,
+    private val meldungen: ch.brickinventoryapp.data.MeldungsKanal,
     // Nur fuer die EINE Frage „liegt ein Token vor?“ — siehe
     // meldungFuerSnackbar() weiter unten.
     private val prefs: ch.brickinventoryapp.data.PreferencesManager,
@@ -53,12 +53,6 @@ class CatalogViewModel @Inject constructor(
 
     private val _catalogState = MutableStateFlow(CatalogUiState())
     val state = _catalogState.asStateFlow()
-
-    /**
-     * Meldungen für die Snackbar — derselbe Fluss wie in allen ViewModels
-     * (MeldungsKanal.kt), damit kein Ziel des Graphen sie weiterleiten muss.
-     */
-    private val _snackbar = meldungen.fluss
 
     /**
      * Text in der Sprache der App, wie AppTexte.text(): Den Application-Context
@@ -88,11 +82,6 @@ class CatalogViewModel @Inject constructor(
     private var catalogGeneration = 0
 
     /**
-     * Derselbe Satz wie in AppTexte.meldung(), über dieselbe Zuordnung fehlerTextId().
-     * Die Servermeldung hat Vorrang — sie kennt ihren Fall genauer und kommt in der
-     * Sprache des Kontos.
-     */
-    /**
      * Wie Texte.meldungFuerSnackbar() — null heisst: Der Kanal schweigt. Ein 401 ist
      * hier schon von der Sitzungsschicht behandelt (util/Abgewiesen.kt). „Angemeldet“
      * heisst: Es liegt ein Token vor — dieselbe Quelle, die der Interceptor liest,
@@ -104,6 +93,11 @@ class CatalogViewModel @Inject constructor(
                 prefs.authTokenState.value?.isNotBlank() == true)) null
         else meldung(fehler)
 
+    /**
+     * Derselbe Satz wie in AppTexte.meldung(), über dieselbe Zuordnung fehlerTextId().
+     * Die Servermeldung hat Vorrang — sie kennt ihren Fall genauer und kommt in der
+     * Sprache des Kontos.
+     */
     private fun meldung(fehler: Result.Error): String {
         if (fehler.message.isNotBlank()) return fehler.message
         val id = fehlerTextId(fehler.art)
@@ -157,7 +151,7 @@ class CatalogViewModel @Inject constructor(
                 }
                 is Result.Error -> {
                     _catalogState.update { it.copy(isLoading = false, error = meldung(r)) }
-                    if (_catalogState.value.loadedPages.isNotEmpty()) _snackbar.value = meldungFuerSnackbar(r)
+                    if (_catalogState.value.loadedPages.isNotEmpty()) meldungen.zeige(meldungFuerSnackbar(r))
                 }
             }
         }
@@ -279,12 +273,12 @@ class CatalogViewModel @Inject constructor(
                         _catalogState.update { it.copy(detailLoading = false, detail = r.data.set?.alsAnsicht()) }
                     else {
                         _catalogState.update { it.copy(detailLoading = false) }
-                        _snackbar.value = r.data.error ?: text(R.string.err_set_not_found)
+                        meldungen.zeige(r.data.error ?: text(R.string.err_set_not_found))
                     }
                 }
                 is Result.Error -> {
                     _catalogState.update { it.copy(detailLoading = false) }
-                    _snackbar.value = meldungFuerSnackbar(r)
+                    meldungen.zeige(meldungFuerSnackbar(r))
                 }
             }
         }

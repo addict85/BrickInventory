@@ -331,9 +331,7 @@ fun anker(chain: Array<X509Certificate>, vertraut: Array<X509Certificate>): X509
 
 /**
  * Hat jemand den Fingerabdruck aus einer zweiten Quelle abgeschrieben (Webapp,
- * Zertifikatsanzeige des Browsers)? Ganz oder mindestens die letzten
- * [FINGERABDRUCK_ABTIPPEN] Hex-Zeichen: 96 Bit — einen Schlüssel mit passendem
- * Ende zu erzeugen, kostet auch mit viel Rechenzeit zu viel; 64 Bit lägen in
+ * Zertifikatsanzeige des Browsers)?
  * Ausführlich: docs/begruendungen/core-data/util/ServerVertrauen.kt.md#fingerabdruck-abtippen
  */
 const val FINGERABDRUCK_ABTIPPEN = 24

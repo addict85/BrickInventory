@@ -24,13 +24,6 @@ import ch.brickinventoryapp.data.ScopeFilter
 import ch.brickinventoryapp.ui.theme.Abstaende
 
 /**
- * Kontofilter einer Ansicht — Alle Konten, Eigene, dann jedes Unterkonto
- * namentlich. Nur bei einem Hauptkonto mit Unterkonten: Eine Auswahl mit genau
- * einer Antwort ist keine Wahl. Gefiltert wird auf dem Server (`accounts=`), weil
- * sich hier zwar die Kachelwand sieben liesse, nicht aber die Gesamtzahl und die
- * Bewertung.
- */
-/**
  * Der Kontofilter, wie ihn eine Bestandsansicht zeigt: links oben, mit dem
  * üblichen Abstand, nur wenn es etwas zu wählen gibt. Eine Zeile für Teile,
  * Minifiguren und Galerie, damit ein abweichender Abstand nicht erst beim
@@ -125,6 +118,13 @@ fun LagerortFilterChip(
     }
 }
 
+/**
+ * Kontofilter einer Ansicht — Alle Konten, Eigene, dann jedes Unterkonto
+ * namentlich. Nur bei einem Hauptkonto mit Unterkonten: Eine Auswahl mit genau
+ * einer Antwort ist keine Wahl. Gefiltert wird auf dem Server (`accounts=`), weil
+ * sich hier zwar die Kachelwand sieben liesse, nicht aber die Gesamtzahl und die
+ * Bewertung.
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ScopeFilterChip(

@@ -141,7 +141,7 @@ class GutscheinKlartextTest {
         assertEquals("geheim", rumpf.getString("password"))
         assertEquals("654321", rumpf.getString("code"))
         assertNull(vm.state.value.bestaetigung)
-        assertEquals("t${R.string.vouchers_deleted}", kanal.fluss.value)
+        assertEquals("t${R.string.vouchers_deleted}", kanal.meldung.value)
     }
 
     @Test

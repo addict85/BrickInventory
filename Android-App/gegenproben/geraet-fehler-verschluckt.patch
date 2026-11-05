@@ -4,15 +4,17 @@ Test: ch.brickinventoryapp.GeraeteEinstellungenViewModelTest
 Rot: ein Fehlschlag beim Einplanen wird gemeldet
 
 diff --git a/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/ui/viewmodel/GeraeteEinstellungenViewModel.kt b/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/ui/viewmodel/GeraeteEinstellungenViewModel.kt
-index 73da9c7..be2ce70 100644
+index 216ac25..f2e87e9 100644
 --- a/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/ui/viewmodel/GeraeteEinstellungenViewModel.kt
 +++ b/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/ui/viewmodel/GeraeteEinstellungenViewModel.kt
-@@ -47,7 +47,7 @@ class GeraeteEinstellungenViewModel @Inject constructor(
+@@ -49,8 +49,8 @@ class GeraeteEinstellungenViewModel @Inject constructor(
          viewModelScope.launch {
              einstellungen.setzeAlarmMeldungen(an)
              val fehler = planer.einplanen(an) ?: return@launch
--            _snackbar.value = texte.text(R.string.alert_schedule_failed,
+-            meldungen.zeige(texte.text(R.string.alert_schedule_failed,
+-                "${fehler::class.java.simpleName}: ${fehler.message ?: "—"}"))
 +            texte.text(R.string.alert_schedule_failed,
-                 "${fehler::class.java.simpleName}: ${fehler.message ?: "—"}")
++                "${fehler::class.java.simpleName}: ${fehler.message ?: "—"}")
          }
      }
+ 

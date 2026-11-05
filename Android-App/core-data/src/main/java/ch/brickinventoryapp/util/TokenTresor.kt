@@ -10,10 +10,8 @@ import javax.crypto.SecretKey
 import javax.crypto.spec.GCMParameterSpec
 
 /**
- * Verschlüsselung für das Bearer-Token. Das Token öffnet ein Konto auf dem Server
- * und läuft erst nach TOKEN_IDLE_DAYS Untätigkeit ab. `allowBackup="false"`
- * verschliesst `adb backup`; bei einem gerooteten Gerät oder einem ausgelesenen
- * Datenverzeichnis wäre Klartext sofort verwendbar, Geheimtext nicht — der
+ * Verschlüsselung für das Bearer-Token. Das Token öffnet ein Konto auf dem Server und läuft
+ * erst nach TOKEN_IDLE_DAYS Untätigkeit ab.
  * Ausführlich: docs/begruendungen/core-data/util/TokenTresor.kt.md#z12
  */
 

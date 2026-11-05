@@ -33,7 +33,7 @@ import javax.inject.Inject
 class KontoViewModel @Inject constructor(
     private val konto: KontoRepository,
     private val texte: Texte,
-    meldungen: MeldungsKanal,
+    private val meldungen: MeldungsKanal,
     private val sitzung: Sitzung,
 ) : ViewModel() {
 
@@ -43,8 +43,6 @@ class KontoViewModel @Inject constructor(
     val geraeteState = _geraeteState.asStateFlow()
     private val _zweiterFaktorState = MutableStateFlow(ZweiterFaktorUiState())
     val zweiterFaktorState = _zweiterFaktorState.asStateFlow()
-
-    private val _snackbar = meldungen.fluss
 
     // ── Profil und Passwort ──────────────────────────────────────────────────
 
@@ -133,7 +131,7 @@ class KontoViewModel @Inject constructor(
                 is Result.Success ->
                     if (r.data.success) {
                         abmelden()
-                        _snackbar.value = texte.text(R.string.konto_password_changed)
+                        meldungen.zeige(texte.text(R.string.konto_password_changed))
                         _kontoState.value = KontoUiState()
                     } else {
                         _kontoState.update { it.copy(speichert = false,
@@ -198,7 +196,7 @@ class KontoViewModel @Inject constructor(
             when (val r = konto.revokeToken(tokenId)) {
                 is Result.Success -> {
                     // deleted = 0: schon weg (anderes Gerät war schneller) — die Liste stimmt danach wieder.
-                    _snackbar.value = texte.text(if (r.data.deleted > 0) R.string.tokens_revoked else R.string.tokens_already_gone)
+                    meldungen.zeige(texte.text(if (r.data.deleted > 0) R.string.tokens_revoked else R.string.tokens_already_gone))
                     ladeGeraete()
                 }
                 is Result.Error -> _geraeteState.update { it.copy(laedt = false, fehler = texte.meldung(r)) }
@@ -218,11 +216,11 @@ class KontoViewModel @Inject constructor(
                 return@launch
             }
             val andere = liste.filter { !it.aktuell }
-            if (andere.isEmpty()) { _snackbar.value = texte.text(R.string.tokens_no_others); return@launch }
+            if (andere.isEmpty()) { meldungen.zeige(texte.text(R.string.tokens_no_others)); return@launch }
             _geraeteState.update { it.copy(laedt = true, fehler = null) }
             var weg = 0
             for (g in andere) if (((konto.revokeToken(g.tokenId) as? Result.Success)?.data?.deleted ?: 0) > 0) weg++
-            _snackbar.value = texte.menge(R.plurals.tokens_revoked_n, weg, weg)
+            meldungen.zeige(texte.menge(R.plurals.tokens_revoked_n, weg, weg))
             ladeGeraete()
         }
     }
@@ -264,7 +262,7 @@ class KontoViewModel @Inject constructor(
             _zweiterFaktorState.update { it.copy(laedt = true, fehler = null) }
             when (val r = abruf()) {
                 is Result.Success -> {
-                    erfolgText?.let { _snackbar.value = texte.text(it) }
+                    erfolgText?.let { meldungen.zeige(texte.text(it)) }
                     _zweiterFaktorState.update { danach(it, r.data).copy(laedt = false) }
                 }
                 is Result.Error -> _zweiterFaktorState.update { it.copy(laedt = false, fehler = texte.meldung(r)) }

@@ -168,10 +168,9 @@ class AnmeldungViewModel @Inject constructor(
     fun setzeVollerZugriff(an: Boolean) = _anmeldeState.update { it.copy(vollerZugriff = an) }
 
     /**
-     * Erst nach der Bestätigung im Einrichtungsbildschirm: Die Adresse kommt aus dem
-     * Code. Sein Fingerabdruck gilt schon für die erste Anfrage, gemerkt wird er aber
-     * erst nach gelungener Anmeldung. Verlangt [mussAbtippen] es, nur wenn
-     * [pinWechselEingabe] ihn aus einer zweiten Quelle bestätigt: Ein Code kann von
+     * Erst nach der Bestätigung im Einrichtungsbildschirm: Die Adresse kommt aus dem Code.
+     * Sein Fingerabdruck gilt schon für die erste Anfrage, gemerkt wird er aber erst nach
+     * gelungener Anmeldung.
      * Ausführlich: docs/begruendungen/feature-anmeldung/ui/viewmodel/AnmeldungViewModel.kt.md#loginwithqrtoken
      */
     fun loginWithQrToken(
@@ -253,7 +252,7 @@ class AnmeldungViewModel @Inject constructor(
         dienste.blickfeld.anmeldungBeginnt()
         ablage.saveAuthToken(token)
         ablage.saveUsername(benutzer)
-        dienste.sitzung.aendere { it.copy(isLoggedIn = true, isAdmin = admin) }
+        dienste.sitzung.angemeldet(admin)
     }
 
     /** Ohne Antwort bleibt der Link verborgen: Ein Knopf ins Leere ist schlechter als keiner. */

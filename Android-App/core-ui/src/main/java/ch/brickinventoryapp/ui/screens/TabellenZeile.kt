@@ -227,17 +227,17 @@ fun Zustandszeile(
 }
 
 /**
- * Neu/Gebraucht als zwei Flächen, neben der Zeile, die es einbaut. Die Werte „N“
- * und „U“ sind die des Servers (utils/validate.ts); übersetzt wird nur die
- * Beschriftung.
- */
-/**
  * Die Vorbelegung von [ConditionToggle] und [Zustandszeile] — an einer Stelle,
  * damit die beiden nicht mit verschiedenen Listen dastehen.
  */
 val ZUSTAND_NEU_GEBRAUCHT: List<Pair<String, Int>> =
     listOf("N" to R.string.condition_new, "U" to R.string.condition_used)
 
+/**
+ * Neu/Gebraucht als zwei Flächen, neben der Zeile, die es einbaut. Die Werte „N“
+ * und „U“ sind die des Servers (utils/validate.ts); übersetzt wird nur die
+ * Beschriftung.
+ */
 @Composable
 fun ConditionToggle(
     selected: String,

@@ -319,10 +319,6 @@ private fun ZoomLeiste(zoom: Float, setzeZoom: (Float) -> Unit, modifier: Modifi
 }
 
 /**
- * Die Seiten, zoombar. Gezoomt wird über die Breite statt mit einem graphicsLayer:
- * Ausführlich: docs/begruendungen/feature-finanzen/ui/screens/PdfViewerScreen.kt.md#z321
- */
-/**
  * Was ein Zoomschritt von der Geste bis zur naechsten Messung braucht. Kein
  * Compose-Zustand: Nur das Messen liest es, neu zeichnen soll es nichts.
  */

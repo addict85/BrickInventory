@@ -35,6 +35,7 @@ abstract class LokalModule {
     @Binds abstract fun entwertung(p: ch.brickinventoryapp.data.lokal.WorkManagerEntwertung): ch.brickinventoryapp.data.EntwertungsPlaner
     @Binds abstract fun sender(s: ServerSender): Bearbeitungssender
     @Binds abstract fun geraet(p: ch.brickinventoryapp.data.PreferencesManager): ch.brickinventoryapp.data.GeraeteEinstellungen
+    @Binds abstract fun sitzungsablage(p: ch.brickinventoryapp.data.PreferencesManager): ch.brickinventoryapp.data.Sitzungsablage
     @Binds abstract fun alarm(p: ch.brickinventoryapp.alarm.WorkManagerAlarmPlaner): ch.brickinventoryapp.data.AlarmPlaner
 
     companion object {

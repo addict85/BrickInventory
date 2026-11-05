@@ -13,9 +13,8 @@ import androidx.compose.runtime.snapshotFlow
 
 /**
  * Gemerkte Rollpositionen je Reiter. Mitschreiben und beim Betreten ausdrücklich
- * scrollToItem(index, offset) — der Weg, der im Katalog zuverlässig an dieselbe
- * Zeile führt; ein über den NavHost geretteter LazyGridState stand danach
- * verschoben. Eine schlichte Karte statt eines StateFlow, weil sich die Position
+ * scrollToItem(index, offset) — der Weg, der im Katalog zuverlässig an dieselbe Zeile führt;
+ * ein über den NavHost geretteter LazyGridState stand danach verschoben.
  * Ausführlich: docs/begruendungen/core-ui/ui/ScrollMemory.kt.md#constructor
  */
 @javax.inject.Singleton

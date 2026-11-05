@@ -36,13 +36,8 @@ class PreferencesManager @Inject constructor(
     /** Die Spiegel laufen, solange die App lebt; kein eigener Bereich ohne Besitzer. */
     @param:ApplicationScope private val prefsScope: CoroutineScope,
 ) : Anmeldeablage, ch.brickinventoryapp.data.cache.CacheBesitzer, ch.brickinventoryapp.util.PinAblage, Entwertungsquelle,
-    ch.brickinventoryapp.util.UpdateStandAblage, GeraeteEinstellungen {
+    ch.brickinventoryapp.util.UpdateStandAblage, GeraeteEinstellungen, Sitzungsablage {
     companion object {
-        /**
-         * Der synchron lesbare Spiegel des Designs — eigene Datei, damit er
-         * nichts anderes beruehrt. Warum es ihn gibt, steht bei
-         * gemerktesDesign() weiter unten.
-         */
         /**
          * Welche Designs es gibt — dieselbe Liste wie ALLOWED in js/00-theme-boot.js, die
          * Whitelist in routes/settings.ts und public/themes/ (theme.test.js hält sie
@@ -51,6 +46,11 @@ class PreferencesManager @Inject constructor(
          */
         val ERLAUBTE_DESIGNS = setOf("classic", "brick", "werkbank", "farbfaecher", "noppe", "hochglanz")
 
+        /**
+         * Der synchron lesbare Spiegel des Designs — eigene Datei, damit er
+         * nichts anderes beruehrt. Warum es ihn gibt, steht bei
+         * gemerktesDesign() weiter unten.
+         */
         const val DESIGN_SPIEGEL_DATEI = "design_spiegel"
         const val DUNKEL_NACH_SYSTEM = "dunkel_nach_system"
         const val HELLIGKEIT = "helligkeit"
@@ -126,7 +126,7 @@ class PreferencesManager @Inject constructor(
         val UPDATE_AUSGESTELLT = longPreferencesKey("update_ausgestellt")
     }
 
-    val serverUrl: Flow<String> = context.dataStore.data.map { prefs ->
+    override val serverUrl: Flow<String> = context.dataStore.data.map { prefs ->
         val raw = prefs[SERVER_URL] ?: ""
         // Normalize scheme to lowercase (e.g. HTTPs → https)
         if (raw.contains("://")) {
@@ -141,12 +141,12 @@ class PreferencesManager @Inject constructor(
      * Ein gesperrter Keystore wird abgewartet und nachgeholt (util/Tresorbefund.liesToken).
      */
     @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
-    val authToken: Flow<String> = context.dataStore.data.map { prefs -> prefs[AUTH_TOKEN_ENC] to prefs[AUTH_TOKEN] }
+    override val authToken: Flow<String> = context.dataStore.data.map { prefs -> prefs[AUTH_TOKEN_ENC] to prefs[AUTH_TOKEN] }
         .distinctUntilChanged()
         .transformLatest { (geheim, alt) -> liesToken(tresor, geheim, alt, melde = { emit(it) }) }
     val username:  Flow<String> = context.dataStore.data.map { it[USERNAME]   ?: "" }
-    val currency:  Flow<String> = context.dataStore.data.map { it[CURRENCY]   ?: "EUR" }
-    val language:  Flow<String> = context.dataStore.data.map { it[LANGUAGE]   ?: "system" }
+    override val currency:  Flow<String> = context.dataStore.data.map { it[CURRENCY]   ?: "EUR" }
+    override val language:  Flow<String> = context.dataStore.data.map { it[LANGUAGE]   ?: "system" }
 
     // Vorgabe: nur WLAN. Begruendung an den Schluesseln oben. `?: true` bzw.
     // `?: false` ist hier die ganze Vorgabe — ein noch nie gesetzter Wert ist
@@ -154,7 +154,7 @@ class PreferencesManager @Inject constructor(
     val vorwaermenWlan:    Flow<Boolean> = context.dataStore.data.map { it[VORWAERMEN_WLAN]    ?: true }
     val vorwaermenMobil:   Flow<Boolean> = context.dataStore.data.map { it[VORWAERMEN_MOBIL]   ?: false }
     val vorwaermenRoaming: Flow<Boolean> = context.dataStore.data.map { it[VORWAERMEN_ROAMING] ?: false }
-    val appTheme:  Flow<String> = context.dataStore.data.map { it[APP_THEME]  ?: "classic" }
+    override val appTheme:  Flow<String> = context.dataStore.data.map { it[APP_THEME]  ?: "classic" }
 
     // Vorgabe AUS — Begruendung am Schluessel oben.
     override val alarmMeldungenAn: Flow<Boolean> = context.dataStore.data.map { it[ALARM_MELDUNGEN] ?: false }
@@ -350,7 +350,7 @@ class PreferencesManager @Inject constructor(
      * Ist die Anmeldung älter als [TOKEN_HOECHSTDAUER_TAGE]? Eine Anmeldung aus
      * einer Fassung ohne Datum beginnt jetzt zu zählen, statt sofort abzumelden.
      */
-    suspend fun anmeldungAbgelaufen(jetzt: Long = System.currentTimeMillis()): Boolean {
+    override suspend fun anmeldungAbgelaufen(jetzt: Long): Boolean {
         val am = context.dataStore.data.first()[ANGEMELDET_AM]
         if (am == null) {
             if (tokenJetzt().isNotBlank()) context.dataStore.edit { it[ANGEMELDET_AM] = jetzt }
@@ -384,7 +384,7 @@ class PreferencesManager @Inject constructor(
     override suspend fun saveUsername(name: String) {
         context.dataStore.edit { it[USERNAME] = name }
     }
-    suspend fun saveCurrency(cur: String) {
+    override suspend fun saveCurrency(cur: String) {
         context.dataStore.edit { it[CURRENCY] = cur }
     }
     /**
@@ -440,7 +440,7 @@ class PreferencesManager @Inject constructor(
         designSpiegel.edit { putString(SPRACHE_SPIEGEL, lang) }
         return lang
     }
-    suspend fun saveAppTheme(theme: String) {
+    override suspend fun saveAppTheme(theme: String) {
         // Unbekannte Werte NICHT schreiben: "" oder null heisst „keine
         // Information" und darf den gemerkten Wert nicht loeschen — dieselbe
         // Regel wie applyTheme() in 00-theme-boot.js.
@@ -538,8 +538,8 @@ class PreferencesManager @Inject constructor(
     fun merkeGescheiterteEntwertung(server: String) {
         designSpiegel.edit { putStringSet(ENTWERTUNG_GESCHEITERT, gescheiterteEntwertungen() + server) }
     }
-    fun gescheiterteEntwertungen(): Set<String> = designSpiegel.getStringSet(ENTWERTUNG_GESCHEITERT, null).orEmpty().toSet()
-    fun quittiereGescheiterteEntwertungen() {
+    override fun gescheiterteEntwertungen(): Set<String> = designSpiegel.getStringSet(ENTWERTUNG_GESCHEITERT, null).orEmpty().toSet()
+    override fun quittiereGescheiterteEntwertungen() {
         designSpiegel.edit { remove(ENTWERTUNG_GESCHEITERT) }
     }
 

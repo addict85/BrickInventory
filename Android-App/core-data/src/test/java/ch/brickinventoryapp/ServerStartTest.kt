@@ -22,8 +22,8 @@ import org.junit.Test
  * Server frisch aufsetzt und die App oeffnet, sieht „keine Verbindung" — und
  * haelt das eine oder das andere fuer kaputt, obwohl alles richtig laeuft.
  *
- * Die Abfrage läuft gegen einen Testserver; die Auswertung im AppViewModel
- * und die Anzeige lesen Quelltext (Gerät und Compose fehlen hier).
+ * Die Abfrage läuft gegen einen Testserver; die Auswertung im AppViewModel führt
+ * AppViewModelTest aus, die Anzeige liest Quelltext (Gerät und Compose fehlen hier).
  *
  * Gegenprobe (29.10.2026, gemessen): in VerwaltungApi `@GET("api/v1/startup-status")`
  * auf "…/startstatus" → rot „die App fragt den Startzustand ab“.
@@ -50,37 +50,6 @@ class ServerStartTest {
         val r = runBlocking { admin.getStartupStatus() }
         assert(r is Result.Success) { "Startzustand nicht gelesen: $r" }
         assertEquals(2.37f / 8, (r as Result.Success).data.alsAnsicht().anteil!!, 0.0001f)
-    }
-
-    @Test
-    fun `keine Antwort heisst NICHT dass der Server startet`() {
-        // Der wichtigste Unterschied: Antwortet der Server gar nicht, ist er
-        // nicht erreichbar — dann ist die gewoehnliche Netzmeldung die
-        // richtige. Nur wenn er ANTWORTET und `ready` verneint, laeuft ein
-        // Start. Ohne diese Trennung zeigte die App „Der Server startet" auch
-        // bei einer falsch eingetippten Adresse.
-        val s = code(read("ui/AppViewModel.kt"))
-        val ab = s.indexOf("fun verfolgeServerstart(")
-        assert(ab > 0) { "verfolgeServerstart fehlt" }
-        val rumpf = s.substring(ab, minOf(ab + 1400, s.length))
-        val fehlerzweig = rumpf.indexOf("r !is Result.Success")
-        assert(fehlerzweig > 0) { "Der Fehlerfall wird nicht behandelt" }
-        val danach = rumpf.substring(fehlerzweig, minOf(fehlerzweig + 200, rumpf.length))
-        assert(danach.contains("startupStatus = null")) {
-            "Bei einer ausbleibenden Antwort bleibt der Startzustand stehen — " +
-                "die App behauptet dann einen Serverstart, den es nicht gibt"
-        }
-    }
-
-    @Test
-    fun `ist der Server fertig, hoert die Abfrage auf`() {
-        val s = code(read("ui/AppViewModel.kt"))
-        val ab = s.indexOf("fun verfolgeServerstart(")
-        assert(ab > 0) { "verfolgeServerstart fehlt" }
-        val rumpf = s.substring(ab, minOf(ab + 1400, s.length))
-        assert(rumpf.contains("r.data.ready)")) {
-            "Die Schleife prueft nicht, ob der Server fertig ist — sie liefe ewig"
-        }
     }
 
     @Test

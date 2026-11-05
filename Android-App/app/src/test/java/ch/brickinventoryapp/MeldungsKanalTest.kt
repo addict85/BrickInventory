@@ -49,14 +49,15 @@ import org.junit.Test
  *      eingesetzt → Teilschritt 1 rot.
  *   b) Den Weiterleitungsblock in CatalogGraph.kt wieder eingesetzt
  *      → Teilschritt 2 rot.
- *   c) In MeldungsKanal.meldung `fluss.asStateFlow()` durch einen eigenen
- *      MutableStateFlow ersetzt → Teilschritt 3 rot, dazu „zwei Bereiche …“.
+ *   c) In MeldungsKanal.zeige() einen zweiten, eigenen MutableStateFlow
+ *      beschrieben → Teilschritt 3 rot, dazu „zwei Bereiche …“.
  *   d) `@Singleton` aus MeldungsKanal.kt entfernt → Teilschritt 3 rot. Das ist
  *      der stillste der vier Fälle: Ohne die Annotation bekäme jedes ViewModel
  *      seine eigene Instanz, und dann gäbe es wieder so viele Kanäle wie
  *      ViewModels — nur sähe man es nirgends im Quelltext.
- *   e) In BereichsViewModel `_snackbar` auf einen eigenen MutableStateFlow →
+ *   e) In BereichsViewModel zeigeMeldung() in einen eigenen MutableStateFlow →
  *      Teilschritt 4 rot und „zwei Bereiche melden in denselben Kanal“.
+ * Die Warteschlange selbst prüft MeldungsWarteschlangeTest (core-data).
  */
 class MeldungsKanalTest {
 
@@ -104,8 +105,10 @@ class MeldungsKanalTest {
         // Ohne das kann kein ViewModel ihn benutzen — und der erste, der es
         // versucht, baut sich wieder einen eigenen.
         val kanal = MeldungsKanal()
-        kanal.fluss.value = "gespeichert"
+        kanal.zeige("gespeichert")
         assertEquals("AppNavigation.kt sammelt die Nur-Lese-Sicht ein", "gespeichert", kanal.meldung.value)
+        kanal.quittiere()
+        assertEquals(null, kanal.meldung.value)
         assertTrue("Ohne @Singleton bekäme jedes ViewModel eine eigene Instanz — dann gibt es " +
             "wieder so viele Kanäle wie ViewModels, nur unsichtbar",
             MeldungsKanal::class.java.isAnnotationPresent(javax.inject.Singleton::class.java))
@@ -117,12 +120,12 @@ class MeldungsKanalTest {
         // hat entweder einen eigenen (Teilschritt 1 faengt das) oder gar keinen
         // Weg nach draussen. Beides ist ein Fehler.
         val schreiber = alleOhneKommentare().filter { (name, s) ->
-            name.endsWith("ViewModel.kt") && Regex("""_snackbar\s*\.value\s*=""").containsMatchIn(s)
+            name.endsWith("ViewModel.kt") && Regex("""\bzeigeMeldung\(|\bmeldungen\.zeige\(""").containsMatchIn(s)
         }
         assert(schreiber.isNotEmpty()) { "Kein ViewModel schreibt Meldungen — Muster veraltet?" }
         // Die Bereichs-ViewModels bekommen ihn über AppDienste von ihrer Grundlage.
         val grundlage = alleOhneKommentare().single { it.first == "BereichsViewModel.kt" }.second
-        assert(grundlage.contains("_snackbar: MutableStateFlow<String?> = dienste.meldungen.fluss")) {
+        assert(grundlage.contains("fun zeigeMeldung(text: String?) = dienste.meldungen.zeige(text)")) {
             "BereichsViewModel reicht den Kanal nicht mehr an die Bereiche weiter"
         }
         val ohneKanal = schreiber.filter { (_, s) ->
@@ -147,7 +150,7 @@ class MeldungsKanalTest {
                 FinanzenRepository(t.api, t.cache), SavedStateHandle()))
             galerie.deleteSet("75192-1")
             TestApi.warteBis("Meldung der Galerie") { t.meldungen.meldung.value != null }
-            t.meldungen.fluss.value = null
+            t.meldungen.quittiere()
             val teile = t.merke(TeileViewModel(t.dienste, TeileRepository(t.api, t.cache), FigurenRepository(t.api, t.cache), SavedStateHandle()))
             teile.setzeTeilFarbe("3001", 5, 11)
             TestApi.warteBis("Meldung der Teile") { t.meldungen.meldung.value != null }

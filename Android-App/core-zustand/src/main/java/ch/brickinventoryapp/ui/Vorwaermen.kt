@@ -79,10 +79,10 @@ class SammlungVorwaermen @Inject constructor(
     private val blickfeld: Blickfeld,
     private val prefs: PreferencesManager,
     @param:ApplicationScope private val bereich: CoroutineScope,
-) {
+) : Vorwaermung {
     private val gestartet = AtomicBoolean(false)
 
-    fun anstossen() {
+    override fun anstossen() {
         if (!gestartet.compareAndSet(false, true)) return
         bereich.launch {
             delay(VorschauVorwaermer.ANLAUF_MS)

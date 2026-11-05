@@ -1,0 +1,18 @@
+Gegenprobe: Eine exportierte Komponente ausserhalb der Positivliste geht durch
+Modul: app
+Test: ch.brickinventoryapp.ManifestPruefenTest
+Rot: eine fremde exportierte Komponente
+
+diff --git a/Android-App/tools/manifest-pruefen.py b/Android-App/tools/manifest-pruefen.py
+index 547ee2f..424319f 100644
+--- a/Android-App/tools/manifest-pruefen.py
++++ b/Android-App/tools/manifest-pruefen.py
+@@ -81,7 +81,7 @@ def pruefe(xmltree, erlaubt):
+                 continue
+             name, recht = a.get('name', '?'), a.get('permission')
+             if name not in erlaubt:
+-                fehler.append(f'{art} {name} ist exportiert und steht nicht in der Positivliste (Berechtigung {recht})')
++                pass
+             elif erlaubt[name] != recht:
+                 fehler.append(f'{art} {name}: verlangt {recht}, erwartet {erlaubt[name]}')
+     if gesehen == 0:

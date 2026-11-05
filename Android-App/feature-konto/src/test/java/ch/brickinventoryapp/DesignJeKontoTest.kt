@@ -103,7 +103,8 @@ class DesignJeKontoTest {
 
     @Test
     fun `Abmelden laesst das Design stehen, bis die Vorgabe da ist`() {
-        t.sitzung.aendere { it.copy(appTheme = "noppe", isLoggedIn = true) }
+        t.sitzung.setzeDesign("noppe")
+        t.sitzung.angemeldet(admin = false)
         t.sitzung.abgemeldet()
         assertEquals("noppe", t.sitzung.state.value.appTheme)
         assertEquals(false, t.sitzung.state.value.isLoggedIn)

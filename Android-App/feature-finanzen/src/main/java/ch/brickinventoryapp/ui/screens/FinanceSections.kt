@@ -39,9 +39,8 @@ import androidx.compose.material.icons.outlined.Info
 import ch.brickinventoryapp.ui.theme.Abstaende
 import ch.brickinventoryapp.ui.theme.LocalStatusFarben
 
-/** Gesamt-Total: Sets + manuell erfasste Teile + Minifiguren. */
 /**
- * `valuation` ist hier nicht nullbar: FinanceScreen() steigt bei `null` vorher
+ * Gesamt-Total: Sets + manuell erfasste Teile + Minifiguren. `valuation` ist hier nicht nullbar: FinanceScreen() steigt bei `null` vorher
  * aus. Die Signatur verlangt den Nicht-Null-Typ, statt im Rumpf `?.` einzustreuen
  * — das hiesse „darf fehlen“ statt „ist hier immer da“.
  */
@@ -170,10 +169,9 @@ fun LazyListScope.financeSetRows(valuation: BewertungAnsicht, showSets: Boolean,
             Modifier.padding(top = Abstaende.winzig, bottom = Abstaende.haar, start = Abstaende.winzig))
     }
 
-    // Ein Set mit einem Kaufpreis für „Neu“ und einem für „Gebraucht“ erscheint
-    // zweimal, jede Karte mit dem Marktpreis ihres Zustands — sonst würde das neu
-    // gekaufte Exemplar mit dem Gebrauchtpreis bewertet. Gleichrangige Karten statt
-    // Unterzeilen, weil jede für einen eigenen Kauf steht; Unterzeilen läsen sich wie
+    // Ein Set mit einem Kaufpreis für „Neu“ und einem für „Gebraucht“ erscheint zweimal, jede
+    // Karte mit dem Marktpreis ihres Zustands — sonst würde das neu gekaufte Exemplar mit dem
+    // Gebrauchtpreis bewertet.
     // Ausführlich: docs/begruendungen/feature-finanzen/ui/screens/FinanceSections.kt.md#items
     items(setZeilen(valuation.sets), key = { it.second.schluessel }) { (set, zeile) ->
         val priceStr    = fmtWert(zeile.wert)

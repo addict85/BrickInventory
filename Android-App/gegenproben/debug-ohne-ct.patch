@@ -1,0 +1,17 @@
+Gegenprobe: Der Debug-Build prüft Certificate Transparency nicht mehr (sec16 N10)
+Modul: core-data
+Test: ch.brickinventoryapp.NetzsicherheitTest
+Rot: der Debug-Build verlangt Certificate Transparency
+
+diff --git a/Android-App/app/src/debug/res/xml/network_security_config.xml b/Android-App/app/src/debug/res/xml/network_security_config.xml
+index a1e5deb..3a59c07 100644
+--- a/Android-App/app/src/debug/res/xml/network_security_config.xml
++++ b/Android-App/app/src/debug/res/xml/network_security_config.xml
+@@ -25,7 +25,6 @@
+     </domain-config>
+ 
+     <base-config cleartextTrafficPermitted="false">
+-        <certificateTransparency enabled="true" />
+         <trust-anchors>
+             <certificates src="system" />
+         </trust-anchors>

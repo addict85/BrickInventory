@@ -65,7 +65,7 @@ class SetDetailViewModel @Inject constructor(
     private var lagerJob: Job? = null
     private val alarmEingabe = Preisalarmeingabe(
         scope = viewModelScope, sets = sets,
-        melde = { _snackbar.value = it },
+        melde = { zeigeMeldung(it) },
         beschreibe = { meldungFuerSnackbar(it) },
         // Nachgeladen wird in beiAenderung(): Dort kommt dasselbe Signal auch
         // an, wenn ein Alarm anderswo (Übersicht, Merkliste) geändert wurde.
@@ -160,7 +160,7 @@ class SetDetailViewModel @Inject constructor(
                     }
                     dienste.bestand.melde(Aenderung.Sets)
                 }
-                is Result.Error -> _snackbar.value = meldungFuerSnackbar(r)?.let { text(R.string.vm_error, it) }
+                is Result.Error -> zeigeMeldung(meldungFuerSnackbar(r)?.let { text(R.string.vm_error, it) })
             }
         }
     }
@@ -172,10 +172,10 @@ class SetDetailViewModel @Inject constructor(
             delay(Alarmeingabe.RUHE_MS)
             when (val r = sets.setSetStorage(setNumber, ort)) {
                 is Result.Success -> {
-                    if (!r.data.success) { _snackbar.value = r.data.error ?: ""; return@launch }
+                    if (!r.data.success) { zeigeMeldung(r.data.error ?: ""); return@launch }
                     dienste.bestand.melde(Aenderung.Sets)
                 }
-                is Result.Error -> _snackbar.value = meldungFuerSnackbar(r)
+                is Result.Error -> zeigeMeldung(meldungFuerSnackbar(r))
             }
         }
     }
@@ -183,7 +183,7 @@ class SetDetailViewModel @Inject constructor(
     fun deleteSet(setNumber: String) {
         viewModelScope.launch {
             val (geloescht, satz) = setLoeschen(sets, dienste.texte, setNumber)
-            _snackbar.value = satz
+            zeigeMeldung(satz)
             if (geloescht) dienste.bestand.melde(Aenderung.Sets, Aenderung.Teile, Aenderung.Figuren)
         }
     }
@@ -192,21 +192,21 @@ class SetDetailViewModel @Inject constructor(
         viewModelScope.launch {
             val gelesen = leser.lies(uri)
             val typ = gelesen?.first
-            if (gelesen == null || typ == null) { _snackbar.value = text(R.string.csv_upload_unreadable); return@launch }
-            if (typ !in ANLEITUNG_TYPEN) { _snackbar.value = text(R.string.instr_upload_wrong_type); return@launch }
+            if (gelesen == null || typ == null) { zeigeMeldung(text(R.string.csv_upload_unreadable)); return@launch }
+            if (typ !in ANLEITUNG_TYPEN) { zeigeMeldung(text(R.string.instr_upload_wrong_type)); return@launch }
             val bytes = gelesen.second
             if (bytes.size > ANLEITUNG_MAX_BYTES) {
-                _snackbar.value = text(R.string.csv_upload_too_big, ANLEITUNG_MAX_BYTES / 1024 / 1024)
+                zeigeMeldung(text(R.string.csv_upload_too_big, ANLEITUNG_MAX_BYTES / 1024 / 1024))
                 return@launch
             }
             val name = leser.name(uri) ?: "anleitung"
             when (val r = sets.uploadAnleitung(setNumber, name, typ, bytes, name)) {
                 is Result.Success ->
                     if (r.data.success) {
-                        _snackbar.value = text(R.string.instr_upload_done)
+                        zeigeMeldung(text(R.string.instr_upload_done))
                         loadSetDetail(setNumber)
-                    } else _snackbar.value = r.data.error ?: text(R.string.err_generic)
-                is Result.Error -> _snackbar.value = meldungFuerSnackbar(r)
+                    } else zeigeMeldung(r.data.error ?: text(R.string.err_generic))
+                is Result.Error -> zeigeMeldung(meldungFuerSnackbar(r))
             }
         }
     }
@@ -216,8 +216,8 @@ class SetDetailViewModel @Inject constructor(
             when (val r = sets.deleteAnleitung(setNumber, instrId)) {
                 is Result.Success ->
                     if (r.data.success) loadSetDetail(setNumber)
-                    else _snackbar.value = r.data.error ?: text(R.string.err_generic)
-                is Result.Error -> _snackbar.value = meldungFuerSnackbar(r)
+                    else zeigeMeldung(r.data.error ?: text(R.string.err_generic))
+                is Result.Error -> zeigeMeldung(meldungFuerSnackbar(r))
             }
         }
     }

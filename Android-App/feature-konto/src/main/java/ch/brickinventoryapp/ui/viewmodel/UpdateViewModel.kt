@@ -143,9 +143,9 @@ class UpdateViewModel @Inject constructor(
 
     /**
      * Lädt das APK und bietet es zur Installation an. Drei Bedingungen, bevor etwas
-     * installiert wird: 1. Die Adresse zeigt in unsere Release-Ablage (schon in der
-     * Prüfung, hier nochmal — zwischen Prüfung und Klick kann ein neuer Zustand
-     * stehen). 2. Die Signatur stimmt mit der installierten App überein. 3. Der Nutzer
+     * installiert wird: 1. Die Adresse zeigt in unsere Release-Ablage (schon in der Prüfung,
+     * hier nochmal — zwischen Prüfung und Klick kann ein neuer Zustand stehen). 2. Die
+     * Signatur stimmt mit der installierten App überein.
      * Ausführlich: docs/begruendungen/feature-konto/ui/viewmodel/UpdateViewModel.kt.md#ladeupdate
      */
     override fun ladeUpdate() {
@@ -174,9 +174,7 @@ class UpdateViewModel @Inject constructor(
                             val gesamt = if (fassung.apkSize > 0) fassung.apkSize
                             else koerper.contentLength()
                             // Die angekündigte Grösse (plus ein Megabyte Luft) oder die feste
-                            // Obergrenze — was kleiner ist. Die Ankündigung stammt aus
-                            // version.json, der hier nicht blind vertraut wird; die feste Grenze
-                            // allein liesse eine Antwort durch, die 46 MB verspricht und 300
+                            // Obergrenze — was kleiner ist.
                             // Ausführlich: docs/begruendungen/feature-konto/ui/viewmodel/UpdateViewModel.kt.md#obergrenze
                             val obergrenze =
                                 if (gesamt in 1..UPDATE_MAX_BYTES) minOf(gesamt + 1024 * 1024, UPDATE_MAX_BYTES)

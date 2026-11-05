@@ -15,9 +15,9 @@ import java.util.concurrent.Executors
 
 /**
  * Der Bildanalyse-Teil des Barcode-Scanners: Barcode-Leser, Texterkennung,
- * Bestätigungszählung und Drosselung. Getrennt von der Einbettung der
- * Kamera-Vorschau, weil wer an der Erkennung arbeitet, mit PreviewView,
- * Lebenszyklus und Fokus-Gesten nichts zu tun hat. Zählerstände, Drosselung, die
+ * Bestätigungszählung und Drosselung. Getrennt von der Einbettung der Kamera-Vorschau, weil
+ * wer an der Erkennung arbeitet, mit PreviewView, Lebenszyklus und Fokus-Gesten nichts zu tun
+ * hat.
  * Ausführlich: docs/begruendungen/feature-sammlung/ui/screens/BarcodeAnalyzer.kt.md#z16
  */
 // Einverständnis für imageProxy.image: `@androidx.annotation.OptIn` ist die Form

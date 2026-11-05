@@ -93,7 +93,7 @@ class DesignVorAnmeldungTest {
         // ueber `stateIn(..., sitzung.state.value.appTheme)` ab. Der gemerkte
         // Wert muss in der Sitzung stehen, BEVOR diese Eigenschaft entsteht —
         // sonst haette MainActivity schon im Vorgabe-Design komponiert.
-        val gesetzt = vm.indexOf("sitzung.aendere { it.copy(appTheme = prefs.gemerktesDesign()) }")
+        val gesetzt = vm.indexOf("sitzung.setzeDesign(prefs.gemerktesDesign())")
         val abgeleitet = vm.indexOf("val appTheme: StateFlow<String> = ")
         assert(gesetzt in 0 until abgeleitet) {
             "Der Zustand startet wieder im Vorgabe-Design. Ein Wert, der erst im " +
@@ -125,8 +125,8 @@ class DesignVorAnmeldungTest {
     }
 
     /**
-     * Die Abfrage gegen einen Testserver, das Einbinden ins AppViewModel als
-     * Quelltext. Gegenprobe (29.10.2026, gemessen): `@GET("api/v1/settings/theme")`
+     * Die Abfrage gegen einen Testserver; das Einbinden ins AppViewModel führt
+     * AppViewModelTest aus. Gegenprobe (29.10.2026, gemessen): `@GET("api/v1/settings/theme")`
      * auf "…/design" → rot.
      */
     @Test
@@ -134,27 +134,6 @@ class DesignVorAnmeldungTest {
         mitRepo(::KontoRepository) { pfade, admin ->
             runBlocking { admin.getAppTheme() }
             assertEquals(listOf("GET /api/v1/settings/theme"), pfade.anfragen.toList())
-        }
-        val vm = code(read("ui/AppViewModel.kt"))
-        assert(vm.contains("prefs.appTheme.first()")) {
-            "Der gemerkte Wert wird beim Start nicht gelesen"
-        }
-        assert(vm.contains("loadAppTheme()")) {
-            "Die zweite Stufe fehlt — ein Wechsel am Server erreicht die App erst nach dem Anmelden"
-        }
-    }
-
-    /**
-     * Sonst gilt Stufe eins nur fuer den Weg, der zufaellig zuletzt lief. Seit das
-     * Design je Konto gilt, kommt es auf zwei Wegen (/settings/theme, Wahl im Konto);
-     * gemerkt wird an EINER Stelle, die jede Aenderung der Sitzung sieht.
-     * Gegenprobe (30.10.2026, gemessen): das Sammeln entfernt → rot.
-     */
-    @Test
-    fun `jede Aenderung des Designs wird gemerkt`() {
-        val s = code(read("ui/AppViewModel.kt"))
-        assert(Regex("""sitzung\.state\.map \{ it\.appTheme \}[^\n]*\.collect \{ prefs\.saveAppTheme\(it\) \}""").containsMatchIn(s)) {
-            "Das Design wird nicht aus der Sitzung gemerkt — eine Wahl im Konto ueberlebte den Kaltstart nicht"
         }
     }
 }

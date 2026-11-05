@@ -113,18 +113,20 @@ class ResponseCache(
      * nichts mehr zu suchen. Fehler werden geschluckt — ein nicht schreibbarer
      * Cache darf einen erfolgreichen Abruf nicht zum Fehler machen.
      */
-    suspend fun <T> put(bereich: String, key: String, serializer: KSerializer<T>, value: T) = withContext(io) {
-        try {
-            mutex.withLock {
-                val fach = fach(bereich).apply { mkdirs() }
-                basis.listFiles()?.filter { it.isDirectory && it.name != fach.name }?.forEach { it.deleteRecursively() }
-                val ziel = fileFor(bereich, key)
-                val tmp = File(fach, ziel.name + ".tmp")
-                val text = json.encodeToString(serializer, value).toByteArray(Charsets.UTF_8)
-                tmp.writeBytes(chiffre?.verschluessle(text, bindung(ziel)) ?: text)
-                tmp.renameTo(ziel)      // atomar, nie halbe Dateien lesen
+    suspend fun <T> put(bereich: String, key: String, serializer: KSerializer<T>, value: T) {
+        withContext(io) {
+            fangeAusserAbbruch {
+                mutex.withLock {
+                    val fach = fach(bereich).apply { mkdirs() }
+                    basis.listFiles()?.filter { it.isDirectory && it.name != fach.name }?.forEach { it.deleteRecursively() }
+                    val ziel = fileFor(bereich, key)
+                    val tmp = File(fach, ziel.name + ".tmp")
+                    val text = json.encodeToString(serializer, value).toByteArray(Charsets.UTF_8)
+                    tmp.writeBytes(chiffre?.verschluessle(text, bindung(ziel)) ?: text)
+                    tmp.renameTo(ziel)      // atomar, nie halbe Dateien lesen
+                }
             }
-        } catch (_: Throwable) { /* Best effort */ }
+        }
     }
 
     /**
@@ -135,7 +137,7 @@ class ResponseCache(
     suspend fun <T> getMitStand(bereich: String, key: String, serializer: KSerializer<T>,
                                 maxAgeMs: Long = MAX_AGE_MS): Pair<T, Long>? =
         withContext(io) {
-            try {
+            fangeAusserAbbruch {
                 val f = fileFor(bereich, key)
                 if (!f.exists()) return@withContext null
                 val stand = f.lastModified()
@@ -143,14 +145,12 @@ class ResponseCache(
                 val roh = f.readBytes()
                 val text = if (chiffre == null) roh else chiffre.entschluessle(roh, bindung(f)) ?: return@withContext null
                 json.decodeFromString(serializer, text.toString(Charsets.UTF_8)) to stand
-            } catch (_: Throwable) {
-                null
-            }
+            }.getOrNull()
         }
 
     /** Beim Abmelden aufrufen — alle Bereiche, nicht nur der aktuelle. */
-    suspend fun clear() = withContext(io) {
-        try { mutex.withLock { basis.listFiles()?.forEach { it.deleteRecursively() } } } catch (_: Throwable) {}
+    suspend fun clear() {
+        withContext(io) { fangeAusserAbbruch { mutex.withLock { basis.listFiles()?.forEach { it.deleteRecursively() } } } }
     }
 
     companion object {

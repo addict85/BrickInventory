@@ -47,13 +47,6 @@ data class MonitoringUiState(
 
 private fun entzogen(r: Result<*>) = r is Result.Error && r.code == ch.brickinventoryapp.di.NUR_ADMINS
 
-/**
- * Der Monitoring-Bildschirm holt seine Daten über dieses ViewModel statt aus den
- * Composables, damit die Ladelogik ohne Compose-Laufzeit prüfbar ist. Ein eigenes
- * ViewModel am NavHost-Ziel (hiltViewModel()), weil der selten geöffnete
- * Bildschirm mit seiner Abfrageschleife nicht die Lebensdauer der Activity
- * Ausführlich: docs/begruendungen/feature-verwaltung/ui/viewmodel/MonitoringViewModel.kt.md#hintergrundarbeiten
- */
 /** Die Hintergrundarbeiten (Auftragstabelle); [fehler] ist der Satz des Servers, etwa bei 403 oder 409. */
 data class HintergrundUiState(
     val laedt: Boolean = false,
@@ -61,11 +54,16 @@ data class HintergrundUiState(
     val fehler: String? = null,
 )
 
+/**
+ * Der Monitoring-Bildschirm holt seine Daten über dieses ViewModel statt aus den Composables,
+ * damit die Ladelogik ohne Compose-Laufzeit prüfbar ist.
+ * Ausführlich: docs/begruendungen/feature-verwaltung/ui/viewmodel/MonitoringViewModel.kt.md#hintergrundarbeiten
+ */
 @HiltViewModel
 class MonitoringViewModel @Inject constructor(
     private val repo: BrickRepository,
     private val texte: Texte,
-    meldungen: MeldungsKanal,
+    private val meldungen: MeldungsKanal,
 ) : ViewModel(), MonitoringAktionen {
 
     private val _state = MutableStateFlow(MonitoringUiState())
@@ -122,9 +120,6 @@ class MonitoringViewModel @Inject constructor(
     internal suspend fun leereAuftragsArt(art: String): String =
         nachAuftrag(repo.verwaltung.leereAuftragsArt(art)) { texte.menge(R.plurals.hintergrund_geleert, it.entfernt, it.entfernt) }
 
-    /** Sätze zu Aufträgen und Speichern gehen in den einen Kanal der Snackbar. */
-    private val _snackbar = meldungen.fluss
-
     // Im viewModelScope, nicht im Scope des Bildschirms: Wer die Seite verlässt,
     // bricht die Aktion nicht ab, und der Satz geht nicht am Zustand vorbei.
     override fun auftragAbbrechen(id: String) = melde { brichAuftragAb(id) }
@@ -138,7 +133,7 @@ class MonitoringViewModel @Inject constructor(
     val einstellungenNeu = _einstellungenNeu.asStateFlow()
 
     override fun melde(satz: String) {
-        _snackbar.value = satz
+        meldungen.zeige(satz)
     }
 
     fun einstellungenGeladen() {
@@ -162,12 +157,12 @@ class MonitoringViewModel @Inject constructor(
         viewModelScope.launch {
             if (!aktion()) return@launch
             if (einstellungen) _einstellungenNeu.value = true
-            _snackbar.value = texte.text(satz)
+            meldungen.zeige(texte.text(satz))
         }
     }
 
     private fun melde(aktion: suspend () -> String) {
-        viewModelScope.launch { _snackbar.value = aktion() }
+        viewModelScope.launch { meldungen.zeige(aktion()) }
     }
 
     private suspend fun <T> nachAuftrag(r: Result<T>, erfolg: (T) -> String): String {
@@ -280,11 +275,6 @@ class MonitoringViewModel @Inject constructor(
         repo.verwaltung.queueCatalogImages() is Result.Success
 
     /**
-     * Das globale Design umstellen. `loadSettings()` beim Aufrufer zieht den neuen
-     * Wert in den Zustand und merkt ihn, damit die Anzeige sofort wechselt und den
-     * Kaltstart überlebt.
-     */
-    /**
      * Die Vorgabe aus /settings/theme. Ein älterer Server kennt `vorgabe` noch
      * nicht; dort war das wirksame Design zugleich die Vorgabe.
      */
@@ -294,6 +284,11 @@ class MonitoringViewModel @Inject constructor(
         }
     }
 
+    /**
+     * Das globale Design umstellen. `loadSettings()` beim Aufrufer zieht den neuen
+     * Wert in den Zustand und merkt ihn, damit die Anzeige sofort wechselt und den
+     * Kaltstart überlebt.
+     */
     internal suspend fun setzeDesign(theme: String): Boolean {
         val ok = repo.verwaltung.setAppTheme(theme) is Result.Success
         if (ok) _state.update { it.copy(vorgabeDesign = theme) }

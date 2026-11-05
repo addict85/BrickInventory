@@ -16,9 +16,4 @@ fehlt er, verschwinden die Meldungen lautlos.
 Er lebt als @Singleton neben den ViewModels (wie [SessionExpiredSignal]): Wer
 melden will, lässt ihn sich einspritzen; angezeigt wird an einer Stelle
 (AppNavigation.kt). Ein neues ViewModel braucht nur den Konstruktorparameter.
-
-`fluss` ist absichtlich der MutableStateFlow selbst und nicht hinter
-zeige()/quittiere() versteckt: Die ViewModels halten ihn unter dem Namen
-`_snackbar`, damit die vielen Schreibstellen in den Feature-Dateien gleich
-bleiben.
 ```

@@ -100,7 +100,7 @@ class CsvAbbruchTest {
         // Er reicht den Satz durch — ausser bei einem 401, den die
         // Sitzungsschicht schon behandelt hat. Die REGEL hier ist unveraendert:
         // Der Abbruch darf nicht lautlos scheitern.
-        assert(rumpf.contains("_snackbar.value = texte.meldungFuerSnackbar(r)")) {
+        assert(rumpf.contains("meldungen.zeige(texte.meldungFuerSnackbar(r))")) {
             "Der Abbruch scheitert lautlos"
         }
     }

@@ -63,7 +63,7 @@ class TeileViewModel @Inject constructor(
             override suspend fun figuren(suche: String?) = figuren.getMinifigs(figurenSicht, suche)
             override suspend fun manuelleFiguren(suche: String?) = figuren.getManualMinifigs(figurenSicht, suche)
         },
-        meldeFehler = { _snackbar.value = meldungFuerSnackbar(it) },
+        meldeFehler = { zeigeMeldung(meldungFuerSnackbar(it)) },
         vergissScroll = { dienste.scrollMemory.vergiss("parts") },
         beschreibeFehler = { meldung(it) },
         lokal = TeileLokal(repo.beobachteTeile(), repo.beobachteManuelleTeile(),
@@ -138,11 +138,11 @@ class TeileViewModel @Inject constructor(
                                        storage?.trim()?.takeIf { it.isNotEmpty() })) {
                 is Result.Success ->
                     if (r.data.success) {
-                        _snackbar.value = erfassungsMeldung(
-                            r.data.action == "added", r.data.partNumber, r.data.priceFromCondition)
+                        zeigeMeldung(erfassungsMeldung(
+                            r.data.action == "added", r.data.partNumber, r.data.priceFromCondition))
                         dienste.bestand.melde(Aenderung.Teile)
-                    } else _snackbar.value = r.data.error ?: text(R.string.err_unknown)
-                is Result.Error -> _snackbar.value = meldungFuerSnackbar(r)
+                    } else zeigeMeldung(r.data.error ?: text(R.string.err_unknown))
+                is Result.Error -> zeigeMeldung(meldungFuerSnackbar(r))
             }
         }
     }
@@ -156,11 +156,11 @@ class TeileViewModel @Inject constructor(
                                           storage?.trim()?.takeIf { it.isNotEmpty() })) {
                 is Result.Success ->
                     if (r.data.success) {
-                        _snackbar.value = erfassungsMeldung(
-                            r.data.action == "added", r.data.figNumber, r.data.priceFromCondition)
+                        zeigeMeldung(erfassungsMeldung(
+                            r.data.action == "added", r.data.figNumber, r.data.priceFromCondition))
                         dienste.bestand.melde(Aenderung.Figuren)
-                    } else _snackbar.value = r.data.error ?: text(R.string.err_unknown)
-                is Result.Error -> _snackbar.value = meldungFuerSnackbar(r)
+                    } else zeigeMeldung(r.data.error ?: text(R.string.err_unknown))
+                is Result.Error -> zeigeMeldung(meldungFuerSnackbar(r))
             }
         }
     }
@@ -215,10 +215,10 @@ class TeileViewModel @Inject constructor(
         viewModelScope.launch {
             val (gelungen, fehler) = tun()
             if (gelungen) {
-                _snackbar.value = erfolgsSatz
+                zeigeMeldung(erfolgsSatz)
                 dienste.bestand.melde(was)
                 danach()
-            } else _snackbar.value = fehler
+            } else zeigeMeldung(fehler)
         }
     }
 
@@ -259,11 +259,11 @@ class TeileViewModel @Inject constructor(
             delay(Alarmeingabe.RUHE_MS)
             when (val r = repo.setPartStorage(nummer, farbe, ort)) {
                 is Result.Success -> {
-                    if (!r.data.success) { _snackbar.value = r.data.error ?: ""; return@launch }
+                    if (!r.data.success) { zeigeMeldung(r.data.error ?: ""); return@launch }
                     _setItemState.update { z -> z.copy(kopf = z.kopf?.copy(storage = r.data.storage)) }
                     dienste.bestand.melde(Aenderung.Teile)
                 }
-                is Result.Error -> _snackbar.value = meldungFuerSnackbar(r)
+                is Result.Error -> zeigeMeldung(meldungFuerSnackbar(r))
             }
         }
     }

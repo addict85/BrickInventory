@@ -51,11 +51,6 @@ import androidx.compose.material.icons.filled.NotificationsActive
 import androidx.compose.material.icons.filled.Alarm
 
 /**
- * Die Merkliste — als Liste, weil sie gelesen und abgearbeitet wird: Nummer, Jahr,
- * Zustand und Preisalarm nebeneinander, wie in der Webapp. Die Regeln stehen am
- * Server (utils/merkliste.ts); der Bildschirm zeigt und ruft.
- */
-/**
  * Der Schlüssel einer Zeile: Nummer, Zustand und Konto. Dasselbe Set kann neu und
  * gebraucht und bei zwei Konten dastehen; mit der Nummer allein verlöre Compose
  * die Zuordnung.
@@ -107,6 +102,11 @@ fun MerkpostenDetailRoute(
     MerkpostenDetailScreen(ansicht, vm, setNumber, condition, imageLoader, onBack)
 }
 
+/**
+ * Die Merkliste — als Liste, weil sie gelesen und abgearbeitet wird: Nummer, Jahr,
+ * Zustand und Preisalarm nebeneinander, wie in der Webapp. Die Regeln stehen am
+ * Server (utils/merkliste.ts); der Bildschirm zeigt und ruft.
+ */
 @Composable
 fun MerklisteScreen(
     ansicht: MerklisteZustand,

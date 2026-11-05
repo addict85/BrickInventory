@@ -55,15 +55,16 @@ class AusgangsmelderTest {
         ablage.puffere(Bearbeitung.SetMenge("10001-1", 1))
         runCurrent()
         assertEquals(1, offene.value)
-        assertEquals("offline Gespeichertes wird gemeldet", "m${R.plurals.offline_ausgang}:1", kanal.fluss.value)
+        assertEquals("offline Gespeichertes wird gemeldet", "m${R.plurals.offline_ausgang}:1", kanal.meldung.value)
 
         ablage.melde(Abgleichsereignis.Gesendet(setOf(Bestandsart.SETS, Bestandsart.MANUELLE_TEILE)))
         runCurrent()
         assertEquals("gesendet lädt die betroffenen Listen nach", setOf(Aenderung.Sets, Aenderung.Teile), gesehen.toSet())
 
+        kanal.quittiere()
         ablage.melde(Abgleichsereignis.Verworfen(Bearbeitung.SetMenge("10001-1", 1), "", 404))
         runCurrent()
         assertEquals("ohne Grund vom Server steht ein eigener Satz da",
-            "t${R.string.offline_verworfen}(10001-1, t${R.string.offline_verworfen_ohne_grund}())", kanal.fluss.value)
+            "t${R.string.offline_verworfen}(10001-1, t${R.string.offline_verworfen_ohne_grund}())", kanal.meldung.value)
     }
 }

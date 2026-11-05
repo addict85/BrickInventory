@@ -37,13 +37,12 @@ class GutscheinViewModel @Inject constructor(
     private val repo: GutscheineRepository,
     private val texte: Texte,
     private val leser: DateiLeser,
-    meldungen: MeldungsKanal,
+    private val meldungen: MeldungsKanal,
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(GutscheinUiState())
     val state = _state.asStateFlow()
 
-    private val _snackbar = meldungen.fluss
     private var guthabenJob: Job? = null
 
     fun ladeGutscheine() {
@@ -56,7 +55,7 @@ class GutscheinViewModel @Inject constructor(
             is Result.Success -> _state.update { it.copy(gutscheine = r.data.vouchers.map { v -> v.alsAnsicht() }, laedt = false) }
             is Result.Error -> {
                 _state.update { it.copy(laedt = false, fehler = texte.meldung(r)) }
-                _snackbar.value = texte.meldungFuerSnackbar(r)
+                meldungen.zeige(texte.meldungFuerSnackbar(r))
             }
         }
     }
@@ -275,20 +274,20 @@ class GutscheinViewModel @Inject constructor(
         when (r) {
             is Result.Success -> {
                 if (!r.data.success) {
-                    _snackbar.value = r.data.error ?: texte.text(R.string.vouchers_save_error)
+                    meldungen.zeige(r.data.error ?: texte.text(R.string.vouchers_save_error))
                     return
                 }
                 val stapel = r.data.mehrere
                 // Zwei Mengenformen statt „%1$d angelegt": Lint meldet sonst
                 // PluralsCandidate, und der Baum zählt die Lint-Befunde.
-                _snackbar.value = if (stapel == null) texte.text(R.string.vouchers_saved)
+                meldungen.zeige(if (stapel == null) texte.text(R.string.vouchers_saved)
                 else texte.text(R.string.vouchers_import_done,
                     texte.menge(R.plurals.csv_upload_new, stapel.added, stapel.added),
-                    texte.menge(R.plurals.csv_upload_updated, stapel.updated, stapel.updated))
+                    texte.menge(R.plurals.csv_upload_updated, stapel.updated, stapel.updated)))
                 leereGutscheinFormular()
                 lade()
             }
-            is Result.Error -> _snackbar.value = texte.meldungFuerSnackbar(r)
+            is Result.Error -> meldungen.zeige(texte.meldungFuerSnackbar(r))
         }
     }
 
@@ -307,17 +306,17 @@ class GutscheinViewModel @Inject constructor(
                         val d = r.data
                         val v = d.voucher
                         if (!d.success || v == null) {
-                            _snackbar.value = d.error ?: texte.text(R.string.err_generic)
+                            meldungen.zeige(d.error ?: texte.text(R.string.err_generic))
                             return@launch
                         }
                         val betrag = d.angezeigt ?: ch.brickinventoryapp.util.fmtMoney(v.amount, v.currency)
                         var satz = texte.text(R.string.vouchers_balance_done, v.number, betrag)
                         // Angehängt statt als zweite Meldung, die die erste überschriebe.
                         if (d.waehrungGeaendert) satz += " " + texte.text(R.string.vouchers_balance_currency, v.currency)
-                        _snackbar.value = satz
+                        meldungen.zeige(satz)
                         lade()
                     }
-                    is Result.Error -> _snackbar.value = texte.meldungFuerSnackbar(r)
+                    is Result.Error -> meldungen.zeige(texte.meldungFuerSnackbar(r))
                 }
             } finally {
                 _state.update { it.copy(guthabenLaeuft = null) }
@@ -360,7 +359,7 @@ class GutscheinViewModel @Inject constructor(
                                 } else {
                                     fehler++
                                     erledigt = true
-                                    _snackbar.value = d.error ?: texte.text(R.string.err_generic)
+                                    meldungen.zeige(d.error ?: texte.text(R.string.err_generic))
                                     // Bot-Schutz gilt für alle, die Kontogrenze für dieses Konto:
                                     // Weitere Karten liefen in dieselbe Absage.
                                     if (d.grund == "botschutz" || d.grund == "konto") return@launch
@@ -369,7 +368,7 @@ class GutscheinViewModel @Inject constructor(
                             is Result.Error -> {
                                 fehler++
                                 erledigt = true
-                                _snackbar.value = texte.meldungFuerSnackbar(r)
+                                meldungen.zeige(texte.meldungFuerSnackbar(r))
                             }
                         }
                     }
@@ -384,8 +383,8 @@ class GutscheinViewModel @Inject constructor(
                 // würde jeder suspendierende Aufruf sofort scheitern.
                 _state.update { it.copy(guthabenLaeuft = null, guthabenLauf = null) }
                 ladeGutscheine()
-                _snackbar.value = texte.text(R.string.vouchers_balance_alle_fertig,
-                    fertig.toString(), fehler.toString())
+                meldungen.zeige(texte.text(R.string.vouchers_balance_alle_fertig,
+                    fertig.toString(), fehler.toString()))
             }
         }
     }
@@ -413,7 +412,7 @@ class GutscheinViewModel @Inject constructor(
     fun oeffneGutscheinExport() = verlange(GutscheinSchritt.EXPORT, null)
     fun gutscheinPdfQuittieren() = _state.update { it.copy(pdfZiel = null) }
 
-    private fun melde(id: Int) { _snackbar.value = texte.text(id) }
+    private fun melde(id: Int) { meldungen.zeige(texte.text(id)) }
 }
 
 /** Schritte, die der Klartext erledigt; PDF und Löschen fragen jedes Mal. */

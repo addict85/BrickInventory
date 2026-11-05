@@ -1,0 +1,18 @@
+Gegenprobe: Der Entzug der Verwalterrechte wird still übernommen
+Modul: core-zustand
+Test: ch.brickinventoryapp.AppViewModelTest
+Rot: entzogene Verwalterrechte gelten sofort
+
+diff --git a/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/ui/AppViewModel.kt b/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/ui/AppViewModel.kt
+index a439d61..1c52b3c 100644
+--- a/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/ui/AppViewModel.kt
++++ b/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/ui/AppViewModel.kt
+@@ -123,7 +123,7 @@ class AppViewModel @Inject constructor(
+         // Ein 403 `nur_admins`: Recht nachziehen; die Meldung nur beim Übergang.
+         viewModelScope.launch {
+             rechte.entzogen.collect {
+-                if (sitzung.rechteNachziehen(repo.konto)) meldungen.zeige(texte.text(R.string.vm_rechte_entzogen))
++                sitzung.rechteNachziehen(repo.konto)
+             }
+         }
+     }

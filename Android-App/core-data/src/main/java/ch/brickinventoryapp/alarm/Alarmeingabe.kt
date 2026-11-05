@@ -1,10 +1,9 @@
 package ch.brickinventoryapp.alarm
 
 /**
- * Was aus dem, was jemand ins Schwellenfeld tippt, wird. Gespeichert wird beim
- * Tippen, entprellt, wie der Kaufpreis — nicht erst beim Fokusverlust: Am Telefon
- * tippt man die Zahl, schliesst die Tastatur und geht zurück, und dieser
- * Fokuswechsel kommt nie. Ohne Ruhezeit legte „249.90“ unterwegs Schwellen an, die
+ * Was aus dem, was jemand ins Schwellenfeld tippt, wird. Gespeichert wird beim Tippen,
+ * entprellt, wie der Kaufpreis — nicht erst beim Fokusverlust: Am Telefon tippt man die Zahl,
+ * schliesst die Tastatur und geht zurück, und dieser Fokuswechsel kommt nie.
  * Ausführlich: docs/begruendungen/core-data/alarm/Alarmeingabe.kt.md#alarmeingabe
  */
 object Alarmeingabe {

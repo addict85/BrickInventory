@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import ch.brickinventoryapp.data.PreferencesManager
 import ch.brickinventoryapp.ui.Sitzung
+import ch.brickinventoryapp.ui.setzeDesign
 import ch.brickinventoryapp.ui.Widgetanstoss
 import ch.brickinventoryapp.util.LanguageManager
 import ch.brickinventoryapp.util.fangeAusserAbbruch
@@ -33,7 +34,7 @@ class DarstellungViewModel @Inject constructor(
     // Der Zustand wird mit dem gemerkten Design geboren; ein späterer Wert käme
     // nach der ersten Komposition, und das falsche Design blitzte auf.
     init {
-        sitzung.aendere { it.copy(appTheme = prefs.gemerktesDesign()) }
+        sitzung.setzeDesign(prefs.gemerktesDesign())
     }
 
     /** Nur das Design, damit MainActivity nicht bei jeder Zustandsänderung neu komponiert. */

@@ -44,11 +44,10 @@ class CsvImportViewModel @Inject constructor(
     private val prefs: PreferencesManager,
     private val texte: Texte,
     private val bestand: Bestandssignal,
-    meldungen: MeldungsKanal,
+    private val meldungen: MeldungsKanal,
     sitzung: Sitzung,
 ) : ViewModel() {
 
-    private val _snackbar = meldungen.fluss
     private val _csvImportState = MutableStateFlow(CsvImportUiState())
     val csvImportState: StateFlow<CsvImportUiState> = _csvImportState.asStateFlow()
     private var csvWatchJob: Job? = null
@@ -101,8 +100,8 @@ class CsvImportViewModel @Inject constructor(
     fun cancelCsvImport() {
         viewModelScope.launch {
             when (val r = repo.sets.cancelCsvImport()) {
-                is Result.Success -> _snackbar.value = texte.text(R.string.csv_cancel_requested)
-                is Result.Error -> _snackbar.value = texte.meldungFuerSnackbar(r)
+                is Result.Success -> meldungen.zeige(texte.text(R.string.csv_cancel_requested))
+                is Result.Error -> meldungen.zeige(texte.meldungFuerSnackbar(r))
             }
         }
     }

@@ -38,11 +38,6 @@ import ch.brickinventoryapp.ui.viewmodel.aktivitaetsViewModel
 import ch.brickinventoryapp.ui.viewmodel.UpdateViewModel
 import ch.brickinventoryapp.util.quelleVeraltet
 
-/**
- * Die Einstellungen — wenige Karten statt eines Stapels: Anzeige & Preise (jede
- * Wahl gilt sofort), Server und Aktualisierung. Die Rubriken mit eigener Seite liegen auf „Mehr“
- * (MehrBildschirm.kt) und in EinstellungenUnterseiten.kt.
- */
 /** Was die Einstellungen zeigen; die Route sammelt es aus vier Flüssen dreier ViewModels. */
 data class EinstellungenZustand(
     val appState: AppUiState,
@@ -84,6 +79,11 @@ fun SettingsRoute(
     )
 }
 
+/**
+ * Die Einstellungen — wenige Karten statt eines Stapels: Anzeige & Preise (jede
+ * Wahl gilt sofort), Server und Aktualisierung. Die Rubriken mit eigener Seite liegen auf „Mehr“
+ * (MehrBildschirm.kt) und in EinstellungenUnterseiten.kt.
+ */
 @Composable
 fun SettingsScreen(
     zustand: EinstellungenZustand,
@@ -306,13 +306,6 @@ private fun Unterschrift(text: String) {
 }
 
 /**
- * Selbstaktualisierung aus dem GitHub-Release: beim Start still prüfen, nie von
- * allein laden, und hier ein Knopf zum Nachsehen. Die laufende Fassung steht immer
- * da, sonst wäre „Aktuell“ ohne Beleg. Herunterladen und Installieren sind zwei
- * Knöpfe, weil dazwischen ein Ausflug zur Erlaubnis „Pakete installieren“ liegen
- * kann.
- */
-/**
  * Mit welchem Server die App spricht — und der Weg, ihn zu wechseln. Die Adresse
  * steht dabei, weil man genau deshalb hinsieht; bei zwei Installationen (Test und
  * Betrieb) ist das der Unterschied zu falschen Daten.
@@ -352,6 +345,13 @@ private fun ServerCard(
     }
 }
 
+/**
+ * Selbstaktualisierung aus dem GitHub-Release: beim Start still prüfen, nie von
+ * allein laden, und hier ein Knopf zum Nachsehen. Die laufende Fassung steht immer
+ * da, sonst wäre „Aktuell“ ohne Beleg. Herunterladen und Installieren sind zwei
+ * Knöpfe, weil dazwischen ein Ausflug zur Erlaubnis „Pakete installieren“ liegen
+ * kann.
+ */
 @Composable
 private fun UpdateCard(
     // `updateZustand`, nicht `zustand`: Die Prüfung „welcher Name trägt in dieser

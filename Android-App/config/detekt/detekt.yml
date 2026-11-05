@@ -8,13 +8,10 @@ config:
   validation: true
 
 complexity:
-  # Eine Ratsche: Die Schwelle steht knapp über dem heutigen Höchstwert, wer eine
-  # Funktion aufteilt, senkt sie nach. Die Spitzen sind Compose-Bildschirme
-  # (ManualItemDetailScreen 189 Zeilen, PartsScreen Verzweigung 51).
-  LongMethod:
-    threshold: 190
+  # Länge und Verzweigung gelten mit detekts Vorgabe (60 Zeilen, 15 Zweige). Die
+  # heutigen Überschreitungen stehen in config/detekt/baseline.xml; neue scheitern,
+  # und tools/detekt-obergrenze.txt lässt die Liste nur schrumpfen.
   CyclomaticComplexMethod:
-    threshold: 52
     ignoreSimpleWhenEntries: true
   LongParameterList:
     # Composables bekommen Zustand und Rückrufe herein, statt ein ViewModel zu

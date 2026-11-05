@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.data.repository
 
+import ch.brickinventoryapp.util.fangeAusserAbbruch
 import ch.brickinventoryapp.data.api.Fehlerrumpf
 import ch.brickinventoryapp.data.cache.ResponseCache
 import ch.brickinventoryapp.data.lokal.Bearbeitung
@@ -117,9 +118,8 @@ suspend fun <T> sicherAufrufen(call: suspend () -> Response<T>): Result<T> {
                 ?: Result.Error("", art = Fehlerart.LEERE_ANTWORT)
         } else {
             // Satz und Code des Servers: der Satz zum Anzeigen, der Code zum Verzweigen.
-            val rumpf = try {
-                Fehlerrumpf.lies(response.errorBody()?.string())
-            } catch (_: Exception) { Fehlerrumpf(null, null) }
+            val rumpf = fangeAusserAbbruch { Fehlerrumpf.lies(response.errorBody()?.string()) }
+                .getOrElse { Fehlerrumpf(null, null) }
             // Servermeldung gewinnt, wenn es eine gibt: Sie ist genauer als
             // jede Einordnung hier. Nur wenn keine da ist, wird die Ursache
             // als Aufzählung gemeldet und die Anzeige formuliert den Satz.
