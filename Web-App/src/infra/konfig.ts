@@ -59,6 +59,9 @@ export interface Konfig {
   datenSchluessel: string;
   /** Pfad der Schlüsseldatei; null: <APP_ROOT>/schluessel/datenschluessel. */
   datenSchluesselDatei: string | null;
+  /** Der vorige Schlüssel während eines Wechsels (DATA_KEY_ALT oder die Datei). */
+  datenSchluesselAlt: string;
+  datenSchluesselAltDatei: string | null;
   erfassungZeitzone: string;
   preisverlaufTage: number;
   uploadKontingentMb: number;
@@ -101,7 +104,7 @@ export const VARIABLEN = [
   'SESSION_IDLE_MINUTES', 'SESSION_MAX_HOURS', 'TOKEN_IDLE_DAYS', 'ROLLE',
   'DATABASE_URL', 'PGHOST', 'PGPORT', 'PGUSER', 'PGPASSWORD', 'PGDATABASE', 'PGSSLMODE',
   'PG_POOL_MAX', 'PG_POOL_MIN', 'PG_IDLE_MS', 'PG_CONN_MS', 'PG_STMT_MS', 'ADMIN_PASSWORD',
-  'APP_BASE_URL', 'APP_BASE_URL_FEHLT_OK', 'APP_ROOT', 'APP_VERSION', 'DATA_KEY', 'DATA_KEY_FILE', 'ERFASSUNG_ZEITZONE', 'TZ',
+  'APP_BASE_URL', 'APP_BASE_URL_FEHLT_OK', 'APP_ROOT', 'APP_VERSION', 'DATA_KEY', 'DATA_KEY_FILE', 'DATA_KEY_ALT', 'DATA_KEY_ALT_FILE', 'ERFASSUNG_ZEITZONE', 'TZ',
   'PRICE_HISTORY_KEEP_DAYS', 'UPLOAD_KONTINGENT_MB', 'MAIL_KONSOLE_MIT_TOKEN', 'IMG_USER_AGENT',
   'BILD_CACHE_MAX_MB', 'BILD_ABRUFE_JE_MINUTE',
   'CSV_ZEILE_FRIST_MS', 'AUFTRAG_PARALLEL', 'BCRYPT_ARBEITER', 'AUFTRAG_FRIST_SEK', 'CA_ZERTIFIKAT', 'VERTRAG_PRUEFEN',
@@ -196,6 +199,9 @@ export function ladeKonfig(env: Umgebung = process.env): Konfig {
   const datenSchluessel = env.DATA_KEY?.trim() || '';
   if (datenSchluessel && Buffer.from(datenSchluessel, 'base64').length !== 32)
     f.push('DATA_KEY muss 32 Byte als base64 sein (openssl rand -base64 32)');
+  const datenSchluesselAlt = env.DATA_KEY_ALT?.trim() || '';
+  if (datenSchluesselAlt && Buffer.from(datenSchluesselAlt, 'base64').length !== 32)
+    f.push('DATA_KEY_ALT muss 32 Byte als base64 sein (der vorige DATA_KEY)');
 
   const zone = zoneAus(env, f);
 
@@ -227,6 +233,8 @@ export function ladeKonfig(env: Umgebung = process.env): Konfig {
     appVersion: env.APP_VERSION?.trim() || null,
     datenSchluessel,
     datenSchluesselDatei: env.DATA_KEY_FILE?.trim() || null,
+    datenSchluesselAlt,
+    datenSchluesselAltDatei: env.DATA_KEY_ALT_FILE?.trim() || null,
     erfassungZeitzone: zone,
     // 0 oder weniger schaltet das Beschneiden des Preisverlaufs ab.
     preisverlaufTage: ganzzahl(env, 'PRICE_HISTORY_KEEP_DAYS', 1095, -1, 36_500, f),

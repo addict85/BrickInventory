@@ -109,14 +109,34 @@ export async function nummernNachverschluesseln(): Promise<number> {
   return n;
 }
 
-/** Kopien vor einer Migration (db/migrate.ts); der Schemaname ist durch das Muster geprüft. */
-export async function kopienVerschluesseln(): Promise<number> {
+/** Nach einem Schlüsselwechsel: Nummer und PIN mit dem neuen Schlüssel, und der
+ * Suchwert neu, denn er hängt am Schlüssel. Dieselbe Bedingung wie oben lässt
+ * eine inzwischen geänderte Zeile stehen. */
+export async function gutscheineNeuVerschluesseln(): Promise<number> {
+  let n = 0;
+  for (const z of await db.all<{ id: number; user_id: number; number: string; pin: string | null; nummer_suche: string | null }>(
+    "SELECT id, user_id, number, pin, nummer_suche FROM vouchers WHERE number LIKE 'v2:%'")) {
+    const nummer = entschluessele(z.number, nummerKontext(z.user_id, z.id));
+    if (nummer === null) continue;
+    const neu = umschluesseln(z.number, nummerKontext(z.user_id, z.id)) ?? z.number;
+    const pin = umschluesseln(z.pin, pinKontext(z.user_id, z.id)) ?? z.pin;
+    const suche = nummerSuche(z.user_id, nummer);
+    if (neu === z.number && pin === z.pin && suche === z.nummer_suche) continue;
+    n += (await db.run(`UPDATE vouchers SET number = $1, nummer_suche = $2, pin = $3
+      WHERE id = $4 AND number = $5 AND pin IS NOT DISTINCT FROM $6`, [neu, suche, pin, z.id, z.number, z.pin])).changes || 0;
+  }
+  return n;
+}
+
+/** Kopien vor einer Migration (db/migrate.ts); der Schemaname ist durch das Muster geprüft.
+ * `alle` auch v2-Zeilen: nach einem Schlüsselwechsel. */
+export async function kopienVerschluesseln(alle = false): Promise<number> {
   let n = 0;
   for (const { schema } of await db.all<{ schema: string }>(
     `SELECT table_schema AS schema FROM information_schema.tables
       WHERE table_name = 'vouchers' AND table_schema ~ '^vor_migration_[0-9]+$'`)) {
     for (const z of await db.all<{ id: number; user_id: number; number: string; pin: string | null }>(
-      `SELECT id, user_id, number, pin FROM ${schema}.vouchers WHERE number NOT LIKE 'v2:%' OR pin NOT LIKE 'v2:%'`)) {
+      `SELECT id, user_id, number, pin FROM ${schema}.vouchers${alle ? '' : " WHERE number NOT LIKE 'v2:%' OR pin NOT LIKE 'v2:%'"}`)) {
       const nummer = umschluesseln(z.number, nummerKontext(z.user_id, z.id));
       const pin = umschluesseln(z.pin, pinKontext(z.user_id, z.id));
       if (nummer === undefined && pin === undefined) continue;

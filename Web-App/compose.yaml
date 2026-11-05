@@ -191,6 +191,8 @@ services:
       # Legt der erste Start an. Ältere Installationen mit data/.datenschluessel
       # laufen weiter und bekommen beim Start den Umzug erklärt (UPGRADE.md).
       DATA_KEY_FILE: /app/schluessel/datenschluessel
+      # Nur während eines Wechsels vorhanden (scripts/datenschluessel-wechseln.sh).
+      DATA_KEY_ALT_FILE: /app/schluessel/datenschluessel.alt
       # Passkeys der Android-App und /.well-known/assetlinks.json (.env.example).
       PASSKEY_ANDROID_ZERTIFIKATE: ${PASSKEY_ANDROID_ZERTIFIKATE:-}
       PASSKEY_ANDROID_PAKET: ${PASSKEY_ANDROID_PAKET:-}
@@ -269,6 +271,7 @@ services:
     environment:
       ROLLE: jobs
       DATA_KEY_FILE: /app/schluessel/datenschluessel
+      DATA_KEY_ALT_FILE: /app/schluessel/datenschluessel.alt
       PGUSER: brickinventory_app
       PGPASSWORD_FILE: /run/secrets/db_app_password
       # Für Links in Mails (Preisalarm), die der Job-Prozess verschickt.

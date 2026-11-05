@@ -1,6 +1,6 @@
 /** RFC 6238 (TOTP, SHA-1, 6 Stellen, 30 s): die Form, die jede
  * Authenticator-App versteht. Ohne Fremdpaket, mit node:crypto. */
-import { verschluessele, entschluessele, kontext, suchwert } from '../infra/geheimnis';
+import { verschluessele, entschluessele, kontext, suchwert, suchwertAlt } from '../infra/geheimnis';
 import crypto from 'crypto';
 import * as db from '../../db/database';
 import type { DbSchnittstelle } from '../../db/database';
@@ -127,6 +127,9 @@ export async function pruefeCode(uid: number, code: unknown): Promise<'totp' | '
     return await repo.verbraucheSchritt(uid, schritt) ? 'totp' : null;
   }
   if (await repo.verbraucheCode(uid, hashCode(uid, eingabe))) return 'wiederherstellung';
+  // Codes aus der Zeit vor einem Schlüsselwechsel: Ihr Klartext ist nicht gespeichert, neu hashen geht nicht.
+  const vorWechsel = suchwertAlt('zweiter-faktor-code', `${uid}:${normiereCode(eingabe)}`);
+  if (vorWechsel && await repo.verbraucheCode(uid, vorWechsel)) return 'wiederherstellung';
   if (normiereCode(eingabe).length !== ALT_LAENGE) return null;
   return await repo.verbraucheCode(uid, alterHash(eingabe)) ? 'wiederherstellung' : null;
 }
