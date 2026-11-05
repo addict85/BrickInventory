@@ -1,5 +1,5 @@
 import * as repo from './repository/katalogSuche';
-import { meldeUndLiefere } from '../infra/httpError';
+import { meldeUndLiefere } from '../infra/fehler';
 import { resolveIfExists } from './bilder/images';
 import { setBildSichtbar, dateiStamm } from './bilder/bildBlickfeld';
 import { resolveOne, resolveViaApi } from './bricklinkLink';

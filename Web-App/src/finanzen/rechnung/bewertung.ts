@@ -1,7 +1,7 @@
 /** Was der Bestand heute wert ist; steht auf der Preisschicht (preise.ts) und
  * trägt die Gewinnrechnung, nicht umgekehrt. */
 
-import { meldeUndLiefere, fehlertext } from '../../infra/httpError';
+import { meldeUndLiefere, fehlertext } from '../../infra/fehler';
 import * as repo from '../repository/bewertung';
 import { setPreiseFrisch } from '../repository/preisCache';
 import { asIds } from '../../haushalt/haushalt';

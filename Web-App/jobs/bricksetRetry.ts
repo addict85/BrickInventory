@@ -1,7 +1,7 @@
 import { fuelleAusBrickset } from '../src/katalog/bildlage';
 import { downloadSetInstructions, anzahlAnleitungen } from '../src/katalog/instructions';
 import { getLimitForApi, getRateLimitStatus } from '../src/finanzen/financeCalc';
-import { logAndContinue, meldeUndWeiter } from '../src/infra/httpError';
+import { logAndContinue, meldeUndWeiter } from '../src/infra/fehler';
 import { pausiereArt } from '../src/auftraege/dienst';
 import { bricksetFaelligAb } from '../src/auftraege/bricksetAuftrag';
 import { AuftragVerschieben } from './auftragsWorker';

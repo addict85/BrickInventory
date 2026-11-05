@@ -1,4 +1,4 @@
-import { fehlerAntwort } from '../../src/infra/httpError';
+import { fehlerAntwort } from '../../src/infra/httpAntwort';
 import { requireToken, kontoSchranke } from './middleware';
 import { scopeIds, parseScopeMode, resolveWriteTarget } from '../../src/haushalt/haushalt';
 import { getBlColorMap, getManualParts, getOwnedQuantities, getParts, getPartsColors, getPartsStats, getPartsCategories } from '../../src/teile/abfragen';

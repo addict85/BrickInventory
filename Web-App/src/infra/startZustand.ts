@@ -1,5 +1,5 @@
 import { liesZustand, setzeZustand } from '../auftraege/laufzustand';
-import { logAndContinue, meldeUndWeiter } from './httpError';
+import { logAndContinue, meldeUndWeiter } from './fehler';
 
 /** Den Katalog lädt der Job-Prozess; der Web-Prozess liest den Stand aus
  * laufzustand nach. */

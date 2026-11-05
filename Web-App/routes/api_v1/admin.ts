@@ -3,7 +3,8 @@
 import fs from 'fs';
 import path from 'path';
 import * as verwaltung from '../../src/verwaltung/dienst';
-import { fehlerAntwort, meldeUndLiefere, pfadParam } from '../../src/infra/httpError';
+import { meldeUndLiefere } from '../../src/infra/fehler';
+import { fehlerAntwort, pfadParam } from '../../src/infra/httpAntwort';
 import { requireApiAdmin } from './middleware';
 import { getLimitForApi } from '../../src/katalog/apiKontingent';
 import { proxyCachePathFor } from '../../src/katalog/bilder/images';

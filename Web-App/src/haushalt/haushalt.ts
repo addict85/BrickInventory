@@ -1,5 +1,5 @@
 // Ausführlich: docs/begruendungen/src/haushalt/haushalt.ts.md#abschnitt
-import { logAndContinue, meldeUndLiefere } from '../infra/httpError';
+import { logAndContinue, meldeUndLiefere } from '../infra/fehler';
 import * as db from '../../db/database';
 import { sperreHaushaltswaehrung } from '../../db/txLock';
 import { getSetting } from '../konto/settings';

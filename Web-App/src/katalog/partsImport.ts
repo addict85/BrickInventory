@@ -5,7 +5,7 @@ import * as db from '../../db/database';
 import { PART_IMAGES_DIR } from '../infra/appPaths';
 import { type RbSetTeil } from '../../clients/rebrickable';
 import { getAllSetParts } from './rebrickableKatalog';
-import { fehlertext, logAndContinue, meldeUndWeiter } from '../infra/httpError';
+import { fehlertext, logAndContinue, meldeUndWeiter } from '../infra/fehler';
 import { getGlobalSetting } from '../konto/settings';
 import { mitVersion } from '../sets/setNummer';
 import { nummernListe, ERLAUBTE_API_HOSTS } from '../infra/fremdeAdressen';

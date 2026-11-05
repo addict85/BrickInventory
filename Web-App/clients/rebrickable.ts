@@ -7,7 +7,7 @@ import { holeHttps, oeffneHttps, AbrufFehler } from '../src/infra/abruf';
 import path from 'path';
 import fs from 'fs';
 import { rebrickableBackgroundLimiter } from '../src/katalog/rateLimiter';
-import { fehlertext, meldeUndLiefere } from '../src/infra/httpError';
+import { fehlertext, meldeUndLiefere } from '../src/infra/fehler';
 import { mitVersion } from '../src/sets/setNummer';
 import { getGlobalSetting } from '../src/konto/settings';
 import { ERLAUBTE_DOWNLOAD_HOSTS, ERLAUBTE_API_HOSTS, pfadSegment } from '../src/infra/fremdeAdressen';

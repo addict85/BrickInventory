@@ -1,6 +1,6 @@
 /** SQL, Rebrickable und Aufträge stehen nur hier und darunter, damit die Routen
  * nur Anfrage und Antwort kennen. */
-import { logAndContinue, meldeUndLiefere, meldeUndWeiter, vorDem, fehlertext, ohneFehlendeDatei, oeffentlicherFehler } from '../infra/httpError';
+import { logAndContinue, meldeUndLiefere, meldeUndWeiter, vorDem, fehlertext, ohneFehlendeDatei, oeffentlicherFehler } from '../infra/fehler';
 import fs from 'fs';
 import path from 'path';
 import { APP_ROOT } from '../infra/appPaths';

@@ -7,7 +7,7 @@ import { konfig } from './konfig';
 import { getGlobalSetting } from '../konto/settings';
 import addressparser from 'nodemailer/lib/addressparser';
 import { ausTabelle, emailGueltig } from './validate';
-import { fehlertext } from './httpError';
+import { fehlertext } from './fehler';
 import { basisUrl, hinweisOhneBasisUrl } from './basisUrl';
 const getSetting = (key: string) => getGlobalSetting(key, '');
 

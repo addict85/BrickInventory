@@ -1,6 +1,6 @@
 import * as db from '../../db/database';
 import type { DbSchnittstelle } from '../../db/database';
-import { meldeUndWeiter, fehlertext, logAndContinue, meldeUndLiefere } from '../infra/httpError';
+import { meldeUndWeiter, fehlertext, logAndContinue, meldeUndLiefere } from '../infra/fehler';
 import { scopeIds, writableIds } from '../haushalt/haushalt';
 import { recordAcquisitionForDay } from '../bestand/acquisitions';
 import { withInventoryLock } from '../../db/txLock';

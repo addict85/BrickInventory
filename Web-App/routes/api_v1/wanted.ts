@@ -1,7 +1,8 @@
 /** /api/v1/wanted — die Merkliste. Die Regeln stehen in src/merkliste/; hier
  * nur Blickfeld, Schreibrecht und Fehlerübersetzung. */
 import express from 'express';
-import { fehlerAntwort, oeffentlicherFehler, handleRouteError, logAndContinue, pfadParam } from '../../src/infra/httpError';
+import { oeffentlicherFehler, logAndContinue } from '../../src/infra/fehler';
+import { fehlerAntwort, handleRouteError, pfadParam } from '../../src/infra/httpAntwort';
 import { sendeFehler } from '../../src/infra/fehlerTexte';
 import { requireToken, kontoSchranke } from './middleware';
 import { scopeIds, parseScopeMode, resolveWriteTarget } from '../../src/haushalt/haushalt';

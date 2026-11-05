@@ -1,4 +1,4 @@
-import { fehlerAntwort } from '../../src/infra/httpError';
+import { fehlerAntwort } from '../../src/infra/httpAntwort';
 import { requireToken } from './middleware';
 import { scopeIds, parseScopeMode } from '../../src/haushalt/haushalt';
 import { getStats } from '../../src/bestand/kennzahlen';

@@ -1,6 +1,6 @@
 // Ausführlich: docs/begruendungen/src/katalog/bilder/thumbs.ts.md#abschnitt
 
-import { meldeUndWeiter } from '../../infra/httpError';
+import { meldeUndWeiter } from '../../infra/fehler';
 import path from 'path';
 import fs from 'fs';
 import { resolveWebPath } from '../../infra/appPaths';

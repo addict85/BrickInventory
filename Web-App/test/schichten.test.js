@@ -170,6 +170,17 @@ test('src/ und clients/ importieren nichts aus jobs/', () => {
   assert.deepEqual(treffer, []);
 });
 
+test('db/, clients/ und jobs/ kennen keine HTTP-Antwort', () => {
+  // Fehler melden sie über src/infra/fehler.ts; den Weg zur Antwort kennt nur
+  // die HTTP-Seite (src/infra/httpAntwort.ts, Routen).
+  // Gegenprobe (05.11.2026): `import { fehlertext } from '../src/infra/httpAntwort'`
+  // in db/migrate.ts → rot.
+  const treffer = [];
+  for (const d of innereDateien().filter(f => /^(db|clients|jobs)\//.test(f)))
+    for (const ziel of importe(d).filter(z => /httpAntwort|^express$/.test(z))) treffer.push(`${d} -> ${ziel}`);
+  assert.deepEqual(treffer, []);
+});
+
 test('db/ importiert nichts aus jobs/', () => {
   // Die Datenbankschicht ist die unterste; die Bilddienste startet
   // startup/datenbank.ts. Gegenprobe (28.10.2026): der Import von

@@ -10,7 +10,7 @@ import { createHash } from 'crypto';
 import { konfig } from '../../infra/konfig';
 import { routeZu } from '../../infra/vertrag';
 import { sendeFehler, fehlerText, antwortSprache } from '../../infra/fehlerTexte';
-import { meldeUndLiefere } from '../../infra/httpError';
+import { meldeUndLiefere } from '../../infra/fehler';
 import { sitzungsVersionAusDb } from '../sitzungsVersion';
 import { istAktiv } from '../zweiterFaktor';
 

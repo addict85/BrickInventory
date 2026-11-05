@@ -1,5 +1,5 @@
 import * as stand from './repository/importStand';
-import { meldeUndWeiter, logAndContinue } from '../infra/httpError';
+import { meldeUndWeiter, logAndContinue } from '../infra/fehler';
 import { fehlerText, antwortSprache } from '../infra/fehlerTexte';
 
 /** EINE Zeile je Konto, damit alle Oberflächen denselben Balken zeigen.

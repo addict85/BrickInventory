@@ -3,7 +3,7 @@ import { setzeGeschaetztenPreis, setErfassungenOhnePreis, teilErfassungenOhnePre
 import { teilfarbenbilderNachtragen } from '../src/katalog/katalogAbgleich';
 import { getCurrentFigMarketPrice, getCurrentPartMarketPrice } from '../src/finanzen/marketPrice';
 import { blAbrufNummer } from '../src/katalog/blZuordnung';
-import { fehlertext, meldeUndWeiter, meldeUndLiefere } from '../src/infra/httpError';
+import { fehlertext, meldeUndWeiter, meldeUndLiefere } from '../src/infra/fehler';
 import { sleep } from '../clients/rebrickable';
 'use strict';
 

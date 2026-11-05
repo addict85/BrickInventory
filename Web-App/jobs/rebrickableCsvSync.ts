@@ -5,7 +5,7 @@
 import { meldeStartZustand } from '../src/infra/startZustand';
 import { fetchMissingBlIds } from '../src/katalog/partsImport';
 import { getRbKey, httpsGetRobust } from '../clients/rebrickable';
-import { fehlertext, logAndContinue, meldeUndLiefere, ohneFehlendeDatei } from '../src/infra/httpError';
+import { fehlertext, logAndContinue, meldeUndLiefere, ohneFehlendeDatei } from '../src/infra/fehler';
 import { merkeBlFarbnummer, blFarbnummerAus } from '../src/katalog/blZuordnung';
 import { liesZustand, setzeZustand, loescheZustand } from '../src/auftraege/laufzustand';
 import fs from 'fs';

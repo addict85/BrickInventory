@@ -1,4 +1,4 @@
-import { meldeUndLiefere } from '../infra/httpError';
+import { meldeUndLiefere } from '../infra/fehler';
 import * as db from '../../db/database';
 import { ERLAUBTE_BILD_HOSTS, hostErlaubt } from '../infra/fremdeAdressen';
 import { colorId as farbeLesen } from '../infra/validate';

@@ -4,7 +4,7 @@ import { getRbKey, holeSet, getThemeName, holeSetTeile, holeFigurTeile } from '.
 import { istErsatzteil } from '../infra/validate';
 import { mitVersion } from '../sets/setNummer';
 import { neuestesInventar } from './rbInventar';
-import { meldeUndLiefere } from '../infra/httpError';
+import { meldeUndLiefere } from '../infra/fehler';
 import * as repo from './repository/rebrickableCache';
 
 /** Ein kaputter Eintrag zählt als keiner. */

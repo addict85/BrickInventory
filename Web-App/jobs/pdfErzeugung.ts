@@ -3,7 +3,7 @@ import path from 'path';
 import { bilderAusKatalog as katalogbilder } from '../src/katalog/bildlage';
 import { MINIFIG_IMAGES_DIR } from '../src/infra/appPaths';
 import { getMinifigInfo } from '../clients/rebrickable';
-import { logAndContinue, meldeUndWeiter } from '../src/infra/httpError';
+import { logAndContinue, meldeUndWeiter } from '../src/infra/fehler';
 import { pdfDateiPfad } from '../src/auftraege/pdfAuftraege';
 import { downloadImage, downloadSetImages } from '../src/katalog/teileAnreicherung';
 import { zeichnePdfImFaden, type PdfSet, type PdfTeil } from './pdfZeichnen';

@@ -1,4 +1,4 @@
-import { logAndContinue, meldeUndLiefere } from '../../infra/httpError';
+import { logAndContinue, meldeUndLiefere } from '../../infra/fehler';
 import { stelleAuftragEin } from '../../auftraege/dienst';
 import * as repo from '../repository/bildbedarf';
 

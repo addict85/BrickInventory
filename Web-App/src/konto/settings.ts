@@ -5,7 +5,7 @@ import * as repo from './repository/einstellungen';
 import { sperreHaushaltswaehrung } from '../../db/txLock';
 import { verschluessele, entschluessele, umschluesseln, kontext } from '../infra/geheimnis';
 import { fehlerWerfen } from '../infra/fehlerTexte';
-import { meldeUndLiefere } from '../infra/httpError';
+import { meldeUndLiefere } from '../infra/fehler';
 import { zaehleAnfrage } from './loginLimiter';
 import crypto from 'node:crypto';
 

@@ -8,7 +8,7 @@ import { hatPreis } from '../preisRegel';
 import { asIds } from '../../haushalt/haushalt';
 import { checkAndIncrementRateLimit, kontingentFrei, getLimitForApi, getRateLimitStatus } from '../../katalog/apiKontingent';
 import { bricklinkRequest } from '../../../clients/bricklink';
-import { fehlertext, logAndContinue, meldeUndLiefere } from '../../infra/httpError';
+import { fehlertext, logAndContinue, meldeUndLiefere } from '../../infra/fehler';
 import { mitVersion, ohneBricklinkPreis } from '../../sets/setNummer';
 import { katalogEintrag, getPriceGuide } from '../../katalog/bricklinkPreise';
 import { effectiveCondition } from './zustand';

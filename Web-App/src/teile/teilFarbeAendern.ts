@@ -1,7 +1,7 @@
 import * as db from '../../db/database';
 import type { DbSchnittstelle } from '../../db/database';
 import { lookupPart } from '../../clients/rebrickable';
-import { meldeUndWeiter, meldeUndLiefere } from '../infra/httpError';
+import { meldeUndWeiter, meldeUndLiefere } from '../infra/fehler';
 import { merkeTeilFarbe, katalogTeil } from '../katalog/katalogPflege';
 import { colorId } from '../infra/validate';
 import * as repo from './repository/teilFarbe';

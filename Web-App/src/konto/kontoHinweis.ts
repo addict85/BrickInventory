@@ -2,7 +2,7 @@
  * Ein Eindringling, der Passwort oder Passkey setzt, bliebe sonst unbemerkt. */
 import { mailEingerichtet, sendKontoHinweisMail } from '../infra/mailer';
 import type { KontoHinweis } from '../infra/mailer';
-import { logAndContinue } from '../infra/httpError';
+import { logAndContinue } from '../infra/fehler';
 import { householdStatus } from '../haushalt/haushalt';
 import { getSetting } from './settings';
 import { aktiveVerwalter, profilZeile as profil } from './repository/konten';

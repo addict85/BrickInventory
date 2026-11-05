@@ -1,4 +1,4 @@
-import { meldeUndLiefere } from '../infra/httpError';
+import { meldeUndLiefere } from '../infra/fehler';
 import { asIds } from '../haushalt/haushalt';
 import { getGlobalSetting } from '../konto/settings';
 import * as repo from './repository/kennzahlen';

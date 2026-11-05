@@ -3,7 +3,7 @@ import * as repo from './repository/kaufErfassungen';
 import type { DbSchnittstelle } from '../../db/database';
 import { writableIds, acquisitionMoveSource, resolveWriteTarget } from '../haushalt/haushalt';
 import { findSameDayAcquisition } from './acquisitions';
-import { meldeUndLiefere } from '../infra/httpError';
+import { meldeUndLiefere } from '../infra/fehler';
 import { withInventoryLock, bestandsSchluessel } from '../../db/txLock';
 import { moveSetBetweenAccounts, moveManualAcquisition } from '../sets/setMove';
 import { getCurrentMarketPrice, getCurrentPartMarketPrice, getCurrentFigMarketPrice } from '../finanzen/marketPrice';

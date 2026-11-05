@@ -1,7 +1,8 @@
 /** Kaufpreis-Erfassungen; die Regeln stehen in src/bestand/erfassungen.ts. */
 import express from 'express';
 import { acquisitionTotals } from '../../src/bestand/acquisitions';
-import { fehlerAntwort, pfadParam, meldeUndLiefere } from '../../src/infra/httpError';
+import { meldeUndLiefere } from '../../src/infra/fehler';
+import { fehlerAntwort, pfadParam } from '../../src/infra/httpAntwort';
 import { requireToken } from './middleware';
 import { scopeIds, parseScopeMode } from '../../src/haushalt/haushalt';
 import { getPartAcquisitions } from '../../src/teile/manuelleTeile';

@@ -13,7 +13,8 @@ import session from 'express-session';
 import compression from 'compression';
 import connectPgSimple from 'connect-pg-simple';
 import * as db from './db/database';
-import { fehlertext, logAndContinue, meldeUndWeiter, fehlerAntwort, meldeUndLiefere } from './src/infra/httpError';
+import { fehlertext, logAndContinue, meldeUndWeiter, meldeUndLiefere } from './src/infra/fehler';
+import { fehlerAntwort, unbekannterApiPfad } from './src/infra/httpAntwort';
 import { startVerbote } from './src/infra/konfig';
 import { hinweisOhneBasisUrl } from './src/infra/basisUrl';
 import { sitzungsKeksName, sitzungsKeksOptionen } from './src/infra/sitzungsKeks';
@@ -356,8 +357,7 @@ app.get(['/verify', '/reset-password'], async (_req, res) => {
 
 // VOR dem SPA-Catch-all: Sonst bekäme ein Tippfehler im API-Pfad die
 // index.html mit 200. Ohne Rücksicht auf die Schreibung, die Routen davor achten darauf.
-app.use((req, res, next) => /^\/api(\/|$)/i.test(req.path)
-  ? res.status(404).json({ success: false, error: 'Endpoint nicht gefunden' }) : next());
+app.use((req, res, next) => /^\/api(\/|$)/i.test(req.path) ? unbekannterApiPfad(req, res) : next());
 
 // '{*splat}' statt '/*splat': Express 5 verlangt einen Namen, und die
 // naheliegende Form träfe die Startseite `/` nicht.

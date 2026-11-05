@@ -3,7 +3,7 @@
 import { holeHttps, auszug } from '../src/infra/abruf';
 import { getGlobalSetting } from '../src/konto/settings';
 import { checkAndIncrementRateLimit } from '../src/katalog/apiKontingent';
-import { fehlertext, meldeUndLiefere } from '../src/infra/httpError';
+import { fehlertext, meldeUndLiefere } from '../src/infra/fehler';
 import { alsAbrufFehler } from './abrufFehler';
 import { mitVersion } from '../src/sets/setNummer';
 import { bricksetVormerken, bricksetAusWiedervorlage, BRICKSET_HOECHSTENS } from '../src/auftraege/bricksetAuftrag';

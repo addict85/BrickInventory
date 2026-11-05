@@ -3,7 +3,7 @@
  * Ausführlich: docs/begruendungen/src/merkliste/wantedListe.ts.md#abschnitt */
 import { blTeilZuRb, blFilterWirkungslos } from '../../clients/rebrickable';
 import * as repo from './repository/wantedListe';
-import { meldeUndLiefere } from '../infra/httpError';
+import { meldeUndLiefere } from '../infra/fehler';
 import { nutzerStandardZustand } from '../konto/settings';
 
 export type WantedArt = 'part' | 'fig' | 'set';

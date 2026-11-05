@@ -13,7 +13,7 @@ import bcrypt from 'bcryptjs';
 import crypto from 'crypto';
 import { Client } from 'pg';
 import { LOCKS } from '../src/infra/lockNamespaces';
-import { fehlerCode, meldeUndWeiter, logAndContinue } from '../src/infra/httpError';
+import { fehlerCode, meldeUndWeiter, logAndContinue } from '../src/infra/fehler';
 import { konfig, datenbankVerbindung } from '../src/infra/konfig';
 import { passwortMangel } from '../src/infra/passwortRegel';
 

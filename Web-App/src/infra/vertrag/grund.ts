@@ -35,11 +35,12 @@ export type Draht<T> = T extends Zeit ? string | Date
   : T extends readonly (infer E)[] ? Draht<E>[]
   : T extends object ? { [K in keyof T as string extends K ? never : K]: Draht<T[K]> } : T;
 
-/** Jede Fehlerantwort (src/infra/fehlerTexte.ts). */
+/** Jede Fehlerantwort (src/infra/fehlerTexte.ts): Die Apps entscheiden am
+ * Code, der Satz ist nur für Menschen. */
 export const Fehler = z.looseObject({
   success: z.literal(false),
-  error: z.string(),
-  code: z.string().optional(),
+  error: z.string().min(1),
+  code: z.string().regex(/^[a-z][a-z0-9_]*$/),
 });
 
 export const Erfolg = z.looseObject({ success: z.literal(true) });

@@ -4,7 +4,8 @@ import { protokolliere } from '../src/verwaltung/dienst';
 const router  = vertragsRouter();
 import * as K from '../src/konto/konten';
 import { meldeHaushaltsaenderung } from '../src/haushalt/haushalt';
-import { fehlerAntwort, logAndContinue, meldeUndWeiter, fehlertext, pfadParam, meldeUndLiefere } from '../src/infra/httpError';
+import { logAndContinue, meldeUndWeiter, fehlertext, meldeUndLiefere } from '../src/infra/fehler';
+import { fehlerAntwort, pfadParam } from '../src/infra/httpAntwort';
 import { hashToken, createToken, pruefeToken, assertLoginAllowed, revokeAllSessions, beendeAndereZugaenge, deleteToken, USERNAME_RE, emailGueltig, leereTokenCache, laufzeitTage, rotiereToken, rotationFaellig, UNBEGRENZT, UEBERLAPPUNG_MS, nameGueltig, verifiziereEmailToken } from '../src/konto/auth';
 import { zielGedrosselt, kontoGedrosselt } from '../src/konto/zielDrossel';
 import { perSitzung, anmelden, establishSession, requireLoginOrToken, nutzerId, angemeldeteNutzerId, ipThrottle, bestaetigeCode, bestaetigeMitFaktor, zugangVon, nutzerName, zweiterFaktorPflicht, gnadenfristVerbrauchen } from '../src/konto/http/anmeldung';
@@ -201,14 +202,14 @@ router.post('/token-create', requireLogin, async (req, res: Antwort<'POST /api/v
 
 router.get('/profile', requireLogin, async (req, res: Antwort<'GET /api/v1/auth/profile'>) => {
   const user = await K.profil(nutzerId(req)!);
-  if (!user) return res.status(404).json({ success: false });
+  if (!user) return sendeFehler(req, res, 404, 'benutzer_nicht_gefunden');
   res.json({ success: true, user });
 });
 
 router.put('/profile', requireLogin, async (req, res: Antwort<'PUT /api/v1/auth/profile'>) => {
   const { username, email, first_name, last_name, password, password_current } = req.body;
   const user = await K.kontoVoll(nutzerId(req)!);
-  if (!user) return res.status(404).json({ success: false });
+  if (!user) return sendeFehler(req, res, 404, 'benutzer_nicht_gefunden');
 
   // Das Passwort nur über /change-password: Nur dort werden danach alle
   // übrigen Sitzungen und Token verworfen.

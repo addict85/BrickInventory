@@ -1,4 +1,4 @@
-import { logAndContinue, meldeUndLiefere } from '../../infra/httpError';
+import { logAndContinue, meldeUndLiefere } from '../../infra/fehler';
 import * as repo from '../repository/bildFehlschlaege';
 
 /** EINMAL gemerkt, für alle Prozesse; nach einer Woche wird erneut gefragt.

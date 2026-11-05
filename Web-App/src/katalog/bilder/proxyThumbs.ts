@@ -1,4 +1,4 @@
-import { logAndContinue } from '../../infra/httpError';
+import { logAndContinue } from '../../infra/fehler';
 import fs from 'fs';
 import { merkeFehlend } from './imageMisses';
 import { imgProxyFailures } from './imgProxyStats';

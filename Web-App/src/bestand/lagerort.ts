@@ -1,7 +1,7 @@
 /** Der Lagerort hängt an Sets, Teilen und Figuren; setzen, auflisten und
  * räumen stehen deshalb einmal hier statt je Route.
  * Ausführlich: docs/begruendungen/src/bestand/lagerort.ts.md#abschnitt */
-import { meldeUndLiefere } from '../infra/httpError';
+import { meldeUndLiefere } from '../infra/fehler';
 import * as db from '../../db/database';
 import * as orte from './repository/lagerort';
 import type { LagerTabelle } from './repository/lagerort';

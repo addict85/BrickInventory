@@ -1,4 +1,4 @@
-import { meldeUndLiefere } from '../../infra/httpError';
+import { meldeUndLiefere } from '../../infra/fehler';
 import * as repo from '../repository/portfolioKurve';
 // Ausführlich: docs/begruendungen/src/finanzen/portfolio/kurve.ts.md#rekonstruierekurve
 export async function rekonstruiereKurve(opts: {

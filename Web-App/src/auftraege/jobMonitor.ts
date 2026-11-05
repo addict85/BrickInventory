@@ -1,6 +1,6 @@
 /** Der Job-Prozess schreibt nach laufzustand, der Web-Prozess liest. */
 
-import { meldeUndWeiter, logAndContinue, meldeUndLiefere } from '../infra/httpError';
+import { meldeUndWeiter, logAndContinue, meldeUndLiefere } from '../infra/fehler';
 import { liesZustand, setzeZustand, zaehleZustand, zustaendeMitPraefix } from './repository/laufzustand';
 
 const JOB_DEFAULTS: Record<string, any> = {

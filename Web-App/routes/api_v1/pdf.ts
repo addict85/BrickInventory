@@ -1,7 +1,8 @@
 /** Asynchron: Die Route stellt nur einen Auftrag ein; Bilder holt und zeichnet
  * der Job-Prozess in einem eigenen Faden, damit der Web-Prozess frei bleibt.
  * Ausführlich: docs/begruendungen/routes/api_v1/pdf.ts.md#abschnitt */
-import { fehlerAntwort, streamFileToResponse, meldeUndWeiter, meldeUndLiefere, ohneFehlendeDatei, pfadParam } from '../../src/infra/httpError';
+import { meldeUndWeiter, meldeUndLiefere, ohneFehlendeDatei } from '../../src/infra/fehler';
+import { fehlerAntwort, streamFileToResponse, pfadParam } from '../../src/infra/httpAntwort';
 import { requireToken, kontoSchranke } from './middleware';
 import { registerSse } from '../../src/infra/sseRegistry';
 import _pdfFs from 'fs/promises';

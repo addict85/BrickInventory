@@ -306,7 +306,7 @@ test('kein stiller Fehler mehr auf Bestandstabellen', () => {
   //
   // Für Schreibvorgänge auf den BESTANDSTABELLEN gilt deshalb: entweder den
   // Fehler durchreichen (Pflichtschritt) oder logAndContinue() aus
-  // src/infra/httpError.ts (bewusst optionaler Schritt). Ein leerer Catch ist
+  // src/infra/fehler.ts (bewusst optionaler Schritt). Ein leerer Catch ist
   // keine der beiden Möglichkeiten. Anderswo — Bild-Caches, Aufräumen,
   // Fremd-APIs — bleibt er erlaubt; dieser Test greift nur die Tabellen ab,
   // aus denen Bestand und Finanzsummen gelesen werden.
@@ -333,5 +333,5 @@ test('kein stiller Fehler mehr auf Bestandstabellen', () => {
   }
   assert.deepEqual(fundstellen, [],
     `Stiller Fehler auf einer Bestandstabelle: ${fundstellen.join(', ')} — ` +
-    'entweder durchreichen oder logAndContinue() aus src/infra/httpError.ts');
+    'entweder durchreichen oder logAndContinue() aus src/infra/fehler.ts');
 });

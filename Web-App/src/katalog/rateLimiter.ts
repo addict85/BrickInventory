@@ -55,7 +55,7 @@ export class RateLimiter {
   }
 }
 
-import { meldeUndWeiter, meldeUndLiefere } from '../infra/httpError';
+import { meldeUndWeiter, meldeUndLiefere } from '../infra/fehler';
 import { checkAndIncrementRateLimit, getRateLimitStatus, REBRICKABLE_DEFAULT_DAILY } from './apiKontingent';
 import * as repo from './repository/apiTakt';
 

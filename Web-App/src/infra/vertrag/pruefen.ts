@@ -2,10 +2,10 @@ import express from 'express';
 import type { Request, Response, NextFunction } from 'express';
 import { konfig } from '../konfig';
 import { routeZu } from './index';
-import { FLACHE_EINGABE } from './grund';
+import { FLACHE_EINGABE, Fehler } from './grund';
 import { GROESSTE_ID, idWert } from '../validate';
 import { sendeFehler } from '../fehlerTexte';
-import { handleRouteError } from '../httpError';
+import { handleRouteError } from '../httpAntwort';
 
 /** Ein Abfragewert ist ein Text: Wiederholt (?a=1&a=2) wird er zur Liste, und
  * `.trim()` oder eine Regex darauf verwechselte den Typ. */
@@ -52,6 +52,8 @@ export function vertragPruefen(req: Request, res: Response, next: NextFunction):
       pruefe('Antwort', route.antwort, JSON.parse(JSON.stringify(rumpf ?? null)));
       if (!route.formular) pruefe('Anfrage', route.eingabe, req.body);
     }
+    // Auch der Fehlerweg hat eine Form; ohne Prüfung fiel eine 404 ohne Code nicht auf.
+    if (res.statusCode >= 400) pruefe('Fehlerantwort', Fehler, JSON.parse(JSON.stringify(rumpf ?? null)));
     if (!fehler.length) return senden(rumpf);
     console.error(`[vertrag] ${schluessel}: ${fehler.join(' | ')}`);
     res.status(500);

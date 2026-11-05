@@ -4,7 +4,7 @@ import PDFDocument from 'pdfkit';
 import { INSTRUCTIONS_DIR } from '../infra/appPaths';
 import { downloadFile, scrapeInstructions, sleep, httpsGetRobust } from '../../clients/rebrickable';
 import * as brickset from '../../clients/brickset';
-import { meldeUndWeiter, fehlertext, logAndContinue, meldeUndLiefere } from '../infra/httpError';
+import { meldeUndWeiter, fehlertext, logAndContinue, meldeUndLiefere } from '../infra/fehler';
 import { mitVersion, ohneVersion } from '../sets/setNummer';
 import { pfadSegment } from '../infra/fremdeAdressen';
 import * as repo from './repository/anleitungen';

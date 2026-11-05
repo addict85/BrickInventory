@@ -1,6 +1,6 @@
 import fs from 'fs';
 import { queueThumb } from './proxyThumbs';
-import { vorDem, ohneFehlendeDatei, logAndContinue } from '../../infra/httpError';
+import { vorDem, ohneFehlendeDatei, logAndContinue } from '../../infra/fehler';
 import { konfig } from '../../infra/konfig';
 import path from 'path';
 import { APP_ROOT } from '../../infra/appPaths';

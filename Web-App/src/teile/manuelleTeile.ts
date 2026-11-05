@@ -1,6 +1,6 @@
 /** Hier und nicht in einer Route, weil Sitzungsroute und v1-Fabrik beide darauf
  * zugreifen — eine Route soll keine andere importieren. */
-import { meldeUndLiefere, oeffentlicherFehler } from '../infra/httpError';
+import { meldeUndLiefere, oeffentlicherFehler } from '../infra/fehler';
 import { csvGemeinsameFelder, csvZeilenAusAnfrage } from '../infra/csvExport';
 import * as db from '../../db/database';
 import { recordAcquisitionForDay } from '../bestand/acquisitions';

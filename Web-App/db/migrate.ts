@@ -5,7 +5,7 @@
 import fs from 'fs';
 import path from 'path';
 import crypto from 'crypto';
-import { meldeUndWeiter, fehlertext, logAndContinue } from '../src/infra/httpError';
+import { meldeUndWeiter, fehlertext, logAndContinue } from '../src/infra/fehler';
 
 /**
  * Alle noch nicht angewandten Migrationen ausführen.

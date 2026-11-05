@@ -13,7 +13,7 @@ import { lebenszeichen } from '../src/auftraege/dienst';
 import { belegeAuftrag } from '../src/auftraege/dienst';
 import { planeNaechsten, hatZeitplan } from '../src/auftraege/zeitplan';
 import { listen, unlisten } from '../db/pgNotify';
-import { fehlertext, logAndContinue } from '../src/infra/httpError';
+import { fehlertext, logAndContinue } from '../src/infra/fehler';
 import { konfig } from '../src/infra/konfig';
 
 export interface AuftragsKontext {

@@ -1,5 +1,5 @@
 import * as db from '../db/database';
-import { logAndContinue } from '../src/infra/httpError';
+import { logAndContinue } from '../src/infra/fehler';
 import { initImageMisses } from '../src/katalog/bilder/imageMisses';
 import { initImageQueue } from '../jobs/imageQueue';
 import { kopienVerschluesseln, nummernNachverschluesseln } from '../src/gutscheine/dienst';

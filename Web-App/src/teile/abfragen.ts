@@ -9,7 +9,7 @@ import type { RbSetTeil } from '../../clients/rebrickable';
 import { getRbKey, httpsGetRobust } from '../../clients/rebrickable';
 import { getAllSetParts } from '../katalog/rebrickableKatalog';
 import { clampPageSize, applyManualCondition, withOwners, MAX_PAGE_SIZE, UNPAGED_LIMIT, SET_PARTS_MAX_PAGE_SIZE } from '../bestand/gemeinsam';
-import { meldeUndWeiter, logAndContinue, meldeUndLiefere } from '../infra/httpError';
+import { meldeUndWeiter, logAndContinue, meldeUndLiefere } from '../infra/fehler';
 import { farbkarte as blFarbkarte } from '../finanzen/financeCalc';
 import { getGlobalSetting } from '../konto/settings';
 import { neuestesInventar } from '../katalog/rbInventar';
@@ -21,7 +21,6 @@ import { merkeBlFarbnummer, blFarbnummerAus } from '../katalog/blZuordnung';
  * Ausführlich: docs/begruendungen/src/teile/abfragen.ts.md#abschnitt */
 
 import type { BlickfeldEingabe as Blickfeld } from '../haushalt/haushalt';
-import * as httpError from '../infra/httpError';
 import { marktpreiseAusCacheFuerTeile } from '../finanzen/marketPrice';
 
 /** Ohne manuelle Positionen — die haben eine eigene Ansicht. Hex-Rückfall aus
@@ -116,7 +115,7 @@ export async function tryPartsSummary(userId: Blickfeld, o: Record<string, unkno
     return { parts: zeilen.map(teilAlsAntwort), total, source: 'summary', page_size: size };
   } catch (e) {
     // Ein Rückfall, kein Fehler: Wie bei fehlender Frische übernimmt die Live-Abfrage.
-    httpError.meldeUndWeiter('teile:zusammenfassung', e);
+    meldeUndWeiter('teile:zusammenfassung', e);
     return null;
   }
 }

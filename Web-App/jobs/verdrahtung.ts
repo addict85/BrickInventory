@@ -3,7 +3,7 @@
  * Datenbankadresse läuft (etwa in Tests); am Pfad über ../jobs/ erkennen die
  * require-Haken der Tests die Module. */
 import { verdrahteNacharbeit } from '../src/auftraege/nacharbeit';
-import { meldeUndWeiter } from '../src/infra/httpError';
+import { meldeUndWeiter } from '../src/infra/fehler';
 
 function verdrahte(): void {
   verdrahteNacharbeit({

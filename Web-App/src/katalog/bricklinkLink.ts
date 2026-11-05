@@ -1,5 +1,5 @@
 // Ausführlich: docs/begruendungen/src/katalog/bricklinkLink.ts.md#abschnitt
-import { logAndContinue, meldeUndLiefere } from '../infra/httpError';
+import { logAndContinue, meldeUndLiefere } from '../infra/fehler';
 import { bricklinkRequest } from '../../clients/bricklink';
 import { getGlobalSetting } from '../konto/settings';
 import { mitVersion, ohneVersion } from '../sets/setNummer';

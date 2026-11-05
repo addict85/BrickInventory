@@ -1,4 +1,4 @@
-import { fehlerAntwort, pfadParam } from '../../src/infra/httpError';
+import { fehlerAntwort, pfadParam } from '../../src/infra/httpAntwort';
 import { requireToken, kontoSchranke } from './middleware';
 import { scopeIds, parseScopeMode, resolveWriteTarget, writableIds } from '../../src/haushalt/haushalt';
 import { getManualMinifigs, getMinifigStats, getMinifigs } from '../../src/figuren/abfragen';

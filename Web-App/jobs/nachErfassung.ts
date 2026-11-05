@@ -4,7 +4,7 @@
 import { importiereTeile, fetchMissingBlIds } from '../src/katalog/partsImport';
 import { importiereFiguren } from '../src/katalog/minifigsImport';
 import { downloadSetInstructions } from '../src/katalog/instructions';
-import { logAndContinue } from '../src/infra/httpError';
+import { logAndContinue } from '../src/infra/fehler';
 import { fuelleAusBrickset } from '../src/katalog/bildlage';
 import { anleitungEinreihen } from '../src/auftraege/anleitungsAuftrag';
 import { refreshPriceForSet } from './priceJob';

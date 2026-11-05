@@ -4,7 +4,7 @@
  * Ausführlich: docs/begruendungen/jobs/instructionQueue.ts.md#db */
 import { mitSitzungsSperre } from '../db/txLock';
 import { downloadSetInstructions, letzterAbrufWarExtern, anzahlAnleitungen, scrapeInstructionsFromFallback } from '../src/katalog/instructions';
-import { fehlertext } from '../src/infra/httpError';
+import { fehlertext } from '../src/infra/fehler';
 import { alsAbrufFehler } from '../clients/abrufFehler';
 import { zaehleArt } from '../src/auftraege/dienst';
 import { beendePause } from '../src/auftraege/dienst';

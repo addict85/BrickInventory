@@ -2,7 +2,7 @@
  * Standarddesign aufblitzt.
  * Ausführlich: docs/begruendungen/src/konto/indexHtml.ts.md#abschnitt */
 import { konfig } from '../infra/konfig';
-import { meldeUndLiefere } from '../infra/httpError';
+import { meldeUndLiefere } from '../infra/fehler';
 import fs from 'fs';
 import { createHash } from 'crypto';
 import {  PUBLIC_DIR } from '../infra/appPaths';

@@ -1,7 +1,7 @@
 import type { PoolClient } from 'pg';
 import { pflegeTabelle } from '../../../db/tabellePflegen';
 import { LOCKS } from '../../infra/lockNamespaces';
-import { logAndContinue } from '../../infra/httpError';
+import { logAndContinue } from '../../infra/fehler';
 
 /** Auf EINER Verbindung, weil Sitzungssperre, Schatten und Transaktion an ihr
  * hängen. Tabellen- und Spaltennamen kommen nur aus dem Quelltext. */

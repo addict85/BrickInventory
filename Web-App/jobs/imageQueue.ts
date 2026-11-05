@@ -1,6 +1,6 @@
 import fs from 'fs';
 import path from 'path';
-import { logAndContinue, meldeUndLiefere } from '../src/infra/httpError';
+import { logAndContinue, meldeUndLiefere } from '../src/infra/fehler';
 import { downloadSetImage } from '../src/katalog/bilder/setImages';
 import { grundFuer, istBekanntFehlend, merkeFehlend } from '../src/katalog/bilder/imageMisses';
 import { generateThumb } from '../src/katalog/bilder/thumbs';
