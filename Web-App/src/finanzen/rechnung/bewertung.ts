@@ -61,7 +61,7 @@ async function merkePreiseVor(viewerId: number, waehrung: string, posten: Posten
 type BewertungsSet = Awaited<ReturnType<typeof repo.setsZurBewertung>>[number];
 type SetErfassung = Awaited<ReturnType<typeof ladeSetErfassungen>>[number];
 /** Was jede Zeile braucht: Einstellungen des Betrachters und die vorgeladenen Tabellen. */
-type Bewertungslage = { ttl: number; pre: Parameters<typeof setPreisAusVorrat>[3]; fehlt: Posten[] };
+type Bewertungslage = { ttl: number; pre: Parameters<typeof setPreisAusVorrat>[3]; fehlt: Posten[]; ohneZugang: boolean };
 
 /** Eine Zeile der Bewertung: Je Kaufpreis der Preis SEINES Zustands, verdichtet
  * in valueSet(), damit die Bewertungsregel an EINER Stelle bleibt. */
@@ -86,6 +86,7 @@ function bewerteSet(set: BewertungsSet, acqs: SetErfassung[], l: Bewertungslage)
     .map(bc => (preise.get(bc.condition as Zustand)?.[key] ?? 0) * bc.quantity)
     .reduce((a, b) => a + b, 0) / qty;
   const einPreis = needed.map(c => preise.get(c)).find(p => p && !p.ausstehend);
+  const ausstehend = needed.some(c => preise.get(c)?.ausstehend === true);
   const unitAvg = valued.unit_price ?? 0;
   const conditions = valued.by_condition.map(bc => bc.condition);
   return {
@@ -104,9 +105,11 @@ function bewerteSet(set: BewertungsSet, acqs: SetErfassung[], l: Bewertungslage)
     acquisitions: rows,
     from_cache: true,
     is_fallback: einPreis?.is_fallback === true,
-    no_price: !!einPreis && valued.unit_price == null,
+    // Ein ausstehender Preis ist noch keiner; ein Haken hiesse „geladen“.
+    no_price: (!!einPreis || ausstehend) && valued.unit_price == null,
     bl_unbekannt: needed.some(c => preise.get(c)?.bl_unbekannt === true),
-    preis_ausstehend: needed.some(c => preise.get(c)?.ausstehend === true),
+    preis_ausstehend: ausstehend,
+    ...(ausstehend && l.ohneZugang && valued.unit_price == null ? { error: 'Kein BrickLink-Zugang eingerichtet' } : {}),
   };
 }
 
@@ -147,7 +150,9 @@ export async function computeSetsValuation(viewerId: number, idsWahl: Sicht | Bl
     setPreiseFrisch(setNumbers, currency, ttl),
     ladeSetErfassungen(uids, currency),
   ]);
-  const lage: Bewertungslage = { ttl, fehlt: [], pre: {
+  // Ohne BrickLink-Zugang kann der Auftrag nichts holen: Das steht dann an der Zeile.
+  const ohneZugang = !(await getGlobalSetting('bricklink_consumer_key'));
+  const lage: Bewertungslage = { ttl, fehlt: [], ohneZugang, pre: {
     catalog: new Map(catRows.map(r => [r.set_number, r])),
     cache:   new Map(cacheRows.map(r => [`${r.set_number}|${r.condition}`, r])),
   } };
