@@ -3,10 +3,13 @@ package ch.brickinventoryapp.ui.components
 import android.app.Activity
 import android.content.Context
 import android.content.ContextWrapper
+import android.view.Window
 import android.view.WindowManager
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.window.DialogWindowProvider
 import ch.brickinventoryapp.ressourcen.R
 
 /**
@@ -17,18 +20,28 @@ import ch.brickinventoryapp.ressourcen.R
 @Composable
 fun Sichtschutz(ueberdeckung: Boolean = true) {
     if (ueberdeckung) Ueberdeckungsschutz()
-    val activity = LocalContext.current.findActivity() ?: return
-    DisposableEffect(activity) {
-        val fenster = activity.window
-        fun anzahl() = fenster.decorView.getTag(R.id.sichtschutz_anzahl) as? Int ?: 0
-        fun setze(n: Int) = fenster.decorView.setTag(R.id.sichtschutz_anzahl, n)
-        if (anzahl() == 0) fenster.addFlags(WindowManager.LayoutParams.FLAG_SECURE)
-        setze(anzahl() + 1)
-        onDispose {
-            setze(anzahl() - 1)
-            if (anzahl() <= 0) fenster.clearFlags(WindowManager.LayoutParams.FLAG_SECURE)
-        }
+    val view = LocalView.current
+    val activity = LocalContext.current.findActivity()
+    DisposableEffect(view, activity) {
+        // Ein Dialog hat ein eigenes Fenster und übernimmt FLAG_SECURE vom Fenster darunter
+        // erst bei seinem nächsten Neuaufbau. Darum beide sofort, und beide gezählt.
+        val fenster = listOfNotNull(activity?.window, (view.parent as? DialogWindowProvider)?.window).distinct()
+        fenster.forEach(::sichere)
+        onDispose { fenster.forEach(::gibFrei) }
     }
+}
+
+private fun anzahl(f: Window) = f.decorView.getTag(R.id.sichtschutz_anzahl) as? Int ?: 0
+
+private fun sichere(f: Window) {
+    if (anzahl(f) == 0) f.addFlags(WindowManager.LayoutParams.FLAG_SECURE)
+    f.decorView.setTag(R.id.sichtschutz_anzahl, anzahl(f) + 1)
+}
+
+private fun gibFrei(f: Window) {
+    val rest = anzahl(f) - 1
+    f.decorView.setTag(R.id.sichtschutz_anzahl, rest)
+    if (rest <= 0) f.clearFlags(WindowManager.LayoutParams.FLAG_SECURE)
 }
 
 private fun Context.findActivity(): Activity? {
