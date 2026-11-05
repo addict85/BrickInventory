@@ -23,7 +23,7 @@ export function handleRouteError(res: FehlerZiel, fehler: unknown, status?: numb
   // Ein 4xx ist eine Antwort, kein Serverfehler: Mit Stack füllte jede falsche
   // Eingabe das Protokoll und verdeckte die echten Fehler.
   if (isServerError) console.error(`[route-error] ${anfrage}${code}:`, e?.stack || e?.message || e);
-  else console.warn(`[route-warnung] ${anfrage}${code}: ${fehlertext(e)}`);
+  else console.warn(`[route-warnung] ${anfrage}${code}: ${fehlertext(fehler)}`);
   if (res.headersSent) return;
   // Helfer werfen den GRUND (Code), erst hier wird daraus ein Satz in der
   // Sprache des Anfragenden.
@@ -49,14 +49,28 @@ export function handleRouteError(res: FehlerZiel, fehler: unknown, status?: numb
   res.status(code).json({ success: false, code: kennung, error: message });
 }
 
+/** SQLSTATE der Integritätsregeln → Antwort. Das Protokoll nennt weiter die verletzte Regel. */
+const DB_REGELN: Record<string, [FehlerCode, number]> = {
+  '22003': ['wert_ungueltig', 400],  // numeric_value_out_of_range
+  '22P02': ['wert_ungueltig', 400],  // invalid_text_representation
+  '23502': ['wert_ungueltig', 400],  // not_null_violation
+  '23514': ['wert_ungueltig', 400],  // check_violation
+  '23505': ['schon_vorhanden', 409], // unique_violation
+  '23503': ['bezug_fehlt', 409],     // foreign_key_violation
+};
+
 /** Ohne Status sähe eine zu grosse Datei wie ein Serverfehler aus; hier wird
  * daraus 413 bzw. 400 mit Code. */
 function alsUploadFehler<T>(e: T): T | Error {
   const m = e as { name?: unknown; code?: unknown; type?: unknown } | null;
   // Fehler des Body-Parsers: Sein Text nennt Parser und Zeichenposition.
   if (m?.type === 'entity.parse.failed') return dateiFehler('anfrage_json_ungueltig', 400);
-  // Zweite Linie hinter idWert(): Ein Wert ausserhalb des Spaltentyps ist eine falsche Eingabe.
-  if (m?.code === '22003') return dateiFehler('wert_ungueltig', 400);
+  // Zweite Linie hinter dem Vertrag: Was erst an einer Regel der Datenbank
+  // scheitert, ist eine falsche Eingabe oder ein Wettlauf, kein Serverfehler.
+  if (typeof m?.code === 'string' && m.code in DB_REGELN) {
+    const [code, status] = DB_REGELN[m.code]!;
+    return dateiFehler(code, status);
+  }
   if (m?.type === 'entity.too.large') return dateiFehler('anfrage_zu_gross', 413);
   if (typeof m?.type === 'string' && /^(charset|encoding)\.unsupported$|^request\.aborted$|^entity\.verify\.failed$/.test(m.type))
     return dateiFehler('anfrage_unlesbar', 400);
