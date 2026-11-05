@@ -52,7 +52,8 @@ val BrandYellow     = Color(0xFFF5A800)
 private val LightColors = lightColorScheme(
     primary             = BrandBlue,
     onPrimary           = Color.White,
-    primaryContainer    = BrandBlue50,
+    // BrandBlue50 trug primary nur mit 4,24:1; der hellere Ton hält 4,5:1.
+    primaryContainer    = BrandBlueLight,
     onPrimaryContainer  = BrandBlueDark,
     secondary           = BrandBlueDark,
     onSecondary         = Color.White,
@@ -396,10 +397,27 @@ val LocalAkzentflaechen = staticCompositionLocalOf { akzentflaechen("classic", f
 internal fun statusFarbenFuer(theme: String, dunkel: Boolean = false): StatusFarben = if (dunkel && hatDunkleFassung(theme)) {
     dunkleRollen(theme).let { StatusFarben(erfolg = Color(it.erfolg), warnung = Color(it.warnung), fehler = Color(it.error)) }
 } else when (theme) {
-    "brick" -> StatusFarben(erfolg = Color(0xFF4E7058), warnung = Color(0xFFB08A3E), fehler = Color(0xFFA34B3C))
+    // Warnung zeichnet Balken und Symbole: 3:1 auf jeder hellen Fläche (WCAG 1.4.11).
+    "brick" -> StatusFarben(erfolg = Color(0xFF4E7058), warnung = Color(0xFF8C6A28), fehler = Color(0xFFA34B3C))
     "werkbank" -> StatusFarben(erfolg = Color(0xFF6FBF7F), warnung = Color(0xFFD9A84E), fehler = Color(0xFFE07A72))
-    else -> StatusFarben(erfolg = Color(0xFF166534), warnung = Color(0xFFE3B341), fehler = Color(0xFFB91C1C))
+    else -> StatusFarben(erfolg = Color(0xFF166534), warnung = Color(0xFF9A6B00), fehler = Color(0xFFB91C1C))
 }
+
+/** Farben der Navigationsleiste und der Seitenleiste (MainScaffold). */
+data class ReiterFarben(
+    val leiste: Color, val anzeige: Color, val aufAnzeige: Color,
+    val gewaehlt: Color, val ungewaehlt: Color,
+)
+
+/**
+ * Die Anzeige des gewählten Ziels in voller Hauptfarbe: Material färbt sie mit
+ * secondaryContainer, das sich von der Leiste kaum abhob (1,03:1). So trägt die
+ * Fläche den Unterschied, nicht der Farbton des Symbols allein (WCAG 1.4.11).
+ */
+fun reiterFarben(s: ColorScheme) = ReiterFarben(
+    leiste = s.surfaceContainer, anzeige = s.primary, aufAnzeige = s.onPrimary,
+    gewaehlt = s.primary, ungewaehlt = s.onSurfaceVariant,
+)
 
 /**
  * Grundton der Ladekacheln (Skelett.kt), gemessen am Hintergrund statt an surface:
@@ -418,24 +436,50 @@ fun skelettTon(s: ColorScheme, anteil: Float = 0.12f): Color = lerp(s.background
  */
 internal fun ergaenzeRollen(s: ColorScheme, dunkel: Boolean): ColorScheme {
     fun stufe(anteil: Float) = lerp(s.surface, s.onSurface, anteil)
+    // Dialoge und Menüs liegen auf den Containerstufen und tragen Text in primary,
+    // error und onSurfaceVariant; die Stufen werden gestaucht, bis alle 4,5:1 halten.
+    val schrift = listOf(s.primary, s.error, s.onSurfaceVariant)
+    var mass = 1f
+    while (mass > 0.3f && schrift.any { kontrast(it, stufe(STUFE_HOECHSTE * mass)) < TEXT_KONTRAST }) mass -= 0.05f
+    fun container(anteil: Float) = stufe(anteil * mass)
     return s.copy(
         onBackground = s.onSurface,
         surfaceTint = s.primary,
         surfaceContainerLowest = if (dunkel) s.background else s.surface,
-        surfaceContainerLow = stufe(0.025f),
-        surfaceContainer = stufe(0.05f),
-        surfaceContainerHigh = stufe(0.075f),
-        surfaceContainerHighest = stufe(0.10f),
+        surfaceContainerLow = container(0.025f),
+        surfaceContainer = container(0.05f),
+        surfaceContainerHigh = container(0.075f),
+        surfaceContainerHighest = container(STUFE_HOECHSTE),
         surfaceDim = if (dunkel) s.background else stufe(0.08f),
         surfaceBright = if (dunkel) stufe(0.12f) else s.surface,
         inverseSurface = s.onSurface,
         inverseOnSurface = s.surface,
-        inversePrimary = lerp(s.primary, if (dunkel) Color.Black else Color.White, 0.45f),
+        // Die Snackbar-Aktion: so weit aufgehellt bzw. abgedunkelt, bis sie 4,5:1 erreicht.
+        inversePrimary = mitKontrast(lerp(s.primary, if (dunkel) Color.Black else Color.White, 0.45f), s.onSurface),
         // Material setzt im Dunkeln #690005, auf den hellen Fehlertönen nur 4,48:1.
         onError = if (dunkel) s.background else Color.White,
         errorContainer = lerp(s.error, s.surface, 0.85f),
         onErrorContainer = lerp(s.error, s.onSurface, 0.5f),
     )
+}
+
+private const val STUFE_HOECHSTE = 0.10f
+private const val TEXT_KONTRAST = 4.5f
+private const val GRAFIK_KONTRAST = 3f
+
+/** Kontrastverhältnis nach WCAG 2 (1 bis 21). */
+fun kontrast(a: Color, b: Color): Float {
+    val la = a.luminance(); val lb = b.luminance()
+    return (maxOf(la, lb) + 0.05f) / (minOf(la, lb) + 0.05f)
+}
+
+/** [farbe], schrittweise von [gegen] weg gemischt, bis sie [ziel]:1 erreicht. */
+fun mitKontrast(farbe: Color, gegen: Color, ziel: Float = TEXT_KONTRAST): Color {
+    val weg = if (gegen.luminance() > 0.5f) Color.Black else Color.White
+    var anteil = 0f
+    var c = farbe
+    while (kontrast(c, gegen) < ziel && anteil < 1f) { anteil += 0.05f; c = lerp(farbe, weg, anteil) }
+    return c
 }
 
 /**
@@ -458,7 +502,8 @@ internal fun diagrammFarben(theme: String, dunkel: Boolean, s: ColorScheme): Cha
         // Fächer und Noppe färben Themen bzw. Kacheln, NICHT Zustände: Neu bleibt
         // blau, Gebraucht bernstein/orange, damit sich die Farbsysteme nicht verwechseln.
         "farbfaecher" -> ChartColors(ChartNewFarbfaecher, ChartUsedFarbfaecher, gedaempft = gedaempft)
-        "noppe", "hochglanz" -> ChartColors(ChartNewNoppe, ChartUsedNoppe,
+        // Das Orange des Webs (#FF7A00) erreicht auf Weiss nur 2,6:1; als Linie braucht es 3:1.
+        "noppe", "hochglanz" -> ChartColors(ChartNewNoppe, mitKontrast(ChartUsedNoppe, s.surface, GRAFIK_KONTRAST),
             raster = Color(0xFFE4E8EF), gedaempft = gedaempft)
         else -> ChartColors(ChartNewClassic, ChartUsedClassic, gedaempft = gedaempft)
     }
