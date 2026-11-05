@@ -86,8 +86,8 @@ fun PartsListRoute(
     }
     // Das fertige PDF einmal zur Auswahl anbieten; ein Activity-Start gehört nicht ins ViewModel.
     LaunchedEffect(zustand.pdfDatei) {
-        zustand.pdfDatei?.let { datei ->
-            ctx.startActivity(ch.brickinventoryapp.service.teilelistenAuswahl(ctx, datei, oeffnenMit))
+        if (zustand.pdfDatei != null) {
+            ctx.startActivity(ch.brickinventoryapp.service.teilelistenAuswahl(ctx, oeffnenMit))
             vm.pdfGeoeffnet()
         }
     }

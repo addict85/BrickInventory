@@ -1,16 +1,21 @@
-Gegenprobe: der FileProvider gibt wieder den externen App-Bereich frei (Stand vor sec12 H11)
+Gegenprobe: der FileProvider steht wieder im Manifest (er gibt nur Klartext-Dateien weiter, sec16 N4)
 Modul: app
 Test: ch.brickinventoryapp.ServicePolishTest
-Rot: FileProvider teilt nur das pdf-Unterverzeichnis
+Rot: die Teileliste geht nur ueber den eigenen Provider
 
-diff --git a/Android-App/app/src/main/res/xml/file_paths.xml b/Android-App/app/src/main/res/xml/file_paths.xml
-index ac6ddbf..4585f45 100644
---- a/Android-App/app/src/main/res/xml/file_paths.xml
-+++ b/Android-App/app/src/main/res/xml/file_paths.xml
-@@ -6,5 +6,6 @@
-   minSdk 30 niemand mehr. Das Update geht über eine PackageInstaller-Sitzung.
- -->
- <paths>
-+    <external-files-path name="pdf_external" path="pdf/" />
-     <files-path name="pdf_internal" path="pdf/" />
- </paths>
+diff --git a/Android-App/app/src/main/AndroidManifest.xml b/Android-App/app/src/main/AndroidManifest.xml
+index 81e0050..acda3dd 100644
+--- a/Android-App/app/src/main/AndroidManifest.xml
++++ b/Android-App/app/src/main/AndroidManifest.xml
+@@ -256,6 +256,11 @@
+             android:authorities="${applicationId}.teileliste"
+             android:exported="false"
+             android:grantUriPermissions="true" />
++        <provider
++            android:name="androidx.core.content.FileProvider"
++            android:authorities="${applicationId}.provider"
++            android:exported="false"
++            android:grantUriPermissions="true" />
+     </application>
+ 
+ </manifest>

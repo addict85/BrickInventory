@@ -279,9 +279,8 @@ class SelbstUpdateTest {
             "Ohne die Berechtigung kann die App den Installer nicht oeffnen"
         }
         // Das APK geht per PackageInstaller-Sitzung ans System; eine Freigabe über
-        // den FileProvider gäbe es jeder App, die eine URI zugespielt bekommt.
-        val pfade = java.io.File(Quellen.res, "xml/file_paths.xml").readText()
-        assert(!pfade.contains("path=\"update")) { "Das Update-Verzeichnis ist über den FileProvider freigegeben" }
+        // einen FileProvider gäbe es jeder App, die eine URI zugespielt bekommt.
+        assert(!manifest.contains("FileProvider")) { "Ein FileProvider könnte das Update-Verzeichnis freigeben" }
     }
 
     @Test
