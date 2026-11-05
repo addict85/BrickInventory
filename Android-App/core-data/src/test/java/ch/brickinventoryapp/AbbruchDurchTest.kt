@@ -4,6 +4,7 @@ import ch.brickinventoryapp.data.CsvImportSseClient
 import ch.brickinventoryapp.data.cache.ResponseCache
 import ch.brickinventoryapp.data.model.CsvImportStatus
 import ch.brickinventoryapp.service.folgeStrom
+import ch.brickinventoryapp.util.fangeAusserAbbruch
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOf
@@ -23,21 +24,24 @@ import java.io.IOException
 
 /**
  * Antwort-Cache und CSV-Strom schlucken Fehler, das Abbrechen aber nicht: Ein
- * abgebrochener Aufrufer liefe sonst weiter, als wäre nichts geschehen.
+ * abgebrochener Aufrufer liefe sonst weiter, als wäre nichts geschehen. Der Cache
+ * fängt über fangeAusserAbbruch; kotlinx-serialization verpackt Ausnahmen aus einem
+ * Serializer, deshalb wird die Hilfe selbst geprüft und am Cache nur das Schlucken.
  *
- * Gegenproben (05.11.2026, gemessen mit kotlinc lokal):
- *   cache-schluckt-abbruch  `put` wieder mit `catch (_: Throwable)` → rot „put reicht …“
- *   strom-schluckt-abbruch  folgeStrom mit `catch (_: Exception)`   → rot „folgeStrom reicht …“
+ * Gegenproben (05.11.2026):
+ *   fang-schluckt-abbruch   fangeAusserAbbruch ohne Abbruch-Zweig → rot „fangeAusserAbbruch reicht …“
+ *   strom-schluckt-abbruch  folgeStrom mit `catch (_: Exception)`  → rot „folgeStrom reicht …“
+ *   cache-schluckt-abbruch  put mit `catch (_: Throwable)` → rot in QuelltextRatscheTest
  */
 class AbbruchDurchTest {
 
     @get:Rule val ordner = TemporaryFolder()
 
-    /** Bricht beim Schreiben und Lesen ab, wie ein `withTimeout` im Inneren. */
-    private object Abbrechend : KSerializer<String> {
+    /** Scheitert beim Schreiben und Lesen wie ein geändertes Modell. */
+    private object Kaputt : KSerializer<String> {
         override val descriptor: SerialDescriptor = String.serializer().descriptor
-        override fun serialize(encoder: Encoder, value: String) = throw CancellationException("weg")
-        override fun deserialize(decoder: Decoder): String = throw CancellationException("weg")
+        override fun serialize(encoder: Encoder, value: String) = throw IllegalStateException("kaputt")
+        override fun deserialize(decoder: Decoder): String = throw IllegalStateException("kaputt")
     }
 
     private fun cache() = ResponseCache(bereichQuelle = { "konto" }) { ordner.root }
@@ -46,18 +50,22 @@ class AbbruchDurchTest {
         try { block(); false } catch (_: CancellationException) { true }
 
     @Test
-    fun `put reicht das Abbrechen weiter, ein Schreibfehler bleibt still`() = runTest {
-        val c = cache()
-        assertTrue("put hat das Abbrechen verschluckt", brichtAb { c.put("konto", "sets", Abbrechend, "x") })
-        c.put("konto", "sets", String.serializer(), "Falcon")
-        assertEquals("Falcon", c.getMitStand("konto", "sets", String.serializer())?.first)
+    fun `fangeAusserAbbruch reicht das Abbrechen weiter und fängt nur Exceptions`() = runTest {
+        assertTrue("fangeAusserAbbruch hat das Abbrechen verschluckt",
+            brichtAb { fangeAusserAbbruch { throw CancellationException("weg") } })
+        assertTrue(fangeAusserAbbruch { throw IOException("weg") }.isFailure)
+        assertEquals(3, fangeAusserAbbruch { 3 }.getOrNull())
+        assertTrue("ein Error darf nicht gefangen werden",
+            runCatching { fangeAusserAbbruch { throw AssertionError("error") } }.exceptionOrNull() is AssertionError)
     }
 
     @Test
-    fun `getMitStand reicht das Abbrechen weiter, ein Lesefehler wird null`() = runTest {
+    fun `ein Schreibfehler im Cache bleibt still, ein Lesefehler wird null`() = runTest {
         val c = cache()
+        c.put("konto", "sets", Kaputt, "x")
         c.put("konto", "sets", String.serializer(), "Falcon")
-        assertTrue("getMitStand hat das Abbrechen verschluckt", brichtAb { c.getMitStand("konto", "sets", Abbrechend) })
+        assertEquals("Falcon", c.getMitStand("konto", "sets", String.serializer())?.first)
+        assertEquals(null, c.getMitStand("konto", "sets", Kaputt))
         assertEquals(null, c.getMitStand("konto", "sets", Int.serializer()))
     }
 

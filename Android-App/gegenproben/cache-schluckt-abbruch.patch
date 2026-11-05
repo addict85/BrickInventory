@@ -1,7 +1,7 @@
 Gegenprobe: ResponseCache.put fängt wieder Throwable und schluckt so das Abbrechen
-Modul: core-data
-Test: ch.brickinventoryapp.AbbruchDurchTest
-Rot: put reicht das Abbrechen weiter
+Modul: app
+Test: ch.brickinventoryapp.QuelltextRatscheTest
+Rot: kein breiter Fang verschluckt das Abbrechen
 
 diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/cache/ResponseCache.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/cache/ResponseCache.kt
 index 14b6b9e..eab87e5 100644

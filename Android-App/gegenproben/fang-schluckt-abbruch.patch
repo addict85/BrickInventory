@@ -1,0 +1,18 @@
+Gegenprobe: fangeAusserAbbruch fängt das Abbrechen wieder mit
+Modul: core-data
+Test: ch.brickinventoryapp.AbbruchDurchTest
+Rot: fangeAusserAbbruch reicht das Abbrechen weiter
+
+diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/util/Abbruch.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/util/Abbruch.kt
+index 6a0a594..edfd88b 100644
+--- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/util/Abbruch.kt
++++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/util/Abbruch.kt
+@@ -11,8 +11,6 @@ import kotlin.coroutines.cancellation.CancellationException
+ inline fun <T> fangeAusserAbbruch(block: () -> T): kotlin.Result<T> =
+     try {
+         kotlin.Result.success(block())
+-    } catch (abbruch: CancellationException) {
+-        throw abbruch
+     } catch (e: Exception) {
+         kotlin.Result.failure(e)
+     }
