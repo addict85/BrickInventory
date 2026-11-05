@@ -2,7 +2,7 @@
 // manuelle Tabellen und CSV-Status.
 import { abonniere } from './00-ereignisse.js';
 import { echt, registerActions } from './00-registry.js';
-import { listeLadefehler, condBadges, ownerBadges, schliesseErfassen, csvHochladen } from './01-bausteine.js';
+import { listeLadefehler, condBadges, ownerBadges, schliesseErfassen, csvHochladen, zeilenKnopf } from './01-bausteine.js';
 import { colorName, t, tRaw } from '../i18n.js';
 import { escHex, esc, html, ungeprueft } from './00-escapen.js';
 import { api } from './01-api.js';
@@ -163,6 +163,7 @@ function appendFigs(batch) {
 export function renderFigs(list, target) {
   const el = target || G('figs-list');
   if (!target) _setFigurenLeer = !list.length;
+  if (!target && list.length && G('fig-search')?.value.trim()) meldeTreffer(tRaw('treffer.eintraege', { n: list.length }));
   if (!list.length) {
     if (target) el.replaceChildren();
     else figurenLeerAbgleichen();
@@ -176,7 +177,7 @@ export function renderFigs(list, target) {
     // Ohne „Quelle“ und Papierkorb: Diese Liste lädt nur source=set, beide Spalten wären in jeder Zeile
     // gleich bzw. leer. Manuelle Figuren haben ihren eigenen Bereich mit editierbaren Karten.
     // Ausführlich: docs/begruendungen/public/js/06-minifigs.js.md#ohne-die-spalten-quelle-und-papierkorb
-    setzeHtml(el, html`<div class="tw"><table class="dt">
+    setzeHtml(el, html`<div class="tw"><table class="dt" aria-label="${tRaw('nav.minifigs')}">
       <thead><tr>
         <th>${tRaw('col.image')}</th><th>${tRaw('col.number')}</th><th>${tRaw('col.name')}</th><th>${tRaw('detail.qty')}</th><th>${tRaw('detail.created')}</th>
       </tr></thead>
@@ -186,9 +187,11 @@ export function renderFigs(list, target) {
         const erfasst = dateVal ? fmtDatum(dateVal) : '—';
         // Anklickbar wie die Kachel darunter — dieselbe Handlung in beiden Ansichten (Marcos Detail-Dialog
         // fuer automatisch erfasste Figuren).
-        return html`<tr data-stil="cursor:pointer" tabindex="0" data-click="${f.source==='manual' ? 'openManDetail' : 'openSetItemDetail'}" data-arg="fig" data-arg2="${f.fig_number}" data-arg3="0">
+        return html`<tr data-stil="cursor:pointer" data-click="${f.source==='manual' ? 'openManDetail' : 'openSetItemDetail'}" data-arg="fig" data-arg2="${f.fig_number}" data-arg3="0">
           <td>${imgSrc ? bildTag({ src: imgSrc, alt: '', klasse: 'bild-klein', ph: 'figur' }) : html`<span class="bild-ph bild-klein" aria-hidden="true">${platzhalterInhalt('figur')}</span>`}</td>
-          <td><span data-stil="font-family:var(--mono);font-size:var(--fs-1);color:var(--b600)">${f.fig_number}</span></td>
+          <td>${zeilenKnopf({ click: f.source==='manual' ? 'openManDetail' : 'openSetItemDetail', arg: 'fig', arg2: f.fig_number, arg3: 0 },
+            html`<span data-stil="font-family:var(--mono);font-size:var(--fs-1);color:var(--b600)">${f.fig_number}</span>`,
+            tRaw('zeile.oeffnen', { name: f.fig_name || f.fig_number, nr: f.fig_number }))}</td>
           <td data-stil="max-width:200px">${f.fig_name || '—'}</td>
           <td><span data-stil="font-family:var(--mono);font-weight:600;color:var(--b700)">${f.total_quantity || f.quantity}</span></td>
           <td data-stil="font-size:var(--fs-1);color:var(--mut)">${ungeprueft(erfasst)}</td>
@@ -201,7 +204,7 @@ export function renderFigs(list, target) {
   /** @type {Record<string, (Figur | ManuelleFigur)[]>} */
   const groups = {};
   for (const f of list) {
-    const key = f.source === 'manual' ? t('figs.group_manual') : t('figs.group_sets');
+    const key = f.source === 'manual' ? tRaw('figs.group_manual') : tRaw('figs.group_sets');
     if (!groups[key]) groups[key] = [];
     groups[key].push(f);
   }
@@ -219,7 +222,7 @@ export function renderFigs(list, target) {
           // Papierkorb oben rechts, wie auf der Set-Kachel: .ca setzt top:6px;right:6px und blendet ihn beim
           // Ueberfahren ein (styles.css). Marcos Vorgabe vom 24.09., zweiter Teil: „analog den Kacheln bei
           // den Sets. Dies aber nur in der webapp."
-          const delBtn = f.source==='manual' ? `<div class="ca"><span class="delbtn" data-click="deleteManualFigStop"${echt()} aria-hidden="true" data-arg="${esc(f.fig_number)}" data-arg2="${f.user_id||''}" title="${esc(t('figs.delete'))}">${TRASH_ICON_SVG}</span></div>` : '';
+          const delBtn = f.source==='manual' ? `<div class="ca"><span class="delbtn" data-click="deleteManualFigStop"${echt()} aria-hidden="true" data-arg="${esc(f.fig_number)}" data-arg2="${f.user_id||''}" title="${esc(tRaw('figs.delete'))}">${TRASH_ICON_SVG}</span></div>` : '';
           // Zustand nur bei manuell erfassten Figuren — aus Sets haben sie keinen eigenen. Die
           // Besitzer-Plakette dagegen immer: „Wem gehört das?“ stellt sich bei der Figur aus dem Set eines
           // Kindes genauso.
@@ -242,7 +245,7 @@ export function renderFigs(list, target) {
             <div class="part-qty">×${f.total_quantity || f.quantity}</div>
             ${ungeprueft(condBadge)}
             ${ungeprueft(besitzer)}
-            ${erfasst ? html`<div data-stil="font-size:var(--fs-0);color:var(--mut)">${ungeprueft(erfasst)}</div>` : ''}
+            ${erfasst ? html`<div data-stil="font-size:var(--fs-0);color:var(--mut)">${tRaw('gallery.card.bought')} ${erfasst}</div>` : ''}
           </div>`;
         })}
       </div>
@@ -251,7 +254,7 @@ export function renderFigs(list, target) {
 
 /** @param {string} figNumber @param {number|string} [owner] siehe deleteManualPart */
 export async function deleteManualFig(figNumber, owner) {
-  if (!await confirmDelete(tRaw('figs.delete.title'), t('gallery.delete.text',{name:figNumber}), 'figur')) return false;
+  if (!await confirmDelete(tRaw('figs.delete.title'), tRaw('gallery.delete.text',{name:figNumber}), 'figur')) return false;
   const d = await api('DELETE', `/v1/minifigs/${encodeURIComponent(figNumber)}${owner ? `?owner=${encodeURIComponent(owner)}` : ''}`);
   if (d.success) { geloeschtMitRueckgaengig(tRaw('figs.deleted'), d); loadMinifigs(); loadManualFigsTable(); return true; }
   else { toast(d.error || t('settings.error'), 'error'); return false; }
@@ -370,6 +373,7 @@ G('btn-add-fig')?.addEventListener('click', async () => {
     quantity:   parseInt(G('af-qty-inline')?.value)||1,
     unit_price: preis.wert,
     condition: G('af-condition')?.value || 'N',
+    acquired_at: G('af-date')?.value || null,
     owner_user_id: selectedOwner('af-owner'),
     storage: selectedStorage('af-storage'),
   });
@@ -381,13 +385,13 @@ G('btn-add-fig')?.addEventListener('click', async () => {
       + (hinweisF ? ` — ${hinweisF}` : '');
     // Der Dialog schliesst; das Ergebnis samt Preishinweis kommt als Meldung.
     schliesseErfassen('fig'); toast(res.textContent.replace(/^\u2705\s*/, ''), 'success');
-    G('af-num-inline').value=''; G('af-blnum-inline').value=''; G('af-qty-inline').value='1'; G('af-price-inline').value='';
+    G('af-num-inline').value=''; G('af-blnum-inline').value=''; G('af-qty-inline').value='1'; G('af-price-inline').value=''; G('af-date').value='';
     leereLagerortFeld('af-storage');
     loadMinifigs();
     // Mit Hinweis laenger stehen lassen: Drei Sekunden reichen fuer ein Haekchen, nicht fuer einen Satz, den
     // man lesen soll.
     setTimeout(()=>{ res.textContent=''; }, hinweisF ? 9000 : 3000);
-  } else { res.style.color='var(--r500)'; res.textContent=d.error||t('settings.error'); }
+  } else { res.style.color='var(--r500)'; res.textContent=d.error||tRaw('settings.error'); }
 });
 
 // Persistente Status-/Hinweiszeile für den CSV-Import (Teile & Minifiguren)
@@ -413,7 +417,7 @@ export function csvImportStatus(elId, state, msg) {
 
 async function importFigsCsv() {
   const d = await csvHochladen({ feld: 'fig-csv-file', pfad: '/v1/minifigs/import/csv',
-    zeige: (l) => csvImportStatus('fig-csv-status', l ? 'running' : 'hide', t('import.running')) });
+    zeige: (l) => csvImportStatus('fig-csv-status', l ? 'running' : 'hide', tRaw('import.running')) });
   if (d) loadMinifigs();
 }
 
@@ -480,9 +484,11 @@ export function manuelleTabelle(posten, art) {
     const loeschArgs = istTeil
       ? `data-arg="${esc(nummer)}" data-arg2="${p.color_id || 0}" data-arg3="${p.user_id || ''}"`
       : `data-arg="${esc(nummer)}" data-arg2="${p.user_id || ''}"`;
-    return html`<tr data-stil="cursor:pointer" tabindex="0" data-click="openManDetail" data-arg="${art}" data-arg2="${nummer}" data-arg3="${istTeil ? p.color_id || 0 : 0}">
+    return html`<tr data-stil="cursor:pointer" data-click="openManDetail" data-arg="${art}" data-arg2="${nummer}" data-arg3="${istTeil ? p.color_id || 0 : 0}">
       <td>${imgSrc ? bildTag({ src: imgSrc, alt: '', klasse: 'bild-klein', ph: istTeil ? 'teil' : 'figur' }) : html`<span class="bild-ph bild-klein" aria-hidden="true">${platzhalterInhalt(istTeil ? 'teil' : 'figur')}</span>`}</td>
-      <td><span data-stil="font-family:var(--mono);font-size:var(--fs-1);color:var(--b600)" title="${nummer}">${blNummer}</span></td>
+      <td>${zeilenKnopf({ click: 'openManDetail', arg: art, arg2: String(nummer), arg3: istTeil ? Number(p.color_id) || 0 : 0 },
+        html`<span data-stil="font-family:var(--mono);font-size:var(--fs-1);color:var(--b600)" title="${nummer}">${blNummer}</span>`,
+        tRaw('zeile.oeffnen', { name: name || nummer, nr: blNummer }))}</td>
       <td data-stil="max-width:200px">${name || '—'}</td>
       ${istTeil ? html`<td><div data-stil="display:flex;align-items:center;gap:5px">${p.color_hex ? html`<div class="color-dot" data-farbe="${escHex(p.color_hex, 'var(--s300)')}"></div>` : ''}${colorName(/** @type {string | null | undefined} */ (p.color_name))}</div></td>` : ''}
       <td><span data-stil="font-family:var(--mono);font-weight:600;color:var(--b700)">${p.quantity || 0}</span></td>
@@ -492,7 +498,7 @@ export function manuelleTabelle(posten, art) {
       <td><button class="delbtn" data-click="${loeschKlick}"${echt()} ${ungeprueft(loeschArgs)} title="${loeschTitel}" aria-label="${loeschTitel}">${TRASH_ICON_SVG}</button>${ownerBadges(p)}</td>
     </tr>`;
   };
-  return html`<div class="tw"><table class="dt" data-stil="font-size:var(--fs-2)"><thead><tr>${kopf.map(h => html`<th>${ungeprueft(h)}</th>`)}</tr></thead><tbody>${ungeprueft(posten.map(zeile).join(''))}</tbody></table></div>`;
+  return html`<div class="tw"><table class="dt" aria-label="${tRaw(istTeil ? 'parts.manual_section' : 'finance.figs_section')}" data-stil="font-size:var(--fs-2)"><thead><tr>${kopf.map(h => html`<th>${ungeprueft(h)}</th>`)}</tr></thead><tbody>${ungeprueft(posten.map(zeile).join(''))}</tbody></table></div>`;
 }
 
 /**

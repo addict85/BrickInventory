@@ -79,7 +79,7 @@ async function zugMessen(entprellt) {
     window.G = id => document.getElementById(id);
     window.alle = (s, w = document) => [...w.querySelectorAll(s)]; window.eins = (s, w = document) => w.querySelector(s);
     window.t = k => k; window.tRaw = k => k;
-    window.locale = () => 'de-CH'; window.toast = () => {};
+    window.locale = () => 'de-CH'; window.toast = () => {}; window.meldeTreffer = () => {};
     window.PARTS_ICON_SVG = ''; window.setScrollLabel = () => {};
     window.imgUrl = s => s;
     window.bildTag = o => '<img src="' + o.src + '" alt="">'; window.platzhalterInhalt = () => '';

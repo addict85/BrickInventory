@@ -1,11 +1,11 @@
 // Die Sammlung: Kennzahlen, Galerie (Kacheln und Liste), Set erfassen, Set-CSV-Import und Löschen. Neu
 // geladen wird sie auch, wenn ein tieferes Modul 'setsGeaendert' oder 'bestandGeaendert' meldet.
 import { abonniere } from './00-ereignisse.js';
-import { skelettKacheln, listeLadefehler, condBadges, ownerBadges, pnlBadge, schliesseErfassen, teileAufschluesselung } from './01-bausteine.js';
+import { skelettKacheln, listeLadefehler, condBadges, ownerBadges, pnlBadge, schliesseErfassen, teileAufschluesselung, geschaetztKauf, zeilenKnopf } from './01-bausteine.js';
 import { echt, registerActions } from './00-registry.js';
 import { LANG, locale, t, tRaw} from '../i18n.js';
-import { esc, html, ungeprueft } from './00-escapen.js';
-import { fehlerMeldung, api } from './01-api.js';
+import { html, ungeprueft } from './00-escapen.js';
+import { fehlerMeldung, api, apiDaten } from './01-api.js';
 import { bildTag, fullUrl, platzhalterInhalt, imgUrl, observeLazyImages, thumbUrl } from './01-bilder.js';
 import { leerZustand, meldeTreffer, ico, G, TRASH_ICON_SVG, zuruecksetzenKnopf, aktiverReiter, alle, fuegeHtmlEin, setzeHtml } from './01-dom.js';
 import { fmtDatum, fmtBig, fmtGeld, fmtN, fmtPct, istGeschenk } from './01-format.js';
@@ -37,7 +37,17 @@ function faecherTon(s) {
 }
 
 // ── STATS ─────────────────────────────────────────────
+/** Mit „Alle Konten“ im Haushalt zählt die Seite fremde Sets mit; „Meine Sammlung“ stimmte dann nicht. */
+function sammlungTitel() {
+  const titel = G('gallery-titel'), wahl = G('scope-gallery');
+  if (!titel) return;
+  const schluessel = wahl && wahl.style.display !== 'none' && wahl.value === 'all' ? 'gallery.title_haushalt' : 'gallery.title';
+  titel.setAttribute('data-i18n', schluessel);
+  titel.textContent = tRaw(schluessel);
+}
+
 export async function loadStats(){
+  sammlungTitel();
   // Kennzahlen mit demselben Kontofilter wie die Liste: Sonst stand über „nur meine“ weiter die Summe des
   // ganzen Haushalts.
   // Ausführlich: docs/begruendungen/public/js/02-gallery.js.md#kennzahlen-mit-demselben-kontofilter-wie
@@ -48,7 +58,7 @@ export async function loadStats(){
     const stueck = d.stats.total_quantity || d.stats.total_sets;
     G('bstat-sets').textContent     = fmtBig(stueck);
     const verschieden = G('bstat-sets').parentElement?.querySelector('.bstat-s');
-    if (verschieden) verschieden.textContent = stueck !== d.stats.total_sets ? tRaw('gallery.stat.verschieden', { n: d.stats.total_sets }) : '';
+    if (verschieden) verschieden.textContent = stueck !== d.stats.total_sets ? tRaw('gallery.stat.verschieden', { n: fmtBig(d.stats.total_sets) }) : '';
     G('bstat-parts').textContent    = fmtBig(d.stats.total_parts    || 0);
     // 0 Teile trotz Sets heisst: Die Teilelisten fehlen noch. Ohne den Satz sähe es nach einem Fehler aus.
     const ohneListen = !d.stats.total_parts && d.stats.total_sets > 0;
@@ -200,7 +210,7 @@ export async function loadGallery(opts = {}){
   // dann wird einmal neu gezeichnet.
   const gal = G('gallery');
   if (!allSets.length || !gal.querySelector('.sgrid, .tw, .empty')) {
-    setzeHtml(gal, skelettKacheln(8, t('gallery.loading')));
+    setzeHtml(gal, skelettKacheln(8, tRaw('gallery.loading')));
   }
   _galGen++; _galPage = 1; _galDone = false; _galLoadingMore = false;
   const gen = _galGen;
@@ -257,7 +267,7 @@ export function renderGallery(){
     setzeHtml(c, html`<div class="sgrid">${list.map(gridCard)}</div>`);
     observeLazyImages(c);
   } else {
-    setzeHtml(c, html`<div class="tw"><table class="dt"><thead><tr><th>${tRaw('col.image_th')}</th><th>${tRaw('col.nr')}</th><th>${tRaw('col.name')}</th><th>${tRaw('detail.year')}</th><th>${tRaw('detail.theme')}</th><th>${tRaw('detail.pieces')}</th><th>${tRaw('detail.minifigs')}</th><th>${tRaw('detail.qty')}</th><th>${tRaw('detail.created')}</th><th>${tRaw('detail.instructions')}</th><th><span class="vh">${tRaw('detail.reimport_parts')}</span></th><th><span class="vh">${tRaw('detail.delete')}</span></th></tr></thead><tbody>${list.map(tableRow)}</tbody></table></div>`);
+    setzeHtml(c, html`<div class="tw"><table class="dt" aria-label="${tRaw('nav.collection')}"><thead><tr><th>${tRaw('col.image_th')}</th><th>${tRaw('col.nr')}</th><th>${tRaw('col.name')}</th><th>${tRaw('detail.year')}</th><th>${tRaw('detail.theme')}</th><th>${tRaw('detail.pieces')}</th><th>${tRaw('detail.minifigs')}</th><th>${tRaw('detail.qty')}</th><th>${tRaw('detail.created')}</th><th>${tRaw('detail.instructions')}</th><th><span class="vh">${tRaw('detail.reimport_parts')}</span></th><th><span class="vh">${tRaw('detail.delete')}</span></th></tr></thead><tbody>${list.map(tableRow)}</tbody></table></div>`);
     observeLazyImages(c);   // fehlte für die Listenansicht komplett
   }
 }
@@ -287,7 +297,8 @@ function preisZeile(s){
   const kauf = s.avg_purchase_price ?? s.max_purchase_price;
   // Der Server sagt, woher kachel_preis stammt: Ohne Marktpreis ist es der Kaufpreis.
   const markt = !!s._price && (s._quelle ? s._quelle === 'markt' : true);
-  const betrag = markt ? fmtN(s._price, CURRENCY) : (kauf != null ? fmtGeld(kauf, CURRENCY) : (s._price ? fmtGeld(s._price, CURRENCY) : ''));
+  const kaufBetrag = kauf != null ? fmtGeld(kauf, CURRENCY) : (s._price ? fmtGeld(s._price, CURRENCY) : '');
+  const betrag = markt ? fmtN(s._price, CURRENCY) : (s.kaufpreis_geschaetzt && kaufBetrag ? String(geschaetztKauf(kaufBetrag)) : kaufBetrag);
   // Ein Geschenk steht als Plakette beim Zustand: Im Preiskasten las es sich als Eigenschaft des Marktpreises.
   const pnl = istGeschenk(kauf) ? '' : pnlBadge(s._pnl_pct, kauf);
   if (!betrag && !pnl) return '';
@@ -343,9 +354,9 @@ function gridCard(s){
 function tableRow(s){
   const src=s.image_local||s.image_url||'';
   const addedFmt = s.added_at ? fmtDatum(s.added_at) : '—';
-  return html`<tr data-stil="cursor:pointer" tabindex="0" data-click="openModal" data-arg="${s.set_number}">
+  return html`<tr data-stil="cursor:pointer" data-click="openModal" data-arg="${s.set_number}">
     <td>${src ? bildTag({ src: imgUrl(thumbUrl(src)||src, true), alt: '', ph: 'set' }) : html`<span class="bild-ph" aria-hidden="true">${platzhalterInhalt('set')}</span>`}</td>
-    <td><span data-stil="font-family:var(--mono);color:var(--b600);font-size:var(--fs-1)">${s.set_number}</span></td>
+    <td>${zeilenKnopf({ click: 'openModal', arg: s.set_number }, html`<span data-stil="font-family:var(--mono);color:var(--b600);font-size:var(--fs-1);white-space:nowrap">${s.set_number}</span>`, tRaw('zeile.oeffnen', { name: s.name || s.set_number, nr: s.set_number }))}</td>
     <td>${s.name || '—'}</td><td>${s.year || '—'}</td><td>${s.theme || '—'}</td>
     <td>${s.pieces ? s.pieces.toLocaleString(locale()) : '—'}</td><td>${s.minifigs || '—'}</td>
     <td><span class="qbadge">×${s.quantity}</span></td>
@@ -367,6 +378,7 @@ G('add-num').addEventListener('keydown',e=>e.key==='Enter'&&doAddSet());
 function unbekanntZuruecksetzen() {
   const box = G('add-unbekannt'); if (box) box.hidden = true;
   delete G('add-num').dataset.bestaetigt;
+  delete G('add-num').dataset.vorhanden;
   G('btn-add-text').textContent = tRaw('gallery.add.submit');
 }
 
@@ -382,8 +394,9 @@ async function setUnbekannt(num) {
   const eigen = await api('GET', `/v1/sets/${encodeURIComponent(nr)}`);
   if (eigen?.success && eigen.set) {
     G('add-num').dataset.bestaetigt = nr;
-    setzeHtml(box, html`${tRaw('gallery.add.schon_da', { num: nr, name: eigen.set.name || nr, n: eigen.set.quantity || 1 })}
-      <button type="button" class="btn bs btn-sm" data-click="erfassenZumSet" data-arg="${nr}">${ico('set')}${tRaw('gallery.add.zum_set')}</button>`);
+    G('add-num').dataset.vorhanden = nr;
+    // Der Hauptknopf heisst jetzt „Set öffnen“; ein zweiter gleichen Namens im Hinweis war einer zu viel.
+    box.textContent = tRaw('gallery.add.schon_da', { num: nr, name: eigen.set.name || nr, n: eigen.set.quantity || 1 });
     box.hidden = false;
     G('btn-add-text').textContent = tRaw('gallery.add.zum_set');
     return true;
@@ -423,15 +436,20 @@ async function doAddSet(){
   const preis = betragAusFeld('add-price');
   const purchase_price = preis.wert;
   const condition = G('add-condition')?.value || 'N';
+  const currency = preis.wert != null ? (G('add-currency')?.value || null) : null;
+  const date = G('add-date')?.value || null;
   // Zielkonto nur mitschicken, wenn die Auswahl überhaupt sichtbar ist. Ohne Haushalt schickt die Webapp gar
   // nichts, und der Server bleibt beim eigenen Konto — dieselbe Antwort wie vor der Haushaltssicht.
   const owner_user_id = selectedOwner('add-owner');
   if(!setnummerFeldGueltig('add-num', num) || !preis.ok) return;
+  // Steht das Set schon da, heisst der Hauptknopf „Set öffnen“ und tut genau das, ohne Schreibversuch.
+  const vorhanden = G('add-num').dataset.vorhanden;
+  if (vorhanden && vorhanden === (/-\d+$/.test(num) ? num : num + '-1')) { erfassenZumSet(vorhanden); return; }
   if (await setUnbekannt(num)) return;
   unbekanntZuruecksetzen();
-  showProgress(t('gallery.adding_set',{num}), false);
+  showProgress(tRaw('gallery.adding_set',{num}), false);
   try{
-    await streamRequest('/v1/sets/add-stream', {set_number:num,quantity:qty,purchase_price,condition,owner_user_id,storage:selectedStorage('add-storage')}, (ev)=>{
+    await streamRequest('/v1/sets/add-stream', {set_number:num,quantity:qty,purchase_price,condition,owner_user_id,storage:selectedStorage('add-storage'),currency,date}, (ev)=>{
       handleSseEvent(ev, num);
       if(ev.step==='done' && ev.action==='exists'){
         // Set steht schon im Blickfeld — der Server hat NICHTS geschrieben (Marcos Festlegung,
@@ -448,10 +466,10 @@ async function doAddSet(){
         schliesseErfassen();
         setTimeout(()=>{
           hideProgress(); loadGallery(); loadStats();
-          G('add-num').value=''; if(G('add-price')) G('add-price').value='';
+          G('add-num').value=''; if(G('add-price')) G('add-price').value=''; if(G('add-date')) G('add-date').value='';
           leereLagerortFeld('add-storage');
           if (ev.katalog_offen) toast(tRaw('gallery.added_no_catalog', { num: ev.set_number }), 'info');
-          else toast(`Set ${esc(ev.set_number)} ${ev.action==='added'?t('common.added'):t('common.updated')}!`,'success');
+          else toast(`Set ${ev.set_number} ${ev.action==='added'?tRaw('common.added'):tRaw('common.updated')}!`,'success');
           // Hintergrundaufträge laufen noch: alle Reiter regelmässig auffrischen
           set_lastImportAt(Date.now());
           [3000, 8000, 15000, 25000].forEach(delay => setTimeout(()=>{
@@ -469,18 +487,26 @@ async function doAddSet(){
 
 // CSV import via SSE stream — Datei-Auswahl startet den Import direkt (analog Teile-Import)
 async function startSetCsvImport(){
-  const fi=G('csv-file'); if(!fi.files?.[0]){toast(tRaw('csv.select_file'),'error');return;}
-  showProgress(t('csv.import_title'), true);
-  const fd=new FormData(); fd.append('file',/** @type {File} */ (fi.files?.[0]));
+  const fi=G('csv-file'); const datei = fi.files?.[0]; if(!datei){toast(tRaw('csv.select_file'),'error');return;}
+  const formular = () => { const fd=new FormData(); fd.append('file', datei); return fd; };
+  // Erst lesen lassen, dann fragen: Der Import erhöht bei vorhandenen Sets die Menge, das Einzel-Erfassen
+  // lehnt dasselbe Set ab. Wer eine Datei zweimal wählt, soll das vorher erfahren.
+  const vorab = await api('POST', '/v1/sets/import/csv?pruefen=1', formular());
+  if(!vorab.success){ toast(vorab.error||tRaw('settings.error'),'error'); fi.value=''; return; }
+  if((vorab.vorhanden ?? 0) > 0 && !await confirmDelete(tRaw('csv.vorhanden_titel'),
+    tRaw('csv.vorhanden_text', { n: vorab.vorhanden ?? 0, nummern: (vorab.vorhanden_nummern || []).slice(0, 5).join(', ') }),
+    'import', { knopf: 'csv.vorhanden_knopf', art: 'bp' })){ fi.value=''; return; }
+  showProgress(tRaw('csv.import_title'), true);
   try{
     // Start import job (returns immediately)
-    const startData = await api('POST', '/v1/sets/import/csv', fd);
+    const startData = await api('POST', '/v1/sets/import/csv', formular());
     if(!startData.success){ hideProgress(); toast(startData.error||t('settings.error'),'error'); return; }
     const total = startData.total;
     // Übersprungene Zeilen nennen — der Import läuft trotzdem weiter, aber wer 500 Zeilen schickt und 498
     // importiert bekommt, soll es erfahren.
     if (startData.skipped_hint) toast(startData.skipped_hint, 'info');
     G('prog-footer').textContent=tRaw('csv.items_progress',{done:0,total});
+    G('prog-set-name').textContent=tRaw('csv.wartet');
 
     setzeCsvPollAktiv(true);
     gibStart(); // globalen Balken zeigen (dieses + andere Fenster)
@@ -536,8 +562,9 @@ function csvApplyOverlayStatus(s, ctx, fi){
     const done = s.done ?? 0;
     const pct = total>0 ? (done/total)*95 : 0;
     setProgBar(pct);
-    G('prog-footer').textContent=`${t('csv.items_progress',{done,total})} (${importZaehler(s)})`;
-    if(s.current) G('prog-set-name').textContent=tRaw('csv.verarbeite', { set: s.current, done, total });
+    G('prog-footer').textContent=`${tRaw('csv.items_progress',{done,total})} (${importZaehler(s)})`;
+    G('prog-set-name').textContent = s.current ? tRaw('csv.verarbeite', { set: s.current, done, total })
+      : done === 0 && s.status === 'running' ? tRaw('csv.wartet') : '';
     // Fortschrittsbalken im Kopf direkt nachführen
     { const _p=total>0?Math.round(done/total*100):0; const _b=G('global-import-bar'); if(_b){_b.style.display='flex';G('gib-fill').style.width=_p+'%';G('gib-text').textContent=done+'/'+total+' ('+fmtPct(_p,{vorzeichen:false,stellen:0})+')';} }
     // Show live results as they come in
@@ -546,7 +573,7 @@ function csvApplyOverlayStatus(s, ctx, fi){
       newResults.forEach(r => {
         // Derselbe Bauer wie in 01-fortschritt.js — die Begruendung steht dort.
         const z = protokollZeile(r);
-        if (z) addCsvLog(z.text, z.ok);
+        if (z) addCsvLog(z.text, z.art);
       });
       ctx.prevResultCount = s.results.length;
     }
@@ -564,8 +591,8 @@ function csvApplyOverlayStatus(s, ctx, fi){
           // Derselbe Zeilenbauer wie in 01-fortschritt.js. Ohne esc(), weil addCsvLog textContent setzt; der
           // Hinweis auf Zeitüberschreitung gilt nur hier.
           // Ausführlich: docs/begruendungen/public/js/02-gallery.js.md#derselbe-zeilenbauer-wie-in-01
-          const z = protokollZeile(r, t('csv.timeout_retry'));
-          if (z) addCsvLog(z.text, z.ok);
+          const z = protokollZeile(r, tRaw('csv.timeout_retry'));
+          if (z) addCsvLog(z.text, z.art);
         });
         ctx.prevResultCount = s.results.length;
       }
@@ -574,8 +601,8 @@ function csvApplyOverlayStatus(s, ctx, fi){
         const errList = errSets.map(r=>r.set_number+': '+(r.error||'?')).join('; ');
         console.warn('[CSV Import] Fehler: '+errList);
       }
-      const zaehler = importZaehler(s, 'csv.timeout_warn_n');
-      G('prog-footer').textContent=`Import: ${zaehler}`;
+      const zaehler = importZaehler(s, 'csv.warnings_n');
+      G('prog-footer').textContent=`${tRaw('csv.zeilen_gelesen', { n: s.total ?? 0 })} · ${zaehler}`;
       const btnClose = G('btn-close-import');
       if (btnClose) btnClose.style.display = '';
       loadGallery();
@@ -597,8 +624,9 @@ async function csvPollLoop(ctx, fi){
     await new Promise(r=>setTimeout(r,1500));
     if(!csvPollAktiv()) break;
     try{
-      const s = await api('GET','/v1/sets/import/csv/status');
-      if(csvApplyOverlayStatus(/** @type {import('./01-fortschritt.js').ImportStand} */ (s), ctx, fi)) break;
+      // apiDaten statt api: api() überschriebe das Feld `status` mit dem HTTP-Status, die Schleife endete nie.
+      const s = await apiDaten('GET','/v1/sets/import/csv/status');
+      if(s && csvApplyOverlayStatus(/** @type {import('./01-fortschritt.js').ImportStand} */ (s), ctx, fi)) break;
     }catch(e){ console.warn('Poll error:',e); }
   }
 }
@@ -623,7 +651,7 @@ export async function delSet(sn){
   const bekannt = (curSet && curSet.set_number === sn ? curSet : null)
     || (allSets || []).find(x => x.set_number === sn);
   const name = bekannt?.name || sn;
-  if(!await confirmDelete(tRaw('gallery.delete.title'), t('gallery.delete.name_parts',{name}))) return false;
+  if(!await confirmDelete(tRaw('gallery.delete.title'), tRaw('gallery.delete.name_parts',{name}))) return false;
   const d=await api('DELETE',`/v1/sets/${sn}`);
   if(!d.success){ toast(d.error,'error'); return false; }
   geloeschtMitRueckgaengig(tRaw('users.deleted',{name}), d);

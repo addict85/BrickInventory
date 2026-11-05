@@ -85,7 +85,7 @@ test('Detailansicht und Zoom zeigen die volle Auflösung', () => {
   assert.match(core, /function fullUrl/, 'Gegenstück zu thumbUrl() fehlt');
 
   const admin = stripModuleSyntax(require('./helpers/sources').adminQuelle());
-  assert.match(admin, /img\.src=fullUrl\((curSet|set)\.image_local\|\|(curSet|set)\.image_url\)/,
+  assert.match(admin, /(img\.src=|setzeDialogbild\(img, )fullUrl\((curSet|set)\.image_local\|\|(curSet|set)\.image_url\)/,
     'Detailansicht der Galerie muss die volle Auflösung nehmen');
 
   const act = stripModuleSyntax(fs.readFileSync(path.join(ROOT, 'public', 'js', '11-actions.js'), 'utf8'));

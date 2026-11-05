@@ -2,7 +2,7 @@ import { echt, registerActions } from './00-registry.js';
 import { locale, t, tRaw } from '../i18n.js';
 import { esc, html, ungeprueft } from './00-escapen.js';
 import { api } from './01-api.js';
-import { bildTag, platzhalterInhalt, fullUrl, imgUrl, thumbUrl } from './01-bilder.js';
+import { bildTag, platzhalterInhalt, fullUrl, imgUrl, thumbUrl, setzeDialogbild } from './01-bilder.js';
 import { leerZustand, meldeTreffer, ico, G, TRASH_ICON_SVG, knopfBesetzt, zuruecksetzenKnopf, setzeHtml } from './01-dom.js';
 import { fmtDatum, fmtN, leseBetrag } from './01-format.js';
 import { setnummerFeldGueltig, betragAusFeld } from './01-formular.js';
@@ -149,7 +149,7 @@ export async function ladeMerkliste() {
   // Das Fragezeichen steht HIER und nicht in merklisteParams(): Dieselbe Schreibweise wie bei der Galerie,
   // und test/frontend-api-paths.test.js liest den Pfad aus genau dieser Zeile — mit dem Fragezeichen im
   // Rueckgabe-wert las sie „/v1/wanted:x" und meldete eine Route, die es nicht gibt.
-  if (!_merkposten.length && !ziel.querySelector('.mk-zeile, .leer')) setzeHtml(ziel, skelettZeilen(4, t('common.loading')));
+  if (!_merkposten.length && !ziel.querySelector('.mk-zeile, .leer')) setzeHtml(ziel, skelettZeilen(4, tRaw('common.loading')));
   const d = await api('GET', `/v1/wanted?${merklisteParams()}`);
   const kasten = /** @type {HTMLDetailsElement | null} */ (document.getElementById('mk-kasten'));
   if (listeLadefehler(ziel, d, { erneut: 'ladeMerkliste', behalten: _merkposten.length > 0 })) {
@@ -192,7 +192,7 @@ export async function merkpostenHinzufuegen() {
     if (!d?.success) { toast(d?.error || tRaw('settings.error'), 'error'); return; }
     // „war schon drauf" ist keine Fehlermeldung, aber auch kein Neuzugang — wer zweimal auf denselben Knopf
     // drückt, soll den Unterschied sehen.
-    toast(tRaw(d.war_neu ? 'wanted.added' : 'wanted.already'), 'success');
+    await merkMeldung(d.war_neu, num);
     G('mk-num').value = '';
     await ladeMerkliste();
   } finally { frei(); }
@@ -225,8 +225,20 @@ export async function katalogAufMerkliste() {
         condition: zustand,
       }).catch(() => null);
     }
-    toast(tRaw(d.war_neu ? 'wanted.added' : 'wanted.already'), 'success');
+    await merkMeldung(d.war_neu, sn);
   } finally { frei(); }
+}
+
+/**
+ * Rückmeldung nach dem Merken. Steht das Set schon in der Sammlung, sagt es der Toast: Das Abzeichen
+ * „schon vorhanden“ sah man erst in der Liste.
+ * @param {boolean | undefined} neu @param {string} num
+ */
+async function merkMeldung(neu, num) {
+  const nr = /-\d+$/.test(num) ? num : num + '-1';
+  const eigen = neu ? await api('GET', `/v1/sets/${encodeURIComponent(nr)}`).catch(() => null) : null;
+  const vorhanden = eigen?.success && eigen.set ? eigen.set : null;
+  toast(vorhanden ? tRaw('wanted.added_schon_da', { n: vorhanden.quantity || 1 }) : tRaw(neu ? 'wanted.added' : 'wanted.already'), 'success');
 }
 
 /** setNumber|condition|user_id — der Schlüssel einer Zeile, wie ihn zeile() baut. */
@@ -330,8 +342,7 @@ export async function oeffneMerkpostenDetail(arg) {
   // durch den Bild-Proxy (01-bilder.js). Das lokale Bild hat Vorrang — es liegt schon da.
   const bild = (w.image_local || w.image_url)
     ? fullUrl(w.image_local || w.image_url) : '/assets/set-placeholder.svg';
-  G('mk-m-img').src = bild;
-  G('mk-m-img').dataset.orig = bild;
+  setzeDialogbild(G('mk-m-img'), bild, bild);
   setzeHtml(G('mk-m-sparkline-content'), html`<span class="text-mut schrift-1">${tRaw('common.loading')}</span>`);
   G('mk-m-market-rows').replaceChildren();
   setzeHtml(G('mk-m-det'), ungeprueft(zeilen(w)));

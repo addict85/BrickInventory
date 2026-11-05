@@ -7,6 +7,7 @@ import { fmtN, leseBetrag, betragFuerFeld } from './01-format.js';
 import { feldFehler } from './01-formular.js';
 import { toast } from './01-meldungen.js';
 import { csvHochladen } from './01-bausteine.js';
+import { confirmDelete } from './01-rueckfrage.js';
 import { allSets } from './00-zustand.js';
 import { esc, html, ungeprueft } from './00-escapen.js';
 // Einstellungen, Abschnitt Preisalarme: Übersicht, Schwelle ändern, löschen, CSV-Import.
@@ -129,10 +130,17 @@ async function aendereAlarmSchwelle(schluessel, wert) {
  * @param {string} setNumber
  */
 async function loescheAlarm(schluessel, setNumber) {
-  if (!confirm(tRaw('alerts.confirm_delete', { set: setNumber }))) return;
+  // Dieselbe Rückfrage wie überall (01-rueckfrage.js) statt des Browserfensters, danach „Rückgängig“.
+  if (!await confirmDelete(tRaw('alerts.delete_title'), tRaw('alerts.confirm_delete', { set: setNumber }), 'alarm')) return;
   const { setNumber: sn, condition } = alarmSchluessel(schluessel);
+  const vorher = (await api('GET', `/v1/sets/${encodeURIComponent(sn)}/alert`))?.alerts?.find(a => a.condition === condition);
   const d = await api('DELETE', `/v1/sets/${encodeURIComponent(sn)}/alert?condition=${encodeURIComponent(condition)}`);
-  if (!d?.success) toast(d?.error || tRaw('settings.error'), 'error');
+  if (!d?.success) { toast(d?.error || tRaw('settings.error'), 'error'); await ladeAlarmUebersicht(); return; }
+  toast(tRaw('alerts.deleted', { set: setNumber }), 'success', vorher ? { text: tRaw('trash.undo'), bleibt: true, fn: async () => {
+    const r = await api('PUT', `/v1/sets/${encodeURIComponent(sn)}/alert`, { richtung: vorher.richtung === 'ueber' ? 'ueber' : 'unter', schwelle: Number(vorher.schwelle), condition });
+    if (!r?.success) toast(r?.error || tRaw('settings.error'), 'error');
+    await ladeAlarmUebersicht();
+  } } : undefined);
   await ladeAlarmUebersicht();
 }
 

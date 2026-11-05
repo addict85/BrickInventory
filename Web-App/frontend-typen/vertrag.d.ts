@@ -11,6 +11,7 @@ export type Acquisition = {
   owner_user_id?: number | null;
   price_estimated: boolean;
   currency?: string | null;
+  preis_konto?: number | null;
   [feld: string]: unknown;
 };
 export type AcquisitionsResponse = {
@@ -24,6 +25,8 @@ export type AcquisitionTotals = {
   quantity: number;
   amount?: number;
   priced_rows: number;
+  currency?: string;
+  ohne_kurs?: number;
   [feld: string]: unknown;
 };
 export type AddMinifigResponse = {
@@ -424,6 +427,7 @@ export type CsvImportStatus = {
   warn?: number | null;
   err?: number | null;
   error?: string | null;
+  beendet_am?: string;
   [feld: string]: unknown;
 };
 export type CurrentByCondition = {
@@ -575,6 +579,7 @@ export type FigsValuationResponse = {
       owner_user_id?: number | null;
       kaufpreis_original?: number;
       kaufpreis_waehrung?: string;
+      price_estimated?: boolean;
       [feld: string]: unknown;
     }>;
     storage?: string | null;
@@ -842,6 +847,11 @@ export type JobStatus = {
   progress: number;
   total: number;
   sub?: string | null;
+  sub_teile?: Array<{
+    code: string;
+    werte?: Record<string, string | number>;
+    vor?: "bestand";
+  }>;
   [feld: string]: unknown;
 };
 export type KonfigExport = {
@@ -974,6 +984,7 @@ export type ManualFigsResponse = {
       owner_user_id?: number | null;
       kaufpreis_original?: number;
       kaufpreis_waehrung?: string;
+      price_estimated?: boolean;
       [feld: string]: unknown;
     }>;
     storage?: string | null;
@@ -1030,6 +1041,7 @@ export type ManualPartsResponse = {
       owner_user_id?: number | null;
       kaufpreis_original?: number;
       kaufpreis_waehrung?: string;
+      price_estimated?: boolean;
       [feld: string]: unknown;
     }>;
     storage?: string | null;
@@ -1269,6 +1281,7 @@ export type PartsValuationResponse = {
       owner_user_id?: number | null;
       kaufpreis_original?: number;
       kaufpreis_waehrung?: string;
+      price_estimated?: boolean;
       [feld: string]: unknown;
     }>;
     storage?: string | null;
@@ -1442,6 +1455,9 @@ export type POST_api_v1_minifigs_import_csv = {
   updated?: number;
   errors?: number;
   error?: string | null;
+  gestartet?: boolean;
+  vorhanden?: number;
+  vorhanden_nummern?: string[];
   [feld: string]: unknown;
 };
 export type POST_api_v1_sets_import_csv_cancel = {
@@ -1705,6 +1721,7 @@ export type SetItem = {
   }[];
   max_purchase_price?: number | null;
   avg_purchase_price?: number | null;
+  kaufpreis_geschaetzt?: boolean | null;
   used_count?: number | null;
   instructions: Instruction[];
   bricklink?: {
@@ -1926,6 +1943,7 @@ export type ValuationSet = {
     owner_user_id?: number | null;
     kaufpreis_original?: number;
     kaufpreis_waehrung?: string;
+    price_estimated?: boolean;
     [feld: string]: unknown;
   }>;
   mixed: boolean;

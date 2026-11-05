@@ -8,11 +8,11 @@ Commit-Nachricht (siehe CLAUDE.md).
 ## `Kopf der Datei`
 
 ```text
-Meldungen (Toasts): Fehler bleiben länger stehen, ein Klick räumt weg — am
-echten Bündel in jsdom.
+Meldungen (Toasts), am echten Bündel in jsdom:
 
-  - Eine Fehlermeldung steht nach allen Zeitgebern unter 8 s noch da und
-    ist erst nach dem langen weg. Vorher verschwand jede Meldung ohne Knopf
-    nach 4,5 s, auch ein Fehler, den man lesen will.
+  - Ein Fehler und eine Meldung mit Knopf („Rückgängig“) laufen nicht ab
+    (Barrierefreiheit 17, M4: WCAG 2.2.1); sie schliessen über ihr ✕.
+  - Eine Meldung ohne Knopf hält ihre Frist an, solange Maus oder Fokus
+    darauf liegt.
   - Ein Klick auf die Meldung entfernt sie sofort.
 ```

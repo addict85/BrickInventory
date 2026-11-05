@@ -13,6 +13,8 @@
  *   B  plRenderTable() wieder mit „Keine Teile gefunden“ → rot: „leeres
  *      Ergebnis“ (kein Grund genannt)
  *   C  Zurücksetzen wieder class="btn bd" → rot: „Aufbau“
+ *   E  (05.11.2026, UI-Prüfung 17 M14) Farbgruppe wieder ohne colorName() →
+ *      rot: „Farbgruppen deutsch, Zusammenfassung nennt Sorten“ („Red“)
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -58,7 +60,7 @@ test('leeres Ergebnis: Grund, keine Exporte', async () => {
     assert.equal(d.getElementById('pl-optionen').hidden, true, 'Export und Optionen bei 0 Teilen');
     assert.equal(d.getElementById('btn-pl-pdf').disabled, true, 'PDF bei 0 Teilen');
     assert.match(text(d.getElementById('pl-result')), /noch keine Teileliste vor.*Rebrickable/);
-    assert.equal(text(d.getElementById('pl-status')), '0 Teile aus 1 Set');
+    assert.equal(text(d.getElementById('pl-status')), '0 Sorten (0 Teile) aus 1 Set');
   } finally { w.close(); }
 });
 
@@ -67,7 +69,7 @@ test('unbekannte Nummer: im Chip genannt, nicht mitgezählt', async () => {
   try {
     const chips = [...d.querySelectorAll('#pl-sets .pl-chip')].map(c => ({ text: text(c), unbekannt: c.classList.contains('unbekannt') }));
     assert.deepEqual(chips, [{ text: '10294-1 — Titanic', unbekannt: false }, { text: '99999-1 — nicht im Katalog', unbekannt: true }]);
-    assert.equal(text(d.getElementById('pl-status')), '1 Teil aus 1 Set · 1 Nummer nicht im Katalog: 99999-1');
+    assert.equal(text(d.getElementById('pl-status')), '1 Sorte (6 Teile) aus 1 Set · 1 Nummer nicht im Katalog: 99999-1');
   } finally { w.close(); }
 });
 
@@ -76,7 +78,16 @@ test('Ergebnis mit Teilen: Exporte frei, Eingabefelder beschriftet', async () =>
   try {
     assert.equal(d.getElementById('pl-optionen').hidden, false);
     assert.equal(d.getElementById('btn-pl-pdf').disabled, false);
-    assert.equal(text(d.getElementById('pl-status')), '1 Teil aus 1 Set');
+    assert.equal(text(d.getElementById('pl-status')), '1 Sorte (6 Teile) aus 1 Set');
     assert.equal(d.querySelector('.pl-have-input').getAttribute('aria-label'), 'Vorhanden: 3001 Red');
+  } finally { w.close(); }
+});
+
+test('Farbgruppen deutsch, Zusammenfassung nennt Sorten', async () => {
+  const { w, d } = await erstelle([TEIL, { ...TEIL, part_number: '3003', part_name: 'Brick 2 x 2', quantity: 10 }]);
+  try {
+    assert.match(text(d.getElementById('pl-result')), /^Rot \(2 Sorten\)/, 'Farbgruppe in der Sprache der Oberfläche');
+    assert.doesNotMatch(text(d.getElementById('pl-result')), /\bRed\b/);
+    assert.equal(text(d.getElementById('pl-status')), '2 Sorten (16 Teile) aus 1 Set');
   } finally { w.close(); }
 });

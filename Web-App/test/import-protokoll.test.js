@@ -6,8 +6,8 @@
  *
  * Ausgangslage `# pass 4 / # fail 0`.
  *
- *   A  `if (!r?.set_number) return null;` aus protokollZeile entfernt
- *      → `pass 3 / fail 1`. Rot: „keine Zeile ohne Namen".
+ *   A  (seit 05.11.2026 in csv-import-ergebnis-oberflaeche.test.js: Eine
+ *      Zeile ohne Setnummer und ohne Zeilennummer erscheint nicht.)
  *   B  in 02-gallery.js die drei alten Zeilen wieder eingesetzt
  *      → `pass 3 / fail 1`. Rot: „keine Protokollzeile wird an
  *        protokollZeile vorbei geschrieben".
@@ -44,16 +44,6 @@ test('nur EINE Fassung baut die Zeile fürs Import-Protokoll', () => {
     'protokollZeile() gehört genau einmal in den Baum. Zwei Fassungen heissen ' +
     'zwei Stellen, an denen die nächste Schranke fehlt — und genau das war ' +
     'der Fall, als dieselben drei Zeilen hier und in 02-gallery.js standen.');
-});
-
-test('keine Zeile ohne Namen', () => {
-  const js = ohneKommentare(lies(FORTSCHRITT));
-  const rumpf = js.slice(js.indexOf('function protokollZeile'));
-  assert.match(rumpf.slice(0, 400), /if\s*\(!r\?\.set_number\)\s*return null;/,
-    'protokollZeile() muss einen Eintrag ohne set_number verwerfen. Ohne das ' +
-    'schreibt das Protokoll „undefined – aktualisiert" — Marcos Befund vom ' +
-    '21.10., 322-mal. Die ZÄHLUNG darüber kommt aus s.ok/s.warn/s.err und ' +
-    'bleibt davon unberührt.');
 });
 
 test('keine Protokollzeile wird an protokollZeile vorbei geschrieben', () => {

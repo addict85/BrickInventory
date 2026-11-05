@@ -95,7 +95,8 @@ test('Import als ein Menü', async () => {
       const leiste = d.querySelector(`#tab-${tab} .erfassen-leiste`);
       assert.deepEqual([...leiste.children].map(e => e.tagName + '.' + e.className.replace(' knopf-schwebend', '')), ['BUTTON.btn bp', 'DETAILS.import-menue'], tab);
       const menue = leiste.querySelector('details');
-      assert.equal(menue.querySelectorAll('.import-klappe > *').length, 3, `${tab}: drei Importwege`);
+      // Dazu kommt beim Set-Menü "Letzter Import" (UI-Prüfung 17 M4), verborgen, solange es keinen gibt.
+      assert.equal(menue.querySelectorAll('.import-klappe > :not([hidden])').length, 3, `${tab}: drei Importwege`);
       menue.open = true;
       d.dispatchEvent(new w.KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
       assert.equal(menue.open, false, `${tab}: Escape schliesst das Menü`);

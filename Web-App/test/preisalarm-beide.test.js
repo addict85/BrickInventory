@@ -82,7 +82,7 @@ test('ein leeres Feld löscht — in beiden', () => {
   // Ein eigener Knopf daneben wäre ein zweiter Weg für dieselbe Absicht, und
   // eine „Schwelle 0" wäre ein Alarm, der nie oder immer meldet.
   // Ausführlich: docs/begruendungen/test/preisalarm-beide.test.js.md#stelle
-  assert.match(web('public/js/02-detailfelder.js'), /const loeschen = !\((zahl != null && )?zahl > 0\);/,
+  assert.match(web('public/js/02-detailfelder.js'), /const loeschen = (zahl == null|!\((zahl != null && )?zahl > 0\));/,
     'Die Webapp löscht bei leerem Feld nicht');
   assert.match(KT_ALARMEINGABE, /return if \(z > 0\.0\) z else null/,
     'Die App löscht bei leerem Feld nicht');

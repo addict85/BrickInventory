@@ -101,6 +101,38 @@ function stripOwnOrigin(src) {
   return src;
 }
 
+export const PLATZHALTER_SET = '/assets/set-placeholder.svg';
+
+/**
+ * Ein festes Dialogbild neu belegen. Die Merker der Fehlerbehandlung (11-actions.js) hängen am Element und
+ * blieben vom letzten Öffnen stehen: Beim zweiten Mal gab es dann keinen Platzhalter, nur ein kaputtes Bild.
+ * @param {HTMLElement} el @param {string} src @param {string} [orig]
+ */
+export function setzeDialogbild(el, src, orig) {
+  const img = /** @type {HTMLImageElement} */ (el);
+  delete img.dataset.retried; delete img.dataset.origVersucht; delete img.dataset.fallbackDone;
+  if (orig !== undefined) img.dataset.orig = orig;
+  img.src = src;
+  zoomStand(img);
+}
+
+/**
+ * Ein Platzhalter vergrössert nichts: Er ist dann kein Knopf und kein Tab-Halt.
+ * @param {HTMLImageElement} img
+ */
+export function zoomStand(img) {
+  if (!img.classList.contains('zoombar')) return;
+  const leer = !img.getAttribute('src') || img.getAttribute('src') === PLATZHALTER_SET;
+  // Auch der Klick ruht: Eine Maus-Klickfläche ohne Tab-Halt wäre nur für die Maus da.
+  if (leer) {
+    img.removeAttribute('role'); img.tabIndex = -1; img.setAttribute('aria-hidden', 'true');
+    if (img.dataset.click) { img.dataset.zoomKlick = img.dataset.click; delete img.dataset.click; }
+  } else {
+    img.setAttribute('role', 'button'); img.tabIndex = 0; img.removeAttribute('aria-hidden');
+    if (img.dataset.zoomKlick && !img.dataset.click) img.dataset.click = img.dataset.zoomKlick;
+  }
+}
+
 /**
  * Die Adresse, unter der ein Bild geladen wird. `thumb` wirkt nur bei Bildern über den Proxy; bei lokalen
  * Dateien entscheidet der Server (image_local ist schon die richtige Adresse, siehe thumbUrl()).

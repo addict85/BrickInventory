@@ -23,6 +23,9 @@ const PdfTeil = z.object({
 const CsvZeile = z.object({
   sn: z.string(), qty: z.number().int(), purchasePrice: z.number().nullable(),
   condition: z.string().nullable(), acquiredAt: z.string().nullable(),
+  // Zeile der Datei und, wenn sie schon beim Lesen scheiterte, warum: Das Ergebnis nennt sie dann an ihrem Platz.
+  zeile: z.number().int().optional(),
+  fehler: z.object({ code: z.enum(['csv_menge_ungueltig', 'csv_keine_setnummer']), wert: z.string().optional() }).optional(),
 });
 
 /** Eine Korrektur der Wanted-Vorschau; der Import gleicht `blId` mit dem Posten ab. */

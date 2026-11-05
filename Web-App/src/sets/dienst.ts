@@ -226,8 +226,7 @@ export async function setPreis(uid: number, blickfeldWahl: Sicht | number[], sn:
   const blickfeld = await blickfeldAus(blickfeldWahl);
   const set = await repo.setImFeld(sn, blickfeld);
   if (!set) return null;
-  // Die Währung aus der Einstellung: Die App schickte ihren lokalen Startwert
-  // mit, bevor sie die Einstellung kannte.
+  // Die Währung aus der Einstellung: Die App schickte ihren lokalen Startwert mit, bevor sie die Einstellung kannte.
   const currency  = await getSetting(uid, 'currency', 'EUR');
   const guideType = await getSetting(uid, 'price_guide_type', 'sold');
   const ttlHours  = await getSetting(uid, 'price_cache_ttl', '24');
@@ -272,7 +271,17 @@ export async function anleitungLoeschen(uid: number, id: string): Promise<boolea
   return true;
 }
 
-export interface ImportZeile { sn: string; qty: number; purchasePrice: number | null; condition: string | null; acquiredAt: string | null }
+export interface ImportZeile {
+  sn: string; qty: number; purchasePrice: number | null; condition: string | null; acquiredAt: string | null;
+  zeile?: number; fehler?: { code: 'csv_menge_ungueltig' | 'csv_keine_setnummer'; wert?: string };
+}
+
+/** Aus „x“ eine 1 und aus „-2“ eine 2 zu machen buchte still etwas anderes, als in der Datei steht. */
+function csvMenge(roh: string): number | null {
+  const s = roh.trim();
+  if (s === '') return 1;
+  return /^\d{1,6}$/.test(s) && Number(s) >= 1 ? Number(s) : null;
+}
 
 /** Spaltennamen ohne Gross/klein und BOM. */
 export function setCsvZeilen(text: string): { rows: ImportZeile[]; uebersprungen: number[] } {
@@ -284,17 +293,21 @@ export function setCsvZeilen(text: string): { rows: ImportZeile[]; uebersprungen
     fehlerWerfen('csv_keine_datenzeilen', 400);
   }
   const rows: ImportZeile[] = [];
-  for (const roh of gelesen.records) {
+  for (const [i, roh] of gelesen.records.entries()) {
+    const zeile = gelesen.zeilen[i];
     const row: Record<string, string> = {};
     for (const [k, v] of Object.entries(roh)) row[k.toLowerCase().trim().replace(/^\uFEFF/, '')] = String(entschaerfungRueckgaengig(v) ?? '');
     const rawSn = row.set_number || row['setnummer'] || row['set'] || Object.values(row)[0];
-    const sn = rawSn ? vorDem(String(rawSn), ';').trim() : null;
-    if (!sn) continue;
-    const qty = parseInt(String(row.quantity || row['anzahl'] || row['qty'] || row['menge'] || '1').replace(/[^0-9]/g, '') || '1') || 1;
+    const sn = rawSn ? vorDem(String(rawSn), ';').trim() : '';
+    const leer = { sn, qty: 0, purchasePrice: null, condition: null, acquiredAt: null, ...(zeile ? { zeile } : {}) };
+    if (!sn) { rows.push({ ...leer, fehler: { code: 'csv_keine_setnummer' } }); continue; }
+    const mengeRoh = String(row.quantity ?? row['anzahl'] ?? row['qty'] ?? row['menge'] ?? '');
+    const qty = csvMenge(mengeRoh);
+    if (qty === null) { rows.push({ ...leer, fehler: { code: 'csv_menge_ungueltig', wert: mengeRoh.trim().slice(0, 20) } }); continue; }
     const rawPrice = row.purchase_price ?? row['kaufpreis'] ?? row['einkaufspreis'] ?? row['price'] ?? '';
     const preis = String(rawPrice).trim() !== '' ? parseFloat(String(rawPrice).replace(',', '.')) : null;
     const zustand = String(row.condition || row['zustand'] || row['kondition'] || '').trim().toUpperCase();
-    rows.push({ sn, qty, purchasePrice: preis !== null && !isNaN(preis) ? preis : null,
+    rows.push({ sn, qty, ...(zeile ? { zeile } : {}), purchasePrice: preis !== null && !isNaN(preis) ? preis : null,
       condition: ['N', 'U'].includes(zustand) ? zustand : null,
       // 05.03.2026 ist der 5. März, nicht der 3. Mai.
       acquiredAt: parseCsvDate(row.acquired_at || row['erfassungsdatum'] || row['datum']) });
@@ -302,11 +315,20 @@ export function setCsvZeilen(text: string): { rows: ImportZeile[]; uebersprungen
   return { rows, uebersprungen: gelesen.uebersprungen };
 }
 
-/** Ein laufender Import desselben Kontos wird abgebrochen. */
-export async function setCsvImportStarten(userId: number, text: string) {
+/** Der Import erhöht bei vorhandenen Sets die Menge, das Einzel-Erfassen lehnt sie ab: Die Oberfläche fragt. */
+async function schonVorhanden(userId: number, rows: ImportZeile[]): Promise<string[]> {
+  const da = new Set((await repo.setsMitMenge(userId)).map(s => s.set_number));
+  const treffer = rows.filter(r => !r.fehler).map(r => normalizeSetNumber(r.sn)).filter(sn => da.has(sn));
+  return [...new Set(treffer)];
+}
+
+/** Ein laufender Import desselben Kontos wird abgebrochen; `nurPruefen` liest nur. */
+export async function setCsvImportStarten(userId: number, text: string, nurPruefen = false) {
+  const { rows, uebersprungen } = setCsvZeilen(text);
+  const vorhanden = await schonVorhanden(userId, rows);
+  if (nurPruefen) return { total: rows.length, uebersprungen, vorhanden, gestartet: false };
   const laufend = await jobGet(userId);
   if (laufend && laufend.status === 'running') await jobUpdate(userId, { status: 'cancelled' });
-  const { rows, uebersprungen } = setCsvZeilen(text);
   const lauf = randomUUID();
   await jobSet(userId, { status: 'running', total: rows.length, done: 0, current: null,
     results: JSON.stringify([]), error: null, run_id: lauf });
@@ -317,7 +339,7 @@ export async function setCsvImportStarten(userId: number, text: string) {
     throw e;
   }
   await emitJobStatus(userId);
-  return { total: rows.length, uebersprungen };
+  return { total: rows.length, uebersprungen, vorhanden, gestartet: true };
 }
 
 export async function setCsvImportAbbrechen(userId: number) {

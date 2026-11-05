@@ -40,6 +40,7 @@
     const btn = el('btn-' + stufe);
     if (_levels.has(stufe)) { _levels.delete(stufe); btn.classList.remove('active'); }
     else { _levels.add(stufe); btn.classList.add('active'); }
+    btn.setAttribute('aria-pressed', String(_levels.has(stufe)));
     renderLogs();
   }
 
@@ -75,10 +76,10 @@
     const btn = el('btn-auto');
     if (_autoTimer) {
       clearInterval(_autoTimer); _autoTimer = null;
-      btn.textContent = tx('log.auto'); btn.classList.remove('active');
+      btn.textContent = tx('log.auto'); btn.classList.remove('active'); btn.setAttribute('aria-pressed', 'false');
     } else {
       _autoTimer = setInterval(loadLogs, 5000);
-      btn.textContent = tx('log.stop'); btn.classList.add('active');
+      btn.textContent = tx('log.stop'); btn.classList.add('active'); btn.setAttribute('aria-pressed', 'true');
       loadLogs();
     }
   }

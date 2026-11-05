@@ -110,7 +110,7 @@ function bewerteSet(set: BewertungsSet, acqs: SetErfassung[], l: Bewertungslage)
     no_price: (!!einPreis || ausstehend) && valued.unit_price == null,
     bl_unbekannt: needed.some(c => preise.get(c)?.bl_unbekannt === true),
     preis_ausstehend: ausstehend,
-    ...(ausstehend && l.ohneZugang && valued.unit_price == null ? { error: l.ohneZugang } : {}),
+    ...(ausstehend && l.ohneZugang && valued.unit_price == null ? { error: l.ohneZugang, error_code: 'kein_bricklink_zugang' } : {}),
   };
 }
 

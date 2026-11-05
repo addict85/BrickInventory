@@ -1,4 +1,5 @@
 import { fehlerAntwort } from '../../src/infra/httpAntwort';
+import { FEHLER, antwortSprache, fehlerText, type FehlerCode } from '../../src/infra/fehlerTexte';
 import { requireToken, sichtVon } from './middleware';
 import { getPortfolioHistory } from '../../src/finanzen/portfolioHistory';
 import { computeMinifigsValuation, computePartsValuation, computePnl, computeSetsValuation } from '../../src/finanzen/financeCalc';
@@ -8,24 +9,31 @@ import { seiteAus } from '../../src/infra/seite';
 import type { Anfrage, Antwort } from '../../src/infra/vertrag';
 const router = vertragsRouter();
 
+/** Preisfehler kommen mit Code aus der Bewertung; der Text folgt der Sprache der Anfrage, nicht dem Server. */
+function uebersetzt<T extends { error?: unknown; error_code?: unknown }>(zeilen: T[], req: Parameters<typeof antwortSprache>[0]): T[] {
+  const sprache = antwortSprache(req);
+  return zeilen.map(z => typeof z.error_code === 'string' && z.error_code in FEHLER
+    ? { ...z, error: fehlerText(z.error_code as FehlerCode, sprache) } : z);
+}
+
 router.get('/finance/valuation', requireToken, async (req: Anfrage<'GET /api/v1/finance/valuation'>, res: Antwort<'GET /api/v1/finance/valuation'>) => {
   const data = await computeSetsValuation(req.apiUser.user_id, sichtVon(req));
   // Kein `rate_limit` in der Antwort: Er kostete drei Abfragen je Aufruf und
   // steht in der Überwachung.
   // Ausführlich: docs/begruendungen/routes/api_v1/finance.ts.md#get-finance-valuation
-  const { eintraege: sets, ...seite } = seiteAus(data.sets, req.abfrage);
+  const { eintraege: sets, ...seite } = seiteAus(uebersetzt(data.sets, req), req.abfrage);
   res.json({ success: true, total_value: data.totals.qty_avg, wert_gesamt: Number(data.totals.qty_avg), ...data, sets, ...seite });
 });
 
 router.get('/finance/parts-valuation', requireToken, async (req: Anfrage<'GET /api/v1/finance/parts-valuation'>, res: Antwort<'GET /api/v1/finance/parts-valuation'>) => {
   const data = await computePartsValuation(req.apiUser.user_id, sichtVon(req));
-  const { eintraege: parts, ...seite } = seiteAus(data.parts, req.abfrage);
+  const { eintraege: parts, ...seite } = seiteAus(uebersetzt(data.parts, req), req.abfrage);
   res.json({ success: true, ...data, parts, ...seite });
 });
 
 router.get('/finance/minifigs-valuation', requireToken, async (req: Anfrage<'GET /api/v1/finance/minifigs-valuation'>, res: Antwort<'GET /api/v1/finance/minifigs-valuation'>) => {
   const data = await computeMinifigsValuation(req.apiUser.user_id, sichtVon(req));
-  const { eintraege: figs, ...seite } = seiteAus(data.figs, req.abfrage);
+  const { eintraege: figs, ...seite } = seiteAus(uebersetzt(data.figs, req), req.abfrage);
   res.json({ success: true, ...data, figs, ...seite });
 });
 

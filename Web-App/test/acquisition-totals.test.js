@@ -86,6 +86,8 @@ test('alle drei Erfassungs-Routen liefern die Summe mit', { concurrency: 1 }, as
   await db.run('DELETE FROM users WHERE username=$1', [NAME]);
   const uid = (await db.get(`INSERT INTO users (username,password_hash) VALUES ($1,'x') RETURNING id`, [NAME])).id;
   t.after(async () => { await db.run('DELETE FROM users WHERE id=$1', [uid]).catch(() => {}); await db.pool.end().catch(() => {}); });
+  // Die Kontowährung ist die der Käufe: So bleibt die Summe ohne Umrechnung nachrechenbar.
+  await db.run("INSERT INTO user_settings (user_id, key, value) VALUES ($1, 'currency', 'CHF')", [uid]);
   await db.run('INSERT INTO sets (user_id, set_number) VALUES ($1,$2)', [uid, SN]);
   await db.run(`INSERT INTO set_acquisitions (user_id, set_number, quantity, purchase_price, condition, currency, created_at)
                 VALUES ($1,$2,2,7.41,'N','CHF','2026-01-01'), ($1,$2,1,9.48,'N','CHF','2026-01-02')`, [uid, SN]);
@@ -99,9 +101,9 @@ test('alle drei Erfassungs-Routen liefern die Summe mit', { concurrency: 1 }, as
   const { base } = testServer(_req, { sitzung: { userId: uid }, apiNutzer: { user_id: uid, is_admin: 0 },
                                      routen: { '/api/v1': 'routes/api_v1/index.js' }, t });
   for (const [art, pfad, erwartet] of [
-    ['sets', `sets/${SN}/acquisitions`, { quantity: 3, amount: 24.3, priced_rows: 2 }],
-    ['parts', `parts/${PN}/4/acquisitions`, { quantity: 3, amount: 1.8, priced_rows: 1 }],
-    ['minifigs', `minifigs/${FN}/acquisitions`, { quantity: 2, priced_rows: 0 }],
+    ['sets', `sets/${SN}/acquisitions`, { quantity: 3, amount: 24.3, priced_rows: 2, currency: 'CHF', ohne_kurs: 0 }],
+    ['parts', `parts/${PN}/4/acquisitions`, { quantity: 3, amount: 1.8, priced_rows: 1, currency: 'CHF', ohne_kurs: 0 }],
+    ['minifigs', `minifigs/${FN}/acquisitions`, { quantity: 2, priced_rows: 0, currency: 'CHF', ohne_kurs: 0 }],
   ]) {
     const r = await (await fetch(`${base}/api/v1/${pfad}`)).json();
     assert.equal(r.acquisitions?.length > 0, true, `${art}: keine Erfassungen in der Antwort`);

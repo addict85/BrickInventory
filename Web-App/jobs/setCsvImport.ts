@@ -16,6 +16,16 @@ export type CsvZeile = CsvNutzlast['rows'][number];
 const zeilenFrist = () => konfig().csvZeileFristMs;
 
 async function importiereZeile(z: CsvZeile, userId: number): Promise<ImportErgebnis> {
+  const wo = z.zeile ? { zeile: z.zeile } : {};
+  if (z.fehler) {
+    const vars = z.fehler.wert !== undefined ? { wert: z.fehler.wert } : undefined;
+    return { set_number: z.sn, ...wo, success: false, code: z.fehler.code, ...(vars ? { vars } : {}),
+             error: fehlerText(z.fehler.code, 'de', vars) };
+  }
+  return { ...await bucheZeile(z, userId), ...wo };
+}
+
+async function bucheZeile(z: CsvZeile, userId: number): Promise<ImportErgebnis> {
   for (let versuch = 1; ; versuch++) {
     let wecker: NodeJS.Timeout | undefined;
     try {
@@ -62,8 +72,7 @@ async function fuehreCsvImportAus(n: CsvNutzlast, k: AuftragsKontext): Promise<v
   for (let i = results.length; i < rows.length; i++) {
     if (k.beendet) throw new AuftragUnterbrochen();
     const z = rows[i]!;
-    // Abgebrochen, abgelöst oder anderswo vergeben: aufhören, ohne in fremde
-    // Zeilen zu schreiben.
+    // Abgebrochen, abgelöst oder anderswo vergeben: aufhören, ohne in fremde Zeilen zu schreiben.
     if (!await k.lebenszeichen() || !await jobUpdate(userId, { current: z.sn }, lauf)) return;
     await emitJobStatus(userId);
     results.push(await importiereZeile(z, userId));

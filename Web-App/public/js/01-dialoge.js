@@ -128,6 +128,15 @@ function tasteGedrueckt(ev) {
       fokussiereFlaeche(dialog);
       return;
     }
+    // Ein offenes Klappmenü im Dialog („Weitere Aktionen“) schliesst zuerst, wie ein Menü nach APG; erst das
+    // nächste Escape schliesst den Dialog.
+    const menue = /** @type {HTMLDetailsElement | null | undefined} */ (aktiv?.closest('details[open]'));
+    if (menue && dialog.contains(menue)) {
+      ev.preventDefault(); ev.stopPropagation();
+      menue.open = false;
+      /** @type {HTMLElement | null} */ (menue.querySelector(':scope > summary'))?.focus();
+      return;
+    }
     const zu = /** @type {HTMLElement | null} */ (dialog.querySelector('[data-dialog-zu]'));
     if (!zu) return;
     ev.preventDefault();

@@ -101,7 +101,7 @@ test('UI-Prüfung 12: Haushalt, Dialoge, Telefon', { timeout: 280_000 }, async (
   await t.test('Platzhalter sieht nicht aus wie ein Wert', async () => {
     const z = await b.auswerten(`(() => { const f = document.getElementById('alarm-neu-set');
       return { text: f.placeholder, stil: getComputedStyle(f, '::placeholder').fontStyle }; })()`);
-    assert.deepEqual(z, { text: 'z. B. 10294-1', stil: 'italic' });
+    assert.deepEqual(z, { text: 'z. B. 75192-1', stil: 'italic' });
   });
 
   // ── Telefon ───────────────────────────────────────────────────────────────

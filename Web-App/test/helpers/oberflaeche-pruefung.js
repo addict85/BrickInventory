@@ -2,7 +2,7 @@
  * Die ganze Oberfläche in Chrome, für ein Design und ein Gerät (Rechner
  * 1280 × 900 oder Telefon 390 × 844), hell und dunkel: jeder Reiter, alle
  * Abschnitte der Einstellungen, die Seiten hinter dem Menü und die
- * wichtigsten Dialoge. Je Zustand: …
+ * wichtigsten Dialoge. Je Zustand: axe-core ohne Verstoss jeder Stufe, Layout, Tastatur …
  * Ausführlich: docs/begruendungen/test/helpers/oberflaeche-pruefung.js.md#kopf
  *
  * Gegenproben (30.10.2026, zusammen angewendet; welche Datei rot war, steht
@@ -59,6 +59,18 @@ const { AXE_LAUF, LAYOUT, tabPruefung } = require('./layout-messung');
 const GERAETE = { rechner: [1280, 900, false], telefon: [390, 844, true] };
 
 const klick = (sel) => `document.querySelector(${JSON.stringify(sel)})?.click(); true`;
+/** Eine Datei in ein verstecktes Dateifeld legen und `change` auslösen. */
+const datei = (sel, name, typ, inhalt) => `(() => { const f = document.querySelector(${JSON.stringify(sel)}); if (!f) return true;
+  const dt = new DataTransfer(); dt.items.add(new File([${JSON.stringify(inhalt)}], ${JSON.stringify(name)}, { type: ${JSON.stringify(typ)} }));
+  f.files = dt.files; f.dispatchEvent(new Event('change', { bubbles: true })); return true; })()`;
+const WANTED_XML = `<INVENTORY>
+<ITEM><ITEMTYPE>P</ITEMTYPE><ITEMID>3001</ITEMID><COLOR>11</COLOR><MINQTY>4</MINQTY><MAXPRICE>0.25</MAXPRICE></ITEM>
+<ITEM><ITEMTYPE>S</ITEMTYPE><ITEMID>10294-1</ITEMID><MINQTY>1</MINQTY></ITEM>
+<ITEM><ITEMTYPE>P</ITEMTYPE><ITEMID>99999zz</ITEMID><COLOR>5</COLOR><MINQTY>2</MINQTY></ITEM>
+</INVENTORY>`;
+/** Kleinstes gültiges PDF mit einer Seite; PDF.js baut die Querverweise selbst. */
+const PDF = '%PDF-1.4\n1 0 obj<</Type/Catalog/Pages 2 0 R>>endobj\n2 0 obj<</Type/Pages/Kids[3 0 R]/Count 1>>endobj\n'
+  + '3 0 obj<</Type/Page/Parent 2 0 R/MediaBox[0 0 300 400]>>endobj\ntrailer<</Root 1 0 R>>\n%%EOF\n';
 const reiter = (r) => klick(`.ntab[data-tab="${r}"]`);
 const ANSICHTEN = [
   ['Sammlung', [reiter('gallery')]],
@@ -88,6 +100,20 @@ const ANSICHTEN = [
   ['Toast mit Aktion', [reiter('gallery'), `location.hash = '#/sammlung/set/99999-9'; true`]],
   ['Bauliste mit Sets', [reiter('partslist'), `(() => { document.getElementById('pl-setnr').value = '10294-1, 99999-1';
     document.querySelector('[data-click="plAddSet"]').click(); return true; })()`, klick('#btn-pl-gen')]],
+  // Dateidialoge ohne Datei auf der Platte: DataTransfer legt sie dem Feld unter, wie eine Wahl im Dialog.
+  ['Wanted-XML', [reiter('parts'), datei('#wanted-xml-part', 'wanted.xml', 'text/xml', WANTED_XML)]],
+  ['CSV-Fortschritt', [reiter('gallery'), datei('#csv-file', 'sets.csv', 'text/csv', 'set_number,quantity\n75192-1,1\n99999-1,abc\n'),
+    `new Promise(r => { const t0 = Date.now(); (function w() { const c = document.getElementById('confirm-modal');
+      if (c && c.style.display === 'flex') { document.getElementById('cd-confirm').click(); r(true); }
+      else if (document.getElementById('progress-overlay').classList.contains('open') || Date.now() - t0 > 5000) r(true); else setTimeout(w, 100); })(); })`,
+    `new Promise(r => { const t0 = Date.now(); (function w() { const f = document.getElementById('prog-footer');
+      if (/fertig|abgeschlossen|Fehler|done|finished/i.test(f?.textContent || '') || Date.now() - t0 > 8000) r(true); else setTimeout(w, 200); })(); })`]],
+  ['PDF-Betrachter', [reiter('gallery'), klick('#gallery [data-click="openModal"]'),
+    `document.getElementById('instr-file') ? true : new Promise(r => setTimeout(() => r(true), 800))`,
+    datei('#instr-file', 'anleitung.pdf', 'application/pdf', PDF),
+    `new Promise(r => { const t0 = Date.now(); (function w() { if (document.querySelector('#set-modal [data-click="openPdfViewerLink"]') || Date.now() - t0 > 8000) r(true); else setTimeout(w, 200); })(); })`,
+    klick('#set-modal [data-click="openPdfViewerLink"]'),
+    `new Promise(r => { const t0 = Date.now(); (function w() { if (document.querySelector('#pdf-viewer-pages [role="img"]') || Date.now() - t0 > 8000) r(true); else setTimeout(w, 200); })(); })`]],
 ];
 
 const SCHLIESSEN = `(() => {

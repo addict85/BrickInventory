@@ -12,7 +12,7 @@ Die ganze Oberfläche in Chrome, für ein Design und ein Gerät (Rechner
 1280 × 900 oder Telefon 390 × 844), hell und dunkel: jeder Reiter, alle
 Abschnitte der Einstellungen, die Seiten hinter dem Menü und die
 wichtigsten Dialoge. Je Zustand:
-  - axe-core: kein Verstoss der Stufe serious oder critical;
+  - axe-core: kein Verstoss, gleich welcher Stufe;
   - Layout (layout-messung.js): kein waagrechter Überlauf, jedes Tippziel
     ≥ 44 × 44 px am Telefon und ≥ 24 × 24 px am Rechner, keine überlappenden
     Bedienelemente, kein abgeschnittener Text ohne „…“, Text und Platzhalter

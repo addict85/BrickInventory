@@ -1,9 +1,9 @@
 import { vergissManItem } from './13-acquisition-modals.js';
-import { detailZeile, ladeAnzeige } from './01-bausteine.js';
+import { detailZeile, ladeAnzeige, zeilenKnopf } from './01-bausteine.js';
 import { colorName, locale, t, tRaw } from '../i18n.js';
 import { escHex, escJs, esc, html, ungeprueft } from './00-escapen.js';
 import { api } from './01-api.js';
-import { bildTag, platzhalterInhalt, fullUrl, imgUrl, thumbUrl } from './01-bilder.js';
+import { bildTag, platzhalterInhalt, fullUrl, imgUrl, thumbUrl, setzeDialogbild } from './01-bilder.js';
 import { ico, G, setzeHtml } from './01-dom.js';
 import { toast } from './01-meldungen.js';
 import { scopeQuery } from './14-scope.js';
@@ -27,11 +27,10 @@ function verwendetInListe(sets) {
       : html`<span class="bild-ph bild-34" aria-hidden="true">${platzhalterInhalt('set')}</span>`;
   };
   return sets.length
-    ? html`<table data-stil="width:100%;border-collapse:collapse"><tbody>${sets.map(s => html`
-        <tr tabindex="0" data-click="openSetAusItem" data-arg="${s.set_number}"
-            title="${t('setitem.open_set')}" data-stil="cursor:pointer">
+    ? html`<table aria-label="${tRaw('setitem.used_in')}" data-stil="width:100%;border-collapse:collapse"><tbody>${sets.map(s => html`
+        <tr>
           <td data-stil="width:34px;padding:4px 8px 4px 0">${setBild(s)}</td>
-          <td data-stil="width:1%;white-space:nowrap;padding:4px 10px 4px 0;font-family:var(--mono);font-size:var(--fs-1);color:var(--b600)">${s.set_number}</td>
+          <td data-stil="width:1%;white-space:nowrap;padding:4px 10px 4px 0;font-family:var(--mono);font-size:var(--fs-1);color:var(--b600)">${zeilenKnopf({ click: 'openSetAusItem', arg: s.set_number }, s.set_number, tRaw('zeile.oeffnen', { name: s.set_name || s.set_number, nr: s.set_number }))}</td>
           <td data-stil="padding:4px 0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:0">${s.set_name || ''}</td>
           <td data-stil="width:1%;white-space:nowrap;padding:4px 0 4px 10px;text-align:right;color:var(--mut);font-size:var(--fs-1)">×${ungeprueft((s.quantity || 0).toLocaleString(locale()))}</td>
         </tr>`)}</tbody></table>`
@@ -79,8 +78,7 @@ export async function openSetItemDetail(type, id, colorId) {
   const roh = item?.image_local || item?.image_url || '';
   const voll = roh ? imgUrl(fullUrl(roh), false) : '';
   if (voll) {
-    imgEl.src = voll;
-    imgEl.dataset.orig = voll;
+    setzeDialogbild(imgEl, voll, voll);
     imgEl.style.display = '';
   } else {
     imgEl.style.display = 'none';

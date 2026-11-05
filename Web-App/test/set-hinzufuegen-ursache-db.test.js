@@ -65,7 +65,8 @@ test('Oberfläche: Set schon in der Sammlung', async () => {
     assert.match(hinweis, /Titanic \(10294-1\) ist schon in deiner Sammlung \(×2\)/);
     assert.equal(knopf, 'Set öffnen');
     assert.equal(aufrufe.some(a => a.url.includes('add-stream')), false, 'trotzdem angelegt');
-    d.querySelector('#add-unbekannt [data-click="erfassenZumSet"]').click();
+    // Ein Knopf „Set öffnen“ (UI-Prüfung 17, N2): der Hauptknopf.
+    d.getElementById('btn-add').click();
     assert.ok(await warte(() => d.getElementById('set-modal').classList.contains('open')), 'das Set öffnet sich');
     assert.equal(d.getElementById('add-set-modal').classList.contains('open'), false, 'der Erfassen-Dialog bleibt offen');
   } finally { w.close(); }

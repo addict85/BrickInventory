@@ -30,12 +30,15 @@
   var systemDunkel = window.matchMedia ? window.matchMedia('(prefers-color-scheme: dark)') : null;
   /** @type {string | null} */
   var serverDesign = null;
-  function folgtSystem() {
-    try { return localStorage.getItem(DUNKEL_KEY) !== 'server'; } catch (_) { return true; }
+  /** 'system', 'server' (nie dunkel) oder 'immer'. */
+  function wahl() {
+    try { var w = localStorage.getItem(DUNKEL_KEY); return w === 'server' || w === 'immer' ? w : 'system'; } catch (_) { return 'system'; }
   }
   /** @param {string} theme */
   function wirksam(theme) {
-    var dunkel = folgtSystem() && systemDunkel && systemDunkel.matches && theme !== 'werkbank';
+    var w = wahl();
+    // „Immer dunkel“ auch bei hellem System: Sonst bekam den Dunkelmodus nur, wer Werkbank wählte.
+    var dunkel = theme !== 'werkbank' && (w === 'immer' || (w === 'system' && !!systemDunkel && systemDunkel.matches));
     if (dunkel) document.documentElement.setAttribute('data-dunkel', '');
     else document.documentElement.removeAttribute('data-dunkel');
     return theme;
@@ -45,10 +48,10 @@
   }
   if (systemDunkel && systemDunkel.addEventListener) systemDunkel.addEventListener('change', neuAnwenden);
   window.__bimDunkel = function (wert) {
-    try { localStorage.setItem(DUNKEL_KEY, wert === 'system' ? 'system' : 'server'); } catch (_) {}
+    try { localStorage.setItem(DUNKEL_KEY, wert === 'immer' || wert === 'server' ? wert : 'system'); } catch (_) {}
     neuAnwenden();
   };
-  window.__bimDunkelWert = function () { return folgtSystem() ? 'system' : 'server'; };
+  window.__bimDunkelWert = wahl;
   // Hat ein Design keine helle Fassung? Die Einstellungen sagen es dann dazu.
   window.__bimNurDunkel = function (theme) { return theme === 'werkbank'; };
 

@@ -8146,6 +8146,28 @@
                         "type": "null"
                       }
                     ]
+                  },
+                  "currency": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "pattern": "^[A-Z]{3}$"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "date": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
                   }
                 },
                 "additionalProperties": false
@@ -9612,6 +9634,28 @@
                         "type": "null"
                       }
                     ]
+                  },
+                  "currency": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "pattern": "^[A-Z]{3}$"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "date": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
                   }
                 },
                 "additionalProperties": false
@@ -9760,6 +9804,22 @@
       "post": {
         "tags": [
           "sets"
+        ],
+        "parameters": [
+          {
+            "name": "pruefen",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "0",
+                "1",
+                "true",
+                "false"
+              ]
+            }
+          }
         ],
         "responses": {
           "200": {
@@ -13708,6 +13768,12 @@
               "string",
               "null"
             ]
+          },
+          "preis_konto": {
+            "type": [
+              "number",
+              "null"
+            ]
           }
         },
         "required": [
@@ -13758,6 +13824,14 @@
             "type": "number"
           },
           "priced_rows": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          },
+          "currency": {
+            "type": "string"
+          },
+          "ohne_kurs": {
             "type": "integer",
             "minimum": -9007199254740991,
             "maximum": 9007199254740991
@@ -15673,6 +15747,9 @@
               "string",
               "null"
             ]
+          },
+          "beendet_am": {
+            "type": "string"
           }
         },
         "required": [
@@ -16457,6 +16534,9 @@
                       },
                       "kaufpreis_waehrung": {
                         "type": "string"
+                      },
+                      "price_estimated": {
+                        "type": "boolean"
                       }
                     },
                     "required": [
@@ -17731,6 +17811,37 @@
               "string",
               "null"
             ]
+          },
+          "sub_teile": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "code": {
+                  "type": "string"
+                },
+                "werte": {
+                  "type": "object",
+                  "propertyNames": {
+                    "type": "string"
+                  },
+                  "additionalProperties": {
+                    "type": [
+                      "string",
+                      "number"
+                    ]
+                  }
+                },
+                "vor": {
+                  "type": "string",
+                  "const": "bestand"
+                }
+              },
+              "required": [
+                "code"
+              ],
+              "additionalProperties": false
+            }
           }
         },
         "required": [
@@ -18379,6 +18490,9 @@
                       },
                       "kaufpreis_waehrung": {
                         "type": "string"
+                      },
+                      "price_estimated": {
+                        "type": "boolean"
                       }
                     },
                     "required": [
@@ -18696,6 +18810,9 @@
                       },
                       "kaufpreis_waehrung": {
                         "type": "string"
+                      },
+                      "price_estimated": {
+                        "type": "boolean"
                       }
                     },
                     "required": [
@@ -19861,6 +19978,9 @@
                       },
                       "kaufpreis_waehrung": {
                         "type": "string"
+                      },
+                      "price_estimated": {
+                        "type": "boolean"
                       }
                     },
                     "required": [
@@ -20713,6 +20833,20 @@
               "string",
               "null"
             ]
+          },
+          "gestartet": {
+            "type": "boolean"
+          },
+          "vorhanden": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          },
+          "vorhanden_nummern": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
           }
         },
         "required": [
@@ -21967,6 +22101,12 @@
               "null"
             ]
           },
+          "kaufpreis_geschaetzt": {
+            "type": [
+              "boolean",
+              "null"
+            ]
+          },
           "used_count": {
             "anyOf": [
               {
@@ -22977,6 +23117,9 @@
                 },
                 "kaufpreis_waehrung": {
                   "type": "string"
+                },
+                "price_estimated": {
+                  "type": "boolean"
                 }
               },
               "required": [

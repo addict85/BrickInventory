@@ -333,7 +333,8 @@ test('Finanzen: Kaufpreis statt zweiter Marktpreis-Spalte', () => {
   assert.doesNotMatch(fin, /t\('finance\.qty_avg'\)/,
     'Die mengengewichtete Spalte ist entfallen');
   // Einstand (Menge × Kaufpreis) vor Marktpreis, für alle drei Tabellen gleich.
-  assert.match(fin, /<th[^>]*>(?:<abbr[^>]*>)?\$\{t(?:Raw)?\('finance\.col\.purchase'\)\}(?:<\/abbr>)?<\/th>`(?:\s*\+ `|\}\$\{html`)<th[^>]*>\$\{t(?:Raw)?\('detail\.market_price'\)\}/,
+  // Der Kopf darf ein Sortierknopf sein (sortKnopf), die Reihenfolge bleibt.
+  assert.match(fin, /<th[^>]*>(?:<abbr[^>]*>)?\$\{(?:t(?:Raw)?\('finance\.col\.purchase'\)|sortKnopf\('kauf', \w+, tRaw\('finance\.col\.purchase'\)\))\}(?:<\/abbr>)?<\/th>`(?:\s*\+ `|\}\$\{html`)<th[^>]*>\$\{t(?:Raw)?\('detail\.market_price'\)\}/,
     'Sets-Tabelle: Kaufpreis vor Marktpreis, wie bei Teilen und Minifiguren');
   // fmtGeld statt fmtN: Ein Kaufpreis von 0 (Geschenk) steht als „0,00 €“ da.
   assert.match(fin, /if \(n <= 1\) return fmtGeld\(p, cur\);/,

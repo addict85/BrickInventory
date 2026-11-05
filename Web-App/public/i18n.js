@@ -1,4 +1,5 @@
 import { melde } from './js/00-ereignisse.js';
+import { SicheresHtml } from './js/00-escapen.js';
 
 // Minimales Übersetzungs-System: t('key', {name}) liefert den Text. Die Sprache wird im localStorage gemerkt,
 // damit beim nächsten Laden nichts verzögert. Nur die aktive Sprache wird ausgeliefert.
@@ -97,12 +98,13 @@ function mehrzahlSchluessel(dict, key, vars) {
 }
 
 /**
- * Übersetzten Text holen und {platzhalter} ersetzen. Die Werte werden maskiert, weil fast jede Aufrufstelle
- * das Ergebnis in innerHTML schiebt und darin Nutzereingaben stehen. Für reinen Text gibt es tRaw().
+ * Übersetzten Text als Markup holen: Die Werte werden maskiert und das Ergebnis ist SicheresHtml, damit tsc
+ * meldet, wenn es in textContent, toast() oder einen Dialogtext geriete — dort stünde sonst „&amp;“. Für
+ * reinen Text gibt es tRaw().
  * Ausführlich: docs/begruendungen/public/i18n.js.md#uebersetzten-text-holen-und-platzhalter
  * @param {string} key
  * @param {Record<string, unknown>} [vars]
- * @returns {string}
+ * @returns {SicheresHtml}
  */
 export function t(key, vars) {
   // Beide können fehlen (nur eine Sprachdatei geladen) — {} als letzte Stufe, dann greift der Rückfall auf
@@ -116,15 +118,14 @@ export function t(key, vars) {
   if (vars) {
     Object.keys(vars).forEach(k => { str = str.replaceAll('{' + k + '}', _i18nEsc(vars[k])); });
   }
-  return str;
+  return new SicheresHtml(str);
 }
 
 /**
  * Wie t(), aber OHNE Maskierung der Variablen.
  *
- * Nur benutzen, wenn das Ergebnis nachweislich nicht in innerHTML landet oder die Werte selbst schon maskiert
- * sind — in der Praxis heisst das: textContent-Zuweisungen und toast(). Hier stand „Aktuell gibt es keine
- * Aufrufstelle"; das war einmal richtig und ist es seit langem nicht mehr.
+ * Für reinen Text: textContent, Attribute per setAttribute, toast() und Dialogtexte. In html`` wird das
+ * Ergebnis dort maskiert.
  *
  * @param {string} key
  * @param {Record<string, unknown>} [vars]
@@ -226,7 +227,7 @@ function schreibeI18n(el) {
   if (el.dataset.i18nVars) { try { vars = JSON.parse(el.dataset.i18nVars); } catch (_) {} }
   // data-i18n-betrag: ein Beispielbetrag im Zahlenformat der Oberfläche („z. B. 79,99“).
   if (el.dataset.i18nBetrag) vars = { ...vars, betrag: new Intl.NumberFormat(locale(), { minimumFractionDigits: 2, useGrouping: false }).format(Number(el.dataset.i18nBetrag)) };
-  const val = t(key ?? '', vars);
+  const val = tRaw(key ?? '', vars);
   if (attr) el.setAttribute(attr, val);
   else if (el.dataset.ico) {
     // Symbol vor dem Text: data-ico nennt es, der Text bleibt übersetzbar.
@@ -268,13 +269,13 @@ export function applyLang(lang, persist) {
 
   // Ein zweites Attribut je Element, meist der Name eines Feldes neben seinem Platzhalter.
   /** @type {NodeListOf<HTMLElement>} */ (document.querySelectorAll('[data-i18n-aria]')).forEach(el => {
-    el.setAttribute('aria-label', t(el.dataset.i18nAria ?? ''));
+    el.setAttribute('aria-label', tRaw(el.dataset.i18nAria ?? ''));
   });
 
   // Re-render nav tab labels
   /** @type {NodeListOf<HTMLElement>} */ (document.querySelectorAll('.ntab[data-i18n-tab]')).forEach(el => {
     const label = el.querySelector('.tab-label');
-    if (label) label.textContent = t(el.dataset.i18nTab ?? '');
+    if (label) label.textContent = tRaw(el.dataset.i18nTab ?? '');
   });
 
   // Sync the language dropdown in settings (if rendered)

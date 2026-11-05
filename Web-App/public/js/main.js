@@ -39,6 +39,7 @@ import './09-catalog.js';
 import './10-mobile.js';
 import './11-actions.js';
 import './12-pdfviewer.js';
+import './13-kaufpreis-anzeige.js';
 import './13-acquisition-modals.js';
 import './13-set-teile.js';
 import './14-scope.js';
