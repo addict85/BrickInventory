@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.ui
 
+import androidx.annotation.Keep
 import ch.brickinventoryapp.data.model.KEINE_FARBE
 import kotlinx.serialization.Serializable
 
@@ -62,7 +63,9 @@ sealed interface Screen {
 /**
  * Welche Art Posten eine Route meint. Als Aufzählung, damit ein Tippfehler nicht
  * erst am Server auffällt; [kennung] ist der Text, den Api und Bildschirme führen.
+ * Keep: Die Routen tragen sie serialisiert; R8 darf ihren Serializer nicht umbenennen.
  */
+@Keep
 @Serializable
 enum class Postenart(val kennung: String) {
     SET("set"), PART("part"), FIG("fig");
