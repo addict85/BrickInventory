@@ -103,6 +103,7 @@ import ch.brickinventoryapp.ressourcen.R
  *   mehr-ohne-vergleich             Vergleich nicht unter „Mehr“ → rot „Vergleich und Bauliste markieren …“
  *   galerie-kachel-gross            Setkachel auch bei 200 % mit Bild über die Breite → rot „Galerie bei 200 Prozent …“
  *   galerie-erfassen-schwebt        Erfassen auch bei 200 % schwebend → rot „Galerie bei 200 Prozent …“
+ *   teile-erfassen-schwebt          Erfassen auch bei 200 % schwebend → rot „Teile bei 200 Prozent …“
  *   teile-kachel-gross              Teilekachel auch bei 200 % mit Bild über die Breite → rot „Teile bei 200 Prozent zeigen …“
  */
 @RunWith(RobolectricTestRunner::class)
@@ -373,15 +374,15 @@ class OberflaechenRegelnTest {
     }
 
     /**
-     * Erfassen-Knöpfe mit [beschreibung], die auf der Liste liegen statt über ihr. Geprüft wird
-     * die ganze Liste, nicht nur die Kacheln: Bei wenigen Sets bleibt die Ecke unter einem
-     * schwebenden Knopf leer, und er verdeckte erst bei voller Sammlung etwas.
+     * Erfassen-Knöpfe mit [beschreibung], die nicht über der Liste stehen. Bei 200 % gehört
+     * Erfassen in die Zeile unter der Suche; ein schwebender Knopf liegt unterhalb des
+     * Listenanfangs, auch wenn die Liste bei wenigen Sets kürzer ist als der Bildschirm.
      */
-    private fun erfassenAufListe(beschreibung: String): List<androidx.compose.ui.geometry.Rect> {
+    private fun erfassenNichtUeberListe(beschreibung: String): List<androidx.compose.ui.geometry.Rect> {
         val liste = compose.onNode(androidx.compose.ui.test.hasScrollToNodeAction()).fetchSemanticsNode().boundsInRoot
         val knoepfe = compose.onAllNodesWithContentDescription(beschreibung).fetchSemanticsNodes().map { it.boundsInRoot }
         assertTrue("Erfassen ist da", knoepfe.isNotEmpty())
-        return knoepfe.filter { it.overlaps(liste) }
+        return knoepfe.filter { it.bottom > liste.top + 0.5f }
     }
 
     /**
@@ -397,8 +398,8 @@ class OberflaechenRegelnTest {
             val namen = listOf("Millennium Falcon", "Titanic", "Baumhaus")
             val ganz = ganzSichtbar(namen)
             assertTrue("Nur $ganz Set(s) ganz sichtbar", ganz >= 2)
-            val aufListe = erfassenAufListe(ctx.getString(R.string.gallery_add_set))
-            assertTrue("Erfassen liegt auf der Liste: $aufListe", aufListe.isEmpty())
+            val daneben = erfassenNichtUeberListe(ctx.getString(R.string.gallery_add_set))
+            assertTrue("Erfassen steht nicht über der Liste: $daneben", daneben.isEmpty())
         } finally {
             welt.close()
         }
@@ -417,8 +418,8 @@ class OberflaechenRegelnTest {
             assertTrue(namen.size >= 3)
             val ganz = ganzSichtbar(namen)
             assertTrue("Nur $ganz Teil(e) ganz sichtbar", ganz >= 2)
-            val aufListe = erfassenAufListe(ctx.getString(R.string.parts_add))
-            assertTrue("Erfassen liegt auf der Liste: $aufListe", aufListe.isEmpty())
+            val daneben = erfassenNichtUeberListe(ctx.getString(R.string.parts_add))
+            assertTrue("Erfassen steht nicht über der Liste: $daneben", daneben.isEmpty())
         } finally {
             welt.close()
         }
