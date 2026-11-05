@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.ui.screens
 
+import ch.brickinventoryapp.ui.theme.farbeAusHex
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -21,10 +22,8 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
-import androidx.core.graphics.toColorInt
 import ch.brickinventoryapp.ressourcen.R
 import ch.brickinventoryapp.ui.model.FarbeAnsicht
 import ch.brickinventoryapp.ui.model.OHNE_FARBE
@@ -97,8 +96,6 @@ fun FarbWahlFeld(
 /** Der Farbpunkt. Ein unlesbarer Hex-Wert ergibt KEINEN Punkt, keinen falschen. */
 @Composable
 private fun FarbPunkt(hex: String?, modifier: Modifier = Modifier) {
-    val farbe = hex?.let {
-        try { Color("#$it".toColorInt()) } catch (_: Exception) { null }
-    } ?: return
+    val farbe = farbeAusHex(hex) ?: return
     Box(modifier.size(14.dp).clip(CircleShape).background(farbe))
 }

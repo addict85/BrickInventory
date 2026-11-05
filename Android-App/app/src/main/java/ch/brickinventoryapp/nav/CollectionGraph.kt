@@ -126,7 +126,7 @@ private fun NavGraphBuilder.galerieZiele(u: ZielUmgebung) {
                 },
                 rueckgaengigMoeglich = galerieUnten != null,
                 onNavigateToAcqMgmt = { type, id, colorId, title ->
-                    navController.navigate(Screen.AcquisitionManagement(type, id, colorId, title))
+                    navController.navigate(Screen.AcquisitionManagement(Postenart.aus(type), id, colorId, title))
                 },
                 onOpenPdf = { url, title ->
                     navController.navigate(Screen.PdfViewer(url, title))
@@ -261,7 +261,7 @@ private fun NavGraphBuilder.einzelstueckZiele(
         // Ein ganzer Screen, kein Dialog mehr — Aufbau wie beim Set-Detail.
         composable<Screen.ManualItemDetail> { backStackEntry ->
             val ziel = backStackEntry.toRoute<Screen.ManualItemDetail>()
-            val itemType  = ziel.type
+            val itemType  = ziel.art.kennung
             val itemId    = ziel.id
             val colorId   = ziel.colorId
             val itemTitle = ziel.title
@@ -275,7 +275,7 @@ private fun NavGraphBuilder.einzelstueckZiele(
                 imageLoader = imageLoader,
                 onBack = { navController.popBackStack() },
                 onNavigateToAcqMgmt = { t, i, c, title ->
-                    navController.navigate(Screen.AcquisitionManagement(t, i, c, title))
+                    navController.navigate(Screen.AcquisitionManagement(Postenart.aus(t), i, c, title))
                 },
                 // Die Farbe ist Teil der Route und der Suche im Screen; nach einer Änderung
                 // wird er mit der neuen Farbe neu geöffnet. Erst zurück, dann hin: Sonst
@@ -291,7 +291,7 @@ private fun NavGraphBuilder.einzelstueckZiele(
             val ziel = backStackEntry.toRoute<Screen.AcquisitionManagement>()
             AcquisitionManagementRoute(
                 vm      = hiltViewModel<KaeufeViewModel>(),
-                type    = ziel.type,
+                type    = ziel.art.kennung,
                 id      = ziel.id,
                 colorId = ziel.colorId,
                 title   = ziel.title,
@@ -324,7 +324,7 @@ internal fun TeileListeUndDetailRoute(
             if (nebeneinander) {
                 teileVm.schliesseSetItem()
                 manuell = listOf(typ, id, farbe.toString(), titel)
-            } else navController.navigate(Screen.ManualItemDetail(typ, id, farbe, titel))
+            } else navController.navigate(Screen.ManualItemDetail(Postenart.aus(typ), id, farbe, titel))
         }
         val oeffneSet: (String) -> Unit = { navController.navigate(Screen.SetDetail(it)) }
         val offen = manuell
@@ -355,7 +355,7 @@ internal fun TeileListeUndDetailRoute(
                             imageLoader = imageLoader,
                             onBack = { manuell = null },
                             onNavigateToAcqMgmt = { t, i, c, title ->
-                                navController.navigate(Screen.AcquisitionManagement(t, i, c, title))
+                                navController.navigate(Screen.AcquisitionManagement(Postenart.aus(t), i, c, title))
                             },
                             onFarbeGeaendert = { neueFarbe -> manuell = listOf(offen[0], offen[1], neueFarbe.toString(), offen[3]) },
                         )

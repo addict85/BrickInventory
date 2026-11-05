@@ -10,6 +10,8 @@ import ch.brickinventoryapp.ui.pdf.PdfHalter
 import ch.brickinventoryapp.ui.pdf.PdfLader
 import ch.brickinventoryapp.ui.pdf.PdfLoadState
 import ch.brickinventoryapp.ui.pdf.PdfQuelle
+import ch.brickinventoryapp.ui.pdf.PdfSchreiber
+import ch.brickinventoryapp.ui.pdf.kopiereAbbrechbar
 import ch.brickinventoryapp.ui.pdf.renderPdfPage
 import ch.brickinventoryapp.di.BrickDispatchers
 import ch.brickinventoryapp.di.Dispatcher
@@ -65,6 +67,9 @@ class PdfBetrachterViewModel @Inject constructor(
     /** Eine Seite als Bitmap; PdfRenderer liest von der Platte und rechnet, beides nicht auf Main. */
     suspend fun seite(quelle: PdfQuelle, index: Int, breitePx: Int): Bitmap? =
         withContext(io) { renderPdfPage(quelle, index, breitePx) }
+
+    /** Kopiert die geladene Datei für den Druck auf dem IO-Dispatcher; abbrechbar zwischen zwei Stücken. */
+    val schreiber = PdfSchreiber { quelle, ziel -> withContext(io) { quelle.eingang().use { kopiereAbbrechbar(it, ziel) } } }
 
     override fun onCleared() {
         offen.close()

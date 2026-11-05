@@ -4,15 +4,15 @@ Test: ch.brickinventoryapp.GutscheinPdfAblageTest
 Rot: Betrachter, Abmelden und Start raeumen auf
 
 diff --git a/Android-App/feature-finanzen/src/main/java/ch/brickinventoryapp/ui/screens/PdfViewerScreen.kt b/Android-App/feature-finanzen/src/main/java/ch/brickinventoryapp/ui/screens/PdfViewerScreen.kt
-index 997d73a..9bc12a3 100644
+index 06cd17c..3e0251e 100644
 --- a/Android-App/feature-finanzen/src/main/java/ch/brickinventoryapp/ui/screens/PdfViewerScreen.kt
 +++ b/Android-App/feature-finanzen/src/main/java/ch/brickinventoryapp/ui/screens/PdfViewerScreen.kt
-@@ -376,17 +376,17 @@ fun PdfViewerScreen(
+@@ -169,17 +169,17 @@ fun PdfViewerScreen(
                      // wo Speichern erlaubt ist: Der Druckdialog bietet „Als PDF speichern“.
                      val s = state
                      if (s is PdfLoadState.Ready) {
 +                        ch.brickinventoryapp.ui.components.MitTooltip(stringResource(R.string.pdfview_print)) {
-+                            IconButton(onClick = { melde(printPdf(ctx, s.quelle, title)) }) {
++                            IconButton(onClick = { melde(printPdf(ctx, s.quelle, title, schreibe, bereich)) }) {
 +                                Icon(Icons.Default.Print, contentDescription = stringResource(R.string.pdfview_print))
 +                            }
 +                        }
@@ -23,7 +23,7 @@ index 997d73a..9bc12a3 100644
                                  }
                              }
 -                            ch.brickinventoryapp.ui.components.MitTooltip(stringResource(R.string.pdfview_print)) {
--                                IconButton(onClick = { melde(printPdf(ctx, s.quelle, title)) }) {
+-                                IconButton(onClick = { melde(printPdf(ctx, s.quelle, title, schreibe, bereich)) }) {
 -                                    Icon(Icons.Default.Print, contentDescription = stringResource(R.string.pdfview_print))
 -                                }
 -                            }

@@ -6,7 +6,6 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import ch.brickinventoryapp.di.BrickDispatchers
 import ch.brickinventoryapp.di.Dispatcher
 import kotlinx.coroutines.CoroutineDispatcher
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
@@ -38,8 +37,8 @@ class ResponseCache(
      * oder einem ausgelesenen Datenverzeichnis offen. Null nur in Tests ohne Keystore.
      */
     private val chiffre: AblageChiffre? = null,
-    /** Für Platte und Verschlüsselung; Hilt gibt den injizierten, Tests die Vorgabe. */
-    private val io: CoroutineDispatcher = Dispatchers.IO,
+    /** Für Platte und Verschlüsselung. */
+    private val io: CoroutineDispatcher,
     /**
      * Woher der Ablageordner kommt. Eine Funktion, damit `context` erst beim
      * ersten Zugriff gefragt wird und der Test ein Wegwerf-Verzeichnis geben kann.

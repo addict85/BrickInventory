@@ -9,7 +9,6 @@ import kotlinx.serialization.json.JsonObject
 import ch.brickinventoryapp.di.BrickDispatchers
 import ch.brickinventoryapp.di.Dispatcher
 import kotlinx.coroutines.CoroutineDispatcher
-import kotlinx.coroutines.Dispatchers
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -21,8 +20,8 @@ import javax.inject.Singleton
 class KontoRepository @Inject constructor(
     api: KontoApi,
     cache: ResponseCache,
-    /** Für den blockierenden Tausch; Hilt gibt den injizierten, Tests die Vorgabe. */
-    @param:Dispatcher(BrickDispatchers.IO) private val io: CoroutineDispatcher = Dispatchers.IO,
+    /** Für den blockierenden Tausch. */
+    @param:Dispatcher(BrickDispatchers.IO) private val io: CoroutineDispatcher,
 ) : RepoBasis<KontoApi>(api, cache) {
 
     // Kein Authorization-Header hier: Der OkHttp-Interceptor in di/ServerClient.kt

@@ -1,0 +1,18 @@
+Gegenprobe: Ein Hex-Wert mit fremden Zeichen wird nicht abgewiesen, sondern wirft
+Modul: core-ui
+Test: ch.brickinventoryapp.FarbeAusHexTest
+Rot: ein unlesbarer Wert ergibt keine Farbe
+
+diff --git a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/theme/FarbeAusHex.kt b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/theme/FarbeAusHex.kt
+index cc1348c..829cb80 100644
+--- a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/theme/FarbeAusHex.kt
++++ b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/theme/FarbeAusHex.kt
+@@ -9,7 +9,7 @@ import androidx.compose.ui.graphics.Color
+  */
+ fun argbAusHex(hex: String?): Long? {
+     val roh = hex?.trim()?.removePrefix("#") ?: return null
+-    if (roh.isEmpty() || roh.any { it !in "0123456789abcdefABCDEF" }) return null
++    if (roh.isEmpty()) return null
+     return when (roh.length) {
+         6 -> 0xFF000000L or roh.toLong(16)
+         8 -> roh.toLong(16)

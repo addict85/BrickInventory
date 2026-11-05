@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.ui.screens
 
+import ch.brickinventoryapp.ui.theme.farbeAusHex
 import ch.brickinventoryapp.ui.erfassungsWerte
 import ch.brickinventoryapp.ui.model.MitgliedAnsicht
 import ch.brickinventoryapp.ui.theme.Formen
@@ -14,7 +15,6 @@ import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import ch.brickinventoryapp.ressourcen.R
@@ -23,7 +23,6 @@ import ch.brickinventoryapp.ui.model.FarbeAnsicht
 import ch.brickinventoryapp.ui.model.OHNE_FARBE
 import ch.brickinventoryapp.ui.ohneKeineFarbe
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.core.graphics.toColorInt
 import ch.brickinventoryapp.ui.theme.Abstaende
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -92,9 +91,7 @@ fun AddPartDialog(
                         readOnly = true,
                         label = { Text(stringResource(R.string.parts_color_label)) },
                         leadingIcon = {
-                            val swatch = selectedColor?.hex?.let {
-                                try { Color("#$it".toColorInt()) } catch (_: Exception) { null }
-                            }
+                            val swatch = farbeAusHex(selectedColor?.hex)
                             if (swatch != null) {
                                 Box(Modifier.padding(start = Abstaende.mittel).size(14.dp)
                                     .clip(androidx.compose.foundation.shape.CircleShape).background(swatch))
@@ -114,9 +111,7 @@ fun AddPartDialog(
                             DropdownMenuItem(
                                 text = { Text(c.name) },
                                 leadingIcon = {
-                                    val swatch = c.hex?.let {
-                                        try { Color("#$it".toColorInt()) } catch (_: Exception) { null }
-                                    }
+                                    val swatch = farbeAusHex(c.hex)
                                     if (swatch != null) {
                                         Box(Modifier.size(14.dp).clip(androidx.compose.foundation.shape.CircleShape).background(swatch))
                                     }

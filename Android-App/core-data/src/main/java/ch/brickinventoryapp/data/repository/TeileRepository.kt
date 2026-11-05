@@ -20,7 +20,7 @@ import javax.inject.Singleton
 class TeileRepository @Inject constructor(
     api: TeileApi,
     cache: ResponseCache,
-    ablage: Offlineablage = Offlineablage.fluechtig(),
+    ablage: Offlineablage,
 ) : RepoBasis<TeileApi>(api, cache, ablage) {
 
     suspend fun getParts(search: String? = null, color: String? = null,
