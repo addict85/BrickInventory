@@ -1,5 +1,6 @@
 package ch.brickinventoryapp
 
+import android.graphics.Bitmap
 import android.os.ParcelFileDescriptor
 import ch.brickinventoryapp.ui.pdf.DownloadGescheitert
 import ch.brickinventoryapp.ui.pdf.PdfFehler
@@ -38,6 +39,8 @@ import java.io.InputStream
  *   C  die Prüfung pdfImBetrachter() entfernt → rot „eine fremde Adresse wird nicht geladen …“
  *   D  in PdfHalter.halte() die Abfrage `if (zu)` entfernt → rot „eine Quelle, die nach
  *      dem Verlassen ankommt, wird sofort geschlossen“
+ *   E  (sec17 A-N6) gegenproben/pdf-seite-am-renderer-vorbei.patch → rot „eine Seite
+ *      rendert der Lader …“
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 class PdfBetrachterViewModelTest {
@@ -73,9 +76,26 @@ class PdfBetrachterViewModelTest {
             offen.halte(quelle)
             return quelle to 12
         }
+
+        /** Der Renderer als Attrappe: Gerendert wird im isolierten Prozess, hier nur gezählt. */
+        val seiten = mutableListOf<Int>()
+        override suspend fun seite(quelle: PdfQuelle, index: Int, breitePx: Int): Bitmap? {
+            seiten += index
+            return null
+        }
     }
 
     private fun vm(lader: Lader) = PdfBetrachterViewModel(lader, takt)
+
+    @Test
+    fun `eine Seite rendert der Lader im eigenen Prozess, nicht das ViewModel`() = runTest(takt) {
+        val lader = Lader()
+        val vm = vm(lader)
+        vm.oeffne(ANLEITUNG, SERVER)
+        advanceUntilIdle()
+        vm.seite(lader.quelle, 3, 1080)
+        assertEquals(listOf(3), lader.seiten)
+    }
 
     @Test
     fun `eine Drehung laedt nicht neu`() = runTest(takt) {

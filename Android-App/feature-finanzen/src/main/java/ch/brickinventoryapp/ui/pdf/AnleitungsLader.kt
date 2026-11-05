@@ -2,7 +2,7 @@ package ch.brickinventoryapp.ui.pdf
 
 import ch.brickinventoryapp.util.fangeAusserAbbruch
 import android.content.Context
-import android.graphics.pdf.PdfRenderer
+import android.graphics.Bitmap
 import android.net.wifi.WifiManager
 import ch.brickinventoryapp.di.BrickDispatchers
 import ch.brickinventoryapp.di.Dispatcher
@@ -38,6 +38,9 @@ import javax.inject.Named
 /** Lädt ein PDF für den Betrachter; [offen] bekommt die Quelle, bevor sie zurückkommt. */
 interface PdfLader {
     suspend fun lade(pdfUrl: String, offen: PdfHalter, onZustand: (PdfLoadState) -> Unit): Pair<PdfQuelle, Int>
+
+    /** Eine Seite als Bitmap, gerendert im isolierten Prozess (PdfRenderDienst). */
+    suspend fun seite(quelle: PdfQuelle, index: Int, breitePx: Int): Bitmap?
 }
 
 @Module
@@ -58,7 +61,10 @@ class AnleitungsLader @Inject constructor(
     @param:Named("api") private val httpClient: OkHttpClient,
     private val anleitungen: AnleitungsAblage,
     @param:Dispatcher(BrickDispatchers.IO) private val io: CoroutineDispatcher,
+    private val renderer: PdfRenderVerbindung,
 ) : PdfLader {
+
+    override suspend fun seite(quelle: PdfQuelle, index: Int, breitePx: Int): Bitmap? = renderer.seite(quelle, index, breitePx)
 
     override suspend fun lade(pdfUrl: String, offen: PdfHalter, onZustand: (PdfLoadState) -> Unit): Pair<PdfQuelle, Int> {
         // Ein Gutschein-PDF trägt Nummer und PIN: keine Datei (ablage == null), nur ein
@@ -118,7 +124,7 @@ class AnleitungsLader @Inject constructor(
                 return withContext(io) {
                     val quelle = PdfBereich.anleitung(anleitungen, cacheFile, anzeige)
                     if (!offen.halte(quelle)) throw CancellationException("Betrachter verlassen")
-                    quelle to seitenzahl(quelle)
+                    quelle to renderer.seitenzahl(quelle)
                 }
             }.onFailure { e ->
                 if (versuch >= 2 || pdfMitEinmalTicket(url)) throw e
@@ -150,7 +156,7 @@ class AnleitungsLader @Inject constructor(
         return withContext(io) {
             val quelle = PdfBereich.speicher(inhalt)
             if (!offen.halte(quelle)) throw CancellationException("Betrachter verlassen")
-            quelle to seitenzahl(quelle)
+            quelle to renderer.seitenzahl(quelle)
         }
     }
 
@@ -242,21 +248,6 @@ class AnleitungsLader @Inject constructor(
             }
             onProgress(downloaded, total)
         }
-    }
-}
-
-/** Seitenzahl über einen eigenen Deskriptor; zugleich die Probe, dass PdfRenderer das PDF lesen kann. */
-private fun seitenzahl(quelle: PdfQuelle): Int {
-    val pfd = quelle.oeffne()
-    try {
-        val renderer = PdfRenderer(pfd)
-        try {
-            return renderer.pageCount
-        } finally {
-            renderer.close()
-        }
-    } finally {
-        pfd.close()
     }
 }
 

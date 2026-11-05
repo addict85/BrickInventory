@@ -3,7 +3,10 @@ package ch.brickinventoryapp
 import android.content.ComponentName
 import android.content.Context
 import android.content.pm.PackageManager
+import android.content.pm.ServiceInfo
+import ch.brickinventoryapp.ui.pdf.PdfRenderDienst
 import androidx.test.core.app.ApplicationProvider
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Assert.fail
 import org.junit.Test
@@ -21,6 +24,8 @@ import org.robolectric.annotation.Config
  *                               rot „Google-Sign-in …“
  *   profilempfaenger-exportiert tools:node="remove" am ProfileInstallReceiver entfernt →
  *                               rot „der Profileinstaller …“
+ *   pdf-renderer-im-app-prozess isolatedProcess am PdfRenderDienst entfernt → rot
+ *                               „der PDF-Renderer läuft isoliert …“ (sec17 A-N6)
  */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [35])
@@ -51,5 +56,13 @@ class BibliotheksKomponentenTest {
         val info = ctx.packageManager.getReceiverInfo(
             ComponentName(ctx.packageName, "ch.brickinventoryapp.widget.SammlungsWidgetEmpfaenger"), 0)
         assertTrue(info.exported)
+    }
+
+    @Test
+    fun `der PDF-Renderer laeuft isoliert und ist von aussen nicht erreichbar`() {
+        val info = ctx.packageManager.getServiceInfo(ComponentName(ctx, PdfRenderDienst::class.java), 0)
+        assertTrue("Ohne isolatedProcess rendert pdfium im Prozess mit Token und Schlüsseln",
+            info.flags and ServiceInfo.FLAG_ISOLATED_PROCESS != 0)
+        assertFalse(info.exported)
     }
 }

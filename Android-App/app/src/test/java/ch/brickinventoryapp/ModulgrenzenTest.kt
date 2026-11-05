@@ -27,6 +27,8 @@ import java.io.File
  *      trägt core-ui ein → rot „Konventionen tragen keine Modulkanten ein“
  *   G  (04.11.2026) in build-logic/settings.gradle.kts `google()` ohne Filter →
  *      rot „Ohne Inhaltsfilter in build-logic/settings.gradle.kts“
+ *   H  (05.11.2026, sec17 A-N6, kotlinc lokal) ein `PdfRenderer(` in PdfSeite.kt →
+ *      rot „PdfRenderer steht nur im isolierten Render-Dienst“
  */
 class ModulgrenzenTest {
 
@@ -135,5 +137,16 @@ class ModulgrenzenTest {
         val kante = Regex("""\bproject\s*\(""")
         val mitKante = quellen.filter { kante.containsMatchIn(Quellen.ohneKommentare(it.readText())) }.map { it.name }
         assertTrue("Konventionen tragen keine Modulkanten ein: $mitKante", mitKante.isEmpty())
+    }
+
+    /** pdfium parst Dateien von Dritten; nur der Dienst im isolierten Prozess darf es (sec17 A-N6). */
+    @Test
+    fun `PdfRenderer steht nur im isolierten Render-Dienst`() {
+        val aufruf = Regex("""\bPdfRenderer\s*\(""")
+        val treffer = Quellen.module.flatMap { m ->
+            File(m, "src/main").walkTopDown().filter { it.isFile && it.extension == "kt" }
+                .filter { aufruf.containsMatchIn(Quellen.ohneKommentare(it.readText())) }.map { it.name }.toList()
+        }
+        assertEquals(listOf("PdfRenderDienst.kt"), treffer)
     }
 }

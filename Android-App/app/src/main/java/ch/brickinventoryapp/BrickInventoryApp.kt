@@ -2,6 +2,7 @@ package ch.brickinventoryapp
 
 import ch.brickinventoryapp.util.fangeAusserAbbruch
 import android.app.Application
+import android.os.Process
 import androidx.work.Configuration
 import dagger.hilt.android.HiltAndroidApp
 import javax.inject.Inject
@@ -19,7 +20,9 @@ import ch.brickinventoryapp.util.raeumeVertraulichePdfsAuf
 
 @HiltAndroidApp
 class BrickInventoryApp : Application(), Configuration.Provider {
-    @Inject lateinit var preferencesManager: PreferencesManager
+    // Lazy: Der isolierte PDF-Prozess erzeugt auch eine Application, darf aber keine Dateien öffnen.
+    @Inject lateinit var preferencesManagerLazy: dagger.Lazy<PreferencesManager>
+    private val preferencesManager get() = preferencesManagerLazy.get()
     @Inject lateinit var bereiche: Anwendungsbereiche
 
     /**
@@ -32,6 +35,8 @@ class BrickInventoryApp : Application(), Configuration.Provider {
 
     override fun onCreate() {
         super.onCreate()
+        // Im Render-Prozess (ui/pdf/PdfRenderDienst) gibt es weder Dateien noch Konto.
+        if (Process.isIsolated()) return
 
         // Ein Klartext-Token älterer Fassungen einmalig verschlüsselt ablegen, im
         // Hintergrund: Der Lesepfad kommt auch ohne Übernahme an das alte Token.

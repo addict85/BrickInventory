@@ -263,6 +263,13 @@
                 android:resource="@xml/sammlungs_widget" />
         </receiver>
 
+        <!-- PDFs von Dritten rendert pdfium ohne Rechte, Dateien und Konto (ui/pdf/PdfRenderDienst). -->
+        <service
+            android:name="ch.brickinventoryapp.ui.pdf.PdfRenderDienst"
+            android:isolatedProcess="true"
+            android:process=":pdf"
+            android:exported="false" />
+
         <!-- Antwort der Installer-Sitzung des Selbst-Updates (util/AppUpdate.kt):
              nur über unsere PendingIntent erreichbar, darum nicht exportiert. -->
         <receiver
