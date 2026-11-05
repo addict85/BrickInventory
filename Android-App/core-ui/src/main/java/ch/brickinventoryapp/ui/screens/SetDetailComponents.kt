@@ -151,7 +151,7 @@ fun PriceChart(chart: PreisDiagrammAnsicht, waehrung: String) {
     Column(Modifier.fillMaxHeight().padding(end = Abstaende.klein),
         verticalArrangement = Arrangement.SpaceBetween, horizontalAlignment = Alignment.End) {
         achse.forEach { v ->
-            Text(ch.brickinventoryapp.util.fmtAmount(v, 0, 0), style = MaterialTheme.typography.labelSmall,
+            Text(ch.brickinventoryapp.util.fmtMoneyGanz(v, waehrung), style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, softWrap = false)
         }
     }
@@ -364,9 +364,10 @@ fun WertKacheln(markt: String, kauf: String, pnl: Double?, modifier: Modifier = 
             rand = farben.outlineVariant)
     }
     val pnlKachel: @Composable (Modifier) -> Unit = { m ->
+        // Nur die Zahl in Grün oder Rot: Die Beschriftung in Statusfarbe las sich wie ein Urteil.
         WertKachel(stringResource(R.string.detail_pnl_tile), pnlText, farben.surface,
             when { pnl == null -> farben.onSurfaceVariant; pnl < 0 -> status.fehler; else -> status.erfolg },
-            m, rand = farben.outlineVariant)
+            m, rand = farben.outlineVariant, beschriftung = farben.onSurfaceVariant)
     }
     val messer = androidx.compose.ui.text.rememberTextMeasurer()
     val stil = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)
@@ -402,7 +403,8 @@ fun WertKacheln(markt: String, kauf: String, pnl: Double?, modifier: Modifier = 
 
 /** Eine Kachel der Wertreihe: Bezeichnung klein, Betrag gross und immer in einer Zeile. */
 @Composable
-private fun WertKachel(label: String, wert: String, flaeche: Color, schrift: Color, modifier: Modifier = Modifier, rand: Color? = null) {
+private fun WertKachel(label: String, wert: String, flaeche: Color, schrift: Color, modifier: Modifier = Modifier,
+                       rand: Color? = null, beschriftung: Color = schrift) {
     Column(
         modifier
             .clip(Formen.leiste)
@@ -411,7 +413,7 @@ private fun WertKachel(label: String, wert: String, flaeche: Color, schrift: Col
             .padding(Abstaende.mittel)
             .semantics(mergeDescendants = true) {},
     ) {
-        Text(label, color = schrift, style = MaterialTheme.typography.labelMedium, maxLines = 2, overflow = TextOverflow.Ellipsis)
+        Text(label, color = beschriftung, style = MaterialTheme.typography.labelMedium, maxLines = 2, overflow = TextOverflow.Ellipsis)
         Text(wert, color = schrift, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold,
             maxLines = 1, softWrap = false)
     }

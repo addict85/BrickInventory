@@ -172,7 +172,7 @@ class SammlungsWidget : GlanceAppWidget() {
             if (zeilen == null) {
                 Text(leer, style = TextStyle(fontSize = 12.sp, color = GlanceTheme.colors.onSurfaceVariant))
             } else for ((name, wert) in zeilen) {
-                Text(name, style = TextStyle(fontSize = 11.sp, color = GlanceTheme.colors.onSurfaceVariant))
+                Text(name, style = TextStyle(fontSize = 12.sp, color = GlanceTheme.colors.onSurfaceVariant))
                 Text(wert, style = TextStyle(fontSize = 15.sp, fontWeight = FontWeight.Medium, color = GlanceTheme.colors.onSurface))
             }
         }

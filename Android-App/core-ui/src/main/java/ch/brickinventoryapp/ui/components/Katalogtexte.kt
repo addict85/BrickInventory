@@ -20,6 +20,11 @@ private fun deutsch(): Boolean = LocalConfiguration.current.locales[0].language 
 fun farbUebersetzer(): (String) -> String =
     if (deutsch()) FarbeDeutsch::uebersetze else { name -> name }
 
+/** Teilekategorien in der Sprache der App, wie die Farben daneben („Steine“ statt „Bricks“). */
+@Composable
+fun kategorieUebersetzer(): (String) -> String =
+    if (deutsch()) ch.brickinventoryapp.ui.KategorieDeutsch::uebersetze else { name -> name }
+
 /**
  * Teile- und Figurennamen bleiben englisch: Der Server liefert keine deutschen,
  * und eine Wort-für-Wort-Übersetzung („Fliese 1 x 2 mit Nut“) träfe die Namen,

@@ -333,7 +333,7 @@ private fun AcquisitionManagementRow(
     }
     Text(
         dateLabel ?: "—",
-        style = MaterialTheme.typography.labelSmall,
+        style = MaterialTheme.typography.bodySmall,
         color = MaterialTheme.colorScheme.primary,
         modifier = Modifier
             .padding(top = Abstaende.klein, bottom = Abstaende.haar)
@@ -402,14 +402,14 @@ private fun AcquisitionManagementRow(
                 .weight(1f)
                 .onFocusChanged { st -> if (!st.isFocused) flushPending() },
             singleLine = true,
-            placeholder = { Text(stringResource(R.string.detail_price_placeholder), style = MaterialTheme.typography.labelSmall) },
+            placeholder = { Text(stringResource(R.string.detail_price_placeholder), style = MaterialTheme.typography.bodySmall) },
             // Ein Marktpreis, den der Server eingesetzt hat, ist kein bezahlter
             // Betrag; das „≈" sagt es, bis jemand den echten Preis einträgt.
             prefix = if (acquisition.priceEstimated && priceText.isNotEmpty()) {
                 { Text("≈", modifier = Modifier.semantics {
                     contentDescription = geschaetztText }) }
             } else null,
-            suffix = acquisition.currency?.let { w -> { Text(w, style = MaterialTheme.typography.labelSmall) } },
+            suffix = acquisition.currency?.let { w -> { Text(w, style = MaterialTheme.typography.bodySmall) } },
             keyboardOptions = NumericInput.preisTastatur(),
             keyboardActions = KeyboardActions(
                 onDone = { focusManager.clearFocus(); flushPending() }

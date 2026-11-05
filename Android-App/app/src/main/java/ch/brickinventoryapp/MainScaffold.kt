@@ -275,7 +275,9 @@ private fun ReiterBeschriftung(text: String, groesse: MutableState<TextUnit>, be
     val boden = stil.fontSize / LocalDensity.current.fontScale.coerceAtLeast(1f)
     val aktuell = if (groesse.value.isSpecified) groesse.value else stil.fontSize
     Text(
-        text, style = stil.copy(fontSize = aktuell), maxLines = 1, softWrap = false,
+        // Mindestabstand zum Rand des Ziels: Bei 200 % stand „Sammlung“ 1 dp vor der Kante.
+        text, Modifier.padding(horizontal = ch.brickinventoryapp.ui.theme.Abstaende.winzig),
+        style = stil.copy(fontSize = aktuell), maxLines = 1, softWrap = false,
         overflow = TextOverflow.Clip,
         onTextLayout = { l ->
             if (l.hasVisualOverflow) {
@@ -335,7 +337,7 @@ private fun androidx.navigation.NavController.zuReiter(ziel: Screen) =
  */
 @Composable
 private fun SammlungUmschalter(aktuell: Screen, onWahl: (Screen) -> Unit, modifier: Modifier = Modifier) {
-    val texte = listOf(R.string.gallery_stat_sets, R.string.nav_parts, R.string.nav_minifigs)
+    val texte = listOf(R.string.nav_sets, R.string.nav_parts, R.string.nav_minifigs)
     val ziele = SAMMLUNGS_ZIELE.zip(texte).map { (ziel, text) -> ziel to stringResource(text) }
     ch.brickinventoryapp.ui.components.SegmentWahl<Screen?>(
         optionen = ziele,

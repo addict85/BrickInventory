@@ -19,12 +19,21 @@ fun fmtDatum(iso: String?, locale: java.util.Locale, jahr: DatumJahr = DatumJahr
     if (j.length != 4 || m.length != 2 || t.length != 2) return null
     if (!(j + m + t).all { it.isDigit() }) return null
     val jj = when (jahr) { DatumJahr.VOLL -> j; DatumJahr.KURZ -> j.takeLast(2); DatumJahr.OHNE -> "" }
+    return if (locale.language != "en") (if (jahr == DatumJahr.OHNE) "$t.$m." else "$t.$m.$jj")
+    else englisch(t.toInt(), m.toInt(), jj, us = locale.country == "US")
+}
+
+/** Englisch mit Monatsnamen: „01/08/2026“ hiesse für US-Leser der 8. Januar. */
+private fun englisch(tag: Int, monat: Int, jj: String, us: Boolean): String? {
+    val name = MONATE_EN.getOrNull(monat - 1) ?: return null
     return when {
-        locale.language != "en" -> if (jahr == DatumJahr.OHNE) "$t.$m." else "$t.$m.$jj"
-        locale.country == "US" -> if (jahr == DatumJahr.OHNE) "$m/$t" else "$m/$t/$jj"
-        else -> if (jahr == DatumJahr.OHNE) "$t/$m" else "$t/$m/$jj"
+        jj.isEmpty() -> if (us) "$name $tag" else "$tag $name"
+        us -> "$name $tag, $jj"
+        else -> "$tag $name $jj"
     }
 }
+
+private val MONATE_EN = listOf("Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec")
 
 /** Wie viel vom Jahr [fmtDatum] zeigt. */
 enum class DatumJahr { VOLL, KURZ, OHNE }

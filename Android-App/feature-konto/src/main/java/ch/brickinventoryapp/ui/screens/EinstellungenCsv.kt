@@ -70,7 +70,7 @@ internal fun CsvImportCard(
                 supportingContent = {
                     Column {
                         Text(stringResource(inhalt), style = MaterialTheme.typography.bodySmall)
-                        Text(stringResource(spalten), style = MaterialTheme.typography.labelSmall,
+                        Text(stringResource(spalten), style = MaterialTheme.typography.bodySmall,
                             fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
                             color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }

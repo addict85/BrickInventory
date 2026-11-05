@@ -33,7 +33,7 @@ class DiagrammAchsenTest {
     @Test
     fun `englisch Tag vor Monat wie jedes Datum`() {
         val l = lokaleAchse(punkte, tage, Locale.forLanguageTag("en-GB")).map { it.xLabel }
-        assertEquals(listOf("03/10", "", "05/10"), l)
+        assertEquals(listOf("3 Oct", "", "5 Oct"), l)
     }
 
     @Test

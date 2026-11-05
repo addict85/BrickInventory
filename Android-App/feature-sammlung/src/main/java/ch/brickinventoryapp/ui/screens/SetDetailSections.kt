@@ -147,7 +147,7 @@ fun LazyListScope.setDetailInstructionsSection(
                                         )
                                         Text(
                                             openUrl,
-                                            style = MaterialTheme.typography.labelSmall,
+                                            style = MaterialTheme.typography.bodySmall,
                                             color = MaterialTheme.colorScheme.primary,
                                             maxLines = 1,
                                             overflow = TextOverflow.Ellipsis
@@ -380,7 +380,7 @@ fun LazyListScope.setDetailStatChips(set: SetAnsicht) {
             set.minifigs?.let { add(labelMinifigs to "$it")  }
             set.theme?.let    { add(labelTheme    to it)     }
         }
-        if (chips.isNotEmpty()) KennzahlenReihe(Modifier.padding(horizontal = Abstaende.gross).padding(bottom = Abstaende.mittel), umbrechen = true) {
+        if (chips.isNotEmpty()) KennzahlenReihe(Modifier.padding(horizontal = Abstaende.gross).padding(bottom = Abstaende.mittel)) {
             chips.forEach { (label, value) -> StatChipV2(label = label, value = value) }
         }
     }

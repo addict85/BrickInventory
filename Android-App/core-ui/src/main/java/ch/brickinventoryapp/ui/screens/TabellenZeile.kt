@@ -25,6 +25,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Clear
 import ch.brickinventoryapp.ui.theme.Abstaende
+import ch.brickinventoryapp.ui.components.stueckzahl
+import ch.brickinventoryapp.ui.components.vorgelesenAls
 
 /**
  * Eine Zeile der Tabellenansicht — für Teile und Figuren, wie die beiden gleich
@@ -80,7 +82,8 @@ fun TabellenZeile(
                 ch.brickinventoryapp.ui.components.ProduktBild(
                     model = bildUrl?.let { ImageRequest.Builder(ctx).data(it).crossfade(!ch.brickinventoryapp.ui.components.bewegungReduziert()).build() },
                     imageLoader = imageLoader,
-                    contentDescription = name,
+                    // Ohne Beschreibung: Der Name steht daneben, TalkBack las ihn sonst zweimal.
+                    contentDescription = null,
                     onState = { st ->
                         if (st is coil3.compose.AsyncImagePainter.State.Error) onBildFehler()
                     },
@@ -116,7 +119,7 @@ fun TabellenZeile(
                     if (!zweiteZeile.isNullOrBlank()) {
                         Text(
                             zweiteZeile,
-                            style = MaterialTheme.typography.labelSmall,
+                            style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis,
@@ -124,7 +127,8 @@ fun TabellenZeile(
                     }
                 }
                 Text(
-                    "$menge",
+                    ch.brickinventoryapp.util.fmtInt(menge),
+                    Modifier.vorgelesenAls(stueckzahl(menge)),
                     fontFamily = FontFamily.Monospace,
                     fontWeight = FontWeight.Bold,
                     style = MaterialTheme.typography.bodyMedium,

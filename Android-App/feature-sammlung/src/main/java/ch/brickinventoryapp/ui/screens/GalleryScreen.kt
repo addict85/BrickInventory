@@ -74,6 +74,8 @@ import ch.brickinventoryapp.ui.components.Bewegt
 import ch.brickinventoryapp.ui.components.SkelettRaster
 import ch.brickinventoryapp.ui.components.SortierMenue
 import ch.brickinventoryapp.ui.components.ansagen
+import ch.brickinventoryapp.ui.components.vorgelesenAls
+import androidx.compose.ui.res.pluralStringResource
 
 /** Was die Galerie zeigt; die Route sammelt es aus den Flüssen der ViewModels. */
 data class GalerieZustand(
@@ -366,24 +368,18 @@ fun GalleryScreen(
     }
 }
 
-/**
- * Die Kennzahlen der Sammlung — erste Zeile des Rasters, sie rollt mit. Bei grosser
- * Schrift wischbar, mit Verlauf und Pfeil am Rand (KennzahlenReihe): Umgebrochen
- * schoben fünf Kennzahlen das erste Set aus dem Blick.
- */
+/** Die Kennzahlen der Sammlung — erste Zeile des Rasters, sie rollt mit. */
 @Composable
 private fun GalerieKennzahlen(stats: KennzahlenAnsicht) {
     KennzahlenReihe {
-        // fmtInt() statt "%,d" mit anschliessendem Ersetzen des Kommas: Die
-        // Webapp formatiert dieselben Kennzahlen mit toLocaleString(locale()).
-        GalleryStatChip(fmtInt(stats.totalSets), stringResource(R.string.gallery_stat_sets))
-        GalleryStatChip(fmtInt(stats.totalQuantity), stringResource(R.string.gallery_stat_units))
-        GalleryStatChip(fmtInt(stats.totalParts), stringResource(R.string.gallery_stat_parts),
+        GalleryStatChip(stats.totalSets, R.plurals.gallery_stat_sets)
+        GalleryStatChip(stats.totalQuantity, R.plurals.gallery_stat_units)
+        GalleryStatChip(stats.totalParts, R.plurals.gallery_stat_parts,
             teileAufschluesselung(stats.teileAusSets, stats.teileEinzeln))
         // Alle Kennzahlen immer, auch mit 0: Eine Reihe, deren Chips je nach Bestand
         // kommen und gehen, liest sich nicht gleich; 0 Figuren ist auch eine Auskunft.
-        GalleryStatChip(fmtInt(stats.totalMinifigs), stringResource(R.string.gallery_stat_minifigs))
-        GalleryStatChip(fmtInt(stats.totalInstructions), stringResource(R.string.gallery_stat_instructions))
+        GalleryStatChip(stats.totalMinifigs, R.plurals.gallery_stat_minifigs)
+        GalleryStatChip(stats.totalInstructions, R.plurals.gallery_stat_instructions)
     }
 }
 
@@ -497,7 +493,8 @@ fun SetCard(
     }) else null
     val menge: (@Composable () -> Unit)? = if (set.quantity > 1) ({
             Surface(color = MaterialTheme.colorScheme.primary, shape = Formen.etikett) {
-                Text(stringResource(R.string.gallery_quantity_badge, set.quantity), Modifier.padding(horizontal = 6.dp, vertical = Abstaende.haar),
+                Text(stringResource(R.string.gallery_quantity_badge, set.quantity), Modifier.padding(horizontal = 6.dp, vertical = Abstaende.haar)
+                    .vorgelesenAls(pluralStringResource(R.plurals.gallery_stat_units, set.quantity, fmtInt(set.quantity))),
                     color = MaterialTheme.colorScheme.onPrimary,
                     style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold)
             }
@@ -580,7 +577,7 @@ fun SetCard(
                 // man im Haushalt das falsche.
                 OwnerBadges(set.owners)
             }
-            Text(set.setNumber, style = MaterialTheme.typography.labelSmall,
+            Text(set.setNumber, style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant)
             // Im Raster zwei Zeilen, Thema und Preis immer: Kacheln einer Reihe sind dann
             // gleich hoch. Die Zeile muss niemandem gleichen und spart die Leerzeilen.
@@ -593,7 +590,7 @@ fun SetCard(
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(Abstaende.winzig)) {
                 if (ton != null && !set.theme.isNullOrBlank()) Box(Modifier.size(8.dp).background(ton, CircleShape))
                 Text(themaUndTeile(set.theme, set.pieces?.let { fmtInt(it) + stringResource(R.string.gallery_pieces_suffix) }),
-                    style = MaterialTheme.typography.labelSmall,
+                    style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
             // Wie im Web eine Zeile darüber, was der Betrag ist: Ohne Marktpreis ist es
@@ -605,13 +602,13 @@ fun SetCard(
                 KachelQuelle.KAUF -> stringResource(R.string.gallery_card_paid)
                 null -> ""
             }
-            if (!zeile) Text(quelle, style = MaterialTheme.typography.labelSmall,
+            if (!zeile) Text(quelle, style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 maxLines = 1, overflow = TextOverflow.Ellipsis)
             // FlowRow und je eine Zeile: Reicht die Breite nicht, rückt „je Stück“ unter
             // den Betrag, statt Zeichen für Zeichen umzubrechen.
             if (betrag != null) FlowRow(horizontalArrangement = Arrangement.spacedBy(Abstaende.klein)) {
-                if (zeile) Text(quelle, style = MaterialTheme.typography.labelSmall,
+                if (zeile) Text(quelle, style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, softWrap = false,
                     modifier = Modifier.align(Alignment.CenterVertically))
                 Text(fmtMoney(betrag, waehrung), style = MaterialTheme.typography.labelMedium,
@@ -621,7 +618,7 @@ fun SetCard(
                 // Der Betrag gilt je Stück; die Finanzen zeigen dasselbe Set mit dem Wert
                 // aller Stück, und ohne Hinweis passten die Zahlen nicht zusammen.
                 if (set.quantity > 1) Text(stringResource(R.string.gallery_price_each),
-                    style = MaterialTheme.typography.labelSmall,
+                    style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     maxLines = 1, softWrap = false, modifier = Modifier.align(Alignment.CenterVertically))
             } else if (!zeile) Text("", style = MaterialTheme.typography.labelMedium)

@@ -25,6 +25,7 @@ import androidx.compose.ui.res.stringResource
 import ch.brickinventoryapp.ui.theme.Abstaende
 import ch.brickinventoryapp.ui.components.LeerSymbol
 import ch.brickinventoryapp.ui.components.Ladezustand
+import ch.brickinventoryapp.ui.components.vorgelesenAls
 
 /** Was der Finanzen-Reiter zeigt; die Route sammelt es aus den Flüssen. */
 data class FinanzZustand(
@@ -251,10 +252,12 @@ fun ManualFinanceRow(
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(1.dp)) {
                 Text(title, fontWeight = FontWeight.SemiBold,
                     maxLines = 2, style = MaterialTheme.typography.bodyMedium)
-                Text(blId, style = MaterialTheme.typography.labelSmall,
+                Text(blId, style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.primary)
                 if (quantity > 1)
-                    Text(ch.brickinventoryapp.ui.mengeManuell(quantity), style = MaterialTheme.typography.labelSmall,
+                    Text(ch.brickinventoryapp.ui.mengeManuell(quantity),
+                        Modifier.vorgelesenAls(ch.brickinventoryapp.ui.components.stueckzahl(quantity)),
+                        style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant)
                 // Bei mehreren Zeilen desselben Eintrags ist die Plakette das
                 // einzige Unterscheidungsmerkmal.
@@ -274,7 +277,7 @@ fun ManualFinanceRow(
                     Text(
                         if (purchaseGesamt) stringResource(R.string.finance_purchase_total, it)
                         else stringResource(R.string.finance_purchase_short, it),
-                        style = MaterialTheme.typography.labelSmall,
+                        style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
@@ -309,7 +312,7 @@ fun SubtotalRow(label: String, value: String) {
 @Composable
 fun PriceColumn(label: String, value: String, farbe: androidx.compose.ui.graphics.Color = MaterialTheme.colorScheme.onPrimary) {
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-        Text(label, style = MaterialTheme.typography.labelSmall, color = farbe)
+        Text(label, style = MaterialTheme.typography.bodySmall, color = farbe)
         Text(value, fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.bodyMedium, color = farbe)
     }
 }

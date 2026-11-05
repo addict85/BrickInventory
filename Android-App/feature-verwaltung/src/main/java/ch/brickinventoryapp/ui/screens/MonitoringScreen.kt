@@ -271,7 +271,7 @@ private fun JobCard(
                     color = statusColor,
                     trackColor = MaterialTheme.colorScheme.surfaceVariant
                 )
-                Text("${job.progress} / ${job.total}", style = MaterialTheme.typography.labelSmall,
+                Text("${job.progress} / ${job.total}", style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
 

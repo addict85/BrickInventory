@@ -181,7 +181,7 @@ fun ManualItemDetailScreen(
                     part?.colorName?.let { add(labelColor to farbe(it)) }
                     fig?.blFigNumber?.let { add("BrickLink" to it) }
                 }
-                KennzahlenReihe(Modifier.padding(horizontal = Abstaende.gross).padding(bottom = Abstaende.mittel), umbrechen = true) {
+                KennzahlenReihe(Modifier.padding(horizontal = Abstaende.gross).padding(bottom = Abstaende.mittel)) {
                     chips.forEach { (label, value) -> StatChipV2(label = label, value = value) }
                 }
             }

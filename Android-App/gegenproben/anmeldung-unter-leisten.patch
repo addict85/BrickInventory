@@ -1,0 +1,15 @@
+Gegenprobe: Anmeldebildschirme ohne systemBarsPadding: Inhalt unter Status- und Gestenleiste
+Modul: app
+Test: ch.brickinventoryapp.AnmeldeRandTest
+Rot: Anmelden beginnt unter der Statusleiste
+
+diff --git a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/Systemleisten.kt b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/Systemleisten.kt
+index 7193e52..04cdf10 100644
+--- a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/Systemleisten.kt
++++ b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/Systemleisten.kt
+@@ -11,4 +11,4 @@ import androidx.compose.ui.Modifier
+  * schrumpft das Fenster nicht. Die Tastatur zuletzt, damit sie nur abzieht, was über
+  * die Gestenleiste hinausragt.
+  */
+-fun Modifier.ausserhalbDerSystemleisten(): Modifier = systemBarsPadding().displayCutoutPadding().imePadding()
++fun Modifier.ausserhalbDerSystemleisten(): Modifier = displayCutoutPadding().imePadding()

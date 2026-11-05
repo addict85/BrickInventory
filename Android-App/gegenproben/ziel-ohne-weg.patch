@@ -4,14 +4,14 @@ Test: ch.brickinventoryapp.ErreichbareRoutenTest
 Rot: zu jedem Ziel ohne Werte führt ein Weg
 
 diff --git a/Android-App/app/src/main/java/ch/brickinventoryapp/MehrBildschirm.kt b/Android-App/app/src/main/java/ch/brickinventoryapp/MehrBildschirm.kt
-index add5f2d..c97a91b 100644
+index bc4a6a3..3a0f7db 100644
 --- a/Android-App/app/src/main/java/ch/brickinventoryapp/MehrBildschirm.kt
 +++ b/Android-App/app/src/main/java/ch/brickinventoryapp/MehrBildschirm.kt
-@@ -88,7 +88,6 @@ fun MehrBildschirm(
-             1 -> {
-                 MehrGruppe(R.string.nav_group_tools, trenner)
-                 MehrEintrag(R.string.nav_partslist, Icons.AutoMirrored.Outlined.ListAlt) { onZiel(Screen.PartsList) }
+@@ -95,7 +95,6 @@ fun MehrBildschirm(
+                 MehrGruppe(R.string.nav_group_manage, trenner)
+                 MehrEintrag(R.string.storage_manage, Icons.Outlined.Inventory2) { onZiel(Screen.Lagerorte) }
+                 MehrEintrag(R.string.household_title, Icons.Outlined.Group) { onZiel(Screen.Haushalt) }
 -                MehrEintrag(R.string.csv_upload_title, Icons.Outlined.UploadFile) { onZiel(Screen.CsvImport) }
              }
-             2 -> {
-                 MehrGruppe(R.string.nav_group_manage, trenner)
+             3 -> {
+                 MehrGruppe(R.string.nav_group_account, trenner)

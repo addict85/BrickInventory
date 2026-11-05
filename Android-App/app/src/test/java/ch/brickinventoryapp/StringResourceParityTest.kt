@@ -185,7 +185,9 @@ class StringResourceParityTest {
             "comparison_barcode_label", "csv_ok_count",
             "detail_section_item", "finance_filter_sets",
             "finance_grand_total", "finance_section_sets", "finance_total_sets",
-            "gallery_quantity_badge", "gallery_sort_name", "gallery_stat_sets",
+            "gallery_quantity_badge", "gallery_sort_name", "nav_sets",
+            // Listenfuss wie finance_grand_total; „Set 10305-1“ für TalkBack.
+            "vouchers_total", "cd_set_nummer",
             "monitoring_theme",
             "monitoring_vorwaermen_roaming",
             // System und Server heissen in beiden Sprachen so.
@@ -301,6 +303,25 @@ class StringResourceParityTest {
         for (t in listOf(de, texte("values/strings.xml"))) {
             assert(t["login_title"] != t["login_button"]) { "Überschrift und Knopf der Anmeldung gleich: ${t["login_title"]}" }
         }
+    }
+
+    /**
+     * Ein Wort je Sache (Glossar): „Setnummer“, Listenfüsse „Total“, „Kaufsumme“ für den
+     * Einstand; englisch „Sign in/out“, „Profit/loss“, „administrator rights“.
+     * Gegenprobe (gegenproben/begriff-set-nummer.patch): gallery_set_number wieder
+     * „Set-Nummer“ → rot.
+     */
+    @Test
+    fun `ein Begriff je Sache in beiden Sprachen`() {
+        val verboten = mapOf(
+            "values-de/strings.xml" to listOf(Regex("Set-Nummer"), Regex("""\bSumme\b"""), Regex("Kauf gesamt")),
+            "values/strings.xml" to listOf(Regex("""(?i)\blog(?:ged)? (?:in|out)\b"""), Regex("Gain/loss"),
+                Regex("""\badmin rights\b""")),
+        )
+        val funde = verboten.flatMap { (datei, muster) ->
+            texte(datei).filterValues { t -> muster.any { it.containsMatchIn(t) } }.map { "$datei ${it.key}: ${it.value}" }
+        }
+        assert(funde.isEmpty()) { "Abweichender Begriff:\n  " + funde.joinToString("\n  ") }
     }
 
     @Test

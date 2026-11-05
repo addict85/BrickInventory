@@ -1,23 +1,18 @@
 package ch.brickinventoryapp.ui.screens
 
-import ch.brickinventoryapp.ui.components.nebenKnopfFarben
 import ch.brickinventoryapp.ui.components.AuswahlChip
 import ch.brickinventoryapp.ui.model.kontoOptionen
 import ch.brickinventoryapp.ui.model.LagerortAnsicht
 import ch.brickinventoryapp.ui.model.MitgliedAnsicht
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -32,7 +27,6 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.rememberModalBottomSheetState
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedIconButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -76,18 +70,17 @@ fun SucheMitFilter(
 ) {
     // So breit wie das Raster darunter (Lesebreite.kt): Endete die Leiste bei 840 dp,
     // stand sie auf dem Tablet mitten über den Kacheln.
-    BoxWithConstraints(Modifier.fillMaxWidth()) {
-        // Auf dem Telefon immer als Symbol: Neben „Filter“ mit Text, Sortieren und
-        // Scannen blieb dem Suchfeld bei 411 dp nur „Such…“. Die Zahl am Symbol
-        // sagt weiter, wie viele Filter wirken.
+    Box(Modifier.fillMaxWidth()) {
+        // Filter, Sortieren und Scannen gleich: drei Symbole mit Tooltip und Namen für
+        // TalkBack. Auf dem Tablet stand „Filter“ beschriftet neben zwei nackten Symbolen.
+        // Die Zahl am Symbol sagt weiter, wie viele Filter wirken.
         val gross = ch.brickinventoryapp.ui.components.grosseSchrift()
-        val nurSymbol = maxWidth < FILTER_TEXT_AB || gross
         // Bei grosser Schrift steht Erfassen in dieser Zeile statt schwebend: Über einer
         // Liste, die nur zwei Einträge zeigt, verdeckte der schwebende Knopf ihren Text.
         val erfassenHier = erfassen.takeIf { gross }
         val knoepfe: @Composable () -> Unit = {
             val folgt = onScannen != null || sortierung != null || erfassenHier != null
-            FilterKnopf(aktiveFilter, onFilter, nurSymbol, Modifier.padding(end = if (folgt) Abstaende.winzig else 14.dp))
+            FilterKnopf(aktiveFilter, onFilter, Modifier.padding(end = if (folgt) Abstaende.winzig else 14.dp))
             if (sortierung != null) Box(Modifier.padding(end = if (onScannen != null || erfassenHier != null) Abstaende.winzig else 14.dp)) { sortierung() }
             if (onScannen != null) ch.brickinventoryapp.ui.components.ScanKnopf(onScannen,
                 Modifier.padding(end = if (erfassenHier != null) Abstaende.winzig else 14.dp))
@@ -113,14 +106,11 @@ fun SucheMitFilter(
     }
 }
 
-/** Ab dieser Breite (Tablet, Querformat) trägt der Filterknopf seinen Namen. */
-private val FILTER_TEXT_AB = 600.dp
-
 /** Breiteste Suchzeile: genug für jeden Suchbegriff, ohne über das ganze Tablet zu laufen. */
 private val SUCHE_MAX = 720.dp
 
 @Composable
-private fun FilterKnopf(aktiv: Int, onClick: () -> Unit, nurSymbol: Boolean, modifier: Modifier = Modifier) {
+private fun FilterKnopf(aktiv: Int, onClick: () -> Unit, modifier: Modifier = Modifier) {
     val zustand = if (aktiv > 0) pluralStringResource(R.plurals.filter_active, aktiv, aktiv) else ""
     // outline statt der Vorgabe outlineVariant (1,1–1,2:1): Der Rand ist die Grenze des Knopfs.
     val rand = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outline)
@@ -128,25 +118,14 @@ private fun FilterKnopf(aktiv: Int, onClick: () -> Unit, nurSymbol: Boolean, mod
         badge = { if (aktiv > 0) Badge { Text(aktiv.toString()) } },
         modifier = modifier,
     ) {
-        if (nurSymbol) {
-            ch.brickinventoryapp.ui.components.MitTooltip(stringResource(R.string.filter_button)) {
-                OutlinedIconButton(
-                    onClick = onClick,
-                    modifier = Modifier.semantics { if (aktiv > 0) stateDescription = zustand },
-                    border = rand,
-                ) {
-                    Icon(Icons.Default.FilterAlt, stringResource(R.string.filter_button))
-                }
+        ch.brickinventoryapp.ui.components.MitTooltip(stringResource(R.string.filter_button)) {
+            OutlinedIconButton(
+                onClick = onClick,
+                modifier = Modifier.semantics { if (aktiv > 0) stateDescription = zustand },
+                border = rand,
+            ) {
+                Icon(Icons.Default.FilterAlt, stringResource(R.string.filter_button))
             }
-        } else OutlinedButton(
-            onClick = onClick,
-            modifier = Modifier.semantics { if (aktiv > 0) stateDescription = zustand },
-            border = rand,
-            colors = nebenKnopfFarben(),
-        ) {
-            Icon(Icons.Default.FilterAlt, null, Modifier.size(ch.brickinventoryapp.ui.components.mitSchrift(18.dp)))
-            Spacer(Modifier.width(Abstaende.winzig))
-            Text(stringResource(R.string.filter_button))
         }
     }
 }

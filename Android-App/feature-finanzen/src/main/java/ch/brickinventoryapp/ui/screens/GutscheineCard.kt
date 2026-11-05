@@ -435,7 +435,7 @@ private fun GutscheinKarte(
                 Text(
                     if (stand != null) stringResource(R.string.vouchers_balance_as_of, stand)
                     else stringResource(R.string.vouchers_balance_never),
-                    style = MaterialTheme.typography.labelSmall,
+                    style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(horizontal = Abstaende.klein, vertical = Abstaende.haar),
                 )

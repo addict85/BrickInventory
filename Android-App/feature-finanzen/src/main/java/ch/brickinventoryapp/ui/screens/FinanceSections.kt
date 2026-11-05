@@ -23,8 +23,6 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.luminance
-import androidx.compose.ui.semantics.heading
-import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -38,6 +36,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Info
 import ch.brickinventoryapp.ui.theme.Abstaende
 import ch.brickinventoryapp.ui.theme.LocalStatusFarben
+import ch.brickinventoryapp.ui.components.vorgelesenAls
 
 /**
  * Gesamt-Total: Sets + manuell erfasste Teile + Minifiguren. `valuation` ist hier nicht nullbar: FinanceScreen() steigt bei `null` vorher
@@ -72,7 +71,7 @@ fun LazyListScope.financeGrandTotal(valuation: BewertungAnsicht, partsValuation:
                     val ohneMarkt = finanzKopf(valuation, partsValuation, figsValuation, pnl).ohneMarkt
                     if (ohneMarkt > 0) Text(
                         pluralStringResource(R.plurals.finance_summe_ohne_markt, ohneMarkt, ohneMarkt),
-                        style = MaterialTheme.typography.labelSmall,
+                        style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
@@ -192,10 +191,12 @@ fun LazyListScope.financeSetRows(valuation: BewertungAnsicht, showSets: Boolean,
                 Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(1.dp)) {
                     Text(set.name ?: set.setNumber, fontWeight = FontWeight.SemiBold,
                         maxLines = 2, style = MaterialTheme.typography.bodyMedium)
-                    Text(set.setNumber, style = MaterialTheme.typography.labelSmall,
+                    Text(set.setNumber, style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.primary)
                     if (rowQty > 1)
-                        Text(ch.brickinventoryapp.ui.mengeManuell(rowQty), style = MaterialTheme.typography.labelSmall,
+                        Text(ch.brickinventoryapp.ui.mengeManuell(rowQty),
+                            Modifier.vorgelesenAls(ch.brickinventoryapp.ui.components.stueckzahl(rowQty)),
+                            style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant)
                     // Zustand dieser Erfassung — bei mehreren Karten
                     // desselben Sets das einzige Unterscheidungsmerkmal.
@@ -224,7 +225,7 @@ fun LazyListScope.financeSetRows(valuation: BewertungAnsicht, showSets: Boolean,
                         Text(
                             if (rowQty > 1) stringResource(R.string.finance_purchase_total, fmtWert(it))
                             else stringResource(R.string.finance_purchase_short, fmtWert(it)),
-                            style = MaterialTheme.typography.labelSmall,
+                            style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
@@ -254,9 +255,8 @@ fun LazyListScope.financeCategoryFilter(
     item {
         // Beschriftet und direkt über den Zeilen: Unter dem Diagramm war unklar, ob die
         // Chips auch die Kurve filtern. Sie wählen nur die Positionen darunter.
-        Text(stringResource(R.string.finance_positionen), style = MaterialTheme.typography.labelLarge,
-            fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.padding(top = Abstaende.klein).semantics { heading() })
+        ch.brickinventoryapp.ui.components.Abschnittstitel(stringResource(R.string.finance_positionen),
+            Modifier.padding(top = Abstaende.klein))
     }
     item {
         LazyRow(
@@ -361,7 +361,7 @@ fun LazyListScope.financeSummaryCards(valuation: BewertungAnsicht, partsValuatio
                     Text(
                         stringResource(R.string.finance_parts_extra, fmtPrice(summen.teileUndFiguren.toPlainString())),
                         color = auf,
-                        style = MaterialTheme.typography.labelSmall
+                        style = MaterialTheme.typography.bodySmall
                     )
                 }
                 // Kaufsumme und G/V in einer Zeile, die bei Bedarf umbricht: Untereinander waren
@@ -424,7 +424,7 @@ fun LazyListScope.financeSummaryCards(valuation: BewertungAnsicht, partsValuatio
                 tint = MaterialTheme.colorScheme.onSurfaceVariant)
             Column(verticalArrangement = Arrangement.spacedBy(Abstaende.haar)) {
                 zeilen.forEach {
-                    Text(it, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
         }

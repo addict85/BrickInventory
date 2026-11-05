@@ -66,7 +66,7 @@ internal fun BricksetQueueRow(
                             color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                     Text(stringResource(R.string.monitoring_retry_attempt, entry.attempts, entry.retryAfter ?: "—"),
-                        style = MaterialTheme.typography.labelSmall,
+                        style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
                 Row(horizontalArrangement = Arrangement.spacedBy(Abstaende.winzig)) {
@@ -99,7 +99,7 @@ internal fun BricksetQueueRow(
                     modifier = Modifier.heightIn(min = 24.dp)
                 ) {
                     Text(if (showError) stringResource(R.string.monitoring_hide_error) else stringResource(R.string.monitoring_show_error),
-                        style = MaterialTheme.typography.labelSmall,
+                        style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.error)
                 }
                 AnimatedVisibility(showError) {
@@ -109,7 +109,7 @@ internal fun BricksetQueueRow(
                     ) {
                         Text(
                             letzterFehler,
-                            style = MaterialTheme.typography.labelSmall,
+                            style = MaterialTheme.typography.bodySmall,
                             fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
                             color = MaterialTheme.colorScheme.error,
                             modifier = Modifier.padding(Abstaende.klein)
@@ -478,7 +478,7 @@ private fun KontingentKarte(
 private fun CacheStatCell(label: String, value: String) {
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
         Text(value, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium)
-        Text(label, style = MaterialTheme.typography.labelSmall,
+        Text(label, style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }
@@ -627,7 +627,7 @@ internal fun ProtokollSection(verwaltung: VerwaltungUiState, aktionen: Monitorin
                                             else versteckteStufen + stufe
                                     },
                                     label = { Text(stufe.uppercase(),
-                                                   style = MaterialTheme.typography.labelSmall) })
+                                                   style = MaterialTheme.typography.bodySmall) })
                             }
                         }
                     }
@@ -655,12 +655,12 @@ internal fun ProtokollSection(verwaltung: VerwaltungUiState, aktionen: Monitorin
                             // gezeigt; ohne sie ist eine Protokollzeile kaum zu
                             // gebrauchen.
                             Text(fmtUhrzeit(zeile.loggedAt) ?: "",
-                                style = MaterialTheme.typography.labelSmall,
+                                style = MaterialTheme.typography.bodySmall,
                                 fontFamily = FontFamily.Monospace,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 modifier = Modifier.width(58.dp))
                             Text(zeile.level.orEmpty().uppercase(),
-                                style = MaterialTheme.typography.labelSmall,
+                                style = MaterialTheme.typography.bodySmall,
                                 fontWeight = FontWeight.Bold,
                                 color = when (zeile.level?.lowercase()) {
                                     "error" -> MaterialTheme.colorScheme.error
@@ -707,7 +707,7 @@ fun ZeitplanZeile(
         Text(
             stringResource(if (taeglich) R.string.monitoring_schedule_daily
                            else R.string.monitoring_schedule_every),
-            style = MaterialTheme.typography.labelSmall,
+            style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
         if (bearbeiten) {

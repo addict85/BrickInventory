@@ -58,6 +58,8 @@ import androidx.compose.ui.graphics.Color
 import ch.brickinventoryapp.data.repository.CATALOG_PAGE_SIZE
 import ch.brickinventoryapp.ui.theme.Abstaende
 import ch.brickinventoryapp.ui.components.LeerSymbol
+import ch.brickinventoryapp.ui.components.vorgelesenAls
+import ch.brickinventoryapp.util.fmtInt
 
 /**
  * Katalog-Screen: gesamter Rebrickable-Set-Katalog, serverseitig paginiert.
@@ -165,7 +167,7 @@ fun CatalogScreen(
             // pluralStringResource statt stringResource: „1 Set im Katalog",
             // nicht „1 Sets".
             pluralStringResource(R.plurals.catalog_result_count, state.total, state.total),
-            style = MaterialTheme.typography.labelSmall,
+            style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.padding(horizontal = Abstaende.gross, vertical = Abstaende.haar)
         )
@@ -470,7 +472,8 @@ fun CatalogSetCard(
                     ch.brickinventoryapp.ui.components.ProduktBild(
                         model = thumbUrl?.let { ImageRequest.Builder(ctx).data(it).crossfade(!ch.brickinventoryapp.ui.components.bewegungReduziert()).build() },
                         imageLoader = imageLoader,
-                        contentDescription = set.name,
+                        // Ohne Beschreibung: Der Name steht darunter, TalkBack las ihn sonst zweimal.
+                        contentDescription = null,
                         onState = { if (it is coil3.compose.AsyncImagePainter.State.Error) onThumbError() },
                         modifier = Modifier.fillMaxSize()
                             .then(if (isBrick) Modifier else Modifier.clip(RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp))),
@@ -487,7 +490,9 @@ fun CatalogSetCard(
                                 if (set.ownedQuantity > 1) "✓ ×${set.ownedQuantity}" else "✓",
                                 color = MaterialTheme.colorScheme.onPrimary,
                                 style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold,
-                                modifier = Modifier.padding(horizontal = 7.dp, vertical = 3.dp)
+                                modifier = Modifier.padding(horizontal = 7.dp, vertical = 3.dp).vorgelesenAls(
+                                    pluralStringResource(R.plurals.cd_in_sammlung, set.ownedQuantity.coerceAtLeast(1),
+                                        set.ownedQuantity.coerceAtLeast(1)))
                             )
                         }
                     }
@@ -498,13 +503,16 @@ fun CatalogSetCard(
                     if (istGlanz) Box(Modifier.matchParentSize().background(ch.brickinventoryapp.ui.theme.lichtStreifen()))
                 }
                 Column(Modifier.padding(horizontal = 10.dp, vertical = 7.dp)) {
-                    Text(set.setNumber, style = MaterialTheme.typography.labelSmall,
+                    Text(set.setNumber, Modifier.vorgelesenAls(stringResource(R.string.cd_set_nummer, set.setNumber)),
+                        style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
                     Text(set.name ?: "—", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold,
                         maxLines = 2, overflow = TextOverflow.Ellipsis, lineHeight = 16.sp)
                     Spacer(Modifier.weight(1f))
                     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                        Text("${set.year ?: "—"}", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        val jahr = set.year
+                        if (jahr != null) Text("$jahr", Modifier.vorgelesenAls(stringResource(R.string.cd_jahr, "$jahr")),
+                            style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         if ((set.numParts ?: 0) > 0) {
                             // Dasselbe Teile-Symbol wie im Reiter „Teile" und in der
                             // Webapp, statt des Puzzleteil-Emojis: Ein Puzzleteil hat
@@ -516,7 +524,10 @@ fun CatalogSetCard(
                                 tint = Color.Unspecified,
                                 modifier = Modifier.size(13.dp)
                             )
-                            Text("${set.numParts}", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            val teile = set.numParts ?: 0
+                            Text(fmtInt(teile), Modifier.vorgelesenAls(
+                                pluralStringResource(R.plurals.gallery_stat_parts, teile, fmtInt(teile))),
+                                style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
                     }
                 }

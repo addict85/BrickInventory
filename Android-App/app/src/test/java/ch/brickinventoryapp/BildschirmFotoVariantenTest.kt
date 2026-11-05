@@ -70,7 +70,9 @@ import java.util.Locale
  * auf 360 dp, Liste und Detail auf dem Tablet sowie die Unterseiten Lagerorte,
  * Haushalt, CSV-Import und die Bauliste. Wie dort auf Deutsch (de-CH),
  * wo nicht `-en` im Namen steht. Namen wie dort:
- * `<bildschirm>[-variante]_<design>_<hell|dunkel>_<gerät>.png`.
+ * `<bildschirm>[-variante]_<design>_<hell|dunkel>_<gerät>.png`; Gerät `quer` ist das
+ * Telefon im Querformat. Dazu der Katalog als Liste, leere und gescheiterte Reiter,
+ * Tablet mit 200 % und die Anmeldung quer und bei 200 %.
  *
  * Gegenprobe wie bei BildschirmFotoTest erst mit eingecheckten Referenzen möglich
  * (eine Farbe in Theme.kt ändern → verifyRoborazziDebug rot); ohne Android-SDK
@@ -131,6 +133,7 @@ class BildschirmFotoVariantenTest {
         val maske = when (geraet) {
             "tablet" -> "w1280dp-h800dp-land-xhdpi"
             "schmal" -> "w360dp-h740dp-port-xxhdpi"
+            "quer" -> "w891dp-h411dp-land-xxhdpi"
             else -> "w411dp-h891dp-port-xxhdpi"
         }
         RuntimeEnvironment.setQualifiers(if (sprache != null) "$sprache-$maske" else maske)
@@ -844,6 +847,127 @@ class BildschirmFotoVariantenTest {
 
     @Test fun snackbarTelefon() = snackbarFoto("telefon", false)
     @Test fun snackbarTabletDunkel() = snackbarFoto("tablet", true)
+
+    // ── Lücken der Prüfung (N17): Katalog, leer und Fehler je Reiter, Tablet 200 %, quer ──
+
+    private val katalogSets = (1..6).map { i ->
+        ch.brickinventoryapp.ui.model.KatalogSetAnsicht(setNumber = "1030$i-1", name = "Beispielset $i",
+            year = 2020 + i, numParts = 500 * i, imageLocal = "/beispiel/set${(i - 1) % 3 + 1}.png",
+            owned = i == 2, ownedQuantity = if (i == 2) 2 else 0)
+    }
+
+    private object KeineKatalogAktionen : ch.brickinventoryapp.ui.viewmodel.KatalogAktionen {
+        override fun loadCatalogMeta() = Unit
+        override fun loadCatalogSets() = Unit
+        override fun catalogSichtbar(ersteSeite: Int, letzteSeite: Int) = Unit
+        override fun scrollCatalogTo(nummer: Int) = Unit
+        override fun setCatalogScrollPos(index: Int, offset: Int) = Unit
+        override fun catalogScrollConsumed() = Unit
+        override fun setCatalogQuery(q: String) = Unit
+        override fun setCatalogTheme(themeId: Int?) = Unit
+        override fun setCatalogYear(year: Int?) = Unit
+        override fun setCatalogSort(sort: String) = Unit
+    }
+
+    private fun katalogFoto(
+        dunkel: Boolean, geraet: String, name: String = "katalog", schrift: Float = 1f,
+        zustand: ch.brickinventoryapp.ui.CatalogUiState =
+            ch.brickinventoryapp.ui.CatalogUiState(loadedPages = mapOf(1 to katalogSets), total = katalogSets.size),
+    ) {
+        zeige(name, dunkel = dunkel, geraet = geraet, schrift = schrift) {
+            ch.brickinventoryapp.ui.screens.CatalogScreen(zustand, serverUrl = "", katalog = KeineKatalogAktionen,
+                imageLoader = bilder, onSetClick = {})
+        }
+        anhalten()
+        foto(name, dunkel = dunkel, geraet = geraet)
+    }
+
+    @Test fun katalogTelefon() = katalogFoto(false, "telefon")
+    @Test fun katalogTabletDunkel() = katalogFoto(true, "tablet")
+    @Test fun katalogSchrift200() = katalogFoto(false, "telefon", "katalog-schrift200", 2f)
+    @Test fun katalogLeer() = katalogFoto(false, "telefon", "katalog-leer", zustand = ch.brickinventoryapp.ui.CatalogUiState())
+    @Test fun katalogFehler() = katalogFoto(true, "telefon", "katalog-fehler",
+        zustand = ch.brickinventoryapp.ui.CatalogUiState(error = "Serverfehler (500)"))
+
+    @Test
+    fun merklisteFehler() {
+        welt.pfade.codes["/api/v1/wanted"] = 500
+        val vm = welt.merkliste().also { it.ladeMerkliste() }
+        zeige("merkliste-fehler", bereit = { vm.merklisteState.value.let { !it.laedt && it.fehler != null } },
+            zustand = { vm.merklisteState.value }) {
+            MerklisteRoute(vm = vm, imageLoader = bilder, onScan = {}, onOeffnenEinzeln = { _, _ -> })
+        }
+        anhalten()
+        foto("merkliste-fehler")
+    }
+
+    @Test
+    fun teileLeer() {
+        welt.pfade.antworten["/api/v1/parts"] = """{"success":true,"total":0,"parts":[]}"""
+        val vm = welt.teile().also { it.loadParts() }
+        zeige("teile-leer", bereit = { vm.partsState.value.let { !it.partsLoading && it.partsFehler == null } },
+            zustand = { vm.partsState.value }) { PartsRoute(vm = vm, imageLoader = bilder) }
+        anhalten()
+        foto("teile-leer")
+    }
+
+    @Test
+    fun teileFehler() {
+        welt.pfade.codes["/api/v1/parts"] = 500
+        val vm = welt.teile().also { it.loadParts() }
+        zeige("teile-fehler", dunkel = true, bereit = { vm.partsState.value.let { !it.partsLoading && it.partsFehler != null } },
+            zustand = { vm.partsState.value }) { PartsRoute(vm = vm, imageLoader = bilder) }
+        anhalten()
+        foto("teile-fehler", dunkel = true)
+    }
+
+    @Test
+    fun finanzenFehler() {
+        welt.pfade.codes["/api/v1/finance/valuation"] = 500
+        val vm = welt.finanzen().also { it.loadValuation() }
+        zeige("finanzen-fehler", bereit = { vm.financeState.value.let { !it.valuationLoading && it.valuationFehler != null } },
+            zustand = { vm.financeState.value }) { FinanceRoute(vm = vm, imageLoader = bilder) }
+        anhalten()
+        foto("finanzen-fehler")
+    }
+
+    @Test
+    fun galerieTabletSchrift200() {
+        val vm = welt.galerie().also { it.loadSets(); it.loadStats() }
+        zeige("galerie-schrift200", geraet = "tablet", schrift = 2f, bereit = galerieFertig(vm),
+            zustand = { vm.galleryState.value }) { Galerie(vm) }
+        foto("galerie-schrift200", geraet = "tablet")
+    }
+
+    @Test
+    fun galerieQuer() {
+        val vm = welt.galerie().also { it.loadSets(); it.loadStats() }
+        zeige("galerie", geraet = "quer", bereit = galerieFertig(vm), zustand = { vm.galleryState.value }) { Galerie(vm) }
+        foto("galerie", geraet = "quer")
+    }
+
+    private fun anmeldungFoto(name: String, formular: AnmeldeFormular, geraet: String, schrift: Float) {
+        zeige(name, geraet = geraet, schrift = schrift) {
+            LoginScreen(
+                serverUrl = "https://brick.example.org", isLoading = false, error = null, codeNoetig = false,
+                formular = formular, registrierungOffen = true, kontoLaeuft = false,
+                kontoMeldung = null, kontoFehler = null, onLogin = { _, _, _ -> }, onFormular = {},
+                onRegistrieren = { _, _, _, _, _ -> }, onPasswortVergessen = {}, onChangeServer = {},
+            )
+        }
+        foto(name, geraet = geraet)
+    }
+
+    @Test fun anmeldenQuer() = anmeldungFoto("anmelden", AnmeldeFormular.ANMELDEN, "quer", 1f)
+    @Test fun registrierenSchrift200() = anmeldungFoto("registrieren-schrift200", AnmeldeFormular.REGISTRIEREN, "telefon", 2f)
+
+    @Test
+    fun einrichtenQuer() {
+        zeige("einrichten", geraet = "quer") {
+            ch.brickinventoryapp.ui.screens.SetupScreen(currentUrl = "https://brick.fritz.box", onSave = {}, entwicklung = false)
+        }
+        foto("einrichten", geraet = "quer")
+    }
 
     /** Ohne Netz: Hinweis mit Stand über der Liste, drei Änderungen warten im Ausgang. */
     @Test

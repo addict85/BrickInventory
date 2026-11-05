@@ -38,6 +38,10 @@ import ch.brickinventoryapp.util.PASSWORT_MIN_ZEICHEN
 import ch.brickinventoryapp.ui.components.PasswortArt
 import ch.brickinventoryapp.ui.components.PasswortFeld
 import ch.brickinventoryapp.ui.components.ansagen
+import ch.brickinventoryapp.ui.components.ausserhalbDerSystemleisten
+import androidx.compose.ui.semantics.collapse
+import androidx.compose.ui.semantics.expand
+import androidx.compose.ui.semantics.stateDescription
 import ch.brickinventoryapp.ui.theme.Abstaende
 
 /**
@@ -81,19 +85,7 @@ fun LoginScreen(
 
     // Passwort, Code und Adresse lernt die Tastatur nicht mit (sec8 H4).
     ch.brickinventoryapp.ui.components.TastaturOhneLernen {
-    // Rollbar: Auf einem kleinen Telefon, mit offener Tastatur oder grosser Schrift
-    // läge der Anmeldeknopf sonst unerreichbar unter dem Rand.
-    Box(
-        modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()),
-        contentAlignment = Alignment.Center
-    ) {
-        Column(
-            modifier = Modifier
-                .mittigBis(ch.brickinventoryapp.ui.theme.Lesebreite.formular)
-                .padding(horizontal = 28.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(0.dp)
-        ) {
+    val kopf: @Composable ColumnScope.() -> Unit = {
             // Derselbe Kopf wie beim Einrichten, das direkt davor kommt.
             ch.brickinventoryapp.ui.components.MarkenKopf()
             Spacer(Modifier.height(Abstaende.mittel))
@@ -124,9 +116,8 @@ fun LoginScreen(
                         tint = MaterialTheme.colorScheme.primary)
                 }
             }
-
-            Spacer(Modifier.height(28.dp))
-
+    }
+    val karte: @Composable (breit: Boolean) -> Unit = { breit ->
             ch.brickinventoryapp.ui.components.AnmeldeKarte {
                 when (formular) {
                     AnmeldeFormular.ANMELDEN -> AnmeldeFelder(
@@ -143,7 +134,7 @@ fun LoginScreen(
 
                     AnmeldeFormular.REGISTRIEREN -> RegistrierFelder(
                         laeuft = kontoLaeuft, meldung = kontoMeldung, fehler = kontoFehler,
-                        focusMgr = focusMgr,
+                        focusMgr = focusMgr, namenNebeneinander = breit,
                         onRegistrieren = onRegistrieren, onFormular = onFormular)
 
                     AnmeldeFormular.PASSWORT_VERGESSEN -> VergessenFelder(
@@ -151,10 +142,45 @@ fun LoginScreen(
                         onSenden = onPasswortVergessen, onFormular = onFormular)
                 }
             }
+    }
+    // Rollbar und mittig, solange es passt: Mit Tastatur oder grosser Schrift läge der
+    // Hauptknopf sonst unerreichbar unter dem Rand. Im Querformat Marke und Formular
+    // nebeneinander wie beim Einrichten, sonst lag „Registrieren“ unter dem Falz.
+    BoxWithConstraints(Modifier.fillMaxSize().ausserhalbDerSystemleisten()) {
+        val hoehe = maxHeight
+        if (maxWidth > hoehe && maxWidth >= QUER_ZWEISPALTIG) {
+            Row(
+                Modifier.fillMaxSize().mittigBis(ch.brickinventoryapp.ui.theme.Lesebreite.formular * 2)
+                    .padding(horizontal = Abstaende.riesig),
+                horizontalArrangement = Arrangement.spacedBy(Abstaende.riesig),
+            ) {
+                Column(Modifier.weight(1f).verticalScroll(rememberScrollState()).heightIn(min = hoehe)
+                    .padding(vertical = Abstaende.gross),
+                    horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center,
+                    content = kopf)
+                Column(Modifier.weight(1f).verticalScroll(rememberScrollState()).heightIn(min = hoehe)
+                    .padding(vertical = Abstaende.gross),
+                    horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
+                    karte(true)
+                }
+            }
+        } else Column(
+            modifier = Modifier.verticalScroll(rememberScrollState()).heightIn(min = hoehe)
+                .mittigBis(ch.brickinventoryapp.ui.theme.Lesebreite.formular)
+                .padding(horizontal = 28.dp, vertical = Abstaende.gross),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center,
+        ) {
+            kopf()
+            Spacer(Modifier.height(28.dp))
+            karte(false)
         }
     }
 }
 }
+
+/** Ab dieser Breite im Querformat stehen Marke und Formular nebeneinander (wie SetupScreen). */
+private val QUER_ZWEISPALTIG = 840.dp
 
 /**
  * Eine stehende Meldung im Formular — Fehler rot, Bestätigung ruhig. Eine Fassung
@@ -279,7 +305,12 @@ private fun AnmeldeFelder(
     val schutz = ch.brickinventoryapp.ui.components.LocalSchrittschutz.current
     val vollGrund = stringResource(R.string.schritt_voller_zugriff)
     var erweitert by rememberSaveable { mutableStateOf(vollerZugriff) }
-    TextButton(onClick = { erweitert = !erweitert }) {
+    // Der Zustand für TalkBack: Ob der Bereich offen ist, sah man sonst nur.
+    val zustand = stringResource(if (erweitert) R.string.zustand_ausgeklappt else R.string.zustand_eingeklappt)
+    TextButton(onClick = { erweitert = !erweitert }, modifier = Modifier.semantics {
+        stateDescription = zustand
+        if (erweitert) collapse { erweitert = false; true } else expand { erweitert = true; true }
+    }) {
         Text(stringResource(R.string.login_erweitert))
         Icon(if (erweitert) Icons.Default.ExpandLess else Icons.Default.ExpandMore, null)
     }
@@ -291,7 +322,7 @@ private fun AnmeldeFelder(
         Checkbox(checked = vollerZugriff, onCheckedChange = null)
         Column(Modifier.padding(start = 8.dp, top = Abstaende.haar)) {
             Text(stringResource(R.string.login_full_access), style = MaterialTheme.typography.bodyMedium)
-            Text(stringResource(R.string.login_full_access_hint), style = MaterialTheme.typography.labelSmall,
+            Text(stringResource(R.string.login_full_access_hint), style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
     }
@@ -348,6 +379,7 @@ private fun AnmeldeFelder(
 private fun RegistrierFelder(
     laeuft: Boolean, meldung: String?, fehler: String?,
     focusMgr: androidx.compose.ui.focus.FocusManager,
+    namenNebeneinander: Boolean,
     onRegistrieren: (String, String, String, String, String) -> Unit,
     onFormular: (AnmeldeFormular) -> Unit,
 ) {
@@ -391,18 +423,7 @@ private fun RegistrierFelder(
             keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next,
                 keyboardType = KeyboardType.Email),
             keyboardActions = naechstes)
-        OutlinedTextField(
-            value = vorname, onValueChange = { vorname = it },
-            label = { Text(stringResource(R.string.register_first_name)) },
-            leadingIcon = { Icon(Icons.Default.Badge, null) },
-            modifier = Modifier.fillMaxWidth(), singleLine = true, shape = Formen.feld,
-            keyboardOptions = weiter, keyboardActions = naechstes)
-        OutlinedTextField(
-            value = nachname, onValueChange = { nachname = it },
-            label = { Text(stringResource(R.string.register_last_name)) },
-            leadingIcon = { Icon(Icons.Default.Badge, null) },
-            modifier = Modifier.fillMaxWidth(), singleLine = true, shape = Formen.feld,
-            keyboardOptions = weiter, keyboardActions = naechstes)
+        NamensFelder(vorname, { vorname = it }, nachname, { nachname = it }, namenNebeneinander, naechstes)
         // Die Mindestlänge steht von Anfang an da, nicht erst als Fehler nach dem Senden.
         PasswortFeld(pw1, { pw1 = it }, stringResource(R.string.login_password), Modifier.fillMaxWidth(),
             art = PasswortArt.NEU, hinweis = pluralStringResource(R.plurals.passwort_mindestens, PASSWORT_MIN_ZEICHEN, PASSWORT_MIN_ZEICHEN),
@@ -431,6 +452,32 @@ private fun RegistrierFelder(
     TextButton(onClick = { onFormular(AnmeldeFormular.ANMELDEN) },
         modifier = Modifier.fillMaxWidth()) {
         Text(stringResource(R.string.login_back))
+    }
+}
+
+/**
+ * Vor- und Nachname; auf dem Tablet in einer Zeile: Sechs Felder untereinander
+ * schoben „Registrieren“ unter den Falz.
+ */
+@Composable
+private fun NamensFelder(
+    vorname: String, onVorname: (String) -> Unit, nachname: String, onNachname: (String) -> Unit,
+    nebeneinander: Boolean, naechstes: KeyboardActions,
+) {
+    val feld: @Composable (String, (String) -> Unit, Int, Modifier) -> Unit = { wert, onWert, label, breite ->
+        OutlinedTextField(
+            value = wert, onValueChange = onWert,
+            label = { Text(stringResource(label)) },
+            leadingIcon = { Icon(Icons.Default.Badge, null) },
+            modifier = breite, singleLine = true, shape = Formen.feld,
+            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next), keyboardActions = naechstes)
+    }
+    if (nebeneinander) Row(horizontalArrangement = Arrangement.spacedBy(Abstaende.mittel)) {
+        feld(vorname, onVorname, R.string.register_first_name, Modifier.weight(1f))
+        feld(nachname, onNachname, R.string.register_last_name, Modifier.weight(1f))
+    } else {
+        feld(vorname, onVorname, R.string.register_first_name, Modifier.fillMaxWidth())
+        feld(nachname, onNachname, R.string.register_last_name, Modifier.fillMaxWidth())
     }
 }
 

@@ -32,6 +32,8 @@ import ch.brickinventoryapp.ui.theme.BrickSage
 import ch.brickinventoryapp.ui.theme.BrickSageText
 import ch.brickinventoryapp.util.NumericInput
 import ch.brickinventoryapp.ui.theme.Abstaende
+import ch.brickinventoryapp.ui.components.stueckzahl
+import ch.brickinventoryapp.ui.components.vorgelesenAls
 
 /**
  * Gemeinsame Composables für manuell erfasste Teile UND Minifiguren.
@@ -103,8 +105,9 @@ fun AcquisitionSummarySection(
 private fun KaufZeile(acq: KaufAnsicht, currency: String) {
     FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
         val mitte = Modifier.align(Alignment.CenterVertically)
-        Text(ch.brickinventoryapp.ui.mengeManuell(acq.quantity), style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = mitte)
+        Text(ch.brickinventoryapp.ui.mengeManuell(acq.quantity), mitte.vorgelesenAls(stueckzahl(acq.quantity)),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant)
         Box(mitte) { ConditionBadge(acq.condition) }
         // Ohne Betrag sagt die Zeile, dass keiner erfasst ist; sonst stand „×2 Neu“ allein da.
         val preis = acq.effectivePrice
@@ -217,7 +220,7 @@ fun InfoPlakette(text: String, modifier: Modifier = Modifier, icon: androidx.com
 fun ManuelleKachelFuss(preis: Double?, waehrung: String) {
     Text(
         if (preis != null) fmtMoney(preis, waehrung) else "—",
-        style = MaterialTheme.typography.labelSmall,
+        style = MaterialTheme.typography.bodySmall,
         fontWeight = FontWeight.Bold,
         color = MaterialTheme.colorScheme.primary,
         maxLines = 1,
@@ -302,7 +305,8 @@ fun ManuelleKachel(
                 ch.brickinventoryapp.ui.components.ProduktBild(
                     model = bildUrl?.let { ImageRequest.Builder(ctx).data(it).crossfade(!ch.brickinventoryapp.ui.components.bewegungReduziert()).build() },
                     imageLoader = imageLoader,
-                    contentDescription = name,
+                    // Ohne Beschreibung: Der Name steht darunter, TalkBack las ihn sonst zweimal.
+                    contentDescription = null,
                     onState = { st ->
                         if (st is coil3.compose.AsyncImagePainter.State.Error) onBildFehler()
                     },
@@ -319,7 +323,7 @@ fun ManuelleKachel(
                     // „N×" auf einer Kachel aus einem Set. Das ist keine Laune,
                     // sondern die Regel der Webapp — `man-tile` traegt dort ein
                     // `qbadge` mit ×N, `part-card` ein `part-qty` mit N×.
-                    Text(ch.brickinventoryapp.ui.mengeManuell(menge), Modifier.padding(horizontal = Abstaende.winzig, vertical = 1.dp),
+                    Text(ch.brickinventoryapp.ui.mengeManuell(menge), Modifier.padding(horizontal = Abstaende.winzig, vertical = 1.dp).vorgelesenAls(stueckzahl(menge)),
                         color = MaterialTheme.colorScheme.onPrimary,
                         style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold)
                 }
@@ -339,10 +343,10 @@ fun ManuelleKachel(
                 // an derselben Stelle wie beim Set.
             }
             Column(Modifier.padding(horizontal = 6.dp, vertical = Abstaende.winzig)) {
-                Text(name, style = MaterialTheme.typography.labelSmall,
+                Text(name, style = MaterialTheme.typography.bodySmall,
                     fontWeight = FontWeight.SemiBold, maxLines = 2, overflow = TextOverflow.Ellipsis)
                 if (farbname != null) {
-                    Text(farbname, style = MaterialTheme.typography.labelSmall,
+                    Text(farbname, style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         maxLines = 1, overflow = TextOverflow.Ellipsis)
                 }

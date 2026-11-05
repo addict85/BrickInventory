@@ -22,6 +22,7 @@ import androidx.compose.ui.unit.dp
 import ch.brickinventoryapp.ressourcen.R
 import ch.brickinventoryapp.ui.model.StartzustandAnsicht
 import ch.brickinventoryapp.ui.theme.Abstaende
+import ch.brickinventoryapp.ui.components.ausserhalbDerSystemleisten
 
 /**
  * „Der Server startet gerade“ — mit Fortschritt statt einer Fehlermeldung, wie die
@@ -32,7 +33,7 @@ import ch.brickinventoryapp.ui.theme.Abstaende
  */
 @Composable
 fun ServerStartAnzeige(status: StartzustandAnsicht, modifier: Modifier = Modifier) {
-    Box(modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+    Box(modifier.fillMaxSize().ausserhalbDerSystemleisten(), contentAlignment = Alignment.Center) {
         Column(
             Modifier.padding(Abstaende.riesig),
             horizontalAlignment = Alignment.CenterHorizontally,
@@ -67,7 +68,7 @@ fun ServerStartAnzeige(status: StartzustandAnsicht, modifier: Modifier = Modifie
                 )
             }
             status.unterschritt?.takeIf { it.isNotBlank() }?.let {
-                Text(it, style = MaterialTheme.typography.labelSmall,
+                Text(it, style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
             Spacer(Modifier.height(Abstaende.winzig))
@@ -75,7 +76,7 @@ fun ServerStartAnzeige(status: StartzustandAnsicht, modifier: Modifier = Modifie
             // sich minutenlang kaum bewegt, wie ein Haenger aus.
             Text(
                 stringResource(R.string.startup_hint),
-                style = MaterialTheme.typography.labelSmall,
+                style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 textAlign = TextAlign.Center,
             )

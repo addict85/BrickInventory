@@ -47,6 +47,8 @@ import ch.brickinventoryapp.ui.components.SkelettRaster
 import ch.brickinventoryapp.ui.components.FehlerHinweis
 import ch.brickinventoryapp.ui.components.KeinTrefferHinweis
 import ch.brickinventoryapp.ui.components.ZustandsHinweis
+import ch.brickinventoryapp.ui.components.stueckzahl
+import ch.brickinventoryapp.ui.components.vorgelesenAls
 
 /** Was der Teile- und der Figurenreiter zeigen; die Routen sammeln es aus den Flüssen. */
 data class TeileZustand(
@@ -163,10 +165,11 @@ fun PartsScreen(
             }
         }
     }
-    val kategorieEintraege = remember(partsState.partsCategories) {
+    val kategorieText = ch.brickinventoryapp.ui.components.kategorieUebersetzer()
+    val kategorieEintraege = remember(partsState.partsCategories, kategorieText) {
         partsState.partsCategories.mapNotNull { k ->
             k.categoryName?.takeIf { it.isNotBlank() }?.let { wert ->
-                TeileFilterEintrag(wert = wert, text = k.label ?: wert, anzahl = k.uniqueParts)
+                TeileFilterEintrag(wert = wert, text = kategorieText(k.label ?: wert), anzahl = k.uniqueParts)
             }
         }
     }
@@ -381,9 +384,9 @@ private fun TeileFilterBlatt(
 @Composable
 private fun TeileKennzahlen(stats: TeileKennzahlenAnsicht) {
     KennzahlenReihe {
-        GalleryStatChip(ch.brickinventoryapp.util.fmtInt(stats.uniqueParts), stringResource(R.string.parts_stat_types))
-        GalleryStatChip(ch.brickinventoryapp.util.fmtInt(stats.uniqueColors), stringResource(R.string.parts_stat_colors))
-        GalleryStatChip(ch.brickinventoryapp.util.fmtInt(stats.teileGesamt), stringResource(R.string.parts_stat_total),
+        GalleryStatChip(stats.uniqueParts, R.plurals.parts_stat_types)
+        GalleryStatChip(stats.uniqueColors, R.plurals.parts_stat_colors)
+        GalleryStatChip(stats.teileGesamt, R.plurals.parts_stat_total,
             teileAufschluesselung(stats.teileAusSets, stats.teileEinzeln))
     }
 }
@@ -440,7 +443,8 @@ fun PartCard(part: TeilAnsicht, serverUrl: String, imageLoader: ImageLoader,
     val weich = !ch.brickinventoryapp.ui.components.bewegungReduziert()
     val menge: @Composable () -> Unit = {
         Surface(color = MaterialTheme.colorScheme.primary, shape = Formen.marke) {
-            Text(mengeAusSet(qty), Modifier.padding(horizontal = Abstaende.winzig, vertical = 1.dp),
+            Text(mengeAusSet(qty), Modifier.padding(horizontal = Abstaende.winzig, vertical = 1.dp)
+                .vorgelesenAls(stueckzahl(qty)),
                 color = MaterialTheme.colorScheme.onPrimary,
                 style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold)
         }
@@ -453,7 +457,8 @@ fun PartCard(part: TeilAnsicht, serverUrl: String, imageLoader: ImageLoader,
             ch.brickinventoryapp.ui.components.ProduktBild(
                 model = imageUrl?.let { ImageRequest.Builder(ctx).data(it).crossfade(weich).build() },
                 imageLoader = imageLoader,
-                contentDescription = part.partName,
+                // Ohne Beschreibung: Der Name steht darunter, TalkBack las ihn sonst zweimal.
+                contentDescription = null,
                 onState = { st ->
                     if (st is coil3.compose.AsyncImagePainter.State.Error) onImageError()
                 },
@@ -480,20 +485,21 @@ fun PartCard(part: TeilAnsicht, serverUrl: String, imageLoader: ImageLoader,
     val texte: @Composable (Modifier) -> Unit = { spalte ->
         Column(spalte.padding(horizontal = 7.dp, vertical = 5.dp), verticalArrangement = Arrangement.spacedBy(1.dp)) {
             if (zeile) menge()
-            Text(part.blPartNumber ?: part.partNumber,
-                style = MaterialTheme.typography.labelSmall,
+            val nummer = part.blPartNumber ?: part.partNumber
+            Text(nummer, Modifier.vorgelesenAls(stringResource(R.string.cd_teil_nummer, nummer)),
+                style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.primary,
                 fontWeight = FontWeight.SemiBold)
             Text(part.partName?.let { ch.brickinventoryapp.ui.components.katalogName(it) }
                     ?: androidx.compose.ui.text.AnnotatedString(stringResource(R.string.name_unknown)),
-                style = MaterialTheme.typography.labelSmall,
+                style = MaterialTheme.typography.bodySmall,
                 color = if (part.partName == null) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurface,
                 // Im Raster immer zwei Zeilen Platz: Kacheln einer Reihe sind gleich hoch,
                 // auch wenn ein Name kurz ist. Die Zeile muss niemandem gleichen.
                 minLines = if (zeile) 1 else 2,
                 maxLines = if (zeile) 4 else 2, overflow = TextOverflow.Ellipsis)
             part.colorName?.let {
-                Text(ch.brickinventoryapp.ui.components.farbUebersetzer()(it), style = MaterialTheme.typography.labelSmall,
+                Text(ch.brickinventoryapp.ui.components.farbUebersetzer()(it), style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1)
             }
             // Ersatzteil — Sets enthalten ein Tuetchen davon. Nur wenn es
@@ -550,8 +556,9 @@ fun PartTableRow(part: TeilAnsicht, serverUrl: String, imageLoader: ImageLoader,
     // Kategorie und Sets in einer Zeile, mit „·" getrennt — und nur, was da
     // ist. Ein leeres „ · " sieht nach einem fehlenden Wert aus.
     val ersatzteil = stringResource(R.string.parts_spare_tag)
+    val kategorie = ch.brickinventoryapp.ui.components.kategorieUebersetzer()
     val zweite = listOfNotNull(
-        part.categoryName?.takeIf { it.isNotBlank() },
+        part.categoryName?.takeIf { it.isNotBlank() }?.let(kategorie),
         part.inSets?.takeIf { it.isNotBlank() }?.replace(",", ", "),
         // In der Tabellenzeile als Wort statt als Plakette: Die Zeile ist auf
         // Dichte gebaut, eine Flaeche mit eigenem Hintergrund saehe darin aus

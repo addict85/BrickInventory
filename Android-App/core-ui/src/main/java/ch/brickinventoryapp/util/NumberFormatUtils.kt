@@ -56,6 +56,17 @@ fun fmtMoney(amount: Double, currencyCode: String?): String {
     }
 }
 
+/** Ganzer Betrag mit Währung („CHF 1'720“) — für Diagrammachsen, wie sie der Server liefert. */
+fun fmtMoneyGanz(amount: Double, currencyCode: String?): String = try {
+    val nf = NumberFormat.getCurrencyInstance(appNumberLocale())
+    nf.currency = Currency.getInstance(currencyCode ?: "EUR")
+    nf.minimumFractionDigits = 0
+    nf.maximumFractionDigits = 0
+    mitWaehrungsAbstand(nf.format(amount))
+} catch (_: IllegalArgumentException) {
+    "${currencyCode.orEmpty()}\u00A0${fmtAmount(amount, 0, 0)}".trim()
+}
+
 /**
  * Ein Code aus Buchstaben („CHF“) klebt in en-GB am Betrag („CHF812.50“), Intl im
  * Web schreibt „CHF 812.50“. Ein festes Leerzeichen dazwischen, damit beide gleich

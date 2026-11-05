@@ -130,7 +130,7 @@ fun ComparisonScreen() {
                     ) {
                         Text(
                             stringResource(R.string.comparison_barcode_label, scannedBarcode ?: ""),
-                            style = MaterialTheme.typography.labelSmall,
+                            style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onPrimaryContainer,
                             modifier = Modifier.padding(horizontal = 10.dp, vertical = Abstaende.winzig)
                         )

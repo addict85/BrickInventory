@@ -39,7 +39,6 @@ import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
-import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
@@ -73,8 +72,7 @@ import org.robolectric.annotation.GraphicsMode
  * Erfassen-Knopf steigt über die Snackbar, offline steht ein neutrales Banner statt zweier
  * widersprüchlicher Zeilen, Fehler in Formularen werden angesagt, Passwortfelder
  * kennen Autofill und Auge, Verwalterrechte stehen unter „Erweitert“, der Server-Chip
- * sagt, was er tut, die Kennzahlen wischen in der Sammlung mit Hinweis und brechen im
- * Detail um, das Katalog-Detail nutzt das Tablet, und die Finanzen nennen den Marktwert
+ * sagt, was er tut, die Kennzahlen brechen in Sammlung und Detail um, das Katalog-Detail nutzt das Tablet, und die Finanzen nennen den Marktwert
  * vor dem Verlauf.
  *
  * Gegenproben (Patches unter gegenproben/, gemessen nur in der CI — Robolectric):
@@ -85,9 +83,7 @@ import org.robolectric.annotation.GraphicsMode
  *   passwortfeld-ohne-autofill  PasswortFeld ohne contentType → rot „Startpasswort-Maske fuellt …“
  *   startpasswort-volle-breite  Maske ohne Lesebreite → rot „Startpasswort-Maske steht auf dem Tablet …“
  *   verwalterrechte-offen       „Erweitert“ von Anfang an offen → rot „Verwalterrechte stehen eingeklappt …“
- *   kennzahlen-umbrechen        Kennzahlen der Sammlung auch bei 200 % als FlowRow → rot „Kennzahlen der Sammlung …“
- *   kennzahlen-ohne-hinweis     Pfeil am Rand nie gezeigt → rot „Kennzahlen der Sammlung …“
- *   kennzahlen-detail-wischt    `umbrechen` überhört → rot „Kennzahlen im Detail …“
+ *   kennzahlen-ohne-umbruch     Kennzahlen in einer Row statt FlowRow → rot „Kennzahlen der Sammlung …“
  *   offline-in-fehlerrot        Banner wieder in tertiaryContainer (Classic: rot) → rot „Offline-Hinweis meldet …“
  *   server-chip-ohne-aufgabe    Chip ohne Beschreibung → rot „Server-Chip nennt …“
  *   katalog-einspaltig          Katalog-Detail auch auf dem Tablet einspaltig → rot „Katalog-Detail steht …“
@@ -97,7 +93,6 @@ import org.robolectric.annotation.GraphicsMode
  *   markenkopf-immer-gross      Markenkopf auch bei 200 % gross → rot „Markenkopf bei 200 Prozent …“
  *   bewegung-immer-an           bewegungReduziert() liefert immer false → rot „reduzierte Bewegung …“
  *   einrichtung-einspaltig      Einrichtung auch quer einspaltig → rot „Einrichtung im Querformat …“
- *   kennzahlen-pfeil-ueber-text Pfeil wieder über dem Rand der Zeile → rot „Kennzahlen der Sammlung …“
  *   detailzeile-volle-breite    Detailzeile ohne Lesebreite → rot „Detailkarten stehen auf dem Tablet …“
  *   bewegung-ohne-beobachter    Einstellung nur einmal gelesen → rot „reduzierte Bewegung folgt einer Aenderung …“
  *   startpasswort-ohne-grund    gesperrter Knopf ohne Grund → rot „Startpasswort-Maske sagt …“
@@ -392,41 +387,24 @@ class GeruestUndFormularTest {
         compose.onAllNodesWithText(voll, substring = true).assertCountEquals(1)
     }
 
-    private val kennzahlen get() = listOf("12" to R.string.gallery_stat_sets, "15" to R.string.gallery_stat_units,
-        "9'090" to R.string.gallery_stat_parts, "22" to R.string.gallery_stat_minifigs,
-        "4" to R.string.gallery_stat_instructions).map { (wert, text) -> wert to ctx.getString(text) }
-
-    private fun mehrPfeil() = compose.onAllNodes(hasTestTag(ch.brickinventoryapp.ui.screens.KENNZAHLEN_MEHR),
-        useUnmergedTree = true).fetchSemanticsNodes()
+    private val kennzahlen = listOf(12 to R.plurals.gallery_stat_sets, 15 to R.plurals.gallery_stat_units,
+        9090 to R.plurals.gallery_stat_parts, 22 to R.plurals.gallery_stat_minifigs, 4 to R.plurals.gallery_stat_instructions)
 
     @Test
-    fun `Kennzahlen der Sammlung stehen bei 200 Prozent in einer Zeile mit Hinweis auf mehr`() {
-        val zahlen = kennzahlen
+    fun `Kennzahlen der Sammlung brechen bei 200 Prozent um und bleiben ganz sichtbar`() {
         zeige(schrift = 2f) {
             Box(Modifier.width(360.dp)) {
                 ch.brickinventoryapp.ui.screens.KennzahlenReihe {
-                    zahlen.forEach { (wert, text) -> ch.brickinventoryapp.ui.screens.GalleryStatChip(wert, text) }
+                    kennzahlen.forEach { (n, id) -> ch.brickinventoryapp.ui.screens.GalleryStatChip(n, id) }
                 }
             }
         }
-        val oben = zahlen.map { (wert, text) ->
-            // positionInRoot statt boundsInRoot: Was rechts aus der wischbaren Zeile ragt,
-            // wäre abgeschnitten und stünde scheinbar bei 0.
-            compose.onNodeWithText("$wert $text", useUnmergedTree = true).fetchSemanticsNode().positionInRoot.y
+        val rand = 360f * ctx.resources.displayMetrics.density
+        kennzahlen.forEach { (n, id) ->
+            val text = ctx.resources.getQuantityString(id, n, ch.brickinventoryapp.util.fmtInt(n))
+            val b = compose.onNodeWithText(text, useUnmergedTree = true).fetchSemanticsNode().boundsInRoot
+            assertTrue("„$text“ ragt über den Rand ($b, Rand $rand)", b.right <= rand + 1f && b.width > 0f)
         }
-        assertTrue("Kennzahlen in einer Zeile: $oben", oben.all { kotlin.math.abs(it - oben[0]) < 1f })
-        // Rechts steht noch etwas: Der Pfeil sagt es, bis ans Ende gewischt ist.
-        assertEquals("Pfeil auf weitere Kennzahlen", 1, mehrPfeil().size)
-        // Der Pfeil steht neben dem Text, nicht auf ihm: Darunter lag sonst „82 Tei“.
-        val pfeil = mehrPfeil().single().boundsInRoot
-        val sichtbar = zahlen.map { (wert, text) ->
-            compose.onNodeWithText("$wert $text", useUnmergedTree = true).fetchSemanticsNode().boundsInRoot
-        }.filter { it.width > 0f }
-        assertTrue("Kein Text unter dem Pfeil ($pfeil / $sichtbar)", sichtbar.all { it.right <= pfeil.left + 0.5f })
-        val (wert, text) = zahlen.last()
-        compose.onNodeWithText("$wert $text", useUnmergedTree = true).performScrollTo()
-        compose.waitForIdle()
-        assertEquals("Am Ende kein Pfeil mehr", 0, mehrPfeil().size)
     }
 
     @Test
@@ -435,7 +413,7 @@ class GeruestUndFormularTest {
             ctx.getString(R.string.detail_theme) to "Star Wars")
         zeige(schrift = 2f) {
             Box(Modifier.width(360.dp)) {
-                ch.brickinventoryapp.ui.screens.KennzahlenReihe(umbrechen = true) {
+                ch.brickinventoryapp.ui.screens.KennzahlenReihe {
                     werte.forEach { (label, wert) -> ch.brickinventoryapp.ui.screens.StatChipV2(label, wert) }
                 }
             }
@@ -445,7 +423,6 @@ class GeruestUndFormularTest {
             val b = compose.onNodeWithText("$label $wert", useUnmergedTree = true).fetchSemanticsNode().boundsInRoot
             assertTrue("„$label $wert“ ragt über den Rand ($b, Rand $rand)", b.right <= rand + 1f && b.width > 0f)
         }
-        assertEquals("Umgebrochen braucht es keinen Pfeil", 0, mehrPfeil().size)
     }
 
     /**
