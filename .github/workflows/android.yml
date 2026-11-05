@@ -276,7 +276,7 @@ jobs:
           python3 tools/lint-zaehlen.py tools/lint-obergrenze.txt \
             app/build/reports/lint-results-release.xml
 
-      # detekt ohne Baseline (Regeln: config/detekt/detekt.yml); jeder Fund macht den Lauf rot.
+      # detekt (Regeln: config/detekt/detekt.yml); jeder Fund ausserhalb von config/detekt/baseline.xml macht den Lauf rot.
       - name: Kotlin prüfen (detekt)
         if: ${{ !cancelled() }}
         run: |

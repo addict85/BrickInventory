@@ -15,8 +15,9 @@ import org.gradle.process.CommandLineArgumentProvider
 import java.io.File
 
 /**
- * Aufgabe `detekt`: prüft src/main und src/test des Moduls nach config/detekt/detekt.yml,
- * ohne Baseline, und scheitert bei jedem Fund. Die Kommandozeile statt des Gradle-Plugins:
+ * Aufgabe `detekt`: prüft src/main und src/test des Moduls nach config/detekt/detekt.yml
+ * und scheitert bei jedem Fund, der nicht in config/detekt/baseline.xml steht. Die
+ * Baseline hält nur Länge und Verzweigung fest; tools/detekt-obergrenze.txt lässt sie schrumpfen. Die Kommandozeile statt des Gradle-Plugins:
  * Sie braucht nur die Quellordner und bringt ihr eigenes Kotlin mit, das Plugin müsste
  * sich an die Quellsätze von AGP 9 mit eingebautem Kotlin hängen.
  */
@@ -38,7 +39,10 @@ class DetektKonvention : Plugin<Project> {
             aufgabe.classpath = werkzeug
             aufgabe.mainClass.set("io.gitlab.arturbosch.detekt.cli.Main")
             aufgabe.argumentProviders.add(
-                DetektArgumente(quellen, target.rootDir.resolve("config/detekt/detekt.yml"), regelwerk, bericht.map { it.asFile }),
+                DetektArgumente(
+                    quellen, target.rootDir.resolve("config/detekt/detekt.yml"),
+                    target.rootDir.resolve("config/detekt/baseline.xml"), regelwerk, bericht.map { it.asFile },
+                ),
             )
             aufgabe.outputs.file(bericht)
             // Ohne Quellordner (core-ressourcen) läse detekt sonst das ganze Modul samt build/.
@@ -67,6 +71,7 @@ class DetektKonvention : Plugin<Project> {
 internal class DetektArgumente(
     @get:InputFiles @get:PathSensitive(PathSensitivity.RELATIVE) val quellen: FileCollection,
     @get:InputFile @get:PathSensitive(PathSensitivity.NONE) val regeln: File,
+    @get:InputFile @get:PathSensitive(PathSensitivity.NONE) val baseline: File,
     @get:Classpath val regelwerk: FileCollection,
     @get:Internal val bericht: org.gradle.api.provider.Provider<File>,
 ) : CommandLineArgumentProvider {
@@ -74,6 +79,7 @@ internal class DetektArgumente(
         "--input", quellen.files.joinToString(",") { it.absolutePath },
         "--config", regeln.absolutePath,
         "--build-upon-default-config",
+        "--baseline", baseline.absolutePath,
         "--plugins", regelwerk.files.joinToString(",") { it.absolutePath },
         "--report", "txt:" + bericht.get().absolutePath,
     )

@@ -37,6 +37,10 @@ import org.junit.Test
  * Kommentare (05.11.2026, gemessen mit kotlinc lokal):
  *   kommentar-zu-lang    sechs Zeilen Prosa über AppViewModel → rot „kein Kommentar hat …“
  *   verweis-ins-leere    ein Anker in Vorwaermen.kt verschrieben → rot „jeder Verweis …“
+ * detekt-Baseline (05.11.2026, gemessen mit kotlinc lokal):
+ *   detekt-baseline-waechst       Obergrenze 133 statt 134 → rot „die detekt-Baseline …“
+ *   detekt-baseline-fremde-regel  ein MagicNumber-Eintrag → rot, derselbe Test
+ * Abbruch (05.11.2026): cache-schluckt-abbruch macht auch „kein breiter Fang …“ rot.
  */
 class QuelltextRatscheTest {
 
@@ -222,6 +226,22 @@ class QuelltextRatscheTest {
             "Breiter Fang um einen suspendierenden Aufruf ohne Abbruch-Zweig; fangeAusserAbbruch verwenden:\n  " +
                 funde.joinToString("\n  ")
         }
+    }
+
+    @Test
+    fun `die detekt-Baseline haelt nur Laenge und Verzweigung und schrumpft`() {
+        val baseline = java.io.File(Quellen.projekt, "config/detekt/baseline.xml").readText()
+        val ids = Regex("""<ID>(\w+):""").findAll(baseline).map { it.groupValues[1] }.toList()
+        val grenze = java.io.File(Quellen.projekt, "tools/detekt-obergrenze.txt").readLines()
+            .first { it.isNotBlank() && !it.startsWith("#") }.trim().toInt()
+        assert(ids.size >= 10) { "Nur ${ids.size} Einträge in der Baseline — Muster veraltet?" }
+        val fremd = ids.filter { it !in setOf("LongMethod", "CyclomaticComplexMethod") }.distinct()
+        assert(fremd.isEmpty()) { "Die Baseline verschweigt andere Regeln: $fremd. Den Fund beheben, nicht eintragen." }
+        assert(ids.size <= grenze) {
+            "${ids.size} Funktionen in der detekt-Baseline, erlaubt sind $grenze. Eine neue lange " +
+                "oder verzweigte Funktion zerlegen, statt sie einzutragen."
+        }
+        if (ids.size < grenze) println("  detekt-Baseline: ${ids.size} (Obergrenze $grenze) — tools/detekt-obergrenze.txt nachziehen")
     }
 
     @Test
