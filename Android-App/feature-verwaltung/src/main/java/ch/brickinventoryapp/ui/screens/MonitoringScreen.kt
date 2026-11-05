@@ -106,10 +106,6 @@ fun MonitoringScreen(vm: AppViewModel) {
     LaunchedEffect(einstellungenNeu) {
         if (einstellungenNeu) { vm.loadSettings(); mon.einstellungenGeladen() }
     }
-    val auftragsMeldung by mon.meldung.collectAsStateWithLifecycle()
-    LaunchedEffect(auftragsMeldung) {
-        auftragsMeldung?.let { snack = it; mon.meldungGezeigt() }
-    }
 
     LazyColumn(
         modifier = Modifier.fillMaxSize(),

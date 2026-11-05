@@ -2,6 +2,7 @@ package ch.brickinventoryapp.ui.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import ch.brickinventoryapp.data.MeldungsKanal
 import ch.brickinventoryapp.data.repository.BrickRepository
 import ch.brickinventoryapp.data.repository.Result
 import ch.brickinventoryapp.ui.VerwaltungUiState
@@ -71,6 +72,7 @@ data class HintergrundUiState(
 class MonitoringViewModel @Inject constructor(
     private val repo: BrickRepository,
     private val texte: Texte,
+    meldungen: MeldungsKanal,
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(MonitoringUiState())
@@ -124,14 +126,8 @@ class MonitoringViewModel @Inject constructor(
     internal suspend fun leereAuftragsArt(art: String): String =
         nachAuftrag(repo.verwaltung.leereAuftragsArt(art)) { texte.menge(R.plurals.hintergrund_geleert, it.entfernt, it.entfernt) }
 
-    private val _meldung = MutableStateFlow<String?>(null)
-
-    /** Satz zur letzten Auftragsaktion; der Bildschirm zeigt ihn und quittiert mit [meldungGezeigt]. */
-    val meldung = _meldung.asStateFlow()
-
-    fun meldungGezeigt() {
-        _meldung.value = null
-    }
+    /** Sätze zu Aufträgen und Speichern gehen in den einen Kanal der Snackbar. */
+    private val _snackbar = meldungen.fluss
 
     // Im viewModelScope, nicht im Scope des Bildschirms: Wer die Seite verlässt,
     // bricht die Aktion nicht ab, und der Satz geht nicht am Zustand vorbei.
@@ -147,7 +143,7 @@ class MonitoringViewModel @Inject constructor(
 
     /** Die Vorschau-Ablage liegt beim AppViewModel; gemeldet wird hier wie jedes Speichern. */
     fun ablageGeleert() {
-        _meldung.value = texte.text(R.string.monitoring_cache_saved)
+        _snackbar.value = texte.text(R.string.monitoring_cache_saved)
     }
 
     fun einstellungenGeladen() {
@@ -171,12 +167,12 @@ class MonitoringViewModel @Inject constructor(
         viewModelScope.launch {
             if (!aktion()) return@launch
             if (einstellungen) _einstellungenNeu.value = true
-            _meldung.value = texte.text(satz)
+            _snackbar.value = texte.text(satz)
         }
     }
 
     private fun melde(aktion: suspend () -> String) {
-        viewModelScope.launch { _meldung.value = aktion() }
+        viewModelScope.launch { _snackbar.value = aktion() }
     }
 
     private suspend fun <T> nachAuftrag(r: Result<T>, erfolg: (T) -> String): String {

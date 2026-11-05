@@ -1,5 +1,6 @@
 package ch.brickinventoryapp
 
+import ch.brickinventoryapp.data.MeldungsKanal
 import ch.brickinventoryapp.data.api.BrickApiService
 import ch.brickinventoryapp.data.cache.ResponseCache
 import ch.brickinventoryapp.data.repository.FigurenRepository
@@ -109,7 +110,7 @@ class MonitoringViewModelVerhaltenTest {
             katalog = KatalogRepository(api, cache),
             gutscheine = GutscheineRepository(api, cache),
             cache = cache,
-        ), NummernTexte)
+        ), NummernTexte, MeldungsKanal())
     }
 
     @After

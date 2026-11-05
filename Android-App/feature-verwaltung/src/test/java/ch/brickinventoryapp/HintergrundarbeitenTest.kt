@@ -1,6 +1,7 @@
 package ch.brickinventoryapp
 
 import ch.brickinventoryapp.ressourcen.R
+import ch.brickinventoryapp.data.MeldungsKanal
 import ch.brickinventoryapp.data.cache.ResponseCache
 import ch.brickinventoryapp.data.repository.BrickRepository
 import ch.brickinventoryapp.data.repository.FigurenRepository
@@ -47,7 +48,7 @@ import java.io.File
  *      zeigt den Satz des Servers“
  *   D  `jobProzessLaeuft = true` fest → rot „ohne Job-Prozess steht die Warnung an“
  * Gegenprobe (05.11.2026, gegenproben/auftrag-meldung-verloren.patch): melde()
- *   startet die Aktion, legt den Satz aber nicht in `meldung` → rot „eine Aktion
+ *   startet die Aktion, legt den Satz aber nicht in den Kanal → rot „eine Aktion
  *   laeuft im ViewModel …“
  */
 class HintergrundarbeitenTest {
@@ -74,6 +75,7 @@ class HintergrundarbeitenTest {
 
     private val pfade = PfadServer("/api/v1/admin/auftraege" to liste)
     private val dir = File(System.getProperty("java.io.tmpdir"), "bim-hg-${System.nanoTime()}")
+    private val kanal = MeldungsKanal()
     private val vm = TestApi.fuer(pfade.server).let { api ->
         val cache = ResponseCache { dir }
         MonitoringViewModel(BrickRepository(
@@ -82,7 +84,7 @@ class HintergrundarbeitenTest {
             figuren = FigurenRepository(api, cache), konto = KontoRepository(api, cache),
             verwaltung = VerwaltungRepository(api, cache), katalog = KatalogRepository(api, cache),
             gutscheine = GutscheineRepository(api, cache), cache = cache,
-        ), Saetze)
+        ), Saetze, kanal)
     }
 
     @After
@@ -111,7 +113,7 @@ class HintergrundarbeitenTest {
         assertFalse(vm.hintergrund.value.ansicht!!.jobProzessLaeuft)
     }
 
-    /** Die Aktion läuft im viewModelScope; der Satz kommt über den Zustand, nicht über den Bildschirm. */
+    /** Die Aktion läuft im viewModelScope; der Satz kommt über den Meldungskanal, nicht über den Bildschirm. */
     @OptIn(ExperimentalCoroutinesApi::class)
     @Test
     fun `eine Aktion laeuft im ViewModel und meldet ueber den Zustand`() = runBlocking {
@@ -119,10 +121,8 @@ class HintergrundarbeitenTest {
         Dispatchers.setMain(UnconfinedTestDispatcher())
         try {
             vm.auftragAbbrechen("17")
-            val satz = withTimeout(5_000) { vm.meldung.first { it != null } }
+            val satz = withTimeout(5_000) { kanal.meldung.first { it != null } }
             assertEquals("t${R.string.hintergrund_abgebrochen_ok}()", satz)
-            vm.meldungGezeigt()
-            assertEquals(null, vm.meldung.value)
         } finally {
             vm.viewModelScope.cancel()
             Dispatchers.resetMain()
