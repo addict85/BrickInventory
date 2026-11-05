@@ -1,7 +1,7 @@
 package ch.brickinventoryapp.data
 
 import ch.brickinventoryapp.data.model.TokenRotation
-import ch.brickinventoryapp.data.repository.Result
+import ch.brickinventoryapp.data.repository.Ergebnis
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.delay
@@ -101,7 +101,7 @@ internal fun anmeldungUeberfaellig(angemeldetAm: Long, jetzt: Long): Boolean =
 class TokenTausch(
     private val stand: suspend () -> TokenStand,
     private val ersetze: suspend (vorher: TokenStand, neu: String, anfrageHerkunft: String?) -> Boolean,
-    private val rotiere: suspend (alterToken: String) -> Result<GetauschterToken>,
+    private val rotiere: suspend (alterToken: String) -> Ergebnis<GetauschterToken>,
     private val uhr: () -> Long = System::currentTimeMillis,
     private val pausen: List<Long> = listOf(2_000, 10_000, 30_000),
     /** Für [faellig]: der Anwendungsbereich, damit der Tausch das Verlassen eines Bildschirms überlebt. */
@@ -152,8 +152,8 @@ class TokenTausch(
             // Abgemeldet oder anderer Server: Der alte Token geht nicht noch einmal hinaus.
             if (versuch > 0 && stand() != vorher) return Tauschergebnis.VERWORFEN
             when (val r = rotiere(alterToken)) {
-                is Result.Success -> return gelungen(vorher, r.data)
-                is Result.Error -> {
+                is Ergebnis.Success -> return gelungen(vorher, r.data)
+                is Ergebnis.Error -> {
                     // 401: Der alte Token gilt nicht mehr (Überlappung vorbei, widerrufen).
                     if (r.httpCode == 401) return Tauschergebnis.NEU_KOPPELN
                     if (!r.transient) return Tauschergebnis.SPAETER

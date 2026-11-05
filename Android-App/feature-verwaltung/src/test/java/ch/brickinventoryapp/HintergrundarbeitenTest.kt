@@ -9,7 +9,7 @@ import ch.brickinventoryapp.data.repository.GutscheineRepository
 import ch.brickinventoryapp.data.repository.HaushaltRepository
 import ch.brickinventoryapp.data.repository.KatalogRepository
 import ch.brickinventoryapp.data.repository.KontoRepository
-import ch.brickinventoryapp.data.repository.Result
+import ch.brickinventoryapp.data.repository.Ergebnis
 import ch.brickinventoryapp.data.repository.SetsRepository
 import ch.brickinventoryapp.data.repository.TeileRepository
 import ch.brickinventoryapp.data.repository.VerwaltungRepository
@@ -43,7 +43,7 @@ import java.io.File
  *      einem Auftrag tun darf, steht schon fest“
  *   B  in MonitoringViewModel.nachAuftrag das Neuladen entfernt → rot „Abbrechen
  *      meldet Erfolg und lädt neu“ (nur eine GET-Anfrage)
- *   C  bei Result.Error den Erfolgssatz statt texte.meldung → rot „ein 409
+ *   C  bei Ergebnis.Error den Erfolgssatz statt texte.meldung → rot „ein 409
  *      zeigt den Satz des Servers“
  *   D  `jobProzessLaeuft = true` fest → rot „ohne Job-Prozess steht die Warnung an“
  * Gegenprobe (05.11.2026, gegenproben/auftrag-meldung-verloren.patch): melde()
@@ -55,7 +55,7 @@ class HintergrundarbeitenTest {
     private object Saetze : Texte {
         override fun text(id: Int, vararg args: Any?) = "t$id(${args.joinToString()})"
         override fun menge(id: Int, anzahl: Int, vararg args: Any?) = "m$id:$anzahl"
-        override fun meldung(fehler: Result.Error) = "Server: ${fehler.message}"
+        override fun meldung(fehler: Ergebnis.Error) = "Server: ${fehler.message}"
         override fun angemeldet() = true
     }
 

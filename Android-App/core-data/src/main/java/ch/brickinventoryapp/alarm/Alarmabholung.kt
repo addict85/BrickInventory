@@ -2,13 +2,13 @@ package ch.brickinventoryapp.alarm
 
 import ch.brickinventoryapp.data.model.PendingAlertsResponse
 import ch.brickinventoryapp.data.model.Preisalarm
-import ch.brickinventoryapp.data.repository.Result
+import ch.brickinventoryapp.data.repository.Ergebnis as Abrufergebnis
 
 /**
  * Die Abfrage selbst — ein Typalias, damit die Signatur von [Alarmabholung.hole]
  * lesbar bleibt. Top-Level, weil Kotlin Typalias nur dort erlaubt.
  */
-typealias Frage = suspend (String?) -> Result<PendingAlertsResponse>
+typealias Frage = suspend (String?) -> Abrufergebnis<PendingAlertsResponse>
 
 /**
  * Was beim Abholen der ausgelösten Preisalarme entschieden wird — ausserhalb des
@@ -51,7 +51,7 @@ object Alarmabholung {
      */
     suspend fun hole(marke: String?, frage: Frage): Ergebnis {
         val r = frage(marke?.takeIf { it.isNotBlank() })
-        val antwort = (r as? Result.Success)?.data?.takeIf { it.success }
+        val antwort = (r as? Abrufergebnis.Success)?.data?.takeIf { it.success }
             ?: return Ergebnis.Fehlgeschlagen
         // Ohne `now` keine neue Marke — und ohne neue Marke lieber gar nichts
         // speichern, als eine falsche. Ein Server, der das Feld nicht kennt,

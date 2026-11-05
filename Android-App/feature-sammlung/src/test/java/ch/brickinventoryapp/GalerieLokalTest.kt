@@ -5,7 +5,7 @@ import ch.brickinventoryapp.data.lokal.Lokal
 import ch.brickinventoryapp.data.model.SetItem
 import ch.brickinventoryapp.data.model.SetsResponse
 import ch.brickinventoryapp.data.model.StatsResponse
-import ch.brickinventoryapp.data.repository.Result
+import ch.brickinventoryapp.data.repository.Ergebnis
 import ch.brickinventoryapp.ui.Galerie
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.test.runCurrent
@@ -35,10 +35,10 @@ class GalerieLokalTest {
         val g = Galerie(
             scope = backgroundScope,
             holeSeite = { st, _ ->
-                Result.Success(SetsResponse(success = true, total = 2,
+                Ergebnis.Success(SetsResponse(success = true, total = 2,
                     sets = if (st.galleryTheme.isBlank()) listOf(set(1), set(2)) else listOf(set(9))))
             },
-            holeKennzahlen = { Result.Success(StatsResponse(success = true)) },
+            holeKennzahlen = { Ergebnis.Success(StatsResponse(success = true)) },
             meldeFehler = {},
             vergissScroll = {},
             lokal = lokal,
@@ -63,8 +63,8 @@ class GalerieLokalTest {
         val lokal = MutableStateFlow(Lokal(listOf(set(7)), stand = null))
         val g = Galerie(
             scope = backgroundScope,
-            holeSeite = { _, _ -> Result.Success(SetsResponse(success = true, total = 1, sets = listOf(set(1)))) },
-            holeKennzahlen = { Result.Success(StatsResponse(success = true)) },
+            holeSeite = { _, _ -> Ergebnis.Success(SetsResponse(success = true, total = 1, sets = listOf(set(1)))) },
+            holeKennzahlen = { Ergebnis.Success(StatsResponse(success = true)) },
             meldeFehler = {},
             vergissScroll = {},
             lokal = lokal,

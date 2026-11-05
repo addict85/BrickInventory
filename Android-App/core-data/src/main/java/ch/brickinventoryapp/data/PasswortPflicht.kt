@@ -16,13 +16,15 @@ interface PasswortPflicht {
     val noetig: StateFlow<Boolean>
     fun melde()
     fun erledigt()
+
+    /** Für Tests ohne Hilt. */
+    companion object {
+        operator fun invoke(): PasswortPflicht = PasswortPflichtZustand()
+    }
 }
 
-/** Für Tests ohne Hilt. */
-fun PasswortPflicht(): PasswortPflicht = PasswortPflichtZustand()
-
 @Singleton
-class PasswortPflichtZustand @Inject constructor() : PasswortPflicht {
+internal class PasswortPflichtZustand @Inject constructor() : PasswortPflicht {
     private val _noetig = MutableStateFlow(false)
     override val noetig: StateFlow<Boolean> = _noetig.asStateFlow()
 

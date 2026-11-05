@@ -8,7 +8,7 @@ import javax.inject.Inject
 import javax.inject.Singleton
 import ch.brickinventoryapp.data.ZweiterFaktorPflicht
 import ch.brickinventoryapp.data.repository.KontoRepository
-import ch.brickinventoryapp.data.repository.Result
+import ch.brickinventoryapp.data.repository.Ergebnis
 import ch.brickinventoryapp.ui.model.StartzustandAnsicht
 
 /**
@@ -112,7 +112,7 @@ class SitzungsZustand @Inject constructor() : Sitzung {
  */
 suspend fun Sitzung.ladeEinstellungen(konto: KontoRepository) {
     val r = konto.getSettings()
-    if (r is Result.Success) {
+    if (r is Ergebnis.Success) {
         val e = r.data.settings
         einstellungenGeladen(e.currency, e.priceCondition, e.defaultPriceCondition, e.effectiveCondition)
     }
@@ -127,7 +127,7 @@ suspend fun Sitzung.rechteNachziehen(konto: KontoRepository): Boolean {
     if (!state.value.isAdmin) return false
     val me = konto.getMe()
     // Ohne Antwort gilt das 403: Der Server hat das Recht eben verneint.
-    val verwalter = me is Result.Success && me.data.user?.isAdmin == true
+    val verwalter = me is Ergebnis.Success && me.data.user?.isAdmin == true
     verwalterGeaendert(verwalter)
     return !verwalter
 }
@@ -142,7 +142,7 @@ suspend fun Sitzung.kontoUebernehmen(
     faktorPflicht: ZweiterFaktorPflicht,
 ) {
     val me = konto.getMe()
-    if (me !is Result.Success) return
+    if (me !is Ergebnis.Success) return
     val nutzer = me.data.user
     verwalterGeaendert(nutzer?.isAdmin == true)
     if (nutzer?.zweiterFaktorPflicht == true) faktorPflicht.melde()

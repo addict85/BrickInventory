@@ -143,13 +143,15 @@ interface ZertifikatsFrage {
     fun melde(frage: ZertifikatUngeklaert)
     fun bestaetige(pins: PinAblage, eingabe: String? = null): Boolean
     fun verwerfen()
+
+    /** Für Tests ohne Hilt. */
+    companion object {
+        operator fun invoke(): ZertifikatsFrage = ZertifikatsRueckfrage()
+    }
 }
 
-/** Für Tests ohne Hilt. */
-fun ZertifikatsFrage(): ZertifikatsFrage = ZertifikatsRueckfrage()
-
 @Singleton
-class ZertifikatsRueckfrage @Inject constructor() : ZertifikatsFrage {
+internal class ZertifikatsRueckfrage @Inject constructor() : ZertifikatsFrage {
     private val _offen = MutableStateFlow<ZertifikatUngeklaert?>(null)
     override val offen: StateFlow<ZertifikatUngeklaert?> = _offen.asStateFlow()
 

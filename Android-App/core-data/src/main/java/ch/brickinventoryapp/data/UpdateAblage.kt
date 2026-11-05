@@ -11,7 +11,7 @@ import kotlinx.coroutines.flow.first
 import javax.inject.Inject
 
 /** Die Messlatte der Selbstaktualisierung (util/UpdateFrische.kt), je Gerät im DataStore. */
-class UpdateAblage @Inject constructor(private val dataStore: DataStore<Preferences>) : UpdateStandAblage {
+internal class UpdateAblage @Inject constructor(private val dataStore: DataStore<Preferences>) : UpdateStandAblage {
     private companion object {
         /**
          * Der höchste gesehene versionCode und der späteste Ausstellungszeitpunkt einer

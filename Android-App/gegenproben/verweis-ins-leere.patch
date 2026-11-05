@@ -4,15 +4,15 @@ Test: ch.brickinventoryapp.QuelltextRatscheTest
 Rot: jeder Verweis auf docs-begruendungen trifft Datei und Anker
 
 diff --git a/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/ui/Vorwaermen.kt b/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/ui/Vorwaermen.kt
-index 0da3c1f..764b21e 100644
+index b4b5eca..c8a91f3 100644
 --- a/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/ui/Vorwaermen.kt
 +++ b/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/ui/Vorwaermen.kt
-@@ -18,7 +18,7 @@ import kotlinx.coroutines.launch
+@@ -20,7 +20,7 @@ import kotlinx.coroutines.launch
  
  /**
   * Die Adressen aller Kacheln der eigenen Sammlung, zum Vorwärmen.
 - * Ausführlich: docs/begruendungen/core-zustand/ui/Vorwaermen.kt.md#bildadressendersammlung
 + * Ausführlich: docs/begruendungen/core-zustand/ui/Vorwaermen.kt.md#bildadressen
   */
- internal suspend fun bildAdressenDerSammlung(repo: BrickRepository, blickfeld: Blickfeld, basis: String): List<String> {
-     val roh = mutableListOf<String?>()
+ internal suspend fun bildAdressenDerSammlung(
+     sets: SetsRepository, teile: TeileRepository, figuren: FigurenRepository, blickfeld: Blickfeld, basis: String,

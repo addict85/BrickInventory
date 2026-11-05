@@ -8,7 +8,7 @@ import ch.brickinventoryapp.alarm.Alarmeingabe
 import ch.brickinventoryapp.data.model.GenericResponse
 import ch.brickinventoryapp.data.repository.FinanzenRepository
 import ch.brickinventoryapp.data.repository.HaushaltRepository
-import ch.brickinventoryapp.data.repository.Result
+import ch.brickinventoryapp.data.repository.Ergebnis
 import ch.brickinventoryapp.data.repository.SetsRepository
 import ch.brickinventoryapp.ui.Aenderung
 import ch.brickinventoryapp.ui.Preisalarmeingabe
@@ -100,8 +100,8 @@ class SetDetailViewModel @Inject constructor(
         viewModelScope.launch {
             _setDetailState.update { it.copy(setDetailLoading = true, setDetailFehler = null) }
             when (val r = sets.getSetDetail(setNumber)) {
-                is Result.Success -> _setDetailState.update { it.copy(setDetail = r.data.set?.alsAnsicht(), setDetailLoading = false) }
-                is Result.Error -> _setDetailState.update { it.copy(setDetailLoading = false, setDetailFehler = meldungen.meldung(r),
+                is Ergebnis.Success -> _setDetailState.update { it.copy(setDetail = r.data.set?.alsAnsicht(), setDetailLoading = false) }
+                is Ergebnis.Error -> _setDetailState.update { it.copy(setDetailLoading = false, setDetailFehler = meldungen.meldung(r),
                     setDetailFehlerKlasse = fehlerklasse(r)) }
             }
         }
@@ -111,8 +111,8 @@ class SetDetailViewModel @Inject constructor(
         viewModelScope.launch {
             _setDetailState.update { it.copy(setPriceLoading = true) }
             when (val r = finanzen.getSetPrice(setNumber)) {
-                is Result.Success -> _setDetailState.update { it.copy(setPrice = r.data.alsAnsicht(), setPriceLoading = false) }
-                is Result.Error -> _setDetailState.update { it.copy(setPriceLoading = false) }
+                is Ergebnis.Success -> _setDetailState.update { it.copy(setPrice = r.data.alsAnsicht(), setPriceLoading = false) }
+                is Ergebnis.Error -> _setDetailState.update { it.copy(setPriceLoading = false) }
             }
         }
     }
@@ -121,8 +121,8 @@ class SetDetailViewModel @Inject constructor(
         viewModelScope.launch {
             _setDetailState.update { it.copy(priceHistoryLoading = true) }
             when (val r = finanzen.getSetPriceHistory(setNumber)) {
-                is Result.Success -> _setDetailState.update { it.copy(priceHistory = r.data.alsAnsicht(), priceHistoryLoading = false) }
-                is Result.Error -> _setDetailState.update { it.copy(priceHistoryLoading = false) }
+                is Ergebnis.Success -> _setDetailState.update { it.copy(priceHistory = r.data.alsAnsicht(), priceHistoryLoading = false) }
+                is Ergebnis.Error -> _setDetailState.update { it.copy(priceHistoryLoading = false) }
             }
         }
     }
@@ -131,11 +131,11 @@ class SetDetailViewModel @Inject constructor(
         viewModelScope.launch {
             _setDetailState.update { it.copy(acquisitionsLoading = true) }
             when (val r = haushalt.getAcquisitions(setNumber)) {
-                is Result.Success -> _setDetailState.update {
+                is Ergebnis.Success -> _setDetailState.update {
                     it.copy(acquisitions = r.data.acquisitions.map { a -> a.alsAnsicht() }, acquisitionTotals = r.data.totals.alsAnsicht(),
                             acquisitionsLoading = false)
                 }
-                is Result.Error -> _setDetailState.update { it.copy(acquisitionsLoading = false) }
+                is Ergebnis.Error -> _setDetailState.update { it.copy(acquisitionsLoading = false) }
             }
         }
     }
@@ -143,7 +143,7 @@ class SetDetailViewModel @Inject constructor(
     override fun loadPreisalarme(setNumber: String) {
         viewModelScope.launch {
             val r = sets.getPreisalarme(setNumber)
-            val alarme = (r as? Result.Success)?.data?.takeIf { it.success }?.alerts?.map { it.alsAnsicht() } ?: emptyList()
+            val alarme = (r as? Ergebnis.Success)?.data?.takeIf { it.success }?.alerts?.map { it.alsAnsicht() } ?: emptyList()
             _setDetailState.update { it.copy(preisalarme = alarme) }
         }
     }
@@ -162,10 +162,10 @@ class SetDetailViewModel @Inject constructor(
     override fun aendereMengeUm(setNumber: String, schritt: Int) =
         mengeAendern(setNumber) { sets.aendereMengeUm(setNumber, schritt) }
 
-    private fun mengeAendern(setNumber: String, aufruf: suspend () -> Result<GenericResponse>) {
+    private fun mengeAendern(setNumber: String, aufruf: suspend () -> Ergebnis<GenericResponse>) {
         viewModelScope.launch {
             when (val r = aufruf()) {
-                is Result.Success -> {
+                is Ergebnis.Success -> {
                     r.data.quantity?.let { echt ->
                         _setDetailState.update { st ->
                             if (st.setDetail?.setNumber == setNumber)
@@ -174,7 +174,7 @@ class SetDetailViewModel @Inject constructor(
                     }
                     bestand.melde(Aenderung.Sets)
                 }
-                is Result.Error -> meldungen.zeige(meldungen.meldungFuerSnackbar(r)?.let { meldungen.text(R.string.vm_error, it) })
+                is Ergebnis.Error -> meldungen.zeige(meldungen.meldungFuerSnackbar(r)?.let { meldungen.text(R.string.vm_error, it) })
             }
         }
     }
@@ -185,11 +185,11 @@ class SetDetailViewModel @Inject constructor(
         lagerJob = viewModelScope.launch {
             delay(Alarmeingabe.RUHE_MS)
             when (val r = sets.setSetStorage(setNumber, ort)) {
-                is Result.Success -> {
+                is Ergebnis.Success -> {
                     if (!r.data.success) { meldungen.zeige(r.data.error ?: ""); return@launch }
                     bestand.melde(Aenderung.Sets)
                 }
-                is Result.Error -> meldungen.zeige(meldungen.meldungFuerSnackbar(r))
+                is Ergebnis.Error -> meldungen.zeige(meldungen.meldungFuerSnackbar(r))
             }
         }
     }
@@ -215,12 +215,12 @@ class SetDetailViewModel @Inject constructor(
             }
             val name = leser.name(datei) ?: "anleitung"
             when (val r = sets.uploadAnleitung(setNumber, name, typ, bytes, name)) {
-                is Result.Success ->
+                is Ergebnis.Success ->
                     if (r.data.success) {
                         meldungen.zeige(meldungen.text(R.string.instr_upload_done))
                         loadSetDetail(setNumber)
                     } else meldungen.zeige(r.data.error ?: meldungen.text(R.string.err_generic))
-                is Result.Error -> meldungen.zeige(meldungen.meldungFuerSnackbar(r))
+                is Ergebnis.Error -> meldungen.zeige(meldungen.meldungFuerSnackbar(r))
             }
         }
     }
@@ -228,10 +228,10 @@ class SetDetailViewModel @Inject constructor(
     override fun loescheAnleitung(setNumber: String, instrId: Int) {
         viewModelScope.launch {
             when (val r = sets.deleteAnleitung(setNumber, instrId)) {
-                is Result.Success ->
+                is Ergebnis.Success ->
                     if (r.data.success) loadSetDetail(setNumber)
                     else meldungen.zeige(r.data.error ?: meldungen.text(R.string.err_generic))
-                is Result.Error -> meldungen.zeige(meldungen.meldungFuerSnackbar(r))
+                is Ergebnis.Error -> meldungen.zeige(meldungen.meldungFuerSnackbar(r))
             }
         }
     }

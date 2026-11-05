@@ -8,7 +8,7 @@ import ch.brickinventoryapp.ressourcen.R
 import ch.brickinventoryapp.data.MeldungsKanal
 import ch.brickinventoryapp.data.model.ProfilAenderung
 import ch.brickinventoryapp.data.repository.KontoRepository
-import ch.brickinventoryapp.data.repository.Result
+import ch.brickinventoryapp.data.repository.Ergebnis
 import ch.brickinventoryapp.ui.model.alsGeraet
 import ch.brickinventoryapp.ui.DesignWahl
 import ch.brickinventoryapp.ui.GeraeteUiState
@@ -60,11 +60,11 @@ class KontoViewModel @Inject constructor(
     /** Lässt einen Fehler stehen, den das Speichern davor gesetzt hat (Mail nicht gesendet). */
     private suspend fun holeProfil() {
         when (val r = konto.getProfil()) {
-            is Result.Success -> _kontoState.update {
+            is Ergebnis.Success -> _kontoState.update {
                 it.copy(laedt = false, profil = r.data.user?.alsAnsicht(),
                         fehler = if (r.data.user == null) r.data.error ?: texte.text(R.string.err_generic) else it.fehler)
             }
-            is Result.Error -> _kontoState.update { it.copy(laedt = false, fehler = texte.meldung(r)) }
+            is Ergebnis.Error -> _kontoState.update { it.copy(laedt = false, fehler = texte.meldung(r)) }
         }
     }
 
@@ -89,7 +89,7 @@ class KontoViewModel @Inject constructor(
                 code = code?.trim()?.ifBlank { null },
             )
             when (val r = konto.updateProfil(aenderung)) {
-                is Result.Success ->
+                is Ergebnis.Success ->
                     if (r.data.success) {
                         // Eine neue Adresse gilt erst nach dem Link: „gespeichert“ allein liesse
                         // glauben, sie gelte schon, und ohne Mail wartet sie umsonst.
@@ -108,7 +108,7 @@ class KontoViewModel @Inject constructor(
                         _kontoState.update { it.copy(speichert = false,
                             fehler = r.data.error ?: texte.text(R.string.err_generic)) }
                     }
-                is Result.Error -> abgelehnt(r)
+                is Ergebnis.Error -> abgelehnt(r)
             }
         }
     }
@@ -118,7 +118,7 @@ class KontoViewModel @Inject constructor(
      * Code. Fehlt er, merkt sich der Zustand das; die Oberfläche zeigt das Feld,
      * und die nächste Anfrage trägt ihn mit. Ein falscher Code lässt das Feld stehen.
      */
-    private fun abgelehnt(r: Result.Error) = _kontoState.update {
+    private fun abgelehnt(r: Ergebnis.Error) = _kontoState.update {
         it.copy(speichert = false, fehler = texte.meldung(r),
             codeNoetig = it.codeNoetig || r.code == Fehlercode.ZWEITER_FAKTOR_NOETIG || r.code == Fehlercode.ZWEITER_FAKTOR_FALSCH)
     }
@@ -132,7 +132,7 @@ class KontoViewModel @Inject constructor(
         viewModelScope.launch {
             _kontoState.update { it.copy(speichert = true, fehler = null, meldung = null) }
             when (val r = konto.changePassword(aktuell, neu, code?.trim()?.ifBlank { null })) {
-                is Result.Success ->
+                is Ergebnis.Success ->
                     if (r.data.success) {
                         sitzungsDienst.abmelden()
                         meldungen.zeige(texte.text(R.string.konto_password_changed))
@@ -141,7 +141,7 @@ class KontoViewModel @Inject constructor(
                         _kontoState.update { it.copy(speichert = false,
                             fehler = r.data.error ?: texte.text(R.string.err_generic)) }
                     }
-                is Result.Error -> abgelehnt(r)
+                is Ergebnis.Error -> abgelehnt(r)
             }
         }
     }
@@ -152,7 +152,7 @@ class KontoViewModel @Inject constructor(
     fun ladeDesign() {
         viewModelScope.launch {
             val r = konto.getAppTheme()
-            if (r is Result.Success && r.data.success) _kontoState.update { it.copy(design = designWahl(r.data)) }
+            if (r is Ergebnis.Success && r.data.success) _kontoState.update { it.copy(design = designWahl(r.data)) }
         }
     }
 
@@ -163,12 +163,12 @@ class KontoViewModel @Inject constructor(
     fun waehleDesign(eigenes: String) {
         viewModelScope.launch {
             when (val r = konto.setzeEigenesDesign(eigenes)) {
-                is Result.Success ->
+                is Ergebnis.Success ->
                     if (r.data.success) {
                         sitzung.setzeDesign(r.data.theme)
                         _kontoState.update { it.copy(design = designWahl(r.data), fehler = null) }
                     } else _kontoState.update { it.copy(fehler = r.data.error ?: texte.text(R.string.err_generic)) }
-                is Result.Error -> _kontoState.update { it.copy(fehler = texte.meldung(r)) }
+                is Ergebnis.Error -> _kontoState.update { it.copy(fehler = texte.meldung(r)) }
             }
         }
     }
@@ -186,10 +186,10 @@ class KontoViewModel @Inject constructor(
         viewModelScope.launch {
             _geraeteState.update { it.copy(laedt = true, fehler = null) }
             when (val r = konto.getTokens()) {
-                is Result.Success ->
+                is Ergebnis.Success ->
                     if (r.data.success) _geraeteState.update { it.copy(laedt = false, geraete = r.data.tokens.map { it.alsGeraet() }, fehler = null) }
                     else _geraeteState.update { it.copy(laedt = false, fehler = r.data.error) }
-                is Result.Error -> _geraeteState.update { it.copy(laedt = false, fehler = texte.meldung(r)) }
+                is Ergebnis.Error -> _geraeteState.update { it.copy(laedt = false, fehler = texte.meldung(r)) }
             }
         }
     }
@@ -198,12 +198,12 @@ class KontoViewModel @Inject constructor(
         viewModelScope.launch {
             _geraeteState.update { it.copy(laedt = true, fehler = null) }
             when (val r = konto.revokeToken(tokenId)) {
-                is Result.Success -> {
+                is Ergebnis.Success -> {
                     // deleted = 0: schon weg (anderes Gerät war schneller) — die Liste stimmt danach wieder.
                     meldungen.zeige(texte.text(if (r.data.deleted > 0) R.string.tokens_revoked else R.string.tokens_already_gone))
                     ladeGeraete()
                 }
-                is Result.Error -> _geraeteState.update { it.copy(laedt = false, fehler = texte.meldung(r)) }
+                is Ergebnis.Error -> _geraeteState.update { it.copy(laedt = false, fehler = texte.meldung(r)) }
             }
         }
     }
@@ -223,7 +223,7 @@ class KontoViewModel @Inject constructor(
             if (andere.isEmpty()) { meldungen.zeige(texte.text(R.string.tokens_no_others)); return@launch }
             _geraeteState.update { it.copy(laedt = true, fehler = null) }
             var weg = 0
-            for (g in andere) if (((konto.revokeToken(g.tokenId) as? Result.Success)?.data?.deleted ?: 0) > 0) weg++
+            for (g in andere) if (((konto.revokeToken(g.tokenId) as? Ergebnis.Success)?.data?.deleted ?: 0) > 0) weg++
             meldungen.zeige(texte.menge(R.plurals.tokens_revoked_n, weg, weg))
             ladeGeraete()
         }
@@ -258,18 +258,18 @@ class KontoViewModel @Inject constructor(
 
     /** Ein Schritt: laden anzeigen, fragen, Ergebnis eintragen oder Fehler zeigen. */
     private fun <T> zweiterFaktor(
-        abruf: suspend () -> Result<T>,
+        abruf: suspend () -> Ergebnis<T>,
         erfolgText: Int? = null,
         danach: (ZweiterFaktorUiState, T) -> ZweiterFaktorUiState,
     ) {
         viewModelScope.launch {
             _zweiterFaktorState.update { it.copy(laedt = true, fehler = null) }
             when (val r = abruf()) {
-                is Result.Success -> {
+                is Ergebnis.Success -> {
                     erfolgText?.let { meldungen.zeige(texte.text(it)) }
                     _zweiterFaktorState.update { danach(it, r.data).copy(laedt = false) }
                 }
-                is Result.Error -> _zweiterFaktorState.update { it.copy(laedt = false, fehler = texte.meldung(r)) }
+                is Ergebnis.Error -> _zweiterFaktorState.update { it.copy(laedt = false, fehler = texte.meldung(r)) }
             }
         }
     }

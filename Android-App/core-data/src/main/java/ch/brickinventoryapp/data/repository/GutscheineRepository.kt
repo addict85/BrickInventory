@@ -8,19 +8,19 @@ import ch.brickinventoryapp.data.model.*
  * Retrofit und Ablage hängen (GutscheineRepositoryImpl).
  */
 interface GutscheineRepository {
-    suspend fun liste(): Result<GutscheinListe>
+    suspend fun liste(): Ergebnis<GutscheinListe>
 
-    suspend fun anlegen(request: GutscheinRequest): Result<GutscheinAntwort>
+    suspend fun anlegen(request: GutscheinRequest): Ergebnis<GutscheinAntwort>
 
-    suspend fun aendern(id: Int, request: GutscheinRequest): Result<GutscheinAntwort>
+    suspend fun aendern(id: Int, request: GutscheinRequest): Ergebnis<GutscheinAntwort>
 
-    suspend fun loeschen(id: Int, bestaetigung: ZweiterFaktorAnfrage): Result<GenericResponse>
+    suspend fun loeschen(id: Int, bestaetigung: ZweiterFaktorAnfrage): Ergebnis<GenericResponse>
 
-    suspend fun klartext(id: Int, bestaetigung: ZweiterFaktorAnfrage): Result<GutscheinKlartext>
+    suspend fun klartext(id: Int, bestaetigung: ZweiterFaktorAnfrage): Ergebnis<GutscheinKlartext>
 
-    suspend fun pdfFreigabe(id: Int?, bestaetigung: ZweiterFaktorAnfrage): Result<GutscheinPdfFreigabe>
+    suspend fun pdfFreigabe(id: Int?, bestaetigung: ZweiterFaktorAnfrage): Ergebnis<GutscheinPdfFreigabe>
 
-    suspend fun guthaben(id: Int): Result<GuthabenAntwort>
+    suspend fun guthaben(id: Int): Ergebnis<GuthabenAntwort>
 
     suspend fun ausPdf(
         dateiname: String,
@@ -30,5 +30,5 @@ interface GutscheineRepository {
         pin: String? = null,
         betrag: String? = null,
         waehrung: String? = null,
-    ): Result<GutscheinAntwort>
+    ): Ergebnis<GutscheinAntwort>
 }

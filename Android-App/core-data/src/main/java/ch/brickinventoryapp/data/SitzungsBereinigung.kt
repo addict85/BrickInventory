@@ -28,7 +28,7 @@ fun interface SitzungsBereinigung {
  * der nächste Nutzer auf dem Gerät fremde Daten. Hier und nicht in der Oberfläche,
  * weil es Dateien, Netz-Caches und die Ablage berührt.
  */
-class GeraeteBereinigung @Inject constructor(
+internal class GeraeteBereinigung @Inject constructor(
     @param:ApplicationContext private val ctx: Context,
     private val prefs: Sitzungsende,
     private val kontoDaten: KontoDatenLoescher,

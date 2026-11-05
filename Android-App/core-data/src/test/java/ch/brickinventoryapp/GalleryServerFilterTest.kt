@@ -1,7 +1,7 @@
 package ch.brickinventoryapp
 
 import ch.brickinventoryapp.data.cache.ResponseCache
-import ch.brickinventoryapp.data.repository.Result
+import ch.brickinventoryapp.data.repository.Ergebnis
 import ch.brickinventoryapp.data.repository.SetsRepository
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
@@ -108,7 +108,7 @@ class GalleryServerFilterTest {
             pfade.server.shutdown()
             val offline = runBlocking { sets.getSets() }
             assertTrue("Eine gefilterte Antwort lag unter dem Schlüssel der vollen Liste: $offline",
-                offline is Result.Error)
+                offline is Ergebnis.Error)
 
             val neu = PfadServer("/api/v1/sets" to """{"success":true,"total":1,"sets":[{"set_number":"10294-1","name":"Titanic"}]}""")
             val sets2 = SetsRepository(TestApi.fuer(neu.server), ResponseCache { ordner })
@@ -116,7 +116,7 @@ class GalleryServerFilterTest {
             neu.server.shutdown()
             val gespeichert = runBlocking { sets2.getSets() }
             assertEquals("Die volle Liste kommt offline von der Platte",
-                "10294-1", (gespeichert as Result.Success).data.sets.single().setNumber)
+                "10294-1", (gespeichert as Ergebnis.Success).data.sets.single().setNumber)
         } finally {
             ordner.deleteRecursively()
         }

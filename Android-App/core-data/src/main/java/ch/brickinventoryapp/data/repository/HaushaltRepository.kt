@@ -8,35 +8,35 @@ import ch.brickinventoryapp.data.model.*
  * Retrofit und Ablage hängen (HaushaltRepositoryImpl).
  */
 interface HaushaltRepository {
-    suspend fun getHousehold(): Result<HouseholdStatusResponse>
+    suspend fun getHousehold(): Ergebnis<HouseholdStatusResponse>
 
-    suspend fun getHouseholdMembers(): Result<HouseholdMembersResponse>
+    suspend fun getHouseholdMembers(): Ergebnis<HouseholdMembersResponse>
 
-    suspend fun createHouseholdInvite(): Result<HouseholdInviteResponse>
+    suspend fun createHouseholdInvite(): Ergebnis<HouseholdInviteResponse>
 
-    suspend fun redeemHouseholdInvite(code: String, passwort: String, faktorCode: String? = null): Result<GenericResponse>
+    suspend fun redeemHouseholdInvite(code: String, passwort: String, faktorCode: String? = null): Ergebnis<GenericResponse>
 
-    suspend fun unlinkHousehold(subUserId: Int? = null, mainUserId: Int? = null): Result<GenericResponse>
+    suspend fun unlinkHousehold(subUserId: Int? = null, mainUserId: Int? = null): Ergebnis<GenericResponse>
 
-    suspend fun verwerfeGetrenntesKonto(subUserId: Int): Result<GenericResponse>
+    suspend fun verwerfeGetrenntesKonto(subUserId: Int): Ergebnis<GenericResponse>
 
-    suspend fun getAcquisitions(setNumber: String): Result<AcquisitionsResponse>
+    suspend fun getAcquisitions(setNumber: String): Ergebnis<AcquisitionsResponse>
 
     suspend fun updateAcquisition(setNumber: String, acqId: Int, purchasePrice: Double? = null,
                                   condition: String? = null, quantity: Int? = null, date: String? = null,
-                                  ownerUserId: Int? = null): Result<GenericResponse>
+                                  ownerUserId: Int? = null): Ergebnis<GenericResponse>
 
-    suspend fun deleteAcquisition(setNumber: String, acqId: Int): Result<GenericResponse>
+    suspend fun deleteAcquisition(setNumber: String, acqId: Int): Ergebnis<GenericResponse>
 
-    suspend fun getPartAcquisitions(partNumber: String, colorId: Int): Result<AcquisitionsResponse>
+    suspend fun getPartAcquisitions(partNumber: String, colorId: Int): Ergebnis<AcquisitionsResponse>
 
-    suspend fun updatePartAcquisition(partNumber: String, colorId: Int, id: Int, req: UpdateAcquisitionRequest): Result<GenericResponse>
+    suspend fun updatePartAcquisition(partNumber: String, colorId: Int, id: Int, req: UpdateAcquisitionRequest): Ergebnis<GenericResponse>
 
-    suspend fun deletePartAcquisition(partNumber: String, colorId: Int, id: Int): Result<DeleteWithQuantityResponse>
+    suspend fun deletePartAcquisition(partNumber: String, colorId: Int, id: Int): Ergebnis<DeleteWithQuantityResponse>
 
-    suspend fun getFigAcquisitions(figNumber: String): Result<AcquisitionsResponse>
+    suspend fun getFigAcquisitions(figNumber: String): Ergebnis<AcquisitionsResponse>
 
-    suspend fun updateFigAcquisition(figNumber: String, id: Int, req: UpdateAcquisitionRequest): Result<GenericResponse>
+    suspend fun updateFigAcquisition(figNumber: String, id: Int, req: UpdateAcquisitionRequest): Ergebnis<GenericResponse>
 
-    suspend fun deleteFigAcquisition(figNumber: String, id: Int): Result<DeleteWithQuantityResponse>
+    suspend fun deleteFigAcquisition(figNumber: String, id: Int): Ergebnis<DeleteWithQuantityResponse>
 }

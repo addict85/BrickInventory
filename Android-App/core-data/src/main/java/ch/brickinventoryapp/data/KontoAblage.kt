@@ -8,7 +8,7 @@ import javax.inject.Inject
  * [TokenAblage], Design, Währung und Pins aus der [GeraeteAblage]. Die beiden Ablagen
  * bleiben getrennt; nur diese Schnittstellen sehen sie gemeinsam.
  */
-class KontoAblage @Inject constructor(
+internal class KontoAblage @Inject constructor(
     private val token: TokenAblage,
     private val geraet: GeraeteAblage,
 ) : Sitzungsablage, Anmeldeablage {

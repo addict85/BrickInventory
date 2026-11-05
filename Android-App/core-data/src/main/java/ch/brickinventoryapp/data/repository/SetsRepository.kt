@@ -20,86 +20,86 @@ interface SetsRepository {
         page: Int = 1,
         pageSize: Int = GALLERY_PAGE_SIZE,
         storage: String? = null
-    ): Result<SetsResponse>
+    ): Ergebnis<SetsResponse>
 
-    suspend fun getSetExists(setNumber: String): Result<SetExistsResponse>
+    suspend fun getSetExists(setNumber: String): Ergebnis<SetExistsResponse>
 
-    suspend fun getSetDetail(setNumber: String): Result<SetDetailResponse>
+    suspend fun getSetDetail(setNumber: String): Ergebnis<SetDetailResponse>
 
-    suspend fun getSetInfo(setNumber: String): Result<SetInfoResponse>
+    suspend fun getSetInfo(setNumber: String): Ergebnis<SetInfoResponse>
 
     suspend fun addSet(setNumber: String, quantity: Int = 1, purchasePrice: Double? = null,
                        condition: String? = null, ownerUserId: Int? = null,
-                       storage: String? = null): Result<AddSetResponse>
+                       storage: String? = null): Ergebnis<AddSetResponse>
 
-    suspend fun updateQuantity(setNumber: String, quantity: Int, purchasePrice: Double? = null, condition: String? = null): Result<GenericResponse>
+    suspend fun updateQuantity(setNumber: String, quantity: Int, purchasePrice: Double? = null, condition: String? = null): Ergebnis<GenericResponse>
 
-    suspend fun aendereMengeUm(setNumber: String, schritt: Int): Result<GenericResponse>
+    suspend fun aendereMengeUm(setNumber: String, schritt: Int): Ergebnis<GenericResponse>
 
     suspend fun getMerkliste(search: String? = null, condition: String? = null,
-                             sort: String? = null, accounts: String? = null): Result<MerklisteResponse>
+                             sort: String? = null, accounts: String? = null): Ergebnis<MerklisteResponse>
 
     fun beobachteMerkliste(): Flow<Lokal<Merkposten>>
 
     suspend fun legeMerkpostenAn(setNumber: String, condition: String,
-                             ownerUserId: Int? = null): Result<MerkpostenAntwort>
+                             ownerUserId: Int? = null): Ergebnis<MerkpostenAntwort>
 
     suspend fun verschiebeMerkposten(setNumber: String, condition: String,
-                                 vonId: Int, zuId: Int): Result<MerkpostenInhaberAntwort>
+                                 vonId: Int, zuId: Int): Ergebnis<MerkpostenInhaberAntwort>
 
     suspend fun loescheMerkposten(setNumber: String, condition: String,
-                              ownerUserId: Int? = null): Result<GenericResponse>
+                              ownerUserId: Int? = null): Ergebnis<GenericResponse>
 
-    suspend fun getMerkpostenPreise(setNumber: String): Result<MerkpostenPreiseResponse>
+    suspend fun getMerkpostenPreise(setNumber: String): Ergebnis<MerkpostenPreiseResponse>
 
     suspend fun uebernimmMerkposten(setNumber: String, condition: String, quantity: Int = 1,
                                 purchasePrice: Double? = null, erfasstAls: String? = null,
                                 ownerUserId: Int? = null,
-                                storage: String? = null): Result<MerkpostenUebernahmeResponse>
+                                storage: String? = null): Ergebnis<MerkpostenUebernahmeResponse>
 
-    suspend fun deleteSet(setNumber: String): Result<GenericResponse>
+    suspend fun deleteSet(setNumber: String): Ergebnis<GenericResponse>
 
     fun beobachteSets(): Flow<Lokal<SetItem>>
 
     suspend fun moveSet(setNumber: String, fromUserId: Int?, toUserId: Int,
-                        acquisitionIds: List<Int>? = null): Result<MoveSetResponse>
+                        acquisitionIds: List<Int>? = null): Ergebnis<MoveSetResponse>
 
-    suspend fun getPendingAlerts(since: String?): Result<PendingAlertsResponse>
+    suspend fun getPendingAlerts(since: String?): Ergebnis<PendingAlertsResponse>
 
-    suspend fun getAlleAlarme(): Result<PreisalarmeResponse>
+    suspend fun getAlleAlarme(): Ergebnis<PreisalarmeResponse>
 
-    suspend fun getPreisalarme(setNumber: String): Result<PreisalarmeResponse>
+    suspend fun getPreisalarme(setNumber: String): Ergebnis<PreisalarmeResponse>
 
     suspend fun setPreisalarm(setNumber: String, richtung: String, schwelle: Double,
-                              condition: String = "N"): Result<PreisalarmResponse>
+                              condition: String = "N"): Ergebnis<PreisalarmResponse>
 
-    suspend fun deletePreisalarm(setNumber: String, condition: String = "N"): Result<PreisalarmResponse>
+    suspend fun deletePreisalarm(setNumber: String, condition: String = "N"): Ergebnis<PreisalarmResponse>
 
-    suspend fun setSetStorage(setNumber: String, ort: String): Result<LagerortResponse>
+    suspend fun setSetStorage(setNumber: String, ort: String): Ergebnis<LagerortResponse>
 
-    suspend fun getSetPartsList(setNumber: String): Result<PartsResponse>
+    suspend fun getSetPartsList(setNumber: String): Ergebnis<PartsResponse>
 
-    suspend fun getSetMinifigsList(setNumber: String): Result<MinifigsResponse>
+    suspend fun getSetMinifigsList(setNumber: String): Ergebnis<MinifigsResponse>
 
-    suspend fun getMinifigsForSet(setNumber: String): Result<MinifigsResponse>
+    suspend fun getMinifigsForSet(setNumber: String): Ergebnis<MinifigsResponse>
 
-    suspend fun getPartsForSet(setNumber: String): Result<PartsResponse>
+    suspend fun getPartsForSet(setNumber: String): Ergebnis<PartsResponse>
 
-    suspend fun resolveBarcode(barcode: String): Result<BarcodeResponse>
+    suspend fun resolveBarcode(barcode: String): Ergebnis<BarcodeResponse>
 
-    suspend fun getCsvImportStatus(serverUrl: String, token: String): Result<CsvImportStatus>
+    suspend fun getCsvImportStatus(serverUrl: String, token: String): Ergebnis<CsvImportStatus>
 
-    suspend fun cancelCsvImport(): Result<GenericAdminResponse>
+    suspend fun cancelCsvImport(): Ergebnis<GenericAdminResponse>
 
-    suspend fun downloadPdf(jobId: String): Result<ByteArray>
+    suspend fun downloadPdf(jobId: String): Ergebnis<ByteArray>
 
-    suspend fun startPdfJob(bodyJson: String): Result<String>
+    suspend fun startPdfJob(bodyJson: String): Ergebnis<String>
 
-    suspend fun getPdfJobStatus(jobId: String): Result<PdfJobStatus>
+    suspend fun getPdfJobStatus(jobId: String): Ergebnis<PdfJobStatus>
 
     suspend fun uploadAnleitung(
         setNumber: String, dateiname: String, typ: String, inhalt: ByteArray, beschreibung: String,
-    ): Result<GenericResponse>
+    ): Ergebnis<GenericResponse>
 
-    suspend fun deleteAnleitung(setNumber: String, instrId: Int): Result<GenericResponse>
+    suspend fun deleteAnleitung(setNumber: String, instrId: Int): Ergebnis<GenericResponse>
 }

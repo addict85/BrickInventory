@@ -27,7 +27,7 @@ import ch.brickinventoryapp.data.cache.CacheBesitzer
 /** Schnittstellen der Datenschicht und ihre Umsetzungen, wo die Datenschicht sie kennt. */
 @Module
 @InstallIn(SingletonComponent::class)
-object DatenModule {
+internal object DatenModule {
 
     /**
      * Die Token-Verschlüsselung als Schnittstelle bereitstellen, nicht als konkrete

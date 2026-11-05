@@ -24,25 +24,25 @@ class GutscheineRepositoryImpl @Inject constructor(
     ablage: Offlineablage,
 ) : RepoBasis<GutscheineApi>(api, cache, ablage), GutscheineRepository {
 
-    override suspend fun liste(): Result<GutscheinListe> =
+    override suspend fun liste(): Ergebnis<GutscheinListe> =
         abgeglichen(Faecher.GUTSCHEINE, { l -> l.vouchers.map { ohneGeheimnis(it) } },
             { GutscheinListe(success = true, vouchers = it) }) { safeCall { api.getGutscheine() } }
 
-    override suspend fun anlegen(request: GutscheinRequest): Result<GutscheinAntwort> =
+    override suspend fun anlegen(request: GutscheinRequest): Ergebnis<GutscheinAntwort> =
         safeCall { api.legeGutscheinAn(request) }
 
-    override suspend fun aendern(id: Int, request: GutscheinRequest): Result<GutscheinAntwort> =
+    override suspend fun aendern(id: Int, request: GutscheinRequest): Ergebnis<GutscheinAntwort> =
         safeCall { api.aendereGutschein(id, request) }
 
     /**
      * Löschen mit Passwort und Code. Bewusst ohne Ausgang: Ein gepuffertes Löschen
      * müsste das Passwort bis zum nächsten Netz aufbewahren.
      */
-    override suspend fun loeschen(id: Int, bestaetigung: ZweiterFaktorAnfrage): Result<GenericResponse> =
+    override suspend fun loeschen(id: Int, bestaetigung: ZweiterFaktorAnfrage): Ergebnis<GenericResponse> =
         safeCall { api.loescheGutschein(id, bestaetigung) }
 
     /** Nummer und PIN im Klartext; nie in Cache oder Ablage. */
-    override suspend fun klartext(id: Int, bestaetigung: ZweiterFaktorAnfrage): Result<GutscheinKlartext> =
+    override suspend fun klartext(id: Int, bestaetigung: ZweiterFaktorAnfrage): Ergebnis<GutscheinKlartext> =
         safeCall { api.gutscheinKlartext(id, bestaetigung) }
 
     /**
@@ -50,7 +50,7 @@ class GutscheineRepositoryImpl @Inject constructor(
      * aller. Die eine Stelle für den Freigabe-Vertrag; die Adresse dazu baut
      * gutscheinPdfAdresse() in GutscheinAdressen.kt.
      */
-    override suspend fun pdfFreigabe(id: Int?, bestaetigung: ZweiterFaktorAnfrage): Result<GutscheinPdfFreigabe> =
+    override suspend fun pdfFreigabe(id: Int?, bestaetigung: ZweiterFaktorAnfrage): Ergebnis<GutscheinPdfFreigabe> =
         safeCall { if (id == null) api.gutscheinExportFreigabe(bestaetigung) else api.gutscheinPdfFreigabe(id, bestaetigung) }
 
     /**
@@ -58,7 +58,7 @@ class GutscheineRepositoryImpl @Inject constructor(
      * weil der Durchgang über alle Karten `grund` und `wartenSek` aus dem Rumpf
      * braucht; andere Fehler bleiben Fehler.
      */
-    override suspend fun guthaben(id: Int): Result<GuthabenAntwort> = safeCall {
+    override suspend fun guthaben(id: Int): Ergebnis<GuthabenAntwort> = safeCall {
         val antwort = api.frageGuthabenAb(id)
         if (antwort.isSuccessful) return@safeCall antwort
         val roh = antwort.errorBody()?.string()
@@ -89,7 +89,7 @@ class GutscheineRepositoryImpl @Inject constructor(
         pin: String?,
         betrag: String?,
         waehrung: String?,
-    ): Result<GutscheinAntwort> {
+    ): Ergebnis<GutscheinAntwort> {
         val koerper = inhalt.toRequestBody(typ.toMediaType())
         val teil = okhttp3.MultipartBody.Part.createFormData("file", dateiname, koerper)
         return safeCall {

@@ -42,7 +42,7 @@ import org.robolectric.RuntimeEnvironment
 import org.robolectric.Shadows.shadowOf
 import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
-import ch.brickinventoryapp.data.repository.Result
+import ch.brickinventoryapp.data.repository.Ergebnis
 import ch.brickinventoryapp.ui.fehlerTextBrauchtCode
 import ch.brickinventoryapp.ui.fehlerTextId
 import ch.brickinventoryapp.ui.viewmodel.Texte
@@ -276,7 +276,7 @@ internal class KontextTexte(
         if (args.isEmpty()) ctx.getString(id) else ctx.getString(id, *args)
     override fun menge(id: Int, anzahl: Int, vararg args: Any?): String =
         ctx.resources.getQuantityString(id, anzahl, *args)
-    override fun meldung(fehler: Result.Error): String {
+    override fun meldung(fehler: Ergebnis.Error): String {
         if (fehler.message.isNotBlank()) return fehler.message
         val id = fehlerTextId(fehler.art)
         return if (fehlerTextBrauchtCode(fehler.art)) text(id, fehler.httpCode ?: 0) else text(id)

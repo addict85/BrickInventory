@@ -42,7 +42,7 @@ class KontoRepositoryImpl @Inject constructor(
      * Ausführlich: docs/begruendungen/core-data/data/repository/KontoRepository.kt.md#login
      */
     override suspend fun login(serverUrl: String, username: String, password: String, code: String?,
-                      scope: String, passkey: JsonObject?): Result<Anmeldeantwort> {
+                      scope: String, passkey: JsonObject?): Ergebnis<Anmeldeantwort> {
         var wege = ZweiterFaktorWege()
         val r = safeCall {
             val https = NetworkPolicy.istHttps(serverUrl)
@@ -57,62 +57,62 @@ class KontoRepositoryImpl @Inject constructor(
             } else antwort
         }
         return when (r) {
-            is Result.Success -> Result.Success(Anmeldeantwort(r.data, wege.passkey), stand = r.stand, gepuffert = r.gepuffert)
-            is Result.Error -> r
+            is Ergebnis.Success -> Ergebnis.Success(Anmeldeantwort(r.data, wege.passkey), stand = r.stand, gepuffert = r.gepuffert)
+            is Ergebnis.Error -> r
         }
     }
 
     private val nachsichtigesJson = kotlinx.serialization.json.Json { ignoreUnknownKeys = true }
 
     /** Die Optionen für den Credential Manager; [zweck] wie PASSKEY_ANMELDEN. */
-    override suspend fun passkeyOptionen(zweck: String): Result<PasskeyOptionen> =
+    override suspend fun passkeyOptionen(zweck: String): Ergebnis<PasskeyOptionen> =
         safeCall { api.passkeyOptionen(PasskeyOptionenAnfrage(zweck)) }
 
     /** Ohne Passwort; derselbe Token wie bei [login], mit denselben Regeln für den Ablauf. */
-    override suspend fun passkeyAnmelden(serverUrl: String, antwort: JsonObject, scope: String): Result<LoginResponse> =
+    override suspend fun passkeyAnmelden(serverUrl: String, antwort: JsonObject, scope: String): Ergebnis<LoginResponse> =
         safeCall { api.passkeyAnmelden(PasskeyAnmeldung(antwort, scope = scope,
             neverExpires = NetworkPolicy.istHttps(serverUrl))) }
 
-    override suspend fun qrLogin(token: String): Result<LoginResponse> =
+    override suspend fun qrLogin(token: String): Ergebnis<LoginResponse> =
         safeCall { api.qrLogin(QrLoginRequest(token)) }
 
-    override suspend fun getMe(): Result<MeResponse> = safeCall { api.getMe() }
+    override suspend fun getMe(): Ergebnis<MeResponse> = safeCall { api.getMe() }
 
     // Konto anlegen und Passwort vergessen — beides ohne bestehende Anmeldung.
-    override suspend fun getRegistrationStatus(): Result<RegistrationStatusResponse> =
+    override suspend fun getRegistrationStatus(): Ergebnis<RegistrationStatusResponse> =
         safeCall { api.getRegistrationStatus() }
 
-    override suspend fun register(request: RegisterRequest): Result<RegisterResponse> =
+    override suspend fun register(request: RegisterRequest): Ergebnis<RegisterResponse> =
         safeCall { api.register(request) }
 
-    override suspend fun forgotPassword(email: String): Result<ForgotPasswordResponse> =
+    override suspend fun forgotPassword(email: String): Ergebnis<ForgotPasswordResponse> =
         safeCall { api.forgotPassword(ForgotPasswordRequest(email)) }
 
-    override suspend fun getProfil(): Result<ProfilResponse> = safeCall { api.getProfil() }
+    override suspend fun getProfil(): Ergebnis<ProfilResponse> = safeCall { api.getProfil() }
 
-    override suspend fun zweiterFaktorStand(): Result<ZweiterFaktorStand> = safeCall { api.zweiterFaktorStand() }
+    override suspend fun zweiterFaktorStand(): Ergebnis<ZweiterFaktorStand> = safeCall { api.zweiterFaktorStand() }
 
-    override suspend fun zweiterFaktorEinrichten(passwort: String): Result<ZweiterFaktorEinrichtung> =
+    override suspend fun zweiterFaktorEinrichten(passwort: String): Ergebnis<ZweiterFaktorEinrichtung> =
         safeCall { api.zweiterFaktorEinrichten(ZweiterFaktorAnfrage(password = passwort)) }
 
-    override suspend fun zweiterFaktorBestaetigen(code: String): Result<ZweiterFaktorCodes> =
+    override suspend fun zweiterFaktorBestaetigen(code: String): Ergebnis<ZweiterFaktorCodes> =
         safeCall { api.zweiterFaktorBestaetigen(ZweiterFaktorAnfrage(code = code)) }
 
-    override suspend fun zweiterFaktorAbschalten(passwort: String, code: String): Result<GenericResponse> =
+    override suspend fun zweiterFaktorAbschalten(passwort: String, code: String): Ergebnis<GenericResponse> =
         safeCall { api.zweiterFaktorAbschalten(ZweiterFaktorAnfrage(password = passwort, code = code)) }
 
-    override suspend fun zweiterFaktorNeueCodes(code: String): Result<ZweiterFaktorCodes> =
+    override suspend fun zweiterFaktorNeueCodes(code: String): Ergebnis<ZweiterFaktorCodes> =
         safeCall { api.zweiterFaktorNeueCodes(ZweiterFaktorAnfrage(code = code)) }
 
-    override suspend fun updateProfil(aenderung: ProfilAenderung): Result<ProfilGespeichert> =
+    override suspend fun updateProfil(aenderung: ProfilAenderung): Ergebnis<ProfilGespeichert> =
         safeCall { api.updateProfil(aenderung) }
 
-    override suspend fun changePassword(aktuell: String, neu: String, code: String?): Result<GenericResponse> =
+    override suspend fun changePassword(aktuell: String, neu: String, code: String?): Ergebnis<GenericResponse> =
         safeCall { api.changePassword(PasswortAenderung(aktuell, neu, code)) }
 
-    override suspend fun getTokens(): Result<TokensResponse> = safeCall { api.getTokens() }
+    override suspend fun getTokens(): Ergebnis<TokensResponse> = safeCall { api.getTokens() }
 
-    override suspend fun revokeToken(tokenId: String): Result<TokenWiderruf> =
+    override suspend fun revokeToken(tokenId: String): Ergebnis<TokenWiderruf> =
         safeCall { api.revokeToken(tokenId) }
 
     /**
@@ -120,15 +120,15 @@ class KontoRepositoryImpl @Inject constructor(
      * Synchron auf einem IO-Faden, am Dispatcher von OkHttp vorbei (KontoApi.tokenRotieren).
      * Die Herkunft kommt aus der Anfrage, die tatsächlich ging: Nur an sie ist der neue Token gebunden.
      */
-    override suspend fun tokenRotieren(alterToken: String): Result<GetauschterToken> {
+    override suspend fun tokenRotieren(alterToken: String): Ergebnis<GetauschterToken> {
         var herkunft: String? = null
         val r = safeCall {
             kotlinx.coroutines.withContext(io) { api.tokenRotieren("Bearer $alterToken").execute() }
                 .also { herkunft = NetworkPolicy.herkunft(it.raw().request.url.toString()) }
         }
         return when (r) {
-            is Result.Success -> Result.Success(GetauschterToken(r.data, herkunft), stand = r.stand, gepuffert = r.gepuffert)
-            is Result.Error -> r
+            is Ergebnis.Success -> Ergebnis.Success(GetauschterToken(r.data, herkunft), stand = r.stand, gepuffert = r.gepuffert)
+            is Ergebnis.Error -> r
         }
     }
 
@@ -151,23 +151,23 @@ class KontoRepositoryImpl @Inject constructor(
         Entwertungsergebnis.SPAETER
     }
 
-    override suspend fun getSettings(): Result<SettingsResponse> =
+    override suspend fun getSettings(): Ergebnis<SettingsResponse> =
         safeCall { api.getSettings() }
 
     /** Das wirksame Design: mit Token das des Kontos, sonst die Vorgabe. Siehe KontoApi.getAppTheme. */
-    override suspend fun getAppTheme(): Result<AppThemeResponse> = safeCall { api.getAppTheme() }
+    override suspend fun getAppTheme(): Ergebnis<AppThemeResponse> = safeCall { api.getAppTheme() }
 
     /** Eigenes Design setzen; "" stellt auf die Vorgabe des Verwalters zurück. */
-    override suspend fun setzeEigenesDesign(theme: String): Result<AppThemeResponse> =
+    override suspend fun setzeEigenesDesign(theme: String): Ergebnis<AppThemeResponse> =
         safeCall { api.setzeEigenesDesign(mapOf("theme" to theme)) }
 
-    override suspend fun updateSettings(currency: String, condition: String): Result<GenericResponse> =
+    override suspend fun updateSettings(currency: String, condition: String): Ergebnis<GenericResponse> =
         safeCall { api.updateSettings(mapOf("currency" to currency, "price_condition" to condition)) }
 
-    override suspend fun getDefaultCondition(): Result<DefaultConditionResponse> = safeCall { api.getDefaultCondition() }
+    override suspend fun getDefaultCondition(): Ergebnis<DefaultConditionResponse> = safeCall { api.getDefaultCondition() }
 
     // User-level: saves per-user default (empty string = revert to global)
-    override suspend fun setUserDefaultCondition(condition: String): Result<GenericAdminResponse> = safeCall { api.setUserDefaultCondition(mapOf("condition" to condition)) }
+    override suspend fun setUserDefaultCondition(condition: String): Ergebnis<GenericAdminResponse> = safeCall { api.setUserDefaultCondition(mapOf("condition" to condition)) }
 }
 
 /** Die Antwort auf [KontoRepository.login]; [passkeyStattCode], wenn der Server beim

@@ -21,7 +21,7 @@ import java.util.UUID
  * Schlüssel und Reihenfolge. So braucht ein neues Feld des Servers keine Migration.
  */
 @Entity(tableName = "bestand", primaryKeys = ["bereich", "art", "schluessel"])
-data class BestandZeile(
+internal data class BestandZeile(
     val bereich: String,
     val art: String,
     val schluessel: String,
@@ -31,14 +31,14 @@ data class BestandZeile(
 
 /** Wann der Server eine Liste zuletzt geliefert hat — für „Offline – Stand von …“. */
 @Entity(tableName = "bestand_stand", primaryKeys = ["bereich", "art"])
-data class BestandStand(val bereich: String, val art: String, val stand: Long)
+internal data class BestandStand(val bereich: String, val art: String, val stand: Long)
 
 /**
  * Ein Posten des Ausgangs; [id] steigt und ist die Reihenfolge des Sendens.
  * [schluessel] ist der Idempotency-Key des Postens (seit Fassung 2).
  */
 @Entity(tableName = "ausgang", indices = [Index("bereich")])
-data class AusgangZeile(
+internal data class AusgangZeile(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
     val bereich: String,
     val bearbeitung: String,
@@ -48,7 +48,7 @@ data class AusgangZeile(
 )
 
 @Dao
-abstract class BestandDao {
+internal abstract class BestandDao {
     @Query("SELECT * FROM bestand WHERE bereich = :bereich AND art = :art ORDER BY position")
     abstract fun beobachte(bereich: String, art: String): Flow<List<BestandZeile>>
 
@@ -92,7 +92,7 @@ abstract class BestandDao {
 }
 
 @Dao
-interface AusgangDao {
+internal interface AusgangDao {
     @Query("SELECT COUNT(*) FROM ausgang WHERE bereich = :bereich")
     fun anzahl(bereich: String): Flow<Int>
 
@@ -121,7 +121,7 @@ interface AusgangDao {
  * gibt — ein destruktiver Neuanfang verlöre sie.
  */
 @Database(entities = [BestandZeile::class, BestandStand::class, AusgangZeile::class], version = 2, exportSchema = true)
-abstract class BestandDatenbank : RoomDatabase() {
+internal abstract class BestandDatenbank : RoomDatabase() {
     abstract fun bestand(): BestandDao
     abstract fun ausgang(): AusgangDao
 

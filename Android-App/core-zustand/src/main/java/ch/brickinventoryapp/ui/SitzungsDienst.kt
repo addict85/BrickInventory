@@ -7,7 +7,7 @@ import ch.brickinventoryapp.data.SessionExpiredSignal
 import ch.brickinventoryapp.data.Sitzungsablage
 import ch.brickinventoryapp.data.ZweiterFaktorPflicht
 import ch.brickinventoryapp.data.repository.KontoRepository
-import ch.brickinventoryapp.data.repository.Result
+import ch.brickinventoryapp.data.repository.Ergebnis
 import ch.brickinventoryapp.data.repository.VerwaltungRepository
 import ch.brickinventoryapp.di.ApplicationScope
 import ch.brickinventoryapp.ressourcen.R
@@ -195,7 +195,7 @@ class SitzungsDienst @Inject constructor(
     private suspend fun ladeDesign() {
         if (prefs.serverUrlJetzt().isBlank()) return
         val r = konto.getAppTheme()
-        if (r is Result.Success && r.data.success) sitzung.setzeDesign(r.data.theme)
+        if (r is Ergebnis.Success && r.data.success) sitzung.setzeDesign(r.data.theme)
     }
 
     /** Ohne Zeitlimit: Der erste Start des Servers kann viele Minuten dauern. */
@@ -203,7 +203,7 @@ class SitzungsDienst @Inject constructor(
         if (prefs.serverUrlJetzt().isBlank()) return
         while (true) {
             val r = verwaltung.getStartupStatus()
-            if (r !is Result.Success || r.data.ready) {
+            if (r !is Ergebnis.Success || r.data.ready) {
                 sitzung.serverstartGeaendert(null)
                 return
             }

@@ -2,7 +2,7 @@ package ch.brickinventoryapp.data
 
 import ch.brickinventoryapp.data.model.CsvImportStatus
 import ch.brickinventoryapp.data.model.GenericAdminResponse
-import ch.brickinventoryapp.data.repository.Result
+import ch.brickinventoryapp.data.repository.Ergebnis
 import ch.brickinventoryapp.data.repository.SetsRepository
 import ch.brickinventoryapp.util.fangeAusserAbbruch
 import kotlinx.coroutines.delay
@@ -20,7 +20,7 @@ interface CsvImportRepository {
     fun beobachte(): Flow<CsvImportStatus>
 
     /** „Ab hier nicht weiter“; schon angelegte Sets bleiben. */
-    suspend fun abbrechen(): Result<GenericAdminResponse>
+    suspend fun abbrechen(): Ergebnis<GenericAdminResponse>
 }
 
 /** Über den SSE-Strom, mit der Statusabfrage als Rückfall. */
@@ -59,12 +59,12 @@ class CsvImportBeobachter @Inject constructor(
             val url = zugang.serverUrlJetzt()
             val token = zugang.tokenJetzt()
             if (token.isBlank() || url.isBlank()) null
-            else (sets.getCsvImportStatus(url, token) as? Result.Success)?.data
+            else (sets.getCsvImportStatus(url, token) as? Ergebnis.Success)?.data
         }.getOrNull()
         if (stand != null) emit(stand)
     }
 
-    override suspend fun abbrechen(): Result<GenericAdminResponse> = sets.cancelCsvImport()
+    override suspend fun abbrechen(): Ergebnis<GenericAdminResponse> = sets.cancelCsvImport()
 
     private companion object {
         const val RUECKZUG_START_MS = 5_000L

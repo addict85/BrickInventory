@@ -9,7 +9,7 @@ import ch.brickinventoryapp.data.ScopeFilter
 import ch.brickinventoryapp.data.repository.KatalogRepository
 import ch.brickinventoryapp.data.repository.FinanzenRepository
 import ch.brickinventoryapp.data.repository.MERKLISTE_DEFAULT_SORT
-import ch.brickinventoryapp.data.repository.Result
+import ch.brickinventoryapp.data.repository.Ergebnis
 import ch.brickinventoryapp.data.repository.SetsRepository
 import ch.brickinventoryapp.ui.Aenderung
 import ch.brickinventoryapp.ui.MerklisteUiState
@@ -121,9 +121,9 @@ class MerklisteViewModel @Inject constructor(
                 accounts  = filter.kontoFuer(ScopeFilter.View.MERKLISTE),
             )
             when (r) {
-                is Result.Success ->
+                is Ergebnis.Success ->
                     _merklisteState.update { it.copy(merkposten = r.data.merkposten.map { m -> m.alsAnsicht() }, laedt = false) }
-                is Result.Error -> {
+                is Ergebnis.Error -> {
                     _merklisteState.update { it.copy(laedt = false, fehler = meldungen.meldung(r),
                         fehlerKlasse = fehlerklasse(r)) }
                     meldungen.zeige(meldungen.meldungFuerSnackbar(r)?.let { meldungen.text(R.string.vm_error, it) })
@@ -167,13 +167,13 @@ class MerklisteViewModel @Inject constructor(
         if (vonId == zuId) return
         viewModelScope.launch {
             when (val r = sets.verschiebeMerkposten(setNumber, zustand, vonId, zuId)) {
-                is Result.Success -> {
+                is Ergebnis.Success -> {
                     if (!r.data.success) { meldungen.zeige(r.data.error ?: meldungen.text(R.string.err_unknown)); return@launch }
                     meldungen.zeige(meldungen.text(
                         if (r.data.zusammengefuehrt) R.string.wanted_already else R.string.vm_saved))
                     bestand.melde(Aenderung.Merkliste)
                 }
-                is Result.Error -> meldungen.zeige(meldungen.meldungFuerSnackbar(r)?.let { meldungen.text(R.string.vm_error, it) })
+                is Ergebnis.Error -> meldungen.zeige(meldungen.meldungFuerSnackbar(r)?.let { meldungen.text(R.string.vm_error, it) })
             }
         }
     }
@@ -181,11 +181,11 @@ class MerklisteViewModel @Inject constructor(
     override fun loescheMerkposten(setNumber: String, zustand: String, besitzer: Int?) {
         viewModelScope.launch {
             when (val r = sets.loescheMerkposten(setNumber, zustand, besitzer)) {
-                is Result.Success -> {
+                is Ergebnis.Success -> {
                     meldungen.zeige(meldungen.text(R.string.wanted_deleted))
                     bestand.melde(Aenderung.Merkliste)
                 }
-                is Result.Error -> meldungen.zeige(meldungen.meldungFuerSnackbar(r)?.let { meldungen.text(R.string.vm_error, it) })
+                is Ergebnis.Error -> meldungen.zeige(meldungen.meldungFuerSnackbar(r)?.let { meldungen.text(R.string.vm_error, it) })
             }
         }
     }
@@ -201,13 +201,13 @@ class MerklisteViewModel @Inject constructor(
             when (val r = sets.uebernimmMerkposten(setNumber, zustand, anzahl, preis,
                                                    erfasstAls, besitzer,
                                                    lagerort?.trim()?.takeIf { it.isNotEmpty() })) {
-                is Result.Success -> {
+                is Ergebnis.Success -> {
                     meldungen.zeige(meldungen.text(
                         if (r.data.action == "exists") R.string.wanted_taken_existing
                         else R.string.wanted_taken))
                     bestand.melde(Aenderung.Merkliste, Aenderung.Sets)
                 }
-                is Result.Error -> meldungen.zeige(meldungen.meldungFuerSnackbar(r)?.let { meldungen.text(R.string.vm_error, it) })
+                is Ergebnis.Error -> meldungen.zeige(meldungen.meldungFuerSnackbar(r)?.let { meldungen.text(R.string.vm_error, it) })
             }
         }
     }
@@ -219,11 +219,11 @@ class MerklisteViewModel @Inject constructor(
     ) {
         viewModelScope.launch {
             when (val r = sets.legeMerkpostenAn(setNumber, zustand, besitzer)) {
-                is Result.Error -> {
+                is Ergebnis.Error -> {
                     meldungen.zeige(meldungen.meldungFuerSnackbar(r)?.let { meldungen.text(R.string.vm_error, it) })
                     return@launch
                 }
-                is Result.Success -> {
+                is Ergebnis.Success -> {
                     val schwelle = Alarmeingabe.zahl(schwelleRoh)
                     if (schwelle != null) sets.setPreisalarm(setNumber, richtung, schwelle, zustand)
                     meldungen.zeige(meldungen.text(
@@ -240,13 +240,13 @@ class MerklisteViewModel @Inject constructor(
             _merkpostenDetailState.value = MerkpostenDetailUiState(setNumber = setNumber, laedt = true)
             if (_merklisteState.value.merkposten.isEmpty()) ladeMerkliste()
             loadPreisalarme(setNumber)
-            val katalog = (katalogRepo.getCatalogSetDetail(setNumber) as? Result.Success)
+            val katalog = (katalogRepo.getCatalogSetDetail(setNumber) as? Ergebnis.Success)
                 ?.data?.takeIf { it.success }?.set
             _merkpostenDetailState.update { it.copy(katalog = katalog?.alsAnsicht()) }
-            val preise = (sets.getMerkpostenPreise(setNumber) as? Result.Success)
+            val preise = (sets.getMerkpostenPreise(setNumber) as? Ergebnis.Success)
                 ?.data?.takeIf { it.success }
             _merkpostenDetailState.update { it.copy(preise = preise?.alsAnsicht()) }
-            val historie = (finanzen.getSetPriceHistory(setNumber) as? Result.Success)
+            val historie = (finanzen.getSetPriceHistory(setNumber) as? Ergebnis.Success)
                 ?.data?.takeIf { it.success }
             _merkpostenDetailState.update { it.copy(historie = historie?.alsAnsicht(), laedt = false) }
         }
@@ -255,7 +255,7 @@ class MerklisteViewModel @Inject constructor(
     fun loadPreisalarme(setNumber: String) {
         viewModelScope.launch {
             val r = sets.getPreisalarme(setNumber)
-            val alarme = (r as? Result.Success)?.data?.takeIf { it.success }?.alerts?.map { it.alsAnsicht() } ?: emptyList()
+            val alarme = (r as? Ergebnis.Success)?.data?.takeIf { it.success }?.alerts?.map { it.alsAnsicht() } ?: emptyList()
             _merkpostenDetailState.update { if (it.setNumber == setNumber) it.copy(preisalarme = alarme) else it }
         }
     }
@@ -292,6 +292,6 @@ class MerklisteViewModel @Inject constructor(
 internal suspend fun merkpostenAnlegen(
     sets: SetsRepository, texte: Texte, setNumber: String, zustand: String, besitzer: Int?,
 ): String? = when (val r = sets.legeMerkpostenAn(setNumber, zustand, besitzer)) {
-    is Result.Success -> texte.text(if (r.data.warNeu) R.string.wanted_added else R.string.wanted_already)
-    is Result.Error -> texte.meldungFuerSnackbar(r)?.let { texte.text(R.string.vm_error, it) }
+    is Ergebnis.Success -> texte.text(if (r.data.warNeu) R.string.wanted_added else R.string.wanted_already)
+    is Ergebnis.Error -> texte.meldungFuerSnackbar(r)?.let { texte.text(R.string.vm_error, it) }
 }

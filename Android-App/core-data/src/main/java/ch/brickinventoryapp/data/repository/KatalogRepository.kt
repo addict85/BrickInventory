@@ -9,16 +9,16 @@ import ch.brickinventoryapp.data.model.CatalogYearVerteilungResponse
  * Retrofit und Ablage hängen (KatalogRepositoryImpl).
  */
 interface KatalogRepository {
-    suspend fun getCatalogMeta(): Result<CatalogMetaResponse>
+    suspend fun getCatalogMeta(): Ergebnis<CatalogMetaResponse>
 
     suspend fun getCatalogSets(
         q: String? = null, themeId: Int? = null, yearFrom: Int? = null, yearTo: Int? = null,
         sort: String = "year_desc", page: Int = 1, limit: Int = 60
-    ): Result<CatalogSetsResponse>
+    ): Ergebnis<CatalogSetsResponse>
 
-    suspend fun getCatalogSetDetail(setNumber: String): Result<CatalogSetDetailResponse>
+    suspend fun getCatalogSetDetail(setNumber: String): Ergebnis<CatalogSetDetailResponse>
 
     suspend fun getCatalogYearVerteilung(
         q: String? = null, themeId: Int? = null, sort: String = "year_desc"
-    ): Result<CatalogYearVerteilungResponse>
+    ): Ergebnis<CatalogYearVerteilungResponse>
 }

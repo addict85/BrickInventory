@@ -12,57 +12,57 @@ import kotlinx.serialization.json.JsonObject
  */
 interface KontoRepository {
     suspend fun login(serverUrl: String, username: String, password: String, code: String? = null,
-                      scope: String = TOKEN_SCOPE_APP, passkey: JsonObject? = null): Result<Anmeldeantwort>
+                      scope: String = TOKEN_SCOPE_APP, passkey: JsonObject? = null): Ergebnis<Anmeldeantwort>
 
-    suspend fun passkeyOptionen(zweck: String): Result<PasskeyOptionen>
+    suspend fun passkeyOptionen(zweck: String): Ergebnis<PasskeyOptionen>
 
-    suspend fun passkeyAnmelden(serverUrl: String, antwort: JsonObject, scope: String = TOKEN_SCOPE_APP): Result<LoginResponse>
+    suspend fun passkeyAnmelden(serverUrl: String, antwort: JsonObject, scope: String = TOKEN_SCOPE_APP): Ergebnis<LoginResponse>
 
-    suspend fun qrLogin(token: String): Result<LoginResponse>
+    suspend fun qrLogin(token: String): Ergebnis<LoginResponse>
 
-    suspend fun getMe(): Result<MeResponse>
+    suspend fun getMe(): Ergebnis<MeResponse>
 
-    suspend fun getRegistrationStatus(): Result<RegistrationStatusResponse>
+    suspend fun getRegistrationStatus(): Ergebnis<RegistrationStatusResponse>
 
-    suspend fun register(request: RegisterRequest): Result<RegisterResponse>
+    suspend fun register(request: RegisterRequest): Ergebnis<RegisterResponse>
 
-    suspend fun forgotPassword(email: String): Result<ForgotPasswordResponse>
+    suspend fun forgotPassword(email: String): Ergebnis<ForgotPasswordResponse>
 
-    suspend fun getProfil(): Result<ProfilResponse>
+    suspend fun getProfil(): Ergebnis<ProfilResponse>
 
-    suspend fun zweiterFaktorStand(): Result<ZweiterFaktorStand>
+    suspend fun zweiterFaktorStand(): Ergebnis<ZweiterFaktorStand>
 
-    suspend fun zweiterFaktorEinrichten(passwort: String): Result<ZweiterFaktorEinrichtung>
+    suspend fun zweiterFaktorEinrichten(passwort: String): Ergebnis<ZweiterFaktorEinrichtung>
 
-    suspend fun zweiterFaktorBestaetigen(code: String): Result<ZweiterFaktorCodes>
+    suspend fun zweiterFaktorBestaetigen(code: String): Ergebnis<ZweiterFaktorCodes>
 
-    suspend fun zweiterFaktorAbschalten(passwort: String, code: String): Result<GenericResponse>
+    suspend fun zweiterFaktorAbschalten(passwort: String, code: String): Ergebnis<GenericResponse>
 
-    suspend fun zweiterFaktorNeueCodes(code: String): Result<ZweiterFaktorCodes>
+    suspend fun zweiterFaktorNeueCodes(code: String): Ergebnis<ZweiterFaktorCodes>
 
-    suspend fun updateProfil(aenderung: ProfilAenderung): Result<ProfilGespeichert>
+    suspend fun updateProfil(aenderung: ProfilAenderung): Ergebnis<ProfilGespeichert>
 
-    suspend fun changePassword(aktuell: String, neu: String, code: String? = null): Result<GenericResponse>
+    suspend fun changePassword(aktuell: String, neu: String, code: String? = null): Ergebnis<GenericResponse>
 
-    suspend fun getTokens(): Result<TokensResponse>
+    suspend fun getTokens(): Ergebnis<TokensResponse>
 
-    suspend fun revokeToken(tokenId: String): Result<TokenWiderruf>
+    suspend fun revokeToken(tokenId: String): Ergebnis<TokenWiderruf>
 
-    suspend fun tokenRotieren(alterToken: String): Result<GetauschterToken>
+    suspend fun tokenRotieren(alterToken: String): Ergebnis<GetauschterToken>
 
     suspend fun abmeldenAmServer(grenzeMs: Long = 3_000): Boolean
 
     suspend fun entwertenAmServer(grenzeMs: Long = 3_000): Entwertungsergebnis
 
-    suspend fun getSettings(): Result<SettingsResponse>
+    suspend fun getSettings(): Ergebnis<SettingsResponse>
 
-    suspend fun getAppTheme(): Result<AppThemeResponse>
+    suspend fun getAppTheme(): Ergebnis<AppThemeResponse>
 
-    suspend fun setzeEigenesDesign(theme: String): Result<AppThemeResponse>
+    suspend fun setzeEigenesDesign(theme: String): Ergebnis<AppThemeResponse>
 
-    suspend fun updateSettings(currency: String, condition: String): Result<GenericResponse>
+    suspend fun updateSettings(currency: String, condition: String): Ergebnis<GenericResponse>
 
-    suspend fun getDefaultCondition(): Result<DefaultConditionResponse>
+    suspend fun getDefaultCondition(): Ergebnis<DefaultConditionResponse>
 
-    suspend fun setUserDefaultCondition(condition: String): Result<GenericAdminResponse>
+    suspend fun setUserDefaultCondition(condition: String): Ergebnis<GenericAdminResponse>
 }

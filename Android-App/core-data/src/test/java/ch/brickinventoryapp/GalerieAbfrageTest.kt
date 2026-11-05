@@ -4,7 +4,7 @@ import ch.brickinventoryapp.data.api.BrickApiService
 import ch.brickinventoryapp.data.cache.ResponseCache
 import ch.brickinventoryapp.data.model.SetsResponse
 import ch.brickinventoryapp.data.repository.GALLERY_DEFAULT_SORT
-import ch.brickinventoryapp.data.repository.Result
+import ch.brickinventoryapp.data.repository.Ergebnis
 import ch.brickinventoryapp.data.repository.SetsRepository
 import com.jakewharton.retrofit2.converter.kotlinx.serialization.asConverterFactory
 import kotlinx.coroutines.test.runTest
@@ -96,12 +96,12 @@ class GalerieAbfrageTest {
         cacheDir.deleteRecursively()
     }
 
-    private fun daten(r: Result<SetsResponse>): SetsResponse {
-        assert(r is Result.Success) { "Erwartet wurde ein Erfolg, kam aber: $r" }
-        return (r as Result.Success).data
+    private fun daten(r: Ergebnis<SetsResponse>): SetsResponse {
+        assert(r is Ergebnis.Success) { "Erwartet wurde ein Erfolg, kam aber: $r" }
+        return (r as Ergebnis.Success).data
     }
 
-    private fun nummern(r: Result<SetsResponse>) = daten(r).sets.map { it.setNumber }
+    private fun nummern(r: Ergebnis<SetsResponse>) = daten(r).sets.map { it.setNumber }
 
     @Test
     fun `jeder Filter steht in der Anfrage an den Server`() = runTest {
@@ -150,7 +150,7 @@ class GalerieAbfrageTest {
         //    einem Neustart eine gefilterte Liste als vollen Bestand.
         server.enqueue(MockResponse().setResponseCode(500))
         val r = repo.getSets()
-        if (r is Result.Success) {
+        if (r is Ergebnis.Success) {
             assert(r.data.sets.isEmpty()) {
                 "Die gefilterte Antwort liegt unter dem Schluessel der vollen Sicht. " +
                     "Nach dem naechsten Start zeigt die Galerie sie als Gesamtbestand an. " +
@@ -172,7 +172,7 @@ class GalerieAbfrageTest {
 
         server.enqueue(MockResponse().setResponseCode(500))
         val r = repo.getSets()
-        if (r is Result.Success) {
+        if (r is Ergebnis.Success) {
             assert(r.data.sets.isEmpty()) {
                 "Seite 2 liegt im Cache der ersten Seite. Bekommen: " +
                     "${r.data.sets.map { it.setNumber }}"

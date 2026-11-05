@@ -50,8 +50,7 @@ import dagger.hilt.InstallIn
 import dagger.hilt.android.EntryPointAccessors
 import dagger.hilt.components.SingletonComponent
 import java.util.concurrent.TimeUnit
-import ch.brickinventoryapp.data.repository.Result as Ergebnis
-
+import ch.brickinventoryapp.data.repository.Ergebnis
 /**
  * Die zuletzt geholten Zahlen. Das Widget liest nur hier und zeigt so auch ohne
  * Netz den letzten Stand; holen tut allein [WidgetArbeiter]. Verschlüsselt wie die

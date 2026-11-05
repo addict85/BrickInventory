@@ -15,13 +15,15 @@ interface ZweiterFaktorPflicht {
     val noetig: StateFlow<Boolean>
     fun melde()
     fun erledigt()
+
+    /** Für Tests ohne Hilt. */
+    companion object {
+        operator fun invoke(): ZweiterFaktorPflicht = ZweiterFaktorZustand()
+    }
 }
 
-/** Für Tests ohne Hilt. */
-fun ZweiterFaktorPflicht(): ZweiterFaktorPflicht = ZweiterFaktorZustand()
-
 @Singleton
-class ZweiterFaktorZustand @Inject constructor() : ZweiterFaktorPflicht {
+internal class ZweiterFaktorZustand @Inject constructor() : ZweiterFaktorPflicht {
     private val _noetig = MutableStateFlow(false)
     override val noetig: StateFlow<Boolean> = _noetig.asStateFlow()
 

@@ -1,7 +1,7 @@
 package ch.brickinventoryapp
 
 import ch.brickinventoryapp.data.api.BrickApiService
-import ch.brickinventoryapp.data.repository.Result
+import ch.brickinventoryapp.data.repository.Ergebnis
 import ch.brickinventoryapp.ui.viewmodel.Texte
 import com.jakewharton.retrofit2.converter.kotlinx.serialization.asConverterFactory
 import okhttp3.MediaType.Companion.toMediaType
@@ -77,7 +77,7 @@ object TestApi {
 object NummernTexte : Texte {
     override fun text(id: Int, vararg args: Any?) = "t$id"
     override fun menge(id: Int, anzahl: Int, vararg args: Any?) = "m$id:$anzahl"
-    override fun meldung(fehler: Result.Error) = "fehler"
+    override fun meldung(fehler: Ergebnis.Error) = "fehler"
     override fun angemeldet() = true
 }
 

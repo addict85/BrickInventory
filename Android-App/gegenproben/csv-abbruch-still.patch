@@ -4,15 +4,15 @@ Test: ch.brickinventoryapp.CsvImportViewModelTest
 Rot: der Abbruch meldet Erfolg und Fehler
 
 diff --git a/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/ui/viewmodel/CsvImportViewModel.kt b/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/ui/viewmodel/CsvImportViewModel.kt
-index 4bdd5d9..331d2ec 100644
+index 01475a3..a3e7bb8 100644
 --- a/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/ui/viewmodel/CsvImportViewModel.kt
 +++ b/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/ui/viewmodel/CsvImportViewModel.kt
-@@ -100,7 +100,7 @@ class CsvImportViewModel @Inject constructor(
+@@ -67,7 +67,7 @@ class CsvImportViewModel @Inject constructor(
          viewModelScope.launch {
-             when (val r = repo.sets.cancelCsvImport()) {
-                 is Result.Success -> meldungen.zeige(texte.text(R.string.csv_cancel_requested))
--                is Result.Error -> meldungen.zeige(texte.meldungFuerSnackbar(r))
-+                is Result.Error -> Unit
+             when (val r = csvImport.abbrechen()) {
+                 is Ergebnis.Success -> meldungen.zeige(texte.text(R.string.csv_cancel_requested))
+-                is Ergebnis.Error -> meldungen.zeige(texte.meldungFuerSnackbar(r))
++                is Ergebnis.Error -> Unit
              }
          }
      }

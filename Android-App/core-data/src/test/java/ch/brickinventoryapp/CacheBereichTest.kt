@@ -3,7 +3,7 @@ package ch.brickinventoryapp
 import ch.brickinventoryapp.data.cache.ResponseCache
 import ch.brickinventoryapp.data.model.CatalogMetaResponse
 import ch.brickinventoryapp.data.repository.KatalogRepository
-import ch.brickinventoryapp.data.repository.Result
+import ch.brickinventoryapp.data.repository.Ergebnis
 import kotlinx.coroutines.test.runTest
 import okhttp3.mockwebserver.MockWebServer
 import org.junit.After
@@ -80,14 +80,14 @@ class CacheBereichTest {
 
     private suspend fun fuellen(r: KatalogRepository, jahr: Int) {
         server.enqueue(TestApi.antwort(antwort(jahr)))
-        assertTrue(r.getCatalogMeta() is Result.Success)
+        assertTrue(r.getCatalogMeta() is Ergebnis.Success)
     }
 
     private suspend fun offlineJahr(r: KatalogRepository): Int? {
         runCatching { server.shutdown() }
         return when (val x = r.getCatalogMeta()) {
-            is Result.Success -> (x.data as CatalogMetaResponse).yearMin
-            is Result.Error -> null
+            is Ergebnis.Success -> (x.data as CatalogMetaResponse).yearMin
+            is Ergebnis.Error -> null
         }
     }
 

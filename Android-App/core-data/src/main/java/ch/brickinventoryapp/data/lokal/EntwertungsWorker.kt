@@ -102,7 +102,7 @@ class EntwertungsWorker @AssistedInject constructor(
 }
 
 /** Ein Auftrag je Abmeldung; ohne Netz wartet er, gescheitert kommt er mit Rückzug wieder. */
-class WorkManagerEntwertung @Inject constructor(
+internal class WorkManagerEntwertung @Inject constructor(
     @param:ApplicationContext private val context: Context,
 ) : EntwertungsPlaner {
     override fun plane(auftrag: Entwertungsauftrag) {

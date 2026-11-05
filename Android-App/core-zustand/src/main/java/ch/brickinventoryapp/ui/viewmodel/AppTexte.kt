@@ -4,7 +4,7 @@ import android.content.Context
 import android.net.Uri
 import ch.brickinventoryapp.data.Anmeldestand
 import ch.brickinventoryapp.data.api.fehlerTextZuCode
-import ch.brickinventoryapp.data.repository.Result
+import ch.brickinventoryapp.data.repository.Ergebnis
 import ch.brickinventoryapp.ui.fehlerTextBrauchtCode
 import ch.brickinventoryapp.ui.fehlerTextId
 import ch.brickinventoryapp.ui.mitTechnischerUrsache
@@ -31,7 +31,7 @@ class AppTexte @Inject constructor(
 
     override fun angemeldet() = prefs.authTokenState.value?.isNotBlank() == true
 
-    override fun meldung(fehler: Result.Error): String {
+    override fun meldung(fehler: Ergebnis.Error): String {
         if (fehler.message.isNotBlank()) return fehler.message
         fehlerTextZuCode(fehler.code)?.let { return text(it) }
         val id = fehlerTextId(fehler.art)

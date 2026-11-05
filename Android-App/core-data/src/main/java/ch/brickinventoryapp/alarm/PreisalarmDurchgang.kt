@@ -25,7 +25,7 @@ interface PreisalarmRepository {
 }
 
 /** Nachfragen, anzeigen, Marke setzen — mit den Ablagen aus dem Konstruktor statt aus einem EntryPoint. */
-class PreisalarmDurchgang @Inject constructor(
+internal class PreisalarmDurchgang @Inject constructor(
     @param:ApplicationContext private val context: Context,
     private val sets: SetsRepository,
     private val alarm: Alarmablage,

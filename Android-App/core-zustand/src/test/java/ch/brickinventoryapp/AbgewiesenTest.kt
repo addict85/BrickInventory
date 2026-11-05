@@ -1,6 +1,6 @@
 package ch.brickinventoryapp
 
-import ch.brickinventoryapp.data.repository.Result
+import ch.brickinventoryapp.data.repository.Ergebnis
 import ch.brickinventoryapp.ui.viewmodel.Texte
 import ch.brickinventoryapp.util.darfNachfassen
 import ch.brickinventoryapp.util.meldetDieSitzungsschicht
@@ -137,17 +137,17 @@ class AbgewiesenTest {
         fun texte(mitToken: Boolean) = object : Texte {
             override fun text(id: Int, vararg args: Any?) = "t$id"
             override fun menge(id: Int, anzahl: Int, vararg args: Any?) = "m$id"
-            override fun meldung(fehler: Result.Error) = "Satz"
+            override fun meldung(fehler: Ergebnis.Error) = "Satz"
             override fun angemeldet() = mitToken
         }
-        val abgewiesen = Result.Error("", unauthorized = true)
+        val abgewiesen = Ergebnis.Error("", unauthorized = true)
         assert(texte(mitToken = true).meldungFuerSnackbar(abgewiesen) == null) {
             "Ein 401 bei angemeldeter App erscheint wieder als Satz in der Snackbar."
         }
         assert(texte(mitToken = false).meldungFuerSnackbar(abgewiesen) == "Satz") {
             "Ohne Token ist ein 401 ein falsches Passwort und muss gezeigt werden."
         }
-        assert(texte(mitToken = true).meldungFuerSnackbar(Result.Error("", transient = true)) == "Satz") {
+        assert(texte(mitToken = true).meldungFuerSnackbar(Ergebnis.Error("", transient = true)) == "Satz") {
             "Ein Netzfehler bei angemeldeter App verschwindet aus der Snackbar."
         }
     }

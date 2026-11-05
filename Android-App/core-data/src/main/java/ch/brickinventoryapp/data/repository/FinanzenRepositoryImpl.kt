@@ -15,34 +15,34 @@ class FinanzenRepositoryImpl @Inject constructor(
     cache: ResponseCache,
 ) : RepoBasis<FinanzenApi>(api, cache), FinanzenRepository {
 
-    override suspend fun getSetPrice(setNumber: String): Result<SetPriceResponse> =
+    override suspend fun getSetPrice(setNumber: String): Ergebnis<SetPriceResponse> =
         safeCall { api.getSetPrice(setNumber) }
 
-    override suspend fun getSetPriceHistory(setNumber: String): Result<PriceHistoryResponse> =
+    override suspend fun getSetPriceHistory(setNumber: String): Ergebnis<PriceHistoryResponse> =
         safeCall { api.getSetPriceHistory(setNumber) }
 
-    override suspend fun getPartPriceHistory(partNumber: String, colorId: Int): Result<PriceHistoryResponse> =
+    override suspend fun getPartPriceHistory(partNumber: String, colorId: Int): Ergebnis<PriceHistoryResponse> =
         safeCall { api.getPartPriceHistory(partNumber, colorId) }
 
-    override suspend fun getFigPriceHistory(figNumber: String): Result<PriceHistoryResponse> =
+    override suspend fun getFigPriceHistory(figNumber: String): Ergebnis<PriceHistoryResponse> =
         safeCall { api.getFigPriceHistory(figNumber) }
 
-    override suspend fun getPartsValuation(accounts: String?): Result<PartsValuationResponse> =
+    override suspend fun getPartsValuation(accounts: String?): Ergebnis<PartsValuationResponse> =
         safeCall { api.getPartsValuation(accounts) }
 
-    override suspend fun getMinifigsValuation(accounts: String?): Result<FigsValuationResponse> =
+    override suspend fun getMinifigsValuation(accounts: String?): Ergebnis<FigsValuationResponse> =
         safeCall { api.getMinifigsValuation(accounts) }
 
-    override suspend fun getValuation(accounts: String?): Result<ValuationResponse> =
+    override suspend fun getValuation(accounts: String?): Ergebnis<ValuationResponse> =
         safeCall { api.getValuation(accounts) }
 
-    override suspend fun getPnl(accounts: String?): Result<PnlResponse> =
+    override suspend fun getPnl(accounts: String?): Ergebnis<PnlResponse> =
         safeCall { api.getPnl(accounts) }
 
-    override suspend fun getPortfolioHistory(period: String, accounts: String?): Result<PortfolioHistoryResponse> =
+    override suspend fun getPortfolioHistory(period: String, accounts: String?): Ergebnis<PortfolioHistoryResponse> =
         safeCall { api.getPortfolioHistory(period, accounts) }
 
-    override suspend fun getStats(accounts: String?): Result<StatsResponse> =
+    override suspend fun getStats(accounts: String?): Ergebnis<StatsResponse> =
         if (accounts == null)
             cached("stats", StatsResponse.serializer()) { safeCall { api.getStats() } }
         else safeCall { api.getStats(accounts) }

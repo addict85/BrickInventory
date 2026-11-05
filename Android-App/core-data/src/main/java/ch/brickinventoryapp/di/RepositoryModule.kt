@@ -28,7 +28,7 @@ import dagger.hilt.components.SingletonComponent
 /** Die Repositories als Schnittstellen; wer eins braucht, sieht die Umsetzung nicht. */
 @Module
 @InstallIn(SingletonComponent::class)
-abstract class RepositoryModule {
+internal abstract class RepositoryModule {
     @Binds abstract fun sets(r: SetsRepositoryImpl): SetsRepository
     @Binds abstract fun teile(r: TeileRepositoryImpl): TeileRepository
     @Binds abstract fun finanzen(r: FinanzenRepositoryImpl): FinanzenRepository

@@ -17,13 +17,15 @@ interface MeldungsKanal {
     val meldung: StateFlow<String?>
     fun zeige(text: String?)
     fun quittiere()
+
+    /** Für Tests ohne Hilt. */
+    companion object {
+        operator fun invoke(): MeldungsKanal = MeldungsWarteschlange()
+    }
 }
 
-/** Für Tests ohne Hilt. */
-fun MeldungsKanal(): MeldungsKanal = MeldungsWarteschlange()
-
 @Singleton
-class MeldungsWarteschlange @Inject constructor() : MeldungsKanal {
+internal class MeldungsWarteschlange @Inject constructor() : MeldungsKanal {
 
     private val _meldung = MutableStateFlow<String?>(null)
     private val warteschlange = ArrayDeque<String>()

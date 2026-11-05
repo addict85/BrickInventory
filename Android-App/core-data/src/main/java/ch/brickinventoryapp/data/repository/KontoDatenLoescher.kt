@@ -13,7 +13,7 @@ fun interface KontoDatenLoescher {
  * Platte, lokale Listen und Ausgang gehören dem angemeldeten Konto. Was noch im
  * Ausgang wartet, geht dabei verloren — ein anderes Konto darf es nicht senden.
  */
-class KontoDatenLoeschung @Inject constructor(
+internal class KontoDatenLoeschung @Inject constructor(
     private val cache: ResponseCache,
     private val ablage: Offlineablage,
 ) : KontoDatenLoescher {

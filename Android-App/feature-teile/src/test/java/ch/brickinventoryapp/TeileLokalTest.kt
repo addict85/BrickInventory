@@ -14,7 +14,7 @@ import ch.brickinventoryapp.data.model.PartsCategoriesResponse
 import ch.brickinventoryapp.data.model.PartsFilterColorsResponse
 import ch.brickinventoryapp.data.model.PartsResponse
 import ch.brickinventoryapp.data.model.PartsStatsResponse
-import ch.brickinventoryapp.data.repository.Result
+import ch.brickinventoryapp.data.repository.Ergebnis
 import ch.brickinventoryapp.ui.Teile
 import ch.brickinventoryapp.ui.TeileAbfrage
 import ch.brickinventoryapp.ui.TeileLokal
@@ -43,18 +43,18 @@ import org.junit.Test
 class TeileLokalTest {
 
     private class Quelle : TeileQuelle {
-        override suspend fun seite(abfrage: TeileAbfrage) = Result.Success(PartsResponse(success = true, total = 1,
+        override suspend fun seite(abfrage: TeileAbfrage) = Ergebnis.Success(PartsResponse(success = true, total = 1,
             parts = listOf(Part(partNumber = if (abfrage.suche == null) "server-${abfrage.seite}" else "treffer"))))
-        override suspend fun manuelleTeile(suche: String?) = Result.Success(ManualPartsResponse(success = true,
+        override suspend fun manuelleTeile(suche: String?) = Ergebnis.Success(ManualPartsResponse(success = true,
             parts = listOf(PartValuationItem(partNumber = if (suche == null) "server" else "treffer"))))
-        override suspend fun teileKennzahlen(): Result<PartsStatsResponse> = Result.Error("aus")
-        override suspend fun filterFarben() = Result.Success(PartsFilterColorsResponse(success = true))
-        override suspend fun kategorien() = Result.Success(PartsCategoriesResponse(success = true))
-        override suspend fun alleFarben() = Result.Success(BrickColorsResponse(success = true))
-        override suspend fun figurKennzahlen(): Result<MinifigStatsResponse> = Result.Error("aus")
-        override suspend fun figuren(suche: String?) = Result.Success(MinifigsResponse(success = true,
+        override suspend fun teileKennzahlen(): Ergebnis<PartsStatsResponse> = Ergebnis.Error("aus")
+        override suspend fun filterFarben() = Ergebnis.Success(PartsFilterColorsResponse(success = true))
+        override suspend fun kategorien() = Ergebnis.Success(PartsCategoriesResponse(success = true))
+        override suspend fun alleFarben() = Ergebnis.Success(BrickColorsResponse(success = true))
+        override suspend fun figurKennzahlen(): Ergebnis<MinifigStatsResponse> = Ergebnis.Error("aus")
+        override suspend fun figuren(suche: String?) = Ergebnis.Success(MinifigsResponse(success = true,
             figs = listOf(Minifig(figNumber = "server"))))
-        override suspend fun manuelleFiguren(suche: String?) = Result.Success(ManualFigsResponse(success = true,
+        override suspend fun manuelleFiguren(suche: String?) = Ergebnis.Success(ManualFigsResponse(success = true,
             figs = listOf(FigValuationItem(figNumber = "server"))))
     }
 

@@ -1,18 +1,18 @@
 Gegenprobe: Ein 401 meldet ab, auch wenn keine Sitzung mehr besteht
 Modul: core-zustand
-Test: ch.brickinventoryapp.AppViewModelTest
+Test: ch.brickinventoryapp.SitzungsDienstTest
 Rot: ein 401 meldet die angemeldete Sitzung ab
 
-diff --git a/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/ui/AppViewModel.kt b/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/ui/AppViewModel.kt
-index a439d61..70ae350 100644
---- a/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/ui/AppViewModel.kt
-+++ b/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/ui/AppViewModel.kt
-@@ -114,7 +114,7 @@ class AppViewModel @Inject constructor(
-         // Fehlversuch beim Anmelden meldet nicht ab.
-         viewModelScope.launch {
-             sessionExpired.events.collect {
--                if (sitzung.state.value.isLoggedIn) {
+diff --git a/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/ui/SitzungsDienst.kt b/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/ui/SitzungsDienst.kt
+index 79f1f8e..04d3518 100644
+--- a/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/ui/SitzungsDienst.kt
++++ b/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/ui/SitzungsDienst.kt
+@@ -106,7 +106,7 @@ class SitzungsDienst @Inject constructor(
+         bereich.launch {
+             sessionExpired.abgelaufen.filter { it }.collect {
+                 sessionExpired.quittiere()
+-                if (prefs.authToken.first().isNotBlank()) {
 +                if (true) {
                      meldungen.zeige(texte.text(R.string.vm_session_expired))
-                     logout()
+                     abmelden()
                  }

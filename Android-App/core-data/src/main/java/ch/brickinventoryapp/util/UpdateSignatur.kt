@@ -19,7 +19,7 @@ import java.util.Base64
  * Repository hat, kann keine der beiden fälschen.
  */
 @Serializable
-data class SignierteBeschreibung(
+internal data class SignierteBeschreibung(
     @SerialName("daten") val daten: String,
     @SerialName("signatur") val signatur: String = "",
     @SerialName("beschreibungssignatur") val beschreibungssignatur: String = "",

@@ -7,7 +7,7 @@ import ch.brickinventoryapp.ui.model.alsAnsicht
 import ch.brickinventoryapp.ui.model.alsDaten
 import ch.brickinventoryapp.data.repository.KontoRepository
 import ch.brickinventoryapp.data.repository.VerwaltungRepository
-import ch.brickinventoryapp.data.repository.Result
+import ch.brickinventoryapp.data.repository.Ergebnis
 import ch.brickinventoryapp.data.repository.SetsRepository
 import ch.brickinventoryapp.data.repository.TeileRepository
 import ch.brickinventoryapp.ui.Aenderung
@@ -78,12 +78,12 @@ class EinstellungenViewModel @Inject constructor(
     override fun saveSettings(currency: String, condition: String) {
         viewModelScope.launch {
             when (val r = konto.updateSettings(currency, condition)) {
-                is Result.Success -> {
+                is Ergebnis.Success -> {
                     meldungen.zeige(meldungen.text(R.string.vm_settings_saved))
                     sitzung.einstellungenGespeichert(currency, condition)
                     bestand.melde(Aenderung.Sets, Aenderung.Teile, Aenderung.Figuren)
                 }
-                is Result.Error -> meldungen.zeige(meldungen.meldungFuerSnackbar(r))
+                is Ergebnis.Error -> meldungen.zeige(meldungen.meldungFuerSnackbar(r))
             }
         }
     }
@@ -92,12 +92,12 @@ class EinstellungenViewModel @Inject constructor(
     override fun saveUserDefaultCondition(condition: String) {
         viewModelScope.launch {
             when (val r = konto.setUserDefaultCondition(condition)) {
-                is Result.Success -> {
+                is Ergebnis.Success -> {
                     // Die Wahl gilt ohne Speichern-Knopf; ohne diese Meldung bliebe offen, ob sie ankam.
                     meldungen.zeige(meldungen.text(R.string.vm_settings_saved))
                     sitzung.ladeEinstellungen(konto)
                 }
-                is Result.Error -> meldungen.zeige(meldungen.meldungFuerSnackbar(r)?.let { meldungen.text(R.string.vm_error, it) })
+                is Ergebnis.Error -> meldungen.zeige(meldungen.meldungFuerSnackbar(r)?.let { meldungen.text(R.string.vm_error, it) })
             }
         }
     }
@@ -119,7 +119,7 @@ class EinstellungenViewModel @Inject constructor(
             }
             val name = leser.name(datei) ?: "import.csv"
             when (val r = verwaltung.importiereCsv(art.alsDaten(), name, bytes)) {
-                is Result.Success ->
+                is Ergebnis.Success ->
                     if (r.data.success) {
                         _csvHochladenState.value = CsvHochladenUiState(ergebnis = r.data.alsAnsicht())
                         bestand.melde(when (art) {
@@ -130,7 +130,7 @@ class EinstellungenViewModel @Inject constructor(
                             CsvImportArt.SETS -> Aenderung.Sets
                         })
                     } else _csvHochladenState.value = CsvHochladenUiState(fehler = r.data.error ?: meldungen.text(R.string.err_generic))
-                is Result.Error -> _csvHochladenState.value = CsvHochladenUiState(fehler = meldungen.meldung(r))
+                is Ergebnis.Error -> _csvHochladenState.value = CsvHochladenUiState(fehler = meldungen.meldung(r))
             }
         }
     }
@@ -144,10 +144,10 @@ class EinstellungenViewModel @Inject constructor(
     override fun ladeAlarmUebersicht() {
         viewModelScope.launch {
             when (val r = sets.getAlleAlarme()) {
-                is Result.Success ->
+                is Ergebnis.Success ->
                     if (r.data.success) _alarmUebersicht.value = AlarmUebersichtUiState(alarme = r.data.alerts.map { it.alsAnsicht() }, geladen = true)
                     else meldungen.zeige(r.data.error)
-                is Result.Error -> meldungen.zeige(meldungen.meldungFuerSnackbar(r))
+                is Ergebnis.Error -> meldungen.zeige(meldungen.meldungFuerSnackbar(r))
             }
         }
     }
@@ -182,11 +182,11 @@ class EinstellungenViewModel @Inject constructor(
         alarmSchleuse { sets.deletePreisalarm(setNumber, condition) }
 
     /** Ändern und Löschen: rufen, melden, die Übersicht lädt auf das Signal nach. */
-    private fun alarmSchleuse(tun: suspend () -> Result<PreisalarmResponse>) {
+    private fun alarmSchleuse(tun: suspend () -> Ergebnis<PreisalarmResponse>) {
         viewModelScope.launch {
             when (val r = tun()) {
-                is Result.Success -> if (!r.data.success) meldungen.zeige(r.data.error)
-                is Result.Error -> meldungen.zeige(meldungen.meldungFuerSnackbar(r))
+                is Ergebnis.Success -> if (!r.data.success) meldungen.zeige(r.data.error)
+                is Ergebnis.Error -> meldungen.zeige(meldungen.meldungFuerSnackbar(r))
             }
             bestand.melde(Aenderung.Alarme)
         }
@@ -215,9 +215,9 @@ class EinstellungenViewModel @Inject constructor(
     }
 
     /** Erfolg und Satz einer Lagerort-Antwort; ein Fehler ohne Satz bleibt still. */
-    private fun <T> Result<T>.auswerten(): Pair<Boolean, String?> = when (this) {
-        is Result.Success -> erfolgUndSatz(data)
-        is Result.Error -> false to meldungen.meldungFuerSnackbar(this)
+    private fun <T> Ergebnis<T>.auswerten(): Pair<Boolean, String?> = when (this) {
+        is Ergebnis.Success -> erfolgUndSatz(data)
+        is Ergebnis.Error -> false to meldungen.meldungFuerSnackbar(this)
     }
 
     private fun erfolgUndSatz(antwort: Any?): Pair<Boolean, String?> = when (antwort) {

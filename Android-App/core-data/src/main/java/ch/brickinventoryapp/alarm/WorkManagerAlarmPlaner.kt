@@ -14,7 +14,7 @@ import javax.inject.Inject
  * Hauptthread: WorkManager liest beim ersten Zugriff von der Platte, und das
  * brachte die App zum Absturz.
  */
-class WorkManagerAlarmPlaner @Inject constructor(
+internal class WorkManagerAlarmPlaner @Inject constructor(
     @param:ApplicationContext private val context: Context,
     @param:Dispatcher(BrickDispatchers.IO) private val io: CoroutineDispatcher,
 ) : AlarmPlaner {

@@ -3,11 +3,11 @@ Modul: app
 Test: ch.brickinventoryapp.GeraeteSchutzTest
 Rot: eine neue Installation verbirgt die Vorschau
 
-diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/PreferencesManager.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/PreferencesManager.kt
-index ddc4bb0..3ca643f 100644
---- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/PreferencesManager.kt
-+++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/PreferencesManager.kt
-@@ -526,7 +526,7 @@ class PreferencesManager @Inject constructor(
+diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/GeraeteAblage.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/GeraeteAblage.kt
+index 13a1176..ba6a155 100644
+--- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/GeraeteAblage.kt
++++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/GeraeteAblage.kt
+@@ -269,7 +269,7 @@ class GeraeteAblage @Inject constructor(
       * an: Die Übersicht zeigt Bestand, Preise und Konto jedem, der das Telefon kurz
       * in der Hand hat. Wer Bildschirmfotos braucht, schaltet es aus.
       */

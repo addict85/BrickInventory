@@ -26,7 +26,7 @@ class ErrorMessageLayerTest {
 
     private val datenschicht = listOf(
         // Alle Dateien der Datenschicht (Nachtrag 155) — vorher nur die eine.
-        "data/repository/BrickRepository.kt",
+        "data/repository/Ergebnis.kt",
         "data/repository/RepoBasis.kt",
         "data/repository/SetsRepositoryImpl.kt",
         "data/repository/TeileRepositoryImpl.kt",
@@ -48,9 +48,9 @@ class ErrorMessageLayerTest {
         val fehler = mutableListOf<String>()
         for (rel in datenschicht) {
             val s = Quellen.ohneKommentare(Quellen.lies(rel))
-            Regex("""Result\.Error\(\s*"([^"]+)"""").findAll(s).forEach { m ->
+            Regex("""Ergebnis\.Error\(\s*"([^"]+)"""").findAll(s).forEach { m ->
                 val zeile = s.substring(0, m.range.first).count { it == '\n' } + 1
-                fehler += "$rel:$zeile  Result.Error(\"${m.groupValues[1]}\")"
+                fehler += "$rel:$zeile  Ergebnis.Error(\"${m.groupValues[1]}\")"
             }
         }
         assert(fehler.isEmpty()) {

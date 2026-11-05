@@ -27,7 +27,7 @@ class FigurenRepositoryImpl @Inject constructor(
      * Gruppierung über jede fig_name-Zeile sucht. Gecacht wird nur die ungefilterte
      * Sicht, sonst wäre ein Suchergebnis nach dem Neustart die ganze Sammlung.
      */
-    override suspend fun getMinifigs(accounts: String?, search: String?): Result<MinifigsResponse> =
+    override suspend fun getMinifigs(accounts: String?, search: String?): Ergebnis<MinifigsResponse> =
         if (accounts == null && search.isNullOrBlank())
             abgeglichen(Faecher.FIGUREN, { it.figs }, { MinifigsResponse(success = true, figs = it) }) {
                 safeCall { api.getMinifigs(source = "set") }
@@ -40,7 +40,7 @@ class FigurenRepositoryImpl @Inject constructor(
     override fun beobachteManuelleFiguren(): Flow<Lokal<FigValuationItem>> = ablage.beobachte(Faecher.MANUELLE_FIGUREN)
 
     override suspend fun getManualMinifigs(accounts: String?,
-                                  search: String?): Result<ManualFigsResponse> =
+                                  search: String?): Ergebnis<ManualFigsResponse> =
         if (accounts == null && search.isNullOrBlank())
             abgeglichen(Faecher.MANUELLE_FIGUREN, { it.figs }, { ManualFigsResponse(success = true, figs = it) }) {
                 safeCall { api.getManualMinifigs(accounts, search) }
@@ -48,13 +48,13 @@ class FigurenRepositoryImpl @Inject constructor(
         else safeCall { api.getManualMinifigs(accounts, search) }
 
     /** Dasselbe fuer eine Minifigur — sie hat keine Farbe (Migration 0024). */
-    override suspend fun setFigStorage(figNumber: String, ort: String): Result<LagerortResponse> =
+    override suspend fun setFigStorage(figNumber: String, ort: String): Ergebnis<LagerortResponse> =
         safeCall { api.setFigStorage(figNumber, LagerortRequest(ort)) }
 
     override suspend fun addMinifig(figNumber: String, blFigNumber: String?, quantity: Int,
                            unitPrice: Double?, condition: String?,
                            ownerUserId: Int?,
-                           storage: String?): Result<AddMinifigResponse> =
+                           storage: String?): Ergebnis<AddMinifigResponse> =
         AddMinifigRequest(figNumber, blFigNumber, quantity, unitPrice, condition, ownerUserId, storage).let { anfrage ->
             schreibe(Bearbeitung.FigurErfassen(anfrage),
                 { AddMinifigResponse(success = true, action = "gepuffert", figNumber = figNumber) }) { schluessel ->
@@ -67,7 +67,7 @@ class FigurenRepositoryImpl @Inject constructor(
      *
      * @param owner Besitzer der Karte; null = eigenes Konto.
      */
-    override suspend fun updateMinifig(figNumber: String, quantity: Int, unitPrice: Double?, blFigNumber: String?, condition: String?, owner: Int?): Result<GenericResponse> {
+    override suspend fun updateMinifig(figNumber: String, quantity: Int, unitPrice: Double?, blFigNumber: String?, condition: String?, owner: Int?): Ergebnis<GenericResponse> {
         val bisher = ablage.lies(Faecher.MANUELLE_FIGUREN)?.liste
             ?.firstOrNull { it.figNumber == figNumber && (owner == null || it.userId == owner) }?.quantity
         val anfrage = UpdateManualItemRequest(quantity, unitPrice, blFigNumber, condition, quantityDelta = bisher?.let { quantity - it })
@@ -77,15 +77,15 @@ class FigurenRepositoryImpl @Inject constructor(
     }
 
     /** Auch offline, wie TeileRepository.deletePart. */
-    override suspend fun deleteMinifig(figNumber: String, owner: Int?): Result<GenericResponse> =
+    override suspend fun deleteMinifig(figNumber: String, owner: Int?): Ergebnis<GenericResponse> =
         schreibe(Bearbeitung.FigurLoeschen(figNumber, owner), { GenericResponse(success = true) }) { schluessel ->
             safeCall { api.deleteMinifig(figNumber, owner, schluessel) }
         }
 
-    override suspend fun getMinifigStats(accounts: String?): Result<MinifigStatsResponse> =
+    override suspend fun getMinifigStats(accounts: String?): Ergebnis<MinifigStatsResponse> =
         safeCall { api.getMinifigStats(accounts) }
 
     override suspend fun getSetsMitFigur(figNumber: String,
-                                accounts: String?): Result<VerwendendeSetsResponse> =
+                                accounts: String?): Ergebnis<VerwendendeSetsResponse> =
         safeCall { api.getSetsMitFigur(figNumber, accounts) }
 }

@@ -7,7 +7,7 @@ import ch.brickinventoryapp.data.model.KEINE_FARBE
 import ch.brickinventoryapp.data.model.UpdateAcquisitionRequest
 import ch.brickinventoryapp.data.repository.FinanzenRepository
 import ch.brickinventoryapp.data.repository.HaushaltRepository
-import ch.brickinventoryapp.data.repository.Result
+import ch.brickinventoryapp.data.repository.Ergebnis
 import ch.brickinventoryapp.data.repository.TeileRepository
 import ch.brickinventoryapp.data.repository.FigurenRepository
 import ch.brickinventoryapp.ui.Aenderung
@@ -83,10 +83,10 @@ class KaeufeViewModel @Inject constructor(
                 else  -> haushalt.getPartAcquisitions(id, colorId)
             }
             when (r) {
-                is Result.Success -> _manDetailState.update {
+                is Ergebnis.Success -> _manDetailState.update {
                     it.copy(acquisitions = r.data.acquisitions.map { a -> a.alsAnsicht() }, acquisitionTotals = r.data.totals.alsAnsicht(), isLoading = false)
                 }
-                is Result.Error -> _manDetailState.update { it.copy(isLoading = false) }
+                is Ergebnis.Error -> _manDetailState.update { it.copy(isLoading = false) }
             }
         }
     }
@@ -96,8 +96,8 @@ class KaeufeViewModel @Inject constructor(
             _manDetailState.update { it.copy(priceHistoryLoading = true) }
             val r = if (type == "fig") finanzen.getFigPriceHistory(id) else finanzen.getPartPriceHistory(id, colorId)
             when (r) {
-                is Result.Success -> _manDetailState.update { it.copy(priceHistory = r.data.alsAnsicht(), priceHistoryLoading = false) }
-                is Result.Error -> _manDetailState.update { it.copy(priceHistoryLoading = false) }
+                is Ergebnis.Success -> _manDetailState.update { it.copy(priceHistory = r.data.alsAnsicht(), priceHistoryLoading = false) }
+                is Ergebnis.Error -> _manDetailState.update { it.copy(priceHistoryLoading = false) }
             }
         }
     }
@@ -114,8 +114,8 @@ class KaeufeViewModel @Inject constructor(
                           quantity: Int?, date: String?) {
         viewModelScope.launch {
             when (val r = haushalt.updateAcquisition(setNumber, acqId, purchasePrice, condition, quantity, date)) {
-                is Result.Success -> if (r.data.success) setGeaendert(r.data.set)
-                is Result.Error -> {
+                is Ergebnis.Success -> if (r.data.success) setGeaendert(r.data.set)
+                is Ergebnis.Error -> {
                     meldungen.zeige(meldungen.meldungFuerSnackbar(r))
                     // Eine abgelehnte Datumsänderung steht sonst weiter im Feld.
                     if (date != null) loadAcquisitions(setNumber)
@@ -127,8 +127,8 @@ class KaeufeViewModel @Inject constructor(
     override fun deleteAcquisition(setNumber: String, acqId: Int) {
         viewModelScope.launch {
             when (val r = haushalt.deleteAcquisition(setNumber, acqId)) {
-                is Result.Success -> if (r.data.success) setGeaendert(r.data.set)
-                is Result.Error -> meldungen.zeige(meldungen.meldungFuerSnackbar(r)?.let { meldungen.text(R.string.vm_error, it) })
+                is Ergebnis.Success -> if (r.data.success) setGeaendert(r.data.set)
+                is Ergebnis.Error -> meldungen.zeige(meldungen.meldungFuerSnackbar(r)?.let { meldungen.text(R.string.vm_error, it) })
             }
         }
     }
@@ -156,9 +156,9 @@ class KaeufeViewModel @Inject constructor(
                                                           quantity = quantity, date = date)
             val r = if (type == "fig") haushalt.updateFigAcquisition(id, acqId, req)
                     else haushalt.updatePartAcquisition(id, colorId, acqId, req)
-            if (r is Result.Success && r.data.success) {
+            if (r is Ergebnis.Success && r.data.success) {
                 bestand.melde(manuelleArt(type))
-            } else if (r is Result.Error) {
+            } else if (r is Ergebnis.Error) {
                 meldungen.zeige(meldungen.meldungFuerSnackbar(r))
                 if (date != null) neuLaden()
             }
@@ -170,8 +170,8 @@ class KaeufeViewModel @Inject constructor(
             val r = if (type == "fig") haushalt.deleteFigAcquisition(id, acqId)
                     else haushalt.deletePartAcquisition(id, colorId, acqId)
             when (r) {
-                is Result.Success -> bestand.melde(manuelleArt(type))
-                is Result.Error -> meldungen.zeige(meldungen.meldungFuerSnackbar(r))
+                is Ergebnis.Success -> bestand.melde(manuelleArt(type))
+                is Ergebnis.Error -> meldungen.zeige(meldungen.meldungFuerSnackbar(r))
             }
         }
     }
@@ -193,12 +193,12 @@ class KaeufeViewModel @Inject constructor(
                 else  -> haushalt.updatePartAcquisition(id, colorId, acqId, req)
             }
             when (r) {
-                is Result.Success ->
+                is Ergebnis.Success ->
                     if (r.data.success) {
                         bestand.melde(Aenderung.Sets, Aenderung.Teile, Aenderung.Figuren)
                         onDone(null, r.data.parts ?: 0, r.data.minifigs ?: 0)
                     } else onDone(r.data.error ?: "", 0, 0)
-                is Result.Error -> onDone(meldungen.meldung(r), 0, 0)
+                is Ergebnis.Error -> onDone(meldungen.meldung(r), 0, 0)
             }
         }
     }
@@ -210,12 +210,12 @@ class KaeufeViewModel @Inject constructor(
             delay(Alarmeingabe.RUHE_MS)
             val r = if (type == "fig") figuren.setFigStorage(id, ort) else teile.setPartStorage(id, farbe, ort)
             when (r) {
-                is Result.Success -> {
+                is Ergebnis.Success -> {
                     if (!r.data.success) { meldungen.zeige(r.data.error ?: ""); return@launch }
                     bestand.melde(manuelleArt(type))
                     filter.eigeneLagerorteNeu()
                 }
-                is Result.Error -> meldungen.zeige(meldungen.meldungFuerSnackbar(r))
+                is Ergebnis.Error -> meldungen.zeige(meldungen.meldungFuerSnackbar(r))
             }
         }
     }

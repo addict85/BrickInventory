@@ -5,7 +5,7 @@ import ch.brickinventoryapp.data.repository.FigurenRepository
 import ch.brickinventoryapp.data.repository.SetsRepository
 import ch.brickinventoryapp.data.repository.TeileRepository
 import ch.brickinventoryapp.data.repository.GALLERY_PAGE_SIZE
-import ch.brickinventoryapp.data.repository.Result
+import ch.brickinventoryapp.data.repository.Ergebnis
 import ch.brickinventoryapp.data.Zugangsdaten
 import ch.brickinventoryapp.data.cache.VorschauVorwaermer
 import ch.brickinventoryapp.di.ApplicationScope
@@ -34,7 +34,7 @@ internal suspend fun bildAdressenDerSammlung(
     while (seite <= MAX_SEITEN) {
         val a = sets.getSets(blickfeld.kontoFuer(ScopeFilter.View.GALLERY),
             search = null, theme = null, sort = null, page = seite, pageSize = GALLERY_PAGE_SIZE)
-        val liste = if (a is Result.Success) a.data.sets else emptyList()
+        val liste = if (a is Ergebnis.Success) a.data.sets else emptyList()
         liste.mapTo(roh) { resolveThumbUrl(basis, it.imageLocal, it.imageUrl) }
         if (liste.size < GALLERY_PAGE_SIZE) break
         seite++
@@ -44,22 +44,22 @@ internal suspend fun bildAdressenDerSammlung(
     while (seite <= MAX_SEITEN) {
         val a = teile.getParts(search = null, page = seite,
             accounts = blickfeld.kontoFuer(ScopeFilter.View.PARTS))
-        val liste = if (a is Result.Success) a.data.parts else emptyList()
+        val liste = if (a is Ergebnis.Success) a.data.parts else emptyList()
         liste.mapTo(roh) { resolveThumbUrl(basis, it.imageLocal, it.imageUrl) }
         if (liste.size < TEILE_SEITE) break
         seite++
     }
 
     val figuren = figuren.getMinifigs(blickfeld.kontoFuer(ScopeFilter.View.MINIFIGS))
-    if (figuren is Result.Success) {
+    if (figuren is Ergebnis.Success) {
         figuren.data.figs.mapTo(roh) { resolveThumbUrl(basis, it.imageLocal, it.imageUrl) }
     }
     val mTeile = teile.getManualParts(blickfeld.kontoFuer(ScopeFilter.View.PARTS))
-    if (mTeile is Result.Success) {
+    if (mTeile is Ergebnis.Success) {
         mTeile.data.parts.mapTo(roh) { resolveThumbUrl(basis, it.imageLocal, it.imageUrl) }
     }
     val mFiguren = figuren.getManualMinifigs(blickfeld.kontoFuer(ScopeFilter.View.MINIFIGS))
-    if (mFiguren is Result.Success) {
+    if (mFiguren is Ergebnis.Success) {
         mFiguren.data.figs.mapTo(roh) { resolveThumbUrl(basis, it.imageLocal, it.imageUrl) }
     }
     return roh.filterNotNull()

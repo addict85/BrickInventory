@@ -12,7 +12,7 @@ import androidx.core.app.NotificationCompat
 import androidx.core.app.ServiceCompat
 import ch.brickinventoryapp.ressourcen.R
 import ch.brickinventoryapp.data.Zugangsdaten
-import ch.brickinventoryapp.data.repository.Result
+import ch.brickinventoryapp.data.repository.Ergebnis
 import ch.brickinventoryapp.data.repository.SetsRepository
 import dagger.hilt.android.AndroidEntryPoint
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -29,7 +29,7 @@ interface CsvImportDienst {
     fun stop()
 }
 
-class AndroidCsvImportDienst @Inject constructor(
+internal class AndroidCsvImportDienst @Inject constructor(
     @param:ApplicationContext private val ctx: Context,
 ) : CsvImportDienst {
     override fun start() = CsvImportService.start(ctx)
@@ -157,9 +157,9 @@ class CsvImportService : Service() {
             PollResult.ERROR
         } else {
             when (val resp = sets.getCsvImportStatus(url, token)) {
-                is Result.Success ->
+                is Ergebnis.Success ->
                     if (applyStatus(resp.data)) PollResult.RUNNING else PollResult.FINISHED
-                is Result.Error -> PollResult.ERROR
+                is Ergebnis.Error -> PollResult.ERROR
             }
         }
     }.getOrElse { PollResult.ERROR }

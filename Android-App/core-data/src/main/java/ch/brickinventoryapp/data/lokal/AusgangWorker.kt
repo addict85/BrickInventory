@@ -21,7 +21,7 @@ import javax.inject.Inject
  * Rückzug und das Überleben eines Neustarts; die Logik steht in [Abgleich].
  */
 @HiltWorker
-class AusgangWorker @AssistedInject constructor(
+internal class AusgangWorker @AssistedInject constructor(
     @Assisted context: Context,
     @Assisted params: WorkerParameters,
     private val abgleich: Abgleich,
@@ -44,7 +44,7 @@ class AusgangWorker @AssistedInject constructor(
  * den Ausgang schon leer gesehen, käme ein eben eingereihter Posten sonst erst
  * beim nächsten Anlass dran.
  */
-class WorkManagerPlaner @Inject constructor(
+internal class WorkManagerPlaner @Inject constructor(
     @param:ApplicationContext private val context: Context,
 ) : AusgangPlaner {
     override fun plane() {

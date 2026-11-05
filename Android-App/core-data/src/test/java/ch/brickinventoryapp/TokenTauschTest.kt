@@ -10,7 +10,7 @@ import ch.brickinventoryapp.data.Tauschergebnis
 import ch.brickinventoryapp.data.anmeldungUeberfaellig
 import ch.brickinventoryapp.data.model.TokenRotation
 import ch.brickinventoryapp.data.repository.Fehlerart
-import ch.brickinventoryapp.data.repository.Result
+import ch.brickinventoryapp.data.repository.Ergebnis
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -70,7 +70,7 @@ class TokenTauschTest {
         var antwortHerkunft: String? = HIER
         val schranke = TokenSchranke()
         val protokoll = mutableListOf<String>()
-        var antworten: MutableList<Result<TokenRotation>> = mutableListOf()
+        var antworten: MutableList<Ergebnis<TokenRotation>> = mutableListOf()
         var bremse: CompletableDeferred<Unit>? = null
         /** Läuft in jedem Aufruf des Servers, nach der Bremse. */
         var beimRotieren: suspend () -> Unit = {}
@@ -90,9 +90,9 @@ class TokenTauschTest {
                 protokoll += "rotiere $alt"
                 bremse?.await()
                 beimRotieren()
-                when (val r = antworten.removeFirstOrNull() ?: Result.Success(TokenRotation(success = true, token = "neu"))) {
-                    is Result.Success -> Result.Success(GetauschterToken(r.data, antwortHerkunft))
-                    is Result.Error -> r
+                when (val r = antworten.removeFirstOrNull() ?: Ergebnis.Success(TokenRotation(success = true, token = "neu"))) {
+                    is Ergebnis.Success -> Ergebnis.Success(GetauschterToken(r.data, antwortHerkunft))
+                    is Ergebnis.Error -> r
                 }
             },
             pausen = listOf(1, 1, 1),
@@ -101,7 +101,7 @@ class TokenTauschTest {
         )
     }
 
-    private val verloren = Result.Error("", transient = true, art = Fehlerart.NETZ)
+    private val verloren = Ergebnis.Error("", transient = true, art = Fehlerart.NETZ)
 
     @Test
     fun `der neue Token ist gespeichert, bevor der Tausch endet`() = runTest {
@@ -132,7 +132,7 @@ class TokenTauschTest {
 
     @Test
     fun `gilt der alte nicht mehr, muss neu gekoppelt werden`() = runTest {
-        val w = Welt().apply { antworten = mutableListOf(verloren, Result.Error("", httpCode = 401, code = Fehlercode.TOKEN_UNGUELTIG)) }
+        val w = Welt().apply { antworten = mutableListOf(verloren, Ergebnis.Error("", httpCode = 401, code = Fehlercode.TOKEN_UNGUELTIG)) }
         assertEquals(Tauschergebnis.NEU_KOPPELN, w.tausch.tausche("alt"))
         assertEquals("alt", w.gespeichert)
     }

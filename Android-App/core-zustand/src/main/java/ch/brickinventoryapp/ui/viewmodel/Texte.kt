@@ -1,6 +1,6 @@
 package ch.brickinventoryapp.ui.viewmodel
 
-import ch.brickinventoryapp.data.repository.Result
+import ch.brickinventoryapp.data.repository.Ergebnis
 import ch.brickinventoryapp.util.meldetDieSitzungsschicht
 
 /**
@@ -14,9 +14,9 @@ interface Texte {
     fun text(id: Int, vararg args: Any?): String
     fun menge(id: Int, anzahl: Int, vararg args: Any?): String
     /** Für Fehlerfelder in Formularen — dort ist „nichts zu sagen" keine Antwort. */
-    fun meldung(fehler: Result.Error): String
+    fun meldung(fehler: Ergebnis.Error): String
     /** Null heisst: Die Sitzungsschicht hat den Fehler schon gemeldet. */
-    fun meldungFuerSnackbar(fehler: Result.Error): String? =
+    fun meldungFuerSnackbar(fehler: Ergebnis.Error): String? =
         if (meldetDieSitzungsschicht(fehler.unauthorized, angemeldet())) null else meldung(fehler)
     /** Liegt ein Token vor? Dieselbe Quelle, die der Interceptor liest. */
     fun angemeldet(): Boolean

@@ -1,6 +1,6 @@
 package ch.brickinventoryapp.ui
 
-import ch.brickinventoryapp.data.repository.Result
+import ch.brickinventoryapp.data.repository.Ergebnis
 
 /**
  * Wiederholen, solange der Fehler vorübergehend ist.
@@ -9,12 +9,12 @@ import ch.brickinventoryapp.data.repository.Result
 suspend fun <T> retryOnNetwork(
     maxAttempts: Int = 10,
     delayMs: Long = 2000,
-    call: suspend () -> Result<T>
-): Result<T> {
+    call: suspend () -> Ergebnis<T>
+): Ergebnis<T> {
     var attempts = 0
     while (true) {
         val r = call()
-        if (r is Result.Error) {
+        if (r is Ergebnis.Error) {
             if (r.transient && attempts < maxAttempts - 1) {
                 attempts++
                 kotlinx.coroutines.delay(delayMs)

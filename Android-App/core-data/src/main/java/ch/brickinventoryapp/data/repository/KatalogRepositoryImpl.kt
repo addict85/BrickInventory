@@ -16,15 +16,15 @@ class KatalogRepositoryImpl @Inject constructor(
     cache: ResponseCache,
 ) : RepoBasis<KatalogApi>(api, cache), KatalogRepository {
 
-    override suspend fun getCatalogMeta(): Result<CatalogMetaResponse> =
+    override suspend fun getCatalogMeta(): Ergebnis<CatalogMetaResponse> =
         cached("catalog-meta", CatalogMetaResponse.serializer()) { safeCall { api.getCatalogMeta() } }
 
     override suspend fun getCatalogSets(
         q: String?, themeId: Int?, yearFrom: Int?, yearTo: Int?,
         sort: String, page: Int, limit: Int
-    ): Result<CatalogSetsResponse> = safeCall { api.getCatalogSets(q, themeId, yearFrom, yearTo, sort, page, limit) }
+    ): Ergebnis<CatalogSetsResponse> = safeCall { api.getCatalogSets(q, themeId, yearFrom, yearTo, sort, page, limit) }
 
-    override suspend fun getCatalogSetDetail(setNumber: String): Result<CatalogSetDetailResponse> =
+    override suspend fun getCatalogSetDetail(setNumber: String): Ergebnis<CatalogSetDetailResponse> =
         safeCall { api.getCatalogSetDetail(setNumber) }
 
     /**
@@ -33,6 +33,6 @@ class KatalogRepositoryImpl @Inject constructor(
      */
     override suspend fun getCatalogYearVerteilung(
         q: String?, themeId: Int?, sort: String
-    ): Result<CatalogYearVerteilungResponse> =
+    ): Ergebnis<CatalogYearVerteilungResponse> =
         safeCall { api.getCatalogYearVerteilung(q, themeId, sort) }
 }

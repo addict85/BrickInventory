@@ -5,7 +5,7 @@ import ch.brickinventoryapp.util.fangeAusserAbbruch
 import android.content.Context
 import ch.brickinventoryapp.data.Zugangsdaten
 import ch.brickinventoryapp.data.repository.SetsRepository
-import ch.brickinventoryapp.data.repository.Result
+import ch.brickinventoryapp.data.repository.Ergebnis
 import ch.brickinventoryapp.util.Teilelistentresor
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.delay
@@ -83,11 +83,11 @@ class PdfExportManager @Inject constructor(
     fun reset() { _state.value = PdfExportState.Idle }
 
     /** Fünf Versuche mit wachsender Pause: Das fertige PDF liegt manchmal erst kurz nach der Meldung bereit. */
-    private suspend fun ladePdf(jobId: String): Result<ByteArray>? {
-        var downloadResult: Result<ByteArray>? = null
+    private suspend fun ladePdf(jobId: String): Ergebnis<ByteArray>? {
+        var downloadResult: Ergebnis<ByteArray>? = null
         var dlDelay = 2000L
         repeat(5) { attempt ->
-            if (downloadResult !is Result.Success) {
+            if (downloadResult !is Ergebnis.Success) {
                 if (attempt > 0) { delay(dlDelay); dlDelay = minOf(dlDelay * 2, 30_000L) }
                 downloadResult = sets.downloadPdf(jobId)
             }
@@ -107,8 +107,8 @@ class PdfExportManager @Inject constructor(
         fangeAusserAbbruch {
             // Step 1: Job starten
             val jobId = when (val r = sets.startPdfJob(body)) {
-                is Result.Success -> r.data
-                is Result.Error   -> { _state.value = PdfExportState.Error(r.message); return }
+                is Ergebnis.Success -> r.data
+                is Ergebnis.Error   -> { _state.value = PdfExportState.Error(r.message); return }
             }
 
             _state.value = PdfExportState.Running(s(R.string.pdfexp_loading_images))
@@ -145,14 +145,14 @@ class PdfExportManager @Inject constructor(
             // Step 3: PDF herunterladen
             _state.value = PdfExportState.Running(s(R.string.pdfexp_downloading))
             when (val r = ladePdf(jobId)) {
-                is Result.Success -> {
+                is Ergebnis.Success -> {
                     val file = teilelistentresor.lege(context.filesDir, context.getExternalFilesDir(null), r.data)
                     // Auch verschlüsselt bleibt das Inventar nur, solange jemand es öffnen will.
                     runCatching { TeilelistenAufraeumer.plane(context) }
                     _state.value = PdfExportState.Done(file)
                 }
-                is Result.Error -> _state.value = PdfExportState.Error(r.message)
-                // downloadResult ist als Result<ByteArray>? deklariert, damit die
+                is Ergebnis.Error -> _state.value = PdfExportState.Error(r.message)
+                // downloadResult ist als Ergebnis<ByteArray>? deklariert, damit die
                 // Wiederholschleife oben es überschreiben kann.
                 // Ausführlich: docs/begruendungen/core-data/service/PdfExportManager.kt.md#z146
                 null -> _state.value =
@@ -233,7 +233,7 @@ class PdfExportManager @Inject constructor(
         while (System.currentTimeMillis() < deadline) {
             delay(3000)
             when (val r = sets.getPdfJobStatus(jobId)) {
-                is Result.Success -> {
+                is Ergebnis.Success -> {
                     errors = 0
                     setEtaOnce(r.data.etaSeconds)
                     when (r.data.status) {
@@ -242,7 +242,7 @@ class PdfExportManager @Inject constructor(
                         "running" -> jobRunning = true  // Countdown-Anzeige übernimmt der Ticker.
                     }
                 }
-                is Result.Error -> { errors++; if (errors >= 10) return false }
+                is Ergebnis.Error -> { errors++; if (errors >= 10) return false }
             }
         }
         return false

@@ -4,7 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import ch.brickinventoryapp.data.CsvImportRepository
 import ch.brickinventoryapp.data.MeldungsKanal
-import ch.brickinventoryapp.data.repository.Result
+import ch.brickinventoryapp.data.repository.Ergebnis
 import ch.brickinventoryapp.ressourcen.R
 import ch.brickinventoryapp.service.CsvImportDienst
 import ch.brickinventoryapp.ui.Aenderung
@@ -66,8 +66,8 @@ class CsvImportViewModel @Inject constructor(
     fun cancelCsvImport() {
         viewModelScope.launch {
             when (val r = csvImport.abbrechen()) {
-                is Result.Success -> meldungen.zeige(texte.text(R.string.csv_cancel_requested))
-                is Result.Error -> meldungen.zeige(texte.meldungFuerSnackbar(r))
+                is Ergebnis.Success -> meldungen.zeige(texte.text(R.string.csv_cancel_requested))
+                is Ergebnis.Error -> meldungen.zeige(texte.meldungFuerSnackbar(r))
             }
         }
     }

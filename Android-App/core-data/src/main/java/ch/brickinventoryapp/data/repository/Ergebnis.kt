@@ -7,14 +7,14 @@ import ch.brickinventoryapp.data.model.*
  * ist und eine neue Variante an jeder Stelle bricht, die sie behandeln muss. Bitte
  * keinen `else`-Zweig nachrüsten: Er verschluckte künftige Fälle still.
  */
-sealed class Result<out T> {
+sealed class Ergebnis<out T> {
     /**
      * [stand] ist gesetzt, wenn die Daten aus der lokalen Ablage kommen
      * (Millisekunden seit 1970, Zeitpunkt der Ablage) — sonst sähe ein alter Stand aus
      * wie ein frischer. [gepuffert]: Die Änderung liegt im Ausgang und geht raus,
      * sobald der Server erreichbar ist; [data] ist dann ein Ersatz, keine Serverantwort.
      */
-    data class Success<T>(val data: T, val stand: Long? = null, val gepuffert: Boolean = false) : Result<T>() {
+    data class Success<T>(val data: T, val stand: Long? = null, val gepuffert: Boolean = false) : Ergebnis<T>() {
         val veraltet: Boolean get() = stand != null
     }
     // unauthorized = true bei HTTP 401: Der Token ist ungültig/abgelaufen. Von
@@ -46,7 +46,7 @@ sealed class Result<out T> {
          * Oberfläche.
          */
         val technisch: String? = null
-    ) : Result<Nothing>()
+    ) : Ergebnis<Nothing>()
 }
 
 /**

@@ -2,7 +2,7 @@ package ch.brickinventoryapp.ui
 
 import ch.brickinventoryapp.util.fangeAusserAbbruch
 import ch.brickinventoryapp.data.model.BestandTeil
-import ch.brickinventoryapp.data.repository.Result
+import ch.brickinventoryapp.data.repository.Ergebnis
 import ch.brickinventoryapp.data.repository.SetsRepository
 import ch.brickinventoryapp.data.repository.TeileRepository
 import ch.brickinventoryapp.ui.screens.comparePartNumbers
@@ -37,14 +37,14 @@ internal class Teileliste @Inject constructor(
             val figsResult  = sets.getSetMinifigsList(setNumber)
             // Der Name kommt aus dem Katalog (/sets/info), nicht aus dem eigenen
             // Bestand: In die Teileliste trägt man gerade Sets ein, die man nicht hat.
-            val setName = (sets.getSetInfo(setNumber) as? Result.Success)
+            val setName = (sets.getSetInfo(setNumber) as? Ergebnis.Success)
                 ?.data?.name?.takeIf { it.isNotBlank() } ?: setNumber
             // Zusammengefasst wird nach der Rebrickable-Nummer, weil der Bestand
             // (mitBestand) danach gefragt wird. Mehrere Rebrickable-Teile teilen sich
             // oft eine BrickLink-Nummer; nach ihr zusammengefasst galt ein vorhandenes
             // Teil als fehlend. Angezeigt wird weiterhin die BrickLink-Nummer.
             val deduped = mutableMapOf<String, PlPart>()
-            if (partsResult is Result.Success) {
+            if (partsResult is Ergebnis.Success) {
                 val serverBase = serverUrl.trimEnd('/')
                 for (p in partsResult.data.parts) {
                     val blNum = p.blPartNumber ?: p.partNumber
@@ -84,7 +84,7 @@ internal class Teileliste @Inject constructor(
                 }
             }
             // Figuren als Ganzes, nicht in ihre Teile zerlegt — wie in der Webapp.
-            if (figsResult is Result.Success) {
+            if (figsResult is Ergebnis.Success) {
                 for (f in figsResult.data.figs) {
                     val figQty = f.totalQuantity?.takeIf { it > 0 } ?: f.quantity
                     val key = "fig:${f.figNumber}"
@@ -130,7 +130,7 @@ internal class Teileliste @Inject constructor(
         // Das Blickfeld kommt aus dieser Ansicht, nicht aus dem Kontofilter des
         // Teile-Reiters. `null` heisst „alle Konten", "own" nur das eigene.
         val antwort = teileRepo.getOwnedParts(anfrage, if (mitUnterkonten) null else "own")
-        val bestand = (antwort as? Result.Success)?.data?.takeIf { it.success }?.bestand ?: return null
+        val bestand = (antwort as? Ergebnis.Success)?.data?.takeIf { it.success }?.bestand ?: return null
         return teile.map { p ->
             val eintrag = bestand["${p.partNumber}|${p.colorId}"]
             p.copy(vorhanden = if (eintrag == null) 0 else if (nurLose) eintrag.lose else eintrag.gesamt)

@@ -355,7 +355,7 @@ class QuelltextRatscheTest {
     fun `die oeffentliche Flaeche von core-data waechst nicht`() {
         // Was nur core-data selbst braucht, ist internal: Jede öffentliche Deklaration ist
         // Schnittstelle für alle Bereiche. Gezählt wird auf oberster Ebene.
-        val GRENZE = 236
+        val GRENZE = 233
         val dekl = Regex("""^(?:@[\w.:]+(?:\([^)\n]*\))?\s+)*((?:(?:public|internal|private|protected|data|sealed|abstract|open|enum|inline|value|annotation|const|suspend|operator|infix|tailrec|lateinit|fun interface)\s+)*)(?:fun\s+interface|class|interface|object|typealias|fun|val|var)\s""", RegexOption.MULTILINE)
         val dateien = java.io.File(Quellen.projekt, "core-data/src/main").walkTopDown().filter { it.isFile && it.extension == "kt" }.toList()
         assert(dateien.size > 100) { "Nur ${dateien.size} Dateien in core-data — greift die Suche noch?" }

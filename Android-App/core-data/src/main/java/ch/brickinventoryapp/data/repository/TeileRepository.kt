@@ -22,53 +22,53 @@ interface TeileRepository {
                          /** "1" nur in der Tabellenansicht — siehe TeileApi.getParts. */
                          withSets: String? = null,
                          /** Lagerort — eigener Parameter, nicht Teil der Suche. */
-                         storage: String? = null): Result<PartsResponse>
+                         storage: String? = null): Ergebnis<PartsResponse>
 
     fun beobachteTeile(): Flow<Lokal<Part>>
 
     fun beobachteManuelleTeile(): Flow<Lokal<PartValuationItem>>
 
-    suspend fun getPartsStats(accounts: String? = null): Result<PartsStatsResponse>
+    suspend fun getPartsStats(accounts: String? = null): Ergebnis<PartsStatsResponse>
 
-    suspend fun getPartsFilterColors(accounts: String? = null): Result<PartsFilterColorsResponse>
+    suspend fun getPartsFilterColors(accounts: String? = null): Ergebnis<PartsFilterColorsResponse>
 
-    suspend fun getPartsCategories(accounts: String? = null): Result<PartsCategoriesResponse>
+    suspend fun getPartsCategories(accounts: String? = null): Ergebnis<PartsCategoriesResponse>
 
     suspend fun getManualParts(accounts: String? = null, search: String? = null,
-                               storage: String? = null): Result<ManualPartsResponse>
+                               storage: String? = null): Ergebnis<ManualPartsResponse>
 
     suspend fun getOwnedParts(teile: List<BestandTeil>,
-                              accounts: String? = null): Result<BestandResponse>
+                              accounts: String? = null): Ergebnis<BestandResponse>
 
-    suspend fun setPartStorage(partNumber: String, colorId: Int, ort: String): Result<LagerortResponse>
+    suspend fun setPartStorage(partNumber: String, colorId: Int, ort: String): Ergebnis<LagerortResponse>
 
-    suspend fun getLagerorte(accounts: String? = null): Result<LagerorteResponse>
+    suspend fun getLagerorte(accounts: String? = null): Ergebnis<LagerorteResponse>
 
-    suspend fun getLagerortVorrat(owner: String? = null): Result<LagerortVorratResponse>
+    suspend fun getLagerortVorrat(owner: String? = null): Ergebnis<LagerortVorratResponse>
 
-    suspend fun legeLagerortAn(name: String): Result<LagerortEintragResponse>
+    suspend fun legeLagerortAn(name: String): Ergebnis<LagerortEintragResponse>
 
-    suspend fun benenneLagerortUm(id: Int, name: String): Result<LagerortEintragResponse>
+    suspend fun benenneLagerortUm(id: Int, name: String): Ergebnis<LagerortEintragResponse>
 
-    suspend fun loescheLagerort(id: Int): Result<LagerortResponse>
+    suspend fun loescheLagerort(id: Int): Ergebnis<LagerortResponse>
 
-    suspend fun setzeLagerortVorgabe(id: Int?): Result<LagerortVorgabeResponse>
+    suspend fun setzeLagerortVorgabe(id: Int?): Ergebnis<LagerortVorgabeResponse>
 
     suspend fun getSetsMitTeil(partNumber: String, colorId: Int,
-                               accounts: String? = null): Result<VerwendendeSetsResponse>
+                               accounts: String? = null): Ergebnis<VerwendendeSetsResponse>
 
-    suspend fun getBrickColors(): Result<BrickColorsResponse>
+    suspend fun getBrickColors(): Ergebnis<BrickColorsResponse>
 
     suspend fun addPart(partNumber: String, colorId: Int = KEINE_FARBE, colorName: String? = null, colorHex: String? = null,
                          quantity: Int = 1, unitPrice: Double? = null,
                          condition: String? = null, ownerUserId: Int? = null,
-                         storage: String? = null): Result<AddPartResponse>
+                         storage: String? = null): Ergebnis<AddPartResponse>
 
-    suspend fun updatePart(partNumber: String, colorId: Int, quantity: Int, unitPrice: Double?, condition: String? = null, owner: Int? = null): Result<GenericResponse>
+    suspend fun updatePart(partNumber: String, colorId: Int, quantity: Int, unitPrice: Double?, condition: String? = null, owner: Int? = null): Ergebnis<GenericResponse>
 
-    suspend fun deletePart(partNumber: String, colorId: Int, owner: Int? = null): Result<GenericResponse>
+    suspend fun deletePart(partNumber: String, colorId: Int, owner: Int? = null): Ergebnis<GenericResponse>
 
     suspend fun setPartColor(partNumber: String, colorId: Int, neueFarbe: Int,
                              farbName: String? = null, farbHex: String? = null,
-                             owner: Int? = null): Result<TeilFarbeResponse>
+                             owner: Int? = null): Ergebnis<TeilFarbeResponse>
 }

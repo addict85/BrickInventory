@@ -1,0 +1,17 @@
+Gegenprobe: Ein Bereich hält einen eigenen AppUiState
+Modul: app
+Test: ch.brickinventoryapp.StateDomainBoundaryTest
+Rot: nur die Sitzung haelt den gemeinsamen Zustand
+
+diff --git a/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/ui/viewmodel/GalerieViewModel.kt b/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/ui/viewmodel/GalerieViewModel.kt
+index aecc523..6a5a172 100644
+--- a/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/ui/viewmodel/GalerieViewModel.kt
++++ b/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/ui/viewmodel/GalerieViewModel.kt
+@@ -47,6 +47,7 @@ class GalerieViewModel @Inject constructor(
+ ) : ViewModel(), Filterwahl by filter {
+ 
+     val state: StateFlow<AppUiState> = sitzung.state
++    private val eigener = kotlinx.coroutines.flow.MutableStateFlow(AppUiState())
+ 
+     init {
+         folgeAbmeldung(sitzung) { zuruecksetzen() }

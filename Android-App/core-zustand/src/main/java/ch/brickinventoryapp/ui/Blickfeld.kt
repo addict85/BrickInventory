@@ -3,7 +3,7 @@ package ch.brickinventoryapp.ui
 import ch.brickinventoryapp.data.ScopeFilter
 import ch.brickinventoryapp.data.ScopeFilterSpeicher
 import ch.brickinventoryapp.data.repository.HaushaltRepository
-import ch.brickinventoryapp.data.repository.Result
+import ch.brickinventoryapp.data.repository.Ergebnis
 import ch.brickinventoryapp.data.repository.TeileRepository
 import ch.brickinventoryapp.ui.model.alsAnsicht
 import ch.brickinventoryapp.ui.model.kontoOptionen
@@ -107,7 +107,7 @@ class BlickfeldDienst @Inject constructor(
      * ohne dass ein sichtbarer Filter es erklärt.
      */
     override suspend fun ladeMitglieder() {
-        val r = haushalt.getHouseholdMembers() as? Result.Success ?: return
+        val r = haushalt.getHouseholdMembers() as? Ergebnis.Success ?: return
         val mitglieder = r.data.members.map { it.alsAnsicht() }
         val erlaubt = kontoOptionen(mitglieder, "", "").map { it.first }
         _konten.update { st ->
@@ -123,21 +123,21 @@ class BlickfeldDienst @Inject constructor(
     /** Die belegten Orte im Blickfeld der Galerie — sie speisen den Lagerfilter. */
     override suspend fun ladeLagerorte() {
         val r = teile.getLagerorte(kontoFuer(ScopeFilter.View.GALLERY))
-        val orte = (r as? Result.Success)?.data?.takeIf { it.success }?.orte ?: return
+        val orte = (r as? Ergebnis.Success)?.data?.takeIf { it.success }?.orte ?: return
         _lager.update { it.copy(orte = orte.map { o -> o.alsAnsicht() }) }
     }
 
     /** Der Vorrat der Besitzer eines Sets — Vorschläge im Lagerortfeld. */
     override suspend fun ladeVorrat(besitzer: List<Int>) {
         val r = teile.getLagerortVorrat(besitzer.takeIf { it.isNotEmpty() }?.joinToString(","))
-        val orte = (r as? Result.Success)?.data?.takeIf { it.success }?.orte ?: return
+        val orte = (r as? Ergebnis.Success)?.data?.takeIf { it.success }?.orte ?: return
         _lager.update { it.copy(vorrat = orte.map { o -> o.alsAnsicht() }) }
     }
 
     /** Die eigenen Orte samt Vorgabe — für Erfassen und Verwaltung. */
     override suspend fun ladeEigeneLagerorte() {
         val r = teile.getLagerortVorrat(null)
-        val antwort = (r as? Result.Success)?.data?.takeIf { it.success } ?: return
+        val antwort = (r as? Ergebnis.Success)?.data?.takeIf { it.success } ?: return
         _lager.update { it.copy(eigene = antwort.orte.map { o -> o.alsAnsicht() }, vorgabe = antwort.vorgabe?.alsAnsicht()) }
     }
 

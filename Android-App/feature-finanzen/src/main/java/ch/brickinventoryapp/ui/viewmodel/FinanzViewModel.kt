@@ -5,7 +5,7 @@ import ch.brickinventoryapp.ui.model.alsAnsicht
 import androidx.lifecycle.viewModelScope
 import ch.brickinventoryapp.data.ScopeFilter
 import ch.brickinventoryapp.data.repository.FinanzenRepository
-import ch.brickinventoryapp.data.repository.Result
+import ch.brickinventoryapp.data.repository.Ergebnis
 import ch.brickinventoryapp.ui.Aenderung
 import ch.brickinventoryapp.ui.FinanceUiState
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -73,23 +73,23 @@ class FinanzViewModel @Inject constructor(
             _financeState.update { it.copy(valuationLoading = true, valuationFehler = null) }
             val konto = filter.kontoFuer(ScopeFilter.View.FINANCE)
             when (val r = finanzen.getValuation(konto)) {
-                is Result.Success -> {
+                is Ergebnis.Success -> {
                     _financeState.update { it.copy(valuation = r.data.alsAnsicht(), valuationLoading = false) }
                     // Die Währung des Kontos kommt mit der Bewertung; das
                     // AppViewModel merkt sie sich für den nächsten Start.
                     sitzung.waehrungUebernommen(r.data.currency)
                 }
-                is Result.Error -> {
+                is Ergebnis.Error -> {
                     _financeState.update { it.copy(valuationLoading = false, valuationFehler = meldungen.meldung(r),
                         valuationFehlerKlasse = fehlerklasse(r)) }
                     meldungen.zeige(meldungen.meldungFuerSnackbar(r))
                 }
             }
-            (finanzen.getPartsValuation(konto) as? Result.Success)
+            (finanzen.getPartsValuation(konto) as? Ergebnis.Success)
                 ?.let { r -> _financeState.update { it.copy(partsValuation = r.data.alsAnsicht()) } }
-            (finanzen.getMinifigsValuation(konto) as? Result.Success)
+            (finanzen.getMinifigsValuation(konto) as? Ergebnis.Success)
                 ?.let { r -> _financeState.update { it.copy(figsValuation = r.data.alsAnsicht()) } }
-            (finanzen.getPnl(konto) as? Result.Success)
+            (finanzen.getPnl(konto) as? Ergebnis.Success)
                 ?.let { r -> _financeState.update { it.copy(pnl = r.data.alsAnsicht()) } }
         }
     }
@@ -104,14 +104,14 @@ class FinanzViewModel @Inject constructor(
                 historyPoints = emptyList(), historyYAxis = emptyList(), historyTage = emptyList(),
                 historyPeriodChangePct = null) }
             when (val r = finanzen.getPortfolioHistory(period, filter.kontoFuer(ScopeFilter.View.FINANCE))) {
-                is Result.Success -> _financeState.update { it.copy(
+                is Ergebnis.Success -> _financeState.update { it.copy(
                     historyLoading         = false,
                     historyPeriodChangePct = r.data.periodChangePct,
                     historyPoints          = r.data.points.map { it.alsAnsicht() },
                     historyYAxis           = r.data.yAxis.map { it.alsAnsicht() },
                     historyTage            = r.data.chart?.x.orEmpty(),
                     historyWaehrung        = r.data.currency) }
-                is Result.Error -> _financeState.update { it.copy(historyLoading = false) }
+                is Ergebnis.Error -> _financeState.update { it.copy(historyLoading = false) }
             }
         }
     }

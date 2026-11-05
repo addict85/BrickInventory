@@ -44,7 +44,7 @@ interface AnleitungsRepository {
  * Über den api-Client (Token, Klartext-Verbot, 401-Meldung), mit WLAN-Sperre:
  * Wird der Bildschirm schwarz, legte Android das WLAN sonst schlafen.
  */
-class AnleitungsDownload @Inject constructor(
+internal class AnleitungsDownload @Inject constructor(
     @param:ApplicationContext private val ctx: Context,
     @param:ApiClient private val httpClient: OkHttpClient,
     private val anleitungen: AnleitungsAblage,

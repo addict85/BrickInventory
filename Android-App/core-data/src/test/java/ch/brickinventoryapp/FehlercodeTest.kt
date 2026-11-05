@@ -7,7 +7,7 @@ import ch.brickinventoryapp.data.cache.ResponseCache
 import ch.brickinventoryapp.data.repository.KontoRepository
 import ch.brickinventoryapp.data.repository.Fehlerart
 import ch.brickinventoryapp.data.repository.GutscheineRepository
-import ch.brickinventoryapp.data.repository.Result
+import ch.brickinventoryapp.data.repository.Ergebnis
 import kotlinx.coroutines.test.runTest
 import okhttp3.mockwebserver.MockResponse
 import okhttp3.mockwebserver.MockWebServer
@@ -20,7 +20,7 @@ import org.junit.Test
 import java.io.File
 
 /**
- * Der Fehlercode des Servers (`code` im Rumpf) kommt in `Result.Error.code` an
+ * Der Fehlercode des Servers (`code` im Rumpf) kommt in `Ergebnis.Error.code` an
  * und entscheidet dort, wo nach dem Fall verzweigt wird.
  *
  * Gegenproben (28.10.2026, gemessen mit kotlinc gegen die Datenschicht):
@@ -59,9 +59,9 @@ class FehlercodeTest {
     private fun admin() = KontoRepository(TestApi.fuer(server), ResponseCache { cacheDir })
     private fun gutscheine() = GutscheineRepository(TestApi.fuer(server), ResponseCache { cacheDir })
 
-    private fun fehler(r: Result<*>): Result.Error {
-        assert(r is Result.Error) { "Erwartet wurde ein Fehler, kam: $r" }
-        return r as Result.Error
+    private fun fehler(r: Ergebnis<*>): Ergebnis.Error {
+        assert(r is Ergebnis.Error) { "Erwartet wurde ein Fehler, kam: $r" }
+        return r as Ergebnis.Error
     }
 
     @Test
@@ -91,11 +91,11 @@ class FehlercodeTest {
         server.enqueue(TestApi.antwort(
             """{"success":false,"code":"guthaben_abstand","error":"Bitte warten","grund":"abstand","wartenSek":30}""", 429))
         when (val r = gutscheine().guthaben(1)) {
-            is Result.Success -> {
+            is Ergebnis.Success -> {
                 assertEquals("abstand", r.data.grund)
                 assertEquals(30, r.data.wartenSek)
             }
-            is Result.Error -> throw AssertionError("Die Wartezeit ging verloren: $r")
+            is Ergebnis.Error -> throw AssertionError("Die Wartezeit ging verloren: $r")
         }
     }
 

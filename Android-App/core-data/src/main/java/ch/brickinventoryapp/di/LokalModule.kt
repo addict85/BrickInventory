@@ -76,7 +76,7 @@ import ch.brickinventoryapp.util.ZertifikatsRueckfrage
  */
 @Module
 @InstallIn(SingletonComponent::class)
-abstract class LokalModule {
+internal abstract class LokalModule {
     @Binds abstract fun bestand(r: RoomBestand): LokalerBestand
     @Binds abstract fun ausgang(r: RoomAusgang): Ausgang
     @Binds abstract fun planer(p: WorkManagerPlaner): AusgangPlaner

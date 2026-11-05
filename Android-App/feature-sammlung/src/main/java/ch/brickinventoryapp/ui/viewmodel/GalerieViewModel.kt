@@ -7,7 +7,7 @@ import ch.brickinventoryapp.ressourcen.R
 import ch.brickinventoryapp.data.ScopeFilter
 import ch.brickinventoryapp.data.repository.FinanzenRepository
 import ch.brickinventoryapp.data.repository.GALLERY_DEFAULT_SORT
-import ch.brickinventoryapp.data.repository.Result
+import ch.brickinventoryapp.data.repository.Ergebnis
 import ch.brickinventoryapp.data.repository.SetsRepository
 import ch.brickinventoryapp.ui.Aenderung
 import ch.brickinventoryapp.ui.Galerie
@@ -127,7 +127,7 @@ class GalerieViewModel @Inject constructor(
     private fun ladePreise() {
         viewModelScope.launch {
             val r = finanzen.getPnl(filter.kontoFuer(ScopeFilter.View.GALLERY))
-            if (r is Result.Success) _preise.value = kachelPreise(r.data.sets)
+            if (r is Ergebnis.Success) _preise.value = kachelPreise(r.data.sets)
         }
     }
 
@@ -244,6 +244,6 @@ class GalerieViewModel @Inject constructor(
  */
 internal suspend fun setLoeschen(sets: SetsRepository, texte: Texte, setNumber: String): Pair<Boolean, String?> =
     when (val r = sets.deleteSet(setNumber)) {
-        is Result.Success -> true to texte.text(R.string.vm_set_deleted, setNumber)
-        is Result.Error -> false to texte.meldungFuerSnackbar(r)
+        is Ergebnis.Success -> true to texte.text(R.string.vm_set_deleted, setNumber)
+        is Ergebnis.Error -> false to texte.meldungFuerSnackbar(r)
     }

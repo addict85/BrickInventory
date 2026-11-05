@@ -26,7 +26,7 @@ import javax.inject.Singleton
  * Ausführlich: docs/begruendungen/core-data/data/SetAnlegenSseClient.kt.md#constructor
  */
 @Singleton
-class SetAnlegenSseClient @Inject constructor(
+internal class SetAnlegenSseClient @Inject constructor(
     @SseClient private val client: OkHttpClient,
     private val prefs: Zugangsdaten,
     @param:Dispatcher(BrickDispatchers.IO) private val io: CoroutineDispatcher,

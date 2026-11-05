@@ -8,23 +8,23 @@ import ch.brickinventoryapp.data.model.*
  * Retrofit und Ablage hängen (FinanzenRepositoryImpl).
  */
 interface FinanzenRepository {
-    suspend fun getSetPrice(setNumber: String): Result<SetPriceResponse>
+    suspend fun getSetPrice(setNumber: String): Ergebnis<SetPriceResponse>
 
-    suspend fun getSetPriceHistory(setNumber: String): Result<PriceHistoryResponse>
+    suspend fun getSetPriceHistory(setNumber: String): Ergebnis<PriceHistoryResponse>
 
-    suspend fun getPartPriceHistory(partNumber: String, colorId: Int): Result<PriceHistoryResponse>
+    suspend fun getPartPriceHistory(partNumber: String, colorId: Int): Ergebnis<PriceHistoryResponse>
 
-    suspend fun getFigPriceHistory(figNumber: String): Result<PriceHistoryResponse>
+    suspend fun getFigPriceHistory(figNumber: String): Ergebnis<PriceHistoryResponse>
 
-    suspend fun getPartsValuation(accounts: String? = null): Result<PartsValuationResponse>
+    suspend fun getPartsValuation(accounts: String? = null): Ergebnis<PartsValuationResponse>
 
-    suspend fun getMinifigsValuation(accounts: String? = null): Result<FigsValuationResponse>
+    suspend fun getMinifigsValuation(accounts: String? = null): Ergebnis<FigsValuationResponse>
 
-    suspend fun getValuation(accounts: String? = null): Result<ValuationResponse>
+    suspend fun getValuation(accounts: String? = null): Ergebnis<ValuationResponse>
 
-    suspend fun getPnl(accounts: String? = null): Result<PnlResponse>
+    suspend fun getPnl(accounts: String? = null): Ergebnis<PnlResponse>
 
-    suspend fun getPortfolioHistory(period: String = "week", accounts: String? = null): Result<PortfolioHistoryResponse>
+    suspend fun getPortfolioHistory(period: String = "week", accounts: String? = null): Ergebnis<PortfolioHistoryResponse>
 
-    suspend fun getStats(accounts: String? = null): Result<StatsResponse>
+    suspend fun getStats(accounts: String? = null): Ergebnis<StatsResponse>
 }

@@ -1,6 +1,6 @@
 package ch.brickinventoryapp
 
-import ch.brickinventoryapp.data.repository.Result
+import ch.brickinventoryapp.data.repository.Ergebnis
 import ch.brickinventoryapp.data.repository.VerwaltungRepository
 import ch.brickinventoryapp.ui.model.alsAnsicht
 import kotlinx.coroutines.runBlocking
@@ -48,8 +48,8 @@ class ServerStartTest {
         // Der Server meldet Schritte samt Anteil des laufenden (2.37 von 8).
         pfade.antworten["/api/v1/startup-status"] = """{"ready":false,"step":"Teile","progress":2.37,"total":8}"""
         val r = runBlocking { admin.getStartupStatus() }
-        assert(r is Result.Success) { "Startzustand nicht gelesen: $r" }
-        assertEquals(2.37f / 8, (r as Result.Success).data.alsAnsicht().anteil!!, 0.0001f)
+        assert(r is Ergebnis.Success) { "Startzustand nicht gelesen: $r" }
+        assertEquals(2.37f / 8, (r as Ergebnis.Success).data.alsAnsicht().anteil!!, 0.0001f)
     }
 
     @Test

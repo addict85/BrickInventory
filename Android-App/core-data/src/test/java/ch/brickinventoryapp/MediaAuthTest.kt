@@ -169,7 +169,7 @@ class MediaAuthTest {
         for (f in Quellen.wurzel.walkTopDown()
                 .filter { it.extension == "kt" }) {
             val src = f.readText()
-            var idx = src.indexOf("is Result.Success")
+            var idx = src.indexOf("is Ergebnis.Success")
             while (idx >= 0) {
                 val block = src.substring(idx, minOf(idx + 2000, src.length))
                 val end = block.indexOf("\n            }")
@@ -188,7 +188,7 @@ class MediaAuthTest {
                     "${f.name}: else-Zweig in einem when über Result — " +
                     "stattdessen einen expliziten null-Zweig ergänzen"
                 }
-                idx = src.indexOf("is Result.Success", idx + 1)
+                idx = src.indexOf("is Ergebnis.Success", idx + 1)
             }
         }
     }

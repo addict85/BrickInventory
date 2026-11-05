@@ -31,7 +31,7 @@ import java.io.File
 import java.util.Collections
 import java.util.concurrent.TimeUnit
 import ch.brickinventoryapp.data.api.ApiJson
-import ch.brickinventoryapp.data.repository.Result
+import ch.brickinventoryapp.data.repository.Ergebnis
 import ch.brickinventoryapp.di.PLATZHALTER_BASIS
 
 /**
@@ -230,7 +230,7 @@ class TokenRotationTest {
             gespeichert = ""
             umgezogen = neuer.url("/").toString().trimEnd('/')
             val r = kotlinx.coroutines.runBlocking { konto.tokenRotieren("alt") }
-            assertTrue(r is Result.Error)
+            assertTrue(r is Ergebnis.Error)
             assertEquals(listOf<String?>(null), dort.toList())
         } finally {
             neuer.shutdown()

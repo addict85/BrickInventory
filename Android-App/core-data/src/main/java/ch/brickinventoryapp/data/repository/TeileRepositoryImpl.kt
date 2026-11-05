@@ -32,7 +32,7 @@ class TeileRepositoryImpl @Inject constructor(
                          /** "1" nur in der Tabellenansicht — siehe TeileApi.getParts. */
                          withSets: String?,
                          /** Lagerort — eigener Parameter, nicht Teil der Suche. */
-                         storage: String?): Result<PartsResponse> =
+                         storage: String?): Ergebnis<PartsResponse> =
         // Manuell erfasste Teile haben ihren eigenen Bereich — die Set-Teileliste
         // schliesst sie aus (wie in der Webapp). Gecacht wird nur die ungefilterte erste
         // Seite: Sie wird nach einem Neustart gebraucht, ein Suchergebnis im Cache belegte
@@ -53,7 +53,7 @@ class TeileRepositoryImpl @Inject constructor(
     override fun beobachteTeile(): Flow<Lokal<Part>> = ablage.beobachte(Faecher.TEILE)
     override fun beobachteManuelleTeile(): Flow<Lokal<PartValuationItem>> = ablage.beobachte(Faecher.MANUELLE_TEILE)
 
-    override suspend fun getPartsStats(accounts: String?): Result<PartsStatsResponse> =
+    override suspend fun getPartsStats(accounts: String?): Ergebnis<PartsStatsResponse> =
         safeCall { api.getPartsStats(accounts) }
 
     /**
@@ -61,10 +61,10 @@ class TeileRepositoryImpl @Inject constructor(
      * Zwischenspeicher: Beide tragen Zählwerte, die sich mit jedem erfassten Teil
      * ändern; ein Cache zeigte Zahlen, die nicht zur Liste passen.
      */
-    override suspend fun getPartsFilterColors(accounts: String?): Result<PartsFilterColorsResponse> =
+    override suspend fun getPartsFilterColors(accounts: String?): Ergebnis<PartsFilterColorsResponse> =
         safeCall { api.getPartsFilterColors(accounts) }
 
-    override suspend fun getPartsCategories(accounts: String?): Result<PartsCategoriesResponse> =
+    override suspend fun getPartsCategories(accounts: String?): Ergebnis<PartsCategoriesResponse> =
         safeCall { api.getPartsCategories(accounts) }
 
     /**
@@ -72,7 +72,7 @@ class TeileRepositoryImpl @Inject constructor(
      * es für dieselbe Liste nur eine Quelle gibt; siehe ManualPartsResponse.
      */
     override suspend fun getManualParts(accounts: String?, search: String?,
-                               storage: String?): Result<ManualPartsResponse> =
+                               storage: String?): Ergebnis<ManualPartsResponse> =
         if (accounts == null && search.isNullOrBlank() && storage.isNullOrBlank())
             abgeglichen(Faecher.MANUELLE_TEILE, { it.parts }, { ManualPartsResponse(success = true, parts = it) }) {
                 safeCall { api.getManualParts(accounts, search, storage) }
@@ -86,12 +86,12 @@ class TeileRepositoryImpl @Inject constructor(
      * ungültig macht, wenn ein Teil dazukommt.
      */
     override suspend fun getOwnedParts(teile: List<BestandTeil>,
-                              accounts: String?): Result<BestandResponse> =
+                              accounts: String?): Ergebnis<BestandResponse> =
         safeCall { api.getOwnedParts(BestandRequest(teile), accounts) }
 
     /** Lagerort eines Teils setzen. Leerer Text loescht ihn. */
     override suspend fun setPartStorage(partNumber: String, colorId: Int, ort: String):
-        Result<LagerortResponse> =
+        Ergebnis<LagerortResponse> =
         safeCall { api.setPartStorage(partNumber, colorId, LagerortRequest(ort)) }
 
     /**
@@ -99,7 +99,7 @@ class TeileRepositoryImpl @Inject constructor(
      * ändert sich bei jedem Eintragen — ein Speicher liesse den gerade angelegten Ort
      * im Vorschlag fehlen.
      */
-    override suspend fun getLagerorte(accounts: String?): Result<LagerorteResponse> =
+    override suspend fun getLagerorte(accounts: String?): Ergebnis<LagerorteResponse> =
         safeCall { api.getLagerorte(accounts) }
 
     // ── Der Vorrat an Lagerorten ──
@@ -110,20 +110,20 @@ class TeileRepositoryImpl @Inject constructor(
     // jemand hier etwas einträgt.
 
     /** @param owner Komma-Liste von Konto-IDs; leer = das eigene Konto. */
-    override suspend fun getLagerortVorrat(owner: String?): Result<LagerortVorratResponse> =
+    override suspend fun getLagerortVorrat(owner: String?): Ergebnis<LagerortVorratResponse> =
         safeCall { api.getLagerortVorrat(owner) }
 
-    override suspend fun legeLagerortAn(name: String): Result<LagerortEintragResponse> =
+    override suspend fun legeLagerortAn(name: String): Ergebnis<LagerortEintragResponse> =
         safeCall { api.legeLagerortAn(LagerortNameRequest(name)) }
 
-    override suspend fun benenneLagerortUm(id: Int, name: String): Result<LagerortEintragResponse> =
+    override suspend fun benenneLagerortUm(id: Int, name: String): Ergebnis<LagerortEintragResponse> =
         safeCall { api.benenneLagerortUm(id, LagerortNameRequest(name)) }
 
-    override suspend fun loescheLagerort(id: Int): Result<LagerortResponse> =
+    override suspend fun loescheLagerort(id: Int): Ergebnis<LagerortResponse> =
         safeCall { api.loescheLagerort(id) }
 
     /** Der vorausgewählte Lagerort (Stern) — `null` schaltet die Vorgabe ab. */
-    override suspend fun setzeLagerortVorgabe(id: Int?): Result<LagerortVorgabeResponse> =
+    override suspend fun setzeLagerortVorgabe(id: Int?): Ergebnis<LagerortVorgabeResponse> =
         safeCall { api.setzeLagerortVorgabe(LagerortVorgabeRequest(id)) }
 
     // ── In welchen Sets steckt dieses Teil / diese Figur? ──
@@ -132,17 +132,17 @@ class TeileRepositoryImpl @Inject constructor(
     // Teil und wird auf Tastendruck geholt — ein Eintrag je Teil-Farb-Paar würde nie
     // ungültig, wenn ein Set dazukommt oder verschwindet.
     override suspend fun getSetsMitTeil(partNumber: String, colorId: Int,
-                               accounts: String?): Result<VerwendendeSetsResponse> =
+                               accounts: String?): Ergebnis<VerwendendeSetsResponse> =
         safeCall { api.getSetsMitTeil(partNumber, colorId, accounts) }
 
-    override suspend fun getBrickColors(): Result<BrickColorsResponse> =
+    override suspend fun getBrickColors(): Ergebnis<BrickColorsResponse> =
         safeCall { api.getBrickColors() }
 
     /** Ohne Farbe KEINE_FARBE, nie 0 (Schwarz); Name und Code gehören dann nicht dazu. */
     override suspend fun addPart(partNumber: String, colorId: Int, colorName: String?, colorHex: String?,
                          quantity: Int, unitPrice: Double?,
                          condition: String?, ownerUserId: Int?,
-                         storage: String?): Result<AddPartResponse> {
+                         storage: String?): Ergebnis<AddPartResponse> {
         val ohne = colorId == KEINE_FARBE
         val anfrage = AddPartRequest(partNumber, colorId, colorName.takeUnless { ohne },
             colorHex.takeUnless { ohne }, quantity, unitPrice, condition, ownerUserId, storage)
@@ -158,7 +158,7 @@ class TeileRepositoryImpl @Inject constructor(
      *
      * @param owner Besitzer der Karte; null = eigenes Konto.
      */
-    override suspend fun updatePart(partNumber: String, colorId: Int, quantity: Int, unitPrice: Double?, condition: String?, owner: Int?): Result<GenericResponse> {
+    override suspend fun updatePart(partNumber: String, colorId: Int, quantity: Int, unitPrice: Double?, condition: String?, owner: Int?): Ergebnis<GenericResponse> {
         val bisher = ablage.lies(Faecher.MANUELLE_TEILE)?.liste
             ?.firstOrNull { it.partNumber == partNumber && it.colorId == colorId && (owner == null || it.userId == owner) }?.quantity
         val anfrage = UpdateManualItemRequest(quantity, unitPrice, condition = condition, quantityDelta = bisher?.let { quantity - it })
@@ -168,7 +168,7 @@ class TeileRepositoryImpl @Inject constructor(
     }
 
     /** Auch offline: Das Teil verschwindet sofort aus der Liste, der Server erfährt es später. */
-    override suspend fun deletePart(partNumber: String, colorId: Int, owner: Int?): Result<GenericResponse> =
+    override suspend fun deletePart(partNumber: String, colorId: Int, owner: Int?): Ergebnis<GenericResponse> =
         schreibe(Bearbeitung.TeilLoeschen(partNumber, colorId, owner), { GenericResponse(success = true) }) { schluessel ->
             safeCall { api.deletePart(partNumber, colorId, owner, schluessel) }
         }
@@ -182,7 +182,7 @@ class TeileRepositoryImpl @Inject constructor(
      */
     override suspend fun setPartColor(partNumber: String, colorId: Int, neueFarbe: Int,
                              farbName: String?, farbHex: String?,
-                             owner: Int?): Result<TeilFarbeResponse> =
+                             owner: Int?): Ergebnis<TeilFarbeResponse> =
         safeCall { api.setPartColor(partNumber, colorId, TeilFarbeRequest(neueFarbe,
             farbName.takeUnless { neueFarbe == KEINE_FARBE }, farbHex.takeUnless { neueFarbe == KEINE_FARBE }), owner) }
 }

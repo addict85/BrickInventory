@@ -4,12 +4,12 @@ Test: ch.brickinventoryapp.KeinTokenImZustandTest
 Rot: kein Feld von AppUiState traegt einen Token
 
 diff --git a/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/ui/ZustandSitzung.kt b/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/ui/ZustandSitzung.kt
-index 59b261a..42c68b4 100644
+index 40ae966..c98b084 100644
 --- a/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/ui/ZustandSitzung.kt
 +++ b/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/ui/ZustandSitzung.kt
-@@ -20,6 +20,7 @@ data class AppUiState(
+@@ -24,6 +24,7 @@ data class AppUiState(
      val isAdmin: Boolean = false,
-     // Kein Token hier: Ihn liest allein der Interceptor (PreferencesManager); im
+     // Kein Token hier: Ihn liest allein der Interceptor (TokenAblage); im
      // Zustand stünde er für jede Oberfläche offen, als zweite Wahrheit.
 +    val authToken: String = "",
      val currency: String = "EUR",

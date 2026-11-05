@@ -4,7 +4,7 @@ import ch.brickinventoryapp.data.cache.ResponseCache
 import ch.brickinventoryapp.data.model.CatalogMetaResponse
 import ch.brickinventoryapp.data.repository.KatalogRepository
 import ch.brickinventoryapp.data.repository.Fehlerart
-import ch.brickinventoryapp.data.repository.Result
+import ch.brickinventoryapp.data.repository.Ergebnis
 import kotlinx.coroutines.test.runTest
 import okhttp3.mockwebserver.MockResponse
 import okhttp3.mockwebserver.MockWebServer
@@ -55,9 +55,9 @@ class RepoCacheRueckfallTest {
         cacheDir.deleteRecursively()
     }
 
-    private fun erfolg(r: Result<*>): Result.Success<*> {
-        assert(r is Result.Success) { "Erwartet wurde ein Erfolg, kam aber: $r" }
-        return r as Result.Success<*>
+    private fun erfolg(r: Ergebnis<*>): Ergebnis.Success<*> {
+        assert(r is Ergebnis.Success) { "Erwartet wurde ein Erfolg, kam aber: $r" }
+        return r as Ergebnis.Success<*>
     }
 
     private suspend fun cacheFuellen(jahr: Int = 1999) {
@@ -88,7 +88,7 @@ class RepoCacheRueckfallTest {
         cacheFuellen()
         server.enqueue(MockResponse().setResponseCode(500))
         val r = repo.getCatalogMeta()
-        assert(r is Result.Error && r.httpCode == 500 && r.art == Fehlerart.SERVER) {
+        assert(r is Ergebnis.Error && r.httpCode == 500 && r.art == Fehlerart.SERVER) {
             "Ein 500 ist eine Auskunft des Servers, kein Netzausfall — er muss " +
                 "durchkommen. Bekommen: $r"
         }
@@ -99,7 +99,7 @@ class RepoCacheRueckfallTest {
         cacheFuellen()
         server.enqueue(TestApi.antwort("""{"success":false,"error":"Nicht gefunden"}""", 404))
         val r = repo.getCatalogMeta()
-        assert(r is Result.Error && r.message == "Nicht gefunden") { "Bekommen: $r" }
+        assert(r is Ergebnis.Error && r.message == "Nicht gefunden") { "Bekommen: $r" }
     }
 
     @Test
@@ -107,7 +107,7 @@ class RepoCacheRueckfallTest {
         cacheFuellen()
         server.enqueue(MockResponse().setResponseCode(401))
         val r = repo.getCatalogMeta()
-        assert(r is Result.Error && r.unauthorized) {
+        assert(r is Ergebnis.Error && r.unauthorized) {
             "Bei 401 darf der Cache NICHT einspringen, sonst läuft die Abmeldung ins Leere: $r"
         }
     }
@@ -126,7 +126,7 @@ class RepoCacheRueckfallTest {
     fun `ohne gespeicherte Daten bleibt ein Netzfehler ein Fehler`() = runTest {
         server.shutdown()
         val r = repo.getCatalogMeta()
-        assert(r is Result.Error && r.transient) {
+        assert(r is Ergebnis.Error && r.transient) {
             "Ohne Cache-Eintrag gibt es nichts zurückzufallen. Bekommen: $r"
         }
     }

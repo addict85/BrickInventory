@@ -12,7 +12,7 @@ import ch.brickinventoryapp.data.lokal.SpeicherBestand
 import ch.brickinventoryapp.data.lokal.einordnen
 import ch.brickinventoryapp.data.lokal.einordnenLoeschen
 import ch.brickinventoryapp.data.repository.Fehlerart
-import ch.brickinventoryapp.data.repository.Result
+import ch.brickinventoryapp.data.repository.Ergebnis
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.toList
@@ -131,22 +131,22 @@ class AusgangAbgleichTest {
 
     @Test
     fun `eine abgelaufene Sitzung verwirft nichts`() {
-        assertEquals(Sendeergebnis.Spaeter, einordnen(Result.Error("", unauthorized = true, httpCode = 401)))
-        assertEquals(Sendeergebnis.Spaeter, einordnen(Result.Error("", httpCode = 429)))
-        assertEquals(Sendeergebnis.Spaeter, einordnen(Result.Error("", httpCode = 503)))
-        assertEquals(Sendeergebnis.Spaeter, einordnen(Result.Error("", transient = true, art = Fehlerart.NETZ)))
-        assertEquals(Sendeergebnis.Abgelehnt("nein", 400), einordnen(Result.Error("nein", httpCode = 400)))
+        assertEquals(Sendeergebnis.Spaeter, einordnen(Ergebnis.Error("", unauthorized = true, httpCode = 401)))
+        assertEquals(Sendeergebnis.Spaeter, einordnen(Ergebnis.Error("", httpCode = 429)))
+        assertEquals(Sendeergebnis.Spaeter, einordnen(Ergebnis.Error("", httpCode = 503)))
+        assertEquals(Sendeergebnis.Spaeter, einordnen(Ergebnis.Error("", transient = true, art = Fehlerart.NETZ)))
+        assertEquals(Sendeergebnis.Abgelehnt("nein", 400), einordnen(Ergebnis.Error("nein", httpCode = 400)))
         assertEquals("2xx ohne Rumpf ist angekommen",
-            Sendeergebnis.Angenommen, einordnen(Result.Error("", art = Fehlerart.LEERE_ANTWORT)))
+            Sendeergebnis.Angenommen, einordnen(Ergebnis.Error("", art = Fehlerart.LEERE_ANTWORT)))
     }
 
     @Test
     fun `beim Löschen ist „gibt es nicht mehr“ angekommen, anderes nicht`() {
-        assertEquals(Sendeergebnis.Angenommen, einordnenLoeschen(Result.Error("weg", httpCode = 404)))
-        assertEquals(Sendeergebnis.Abgelehnt("nein", 403), einordnenLoeschen(Result.Error("nein", httpCode = 403)))
-        assertEquals(Sendeergebnis.Spaeter, einordnenLoeschen(Result.Error("", transient = true, art = Fehlerart.NETZ)))
+        assertEquals(Sendeergebnis.Angenommen, einordnenLoeschen(Ergebnis.Error("weg", httpCode = 404)))
+        assertEquals(Sendeergebnis.Abgelehnt("nein", 403), einordnenLoeschen(Ergebnis.Error("nein", httpCode = 403)))
+        assertEquals(Sendeergebnis.Spaeter, einordnenLoeschen(Ergebnis.Error("", transient = true, art = Fehlerart.NETZ)))
         assertEquals("ausserhalb des Löschens bleibt 404 eine Ablehnung",
-            Sendeergebnis.Abgelehnt("weg", 404), einordnen(Result.Error("weg", httpCode = 404)))
+            Sendeergebnis.Abgelehnt("weg", 404), einordnen(Ergebnis.Error("weg", httpCode = 404)))
     }
 
     @Test

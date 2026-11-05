@@ -66,13 +66,13 @@ class ResultAndStateSplitTest {
     fun `Result hat genau zwei Varianten`() {
         val src = code(datenschicht())
         assert(!src.contains("Loading")) {
-            "Result.Loading ist zurück. Die Variante wurde nie erzeugt — safeCall() " +
+            "Ergebnis.Loading ist zurück. Die Variante wurde nie erzeugt — safeCall() " +
                 "liefert nur Success oder Error — erzwang aber in jedem `when` einen " +
                 "else-Zweig. Und `else -> {}` verschluckt stillschweigend jeden Fall, " +
                 "der später dazukommt."
         }
         assert(src.contains("data class Success") && src.contains("data class Error")) {
-            "Success/Error fehlen in Result"
+            "Success/Error fehlen in Ergebnis"
         }
     }
 
@@ -95,11 +95,11 @@ class ResultAndStateSplitTest {
                     if (started && before <= 1) top.add(lines[j])
                 }
                 val body = top.joinToString("\n")
-                if (!body.contains("is Result.Success")) continue
+                if (!body.contains("is Ergebnis.Success")) continue
                 if (Regex("""^\s*else\s*->""", RegexOption.MULTILINE).containsMatchIn(body)) {
                     offenders += "${f.name}:${range.first + 1} (else-Zweig)"
                 }
-                if (!body.contains("is Result.Error")) {
+                if (!body.contains("is Ergebnis.Error")) {
                     offenders += "${f.name}:${range.first + 1} (kein Error-Zweig)"
                 }
             }
@@ -163,7 +163,9 @@ class ResultAndStateSplitTest {
         assert(!src.contains("vm.state.collectAsStateWithLifecycle()")) {
             "MainActivity sammelt weiterhin den ganzen Zustand"
         }
-        assert(code(read("ui/viewmodel/DarstellungViewModel.kt")).contains("distinctUntilChanged()")) {
+        // Abgeleitet (AbgeleiteterZustand.kt) heisst: nur echte Änderungen kommen durch.
+        assert(code(read("ui/viewmodel/DarstellungViewModel.kt")).contains("sitzung.state.abgeleitet { it.appTheme }") &&
+            code(read("ui/AbgeleiteterZustand.kt")).contains("distinctUntilChanged()")) {
             "appTheme filtert unveränderte Werte nicht heraus"
         }
     }

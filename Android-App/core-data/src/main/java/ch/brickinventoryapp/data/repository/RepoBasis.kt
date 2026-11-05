@@ -12,7 +12,7 @@ import ch.brickinventoryapp.util.KlartextAbgelehnt
 
 /**
  * Was die Repositories gemeinsam brauchen: den Abruf mit Plattenspeicher als
- * Rückfallebene und die Umsetzung einer Retrofit-Antwort in ein Result. Jedes
+ * Rückfallebene und die Umsetzung einer Retrofit-Antwort in ein Ergebnis. Jedes
  * Repository sieht nur seinen Bereich der Schnittstelle ([A]).
  */
 abstract class RepoBasis<A : Any>(
@@ -35,41 +35,41 @@ abstract class RepoBasis<A : Any>(
         liste: (R) -> List<T>,
         ausLokal: (List<T>) -> R,
         anhaengen: Boolean = false,
-        call: suspend () -> Result<R>,
-    ): Result<R> {
+        call: suspend () -> Ergebnis<R>,
+    ): Ergebnis<R> {
         val vorher = ablage.bereich()
         val frisch = call()
         val bereich = ablage.bereich()?.takeIf { it == vorher } ?: return frisch
-        if (frisch is Result.Success) {
+        if (frisch is Ergebnis.Success) {
             ablage.uebernimm(fach, liste(frisch.data), anhaengen, bereich)
             // Wartet noch etwas im Ausgang, liegt es lokal schon über der Serverantwort.
             if (!ablage.wartet(fach.art)) return frisch
-            return Result.Success(ausLokal(ablage.lies(fach)?.liste.orEmpty()))
+            return Ergebnis.Success(ausLokal(ablage.lies(fach)?.liste.orEmpty()))
         }
-        if (frisch !is Result.Error || !frisch.transient) return frisch
+        if (frisch !is Ergebnis.Error || !frisch.transient) return frisch
         val lokal = ablage.lies(fach) ?: return frisch
         val stand = lokal.stand ?: return frisch
-        return Result.Success(ausLokal(lokal.liste), stand = stand)
+        return Ergebnis.Success(ausLokal(lokal.liste), stand = stand)
     }
 
     /**
      * Schreiben mit Ausgang: online direkt; ohne Verbindung — oder wenn schon
      * etwas wartet, damit die Reihenfolge hält — in den Ausgang und lokal
-     * angewandt. Dann ist das Ergebnis [Result.Success.gepuffert] mit [ersatz].
+     * angewandt. Dann ist das Ergebnis [Ergebnis.Success.gepuffert] mit [ersatz].
      * Der direkte Versuch und der gepufferte tragen denselben Idempotency-Key:
      * Kam der erste an und nur die Antwort nicht, wirkt der zweite nicht doppelt.
      */
     protected suspend fun <T> schreibe(
         bearbeitung: Bearbeitung,
         ersatz: () -> T,
-        direkt: suspend (schluessel: String) -> Result<T>,
-    ): Result<T> {
+        direkt: suspend (schluessel: String) -> Ergebnis<T>,
+    ): Ergebnis<T> {
         val schluessel = ablage.neuerSchluessel()
-        if (ablage.wartet() && ablage.puffere(bearbeitung, schluessel)) return Result.Success(ersatz(), gepuffert = true)
+        if (ablage.wartet() && ablage.puffere(bearbeitung, schluessel)) return Ergebnis.Success(ersatz(), gepuffert = true)
         val r = direkt(schluessel)
-        if (r is Result.Error && r.transient && ablage.puffere(bearbeitung, schluessel))
-            return Result.Success(ersatz(), gepuffert = true)
-        if (r is Result.Success) ablage.wendeAn(bearbeitung)
+        if (r is Ergebnis.Error && r.transient && ablage.puffere(bearbeitung, schluessel))
+            return Ergebnis.Success(ersatz(), gepuffert = true)
+        if (r is Ergebnis.Success) ablage.wendeAn(bearbeitung)
         return r
     }
 
@@ -82,15 +82,15 @@ abstract class RepoBasis<A : Any>(
     protected suspend fun <T : Any> cached(
         key: String,
         serializer: kotlinx.serialization.KSerializer<T>,
-        call: suspend () -> Result<T>,
-    ): Result<T> {
+        call: suspend () -> Ergebnis<T>,
+    ): Ergebnis<T> {
         // Abgelegt und gelesen wird nur, wenn vor und nach dem Abruf derselbe
         // Bereich gilt. Wechselt das Konto während des Abrufs, gehört die
         // Antwort keinem der beiden sicher.
         val vorher = cache.bereich()
         val fresh = call()
         val bereich = cache.bereich()?.takeIf { it == vorher } ?: return fresh
-        if (fresh is Result.Success) {
+        if (fresh is Ergebnis.Success) {
             cache.put(bereich, key, serializer, fresh.data)
             return fresh
         }
@@ -99,26 +99,26 @@ abstract class RepoBasis<A : Any>(
         // oder 500, ist das seine Auskunft — alte Daten darüber zu legen hiesse,
         // sie zu verschweigen. Der Rückfall trägt seinen Stand, damit die Liste
         // „Offline – Stand von …“ zeigen kann statt frisch auszusehen.
-        if (fresh !is Result.Error || !fresh.transient) return fresh
+        if (fresh !is Ergebnis.Error || !fresh.transient) return fresh
         val (stored, stand) = cache.getMitStand(bereich, key, serializer) ?: return fresh
-        return Result.Success(stored, stand = stand)
+        return Ergebnis.Success(stored, stand = stand)
     }
 
-    protected suspend fun <T> safeCall(call: suspend () -> Response<T>): Result<T> = sicherAufrufen(call)
+    protected suspend fun <T> safeCall(call: suspend () -> Response<T>): Ergebnis<T> = sicherAufrufen(call)
 }
 
 /**
- * Eine Retrofit-Antwort als Result: Servermeldung und -code bleiben erhalten,
+ * Eine Retrofit-Antwort als Ergebnis: Servermeldung und -code bleiben erhalten,
  * Transportfehler sind als vorübergehend markiert. Top-Level, weil auch der
  * Ausgang (data/lokal) damit sendet, ohne ein Repository zu sein.
  */
-@Suppress("TooGenericExceptionCaught") // Die Grenze: jeder Fehler wird hier zu Result.
-suspend fun <T> sicherAufrufen(call: suspend () -> Response<T>): Result<T> {
+@Suppress("TooGenericExceptionCaught") // Die Grenze: jeder Fehler wird hier zu Ergebnis.
+suspend fun <T> sicherAufrufen(call: suspend () -> Response<T>): Ergebnis<T> {
     return try {
         val response = call()
         if (response.isSuccessful) {
-            response.body()?.let { Result.Success(it) }
-                ?: Result.Error("", art = Fehlerart.LEERE_ANTWORT)
+            response.body()?.let { Ergebnis.Success(it) }
+                ?: Ergebnis.Error("", art = Fehlerart.LEERE_ANTWORT)
         } else {
             // Satz und Code des Servers: der Satz zum Anzeigen, der Code zum Verzweigen.
             val rumpf = fangeAusserAbbruch { Fehlerrumpf.lies(response.errorBody()?.string()) }
@@ -126,7 +126,7 @@ suspend fun <T> sicherAufrufen(call: suspend () -> Response<T>): Result<T> {
             // Servermeldung gewinnt, wenn es eine gibt: Sie ist genauer als
             // jede Einordnung hier. Nur wenn keine da ist, wird die Ursache
             // als Aufzählung gemeldet und die Anzeige formuliert den Satz.
-            Result.Error(
+            Ergebnis.Error(
                 message = rumpf.text ?: "",
                 unauthorized = response.code() == 401,
                 art = when {
@@ -145,23 +145,23 @@ suspend fun <T> sicherAufrufen(call: suspend () -> Response<T>): Result<T> {
     } catch (_: java.net.UnknownHostException) {
         // Vorübergehende Netzwerkfehler explizit als transient markieren, statt
         // sie später an der Fehlermeldung zu erraten (retryOnNetwork nutzt das Flag).
-        Result.Error("", transient = true, art = Fehlerart.NETZ)
+        Ergebnis.Error("", transient = true, art = Fehlerart.NETZ)
     } catch (_: java.net.ConnectException) {
-        Result.Error("", transient = true, art = Fehlerart.NETZ)
+        Ergebnis.Error("", transient = true, art = Fehlerart.NETZ)
     } catch (_: java.net.SocketTimeoutException) {
-        Result.Error("", transient = true, art = Fehlerart.ZEIT)
+        Ergebnis.Error("", transient = true, art = Fehlerart.ZEIT)
     } catch (_: KlartextAbgelehnt) {
         // Nicht vorübergehend: Ein zweiter Versuch ginge genauso an http.
-        Result.Error("", art = Fehlerart.KLARTEXT)
+        Ergebnis.Error("", art = Fehlerart.KLARTEXT)
     } catch (e: java.io.IOException) {
         // Jede übrige IOException ist ein Transportproblem und wiederholbar, gleich
         // welchen Untertyp OkHttp wählt. Fehler beim Auswerten der Antwort sind
         // keine IOException und laufen unten als UNBEKANNT durch.
-        Result.Error("", transient = true, art = Fehlerart.NETZ, technisch = e.message)
+        Ergebnis.Error("", transient = true, art = Fehlerart.NETZ, technisch = e.message)
     } catch (e: Exception) {
         // e.message ist hier durchweg englischer Bibliothekstext ("Socket
         // closed", "unexpected end of stream"). Als Meldung an den Nutzer
         // war das nie sinnvoll; sie steht jetzt im Log-Feld statt im Satz.
-        Result.Error("", art = Fehlerart.UNBEKANNT, technisch = e.message)
+        Ergebnis.Error("", art = Fehlerart.UNBEKANNT, technisch = e.message)
     }
 }
