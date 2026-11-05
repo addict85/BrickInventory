@@ -43,7 +43,7 @@ export function handleRouteError(res: FehlerZiel, fehler: unknown, status?: numb
   // Jede Fehlerantwort trägt einen Code, damit die Apps nicht am Satz raten.
   // Den Text der Ausnahme sieht nur die Entwicklung; im Betrieb nennt er Interna.
   const kennung: FehlerCode = isServerError ? 'interner_fehler' : 'anfrage_ungueltig';
-  const message = (isServerError && konfig().produktion)
+  const message = (isServerError && konfig().betrieb)
     ? fehlerText('interner_fehler', antwortSprache(req))
     : fehlertext(e);
   res.status(code).json({ success: false, code: kennung, error: message });

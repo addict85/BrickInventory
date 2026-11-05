@@ -11,9 +11,9 @@ import { konfig } from '../src/infra/konfig';
 import { liesZustand, setzeZustand } from '../src/auftraege/laufzustand';
 
 /** Ein Superuser erreicht COPY … PROGRAM und jede Datenbank des Servers: In
- * Produktion ein Startverbot, ausser DB_SUPERUSER_ERLAUBT=1 (UPGRADE.md). */
+ * Betrieb (auch ohne NODE_ENV) ein Startverbot, ausser DB_SUPERUSER_ERLAUBT=1 (UPGRADE.md). */
 export async function warneBeiSuperuser(): Promise<boolean> {
-  if (!konfig().produktion || !await db.alsSuperuserVerbunden()) return false;
+  if (!konfig().betrieb || !await db.alsSuperuserVerbunden()) return false;
   if (!konfig().dbSuperuserErlaubt) {
     console.error('❌ [datenbank] Die App verbindet sich als Superuser — Start verweigert. Eigene Rolle: UPGRADE.md, '
       + 'Abschnitt 29; wer es bewusst so betreibt, setzt DB_SUPERUSER_ERLAUBT=1 (Abschnitt 34).');

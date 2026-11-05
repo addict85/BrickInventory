@@ -69,7 +69,7 @@ test('TRUST_PROXY=docker: Start verweigert', { timeout: 30_000 }, async () => {
 });
 
 test('ohne NODE_ENV kein öffentliches Sitzungsgeheimnis', { timeout: 30_000 }, async () => {
-  const ohne = { NODE_ENV: undefined, DATABASE_URL: 'postgres://u:eigenes@127.0.0.1:1/x' };
+  const ohne = { NODE_ENV: undefined, DATABASE_URL: 'postgres://u:eigenes@127.0.0.1:1/x', APP_BASE_URL: 'https://lego.example.org' };
   for (const geheimnis of [undefined, 'brickinventory-manager-dev-secret']) {
     const { code, log } = await starte({ ...ohne, SESSION_SECRET: geheimnis });
     assert.equal(code, 1, log.slice(-400));
