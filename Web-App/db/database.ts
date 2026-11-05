@@ -1,5 +1,5 @@
 /** Der Zugang zu PostgreSQL: Pool, Abfragen, Transaktionen, Erststart.
- * Ausführlich: docs/begruendungen/db/database.ts.md#abschnitt */
+ * Ausführlich: docs/begruendungen/db/database.ts.md#ueberblick */
 
 import { Pool, types as pgTypes, Client } from 'pg';
 import type { PoolClient } from 'pg';
@@ -14,11 +14,12 @@ import { fehlerCode, meldeUndWeiter, logAndContinue } from '../src/infra/fehler'
 import { konfig, datenbankVerbindung } from '../src/infra/konfig';
 import { passwortMangel } from '../src/infra/passwortRegel';
 
-// Ausführlich: docs/begruendungen/db/database.ts.md#abschnitt-2
+// Alle Abhängigkeiten stehen hier oben: Ein require() im Rumpf versteckt sie
+// und liefert `any`. Ausführlich: docs/begruendungen/db/database.ts.md#importe-am-kopf
 
 // NUMERIC als Zahl: NUMERIC(12,4) bleibt weit unter 2^53, gerechnet wird in
 // src/infra/geld.ts in Zehntausendsteln.
-// Ausführlich: docs/begruendungen/db/database.ts.md#abschnitt-3
+// Ausführlich: docs/begruendungen/db/database.ts.md#numeric-als-zahl
 pgTypes.setTypeParser(pgTypes.builtins.NUMERIC, (v: any) => (v === null ? null : parseFloat(v)));
 
 // ── Connection pool ───────────────────────────────────────────────────────────
@@ -43,24 +44,9 @@ const baseConfig = datenbankVerbindung();
 
 const pool = new Pool({ ...baseConfig, ...POOL_CONFIG });
 
-// ── Pool event logging ────────────────────────────────────────────────────────
-pool.on('error', (err, _client) => {
+// Ohne Lauscher brächte der Abriss einer ruhenden Verbindung den Prozess zu Fall.
+pool.on('error', (err) => {
   console.error('[db-pool] idle client error:', err.message);
-});
-
-pool.on('connect', (_client) => {
-});
-
-// Optional: log pool exhaustion warnings (fires when all connections are in use)
-let _poolWarnTimer: any = null;
-pool.on('acquire', () => {
-  const {   waitingCount } = pool;
-  if (waitingCount > 0 && !_poolWarnTimer) {
-    _poolWarnTimer = setTimeout(() => {
-      // Pool pressure warning suppressed — too noisy during bulk imports
-      _poolWarnTimer = null;
-    }, 500);
-  }
 });
 
 // ── Query helper with retry on transient errors ───────────────────────────────
@@ -103,7 +89,7 @@ export async function queryWithRetry<T>(queryFn: () => Promise<T>, lesend: boole
   throw lastErr;
 }
 
-// ── Pool stats (for /api/finance/cache-stats and health endpoints) ────────────
+// Für den Gesundheits-Endpunkt.
 function getPoolStats() {
   return {
     total:   pool.totalCount,
@@ -146,8 +132,8 @@ const txClient = (): PoolClient | null => { const t = laufendeTx.getStore(); ret
 /** Ob dieser Aufrufpfad in einer Transaktion läuft (für Tests und Wächter). */
 export function inTransaktion(): boolean { return txClient() !== null; }
 
-/** Alle Zeilen einer Abfrage.
- * Ausführlich: docs/begruendungen/db/database.ts.md#abschnitt-4 */
+/** Alle Zeilen einer Abfrage. T ist ungeprüft: Der Aufrufer sagt, welche
+ * Spalten sein SQL liefert; ohne Angabe bleibt es `unknown`. */
 async function all<T = unknown>(sql: string, params: unknown[] = []): Promise<T[]> {
   const c = txClient();
   if (c) return (await c.query(sql, params)).rows as T[];
@@ -157,7 +143,7 @@ async function all<T = unknown>(sql: string, params: unknown[] = []): Promise<T[
   }, istLesend(sql));
 }
 
-/** Erste Zeile einer Abfrage, oder undefined. Zum Typ siehe all(). */
+/** Erste Zeile einer Abfrage, oder undefined. T wie bei all(). */
 async function get<T = unknown>(sql: string, params: unknown[] = []): Promise<T | undefined> {
   return (await all<T>(sql, params))[0];
 }
@@ -229,21 +215,19 @@ async function transaction<T>(fn: (tx: DbSchnittstelle) => Promise<T>): Promise<
   }
 }
 
-// SQL wird nicht übersetzt. Ausführlich: docs/begruendungen/db/database.ts.md#abschnitt-5
+// SQL geht unverändert an PostgreSQL: Die frühere SQLite-Übersetzung hängte
+// still ON CONFLICT an und ersetzte ? auch in JSONB-Operatoren.
+// Ausführlich: docs/begruendungen/db/database.ts.md#sql-unuebersetzt
 
 
 // Die letzte Migration, die es zusammen mit den alten Startstufen gab
 // (307ee28). Eine Datenbank, die noch nicht so weit ist, ist ein Altbestand.
 const ALTBESTAND_BIS = '0050-teilezaehler-nur-bestehende-konten.sql';
 
-/**
- * Erststart: Eine LEERE Datenbank bekommt ihr Schema aus db/basis.sql, dem
- * erzeugten Abbild aller Migrationen bis zu seiner Entstehung (scripts/
- * schema-stand.js). Danach laufen nur die jüngeren Migrationen. Eine
- * bestehende Datenbank fasst diese Funktion nicht an — so gibt es für jede
- * Tabelle genau einen Weg: Basis plus Migrationen.
- * @returns true, wenn die Basis eingespielt wurde
- */
+/** Eine LEERE Datenbank bekommt db/basis.sql (Abbild der Migrationen, aus
+ * scripts/schema-stand.js), danach nur die jüngeren Migrationen; eine
+ * bestehende bleibt unberührt. So hat jede Tabelle genau einen Weg.
+ * true, wenn die Basis eingespielt wurde. */
 async function initSchema(): Promise<boolean> {
   const c = await eigeneVerbindung();
   try {
@@ -353,12 +337,9 @@ async function istAltbestand(client: import('pg').ClientBase): Promise<boolean> 
   return r.rows.length === 0;
 }
 
-/**
- * Ein Altbestand bekommt, was früher der Start mit FORCE_SCHEMA_INIT=1 tat:
- * die letzten Startstufen samt ihrer Datenschritte, die Migrationen bis
- * ALTBESTAND_BIS und danach das Entfernen dessen, was diese schon abgelöst
- * hatten. Erst dann laufen die jüngeren Migrationen wie bei jeder Datenbank.
- */
+/** Ein Altbestand holt die früheren Startstufen, die Migrationen bis
+ * ALTBESTAND_BIS und das Entfernen des Abgelösten nach — danach ist er eine
+ * Datenbank wie jede andere und bekommt die jüngeren Migrationen. */
 async function ruesteAltbestandAuf(client: import('pg').ClientBase): Promise<void> {
   console.log('🔧 Ältere Datenbank: die früheren Startstufen laufen einmal nach');
   await sichereNutzerdaten(client, ['altbestand/startstufen.sql']);

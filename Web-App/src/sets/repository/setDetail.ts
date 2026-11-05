@@ -1,6 +1,6 @@
 import { mengeSkalar } from '../../../db/bestandsmenge';
 import { blJoin, blNummerSql } from '../../../db/blZuordnungSql';
-import type { KatalogTeil, ListenTeil, SetStamm } from '../dienst';
+import type { KatalogTeil, ListenTeil, SetStamm } from '../zeilen';
 import * as db from '../../../db/database';
 
 export function setStamm(setNumber: string) {

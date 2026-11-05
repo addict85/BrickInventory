@@ -1,6 +1,6 @@
 /** Der Wanted-XML-Import als Auftrag: Er legt Teile, Figuren und Sets an und
  * fragt auf Wunsch Rebrickable — beides gehört nicht in den Web-Prozess. */
-import { importiereWantedListe, type Korrektur } from '../src/merkliste/wantedListe';
+import { importiereWantedListe } from '../src/merkliste/wantedListe';
 import { merkeBlNummer, merkeEigeneBlNummer } from '../src/katalog/blZuordnung';
 import { starteAuftrag, meldeAuftrag, beendeAuftrag, istAbgebrochen } from '../src/auftraege/importAuftrag';
 import { addManualPart } from '../src/teile/manuelleTeile';
@@ -8,10 +8,9 @@ import { addManualFig } from '../src/figuren/manuelleFiguren';
 import { addSet } from '../src/sets/setService';
 import { logAndContinue } from '../src/infra/fehler';
 import type { AuftragsKontext } from './auftragsWorker';
+import type { Nutzlast } from '../src/auftraege/nutzlasten';
 
-export interface WantedXmlEingabe {
-  xml: string; dateiName: string; schreiben: boolean; ueberRebrickable: boolean; korrekturen?: Korrektur[];
-}
+export type WantedXmlEingabe = Extract<Nutzlast<'csv_import'>, { quelle: 'wanted_xml' }>['eingabe'];
 
 async function importiereWantedXml(uid: number, e: WantedXmlEingabe, k: AuftragsKontext): Promise<Record<string, unknown>> {
   // Zwei Merker: angefragt (für die Kette) und laufend (für den Abbruch).

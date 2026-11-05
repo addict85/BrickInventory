@@ -463,4 +463,8 @@ async function starte(): Promise<void> {
   if (jobs) await starteJobs(web);
 }
 
-void starte();
+// Ohne Worker weiterzulaufen täuschte einen Dienst vor.
+starte().catch((e: unknown) => {
+  console.error('❌ [start] Start gescheitert:', fehlertext(e));
+  process.exit(1);
+});

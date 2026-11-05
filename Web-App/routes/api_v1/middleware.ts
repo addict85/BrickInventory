@@ -8,6 +8,11 @@ import { validateToken } from '../../src/konto/auth';
 import { resolveUserId, nutzerId, zweiterFaktorPflicht } from '../../src/konto/http/anmeldung';
 import { belegeKontoPlatz, type Schranke } from '../../src/infra/kontoSchranke';
 import { mussPasswortAendern } from '../../src/konto/konten';
+import type { Sicht } from '../../src/haushalt/haushalt';
+
+/** Wer fragt und welche Konten er gewählt hat; den Bereich löst der Dienst auf. */
+export const sichtVon = (req: AuthedRequest & { abfrage: { accounts?: string | undefined } }): Sicht =>
+  ({ nutzer: req.apiUser.user_id, konten: req.abfrage.accounts });
 import { sendeFehler } from '../../src/infra/fehlerTexte';
 import { waechter } from '../../src/infra/vertrag/pruefen';
 

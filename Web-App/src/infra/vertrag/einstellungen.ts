@@ -1,6 +1,17 @@
 import { z } from 'zod';
 import { VerwaltungZustand, VerwaltungDesign } from './verwaltung';
-import { type Route, Erfolg, ganz, zeit, bestaetigt, OHNE_RUMPF, TEXT, ZUSTAND, EINSTELLUNGEN } from './grund';
+import { type Route, Erfolg, ganz, zeit, bestaetigt, OHNE_RUMPF, TEXT, ZUSTAND, EINSTELLUNGEN, EINFACH } from './grund';
+
+/** Was POST /settings annimmt: global nur vom Verwalter, je Konto von jedem. */
+export const GLOBALE_EINSTELLUNGEN = ['bricklink_consumer_key', 'bricklink_consumer_secret', 'bricklink_token',
+  'bricklink_token_secret', 'brickset_api_key', 'rebrickable_api_key', 'price_job_interval_minutes',
+  'price_cache_ttl', 'api_limit_rebrickable', 'api_limit_bricklink', 'api_limit_brickset',
+  'registration_enabled', 'smtp_host', 'smtp_port', 'smtp_user', 'smtp_pass', 'smtp_from', 'smtp_secure',
+  'smtp_tls_fingerprint', 'smtp_tls_ca', 'default_price_condition', 'gutschein_land'] as const;
+export const KONTO_EINSTELLUNGEN = ['currency', 'language', 'user_default_condition'] as const;
+type Einstellung = (typeof GLOBALE_EINSTELLUNGEN)[number] | (typeof KONTO_EINSTELLUNGEN)[number];
+const einstellungsFelder = Object.fromEntries([...GLOBALE_EINSTELLUNGEN, ...KONTO_EINSTELLUNGEN]
+  .map(k => [k, EINFACH.optional()])) as Record<Einstellung, z.ZodOptional<typeof EINFACH>>;
 import { GenericResponse } from './gemeinsam';
 
 export const AppThemeResponse = z.looseObject({
@@ -76,22 +87,22 @@ export const routen = {
   'GET /api/v1/settings': { antwort: SettingsResponse },
   'GET /api/v1/settings/default-condition': { antwort: DefaultConditionResponse },
   'GET /api/v1/startup-status': { antwort: StartupStatus },
-  'POST /api/v1/settings/user/theme': { eingabe: z.looseObject({ theme: TEXT(40).nullable().optional() }), antwort: AppThemeResponse },
+  'POST /api/v1/settings/user/theme': { eingabe: z.strictObject({ theme: TEXT(40).nullable().optional() }), antwort: AppThemeResponse },
   'PUT /api/v1/settings': { eingabe: EINSTELLUNGEN, antwort: EinstellungenGespeichert },
-  'POST /api/v1/settings/user/default-condition': { eingabe: z.looseObject({ condition: ZUSTAND.nullable().optional() }), antwort: VerwaltungZustand },
-  'POST /api/v1/settings/admin/theme': { eingabe: z.looseObject({ theme: TEXT(40).optional() }), antwort: VerwaltungDesign },
+  'POST /api/v1/settings/user/default-condition': { eingabe: z.strictObject({ condition: ZUSTAND.nullable().optional() }), antwort: VerwaltungZustand },
+  'POST /api/v1/settings/admin/theme': { eingabe: z.strictObject({ theme: TEXT(40).optional() }), antwort: VerwaltungDesign },
   'GET /api/v1/settings/einrichtung': { antwort: Einrichtung },
   'POST /api/v1/settings/einrichtung/fertig': { eingabe: OHNE_RUMPF, antwort: Erfolg },
   'GET /api/v1/settings/raw': { antwort: RoheEinstellungen },
   'GET /api/v1/settings/tls': { antwort: TlsStand },
   'GET /api/v1/settings/user/default-condition': { antwort: DefaultConditionResponse },
-  'POST /api/v1/settings': { antwort: Erfolg, ...bestaetigt({}, 'admin_password') },
+  'POST /api/v1/settings': { antwort: Erfolg, ...bestaetigt(einstellungsFelder, 'admin_password') },
   'GET /api/v1/settings/export': { antwort: Sicherung },
   'POST /api/v1/settings/import': { formular: true, antwort: SicherungEingespielt },
   'GET /api/v1/health': { antwort: Gesundheit },
   'GET /api/v1/health/live': { antwort: Lebenszeichen },
   'GET /api/v1/health/ready': { antwort: Lebenszeichen },
   'GET /api/v1/settings/export/data': { art: 'zip' },
-  'POST /api/v1/settings/smtp-test': { eingabe: z.looseObject({ to: TEXT(320).optional() }), antwort: SmtpProbe },
-  'POST /api/v1/settings/quelle-testen': { eingabe: z.looseObject({ quelle: TEXT(40) }), antwort: Erfolg },
+  'POST /api/v1/settings/smtp-test': { eingabe: z.strictObject({ to: TEXT(320).optional() }), antwort: SmtpProbe },
+  'POST /api/v1/settings/quelle-testen': { eingabe: z.strictObject({ quelle: TEXT(40) }), antwort: Erfolg },
 } satisfies Record<string, Route>;

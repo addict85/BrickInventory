@@ -1,5 +1,5 @@
 import { blJoin, blNummerSql } from '../../../db/blZuordnungSql';
-import type { FigurTeil, KatalogZeile } from '../dienst';
+import type { FigurTeil, KatalogZeile } from '../zeilen';
 import * as db from '../../../db/database';
 
 export function katalogTeileDerFigur(figNumber: string) {

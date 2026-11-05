@@ -57,7 +57,7 @@ function fail(msg: string): never {
   throw new Meldung(msg, 400);
 }
 
-export function requireItemNumber(value: any, field = 'part_number'): string {
+export function requireItemNumber(value: unknown, field = 'part_number'): string {
   const v = String(value ?? '').trim();
   if (!v) fail(`${field} erforderlich`);
   if (!ITEM_NUMBER_RE.test(v))
@@ -66,7 +66,7 @@ export function requireItemNumber(value: any, field = 'part_number'): string {
 }
 
 /** Gekappt statt abgelehnt: Katalognamen sind lang. */
-export function optionalText(value: any, maxLen = 200): string | null {
+export function optionalText(value: unknown, maxLen = 200): string | null {
   if (value === undefined || value === null) return null;
   const v = String(value).replace(/[\u0000-\u001F\u007F]/g, '').trim();
   return v ? v.slice(0, maxLen) : null;
@@ -74,7 +74,7 @@ export function optionalText(value: any, maxLen = 200): string | null {
 
 /** Nur https und ein wohlgeformter Host: "javascript:…", "data:…" und
  * Attribut-Ausbrüche fallen damit raus. */
-export function optionalImageUrl(value: any): string | null {
+export function optionalImageUrl(value: unknown): string | null {
   if (value === undefined || value === null || value === '') return null;
   const v = String(value).trim();
   if (v.length > 2048) fail('image_url ist zu lang');
@@ -84,7 +84,7 @@ export function optionalImageUrl(value: any): string | null {
   return u.toString();
 }
 
-export function positiveInt(value: any, fallback = 1, max = 1_000_000): number {
+export function positiveInt(value: unknown, fallback = 1, max = 1_000_000): number {
   const n = parseInt(String(value ?? ''), 10);
   if (!Number.isFinite(n)) return fallback;
   return Math.min(max, Math.max(1, n));
@@ -108,24 +108,24 @@ export function colorId(value: unknown): number {
 }
 
 /** Ungültige Werte werden verworfen, nicht abgelehnt. */
-export function optionalHex(value: any): string | null {
+export function optionalHex(value: unknown): string | null {
   const v = String(value ?? '').trim().replace(/^#/, '');
   return /^[0-9A-Fa-f]{6}$/.test(v) ? v.toUpperCase() : null;
 }
 
 /** null = keine Angabe. */
-export function optionalCondition(value: any): 'N' | 'U' | null {
+export function optionalCondition(value: unknown): 'N' | 'U' | null {
   return value === 'N' || value === 'U' ? value : null;
 }
 
 // Ausführlich: docs/begruendungen/src/infra/validate.ts.md#acquisitionquantity
-export function acquisitionQuantity(value: any, fallback = 1): number {
+export function acquisitionQuantity(value: unknown, fallback = 1): number {
   return positiveInt(value, fallback, 10_000);
 }
 
 /** @returns null bei leerer Angabe (= „kein Preis"), sonst der geprüfte Betrag
  * Ausführlich: docs/begruendungen/src/infra/validate.ts.md#optionalprice */
-export function optionalPrice(value: any, feld = 'Preis'): number | null {
+export function optionalPrice(value: unknown, feld = 'Preis'): number | null {
   if (value === undefined || value === null || value === '') return null;
   const n = parseFloat(String(value).replace(',', '.'));
   if (!Number.isFinite(n)) return null;
@@ -136,7 +136,7 @@ export function optionalPrice(value: any, feld = 'Preis'): number | null {
 
 /** Streng: Die Zeichenkette "false" ist in JavaScript wahr.
  * Ausführlich: docs/begruendungen/src/infra/validate.ts.md#strictbool */
-export function strictBool(value: any, feld = 'Wert'): boolean {
+export function strictBool(value: unknown, feld = 'Wert'): boolean {
   if (value === true  || value === 'true'  || value === 1 || value === '1') return true;
   if (value === false || value === 'false' || value === 0 || value === '0') return false;
   fail(`${feld} muss true oder false sein`);
@@ -178,15 +178,19 @@ export function ausTabelle<T>(
   return Object.prototype.hasOwnProperty.call(tabelle, k) ? tabelle[k] : vorgabe;
 }
 
-/** Dieselben Prüfungen als Eingabeschema für den API-Vertrag (src/infra/vertrag/):
- * Es prüft die Funktion oben, das JSON-Schema daneben beschreibt sie nur. So
- * gibt es die Regel einmal, und der Vertrag kann ihr nicht davonlaufen. */
-function alsSchema(pruefe: (v: unknown) => unknown, json: Record<string, unknown>, pflicht = false) {
-  const geprueft = z.unknown().superRefine((v, ctx) => {
+/** Dieselben Prüfungen als Eingabeschema für den API-Vertrag: Die Regel gibt es
+ * einmal, das JSON-Schema beschreibt sie nur, und die Route bekommt ihr Ergebnis. */
+function alsSchema<T>(pruefe: (v: unknown) => T, json: Record<string, unknown>, pflicht: true): z.ZodType<T, unknown>;
+function alsSchema<T>(pruefe: (v: unknown) => T, json: Record<string, unknown>, pflicht?: false): z.ZodType<T | undefined, unknown>;
+function alsSchema<T>(pruefe: (v: unknown) => T, json: Record<string, unknown>, pflicht = false) {
+  const geprueft = z.unknown().meta(json).transform((v, ctx): T => {
     // Ein Objekt hiesse für die Prüfer oft „fehlt" und damit Vorgabewert.
-    if (v !== null && typeof v === 'object') return void ctx.addIssue({ code: 'custom', message: 'kein einfacher Wert' });
-    try { pruefe(v); } catch (e) { ctx.addIssue({ code: 'custom', message: e instanceof Error ? e.message : String(e), params: { fehler: e } }); }
-  }).meta(json);
+    if (v !== null && typeof v === 'object') { ctx.addIssue({ code: 'custom', message: 'kein einfacher Wert' }); return z.NEVER; }
+    try { return pruefe(v); } catch (e) {
+      ctx.addIssue({ code: 'custom', message: e instanceof Error ? e.message : String(e), params: { fehler: e } });
+      return z.NEVER;
+    }
+  });
   return pflicht ? geprueft : geprueft.optional();
 }
 
@@ -196,15 +200,20 @@ export const eingabe = {
   text: (max = 200) => alsSchema(v => optionalText(v, max), { type: ['string', 'null'], maxLength: max }),
   bildUrl: () => alsSchema(optionalImageUrl, { type: ['string', 'null'], format: 'uri', pattern: '^https:' }),
   /** Ohne `pflicht` darf die Menge fehlen oder null sein; dann bleibt sie, wie sie ist. */
-  menge: (min = 0, max = 100_000, pflicht = true) => alsSchema(v => (!pflicht && v == null) || bestandsMenge(v, min, max),
-    { type: ['integer', 'string'], minimum: min, maximum: max }, pflicht),
+  menge: (min = 0, max = 100_000) => alsSchema(v => bestandsMenge(v, min, max),
+    { type: ['integer', 'string'], minimum: min, maximum: max }, true),
+  /** Fehlt sie oder ist sie null, bleibt die Menge, wie sie ist. */
+  mengeOderNichts: (min = 0, max = 100_000) => alsSchema(v => v == null ? null : bestandsMenge(v, min, max),
+    { type: ['integer', 'string', 'null'], minimum: min, maximum: max }),
   stueckzahl: () => alsSchema(v => acquisitionQuantity(v), { type: ['integer', 'string'], minimum: 1, maximum: 10_000 }),
   farbe: () => alsSchema(colorId, { type: ['integer', 'string'], description: `fehlt sie, gilt ${KEINE_FARBE} (keine Farbe)` }),
   farbcode: () => alsSchema(optionalHex, { type: ['string', 'null'], pattern: '^#?[0-9A-Fa-f]{6}$' }),
   preis: (feld: string) =>
     alsSchema(v => optionalPrice(v, feld), { type: ['number', 'string', 'null'], minimum: 0, maximum: 1_000_000 }),
   zustand: () => alsSchema(optionalCondition, { enum: ['N', 'U', null] }),
-  /** Ohne `pflicht` gilt ein fehlender Schalter als nein. */
-  schalter: (feld: string, pflicht = true) => alsSchema(v => (!pflicht && v === undefined) || strictBool(v, feld),
-    { type: ['boolean', 'integer', 'string'], enum: [true, false, 1, 0, 'true', 'false', '1', '0'] }, pflicht),
+  schalter: (feld: string) => alsSchema(v => strictBool(v, feld),
+    { type: ['boolean', 'integer', 'string'], enum: [true, false, 1, 0, 'true', 'false', '1', '0'] }, true),
+  /** Darf fehlen; dann ist er nein. */
+  schalterOderNein: (feld: string) => alsSchema(v => strictBool(v, feld),
+    { type: ['boolean', 'integer', 'string'], enum: [true, false, 1, 0, 'true', 'false', '1', '0'] }),
 };

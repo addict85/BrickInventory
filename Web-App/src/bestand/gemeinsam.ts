@@ -1,6 +1,6 @@
 import * as repo from './repository/gemeinsam';
 import { istErsatzteil, KEINE_FARBE } from '../infra/validate';
-import { asIds } from '../haushalt/haushalt';
+import { asIds, blickfeldAus, type Sicht } from '../haushalt/haushalt';
 
 // Ausführlich: docs/begruendungen/src/bestand/gemeinsam.ts.md#abschnitt
 
@@ -115,10 +115,11 @@ export interface BestandteilAntwort {
 }
 
 export async function verwendendeSets(
-  uids: number[],
+  uidsWahl: Sicht | number[],
   tabelle: 'parts' | 'minifigs',
   schluessel: Record<string, string | number>,
 ): Promise<BestandteilAntwort> {
+  const uids = await blickfeldAus(uidsWahl);
   const rows = await repo.setsMitBestandteil(uids, tabelle, schluessel);
 
   const sets: VerwendendesSet[] = rows.map((r: any) => ({

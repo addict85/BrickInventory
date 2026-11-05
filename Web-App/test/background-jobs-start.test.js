@@ -17,6 +17,8 @@
  *   B  in starteJobs() die Schleife über NACHLAEUFE entfernt → rot: „jeder
  *      Nachlauf ist einmal eingestellt“
  *   C  starteAuftragsWorker() aus starteJobs() entfernt → rot: „der Worker läuft an“
+ *   D  (05.11.2026) das Lebenszeichen ohne Blick auf den Worker geschrieben →
+ *      rot: „das Lebenszeichen folgt dem Worker“ (es kam auch ohne Worker)
  *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL.
  */
@@ -31,7 +33,8 @@ const echtesRequire = Module.prototype.require;
 Module.prototype.require = function (name) {
   const m = echtesRequire.apply(this, arguments);
   if (typeof name === 'string' && /jobs[/\\]auftraegeStarten(\.js)?$/.test(name))
-    return { ...m, starteAuftragsWorker: () => { workerGestartet++; }, stoppeAuftragsWorker: async () => {} };
+    return { ...m, starteAuftragsWorker: () => { workerGestartet++; return { letzteRunde: () => Date.now() }; },
+      stoppeAuftragsWorker: async () => {} };
   return m;
 };
 
@@ -77,5 +80,18 @@ test('der Start des Job-Prozesses stellt alles als Auftrag ein', { concurrency: 
 
   await t.test('der Worker läuft an', () => {
     assert.ok(workerGestartet >= 1);
+  });
+
+  await t.test('das Lebenszeichen folgt dem Worker', async () => {
+    const jp = _req('startup/jobsProzess.js');
+    const { liesZustand, loescheZustand } = _req('src/auftraege/laufzustand.js');
+    const warte = (ms) => new Promise(r => setTimeout(r, ms));
+    for (let i = 0; i < 50 && !await liesZustand(jp.LEBENSZEICHEN_SCHLUESSEL); i++) await warte(20);
+    assert.ok(await liesZustand(jp.LEBENSZEICHEN_SCHLUESSEL), 'nach dem Start fehlt das Lebenszeichen');
+    await jp.stoppeJobs();
+    await loescheZustand(jp.LEBENSZEICHEN_SCHLUESSEL);
+    jp.erneuereLebenszeichen();
+    await warte(200);
+    assert.equal(await liesZustand(jp.LEBENSZEICHEN_SCHLUESSEL), null, 'ohne Worker kein Lebenszeichen');
   });
 });

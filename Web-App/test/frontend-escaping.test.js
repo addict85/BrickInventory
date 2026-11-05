@@ -1,20 +1,14 @@
 /**
  * Statischer XSS-Regressionstest für public/js/.
  *
- * Hintergrund: Die Listen- und Detailansichten werden per innerHTML aus
- * Template-Literalen gebaut. Solange das so ist, ist jedes Datenfeld, das
- * ungeescaped in ein Attribut oder in einen JS-String im Attribut wandert, ein
- * Stored-XSS-Vektor — und genau das war an ~20 Stellen der Fall (Bild-URLs
- * manueller Teile, Set-Nummern in onclick, Farb- und Teilenamen).
+ * Die Listen- und Detailansichten entstehen per innerHTML aus
+ * Template-Literalen; jedes Datenfeld, das ungeescaped in ein Attribut oder
+ * einen JS-String im Attribut wandert, ist ein Stored-XSS-Vektor.
  *
- * Dieser Test prüft ohne DB und ohne Browser:
- *   1. Die Escaping-Helfer verhalten sich in ihrem jeweiligen Kontext korrekt.
- *   2. Es gibt keine neuen ungeschützten Sinks in den Frontend-Dateien.
- *
- * Punkt 2 ist der eigentliche Wert: Der Fix von heute hält nur, wenn die
- * nächste Zeile `src="${x}"` beim Testlauf rot wird statt in Produktion.
- *
- * Ausführen: npm test
+ * Geprüft ohne DB und ohne Browser:
+ *   1. Die Escaping-Helfer verhalten sich in ihrem Kontext korrekt.
+ *   2. Es gibt keine ungeschützten Sinks in den Frontend-Dateien — die
+ *      nächste Zeile `src="${x}"` wird hier rot statt in Produktion.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -27,19 +21,9 @@ const FILES = fs.readdirSync(JS_DIR).filter(f => /^\d\d-.*\.js$/.test(f)).sort()
 
 // ── Helfer aus 01-core.js in einer Sandbox laden ────────────────────────────
 function loadHelpers() {
-  // Seit der Umstellung auf ES-Module tragen die Deklarationen ein
-  // vorangestelltes `export`. Das wird für die Sandbox entfernt — dort läuft
-  // der Ausschnitt als klassisches Skript, und `export` wäre ein Syntaxfehler.
-  // `export` UND `import` heraus: In der Sandbox laeuft der Ausschnitt als
-  // klassisches Skript, beide waeren dort ein Syntaxfehler.
-  //
-  // Die import-Zeilen kamen am 20.10. dazu: esc() liegt seither in
-  // js/00-escapen.js (DOM-frei, damit der BrickLink-Export es benutzen kann),
-  // und der Ausschnitt unten laeuft deshalb ueber eine Dateigrenze hinweg —
-  // mitten in den Kopf von js/01-core.js mit seinen Einfuhren. GEMESSEN:
-  // „Cannot use import statement outside a module", vier Faelle rot.
-  // Gebraucht werden sie nicht: Der Ausschnitt enthaelt nur die vier Helfer,
-  // und die kommen ohne aus.
+  // `export` und `import` heraus: In der Sandbox läuft der Ausschnitt als
+  // klassisches Skript. Er reicht über die Grenze von 00-escapen.js in den
+  // Kopf von 01-core.js; die vier Helfer brauchen dessen Einfuhren nicht.
   const src = require('./helpers/sources').coreQuelle()
     .replace(/^export /gm, '')
     .replace(/^import .*;$/gm, '');

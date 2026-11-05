@@ -315,6 +315,7 @@ export const FEHLER = {
                                    + '(no <INVENTORY> in the file).' },
   id_ungueltig:                { de: 'Ungültige ID', en: 'Invalid ID' },
   eingabe_ungueltig:           { de: 'Ungültige Eingabe im Feld „{feld}“', en: 'Invalid input in field “{feld}”' },
+  feld_unbekannt:              { de: 'Unbekanntes Feld „{feld}“', en: 'Unknown field “{feld}”' },
 
   // ── Betrieb und Verwaltung ───────────────────────────────────────────────
   nicht_gefunden:              { de: 'Nicht gefunden', en: 'Not found' },

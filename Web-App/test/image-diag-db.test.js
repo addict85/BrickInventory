@@ -1,14 +1,9 @@
 /**
  * Bild-Diagnose: „Warum fehlt das Bild für Set X?" in EINER Antwort.
  *
- * ── Woher das kommt (Nachtrag 50) ───────────────────────────────────────────
- * Dieser Endpunkt ist die Lehre aus einer Fehlersuche, die fünf Anläufe
- * gebraucht hat (Nachträge 36, 37, 40, 41, 43, 47, 48). Dasselbe Symptom —
- * „die Kachel bleibt leer" — hatte nacheinander verschiedene Ursachen, und
- * jede Runde begann damit, dieselben Fragen einzeln von Hand zu beantworten:
- * Kennt die Datenbank eine Adresse? Liegt die Datei da? Die Vorschau? Ist sie
- * plausibel gross? Was sagt der Proxy-Cache? Die Antworten lagen an drei
- * verschiedenen Orten.
+ * Die Fragen bei einer leeren Kachel (Adresse in der Datenbank? Datei,
+ * Vorschau, Grösse, Proxy-Cache?) liegen an drei Orten; der Endpunkt
+ * beantwortet sie in einer Antwort.
  *
  * Geprüft wird VERHALTEN gegen echte Dateien und echte Datenbank, in den drei
  * Lagen, die im Betrieb tatsächlich vorkommen. Besonders wichtig ist der

@@ -4,6 +4,7 @@ import {
 } from '../src/auftraege/auftraege';
 import { AUFTRAG_KANAL, imNamenDesAuftrags, gibZurueck, verschoben, fehlgeschlagen, erledigt, setzeFortschritt, lebenszeichen, belegeAuftrag } from '../src/auftraege/dienst';
 import { planeNaechsten, hatZeitplan } from '../src/auftraege/zeitplan';
+import { pruefeNutzlast, NutzlastUngueltig, type Nutzlast } from '../src/auftraege/nutzlasten';
 import { listen, unlisten } from '../db/pgNotify';
 import { fehlertext, logAndContinue } from '../src/infra/fehler';
 import { konfig } from '../src/infra/konfig';
@@ -29,9 +30,10 @@ class AuftragVerschieben extends Error {
   constructor(readonly bis: Date, readonly grund: string, readonly zaehlt = false) { super(grund); }
 }
 
-export interface Bearbeiter {
-  ausfuehren(nutzlast: Record<string, unknown>, k: AuftragsKontext, a: AuftragsZeile): Promise<void>;
-  aufgegeben?(nutzlast: Record<string, unknown>, fehler: string, a: AuftragsZeile): Promise<void>;
+/** Die Nutzlast kommt geprüft an (src/auftraege/nutzlasten.ts). */
+export interface Bearbeiter<A extends AuftragsArt = AuftragsArt> {
+  ausfuehren(nutzlast: Nutzlast<A>, k: AuftragsKontext, a: AuftragsZeile): Promise<void>;
+  aufgegeben?(nutzlast: Nutzlast<A>, fehler: string, a: AuftragsZeile): Promise<void>;
   /** Höchstens einer dieser Art gleichzeitig, auch über Prozesse hinweg. */
   exklusiv?: boolean;
 }
@@ -42,7 +44,7 @@ export interface WorkerOptionen {
   fristSek?: number;
 }
 
-export type Bearbeitertabelle = Partial<Record<AuftragsArt, Bearbeiter>>;
+export type Bearbeitertabelle = { [A in AuftragsArt]?: Bearbeiter<A> };
 
 /** Mehrere Worker teilen sich die Arbeit über SKIP LOCKED; das NOTIFY beim
  * Einstellen weckt früher als der Takt. */
@@ -54,6 +56,8 @@ function erzeugeWorker(bearbeiter: Bearbeitertabelle, o: WorkerOptionen = {}) {
   const laufend = new Map<string, { a: AuftragsZeile; fertig: Promise<void> }>();
   let beendet = false, gestartet = false, pumpt = false;
   let takt: NodeJS.Timeout | null = null;
+  // Am Ende jeder Runde: Daran hängt das Lebenszeichen (startup/jobsProzess.ts).
+  let letzteRunde = 0;
 
   /** Auch nach einem endgültigen Fehler, sonst endete der Zeitplan. */
   async function folgeplan(a: AuftragsZeile): Promise<void> {
@@ -61,7 +65,8 @@ function erzeugeWorker(bearbeiter: Bearbeitertabelle, o: WorkerOptionen = {}) {
   }
 
   async function fuehreAus(a: AuftragsZeile): Promise<void> {
-    const b = bearbeiter[a.art];
+    const b: Bearbeiter | undefined = bearbeiter[a.art];
+    let nutzlast: Nutzlast<AuftragsArt> | undefined;
     const k: AuftragsKontext = {
       lebenszeichen: () => lebenszeichen(a, fristSek),
       fortschritt: (f) => setzeFortschritt(a, f, fristSek),
@@ -72,17 +77,22 @@ function erzeugeWorker(bearbeiter: Bearbeitertabelle, o: WorkerOptionen = {}) {
       // Mehr Versuche als erlaubt: Die früheren endeten ohne Rückmeldung (Absturz),
       // ein weiterer Lauf stürzte vermutlich genauso ab.
       if (!b || a.versuche > a.max_versuche) throw new Error(b ? 'ohne Rückmeldung abgebrochen' : `keine Bearbeitung für ${a.art}`);
-      await imNamenDesAuftrags(a, () => b.ausfuehren(a.nutzlast, k, a));
+      const geprueft = nutzlast = pruefeNutzlast(a.art, a.nutzlast);
+      await imNamenDesAuftrags(a, () => b.ausfuehren(geprueft, k, a));
       if (await erledigt(a)) await folgeplan(a);
     } catch (e) {
       if (e instanceof AuftragUnterbrochen) { await gibZurueck(a); return; }
       if (e instanceof AuftragVerschieben) {
-        if (await verschoben(a, e.bis, e.grund, e.zaehlt)) { await b?.aufgegeben?.(a.nutzlast, e.grund, a); await folgeplan(a); }
+        if (await verschoben(a, e.bis, e.grund, e.zaehlt)) { if (nutzlast) await b?.aufgegeben?.(nutzlast, e.grund, a); await folgeplan(a); }
         return;
       }
       const text = fehlertext(e) || 'Unbekannter Fehler';
       console.warn(`[auftraege] ${a.art} #${a.id} Versuch ${a.versuche}/${a.max_versuche}: ${text}`);
-      if (await fehlgeschlagen(a, text)) { await b?.aufgegeben?.(a.nutzlast, text, a); await folgeplan(a); }
+      // Eine ungültige Nutzlast bleibt ungültig: kein zweiter Versuch.
+      if (await fehlgeschlagen(a, text, e instanceof NutzlastUngueltig)) {
+        if (nutzlast) await b?.aufgegeben?.(nutzlast, text, a);
+        await folgeplan(a);
+      }
     }
   }
 
@@ -118,13 +128,14 @@ function erzeugeWorker(bearbeiter: Bearbeitertabelle, o: WorkerOptionen = {}) {
       }
     } catch (e) {
       logAndContinue('auftraege:belegen')(e);
-    } finally { pumpt = false; }
+    } finally { pumpt = false; letzteRunde = Date.now(); }
   }
   const geweckt = () => { void pumpe(); };
 
   function starte(): void {
     if (gestartet) return;
     gestartet = true;
+    letzteRunde = Date.now();
     listen(AUFTRAG_KANAL, geweckt);
     takt = setInterval(geweckt, o.taktMs ?? 5000);
     takt.unref();
@@ -144,7 +155,7 @@ function erzeugeWorker(bearbeiter: Bearbeitertabelle, o: WorkerOptionen = {}) {
     console.log(`[auftraege] beendet, ${rest.length} laufende Aufträge zurückgegeben`);
   }
 
-  return { verarbeiteEinen, starte, stoppe, laufend: () => laufend.size };
+  return { verarbeiteEinen, starte, stoppe, laufend: () => laufend.size, letzteRunde: () => letzteRunde };
 }
 
 export { AuftragUnterbrochen, AuftragVerschieben, erzeugeWorker };

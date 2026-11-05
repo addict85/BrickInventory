@@ -137,12 +137,15 @@ test('Alles-Loeschen fasst die verknuepften Konten nicht an', async (t) => {
 
 test('accounts kann das Loesch-Blickfeld nur einschraenken, nie erweitern', () => {
   // Ein Blickfeld-Parameter, der etwas ÖFFNEN kann, wäre ein Zugriffsweg statt
-  // einer Sicherung. Die Route schneidet deshalb gegen writableIds().
+  // einer Sicherung. Der Dienst schneidet deshalb gegen writableIds(); die
+  // Route gibt nur die Sicht weiter (Verhalten: blickfeld-dienste-db.test.js).
   const src = fs.readFileSync(path.join(ROOT, 'routes/api_v1/sets.ts'), 'utf8');
   const i = src.indexOf("router.delete('/sets/:setNumber'");
   assert.ok(i > 0, 'Löschroute nicht gefunden');
-  const rumpf = src.slice(i, i + 900);
-  assert.match(rumpf, /schreibbar\.includes\(/,
+  assert.match(src.slice(i, i + 900), /loescheSetFuer\(sichtVon\(req\)/, 'Die Route löscht nicht über den Dienst');
+  const dienst = require('./helpers/sources').funktionsRumpf(
+    fs.readFileSync(path.join(ROOT, 'src/sets/abfragen.ts'), 'utf8'), 'loescheSetFuer');
+  assert.match(dienst, /schreibbar\.includes\(/,
     'Die gewählte Menge muss gegen writableIds() geschnitten werden');
 });
 

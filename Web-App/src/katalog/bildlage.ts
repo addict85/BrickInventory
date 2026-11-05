@@ -30,7 +30,7 @@ export async function fuelleAusBrickset(setNumber: string): Promise<boolean> {
   return true;
 }
 
-export type Bildposten = { part_number: string; color_id?: number | null; image_url?: string | null; image_local?: string | null };
+export type Bildposten = { part_number: string; color_id?: number | null | undefined; image_url?: string | null | undefined; image_local?: string | null | undefined };
 
 /** Nur aus geprüfter Quelle: Die Dateien gelten für alle Konten, ein Bild vom
  * Client landete sonst bei allen anderen. */

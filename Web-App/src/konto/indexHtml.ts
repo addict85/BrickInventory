@@ -57,7 +57,7 @@ async function currentTheme(userId?: number): Promise<string> {
   }
   if (_theme !== null && Date.now() - _themeAt < THEME_TTL_MS) return _theme;
   const gespeichert = await getGlobalSetting('app_theme').catch(meldeUndLiefere('index-html:getGlobalSetting', null));
-  const gewaehlt: string = DESIGNS.includes(gespeichert) ? gespeichert : 'classic';
+  const gewaehlt: string = gespeichert && DESIGNS.includes(gespeichert) ? gespeichert : 'classic';
   _theme = gewaehlt;
   _themeAt = Date.now();
   return gewaehlt;

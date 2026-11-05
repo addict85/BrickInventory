@@ -1,6 +1,6 @@
 /**
  * Serialisierung nebenläufiger Mutationen an derselben Bestandszeile.
- * Ausführlich: docs/begruendungen/db/txLock.ts.md#abschnitt
+ * Ausführlich: docs/begruendungen/db/txLock.ts.md#ueberblick
  */
 import * as db from './database';
 import type { DbSchnittstelle } from './database';

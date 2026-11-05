@@ -2,12 +2,9 @@ import { logAndContinue, meldeUndLiefere } from '../infra/fehler';
 import { inventarNachKandidaten } from '../katalog/rbInventar';
 import { nacharbeit } from '../auftraege/nacharbeit';
 import * as repo from './repository/figurTeile';
+import type { KatalogZeile } from './zeilen';
+export type { FigurTeil, KatalogZeile } from './zeilen';
 
-export interface FigurTeil {
-  part_number: string; bl_part_number: string; part_name: string | null; color_id: number;
-  color_name: string | null; color_hex: string | null; is_spare: boolean; quantity: number;
-}
-export interface KatalogZeile { part_number: string; color_id: number; bl_part_number: string | null; image_url: string | null; image_local: string | null }
 
 function katalog(figNumber: string): Promise<KatalogZeile[]> {
   return repo.katalogTeileDerFigur(figNumber);

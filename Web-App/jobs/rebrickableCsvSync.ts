@@ -15,6 +15,7 @@ import zlib2 from 'zlib';
 import { DATA_DIR } from '../src/infra/appPaths';
 import { fork as _fork } from 'child_process';
 import { get } from 'https';
+import type { Nutzlast } from '../src/auftraege/nutzlasten';
 
 const CSV_BASE = 'https://cdn.rebrickable.com/media/downloads/';
 
@@ -223,7 +224,7 @@ async function run() {
 
 /** Beim Start nur, wenn heute noch nicht geladen; der tägliche und der von
  * Hand angestossene Lauf laden immer. */
-async function csvAbgleich(n: Record<string, unknown>): Promise<void> {
+async function csvAbgleich(n: Nutzlast<'csv_sync'>): Promise<void> {
   if (!n.beimStart) await loescheZustand(SYNC_KEY);
   await run();
 }

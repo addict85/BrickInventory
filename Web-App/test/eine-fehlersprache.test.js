@@ -1,15 +1,8 @@
 /**
  * Der Server antwortet in der Sprache, die der Anfragende ZEIGT.
  *
- * ── Der Befund (Nachtrag 130) ───────────────────────────────────────────────
- *
- * Beide Oberflächen sind zweisprachig — die Webapp mit 724 Übersetzungszeilen,
- * die Android-App mit 452 Texten. Der Server, der sie füttert, sprach nur
- * Deutsch: GEMESSEN 125 Stellen mit fester Zeichenkette, 80 verschiedene Texte,
- * davon 54 eindeutig deutsch. Und beide Clients zeigen sie unverändert an.
- *
- * Ein englischsprachiger Nutzer hatte damit eine vollständig englische
- * Oberfläche — bis etwas schiefging.
+ * Beide Oberflächen sind zweisprachig; eine feste deutsche Fehlermeldung des
+ * Servers bräche die englische Oberfläche genau dann, wenn etwas schiefgeht.
  *
  * ── Was hier geprüft wird ───────────────────────────────────────────────────
  *

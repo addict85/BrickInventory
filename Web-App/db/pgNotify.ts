@@ -1,19 +1,14 @@
 /**
  * PostgreSQL LISTEN/NOTIFY statt Datenbank-Polling.
- * Ausführlich: docs/begruendungen/db/pgNotify.ts.md#abschnitt
+ * Ausführlich: docs/begruendungen/db/pgNotify.ts.md#ueberblick
  */
 import { logAndContinue } from '../src/infra/fehler';
 import { Client } from 'pg';
 import * as db from './database';
 import * as konfig from '../src/infra/konfig';
 
-/**
- * Handler eines Kanals.
- *
- * Der Payload ist optional, weil Handler auch beim (Wieder-)Verbinden ohne
- * konkretes Signal aufgerufen werden — dann steht dort undefined, und der
- * Handler soll seinen Zustand aus der Datenbank nachziehen.
- */
+/** Ohne Payload ruft der (Wieder-)Verbindungsaufbau: Dann zieht der Handler
+ * seinen Zustand aus der Datenbank nach, statt einem Signal zu folgen. */
 type Handler = (payload?: string) => void | Promise<void>;
 
 const _handlers = new Map<string, Handler[]>();

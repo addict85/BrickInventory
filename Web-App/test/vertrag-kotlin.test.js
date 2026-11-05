@@ -17,6 +17,10 @@
  *      Route der App hat einen Vertrag“ und „… sagt kein JSON“
  *   E  in FEHLEN_ERLAUBT einen erfundenen Schlüssel ergänzt → rot: „jede
  *      erlaubte Lücke gibt es noch“
+ *   F  (05.11.2026) im Vertrag `label` aus den Anmeldedaten gestrichen → rot:
+ *      „jedes Feld, das die App schickt, kennt der Vertrag“ (LoginRequest.label)
+ *   G  (05.11.2026) im Vertrag die Abfrage von GET /api/v1/sets ohne `page_size`
+ *      → rot: „jeder Abfrageparameter der App steht im Vertrag“
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -30,7 +34,7 @@ const API = path.join(ANDROID, 'core-data', 'src', 'main', 'java', 'ch', 'bricki
 const dok = _req('src/infra/vertrag/openapi.js').openapi();
 const modelle = kotlinModelle(quellwurzeln());
 const routen = [
-  ...apiRouten(API).map((r) => ({ methode: 'GET', pfad: r.pfad, typ: r.typ })),
+  ...apiRouten(API).map((r) => ({ methode: 'GET', pfad: r.pfad, typ: r.typ, anfrage: r.anfrage })),
   ...schreibRouten(API),
 ];
 /** @param {string} p */
@@ -71,6 +75,33 @@ test('jede erlaubte Lücke gibt es noch', () => {
     return !routen.some((r) => r.pfad === route) || !modelle.get(klasse)?.felder.some((f) => f.json === name);
   });
   assert.deepEqual(tot, [], 'Eine Ausnahme ohne Route oder Feld verdeckt nichts mehr');
+});
+
+// Eingaben sind geschlossen (strictObject): Ein Feld, das die App schickt und
+// der Vertrag nicht kennt, wäre im Betrieb eine 400.
+test('jedes Feld, das die App schickt, kennt der Vertrag', () => {
+  const fehlt = [];
+  let geprueft = 0;
+  for (const r of routen.filter((x) => x.rumpf && modelle.has(x.rumpf))) {
+    const op = operation(r.methode, r.pfad);
+    const schema = op?.requestBody?.content?.['application/json']?.schema;
+    const felder = new Set(Object.keys(schema?.properties ?? {}));
+    geprueft++;
+    for (const f of modelle.get(r.rumpf).felder) if (!felder.has(f.json)) fehlt.push(`${r.methode} ${r.pfad} ${r.rumpf}.${f.json}`);
+  }
+  assert.deepEqual(fehlt, []);
+  assert.ok(geprueft >= 35, `nur ${geprueft} Rümpfe verglichen`);
+});
+
+test('jeder Abfrageparameter der App steht im Vertrag', () => {
+  const fehlt = [];
+  let geprueft = 0;
+  for (const r of routen) {
+    const namen = new Set((operation(r.methode, r.pfad)?.parameters ?? []).filter((p) => p.in === 'query').map((p) => p.name));
+    for (const a of r.anfrage ?? []) { geprueft++; if (!namen.has(a.name)) fehlt.push(`${r.methode} ${r.pfad} ?${a.name}`); }
+  }
+  assert.deepEqual(fehlt, []);
+  assert.ok(geprueft >= 50, `nur ${geprueft} Abfrageparameter verglichen`);
 });
 
 test('der Vergleich schlägt an, wo die App nicht lesen kann', () => {

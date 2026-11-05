@@ -44,8 +44,14 @@ export function openapi(): Record<string, unknown> {
   for (const [bereich, modul] of Object.entries(BEREICHE)) {
     for (const [schluessel, r] of Object.entries(modul.routen as Record<string, Route>)) {
       const [methode = '', pfad = ''] = schluessel.split(' ');
-      const parameters = [...pfad.matchAll(/:(\w+)/g)].map(m =>
+      const parameters: Record<string, unknown>[] = [...pfad.matchAll(/:(\w+)/g)].map(m =>
         ({ name: m[1], in: 'path', required: true, schema: { type: 'string' } }));
+      if (r.abfrage) {
+        const s = z.toJSONSchema(r.abfrage, { io: 'input', unrepresentable: 'any' });
+        const pflicht = new Set(s.required ?? []);
+        for (const [name, schema] of Object.entries(s.properties ?? {}))
+          parameters.push({ name, in: 'query', required: pflicht.has(name), schema });
+      }
       const ok = r.antwort
         ? { description: 'Erfolg', content: { 'application/json': { schema: { $ref: URI(benannt.get(r.antwort) ?? '') } } } }
         : { description: 'Erfolg', content: { [MIME[r.art ?? 'datei']]: {} } };
@@ -53,12 +59,11 @@ export function openapi(): Record<string, unknown> {
         tags: [bereich], ...(parameters.length ? { parameters } : {}),
         responses: { 200: ok, default: { description: 'Fehler', content: { 'application/json': { schema: { $ref: URI('Fehler') } } } } },
       };
-      if (r.formular) op.requestBody = { content: { 'multipart/form-data': { schema: { type: 'object',
-        properties: { file: { type: 'string', format: 'binary' } } } } } };
-      else if (r.eingabe) {
-        const { $schema: _, ...schema } = z.toJSONSchema(r.eingabe, { io: 'input', unrepresentable: 'any' });
-        op.requestBody = { content: { 'application/json': { schema } } };
-      }
+      const rumpf = r.eingabe ? z.toJSONSchema(r.eingabe, { io: 'input', unrepresentable: 'any' }) : undefined;
+      delete rumpf?.$schema;
+      if (r.formular) op.requestBody = { content: { 'multipart/form-data': { schema: { ...rumpf, type: 'object',
+        properties: { file: { type: 'string', format: 'binary' }, ...rumpf?.properties } } } } };
+      else if (rumpf) op.requestBody = { content: { 'application/json': { schema: rumpf } } };
       if (r.bestaetigung) op['x-bestaetigung'] = r.bestaetigung;
       if (r.geheim) op['x-geheim'] = true;
       const oaPfad = pfad.replace(/:(\w+)/g, '{$1}');

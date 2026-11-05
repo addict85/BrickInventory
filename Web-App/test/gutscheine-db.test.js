@@ -215,7 +215,7 @@ test('Gutscheine gegen echte Datenbank', { concurrency: 1 }, async (t) => {
       ]) {
         const r = methode === 'GET'
           ? await hole(pfad, keks)
-          : await jsonAn(pfad, keks, methode, { amount: 1, password: PASS });
+          : await jsonAn(pfad, keks, methode, methode === 'PUT' ? { amount: 1 } : { password: PASS });
         assert.equal(r.status, 404, `${wer} durfte ${methode} ${pfad} nicht`);
       }
       // Und die Zeile steht noch.

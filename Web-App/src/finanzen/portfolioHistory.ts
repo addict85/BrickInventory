@@ -1,3 +1,5 @@
+import { blickfeldAus } from '../haushalt/haushalt';
+import type { Sicht } from '../haushalt/haushalt';
 import * as dbStandard from '../../db/database';
 import { getSetting as getSettingStandard } from '../einstellungen/settings';
 import { baueDiagrammdaten } from './portfolio/diagrammdaten';
@@ -7,10 +9,11 @@ import * as repo from './repository/portfolioKurve';
 /** `db` und `getSetting` lassen sich hereingeben, damit die Rechnung ohne
  * Datenbank prüfbar bleibt. */
 export async function getPortfolioHistory(
-  viewerId: number, ids: number[], period: string,
+  viewerId: number, idsWahl: Sicht | number[], period: string,
   db: { all(sql: string, params?: any[]): Promise<any[]>; get(sql: string, params?: any[]): Promise<any> } = dbStandard,
   getSetting: (userId: number, key: string, fallback?: any) => Promise<any> = getSettingStandard,
 ) {
+  const ids = await blickfeldAus(idsWahl);
   // Mit dem Filter „Unterkonten" enthält ids das fragende Konto nicht; die
   // Währung darf dann nicht aus ids[0] kommen.
   const uids = Array.isArray(ids) ? ids.map(n => parseInt(String(n))) : [parseInt(String(ids))];

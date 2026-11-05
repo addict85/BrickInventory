@@ -7,14 +7,13 @@ import { fehlerAntwort, pfadParam } from '../../src/infra/httpAntwort';
 import { revokeAllSessions, USERNAME_RE, leereTokenCache } from '../../src/konto/auth';
 import { nutzerId, angemeldeteNutzerId, bestaetigeMitFaktor, nutzerName } from '../../src/konto/http/anmeldung';
 import { hinweisNebenher, verwalterHinweisNebenher } from '../../src/konto/kontoHinweis';
-import { strictBool } from '../../src/infra/validate';
 import { passwortMangel } from '../../src/infra/passwortRegel';
 import { requireApiAdmin } from '../api_v1/middleware';
 import { sendeFehler, alsDoppelt } from '../../src/infra/fehlerTexte';
 import * as zf from '../../src/konto/zweiterFaktor';
 import { loescheKontoDateien } from '../../src/gutscheine/gutscheinDateien';
 import { vertragsRouter } from '../../src/infra/vertrag/pruefen';
-import type { Antwort } from '../../src/infra/vertrag';
+import type { Antwort, OffeneAnfrage } from '../../src/infra/vertrag';
 
 const router = vertragsRouter();
 const requireAdmin = requireApiAdmin;
@@ -24,8 +23,8 @@ router.get('/users', requireAdmin, async (_req, res: Antwort<'GET /api/v1/auth/u
   res.json({ success: true, users });
 });
 
-router.post('/users', requireAdmin, async (req, res: Antwort<'POST /api/v1/auth/users'>) => {
-  const { username, password } = req.body;
+router.post('/users', requireAdmin, async (req: OffeneAnfrage<'POST /api/v1/auth/users'>, res: Antwort<'POST /api/v1/auth/users'>) => {
+  const { username, password } = req.eingabe;
   if (!username || !password) return sendeFehler(req, res, 400, 'benutzername_passwort');
   if (!USERNAME_RE.test(String(username)))
     return sendeFehler(req, res, 400, 'benutzername_ungueltig');
@@ -33,12 +32,11 @@ router.post('/users', requireAdmin, async (req, res: Antwort<'POST /api/v1/auth/
   if (mangel) return sendeFehler(req, res, 400, mangel);
   // Streng: Die Zeichenkette "false" ist in JavaScript wahr und legte einen
   // Verwalter an.
-  const roh = req.body.is_admin ?? req.body.isAdmin;
-  const alsVerwalter = roh === undefined ? false : strictBool(roh, 'is_admin');
+  const alsVerwalter = req.eingabe.is_admin ?? req.eingabe.isAdmin ?? false;
   // Passwort bestätigen und protokollieren — eine erbeutete Sitzung soll keinen
   // Verwalter anlegen.
   const verwalter = angemeldeteNutzerId(req);
-  if (!await bestaetigeMitFaktor(req, res, verwalter, req.body?.admin_password)) return;
+  if (!await bestaetigeMitFaktor(req, res, verwalter, req.eingabe.admin_password)) return;
   // Wie bei der Registrierung auch gegen die Adressen: Die Anmeldung sucht in beiden Spalten.
   if (await K.nameVergeben(username, 0)) return sendeFehler(req, res, 409, 'benutzername_vergeben');
   const neu = await K.legeKontoAn(username, password, alsVerwalter).catch(alsDoppelt('benutzername_vergeben'));
@@ -49,14 +47,14 @@ router.post('/users', requireAdmin, async (req, res: Antwort<'POST /api/v1/auth/
   res.json({ success: true });
 });
 
-router.put('/users/:id/admin', requireAdmin, async (req, res: Antwort<'PUT /api/v1/auth/users/:id/admin'>) => {
+router.put('/users/:id/admin', requireAdmin, async (req: OffeneAnfrage<'PUT /api/v1/auth/users/:id/admin'>, res: Antwort<'PUT /api/v1/auth/users/:id/admin'>) => {
   const targetId = parseInt(pfadParam(req, 'id'));
   // Streng: "false" ist in JavaScript wahr und entzöge sonst keine Rechte.
-  const soll = strictBool(req.body.is_admin, 'is_admin');
+  const soll = req.eingabe.is_admin;
   if (targetId === nutzerId(req) && !soll)
     return sendeFehler(req, res, 400, 'eigene_adminrolle');
   if (!await K.kontoExistiert(targetId)) return sendeFehler(req, res, 404, 'benutzer_nicht_gefunden');
-  if (!await bestaetigeMitFaktor(req, res, angemeldeteNutzerId(req), req.body?.admin_password)) return;
+  if (!await bestaetigeMitFaktor(req, res, angemeldeteNutzerId(req), req.eingabe.admin_password)) return;
   const r = await K.setzeVerwalterRolle(targetId, soll);
   if (!r) return sendeFehler(req, res, 404, 'benutzer_nicht_gefunden');
   if (r.geaendert) await protokolliere(angemeldeteNutzerId(req), targetId, soll ? 'verwalter_ernannt' : 'verwalter_entzogen');
@@ -69,13 +67,13 @@ router.put('/users/:id/admin', requireAdmin, async (req, res: Antwort<'PUT /api/
   res.json({ success: true });
 });
 
-router.put('/users/:id/aktiv', requireAdmin, async (req, res: Antwort<'PUT /api/v1/auth/users/:id/aktiv'>) => {
+router.put('/users/:id/aktiv', requireAdmin, async (req: OffeneAnfrage<'PUT /api/v1/auth/users/:id/aktiv'>, res: Antwort<'PUT /api/v1/auth/users/:id/aktiv'>) => {
   const targetId = parseInt(pfadParam(req, 'id'));
-  const soll = strictBool(req.body.is_active, 'is_active');
+  const soll = req.eingabe.is_active;
   if (!Number.isInteger(targetId)) return sendeFehler(req, res, 400, 'id_ungueltig');
   if (targetId === nutzerId(req)) return sendeFehler(req, res, 400, 'eigenes_konto_deaktivieren');
   if (!await K.kontoExistiert(targetId)) return sendeFehler(req, res, 404, 'benutzer_nicht_gefunden');
-  if (!await bestaetigeMitFaktor(req, res, angemeldeteNutzerId(req), req.body?.admin_password)) return;
+  if (!await bestaetigeMitFaktor(req, res, angemeldeteNutzerId(req), req.eingabe.admin_password)) return;
   const r = await K.setzeAktiv(targetId, soll);
   if (!r) return sendeFehler(req, res, 404, 'benutzer_nicht_gefunden');
   if (r.geaendert) await protokolliere(angemeldeteNutzerId(req), targetId, soll ? 'konto_reaktiviert' : 'konto_deaktiviert');
@@ -83,10 +81,10 @@ router.put('/users/:id/aktiv', requireAdmin, async (req, res: Antwort<'PUT /api/
 });
 
 // Für Registrierungen, deren Bestätigungsmail nie ankam: Der Verwalter bürgt für die Adresse.
-router.put('/users/:id/freischalten', requireAdmin, async (req, res: Antwort<'PUT /api/v1/auth/users/:id/freischalten'>) => {
+router.put('/users/:id/freischalten', requireAdmin, async (req: OffeneAnfrage<'PUT /api/v1/auth/users/:id/freischalten'>, res: Antwort<'PUT /api/v1/auth/users/:id/freischalten'>) => {
   const targetId = parseInt(pfadParam(req, 'id'));
   if (!Number.isInteger(targetId) || !await K.kontoExistiert(targetId)) return sendeFehler(req, res, 404, 'benutzer_nicht_gefunden');
-  if (!await bestaetigeMitFaktor(req, res, angemeldeteNutzerId(req), req.body?.admin_password)) return;
+  if (!await bestaetigeMitFaktor(req, res, angemeldeteNutzerId(req), req.eingabe.admin_password)) return;
   const r = await K.schalteRegistrierungFrei(targetId);
   if (r !== 'ok') return sendeFehler(req, res, 409, r === 'vergeben' ? 'email_vergeben' : 'konto_nicht_wartend');
   await protokolliere(angemeldeteNutzerId(req), targetId, 'konto_freigeschaltet');
@@ -95,8 +93,8 @@ router.put('/users/:id/freischalten', requireAdmin, async (req, res: Antwort<'PU
 
 /** Ohne aktuelles Passwort des Ziels, aber mit dem des Verwalters.
  * Ausführlich: docs/begruendungen/routes/auth/benutzer.ts.md#put-users-id-password */
-router.put('/users/:id/password', requireAdmin, async (req, res: Antwort<'PUT /api/v1/auth/users/:id/password'>) => {
-  const { password } = req.body || {};
+router.put('/users/:id/password', requireAdmin, async (req: OffeneAnfrage<'PUT /api/v1/auth/users/:id/password'>, res: Antwort<'PUT /api/v1/auth/users/:id/password'>) => {
+  const { password } = req.eingabe || {};
   const targetId = parseInt(pfadParam(req, 'id'));
   if (!targetId || targetId === nutzerId(req))
     return sendeFehler(req, res, 400, 'eigenes_konto_passwort');
@@ -105,7 +103,7 @@ router.put('/users/:id/password', requireAdmin, async (req, res: Antwort<'PUT /a
 
   // Mit dem Passwort eines anderen Kontos lässt sich dieses übernehmen —
   // eine offene Verwaltersitzung allein genügt dafür nicht.
-  if (!await bestaetigeMitFaktor(req, res, angemeldeteNutzerId(req), req.body?.admin_password)) return;
+  if (!await bestaetigeMitFaktor(req, res, angemeldeteNutzerId(req), req.eingabe.admin_password)) return;
   if (!await K.setzeFremdesPasswort(targetId, password)) return sendeFehler(req, res, 404, 'benutzer_nicht_gefunden');
   await protokolliere(angemeldeteNutzerId(req), targetId, 'passwort_gesetzt');
   // Wie beim entfernten Faktor: Eine Übernahme durch eine erbeutete Verwaltersitzung bliebe sonst unbemerkt.
@@ -116,9 +114,9 @@ router.put('/users/:id/password', requireAdmin, async (req, res: Antwort<'PUT /a
   res.json({ success: true });
 });
 
-router.delete('/users/:id', requireAdmin, async (req, res: Antwort<'DELETE /api/v1/auth/users/:id'>) => {
+router.delete('/users/:id', requireAdmin, async (req: OffeneAnfrage<'DELETE /api/v1/auth/users/:id'>, res: Antwort<'DELETE /api/v1/auth/users/:id'>) => {
   const targetId = parseInt(pfadParam(req, 'id'));
-  if (!await bestaetigeMitFaktor(req, res, angemeldeteNutzerId(req), req.body?.admin_password)) return;
+  if (!await bestaetigeMitFaktor(req, res, angemeldeteNutzerId(req), req.eingabe.admin_password)) return;
   if (targetId !== nutzerId(req) && await K.kontoExistiert(targetId))
     await protokolliere(angemeldeteNutzerId(req), targetId, 'konto_geloescht');
   if (!await K.loescheKonto(targetId, nutzerId(req))) return sendeFehler(req, res, 404, 'benutzer_nicht_gefunden_oder_eigenes');
@@ -137,11 +135,11 @@ router.delete('/users/:id', requireAdmin, async (req, res: Antwort<'DELETE /api/
 });
 
 // Notausgang, wenn Telefon UND Wiederherstellungscodes weg sind.
-router.delete('/users/:id/zweiter-faktor', requireAdmin, async (req, res: Antwort<'DELETE /api/v1/auth/users/:id/zweiter-faktor'>) => {
+router.delete('/users/:id/zweiter-faktor', requireAdmin, async (req: OffeneAnfrage<'DELETE /api/v1/auth/users/:id/zweiter-faktor'>, res: Antwort<'DELETE /api/v1/auth/users/:id/zweiter-faktor'>) => {
   const id = parseInt(pfadParam(req, 'id'));
   if (!Number.isInteger(id)) return sendeFehler(req, res, 400, 'id_ungueltig');
   if (id === nutzerId(req)) return sendeFehler(req, res, 400, 'eigener_zweiter_faktor');
-  if (!await bestaetigeMitFaktor(req, res, angemeldeteNutzerId(req), req.body?.admin_password)) return;
+  if (!await bestaetigeMitFaktor(req, res, angemeldeteNutzerId(req), req.eingabe.admin_password)) return;
   await zf.schalteAb(id);
   await protokolliere(angemeldeteNutzerId(req), id, 'zweiter_faktor_entfernt');
   const durch = nutzerName(req) ?? '';

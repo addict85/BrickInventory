@@ -5,11 +5,12 @@ import { logAndContinue, meldeUndWeiter } from '../src/infra/fehler';
 import { pausiereArt } from '../src/auftraege/dienst';
 import { bricksetFaelligAb } from '../src/auftraege/bricksetAuftrag';
 import { AuftragVerschieben } from './auftragsWorker';
+import type { Nutzlast } from '../src/auftraege/nutzlasten';
 
 /** Ist das Tageskontingent aufgebraucht, wartet die ganze Art bis zur
  * eingestellten Uhrzeit; der Versuch zählt dann nicht. */
-async function bricksetNachlauf(n: Record<string, unknown>): Promise<void> {
-  const sn = String(n.set_number);
+async function bricksetNachlauf(n: Nutzlast<'brickset'>): Promise<void> {
+  const sn = n.set_number;
   try {
     const [limit, status] = await Promise.all([getLimitForApi('brickset'), getRateLimitStatus('brickset')]);
     if (Math.max(0, limit - (status.count || 0)) <= 0) {

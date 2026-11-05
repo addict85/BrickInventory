@@ -4,12 +4,9 @@
  * Repository einen Dienst importieren darf.
  */
 
-/**
- * Der Kaufpreis in der Anzeigewährung `w` (ein SQL-Parameter): gleiche Währung
- * unverändert, eine fremde zum Kurs des Kauftags (Migration 0077, sonst der
- * nächstfrühere). NULL, wenn kein Kurs da ist — dann zählt der Preis als
- * „fremde Währung, nicht eingerechnet“ wie vor den Kursen.
- */
+/** Der Kaufpreis in der Anzeigewährung `w` (SQL-Parameter), fremde Währung
+ * zum Kurs des Kauftags oder davor (0077). Ohne Kurs NULL: Der Preis zählt
+ * dann als „fremde Währung, nicht eingerechnet“. */
 export function kaufpreisIn(spalte: string, w: string): string {
   return `in_waehrung(${spalte}, currency, ${w}, COALESCE(tag, (created_at AT TIME ZONE 'UTC')::date))`;
 }

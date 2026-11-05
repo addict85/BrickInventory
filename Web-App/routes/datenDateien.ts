@@ -5,14 +5,14 @@ import { liefereDatei } from '../src/infra/dateiAusliefern';
 import { safeDataPath } from '../src/infra/datenPfad';
 
 import { requireLoginOrToken, angemeldeteNutzerId } from '../src/konto/http/anmeldung';
-import { scopeIds } from '../src/haushalt/haushalt';
+import { siehtKonto } from '../src/haushalt/haushalt';
 import { anleitungFreigegeben } from '../src/katalog/bilder/bildBlickfeld';
 
 type WildcardRequest = Request<{ pfad: string[] }>;
 const router = express.Router();
 
-// scopeIds(): Das Hauptkonto sieht die Uploads seiner Unterkonten, nicht
-// umgekehrt. Ein erstes Segment ohne Benutzer-ID wird abgewiesen.
+// Das Hauptkonto sieht die Uploads seiner Unterkonten, nicht umgekehrt. Ein
+// erstes Segment ohne Benutzer-ID wird abgewiesen.
 // Ausführlich: docs/begruendungen/routes/datenDateien.ts.md#servedatafile
 router.get('/data/uploads/*pfad', requireLoginOrToken, async (req: WildcardRequest, res: Response) => {
   const userId = angemeldeteNutzerId(req);
@@ -24,10 +24,7 @@ router.get('/data/uploads/*pfad', requireLoginOrToken, async (req: WildcardReque
   const besitzer = Number(segments[0]);
   // Auch Verwalter lesen fremde Uploads (Rechnungen, Gutscheine) nicht. Fremd
   // antwortet wie fehlend, damit sich nicht ablesen lässt, welche Konten Dateien haben.
-  if (besitzer !== userId) {
-    const erlaubt = await scopeIds(userId).catch(() => [userId]);
-    if (!erlaubt.includes(besitzer)) return res.status(404).send('Datei nicht gefunden');
-  }
+  if (!await siehtKonto(userId, besitzer)) return res.status(404).send('Datei nicht gefunden');
   liefereDatei(res, filePath);
 });
 

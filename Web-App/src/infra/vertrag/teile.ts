@@ -1,4 +1,4 @@
-import { OHNE_RUMPF, ZAHL, ZUSTAND } from './grund';
+import { OHNE_RUMPF, ZAHL, ZUSTAND, KENNUNG, TEXT, abfrage, Q } from './grund';
 import { z } from 'zod';
 import { eingabe } from '../validate';
 import type { Route } from './grund';
@@ -91,23 +91,26 @@ export const TeilFarbeResponse = z.looseObject({
 export const BlFarbTabelle = z.looseObject({ success: z.literal(true), source: z.string(), map: z.record(z.string(), z.unknown()) });
 
 export const routen = {
-  'GET /api/v1/parts': { antwort: PartsResponse },
-  'GET /api/v1/parts/:partNumber/:colorId/sets': { antwort: VerwendendeSetsResponse },
-  'GET /api/v1/parts/stats': { antwort: PartsStatsResponse },
+  'GET /api/v1/parts': { antwort: PartsResponse, abfrage: abfrage({ accounts: Q.konten, search: Q.text(), color: Q.text(64),
+    category: Q.text(), page: Q.zahl(), page_size: Q.zahl(), set_number: Q.text(64), exclude_manual: Q.schalter,
+    spare: z.enum(['0', '1', '']), with_sets: Q.schalter, storage: Q.text(), ordnung: z.enum(['farbe', 'name', 'menge']) }) },
+  'GET /api/v1/parts/:partNumber/:colorId/sets': { antwort: VerwendendeSetsResponse, abfrage: abfrage({ accounts: Q.konten }) },
+  'GET /api/v1/parts/stats': { antwort: PartsStatsResponse, abfrage: abfrage({ accounts: Q.konten }) },
   'GET /api/v1/parts/brick-colors': { antwort: BrickColorsResponse },
-  'GET /api/v1/parts/colors': { antwort: PartsFilterColorsResponse },
-  'GET /api/v1/parts/categories': { antwort: PartsCategoriesResponse },
-  'GET /api/v1/parts/manual': { antwort: ManualPartsResponse },
-  'PUT /api/v1/parts/:partNumber/:colorId/color': { antwort: TeilFarbeResponse, eingabe: z.looseObject({ color_name: eingabe.text(100), color_hex: eingabe.farbcode() }) },
-  'POST /api/v1/parts/owned': { antwort: BestandResponse, eingabe: z.looseObject({
+  'GET /api/v1/parts/colors': { antwort: PartsFilterColorsResponse, abfrage: abfrage({ accounts: Q.konten }) },
+  'GET /api/v1/parts/categories': { antwort: PartsCategoriesResponse, abfrage: abfrage({ accounts: Q.konten }) },
+  'GET /api/v1/parts/manual': { antwort: ManualPartsResponse, abfrage: abfrage({ accounts: Q.konten, search: Q.text(), storage: Q.text() }) },
+  'PUT /api/v1/parts/:partNumber/:colorId/color': { antwort: TeilFarbeResponse, abfrage: abfrage({ owner: Q.konto }),
+    eingabe: z.strictObject({ color_id: KENNUNG.nullable().optional(), color_name: eingabe.text(100), color_hex: eingabe.farbcode() }) },
+  'POST /api/v1/parts/owned': { antwort: BestandResponse, abfrage: abfrage({ accounts: Q.konten }), eingabe: z.strictObject({
     teile: z.array(z.looseObject({ part_number: z.union([z.string(), z.number()]).optional(), color_id: z.union([z.string(), z.number()]).nullable().optional() })).optional() }) },
-  'POST /api/v1/parts': { antwort: AddPartResponse, eingabe: z.looseObject({
+  'POST /api/v1/parts': { antwort: AddPartResponse, eingabe: z.strictObject({
     part_number: eingabe.artikelnummer('part_number'), color_id: eingabe.farbe(), color_name: eingabe.text(100),
     color_hex: eingabe.farbcode(), quantity: eingabe.stueckzahl(), condition: eingabe.zustand(),
     unit_price: eingabe.preis('Stückpreis'), part_name: eingabe.text(200), image_url: eingabe.bildUrl(),
-    category_name: eingabe.text(100) }) },
-  'PUT /api/v1/parts/:partNumber/:colorId': { eingabe: z.looseObject({ quantity: ZAHL.optional(), quantity_delta: ZAHL.nullable().optional(), unit_price: ZAHL.nullable().optional(), condition: ZUSTAND.nullable().optional() }), antwort: GenericResponse },
-  'DELETE /api/v1/parts/:partNumber/:colorId': { eingabe: OHNE_RUMPF, antwort: InDenPapierkorb },
+    category_name: eingabe.text(100), owner_user_id: KENNUNG.nullable().optional(), storage: TEXT().nullable().optional(), acquired_at: TEXT(40).nullable().optional() }) },
+  'PUT /api/v1/parts/:partNumber/:colorId': { abfrage: abfrage({ owner: Q.konto }), eingabe: z.strictObject({ quantity: ZAHL.optional(), quantity_delta: ZAHL.nullable().optional(), unit_price: ZAHL.nullable().optional(), condition: ZUSTAND.nullable().optional() }), antwort: GenericResponse },
+  'DELETE /api/v1/parts/:partNumber/:colorId': { eingabe: OHNE_RUMPF, antwort: InDenPapierkorb, abfrage: abfrage({ owner: Q.konto }) },
   'POST /api/v1/parts/import/csv': { formular: true, antwort: CsvImportErgebnis },
   'GET /api/v1/parts/bl-color-map': { antwort: BlFarbTabelle },
 } satisfies Record<string, Route>;

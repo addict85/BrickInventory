@@ -4,23 +4,13 @@ import fs from 'fs';
 import { Worker, isMainThread, parentPort, workerData } from 'worker_threads';
 import PDFDocument from 'pdfkit';
 import { IMAGES_DIR, resolveWebPath } from '../src/infra/appPaths';
+import type { Nutzlast } from '../src/auftraege/nutzlasten';
 
 /** Im worker_thread: pdfkit zeichnet synchron und hielte bei tausenden Zeilen
  * die Ereignisschleife an, die im Prozess „beides" auch Anfragen beantwortet. */
 
-export type PdfTeil = {
-  part_number: string;
-  bl_part_number?: string | null;
-  part_name?: string | null;
-  color_id?: number | null;
-  color_name?: string | null;
-  color_hex?: string | null;
-  quantity?: number | string | null;
-  is_fig?: boolean | number | null;
-  image_url?: string | null;
-  image_local?: string | null;
-};
-export type PdfSet = { set_number: string };
+export type PdfTeil = Nutzlast<'pdf'>['parts'][number];
+export type PdfSet = Nutzlast<'pdf'>['sets'][number];
 
 /** Nur innerhalb des Bildordners: Die Liste kommt vom Client, ein `image_local`
  * wie `/images/../../…` läse sonst fremde Dateien ins PDF. */

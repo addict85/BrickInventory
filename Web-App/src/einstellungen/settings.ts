@@ -5,7 +5,10 @@ import { fehlerWerfen } from '../infra/fehlerTexte';
 import { meldeUndLiefere } from '../infra/fehler';
 import crypto from 'node:crypto';
 
-export async function getSetting(userId: number, key: string, fallback?: any) {
+/** Gespeichert ist Text; mit Vorgabe ist das Ergebnis Text oder die Vorgabe, nie `any`. */
+export async function getSetting(userId: number, key: string): Promise<string | null | undefined>;
+export async function getSetting<T>(userId: number, key: string, fallback: T): Promise<string | T>;
+export async function getSetting(userId: number, key: string, fallback?: unknown): Promise<unknown> {
   const eigen = await repo.nutzerWert(userId, key);
   if (eigen) return eigen;
   return klar(key, await repo.globalerWert(key)) || fallback;
@@ -19,7 +22,9 @@ function klar(key: string, wert: string | null | undefined): string | null | und
 /** Der Name im Kontext: Ein SMTP-Passwort, in die Zeile eines API-Schlüssels kopiert, bleibt unlesbar. */
 const globalerKontext = (key: string) => kontext('global_settings.value', key);
 
-export async function getGlobalSetting(key: string, fallback: any = null) {
+export async function getGlobalSetting(key: string): Promise<string | null>;
+export async function getGlobalSetting<T>(key: string, fallback: T): Promise<string | T>;
+export async function getGlobalSetting(key: string, fallback: unknown = null): Promise<unknown> {
   const g = await repo.globalerWert(key).catch(meldeUndLiefere(`einstellungen:${key}`, null));
   return klar(key, g) ?? fallback;
 }
@@ -153,7 +158,7 @@ export function maskSecret(value: string | null | undefined) {
   return String(value ?? '') ? MASK_CHAR.repeat(12) : '';
 }
 
-export function isMaskedValue(value: string | null | undefined) {
+export function isMaskedValue(value: unknown) {
   return typeof value === 'string' && value.includes(MASK_CHAR);
 }
 
@@ -194,7 +199,7 @@ export async function globaleWerteOhneGeheimnisse(): Promise<Record<string, stri
 // nichts gewählt haben, einem Wechsel.
 export async function designFuer(userId?: number | null): Promise<{ theme: string; vorgabe: string; eigenes: string | null }> {
   const g = await getGlobalSetting('app_theme');
-  const vorgabe = DESIGNS.includes(g) ? g : 'classic';
+  const vorgabe = g && DESIGNS.includes(g) ? g : 'classic';
   const u = userId ? await repo.nutzerWert(userId, 'app_theme') : null;
   const eigenes = u && DESIGNS.includes(u) ? u : null;
   return { theme: eigenes ?? vorgabe, vorgabe, eigenes };

@@ -14,6 +14,8 @@
  *      quantity {"$ne":1} galt als „fehlt" und wurde 1)
  *   D  (05.11.2026) OHNE_RUMPF als z.looseObject({}) → rot: „jede schreibende
  *      Route weist ein Objekt …" für alle Routen ohne Rumpf
+ *   F  (05.11.2026) das Schema von POST /api/v1/sets/add-stream entfernt → rot:
+ *      „jede schreibende Route hat ein Eingabeschema"
  *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL.
  */
@@ -53,9 +55,8 @@ test('verschachtelte Werte an schreibenden Routen', { concurrency: 1 }, async (t
   });
 
   await t.test('jede schreibende Route hat ein Eingabeschema', () => {
-    // Einzige Ausnahme: der Strom, dessen Rumpf die Route selbst zerlegt.
     const ohneSchema = Object.entries(VERTRAG).filter(([k, r]) => !k.startsWith('GET ') && !r.eingabe && !r.formular).map(([k]) => k);
-    assert.deepEqual(ohneSchema, ['POST /api/v1/sets/add-stream']);
+    assert.deepEqual(ohneSchema, []);
   });
 
   await t.test('jede schreibende Route weist ein Objekt in einem ihrer Felder ab', async () => {

@@ -161,31 +161,16 @@ test('der Kontofilter wird am Server in IDs übersetzt, nicht in der Oberfläche
   assert.match(h, /if \(v === 'own' \|\| v === 'subs'\) return v;/);
   assert.match(h, /return Number\.isFinite\(n\) && n > 0 \? n : 'all';/);
 
-  // Und jeder Lesepfad reicht den Filter durch — einer, der es vergisst, zeigt
-  // stumm den ganzen Haushalt, während die Ansicht daneben gefiltert ist.
-  // Die Leserouten liegen alle in der v1-Familie; geprüft wird dort.
-  // Die eine Ausnahme fragt „darf ich?“, nicht „was zeige ich?“: lagerKonten()
-  // prüft eine Berechtigung. Ihr Verhalten belegt household-db.test.js („die
-  // Lagerorte eines Unterkontos folgen dem Recht …“).
-  const OHNE_ANSICHTSFILTER = { 'routes/api_v1/sets.ts': ['lagerKonten'] };
-  const genutzt = new Set();
+  // Und jeder Lesepfad reicht den Filter durch: Die Routen geben die Sicht
+  // (sichtVon) weiter, den Bereich löst der Dienst auf (blickfeldAus). Dass
+  // keine Route ihn selbst auflöst, prüft test/schichten.test.js.
   for (const f of ['routes/api_v1/sets.ts', 'routes/api_v1/parts.ts',
                    'routes/api_v1/minifigs.ts', 'routes/api_v1/finance.ts',
                    'routes/api_v1/misc.ts']) {
-    const zeilen = read(f).split('\n');
-    let block = null, gefunden = 0;
-    for (const l of zeilen) {
-      block = (l.match(/^(?:export )?(?:async )?function (\w+)/) || l.match(/^router\.\w+\('([^']+)'/) || [])[1] ?? block;
-      if (!l.includes('await scopeIds(')) continue;
-      gefunden++;
-      if ((OHNE_ANSICHTSFILTER[f] || []).includes(block)) { genutzt.add(`${f}#${block}`); continue; }
-      assert.ok(l.includes('parseScopeMode(req.query.accounts)'),
-        `${f} (${block}): scopeIds ohne Kontofilter — ${l.trim()}`);
-    }
-    assert.ok(gefunden > 0, `${f}: kein scopeIds-Aufruf`);
+    assert.match(read(f), /sichtVon\(req\)/, `${f}: keine Route gibt die Sicht weiter`);
   }
-  const erwartet = Object.entries(OHNE_ANSICHTSFILTER).flatMap(([f, n]) => n.map(x => `${f}#${x}`));
-  assert.deepEqual([...genutzt].sort(), erwartet.sort(), 'Eine Ausnahme ohne scopeIds-Aufruf ist veraltet');
+  assert.match(h, /export async function blickfeldAus\([\s\S]{0,200}scopeIds\(v\.nutzer, parseScopeMode\(v\.konten\)\)/,
+    'Die Sicht wird nicht über den Kontofilter aufgelöst');
 });
 
 test('ein Set erscheint nur EINMAL, mit der Summe der Mengen', () => {
@@ -293,12 +278,12 @@ test('Schreiben in ein fremdes Konto verlangt die richtige Richtung', () => {
   // Für Minifiguren liegt der Schreibpfad seit Nachtrag 72 in der gemeinsamen
   // Fabrik — deshalb steht dort routes/api_v1/minifigs.ts statt der entfernten
   // Session-Route. Geprüft wird dieselbe Regel am neuen Ort.
-  for (const f of ['routes/api_v1/sets.ts', 'routes/api_v1/parts.ts', 'routes/api_v1/minifigs.ts']) {
-    const src = read(f);
-    assert.match(src, /resolveWriteTarget\(/, `${f}: Kontoauswahl fehlt`);
-    assert.match(src, /=== null\)[\s\S]{0,120}sendeFehler\(req, res, 403/,
-      `${f}: Ohne Recht muss die Antwort 403 sein, nicht stillschweigend das eigene Konto`);
-  }
+  // Seit dem 05.11.2026 über schreibziel(): Es wirft 403 statt null zurückzugeben
+  // (Verhalten: test/blickfeld-dienste-db.test.js).
+  for (const f of ['routes/api_v1/sets.ts', 'routes/api_v1/parts.ts', 'routes/api_v1/minifigs.ts'])
+    assert.match(read(f), /schreibziel\(/, `${f}: Kontoauswahl fehlt`);
+  assert.match(h, /if \(ziel === null\) fehlerWerfen\(absage, 403\);/,
+    'Ohne Recht muss die Antwort 403 sein, nicht stillschweigend das eigene Konto');
 });
 
 test('manuelle Teile und Minifiguren tragen den Besitzer', () => {
@@ -322,7 +307,7 @@ test('manuelle Teile und Minifiguren tragen den Besitzer', () => {
 
   const fc = require('./helpers/sources').finanzQuelle();
   pruefeParameter(fc, 'withOwnerNames', ['uids', 'rows']);
-  const uses = (fc.match(/await withOwnerNames\(uids, await parallelLimit\(tasks, 5\)\)/g) || []).length;
+  const uses = (fc.match(/await withOwnerNames\(uids, await parallelLimit\(/g) || []).length;
   // Seit der UI-Prüfung 12 auch die Sets: Jede Zeile ist der Bestand eines Kontos.
   assert.equal(uses, 3, 'Set-, Teile- und Minifiguren-Bewertung brauchen den Besitzer');
 });

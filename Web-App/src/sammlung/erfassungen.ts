@@ -1,7 +1,7 @@
 /** Eine Regel für drei Arten, damit Webapp und App nicht auseinanderlaufen. */
 import * as repo from './repository/erfassungen';
 import type { DbSchnittstelle } from '../../db/database';
-import { writableIds, acquisitionMoveSource, resolveWriteTarget } from '../haushalt/haushalt';
+import { writableIds, acquisitionMoveSource, resolveWriteTarget, blickfeldAus, type Sicht } from '../haushalt/haushalt';
 import { findSameDayAcquisition } from '../bestand/acquisitions';
 import { meldeUndLiefere } from '../infra/fehler';
 import { withInventoryLock, bestandsSchluessel } from '../../db/txLock';
@@ -157,6 +157,6 @@ export async function erfassungLoeschen(art: ErfassungsArt, uid: number, id: num
   return antwort(art, uid, keys, { success: true, new_quantity: menge ?? 0 });
 }
 
-export function setErfassungen(blickfeld: number[], setNumber: string) {
-  return repo.setErfassungenImBlickfeld(blickfeld, setNumber);
+export async function setErfassungen(sicht: Sicht | number[], setNumber: string) {
+  return repo.setErfassungenImBlickfeld(await blickfeldAus(sicht), setNumber);
 }

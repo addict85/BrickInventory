@@ -88,10 +88,8 @@ test('ohne page_size bleibt alles wie bisher', () => {
   // alle vier Parameter durch, und ohne page_size bleibt die Liste unbegrenzt.
   const v1 = fs.readFileSync(path.join(ROOT, 'routes/api_v1/sets.ts'), 'utf8');
   const route = v1.slice(v1.indexOf("router.get('/sets', requireToken"), v1.indexOf("router.get('/sets/:setNumber'"));
-  // req.query als GANZES: Eine Auswahl daneben liess einst `storage` fallen.
-  // (Bis hierher prüfte diese Zeile die alte Auswahl — sie stand nur noch als
-  // Beispiel in einem Kommentar.)
-  assert.match(route, /await getSets\([^;]*\breq\.query\)/,
+  // Die geprüfte Abfrage als GANZES: Eine Auswahl daneben liess einst `storage` fallen.
+  assert.match(route, /await getSets\([^;]*\breq\.abfrage\)/,
     'Die Route muss alle Filterparameter durchreichen — sonst filtert der Client wieder selbst');
 });
 
@@ -160,7 +158,8 @@ test('Minifiguren laden seitenweise', () => {
   const { funktionsKopf } = require('./helpers/sources');
   const figKopf = funktionsKopf(H_SRC, 'getMinifigs');
   for (const p of ['userId', 'search', 'source', 'set_number', 'page', 'page_size']) {
-    assert.match(figKopf, new RegExp(`\\b${p}\\b`),
+    // userId heisst seit dem 05.11.2026 userIdWahl (Sicht oder IDs).
+    assert.match(figKopf, new RegExp(`\\b${p}(Wahl)?\\b`),
       `getMinifigs nimmt '${p}' nicht mehr entgegen: ${figKopf}`);
   }
   assert.match(figKopf, /page\s*=\s*1/,   'page muss auf 1 vorbelegt sein');

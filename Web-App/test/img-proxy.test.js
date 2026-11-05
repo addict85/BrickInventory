@@ -256,7 +256,7 @@ test('Minifiguren-Bilder werden lokal abgelegt wie Set-Bilder', () => {
   assert.match(route, /verwaltung\.bestandsFigurenbilderOffen\(\)/,
     'Die Job-Übersicht muss die Figurenbilder des Bestands abfragen');
   const admin = fs.readFileSync(path.join(ROOT, 'src/verwaltung/repository/verwaltung.ts'), 'utf8');
-  assert.match(admin, /COUNT\(\*\) as c FROM minifigs_catalog mc/,
+  assert.match(admin, /COUNT\(\*\)::int AS c FROM minifigs_catalog mc/,
     'Die Minifiguren des Bestands fehlen in der offenen Menge');
   // Dieselbe Menge wie der Hintergrundlauf — sonst zeigt das Monitoring eine
   // Zahl, die mit dem Fortschritt nicht zusammenpasst.

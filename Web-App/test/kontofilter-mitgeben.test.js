@@ -127,7 +127,7 @@ test('jeder Abruf hinter dem Kontofilter gibt den Kontofilter mit', () => {
       if (!f.endsWith('.ts') || f === 'index.ts' || f === 'middleware.ts') continue;
       const src = ohneKommentare(fs.readFileSync(path.join(wurzel, f), 'utf8'));
       for (const m of src.matchAll(/router\.(get|post|put|delete)\(\s*'([^']+)'([\s\S]*?)\n\}\);/g))
-        if (m[3].includes('query.accounts')) menge.add(m[2].split('/:')[0].replace(/\/+$/, ''));
+        if (/sichtVon\(req\)|abfrage\.accounts/.test(m[3])) menge.add(m[2].split('/:')[0].replace(/\/+$/, ''));
     }
     return menge;
   }

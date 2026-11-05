@@ -1,5 +1,5 @@
 import { resolveImageLocal } from '../katalog/bilder/images';
-import { asIds, withOwners } from '../haushalt/haushalt';
+import { asIds, withOwners, blickfeldAus, type Sicht } from '../haushalt/haushalt';
 import { clampPageSize, applyManualCondition, conditionFromAcquisitions, conditionsFromAcquisitions } from '../bestand/gemeinsam';
 import { mitVersion } from '../infra/setNummer';
 import { marktpreiseAusCacheFuerFiguren } from '../finanzen/marketPrice';
@@ -8,9 +8,10 @@ import * as repo from './repository/figurenListe';
 // Ausführlich: docs/begruendungen/src/figuren/abfragen.ts.md#abschnitt
 
 /** Ohne page_size unverändertes Verhalten — die Android-App ruft so auf. */
-export async function getMinifigs(userId: number | number[], { search, source, set_number, page = 1, page_size = null }: any = {}) {
+export async function getMinifigs(userIdWahl: Sicht | number | number[], { search, source, set_number, page = 1, page_size = null }: any = {}) {
+  const userId = await blickfeldAus(userIdWahl);
   // asIds(), damit ältere Aufrufer mit einer nackten ID weiter gehen.
-  const uids = asIds(userId as any);
+  const uids = asIds(userId);
   const size = page_size ? clampPageSize(page_size, 60) : null;
   const { figCount, figs } = await repo.figurenGruppiert(uids, { search, source,
     setNumber: set_number ? mitVersion(set_number) : null,
@@ -25,7 +26,7 @@ export async function getMinifigs(userId: number | number[], { search, source, s
   const mappedFigs = figs.map(({ owner_ids, ...f }: any) => ({
     ...f,
     // owner_ids nur im Haushalt: Im Einzelkonto wäre „gehört mir" Rauschen.
-    ...(uids.length > 1 ? { owner_ids: (owner_ids || []).map((n: any) => parseInt(n)) } : {}),
+    ...(uids.length > 1 ? { owner_ids: (owner_ids || []).map((n: unknown) => parseInt(String(n))) } : {}),
     image_local: resolveImageLocal(f.image_local),
     // Ohne Erfassung 'N'.
     condition: conditionFromAcquisitions(zustand(f)?.acq_count, zustand(f)?.used_count),
@@ -40,8 +41,9 @@ export async function getMinifigs(userId: number | number[], { search, source, s
 }
 
 // Ausführlich: docs/begruendungen/src/figuren/abfragen.ts.md#getminifigstats
-export async function getMinifigStats(userId: number | number[]) {
-  const uids = asIds(userId as any);
+export async function getMinifigStats(userIdWahl: Sicht | number | number[]) {
+  const userId = await blickfeldAus(userIdWahl);
+  const uids = asIds(userId);
   const row = await repo.figurenKennzahlen(uids);
   return {
     types: row?.types ?? 0,
@@ -53,9 +55,10 @@ export async function getMinifigStats(userId: number | number[]) {
 }
 
 /** @param viewerId wessen Einstellungen gelten (Währung); `userId` sagt, wessen Daten. */
-export async function getManualMinifigs(userId: number | number[], viewerId: number,
+export async function getManualMinifigs(userIdWahl: Sicht | number | number[], viewerId: number,
                                  { page = 1, page_size = null, search = null }: any = {}) {
-  const uids = asIds(userId as any);
+  const userId = await blickfeldAus(userIdWahl);
+  const uids = asIds(userId);
   const size = page_size ? clampPageSize(page_size, 60) : null;
   const figs = await repo.manuelleFigurenListe(uids, search,
     size ? { groesse: size, versatz: (Math.max(1, parseInt(page) || 1) - 1) * size } : null);

@@ -5,6 +5,7 @@ import { verschluesseleAltbestand } from '../src/konto/geheimnisAltbestand';
 import { verschluesseleGutscheinAltbestand } from '../src/gutscheine/gutscheinDateien';
 import * as catalogSync from '../src/katalog/katalogAbgleich';
 import * as purchasePriceBackfill from './purchasePriceBackfill';
+import type { Nutzlast } from '../src/auftraege/nutzlasten';
 
 /** Geheimnisse aus der Zeit vor der Verschlüsselung (src/infra/geheimnis.ts). */
 async function geheimnisseVerschluesseln(): Promise<void> {
@@ -20,13 +21,11 @@ const NACHLAEUFE = {
   anleitungen:  { nachSekunden: 15, lauf: anleitungenNachtragen },
   set_bilder:   { nachSekunden: 45, lauf: setBilderNachladen },
   kaufpreise:   { nachSekunden: 45, lauf: () => purchasePriceBackfill.run() },
-} as const;
-type Nachlauf = keyof typeof NACHLAEUFE;
+} as const satisfies Record<Nachlauf, { nachSekunden: number; lauf: () => Promise<unknown> }>;
+type Nachlauf = Nutzlast<'nachlauf'>['schritt'];
 
-async function nachlauf(n: Record<string, unknown>): Promise<void> {
-  const schritt = String(n.schritt);
-  if (!Object.hasOwn(NACHLAEUFE, schritt)) throw new Error(`unbekannter Nachlauf ${schritt}`);
-  await NACHLAEUFE[schritt as Nachlauf].lauf();
+async function nachlauf(n: Nutzlast<'nachlauf'>): Promise<void> {
+  await NACHLAEUFE[n.schritt].lauf();
 }
 
 export { NACHLAEUFE, nachlauf };

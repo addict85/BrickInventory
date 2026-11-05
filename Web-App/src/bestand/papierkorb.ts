@@ -1,3 +1,5 @@
+import { schreibbereichAus } from '../haushalt/haushalt';
+import type { Schreiber } from '../haushalt/haushalt';
 import type { DbSchnittstelle } from '../../db/database';
 import * as db from '../../db/database';
 import * as repo from './repository/papierkorb';
@@ -34,7 +36,8 @@ export interface PapierkorbEintrag {
   bezeichnung: string | null; anzahl: number; geloescht_am: string; endgueltig_am: string;
 }
 
-export async function listePapierkorb(uids: number[]): Promise<PapierkorbEintrag[]> {
+export async function listePapierkorb(uidsWahl: Schreiber | number[]): Promise<PapierkorbEintrag[]> {
+  const uids = await schreibbereichAus(uidsWahl);
   const rows = await repo.eintraege(uids, AUFBEWAHRUNG_TAGE);
   return rows.map((r) => {
     const erfassungen = r.zeilen?.[ERFASSUNGEN[r.art]] ?? [];
@@ -49,7 +52,8 @@ export type Wiederherstellung =
 
 /** Gibt es das Element inzwischen wieder, greift ein eindeutiger Index — dann
  * wird nichts verändert und der Eintrag bleibt. */
-export async function stelleWiederHer(uids: number[], id: number): Promise<Wiederherstellung> {
+export async function stelleWiederHer(uidsWahl: Schreiber | number[], id: number): Promise<Wiederherstellung> {
+  const uids = await schreibbereichAus(uidsWahl);
   try {
     return await db.transaction(async (tx): Promise<Wiederherstellung> => {
       const e = await repo.eintragSperren(tx, id, uids);
@@ -66,11 +70,13 @@ export async function stelleWiederHer(uids: number[], id: number): Promise<Wiede
   }
 }
 
-export async function loescheEndgueltig(uids: number[], id: number): Promise<boolean> {
+export async function loescheEndgueltig(uidsWahl: Schreiber | number[], id: number): Promise<boolean> {
+  const uids = await schreibbereichAus(uidsWahl);
   return await repo.entferneEintragDesKontos(id, uids) > 0;
 }
 
-export async function leerePapierkorb(uids: number[]): Promise<number> {
+export async function leerePapierkorb(uidsWahl: Schreiber | number[]): Promise<number> {
+  const uids = await schreibbereichAus(uidsWahl);
   return repo.entferneAlle(uids);
 }
 

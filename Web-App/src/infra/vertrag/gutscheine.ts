@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { type Route, zeit, bestaetigt, OHNE_RUMPF, ZAHL, TEXT } from './grund';
+import { type Route, zeit, bestaetigt, OHNE_RUMPF, ZAHL, TEXT, abfrage, Q } from './grund';
 import { GenericResponse } from './gemeinsam';
 
 export const GelesenerGutschein = z.looseObject({
@@ -68,14 +68,15 @@ export const PdfFreigabe = z.looseObject({
 
 export const routen = {
   'GET /api/v1/vouchers': { antwort: GutscheinListe },
-  'POST /api/v1/vouchers': { eingabe: z.looseObject({ number: ZAHL, pin: ZAHL.nullable().optional(), amount: ZAHL.nullable().optional(), currency: TEXT(40).nullable().optional() }), antwort: GutscheinAntwort },
-  'PUT /api/v1/vouchers/:id': { eingabe: z.looseObject({ number: ZAHL.optional(), pin: ZAHL.nullable().optional(), amount: ZAHL.optional(), currency: TEXT(40).nullable().optional() }), antwort: GutscheinAntwort },
+  'POST /api/v1/vouchers': { eingabe: z.strictObject({ number: ZAHL, pin: ZAHL.nullable().optional(), amount: ZAHL.nullable().optional(), currency: TEXT(40).nullable().optional() }), antwort: GutscheinAntwort },
+  'PUT /api/v1/vouchers/:id': { eingabe: z.strictObject({ number: ZAHL.optional(), pin: ZAHL.nullable().optional(), amount: ZAHL.optional(), currency: TEXT(40).nullable().optional() }), antwort: GutscheinAntwort },
   'DELETE /api/v1/vouchers/:id': { antwort: GenericResponse, ...bestaetigt() },
-  'POST /api/v1/vouchers/pdf': { formular: true, antwort: GutscheinAntwort },
+  'POST /api/v1/vouchers/pdf': { formular: true, antwort: GutscheinAntwort, eingabe: z.strictObject({
+    number: TEXT(40).optional(), pin: TEXT(40).optional(), amount: TEXT(40).optional(), currency: TEXT(40).optional() }) },
   'POST /api/v1/vouchers/:id/guthaben': { eingabe: OHNE_RUMPF, antwort: GuthabenAntwort },
   'POST /api/v1/vouchers/:id/klartext': { antwort: GutscheinKlartext, ...bestaetigt(), geheim: true },
   'POST /api/v1/vouchers/:id/pdf-freigabe': { antwort: PdfFreigabe, ...bestaetigt(), geheim: true },
   'POST /api/v1/vouchers/export/pdf-freigabe': { antwort: PdfFreigabe, ...bestaetigt(), geheim: true },
-  'GET /api/v1/vouchers/:id/pdf': { art: 'pdf' },
-  'GET /api/v1/vouchers/export/pdf': { art: 'pdf' },
+  'GET /api/v1/vouchers/:id/pdf': { art: 'pdf', abfrage: abfrage({ ticket: Q.text(200), download: Q.schalter }) },
+  'GET /api/v1/vouchers/export/pdf': { art: 'pdf', abfrage: abfrage({ ticket: Q.text(200) }) },
 } satisfies Record<string, Route>;

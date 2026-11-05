@@ -1,23 +1,10 @@
 /**
  * Die QR-Nonce wird per POST angelegt, nicht per GET.
  *
- * ── Der Befund (Nachtrag 154) ───────────────────────────────────────────────
- * /api/v1/auth/qr-token legt eine Nonce an, die fünf Minuten lang ein Konto
- * öffnet. Sie war als GET registriert und hing an der Session — die EINZIGE
- * zustandsändernde Route im Baum mit dieser Kombination.
- *
- * Genau dort lässt SameSite=lax eine Lücke: Bei einer Navigation von einer
- * fremden Seite (window.open, ein Link, location=) schickt der Browser das
- * Sitzungs-Cookie mit. Lesen konnte ein Angreifer die Antwort nicht — quer
- * über Ursprünge hinweg gibt ihm eine Navigation keinen Zugriff auf den
- * Rumpf —, auslösen aber schon. Und dasselbe tun Link-Vorschauen,
- * Virenscanner und die Vorab-Ladelogik der Browser: alles, was GET für
- * gefahrlos hält, weil GET gefahrlos sein SOLL.
- *
- * Diese Prüfung hält beide Richtungen fest: dass POST funktioniert UND dass
- * GET verschwunden ist. Nur das zweite zu prüfen liesse offen, ob die Route
- * überhaupt noch geht; nur das erste liesse zu, dass GET nebenher bestehen
- * bleibt.
+ * Die Nonce öffnet fünf Minuten lang ein Konto. Per GET mit Sitzungs-Cookie
+ * könnte eine fremde Seite sie trotz SameSite=lax auslösen (Navigation), und
+ * Link-Vorschauen täten es nebenbei. Geprüft sind beide Richtungen: POST geht,
+ * GET gibt es nicht mehr.
  *
  * ── Gegenprobe (durchgeführt) ───────────────────────────────────────────────
  * Die Route versuchsweise auf `router.get` zurückgestellt: „per GET gibt es

@@ -4,8 +4,8 @@ Die ausführlichen Kommentare aus `db/tabellePflegen.ts`, wörtlich. Im Code ste
 Stelle der erste Absatz und ein Verweis hierher. Neue Geschichte gehört in die
 Commit-Nachricht (siehe CLAUDE.md).
 
-<a id="abschnitt"></a>
-## Abschnitt
+<a id="ueberblick"></a>
+## Überblick
 
 ```text
 Nach einem Masseneinfuegen: Planerstatistik und GIN-Wartelisten auffrischen.

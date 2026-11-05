@@ -92,8 +92,8 @@ test('stille Faenge werden weniger, nie mehr', () => {
 });
 
 test('any wird weniger, nie mehr', () => {
-  // Gemessen 192 am 05.11.2026; wie die Zahl gesunken ist, steht im git log.
-  const SCHRANKE = 192;
+  // Gemessen 152 am 05.11.2026 (vorher 183); wie die Zahl sinkt, steht im git log.
+  const SCHRANKE = 152;
   const ist = zaehle([/\bas any\b/g, /:\s*any\b/g]);
   assert.ok(ist <= SCHRANKE,
     `${ist}-mal \`any\`, erlaubt sind ${SCHRANKE}. Jedes davon schaltet den ` +
@@ -102,6 +102,16 @@ test('any wird weniger, nie mehr', () => {
   if (ist < SCHRANKE) {
     console.log(`  ℹ any: ${ist} (Schranke ${SCHRANKE}) — Schranke nachziehen`);
   }
+});
+
+test('any in allen Formen wird weniger, nie mehr', () => {
+  // Auch Promise<any>, any[] und Record<string, any>: Die enge Zählung oben sah
+  // nur `as any` und `: any`. Gemessen 205 am 05.11.2026.
+  // Gegenprobe (05.11.2026): getSetting wieder `fallback?: any` ohne Überladungen → rot.
+  const SCHRANKE = 205;
+  const ist = zaehle([/\bany\b/g]);
+  assert.ok(ist <= SCHRANKE, `${ist}-mal any, erlaubt sind ${SCHRANKE}`);
+  if (ist < SCHRANKE) console.log(`  ℹ any (alle Formen): ${ist} (Schranke ${SCHRANKE}) — Schranke nachziehen`);
 });
 
 test('eigene REQUIRE_DB-Blöcke in Tests werden weniger, nie mehr', () => {
@@ -128,12 +138,37 @@ test('Datenbankzeilen sind ohne Typargument unknown', () => {
 
 test('ungetypte Datenbankabfragen werden weniger, nie mehr', () => {
   // Erlaubt, solange niemand Felder der Zeile liest — dann verlangt der
-  // Übersetzer ohnehin ein Typargument. Gemessen 92 am 05.11.2026 (vorher 190).
-  // Gegenprobe (05.11.2026): Schranke auf 91 → rot.
-  const SCHRANKE = 92;
+  // Übersetzer ohnehin ein Typargument. Gemessen 78 am 05.11.2026 (vorher 190).
+  // Gegenprobe (05.11.2026): Schranke auf 77 → rot.
+  const SCHRANKE = 78;
   const ist = zaehle([/\b(?:db|tx|dbh|d)\.(?:get|all)\(/g]);
   assert.ok(ist <= SCHRANKE, `${ist} ungetypte db.get/all, erlaubt sind ${SCHRANKE}`);
   if (ist < SCHRANKE) console.log(`  ℹ ungetypte Abfragen: ${ist} (Schranke ${SCHRANKE}) — Schranke nachziehen`);
+});
+
+test('rohe req.body und req.query in Routen werden weniger, nie mehr', () => {
+  // Eine Route liest req.eingabe und req.abfrage: geprüft und getypt aus dem
+  // Vertrag. Übrig sind die Middleware vor der Prüfung, der Bild-Proxy (ohne
+  // Vertrag) und routes/auth/registrierung.ts. Gemessen 13 am 05.11.2026 (vorher 229).
+  // Gegenprobe (05.11.2026): in routes/api_v1/sets.ts ein `req.body.storage` zurück → rot.
+  const SCHRANKE = 13;
+  let ist = 0;
+  for (const f of quellen().filter(f => /[\\/]routes[\\/]/.test(f)))
+    ist += (require('./helpers/sources').ohneKommentare(fs.readFileSync(f, 'utf8')).match(/\breq\.(?:body|query)\b/g) || []).length;
+  assert.ok(ist <= SCHRANKE, `${ist}-mal req.body/req.query in routes/, erlaubt sind ${SCHRANKE}`);
+  if (ist < SCHRANKE) console.log(`  ℹ req.body/req.query in Routen: ${ist} (Schranke ${SCHRANKE}) — Schranke nachziehen`);
+});
+
+test('Schreibziele in Routen werden weniger, nie mehr', () => {
+  // schreibziel() prüft im Haushalt, für wen geschrieben wird; besser nimmt der
+  // Dienst den Wunsch selbst entgegen. Gemessen 17 am 05.11.2026.
+  // Gegenprobe (05.11.2026): Schranke auf 16 → rot.
+  const SCHRANKE = 17;
+  let ist = 0;
+  for (const f of quellen().filter(f => /[\\/]routes[\\/]/.test(f)))
+    ist += (require('./helpers/sources').ohneKommentare(fs.readFileSync(f, 'utf8')).match(/\bschreibziel\(/g) || []).length;
+  assert.ok(ist <= SCHRANKE, `${ist}-mal schreibziel() in routes/, erlaubt sind ${SCHRANKE}`);
+  if (ist < SCHRANKE) console.log(`  ℹ schreibziel() in Routen: ${ist} (Schranke ${SCHRANKE}) — Schranke nachziehen`);
 });
 
 /**
@@ -346,13 +381,13 @@ test('kein Kommentar der Oberfläche hat mehr als fünf Zeilen Prosa', () => {
   assert.deepEqual(lang, [], 'Lange Begründung: Warum in den Code (höchstens fünf Zeilen), Geschichte in den Commit');
 });
 
-/** Funktionen der Oberfläche mit ihrer Länge (Deklaration bis zur schliessenden Klammer gleicher Einrückung). */
-function funktionsLaengen() {
+/** Funktionen mit ihrer Länge (Deklaration bis zur schliessenden Klammer gleicher Einrückung). */
+function funktionsLaengen(dateien = oberflaeche()) {
   const raus = [];
-  for (const f of oberflaeche()) {
+  for (const f of dateien) {
     const z = fs.readFileSync(f, 'utf8').split('\n');
     z.forEach((l, i) => {
-      const m = l.match(/^(\s*)(?:export\s+)?(?:async\s+)?function\s*\*?\s*(\w+)\s*\(/);
+      const m = l.match(/^(\s*)(?:export\s+)?(?:async\s+)?function\s*\*?\s*(\w+)\s*[<(]/);
       if (!m || /\}\s*;?\s*$/.test(l)) return;
       const ende = z.findIndex((x, j) => j > i && x.startsWith(m[1] + '}'));
       if (ende > i) raus.push({ ort: `${path.relative(WEB, f)}:${i + 1} ${m[2]}`, zeilen: ende - i + 1 });
@@ -376,10 +411,23 @@ test('keine Funktion der Oberfläche über 100 Zeilen, über 80 werden weniger',
   if (ueber80.length < SCHRANKE_80) console.log(`  ℹ Funktionen über 80 Zeilen: ${ueber80.length} (Schranke ${SCHRANKE_80}) — Schranke nachziehen`);
 });
 
+test('Funktionen im Server über 80 und über 150 Zeilen werden weniger, nie mehr', () => {
+  // Gemessen am 05.11.2026 nach dem Zerlegen von computePnl, computeSetsValuation
+  // und jobUebersicht: 18 über 80, 1 über 150 (importiereWantedListe).
+  // Gegenprobe (05.11.2026): computePnl wieder in einem Stück → rot (2 über 150).
+  const SCHRANKE_80 = 18, SCHRANKE_150 = 1;
+  const alle = funktionsLaengen(quellen().filter(f => /[\\/](src|routes|jobs|db|clients|startup)[\\/]|[\\/]server\.ts$/.test(f)));
+  assert.ok(alle.length > 1000, `nur ${alle.length} Funktionen gefunden — greift die Suche noch?`);
+  const ueber = (n) => alle.filter(x => x.zeilen > n);
+  assert.ok(ueber(150).length <= SCHRANKE_150, `über 150 Zeilen:\n${ueber(150).map(x => x.ort).join('\n')}`);
+  assert.ok(ueber(80).length <= SCHRANKE_80, `${ueber(80).length} über 80 Zeilen, erlaubt sind ${SCHRANKE_80}`);
+  if (ueber(80).length < SCHRANKE_80) console.log(`  ℹ Server-Funktionen über 80 Zeilen: ${ueber(80).length} — Schranke nachziehen`);
+});
+
 test('der Kommentaranteil in db/, clients/ und scripts/ sinkt, nie steigt', () => {
   // Je Ordner eine Schranke, gemessen am 05.11.2026 nach dem Kürzen.
   // Gegenprobe: 40 Kommentarzeilen an clients/ezb.ts gehängt → rot (clients).
-  const SCHRANKE = { db: 33.0, clients: 20.6, scripts: 35.2 };
+  const SCHRANKE = { db: 28.0, clients: 20.6, scripts: 34.5 };
   const zuViel = [];
   for (const [ordner, schranke] of Object.entries(SCHRANKE)) {
     let zeilen = 0, kommentar = 0;
@@ -402,6 +450,28 @@ test('der Kommentaranteil in db/, clients/ und scripts/ sinkt, nie steigt', () =
     else if (anteil < schranke - 0.5) console.log(`  ℹ Kommentaranteil ${ordner}: ${anteil} % (Schranke ${schranke}) — Schranke nachziehen`);
   }
   assert.deepEqual(zuViel, []);
+});
+
+test('Geschichte in Testkommentaren wird weniger, nie mehr', () => {
+  // Ein Testkopf nennt, was geprüft wird, und seine Gegenproben (CLAUDE.md);
+  // woher ein Test kam, steht im Commit. Gezählt werden Kommentarzeilen mit
+  // den typischen Erzählmarken. Gemessen 424 am 05.11.2026.
+  // Gegenprobe (05.11.2026): den alten Kopf von scope-reset.test.js zurück → rot.
+  const SCHRANKE = 424;
+  const MARKE = /(Nachtr(ag|äge) [0-9]|Hier stand|Vorher stand|NACHGEMESSEN|kam(en)? am [0-9]|Marcos (Frage|Wunsch|Bericht|Rückfrage|Konsole))/;
+  const dateien = [
+    ...fs.readdirSync(__dirname).filter(n => n.endsWith('.js')).map(n => path.join(__dirname, n)),
+    ...fs.readdirSync(path.join(__dirname, 'helpers')).filter(n => n.endsWith('.js')).map(n => path.join(__dirname, 'helpers', n)),
+  ];
+  let ist = 0;
+  for (const f of dateien)
+    for (const z of fs.readFileSync(f, 'utf8').split('\n')) {
+      const t = z.trim();
+      if ((t.startsWith('//') || t.startsWith('*')) && MARKE.test(t)) ist++;
+    }
+  assert.ok(ist > 0, 'keine Marke gefunden — greift die Suche noch?');
+  assert.ok(ist <= SCHRANKE, `${ist} Kommentarzeilen mit Geschichte in den Tests, erlaubt sind ${SCHRANKE}`);
+  if (ist < SCHRANKE) console.log(`  ℹ Geschichte in Testkommentaren: ${ist} (Schranke ${SCHRANKE}) — Schranke nachziehen`);
 });
 
 test('der Kommentaranteil der Tests sinkt, nie steigt', () => {
@@ -457,9 +527,9 @@ test('jeder Verweis auf docs/begruendungen trifft Datei und Anker', () => {
 test('Anker ohne Verweis werden weniger, nie mehr', () => {
   // Ein Abschnitt, auf den kein Code mehr zeigt, gehört zu einer gekürzten
   // oder entfernten Stelle — Geschichte, die nach git gehört.
-  // Gemessen 288 von 905 am 05.11.2026. Gegenprobe: einen Verweis in
+  // Gemessen 285 von 901 am 05.11.2026. Gegenprobe: einen Verweis in
   // routes/auth/benutzer.ts gestrichen → rot (289).
-  const SCHRANKE = 288;
+  const SCHRANKE = 285;
   const verwiesen = new Set();
   for (const f of serverUndOberflaeche())
     for (const m of fs.readFileSync(f, 'utf8').matchAll(/docs\/begruendungen\/([^\s#`'"]+\.md)#([\w-]+)/g)) verwiesen.add(`${m[1]}#${m[2]}`);

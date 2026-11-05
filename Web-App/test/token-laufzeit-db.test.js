@@ -153,8 +153,11 @@ test('QR-Zugang: die Laufzeit waehlt der Erzeuger, nicht der Einloeser',
     assert.equal(ohne.body.token_days, 180, 'Ohne Wahl gilt die Höchstdauer von 180 Tagen');
     const versuch = await ruf('/qr-login', { method: 'POST',
       body: { token: ohne.body.token, gueltigkeit: 'unbegrenzt', token_days: 3650 } });
-    assert.equal(versuch.status, 200, JSON.stringify(versuch.body));
-    const zv = await zeile(versuch.body.token);
+    // Der Vertrag kennt beim Einlösen keinen Wunsch: 400, und der Code bleibt unverbraucht.
+    assert.deepEqual([versuch.status, versuch.body.code], [400, 'feld_unbekannt'], JSON.stringify(versuch.body));
+    const eingeloest = await ruf('/qr-login', { method: 'POST', body: { token: ohne.body.token } });
+    assert.equal(eingeloest.status, 200, JSON.stringify(eingeloest.body));
+    const zv = await zeile(eingeloest.body.token);
     assert.ok(zv.hard_expires_at && Math.abs(tageVoraus(zv.hard_expires_at) - 180) < 1,
       'Das einloesende Geraet darf sich keine Laufzeit erteilen — sonst reicht ein abfotografierter Code');
     assert.ok(zv.expires_at,

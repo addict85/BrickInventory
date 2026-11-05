@@ -170,7 +170,7 @@ test('der im Formular gewählte Zustand kommt beim Anlegen an', () => {
   // Und der Body muss ihn überhaupt hergeben. Seit der Haushaltssicht steht
   // dahinter noch owner_user_id (Kontoauswahl beim Erfassen) — geprüft wird
   // deshalb der Anfang der Zerlegung, nicht die vollständige Zeile.
-  assert.match(src, /const \{ set_number, quantity=1, purchase_price, condition[,}]/,
+  assert.match(src, /const \{ quantity = 1, purchase_price = null, condition = null[,}]/,
     'POST /api/sets liest den Zustand nicht aus dem Body');
 });
 
@@ -617,7 +617,7 @@ test('der Preisverlauf-Graph benutzt den Zustand DES SETS, nicht den globalen St
 
   assert.doesNotMatch(fn, /const condition = DEFAULT_PRICE_CONDITION;/,
     'Der globale Standard darf nicht mehr direkt als Zustand des Sets gelten');
-  assert.match(fn, /getSetPriceHistory\(await scopeIds\(uid, parseScopeMode\(req\.query\.accounts\)\), sn, currency\)/,
+  assert.match(fn, /getSetPriceHistory\(sichtVon\(req\), sn, currency\)/,
     'Die Route muss den gemeinsamen Helfer benutzen — mit Blickfeld');
   assert.doesNotMatch(fn, /FROM price_history/,
     'Die Abfrage gehört in src/finanzen/priceHistory.ts, nicht in die Route');
@@ -651,7 +651,7 @@ test('Android-API: Marktpreis benutzt den Zustand des Sets, nicht den globalen S
     'Auch der Verlauf darf nicht mehr den globalen Standard nehmen');
   // Seit der Zusammenführung teilt sich diese Route src/finanzen/priceHistory.ts mit
   // der Webapp — die rund fünfzig Zeilen, die dort standen, waren eine Kopie.
-  assert.match(historyRoute, /getSetPriceHistory\(await scopeIds\(uid, parseScopeMode\(req\.query\.accounts\)\), sn, currency\)/,
+  assert.match(historyRoute, /getSetPriceHistory\(sichtVon\(req\), sn, currency\)/,
     'Der Verlauf muss den gemeinsamen Helfer benutzen');
   assert.doesNotMatch(historyRoute, /FROM price_history/,
     'Die Abfrage gehört in src/finanzen/priceHistory.ts, nicht in die Route');
