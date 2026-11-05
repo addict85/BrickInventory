@@ -15,7 +15,6 @@ import okhttp3.OkHttpClient
 import retrofit2.Retrofit
 import java.io.IOException
 import java.util.concurrent.TimeUnit
-import javax.inject.Named
 import javax.inject.Singleton
 import okio.Path.Companion.toOkioPath
 import ch.brickinventoryapp.data.Entwerter
@@ -43,7 +42,7 @@ object NetzModule {
 
     @Provides
     @Singleton
-    @Named("api")
+    @ApiClient
     fun provideApiOkHttpClient(
         @dagger.hilt.android.qualifiers.ApplicationContext context: android.content.Context,
         prefs: Netzablagen,
@@ -68,7 +67,7 @@ object NetzModule {
      */
     @Provides
     @Singleton
-    @Named("update")
+    @UpdateClient
     fun provideUpdateOkHttpClient(): OkHttpClient =
         OkHttpClient.Builder()
             // ── Keine Umleitung von https auf http ──
@@ -104,7 +103,7 @@ object NetzModule {
 
     @Provides
     @Singleton
-    @Named("image")
+    @BildClient
     fun provideImageOkHttpClient(
         // Context für den HTTP-Zwischenspeicher unten — dieselbe Schreibweise
         // wie bei provideImageLoader in dieser Datei.
@@ -222,7 +221,7 @@ object NetzModule {
     @Singleton
     fun provideImageLoader(
         @dagger.hilt.android.qualifiers.ApplicationContext context: android.content.Context,
-        @Named("image") client: OkHttpClient
+        @BildClient client: OkHttpClient
     ): coil3.ImageLoader =
         coil3.ImageLoader.Builder(context)
             // ── Das Netz ist in Coil 3 ein eigenes Bauteil ──
@@ -256,7 +255,7 @@ object NetzModule {
      */
     @Provides
     @Singleton
-    @Named("sse")
+    @SseClient
     fun provideSseOkHttpClient(
         @dagger.hilt.android.qualifiers.ApplicationContext context: android.content.Context,
         prefs: Netzablagen,
@@ -287,17 +286,17 @@ object NetzModule {
     fun provideSystemWurzeln(): SystemWurzeln = systemWurzeln()
 
     // Kein unqualifiziertes OkHttpClient-Binding: Es lieferte still den api-Client
-    // auch an Bild- und SSE-Wege aus. Wer einen Client braucht, nennt @Named("api"),
-    // @Named("image") oder @Named("sse").
+    // auch an Bild- und SSE-Wege aus. Wer einen Client braucht, nennt @ApiClient,
+    // @BildClient oder @SseClient.
 
     /** Nach einer Änderung des Vertrauens: Offene Verbindungen trugen das alte. */
     @Provides
-    fun provideVerbindungsabwurf(@Named("api") client: OkHttpClient): Verbindungsabwurf =
+    fun provideVerbindungsabwurf(@ApiClient client: OkHttpClient): Verbindungsabwurf =
         Verbindungsabwurf { client.connectionPool.evictAll() }
 
     @Provides
     @Singleton
-    fun provideRetrofit(json: Json, @Named("api") client: OkHttpClient): Retrofit =
+    fun provideRetrofit(json: Json, @ApiClient client: OkHttpClient): Retrofit =
         Retrofit.Builder()
             .baseUrl("http://localhost:3000/")
             .client(client)

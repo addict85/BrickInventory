@@ -26,12 +26,20 @@ import ch.brickinventoryapp.alarm.PreisalarmRepository
 import ch.brickinventoryapp.data.AlarmPlaner
 import ch.brickinventoryapp.data.CsvImportSseClient
 import ch.brickinventoryapp.data.CsvImportStrom
+import ch.brickinventoryapp.data.CsvImportBeobachter
+import ch.brickinventoryapp.data.CsvImportRepository
+import ch.brickinventoryapp.data.GeraeteBereinigung
+import ch.brickinventoryapp.data.SitzungsBereinigung
 import ch.brickinventoryapp.data.Darstellungsablage
 import ch.brickinventoryapp.data.GeraeteEinstellungen
 import ch.brickinventoryapp.data.GeraeteAblage
 import ch.brickinventoryapp.data.KontoAblage
 import ch.brickinventoryapp.data.TokenAblage
 import ch.brickinventoryapp.data.UpdateAblage
+import ch.brickinventoryapp.data.UpdateLader
+import ch.brickinventoryapp.data.AnleitungsDownload
+import ch.brickinventoryapp.data.AnleitungsRepository
+import ch.brickinventoryapp.data.UpdateRepository
 import ch.brickinventoryapp.data.Tokenspiegel
 import ch.brickinventoryapp.data.Tokenuebernahme
 import ch.brickinventoryapp.data.Netzvertrauen
@@ -79,7 +87,11 @@ abstract class LokalModule {
     @Binds abstract fun tokenuebernahme(p: TokenAblage): Tokenuebernahme
     @Binds abstract fun updateStand(p: UpdateAblage): UpdateStandAblage
     @Binds abstract fun updateGeraet(g: AndroidUpdateGeraet): UpdateGeraet
+    @Binds abstract fun update(l: UpdateLader): UpdateRepository
+    @Binds abstract fun anleitungen(d: AnleitungsDownload): AnleitungsRepository
     @Binds abstract fun csvStrom(c: CsvImportSseClient): CsvImportStrom
+    @Binds abstract fun csvImport(b: CsvImportBeobachter): CsvImportRepository
+    @Binds abstract fun bereinigung(b: GeraeteBereinigung): SitzungsBereinigung
     @Binds abstract fun csvDienst(d: AndroidCsvImportDienst): CsvImportDienst
     @Binds abstract fun alarm(p: WorkManagerAlarmPlaner): AlarmPlaner
     @Binds abstract fun preisalarme(d: PreisalarmDurchgang): PreisalarmRepository

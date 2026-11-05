@@ -1,5 +1,6 @@
 package ch.brickinventoryapp
 
+import ch.brickinventoryapp.data.UpdateLader
 import androidx.lifecycle.viewModelScope
 import ch.brickinventoryapp.data.Anmeldestand
 import ch.brickinventoryapp.ressourcen.R
@@ -118,8 +119,8 @@ class UpdateViewModelTest {
         Dispatchers.setMain(takt)
         antworten[UPDATE_VERSION_URL] = 200 to beschreibung()
         antworten[apkAdresse] = 200 to apk
-        vm = UpdateViewModel(client, NummernTexte, object : Anmeldestand { override val authTokenState = token },
-            ablage, geraet, AppFassung("2.10", 10), takt)
+        vm = UpdateViewModel(UpdateLader(client, AppFassung("2.10", 10), takt), NummernTexte,
+            object : Anmeldestand { override val authTokenState = token }, ablage, geraet, takt)
     }
 
     @After fun ab() {

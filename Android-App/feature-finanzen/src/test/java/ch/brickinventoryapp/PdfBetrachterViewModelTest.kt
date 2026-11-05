@@ -1,7 +1,7 @@
 package ch.brickinventoryapp
 
 import android.os.ParcelFileDescriptor
-import ch.brickinventoryapp.ui.pdf.DownloadGescheitert
+import ch.brickinventoryapp.data.DownloadGescheitert
 import ch.brickinventoryapp.ui.pdf.PdfFehler
 import ch.brickinventoryapp.ui.pdf.PdfHalter
 import ch.brickinventoryapp.ui.pdf.PdfLader

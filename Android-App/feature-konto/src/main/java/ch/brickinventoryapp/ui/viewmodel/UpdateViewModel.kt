@@ -5,9 +5,6 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import ch.brickinventoryapp.ressourcen.R
 import ch.brickinventoryapp.ui.UpdateUiState
-import ch.brickinventoryapp.util.UPDATE_JSON_MAX_BYTES
-import ch.brickinventoryapp.util.UPDATE_MAX_BYTES
-import ch.brickinventoryapp.util.UPDATE_VERSION_URL
 import ch.brickinventoryapp.util.gepruefteBeschreibung
 import ch.brickinventoryapp.util.pruefsummePasst
 import ch.brickinventoryapp.util.fassungPasst
@@ -26,19 +23,16 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import okhttp3.OkHttpClient
-import okhttp3.Request
 import javax.inject.Inject
-import javax.inject.Named
-import ch.brickinventoryapp.di.BrickDispatchers
-import ch.brickinventoryapp.di.Dispatcher
-import ch.brickinventoryapp.util.AppFassung
-import ch.brickinventoryapp.data.Anmeldestand
-import ch.brickinventoryapp.util.UpdateGeraet
-import ch.brickinventoryapp.util.UpdateStandAblage
 import ch.brickinventoryapp.util.UpdateBeschreibung
 import java.io.File
-import java.io.IOException
+import ch.brickinventoryapp.di.BrickDispatchers
+import ch.brickinventoryapp.di.Dispatcher
+import ch.brickinventoryapp.data.Anmeldestand
+import ch.brickinventoryapp.data.UpdateRepository
+import kotlinx.coroutines.Job
+import ch.brickinventoryapp.util.UpdateGeraet
+import ch.brickinventoryapp.util.UpdateStandAblage
 
 /**
  * Selbstaktualisierung: nachsehen, laden, installieren lassen. Beim Start still
@@ -49,17 +43,19 @@ import java.io.IOException
  */
 @HiltViewModel
 class UpdateViewModel @Inject constructor(
-    @param:Named("update") private val updateHttpClient: OkHttpClient,
+    private val repo: UpdateRepository,
     private val texte: Texte,
     private val anmeldestand: Anmeldestand,
     private val updateStand: UpdateStandAblage,
     private val geraet: UpdateGeraet,
-    private val fassung: AppFassung,
     @param:Dispatcher(BrickDispatchers.IO) private val io: CoroutineDispatcher,
 ) : ViewModel(), UpdateAktionen {
 
     private val _state = MutableStateFlow(UpdateUiState())
     val updateState = _state.asStateFlow()
+
+    /** Der laufende Download; [ladeAbbrechen] beendet ihn samt Teildatei. */
+    private var ladeJob: Job? = null
 
     init {
         // Beim Abmelden zuruecksetzen: Ein Fortschritt oder „bereit zur
@@ -88,17 +84,7 @@ class UpdateViewModel @Inject constructor(
         viewModelScope.launch {
             _state.update { it.copy(laedtPruefung = !still, fehler = null) }
             fangeAusserAbbruch {
-                val roh = withContext(io) {
-                    updateHttpClient.newCall(Request.Builder().url(UPDATE_VERSION_URL).build())
-                        .execute().use { antwort ->
-                            if (!antwort.isSuccessful) throw IOException("HTTP ${antwort.code}")
-                            // peekBody statt body.string(): liest HOECHSTENS so viele
-                            // Bytes. Ohne die Grenze koennte eine manipulierte
-                            // Antwort die App umbringen, ohne je ein APK anfassen zu
-                            // muessen — die Beschreibung traegt sechs Felder.
-                            antwort.peekBody(UPDATE_JSON_MAX_BYTES).string()
-                        }
-                }
+                val roh = repo.holeBeschreibung()
                 // Nur eine signierte Beschreibung zählt: Schreibrecht am Repository allein
                 // reicht dann nicht, um ein Update zu unterdrücken oder umzuleiten. Danach
                 // wird die Adresse trotzdem geprüft, nicht geglaubt.
@@ -115,10 +101,10 @@ class UpdateViewModel @Inject constructor(
                 }
                 // Aus einer zurückgesetzten oder abgelaufenen Beschreibung kein Angebot;
                 // die Einstellungen sagen dann, warum (anzubietendeFassung).
-                val frische = pruefeFrische(updateStand, beschreibung, fassung.code, System.currentTimeMillis() / 1000)
+                val frische = pruefeFrische(updateStand, beschreibung, repo.laufendeFassung.code, System.currentTimeMillis() / 1000)
                 _state.update {
                     it.copy(laedtPruefung = false, geprueft = true,
-                        neuereFassung = anzubietendeFassung(beschreibung, frische, fassung.code), fehler = null, frische = frische)
+                        neuereFassung = anzubietendeFassung(beschreibung, frische, repo.laufendeFassung.code), fehler = null, frische = frische)
                 }
             }.onFailure { _ ->
                 _state.update {
@@ -147,7 +133,8 @@ class UpdateViewModel @Inject constructor(
      */
     override fun ladeUpdate() {
         val fassung = _state.value.neuereFassung ?: return
-        viewModelScope.launch {
+        if (ladeJob?.isActive == true) return
+        ladeJob = viewModelScope.launch {
             if (!istErlaubteApkAdresse(fassung.apkUrl)) {
                 _state.update { it.copy(fehler = texte.text(R.string.update_fremde_adresse)) }
                 return@launch
@@ -155,7 +142,7 @@ class UpdateViewModel @Inject constructor(
             _state.update { it.copy(fortschritt = 0, fehler = null, bereitZurInstallation = false) }
             val ziel = geraet.updateDatei()
             fangeAusserAbbruch {
-                withContext(io) { ladeApk(fassung, ziel) }
+                repo.ladeApk(fassung, ziel).collect { p -> _state.update { it.copy(fortschritt = p) } }
                 val falsch = withContext(io) { ungueltigesApk(fassung, ziel) }
                 if (falsch != null) {
                     ziel.delete()
@@ -174,40 +161,11 @@ class UpdateViewModel @Inject constructor(
         }
     }
 
-    /**
-     * Lädt das APK nach [ziel], höchstens die angekündigte Grösse plus ein Megabyte
-     * (oder die feste Obergrenze), und meldet den Fortschritt nur bei Änderung.
-     * Ausführlich: docs/begruendungen/feature-konto/ui/viewmodel/UpdateViewModel.kt.md#obergrenze
-     */
-    private fun ladeApk(beschreibung: UpdateBeschreibung, ziel: File) {
-        updateHttpClient.newCall(Request.Builder().url(beschreibung.apkUrl).build()).execute().use { antwort ->
-            if (!antwort.isSuccessful) throw IOException("HTTP ${antwort.code}")
-            // Bevorzugt aus der Beschreibung: Hinter der Umleitung ist contentLength oft -1.
-            val gesamt = if (beschreibung.apkSize > 0) beschreibung.apkSize else antwort.body.contentLength()
-            val obergrenze =
-                if (gesamt in 1..UPDATE_MAX_BYTES) minOf(gesamt + 1024 * 1024, UPDATE_MAX_BYTES)
-                else UPDATE_MAX_BYTES
-            antwort.body.byteStream().use { ein ->
-                ziel.outputStream().use { aus ->
-                    val puffer = ByteArray(64 * 1024)
-                    var geladen = 0L
-                    var zuletzt = -1
-                    while (true) {
-                        val n = ein.read(puffer)
-                        if (n < 0) break
-                        geladen += n
-                        // Abbrechen, BEVOR geschrieben wird: Sonst liegt das Zuviel schon auf der Platte.
-                        if (geladen > obergrenze) throw IOException("Update groesser als erlaubt ($geladen > $obergrenze)")
-                        aus.write(puffer, 0, n)
-                        val p = if (gesamt > 0) ((geladen * 100) / gesamt).toInt().coerceIn(0, 100) else zuletzt
-                        if (p != zuletzt) {
-                            zuletzt = p
-                            _state.update { it.copy(fortschritt = p) }
-                        }
-                    }
-                }
-            }
-        }
+    /** Der Download bricht ab, die Teildatei löscht die Datenschicht; ein neuer Versuch beginnt von vorn. */
+    override fun ladeAbbrechen() {
+        ladeJob?.cancel()
+        ladeJob = null
+        _state.update { it.copy(fortschritt = null) }
     }
 
     /**
@@ -218,7 +176,7 @@ class UpdateViewModel @Inject constructor(
     private fun ungueltigesApk(beschreibung: UpdateBeschreibung, ziel: File): Int? = when {
         !pruefsummePasst(ziel, beschreibung.apkSha256) -> R.string.update_pruefsumme_falsch
         !geraet.signaturPasst(ziel) -> R.string.update_signatur_falsch
-        !fassungPasst(geraet.apkFassung(ziel), beschreibung.versionCode, fassung.code) -> R.string.update_fassung_falsch
+        !fassungPasst(geraet.apkFassung(ziel), beschreibung.versionCode, repo.laufendeFassung.code) -> R.string.update_fassung_falsch
         else -> null
     }
 
@@ -237,7 +195,7 @@ class UpdateViewModel @Inject constructor(
             val geprueft = withContext(io) {
                 val datei = geraet.updateDatei()
                 val echt = datei.isFile && pruefsummePasst(datei, pruefsumme) && geraet.signaturPasst(datei) &&
-                    fassungPasst(geraet.apkFassung(datei), gemeldet, fassung.code)
+                    fassungPasst(geraet.apkFassung(datei), gemeldet, repo.laufendeFassung.code)
                 if (!echt) datei.delete()
                 datei.takeIf { echt }
             }

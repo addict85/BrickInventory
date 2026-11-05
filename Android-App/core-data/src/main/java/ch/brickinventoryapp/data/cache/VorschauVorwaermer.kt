@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.data.cache
 
+import ch.brickinventoryapp.di.BildClient
 import ch.brickinventoryapp.data.Netzlage
 import ch.brickinventoryapp.data.GeraeteEinstellungen
 import ch.brickinventoryapp.data.VorwaermNetz
@@ -11,7 +12,6 @@ import kotlinx.coroutines.flow.first
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import javax.inject.Inject
-import javax.inject.Named
 import javax.inject.Singleton
 
 /**
@@ -33,7 +33,7 @@ class VorschauVorwaermer @Inject constructor(
     private val vorschau: VorschauSpeicher,
     private val netz: Netzlage,
     private val prefs: GeraeteEinstellungen,
-    @param:Named("image") private val bildClient: OkHttpClient,
+    @param:BildClient private val bildClient: OkHttpClient,
 ) {
     companion object {
         /**

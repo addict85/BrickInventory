@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.service
 
+import ch.brickinventoryapp.di.SseClient
 import ch.brickinventoryapp.util.fangeAusserAbbruch
 import android.content.Context
 import ch.brickinventoryapp.data.Zugangsdaten
@@ -26,7 +27,6 @@ import okhttp3.sse.EventSources
 import java.io.File
 import java.util.concurrent.atomic.AtomicBoolean
 import javax.inject.Inject
-import javax.inject.Named
 import javax.inject.Singleton
 import kotlin.coroutines.resume
 import ch.brickinventoryapp.data.api.Fehlerrumpf
@@ -50,7 +50,7 @@ sealed class PdfExportState {
 class PdfExportManager @Inject constructor(
     private val sets: SetsRepository,
     private val prefs: Zugangsdaten,
-    @param:Named("sse") private val sseClient: OkHttpClient,
+    @param:SseClient private val sseClient: OkHttpClient,
     private val json: Json,
     private val teilelistentresor: Teilelistentresor,
     @param:ApplicationContext private val context: Context

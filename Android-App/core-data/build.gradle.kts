@@ -30,13 +30,12 @@ dependencies {
     implementation(project(":core-ressourcen"))
     implementation(libs.androidx.core.ktx)
     api(libs.kotlinx.coroutines.android)
-    // api, weil die Typen in öffentlichen Signaturen stehen: Response<T> in den
-    // Api-Schnittstellen, Preferences.Key im PreferencesManager, Worker-Klassen,
-    // der Logging-Interceptor in Protokoll.kt. Kotlin braucht sie beim Aufrufer.
-    api(libs.retrofit)
+    // Netz nur als implementation: Kein Modul darüber soll OkHttp oder Retrofit sehen,
+    // es nimmt die Repositories. Tests bekommen beides über core-testing.
+    implementation(libs.retrofit)
     implementation(libs.retrofit.kotlinx.serialization)
-    api(libs.okhttp.logging)
-    api(libs.okhttp.sse)
+    implementation(libs.okhttp.logging)
+    implementation(libs.okhttp.sse)
     api(libs.coil.core)
     implementation(libs.coil.network.okhttp)
     api(libs.androidx.datastore)

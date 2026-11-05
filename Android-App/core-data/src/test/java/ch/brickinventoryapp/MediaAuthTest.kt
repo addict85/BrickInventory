@@ -73,7 +73,7 @@ class MediaAuthTest {
 
     @Test
     fun `der Bild-Cache wird beim Abmelden geleert`() {
-        val session = code(read("ui/Abmelden.kt"))
+        val session = code(read("data/SitzungsBereinigung.kt"))
         assert(session.contains("imageLoader.memoryCache?.clear()")) { "Memory-Cache bleibt stehen" }
         assert(session.contains("imageLoader.diskCache?.clear()")) {
             "Sonst sieht der nächste Nutzer auf demselben Gerät die Bilder des vorherigen"
@@ -115,8 +115,8 @@ class MediaAuthTest {
 
     @Test
     fun `die Anzeige selbst laeuft ueber den authentifizierten Client`() {
-        // Geladen wird im AnleitungsLader (ViewModel), nicht mehr im Bildschirm.
-        val viewer = code(read("ui/pdf/AnleitungsLader.kt"))
+        // Geladen wird in der Datenschicht (AnleitungsRepository), nicht im Bildschirm.
+        val viewer = code(read("data/AnleitungsRepository.kt"))
         // Geprüft wird die AUSSAGE, nicht der Wortlaut des Aufrufs: Der
         // Download läuft über den injizierten Client. Die frühere Fassung
         // suchte die Argumentliste zeichengenau und wurde in Nachtrag 115 rot,
@@ -131,7 +131,7 @@ class MediaAuthTest {
         assert(!viewer.contains("OkHttpClient()")) {
             "Ein frei gebauter Client kennt den Bearer-Token nicht"
         }
-        assert(viewer.contains("""@param:Named("api") private val httpClient: OkHttpClient""")) {
+        assert(viewer.contains("""@param:ApiClient private val httpClient: OkHttpClient""")) {
             "Der Lader bekommt nicht den api-Client mit Token und Klartext-Verbot"
         }
     }

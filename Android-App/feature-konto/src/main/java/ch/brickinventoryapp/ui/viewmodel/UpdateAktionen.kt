@@ -5,5 +5,6 @@ interface UpdateAktionen {
     fun pruefeAufUpdate(still: Boolean = false)
     fun updateHinweisSchliessen()
     fun ladeUpdate()
+    fun ladeAbbrechen()
     fun starteInstallation()
 }

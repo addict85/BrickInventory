@@ -5,8 +5,8 @@ import androidx.lifecycle.viewModelScope
 import ch.brickinventoryapp.ressourcen.R
 import ch.brickinventoryapp.ui.TeilelistenQuelle
 import ch.brickinventoryapp.ui.PlPart
-import ch.brickinventoryapp.ui.viewmodel.ExportErgebnis
-import ch.brickinventoryapp.ui.viewmodel.TeilelistenExport
+import ch.brickinventoryapp.service.ExportErgebnis
+import ch.brickinventoryapp.service.TeilelistenExport
 import ch.brickinventoryapp.ui.viewmodel.TeilelisteViewModel
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers

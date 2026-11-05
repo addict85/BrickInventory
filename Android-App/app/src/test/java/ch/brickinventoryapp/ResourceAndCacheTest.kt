@@ -50,7 +50,7 @@ class ResourceAndCacheTest {
 
     @Test
     fun `der PDF-Ansichts-Cache hat eine Obergrenze`() {
-        val src = code(read("ui/pdf/AnleitungsLader.kt"))
+        val src = code(read("data/AnleitungsRepository.kt"))
         assert(src.contains("private fun prunePdfCache")) {
             "Kein Aufräumen des PDF-Caches. Angesehene Anleitungen bleiben absichtlich " +
                 "liegen (Resume, erneutes Öffnen ohne Neudownload) — bei bis zu 300 MB " +
@@ -70,11 +70,11 @@ class ResourceAndCacheTest {
 
     @Test
     fun `beim Abmelden werden API- UND Bild-Cache geleert`() {
-        val src = code(read("ui/Abmelden.kt"))
-        assert(src.contains("repo.clearCache()")) { "API-Cache wird nicht geleert" }
+        val src = code(read("data/SitzungsBereinigung.kt"))
+        assert(src.contains("kontoDaten.loesche()")) { "API-Cache wird nicht geleert" }
         assert(src.contains("imageLoader.diskCache?.clear()")) {
             "Der Coil-Disk-Cache bleibt beim Abmelden liegen — inkonsistent zur " +
-                "Begründung, mit der repo.clearCache() eingeführt wurde"
+                "Begründung, mit der kontoDaten.loesche() eingeführt wurde"
         }
         val mem = src.indexOf("memoryCache?.clear()")
         val disk = src.indexOf("diskCache?.clear()")

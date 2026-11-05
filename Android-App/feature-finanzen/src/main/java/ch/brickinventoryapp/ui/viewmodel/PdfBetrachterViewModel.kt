@@ -4,7 +4,7 @@ import ch.brickinventoryapp.util.fangeAusserAbbruch
 import android.graphics.Bitmap
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import ch.brickinventoryapp.ui.pdf.DownloadGescheitert
+import ch.brickinventoryapp.data.DownloadGescheitert
 import ch.brickinventoryapp.ui.pdf.PdfFehler
 import ch.brickinventoryapp.ui.pdf.PdfHalter
 import ch.brickinventoryapp.ui.pdf.PdfLader

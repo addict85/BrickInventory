@@ -1,31 +1,21 @@
 package ch.brickinventoryapp.ui.viewmodel
 
-import android.content.Context
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.viewModelScope
 import ch.brickinventoryapp.ressourcen.R
-import ch.brickinventoryapp.service.PdfExportManager
-import ch.brickinventoryapp.service.PdfExportService
-import ch.brickinventoryapp.service.PdfExportState
+import ch.brickinventoryapp.service.ExportErgebnis
+import ch.brickinventoryapp.service.TeilelistenExport
 import ch.brickinventoryapp.ui.TeilelisteUiState
 import ch.brickinventoryapp.ui.TeilelistenQuelle
 import ch.brickinventoryapp.ui.PlPart
 import ch.brickinventoryapp.ui.PlSet
 import ch.brickinventoryapp.ui.normalisiert
-import dagger.Binds
-import dagger.Module
-import dagger.hilt.InstallIn
 import dagger.hilt.android.lifecycle.HiltViewModel
-import dagger.hilt.android.qualifiers.ApplicationContext
-import dagger.hilt.components.SingletonComponent
 import kotlinx.coroutines.CancellationException
-import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -33,46 +23,7 @@ import kotlinx.serialization.json.addJsonObject
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
 import kotlinx.serialization.json.putJsonArray
-import java.io.File
 import javax.inject.Inject
-
-/** Ausgang eines PDF-Exports: die Datei oder die Meldung des Servers. */
-sealed interface ExportErgebnis {
-    data class Datei(val datei: File) : ExportErgebnis
-    data class Fehler(val meldung: String?) : ExportErgebnis
-}
-
-/** Der PDF-Export als Vordergrund-Dienst, der länger lebt als der Bildschirm; im Test ein Double. */
-interface TeilelistenExport {
-    /** „…noch ~Xs“ eines laufenden Exports, null ohne Export. */
-    val status: Flow<String?>
-    suspend fun erzeuge(rumpf: String): ExportErgebnis
-}
-
-internal class DienstExport @Inject constructor(
-    private val manager: PdfExportManager,
-    @param:ApplicationContext private val ctx: Context,
-) : TeilelistenExport {
-    override val status: Flow<String?> = manager.state.map { (it as? PdfExportState.Running)?.statusText }
-
-    override suspend fun erzeuge(rumpf: String): ExportErgebnis {
-        manager.reset()
-        manager.pendingBody = rumpf
-        PdfExportService.start(ctx)
-        return when (val r = manager.state.first { it is PdfExportState.Done || it is PdfExportState.Error }) {
-            is PdfExportState.Done -> ExportErgebnis.Datei(r.file)
-            is PdfExportState.Error -> ExportErgebnis.Fehler(r.message)
-            // Ohne else-Zweig, damit ein neuer Zustand hier auffällt; first{} lässt beide nicht durch.
-            is PdfExportState.Idle, is PdfExportState.Running -> ExportErgebnis.Fehler(null)
-        }
-    }
-}
-
-@Module
-@InstallIn(SingletonComponent::class)
-internal interface TeilelistenExportModul {
-    @Binds fun export(e: DienstExport): TeilelistenExport
-}
 
 /**
  * Die Bauliste: Sets sammeln, auflösen, Bestand abgleichen, PDF erzeugen. Liste und
