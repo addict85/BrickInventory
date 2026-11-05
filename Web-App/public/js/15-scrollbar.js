@@ -3,7 +3,8 @@
 // ── Warum eigene Datei ───────────────────────────────────────
 //
 // Braucht von aussen nur G() — den Rest macht er selbst.
-import { G } from './01-dom.js';
+import { html } from './00-escapen.js';
+import { G, setzeHtml } from './01-dom.js';
 
 // Ein eigener Scrollbalken für die ganze Seite, fest am rechten Rand, statt eines Scrollkastens im
 // Katalog: Dort sass der Balken mitten im Fenster, und das Nachladen mass gegen den Kasten statt gegen
@@ -52,7 +53,7 @@ function _erzeugeScrollbalken() {
     bar = document.createElement('div');
     bar.id = 'app-scrollbar';
     bar.style.display = 'none';
-    bar.innerHTML = '<div id="app-scrollbar-thumb"></div><div id="app-scrollbar-label"></div>';
+    setzeHtml(bar, html`<div id="app-scrollbar-thumb"></div><div id="app-scrollbar-label"></div>`);
     document.body.appendChild(bar);
   }
   return bar;

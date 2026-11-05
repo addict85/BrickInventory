@@ -88,7 +88,7 @@ test('Finanzen-Filter: dieselben vier Arten in Webapp und App', () => {
   // zum Dateiende fand deshalb IMMER einen Treffer — auch nachdem ich den
   // Aufruf aus loadFinance() entfernt hatte. Die Pruefung war gruen und
   // pruefte nichts.
-  const ab = web.indexOf("G('fin-tbl').innerHTML = setsTabelle(");
+  const ab = web.indexOf("setzeHtml(G('fin-tbl'), html`${setsTabelle(");
   assert.ok(ab > 0, 'Die Zeile, die die Tabelle zeichnet, wurde nicht gefunden — Muster veraltet?');
   const ende = web.indexOf('\n}', ab);
   assert.ok(ende > ab, 'Das Ende von loadFinance() wurde nicht gefunden');

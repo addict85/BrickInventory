@@ -3,12 +3,12 @@
 // keine Ansicht importiert es. Die API-Hülle meldet ein Sitzungsende nur als
 // Ereignis; reagiert wird hier.
 import { registerActions } from './00-registry.js';
-import { esc } from './00-escapen.js';
+import { html } from './00-escapen.js';
 import { abonniere } from './00-ereignisse.js';
 import { resetScopeModes } from './14-scope.js';
 import { LANG, applyLang, t, setLangValue, tRaw } from '../i18n.js';
 import { api, apiRoh, leereZwischenspeicher } from './01-api.js';
-import { G, knopfBesetzt, alle } from './01-dom.js';
+import { G, knopfBesetzt, alle, setzeHtml } from './01-dom.js';
 import { formularFehler, passwortRegelText } from './01-formular.js';
 import { applyTheme, initDefaultCondition, zeigeBenutzernamen, rbHinweisZeigen, _updateLangSelect } from './01-konto.js';
 import { toast } from './01-meldungen.js';
@@ -385,13 +385,13 @@ function showLogin(o = {}){
   // Das Diagramm nur leeren, nicht seinen Abschnitt: Der trägt Kopf und Zeitraumwahl,
   // die nach der nächsten Anmeldung sonst fehlten.
   ['fin-tbl','portfolio-chart','portfolio-pnl','gallery-grid','parts-main','monitor-content'].forEach(id=>{
-    const el=G(id); if(el) el.innerHTML='';
+    const el=G(id); if(el) el.replaceChildren();
   });
   setAllSets([]);
   resetPartsList();
   // Clear partslist DOM so it doesn't persist after re-login
-  const plResult=G('pl-result'); if(plResult) plResult.innerHTML='';
-  const plSetsEl=G('pl-sets'); if(plSetsEl) plSetsEl.innerHTML='';
+  const plResult=G('pl-result'); if(plResult) plResult.replaceChildren();
+  const plSetsEl=G('pl-sets'); if(plSetsEl) plSetsEl.replaceChildren();
   const plStatus=G('pl-status'); if(plStatus) plStatus.textContent='';
   ['btn-pl-pdf','btn-pl-bl','pl-bl-condition','pl-bestand-zeile'].forEach(id=>{const el=G(id);if(el)el.style.display='none';});
   G('login-screen').style.display='flex'; startgeruestWeg();
@@ -505,7 +505,7 @@ async function doLogin(){
     oeffneApp(); } else { const err=d.error||tRaw('settings.error');
     // Fokus ins erste leere Feld; sind beide gefüllt, stimmt meist das Passwort nicht.
     const leer=['lu','lp'].filter(id=>!G(id).value);
-    formularFehler(G('lerr'), err, leer.length ? leer : ['lp','lu']); if(d.unverified||d.code==='email_nicht_bestaetigt'){ G('lerr').innerHTML=esc(err)+' <a href="#" data-click="bestaetigungErneut" data-stil="color:var(--b600)">'+t('auth.resend_mail')+'</a>'; } }
+    formularFehler(G('lerr'), err, leer.length ? leer : ['lp','lu']); if(d.unverified||d.code==='email_nicht_bestaetigt'){ setzeHtml(G('lerr'), html`${err}${html` <a href="#" data-click="bestaetigungErneut" data-stil="color:var(--b600)">`}${tRaw('auth.resend_mail')}${html`</a>`}`); } }
 }
 G('btn-logout').onclick=async()=>{
   // Ein Token aus einer älteren Anmeldung wird mit entwertet.

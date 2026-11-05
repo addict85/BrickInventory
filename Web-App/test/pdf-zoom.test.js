@@ -166,8 +166,8 @@ async function werkbank(umbau) {
   const aktionen = {};
   w.registerActions = o => Object.assign(aktionen, o);
   w.G = id => w.document.getElementById(id);
-  w.esc = s => String(s ?? '');
-  w.t = k => k;
+  Object.assign(w, require('./helpers/markup').markupHelfer());
+  w.t = k => k; w.tRaw = k => k;
   w.eval(code);
 
   const warte = ms => new Promise(r => setTimeout(r, ms));

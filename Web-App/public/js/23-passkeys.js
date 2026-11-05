@@ -1,11 +1,11 @@
 import { echt, registerActions } from './00-registry.js';
-import { t, tRaw } from '../i18n.js';
+import { tRaw } from '../i18n.js';
 import { api } from './01-api.js';
-import { ico, G } from './01-dom.js';
+import { ico, G, setzeHtml } from './01-dom.js';
 import { fmtDatum } from './01-format.js';
 import { toast } from './01-meldungen.js';
 import { ME } from './00-zustand.js';
-import { esc } from './00-escapen.js';
+import { html } from './00-escapen.js';
 import { bestaetigeMitPasswort, mitZweitemFaktor, setzePasskeyHolen } from './01-rueckfrage.js';
 
 // ═══ Passkeys (Server: src/konto/passkeys.ts, routes/passkeys.ts) ═══════════════
@@ -97,25 +97,23 @@ export async function ladePasskeys() {
   const f = flaeche();
   if (!f) return;
   const [d, zf] = await Promise.all([api('GET', '/v1/auth/passkeys'), api('GET', '/v1/auth/zweiter-faktor')]);
-  if (!d?.success || !Array.isArray(d.passkeys)) { f.innerHTML = `<div class="voucher-leer">${t('settings.error')}</div>`; return; }
+  if (!d?.success || !Array.isArray(d.passkeys)) { setzeHtml(f, html`<div class="voucher-leer">${tRaw('settings.error')}</div>`); return; }
   const liste = d.passkeys.length
-    ? `<div class="tw"><table class="dt"><thead><tr><th>${t('pk.col.name')}</th><th>${t('tokens.col.created')}</th>
-        <th>${t('tokens.col.last_used')}</th><th>${t('users.col.actions')}</th></tr></thead><tbody>${
-        d.passkeys.map(p => `<tr><td><strong>${esc(p.name || '—')}</strong></td>
+    ? html`<div class="tw"><table class="dt"><thead><tr><th>${tRaw('pk.col.name')}</th><th>${tRaw('tokens.col.created')}</th>
+        <th>${tRaw('tokens.col.last_used')}</th><th>${tRaw('users.col.actions')}</th></tr></thead><tbody>${d.passkeys.map(p => html`<tr><td><strong>${p.name || '—'}</strong></td>
           <td>${fmtDatum(p.created_at, 'tagzeit')}</td>
           <td>${p.last_used ? fmtDatum(p.last_used, 'tagzeit') : '—'}</td>
-          <td><button class="btn bd btn-sm" data-click="passkeyLoeschen"${echt()} data-arg="${esc(p.id)}" data-arg2="${esc(p.name || '')}" aria-label="${esc(tRaw('common.delete'))}">${ico('loeschen')}</button></td></tr>`).join('')
-      }</tbody></table></div>`
-    : `<p class="hinweis-absatz">${t('pk.none')}</p>`;
-  const neu = !d.verfuegbar ? `<p class="text-klein hinweis-warnung">${t(ME?.isAdmin ? 'pk.ohne_domain_verwalter' : 'pk.ohne_domain')}</p>`
-    : !passkeysMoeglich() ? `<p class="text-klein hinweis-warnung">${t('pk.browser')}</p>`
-    : `<form class="sform abstand-o-075" data-submit="pk-neu" data-stil="max-width:420px">
-        <div class="fg"><label for="pk-name">${t('pk.name')}</label><input type="text" id="pk-name" maxlength="60" /></div>
-        <div class="fg"><label for="pk-pw">${t('settings.password.current')}</label><input type="password" id="pk-pw" autocomplete="current-password" /></div>
-        ${zf?.aktiv ? `<div class="fg"><label for="pk-code">${t('login.code')}</label><input type="text" id="pk-code" inputmode="numeric" autocomplete="one-time-code" maxlength="24" /></div>` : ''}
-        <div><button type="button" class="btn bp btn-sm" id="pk-neu" data-click="passkeyHinzufuegen"${echt()}>${t('pk.add')}</button></div>
+          <td><button class="btn bd btn-sm" data-click="passkeyLoeschen"${echt()} data-arg="${p.id}" data-arg2="${p.name || ''}" aria-label="${tRaw('common.delete')}">${ico('loeschen')}</button></td></tr>`)}</tbody></table></div>`
+    : html`<p class="hinweis-absatz">${tRaw('pk.none')}</p>`;
+  const neu = !d.verfuegbar ? html`<p class="text-klein hinweis-warnung">${tRaw(ME?.isAdmin ? 'pk.ohne_domain_verwalter' : 'pk.ohne_domain')}</p>`
+    : !passkeysMoeglich() ? html`<p class="text-klein hinweis-warnung">${tRaw('pk.browser')}</p>`
+    : html`<form class="sform abstand-o-075" data-submit="pk-neu" data-stil="max-width:420px">
+        <div class="fg"><label for="pk-name">${tRaw('pk.name')}</label><input type="text" id="pk-name" maxlength="60" /></div>
+        <div class="fg"><label for="pk-pw">${tRaw('settings.password.current')}</label><input type="password" id="pk-pw" autocomplete="current-password" /></div>
+        ${zf?.aktiv ? html`<div class="fg"><label for="pk-code">${tRaw('login.code')}</label><input type="text" id="pk-code" inputmode="numeric" autocomplete="one-time-code" maxlength="24" /></div>` : ''}
+        <div><button type="button" class="btn bp btn-sm" id="pk-neu" data-click="passkeyHinzufuegen"${echt()}>${tRaw('pk.add')}</button></div>
       </form>`;
-  f.innerHTML = liste + neu;
+  setzeHtml(f, html`${liste}${neu}`);
 }
 
 export async function passkeyHinzufuegen() {

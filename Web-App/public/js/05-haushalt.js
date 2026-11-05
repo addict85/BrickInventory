@@ -1,9 +1,9 @@
 import { echt, registerActions } from './00-registry.js';
 import { t, tRaw } from '../i18n.js';
 import { api } from './01-api.js';
-import { G } from './01-dom.js';
+import { G, setzeHtml } from './01-dom.js';
 import { toast } from './01-meldungen.js';
-import { esc } from './00-escapen.js';
+import { esc, html, ungeprueft } from './00-escapen.js';
 import { confirmDelete, bestaetigeMitPasswort, mitZweitemFaktor } from './01-rueckfrage.js';
 // Einstellungen, Abschnitt Haushalt: Einladen, Beitreten, Trennen. Ein Konto sieht danach die
 // Bestände der verknüpften Konten; die Regeln dazu stehen im Server (src/haushalt).
@@ -42,33 +42,32 @@ function renderHousehold(d){
   // Ein Raster auf der Liste, die Zeilen als display:contents: So stehen alle
   // Namen und alle Knöpfe in denselben zwei Spalten.
   // Namen und alle Knöpfe in denselben zwei Spalten; das Sinnbild macht die Namen als Konten kenntlich.
-  const liste = (/** @type {{ id: number, username?: string | null, via?: string | null }[]} */ eintraege, /** @type {(a: { id: number, username?: string | null, via?: string | null }) => string} */ aktion) => `<ul class="haushalt-liste">${
-    eintraege.map(a => `<li data-stil="display:contents">
-      <span class="haushalt-name"><svg class="ico" aria-hidden="true"><use href="#i-profil"/></svg>${esc(a.username)}</span>
-      <span class="haushalt-aktion">${aktion(a)}</span>
-    </li>`).join('')}</ul>`;
+  const liste = (/** @type {{ id: number, username?: string | null, via?: string | null }[]} */ eintraege, /** @type {(a: { id: number, username?: string | null, via?: string | null }) => string} */ aktion) => html`<ul class="haushalt-liste">${eintraege.map(a => html`<li data-stil="display:contents">
+      <span class="haushalt-name"><svg class="ico" aria-hidden="true"><use href="#i-profil"/></svg>${a.username}</span>
+      <span class="haushalt-aktion">${ungeprueft(aktion(a))}</span>
+    </li>`)}</ul>`;
 
   const teile = [];
   const eltern = d.parents || (d.linked_to ? [d.linked_to] : []);
   if(eltern.length){
-    teile.push(`<div>${t('household.state_parents', { n: eltern.length })}${liste(eltern,
+    teile.push(html`<div>${tRaw('household.state_parents', { n: eltern.length })}${liste(eltern,
       a => `<button class="btn bs btn-sm" data-click="unlinkFromParent"${echt()} data-arg="${a.id}" data-arg2="${esc(a.username || '')}">${t('household.unlink_self')}</button>`)}</div>`);
   }
   if(d.sub_accounts?.length){
-    teile.push(`${eltern.length ? '<div data-stil="margin-top:.6rem">' : '<div>'}${t('household.state_main', { n: d.sub_accounts.length })}${liste(d.sub_accounts,
+    teile.push(html`${eltern.length ? html`<div data-stil="margin-top:.6rem">` : html`<div>`}${tRaw('household.state_main', { n: d.sub_accounts.length })}${liste(d.sub_accounts,
       a => `<button class="btn bs btn-sm" data-click="unlinkHousehold"${echt()} data-arg="${a.id}" data-arg2="${esc(a.username || '')}">${t('household.unlink_sub')}</button>`)}</div>`);
   }
   if(!teile.length){
-    teile.push(`<div data-stil="color:var(--mut)">${t('household.state_none', { cur: esc(d.currency||'') })}</div>`);
+    teile.push(html`<div data-stil="color:var(--mut)">${tRaw('household.state_none', { cur: esc(d.currency||'') })}</div>`);
   }
   if(d.former_links?.length){
-    teile.push(`<div role="note" data-stil="margin-top:.8rem;padding:.6rem .8rem;border-radius:8px;background:var(--b100);color:var(--b600)">
-      ${t('household.former_intro')}${liste(d.former_links,
+    teile.push(html`<div role="note" data-stil="margin-top:.8rem;padding:.6rem .8rem;border-radius:8px;background:var(--b100);color:var(--b600)">
+      ${tRaw('household.former_intro')}${liste(d.former_links,
         a => `<span data-stil="color:var(--mut)">${a.via ? t('household.former_via', { via: esc(a.via) }) : ''}</span>
               <button class="btn bs btn-sm" data-click="dismissFormerLink" data-arg="${a.id}">${t('household.former_dismiss')}</button>`)}
     </div>`);
   }
-  stateEl.innerHTML = teile.join('');
+  setzeHtml(stateEl, ungeprueft(teile.join('')));
 
   // Einladen und Einlösen darf jedes Konto: Ein Konto kann mehrere
   // Elternkonten haben, und jedes braucht seine eigene Einladung.

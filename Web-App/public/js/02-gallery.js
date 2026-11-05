@@ -5,10 +5,10 @@ import { abonniere } from './00-ereignisse.js';
 import { skelettKacheln, listeLadefehler, condBadges, ownerBadges, pnlBadge, schliesseErfassen, teileAufschluesselung } from './01-bausteine.js';
 import { echt, registerActions } from './00-registry.js';
 import { LANG, locale, t, tRaw} from '../i18n.js';
-import { escJs, esc } from './00-escapen.js';
+import { esc, html, ungeprueft } from './00-escapen.js';
 import { fehlerMeldung, api } from './01-api.js';
 import { bildTag, fullUrl, platzhalterInhalt, imgUrl, observeLazyImages, thumbUrl } from './01-bilder.js';
-import { leerZustand, meldeTreffer, ico, G, TRASH_ICON_SVG, zuruecksetzenKnopf, aktiverReiter, alle } from './01-dom.js';
+import { leerZustand, meldeTreffer, ico, G, TRASH_ICON_SVG, zuruecksetzenKnopf, aktiverReiter, alle, fuegeHtmlEin, setzeHtml } from './01-dom.js';
 import { fmtDatum, fmtBig, fmtGeld, fmtN, fmtPct, istGeschenk } from './01-format.js';
 import { setnummerFeldGueltig, betragAusFeld } from './01-formular.js';
 import { toast } from './01-meldungen.js';
@@ -129,10 +129,10 @@ function appendGallery(batch){
   const grid = c.querySelector('.sgrid');
   const tbody = c.querySelector('.dt tbody');
   if (curView === 'grid' && grid) {
-    grid.insertAdjacentHTML('beforeend', batch.map(gridCard).join(''));
+    fuegeHtmlEin(grid, 'beforeend', ungeprueft(batch.map(gridCard).join('')));
     observeLazyImages(grid);
   } else if (tbody) {
-    tbody.insertAdjacentHTML('beforeend', batch.map(tableRow).join(''));
+    fuegeHtmlEin(tbody, 'beforeend', ungeprueft(batch.map(tableRow).join('')));
   } else {
     renderGallery();                        // Struktur fehlt (leerer Zustand)
   }
@@ -204,7 +204,7 @@ export async function loadGallery(opts = {}){
   // Antwort da ist; erst dann wird einmal neu gezeichnet.
   const gal = G('gallery');
   if (!allSets.length || !gal.querySelector('.sgrid, .tw, .empty')) {
-    gal.innerHTML = skelettKacheln(8, t('gallery.loading'));
+    setzeHtml(gal, skelettKacheln(8, t('gallery.loading')));
   }
   _galGen++; _galPage = 1; _galDone = false; _galLoadingMore = false;
   const gen = _galGen;
@@ -228,8 +228,7 @@ export async function loadGallery(opts = {}){
   const themeEl = G('gtheme');
   if (themeEl && Array.isArray(d.themes)) {
     const current = themeEl.value;
-    themeEl.innerHTML = `<option value="">${t('gallery.filter.all')}</option>` +
-      d.themes.map(th=>`<option value="${esc(th)}"${th===current?' selected':''}>${esc(th)}</option>`).join('');
+    setzeHtml(themeEl, html`${html`<option value="">${tRaw('gallery.filter.all')}</option>`}${d.themes.map(th=>html`<option value="${th}"${th===current ? ' selected' : ''}>${th}</option>`)}`);
     themeEl.value = current;
   }
   if (themeEl && !themeEl._bound) { themeEl._bound = true; themeEl.addEventListener('change', () => loadGallery()); }
@@ -254,20 +253,17 @@ export function renderGallery(){
   if (gefiltert) meldeTreffer(list.length ? tRaw('treffer.sets', { n: _galTotal || list.length })
     : q ? tRaw('common.no_hits', { query: q }) : tRaw('gallery.no_results_filter'));
   if(!list.length){
-    c.innerHTML = gefiltert
-      ? leerZustand({ ico: 'suche', titel: q ? tRaw('common.no_hits', { query: q }) : tRaw('gallery.no_results_filter'),
-                      knopf: zuruecksetzenKnopf('gallery') })
-      // Ohne eigenen Knopf: „Set hinzufügen“ steht direkt darüber in der Erfassen-Leiste.
-      : leerZustand({ ico: 'set', titel: tRaw('gallery.empty'),
+    setzeHtml(c, gefiltert ? leerZustand({ ico: 'suche', titel: q ? tRaw('common.no_hits', { query: q }) : tRaw('gallery.no_results_filter'),
+                      knopf: zuruecksetzenKnopf('gallery') }) : leerZustand({ ico: 'set', titel: tRaw('gallery.empty'),
                       text: tRaw(window.matchMedia?.('(max-width: 640px)').matches ? 'gallery.empty_hint_telefon' : 'gallery.empty_hint'),
-                      knopf: { text: tRaw('gallery.add.title'), click: 'oeffneErfassen', arg: 'set' } });
+                      knopf: { text: tRaw('gallery.add.title'), click: 'oeffneErfassen', arg: 'set' } }));
     return;
   }
   if(curView==='grid'){
-    c.innerHTML=`<div class="sgrid">${list.map(gridCard).join('')}</div>`;
+    setzeHtml(c, html`<div class="sgrid">${ungeprueft(list.map(gridCard).join(''))}</div>`);
     observeLazyImages(c);
   } else {
-    c.innerHTML=`<div class="tw"><table class="dt"><thead><tr><th>${t('col.image_th')}</th><th>${t('col.nr')}</th><th>${t('col.name')}</th><th>${t('detail.year')}</th><th>${t('detail.theme')}</th><th>${t('detail.pieces')}</th><th>${t('detail.minifigs')}</th><th>${t('detail.qty')}</th><th>${t('detail.created')}</th><th>${t('detail.instructions')}</th><th><span class="vh">${t('detail.reimport_parts')}</span></th><th><span class="vh">${t('detail.delete')}</span></th></tr></thead><tbody>${list.map(tableRow).join('')}</tbody></table></div>`;
+    setzeHtml(c, html`<div class="tw"><table class="dt"><thead><tr><th>${tRaw('col.image_th')}</th><th>${tRaw('col.nr')}</th><th>${tRaw('col.name')}</th><th>${tRaw('detail.year')}</th><th>${tRaw('detail.theme')}</th><th>${tRaw('detail.pieces')}</th><th>${tRaw('detail.minifigs')}</th><th>${tRaw('detail.qty')}</th><th>${tRaw('detail.created')}</th><th>${tRaw('detail.instructions')}</th><th><span class="vh">${tRaw('detail.reimport_parts')}</span></th><th><span class="vh">${tRaw('detail.delete')}</span></th></tr></thead><tbody>${ungeprueft(list.map(tableRow).join(''))}</tbody></table></div>`);
     observeLazyImages(c);   // fehlte für die Listenansicht komplett
   }
 }
@@ -282,7 +278,7 @@ export function updateGalleryPrices(){
     const s = bySet.get(el.dataset.priceFor ?? '');
     if (!s) return;
     const inhalt = preisZeile(s);
-    el.innerHTML = inhalt;
+    setzeHtml(el, inhalt);
     el.hidden = !inhalt;
   });
 }
@@ -301,9 +297,9 @@ function preisZeile(s){
   // Ein Geschenk steht als Plakette beim Zustand: Im Preiskasten las es sich als Eigenschaft des Marktpreises.
   const pnl = istGeschenk(kauf) ? '' : pnlBadge(s._pnl_pct, kauf);
   if (!betrag && !pnl) return '';
-  const art = betrag ? `<span class="preis-art">${t(markt ? 'gallery.card.market' : 'gallery.card.paid')}</span>` : '';
-  const pct = pnl ? `<span title="${esc(tRaw('gallery.card.pnl_hint'))}"><span class="vh">${t('gallery.card.pnl_hint')}: </span>${pnl}</span>` : '';
-  return `${art}<span class="preis">${betrag}</span>${pct ? `<span class="preis-pnl">${pct}</span>` : ''}`;
+  const art = betrag ? html`<span class="preis-art">${tRaw(markt ? 'gallery.card.market' : 'gallery.card.paid')}</span>` : '';
+  const pct = pnl ? html`<span title="${tRaw('gallery.card.pnl_hint')}"><span class="vh">${tRaw('gallery.card.pnl_hint')}: </span>${pnl}</span>` : '';
+  return html`${art}<span class="preis">${ungeprueft(betrag)}</span>${pct ? html`<span class="preis-pnl">${pct}</span>` : ''}`;
 }
 
 /** @param {Kachel} s */
@@ -314,7 +310,7 @@ function gridCard(s){
   // die verkleinerte Fassung, sonst käme die volle Auflösung für eine Kachel.
   const thumb=src?imgUrl(thumbUrl(src)||src, true):null;
   // Ohne Alternativtext: Die Kachel ist ein Knopf, ihr Text nennt das Set schon.
-  const img=src?bildTag({ src: thumb||src, alt: '', orig: imgUrl(fullUrl(src)), fade: true, ph: 'set' }):`<span class="bild-ph" aria-hidden="true">${platzhalterInhalt('set')}</span>`;
+  const img=src?bildTag({ src: thumb||src, alt: '', orig: imgUrl(fullUrl(src)), fade: true, ph: 'set' }):html`<span class="bild-ph" aria-hidden="true">${platzhalterInhalt('set')}</span>`;
   // Ohne geladenen Marktpreis der mengengewichtete Kaufpreis. Vorher stand
   // hier max_purchase_price — bei 2x100 und 1x160 zeigte die Kachel 160 statt
   // der tatsächlichen 120.
@@ -328,25 +324,25 @@ function gridCard(s){
   // Ohne Jahr, Thema und echten Namen kennt der Katalog die Nummer (noch) nicht.
   const unbekannt = !s.year && !s.theme && (!s.name || s.name === 'Set ' + s.set_number);
   // Kein aria-label: Der Name kommt aus dem Inhalt, sonst fehlte dem Vorleser, was sichtbar dasteht.
-  return `<div class="sc"${faecherTon(s)} tabindex="0" role="button" aria-keyshortcuts="Delete" data-click="openModal" data-arg="${escJs(s.set_number)}">
-    <div class="ca"><span class="delbtn" data-click="delSetStop"${echt()} aria-hidden="true" data-arg="${esc(s.set_number)}" title="${esc(t('detail.delete'))}">${TRASH_ICON_SVG}</span></div>
+  return html`<div class="sc"${ungeprueft(faecherTon(s))} tabindex="0" role="button" aria-keyshortcuts="Delete" data-click="openModal" data-arg="${s.set_number}">
+    <div class="ca"><span class="delbtn" data-click="delSetStop"${echt()} aria-hidden="true" data-arg="${s.set_number}" title="${t('detail.delete')}">${TRASH_ICON_SVG}</span></div>
     <div class="sci">${img}</div>
     <div class="scb">
-      <div class="snum">${esc(s.set_number)}</div>
-      <div class="sname">${esc(s.name)||t('common.unknown')}</div>
+      <div class="snum">${s.set_number}</div>
+      <div class="sname">${s.name || tRaw('common.unknown')}</div>
       <div class="smeta">
-        <span class="smeta-text"${s.theme ? ` title="${esc(s.theme)}"` : ''}>${s.year||'—'}${s.theme?' · '+esc(s.theme):''}</span>
+        <span class="smeta-text"${s.theme ? html` title="${s.theme}"` : ''}>${s.year || '—'}${s.theme ? html`${' · '}${s.theme}` : ''}</span>
         <div class="splaketten">
-          ${s.instructions?.length?`<span class="ibadge">${ico('liste')}${s.instructions.length}</span>`:''}
-          ${s.quantity>1?`<span class="qbadge">×${s.quantity}</span>`:''}
-          ${condBadge}
-          ${istGeschenk(s.avg_purchase_price ?? s.max_purchase_price) ? `<span class="geschenk-badge">${t('finance.gift')}</span>` : ''}
-          ${unbekannt ? `<span class="unbekannt-badge" title="${esc(tRaw('gallery.card.unbekannt_hint'))}">${t('gallery.card.unbekannt')}</span>` : ''}
+          ${s.instructions?.length ? html`<span class="ibadge">${ico('liste')}${s.instructions.length}</span>` : ''}
+          ${s.quantity>1 ? html`<span class="qbadge">×${s.quantity}</span>` : ''}
+          ${ungeprueft(condBadge)}
+          ${istGeschenk(s.avg_purchase_price ?? s.max_purchase_price) ? html`<span class="geschenk-badge">${tRaw('finance.gift')}</span>` : ''}
+          ${unbekannt ? html`<span class="unbekannt-badge" title="${tRaw('gallery.card.unbekannt_hint')}">${tRaw('gallery.card.unbekannt')}</span>` : ''}
           ${ownerBadges(s)}
         </div>
       </div>
-      <div class="price-badge" data-price-for="${esc(s.set_number)}"${preis ? '' : ' hidden'}>${preis}</div>
-      ${kaufFmt ? `<div class="kachel-datum" title="${esc(t('gallery.card.bought'))}">${ico('kalender')} <span>${t('detail.added')}</span> ${kaufFmt}</div>` : '<div class="kachel-datum" aria-hidden="true"></div>'}
+      <div class="price-badge" data-price-for="${s.set_number}"${preis ? '' : ' hidden'}>${preis}</div>
+      ${kaufFmt ? html`<div class="kachel-datum" title="${t('gallery.card.bought')}">${ico('kalender')} <span>${tRaw('detail.added')}</span> ${ungeprueft(kaufFmt)}</div>` : html`<div class="kachel-datum" aria-hidden="true"></div>`}
     </div>
   </div>`;
 }
@@ -354,16 +350,16 @@ function gridCard(s){
 function tableRow(s){
   const src=s.image_local||s.image_url||'';
   const addedFmt = s.added_at ? fmtDatum(s.added_at) : '—';
-  return `<tr data-stil="cursor:pointer" tabindex="0" data-click="openModal" data-arg="${escJs(s.set_number)}">
-    <td>${src?bildTag({ src: imgUrl(thumbUrl(src)||src, true), alt: '', ph: 'set' }):`<span class="bild-ph" aria-hidden="true">${platzhalterInhalt('set')}</span>`}</td>
-    <td><span data-stil="font-family:var(--mono);color:var(--b600);font-size:var(--fs-1)">${esc(s.set_number)}</span></td>
-    <td>${esc(s.name)||'—'}</td><td>${s.year||'—'}</td><td>${esc(s.theme)||'—'}</td>
-    <td>${s.pieces?s.pieces.toLocaleString(locale()):'—'}</td><td>${s.minifigs||'—'}</td>
+  return html`<tr data-stil="cursor:pointer" tabindex="0" data-click="openModal" data-arg="${s.set_number}">
+    <td>${src ? bildTag({ src: imgUrl(thumbUrl(src)||src, true), alt: '', ph: 'set' }) : html`<span class="bild-ph" aria-hidden="true">${platzhalterInhalt('set')}</span>`}</td>
+    <td><span data-stil="font-family:var(--mono);color:var(--b600);font-size:var(--fs-1)">${s.set_number}</span></td>
+    <td>${s.name || '—'}</td><td>${s.year || '—'}</td><td>${s.theme || '—'}</td>
+    <td>${s.pieces ? ungeprueft(s.pieces.toLocaleString(locale())) : '—'}</td><td>${s.minifigs || '—'}</td>
     <td><span class="qbadge">×${s.quantity}</span></td>
-    <td data-stil="font-size:var(--fs-1);color:var(--mut)">${addedFmt}</td>
-    <td>${s.instructions?.length?`<span class="ibadge">${ico('liste')}${s.instructions.length}</span>`:'—'}</td>
-    <td data-click="stopEvent"><button class="btn bs btn-sm" data-click="reimportParts" data-arg="${escJs(s.set_number)}" title="${esc(t('detail.reimport_parts'))}" aria-label="${esc(t('detail.reimport_parts'))}">${PARTS_ICON_SVG}</button></td>
-    <td data-click="stopEvent"><button class="btn bd btn-sm" data-click="delSet"${echt()} data-arg="${escJs(s.set_number)}" title="${esc(t('detail.delete'))}" aria-label="${esc(t('detail.delete'))}">${TRASH_ICON_SVG}</button></td>
+    <td data-stil="font-size:var(--fs-1);color:var(--mut)">${ungeprueft(addedFmt)}</td>
+    <td>${s.instructions?.length ? html`<span class="ibadge">${ico('liste')}${s.instructions.length}</span>` : '—'}</td>
+    <td data-click="stopEvent"><button class="btn bs btn-sm" data-click="reimportParts" data-arg="${s.set_number}" title="${t('detail.reimport_parts')}" aria-label="${t('detail.reimport_parts')}">${ungeprueft(PARTS_ICON_SVG)}</button></td>
+    <td data-click="stopEvent"><button class="btn bd btn-sm" data-click="delSet"${echt()} data-arg="${s.set_number}" title="${t('detail.delete')}" aria-label="${t('detail.delete')}">${TRASH_ICON_SVG}</button></td>
   </tr>`;
 }
 
@@ -394,8 +390,8 @@ async function setUnbekannt(num) {
   const eigen = await api('GET', `/v1/sets/${encodeURIComponent(nr)}`);
   if (eigen?.success && eigen.set) {
     G('add-num').dataset.bestaetigt = nr;
-    box.innerHTML = `${esc(tRaw('gallery.add.schon_da', { num: nr, name: eigen.set.name || nr, n: eigen.set.quantity || 1 }))}
-      <button type="button" class="btn bs btn-sm" data-click="erfassenZumSet" data-arg="${esc(nr)}">${ico('set')}${esc(tRaw('gallery.add.zum_set'))}</button>`;
+    setzeHtml(box, html`${tRaw('gallery.add.schon_da', { num: nr, name: eigen.set.name || nr, n: eigen.set.quantity || 1 })}
+      <button type="button" class="btn bs btn-sm" data-click="erfassenZumSet" data-arg="${nr}">${ico('set')}${tRaw('gallery.add.zum_set')}</button>`);
     box.hidden = false;
     G('btn-add-text').textContent = tRaw('gallery.add.zum_set');
     return true;

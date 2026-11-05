@@ -1,9 +1,10 @@
 // Der Importbalken im Seitenkopf ist ein geschlossener Gegenstand: Nach aussen zählen gibCheckOnLoad()
 // und gibZuruecksetzen(), der Rest ist Innenleben.
 // Ausführlich: docs/begruendungen/public/js/01-fortschritt.js.md#der-block-lag-in-js-01-core-js-und-war-d
+import { html } from './00-escapen.js';
 import { registerActions } from './00-registry.js';
 import { apiRoh, api, apiDaten } from './01-api.js';
-import { ico, G } from './01-dom.js';
+import { ico, G, setzeHtml } from './01-dom.js';
 import { fmtPct } from './01-format.js';
 import { toast } from './01-meldungen.js';
 import { melde } from './00-ereignisse.js';
@@ -68,7 +69,7 @@ function gibApplyStatus(s) {
   }
 
   // Update detail panel
-  G('gib-stats').innerHTML = `${Number(s.ok)||0} ${ico('ok')} · ${Number(s.warn)||0} ${ico('warnung')} · ${Number(s.err)||0} ${ico('fehler')}`;
+  setzeHtml(G('gib-stats'), html`${Number(s.ok) || 0} ${ico('ok')} · ${Number(s.warn) || 0} ${ico('warnung')} · ${Number(s.err) || 0} ${ico('fehler')}`);
   const gpw = G('gib-prog-wrap');
   if (gpw && running) {
     gpw.style.display = 'block';
@@ -182,7 +183,7 @@ function gibAddLog(text, ok) {
 export function gibStart() {
   if (_gibSse || _gibTimer) return; // läuft bereits
   _gibLastCount = 0;
-  G('gib-log').innerHTML = '';
+  G('gib-log').replaceChildren();
   G('global-import-bar').style.display = 'flex';
   G('gib-text').textContent = tRaw('csv.running_text');
   G('gib-fill').style.width = '0%';
@@ -274,7 +275,7 @@ export function gibZuruecksetzen() {
   if (_gibCheckTimer) { clearInterval(_gibCheckTimer); _gibCheckTimer = null; }
   _gibLastCount = 0;
   const log = G('gib-log');
-  if (log) log.innerHTML = '';
+  if (log) log.replaceChildren();
 }
 
 // ── Handler beim Dispatcher anmelden (siehe js/00-registry.js) ──────────────
@@ -295,7 +296,7 @@ export function showProgress(title, csvMode){
   G('prog-footer').textContent=tRaw('common.please_wait');
   G('prog-set-name').textContent='';
   G('csv-log').style.display=csvMode?'block':'none';
-  G('csv-log').innerHTML='';
+  G('csv-log').replaceChildren();
   G('prog-steps').style.display=csvMode?'none':'';
   // Der Hintergrund-Hinweis gilt nur fürs Erfassen eines einzelnen Sets. Beim
   // CSV-Import ist die Schrittliste ohnehin ausgeblendet, dort zeigt das

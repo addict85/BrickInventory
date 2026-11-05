@@ -397,9 +397,9 @@ function funktionsLaengen(dateien = oberflaeche()) {
 
 test('keine Funktion der Oberfläche über 100 Zeilen, über 80 werden weniger', () => {
   // Gemessen am 05.11.2026: 13 über 100 (loadFinance 262); nach dem Aufteilen
-  // 0 über 100 und 8 über 80, seitdem 6. Gegenprobe: loadFinance wieder in einem Stück
+  // 0 über 100 und 8 über 80, seitdem 5. Gegenprobe: loadFinance wieder in einem Stück
   // (vor dem Aufteilen) → rot mit „04-finance.js … loadFinance“.
-  const SCHRANKE_80 = 6;
+  const SCHRANKE_80 = 5;
   const alle = funktionsLaengen();
   assert.ok(alle.length > 500, `nur ${alle.length} Funktionen gefunden — greift die Suche noch?`);
   const ueber100 = alle.filter(x => x.zeilen > 100).map(x => `${x.ort} (${x.zeilen})`);
@@ -410,11 +410,45 @@ test('keine Funktion der Oberfläche über 100 Zeilen, über 80 werden weniger',
   if (ueber80.length < SCHRANKE_80) console.log(`  ℹ Funktionen über 80 Zeilen: ${ueber80.length} (Schranke ${SCHRANKE_80}) — Schranke nachziehen`);
 });
 
+/** Code-Zeilen der Oberflächenmodule (public/js/NN-*.js) ohne Kommentarzeilen, mit Fundort. */
+function oberflaechenCode() {
+  const js = path.join(WEB, 'public', 'js');
+  const raus = [];
+  for (const f of fs.readdirSync(js).filter(n => /^\d\d-.*\.js$/.test(n)))
+    fs.readFileSync(path.join(js, f), 'utf8').split('\n').forEach((z, i) => {
+      const t = z.trim();
+      if (!t.startsWith('//') && !t.startsWith('*') && !t.startsWith('/*')) raus.push({ ort: `${f}:${i + 1}`, z });
+    });
+  return raus;
+}
+
+test('Markup kommt nur über setzeHtml()/fuegeHtmlEin() in die Seite', () => {
+  // Gemessen vor dem Umbau: 171 innerHTML-Zuweisungen und 9 +=/insertAdjacentHTML. Jetzt schreiben
+  // nur die beiden Helfer in 01-dom.js; das Protokollfenster (01-monitor.js) baut ein eigenes
+  // Dokument per document.write. Gegenprobe: in 02-gallery.js `grid.innerHTML = ''` → rot mit Fundort.
+  const ERLAUBT = ['01-dom.js', '01-dom.js', '01-monitor.js'];
+  const roh = oberflaechenCode().filter(x => /\.(innerHTML|outerHTML)\s*\+?=(?!=)|insertAdjacentHTML\(|document\.write\(/.test(x.z));
+  assert.deepEqual(roh.map(x => x.ort.split(':')[0]).sort(), ERLAUBT,
+    `Markup an setzeHtml() vorbei:\n${roh.map(x => x.ort).join('\n')}`);
+});
+
+test('ungeprueft() wird weniger, nie mehr', () => {
+  // html`` maskiert jeden eingesetzten Wert; ungeprueft() setzt eine Zeichenkette als Markup ein, die
+  // vor dem Umbau schon maskiert gebaut wurde. Gemessen nach dem Umbau: 170. Wer eine Stelle auf
+  // html`` umstellt, senkt die Schranke. Gegenprobe: `${ungeprueft(x)}` in 01-dom.js ergänzt → rot mit 171.
+  const SCHRANKE = 170;
+  const ist = oberflaechenCode().reduce((n, x) => n + (x.z.match(/(?<![\w.])ungeprueft\(/g) || []).length
+    - (/export function ungeprueft\(/.test(x.z) ? 1 : 0), 0);
+  assert.ok(ist > 0, 'kein ungeprueft() gefunden — greift die Suche noch?');
+  assert.ok(ist <= SCHRANKE, `${ist}-mal ungeprueft(), erlaubt sind ${SCHRANKE}`);
+  if (ist < SCHRANKE) console.log(`  ℹ ungeprueft(): ${ist} (Schranke ${SCHRANKE}) — Schranke nachziehen`);
+});
+
 test('keine Datei der Oberfläche über 1000 Zeilen, die grossen werden kleiner', () => {
   // Eine Sammeldatei zieht Neues an, weil es dort schon liegt. Gemessen nach dem Teilen von
-  // 01-core.js, 05-settings.js und 13-acquisition-modals.js: grösste 948, über 600 Zeilen 8.
-  // Gegenprobe: an 13-acquisition-modals.js 60 Leerzeilen-Kommentare gehängt → rot mit 1008.
-  const SCHRANKE_GROESSTE = 948, SCHRANKE_UEBER_600 = 8;
+  // 01-core.js, 05-settings.js und 13-acquisition-modals.js: grösste 936 (nach dem Umbau auf html``), über 600 Zeilen 8.
+  // Gegenprobe: an 13-acquisition-modals.js 60 Kommentarzeilen gehängt → rot: „grösste Datei 996 Zeilen“.
+  const SCHRANKE_GROESSTE = 936, SCHRANKE_UEBER_600 = 8;
   const laengen = oberflaeche().map(f => ({ f: path.relative(WEB, f), n: fs.readFileSync(f, 'utf8').split('\n').length }));
   assert.ok(laengen.length > 40, `nur ${laengen.length} Dateien gefunden — greift die Suche noch?`);
   const ueber1000 = laengen.filter(x => x.n > 1000).map(x => `${x.f} (${x.n})`);

@@ -260,7 +260,7 @@ test('Adressen auf den eigenen Server gehen nicht durch den Proxy', () => {
   // „istProxyPfad is not defined" — die Funktion war da, nur nicht im
   // ausgeschnittenen Stueck.
   vm.runInContext(src.slice(src.indexOf('const IMG_PROXY ='),
-                            src.indexOf('function escHtmlAttr')), ctx);
+                            src.indexOf('function thumbUrl', src.indexOf('const IMG_PROXY ='))), ctx);
   const { imgUrl, fullUrl } = vm.runInContext('({ imgUrl, fullUrl })', ctx);
 
   assert.equal(fullUrl('https://example.test/images/sets/9396-1_thumb.jpg'),

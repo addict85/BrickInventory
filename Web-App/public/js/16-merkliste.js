@@ -1,9 +1,9 @@
 import { echt, registerActions } from './00-registry.js';
 import { locale, t, tRaw } from '../i18n.js';
-import { escJs, esc } from './00-escapen.js';
+import { esc, html, ungeprueft } from './00-escapen.js';
 import { api } from './01-api.js';
 import { bildTag, platzhalterInhalt, fullUrl, imgUrl, thumbUrl } from './01-bilder.js';
-import { leerZustand, meldeTreffer, ico, G, TRASH_ICON_SVG, knopfBesetzt, zuruecksetzenKnopf } from './01-dom.js';
+import { leerZustand, meldeTreffer, ico, G, TRASH_ICON_SVG, knopfBesetzt, zuruecksetzenKnopf, setzeHtml } from './01-dom.js';
 import { fmtDatum, fmtN, leseBetrag } from './01-format.js';
 import { setnummerFeldGueltig, betragAusFeld } from './01-formular.js';
 import { toast } from './01-meldungen.js';
@@ -57,7 +57,7 @@ function zeile(w) {
   const roh = w.image_local || w.image_url;
   const bild = roh
     ? bildTag({ src: imgUrl(thumbUrl(roh) || roh, 'nur'), alt: '', klasse: 'bild-56', ph: 'set' })
-    : `<span class="bild-ph bild-56" aria-hidden="true">${platzhalterInhalt('set')}</span>`;
+    : html`<span class="bild-ph bild-56" aria-hidden="true">${platzhalterInhalt('set')}</span>`;
 
   // Kein Name heisst: rb_sets kennt das Set nicht. Der benannte Preis dafür,
   // dass hier keine zweite Kopie der Stammdaten liegt (siehe 0021) — sichtbar
@@ -71,28 +71,28 @@ function zeile(w) {
   ].filter(Boolean).join(' · ');
 
   const alarm = w.alarm
-    ? `<span class="mk-etikett">
+    ? html`<span class="mk-etikett">
          ${ico(w.alarm.ausgeloest ? 'alarm' : 'uhr')}
-         ${esc(tRaw(w.alarm.richtung === 'ueber' ? 'detail.alert_above' : 'detail.alert_below'))}
-         ${esc(fmtN(Number(w.alarm.schwelle), CURRENCY))}
+         ${tRaw(w.alarm.richtung === 'ueber' ? 'detail.alert_above' : 'detail.alert_below')}
+         ${fmtN(Number(w.alarm.schwelle), CURRENCY)}
        </span>` : '';
 
   // „Habe ich das inzwischen?" ist die Frage, die in der Liste sofort
   // aufkommt — und sie meint das BLICKFELD: Beim Grossvater heisst „ich habe
   // es" auch „der Enkel hat es".
   const schon = w.owned
-    ? `<span class="mk-etikett mk-etikett-ok">${esc(tRaw('wanted.owned'))}</span>`
+    ? html`<span class="mk-etikett mk-etikett-ok">${tRaw('wanted.owned')}</span>`
     : '';
 
   // In der Zeile steht der Marktpreis, nicht „In die Galerie“: Übernehmen gibt es weiter im Detail, wo
   // Anzahl, Preis und Zustand ohnehin abgefragt werden.
   // Ausführlich: docs/begruendungen/public/js/16-merkliste.js.md#preis
   const preis = w.marktpreis != null
-    ? `<span title="${esc(tRaw('detail.market_price'))}" class="preis mk-preis">${fmtN(w.marktpreis, w.waehrung || CURRENCY)}</span>`
-    : `<span class="mk-preis text-mut mk-preis-offen" title="${esc(tRaw('wanted.preis_offen_hint'))}">${t('wanted.preis_offen')}</span>`;
+    ? html`<span title="${tRaw('detail.market_price')}" class="preis mk-preis">${fmtN(w.marktpreis, w.waehrung || CURRENCY)}</span>`
+    : html`<span class="mk-preis text-mut mk-preis-offen" title="${tRaw('wanted.preis_offen_hint')}">${tRaw('wanted.preis_offen')}</span>`;
 
-  const arg = escJs(`${w.set_number}|${w.condition}|${w.user_id}`);
-  return `
+  const arg = `${w.set_number}|${w.condition}|${w.user_id}`;
+  return html`
     <!-- Die GANZE Zeile oeffnet das Detail — wie die Karte in der App.
          Der Papierkorb sitzt oben rechts und haelt seinen Klick an
          (merkpostenLoeschenStop), genau wie auf der Set-Kachel. Marcos
@@ -110,11 +110,11 @@ function zeile(w) {
          src/teile/abfragen.ts, wo derselbe Hinweis steht. -->
     <div class="mk-zeile" tabindex="0" role="button" aria-keyshortcuts="Delete" data-click="oeffneMerkpostenDetail" data-arg="${arg}">
       <div class="ca"><span class="delbtn" data-click="merkpostenLoeschenStop"${echt()} aria-hidden="true" data-arg="${arg}"
-           title="${esc(tRaw('wanted.remove'))}">${TRASH_ICON_SVG}</span></div>
+           title="${tRaw('wanted.remove')}">${TRASH_ICON_SVG}</span></div>
       ${bild}
       <div class="mk-text">
-        <div class="mk-titel">${titel}</div>
-        <div class="mk-unter">${unter}</div>
+        <div class="mk-titel">${ungeprueft(titel)}</div>
+        <div class="mk-unter">${ungeprueft(unter)}</div>
       </div>
       <div class="mk-rechts">
         ${alarm}${schon}${preis}
@@ -152,7 +152,7 @@ export async function ladeMerkliste() {
   // Schreibweise wie bei der Galerie, und test/frontend-api-paths.test.js
   // liest den Pfad aus genau dieser Zeile — mit dem Fragezeichen im Rueckgabe-
   // wert las sie „/v1/wanted:x" und meldete eine Route, die es nicht gibt.
-  if (!_merkposten.length && !ziel.querySelector('.mk-zeile, .leer')) ziel.innerHTML = skelettZeilen(4, t('common.loading'));
+  if (!_merkposten.length && !ziel.querySelector('.mk-zeile, .leer')) setzeHtml(ziel, skelettZeilen(4, t('common.loading')));
   const d = await api('GET', `/v1/wanted?${merklisteParams()}`);
   const kasten = /** @type {HTMLDetailsElement | null} */ (document.getElementById('mk-kasten'));
   if (listeLadefehler(ziel, d, { erneut: 'ladeMerkliste', behalten: _merkposten.length > 0 })) {
@@ -175,11 +175,7 @@ export async function ladeMerkliste() {
   const gefiltert = !!filter.toString();
   if (gefiltert) meldeTreffer(_merkposten.length ? tRaw('treffer.merkliste', { n: _merkposten.length })
     : G('mks')?.value.trim() ? tRaw('common.no_hits', { query: G('mks').value.trim() }) : tRaw('wanted.no_results'));
-  ziel.innerHTML = _merkposten.length
-    ? _merkposten.map(zeile).join('')
-    : (gefiltert
-      ? leerZustand({ ico: 'suche', titel: G('mks')?.value.trim() ? tRaw('common.no_hits', { query: G('mks').value.trim() }) : tRaw('wanted.no_results'), knopf: zuruecksetzenKnopf('merkliste') })
-      : leerZustand({ ico: 'merkliste', titel: tRaw('wanted.empty'), text: tRaw('wanted.empty_hint'),
+  setzeHtml(ziel, _merkposten.length ? ungeprueft(_merkposten.map(zeile).join('')) : gefiltert ? leerZustand({ ico: 'suche', titel: G('mks')?.value.trim() ? tRaw('common.no_hits', { query: G('mks').value.trim() }) : tRaw('wanted.no_results'), knopf: zuruecksetzenKnopf('merkliste') }) : leerZustand({ ico: 'merkliste', titel: tRaw('wanted.empty'), text: tRaw('wanted.empty_hint'),
                       knopf: { text: tRaw('wanted.erster'), click: 'feldFokussieren', arg: 'mk-num', art: 'bs' } }));
 }
 
@@ -345,10 +341,9 @@ export async function oeffneMerkpostenDetail(arg) {
     ? fullUrl(w.image_local || w.image_url) : '/assets/set-placeholder.svg';
   G('mk-m-img').src = bild;
   G('mk-m-img').dataset.orig = bild;
-  G('mk-m-sparkline-content').innerHTML =
-    `<span class="text-mut schrift-1">${esc(tRaw('common.loading'))}</span>`;
-  G('mk-m-market-rows').innerHTML = '';
-  G('mk-m-det').innerHTML = zeilen(w);
+  setzeHtml(G('mk-m-sparkline-content'), html`<span class="text-mut schrift-1">${tRaw('common.loading')}</span>`);
+  G('mk-m-market-rows').replaceChildren();
+  setzeHtml(G('mk-m-det'), ungeprueft(zeilen(w)));
   G('mk-m-bricklink').style.display = 'none';
   // Der Preisvergleich ist SOFORT da: Er hängt am Merkposten, nicht am Katalog
   // (src/merkliste/merkliste.ts). Ein Set, das rb_sets nicht kennt, beantwortet
@@ -392,9 +387,7 @@ export async function oeffneMerkpostenDetail(arg) {
   // Fehler, sondern der Anfang.
   api('GET', `/v1/sets/${encodeURIComponent(set_number)}/price-history`).then(ph => {
     if (_detail !== arg) return;
-    G('mk-m-sparkline-content').innerHTML = ph?.success
-      ? priceChartSVG(ph, 'wl' + set_number.replace(/[^a-zA-Z0-9]/g, ''), diagrammBreite(G('mk-m-sparkline-content')))
-      : `<span class="text-mut schrift-1">${esc(tRaw(ph?.networkError ? 'chart.offline' : 'detail.no_history'))}</span>`;
+    setzeHtml(G('mk-m-sparkline-content'), ph?.success ? priceChartSVG(ph, 'wl' + set_number.replace(/[^a-zA-Z0-9]/g, ''), diagrammBreite(G('mk-m-sparkline-content'))) : html`<span class="text-mut schrift-1">${tRaw(ph?.networkError ? 'chart.offline' : 'detail.no_history')}</span>`);
   }).catch(() => {});
 }
 
@@ -421,7 +414,7 @@ const zahl = (/** @type {unknown} */ n) => (n == null ? STRICH : Number(n).toLoc
  */
 /** @param {Merkposten} w */
 function zeilen(w) {
-  /** @type {[string, string, string | null][]} */
+  /** @type {[string, string | import('./00-escapen.js').SicheresHtml, string | null][]} */
   const z = [
     ['detail.year',     w.year != null ? String(w.year) : STRICH, null],
     ['detail.theme',    STRICH, 'mk-m-theme'],
@@ -447,11 +440,8 @@ function zeilen(w) {
 function inhaberWahl(w) {
   const konten = haushaltsKonten();
   if (konten.length < 2) return '';
-  return `<select id="mk-m-owner" class="alarm-feld" aria-label="${esc(tRaw('household.for_account'))}"
-                  data-change="merkpostenInhaberGewaehlt" data-arg="${escJs(`${w.set_number}|${w.condition}|${w.user_id}`)}">`
-    + konten.map(k => `<option value="${k.id}"${k.id === w.user_id ? ' selected' : ''}>`
-                    + `${esc(k.username)}${k.is_self ? ' ' + esc(tRaw('household.ich')) : ''}</option>`).join('')
-    + '</select>';
+  return html`${html`<select id="mk-m-owner" class="alarm-feld" aria-label="${tRaw('household.for_account')}"
+                  data-change="merkpostenInhaberGewaehlt" data-arg="${`${w.set_number}|${w.condition}|${w.user_id}`}">`}${konten.map(k => html`${html`<option value="${k.id}"${k.id === w.user_id ? ' selected' : ''}>`}${html`${k.username}${k.is_self ? html`${' '}${tRaw('household.ich')}` : ''}</option>`}`)}${html`</select>`}`;
 }
 
 /**

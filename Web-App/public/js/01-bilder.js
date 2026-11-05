@@ -1,5 +1,5 @@
-import { esc, escUrl } from './00-escapen.js';
-import { ico } from './01-dom.js';
+import { html, sichereUrl, ungeprueft } from './00-escapen.js';
+import { ico, setzeHtml } from './01-dom.js';
 
 // Bildadressen und Platzhalter. Fremde Bilder gehen nur über den Proxy des Servers; was nicht lädt,
 // zeigt den Platzhalter seiner Art statt des Browsersymbols.
@@ -12,10 +12,7 @@ import { ico } from './01-dom.js';
  *           orig?: string, stil?: string, fade?: boolean, extra?: string }} o
  */
 export function bildTag(o) {
-  return `<img src="${escUrl(o.src)}" alt="${esc(o.alt || '')}"${o.klasse ? ` class="${esc(o.klasse)}"` : ''}` +
-    ` loading="lazy" decoding="async" data-onerror="platzhalter" data-ph="${esc(o.ph || 'set')}"` +
-    `${o.orig ? ` data-orig="${escUrl(o.orig)}"` : ''}${o.fade ? ' data-fade="1"' : ''}` +
-    `${o.stil ? ` data-stil="${esc(o.stil)}"` : ''}${o.extra ? ' ' + o.extra : ''} />`;
+  return html`${html`<img src="${sichereUrl(o.src)}" alt="${o.alt || ''}"${o.klasse ? html` class="${o.klasse}"` : ''}`}${html` loading="lazy" decoding="async" data-onerror="platzhalter" data-ph="${o.ph || 'set'}"`}${html`${o.orig ? html` data-orig="${sichereUrl(o.orig)}"` : ''}${o.fade ? html` data-fade="1"` : ''}`}${html`${o.stil ? html` data-stil="${o.stil}"` : ''}${o.extra ? html`${' '}${ungeprueft(o.extra)}` : ''} />`}`;
 }
 
 /**
@@ -26,7 +23,7 @@ export function platzhalterInhalt(art) {
   // Dasselbe dezente Symbol wie bei Teilen und Figuren; das rote Logo füllte
   // ohne Bilder jede Karte gleich.
   // Sets nehmen die Datei: Sie sieht in jedem Design gleich aus (UI-Prüfung 6, M3).
-  if (art === 'set') return '<img src="/assets/set-placeholder.svg" alt="" aria-hidden="true">';
+  if (art === 'set') return html`<img src="/assets/set-placeholder.svg" alt="" aria-hidden="true">`;
   return ico(art === 'figur' ? 'figur' : 'teil');
 }
 
@@ -69,7 +66,7 @@ export function bildPlatzhalter(img, vorlaeufig = false) {
   const cs = getComputedStyle(img);
   // In der Kachel füllt der Platzhalter die Bildfläche; ein kaputtes Bild misst nur sein Symbol.
   if (!img.closest('.sci')) for (const k of /** @type {const} */ (['width', 'height', 'borderRadius', 'margin'])) if (cs[k] && cs[k] !== 'auto') ph.style[k] = cs[k];
-  ph.innerHTML = platzhalterInhalt(img.dataset.ph ?? '');
+  setzeHtml(ph, platzhalterInhalt(img.dataset.ph ?? ''));
   if (vorlaeufig) { ph.classList.add('bild-ph-vorlaeufig'); img.before(ph); return; }
   img.replaceWith(ph);
 }

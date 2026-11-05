@@ -2,7 +2,7 @@
 // Faktor. Eine Ebene über dem Kern, damit jede Ansicht sie nutzen kann, ohne
 // eine andere Ansicht zu importieren.
 import { api } from './01-api.js';
-import { G, ico } from './01-dom.js';
+import { G, ico, setzeHtml } from './01-dom.js';
 import { t, tRaw } from '../i18n.js';
 
 /**
@@ -118,7 +118,7 @@ function dialogOeffnen(title, msg, icon, mitPasswort, mitCode = false, mitPasske
     if (codeFeld) codeFeld.value = '';
     G('cd-title').textContent = title || t('common.delete_title');
     G('cd-msg').textContent   = msg   || t('common.delete_text');
-    G('cd-icon').innerHTML  = ico(icon || 'loeschen');
+    setzeHtml(G('cd-icon'), ico(icon || 'loeschen'));
     modal.style.display = 'flex';
     const btnYes = G('cd-confirm');
     const btnNo  = G('cd-cancel');

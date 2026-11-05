@@ -3,11 +3,11 @@
 import { echt, registerActions } from './00-registry.js';
 import { locale, t, tRaw} from '../i18n.js';
 import { api } from './01-api.js';
-import { ico, G } from './01-dom.js';
+import { ico, G, setzeHtml } from './01-dom.js';
 import { fmtDatum } from './01-format.js';
 import { toast } from './01-meldungen.js';
 import { _settingsCache, _pnlCache } from './00-zustand.js';
-import { esc } from './00-escapen.js';
+import { html } from './00-escapen.js';
 
 // ── JOB STATUS ───────────────────────────────────────────
 /** @type {ReturnType<typeof setInterval> | null} */
@@ -116,7 +116,7 @@ export async function queueCatalogImages(btn) {
       teile.push(tRaw('monitor.catalog_images_eta',
                       { n: d.dauer_minuten.toLocaleString(locale()) }));
     toast(teile.join(' · '), 'success');
-    btn.innerHTML = ico('ok');
+    setzeHtml(btn, ico('ok'));
     setTimeout(() => { btn.disabled = false; btn.textContent = tRaw('monitor.catalog_images'); }, 5000);
   } else {
     toast(d?.error || t('settings.error'), 'error');
@@ -130,7 +130,7 @@ export async function redownloadMissingImages(btn) {
   const d = await api('POST', '/v1/admin/redownload-missing-images').catch(() => null);
   if (d?.success) {
     toast(tRaw('monitor.redownload_started'), 'success');
-    btn.innerHTML = ico('ok');
+    setzeHtml(btn, ico('ok'));
     setTimeout(() => { btn.disabled = false; btn.textContent = tRaw('monitor.redownload_missing'); }, 5000);
   } else {
     toast(d?.error || t('settings.error'), 'error');
@@ -178,30 +178,30 @@ export async function loadBricksetQueue() {
   const panel = G('brickset-queue-panel');
   if (!panel) return;
   const d = await api('GET', '/v1/admin/brickset-queue').catch(() => null);
-  if (!d?.success) { panel.innerHTML = `<div data-stil="color:var(--r500)">${t('monitor.load_error')}</div>`; panel.style.display='block'; return; }
-  if (!d.entries?.length) { panel.innerHTML = `<div data-stil="font-size:var(--fs-2);color:var(--mut)">${t('monitor.no_entries')}</div>`; panel.style.display='block'; return; }
-  panel.innerHTML = `
-    <div data-stil="font-size:var(--fs-1);font-weight:700;color:var(--mut);margin-bottom:.5rem;text-transform:uppercase;letter-spacing:.5px">${t('monitor.queue_entries',{n:d.count})}</div>
+  if (!d?.success) { setzeHtml(panel, html`<div data-stil="color:var(--r500)">${tRaw('monitor.load_error')}</div>`); panel.style.display='block'; return; }
+  if (!d.entries?.length) { setzeHtml(panel, html`<div data-stil="font-size:var(--fs-2);color:var(--mut)">${tRaw('monitor.no_entries')}</div>`); panel.style.display='block'; return; }
+  setzeHtml(panel, html`
+    <div data-stil="font-size:var(--fs-1);font-weight:700;color:var(--mut);margin-bottom:.5rem;text-transform:uppercase;letter-spacing:.5px">${tRaw('monitor.queue_entries', {n:d.count})}</div>
     <div data-stil="display:flex;flex-direction:column;gap:.4rem;max-height:400px;overflow-y:auto">
-      ${d.entries.map(e => `
-        <div id="bsq-${esc(e.set_number)}" data-stil="display:flex;align-items:flex-start;gap:.5rem;padding:.5rem .6rem;background:var(--s50);border-radius:6px;font-size:var(--fs-2)">
+      ${d.entries.map(e => html`
+        <div id="bsq-${e.set_number}" data-stil="display:flex;align-items:flex-start;gap:.5rem;padding:.5rem .6rem;background:var(--s50);border-radius:6px;font-size:var(--fs-2)">
           <div data-stil="flex:1;min-width:0">
-            <div data-stil="font-weight:600">${esc(e.set_number)}${e.name ? ` — ${esc(e.name)}` : ''}</div>
-            <div data-stil="color:var(--mut);margin-top:.15rem">${t('monitor.attempt',{a:e.attempts,r:e.retry_after})}</div>
-            ${e.last_error ? `
+            <div data-stil="font-weight:600">${e.set_number}${e.name ? html` — ${e.name}` : ''}</div>
+            <div data-stil="color:var(--mut);margin-top:.15rem">${tRaw('monitor.attempt', {a:e.attempts,r:e.retry_after})}</div>
+            ${e.last_error ? html`
             <details data-stil="margin-top:.25rem">
-              <summary data-stil="cursor:pointer;color:var(--r500);font-size:var(--fs-1);user-select:none">${t('monitor.show_last_error')}</summary>
-              <div data-stil="margin-top:.2rem;padding:.3rem .4rem;background:var(--s100);border-radius:4px;font-family:monospace;font-size:var(--fs-1);white-space:pre-wrap;word-break:break-all;color:var(--r600);max-height:100px;overflow-y:auto">${esc(e.last_error)}</div>
+              <summary data-stil="cursor:pointer;color:var(--r500);font-size:var(--fs-1);user-select:none">${tRaw('monitor.show_last_error')}</summary>
+              <div data-stil="margin-top:.2rem;padding:.3rem .4rem;background:var(--s100);border-radius:4px;font-family:monospace;font-size:var(--fs-1);white-space:pre-wrap;word-break:break-all;color:var(--r600);max-height:100px;overflow-y:auto">${e.last_error}</div>
             </details>` : ''}
           </div>
           <div data-stil="display:flex;flex-direction:column;gap:.3rem;flex-shrink:0">
             <button class="btn bs btn-sm" data-stil="padding:2px 8px;font-size:var(--fs-1)"
-              data-click="retryBricksetQueueEntry" data-arg="${esc(e.set_number)}" data-self="1">${ico('aktualisieren')}</button>
+              data-click="retryBricksetQueueEntry" data-arg="${e.set_number}" data-self="1">${ico('aktualisieren')}</button>
             <button class="btn bd btn-sm" data-stil="padding:2px 8px;font-size:var(--fs-1)"
-              data-click="deleteBricksetQueueEntry"${echt()} data-arg="${esc(e.set_number)}" data-self="1">${ico('loeschen')}</button>
+              data-click="deleteBricksetQueueEntry"${echt()} data-arg="${e.set_number}" data-self="1">${ico('loeschen')}</button>
           </div>
-        </div>`).join('')}
-    </div>`;
+        </div>`)}
+    </div>`);
   panel.style.display = 'block';
 }
 
@@ -213,18 +213,18 @@ export async function loadBricksetQueue() {
  */
 /** @param {HTMLButtonElement} btn @param {string} setNumber */
 async function retryBricksetQueueEntry(btn, setNumber) {
-  btn.disabled = true; btn.innerHTML = ico('uhr');
+  btn.disabled = true; setzeHtml(btn, ico('uhr'));
   const d = await api('POST', `/v1/admin/brickset-queue/${setNumber}/retry`).catch(() => null);
   if (d?.success) {
-    btn.innerHTML = ico('ok');
+    setzeHtml(btn, ico('ok'));
     toast(tRaw('monitor.retrying',{set:setNumber}), 'success');
     // Warteschlange neu zeichnen — retry_after und Versuchszähler haben sich
     // geändert. Vorher blieb der Eintrag mit den alten Werten stehen, was wie
     // ein wirkungsloser Klick aussah.
     loadBricksetQueue();
-    setTimeout(() => { btn.disabled = false; btn.innerHTML = ico('aktualisieren'); }, 3000);
+    setTimeout(() => { btn.disabled = false; setzeHtml(btn, ico('aktualisieren')); }, 3000);
   } else {
-    btn.disabled = false; btn.innerHTML = ico('aktualisieren');
+    btn.disabled = false; setzeHtml(btn, ico('aktualisieren'));
     toast(tRaw('monitor.retry_error'), 'error');
   }
 }
@@ -235,14 +235,14 @@ async function deleteBricksetQueueEntry(btn, setNumber) {
   const row = G(`bsq-${setNumber}`);
   // Remove immediately from UI
   if (row) row.style.opacity = '0.4';
-  btn.disabled = true; btn.innerHTML = ico('uhr');
+  btn.disabled = true; setzeHtml(btn, ico('uhr'));
   const d = await api('DELETE', `/v1/admin/brickset-queue/${setNumber}`).catch(() => null);
   if (d?.success) {
     if (row) row.remove();
     toast(tRaw('monitor.removed_fallback',{set:setNumber}), 'success');
   } else {
     if (row) row.style.opacity = '1';
-    btn.disabled = false; btn.innerHTML = ico('loeschen');
+    btn.disabled = false; setzeHtml(btn, ico('loeschen'));
     toast(tRaw('monitor.delete_error'), 'error');
   }
 }

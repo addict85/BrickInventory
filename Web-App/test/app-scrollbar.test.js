@@ -56,6 +56,7 @@ function buehne({ scrollHeight = 5000, innerHeight = 800 } = {}) {
     { runScripts: 'outside-only', pretendToBeVisual: true });
   const w = dom.window;
   w.eval('window.G = id => document.getElementById(id);');
+  Object.assign(w, require('./helpers/markup').markupHelfer());
   w.eval(`
     Object.defineProperty(document.documentElement,'scrollHeight',{value:${scrollHeight},configurable:true});
     Object.defineProperty(window,'innerHeight',{value:${innerHeight},configurable:true});

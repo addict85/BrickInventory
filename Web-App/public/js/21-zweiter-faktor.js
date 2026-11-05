@@ -1,11 +1,11 @@
 import { echt, registerActions } from './00-registry.js';
 import { t, tRaw } from '../i18n.js';
 import { api } from './01-api.js';
-import { ico, G } from './01-dom.js';
+import { ico, G, setzeHtml } from './01-dom.js';
 import { formularFehler } from './01-formular.js';
 import { toast } from './01-meldungen.js';
 import { loadUsers } from './05-nutzerverwaltung.js';
-import { esc } from './00-escapen.js';
+import { esc, html, ungeprueft } from './00-escapen.js';
 import { confirmDelete, bestaetigeMitPasswort, mitZweitemFaktor, mitPasswortBestaetigen } from './01-rueckfrage.js';
 
 // ═══ Zweiter Faktor im Profil (Server: src/konto/zweiterFaktor.ts) ══════════════
@@ -27,34 +27,34 @@ function pflichtHinweis(schluessel) {
 }
 
 /**
- * @param {string} markup
+ * @param {import('./00-escapen.js').Markup} markup
  */
-function zeichne(markup) { const f = flaeche(); if (f) f.innerHTML = markup; }
+function zeichne(markup) { const f = flaeche(); if (f) setzeHtml(f, markup); }
 // Im Anmeldebildschirm stehen die Knöpfe breit untereinander wie „Abmelden“ darunter.
 const knopfArt = () => pflicht ? 'knopf-breit' : 'btn-sm';
 
 const knopf = (/** @type {string} */ aktion, /** @type {string} */ text, art = 'bs') =>
-  `<button type="button" class="btn ${art} ${knopfArt()}" data-click="${aktion}"${echt()}>${text}</button>`;
-const reihe = (/** @type {string} */ inhalt) => `<div class="${pflicht ? 'zf-knoepfe-breit' : 'zf-knoepfe'}">${inhalt}</div>`;
+  html`<button type="button" class="btn ${art} ${ungeprueft(knopfArt())}" data-click="${aktion}"${echt()}>${ungeprueft(text)}</button>`;
+const reihe = (/** @type {string} */ inhalt) => html`<div class="${pflicht ? 'zf-knoepfe-breit' : 'zf-knoepfe'}">${ungeprueft(inhalt)}</div>`;
 // Die Felder stehen ausgeschrieben da, nicht über einen Helfer: test/dom-ids.test.js
 // findet nur wörtliche id-Angaben.
 // findet nur wörtliche id-Angaben. Das Passwort fragt der Dialog beim Auslösen.
 const CODEFELD = (/** @type {string} */ label, laenge = 24) =>
-  `<div class="fg"><label for="zf-code">${label}</label><input type="text" id="zf-code" inputmode="numeric" autocomplete="one-time-code" maxlength="${laenge}" data-erstfokus /></div>`;
+  html`<div class="fg"><label for="zf-code">${ungeprueft(label)}</label><input type="text" id="zf-code" inputmode="numeric" autocomplete="one-time-code" maxlength="${laenge}" data-erstfokus /></div>`;
 
 export async function ladeZweitenFaktor() {
   if (!flaeche()) return;
   const d = await api('GET', '/v1/auth/zweiter-faktor');
-  if (!d?.success) { zeichne(`<div class="voucher-leer">${t('settings.error')}</div>`); return; }
+  if (!d?.success) { zeichne(html`<div class="voucher-leer">${tRaw('settings.error')}</div>`); return; }
   if (!d.aktiv) {
-    zeichne(`<form class="sform" data-submit="zf-start" data-stil="max-width:420px">
-      <div><button type="button" class="btn bp ${knopfArt()}" id="zf-start" data-click="zfEinrichten"${echt()}>${t('zf.setup')}</button></div>
+    zeichne(html`<form class="sform" data-submit="zf-start" data-stil="max-width:420px">
+      <div><button type="button" class="btn bp ${knopfArt()}" id="zf-start" data-click="zfEinrichten"${echt()}>${tRaw('zf.setup')}</button></div>
     </form>`);
     // Im Anmeldebildschirm ist „Einrichten“ der einzige nächste Schritt.
     if (pflicht) G('zf-start')?.focus();
     return;
   }
-  zeichne(`<p data-stil="font-size:var(--fs-3);margin:0 0 .75rem 0">${ico('ok')} ${esc(tRaw('zf.active', { n: d.codes_uebrig }))}</p>
+  zeichne(html`<p data-stil="font-size:var(--fs-3);margin:0 0 .75rem 0">${ico('ok')} ${tRaw('zf.active', { n: d.codes_uebrig })}</p>
     <form class="sform" data-stil="max-width:420px">
       ${CODEFELD(t('login.code'))}
       <div data-stil="display:flex;gap:.5rem;flex-wrap:wrap">
@@ -73,10 +73,10 @@ export async function zfEinrichten() {
   if (!d?.success) { toast(d?.error || tRaw('settings.error'), 'error'); return; }
   // Gruppiert lesbar, falls jemand den Schlüssel von Hand eintippt.
   const lesbar = (d.geheimnis ?? '').replace(/(.{4})/g, '$1 ').trim();
-  zeichne(`<form class="sform" data-submit="zf-bestaetigen" data-stil="max-width:420px">
-      <p data-stil="font-size:var(--fs-2);margin:0">${t('zf.scan')}</p>
+  zeichne(html`<form class="sform" data-submit="zf-bestaetigen" data-stil="max-width:420px">
+      <p data-stil="font-size:var(--fs-2);margin:0">${tRaw('zf.scan')}</p>
       <div id="zf-qr" data-stil="background:#fff;padding:8px;align-self:flex-start;border-radius:8px"></div>
-      <div data-stil="font-size:var(--fs-1);color:var(--mut)">${t('zf.manual')}<br><code data-stil="user-select:all;font-size:var(--fs-3)">${esc(lesbar)}</code></div>
+      <div data-stil="font-size:var(--fs-1);color:var(--mut)">${tRaw('zf.manual')}<br><code data-stil="user-select:all;font-size:var(--fs-3)">${lesbar}</code></div>
       <div class="lerr" id="zf-fehler" role="alert"></div>
       ${CODEFELD(t('zf.confirm_code'), 6)}
       ${reihe(`<button type="button" class="btn bp ${knopfArt()}" id="zf-bestaetigen" data-click="zfBestaetigen">${t('zf.confirm')}</button>
@@ -95,9 +95,9 @@ export async function zfEinrichten() {
 /** @param {string[]} codes */
 function zeigeCodes(codes) {
   if (pflicht) pflichtHinweis('zfpflicht.fertig');
-  zeichne(`<div class="sform" data-stil="max-width:420px">
-      <p data-stil="font-size:var(--fs-2);margin:0"><strong>${t('zf.codes_title')}</strong><br>${t('zf.codes_hint')}</p>
-      <pre id="zf-codes" data-stil="font-size:var(--fs-3);line-height:1.6;background:var(--s50,#f8fafc);border:1px solid var(--bdr);border-radius:8px;padding:.6rem .9rem;margin:0;user-select:all">${codes.map(esc).join('\n')}</pre>
+  zeichne(html`<div class="sform" data-stil="max-width:420px">
+      <p data-stil="font-size:var(--fs-2);margin:0"><strong>${tRaw('zf.codes_title')}</strong><br>${tRaw('zf.codes_hint')}</p>
+      <pre id="zf-codes" data-stil="font-size:var(--fs-3);line-height:1.6;background:var(--s50,#f8fafc);border:1px solid var(--bdr);border-radius:8px;padding:.6rem .9rem;margin:0;user-select:all">${ungeprueft(codes.map(esc).join('\n'))}</pre>
       ${reihe(`${knopf('zfCodesKopieren', t('zf.copy'))}
         <button type="button" class="btn bp ${knopfArt()}" id="zf-gespeichert" data-click="${pflicht ? 'zfPflichtFertig' : 'ladeZweitenFaktor'}">${t('zf.codes_done')}</button>`)}
     </div>`);

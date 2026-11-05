@@ -1,13 +1,13 @@
 import { registerActions } from './00-registry.js';
 import { tRaw } from '../i18n.js';
 import { api } from './01-api.js';
-import { ico, G, alle, eins } from './01-dom.js';
+import { ico, G, alle, eins, setzeHtml, fuegeHtmlEin } from './01-dom.js';
 import { passwortRegelText, formularFehler } from './01-formular.js';
 import { rbHinweisVerbergen, rbHinweisZeigen } from './01-konto.js';
 import { toast, verwirfToasts } from './01-meldungen.js';
 import { oeffneErfassen, verstaendlicherGrund } from './01-bausteine.js';
 import { mitZweitemFaktor, speichereEinstellungen } from './01-rueckfrage.js';
-import { esc } from './00-escapen.js';
+import { html } from './00-escapen.js';
 
 // ═══ Einrichtung beim ersten Start (Server: routes/settings.ts /einrichtung) ═
 // Nur für Verwalter, nur solange etwas fehlt. „Später" schliesst bloss — beim
@@ -49,7 +49,7 @@ function setzeStand(quelle, ok) {
   const el = G(`ew-stand-${quelle}`);
   if (!el) return;
   el.className = ok === null ? '' : ok ? 'ew-stand ok' : 'ew-stand fehlt';
-  el.innerHTML = ok === null ? '' : `${ico(ok ? 'ok' : 'fehler')}<span class="vh">${esc(tRaw(ok ? 'setup.test_ok' : 'setup.test_failed'))}</span>`;
+  setzeHtml(el, ok === null ? '' : html`${ico(ok ? 'ok' : 'fehler')}<span class="vh">${tRaw(ok ? 'setup.test_ok' : 'setup.test_failed')}</span>`);
 }
 
 /** Meldung am Abschnitt; der rohe Grund steht aufklappbar darunter. */
@@ -59,7 +59,7 @@ function quellenFehler(quelle, text, details = '', felder = []) {
   if (!box) return;
   formularFehler(box, text, felder);
   if (text && details && details !== text)
-    box.insertAdjacentHTML('beforeend', `<details class="fehler-details"><summary>${esc(tRaw('liste.details'))}</summary><code>${esc(details)}</code></details>`);
+    fuegeHtmlEin(box, 'beforeend', html`<details class="fehler-details"><summary>${tRaw('liste.details')}</summary><code>${details}</code></details>`);
 }
 
 /**

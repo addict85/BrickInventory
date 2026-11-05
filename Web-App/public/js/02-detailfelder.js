@@ -2,9 +2,9 @@
 // Eintrag), Preisalarm und das Schliessen des Set-Dialogs. Liegt unter den
 // Ansichten, damit Set-Detail, Merkliste und Teile-Detail sie gleich nutzen.
 import { registerActions } from './00-registry.js';
-import { escJs, esc } from './00-escapen.js';
+import { html, ungeprueft } from './00-escapen.js';
 import { api } from './01-api.js';
-import { G } from './01-dom.js';
+import { G, setzeHtml } from './01-dom.js';
 import { betragFuerFeld, leseBetrag } from './01-format.js';
 import { toast } from './01-meldungen.js';
 import { ME, allSets, curSet, set_curSet } from './00-zustand.js';
@@ -62,18 +62,18 @@ export function alarmBlock(sn, praefix = 'm') {
   // Das Aussehen steht in styles.css unter .alarm-feld, nicht hier: Die feste
   // Hoehe im style-Attribut hat den gewaehlten Eintrag auf sechs Pixel
   // zusammengeschnitten (im Browser gemessen, Begruendung dort).
-  return `
-      <select id="${p}-alert-cond" class="alarm-feld" aria-label="${esc(tRaw('detail.alert'))}: ${esc(tRaw('common.condition'))}" data-change="wechsleAlarmZustand" data-arg="${escJs(sn)}">
-        <option value="N">${esc(tRaw('common.condition_new'))}</option>
-        <option value="U">${esc(tRaw('common.condition_used'))}</option>
+  return html`
+      <select id="${p}-alert-cond" class="alarm-feld" aria-label="${tRaw('detail.alert')}: ${tRaw('common.condition')}" data-change="wechsleAlarmZustand" data-arg="${sn}">
+        <option value="N">${tRaw('common.condition_new')}</option>
+        <option value="U">${tRaw('common.condition_used')}</option>
       </select>
-      <select id="${p}-alert-dir" class="alarm-feld" aria-label="${esc(tRaw('detail.alert'))}" data-change="speichereAlarm" data-arg="${escJs(sn)}">
-        <option value="unter">${esc(tRaw('detail.alert_below'))}</option>
-        <option value="ueber">${esc(tRaw('detail.alert_above'))}</option>
+      <select id="${p}-alert-dir" class="alarm-feld" aria-label="${tRaw('detail.alert')}" data-change="speichereAlarm" data-arg="${sn}">
+        <option value="unter">${tRaw('detail.alert_below')}</option>
+        <option value="ueber">${tRaw('detail.alert_above')}</option>
       </select>
-      <label class="alarm-preis" for="${p}-alert-val"><span class="alarm-preis-titel">${esc(tRaw('detail.alert_preis_ph'))}</span>
-      <input inputmode="decimal" type="text" autocomplete="off" id="${p}-alert-val" class="alarm-feld" aria-label="${esc(tRaw('detail.alert_price'))}"
-             data-input="alarmGetippt" data-arg="${escJs(sn)}"
+      <label class="alarm-preis" for="${p}-alert-val"><span class="alarm-preis-titel">${tRaw('detail.alert_preis_ph')}</span>
+      <input inputmode="decimal" type="text" autocomplete="off" id="${p}-alert-val" class="alarm-feld" aria-label="${tRaw('detail.alert_price')}"
+             data-input="alarmGetippt" data-arg="${sn}"
              data-change="speichereAlarm" /></label>
       <span id="${p}-alert-state" data-stil="font-size:var(--fs-1);color:var(--mut)"></span>
     `;
@@ -84,7 +84,7 @@ export function alarmBlock(sn, praefix = 'm') {
  * kann jemand als Lagerort eintippen.
  * Ausführlich: docs/begruendungen/public/js/02-detailfelder.js.md#ort-neu-marke
  */
-const ORT_NEU_MARKE = 'data-neu="1"';
+const ORT_NEU_MARKE = html`data-neu="1"`;
 
 const istNeuEintrag = (/** @type {Pick<HTMLSelectElement, 'selectedOptions'> | null | undefined} */ sel) => sel?.selectedOptions?.[0]?.dataset?.neu === '1';
 
@@ -107,7 +107,7 @@ export function setzeOrtVorrat(namen) {
     // sonst spraenge sie jemandem beim Tippen unter der Hand weg.
     const warNeu = istNeuEintrag(sel);
     const vorher = sel.value;
-    sel.innerHTML = ortOptionen(vorher);
+    setzeHtml(sel, ungeprueft(ortOptionen(vorher)));
     if (warNeu) sel.selectedIndex = sel.options.length - 1;
     else if ([...sel.options].some(o => o.value === vorher)) sel.value = vorher;
   }
@@ -119,14 +119,14 @@ export function setzeOrtVorrat(namen) {
 function ortOptionen(wert) {
   const bekannt = _orte.includes(wert);
   return [
-    `<option value="">${esc(tRaw('detail.storage_none'))}</option>`,
+    html`<option value="">${tRaw('detail.storage_none')}</option>`,
     // Ein Ort, den der Vorrat (noch) nicht kennt — etwa weil er gerade erst
     // eingetippt wurde —, muss trotzdem dastehen, sonst spraenge die Anzeige
     // auf „—" zurueck.
-    ...(wert && !bekannt ? [`<option value="${esc(wert)}" selected>${esc(wert)}</option>`] : []),
-    ..._orte.map(o => `<option value="${esc(o)}"${o === wert ? ' selected' : ''}>${esc(o)}</option>`),
+    ...(wert && !bekannt ? [html`<option value="${wert}" selected>${wert}</option>`] : []),
+    ..._orte.map(o => html`<option value="${o}"${o === wert ? ' selected' : ''}>${o}</option>`),
     // IMMER zuletzt: setzeOrtVorrat() greift ihn ueber options.length - 1 ab.
-    `<option value="" ${ORT_NEU_MARKE}>${esc(tRaw('detail.storage_new'))}</option>`,
+    html`<option value="" ${ORT_NEU_MARKE}>${tRaw('detail.storage_new')}</option>`,
   ].join('');
 }
 
@@ -141,12 +141,12 @@ function ortOptionen(wert) {
  */
 export function lagerortBlock(id, wert, attrs = '') {
   const ort = String(wert || '');
-  return `
-      <select id="${id}-sel" class="alarm-feld" aria-label="${esc(tRaw('detail.storage'))}" data-ortauswahl="1"
-              data-change="lagerortGewaehlt" data-arg="${id}">${ortOptionen(ort)}</select>
-      <input type="text" id="${id}" class="alarm-feld" maxlength="60" aria-label="${esc(tRaw('detail.storage'))}" data-stil="display:none"
-             placeholder="${esc(tRaw('detail.storage_ph'))}" value="${esc(ort)}"
-             data-blur="lagerortGetippt" ${attrs} />
+  return html`
+      <select id="${id}-sel" class="alarm-feld" aria-label="${tRaw('detail.storage')}" data-ortauswahl="1"
+              data-change="lagerortGewaehlt" data-arg="${id}">${ungeprueft(ortOptionen(ort))}</select>
+      <input type="text" id="${id}" class="alarm-feld" maxlength="60" aria-label="${tRaw('detail.storage')}" data-stil="display:none"
+             placeholder="${tRaw('detail.storage_ph')}" value="${ort}"
+             data-blur="lagerortGetippt" ${ungeprueft(attrs)} />
     `;
 }
 
@@ -186,7 +186,7 @@ export function lagerortGetippt() {
   if (!sel) return;
   const ort = String(feld.value || '').trim();
   if (!_orte.includes(ort) && ort) _orte = [..._orte, ort].sort((a, b) => a.localeCompare(b));
-  sel.innerHTML = ortOptionen(ort);
+  setzeHtml(sel, ungeprueft(ortOptionen(ort)));
   sel.value = ort;
   if (ort) feld.style.display = 'none';
 }
@@ -356,7 +356,7 @@ export async function ladeOrtAuswahl(besitzer) {
   const frage = ids.length ? '?owner=' + encodeURIComponent(ids.join(',')) : '';
   const d = await api('GET', `/v1/storage/locations${frage}`).catch(() => null);
   if (!d?.success) return;
-  dl.innerHTML = (d.orte || []).map(o => `<option value="${esc(o.name)}"></option>`).join('');
+  setzeHtml(dl, (d.orte || []).map(o => html`<option value="${o.name}"></option>`));
   // Dieselbe Liste speist das Auswahlfeld im Detail (lagerortBlock).
   setzeOrtVorrat((d.orte || []).map(o => o.name));
 }
@@ -379,7 +379,7 @@ export async function ladeLagerorte(konten) {
   if (vorrat?.success) {
     const namen = (vorrat.orte || []).map(o => o.name);
     const dl = G('lagerorte');
-    if (dl) dl.innerHTML = [...new Set(namen)].map(n => `<option value="${esc(n)}"></option>`).join('');
+    if (dl) setzeHtml(dl, [...new Set(namen)].map(n => html`<option value="${n}"></option>`));
     setzeOrtVorrat(namen);
   }
   if (belegt?.success) initStorageSelects(belegt.orte || []);
@@ -406,13 +406,13 @@ registerActions({
  * @param {import('../../frontend-typen/vertrag').Lagerort[]} orte
  */
 export function initStorageSelects(orte) {
-  const opts = [`<option value="">${esc(tRaw('filter.storage_all'))}</option>`,
-    ...orte.map(o => `<option value="${esc(o.ort)}">${esc(o.ort)}</option>`)].join('');
+  const opts = [html`<option value="">${tRaw('filter.storage_all')}</option>`,
+    ...orte.map(o => html`<option value="${o.ort}">${o.ort}</option>`)].join('');
   for (const view of LAGER_VIEWS) {
     const el = G('storage-' + view);
     if (!el) continue;
     if (!orte.length) { el.style.display = 'none'; continue; }
-    el.innerHTML = opts;
+    setzeHtml(el, ungeprueft(opts));
     // Zeigt die gespeicherte Wahl auf einen inzwischen leeren Ort, steht hier
     // sonst eine leere Beschriftung über einer gefilterten Liste — dieselbe
     // Falle wie beim Kontofilter.

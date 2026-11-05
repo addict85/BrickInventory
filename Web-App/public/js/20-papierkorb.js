@@ -1,10 +1,10 @@
 import { echt, registerActions } from './00-registry.js';
 import { t, tRaw } from '../i18n.js';
 import { api } from './01-api.js';
-import { ico, G } from './01-dom.js';
+import { ico, G, setzeHtml } from './01-dom.js';
 import { fmtDatum } from './01-format.js';
 import { toast } from './01-meldungen.js';
-import { esc } from './00-escapen.js';
+import { html, ungeprueft } from './00-escapen.js';
 import { bestaetigeMitPasswort, mitZweitemFaktor } from './01-rueckfrage.js';
 import { melde } from './00-ereignisse.js';
 
@@ -17,14 +17,14 @@ const ICON = { set: 'set', teil: 'teil', figur: 'figur' };
 /** @param {import('../../frontend-typen/vertrag').PapierkorbEintrag} e */
 function zeile(e) {
   const frist = fmtDatum(e.endgueltig_am);
-  return `<div class="pk-zeile">
+  return html`<div class="pk-zeile">
     <span aria-hidden="true">${ico(ICON[e.art] || 'loeschen')}</span>
-    <span class="pk-name"><span class="pk-nr">${esc(e.nummer)}</span>
-      ${e.bezeichnung ? ' · ' + esc(e.bezeichnung) : ''}
-      ${e.anzahl > 1 ? ` · ×${e.anzahl}` : ''}</span>
-    <span class="pk-frist">${esc(tRaw('trash.until', { datum: frist }))}</span>
-    <button class="btn bs btn-sm" data-click="papierkorbWiederherstellen" data-arg="${e.id}">${t('trash.restore')}</button>
-    <button class="btn bd btn-sm" data-click="papierkorbEndgueltig"${echt()} data-arg="${e.id}">${t('trash.delete_final')}</button>
+    <span class="pk-name"><span class="pk-nr">${e.nummer}</span>
+      ${e.bezeichnung ? html`${' · '}${e.bezeichnung}` : ''}
+      ${e.anzahl > 1 ? html` · ×${e.anzahl}` : ''}</span>
+    <span class="pk-frist">${tRaw('trash.until', { datum: frist })}</span>
+    <button class="btn bs btn-sm" data-click="papierkorbWiederherstellen" data-arg="${e.id}">${tRaw('trash.restore')}</button>
+    <button class="btn bd btn-sm" data-click="papierkorbEndgueltig"${echt()} data-arg="${e.id}">${tRaw('trash.delete_final')}</button>
   </div>`;
 }
 
@@ -33,11 +33,9 @@ export async function ladePapierkorb() {
   if (!liste) return;
   const d = await api('GET', '/v1/papierkorb');
   const leeren = G('papierkorb-leeren');
-  if (!d?.success) { liste.innerHTML = `<div class="voucher-leer">${t('trash.load_error')}</div>`; return; }
+  if (!d?.success) { setzeHtml(liste, html`<div class="voucher-leer">${tRaw('trash.load_error')}</div>`); return; }
   const eintraege = d.eintraege || [];
-  liste.innerHTML = eintraege.length
-    ? eintraege.map(zeile).join('')
-    : `<div class="voucher-leer">${t('trash.empty')}</div>`;
+  setzeHtml(liste, eintraege.length ? ungeprueft(eintraege.map(zeile).join('')) : html`<div class="voucher-leer">${tRaw('trash.empty')}</div>`);
   if (leeren) leeren.style.display = eintraege.length ? '' : 'none';
 }
 

@@ -135,7 +135,7 @@ test('Anleitungen: beide Oberflaechen haengen den Papierkorb an is_manual', () =
     'Die Webapp soll die Herkunft vom Server nehmen, nicht selbst am Pfad ablesen');
   assert.ok(!/local_path\.startsWith\('\/data\/uploads\/'\)/.test(galerie),
     'Der Pfadvergleich war die zweite Fassung derselben Regel und soll weg sein');
-  assert.ok(/\$\{isUpload \? `<button data-click="delInstr"/.test(galerie),
+  assert.ok(/\$\{isUpload \? (?:html)?`<button data-click="delInstr"/.test(galerie),
     'Der Loeschknopf der Webapp soll nur bei selbst hochgeladenen Anleitungen stehen');
 
   // ── Android-App ───────────────────────────────────────────────────────────

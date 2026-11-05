@@ -1,10 +1,10 @@
 import { detailZeile } from './01-bausteine.js';
 import { echt, registerActions } from './00-registry.js';
 import { colorName, t, tRaw } from '../i18n.js';
-import { escHex, escJs, hexZiffern, esc } from './00-escapen.js';
+import { escHex, escJs, hexZiffern, esc, html, ungeprueft } from './00-escapen.js';
 import { api } from './01-api.js';
 import { fullUrl, imgUrl } from './01-bilder.js';
-import { ico, G, aktiverReiter } from './01-dom.js';
+import { ico, G, aktiverReiter, setzeHtml, fuegeHtmlEin } from './01-dom.js';
 import { fmtDatum, fmtGeld, fmtN, betragFuerFeld } from './01-format.js';
 import { betragAusFeld } from './01-formular.js';
 import { toast } from './01-meldungen.js';
@@ -37,7 +37,7 @@ export function openAcqModal(sn) {
   // Header
   G('acq-modal-tit').textContent = tRaw('detail.purchase_price');
   G('acq-modal-sub').textContent = sn + (curSet?.name ? ' – ' + curSet.name : '');
-  G('acq-modal-body').innerHTML = `<div data-stil="color:var(--mut);font-size:var(--fs-2)">${t('common.loading')}</div>`;
+  setzeHtml(G('acq-modal-body'), html`<div data-stil="color:var(--mut);font-size:var(--fs-2)">${tRaw('common.loading')}</div>`);
   G('set-modal').classList.remove('open');
   _gespeichert.clear();
   G('acq-modal').classList.add('open');
@@ -75,8 +75,8 @@ let _householdMembers = [];
 function acqSummary(totals) {
   const menge  = totals?.quantity ?? 0;
   const betrag = totals?.amount;
-  return `<div id="acq-summary" data-stil="display:flex;justify-content:space-between;padding:.75rem .5rem 0;border-top:2px solid var(--bdr);margin-top:.25rem">
-    <span data-stil="font-size:var(--fs-2);color:var(--mut)">${t('detail.qty')}: <strong id="acq-total-qty">${menge}</strong></span>
+  return html`<div id="acq-summary" data-stil="display:flex;justify-content:space-between;padding:.75rem .5rem 0;border-top:2px solid var(--bdr);margin-top:.25rem">
+    <span data-stil="font-size:var(--fs-2);color:var(--mut)">${tRaw('detail.qty')}: <strong id="acq-total-qty">${menge}</strong></span>
     <span id="acq-total-price" class="preis preis-stark">${betrag != null ? fmtN(betrag, CURRENCY) : '—'}</span>
   </div>`;
 }
@@ -100,12 +100,12 @@ async function loadAcqModal(sn) {
  * eines Feldes zeichnet die Tabelle neu, wenn Tab schon im nächsten Feld
  * steht — der Fokus fiel dann auf <body>, und die Tastatur war draussen.
  * @param {HTMLElement} ziel
- * @param {string} markup
+ * @param {import('./00-escapen.js').Markup} markup
  */
 function setzeMitFokus(ziel, markup) {
   const felder = () => /** @type {HTMLElement[]} */ ([...ziel.querySelectorAll('input, select, button')]);
   const stelle = felder().indexOf(/** @type {HTMLElement} */ (document.activeElement));
-  ziel.innerHTML = markup;
+  setzeHtml(ziel, markup);
   if (stelle >= 0) felder()[stelle]?.focus({ preventScroll: true });
 }
 
@@ -126,16 +126,16 @@ function isoTag(v) {
  * @param {string} textId
  */
 function datumFeld(attrs, iso, textId) {
-  return `<span class="acq-datum"><input class="acq-feld" type="date" value="${iso}" aria-label="${esc(tRaw('detail.added'))}"
-      aria-describedby="${textId}" ${attrs} />
-    <span class="acq-datum-text" id="${textId}">${esc(fmtDatum(iso, 'lang'))}</span></span>`;
+  return html`<span class="acq-datum"><input class="acq-feld" type="date" value="${iso}" aria-label="${tRaw('detail.added')}"
+      aria-describedby="${textId}" ${ungeprueft(attrs)} />
+    <span class="acq-datum-text" id="${textId}">${fmtDatum(iso, 'lang')}</span></span>`;
 }
 
 /** Zeilen, deren letzte Änderung gespeichert ist; die Marke übersteht das Neuzeichnen. */
 const _gespeichert = new Set();
 /** @param {number | string} id */
 function gespeichertMarke(id) {
-  return `<span class="acq-ok" id="acq-ok-${id}" role="status"${_gespeichert.has(String(id)) ? '' : ' hidden'}>${ico('ok')}<span>${esc(tRaw('settings.saved'))}</span></span>`;
+  return html`<span class="acq-ok" id="acq-ok-${id}" role="status"${_gespeichert.has(String(id)) ? '' : ' hidden'}>${ico('ok')}<span>${tRaw('settings.saved')}</span></span>`;
 }
 /** @param {number | string} id */
 function zeigeGespeichert(id) {
@@ -151,62 +151,62 @@ function zeigeGespeichert(id) {
  */
 export function renderAcqModalBody(sn, acqs, totals) {
   if (!acqs.length) {
-    G('acq-modal-body').innerHTML = `<div data-stil="color:var(--mut);font-size:var(--fs-3);padding:.5rem 0">—</div>`;
+    setzeHtml(G('acq-modal-body'), html`<div data-stil="color:var(--mut);font-size:var(--fs-3);padding:.5rem 0">—</div>`);
     return;
   }
-  let markup = `<div class="tw"><table class="dt acq-tabelle">
+  let markup = html`<div class="tw"><table class="dt acq-tabelle">
     <thead>
       <tr>
-        <th>${t('detail.qty')}</th>
-        <th>${t('detail.added')}</th>
-        <th>${t('common.condition')}</th>
-        <th class="zahl">${t('detail.purchase_price')}</th>
-        ${_householdMembers.length > 1 ? `<th>${t('household.owner')}</th>` : ''}
-        <th><span class="vh">${t('common.actions')}</span></th>
+        <th>${tRaw('detail.qty')}</th>
+        <th>${tRaw('detail.added')}</th>
+        <th>${tRaw('common.condition')}</th>
+        <th class="zahl">${tRaw('detail.purchase_price')}</th>
+        ${_householdMembers.length > 1 ? html`<th>${tRaw('household.owner')}</th>` : ''}
+        <th><span class="vh">${tRaw('common.actions')}</span></th>
       </tr>
     </thead>
     <tbody>`;
 
   acqs.forEach(a => {
     const dateIso = isoTag(a.created_at);
-    markup += `<tr id="acq-row-${a.id}">
+    markup = html`${markup}${html`<tr id="acq-row-${a.id}">
       <td>
-        <input class="acq-feld acq-menge" inputmode="numeric" type="number" min="1" value="${a.quantity}" aria-label="${esc(tRaw('detail.qty'))}"
-          data-blur="acqSave" data-arg="${esc(sn)}" data-arg2="${a.id}" data-arg3="qty" data-val="1"
+        <input class="acq-feld acq-menge" inputmode="numeric" type="number" min="1" value="${a.quantity}" aria-label="${tRaw('detail.qty')}"
+          data-blur="acqSave" data-arg="${sn}" data-arg2="${a.id}" data-arg3="qty" data-val="1"
           data-keydown="blurOnEnter" />
       </td>
       <td>${datumFeld(`data-change="acqSave" data-arg="${esc(sn)}" data-arg2="${a.id}" data-arg3="date" data-val="1"`, dateIso, `acq-datum-${a.id}`)}</td>
       <td>
-        <select class="acq-feld" aria-label="${esc(tRaw('common.condition'))}" data-change="acqSave" data-arg="${esc(sn)}" data-arg2="${a.id}" data-arg3="cond" data-val="1">
-          <option value="N" ${a.condition!=='U'?'selected':''}>${t('common.condition_new')}</option>
-          <option value="U" ${a.condition==='U'?'selected':''}>${t('common.condition_used')}</option>
+        <select class="acq-feld" aria-label="${tRaw('common.condition')}" data-change="acqSave" data-arg="${sn}" data-arg2="${a.id}" data-arg3="cond" data-val="1">
+          <option value="N" ${a.condition!=='U' ? 'selected' : ''}>${tRaw('common.condition_new')}</option>
+          <option value="U" ${a.condition==='U' ? 'selected' : ''}>${tRaw('common.condition_used')}</option>
         </select>
       </td>
       <td class="zahl">
-        <input class="acq-feld acq-preis" id="acq-preis-${a.id}" type="text" inputmode="decimal" autocomplete="off" value="${esc(betragFuerFeld(a.purchase_price))}" aria-label="${esc(tRaw('detail.purchase_price'))}"
-          data-blur="acqSave" data-arg="${esc(sn)}" data-arg2="${a.id}" data-arg3="price" data-val="1"
+        <input class="acq-feld acq-preis" id="acq-preis-${a.id}" type="text" inputmode="decimal" autocomplete="off" value="${betragFuerFeld(a.purchase_price)}" aria-label="${tRaw('detail.purchase_price')}"
+          data-blur="acqSave" data-arg="${sn}" data-arg2="${a.id}" data-arg3="price" data-val="1"
           data-keydown="blurOnEnter" />
       </td>
-      ${_householdMembers.length > 1 ? `<td>
-        <select class="acq-feld" aria-label="${esc(tRaw('household.owner'))}" data-change="acqSave" data-arg="${esc(sn)}" data-arg2="${a.id}" data-arg3="owner" data-val="1">
-          ${_householdMembers.map(m => `<option value="${m.id}"${m.id === (a.owner_user_id ?? _acqOwnerId) ? ' selected' : ''}>${esc(m.username)}</option>`).join('')}
+      ${_householdMembers.length > 1 ? html`<td>
+        <select class="acq-feld" aria-label="${tRaw('household.owner')}" data-change="acqSave" data-arg="${sn}" data-arg2="${a.id}" data-arg3="owner" data-val="1">
+          ${_householdMembers.map(m => html`<option value="${m.id}"${m.id === (a.owner_user_id ?? _acqOwnerId) ? ' selected' : ''}>${m.username}</option>`)}
         </select>
       </td>` : ''}
       <td class="acq-aktion">
         ${gespeichertMarke(a.id)}
-        <button class="acq-loeschen" data-click="acqDelete"${echt()} data-arg="${esc(sn)}" data-arg2="${a.id}"
-          title="${t('gallery.delete.title')}" aria-label="${t('gallery.delete.title')}">${ico('loeschen')}</button>
+        <button class="acq-loeschen" data-click="acqDelete"${echt()} data-arg="${sn}" data-arg2="${a.id}"
+          title="${tRaw('gallery.delete.title')}" aria-label="${tRaw('gallery.delete.title')}">${ico('loeschen')}</button>
       </td>
-    </tr>`;
+    </tr>`}`;
   });
 
-  markup += `</tbody></table></div>`;
+  markup = html`${markup}${html`</tbody></table></div>`}`;
 
   // Summenzeile: Der Server rechnet sie (acquisitionTotals in
   // src/bestand/acquisitions.ts) und liefert sie als `totals` mit. Vorher stand die
   // Rechnung hier und noch dreimal woanders — zweimal in dieser Datei, zweimal
   // in der App, und mit verschiedenen Preisfeldern.
-  markup += acqSummary(totals);
+  markup = html`${markup}${acqSummary(totals)}`;
 
   setzeMitFokus(G('acq-modal-body'), markup);
 }
@@ -279,8 +279,7 @@ async function acqSave(sn, id, field, value) {
     api('GET', `/v1/sets/${sn}/acquisitions`).then(ad => {
       if (ad?.success && curSet?.set_number === sn) {
         const summaryEl = G('m-acq-summary');
-        if (summaryEl) summaryEl.innerHTML = renderAcquisitionSummary(ad.acquisitions, sn) +
-          `<button class="btn bs btn-sm" data-click="openAcqModal" data-arg="${escJs(sn)}" data-stil="margin-top:4px;font-size:var(--fs-1);padding:2px 10px">${ico('bearbeiten')} ${t('detail.edit_prices')}</button>`;
+        if (summaryEl) setzeHtml(summaryEl, html`${ungeprueft(renderAcquisitionSummary(ad.acquisitions, sn))}${html`<button class="btn bs btn-sm" data-click="openAcqModal" data-arg="${sn}" data-stil="margin-top:4px;font-size:var(--fs-1);padding:2px 10px">${ico('bearbeiten')} ${tRaw('detail.edit_prices')}</button>`}`);
       }
     }).catch(()=>{});
     return;
@@ -297,8 +296,7 @@ async function acqSave(sn, id, field, value) {
     api('GET', `/v1/sets/${sn}/acquisitions`).then(ad => {
       if (!ad?.success) return;
       const sumEl = G('m-acq-summary');
-      if (sumEl) sumEl.innerHTML = renderAcquisitionSummary(ad.acquisitions, sn) +
-        `<button class="btn bs btn-sm" data-click="openAcqModal" data-arg="${escJs(sn)}" data-stil="margin-top:4px;font-size:var(--fs-1);padding:2px 10px">${ico('bearbeiten')} ${t('detail.edit_prices')}</button>`;
+      if (sumEl) setzeHtml(sumEl, html`${ungeprueft(renderAcquisitionSummary(ad.acquisitions, sn))}${html`<button class="btn bs btn-sm" data-click="openAcqModal" data-arg="${sn}" data-stil="margin-top:4px;font-size:var(--fs-1);padding:2px 10px">${ico('bearbeiten')} ${tRaw('detail.edit_prices')}</button>`}`);
     }).catch(()=>{});
   }
   // If qty changed → reload whole modal to update summary + refresh set-detail qty
@@ -308,8 +306,7 @@ async function acqSave(sn, id, field, value) {
     api('GET', `/v1/sets/${sn}/acquisitions`).then(ad => {
       if (ad.success && curSet?.set_number === sn) {
         const summaryEl = G('m-acq-summary');
-        if (summaryEl) summaryEl.innerHTML = renderAcquisitionSummary(ad.acquisitions, sn) +
-          `<button class="btn bs btn-sm" data-click="openAcqModal" data-arg="${escJs(sn)}" data-stil="margin-top:4px;font-size:var(--fs-1);padding:2px 10px">${ico('bearbeiten')} ${t('detail.edit_prices')}</button>`;
+        if (summaryEl) setzeHtml(summaryEl, html`${ungeprueft(renderAcquisitionSummary(ad.acquisitions, sn))}${html`<button class="btn bs btn-sm" data-click="openAcqModal" data-arg="${sn}" data-stil="margin-top:4px;font-size:var(--fs-1);padding:2px 10px">${ico('bearbeiten')} ${tRaw('detail.edit_prices')}</button>`}`);
       }
     }).catch(()=>{});
     return;
@@ -336,8 +333,7 @@ async function acqDelete(sn, id) {
   renderAcqModalBody(sn, ad.acquisitions, ad.totals);
   // Refresh compact summary in set-detail modal
   const dvEl = G('m-acq-summary');
-  if (dvEl) dvEl.innerHTML = renderAcquisitionSummary(ad.acquisitions, sn) +
-    `<button class="btn bs btn-sm" data-click="openAcqModal" data-arg="${escJs(sn)}" data-stil="margin-top:4px;font-size:var(--fs-1);padding:2px 10px">${ico('bearbeiten')} ${t('detail.edit_prices')}</button>`;
+  if (dvEl) setzeHtml(dvEl, html`${ungeprueft(renderAcquisitionSummary(ad.acquisitions, sn))}${html`<button class="btn bs btn-sm" data-click="openAcqModal" data-arg="${sn}" data-stil="margin-top:4px;font-size:var(--fs-1);padding:2px 10px">${ico('bearbeiten')} ${tRaw('detail.edit_prices')}</button>`}`);
   // Wie in acqSave(): Eine gelöschte Erfassung verändert Bestand und Wert —
   // und lässt eine Zustands-Zeile verschwinden, wenn es die letzte war.
   api('GET', `/v1/sets/${sn}/price-history`).then(renderMarketRows).catch(()=>{});
@@ -353,10 +349,10 @@ async function acqDelete(sn, id) {
  */
 export function erfassungsPreis(a, betrag) {
   if (betrag == null) return '';
-  const zahl = `<strong>${fmtGeld(betrag, a.currency || CURRENCY)}</strong>`;
+  const zahl = html`<strong>${fmtGeld(betrag, a.currency || CURRENCY)}</strong>`;
   if (!a.price_estimated) return zahl;
   const hinweis = esc(tRaw('acq.geschaetzt'));
-  return `<span title="${hinweis}"><span role="img" aria-label="${hinweis}">≈</span> ${zahl}</span>`;
+  return html`<span title="${hinweis}"><span role="img" aria-label="${hinweis}">≈</span> ${zahl}</span>`;
 }
 
 // Compact link shown in set-detail-modal → opens the full acq-modal
@@ -365,7 +361,7 @@ export function erfassungsPreis(a, betrag) {
  * @param {Erfassung[]} acqs
  */
 function legendeGeschaetzt(acqs) {
-  return acqs.some(a => a.price_estimated) ? `<div class="acq-legende">${esc(tRaw('acq.legende_geschaetzt'))}</div>` : '';
+  return acqs.some(a => a.price_estimated) ? html`<div class="acq-legende">${tRaw('acq.legende_geschaetzt')}</div>` : '';
 }
 
 /**
@@ -373,17 +369,17 @@ function legendeGeschaetzt(acqs) {
  * @param {string} sn
  */
 export function renderAcquisitionSummary(acqs, sn) {
-  if (!acqs?.length) return `<div data-stil="color:var(--mut);font-size:var(--fs-2)">—</div>`;
+  if (!acqs?.length) return html`<div data-stil="color:var(--mut);font-size:var(--fs-2)">—</div>`;
   return acqs.map(a => {
-    const cond = a.condition === 'U' ? `<span class="cond-badge cond-used">${t('common.condition_used')}</span>`
-      : `<span class="cond-badge cond-new">${t('common.condition_new')}</span>`;
+    const cond = a.condition === 'U' ? html`<span class="cond-badge cond-used">${tRaw('common.condition_used')}</span>`
+      : html`<span class="cond-badge cond-new">${tRaw('common.condition_new')}</span>`;
     const price = erfassungsPreis(a, a.purchase_price);
     const dateFmt = a.created_at ? fmtDatum(a.created_at) : '';
-    return `<div data-stil="display:flex;flex-wrap:wrap;align-items:center;gap:6px;padding:2px 0">
+    return html`<div data-stil="display:flex;flex-wrap:wrap;align-items:center;gap:6px;padding:2px 0">
       <span data-stil="color:var(--mut);font-size:var(--fs-1);min-width:24px;white-space:nowrap">×${a.quantity}</span>
       ${cond}
       ${price}
-      ${dateFmt ? `<span data-stil="font-size:var(--fs-1);color:var(--mut)">${dateFmt}</span>` : ''}
+      ${dateFmt ? html`<span data-stil="font-size:var(--fs-1);color:var(--mut)">${ungeprueft(dateFmt)}</span>` : ''}
     </div>`;
   }).join('') + legendeGeschaetzt(acqs);
 }
@@ -402,25 +398,25 @@ export function vergissManItem() { _manItem = null; }
  * @param {number} colorId
  */
 function renderManAcqSummary(acqs, type, id, colorId) {
-  if (!acqs?.length) return `<div data-stil="color:var(--mut);font-size:var(--fs-2)">—</div>`;
+  if (!acqs?.length) return html`<div data-stil="color:var(--mut);font-size:var(--fs-2)">—</div>`;
   return acqs.map(a => {
     const cond = a.condition === 'U'
-      ? `<span class="cond-badge cond-used">${t('common.condition_used')}</span>`
-      : `<span class="cond-badge cond-new">${t('common.condition_new')}</span>`;
+      ? html`<span class="cond-badge cond-used">${tRaw('common.condition_used')}</span>`
+      : html`<span class="cond-badge cond-new">${tRaw('common.condition_new')}</span>`;
     const price = erfassungsPreis(a, a.unit_price);
     const dateFmt = a.created_at ? fmtDatum(a.created_at) : '';
-    return `<div data-stil="display:flex;flex-wrap:wrap;align-items:center;gap:6px;padding:2px 0">
+    return html`<div data-stil="display:flex;flex-wrap:wrap;align-items:center;gap:6px;padding:2px 0">
       <span data-stil="color:var(--mut);font-size:var(--fs-1);min-width:24px;white-space:nowrap">×${a.quantity}</span>
       ${cond}
       ${price}
-      ${dateFmt ? `<span data-stil="font-size:var(--fs-1);color:var(--mut)">${dateFmt}</span>` : ''}
+      ${dateFmt ? html`<span data-stil="font-size:var(--fs-1);color:var(--mut)">${ungeprueft(dateFmt)}</span>` : ''}
     </div>`;
   }).join('') + legendeGeschaetzt(acqs);
 }
 
 /** Die Zeilen des Detail-Dialogs eines manuell erfassten Teils oder einer Figur.
  * @param {string} type @param {string} id @param {number} colorId @param {{ quantity?: number, user_id?: number | null, bl_fig_number?: string | null, color_hex?: string | null, color_name?: string | null, storage?: string | null }} item @param {Erfassung[]} acqs @param {{ totals?: { priced_rows?: number, quantity?: number } } | null | undefined} ad
- * @returns {string[]} */
+ * @returns {import('./00-escapen.js').Markup[]} */
 function manDetailZeilen(type, id, colorId, item, acqs, ad) {
   const rows = [];
 
@@ -428,17 +424,17 @@ function manDetailZeilen(type, id, colorId, item, acqs, ad) {
   // Summenzeile darunter (`totals`), nicht aus einer eigenen Schleife.
   const totalQty = ad?.totals?.priced_rows !== undefined && acqs.length
     ? ad.totals.quantity : item.quantity;
-  rows.push(detailZeile(t('detail.qty'), `
-    <button class="btn bs btn-sm" data-click="manQtyChange" data-arg="-1" aria-label="${esc(tRaw('detail.qty_less'))}" data-stil="font-size:var(--fs-4);padding:2px 8px;line-height:1">−</button>
-    <input inputmode="numeric" type="number" id="man-det-qty" min="1" aria-label="${esc(tRaw('detail.qty'))}" value="${totalQty}" data-stil="width:4.5em;text-align:center;border:1px solid var(--feldrand);border-radius:6px;padding:2px;font-weight:600" data-change="manQtySave" />
-    <button class="btn bs btn-sm" data-click="manQtyChange" data-arg="1" aria-label="${esc(tRaw('detail.qty_more'))}" data-stil="font-size:var(--fs-4);padding:2px 8px;line-height:1">+</button>
+  rows.push(detailZeile(t('detail.qty'), html`
+    <button class="btn bs btn-sm" data-click="manQtyChange" data-arg="-1" aria-label="${tRaw('detail.qty_less')}" data-stil="font-size:var(--fs-4);padding:2px 8px;line-height:1">−</button>
+    <input inputmode="numeric" type="number" id="man-det-qty" min="1" aria-label="${tRaw('detail.qty')}" value="${totalQty}" data-stil="width:4.5em;text-align:center;border:1px solid var(--feldrand);border-radius:6px;padding:2px;font-weight:600" data-change="manQtySave" />
+    <button class="btn bs btn-sm" data-click="manQtyChange" data-arg="1" aria-label="${tRaw('detail.qty_more')}" data-stil="font-size:var(--fs-4);padding:2px 8px;line-height:1">+</button>
   `, { wertStil: 'display:flex;align-items:center;gap:6px' }));
 
   // BrickLink-Nr (minifigs only, editable)
   if (type === 'fig') {
-    rows.push(detailZeile('BrickLink-Nr.', `
-      <input type="text" value="${esc(item.bl_fig_number||'')}" placeholder="${esc(tRaw('figs.bl_placeholder'))}" aria-label="${esc(tRaw('figs.bl_number'))}" data-stil="width:9em;max-width:100%;text-align:right;border:1px solid var(--feldrand);border-radius:6px;padding:2px 6px"
-        data-blur="saveManualFigBl" data-arg="${esc(id)}" data-arg2="${item?.user_id||''}" />
+    rows.push(detailZeile('BrickLink-Nr.', html`
+      <input type="text" value="${item.bl_fig_number||''}" placeholder="${tRaw('figs.bl_placeholder')}" aria-label="${tRaw('figs.bl_number')}" data-stil="width:9em;max-width:100%;text-align:right;border:1px solid var(--feldrand);border-radius:6px;padding:2px 6px"
+        data-blur="saveManualFigBl" data-arg="${id}" data-arg2="${item?.user_id || ''}" />
     `));
   }
 
@@ -447,12 +443,12 @@ function manDetailZeilen(type, id, colorId, item, acqs, ad) {
   // nach dem Zeichnen.
   // Ausführlich: docs/begruendungen/public/js/13-acquisition-modals.js.md#if-2
   if (type === 'part') {
-    const swatch = `<span id="man-farb-punkt" data-stil="display:inline-block;width:12px;height:12px;border-radius:50%;border:1px solid rgba(0,0,0,.15);vertical-align:middle;flex:0 0 auto" data-farbe="${escHex(item.color_hex, 'var(--s300)')}"></span>`;
-    rows.push(detailZeile(t('parts.color_label'), `${swatch}
-      <select id="man-farb-wahl" aria-label="${esc(tRaw('parts.color_label'))}" data-stil="max-width:150px;border:1px solid var(--feldrand);border-radius:6px;padding:2px 4px;font-size:var(--fs-2)"
-        data-change="speichereTeilFarbe" data-part="${escJs(id)}" data-color="${colorId}"
-        data-owner="${esc(item?.user_id ?? '')}">
-        <option value="${colorId}">${esc(item.color_name ? colorName(item.color_name) : tRaw('parts.no_color_dash'))}</option>
+    const swatch = html`<span id="man-farb-punkt" data-stil="display:inline-block;width:12px;height:12px;border-radius:50%;border:1px solid rgba(0,0,0,.15);vertical-align:middle;flex:0 0 auto" data-farbe="${escHex(item.color_hex, 'var(--s300)')}"></span>`;
+    rows.push(detailZeile(t('parts.color_label'), html`${swatch}
+      <select id="man-farb-wahl" aria-label="${tRaw('parts.color_label')}" data-stil="max-width:150px;border:1px solid var(--feldrand);border-radius:6px;padding:2px 4px;font-size:var(--fs-2)"
+        data-change="speichereTeilFarbe" data-part="${id}" data-color="${colorId}"
+        data-owner="${item?.user_id ?? ''}">
+        <option value="${colorId}">${item.color_name ? colorName(item.color_name) : tRaw('parts.no_color_dash')}</option>
       </select>`,
       { wertStil: 'display:flex;align-items:center;gap:6px;justify-content:flex-end' }));
   }
@@ -470,9 +466,9 @@ function manDetailZeilen(type, id, colorId, item, acqs, ad) {
     { wertStil: 'display:flex;align-items:center;gap:6px;flex-wrap:wrap;justify-content:flex-end' }));
 
   // Acquisition summary — compact, like set-detail
-  rows.push(detailZeile(t('detail.purchase_price'), `
-      ${renderManAcqSummary(acqs, type, id, colorId)}
-      <button class="btn bs btn-sm" data-click="openManAcqModal" data-stil="margin-top:4px;font-size:var(--fs-1);padding:2px 10px">${ico('bearbeiten')} ${t('detail.edit_prices')}</button>
+  rows.push(detailZeile(t('detail.purchase_price'), html`
+      ${ungeprueft(renderManAcqSummary(acqs, type, id, colorId))}
+      <button class="btn bs btn-sm" data-click="openManAcqModal" data-stil="margin-top:4px;font-size:var(--fs-1);padding:2px 10px">${ico('bearbeiten')} ${tRaw('detail.edit_prices')}</button>
     `, { zeilenStil: 'align-items:flex-start',
          wertId: 'man-acq-summary',
          wertStil: 'flex-direction:column;align-items:flex-end;gap:3px' }));
@@ -480,11 +476,11 @@ function manDetailZeilen(type, id, colorId, item, acqs, ad) {
   // Preisverlauf wie im Set-Detail, beide Zustände in einem Diagramm, der Marktpreis je Zustand darüber.
   // Bis genug Punkte gesammelt sind, bleibt das Diagramm leer — das ist erwartet.
   // Ausführlich: docs/begruendungen/public/js/13-acquisition-modals.js.md#preisverlauf-wie-im-set-detail-beide-zus
-  rows.push('<div id="man-market-rows"></div>');
+  rows.push(html`<div id="man-market-rows"></div>`);
 
-  rows.push(`<div data-stil="margin-top:10px">
-    <div data-stil="font-size:var(--fs-1);font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--mut);margin-bottom:4px">${t('detail.price_history')}</div>
-    <div id="man-chart-content"><span data-stil="color:var(--mut);font-size:var(--fs-1)">${t('common.loading')}</span></div>
+  rows.push(html`<div data-stil="margin-top:10px">
+    <div data-stil="font-size:var(--fs-1);font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--mut);margin-bottom:4px">${tRaw('detail.price_history')}</div>
+    <div id="man-chart-content"><span data-stil="color:var(--mut);font-size:var(--fs-1)">${tRaw('common.loading')}</span></div>
   </div>`);
 
   return rows;
@@ -505,12 +501,10 @@ function ladeManPreisverlauf(type, id, colorId) {
     renderMarketRows(ph, 'man-market-rows');
     const el = G('man-chart-content');
     if (!el) return;
-    el.innerHTML = ph?.success
-      ? priceChartSVG(ph, `man-${String(id).replace(/[^a-zA-Z0-9]/g, '')}-${colorId || 0}`, diagrammBreite(el))
-      : `<span data-stil="color:var(--mut);font-size:var(--fs-1)">${t('detail.no_history')}</span>`;
+    setzeHtml(el, ph?.success ? priceChartSVG(ph, `man-${String(id).replace(/[^a-zA-Z0-9]/g, '')}-${colorId || 0}`, diagrammBreite(el)) : html`<span data-stil="color:var(--mut);font-size:var(--fs-1)">${tRaw('detail.no_history')}</span>`);
   }).catch(() => {
     const el = G('man-chart-content');
-    if (el) el.innerHTML = `<span data-stil="color:var(--mut);font-size:var(--fs-1)">${t('detail.no_history')}</span>`;
+    if (el) setzeHtml(el, html`<span data-stil="color:var(--mut);font-size:var(--fs-1)">${tRaw('detail.no_history')}</span>`);
   });
 
 }
@@ -567,7 +561,7 @@ export async function openManDetail(type, id, colorId) {
   const ad = await api('GET', acqUrl).catch(()=>null);
   const acqs = ad?.acquisitions || [];
 
-  bodyEl.innerHTML = manDetailZeilen(type, id, ziel.colorId, item, acqs, ad).join('');
+  setzeHtml(bodyEl, ungeprueft(manDetailZeilen(type, id, ziel.colorId, item, acqs, ad).join('')));
   modal.classList.add('open');
 
   // Farbauswahl nachfüllen — siehe die Begründung an der Zeile oben.
@@ -605,17 +599,14 @@ async function fuelleFarbwahl(aktuell) {
   // color_name mit und wird für BrickLink-Abgleiche gebraucht. Übersetzt wird
   // nur der sichtbare Text, mit derselben Funktion wie im Teile-Reiter
   // (renderColorDropdown in 06-minifigs.js).
-  sel.innerHTML = farben.map(c =>
-    `<option value="${c.id}" data-name="${esc((c.name || '').replace(/"/g, '&quot;'))}" ` +
-    `data-hex="${hexZiffern(c.hex)}"${Number(c.id) === Number(aktuell) ? ' selected' : ''}>` +
-    `${esc(colorName(c.name))}</option>`).join('');
+  setzeHtml(sel, farben.map(c =>
+    html`${html`<option value="${c.id}" data-name="${(c.name || '').replace(/"/g, '&quot;')}" `}${html`data-hex="${hexZiffern(c.hex)}"${Number(c.id) === Number(aktuell) ? ' selected' : ''}>`}${html`${colorName(c.name)}</option>`}`));
   // Kennt die Liste die heutige Farbe nicht (ältere Bestände, eine Farbe, die
   // Rebrickable zurückgezogen hat), wäre sie nach dem Ersetzen verschwunden
   // und die Auswahl stünde auf einer FREMDEN Farbe — ohne dass jemand etwas
   // geändert hätte. Dann kommt sie vorne wieder dazu.
   if (!farben.some(c => Number(c.id) === Number(aktuell))) {
-    sel.insertAdjacentHTML('afterbegin',
-      `<option value="${Number(aktuell) || 0}" selected>${esc(String(aktuell))}</option>`);
+    fuegeHtmlEin(sel, 'afterbegin', html`<option value="${Number(aktuell) || 0}" selected>${String(aktuell)}</option>`);
   }
 }
 
@@ -689,8 +680,7 @@ async function manQtySave() {
   api('GET', acqUrl2).then(ad2 => {
     const acqs2 = ad2?.acquisitions || [];
     const sumEl = G('man-acq-summary');
-    if (sumEl) sumEl.innerHTML = renderManAcqSummary(acqs2, type, id, colorId) +
-      `<button class="btn bs btn-sm" data-click="openManAcqModal" data-stil="margin-top:4px;font-size:var(--fs-1);padding:2px 10px">${ico('bearbeiten')} ${t('detail.edit_prices')}</button>`;
+    if (sumEl) setzeHtml(sumEl, html`${ungeprueft(renderManAcqSummary(acqs2, type, id, colorId))}${html`<button class="btn bs btn-sm" data-click="openManAcqModal" data-stil="margin-top:4px;font-size:var(--fs-1);padding:2px 10px">${ico('bearbeiten')} ${tRaw('detail.edit_prices')}</button>`}`);
     if (G('acq-modal').classList.contains('open')) renderManAcqBody(type, id, colorId, acqs2, ad2?.totals);
   }).catch(()=>{});
 
@@ -708,7 +698,7 @@ function openManAcqModal() {
     : (manuelleTeile().find(p=>p.part_number===id)?.part_name || id);
   G('acq-modal-tit').textContent = tRaw('detail.edit_prices');
   G('acq-modal-sub').textContent = title;
-  G('acq-modal-body').innerHTML = `<div data-stil="color:var(--mut);font-size:var(--fs-2)">${t('common.loading')}</div>`;
+  setzeHtml(G('acq-modal-body'), html`<div data-stil="color:var(--mut);font-size:var(--fs-2)">${tRaw('common.loading')}</div>`);
   G('man-detail-modal').classList.remove('open');
   _gespeichert.clear();
   G('acq-modal').classList.add('open');
@@ -736,8 +726,7 @@ function closeAcqModal() {
     api('GET', `/v1/sets/${sn}/acquisitions`).then(ad => {
       if (!ad?.success) return;
       const sumEl = G('m-acq-summary');
-      if (sumEl) sumEl.innerHTML = renderAcquisitionSummary(ad.acquisitions, sn) +
-        `<button class="btn bs btn-sm" data-click="openAcqModal" data-arg="${escJs(sn)}" data-stil="margin-top:4px;font-size:var(--fs-1);padding:2px 10px">${ico('bearbeiten')} ${t('detail.edit_prices')}</button>`;
+      if (sumEl) setzeHtml(sumEl, html`${ungeprueft(renderAcquisitionSummary(ad.acquisitions, sn))}${html`<button class="btn bs btn-sm" data-click="openAcqModal" data-arg="${sn}" data-stil="margin-top:4px;font-size:var(--fs-1);padding:2px 10px">${ico('bearbeiten')} ${tRaw('detail.edit_prices')}</button>`}`);
       const total = ad.totals?.quantity ?? 0;
       const qEl = G('m-qty');
       if (qEl && total > 0) { qEl.value = String(total); if(curSet) curSet.quantity = total; }
@@ -775,55 +764,55 @@ async function loadManAcqModal(type, id, colorId) {
 function renderManAcqBody(type, id, colorId, acqs, totals) {
   // Reuse the same table renderer with type-specific save/delete
   if (!acqs.length) {
-    G('acq-modal-body').innerHTML = `<div data-stil="color:var(--mut);font-size:var(--fs-3);padding:.5rem 0">—</div>`;
+    setzeHtml(G('acq-modal-body'), html`<div data-stil="color:var(--mut);font-size:var(--fs-3);padding:.5rem 0">—</div>`);
     return;
   }
-  let markup = `<div class="tw"><table class="dt acq-tabelle">
+  let markup = html`<div class="tw"><table class="dt acq-tabelle">
     <thead><tr>
-      <th>${t('detail.qty')}</th><th>${t('detail.added')}</th>
-      <th>${t('common.condition')}</th>
-      <th class="zahl">${t('figs.price_label')}</th>
-      ${_householdMembers.length > 1 ? `<th>${t('household.owner')}</th>` : ''}
-      <th><span class="vh">${t('common.actions')}</span></th>
+      <th>${tRaw('detail.qty')}</th><th>${tRaw('detail.added')}</th>
+      <th>${tRaw('common.condition')}</th>
+      <th class="zahl">${tRaw('figs.price_label')}</th>
+      ${_householdMembers.length > 1 ? html`<th>${tRaw('household.owner')}</th>` : ''}
+      <th><span class="vh">${tRaw('common.actions')}</span></th>
     </tr></thead><tbody>`;
 
   acqs.forEach(a => {
     const dateIso = isoTag(a.created_at);
     const t_ = type, i_ = id, c_ = colorId, ai_ = a.id;
     const args = `data-arg="${esc(t_)}" data-arg2="${esc(i_)}" data-arg3="${esc(c_)}" data-arg4="${ai_}"`;
-    markup += `<tr id="acq-row-${ai_}">
+    markup = html`${markup}${html`<tr id="acq-row-${ai_}">
       <td>
-        <input class="acq-feld acq-menge" inputmode="numeric" type="number" min="1" value="${a.quantity}" aria-label="${esc(tRaw('detail.qty'))}"
-          data-blur="manAcqSave" ${args} data-arg5="qty" data-val="1"
+        <input class="acq-feld acq-menge" inputmode="numeric" type="number" min="1" value="${a.quantity}" aria-label="${tRaw('detail.qty')}"
+          data-blur="manAcqSave" ${ungeprueft(args)} data-arg5="qty" data-val="1"
           data-keydown="blurOnEnter" />
       </td>
       <td>${datumFeld(`data-change="manAcqSave" ${args} data-arg5="date" data-val="1"`, dateIso, `acq-datum-${ai_}`)}</td>
       <td>
-        <select class="acq-feld" aria-label="${esc(tRaw('common.condition'))}" data-change="manAcqSave" ${args} data-arg5="cond" data-val="1">
-          <option value="N" ${a.condition!=='U'?'selected':''}>${t('common.condition_new')}</option>
-          <option value="U" ${a.condition==='U'?'selected':''}>${t('common.condition_used')}</option>
+        <select class="acq-feld" aria-label="${tRaw('common.condition')}" data-change="manAcqSave" ${ungeprueft(args)} data-arg5="cond" data-val="1">
+          <option value="N" ${a.condition!=='U' ? 'selected' : ''}>${tRaw('common.condition_new')}</option>
+          <option value="U" ${a.condition==='U' ? 'selected' : ''}>${tRaw('common.condition_used')}</option>
         </select>
       </td>
       <td class="zahl">
-        <input class="acq-feld acq-preis" id="acq-preis-${ai_}" type="text" inputmode="decimal" autocomplete="off" value="${esc(betragFuerFeld(a.unit_price))}" aria-label="${esc(tRaw('detail.purchase_price'))}"
-          data-blur="manAcqSave" ${args} data-arg5="price" data-val="1"
+        <input class="acq-feld acq-preis" id="acq-preis-${ai_}" type="text" inputmode="decimal" autocomplete="off" value="${betragFuerFeld(a.unit_price)}" aria-label="${tRaw('detail.purchase_price')}"
+          data-blur="manAcqSave" ${ungeprueft(args)} data-arg5="price" data-val="1"
           data-keydown="blurOnEnter" />
       </td>
-      ${_householdMembers.length > 1 ? `<td>
-        <select class="acq-feld" aria-label="${esc(tRaw('household.owner'))}" data-change="manAcqSave" ${args} data-arg5="owner" data-val="1">
-          ${_householdMembers.map(m => `<option value="${m.id}"${m.id === (a.owner_user_id ?? _acqOwnerId) ? ' selected' : ''}>${esc(m.username)}</option>`).join('')}
+      ${_householdMembers.length > 1 ? html`<td>
+        <select class="acq-feld" aria-label="${tRaw('household.owner')}" data-change="manAcqSave" ${ungeprueft(args)} data-arg5="owner" data-val="1">
+          ${_householdMembers.map(m => html`<option value="${m.id}"${m.id === (a.owner_user_id ?? _acqOwnerId) ? ' selected' : ''}>${m.username}</option>`)}
         </select>
       </td>` : ''}
       <td class="acq-aktion">
         ${gespeichertMarke(ai_)}
-        <button class="acq-loeschen" data-click="manAcqDelete"${echt()} ${args}
-          title="${t('gallery.delete.title')}" aria-label="${t('gallery.delete.title')}">${ico('loeschen')}</button>
+        <button class="acq-loeschen" data-click="manAcqDelete"${echt()} ${ungeprueft(args)}
+          title="${tRaw('gallery.delete.title')}" aria-label="${tRaw('gallery.delete.title')}">${ico('loeschen')}</button>
       </td>
-    </tr>`;
+    </tr>`}`;
   });
 
-  markup += `</tbody></table></div>`;
-  markup += acqSummary(totals);
+  markup = html`${markup}${html`</tbody></table></div>`}`;
+  markup = html`${markup}${acqSummary(totals)}`;
   setzeMitFokus(G('acq-modal-body'), markup);
 }
 
@@ -915,8 +904,7 @@ async function manAcqDelete(type, id, colorId, acqId) {
   const acqs = ad?.acquisitions || [];
   // Refresh inline summary in detail modal
   const sumEl = G('man-acq-summary');
-  if (sumEl) sumEl.innerHTML = renderManAcqSummary(acqs, type, id, colorId) +
-    `<button class="btn bs btn-sm" data-click="openManAcqModal" data-stil="margin-top:4px;font-size:var(--fs-1);padding:2px 10px">${ico('bearbeiten')} ${t('detail.edit_prices')}</button>`;
+  if (sumEl) setzeHtml(sumEl, html`${ungeprueft(renderManAcqSummary(acqs, type, id, colorId))}${html`<button class="btn bs btn-sm" data-click="openManAcqModal" data-stil="margin-top:4px;font-size:var(--fs-1);padding:2px 10px">${ico('bearbeiten')} ${tRaw('detail.edit_prices')}</button>`}`);
   if (!acqs.length) { closeAcqModal(); return; }
   renderManAcqBody(type, id, colorId, acqs, ad?.totals);
   if (type==='fig') loadManualFigsTable();

@@ -2,9 +2,9 @@
 // gerufen.
 // Ausführlich: docs/begruendungen/public/js/12-pdfviewer.js.md#diese-110-zeilen-standen-in-js-01-core-j
 import { registerActions } from './00-registry.js';
-import { G } from './01-dom.js';
-import { t } from '../i18n.js';
-import { esc } from './00-escapen.js';
+import { G, setzeHtml } from './01-dom.js';
+import { tRaw } from '../i18n.js';
+import { html } from './00-escapen.js';
 
 /** @type {PdfDokument | null} */
 let _pdfDoc = null;
@@ -49,8 +49,8 @@ export async function openPdfViewer(url, title, opt = {}) {
   dl.href = url; dl.setAttribute('download', fname);
   _pdfCurrentUrl = url;
   _pdfZoom = 1; _pdfZoomGen++; _pdfZeigeFaktor();
-  if (pages) { pages.innerHTML = ''; pages.scrollLeft = 0; pages.scrollTop = 0; }
-  if (loading) { loading.style.display = 'flex'; loading.innerHTML = '<div class="spin"></div><span>' + (t('pdf.loading')||'PDF wird geladen…') + '</span>'; }
+  if (pages) { pages.replaceChildren(); pages.scrollLeft = 0; pages.scrollTop = 0; }
+  if (loading) { loading.style.display = 'flex'; setzeHtml(loading, html`${html`<div class="spin"></div><span>`}${tRaw('pdf.loading') || 'PDF wird geladen…'}${html`</span>`}`); }
   modal.style.display = 'flex';
   document.body.style.overflow = 'hidden';
 
@@ -59,8 +59,7 @@ export async function openPdfViewer(url, title, opt = {}) {
   while (!window.pdfjsLib && _tries < 50) { await new Promise(r => setTimeout(r, 100)); _tries++; }
   const pdfjsLib = window.pdfjsLib;
   if (!pdfjsLib) {
-    if (loading) loading.innerHTML =
-      `<span data-stil="color:#f88;padding:20px">${t('pdf.lib_missing')}</span>`;
+    if (loading) setzeHtml(loading, html`<span data-stil="color:#f88;padding:20px">${tRaw('pdf.lib_missing')}</span>`);
     return;
   }
   try {
@@ -80,7 +79,7 @@ export async function openPdfViewer(url, title, opt = {}) {
     if (loading) loading.style.display = 'none';
     await _renderPdfLazy(_pdfDoc, pages);
   } catch (e) {
-    if (loading) { loading.style.display = 'flex'; loading.innerHTML = '<span data-stil="color:#f88;padding:20px;text-align:center">' + (t('pdf.error')||'Fehler beim Laden') + ': ' + esc(e instanceof Error ? e.message : String(e)) + '</span>'; }
+    if (loading) { loading.style.display = 'flex'; setzeHtml(loading, html`<span data-stil="color:#f88;padding:20px;text-align:center">${tRaw('pdf.error') || 'Fehler beim Laden'}: ${e instanceof Error ? e.message : String(e)}</span>`); }
   }
 }
 
@@ -167,7 +166,7 @@ async function _renderPdfPage(pdf, n, ph) {
     // Durchlauf oben ab (Leinwand schon da), und die Seite bliebe grob bis zum nächsten Zoom.
     // Ausführlich: docs/begruendungen/public/js/12-pdfviewer.js.md#if
     if (gen !== _pdfZoomGen) { canvas.width = 0; canvas.height = 0; ph.dataset.rendering = '0'; return; }
-    ph.innerHTML = ''; ph.appendChild(canvas);
+    ph.replaceChildren(); ph.appendChild(canvas);
   } catch (e) { /* Render abgebrochen (Scroll) o.ä. */ }
   ph.dataset.rendering = '0';
 }
@@ -180,7 +179,7 @@ function _unloadPdfPage(n, ph) {
   const task = _pdfRenderTasks.get(n);
   if (task) { try { task.cancel(); } catch (_) {} _pdfRenderTasks.delete(n); }
   const canvas = ph.querySelector('canvas');
-  if (canvas) { canvas.width = 0; canvas.height = 0; ph.innerHTML = ''; } // Speicher freigeben
+  if (canvas) { canvas.width = 0; canvas.height = 0; ph.replaceChildren(); } // Speicher freigeben
   ph.dataset.rendering = '0';
 }
 
@@ -340,7 +339,7 @@ function closePdfViewer() {
   if (_pdfObserver) { _pdfObserver.disconnect(); _pdfObserver = null; }
   _pdfRenderTasks.forEach(task => { try { task.cancel(); } catch (_) {} });
   _pdfRenderTasks.clear();
-  const pages = G('pdf-viewer-pages'); if (pages) pages.innerHTML = '';
+  const pages = G('pdf-viewer-pages'); if (pages) pages.replaceChildren();
   if (_pdfDoc) { try { _pdfDoc.destroy(); } catch (_) {} _pdfDoc = null; }
   modal.style.display = 'none';
   document.body.style.overflow = '';

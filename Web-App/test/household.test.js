@@ -368,7 +368,7 @@ test('die Oberfläche zeigt Besitzer und Kontoauswahl nur im Haushalt', () => {
   const adm = require('./helpers/sources').adminQuelle();
   assert.doesNotMatch(adm, /renderMoveBox|moveSetToAccount/,
     'Das ganze Set darf nicht mehr auf einmal verschoben werden');
-  const ownerCols = (adm.match(/_householdMembers\.length > 1 \? `<th>\$\{t\('household\.owner'\)\}<\/th>` : ''/g) || []).length;
+  const ownerCols = (adm.match(/_householdMembers\.length > 1 \? (?:html)?`<th>\$\{t(?:Raw)?\('household\.owner'\)\}<\/th>` : ''/g) || []).length;
   assert.equal(ownerCols, 2,
     'Eigentümer-Spalte fehlt in einem der beiden Kaufpreis-Dialoge');
 });
@@ -421,7 +421,7 @@ test('der Umschalter lädt nur die betroffene Ansicht neu', () => {
   assert.match(gal, /if \(!isMain\) \{ el\.style\.display = 'none'; continue; \}/);
   assert.match(gal, /initScopeSelects\(members\);/);
   // Ein Eintrag je Unterkonto, namentlich.
-  assert.match(gal, /subs\.map\(m => `<option value="\$\{m\.id\}">/,
+  assert.match(gal, /subs\.map\(m => (?:html)?`<option value="\$\{m\.id\}">/,
     'Die Auswahl muss jedes Unterkonto einzeln führen');
 });
 

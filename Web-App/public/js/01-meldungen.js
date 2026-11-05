@@ -1,6 +1,6 @@
 import { tRaw } from '../i18n.js';
 import { ME } from './00-zustand.js';
-import { G, ico } from './01-dom.js';
+import { G, ico, setzeHtml } from './01-dom.js';
 
 // Toasts: kurze Meldungen unten im Bild. Gleiche Meldungen zählen statt zu stapeln, damit eine
 // wiederholte Störung nicht die Liste verdeckt.
@@ -44,7 +44,7 @@ export function toast(msg, type='info', aktion, details) {
   // und Set-/Teilenummern aus Nutzereingaben.
   const icon = document.createElement('span');
   icon.className = 'toast-ico';
-  icon.innerHTML = ico(type === 'success' ? 'ok' : type === 'error' ? 'fehler' : 'info');
+  setzeHtml(icon, ico(type === 'success' ? 'ok' : type === 'error' ? 'fehler' : 'info'));
   const text = document.createElement('span');
   text.className = 'toast-text';
   text.textContent = String(msg ?? '');

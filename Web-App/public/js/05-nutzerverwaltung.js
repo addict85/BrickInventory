@@ -1,12 +1,12 @@
 import { echt, registerActions } from './00-registry.js';
 import { locale, t, tRaw } from '../i18n.js';
 import { api } from './01-api.js';
-import { ico, G } from './01-dom.js';
+import { ico, G, setzeHtml } from './01-dom.js';
 import { fmtDatum } from './01-format.js';
 import { passwortRegelText } from './01-formular.js';
 import { toast } from './01-meldungen.js';
 import { ME } from './00-zustand.js';
-import { esc } from './00-escapen.js';
+import { esc, html, ungeprueft } from './00-escapen.js';
 import { bestaetigeMitPasswort, mitZweitemFaktor } from './01-rueckfrage.js';
 // Einstellungen, Abschnitt Verwaltung: Konten anlegen, sperren, freischalten, Rechte. Nur Verwalter
 // sehen ihn, der Server prüft jede Aktion selbst.
@@ -16,14 +16,12 @@ import { bestaetigeMitPasswort, mitZweitemFaktor } from './01-rueckfrage.js';
 export async function loadUsers(){
   const d=await api('GET','/v1/auth/users'); if(!d.success) return;
   // Der Name zuerst: Am Telefon ist er der Kartentitel (data-label leer), die ID steht nur am Rechner.
-  G('users-tbl').innerHTML=`<div class="tw"><table class="dt user-tbl"><thead><tr><th>${t('users.col.username')}</th><th class="nutzer-id">ID</th><th>${t('users.col.role')}</th><th>${t('users.col.created')}</th><th>${t('users.col.actions')}</th></tr></thead><tbody>${
-    d.users.map(u=>`<tr><td class="nutzer-name" data-label=""><strong>${esc(u.username)}</strong></td><td class="nutzer-id">${u.id}</td>
-      <td><span class="rb ${u.is_admin?'rv':'ru'}">${u.is_admin?t('users.role.admin'):t('users.role.user')}</span>
-        ${u.is_active === false ? `<span class="rb ru">${t('users.status.inaktiv')}</span>` : ''}
-        ${u.wartet_auf_bestaetigung ? `<span class="rb ru">${t('users.status.wartet')}</span>` : ''}</td>
+  setzeHtml(G('users-tbl'), html`<div class="tw"><table class="dt user-tbl"><thead><tr><th>${tRaw('users.col.username')}</th><th class="nutzer-id">ID</th><th>${tRaw('users.col.role')}</th><th>${tRaw('users.col.created')}</th><th>${tRaw('users.col.actions')}</th></tr></thead><tbody>${d.users.map(u=>html`<tr><td class="nutzer-name" data-label=""><strong>${u.username}</strong></td><td class="nutzer-id">${u.id}</td>
+      <td><span class="rb ${u.is_admin ? 'rv' : 'ru'}">${u.is_admin ? tRaw('users.role.admin') : tRaw('users.role.user')}</span>
+        ${u.is_active === false ? html`<span class="rb ru">${tRaw('users.status.inaktiv')}</span>` : ''}
+        ${u.wartet_auf_bestaetigung ? html`<span class="rb ru">${tRaw('users.status.wartet')}</span>` : ''}</td>
       <td>${fmtDatum(u.created_at)}</td>
-      <td>${nutzerAktionen(u)}</td></tr>`).join('')
-  }</tbody></table></div>`;
+      <td>${nutzerAktionen(u)}</td></tr>`)}</tbody></table></div>`);
   ladeProtokoll();
 }
 // Ausgeschrieben statt zusammengesetzt, damit jeder Schlüssel als Aufruf im
@@ -47,10 +45,8 @@ const AKTIONEN = {
 async function ladeProtokoll(){
   const d=await api('GET','/v1/admin/protokoll'); if(!d.success) return;
   const eintraege = d.eintraege || [];
-  G('vw-protokoll').innerHTML = eintraege.length ? `<div class="tw"><table class="dt"><thead><tr><th>${t('users.protokoll.zeit')}</th><th>${t('users.protokoll.verwalter')}</th><th>${t('users.protokoll.aktion')}</th><th>${t('users.protokoll.konto')}</th></tr></thead><tbody>${
-    eintraege.map(e=>`<tr><td>${new Date(String(e.zeit)).toLocaleString(locale())}</td><td>${esc(e.verwalter_name||'—')}</td>
-      <td>${(/** @type {Record<string, () => string>} */ (AKTIONEN)[String(e.aktion)] || (() => esc(e.aktion)))()}${e.einzelheiten ? `: ${esc(e.einzelheiten)}` : ''}</td><td>${esc(e.ziel_name||'#'+e.ziel_id)}</td></tr>`).join('')
-  }</tbody></table></div>` : `<p data-stil="color:var(--mut);font-size:var(--fs-2)">${t('users.protokoll.leer')}</p>`;
+  setzeHtml(G('vw-protokoll'), eintraege.length ? html`<div class="tw"><table class="dt"><thead><tr><th>${tRaw('users.protokoll.zeit')}</th><th>${tRaw('users.protokoll.verwalter')}</th><th>${tRaw('users.protokoll.aktion')}</th><th>${tRaw('users.protokoll.konto')}</th></tr></thead><tbody>${eintraege.map(e=>html`<tr><td>${ungeprueft(new Date(String(e.zeit)).toLocaleString(locale()))}</td><td>${e.verwalter_name||'—'}</td>
+      <td>${ungeprueft((/** @type {Record<string, () => string>} */ (AKTIONEN)[String(e.aktion)] || (() => esc(e.aktion)))())}${e.einzelheiten ? html`: ${e.einzelheiten}` : ''}</td><td>${e.ziel_name||'#'+e.ziel_id}</td></tr>`)}</tbody></table></div>` : html`<p data-stil="color:var(--mut);font-size:var(--fs-2)">${tRaw('users.protokoll.leer')}</p>`);
 }
 /**
  * Gegen das eigene Konto gibt es hier nichts zu tun (der Server lehnt es
@@ -59,7 +55,7 @@ async function ladeProtokoll(){
  * @param {Konto} u
  */
 function nutzerAktionen(u) {
-  if (ME && u.id === ME.id) return `<span class="text-klein">${t('users.selbst')}</span>`;
+  if (ME && u.id === ME.id) return html`<span class="text-klein">${tRaw('users.selbst')}</span>`;
   const selten = [
     nutzerKnopf(u, 'bs', 'toggleAktiv', u.is_active === false ? 'ok' : 'pause',
       u.is_active === false ? 'users.action.activate' : 'users.action.deactivate',
@@ -67,14 +63,14 @@ function nutzerAktionen(u) {
     u.zweiter_faktor ? nutzerKnopf(u, 'bs', 'zfZuruecksetzen', 'schloss', 'users.action.2fa', 'zf.reset_title', u.username) : '',
     nutzerKnopf(u, 'bd', 'delUser', 'loeschen', 'common.delete', 'users.action.delete_title', u.username),
   ].join('');
-  return `<div class="nutzer-aktionen">
+  return html`<div class="nutzer-aktionen">
     ${u.wartet_auf_bestaetigung ? nutzerKnopf(u, 'bp', 'kontoFreischalten', 'ok', 'users.action.freischalten', 'users.action.freischalten_title', u.username) : ''}
     ${nutzerKnopf(u, 'bs', 'openRpw', 'schluessel', 'users.action.password', 'users.pw_reset_title', u.username)}
     ${nutzerKnopf(u, 'bs', 'toggleAdmin', u.is_admin ? 'runter' : 'hoch',
       u.is_admin ? 'users.action.make_user' : 'users.action.make_admin',
       u.is_admin ? 'users.action.make_user_title' : 'users.action.make_admin_title', u.is_admin ? 1 : 0, u.username)}
-    <details class="mehr-menue v-mehr"><summary class="btn bs btn-sm" aria-label="${esc(tRaw('users.weitere', { name: u.username }))}">${ico('menue')}<span>${t('users.weitere_kurz')}</span></summary>
-      <div class="mehr-liste">${selten}</div></details>
+    <details class="mehr-menue v-mehr"><summary class="btn bs btn-sm" aria-label="${tRaw('users.weitere', { name: u.username })}">${ico('menue')}<span>${tRaw('users.weitere_kurz')}</span></summary>
+      <div class="mehr-liste">${ungeprueft(selten)}</div></details>
   </div>`;
 }
 
@@ -92,10 +88,7 @@ function nutzerAktionen(u) {
  */
 function nutzerKnopf(u, art, klick, symbol, wortKey, titelKey, arg2, arg3) {
   const wort = tRaw(wortKey), titel = tRaw(titelKey);
-  return `<button type="button" class="btn ${art} btn-sm" data-click="${klick}"${echt()} data-arg="${u.id}"` +
-    `${arg2 !== undefined ? ` data-arg2="${esc(String(arg2))}"` : ''}` +
-    `${arg3 !== undefined ? ` data-arg3="${esc(String(arg3))}"` : ''} title="${esc(titel)}"` +
-    ` aria-label="${esc(`${wort}: ${u.username}`)}">${ico(symbol)}<span>${esc(wort)}</span></button>`;
+  return html`${html`<button type="button" class="btn ${art} btn-sm" data-click="${klick}"${echt()} data-arg="${u.id}"`}${html`${arg2 !== undefined ? html` data-arg2="${String(arg2)}"` : ''}`}${html`${arg3 !== undefined ? html` data-arg3="${String(arg3)}"` : ''} title="${titel}"`}${html` aria-label="${`${wort}: ${u.username}`}">${ico(symbol)}<span>${wort}</span></button>`}`;
 }
 G('btn-cu').onclick=async()=>{
   const n=G('nu-n').value.trim(),p=G('nu-p').value,a=G('nu-a').checked;

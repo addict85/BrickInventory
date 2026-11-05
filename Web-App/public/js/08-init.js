@@ -1,9 +1,9 @@
 import { registerActions } from './00-registry.js';
 import { locale, t, tRaw} from '../i18n.js';
-import { escHex, esc } from './00-escapen.js';
+import { escHex, esc, html, ungeprueft } from './00-escapen.js';
 import { fehlerMeldung, api, apiRoh } from './01-api.js';
 import { bildTag, platzhalterInhalt, imgUrl, thumbUrl } from './01-bilder.js';
-import { leerZustand, ico, G, knopfBesetzt, alle } from './01-dom.js';
+import { leerZustand, ico, G, knopfBesetzt, alle, setzeHtml } from './01-dom.js';
 import { feldFehler, istSetnummer } from './01-formular.js';
 import { toast } from './01-meldungen.js';
 import { baueWantedXmlStuecke } from './19-bricklink-xml.js';
@@ -103,17 +103,17 @@ export function plRenderSets() {
   // Zurücksetzen hat erst etwas zu tun, wenn Sets oder eine fertige Liste da sind.
   G('btn-pl-reset').disabled = !_plSets.length && !_plParts;
   if (!_plSets.length) {
-    c.innerHTML = leerZustand({ ico: 'liste', titelKey: 'pl.no_sets', textKey: 'pl.no_sets_hint',
-                                knopf: { textKey: 'pl.erstes_set', click: 'feldFokussieren', arg: 'pl-setnr', art: 'bs' } });
+    setzeHtml(c, leerZustand({ ico: 'liste', titelKey: 'pl.no_sets', textKey: 'pl.no_sets_hint',
+                                knopf: { textKey: 'pl.erstes_set', click: 'feldFokussieren', arg: 'pl-setnr', art: 'bs' } }));
     G('btn-pl-gen').setAttribute('aria-disabled', 'true'); return;
   }
   G('btn-pl-gen').removeAttribute('aria-disabled');
-  c.innerHTML = _plSets.map((s,i) => `
+  setzeHtml(c, _plSets.map((s,i) => html`
     <div class="pl-chip${s.unbekannt ? ' unbekannt' : ''}">
-      <span class="pl-chip-nr">${esc(s.set_number)}</span>
-      <span class="pl-chip-name">${s.unbekannt ? '— ' + esc(tRaw('pl.nicht_im_katalog')) : s.name !== s.set_number ? '— '+esc(s.name) : ''}</span>
-      <button type="button" class="pl-chip-weg" data-click="plRemoveSet" data-arg="${i}" aria-label="${esc(tRaw('pl.entfernen', { set: s.set_number }))}">${ico('schliessen')}</button>
-    </div>`).join('');
+      <span class="pl-chip-nr">${s.set_number}</span>
+      <span class="pl-chip-name">${s.unbekannt ? html`${'— '}${tRaw('pl.nicht_im_katalog')}` : s.name !== s.set_number ? html`${'— '}${s.name}` : ''}</span>
+      <button type="button" class="pl-chip-weg" data-click="plRemoveSet" data-arg="${i}" aria-label="${tRaw('pl.entfernen', { set: s.set_number })}">${ico('schliessen')}</button>
+    </div>`));
 }
 // Aufruf verschoben nach startApp() (js/08-init.js), das js/main.js NACH der
 // Auswertung aller Module aufruft. Im Modulrumpf lief er zu früh: Bei
@@ -127,7 +127,7 @@ export function plRenderSets() {
 function plRemoveSet(i) {
   _plSets.splice(i, 1);
   _plParts = null;
-  G('pl-result').innerHTML = '';
+  G('pl-result').replaceChildren();
   plExportStand();
   plRenderSets();
 }
@@ -136,7 +136,7 @@ async function plGenerate() {
   if (!_plSets.length) { feldFehler('pl-setnr', tRaw('pl.erst_set')); return; }
   G('pl-status').textContent = tRaw('pl.loading_lists');
   G('btn-pl-gen').disabled = true;
-  G('pl-result').innerHTML = '';
+  G('pl-result').replaceChildren();
   _plParts = null; plExportStand();
 
   /** @type {Record<string, PlTeil>} Schlüssel „Teilnummer|Farbe“ bzw. „fig:Nummer“ */
@@ -292,9 +292,9 @@ function plExportStand() {
 function plRenderTable(fehler = 0) {
   if (!_plParts?.length) {
     // Die Ursache nennen: Fehlende Teilelisten kommen aus dem Rebrickable-Katalog, nicht aus der Eingabe.
-    G('pl-result').innerHTML = leerZustand({ ico: 'warnung', titelKey: fehler ? 'pl.leer_fehler_titel' : 'pl.leer_titel',
+    setzeHtml(G('pl-result'), leerZustand({ ico: 'warnung', titelKey: fehler ? 'pl.leer_fehler_titel' : 'pl.leer_titel',
       textKey: fehler ? 'pl.leer_fehler_text' : 'pl.leer_text',
-      knopf: { textKey: 'liste.erneut', click: 'plGenerate', ico: 'aktualisieren', art: 'bs' } });
+      knopf: { textKey: 'liste.erneut', click: 'plGenerate', ico: 'aktualisieren', art: 'bs' } }));
     return;
   }
 
@@ -308,30 +308,30 @@ function plRenderTable(fehler = 0) {
   }
   const sorted = Object.values(byColor).sort((a,b) => a.color_name.localeCompare(b.color_name));
 
-  let markup = '';
+  let markup = html``;
   let totalParts = 0;
   for (const grp of sorted) {
-    const colorDot = grp.color_hex ? `<span data-stil="display:inline-block;width:14px;height:14px;border-radius:50%;border:1px solid rgba(0,0,0,.15);vertical-align:middle;margin-right:6px" data-farbe="${escHex(grp.color_hex, 'var(--s300)')}"></span>` : '';
-    markup += `<div data-stil="margin-bottom:1.5rem"><div data-stil="font-weight:700;font-size:var(--fs-4);padding:6px 0;border-bottom:2px solid var(--b200);margin-bottom:.5rem;color:var(--b700)">${colorDot}${esc(grp.color_name)} <span data-stil="font-weight:400;color:var(--mut);font-size:var(--fs-3)">${t('pl.types',{n:grp.parts.length})}</span></div><div>`;
-      markup += `<div data-stil="display:flex;align-items:center;gap:10px;padding:3px 4px;font-size:var(--fs-0);font-weight:700;color:var(--mut);text-transform:uppercase;letter-spacing:.4px;border-bottom:1.5px solid var(--b200)"><span data-stil="width:44px;flex-shrink:0"></span><span data-stil="min-width:65px;flex-shrink:0">${t('col.nr')}</span><span data-stil="flex:1">${t('pl.col_name')}</span><span data-stil="width:70px;text-align:right;flex-shrink:0">${t('pl.col_needed')}</span><span data-stil="width:70px;padding-left:6px;flex-shrink:0">${t('pl.col_have')}</span></div>`;
+    const colorDot = grp.color_hex ? html`<span data-stil="display:inline-block;width:14px;height:14px;border-radius:50%;border:1px solid rgba(0,0,0,.15);vertical-align:middle;margin-right:6px" data-farbe="${escHex(grp.color_hex, 'var(--s300)')}"></span>` : '';
+    markup = html`${markup}${html`<div data-stil="margin-bottom:1.5rem"><div data-stil="font-weight:700;font-size:var(--fs-4);padding:6px 0;border-bottom:2px solid var(--b200);margin-bottom:.5rem;color:var(--b700)">${colorDot}${grp.color_name} <span data-stil="font-weight:400;color:var(--mut);font-size:var(--fs-3)">${tRaw('pl.types', {n:grp.parts.length})}</span></div><div>`}`;
+      markup = html`${markup}${html`<div data-stil="display:flex;align-items:center;gap:10px;padding:3px 4px;font-size:var(--fs-0);font-weight:700;color:var(--mut);text-transform:uppercase;letter-spacing:.4px;border-bottom:1.5px solid var(--b200)"><span data-stil="width:44px;flex-shrink:0"></span><span data-stil="min-width:65px;flex-shrink:0">${tRaw('col.nr')}</span><span data-stil="flex:1">${tRaw('pl.col_name')}</span><span data-stil="width:70px;text-align:right;flex-shrink:0">${tRaw('pl.col_needed')}</span><span data-stil="width:70px;padding-left:6px;flex-shrink:0">${tRaw('pl.col_have')}</span></div>`}`;
     for (const p of grp.parts.sort((a,b) => (a.bl_part_number||a.part_number).localeCompare(b.bl_part_number||b.part_number, undefined, { numeric: true }))) {
       totalParts += p.quantity;
       // Build image source: prefer local cached file, then stored URL, then Rebrickable CDN
       const imgSrc = p.image_url || '';
       const img = imgSrc
         ? bildTag({ src: imgUrl(thumbUrl(imgSrc)||imgSrc, true), alt: '', klasse: 'bild-44', ph: 'teil' })
-        : `<span class="bild-ph bild-44" aria-hidden="true">${platzhalterInhalt('teil')}</span>`;
-      const pkey = `${esc(p.part_number)}__${p.color_id||0}`;
+        : html`<span class="bild-ph bild-44" aria-hidden="true">${platzhalterInhalt('teil')}</span>`;
+      const pkey = `${p.part_number}__${p.color_id||0}`;
       // Kein Rückfall auf die Rebrickable-Farbnummer: Das ergäbe eine gültige Datei mit der falschen Farbe.
       // Leer heisst unbekannt; plExportBricklink lässt solche Posten weg und nennt sie.
       // Ausführlich: docs/begruendungen/public/js/08-init.js.md#blcolorid
       const blColorId = p.bl_color_id ?? _rbToBlColor[p.color_id] ?? '';
-      markup += `<div data-stil="display:flex;align-items:center;gap:10px;padding:5px 4px;border-bottom:1px solid var(--bdr)">${img}<span data-stil="font-family:monospace;font-size:var(--fs-2);color:var(--b600);min-width:65px;flex-shrink:0" title="Rebrickable: ${esc(p.part_number)}">${esc(p.bl_part_number||p.part_number)}</span><span data-stil="flex:1;font-size:var(--fs-3)">${esc(p.part_name)}</span><span data-stil="font-weight:700;font-size:var(--fs-3);width:70px;text-align:right;flex-shrink:0">×${p.quantity.toLocaleString(locale())}</span><span data-stil="width:70px;flex-shrink:0;padding-left:6px"><input inputmode="numeric" type="number" min="0" value="0" data-key="${pkey}" data-need="${p.quantity}" data-part="${esc(p.bl_part_number||p.part_number)}" data-color="${blColorId}" data-rb-color="${p.color_id||0}" data-color-name="${esc(p.color_name||'')}" data-type="${(p.bl_part_number||p.part_number||'P').startsWith('fig-')?'M':'P'}" class="pl-have-input" aria-label="${esc(tRaw('pl.col_have'))}: ${esc(p.bl_part_number||p.part_number)} ${esc(p.color_name||'')}" data-stil="width:58px;height:28px;border:1px solid var(--feldrand);border-radius:5px;padding:0 6px;font-size:var(--fs-2);text-align:center" /></span></div>`;
+      markup = html`${markup}${html`<div data-stil="display:flex;align-items:center;gap:10px;padding:5px 4px;border-bottom:1px solid var(--bdr)">${img}<span data-stil="font-family:monospace;font-size:var(--fs-2);color:var(--b600);min-width:65px;flex-shrink:0" title="Rebrickable: ${p.part_number}">${p.bl_part_number||p.part_number}</span><span data-stil="flex:1;font-size:var(--fs-3)">${p.part_name}</span><span data-stil="font-weight:700;font-size:var(--fs-3);width:70px;text-align:right;flex-shrink:0">×${ungeprueft(p.quantity.toLocaleString(locale()))}</span><span data-stil="width:70px;flex-shrink:0;padding-left:6px"><input inputmode="numeric" type="number" min="0" value="0" data-key="${pkey}" data-need="${p.quantity}" data-part="${p.bl_part_number||p.part_number}" data-color="${blColorId}" data-rb-color="${p.color_id || 0}" data-color-name="${p.color_name||''}" data-type="${(p.bl_part_number||p.part_number||'P').startsWith('fig-') ? 'M' : 'P'}" class="pl-have-input" aria-label="${tRaw('pl.col_have')}: ${p.bl_part_number||p.part_number} ${p.color_name||''}" data-stil="width:58px;height:28px;border:1px solid var(--feldrand);border-radius:5px;padding:0 6px;font-size:var(--fs-2);text-align:center" /></span></div>`}`;
     }
-    markup += '</div></div>';
+    markup = html`${markup}</div></div>`;
   }
   // Summary shown in status bar above table
-  G('pl-result').innerHTML = markup;
+  setzeHtml(G('pl-result'), markup);
 }
 
 async function plExportPdf() {
@@ -584,7 +584,7 @@ async function plExportBricklink() {
 
 function plReset() {
   _plSets = []; _plParts = null;
-  G('pl-result').innerHTML = '';
+  G('pl-result').replaceChildren();
   G('pl-status').textContent = '';
   plExportStand();
   plRenderSets();

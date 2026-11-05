@@ -83,7 +83,7 @@ export function escHtmlAttr(v) {
     .replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }
 
-/** Fertiges Markup: aus html`` oder roh(). Nur so nimmt setzeHtml() (01-dom.js) Text als Markup an. */
+/** Fertiges Markup: aus html`` oder ungeprueft(). Nur so nimmt setzeHtml() (01-dom.js) Text als Markup an. */
 export class SicheresHtml {
   /** Macht die Klasse für tsc nominal: ein Objekt mit `text` ist noch kein SicheresHtml. */
   #marke = true;
@@ -92,11 +92,10 @@ export class SicheresHtml {
   toString() { return this.text; }
 }
 
-/** @typedef {SicheresHtml | string | number | boolean | null | undefined | Einsetzbar[]} Einsetzbar */
 /** Was setzeHtml() annimmt: fertiges Markup, Listen davon oder nichts — keine Zeichenkette mit Daten.
  * @typedef {SicheresHtml | Markup[] | '' | false | null | undefined} Markup */
 
-/** Der Text eines Werts für Markup: SicheresHtml unverändert, alles andere maskiert. @param {Einsetzbar} wert @returns {string} */
+/** Der Text eines Werts für Markup: SicheresHtml unverändert, alles andere maskiert. @param {unknown} wert @returns {string} */
 export function einsetzen(wert) {
   if (wert instanceof SicheresHtml) return wert.text;
   if (Array.isArray(wert)) return wert.map(einsetzen).join('');
@@ -106,10 +105,10 @@ export function einsetzen(wert) {
 
 /**
  * Vorlage für Markup, die jeden eingesetzten Wert maskiert. Durch kommen nur Stücke, die selbst aus
- * html`` stammen (oder roh()); Listen werden aneinandergehängt, null/undefined/false fallen weg. Ein
+ * html`` stammen (oder ungeprueft()); Listen werden aneinandergehängt, null/undefined/false fallen weg. Ein
  * vergessenes esc() ist damit kein XSS mehr, sondern sichtbarer Text.
  * @param {TemplateStringsArray} teile
- * @param {...Einsetzbar} werte
+ * @param {...unknown} werte
  */
 export function html(teile, ...werte) {
   let s = teile[0] ?? '';
@@ -122,4 +121,4 @@ export function html(teile, ...werte) {
  * test/ratschen.test.js; neue Vorlagen nehmen html``.
  * @param {unknown} text
  */
-export function roh(text) { return new SicheresHtml(String(text ?? '')); }
+export function ungeprueft(text) { return new SicheresHtml(String(text ?? '')); }

@@ -4,13 +4,13 @@ import { registerActions } from './00-registry.js';
 import { locale, t, tRaw} from '../i18n.js';
 import { fehlerMeldung, api } from './01-api.js';
 import { bildTag, platzhalterInhalt, fullUrl, imgUrl, thumbUrl } from './01-bilder.js';
-import { leerZustand, ico, G, zuruecksetzenKnopf, alle, eins } from './01-dom.js';
+import { leerZustand, ico, G, zuruecksetzenKnopf, alle, eins, setzeHtml, fuegeHtmlEin } from './01-dom.js';
 import { betragAusFeld } from './01-formular.js';
 import { toast } from './01-meldungen.js';
 import { setScrollLabel } from './15-scrollbar.js';
 import { loadGallery, loadStats } from './02-gallery.js';
 import { _lastImportAt, set_lastImportAt, ME, _settingsCache } from './00-zustand.js';
-import { esc } from './00-escapen.js';
+import { esc, html, ungeprueft } from './00-escapen.js';
 import { handleSseEvent, hideProgress, showProgress, streamFertig, streamRequest } from './01-fortschritt.js';
 import { leereLagerortFeld, selectedOwner, selectedStorage } from './02-konten-orte.js';
 
@@ -95,17 +95,16 @@ async function loadCatalogMeta(){
   // Themen-Dropdown: Pfadnamen ("Star Wars › UCS") mit Set-Zahl
   const themeEl = G('cat-theme');
   const cur = themeEl.value;
-  themeEl.innerHTML = `<option value="">${t('catalog.filter.all_themes')}</option>` +
-    (d.themes||[]).map(th=>`<option value="${th.id}"${String(th.id)===cur?' selected':''}>${esc(th.name)} (${th.set_count})</option>`).join('');
+  setzeHtml(themeEl, html`${html`<option value="">${tRaw('catalog.filter.all_themes')}</option>`}${(d.themes||[]).map(th=>html`<option value="${th.id}"${String(th.id)===cur ? ' selected' : ''}>${th.name} (${th.set_count})</option>`)}`);
   // Jahr-Dropdowns (Von/Bis): absteigend von max bis min
   const { year_min: von, year_max: bis } = d;
   if (von && bis) {
     const mk = (/** @type {HTMLElement | null} */ el, /** @type {string} */ placeholderKey, /** @type {string} */ cur)=>{
-      let opts = `<option value="">${t(placeholderKey)}</option>`;
+      let opts = html`<option value="">${tRaw(placeholderKey)}</option>`;
       for (let y = bis; y >= von; y--) {
-        opts += `<option value="${y}"${String(y)===cur?' selected':''}>${y}</option>`;
+        opts = html`${opts}${html`<option value="${y}"${String(y)===cur ? ' selected' : ''}>${y}</option>`}`;
       }
-      if (el) el.innerHTML = opts;
+      if (el) setzeHtml(el, opts);
     };
     mk(G('cat-year-from'), 'catalog.filter.year_from', _catState.yearFrom);
     mk(G('cat-year-to'),   'catalog.filter.year_to',   _catState.yearTo);
@@ -173,7 +172,7 @@ async function loadCatalogSets(){
   _catLoadedPages = new Set();
   _catLoadingPages = new Set();
   const grid = G('catalog-grid');
-  grid.innerHTML = ladeAnzeige(t('catalog.loading'));
+  setzeHtml(grid, ladeAnzeige(t('catalog.loading')));
   _catState.page = 1;
   const d = await api('GET', `/v1/catalog/sets?${_catQuery(1)}`);
   if (gen !== _catGen) return;   // inzwischen neuer Filter — Antwort verwerfen
@@ -194,8 +193,8 @@ async function loadCatalogSets(){
       : !ME?.isAdmin ? undefined
       : ohneSchluessel ? { text: tRaw('rb_key.banner_link'), click: 'rbHinweisOeffnen', ico: 'schluessel' }
       : { text: tRaw('catalog.zum_abgleich'), click: 'oeffneReiter', arg: 'monitor', ico: 'aktualisieren' };
-    grid.innerHTML = leerZustand({ ico: gefiltert ? 'suche' : 'katalog', titel: tRaw(gefiltert ? 'catalog.no_results' : 'catalog.leer_titel'),
-      text: tRaw(leerText), knopf: leerKnopf });
+    setzeHtml(grid, leerZustand({ ico: gefiltert ? 'suche' : 'katalog', titel: tRaw(gefiltert ? 'catalog.no_results' : 'catalog.leer_titel'),
+      text: tRaw(leerText), knopf: leerKnopf }));
     setScrollLabel(null);
     return;
   }
@@ -205,13 +204,13 @@ async function loadCatalogSets(){
   for (let seite = 1; seite <= _catPageCount; seite++) {
     const anzahl = (seite === _catPageCount) ? (_catTotal - (seite - 1) * CAT_LIMIT) : CAT_LIMIT;
     markup += seite === 1
-      ? `<div class="sgrid cat-page" data-page="1">${_catItems.map(catCard).join('')}</div>`
+      ? html`<div class="sgrid cat-page" data-page="1">${ungeprueft(_catItems.map(catCard).join(''))}</div>`
       // Ungeladene Seiten sind EIN leerer Block statt 60 Platzhalterkacheln: Bei 25 000 Sets wären das 25
       // 000 Elemente. Die Höhe kommt aus der gemessenen ersten Seite, weil die Spaltenzahl am Fenster hängt.
       // Ausführlich: docs/begruendungen/public/js/09-catalog.js.md#ungeladene-seiten-sind-ein-leerer-block
-      : `<div class="cat-page cat-page-ph" data-page="${seite}" data-anzahl="${anzahl}"></div>`;
+      : html`<div class="cat-page cat-page-ph" data-page="${seite}" data-anzahl="${anzahl}"></div>`;
   }
-  grid.innerHTML = markup;
+  setzeHtml(grid, ungeprueft(markup));
   _catLoadedPages.add(1);
   _ladeJahrVerteilung();
   _setzePlatzhalterHoehe();
@@ -335,7 +334,7 @@ export async function ladeSeite(seite){
     block.classList.add('sgrid');
     block.style.height = '';
     block.removeAttribute('data-anzahl');
-    block.innerHTML = d.sets.map(catCard).join('');
+    setzeHtml(block, ungeprueft(d.sets.map(catCard).join('')));
     _catLoadedPages.add(seite);
     _catItems = _catItems.concat(d.sets);
     // Die Blockhöhen haben sich geändert — neu messen, dann nachsehen, was
@@ -355,10 +354,10 @@ function catCard(s){
   const src = s.image_local || s.image_url;
   const img = src
     ? bildTag({ src: imgUrl(thumbUrl(src), 'nur'), alt: '', fade: true, ph: 'set' })
-    : `<span class="bild-ph" aria-hidden="true">${platzhalterInhalt('set')}</span>`;
+    : html`<span class="bild-ph" aria-hidden="true">${platzhalterInhalt('set')}</span>`;
   const themeShort = s.theme_name ? s.theme_name.split(' › ').pop() : '';
   const ownedBadge = s.owned
-    ? `<span class="ibadge besitz-badge">${ico('ok')}${t('catalog.owned_badge')}${s.owned_quantity>1?' ×'+s.owned_quantity:''}</span>`
+    ? html`<span class="ibadge besitz-badge">${ico('ok')}${tRaw('catalog.owned_badge')}${s.owned_quantity>1 ? html`${' ×'}${s.owned_quantity}` : ''}</span>`
     : '';
   // Der Thementon fuer das Design "farbfaecher" (themes/farbfaecher.css liest
   // ihn als --faecher-ton). Immer gesetzt, nicht nur bei aktivem Design: Die
@@ -368,15 +367,15 @@ function catCard(s){
   const thema = s.theme_id;
   const ton = thema != null && Number.isInteger(thema)
     ? ` data-faecher="${((thema % 12) + 12) % 12}"` : '';
-  return `<div class="sc"${ton} tabindex="0" role="button" data-sn="${esc(s.set_number)}" data-year="${s.year||''}" data-click="openCatModal" data-arg="${esc(s.set_number)}">
+  return html`<div class="sc"${ungeprueft(ton)} tabindex="0" role="button" data-sn="${s.set_number}" data-year="${s.year || ''}" data-click="openCatModal" data-arg="${s.set_number}">
     <div class="sci">${img}</div>
     <div class="scb">
-      <div class="snum">${esc(s.set_number)}</div>
-      <div class="sname">${esc(s.name)||'—'}</div>
+      <div class="snum">${s.set_number}</div>
+      <div class="sname">${s.name || '—'}</div>
       <div class="smeta">
-        <span class="smeta-text"${themeShort ? ` title="${esc(themeShort)}"` : ''}>${s.year||'—'}${themeShort?' · '+esc(themeShort):''}</span>
+        <span class="smeta-text"${themeShort ? html` title="${themeShort}"` : ''}>${s.year || '—'}${themeShort ? html`${' · '}${themeShort}` : ''}</span>
         <div class="splaketten">
-          ${s.num_parts?`<span class="teile-zahl">${t('catalog.pieces_n', { n: s.num_parts.toLocaleString(locale()) })}</span>`:''}
+          ${s.num_parts ? html`<span class="teile-zahl">${tRaw('catalog.pieces_n', { n: s.num_parts.toLocaleString(locale()) })}</span>` : ''}
           ${ownedBadge}
         </div>
       </div>
@@ -409,7 +408,7 @@ async function openCatModal(setNumber){
     [t('detail.minifigs'), s.minifigs || '—'],
   ];
   if (s.owned) rows.push([t('catalog.owned'), '×' + s.owned_quantity]);
-  G('cat-m-det').innerHTML = rows.map(([k, v]) => detailZeile(k, esc(String(v)))).join('');
+  setzeHtml(G('cat-m-det'), rows.map(([k, v]) => detailZeile(k, esc(String(v)))));
   // Der Kauf-Link kommt fertig vom Server (bricklinkLink.ts): Aus der Rebrickable-Nummer gebaut, war er
   // für Gear, Bücher und Sammelfiguren falsch. Ist der Artikel nicht eindeutig, zeigt er auf die Suche —
   // nie ausblenden.
@@ -488,7 +487,7 @@ function _patchCatalogOwned(setNumber, qty){
   it.owned = true;
   it.owned_quantity = (parseInt(String(it.owned_quantity)) || 0) + (qty || 1);
   const el = document.querySelector(`#catalog-grid .sc[data-sn="${(window.CSS && CSS.escape) ? CSS.escape(setNumber) : setNumber}"]`);
-  if (el) el.outerHTML = catCard(it);
+  if (el) { fuegeHtmlEin(el, 'afterend', catCard(it)); el.remove(); }
 }
 
 

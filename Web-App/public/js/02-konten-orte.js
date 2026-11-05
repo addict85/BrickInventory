@@ -2,11 +2,11 @@
 // Lagerortfelder der Erfassungswege. Eine gemeinsame Quelle, damit alle
 // Formulare dieselbe Liste zeigen.
 import { api } from './01-api.js';
-import { G } from './01-dom.js';
+import { G, setzeHtml } from './01-dom.js';
 import { SCOPE_VIEWS, scopeMode, setScopeMode } from './14-scope.js';
 import { ladeLagerorte, lagerortBlock } from './02-detailfelder.js';
 import { tRaw } from '../i18n.js';
-import { esc } from './00-escapen.js';
+import { html, ungeprueft } from './00-escapen.js';
 import { abonniere } from './00-ereignisse.js';
 /** @typedef {import('../../frontend-typen/vertrag').HouseholdMember} HouseholdMember */
 
@@ -25,16 +25,16 @@ export function initScopeSelects(members) {
   // Ausführlich: docs/begruendungen/public/js/02-konten-orte.js.md#subs
   const subs = members.filter(m => !m.is_self);
   const opts = [
-    `<option value="all">${esc(tRaw('household.scope_all'))}</option>`,
-    `<option value="own">${esc(tRaw('household.scope_own'))}</option>`,
-    ...subs.map(m => `<option value="${m.id}">${esc(m.username)}</option>`),
+    html`<option value="all">${tRaw('household.scope_all')}</option>`,
+    html`<option value="own">${tRaw('household.scope_own')}</option>`,
+    ...subs.map(m => html`<option value="${m.id}">${m.username}</option>`),
   ].join('');
 
   for (const view of SCOPE_VIEWS) {
     const el = G('scope-' + view);
     if (!el) continue;
     if (!isMain) { el.style.display = 'none'; continue; }
-    el.innerHTML = opts;
+    setzeHtml(el, ungeprueft(opts));
     // Gespeicherte Wahl kann auf ein inzwischen entkoppeltes Konto zeigen —
     // dann auf „Alle" zurückfallen statt eine leere Auswahl zu zeigen.
     const saved = scopeMode(view);
@@ -101,14 +101,14 @@ export async function loadHouseholdMembers() {
  */
 function zeichneKontoauswahl(members) {
   const markup = members.map(m =>
-    `<option value="${m.id}"${m.is_self ? ' selected' : ''}>${esc(m.username)}${m.is_self ? ' ' + esc(tRaw('household.ich')) : ''}</option>`
+    html`<option value="${m.id}"${m.is_self ? ' selected' : ''}>${m.username}${m.is_self ? html`${' '}${tRaw('household.ich')}` : ''}</option>`
   ).join('');
   for (const id of ['add-owner', 'ap-owner', 'af-owner', 'cat-m-owner', 'mk-owner']) {
     const box = G(`${id}-box`), sel = G(id);
     if (!box || !sel) continue;
     if (members.length < 2) { box.style.display = 'none'; continue; }
     const vorher = sel.value;
-    sel.innerHTML = markup;
+    setzeHtml(sel, ungeprueft(markup));
     if (vorher && [...sel.querySelectorAll('option')].some(o => o.value === vorher)) sel.value = vorher;
     box.style.display = '';
   }
@@ -149,7 +149,7 @@ let _ortVorgabe = '';
 function zeichneOrtFeld(id, wert) {
   const slot = G(`${id}-slot`);
   if (!slot) return;
-  slot.innerHTML = lagerortBlock(id, wert);
+  setzeHtml(slot, lagerortBlock(id, wert));
   // Die sichtbare Beschriftung steht im HTML, die beiden Bedienelemente
   // entstehen hier — ein `for=` darauf waere im Quelltext ein Verweis ins
   // Leere (test/a11y.test.js meldet genau das, zu Recht). aria-labelledby

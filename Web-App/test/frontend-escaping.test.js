@@ -64,7 +64,7 @@ test('escHex() akzeptiert ausschliesslich 6 Hex-Ziffern', async () => {
 });
 
 // ── Statische Sink-Prüfung ──────────────────────────────────────────────────
-const SAFE = /^\s*(esc|escJs|escUrl|escHex|escHtml|encodeURIComponent|t)\s*\(/;
+const SAFE = /^\s*(esc|escJs|escUrl|sichereUrl|escHex|escHtml|encodeURIComponent|t)\s*\(/;
 const DATA_FIELD = /(set_number|part_number|bl_part_number|fig_number|bl_fig_number|part_name|fig_name|color_name|category_name|image_url|image_local|note|username|theme|last_error)\b/;
 
 function interpolations(attrValue) {
@@ -75,7 +75,7 @@ test('kein src/href/data-orig mit ungeprüfter URL', () => {
   const bad = [];
   for (const f of FILES) {
     const src = fs.readFileSync(path.join(JS_DIR, f), 'utf8');
-    for (const m of src.matchAll(/\b(src|href|data-orig)="([^"]*\$\{[^"]*)"/g)) {
+    for (const m of src.matchAll(/\b(src|href|data-orig)="([^"#]*\$\{[^"]*)"/g)) {
       for (const expr of interpolations(m[2])) {
         if (!SAFE.test(expr)) bad.push(`${f}: ${m[1]}="…\${${expr}}…"`);
       }
@@ -169,10 +169,15 @@ test('serverseitige Fehlermeldungen laufen im HTML-Kontext durch esc()', () => {
   const FELD = /\w+\.(?:error|message)\b/g;
   for (const f of FILES) {
     const src = fs.readFileSync(path.join(JS_DIR, f), 'utf8');
+    let ab = 0;
     src.split('\n').forEach((line, i) => {
+      const zeileAb = ab; ab += line.length + 1;
       if (/^\s*(\/\/|\*)/.test(line)) return;
       if (!/<\w/.test(line)) return;                       // kein HTML-Kontext
       for (const m of line.matchAll(/\$\{([^}]*)\}/g)) {
+        // In html`` maskiert die Vorlage selbst — ausser der Wert geht durch ungeprueft().
+        const vor = src.lastIndexOf('`', zeileAb + (m.index ?? 0));
+        if (src.slice(vor - 4, vor) === 'html' && !/ungeprueft\(/.test(m[1])) continue;
         // Zeichenkettenliterale entfernen, damit Übersetzungsschlüssel
         // ('…error') nicht als Datenfeld gelten.
         const ausdruck = m[1].replace(/'[^']*'|"[^"]*"|`[^`]*`/g, "''");

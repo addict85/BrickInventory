@@ -75,7 +75,7 @@ function gestell(dom, zielId) {
   return {
     document: d,
     G: (id) => d.getElementById(id),
-    esc: (s) => String(s ?? ''),
+    ...require('./helpers/markup').markupHelfer(),
     echt: () => '',
     t:    (k, v) => k + (v ? ' ' + JSON.stringify(v) : ''),
     tRaw: (k) => k,
@@ -151,7 +151,7 @@ test('die Lagerorte stehen wie in einer Tabelle', () => {
   const sandbox = {
     document: d,
     G: (id) => d.getElementById(id),
-    esc: (s) => String(s ?? ''),
+    ...require('./helpers/markup').markupHelfer(),
     echt: () => '',
     ico: (n) => `<svg class="ico"><use href="#i-${n}"/></svg>`,
     t: (k, v) => k + ' ' + JSON.stringify(v || {}),

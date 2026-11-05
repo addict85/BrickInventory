@@ -331,7 +331,7 @@ test('die Finanz-Ansicht zeigt avg_price als Marktpreis', () => {
     'Die Total-Spalte muss über avg_price laufen, nicht über qty_avg');
   assert.match(fin, /parseFloat\(d\.totals\.avg\|\|'?0'?\)/,
     'Die Summen sind als „Ø Marktpreis" beschriftet und müssen totals.avg nehmen');
-  assert.match(fin, /parseFloat\(it\.avg_price \?\? it\.qty_avg_price \?\? 0\)/,
+  assert.match(fin, /(?:parseFloat|Number)\(it\.avg_price \?\? it\.qty_avg_price \?\? 0\)/,
     'Teile- und Minifiguren-Zeilen: avg_price zuerst');
   assert.doesNotMatch(fin, /parseFloat\(d\.totals\.qty_avg/,
     'Keine Summe darf mehr auf qty_avg basieren');
@@ -350,7 +350,7 @@ test('Finanzen: Kaufpreis statt zweiter Marktpreis-Spalte', () => {
   assert.doesNotMatch(fin, /t\('finance\.qty_avg'\)/,
     'Die mengengewichtete Spalte ist entfallen');
   // Einstand (Menge × Kaufpreis) vor Marktpreis, für alle drei Tabellen gleich.
-  assert.match(fin, /<th[^>]*>(?:<abbr[^>]*>)?\$\{t\('finance\.col\.purchase'\)\}(?:<\/abbr>)?<\/th>`\s*\+ `<th[^>]*>\$\{t\('detail\.market_price'\)\}/,
+  assert.match(fin, /<th[^>]*>(?:<abbr[^>]*>)?\$\{t(?:Raw)?\('finance\.col\.purchase'\)\}(?:<\/abbr>)?<\/th>`(?:\s*\+ `|\}\$\{html`)<th[^>]*>\$\{t(?:Raw)?\('detail\.market_price'\)\}/,
     'Sets-Tabelle: Kaufpreis vor Marktpreis, wie bei Teilen und Minifiguren');
   // fmtGeld statt fmtN: Ein Kaufpreis von 0 (Geschenk) steht als „0,00 €“ da.
   assert.match(fin, /if \(n <= 1\) return fmtGeld\(p, cur\);/,

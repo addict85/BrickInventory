@@ -1,10 +1,10 @@
 import { vergissManItem } from './13-acquisition-modals.js';
 import { detailZeile, ladeAnzeige } from './01-bausteine.js';
 import { colorName, locale, t, tRaw } from '../i18n.js';
-import { escHex, escJs, esc } from './00-escapen.js';
+import { escHex, escJs, esc, html, ungeprueft } from './00-escapen.js';
 import { api } from './01-api.js';
 import { bildTag, platzhalterInhalt, fullUrl, imgUrl, thumbUrl } from './01-bilder.js';
-import { ico, G } from './01-dom.js';
+import { ico, G, setzeHtml } from './01-dom.js';
 import { toast } from './01-meldungen.js';
 import { scopeQuery } from './14-scope.js';
 import { ladeLagerorte, lagerortBlock, ladeOrtAuswahl } from './02-detailfelder.js';
@@ -24,18 +24,18 @@ function verwendetInListe(sets) {
     const klein = thumbUrl(s.image_local || s.image_url) || s.image_local || s.image_url || '';
     return klein
       ? bildTag({ src: imgUrl(klein, true), orig: imgUrl(s.image_url || ''), alt: '', klasse: 'bild-34', ph: 'set' })
-      : `<span class="bild-ph bild-34" aria-hidden="true">${platzhalterInhalt('set')}</span>`;
+      : html`<span class="bild-ph bild-34" aria-hidden="true">${platzhalterInhalt('set')}</span>`;
   };
   return sets.length
-    ? `<table data-stil="width:100%;border-collapse:collapse"><tbody>${sets.map(s => `
-        <tr tabindex="0" data-click="openSetAusItem" data-arg="${escJs(s.set_number)}"
-            title="${esc(t('setitem.open_set'))}" data-stil="cursor:pointer">
+    ? html`<table data-stil="width:100%;border-collapse:collapse"><tbody>${sets.map(s => html`
+        <tr tabindex="0" data-click="openSetAusItem" data-arg="${s.set_number}"
+            title="${t('setitem.open_set')}" data-stil="cursor:pointer">
           <td data-stil="width:34px;padding:4px 8px 4px 0">${setBild(s)}</td>
-          <td data-stil="width:1%;white-space:nowrap;padding:4px 10px 4px 0;font-family:var(--mono);font-size:var(--fs-1);color:var(--b600)">${esc(s.set_number)}</td>
-          <td data-stil="padding:4px 0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:0">${esc(s.set_name || '')}</td>
-          <td data-stil="width:1%;white-space:nowrap;padding:4px 0 4px 10px;text-align:right;color:var(--mut);font-size:var(--fs-1)">×${(s.quantity || 0).toLocaleString(locale())}</td>
-        </tr>`).join('')}</tbody></table>`
-    : `<span data-stil="color:var(--mut);font-size:var(--fs-2)">${esc(t('setitem.used_in_none'))}</span>`;
+          <td data-stil="width:1%;white-space:nowrap;padding:4px 10px 4px 0;font-family:var(--mono);font-size:var(--fs-1);color:var(--b600)">${s.set_number}</td>
+          <td data-stil="padding:4px 0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:0">${s.set_name || ''}</td>
+          <td data-stil="width:1%;white-space:nowrap;padding:4px 0 4px 10px;text-align:right;color:var(--mut);font-size:var(--fs-1)">×${ungeprueft((s.quantity || 0).toLocaleString(locale()))}</td>
+        </tr>`)}</tbody></table>`
+    : html`<span data-stil="color:var(--mut);font-size:var(--fs-2)">${t('setitem.used_in_none')}</span>`;
 }
 
 /**
@@ -53,7 +53,7 @@ export async function openSetItemDetail(type, id, colorId) {
   G('setitem-tit').textContent = id;
   G('setitem-sub').textContent = '';
   imgEl.style.display = 'none';
-  bodyEl.innerHTML = ladeAnzeige('', { stil: 'padding:1rem' });
+  setzeHtml(bodyEl, ladeAnzeige('', { stil: 'padding:1rem' }));
   modal.classList.add('open');
 
   // Blickfeld mitgeben wie überall: Im Haushalt gehört das Set des Geschwisterkontos dazu. scopeQuery()
@@ -92,11 +92,11 @@ export async function openSetItemDetail(type, id, colorId) {
   // Teilekachel — fmtN() ist der Geldformatierer und machte aus 6 „EUR 6.00×“.
   // Ausführlich: docs/begruendungen/public/js/13-set-teile.js.md#anzahl-nur-anzeige-marcos-vorgabe-eine-m
   zeilen.push(detailZeile(t('setitem.total_qty'),
-    `<span data-stil="font-family:var(--mono);font-weight:600">×${(item?.total_quantity || 0).toLocaleString(locale())}</span>`));
+    html`<span data-stil="font-family:var(--mono);font-weight:600">×${String((item?.total_quantity || 0).toLocaleString(locale()) ?? '')}</span>`));
 
   if (type === 'part' && item?.color_name) {
     const punkt = item.color_hex
-      ? `<span data-stil="display:inline-block;width:12px;height:12px;border-radius:50%;border:1px solid rgba(0,0,0,.15);margin-right:4px;vertical-align:middle" data-farbe="${escHex(item.color_hex, 'var(--s300)')}"></span>`
+      ? html`<span data-stil="display:inline-block;width:12px;height:12px;border-radius:50%;border:1px solid rgba(0,0,0,.15);margin-right:4px;vertical-align:middle" data-farbe="${escHex(item.color_hex, 'var(--s300)')}"></span>`
       : '';
     zeilen.push(detailZeile(t('parts.color_label'), `${punkt}${esc(colorName(item.color_name))}`));
   }
@@ -126,7 +126,7 @@ export async function openSetItemDetail(type, id, colorId) {
     { zeilenStil: 'flex-direction:column;align-items:stretch;gap:4px',
       wertStil: 'flex-direction:column;align-items:stretch;gap:0;min-width:0' }));
 
-  bodyEl.innerHTML = zeilen.join('');
+  setzeHtml(bodyEl, ungeprueft(zeilen.join('')));
 }
 
 /**

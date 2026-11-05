@@ -4,7 +4,7 @@ import { stelleZielBereit } from './00-ziele.js';
 import { echt, registerActions } from './00-registry.js';
 import { I18N, LANG, applyLang, locale, t, tRaw } from '../i18n.js';
 import { fehlerMeldung, api } from './01-api.js';
-import { ico, G, knopfBesetzt } from './01-dom.js';
+import { ico, G, knopfBesetzt, setzeHtml } from './01-dom.js';
 import { antwortFehler, feldFehler, passwortRegelText } from './01-formular.js';
 import { _updateLangSelect, applyTheme, initDefaultCondition, zeigeBenutzernamen } from './01-konto.js';
 import { toast } from './01-meldungen.js';
@@ -14,7 +14,7 @@ import { loadMinifigs } from './06-minifigs.js';
 import { meldeAbschnitt } from './24-router.js';
 import { verstaendlicherGrund } from './01-bausteine.js';
 import { CURRENCY, ME, _settingsCache, set_CURRENCY, set_settingsCache } from './00-zustand.js';
-import { esc } from './00-escapen.js';
+import { html, sichereUrl, ungeprueft } from './00-escapen.js';
 import { confirmDelete, bestaetigeMitPasswort, mitZweitemFaktor, mitPasswortBestaetigen, speichereEinstellungen } from './01-rueckfrage.js';
 import { loadFinance } from './04-finance.js';
 import { LAND_ZUR_WAEHRUNG } from './17-gutscheine.js';
@@ -208,7 +208,7 @@ async function generateQrCode() {
       // sichtbarer Code neben einer Fehlermeldung sieht aus wie ein Code, der
       // trotzdem geht. Beim Ablaufzaehler weiter unten wird aus demselben
       // Grund geleert.
-      container.innerHTML = '';
+      container.replaceChildren();
       frei(); return;
     }
     // Nur die Adresse, die der Server nennt (APP_BASE_URL): Die in der Browserzeile ist die des
@@ -221,7 +221,7 @@ async function generateQrCode() {
     // der Server schickt ihn nur zu einer https-Adresse.
     const qrData = JSON.stringify({ url: serverUrl, token: d.token, ...(d.fp ? { fp: d.fp } : {}) });
     // Clear and render QR code
-    container.innerHTML = '';
+    container.replaceChildren();
     if (typeof QRCode !== 'undefined') {
       new QRCode(container, {
         text: qrData,
@@ -244,7 +244,7 @@ async function generateQrCode() {
     const timer = setInterval(() => {
       secs--;
       hint.textContent = tRaw('qr.valid_for',{t:fmt(secs)});
-      if (secs <= 0) { clearInterval(timer); hint.textContent = tRaw('qr.expired'); container.innerHTML=''; }
+      if (secs <= 0) { clearInterval(timer); hint.textContent = tRaw('qr.expired'); container.replaceChildren(); }
     }, 1000);
     hint.textContent = tRaw('qr.valid_for',{t:fmt(secs)});
     // Die Laufzeit aus der Serverantwort, nicht aus der Auswahl: Kennt er den Wert nicht, gilt die
@@ -287,27 +287,20 @@ export async function loadTokens() {
   const ziel = G('tokens-tbl');
   if (!ziel) return;
   const d = await api('GET', '/v1/settings/tokens');
-  if (!d.success) { ziel.innerHTML = `<p data-stil="color:var(--mut)">${esc(d.error || t('settings.error'))}</p>`; return; }
-  if (!d.tokens.length) { ziel.innerHTML = `<p data-stil="color:var(--mut)">${t('tokens.none')}</p>`; return; }
-  ziel.innerHTML = `<div class="tw"><table class="dt"><thead><tr>
-      <th>${t('tokens.col.label')}</th><th>${t('tokens.col.created')}</th>
-      <th>${t('tokens.col.last_used')}</th><th>${t('tokens.col.scope')}</th><th>${t('tokens.col.ip')}</th>
-      <th>${t('tokens.col.expires')}</th><th>${t('users.col.actions')}</th></tr></thead><tbody>${
-    d.tokens.map(tk => `<tr>
-      <td><strong>${esc(tk.label || '—')}</strong>${tk.aktuell ? ` <span class="rb ra">${t('tokens.current')}</span>` : ''}</td>
-      <td>${tokenDatum(tk.created_at)}</td>
-      <td>${tokenDatum(tk.last_used)}</td>
-      <td>${tk.scope === 'voll' ? t('tokens.scope.voll') : t('tokens.scope.app')}</td>
-      <td>${esc(tk.ip_bereich || '—')}</td>
-      <td>${tk.never_expires ? t('tokens.never') : tokenDatum(tk.expires_at)}${
-        // Plakette „fest": Ohne sie stuenden beide Fristen als dasselbe Datum
-        // da, und sie bedeuten Verschiedenes. Die gleitende rueckt bei jeder
-        // Benutzung nach; die feste, die beim QR-Code gewaehlt wurde, nicht.
-        tk.hard_expires_at ? ` <span class="rb ra" title="${esc(tokenDatum(tk.hard_expires_at))}">${t('tokens.fixed')}</span>` : ''}</td>
-      <td>${tk.aktuell ? '' :
-        `<button class="btn bd btn-sm" data-click="revokeToken"${echt()} data-arg="${esc(tk.token_id)}" data-arg2="${esc(tk.label || '')}" aria-label="${esc(tRaw('common.delete'))}">${ico('loeschen')}</button>`}</td>
-    </tr>`).join('')
-  }</tbody></table></div>`;
+  if (!d.success) { setzeHtml(ziel, html`<p data-stil="color:var(--mut)">${d.error || t('settings.error')}</p>`); return; }
+  if (!d.tokens.length) { setzeHtml(ziel, html`<p data-stil="color:var(--mut)">${tRaw('tokens.none')}</p>`); return; }
+  setzeHtml(ziel, html`<div class="tw"><table class="dt"><thead><tr>
+      <th>${tRaw('tokens.col.label')}</th><th>${tRaw('tokens.col.created')}</th>
+      <th>${tRaw('tokens.col.last_used')}</th><th>${tRaw('tokens.col.scope')}</th><th>${tRaw('tokens.col.ip')}</th>
+      <th>${tRaw('tokens.col.expires')}</th><th>${tRaw('users.col.actions')}</th></tr></thead><tbody>${d.tokens.map(tk => html`<tr>
+      <td><strong>${tk.label || '—'}</strong>${tk.aktuell ? html` <span class="rb ra">${tRaw('tokens.current')}</span>` : ''}</td>
+      <td>${ungeprueft(tokenDatum(tk.created_at))}</td>
+      <td>${ungeprueft(tokenDatum(tk.last_used))}</td>
+      <td>${tk.scope === 'voll' ? tRaw('tokens.scope.voll') : tRaw('tokens.scope.app')}</td>
+      <td>${tk.ip_bereich || '—'}</td>
+      <td>${tk.never_expires ? tRaw('tokens.never') : ungeprueft(tokenDatum(tk.expires_at))}${tk.hard_expires_at ? html` <span class="rb ra" title="${tokenDatum(tk.hard_expires_at)}">${tRaw('tokens.fixed')}</span>` : ''}</td>
+      <td>${tk.aktuell ? '' : html`<button class="btn bd btn-sm" data-click="revokeToken"${echt()} data-arg="${tk.token_id}" data-arg2="${tk.label || ''}" aria-label="${tRaw('common.delete')}">${ico('loeschen')}</button>`}</td>
+    </tr>`)}</tbody></table></div>`);
 }
 
 /**
@@ -318,18 +311,18 @@ export async function ladeTls() {
   const ziel = G('tls-flaeche');
   if (!ziel) return;
   const d = await api('GET', '/v1/settings/tls');
-  if (!d?.success) { ziel.innerHTML = `<p class="hinweis-absatz">${esc(d?.error || t('settings.error'))}</p>`; return; }
+  if (!d?.success) { setzeHtml(ziel, html`<p class="hinweis-absatz">${d?.error || t('settings.error')}</p>`); return; }
   if (!d.fp) {
-    ziel.innerHTML = `<p class="hinweis-absatz">${d.https ? t('tls.ohne_ca') : t('tls.ohne_https')}</p>`;
+    setzeHtml(ziel, html`<p class="hinweis-absatz">${d.https ? tRaw('tls.ohne_ca') : tRaw('tls.ohne_https')}</p>`);
     return;
   }
-  ziel.innerHTML = `<p class="hinweis-absatz">${t('tls.hint')}</p>
-    <div class="text-klein">${t('tls.subject')}: ${esc(d.subject)}<br>${t('tls.valid_until')}: ${esc(tokenDatum(d.gueltig_bis))}</div>
-    <div class="text-klein abstand-o-075">${t('tls.fp_sha256')}</div>
-    <code id="tls-fp-hex" data-stil="user-select:all;word-break:break-all;font-size:var(--fs-2)">${esc(d.fp_hex)}</code>
-    <div class="text-klein abstand-o-075">${t('tls.fp_base64')}</div>
-    <code id="tls-fp" data-stil="user-select:all;word-break:break-all;font-size:var(--fs-2)">${esc(d.fp)}</code>
-    <div class="abstand-o-075"><a class="btn bs btn-sm" href="${esc(d.download)}" download>${t('tls.download')}</a></div>`;
+  setzeHtml(ziel, html`<p class="hinweis-absatz">${tRaw('tls.hint')}</p>
+    <div class="text-klein">${tRaw('tls.subject')}: ${d.subject}<br>${tRaw('tls.valid_until')}: ${tokenDatum(d.gueltig_bis)}</div>
+    <div class="text-klein abstand-o-075">${tRaw('tls.fp_sha256')}</div>
+    <code id="tls-fp-hex" data-stil="user-select:all;word-break:break-all;font-size:var(--fs-2)">${d.fp_hex}</code>
+    <div class="text-klein abstand-o-075">${tRaw('tls.fp_base64')}</div>
+    <code id="tls-fp" data-stil="user-select:all;word-break:break-all;font-size:var(--fs-2)">${d.fp}</code>
+    <div class="abstand-o-075"><a class="btn bs btn-sm" href="${sichereUrl(d.download)}" download>${tRaw('tls.download')}</a></div>`);
 }
 
 /**
@@ -383,9 +376,7 @@ export async function loadProfile() {
   // Ohne Adresse gibt es nichts zu bestätigen — „verifiziert“ neben einem
   // leeren Feld widerspräche sich.
   const vEl = G('prof-email-verified');
-  if (vEl) vEl.innerHTML = !u.email ? ''
-    : u.email_verified ? `<span class="email-ok">${t('profile.verified')}</span>`
-    : `<span class="email-offen">${t('profile.not_verified')}</span>`;
+  if (vEl) setzeHtml(vEl, !u.email ? '' : u.email_verified ? html`<span class="email-ok">${tRaw('profile.verified')}</span>` : html`<span class="email-offen">${tRaw('profile.not_verified')}</span>`);
   // Die neue Adresse gilt erst nach dem Link; bis dahin steht sie nur hier.
   const hint = G('prof-email-hint');
   if (hint) hint.textContent = u.email_neu ? tRaw('profile.email_pending', { email: u.email_neu }) : '';
@@ -681,7 +672,7 @@ async function einstellungenQuellePruefen(quelle) {
   frei();
   const { grund } = d?.success ? { grund: '' } : d?.code ? { grund: d.error } : verstaendlicherGrund(d);
   stand.classList.add(d?.success ? 'quelle-ok' : 'quelle-fehler');
-  stand.innerHTML = `${ico(d?.success ? 'ok' : 'fehler')}<span>${esc(d?.success ? tRaw('setup.test_ok') : grund || tRaw('setup.test_failed'))}</span>`;
+  setzeHtml(stand, html`${ico(d?.success ? 'ok' : 'fehler')}<span>${d?.success ? tRaw('setup.test_ok') : grund || tRaw('setup.test_failed')}</span>`);
 }
 
 stelleZielBereit({ einstAbschnitt });

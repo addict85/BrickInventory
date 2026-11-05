@@ -2,22 +2,22 @@
 // überall gleich aussehen soll, stand vorher fünfzehnmal als eigene HTML-Zeichenkette in vier Modulen.
 // Ausführlich: docs/begruendungen/public/js/01-bausteine.js.md#01-core-js-sammelt-werkzeuge-escaping-bi
 import { api } from './01-api.js';
-import { ico, G } from './01-dom.js';
+import { ico, G, setzeHtml } from './01-dom.js';
 import { fmtBig, fmtPct, istGeschenk } from './01-format.js';
 import { toast } from './01-meldungen.js';
 import { tRaw, t } from '../i18n.js';
 import { registerActions, resolveAction } from './00-registry.js';
-import { esc } from './00-escapen.js';
+import { esc, html, ungeprueft } from './00-escapen.js';
 import { ME } from './00-zustand.js';
 
 /**
  * Eine Zeile „Label — Wert" in einer Detailansicht.
  *
- * @param {string} label     Beschriftung links. Wird NICHT escaped: Alle
+ * @param {string | import('./00-escapen.js').SicheresHtml} label     Beschriftung links. Wird NICHT escaped: Alle
  *                           Aufrufer geben hier eine Übersetzung t(...), und
  *                           die ist bereits sicher. Ein escape hier würde die
  *                           Sonderzeichen der Übersetzungen zerstören.
- * @param {string} wert      Inhalt rechts. Wird NICHT escaped — viele
+ * @param {import('./00-escapen.js').Markup | string} wert      Inhalt rechts. Wird NICHT escaped — viele
  *                           Aufrufer geben absichtlich Markup mit (Eingabe-
  *                           felder, Farbpunkte, Knöpfe). Wer Nutzertext
  *                           einsetzt, escaped ihn selbst mit esc().
@@ -32,8 +32,7 @@ export function detailZeile(label, wert, o = {}) {
   const zKlasse = o.klasse ? ` ${o.klasse}` : '';
   const wStil = o.wertStil ? ` data-stil="${o.wertStil}"` : '';
   const wId   = o.wertId ? ` id="${o.wertId}"` : '';
-  return `<div class="dr${zKlasse}"${zStil}><span class="dl">${label}</span>` +
-         `<span class="dv"${wId}${wStil}>${wert}</span></div>`;
+  return html`${html`<div class="dr${zKlasse}"${ungeprueft(zStil)}><span class="dl">${ungeprueft(label)}</span>`}${html`<span class="dv"${ungeprueft(wId)}${ungeprueft(wStil)}>${typeof wert === 'string' ? ungeprueft(wert) : wert}</span></div>`}`;
 }
 
 /**
@@ -48,8 +47,7 @@ export function ladeAnzeige(text, o = {}) {
   // daneben schon steht, worauf gewartet wird.
   const inhalt = o.klein ? '<div class="skelett-flaeche"></div>'
     : '<div class="skelett-zeile"></div><div class="skelett-zeile"></div><div class="skelett-zeile kurz"></div>';
-  return `<div class="lade-geruest${o.klein ? ' klein' : ''}" role="status" aria-busy="true"${stil}>` +
-    `<span class="vh">${text || esc(tRaw('common.loading'))}</span>${inhalt}</div>`;
+  return html`${html`<div class="lade-geruest${o.klein ? ' klein' : ''}" role="status" aria-busy="true"${ungeprueft(stil)}>`}${html`<span class="vh">${(text) ? ungeprueft(text) : tRaw('common.loading')}</span>${ungeprueft(inhalt)}</div>`}`;
 }
 
 /**
@@ -62,8 +60,8 @@ export function ladeAnzeige(text, o = {}) {
  */
 export function skelettKacheln(anzahl, text, art = 'set') {
   const raster = art === 'teil' ? 'parts-grid' : 'sgrid';
-  const kachel = `<div class="${art === 'teil' ? 'part-card' : 'sc'} skelett" aria-hidden="true"><div class="skelett-bild"></div><div class="skelett-zeile"></div><div class="skelett-zeile kurz"></div></div>`;
-  return `<div class="${raster} skelett-raster" role="status" aria-busy="true"><span class="vh">${text}</span>${kachel.repeat(anzahl)}</div>`;
+  const kachel = html`<div class="${art === 'teil' ? 'part-card' : 'sc'} skelett" aria-hidden="true"><div class="skelett-bild"></div><div class="skelett-zeile"></div><div class="skelett-zeile kurz"></div></div>`;
+  return html`<div class="${raster} skelett-raster" role="status" aria-busy="true"><span class="vh">${ungeprueft(text)}</span>${Array.from({ length: anzahl }, () => kachel)}</div>`;
 }
 
 /**
@@ -74,7 +72,7 @@ export function skelettKacheln(anzahl, text, art = 'set') {
  */
 export function skelettZeilen(anzahl, text) {
   const zeile = '<div class="skelett-listenzeile" aria-hidden="true"><div class="skelett-bild"></div><div><div class="skelett-zeile"></div><div class="skelett-zeile kurz"></div></div></div>';
-  return `<div class="skelett-liste" role="status" aria-busy="true"><span class="vh">${text}</span>${zeile.repeat(anzahl)}</div>`;
+  return html`<div class="skelett-liste" role="status" aria-busy="true"><span class="vh">${ungeprueft(text)}</span>${ungeprueft(zeile.repeat(anzahl))}</div>`;
 }
 
 /**
@@ -104,10 +102,8 @@ export function textOderStrich(wert) {
  */
 export function fehlerZustand(o) {
   const arg = o.arg ? ` data-arg="${esc(o.arg)}"` : '';
-  const details = o.details ? `<details class="fehler-details"><summary>${esc(tRaw('liste.details'))}</summary><code>${esc(o.details)}</code></details>` : '';
-  return `<div class="empty leer fehler-zustand" role="alert"><div class="leer-ico">${ico('warnung')}</div>` +
-    `<h2>${esc(o.titel || tRaw('liste.fehler_titel'))}</h2><p>${esc(o.grund || tRaw('common.unknown_error'))}</p>${details}` +
-    `<button type="button" class="btn bp" data-lesend data-click="${esc(o.erneut)}"${arg}>${ico('aktualisieren')}<span>${esc(tRaw('liste.erneut'))}</span></button></div>`;
+  const details = o.details ? html`<details class="fehler-details"><summary>${tRaw('liste.details')}</summary><code>${o.details}</code></details>` : '';
+  return html`${html`<div class="empty leer fehler-zustand" role="alert"><div class="leer-ico">${ico('warnung')}</div>`}${html`<h2>${o.titel || tRaw('liste.fehler_titel')}</h2><p>${o.grund || tRaw('common.unknown_error')}</p>${details}`}${html`<button type="button" class="btn bp" data-lesend data-click="${o.erneut}"${ungeprueft(arg)}>${ico('aktualisieren')}<span>${tRaw('liste.erneut')}</span></button></div>`}`;
 }
 
 /**
@@ -129,7 +125,7 @@ export function listeLadefehler(ziel, d, o) {
   // „Der letzte Stand bleibt“ nur, wenn einer dasteht: Über einem Fehlerzustand widerspräche der Toast der Liste.
   const alterStand = o.behalten && !ziel?.querySelector('.fehler-zustand, .lade-geruest, .skelett-raster');
   if (alterStand) toast(tRaw('liste.alter_stand_kurz'), 'error', { text: tRaw('liste.erneut'), fn: nochmal }, [grund, details].filter(Boolean).join(' — '));
-  else if (ziel) ziel.innerHTML = fehlerZustand({ grund, details, erneut: o.erneut, arg: o.arg });
+  else if (ziel) setzeHtml(ziel, fehlerZustand({ grund, details, erneut: o.erneut, arg: o.arg }));
   return true;
 }
 
@@ -163,10 +159,10 @@ export function teileAufschluesselung(ausSets, einzeln) {
  * @param {unknown} [kauf]
  */
 export function pnlBadge(pct, kauf){
-  if(istGeschenk(kauf)) return `<span class="pnl-geschenk">${t('finance.gift')}</span>`;
+  if(istGeschenk(kauf)) return html`<span class="pnl-geschenk">${tRaw('finance.gift')}</span>`;
   if(pct===null||pct===undefined) return '';
   const v=parseFloat(String(pct)); const cls=v>0?'pnl-pos':v<0?'pnl-neg':'pnl-neu';
-  return `<span class="${cls}">${fmtPct(v)}</span>`;
+  return html`<span class="${cls}">${fmtPct(v)}</span>`;
 }
 
 /**
@@ -178,7 +174,7 @@ export function pnlBadge(pct, kauf){
 export function ownerBadges(item) {
   if (!item?.owners?.length) return '';
   if (item.owners.every(o => ME && o.id === ME.id)) return '';
-  return item.owners.map(o => `<span class="cond-badge besitzer-badge" title="${esc(o.username)}">${esc(o.username)}</span>`).join('');
+  return html`${item.owners.map(o => html`<span class="cond-badge besitzer-badge" title="${o.username}">${o.username}</span>`)}`;
 }
 
 /**
@@ -192,10 +188,10 @@ export function condBadges(item) {
   const list = Array.isArray(item?.conditions) && item.conditions.length
     ? item.conditions
     : [item?.condition === 'U' ? 'U' : 'N'];
-  return list.map((/** @type {string} */ c) => c === 'U'
-    ? `<span class="cond-badge cond-used"><span class="vh">${t('common.condition')}: </span>${t('common.condition_used')}</span>`
-    : `<span class="cond-badge cond-new"><span class="vh">${t('common.condition')}: </span>${t('common.condition_badge_new')}</span>`
-  ).join('');
+  return html`${list.map((/** @type {string} */ c) => c === 'U'
+    ? html`<span class="cond-badge cond-used"><span class="vh">${tRaw('common.condition')}: </span>${tRaw('common.condition_used')}</span>`
+    : html`<span class="cond-badge cond-new"><span class="vh">${tRaw('common.condition')}: </span>${tRaw('common.condition_badge_new')}</span>`
+  )}`;
 }
 
 /** Erfassen-Dialoge der Sammlung: set, part, fig — gleich aufgebaut (Erstfokus: data-erstfokus). */

@@ -1,6 +1,7 @@
 // In ES-Modulen liegen Funktionen nicht auf window; data-click="name" findet seinen Handler deshalb
 // hier. Ein Tippfehler im Namen fällt so im Test auf statt erst beim Klicken.
 // Ausführlich: docs/begruendungen/public/js/00-registry.js.md#js-11-actions-js-loest-die-handler-aus-d
+import { html } from './00-escapen.js';
 
 /** name → Funktion. Wird von den einzelnen Modulen gefüllt. */
 const _actions = new Map();
@@ -44,7 +45,7 @@ if (typeof document !== 'undefined')
     _vonAnfang.add(el);
 
 /** Attribut für Vorlagen, die eine gefährliche Aktion auslösen. */
-export function echt() { return ` data-echt="${_marke}"`; }
+export function echt() { return html` data-echt="${_marke}"`; }
 
 /** @param {Element} el  das Element mit dem data-*-Attribut */
 export function istVertraut(el) {

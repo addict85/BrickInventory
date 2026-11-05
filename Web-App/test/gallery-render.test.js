@@ -67,8 +67,8 @@ function code(src) {
 }
 
 test('geladene Bilder werden synchron als loaded markiert', () => {
-  const fn = core.slice(core.indexOf('function observeLazyImages'),
-                        core.indexOf('function toast'));
+  const ab = core.indexOf('function observeLazyImages');
+  const fn = core.slice(ab, core.indexOf('\n}\n', ab));
   assert.match(fn, /complete && img\.naturalWidth > 0/,
     'Ohne synchrone Prüfung liegt zwischen innerHTML und Observer-Callback ' +
     'mindestens ein Paint mit unsichtbaren Bildern');
@@ -106,7 +106,7 @@ test('die Preis-Zeile ist ein stabiler Anker', () => {
   assert.match(gallery, /function updateGalleryPrices/);
   // Immer im Markup, nur leer ausgeblendet — sonst gäbe es beim ersten
   // Preis-Update doch wieder ein Layout-Sprung
-  assert.match(gallery, /data-price-for="\$\{esc\(s\.set_number\)\}"\$\{preis \? '' : ' hidden'\}/,
+  assert.match(gallery, /data-price-for="\$\{(?:esc\()?s\.set_number\)?\}"\$\{preis \? '' : ' hidden'\}/,
     'Der Container muss immer gerendert und nur bei leerem Inhalt hidden sein');
   assert.match(styles, /\.price-badge\[hidden\]\{display:none\}/,
     '.price-badge setzt display:flex — ohne diese Regel bliebe [hidden] wirkungslos');

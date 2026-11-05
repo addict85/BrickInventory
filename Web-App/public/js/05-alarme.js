@@ -2,13 +2,13 @@ import { echt, registerActions } from './00-registry.js';
 import { t, tRaw } from '../i18n.js';
 import { api } from './01-api.js';
 import { bildTag, platzhalterInhalt, imgUrl, thumbUrl } from './01-bilder.js';
-import { ico, G } from './01-dom.js';
+import { ico, G, setzeHtml } from './01-dom.js';
 import { fmtN, leseBetrag, betragFuerFeld } from './01-format.js';
 import { feldFehler } from './01-formular.js';
 import { toast } from './01-meldungen.js';
 import { csvHochladen } from './01-bausteine.js';
 import { allSets } from './00-zustand.js';
-import { esc } from './00-escapen.js';
+import { esc, html, ungeprueft } from './00-escapen.js';
 // Einstellungen, Abschnitt Preisalarme: Übersicht, Schwelle ändern, löschen, CSV-Import.
 
 // Lagerorte verwalten. Nur die eigenen: Ein Ort ist ein Regal in der eigenen Wohnung, fremde
@@ -40,15 +40,15 @@ export async function ladeAlarmUebersicht() {
   const el = G('alerts-list');
   if (!el) return;
   const vorschlag = G('alarm-neu-sets');
-  if (vorschlag) vorschlag.innerHTML = allSets.map(x => `<option value="${esc(x.set_number)}">${esc(x.name || '')}</option>`).join('');
+  if (vorschlag) setzeHtml(vorschlag, allSets.map(x => html`<option value="${x.set_number}">${x.name || ''}</option>`));
   const d = await api('GET', '/v1/alerts');
   if (!d?.success) return;
   const alarme = d.alerts || [];
   if (!alarme.length) {
-    el.innerHTML = `<p class="text-mut">${esc(tRaw('alerts.empty'))}</p>`;
+    setzeHtml(el, html`<p class="text-mut">${tRaw('alerts.empty')}</p>`);
     return;
   }
-  el.innerHTML = alarme.map(a => {
+  setzeHtml(el, alarme.map(a => {
     const zustand = a.condition === 'U' ? tRaw('common.condition_used') : tRaw('common.condition_new');
     const richtung = a.richtung === 'unter' ? tRaw('alerts.below') : tRaw('alerts.above');
     // Der Schluessel ist (Set, Zustand) — beides muss mit, sonst trifft das
@@ -78,24 +78,24 @@ export async function ladeAlarmUebersicht() {
     const oeffnet = a.besitzt
       ? ` class="zeiger" data-click="openModal" data-arg="${esc(a.set_number)}"`
       : '';
-    return `<div class="alarm-ue"${oeffnet}>
-      ${bild}
+    return html`<div class="alarm-ue"${ungeprueft(oeffnet)}>
+      ${ungeprueft(bild)}
       <div class="alarm-ue-text">
-        <div><strong>${esc(a.name || a.set_number)}</strong></div>
-        <div class="alarm-ue-unter">${a.name ? esc(a.set_number) + ' · ' : ''}${esc(zustand)}</div>
+        <div><strong>${a.name || a.set_number}</strong></div>
+        <div class="alarm-ue-unter">${a.name ? html`${a.set_number}${' · '}` : ''}${zustand}</div>
       </div>
-      <div class="alarm-ue-stand">${marke}<span class="alarm-ue-zuletzt">${esc(stand)}</span></div>
+      <div class="alarm-ue-stand">${ungeprueft(marke)}<span class="alarm-ue-zuletzt">${stand}</span></div>
       <div class="alarm-ue-schwelle">
-        <span class="alarm-ue-richtung">${esc(richtung)}</span>
-        <input inputmode="decimal" type="text" autocomplete="off" value="${esc(betragFuerFeld(a.schwelle))}" aria-label="${esc(tRaw('detail.alert_price'))} ${esc(a.set_number)}"
-               data-change="aendereAlarmSchwelle" data-arg="${esc(schluessel)}" data-val="1" data-click="stopEvent" class="alarm-ue-feld" />
-        <span class="alarm-ue-waehrung">${esc(a.currency_code)}</span>
+        <span class="alarm-ue-richtung">${richtung}</span>
+        <input inputmode="decimal" type="text" autocomplete="off" value="${betragFuerFeld(a.schwelle)}" aria-label="${tRaw('detail.alert_price')} ${a.set_number}"
+               data-change="aendereAlarmSchwelle" data-arg="${schluessel}" data-val="1" data-click="stopEvent" class="alarm-ue-feld" />
+        <span class="alarm-ue-waehrung">${a.currency_code}</span>
       </div>
-      <button class="btn bs btn-sm alarm-ue-loeschen" data-click="loescheAlarm"${echt()} data-arg="${esc(schluessel)}"
-              aria-label="${esc(tRaw('common.delete'))}: ${esc(a.set_number)}" title="${esc(tRaw('common.delete'))}"
-              data-arg2="${esc(a.set_number)}">${ico('loeschen')}</button>
+      <button class="btn bs btn-sm alarm-ue-loeschen" data-click="loescheAlarm"${echt()} data-arg="${schluessel}"
+              aria-label="${tRaw('common.delete')}: ${a.set_number}" title="${tRaw('common.delete')}"
+              data-arg2="${a.set_number}">${ico('loeschen')}</button>
     </div>`;
-  }).join('');
+  }));
 }
 
 /**

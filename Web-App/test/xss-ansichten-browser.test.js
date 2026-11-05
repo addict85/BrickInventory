@@ -9,10 +9,10 @@
  * deshalb zählt das Element, nicht der Aufruf.
  *
  * Gegenproben (gemessen):
- *   A  im Kachelnamen der Sammlung (02-gallery.js) `${esc(s.name || '')}` durch
- *      `${s.name || ''}` ersetzt → rot: „Sammlung“ mit img[onerror]
- *   B  in der Lagerortliste der Einstellungen (05-lagerorte.js) das Maskieren des
- *      Namens entfernt → rot: „Lagerorte“
+ *   A  im Kachelnamen der Sammlung (02-gallery.js) den Namen in ungeprueft()
+ *      gesetzt (vor dem Umbau: esc() entfernt) → rot: „Sammlung“ mit img[onerror]
+ *   B  im Lagerortfeld (05-lagerorte.js) esc() entfernt (vor dem Umbau) → rot:
+ *      „Lagerorte“
  *
  * Ohne Chrome (CHROME_BIN) wird übersprungen; Voraussetzung: Test-DB.
  */

@@ -187,11 +187,11 @@ test('Bedarf und Bestand werden über dieselbe Nummer zusammengeführt', () => {
     'Der alte BrickLink-Schlüssel steht wieder da');
 
   // Die Nachfrage-Seite: derselbe Bestandteil, damit beide zusammenpassen.
-  assert.match(src, /const pkey = `\$\{esc\(p\.part_number\)\}__\$\{p\.color_id\|\|0\}`/,
+  assert.match(src, /const pkey = `\$\{(?:esc\()?p\.part_number\)?\}__\$\{p\.color_id\|\|0\}`/,
     'Die Bestandsabfrage fragt nicht mehr mit der Rebrickable-Nummer');
 
   // Und die Anzeige bleibt BrickLink — genau Marcos Vorgabe.
-  assert.ok(src.includes('data-part="${esc(p.bl_part_number||p.part_number)}"'),
+  assert.ok(src.includes('data-part="${p.bl_part_number||p.part_number}"'),
     'Die Anzeige zeigt nicht mehr die BrickLink-Nummer');
 });
 

@@ -118,7 +118,9 @@ test('der Zeitplan im Monitor geht durch denselben Escaper wie sein Nachbar', ()
   const treffer = [...core.matchAll(/class="job-sched-input[^"]*"[^`]*?value="\$\{([^}]+)\}"/g)];
   assert.strictEqual(treffer.length, 2,
     `${treffer.length} Zeitplan-Eingabefelder gefunden, erwartet 2 — Muster veraltet?`);
+  // In html`` maskiert die Vorlage selbst; ausserhalb muss esc() dastehen.
+  const inHtml = (/** @type {number} */ i) => core.slice(core.lastIndexOf('`', i) - 4, core.lastIndexOf('`', i)) === 'html';
   for (const m of treffer)
-    assert.ok(m[1].startsWith('esc('),
+    assert.ok(m[1].startsWith('esc(') || inHtml(m.index ?? 0),
       `Das Zeitplan-Feld setzt „${m[1]}" roh ein, waehrend data-arg daneben esc() nutzt`);
 });

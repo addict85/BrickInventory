@@ -4,10 +4,10 @@
 // Ausführlich: docs/begruendungen/public/js/18-wanted-xml.js.md#noch-besser-waere-wenn-es-beim-import-di
 import { registerActions } from './00-registry.js';
 import { t, tRaw, colorName } from '../i18n.js';
-import { escHex, hexZiffern, esc } from './00-escapen.js';
+import { escHex, hexZiffern, esc, html, ungeprueft } from './00-escapen.js';
 import { apiRoh } from './01-api.js';
 import { bildTag, platzhalterInhalt, fullUrl, imgUrl } from './01-bilder.js';
-import { ico, G, XML_ICON_SVG } from './01-dom.js';
+import { ico, G, XML_ICON_SVG, setzeHtml } from './01-dom.js';
 import { toast } from './01-meldungen.js';
 import { loadManualFigsTable } from './06-minifigs.js';
 import { loadGallery } from './02-gallery.js';
@@ -188,7 +188,7 @@ async function liesWirklich(schreiben) {
   const tab = G('wanted-xml-tabelle');
   const ber = G('wanted-xml-bericht');
   if (ber) ber.textContent = tRaw('import.running');
-  if (!schreiben && tab) tab.innerHTML = '';
+  if (!schreiben && tab) tab.replaceChildren();
 
   const fd = new FormData();
   if (_datei) fd.append('file', _datei);
@@ -251,37 +251,26 @@ function zeichneBericht(d) {
   // schlecht, und „wahrscheinlich" ist eine Aussage, die dastehen muss und
   // nicht angedeutet werden darf.
   const stufe = (/** @type {string} */ k, /** @type {string} */ text) => (d.stufen?.[k]
-    ? `<div>• ${esc(text)}: <strong>${d.stufen[k]}</strong></div>` : '');
+    ? html`<div>• ${text}: <strong>${d.stufen[k]}</strong></div>` : '');
   G('wanted-xml-sub').textContent = _datei?.name || '';
   // Der Knopfzustand kommt aus knoepfeStand() — siehe die Begründung dort.
   knoepfeStand();
-  el.innerHTML = `
+  setzeHtml(el, html`
     <div data-stil="border:1px solid var(--bdr);border-radius:8px;padding:.6rem">
-      <div><strong>${d.gelesen}</strong> ${esc(tRaw('settings.wanted_read'))}${
-        d.vorschau ? ` — ${esc(tRaw('settings.wanted_preview_only'))}` : ''}</div>
+      <div><strong>${d.gelesen}</strong> ${tRaw('settings.wanted_read')}${d.vorschau ? html` — ${tRaw('settings.wanted_preview_only')}` : ''}</div>
       ${stufe('zuordnung', tRaw('settings.wanted_s1'))}
       ${stufe('gleich_vermerkt', tRaw('settings.wanted_s2'))}
       ${stufe('katalogtreffer', tRaw('settings.wanted_s3'))}
       ${stufe('rebrickable', tRaw('settings.wanted_s4'))}
       ${stufe('korrigiert', tRaw('wanted.s_corrected'))}
-      ${d.offen?.length ? `<div>${ico('warnung')} <strong>${d.offen.length}</strong> ${
-        esc(tRaw('settings.wanted_open'))}</div>` : ''}
-      ${d.farbeOffen ? `<div>${ico('warnung')} <strong>${d.farbeOffen}</strong> ${
-        esc(tRaw('settings.wanted_color_open'))}</div>` : ''}
-      ${Object.keys(d.fremdeArten || {}).length ? `<div>${ico('warnung')} ${
-        esc(tRaw('settings.wanted_other_kinds'))}: ${
-        esc(Object.entries(d.fremdeArten ?? {}).map(([k, n]) => `${k}=${n}`).join(', '))}</div>` : ''}
-      ${d.rebrickable ? `<div>${esc(tRaw('settings.wanted_rb_asked'))}: ${
-        d.rebrickable.gefragt} → ${d.rebrickable.gefunden}</div>` : ''}
-      ${d.korrekturen?.abgewiesen?.length ? `<div>${ico('warnung')} <strong>${
-        d.korrekturen.abgewiesen.length}</strong> ${
-        esc(tRaw('wanted.corrections_rejected'))}</div>` : ''}
-      ${d.abgebrochen ? `<div>${ico('warnung')} ${esc(tRaw('wanted.cancelled'))}</div>` : ''}
-      ${!d.vorschau ? `<div data-stil="margin-top:.4rem"><strong>${d.angelegt}</strong> ${
-        esc(tRaw('settings.wanted_written'))}${d.aufgestockt ? `, ${d.aufgestockt} ${
-        esc(tRaw('wanted.topped_up'))}` : ''}${d.fehler ? `, ${d.fehler} ${
-        esc(tRaw('settings.wanted_errors'))}` : ''}</div>` : ''}
-    </div>`;
+      ${d.offen?.length ? html`<div>${ico('warnung')} <strong>${d.offen.length}</strong> ${tRaw('settings.wanted_open')}</div>` : ''}
+      ${d.farbeOffen ? html`<div>${ico('warnung')} <strong>${d.farbeOffen}</strong> ${tRaw('settings.wanted_color_open')}</div>` : ''}
+      ${Object.keys(d.fremdeArten || {}).length ? html`<div>${ico('warnung')} ${tRaw('settings.wanted_other_kinds')}: ${Object.entries(d.fremdeArten ?? {}).map(([k, n]) => `${k}=${n}`).join(', ')}</div>` : ''}
+      ${d.rebrickable ? html`<div>${tRaw('settings.wanted_rb_asked')}: ${d.rebrickable.gefragt} → ${d.rebrickable.gefunden}</div>` : ''}
+      ${d.korrekturen?.abgewiesen?.length ? html`<div>${ico('warnung')} <strong>${d.korrekturen.abgewiesen.length}</strong> ${tRaw('wanted.corrections_rejected')}</div>` : ''}
+      ${d.abgebrochen ? html`<div>${ico('warnung')} ${tRaw('wanted.cancelled')}</div>` : ''}
+      ${!d.vorschau ? html`<div data-stil="margin-top:.4rem"><strong>${d.angelegt}</strong> ${tRaw('settings.wanted_written')}${d.aufgestockt ? html`, ${d.aufgestockt} ${tRaw('wanted.topped_up')}` : ''}${d.fehler ? html`, ${d.fehler} ${tRaw('settings.wanted_errors')}` : ''}</div>` : ''}
+    </div>`);
 }
 
 /** Was in einer Zeile steht. Siehe die Begründung an PostenErgebnis. */
@@ -289,9 +278,9 @@ function zeichneBericht(d) {
 function zeile(p, i) {
   const bild = p.bild
     ? bildTag({ src: imgUrl(fullUrl(p.bild), true), alt: '', klasse: 'bild-40', ph: 'teil' })
-    : `<span class="bild-ph bild-40" aria-hidden="true">${platzhalterInhalt('teil')}</span>`;
+    : html`<span class="bild-ph bild-40" aria-hidden="true">${platzhalterInhalt('teil')}</span>`;
   const punkt = p.farbHex
-    ? `<span data-stil="display:inline-block;width:10px;height:10px;border-radius:50%;border:1px solid rgba(0,0,0,.15);margin-right:4px"
+    ? html`<span data-stil="display:inline-block;width:10px;height:10px;border-radius:50%;border:1px solid rgba(0,0,0,.15);margin-right:4px"
         data-farbe="${escHex(p.farbHex, 'var(--s300)')}"></span>`
     : '';
   // Der Ausgang in Worten, nicht nur als Farbe. In der Vorschau „wird angelegt“, nach dem Import
@@ -315,10 +304,7 @@ function zeile(p, i) {
     ? p.zustand : (_bericht?.standardZustand || null);
   const ausStandard = p.zustand !== 'N' && p.zustand !== 'U';
   const zustandZelle = zustandWert
-    ? `<span class="cond-badge ${zustandWert === 'U' ? 'cond-used' : 'cond-new'}">${
-        esc(tRaw(zustandWert === 'U' ? 'common.condition_used' : 'common.condition_new'))}</span>${
-        ausStandard ? `<div data-stil="color:var(--mut);font-size:var(--fs-1)">${
-          esc(tRaw('wanted.cond_default'))}</div>` : ''}`
+    ? html`<span class="cond-badge ${zustandWert === 'U' ? 'cond-used' : 'cond-new'}">${tRaw(zustandWert === 'U' ? 'common.condition_used' : 'common.condition_new')}</span>${ausStandard ? html`<div data-stil="color:var(--mut);font-size:var(--fs-1)">${tRaw('wanted.cond_default')}</div>` : ''}`
     : '';
   const korr = _korrekturen.get(i) || {};
 
@@ -326,8 +312,8 @@ function zeile(p, i) {
   // Korrektur — anders als bei den leeren Korrekturfeldern rechts, wo leer „nicht angefasst“ heisst.
   // Ausführlich: docs/begruendungen/public/js/18-wanted-xml.js.md#feld
   const feld = (/** @type {string} */ name, /** @type {unknown} */ wert, extra = '', breit = 72) =>
-    `<input data-change="wantedKorrekturWert" data-feld="${name}" data-i="${i}"
-       value="${esc(wert)}" ${extra}
+    html`<input data-change="wantedKorrekturWert" data-feld="${name}" data-i="${i}"
+       value="${wert}" ${ungeprueft(extra)}
        data-breite-px="${breit}"
        data-stil="font-size:var(--fs-1);padding:2px 4px;border:1px solid var(--feldrand);border-radius:5px;text-align:right" />`;
   const mengeZelle = feld('menge', korr.menge ?? p.menge, 'type="number" min="1" step="1"');
@@ -340,42 +326,29 @@ function zeile(p, i) {
   // Lücke, sondern „Standard des Kontos" — dieselbe Aussage wie CONDITION=X.
   const zustandJetzt = korr.zustand !== undefined ? (korr.zustand ?? '') : (p.zustand ?? '');
   const wahl = (/** @type {string} */ w, /** @type {string} */ text) =>
-    `<option value="${w}"${zustandJetzt === w ? ' selected' : ''}>${esc(text)}</option>`;
-  const zustandWahl = `<select data-change="wantedKorrekturWert" data-feld="zustand" data-i="${i}"
+    html`<option value="${w}"${zustandJetzt === w ? ' selected' : ''}>${text}</option>`;
+  const zustandWahl = html`<select data-change="wantedKorrekturWert" data-feld="zustand" data-i="${i}"
       data-stil="font-size:var(--fs-1);padding:2px;border:1px solid var(--feldrand);border-radius:5px">
       ${wahl('', tRaw('wanted.cond_default_opt'))}
       ${wahl('N', tRaw('common.condition_new'))}
       ${wahl('U', tRaw('common.condition_used'))}
     </select>`;
 
-  return `<tr${p.ausgang === 'offen' ? ' data-stil="background:var(--s50)"' : ''}>
+  return html`<tr${p.ausgang === 'offen' ? html` data-stil="background:var(--s50)"` : ''}>
     <td>${bild}</td>
-    <td data-stil="font-family:monospace;font-size:var(--fs-1)">${esc(p.blId)}${
-      p.rbId && p.rbId !== p.blId ? `<div data-stil="color:var(--mut)">→ ${esc(p.rbId)}</div>` : ''}</td>
-    <td data-stil="font-size:var(--fs-2)">${esc(p.name || '')}${
-      p.nameGeraten ? `<div data-stil="color:var(--mut);font-size:var(--fs-1)">${
-        esc(tRaw('wanted.name_guessed'))}</div>` : ''}</td>
-    <td data-stil="font-size:var(--fs-2);white-space:nowrap">${punkt}${esc(p.farbName || '')}${
-      p.blFarbe !== null && !p.farbName
-        ? `<span data-stil="color:var(--mut)">BL ${p.blFarbe}</span>` : ''}</td>
+    <td data-stil="font-family:monospace;font-size:var(--fs-1)">${p.blId}${p.rbId && p.rbId !== p.blId ? html`<div data-stil="color:var(--mut)">→ ${p.rbId}</div>` : ''}</td>
+    <td data-stil="font-size:var(--fs-2)">${p.name || ''}${p.nameGeraten ? html`<div data-stil="color:var(--mut);font-size:var(--fs-1)">${tRaw('wanted.name_guessed')}</div>` : ''}</td>
+    <td data-stil="font-size:var(--fs-2);white-space:nowrap">${punkt}${p.farbName || ''}${p.blFarbe !== null && !p.farbName ? html`<span data-stil="color:var(--mut)">BL ${p.blFarbe}</span>` : ''}</td>
     <td data-stil="text-align:right">${mengeZelle}</td>
-    <td data-stil="font-size:var(--fs-1);white-space:nowrap">${zustandWahl}${
-      // Die Plakette NUR bei „Standard": Dann sagt sie, was wirklich angelegt
-      // wird — den Wert aus den Einstellungen, den die Auswahl nicht zeigen
-      // kann. Steht dort N oder U, wiederholte sie bloss das Wort daneben
-      // (am Bildschirm gesehen: „Gebraucht" über „Gebraucht").
-      zustandJetzt === '' && zustandZelle
-        ? `<div data-stil="margin-top:2px">${zustandZelle}</div>` : ''}</td>
+    <td data-stil="font-size:var(--fs-1);white-space:nowrap">${zustandWahl}${zustandJetzt === '' && zustandZelle ? html`<div data-stil="margin-top:2px">${zustandZelle}</div>` : ''}</td>
     <td data-stil="text-align:right">${preisZelle}</td>
-    <td data-stil="font-size:var(--fs-1)">${ausgang}${
-      grund ? `<div data-stil="color:var(--mut);font-size:var(--fs-1)">${grund}</div>` : ''}</td>
-    <td><input type="text" value="${esc(korr.rbId ?? '')}" placeholder="${
-      esc(tRaw('wanted.rb_id_ph'))}" data-stil="width:8em;max-width:100%;font-size:var(--fs-1);padding:2px 4px;
+    <td data-stil="font-size:var(--fs-1)">${ungeprueft(ausgang)}${grund ? html`<div data-stil="color:var(--mut);font-size:var(--fs-1)">${ungeprueft(grund)}</div>` : ''}</td>
+    <td><input type="text" value="${korr.rbId ?? ''}" placeholder="${tRaw('wanted.rb_id_ph')}" data-stil="width:8em;max-width:100%;font-size:var(--fs-1);padding:2px 4px;
       border:1px solid var(--feldrand);border-radius:5px"
       data-change="wantedKorrekturNummer" data-i="${i}" /></td>
     <td><select data-change="wantedKorrekturFarbe" data-i="${i}"
       data-stil="max-width:140px;font-size:var(--fs-1);padding:2px;border:1px solid var(--feldrand);border-radius:5px">
-      <option value="">${esc(tRaw('wanted.keep'))}</option></select></td>
+      <option value="">${tRaw('wanted.keep')}</option></select></td>
   </tr>`;
 }
 
@@ -384,19 +357,19 @@ function zeichneTabelle(d) {
   const el = G('wanted-xml-tabelle');
   if (!el) return;
   const posten = d.posten || [];
-  if (!posten.length) { el.innerHTML = ''; return; }
-  el.innerHTML = `<table class="dt" data-stil="font-size:var(--fs-2)"><thead><tr>
-      <th>${t('col.image_th')}</th>
+  if (!posten.length) { el.replaceChildren(); return; }
+  setzeHtml(el, html`<table class="dt" data-stil="font-size:var(--fs-2)"><thead><tr>
+      <th>${tRaw('col.image_th')}</th>
       <th>BrickLink</th>
-      <th>${t('col.name')}</th>
-      <th>${t('col.color')}</th>
-      <th>${t('detail.qty')}</th>
-      <th>${t('common.condition')}</th>
-      <th>${t('detail.purchase_price')}</th>
-      <th>${t('wanted.col_outcome')}</th>
-      <th>${t('wanted.col_rb_id')}</th>
-      <th>${t('wanted.col_set_color')}</th>
-    </tr></thead><tbody>${posten.map(zeile).join('')}</tbody></table>`;
+      <th>${tRaw('col.name')}</th>
+      <th>${tRaw('col.color')}</th>
+      <th>${tRaw('detail.qty')}</th>
+      <th>${tRaw('common.condition')}</th>
+      <th>${tRaw('detail.purchase_price')}</th>
+      <th>${tRaw('wanted.col_outcome')}</th>
+      <th>${tRaw('wanted.col_rb_id')}</th>
+      <th>${tRaw('wanted.col_set_color')}</th>
+    </tr></thead><tbody>${ungeprueft(posten.map(zeile).join(''))}</tbody></table>`);
   fuelleFarbwahlen().catch(() => {});
 }
 
@@ -411,11 +384,11 @@ async function fuelleFarbwahlen() {
   const farben = await loadBrickColors();
   if (!farben?.length) return;
   const opts = farben.map(c =>
-    `<option value="${c.id}" data-hex="${hexZiffern(c.hex)}">${esc(colorName(c.name))}</option>`).join('');
+    html`<option value="${c.id}" data-hex="${hexZiffern(c.hex)}">${colorName(c.name)}</option>`).join('');
   for (const sel of /** @type {NodeListOf<HTMLSelectElement>} */ (G('wanted-xml-tabelle').querySelectorAll('select[data-change="wantedKorrekturFarbe"]'))) {
     const i = Number(sel.dataset.i);
     const gewaehlt = _korrekturen.get(i)?.rbFarbe;
-    sel.innerHTML = `<option value="">${esc(tRaw('wanted.keep'))}</option>${opts}`;
+    setzeHtml(sel, html`<option value="">${tRaw('wanted.keep')}</option>${ungeprueft(opts)}`);
     if (gewaehlt !== undefined && gewaehlt !== null) sel.value = String(gewaehlt);
   }
 }
@@ -510,7 +483,7 @@ G('wanted-xml-modal')?.addEventListener('click',
 // Das Symbol einmal hier an die drei Knöpfe hängen statt dreimal ins HTML. In ein eigenes <span> ohne
 // data-i18n: Die Übersetzung setzt textContent und würfe es beim Sprachwechsel hinaus.
 // Ausführlich: docs/begruendungen/public/js/18-wanted-xml.js.md#for
-for (const el of document.querySelectorAll('[data-wanted-icon]')) el.innerHTML = XML_ICON_SVG;
+for (const el of document.querySelectorAll('[data-wanted-icon]')) setzeHtml(el, XML_ICON_SVG);
 
 registerActions({
   wantedKorrekturFarbe,

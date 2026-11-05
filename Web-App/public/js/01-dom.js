@@ -1,5 +1,5 @@
 import { tRaw } from '../i18n.js';
-import { esc, einsetzen } from './00-escapen.js';
+import { esc, einsetzen, html, ungeprueft } from './00-escapen.js';
 
 // Kleine DOM-Helfer, die jede Ansicht braucht: Elemente holen, Symbole, Leerzustand, besetzte Knöpfe.
 // Ohne Abhängigkeit über Escaping und Sprache hinaus, damit jedes Modul sie laden kann.
@@ -34,7 +34,7 @@ export function aktiverReiter() { return eins('.ntab.active')?.dataset.tab; }
  * Ein Symbol aus der Symbolfamilie (Sprite in index.html) als HTML.
  * @param {string} name
  */
-export function ico(name) { return `<svg class="ico" aria-hidden="true"><use href="#i-${esc(name)}"/></svg>`; }
+export function ico(name) { return html`<svg class="ico" aria-hidden="true"><use href="#i-${name}"/></svg>`; }
 
 /** @type {ReturnType<typeof setTimeout> | undefined} */
 let _trefferUhr;
@@ -58,11 +58,11 @@ export function meldeTreffer(text) {
  * @param {{ ico: string, titel?: string, text?: string, titelKey?: string, textKey?: string, knopf?: { text?: string, textKey?: string, click: string, arg?: string, ico?: string, art?: string } }} o
  */
 export function leerZustand(o) {
-  const knopfText = o.knopf?.textKey ? `<span data-i18n="${esc(o.knopf.textKey)}">${esc(tRaw(o.knopf.textKey))}</span>` : `<span>${esc(o.knopf?.text)}</span>`;
-  const knopf = o.knopf ? `<button type="button" class="btn ${o.knopf.art || 'bp'}" data-click="${esc(o.knopf.click)}"${o.knopf.arg ? ` data-arg="${esc(o.knopf.arg)}"` : ''}>${ico(o.knopf.ico || 'plus')}${knopfText}</button>` : '';
+  const knopfText = o.knopf?.textKey ? html`<span data-i18n="${o.knopf.textKey}">${tRaw(o.knopf.textKey)}</span>` : html`<span>${o.knopf?.text}</span>`;
+  const knopf = o.knopf ? html`<button type="button" class="btn ${o.knopf.art || 'bp'}" data-click="${o.knopf.click}"${o.knopf.arg ? html` data-arg="${o.knopf.arg}"` : ''}>${ico(o.knopf.ico || 'plus')}${knopfText}</button>` : '';
   // Mit Schlüssel übersetzt applyLang den Text nach, wenn die Kontosprache erst später feststeht.
   const k = (/** @type {string | undefined} */ key) => key ? ` data-i18n="${esc(key)}"` : '';
-  return `<div class="empty leer"><div class="leer-ico">${ico(o.ico)}</div><h2${k(o.titelKey)}>${esc(o.titelKey ? tRaw(o.titelKey) : o.titel)}</h2>${o.text || o.textKey ? `<p${k(o.textKey)}>${esc(o.textKey ? tRaw(o.textKey) : o.text)}</p>` : ''}${knopf}</div>`;
+  return html`<div class="empty leer"><div class="leer-ico">${ico(o.ico)}</div><h2${ungeprueft(k(o.titelKey))}>${o.titelKey ? tRaw(o.titelKey) : o.titel}</h2>${o.text || o.textKey ? html`<p${ungeprueft(k(o.textKey))}>${o.textKey ? tRaw(o.textKey) : o.text}</p>` : ''}${knopf}</div>`;
 }
 
 /**
@@ -118,13 +118,7 @@ export function knopfBesetzt(btn, laeuft) {
  * Anmassung.
  * Ausführlich: docs/begruendungen/public/js/01-dom.js.md#xml-icon-svg
  */
-export const XML_ICON_SVG = '<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" '
-  + 'data-stil="width:1.05em;height:1.05em;display:inline-block;vertical-align:-.18em" '
-  + 'fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" '
-  + 'stroke-linejoin="round" aria-hidden="true">'
-  + '<path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/>'
-  + '<path d="M14 3v5h5"/>'
-  + '<path d="M10 12.5 8 14.5l2 2"/><path d="M14 12.5l2 2-2 2"/></svg>';
+export const XML_ICON_SVG = html`<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" data-stil="width:1.05em;height:1.05em;display:inline-block;vertical-align:-.18em" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/><path d="M10 12.5 8 14.5l2 2"/><path d="M14 12.5l2 2-2 2"/></svg>`;
 
 /**
  * Papierkorb-Symbol für Löschknöpfe auf Kacheln und in Listenzeilen.
@@ -133,21 +127,16 @@ export const XML_ICON_SVG = '<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2
  * CSS (weiss auf rotem Grund bei .delbtn, rot auf hellem Grund bei .bd), das
  * Symbol übernimmt sie. So passt es in beide Umgebungen ohne zweite Fassung.
  */
-export const TRASH_ICON_SVG = '<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" '
-  + 'data-stil="width:1em;height:1em;display:block" fill="none" stroke="currentColor" '
-  + 'stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'
-  + '<path d="M3 6h18"/><path d="M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2"/>'
-  + '<path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>'
-  + '<path d="M10 11v6"/><path d="M14 11v6"/></svg>';
+export const TRASH_ICON_SVG = html`<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" data-stil="width:1em;height:1em;display:block" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18"/><path d="M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/></svg>`;
 
 /**
- * Die eine Stelle, die Markup in die Seite schreibt. Sie nimmt nur fertiges Markup (html``, roh() oder
+ * Die eine Stelle, die Markup in die Seite schreibt. Sie nimmt nur fertiges Markup (html``, ungeprueft() oder
  * Listen davon), damit die Typprüfung eine Zeichenkette mit Daten zurückweist, statt sie einzusetzen.
  * @param {Element | null | undefined} el
  * @param {import('./00-escapen.js').Markup} inhalt
  */
 export function setzeHtml(el, inhalt) {
-  if (typeof inhalt === 'string' && inhalt !== '') throw new TypeError('setzeHtml: nur html`` oder roh()');
+  if (typeof inhalt === 'string' && inhalt !== '') throw new TypeError('setzeHtml: nur html`` oder ungeprueft()');
   if (el) el.innerHTML = einsetzen(inhalt);
 }
 
@@ -158,6 +147,6 @@ export function setzeHtml(el, inhalt) {
  * @param {import('./00-escapen.js').Markup} inhalt
  */
 export function fuegeHtmlEin(el, wo, inhalt) {
-  if (typeof inhalt === 'string' && inhalt !== '') throw new TypeError('fuegeHtmlEin: nur html`` oder roh()');
+  if (typeof inhalt === 'string' && inhalt !== '') throw new TypeError('fuegeHtmlEin: nur html`` oder ungeprueft()');
   el?.insertAdjacentHTML(wo, einsetzen(inhalt));
 }

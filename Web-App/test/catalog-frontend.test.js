@@ -123,11 +123,11 @@ function fakeApi(_method, url) {
 }
 
 // ── Globale Stubs, wie sie 01-*/i18n bereitstellen ────────────────────────
+Object.assign(w, require('./helpers/markup').markupHelfer());
 w.eval(`
   window.G = id => document.getElementById(id);
   window.alle = (s, w = document) => [...w.querySelectorAll(s)]; window.eins = (s, w = document) => w.querySelector(s);
   window.t = (k, v) => { let s = k; if (v) for (const [a,b] of Object.entries(v)) s += ' ' + b; return s; };
-  window.esc = s => String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
   window.locale = () => 'de-CH';
   window.toast = () => {};
   // Das Teile-Symbol kommt aus 02-gallery.js und wird hier nur als Marke
