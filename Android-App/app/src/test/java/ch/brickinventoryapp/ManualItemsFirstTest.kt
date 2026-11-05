@@ -92,8 +92,8 @@ class ManualItemsFirstTest {
         // gar nicht mehr holt.
         val graph = Quellen.ohneKommentare(Quellen.lies("nav/CollectionGraph.kt"))
         for ((schluessel, liste) in listOf(
-            "\"parts\"" to "manualParts",
-            "\"minifigs\"" to "manualFigs",
+            "Screen.Parts.rollSchluessel" to "manualParts",
+            "Screen.Minifigs.rollSchluessel" to "manualFigs",
         )) {
             val block = Quellen.fenster(graph, "ScrollPositionKeeper(\n                    $schluessel", 12)
             assert(block.isNotEmpty()) { "Kein ScrollPositionKeeper für $schluessel gefunden" }

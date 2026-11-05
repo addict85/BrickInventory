@@ -54,7 +54,7 @@ private fun NavGraphBuilder.galerieZiele(u: ZielUmgebung) {
             // Rollposition ausdrücklich wiederherstellen — der hochgezogene Zustand allein
             // landet verschoben.
             ch.brickinventoryapp.ui.ScrollPositionKeeper(
-                "gallery", galleryGridState, galerie.sets.isNotEmpty(), vm.scrollMemory)
+                Screen.Gallery.rollSchluessel, galleryGridState, galerie.sets.isNotEmpty(), vm.scrollMemory)
 
             // Gallery-Search: set found → navigate to detail
             LaunchedEffect(barcode.gefundenesSet) {
@@ -189,7 +189,7 @@ private fun NavGraphBuilder.teileZiele(u: ZielUmgebung) {
             }
             ReiterGeruest(stringResource(R.string.nav_parts), u) {
                 ch.brickinventoryapp.ui.ScrollPositionKeeper(
-                    "parts", partsGridState,
+                    Screen.Parts.rollSchluessel, partsGridState,
                     // Beide Ladevorgänge, nicht nur die Set-Teile. `manualParts != null` heisst
                     // „die Antwort ist zurück“ — auch bei null manuell erfassten Teilen. Mit
                     // `isNotEmpty()` würde die Position bei jemandem ohne eigene Teile nie
@@ -223,7 +223,7 @@ private fun NavGraphBuilder.teileZiele(u: ZielUmgebung) {
             LaunchedEffect(state.serverUrl) { if (state.serverUrl.isNotBlank()) { if (partsState.minifigs.isEmpty()) teileVm.loadMinifigs() } }
             ReiterGeruest(stringResource(R.string.nav_minifigs), u) {
                 ch.brickinventoryapp.ui.ScrollPositionKeeper(
-                    "minifigs", minifigsGridState,
+                    Screen.Minifigs.rollSchluessel, minifigsGridState,
                     // Auf abgeschlossen statt auf Inhalt prüfen, wie bei den Teilen: Sonst bekäme,
                     // wer keine manuell erfassten Minifiguren hat, nie eine Position
                     // wiederhergestellt.
