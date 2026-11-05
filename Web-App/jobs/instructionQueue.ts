@@ -10,6 +10,7 @@ import { zaehleArt, beendePause, pausiereArt, liesPause } from '../src/auftraege
 import * as monitor from '../src/auftraege/jobMonitor';
 import { LOCKS } from '../src/infra/lockNamespaces';
 import { AuftragVerschieben } from './auftragsWorker';
+import type { Nutzlast } from '../src/auftraege/nutzlasten';
 
 const TAKT_NACH_ABRUF_MS = 15_000;
 /** Pausen nach der ersten bis vierten Cloudflare-Sperre; danach bis morgen. */
@@ -39,8 +40,8 @@ async function meldeMonitor(setNumber: string): Promise<void> {
 }
 
 /** Eine Drosselung verschiebt den Auftrag, ohne ihn als Versuch zu zählen. */
-async function anleitungLaden(n: Record<string, unknown>): Promise<void> {
-  const sn = String(n.set_number);
+async function anleitungLaden(n: Nutzlast<'anleitung'>): Promise<void> {
+  const sn = n.set_number;
   if (await anzahlAnleitungen(sn) > 0) return;
   if (n.nur_ausweichquelle) { await scrapeInstructionsFromFallback(sn); return; }
   await mitSperre(async () => {

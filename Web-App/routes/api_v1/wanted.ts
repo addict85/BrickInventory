@@ -11,6 +11,7 @@ import { getSetting } from '../../src/einstellungen/settings';
 import { csvEmpfang, xmlEmpfang } from '../../src/infra/dateiEmpfang';
 import type { Korrektur } from '../../src/merkliste/wantedListe';
 import { importAlsAuftrag } from '../../src/auftraege/importAlsAuftrag';
+import { WantedKorrekturen } from '../../src/auftraege/nutzlasten';
 import type { CsvImportBericht } from '../../src/infra/csvExport';
 import type { z } from 'zod';
 import type { WantedXmlErgebnis } from '../../src/infra/vertrag/merkliste';
@@ -113,9 +114,9 @@ router.post('/wanted-list/import/xml', requireToken, kontoSchranke('upload'), xm
     let korrekturen: Korrektur[] | undefined;
     const rohKorr = (req.body as { korrekturen?: unknown } | undefined)?.korrekturen;
     if (typeof rohKorr === 'string' && rohKorr.trim() !== '') {
-      const geparst = jsonOderNull(rohKorr);
-      if (!geparst || !Array.isArray(geparst.wert)) return sendeFehler(req, res, 400, 'korrekturen_ungueltig');
-      korrekturen = geparst.wert as Korrektur[];
+      const geparst = WantedKorrekturen.safeParse(jsonOderNull(rohKorr)?.wert);
+      if (!geparst.success) return sendeFehler(req, res, 400, 'korrekturen_ungueltig');
+      korrekturen = geparst.data;
     }
     const eingabe = {
       xml, dateiName: String(req.file.originalname || 'wanted.xml').slice(0, 120),

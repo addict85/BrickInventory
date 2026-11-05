@@ -5,6 +5,7 @@ import { notify, listen, unlisten } from '../../db/pgNotify';
 import { imNamenVon } from '../infra/anfrageKonto';
 import * as repo from './repository/auftraege';
 import type { AuftragsArt, AuftragsStatus, AuftragsZeile, Belegung, Einstellen, Fortschritt } from './auftraege';
+import { pruefeNutzlast, type NutzlastEingabe } from './nutzlasten';
 
 export { belegeAuftrag, gibZurueck, lebenszeichen, leereArt, liesPause, pausiereArt, raeumeErledigteAuf,
   setzeFaelligkeit, zieheTerminVor, laeuftArt, AUFTRAG_KANAL, AUFTRAG_STAND_KANAL } from './repository/auftraege';
@@ -18,8 +19,8 @@ export function wartezeitSek(versuch: number): number {
   return Math.min(3600, 30 * 2 ** Math.max(0, versuch - 1));
 }
 
-export async function stelleAuftragEin(art: AuftragsArt, nutzlast: Record<string, unknown>, o: Einstellen = {}): Promise<string | null> {
-  const id = await repo.fuegeAuftragEin(art, nutzlast, o);
+export async function stelleAuftragEin<A extends AuftragsArt>(art: A, nutzlast: NutzlastEingabe<A>, o: Einstellen = {}): Promise<string | null> {
+  const id = await repo.fuegeAuftragEin(art, pruefeNutzlast(art, nutzlast), o);
   await notify(repo.AUFTRAG_KANAL, art);
   return id;
 }
@@ -38,8 +39,8 @@ export async function erledigt(a: Belegung): Promise<boolean> {
 }
 
 /** @returns true, wenn es der letzte Versuch war und der Auftrag jetzt 'fehler' ist */
-export async function fehlgeschlagen(a: AuftragsZeile, fehler: string): Promise<boolean> {
-  const endgueltig = a.versuche >= a.max_versuche;
+export async function fehlgeschlagen(a: AuftragsZeile, fehler: string, sofortEndgueltig = false): Promise<boolean> {
+  const endgueltig = sofortEndgueltig || a.versuche >= a.max_versuche;
   const z = await repo.setzeFehlgeschlagen(a, endgueltig, fehler, wartezeitSek(a.versuche));
   await meldeStand(z);
   return endgueltig && !!z;

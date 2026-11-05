@@ -6,13 +6,14 @@ import { getMinifigInfo } from '../src/katalog/quellen';
 import { logAndContinue, meldeUndWeiter } from '../src/infra/fehler';
 import { pdfDateiPfad } from '../src/auftraege/pdfAuftraege';
 import { downloadImage, downloadSetImages } from '../src/katalog/teileAnreicherung';
-import { zeichnePdfImFaden, type PdfSet, type PdfTeil } from './pdfZeichnen';
+import { zeichnePdfImFaden, type PdfTeil } from './pdfZeichnen';
+import type { Nutzlast } from '../src/auftraege/nutzlasten';
 import { KEINE_FARBE } from '../src/infra/validate';
 import { merkeFigurBildAdresse, setzeFigurBildLokal, setzeTeilBildLokal } from '../src/katalog/katalogPflege';
 import { normalisiereSetNummer, moeglicheSetNummer } from '../src/infra/setNummer';
 
 /** Erst fehlende Bilder holen, dann im eigenen Faden zeichnen. */
-export interface PdfNutzlast { job_id: string; user_id: number; sets: PdfSet[]; parts: PdfTeil[] }
+export type PdfNutzlast = Nutzlast<'pdf'>;
 
 const istFigur = (p: PdfTeil) => !!p.is_fig || String(p.part_number).startsWith('fig-');
 const cdnAdresse = (url: string) => {

@@ -6,22 +6,23 @@ import { importiereMerklisteCsv } from '../src/merkliste/merkliste';
 import { alarmeAusCsv } from '../src/finanzen/preisalarm';
 import { csvImportBericht } from '../src/infra/csvExport';
 import { Fachfehler } from '../src/infra/fehlerTexte';
-import { setzeErgebnis, setzeFachfehler, type ImportQuelle } from '../src/auftraege/importAlsAuftrag';
+import type { z } from 'zod';
+import { setzeErgebnis, setzeFachfehler } from '../src/auftraege/importAlsAuftrag';
+import type { ImportNutzlast as ImportNutzlastSchema } from '../src/auftraege/nutzlasten';
 import type { AuftragsZeile } from '../src/auftraege/auftraege';
 import type { AuftragsKontext } from './auftragsWorker';
-import { importiereWantedXml, type WantedXmlEingabe } from './wantedXmlImport';
+import { importiereWantedXml } from './wantedXmlImport';
 
-export interface ImportNutzlast { user_id: number; quelle: ImportQuelle; eingabe: Record<string, unknown> }
+export type ImportNutzlast = z.output<typeof ImportNutzlastSchema>;
 
 async function ergebnisVon(n: ImportNutzlast, k: AuftragsKontext): Promise<Record<string, unknown>> {
-  const uid = Number(n.user_id);
-  const text = String(n.eingabe.text ?? '');
+  const uid = n.user_id;
   switch (n.quelle) {
-    case 'teile_csv':     return csvImportBericht(await importiereTeileCsv(uid, text));
-    case 'figuren_csv':   return csvImportBericht(await importiereFigurenCsv(uid, text));
-    case 'merkliste_csv': return csvImportBericht(await importiereMerklisteCsv(Number(n.eingabe.owner), text));
-    case 'alarme_csv':    return alarmeAusCsv(uid, String(n.eingabe.waehrung ?? 'EUR'), text);
-    case 'wanted_xml':    return importiereWantedXml(uid, n.eingabe as unknown as WantedXmlEingabe, k);
+    case 'teile_csv':     return csvImportBericht(await importiereTeileCsv(uid, n.eingabe.text));
+    case 'figuren_csv':   return csvImportBericht(await importiereFigurenCsv(uid, n.eingabe.text));
+    case 'merkliste_csv': return csvImportBericht(await importiereMerklisteCsv(n.eingabe.owner, n.eingabe.text));
+    case 'alarme_csv':    return alarmeAusCsv(uid, n.eingabe.waehrung, n.eingabe.text);
+    case 'wanted_xml':    return importiereWantedXml(uid, n.eingabe, k);
   }
 }
 

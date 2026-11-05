@@ -9,7 +9,7 @@ import type { Auftrag, AuftragZaehler, AuftragPause, BricksetQueueEntry } from '
 type Stand = { s: string } | undefined;
 
 /** @returns die Kennung, oder null, wenn derselbe Auftrag schon offen steht */
-export async function fuegeAuftragEin(art: AuftragsArt, nutzlast: Record<string, unknown>,
+export async function fuegeAuftragEin(art: AuftragsArt, nutzlast: object,
   o: Einstellen = {}): Promise<string | null> {
   const z = await db.get<{ id: string }>(
     `INSERT INTO auftraege (art, nutzlast, user_id, schluessel, max_versuche, faellig_ab, fortschritt)
@@ -151,7 +151,7 @@ export async function setzeFaelligkeit(schluessel: string, faelligAb: Date): Pro
     [schluessel, faelligAb]);
 }
 
-export async function zieheTerminVor(schluessel: string, sekunden: number, nutzlast: Record<string, unknown>): Promise<boolean> {
+export async function zieheTerminVor(schluessel: string, sekunden: number, nutzlast: object): Promise<boolean> {
   const r = await db.run(
     `UPDATE auftraege SET faellig_ab = LEAST(faellig_ab, NOW() + make_interval(secs => $2)),
             nutzlast = nutzlast || $3::jsonb, aktualisiert = NOW()

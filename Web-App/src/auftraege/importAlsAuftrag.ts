@@ -4,10 +4,14 @@
 import { stelleAuftragEin } from './dienst';
 import * as repo from './repository/auftraege';
 import type { Fortschritt } from './auftraege';
+import type { z } from 'zod';
+import type { ImportNutzlast, NutzlastEingabe } from './nutzlasten';
 import { Fachfehler, fehlerWerfen } from '../infra/fehlerTexte';
 import type { FehlerCode } from '../infra/fehlerTexte';
 
-export type ImportQuelle = 'teile_csv' | 'figuren_csv' | 'merkliste_csv' | 'alarme_csv' | 'wanted_xml';
+export type ImportQuelle = z.input<typeof ImportNutzlast>['quelle'];
+/** Was der Import der Quelle braucht (src/auftraege/nutzlasten.ts). */
+export type ImportEingabe<Q extends ImportQuelle> = Extract<z.input<typeof ImportNutzlast>, { quelle: Q }>['eingabe'];
 
 /** So lange wartet die Anfrage; danach läuft der Import im Hintergrund weiter. */
 export const IMPORT_WARTEN_MS = 10 * 60_000;
@@ -26,10 +30,12 @@ export async function setzeFachfehler(id: string, e: Fachfehler): Promise<void> 
 }
 
 /** @typeParam T die Antwort, die der Job ablegt; der Vertrag prüft sie im Testlauf. */
-export async function importAlsAuftrag<T = Record<string, unknown>>(uid: number, quelle: ImportQuelle, eingabe: Record<string, unknown>,
+export async function importAlsAuftrag<T = Record<string, unknown>, Q extends ImportQuelle = ImportQuelle>(uid: number, quelle: Q, eingabe: ImportEingabe<Q>,
   o: { fortschritt?: (f: Fortschritt) => void; wartenMs?: number } = {}): Promise<T> {
   // Ein Versuch: Ein zweiter Lauf legte schon Angelegtes noch einmal an.
-  const id = await stelleAuftragEin('csv_import', { user_id: uid, quelle, eingabe }, { userId: uid, maxVersuche: 1 });
+  // tsc verbindet Q nicht mit dem Zweig der Union; geprüft wird beim Einstellen.
+  const nutzlast = { user_id: uid, quelle, eingabe } as NutzlastEingabe<'csv_import'>;
+  const id = await stelleAuftragEin('csv_import', nutzlast, { userId: uid, maxVersuche: 1 });
   if (!id) fehlerWerfen('interner_fehler', 500);
   const bis = Date.now() + (o.wartenMs ?? IMPORT_WARTEN_MS);
   let zuletzt = '';

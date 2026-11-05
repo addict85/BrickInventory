@@ -28,6 +28,8 @@ test('Abschalten während einer Belegung', async (t) => {
   const { erzeugeWorker } = _req('jobs/auftragsWorker.js');
   const ART = `abschalten-${process.pid}`;
   const MARKE = `abschalten-${process.pid}`;
+  // Eine Testart braucht wie jede andere ein Schema für ihre Nutzlast.
+  _req('src/auftraege/nutzlasten.js').NUTZLASTEN[ART] = require('zod').looseObject({});
   const sperre = await db.pool.connect();
   let loslassen = () => {};
   const haengt = new Promise(r => { loslassen = r; });

@@ -252,16 +252,16 @@ export interface Korrektur {
   /** Gegenprobe — muss zu dem Posten an [index] passen. */
   blId: string;
   art: WantedArt;
-  rbId?: string | null;
-  rbFarbe?: number | null;
+  rbId?: string | null | undefined;
+  rbFarbe?: number | null | undefined;
   /** Die Werte aus der Datei, von Hand geändert, damit ein Vertipper nicht ein
    * erneutes Einlesen erzwingt.
    * Ausführlich: docs/begruendungen/src/merkliste/wantedListe.ts.md#korrektur-2 */
-  menge?: number;
+  menge?: number | undefined;
   /** null heisst „Standard des Kontos". */
-  zustand?: string | null;
+  zustand?: string | null | undefined;
   /** null heisst „keiner, hol den Marktpreis". */
-  kaufpreis?: number | null;
+  kaufpreis?: number | null | undefined;
 }
 
 export interface WantedBericht {

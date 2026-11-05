@@ -45,6 +45,8 @@ test('Auftragstabelle', { concurrency: 1 }, async (t) => {
   // Nur Zeilen dieses Tests: eine eigene Art, die kein anderer Worker kennt.
   const ART = `test-${process.pid}`;
   const MARKE = `test-${process.pid}`;
+  // Eine Testart braucht wie jede andere ein Schema für ihre Nutzlast.
+  for (const art of [ART, `${ART}-ex`]) _req('src/auftraege/nutzlasten.js').NUTZLASTEN[art] = require('zod').looseObject({});
   const leeren = () => db.run(`DELETE FROM auftraege WHERE nutzlast->>'marke' = $1`, [MARKE]);
   const zeile = (id) => db.get('SELECT status, versuche, fehler, faellig_ab > NOW() AS spaeter FROM auftraege WHERE id=$1', [id]);
   await leeren();

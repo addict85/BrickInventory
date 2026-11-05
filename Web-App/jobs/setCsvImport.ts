@@ -1,4 +1,6 @@
+import type { z } from 'zod';
 import { konfig } from '../src/infra/konfig';
+import type { SetCsvNutzlast } from '../src/auftraege/nutzlasten';
 import { addSetWithDate, nacharbeitEinstellen } from '../src/sets/setService';
 import { emitJobStatus, jobUpdate, setzeImportFort, type ImportErgebnis } from '../src/auftraege/importAuftrag';
 import { fehlertext } from '../src/infra/fehler';
@@ -8,8 +10,8 @@ import { AuftragUnterbrochen, type AuftragsKontext } from './auftragsWorker';
 /** Nach jedem Set steht der Stand in import_stand; ein Neustart setzt dort
  * fort. Steht `current` nach einem Absturz noch da, ist ungewiss, ob das Set
  * gebucht wurde — es wird nicht noch einmal gebucht, sondern gemeldet. */
-export type CsvZeile = { sn: string; qty: number; purchasePrice: number | null; condition: string | null; acquiredAt: string | null };
-export interface CsvNutzlast { user_id: number; lauf: string; rows: CsvZeile[] }
+export type CsvNutzlast = z.output<typeof SetCsvNutzlast>;
+export type CsvZeile = CsvNutzlast['rows'][number];
 
 const zeilenFrist = () => konfig().csvZeileFristMs;
 
