@@ -104,7 +104,7 @@ test('Design: ein Satz zur Wahl, Noppe und Hochglanz verschieden', async () => {
   const texte = {};
   for (const design of ['noppe', 'hochglanz', 'werkbank']) {
     const o = await oeffneOberflaeche({ '/v1/settings/theme': { success: true, vorgabe: 'classic', eigenes: design, theme: design },
-      '/v1/auth/profile': { success: true, user: { username: 'anna', email: 'anna@example.org', email_verified: 1 } } });
+      '/v1/auth/profile': { success: true, user: { username: 'anna', email: 'anna@example.org', email_verified: true } } });
     try {
       await sicht(o.w, 'profil');
       await warte(() => o.d.getElementById('design-hinweis').textContent);

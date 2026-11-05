@@ -15,6 +15,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
+const { pruefeAntwort } = require('./helpers/oberflaeche');
 
 const ROOT = path.join(__dirname, '..');
 const SKRIPT = fs.readFileSync(path.join(ROOT, 'public', 'js', 'logviewer.js'), 'utf8');
@@ -36,10 +37,11 @@ function oeffne() {
   const aufrufe = [];
   w.fetch = async (url, o = {}) => {
     aufrufe.push({ url: String(url), headers: o.headers || {}, credentials: o.credentials });
-    return { ok: true, json: async () => ({ success: true, logs: [
+    const daten = pruefeAntwort(o.method || 'GET', url, { success: true, logs: [
       { level: 'info', message: 'Start fertig', logged_at: '2026-11-05T10:00:00Z' },
       { level: 'error', message: 'Abruf <b>kaputt</b>', logged_at: '2026-11-05T10:01:00Z' },
-    ] }) };
+    ] });
+    return { ok: true, json: async () => daten };
   };
   let alarm = 0;
   w.alert = () => { alarm++; };

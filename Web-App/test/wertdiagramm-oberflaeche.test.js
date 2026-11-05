@@ -21,7 +21,7 @@ const assert = require('node:assert/strict');
 const { oeffneOberflaeche, reiter, warte } = require('./helpers/oberflaeche');
 
 const punkte = (werte) => werte.map((value, i) => ({ x_label: `0${i + 1}.10`, value, y_frac: 0.5 }));
-const PNL = { '/v1/finance/pnl': { success: true, currency: 'EUR', sets: [], totals: { grand_total: '500', pnl_pct: 22.7 } } };
+const PNL = { '/v1/finance/pnl': { success: true, currency: 'EUR', sets: [], totals: { grand_total: '500', pnl_pct: '22.7' } } };
 
 test('ein Messpunkt: Leerzustand statt Linie', async () => {
   const { w, d } = await oeffneOberflaeche({ ...PNL,

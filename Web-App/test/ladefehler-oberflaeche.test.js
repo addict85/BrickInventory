@@ -26,7 +26,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const { oeffneOberflaeche, reiter, warte, takt } = require('./helpers/oberflaeche');
 
-const SERVERFEHLER = { $status: 500, success: false, error: 'Interner Fehler' };
+const SERVERFEHLER = { $status: 500, success: false, error: 'Interner Fehler', code: 'interner_fehler' };
 const ZWEI_SETS = { success: true, total: 2, themes: [], sets: [
   { set_number: '10294-1', name: 'Titanic', quantity: 1, year: 2021 },
   { set_number: '42143-1', name: 'Ferrari', quantity: 1, year: 2022 },

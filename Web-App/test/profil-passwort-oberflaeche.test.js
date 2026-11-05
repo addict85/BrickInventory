@@ -13,7 +13,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const { oeffneOberflaeche, sicht, warte } = require('./helpers/oberflaeche');
 
-const PROFIL = { '/v1/auth/profile': { success: true, user: { username: 'anna', email: 'anna@example.org', email_verified: 1 } } };
+const PROFIL = { '/v1/auth/profile': { success: true, user: { username: 'anna', email: 'anna@example.org', email_verified: true } } };
 const putAufrufe = (aufrufe) => aufrufe.filter(a => a.method === 'PUT' && a.url.endsWith('/v1/auth/profile'));
 const dialogOffen = (d) => d.getElementById('confirm-modal').style.display === 'flex';
 

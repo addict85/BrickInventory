@@ -117,7 +117,7 @@ test('Teile: Solange sie laden, keine leere Box „Manuell erfasste Teile“', a
 
 test('Konto: ohne E-Mail steht nicht „verifiziert“', async () => {
   const { w, d } = await oeffneOberflaeche({ '/v1/auth/profile': { success: true,
-    user: { username: 'anna', email: '', email_verified: 1, first_name: '', last_name: '' } } });
+    user: { username: 'anna', email: '', email_verified: true, first_name: '', last_name: '' } } });
   try {
     await sicht(w, 'profil');
     await warte(() => d.getElementById('prof-user').value === 'anna');
@@ -155,7 +155,7 @@ test('Konto: eigenes Design oder Vorgabe des Verwalters', async () => {
   const aufrufe = [];
   let eigenes = null;
   const { w, d } = await oeffneOberflaeche({
-    '/v1/auth/profile': { success: true, user: { username: 'anna', email: 'anna@example.org', email_verified: 1 } },
+    '/v1/auth/profile': { success: true, user: { username: 'anna', email: 'anna@example.org', email_verified: true } },
     '/v1/settings/theme': () => ({ success: true, theme: eigenes || 'noppe', vorgabe: 'noppe', eigenes }),
     '/v1/settings/user/theme': (_url, o) => { aufrufe.push(JSON.parse(o.body)); eigenes = JSON.parse(o.body).theme || null;
       return { success: true, theme: eigenes || 'noppe', vorgabe: 'noppe', eigenes }; },
