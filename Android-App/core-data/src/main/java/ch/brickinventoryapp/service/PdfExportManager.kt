@@ -144,9 +144,7 @@ class PdfExportManager @Inject constructor(
                 }
                 is Result.Error -> _state.value = PdfExportState.Error(r.message)
                 // downloadResult ist als Result<ByteArray>? deklariert, damit die
-                // Wiederholschleife oben es überschreiben kann. Dass die Schleife
-                // IMMER mindestens einmal zuweist (repeat(5) läuft, und beim
-                // ersten Durchlauf ist der Wert null, also nicht Success), kann
+                // Wiederholschleife oben es überschreiben kann.
                 // Ausführlich: docs/begruendungen/core-data/service/PdfExportManager.kt.md#z146
                 null -> _state.value =
                     PdfExportState.Error(s(ch.brickinventoryapp.ressourcen.R.string.pdfexp_unknown_error))

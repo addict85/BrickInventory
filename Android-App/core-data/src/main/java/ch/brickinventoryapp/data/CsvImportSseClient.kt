@@ -31,11 +31,10 @@ class CsvImportSseClient @Inject constructor(
     sealed class Event {
         /** Statusänderung vom Server (inkl. idle-Zustand wenn kein Import läuft). */
         data class Status(val status: CsvImportStatus) : Event()
-        /** Verbindungsfehler — Aufrufer soll auf Polling zurückfallen. */
         /**
          * Verbindungsfehler. [technisch] ist ausschliesslich fürs Log: Der Aufrufer
-         * (AppViewModel.startCsvImportWatcher) setzt nur `sseFailed = true` und fällt auf
-         * Polling zurück, dem Nutzer wird nichts gezeigt — deshalb kein übersetzbarer
+         * (CsvImportService über folgeStrom) fällt auf Polling zurück, dem Nutzer wird
+         * nichts gezeigt — deshalb kein übersetzbarer
          * Text, sondern die Ursache in technischer Form.
          */
         data class Failed(val technisch: String?) : Event()

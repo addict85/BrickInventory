@@ -28,9 +28,9 @@ import kotlinx.coroutines.launch
 
 /**
  * Das Detail eines Merkpostens — dieselben Zeilen in derselben Reihenfolge wie das
- * Set-Detail, ohne was ein Merkposten nicht hat (Kaufpreis, Anzahl, Lagerort,
- * Anleitungen; „hinzugefügt“ heisst hier „auf der Liste seit“). Marktpreis und
- * Verlauf zeichnet dieselbe PriceChart(). Der Merkposten wird aus dem geladenen
+ * Set-Detail, ohne was ein Merkposten nicht hat (Kaufpreis, Anzahl, Lagerort, Anleitungen;
+ * „hinzugefügt“ heisst hier „auf der Liste seit“). Marktpreis und Verlauf zeichnet dieselbe
+ * PriceChart().
  * Ausführlich: docs/begruendungen/feature-sammlung/ui/screens/MerkpostenDetailScreen.kt.md#merkpostendetailscreen
  */
 @OptIn(ExperimentalMaterial3Api::class)

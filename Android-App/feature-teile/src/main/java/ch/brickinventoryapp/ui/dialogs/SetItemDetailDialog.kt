@@ -148,10 +148,10 @@ private fun SetItemDetail(
                         if (kopf?.isSpare == true) {
                             SetItemZeile(stringResource(R.string.parts_spare_tag), "✓")
                         }
-                        // Nur für Teile (kopf.colorId ist bei Figuren null): Eine Minifigur steckt
-                        // in ihrem Set, dessen Ort im Set-Detail steht — ein zweiter Ort könnte
-                        // auseinanderlaufen. Bearbeitbar wie in der Webapp; das Feld schreibt auf
-                        // alle Zeilen dieses Teil-Farb-Paares. Die Auswahlliste gehört dem Besitzer
+                        // Nur für Teile (kopf.colorId ist bei Figuren null): Eine Minifigur
+                        // steckt in ihrem Set, dessen Ort im Set-Detail steht — ein zweiter
+                        // Ort könnte auseinanderlaufen. Bearbeitbar wie in der Webapp; das
+                        // Feld schreibt auf alle Zeilen dieses Teil-Farb-Paares.
                         // Ausführlich: docs/begruendungen/feature-teile/ui/dialogs/SetItemDetailDialog.kt.md#kopffarbe
                         val kopfFarbe = kopf?.colorId
                         if (kopf != null && kopfFarbe != null) {

@@ -127,11 +127,6 @@ class PreisalarmWorker(
         }.exceptionOrNull()
 
         /**
-         * Die Meldungen anzeigen — eine je gerissener Schwelle, gruppiert unter einer
-         * Zusammenfassung: Man will ohne die App zu öffnen wissen, welcher Alarm gefallen
-         * ist.
-         */
-        /**
          * Auf dem gesperrten Bildschirm nur „Preisalarm“: Set und Preis verrieten jedem,
          * der das Telefon sieht, was im Regal steht und was es wert ist.
          */
@@ -153,6 +148,11 @@ class PreisalarmWorker(
                 .build()
         }
 
+        /**
+         * Die Meldungen anzeigen — eine je gerissener Schwelle, gruppiert unter einer
+         * Zusammenfassung: Man will ohne die App zu öffnen wissen, welcher Alarm gefallen
+         * ist.
+         */
         fun zeige(context: Context, meldungen: List<ch.brickinventoryapp.data.model.Preisalarm>) {
             if (meldungen.isEmpty()) return
             // Ab Android 13 ist POST_NOTIFICATIONS eine Laufzeitberechtigung.

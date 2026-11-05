@@ -85,10 +85,10 @@ fun KameraErlaubnisHinweis(onErlauben: () -> Unit) {
 }
 
 /**
- * Die Überlagerung über dem Kamerabild: Rahmen in der Mitte, darunter ein dunkles
- * Schild mit dem Hinweistext — eine Gestaltung für Barcode-Scanner und QR-Aufbau
- * (Gewichtung 0.2 / 0.8, damit der Rahmen etwas über der Mitte sitzt; Schwarz mit
- * 72 % Deckung, Formen.kachel, weisse Schrift in 13 sp). Nur der Rahmen ist
+ * Die Überlagerung über dem Kamerabild: Rahmen in der Mitte, darunter ein dunkles Schild mit
+ * dem Hinweistext — eine Gestaltung für Barcode-Scanner und QR-Aufbau (Gewichtung 0.2 / 0.8,
+ * damit der Rahmen etwas über der Mitte sitzt; Schwarz mit 72 % Deckung, Formen.kachel,
+ * weisse Schrift in 13 sp).
  * Ausführlich: docs/begruendungen/core-ui/ui/screens/KameraErlaubnis.kt.md#kameraueberlagerung
  */
 @Composable

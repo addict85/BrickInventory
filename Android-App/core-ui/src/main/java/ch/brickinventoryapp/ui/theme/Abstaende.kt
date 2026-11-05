@@ -30,10 +30,10 @@ object Abstaende {
     val riesig = 32.dp
 
     /**
-     * Der Seitenrand der Bildschirme — 14 dp. Kein Abstand zwischen Dingen, sondern
-     * der Rand, an dem eine Seite beginnt; er steht vielfach im Baum
-     * (ScopeFilterZeile, Suchfeld, Chip-Zeilen), und ihn auf 16 zu ziehen wäre eine
-     * Gestaltungsänderung an all diesen Stellen. Der Name lässt neue Bildschirme sich
+     * Der Seitenrand der Bildschirme — 14 dp. Kein Abstand zwischen Dingen, sondern der Rand,
+     * an dem eine Seite beginnt; er steht vielfach im Baum (ScopeFilterZeile, Suchfeld,
+     * Chip-Zeilen), und ihn auf 16 zu ziehen wäre eine Gestaltungsänderung an all diesen
+     * Stellen.
      * Ausführlich: docs/begruendungen/core-ui/ui/theme/Abstaende.kt.md#rand
      */
     val rand = 14.dp

@@ -82,11 +82,6 @@ class CatalogViewModel @Inject constructor(
     private var catalogGeneration = 0
 
     /**
-     * Derselbe Satz wie in AppTexte.meldung(), über dieselbe Zuordnung fehlerTextId().
-     * Die Servermeldung hat Vorrang — sie kennt ihren Fall genauer und kommt in der
-     * Sprache des Kontos.
-     */
-    /**
      * Wie Texte.meldungFuerSnackbar() — null heisst: Der Kanal schweigt. Ein 401 ist
      * hier schon von der Sitzungsschicht behandelt (util/Abgewiesen.kt). „Angemeldet“
      * heisst: Es liegt ein Token vor — dieselbe Quelle, die der Interceptor liest,
@@ -98,6 +93,11 @@ class CatalogViewModel @Inject constructor(
                 prefs.authTokenState.value?.isNotBlank() == true)) null
         else meldung(fehler)
 
+    /**
+     * Derselbe Satz wie in AppTexte.meldung(), über dieselbe Zuordnung fehlerTextId().
+     * Die Servermeldung hat Vorrang — sie kennt ihren Fall genauer und kommt in der
+     * Sprache des Kontos.
+     */
     private fun meldung(fehler: Result.Error): String {
         if (fehler.message.isNotBlank()) return fehler.message
         val id = fehlerTextId(fehler.art)

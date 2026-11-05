@@ -31,10 +31,8 @@ import ch.brickinventoryapp.util.fingerabdruckAnfang
 import ch.brickinventoryapp.util.fingerabdruckLesbar
 
 /**
- * Die Frage nach einem Zertifikat, das die App nicht von selbst annimmt. Der
- * Fingerabdruck steht in derselben Schreibweise da wie in der Webapp, damit man
- * ihn vergleichen kann. Ohne öffentliche CA oder bei geändertem Schlüssel gilt er erst,
- * wenn man ihn aus einer zweiten Quelle abschreibt, und steht hier nur angefangen da —
+ * Die Frage nach einem Zertifikat, das die App nicht von selbst annimmt. Der Fingerabdruck
+ * steht in derselben Schreibweise da wie in der Webapp, damit man ihn vergleichen kann.
  * Ausführlich: docs/begruendungen/app/ui/components/ZertifikatDialog.kt.md#zertifikatdialog
  */
 @Composable

@@ -39,11 +39,6 @@ class PreferencesManager @Inject constructor(
     ch.brickinventoryapp.util.UpdateStandAblage, GeraeteEinstellungen, Sitzungsablage {
     companion object {
         /**
-         * Der synchron lesbare Spiegel des Designs — eigene Datei, damit er
-         * nichts anderes beruehrt. Warum es ihn gibt, steht bei
-         * gemerktesDesign() weiter unten.
-         */
-        /**
          * Welche Designs es gibt — dieselbe Liste wie ALLOWED in js/00-theme-boot.js, die
          * Whitelist in routes/settings.ts und public/themes/ (theme.test.js hält sie
          * zusammen). Unbekannte Werte werden nicht gemerkt: "" oder null heisst „keine
@@ -51,6 +46,11 @@ class PreferencesManager @Inject constructor(
          */
         val ERLAUBTE_DESIGNS = setOf("classic", "brick", "werkbank", "farbfaecher", "noppe", "hochglanz")
 
+        /**
+         * Der synchron lesbare Spiegel des Designs — eigene Datei, damit er
+         * nichts anderes beruehrt. Warum es ihn gibt, steht bei
+         * gemerktesDesign() weiter unten.
+         */
         const val DESIGN_SPIEGEL_DATEI = "design_spiegel"
         const val DUNKEL_NACH_SYSTEM = "dunkel_nach_system"
         const val HELLIGKEIT = "helligkeit"

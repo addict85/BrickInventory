@@ -5,17 +5,17 @@ import ch.brickinventoryapp.data.model.Preisalarm
 import ch.brickinventoryapp.data.repository.Result
 
 /**
- * Was beim Abholen der ausgelösten Preisalarme entschieden wird — ausserhalb des
- * Workers, weil sich ein ListenableWorker nur mit laufendem Android prüfen lässt.
- * Der Worker beschafft den Kontext, ruft hier an und zeigt an, was zurückkommt.
- * Ausführlich: docs/begruendungen/core-data/alarm/Alarmabholung.kt.md#z7
- */
-/**
  * Die Abfrage selbst — ein Typalias, damit die Signatur von [Alarmabholung.hole]
  * lesbar bleibt. Top-Level, weil Kotlin Typalias nur dort erlaubt.
  */
 typealias Frage = suspend (String?) -> Result<PendingAlertsResponse>
 
+/**
+ * Was beim Abholen der ausgelösten Preisalarme entschieden wird — ausserhalb des
+ * Workers, weil sich ein ListenableWorker nur mit laufendem Android prüfen lässt.
+ * Der Worker beschafft den Kontext, ruft hier an und zeigt an, was zurückkommt.
+ * Ausführlich: docs/begruendungen/core-data/alarm/Alarmabholung.kt.md#z7
+ */
 object Alarmabholung {
 
     /** Was ein Durchgang ergeben hat. */

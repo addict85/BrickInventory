@@ -47,13 +47,6 @@ data class MonitoringUiState(
 
 private fun entzogen(r: Result<*>) = r is Result.Error && r.code == ch.brickinventoryapp.di.NUR_ADMINS
 
-/**
- * Der Monitoring-Bildschirm holt seine Daten über dieses ViewModel statt aus den
- * Composables, damit die Ladelogik ohne Compose-Laufzeit prüfbar ist. Ein eigenes
- * ViewModel am NavHost-Ziel (hiltViewModel()), weil der selten geöffnete
- * Bildschirm mit seiner Abfrageschleife nicht die Lebensdauer der Activity
- * Ausführlich: docs/begruendungen/feature-verwaltung/ui/viewmodel/MonitoringViewModel.kt.md#hintergrundarbeiten
- */
 /** Die Hintergrundarbeiten (Auftragstabelle); [fehler] ist der Satz des Servers, etwa bei 403 oder 409. */
 data class HintergrundUiState(
     val laedt: Boolean = false,
@@ -61,6 +54,11 @@ data class HintergrundUiState(
     val fehler: String? = null,
 )
 
+/**
+ * Der Monitoring-Bildschirm holt seine Daten über dieses ViewModel statt aus den Composables,
+ * damit die Ladelogik ohne Compose-Laufzeit prüfbar ist.
+ * Ausführlich: docs/begruendungen/feature-verwaltung/ui/viewmodel/MonitoringViewModel.kt.md#hintergrundarbeiten
+ */
 @HiltViewModel
 class MonitoringViewModel @Inject constructor(
     private val repo: BrickRepository,
@@ -277,11 +275,6 @@ class MonitoringViewModel @Inject constructor(
         repo.verwaltung.queueCatalogImages() is Result.Success
 
     /**
-     * Das globale Design umstellen. `loadSettings()` beim Aufrufer zieht den neuen
-     * Wert in den Zustand und merkt ihn, damit die Anzeige sofort wechselt und den
-     * Kaltstart überlebt.
-     */
-    /**
      * Die Vorgabe aus /settings/theme. Ein älterer Server kennt `vorgabe` noch
      * nicht; dort war das wirksame Design zugleich die Vorgabe.
      */
@@ -291,6 +284,11 @@ class MonitoringViewModel @Inject constructor(
         }
     }
 
+    /**
+     * Das globale Design umstellen. `loadSettings()` beim Aufrufer zieht den neuen
+     * Wert in den Zustand und merkt ihn, damit die Anzeige sofort wechselt und den
+     * Kaltstart überlebt.
+     */
     internal suspend fun setzeDesign(theme: String): Boolean {
         val ok = repo.verwaltung.setAppTheme(theme) is Result.Success
         if (ok) _state.update { it.copy(vorgabeDesign = theme) }

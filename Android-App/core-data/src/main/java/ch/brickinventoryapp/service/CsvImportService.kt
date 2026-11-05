@@ -160,10 +160,8 @@ class CsvImportService : Service() {
         val total   = s.total ?: 0
         val current = s.current ?: ""
         if (!running) {
-            // Anlaufschutz: Der Server meldet "idle", bis der Import-Job
-            // tatsächlich angelegt ist. Der Service wird aber im selben Moment
-            // gestartet wie der Upload — ohne dieses Fenster würde die erste
-            // idle-Antwort den Service sofort wieder beenden, und der Nutzer
+            // Anlaufschutz: Der Server meldet "idle", bis der Import-Job tatsächlich angelegt
+            // ist.
             // Ausführlich: docs/begruendungen/core-data/service/CsvImportService.kt.md#if
             if (!sawRunning && System.currentTimeMillis() - startedAtMs < GRACE_MS) return true
             return false

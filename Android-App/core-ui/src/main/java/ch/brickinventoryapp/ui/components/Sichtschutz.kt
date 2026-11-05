@@ -10,10 +10,8 @@ import androidx.compose.ui.platform.LocalContext
 import ch.brickinventoryapp.ressourcen.R
 
 /**
- * Kein Bildschirmfoto, keine Aufnahme und kein Vorschaubild in der App-Übersicht,
- * solange dieser Bildschirm steht — für Nummer und PIN der Gutscheine. Gezählt,
- * weil beim Übergang von der Gutscheinseite in ihr PDF beide kurz stehen und das
- * Ende der ersten den Schutz der zweiten sonst aufhöbe; der Zähler hängt am
+ * Kein Bildschirmfoto, keine Aufnahme und kein Vorschaubild in der App-Übersicht, solange
+ * dieser Bildschirm steht — für Nummer und PIN der Gutscheine.
  * Ausführlich: docs/begruendungen/core-ui/ui/components/Sichtschutz.kt.md#sichtschutz
  */
 @Composable

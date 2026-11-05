@@ -174,6 +174,30 @@ class QuelltextRatscheTest {
         assert(kaputt.isEmpty()) { "Verweise ins Leere:\n  " + kaputt.joinToString("\n  ") }
     }
 
+    @Test
+    fun `eine Kurzfassung endet mit einem ganzen Satz, und keine KDoc haengt an nichts`() {
+        // Die maschinell gewählten Kurzfassungen brachen mitten im Satz ab, und
+        // verschobene Blöcke standen als zweite KDoc vor fremden Deklarationen.
+        val satzende = Regex("""[.:!?)“"»\]═]$""")
+        var verweise = 0
+        val funde = produktivDateien().flatMap { f ->
+            val z = f.readLines()
+            z.indices.mapNotNull { i ->
+                val vor = if (i > 0) z[i - 1].trim().trimStart('/', '*').trim() else ""
+                when {
+                    "Ausführlich: docs/begruendungen/" in z[i] -> {
+                        verweise++
+                        if (vor.isNotEmpty() && !satzende.containsMatchIn(vor)) "${f.name}:$i bricht ab: $vor" else null
+                    }
+                    z[i].trim().startsWith("/**") && i > 0 && z[i - 1].trim().endsWith("*/") -> "${f.name}:${i + 1} zweite KDoc"
+                    else -> null
+                }
+            }
+        }
+        assert(verweise >= 100) { "Nur $verweise Verweise gefunden — greift die Suche noch?" }
+        assert(funde.isEmpty()) { "Kurzfassungen zu einem Warum umschreiben:\n  " + funde.joinToString("\n  ") }
+    }
+
     /** Index der öffnenden Klammer zur schliessenden bei [zu], -1 wenn keine. */
     private fun oeffnendeKlammer(c: String, zu: Int): Int {
         var tiefe = 0

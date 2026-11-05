@@ -32,10 +32,8 @@ internal fun importLaeuft(status: String?): Boolean =
     status == "running" || status == "pending"
 
 /**
- * Die eigentliche Regel: Nachgeladen wird beim Übergang von „läuft“ zu „fertig“,
- * nicht in jedem Zustand „fertig“. Der SSE-Strom meldet den Importstatus
- * fortlaufend, auch lange nach dem Ende; eine Zustandsbedingung lüde alle paar
- * Sekunden neu und ersetzte die Galerie durch Seite 1 — die Liste spränge beim
+ * Die eigentliche Regel: Nachgeladen wird beim Übergang von „läuft“ zu „fertig“, nicht in
+ * jedem Zustand „fertig“.
  * Ausführlich: docs/begruendungen/core-zustand/ui/CsvUebergang.kt.md#csvfolge
  */
 internal fun csvFolge(warVorherAktiv: Boolean, status: String?): CsvFolge = when {

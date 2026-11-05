@@ -14,9 +14,8 @@ data class MerklisteUiState(
     val fehler: String? = null,
     val fehlerKlasse: Fehlerklasse? = null,
     // Drei Werte hier; der vierte, der Inhaber, steht wie in jeder Ansicht in
-    // AppUiState.scopeModes — dieselbe Wahl unter demselben Schlüssel wie in Galerie,
-    // Teilen, Minifiguren und Finanzen. Angewandt werden alle am Server: Die
-    // Sortierung nach Marktpreis braucht price_cache, den die App nicht kennt; so
+    // AppUiState.scopeModes — dieselbe Wahl unter demselben Schlüssel wie in Galerie, Teilen,
+    // Minifiguren und Finanzen.
     // Ausführlich: docs/begruendungen/feature-sammlung/ui/ZustandMerkliste.kt.md#z16
     /** Suchtext — trifft Nummer UND Name. Leer heisst: kein Filter. */
     val query: String = "",
@@ -33,10 +32,10 @@ data class MerklisteUiState(
  */
 data class MerkpostenDetailUiState(
     /**
-     * Welches Set dieses Detail zeigt — gesetzt, sobald geladen wird, vor jeder
-     * Antwort. Daran erkennt setzePreisalarm(), dass der Bildschirm offen ist und die
-     * Alarme nachgeladen werden dürfen; das Merkposten-Detail lädt kein SetDetail, an
-     * dem es sonst zu sehen wäre. Nicht `katalog?.setNumber`: Ein Set, das rb_sets
+     * Welches Set dieses Detail zeigt — gesetzt, sobald geladen wird, vor jeder Antwort.
+     * Daran erkennt setzePreisalarm(), dass der Bildschirm offen ist und die Alarme
+     * nachgeladen werden dürfen; das Merkposten-Detail lädt kein SetDetail, an dem es sonst
+     * zu sehen wäre.
      * Ausführlich: docs/begruendungen/feature-sammlung/ui/ZustandMerkliste.kt.md#setnumber
      */
     val setNumber: String? = null,
