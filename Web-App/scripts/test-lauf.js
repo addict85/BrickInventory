@@ -8,6 +8,7 @@
  *
  *   TEST_DATABASE_URL  Basis; ohne sie laufen die Tests ohne Datenbank
  *   TEST_PARALLEL      gleichzeitige Testdateien (Vorgabe: doppelte Kernzahl, höchstens 8)
+ *   TEST_FRIST_MS      feste Frist je Datei; ohne sie 60 s, mit der Last wachsend
  *   --seriell          alles nacheinander auf der Basis-Datenbank, wie früher
  *   weitere Argumente  Testdateien statt test/*.test.js
  */
@@ -26,18 +27,66 @@ const mitDb = (url, name) => { const u = new URL(url); u.pathname = '/' + name; 
 /** @param {string} s */
 const id = (s) => `"${s.replace(/"/g, '""')}"`;
 
-/** @param {string[]} dateien @param {number} n @param {Record<string, string>} env @param {number} frist @returns {Promise<number>} */
+/** Fremde Last auf dem Rechner verlängert jede Datei, ohne dass sie langsamer
+ * geworden wäre: Die Frist wächst mit der Last je Kern, höchstens auf das Vierfache. */
+function fristBeiLast(/** @type {number} */ grund) {
+  const last = os.loadavg()[0] / os.availableParallelism();
+  return Math.round(grund * Math.min(4, Math.max(1, last)));
+}
+
+/**
+ * Ein TAP-Bericht geht zusätzlich in eine Datei: Aus ihm liest der Lauf, welche
+ * Dateien nur an der Frist scheiterten.
+ * @param {string[]} dateien @param {number} n @param {Record<string, string>} env @param {number} frist
+ * @returns {Promise<{ code: number, frist: string[], andere: number }>}
+ */
 function lauf(dateien, n, env, frist = 60_000) {
-  if (!dateien.length) return Promise.resolve(0);
+  if (!dateien.length) return Promise.resolve({ code: 0, frist: [], andere: 0 });
   // textausgabe.js hält Text aus dem Strom der Berichtsrahmen (Begründung dort).
   const vorlader = ['--require', path.join(ROOT, 'test', 'helpers', 'textausgabe.js'),
     ...(env.TEST_DB_VORLAGE ? ['--require', path.join(ROOT, 'test', 'helpers', 'eigene-db.js')] : [])];
+  const bericht = path.join(os.tmpdir(), `test-lauf-${process.pid}-${Date.now()}.tap`);
+  const reporter = process.stdout.isTTY ? 'spec' : 'tap';
   return new Promise((fertig) => {
     const p = spawn(process.execPath,
-      [...vorlader, '--test', `--test-concurrency=${n}`, `--test-timeout=${frist}`, ...dateien],
+      [...vorlader, '--test', `--test-concurrency=${n}`, `--test-timeout=${frist}`,
+        `--test-reporter=${reporter}`, '--test-reporter-destination=stdout',
+        '--test-reporter=tap', `--test-reporter-destination=${bericht}`, ...dateien],
       { cwd: ROOT, stdio: 'inherit', env: { ...process.env, ...env } });
-    p.on('exit', (code) => fertig(code ?? 1));
+    p.on('exit', (code) => {
+      const tap = fs.existsSync(bericht) ? fs.readFileSync(bericht, 'utf8') : '';
+      fs.rmSync(bericht, { force: true });
+      fertig({ code: code ?? 1, ...fristFehler(tap, dateien) });
+    });
   });
+}
+
+/** Rote Dateien auf oberster Ebene: welche nur an der Frist scheiterten, wie viele aus anderem Grund.
+ * @param {string} tap @param {string[]} dateien */
+function fristFehler(tap, dateien) {
+  /** @type {string[]} */
+  const frist = [];
+  let andere = 0;
+  for (const block of tap.split(/\n(?=(?:not )?ok \d+ - )/).filter(b => b.startsWith('not ok'))) {
+    // Der Name ist die Datei (sie selbst lief zu lange) oder ein Test darin (location).
+    const name = /^not ok \d+ - (.*)/.exec(block)?.[1]?.trim() ?? '';
+    const ort = /location: '(.+?):\d+:\d+'/.exec(block)?.[1] ?? name;
+    const datei = dateien.find(d => [name, ort].some(x => path.resolve(ROOT, d) === path.resolve(ROOT, x)));
+    if (datei && /testTimeoutFailure|timed out after/.test(block)) { if (!frist.includes(datei)) frist.push(datei); }
+    else andere++;
+  }
+  return { frist, andere };
+}
+
+/** Was nur an der Frist scheiterte, läuft einzeln nach: unter Last ein
+ * Ausrutscher, einzeln rot ein Fehler. Übersprungen wird nichts. */
+async function mitNachlauf(/** @type {{ code: number, frist: string[], andere: number }} */ r,
+                           /** @type {Record<string, string>} */ env, /** @type {number} */ frist) {
+  if (!r.frist.length) return r.code;
+  console.log(`[test-lauf] Frist überschritten, Nachlauf einzeln: ${r.frist.join(', ')}`);
+  const nach = await lauf(r.frist, 1, env, frist * 2);
+  console.log(`[test-lauf] Nachlauf ${nach.code === 0 ? 'grün' : 'ROT'}: ${r.frist.length} Dateien`);
+  return r.andere > 0 ? (r.code || 1) : nach.code;
 }
 
 async function main() {
@@ -47,7 +96,7 @@ async function main() {
   const dateien = auswahl.length ? auswahl
     : fs.readdirSync(path.join(ROOT, 'test')).filter(f => f.endsWith('.test.js')).sort().map(f => path.join('test', f));
   if (seriell) {
-    const code = await lauf(dateien, 1, {});
+    const { code } = await lauf(dateien, 1, {}, fristBeiLast(60_000));
     console.log(`[test-lauf] seriell, ${Math.round((Date.now() - start) / 1000)} s`);
     process.exit(code);
   }
@@ -80,10 +129,12 @@ async function main() {
   }
   let code = 0;
   try {
-    code = await lauf(uebrige, n, env);
+    const frist = Number(process.env.TEST_FRIST_MS) || fristBeiLast(60_000);
+    if (frist > 60_000) console.log(`[test-lauf] Last ${os.loadavg()[0].toFixed(1)}: Frist je Datei ${frist / 1000} s`);
+    code = await mitNachlauf(await lauf(uebrige, n, env, frist), env, frist);
     // Browser-Tests erlauben sich selbst 300 s; die Frist des Runners gilt je
     // Datei und darf sie nicht vorher abschneiden.
-    code = (await lauf(browser, 1, env, 300_000)) || code;
+    code = (await mitNachlauf(await lauf(browser, 1, env, 300_000), env, 300_000)) || code;
   } finally {
     if (admin) { await raeumeAuf(admin, vorlage, true).catch(() => {}); await admin.end(); }
   }
