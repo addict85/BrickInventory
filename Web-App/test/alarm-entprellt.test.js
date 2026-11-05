@@ -90,7 +90,7 @@ function alarmMarkup(sn) {
     // Der Präfix des Set-Dialogs. Er steht in alarmBlock() als ${p}; hier
     // wird daraus, was zur Laufzeit dort steht.
     .replace(/\$\{p\}/g, 'm')
-    .replace(/\$\{escJs\(sn\)\}/g, sn)
+    .replace(/\$\{(?:escJs\()?sn\)?\}/g, sn)
     // Die Beschriftungen kommen aus der Übersetzung; hier zählt nur die
     // Verdrahtung, nicht der Text.
     .replace(/\$\{[^}]*\}/g, 'x');

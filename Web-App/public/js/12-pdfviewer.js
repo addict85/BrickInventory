@@ -1,15 +1,9 @@
-// Der PDF-Betrachter ist eine eigene Datei: Er hängt nur an G und esc und wird über openPdfViewer()
-// gerufen. In 01-core.js stand er zwischen Dingen, die mit ihm nichts zu tun haben.
+// Der PDF-Betrachter ist eine eigene Datei: Er hängt nur an G und esc und wird über openPdfViewer() gerufen.
 // Ausführlich: docs/begruendungen/public/js/12-pdfviewer.js.md#diese-110-zeilen-standen-in-js-01-core-j
 import { registerActions } from './00-registry.js';
-import { G } from './01-core.js';
-// t() wird für die Lade- und Fehlermeldung gebraucht. Beim Herauslösen aus
-// 01-core.js früher blieb der Import zurück — dort war t() über den
-// Dateikopf verfügbar. Der Fehler flog erst beim ÖFFNEN eines PDFs
-// („ReferenceError: t is not defined"), also nicht beim Laden der Seite und
-// damit auch nicht beim Bündeln.
-import { t } from '../i18n.js';
-import { esc } from './00-escapen.js';
+import { G, setzeHtml } from './01-dom.js';
+import { tRaw } from '../i18n.js';
+import { html } from './00-escapen.js';
 
 /** @type {PdfDokument | null} */
 let _pdfDoc = null;
@@ -22,25 +16,23 @@ const _pdfRenderTasks = new Map();
 // ── Zoom ─────────────────────────────────────────────────────────────────────
 //
 // `_pdfZoom` ist der Faktor auf die Grundgrösse, und die Grundgrösse ist
-// „Seite füllt die Breite" (_pdfBaseScale). 1 ist deshalb der untere Anschlag:
-// weiter hinaus gibt es nichts zu sehen, die Breite ist schon ganz da. Dieselbe
-// Untergrenze hat der Bildzoom der App (ZoomableImageDialog.kt).
+// „Seite füllt die Breite" (_pdfBaseScale). 1 ist deshalb der untere Anschlag: weiter hinaus gibt es nichts
+// zu sehen, die Breite ist schon ganz da. Dieselbe Untergrenze hat der Bildzoom der App
+// (ZoomableImageDialog.kt).
 const PDF_ZOOM_MIN = 1;
 const PDF_ZOOM_MAX = 5;
 const PDF_ZOOM_SCHRITT = 1.25;   // ein Druck auf + bzw. −
 
-// Obergrenze der Leinwand in Pixeln der Fläche. Der Riegel ist der Speicher, nicht die Grenze des
-// Browsers (16384 je Seite): 16 MPixel sind rund 60 MB und reichen für jede Zoomstufe, die man lesen
-// will.
+// Obergrenze der Leinwand in Pixeln der Fläche. Der Riegel ist der Speicher, nicht die Grenze des Browsers
+// (16384 je Seite): 16 MPixel sind rund 60 MB und reichen für jede Zoomstufe, die man lesen will.
 // Ausführlich: docs/begruendungen/public/js/12-pdfviewer.js.md#pdf-leinwand-max-px
 const PDF_LEINWAND_MAX_PX = 16e6;
 
 let _pdfZoom = 1;
 let _pdfBaseScale = 1;          // Faktor „Seite füllt die Breite"
 let _pdfSeiteW = 0, _pdfSeiteH = 0;   // Seitengrösse bei scale 1, aus PDF.js
-// Zählt jede Zoom-Änderung. Ein Render, der über eine Änderung hinweg läuft,
-// hängt seine Leinwand sonst in einen Platzhalter, der inzwischen eine andere
-// Grösse hat — die Seite wäre verzerrt. Siehe _renderPdfPage.
+// Zählt jede Zoom-Änderung. Ein Render, der über eine Änderung hinweg läuft, hängt seine Leinwand sonst in
+// einen Platzhalter, der inzwischen eine andere Grösse hat — die Seite wäre verzerrt. Siehe _renderPdfPage.
 let _pdfZoomGen = 0;
 
 /** @param {{ daten?: ArrayBuffer, dateiname?: string }} [opt] schon geladene Bytes (Gutschein-PDF mit
@@ -54,8 +46,8 @@ export async function openPdfViewer(url, title, opt = {}) {
   dl.href = url; dl.setAttribute('download', fname);
   _pdfCurrentUrl = url;
   _pdfZoom = 1; _pdfZoomGen++; _pdfZeigeFaktor();
-  if (pages) { pages.innerHTML = ''; pages.scrollLeft = 0; pages.scrollTop = 0; }
-  if (loading) { loading.style.display = 'flex'; loading.innerHTML = '<div class="spin"></div><span>' + (t('pdf.loading')||'PDF wird geladen…') + '</span>'; }
+  if (pages) { pages.replaceChildren(); pages.scrollLeft = 0; pages.scrollTop = 0; }
+  if (loading) { loading.style.display = 'flex'; setzeHtml(loading, html`${html`<div class="spin"></div><span>`}${tRaw('pdf.loading') || 'PDF wird geladen…'}${html`</span>`}`); }
   modal.style.display = 'flex';
   document.body.style.overflow = 'hidden';
 
@@ -64,8 +56,7 @@ export async function openPdfViewer(url, title, opt = {}) {
   while (!window.pdfjsLib && _tries < 50) { await new Promise(r => setTimeout(r, 100)); _tries++; }
   const pdfjsLib = window.pdfjsLib;
   if (!pdfjsLib) {
-    if (loading) loading.innerHTML =
-      `<span data-stil="color:#f88;padding:20px">${t('pdf.lib_missing')}</span>`;
+    if (loading) setzeHtml(loading, html`<span data-stil="color:#f88;padding:20px">${tRaw('pdf.lib_missing')}</span>`);
     return;
   }
   try {
@@ -76,8 +67,8 @@ export async function openPdfViewer(url, title, opt = {}) {
       disableRange: false,      // Byte-Range-Requests nutzen
       rangeChunkSize: 262144,   // 256 KB
       withCredentials: true,    // Session-Cookie (same-origin) mitsenden
-      // Ein PDF kommt auch von fremden Quellen: kein eval für Schriften (ab
-      // PDF.js 5 ohnehin entfallen, die CSP verbietet es) und kein Skript im PDF.
+      // Ein PDF kommt auch von fremden Quellen: kein eval für Schriften (ab PDF.js 5 ohnehin entfallen, die
+      // CSP verbietet es) und kein Skript im PDF.
       isEvalSupported: false,
       enableScripting: false
     });
@@ -85,7 +76,7 @@ export async function openPdfViewer(url, title, opt = {}) {
     if (loading) loading.style.display = 'none';
     await _renderPdfLazy(_pdfDoc, pages);
   } catch (e) {
-    if (loading) { loading.style.display = 'flex'; loading.innerHTML = '<span data-stil="color:#f88;padding:20px;text-align:center">' + (t('pdf.error')||'Fehler beim Laden') + ': ' + esc(String(e && e.message || e)) + '</span>'; }
+    if (loading) { loading.style.display = 'flex'; setzeHtml(loading, html`<span data-stil="color:#f88;padding:20px;text-align:center">${tRaw('pdf.error') || 'Fehler beim Laden'}: ${e instanceof Error ? e.message : String(e)}</span>`); }
   }
 }
 
@@ -98,9 +89,8 @@ function _pdfMasse() {
 }
 
 /**
- * Einen Platzhalter auf die Zoomgrösse bringen. margin:0 auto statt nur align-items:center: Bei einer
- * Seite breiter als der Behälter läge der linke Rand sonst im Negativen und wäre nicht mehr
- * erreichbar.
+ * Einen Platzhalter auf die Zoomgrösse bringen. margin:0 auto statt nur align-items:center: Bei einer Seite
+ * breiter als der Behälter läge der linke Rand sonst im Negativen und wäre nicht mehr erreichbar.
  * Ausführlich: docs/begruendungen/public/js/12-pdfviewer.js.md#pdfmassplatzhalter
  * @param {HTMLElement} ph
  */
@@ -154,9 +144,8 @@ async function _renderPdfPage(pdf, n, ph) {
   try {
     const page = await pdf.getPage(n);
     const dpr = Math.min(window.devicePixelRatio || 1, 2);
-    // Der Riegel wirkt auf die FLÄCHE, nicht auf eine Seitenlänge: eine
-    // querformatige Seite hat dieselbe Pixelzahl wie eine hochformatige, nur
-    // anders verteilt.
+    // Der Riegel wirkt auf die FLÄCHE, nicht auf eine Seitenlänge: eine querformatige Seite hat dieselbe
+    // Pixelzahl wie eine hochformatige, nur anders verteilt.
     let scale = _pdfBaseScale * _pdfZoom * dpr;
     const flaeche = (_pdfSeiteW * scale) * (_pdfSeiteH * scale);
     if (flaeche > PDF_LEINWAND_MAX_PX) scale *= Math.sqrt(PDF_LEINWAND_MAX_PX / flaeche);
@@ -172,7 +161,7 @@ async function _renderPdfPage(pdf, n, ph) {
     // Durchlauf oben ab (Leinwand schon da), und die Seite bliebe grob bis zum nächsten Zoom.
     // Ausführlich: docs/begruendungen/public/js/12-pdfviewer.js.md#if
     if (gen !== _pdfZoomGen) { canvas.width = 0; canvas.height = 0; ph.dataset.rendering = '0'; return; }
-    ph.innerHTML = ''; ph.appendChild(canvas);
+    ph.replaceChildren(); ph.appendChild(canvas);
   } catch (e) { /* Render abgebrochen (Scroll) o.ä. */ }
   ph.dataset.rendering = '0';
 }
@@ -185,7 +174,7 @@ function _unloadPdfPage(n, ph) {
   const task = _pdfRenderTasks.get(n);
   if (task) { try { task.cancel(); } catch (_) {} _pdfRenderTasks.delete(n); }
   const canvas = ph.querySelector('canvas');
-  if (canvas) { canvas.width = 0; canvas.height = 0; ph.innerHTML = ''; } // Speicher freigeben
+  if (canvas) { canvas.width = 0; canvas.height = 0; ph.replaceChildren(); } // Speicher freigeben
   ph.dataset.rendering = '0';
 }
 
@@ -216,8 +205,8 @@ function _pdfSetzeZoom(neu, ankerX, ankerY) {
   _pdfZoom = ziel;
   _pdfZoomGen++;
 
-  // Erst alle Leinwände weg, dann die Platzhalter neu bemessen: eine Leinwand
-  // mit width:100% würde sonst kurz verzerrt dastehen.
+  // Erst alle Leinwände weg, dann die Platzhalter neu bemessen: eine Leinwand mit width:100% würde sonst kurz
+  // verzerrt dastehen.
   /** @type {NodeListOf<HTMLElement>} */ (container.querySelectorAll('.pdf-page-ph')).forEach(ph => {
     _unloadPdfPage(parseInt(ph.dataset.page ?? ''), ph);
     _pdfMassPlatzhalter(ph);
@@ -226,10 +215,9 @@ function _pdfSetzeZoom(neu, ankerX, ankerY) {
   container.scrollLeft = dokX * ziel - ax;
   container.scrollTop = dokY * ziel - ay;
 
-  // Der Beobachter meldet sich NICHT von selbst, wenn ein beobachtetes Element
-  // nur die Grösse ändert und weiter sichtbar bleibt — die sichtbaren Seiten
-  // blieben leer. observe() liefert aber immer einen ersten Rückruf, also neu
-  // anmelden. (disconnect() davor, sonst doppelte Anmeldung.)
+  // Der Beobachter meldet sich NICHT von selbst, wenn ein beobachtetes Element nur die Grösse ändert und
+  // weiter sichtbar bleibt — die sichtbaren Seiten blieben leer. observe() liefert aber immer einen ersten
+  // Rückruf, also neu anmelden. (disconnect() davor, sonst doppelte Anmeldung.)
   if (_pdfObserver) { _pdfObserver.disconnect(); _pdfBeobachteAlle(container); }
   _pdfZeigeFaktor();
 }
@@ -239,8 +227,8 @@ function _pdfZeigeFaktor() {
   const el = G('pdf-viewer-zoom');
   if (el) el.textContent = Math.round(_pdfZoom * 100) + '%';
   const minus = G('pdf-viewer-zoom-out'), plus = G('pdf-viewer-zoom-in');
-  // Am Anschlag abschalten. `disabled` ist für Screenreader und Tastatur
-  // verbindlich; die Ausgrauung ist nur die Begleitung davon, nicht das Signal.
+  // Am Anschlag abschalten. `disabled` ist für Screenreader und Tastatur verbindlich; die Ausgrauung ist nur
+  // die Begleitung davon, nicht das Signal.
   if (minus) minus.disabled = _pdfZoom <= PDF_ZOOM_MIN + 1e-4;
   if (plus) plus.disabled = _pdfZoom >= PDF_ZOOM_MAX - 1e-4;
 }
@@ -250,8 +238,8 @@ function pdfZoomOut() { _pdfSetzeZoom(_pdfZoom / PDF_ZOOM_SCHRITT, null, null); 
 function pdfZoomReset() { _pdfSetzeZoom(1, null, null); }
 
 /**
- * Strg/⌘ + Rad zoomt das PDF statt der ganzen Oberfläche; ohne Zusatztaste rollt das Rad weiter, weil
- * man durch Anleitungen vor allem blättert. Der Zeiger ist der Anker.
+ * Strg/⌘ + Rad zoomt das PDF statt der ganzen Oberfläche; ohne Zusatztaste rollt das Rad weiter, weil man
+ * durch Anleitungen vor allem blättert. Der Zeiger ist der Anker.
  * Ausführlich: docs/begruendungen/public/js/12-pdfviewer.js.md#pdfrad
  */
 /** @param {WheelEvent} ev */
@@ -260,8 +248,8 @@ function _pdfRad(ev) {
   ev.preventDefault();
   const container = G('pdf-viewer-pages'); if (!container) return;
   const r = container.getBoundingClientRect();
-  // deltaY ist je nach Gerät Pixel, Zeilen oder Seiten — nur das Vorzeichen
-  // ist überall verlässlich, der Betrag nicht. Deshalb ein fester Schritt.
+  // deltaY ist je nach Gerät Pixel, Zeilen oder Seiten — nur das Vorzeichen ist überall verlässlich, der
+  // Betrag nicht. Deshalb ein fester Schritt.
   const f = ev.deltaY < 0 ? PDF_ZOOM_SCHRITT : 1 / PDF_ZOOM_SCHRITT;
   _pdfSetzeZoom(_pdfZoom * f, ev.clientX - r.left, ev.clientY - r.top);
 }
@@ -281,10 +269,9 @@ function _pdfTaste(ev) {
 
 // ── Zwei-Finger-Geste ────────────────────────────────────────────────────────
 //
-// Der Browser kann selbst zoomen (die Seite hat kein user-scalable=no), aber er
-// zoomt das Sichtfeld: Kopfzeile und Knöpfe werden mitgross, und das Bild wird
-// weich, weil die Leinwand dieselbe bleibt. Hier wird stattdessen die SEITE
-// gezoomt und neu gerendert, deshalb fängt der Betrachter die Geste ab.
+// Der Browser kann selbst zoomen (die Seite hat kein user-scalable=no), aber er zoomt das Sichtfeld:
+// Kopfzeile und Knöpfe werden mitgross, und das Bild wird weich, weil die Leinwand dieselbe bleibt. Hier wird
+// stattdessen die SEITE gezoomt und neu gerendert, deshalb fängt der Betrachter die Geste ab.
 let _pdfPinchAbstand = 0, _pdfPinchZoom = 1;
 
 /** @param {Touch} t1 @param {Touch} t2 */
@@ -319,8 +306,8 @@ function _pdfTouchEnd(ev) {
 }
 
 /**
- * Zuhörer einmal am Behälter anmelden, nicht bei jedem openPdfViewer(): Sonst zoomte nach zehn PDFs
- * ein Raddreh zehnfach. passive:false, damit preventDefault() greift und der Browser nicht mitzoomt.
+ * Zuhörer einmal am Behälter anmelden, nicht bei jedem openPdfViewer(): Sonst zoomte nach zehn PDFs ein
+ * Raddreh zehnfach. passive:false, damit preventDefault() greift und der Browser nicht mitzoomt.
  * Ausführlich: docs/begruendungen/public/js/12-pdfviewer.js.md#pdfhaengezuhoererein
  */
 function _pdfHaengeZuhoererEin() {
@@ -345,18 +332,17 @@ function closePdfViewer() {
   if (_pdfObserver) { _pdfObserver.disconnect(); _pdfObserver = null; }
   _pdfRenderTasks.forEach(task => { try { task.cancel(); } catch (_) {} });
   _pdfRenderTasks.clear();
-  const pages = G('pdf-viewer-pages'); if (pages) pages.innerHTML = '';
+  const pages = G('pdf-viewer-pages'); if (pages) pages.replaceChildren();
   if (_pdfDoc) { try { _pdfDoc.destroy(); } catch (_) {} _pdfDoc = null; }
   modal.style.display = 'none';
   document.body.style.overflow = '';
 }
 
-// Drucken: nativen Viewer in neuem Tab öffnen (druckt zuverlässig alle Seiten,
-// ohne für den Druck das ganze PDF im Speicher rendern zu müssen).
+// Drucken: nativen Viewer in neuem Tab öffnen (druckt zuverlässig alle Seiten, ohne für den Druck das ganze
+// PDF im Speicher rendern zu müssen).
 function printPdfViewer() {
   if (_pdfCurrentUrl) { try { window.open(_pdfCurrentUrl, '_blank'); } catch (_) {} }
 }
 
-// Die Knöpfe im PDF-Fenster melden sich hier an, nicht mehr in 01-core.js —
-// der Handler gehört zu dem Modul, das ihn umsetzt.
+// Die Knöpfe im PDF-Fenster melden sich hier an: Der Handler gehört zu dem Modul, das ihn umsetzt.
 registerActions({ closePdfViewer, printPdfViewer, pdfZoomIn, pdfZoomOut, pdfZoomReset });

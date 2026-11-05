@@ -1,10 +1,12 @@
-// Beide Seiten der Überwachung beieinander: die Liste der Dienste und das Protokollfenster. In
-// 01-core.js stand das eingekeilt in einer Datei, deren Kopf es nicht einmal nannte.
+// Beide Seiten der Überwachung beieinander: die Liste der Dienste und das Protokollfenster.
 // Ausführlich: docs/begruendungen/public/js/01-monitor.js.md#dieser-block-lag-in-js-01-core-js-deren
 import { echt, registerActions } from './00-registry.js';
-import { fmtDatum, ico, G, api, escHtmlAttr, toast, apiDaten } from './01-core.js';
+import { escHtmlAttr, esc, html, ungeprueft } from './00-escapen.js';
+import { api, apiDaten } from './01-api.js';
+import { ico, G, setzeHtml } from './01-dom.js';
+import { fmtDatum } from './01-format.js';
+import { toast } from './01-meldungen.js';
 import { LANG, locale, t, tRaw } from '../i18n.js';
-import { esc } from './00-escapen.js';
 /** @typedef {import('../../frontend-typen/vertrag').AuftragPause} AuftragPause */
 /** @typedef {import('../../frontend-typen/vertrag').Auftrag} Auftrag */
 /** @typedef {import('../../frontend-typen/vertrag').JobStatus} JobStatus */
@@ -12,9 +14,8 @@ import { esc } from './00-escapen.js';
 /**
  * Zeitgeber, der die Jobliste nachzieht, solange der Reiter offen ist.
  *
- * Er steht hier und nicht in 01-core.js, weil nur diese Datei ihn setzt —
- * js/02-gallery.js hält ihn beim Reiterwechsel an, dafür gibt es den Setter
- * unten.
+ * Er steht hier, weil nur diese Datei ihn setzt — js/02-gallery.js hält ihn beim Reiterwechsel an, dafür gibt
+ * es den Setter unten.
  */
 /** @type {ReturnType<typeof setInterval> | null} */
 let _monitorTimer = null;
@@ -24,10 +25,9 @@ function openLogViewer() {
   if (!win) { alert(tRaw('popup.blocked')); return; }
   const base  = window.location.origin;
 
-  // Die Zeitspannen als Daten statt als sechs ausgeschriebene <option>: So
-  // steht die Beschriftung EINMAL da, in der Sprache des Nutzers. Vorher
-  // waren es sechs deutsche Literale — in einem Fenster, das ein englischer
-  // Verwalter genauso oeffnet.
+  // Die Zeitspannen als Daten statt als sechs ausgeschriebene <option>: So steht die Beschriftung EINMAL da,
+  // in der Sprache des Nutzers. Vorher waren es sechs deutsche Literale — in einem Fenster, das ein
+  // englischer Verwalter genauso oeffnet.
   const spannen = [15, 30, 60, 360, 1440, 2880].map((min) => {
     const text = min < 60 ? t('log.minutes_n', { n: min })
       : min === 60 ? t('log.hour_1')
@@ -35,7 +35,7 @@ function openLogViewer() {
     return '<option value="' + min + '">' + text + '</option>';
   }).join('');
 
-  const html = '<!DOCTYPE html><html lang="' + escHtmlAttr(LANG) + '"><head>' +
+  const markup = '<!DOCTYPE html><html lang="' + escHtmlAttr(LANG) + '"><head>' +
     '<meta charset="UTF-8"><title>' + esc(t('log.title')) + '</title>' +
     '<link rel="stylesheet" href="/tokens.css?v=' + (window.__APP_VERSION || Date.now()) + '">' +
     '<link rel="stylesheet" href="/logviewer.css?v=' + (window.__APP_VERSION || Date.now()) + '">' +
@@ -47,8 +47,8 @@ function openLogViewer() {
         'log.none_found':       t('log.none_found'),
         'log.entries':          t('log.entries'),
         'toast.error':          t('toast.error'),
-        // Die beiden Beschriftungen des Auto-Knopfes wechseln zur Laufzeit;
-        // logviewer.js hatte sie deshalb als deutsche Literale.
+        // Die beiden Beschriftungen des Auto-Knopfes wechseln zur Laufzeit; logviewer.js hatte sie deshalb
+        // als deutsche Literale.
         'log.auto':             t('log.auto'),
         'log.stop':             t('log.stop'),
       })) + '">' +
@@ -72,12 +72,12 @@ function openLogViewer() {
     '<script src="/js/logviewer.js?v=' + (window.__APP_VERSION || Date.now()) + '"><\/script>' +
     '</body></html>';
 
-  win.document.write(html);
+  win.document.write(markup);
   win.document.close();
 }
 
-// Übersetzt Server-seitige Job-Sub-Texte (background jobs kennen die
-// Nutzersprache nicht). Bekannte Muster werden clientseitig ersetzt.
+// Übersetzt Server-seitige Job-Sub-Texte (background jobs kennen die Nutzersprache nicht). Bekannte Muster
+// werden clientseitig ersetzt.
 /**
  * @param {string} sub
  */
@@ -111,18 +111,17 @@ export async function saveJobSchedule(name, payload) {
 }
 
 
-// Bausteine der Dienstetabelle im Monitor.
-// Die Uhrzeit als Textfeld mit 24-h-Form: <input type="time"> zeigt die
-// Form des Browsers („03:00 AM“), unabhängig von der Sprache der Seite.
-/** @param {any} schedules @param {string} k */
+// Bausteine der Dienstetabelle im Monitor. Die Uhrzeit als Textfeld mit 24-h-Form: <input type="time"> zeigt
+// die Form des Browsers („03:00 AM“), unabhängig von der Sprache der Seite.
+/** @param {Record<string, import('../../frontend-typen/vertrag').JobSchedule> | null | undefined} schedules @param {string} k */
 const schedInput = (schedules, k) => {
   const sc = schedules?.[k];
-  if (!sc) return `<span class="mon-leise">${t('monitor.sched.keiner')}</span>`;
+  if (!sc) return html`<span class="mon-leise">${tRaw('monitor.sched.keiner')}</span>`;
   if (sc.type === 'daily') {
-    return `<label class="mon-plan">${t('monitor.sched.taeglich')} <input type="text" inputmode="numeric" maxlength="5" placeholder="HH:MM" class="job-sched-input mon-zeit" value="${esc(sc.time)}" aria-label="${t('monitor.sched.daily_hint')}" data-change="saveJobTime" data-arg="${esc(k)}"></label>`;
+    return html`<label class="mon-plan">${tRaw('monitor.sched.taeglich')} <input type="text" inputmode="numeric" maxlength="5" placeholder="HH:MM" class="job-sched-input mon-zeit" value="${sc.time}" aria-label="${tRaw('monitor.sched.daily_hint')}" data-change="saveJobTime" data-arg="${k}"></label>`;
   }
   if (sc.type === 'interval') {
-    return `<label class="mon-plan">${t('monitor.sched.alle')} <input inputmode="numeric" type="number" min="5" class="job-sched-input mon-minuten" aria-label="${t('monitor.sched.interval_hint')}" value="${esc(sc.minutes)}" data-change="saveJobMinutes" data-arg="${esc(k)}"> ${t('monitor.sched.min')}</label>`;
+    return html`<label class="mon-plan">${tRaw('monitor.sched.alle')} <input inputmode="numeric" type="number" min="5" class="job-sched-input mon-minuten" aria-label="${tRaw('monitor.sched.interval_hint')}" value="${sc.minutes}" data-change="saveJobMinutes" data-arg="${k}"> ${tRaw('monitor.sched.min')}</label>`;
   }
   return '';
 };
@@ -143,7 +142,7 @@ const jobIconSvg = (/** @type {string} */ k) => {
         // PDF-Aufträge: Blatt mit roter Leiste
         pdfJobs: '<path d="M26,10 L76,10 L98,32 L98,110 L26,110 Z" fill="#9BA19D"/><path d="M76,10 L76,32 L98,32 Z" fill="#fff" fill-opacity=".6"/><rect x="16" y="56" width="70" height="26" rx="4" fill="#E63329"/><rect x="38" y="90" width="44" height="5" rx="2.5" fill="#fff"/>',
   };
-  return svgs[k] ? `<svg class="mon-sinnbild" viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">${svgs[k]}</svg>` : '<span class="mon-sinnbild" aria-hidden="true"></span>';
+  return svgs[k] ? html`<svg class="mon-sinnbild" viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">${ungeprueft(svgs[k])}</svg>` : '<span class="mon-sinnbild" aria-hidden="true"></span>';
 };
 const jobZustand = (/** @type {string} */ s) => ({ running: tRaw('monitor.state.running'), done: tRaw('monitor.state.done'),
   error: tRaw('monitor.state.error') })[s] || tRaw('monitor.state.idle');
@@ -158,15 +157,15 @@ const statusIcon = (/** @type {string} */ s, /** @type {JobStatus} */ j) => {
 const bar = (/** @type {number} */ v, /** @type {number} */ gesamt) => {
   if (!gesamt) return '';
   const pct = Math.min(100, Math.round(v / gesamt * 100));
-  return `<div class="mon-balken"><div data-breite="${pct}"></div></div>`;
+  return html`<div class="mon-balken"><div data-breite="${pct}"></div></div>`;
 };
 const aktionen = (/** @type {string} */ k, /** @type {JobStatus} */ j) => [
-  k === 'priceJob' ? `<button class="btn bs btn-sm" type="button" data-click="clickJobTrigger">${t('monitor.run_now')}</button>` : '',
-  k === 'instrQueue' ? `<button class="btn bs btn-sm" type="button" data-click="reimportMissingInstructions" data-self="1">${t('monitor.import_missing')}</button>` : '',
-  k === 'csvImport' ? `<button class="btn bs btn-sm" type="button" data-click="triggerCsvSync" data-self="1">${t('monitor.sync_now')}</button>` : '',
-  k === 'imgDl' && j.canRedownload ? `<button class="btn bs btn-sm" type="button" data-click="redownloadMissingImages" data-self="1">${t('monitor.redownload_missing')}</button>` : '',
-  k === 'imgDl' ? `<button class="btn bs btn-sm" type="button" data-click="queueCatalogImages" data-self="1">${t('monitor.catalog_images')}</button>` : '',
-  k === 'bricksetRetry' && j.total > 0 ? `<button class="btn bs btn-sm" type="button" data-click="toggleBricksetQueue" data-self="1"><span>${t('monitor.show')}</span></button>` : '',
+  k === 'priceJob' ? html`<button class="btn bs btn-sm" type="button" data-click="clickJobTrigger">${tRaw('monitor.run_now')}</button>` : '',
+  k === 'instrQueue' ? html`<button class="btn bs btn-sm" type="button" data-click="reimportMissingInstructions" data-self="1">${tRaw('monitor.import_missing')}</button>` : '',
+  k === 'csvImport' ? html`<button class="btn bs btn-sm" type="button" data-click="triggerCsvSync" data-self="1">${tRaw('monitor.sync_now')}</button>` : '',
+  k === 'imgDl' && j.canRedownload ? html`<button class="btn bs btn-sm" type="button" data-click="redownloadMissingImages" data-self="1">${tRaw('monitor.redownload_missing')}</button>` : '',
+  k === 'imgDl' ? html`<button class="btn bs btn-sm" type="button" data-click="queueCatalogImages" data-self="1">${tRaw('monitor.catalog_images')}</button>` : '',
+  k === 'bricksetRetry' && j.total > 0 ? html`<button class="btn bs btn-sm" type="button" data-click="toggleBricksetQueue" data-self="1"><span>${tRaw('monitor.show')}</span></button>` : '',
 ].join('');
 const dienstName = (/** @type {string} */ k, /** @type {JobStatus} */ j) => t('monitor.job.' + k, {}) !== 'monitor.job.' + k ? t('monitor.job.' + k) : esc(j.label || k);
 
@@ -177,8 +176,8 @@ export async function loadMonitor() {
   const render = async () => {
     const d = await apiDaten('GET', '/v1/admin/jobs');
     if (!d?.success) return;
-    // Nicht neu rendern, während der Nutzer gerade eine Zeitplan-Eingabe bearbeitet
-    // (sonst würde das 3s-Re-Render die Eingabe/den Fokus verwerfen).
+    // Nicht neu rendern, während der Nutzer gerade eine Zeitplan-Eingabe bearbeitet (sonst würde das
+    // 3s-Re-Render die Eingabe/den Fokus verwerfen).
     const _ae = document.activeElement;
     if (_ae && _ae.classList && _ae.classList.contains('job-sched-input')) return;
     const { jobs, schedules } = d;
@@ -193,25 +192,25 @@ export async function loadMonitor() {
     setze('mon-db-inventar', zahl(dbStats.csvCache.inventoryParts));
     setze('mon-db-bl', `${zahl(dbStats.blMapping.mapped)} / ${zahl(dbStats.blMapping.total)}`);
 
-    el.innerHTML = `
-      <p class="mon-hinweis">${t('monitor.services_hint')}</p>
+    setzeHtml(el, html`
+      <p class="mon-hinweis">${tRaw('monitor.services_hint')}</p>
       <div class="tw"><table class="dt mon-tabelle mon-dienste">
-        <thead><tr><th>${t('monitor.col.dienst')}</th><th>${t('monitor.col.zustand')}</th><th>${t('monitor.col.zeitplan')}</th><th>${t('monitor.col.zuletzt')}</th><th>${t('monitor.col.aktionen')}</th></tr></thead>
-        <tbody>${Object.entries(jobs).map(([k, j]) => `<tr>
-          <td><span class="mon-name">${k === 'bricksetRetry' ? jobIconSvg('brickset') : jobIconSvg(k)}${dienstName(k, j)}</span></td>
-          <td><span class="mon-zustand mon-${esc(j.status || 'idle')}">${statusIcon(j.status, j)} ${esc(jobZustand(j.status))}</span>
-            ${j.sub ? `<div class="mon-leise">${translateJobSub(j.sub)}</div>` : ''}${j.total > 0 ? bar(j.progress, j.total) : ''}</td>
+        <thead><tr><th>${tRaw('monitor.col.dienst')}</th><th>${tRaw('monitor.col.zustand')}</th><th>${tRaw('monitor.col.zeitplan')}</th><th>${tRaw('monitor.col.zuletzt')}</th><th>${tRaw('monitor.col.aktionen')}</th></tr></thead>
+        <tbody>${Object.entries(jobs).map(([k, j]) => html`<tr>
+          <td><span class="mon-name">${k === 'bricksetRetry' ? ungeprueft(jobIconSvg('brickset')) : ungeprueft(jobIconSvg(k))}${ungeprueft(dienstName(k, j))}</span></td>
+          <td><span class="mon-zustand mon-${j.status || 'idle'}">${statusIcon(j.status, j)} ${jobZustand(j.status)}</span>
+            ${j.sub ? html`<div class="mon-leise">${ungeprueft(translateJobSub(j.sub))}</div>` : ''}${j.total > 0 ? bar(j.progress, j.total) : ''}</td>
           <td>${schedInput(schedules, k)}</td>
           <td>${j.lastRun ? fmtDatum(/** @type {string} */ (j.lastRun), 'zeit') : ''}</td>
-          <td><div class="mon-knoepfe">${aktionen(k, j) || '<span class="mon-leise">–</span>'}</div></td>
-        </tr>`).join('')}</tbody>
+          <td><div class="mon-knoepfe">${(aktionen(k, j)) ? ungeprueft(aktionen(k, j)) : html`<span class="mon-leise">–</span>`}</div></td>
+        </tr>`)}</tbody>
       </table></div>
-      ${jobs.bricksetRetry ? '<div id="brickset-queue-panel" class="mon-panel" data-stil="display:none"></div>' : ''}`;
+      ${jobs.bricksetRetry ? html`<div id="brickset-queue-panel" class="mon-panel" data-stil="display:none"></div>` : ''}`);
 
     if (panelHTML !== null) {
       const neu = G('brickset-queue-panel');
       if (neu) {
-        neu.innerHTML = panelHTML;
+        setzeHtml(neu, ungeprueft(panelHTML));
         neu.style.display = 'block';
         const knopf = el.querySelector('[data-click="toggleBricksetQueue"] span');
         if (knopf) knopf.textContent = tRaw('monitor.collapse');
@@ -261,8 +260,8 @@ const STATUSNAMEN = {
 const artName = (/** @type {string} */ art) => (Object.hasOwn(ARTNAMEN, art) ? ARTNAMEN[art]() : esc(art));
 
 /**
- * Eine Fehlermeldung des Servers in einem Satz, den man ohne Netzwerkwissen
- * versteht; der Originaltext bleibt aufklappbar, er ist für die Fehlersuche da.
+ * Eine Fehlermeldung des Servers in einem Satz, den man ohne Netzwerkwissen versteht; der Originaltext bleibt
+ * aufklappbar, er ist für die Fehlersuche da.
  * @param {unknown} text
  */
 export function fehlerKurz(text) {
@@ -277,19 +276,18 @@ export function fehlerKurz(text) {
 
 /** @param {unknown} text */
 function fehlerKasten(text) {
-  return `<details class="fehler-kasten"><summary>${ico('warnung')} ${esc(fehlerKurz(text))}</summary><code>${esc(text)}</code></details>`;
+  return html`<details class="fehler-kasten"><summary>${ico('warnung')} ${fehlerKurz(text)}</summary><code>${text}</code></details>`;
 }
 
 /**
- * Die Karte „Hintergrundarbeiten“: die Auftragstabelle des Servers
- * (GET /api/v1/admin/auftraege) — je Art die Zahlen mit „Jetzt“ und
- * „Leeren“, darunter laufende, wartende und gescheiterte Aufträge.
+ * Die Karte „Hintergrundarbeiten“: die Auftragstabelle des Servers (GET /api/v1/admin/auftraege) — je Art die
+ * Zahlen mit „Jetzt“ und „Leeren“, darunter laufende, wartende und gescheiterte Aufträge.
  */
 async function zeigeAuftraege() {
   const el = G('auftraege-karte');
   if (!el) return;
   const d = await api('GET', '/v1/admin/auftraege').catch(() => null);
-  if (!d?.success) { el.innerHTML = ''; return; }
+  if (!d?.success) { el.replaceChildren(); return; }
   /** @type {Record<string, Record<string, number>>} */
   const zahl = {};
   for (const z of d.zusammenfassung) (zahl[z.art] ||= {})[z.status] = z.anzahl;
@@ -300,56 +298,55 @@ async function zeigeAuftraege() {
     if (a.status === 'offen' && a.faellig_ab && (!naechster[a.art] || a.faellig_ab < naechster[a.art])) naechster[a.art] = a.faellig_ab;
   // Sieben gleiche „Jetzt starten“ sind für Vorleser ununterscheidbar: Der Name nennt die Art mit.
   const knopf = (/** @type {string} */ aktion, /** @type {string} */ arg, /** @type {string} */ text, wofuer = '') =>
-    `<button class="btn bs btn-sm" type="button" data-click="${aktion}"${echt()} data-arg="${esc(arg)}"${wofuer ? ` aria-label="${text}: ${wofuer}"` : ''}>${text}</button>`;
+    html`<button class="btn bs btn-sm" type="button" data-click="${aktion}"${echt()} data-arg="${arg}"${wofuer ? html` aria-label="${text}: ${ungeprueft(wofuer)}"` : ''}>${ungeprueft(text)}</button>`;
   const arten = Object.keys(zahl).sort((a, b) => artName(a).localeCompare(artName(b), locale()));
   const status = (/** @type {string} */ s) => Object.hasOwn(STATUSNAMEN, s) ? STATUSNAMEN[s]() : esc(s);
-  const ziffer = (/** @type {number | undefined} */ n, klasse = '') => `<span class="mon-ziffer${n ? ' ' + klasse : ' null'}">${n || 0}</span>`;
+  const ziffer = (/** @type {number | undefined} */ n, klasse = '') => html`<span class="mon-ziffer${n ? html`${' '}${ungeprueft(klasse)}` : ' null'}">${n || 0}</span>`;
   const zeile = (/** @type {Auftrag} */ a) => {
     const zeit = fmtDatum(a.status === 'laeuft' ? a.gestartet : a.faellig_ab, 'zeit');
     const wann = a.status === 'offen' ? t(a.geplant ? 'monitor.auftraege.geplant' : 'monitor.auftraege.faellig', { zeit }) : (a.status === 'laeuft' ? zeit : '');
     const stand = a.fortschritt?.gesamt ? `${a.fortschritt.erledigt ?? 0} / ${a.fortschritt.gesamt}` : (a.fortschritt?.text || '');
     const hinweis = [a.fehler && a.status !== 'laeuft' ? fehlerKasten(a.fehler) : '',
-      a.versuche > 1 ? `<span class="mon-leise">${t('monitor.auftraege.versuch', { n: a.versuche, max: a.max_versuche })}</span>` : '',
-      stand ? `<span class="mon-leise">${esc(stand)}</span>` : ''].filter(Boolean).join(' ');
+      a.versuche > 1 ? html`<span class="mon-leise">${tRaw('monitor.auftraege.versuch', { n: a.versuche, max: a.max_versuche })}</span>` : '',
+      stand ? html`<span class="mon-leise">${stand}</span>` : ''].filter(Boolean).join(' ');
     const aktion = a.status === 'offen' || a.status === 'laeuft' ? knopf('auftragAbbrechen', a.id, t('monitor.auftraege.abbrechen'))
       : a.status === 'fehler' || a.status === 'abgebrochen' ? knopf('auftragWiederholen', a.id, t('monitor.auftraege.wiederholen')) : '';
-    return `<tr>
-      <td><strong>${artName(a.art)}</strong>${a.set_number ? ` <span class="mon-leise">${esc(a.set_number)}</span>` : ''}</td>
-      <td><span class="mon-zustand mon-${esc(a.status)}">${status(a.status)}</span></td>
-      <td>${wann}</td>
-      <td>${hinweis}</td>
+    return html`<tr>
+      <td><strong>${ungeprueft(artName(a.art))}</strong>${a.set_number ? html` <span class="mon-leise">${a.set_number}</span>` : ''}</td>
+      <td><span class="mon-zustand mon-${a.status}">${ungeprueft(status(a.status))}</span></td>
+      <td>${ungeprueft(wann)}</td>
+      <td>${ungeprueft(hinweis)}</td>
       <td><div class="mon-knoepfe">${aktion}</div></td>
     </tr>`;
   };
   const mehr = d.auftraege.length - 40;
   const pause = (/** @type {AuftragPause} */ p) => t('monitor.auftraege.pause', { art: Object.hasOwn(ARTNAMEN, p.art) ? ARTNAMEN[p.art]() : esc(p.art), bis: fmtDatum(p.bis, 'zeit'), grund: p.grund || '' });
-  el.innerHTML = `
-    <h2 class="mon-titel" id="mon-t-auftraege">${ico('liste')}<span>${t('monitor.auftraege.titel')}</span></h2>
-    <p class="mon-hinweis">${t('monitor.auftraege.hinweis')}</p>
-    ${d.job_prozess.laeuft ? '' : `<p class="mon-warnung">${ico('warnung')} ${t('monitor.auftraege.kein_prozess')}</p>`}
-    ${d.pausen.map(p => `<p class="mon-leise">${ico('pause')} ${pause(p)}</p>`).join('')}
-    ${d.bildbedarf ? `<p class="mon-leise">${t('monitor.auftraege.bildbedarf', { n: d.bildbedarf })}</p>` : ''}
-    ${arten.length ? `<div class="tw"><table class="dt mon-tabelle mon-arten">
-      <thead><tr><th>${t('monitor.col.art')}</th><th class="zahl">${t('monitor.col.offen')}</th><th class="zahl">${t('monitor.col.laeuft')}</th><th class="zahl">${t('monitor.col.fehler')}</th><th>${t('monitor.col.naechster')}</th><th>${t('monitor.col.aktionen')}</th></tr></thead>
-      <tbody>${arten.map(art => `<tr>
-        <td>${artName(art)}</td>
+  setzeHtml(el, html`
+    <h2 class="mon-titel" id="mon-t-auftraege">${ico('liste')}<span>${tRaw('monitor.auftraege.titel')}</span></h2>
+    <p class="mon-hinweis">${tRaw('monitor.auftraege.hinweis')}</p>
+    ${d.job_prozess.laeuft ? '' : html`<p class="mon-warnung">${ico('warnung')} ${tRaw('monitor.auftraege.kein_prozess')}</p>`}
+    ${d.pausen.map(p => html`<p class="mon-leise">${ico('pause')} ${ungeprueft(pause(p))}</p>`)}
+    ${d.bildbedarf ? html`<p class="mon-leise">${tRaw('monitor.auftraege.bildbedarf', { n: d.bildbedarf })}</p>` : ''}
+    ${arten.length ? html`<div class="tw"><table class="dt mon-tabelle mon-arten">
+      <thead><tr><th>${tRaw('monitor.col.art')}</th><th class="zahl">${tRaw('monitor.col.offen')}</th><th class="zahl">${tRaw('monitor.col.laeuft')}</th><th class="zahl">${tRaw('monitor.col.fehler')}</th><th>${tRaw('monitor.col.naechster')}</th><th>${tRaw('monitor.col.aktionen')}</th></tr></thead>
+      <tbody>${arten.map(art => html`<tr>
+        <td>${ungeprueft(artName(art))}</td>
         <td class="zahl">${ziffer(zahl[art].offen)}</td>
         <td class="zahl">${ziffer(zahl[art].laeuft, 'mon-laeuft')}</td>
         <td class="zahl">${ziffer(zahl[art].fehler, 'mon-fehler')}</td>
         <td>${naechster[art] ? fmtDatum(naechster[art], 'zeit') : ''}</td>
         <td><div class="mon-knoepfe">${knopf('auftragsArtJetzt', art, t('monitor.auftraege.jetzt'), artName(art))}${zahl[art].offen ? knopf('auftragsArtLeeren', art, t('monitor.auftraege.leeren'), artName(art)) : ''}</div></td>
-      </tr>`).join('')}</tbody></table></div>` : ''}
-    ${d.auftraege.length ? `<details class="mon-einzeln"${einzelnOffen() ? ' open' : ''}>
-      <summary class="mon-untertitel">${t('monitor.auftraege.einzeln')} <span class="mon-leise">(${d.auftraege.length})</span></summary>
+      </tr>`)}</tbody></table></div>` : ''}
+    ${d.auftraege.length ? html`<details class="mon-einzeln"${einzelnOffen() ? ' open' : ''}>
+      <summary class="mon-untertitel">${tRaw('monitor.auftraege.einzeln')} <span class="mon-leise">(${d.auftraege.length})</span></summary>
       <div class="tw"><table class="dt mon-tabelle">
-      <thead><tr><th>${t('monitor.col.auftrag')}</th><th>${t('monitor.col.zustand')}</th><th>${t('monitor.col.zeit')}</th><th>${t('monitor.col.hinweis')}</th><th>${t('monitor.col.aktionen')}</th></tr></thead>
-      <tbody>${d.auftraege.slice(0, 40).map(zeile).join('')}</tbody></table></div>
-      ${mehr > 0 ? `<p class="mon-leise">${t('monitor.auftraege.mehr', { n: mehr })}</p>` : ''}</details>`
-      : `<h3 class="mon-untertitel">${t('monitor.auftraege.einzeln')}</h3><p class="mon-leise">${t('monitor.auftraege.leer')}</p>`}`;
+      <thead><tr><th>${tRaw('monitor.col.auftrag')}</th><th>${tRaw('monitor.col.zustand')}</th><th>${tRaw('monitor.col.zeit')}</th><th>${tRaw('monitor.col.hinweis')}</th><th>${tRaw('monitor.col.aktionen')}</th></tr></thead>
+      <tbody>${ungeprueft(d.auftraege.slice(0, 40).map(zeile).join(''))}</tbody></table></div>
+      ${mehr > 0 ? html`<p class="mon-leise">${tRaw('monitor.auftraege.mehr', { n: mehr })}</p>` : ''}</details>` : html`<h3 class="mon-untertitel">${tRaw('monitor.auftraege.einzeln')}</h3><p class="mon-leise">${tRaw('monitor.auftraege.leer')}</p>`}`);
 }
 /**
- * Die Liste der einzelnen Aufträge ist am Telefon zu, sonst offen; ein Klick
- * gilt bis zum Neuladen, auch über das Nachzeichnen alle paar Sekunden.
+ * Die Liste der einzelnen Aufträge ist am Telefon zu, sonst offen; ein Klick gilt bis zum Neuladen, auch über
+ * das Nachzeichnen alle paar Sekunden.
  * @type {boolean | null}
  */
 let _einzelnOffen = null;

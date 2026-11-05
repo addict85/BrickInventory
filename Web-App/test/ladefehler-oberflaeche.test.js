@@ -20,7 +20,7 @@
  *      „jede Liste zeigt ihren Ladefehler“ (Merkliste)
  *   C  in doAddSet wieder toast(e.message) → rot: „Netzfehler beim Erfassen“
  *      („Failed to fetch“)
- *   D  den offline-Hörer in 01-core.js entfernt → rot: „Band ohne Verbindung“
+ *   D  den offline-Hörer in 01-verbindung.js entfernt → rot: „Band ohne Verbindung“
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');

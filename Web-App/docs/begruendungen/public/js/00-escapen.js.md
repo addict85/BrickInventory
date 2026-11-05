@@ -33,3 +33,35 @@ Also: eine Fassung, an einem Ort, den beide Seiten erreichen. js/01-core.js
 führt sie weiterhin aus — jeder bestehende `import { esc } from
 './01-core.js'` gilt unverändert.
 ```
+
+<a id="alle-listen-und-detailansichten-werden-p"></a>
+## Alle Listen und Detailansichten werden per innerHTML aus Template-Literalen
+
+```text
+── ESCAPING ───────────────────────────────────────────────────────────────
+Alle Listen und Detailansichten werden per innerHTML aus Template-Literalen
+gebaut. Jeder Wert, der aus der DB, einem CSV-Import oder einer Fremd-API
+kommt, MUSS deshalb durch einen dieser Helfer — sonst ist jedes freie
+Textfeld (Teilename, Farbname, Notiz, Bild-URL) ein Stored-XSS-Vektor.
+Faustregel:
+  Textinhalt oder doppelt-gequotetes Attribut  → esc()
+  Wert in einem JS-String im Attribut          → escJs()   z.B. data-click="fn" data-arg="${escJs(x)}"
+  src / href                                   → escUrl()
+  Farbwert in data-farbe=""                    → escHex()
+```
+
+<a id="hexziffern"></a>
+## `hexZiffern`
+
+```text
+Dieselbe Prüfung wie [escHex], aber OHNE das Doppelkreuz.
+
+Für Attribute, die den nackten Farbwert tragen und deren Leser das `#`
+selbst ergänzen — `data-hex` in der Farbauswahl ist so eines:
+
+    dot.style.background = hex ? '#' + hex : 'var(--s200)';
+
+escHex() dort einzusetzen hätte beide Leser gebrochen (`##RRGGBB`). Statt
+die Regel zu verbiegen, gibt es sie zweimal: einmal für `style`, einmal für
+das Attribut. Geprüft wird beide Male dasselbe — genau sechs Hexziffern.
+```

@@ -1,20 +1,23 @@
-// Bausteine für Ansichten (Detailzeile, Ladeanzeige, Leer- und Fehlerzustand) an einer Stelle: Was
-// überall gleich aussehen soll, stand vorher fünfzehnmal als eigene HTML-Zeichenkette in vier Modulen.
+// Bausteine für Ansichten (Detailzeile, Ladeanzeige, Leer- und Fehlerzustand) an einer Stelle: Was überall
+// gleich aussehen soll, stand vorher fünfzehnmal als eigene HTML-Zeichenkette in vier Modulen.
 // Ausführlich: docs/begruendungen/public/js/01-bausteine.js.md#01-core-js-sammelt-werkzeuge-escaping-bi
-import { ico, toast, G, fmtBig, fmtPct, istGeschenk, api } from './01-core.js';
+import { api } from './01-api.js';
+import { ico, G, setzeHtml } from './01-dom.js';
+import { fmtBig, fmtPct, istGeschenk } from './01-format.js';
+import { toast } from './01-meldungen.js';
 import { tRaw, t } from '../i18n.js';
 import { registerActions, resolveAction } from './00-registry.js';
-import { esc } from './00-escapen.js';
+import { esc, html, ungeprueft } from './00-escapen.js';
 import { ME } from './00-zustand.js';
 
 /**
  * Eine Zeile „Label — Wert" in einer Detailansicht.
  *
- * @param {string} label     Beschriftung links. Wird NICHT escaped: Alle
+ * @param {string | import('./00-escapen.js').SicheresHtml} label     Beschriftung links. Wird NICHT escaped: Alle
  *                           Aufrufer geben hier eine Übersetzung t(...), und
  *                           die ist bereits sicher. Ein escape hier würde die
  *                           Sonderzeichen der Übersetzungen zerstören.
- * @param {string} wert      Inhalt rechts. Wird NICHT escaped — viele
+ * @param {import('./00-escapen.js').Markup | string} wert      Inhalt rechts. Wird NICHT escaped — viele
  *                           Aufrufer geben absichtlich Markup mit (Eingabe-
  *                           felder, Farbpunkte, Knöpfe). Wer Nutzertext
  *                           einsetzt, escaped ihn selbst mit esc().
@@ -29,8 +32,7 @@ export function detailZeile(label, wert, o = {}) {
   const zKlasse = o.klasse ? ` ${o.klasse}` : '';
   const wStil = o.wertStil ? ` data-stil="${o.wertStil}"` : '';
   const wId   = o.wertId ? ` id="${o.wertId}"` : '';
-  return `<div class="dr${zKlasse}"${zStil}><span class="dl">${label}</span>` +
-         `<span class="dv"${wId}${wStil}>${wert}</span></div>`;
+  return html`${html`<div class="dr${zKlasse}"${ungeprueft(zStil)}><span class="dl">${ungeprueft(label)}</span>`}${html`<span class="dv"${ungeprueft(wId)}${ungeprueft(wStil)}>${typeof wert === 'string' ? ungeprueft(wert) : wert}</span></div>`}`;
 }
 
 /**
@@ -41,44 +43,41 @@ export function detailZeile(label, wert, o = {}) {
  */
 export function ladeAnzeige(text, o = {}) {
   const stil = o.stil ? ` data-stil="${o.stil}"` : '';
-  // Ohne Text nur der Kringel — so macht es die Teile-Zusammenfassung, wo
-  // daneben schon steht, worauf gewartet wird.
+  // Ohne Text nur der Kringel — so macht es die Teile-Zusammenfassung, wo daneben schon steht, worauf
+  // gewartet wird.
   const inhalt = o.klein ? '<div class="skelett-flaeche"></div>'
     : '<div class="skelett-zeile"></div><div class="skelett-zeile"></div><div class="skelett-zeile kurz"></div>';
-  return `<div class="lade-geruest${o.klein ? ' klein' : ''}" role="status" aria-busy="true"${stil}>` +
-    `<span class="vh">${text || esc(tRaw('common.loading'))}</span>${inhalt}</div>`;
+  return html`${html`<div class="lade-geruest${o.klein ? ' klein' : ''}" role="status" aria-busy="true"${ungeprueft(stil)}>`}${html`<span class="vh">${(text) ? ungeprueft(text) : tRaw('common.loading')}</span>${ungeprueft(inhalt)}</div>`}`;
 }
 
 /**
- * Platzhalterkacheln in der Form des Inhalts, solange er lädt: Die Seite
- * springt danach nicht, und man sieht, was kommt. Der Text ist für
- * Vorleseprogramme.
+ * Platzhalterkacheln in der Form des Inhalts, solange er lädt: Die Seite springt danach nicht, und man sieht,
+ * was kommt. Der Text ist für Vorleseprogramme.
  * @param {number} anzahl
  * @param {string} text bereits übersetzt
  * @param {'set'|'teil'} [art]
  */
 export function skelettKacheln(anzahl, text, art = 'set') {
   const raster = art === 'teil' ? 'parts-grid' : 'sgrid';
-  const kachel = `<div class="${art === 'teil' ? 'part-card' : 'sc'} skelett" aria-hidden="true"><div class="skelett-bild"></div><div class="skelett-zeile"></div><div class="skelett-zeile kurz"></div></div>`;
-  return `<div class="${raster} skelett-raster" role="status" aria-busy="true"><span class="vh">${text}</span>${kachel.repeat(anzahl)}</div>`;
+  const kachel = html`<div class="${art === 'teil' ? 'part-card' : 'sc'} skelett" aria-hidden="true"><div class="skelett-bild"></div><div class="skelett-zeile"></div><div class="skelett-zeile kurz"></div></div>`;
+  return html`<div class="${raster} skelett-raster" role="status" aria-busy="true"><span class="vh">${ungeprueft(text)}</span>${Array.from({ length: anzahl }, () => kachel)}</div>`;
 }
 
 /**
- * Platzhalterzeilen für Listen und Detailansichten (Merkliste, Set-Detail),
- * wie skelettKacheln für Raster.
+ * Platzhalterzeilen für Listen und Detailansichten (Merkliste, Set-Detail), wie skelettKacheln für Raster.
  * @param {number} anzahl
  * @param {string} text bereits übersetzt
  */
 export function skelettZeilen(anzahl, text) {
   const zeile = '<div class="skelett-listenzeile" aria-hidden="true"><div class="skelett-bild"></div><div><div class="skelett-zeile"></div><div class="skelett-zeile kurz"></div></div></div>';
-  return `<div class="skelett-liste" role="status" aria-busy="true"><span class="vh">${text}</span>${zeile.repeat(anzahl)}</div>`;
+  return html`<div class="skelett-liste" role="status" aria-busy="true"><span class="vh">${ungeprueft(text)}</span>${ungeprueft(zeile.repeat(anzahl))}</div>`;
 }
 
 /**
  * Ein Wert, der fehlen darf — sonst steht in der Zeile ein leeres Feld.
- * 
- * Die Aufrufer schrieben dafür `${x || '—'}` oder `${x ?? '–'}`, mit zwei
- * verschiedenen Strichen. Hier ist es einer.
+ *
+ * Die Aufrufer schrieben dafür `${x || '—'}` oder `${x ?? '–'}`, mit zwei verschiedenen Strichen. Hier ist es
+ * einer.
  * @param {unknown} wert
  */
 export function oderStrich(wert) {
@@ -94,22 +93,19 @@ export function textOderStrich(wert) {
 }
 
 /**
- * Fehlerzustand einer Liste: Grund und „Erneut versuchen“. Eine leere Liste
- * an dieser Stelle läse sich als „nichts erfasst“, obwohl nur der Server
- * nicht geantwortet hat.
+ * Fehlerzustand einer Liste: Grund und „Erneut versuchen“. Eine leere Liste an dieser Stelle läse sich als
+ * „nichts erfasst“, obwohl nur der Server nicht geantwortet hat.
  * @param {{ grund?: string, erneut: string, arg?: string, titel?: string, details?: string }} o  erneut: Name der Ladefunktion (data-click)
  */
 export function fehlerZustand(o) {
   const arg = o.arg ? ` data-arg="${esc(o.arg)}"` : '';
-  const details = o.details ? `<details class="fehler-details"><summary>${esc(tRaw('liste.details'))}</summary><code>${esc(o.details)}</code></details>` : '';
-  return `<div class="empty leer fehler-zustand" role="alert"><div class="leer-ico">${ico('warnung')}</div>` +
-    `<h2>${esc(o.titel || tRaw('liste.fehler_titel'))}</h2><p>${esc(o.grund || tRaw('common.unknown_error'))}</p>${details}` +
-    `<button type="button" class="btn bp" data-lesend data-click="${esc(o.erneut)}"${arg}>${ico('aktualisieren')}<span>${esc(tRaw('liste.erneut'))}</span></button></div>`;
+  const details = o.details ? html`<details class="fehler-details"><summary>${tRaw('liste.details')}</summary><code>${o.details}</code></details>` : '';
+  return html`${html`<div class="empty leer fehler-zustand" role="alert"><div class="leer-ico">${ico('warnung')}</div>`}${html`<h2>${o.titel || tRaw('liste.fehler_titel')}</h2><p>${o.grund || tRaw('common.unknown_error')}</p>${details}`}${html`<button type="button" class="btn bp" data-lesend data-click="${o.erneut}"${ungeprueft(arg)}>${ico('aktualisieren')}<span>${tRaw('liste.erneut')}</span></button></div>`}`;
 }
 
 /**
- * Hat das Laden einer Liste versagt? Dann bleibt eine schon gezeigte Liste
- * stehen (mit Meldung), sonst zeigt `ziel` den Fehlerzustand.
+ * Hat das Laden einer Liste versagt? Dann bleibt eine schon gezeigte Liste stehen (mit Meldung), sonst zeigt
+ * `ziel` den Fehlerzustand.
  * @param {HTMLElement|null} ziel
  * @template D
  * @param {D} d          Antwort von api() — null zählt als Fehler
@@ -126,14 +122,13 @@ export function listeLadefehler(ziel, d, o) {
   // „Der letzte Stand bleibt“ nur, wenn einer dasteht: Über einem Fehlerzustand widerspräche der Toast der Liste.
   const alterStand = o.behalten && !ziel?.querySelector('.fehler-zustand, .lade-geruest, .skelett-raster');
   if (alterStand) toast(tRaw('liste.alter_stand_kurz'), 'error', { text: tRaw('liste.erneut'), fn: nochmal }, [grund, details].filter(Boolean).join(' — '));
-  else if (ziel) ziel.innerHTML = fehlerZustand({ grund, details, erneut: o.erneut, arg: o.arg });
+  else if (ziel) setzeHtml(ziel, fehlerZustand({ grund, details, erneut: o.erneut, arg: o.arg }));
   return true;
 }
 
 /**
- * Ein Serverfehler (5xx) sagt dem Laien nichts. Gezeigt wird, was er tun kann;
- * der Rohtext steht unter „Details“ für die Meldung an den Verwalter.
- * 4xx-Texte schreibt der Server selbst verständlich.
+ * Ein Serverfehler (5xx) sagt dem Laien nichts. Gezeigt wird, was er tun kann; der Rohtext steht unter
+ * „Details“ für die Meldung an den Verwalter. 4xx-Texte schreibt der Server selbst verständlich.
  * @param {{ networkError?: boolean, status?: number, error?: unknown } | null | undefined} d Antwort von api()
  * @returns {{ grund: string, details?: string }}
  */
@@ -154,34 +149,33 @@ export function teileAufschluesselung(ausSets, einzeln) {
 }
 
 /**
- * G&V-Plakette. Bei Kaufpreis 0 „Geschenk“ statt einer Prozentzahl: Gegen 0
- * gerechnet stünde dort „+327.600 %“, und das sagt nichts.
+ * G&V-Plakette. Bei Kaufpreis 0 „Geschenk“ statt einer Prozentzahl: Gegen 0 gerechnet stünde dort „+327.600
+ * %“, und das sagt nichts.
  * @param {number | string | null | undefined} pct
  * @param {unknown} [kauf]
  */
 export function pnlBadge(pct, kauf){
-  if(istGeschenk(kauf)) return `<span class="pnl-geschenk">${t('finance.gift')}</span>`;
+  if(istGeschenk(kauf)) return html`<span class="pnl-geschenk">${tRaw('finance.gift')}</span>`;
   if(pct===null||pct===undefined) return '';
   const v=parseFloat(String(pct)); const cls=v>0?'pnl-pos':v<0?'pnl-neg':'pnl-neu';
-  return `<span class="${cls}">${fmtPct(v)}</span>`;
+  return html`<span class="${cls}">${fmtPct(v)}</span>`;
 }
 
 /**
- * Besitzer-Plaketten nur, wenn ein ANDERES Konto mit drinsteckt: Im Haushalt verhindern sie, dass man
- * das falsche Exemplar verschiebt; der eigene Name auf jeder Kachel wäre nur Rauschen.
+ * Besitzer-Plaketten nur, wenn ein ANDERES Konto mit drinsteckt: Im Haushalt verhindern sie, dass man das
+ * falsche Exemplar verschiebt; der eigene Name auf jeder Kachel wäre nur Rauschen.
  * Ausführlich: docs/begruendungen/public/js/01-bausteine.js.md#besitzer-plaketten-nur-im-haushalt
  * @param {{ owners?: { id: number, username: string }[] } | null | undefined} item
  */
 export function ownerBadges(item) {
   if (!item?.owners?.length) return '';
   if (item.owners.every(o => ME && o.id === ME.id)) return '';
-  return item.owners.map(o => `<span class="cond-badge besitzer-badge" title="${esc(o.username)}">${esc(o.username)}</span>`).join('');
+  return html`${item.owners.map(o => html`<span class="cond-badge besitzer-badge" title="${o.username}">${o.username}</span>`)}`;
 }
 
 /**
- * Eine Plakette je erfasstem Zustand, aus `conditions` vom Server: Das Aggregat `condition` zeigte bei
- * neu und gebraucht nur „gebraucht“, und die Neu-Erfassung war unsichtbar, obwohl sie mitbewertet
- * wird.
+ * Eine Plakette je erfasstem Zustand, aus `conditions` vom Server: Das Aggregat `condition` zeigte bei neu
+ * und gebraucht nur „gebraucht“, und die Neu-Erfassung war unsichtbar, obwohl sie mitbewertet wird.
  * Ausführlich: docs/begruendungen/public/js/01-bausteine.js.md#zustands-plaketten-eines-eintrags-eine-j
  * @param {{ conditions?: string[] | null, condition?: string | null } | null | undefined} item
  */
@@ -189,10 +183,10 @@ export function condBadges(item) {
   const list = Array.isArray(item?.conditions) && item.conditions.length
     ? item.conditions
     : [item?.condition === 'U' ? 'U' : 'N'];
-  return list.map((/** @type {string} */ c) => c === 'U'
-    ? `<span class="cond-badge cond-used"><span class="vh">${t('common.condition')}: </span>${t('common.condition_used')}</span>`
-    : `<span class="cond-badge cond-new"><span class="vh">${t('common.condition')}: </span>${t('common.condition_badge_new')}</span>`
-  ).join('');
+  return html`${list.map((/** @type {string} */ c) => c === 'U'
+    ? html`<span class="cond-badge cond-used"><span class="vh">${tRaw('common.condition')}: </span>${tRaw('common.condition_used')}</span>`
+    : html`<span class="cond-badge cond-new"><span class="vh">${tRaw('common.condition')}: </span>${tRaw('common.condition_badge_new')}</span>`
+  )}`;
 }
 
 /** Erfassen-Dialoge der Sammlung: set, part, fig — gleich aufgebaut (Erstfokus: data-erstfokus). */
@@ -210,13 +204,14 @@ export function oeffneErfassen(art){ erfassenDialog(art)?.classList.add('open');
 export function schliesseErfassen(art){ erfassenDialog(art)?.classList.remove('open'); }
 
 /**
- * Gewählte CSV-Datei hochladen und das Ergebnis melden — eine Fassung für
- * Teile, Figuren, Merkliste und Alarme. Übersprungene Zeilen und Zusatz-
- * hinweise stehen überall in der Meldung, sonst sähe ein lückenhafter Import
- * aus wie ein vollständiger.
+ * Gewählte CSV-Datei hochladen und das Ergebnis melden — eine Fassung für Teile, Figuren, Merkliste und
+ * Alarme. Übersprungene Zeilen und Zusatz-hinweise stehen überall in der Meldung, sonst sähe ein lückenhafter
+ * Import aus wie ein vollständiger.
+ * @typedef {{ success: boolean, error?: string, added?: number, updated?: number, errors?: number,
+ *   skipped?: number, skipped_hint?: string, [feld: string]: unknown }} CsvErgebnis
  * @param {{ feld: string, pfad: string, felder?: Record<string, string>,
- *           zeige?: (laeuft: boolean) => void, hinweise?: (d: any) => unknown[] }} o
- * @returns {Promise<any>} die Antwort bei Erfolg, sonst null
+ *           zeige?: (laeuft: boolean) => void, hinweise?: (d: CsvErgebnis) => unknown[] }} o
+ * @returns {Promise<CsvErgebnis | null>} die Antwort bei Erfolg, sonst null
  */
 export async function csvHochladen(o) {
   const fi = G(o.feld);
@@ -225,6 +220,7 @@ export async function csvHochladen(o) {
   fd.append('file', fi.files[0]);
   for (const [k, v] of Object.entries(o.felder ?? {})) fd.append(k, v);
   o.zeige?.(true);
+  /** @type {CsvErgebnis} */
   const d = await api('POST', o.pfad, fd);
   fi.value = '';
   o.zeige?.(false);

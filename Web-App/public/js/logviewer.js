@@ -1,7 +1,6 @@
-// Protokollfenster (01-monitor.js öffnet es per window.open). Externe Datei,
-// weil das Fenster die CSP des Öffners erbt und die Inline-Skripte sperrt.
-// Übersetzungen kommen als data-Attribute am <body>, die Anmeldung im
-// Sitzungscookie. Eigene Funktion: Nichts davon soll global werden.
+// Protokollfenster (01-monitor.js öffnet es per window.open). Externe Datei, weil das Fenster die CSP des
+// Öffners erbt und die Inline-Skripte sperrt. Übersetzungen kommen als data-Attribute am <body>, die
+// Anmeldung im Sitzungscookie. Eigene Funktion: Nichts davon soll global werden.
 (function () {
   'use strict';
   const body = document.body;
@@ -29,8 +28,9 @@
     return teile.map((p, i) => (i % 2 === 1 ? '<mark>' + p + '</mark>' : p)).join('');
   }
 
-  /** @param {string} stufe */
+  /** @param {string} [stufe] */
   function toggleLevel(stufe) {
+    if (!stufe) return;
     const btn = el('btn-' + stufe);
     if (_levels.has(stufe)) { _levels.delete(stufe); btn.classList.remove('active'); }
     else { _levels.add(stufe); btn.classList.add('active'); }
@@ -77,8 +77,8 @@
     }
   }
 
-  // Wie 00-registry.js in der Anwendung: nur diese Namen sind aus dem Markup
-  // erreichbar, nicht jede Funktion auf window.
+  // Wie 00-registry.js in der Anwendung: nur diese Namen sind aus dem Markup erreichbar, nicht jede Funktion
+  // auf window.
   /** @type {Record<string, (arg?: string) => unknown>} */
   const HANDLER = { loadLogs, renderLogs, toggleAuto, toggleLevel };
   for (const [attr, ereignis] of [['data-click', 'click'], ['data-change', 'change'], ['data-input', 'input']]) {

@@ -166,7 +166,7 @@ test('Preisalarm-Übersicht: eigene Alarme, mit Namen, änderbar, löschbar',
     const galerie = ohneKommentare(fs.readFileSync(path.join(ROOT, 'public/js/25-navigation.js'), 'utf8'));
     assert.match(galerie, /ladeAlarmUebersicht\(\)/,
       'Beim Öffnen der Einstellungen wird die Übersicht nicht geladen — die Rubrik bliebe leer.');
-    const js = ohneKommentare(fs.readFileSync(path.join(ROOT, 'public/js/05-settings.js'), 'utf8'));
+    const js = ohneKommentare(require('./helpers/sources').ansichtQuelle('05'));
     // Ändern und Löschen gehen über die BESTEHENDE Route zum Set: zwei
     // Schreibwege zum selben Zustand wären zwei Stellen, an denen die Regeln
     // auseinanderlaufen.
@@ -201,7 +201,7 @@ test('Preisalarm-Übersicht: eigene Alarme, mit Namen, änderbar, löschbar',
   });
 
   await t.test('6. die Zeile öffnet den Detaildialog, das Zahlenfeld nicht', () => {
-    const js = ohneKommentare(fs.readFileSync(path.join(ROOT, 'public/js/05-settings.js'), 'utf8'));
+    const js = ohneKommentare(require('./helpers/sources').ansichtQuelle('05'));
     assert.match(js, /data-click="openModal"/,
       'Die Zeile öffnet den Detaildialog nicht — genau das hat Marco verlangt.');
     // Der Verteiler in 11-actions.js nimmt das NÄCHSTGELEGENE Element mit
@@ -260,7 +260,7 @@ test('Preisalarm-Übersicht: eigene Alarme, mit Namen, änderbar, löschbar',
     // Oberfläche, die eine Aussage NUR in die Farbe legt.
     //
     // Geprüft werden drei Unterschiede, von denen jeder EINZELN reicht.
-    const js = ohneKommentare(fs.readFileSync(path.join(ROOT, 'public/js/05-settings.js'), 'utf8'));
+    const js = ohneKommentare(require('./helpers/sources').ansichtQuelle('05'));
     const css = fs.readFileSync(path.join(ROOT, 'public/styles.css'), 'utf8');
 
     // 1. Die Marke kommt aus einer Klasse, nicht aus einer Farbe im Markup.

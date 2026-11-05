@@ -1,12 +1,11 @@
 import { melde } from './js/00-ereignisse.js';
 
-// Minimales Übersetzungs-System: t('key', {name}) liefert den Text. Die Sprache wird im localStorage
-// gemerkt, damit beim nächsten Laden nichts verzögert. Nur die aktive Sprache wird ausgeliefert.
+// Minimales Übersetzungs-System: t('key', {name}) liefert den Text. Die Sprache wird im localStorage gemerkt,
+// damit beim nächsten Laden nichts verzögert. Nur die aktive Sprache wird ausgeliefert.
 // Ausführlich: docs/begruendungen/public/i18n.js.md#minimales-uebersetzungs-system-sprache-w
 
 /**
- * Wörterbuch der geladenen Sprachen. Mindestens eine ist beim Start da; die
- * zweite kommt per loadLang() dazu.
+ * Wörterbuch der geladenen Sprachen. Mindestens eine ist beim Start da; die zweite kommt per loadLang() dazu.
  * @type {Record<string, Record<string,string>>}
  */
 export const I18N = {};
@@ -14,8 +13,8 @@ if (window.I18N_DE) I18N.de = window.I18N_DE;
 if (window.I18N_EN) I18N.en = window.I18N_EN;
 
 /**
- * Eine Sprachdatei nachladen, bevor neu übersetzt wird: Sonst stünden eine halbe Sekunde lang
- * Schlüsselnamen da. Scheitert es, bleibt die bisherige Sprache — der Aufrufer prüft I18N[lang].
+ * Eine Sprachdatei nachladen, bevor neu übersetzt wird: Sonst stünden eine halbe Sekunde lang Schlüsselnamen
+ * da. Scheitert es, bleibt die bisherige Sprache — der Aufrufer prüft I18N[lang].
  * Ausführlich: docs/begruendungen/public/i18n.js.md#loadlang
  * @param {string} lang 'de' oder 'en'
  * @returns {Promise<void>}
@@ -41,8 +40,7 @@ const _browserLang = navigator.language?.toLowerCase().startsWith('de') ? 'de' :
 export let LANG = localStorage.getItem('bim_lang') || _browserLang;
 
 /**
- * Translate a key. Supports {placeholder} substitution.
- * Falls back to the key itself if not found.
+ * Translate a key. Supports {placeholder} substitution. Falls back to the key itself if not found.
  */
 /** Währung des Kontos; ohne passende Browserregion bestimmt sie das Zahlenformat. */
 let _waehrung = 'EUR';
@@ -68,11 +66,10 @@ export function locale() {
 }
 
 /**
- * HTML-Sonderzeichen maskieren — Zwilling von esc() aus js/01-core.js.
+ * HTML-Sonderzeichen maskieren — Zwilling von esc() aus js/00-escapen.js.
  *
- * Bewusst hier dupliziert und nicht importiert: i18n.js wird VOR 01-core.js
- * geladen (siehe Skript-Reihenfolge in index.html), esc() existiert zum
- * Zeitpunkt der ersten t()-Aufrufe also noch nicht.
+ * Bewusst hier dupliziert und nicht importiert: i18n.js wird VOR den Kernmodulen geladen (siehe
+ * Skript-Reihenfolge in index.html), esc() existiert zum Zeitpunkt der ersten t()-Aufrufe also noch nicht.
  * @param {unknown} v
  * @returns {string}
  */
@@ -86,9 +83,8 @@ function _i18nEsc(v) {
 }
 
 /**
- * Mehrzahl nach den Regeln der Sprache: Ist {n} oder {count} eine Zahl und gibt
- * es „schlüssel_one“ (bzw. _few, _many …), gilt diese Form. Feste Formen wie
- * „{n} Typen“ ergaben sonst „1 Typen“.
+ * Mehrzahl nach den Regeln der Sprache: Ist {n} oder {count} eine Zahl und gibt es „schlüssel_one“ (bzw.
+ * _few, _many …), gilt diese Form. Feste Formen wie „{n} Typen“ ergaben sonst „1 Typen“.
  * @param {Record<string,string>} dict
  * @param {string} key
  * @param {Record<string, unknown>} [vars]
@@ -101,21 +97,20 @@ function mehrzahlSchluessel(dict, key, vars) {
 }
 
 /**
- * Übersetzten Text holen und {platzhalter} ersetzen. Die Werte werden maskiert, weil fast jede
- * Aufrufstelle das Ergebnis in innerHTML schiebt und darin Nutzereingaben stehen. Für reinen Text gibt
- * es tRaw().
+ * Übersetzten Text holen und {platzhalter} ersetzen. Die Werte werden maskiert, weil fast jede Aufrufstelle
+ * das Ergebnis in innerHTML schiebt und darin Nutzereingaben stehen. Für reinen Text gibt es tRaw().
  * Ausführlich: docs/begruendungen/public/i18n.js.md#t
  * @param {string} key
  * @param {Record<string, unknown>} [vars]
  * @returns {string}
  */
 export function t(key, vars) {
-  // Beide können fehlen (nur eine Sprachdatei geladen) — {} als letzte Stufe,
-  // dann greift der Rückfall auf den Schlüssel selbst.
+  // Beide können fehlen (nur eine Sprachdatei geladen) — {} als letzte Stufe, dann greift der Rückfall auf
+  // den Schlüssel selbst.
   const dict = I18N[LANG] || I18N['de'] || I18N['en'] || {};
-  // I18N['de'] ist NICHT garantiert vorhanden — bei englischer Oberfläche wird
-  // nur locales/en.js geladen. Der Rückfall greift deshalb nur, wenn Deutsch
-  // tatsächlich da ist; sonst bleibt der Schlüssel selbst als letzte Stufe.
+  // I18N['de'] ist NICHT garantiert vorhanden — bei englischer Oberfläche wird nur locales/en.js geladen. Der
+  // Rückfall greift deshalb nur, wenn Deutsch tatsächlich da ist; sonst bleibt der Schlüssel selbst als
+  // letzte Stufe.
   const k = mehrzahlSchluessel(dict, key, vars);
   let str = dict[k] || I18N['de']?.[k] || key;
   if (vars) {
@@ -127,9 +122,8 @@ export function t(key, vars) {
 /**
  * Wie t(), aber OHNE Maskierung der Variablen.
  *
- * Nur benutzen, wenn das Ergebnis nachweislich nicht in innerHTML landet oder
- * die Werte selbst schon maskiert sind — in der Praxis heisst das:
- * textContent-Zuweisungen und toast(). Hier stand „Aktuell gibt es keine
+ * Nur benutzen, wenn das Ergebnis nachweislich nicht in innerHTML landet oder die Werte selbst schon maskiert
+ * sind — in der Praxis heisst das: textContent-Zuweisungen und toast(). Hier stand „Aktuell gibt es keine
  * Aufrufstelle"; das war einmal richtig und ist es seit langem nicht mehr.
  *
  * @param {string} key
@@ -137,12 +131,12 @@ export function t(key, vars) {
  * @returns {string}
  */
 export function tRaw(key, vars) {
-  // Beide können fehlen (nur eine Sprachdatei geladen) — {} als letzte Stufe,
-  // dann greift der Rückfall auf den Schlüssel selbst.
+  // Beide können fehlen (nur eine Sprachdatei geladen) — {} als letzte Stufe, dann greift der Rückfall auf
+  // den Schlüssel selbst.
   const dict = I18N[LANG] || I18N['de'] || I18N['en'] || {};
-  // I18N['de'] ist NICHT garantiert vorhanden — bei englischer Oberfläche wird
-  // nur locales/en.js geladen. Der Rückfall greift deshalb nur, wenn Deutsch
-  // tatsächlich da ist; sonst bleibt der Schlüssel selbst als letzte Stufe.
+  // I18N['de'] ist NICHT garantiert vorhanden — bei englischer Oberfläche wird nur locales/en.js geladen. Der
+  // Rückfall greift deshalb nur, wenn Deutsch tatsächlich da ist; sonst bleibt der Schlüssel selbst als
+  // letzte Stufe.
   const k = mehrzahlSchluessel(dict, key, vars);
   let str = dict[k] || I18N['de']?.[k] || key;
   if (vars) {
@@ -151,16 +145,15 @@ export function tRaw(key, vars) {
   return str;
 }
 
-// Die zuletzt angewendete Sprache. checkAuth() und showApp() rufen applyLang()
-// beim Start mit demselben Wert auf; ohne diese Sperre lief die Neuübersetzung
-// samt Neuaufbau der aktiven Liste zweimal.
+// Die zuletzt angewendete Sprache. checkAuth() und showApp() rufen applyLang() beim Start mit demselben Wert
+// auf; ohne diese Sperre lief die Neuübersetzung samt Neuaufbau der aktiven Liste zweimal.
 /** @type {string | null} */
 let _langApplied = null;
 
 
 /**
- * Farbnamen nur in der Anzeige übersetzen: Daten und BrickLink-Abfragen brauchen die englischen Namen.
- * Ein Wortschatz statt einer Liste aller Farben, damit auch neue Rebrickable-Farben lesbar werden.
+ * Farbnamen nur in der Anzeige übersetzen: Daten und BrickLink-Abfragen brauchen die englischen Namen. Ein
+ * Wortschatz statt einer Liste aller Farben, damit auch neue Rebrickable-Farben lesbar werden.
  * Ausführlich: docs/begruendungen/public/i18n.js.md#color-words-de
  */
 /** @type {Record<string, string>} */
@@ -209,9 +202,9 @@ export function colorName(en) {
     out.push(de === undefined ? tok : de);     // unbekannt: englisch lassen
   }
 
-  // Bekannte Modifikatoren ans nächste Wort hängen („Dunkelbläulichgrau“), unbekannte Wörter getrennt
-  // lassen. Entschieden am vorigen Token, nicht am Zusammengesetzten — sonst bräche die Kette nach dem
-  // zweiten Glied ab.
+  // Bekannte Modifikatoren ans nächste Wort hängen („Dunkelbläulichgrau“), unbekannte Wörter getrennt lassen.
+  // Entschieden am vorigen Token, nicht am Zusammengesetzten — sonst bräche die Kette nach dem zweiten Glied
+  // ab.
   // Ausführlich: docs/begruendungen/public/i18n.js.md#res
   let res = '';
   let joinNext = false;
@@ -288,8 +281,8 @@ export function applyLang(lang, persist) {
   const sel = /** @type {HTMLSelectElement | null} */ (document.getElementById('lang-select'));
   if (sel) sel.value = lang;
 
-  // Speichern (01-core.js) und das Neuladen des offenen Reiters (25-navigation.js)
-  // hören auf dieses Ereignis: Die Übersetzung selbst kennt keine Ansicht.
+  // Speichern (01-konto.js) und das Neuladen des offenen Reiters (25-navigation.js) hören auf dieses
+  // Ereignis: Die Übersetzung selbst kennt keine Ansicht.
   melde('spracheGewechselt', { sprache: lang, speichern: !!persist, echterWechsel: !!isRealSwitch });
 }
 
@@ -299,9 +292,9 @@ export function applyLang(lang, persist) {
 /**
  * Aktive Sprache setzen, ohne die volle Neuübersetzung von applyLang().
  *
- * Braucht 01-core.js beim Start, um den in localStorage gespeicherten Wert zu
- * übernehmen, bevor die Oberfläche steht. Importierte Bindungen sind in
- * ES-Modulen schreibgeschützt, deshalb dieser Weg statt `LANG = …`.
+ * Braucht 26-sitzung.js beim Start, um den in localStorage gespeicherten Wert zu übernehmen, bevor die
+ * Oberfläche steht. Importierte Bindungen sind in ES-Modulen schreibgeschützt, deshalb dieser Weg statt `LANG
+ * = …`.
  *
  * @param {string} lang
  */

@@ -10,7 +10,7 @@
  *
  * ── Warum ───────────────────────────────────────────────────────────────────
  *
- * Die Hilfsfunktion hat diese Form (public/js/01-core.js):
+ * Die Hilfsfunktion hat diese Form (public/js/01-dom.js):
  *
  *     export function knopfBesetzt(btn, laeuft = '…') {
  *       const vorher = btn.textContent;
@@ -138,7 +138,7 @@ test('knopfBesetzt(): zweites Argument ist eine Beschriftung, kein Rückruf', ()
  * ── Warum dieser Test und keine Quelltext-Regel ─────────────────────────────
  *
  * Eine Regel „im Quelltext muss minWidth vorkommen" wäre mit einem Kommentar
- * zufrieden. Hier läuft die ECHTE Funktion aus public/js/01-core.js unter
+ * zufrieden. Hier läuft die ECHTE Funktion aus public/js/01-dom.js unter
  * jsdom, mit einer gestellten offsetWidth — jsdom rechnet kein Layout, also
  * ist die Breite das einzige, was gestellt werden muss.
  *
@@ -152,7 +152,7 @@ test('knopfBesetzt(): Beschriftung und Breite bleiben, solange der Knopf besetzt
   const { JSDOM } = require(path.join(__dirname, '..', 'node_modules', 'jsdom'));
 
   // Die echte Funktion aus dem Quelltext holen — nicht nachgebaut.
-  const src = fs.readFileSync(path.join(JS, '01-core.js'), 'utf8');
+  const src = fs.readFileSync(path.join(JS, '01-dom.js'), 'utf8');
   const auf = src.indexOf('export function knopfBesetzt');
   assert.ok(auf > 0, 'knopfBesetzt() nicht gefunden — umbenannt?');
   const start = src.indexOf('{', src.indexOf(')', auf));

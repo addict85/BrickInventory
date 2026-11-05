@@ -27,7 +27,7 @@
  * js/08-init.js greift schon beim Laden auf das Dokument zu und lässt sich
  * deshalb hier nicht einlesen. Das Format steht darum in
  * js/19-bricklink-xml.js, das nur Daten kennt — eingelesen wie
- * test/bundle-smoke.test.js es mit js/01-core.js macht.
+ * test/bundle-smoke.test.js es mit js/01-api.js macht.
  *
  * Was der AUFRUFER damit tut (welche Posten er weglässt und wie er das
  * meldet), prüft test/teileliste-bl-export.test.js am Quelltext.

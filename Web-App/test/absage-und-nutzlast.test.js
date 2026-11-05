@@ -125,7 +125,7 @@ test('nach dem Waehrungswechsel wird die Haushaltskarte neu gezeichnet', () => {
   // Geprueft wird die NACHBARSCHAFT und keine Aufrufreihenfolge: Wer die
   // Waehrung setzt, muss auch die Karte nachziehen. Dieselbe Regel gilt zwei
   // Zeilen weiter schon fuer den Standard-Zustand.
-  const quelle = lies('public/js/05-settings.js');
+  const quelle = require('./helpers/sources').ansichtQuelle('05');
   const ab = quelle.indexOf('set_CURRENCY(');
   assert.ok(ab > 0, 'set_CURRENCY() wird nicht mehr aufgerufen — greift die Suche noch?');
   // Der Block bis zum Ende der speichernden Funktion.

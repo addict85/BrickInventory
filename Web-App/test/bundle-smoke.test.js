@@ -43,7 +43,7 @@ function handlerNames() {
       names.add(m[1]);
     }
   }
-  // 'fn' stammt aus einem Kommentar-Beispiel in 01-core.js, nicht aus Markup.
+  // 'fn' stammt aus einem Kommentar-Beispiel in 01-api.js, nicht aus Markup.
   names.delete('fn');
   return [...names].filter(n => !LOGVIEWER.has(n)).sort();
 }
@@ -169,7 +169,7 @@ test('api() liefert bei jedem Fehlschlag ein Objekt statt zu werfen', async () =
   });
 
   try {
-    const core = await import(`file://${path.join(ROOT, 'public', 'js', '01-core.js')}`);
+    const core = await import(`file://${path.join(ROOT, 'public', 'js', '01-api.js')}`);
 
     const ok = await core.api('GET', '/ok');
     assert.equal(ok.success, true, 'Der Normalfall muss unverändert durchgehen');

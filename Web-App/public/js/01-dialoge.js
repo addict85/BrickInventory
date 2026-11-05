@@ -1,6 +1,5 @@
-// Tastaturbedienung aller Dialoge an einer Stelle: Escape, Fokus hinein, Tab bleibt drin, Fokus
-// zurück. Geschlossen wird über den Knopf data-dialog-zu, damit dieselbe Aufräumarbeit läuft wie beim
-// Klick auf ✕.
+// Tastaturbedienung aller Dialoge an einer Stelle: Escape, Fokus hinein, Tab bleibt drin, Fokus zurück.
+// Geschlossen wird über den Knopf data-dialog-zu, damit dieselbe Aufräumarbeit läuft wie beim Klick auf ✕.
 // Ausführlich: docs/begruendungen/public/js/01-dialoge.js.md#fuer-jedes-ovl-role-dialog-an-einer-stel
 
 // `summary` gehört dazu: Fehlt es, springt die Falle vor „Weitere Aktionen“
@@ -85,8 +84,8 @@ function zustandGeaendert(dialog) {
   } else {
     const zurueck = _vorher.get(dialog);
     _vorher.delete(dialog);
-    // Nur wenn der Fokus noch im geschlossenen Dialog (oder nirgends) steht —
-    // wer inzwischen woanders hingeklickt hat, wird nicht zurückgerissen.
+    // Nur wenn der Fokus noch im geschlossenen Dialog (oder nirgends) steht — wer inzwischen woanders
+    // hingeklickt hat, wird nicht zurückgerissen.
     const aktiv = document.activeElement;
     const verwaist = !aktiv || aktiv === document.body || dialog.contains(aktiv);
     if (!verwaist) return;
@@ -101,9 +100,8 @@ function zustandGeaendert(dialog) {
 }
 
 /**
- * Wohin der Fokus nach dem Schliessen zurückgeht. Lag der Auslöser in einem
- * inzwischen zugeklappten <details> („Weitere Aktionen“), ist er unsichtbar
- * und nähme keinen Fokus — dann dessen <summary>.
+ * Wohin der Fokus nach dem Schliessen zurückgeht. Lag der Auslöser in einem inzwischen zugeklappten <details>
+ * („Weitere Aktionen“), ist er unsichtbar und nähme keinen Fokus — dann dessen <summary>.
  * @param {HTMLElement} el
  */
 function rueckziel(el) {
@@ -118,15 +116,15 @@ function tasteGedrueckt(ev) {
   const dialog = obersterDialog();
   if (!dialog) return;
   if (ev.key === 'Escape') {
-    // Escape schliesst beim ersten Druck, auch aus einem Feld. Ausnahme sind
-    // Felder in einer Tabelle (Korrekturen der Wanted-Vorschau): Dort verlässt
-    // es nur die Zelle, damit nicht alle Korrekturen mit dem Dialog verschwinden.
+    // Escape schliesst beim ersten Druck, auch aus einem Feld. Ausnahme sind Felder in einer Tabelle
+    // (Korrekturen der Wanted-Vorschau): Dort verlässt es nur die Zelle, damit nicht alle Korrekturen mit dem
+    // Dialog verschwinden.
     const aktiv = /** @type {HTMLElement | null} */ (document.activeElement);
     if (aktiv && dialog.contains(aktiv) && /^(INPUT|TEXTAREA|SELECT)$/.test(aktiv.tagName) && aktiv.closest('table')) {
       ev.preventDefault();
       aktiv.blur();
-      // Auf die Fläche, nicht zum Erstfokus: Ist der ein Eingabefeld, stünde
-      // man wieder darin, und Escape käme nie aus dem Dialog heraus.
+      // Auf die Fläche, nicht zum Erstfokus: Ist der ein Eingabefeld, stünde man wieder darin, und Escape
+      // käme nie aus dem Dialog heraus.
       fokussiereFlaeche(dialog);
       return;
     }

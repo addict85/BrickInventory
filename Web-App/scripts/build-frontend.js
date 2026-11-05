@@ -103,6 +103,22 @@ function erlaubteStile() {
   return [...werte].sort();
 }
 
+/** Bündelt nach `outAbs` (Auslieferung, test-lauf.js). */
+function baueBuendel(/** @type {string} */ outAbs) {
+  // Lokales esbuild statt npx — siehe die Begründung in scripts/build-ts.js.
+  const local = path.join(ROOT, 'node_modules', '.bin',
+    process.platform === 'win32' ? 'esbuild.cmd' : 'esbuild');
+  const [cmd, prefix] = fs.existsSync(local)
+    ? [local, []]
+    : ['npx', ['--yes', `esbuild@${ESBUILD_VERSION}`]];
+  execFileSync(cmd, [
+    ...prefix, path.join(PUBLIC, ENTRY),
+    '--bundle', '--format=iife', '--minify', '--charset=utf8',
+    `--define:__ERLAUBTE_STILE__=${JSON.stringify(erlaubteStile())}`,
+    `--outfile=${outAbs}`,
+  ], { stdio: ['ignore', 'ignore', 'inherit'] });
+}
+
 function main() {
   checkComplete();
   if (process.argv.includes('--check')) {
@@ -110,20 +126,11 @@ function main() {
     return;
   }
 
-  // Lokales esbuild statt npx — siehe die Begründung in scripts/build-ts.js.
-  const local = path.join(ROOT, 'node_modules', '.bin',
-    process.platform === 'win32' ? 'esbuild.cmd' : 'esbuild');
-  const [cmd, prefix] = fs.existsSync(local)
-    ? [local, []]
-    : ['npx', ['--yes', `esbuild@${ESBUILD_VERSION}`]];
-
+  // --outfile=…: nur bündeln, an einen anderen Ort (test/buendel-aktuell.test.js).
+  const ziel = process.argv.find(a => a.startsWith('--outfile='))?.slice('--outfile='.length);
+  if (ziel) { baueBuendel(path.resolve(ziel)); return; }
   const outAbs = path.join(PUBLIC, OUT_REL);
-  execFileSync(cmd, [
-    ...prefix, path.join(PUBLIC, ENTRY),
-    '--bundle', '--format=iife', '--minify', '--charset=utf8',
-    `--define:__ERLAUBTE_STILE__=${JSON.stringify(erlaubteStile())}`,
-    `--outfile=${outAbs}`,
-  ], { stdio: ['ignore', 'ignore', 'inherit'] });
+  baueBuendel(outAbs);
 
   const after = fs.statSync(outAbs).size;
   console.log(`[build-frontend] ${ENTRY} → ${OUT_REL}: ${(after / 1024).toFixed(0)} KB`);
@@ -134,4 +141,4 @@ function main() {
 
 if (require.main === module) main();
 
-module.exports = { ENTRY, OUT_REL, STANDALONE, erlaubteStile };
+module.exports = { ENTRY, OUT_REL, STANDALONE, erlaubteStile, baueBuendel };

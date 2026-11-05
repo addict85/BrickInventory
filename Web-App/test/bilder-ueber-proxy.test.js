@@ -15,7 +15,7 @@
  *
  *     <img src="${esc(thumbUrl(w.image_url))}"        ← direkt ans CDN
  *
- * thumbUrl() reicht seine Eingabe unverändert durch (01-core.js); erst
+ * thumbUrl() reicht seine Eingabe unverändert durch (01-bilder.js); erst
  * imgUrl() bzw. fullUrl() machen daraus eine Adresse auf dem eigenen Server.
  *
  * ── Was diese Prüfung festhält ──────────────────────────────────────────────

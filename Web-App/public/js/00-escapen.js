@@ -1,6 +1,6 @@
-// Eine einzige Fassung des Maskierens, ohne Zugriff auf document: Auch das DOM-freie
-// 19-bricklink-xml.js braucht sie, und ein zweiter Maskierer daneben ist genau die Doppelung, die
-// schon einmal auseinandergelaufen ist.
+// Eine einzige Fassung des Maskierens, ohne Zugriff auf document: Auch das DOM-freie 19-bricklink-xml.js
+// braucht sie, und ein zweiter Maskierer daneben ist genau die Doppelung, die schon einmal
+// auseinandergelaufen ist.
 // Ausführlich: docs/begruendungen/public/js/00-escapen.js.md#hier-stand-esc-bis-zum-20-10-in-js-01-co
 
 /**
@@ -18,3 +18,106 @@ export function esc(s){
     .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
     .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
 }
+
+// Ansichten entstehen per innerHTML aus Vorlagen; jeder Wert aus Datenbank, CSV oder Fremd-API muss durch
+// einen dieser Helfer, sonst ist jedes freie Textfeld ein gespeichertes XSS. esc() für Text, escJs() in
+// data-arg, escUrl() für src/href, escHex() für Farben.
+// Ausführlich: docs/begruendungen/public/js/00-escapen.js.md#alle-listen-und-detailansichten-werden-p
+
+/**
+ * Wert in einem einfach-gequoteten JS-String innerhalb eines doppelt-gequoteten HTML-Attributs. Erst
+ * JS-escapen (Backslash, Apostroph), dann HTML: esc() allein liesse den Apostroph als &#39; stehen, der
+ * Browser dekodiert ihn vor dem JS-Parsen zurück, und der String bricht auf.
+ * @param {unknown} s
+ */
+export function escJs(s){
+  return String(s ?? '')
+    .replace(/\\/g,'\\\\').replace(/'/g,"\\'")
+    .replace(/&/g,'&amp;').replace(/"/g,'&quot;')
+    .replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+/**
+ * src/href: nur relative Pfade und http(s) durchlassen. Manuell erfasste Teile und Minifiguren dürfen eine
+ * Bild-URL mitbringen — ohne diese Prüfung landet "javascript:…" ungefiltert in einem href.
+ * @param {unknown} u
+ */
+export function escUrl(u){
+  return esc(sichereUrl(u));
+}
+
+/** Wie escUrl(), aber unmaskiert: für html``, das selbst maskiert. @param {unknown} u */
+export function sichereUrl(u){
+  const v = String(u ?? '').trim();
+  return /^(https?:\/\/|\/(?!\/)|data:image\/)/i.test(v) ? v : '';
+}
+
+/**
+ * Farbwert für data-farbe="…" (js/00-stile.js) — alles ausser 6 Hex-Ziffern fliegt raus.
+ * @param {unknown} hex
+ * @param {string} fallback
+ */
+export function escHex(hex, fallback){
+  const v = String(hex ?? '').trim().replace(/^#/, '');
+  return /^[0-9A-Fa-f]{6}$/.test(v) ? '#' + v : (fallback || 'var(--s300)');
+}
+
+/**
+ * Wie escHex(), aber ohne „#“: für Attribute, deren Leser das Doppelkreuz selbst ergänzen (data-hex).
+ * escHex() dort ergäbe „##RRGGBB“.
+ * Ausführlich: docs/begruendungen/public/js/00-escapen.js.md#hexziffern
+ * @param {unknown} hex
+ */
+export function hexZiffern(hex){
+  const v = String(hex ?? '').trim().replace(/^#/, '');
+  return /^[0-9A-Fa-f]{6}$/.test(v) ? v : '';
+}
+
+/**
+ * @param {string} v
+ */
+export function escHtmlAttr(v) {
+  return String(v == null ? '' : v)
+    .replace(/&/g, '&amp;').replace(/"/g, '&quot;')
+    .replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
+/** Fertiges Markup: aus html`` oder ungeprueft(). Nur so nimmt setzeHtml() (01-dom.js) Text als Markup an. */
+export class SicheresHtml {
+  /** Macht die Klasse für tsc nominal: ein Objekt mit `text` ist noch kein SicheresHtml. */
+  #marke = true;
+  /** @param {string} text */
+  constructor(text) { this.text = text; void this.#marke; }
+  toString() { return this.text; }
+}
+
+/** Was setzeHtml() annimmt: fertiges Markup, Listen davon oder nichts — keine Zeichenkette mit Daten.
+ * @typedef {SicheresHtml | Markup[] | '' | false | null | undefined} Markup */
+
+/** Der Text eines Werts für Markup: SicheresHtml unverändert, alles andere maskiert. @param {unknown} wert @returns {string} */
+export function einsetzen(wert) {
+  if (wert instanceof SicheresHtml) return wert.text;
+  if (Array.isArray(wert)) return wert.map(einsetzen).join('');
+  if (wert === null || wert === undefined || wert === false) return '';
+  return esc(wert);
+}
+
+/**
+ * Vorlage für Markup, die jeden eingesetzten Wert maskiert. Durch kommen nur Stücke, die selbst aus html``
+ * stammen (oder ungeprueft()); Listen werden aneinandergehängt, null/undefined/false fallen weg. Ein
+ * vergessenes esc() ist damit kein XSS mehr, sondern sichtbarer Text.
+ * @param {TemplateStringsArray} teile
+ * @param {...unknown} werte
+ */
+export function html(teile, ...werte) {
+  let s = teile[0] ?? '';
+  for (let i = 0; i < werte.length; i++) s += einsetzen(werte[i]) + (teile[i + 1] ?? '');
+  return new SicheresHtml(s);
+}
+
+/**
+ * Markup ohne Prüfung — nur für Zeichenketten, die schon maskiert gebaut wurden. Jede Stelle zählt
+ * test/ratschen.test.js; neue Vorlagen nehmen html``.
+ * @param {unknown} text
+ */
+export function ungeprueft(text) { return new SicheresHtml(String(text ?? '')); }

@@ -1,5 +1,8 @@
 import { istVertraut, registerActions, resolveAction } from './00-registry.js';
-import { G, bildPlatzhalter, bildVorlaeufig, bildGeladen, fullUrl, setLang, toast } from './01-core.js';
+import { bildPlatzhalter, bildVorlaeufig, bildGeladen, fullUrl } from './01-bilder.js';
+import { G } from './01-dom.js';
+import { setLang } from './01-konto.js';
+import { toast } from './01-meldungen.js';
 import { tRaw } from '../i18n.js';
 import { saveJobSchedule } from './01-monitor.js';
 import { openPdfViewer } from './12-pdfviewer.js';
@@ -10,9 +13,8 @@ import { autosaveSet, closeImageLightbox, openImageLightbox } from './07-set-det
 import { hideProgress } from './01-fortschritt.js';
 import { deleteManualPart } from './03-parts.js';
 
-// Ein delegierter Dispatcher für data-click & Co. statt onclick im Markup: So kommt die CSP ohne
-// script-src 'unsafe-inline' aus, und eine übersehene XSS-Lücke trifft noch auf diese
-// Verteidigungslinie.
+// Ein delegierter Dispatcher für data-click & Co. statt onclick im Markup: So kommt die CSP ohne script-src
+// 'unsafe-inline' aus, und eine übersehene XSS-Lücke trifft noch auf diese Verteidigungslinie.
 // Ausführlich: docs/begruendungen/public/js/11-actions.js.md#ziel-script-src-unsafe-inline-aus-der-cs
 
 (function () {
@@ -26,8 +28,8 @@ import { deleteManualPart } from './03-parts.js';
   /** blur steigt nicht auf — braucht Capture. */
   const NEEDS_CAPTURE = new Set(['blur', 'error', 'load']);
 
-  // Ausser click nimmt jedes Ereignis nur die Handler, die das Markup dafür
-  // wirklich nutzt; test/aktionen-schutz.test.js gleicht die Liste ab.
+  // Ausser click nimmt jedes Ereignis nur die Handler, die das Markup dafür wirklich nutzt;
+  // test/aktionen-schutz.test.js gleicht die Liste ab.
   /** @type {Record<string, Set<string>>} */
   const NUR = {
     change: new Set(['acqSave', 'aendereAlarmSchwelle', 'autosaveSet', 'benenneLagerortUm',
@@ -45,8 +47,8 @@ import { deleteManualPart } from './03-parts.js';
     keydown: new Set(['blurOnEnter', 'lagerortTaste']),
   };
 
-  // Löschen, Konto, Zugänge, Verwaltung: nur von Elementen, die unser Code
-  // erzeugt hat (istVertraut), nie aus eingeschleustem Markup.
+  // Löschen, Konto, Zugänge, Verwaltung: nur von Elementen, die unser Code erzeugt hat (istVertraut), nie aus
+  // eingeschleustem Markup.
   const GEFAEHRLICH = new Set([
     'delSet', 'delSetStop', 'delInstr', 'acqDelete', 'manAcqDelete', 'deleteManualFig',
     'deleteManualFigStop', 'deleteManualPartStop', 'merkpostenLoeschen', 'merkpostenLoeschenStop',
@@ -65,9 +67,8 @@ import { deleteManualPart } from './03-parts.js';
   function attrFor(type) { return 'data-' + type; }
 
   /**
-   * Handlernamen über die Registry auflösen: Modul-Funktionen liegen nicht auf window. resolveAction()
-   * fällt intern noch auf window zurück, für den Log-Betrachter, der als klassisches Skript im eigenen
-   * Popup läuft.
+   * Handlernamen über die Registry auflösen: Modul-Funktionen liegen nicht auf window. resolveAction() fällt
+   * intern noch auf window zurück, für den Log-Betrachter, der als klassisches Skript im eigenen Popup läuft.
    * Ausführlich: docs/begruendungen/public/js/11-actions.js.md#resolve
    * @param {string} name
    */
@@ -89,12 +90,11 @@ import { deleteManualPart } from './03-parts.js';
     const fn = resolve(name);
     if (!fn) { console.warn('[actions] unbekannter Handler:', name); return; }
 
-    // Argumente: data-arg, data-arg2, data-arg3 … in dieser Reihenfolge.
-    // data-val="1" hängt den aktuellen Feldwert an — deckt die vielen
-    // Handler ab, die früher this.value gelesen haben.
+    // Argumente: data-arg, data-arg2, data-arg3 … in dieser Reihenfolge. data-val="1" hängt den aktuellen
+    // Feldwert an — deckt die vielen Handler ab, die früher this.value gelesen haben.
     const args = [];
-    // data-self="1": Element als erstes Argument. Mehrere bestehende Handler
-    // erwarteten früher `this` explizit (z. B. triggerCsvSync(this)).
+    // data-self="1": Element als erstes Argument. Mehrere bestehende Handler erwarteten früher `this`
+    // explizit (z. B. triggerCsvSync(this)).
     if (el.dataset.self === '1') args.push(el);
     for (const key of ['data-arg', 'data-arg2', 'data-arg3', 'data-arg4', 'data-arg5', 'data-arg6']) {
       if (!el.hasAttribute(key)) break;
@@ -110,9 +110,8 @@ import { deleteManualPart } from './03-parts.js';
     document.addEventListener(type, ev => handle(type, ev), NEEDS_CAPTURE.has(type));
   }
 
-  // Karten und Zeilen mit data-click sind keine Knöpfe; mit tabindex und
-  // dieser Zeile bedient die Tastatur sie wie einen (Eingabe, bei role=button
-  // auch Leertaste).
+  // Karten und Zeilen mit data-click sind keine Knöpfe; mit tabindex und dieser Zeile bedient die Tastatur
+  // sie wie einen (Eingabe, bei role=button auch Leertaste).
   const NATIV = new Set(['BUTTON', 'A', 'INPUT', 'SELECT', 'TEXTAREA', 'LABEL', 'SUMMARY']);
   document.addEventListener('keydown', ev => {
     const el = ev.target;
@@ -127,8 +126,8 @@ import { deleteManualPart } from './03-parts.js';
   });
 
   // Anmelde- und Passwortfelder stehen in einem <form>, damit Passwortmanager zuverlässig speichern und
-  // ausfüllen. Abgesendet wird nie: Ein echtes Absenden lüde die Seite neu; stattdessen läuft der Knopf
-  // aus data-submit.
+  // ausfüllen. Abgesendet wird nie: Ein echtes Absenden lüde die Seite neu; stattdessen läuft der Knopf aus
+  // data-submit.
   // Ausführlich: docs/begruendungen/public/js/11-actions.js.md#die-anmelde-registrier-und-passwortfelde
   document.addEventListener('submit', ev => {
     const form = ev.target;
@@ -139,9 +138,8 @@ import { deleteManualPart } from './03-parts.js';
     const knopf = /** @type {HTMLButtonElement | null} */ (document.getElementById(id));
     if (knopf && !knopf.disabled) knopf.click();
   });
-  // Mit mehr als einem Textfeld und ohne Absendeknopf sendet der Browser bei
-  // Enter nicht ab (auch verborgene Felder zählen). Dann löst Enter hier den
-  // Knopf aus, den `data-submit` nennt.
+  // Mit mehr als einem Textfeld und ohne Absendeknopf sendet der Browser bei Enter nicht ab (auch verborgene
+  // Felder zählen). Dann löst Enter hier den Knopf aus, den `data-submit` nennt.
   document.addEventListener('keydown', ev => {
     if (ev.key !== 'Enter' || ev.isComposing || ev.defaultPrevented) return;
     const feld = ev.target;
@@ -154,29 +152,28 @@ import { deleteManualPart } from './03-parts.js';
   });
 
   // ── Bilder: Fehler- und Ladezustand ───────────────────────────────────────
-  // error und load steigen nicht auf, lassen sich aber in der Capture-Phase am
-  // document abfangen. Ersetzt die zwölf onerror- und vier onload-Attribute in
-  // den Kachel-Templates.
+  // error und load steigen nicht auf, lassen sich aber in der Capture-Phase am document abfangen. Ersetzt die
+  // zwölf onerror- und vier onload-Attribute in den Kachel-Templates.
   document.addEventListener('error', ev => {
     const el = ev.target;
     if (!(el instanceof HTMLImageElement)) return;
 
-    // Einmal wiederholen, bevor aufgegeben wird: Ein einzelner Verbindungsfehler (ETIMEDOUT beim CDN)
-    // liess die Kachel sonst dauerhaft leer, obwohl das Bild in Ordnung war.
+    // Einmal wiederholen, bevor aufgegeben wird: Ein einzelner Verbindungsfehler (ETIMEDOUT beim CDN) liess
+    // die Kachel sonst dauerhaft leer, obwohl das Bild in Ordnung war.
     // Ausführlich: docs/begruendungen/public/js/11-actions.js.md#if
     if (!el.dataset.retried && el.src) {
       el.dataset.retried = '1';
       if (/** @type {HTMLImageElement} */ (el).dataset.ph) bildVorlaeufig(el);
       const src = el.src;
-      // removeAttribute statt src='': Ein leeres src zeigt auf die SEITE, und
-      // der Browser wuerde sie als Bild zu laden versuchen.
+      // removeAttribute statt src='': Ein leeres src zeigt auf die SEITE, und der Browser wuerde sie als Bild
+      // zu laden versuchen.
       setTimeout(() => { el.removeAttribute('src'); el.src = src; }, 1000);
       return;
     }
 
     if (el.dataset.onerror === 'keep') {
-      // Der Zoom (#lightbox-img) behält die Adresse: Ein leeres Overlay sähe
-      // aus wie ein kaputter Zoom, so nennt die Konsole die Adresse.
+      // Der Zoom (#lightbox-img) behält die Adresse: Ein leeres Overlay sähe aus wie ein kaputter Zoom, so
+      // nennt die Konsole die Adresse.
       console.warn('[img] konnte nicht geladen werden:', el.src);
       return;
     }
@@ -188,14 +185,14 @@ import { deleteManualPart } from './03-parts.js';
     }
     if (el.dataset.fallbackDone) return;
     el.dataset.fallbackDone = '1';
-    // Bilder aus Vorlagen (bildTag) bekommen den Platzhalter ihrer Art; die
-    // festen Dialogbilder in index.html werden nur geleert.
+    // Bilder aus Vorlagen (bildTag) bekommen den Platzhalter ihrer Art; die festen Dialogbilder in index.html
+    // werden nur geleert.
     if (el.dataset.ph) bildPlatzhalter(el);
     else { el.removeAttribute('src'); el.classList.add('loaded'); }
   }, true);
 
-  // .loaded an jedes img[loading=lazy], nicht nur an data-fade: styles.css blendet alle lazy-Bilder aus,
-  // und ohne Zusatzattribut blieben sie sonst trotz geladenem Bild unsichtbar.
+  // .loaded an jedes img[loading=lazy], nicht nur an data-fade: styles.css blendet alle lazy-Bilder aus, und
+  // ohne Zusatzattribut blieben sie sonst trotz geladenem Bild unsichtbar.
   // Ausführlich: docs/begruendungen/public/js/11-actions.js.md#markloaded
   /** @param {EventTarget | null} el */
   function markLoaded(el) {
@@ -208,8 +205,8 @@ import { deleteManualPart } from './03-parts.js';
 
   document.addEventListener('load', ev => markLoaded(ev.target), true);
 
-  // Aus dem Browser-Cache gelieferte Bilder sind beim Einfügen schon fertig —
-  // ihr load-Ereignis ist dann bereits durch und würde nie ankommen.
+  // Aus dem Browser-Cache gelieferte Bilder sind beim Einfügen schon fertig — ihr load-Ereignis ist dann
+  // bereits durch und würde nie ankommen.
   const imgObserver = new MutationObserver(muts => {
     for (const m of muts) {
       for (const node of m.addedNodes) {
@@ -226,13 +223,10 @@ import { deleteManualPart } from './03-parts.js';
 })();
 
 // ── Kleine Helfer für Handler, die vorher als Ausdruck im Attribut standen ──
-// Der Dispatcher ruft mit `this` = auslösendes Element und dem Ereignis als
-// letztem Argument auf.
+// Der Dispatcher ruft mit `this` = auslösendes Element und dem Ereignis als letztem Argument auf.
 
-/** War: onclick="G('pw-modal').classList.remove('open')" */
 function closePwModal() { G('pw-modal')?.classList.remove('open'); }
 
-/** War: onclick="hideProgress();G('btn-close-import').style.display='none'" */
 function closeImportProgress() {
   hideProgress();
   const b = G('btn-close-import');
@@ -240,19 +234,18 @@ function closeImportProgress() {
 }
 
 /**
- * War: onclick="if(event.target===this)closeImageLightbox()" — nur der Hintergrund schliesst.
  * @param {Event} ev
+ * @this {HTMLElement}
  */
 function lightboxBackdrop(ev) {
   if (ev && ev.target === this) closeImageLightbox();
 }
 
 /**
- * War: onclick="openImageLightbox(this.src)"
  *
- * Nimmt bevorzugt data-orig, nicht this.src: Die Kacheln zeigen seit der
- * Thumbnail-Umstellung eine verkleinerte Fassung, und im Zoom wäre die
- * unscharf. data-orig trägt die volle Auflösung.
+ * Nimmt bevorzugt data-orig, nicht this.src: Die Kacheln zeigen seit der Thumbnail-Umstellung eine
+ * verkleinerte Fassung, und im Zoom wäre die unscharf. data-orig trägt die volle Auflösung.
+ * @this {HTMLImageElement}
  */
 function openImageLightboxFromEl() {
   const src = this.dataset.orig && this.dataset.orig !== '/assets/set-placeholder.svg'
@@ -260,41 +253,37 @@ function openImageLightboxFromEl() {
   openImageLightbox(typeof fullUrl === 'function' ? fullUrl(src) : src);
 }
 
-/** War: onchange="setLang(this.value)" */
-function setLangFromEl() { setLang(this.value); }
-/** Darstellung je Gerät — die Logik steht in 00-theme-boot.js. */
 /** @this {HTMLSelectElement} */
+function setLangFromEl() { setLang(this.value); }
+/** Darstellung je Gerät — die Logik steht in 00-theme-boot.js. @this {HTMLSelectElement} */
 function setzeDunkel() { window.__bimDunkel?.(this.value); }
 
 /**
- * Der Ansichtsumschalter des Figuren-Reiters gilt für beide Listen: Er steht über beiden, also
- * schaltet er auch die manuell erfassten Figuren um.
+ * Der Ansichtsumschalter des Figuren-Reiters gilt für beide Listen: Er steht über beiden, also schaltet er
+ * auch die manuell erfassten Figuren um.
  * Ausführlich: docs/begruendungen/public/js/11-actions.js.md#renderfigsall
  */
 function renderFigsAll() { renderFigs(alleFiguren()); renderManualFigsTable(); }
 
 // ── Wrapper für Handler, die vorher als Ausdruck im Attribut standen ────────
-// Alle bekommen `this` = auslösendes Element und das Ereignis als letztes
-// Argument (siehe Dispatcher oben).
+// Alle bekommen `this` = auslösendes Element und das Ereignis als letztes Argument (siehe Dispatcher oben).
 
 /**
- * War: onclick="event.stopPropagation()"
  * @param {Event | undefined} ev
  */
 export function stopEvent(ev) { ev?.stopPropagation(); }
 
 /**
- * War: onkeydown="if(event.key==='Enter'){this.blur()}"
  * @param {KeyboardEvent | undefined} ev
+ * @this {HTMLElement}
  */
 export function blurOnEnter(ev) { if (ev?.key === 'Enter') this.blur(); }
 
-/** War: onclick="document.getElementById('btn-job-trigger').click()" */
 export function clickJobTrigger() { document.getElementById('btn-job-trigger')?.click(); }
 
 /**
- * War: onchange="saveJobSchedule('${k}',{time:this.value})"
  * @param {string} k
+ * @this {HTMLInputElement}
  */
 export function saveJobTime(k) {
   const m = /^\s*(\d{1,2})\s*[:.]?\s*(\d{2})\s*$/.exec(this.value);
@@ -306,32 +295,31 @@ export function saveJobTime(k) {
 }
 
 /**
- * War: onchange="saveJobSchedule('${k}',{minutes:this.value})"
  * @param {string} k
+ * @this {HTMLInputElement}
  */
-export function saveJobMinutes(k) { saveJobSchedule(k, { minutes: this.value }); }
+export function saveJobMinutes(k) { saveJobSchedule(k, { minutes: Number(this.value) }); }
 
-/** War: onblur="updateManualFig('${id}',{bl_fig_number:this.value.trim()||null})" */
-// owner: Besitzer der Karte. Ohne ihn schriebe der Server in die Zeile des
-// Aufrufers statt in die angezeigte — siehe openManDetail.
+// owner: Besitzer der Karte. Ohne ihn schriebe der Server in die Zeile des Aufrufers statt in die angezeigte
+// — siehe openManDetail.
 /**
  * @param {string} id
  * @param {string} owner
+ * @this {HTMLInputElement}
  */
 export function saveManualFigBl(id, owner) {
   updateManualFig(id, { bl_fig_number: this.value.trim() || null }, owner);
 }
 
 /**
- * War: onclick="event.stopPropagation();delSet('${sn}')" — Löschen auf klickbarer Kachel
  * @param {string} sn
  * @param {Event | undefined} ev
  */
 export function delSetStop(sn, ev) { ev?.stopPropagation(); delSet(sn); }
 
 /**
- * Löschen von einer Kachel aus, mit stopPropagation: Die Kachel hat selbst ein data-click, und ohne
- * Stopp öffnete der Papierkorb zusätzlich den Dialog hinter der Löschabfrage.
+ * Löschen von einer Kachel aus, mit stopPropagation: Die Kachel hat selbst ein data-click, und ohne Stopp
+ * öffnete der Papierkorb zusätzlich den Dialog hinter der Löschabfrage.
  * Ausführlich: docs/begruendungen/public/js/11-actions.js.md#deletemanualfigstop
  * @param {string} n
  * @param {string} owner
@@ -353,9 +341,9 @@ export function deleteManualPartStop(partNumber, colorId, owner, ev) {
 /**
  * Merkposten von der Zeile aus loeschen.
  *
- * Die Zeile oeffnet seit dem 24.09. auf ihrer GANZEN Flaeche das Detail —
- * damals, weil sie keinen Knopf mehr trug. Jetzt traegt sie wieder einen, und
- * genau deshalb braucht er dieselbe Stop-Fassung wie die Kacheln daneben.
+ * Die Zeile oeffnet seit dem 24.09. auf ihrer GANZEN Flaeche das Detail — damals, weil sie keinen Knopf mehr
+ * trug. Jetzt traegt sie wieder einen, und genau deshalb braucht er dieselbe Stop-Fassung wie die Kacheln
+ * daneben.
  * @param {string} arg
  * @param {Event | undefined} ev
  */
@@ -365,17 +353,14 @@ export function merkpostenLoeschenStop(arg, ev) {
 }
 
 /**
- * War: onclick="openPdfViewer('${href}','${desc}');return false;" auf einem Link
  * @param {string} href
  * @param {string} desc
  * @param {Event | undefined} ev
  */
 export function openPdfViewerLink(href, desc, ev) { ev?.preventDefault(); openPdfViewer(href, desc || ''); }
 
-/** War: onclick="const q=G('m-qty');q.value=Math.max(1,parseInt(q.value||1)-1);autosaveSet()" */
 export function mQtyDec() { const q = G('m-qty'); q.value = String(Math.max(1, parseInt(q.value || '1') - 1)); autosaveSet(); }
 
-/** War: onclick="const q=G('m-qty');q.value=parseInt(q.value||1)+1;autosaveSet()" */
 export function mQtyInc() { const q = G('m-qty'); q.value = String(parseInt(q.value || '1') + 1); autosaveSet(); }
 
 

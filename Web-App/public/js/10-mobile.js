@@ -14,8 +14,8 @@
     const head = table.tHead;
     if (!head || !head.rows.length) return;
 
-    // Nur die unterste Kopfzeile zählt — mehrzeilige Köpfe (Gruppenüberschrift
-    // darüber) kommen in den Finanztabellen vor.
+    // Nur die unterste Kopfzeile zählt — mehrzeilige Köpfe (Gruppenüberschrift darüber) kommen in den
+    // Finanztabellen vor.
     const headRow = head.rows[head.rows.length - 1];
     // Nur sichtbarer Text: Ein Kopf, der bloss für Vorleser beschriftet ist (.vh), bleibt in der Karte leer.
     const labels = [...headRow.cells].map(th => { const k = th.cloneNode(true); /** @type {Element} */ (k).querySelectorAll('.vh').forEach(v => v.remove()); return (k.textContent || '').trim(); });
@@ -44,9 +44,8 @@
     /** @type {NodeListOf<HTMLTableElement>} */ (scope.querySelectorAll('table.dt:not([data-labelled])')).forEach(labelTable);
   }
 
-  // Die Listen werden per innerHTML gebaut, also beobachten wir Kindknoten.
-  // characterData und attributes bewusst aus: Wir wollen nur neue Tabellen,
-  // nicht jede Textänderung.
+  // Die Listen werden per innerHTML gebaut, also beobachten wir Kindknoten. characterData und attributes
+  // bewusst aus: Wir wollen nur neue Tabellen, nicht jede Textänderung.
   const observer = new MutationObserver(muts => {
     for (const m of muts) {
       for (const node of m.addedNodes) {
@@ -87,15 +86,15 @@
     setTimeout(scrollActiveTabIntoView, 300);
   }
 
-  // Bedingung ist <body>, nicht der readyState: Das Skript steht am Ende des Body, die Beschriftungen
-  // greifen so vor dem ersten Paint. Nur auf DOMContentLoaded zu warten liefe bei spätem Laden nie an.
+  // Bedingung ist <body>, nicht der readyState: Das Skript steht am Ende des Body, die Beschriftungen greifen
+  // so vor dem ersten Paint. Nur auf DOMContentLoaded zu warten liefe bei spätem Laden nie an.
   // Ausführlich: docs/begruendungen/public/js/10-mobile.js.md#start
   start();
   if (!started) document.addEventListener('DOMContentLoaded', start);
 
   // ── 3. Rollende Abschnittsleiste der Einstellungen ──────────────────────
-  // Am Telefon rollt sie seitwärts; ohne Hinweis am Rand sah niemand die
-  // Abschnitte dahinter. data-mehr sagt dem CSS, auf welcher Seite noch etwas liegt.
+  // Am Telefon rollt sie seitwärts; ohne Hinweis am Rand sah niemand die Abschnitte dahinter. data-mehr sagt
+  // dem CSS, auf welcher Seite noch etwas liegt.
   /**
    * @param {HTMLElement} nav
    */
@@ -111,9 +110,8 @@
   }
 
   // ── 4. Kopf beim Rollen nach unten ausblenden ───────────────────────────
-  // Nur die Klasse; mobile.css blendet aus, und zwar nur bei geringer Höhe
-  // (200 % Zoom, Querformat), wo Kopf, Band und Leiste fast die Hälfte belegen.
-  // Rollen nach oben oder Fokus im Kopf holt ihn zurück.
+  // Nur die Klasse; mobile.css blendet aus, und zwar nur bei geringer Höhe (200 % Zoom, Querformat), wo Kopf,
+  // Band und Leiste fast die Hälfte belegen. Rollen nach oben oder Fokus im Kopf holt ihn zurück.
   let letzteHoehe = window.scrollY;
   window.addEventListener('scroll', () => {
     const y = window.scrollY, wurzel = document.documentElement;
@@ -126,9 +124,9 @@
     leiste.addEventListener('focusin', () => document.documentElement.classList.remove('kopf-weg'));
 
   // ── 5. Platz für die festen Leisten ─────────────────────────────────────
-  // Tab rollte ein Feld nur knapp ins Bild, und die Leiste lag darüber
-  // (WCAG 2.4.11). Die Höhen wechseln mit Schriftgrösse und Breite; das
-  // scroll-padding in styles.css liest sie. Gemessen wird vor dem Rollen (focusin).
+  // Tab rollte ein Feld nur knapp ins Bild, und die Leiste lag darüber (WCAG 2.4.11). Die Höhen wechseln mit
+  // Schriftgrösse und Breite; das scroll-padding in styles.css liest sie. Gemessen wird vor dem Rollen
+  // (focusin).
   function leistenMessen() {
     const wurzel = document.documentElement, kopf = /** @type {HTMLElement|null} */ (document.querySelector('header'));
     const nav = /** @type {HTMLElement|null} */ (document.querySelector('nav:not(.einst-nav)')), band = document.getElementById('offline-band');

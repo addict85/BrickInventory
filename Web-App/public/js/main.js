@@ -1,14 +1,20 @@
-// Einstiegspunkt des Bündels. Jede Datei unter js/ steht hier, weil
-// scripts/build-frontend.js die Vollständigkeit am Einstieg prüft. Die
-// Reihenfolge der Auswertung bestimmt der Importgraph; er ist kreisfrei
-// (test/frontend-architektur.test.js), Rückwege laufen über Ereignisse.
+// Einstiegspunkt des Bündels. Jede Datei unter js/ steht hier, weil scripts/build-frontend.js die
+// Vollständigkeit am Einstieg prüft. Die Reihenfolge der Auswertung bestimmt der Importgraph; er ist
+// kreisfrei (test/frontend-architektur.test.js), Rückwege laufen über Ereignisse.
 import './00-stile.js';
 import './00-escapen.js';
 import './00-ereignisse.js';
 import './00-ziele.js';
 import './00-zustand.js';
 import '../i18n.js';
-import './01-core.js';
+import './01-dom.js';
+import './01-format.js';
+import './01-meldungen.js';
+import './01-verbindung.js';
+import './01-api.js';
+import './01-bilder.js';
+import './01-formular.js';
+import './01-konto.js';
 import './01-dialoge.js';
 import './01-fortschritt.js';
 import './01-monitor.js';
@@ -21,6 +27,10 @@ import './02-gallery.js';
 import './03-parts.js';
 import './04-finance.js';
 import './05-settings.js';
+import './05-haushalt.js';
+import './05-nutzerverwaltung.js';
+import './05-alarme.js';
+import './05-lagerorte.js';
 import './06-minifigs.js';
 import './07-admin.js';
 import './07-set-detail.js';
@@ -30,6 +40,7 @@ import './10-mobile.js';
 import './11-actions.js';
 import './12-pdfviewer.js';
 import './13-acquisition-modals.js';
+import './13-set-teile.js';
 import './14-scope.js';
 import './15-scrollbar.js';
 import './16-merkliste.js';

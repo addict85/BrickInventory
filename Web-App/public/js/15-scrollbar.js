@@ -2,13 +2,12 @@
 //
 // ── Warum eigene Datei ───────────────────────────────────────
 //
-// Lag ebenfalls in js/01-core.js und gehört zu keinem ihrer Themen. Braucht
-// von aussen nur G() — den Rest macht er selbst.
-import { G } from './01-core.js';
+// Braucht von aussen nur G() — den Rest macht er selbst.
+import { html } from './00-escapen.js';
+import { G, setzeHtml } from './01-dom.js';
 
-// Ein eigener Scrollbalken für die ganze Seite, fest am rechten Rand, statt eines Scrollkastens im
-// Katalog: Dort sass der Balken mitten im Fenster, und das Nachladen mass gegen den Kasten statt gegen
-// das Fenster.
+// Ein eigener Scrollbalken für die ganze Seite, fest am rechten Rand, statt eines Scrollkastens im Katalog:
+// Dort sass der Balken mitten im Fenster, und das Nachladen mass gegen den Kasten statt gegen das Fenster.
 // Ausführlich: docs/begruendungen/public/js/15-scrollbar.js.md#marcos-vorgabe-der-rechte-scrollbalken-i
 
 /**
@@ -42,8 +41,8 @@ export function zeichneScrollbalken() {
 }
 
 /**
- * Das Balken-Element aus JavaScript erzeugen: app.bundle.js läuft, sobald der Parser es erreicht, und
- * ein <div> dahinter im Markup gab es beim Start noch nicht — der Balken fehlte still.
+ * Das Balken-Element aus JavaScript erzeugen: app.bundle.js läuft, sobald der Parser es erreicht, und ein
+ * <div> dahinter im Markup gab es beim Start noch nicht — der Balken fehlte still.
  * Ausführlich: docs/begruendungen/public/js/15-scrollbar.js.md#erzeugescrollbalken
  */
 function _erzeugeScrollbalken() {
@@ -53,7 +52,7 @@ function _erzeugeScrollbalken() {
     bar = document.createElement('div');
     bar.id = 'app-scrollbar';
     bar.style.display = 'none';
-    bar.innerHTML = '<div id="app-scrollbar-thumb"></div><div id="app-scrollbar-label"></div>';
+    setzeHtml(bar, html`<div id="app-scrollbar-thumb"></div><div id="app-scrollbar-label"></div>`);
     document.body.appendChild(bar);
   }
   return bar;
@@ -65,10 +64,9 @@ export function initScrollbalken() {
   if (!bar || !thumb) return;
   let ziehen = false, griffOffset = 0;
 
-  // Gedrosselt über requestAnimationFrame: Ein Scroll-Ereignis feuert dutzende
-  // Male je Sekunde, und zeichneScrollbalken() LIEST Layout (scrollHeight).
-  // Ungedrosselt erzwingt das je Ereignis eine Neuberechnung — die Seite fühlt
-  // sich dann zäh an, obwohl der Server längst geantwortet hat.
+  // Gedrosselt über requestAnimationFrame: Ein Scroll-Ereignis feuert dutzende Male je Sekunde, und
+  // zeichneScrollbalken() LIEST Layout (scrollHeight). Ungedrosselt erzwingt das je Ereignis eine
+  // Neuberechnung — die Seite fühlt sich dann zäh an, obwohl der Server längst geantwortet hat.
   let angefordert = false;
   const nachzeichnen = () => {
     if (angefordert) return;
@@ -77,8 +75,8 @@ export function initScrollbalken() {
   };
   window.addEventListener('scroll', nachzeichnen, { passive: true });
   window.addEventListener('resize', nachzeichnen, { passive: true });
-  // Die Seitenhöhe ändert sich beim Nachladen von Kacheln, ohne dass gerollt
-  // wird — ohne diese Beobachtung bliebe der Griff auf seiner alten Grösse.
+  // Die Seitenhöhe ändert sich beim Nachladen von Kacheln, ohne dass gerollt wird — ohne diese Beobachtung
+  // bliebe der Griff auf seiner alten Grösse.
   if (typeof ResizeObserver !== 'undefined') {
     new ResizeObserver(nachzeichnen).observe(document.body);
   }
@@ -99,8 +97,7 @@ export function initScrollbalken() {
   const start = (/** @type {MouseEvent | TouchEvent} */ ev) => {
     const y = 'touches' in ev ? ev.touches[0].clientY : ev.clientY;
     const tr = thumb.getBoundingClientRect();
-    // Neben den Griff getippt: erst dorthin springen, dann greifen — wie bei
-    // einem gewöhnlichen Scrollbalken.
+    // Neben den Griff getippt: erst dorthin springen, dann greifen — wie bei einem gewöhnlichen Scrollbalken.
     griffOffset = (y >= tr.top && y <= tr.bottom) ? y - tr.top : thumb.offsetHeight / 2;
     ziehen = true; bar.classList.add('dragging');
     rollen(y); ev.preventDefault();

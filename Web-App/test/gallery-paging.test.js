@@ -104,7 +104,7 @@ test('die Themenliste kommt vom Server und nur auf Seite 1', () => {
     'Die Themenliste muss auf das Blickfeld eingeschränkt sein');
   assert.match(H_SRC, /parseInt\(page\) <= 1/, 'Folgeseiten brauchen die Liste nicht');
   assert.match(GAL, /Array\.isArray\(d\.themes\)/, 'Der Client muss die Serverliste verwenden');
-  assert.match(GAL, /esc\(th\)/, 'Themennamen stammen aus Fremddaten und müssen escaped werden');
+  assert.match(GAL, /esc\(th\)|html`<option value="\$\{th\}"/, 'Themennamen stammen aus Fremddaten und müssen escaped werden');
 });
 
 test('renderGallery filtert und sortiert nicht mehr selbst', () => {
@@ -143,7 +143,7 @@ test('der Sentinel steht neben #gallery, nicht darin', () => {
 
 test('Folgeseiten hängen an, statt alles neu zu bauen', () => {
   assert.match(GAL, /function appendGallery/, 'Anhängen fehlt');
-  assert.match(GAL, /insertAdjacentHTML\('beforeend'/,
+  assert.match(GAL, /insertAdjacentHTML\('beforeend'|fuegeHtmlEin\(\w+, 'beforeend'/,
     'Ein renderGallery() je Seite würde alle Bilder neu laden lassen');
 });
 

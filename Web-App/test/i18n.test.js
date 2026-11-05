@@ -160,9 +160,9 @@ test('die Farbauswahl im Formular „Teil erfassen" zeigt deutsche Namen', () =>
   const src = fs.readFileSync(path.join(__dirname, '..', 'public', 'js', '03-parts.js'), 'utf8');
   const fn = src.slice(src.indexOf('function renderColorDropdown'),
                        src.indexOf('function renderColorDropdown') + 900);
-  assert.match(fn, />\$\{esc\(colorName\(c\.name\)\)\}<\/option>/,
+  assert.match(fn, />\$\{(?:esc\()?colorName\(c\.name\)\)?\}<\/option>/,
     'Der sichtbare Options-Text muss übersetzt werden');
-  assert.match(fn, /data-name="\$\{esc\(\(c\.name\|\|''\)\.replace/,
+  assert.match(fn, /data-name="\$\{(?:esc\()?\(c\.name\|\|''\)\.replace/,
     'data-name muss den englischen Namen behalten — er geht ans Backend');
 });
 

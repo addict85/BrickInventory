@@ -58,10 +58,10 @@ test('beide Oberflächen setzen den Lagerort über dieselben Endpunkte', () => {
   // Handler bedient jetzt Teile UND Figuren, und eine Figur hat keine Farbe —
   // sie braucht deshalb eine eigene Route. Geprüft wird weiter, dass genau
   // dieser eine Weg speichert, nur eben ohne die Adresse im selben Ausdruck.
-  assert.match(web('public/js/13-acquisition-modals.js'),
+  assert.match(require('./helpers/sources').ansichtQuelle('13'),
     /api\('PUT', adresse, \{ storage: el\.value \}\)/,
     'Die Webapp speichert den Lagerort eines Teils nicht');
-  assert.match(web('public/js/13-acquisition-modals.js'),
+  assert.match(require('./helpers/sources').ansichtQuelle('13'),
     /\/v1\/minifigs\/\$\{encodeURIComponent\(nummer\)\}\/storage/,
     'Die Webapp kennt die Lagerort-Adresse der Minifiguren nicht (Migration 0024)');
   assert.match((web('public/js/02-detailfelder.js') + web('public/js/07-set-detail.js')), /\/storage`, \{ storage: el\.value \}/,
@@ -80,7 +80,7 @@ test('beide zeigen den Lagerort dort, wo er hingehört', () => {
   // Beide Oberflaechen bauen das Feld aus EINEM Baustein (07-admin.js,
   // lagerortBlock) — vorher stand die Auszeichnung an jeder Stelle einzeln.
   assert.match((web('public/js/02-detailfelder.js') + web('public/js/07-set-detail.js')), /lagerortBlock\('m-storage'/, 'Webapp: Set-Detail');
-  assert.match(web('public/js/13-acquisition-modals.js'), /lagerortBlock\('setitem-storage'/,
+  assert.match(require('./helpers/sources').ansichtQuelle('13'), /lagerortBlock\('setitem-storage'/,
     'Webapp: Teil-Detail');
 
   // Marcos Vorgabe: „Das Feld Lagerort soll ein Auswahlfeld sein (analog den
@@ -103,7 +103,7 @@ test('beide zeigen den Lagerort dort, wo er hingehört', () => {
   assert.match(KT_DIALOG, /LagerortFeld\(/, 'App: Teil-Detail');
 
   // Und in BEIDEN nur für Teile, nicht für Figuren.
-  assert.match(web('public/js/13-acquisition-modals.js'), /if \(type === 'part'\) \{/,
+  assert.match(require('./helpers/sources').ansichtQuelle('13'), /if \(type === 'part'\) \{/,
     'Webapp: das Feld steht auch bei Figuren');
   // Die Farbe als lokale Variable: Das Modell liegt in einem anderen Modul.
   assert.match(KT_DIALOG, /val kopfFarbe = kopf\?\.colorId[\s\S]{0,80}kopfFarbe != null/,
@@ -225,7 +225,7 @@ test('beide sprechen dieselben vier Endpunkte des Vorrats an', () => {
   assert.match(route, /router\.put\('\/storage\/locations\/:id'/);
   assert.match(route, /router\.delete\('\/storage\/locations\/:id'/);
 
-  const js = (web('public/js/02-detailfelder.js') + web('public/js/07-set-detail.js')) + web('public/js/05-settings.js');
+  const js = (web('public/js/02-detailfelder.js') + web('public/js/07-set-detail.js')) + require('./helpers/sources').ansichtQuelle('05');
   assert.match(js, /'\/v1\/storage\/locations'/, 'Die Webapp liest den Vorrat nicht');
   assert.match(js, /'POST', '\/v1\/storage\/locations'/, 'Die Webapp legt nichts an');
   assert.match(js, /'PUT', `\/v1\/storage\/locations\/\$\{encodeURIComponent\(id\)\}`/,
@@ -273,7 +273,7 @@ test('auch das TEIL kennt seine Besitzer — es war die letzte Lücke', () => {
   assert.match(geteilt, /owner_ids:\s+\[\.\.\.new Set\(sets\.map\(s => s\.owner_user_id\)\)\]/,
     'Die Besitzer kommen nicht aus denselben Zeilen wie die Set-Liste');
 
-  assert.match(web('public/js/13-acquisition-modals.js'), /ladeOrtAuswahl\(item\?\.owner_ids\)/,
+  assert.match(require('./helpers/sources').ansichtQuelle('13'), /ladeOrtAuswahl\(item\?\.owner_ids\)/,
     'Die Webapp fragt beim Teil nicht nach der Liste des Besitzers');
   assert.match(lies(path.join(__dirname, '..', '..', 'Android-App', 'feature-teile', 'src', 'main', 'java', 'ch', 'brickinventoryapp', 'ui', 'dialogs', 'SetItemDetailDialog.kt')),
     /aktionen\.loadLagerortVorrat\(zustand\.kopf\?\.ownerIds \?: emptyList\(\)\)/,
@@ -305,9 +305,9 @@ test('beide verwalten die Orte in den Einstellungen', () => {
   const html = web('public/index.html');
   assert.match(html, /id="storage-list"/, 'Der Webapp fehlt die Liste');
   assert.match(html, /data-click="legeLagerortAn"/, 'Der Webapp fehlt das Anlegen');
-  assert.match(web('public/js/05-settings.js'), /function benenneLagerortUm/,
+  assert.match(require('./helpers/sources').ansichtQuelle('05'), /function benenneLagerortUm/,
     'Der Webapp fehlt das Umbenennen');
-  assert.match(web('public/js/05-settings.js'), /function loescheLagerort/,
+  assert.match(require('./helpers/sources').ansichtQuelle('05'), /function loescheLagerort/,
     'Der Webapp fehlt das Löschen');
 
   assert.match(KT_EINST, /LagerorteCard\(lager, vm\)/, 'Der App fehlt die Karte');
@@ -319,7 +319,7 @@ test('beide verwalten die Orte in den Einstellungen', () => {
   // sondern ein Versehen.
   assert.match(KT_HAUS, /getLagerortVorrat\(null\)/,
     'Die App holt für die Einstellungen nicht die eigene Liste');
-  assert.match(web('public/js/05-settings.js'), /'\/v1\/storage\/locations'\)/,
+  assert.match(require('./helpers/sources').ansichtQuelle('05'), /'\/v1\/storage\/locations'\)/,
     'Die Webapp holt für die Einstellungen nicht die eigene Liste');
 });
 

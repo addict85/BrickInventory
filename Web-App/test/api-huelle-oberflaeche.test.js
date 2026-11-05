@@ -1,6 +1,6 @@
 /**
  * Auch Uploads, Downloads und Ströme laufen über die API-Hülle (api/apiRoh in
- * js/01-core.js) — am echten Bündel in jsdom. Dann gelten für sie dieselben
+ * js/01-api.js) — am echten Bündel in jsdom. Dann gelten für sie dieselben
  * Regeln wie für jeden anderen Aufruf: die Sprache der Oberfläche geht mit,
  * ein 401 beendet die Sitzung sichtbar, ein Netzfehler zeigt das Band.
  *

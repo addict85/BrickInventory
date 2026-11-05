@@ -205,8 +205,8 @@ test('die angezeigte QR-Gültigkeit stimmt mit dem Server überein', () => {
   const minutes = parseInt(m[1]);
 
   // Der Client darf die Dauer nicht fest verdrahten
-  const settings = fs.readFileSync(path.join(ROOT, 'public', 'js', '05-settings.js'), 'utf8');
-  assert.match(settings, /let secs = parseInt\(d\.expires_in\)/,
+  const settings = require('./helpers/sources').ansichtQuelle('05');
+  assert.match(settings, /let secs = Number\(d\.expires_in\)/,
     'Die Dauer muss vom Server kommen');
   assert.doesNotMatch(settings, /let secs = 1800/, 'Fest verdrahtete 30 Minuten');
   assert.match(auth, /expires_in: QR_TTL_MS \/ 1000/, 'Der Server muss die Dauer mitliefern');

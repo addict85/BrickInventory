@@ -8,7 +8,7 @@
  * Gegenproben (am 28.10. gemessen):
  *   A  in 11-actions.js statt bildPlatzhalter() wieder removeAttribute('src')
  *      → rot: „Galerie: kaputtes Bild wird zum Platzhalter"
- *   B  in bildTag() (01-core.js) das alt weggelassen → rot: „alt an jedem Bild"
+ *   B  in bildTag() (01-bilder.js) das alt weggelassen → rot: „alt an jedem Bild"
  *   C  (03.11.) platzhalterInhalt('set') wieder das Sinnbild statt
  *      set-placeholder.svg → rot: „Galerie: kaputtes Bild wird zum Platzhalter"
  */

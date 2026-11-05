@@ -42,7 +42,7 @@ const vm = require('node:vm');
 const { JSDOM } = require('jsdom');
 
 const ROOT = path.join(__dirname, '..');
-const QUELLE = fs.readFileSync(path.join(ROOT, 'public', 'js', '05-settings.js'), 'utf8');
+const QUELLE = require('./helpers/sources').ansichtQuelle('05');
 const HTML = fs.readFileSync(path.join(ROOT, 'public', 'index.html'), 'utf8');
 
 /** Wie in test/catalog-frontend.test.js: die Modulverpackung weg. */
@@ -59,7 +59,7 @@ function ohneModul(src) {
  */
 function fuehreAus(funktionsName, umgebung) {
   const start = QUELLE.indexOf(`function ${funktionsName}(`);
-  assert.ok(start > 0, `${funktionsName}() steht nicht mehr in public/js/05-settings.js`);
+  assert.ok(start > 0, `${funktionsName}() steht nicht mehr in public/js/05-*.js`);
   // Bis zur Klammer auf Spalte 0 — so sind diese Dateien geschrieben.
   const ende = QUELLE.indexOf('\n}\n', start) + 3;
   const code = ohneModul(QUELLE.slice(start, ende));
@@ -75,7 +75,7 @@ function gestell(dom, zielId) {
   return {
     document: d,
     G: (id) => d.getElementById(id),
-    esc: (s) => String(s ?? ''),
+    ...require('./helpers/markup').markupHelfer(),
     echt: () => '',
     t:    (k, v) => k + (v ? ' ' + JSON.stringify(v) : ''),
     tRaw: (k) => k,
@@ -151,7 +151,7 @@ test('die Lagerorte stehen wie in einer Tabelle', () => {
   const sandbox = {
     document: d,
     G: (id) => d.getElementById(id),
-    esc: (s) => String(s ?? ''),
+    ...require('./helpers/markup').markupHelfer(),
     echt: () => '',
     ico: (n) => `<svg class="ico"><use href="#i-${n}"/></svg>`,
     t: (k, v) => k + ' ' + JSON.stringify(v || {}),

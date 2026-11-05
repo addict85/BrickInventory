@@ -1,10 +1,14 @@
-// Der Detail-Dialog eines Sets: Anzeige, Menge, Anleitungen, Bildzoom. Er
-// steht über Galerie und Kaufpreis-Dialog; wer ihn von unten öffnen muss,
-// nimmt springe('setDetail', …) aus 00-ziele.js.
+// Der Detail-Dialog eines Sets: Anzeige, Menge, Anleitungen, Bildzoom. Er steht über Galerie und
+// Kaufpreis-Dialog; wer ihn von unten öffnen muss, nimmt springe('setDetail', …) aus 00-ziele.js.
 import { stelleZielBereit } from './00-ziele.js';
 import { registerActions, echt } from './00-registry.js';
 import { CURRENCY, ME, curSet, set_curSet } from './00-zustand.js';
-import { G, api, escJs, escUrl, fmtDatum, fmtGeld, fullUrl, ico, toast, aktiverReiter, verwirfToasts } from './01-core.js';
+import { escJs, esc, html, sichereUrl, ungeprueft } from './00-escapen.js';
+import { api } from './01-api.js';
+import { fullUrl } from './01-bilder.js';
+import { G, ico, aktiverReiter, setzeHtml } from './01-dom.js';
+import { fmtDatum, fmtGeld } from './01-format.js';
+import { toast, verwirfToasts } from './01-meldungen.js';
 import { alarmBlock, closeModal, ladeAlarm, ladeOrtAuswahl, lagerortBlock, setzeAlarmFeld } from './02-detailfelder.js';
 import { confirmDelete } from './01-rueckfrage.js';
 import { delSet, loadGallery, loadStats, reimportParts } from './02-gallery.js';
@@ -13,14 +17,13 @@ import { diagrammBreite, priceChartSVG, renderMarketRows } from './01-diagramme.
 import { loadFinance } from './04-finance.js';
 import { locale, t, tRaw } from '../i18n.js';
 import { openAcqModal, renderAcqModalBody, renderAcquisitionSummary } from './13-acquisition-modals.js';
-import { esc } from './00-escapen.js';
 
-// Verschoben wird nur über den Kaufpreis (Kaufpreis-Dialog, Zeile für Zeile),
-// nicht das ganze Set: Mehrere Käufe eines Sets können im Haushalt
-// verschiedenen Konten gehören. Der Server verlangt dafür acquisition_ids.
+// Verschoben wird nur über den Kaufpreis (Kaufpreis-Dialog, Zeile für Zeile), nicht das ganze Set: Mehrere
+// Käufe eines Sets können im Haushalt verschiedenen Konten gehören. Der Server verlangt dafür
+// acquisition_ids.
 let _detailLauf = 0;
 
-/** Inhalt des Set-Dialogs aus curSet und den Erfassungen. @param {string} sn @param {any[]} acqs */
+/** Inhalt des Set-Dialogs aus curSet und den Erfassungen. @param {string} sn @param {import('../../frontend-typen/vertrag').Acquisition[]} acqs */
 function setDetailHtml(sn, acqs) {
   const set = curSet;
   if (!set) return '';
@@ -28,23 +31,23 @@ function setDetailHtml(sn, acqs) {
   // Marktpreis und Entwicklung je Zustand, aus derselben Abfrage wie der Preisverlauf; hier nur der
   // Platzhalter. Ein Wert fürs ganze Set vermischte neu und gebraucht.
   // Ausführlich: docs/begruendungen/public/js/07-set-detail.js.md#pricerow
-  const priceRow = `<div class="m-wertkopf" id="m-market-rows" data-kopf="1" role="group" aria-label="${esc(tRaw('detail.wert'))}"><div class="skelett-zeile"></div><div class="skelett-zeile kurz"></div></div>`;
+  const priceRow = html`<div class="m-wertkopf" id="m-market-rows" data-kopf="1" role="group" aria-label="${tRaw('detail.wert')}"><div class="skelett-zeile"></div><div class="skelett-zeile kurz"></div></div>`;
   const pnlRow  = '';
-  const qtyRow = detailZeile(t('detail.qty'), `
-      <button class="btn bs btn-sm detail-knopf menge-knopf" data-click="mQtyDec" aria-label="${esc(tRaw('detail.qty_less'))}">−</button>
-      <input inputmode="numeric" type="number" id="m-qty" min="1" class="detail-feld menge-feld" aria-label="${esc(tRaw('detail.qty'))}" data-change="autosaveSet" />
-      <button class="btn bs btn-sm detail-knopf menge-knopf" data-click="mQtyInc" aria-label="${esc(tRaw('detail.qty_more'))}">+</button>
+  const qtyRow = detailZeile(t('detail.qty'), html`
+      <button class="btn bs btn-sm detail-knopf menge-knopf" data-click="mQtyDec" aria-label="${tRaw('detail.qty_less')}">−</button>
+      <input inputmode="numeric" type="number" id="m-qty" min="1" class="detail-feld menge-feld" aria-label="${tRaw('detail.qty')}" data-change="autosaveSet" />
+      <button class="btn bs btn-sm detail-knopf menge-knopf" data-click="mQtyInc" aria-label="${tRaw('detail.qty_more')}">+</button>
     `, { wertStil: 'display:flex;align-items:center;gap:6px' });
 
   // Acquisition summary: compact read-only rows + button to open full editor
-  const acqRows = detailZeile(t('detail.purchase_price'), `
-      ${renderAcquisitionSummary(acqs, sn)}
-      <button class="btn bs btn-sm detail-knopf" data-click="openAcqModal" data-arg="${escJs(sn)}">${ico('bearbeiten')} ${t('detail.edit_prices')}</button>
+  const acqRows = detailZeile(t('detail.purchase_price'), html`
+      ${ungeprueft(renderAcquisitionSummary(acqs, sn))}
+      <button class="btn bs btn-sm detail-knopf" data-click="openAcqModal" data-arg="${sn}">${ico('bearbeiten')} ${tRaw('detail.edit_prices')}</button>
     `, { zeilenStil: 'align-items:flex-start',
          wertId: 'm-acq-summary',
          wertStil: 'flex-direction:column;align-items:flex-end;gap:3px' });
 
-  return `
+  return html`
     ${priceRow}${pnlRow}
     ${acqRows}
     ${detailZeile(t('detail.year'), oderStrich(set.year))}
@@ -61,8 +64,8 @@ function setDetailHtml(sn, acqs) {
         { wertStil: 'display:flex;align-items:center;gap:6px;flex-wrap:wrap;justify-content:flex-end' })}
     ${detailZeile(t('detail.created'), `${ico('kalender')} ${addedFmt}`, { klasse: 'dr-leise' })}
     <div id="m-price-chart" data-stil="margin-top:.75rem">
-      <div data-stil="font-size:var(--fs-1);font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--mut);margin-bottom:4px">${t('detail.price_history')}</div>
-      <div class="sparkline-wrap" id="m-sparkline-content"><span data-stil="color:var(--mut);font-size:var(--fs-1)">${t('common.loading')}</span></div>
+      <div data-stil="font-size:var(--fs-1);font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--mut);margin-bottom:4px">${tRaw('detail.price_history')}</div>
+      <div class="sparkline-wrap" id="m-sparkline-content"><span data-stil="color:var(--mut);font-size:var(--fs-1)">${tRaw('common.loading')}</span></div>
     </div>`;
 }
 
@@ -88,9 +91,7 @@ function ladeSetNachtraege(sn) {
     const el = G('m-sparkline-content');
     if(!el) return;
     // Beide Zustände in EINEM Diagramm — siehe priceChartSVG().
-    el.innerHTML = ph.success
-      ? priceChartSVG(ph, sn.replace(/[^a-zA-Z0-9]/g, ''), diagrammBreite(el))
-      : `<span data-stil="color:var(--mut);font-size:var(--fs-1)">${t(ph.networkError ? 'chart.offline' : 'detail.no_history')}</span>`;
+    setzeHtml(el, ph.success ? priceChartSVG(ph, sn.replace(/[^a-zA-Z0-9]/g, ''), diagrammBreite(el)) : html`<span data-stil="color:var(--mut);font-size:var(--fs-1)">${tRaw(ph.networkError ? 'chart.offline' : 'detail.no_history')}</span>`);
   });
 }
 
@@ -99,12 +100,12 @@ function ladeSetNachtraege(sn) {
  */
 export async function openModal(sn){
   const lauf = ++_detailLauf;
-  // Der Dialog steht sofort da, mit Platzhalter: Bei langsamem Netz geschah
-  // sonst bis zur Antwort nichts, und ein zweiter Tipp öffnete ihn doppelt.
+  // Der Dialog steht sofort da, mit Platzhalter: Bei langsamem Netz geschah sonst bis zur Antwort nichts, und
+  // ein zweiter Tipp öffnete ihn doppelt.
   G('m-tit').textContent = sn; G('m-untertit').textContent = '';
   const bild = G('m-img'); bild.src = '/assets/set-placeholder.svg';
-  G('m-det').innerHTML = skelettZeilen(4, t('common.loading'));
-  G('m-instr').innerHTML = '';
+  setzeHtml(G('m-det'), skelettZeilen(4, t('common.loading')));
+  G('m-instr').replaceChildren();
   G('set-modal').dataset.nummer = sn;
   G('set-modal').classList.add('open');
   const [d, ad] = await Promise.all([
@@ -135,7 +136,7 @@ export async function openModal(sn){
   // fullUrl(): volle Auflösung, auch wenn image_local auf die _thumb-Datei zeigt
   const img=G('m-img'); img.src=fullUrl(set.image_local||set.image_url)||'/assets/set-placeholder.svg'; img.style.display='block';
 
-  G('m-det').innerHTML = setDetailHtml(sn, ad?.acquisitions || []);
+  setzeHtml(G('m-det'), setDetailHtml(sn, ad?.acquisitions || []));
 
   G('m-qty').value=String(set.quantity);
 
@@ -144,8 +145,7 @@ export async function openModal(sn){
   setzeAlarmFeld('m');
   G('set-modal').classList.add('open');
   ladeAlarm(sn).catch(() => {});
-  // Die Auswahlliste gehört dem BESITZER des Sets, nicht dem Betrachter —
-  // Begründung an ladeOrtAuswahl().
+  // Die Auswahlliste gehört dem BESITZER des Sets, nicht dem Betrachter — Begründung an ladeOrtAuswahl().
   ladeOrtAuswahl(set.owners).catch(() => {});
 
   ladeSetNachtraege(sn);
@@ -161,46 +161,45 @@ export function renderInstructions(instr, sn) {
   const items = instr.map(i => {
     const href = i.local_path || i.url;
     const isLocal = !!i.local_path;
-    // Selbst hochgeladen oder automatisch importiert? Das sagt der Server
-    // (is_manual, siehe utils/instructions.anleitungenZusammenlegen). Vorher
-    // stand die Regel hier als Pfadvergleich — eine zweite Fassung derselben
-    // Frage, die die Android-App gar nicht erst nachbauen konnte.
+    // Selbst hochgeladen oder automatisch importiert? Das sagt der Server (is_manual, siehe
+    // utils/instructions.anleitungenZusammenlegen). Vorher stand die Regel hier als Pfadvergleich — eine
+    // zweite Fassung derselben Frage, die die Android-App gar nicht erst nachbauen konnte.
     const isUpload = !!i.is_manual;
     const label = esc(i.description) || t('instr.label');
     // Lokale Dateien (PDF/Bild) im In-App-Viewer öffnen; externe URLs im neuen Tab.
     const link = isLocal
-      ? `<a href="${escUrl(href)}" data-click="openPdfViewerLink" data-arg="${esc(href)}" data-arg2="${esc(i.description||'')}" data-stil="cursor:pointer">${label}</a>`
-      : `<a href="${escUrl(href)}" target="_blank" rel="noopener">${label}</a>`;
-    return `<div class="ii" id="instr-${i.id}">
+      ? html`<a href="${sichereUrl(href)}" data-click="openPdfViewerLink" data-arg="${href}" data-arg2="${i.description||''}" data-stil="cursor:pointer">${ungeprueft(label)}</a>`
+      : html`<a href="${sichereUrl(href)}" target="_blank" rel="noopener">${ungeprueft(label)}</a>`;
+    return html`<div class="ii" id="instr-${i.id}">
       ${link}
-      ${isUpload ? `<span class="lv" data-stil="background:var(--p100);color:var(--p600)">${t('instr.badge_manual')}</span>` : isLocal ? `<span class="lc">${ico('speichern')}</span>` : `<span class="lv">${ico('globus')}</span>`}
-      ${isUpload ? `<button data-click="delInstr"${echt()} data-arg="${esc(sn)}" data-arg2="${i.id}" title="${t('instr.delete_tooltip')}" data-stil="background:none;border:none;cursor:pointer;color:var(--s400);font-size:var(--fs-3);padding:0 2px" aria-label="${t('instr.delete_tooltip')}">${ico('schliessen')}</button>` : ''}
+      ${isUpload ? html`<span class="lv" data-stil="background:var(--p100);color:var(--p600)">${tRaw('instr.badge_manual')}</span>` : isLocal ? html`<span class="lc">${ico('speichern')}</span>` : html`<span class="lv">${ico('globus')}</span>`}
+      ${isUpload ? html`<button data-click="delInstr"${echt()} data-arg="${sn}" data-arg2="${i.id}" title="${tRaw('instr.delete_tooltip')}" data-stil="background:none;border:none;cursor:pointer;color:var(--s400);font-size:var(--fs-3);padding:0 2px" aria-label="${tRaw('instr.delete_tooltip')}">${ico('schliessen')}</button>` : ''}
     </div>`;
   }).join('');
 
-  const uploadForm = `
+  const uploadForm = html`
     <div id="instr-upload-form" data-stil="margin-top:10px;padding:10px;background:var(--s50);border:1px dashed var(--bdr);border-radius:8px">
-      <div data-stil="font-size:var(--fs-1);font-weight:600;color:var(--mut);margin-bottom:7px">${t('instr.upload_title')}</div>
+      <div data-stil="font-size:var(--fs-1);font-weight:600;color:var(--mut);margin-bottom:7px">${tRaw('instr.upload_title')}</div>
       <div data-stil="display:flex;gap:6px;flex-wrap:wrap;align-items:flex-end">
         <div data-stil="flex:1;min-width:140px">
-          <label for="instr-desc" class="feld-titel-klein">${t('instr.desc_placeholder')}</label>
+          <label for="instr-desc" class="feld-titel-klein">${tRaw('instr.desc_placeholder')}</label>
           <input type="text" id="instr-desc" data-stil="font-size:var(--fs-2);padding:6px 10px" />
         </div>
         <label class="btn bs btn-sm zeiger">
-          ${ico('datei')} ${t('instr.choose_file')}
-          <input type="file" id="instr-file" accept=".pdf,.jpg,.jpeg,.png" class="datei-versteckt" data-change="uploadInstr" data-arg="${escJs(sn)}" />
+          ${ico('datei')} ${tRaw('instr.choose_file')}
+          <input type="file" id="instr-file" accept=".pdf,.jpg,.jpeg,.png" class="datei-versteckt" data-change="uploadInstr" data-arg="${sn}" />
         </label>
       </div>
       <div id="instr-upload-status" role="status" data-stil="font-size:var(--fs-1);margin-top:6px;color:var(--mut)"></div>
     </div>`;
 
-  G('m-instr').innerHTML = `
+  setzeHtml(G('m-instr'), html`
     <div data-stil="font-size:var(--fs-1);font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--mut);margin:12px 0 7px">
-      ${t('instr.section_title')} ${instr.length ? `(${instr.length})` : ''}
-      ${ME?.isAdmin || !instr.some(i => !i.is_manual) ? `<button data-click="redownloadInstr" data-arg="${escJs(sn)}" class="btn bs btn-sm" data-stil="margin-left:8px;font-size:var(--fs-0);padding:3px 8px">${t('instr.reload')}</button>` : ''}
+      ${tRaw('instr.section_title')} ${instr.length ? html`(${instr.length})` : ''}
+      ${ME?.isAdmin || !instr.some(i => !i.is_manual) ? html`<button data-click="redownloadInstr" data-arg="${sn}" class="btn bs btn-sm" data-stil="margin-left:8px;font-size:var(--fs-0);padding:3px 8px">${tRaw('instr.reload')}</button>` : ''}
     </div>
-    ${items || `<div data-stil="color:var(--mut);font-size:var(--fs-2)">${t('instr.none_auto')}</div>`}
-    ${uploadForm}`;
+    ${(items) ? ungeprueft(items) : html`<div data-stil="color:var(--mut);font-size:var(--fs-2)">${tRaw('instr.none_auto')}</div>`}
+    ${uploadForm}`);
 }
 
 /** @param {string} sn @param {string} instrId */
@@ -241,10 +240,9 @@ export function openImageLightbox(src){
 }
 
 // `removeAttribute` und NICHT `src=''`: Ein leeres src ist keine leere
-// Adresse, sondern die Adresse der SEITE. Der Browser laedt sie als Bild,
-// scheitert daran, und der Fehlerlauscher in 11-actions.js meldete bei jedem
-// Schliessen des Zooms `[img] konnte nicht geladen werden: https://<host>/`.
-// Ohne Attribut laedt der Browser gar nichts.
+// Adresse, sondern die Adresse der SEITE. Der Browser laedt sie als Bild, scheitert daran, und der
+// Fehlerlauscher in 11-actions.js meldete bei jedem Schliessen des Zooms `[img] konnte nicht geladen werden:
+// https://<host>/`. Ohne Attribut laedt der Browser gar nichts.
 export function closeImageLightbox(){ G('img-lightbox').classList.remove('open'); G('lightbox-img').removeAttribute('src'); }
 
 // Escape schliesst den Zoom über js/01-dialoge.js, wie jeden Dialog.
@@ -270,17 +268,16 @@ export function autosaveSet(){
       const echt = d.quantity != null && Number.isInteger(d.quantity) ? d.quantity : qty;
       set.quantity = echt;
       if (echt !== qty) G('m-qty').value = String(echt);
-      // Bei jeder Mengenänderung die Erfassungs-Übersicht neu laden: beim
-      // Erhöhen entsteht eine neue Zeile, beim Reduzieren fällt (LIFO) die
-      // letzte weg — sonst blieb die entfernte Zeile in der Detailsicht stehen.
+      // Bei jeder Mengenänderung die Erfassungs-Übersicht neu laden: beim Erhöhen entsteht eine neue Zeile,
+      // beim Reduzieren fällt (LIFO) die letzte weg — sonst blieb die entfernte Zeile in der Detailsicht
+      // stehen.
       const sn = set.set_number;
       if (echt !== prevQty && typeof renderAcquisitionSummary === 'function') {
         api('GET', `/v1/sets/${esc(sn)}/acquisitions`).then(ad => {
           if (!ad?.success) return;
           if (echt > prevQty) meldeNeueExemplare(sn, ad.acquisitions, echt - prevQty);
           const sumEl = G('m-acq-summary');
-          if (sumEl) sumEl.innerHTML = renderAcquisitionSummary(ad.acquisitions, set.set_number) +
-            `<button class="btn bs btn-sm" data-click="openAcqModal" data-arg="${escJs(set.set_number)}" data-stil="margin-top:4px;font-size:var(--fs-1);padding:2px 10px">${ico('bearbeiten')} ${t('detail.edit_prices')}</button>`;
+          if (sumEl) setzeHtml(sumEl, html`${ungeprueft(renderAcquisitionSummary(ad.acquisitions, set.set_number))}${html`<button class="btn bs btn-sm" data-click="openAcqModal" data-arg="${set.set_number}" data-stil="margin-top:4px;font-size:var(--fs-1);padding:2px 10px">${ico('bearbeiten')} ${tRaw('detail.edit_prices')}</button>`}`);
           if (G('acq-modal').classList.contains('open') && typeof renderAcqModalBody === 'function') {
             renderAcqModalBody(set.set_number, ad.acquisitions, undefined);
           }
@@ -295,9 +292,8 @@ export function autosaveSet(){
 }
 
 /**
- * „+“ legt eine Kauferfassung an, meist mit dem Marktpreis als Schätzung. Das
- * verändert die Finanzen, also sagt der Toast es samt Betrag und bietet
- * „Ändern“ an, statt nur „Gespeichert“ zu melden.
+ * „+“ legt eine Kauferfassung an, meist mit dem Marktpreis als Schätzung. Das verändert die Finanzen, also
+ * sagt der Toast es samt Betrag und bietet „Ändern“ an, statt nur „Gespeichert“ zu melden.
  */
 /** @param {string} sn @param {import('../../frontend-typen/vertrag').Acquisition[] | null | undefined} acqs @param {number} n */
 function meldeNeueExemplare(sn, acqs, n) {
@@ -310,9 +306,8 @@ function meldeNeueExemplare(sn, acqs, n) {
   toast(text, 'success', { text: tRaw('acq.aendern'), fn: () => openAcqModal(sn) });
 }
 
-// Keine eigene Rückfrage mehr — delSet() fragt (siehe dort). Der Dialog
-// schliesst nur, wenn wirklich gelöscht wurde; sonst stünde er nach einem
-// „Abbrechen" leer da.
+// Keine eigene Rückfrage mehr — delSet() fragt (siehe dort). Der Dialog schliesst nur, wenn wirklich gelöscht
+// wurde; sonst stünde er nach einem „Abbrechen" leer da.
 G('btn-md').onclick=async()=>{ if(!curSet) return; if(await delSet(curSet.set_number)) closeModal(); };
 
 /**

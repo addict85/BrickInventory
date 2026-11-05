@@ -26,7 +26,7 @@
  * Fenster, das ein englischsprachiger Verwalter genauso öffnet.
  *
  * Das Gegenmittel bei den Knöpfen ist nicht ein weiterer Schlüssel, sondern
- * ein GEMERKTER Wert: `knopfBesetzt()` (01-core.js) hält die Beschriftung fest
+ * ein GEMERKTER Wert: `knopfBesetzt()` (01-dom.js) hält die Beschriftung fest
  * und gibt sie zurück. Damit gibt es keine zweite Fassung, die auseinander-
  * laufen kann.
  *
@@ -97,5 +97,5 @@ test('kein fester Text in textContent, placeholder, title, toast, confirm oder a
     'Diese Texte stehen fest im Quelltext statt im Wörterbuch:\n  ' + fest.join('\n  ') +
     '\nIn einer englischen Oberfläche steht dann ein deutsches Wort da. Bei einer ' +
     'Knopfbeschriftung, die nach dem Klick zurückkommt, hilft knopfBesetzt() ' +
-    '(01-core.js): Es MERKT sich den Text, statt einen zweiten zu erfinden.');
+    '(01-dom.js): Es MERKT sich den Text, statt einen zweiten zu erfinden.');
 });

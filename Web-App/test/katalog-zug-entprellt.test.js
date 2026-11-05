@@ -119,13 +119,14 @@ async function zugMessen(entprellt) {
     }
     return Promise.resolve({ success: false, error: 'unbekannt: ' + url });
   };
+  Object.assign(w, require('./helpers/markup').markupHelfer());
   w.eval(`
     window.G = id => document.getElementById(id);
     window.alle = (s, w = document) => [...w.querySelectorAll(s)]; window.eins = (s, w = document) => w.querySelector(s);
-    window.t = k => k; window.esc = s => String(s ?? '');
+    window.t = k => k; window.tRaw = k => k;
     window.locale = () => 'de-CH'; window.toast = () => {};
     window.PARTS_ICON_SVG = ''; window.setScrollLabel = () => {};
-    window.escUrl = s => String(s ?? ''); window.imgUrl = s => s;
+    window.imgUrl = s => s;
     window.bildTag = o => '<img src="' + o.src + '" alt="">'; window.platzhalterInhalt = () => '';
     window.thumbUrl = s => s; window.fullUrl = s => s; window.detailZeile = () => '';
   `);

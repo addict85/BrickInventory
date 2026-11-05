@@ -42,13 +42,13 @@ const path = require('node:path');
  *    Farbe). In js/08-init.js ging das nicht: Sie laedt die Teileliste und
  *    braucht dafuer `document`.
  *
- * 2. esc() liegt nicht mehr in js/01-core.js, sondern in js/00-escapen.js.
- *    Das ist die Folge aus 1.: Der Aufbau muss maskieren, js/01-core.js
+ * 2. esc() liegt nicht mehr in js/00-escapen.js, sondern in js/00-escapen.js.
+ *    Das ist die Folge aus 1.: Der Aufbau muss maskieren, js/00-escapen.js
  *    laesst sich aber ohne Dokument nicht laden (GEMESSEN: „document is not
  *    defined"). Die Wahl war, esc() zu KOPIEREN — also genau die zweite
  *    Fassung, die dieser Test verbietet — oder es dorthin zu legen, wo beide
- *    Seiten es erreichen. js/01-core.js reicht es weiter, jeder bestehende
- *    `import { esc } from './01-core.js'` gilt unveraendert.
+ *    Seiten es erreichen. js/00-escapen.js reicht es weiter, jeder bestehende
+ *    `import { esc } from './00-escapen.js'` gilt unveraendert.
  */
 
 const WURZEL = path.join(__dirname, '..');
@@ -118,7 +118,9 @@ test('der Zeitplan im Monitor geht durch denselben Escaper wie sein Nachbar', ()
   const treffer = [...core.matchAll(/class="job-sched-input[^"]*"[^`]*?value="\$\{([^}]+)\}"/g)];
   assert.strictEqual(treffer.length, 2,
     `${treffer.length} Zeitplan-Eingabefelder gefunden, erwartet 2 — Muster veraltet?`);
+  // In html`` maskiert die Vorlage selbst; ausserhalb muss esc() dastehen.
+  const inHtml = (/** @type {number} */ i) => core.slice(core.lastIndexOf('`', i) - 4, core.lastIndexOf('`', i)) === 'html';
   for (const m of treffer)
-    assert.ok(m[1].startsWith('esc('),
+    assert.ok(m[1].startsWith('esc(') || inHtml(m.index ?? 0),
       `Das Zeitplan-Feld setzt „${m[1]}" roh ein, waehrend data-arg daneben esc() nutzt`);
 });

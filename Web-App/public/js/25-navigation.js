@@ -1,15 +1,17 @@
-// Reiter, Benutzermenü, Sichten und die Filter, die mehrere Listen neu laden.
-// Steht über allen Ansichten und darf jede laden; der Router erreicht die
-// Sichten über 00-ziele.js, nicht über einen Import.
+// Reiter, Benutzermenü, Sichten und die Filter, die mehrere Listen neu laden. Steht über allen Ansichten und
+// darf jede laden; der Router erreicht die Sichten über 00-ziele.js, nicht über einen Import.
 import { stelleZielBereit } from './00-ziele.js';
 import { registerActions } from './00-registry.js';
-import { G, leerZustand, alle, eins } from './01-core.js';
+import { G, leerZustand, alle, eins, setzeHtml } from './01-dom.js';
 import { ME, _lastImportAt } from './00-zustand.js';
 import { loadMonitor, stoppeMonitor } from './01-monitor.js';
 import { figurenFilterZuruecksetzen, loadManualFigsTable, loadMinifigs } from './06-minifigs.js';
 import { initCatalog, katalogZuruecksetzen } from './09-catalog.js';
 import { pollJobStatus, stoppeJobAbfrage } from './07-admin.js';
-import { ladeAlarmUebersicht, ladeLagerortVerwaltung, ladeTls, loadApiLimits, loadCacheStats, loadCacheTtl, loadHousehold, loadProfile, loadRateLimitStats, loadSettings, loadTokens } from './05-settings.js';
+import { ladeAlarmUebersicht } from './05-alarme.js';
+import { ladeLagerortVerwaltung } from './05-lagerorte.js';
+import { ladeTls, loadApiLimits, loadCacheStats, loadCacheTtl, loadProfile, loadRateLimitStats, loadSettings, loadTokens } from './05-settings.js';
+import { loadHousehold } from './05-haushalt.js';
 import { ladeGutscheine } from './17-gutscheine.js';
 import { ladeMerkliste, merklisteZuruecksetzen } from './16-merkliste.js';
 import { ladePapierkorb } from './20-papierkorb.js';
@@ -25,9 +27,8 @@ import { tRaw } from '../i18n.js';
 import { abonniere } from './00-ereignisse.js';
 import { esc } from './00-escapen.js';
 
-// Icon des Reiters in den Seitentitel spiegeln (links vom Text), damit
-// oben derselbe Icon wie im Nav-Tab erscheint. Quelle ist der Nav-Tab
-// selbst — Emoji ODER Inline-SVG —, so bleibt beides automatisch synchron.
+// Icon des Reiters in den Seitentitel spiegeln (links vom Text), damit oben derselbe Icon wie im Nav-Tab
+// erscheint. Quelle ist der Nav-Tab selbst — Emoji ODER Inline-SVG —, so bleibt beides automatisch synchron.
 /**
  * @param {string | undefined} tab
  */
@@ -37,8 +38,8 @@ function syncTabTitleIcon(tab){
   if(!nav || !slot) return;
   // Alles vor dem .tab-label ist das Icon (Emoji-Textknoten oder <svg>).
   const label = nav.querySelector('.tab-label');
-  // Kopien statt outerHTML: Als Text neu eingelesen, stünde der Stil des
-  // Symbols wieder als style-Attribut da, und das verbietet die CSP.
+  // Kopien statt outerHTML: Als Text neu eingelesen, stünde der Stil des Symbols wieder als style-Attribut
+  // da, und das verbietet die CSP.
   const kopien = [];
   for(const node of nav.childNodes){
     if(node === label) break;
@@ -48,9 +49,9 @@ function syncTabTitleIcon(tab){
 }
 
 /**
- * Sets, Teile und Minifiguren teilen sich in der Leiste EIN Ziel („Sammlung");
- * umgeschaltet wird oben auf der Seite. Teile und Minifiguren behalten ihren
- * unsichtbaren Reiter — Code und Wiederherstellung sprechen sie darüber an.
+ * Sets, Teile und Minifiguren teilen sich in der Leiste EIN Ziel („Sammlung"); umgeschaltet wird oben auf der
+ * Seite. Teile und Minifiguren behalten ihren unsichtbaren Reiter — Code und Wiederherstellung sprechen sie
+ * darüber an.
  */
 const SAMMLUNG = ['gallery', 'parts', 'minifigs'];
 
@@ -65,9 +66,8 @@ function markiereGruppe(tab){
   alle('.sammlung-wahl [data-arg]').forEach(b => {
     if (b.dataset.arg === tab) b.setAttribute('aria-current', 'page'); else b.removeAttribute('aria-current');
   });
-  // Vorleseprogramme erfahren so, welcher Reiter offen ist.
-  // „Sammlung“ gilt nur dann als aktuelle Seite, wenn der eigene Reiter der
-  // Ansicht nicht zu sehen ist (am Telefon).
+  // Vorleseprogramme erfahren so, welcher Reiter offen ist. „Sammlung“ gilt nur dann als aktuelle Seite, wenn
+  // der eigene Reiter der Ansicht nicht zu sehen ist (am Telefon).
   const offen = document.querySelector('.ntab.active');
   const offenSichtbar = !!offen?.getClientRects().length;
   document.querySelectorAll('.ntab').forEach(x => {
@@ -76,7 +76,7 @@ function markiereGruppe(tab){
   });
 }
 
-/** Am Handy: die Filter hinter einem Knopf, damit die Liste oben beginnt. */
+/** Am Handy: die Filter hinter einem Knopf, damit die Liste oben beginnt. @this {HTMLElement} */
 export function filterUmschalten(){
   const leiste = this?.closest?.('.filterleiste');
   if (!leiste) return;
@@ -89,7 +89,7 @@ function zeigeEinstellungsZugriff(){
   const f = G('einst-kein-zugriff');
   if (!f) return;
   f.hidden = !!ME?.isAdmin;
-  f.innerHTML = ME?.isAdmin ? '' : leerZustand({ ico: 'schloss', titel: tRaw('settings.kein_zugriff'), text: tRaw('settings.kein_zugriff_text') });
+  setzeHtml(f, ME?.isAdmin ? '' : leerZustand({ ico: 'schloss', titel: tRaw('settings.kein_zugriff'), text: tRaw('settings.kein_zugriff_text') }));
 }
 
 /**
@@ -104,9 +104,8 @@ export function oeffneReiter(name){
 }
 
 /**
- * Nach einer Wahl im Menü steht der Fokus auf einem nun verborgenen Eintrag
- * und fiele an den Seitenanfang; die Überschrift der neuen Seite ist der Ort,
- * an dem Tastatur und Bildschirmleser weitermachen.
+ * Nach einer Wahl im Menü steht der Fokus auf einem nun verborgenen Eintrag und fiele an den Seitenanfang;
+ * die Überschrift der neuen Seite ist der Ort, an dem Tastatur und Bildschirmleser weitermachen.
  */
 /** @param {HTMLElement | null} flaeche */
 function fokusAufTitel(flaeche){
@@ -123,8 +122,8 @@ export function bindTabs(){
     t.addEventListener('click',()=>{
       document.querySelectorAll('.ntab').forEach(x=>x.classList.remove('active'));
       document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));
-      // Unsichtbare Reiter (Einstellungen, Monitoring) öffnet das Kontomenü —
-      // dann markiert der Menüknopf, wo man ist.
+      // Unsichtbare Reiter (Einstellungen, Monitoring) öffnet das Kontomenü — dann markiert der Menüknopf, wo
+      // man ist.
       const unter = t.classList.contains('ntab-unter');
       G('btn-umenu')?.classList.toggle('aktiv', unter);
       if (unter) G('btn-umenu')?.setAttribute('aria-current', 'page'); else G('btn-umenu')?.removeAttribute('aria-current');
@@ -134,9 +133,8 @@ export function bindTabs(){
       markiereGruppe(tab);
       zeigeSeitenname(G('tab-'+tab), unter);
       syncTabTitleIcon(tab);
-      // Das Jahres-Etikett am Scrollbalken gehört NUR in den Katalog. Ohne
-      // dieses Abmelden lieferte die dort angemeldete Funktion weiterhin ein
-      // Jahr — auch in der Galerie, wo die Zahl nichts bedeutet.
+      // Das Jahres-Etikett am Scrollbalken gehört NUR in den Katalog. Ohne dieses Abmelden lieferte die dort
+      // angemeldete Funktion weiterhin ein Jahr — auch in der Galerie, wo die Zahl nichts bedeutet.
       if (tab !== 'catalog') setScrollLabel(null);
       if(tab==='gallery')      { loadGallery(); loadStats(); }
       if(tab==='catalog')      { initCatalog(); }
@@ -152,31 +150,27 @@ export function bindTabs(){
       }
       if(tab==='finance')      { loadFinance(); } // loadFinance already fetches parts+minifigs valuation in parallel
       if(tab==='partslist')    { /* session-only, no server load needed */ }
-      // Der Reiter traegt seit dem 16.10. nur noch die Verwalter-Rubriken; was
-      // frueher hier alles mitgeladen wurde, holt jetzt die jeweilige Sicht
-      // beim Oeffnen (siehe oeffneSicht unten). Wer die API-Schluessel
+      // Der Reiter traegt seit dem 16.10. nur noch die Verwalter-Rubriken; was frueher hier alles mitgeladen
+      // wurde, holt jetzt die jeweilige Sicht beim Oeffnen (siehe oeffneSicht unten). Wer die API-Schluessel
       // nachsieht, braucht keine Gutscheinliste.
       if(tab==='settings')     { zeigeEinstellungsZugriff(); loadSettings(); if(ME?.isAdmin) loadApiLimits(); }
       if(tab==='monitor')      { loadMonitor(); loadCacheStats(); loadRateLimitStats(); loadCacheTtl(); stoppeJobAbfrage(); pollJobStatus(); }
       if(tab!=='monitor' && stoppeMonitor()) stoppeJobAbfrage();
     });
   });
-  // Alle Seitentitel-Icons füllen — läuft bei jedem bindTabs()-Aufruf, also
-  // auch nach dem Login (showApp ruft bindTabs erneut), wenn der Inhalt
-  // sichtbar wird. So erscheint das Icon links vom Titel auf allen Tabs,
+  // Alle Seitentitel-Icons füllen — läuft bei jedem bindTabs()-Aufruf, also auch nach dem Login (showApp ruft
+  // bindTabs erneut), wenn der Inhalt sichtbar wird. So erscheint das Icon links vom Titel auf allen Tabs,
   // nicht nur nach einem Klick.
   alle('.ptitle[data-tab-title]').forEach(h=>syncTabTitleIcon(h.dataset.tabTitle));
 }
 
-// Aufruf verschoben nach startApp() (js/08-init.js), das js/main.js NACH der
-// Auswertung aller Module aufruft. Im Modulrumpf lief er zu früh: Bei
-// gegenseitigen Importen ist das Übersetzungsobjekt aus i18n.js dann noch
+// Aufruf verschoben nach startApp() (js/08-init.js), das js/main.js NACH der Auswertung aller Module aufruft.
+// Im Modulrumpf lief er zu früh: Bei gegenseitigen Importen ist das Übersetzungsobjekt aus i18n.js dann noch
 // nicht initialisiert, und t() wirft.
 
 
-// Die Sichten hinter dem Benutzermenü, wie in der Android-App. Jede Sicht lädt nur, was sie zeigt:
-// Vorher holte der Einstellungs-Reiter bei jedem Öffnen fünf Bereiche, von denen man meist einen sehen
-// wollte.
+// Die Sichten hinter dem Benutzermenü, wie in der Android-App. Jede Sicht lädt nur, was sie zeigt: Vorher
+// holte der Einstellungs-Reiter bei jedem Öffnen fünf Bereiche, von denen man meist einen sehen wollte.
 // Ausführlich: docs/begruendungen/public/js/25-navigation.js.md#sichten
 /** @type {Record<string, () => unknown>} */
 const SICHTEN = {
@@ -205,20 +199,20 @@ export function oeffneSicht(name){
   zeigeSeitenname(flaeche, true);
   menueSchliessen();
   meldeAnsicht(name);
-  // Die Sichten liegen im Kontomenü, nicht in der Leiste: Dann zeigt der
-  // Menüknopf, wo man ist — sonst wäre kein Reiter als aktiv markiert.
+  // Die Sichten liegen im Kontomenü, nicht in der Leiste: Dann zeigt der Menüknopf, wo man ist — sonst wäre
+  // kein Reiter als aktiv markiert.
   G('btn-umenu')?.classList.add('aktiv');
   G('btn-umenu')?.setAttribute('aria-current', 'page');
-  // Nach oben: Die Sicht öffnet sich sonst an der Stelle, an der die vorige
-  // gerollt war, und man sieht die Mitte einer fremden Seite.
+  // Nach oben: Die Sicht öffnet sich sonst an der Stelle, an der die vorige gerollt war, und man sieht die
+  // Mitte einer fremden Seite.
   window.scrollTo({ top: 0, behavior: 'smooth' });
   if (ausMenue) fokusAufTitel(flaeche);
   SICHTEN[name]();
 }
 
 /**
- * Seitenname im Fenstertitel und, für Seiten hinter dem Menü, im Kopf: Dort
- * markiert kein Reiter die offene Seite, sonst wüsste man nur am Inhalt, wo man ist.
+ * Seitenname im Fenstertitel und, für Seiten hinter dem Menü, im Kopf: Dort markiert kein Reiter die offene
+ * Seite, sonst wüsste man nur am Inhalt, wo man ist.
  * @param {Element | null} flaeche
  * @param {boolean} imKopf
  */
@@ -238,8 +232,8 @@ export function seitennameAktualisieren(){
 }
 
 /**
- * Am Telefon steht der Seitenname nur dann im Kopf, wenn die Überschrift
- * hinausgerollt ist; sonst stünde er zweimal untereinander.
+ * Am Telefon steht der Seitenname nur dann im Kopf, wenn die Überschrift hinausgerollt ist; sonst stünde er
+ * zweimal untereinander.
  * @type {IntersectionObserver | null}
  */
 let _titelBeobachter = null;
@@ -288,8 +282,8 @@ export function benutzerMenue(){
   menueOeffnen();
 }
 
-// Tastatur nach dem APG-Muster „Menu Button": Ein Bildschirmleser kündigt
-// role=menu an, und Nutzer erwarten dann Pfeiltasten statt Tab.
+// Tastatur nach dem APG-Muster „Menu Button": Ein Bildschirmleser kündigt role=menu an, und Nutzer erwarten
+// dann Pfeiltasten statt Tab.
 document.addEventListener('keydown', (ev) => {
   const ziel = ev.target instanceof Element ? ev.target : null;
   if(ziel?.id === 'btn-umenu' && (ev.key === 'ArrowDown' || ev.key === 'ArrowUp')){
@@ -302,8 +296,8 @@ document.addEventListener('keydown', (ev) => {
   if(ev.key === 'Tab') menueSchliessen();
 });
 
-// Zuklappen, wenn jemand daneben tippt oder Escape drückt. Escape bringt den
-// Fokus zurück auf den Menüknopf, sonst fiele er auf den Seitenanfang.
+// Zuklappen, wenn jemand daneben tippt oder Escape drückt. Escape bringt den Fokus zurück auf den Menüknopf,
+// sonst fiele er auf den Seitenanfang.
 document.addEventListener('click', (ev) => {
   const pop = G('umenu-pop');
   if(!pop || pop.style.display === 'none') return;
@@ -358,11 +352,10 @@ function filterZuruecksetzen(ansicht) {
 
 /**
  * Umschalten — lädt NUR die betroffene Ansicht neu, wie beim Kontofilter.
- * 
- * Im Reiter Teile BEIDE Listen: Seit der Lagerortfilter auch die manuell
- * erfassten Teile trifft (getManualParts), waere ein Umschalten ohne
- * loadManualParts() ein halb angewandter Filter — oben ungefiltert, unten
- * gefiltert. Dieselbe Begruendung wie bei onScopeChange() darunter.
+ *
+ * Im Reiter Teile BEIDE Listen: Seit der Lagerortfilter auch die manuell erfassten Teile trifft
+ * (getManualParts), waere ein Umschalten ohne loadManualParts() ein halb angewandter Filter — oben
+ * ungefiltert, unten gefiltert. Dieselbe Begruendung wie bei onScopeChange() darunter.
  * @param {string} view
  */
 export function onStorageChange(view) {
@@ -375,10 +368,9 @@ export function onStorageChange(view) {
 
 /**
  * Umschalten — lädt NUR die betroffene Ansicht neu.
- * 
- * Die Wahl gilt pro Ansicht; alle vier gleichzeitig neu zu laden würde drei
- * Ansichten anfassen, die niemand gerade ansieht, und dabei Preisabrufe
- * auslösen.
+ *
+ * Die Wahl gilt pro Ansicht; alle vier gleichzeitig neu zu laden würde drei Ansichten anfassen, die niemand
+ * gerade ansieht, und dabei Preisabrufe auslösen.
  * @param {string} view
  */
 export function onScopeChange(view) {
@@ -386,24 +378,23 @@ export function onScopeChange(view) {
   if (!el) return;
   setScopeMode(view, el.value);
   if (view === 'gallery')  { loadGallery(); loadStats(); }
-  // Die Reiter Teile und Minifiguren haben je ZWEI Listen: die aus Sets und
-  // die manuell erfassten. Nur loadParts() neu zu laden liess den manuellen
-  // Bereich ungefiltert stehen — er lädt über einen eigenen Endpunkt.
+  // Die Reiter Teile und Minifiguren haben je ZWEI Listen: die aus Sets und die manuell erfassten. Nur
+  // loadParts() neu zu laden liess den manuellen Bereich ungefiltert stehen — er lädt über einen eigenen
+  // Endpunkt.
   if (view === 'parts')    { loadParts(); loadManualParts(); }
-  // Der Reiter Minifiguren hat dieselben zwei Listen — hier stand trotzdem nur
-  // loadMinifigs(). Die manuellen Karten hingen damit am Kontofilter des
-  // LETZTEN Ladens: loadManualFigsTable() schickt den Filter mit, wurde beim
-  // Umschalten aber nie gerufen. Genau die Luecke, die der Satz darueber fuer
-  // beide Reiter beschreibt.
+  // Der Reiter Minifiguren hat dieselben zwei Listen — hier stand trotzdem nur loadMinifigs(). Die manuellen
+  // Karten hingen damit am Kontofilter des LETZTEN Ladens: loadManualFigsTable() schickt den Filter mit,
+  // wurde beim Umschalten aber nie gerufen. Genau die Luecke, die der Satz darueber fuer beide Reiter
+  // beschreibt.
   if (view === 'minifigs') { loadMinifigs(); loadManualFigsTable(); }
   if (view === 'finance')  loadFinance();
-  // Die Merkliste laedt EINE Liste und hat keine Kennzahlen darueber — anders
-  // als die Galerie, wo loadStats() mitmuss.
+  // Die Merkliste laedt EINE Liste und hat keine Kennzahlen darueber — anders als die Galerie, wo loadStats()
+  // mitmuss.
   if (view === 'merkliste') ladeMerkliste();
 }
 
-// Ein echter Sprachwechsel baut den offenen Reiter neu auf. Die Galerie wird nur
-// neu gezeichnet: Ein Neuladen leerte das Raster zwischendurch.
+// Ein echter Sprachwechsel baut den offenen Reiter neu auf. Die Galerie wird nur neu gezeichnet: Ein Neuladen
+// leerte das Raster zwischendurch.
 abonniere('spracheGewechselt', ({ echterWechsel }) => {
   if (!echterWechsel) return;
   const aktiv = /** @type {HTMLElement|null} */ (document.querySelector('.ntab.active'))?.dataset?.tab;

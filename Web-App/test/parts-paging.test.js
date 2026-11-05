@@ -253,7 +253,7 @@ test('Argumente aus data-arg werden als Zeichenkette behandelt', () => {
   const admin = stripModuleSyntax(require('./helpers/sources').adminQuelle());
   assert.match(admin, /\(parseInt\(delta\) \|\| 0\)/,
     'manQtyChange muss delta umwandeln');
-  const settings = stripModuleSyntax(fs.readFileSync(path.join(ROOT, 'public', 'js', '05-settings.js'), 'utf8'));
+  const settings = stripModuleSyntax(require('./helpers/sources').ansichtQuelle('05'));
   assert.match(settings, /isAdmin === true \|\| isAdmin === 1 \|\| isAdmin === '1'/,
     'toggleAdmin: !"0" ist false — das Umschalten wäre wirkungslos');
 });
