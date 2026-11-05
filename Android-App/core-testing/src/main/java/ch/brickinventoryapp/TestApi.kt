@@ -40,6 +40,15 @@ import java.util.Collections
 import java.util.concurrent.TimeUnit
 import ch.brickinventoryapp.data.api.ApiJson
 import ch.brickinventoryapp.ui.Aenderung
+import kotlinx.serialization.serializer
+import okhttp3.ResponseBody
+import retrofit2.Invocation
+import retrofit2.Response as RetrofitAntwort
+import java.lang.reflect.Method
+import java.lang.reflect.ParameterizedType
+import java.lang.reflect.Type
+import java.lang.reflect.WildcardType
+import java.util.WeakHashMap
 
 /** Gemeinsames Gerüst der ViewModel-Tests, die gegen einen Testserver laufen. */
 object TestApi {
@@ -95,11 +104,19 @@ class PfadServer(vararg regeln: Pair<String, String>) {
     val codes: MutableMap<String, Int> = Collections.synchronizedMap(mutableMapOf())
     /** Antwort erst nach so vielen Millisekunden — für „was geschieht, solange der Server rechnet“. */
     val verzoegert: MutableMap<String, Long> = Collections.synchronizedMap(mutableMapOf())
+    /** Im Takt: Pfade, deren Antwort zurückgehalten wird, bis [freigeben] sie schickt. */
+    val ausbleibend: MutableSet<String> = Collections.synchronizedSet(mutableSetOf())
+    private val gehalten: MutableList<() -> Unit> = Collections.synchronizedList(mutableListOf())
+    /** Antwortet vor den Regeln, etwa aus einer Reihe ([ReihenServer]); null heisst: nach Pfad. */
+    var vorrang: ((methode: String, pfad: String) -> Pair<Int, String>?)? = null
+    /** Im Takt: Antworten, die nicht zum DTO passten; [pruefeEinlesen] scheitert an ihnen. */
+    val einlesefehler: MutableList<String> = Collections.synchronizedList(mutableListOf())
 
     /** Schreibt die Anfrage mit und liefert Statuscode und Rumpf nach den Regeln. */
     private fun beantworte(methode: String, pfad: String, rumpf: String): Pair<Int, String> {
         anfragen += "$methode $pfad"
         koerper += rumpf
+        vorrang?.invoke(methode, pfad)?.let { return it }
         val ohneAbfrage = pfad.substringBefore('?')
         val antwort = antworten[ohneAbfrage]
         return if (antwort == null) (codes[ohneAbfrage] ?: 404) to """{"success":false}"""
@@ -122,21 +139,73 @@ class PfadServer(vararg regeln: Pair<String, String>) {
     /**
      * Dieselben Regeln ohne Netz: Ein Interceptor antwortet, und OkHttp führt den Abruf
      * im aufrufenden Faden aus. Mit Test-Dispatchern läuft ein ViewModel samt Abruf so in
-     * der Testuhr, und kein Test wartet in Echtzeit. Verzögerte Antworten gibt es hier nicht.
+     * der Testuhr, und kein Test wartet in Echtzeit. Statt verzögert gibt es [ausbleibend].
      */
     fun imTakt(): BrickApiService {
         val client = OkHttpClient.Builder().addInterceptor { kette ->
             val anfrage = kette.request()
-            val pfad = anfrage.url.encodedPath + (anfrage.url.encodedQuery?.let { "?$it" } ?: "")
-            check(verzoegert.isEmpty()) { "Im Takt gibt es keine verzögerte Antwort ($pfad)" }
+            val pfad = pfadMitAbfrage(anfrage)
+            check(verzoegert.isEmpty()) { "Im Takt gibt es keine verzögerte Antwort ($pfad); dafür ausbleibend" }
             val rumpf = anfrage.body?.let { b -> Buffer().also { b.writeTo(it) }.readUtf8() }.orEmpty()
             val (code, text) = beantworte(anfrage.method, pfad, rumpf)
+            if (code in 200..299) pruefeGegenDto(anfrage, pfad, text)
             Response.Builder().request(anfrage).protocol(Protocol.HTTP_1_1).code(code).message("OK")
                 .body(text.toResponseBody("application/json".toMediaType())).build()
         }.build()
-        return TestApi.fuer("http://im-takt.test/", object : Call.Factory {
-            override fun newCall(request: Request): Call = SofortRuf(client.newCall(request))
+        val bleibtAus = { anfrage: Request, senden: () -> Unit ->
+            (pfadMitAbfrage(anfrage).substringBefore('?') in ausbleibend).also { if (it) gehalten += senden }
+        }
+        val api = TestApi.fuer("http://im-takt.test/", object : Call.Factory {
+            override fun newCall(request: Request): Call = SofortRuf(client.newCall(request), bleibtAus)
         })
+        synchronized(herkunft) { herkunft[api] = this }
+        return api
+    }
+
+    private fun pfadMitAbfrage(anfrage: Request) =
+        anfrage.url.encodedPath + (anfrage.url.encodedQuery?.let { "?$it" } ?: "")
+
+    /**
+     * Liest die Antwort wie Retrofit gegen das DTO der aufgerufenen Methode. Scheitert das
+     * Einlesen bei Retrofit, kommt der Fehler über Dispatchers.Default zurück und der Test
+     * verlässt den Takt. Ein AssertionError ist keine Exception: Retrofit reicht ihn im
+     * aufrufenden Faden durch, und [pruefeEinlesen] nennt ihn beim Aufräumen.
+     */
+    private fun pruefeGegenDto(anfrage: Request, pfad: String, text: String) {
+        val typ = anfrage.tag(Invocation::class.java)?.let { antworttyp(it.method()) } ?: return
+        try {
+            ApiJson.decodeFromString(ApiJson.serializersModule.serializer(typ), text)
+        } catch (e: IllegalArgumentException) {
+            val grund = "${anfrage.method} $pfad: ${e.message?.lineSequence()?.firstOrNull()}"
+            einlesefehler += grund
+            throw AssertionError("Testantwort passt nicht zum DTO — $grund", e)
+        }
+    }
+
+    /**
+     * Schickt die zurückgehaltenen Antworten, im aufrufenden Faden. Ein inzwischen
+     * abgebrochener Abruf bekommt keine mehr: So prüft ein Test, dass Abbrechen wirkt.
+     */
+    fun freigeben() {
+        ausbleibend.clear()
+        val jetzt = synchronized(gehalten) { gehalten.toList().also { gehalten.clear() } }
+        jetzt.forEach { it() }
+    }
+
+    /** Scheitert, wenn eine Antwort im Takt nicht zum DTO passte. */
+    fun pruefeEinlesen() {
+        val fehler = synchronized(einlesefehler) { einlesefehler.toList() }
+        if (fehler.isNotEmpty()) {
+            throw AssertionError("Testantworten passen nicht zum DTO; die Antwort vervollständigen:\n  " +
+                fehler.joinToString("\n  "))
+        }
+    }
+
+    companion object {
+        private val herkunft = WeakHashMap<BrickApiService, PfadServer>()
+
+        /** Der Server hinter einem Dienst aus [imTakt], sonst null. */
+        fun von(api: BrickApiService): PfadServer? = synchronized(herkunft) { herkunft[api] }
     }
 
     fun anfragenAn(pfad: String): List<String> = synchronized(anfragen) { anfragen.filter { pfad in it } }
@@ -168,7 +237,7 @@ class SpeicherAblage : FilterAblage {
  * Die gemeinsamen Dienste der Bereichs-ViewModels, gegen einen Testserver oder
  * eine [FakeApi]. Mit [io] = Test-Dispatcher läuft auch die Ablage in virtueller Zeit.
  */
-class TestDienste(val api: BrickApiService, texte: Texte = NummernTexte, io: CoroutineDispatcher = Dispatchers.IO) {
+class TestDienste(val api: BrickApiService, texte: Texte = NummernTexte, val io: CoroutineDispatcher = Dispatchers.IO) {
     /** Mit einem Test-Dispatcher ist alles schon gelaufen, wenn ein Aufruf zurückkehrt. */
     private val imTakt = io != Dispatchers.IO
 
@@ -221,6 +290,7 @@ class TestDienste(val api: BrickApiService, texte: Texte = NummernTexte, io: Cor
             kotlinx.coroutines.withTimeoutOrNull(5_000) { jobs.forEach { it.join() } }
         }
         cacheDir.deleteRecursively()
+        PfadServer.von(api)?.pruefeEinlesen()
     }
 }
 
@@ -234,11 +304,62 @@ fun <R, T> mitRepo(bau: (BrickApiService, ResponseCache) -> R, block: (PfadServe
 }
 
 /** Ein Abruf, der auch asynchron gestellt im aufrufenden Faden läuft (PfadServer.imTakt). */
-private class SofortRuf(private val echt: Call) : Call by echt {
+private class SofortRuf(private val echt: Call, private val bleibtAus: (Request, () -> Unit) -> Boolean) : Call by echt {
     override fun enqueue(responseCallback: Callback) {
+        if (bleibtAus(echt.request()) { senden(responseCallback) }) return
+        senden(responseCallback)
+    }
+
+    private fun senden(responseCallback: Callback) {
+        if (echt.isCanceled()) return
         val antwort = try { echt.execute() } catch (e: IOException) { responseCallback.onFailure(this, e); return }
         responseCallback.onResponse(this, antwort)
     }
 
-    override fun clone(): Call = SofortRuf(echt.clone())
+    override fun clone(): Call = SofortRuf(echt.clone(), bleibtAus)
+}
+
+/**
+ * Was Retrofit aus der Antwort liest: T aus `suspend fun …(): Response<T>`. Rümpfe ohne
+ * DTO (ResponseBody, Unit) liest Retrofit selbst; sie prüft niemand.
+ */
+private fun antworttyp(methode: Method): Type? {
+    var typ = (methode.genericParameterTypes.lastOrNull() as? ParameterizedType)?.actualTypeArguments?.singleOrNull()
+    if (typ is WildcardType) typ = typ.lowerBounds.singleOrNull()
+    if (typ is ParameterizedType && typ.rawType == RetrofitAntwort::class.java) typ = typ.actualTypeArguments.single()
+    if (typ is WildcardType) typ = typ.upperBounds.singleOrNull()
+    return typ?.takeUnless { it == ResponseBody::class.java || it == Unit::class.java || it == Void::class.java }
+}
+
+/**
+ * Antworten in fester Reihenfolge wie bei MockWebServer.enqueue, aber im Takt: kein
+ * Netzfaden, jede Antwort wird gegen das DTO gelesen. Für Abläufe, die an der
+ * Reihenfolge der Abrufe hängen statt am Pfad.
+ */
+class ReihenServer {
+    /** Eine gestellte Anfrage, wie RecordedRequest sie zeigte. */
+    class Anfrage(val method: String, val path: String, val body: Buffer)
+
+    private val pfade = PfadServer()
+    private val reihe = ArrayDeque<Pair<Int, String>>()
+    private val gestellt = ArrayDeque<Anfrage>()
+    val api: BrickApiService = pfade.imTakt()
+    val requestCount: Int get() = pfade.anfragen.size
+
+    init {
+        pfade.vorrang = { methode, pfad ->
+            gestellt += Anfrage(methode, pfad, Buffer().writeUtf8(pfade.koerper.last()))
+            reihe.removeFirstOrNull() ?: throw AssertionError("Keine Antwort mehr in der Reihe für $methode $pfad")
+        }
+    }
+
+    fun enqueue(antwort: MockResponse) {
+        reihe += antwort.status.split(' ')[1].toInt() to antwort.getBody()?.readUtf8().orEmpty()
+    }
+
+    fun takeRequest(): Anfrage = gestellt.removeFirst()
+
+    fun pruefeEinlesen() = pfade.pruefeEinlesen()
+
+    fun shutdown() = pfade.server.shutdown()
 }

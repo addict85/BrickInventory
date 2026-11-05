@@ -7,6 +7,8 @@ import coil3.decode.DataSource
 import coil3.intercept.Interceptor
 import coil3.request.ImageResult
 import coil3.request.SuccessResult
+import android.graphics.BitmapFactory
+import kotlinx.coroutines.Dispatchers
 
 /**
  * Bilder für die Fototests: Jede Adresse, deren letzter Pfadteil ein Beispielbild
@@ -23,12 +25,14 @@ object Beispielbilder {
         return pfad.takeIf { name.endsWith(".png") && javaClass.classLoader?.getResource(it) != null }
     }
 
-    fun loader(ctx: Context): ImageLoader = ImageLoader.Builder(ctx).components { add(Abfang) }.build()
+    /** Auf dem Hauptlooper: Ein Foto wartet so auf kein Bild aus einem fremden Faden. */
+    fun loader(ctx: Context): ImageLoader = ImageLoader.Builder(ctx).components { add(Abfang) }
+        .coroutineContext(Dispatchers.Main.immediate).interceptorCoroutineContext(Dispatchers.Main.immediate).build()
 
     private object Abfang : Interceptor {
         override suspend fun intercept(chain: Interceptor.Chain): ImageResult {
             val pfad = (chain.request.data as? String)?.let(::ressource) ?: return chain.proceed()
-            val bitmap = javaClass.classLoader!!.getResourceAsStream(pfad).use { android.graphics.BitmapFactory.decodeStream(it) }
+            val bitmap = javaClass.classLoader!!.getResourceAsStream(pfad).use { BitmapFactory.decodeStream(it) }
             // MEMORY_CACHE, damit Coil nicht überblendet: Robolectric zeichnet für das Foto
             // ein Bild, und eine Überblendung stand darin noch bei Deckkraft 0 — die
             // Kacheln mit crossfade(true) blieben leer.

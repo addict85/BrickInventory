@@ -15,7 +15,7 @@ import androidx.compose.ui.semantics.SemanticsNode
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.semantics.getOrNull
 import androidx.compose.ui.test.hasText
-import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.unit.Density
@@ -49,6 +49,11 @@ import ch.brickinventoryapp.ui.screens.PriceChart
 import ch.brickinventoryapp.ui.screens.Zustandszeile
 import ch.brickinventoryapp.ui.viewmodel.ErfassungViewModel
 import ch.brickinventoryapp.util.fmtMoney
+import android.content.Context
+import androidx.compose.foundation.layout.Column
+import androidx.compose.ui.test.SemanticsMatcher
+import java.util.Locale
+import org.robolectric.RuntimeEnvironment
 
 /**
  * Regeln aus der achten UI-Prüfung, als Verhalten ausgeführt: Navigationsziele stehen
@@ -66,19 +71,19 @@ import ch.brickinventoryapp.util.fmtMoney
  */
 @RunWith(RobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
-@Config(sdk = [35], qualifiers = "de-rCH-w411dp-h891dp-port-xxhdpi")
+@Config(qualifiers = "de-rCH-w411dp-h891dp-port-xxhdpi")
 class FeinschliffRegelnTest {
 
     @get:Rule
     val compose = createComposeRule()
 
-    private val vorher = java.util.Locale.getDefault()
-    private val ctx: android.content.Context = ApplicationProvider.getApplicationContext()
+    private val vorher = Locale.getDefault()
+    private val ctx: Context = ApplicationProvider.getApplicationContext()
 
-    init { java.util.Locale.setDefault(java.util.Locale.forLanguageTag("de-CH")) }
+    init { Locale.setDefault(Locale.forLanguageTag("de-CH")) }
 
     @After
-    fun zu() = java.util.Locale.setDefault(vorher)
+    fun zu() = Locale.setDefault(vorher)
 
     private fun zeige(schrift: Float = 1f, inhalt: @Composable () -> Unit) {
         compose.setContent {
@@ -125,7 +130,7 @@ class FeinschliffRegelnTest {
                 title = "Titel", navController = nav, bottomNavItems = reiter,
                 snackbarHostState = remember { SnackbarHostState() },
                 csvImportState = remember { MutableStateFlow(CsvImportUiState()) },
-                onCsvAbbrechen = {}, serverUrl = "", onTabAngetippt = {},
+                onCsvAbbrechen = {}, onTabAngetippt = {},
             ) {
                 NavHost(nav, startDestination = Screen.Finance) { composable<Screen.Finance> { } }
             }
@@ -159,7 +164,7 @@ class FeinschliffRegelnTest {
                 title = "Titel", navController = nav, bottomNavItems = reiter,
                 snackbarHostState = remember { SnackbarHostState() },
                 csvImportState = remember { MutableStateFlow(CsvImportUiState()) },
-                onCsvAbbrechen = {}, serverUrl = "", onTabAngetippt = {},
+                onCsvAbbrechen = {}, onTabAngetippt = {},
             ) {
                 NavHost(nav, startDestination = Screen.Gallery) { composable<Screen.Gallery> { } }
             }
@@ -209,12 +214,7 @@ class FeinschliffRegelnTest {
                 GalleryRoute(vm = vm, erfassung = erfassung,
                     imageLoader = coil3.ImageLoader.Builder(ctx).build(), onScanBarcode = {}, onSetClick = {})
             }
-            val ende = System.nanoTime() + 10_000_000_000L
-            while (vm.galleryState.value.let { it.sets.isEmpty() || it.galleryLoading }) {
-                check(System.nanoTime() < ende) { "Galerie nach 10 s nicht geladen" }
-                org.robolectric.Shadows.shadowOf(android.os.Looper.getMainLooper()).idle()
-                Thread.sleep(10)
-            }
+            treibeBis("Galerie", bereit = { !(vm.galleryState.value.let { it.sets.isEmpty() || it.galleryLoading }) })
             compose.waitForIdle()
             ganzEineZeile(ctx.getString(R.string.gallery_search_placeholder),
                 if (schrift == 1f) "Such-Platzhalter" else "Such-Platzhalter 200 %")
@@ -232,7 +232,7 @@ class FeinschliffRegelnTest {
     fun `Preisverlauf zeigt unter drei Punkten keine Linie und nennt Tief und Hoch`() {
         val punkte = androidx.compose.runtime.mutableIntStateOf(2)
         zeige {
-            androidx.compose.foundation.layout.Column {
+            Column {
                 PriceChart(verlauf(punkte.intValue), "CHF")
             }
         }
@@ -249,21 +249,16 @@ class FeinschliffRegelnTest {
             compose.onAllNodes(hasText(zuWenig)).fetchSemanticsNodes().isEmpty())
     }
 
-    /** Antworten des Testservers kommen über den Hauptlooper; ihn selbst treiben. */
+    /** Die Welt antwortet im Takt; den Hauptlooper treiben, bis [fertig] gilt. */
     private fun warte(name: String, fertig: () -> Boolean) {
-        val ende = System.nanoTime() + 10_000_000_000L
-        while (!fertig()) {
-            check(System.nanoTime() < ende) { "$name nach 10 s nicht geladen" }
-            org.robolectric.Shadows.shadowOf(android.os.Looper.getMainLooper()).idle()
-            Thread.sleep(10)
-        }
+        treibeBis(name, bereit = fertig)
         compose.waitForIdle()
     }
 
     /** Listen-Detail wie in der Merkliste: Das Teil steht rechts, die Liste bleibt links stehen. */
     @Test
     fun `Tablet zeigt Teil und Liste nebeneinander`() {
-        org.robolectric.RuntimeEnvironment.setQualifiers("de-rCH-w1280dp-h800dp-land-xhdpi")
+        RuntimeEnvironment.setQualifiers("de-rCH-w1280dp-h800dp-land-xhdpi")
         val welt = Beispiele.Welt(KontextTexte())
         try {
             welt.pfade.antworten["/api/v1/parts/3001/5/sets"] = """{"success":true,
@@ -291,8 +286,8 @@ class FeinschliffRegelnTest {
             val titel = compose.onNode(androidx.compose.ui.test.hasText("Brick 2 x 4") and
                 androidx.compose.ui.test.isHeading()).fetchSemanticsNode().boundsInRoot
             assertTrue("Tablet zeigt Teil mit Schliessen links vom Titel ($zu / $titel)", zu.right <= titel.left)
-            compose.onNode(kachel and androidx.compose.ui.test.SemanticsMatcher.expectValue(
-                androidx.compose.ui.semantics.SemanticsProperties.Selected, true)).fetchSemanticsNode("Kachel nicht markiert")
+            compose.onNode(kachel and SemanticsMatcher.expectValue(
+                SemanticsProperties.Selected, true)).fetchSemanticsNode("Kachel nicht markiert")
         } finally {
             welt.close()
         }
