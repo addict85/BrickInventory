@@ -16,7 +16,7 @@ import org.junit.Test
  */
 class TokenVorDerSchreibungTest {
 
-    private val quelle = Quellen.ohneKommentare(Quellen.lies("data/PreferencesManager.kt"))
+    private val quelle = Quellen.ohneKommentare(Quellen.lies("data/TokenAblage.kt"))
 
     /** Der Rumpf einer Funktion, bis zur naechsten Deklaration auf ihrer Ebene. */
     private fun rumpf(name: String): String {
@@ -51,7 +51,7 @@ class TokenVorDerSchreibungTest {
         )) {
             val r = rumpf(name)
             val speicher = r.indexOf("$feld.value =")
-            val platte   = r.indexOf("context.dataStore.edit")
+            val platte   = r.indexOf("dataStore.edit")
             assert(speicher >= 0) { "$name setzt $feld gar nicht" }
             assert(platte >= 0)   { "$name schreibt nicht mehr in den DataStore — Muster veraltet?" }
             assert(speicher < platte) {

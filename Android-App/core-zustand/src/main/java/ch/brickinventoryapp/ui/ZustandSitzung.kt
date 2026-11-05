@@ -22,7 +22,7 @@ data class AppUiState(
     val serverUrl: String = "",
     val isLoggedIn: Boolean = false,
     val isAdmin: Boolean = false,
-    // Kein Token hier: Ihn liest allein der Interceptor (PreferencesManager); im
+    // Kein Token hier: Ihn liest allein der Interceptor (TokenAblage); im
     // Zustand stünde er für jede Oberfläche offen, als zweite Wahrheit.
     val currency: String = "EUR",
     val priceCondition: String = "N",

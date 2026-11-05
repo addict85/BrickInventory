@@ -57,7 +57,7 @@ class DesignVorAnmeldungTest {
 
     @Test
     fun `Stufe null - der gemerkte Wert ist SYNCHRON zu haben`() {
-        val prefs = code(read("data/PreferencesManager.kt"))
+        val prefs = code(read("data/GeraeteAblage.kt"))
         // Synchron heisst hier: SharedPreferences. DataStore kann es nicht,
         // und `runBlocking` auf dem Hauptthread waere die Wiederholung des
         // Fehlers, den der Bild-Interceptor schon einmal hatte.
@@ -86,7 +86,7 @@ class DesignVorAnmeldungTest {
 
     @Test
     fun `Stufe eins - das Design wird gemerkt`() {
-        val prefs = code(read("data/PreferencesManager.kt"))
+        val prefs = code(read("data/GeraeteAblage.kt"))
         assert(prefs.contains("stringPreferencesKey(\"app_theme\")")) {
             "Das Design wird nicht gemerkt — jeder Kaltstart faengt wieder im Standard an"
         }

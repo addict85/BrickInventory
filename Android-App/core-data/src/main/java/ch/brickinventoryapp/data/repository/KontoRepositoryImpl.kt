@@ -31,7 +31,7 @@ class KontoRepositoryImpl @Inject constructor(
 
     // Kein Authorization-Header hier: Der OkHttp-Interceptor in di/ServerClient.kt
     // setzt "Bearer <token>" für alle Anfragen an unseren Server (aus dem
-    // Speicher-Spiegel des PreferencesManagers). Einzige Ausnahme:
+    // Speicher-Spiegel der TokenAblage). Einzige Ausnahme:
     // getCsvImportStatusDirect, wo der Foreground-Service den Token selbst mitgibt.
 
     /**

@@ -95,7 +95,7 @@ test('fuenf Listen nennen dieselben Designs', () => {
   //
   // Ein Design steht an FUENF Stellen: als Datei unter public/themes/, als
   // <link> in index.html, in der Whitelist des Servers, in ALLOWED des
-  // Boot-Skripts und in der App (PreferencesManager.ERLAUBTE_DESIGNS). Fehlt
+  // Boot-Skripts und in der App (GeraeteAblage.ERLAUBTE_DESIGNS). Fehlt
   // es an einer davon, faellt das nicht auf, sondern wirkt teilweise: Der
   // Admin kann es waehlen, der Server nimmt es an, und das Boot-Skript
   // verwirft es beim naechsten Start stillschweigend — genau die Sorte
@@ -137,8 +137,8 @@ test('fuenf Listen nennen dieselben Designs', () => {
     /var ALLOWED = \[([^\]]*)\]/, 'js/00-theme-boot.js');
   const server = liste(fs.readFileSync(path.join(__dirname, '..', 'src/einstellungen/settings.ts'), 'utf8'),
     /const DESIGNS: readonly string\[\] = \[([^\]]*)\]/, 'src/einstellungen/settings.ts');
-  const app = liste(fs.readFileSync(path.join(__dirname, '..', '..', 'Android-App', 'core-data', 'src', 'main', 'java', 'ch', 'brickinventoryapp', 'data', 'PreferencesManager.kt'), 'utf8'),
-    /ERLAUBTE_DESIGNS = setOf\(([^)]*)\)/, 'PreferencesManager.kt');
+  const app = liste(fs.readFileSync(path.join(__dirname, '..', '..', 'Android-App', 'core-data', 'src', 'main', 'java', 'ch', 'brickinventoryapp', 'data', 'GeraeteAblage.kt'), 'utf8'),
+    /ERLAUBTE_DESIGNS = setOf\(([^)]*)\)/, 'GeraeteAblage.kt');
 
   assert.deepEqual(boot, erwartet, 'ALLOWED im Boot-Skript weicht von den Dateien ab');
   assert.deepEqual(server, erwartet, 'Die Whitelist des Servers weicht von den Dateien ab');

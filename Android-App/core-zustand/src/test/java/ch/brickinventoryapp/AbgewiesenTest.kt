@@ -194,7 +194,7 @@ class AbgewiesenTest {
             // wird dieses Projekt gebaut — liefert `path` Backslashes, und der
             // Schnitt ginge ins Leere (siehe Quellen.unter()).
             val name = datei.invariantSeparatorsPath.substringAfter("ch/brickinventoryapp/")
-            if (name.endsWith("PreferencesManager.kt")) continue
+            if (name.endsWith("TokenAblage.kt")) continue
             val code = Quellen.ohneKommentare(datei.readText())
             // Ohne `prefs.` davor: Der Manager heisst nicht ueberall gleich,
             // und die Regel gilt dem Fluss, nicht dem Variablennamen.

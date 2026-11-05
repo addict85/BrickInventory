@@ -139,7 +139,7 @@ class TokenTresorTest {
 
     @Test
     fun `saveAuthToken schreibt verschluesselt und raeumt den Klartext weg`() {
-        val src = quelle("data/PreferencesManager.kt")
+        val src = quelle("data/TokenAblage.kt")
         val fn = src.substring(
             src.indexOf("suspend fun saveAuthToken"),
             src.indexOf("suspend fun uebernehmeAltesToken"),
@@ -151,7 +151,7 @@ class TokenTresorTest {
 
     @Test
     fun `clearSession entfernt beide Token-Eintraege`() {
-        val src = quelle("data/PreferencesManager.kt")
+        val src = quelle("data/TokenAblage.kt")
         val fn = src.substring(src.indexOf("suspend fun clearSession"))
         assertTrue(fn.contains("remove(AUTH_TOKEN)"))
         assertTrue("nur der alte wird entfernt — der neue bleibt stehen",
@@ -160,7 +160,7 @@ class TokenTresorTest {
 
     @Test
     fun `der Lesepfad versucht zuerst den verschluesselten Wert`() {
-        val src = quelle("data/PreferencesManager.kt")
+        val src = quelle("data/TokenAblage.kt")
         val fn = src.substring(
             src.indexOf("val authToken: Flow<String>"),
             src.indexOf("val username:"),

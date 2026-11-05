@@ -41,6 +41,9 @@ dependencies {
     implementation(libs.coil.network.okhttp)
     api(libs.androidx.datastore)
     api(libs.androidx.work)
+    // @HiltWorker: Die Worker bekommen ihre Abhängigkeiten im Konstruktor.
+    implementation(libs.androidx.hilt.work)
+    ksp(libs.androidx.hilt.compiler)
     implementation(libs.androidx.appcompat)
     implementation(libs.androidx.room.runtime)
     implementation(libs.androidx.room.ktx)

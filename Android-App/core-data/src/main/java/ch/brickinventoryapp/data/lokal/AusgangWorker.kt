@@ -9,29 +9,25 @@ import androidx.work.NetworkType
 import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkManager
 import androidx.work.WorkerParameters
-import dagger.hilt.EntryPoint
-import dagger.hilt.InstallIn
-import dagger.hilt.android.EntryPointAccessors
+import androidx.hilt.work.HiltWorker
+import dagger.assisted.Assisted
+import dagger.assisted.AssistedInject
 import dagger.hilt.android.qualifiers.ApplicationContext
-import dagger.hilt.components.SingletonComponent
 import java.util.concurrent.TimeUnit
 import javax.inject.Inject
 
 /**
  * Sendet den Ausgang, sobald Netz da ist. WorkManager übernimmt Netzbedingung,
  * Rückzug und das Überleben eines Neustarts; die Logik steht in [Abgleich].
- * EntryPoint statt @HiltWorker wie beim PreisalarmWorker: weniger Apparat.
  */
-class AusgangWorker(context: Context, params: WorkerParameters) : CoroutineWorker(context, params) {
-
-    @EntryPoint
-    @InstallIn(SingletonComponent::class)
-    interface Zugang {
-        fun abgleich(): Abgleich
-    }
+@HiltWorker
+class AusgangWorker @AssistedInject constructor(
+    @Assisted context: Context,
+    @Assisted params: WorkerParameters,
+    private val abgleich: Abgleich,
+) : CoroutineWorker(context, params) {
 
     override suspend fun doWork(): Result {
-        val abgleich = EntryPointAccessors.fromApplication(applicationContext, Zugang::class.java).abgleich()
         return when (abgleich.sende()) {
             Abgleichsergebnis.SPAETER -> Result.retry()
             Abgleichsergebnis.FERTIG, Abgleichsergebnis.NICHT_ANGEMELDET -> Result.success()

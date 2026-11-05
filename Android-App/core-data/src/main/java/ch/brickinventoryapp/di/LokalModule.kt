@@ -21,12 +21,23 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
 import javax.inject.Singleton
 import ch.brickinventoryapp.alarm.WorkManagerAlarmPlaner
+import ch.brickinventoryapp.alarm.PreisalarmDurchgang
+import ch.brickinventoryapp.alarm.PreisalarmRepository
 import ch.brickinventoryapp.data.AlarmPlaner
 import ch.brickinventoryapp.data.CsvImportSseClient
 import ch.brickinventoryapp.data.CsvImportStrom
 import ch.brickinventoryapp.data.Darstellungsablage
 import ch.brickinventoryapp.data.GeraeteEinstellungen
-import ch.brickinventoryapp.data.PreferencesManager
+import ch.brickinventoryapp.data.GeraeteAblage
+import ch.brickinventoryapp.data.KontoAblage
+import ch.brickinventoryapp.data.TokenAblage
+import ch.brickinventoryapp.data.UpdateAblage
+import ch.brickinventoryapp.data.Tokenspiegel
+import ch.brickinventoryapp.data.Tokenuebernahme
+import ch.brickinventoryapp.data.Netzvertrauen
+import ch.brickinventoryapp.data.Alarmablage
+import ch.brickinventoryapp.data.Entwertungsprotokoll
+import ch.brickinventoryapp.data.Sprachablage
 import ch.brickinventoryapp.data.Sitzungsablage
 import ch.brickinventoryapp.data.Vertrauensablage
 import ch.brickinventoryapp.data.Zugangsdaten
@@ -53,18 +64,25 @@ abstract class LokalModule {
     @Binds abstract fun planer(p: WorkManagerPlaner): AusgangPlaner
     @Binds abstract fun entwertung(p: WorkManagerEntwertung): EntwertungsPlaner
     @Binds abstract fun sender(s: ServerSender): Bearbeitungssender
-    @Binds abstract fun geraet(p: PreferencesManager): GeraeteEinstellungen
-    @Binds abstract fun sitzungsablage(p: PreferencesManager): Sitzungsablage
-    @Binds abstract fun darstellung(p: PreferencesManager): Darstellungsablage
-    @Binds abstract fun vertrauensablage(p: PreferencesManager): Vertrauensablage
-    @Binds abstract fun zugang(p: PreferencesManager): Zugangsdaten
-    @Binds abstract fun anmeldestand(p: PreferencesManager): Anmeldestand
-    @Binds abstract fun sitzungsende(p: PreferencesManager): Sitzungsende
-    @Binds abstract fun updateStand(p: PreferencesManager): UpdateStandAblage
+    @Binds abstract fun geraet(p: GeraeteAblage): GeraeteEinstellungen
+    @Binds abstract fun sitzungsablage(p: KontoAblage): Sitzungsablage
+    @Binds abstract fun darstellung(p: GeraeteAblage): Darstellungsablage
+    @Binds abstract fun vertrauensablage(p: GeraeteAblage): Vertrauensablage
+    @Binds abstract fun netzvertrauen(p: GeraeteAblage): Netzvertrauen
+    @Binds abstract fun alarmablage(p: GeraeteAblage): Alarmablage
+    @Binds abstract fun entwertungsprotokoll(p: GeraeteAblage): Entwertungsprotokoll
+    @Binds abstract fun sprachablage(p: GeraeteAblage): Sprachablage
+    @Binds abstract fun zugang(p: TokenAblage): Zugangsdaten
+    @Binds abstract fun anmeldestand(p: TokenAblage): Anmeldestand
+    @Binds abstract fun sitzungsende(p: TokenAblage): Sitzungsende
+    @Binds abstract fun tokenspiegel(p: TokenAblage): Tokenspiegel
+    @Binds abstract fun tokenuebernahme(p: TokenAblage): Tokenuebernahme
+    @Binds abstract fun updateStand(p: UpdateAblage): UpdateStandAblage
     @Binds abstract fun updateGeraet(g: AndroidUpdateGeraet): UpdateGeraet
     @Binds abstract fun csvStrom(c: CsvImportSseClient): CsvImportStrom
     @Binds abstract fun csvDienst(d: AndroidCsvImportDienst): CsvImportDienst
     @Binds abstract fun alarm(p: WorkManagerAlarmPlaner): AlarmPlaner
+    @Binds abstract fun preisalarme(d: PreisalarmDurchgang): PreisalarmRepository
 
     companion object {
         @Provides

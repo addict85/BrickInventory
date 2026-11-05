@@ -314,6 +314,9 @@ dependencies {
     // WorkManager: der stuendliche Abruf der ausgeloesten Preisalarme.
     // Keine native Bibliothek — die 16-KB-Ausrichtung bleibt unberuehrt.
     implementation(libs.androidx.work)
+    // HiltWorkerFactory in BrickInventoryApp, @HiltWorker beim Widget-Arbeiter.
+    implementation(libs.androidx.hilt.work)
+    ksp(libs.androidx.hilt.compiler)
     // Per-app language switching (AppCompatDelegate.setApplicationLocales)
     implementation(libs.androidx.appcompat)
     implementation(libs.kotlinx.coroutines.android)

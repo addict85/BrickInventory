@@ -1,6 +1,5 @@
 package ch.brickinventoryapp.ui
 
-import android.content.Context
 import ch.brickinventoryapp.data.ScopeFilter
 import ch.brickinventoryapp.data.ScopeFilterSpeicher
 import ch.brickinventoryapp.data.repository.HaushaltRepository
@@ -8,7 +7,6 @@ import ch.brickinventoryapp.data.repository.Result
 import ch.brickinventoryapp.data.repository.TeileRepository
 import ch.brickinventoryapp.ui.model.alsAnsicht
 import ch.brickinventoryapp.ui.model.kontoOptionen
-import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -27,13 +25,13 @@ interface FilterAblage {
 }
 
 class ScopeFilterAblage @Inject constructor(
-    @param:ApplicationContext private val ctx: Context,
+    private val speicher: ScopeFilterSpeicher,
 ) : FilterAblage {
-    override suspend fun konto(view: ScopeFilter.View) = ScopeFilterSpeicher.flow(ctx, view).first()
-    override suspend fun lager(view: ScopeFilter.View) = ScopeFilterSpeicher.lagerFlow(ctx, view).first()
-    override suspend fun setzeKonto(view: ScopeFilter.View, wert: String) = ScopeFilterSpeicher.set(ctx, view, wert)
-    override suspend fun setzeLager(view: ScopeFilter.View, wert: String) = ScopeFilterSpeicher.setLager(ctx, view, wert)
-    override suspend fun allesVergessen() = ScopeFilterSpeicher.resetAll(ctx)
+    override suspend fun konto(view: ScopeFilter.View) = speicher.flow(view).first()
+    override suspend fun lager(view: ScopeFilter.View) = speicher.lagerFlow(view).first()
+    override suspend fun setzeKonto(view: ScopeFilter.View, wert: String) = speicher.set(view, wert)
+    override suspend fun setzeLager(view: ScopeFilter.View, wert: String) = speicher.setLager(view, wert)
+    override suspend fun allesVergessen() = speicher.resetAll()
 }
 
 /**

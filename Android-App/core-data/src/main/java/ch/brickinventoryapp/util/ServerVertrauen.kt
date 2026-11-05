@@ -25,7 +25,7 @@ import javax.net.ssl.X509ExtendedTrustManager
  * den System-CAs, oder auf ausdrückliche Einstellung zusätzlich den vom Nutzer
  * installierten. Je Verbindungsaufbau gefragt, damit der Schalter ohne Neustart
  * wirkt. Eine nutzerinstallierte CA kann jeder einschleusen, der kurz ans Gerät
- * kommt oder es verwaltet — darum ist die Vorgabe aus (PreferencesManager).
+ * kommt oder es verwaltet — darum ist die Vorgabe aus (GeraeteAblage).
  */
 // Eigener TrustManager mit Absicht: Er reicht an die System-Prüfung weiter und
 // wählt nur, ob Nutzer-CAs mitzählen.
@@ -101,7 +101,7 @@ fun interface SystemWurzeln {
     fun enthaelt(fingerabdruck: String): Boolean
 }
 
-/** Die gemerkten Pins: im Gerät SharedPreferences (PreferencesManager), im Test eine Map. */
+/** Die gemerkten Pins: im Gerät SharedPreferences (GeraeteAblage), im Test eine Map. */
 interface PinAblage {
     fun pin(schluessel: String): String?
     fun merkePin(schluessel: String, fingerabdruck: String)

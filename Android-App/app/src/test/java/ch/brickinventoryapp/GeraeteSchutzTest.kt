@@ -13,7 +13,9 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithText
 import androidx.test.core.app.ApplicationProvider
-import ch.brickinventoryapp.data.PreferencesManager
+import ch.brickinventoryapp.data.GeraeteAblage
+import ch.brickinventoryapp.data.TokenAblage
+import androidx.datastore.preferences.core.PreferenceDataStoreFactory
 import ch.brickinventoryapp.ui.components.LocalSchrittschutz
 import ch.brickinventoryapp.ui.components.Sichtschutz
 import ch.brickinventoryapp.ui.components.Schrittschutz
@@ -161,20 +163,29 @@ class GeraeteSchutzTest {
         compose.onNodeWithText("Verwalteraktion").assertExists()
     }
 
+    /** Token- und Geräteablage auf einem eigenen DataStore, wie Hilt sie verbindet. */
+    private fun ablagen(): Pair<TokenAblage, GeraeteAblage> {
+        val ctx = ApplicationProvider.getApplicationContext<Context>()
+        val store = PreferenceDataStoreFactory.create { java.io.File(ctx.filesDir, "test-${System.nanoTime()}.preferences_pb") }
+        val geraet = GeraeteAblage(ctx, store)
+        val tresor = object : TokenVerschluesselung {
+            override fun verschluessle(klartext: String) = klartext
+            override fun entschluessle(gespeichert: String) = gespeichert
+        }
+        return TokenAblage(store, tresor, geraet, CoroutineScope(SupervisorJob() + Dispatchers.IO)) to geraet
+    }
+
     /**
      * Die Verdrahtung für M1 (pruef6): Die Server-Clients hören hier mit (di/ServerClient.folgtDemServer).
      * Seit sec7 N2 ist ein anderer Pfad auf demselben Host ein anderer Server.
      */
     @Test
     fun `ein anderer Server bricht laufende Aufrufe ab, derselbe nicht`() {
-        val prefs = PreferencesManager(ApplicationProvider.getApplicationContext<Context>(), object : TokenVerschluesselung {
-            override fun verschluessle(klartext: String) = klartext
-            override fun entschluessle(gespeichert: String) = gespeichert
-        }, CoroutineScope(SupervisorJob() + Dispatchers.IO))
+        val (prefs, geraet) = ablagen()
         var abgebrochen = 0
         var nutzerCa = 0
         prefs.beimServerwechsel { abgebrochen++ }
-        prefs.beimNutzerCaWechsel { nutzerCa++ }
+        geraet.beimNutzerCaWechsel { nutzerCa++ }
         kotlinx.coroutines.runBlocking {
             prefs.saveServerUrl("https://alt.example/brick")
             abgebrochen = 0
@@ -185,17 +196,14 @@ class GeraeteSchutzTest {
             prefs.saveServerUrl("https://neu.example")
             assertEquals(2, abgebrochen)
         }
-        prefs.setzeNutzerCa(true)
+        geraet.setzeNutzerCa(true)
         assertEquals("Der TLS-Kontext wird nach dem Umschalten neu gebaut", 1, nutzerCa)
     }
 
     /** sec7 N2: Der Token hält nur die Herkunft; den Pfad trägt die bisherige Adresse bei. */
     @Test
     fun `ein anderer Pfad auf demselben Host verwirft den Token`() {
-        val prefs = PreferencesManager(ApplicationProvider.getApplicationContext<Context>(), object : TokenVerschluesselung {
-            override fun verschluessle(klartext: String) = klartext
-            override fun entschluessle(gespeichert: String) = gespeichert
-        }, CoroutineScope(SupervisorJob() + Dispatchers.IO))
+        val (prefs, _) = ablagen()
         kotlinx.coroutines.runBlocking {
             prefs.saveServerUrl("https://geteilt.example/brick")
             prefs.saveAuthToken("token-brick")
@@ -208,11 +216,7 @@ class GeraeteSchutzTest {
 
     @Test
     fun `eine neue Installation verbirgt die Vorschau, bis der Nutzer es ausschaltet`() {
-        val ctx = ApplicationProvider.getApplicationContext<Context>()
-        val prefs = PreferencesManager(ctx, object : TokenVerschluesselung {
-            override fun verschluessle(klartext: String) = klartext
-            override fun entschluessle(gespeichert: String) = gespeichert
-        }, CoroutineScope(SupervisorJob() + Dispatchers.IO))
+        val (_, prefs) = ablagen()
         assertTrue("Ohne Wahl zeigt die App-Übersicht alles", prefs.vorschauVerbergen())
         prefs.setzeVorschauVerbergen(false)
         assertFalse(prefs.vorschauVerbergen())

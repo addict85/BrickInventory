@@ -364,7 +364,7 @@ class VorschauAblageTest {
 
     @Test
     fun `die Vorgabe ist WLAN, und nur WLAN`() {
-        val pm = quelle("data/PreferencesManager.kt")
+        val pm = quelle("data/GeraeteAblage.kt")
         // Auf die DEFINITION mitsamt Vorgabewert, nicht nur auf den Namen —
         // dieselbe Lehre wie bei MAX_BYTES und GRENZE_VORWAERMEN weiter oben.
         // Eine Zusicherung, die „vorwaermenWlan" irgendwo findet, bliebe gruen,

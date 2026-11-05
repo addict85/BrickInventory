@@ -7,7 +7,7 @@ enum class VorwaermNetz { WLAN, MOBIL, ROAMING }
 
 /**
  * Einstellungen, die nur dieses Gerät betreffen, nicht das Konto. Eine schmale
- * Schnittstelle statt PreferencesManager, damit ViewModels sie ohne Android prüfen
+ * Schnittstelle statt der GeraeteAblage, damit ViewModels sie ohne Android prüfen
  * und Bereiche keine DataStore-Schlüssel kennen.
  */
 interface GeraeteEinstellungen {

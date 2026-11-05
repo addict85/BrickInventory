@@ -8,7 +8,10 @@ import javax.inject.Inject
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import ch.brickinventoryapp.alarm.PreisalarmWorker
-import ch.brickinventoryapp.data.PreferencesManager
+import androidx.hilt.work.HiltWorkerFactory
+import ch.brickinventoryapp.data.Alarmablage
+import ch.brickinventoryapp.data.Sprachablage
+import ch.brickinventoryapp.data.Tokenuebernahme
 import ch.brickinventoryapp.di.Anwendungsbereiche
 import ch.brickinventoryapp.util.LanguageManager
 import ch.brickinventoryapp.util.Protokoll
@@ -19,16 +22,19 @@ import ch.brickinventoryapp.util.raeumeVertraulichePdfsAuf
 
 @HiltAndroidApp
 class BrickInventoryApp : Application(), Configuration.Provider {
-    @Inject lateinit var preferencesManager: PreferencesManager
+    @Inject lateinit var tokenuebernahme: Tokenuebernahme
+    @Inject lateinit var alarme: Alarmablage
+    @Inject lateinit var sprache: Sprachablage
     @Inject lateinit var bereiche: Anwendungsbereiche
+    @Inject lateinit var workerFabrik: HiltWorkerFactory
 
     /**
      * WorkManager auf Abruf statt beim Start, das Gegenstück zum tools:node="remove"
      * im Manifest: Ohne diese Schnittstelle wirft der erste Zugriff „WorkManager is
-     * not initialized properly“. Die Vorgaben genügen (PreisalarmWorker).
+     * not initialized properly“. Die Fabrik von Hilt baut die @HiltWorker.
      */
     override val workManagerConfiguration: Configuration
-        get() = Configuration.Builder().build()
+        get() = Configuration.Builder().setWorkerFactory(workerFabrik).build()
 
     override fun onCreate() {
         super.onCreate()
@@ -43,12 +49,12 @@ class BrickInventoryApp : Application(), Configuration.Provider {
             // Bild-Zwischenspeicher älterer Fassungen (Klartext) und eine abgelaufene Teileliste.
             fangeAusserAbbruch { raeumeKlartextBildcachesAuf(cacheDir) }
             fangeAusserAbbruch { raeumeAlteTeilelisteAuf(filesDir, System.currentTimeMillis()) }
-            fangeAusserAbbruch { preferencesManager.uebernehmeAltesToken() }
+            fangeAusserAbbruch { tokenuebernahme.uebernehmeAltesToken() }
             // Den Preisalarm-Abruf wieder einplanen: Zurückgesetzte App-Daten oder ein
             // „Force Stop“ verwerfen die Aufträge, der Schalter stünde sonst auf „an“
             // ohne Wirkung. KEEP lässt einen eingeplanten Auftrag unverändert.
             fangeAusserAbbruch {
-                if (preferencesManager.alarmMeldungenAn.first()) {
+                if (alarme.alarmMeldungenAn.first()) {
                     PreisalarmWorker
                         .einplanen(this@BrickInventoryApp, true)
                         ?.let { Protokoll.warnung("Preisalarm", "Abruf nicht eingeplant", it) }
@@ -60,12 +66,12 @@ class BrickInventoryApp : Application(), Configuration.Provider {
         // (gespeichert vor dem Spiegel), einmal nachziehen — AppCompat erneuert dann die
         // Activity. Ab 13 merkt sich das System die Sprache selbst.
         if (android.os.Build.VERSION.SDK_INT < 33) {
-            val gemerkt = preferencesManager.gemerkteSprache()
+            val gemerkt = sprache.gemerkteSprache()
             if (gemerkt != null) {
                 LanguageManager.applyLanguage(gemerkt)
             } else {
                 bereiche.anwendung.launch(bereiche.haupt) {
-                    val lang = fangeAusserAbbruch { preferencesManager.spracheNachziehen() }.getOrNull() ?: return@launch
+                    val lang = fangeAusserAbbruch { sprache.spracheNachziehen() }.getOrNull() ?: return@launch
                     LanguageManager.applyLanguage(lang)
                 }
             }

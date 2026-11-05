@@ -31,7 +31,7 @@ fun interface EntwertungsPlaner {
     fun plane(auftrag: Entwertungsauftrag)
 }
 
-/** Der Auftrag für das jetzige Token, oder null ohne Token (PreferencesManager). */
+/** Der Auftrag für das jetzige Token, oder null ohne Token (TokenAblage). */
 fun interface Entwertungsquelle {
     suspend fun entwertungsauftrag(): Entwertungsauftrag?
 }

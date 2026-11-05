@@ -29,7 +29,7 @@ import androidx.lifecycle.lifecycleScope
 import kotlinx.coroutines.launch
 import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
-import ch.brickinventoryapp.alarm.PreisalarmWorker
+import ch.brickinventoryapp.alarm.PreisalarmRepository
 import ch.brickinventoryapp.ui.Meldungseingang
 import ch.brickinventoryapp.ui.components.GeraeteSchrittschutz
 import ch.brickinventoryapp.ui.components.LocalSchrittschutz
@@ -75,6 +75,8 @@ class MainActivity : NurLauncherStart() {
     /** Das Ziel einer angetippten Meldung; abgelegt nur vom nicht exportierten MeldungsEinstieg. */
     @Inject lateinit var meldungseingang: Meldungseingang
 
+    @Inject lateinit var preisalarme: PreisalarmRepository
+
     /**
      * Eine angetippte Meldung, waehrend die App schon laeuft (singleTop). Das
      * Ziel liegt im Meldungseingang; NurLauncherStart hat Extras und Daten des
@@ -99,7 +101,7 @@ class MainActivity : NurLauncherStart() {
     override fun onStart() {
         super.onStart()
         lifecycleScope.launch {
-            fangeAusserAbbruch { PreisalarmWorker.durchgang(applicationContext) }
+            fangeAusserAbbruch { preisalarme.durchgang() }
                 .onFailure { Protokoll.warnung("Preisalarm", "Abruf beim Oeffnen fehlgeschlagen", it) }
         }
     }

@@ -16,7 +16,7 @@ import okhttp3.Response
 import java.util.concurrent.atomic.AtomicBoolean
 
 /**
- * Was der Wächter je Anfrage wissen muss. Im Gerät liefern es PreferencesManager
+ * Was der Wächter je Anfrage wissen muss. Im Gerät liefern es TokenAblage
  * und Context (ServerClient.kt); als Schnittstelle läuft der Wächter auf der JVM
  * gegen einen Testserver.
  */

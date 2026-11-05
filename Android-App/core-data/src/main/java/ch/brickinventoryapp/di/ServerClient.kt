@@ -1,7 +1,9 @@
 package ch.brickinventoryapp.di
 
+import javax.inject.Inject
 import ch.brickinventoryapp.core.data.BuildConfig
-import ch.brickinventoryapp.data.PreferencesManager
+import ch.brickinventoryapp.data.Netzvertrauen
+import ch.brickinventoryapp.data.Tokenspiegel
 import ch.brickinventoryapp.util.NetworkPolicy
 import ch.brickinventoryapp.util.VersionsHinweis
 import okhttp3.OkHttpClient
@@ -24,11 +26,11 @@ import ch.brickinventoryapp.util.SystemWurzeln
 import ch.brickinventoryapp.ressourcen.R
 
 /**
- * Die Zugangslage des Geräts. Die Werte kommen aus dem Speicherspiegel des
- * PreferencesManagers; nur beim Kaltstart wird auf die Platte gewartet, ohne
- * runBlocking (PreferencesManager.warteAufStart).
+ * Die Zugangslage des Geräts. Die Werte kommen aus dem Speicherspiegel der
+ * TokenAblage; nur beim Kaltstart wird auf die Platte gewartet, ohne
+ * runBlocking (TokenAblage.warteAufStart).
  */
-private class GeraeteZugang(private val prefs: PreferencesManager) : Zugangslage {
+private class GeraeteZugang(private val prefs: Tokenspiegel) : Zugangslage {
     // Immer warten, nicht nur ohne Spiegelwert: Erst danach ist auch der alte
     // Stand der Nutzer-CAs zurückgesetzt. Nach dem Kaltstart kehrt es sofort zurück.
     private fun bereit() = prefs.warteAufStart()
@@ -60,7 +62,7 @@ private var gemeinsameTls: ErneuerbareTlsFabrik? = null
 
 /** Ein SSLContext für alle Server-Clients; neu, sobald die Nutzer-CAs umschalten. */
 @Synchronized
-private fun serverTls(prefs: PreferencesManager, tm: PinVertrauen): ErneuerbareTlsFabrik {
+private fun serverTls(prefs: Netzvertrauen, tm: PinVertrauen): ErneuerbareTlsFabrik {
     gemeinsameTls?.let { return it }
     val fabrik = ErneuerbareTlsFabrik {
         javax.net.ssl.SSLContext.getInstance("TLS").apply { init(null, arrayOf(tm), null) }.socketFactory
@@ -70,26 +72,29 @@ private fun serverTls(prefs: PreferencesManager, tm: PinVertrauen): ErneuerbareT
 }
 
 @Synchronized
-private fun serverVertrauen(prefs: PreferencesManager, frage: ZertifikatsFrage): PinVertrauen {
+private fun serverVertrauen(prefs: Netzablagen, frage: ZertifikatsFrage): PinVertrauen {
     gemeinsamesVertrauen?.let { return it }
     val system = vertrauen(null)
     return PinVertrauen(
         kette = WahlVertrauen(
             system = system,
             mitNutzer = lazy { vertrauen(java.security.KeyStore.getInstance("AndroidCAStore").apply { load(null) }) },
-            nutzerErlaubt = { prefs.nutzerCaErlaubt() },
+            nutzerErlaubt = { prefs.vertrauen.nutzerCaErlaubt() },
         ),
-        pins = prefs,
-        eigenerServer = { pinSchluessel(prefs.serverUrlState.value.orEmpty()) },
+        pins = prefs.vertrauen,
+        eigenerServer = { pinSchluessel(prefs.token.serverUrlState.value.orEmpty()) },
         frage = frage,
         fremdeHosts = system,
     ).also { gemeinsamesVertrauen = it }
 }
 
+/** Token und Vertrauen zusammen: Die Server-Clients brauchen beides, sonst nichts aus den Ablagen. */
+class Netzablagen @Inject constructor(val token: Tokenspiegel, val vertrauen: Netzvertrauen)
+
 /** API-, Bild- und SSE-Client: derselbe Wächter (ServerWaechter.kt), eigene Zeitgrenzen. */
 @Suppress("LongParameterList") // Ein Baustein für drei Clients; die Teile unterscheiden sich je Client.
 internal fun buildInterceptorClient(
-    prefs: PreferencesManager,
+    prefs: Netzablagen,
     isApiClient: Boolean,
     sessionExpired: SessionExpiredSignal,
     ctx: android.content.Context,
@@ -125,7 +130,7 @@ internal fun buildInterceptorClient(
         // folgt nur innerhalb derselben Herkunft (ServerWaechter.senden).
         .followRedirects(false)
         .followSslRedirects(false)
-        .addInterceptor(ServerWaechter(GeraeteZugang(prefs), isApiClient, NetworkPolicy.entwicklung,
+        .addInterceptor(ServerWaechter(GeraeteZugang(prefs.token), isApiClient, NetworkPolicy.entwicklung,
             sitzungAbgelaufen = { sessionExpired.notifyExpired() }, versionsMeldung = versionsMeldung,
             // Die Sprache aus den Ressourcen: Der Server antwortet in der, die die Oberfläche zeigt.
             eigeneKoepfe = { original, ziel ->
@@ -136,7 +141,7 @@ internal fun buildInterceptorClient(
             passwortWechselNoetig = { pflicht?.melde() }, zweiterFaktorPflicht = { faktorPflicht?.melde() }))
         .apply {
             val tm = serverVertrauen(prefs, frage)
-            sslSocketFactory(serverTls(prefs, tm), tm)
+            sslSocketFactory(serverTls(prefs.vertrauen, tm), tm)
         }
         .connectTimeout(15, TimeUnit.SECONDS)
         // Ein Zwischen-Byte-Timeout; die PDF-Erzeugung läuft über Job-Polling.
@@ -152,14 +157,14 @@ internal fun buildInterceptorClient(
  * des Auftrags selbst ein.
  */
 internal fun buildEntwertungsBasis(
-    prefs: PreferencesManager,
+    prefs: Netzablagen,
     frage: ZertifikatsFrage,
 ): OkHttpClient = OkHttpClient.Builder()
     .followRedirects(false)
     .followSslRedirects(false)
     .apply {
         val tm = serverVertrauen(prefs, frage)
-        sslSocketFactory(serverTls(prefs, tm), tm)
+        sslSocketFactory(serverTls(prefs.vertrauen, tm), tm)
     }
     .connectTimeout(15, TimeUnit.SECONDS)
     .readTimeout(30, TimeUnit.SECONDS)
@@ -170,7 +175,7 @@ internal fun buildEntwertungsBasis(
  * sonst der gemerkte — Pins bleiben beim Abmelden stehen. Nutzer-CAs wie beim
  * eigenen Server nur auf ausdrückliche Einstellung.
  */
-internal fun auftragsVertrauenFabrik(prefs: PreferencesManager): (String, String?) -> javax.net.ssl.X509ExtendedTrustManager {
+internal fun auftragsVertrauenFabrik(prefs: Netzvertrauen): (String, String?) -> javax.net.ssl.X509ExtendedTrustManager {
     val system = vertrauen(null)
     val kette = WahlVertrauen(
         system = system,
@@ -185,7 +190,7 @@ internal fun auftragsVertrauenFabrik(prefs: PreferencesManager): (String, String
  * Umschalten der Nutzer-CAs keine Verbindung mit dem alten Vertrauen weiterbenutzen.
  * Für jeden Client mit eigenem Dispatcher oder Pool (der Bild-Client hat einen).
  */
-internal fun folgtDemServer(prefs: PreferencesManager, client: OkHttpClient) {
-    prefs.beimServerwechsel { client.dispatcher.cancelAll() }
-    prefs.beimNutzerCaWechsel { client.connectionPool.evictAll() }
+internal fun folgtDemServer(prefs: Netzablagen, client: OkHttpClient) {
+    prefs.token.beimServerwechsel { client.dispatcher.cancelAll() }
+    prefs.vertrauen.beimNutzerCaWechsel { client.connectionPool.evictAll() }
 }

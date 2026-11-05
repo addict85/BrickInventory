@@ -7,7 +7,7 @@ package ch.brickinventoryapp.util
  */
 data class UpdateStand(val hoechsterCode: Int, val ausgestellt: Long)
 
-/** Wo der [UpdateStand] liegt: im Gerät der DataStore (PreferencesManager), im Test eine Variable. */
+/** Wo der [UpdateStand] liegt: im Gerät der DataStore (UpdateAblage), im Test eine Variable. */
 interface UpdateStandAblage {
     suspend fun updateStand(): UpdateStand?
     suspend fun merkeUpdateStand(stand: UpdateStand)

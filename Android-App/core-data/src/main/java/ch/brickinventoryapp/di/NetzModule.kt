@@ -1,6 +1,5 @@
 package ch.brickinventoryapp.di
 
-import ch.brickinventoryapp.data.PreferencesManager
 import ch.brickinventoryapp.util.NetworkPolicy
 import com.jakewharton.retrofit2.converter.kotlinx.serialization.asConverterFactory
 import dagger.Module
@@ -47,7 +46,7 @@ object NetzModule {
     @Named("api")
     fun provideApiOkHttpClient(
         @dagger.hilt.android.qualifiers.ApplicationContext context: android.content.Context,
-        prefs: PreferencesManager,
+        prefs: Netzablagen,
         sessionExpired: SessionExpiredSignal,
         meldungen: MeldungsKanal,
         frage: ZertifikatsFrage,
@@ -110,7 +109,7 @@ object NetzModule {
         // Context für den HTTP-Zwischenspeicher unten — dieselbe Schreibweise
         // wie bei provideImageLoader in dieser Datei.
         @dagger.hilt.android.qualifiers.ApplicationContext context: android.content.Context,
-        prefs: PreferencesManager,
+        prefs: Netzablagen,
         sessionExpired: SessionExpiredSignal,
         vorschau: VorschauSpeicher,
         frage: ZertifikatsFrage,
@@ -172,9 +171,9 @@ object NetzModule {
             // der Wächter selbst, OkHttp folgte ihnen sonst an ihm vorbei.
             .addInterceptor(BildHostWaechter(
                 eigenerServer = { url ->
-                    istEigenerBildServer(url, prefs.serverUrlState.value ?: "", NetworkPolicy.entwicklung)
+                    istEigenerBildServer(url, prefs.token.serverUrlState.value ?: "", NetworkPolicy.entwicklung)
                 },
-                basisPfad = { NetworkPolicy.basisPfad(prefs.serverUrlState.value.orEmpty()).orEmpty() },
+                basisPfad = { NetworkPolicy.basisPfad(prefs.token.serverUrlState.value.orEmpty()).orEmpty() },
             ))
             .followRedirects(false)
             // Bild-Downloads drosseln, aber nicht so eng, dass Kacheln verhungern: Dies ist
@@ -260,7 +259,7 @@ object NetzModule {
     @Named("sse")
     fun provideSseOkHttpClient(
         @dagger.hilt.android.qualifiers.ApplicationContext context: android.content.Context,
-        prefs: PreferencesManager,
+        prefs: Netzablagen,
         sessionExpired: SessionExpiredSignal,
         frage: ZertifikatsFrage,
         tausch: TokenTausch,
@@ -276,11 +275,11 @@ object NetzModule {
     @Provides
     @Singleton
     fun provideEntwerter(
-        prefs: PreferencesManager,
+        prefs: Netzablagen,
         frage: ZertifikatsFrage,
     ): Entwerter =
         Entwerter(buildEntwertungsBasis(prefs, frage), NetworkPolicy.entwicklung,
-            vertrauenFuer = auftragsVertrauenFabrik(prefs))
+            vertrauenFuer = auftragsVertrauenFabrik(prefs.vertrauen))
 
     /** Für die QR-Anmeldung: Ein `fp` auf eine System-Wurzel gilt ohne Abtippen (sec10 N2). */
     @Provides

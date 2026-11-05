@@ -172,7 +172,7 @@ class ResponseCache(
 
 /**
  * Wem die abgelegten Antworten gehören: Server und Sitzung. Im Gerät der
- * PreferencesManager; die Schnittstelle hält den Cache ohne DataStore prüfbar.
+ * TokenAblage; die Schnittstelle hält den Cache ohne DataStore prüfbar.
  */
 fun interface CacheBesitzer {
     /** Null, solange kein Server oder kein Token hinterlegt ist. */
