@@ -4,29 +4,27 @@ import { abonniere, melde } from './00-ereignisse.js';
 import { LANG, applyLang, locale, tRaw } from '../i18n.js';
 import { CURRENCY, _settingsCache, ME } from './00-zustand.js';
 
-// Was NICHT (mehr) hier steht, obwohl es hier stand:
-//   Kontofilter                    → js/14-scope.js
-//   eigener Scrollbalken           → js/15-scrollbar.js
-//   PDF-Betrachter                 → js/12-pdfviewer.js …
+// Hierher gehört nur, was die Zeile darüber nennt. Die Datei wuchs zweimal auf über 1300 Zeilen, weil
+// Neues dort landete, wo gerade jemand las; alles andere bekommt eine eigene Datei.
 // Ausführlich: docs/begruendungen/public/js/01-core.js.md#was-nicht-mehr-hier-steht-obwohl-es-hier
 
-// Alle Listen und Detailansichten werden per innerHTML aus Template-Literalen
-// gebaut. Jeder Wert, der aus der DB, einem CSV-Import oder einer Fremd-API
-// kommt, MUSS deshalb durch einen dieser Helfer — sonst ist jedes freie
-// Textfeld (Teilename, Farbname, Notiz, Bild-URL) ein Stored-XSS-Vektor. …
+// Ansichten entstehen per innerHTML aus Vorlagen; jeder Wert aus Datenbank, CSV oder Fremd-API muss
+// durch einen dieser Helfer, sonst ist jedes freie Textfeld ein gespeichertes XSS. esc() für Text,
+// escJs() in data-arg, escUrl() für src/href, escHex() für Farben.
 // Ausführlich: docs/begruendungen/public/js/01-core.js.md#alle-listen-und-detailansichten-werden-p
 
-/** HTML-Escape für Textinhalte und doppelt-gequotete Attributwerte. */
 /**
- * Wie kurz ein Passwort hoechstens sein darf — dieselbe Zahl wie im Server
- * (PASSWORT_MIN_ZEICHEN in src/konto/auth.ts) und in der App.
+ * Mindestlänge eines Passworts. Der Server setzt sie durch, der Browser sagt sie vorher;
+ * test/passwortlaenge.test.js hält Server, Web und App gleich.
  * Ausführlich: docs/begruendungen/public/js/01-core.js.md#passwort-min-zeichen
  */
 export const PASSWORT_MIN_ZEICHEN = 12;
 
 /**
- * Ist dieses Passwort zu kurz?
+ * Die Webapp prüfte die Länge an keiner der fünf Stellen, die ein Passwort setzen, und lief in den
+ * Serverfehler, wo die App den Knopf gar nicht erst freigibt. Hier wird vorher gefragt.
  * Ausführlich: docs/begruendungen/public/js/01-core.js.md#passwortzukurz
+ * @param {unknown} p
  */
 export function passwortZuKurz(p){ return String(p ?? '').length < PASSWORT_MIN_ZEICHEN; }
 
@@ -38,8 +36,11 @@ export function passwortZuKurzText(){
 /** bcrypt liest 72 Byte; dieselbe Grenze wie PASSWORT_MAX_BYTE im Server. */
 export const PASSWORT_MAX_BYTE = 72;
 
-/** Was der Browser vor dem Absenden prüfen kann, als Meldung, sonst null. Die
- * Liste häufiger Passwörter kennt nur der Server; seine Meldung kommt zurück. */
+/**
+ * Was der Browser vor dem Absenden prüfen kann, als Meldung, sonst null. Die
+ * Liste häufiger Passwörter kennt nur der Server; seine Meldung kommt zurück.
+ * @param {string} p
+ */
 export function passwortRegelText(p){
   if (passwortZuKurz(p)) return passwortZuKurzText();
   if (new TextEncoder().encode(String(p)).length > PASSWORT_MAX_BYTE) return tRaw('settings.password.too_long', { n: PASSWORT_MAX_BYTE });
@@ -52,13 +53,14 @@ export function passwortRegelText(p){
 // `import { esc } from './01-core.js'` unverändert gilt.
 export { esc };
 
-/**
- * Wert in einem einfach-gequoteten JS-String innerhalb eines doppelt-gequoteten
- * HTML-Attributs: data-click="fn" data-arg="${escJs(x)}".
- * Reihenfolge zählt — erst JS-escapen (Backslash, Apostroph), dann HTML.
- * Ein blosses esc() reicht hier NICHT: es lässt den Apostroph als &#39; stehen,
- * der Browser dekodiert ihn vor dem JS-Parsen zurück und der String bricht auf.
- */
+  /**
+   * Wert in einem einfach-gequoteten JS-String innerhalb eines doppelt-gequoteten
+   * HTML-Attributs: data-click="fn" data-arg="${escJs(x)}".
+   * Reihenfolge zählt — erst JS-escapen (Backslash, Apostroph), dann HTML.
+   * Ein blosses esc() reicht hier NICHT: es lässt den Apostroph als &#39; stehen,
+   * der Browser dekodiert ihn vor dem JS-Parsen zurück und der String bricht auf.
+   * @param {unknown} s
+   */
 export function escJs(s){
   return String(s ?? '')
     .replace(/\\/g,'\\\\').replace(/'/g,"\\'")
@@ -70,6 +72,7 @@ export function escJs(s){
  * src/href: nur relative Pfade und http(s) durchlassen. Manuell erfasste Teile
  * und Minifiguren dürfen eine Bild-URL mitbringen — ohne diese Prüfung landet
  * "javascript:…" ungefiltert in einem href.
+ * @param {unknown} u
  */
 export function escUrl(u){
   const v = String(u ?? '').trim();
@@ -78,15 +81,21 @@ export function escUrl(u){
   return esc(v);
 }
 
-/** Farbwert für data-farbe="…" (js/00-stile.js) — alles ausser 6 Hex-Ziffern fliegt raus. */
+/**
+ * Farbwert für data-farbe="…" (js/00-stile.js) — alles ausser 6 Hex-Ziffern fliegt raus.
+ * @param {unknown} hex
+ * @param {string} fallback
+ */
 export function escHex(hex, fallback){
   const v = String(hex ?? '').trim().replace(/^#/, '');
   return /^[0-9A-Fa-f]{6}$/.test(v) ? '#' + v : (fallback || 'var(--s300)');
 }
 
 /**
- * Dieselbe Prüfung wie [escHex], aber OHNE das Doppelkreuz.
+ * Wie escHex(), aber ohne „#“: für Attribute, deren Leser das Doppelkreuz selbst ergänzen (data-hex).
+ * escHex() dort ergäbe „##RRGGBB“.
  * Ausführlich: docs/begruendungen/public/js/01-core.js.md#hexziffern
+ * @param {unknown} hex
  */
 export function hexZiffern(hex){
   const v = String(hex ?? '').trim().replace(/^#/, '');
@@ -96,10 +105,8 @@ export function hexZiffern(hex){
 /** Rückwärtskompatibler Alias (wurde früher in 03-parts.js definiert). */
 export const escHtml = escJs;
 
-// Diese Helfer werden von anderen Modulen bei DEREN Top-Level-Auswertung
-// benutzt (z. B. G('parts-search').addEventListener(…) in 03-parts.js). Bei
-// gegenseitigen Importen wertet JavaScript das importierte Modul zuerst aus —
-// eine `const`-Pfeilfunktion aus 01-core.js liegt dann noch in der temporalen …
+// function statt const: Andere Module rufen G() & Co. schon beim eigenen Laden. Eine
+// const-Pfeilfunktion läge dann noch in der Todeszone und würfe „G is not a function“.
 // Ausführlich: docs/begruendungen/public/js/01-core.js.md#diese-helfer-werden-von-anderen-modulen
 /**
  * Als Formularelement typisiert: Die meisten Aufrufe lesen .value, .checked
@@ -120,7 +127,10 @@ export function alle(sel, wurzel = document) { return /** @type {HTMLElement[]} 
 export function eins(sel, wurzel = document) { return /** @type {HTMLElement | null} */ (wurzel.querySelector(sel)); }
 /** Der offene Reiter (data-tab des aktiven Knopfs in der Leiste). */
 export function aktiverReiter() { return eins('.ntab.active')?.dataset.tab; }
-/** Ein Symbol aus der Symbolfamilie (Sprite in index.html) als HTML. */
+/**
+ * Ein Symbol aus der Symbolfamilie (Sprite in index.html) als HTML.
+ * @param {string} name
+ */
 export function ico(name) { return `<svg class="ico" aria-hidden="true"><use href="#i-${esc(name)}"/></svg>`; }
 /**
  * Ein Vorschaubild aus einer Vorlage. Lädt es nicht, setzt 11-actions.js den
@@ -136,7 +146,10 @@ export function bildTag(o) {
     `${o.stil ? ` data-stil="${esc(o.stil)}"` : ''}${o.extra ? ' ' + o.extra : ''} />`;
 }
 
-/** Der Platzhalter einer Art: das Set-Bild oder das Symbol in einer getönten Fläche. */
+/**
+ * Der Platzhalter einer Art: das Set-Bild oder das Symbol in einer getönten Fläche.
+ * @param {string} art
+ */
 export function platzhalterInhalt(art) {
   // Dasselbe dezente Symbol wie bei Teilen und Figuren; das rote Logo füllte
   // ohne Bilder jede Karte gleich.
@@ -149,6 +162,7 @@ export function platzhalterInhalt(art) {
  * Zeigt den Platzhalter, solange ein Bild noch einmal versucht wird; das Bild
  * bleibt verborgen daneben und ersetzt ihn, sobald es doch lädt. Ohne das
  * stand während des zweiten Versuchs das Symbol des Browsers in der Kachel.
+ * @param {HTMLImageElement} img
  */
 export function bildVorlaeufig(img) {
   if (img.previousElementSibling?.classList.contains('bild-ph-vorlaeufig')) return;
@@ -158,14 +172,20 @@ export function bildVorlaeufig(img) {
   img.setAttribute('loading', 'eager');
 }
 
-/** Das Bild hat doch geladen: vorläufigen Platzhalter entfernen. */
+/**
+ * Das Bild hat doch geladen: vorläufigen Platzhalter entfernen.
+ * @param {HTMLImageElement} img
+ */
 export function bildGeladen(img) {
   const ph = img.previousElementSibling;
   if (!ph?.classList.contains('bild-ph-vorlaeufig')) return;
   ph.remove(); img.hidden = false; img.style.display = '';
 }
 
-/** Ersetzt ein Bild, das nicht lädt, durch seinen Platzhalter in derselben Grösse. */
+/**
+ * Ersetzt ein Bild, das nicht lädt, durch seinen Platzhalter in derselben Grösse.
+ * @param {HTMLImageElement} img
+ */
 export function bildPlatzhalter(img, vorlaeufig = false) {
   const alt = img.previousElementSibling;
   if (!vorlaeufig && alt?.classList.contains('bild-ph-vorlaeufig')) { alt.classList.remove('bild-ph-vorlaeufig'); img.remove(); return; }
@@ -176,8 +196,8 @@ export function bildPlatzhalter(img, vorlaeufig = false) {
   if (!img.getAttribute('alt')) ph.setAttribute('aria-hidden', 'true');
   const cs = getComputedStyle(img);
   // In der Kachel füllt der Platzhalter die Bildfläche; ein kaputtes Bild misst nur sein Symbol.
-  if (!img.closest('.sci')) for (const k of ['width', 'height', 'borderRadius', 'margin']) if (cs[k] && cs[k] !== 'auto') ph.style[k] = cs[k];
-  ph.innerHTML = platzhalterInhalt(img.dataset.ph);
+  if (!img.closest('.sci')) for (const k of /** @type {const} */ (['width', 'height', 'borderRadius', 'margin'])) if (cs[k] && cs[k] !== 'auto') ph.style[k] = cs[k];
+  ph.innerHTML = platzhalterInhalt(img.dataset.ph ?? '');
   if (vorlaeufig) { ph.classList.add('bild-ph-vorlaeufig'); img.before(ph); return; }
   img.replaceWith(ph);
 }
@@ -187,6 +207,7 @@ export function bildPlatzhalter(img, vorlaeufig = false) {
  * Buchstaben-Präfix echter Nummern (llca30, comcon001), dahinter ein
  * Versionsanhang (-1). Der Server prüft selbst; hier geht es darum, dass
  * „abc“ gar nicht erst als Set „abc-1“ angelegt wird.
+ * @param {string} eingabe
  */
 export function istSetnummer(eingabe) {
   return /^[A-Za-z]{0,12}\d{1,8}[A-Za-z0-9]{0,8}(-\d{1,3})?$/.test(String(eingabe ?? '').trim());
@@ -195,6 +216,8 @@ export function istSetnummer(eingabe) {
 /**
  * Eine Fehlermeldung direkt am Feld (leerer Text räumt sie weg). Vorleser
  * hören sie über role="alert" und finden sie über aria-describedby.
+ * @param {string} id
+ * @param {string} text
  */
 export function feldFehler(id, text) {
   const feld = G(id);
@@ -234,7 +257,11 @@ export function antwortFehler(d, felder, ersatz) {
   else toast(d?.error || ersatz, 'error');
 }
 
-/** Prüft das Set-Nummer-Feld vor dem Absenden; meldet am Feld und sagt, ob es weitergeht. */
+/**
+ * Prüft das Set-Nummer-Feld vor dem Absenden; meldet am Feld und sagt, ob es weitergeht.
+ * @param {string} id
+ * @param {string} wert
+ */
 export function setnummerFeldGueltig(id, wert) {
   const v = wert ?? (G(id)?.value || '').trim();
   if (!v) { feldFehler(id, tRaw('common.enter_set_number')); return false; }
@@ -256,13 +283,18 @@ export function leerZustand(o) {
   return `<div class="empty leer"><div class="leer-ico">${ico(o.ico)}</div><h2${k(o.titelKey)}>${esc(o.titelKey ? tRaw(o.titelKey) : o.titel)}</h2>${o.text || o.textKey ? `<p${k(o.textKey)}>${esc(o.textKey ? tRaw(o.textKey) : o.text)}</p>` : ''}${knopf}</div>`;
 }
 
-/** Der Knopf „Filter zurücksetzen“ für einen Leerzustand ohne Treffer. */
+/**
+ * Der Knopf „Filter zurücksetzen“ für einen Leerzustand ohne Treffer.
+ * @param {string} ansicht
+ */
 export function zuruecksetzenKnopf(ansicht) {
   return { text: tRaw('common.reset_filter'), click: 'filterZuruecksetzen', arg: ansicht, ico: 'schliessen', art: 'bs' };
 }
 
 /**
- * Einen Knopf für die Dauer eines Aufrufs sperren.
+ * Sperrt einen Knopf für die Dauer eines Aufrufs und merkt sich seine Beschriftung, statt sie danach
+ * neu zu setzen: Fest eingetragene Texte waren falsch übersetzt, und ein kurz leerer Knopf sah wie ein
+ * Fehler aus.
  * Ausführlich: docs/begruendungen/public/js/01-core.js.md#knopfbesetzt
  * @param {HTMLButtonElement | HTMLInputElement} btn
  * @param {string} [laeuft] Andere Beschriftung waehrend der Arbeit. NUR
@@ -276,7 +308,8 @@ export function zuruecksetzenKnopf(ansicht) {
  */
 export function knopfBesetzt(btn, laeuft) {
   const vorher = btn.textContent;
-  // Die Breite einfrieren, BEVOR sich etwas aendern kann.
+  // Die Breite einfrieren, bevor sich etwas ändert: Ein kürzerer Wartetext liesse sonst die ganze
+  // flex-Zeile daneben nachrutschen.
   // Ausführlich: docs/begruendungen/public/js/01-core.js.md#breite
   const breite = btn.offsetWidth;
   const minVorher = btn.style.minWidth;
@@ -297,27 +330,25 @@ export function knopfBesetzt(btn, laeuft) {
   };
 }
 
-// Return thumbnail URL if it would exist, else original
 /**
- * @param {string} src
- * @param {boolean} [thumb] Verkleinerte Fassung anfordern. Wirkt nur für
- *        Bilder, die über /api/img-proxy laufen (Rebrickable-CDN) — für
- *        lokale Dateien entscheidet ausschliesslich der Server (image_local
- *        ist bereits die richtige Adresse, siehe thumbUrl()).
- */
-/**
- * Die Adresse des Bild-Proxys — und die alte daneben.
+ * Der Bild-Proxy liegt unter /api/v1. Ältere image_url aus der Datenbank tragen noch die alte Adresse;
+ * erkannt werden beide, gebaut wird nur die neue.
  * Ausführlich: docs/begruendungen/public/js/01-core.js.md#img-proxy
  */
 const IMG_PROXY = '/api/v1/img-proxy';
 const IMG_PROXY_ALT = '/api/img-proxy';
-/** Traegt diese Adresse eine der beiden Proxy-Formen? */
+/**
+ * Traegt diese Adresse eine der beiden Proxy-Formen?
+ * @param {string} src
+ */
 function istProxyPfad(src) {
   return src.startsWith(IMG_PROXY) || src.startsWith(IMG_PROXY_ALT);
 }
 
 /**
- * Adressen auf den EIGENEN Server auf ihren Pfad zurückführen.
+ * Adressen auf den eigenen Server auf ihren Pfad kürzen: imgEl.src liefert die absolute Adresse, und
+ * der Proxy lehnt sich selbst als Ziel zu Recht ab (offene Weiterleitung). Ohne das brach der Zoom mit
+ * 403.
  * Ausführlich: docs/begruendungen/public/js/01-core.js.md#stripownorigin
  * @param {string} src
  * @returns {string} Pfad, wenn die Adresse auf den eigenen Ursprung zeigt, sonst unverändert
@@ -328,11 +359,19 @@ function stripOwnOrigin(src) {
   return src;
 }
 
+/**
+ * Die Adresse, unter der ein Bild geladen wird. `thumb` wirkt nur bei Bildern
+ * über den Proxy; bei lokalen Dateien entscheidet der Server (image_local
+ * ist schon die richtige Adresse, siehe thumbUrl()).
+ * @param {string | null | undefined} src
+ * @param {boolean | 'nur'} [thumb]  'nur': nur die verkleinerte Fassung, nie das Original nachladen
+ */
 export function imgUrl(src, thumb) {
   if (!src) return '';
   src = stripOwnOrigin(src);
 
-  // Bereits eine Server-Adresse (lokale Datei oder Proxy) — unverändert lassen.
+  // Lokale Datei oder schon über den Proxy: unverändert. Fremde Adressen lädt der Browser nie direkt —
+  // nur der Proxy setzt die Kopfzeilen gegen den Hotlink-Schutz und hält den Cache.
   // Ausführlich: docs/begruendungen/public/js/01-core.js.md#if-2
   if (src.startsWith('/data/') || src.startsWith('/images/') || istProxyPfad(src)) {
     return src;
@@ -346,10 +385,9 @@ export function imgUrl(src, thumb) {
   // Allowlist-Test im Client wäre nur eine weitere Stelle, die man vergisst
   // mitzupflegen.
   if (/^https?:\/\//.test(src)) {
-    // Teilebilder haben auf dem CDN keine _thumb-Variante; die Verkleinerung
-    // entsteht serverseitig aus dem Proxy-Cache (siehe routes/imgProxy.ts).
-    // `thumb` kennt drei Werte:
-    //   false  — volle Auflösung …
+    // Vorschauen entstehen im Proxy. `thumb` 'nur' nutzt eine vorhandene, rechnet aber keine neue: für den
+    // Katalog mit 25 000 fremden Sets, an denen man vorbeiscrollt. Der eigene Bestand bekommt die Vorschau
+    // (true).
     // Ausführlich: docs/begruendungen/public/js/01-core.js.md#tp
     const tp = thumb === 'nur' ? '&thumb=1&gen=0' : (thumb ? '&thumb=1' : '');
     return IMG_PROXY + '?url=' + encodeURIComponent(src) + tp;
@@ -362,9 +400,11 @@ export function imgUrl(src, thumb) {
  * Nötig, weil manche Sets image_local direkt auf die _thumb-Datei zeigen
  * (der Server kann das so abgelegt haben) — und weil Detailansicht und Zoom
  * die grosse Fassung zeigen sollen, nicht die Kachelgrösse.
+ * @param {string | null | undefined} src
+ * @returns {string}
  */
 export function fullUrl(src) {
-  if (!src) return src;
+  if (!src) return '';
   src = stripOwnOrigin(src);
   if (istProxyPfad(src)) return src.replace(/&thumb=1\b/, '').replace(/&gen=0\b/, '');
   // Absolute Adresse (CDN) auch hier über den Proxy — vorher wurde sie
@@ -375,11 +415,9 @@ export function fullUrl(src) {
 }
 
 /**
- * Wert für ein HTML-Attribut absichern. Wird für die Datenattribute des
- * Log-Fensters gebraucht: Token, Basis-URL und die Übersetzungen als JSON.
- */
-/**
- * Symbol für die BrickLink-Wanted-Listen-Knöpfe: ein XML-Dokument.
+ * Symbol für die BrickLink-XML-Knöpfe: eine Datei mit spitzen Klammern zeigt, was der Knopf tut. Der
+ * Ziegelstein stand schon für Teile und Sets, und das fremde BrickLink-Logo nachzuzeichnen wäre eine
+ * Anmassung.
  * Ausführlich: docs/begruendungen/public/js/01-core.js.md#xml-icon-svg
  */
 export const XML_ICON_SVG = '<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" '
@@ -404,6 +442,9 @@ export const TRASH_ICON_SVG = '<svg viewBox="0 0 24 24" xmlns="http://www.w3.org
   + '<path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>'
   + '<path d="M10 11v6"/><path d="M14 11v6"/></svg>';
 
+/**
+ * @param {string} v
+ */
 export function escHtmlAttr(v) {
   return String(v == null ? '' : v)
     .replace(/&/g, '&amp;').replace(/"/g, '&quot;')
@@ -411,8 +452,13 @@ export function escHtmlAttr(v) {
 }
 
 /**
- * Bildadresse für eine lokale Datei — unverändert, wie vom Server geliefert.
+ * Lokale Bildadressen bleiben, wie der Server sie liefert: Er weiss, ob es die Vorschau gibt. Eine
+ * selbst gebaute _thumb-Adresse lud Bilder, die nicht existierten, auch nach dem Neuladen nicht
+ * (gleich in der App).
  * Ausführlich: docs/begruendungen/public/js/01-core.js.md#thumburl
+ * @template {string | null | undefined} T
+ * @param {T} src
+ * @returns {T}
  */
 export function thumbUrl(src) {
   return src;
@@ -420,28 +466,28 @@ export function thumbUrl(src) {
 
 // Lazy image loading with IntersectionObserver and fade-in
 /**
- * Blendet Bilder erst beim Sichtbarwerden ein — und markiert alles, was schon
- * fertig geladen ist, SOFORT als geladen.
+ * Blendet Bilder beim Sichtbarwerden ein und markiert schon geladene sofort: Nach innerHTML starten
+ * alle <img> bei opacity 0, und bis der Beobachter antwortet, stand sonst eine kurz weisse Kachelwand
+ * da.
  * Ausführlich: docs/begruendungen/public/js/01-core.js.md#observelazyimages
+ * @param {ParentNode} [root]
  */
 export function observeLazyImages(root) {
-  const imgs = (root||document).querySelectorAll('img[loading=lazy]:not(.observed)');
+  const imgs = /** @type {NodeListOf<HTMLImageElement>} */ ((root||document).querySelectorAll('img[loading=lazy]:not(.observed)'));
   if(!imgs.length) return;
   // Synchron, VOR dem nächsten Paint
   imgs.forEach(img => { if(img.complete && img.naturalWidth > 0) img.classList.add('loaded'); });
-  if(!window._imgObserver){
-    window._imgObserver = new IntersectionObserver((entries) => {
-      entries.forEach(e => {
-        if(e.isIntersecting){
-          const img = /** @type {HTMLImageElement} */ (e.target);
-          if(img.complete) img.classList.add('loaded');
-          img.addEventListener('load', ()=>img.classList.add('loaded'), {once:true});
-          window._imgObserver.unobserve(img);
-        }
-      });
-    }, { rootMargin: '200px' });
-  }
-  imgs.forEach(img => { img.classList.add('observed'); window._imgObserver.observe(img); });
+  const beobachter = window._imgObserver ??= new IntersectionObserver((entries, obs) => {
+    entries.forEach(e => {
+      if(e.isIntersecting){
+        const img = /** @type {HTMLImageElement} */ (e.target);
+        if(img.complete) img.classList.add('loaded');
+        img.addEventListener('load', ()=>img.classList.add('loaded'), {once:true});
+        obs.unobserve(img);
+      }
+    });
+  }, { rootMargin: '200px' });
+  imgs.forEach(img => { img.classList.add('observed'); beobachter.observe(img); });
 }
 /** Anzeigedauer je Art in ms. */
 const TOAST_DAUER = { success: 3500, info: 5000, error: 9000 };
@@ -453,7 +499,10 @@ const _toastStand = new WeakMap();
 const _meldungenDerAbgelaufenenSitzung = new Set();
 /** @param {{text: string, fn: () => any, bleibt?: boolean}} [aktion] Knopf in der Meldung, z. B. „Rückgängig";
  *  `bleibt` hält ihn über einen Ansichtswechsel (verwirfToasts).
- * @param {string} [details] aufklappbare Ursache unter der Meldung */
+ * @param {string} [details] aufklappbare Ursache unter der Meldung
+ * @param {unknown} msg
+ * @param {'info' | 'success' | 'error'} [type]
+ */
 export function toast(msg, type='info', aktion, details) {
   const c = G('toasts');
   if (type === 'error' && !ME && [..._meldungenDerAbgelaufenenSitzung].some(m => String(msg ?? '').startsWith(m))) return null;
@@ -476,7 +525,7 @@ export function toast(msg, type='info', aktion, details) {
   // und Set-/Teilenummern aus Nutzereingaben.
   const icon = document.createElement('span');
   icon.className = 'toast-ico';
-  icon.innerHTML = ico({ success: 'ok', error: 'fehler' }[type] || 'info');
+  icon.innerHTML = ico(type === 'success' ? 'ok' : type === 'error' ? 'fehler' : 'info');
   const text = document.createElement('span');
   text.className = 'toast-text';
   text.textContent = String(msg ?? '');
@@ -553,8 +602,10 @@ export async function apiRoh(method, path, o = {}) {
  * JSON einer Antwort, deren Felder unverändert bleiben sollen (etwa ein eigenes
  * `status`, das api() mit dem HTTP-Status überschriebe). null bei Netzfehler,
  * Fehlerstatus oder einer Antwort, die kein JSON ist.
- * @param {string} method @param {string} path
- * @returns {Promise<any>}
+ * @template {string} M
+ * @template {string} P
+ * @param {M} method @param {P} path
+ * @returns {Promise<import('../../frontend-typen/api').ApiDaten<M, P>>}
  */
 export async function apiDaten(method, path) {
   try {
@@ -564,16 +615,18 @@ export async function apiDaten(method, path) {
 }
 
 /**
- * Aufruf der eigenen API mit JSON-Antwort. Liefert IMMER ein Objekt, nie eine
- * Ausnahme: Jeder Fehlschlag (Netz, HTML-Fehlerseite des Proxys, Status ohne
- * `success`) kommt als `{ success: false, error }` zurück, wie vom Server.
- * `status` und `networkError` sind für die Stellen, die genauer unterscheiden.
- * Ein FormData-Körper geht als Upload, jeder andere als JSON.
- * @param {string} method
- * @param {string} path
+ * Aufruf der eigenen API mit JSON-Antwort. Liefert immer ein Objekt, nie eine
+ * Ausnahme: Jeder Fehlschlag (Netz, Proxy-Fehlerseite, Status ohne `success`)
+ * kommt als `{ success: false, error, status }`, wie vom Server. Den Typ der
+ * Antwort liefert der Vertrag (frontend-typen/api.d.ts), wenn der Pfad als
+ * Literal oder Vorlage dasteht. FormData geht als Upload, alles andere als JSON.
+ * @template {string} M
+ * @template {string} P
+ * @param {M} method
+ * @param {P} path
  * @param {FormData | object | null} [body]
  * @param {{ signal?: AbortSignal, cache?: RequestCache }} [o]
- * @returns {Promise<any>}
+ * @returns {Promise<import('../../frontend-typen/api').ApiAntwort<M, P>>}
  */
 export async function api(method, path, body, o = {}) {
   let res;
@@ -752,18 +805,29 @@ if (typeof window !== 'undefined') {
 }
 
 /**
- * Ein GELDBETRAG in der Waehrung des Nutzers.
+ * Ein Geldbetrag in der Währung des Nutzers. Ohne Angabe gilt die eingestellte Währung, nicht fest
+ * EUR: Sonst stand bei Franken still „EUR“ da. test/geldformat.test.js hält fest, dass kein Aufruf sie
+ * weglässt.
  * Ausführlich: docs/begruendungen/public/js/01-core.js.md#fmtn
+ * @param {number | string | null | undefined} v
+ * @param {string} [cur]
  */
 export function fmtN(v,cur){
   if(!v||v==0) return '—';
-  return new Intl.NumberFormat(locale(),{style:'currency',currency:cur||CURRENCY||'EUR',minimumFractionDigits:2}).format(v);
+  return new Intl.NumberFormat(locale(),{style:'currency',currency:cur||CURRENCY||'EUR',minimumFractionDigits:2}).format(Number(v));
 }
-/** Ein erfasster Kaufpreis von 0 ist ein Geschenk; fehlt er (null), ist er unbekannt. */
+/**
+ * Ein erfasster Kaufpreis von 0 ist ein Geschenk; fehlt er (null), ist er unbekannt.
+ * @param {unknown} kauf
+ */
 export function istGeschenk(kauf){
   return kauf !== null && kauf !== undefined && String(kauf).trim() !== '' && Number(kauf) === 0;
 }
-/** Betrag, bei dem 0 ein Wert ist (Kaufpreis): „0,00 €“ statt „—“. */
+/**
+ * Betrag, bei dem 0 ein Wert ist (Kaufpreis): „0,00 €“ statt „—“.
+ * @param {number | string | null | undefined} v
+ * @param {string} [cur]
+ */
 export function fmtGeld(v, cur){
   if (v === null || v === undefined || String(v).trim() === '' || !Number.isFinite(Number(v))) return '—';
   return Number(v) === 0 ? new Intl.NumberFormat(locale(),{style:'currency',currency:cur||CURRENCY||'EUR',minimumFractionDigits:2}).format(0) : fmtN(v, cur);
@@ -796,7 +860,10 @@ export function leseBetrag(roh) {
   return Number((gruppen.join('') || '0') + (nach ? '.' + nach : ''));
 }
 
-/** Ein Betrag für ein Eingabefeld in der Schreibweise der Sprache („129,99“ de-DE), ohne Tausender. */
+/**
+ * Ein Betrag für ein Eingabefeld in der Schreibweise der Sprache („129,99“ de-DE), ohne Tausender.
+ * @param {number | string | null | undefined} v
+ */
 export function betragFuerFeld(v) {
   if (v === null || v === undefined || String(v).trim() === '' || !Number.isFinite(Number(v))) return '';
   return new Intl.NumberFormat(locale(), { useGrouping: false, minimumFractionDigits: 2, maximumFractionDigits: 4 }).format(Number(v));
@@ -834,7 +901,10 @@ export function fmtPct(v, o = {}) {
   return new Intl.NumberFormat(locale(), { style: 'percent', minimumFractionDigits: stellen,
     maximumFractionDigits: stellen, signDisplay: o.vorzeichen === false ? 'auto' : 'exceptZero' }).format(n / 100);
 }
-/** Grosse Anzahl kurz in der Sprache der Oberfläche: „1300“ → „1,3 Tsd.“ (de), „1.3K“ (en). */
+/**
+ * Grosse Anzahl kurz in der Sprache der Oberfläche: „1300“ → „1,3 Tsd.“ (de), „1.3K“ (en).
+ * @param {number | string | null | undefined} n
+ */
 export function fmtBig(n){
   const v = Number(n) || 0;
   if (v < 10000) return v.toLocaleString(locale());
@@ -860,6 +930,7 @@ export function fmtDatum(v, art = 'tag'){
 }
 
 // ── LANGUAGE HELPERS ────────────────────────────────────────────────────────
+/** @param {string} lang */
 export function setLang(lang) {
   applyLang(lang, true);
   _updateLangSelect();
@@ -902,14 +973,15 @@ if (typeof document !== 'undefined') document.addEventListener('input', (ev) => 
   if (f?.getAttribute('aria-invalid') === 'true') f.removeAttribute('aria-invalid');
 });
 
-// Setzt das globale App-Design (vom Admin gewählt) als data-theme auf <html>.
-// Das CSS bringt für [data-theme="brick"] das blaue Stein-Design mit.
+// Reicht das Design an 00-theme-boot.js weiter, das es schon im <head> anwendet und den Cache führt:
+// So wirkt ein Wechsel sofort und beim nächsten Laden ohne Aufblitzen.
 // Ausführlich: docs/begruendungen/public/js/01-core.js.md#applytheme
+/**
+ * @param {string} theme
+ */
 export function applyTheme(theme){
-  // Hier stand `if (theme !== 'brick' && theme !== 'classic') return null;` —
-  // eine EIGENE Liste der gueltigen Designs, geschrieben, als es zwei gab.
-  // Inzwischen sind es sechs. Die vier neueren wurden hier abgewiesen und
-  // NIE angewendet: Der Wechsel wirkte erst beim naechsten Seitenaufruf, …
+  // Keine eigene Liste gültiger Designs: Die alte kannte zwei von sechs, und die neueren wirkten erst
+  // nach dem Neuladen. Gültig ist, was 00-theme-boot.js kennt; ohne dieses Skript wird nichts gesetzt.
   // Ausführlich: docs/begruendungen/public/js/01-core.js.md#if
   if (typeof window.__bimApplyTheme !== 'function') return null;
   return window.__bimApplyTheme(theme);
@@ -930,7 +1002,8 @@ export async function initDefaultCondition(){
 }
 
 /**
- * Den Namenszug in der Kopfleiste schreiben — mit dem Verwalter-Zusatz.
+ * Der Name in der Kopfleiste, für Verwalter mit „(Verwalter)“ statt eigener Plakette. Eine Funktion,
+ * weil Anmeldung und Profil ihn schreiben und eine zweite Fassung schon einmal ins Leere lief.
  * Ausführlich: docs/begruendungen/public/js/01-core.js.md#zeigebenutzernamen
  */
 export function zeigeBenutzernamen(){

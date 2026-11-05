@@ -10,10 +10,9 @@ import { autosaveSet, closeImageLightbox, openImageLightbox } from './07-set-det
 import { hideProgress } from './01-fortschritt.js';
 import { deleteManualPart } from './03-parts.js';
 
-// Ziel: `script-src 'unsafe-inline'` aus der CSP entfernen. Solange irgendwo
-// `onclick="…"` im Markup steht, muss der Browser Inline-Skript erlauben — und
-// damit fehlt genau die Verteidigungslinie, die bei einer übersehenen
-// XSS-Lücke greifen würde.
+// Ein delegierter Dispatcher für data-click & Co. statt onclick im Markup: So kommt die CSP ohne
+// script-src 'unsafe-inline' aus, und eine übersehene XSS-Lücke trifft noch auf diese
+// Verteidigungslinie.
 // Ausführlich: docs/begruendungen/public/js/11-actions.js.md#ziel-script-src-unsafe-inline-aus-der-cs
 
 (function () {
@@ -29,6 +28,7 @@ import { deleteManualPart } from './03-parts.js';
 
   // Ausser click nimmt jedes Ereignis nur die Handler, die das Markup dafür
   // wirklich nutzt; test/aktionen-schutz.test.js gleicht die Liste ab.
+  /** @type {Record<string, Set<string>>} */
   const NUR = {
     change: new Set(['acqSave', 'aendereAlarmSchwelle', 'autosaveSet', 'benenneLagerortUm',
       'gutscheinDateiGewaehlt', 'gutscheinLandSpeichern', 'importAlarmeCsv', 'importConfig', 'importFigsCsv',
@@ -59,21 +59,31 @@ import { deleteManualPart } from './03-parts.js';
     'auftragAbbrechen', 'auftragsArtLeeren',
   ]);
 
+  /**
+   * @param {string} type
+   */
   function attrFor(type) { return 'data-' + type; }
 
   /**
-   * Löst den Handlernamen über die Registry auf (js/00-registry.js).
+   * Handlernamen über die Registry auflösen: Modul-Funktionen liegen nicht auf window. resolveAction()
+   * fällt intern noch auf window zurück, für den Log-Betrachter, der als klassisches Skript im eigenen
+   * Popup läuft.
    * Ausführlich: docs/begruendungen/public/js/11-actions.js.md#resolve
+   * @param {string} name
    */
   function resolve(name) {
     return resolveAction(name);
   }
 
+  /**
+   * @param {string} type
+   * @param {Event} ev
+   */
   function handle(type, ev) {
-    const el = ev.target?.closest?.(`[${attrFor(type)}]`);
+    const el = /** @type {HTMLElement | null | undefined} */ (/** @type {Element | null} */ (ev.target)?.closest?.(`[${attrFor(type)}]`));
     if (!el) return;
     const name = el.getAttribute(attrFor(type));
-    if ((NUR[type] && !NUR[type].has(name)) || (GEFAEHRLICH.has(name) && !istVertraut(el))) {
+    if (name === null || (NUR[type] && !NUR[type].has(name)) || (GEFAEHRLICH.has(name) && !istVertraut(el))) {
       console.warn('[actions] abgewiesen:', type, name); return;
     }
     const fn = resolve(name);
@@ -90,7 +100,7 @@ import { deleteManualPart } from './03-parts.js';
       if (!el.hasAttribute(key)) break;
       args.push(el.getAttribute(key));
     }
-    if (el.dataset.val === '1') args.push(el.value);
+    if (el.dataset.val === '1') args.push(/** @type {HTMLInputElement} */ (el).value);
     args.push(ev);
     try { fn.apply(el, args); }
     catch (e) { console.error('[actions]', name, e); }
@@ -116,10 +126,9 @@ import { deleteManualPart } from './03-parts.js';
     el.click();
   });
 
-  // Die Anmelde-, Registrier- und Passwortfelder liegen seit Nachtrag … in
-  // einem <form>. Nicht aus Formtreue: Ohne umgebendes Formular meldet Chrome
-  // „Password field is not contained in a form", und Passwortmanager bieten
-  // Speichern und Ausfuellen dann nur noch nach Heuristik an — mal ja, mal …
+  // Anmelde- und Passwortfelder stehen in einem <form>, damit Passwortmanager zuverlässig speichern und
+  // ausfüllen. Abgesendet wird nie: Ein echtes Absenden lüde die Seite neu; stattdessen läuft der Knopf
+  // aus data-submit.
   // Ausführlich: docs/begruendungen/public/js/11-actions.js.md#die-anmelde-registrier-und-passwortfelde
   document.addEventListener('submit', ev => {
     const form = ev.target;
@@ -152,7 +161,8 @@ import { deleteManualPart } from './03-parts.js';
     const el = ev.target;
     if (!(el instanceof HTMLImageElement)) return;
 
-    // Erst einmal wiederholen, bevor aufgegeben wird.
+    // Einmal wiederholen, bevor aufgegeben wird: Ein einzelner Verbindungsfehler (ETIMEDOUT beim CDN)
+    // liess die Kachel sonst dauerhaft leer, obwohl das Bild in Ordnung war.
     // Ausführlich: docs/begruendungen/public/js/11-actions.js.md#if
     if (!el.dataset.retried && el.src) {
       el.dataset.retried = '1';
@@ -184,13 +194,12 @@ import { deleteManualPart } from './03-parts.js';
     else { el.removeAttribute('src'); el.classList.add('loaded'); }
   }, true);
 
-  // styles.css blendet JEDES img[loading=lazy] auf opacity:0 aus und erst die
-  // Klasse .loaded wieder ein. Die Markierung darf deshalb nicht an data-fade
-  // hängen — sonst bleibt jedes Bild unsichtbar, dem beim Ergänzen von
-  // loading="lazy" das Zusatzattribut gefehlt hat. Genau das ist passiert: …
+  // .loaded an jedes img[loading=lazy], nicht nur an data-fade: styles.css blendet alle lazy-Bilder aus,
+  // und ohne Zusatzattribut blieben sie sonst trotz geladenem Bild unsichtbar.
   // Ausführlich: docs/begruendungen/public/js/11-actions.js.md#markloaded
+  /** @param {EventTarget | null} el */
   function markLoaded(el) {
-    if (el && el.tagName === 'IMG' && el.getAttribute('loading') === 'lazy') {
+    if (el instanceof HTMLImageElement && el.getAttribute('loading') === 'lazy') {
       el.classList.add('loaded');
     }
     const bild = /** @type {HTMLImageElement} */ (el);
@@ -230,7 +239,10 @@ function closeImportProgress() {
   if (b) b.style.display = 'none';
 }
 
-/** War: onclick="if(event.target===this)closeImageLightbox()" — nur der Hintergrund schliesst. */
+/**
+ * War: onclick="if(event.target===this)closeImageLightbox()" — nur der Hintergrund schliesst.
+ * @param {Event} ev
+ */
 function lightboxBackdrop(ev) {
   if (ev && ev.target === this) closeImageLightbox();
 }
@@ -254,9 +266,9 @@ function setLangFromEl() { setLang(this.value); }
 /** @this {HTMLSelectElement} */
 function setzeDunkel() { window.__bimDunkel?.(this.value); }
 
-/** Neu zeichnen mit der zuletzt geladenen Liste. */
 /**
- * Der Ansichtsumschalter des Figuren-Reiters — fuer BEIDE Listen.
+ * Der Ansichtsumschalter des Figuren-Reiters gilt für beide Listen: Er steht über beiden, also
+ * schaltet er auch die manuell erfassten Figuren um.
  * Ausführlich: docs/begruendungen/public/js/11-actions.js.md#renderfigsall
  */
 function renderFigsAll() { renderFigs(alleFiguren()); renderManualFigsTable(); }
@@ -265,16 +277,25 @@ function renderFigsAll() { renderFigs(alleFiguren()); renderManualFigsTable(); }
 // Alle bekommen `this` = auslösendes Element und das Ereignis als letztes
 // Argument (siehe Dispatcher oben).
 
-/** War: onclick="event.stopPropagation()" */
+/**
+ * War: onclick="event.stopPropagation()"
+ * @param {Event | undefined} ev
+ */
 export function stopEvent(ev) { ev?.stopPropagation(); }
 
-/** War: onkeydown="if(event.key==='Enter'){this.blur()}" */
+/**
+ * War: onkeydown="if(event.key==='Enter'){this.blur()}"
+ * @param {KeyboardEvent | undefined} ev
+ */
 export function blurOnEnter(ev) { if (ev?.key === 'Enter') this.blur(); }
 
 /** War: onclick="document.getElementById('btn-job-trigger').click()" */
 export function clickJobTrigger() { document.getElementById('btn-job-trigger')?.click(); }
 
-/** War: onchange="saveJobSchedule('${k}',{time:this.value})" */
+/**
+ * War: onchange="saveJobSchedule('${k}',{time:this.value})"
+ * @param {string} k
+ */
 export function saveJobTime(k) {
   const m = /^\s*(\d{1,2})\s*[:.]?\s*(\d{2})\s*$/.exec(this.value);
   const gueltig = !!m && +m[1] < 24 && +m[2] < 60;
@@ -284,22 +305,37 @@ export function saveJobTime(k) {
   saveJobSchedule(k, { time: this.value });
 }
 
-/** War: onchange="saveJobSchedule('${k}',{minutes:this.value})" */
+/**
+ * War: onchange="saveJobSchedule('${k}',{minutes:this.value})"
+ * @param {string} k
+ */
 export function saveJobMinutes(k) { saveJobSchedule(k, { minutes: this.value }); }
 
 /** War: onblur="updateManualFig('${id}',{bl_fig_number:this.value.trim()||null})" */
 // owner: Besitzer der Karte. Ohne ihn schriebe der Server in die Zeile des
 // Aufrufers statt in die angezeigte — siehe openManDetail.
+/**
+ * @param {string} id
+ * @param {string} owner
+ */
 export function saveManualFigBl(id, owner) {
   updateManualFig(id, { bl_fig_number: this.value.trim() || null }, owner);
 }
 
-/** War: onclick="event.stopPropagation();delSet('${sn}')" — Löschen auf klickbarer Kachel */
+/**
+ * War: onclick="event.stopPropagation();delSet('${sn}')" — Löschen auf klickbarer Kachel
+ * @param {string} sn
+ * @param {Event | undefined} ev
+ */
 export function delSetStop(sn, ev) { ev?.stopPropagation(); delSet(sn); }
 
 /**
- * Löschen von einer KACHEL aus — Figur, Teil, Merkposten.
+ * Löschen von einer Kachel aus, mit stopPropagation: Die Kachel hat selbst ein data-click, und ohne
+ * Stopp öffnete der Papierkorb zusätzlich den Dialog hinter der Löschabfrage.
  * Ausführlich: docs/begruendungen/public/js/11-actions.js.md#deletemanualfigstop
+ * @param {string} n
+ * @param {string} owner
+ * @param {Event | undefined} ev
  */
 export function deleteManualFigStop(n, owner, ev) { ev?.stopPropagation(); deleteManualFig(n, owner); }
 
@@ -307,6 +343,7 @@ export function deleteManualFigStop(n, owner, ev) { ev?.stopPropagation(); delet
  * @param {string} partNumber
  * @param {string} colorId Kommt als Zeichenkette aus data-arg2
  * @param {Event} ev
+ * @param {string} owner
  */
 export function deleteManualPartStop(partNumber, colorId, owner, ev) {
   ev?.stopPropagation();
@@ -319,13 +356,20 @@ export function deleteManualPartStop(partNumber, colorId, owner, ev) {
  * Die Zeile oeffnet seit dem 24.09. auf ihrer GANZEN Flaeche das Detail —
  * damals, weil sie keinen Knopf mehr trug. Jetzt traegt sie wieder einen, und
  * genau deshalb braucht er dieselbe Stop-Fassung wie die Kacheln daneben.
+ * @param {string} arg
+ * @param {Event | undefined} ev
  */
 export function merkpostenLoeschenStop(arg, ev) {
   ev?.stopPropagation();
   merkpostenLoeschen(arg);
 }
 
-/** War: onclick="openPdfViewer('${href}','${desc}');return false;" auf einem Link */
+/**
+ * War: onclick="openPdfViewer('${href}','${desc}');return false;" auf einem Link
+ * @param {string} href
+ * @param {string} desc
+ * @param {Event | undefined} ev
+ */
 export function openPdfViewerLink(href, desc, ev) { ev?.preventDefault(); openPdfViewer(href, desc || ''); }
 
 /** War: onclick="const q=G('m-qty');q.value=Math.max(1,parseInt(q.value||1)-1);autosaveSet()" */

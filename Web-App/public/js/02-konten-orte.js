@@ -6,25 +6,20 @@ import { SCOPE_VIEWS, scopeMode, setScopeMode } from './14-scope.js';
 import { ladeLagerorte, lagerortBlock } from './02-detailfelder.js';
 import { tRaw } from '../i18n.js';
 import { esc } from './00-escapen.js';
+/** @typedef {import('../../frontend-typen/vertrag').HouseholdMember} HouseholdMember */
 
-/**
- * Kontoauswahl beim Erfassen — nur im Haushalt.
- *
- * Die Liste kommt vom Server (/sets/household-members) und enthält bei einem
- * Konto ohne Verknüpfung genau einen Eintrag. Dann bleibt das Feld verborgen:
- * Eine Auswahl mit einer einzigen Möglichkeit ist keine Auswahl, sondern eine
- * Frage, die sich nicht stellt.
- */
 /**
  * Kontofilter je Ansicht sichtbar machen und mit dem gespeicherten Wert füllen.
  *
  * Bleibt verborgen, solange das Konto keine Unterkonten hat: Ein Filter mit
  * genau einer möglichen Antwort ist keine Wahl, sondern eine Frage, die sich
  * nicht stellt.
+ * @param {HouseholdMember[]} members
  */
 export function initScopeSelects(members) {
   const isMain = members.length > 1;
-  // Einträge: Alle Konten, Eigene, dann JEDES Unterkonto namentlich.
+  // Alle, Eigene, dann jedes Unterkonto namentlich. „Unterkonten“ als Sammelposten fügte nichts hinzu;
+  // der Server versteht accounts=subs weiter für ältere Apps.
   // Ausführlich: docs/begruendungen/public/js/02-konten-orte.js.md#subs
   const subs = members.filter(m => !m.is_self);
   const opts = [
@@ -46,10 +41,8 @@ export function initScopeSelects(members) {
     el.style.display = '';
   }
 
-  // Die Teileliste hat kein Auswahlfeld, sondern eine Wahl mit zwei
-  // Möglichkeiten („Unterkonten mit einbeziehen", index.html). Sie beantwortet
-  // dort dieselbe Frage und gehorcht deshalb derselben Regel: Wer keine
-  // Unterkonten hat, bekommt sie nicht zu sehen — ein Schalter ohne Wirkung …
+  // Der Schalter „Unterkonten einbeziehen“ der Teileliste folgt derselben Regel: ohne Unterkonten nicht
+  // zu sehen. Er steht hier, weil isMain hier aus derselben Antwort feststeht.
   // Ausführlich: docs/begruendungen/public/js/02-konten-orte.js.md#subsbox
   const subsBox = G('pl-bestand-subs-box');
   if (subsBox) {
@@ -68,12 +61,18 @@ export function initScopeSelects(members) {
  * Merkliste baut seine Zeilen beim Oeffnen und braucht die Liste dann —
  * lange nach loadHouseholdMembers(). Ein zweiter Abruf waere ein zweiter
  * Stand derselben Antwort.
+ * @type {HouseholdMember[]}
  */
 let _haushalt = [];
 
 /** Die gemerkten Konten. Leer, solange noch keine Antwort da war. */
 export function haushaltsKonten() { return _haushalt; }
 
+/**
+ * Kontoauswahl beim Erfassen, nur im Haushalt: Bei einem Konto ohne
+ * Verknüpfung liefert der Server genau einen Eintrag, und eine Auswahl mit
+ * einer Möglichkeit bleibt verborgen.
+ */
 export async function loadHouseholdMembers() {
   const d = await api('GET', '/v1/sets/household-members').catch(() => null);
   const members = d?.members || [];
@@ -91,10 +90,8 @@ export async function loadHouseholdMembers() {
   const html = members.map(m =>
     `<option value="${m.id}"${m.is_self ? ' selected' : ''}>${esc(m.username)}${m.is_self ? ' ' + esc(tRaw('household.ich')) : ''}</option>`
   ).join('');
-  // Alle drei Erfassen-Formulare: Set, manuelles Teil, manuelle Minifigur.
-  // Dieselbe Liste, dieselbe Regel — ein Kaufpreis für ein Kind zu erfassen
-  // soll für alle drei gleich gehen.
-  // cat-m-owner dabei — der Katalog-Dialog ist der vierte …
+  // Alle fünf Erfassungswege (Set, Teil, Figur, Katalog, Merkliste) bekommen dieselbe Kontoauswahl:
+  // Etwas für ein Kind zu erfassen soll überall gleich gehen.
   // Ausführlich: docs/begruendungen/public/js/02-konten-orte.js.md#for
   for (const id of ['add-owner', 'ap-owner', 'af-owner', 'cat-m-owner', 'mk-owner']) {
     const box = G(`${id}-box`), sel = G(id);
@@ -107,7 +104,8 @@ export async function loadHouseholdMembers() {
 }
 
 /**
- * Die Lagerortfelder der fuenf ERFASSUNGSWEGE einmal zeichnen.
+ * Die Lagerortfelder der fünf Erfassungswege, einmal aus lagerortBlock() gezeichnet statt fünfmal im
+ * HTML. Zusammen mit der Kontoauswahl, weil beide warten, bis der Haushalt geladen ist.
  * Ausführlich: docs/begruendungen/public/js/02-konten-orte.js.md#erfassungs-ortfelder
  */
 export const ERFASSUNGS_ORTFELDER = ['add-storage', 'ap-storage', 'af-storage',
@@ -123,7 +121,11 @@ export const ERFASSUNGS_ORTFELDER = ['add-storage', 'ap-storage', 'af-storage',
  */
 let _ortVorgabe = '';
 
-/** Ein Lagerortfeld eines Erfassungswegs neu zeichnen. */
+/**
+ * Ein Lagerortfeld eines Erfassungswegs neu zeichnen.
+ * @param {string} id
+ * @param {string} wert
+ */
 function zeichneOrtFeld(id, wert) {
   const slot = G(`${id}-slot`);
   if (!slot) return;
@@ -147,7 +149,8 @@ export function zeichneLagerortFelder() {
 }
 
 /**
- * Die Vorgabe holen und die Erfassungsfelder darauf stellen.
+ * Die Vorgabe steht beim Vorrat (/v1/storage/locations), nicht bei den belegten Orten. Nachgezogen
+ * wird nur ein noch leeres Feld: Wer inzwischen selbst gewählt hat, behält seine Wahl.
  * Ausführlich: docs/begruendungen/public/js/02-konten-orte.js.md#ladelagerortvorgabe
  */
 export async function ladeLagerortVorgabe() {
@@ -161,8 +164,10 @@ export async function ladeLagerortVorgabe() {
 }
 
 /**
- * Das Lagerortfeld eines Erfassungswegs auf den Ausgangszustand stellen.
+ * Den Anfangszustand herstellen: Ein Ort von vorhin sähe wie eine Vorgabe aus. Gibt es eine Vorgabe,
+ * steht sie da; gezeichnet statt gesetzt, damit Auswahl und Textfeld dasselbe sagen.
  * Ausführlich: docs/begruendungen/public/js/02-konten-orte.js.md#leerelagerortfeld
+ * @param {string} id
  */
 export function leereLagerortFeld(id) {
   if (G(`${id}-slot`)) { zeichneOrtFeld(id, _ortVorgabe); return; }
@@ -175,14 +180,20 @@ export function leereLagerortFeld(id) {
 }
 
 /**
- * Der gewaehlte Lagerort eines Formulars — `''`, wenn keiner dasteht.
+ * Der gewählte Lagerort, `''` wenn keiner dasteht — nie undefined: Ein geleertes Feld heisst „kein
+ * Ort“, ein fehlender Schlüssel „Vorgabe nehmen“, und der Server setzt die Vorgabe nur im zweiten Fall
+ * ein.
  * Ausführlich: docs/begruendungen/public/js/02-konten-orte.js.md#selectedstorage
+ * @param {string} id
  */
 export function selectedStorage(id) {
   return (G(id)?.value || '').trim();
 }
 
-/** Gewähltes Zielkonto eines Formulars — undefined, solange es keines gibt. */
+/**
+ * Gewähltes Zielkonto eines Formulars — undefined, solange es keines gibt.
+ * @param {string} selectId
+ */
 export function selectedOwner(selectId) {
   const box = G(`${selectId}-box`), sel = G(selectId);
   if (!box || box.style.display === 'none' || !sel?.value) return undefined;

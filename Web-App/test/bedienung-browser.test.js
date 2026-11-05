@@ -106,7 +106,9 @@ test('Bedienung: Fokus, Zielgrössen, Hover, Anmeldemaske', { timeout: 240_000 }
   await bis(`getComputedStyle(document.getElementById('login-screen')).display !== 'none'`, 'Anmeldemaske');
   // Der Testserver hat keine Domäne in APP_BASE_URL und blendet Passkey und
   // „Passwort vergessen?“ aus; gemessen wird die volle Maske.
-  await bis(`document.getElementById('link-forgot').hidden`, 'Anmeldewege abgefragt');
+  // Erst wenn die jüngste Antwort eingetragen ist: Eine spätere blendete sonst
+  // den eben eingeblendeten Passkey-Knopf wieder aus.
+  await bis(`document.getElementById('login-screen').dataset.anmeldewege === 'geladen'`, 'Anmeldewege abgefragt');
   await b.auswerten(`document.getElementById('btn-passkey').hidden = false; document.getElementById('link-forgot').hidden = false; true`);
   for (const design of ['classic', 'brick', 'werkbank', 'farbfaecher', 'noppe', 'hochglanz']) {
     await t.test(`Anmeldemaske ${design}`, async () => {

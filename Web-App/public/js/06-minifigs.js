@@ -14,6 +14,11 @@ import { leereLagerortFeld, selectedOwner, selectedStorage } from './02-konten-o
 import { confirmDelete } from './01-rueckfrage.js';
 
 // ── MINIFIGUREN ──────────────────────────────────────────────────────────────
+/**
+ * @typedef {import('../../frontend-typen/vertrag').GET_api_v1_minifigs['figs'][number]} Figur
+ * @typedef {import('../../frontend-typen/vertrag').ManualFigsResponse['figs'][number]} ManuelleFigur
+ */
+/** @type {Figur[]} */
 let allFigsCache = [];
 /** Die zuletzt geladenen Figuren aus Sets (nur lesen). */
 export function alleFiguren() { return allFigsCache; }
@@ -25,14 +30,14 @@ export function alleFiguren() { return allFigsCache; }
 const FIG_PAGE_SIZE = 60;
 let _figGen = 0, _figPage = 1, _figDone = false, _figLoadingMore = false, _figTotal = 0;
 
+/** @param {number} page */
 function figParams(page) {
   const p = new URLSearchParams();
-  p.set('page', page);
+  p.set('page', String(page));
   p.set('page_size', String(FIG_PAGE_SIZE));
-  // Manuell erfasste Figuren haben oben eine eigene Sektion. Der Ausschluss
-  // gehört auf den Server — clientseitig gefiltert könnte eine ganze Seite
-  // wegfallen und die Liste bliebe scheinbar leer.
-  // Fest 'set': Manuell erfasste Figuren haben ihren eigenen Bereich mit …
+  // Fest 'set': Manuell erfasste Figuren haben oben eine eigene Sektion. Der Ausschluss gehört auf den
+  // Server — clientseitig gefiltert könnte eine ganze Seite wegfallen und die Liste bliebe scheinbar
+  // leer.
   // Ausführlich: docs/begruendungen/public/js/06-minifigs.js.md#manuell-erfasste-figuren-haben-oben-eine
   p.set('source', 'set');
   const q = G('fig-search')?.value?.trim();
@@ -91,19 +96,17 @@ export async function loadMinifigs() {
   renderFigs(allFigsCache);
   loadManualFigsTable();
 
-  // Stats
-  // Kennzahlen MIT dem Filter des Reiters — vorher lief die Abfrage ohne ihn
-  // und ohne Blickfeld: Im Haushalt zeigte die Kachel die eigenen Zahlen,
-  // während die Liste darunter alle Konten zeigte, und Umschalten änderte oben …
+  // Kennzahlen mit dem Filter des Reiters: Sonst zeigte die Kachel im Haushalt die eigenen Zahlen,
+  // während die Liste darunter alle Konten zeigte.
   // Ausführlich: docs/begruendungen/public/js/06-minifigs.js.md#s
-  const s = await api('GET', '/v1/minifigs/stats'+scopeQuery('minifigs'));
+  const s = await api('GET', `/v1/minifigs/stats${scopeQuery('minifigs')}`);
   if (s.success) {
-    G('mf-unique').textContent = s.stats.types;
-    G('mf-total').textContent  = s.stats.total_quantity;
+    G('mf-unique').textContent = String(s.stats.types);
+    G('mf-total').textContent  = String(s.stats.total_quantity);
   }
   // Manual valuation — mit dem Filter des Minifiguren-Reiters, damit die
   // Wertangabe zur Liste darüber passt.
-  const v = await api('GET', '/v1/finance/minifigs-valuation'+scopeQuery('minifigs'));
+  const v = await api('GET', `/v1/finance/minifigs-valuation${scopeQuery('minifigs')}`);
   if (v.success && parseFloat(v.total_value) > 0) {
     G('mf-val').textContent = fmtN(v.total_value, v.currency || CURRENCY);
   } else if (G('mf-val')) {
@@ -112,17 +115,18 @@ export async function loadMinifigs() {
 }
 
 /**
- * Suche und Quellenfilter liegen auf dem Server (getMinifigs kannte beide
- * schon). Hier wird deshalb neu GELADEN statt clientseitig gefiltert — sonst
- * durchsuchte der Filter nur die bereits geladene Seite.
+ * Suche und Quelle filtert der Server; hier wird neu geladen, sonst durchsuchte der Filter nur die
+ * geladene Seite. Beide Listen, weil die manuellen Figuren unter derselben Filterleiste stehen.
  * Ausführlich: docs/begruendungen/public/js/06-minifigs.js.md#filterfigs
  */
 function filterFigs() { loadMinifigs(); loadManualFigsTable(); }
 
 /**
- * Hängt eine nachgeladene Seite an, statt die Liste neu zu bauen.
+ * Hängt eine nachgeladene Seite an, statt die Liste neu zu bauen: Ein Ersetzen per innerHTML brach die
+ * laufenden Bildanfragen ab, und Kacheln, deren Bild nie über eine Runde hinauskam, blieben leer.
  * Ausführlich: docs/begruendungen/public/js/06-minifigs.js.md#appendfigs
  */
+/** @param {Figur[]} batch */
 function appendFigs(batch) {
   const el = G('figs-list');
   // Die Seite losgelöst rendern, damit die bestehende Liste unangetastet bleibt.
@@ -149,7 +153,7 @@ function appendFigs(batch) {
 }
 
 /**
- * @param {Array} list
+ * @param {(Figur | ManuelleFigur)[]} list
  * @param {HTMLElement} [target] Zielcontainer. Vorgabe ist #figs-list.
  *        Wird ein anderer übergeben, kann eine Seite losgelöst gerendert und
  *        anschliessend angehängt werden — siehe appendFigs().
@@ -167,7 +171,8 @@ export function renderFigs(list, target) {
   const viewMode = G('figs-view')?.value || 'grid';
 
   if (viewMode === 'table') {
-    // Ohne die Spalten „Quelle" und Papierkorb.
+    // Ohne „Quelle“ und Papierkorb: Diese Liste lädt nur source=set, beide Spalten wären in jeder Zeile
+    // gleich bzw. leer. Manuelle Figuren haben ihren eigenen Bereich mit editierbaren Karten.
     // Ausführlich: docs/begruendungen/public/js/06-minifigs.js.md#ohne-die-spalten-quelle-und-papierkorb
     el.innerHTML = `<div class="tw"><table class="dt">
       <thead><tr>
@@ -175,7 +180,7 @@ export function renderFigs(list, target) {
       </tr></thead>
       <tbody>${list.map(f => {
         const imgSrc = imgUrl(thumbUrl(f.image_local || f.image_url) || f.image_local || f.image_url || '', true);
-        const dateVal = f.set_added_at || null;
+        const dateVal = /** @type {string | null} */ (f.set_added_at || null);
         const erfasst = dateVal ? fmtDatum(dateVal) : '—';
         // Anklickbar wie die Kachel darunter — dieselbe Handlung in beiden
         // Ansichten (Marcos Detail-Dialog fuer automatisch erfasste Figuren).
@@ -191,6 +196,7 @@ export function renderFigs(list, target) {
   }
 
   // Grid view: group by source (Set / Manuell)
+  /** @type {Record<string, (Figur | ManuelleFigur)[]>} */
   const groups = {};
   for (const f of list) {
     const key = f.source === 'manual' ? t('figs.group_manual') : t('figs.group_sets');
@@ -206,17 +212,15 @@ export function renderFigs(list, target) {
       <div class="parts-grid">
         ${figs.map(f => {
           const imgSrc = imgUrl(thumbUrl(f.image_local || f.image_url) || f.image_local || f.image_url || '', true);
-          const dateVal = f.set_added_at || null;
+          const dateVal = /** @type {string | null} */ (f.set_added_at || null);
           const erfasst = dateVal ? fmtDatum(dateVal) : '';
           // Papierkorb oben rechts, wie auf der Set-Kachel: .ca setzt
           // top:6px;right:6px und blendet ihn beim Ueberfahren ein
           // (styles.css). Marcos Vorgabe vom 24.09., zweiter Teil: „analog den
           // Kacheln bei den Sets. Dies aber nur in der webapp."
           const delBtn = f.source==='manual' ? `<div class="ca"><span class="delbtn" data-click="deleteManualFigStop"${echt()} aria-hidden="true" data-arg="${esc(f.fig_number)}" data-arg2="${f.user_id||''}" title="${esc(t('figs.delete'))}">${TRASH_ICON_SVG}</span></div>` : '';
-          // Zustand nur bei manuell erfassten Minifiguren anzeigen (automatisch
-          // hinzugefügte aus Sets haben keinen eigenen Zustand).
-          // Eine Plakette je erfasstem Zustand — gemeinsame Fassung in
-          // 02-gallery.js. Die frühere Inline-Fassung hier trug dieselben …
+          // Zustand nur bei manuell erfassten Figuren — aus Sets haben sie keinen eigenen. Die Besitzer-Plakette
+          // dagegen immer: „Wem gehört das?“ stellt sich bei der Figur aus dem Set eines Kindes genauso.
           // Ausführlich: docs/begruendungen/public/js/06-minifigs.js.md#condbadge
           const condBadge = f.source==='manual'
             ? `<div data-stil="display:flex;gap:3px;justify-content:center;flex-wrap:wrap;margin-top:3px">${condBadges(f)}</div>`
@@ -253,11 +257,12 @@ export async function deleteManualFig(figNumber, owner) {
   else { toast(d.error || t('settings.error'), 'error'); return false; }
 }
 
+/** @type {ManuelleFigur[]} */
 let manualFigsCache = [];
 /** Die zuletzt geladenen manuell erfassten Figuren (nur lesen). */
 export function manuelleFiguren() { return manualFigsCache; }
 export async function loadManualFigsTable() {
-  const d = await api('GET', '/v1/minifigs/manual'+manuellQuery('minifigs', 'fig-search'));
+  const d = await api('GET', `/v1/minifigs/manual${manuellQuery('minifigs', 'fig-search')}`);
   if (!d.success) return;
   manualFigsCache = d.figs || [];
   renderManualFigsTable();
@@ -333,7 +338,7 @@ export function renderManualFigsTable() {
   </div>`;
 }
 
-/** @param {number} [owner] Besitzer der Karte — siehe deleteManualPart. */
+/** @param {string} figNumber @param {object} body @param {number | string} [owner] Besitzer der Karte — siehe deleteManualPart. */
 export async function updateManualFig(figNumber, body, owner) {
   const d = await api('PUT', `/v1/minifigs/${encodeURIComponent(figNumber)}${owner ? `?owner=${encodeURIComponent(owner)}` : ''}`, body);
   if (d.success) { toast(tRaw('settings.saved'),'success'); loadManualFigsTable(); loadMinifigs(); if(aktiverReiter()==='finance') loadFinance(); }
@@ -341,9 +346,11 @@ export async function updateManualFig(figNumber, body, owner) {
 }
 
 /**
- * Der Hinweis, wenn der Kaufpreis aus dem ANDEREN Zustand stammt.
+ * Hinweis, wenn der Kaufpreis aus dem anderen Zustand stammt: BrickLink führt oft nur einen.
+ * Übernehmen und kennzeichnen, damit der Rückfall weder unsichtbar ist noch das Feld leer bleibt. Ein
+ * Helfer für Teile und Figuren.
  * Ausführlich: docs/begruendungen/public/js/06-minifigs.js.md#preisherkunfthinweis
- * @param zustand 'N' | 'U' | null — null heisst „nichts zu sagen".
+ * @param {string | null | undefined} zustand 'N' | 'U' | null — null heisst „nichts zu sagen".
  */
 export function preisHerkunftHinweis(zustand) {
   if (zustand !== 'N' && zustand !== 'U') return '';
@@ -385,10 +392,16 @@ G('btn-add-fig')?.addEventListener('click', async () => {
 });
 
 // Persistente Status-/Hinweiszeile für den CSV-Import (Teile & Minifiguren)
+/**
+ * @param {string} elId
+ * @param {string} state
+ * @param {string} msg
+ */
 export function csvImportStatus(elId, state, msg) {
   const el = G(elId);
   if (!el) return;
   if (state === 'hide') { el.style.display = 'none'; el.textContent = ''; return; }
+  /** @type {Record<string, string>} */
   const styles = {
     running: 'background:var(--b100);color:var(--b700)',
     success: 'background:var(--g100);color:var(--g700)',
@@ -416,7 +429,9 @@ G('btn-fig-csv-template').onclick = (e) => {
 
 
 /**
- * Abfrageteil für die MANUELL erfassten Listen: Kontofilter und Suchtext.
+ * Abfrageteil der manuellen Listen: Kontofilter UND Suchtext. scopeQuery() allein liess die Suche an
+ * den manuellen Kacheln vorbeilaufen, obwohl die Filterleiste über beiden Listen steht. Gefiltert wird
+ * am Server.
  * Ausführlich: docs/begruendungen/public/js/06-minifigs.js.md#manuellquery
  * @param {string} view     Name des Blickfelds ('parts' | 'minifigs')
  * @param {string} sucheId  ID des Suchfelds der Filterleiste
@@ -436,9 +451,11 @@ export function manuellQuery(view, sucheId) {
 }
 
 /**
- * Die manuell erfassten Posten als TABELLE — Teile und Figuren.
+ * Die manuell erfassten Posten als Tabelle: Der Ansichtsumschalter steht über beiden Listen und muss
+ * für beide gelten. Eine Funktion für Teile und Figuren, damit die zwei Tabellen nicht
+ * auseinanderlaufen.
  * Ausführlich: docs/begruendungen/public/js/06-minifigs.js.md#manuelletabelle
- * @param {Array}  posten  Die Einträge aus dem jeweiligen Cache.
+ * @param {(import('./03-parts.js').ManuellesTeil | ManuelleFigur)[]} posten  Die Einträge aus dem jeweiligen Cache.
  * @param {'part'|'fig'} art
  */
 export function manuelleTabelle(posten, art) {
@@ -454,7 +471,7 @@ export function manuelleTabelle(posten, art) {
     t('detail.storage'),
     '',
   ];
-  const zeile = (p) => {
+  const zeile = (/** @type {import('./03-parts.js').ManuellesTeil | ManuelleFigur} */ p) => {
     const nummer = istTeil ? p.part_number : p.fig_number;
     const blNummer = (istTeil ? p.bl_part_number : p.bl_fig_number) || nummer;
     const name = istTeil ? p.part_name : p.fig_name;
@@ -475,7 +492,7 @@ export function manuelleTabelle(posten, art) {
       <td data-stil="max-width:200px">${esc(name) || '—'}</td>
       ${istTeil ? `<td><div data-stil="display:flex;align-items:center;gap:5px">${
         p.color_hex ? `<div class="color-dot" data-farbe="${escHex(p.color_hex, 'var(--s300)')}"></div>` : ''
-      }${esc(colorName(p.color_name))}</div></td>` : ''}
+      }${esc(colorName(/** @type {string | null | undefined} */ (p.color_name)))}</div></td>` : ''}
       <td><span data-stil="font-family:var(--mono);font-weight:600;color:var(--b700)">${p.quantity || 0}</span></td>
       <td>${condBadges(p)}</td>
       <td class="preis">${preis != null ? fmtN(preis, CURRENCY) : '—'}</td>
@@ -488,7 +505,10 @@ export function manuelleTabelle(posten, art) {
   }</tr></thead><tbody>${posten.map(zeile).join('')}</tbody></table></div>`;
 }
 
-/** Steht der Umschalter des Reiters auf „Tabelle"? */
+/**
+ * Steht der Umschalter des Reiters auf „Tabelle"?
+ * @param {string} id
+ */
 export function tabellenAnsicht(id) {
   return G(id)?.value === 'table';
 }

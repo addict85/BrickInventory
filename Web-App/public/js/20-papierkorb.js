@@ -11,6 +11,7 @@ import { melde } from './00-ereignisse.js';
 
 const ICON = { set: 'set', teil: 'teil', figur: 'figur' };
 
+/** @param {import('../../frontend-typen/vertrag').PapierkorbEintrag} e */
 function zeile(e) {
   const frist = fmtDatum(e.endgueltig_am);
   return `<div class="pk-zeile">
@@ -40,6 +41,7 @@ export async function ladePapierkorb() {
 /** Alles nachladen, was ein Wiederherstellen verändert haben kann. */
 function bestandNeuLaden() { melde('bestandGeaendert'); }
 
+/** @param {(number | string)[]} ids */
 async function wiederherstellen(ids) {
   for (const id of ids) {
     const d = await api('POST', `/v1/papierkorb/${id}/wiederherstellen`);
@@ -48,6 +50,7 @@ async function wiederherstellen(ids) {
   return true;
 }
 
+/** @param {string} id */
 export async function papierkorbWiederherstellen(id) {
   if (!await wiederherstellen([id])) return;
   toast(tRaw('trash.restored'), 'success');
@@ -56,6 +59,7 @@ export async function papierkorbWiederherstellen(id) {
 }
 
 // Endgültig heisst unumkehrbar: Der Server verlangt dafür das Passwort (und den zweiten Faktor).
+/** @param {string} id */
 export async function papierkorbEndgueltig(id) {
   const password = await bestaetigeMitPasswort(tRaw('trash.delete_final'), t('common.delete_text'), 'loeschen', { knopf: 'confirm.btn.endgueltig_loeschen', art: 'bd' });
   if (password === null) return;

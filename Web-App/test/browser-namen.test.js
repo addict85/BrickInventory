@@ -9,11 +9,14 @@
  *
  * Gegenproben (am 05.11.2026 gemessen):
  *   A  an G() in 01-core.js die Typangabe {Feld} entfernt → rot: Hauptlauf
- *      mit 357 Meldungen, dazu die strictNullChecks-Ratsche
+ *      mit 357 Meldungen
  *   B  in 01-fortschritt.js den Import von apiRoh entfernt → rot, TS2304
  *      „Cannot find name 'apiRoh'“ mit beiden Fundstellen
  *   C  in logviewer.js die Typangabe an getElementById("period") entfernt →
  *      rot im Lauf der klassischen Skripte
+ *   D  (05.11.) "strictNullChecks": true aus tsconfig.frontend.json entfernt →
+ *      rot: „strictNullChecks und noImplicitAny sind eingeschaltet“, dazu der
+ *      Hauptlauf (ohne den Schalter verengt tsc einige Vereinigungen nicht)
  */
 const test   = require('node:test');
 const assert = require('node:assert/strict');
@@ -26,14 +29,18 @@ for (const config of LAEUFE) {
   });
 }
 
-test('Oberfläche: strictNullChecks meldet weniger, nie mehr', () => {
-  // Nächste Stufe der Typprüfung, gestaffelt wie beim Server. Bei 0 wird der
-  // Schalter in tsconfig.frontend.json eingeschaltet und die Ratsche entfällt.
-  // 05.11.2026: 140; 87 nach Typangaben an den mit null vorbelegten Variablen.
-  const SCHRANKE = 87;
-  const meldungen = pruefe('tsconfig.frontend.json', ['--strictNullChecks']);
-  assert.ok(meldungen.length > 0 || SCHRANKE === 0, 'keine Meldung — Schalter einschalten und Ratsche streichen');
-  assert.ok(meldungen.length <= SCHRANKE,
-    `${meldungen.length} Meldungen unter strictNullChecks, erlaubt sind ${SCHRANKE}. Neue zuerst:\n${meldungen.slice(0, 15).join('\n')}`);
-  if (meldungen.length < SCHRANKE) console.log(`  ℹ strictNullChecks: ${meldungen.length} (Schranke ${SCHRANKE}) — Schranke nachziehen`);
+test('Oberfläche: strictNullChecks und noImplicitAny sind eingeschaltet', () => {
+  // Ohne die Schalter bliebe der Lauf oben grün, prüfte aber weniger. Gefragt
+  // wird tsc selbst (--showConfig), damit auch geerbte Einstellungen zählen.
+  const { spawnSync } = require('node:child_process');
+  const path = require('node:path');
+  const ROOT = path.join(__dirname, '..');
+  // Das Werkzeug liegt im Projekt; -p nimmt den Konfigurationsnamen relativ zu cwd.
+  for (const config of LAEUFE) {
+    const r = spawnSync(process.execPath, [path.join(ROOT, 'node_modules', 'typescript', 'bin', 'tsc'), '-p', config, '--showConfig'],
+      { cwd: ROOT, encoding: 'utf8' });
+    const o = JSON.parse(r.stdout).compilerOptions;
+    assert.equal(o.strictNullChecks, true, `${config}: strictNullChecks`);
+    assert.equal(o.noImplicitAny, true, `${config}: noImplicitAny`);
+  }
 });

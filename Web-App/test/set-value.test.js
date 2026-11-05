@@ -329,7 +329,7 @@ test('die Finanz-Ansicht zeigt avg_price als Marktpreis', () => {
   const fin = fs.readFileSync(path.join(ROOT, 'public', 'js', '04-finance.js'), 'utf8');
   assert.match(fin, /const total\s*=\s*acq \? acq\.wert_gesamt : s\.wert_gesamt;/,
     'Die Total-Spalte muss über avg_price laufen, nicht über qty_avg');
-  assert.match(fin, /parseFloat\(d\.totals\.avg\|\|0\)/,
+  assert.match(fin, /parseFloat\(d\.totals\.avg\|\|'?0'?\)/,
     'Die Summen sind als „Ø Marktpreis" beschriftet und müssen totals.avg nehmen');
   assert.match(fin, /parseFloat\(it\.avg_price \?\? it\.qty_avg_price \?\? 0\)/,
     'Teile- und Minifiguren-Zeilen: avg_price zuerst');

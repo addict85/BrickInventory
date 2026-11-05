@@ -4,7 +4,13 @@
 import { G, ico, api } from './01-core.js';
 import { t, tRaw } from '../i18n.js';
 
-/** Ohne `knopf` heisst der Hauptknopf rot „Löschen“; wer etwas anderes bestätigt, nennt sein Verb. */
+/**
+ * Ohne `knopf` heisst der Hauptknopf rot „Löschen“; wer etwas anderes bestätigt, nennt sein Verb.
+ * @param {string} title
+ * @param {string} msg
+ * @param {string} [icon]
+ * @param {Knopf | null} [knopf]
+ */
 export function confirmDelete(title, msg, icon, knopf = null) {
   return dialogOeffnen(title, msg, icon, false, false, false, knopf).then(r => r !== null);
 }
@@ -12,9 +18,13 @@ export function confirmDelete(title, msg, icon, knopf = null) {
 /**
  * Wie confirmDelete, verlangt aber das eigene Passwort — für Verwalteraktionen
  * an fremden Konten. Liefert das Passwort oder null (abgebrochen).
+ * @param {string} title
+ * @param {string} msg
+ * @param {string} icon
+ * @param {Knopf} knopf
  */
 export function bestaetigeMitPasswort(title, msg, icon, knopf) {
-  if (!knopf?.knopf || !['bp', 'bd'].includes(knopf.art)) throw new Error('bestaetigeMitPasswort: Knopftext und Art fehlen');
+  if (!knopf?.knopf || !['bp', 'bd'].includes(knopf.art ?? '')) throw new Error('bestaetigeMitPasswort: Knopftext und Art fehlen');
   return dialogOeffnen(title, msg, icon, true, false, false, { feld: 'confirm.admin_password', ...knopf });
 }
 
@@ -33,7 +43,11 @@ export async function mitZweitemFaktor(ruf) {
   const passkey = await /** @type {() => Promise<object | null>} */ (passkeyHolen)();
   return passkey ? ruf({ passkey }) : null;
 }
-/** Ein Bestätigen ist kein Löschen: Knopf in der Hauptfarbe statt rot. */
+/**
+ * Hauptknopf des Rückfragedialogs: Text, Art (bp blau, bd rot), Feldbeschriftung.
+ * @typedef {{ knopf?: string, art?: string, feld?: string, werte?: Record<string, unknown>, fehler?: boolean }} Knopf
+ */
+/** Ein Bestätigen ist kein Löschen: Knopf in der Hauptfarbe statt rot. @type {Knopf} */
 const BESTAETIGEN = { knopf: 'common.confirm', art: 'bp', feld: 'settings.password.current' };
 
 /**
@@ -59,7 +73,10 @@ export async function mitPasswortBestaetigen(titel, ruf, erklaerung = tRaw('kont
 }
 
 /** Erst ohne Passwort; nur wenn der Server es für diese Änderung verlangt, wird nachgefragt.
- * @returns die Antwort, oder null bei Abbruch */
+ * @returns die Antwort, oder null bei Abbruch
+ * @param {string} titel
+ * @param {Record<string, unknown>} werte
+ */
 export async function speichereEinstellungen(titel, werte) {
   const d = await api('POST', '/v1/settings', werte);
   if (d?.code !== 'aktuelles_passwort_erforderlich') return d;
@@ -77,7 +94,13 @@ export function setzePasskeyHolen(fn) { passkeyHolen = fn; }
 
 const MIT_PASSKEY = Symbol('passkey');
 
-/** @param {{ knopf?: string, art?: string, feld?: string, werte?: Record<string, any>, fehler?: string } | null} [knopf] */
+/**
+ * @param {Knopf | null} [knopf]
+ * @param {string} title
+ * @param {string} msg
+ * @param {string | undefined} icon
+ * @param {boolean} mitPasswort
+ */
 function dialogOeffnen(title, msg, icon, mitPasswort, mitCode = false, mitPasskey = false, knopf = null) {
   return new Promise(resolve => {
     const modal = G('confirm-modal');
@@ -102,6 +125,7 @@ function dialogOeffnen(title, msg, icon, mitPasswort, mitCode = false, mitPasske
     G('cd-pw-label').textContent = tRaw(knopf?.feld || 'confirm.admin_password');
     if (mitPasswort) setTimeout(() => pw?.focus(), 0);
     else if (mitCode) setTimeout(() => codeFeld?.focus(), 0);
+    /** @param {string | symbol | null} result */
     function cleanup(result) {
       if (pw) pw.value = '';
       if (codeFeld) codeFeld.value = '';

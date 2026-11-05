@@ -1,5 +1,6 @@
-// Hier stand esc() bis zum 20.10. in js/01-core.js, zusammen mit api(), Auth
-// und den Panels. Das ging, solange nur Oberflächencode maskierte.
+// Eine einzige Fassung des Maskierens, ohne Zugriff auf document: Auch das DOM-freie
+// 19-bricklink-xml.js braucht sie, und ein zweiter Maskierer daneben ist genau die Doppelung, die
+// schon einmal auseinandergelaufen ist.
 // Ausführlich: docs/begruendungen/public/js/00-escapen.js.md#hier-stand-esc-bis-zum-20-10-in-js-01-co
 
 /**
@@ -10,6 +11,7 @@
  *
  * `&#39;` statt `&apos;` für den Apostroph: Beides ist in XML gültig, die
  * numerische Form zusätzlich in HTML 4. Eine Form, beide Verwendungen.
+ * @param {unknown} s
  */
 export function esc(s){
   return String(s ?? '')

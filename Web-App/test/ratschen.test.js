@@ -277,16 +277,20 @@ function oberflaeche() {
           path.join(WEB, 'public', 'i18n.js')];
 }
 
+// Typangaben in JSDoc (@param, @type …) und reine Begrenzer (/**, */) sind
+// Code für tsc, keine Erzählung; sie zählen weder als Kommentar noch als Zeile.
+const TYPZEILE = /^(\/\*\*\s*)?\*?\s*@(param|type|returns?|typedef|template|this|property)\b|^\/\*\*$|^\*\/$|^\*$/;
+
 test('der Kommentaranteil der Oberfläche sinkt, nie steigt', () => {
   // Gemessen am 05.11.2026: 35,9 %; nach dem Auslagern der langen Kommentare
-  // nach docs/begruendungen/public/ 26,1 %. Gegenprobe: 300 Kommentarzeilen
-  // an 01-core.js gehängt → rot.
-  const SCHRANKE = 26.1;
+  // nach docs/begruendungen/public/ 26,1 %; ohne Typzeilen gezählt 22,0 %.
+  // Gegenprobe: 300 Kommentarzeilen an 01-core.js gehängt → rot.
+  const SCHRANKE = 22.0;
   let zeilen = 0, kommentar = 0;
   for (const f of oberflaeche()) {
     for (const z of fs.readFileSync(f, 'utf8').split('\n')) {
       const t = z.trim();
-      if (!t) continue;
+      if (!t || TYPZEILE.test(t)) continue;
       zeilen++;
       if (t.startsWith('//') || t.startsWith('*') || t.startsWith('/*')) kommentar++;
     }
@@ -295,6 +299,20 @@ test('der Kommentaranteil der Oberfläche sinkt, nie steigt', () => {
   const anteil = Math.round(1000 * kommentar / zeilen) / 10;
   assert.ok(anteil <= SCHRANKE, `${anteil} % Kommentarzeilen in der Oberfläche, erlaubt sind ${SCHRANKE} %`);
   if (anteil < SCHRANKE - 0.5) console.log(`  ℹ Kommentaranteil Oberfläche: ${anteil} % (Schranke ${SCHRANKE}) — Schranke nachziehen`);
+});
+
+test('any in den Typangaben der Oberfläche wird weniger, nie mehr', () => {
+  // noImplicitAny verbietet nur das stille any; ein ausgeschriebenes schaltet
+  // die Prüfung für diesen Wert genauso ab. 05.11.2026: 48, meist Zeilen aus
+  // Antworten, die der Vertrag (noch) offen lässt. Gegenprobe: an 01-core.js
+  // `/** @type {any} */ let x;` angehängt → rot mit 49.
+  const SCHRANKE = 48;
+  let ist = 0;
+  for (const f of oberflaeche())
+    for (const z of fs.readFileSync(f, 'utf8').split('\n'))
+      if (z.includes('@') && (z.includes('/**') || z.trim().startsWith('*'))) ist += (z.match(/\bany\b/g) || []).length;
+  assert.ok(ist <= SCHRANKE, `${ist}-mal any in Typangaben der Oberfläche, erlaubt sind ${SCHRANKE}`);
+  if (ist < SCHRANKE) console.log(`  ℹ any in der Oberfläche: ${ist} (Schranke ${SCHRANKE}) — Schranke nachziehen`);
 });
 
 test('kein Kommentar der Oberfläche hat mehr als fünf Zeilen Prosa', () => {

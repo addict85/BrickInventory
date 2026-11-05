@@ -86,7 +86,7 @@ test('ein leeres Feld löscht — in beiden', () => {
   // Beide entscheiden es an derselben Stelle: „ist das eine Zahl > 0?". Die
   // Webapp misst es zusätzlich am Verhalten (test/alarm-entprellt.test.js),
   // die App an der Umrechnung (AlarmeingabeTest).
-  assert.match(web('public/js/02-detailfelder.js'), /const loeschen = !\(zahl > 0\);/,
+  assert.match(web('public/js/02-detailfelder.js'), /const loeschen = !\((zahl != null && )?zahl > 0\);/,
     'Die Webapp löscht bei leerem Feld nicht');
   assert.match(KT_ALARMEINGABE, /return if \(z > 0\.0\) z else null/,
     'Die App löscht bei leerem Feld nicht');
@@ -212,7 +212,7 @@ test('die Prüfung hängt am Ende des Preislaufs, nicht an jedem Preisabruf', ()
 test('beide holen dieselbe Liste beim selben Endpunkt ab', () => {
   assert.match(web('routes/api_v1/sets.ts'), /router\.get\('\/alerts\/pending'/,
     'Der Endpunkt fehlt');
-  assert.match(web('public/js/02-detailfelder.js'), /'\/v1\/alerts\/pending'/,
+  assert.match(web('public/js/02-detailfelder.js'), /['`]\/v1\/alerts\/pending['`$]/,
     'Die Webapp fragt nicht nach');
   assert.match(KT_API, /@GET\("api\/v1\/alerts\/pending"\)/,
     'Die App fragt nicht nach');

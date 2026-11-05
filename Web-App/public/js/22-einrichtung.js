@@ -10,11 +10,14 @@ import { esc } from './00-escapen.js';
 // nächsten Anmelden kommt der Assistent wieder, bis er abgeschlossen ist.
 
 /** Die Schritte dieses Durchgangs; „passwort" nur, wenn es noch das Startpasswort ist. */
+/** @type {string[]} */
 let _schritte = [];
 let _jetzt = 0;
 /** Welche Quellen schon einen gespeicherten Zugang haben; dann prüft ein leeres Feld diesen. */
+/** @type {Record<string, boolean>} */
 let _gespeichert = {};
 
+/** @type {Record<string, Record<string, string>>} */
 const QUELLEN_FELDER = {
   rebrickable: { rebrickable_api_key: 'ew-rb' },
   brickset:    { brickset_api_key: 'ew-bs' },
@@ -34,6 +37,10 @@ function zeige() {
   verwirfToasts();
 }
 
+/**
+ * @param {string} quelle
+ * @param {boolean | null} ok  null: noch nicht geprüft
+ */
 function setzeStand(quelle, ok) {
   const el = G(`ew-stand-${quelle}`);
   if (!el) return;
@@ -42,6 +49,7 @@ function setzeStand(quelle, ok) {
 }
 
 /** Meldung am Abschnitt; der rohe Grund steht aufklappbar darunter. */
+/** @param {string} quelle @param {string} text @param {string} [details] @param {string[]} [felder] */
 function quellenFehler(quelle, text, details = '', felder = []) {
   const box = G(`ew-fehler-${quelle}`);
   if (!box) return;
@@ -65,7 +73,7 @@ export async function pruefeEinrichtung() {
   }
   _schritte = [...(d.passwort_aendern ? ['passwort'] : []), 'rebrickable', 'bricklink', 'brickset', 'erstes-set'];
   _jetzt = 0;
-  _gespeichert = { ...(d.quellen || {}) };
+  _gespeichert = Object.fromEntries(Object.entries(d.quellen || {}).map(([q, ok]) => [q, !!ok]));
   for (const [q, ok] of Object.entries(_gespeichert)) setzeStand(q, ok ? true : null);
   zeige();
   G('einrichtung-modal').classList.add('open');
@@ -99,7 +107,8 @@ export async function einrichtungPasswort() {
   const alt = G('ew-pw-alt').value, neu = G('ew-pw-neu').value, wdh = G('ew-pw-wdh').value;
   const box = G('ew-pw-fehler');
   formularFehler(box, '');
-  if (passwortRegelText(neu)) { formularFehler(box, passwortRegelText(neu), ['ew-pw-neu']); return; }
+  const regel = passwortRegelText(neu);
+  if (regel) { formularFehler(box, regel, ['ew-pw-neu']); return; }
   if (neu !== wdh) { formularFehler(box, tRaw('settings.password.mismatch'), ['ew-pw-wdh']); return; }
   const d = await mitZweitemFaktor(z => api('POST', '/v1/auth/change-password', { current: alt, newPassword: neu, ...z }));
   if (!d) return;
@@ -112,11 +121,17 @@ export async function einrichtungPasswort() {
   await einrichtungWeiter();
 }
 
-/** Speichern, was eingetragen ist (leere Felder bleiben, wie sie sind), dann testen. */
+/**
+ * Speichern, was eingetragen ist (leere Felder bleiben, wie sie sind), dann testen.
+ * @param {string} quelle
+ */
 export async function einrichtungQuelle(quelle) {
   const felder = QUELLEN_FELDER[quelle];
   if (!felder) return;
-  const werte = {}, leer = [];
+  /** @type {Record<string, string>} */
+  const werte = {};
+  /** @type {string[]} */
+  const leer = [];
   for (const [schluessel, id] of Object.entries(felder)) {
     const v = G(id).value.trim();
     if (v) werte[schluessel] = v; else leer.push(id);
@@ -137,13 +152,16 @@ export async function einrichtungQuelle(quelle) {
   const d = await api('POST', '/v1/settings/quelle-testen', { quelle });
   setzeStand(quelle, !!d?.success);
   if (d?.success) { toast(tRaw('setup.test_ok'), 'success'); return; }
-  const { grund, details } = d?.code ? { grund: d.error, details: d.details } : verstaendlicherGrund(d);
+  const { grund, details } = d?.code ? { grund: d.error, details: d.details == null ? undefined : String(d.details) } : verstaendlicherGrund(d);
   quellenFehler(quelle, grund || tRaw('settings.error'), details || '', d?.code === 'quelle_abgelehnt' ? Object.values(felder) : []);
 }
 
-/** Letzter Schritt: dorthin, wo das erste Set entsteht. */
+/**
+ * Letzter Schritt: dorthin, wo das erste Set entsteht.
+ * @param {string} ziel
+ */
 export function einrichtungZiel(ziel) {
-  const reiter = (name) => eins(`.ntab[data-tab="${name}"]`)?.click();
+  const reiter = (/** @type {string} */ name) => eins(`.ntab[data-tab="${name}"]`)?.click();
   if (ziel === 'katalog') reiter('catalog');
   else {
     reiter('gallery');

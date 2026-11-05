@@ -1,7 +1,6 @@
-// Die CSP erlaubt keine style-Attribute im Markup: Eine eingeschleuste
-// Auszeichnung soll die Seite nicht umgestalten können (falsches Formular über
-// dem echten). Das Markup trägt den Stil deshalb als data-stil, und diese Datei
-// setzt ihn per CSSOM — aber nur Werte, die so im Quelltext stehen. Die Liste …
+// Die CSP verbietet style-Attribute, damit eingeschleustes Markup die Seite nicht umgestalten kann.
+// Stile stehen deshalb als data-stil da und gelten nur, wenn sie im Quelltext vorkommen (Liste aus
+// scripts/build-frontend.js).
 // Ausführlich: docs/begruendungen/public/js/00-stile.js.md#die-csp-erlaubt-keine-style-attribute-im
 
 /* global __ERLAUBTE_STILE__ */
@@ -22,10 +21,13 @@ const FREI = [
 ];
 const AUSWAHL = '[data-stil],' + FREI.map(([a]) => `[${a}]`).join(',');
 
-/** Alle data-stil und Laufzeitwerte unter `wurzel` (einschliesslich) anwenden. */
+/**
+ * Alle data-stil und Laufzeitwerte unter `wurzel` (einschliesslich) anwenden.
+ * @param {HTMLElement} wurzel
+ */
 export function wendeStileAn(wurzel) {
   if (!wurzel || typeof wurzel.querySelectorAll !== 'function') return;
-  const els = [...wurzel.querySelectorAll(AUSWAHL)];
+  const els = /** @type {HTMLElement[]} */ ([...wurzel.querySelectorAll(AUSWAHL)]);
   if (wurzel.matches?.(AUSWAHL)) els.unshift(wurzel);
   for (const el of els) {
     const stil = el.getAttribute('data-stil');
@@ -44,21 +46,26 @@ export function wendeStileAn(wurzel) {
 // innerHTML & Co. umhüllen, damit der Stil im selben Schritt sitzt wie das
 // Markup: Code, der gleich danach el.style.display umschaltet, findet den
 // Ausgangswert vor und wird nicht nachträglich überschrieben.
+/**
+ * @param {object} proto
+ * @param {string} name
+ * @param {(el: HTMLElement, eltern: HTMLElement, arg0?: unknown) => void} nachher
+ */
 function umhuelle(proto, name, nachher) {
   const d = Object.getOwnPropertyDescriptor(proto, name);
   if (!d) return;
   if (d.set) {
-    Object.defineProperty(proto, name, { ...d, set(v) { const p = this.parentNode; d.set.call(this, v); nachher(this, p); } });
+    Object.defineProperty(proto, name, { ...d, set(v) { const p = this.parentNode; d.set?.call(this, v); nachher(this, p); } });
   } else if (typeof d.value === 'function') {
     const f = d.value;
-    Object.defineProperty(proto, name, { ...d, value(...a) { const p = this.parentNode; const r = f.apply(this, a); nachher(this, p, a[0]); return r; } });
+    Object.defineProperty(proto, name, { ...d, value( /** @type {unknown[]} */ ...a) { const p = this.parentNode; const r = f.apply(this, a); nachher(this, p, a[0]); return r; } });
   }
 }
 if (typeof Element !== 'undefined') {
-  umhuelle(Element.prototype, 'innerHTML', (el) => wendeStileAn(el));
+  umhuelle(Element.prototype, 'innerHTML', (/** @type {HTMLElement} */ el) => wendeStileAn(el));
   // outerHTML ersetzt das Element selbst; die neuen Knoten hängen am Elternteil.
-  umhuelle(Element.prototype, 'outerHTML', (_el, p) => wendeStileAn(p));
-  umhuelle(Element.prototype, 'insertAdjacentHTML', (el, p, wo) =>
+  umhuelle(Element.prototype, 'outerHTML', (/** @type {HTMLElement} */ _el, p) => wendeStileAn(p));
+  umhuelle(Element.prototype, 'insertAdjacentHTML', (/** @type {HTMLElement} */ el, p, wo) =>
     wendeStileAn(/^(beforebegin|afterend)$/i.test(String(wo)) ? p : el));
   if (typeof document !== 'undefined') wendeStileAn(document.documentElement);
 }

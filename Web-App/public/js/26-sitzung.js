@@ -35,7 +35,8 @@ abonniere('passwortWechselNoetig', () => zeigePflichtwechsel());
 abonniere('zweiterFaktorPflicht', () => zeigeZweitpflicht());
 
 /**
- * Antwortet der Server mit 401, ist die Sitzung nicht mehr gültig.
+ * Ein 401 heisst: Die Sitzung ist nicht mehr gültig. Statt eines Hinweises je Klick über alten Daten
+ * geht es zurück zur Anmeldung mit „Sitzung abgelaufen“ — wie in der Android-App.
  * Ausführlich: docs/begruendungen/public/js/26-sitzung.js.md#abonniere
  */
 abonniere('sitzungBeendet', (path) => {
@@ -48,8 +49,16 @@ abonniere('sitzungBeendet', (path) => {
 // ── AUTH & PANELS ─────────────────────────────────────
 /** @type {string | null} */
 let _resetToken = null;
-let _verifyToken = null, _verifyAngemeldet = false;
+/**
+ * @type {string}
+ */
+/** @type {string | null} */
+let _verifyToken = null;
+let _verifyAngemeldet = false;
 
+/**
+ * @param {string} name
+ */
 function showPanel(name){
   ['login','register','forgot','reset','verify','pflichtwechsel','zweitpflicht'].forEach(p => {
     const el = G('panel-'+p); if(el) el.style.display = p===name?'block':'none';
@@ -125,13 +134,14 @@ G('btn-register')?.addEventListener('click', async () => {
   const p=G('reg-pass').value, p2=G('reg-pass2').value;
   const err=G('reg-err');
   formularFehler(err, '');
-  if(!u||!e||!p){ formularFehler(err, tRaw('register.req_fields'), [!u&&'reg-user', !e&&'reg-email', !p&&'reg-pass'].filter(Boolean)); return; }
+  if(!u||!e||!p){ formularFehler(err, tRaw('register.req_fields'), [!u&&'reg-user', !e&&'reg-email', !p&&'reg-pass'].filter(x => typeof x === 'string')); return; }
   // Reihenfolge: zu kurz VOR ungleich — dieselbe wie in der App
   // (LoginScreen.kt). Deren Kommentar behauptete schon vorher „dieselben drei
   // Pruefungen wie im Web-Formular, und in derselben Reihenfolge"; wahr war
   // daran bis hierher weder das eine noch das andere, weil die Webapp die
   // Laenge gar nicht prueft.
-  if(passwortRegelText(p)){ formularFehler(err, passwortRegelText(p), ['reg-pass']); return; }
+  const regel = passwortRegelText(p);
+  if (regel) { formularFehler(err, regel, ['reg-pass']); return; }
   if(p!==p2){ formularFehler(err, tRaw('settings.password.mismatch'), ['reg-pass2']); return; }
   const btn=G('btn-register'); const frei=knopfBesetzt(btn);
   const d=await api('POST','/v1/auth/register',{
@@ -187,7 +197,8 @@ G('btn-reset')?.addEventListener('click', async () => {
   const err=G('reset-err');
   formularFehler(err, '');
   if(!p||p!==p2){ formularFehler(err, tRaw('settings.password.mismatch'), [p ? 'reset-pass2' : 'reset-pass']); return; }
-  if(passwortRegelText(p)){ formularFehler(err, passwortRegelText(p), ['reset-pass']); return; }
+  const regel = passwortRegelText(p);
+  if (regel) { formularFehler(err, regel, ['reset-pass']); return; }
   if(!_resetToken){ formularFehler(err, tRaw('reset.invalid_token')); return; }
   const btn=G('btn-reset'); btn.disabled=true; btn.textContent=tRaw('reset.saving');
   const d=await api('POST','/v1/auth/reset-password',{token:_resetToken,password:p});
@@ -219,7 +230,8 @@ export async function checkAuth(){
   // Profil) wird erst bestätigt, dann öffnet die Anwendung.
   _verifyAngemeldet = !!d.loggedIn;
   if(_verifyToken) zeigeBestaetigungsziel(!!d.loggedIn);
-  if(d.loggedIn && !_verifyToken){ set_ME({ ...d, ...(d.user||{}), isAdmin: d.user?.is_admin === true }); oeffneApp(); }
+  // Angemeldet heisst: `user` ist da; der Vertrag lässt es offen, weil /auth/me auch abgemeldet antwortet.
+  if(d.loggedIn && !_verifyToken){ set_ME(/** @type {import('./00-zustand.js').Konto} */ ({ ...d, ...(d.user||{}), isAdmin: d.user?.is_admin === true })); oeffneApp(); }
   else {
     G('login-screen').style.display='flex'; startgeruestWeg();
     G('app').style.display='none';
@@ -234,6 +246,7 @@ export async function checkAuth(){
  * Vor dem Einlösen nennt der Server das Konto des Links, und der Knopf nennt es
  * noch einmal: Wer von zwei gleichen Mails die eines fremden Kontos öffnet,
  * sieht dessen Namen, bevor er dessen Adresse bestätigt.
+ * @param {boolean} angemeldet
  */
 async function zeigeBestaetigungsziel(angemeldet) {
   const el = G('verify-ziel'), btn = G('btn-verify');
@@ -260,8 +273,12 @@ async function zeigeBestaetigungsziel(angemeldet) {
 /**
  * Angemeldet führt die Seite zurück in die Sammlung; wartet nichts, ist
  * „Bestätigen“ nicht mehr der nahegelegte Schritt.
+ * @type {string | null}
  */
 let _verifyEmail = null;
+/**
+ * @param {string | null | undefined} email
+ */
 function bestaetigungAngemeldet(email) {
   _verifyEmail = email || null;
   const zurueck = G('link-verify-to-login');
@@ -378,16 +395,23 @@ function showLogin(o = {}){
   showPanel('login');
   checkRegistrationEnabled();
 }
+/** Zähler der Abfragen nach den Anmeldewegen. Abmelden und abgelaufene Sitzung
+ * fragen beide; kommt die ältere Antwort zuletzt an, gilt sie nicht mehr. */
+let _anmeldewegeLauf = 0;
 async function checkRegistrationEnabled(){
+  const lauf = ++_anmeldewegeLauf;
+  // Steht erst wieder, wenn die jüngste Antwort eingetragen ist (Browser-Tests warten darauf).
+  delete G('login-screen').dataset.anmeldewege;
   try {
     const d = await api('GET', '/v1/auth/registration-status');
-    if (d.success === false) return;
+    if (lauf !== _anmeldewegeLauf || d.success === false) return;
     const wrap = G('link-register-wrap');
     if(wrap) wrap.style.display = d.enabled ? '' : 'none';
     // Nur Wege anbieten, die der Server kann; fehlt die Angabe (älterer Server), bleibt alles wie es war.
     if (d.passkey === false && G('btn-passkey')) G('btn-passkey').hidden = true;
     if (G('link-forgot')) G('link-forgot').hidden = d.passwort_vergessen === false;
     if (G('forgot-verwalter')) G('forgot-verwalter').hidden = d.passwort_vergessen !== false;
+    G('login-screen').dataset.anmeldewege = 'geladen';
   } catch(_){}
 }
 
@@ -405,8 +429,9 @@ function showApp(){ bindTabs(); plInit(); setTimeout(()=>{ gibCheckOnLoad(); }, 
   zeigeOffeneAlarme();
   // Einrichtungs-Assistent für eine frische Installation (nur Verwalter).
   if (ME?.isAdmin) pruefeEinrichtung();
-  // Marcos Wunsch vom 25.09.: „Bei den Mails waere es schoen wenn es ebenfalls
-  // einen direkt link auf die Webapp mit dem entsprechenden Set geben wuerde."
+  // ?set=<nummer> öffnet das Set direkt (Knopf der Preisalarm-Mail). Hier und nicht beim Laden, weil
+  // erst hier eine Sitzung besteht. Danach fällt der Parameter weg, damit F5 das Detail nicht erneut
+  // öffnet.
   // Ausführlich: docs/begruendungen/public/js/26-sitzung.js.md#setauslink
   const setAusLink = new URLSearchParams(location.search).get('set');
   if (setAusLink) {
@@ -436,8 +461,8 @@ function showApp(){ bindTabs(); plInit(); setTimeout(()=>{ gibCheckOnLoad(); }, 
   // Verwalter setzt (Marcos Vorgabe) — er wird deshalb wie das Monitoring
   // erst hier eingeblendet. Fuer alle anderen waere er leer, und ein leerer
   // Reiter ist schlimmer als keiner: Man klickt ihn an und sucht.
-  if(ME.isAdmin){ const ns=G('ntab-settings'); if(ns) ns.style.display=''; }
-  if(ME.isAdmin){ alle('.admin-only').forEach(el=>el.style.display=''); const nm=G('ntab-monitor'); if(nm){ nm.style.display=''; const lbl=nm.querySelector('.tab-label'); if(lbl) lbl.textContent=tRaw('nav.monitoring'); } G('usermgmt').style.display='block'; ['bl-ao','rb-ao','bs-ao'].forEach(id=>{ const el=G(id); if(el) el.style.display='none'; }); const gg=G('global-settings-grid'); if(gg) gg.style.display='grid'; const gl=G('global-settings-label'); if(gl) gl.style.display='block'; }
+  if(ME?.isAdmin){ const ns=G('ntab-settings'); if(ns) ns.style.display=''; }
+  if(ME?.isAdmin){ alle('.admin-only').forEach(el=>el.style.display=''); const nm=G('ntab-monitor'); if(nm){ nm.style.display=''; const lbl=nm.querySelector('.tab-label'); if(lbl) lbl.textContent=tRaw('nav.monitoring'); } G('usermgmt').style.display='block'; ['bl-ao','rb-ao','bs-ao'].forEach(id=>{ const el=G(id); if(el) el.style.display='none'; }); const gg=G('global-settings-grid'); if(gg) gg.style.display='grid'; const gl=G('global-settings-label'); if(gl) gl.style.display='block'; }
   else { ['bl-ck','bl-cs','bl-tok','bl-ts','rb-key','bs-key','lim-rb','lim-bl','lim-bs'].forEach(id=>{const el=G(id);if(el){el.disabled=true;if(el.type!=='number')el.placeholder=tRaw('settings.admins_only_ph')}}); G('btn-sav-bl').disabled=true; G('btn-sav-rb').disabled=true; G('btn-sav-bs').disabled=true; }
   // Ohne Rebrickable-Schlüssel öffnet trotzdem die Sammlung: Ein Sprung in
   // die Einstellungen bei jeder Anmeldung nimmt dem Verwalter seine Startseite.
@@ -468,7 +493,7 @@ async function doLogin(){
     return;
   }
   G('lc-zeile').style.display='none'; G('lc').value='';
-  if(d.success){ set_ME({ ...d, ...(d.user||{}), isAdmin: d.user?.is_admin === true });
+  if(d.success){ set_ME(/** @type {import('./00-zustand.js').Konto} */ ({ ...d, ...(d.user||{}), isAdmin: d.user?.is_admin === true }));
     // Jede Anmeldung beginnt mit „Alle Konten" — VOR showApp(),
     // damit die Auswahlfelder gleich mit dem zurückgesetzten Wert entstehen.
     resetScopeModes();
@@ -481,10 +506,13 @@ async function doLogin(){
 G('btn-logout').onclick=async()=>{
   // Ein Token aus einer älteren Anmeldung wird mit entwertet.
   const _wt = sessionStorage.getItem('webToken');
+  // Zuerst abgemeldet: Laufende Anfragen, die jetzt mit 401 enden, melden kein
+  // „Sitzung abgelaufen“ und öffnen die Anmeldemaske kein zweites Mal.
+  set_ME(null);
   await apiRoh('POST', '/v1/auth/logout', {
     headers: _wt ? { 'Authorization': 'Bearer ' + _wt } : {},
   }).catch(()=>{});
-  set_ME(null); setAllSets([]);
+  setAllSets([]);
   // Reset all admin-only elements before showing login
   const nm=G('ntab-monitor'); if(nm) nm.style.display='none';
   const ns=G('ntab-settings'); if(ns) ns.style.display='none';
@@ -512,7 +540,10 @@ async function bestaetigungErneut(){
   const d=await api('POST','/v1/auth/bestaetigung-erneut',{email});
   toast(d.message||d.error||tRaw('settings.error'), d.success?'success':'error');
 }
-/** Leerzustände führen zum Feld, in das der erste Eintrag gehört. */
+/**
+ * Leerzustände führen zum Feld, in das der erste Eintrag gehört.
+ * @param {string} id
+ */
 function feldFokussieren(id) {
   const f = G(id); const klappe = f?.closest('details'); if (klappe) klappe.open = true;
   f?.scrollIntoView({ block: 'center' }); f?.focus();

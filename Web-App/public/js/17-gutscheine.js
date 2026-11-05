@@ -6,20 +6,20 @@ import { CURRENCY, _settingsCache } from './00-zustand.js';
 import { esc } from './00-escapen.js';
 import { bestaetigeMitPasswort, mitZweitemFaktor } from './01-rueckfrage.js';
 
-// „Im Eigenen Profil sollen Lego-Gutscheine mit Gutscheinnummer und Pins und
-// Betrag hinterlegt werden können. […] Die Erfassung, Änderung und Anzeige
-// soll sowohl in der Android-App als auch in der Webapp möglich sein und
-// möglichst einfach erreichbar sein."
+// Gutscheine (LEGO-Geschenkkarten) stehen direkt im Profil statt in einem eigenen Reiter: Sie sollen
+// schnell erreichbar sein, und wie in der App erfassen, ändern und anzeigen.
 // Ausführlich: docs/begruendungen/public/js/17-gutscheine.js.md#im-eigenen-profil-sollen-lego-gutscheine
 
 /** Die zuletzt geladene Liste — für die Knöpfe, die auf eine Zeile zeigen. */
+/** @type {import('../../frontend-typen/vertrag').Gutschein[]} */
 let _gutscheine = [];
 
 /** Die id des Gutscheins, der gerade bearbeitet wird; null = neuer Eintrag. */
+/** @type {number | string | null} */
 let _bearbeitet = null;
 
 /** @param {string} id */
-const el = (id) => /** @type {Feld} */ (document.getElementById(id));
+const el = (/** @type {string} */ id) => /** @type {Feld} */ (document.getElementById(id));
 
 // Die Handler nehmen die id als ERSTES Argument und kein Ereignis: Der
 // Verteiler in 11-actions.js reicht `data-arg`, `data-arg2` … in dieser
@@ -33,6 +33,9 @@ const _sichtbar = new Set();
  * den Klartext gibt es bestätigt und protokolliert, einmal je Gutschein und Seite. */
 const _klartext = new Map();
 
+/**
+ * @param {number} id
+ */
 async function holeKlartext(id) {
   if (_klartext.has(id)) return _klartext.get(id);
   const password = await bestaetigeMitPasswort(tRaw('vouchers.klartext_title'), tRaw('vouchers.klartext_text'), 'schloss', { knopf: 'confirm.btn.anzeigen', art: 'bp' });
@@ -57,13 +60,16 @@ const KOPIE_ICON_SVG =
   '<path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>';
 
 /** „6123-4567-8901“ und „612345678901“ → „6123 4567 8901“. */
+/** @param {unknown} roh */
 export function gruppiereNummer(roh) {
   return String(roh ?? '').replace(/[\s-]/g, '').replace(/(\d{4})(?=\d)/g, '$1 ');
 }
 
 /** Die Währung der Karten des Ausgabelandes; ohne Land die des Kontos. */
+/** @type {Record<string, string>} */
 const LAND_WAEHRUNG = { 'de-CH': 'CHF', 'de-DE': 'EUR', 'de-AT': 'EUR', 'fr-FR': 'EUR', 'it-IT': 'EUR', 'nl-NL': 'EUR', 'en-GB': 'GBP', 'en-US': 'USD' };
 /** Ohne gespeichertes Ausgabeland das Land zur Kontowährung (wie landFuerWaehrung im Server). */
+/** @type {Record<string, string>} */
 export const LAND_ZUR_WAEHRUNG = { CHF: 'de-CH', EUR: 'de-DE', GBP: 'en-GB', USD: 'en-US' };
 export function landWaehrung() {
   const land = G('gutschein-land')?.value || _settingsCache?.gutschein_land || '';
@@ -79,6 +85,7 @@ function waehrungPruefen() {
   hinweis.textContent = tRaw('vouchers.waehrung_hinweis', { w: soll });
 }
 
+/** @param {import('../../frontend-typen/vertrag').Gutschein} g */
 function zeile(g) {
   const k = _klartext.get(g.id);
   const pinOffen = _sichtbar.has(g.id) && !!k;
@@ -179,6 +186,7 @@ function formularLeeren() {
   if (abbrechen) abbrechen.style.display = 'none';
 }
 
+/** @param {string} id */
 export function gutscheinBearbeiten(id) {
   const g = _gutscheine.find(x => String(x.id) === String(id));
   if (!g) return;
@@ -194,23 +202,27 @@ export function gutscheinBearbeiten(id) {
   // Die Datei bleibt, wie sie ist: Ein Gutschein bekommt sein PDF beim
   // Anlegen. Es nachträglich auszutauschen wäre ein eigener Vorgang und
   // beantwortet keine Frage, die jemand hat.
-  el('v-pdf').parentElement.style.display = 'none';
+  const pdfZeile = el('v-pdf').parentElement;
+  if (pdfZeile) pdfZeile.style.display = 'none';
   el('v-number').focus();
 }
 
 export function gutscheinAbbrechen() {
   formularLeeren();
-  el('v-pdf').parentElement.style.display = '';
+  const pdfZeile = el('v-pdf').parentElement;
+  if (pdfZeile) pdfZeile.style.display = '';
 }
 
-/**
- * Speichern — der eine Knopf für beide Wege.
- * Ausführlich: docs/begruendungen/public/js/17-gutscheine.js.md#speichern-der-eine-knopf-fuer-beide-wege
- */
 /** Fehlercodes des Servers → Feld im Formular (Meldung am Feld statt Toast). */
 const GUTSCHEIN_FELDER = { nummer_ungueltig: 'v-number', gutschein_existiert: 'v-number',
   pin_ungueltig: 'v-pin', betrag_ungueltig: 'v-amount', waehrung_ungueltig: 'v-currency' };
 
+/**
+ * Speichern, ein Knopf für beide Wege: Liegt eine Datei im Feld, liest der Server sie, und ausgefüllte
+ * Felder gewinnen. So kann man ein PDF hochladen und den Betrag selbst ergänzen, wenn es ihn nicht
+ * hergibt.
+ * Ausführlich: docs/begruendungen/public/js/17-gutscheine.js.md#speichern-der-eine-knopf-fuer-beide-wege
+ */
 export async function gutscheinSpeichern() {
   const number   = el('v-number').value.trim();
   const pin      = el('v-pin').value.trim();
@@ -225,7 +237,7 @@ export async function gutscheinSpeichern() {
     if (!d?.success) { antwortFehler(d, GUTSCHEIN_FELDER, tRaw('vouchers.save_error')); return; }
     _klartext.delete(_bearbeitet);
     toast(tRaw('vouchers.saved'), 'success');
-    formularLeeren(); el('v-pdf').parentElement.style.display = '';
+    formularLeeren(); const pdfZeile = el('v-pdf').parentElement; if (pdfZeile) pdfZeile.style.display = '';
     await ladeGutscheine();
     return;
   }
@@ -263,10 +275,9 @@ export async function gutscheinSpeichern() {
     }
     if (!d?.success) { antwortFehler(d, GUTSCHEIN_FELDER, tRaw('vouchers.save_error')); return; }
 
-    // Marcos Vorgabe: „Wenn ein PDF mit mehreren Seiten selektiert wird,
-    // sollen mehrere Gutscheine erfasst werden." Welcher Fall es ist,
-    // entscheidet der SERVER — er liest die Datei. Hier wird nur die Antwort
-    // gezeigt, und `mehrere` sagt, welche es ist.
+    // Ob ein PDF einen oder mehrere Gutscheine ergab, entscheidet der Server; `mehrere` sagt es. Dann
+    // dieselbe Meldung wie bei CSV-Importen, damit niemand bei drei Gutscheinen „gespeichert“ liest und
+    // rät.
     // Ausführlich: docs/begruendungen/public/js/17-gutscheine.js.md#if
     if (d.mehrere) {
       toast(tRaw('import.summary', { added: d.mehrere.added, updated: d.mehrere.updated,
@@ -287,6 +298,7 @@ export async function gutscheinSpeichern() {
   await ladeGutscheine();
 }
 
+/** @param {string} id */
 export async function gutscheinLoeschen(id) {
   const g = _gutscheine.find(x => String(x.id) === String(id));
   if (!g) return;
@@ -307,6 +319,7 @@ export async function gutscheinLoeschen(id) {
   await ladeGutscheine();
 }
 
+/** @param {string} id */
 export async function gutscheinPinUmschalten(id) {
   const n = Number(id);
   if (_sichtbar.has(n)) _sichtbar.delete(n);
@@ -316,9 +329,11 @@ export async function gutscheinPinUmschalten(id) {
 }
 
 /**
- * Das PDF im Betrachter der App — derselbe wie bei den Bauanleitungen.
+ * Das PDF im Betrachter der Anleitungen, wie in der Android-App: Er kann anzeigen und herunterladen,
+ * zwei eigene Knöpfe dafür wären doppelt.
  * Ausführlich: docs/begruendungen/public/js/17-gutscheine.js.md#gutscheinpdfoeffnen
  */
+/** @param {string} id */
 export async function gutscheinPdfOeffnen(id) {
   const g = _gutscheine.find(x => String(x.id) === String(id));
   const f = await pdfFreigabe(`/v1/vouchers/${id}/pdf-freigabe`);
@@ -330,7 +345,10 @@ export async function gutscheinPdfOeffnen(id) {
     { daten, dateiname: `gutschein-${id}.pdf` });
 }
 
-/** Bestätigung, dann ein Ticket für genau einen Abruf des PDFs (60 s). */
+/**
+ * Bestätigung, dann ein Ticket für genau einen Abruf des PDFs (60 s).
+ * @param {string} pfad
+ */
 async function pdfFreigabe(pfad) {
   const password = await bestaetigeMitPasswort(tRaw('vouchers.pdf_freigabe_title'), tRaw('vouchers.pdf_freigabe_text'), 'schloss', { knopf: 'confirm.btn.pdf_oeffnen', art: 'bp' });
   if (password === null) return null;
@@ -341,9 +359,11 @@ async function pdfFreigabe(pfad) {
 }
 
 /**
- * Gutscheinnummer oder PIN in die Zwischenablage.
+ * Nummer oder PIN kopieren, roh statt gruppiert: Die Leerzeichen sind eine Lesehilfe an der Kasse, ein
+ * Bezahlfeld nimmt sie nicht an. navigator.clipboard braucht HTTPS, daher der Rückfall.
  * Ausführlich: docs/begruendungen/public/js/17-gutscheine.js.md#gutscheinkopieren
  */
+/** @param {string} id @param {string} feld */
 export async function gutscheinKopieren(id, feld) {
   const g = _gutscheine.find(x => String(x.id) === String(id));
   if (!g) return;
@@ -375,7 +395,8 @@ export async function gutscheinKopieren(id, feld) {
 }
 
 /**
- * Alle Gutscheine als EIN PDF herunterladen.
+ * Alle Gutscheine als ein PDF, per fetch statt Link: Die Kopfzeile X-Gutschein-Befunde sagt, wo der
+ * Betrag nicht ersetzt werden konnte — ein <a href> würfe genau diese Auskunft weg.
  * Ausführlich: docs/begruendungen/public/js/17-gutscheine.js.md#gutscheineexportieren
  */
 async function gutscheineExportieren() {
@@ -390,6 +411,7 @@ async function gutscheineExportieren() {
       return;
     }
     const blob = await r.blob();
+    /** @type {{ art?: string, grund?: string, number?: string }[]} */
     let befunde = [];
     try {
       const kopf = r.headers.get('X-Gutschein-Befunde');
@@ -414,10 +436,9 @@ async function gutscheineExportieren() {
     if (!offen.length) {
       toast(tRaw('vouchers.export_done', { n: befunde.length }), 'success');
     } else {
-      // tRaw und nicht t: Das Ziel ist ein TOAST, also reiner Text. t()
-      // maskiert die eingesetzten Werte, und die Maskierung erscheint dort
-      // WOERTLICH — aus 9'325 wurde im Katalog sichtbar „9&#39;325".
-      // test/frontend-escaping.test.js faengt genau das, und es hat es …
+      // tRaw statt t(), weil ein Toast reiner Text ist: t() maskiert, und aus 9'325 würde sichtbar
+      // „9&#39;325“. Die Nummern stehen in der Meldung, damit man weiss, welche Karte auf Papier den alten
+      // Betrag trägt.
       // Ausführlich: docs/begruendungen/public/js/17-gutscheine.js.md#toast
       toast(tRaw('vouchers.export_done', { n: befunde.length }) + ' — '
           + tRaw('vouchers.export_offen', { n: offen.length }) + ': '
@@ -428,14 +449,15 @@ async function gutscheineExportieren() {
   }
 }
 
-// „Kannst du dies bei den Gutscheinen einbauen, damit dies auf Knopfdruck
-//  abgefragt und gespeichert werden kann?"
+// Guthaben bei LEGO auf Knopfdruck abfragen. Die Grenze (eine Anfrage je 30 s über alle Benutzer)
+// setzt der Server; die Oberfläche befolgt sie: Bei 429 wartet sie wartenSek ab und fragt dieselbe
+// Karte erneut. Eine Sammelroute hielte dafür Minuten eine Verbindung offen.
 // Ausführlich: docs/begruendungen/public/js/17-gutscheine.js.md#kannst-du-dies-bei-den-gutscheinen-einba
 
 /** Höchstens so oft dieselbe Karte erneut versuchen, wenn die Schranke bremst. */
 const ABSTAND_VERSUCHE = 4;
 
-const _warte = (ms) => new Promise(r => setTimeout(r, ms));
+const _warte = (/** @type {number} */ ms) => new Promise(r => setTimeout(r, ms));
 
 /**
  * Sekunden abwarten und dabei herunterzählen.
@@ -443,6 +465,7 @@ const _warte = (ms) => new Promise(r => setTimeout(r, ms));
  * Der Text nennt die Karte: Bei „alle abfragen" ist sonst nicht zu sehen,
  * wofür gewartet wird.
  */
+/** @param {number} sekunden @param {string} nummer */
 async function warteSichtbar(sekunden, nummer) {
   const status = G('vouchers-balance-status');
   for (let rest = sekunden; rest > 0; rest--) {
@@ -457,6 +480,8 @@ async function warteSichtbar(sekunden, nummer) {
  * Gibt zurück, was der Aufrufer wissen muss: ob es geklappt hat, und wenn
  * nicht, ob es am Abstand lag (dann lohnt Warten) oder am Bot-Schutz (dann
  * wird AUFGEHÖRT — weiterzufragen ist genau das, was nicht sein soll).
+ * @param {number | string} id
+ * @returns {Promise<{ art: 'ok', antwort: import('../../frontend-typen/vertrag').GuthabenAntwort } | { art: 'abstand', wartenSek: number } | { art: 'botschutz' | 'fehler', fehler: string }>}
  */
 async function eineAbfrage(id) {
   const d = await api('POST', `/v1/vouchers/${id}/guthaben`);
@@ -471,8 +496,10 @@ async function eineAbfrage(id) {
 }
 
 /** Was eine erfolgreiche Abfrage dem Nutzer sagt. */
+/** @param {import('../../frontend-typen/vertrag').GuthabenAntwort} antwort */
 function meldeErfolg(antwort) {
   const v = antwort.voucher;
+  if (!v) return;
   toast(tRaw('vouchers.balance_done', {
     nummer: v.number,
     betrag: antwort.angezeigt || fmtN(v.amount, v.currency),
@@ -485,6 +512,7 @@ function meldeErfolg(antwort) {
 }
 
 /** Eine Karte, auf Knopfdruck in ihrer Zeile. */
+/** @param {string} id */
 export async function guthabenAbfragen(id) {
   const status = G('vouchers-balance-status');
   const g = _gutscheine.find(x => String(x.id) === String(id));
@@ -504,7 +532,7 @@ export async function guthabenAbfragen(id) {
     if (status) status.textContent = '';
     // Auch der Abstand wird hier zur Fehlermeldung: Nach vier Versuchen ist
     // die Auskunft „es ist belegt" ehrlicher als weiteres Warten.
-    toast(r.fehler || tRaw('settings.error'), 'error');
+    toast(('fehler' in r && r.fehler) || tRaw('settings.error'), 'error');
     return;
   }
 }

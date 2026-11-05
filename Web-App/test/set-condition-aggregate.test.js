@@ -98,8 +98,13 @@ test('ein unbekannter Theme-Wert setzt nichts zurück', () => {
   assert.match(boot, /if \(!val\) return null;/,
     'Ein ungültiger Wert darf den localStorage-Cache nicht überschreiben');
 
-  const fn = core.slice(core.indexOf('function applyTheme'), core.indexOf('function applyTheme') + 500);
-  assert.match(fn, /theme !== 'brick' && theme !== 'classic'/,
+  // applyTheme() führt keine eigene Liste mehr, sondern reicht an 00-theme-boot.js
+  // weiter (dessen Rückfall oben geprüft ist). Geprüft wird der Code ohne Kommentare.
+  const roh = core.slice(core.indexOf('function applyTheme'), core.indexOf('function applyTheme') + 500);
+  const fn = roh.slice(0, roh.indexOf('\n}') + 2).replace(/\/\/.*$/gm, '');
+  assert.match(fn, /return window\.__bimApplyTheme\(theme\);/,
+    'applyTheme() muss an 00-theme-boot.js weiterreichen');
+  assert.doesNotMatch(fn, /'classic'/,
     "applyTheme() muss unbekannte Werte ignorieren statt auf 'classic' zu setzen");
 });
 

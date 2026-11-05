@@ -18,9 +18,9 @@ let _catState = { page: 1, q: '', theme: '', yearFrom: '', yearTo: '', sort: 'ye
 // Filterwechsel (gleiches Muster wie in der Android-App), _catItems hält die
 // geladenen Sets für In-Place-Updates (owned-Badge nach Galerie-Aufnahme).
 let _catGen = 0;
-// Marcos Vorgabe: Die Jahres-Leiste soll nicht filtern, sondern schnell
-// scrollen — „kann nicht geprüft werden, wo man hinscrollt, und dieser Teil
-// wird dann geladen".
+// Fensterladen statt Endlos-Scroll: Die Jahresleiste springt mitten in die Liste, und eine angehängte
+// Liste hätte darüber und darunter nichts. Ein Block je Seite; geladen wird, was ins Bild kommt,
+// Platzhalter halten die Höhe frei.
 // Ausführlich: docs/begruendungen/public/js/09-catalog.js.md#cat-limit
 const CAT_LIMIT = 60;
 let _catTotal = 0;
@@ -28,11 +28,17 @@ let _catPageCount = 0;
 let _catLoadedPages = new Set();
 let _catLoadingPages = new Set();
 let _catScrollGebunden = false;
+/** @type {import('../../frontend-typen/vertrag').CatalogSetItem[]} */
 let _catItems = [];
-let _catYearMin = null, _catYearMax = null;   // Datenbereich aus /catalog/meta
+/** Datenbereich aus /catalog/meta. @type {number | null} */
+let _catYearMin = null;
+/** @type {number | null} */
+let _catYearMax = null;
 let _catMetaLoaded = false;
-let _catCurSet = null;      // aktuell im Modal geöffnetes Set
-let _catYearCounts = {};    // Jahr -> Set-Zahl (für Slider-Badge)
+/** Das Set im Detail-Dialog. @type {import('../../frontend-typen/vertrag').CatalogSetDetail | null} */
+let _catCurSet = null;
+/** Jahr → Zahl der Sets (Etikett am Jahresregler). @type {Record<number, number>} */
+let _catYearCounts = {};
 
 
 export function initCatalog(){
@@ -88,13 +94,14 @@ async function loadCatalogMeta(){
   themeEl.innerHTML = `<option value="">${t('catalog.filter.all_themes')}</option>` +
     (d.themes||[]).map(th=>`<option value="${th.id}"${String(th.id)===cur?' selected':''}>${esc(th.name)} (${th.set_count})</option>`).join('');
   // Jahr-Dropdowns (Von/Bis): absteigend von max bis min
-  if (d.year_min && d.year_max) {
-    const mk = (el, placeholderKey, cur)=>{
+  const { year_min: von, year_max: bis } = d;
+  if (von && bis) {
+    const mk = (/** @type {HTMLElement | null} */ el, /** @type {string} */ placeholderKey, /** @type {string} */ cur)=>{
       let opts = `<option value="">${t(placeholderKey)}</option>`;
-      for (let y = d.year_max; y >= d.year_min; y--) {
+      for (let y = bis; y >= von; y--) {
         opts += `<option value="${y}"${String(y)===cur?' selected':''}>${y}</option>`;
       }
-      el.innerHTML = opts;
+      if (el) el.innerHTML = opts;
     };
     mk(G('cat-year-from'), 'catalog.filter.year_from', _catState.yearFrom);
     mk(G('cat-year-to'),   'catalog.filter.year_to',   _catState.yearTo);
@@ -113,7 +120,11 @@ export function katalogZuruecksetzen(){
   setCatalogYearRange('', '');
 }
 
-/** Zentrale Stelle für Jahresbereichs-Änderungen — hält Dropdowns, Slider und Badge synchron. */
+/**
+ * Zentrale Stelle für Jahresbereichs-Änderungen — hält Dropdowns, Slider und Badge synchron.
+ * @param {string} from
+ * @param {string} to
+ */
 function setCatalogYearRange(from, to){
   from = from ? String(from) : '';
   to   = to   ? String(to)   : '';
@@ -132,6 +143,9 @@ function _syncYearUI(){
   G('cat-year-to').value   = _catState.yearTo   || '';
 }
 
+/**
+ * @param {number} page
+ */
 function _catQuery(page){
   const p = new URLSearchParams();
   if (_catState.q)        p.set('q', _catState.q);
@@ -157,7 +171,7 @@ async function loadCatalogSets(){
   const grid = G('catalog-grid');
   grid.innerHTML = ladeAnzeige(t('catalog.loading'));
   _catState.page = 1;
-  const d = await api('GET', '/v1/catalog/sets?' + _catQuery(1));
+  const d = await api('GET', `/v1/catalog/sets?${_catQuery(1)}`);
   if (gen !== _catGen) return;   // inzwischen neuer Filter — Antwort verwerfen
   if (listeLadefehler(grid, d, { erneut: 'loadCatalogSets' })) return;
 
@@ -188,10 +202,8 @@ async function loadCatalogSets(){
     const anzahl = (seite === _catPageCount) ? (_catTotal - (seite - 1) * CAT_LIMIT) : CAT_LIMIT;
     html += seite === 1
       ? `<div class="sgrid cat-page" data-page="1">${_catItems.map(catCard).join('')}</div>`
-      // Ungeladene Seiten sind EIN leerer Block, nicht 60 Kachel-Platzhalter.
-      // Bei 25 000 Sets wären das über 25 000 Elemente auf einmal — der Browser
-      // baut sie, aber langsam, und jeder Scroll-Schritt kostet danach. Die
-      // Höhe kommt gleich nach dem Zeichnen aus der GEMESSENEN ersten Seite …
+      // Ungeladene Seiten sind EIN leerer Block statt 60 Platzhalterkacheln: Bei 25 000 Sets wären das 25
+      // 000 Elemente. Die Höhe kommt aus der gemessenen ersten Seite, weil die Spaltenzahl am Fenster hängt.
       // Ausführlich: docs/begruendungen/public/js/09-catalog.js.md#ungeladene-seiten-sind-ein-leerer-block
       : `<div class="cat-page cat-page-ph" data-page="${seite}" data-anzahl="${anzahl}"></div>`;
   }
@@ -218,18 +230,21 @@ function _setzePlatzhalterHoehe(){
   if (hoehe < 10) return;   // noch nicht gezeichnet
   const proKachel = hoehe / Math.max(1, _catItems.length);
   for (const el of alle('#catalog-grid .cat-page-ph')) {
-    const anzahl = parseInt(el.dataset.anzahl) || CAT_LIMIT;
+    const anzahl = parseInt(el.dataset.anzahl ?? '') || CAT_LIMIT;
     el.style.height = Math.round(anzahl * proKachel) + 'px';
   }
 }
 
 /**
- * Wo liegt welcher Seitenblock? EINMAL gemessen, dann aus dem Gedächtnis.
+ * Die Lage der Seitenblöcke einmal messen, dann aus dem Gedächtnis: getBoundingClientRect je Block und
+ * Bild erzwang über 400 Layouts, und das Ziehen am Balken legte die CPU auf 100 %.
  * Ausführlich: docs/begruendungen/public/js/09-catalog.js.md#catblocklagen
  */
+/** @type {{ seite: number, oben: number, unten: number }[]} */
 let _catBlockLagen = [];
 // Jahre mit ihrer Anzahl, in der Reihenfolge der Liste — die Grundlage für das
 // Etikett am Scrollbalken (siehe _jahrAnPosition).
+/** @type {import('../../frontend-typen/vertrag').JahrAnzahl[]} */
 let _catJahrVerteilung = [];
 
 function _messeBloecke(){
@@ -237,7 +252,7 @@ function _messeBloecke(){
   for (const el of alle('#catalog-grid .cat-page')) {
     const r = el.getBoundingClientRect();
     _catBlockLagen.push({
-      seite: parseInt(el.dataset.page),
+      seite: parseInt(el.dataset.page ?? ''),
       oben:  r.top + window.scrollY,
       unten: r.bottom + window.scrollY,
     });
@@ -245,11 +260,16 @@ function _messeBloecke(){
 }
 
 /**
- * Die Seiten laden, die im Bild stehen — erst, wenn das Rollen zur Ruhe kommt.
+ * Erst laden, wenn das Rollen ruht (150 ms): Ein Zug über die ganze Leiste forderte sonst hunderte
+ * Seiten an, von denen nur die letzte angesehen wird. Beim normalen Scrollen merkt man die Pause
+ * nicht.
  * Ausführlich: docs/begruendungen/public/js/09-catalog.js.md#die-seiten-laden-die-im-bild-stehen-erst
  */
 /** @type {number | null} */
 let _catLadeTimer = null;
+/**
+ * @param {boolean} [sofort]
+ */
 function _ladeSichtbareSeiten(sofort){
   clearTimeout(_catLadeTimer);
   const tun = () => {
@@ -291,9 +311,10 @@ function _beobachteSeiten(){
 
 /**
  * Eine Seite nachladen und ihren Block füllen.
- *
+ * 
  * Bereits geladene oder gerade ladende Seiten werden übersprungen — ohne diese
  * Prüfung löste jeder Scroll-Schritt denselben Abruf mehrfach aus.
+ * @param {number} seite
  */
 export async function ladeSeite(seite){
   if (seite < 1 || seite > _catPageCount) return;
@@ -301,7 +322,7 @@ export async function ladeSeite(seite){
   _catLoadingPages.add(seite);
   const gen = _catGen;
   try {
-    const d = await api('GET', '/v1/catalog/sets?' + _catQuery(seite));
+    const d = await api('GET', `/v1/catalog/sets?${_catQuery(seite)}`);
     if (gen !== _catGen) return;   // Filter hat inzwischen gewechselt
     if (!d.success || !d.sets?.length) return;
     const block = eins(`#catalog-grid .cat-page[data-page="${seite}"]`);
@@ -322,11 +343,10 @@ export async function ladeSeite(seite){
   }
 }
 
+/** @param {import('../../frontend-typen/vertrag').CatalogSetItem} s */
 function catCard(s){
-  // Über den Server statt direkt im Browser vom CDN — dieselbe Logik wie
-  // Sets, Teile und Minifiguren (imgUrl(thumbUrl(...), true)), auf Wunsch
-  // auch für den Katalog vereinheitlicht. Vorteil gegenüber der bisherigen
-  // rohen CDN-Adresse: kleineres Vorschaubild statt der vollen Auflösung, …
+  // Vorschau über den Server wie bei Sets, Teilen und Figuren: kleiner als die volle CDN-Auflösung, und
+  // schon heruntergeladene Bilder (image_local) sparen den Weg zum CDN ganz.
   // Ausführlich: docs/begruendungen/public/js/09-catalog.js.md#src
   const src = s.image_local || s.image_url;
   const img = src
@@ -341,8 +361,9 @@ function catCard(s){
   // Variable kostet nichts, und eine Abfrage des aktiven Designs hier waere
   // eine zweite Stelle, die es kennen muss. Ohne Thema-Nummer bleibt sie weg —
   // dann zeigt der Streifen nichts statt etwas Falsches.
-  const ton = Number.isInteger(s.theme_id)
-    ? ` data-faecher="${((s.theme_id % 12) + 12) % 12}"` : '';
+  const thema = s.theme_id;
+  const ton = thema != null && Number.isInteger(thema)
+    ? ` data-faecher="${((thema % 12) + 12) % 12}"` : '';
   return `<div class="sc"${ton} tabindex="0" role="button" data-sn="${esc(s.set_number)}" data-year="${s.year||''}" data-click="openCatModal" data-arg="${esc(s.set_number)}">
     <div class="sci">${img}</div>
     <div class="scb">
@@ -360,20 +381,23 @@ function catCard(s){
 }
 
 // ── Detail-Modal ──────────────────────────────────────────────────────────────
+/** @param {string} setNumber */
 async function openCatModal(setNumber){
-  const d = await api('GET', '/v1/catalog/sets/' + encodeURIComponent(setNumber));
+  const d = await api('GET', `/v1/catalog/sets/${encodeURIComponent(setNumber)}`);
   if (!d.success) { toast(d.error || t('settings.error'), 'error'); return; }
-  const s = d.set; _catCurSet = s;
+  const s = d.set;
+  if (!s) return;
+  _catCurSet = s;
   G('cat-m-tit').textContent = s.name || s.set_number;
   G('cat-m-sub').textContent = s.set_number;
   leereLagerortFeld('cat-m-storage');
-  // Volle Auflösung im Detail-Modal — wie beim Zoom der eigenen Sets
-  // (11-actions.js, openImageLightboxFromEl): NICHT über den Proxy, sondern
-  // direkt im Browser vom CDN geladen. Das ist bewusst so: Der Server-Umweg
-  // lohnt sich für die kleine Vorschau (spart Bandbreite, profitiert vom …
+  // Die volle Auflösung im Detail direkt vom CDN, nicht über den Proxy: Für ein einmaliges grosses Bild
+  // ist das schneller und entlastet den Server; der Proxy lohnt sich nur für die vielen kleinen
+  // Vorschauen.
   // Ausführlich: docs/begruendungen/public/js/09-catalog.js.md#detailsrc
   const detailSrc = s.image_local || s.image_url;
   G('cat-m-img').src = detailSrc ? fullUrl(detailSrc) : '/assets/set-placeholder.svg';
+  /** @type {[string, string | number][]} */
   const rows = [
     [t('detail.year'),     s.year || '—'],
     [t('detail.theme'),    s.theme_name || '—'],
@@ -382,10 +406,9 @@ async function openCatModal(setNumber){
   ];
   if (s.owned) rows.push([t('catalog.owned'), '×' + s.owned_quantity]);
   G('cat-m-det').innerHTML = rows.map(([k, v]) => detailZeile(k, esc(String(v)))).join('');
-  // Kauf-Link kommt fertig vom Server (src/katalog/bricklinkLink.ts). Vorher wurde er
-  // hier aus der Rebrickable-Nummer gebaut und immer als Set verlinkt (S=…) —
-  // für alles, was BrickLink als Gear oder Buch führt, war damit sowohl der
-  // Parameter als auch die Nummer falsch (dort ohne "-1"-Suffix). …
+  // Der Kauf-Link kommt fertig vom Server (bricklinkLink.ts): Aus der Rebrickable-Nummer gebaut, war er
+  // für Gear, Bücher und Sammelfiguren falsch. Ist der Artikel nicht eindeutig, zeigt er auf die Suche —
+  // nie ausblenden.
   // Ausführlich: docs/begruendungen/public/js/09-catalog.js.md#bl
   const bl = s.bricklink;
   const blBtn = G('cat-m-bricklink');
@@ -399,9 +422,8 @@ async function openCatModal(setNumber){
   G('cat-m-add').textContent = s.owned ? t('catalog.add_again') : t('catalog.add_to_gallery');
   G('cat-m-qty').value = '1';
   G('cat-m-price').value = '';
-  // Die Setnummer am Modal hinterlegen: Der Merklisten-Knopf liegt in einem
-  // anderen Modul und hat auf _catCurSet keinen Zugriff. Ein Export waere ein
-  // zweiter Weg zu demselben Zustand — das Modal weiss ohnehin, was es zeigt.
+  // Die Setnummer hängt am Modal: Der Merklisten-Knopf liegt in einem anderen Modul, und das Modal weiss
+  // ohnehin, was es zeigt. Ein Export von _catCurSet wäre ein zweiter Weg zum selben Zustand.
   // Ausführlich: docs/begruendungen/public/js/09-catalog.js.md#cat-modal
   G('cat-modal').dataset.setNumber = s.set_number;
   G('cat-modal').classList.add('open');
@@ -450,13 +472,17 @@ async function addCatalogSetToGallery(){
   } catch(e) { if (e.name !== 'AbortError') { hideProgress(); toast(fehlerMeldung(e), 'error'); } }
 }
 
-/** owned-Badge eines Sets in der geladenen Liste aktualisieren, ohne die
- *  Liste neu zu laden (Infinite Scroll: Scroll-Position bleibt erhalten). */
+/**
+ * owned-Badge eines Sets in der geladenen Liste aktualisieren, ohne die
+ * Liste neu zu laden (Infinite Scroll: Scroll-Position bleibt erhalten).
+ * @param {string} setNumber
+ * @param {number} qty
+ */
 function _patchCatalogOwned(setNumber, qty){
   const it = _catItems.find(x => x.set_number === setNumber);
   if (!it) return;
   it.owned = true;
-  it.owned_quantity = (parseInt(it.owned_quantity) || 0) + (qty || 1);
+  it.owned_quantity = (parseInt(String(it.owned_quantity)) || 0) + (qty || 1);
   const el = document.querySelector(`#catalog-grid .sc[data-sn="${(window.CSS && CSS.escape) ? CSS.escape(setNumber) : setNumber}"]`);
   if (el) el.outerHTML = catCard(it);
 }
@@ -470,9 +496,8 @@ registerActions({
 });
 
 
-// Den Balken selbst zeichnet die Anwendung für die ganze Seite (js/01-core.js,
-// #app-scrollbar). Der Katalog trägt hier nur bei, WAS beim Ziehen daneben
-// steht: das Jahr an der aktuellen Stelle.
+// Den Balken zeichnet die Anwendung (#app-scrollbar); der Katalog liefert nur das Jahr daneben.
+// Gelesen aus der obersten sichtbaren Kachel — geschätzt wird nur, wo noch nichts geladen ist.
 // Ausführlich: docs/begruendungen/public/js/09-catalog.js.md#jahranposition
 function _jahrAnPosition(){
   const grid = G('catalog-grid');
@@ -487,7 +512,8 @@ function _jahrAnPosition(){
       break;
     }
   }
-  // Zweite Wahl: über die tatsächliche VERTEILUNG rechnen.
+  // Zweite Wahl: über die tatsächliche Verteilung der Jahre rechnen. Linear auf 1949–2027 umgerechnet
+  // stand bei neun Zehnteln „1965“, weil der Katalog fast ganz aus den letzten Jahrzehnten stammt.
   // Ausführlich: docs/begruendungen/public/js/09-catalog.js.md#if
   if (!_catJahrVerteilung.length || !_catTotal) return null;
   const doc = document.documentElement;
@@ -515,7 +541,7 @@ async function _ladeJahrVerteilung(){
   if (_catState.theme) p.set('theme_id', _catState.theme);
   p.set('sort', _catState.sort);
   const gen = _catGen;
-  const d = await api('GET', '/v1/catalog/year-verteilung?' + p.toString()).catch(() => null);
+  const d = await api('GET', `/v1/catalog/year-verteilung?${p.toString()}`).catch(() => null);
   if (gen !== _catGen) return;   // Filter hat inzwischen gewechselt
   if (d?.success) _catJahrVerteilung = (d.years || []).filter(y => y.year);
 }

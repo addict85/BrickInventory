@@ -1,6 +1,5 @@
-// js/11-actions.js löst die Handler aus data-click="name" auf. Bisher tat es
-// das über `window[name]` — was funktionierte, weil alle Handler klassische
-// Funktionsdeklarationen auf oberster Ebene und damit global waren.
+// In ES-Modulen liegen Funktionen nicht auf window; data-click="name" findet seinen Handler deshalb
+// hier. Ein Tippfehler im Namen fällt so im Test auf statt erst beim Klicken.
 // Ausführlich: docs/begruendungen/public/js/00-registry.js.md#js-11-actions-js-loest-die-handler-aus-d
 
 /** name → Funktion. Wird von den einzelnen Modulen gefüllt. */

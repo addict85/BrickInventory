@@ -21,6 +21,10 @@ if (require.main === module) {
   const { openapi } = require(path.join(ROOT, 'dist', 'src', 'infra', 'vertrag', 'openapi.js'));
   fs.writeFileSync(DATEI, alsText(openapi()));
   console.log(`geschrieben: ${path.relative(ROOT, DATEI)}`);
+  // Die Typen der Oberfläche folgen dem Vertrag im selben Schritt.
+  const typen = require('./vertrag-frontend-typen.js');
+  fs.writeFileSync(typen.ZIEL, typen.erzeuge(JSON.parse(fs.readFileSync(DATEI, 'utf8'))));
+  console.log(`geschrieben: ${path.relative(ROOT, typen.ZIEL)}`);
 }
 
 module.exports = { DATEI, alsText };

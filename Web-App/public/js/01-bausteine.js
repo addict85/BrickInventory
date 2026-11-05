@@ -1,6 +1,5 @@
-// 01-core.js sammelt WERKZEUGE: Escaping, Bild-URLs, Formatierung, Toasts,
-// Theme. Was dort fehlte, sind Bausteine für die ANSICHT — und die standen
-// deshalb als HTML-Zeichenkette in jedem Modul neu.
+// Bausteine für Ansichten (Detailzeile, Ladeanzeige, Leer- und Fehlerzustand) an einer Stelle: Was
+// überall gleich aussehen soll, stand vorher fünfzehnmal als eigene HTML-Zeichenkette in vier Modulen.
 // Ausführlich: docs/begruendungen/public/js/01-bausteine.js.md#01-core-js-sammelt-werkzeuge-escaping-bi
 import { ico, toast, G, fmtBig, fmtPct, istGeschenk, api } from './01-core.js';
 import { tRaw, t } from '../i18n.js';
@@ -77,15 +76,19 @@ export function skelettZeilen(anzahl, text) {
 
 /**
  * Ein Wert, der fehlen darf — sonst steht in der Zeile ein leeres Feld.
- *
+ * 
  * Die Aufrufer schrieben dafür `${x || '—'}` oder `${x ?? '–'}`, mit zwei
  * verschiedenen Strichen. Hier ist es einer.
+ * @param {unknown} wert
  */
 export function oderStrich(wert) {
   return (wert === null || wert === undefined || wert === '') ? '—' : String(wert);
 }
 
-/** Wie [oderStrich], aber der Wert kommt vom Nutzer und wird escaped. */
+/**
+ * Wie [oderStrich], aber der Wert kommt vom Nutzer und wird escaped.
+ * @param {string} wert
+ */
 export function textOderStrich(wert) {
   return (wert === null || wert === undefined || wert === '') ? '—' : esc(String(wert));
 }
@@ -108,15 +111,17 @@ export function fehlerZustand(o) {
  * Hat das Laden einer Liste versagt? Dann bleibt eine schon gezeigte Liste
  * stehen (mit Meldung), sonst zeigt `ziel` den Fehlerzustand.
  * @param {HTMLElement|null} ziel
- * @param {any} d          Antwort von api() — null zählt als Fehler
+ * @template D
+ * @param {D} d          Antwort von api() — null zählt als Fehler
  * @param {{ erneut: string, arg?: string, behalten?: boolean }} o
- * @returns {boolean} true, wenn es ein Fehler war und der Aufrufer aufhören soll
+ * @returns {d is Extract<D, { success: false }>} true, wenn es ein Fehler war und der Aufrufer aufhören soll
  */
 export function listeLadefehler(ziel, d, o) {
-  if (d && d.success !== false) return false;
+  const a = /** @type {{ success?: unknown, status?: number, error?: unknown, networkError?: boolean } | null | undefined} */ (d);
+  if (a && a.success !== false) return false;
   // Die abgelaufene Sitzung meldet die Anmeldekarte; „Erneut versuchen“ hülfe dort nicht.
-  if (d?.status === 401) return true;
-  const { grund, details } = verstaendlicherGrund(d);
+  if (a?.status === 401) return true;
+  const { grund, details } = verstaendlicherGrund(a);
   const nochmal = () => { const f = resolveAction(o.erneut); if (f) o.arg !== undefined ? f(o.arg) : f(); };
   if (o.behalten) toast(tRaw('liste.alter_stand_kurz'), 'error', { text: tRaw('liste.erneut'), fn: nochmal }, [grund, details].filter(Boolean).join(' — '));
   else if (ziel) ziel.innerHTML = fehlerZustand({ grund, details, erneut: o.erneut, arg: o.arg });
@@ -127,16 +132,20 @@ export function listeLadefehler(ziel, d, o) {
  * Ein Serverfehler (5xx) sagt dem Laien nichts. Gezeigt wird, was er tun kann;
  * der Rohtext steht unter „Details“ für die Meldung an den Verwalter.
  * 4xx-Texte schreibt der Server selbst verständlich.
- * @param {any} d Antwort von api()
+ * @param {{ networkError?: boolean, status?: number, error?: unknown } | null | undefined} d Antwort von api()
  * @returns {{ grund: string, details?: string }}
  */
 export function verstaendlicherGrund(d) {
   if (d?.networkError) return { grund: tRaw('net.liste_offline') };
-  if (!d || d.status >= 500 || !d.error) return { grund: tRaw('liste.server_fehler'), details: d?.error || undefined };
-  return { grund: d.error };
+  if (!d || (d.status ?? 0) >= 500 || !d.error) return { grund: tRaw('liste.server_fehler'), details: d?.error ? String(d.error) : undefined };
+  return { grund: String(d.error) };
 }
 
-/** „144 aus Sets · 250 einzeln“ — leer, solange nur eine der beiden Quellen etwas hat. */
+/**
+ * „144 aus Sets · 250 einzeln“ — leer, solange nur eine der beiden Quellen etwas hat.
+ * @param {number} ausSets
+ * @param {number} einzeln
+ */
 export function teileAufschluesselung(ausSets, einzeln) {
   if (!ausSets || !einzeln) return '';
   return t('parts.stat.breakdown', { sets: fmtBig(ausSets), einzeln: fmtBig(einzeln) });
@@ -145,18 +154,21 @@ export function teileAufschluesselung(ausSets, einzeln) {
 /**
  * G&V-Plakette. Bei Kaufpreis 0 „Geschenk“ statt einer Prozentzahl: Gegen 0
  * gerechnet stünde dort „+327.600 %“, und das sagt nichts.
+ * @param {number | string | null | undefined} pct
+ * @param {unknown} [kauf]
  */
 export function pnlBadge(pct, kauf){
   if(istGeschenk(kauf)) return `<span class="pnl-geschenk">${t('finance.gift')}</span>`;
   if(pct===null||pct===undefined) return '';
-  const v=parseFloat(pct); const cls=v>0?'pnl-pos':v<0?'pnl-neg':'pnl-neu';
+  const v=parseFloat(String(pct)); const cls=v>0?'pnl-pos':v<0?'pnl-neg':'pnl-neu';
   return `<span class="${cls}">${fmtPct(v)}</span>`;
 }
 
 /**
- * Besitzer-Plaketten — nur im Haushalt. Gezeigt nur, wenn ein ANDERES Konto
- * mit drinsteckt: Der eigene Name auf jeder Kachel beantwortet keine Frage.
+ * Besitzer-Plaketten nur, wenn ein ANDERES Konto mit drinsteckt: Im Haushalt verhindern sie, dass man
+ * das falsche Exemplar verschiebt; der eigene Name auf jeder Kachel wäre nur Rauschen.
  * Ausführlich: docs/begruendungen/public/js/01-bausteine.js.md#besitzer-plaketten-nur-im-haushalt
+ * @param {{ owners?: { id: number, username: string }[] } | null | undefined} item
  */
 export function ownerBadges(item) {
   if (!item?.owners?.length) return '';
@@ -165,14 +177,17 @@ export function ownerBadges(item) {
 }
 
 /**
- * Zustands-Plaketten eines Eintrags — eine je erfasstem Zustand.
+ * Eine Plakette je erfasstem Zustand, aus `conditions` vom Server: Das Aggregat `condition` zeigte bei
+ * neu und gebraucht nur „gebraucht“, und die Neu-Erfassung war unsichtbar, obwohl sie mitbewertet
+ * wird.
  * Ausführlich: docs/begruendungen/public/js/01-bausteine.js.md#zustands-plaketten-eines-eintrags-eine-j
+ * @param {{ conditions?: string[] | null, condition?: string | null } | null | undefined} item
  */
 export function condBadges(item) {
   const list = Array.isArray(item?.conditions) && item.conditions.length
     ? item.conditions
     : [item?.condition === 'U' ? 'U' : 'N'];
-  return list.map(c => c === 'U'
+  return list.map((/** @type {string} */ c) => c === 'U'
     ? `<span class="cond-badge cond-used"><span class="vh">${t('common.condition')}: </span>${t('common.condition_used')}</span>`
     : `<span class="cond-badge cond-new"><span class="vh">${t('common.condition')}: </span>${t('common.condition_badge_new')}</span>`
   ).join('');
@@ -180,10 +195,16 @@ export function condBadges(item) {
 
 /** Erfassen-Dialoge der Sammlung: set, part, fig — gleich aufgebaut (Erstfokus: data-erstfokus). */
 // Ohne data-arg reicht der Dispatcher das Ereignis als erstes Argument.
-const erfassenDialog = (art) => G(`add-${typeof art === 'string' ? art : 'set'}-modal`);
+const erfassenDialog = (/** @type {unknown} */ art) => G(`add-${typeof art === 'string' ? art : 'set'}-modal`);
 
+/**
+ * @param {string} [art]
+ */
 export function oeffneErfassen(art){ erfassenDialog(art)?.classList.add('open'); }
 
+/**
+ * @param {string} [art]
+ */
 export function schliesseErfassen(art){ erfassenDialog(art)?.classList.remove('open'); }
 
 /**

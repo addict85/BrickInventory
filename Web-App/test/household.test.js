@@ -415,7 +415,8 @@ test('der Kontofilter gilt je Ansicht und wird überall mitgeschickt', () => {
   // Abfragen des Reiters tragen denselben Filter.
   for (const ep of ['/v1/finance/valuation', '/v1/finance/parts-valuation',
                     '/v1/finance/minifigs-valuation', '/v1/finance/pnl']) {
-    assert.ok(fin.includes(`'${ep}'+scopeQuery('finance')`), `${ep} ohne Kontofilter`);
+    assert.ok(fin.includes(`'${ep}'+scopeQuery('finance')`) || fin.includes(`\`${ep}\${scopeQuery('finance')}\``),
+      `${ep} ohne Kontofilter`);
   }
   assert.match(fin, /portfolio-history\?period=\$\{_chartPeriod\}\$\{scopeMode\('finance'\)/,
     'Auch die Kurve muss dem Filter folgen');

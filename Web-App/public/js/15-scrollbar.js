@@ -6,12 +6,17 @@
 // von aussen nur G() — den Rest macht er selbst.
 import { G } from './01-core.js';
 
-// Marcos Vorgabe: „Der rechte Scrollbalken ist der vom Browser, der durch den
-// eigenen ersetzt werden soll. Gerne gleich in der ganzen App."
+// Ein eigener Scrollbalken für die ganze Seite, fest am rechten Rand, statt eines Scrollkastens im
+// Katalog: Dort sass der Balken mitten im Fenster, und das Nachladen mass gegen den Kasten statt gegen
+// das Fenster.
 // Ausführlich: docs/begruendungen/public/js/15-scrollbar.js.md#marcos-vorgabe-der-rechte-scrollbalken-i
 
-/** Wer beim Ziehen ein Etikett zeigen will, setzt hier eine Funktion. */
+/**
+ * Wer beim Ziehen ein Etikett zeigen will, setzt hier eine Funktion.
+ * @type {(() => string | null | undefined) | null}
+ */
 let scrollLabelFn = null;
+/** @param {(() => string | null | undefined) | null} fn */
 export function setScrollLabel(fn) { scrollLabelFn = fn; }
 
 function _rollbarerBereich() {
@@ -37,7 +42,8 @@ export function zeichneScrollbalken() {
 }
 
 /**
- * Das Balken-Element erzeugen, falls es noch nicht da ist.
+ * Das Balken-Element aus JavaScript erzeugen: app.bundle.js läuft, sobald der Parser es erreicht, und
+ * ein <div> dahinter im Markup gab es beim Start noch nicht — der Balken fehlte still.
  * Ausführlich: docs/begruendungen/public/js/15-scrollbar.js.md#erzeugescrollbalken
  */
 function _erzeugeScrollbalken() {
@@ -77,7 +83,7 @@ export function initScrollbalken() {
     new ResizeObserver(nachzeichnen).observe(document.body);
   }
 
-  const rollen = (clientY) => {
+  const rollen = (/** @type {number} */ clientY) => {
     const r = bar.getBoundingClientRect();
     const hoehe = thumb.offsetHeight;
     const maxOben = Math.max(1, r.height - hoehe);
@@ -90,8 +96,8 @@ export function initScrollbalken() {
       label.style.top = (oben + hoehe / 2) + 'px';
     }
   };
-  const start = (ev) => {
-    const y = ev.touches ? ev.touches[0].clientY : ev.clientY;
+  const start = (/** @type {MouseEvent | TouchEvent} */ ev) => {
+    const y = 'touches' in ev ? ev.touches[0].clientY : ev.clientY;
     const tr = thumb.getBoundingClientRect();
     // Neben den Griff getippt: erst dorthin springen, dann greifen — wie bei
     // einem gewöhnlichen Scrollbalken.
@@ -99,16 +105,17 @@ export function initScrollbalken() {
     ziehen = true; bar.classList.add('dragging');
     rollen(y); ev.preventDefault();
   };
-  const bewegen = (ev) => {
+  const bewegen = (/** @type {MouseEvent | TouchEvent} */ ev) => {
     if (!ziehen) return;
-    rollen(ev.touches ? ev.touches[0].clientY : ev.clientY);
+    rollen('touches' in ev ? ev.touches[0].clientY : ev.clientY);
     ev.preventDefault();
   };
   const ende = () => {
     if (!ziehen) return;
     ziehen = false;
     bar.classList.remove('dragging');
-    // Die INLINE gesetzte Sichtbarkeit wieder wegnehmen.
+    // Die inline gesetzte Sichtbarkeit wieder wegnehmen: Sie schlägt die CSS-Regel für .dragging, und das
+    // Jahresetikett blieb nach dem Loslassen in jedem Reiter stehen.
     // Ausführlich: docs/begruendungen/public/js/15-scrollbar.js.md#if
     if (label) label.style.display = '';
   };

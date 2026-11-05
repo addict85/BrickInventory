@@ -14,23 +14,29 @@ let pflicht = false;
 const flaeche = () => pflicht ? G('zf-pflicht-flaeche') : G('zf-flaeche');
 if (typeof document !== 'undefined') document.addEventListener('zweitpflicht', () => { pflicht = true; pflichtHinweis('zfpflicht.hint'); void ladeZweitenFaktor(); });
 
-/** Die Einleitung über der Fläche: erst „bitte einrichten“, nach dem Code „fertig, Codes sichern“. */
+/**
+ * Die Einleitung über der Fläche: erst „bitte einrichten“, nach dem Code „fertig, Codes sichern“.
+ * @param {string} schluessel
+ */
 function pflichtHinweis(schluessel) {
   const h = G('zfpflicht-hinweis'); if (!h) return;
   h.dataset.i18n = schluessel; h.textContent = tRaw(schluessel);
 }
 
+/**
+ * @param {string} html
+ */
 function zeichne(html) { const f = flaeche(); if (f) f.innerHTML = html; }
 // Im Anmeldebildschirm stehen die Knöpfe breit untereinander wie „Abmelden“ darunter.
 const knopfArt = () => pflicht ? 'knopf-breit' : 'btn-sm';
 
-const knopf = (aktion, text, art = 'bs') =>
+const knopf = (/** @type {string} */ aktion, /** @type {string} */ text, art = 'bs') =>
   `<button type="button" class="btn ${art} ${knopfArt()}" data-click="${aktion}"${echt()}>${text}</button>`;
-const reihe = (inhalt) => `<div class="${pflicht ? 'zf-knoepfe-breit' : 'zf-knoepfe'}">${inhalt}</div>`;
+const reihe = (/** @type {string} */ inhalt) => `<div class="${pflicht ? 'zf-knoepfe-breit' : 'zf-knoepfe'}">${inhalt}</div>`;
 // Die Felder stehen ausgeschrieben da, nicht über einen Helfer: test/dom-ids.test.js
 // findet nur wörtliche id-Angaben.
 // findet nur wörtliche id-Angaben. Das Passwort fragt der Dialog beim Auslösen.
-const CODEFELD = (label, laenge = 24) =>
+const CODEFELD = (/** @type {string} */ label, laenge = 24) =>
   `<div class="fg"><label for="zf-code">${label}</label><input type="text" id="zf-code" inputmode="numeric" autocomplete="one-time-code" maxlength="${laenge}" data-erstfokus /></div>`;
 
 export async function ladeZweitenFaktor() {
@@ -64,7 +70,7 @@ export async function zfEinrichten() {
   if (!d) return;
   if (!d?.success) { toast(d?.error || tRaw('settings.error'), 'error'); return; }
   // Gruppiert lesbar, falls jemand den Schlüssel von Hand eintippt.
-  const lesbar = d.geheimnis.replace(/(.{4})/g, '$1 ').trim();
+  const lesbar = (d.geheimnis ?? '').replace(/(.{4})/g, '$1 ').trim();
   zeichne(`<form class="sform" data-submit="zf-bestaetigen" data-stil="max-width:420px">
       <p data-stil="font-size:var(--fs-2);margin:0">${t('zf.scan')}</p>
       <div id="zf-qr" data-stil="background:#fff;padding:8px;align-self:flex-start;border-radius:8px"></div>
@@ -80,10 +86,11 @@ export async function zfEinrichten() {
     // Die Bibliothek legt Leinwand und Bild ohne Namen an; vorgelesen wird der Zweck.
     qr.querySelector('img')?.setAttribute('alt', tRaw('zf.qr_alt'));
     qr.querySelector('canvas')?.setAttribute('aria-hidden', 'true');
-  } else if (qr) qr.textContent = d.otpauth;
+  } else if (qr) qr.textContent = d.otpauth ?? '';
   G('zf-code')?.focus();
 }
 
+/** @param {string[]} codes */
 function zeigeCodes(codes) {
   if (pflicht) pflichtHinweis('zfpflicht.fertig');
   zeichne(`<div class="sform" data-stil="max-width:420px">
@@ -108,13 +115,13 @@ export async function zfBestaetigen() {
     return;
   }
   toast(tRaw('zf.enabled'), 'success');
-  zeigeCodes(d.codes);
+  zeigeCodes(d.codes ?? []);
 }
 
 export async function zfNeueCodes() {
   const d = await api('POST', '/v1/auth/zweiter-faktor/codes', { code: G('zf-code')?.value || '' });
   if (!d?.success) { toast(d?.error || tRaw('settings.error'), 'error'); return; }
-  zeigeCodes(d.codes);
+  zeigeCodes(d.codes ?? []);
 }
 
 export async function zfAbschalten() {
@@ -135,6 +142,7 @@ export async function zfCodesKopieren() {
 }
 
 /** Verwalter: den zweiten Faktor eines Kontos entfernen (Telefon und Codes verloren). */
+/** @param {string} uid @param {string} name */
 export async function zfZuruecksetzen(uid, name) {
   const admin_password = await bestaetigeMitPasswort(tRaw('zf.reset_title_name', { name }), tRaw('zf.reset_text', { name }), 'schloss', { knopf: 'confirm.btn.zuruecksetzen', art: 'bp' });
   if (admin_password === null) return;

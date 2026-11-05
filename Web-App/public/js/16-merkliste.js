@@ -10,21 +10,28 @@ import { alarmBlock, ladeAlarm, setzeAlarmFeld } from './02-detailfelder.js';
 import { diagrammBreite, priceChartSVG, renderMarketRows } from './01-diagramme.js';
 import { leereLagerortFeld, selectedOwner, selectedStorage, haushaltsKonten } from './02-konten-orte.js';
 
-// Was man haben möchte — getrennt vom Besitz. Die Trennung ist der ganze
-// Grund für eine eigene Tabelle (db/migrations/0021-merkliste.sql): Stünde
-// ein Merkposten in `sets`, zählte er in Galerie, Teileliste, Portfolio-Wert und
-// Finanzansicht mit, und jede dieser Ansichten bräuchte ab dann einen Filter, …
+// Was man haben möchte, getrennt vom Besitz, deshalb eine eigene Tabelle: In `sets` zählte ein
+// Merkposten in Galerie, Teilen, Portfolio und Finanzen mit, und jede Ansicht bräuchte einen Filter.
 // Ausführlich: docs/begruendungen/public/js/16-merkliste.js.md#was-man-haben-moechte-getrennt-vom-besit
 
 /** Die zuletzt geladene Liste — für die Knöpfe, die auf eine Zeile zeigen. */
+/** @typedef {import('../../frontend-typen/vertrag').Merkposten} Merkposten */
+/** @type {Merkposten[]} */
 let _merkposten = [];
 
 /** Der Eintrag, ueber den der Uebernahme-Dialog gerade steht. */
+/** @type {string | null} */
 let _uebernahme = null;
 
-/** Der Eintrag, dessen Detail offen ist. */
+/**
+ * Der Eintrag, dessen Detail offen ist.
+ * @type {string | null}
+ */
 let _detail = null;
 
+/**
+ * @param {string} c
+ */
 function zustandText(c) {
   return t(c === 'U' ? 'common.condition_used' : 'common.condition_new');
 }
@@ -37,11 +44,10 @@ function zustandText(c) {
  * Enkel") ist dabei so wichtig wie das Bild und hätte auf einer Kachel keinen
  * Platz.
  */
+/** @param {Merkposten} w */
 function zeile(w) {
-  // Marcos Befund: „Die Bilder in der Merkliste werden nicht geladen.
-  // Anscheinend wird direkt das CDN aufgerufen." Genau so war es: Hier stand
-  // `thumbUrl(w.image_url)`, und thumbUrl() reicht seine Eingabe unveraendert
-  // durch (01-core.js) — gedacht fuer LOKALE Pfade. Fuer eine CDN-Adresse …
+  // Bild über imgUrl(), nicht thumbUrl() allein: thumbUrl() reicht fremde Adressen unverändert durch,
+  // der Browser rief das CDN direkt, und die Sicherheitsrichtlinie blockte es.
   // Ausführlich: docs/begruendungen/public/js/16-merkliste.js.md#roh
   const roh = w.image_local || w.image_url;
   const bild = roh
@@ -73,8 +79,8 @@ function zeile(w) {
     ? `<span class="mk-etikett mk-etikett-ok">${esc(tRaw('wanted.owned'))}</span>`
     : '';
 
-  // Marcos Vorgabe vom 24.09.: „Bitte in der Tabelle der Merkliste der Button
-  // In die Galerie aufnehme entfernen und dafuer den Marktpreis anzeigen."
+  // In der Zeile steht der Marktpreis, nicht „In die Galerie“: Übernehmen gibt es weiter im Detail, wo
+  // Anzahl, Preis und Zustand ohnehin abgefragt werden.
   // Ausführlich: docs/begruendungen/public/js/16-merkliste.js.md#preis
   const preis = w.marktpreis != null
     ? `<span title="${esc(tRaw('detail.market_price'))}" class="preis mk-preis">${fmtN(w.marktpreis, w.waehrung || CURRENCY)}</span>`
@@ -112,7 +118,9 @@ function zeile(w) {
 }
 
 /**
- * Suche, Zustand, Sortierung und Inhaber als Anfrageparameter.
+ * Suche, Zustand, Sortierung und Inhaber als Anfrageparameter, in derselben Form wie galleryParams() —
+ * ohne Seite (die Liste blättert nicht) und ohne Lagerort (ein Merkposten liegt nirgends). Gefiltert
+ * wird am Server.
  * Ausführlich: docs/begruendungen/public/js/16-merkliste.js.md#merklisteparams
  */
 function merklisteParams() {
@@ -154,10 +162,9 @@ export async function ladeMerkliste() {
     kasten.dataset.entschieden = '1';
     kasten.open = !(_merkposten.length && window.matchMedia?.('(max-width: 640px)').matches);
   }
-  // Zwei verschiedene Leermeldungen: „Noch keine Merkposten" ist eine Aussage
-  // ueber die Liste, „Nichts gefunden" eine ueber den Filter. Stuende hier
-  // immer die erste, saehe eine Suche ohne Treffer wie eine geleerte Merkliste
-  // aus — genau die Verwechslung, wegen der der Kontofilter beim Anmelden …
+  // Zwei Leermeldungen: „Noch keine Merkposten“ sagt etwas über die Liste, „Nichts gefunden“ über den
+  // Filter — sonst sähe eine erfolglose Suche wie eine geleerte Liste aus. Die Sortierung zählt nicht
+  // als Filter.
   // Ausführlich: docs/begruendungen/public/js/16-merkliste.js.md#filter
   const filter = new URLSearchParams(merklisteParams()); filter.delete('sort');
   const gefiltert = !!filter.toString();
@@ -186,14 +193,15 @@ export async function merkpostenHinzufuegen() {
     if (!d?.success) { toast(d?.error || tRaw('settings.error'), 'error'); return; }
     // „war schon drauf" ist keine Fehlermeldung, aber auch kein Neuzugang —
     // wer zweimal auf denselben Knopf drückt, soll den Unterschied sehen.
-    toast(tRaw(d.war_neu ? 'wanted.added' : 'wanted.already'), 'ok');
+    toast(tRaw(d.war_neu ? 'wanted.added' : 'wanted.already'), 'success');
     G('mk-num').value = '';
     await ladeMerkliste();
   } finally { frei(); }
 }
 
 /**
- * Aus dem Katalog-Detail — Marcos „inkl. Zustand und einem Preisalarm".
+ * Aus dem Katalog-Detail auf die Merkliste, mit Zustand aus cat-m-cond (ein zweiter Wähler könnte
+ * widersprechen). Der Alarm ist freiwillig; leer heisst kein Alarm, nicht Schwelle 0.
  * Ausführlich: docs/begruendungen/public/js/16-merkliste.js.md#katalogaufmerkliste
  */
 export async function katalogAufMerkliste() {
@@ -212,23 +220,25 @@ export async function katalogAufMerkliste() {
     // Alarm, den das Set-Detail setzt. Ein zweiter Weg, eine Schwelle zu
     // speichern, wäre eine zweite Wahrheit.
     const schwelle = leseBetrag(G('cat-m-alert-val')?.value);
-    if (schwelle > 0) {
+    if (schwelle != null && schwelle > 0) {
       await api('PUT', `/v1/sets/${encodeURIComponent(sn)}/alert`, {
         richtung:  G('cat-m-alert-dir')?.value || 'unter',
         schwelle,
         condition: zustand,
       }).catch(() => null);
     }
-    toast(tRaw(d.war_neu ? 'wanted.added' : 'wanted.already'), 'ok');
+    toast(tRaw(d.war_neu ? 'wanted.added' : 'wanted.already'), 'success');
   } finally { frei(); }
 }
 
 /** setNumber|condition|user_id — der Schlüssel einer Zeile, wie ihn zeile() baut. */
+/** @param {string | null | undefined} arg */
 function zerlege(arg) {
   const [set_number, condition, owner] = String(arg || '').split('|');
   return { set_number, condition, owner_user_id: parseInt(owner) };
 }
 
+/** @param {string} arg */
 export async function merkpostenLoeschen(arg) {
   const { set_number, condition, owner_user_id } = zerlege(arg);
   if (!set_number) return;
@@ -247,9 +257,11 @@ export async function merkpostenLoeschen(arg) {
 }
 
 /**
- * In die Galerie übernehmen — Schritt 1: fragen.
+ * In die Galerie übernehmen, Schritt 1: fragen. Anzahl, Kaufpreis und Zustand sind beim Kauf selten
+ * die des Merkpostens; der Zustand ist vorbelegt, bleibt aber änderbar.
  * Ausführlich: docs/begruendungen/public/js/16-merkliste.js.md#merkpostenuebernehmen
  */
+/** @param {string} arg */
 export function merkpostenUebernehmen(arg) {
   const { set_number, condition } = zerlege(arg);
   if (!set_number) return;
@@ -269,7 +281,9 @@ export function schliesseUebernahme() {
 }
 
 /**
- * Schritt 2: tun.
+ * Schritt 2: tun. Die Regel liegt am Server (addSet, dann Merkposten und Alarm weg). Der Zustand geht
+ * zweimal mit — im Pfad der des Merkpostens, im Rumpf der erfasste —, weil man anderes kaufen kann als
+ * gewünscht.
  * Ausführlich: docs/begruendungen/public/js/16-merkliste.js.md#bestaetigeuebernahme
  */
 export async function bestaetigeUebernahme() {
@@ -295,7 +309,7 @@ export async function bestaetigeUebernahme() {
     // 'exists' heisst: Das Set war schon im Blickfeld. Der Merkposten ist
     // trotzdem erfüllt und verschwindet — er stünde sonst für etwas, das man
     // längst hat.
-    toast(tRaw(d.action === 'exists' ? 'wanted.taken_existing' : 'wanted.taken'), 'ok');
+    toast(tRaw(d.action === 'exists' ? 'wanted.taken_existing' : 'wanted.taken'), 'success');
     await ladeMerkliste();
     await loadGallery();
     await loadStats();
@@ -303,8 +317,11 @@ export async function bestaetigeUebernahme() {
 }
 
 /**
- * Das Detail eines Merkpostens.
+ * Das Detail eines Merkpostens aus drei bestehenden Quellen: der geladenen Zeile, dem Katalog-Detail
+ * und dem Preisverlauf. Kein neuer Endpunkt, damit die Angaben dieselben sind wie an den anderen
+ * Stellen.
  * Ausführlich: docs/begruendungen/public/js/16-merkliste.js.md#oeffnemerkpostendetail
+ * @param {string} arg
  */
 export async function oeffneMerkpostenDetail(arg) {
   const { set_number, condition } = zerlege(arg);
@@ -374,7 +391,11 @@ export async function oeffneMerkpostenDetail(arg) {
   }).catch(() => {});
 }
 
-/** Ein Knopf, der ins Leere führt, ist schlechter als keiner. */
+/**
+ * Ein Knopf, der ins Leere führt, ist schlechter als keiner.
+ * @param {string} id
+ * @param {string | null | undefined} url
+ */
 function zeigeAdresse(id, url) {
   const el = G(id);
   if (!el) return;
@@ -383,15 +404,18 @@ function zeigeAdresse(id, url) {
 }
 
 const STRICH = '—';
-const zahl = (n) => (n == null ? STRICH : Number(n).toLocaleString(locale()));
+const zahl = (/** @type {unknown} */ n) => (n == null ? STRICH : Number(n).toLocaleString(locale()));
 
 /**
- * Die Zeilen — dieselbe Auswahl und Reihenfolge wie im Set-Dialog, abzüglich
- * dessen, was einen Besitz voraussetzt.
+ * Die Zeilen wie im Set-Dialog, ohne was Besitz voraussetzt. Genau einmal je Öffnen gebaut,
+ * Katalogangaben werden an Ort und Stelle nachgetragen: Neu gezeichnet verlor der Alarm eine laufende
+ * Eingabe.
  * Ausführlich: docs/begruendungen/public/js/16-merkliste.js.md#zeilen
  */
+/** @param {Merkposten} w */
 function zeilen(w) {
-  return [
+  /** @type {[string, string, string | null][]} */
+  const z = [
     ['detail.year',     w.year != null ? String(w.year) : STRICH, null],
     ['detail.theme',    STRICH, 'mk-m-theme'],
     ['detail.pieces',   zahl(w.num_parts), 'mk-m-pieces'],
@@ -403,13 +427,16 @@ function zeilen(w) {
     // Eintrag in price_alerts, am selben Schlüssel (Konto, Set, Zustand).
     // Gefüllt wird er von ladeAlarm() beim Öffnen.
     ['detail.alert',    alarmBlock(w.set_number, 'mk-m'), null],
-  ].map(([k, v, id]) => detailZeile(t(k), v, id ? { wertId: id } : {})).join('');
+  ];
+  return z.map(([k, v, id]) => detailZeile(t(k), v, id ? { wertId: id } : {})).join('');
 }
 
 /**
- * Der Inhaber — als AUSWAHLFELD, nicht als Text.
+ * Der Inhaber als Auswahlfeld: Wer sich beim Erfassen vertan hatte, musste löschen und verlor Alarm
+ * und Datum. Bei einem einzigen Konto bleibt die Zeile leer — wie bei den Erfassungsmasken.
  * Ausführlich: docs/begruendungen/public/js/16-merkliste.js.md#inhaberwahl
  */
+/** @param {Merkposten} w */
 function inhaberWahl(w) {
   const konten = haushaltsKonten();
   if (konten.length < 2) return '';
@@ -426,6 +453,7 @@ function inhaberWahl(w) {
  * Der Schlüssel im data-arg trägt den ALTEN Inhaber — der Server muss wissen,
  * WOHER er umhängt, und die Auswahl kennt nur das Ziel.
  */
+/** @param {string} arg */
 export async function merkpostenInhaberGewaehlt(arg) {
   const { set_number, condition, owner_user_id } = zerlege(arg);
   const sel = G('mk-m-owner');
@@ -440,7 +468,7 @@ export async function merkpostenInhaberGewaehlt(arg) {
   // settings.saved statt eines neuen Textes: „Gespeichert" steht schon in der
   // Sprachdatei, und zwei gleichlautende Eintraege laufen beim naechsten
   // Feinschliff auseinander.
-  toast(tRaw(d.zusammengefuehrt ? 'wanted.already' : 'settings.saved'), 'ok');
+  toast(tRaw(d.zusammengefuehrt ? 'wanted.already' : 'settings.saved'), 'success');
   await ladeMerkliste();
   // Das Detail hängt am alten Schlüssel (er trägt den Inhaber) — mit dem
   // neuen wieder öffnen, sonst zeigt es einen Eintrag, den es so nicht mehr
@@ -456,8 +484,9 @@ export async function merkpostenInhaberGewaehlt(arg) {
  * ist damit fremder Text. So kann er gar nicht erst als Auszeichnung gelesen
  * werden, und es braucht kein esc() an einer weiteren Stelle.
  */
+/** @param {import('../../frontend-typen/vertrag').CatalogSetDetail | null | undefined} katalog @param {Merkposten} w */
 function katalogNachtragen(katalog, w) {
-  const setze = (id, wert) => { const el = G(id); if (el) el.textContent = wert; };
+  const setze = (/** @type {string} */ id, /** @type {string} */ wert) => { const el = G(id); if (el) el.textContent = wert; };
   setze('mk-m-theme',    katalog?.theme_name || STRICH);
   setze('mk-m-pieces',   zahl(katalog?.num_parts ?? w.num_parts));
   setze('mk-m-minifigs', zahl(katalog?.minifigs));
@@ -483,9 +512,8 @@ export function merkpostenDetailUebernehmen() {
   merkpostenUebernehmen(arg);
 }
 
-// Suche entprellt, 250 ms wie in Galerie und Teileliste: Jeder Tastendruck
-// waere sonst ein Abruf. Zustand und Sortierung haengen ueber data-change
-// direkt an ladeMerkliste() — eine Auswahl trifft man einmal, nicht buchstabenweise.
+// Suche entprellt (250 ms wie Galerie und Teile), sonst ein Abruf je Taste. Der Wächter `?.`, weil die
+// Datei in den Tests auch ohne DOM geladen wird.
 // Ausführlich: docs/begruendungen/public/js/16-merkliste.js.md#mks
 G('mks')?.addEventListener('input', () => {
   clearTimeout(G('mks')._t);
@@ -493,11 +521,13 @@ G('mks')?.addEventListener('input', () => {
 });
 
 /**
- * Eine Merkliste aus einer CSV einlesen.
+ * Eine Merkliste aus einer CSV einlesen, wie importFigsCsv(): Beide werten dieselbe Serverantwort aus
+ * (csvImportAntwort) und nutzen dieselben Texte — eine zweite Fassung derselben Aussage würde
+ * auseinanderlaufen.
  * Ausführlich: docs/begruendungen/public/js/16-merkliste.js.md#importmerklistecsv
  */
 async function importMerklisteCsv() {
-  const owner = selectedOwner();
+  const owner = selectedOwner('mk-owner');
   const status = G('mk-status');
   const d = await csvHochladen({ feld: 'mk-csv-file', pfad: '/v1/wanted/import/csv',
     felder: owner ? { owner_user_id: String(owner) } : {},
@@ -512,12 +542,15 @@ registerActions({ ladeMerkliste, merkpostenHinzufuegen, katalogAufMerkliste, mer
                   merkpostenInhaberGewaehlt, importMerklisteCsv });
 
 /**
- * `current` aus der Preis-Antwort in die Form, die renderMarketRows() liest.
+ * `current` der Preisantwort in die Form von renderMarketRows() bringen: Dieselbe Zahl heisst dort
+ * avg_price. pnl_pct bleibt leer, weil ein Merkposten keinen Kaufpreis hat.
  * Ausführlich: docs/begruendungen/public/js/16-merkliste.js.md#umaufanzeige
  */
+/** @param {import('../../frontend-typen/vertrag').CurrentByCondition | null | undefined} current */
 function umAufAnzeige(current) {
+  /** @type {Record<string, { market_price: number | null | undefined, pnl_pct: null }>} */
   const raus = {};
-  for (const c of ['N', 'U']) {
+  for (const c of /** @type {const} */ (['N', 'U'])) {
     const d = current?.[c];
     if (d) raus[c] = { market_price: d.avg_price, pnl_pct: null };
   }
