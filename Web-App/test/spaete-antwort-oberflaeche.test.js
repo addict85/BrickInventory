@@ -18,7 +18,9 @@ const { oeffneOberflaeche, reiter } = require('./helpers/oberflaeche');
 /** Eine Antwort, die erst auf Zuruf eintrifft. */
 function zurueckgehalten() {
   let los;
-  const antwort = new Promise(r => { los = r; });
+  const antwort = new Promise(r => {
+    los = r;
+  });
   return { antwort, los: (/** @type {any} */ d) => los(d) };
 }
 
@@ -28,9 +30,10 @@ const teil = (nr, name) => ({ part_number: nr, part_name: name, color_id: 5, col
 test('Galerie: späte Antwort einer alten Suche wird verworfen', async () => {
   const alt = zurueckgehalten();
   const { w, d, warte, aufrufe } = await oeffneOberflaeche({
-    '/v1/sets': (url) => new URL(url, 'http://x').searchParams.get('search') === 'neu'
-      ? { success: true, sets: [set('10300-1', 'NEU-Set')], count: 1, total: 1 }
-      : alt.antwort,
+    '/v1/sets': url =>
+      new URL(url, 'http://x').searchParams.get('search') === 'neu'
+        ? { success: true, sets: [set('10300-1', 'NEU-Set')], count: 1, total: 1 }
+        : alt.antwort,
   });
   try {
     const gs = d.getElementById('gs');
@@ -42,7 +45,9 @@ test('Galerie: späte Antwort einer alten Suche wird verworfen', async () => {
     assert.ok(aufrufe.filter(a => a.url.includes('/v1/sets?')).length >= 2, 'beide Anfragen liefen');
     assert.match(d.getElementById('gallery').textContent, /NEU-Set/);
     assert.doesNotMatch(d.getElementById('gallery').textContent, /ALT-Set/);
-  } finally { w.close(); }
+  } finally {
+    w.close();
+  }
 });
 
 test('Galerie: späte Folgeseite einer alten Suche wird nicht angehängt', async () => {
@@ -50,7 +55,7 @@ test('Galerie: späte Folgeseite einer alten Suche wird nicht angehängt', async
   const erste = Array.from({ length: 60 }, (_, i) => set(`${1000 + i}-1`, `Set ${i}`));
   const folge = zurueckgehalten();
   const { w, d, warte, aufrufe } = await oeffneOberflaeche({
-    '/v1/sets': (url) => {
+    '/v1/sets': url => {
       const q = new URL(url, 'http://x').searchParams;
       if (q.get('search') === 'neu') return { success: true, sets: [set('10300-1', 'NEU-Set')], count: 1, total: 1 };
       return q.get('page') === '2' ? folge.antwort : { success: true, sets: erste, count: 60, total: 200 };
@@ -65,15 +70,18 @@ test('Galerie: späte Folgeseite einer alten Suche wird nicht angehängt', async
     folge.los({ success: true, sets: [set('20000-1', 'ALT-Folge')], count: 1, total: 200 });
     await warte(() => /ALT-Folge/.test(d.getElementById('gallery').textContent), 300);
     assert.doesNotMatch(d.getElementById('gallery').textContent, /ALT-Folge/);
-  } finally { w.close(); }
+  } finally {
+    w.close();
+  }
 });
 
 test('Teileliste: späte Antwort eines alten Filters wird verworfen', async () => {
   const alt = zurueckgehalten();
   const { w, d, warte } = await oeffneOberflaeche({
-    '/v1/parts': (url) => new URL(url, 'http://x').searchParams.get('spare') === '0'
-      ? { success: true, parts: [teil('3001', 'NEU-Teil')], total: 1, page: 1, page_size: 100 }
-      : alt.antwort,
+    '/v1/parts': url =>
+      new URL(url, 'http://x').searchParams.get('spare') === '0'
+        ? { success: true, parts: [teil('3001', 'NEU-Teil')], total: 1, page: 1, page_size: 100 }
+        : alt.antwort,
   });
   try {
     await reiter(w, 'parts');
@@ -85,5 +93,7 @@ test('Teileliste: späte Antwort eines alten Filters wird verworfen', async () =
     await warte(() => /ALT-Teil/.test(d.getElementById('parts-main').textContent), 300);
     assert.match(d.getElementById('parts-main').textContent, /NEU-Teil/);
     assert.doesNotMatch(d.getElementById('parts-main').textContent, /ALT-Teil/);
-  } finally { w.close(); }
+  } finally {
+    w.close();
+  }
 });

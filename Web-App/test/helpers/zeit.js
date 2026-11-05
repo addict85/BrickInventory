@@ -6,7 +6,7 @@
  */
 
 /** @param {number} ms */
-const warte = (ms) => new Promise(r => setTimeout(r, ms));
+const warte = ms => new Promise(r => setTimeout(r, ms));
 
 /**
  * @param {() => unknown | Promise<unknown>} bedingung

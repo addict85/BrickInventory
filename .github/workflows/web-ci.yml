@@ -136,6 +136,14 @@ jobs:
       - name: Typprüfung Oberfläche
         run: npm run typecheck:frontend
 
+      # Biome als Ratsche: rot erst, wenn Funde oder unformatierte Dateien
+      # über die Schranke in scripts/lint-schranken.json steigen.
+      - name: Lint
+        run: npm run lint
+
+      - name: Formatierung
+        run: npm run format:pruefen
+
       # Eigener Schritt, damit ein Baufehler nicht als roter Test erscheint.
       - name: Bauen
         run: npm run build

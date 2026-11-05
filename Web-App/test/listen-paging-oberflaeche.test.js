@@ -19,18 +19,25 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const { oeffneOberflaeche, reiter } = require('./helpers/oberflaeche');
 
-const abfrage = (url) => new URL(url, 'http://x').searchParams;
+const abfrage = url => new URL(url, 'http://x').searchParams;
 const set = (nr, name) => ({ set_number: nr, name, quantity: 1 });
-const teil = (nr, name, farbe = 'Red') => ({ part_number: nr, part_name: name, color_id: 5, color_name: farbe,
-  total_quantity: 1, image_url: `https://cdn.rebrickable.com/media/parts/${nr}.jpg` });
+const teil = (nr, name, farbe = 'Red') => ({
+  part_number: nr,
+  part_name: name,
+  color_id: 5,
+  color_name: farbe,
+  total_quantity: 1,
+  image_url: `https://cdn.rebrickable.com/media/parts/${nr}.jpg`,
+});
 const aufrufeZu = (aufrufe, pfad) => aufrufe.filter(a => a.url.includes(`/api${pfad}?`)).map(a => abfrage(a.url));
 
 test('Galerie: erste Seite mit page und page_size, Folgeseite wird angehängt', async () => {
   const erste = Array.from({ length: 60 }, (_, i) => set(`${1000 + i}-1`, `Set ${i}`));
   const { w, d, warte, aufrufe } = await oeffneOberflaeche({
-    '/v1/sets': (url) => abfrage(url).get('page') === '2'
-      ? { success: true, sets: [set('9999-1', 'Folge-Set')], count: 1, total: 61 }
-      : { success: true, sets: erste, count: 60, total: 61 },
+    '/v1/sets': url =>
+      abfrage(url).get('page') === '2'
+        ? { success: true, sets: [set('9999-1', 'Folge-Set')], count: 1, total: 61 }
+        : { success: true, sets: erste, count: 60, total: 61 },
   });
   try {
     const kachel = () => d.querySelector('#gallery .sgrid > *');
@@ -43,18 +50,32 @@ test('Galerie: erste Seite mit page und page_size, Folgeseite wird angehängt', 
     assert.equal(p2.get('page'), '2');
     assert.equal(kachel(), ersteKachel, 'die erste Seite wurde neu gebaut statt ergänzt');
     assert.equal(d.querySelectorAll('#gallery .sgrid > *').length, 61);
-    assert.ok(d.getElementById('gallery-sentinel') && !d.getElementById('gallery').contains(d.getElementById('gallery-sentinel')),
-      'der Sentinel liegt neben #gallery');
-  } finally { w.close(); }
+    assert.ok(
+      d.getElementById('gallery-sentinel') &&
+        !d.getElementById('gallery').contains(d.getElementById('gallery-sentinel')),
+      'der Sentinel liegt neben #gallery',
+    );
+  } finally {
+    w.close();
+  }
 });
 
 test('Galerie: Suche, Sortierung und Themenfilter laden neu beim Server', async () => {
   const { w, d, warte, aufrufe } = await oeffneOberflaeche({
-    '/v1/sets': { success: true, sets: [set('10294-1', 'Titanic')], count: 1, total: 1, themes: ['Icons', '<b>Fett</b>'] },
+    '/v1/sets': {
+      success: true,
+      sets: [set('10294-1', 'Titanic')],
+      count: 1,
+      total: 1,
+      themes: ['Icons', '<b>Fett</b>'],
+    },
   });
   try {
     assert.ok(await warte(() => d.querySelectorAll('#gtheme option').length === 3));
-    assert.deepEqual([...d.querySelectorAll('#gtheme option')].map(o => o.textContent), ['Alle Themen', 'Icons', '<b>Fett</b>']);
+    assert.deepEqual(
+      [...d.querySelectorAll('#gtheme option')].map(o => o.textContent),
+      ['Alle Themen', 'Icons', '<b>Fett</b>'],
+    );
     const n = () => aufrufeZu(aufrufe, '/v1/sets').length;
     const vorher = n();
     d.getElementById('gs').value = 'tita';
@@ -68,14 +89,17 @@ test('Galerie: Suche, Sortierung und Themenfilter laden neu beim Server', async 
     d.getElementById('gtheme').dispatchEvent(new w.Event('change'));
     assert.ok(await warte(() => aufrufeZu(aufrufe, '/v1/sets').at(-1).get('theme') === 'Icons'));
     assert.equal(aufrufeZu(aufrufe, '/v1/sets').at(-1).get('sort'), 'name_asc');
-  } finally { w.close(); }
+  } finally {
+    w.close();
+  }
 });
 
 test('Galerie: zeigt, was der Server liefert, ohne selbst zu filtern oder zu sortieren', async () => {
   const { w, d, warte } = await oeffneOberflaeche({
-    '/v1/sets': (url) => abfrage(url).get('search')
-      ? { success: true, sets: [set('2-1', 'Zebra'), set('1-1', 'Affe')], count: 2, total: 2 }
-      : { success: true, sets: [set('3-1', 'Start')], count: 1, total: 1 },
+    '/v1/sets': url =>
+      abfrage(url).get('search')
+        ? { success: true, sets: [set('2-1', 'Zebra'), set('1-1', 'Affe')], count: 2, total: 2 }
+        : { success: true, sets: [set('3-1', 'Start')], count: 1, total: 1 },
   });
   try {
     d.getElementById('gs').value = 'xyz';
@@ -83,7 +107,9 @@ test('Galerie: zeigt, was der Server liefert, ohne selbst zu filtern oder zu sor
     assert.ok(await warte(() => /Zebra/.test(d.getElementById('gallery').textContent)));
     const text = d.getElementById('gallery').textContent;
     assert.ok(text.indexOf('Zebra') < text.indexOf('Affe'), 'Reihenfolge des Servers');
-  } finally { w.close(); }
+  } finally {
+    w.close();
+  }
 });
 
 test('Teileliste: Seiten mit page_size, Bilder als Vorschau über den Proxy', async () => {
@@ -100,15 +126,24 @@ test('Teileliste: Seiten mit page_size, Bilder als Vorschau über den Proxy', as
     const src = d.querySelector('#parts-main .part-card img').getAttribute('src');
     assert.match(src, /^\/api\/v1\/img-proxy\?.*thumb=1/);
     assert.equal(d.querySelector('#parts-main .part-card img').getAttribute('loading'), 'lazy');
-  } finally { w.close(); }
+  } finally {
+    w.close();
+  }
 });
 
 test('Teileliste: eine Farbgruppe läuft über die Seitengrenze', async () => {
   const seite1 = [...Array.from({ length: 99 }, (_, i) => teil(`a${i}`, `Blau ${i}`, 'Blue')), teil('r1', 'Rot 1')];
   const { w, d, warte } = await oeffneOberflaeche({
-    '/v1/parts': (url) => abfrage(url).get('page') === '2'
-      ? { success: true, parts: [teil('r2', 'Rot 2'), teil('g1', 'Grün 1', 'Green')], total: 102, page: 2, page_size: 100 }
-      : { success: true, parts: seite1, total: 102, page: 1, page_size: 100 },
+    '/v1/parts': url =>
+      abfrage(url).get('page') === '2'
+        ? {
+            success: true,
+            parts: [teil('r2', 'Rot 2'), teil('g1', 'Grün 1', 'Green')],
+            total: 102,
+            page: 2,
+            page_size: 100,
+          }
+        : { success: true, parts: seite1, total: 102, page: 1, page_size: 100 },
   });
   try {
     await reiter(w, 'parts');
@@ -118,7 +153,9 @@ test('Teileliste: eine Farbgruppe läuft über die Seitengrenze', async () => {
     const rot = gruppen[1];
     assert.equal(rot.querySelectorAll('.part-card').length, 2);
     assert.equal(rot.dataset.count, '2');
-  } finally { w.close(); }
+  } finally {
+    w.close();
+  }
 });
 
 test('Teileliste: Suche lädt beide Listen, Ersatzteil- und Ansichtswechsel bauen neu auf', async () => {
@@ -143,9 +180,14 @@ test('Teileliste: Suche lädt beide Listen, Ersatzteil- und Ansichtswechsel baue
     assert.ok(await warte(() => aufrufeZu(aufrufe, '/v1/parts').length === 4));
     assert.equal(aufrufeZu(aufrufe, '/v1/parts').at(-1).get('with_sets'), '1', 'in_sets nur in der Tabelle');
     assert.ok(await warte(() => d.querySelector('#parts-main table')));
-    assert.ok(d.getElementById('parts-sentinel') && !d.getElementById('parts-main').contains(d.getElementById('parts-sentinel')),
-      'der Sentinel liegt neben #parts-main und überlebt den Neuaufbau');
-  } finally { w.close(); }
+    assert.ok(
+      d.getElementById('parts-sentinel') &&
+        !d.getElementById('parts-main').contains(d.getElementById('parts-sentinel')),
+      'der Sentinel liegt neben #parts-main und überlebt den Neuaufbau',
+    );
+  } finally {
+    w.close();
+  }
 });
 
 test('Teileliste: Farbfilter baut beim Server neu auf', async () => {
@@ -161,12 +203,18 @@ test('Teileliste: Farbfilter baut beim Server neu auf', async () => {
     d.getElementById('parts-color').dispatchEvent(new w.Event('change', { bubbles: true }));
     assert.ok(await warte(() => aufrufeZu(aufrufe, '/v1/parts').length > n));
     assert.equal(aufrufeZu(aufrufe, '/v1/parts').at(-1).get('color'), 'Red');
-  } finally { w.close(); }
+  } finally {
+    w.close();
+  }
 });
 
 test('Minifiguren: Quelle und Seitengrösse gehen an den Server, die Suche lädt neu', async () => {
   const { w, d, warte, aufrufe } = await oeffneOberflaeche({
-    '/v1/minifigs': { success: true, figs: [{ fig_number: 'sw0001', name: 'Luke', quantity: 1, source: 'set' }], total: 1 },
+    '/v1/minifigs': {
+      success: true,
+      figs: [{ fig_number: 'sw0001', name: 'Luke', quantity: 1, source: 'set' }],
+      total: 1,
+    },
   });
   try {
     await reiter(w, 'minifigs');
@@ -180,23 +228,33 @@ test('Minifiguren: Quelle und Seitengrösse gehen an den Server, die Suche lädt
     d.getElementById('fig-search').dispatchEvent(new w.Event('input', { bubbles: true }));
     assert.ok(await warte(() => aufrufeZu(aufrufe, '/v1/minifigs').length > n));
     assert.equal(aufrufeZu(aufrufe, '/v1/minifigs').at(-1).get('search'), 'luke');
-  } finally { w.close(); }
+  } finally {
+    w.close();
+  }
 });
 
 test('Minifiguren: Folgeseite wird angehängt, nicht neu gebaut', async () => {
   const fig = (nr, name) => ({ fig_number: nr, name, quantity: 1, source: 'set' });
   const erste = Array.from({ length: 60 }, (_, i) => fig(`sw${1000 + i}`, `Figur ${i}`));
   const { w, d, warte } = await oeffneOberflaeche({
-    '/v1/minifigs': (url) => abfrage(url).get('page') === '2'
-      ? { success: true, figs: [fig('sw9999', 'Folge-Figur')], total: 61 }
-      : { success: true, figs: erste, total: 61 },
+    '/v1/minifigs': url =>
+      abfrage(url).get('page') === '2'
+        ? { success: true, figs: [fig('sw9999', 'Folge-Figur')], total: 61 }
+        : { success: true, figs: erste, total: 61 },
   });
   try {
     await reiter(w, 'minifigs');
     assert.ok(await warte(() => /sw1000/.test(d.getElementById('figs-list').textContent)));
-    const ersterKnoten = d.querySelector('#figs-list :is(.parts-grid, .man-grid, .figs-grid, .sgrid) > *, #figs-list .dt tbody tr');
+    const ersterKnoten = d.querySelector(
+      '#figs-list :is(.parts-grid, .man-grid, .figs-grid, .sgrid) > *, #figs-list .dt tbody tr',
+    );
     assert.ok(await warte(() => /sw9999/.test(d.getElementById('figs-list').textContent)));
     assert.ok(ersterKnoten && d.getElementById('figs-list').contains(ersterKnoten), 'die erste Seite wurde neu gebaut');
-    assert.ok(!d.getElementById('figs-list').contains(d.getElementById('figs-sentinel')), 'der Sentinel liegt neben der Liste');
-  } finally { w.close(); }
+    assert.ok(
+      !d.getElementById('figs-list').contains(d.getElementById('figs-sentinel')),
+      'der Sentinel liegt neben der Liste',
+    );
+  } finally {
+    w.close();
+  }
 });
