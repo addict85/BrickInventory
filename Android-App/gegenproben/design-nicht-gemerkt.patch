@@ -1,0 +1,18 @@
+Gegenprobe: Das wirksame Design wird nicht mehr für den Kaltstart gemerkt
+Modul: core-zustand
+Test: ch.brickinventoryapp.AppViewModelTest
+Rot: das Design des Servers gilt und wird gemerkt
+
+diff --git a/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/ui/AppViewModel.kt b/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/ui/AppViewModel.kt
+index a439d61..8179214 100644
+--- a/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/ui/AppViewModel.kt
++++ b/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/ui/AppViewModel.kt
+@@ -100,7 +100,7 @@ class AppViewModel @Inject constructor(
+         // Jede Änderung des Designs landet im Spiegel des Geräts, ob vom Server oder
+         // aus der Wahl im Konto; nach dem Abmelden ist es die Vorgabe.
+         viewModelScope.launch {
+-            sitzung.state.map { it.appTheme }.distinctUntilChanged().collect { prefs.saveAppTheme(it) }
++            sitzung.state.map { it.appTheme }.distinctUntilChanged().collect { }
+         }
+         // drop(1) lässt den gemerkten Startwert aus: Nur eine Währung des Servers wird gemerkt.
+         viewModelScope.launch {

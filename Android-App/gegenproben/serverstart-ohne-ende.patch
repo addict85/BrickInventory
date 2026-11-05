@@ -1,0 +1,18 @@
+Gegenprobe: Die Abfrage des Serverstarts hört nicht auf, wenn der Server bereit ist
+Modul: core-zustand
+Test: ch.brickinventoryapp.AppViewModelTest
+Rot: der Serverstart wird im Takt verfolgt
+
+diff --git a/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/ui/AppViewModel.kt b/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/ui/AppViewModel.kt
+index a439d61..94d469c 100644
+--- a/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/ui/AppViewModel.kt
++++ b/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/ui/AppViewModel.kt
+@@ -214,7 +214,7 @@ class AppViewModel @Inject constructor(
+             if (prefs.serverUrlJetzt().isBlank()) return@launch
+             while (true) {
+                 val r = repo.verwaltung.getStartupStatus()
+-                if (r !is Result.Success || r.data.ready) {
++                if (r !is Result.Success) {
+                     sitzung.aendere { it.copy(startupStatus = null) }
+                     return@launch
+                 }

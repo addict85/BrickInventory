@@ -42,10 +42,10 @@ class Abmelden @Inject constructor(
     private val blickfeld: Blickfeld,
     private val abmeldung: Abmeldung,
     @param:Dispatcher(BrickDispatchers.IO) private val io: CoroutineDispatcher,
-) {
+) : Abmeldevorgang {
     /** Liefert, ob der Server den Token erst später entwertet (aus der Warteschlange). */
     @OptIn(ExperimentalCoilApi::class)
-    suspend fun ausfuehren(): Abmeldeweg? {
+    override suspend fun ausfuehren(): Abmeldeweg? {
         val weg = if (sitzung.state.value.isLoggedIn) abmeldung.amServer() else null
         prefs.clearSession()
         passwortPflicht.erledigt()

@@ -19,5 +19,11 @@ object ZustandModule {
     fun provideDateiLeser(l: ch.brickinventoryapp.ui.viewmodel.AppDateiLeser): ch.brickinventoryapp.ui.viewmodel.DateiLeser = l
 
     @Provides
+    fun provideAbmeldevorgang(a: ch.brickinventoryapp.ui.Abmelden): ch.brickinventoryapp.ui.Abmeldevorgang = a
+
+    @Provides
+    fun provideVorwaermung(v: ch.brickinventoryapp.ui.SammlungVorwaermen): ch.brickinventoryapp.ui.Vorwaermung = v
+
+    @Provides
     fun provideFilterAblage(a: ch.brickinventoryapp.ui.ScopeFilterAblage): ch.brickinventoryapp.ui.FilterAblage = a
 }

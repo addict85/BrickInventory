@@ -18,6 +18,8 @@ import ch.brickinventoryapp.ui.ScrollMemory
 import ch.brickinventoryapp.ui.Sitzung
 import ch.brickinventoryapp.ui.viewmodel.AppDienste
 import androidx.lifecycle.viewModelScope
+import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
 import okhttp3.mockwebserver.Dispatcher
@@ -125,11 +127,15 @@ class SpeicherAblage : FilterAblage {
     override suspend fun allesVergessen() { konten.clear(); lager.clear() }
 }
 
-/** Die gemeinsamen Dienste der Bereichs-ViewModels, gegen einen Testserver. */
-class TestDienste(server: MockWebServer, texte: Texte = NummernTexte) {
+/**
+ * Die gemeinsamen Dienste der Bereichs-ViewModels, gegen einen Testserver oder
+ * eine [FakeApi]. Mit [io] = Test-Dispatcher läuft auch die Ablage in virtueller Zeit.
+ */
+class TestDienste(val api: BrickApiService, texte: Texte = NummernTexte, io: CoroutineDispatcher = Dispatchers.IO) {
+    constructor(server: MockWebServer, texte: Texte = NummernTexte) : this(TestApi.fuer(server), texte)
+
     val cacheDir: File = File(System.getProperty("java.io.tmpdir"), "bim-vm-${System.nanoTime()}").apply { mkdirs() }
-    val api = TestApi.fuer(server)
-    val cache = ResponseCache { cacheDir }
+    val cache = ResponseCache(io = io) { cacheDir }
     val sitzung = Sitzung()
     val blickfeld = Blickfeld(SpeicherAblage(), HaushaltRepository(api, cache), TeileRepository(api, cache))
     val meldungen = MeldungsKanal()

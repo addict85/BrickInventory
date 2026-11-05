@@ -58,19 +58,6 @@ class SessionAndLifecycleTest {
         }
     }
 
-    @Test
-    fun `das AppViewModel loggt bei abgelaufener Sitzung aus`() {
-        val src = code(read("ui/AppViewModel.kt"))
-        assert(src.contains("sessionExpired.events.collect")) {
-            "Das AppViewModel sammelt das SessionExpiredSignal nicht ein"
-        }
-        val block = src.substringAfter("sessionExpired.events.collect").substringBefore("\n        }")
-        assert(block.contains("isLoggedIn")) {
-            "Der Logout-Zweig prüft nicht, ob überhaupt eine Sitzung besteht"
-        }
-        assert(block.contains("logout()")) { "Es wird nicht ausgeloggt" }
-    }
-
     // ── ImageLoader-Lebensdauer ──────────────────────────────────────────────
 
     @Test

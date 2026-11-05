@@ -5,9 +5,9 @@ import androidx.lifecycle.viewModelScope
 import ch.brickinventoryapp.data.Abmeldeweg
 import ch.brickinventoryapp.data.MeldungsKanal
 import ch.brickinventoryapp.data.PasswortPflicht
-import ch.brickinventoryapp.data.PreferencesManager
 import ch.brickinventoryapp.data.RechteSignal
 import ch.brickinventoryapp.data.SessionExpiredSignal
+import ch.brickinventoryapp.data.Sitzungsablage
 import ch.brickinventoryapp.data.ZweiterFaktorPflicht
 import ch.brickinventoryapp.data.repository.BrickRepository
 import ch.brickinventoryapp.data.repository.Result
@@ -38,7 +38,7 @@ import javax.inject.Inject
 @HiltViewModel
 class AppViewModel @Inject constructor(
     private val repo: BrickRepository,
-    private val prefs: PreferencesManager,
+    private val prefs: Sitzungsablage,
     private val sessionExpired: SessionExpiredSignal,
     private val rechte: RechteSignal,
     private val meldungen: MeldungsKanal,
@@ -50,8 +50,8 @@ class AppViewModel @Inject constructor(
     ausgangsmelder: Ausgangsmelder,
     private val passwortPflicht: PasswortPflicht,
     private val zweiterFaktorPflicht: ZweiterFaktorPflicht,
-    private val abmelden: Abmelden,
-    private val vorwaermen: SammlungVorwaermen,
+    private val abmelden: Abmeldevorgang,
+    private val vorwaermen: Vorwaermung,
 ) : ViewModel() {
 
     val state: StateFlow<AppUiState> = sitzung.state
