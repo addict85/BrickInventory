@@ -123,8 +123,14 @@ export function setzeDialogbild(el, src, orig) {
 export function zoomStand(img) {
   if (!img.classList.contains('zoombar')) return;
   const leer = !img.getAttribute('src') || img.getAttribute('src') === PLATZHALTER_SET;
-  if (leer) { img.removeAttribute('role'); img.tabIndex = -1; img.setAttribute('aria-hidden', 'true'); }
-  else { img.setAttribute('role', 'button'); img.tabIndex = 0; img.removeAttribute('aria-hidden'); }
+  // Auch der Klick ruht: Eine Maus-Klickfläche ohne Tab-Halt wäre nur für die Maus da.
+  if (leer) {
+    img.removeAttribute('role'); img.tabIndex = -1; img.setAttribute('aria-hidden', 'true');
+    if (img.dataset.click) { img.dataset.zoomKlick = img.dataset.click; delete img.dataset.click; }
+  } else {
+    img.setAttribute('role', 'button'); img.tabIndex = 0; img.removeAttribute('aria-hidden');
+    if (img.dataset.zoomKlick && !img.dataset.click) img.dataset.click = img.dataset.zoomKlick;
+  }
 }
 
 /**

@@ -1431,7 +1431,7 @@ window.I18N_EN = {
   'wanted.feld_zustand': 'Condition {id}',
   'wanted.feld_rb': 'Rebrickable number {id}',
   'wanted.feld_farbe': 'Set color {id}',
-  'zeile.oeffnen': 'Open {name} ({nr})',
+  'zeile.oeffnen': '{nr} {name}, open',
   'treffer.eintraege': '{n} entries found',
   'treffer.eintraege_one': '{n} entry found',
   'log.zeitraum': 'Time span',

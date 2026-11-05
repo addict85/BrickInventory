@@ -16,12 +16,13 @@ const OBERSTER = `(() => { let d = null, z = -Infinity;
     if (offen && zi >= z) { d = el; z = zi; } }
   return d; })()`;
 
-/** axe auf der offenen Seite; zurück kommen nur Verstösse der Stufen serious und critical. */
+/** axe auf der offenen Seite, alle Stufen: Auch „moderate“ (Überschriftenfolge, Landmarken) und „minor“ sind
+ * Befunde, die eine Prüfung findet. */
 const AXE_LAUF = `(async () => {
   if (!window.axe) { (0, eval)(${JSON.stringify(AXE)}); }
   const d = ${OBERSTER}; const wurzel = d?.querySelector('.modal') || d || document;
   const r = await axe.run(wurzel, { resultTypes: ['violations'], rules: { region: { enabled: false } } });
-  return r.violations.filter(v => v.impact === 'serious' || v.impact === 'critical')
+  return r.violations
     .flatMap(v => v.nodes.slice(0, 4).map(n => v.id + ': ' + n.target.join(' ') + (n.any?.[0]?.message ? ' — ' + n.any[0].message.slice(0, 90) : '')));
 })()`;
 

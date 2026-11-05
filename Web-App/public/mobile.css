@@ -630,10 +630,23 @@
   .knopf-schwebend > span { display: none; }
 }
 @media (max-width: 640px) {
+  /* Importstand im Kopf: Mit 180 px Mindestbreite schob er bei grosser Schrift die Seite 50 px über den Rand.
+     Am Telefon nur der Text, gekürzt; der Balken steht im Fortschrittsdialog. */
+  .import-leiste { min-width: 0; max-width: 45vw; flex: 0 1 auto; }
+  .import-leiste-balken { display: none; }
+  #gib-text { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+  .hright { min-width: 0; }
+  /* Wanted-Liste: Felder fingerbreit; die Tabelle scrollt mit dem Dialog statt in einem eigenen engen Kasten. */
+  #wanted-xml-modal :is(input, select) { min-height: 44px; }
+  #wanted-xml-tabelle { max-height: none !important; }
+  /* PDF: Drucken und Herunterladen nur als Symbol; der Name bleibt für Screenreader. */
+  .pdf-werkzeuge .btn > span { display: none; }
+  .prog-minimieren { min-width: 44px; min-height: 44px; }
+  .pdf-werkzeuge { gap: 4px; }
   .kopf-weg .knopf-schwebend { width: 56px; min-width: 56px; padding: 0; justify-content: center; }
   .kopf-weg .knopf-schwebend > span { display: none; }
   /* Tippziel am Telefon: Der Zeilenknopf einer Tabelle wird so hoch wie ein Finger. */
-  .zeile-oeffnen { min-height: 44px; }
+  .zeile-oeffnen { min-height: 44px; min-width: 44px; }
   .toast-zu { min-width: 44px; min-height: 44px; }
 }
 @container haupt (min-width: 15em) and (max-width: 22em) {

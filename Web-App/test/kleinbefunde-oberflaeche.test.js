@@ -33,7 +33,7 @@
  *      Sammlung“
  *   H  sammlungTitel() in loadStats nicht aufgerufen → rot: „Haushalt im
  *      Titel“
- *   I  mitVersion() gibt das HTML unverändert zurück → rot: „Version in
+ *   I  versionEinsetzen() gibt das HTML unverändert zurück → rot: „Version in
  *      der Anmeldemaske“
  */
 const test = require('node:test');
@@ -177,10 +177,10 @@ test('Haushalt im Titel', async () => {
 });
 
 test('Version in der Anmeldemaske', () => {
-  const { mitVersion } = require('./helpers/sources').buildAndRequire()('src/konto/indexHtml.js');
+  const { versionEinsetzen } = require('./helpers/sources').buildAndRequire()('src/konto/indexHtml.js');
   const html = fs.readFileSync(path.join(__dirname, '..', 'public', 'index.html'), 'utf8');
   assert.doesNotMatch(html, /Build 20\d\d\./, 'festes Datum in index.html');
-  assert.match(mitVersion(html, 'ab341de'), /<div class="start-fuss" data-version>Version ab341de<\/div>/);
-  assert.match(mitVersion(html, 'unbekannt'), /<div class="start-fuss" data-version><\/div>/);
-  assert.doesNotMatch(mitVersion(html, '<b>x'), /<b>/);
+  assert.match(versionEinsetzen(html, 'ab341de'), /<div class="start-fuss" data-version>Version ab341de<\/div>/);
+  assert.match(versionEinsetzen(html, 'unbekannt'), /<div class="start-fuss" data-version><\/div>/);
+  assert.doesNotMatch(versionEinsetzen(html, '<b>x'), /<b>/);
 });

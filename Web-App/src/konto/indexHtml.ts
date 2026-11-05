@@ -47,7 +47,7 @@ async function readIndex(): Promise<string> {
 
 /** Die Anmeldemaske nennt den ausgelieferten Stand. Eine feste Zahl in index.html blieb stehen, während
  * längst ein neuerer Commit lief; ohne bekannte Version bleibt die Zeile leer. */
-export function mitVersion(html: string, version: string): string {
+export function versionEinsetzen(html: string, version: string): string {
   const v = version && version !== 'unbekannt' ? `Version ${version.replace(/[^\w.+-]/g, '')}` : '';
   return html.replace(/(<div class="start-fuss" data-version>)[^<]*(<\/div>)/, `$1${v}$2`);
 }
@@ -100,7 +100,8 @@ export async function renderIndexHtml(userId?: number): Promise<string> {
 
     // ZULETZT stempeln: Sonst hinge der Stempel der deutschen Sprachdatei an der
     // englischen.
-    return stempleAssetsGecacht(mitVersion(out, appVersion()), PUBLIC_DIR);
+    out = versionEinsetzen(out, appVersion());
+    return stempleAssetsGecacht(out, PUBLIC_DIR);
   } catch (_) {
     return html;
   }

@@ -305,7 +305,7 @@
 <!-- PROGRESS OVERLAY -->
 <div id="progress-overlay" class="ovl" role="dialog" aria-modal="true" aria-labelledby="prog-title-txt">
   <div class="prog-box relativ">
-    <button type="button" data-click="hideProgress" data-dialog-zu aria-label="Minimieren" title="Minimieren" data-i18n="prog.minimieren" data-i18n-attr="title" data-i18n-aria="prog.minimieren" data-stil="position:absolute;top:.75rem;right:.75rem;background:none;border:1px solid var(--bdr);cursor:pointer;color:var(--mut);padding:1px 9px 4px;border-radius:4px;line-height:1;font-size:var(--fs-4);font-weight:400" class="hover-row" >&#8722;</button>
+    <button type="button" data-click="hideProgress" data-dialog-zu aria-label="Minimieren" title="Minimieren" data-i18n="prog.minimieren" data-i18n-attr="title" data-i18n-aria="prog.minimieren" class="hover-row prog-minimieren" >&#8722;</button>
     <div class="prog-title"><svg class="ico" aria-hidden="true"><use href="#i-aktualisieren"/></svg> <span id="prog-title-txt" data-i18n="prog.processing">Wird verarbeitet…</span></div>
     <div class="prog-set-name" id="prog-set-name"></div>
     <div class="prog-steps" id="prog-steps">
@@ -2117,8 +2117,8 @@
           <button id="pdf-viewer-zoom" class="btn bs btn-sm min-34rem" data-click="pdfZoomReset" aria-label="100% – Zoom zurücksetzen (Taste 0)">100%</button>
           <button id="pdf-viewer-zoom-in" class="btn bs btn-sm" data-click="pdfZoomIn" aria-label="Vergrössern (Taste +, oder Strg + Mausrad)" data-i18n="pdf.zoom_in" data-i18n-attr="aria-label">+</button>
         </div>
-        <button id="pdf-viewer-print" class="btn bs btn-sm" data-click="printPdfViewer"><svg class="ico" aria-hidden="true"><use href="#i-drucker"/></svg> <span data-i18n="pdf.print">Drucken</span></button>
-        <a id="pdf-viewer-download" class="btn bs btn-sm ohne-unterstrich" download href="#"><svg class="ico" aria-hidden="true"><use href="#i-runter"/></svg> <span data-i18n="pdf.download">Herunterladen</span></a>
+        <button id="pdf-viewer-print" class="btn bs btn-sm" data-click="printPdfViewer" aria-label="Drucken" data-i18n-aria="pdf.print"><svg class="ico" aria-hidden="true"><use href="#i-drucker"/></svg> <span data-i18n="pdf.print">Drucken</span></button>
+        <a id="pdf-viewer-download" class="btn bs btn-sm ohne-unterstrich" download href="#" aria-label="Herunterladen" data-i18n-aria="pdf.download"><svg class="ico" aria-hidden="true"><use href="#i-runter"/></svg> <span data-i18n="pdf.download">Herunterladen</span></a>
         <button class="btn bs btn-sm" data-click="closePdfViewer" data-dialog-zu aria-label="Schliessen" data-i18n="common.close" data-i18n-attr="aria-label"><svg class="ico" aria-hidden="true"><use href="#i-schliessen"/></svg></button>
       </div>
     </div>

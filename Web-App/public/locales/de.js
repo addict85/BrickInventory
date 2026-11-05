@@ -1442,7 +1442,7 @@ window.I18N_DE = {
   'wanted.feld_zustand': 'Zustand {id}',
   'wanted.feld_rb': 'Rebrickable-Nummer {id}',
   'wanted.feld_farbe': 'Farbe setzen {id}',
-  'zeile.oeffnen': '{name} ({nr}) öffnen',
+  'zeile.oeffnen': '{nr} {name} öffnen',
   'treffer.eintraege': '{n} Einträge gefunden',
   'treffer.eintraege_one': '{n} Eintrag gefunden',
   'log.zeitraum': 'Zeitraum',
