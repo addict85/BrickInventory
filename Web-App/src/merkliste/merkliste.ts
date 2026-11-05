@@ -9,6 +9,7 @@ import { addSet, sanitizeSetNumber } from '../sets/setService';
 import { findSetInScope } from '../sets/setAdd';
 import { loescheAlarm } from '../finanzen/preisalarm';
 import * as V from '../infra/validate';
+import { fehlerWerfen } from '../infra/fehlerTexte';
 import { nutzerStandardZustand, getSetting } from '../einstellungen/settings';
 import { meldeUndWeiter, meldeUndLiefere, oeffentlicherFehler } from '../infra/fehler';
 import { fuerSet } from '../katalog/preisvergleich';
@@ -212,6 +213,8 @@ export async function uebernimm(
   // Zwei Zustände: `condition` ist der Schlüssel des Merkpostens, der
   // verschwindet; `eingabe.condition` der, in dem das Set erfasst wird.
   const merkpostenZustand = await zustandOder(condition, besitzerId);
+  // Übernommen wird ein Merkposten; ohne ihn wäre das ein zweiter Weg zum Erfassen.
+  if (!await repo.istVorgemerkt(besitzerId, sn, merkpostenZustand)) fehlerWerfen('nicht_gefunden', 404);
   const zustand = eingabe.condition == null
     ? merkpostenZustand
     : await zustandOder(eingabe.condition, besitzerId);

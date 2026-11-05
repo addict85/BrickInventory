@@ -219,8 +219,10 @@ router.get('/sets/:setNumber', requireToken, async (req: Anfrage<'GET /api/v1/se
 
 router.post('/sets', requireToken, async (req: Anfrage<'POST /api/v1/sets'>, res: Antwort<'POST /api/v1/sets'>) => {
   const { quantity = 1, purchase_price = null, condition = null, owner_user_id, storage = null } = req.eingabe;
-  const set_number = String(req.eingabe.set_number ?? '');
+  const set_number = String(req.eingabe.set_number ?? '').trim();
   if (!set_number) return sendeFehler(req, res, 400, 'set_number_erforderlich');
+  // Getippt wird eine Nummer, kein Satz: Die nachsichtige Normalisierung (für CSV) machte aus Text ein Set.
+  if (!/^[A-Za-z0-9]{1,20}(-\d{1,3})?$/.test(set_number)) return sendeFehler(req, res, 400, 'setnummer_ungueltig');
   // resolveWriteTarget prüft die RICHTUNG (Haupt- für Unterkonto), nicht bloss
   // die Mitgliedschaft im Blickfeld.
   const owner = await schreibziel(req.apiUser.user_id, owner_user_id);
