@@ -49,7 +49,7 @@ class MerklisteViewModelTest {
     private lateinit var t: TestDienste
 
     private fun vm(gemerkt: SavedStateHandle = SavedStateHandle(), t: TestDienste = this.t) = t.merke(MerklisteViewModel(
-        t.dienste, SetsRepository(t.api, t.cache), KatalogRepository(t.api, t.cache),
+        t.sitzung, t.filter(), t.hinweise, t.bestand, SetsRepository(t.api, t.cache), KatalogRepository(t.api, t.cache),
         FinanzenRepository(t.api, t.cache), gemerkt))
 
     @Before
@@ -134,7 +134,7 @@ class MerklisteViewModelTest {
     @Test
     fun `ohne Filter folgt die Liste der Ablage, mit Suchtext nicht`() {
         val ablage = Offlineablage.fluechtig()
-        val vm = t.merke(MerklisteViewModel(t.dienste, SetsRepository(t.api, t.cache, ablage),
+        val vm = t.merke(MerklisteViewModel(t.sitzung, t.filter(), t.hinweise, t.bestand, SetsRepository(t.api, t.cache, ablage),
             KatalogRepository(t.api, t.cache), FinanzenRepository(t.api, t.cache), SavedStateHandle()))
         vm.ladeMerkliste()
         assertTrue("Liste geladen", vm.merklisteState.value.merkposten.isNotEmpty())

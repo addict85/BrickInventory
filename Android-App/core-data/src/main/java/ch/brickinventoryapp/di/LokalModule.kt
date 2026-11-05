@@ -58,6 +58,16 @@ import ch.brickinventoryapp.data.lokal.WorkManagerEntwertung
 import ch.brickinventoryapp.service.AndroidCsvImportDienst
 import ch.brickinventoryapp.service.CsvImportDienst
 import ch.brickinventoryapp.data.EntwertungsPlaner
+import ch.brickinventoryapp.data.cache.VorschauSpeicher
+import ch.brickinventoryapp.data.cache.Vorschauablage
+import ch.brickinventoryapp.data.MeldungsKanal
+import ch.brickinventoryapp.data.MeldungsWarteschlange
+import ch.brickinventoryapp.data.PasswortPflicht
+import ch.brickinventoryapp.data.PasswortPflichtZustand
+import ch.brickinventoryapp.data.ZweiterFaktorPflicht
+import ch.brickinventoryapp.data.ZweiterFaktorZustand
+import ch.brickinventoryapp.util.ZertifikatsFrage
+import ch.brickinventoryapp.util.ZertifikatsRueckfrage
 
 /**
  * Die lokale Ablage: Room für Listen und Ausgang, WorkManager fürs Senden.
@@ -95,6 +105,11 @@ abstract class LokalModule {
     @Binds abstract fun csvDienst(d: AndroidCsvImportDienst): CsvImportDienst
     @Binds abstract fun alarm(p: WorkManagerAlarmPlaner): AlarmPlaner
     @Binds abstract fun preisalarme(d: PreisalarmDurchgang): PreisalarmRepository
+    @Binds abstract fun vorschauablage(v: VorschauSpeicher): Vorschauablage
+    @Binds abstract fun meldungen(m: MeldungsWarteschlange): MeldungsKanal
+    @Binds abstract fun passwortPflicht(p: PasswortPflichtZustand): PasswortPflicht
+    @Binds abstract fun faktorPflicht(z: ZweiterFaktorZustand): ZweiterFaktorPflicht
+    @Binds abstract fun zertifikatsFrage(z: ZertifikatsRueckfrage): ZertifikatsFrage
 
     companion object {
         @Provides

@@ -75,7 +75,7 @@ class PdfBetrachterViewModelTest {
         }
     }
 
-    private fun vm(lader: Lader) = PdfBetrachterViewModel(lader, takt)
+    private fun vm(lader: Lader) = PdfBetrachterViewModel(lader, { _, _, _ -> null }, takt)
 
     @Test
     fun `eine Drehung laedt nicht neu`() = runTest(takt) {

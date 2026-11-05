@@ -42,36 +42,59 @@ class ScopeFilterAblage @Inject constructor(
  * dieselben Konten und Orte zeigen. Wer einen Filter ändert, lädt danach seine
  * eigene Liste nach; der Blickfeld-Dienst selbst lädt keine Bestandsdaten.
  */
+interface Blickfeld {
+    val konten: StateFlow<BlickfeldUiState>
+    val lager: StateFlow<LagerUiState>
+    fun kontoFuer(view: ScopeFilter.View): String?
+    fun lagerFuer(view: ScopeFilter.View): String?
+    suspend fun setzeKonto(view: ScopeFilter.View, wert: String)
+    suspend fun setzeLager(view: ScopeFilter.View, wert: String)
+    suspend fun ladeFilter()
+    suspend fun ladeMitglieder()
+    suspend fun ladeLagerorte()
+    suspend fun ladeVorrat(besitzer: List<Int>)
+    suspend fun ladeEigeneLagerorte()
+    suspend fun anmeldungBeginnt()
+    fun zuruecksetzen()
+}
+
+/** Für Tests ohne Hilt. */
+fun Blickfeld(
+    ablage: FilterAblage,
+    haushalt: HaushaltRepository,
+    teile: TeileRepository,
+): Blickfeld = BlickfeldDienst(ablage, haushalt, teile)
+
 @Singleton
-class Blickfeld @Inject constructor(
+class BlickfeldDienst @Inject constructor(
     private val ablage: FilterAblage,
     private val haushalt: HaushaltRepository,
     private val teile: TeileRepository,
-) {
+) : Blickfeld {
     private val _konten = MutableStateFlow(BlickfeldUiState())
-    val konten: StateFlow<BlickfeldUiState> = _konten.asStateFlow()
+    override val konten: StateFlow<BlickfeldUiState> = _konten.asStateFlow()
 
     private val _lager = MutableStateFlow(LagerUiState())
-    val lager: StateFlow<LagerUiState> = _lager.asStateFlow()
+    override val lager: StateFlow<LagerUiState> = _lager.asStateFlow()
 
     /** Der Wert für `accounts=`, oder null für „alle Konten“. */
-    fun kontoFuer(view: ScopeFilter.View): String? = ScopeFilter.asQuery(_konten.value.scopeModes[view.key])
+    override fun kontoFuer(view: ScopeFilter.View): String? = ScopeFilter.asQuery(_konten.value.scopeModes[view.key])
 
     /** Der Wert für `storage=`, oder null für „alle Orte“. */
-    fun lagerFuer(view: ScopeFilter.View): String? = ScopeFilter.lagerAsQuery(_lager.value.modi[view.key])
+    override fun lagerFuer(view: ScopeFilter.View): String? = ScopeFilter.lagerAsQuery(_lager.value.modi[view.key])
 
-    suspend fun setzeKonto(view: ScopeFilter.View, wert: String) {
+    override suspend fun setzeKonto(view: ScopeFilter.View, wert: String) {
         ablage.setzeKonto(view, wert)
         _konten.update { it.copy(scopeModes = it.scopeModes + (view.key to wert)) }
     }
 
-    suspend fun setzeLager(view: ScopeFilter.View, wert: String) {
+    override suspend fun setzeLager(view: ScopeFilter.View, wert: String) {
         ablage.setzeLager(view, wert)
         _lager.update { it.copy(modi = it.modi + (view.key to wert)) }
     }
 
     /** Die gemerkten Filter aus der Ablage — einmal nach der Anmeldung. */
-    suspend fun ladeFilter() {
+    override suspend fun ladeFilter() {
         val konten = ScopeFilter.View.entries.associate { it.key to ablage.konto(it) }
         val lager = ScopeFilter.View.entries.associate { it.key to ablage.lager(it) }
         _konten.update { it.copy(scopeModes = konten) }
@@ -83,7 +106,7 @@ class Blickfeld @Inject constructor(
      * mehr dazugehört, fällt auf „alle“ zurück — sonst bliebe die Liste leer,
      * ohne dass ein sichtbarer Filter es erklärt.
      */
-    suspend fun ladeMitglieder() {
+    override suspend fun ladeMitglieder() {
         val r = haushalt.getHouseholdMembers() as? Result.Success ?: return
         val mitglieder = r.data.members.map { it.alsAnsicht() }
         val erlaubt = kontoOptionen(mitglieder, "", "").map { it.first }
@@ -98,21 +121,21 @@ class Blickfeld @Inject constructor(
     }
 
     /** Die belegten Orte im Blickfeld der Galerie — sie speisen den Lagerfilter. */
-    suspend fun ladeLagerorte() {
+    override suspend fun ladeLagerorte() {
         val r = teile.getLagerorte(kontoFuer(ScopeFilter.View.GALLERY))
         val orte = (r as? Result.Success)?.data?.takeIf { it.success }?.orte ?: return
         _lager.update { it.copy(orte = orte.map { o -> o.alsAnsicht() }) }
     }
 
     /** Der Vorrat der Besitzer eines Sets — Vorschläge im Lagerortfeld. */
-    suspend fun ladeVorrat(besitzer: List<Int>) {
+    override suspend fun ladeVorrat(besitzer: List<Int>) {
         val r = teile.getLagerortVorrat(besitzer.takeIf { it.isNotEmpty() }?.joinToString(","))
         val orte = (r as? Result.Success)?.data?.takeIf { it.success }?.orte ?: return
         _lager.update { it.copy(vorrat = orte.map { o -> o.alsAnsicht() }) }
     }
 
     /** Die eigenen Orte samt Vorgabe — für Erfassen und Verwaltung. */
-    suspend fun ladeEigeneLagerorte() {
+    override suspend fun ladeEigeneLagerorte() {
         val r = teile.getLagerortVorrat(null)
         val antwort = (r as? Result.Success)?.data?.takeIf { it.success } ?: return
         _lager.update { it.copy(eigene = antwort.orte.map { o -> o.alsAnsicht() }, vorgabe = antwort.vorgabe?.alsAnsicht()) }
@@ -123,12 +146,12 @@ class Blickfeld @Inject constructor(
      * überlebt, liesse die Sammlung beim nächsten Mal halbiert aussehen, ohne
      * dass etwas darauf hinweist. Dieselbe Regel wie in der Webapp.
      */
-    suspend fun anmeldungBeginnt() {
+    override suspend fun anmeldungBeginnt() {
         ablage.allesVergessen()
         zuruecksetzen()
     }
 
-    fun zuruecksetzen() {
+    override fun zuruecksetzen() {
         _konten.value = BlickfeldUiState()
         _lager.value = LagerUiState()
     }

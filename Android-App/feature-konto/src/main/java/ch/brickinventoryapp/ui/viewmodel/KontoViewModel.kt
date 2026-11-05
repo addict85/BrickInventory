@@ -14,7 +14,7 @@ import ch.brickinventoryapp.ui.DesignWahl
 import ch.brickinventoryapp.ui.GeraeteUiState
 import ch.brickinventoryapp.ui.KontoUiState
 import ch.brickinventoryapp.ui.Sitzung
-import ch.brickinventoryapp.ui.setzeDesign
+import ch.brickinventoryapp.ui.SitzungsRepository
 import ch.brickinventoryapp.ui.ZweiterFaktorUiState
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -38,6 +38,7 @@ class KontoViewModel @Inject constructor(
     private val texte: Texte,
     private val meldungen: MeldungsKanal,
     private val sitzung: Sitzung,
+    private val sitzungsDienst: SitzungsRepository,
 ) : ViewModel() {
 
     private val _kontoState = MutableStateFlow(KontoUiState())
@@ -124,16 +125,16 @@ class KontoViewModel @Inject constructor(
 
     /**
      * Passwort ändern. Der Server verwirft danach ALLE Token des Kontos, auch
-     * diesen; [abmelden] geht deshalb den vollen Abmeldeweg der App. Die
+     * diesen; deshalb geht es danach den vollen Abmeldeweg der App. Die
      * Erklärung kommt in den Snackbar — die Kontokarte ist danach weg.
      */
-    fun aenderePasswort(aktuell: String, neu: String, code: String? = null, abmelden: () -> Unit) {
+    fun aenderePasswort(aktuell: String, neu: String, code: String? = null) {
         viewModelScope.launch {
             _kontoState.update { it.copy(speichert = true, fehler = null, meldung = null) }
             when (val r = konto.changePassword(aktuell, neu, code?.trim()?.ifBlank { null })) {
                 is Result.Success ->
                     if (r.data.success) {
-                        abmelden()
+                        sitzungsDienst.abmelden()
                         meldungen.zeige(texte.text(R.string.konto_password_changed))
                         _kontoState.value = KontoUiState()
                     } else {

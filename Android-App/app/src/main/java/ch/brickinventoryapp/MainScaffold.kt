@@ -33,7 +33,6 @@ import androidx.navigation.compose.*
 import ch.brickinventoryapp.ressourcen.R
 import ch.brickinventoryapp.ui.*
 import ch.brickinventoryapp.ui.screens.*
-import ch.brickinventoryapp.ui.viewmodel.aktivitaetsViewModel
 import ch.brickinventoryapp.ui.viewmodel.UpdateViewModel
 import ch.brickinventoryapp.nav.ZielUmgebung
 import ch.brickinventoryapp.ui.components.AusgangLeiste
@@ -251,12 +250,12 @@ fun ReiterGeruest(
     umgebung: ZielUmgebung,
     content: @Composable () -> Unit
 ) {
-    val vm: AppViewModel = aktivitaetsViewModel()
+    val vm = umgebung.aktivitaet.app
     val state by vm.state.collectAsStateWithLifecycle()
-    val selbstUpdate: UpdateViewModel = aktivitaetsViewModel()
+    val selbstUpdate = umgebung.aktivitaet.update
     val updateZustand by selbstUpdate.updateState.collectAsStateWithLifecycle()
     val offen by vm.offeneAenderungen.collectAsStateWithLifecycle()
-    val csvImport: CsvImportViewModel = aktivitaetsViewModel()
+    val csvImport = umgebung.aktivitaet.csvImport
     MainScaffold(
         title = titel,
         navController = umgebung.navController,

@@ -13,21 +13,30 @@ import javax.inject.Singleton
  * fehlt er, verschwinden die Meldungen lautlos.
  * Ausführlich: docs/begruendungen/core-data/data/MeldungsKanal.kt.md#constructor
  */
+interface MeldungsKanal {
+    val meldung: StateFlow<String?>
+    fun zeige(text: String?)
+    fun quittiere()
+}
+
+/** Für Tests ohne Hilt. */
+fun MeldungsKanal(): MeldungsKanal = MeldungsWarteschlange()
+
 @Singleton
-class MeldungsKanal @Inject constructor() {
+class MeldungsWarteschlange @Inject constructor() : MeldungsKanal {
 
     private val _meldung = MutableStateFlow<String?>(null)
     private val warteschlange = ArrayDeque<String>()
 
     /** Die Meldung, die gerade dran ist; null heisst: nichts anzuzeigen. */
-    val meldung: StateFlow<String?> = _meldung.asStateFlow()
+    override val meldung: StateFlow<String?> = _meldung.asStateFlow()
 
     /**
      * Reiht [text] ein; null zeigt nichts. Eine zweite Meldung wartet, bis die
      * erste quittiert ist, statt sie zu ersetzen. Dieselbe Meldung doppelt
      * hintereinander kommt nur einmal, und mehr als [PLAETZE] warten nicht.
      */
-    fun zeige(text: String?) {
+    override fun zeige(text: String?) {
         if (text == null) return
         synchronized(warteschlange) {
             when {
@@ -39,7 +48,7 @@ class MeldungsKanal @Inject constructor() {
     }
 
     /** Die angezeigte Meldung ist erledigt (gesehen oder überholt); die nächste rückt nach. */
-    fun quittiere() {
+    override fun quittiere() {
         synchronized(warteschlange) { _meldung.value = warteschlange.removeFirstOrNull() }
     }
 

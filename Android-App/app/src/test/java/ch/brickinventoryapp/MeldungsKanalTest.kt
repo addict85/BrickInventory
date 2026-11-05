@@ -55,7 +55,7 @@ import org.junit.Test
  *      der stillste der vier Fälle: Ohne die Annotation bekäme jedes ViewModel
  *      seine eigene Instanz, und dann gäbe es wieder so viele Kanäle wie
  *      ViewModels — nur sähe man es nirgends im Quelltext.
- *   e) In BereichsViewModel zeigeMeldung() in einen eigenen MutableStateFlow →
+ *   e) In AppMeldungen zeige() in einen eigenen MutableStateFlow →
  *      Teilschritt 4 rot und „zwei Bereiche melden in denselben Kanal“.
  * Die Warteschlange selbst prüft MeldungsWarteschlangeTest (core-data).
  */
@@ -123,13 +123,13 @@ class MeldungsKanalTest {
             name.endsWith("ViewModel.kt") && Regex("""\bzeigeMeldung\(|\bmeldungen\.zeige\(""").containsMatchIn(s)
         }
         assert(schreiber.isNotEmpty()) { "Kein ViewModel schreibt Meldungen — Muster veraltet?" }
-        // Die Bereichs-ViewModels bekommen ihn über AppDienste von ihrer Grundlage.
-        val grundlage = alleOhneKommentare().single { it.first == "BereichsViewModel.kt" }.second
-        assert(grundlage.contains("fun zeigeMeldung(text: String?) = dienste.meldungen.zeige(text)")) {
-            "BereichsViewModel reicht den Kanal nicht mehr an die Bereiche weiter"
+        // Die Bereichs-ViewModels bekommen ihn als Meldungen (Bereichshelfer.kt).
+        val helfer = alleOhneKommentare().single { it.first == "Bereichshelfer.kt" }.second
+        assert(helfer.contains("override fun zeige(text: String?) = kanal.zeige(text)")) {
+            "Meldungen reicht nicht mehr in den Kanal der App weiter"
         }
         val ohneKanal = schreiber.filter { (_, s) ->
-            !s.contains("MeldungsKanal") && !s.contains(": BereichsViewModel(dienste)")
+            !s.contains("MeldungsKanal") && !s.contains("meldungen: Meldungen")
         }.map { it.first }
         assert(ohneKanal.isEmpty()) {
             "Diese ViewModels melden, holen sich den Kanal aber nicht: " +
@@ -146,12 +146,12 @@ class MeldungsKanalTest {
         pfade.codes["/api/v1/parts/3001/5/color"] = 500
         val t = TestDienste(pfade.imTakt(), io = Dispatchers.Main)
         try {
-            val galerie = t.merke(GalerieViewModel(t.dienste, SetsRepository(t.api, t.cache),
+            val galerie = t.merke(GalerieViewModel(t.sitzung, t.filter(), t.hinweise, t.bestand, t.scrollMemory, SetsRepository(t.api, t.cache),
                 FinanzenRepository(t.api, t.cache), SavedStateHandle()))
             galerie.deleteSet("75192-1")
             assertTrue("Meldung der Galerie", t.meldungen.meldung.value != null)
             t.meldungen.quittiere()
-            val teile = t.merke(TeileViewModel(t.dienste, TeileRepository(t.api, t.cache), FigurenRepository(t.api, t.cache), SavedStateHandle()))
+            val teile = t.merke(TeileViewModel(t.sitzung, t.filter(), t.hinweise, t.bestand, t.scrollMemory, TeileRepository(t.api, t.cache), FigurenRepository(t.api, t.cache), SavedStateHandle()))
             teile.setzeTeilFarbe("3001", 5, 11)
             assertTrue("Meldung der Teile", t.meldungen.meldung.value != null)
         } finally {

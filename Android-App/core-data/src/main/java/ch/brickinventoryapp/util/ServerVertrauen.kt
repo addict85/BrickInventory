@@ -138,12 +138,22 @@ class ZertifikatUngeklaert(
  * Was gerade auf eine Entscheidung wartet. Der Handshake läuft auf einem
  * OkHttp-Faden; die Oberfläche liest hier und zeigt einen Dialog.
  */
-@Singleton
-class ZertifikatsFrage @Inject constructor() {
-    private val _offen = MutableStateFlow<ZertifikatUngeklaert?>(null)
-    val offen: StateFlow<ZertifikatUngeklaert?> = _offen.asStateFlow()
+interface ZertifikatsFrage {
+    val offen: StateFlow<ZertifikatUngeklaert?>
+    fun melde(frage: ZertifikatUngeklaert)
+    fun bestaetige(pins: PinAblage, eingabe: String? = null): Boolean
+    fun verwerfen()
+}
 
-    fun melde(frage: ZertifikatUngeklaert) {
+/** Für Tests ohne Hilt. */
+fun ZertifikatsFrage(): ZertifikatsFrage = ZertifikatsRueckfrage()
+
+@Singleton
+class ZertifikatsRueckfrage @Inject constructor() : ZertifikatsFrage {
+    private val _offen = MutableStateFlow<ZertifikatUngeklaert?>(null)
+    override val offen: StateFlow<ZertifikatUngeklaert?> = _offen.asStateFlow()
+
+    override fun melde(frage: ZertifikatUngeklaert) {
         // Ein schon offener Dialog bleibt stehen; mehrere Abrufe scheitern gleichzeitig.
         if (_offen.value == null) _offen.value = frage
     }
@@ -154,7 +164,7 @@ class ZertifikatsFrage @Inject constructor() {
      * ([bestaetigtFingerabdruck]): Dort prüft sonst niemand die Kette, und ein Tipp
      * allein wäre genau das, was ein Angreifer dazwischen braucht.
      */
-    fun bestaetige(pins: PinAblage, eingabe: String? = null): Boolean {
+    override fun bestaetige(pins: PinAblage, eingabe: String?): Boolean {
         val f = _offen.value ?: return false
         if (f.art != ZertifikatUngeklaert.Art.ERSTKONTAKT && !bestaetigtFingerabdruck(eingabe, f.fingerabdruck)) return false
         pins.merkePin(f.schluessel, f.fingerabdruck)
@@ -162,7 +172,7 @@ class ZertifikatsFrage @Inject constructor() {
         return true
     }
 
-    fun verwerfen() {
+    override fun verwerfen() {
         _offen.value = null
     }
 }

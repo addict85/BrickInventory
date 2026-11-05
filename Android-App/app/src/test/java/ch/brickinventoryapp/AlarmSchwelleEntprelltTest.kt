@@ -1,11 +1,11 @@
 package ch.brickinventoryapp
 
-import android.net.Uri
 import ch.brickinventoryapp.data.repository.KontoRepository
 import ch.brickinventoryapp.data.repository.SetsRepository
 import ch.brickinventoryapp.data.repository.TeileRepository
 import ch.brickinventoryapp.data.repository.VerwaltungRepository
 import ch.brickinventoryapp.ui.viewmodel.DateiLeser
+import ch.brickinventoryapp.ui.viewmodel.DateiRef
 import ch.brickinventoryapp.ui.viewmodel.EinstellungenViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -34,7 +34,7 @@ class AlarmSchwelleEntprelltTest {
     private lateinit var pfade: PfadServer
     private lateinit var t: TestDienste
 
-    private val keinLeser = object : DateiLeser { override suspend fun lies(uri: Uri): Pair<String?, ByteArray>? = null }
+    private val keinLeser = object : DateiLeser { override suspend fun lies(datei: DateiRef): Pair<String?, ByteArray>? = null }
 
     @Before
     fun auf() {
@@ -55,7 +55,7 @@ class AlarmSchwelleEntprelltTest {
 
     @Test
     fun `getippte Schwelle speichert nach der Ruhezeit einmal, die letzte`() {
-        val vm = t.merke(EinstellungenViewModel(t.dienste, KontoRepository(t.api, t.cache),
+        val vm = t.merke(EinstellungenViewModel(t.sitzung, t.filter(), t.hinweise, t.bestand, KontoRepository(t.api, t.cache),
             VerwaltungRepository(t.api, t.cache), SetsRepository(t.api, t.cache), TeileRepository(t.api, t.cache), keinLeser))
         vm.setzeAlarmSchwelle("75192-1", "N", "unter", "4")
         vm.setzeAlarmSchwelle("75192-1", "N", "unter", "449,90")

@@ -47,11 +47,9 @@ class CsvImportViewModel @Inject constructor(
     @Volatile private var csvFinishing = false
 
     init {
-        viewModelScope.launch {
-            sitzung.abmeldungen.collect {
-                csvWatchJob?.cancel(); csvWatchJob = null
-                _csvImportState.value = CsvImportUiState()
-            }
+        folgeAbmeldung(sitzung) {
+            csvWatchJob?.cancel(); csvWatchJob = null
+            _csvImportState.value = CsvImportUiState()
         }
     }
 

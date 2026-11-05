@@ -23,7 +23,6 @@ import ch.brickinventoryapp.ui.viewmodel.SetDetailViewModel
 import ch.brickinventoryapp.ui.viewmodel.KaeufeViewModel
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.navigation.toRoute
-import ch.brickinventoryapp.ui.viewmodel.aktivitaetsViewModel
 import ch.brickinventoryapp.ui.ScrollPositionKeeper
 import ch.brickinventoryapp.ui.components.ListeUndDetail
 import ch.brickinventoryapp.ui.components.LocalOffenesDetail
@@ -48,11 +47,11 @@ private fun NavGraphBuilder.galerieZiele(u: ZielUmgebung) {
     val snackbarHostState = u.snackbarHostState
     val galleryGridState = u.rollen.galerie
     composable<Screen.Gallery> {
-        val vm: AppViewModel = aktivitaetsViewModel()
+        val vm = u.aktivitaet.app
         val galerieVm: GalerieViewModel = hiltViewModel()
         val state by galerieVm.state.collectAsStateWithLifecycle()
         val galerie by galerieVm.galleryState.collectAsStateWithLifecycle()
-        val erfassung = aktivitaetsViewModel<ErfassungViewModel>()
+        val erfassung = u.aktivitaet.erfassung
         val barcode by erfassung.barcodeState.collectAsStateWithLifecycle()
         // Retry loading if sets are empty and server URL is available
         LaunchedEffect(state.serverUrl) {
@@ -109,7 +108,7 @@ private fun NavGraphBuilder.setDetailZiel(u: ZielUmgebung) {
     val navController = u.navController
     val imageLoader = u.imageLoader
     composable<Screen.SetDetail> { backStack ->
-        val vm: AppViewModel = aktivitaetsViewModel()
+        val vm = u.aktivitaet.app
         val state by vm.state.collectAsStateWithLifecycle()
         val setNumber = backStack.toRoute<Screen.SetDetail>().setNumber
         // Die Galerie liegt als Startziel immer darunter; ihre geladene
@@ -162,7 +161,7 @@ private fun NavGraphBuilder.setDetailZiel(u: ZielUmgebung) {
 @Composable
 private fun GalerieNebenDetailRoute(u: ZielUmgebung, galerie: GalerieViewModel, setNumber: String, detail: @Composable () -> Unit) {
     val navController = u.navController
-    val erfassung = aktivitaetsViewModel<ErfassungViewModel>()
+    val erfassung = u.aktivitaet.erfassung
     ReiterGeruest(stringResource(R.string.nav_collection), u) {
         ListeUndDetail(
             liste = {
@@ -192,7 +191,7 @@ private fun NavGraphBuilder.teileZiele(u: ZielUmgebung) {
     val imageLoader = u.imageLoader
     val partsGridState = u.rollen.teile
     composable<Screen.Parts> {
-        val vm: AppViewModel = aktivitaetsViewModel()
+        val vm = u.aktivitaet.app
         val teileVm: TeileViewModel = hiltViewModel()
         val state by teileVm.state.collectAsStateWithLifecycle()
         val partsState by teileVm.partsState.collectAsStateWithLifecycle()
@@ -242,7 +241,7 @@ private fun NavGraphBuilder.figurenZiele(u: ZielUmgebung) {
     val imageLoader = u.imageLoader
     val minifigsGridState = u.rollen.minifiguren
     composable<Screen.Minifigs> {
-        val vm: AppViewModel = aktivitaetsViewModel()
+        val vm = u.aktivitaet.app
         val teileVm: TeileViewModel = hiltViewModel()
         val state by teileVm.state.collectAsStateWithLifecycle()
         val partsState by teileVm.partsState.collectAsStateWithLifecycle()

@@ -86,6 +86,7 @@ import ch.brickinventoryapp.ui.screens.SetupScreen
 import ch.brickinventoryapp.ui.screens.StartpasswortMaske
 import ch.brickinventoryapp.ui.screens.ZweiterFaktorPflichtMaske
 import ch.brickinventoryapp.ui.viewmodel.DateiLeser
+import ch.brickinventoryapp.ui.viewmodel.DateiRef
 import ch.brickinventoryapp.ui.viewmodel.EinstellungenViewModel
 import ch.brickinventoryapp.ui.viewmodel.GalerieViewModel
 import ch.brickinventoryapp.ui.viewmodel.HaushaltViewModel
@@ -203,7 +204,7 @@ class BildschirmFotoVariantenTest {
     private fun foto(name: String, design: String = "classic", dunkel: Boolean = false, geraet: String = "telefon") =
         compose.onRoot().captureRoboImage(pfad(name, design, dunkel, geraet))
 
-    private fun erfassung() = welt.t.merke(ErfassungViewModel(welt.t.dienste, SetsRepository(welt.t.api, welt.t.cache),
+    private fun erfassung() = welt.t.merke(ErfassungViewModel(welt.t.sitzung, welt.t.filter(), welt.t.hinweise, welt.t.bestand, SetsRepository(welt.t.api, welt.t.cache),
         KatalogRepository(welt.t.api, welt.t.cache), object : SetAnleger {
             override fun anlegen(setNumber: String, quantity: Int, purchasePrice: Double?, condition: String?,
                                  ownerUserId: Int?, storage: String?): Flow<SetAnlegenSchritt> = emptyFlow()
@@ -552,13 +553,13 @@ class BildschirmFotoVariantenTest {
 
     // ── Unterseiten und Erfassen, die sonst kein Foto hatten (I2) ──
 
-    private fun einstellungen() = welt.t.merke(EinstellungenViewModel(welt.t.dienste,
+    private fun einstellungen() = welt.t.merke(EinstellungenViewModel(welt.t.sitzung, welt.t.filter(), welt.t.hinweise, welt.t.bestand,
         KontoRepository(welt.t.api, welt.t.cache),
         VerwaltungRepository(welt.t.api, welt.t.cache),
         SetsRepository(welt.t.api, welt.t.cache),
         TeileRepository(welt.t.api, welt.t.cache),
         object : DateiLeser {
-            override suspend fun lies(uri: android.net.Uri): Pair<String?, ByteArray>? = null
+            override suspend fun lies(datei: DateiRef): Pair<String?, ByteArray>? = null
         }))
 
     @Test
@@ -589,7 +590,7 @@ class BildschirmFotoVariantenTest {
     fun haushalt() {
         welt.pfade.antworten["/api/v1/settings/household"] = """{"success":true,"is_main":true,"currency":"CHF",
             "sub_accounts":[{"id":2,"username":"lena"},{"id":3,"username":"tim"}],"open_invites":1}"""
-        val vm = welt.t.merke(HaushaltViewModel(welt.t.dienste,
+        val vm = welt.t.merke(HaushaltViewModel(welt.t.sitzung, welt.t.filter(), welt.t.hinweise, welt.t.bestand,
             HaushaltRepository(welt.t.api, welt.t.cache),
             KontoRepository(welt.t.api, welt.t.cache))).also { it.loadHouseholdStatus() }
         zeige("haushalt", bereit = { vm.householdState.value.status != null }, zustand = { vm.householdState.value }) {
@@ -721,7 +722,7 @@ class BildschirmFotoVariantenTest {
             {"token_id":"b2","label":"Galaxy Tab","created_at":"2026-06-12T10:00:00Z","last_used":"2026-10-20T08:00:00Z","scope":"app"}]}"""
         val konto = welt.t.merke(KontoViewModel(
             KontoRepository(welt.t.api, welt.t.cache), KontextTexte(),
-            welt.t.meldungen, welt.t.sitzung))
+            welt.t.meldungen, welt.t.sitzung, SitzungsAttrappe()))
         zeige(name, dunkel = dunkel, geraet = geraet) {
             KontoRoute(onAbmelden = {}, snackbarHostState = remember { SnackbarHostState() },
                 konto = konto, onZurueck = {})

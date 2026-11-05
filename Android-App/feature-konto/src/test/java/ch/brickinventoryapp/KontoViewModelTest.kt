@@ -28,7 +28,7 @@ import ch.brickinventoryapp.ui.Sitzung
  *  - In entwerteAndereGeraete() die Prüfung `liste.none { it.aktuell }`
  *    entfernt: „ohne erkanntes eigenes Gerät wird nichts entwertet" rot — es
  *    gingen zwei Entwertungen hinaus.
- *  - In aenderePasswort() den Aufruf `abmelden()` entfernt: „nach dem
+ *  - In aenderePasswort() den Aufruf `sitzungsDienst.abmelden()` entfernt: „nach dem
  *    Passwortwechsel wird abgemeldet" rot.
  *  - In zweiterFaktor() `erfolgText` nicht mehr gemeldet: „der bestätigte
  *    zweite Faktor zeigt die Codes" rot an der Meldung.
@@ -58,6 +58,8 @@ class KontoViewModelTest {
     private lateinit var kanal: MeldungsKanal
     private lateinit var vm: KontoViewModel
 
+    @Volatile private var abgemeldet = false
+
     private fun antwort(rumpf: String, code: Int = 200) = TestApi.antwort(rumpf, code)
     private fun warteBis(was: String, bedingung: () -> Boolean) = TestApi.warteBis(was, bedingung)
 
@@ -70,7 +72,7 @@ class KontoViewModelTest {
         cacheDir.mkdirs()
         kanal = MeldungsKanal()
         vm = KontoViewModel(KontoRepository(TestApi.fuer(server), ResponseCache { cacheDir }), NummernTexte, kanal,
-                            Sitzung())
+                            Sitzung(), SitzungsAttrappe { abgemeldet = true })
     }
 
     @After
@@ -151,9 +153,8 @@ class KontoViewModelTest {
 
     @Test
     fun `nach dem Passwortwechsel wird abgemeldet`() {
-        var abgemeldet = false
         server.enqueue(antwort("""{"success":true}"""))
-        vm.aenderePasswort("alt", "neuNeuNeu123!") { abgemeldet = true }
+        vm.aenderePasswort("alt", "neuNeuNeu123!")
         warteBis("Meldung") { kanal.meldung.value != null }
 
         assertTrue(abgemeldet)
@@ -163,9 +164,8 @@ class KontoViewModelTest {
 
     @Test
     fun `ein abgelehnter Passwortwechsel meldet abzumelden nicht`() {
-        var abgemeldet = false
         server.enqueue(antwort("""{"success":false,"error":"Aktuelles Passwort falsch"}"""))
-        vm.aenderePasswort("falsch", "neuNeuNeu123!") { abgemeldet = true }
+        vm.aenderePasswort("falsch", "neuNeuNeu123!")
         warteBis("Fehler") { vm.kontoState.value.fehler != null }
 
         assertFalse(abgemeldet)
@@ -207,16 +207,15 @@ class KontoViewModelTest {
 
     @Test
     fun `ohne Code verlangt der zweite Faktor das Codefeld, mit Code geht der Wechsel durch`() {
-        var abgemeldet = false
         server.enqueue(antwort("""{"success":false,"error":"Bitte den Code eingeben.","code":"zweiter_faktor_noetig"}""", 400))
-        vm.aenderePasswort("alt", "neuNeuNeu123!") { abgemeldet = true }
+        vm.aenderePasswort("alt", "neuNeuNeu123!")
         warteBis("Absage") { vm.kontoState.value.fehler != null }
         assertTrue("Das Codefeld erscheint", vm.kontoState.value.codeNoetig)
         assertFalse(abgemeldet)
         server.takeRequest()
 
         server.enqueue(antwort("""{"success":true}"""))
-        vm.aenderePasswort("alt", "neuNeuNeu123!", " 123456 ") { abgemeldet = true }
+        vm.aenderePasswort("alt", "neuNeuNeu123!", " 123456 ")
         warteBis("abgemeldet") { abgemeldet }
         assertTrue(server.takeRequest().body.readUtf8().contains("\"code\":\"123456\""))
     }

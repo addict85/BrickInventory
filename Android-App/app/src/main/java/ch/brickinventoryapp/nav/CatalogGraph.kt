@@ -19,7 +19,6 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.navigation.NavBackStackEntry
 import androidx.navigation.toRoute
 import kotlinx.serialization.Serializable
-import ch.brickinventoryapp.ui.viewmodel.aktivitaetsViewModel
 import ch.brickinventoryapp.ui.viewmodel.CatalogViewModel
 import ch.brickinventoryapp.ui.listeUndDetail
 import ch.brickinventoryapp.ui.screens.MerklisteRoute
@@ -53,7 +52,7 @@ private fun NavGraphBuilder.merklisteZiele(u: ZielUmgebung) {
         androidx.compose.foundation.layout.BoxWithConstraints {
             val nebeneinander = listeUndDetail(maxWidth.value)
             ReiterGeruest(stringResource(R.string.nav_wanted), u) {
-                val erfassung = aktivitaetsViewModel<ErfassungViewModel>()
+                val erfassung = u.aktivitaet.erfassung
                 MerklisteRoute(
                     vm = hiltViewModel<MerklisteViewModel>(),
                     imageLoader = imageLoader,
@@ -84,7 +83,7 @@ private fun NavGraphBuilder.katalogZiele(u: ZielUmgebung) {
     val imageLoader = u.imageLoader
     navigation<KatalogBereich>(startDestination = Screen.Catalog) {
         composable<Screen.Catalog> { eintrag ->
-            val vm: AppViewModel = aktivitaetsViewModel()
+            val vm = u.aktivitaet.app
             val katalog = katalogViewModel(navController, eintrag)
             val state by vm.state.collectAsStateWithLifecycle()
             val catalogState by katalog.state.collectAsStateWithLifecycle()
@@ -103,13 +102,13 @@ private fun NavGraphBuilder.katalogZiele(u: ZielUmgebung) {
             }
         }
         composable<Screen.CatalogDetail> { backStack ->
-            val vm: AppViewModel = aktivitaetsViewModel()
+            val vm = u.aktivitaet.app
             val katalog = katalogViewModel(navController, backStack)
             val state by vm.state.collectAsStateWithLifecycle()
             val blick by vm.blickfeld.collectAsStateWithLifecycle()
             val catSetNumber = backStack.toRoute<Screen.CatalogDetail>().setNumber
             val merkliste: MerklisteViewModel = hiltViewModel()
-            val erfassung = aktivitaetsViewModel<ErfassungViewModel>()
+            val erfassung = u.aktivitaet.erfassung
             val catalogState by katalog.state.collectAsStateWithLifecycle()
             val lagerZustand by vm.lagerState.collectAsStateWithLifecycle()
             // loadCatalogDetail() meldet über denselben Kanal wie alle ViewModels

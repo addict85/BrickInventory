@@ -21,6 +21,11 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import javax.inject.Inject
+import androidx.lifecycle.ViewModel
+import ch.brickinventoryapp.ui.AppUiState
+import ch.brickinventoryapp.ui.Sitzung
+import ch.brickinventoryapp.ui.Bestandssignal
+import ch.brickinventoryapp.ui.ScrollMemory
 
 /**
  * Die Sammlung der Sets: Liste, Filter, Kennzahlen.
@@ -31,29 +36,54 @@ import javax.inject.Inject
  */
 @HiltViewModel
 class GalerieViewModel @Inject constructor(
-    dienste: AppDienste,
+    private val sitzung: Sitzung,
+    private val filter: Filterwahl,
+    private val meldungen: Meldungen,
+    private val bestand: Bestandssignal,
+    private val scrollMemory: ScrollMemory,
     private val sets: SetsRepository,
     private val finanzen: FinanzenRepository,
     private val gemerkt: SavedStateHandle,
-) : BereichsViewModel(dienste) {
+) : ViewModel(), Filterwahl by filter {
+
+    val state: StateFlow<AppUiState> = sitzung.state
+
+    init {
+        folgeAbmeldung(sitzung) { zuruecksetzen() }
+        folgeBestand(bestand) { beiAenderung(it) }
+    }
+
+    override fun setScope(view: ScopeFilter.View, value: String) {
+        viewModelScope.launch {
+            filter.setzeKonto(view, value)
+            nachFilter(view)
+        }
+    }
+
+    override fun setLagerFilter(view: ScopeFilter.View, value: String) {
+        viewModelScope.launch {
+            filter.setzeLager(view, value)
+            nachFilter(view)
+        }
+    }
 
     private val galerie = Galerie(
         scope = viewModelScope,
         holeSeite = { g, seite ->
             retryOnNetwork {
-                sets.getSets(scopeFor(ScopeFilter.View.GALLERY),
+                sets.getSets(filter.kontoFuer(ScopeFilter.View.GALLERY),
                     search = g.galleryQuery, theme = g.galleryTheme, sort = g.gallerySort, page = seite,
-                    storage = lagerFor(ScopeFilter.View.GALLERY))
+                    storage = filter.lagerFuer(ScopeFilter.View.GALLERY))
             }
         },
-        holeKennzahlen = { finanzen.getStats(scopeFor(ScopeFilter.View.GALLERY)) },
-        meldeFehler = { zeigeMeldung(meldungFuerSnackbar(it)) },
-        beschreibeFehler = { meldung(it) },
-        vergissScroll = { dienste.scrollMemory.vergiss("gallery") },
+        holeKennzahlen = { finanzen.getStats(filter.kontoFuer(ScopeFilter.View.GALLERY)) },
+        meldeFehler = { meldungen.zeige(meldungen.meldungFuerSnackbar(it)) },
+        beschreibeFehler = { meldungen.meldung(it) },
+        vergissScroll = { scrollMemory.vergiss("gallery") },
         lokal = sets.beobachteSets(),
         ungefiltert = { g ->
             g.galleryQuery.isBlank() && g.galleryTheme.isBlank() && g.gallerySort == GALLERY_DEFAULT_SORT &&
-                scopeFor(ScopeFilter.View.GALLERY) == null && lagerFor(ScopeFilter.View.GALLERY).isNullOrBlank()
+                filter.kontoFuer(ScopeFilter.View.GALLERY) == null && filter.lagerFuer(ScopeFilter.View.GALLERY).isNullOrBlank()
         },
     )
     /** Ein gelöschtes Set, das sich noch zurückholen lässt — die Snackbar „Rückgängig“. */
@@ -96,7 +126,7 @@ class GalerieViewModel @Inject constructor(
      */
     private fun ladePreise() {
         viewModelScope.launch {
-            val r = finanzen.getPnl(scopeFor(ScopeFilter.View.GALLERY))
+            val r = finanzen.getPnl(filter.kontoFuer(ScopeFilter.View.GALLERY))
             if (r is Result.Success) _preise.value = kachelPreise(r.data.sets)
         }
     }
@@ -125,8 +155,8 @@ class GalerieViewModel @Inject constructor(
         loadSets()
         loadStats()
         viewModelScope.launch {
-            dienste.blickfeld.ladeMitglieder()
-            dienste.blickfeld.ladeLagerorte()
+            filter.ladeMitglieder()
+            filter.ladeLagerorte()
         }
     }
 
@@ -157,20 +187,20 @@ class GalerieViewModel @Inject constructor(
     /** [erfolgMelden] aus, wenn „gelöscht“ schon in der Snackbar mit „Rückgängig“ stand. */
     fun deleteSet(setNumber: String, erfolgMelden: Boolean = true) {
         viewModelScope.launch {
-            val (geloescht, satz) = setLoeschen(sets, dienste.texte, setNumber)
+            val (geloescht, satz) = setLoeschen(sets, meldungen, setNumber)
             if (geloescht) galerie.entferne(setNumber)
-            if (!geloescht || erfolgMelden) zeigeMeldung(satz)
-            if (geloescht) dienste.bestand.melde(Aenderung.Sets, Aenderung.Teile, Aenderung.Figuren)
+            if (!geloescht || erfolgMelden) meldungen.zeige(satz)
+            if (geloescht) bestand.melde(Aenderung.Sets, Aenderung.Teile, Aenderung.Figuren)
         }
     }
 
-    override fun nachFilter(view: ScopeFilter.View) {
+    private fun nachFilter(view: ScopeFilter.View) {
         if (view != ScopeFilter.View.GALLERY) return
         loadSets()
         loadStats()
     }
 
-    override fun beiAenderung(aenderung: Aenderung) {
+    private fun beiAenderung(aenderung: Aenderung) {
         when (aenderung) {
             Aenderung.Sets -> { loadSets(); loadStats() }
             Aenderung.Teile, Aenderung.Figuren -> loadStats()
@@ -193,7 +223,7 @@ class GalerieViewModel @Inject constructor(
         }
     }
 
-    override fun zuruecksetzen() {
+    private fun zuruecksetzen() {
         galerie.zuruecksetzen()
         _preise.value = emptyMap()
         gemerkt[SUCHE] = ""

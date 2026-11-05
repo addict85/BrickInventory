@@ -13,12 +13,18 @@ import javax.inject.Singleton
  * Dauerhafte Ablage der Vorschaubilder — damit die Tabellen ohne Netz stehen.
  * Ausführlich: docs/begruendungen/core-data/data/cache/VorschauSpeicher.kt.md#vorschauspeicher
  */
+/** Was die Einstellungen von der Vorschau-Ablage brauchen: Belegung zeigen, leeren. */
+interface Vorschauablage {
+    fun belegt(): Long
+    fun leeren()
+}
+
 @Singleton
 class VorschauSpeicher(
     /** Der Ablageordner; eine Funktion, damit `context` erst beim ersten Zugriff gefragt wird. */
     private val wurzel: () -> File,
     private val chiffre: AblageChiffre,
-) {
+) : Vorschauablage {
     @Inject constructor(@ApplicationContext context: Context, ablage: Ablageschluessel) :
         this({ File(context.filesDir, "vorschau") }, AblageChiffre { ablage.fuer("vorschau") })
 
@@ -125,11 +131,11 @@ class VorschauSpeicher(
     }
 
     /** Wie viel liegt hier? Fuer die Anzeige in den Einstellungen. */
-    fun belegt(): Long =
+    override fun belegt(): Long =
         runCatching { ordner.listFiles()?.sumOf { it.length() } ?: 0L }.getOrDefault(0L)
 
     /** Alles wegwerfen — fuer den Knopf in den Einstellungen. */
-    fun leeren() {
+    override fun leeren() {
         runCatching { ordner.listFiles()?.forEach { it.delete() } }
     }
 

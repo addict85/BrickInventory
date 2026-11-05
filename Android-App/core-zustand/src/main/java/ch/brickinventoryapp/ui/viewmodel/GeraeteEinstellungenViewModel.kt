@@ -2,7 +2,7 @@ package ch.brickinventoryapp.ui.viewmodel
 
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.MutableStateFlow
-import ch.brickinventoryapp.data.cache.VorschauSpeicher
+import ch.brickinventoryapp.data.cache.Vorschauablage
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import ch.brickinventoryapp.data.AlarmPlaner
@@ -29,7 +29,7 @@ class GeraeteEinstellungenViewModel @Inject constructor(
     private val planer: AlarmPlaner,
     private val texte: Texte,
     private val meldungen: MeldungsKanal,
-    private val vorschau: VorschauSpeicher,
+    private val vorschau: Vorschauablage,
 ) : ViewModel() {
 
     val alarmMeldungenAn: StateFlow<Boolean> =

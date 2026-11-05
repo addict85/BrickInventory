@@ -17,6 +17,7 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import ch.brickinventoryapp.ui.components.Ueberdeckungsschutz
 import ch.brickinventoryapp.ui.theme.Lesebreite
 import ch.brickinventoryapp.ui.viewmodel.KontoViewModel
+import ch.brickinventoryapp.ui.viewmodel.DateiRef
 
 /**
  * Die Unterseiten der Einstellungen: je Rubrik eine Seite mit Titel und
@@ -164,7 +165,7 @@ fun CsvImportRoute(
     Unterseite(stringResource(R.string.csv_upload_title), snackbarHostState, onZurueck) {
         CsvImportCard(
             csvZustand = csvZustand,
-            onDatei = { art, uri -> vm.ladeCsvHoch(art, uri) },
+            onDatei = { art, uri -> vm.ladeCsvHoch(art, DateiRef(uri.toString())) },
             onSchliessen = { vm.csvHochladenWeg() },
         )
     }

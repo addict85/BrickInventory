@@ -44,14 +44,16 @@ class AppDateiLeser @Inject constructor(
     @param:ApplicationContext private val ctx: Context,
     @param:Dispatcher(BrickDispatchers.IO) private val io: CoroutineDispatcher,
 ) : DateiLeser {
-    override suspend fun lies(uri: Uri): Pair<String?, ByteArray>? = withContext(io) {
+    override suspend fun lies(datei: DateiRef): Pair<String?, ByteArray>? = withContext(io) {
+        val uri = Uri.parse(datei.wert)
         runCatching {
             val bytes = ctx.contentResolver.openInputStream(uri)?.use { it.readBytes() }
             bytes?.let { ctx.contentResolver.getType(uri) to it }
         }.getOrNull()
     }
 
-    override suspend fun name(uri: Uri): String? = withContext(io) {
+    override suspend fun name(datei: DateiRef): String? = withContext(io) {
+        val uri = Uri.parse(datei.wert)
         runCatching {
             ctx.contentResolver.query(uri, null, null, null, null)?.use { c ->
                 val i = c.getColumnIndex(android.provider.OpenableColumns.DISPLAY_NAME)

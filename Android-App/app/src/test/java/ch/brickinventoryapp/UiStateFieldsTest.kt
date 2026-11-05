@@ -37,7 +37,7 @@ class UiStateFieldsTest {
     /**
      * Welcher öffentliche Fluss des ViewModels trägt welchen Zustandstyp?
      *
-     * Gelesen aus AppViewModel.kt und BereichsViewModel.kt (Quellen.zustandsFluesse).
+     * Gelesen aus AppViewModel.kt und Bereichshelfer.kt (Quellen.zustandsFluesse).
      * Bewusst abgeleitet statt hier aufgezählt: Eine Liste im Test wäre eine
      * zweite Wahrheit, die beim nächsten neuen Zustand still veraltet.
      */
@@ -268,7 +268,7 @@ class UiStateFieldsTest {
         // Ein baumweiter Lauf wäre hier falsch — MonitoringViewModel nennt
         // seinen eigenen Fluss ebenfalls `_state`, und der trägt MonitoringUiState.
         val mvm = ohneKommentare(java.io.File(wurzel, "ui/AppViewModel.kt").readText() + "\n" +
-            java.io.File(wurzel, "ui/viewmodel/BereichsViewModel.kt").readText())
+            java.io.File(wurzel, "ui/viewmodel/Bereichshelfer.kt").readText())
         val privGlobal = Regex("""val\s+_(\w+)\s*=\s*MutableStateFlow\((\w+UiState)\(""")
             .findAll(mvm).associate { it.groupValues[1] to it.groupValues[2] }
         val oeffentlich = Regex("""val\s+(\w+)\s*=\s*_(\w+)\.asStateFlow\(\)""")

@@ -1,6 +1,5 @@
 package ch.brickinventoryapp.ui.viewmodel
 
-import android.net.Uri
 import ch.brickinventoryapp.data.repository.Result
 import ch.brickinventoryapp.util.meldetDieSitzungsschicht
 
@@ -23,9 +22,17 @@ interface Texte {
     fun angemeldet(): Boolean
 }
 
+/**
+ * Eine vom Nutzer gewählte Datei, wie die Oberfläche sie nennt (die Zeichenkette
+ * einer content://-Adresse). Kein android.net.Uri: Das ViewModel reicht sie nur an
+ * den [DateiLeser] weiter und bleibt so ohne Android-Typen prüfbar.
+ */
+@JvmInline
+value class DateiRef(val wert: String)
+
 /** Liest eine vom Nutzer gewählte Datei: Medientyp und Inhalt, oder null. */
 interface DateiLeser {
-    suspend fun lies(uri: Uri): Pair<String?, ByteArray>?
+    suspend fun lies(datei: DateiRef): Pair<String?, ByteArray>?
     /** Der angezeigte Dateiname, oder null, wenn ihn die Quelle nicht nennt. */
-    suspend fun name(uri: Uri): String? = null
+    suspend fun name(datei: DateiRef): String? = null
 }

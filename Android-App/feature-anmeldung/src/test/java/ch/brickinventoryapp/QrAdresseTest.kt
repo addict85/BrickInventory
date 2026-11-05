@@ -20,7 +20,6 @@ import org.junit.Before
 import org.junit.Test
 import ch.brickinventoryapp.data.repository.HaushaltRepository
 import ch.brickinventoryapp.ui.Blickfeld
-import ch.brickinventoryapp.ui.viewmodel.AppDienste
 
 /**
  * Der QR-Dialog ist die einzige Hürde gegen einen untergeschobenen Code. Geprüft
@@ -129,17 +128,16 @@ class QrAdresseTest {
     @Test
     fun `das ViewModel nimmt eine Adresse mit Benutzerangabe nicht an`() {
         val ablage = Ablage()
-        val dienste = AppDienste(t.sitzung,
-            Blickfeld(SpeicherAblage(),
-                HaushaltRepository(t.api, t.cache),
-                TeileRepository(t.api, t.cache)),
-            t.meldungen, NummernTexte, t.bestand, t.scrollMemory)
-        val vm = t.merke(AnmeldungViewModel(dienste, KontoRepository(t.api, t.cache), ablage, { false }))
-        var abgemeldet = false
-        vm.loginWithQrToken("https://brick.meinserver.ch@evil.example", "bim:x", abmelden = { abgemeldet = true })
+        val abmelden = SitzungsAttrappe()
+        val blickfeld = Blickfeld(SpeicherAblage(),
+            HaushaltRepository(t.api, t.cache),
+            TeileRepository(t.api, t.cache))
+        val vm = t.merke(AnmeldungViewModel(t.sitzung, blickfeld, t.hinweise, abmelden,
+            KontoRepository(t.api, t.cache), ablage, { false }))
+        vm.loginWithQrToken("https://brick.meinserver.ch@evil.example", "bim:x")
         assertFalse(vm.saveServerUrl("https://brick.meinserver.ch@evil.example"))
         assertEquals(emptyList<String>(), ablage.protokoll.toList())
-        assertFalse("Nichts abgemeldet", abgemeldet)
+        assertEquals("Nichts abgemeldet", 0, abmelden.abmeldungen)
         assertTrue("kein qr-login", pfade.anfragenAn("qr-login").isEmpty())
         assertTrue(vm.anmeldeState.value.loginError != null)
     }

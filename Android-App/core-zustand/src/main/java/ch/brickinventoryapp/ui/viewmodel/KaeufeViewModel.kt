@@ -23,6 +23,10 @@ import kotlinx.coroutines.launch
 import javax.inject.Inject
 import ch.brickinventoryapp.data.model.SetAggregate
 import ch.brickinventoryapp.ressourcen.R
+import androidx.lifecycle.ViewModel
+import ch.brickinventoryapp.ui.AppUiState
+import ch.brickinventoryapp.ui.Sitzung
+import ch.brickinventoryapp.ui.Bestandssignal
 
 /**
  * Die Käufe eines Eintrags — Set, manuelles Teil oder manuelle Figur:
@@ -33,12 +37,22 @@ import ch.brickinventoryapp.ressourcen.R
  */
 @HiltViewModel
 class KaeufeViewModel @Inject constructor(
-    dienste: AppDienste,
+    private val sitzung: Sitzung,
+    private val filter: Filterwahl,
+    private val meldungen: Meldungen,
+    private val bestand: Bestandssignal,
     private val haushalt: HaushaltRepository,
     private val finanzen: FinanzenRepository,
     private val teile: TeileRepository,
     private val figuren: FigurenRepository,
-) : BereichsViewModel(dienste), KaeufeAktionen {
+) : ViewModel(), Filterwahl by filter, KaeufeAktionen {
+
+    val state: StateFlow<AppUiState> = sitzung.state
+
+    init {
+        folgeAbmeldung(sitzung) { zuruecksetzen() }
+        folgeBestand(bestand) { beiAenderung(it) }
+    }
 
     private val _manDetailState = MutableStateFlow(ManualItemDetailUiState())
     val manDetailState: StateFlow<ManualItemDetailUiState> = _manDetailState.asStateFlow()
@@ -102,7 +116,7 @@ class KaeufeViewModel @Inject constructor(
             when (val r = haushalt.updateAcquisition(setNumber, acqId, purchasePrice, condition, quantity, date)) {
                 is Result.Success -> if (r.data.success) setGeaendert(r.data.set)
                 is Result.Error -> {
-                    zeigeMeldung(meldungFuerSnackbar(r))
+                    meldungen.zeige(meldungen.meldungFuerSnackbar(r))
                     // Eine abgelehnte Datumsänderung steht sonst weiter im Feld.
                     if (date != null) loadAcquisitions(setNumber)
                 }
@@ -114,7 +128,7 @@ class KaeufeViewModel @Inject constructor(
         viewModelScope.launch {
             when (val r = haushalt.deleteAcquisition(setNumber, acqId)) {
                 is Result.Success -> if (r.data.success) setGeaendert(r.data.set)
-                is Result.Error -> zeigeMeldung(meldungFuerSnackbar(r)?.let { text(R.string.vm_error, it) })
+                is Result.Error -> meldungen.zeige(meldungen.meldungFuerSnackbar(r)?.let { meldungen.text(R.string.vm_error, it) })
             }
         }
     }
@@ -126,10 +140,10 @@ class KaeufeViewModel @Inject constructor(
      */
     private fun setGeaendert(agg: SetAggregate?) {
         if (agg != null && agg.setNumber.isNotBlank()) {
-            dienste.bestand.melde(Aenderung.SetZusammenfassung(agg))
+            bestand.melde(Aenderung.SetZusammenfassung(agg))
         } else {
             neuLaden()
-            dienste.bestand.melde(Aenderung.Sets)
+            bestand.melde(Aenderung.Sets)
         }
     }
 
@@ -143,9 +157,9 @@ class KaeufeViewModel @Inject constructor(
             val r = if (type == "fig") haushalt.updateFigAcquisition(id, acqId, req)
                     else haushalt.updatePartAcquisition(id, colorId, acqId, req)
             if (r is Result.Success && r.data.success) {
-                dienste.bestand.melde(manuelleArt(type))
+                bestand.melde(manuelleArt(type))
             } else if (r is Result.Error) {
-                zeigeMeldung(meldungFuerSnackbar(r))
+                meldungen.zeige(meldungen.meldungFuerSnackbar(r))
                 if (date != null) neuLaden()
             }
         }
@@ -156,8 +170,8 @@ class KaeufeViewModel @Inject constructor(
             val r = if (type == "fig") haushalt.deleteFigAcquisition(id, acqId)
                     else haushalt.deletePartAcquisition(id, colorId, acqId)
             when (r) {
-                is Result.Success -> dienste.bestand.melde(manuelleArt(type))
-                is Result.Error -> zeigeMeldung(meldungFuerSnackbar(r))
+                is Result.Success -> bestand.melde(manuelleArt(type))
+                is Result.Error -> meldungen.zeige(meldungen.meldungFuerSnackbar(r))
             }
         }
     }
@@ -181,10 +195,10 @@ class KaeufeViewModel @Inject constructor(
             when (r) {
                 is Result.Success ->
                     if (r.data.success) {
-                        dienste.bestand.melde(Aenderung.Sets, Aenderung.Teile, Aenderung.Figuren)
+                        bestand.melde(Aenderung.Sets, Aenderung.Teile, Aenderung.Figuren)
                         onDone(null, r.data.parts ?: 0, r.data.minifigs ?: 0)
                     } else onDone(r.data.error ?: "", 0, 0)
-                is Result.Error -> onDone(meldung(r), 0, 0)
+                is Result.Error -> onDone(meldungen.meldung(r), 0, 0)
             }
         }
     }
@@ -197,18 +211,18 @@ class KaeufeViewModel @Inject constructor(
             val r = if (type == "fig") figuren.setFigStorage(id, ort) else teile.setPartStorage(id, farbe, ort)
             when (r) {
                 is Result.Success -> {
-                    if (!r.data.success) { zeigeMeldung(r.data.error ?: ""); return@launch }
-                    dienste.bestand.melde(manuelleArt(type))
-                    dienste.blickfeld.ladeEigeneLagerorte()
+                    if (!r.data.success) { meldungen.zeige(r.data.error ?: ""); return@launch }
+                    bestand.melde(manuelleArt(type))
+                    filter.eigeneLagerorteNeu()
                 }
-                is Result.Error -> zeigeMeldung(meldungFuerSnackbar(r))
+                is Result.Error -> meldungen.zeige(meldungen.meldungFuerSnackbar(r))
             }
         }
     }
 
     private fun manuelleArt(type: String) = if (type == "fig") Aenderung.Figuren else Aenderung.Teile
 
-    override fun beiAenderung(aenderung: Aenderung) {
+    private fun beiAenderung(aenderung: Aenderung) {
         val art = _manDetailState.value.itemType
         val betrifft = when (aenderung) {
             Aenderung.Teile -> art == "part"
@@ -219,7 +233,7 @@ class KaeufeViewModel @Inject constructor(
         if (betrifft) neuLaden()
     }
 
-    override fun zuruecksetzen() {
+    private fun zuruecksetzen() {
         lagerJob?.cancel()
         _manDetailState.value = ManualItemDetailUiState()
     }

@@ -193,7 +193,7 @@ class VorschauAblageTest {
         }
 
         val vw = quelle("data/cache/VorschauVorwaermer.kt")
-        val fe = quelle("ui/Vorwaermen.kt") + "\n" + quelle("ui/AppViewModel.kt")
+        val fe = quelle("ui/Vorwaermen.kt") + "\n" + quelle("ui/SitzungsDienst.kt")
 
         // Erste Stelle: VOR dem Sammeln. Ohne sie kostet ein voller Speicher
         // bei jedem App-Start vier Listenabrufe, um danach nichts zu tun.
@@ -257,7 +257,7 @@ class VorschauAblageTest {
 
     @Test
     fun `vorgewaermt wird die Sammlung, nicht der Katalog`() {
-        val fe = quelle("ui/Vorwaermen.kt") + "\n" + quelle("ui/AppViewModel.kt")
+        val fe = quelle("ui/Vorwaermen.kt") + "\n" + quelle("ui/SitzungsDienst.kt")
         // Alle Reiter, die Kacheln der EIGENEN Sammlung zeigen. Die manuell
         // erfassten Teile und Figuren erscheinen auch im Finanzen-Reiter — es
         // sind dieselben Bilder, deshalb steht Finanzen hier nicht eigens.
@@ -334,7 +334,7 @@ class VorschauAblageTest {
         //
         // BEIDE Haelften geprueft: Das Holen steht unten, das Sammeln oben.
         val vw = quelle("data/cache/VorschauVorwaermer.kt")
-        val fe = quelle("ui/Vorwaermen.kt") + "\n" + quelle("ui/AppViewModel.kt")
+        val fe = quelle("ui/Vorwaermen.kt") + "\n" + quelle("ui/SitzungsDienst.kt")
         for (verb in listOf(".post(", ".put(", ".patch(", ".delete(")) {
             assert(!vw.contains(verb) && !fe.contains(verb)) {
                 "Das Vorwaermen benutzt $verb. Es darf ausschliesslich lesen."

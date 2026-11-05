@@ -90,7 +90,7 @@ class TeilelisteViewModelTest {
         quelle: Quelle = Quelle(),
         export: Export = Export(ExportErgebnis.Fehler(null)),
         gemerkt: SavedStateHandle = SavedStateHandle(),
-    ) = TeilelisteViewModel(t.dienste, quelle, export, gemerkt).also { erzeugt += it }
+    ) = TeilelisteViewModel(t.sitzung, t.hinweise, quelle, export, gemerkt).also { erzeugt += it }
 
     private fun teil(nr: String, menge: Int, farbe: String = "Rot") =
         PlPart(partNumber = nr, partName = nr, colorName = farbe, colorHex = null, quantity = menge, imageUrl = null)

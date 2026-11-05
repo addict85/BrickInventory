@@ -12,11 +12,20 @@ import javax.inject.Singleton
  * ServerWaechter setzt den Zustand, die App zeigt dann die Maske „Startpasswort
  * ersetzen“ statt einer Kette von Fehlermeldungen.
  */
-@Singleton
-class PasswortPflicht @Inject constructor() {
-    private val _noetig = MutableStateFlow(false)
-    val noetig: StateFlow<Boolean> = _noetig.asStateFlow()
+interface PasswortPflicht {
+    val noetig: StateFlow<Boolean>
+    fun melde()
+    fun erledigt()
+}
 
-    fun melde() { _noetig.value = true }
-    fun erledigt() { _noetig.value = false }
+/** Für Tests ohne Hilt. */
+fun PasswortPflicht(): PasswortPflicht = PasswortPflichtZustand()
+
+@Singleton
+class PasswortPflichtZustand @Inject constructor() : PasswortPflicht {
+    private val _noetig = MutableStateFlow(false)
+    override val noetig: StateFlow<Boolean> = _noetig.asStateFlow()
+
+    override fun melde() { _noetig.value = true }
+    override fun erledigt() { _noetig.value = false }
 }

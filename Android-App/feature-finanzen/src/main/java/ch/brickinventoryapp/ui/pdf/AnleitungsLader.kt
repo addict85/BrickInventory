@@ -31,6 +31,7 @@ interface PdfLader {
 @InstallIn(SingletonComponent::class)
 internal interface PdfLaderModul {
     @Binds fun lader(l: AnleitungsLader): PdfLader
+    @Binds fun seiten(s: PdfRendererSeiten): PdfSeitenQuelle
 }
 
 /**

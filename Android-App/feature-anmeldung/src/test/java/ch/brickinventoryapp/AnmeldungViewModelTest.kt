@@ -21,7 +21,6 @@ import org.junit.Test
 import ch.brickinventoryapp.data.repository.HaushaltRepository
 import ch.brickinventoryapp.ui.Blickfeld
 import ch.brickinventoryapp.ui.FilterAblage
-import ch.brickinventoryapp.ui.viewmodel.AppDienste
 
 /**
  * Das Anmelde-ViewModel, ausgeführt gegen einen PfadServer ohne Netz und eine Ablage im
@@ -35,7 +34,7 @@ import ch.brickinventoryapp.ui.viewmodel.AppDienste
  *   C  in qrGescheitert() den Satz immer gesetzt → rot „ein zweiter QR-Anlauf
  *      nach gelungener Anmeldung meldet keinen Fehler“
  *   D  zuruecksetzen() leer → rot „nach dem Abmelden ist das Formular leer“
- *   E  in richteEin() den Aufruf abmelden() entfernt → rot „ein anderer Server
+ *   E  in richteEin() den Aufruf sitzungsDienst.abmelden() entfernt → rot „ein anderer Server
  *      meldet vor der neuen Adresse ab“ und „ein QR-Code für einen anderen
  *      Server meldet zuerst ab“
  *   F  gleicheHerkunft() durch `!=` der rohen Texte ersetzt → rot „derselbe
@@ -113,9 +112,9 @@ class AnmeldungViewModelTest {
         val blickfeld = Blickfeld(blickAblage,
             HaushaltRepository(t.api, t.cache),
             TeileRepository(t.api, t.cache))
-        val dienste = AppDienste(t.sitzung, blickfeld, t.meldungen,
-            NummernTexte, t.bestand, t.scrollMemory)
-        return t.merke(AnmeldungViewModel(dienste, KontoRepository(t.api, t.cache), ablage) { it in wurzeln })
+        val abmelden = SitzungsAttrappe { ablage.protokoll += "abmelden" }
+        return t.merke(AnmeldungViewModel(t.sitzung, blickfeld, t.hinweise, abmelden,
+            KontoRepository(t.api, t.cache), ablage) { it in wurzeln })
     }
 
     @Before
@@ -185,7 +184,7 @@ class AnmeldungViewModelTest {
         pfade.antworten["/api/v1/auth/qr-login"] = """{"success":false,"error":"Ungültiges oder abgelaufenes Token"}"""
         t.sitzung.angemeldet(admin = false)
         val vm = vm()
-        vm.loginWithQrToken("https://server/", "einmalig", abmelden = { ablage.protokoll += "abmelden" })
+        vm.loginWithQrToken("https://server/", "einmalig")
         assertTrue("Antwort", pfade.anfragenAn("qr-login").isNotEmpty() && !vm.anmeldeState.value.loginLaeuft)
         assertNull(vm.anmeldeState.value.loginError)
         assertEquals("Derselbe Server: keine Abmeldung", "url:https://server", ablage.protokoll.first())
@@ -304,8 +303,8 @@ class AnmeldungViewModelTest {
     fun `eine http-Adresse wird nicht gespeichert, eine ohne Schema als https`() {
         t.sitzung.angemeldet(admin = false)
         val vm = vm()
-        assertFalse(vm.saveServerUrl("http://nas:3000", abmelden = { ablage.protokoll += "abmelden" }))
-        assertTrue(vm.saveServerUrl("brick.example.org", abmelden = { ablage.protokoll += "abmelden" }))
+        assertFalse(vm.saveServerUrl("http://nas:3000"))
+        assertTrue(vm.saveServerUrl("brick.example.org"))
         assertTrue("abgelegt", ablage.protokoll.any { it.startsWith("url:") })
         assertEquals("Die abgelehnte Adresse meldet nicht ab und landet nirgends",
             listOf("abmelden", "url:https://brick.example.org"), ablage.protokoll.toList())
@@ -326,7 +325,7 @@ class AnmeldungViewModelTest {
     fun `ein anderer Server meldet vor der neuen Adresse ab`() {
         t.sitzung.angemeldet(admin = false)
         val vm = vm()
-        vm.saveServerUrl("https://anderer.example:8443", abmelden = { ablage.protokoll += "abmelden" })
+        vm.saveServerUrl("https://anderer.example:8443")
         assertTrue("abgelegt", ablage.protokoll.any { it.startsWith("url:") })
         assertEquals(listOf("abmelden", "url:https://anderer.example:8443"), ablage.protokoll.take(2))
     }
@@ -335,7 +334,7 @@ class AnmeldungViewModelTest {
     fun `derselbe Server mit Schraegstrich meldet nicht ab`() {
         t.sitzung.angemeldet(admin = false)
         val vm = vm()
-        vm.saveServerUrl("https://SERVER/", abmelden = { ablage.protokoll += "abmelden" })
+        vm.saveServerUrl("https://SERVER/")
         assertTrue("abgelegt", ablage.protokoll.any { it.startsWith("url:") })
         assertFalse(ablage.protokoll.contains("abmelden"))
     }
@@ -345,7 +344,7 @@ class AnmeldungViewModelTest {
         pfade.antworten["/api/v1/auth/qr-login"] = """{"success":true,"token":"neu","user":{"id":2,"username":"anna"}}"""
         t.sitzung.angemeldet(admin = false)
         val vm = vm()
-        vm.loginWithQrToken("https://neu.example", "einmalig", abmelden = { ablage.protokoll += "abmelden" })
+        vm.loginWithQrToken("https://neu.example", "einmalig")
         assertTrue("angemeldet", ablage.protokoll.contains("token:neu"))
         val p = ablage.protokoll.toList()
         assertTrue("Abmelden vor der Adresse: $p", p.indexOf("abmelden") in 0 until p.indexOf("url:https://neu.example"))

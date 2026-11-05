@@ -1,6 +1,5 @@
 package ch.brickinventoryapp.ui.viewmodel
 
-import android.net.Uri
 import ch.brickinventoryapp.ui.model.alsAnsicht
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.viewModelScope
@@ -24,6 +23,10 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 import ch.brickinventoryapp.ui.fehlerklasse
+import androidx.lifecycle.ViewModel
+import ch.brickinventoryapp.ui.AppUiState
+import ch.brickinventoryapp.ui.Sitzung
+import ch.brickinventoryapp.ui.Bestandssignal
 
 /**
  * Wie gross eine Anleitung sein darf — derselbe Wert wie `limits.fileSize` in
@@ -47,13 +50,23 @@ internal val ANLEITUNG_TYPEN = arrayOf("application/pdf", "image/jpeg", "image/p
  */
 @HiltViewModel
 class SetDetailViewModel @Inject constructor(
-    dienste: AppDienste,
+    private val sitzung: Sitzung,
+    private val filter: Filterwahl,
+    private val meldungen: Meldungen,
+    private val bestand: Bestandssignal,
     private val sets: SetsRepository,
     private val finanzen: FinanzenRepository,
     private val haushalt: HaushaltRepository,
     private val leser: DateiLeser,
     gemerkt: SavedStateHandle,
-) : BereichsViewModel(dienste), SetDetailAktionen {
+) : ViewModel(), Filterwahl by filter, SetDetailAktionen {
+
+    val state: StateFlow<AppUiState> = sitzung.state
+
+    init {
+        folgeAbmeldung(sitzung) { zuruecksetzen() }
+        folgeBestand(bestand) { beiAenderung(it) }
+    }
 
     /** Aus der Route set_detail/{setNumber}. */
     val setNumber: String = gemerkt[ARG_SET] ?: ""
@@ -66,11 +79,11 @@ class SetDetailViewModel @Inject constructor(
     private var lagerJob: Job? = null
     private val alarmEingabe = Preisalarmeingabe(
         scope = viewModelScope, sets = sets,
-        melde = { zeigeMeldung(it) },
-        beschreibe = { meldungFuerSnackbar(it) },
+        melde = { meldungen.zeige(it) },
+        beschreibe = { meldungen.meldungFuerSnackbar(it) },
         // Nachgeladen wird in beiAenderung(): Dort kommt dasselbe Signal auch
         // an, wenn ein Alarm anderswo (Übersicht, Merkliste) geändert wurde.
-        gespeichert = { dienste.bestand.melde(Aenderung.Alarme) },
+        gespeichert = { bestand.melde(Aenderung.Alarme) },
     )
 
     /** Alles, was die Ansicht zeigt — beim Betreten und nach der Rückkehr. */
@@ -88,7 +101,7 @@ class SetDetailViewModel @Inject constructor(
             _setDetailState.update { it.copy(setDetailLoading = true, setDetailFehler = null) }
             when (val r = sets.getSetDetail(setNumber)) {
                 is Result.Success -> _setDetailState.update { it.copy(setDetail = r.data.set?.alsAnsicht(), setDetailLoading = false) }
-                is Result.Error -> _setDetailState.update { it.copy(setDetailLoading = false, setDetailFehler = meldung(r),
+                is Result.Error -> _setDetailState.update { it.copy(setDetailLoading = false, setDetailFehler = meldungen.meldung(r),
                     setDetailFehlerKlasse = fehlerklasse(r)) }
             }
         }
@@ -159,9 +172,9 @@ class SetDetailViewModel @Inject constructor(
                                 st.copy(setDetail = st.setDetail.copy(quantity = echt)) else st
                         }
                     }
-                    dienste.bestand.melde(Aenderung.Sets)
+                    bestand.melde(Aenderung.Sets)
                 }
-                is Result.Error -> zeigeMeldung(meldungFuerSnackbar(r)?.let { text(R.string.vm_error, it) })
+                is Result.Error -> meldungen.zeige(meldungen.meldungFuerSnackbar(r)?.let { meldungen.text(R.string.vm_error, it) })
             }
         }
     }
@@ -173,41 +186,41 @@ class SetDetailViewModel @Inject constructor(
             delay(Alarmeingabe.RUHE_MS)
             when (val r = sets.setSetStorage(setNumber, ort)) {
                 is Result.Success -> {
-                    if (!r.data.success) { zeigeMeldung(r.data.error ?: ""); return@launch }
-                    dienste.bestand.melde(Aenderung.Sets)
+                    if (!r.data.success) { meldungen.zeige(r.data.error ?: ""); return@launch }
+                    bestand.melde(Aenderung.Sets)
                 }
-                is Result.Error -> zeigeMeldung(meldungFuerSnackbar(r))
+                is Result.Error -> meldungen.zeige(meldungen.meldungFuerSnackbar(r))
             }
         }
     }
 
     fun deleteSet(setNumber: String) {
         viewModelScope.launch {
-            val (geloescht, satz) = setLoeschen(sets, dienste.texte, setNumber)
-            zeigeMeldung(satz)
-            if (geloescht) dienste.bestand.melde(Aenderung.Sets, Aenderung.Teile, Aenderung.Figuren)
+            val (geloescht, satz) = setLoeschen(sets, meldungen, setNumber)
+            meldungen.zeige(satz)
+            if (geloescht) bestand.melde(Aenderung.Sets, Aenderung.Teile, Aenderung.Figuren)
         }
     }
 
-    override fun ladeAnleitungHoch(setNumber: String, uri: Uri) {
+    override fun ladeAnleitungHoch(setNumber: String, datei: DateiRef) {
         viewModelScope.launch {
-            val gelesen = leser.lies(uri)
+            val gelesen = leser.lies(datei)
             val typ = gelesen?.first
-            if (gelesen == null || typ == null) { zeigeMeldung(text(R.string.csv_upload_unreadable)); return@launch }
-            if (typ !in ANLEITUNG_TYPEN) { zeigeMeldung(text(R.string.instr_upload_wrong_type)); return@launch }
+            if (gelesen == null || typ == null) { meldungen.zeige(meldungen.text(R.string.csv_upload_unreadable)); return@launch }
+            if (typ !in ANLEITUNG_TYPEN) { meldungen.zeige(meldungen.text(R.string.instr_upload_wrong_type)); return@launch }
             val bytes = gelesen.second
             if (bytes.size > ANLEITUNG_MAX_BYTES) {
-                zeigeMeldung(text(R.string.csv_upload_too_big, ANLEITUNG_MAX_BYTES / 1024 / 1024))
+                meldungen.zeige(meldungen.text(R.string.csv_upload_too_big, ANLEITUNG_MAX_BYTES / 1024 / 1024))
                 return@launch
             }
-            val name = leser.name(uri) ?: "anleitung"
+            val name = leser.name(datei) ?: "anleitung"
             when (val r = sets.uploadAnleitung(setNumber, name, typ, bytes, name)) {
                 is Result.Success ->
                     if (r.data.success) {
-                        zeigeMeldung(text(R.string.instr_upload_done))
+                        meldungen.zeige(meldungen.text(R.string.instr_upload_done))
                         loadSetDetail(setNumber)
-                    } else zeigeMeldung(r.data.error ?: text(R.string.err_generic))
-                is Result.Error -> zeigeMeldung(meldungFuerSnackbar(r))
+                    } else meldungen.zeige(r.data.error ?: meldungen.text(R.string.err_generic))
+                is Result.Error -> meldungen.zeige(meldungen.meldungFuerSnackbar(r))
             }
         }
     }
@@ -217,13 +230,13 @@ class SetDetailViewModel @Inject constructor(
             when (val r = sets.deleteAnleitung(setNumber, instrId)) {
                 is Result.Success ->
                     if (r.data.success) loadSetDetail(setNumber)
-                    else zeigeMeldung(r.data.error ?: text(R.string.err_generic))
-                is Result.Error -> zeigeMeldung(meldungFuerSnackbar(r))
+                    else meldungen.zeige(r.data.error ?: meldungen.text(R.string.err_generic))
+                is Result.Error -> meldungen.zeige(meldungen.meldungFuerSnackbar(r))
             }
         }
     }
 
-    override fun beiAenderung(aenderung: Aenderung) {
+    private fun beiAenderung(aenderung: Aenderung) {
         val betrifftDiesesSet = when (aenderung) {
             Aenderung.Sets -> true
             is Aenderung.SetZusammenfassung -> aenderung.agg.setNumber == setNumber
@@ -236,7 +249,7 @@ class SetDetailViewModel @Inject constructor(
         if (aenderung == Aenderung.Alarme && setNumber.isNotBlank()) loadPreisalarme(setNumber)
     }
 
-    override fun zuruecksetzen() {
+    private fun zuruecksetzen() {
         lagerJob?.cancel()
         _setDetailState.value = SetDetailUiState()
     }

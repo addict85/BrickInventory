@@ -53,7 +53,7 @@ class DesignJeKontoTest {
         pfade.server.shutdown()
     }
 
-    private fun vm() = t.merke(KontoViewModel(KontoRepository(t.api, t.cache), NummernTexte, t.meldungen, t.sitzung))
+    private fun vm() = t.merke(KontoViewModel(KontoRepository(t.api, t.cache), NummernTexte, t.meldungen, t.sitzung, SitzungsAttrappe()))
 
     @Test
     fun `das Konto zeigt Vorgabe und eigenes Design`() {

@@ -1,7 +1,6 @@
 package ch.brickinventoryapp.ui.viewmodel
 
 import ch.brickinventoryapp.data.model.Fehlercode
-import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import ch.brickinventoryapp.ressourcen.R
@@ -217,9 +216,9 @@ class GutscheinViewModel @Inject constructor(
      * Mit Datei liest der Server daraus, was die Felder nicht hergeben; man
      * kann also ein PDF schicken UND den Betrag selbst eintragen.
      */
-    fun speichereGutschein(uri: Uri?) = speichere(uri?.let { u -> suspend { leser.lies(u) } })
+    fun speichereGutschein(datei: DateiRef?) = speichere(datei?.let { d -> suspend { leser.lies(d) } })
 
-    /** Die Datei als Lesefunktion — so prüft der Test den PDF-Weg ohne Uri. */
+    /** Die Datei als Lesefunktion — so prüft der Test den PDF-Weg ohne Leser. */
     internal fun speichere(datei: (suspend () -> Pair<String?, ByteArray>?)?) {
         viewModelScope.launch {
             val s = _state.value

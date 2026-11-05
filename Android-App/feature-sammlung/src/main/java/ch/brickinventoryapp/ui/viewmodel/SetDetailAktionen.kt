@@ -1,6 +1,5 @@
 package ch.brickinventoryapp.ui.viewmodel
 
-import android.net.Uri
 
 /**
  * Was das Set-Detail auslöst. Der Bildschirm kennt nur diese Schnittstelle;
@@ -16,6 +15,6 @@ interface SetDetailAktionen {
     fun aendereMengeUm(setNumber: String, schritt: Int)
     fun setzeSetLagerort(setNumber: String, ort: String)
     fun loadLagerortVorrat(besitzer: List<Int>)
-    fun ladeAnleitungHoch(setNumber: String, uri: Uri)
+    fun ladeAnleitungHoch(setNumber: String, datei: DateiRef)
     fun loescheAnleitung(setNumber: String, instrId: Int)
 }

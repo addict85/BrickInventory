@@ -27,6 +27,11 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 import ch.brickinventoryapp.data.model.GenericResponse
+import androidx.lifecycle.ViewModel
+import ch.brickinventoryapp.ui.AppUiState
+import ch.brickinventoryapp.ui.Sitzung
+import ch.brickinventoryapp.ui.Bestandssignal
+import ch.brickinventoryapp.ui.ScrollMemory
 
 /**
  * Teile und Minifiguren: Listen, Filter, Erfassen und Ändern manueller
@@ -38,18 +43,43 @@ import ch.brickinventoryapp.data.model.GenericResponse
  */
 @HiltViewModel
 class TeileViewModel @Inject constructor(
-    dienste: AppDienste,
+    private val sitzung: Sitzung,
+    private val filter: Filterwahl,
+    private val meldungen: Meldungen,
+    private val bestand: Bestandssignal,
+    private val scrollMemory: ScrollMemory,
     private val repo: TeileRepository,
     private val figuren: FigurenRepository,
     private val gemerkt: SavedStateHandle,
-) : BereichsViewModel(dienste), TeileAktionen {
+) : ViewModel(), Filterwahl by filter, TeileAktionen {
+
+    val state: StateFlow<AppUiState> = sitzung.state
+
+    init {
+        folgeAbmeldung(sitzung) { zuruecksetzen() }
+        folgeBestand(bestand) { beiAenderung(it) }
+    }
+
+    override fun setScope(view: ScopeFilter.View, value: String) {
+        viewModelScope.launch {
+            filter.setzeKonto(view, value)
+            nachFilter(view)
+        }
+    }
+
+    override fun setLagerFilter(view: ScopeFilter.View, value: String) {
+        viewModelScope.launch {
+            filter.setzeLager(view, value)
+            nachFilter(view)
+        }
+    }
 
     private val teile = Teile(
         scope = viewModelScope,
         quelle = object : TeileQuelle {
-            private val teileSicht get() = scopeFor(ScopeFilter.View.PARTS)
-            private val teileLager get() = lagerFor(ScopeFilter.View.PARTS)
-            private val figurenSicht get() = scopeFor(ScopeFilter.View.MINIFIGS)
+            private val teileSicht get() = filter.kontoFuer(ScopeFilter.View.PARTS)
+            private val teileLager get() = filter.lagerFuer(ScopeFilter.View.PARTS)
+            private val figurenSicht get() = filter.kontoFuer(ScopeFilter.View.MINIFIGS)
             override suspend fun seite(abfrage: TeileAbfrage) = retryOnNetwork {
                 repo.getParts(search = abfrage.suche, color = abfrage.farbe,
                     category = abfrage.kategorie, page = abfrage.seite, accounts = teileSicht,
@@ -64,15 +94,15 @@ class TeileViewModel @Inject constructor(
             override suspend fun figuren(suche: String?) = figuren.getMinifigs(figurenSicht, suche)
             override suspend fun manuelleFiguren(suche: String?) = figuren.getManualMinifigs(figurenSicht, suche)
         },
-        meldeFehler = { zeigeMeldung(meldungFuerSnackbar(it)) },
-        vergissScroll = { dienste.scrollMemory.vergiss("parts") },
-        beschreibeFehler = { meldung(it) },
+        meldeFehler = { meldungen.zeige(meldungen.meldungFuerSnackbar(it)) },
+        vergissScroll = { scrollMemory.vergiss("parts") },
+        beschreibeFehler = { meldungen.meldung(it) },
         lokal = TeileLokal(repo.beobachteTeile(), repo.beobachteManuelleTeile(),
             figuren.beobachteFiguren(), figuren.beobachteManuelleFiguren()),
         teileEingeschraenkt = {
-            scopeFor(ScopeFilter.View.PARTS) != null || !lagerFor(ScopeFilter.View.PARTS).isNullOrBlank()
+            filter.kontoFuer(ScopeFilter.View.PARTS) != null || !filter.lagerFuer(ScopeFilter.View.PARTS).isNullOrBlank()
         },
-        figurenEingeschraenkt = { scopeFor(ScopeFilter.View.MINIFIGS) != null },
+        figurenEingeschraenkt = { filter.kontoFuer(ScopeFilter.View.MINIFIGS) != null },
     )
     val partsState: StateFlow<PartsUiState> = teile.state
 
@@ -120,10 +150,10 @@ class TeileViewModel @Inject constructor(
      * `price_from_condition`, aus welchem der Wert stammt.
      */
     private fun erfassungsMeldung(angelegt: Boolean, nummer: String?, preisAusZustand: String?): String {
-        val kopf = text(if (angelegt) R.string.vm_added else R.string.vm_updated, nummer)
+        val kopf = meldungen.text(if (angelegt) R.string.vm_added else R.string.vm_updated, nummer)
         val hinweis = when (preisAusZustand) {
-            "N" -> text(R.string.price_from_other_condition_new)
-            "U" -> text(R.string.price_from_other_condition_used)
+            "N" -> meldungen.text(R.string.price_from_other_condition_new)
+            "U" -> meldungen.text(R.string.price_from_other_condition_used)
             else -> null
         }
         return if (hinweis != null) "$kopf — $hinweis" else kopf
@@ -139,11 +169,11 @@ class TeileViewModel @Inject constructor(
                                        storage?.trim()?.takeIf { it.isNotEmpty() })) {
                 is Result.Success ->
                     if (r.data.success) {
-                        zeigeMeldung(erfassungsMeldung(
+                        meldungen.zeige(erfassungsMeldung(
                             r.data.action == "added", r.data.partNumber, r.data.priceFromCondition))
-                        dienste.bestand.melde(Aenderung.Teile)
-                    } else zeigeMeldung(r.data.error ?: text(R.string.err_unknown))
-                is Result.Error -> zeigeMeldung(meldungFuerSnackbar(r))
+                        bestand.melde(Aenderung.Teile)
+                    } else meldungen.zeige(r.data.error ?: meldungen.text(R.string.err_unknown))
+                is Result.Error -> meldungen.zeige(meldungen.meldungFuerSnackbar(r))
             }
         }
     }
@@ -157,34 +187,34 @@ class TeileViewModel @Inject constructor(
                                           storage?.trim()?.takeIf { it.isNotEmpty() })) {
                 is Result.Success ->
                     if (r.data.success) {
-                        zeigeMeldung(erfassungsMeldung(
+                        meldungen.zeige(erfassungsMeldung(
                             r.data.action == "added", r.data.figNumber, r.data.priceFromCondition))
-                        dienste.bestand.melde(Aenderung.Figuren)
-                    } else zeigeMeldung(r.data.error ?: text(R.string.err_unknown))
-                is Result.Error -> zeigeMeldung(meldungFuerSnackbar(r))
+                        bestand.melde(Aenderung.Figuren)
+                    } else meldungen.zeige(r.data.error ?: meldungen.text(R.string.err_unknown))
+                is Result.Error -> meldungen.zeige(meldungen.meldungFuerSnackbar(r))
             }
         }
     }
 
     override fun updatePart(partNumber: String, colorId: Int, quantity: Int, unitPrice: Double?,
                    condition: String?, owner: Int?) =
-        aendere(Aenderung.Teile, text(R.string.vm_saved)) {
+        aendere(Aenderung.Teile, meldungen.text(R.string.vm_saved)) {
             repo.updatePart(partNumber, colorId, quantity, unitPrice, condition, owner).erfolg()
         }
 
     override fun updateMinifig(figNumber: String, quantity: Int, unitPrice: Double?, blFigNumber: String?,
                       condition: String?, owner: Int?) =
-        aendere(Aenderung.Figuren, text(R.string.vm_saved)) {
+        aendere(Aenderung.Figuren, meldungen.text(R.string.vm_saved)) {
             figuren.updateMinifig(figNumber, quantity, unitPrice, blFigNumber, condition, owner).erfolg()
         }
 
     override fun deletePart(partNumber: String, colorId: Int, owner: Int?) =
-        aendere(Aenderung.Teile, text(R.string.vm_part_deleted)) {
+        aendere(Aenderung.Teile, meldungen.text(R.string.vm_part_deleted)) {
             repo.deletePart(partNumber, colorId, owner).erfolg()
         }
 
     override fun deleteMinifig(figNumber: String, owner: Int?) =
-        aendere(Aenderung.Figuren, text(R.string.vm_minifig_deleted)) {
+        aendere(Aenderung.Figuren, meldungen.text(R.string.vm_minifig_deleted)) {
             figuren.deleteMinifig(figNumber, owner).erfolg()
         }
 
@@ -196,10 +226,10 @@ class TeileViewModel @Inject constructor(
                        farbName: String?, farbHex: String?,
                        owner: Int?, onFertig: (Int) -> Unit) {
         if (neueFarbe == colorId) return
-        aendere(Aenderung.Teile, text(R.string.vm_saved), danach = { onFertig(neueFarbe) }) {
+        aendere(Aenderung.Teile, meldungen.text(R.string.vm_saved), danach = { onFertig(neueFarbe) }) {
             when (val r = repo.setPartColor(partNumber, colorId, neueFarbe, farbName, farbHex, owner)) {
-                is Result.Success -> r.data.success to (r.data.error ?: text(R.string.err_unknown))
-                is Result.Error -> false to meldungFuerSnackbar(r)
+                is Result.Success -> r.data.success to (r.data.error ?: meldungen.text(R.string.err_unknown))
+                is Result.Error -> false to meldungen.meldungFuerSnackbar(r)
             }
         }
     }
@@ -216,17 +246,17 @@ class TeileViewModel @Inject constructor(
         viewModelScope.launch {
             val (gelungen, fehler) = tun()
             if (gelungen) {
-                zeigeMeldung(erfolgsSatz)
-                dienste.bestand.melde(was)
+                meldungen.zeige(erfolgsSatz)
+                bestand.melde(was)
                 danach()
-            } else zeigeMeldung(fehler)
+            } else meldungen.zeige(fehler)
         }
     }
 
     private fun Result<GenericResponse>.erfolg(): Pair<Boolean, String?> =
         when (this) {
-            is Result.Success -> data.success to (data.error ?: text(R.string.err_unknown))
-            is Result.Error -> false to meldungFuerSnackbar(this)
+            is Result.Success -> data.success to (data.error ?: meldungen.text(R.string.err_unknown))
+            is Result.Error -> false to meldungen.meldungFuerSnackbar(this)
         }
 
     // ── „In welchen Sets steckt das?“ ────────────────────────────────────────
@@ -234,7 +264,7 @@ class TeileViewModel @Inject constructor(
     override fun oeffneSetItem(art: String, nummer: String, colorId: Int) {
         _setItemState.value = SetItemUiState(art = art, nummer = nummer, colorId = colorId, laedt = true)
         viewModelScope.launch {
-            val blick = scopeFor(if (art == "fig") ScopeFilter.View.MINIFIGS else ScopeFilter.View.PARTS)
+            val blick = filter.kontoFuer(if (art == "fig") ScopeFilter.View.MINIFIGS else ScopeFilter.View.PARTS)
             val r = if (art == "fig") figuren.getSetsMitFigur(nummer, blick)
                     else              repo.getSetsMitTeil(nummer, colorId, blick)
             // Inzwischen ein anderes Teil geöffnet? Dann gehört die Antwort nicht mehr hierher.
@@ -245,7 +275,7 @@ class TeileViewModel @Inject constructor(
                     it.copy(laedt = false, kopf = r.data.item?.alsAnsicht(), sets = r.data.sets.map { s -> s.alsAnsicht() },
                             fehler = if (r.data.success) null else r.data.error)
                 }
-                is Result.Error -> _setItemState.update { it.copy(laedt = false, fehler = meldung(r)) }
+                is Result.Error -> _setItemState.update { it.copy(laedt = false, fehler = meldungen.meldung(r)) }
             }
         }
     }
@@ -260,18 +290,18 @@ class TeileViewModel @Inject constructor(
             delay(Alarmeingabe.RUHE_MS)
             when (val r = repo.setPartStorage(nummer, farbe, ort)) {
                 is Result.Success -> {
-                    if (!r.data.success) { zeigeMeldung(r.data.error ?: ""); return@launch }
+                    if (!r.data.success) { meldungen.zeige(r.data.error ?: ""); return@launch }
                     _setItemState.update { z -> z.copy(kopf = z.kopf?.copy(storage = r.data.storage)) }
-                    dienste.bestand.melde(Aenderung.Teile)
+                    bestand.melde(Aenderung.Teile)
                 }
-                is Result.Error -> zeigeMeldung(meldungFuerSnackbar(r))
+                is Result.Error -> meldungen.zeige(meldungen.meldungFuerSnackbar(r))
             }
         }
     }
 
     // ── Haken ────────────────────────────────────────────────────────────────
 
-    override fun nachFilter(view: ScopeFilter.View) {
+    private fun nachFilter(view: ScopeFilter.View) {
         when (view) {
             ScopeFilter.View.PARTS -> loadParts()
             ScopeFilter.View.MINIFIGS -> loadMinifigs()
@@ -279,7 +309,7 @@ class TeileViewModel @Inject constructor(
         }
     }
 
-    override fun beiAenderung(aenderung: Aenderung) {
+    private fun beiAenderung(aenderung: Aenderung) {
         when (aenderung) {
             Aenderung.Teile -> loadParts()
             Aenderung.Figuren -> loadMinifigs()
@@ -287,7 +317,7 @@ class TeileViewModel @Inject constructor(
         }
     }
 
-    override fun zuruecksetzen() {
+    private fun zuruecksetzen() {
         lagerJob?.cancel()
         teile.zuruecksetzen()
         _setItemState.value = SetItemUiState()

@@ -88,7 +88,7 @@ class ErfassungViewModelTest {
     }
 
     private fun vm(anleger: Anleger = Anleger(emptyList())) = t.merke(
-        ErfassungViewModel(t.dienste, SetsRepository(t.api, t.cache), KatalogRepository(t.api, t.cache), anleger)
+        ErfassungViewModel(t.sitzung, t.filter(), t.hinweise, t.bestand, SetsRepository(t.api, t.cache), KatalogRepository(t.api, t.cache), anleger)
     ).also { anleger.vm = it }
 
     @Before

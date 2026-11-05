@@ -24,7 +24,8 @@ import ch.brickinventoryapp.ui.Blickfeld
 import ch.brickinventoryapp.ui.FilterAblage
 import ch.brickinventoryapp.ui.ScrollMemory
 import ch.brickinventoryapp.ui.Sitzung
-import ch.brickinventoryapp.ui.viewmodel.AppDienste
+import ch.brickinventoryapp.ui.viewmodel.Filterwahl
+import ch.brickinventoryapp.ui.viewmodel.Meldungen
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
@@ -181,7 +182,12 @@ class TestDienste(val api: BrickApiService, texte: Texte = NummernTexte, io: Cor
     val meldungen = MeldungsKanal()
     val bestand = Bestandssignal()
     val scrollMemory = ScrollMemory()
-    val dienste = AppDienste(sitzung, blickfeld, meldungen, texte, bestand, scrollMemory)
+    val hinweise = Meldungen(meldungen, texte)
+
+    /** Filter setzen läuft wie in der App ausserhalb des ViewModels; [aufraeumen] beendet es. */
+    private val filterBereich = kotlinx.coroutines.CoroutineScope(
+        kotlinx.coroutines.SupervisorJob() + kotlinx.coroutines.Dispatchers.Main.immediate)
+    fun filter(): Filterwahl = Filterwahl(blickfeld, filterBereich)
 
     /**
      * Sammelt die Meldungen ans Bestandssignal, während [block] läuft, und
@@ -214,6 +220,7 @@ class TestDienste(val api: BrickApiService, texte: Texte = NummernTexte, io: Cor
     fun aufraeumen() {
         val jobs = erzeugt.mapNotNull { it.viewModelScope.coroutineContext[kotlinx.coroutines.Job] }
         erzeugt.forEach { it.viewModelScope.cancel() }
+        filterBereich.cancel()
         // Abbrechen allein reicht nicht: Eine Antwort, die schon unterwegs ist,
         // beendet ihre Koroutine erst danach auf Main. Kommt sie nach resetMain(),
         // wirft sie im gerade laufenden fremden Test.

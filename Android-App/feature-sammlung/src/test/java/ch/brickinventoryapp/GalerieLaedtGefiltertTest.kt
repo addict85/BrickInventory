@@ -57,7 +57,7 @@ class GalerieLaedtGefiltertTest {
         try {
             val gemerkt = SavedStateHandle(mapOf("galerie_suche" to "Falke",
                 "galerie_thema" to "Star Wars", "galerie_sortierung" to "year_desc"))
-            val vm = t.merke(GalerieViewModel(t.dienste, SetsRepository(t.api, t.cache),
+            val vm = t.merke(GalerieViewModel(t.sitzung, t.filter(), t.hinweise, t.bestand, t.scrollMemory, SetsRepository(t.api, t.cache),
                 FinanzenRepository(t.api, t.cache), gemerkt))
             vm.setScope(ScopeFilter.View.GALLERY, "own")
             assertTrue("erste Seite", vm.galleryState.value.sets.isNotEmpty())

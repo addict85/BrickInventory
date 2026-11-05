@@ -70,3 +70,23 @@ fun ResponseCache(
     io: CoroutineDispatcher = Dispatchers.IO,
     ordnerQuelle: () -> File,
 ) = ResponseCache(bereichQuelle, altlast, chiffre, io, ordnerQuelle)
+
+/**
+ * Der SitzungsDienst für Tests von ViewModels, die abmelden lassen: Er zählt nur
+ * mit, damit ein Test prüfen kann, ob und wann abgemeldet wurde.
+ */
+class SitzungsAttrappe(private val beimAbmelden: () -> Unit = {}) : ch.brickinventoryapp.ui.SitzungsRepository {
+    var abmeldungen = 0
+        private set
+
+    override fun starte() = Unit
+    override fun abmelden(): kotlinx.coroutines.Job {
+        abmeldungen++
+        beimAbmelden()
+        return kotlinx.coroutines.Job().apply { complete() }
+    }
+    override fun zweiterFaktorEingerichtet() = Unit
+    override fun ladeEinstellungen() = Unit
+    override fun ladeMitglieder() = Unit
+    override fun ladeLagerorte() = Unit
+}

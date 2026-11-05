@@ -43,6 +43,12 @@ import ch.brickinventoryapp.ui.screens.ZweiterFaktorPflichtMaske
 import ch.brickinventoryapp.ui.viewmodel.DarstellungViewModel
 import ch.brickinventoryapp.ui.viewmodel.KontoViewModel
 import ch.brickinventoryapp.ui.viewmodel.VertrauenViewModel
+import ch.brickinventoryapp.ui.viewmodel.AnmeldungViewModel
+import ch.brickinventoryapp.ui.viewmodel.CsvImportViewModel
+import ch.brickinventoryapp.ui.viewmodel.ErfassungViewModel
+import ch.brickinventoryapp.ui.viewmodel.GutscheinViewModel
+import ch.brickinventoryapp.ui.viewmodel.UpdateViewModel
+import ch.brickinventoryapp.nav.AktivitaetsZustand
 import ch.brickinventoryapp.util.GeheimeZwischenablage
 import ch.brickinventoryapp.util.LanguageManager
 import ch.brickinventoryapp.util.Protokoll
@@ -52,6 +58,11 @@ class MainActivity : NurLauncherStart() {
     private val vm: AppViewModel by viewModels()
     private val darstellung: DarstellungViewModel by viewModels()
     private val vertrauen: VertrauenViewModel by viewModels()
+    private val erfassung: ErfassungViewModel by viewModels()
+    private val selbstUpdate: UpdateViewModel by viewModels()
+    private val csvImport: CsvImportViewModel by viewModels()
+    private val anmeldung: AnmeldungViewModel by viewModels()
+    private val gutschein: GutscheinViewModel by viewModels()
 
     // Nur für die Pflichtmasken (Startpasswort, zweiter Faktor), die über allem liegen.
     private val startKontoVm: KontoViewModel by viewModels()
@@ -147,7 +158,7 @@ class MainActivity : NurLauncherStart() {
                 ) { TastaturOhneLernen {
                     // App-weit (sec8 H4): Gutschein-Nummer und PIN, Passwörter, Codes und
                     // Einladungen; Setnamen lernt die Tastatur dafür auch nicht mit.
-                    BrickInventoryRoute(vm, imageLoader)
+                    BrickInventoryRoute(aktivitaetsZustand(), imageLoader)
                     // Ohne Displaysperre fragt der Schrittschutz hier nach, statt still durchzulassen (sec10 H3).
                     OhneSperreWarnung(schrittschutz.ohneSperre)
                     // Mit Startpasswort weist der Server alles ab: nur die Maske, bis es ersetzt ist.
@@ -162,7 +173,7 @@ class MainActivity : NurLauncherStart() {
                         val kontoZustand by startKontoVm.kontoState.collectAsStateWithLifecycle()
                         StartpasswortMaske(
                             kontoZustand = kontoZustand,
-                            onErsetzen = { alt, neu, code -> startKontoVm.aenderePasswort(alt, neu, code) { vm.logout() } },
+                            onErsetzen = { alt, neu, code -> startKontoVm.aenderePasswort(alt, neu, code) },
                             onAbmelden = { vm.logout() },
                         )
                     } else if (faktorPflicht && angemeldet) {

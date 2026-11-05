@@ -1,11 +1,11 @@
 package ch.brickinventoryapp
 
 import ch.brickinventoryapp.ressourcen.R
-import android.net.Uri
 import ch.brickinventoryapp.data.MeldungsKanal
 import ch.brickinventoryapp.data.cache.ResponseCache
 import ch.brickinventoryapp.data.repository.GutscheineRepository
 import ch.brickinventoryapp.ui.viewmodel.DateiLeser
+import ch.brickinventoryapp.ui.viewmodel.DateiRef
 import ch.brickinventoryapp.ui.viewmodel.GutscheinViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -63,7 +63,7 @@ class GutscheinViewModelTest {
         vm = GutscheinViewModel(
             repo = GutscheineRepository(api, ResponseCache { cacheDir }),
             texte = NummernTexte,
-            leser = object : DateiLeser { override suspend fun lies(uri: Uri): Pair<String?, ByteArray>? = null },
+            leser = object : DateiLeser { override suspend fun lies(datei: DateiRef): Pair<String?, ByteArray>? = null },
             meldungen = kanal,
         )
     }

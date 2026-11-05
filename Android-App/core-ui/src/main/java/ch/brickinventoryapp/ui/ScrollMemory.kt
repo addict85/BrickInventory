@@ -17,18 +17,28 @@ import androidx.compose.runtime.snapshotFlow
  * ein über den NavHost geretteter LazyGridState stand danach verschoben.
  * Ausführlich: docs/begruendungen/core-ui/ui/ScrollMemory.kt.md#constructor
  */
+interface ScrollMemory {
+    fun lies(schluessel: String): Pair<Int, Int>
+    fun merke(schluessel: String, index: Int, offset: Int)
+
+    /** Nach einem Filterwechsel: Die alte Stelle zeigt auf Einträge, die es nicht mehr gibt. */
+    fun vergiss(schluessel: String)
+}
+
+/** Für Tests ohne Hilt. */
+fun ScrollMemory(): ScrollMemory = ScrollSpeicher()
+
 @javax.inject.Singleton
-class ScrollMemory @javax.inject.Inject constructor() {
+class ScrollSpeicher @javax.inject.Inject constructor() : ScrollMemory {
     private val positionen = mutableMapOf<String, Pair<Int, Int>>()
 
-    fun lies(schluessel: String): Pair<Int, Int> = positionen[schluessel] ?: (0 to 0)
+    override fun lies(schluessel: String): Pair<Int, Int> = positionen[schluessel] ?: (0 to 0)
 
-    fun merke(schluessel: String, index: Int, offset: Int) {
+    override fun merke(schluessel: String, index: Int, offset: Int) {
         positionen[schluessel] = index to offset
     }
 
-    /** Nach einem Filterwechsel: Die alte Stelle zeigt auf Einträge, die es nicht mehr gibt. */
-    fun vergiss(schluessel: String) {
+    override fun vergiss(schluessel: String) {
         positionen.remove(schluessel)
     }
 }

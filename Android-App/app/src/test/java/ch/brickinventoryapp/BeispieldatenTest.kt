@@ -8,6 +8,7 @@ import ch.brickinventoryapp.data.repository.SetsRepository
 import ch.brickinventoryapp.data.repository.TeileRepository
 import ch.brickinventoryapp.data.repository.FigurenRepository
 import ch.brickinventoryapp.ui.viewmodel.DateiLeser
+import ch.brickinventoryapp.ui.viewmodel.DateiRef
 import ch.brickinventoryapp.ui.viewmodel.FinanzViewModel
 import ch.brickinventoryapp.ui.viewmodel.GalerieViewModel
 import ch.brickinventoryapp.ui.viewmodel.MerklisteViewModel
@@ -291,20 +292,20 @@ object Beispiele {
         val pfade = PfadServer(*ANTWORTEN)
         val t = TestDienste(pfade.server, texte).also { d -> d.sitzung.waehrungUebernommen("CHF") }
 
-        fun galerie() = t.merke(GalerieViewModel(t.dienste, SetsRepository(t.api, t.cache),
+        fun galerie() = t.merke(GalerieViewModel(t.sitzung, t.filter(), t.hinweise, t.bestand, t.scrollMemory, SetsRepository(t.api, t.cache),
             FinanzenRepository(t.api, t.cache), SavedStateHandle()))
-        fun teile() = t.merke(TeileViewModel(t.dienste, TeileRepository(t.api, t.cache), FigurenRepository(t.api, t.cache), SavedStateHandle()))
-        fun finanzen() = t.merke(FinanzViewModel(t.dienste, FinanzenRepository(t.api, t.cache), SavedStateHandle()))
-        fun merkliste() = t.merke(MerklisteViewModel(t.dienste, SetsRepository(t.api, t.cache),
+        fun teile() = t.merke(TeileViewModel(t.sitzung, t.filter(), t.hinweise, t.bestand, t.scrollMemory, TeileRepository(t.api, t.cache), FigurenRepository(t.api, t.cache), SavedStateHandle()))
+        fun finanzen() = t.merke(FinanzViewModel(t.sitzung, t.filter(), t.hinweise, t.bestand, FinanzenRepository(t.api, t.cache), SavedStateHandle()))
+        fun merkliste() = t.merke(MerklisteViewModel(t.sitzung, t.filter(), t.hinweise, t.bestand, SetsRepository(t.api, t.cache),
             KatalogRepository(t.api, t.cache), FinanzenRepository(t.api, t.cache), SavedStateHandle()))
-        fun setDetail() = t.merke(SetDetailViewModel(t.dienste, SetsRepository(t.api, t.cache),
+        fun setDetail() = t.merke(SetDetailViewModel(t.sitzung, t.filter(), t.hinweise, t.bestand, SetsRepository(t.api, t.cache),
             FinanzenRepository(t.api, t.cache), HaushaltRepository(t.api, t.cache),
-            object : DateiLeser { override suspend fun lies(uri: android.net.Uri): Pair<String?, ByteArray>? = null },
+            object : DateiLeser { override suspend fun lies(datei: DateiRef): Pair<String?, ByteArray>? = null },
             SavedStateHandle(mapOf("setNumber" to SET))))
 
         /** Die Bauliste ohne Netz: [aufloesen] liefert Name und Teile je Setnummer. */
         fun bauliste(aufloesen: (String) -> Pair<String, List<PlPart>> = { error("nichts aufzulösen") }) =
-            t.merke(TeilelisteViewModel(t.dienste, object : TeilelistenQuelle {
+            t.merke(TeilelisteViewModel(t.sitzung, t.hinweise, object : TeilelistenQuelle {
                 override suspend fun loeseSetAuf(setNumber: String, serverUrl: String) = aufloesen(setNumber)
                 override suspend fun mitBestand(teile: List<PlPart>, nurLose: Boolean, mitUnterkonten: Boolean) = teile
                 override fun sortiert(teile: Collection<PlPart>) = teile.toList()

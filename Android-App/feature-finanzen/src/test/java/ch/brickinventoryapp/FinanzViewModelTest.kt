@@ -37,7 +37,7 @@ class FinanzViewModelTest {
     private lateinit var t: TestDienste
 
     private fun vm(gemerkt: SavedStateHandle = SavedStateHandle()) =
-        t.merke(FinanzViewModel(t.dienste, FinanzenRepository(t.api, t.cache), gemerkt))
+        t.merke(FinanzViewModel(t.sitzung, t.filter(), t.hinweise, t.bestand, FinanzenRepository(t.api, t.cache), gemerkt))
 
     @Before
     fun auf() {

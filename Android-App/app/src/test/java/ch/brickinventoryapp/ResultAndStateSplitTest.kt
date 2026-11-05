@@ -173,20 +173,20 @@ class ResultAndStateSplitTest {
         // Seit dem Schnitt in Bereichs-ViewModels leert jedes seinen Zustand
         // selbst, auf Sitzung.abgemeldet() hin. Ausgeführt prüfen das die
         // ViewModel-Tests („nach dem Abmelden …“); hier steht die Regel für
-        // jedes künftige: Wer Zustand hält, überschreibt zuruecksetzen().
-        // Gegenprobe (28.10.2026): HaushaltViewModel ohne override → rot.
+        // jedes künftige: Wer Zustand hält, folgt der Abmeldung mit zuruecksetzen().
+        // Gegenprobe (28.10.2026): HaushaltViewModel ohne zuruecksetzen → rot.
         val abmelden = code(read("ui/Abmelden.kt"))
         for (reset in listOf("sitzung.abgemeldet()", "blickfeld.zuruecksetzen()")) {
             assert(abmelden.contains(reset)) { "Abmelden ruft $reset nicht mehr" }
         }
         val bereiche = Quellen.unter("ui/viewmodel").filter {
-            code(it.readText()).contains(": BereichsViewModel(dienste)")
+            code(it.readText()).contains("sitzung: Sitzung,") && it.name != "AppViewModel.kt"
         }
         assert(bereiche.size >= 10) { "Nur ${bereiche.size} Bereichs-ViewModels gefunden — Muster veraltet?" }
         val vergesslich = bereiche.filter {
             val c = code(it.readText())
             (c.contains("MutableStateFlow(") || c.contains("SavedStateHandle")) &&
-                !c.contains("override fun zuruecksetzen()")
+                !c.contains("folgeAbmeldung(sitzung) { zuruecksetzen() }")
         }.map { it.name }
         assert(vergesslich.isEmpty()) {
             "Diese ViewModels halten Zustand, leeren ihn beim Abmelden aber nicht — der " +
