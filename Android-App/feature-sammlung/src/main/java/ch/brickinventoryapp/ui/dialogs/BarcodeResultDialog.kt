@@ -127,14 +127,14 @@ AlertDialog(
                 ersatzGroesse = 56.dp,
             )
             if (barcodeState.setName != null)
-                Text(barcodeState.setName!!, fontWeight = FontWeight.Bold,
+                Text(barcodeState.setName, fontWeight = FontWeight.Bold,
                     style = MaterialTheme.typography.titleMedium)
             Row(horizontalArrangement = Arrangement.spacedBy(Abstaende.klein), verticalAlignment = Alignment.CenterVertically) {
-                Text(barcodeState.result!!, style = MaterialTheme.typography.bodySmall,
+                Text(barcodeState.result, style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.SemiBold)
                 if (barcodeState.theme != null)
                     Surface(color = MaterialTheme.colorScheme.primaryContainer, shape = MaterialTheme.shapes.small) {
-                        Text(barcodeState.theme!!, Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+                        Text(barcodeState.theme, Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.onPrimaryContainer)
                     }
@@ -148,10 +148,10 @@ AlertDialog(
                 }
                 if (barcodeState.pieces != null) Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Icon(ImageVector.vectorResource(R.drawable.ic_parts_bricks), null, Modifier.size(ch.brickinventoryapp.ui.components.mitSchrift(18.dp)), tint = Color.Unspecified)
-                    Text(ch.brickinventoryapp.util.fmtInt(barcodeState.pieces!!), style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold)
+                    Text(ch.brickinventoryapp.util.fmtInt(barcodeState.pieces), style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold)
                     Text(stringResource(R.string.main_barcode_pieces), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
-                if (barcodeState.minifigs != null && barcodeState.minifigs!! > 0)
+                if (barcodeState.minifigs != null && barcodeState.minifigs > 0)
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         Icon(Icons.Default.Person, null, Modifier.size(ch.brickinventoryapp.ui.components.mitSchrift(18.dp)), tint = MaterialTheme.colorScheme.onSurfaceVariant)
                         Text("${barcodeState.minifigs}", style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold)
@@ -204,11 +204,11 @@ AlertDialog(
                     // Nur die Nummer: Aus der Teileliste entsteht kein Bestand, die Felder sind
                     // oben nicht sichtbar. confirmAddBarcode() verwürfe sie zwar, aber der Aufruf
                     // soll beim Lesen zeigen, was gemeint ist.
-                    aktionen.confirmAddBarcode(barcodeState.result!!)
+                    aktionen.confirmAddBarcode(barcodeState.result)
                 } else {
                     val price = barcodePriceText.replace(',', '.').toDoubleOrNull()
                     aktionen.confirmAddBarcode(
-                        barcodeState.result!!, price, barcodeCondition,
+                        barcodeState.result, price, barcodeCondition,
                         // Ohne Haushalt gar nichts mitschicken — der Server
                         // bleibt dann beim eigenen Konto (gleiche Regel wie
                         // im Galerie-Dialog).

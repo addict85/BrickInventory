@@ -118,7 +118,7 @@ private fun SetItemDetail(
                         CircularProgressIndicator(Modifier.size(28.dp))
                     }
                     zustand.fehler != null -> Text(
-                        zustand.fehler!!,
+                        zustand.fehler,
                         color = MaterialTheme.colorScheme.error,
                     )
                     else -> {

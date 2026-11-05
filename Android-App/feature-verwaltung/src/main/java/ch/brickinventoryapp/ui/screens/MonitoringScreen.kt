@@ -34,8 +34,6 @@ import androidx.lifecycle.repeatOnLifecycle
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import ch.brickinventoryapp.ui.theme.Abstaende
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
 /** Was die Verwaltungsseite zeigt; die Route sammelt es aus den Flüssen. */
 data class MonitoringZustand(
     val monState: MonitoringUiState,
