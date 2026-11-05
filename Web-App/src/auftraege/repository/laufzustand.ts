@@ -27,6 +27,3 @@ export async function zaehleZustand(schluessel: string, delta: number): Promise<
     [schluessel, String(Math.max(0, delta)), delta]);
 }
 
-export async function zustaendeMitPraefix(praefix: string): Promise<Array<{ schluessel: string; wert: string }>> {
-  return db.all('SELECT schluessel, wert FROM laufzustand WHERE starts_with(schluessel, $1)', [praefix]);
-}

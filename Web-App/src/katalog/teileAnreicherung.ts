@@ -22,6 +22,7 @@ import * as repo from './repository/teileAnreicherung';
 import { holeHttps } from '../infra/abruf';
 import fs from 'fs';
 import path from 'path';
+import { pruefeAbbruch, type AuftragsLauf } from '../auftraege/auftraege';
 import * as monitor from '../auftraege/jobMonitor';
 import { PART_IMAGES_DIR, MINIFIG_IMAGES_DIR, SET_IMAGES_DIR } from '../infra/appPaths';
 import { generateThumb } from './bilder/thumbs';
@@ -442,7 +443,7 @@ async function _redlSetStatus(obj: Record<string, unknown>) {
     .catch(logAndContinue('teile-enrich:setzeZustand'));
 }
 
-async function redownloadMissingImages() {
+async function redownloadMissingImages(lauf?: AuftragsLauf) {
   if (_redlRunning) return { alreadyRunning: true };
   // Sperre auf EIGENER Verbindung: Advisory-Locks hängen an der Session.
   let lockClient;
@@ -453,7 +454,7 @@ async function redownloadMissingImages() {
   } catch (e) { lockClient.release(); return { error: fehlertext(e) || 'Sperre fehlgeschlagen' }; }
   _redlRunning = true;
   try {
-    return await _redownloadMissingImages();
+    return await _redownloadMissingImages(lauf);
   } finally {
     _redlRunning = false;
     await repo.gibNachlaufSperreFrei(lockClient).catch(logAndContinue('teile-enrich:pg_advisory_unlock'));
@@ -461,7 +462,7 @@ async function redownloadMissingImages() {
   }
 }
 
-async function _redownloadMissingImages() {
+async function _redownloadMissingImages(lauf?: AuftragsLauf) {
   try {
     fs.mkdirSync(PART_IMAGES_DIR, { recursive: true });
     await _redlSetStatus({ running: true, phase: 'scanning', total: 0, done: 0, redownloaded: 0, cleared: 0 });
@@ -506,7 +507,7 @@ async function _redownloadMissingImages() {
 
     let idx = 0;
     const worker = async () => {
-      while (idx < missing.length) {
+      while (idx < missing.length && !lauf?.signal?.aborted) {
         const m = missing[idx++];
         if (!m) break;
         let ok = false;
@@ -536,12 +537,14 @@ async function _redownloadMissingImages() {
     };
     const CONC = 2; // wie beim normalen Download; der CDN-Limiter drosselt ohnehin
     await Promise.all(Array.from({ length: CONC }, () => worker()));
+    pruefeAbbruch(lauf);
 
     await _redlSetStatus({ running: false, phase: 'done', total, done, redownloaded, cleared, thumbs: thumbsErzeugt });
     console.log(`[img-redl] fertig: ${redownloaded} neu geladen, ${cleared} geleert (von ${total} fehlenden), ${thumbsErzeugt} Vorschauen erzeugt`);
     return { total, redownloaded, cleared, thumbs: thumbsErzeugt };
   } catch (e) {
     await _redlSetStatus({ running: false, phase: 'error', error: fehlertext(e) });
+    if (lauf?.signal?.aborted) throw e;
     console.error('[img-redl] Fehler:', fehlertext(e));
     return { error: fehlertext(e) };
   }

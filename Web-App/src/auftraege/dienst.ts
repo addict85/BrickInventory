@@ -7,7 +7,7 @@ import * as repo from './repository/auftraege';
 import type { AuftragsArt, AuftragsStatus, AuftragsZeile, Belegung, Einstellen, Fortschritt } from './auftraege';
 import { pruefeNutzlast, type NutzlastEingabe } from './nutzlasten';
 
-export { belegeAuftrag, gibZurueck, lebenszeichen, leereArt, liesPause, pausiereArt, raeumeErledigteAuf,
+export { belegeAuftrag, gibZurueck, lebenszeichen, gehoertNoch, merkeExklusive, leereArt, liesPause, pausiereArt, raeumeErledigteAuf,
   setzeFaelligkeit, zieheTerminVor, laeuftArt, AUFTRAG_KANAL, AUFTRAG_STAND_KANAL } from './repository/auftraege';
 
 async function meldeStand(z: { s: string } | undefined): Promise<void> {

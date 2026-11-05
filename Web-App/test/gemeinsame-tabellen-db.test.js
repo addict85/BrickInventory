@@ -77,6 +77,7 @@ const GEMEINSAM = {
   parts_katalog_offen:   { art: BETRIEB, eingabe: 'Nummern, deren Teile-Zusammenfassung nachzuziehen ist; sie ändern keine Angabe' },
   api_takt:              { art: BETRIEB, eingabe: false },
   auftrag_pausen:        { art: BETRIEB, eingabe: false },
+  auftrag_exklusiv:      { art: BETRIEB, eingabe: false },
   laufzustand:           { art: BETRIEB, eingabe: false },
   schema_migrations:     { art: BETRIEB, eingabe: false },
   global_settings:       { art: BETRIEB, eingabe: 'nur Verwalter (requireAdmin)' },

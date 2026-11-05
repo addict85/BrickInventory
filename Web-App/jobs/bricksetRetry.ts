@@ -6,10 +6,11 @@ import { pausiereArt } from '../src/auftraege/dienst';
 import { bricksetFaelligAb } from '../src/auftraege/bricksetAuftrag';
 import { AuftragVerschieben } from './auftragsWorker';
 import type { Nutzlast } from '../src/auftraege/nutzlasten';
+import { pruefeAbbruch, type AuftragsLauf } from '../src/auftraege/auftraege';
 
 /** Ist das Tageskontingent aufgebraucht, wartet die ganze Art bis zur
  * eingestellten Uhrzeit; der Versuch zählt dann nicht. */
-async function bricksetNachlauf(n: Nutzlast<'brickset'>): Promise<void> {
+async function bricksetNachlauf(n: Nutzlast<'brickset'>, lauf?: AuftragsLauf): Promise<void> {
   const sn = n.set_number;
   try {
     const [limit, status] = await Promise.all([getLimitForApi('brickset'), getRateLimitStatus('brickset')]);
@@ -23,8 +24,10 @@ async function bricksetNachlauf(n: Nutzlast<'brickset'>): Promise<void> {
     meldeUndWeiter('brickset-retry:kontingent', e);
   }
 
+  pruefeAbbruch(lauf);
   // Ist das Kontingent mittendrin weg, merkt getSetInfo das Set selbst erneut vor.
   if (await fuelleAusBrickset(sn)) console.log(`[brickset] Retry OK: ${sn}`);
+  pruefeAbbruch(lauf);
   if (await anzahlAnleitungen(sn) === 0) {
     await downloadSetInstructions(sn).catch(logAndContinue('brickset-retry:downloadSetInstructions'));
   }

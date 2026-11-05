@@ -1,4 +1,5 @@
 import path from 'path';
+import type { AuftragsLauf } from '../auftraege/auftraege';
 import fs from 'fs';
 import { holeHttps } from '../infra/abruf';
 import * as db from '../../db/database';
@@ -12,7 +13,6 @@ import { nummernListe, ERLAUBTE_API_HOSTS } from '../infra/fremdeAdressen';
 import { merkeBlNummer, merkeBlNummern, merkeBlNummerUnveraendert } from './blZuordnung';
 import { merkeSetTeile, type SetTeilZeile } from './katalogPflege';
 import { stelleAuftragEin } from '../auftraege/dienst';
-import * as monitor from '../auftraege/jobMonitor';
 import { rebrickableBackgroundLimiter, consumeRebrickableDaily } from './rateLimiter';
 import * as inhalt from './repository/setInhalt';
 
@@ -93,18 +93,21 @@ function holeSeite(url: string, rbKey: string): Promise<{ status: number; body: 
 }
 
 /** Eine leere bl_id heisst „nachgesehen" und löst kein zweites Nachladen aus. */
-export async function fetchMissingBlIds() {
+/** Im Auftrag mit Stand und Abbruch; aus einer Anfrage ohne. */
+export async function fetchMissingBlIds(lauf: AuftragsLauf = {}) {
   try {
     const rbKey = await getGlobalSetting('rebrickable_api_key');
     if (!rbKey) return;
     const missing = await inhalt.teileOhneBlZuordnung();
     if (!missing.length) return;
 
-    monitor.update('blIds', { status: 'running', progress: 0, total: missing.length, sub: `0 / ${missing.length}` });
+    const stand = (n: number) => lauf.fortschritt?.({ erledigt: n, gesamt: missing.length, schritt: 'BrickLink IDs nachladen',
+      text: `${Math.min(n, missing.length)} / ${missing.length}` });
+    await stand(0);
     const BATCH = 500;
     let serverErrors = 0;
     for (let i = 0; i < missing.length; i += BATCH) {
-      if (!await consumeRebrickableDaily()) break;
+      if (lauf.signal?.aborted || !await consumeRebrickableDaily()) break;
       await rebrickableBackgroundLimiter.waitForSlot();
       const batch: string[] = missing.slice(i, i + BATCH).map(r => r.part_number);
       const result = await holeSeite(`https://rebrickable.com/api/v3/lego/parts/?part_nums=${nummernListe(batch)}&page_size=500`, rbKey);
@@ -120,7 +123,7 @@ export async function fetchMissingBlIds() {
       let data: { results?: { part_num: string; external_ids?: { BrickLink?: string[] } }[] };
       try { data = JSON.parse(result.body); } catch (e) { meldeUndWeiter('bl-nummern:antwort', e); continue; }
       const batchDone = i + BATCH;
-      monitor.update('blIds', { status: 'running', progress: batchDone, sub: `${Math.min(batchDone, missing.length)} / ${missing.length}` });
+      await stand(batchDone);
       for (const part of (data?.results || [])) {
         const blIds = part.external_ids?.BrickLink;
         const blNum = Array.isArray(blIds) && blIds.length > 0 ? blIds[0]! : part.part_num;
@@ -131,7 +134,6 @@ export async function fetchMissingBlIds() {
         if (!returned.has(pn)) await merkeBlNummerUnveraendert('part', pn).catch(logAndContinue('bl-nummern:merken'));
       }
     }
-    monitor.update('blIds', { status: 'done', sub: null });
   } catch (e) { console.error('[bl-fetch] error:', fehlertext(e)); }
 }
 

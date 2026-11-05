@@ -117,6 +117,12 @@ CREATE INDEX idx_auftraege_frist ON auftraege USING btree (frist_bis) WHERE (sta
 CREATE INDEX idx_auftraege_offen_faellig ON auftraege USING btree (faellig_ab) WHERE (status = 'offen'::text);
 CREATE UNIQUE INDEX idx_auftraege_schluessel ON auftraege USING btree (schluessel) WHERE (status = 'offen'::text);
 CREATE INDEX idx_auftraege_user ON auftraege USING btree (user_id) WHERE (user_id IS NOT NULL);
+CREATE TRIGGER auftrag_exklusiv BEFORE UPDATE OF status, belegt_von ON auftraege FOR EACH ROW WHEN (((new.status = 'laeuft'::text) AND (new.belegt_von IS DISTINCT FROM old.belegt_von))) EXECUTE FUNCTION auftrag_exklusiv_belegen();
+
+CREATE TABLE auftrag_exklusiv (
+  art text NOT NULL,
+  CONSTRAINT auftrag_exklusiv_pkey PRIMARY KEY (art)
+);
 
 CREATE TABLE auftrag_pausen (
   art text NOT NULL,
@@ -1012,6 +1018,21 @@ CREATE TABLE zweiter_faktor_codes (
   CONSTRAINT zweiter_faktor_codes_user_id_fkey FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
 CREATE INDEX idx_zweiter_faktor_codes_konto ON zweiter_faktor_codes USING btree (user_id);
+
+CREATE OR REPLACE FUNCTION auftrag_exklusiv_belegen()
+ RETURNS trigger
+ LANGUAGE plpgsql
+AS $function$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM auftrag_exklusiv e WHERE e.art = NEW.art) THEN RETURN NEW; END IF;
+  -- Belegt gerade ein anderer: diese Zeile nicht, ohne zu warten.
+  IF NOT pg_try_advisory_xact_lock(59, hashtext(NEW.art)) THEN RETURN NULL; END IF;
+  IF EXISTS (SELECT 1 FROM auftraege l
+              WHERE l.art = NEW.art AND l.status = 'laeuft' AND l.frist_bis >= NOW() AND l.id <> NEW.id) THEN
+    RETURN NULL;
+  END IF;
+  RETURN NEW;
+END $function$;
 
 CREATE OR REPLACE FUNCTION bild_stamm(pfad text)
  RETURNS text

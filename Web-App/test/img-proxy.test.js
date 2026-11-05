@@ -245,7 +245,7 @@ test('Minifiguren-Bilder werden lokal abgelegt wie Set-Bilder', () => {
 
   // Fortschritt im bestehenden Job, kein zweiter Eintrag im Monitoring
   assert.match(SERVER, /const tick = async \(\) => \{/, 'Fortschrittszähler fehlt');
-  assert.match(SERVER, /sub: `\$\{done\} \/ \$\{total\} geladen`/, 'Zwischenstand fehlt');
+  assert.match(SERVER, /text: `\$\{done\} \/ \$\{total\} geladen`/, 'Zwischenstand fehlt');
   const mon = fs.readFileSync(path.join(ROOT, 'src/auftraege/jobMonitor.ts'), 'utf8');
   const figJobs = (mon.match(/^\s{2}\w+:\s*\{/gm) || []).filter(l => /fig|minifig/i.test(l));
   assert.deepEqual(figJobs, [], 'Es darf kein eigener Job dafür entstehen — imgDl deckt es ab');

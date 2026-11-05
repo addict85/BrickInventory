@@ -9,7 +9,6 @@ import { getGlobalSetting, getSetting } from '../src/einstellungen/settings';
 import { ohneBricklinkPreis } from '../src/infra/setNummer';
 import { katalogEintrag, getPriceGuide } from '../src/katalog/bricklinkPreise';
 import { belegeSitzungsSperre } from '../db/txLock';
-import * as monitor from '../src/auftraege/jobMonitor';
 import { LOCKS } from '../src/infra/lockNamespaces';
 import { pruefeSet } from '../src/finanzen/preisalarm';
 
@@ -89,7 +88,7 @@ async function runPriceRefresh(k?: AuftragsKontext) {
 
   const t0 = Date.now(); let updated=0, skipped=0, errors=0;
   const fortschritt = { current:0, total:0, set:null as string | null };
-  monitor.update('priceJob', { status:'running', progress:0, total:0, sub:'Starte…', lastRun:new Date().toISOString() });
+  await k?.fortschritt({ erledigt: 0, gesamt: 0, text: 'Starte…' });
   try {
     // Auch Merkposten: /price-history liest den Cache nur, und ohne diesen Lauf
     // bliebe ihr Preisverlauf leer.
@@ -103,7 +102,7 @@ async function runPriceRefresh(k?: AuftragsKontext) {
     if (!allSets.length) { log('No sets, nothing to do'); await merkeStand({ lastRun: new Date().toISOString() }); return; }
     log(`Starting: ${allSets.length} set-slots`);
     fortschritt.total = allSets.length;
-    monitor.update('priceJob', { status:'running', progress:0, total:allSets.length, sub:`0/${allSets.length} Sets` });
+    await k?.fortschritt({ erledigt: 0, gesamt: allSets.length, text: `0/${allSets.length} Sets` });
     const byUser: any = {};
     for (const row of allSets) (byUser[row.user_id] = byUser[row.user_id] || []).push(row.set_number);
     for (const [userId, setNumbers] of Object.entries(byUser)) {
@@ -120,9 +119,9 @@ async function runPriceRefresh(k?: AuftragsKontext) {
 
       const tasks = valid.map(sn => async () => {
         fortschritt.current++; fortschritt.set = sn;
+        k?.signal.throwIfAborted();
         if (k && fortschritt.current % 10 === 1)
-          await k.fortschritt({ erledigt: fortschritt.current, gesamt: fortschritt.total, text: sn });
-        monitor.update('priceJob', { status:'running', progress:fortschritt.current, total:fortschritt.total, sub:`${sn} (${fortschritt.current}/${fortschritt.total})` });
+          await k.fortschritt({ erledigt: fortschritt.current, gesamt: fortschritt.total, text: `${sn} (${fortschritt.current}/${fortschritt.total})` });
         const conditions = zustaende.get(sn) ?? ['N'];
         let last = 'skipped';
         for (const c of conditions) {
@@ -141,7 +140,7 @@ async function runPriceRefresh(k?: AuftragsKontext) {
     log(`Done: ${updated} updated, ${skipped} skipped, ${errors} errors — ${(dur/1000).toFixed(1)}s`);
     const lastRun = new Date().toISOString();
     await merkeStand({ lastRun, lastDuration: dur, lastUpdated: updated, lastErrors: errors });
-    monitor.update('priceJob', { status:'done', progress:fortschritt.total, total:fortschritt.total, sub:`${updated} aktualisiert, ${errors} Fehler — ${(dur/1000).toFixed(1)}s`, lastRun });
+    await k?.fortschritt({ erledigt: fortschritt.total, gesamt: fortschritt.total, text: `${updated} aktualisiert, ${errors} Fehler — ${(dur/1000).toFixed(1)}s` });
 
     log('Writing daily price_history snapshot from price_cache...');
     try {
