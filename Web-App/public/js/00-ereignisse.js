@@ -18,7 +18,7 @@
  * @property {{ sprache: string, speichern: boolean, echterWechsel: boolean }} spracheGewechselt
  */
 
-/** @type {Map<string, Set<(daten: any) => void>>} */
+/** @type {Map<string, Set<(daten: unknown) => void>>} */
 const _hoerer = new Map();
 
 /**
@@ -30,8 +30,9 @@ const _hoerer = new Map();
 export function abonniere(name, fn) {
   let liste = _hoerer.get(name);
   if (!liste) _hoerer.set(name, liste = new Set());
-  liste.add(fn);
-  return () => { liste.delete(fn); };
+  const hoerer = /** @type {(daten: unknown) => void} */ (fn);
+  liste.add(hoerer);
+  return () => { liste.delete(hoerer); };
 }
 
 /**

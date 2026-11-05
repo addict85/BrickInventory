@@ -214,9 +214,11 @@ export function schliesseErfassen(art){ erfassenDialog(art)?.classList.remove('o
  * Teile, Figuren, Merkliste und Alarme. Übersprungene Zeilen und Zusatz-
  * hinweise stehen überall in der Meldung, sonst sähe ein lückenhafter Import
  * aus wie ein vollständiger.
+ * @typedef {{ success: boolean, error?: string, added?: number, updated?: number, errors?: number,
+ *   skipped?: number, skipped_hint?: string, [feld: string]: unknown }} CsvErgebnis
  * @param {{ feld: string, pfad: string, felder?: Record<string, string>,
- *           zeige?: (laeuft: boolean) => void, hinweise?: (d: any) => unknown[] }} o
- * @returns {Promise<any>} die Antwort bei Erfolg, sonst null
+ *           zeige?: (laeuft: boolean) => void, hinweise?: (d: CsvErgebnis) => unknown[] }} o
+ * @returns {Promise<CsvErgebnis | null>} die Antwort bei Erfolg, sonst null
  */
 export async function csvHochladen(o) {
   const fi = G(o.feld);
@@ -225,6 +227,7 @@ export async function csvHochladen(o) {
   fd.append('file', fi.files[0]);
   for (const [k, v] of Object.entries(o.felder ?? {})) fd.append(k, v);
   o.zeige?.(true);
+  /** @type {CsvErgebnis} */
   const d = await api('POST', o.pfad, fd);
   fi.value = '';
   o.zeige?.(false);

@@ -20,7 +20,7 @@ import { esc } from './00-escapen.js';
 // verschiedenen Konten gehören. Der Server verlangt dafür acquisition_ids.
 let _detailLauf = 0;
 
-/** Inhalt des Set-Dialogs aus curSet und den Erfassungen. @param {string} sn @param {any[]} acqs */
+/** Inhalt des Set-Dialogs aus curSet und den Erfassungen. @param {string} sn @param {import('../../frontend-typen/vertrag').Acquisition[]} acqs */
 function setDetailHtml(sn, acqs) {
   const set = curSet;
   if (!set) return '';

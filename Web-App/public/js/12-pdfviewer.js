@@ -85,7 +85,7 @@ export async function openPdfViewer(url, title, opt = {}) {
     if (loading) loading.style.display = 'none';
     await _renderPdfLazy(_pdfDoc, pages);
   } catch (e) {
-    if (loading) { loading.style.display = 'flex'; loading.innerHTML = '<span data-stil="color:#f88;padding:20px;text-align:center">' + (t('pdf.error')||'Fehler beim Laden') + ': ' + esc(String(e && e.message || e)) + '</span>'; }
+    if (loading) { loading.style.display = 'flex'; loading.innerHTML = '<span data-stil="color:#f88;padding:20px;text-align:center">' + (t('pdf.error')||'Fehler beim Laden') + ': ' + esc(e instanceof Error ? e.message : String(e)) + '</span>'; }
   }
 }
 

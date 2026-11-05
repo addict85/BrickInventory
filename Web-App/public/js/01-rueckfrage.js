@@ -30,12 +30,14 @@ export function bestaetigeMitPasswort(title, msg, icon, knopf) {
 
 /** Bei aktivem zweitem Faktor verlangt der Server für heikle Änderungen den
  * Code (zweiter_faktor_noetig); dann einmal fragen und mit `code` wiederholen.
- * @param {(zusatz: { code?: string, passkey?: object }) => Promise<any>} ruf
- * @returns die Antwort, oder null, wenn der Dialog abgebrochen wurde */
+ * @template T
+ * @param {(zusatz: { code?: string, passkey?: object }) => Promise<T>} ruf
+ * @returns {Promise<T | null>} die Antwort, oder null, wenn der Dialog abgebrochen wurde */
 export async function mitZweitemFaktor(ruf) {
   const d = await ruf({});
-  if (d?.code !== 'zweiter_faktor_noetig') return d;
-  const mitPasskey = !!(d.passkey && passkeyHolen);
+  const a = /** @type {{ code?: unknown, passkey?: unknown } | null | undefined} */ (d);
+  if (a?.code !== 'zweiter_faktor_noetig') return d;
+  const mitPasskey = !!(a.passkey && passkeyHolen);
   const code = await dialogOeffnen(tRaw('zf.title'), tRaw(mitPasskey ? 'zf.code_oder_passkey' : 'zf.code_noetig'),
     'schloss', false, true, mitPasskey, BESTAETIGEN);
   if (code === null) return null;
@@ -55,9 +57,10 @@ const BESTAETIGEN = { knopf: 'common.confirm', art: 'bp', feld: 'settings.passwo
  * Speichern im Dialog statt je Abschnitt ein Feld „Aktuelles Passwort“, das
  * wie ein Fehler aussah. Bei falschem Passwort fragt der Dialog erneut.
  * @param {string} titel
- * @param {(passwort: string, zusatz: { code?: string, passkey?: object }) => Promise<any>} ruf
+ * @template T
+ * @param {(passwort: string, zusatz: { code?: string, passkey?: object }) => Promise<T>} ruf
  * @param {string} [erklaerung] sagt, was bestätigt wird (statt nur „bitte Passwort“)
- * @returns die Antwort, oder null bei Abbruch
+ * @returns {Promise<T | null>} die Antwort, oder null bei Abbruch
  */
 export async function mitPasswortBestaetigen(titel, ruf, erklaerung = tRaw('konto.passwort_bestaetigen')) {
   let text = erklaerung, knopfArt = BESTAETIGEN;
@@ -65,8 +68,9 @@ export async function mitPasswortBestaetigen(titel, ruf, erklaerung = tRaw('kont
     const pw = await dialogOeffnen(titel, text, 'schloss', true, false, false, knopfArt);
     if (pw === null) return null;
     const d = await mitZweitemFaktor(z => ruf(pw, z));
-    if (d?.code !== 'aktuelles_passwort_falsch' && d?.code !== 'aktuelles_passwort_erforderlich') return d;
-    text = d.error || erklaerung;
+    const a = /** @type {{ code?: unknown, error?: string } | null} */ (d);
+    if (a?.code !== 'aktuelles_passwort_falsch' && a?.code !== 'aktuelles_passwort_erforderlich') return d;
+    text = a.error || erklaerung;
     knopfArt = { ...BESTAETIGEN, fehler: true };
   }
   return null;

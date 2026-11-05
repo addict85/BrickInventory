@@ -64,9 +64,8 @@ export async function ladeZweitenFaktor() {
 export async function zfEinrichten() {
   // Kurz nach der Anmeldung lässt der Server das Passwort weg (Gnadenfrist);
   // sonst antwortet er ohne Zählen mit aktuelles_passwort_erforderlich.
-  let d = await api('POST', '/v1/auth/zweiter-faktor/einrichten', {});
-  if (d?.code === 'aktuelles_passwort_erforderlich')
-    d = await mitPasswortBestaetigen(tRaw('zf.title'), (password, z) => api('POST', '/v1/auth/zweiter-faktor/einrichten', { password, ...z }));
+  const erst = await api('POST', '/v1/auth/zweiter-faktor/einrichten', {});
+  const d = erst?.code !== 'aktuelles_passwort_erforderlich' ? erst : await mitPasswortBestaetigen(tRaw('zf.title'), (password, z) => api('POST', '/v1/auth/zweiter-faktor/einrichten', { password, ...z }));
   if (!d) return;
   if (!d?.success) { toast(d?.error || tRaw('settings.error'), 'error'); return; }
   // Gruppiert lesbar, falls jemand den Schlüssel von Hand eintippt.

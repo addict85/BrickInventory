@@ -66,6 +66,7 @@ function smtpFormular() {
   };
 }
 /** SMTP speichern; null, wenn die Passwortabfrage abgebrochen wurde. */
+/** @returns {Promise<{ success: boolean, error?: string | null } | null>} */
 async function speichereSmtp() {
   const werte = smtpFormular();
   // Mit dem Hinweis auf die alte Ausnahme auch unverändert speichern: Erst das räumt sie ab.
@@ -236,7 +237,7 @@ async function generateQrCode() {
     // expires_in mit. Hier stand 1800 (30 Minuten), während der Token seit der
     // Sicherheitshärtung nach 5 Minuten abläuft — der Zähler lief also 25
     // Minuten weiter, obwohl der Code längst ungültig war.
-    let secs = parseInt(d.expires_in) || 300;
+    let secs = Number(d.expires_in) || 300;
     const fmt = (/** @type {number} */ v) => `${Math.floor(v/60)}:${(v%60).toString().padStart(2,'0')}`;
     const timer = setInterval(() => {
       secs--;
@@ -256,7 +257,7 @@ async function generateQrCode() {
     const zugang = G('qr-access-hint');
     if (zugang) zugang.textContent =
       d.token_days === 0    ? tRaw('qr.access_unlimited')
-      : d.token_days > 0    ? tRaw('qr.access_days', { n: d.token_days })
+      : (d.token_days ?? 0) > 0 ? tRaw('qr.access_days', { n: d.token_days })
                             : tRaw('qr.access_default');
     // Nach dem ersten Erzeugen heisst der Knopf „Neu generieren" — die eine
     // Stelle, an der die Beschriftung sich absichtlich ändert.
@@ -651,7 +652,8 @@ export async function redeemHouseholdInvite(){
   if(G('household-redeem-faktor-code')) G('household-redeem-faktor-code').value = '';
   // tRaw + roher Name: Der Toast setzt Text, keine HTML — mit esc() stünde
   // dort "Marco &amp; Co" statt "Marco & Co".
-  toast(tRaw('household.redeem_ok', { name: d.linked_to?.username || '' }),'success');
+  const verknuepft = /** @type {{ linked_to?: { username?: string } }} */ (d).linked_to;
+  toast(tRaw('household.redeem_ok', { name: verknuepft?.username || '' }),'success');
   loadHousehold();
 }
 

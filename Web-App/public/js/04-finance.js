@@ -159,12 +159,16 @@ const KENNZAHLEN = ['fin-einstand', 'fin-wert', 'fin-total-pnl', 'portfolio-curr
 
 /** Was eine Tabellenzeile ausser ihren Daten braucht.
  * @typedef {{ cur: string, mehrereKonten: boolean, fehlerNeutral: boolean }} Zeilenlage */
+/** @typedef {import('../../frontend-typen/vertrag').ValuationSet & { error?: string | null, owners?: { id: number, username: string }[] }} BewertetesSet */
+/** @typedef {BewertetesSet['acquisitions'][number]} SetKauf */
+/** @typedef {import('../../frontend-typen/vertrag').PartsValuationResponse['parts'][number] | import('../../frontend-typen/vertrag').FigsValuationResponse['figs'][number]} ManPosten */
+/** @typedef {ManPosten['acquisitions'][number]} ManKauf */
 
 /** Stehen Zeilen mehrerer Konten da, nennt jede ihr Konto — auch das eigene;
- * sonst sieht dasselbe Set zweimal aus wie ein Fehler. @param {any} it @param {boolean} mehrereKonten */
+ * sonst sieht dasselbe Set zweimal aus wie ein Fehler. @param {{ owners?: { id: number, username: string }[] }} it @param {boolean} mehrereKonten */
 function besitzer(it, mehrereKonten) {
   return mehrereKonten && it.owners?.length
-    ? it.owners.map((/** @type {any} */ o) => `<span class="cond-badge besitzer-badge"><span class="vh">${t('finance.konto')}: </span>${esc(o.username)}</span>`).join('')
+    ? it.owners.map(o => `<span class="cond-badge besitzer-badge"><span class="vh">${t('finance.konto')}: </span>${esc(o.username)}</span>`).join('')
     : ownerBadges(it);
 }
 
@@ -181,7 +185,7 @@ const PM_COLGROUP = `<colgroup>
  * Teile- und Figurenzeilen öffnen ihr Detail wie die Kachel im Reiter: Eine Tabelle, in der nur die
  * Set-Zeilen auf Klick reagieren, sieht kaputt aus.
  * Ausführlich: docs/begruendungen/public/js/04-finance.js.md#manargs
- * @param {any} it */
+ * @param {{ fig_number?: string, part_number?: string, color_id?: number }} it */
 const manArgs = it => it.fig_number
   ? `data-click="openManDetail" data-arg="fig" data-arg2="${escJs(it.fig_number)}" data-arg3="0"`
   : `data-click="openManDetail" data-arg="part" data-arg2="${escJs(it.part_number)}" data-arg3="${it.color_id||0}"`;
@@ -194,16 +198,16 @@ function geschaetztMarke(it, html){
   return `<span title="${hinweis}"><span role="img" aria-label="${hinweis}">≈</span> ${html}</span>`;
 }
 
-/** @param {any} it @param {string} label @param {any} acq @param {Zeilenlage} lage */
+/** @param {ManPosten} it @param {string} label @param {ManKauf | null} acq @param {Zeilenlage} lage */
 function pmRow(it, label, acq, lage){
   const cur = lage.cur;
   const qty = acq ? acq.quantity : (it.quantity || 1);
   // avg_price zuerst — wie überall seit der Preisumstellung.
-  const current = acq ? parseFloat(acq.avg_price ?? 0)
-                      : parseFloat(it.avg_price ?? it.qty_avg_price ?? 0);
+  const current = acq ? Number(acq.avg_price ?? 0)
+                      : Number(it.avg_price ?? it.qty_avg_price ?? 0);
   const purchase = acq
-    ? (acq.purchase_price!=null ? parseFloat(acq.purchase_price) : null)
-    : (it.purchase_price!=null ? parseFloat(it.purchase_price) : null);
+    ? (acq.purchase_price!=null ? Number(acq.purchase_price) : null)
+    : (it.purchase_price!=null ? Number(it.purchase_price) : null);
   const total = acq ? (acq.wert_gesamt ?? 0) : (it.wert_gesamt ?? 0);
   const pnl = acq ? acq.pnl_prozent : it.pnl_prozent;
   const art = it.fig_number ? 'figur' : 'teil';
@@ -216,7 +220,7 @@ function pmRow(it, label, acq, lage){
     <td class="fin-detail zahl"><span class="qbadge">×${qty}</span></td>
     <td class="fin-detail fin-datum">${acq?.created_at?fmtDatum(acq.created_at):''}</td>
     <td class="fin-detail price-cell zahl">${einstandZelle(purchase, qty, cur, acq)}</td>
-    <td class="fin-detail price-cell zahl">${current>0?geschaetztMarke(it, fmtN(current,cur)):ohneWert()}</td>
+    <td class="fin-detail price-cell zahl">${current>0?geschaetztMarke(/** @type {{ estimated_from_parts?: boolean | null, abdeckung?: number | null }} */ (it), fmtN(current,cur)):ohneWert()}</td>
     <td class="fin-wert price-total zahl">${total > 0 ? fmtN(total,cur) : ohneWert()}</td>
     <td class="fin-guv zahl">${pnlBadge(pnl, purchase)||'<span class="text-mut">—</span>'}</td>
     <td class="fin-status"></td>
@@ -224,11 +228,11 @@ function pmRow(it, label, acq, lage){
 }
 
 /** Eine Zeile je Kaufpreis-Erfassung (mindestens eine), jede mit dem Marktpreis ihres Zustands.
- * @param {any} it @param {string} label @param {Zeilenlage} lage */
+ * @param {ManPosten} it @param {string} label @param {Zeilenlage} lage */
 function pmRows(it, label, lage){
   const acqs = it.acquisitions || [];
   if (!acqs.length) return pmRow(it, label, null, lage);
-  return acqs.map((/** @type {any} */ a) => pmRow(it, label, a, lage)).join('');
+  return acqs.map(a => pmRow(it, label, a, lage)).join('');
 }
 
 function pmTableHead() {
@@ -251,7 +255,7 @@ function manuellerAbschnitt(o) {
 // bewertete eine Gebraucht-Erfassung auch das neu gekaufte Exemplar gebraucht. Keine Summenzeile und
 // kein Einrücken — die Zeilen sind gleichrangige Käufe, keine Aufschlüsselung.
 // Ausführlich: docs/begruendungen/public/js/04-finance.js.md#setrow
-/** @param {any} s @param {any} acq @param {Zeilenlage} lage */
+/** @param {BewertetesSet} s @param {SetKauf | null} acq @param {Zeilenlage} lage */
 function setRow(s, acq, lage){
   const { cur, fehlerNeutral } = lage;
   const mitPreis = !s.error;
@@ -321,7 +325,7 @@ function finanzenLaedt() {
   return hatteTabelle;
 }
 
-/** Ladefehler: Diagramm und Kennzahlen dürfen nicht auf „Laden…“ stehen bleiben. @param {any} d */
+/** Ladefehler: Diagramm und Kennzahlen dürfen nicht auf „Laden…“ stehen bleiben. @param {{ status?: number } | null | undefined} d */
 function finanzenFehlen(d) {
   if (d?.status === 401) return;
   // Grund und „Erneut versuchen“ stehen schon bei der Liste darunter; ein zweiter Block sagte dasselbe.
@@ -393,13 +397,13 @@ export async function loadFinance(){
     return;
   }
   // Fehlt der Preis bei den meisten Sets, ist es eine Störung, kein Einzelfall: neutral statt rot.
-  const fehlerZeilen = d.sets.filter((/** @type {any} */ s) => s.error).length;
+  const fehlerZeilen = d.sets.filter(s => s.error).length;
   /** @type {Zeilenlage} */
   const lage = { cur, mehrereKonten, fehlerNeutral: fehlerZeilen >= 3 && fehlerZeilen * 2 >= d.sets.length };
-  const rows = d.sets.map((/** @type {any} */ s) => {
+  const rows = d.sets.map(s => {
     const acqs = s.acquisitions || [];
     if (acqs.length <= 1) return setRow(s, acqs[0] || null, lage);
-    return acqs.map((/** @type {any} */ a) => setRow(s, a, lage)).join('');
+    return acqs.map(a => setRow(s, a, lage)).join('');
   }).join('');
   const partsRows = partsItems.map(p => pmRows(p, `${esc(p.part_name||p.part_number)}${p.color_name?` <span class="text-mut schrift-1">(${esc(colorName(p.color_name))})</span>`:''}`, lage)).join('');
   const figsRows  = figsItems.map(f => pmRows(f, esc(f.fig_name||f.fig_number), lage)).join('');

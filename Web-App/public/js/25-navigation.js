@@ -76,7 +76,7 @@ function markiereGruppe(tab){
   });
 }
 
-/** Am Handy: die Filter hinter einem Knopf, damit die Liste oben beginnt. */
+/** Am Handy: die Filter hinter einem Knopf, damit die Liste oben beginnt. @this {HTMLElement} */
 export function filterUmschalten(){
   const leiste = this?.closest?.('.filterleiste');
   if (!leiste) return;

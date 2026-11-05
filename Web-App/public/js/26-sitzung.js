@@ -349,7 +349,7 @@ async function waitForStartup() {
       // Den Fortschritt erst zeigen, wenn der Server wirklich noch startet.
       if (ss && ss.style.display !== 'flex') { startgeruestWeg(); ss.style.display = 'flex'; }
       if (Date.now() - lastChangeAt > STALL_TIMEOUT) { console.warn('[startup] stalled — no progress'); break; }
-    } catch(e) { console.warn('[startup] poll error:', e.message); }
+    } catch(e) { console.warn('[startup] poll error:', e instanceof Error ? e.message : e); }
     await new Promise(r => setTimeout(r, 600));
   }
   if (ss) ss.style.display = 'none';

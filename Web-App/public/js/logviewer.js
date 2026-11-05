@@ -29,8 +29,9 @@
     return teile.map((p, i) => (i % 2 === 1 ? '<mark>' + p + '</mark>' : p)).join('');
   }
 
-  /** @param {string} stufe */
+  /** @param {string} [stufe] */
   function toggleLevel(stufe) {
+    if (!stufe) return;
     const btn = el('btn-' + stufe);
     if (_levels.has(stufe)) { _levels.delete(stufe); btn.classList.remove('active'); }
     else { _levels.add(stufe); btn.classList.add('active'); }

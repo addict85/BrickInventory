@@ -597,7 +597,7 @@ export async function gutscheinLandSpeichern() {
     d?.success ? 'success' : 'error');
 }
 
-/** Der Name der gewählten Datei neben dem Knopf — das native Feld zeigte ihn selbst. */
+/** Der Name der gewählten Datei neben dem Knopf — das native Feld zeigte ihn selbst. @this {HTMLInputElement | undefined} */
 function gutscheinDateiGewaehlt() {
   const name = el('v-pdf-name');
   if (!name) return;

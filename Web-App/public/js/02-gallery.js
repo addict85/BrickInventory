@@ -22,10 +22,10 @@ import { leereLagerortFeld, selectedOwner, selectedStorage } from './02-konten-o
  * Der Thementon für das Design „Farbfächer“ — auch in der Sammlung: Ohne ihn
  * war das Design dort grau in grau. Ohne Thema-Nummer entscheidet der
  * Themenname, damit ein Thema immer denselben Ton trägt.
- * @param {any} s
+ * @param {{ theme_id?: number | null, theme?: string | null }} s
  */
 function faecherTon(s) {
-  if (Number.isInteger(s.theme_id)) return ` data-faecher="${((s.theme_id % 12) + 12) % 12}"`;
+  if (typeof s.theme_id === 'number' && Number.isInteger(s.theme_id)) return ` data-faecher="${((s.theme_id % 12) + 12) % 12}"`;
   const name = String(s.theme || '').split(' / ')[0];
   if (!name) return '';
   let h = 0;
@@ -449,7 +449,7 @@ async function doAddSet(){
         hideProgress();
         G('add-num').value='';
         schliesseErfassen();
-        springe('setDetail', ev.set_number);
+        springe('setDetail', ev.set_number ?? '');
         return;
       }
       if(ev.step==='done'){
@@ -473,7 +473,7 @@ async function doAddSet(){
       }
       else if(ev.step==='error'){ streamFertig(); setTimeout(()=>{hideProgress();toast(ev.error,'error');},1500); }
     });
-  }catch(e){if(e.name!=='AbortError'){hideProgress();toast(fehlerMeldung(e),'error');}}
+  }catch(e){if(/** @type {Error} */ (e).name!=='AbortError'){hideProgress();toast(fehlerMeldung(e),'error');}}
 }
 
 // CSV import via SSE stream — Datei-Auswahl startet den Import direkt (analog Teile-Import)

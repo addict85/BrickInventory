@@ -242,6 +242,7 @@ function closeImportProgress() {
 /**
  * War: onclick="if(event.target===this)closeImageLightbox()" — nur der Hintergrund schliesst.
  * @param {Event} ev
+ * @this {HTMLElement}
  */
 function lightboxBackdrop(ev) {
   if (ev && ev.target === this) closeImageLightbox();
@@ -253,6 +254,7 @@ function lightboxBackdrop(ev) {
  * Nimmt bevorzugt data-orig, nicht this.src: Die Kacheln zeigen seit der
  * Thumbnail-Umstellung eine verkleinerte Fassung, und im Zoom wäre die
  * unscharf. data-orig trägt die volle Auflösung.
+ * @this {HTMLImageElement}
  */
 function openImageLightboxFromEl() {
   const src = this.dataset.orig && this.dataset.orig !== '/assets/set-placeholder.svg'
@@ -260,10 +262,9 @@ function openImageLightboxFromEl() {
   openImageLightbox(typeof fullUrl === 'function' ? fullUrl(src) : src);
 }
 
-/** War: onchange="setLang(this.value)" */
+/** War: onchange="setLang(this.value)" @this {HTMLSelectElement} */
 function setLangFromEl() { setLang(this.value); }
-/** Darstellung je Gerät — die Logik steht in 00-theme-boot.js. */
-/** @this {HTMLSelectElement} */
+/** Darstellung je Gerät — die Logik steht in 00-theme-boot.js. @this {HTMLSelectElement} */
 function setzeDunkel() { window.__bimDunkel?.(this.value); }
 
 /**
@@ -286,6 +287,7 @@ export function stopEvent(ev) { ev?.stopPropagation(); }
 /**
  * War: onkeydown="if(event.key==='Enter'){this.blur()}"
  * @param {KeyboardEvent | undefined} ev
+ * @this {HTMLElement}
  */
 export function blurOnEnter(ev) { if (ev?.key === 'Enter') this.blur(); }
 
@@ -295,6 +297,7 @@ export function clickJobTrigger() { document.getElementById('btn-job-trigger')?.
 /**
  * War: onchange="saveJobSchedule('${k}',{time:this.value})"
  * @param {string} k
+ * @this {HTMLInputElement}
  */
 export function saveJobTime(k) {
   const m = /^\s*(\d{1,2})\s*[:.]?\s*(\d{2})\s*$/.exec(this.value);
@@ -308,8 +311,9 @@ export function saveJobTime(k) {
 /**
  * War: onchange="saveJobSchedule('${k}',{minutes:this.value})"
  * @param {string} k
+ * @this {HTMLInputElement}
  */
-export function saveJobMinutes(k) { saveJobSchedule(k, { minutes: this.value }); }
+export function saveJobMinutes(k) { saveJobSchedule(k, { minutes: Number(this.value) }); }
 
 /** War: onblur="updateManualFig('${id}',{bl_fig_number:this.value.trim()||null})" */
 // owner: Besitzer der Karte. Ohne ihn schriebe der Server in die Zeile des
@@ -317,6 +321,7 @@ export function saveJobMinutes(k) { saveJobSchedule(k, { minutes: this.value });
 /**
  * @param {string} id
  * @param {string} owner
+ * @this {HTMLInputElement}
  */
 export function saveManualFigBl(id, owner) {
   updateManualFig(id, { bl_fig_number: this.value.trim() || null }, owner);

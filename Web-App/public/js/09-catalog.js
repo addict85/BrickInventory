@@ -469,7 +469,7 @@ async function addCatalogSetToGallery(){
         setTimeout(()=>{ hideProgress(); toast(ev.error, 'error'); }, 1500);
       }
     });
-  } catch(e) { if (e.name !== 'AbortError') { hideProgress(); toast(fehlerMeldung(e), 'error'); } }
+  } catch(e) { if (/** @type {Error} */ (e).name !== 'AbortError') { hideProgress(); toast(fehlerMeldung(e), 'error'); } }
 }
 
 /**

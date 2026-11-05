@@ -15,12 +15,9 @@
     "lib": ["es2022", "dom", "dom.iterable"],
     "skipLibCheck": true,
     "types": [],
-    "strict": false,
-    "strictNullChecks": true,
-    "noImplicitAny": true,
+    "strict": true,
     "noUnusedLocals": true,
-    "noFallthroughCasesInSwitch": true,
-    "strictBindCallApply": true
+    "noFallthroughCasesInSwitch": true
   },
   "include": ["public/js/*.js", "public/i18n.js", "frontend-typen/*.d.ts"],
   "exclude": ["public/js/app.bundle.js", "public/js/00-theme-boot.js", "public/js/logviewer.js"]

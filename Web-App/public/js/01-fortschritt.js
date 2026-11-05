@@ -345,12 +345,15 @@ export function addCsvLog(text, ok){
   line.textContent=text; d.appendChild(line); d.scrollTop=d.scrollHeight;
 }
 
+/** Ein Ereignis des Stroms beim Erfassen; `step` sagt, welche Felder es trägt.
+ * @typedef {{ step?: string, set?: string, set_number?: string, action?: string, error?: string, [feld: string]: unknown }} SseEreignis */
+
 // SSE-Ereignisse beim Erfassen eines Sets. Gewartet wird nur auf Set-Daten und Bild; Anleitungen,
 // Teile und Preis laufen danach im Hintergrund, und ein Balken für Arbeit, auf die niemand wartet,
 // wäre eine Behauptung.
 // Ausführlich: docs/begruendungen/public/js/01-fortschritt.js.md#handlesseevent
 /**
- * @param {any} ev
+ * @param {SseEreignis} ev
  * @param {string} singleSetName
  */
 export function handleSseEvent(ev, singleSetName){
@@ -388,7 +391,7 @@ function cancelImport(){
 }
 
 /** Abbrechbarer Ereignisstrom (POST mit JSON-Körper); ein Abbruch endet ohne Fehler.
- * @param {string} path @param {object} body @param {(ev: any) => void} onEvent
+ * @param {string} path @param {object} body @param {(ev: SseEreignis) => void} onEvent
  * @returns {Promise<void>} */
 export function streamRequest(path, body, onEvent){
   const ac = _activeAbort = new AbortController();
@@ -400,7 +403,7 @@ export function streamRequest(path, body, onEvent){
 
 /**
  * @param {Response} res
- * @param {(ev: any) => void} onEvent
+ * @param {(ev: SseEreignis) => void} onEvent
  * @param {AbortSignal} signal
  */
 async function readSSE(res, onEvent, signal){
@@ -429,7 +432,7 @@ async function readSSE(res, onEvent, signal){
       }
     }
   } catch(e){
-    if(e.name!=='AbortError') throw e;
+    if(/** @type {Error} */ (e).name!=='AbortError') throw e;
   } finally {
     try{ reader.cancel(); }catch(_){}
   }

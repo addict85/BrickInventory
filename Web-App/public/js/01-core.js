@@ -247,14 +247,15 @@ export function feldFehler(id, text) {
 /**
  * Eine Absage des Servers: Gehört ihr Code zu einem Feld des Formulars, steht
  * die Meldung dort (wie feldFehler), sonst als Toast.
- * @param {any} d Antwort von api()
+ * @param {object | null | undefined} d Antwort von api()
  * @param {Record<string, string>} felder Fehlercode → Feld-ID
  * @param {string} ersatz Text, wenn die Antwort keinen hat
  */
 export function antwortFehler(d, felder, ersatz) {
-  const id = d?.code ? felder[d.code] : null;
-  if (id && G(id)) feldFehler(id, d.error || ersatz);
-  else toast(d?.error || ersatz, 'error');
+  const a = /** @type {{ code?: string, error?: string | null }} */ (d ?? {});
+  const id = a.code ? felder[a.code] : null;
+  if (id && G(id)) feldFehler(id, a.error || ersatz);
+  else toast(a.error || ersatz, 'error');
 }
 
 /**
@@ -506,13 +507,13 @@ export function observeLazyImages(root) {
 }
 /** Anzeigedauer je Art in ms. */
 const TOAST_DAUER = { success: 3500, info: 5000, error: 9000 };
-/** @type {WeakMap<Element, {schluessel: string, anzahl: number, frist: any}>} */
+/** @type {WeakMap<Element, {schluessel: string, anzahl: number, frist: ReturnType<typeof setTimeout>}>} */
 const _toastStand = new WeakMap();
 /** Fehlertexte der 401-Antworten: Noch laufende Anfragen scheitern nach dem
  * Ende der Sitzung mit genau diesem Text. Als Toast widerspräche er dem einen
  * Hinweis in der Anmeldekarte; toast() lässt ihn deshalb weg. */
 const _meldungenDerAbgelaufenenSitzung = new Set();
-/** @param {{text: string, fn: () => any, bleibt?: boolean}} [aktion] Knopf in der Meldung, z. B. „Rückgängig";
+/** @param {{text: string, fn: () => unknown, bleibt?: boolean}} [aktion] Knopf in der Meldung, z. B. „Rückgängig";
  *  `bleibt` hält ihn über einen Ansichtswechsel (verwirfToasts).
  * @param {string} [details] aufklappbare Ursache unter der Meldung
  * @param {unknown} msg
@@ -525,7 +526,7 @@ export function toast(msg, type='info', aktion, details) {
   const schluessel = `${type}|${String(msg ?? '')}`;
   const gleich = aktion ? null : [...c.children].find(x => _toastStand.get(x)?.schluessel === schluessel);
   if (gleich) {
-    const stand = /** @type {{schluessel: string, anzahl: number, frist: any}} */ (_toastStand.get(gleich));
+    const stand = /** @type {{schluessel: string, anzahl: number, frist: ReturnType<typeof setTimeout>}} */ (_toastStand.get(gleich));
     stand.anzahl++;
     const zahl = /** @type {HTMLElement} */ (gleich.querySelector('.toast-anzahl'));
     zahl.textContent = `×${stand.anzahl}`; zahl.hidden = false;
@@ -604,7 +605,7 @@ export async function apiRoh(method, path, o = {}) {
   try {
     res = await fetch('/api' + path, init);
   } catch (e) {
-    if (/** @type {any} */ (e)?.name !== 'AbortError') { console.warn('[api]', method, path, e); zeigeVerbindung(false); }
+    if (/** @type {{ name?: string } | null} */ (e)?.name !== 'AbortError') { console.warn('[api]', method, path, e); zeigeVerbindung(false); }
     throw e;
   }
   _letzteAntwort = new Date();
@@ -652,7 +653,7 @@ export async function api(method, path, body, o = {}) {
     if (alt) return { ...alt, ausZwischenspeicher: true };
     return { success:false, error:tRaw('api.unreachable'), networkError:true, status:0 };
   }
-  /** @type {any} */
+  /** @type {Record<string, unknown> | null} */
   let daten = null;
   try {
     daten = await res.json();
@@ -663,14 +664,14 @@ export async function api(method, path, body, o = {}) {
   }
   if (!res.ok && daten && typeof daten === 'object' && daten.success === undefined) {
     return { ...daten, success:false, status:res.status,
-             error: daten.error || tRaw('api.server_error', { status:res.status }) };
+             error: String(daten.error || tRaw('api.server_error', { status:res.status })) };
   }
   if (daten && typeof daten === 'object') daten.status = res.status;
   if (method === 'GET' && res.ok && daten?.success !== false) inZwischenspeicher(path, daten);
   if (res.status === 401 && daten?.error && !/^\/v1\/auth\/(me|login)/.test(path)) _meldungenDerAbgelaufenenSitzung.add(String(daten.error));
   if (res.status === 403 && daten?.code === 'passwort_wechsel_noetig') melde('passwortWechselNoetig');
   if (res.status === 403 && daten?.code === 'zweiter_faktor_pflicht') melde('zweiterFaktorPflicht');
-  return daten;
+  return /** @type {import('../../frontend-typen/api').ApiAntwort<M, P>} */ (/** @type {unknown} */ (daten));
 }
 
 /**
@@ -679,7 +680,7 @@ export async function api(method, path, body, o = {}) {
  * @param {unknown} e
  */
 export function fehlerMeldung(e) {
-  const text = String(/** @type {any} */ (e)?.message ?? e ?? '');
+  const text = String(/** @type {{ message?: unknown } | null} */ (e)?.message ?? e ?? '');
   if (/failed to fetch|networkerror|load failed|network request failed/i.test(text) || (typeof navigator !== 'undefined' && navigator.onLine === false))
     return tRaw('api.unreachable');
   return text || tRaw('common.unknown_error');

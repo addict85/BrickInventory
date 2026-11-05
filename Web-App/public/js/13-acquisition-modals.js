@@ -414,7 +414,7 @@ function renderManAcqSummary(acqs, type, id, colorId) {
 }
 
 /** Die Zeilen des Detail-Dialogs eines manuell erfassten Teils oder einer Figur.
- * @param {string} type @param {string} id @param {number} colorId @param {any} item @param {Erfassung[]} acqs @param {any} ad
+ * @param {string} type @param {string} id @param {number} colorId @param {{ quantity?: number, user_id?: number | null, bl_fig_number?: string | null, color_hex?: string | null, color_name?: string | null, storage?: string | null }} item @param {Erfassung[]} acqs @param {{ totals?: { priced_rows?: number, quantity?: number } } | null | undefined} ad
  * @returns {string[]} */
 function manDetailZeilen(type, id, colorId, item, acqs, ad) {
   const rows = [];
@@ -486,7 +486,7 @@ function manDetailZeilen(type, id, colorId, item, acqs, ad) {
 }
 
 /** Preisverlauf und Marktpreise nachladen, ohne den Dialog aufzuhalten.
- * @param {string} type @param {string} id @param {any} colorId */
+ * @param {string} type @param {string} id @param {number | string} colorId */
 function ladeManPreisverlauf(type, id, colorId) {
   // Derselbe Renderer wie beim Set — die Endpunkte liefern
   // dieselbe Diagrammstruktur (src/finanzen/chartData.ts), also braucht es hier keine
@@ -588,7 +588,7 @@ export async function openManDetail(type, id, colorId) {
 // ohne Marktpreis und ohne änderbare Anzahl — die Menge entsteht aus den Inventaren. Derselbe Rahmen
 // wie openManDetail.
 // Ausführlich: docs/begruendungen/public/js/13-acquisition-modals.js.md#opensetitemdetail
-/** Die Sets, in denen ein Teil oder eine Figur steckt, als klickbare Liste. @param {any[]} sets */
+/** Die Sets, in denen ein Teil oder eine Figur steckt, als klickbare Liste. @param {{ set_number: string, name?: string | null, set_name?: string | null, image_local?: string | null, image_url?: string | null, quantity?: number | null }[]} sets */
 function verwendetInListe(sets) {
   // Die Sets als Tabelle (Bild, Nummer, Name) wie im Reiter Finanzen: Als Fliesstext stand jeder Name
   // woanders. Jede Zeile öffnet das Set-Detail und schliesst diesen Dialog, zwei offene Fenster wären
@@ -707,12 +707,13 @@ export async function openSetItemDetail(type, id, colorId) {
  * Lagerort eines Teils oder einer Figur speichern, beim Verlassen des Feldes (sonst ein Zwischenstand
  * je Zeichen). `this` statt fester Kennung, weil zwei Dialoge denselben Handler nutzen.
  * Ausführlich: docs/begruendungen/public/js/13-acquisition-modals.js.md#speichereteillagerort
+ * @this {unknown}
  */
 async function speichereTeilLagerort() {
-  const el = this instanceof HTMLElement ? this : G('setitem-storage');
+  const el = this instanceof HTMLInputElement ? this : G('setitem-storage');
   if (!el) return;
-  const nummer = el.dataset.part;
-  const farbe  = parseInt(el.dataset.color) || 0;
+  const nummer = el.dataset.part ?? '';
+  const farbe  = parseInt(el.dataset.color ?? '') || 0;
   const adresse = el.dataset.typ === 'fig'
     ? `/v1/minifigs/${encodeURIComponent(nummer)}/storage`
     : `/v1/parts/${encodeURIComponent(nummer)}/${farbe}/storage`;
@@ -721,7 +722,7 @@ async function speichereTeilLagerort() {
   await ladeLagerorte();
   // Ein frisch getippter Ort ist jetzt im Vorrat — ohne das stünde er am Teil,
   // fehlte aber in der Liste, aus der er beim nächsten Mal gewählt wird.
-  await ladeOrtAuswahl(el.dataset.owners ? el.dataset.owners.split(',') : []);
+  await ladeOrtAuswahl(el.dataset.owners ? el.dataset.owners.split(',').map(Number) : []);
 }
 
 /**
@@ -758,12 +759,13 @@ async function fuelleFarbwahl(aktuell) {
  * Die Farbe eines manuellen Teils ändern (die Regeln stehen in src/teile/teilFarbeAendern.ts). Danach
  * öffnet der Dialog mit der neuen Farbe: Sie ist Teil der Adresse, der alte Dialog zeigte ins Leere.
  * Ausführlich: docs/begruendungen/public/js/13-acquisition-modals.js.md#speichereteilfarbe
+ * @this {unknown}
  */
 async function speichereTeilFarbe() {
-  const el = this instanceof HTMLElement ? this : G('man-farb-wahl');
+  const el = this instanceof HTMLSelectElement ? this : /** @type {HTMLSelectElement | null} */ (document.querySelector('#man-farb-wahl'));
   if (!el) return;
-  const nummer = el.dataset.part;
-  const alt    = parseInt(el.dataset.color) || 0;
+  const nummer = el.dataset.part ?? '';
+  const alt    = parseInt(el.dataset.color ?? '') || 0;
   const neu    = parseInt(el.value);
   if (!Number.isFinite(neu) || neu === alt) return;
   const wahl   = el.options[el.selectedIndex];

@@ -59,9 +59,9 @@ function knoepfeStand() {
 
 // ── IMPORT ─────────────────────────────────────────────────────────────────
 
-/** Datei gewählt (in einem der drei Reiter) → Vorschau holen. */
+/** Datei gewählt (in einem der drei Reiter) → Vorschau holen. @this {unknown} */
 async function wantedXmlGewaehlt() {
-  const el = this instanceof HTMLElement ? this : null;
+  const el = this instanceof HTMLInputElement ? this : null;
   if (!el?.files?.[0]) return;
   // Während ein Import läuft, keine neue Datei annehmen: Sie würde _datei
   // mitten im laufenden Schreiben austauschen. Der Knopf daneben lässt sich
@@ -417,9 +417,9 @@ async function fuelleFarbwahlen() {
   }
 }
 
-/** Eine eingetragene Rebrickable-Nummer merken (oder die Eintragung löschen). */
+/** Eine eingetragene Rebrickable-Nummer merken (oder die Eintragung löschen). @this {unknown} */
 function wantedKorrekturNummer() {
-  const el = this instanceof HTMLElement ? this : null;
+  const el = this instanceof HTMLInputElement || this instanceof HTMLSelectElement ? this : null;
   if (!el) return;
   const i = Number(el.dataset.i);
   const wert = el.value.trim();
@@ -431,8 +431,9 @@ function wantedKorrekturNummer() {
   setzeKorrektur(i, k);
 }
 
+/** @this {unknown} */
 function wantedKorrekturFarbe() {
-  const el = this instanceof HTMLElement ? this : null;
+  const el = this instanceof HTMLInputElement || this instanceof HTMLSelectElement ? this : null;
   if (!el) return;
   const i = Number(el.dataset.i);
   const k = { ..._korrekturen.get(i) };
@@ -445,9 +446,10 @@ function wantedKorrekturFarbe() {
  * dem Bericht verglichen wird statt auf leer geprüft: Wer den Ausgangswert zurücktippt, nimmt die
  * Korrektur zurück.
  * Ausführlich: docs/begruendungen/public/js/18-wanted-xml.js.md#wantedkorrekturwert
+ * @this {unknown}
  */
 function wantedKorrekturWert() {
-  const el = this instanceof HTMLElement ? this : null;
+  const el = this instanceof HTMLInputElement || this instanceof HTMLSelectElement ? this : null;
   if (!el) return;
   const i = Number(el.dataset.i);
   const name = el.dataset.feld;

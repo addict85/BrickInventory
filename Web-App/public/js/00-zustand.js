@@ -12,7 +12,7 @@ import { setzeZahlenWaehrung } from '../i18n.js';
  * @property {boolean} [mustChangePassword]
  */
 
-/** Das angemeldete Konto; null ohne Anmeldung. @type {Konto & Record<string, any> | null} */
+/** Das angemeldete Konto; null ohne Anmeldung. @type {Konto & Record<string, unknown> | null} */
 export let ME = null;
 /** Währung aus den Einstellungen; 'EUR', solange sie nicht geladen sind. */
 export let CURRENCY = 'EUR';
@@ -28,7 +28,7 @@ export let _settingsCache = null;
 export let allSets = [];
 /** Das Set im Detail-Dialog; null, wenn er zu ist. @type {Kachel | null} */
 export let curSet = null;
-/** Kachelpreis und G&V je Setnummer aus /v1/finance/pnl. @type {Record<string, { price: any, pnl_pct: any, quelle?: string | null }>} */
+/** Kachelpreis und G&V je Setnummer aus /v1/finance/pnl. @type {Record<string, { price?: number | null, pnl_pct?: number | null, quelle?: string | null }>} */
 export let _pnlCache = {};
 /** Zeitpunkt (ms) des letzten Set-Imports; die Auftragsanzeige wartet danach kurz. */
 export let _lastImportAt = 0;

@@ -22,7 +22,7 @@ export function stelleZielBereit(teil) { Object.assign(_ziele, teil); }
  * @param {Parameters<Ziele[K]>} args
  */
 export function springe(name, ...args) {
-  const ziel = /** @type {((...a: any[]) => unknown) | undefined} */ (_ziele[name]);
+  const ziel = /** @type {((...a: Parameters<Ziele[K]>) => unknown) | undefined} */ (_ziele[name]);
   if (!ziel) { console.warn('[ziele] nicht angemeldet:', name); return undefined; }
   return ziel(...args);
 }

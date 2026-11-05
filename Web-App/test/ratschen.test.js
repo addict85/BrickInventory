@@ -338,10 +338,9 @@ test('der Kommentaranteil der Oberfläche sinkt, nie steigt', () => {
 
 test('any in den Typangaben der Oberfläche wird weniger, nie mehr', () => {
   // noImplicitAny verbietet nur das stille any; ein ausgeschriebenes schaltet
-  // die Prüfung für diesen Wert genauso ab. 05.11.2026: 48, meist Zeilen aus
-  // Antworten, die der Vertrag (noch) offen lässt. Gegenprobe: an 01-core.js
-  // `/** @type {any} */ let x;` angehängt → rot mit 49.
-  const SCHRANKE = 48;
+  // die Prüfung für diesen Wert genauso ab. Seit dem Abbau steht keines mehr da.
+  // Gegenprobe: an 01-api.js `/** @type {any} */ let x;` angehängt → rot mit 1.
+  const SCHRANKE = 0;
   let ist = 0;
   for (const f of oberflaeche())
     for (const z of fs.readFileSync(f, 'utf8').split('\n'))

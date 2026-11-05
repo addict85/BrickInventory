@@ -175,6 +175,7 @@ export function lagerortGewaehlt(id) {
  * nur die Auswahl daneben nach. `this` ist das Feld (der Dispatcher ruft mit dem Element als
  * Empfänger).
  * Ausführlich: docs/begruendungen/public/js/02-detailfelder.js.md#lagerortgetippt
+ * @this {HTMLInputElement}
  */
 export function lagerortGetippt() {
   const feld = this;

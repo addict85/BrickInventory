@@ -421,11 +421,14 @@ document.addEventListener('keydown', (e) => {
   zeigeFadenkreuz(svg, ziel, true);
 });
 
+/** Antwort von /v1/…/price-history, soweit die Diagramme sie lesen.
+ * @typedef {Partial<Pick<import('../../frontend-typen/vertrag').PriceHistoryResponse, 'chart' | 'history_new' | 'history_used' | 'by_condition'>> | null | undefined} Preisdaten */
+
 /**
  * Die Reihen des Preisverlaufs je Zustand, aus den Diagrammdaten des Servers
  * (src/finanzen/chartData.ts). Vor firstRealIndex stehen aufgefüllte Nullen;
  * der Kaufpreis am Kauftag ist kein Marktpreis und steht als Punkt da.
- * @param {any} data @returns {{ key: string, name: string, color: string, pts: { x: string, y: number }[], kauf: number, kaufTag: string | null }[]}
+ * @param {Preisdaten} data @returns {{ key: string, name: string, color: string, pts: { x: string, y: number }[], kauf: number, kaufTag: string | null }[]}
  */
 function preisReihen(data) {
   /** @type {Record<string, string>} */
@@ -434,17 +437,17 @@ function preisReihen(data) {
   /** @type {Record<string, string>} */
   const COLORS = { N: 'var(--chart-new)', U: 'var(--chart-used)' };
   const kaufTage = (/** @type {string} */ k) => new Set(((k === 'U' ? data?.history_used : data?.history_new) || [])
-    .filter((/** @type {any} */ p) => p?.is_purchase_price).map((/** @type {any} */ p) => String(p.recorded_at)));
+    .filter(p => p?.is_purchase_price).map(p => String(p.recorded_at)));
   return (data?.chart?.values || [])
-    .map((/** @type {any} */ sd) => { const tage = kaufTage(sd.name); return {
+    .map(sd => { const tage = kaufTage(sd.name); return {
       key: sd.name,
       name: NAMES[sd.name] || sd.name,
       color: COLORS[sd.name] || 'var(--mut)',
-      pts: (sd.values || []).slice(sd.firstRealIndex ?? 0).filter((/** @type {any} */ pt) => pt.y > 0 && !tage.has(String(pt.x))),
-      kauf: Number(data?.by_condition?.[sd.name]?.purchase_price) || 0,
+      pts: (sd.values || []).slice(sd.firstRealIndex ?? 0).filter(pt => pt.y > 0 && !tage.has(String(pt.x))),
+      kauf: Number((sd.name === 'N' || sd.name === 'U' ? data?.by_condition?.[sd.name]?.purchase_price : 0)) || 0,
       kaufTag: [...tage][0] || null,
     }; })
-    .filter((/** @type {any} */ sd) => sd.pts.length > 0);
+    .filter(sd => sd.pts.length > 0);
 }
 
 /**
@@ -472,7 +475,7 @@ function preisLinie(sd, gid, xOf, yOf, unten, f) {
  * Preisverlauf mit zwei Linien (neu und gebraucht) auf gemeinsamer Skala. Die
  * x-Position kommt vom Datum, nicht vom Index: Gebrauchtpreise setzen oft
  * später ein, und gestreckte Reihen zeigten einen Vergleich, den es nicht gibt.
- * @param {{ chart?: any, history_new?: any[], history_used?: any[], by_condition?: Record<string, any> }} data
+ * @param {Preisdaten} data
  *   Antwort von /v1/sets/:nummer/price-history
  * @param {string} [uid]  Kürzel für die Verlaufs-IDs im SVG
  * @param {number} [breite]

@@ -114,7 +114,7 @@ export async function saveJobSchedule(name, payload) {
 // Bausteine der Dienstetabelle im Monitor.
 // Die Uhrzeit als Textfeld mit 24-h-Form: <input type="time"> zeigt die
 // Form des Browsers („03:00 AM“), unabhängig von der Sprache der Seite.
-/** @param {any} schedules @param {string} k */
+/** @param {Record<string, import('../../frontend-typen/vertrag').JobSchedule> | null | undefined} schedules @param {string} k */
 const schedInput = (schedules, k) => {
   const sc = schedules?.[k];
   if (!sc) return `<span class="mon-leise">${t('monitor.sched.keiner')}</span>`;
