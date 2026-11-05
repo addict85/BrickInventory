@@ -2,7 +2,7 @@ package ch.brickinventoryapp.ui.viewmodel
 
 import android.content.Context
 import android.net.Uri
-import ch.brickinventoryapp.data.PreferencesManager
+import ch.brickinventoryapp.data.Anmeldestand
 import ch.brickinventoryapp.data.api.fehlerTextZuCode
 import ch.brickinventoryapp.data.repository.Result
 import ch.brickinventoryapp.ui.fehlerTextBrauchtCode
@@ -19,7 +19,7 @@ import javax.inject.Inject
 /** In der Sprache der App, nicht des Systems — siehe LanguageManager.localizedContext(). */
 class AppTexte @Inject constructor(
     @param:ApplicationContext private val ctx: Context,
-    private val prefs: PreferencesManager,
+    private val prefs: Anmeldestand,
 ) : Texte {
     override fun text(id: Int, vararg args: Any?): String {
         val c = LanguageManager.localizedContext(ctx)

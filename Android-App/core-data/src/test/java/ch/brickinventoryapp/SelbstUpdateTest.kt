@@ -19,12 +19,9 @@ import org.junit.Test
  * wie das schiefgehen kann; faellt eine weg, faellt sie lautlos weg.
  *
  * Zwei der Pruefungen fuehren echten Code aus (istNeuer, istErlaubteApkAdresse
- * sind reine Funktionen). Die uebrigen lesen Quelltext — die Alternative waere
- * ein Geraet, und das hat dieser Lauf nicht.
- *
- * Gegenprobe (04.11.2026, sec12 H2): im UpdateViewModel wieder
- * `neuereFassung = if (istNeuer(…)) beschreibung else null` → rot „angeboten wird nur
- * ueber anzubietendeFassung“.
+ * sind reine Funktionen). Die uebrigen lesen Quelltext: Verdrahtung, Netzkonfig
+ * und Obergrenzen. Signatur, Prüfsumme, Fassung, Angebot und stille Prüfung des
+ * UpdateViewModels prüft UpdateViewModelTest ausgeführt.
  */
 class SelbstUpdateTest {
 
@@ -114,31 +111,6 @@ class SelbstUpdateTest {
     private fun quelle(rel: String) = Quellen.ohneKommentare(Quellen.lies(rel))
 
     @Test
-    fun `die Signatur wird geprueft, bevor der Nutzer gefragt wird`() {
-        val feature = quelle("ui/viewmodel/UpdateViewModel.kt")
-        assert(feature.contains("signaturPasst(ctx, ziel)")) {
-            "Das geladene APK wird nicht gegen die Signatur der installierten App geprueft. " +
-                "Android lehnt es zwar ohnehin ab — aber dann steht der Nutzer vor einer " +
-                "Fehlermeldung, NACHDEM er zugestimmt hat."
-        }
-        assert(feature.contains("ziel.delete()")) {
-            "Ein APK mit falscher Signatur bleibt liegen, statt geloescht zu werden"
-        }
-        // Auch der zweite Weg (Erlaubnis nachtraeglich erteilt) prueft erneut:
-        // Zwischen Download und zweitem Anlauf liegt ein Ausflug in die
-        // Systemeinstellungen, und die Datei liegt so lange auf der Platte.
-        val starte = feature.substringAfter("fun starteInstallation()")
-        assert(starte.contains("signaturPasst(ctx, datei)")) {
-            "Der zweite Installationsweg prueft die Signatur nicht"
-        }
-        // Und die Fassung im APK gegen version.json (fassungPasst, UpdateFassungTest).
-        assert(feature.substringBefore("fun starteInstallation()").contains("fassungPasst(") &&
-            starte.contains("fassungPasst(apkFassung(ctx, datei)")) {
-            "Ein Weg installiert, ohne den versionCode im APK zu pruefen"
-        }
-    }
-
-    @Test
     fun `bei Unklarheit wird nicht installiert`() {
         val hilfe = quelle("util/AppUpdate.kt")
         // Jedes `return null` in der Signaturermittlung fuehrt ueber die
@@ -159,26 +131,11 @@ class SelbstUpdateTest {
         assert(nav.contains("pruefeAufUpdate(still = true)")) {
             "Beim Start wird nicht (mehr) still nach einem Update gesehen"
         }
-        val feature = quelle("ui/viewmodel/UpdateViewModel.kt")
-        assert(feature.contains("if (still) null")) {
-            "Die stille Pruefung hinterlaesst eine Fehlermeldung — wer ohne Netz " +
-                "startet, saehe bei jedem Start eine rote Zeile"
-        }
         // Und sie laedt nichts: ladeUpdate() hat genau einen Ausloeser, den Knopf.
         assert(!nav.contains("ladeUpdate()")) {
             "Der Start stoesst das Herunterladen an — Marcos Vorgabe war ausdruecklich " +
                 "„nie von allein laden\""
         }
-    }
-
-    /** Die Regel selbst rechnet UpdateFrischeTest; hier nur, dass das Angebot über sie läuft (sec12 H2). */
-    @Test
-    fun `angeboten wird nur ueber anzubietendeFassung`() {
-        val feature = quelle("ui/viewmodel/UpdateViewModel.kt")
-        assert(feature.contains("neuereFassung = anzubietendeFassung(beschreibung, frische, fassung.code)")) {
-            "Das ViewModel bietet eine neuere Fassung an, ohne die Frische der Beschreibung zu beachten"
-        }
-        assert(!feature.contains("istNeuer(")) { "Ein zweiter Weg entscheidet über das Angebot" }
     }
 
     @Test
@@ -352,7 +309,7 @@ class SelbstUpdateTest {
     @Test
     fun `der Dialog haengt ueber der ganzen App, nicht an einem Bildschirm`() {
         val nav = Quellen.ohneKommentare(Quellen.lies("AppNavigation.kt"))
-        assert(nav.contains("dialogs.UpdateRoute(selbstUpdate)")) {
+        assert(nav.contains("UpdateRoute(selbstUpdate)")) {
             "Der Update-Hinweis wird nirgends gezeigt. In einem einzelnen Bildschirm " +
                 "aufgerufen bekaeme ihn nur, wer ohnehin dort sitzt — genau der Fehler, " +
                 "den der Punkt in den Einstellungen schon einmal hatte."
@@ -405,13 +362,6 @@ class SelbstUpdateTest {
         val dialog = Quellen.ohneKommentare(Quellen.lies("ui/dialogs/UpdateDialog.kt"))
         assert(dialog.contains("if (zustand.dialogAbgelehnt) return")) {
             "Der Dialog fragt trotz „Spaeter\" weiter"
-        }
-        // Nicht auf die Platte: Der Merker gehoert in den Zustand, nicht in die
-        // Einstellungen. Ein dauerhaftes „nein" waere nicht mehr rueckgaengig
-        // zu machen, ohne die App neu einzurichten.
-        val feature = Quellen.ohneKommentare(Quellen.lies("ui/viewmodel/UpdateViewModel.kt"))
-        assert(!feature.contains("prefs.save")) {
-            "Das Wegklicken wird dauerhaft gespeichert — dann fragt die App nie wieder"
         }
     }
 }

@@ -43,7 +43,7 @@ class PreferencesManager @Inject constructor(
     @param:ApplicationScope private val prefsScope: CoroutineScope,
 ) : Anmeldeablage, CacheBesitzer, Entwertungsquelle,
     UpdateStandAblage, GeraeteEinstellungen, Sitzungsablage,
-    Darstellungsablage, Vertrauensablage, Zugangsdaten {
+    Darstellungsablage, Vertrauensablage, Zugangsdaten, Anmeldestand, Sitzungsende {
     companion object {
         /**
          * Welche Designs es gibt — dieselbe Liste wie ALLOWED in js/00-theme-boot.js, die
@@ -185,7 +185,7 @@ class PreferencesManager @Inject constructor(
     private val _serverUrlState = MutableStateFlow<String?>(null)
     val serverUrlState: StateFlow<String?> = _serverUrlState.asStateFlow()
     private val _authTokenState = MutableStateFlow<String?>(null)
-    val authTokenState: StateFlow<String?> = _authTokenState.asStateFlow()
+    override val authTokenState: StateFlow<String?> = _authTokenState.asStateFlow()
     private val _tokenHerkunftState = MutableStateFlow<String?>(null)
     /** Leer = Altbestand ohne Bindung; dann gilt der eingetragene Server. */
     val tokenHerkunftState: StateFlow<String?> = _tokenHerkunftState.asStateFlow()
@@ -572,7 +572,7 @@ class PreferencesManager @Inject constructor(
         return Entwertungsauftrag(server, geheim, pinSchluessel(server)?.let(::pin))
     }
 
-    suspend fun clearSession() = tokenSchranke.schreibe {
+    override suspend fun clearSession(): Unit = tokenSchranke.schreibe<Unit> {
         _authTokenState.value = ""
         _tokenHerkunftState.value = null
         context.dataStore.edit {

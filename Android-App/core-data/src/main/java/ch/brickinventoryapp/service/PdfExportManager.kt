@@ -2,7 +2,7 @@ package ch.brickinventoryapp.service
 
 import ch.brickinventoryapp.util.fangeAusserAbbruch
 import android.content.Context
-import ch.brickinventoryapp.data.PreferencesManager
+import ch.brickinventoryapp.data.Zugangsdaten
 import ch.brickinventoryapp.data.repository.BrickRepository
 import ch.brickinventoryapp.data.repository.Result
 import ch.brickinventoryapp.util.Teilelistentresor
@@ -49,7 +49,7 @@ sealed class PdfExportState {
 @Singleton
 class PdfExportManager @Inject constructor(
     private val repo: BrickRepository,
-    private val prefs: PreferencesManager,
+    private val prefs: Zugangsdaten,
     @param:Named("sse") private val sseClient: OkHttpClient,
     private val json: Json,
     private val teilelistentresor: Teilelistentresor,

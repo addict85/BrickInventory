@@ -30,6 +30,11 @@ import ch.brickinventoryapp.data.PreferencesManager
 import ch.brickinventoryapp.data.Sitzungsablage
 import ch.brickinventoryapp.data.Vertrauensablage
 import ch.brickinventoryapp.data.Zugangsdaten
+import ch.brickinventoryapp.data.Anmeldestand
+import ch.brickinventoryapp.data.Sitzungsende
+import ch.brickinventoryapp.util.AndroidUpdateGeraet
+import ch.brickinventoryapp.util.UpdateGeraet
+import ch.brickinventoryapp.util.UpdateStandAblage
 import ch.brickinventoryapp.data.lokal.WorkManagerEntwertung
 import ch.brickinventoryapp.service.AndroidCsvImportDienst
 import ch.brickinventoryapp.service.CsvImportDienst
@@ -53,6 +58,10 @@ abstract class LokalModule {
     @Binds abstract fun darstellung(p: PreferencesManager): Darstellungsablage
     @Binds abstract fun vertrauensablage(p: PreferencesManager): Vertrauensablage
     @Binds abstract fun zugang(p: PreferencesManager): Zugangsdaten
+    @Binds abstract fun anmeldestand(p: PreferencesManager): Anmeldestand
+    @Binds abstract fun sitzungsende(p: PreferencesManager): Sitzungsende
+    @Binds abstract fun updateStand(p: PreferencesManager): UpdateStandAblage
+    @Binds abstract fun updateGeraet(g: AndroidUpdateGeraet): UpdateGeraet
     @Binds abstract fun csvStrom(c: CsvImportSseClient): CsvImportStrom
     @Binds abstract fun csvDienst(d: AndroidCsvImportDienst): CsvImportDienst
     @Binds abstract fun alarm(p: WorkManagerAlarmPlaner): AlarmPlaner

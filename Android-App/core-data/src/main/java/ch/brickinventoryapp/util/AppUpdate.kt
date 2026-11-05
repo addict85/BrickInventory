@@ -11,6 +11,8 @@ import android.content.pm.PackageManager
 import android.os.Build
 import androidx.core.net.toUri
 import ch.brickinventoryapp.ressourcen.R
+import dagger.hilt.android.qualifiers.ApplicationContext
+import javax.inject.Inject
 import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
@@ -270,3 +272,15 @@ class InstallationsEmpfaenger : BroadcastReceiver() {
 /** Die Datei, in die geladen wird. Immer dieselbe — ein altes APK ist Ballast. */
 fun updateDatei(ctx: Context): File =
     File(File(ctx.filesDir, UPDATE_ORDNER).apply { mkdirs() }, "BrickInventory.apk")
+
+/** Die Gerätefunktionen dieser Datei hinter [UpdateGeraet]. */
+class AndroidUpdateGeraet @Inject constructor(@param:ApplicationContext private val ctx: Context) : UpdateGeraet {
+    override fun beschreibungsSchluessel(): List<ByteArray> = beschreibungsSchluessel(
+        ctx.resources.openRawResource(R.raw.beschreibungs_schluessel).bufferedReader().use { it.readText() })
+    override fun eigeneZertifikate(): List<ByteArray> = eigeneZertifikate(ctx)
+    override fun updateDatei(): File = updateDatei(ctx)
+    override fun signaturPasst(apk: File): Boolean = signaturPasst(ctx, apk)
+    override fun apkFassung(apk: File): Long? = apkFassung(ctx, apk)
+    override fun darfInstallieren(): Boolean = darfInstallieren(ctx)
+    override fun installiere(apk: File) = installiere(ctx, apk)
+}

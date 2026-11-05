@@ -11,7 +11,7 @@ import android.os.IBinder
 import androidx.core.app.NotificationCompat
 import androidx.core.app.ServiceCompat
 import ch.brickinventoryapp.ressourcen.R
-import ch.brickinventoryapp.data.PreferencesManager
+import ch.brickinventoryapp.data.Zugangsdaten
 import ch.brickinventoryapp.data.repository.Result
 import ch.brickinventoryapp.data.repository.BrickRepository
 import dagger.hilt.android.AndroidEntryPoint
@@ -66,7 +66,7 @@ class CsvImportService : Service() {
         }
     }
 
-    @Inject lateinit var prefs: PreferencesManager
+    @Inject lateinit var prefs: Zugangsdaten
     @Inject lateinit var repo:  BrickRepository
     @Inject lateinit var sseClient: CsvImportSseClient
 
