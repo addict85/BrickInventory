@@ -258,7 +258,8 @@ test('Verschieben läuft über die Tagesregel, nicht über UPDATE user_id', () =
   // Zielkonto oder einem festen Schluessel — laeuft in
   // test/sperre-beim-verschieben-db.test.js ueber die echte Adresse; beides
   // zusammen, nicht eines statt des anderen.
-  assert.ok(src.includes('withInventoryLock(fromId, sn'), 'Serialisiert über das Quellkonto');
+  assert.ok(src.includes('verschiebeSet(sn, fromId'), 'Das Verschieben läuft über verschiebeSet');
+  assert.ok(mv.includes('withInventoryLock(fromId, sn'), 'Serialisiert über das Quellkonto');
   // Ganzes Set und einzelne Kaufpreise laufen durch DIESELBE Umsetzung — der
   // Teilfall ist kein Sonderweg, sondern der allgemeine Fall mit Auswahl.
   //
@@ -268,7 +269,7 @@ test('Verschieben läuft über die Tagesregel, nicht über UPDATE user_id', () =
   // Datei; die Regel („beide Wege nutzen denselben Helfer") ist unverändert,
   // nur ihr Ort hat sich geändert.
   const acq = read('routes/api_v1/acquisitions.ts');
-  const calls = (src.match(/moveSetBetweenAccounts\(tx, sn/g) || []).length
+  const calls = (mv.match(/moveSetBetweenAccounts\(tx, sn/g) || []).length
               + (acq.match(/moveSetBetweenAccounts\(tx, sn/g) || []).length;
   assert.ok(calls >= 1,
     'Der Eigentümerwechsel muss über moveSetBetweenAccounts laufen — in routes/sets.ts ' +

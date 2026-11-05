@@ -7550,21 +7550,28 @@
                     ]
                   },
                   "acquisition_ids": {
-                    "maxItems": 10000,
-                    "type": "array",
-                    "items": {
-                      "anyOf": [
-                        {
-                          "type": "integer",
-                          "minimum": -9007199254740991,
-                          "maximum": 9007199254740991
-                        },
-                        {
-                          "type": "string",
-                          "pattern": "^-?\\d{1,12}$"
+                    "anyOf": [
+                      {
+                        "maxItems": 10000,
+                        "type": "array",
+                        "items": {
+                          "anyOf": [
+                            {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            },
+                            {
+                              "type": "string",
+                              "pattern": "^-?\\d{1,12}$"
+                            }
+                          ]
                         }
-                      ]
-                    }
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
                   }
                 },
                 "required": [
@@ -9878,11 +9885,18 @@
                   "amount": {
                     "anyOf": [
                       {
-                        "type": "number"
+                        "anyOf": [
+                          {
+                            "type": "number"
+                          },
+                          {
+                            "type": "string",
+                            "maxLength": 40
+                          }
+                        ]
                       },
                       {
-                        "type": "string",
-                        "maxLength": 40
+                        "type": "null"
                       }
                     ]
                   },
@@ -9890,7 +9904,7 @@
                     "anyOf": [
                       {
                         "type": "string",
-                        "maxLength": 3
+                        "maxLength": 40
                       },
                       {
                         "type": "null"
@@ -9899,8 +9913,7 @@
                   }
                 },
                 "required": [
-                  "number",
-                  "amount"
+                  "number"
                 ],
                 "additionalProperties": {}
               }
@@ -9996,7 +10009,7 @@
                     "anyOf": [
                       {
                         "type": "string",
-                        "maxLength": 3
+                        "maxLength": 40
                       },
                       {
                         "type": "null"

@@ -70,7 +70,7 @@ test('1. die Startseite ist auch ohne Pfad erreichbar', async () => {
   // dasteht, bleibt offen — gefordert ist nur, dass überhaupt eines
   // ALLES fängt.
   const kandidaten = [];
-  for (const m of src.matchAll(/^app\.get\('([^']+)'/gm)) {
+  for (const m of src.matchAll(/^\s*app\.get\('([^']+)'/gm)) {
     if (src.slice(m.index, m.index + 800).includes('renderIndexHtml')) kandidaten.push(m[1]);
   }
   assert.ok(kandidaten.length, 'Keine Route rendert mehr index.html — Suche veraltet?');

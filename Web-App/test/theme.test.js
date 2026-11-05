@@ -173,7 +173,7 @@ test('der Server setzt data-theme selbst — kein Sprung beim ersten Aufruf', ()
   // Seit Express 5 (05.10.) heisst das Muster '/{*splat}' und nicht mehr '*'.
   // Die geschweiften Klammern sind nicht Geschmack: Ohne sie trifft die Regel
   // die nackte Wurzel '/' nicht mehr — gemessen gegen express 5.2.1.
-  const at = server.search(/^app\.get\('\/\{\*splat\}'/m);
+  const at = server.search(/^\s*app\.get\('\/\{\*splat\}'/m);
   assert.ok(at > 0, "SPA-Catch-all nicht gefunden");
   const catchAll = server.slice(at, at + 700);
   // Argument zugelassen: renderIndexHtml() bekommt seit der Aufteilung der

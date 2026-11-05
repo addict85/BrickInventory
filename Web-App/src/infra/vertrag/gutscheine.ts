@@ -68,8 +68,8 @@ export const PdfFreigabe = z.looseObject({
 
 export const routen = {
   'GET /api/v1/vouchers': { antwort: GutscheinListe },
-  'POST /api/v1/vouchers': { eingabe: z.looseObject({ number: ZAHL, pin: ZAHL.nullable().optional(), amount: ZAHL, currency: TEXT(3).nullable().optional() }), antwort: GutscheinAntwort },
-  'PUT /api/v1/vouchers/:id': { eingabe: z.looseObject({ number: ZAHL.optional(), pin: ZAHL.nullable().optional(), amount: ZAHL.optional(), currency: TEXT(3).nullable().optional() }), antwort: GutscheinAntwort },
+  'POST /api/v1/vouchers': { eingabe: z.looseObject({ number: ZAHL, pin: ZAHL.nullable().optional(), amount: ZAHL.nullable().optional(), currency: TEXT(40).nullable().optional() }), antwort: GutscheinAntwort },
+  'PUT /api/v1/vouchers/:id': { eingabe: z.looseObject({ number: ZAHL.optional(), pin: ZAHL.nullable().optional(), amount: ZAHL.optional(), currency: TEXT(40).nullable().optional() }), antwort: GutscheinAntwort },
   'DELETE /api/v1/vouchers/:id': { antwort: GenericResponse, ...bestaetigt() },
   'POST /api/v1/vouchers/pdf': { formular: true, antwort: GutscheinAntwort },
   'POST /api/v1/vouchers/:id/guthaben': { eingabe: OHNE_RUMPF, antwort: GuthabenAntwort },

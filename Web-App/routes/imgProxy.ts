@@ -118,7 +118,7 @@ async function vomCdn(url: string, cacheKey: string, res: Response): Promise<Abr
     // 404 ist eine Auskunft, kein Fehler: als `error` verstopfte es das Protokoll.
     const meldung = `[img-proxy] CDN antwortete ${r.status} (auch ohne Referer): ${url}`;
     if (r.status === 404) console.info(meldung); else console.error(meldung);
-    if (r.status === 404) sendePlatzhalter(res); else res.status(r.status || 502).end();
+    void (r.status === 404 ? sendePlatzhalter(res) : res.status(r.status || 502).end());
     return null;
   }
   return r;
