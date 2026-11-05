@@ -13,7 +13,9 @@ const { vervollstaendige } = require('./vertrag-fuellen');
 
 const ROOT = path.join(__dirname, '..', '..');
 const HTML = fs.readFileSync(path.join(ROOT, 'public', 'index.html'), 'utf8');
-const BUNDLE = fs.readFileSync(path.join(ROOT, 'public', 'js', 'app.bundle.js'), 'utf8');
+// TEST_BUENDEL: das Bündel mit Sourcemap aus test-lauf.js --abdeckung.
+const BUNDLE_PFAD = process.env.TEST_BUENDEL || path.join(ROOT, 'public', 'js', 'app.bundle.js');
+const BUNDLE = fs.readFileSync(BUNDLE_PFAD, 'utf8');
 
 const ANMELDUNG = {
   '/v1/startup-status': { ready: true, progress: 0, total: 0 },
@@ -140,7 +142,8 @@ async function oeffneOberflaeche(antworten = {}, opt = {}) {
   // Die Wörterbücher lädt index.html als eigene <script>-Tags.
   for (const l of ['de', 'en']) w.eval(fs.readFileSync(path.join(ROOT, 'public', 'locales', l + '.js'), 'utf8'));
   if (opt.vorher) opt.vorher(w);
-  w.eval(BUNDLE);
+  // Mit Dateinamen statt w.eval(): So ordnet V8 die Abdeckung dem Bündel zu.
+  new (require('node:vm').Script)(BUNDLE, { filename: BUNDLE_PFAD }).runInContext(dom.getInternalVMContext());
   if (w.document.readyState === 'loading')
     await new Promise(r => w.document.addEventListener('DOMContentLoaded', r));
   if (opt.angemeldet !== false)

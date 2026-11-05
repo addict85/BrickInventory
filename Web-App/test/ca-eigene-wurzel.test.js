@@ -222,6 +222,8 @@ test('das Startskript wählt eigene CA, acme oder ausdrücklich Caddys CA — so
 });
 
 const CADDY = process.env.CADDY_BIN || (spawnSync('caddy', ['version']).status === 0 ? 'caddy' : null);
+// REQUIRE_CADDY=1 (CI): ein fehlender Caddy ist ein Fehler, kein stilles Überspringen.
+if (!CADDY && process.env.REQUIRE_CADDY === '1') throw new Error('REQUIRE_CADDY=1, aber kein Caddy (CADDY_BIN)');
 
 test('Caddy liefert die Wurzel mit aus', { skip: !CADDY && 'kein Caddy (CADDY_BIN)' }, async (t) => {
   const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'caddy-echt-'));

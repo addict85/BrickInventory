@@ -10,6 +10,8 @@
  *   TEST_PARALLEL      gleichzeitige Testdateien (Vorgabe: doppelte Kernzahl, höchstens 8)
  *   TEST_FRIST_MS      feste Frist je Datei; ohne sie 60 s, mit der Last wachsend
  *   TEST_NACHLAUF=aus  eine Fristüberschreitung ist rot statt nachzulaufen
+ *   TEST_PARALLEL_BROWSER  gleichzeitige Browser-Dateien (Vorgabe 1; je Datei eigene DB, Port, Profil)
+ *   --abdeckung        V8-Abdeckung samt Oberfläche (Bündel mit Sourcemap), Bericht in coverage/
  *   --seriell          alles nacheinander auf der Basis-Datenbank, wie früher
  *   weitere Argumente  Testdateien statt test/*.test.js
  */
@@ -21,7 +23,9 @@ const path = require('path');
 const ROOT = path.resolve(__dirname, '..');
 const args = process.argv.slice(2);
 const seriell = args.includes('--seriell');
-const auswahl = args.filter(a => a !== '--seriell');
+const abdeckung = args.includes('--abdeckung');
+const auswahl = args.filter(a => a !== '--seriell' && a !== '--abdeckung');
+const ABDECKUNG = path.join(ROOT, 'coverage');
 
 /** @param {string} url @param {string} name */
 const mitDb = (url, name) => { const u = new URL(url); u.pathname = '/' + name; return u.toString(); };
@@ -114,6 +118,13 @@ function meldeNachlauf() {
   }
 }
 
+/** Bericht aus den V8-Dateien (scripts/abdeckung.js); die Rohdaten sind danach überflüssig. */
+async function berichteAbdeckung() {
+  const bereiche = await require('./abdeckung').bericht(path.join(ABDECKUNG, 'v8'));
+  console.log(`[test-lauf] Abdeckung (Zeilen %): ${JSON.stringify(bereiche)}`);
+  fs.rmSync(path.join(ABDECKUNG, 'v8'), { recursive: true, force: true });
+}
+
 async function main() {
   const start = Date.now();
   execFileSync(process.execPath, [path.join(ROOT, 'scripts', 'build-ts.js'), '--outdir', path.join(ROOT, 'dist')], { stdio: 'ignore' });
@@ -122,25 +133,41 @@ async function main() {
   const vorher = fs.existsSync(buendel) ? fs.readFileSync(buendel, 'utf8') : '';
   require('./build-frontend').baueBuendel(buendel);
   if (fs.readFileSync(buendel, 'utf8') !== vorher) console.log('[test-lauf] app.bundle.js war veraltet und ist neu gebaut — mitcommitten.');
+  /** @type {Record<string, string>} */
+  const messung = {};
+  if (abdeckung) {
+    // Ein eigenes Bündel mit eingebetteter Sourcemap: Das ausgelieferte bleibt ohne.
+    const mitKarte = path.join(ROOT, 'dist', 'abdeckung', 'app.bundle.js');
+    require('./build-frontend').baueBuendel(mitKarte, { quellkarte: true });
+    fs.rmSync(ABDECKUNG, { recursive: true, force: true });
+    fs.mkdirSync(path.join(ABDECKUNG, 'v8'), { recursive: true });
+    Object.assign(messung, { NODE_V8_COVERAGE: path.join(ABDECKUNG, 'v8'), TEST_BUENDEL: mitKarte });
+  }
 
   const dateien = auswahl.length ? auswahl
     : fs.readdirSync(path.join(ROOT, 'test')).filter(f => f.endsWith('.test.js')).sort().map(f => path.join('test', f));
   if (seriell) {
-    const { code } = await lauf(dateien, 1, {}, fristBeiLast(60_000));
+    const { code } = await lauf(dateien, 1, messung, fristBeiLast(60_000));
+    if (abdeckung) await berichteAbdeckung();
     console.log(`[test-lauf] seriell, ${Math.round((Date.now() - start) / 1000)} s`);
     process.exit(code);
   }
-  // Einzeln laufen Browser-Tests und Dateien mit der Marke `@einzeln`: Sie
-  // teilen etwas ausserhalb ihrer Datenbank, etwa eine Datei unter data/.
+  // Browser-Dateien haben je eigene Datenbank, Port und Chrome-Profil; sie laufen
+  // getrennt, weil mehrere Chrome je Kern die Fristen reissen (TEST_PARALLEL_BROWSER).
+  // Dateien mit `@einzeln` teilen etwas ausserhalb ihrer Datenbank (data/) und laufen allein.
+  const quelle = (/** @type {string} */ f) => fs.readFileSync(path.resolve(ROOT, f), 'utf8');
   const istBrowser = (/** @type {string} */ f) =>
-    /CHROME_BIN|helpers\/app-browser|@einzeln\b/.test(fs.readFileSync(path.resolve(ROOT, f), 'utf8'));
-  const browser = dateien.filter(istBrowser), uebrige = dateien.filter(f => !istBrowser(f));
+    /-browser\.test\.js$/.test(f) || /CHROME_BIN|helpers\/app-browser|helpers\/oberflaeche-pruefung/.test(quelle(f));
+  const browser = dateien.filter(istBrowser);
+  const einzeln = dateien.filter(f => !istBrowser(f) && /@einzeln\b/.test(quelle(f)));
+  const uebrige = dateien.filter(f => !browser.includes(f) && !einzeln.includes(f));
   // Doppelt so viele wie Kerne: Viele Dateien warten auf die Datenbank oder Zeitgeber.
   const n = Math.max(1, Number(process.env.TEST_PARALLEL) || Math.min(2 * os.availableParallelism(), 8));
+  const nb = Math.max(1, Number(process.env.TEST_PARALLEL_BROWSER) || 1);
 
   const basis = process.env.TEST_DATABASE_URL;
   /** @type {Record<string, string>} */
-  let env = {};
+  let env = { ...messung };
   /** @type {import('pg').Client | null} */
   let admin = null;
   let vorlage = '';
@@ -155,21 +182,24 @@ async function main() {
     execFileSync(process.execPath, ['-e',
       "const db = require('./dist/db/database.js'); db.initSchemaOnce().then(() => db.pool.end()).catch(e => { console.error(e); process.exit(1); })"],
       { cwd: ROOT, stdio: ['ignore', 'ignore', 'inherit'], env: { ...process.env, DATABASE_URL: mitDb(basis, vorlage) } });
-    env = { TEST_DB_VORLAGE: vorlage, TEST_DB_BASIS: basis };
+    env = { ...env, TEST_DB_VORLAGE: vorlage, TEST_DB_BASIS: basis };
   }
   let code = 0;
   try {
     const frist = Number(process.env.TEST_FRIST_MS) || fristBeiLast(60_000);
     if (frist > 60_000) console.log(`[test-lauf] Last ${(os.loadavg()[0] ?? 0).toFixed(1)}: Frist je Datei ${frist / 1000} s`);
     code = await mitNachlauf(await lauf(uebrige, n, env, frist), env, frist);
+    code = (await mitNachlauf(await lauf(einzeln, 1, env, frist), env, frist)) || code;
     // Browser-Tests erlauben sich selbst 300 s; die Frist des Runners gilt je
     // Datei und darf sie nicht vorher abschneiden.
-    code = (await mitNachlauf(await lauf(browser, 1, env, 300_000), env, 300_000)) || code;
+    code = (await mitNachlauf(await lauf(browser, nb, env, 300_000), env, 300_000)) || code;
   } finally {
     if (admin) { await raeumeAuf(admin, vorlage, true).catch(() => {}); await admin.end(); }
   }
   meldeNachlauf();
-  console.log(`[test-lauf] ${uebrige.length} Dateien zu ${n} parallel, ${browser.length} Dateien einzeln (Browser, @einzeln), `
+  if (abdeckung) await berichteAbdeckung();
+  console.log(`[test-lauf] ${uebrige.length} Dateien zu ${n} parallel, ${einzeln.length} @einzeln, `
+    + `${browser.length} Browser zu ${nb}, `
     + `${Math.round((Date.now() - start) / 1000)} s`);
   process.exit(code);
 }

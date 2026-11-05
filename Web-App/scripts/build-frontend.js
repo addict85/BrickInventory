@@ -104,7 +104,12 @@ function erlaubteStile() {
 }
 
 /** Bündelt nach `outAbs` (Auslieferung, test-lauf.js). */
-function baueBuendel(/** @type {string} */ outAbs) {
+/**
+ * @param {string} outAbs
+ * @param {{ quellkarte?: boolean }} [opt]  quellkarte: Sourcemap eingebettet, nur für die
+ *   Abdeckungsmessung (test-lauf.js --abdeckung); das ausgelieferte Bündel bleibt ohne.
+ */
+function baueBuendel(outAbs, opt = {}) {
   // Lokales esbuild statt npx — siehe die Begründung in scripts/build-ts.js.
   const local = path.join(ROOT, 'node_modules', '.bin',
     process.platform === 'win32' ? 'esbuild.cmd' : 'esbuild');
@@ -113,9 +118,10 @@ function baueBuendel(/** @type {string} */ outAbs) {
     : ['npx', ['--yes', `esbuild@${ESBUILD_VERSION}`]];
   execFileSync(cmd, [
     ...prefix, path.join(PUBLIC, ENTRY),
-    '--bundle', '--format=iife', '--minify', '--charset=utf8',
+    '--bundle', '--format=iife', ...(opt.quellkarte ? [] : ['--minify']), '--charset=utf8',
     `--define:__ERLAUBTE_STILE__=${JSON.stringify(erlaubteStile())}`,
     `--outfile=${outAbs}`,
+    ...(opt.quellkarte ? ['--sourcemap=inline', '--sources-content=true'] : []),
   ], { stdio: ['ignore', 'ignore', 'inherit'] });
 }
 
