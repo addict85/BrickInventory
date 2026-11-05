@@ -925,7 +925,7 @@ class BildschirmFotoVariantenTest {
     fun finanzenFehler() {
         welt.pfade.codes["/api/v1/finance/valuation"] = 500
         val vm = welt.finanzen().also { it.loadValuation() }
-        zeige("finanzen-fehler", bereit = { vm.financeState.value.let { !it.valuationLoading && it.valuationFehler != null } },
+        zeige("finanzen-fehler", bereit = { vm.financeState.value.let { !it.valuationLoading && !it.historyLoading && it.valuationFehler != null } },
             zustand = { vm.financeState.value }) { FinanceRoute(vm = vm, imageLoader = bilder) }
         anhalten()
         foto("finanzen-fehler")

@@ -66,8 +66,9 @@ def miss(projekt, wurzel, patch, gradle):
         return False, f'{name}: Patch passt nicht mehr auf den Stand — {pruef.stderr.strip()}'
     klasse = k['Test']
     # Reine JVM-Module (core-model) haben `test` statt `testDebugUnitTest`.
-    with open(os.path.join(projekt, k['Modul'], 'build.gradle.kts'), encoding='utf-8') as f:
-        aufgabe = 'test' if 'kotlin.jvm' in f.read() else 'testDebugUnitTest'
+    skript = os.path.join(projekt, k['Modul'], 'build.gradle.kts')
+    jvm = os.path.exists(skript) and 'kotlin.jvm' in open(skript, encoding='utf-8').read()
+    aufgabe = 'test' if jvm else 'testDebugUnitTest'
     bericht = os.path.join(projekt, k['Modul'], 'build', 'test-results', aufgabe, f'TEST-{klasse}.xml')
     if os.path.exists(bericht):
         os.remove(bericht)
