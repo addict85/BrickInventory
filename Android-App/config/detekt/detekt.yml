@@ -8,27 +8,32 @@ config:
   validation: true
 
 complexity:
-  # Schwellen knapp über dem heutigen Höchstwert: Neues darf nicht länger,
-  # verschachtelter oder verzweigter werden als das Schlimmste von heute.
-  # Wer eine der Funktionen aufteilt, senkt die Zahl nach.
+  # Eine Ratsche: Die Schwelle steht knapp über dem heutigen Höchstwert, wer eine
+  # Funktion aufteilt, senkt sie nach. Die Spitzen sind Compose-Bildschirme
+  # (ManualItemDetailScreen 189 Zeilen, PartsScreen Verzweigung 51).
   LongMethod:
-    threshold: 200
+    threshold: 190
   CyclomaticComplexMethod:
-    threshold: 60
+    threshold: 52
     ignoreSimpleWhenEntries: true
   LongParameterList:
     # Composables bekommen Zustand und Rückrufe herein, statt ein ViewModel zu
     # kennen; Routen reichen sie einzeln weiter, das ergibt lange Listen.
     ignoreAnnotated: ['Composable']
-    functionThreshold: 12
-    constructorThreshold: 26
+    functionThreshold: 10
+    # Abfrageparameter einer Retrofit-Schnittstelle sind die Adresse, keine Liste von Belangen.
+    ignoreAnnotatedParameter: ['Query']
+    # Testhilfen mit Vorgaben für jede Variante (Design, Gerät, Schrift).
+    excludes: ['**/test/**']
+    # Hilt-Konstruktoren; AppViewModel hat 15.
+    constructorThreshold: 16
   NestedBlockDepth:
-    threshold: 9
+    threshold: 6
   TooManyFunctions:
     # Dateien sind nach Bereichen geschnitten, nicht nach Anzahl Funktionen.
     active: false
   ComplexCondition:
-    threshold: 9
+    threshold: 6
   LargeClass:
     excludes: ['**/test/**']
 
