@@ -308,35 +308,17 @@ dependencies {
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.navigation.compose)
 
-    // Network
-    implementation(libs.retrofit)
-    implementation(libs.okhttp.logging)
-    implementation(libs.okhttp.sse)
+    // Netz, DataStore, Kamera und ML Kit bringen core-data und die Features mit;
+    // hier steht nur, was app/src/main selbst importiert.
     implementation(libs.kotlinx.serialization.json)
-    implementation(libs.retrofit.kotlinx.serialization)
-
-    // Storage & async
-    implementation(libs.androidx.datastore)
     // WorkManager: der stuendliche Abruf der ausgeloesten Preisalarme.
     // Keine native Bibliothek — die 16-KB-Ausrichtung bleibt unberuehrt.
     implementation(libs.androidx.work)
     // Per-app language switching (AppCompatDelegate.setApplicationLocales)
     implementation(libs.androidx.appcompat)
     implementation(libs.kotlinx.coroutines.android)
-    // Installiert die Baseline-Profile der Libraries (v.a. Compose) beim
-    // ersten Start — AOT-kompiliert die Hot-Paths und beschleunigt den
-    // Kaltstart typ. um 20-30%, ohne dass ein eigenes Profil nötig ist.
-    // profileinstaller ENTFERNT (Nachtrag 118): Die Bibliothek installiert ein
-    // Baseline-Profil in die ART-Laufzeit — im Baum gab es aber keins
-    // (kein baseline-prof.txt, kein :macrobenchmark-Modul). Sie kostete damit
-    // APK-Grösse und eine Initialisierung beim Start, ohne etwas zu tun.
-    //
-    // ZURÜCKHOLEN lohnt sich, sobald ein Profil da ist — bei einer
-    // Compose-App mit fünfzehn Bildschirmen bringt es beim Kaltstart
-    // spürbar etwas. Der Weg dahin: ein Modul :macrobenchmark mit
-    // BaselineProfileRule, ein Lauf auf einem echten Gerät, das Ergebnis nach
-    // app/src/main/baseline-prof.txt, dann diese Zeile wieder aktivieren:
-    //   implementation(libs.androidx.profileinstaller)
+    // Kein profileinstaller: Ohne eigenes Baseline-Profil (app/src/main/baseline-prof.txt)
+    // kostet er nur Grösse und eine Initialisierung beim Start.
 
     // graphics-path kommt sonst transitiv über Compose (ui-graphics) in einer
     // 1.0.x-Fassung herein, deren libandroidx.graphics.path.so 4-KB-ausgerichtet
@@ -354,14 +336,6 @@ dependencies {
     // Artefakt NICHT aus dem Netz. Das Fehlen ergaebe keine Fehlermeldung,
     // sondern leere Bildflaechen.
     implementation(libs.coil.network.okhttp)
-
-    // Barcode scanner
-    implementation(libs.camerax.core)
-    implementation(libs.camerax.camera2)
-    implementation(libs.camerax.lifecycle)
-    implementation(libs.camerax.view)
-    implementation(libs.mlkit.barcode)
-    implementation(libs.mlkit.textrec)
 
     debugImplementation(libs.androidx.ui.tooling)
 
