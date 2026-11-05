@@ -93,7 +93,7 @@ class CsvAbbruchTest {
         // dauerhaft da (btn-cancel-import).
         val s = code(read("ui/screens/CsvImportBanner.kt"))
         val knopf = s.indexOf("R.string.csv_cancel")
-        val aufgeklappt = s.indexOf("if (expanded) {")
+        val aufgeklappt = s.indexOf("if (expanded) CsvImportZahlen(")
         assert(knopf > 0) { "Der Abbrechen-Knopf fehlt" }
         assert(aufgeklappt > 0) { "Der aufklappbare Teil fehlt — Test veraltet?" }
         assert(knopf < aufgeklappt) {

@@ -263,8 +263,12 @@ class GutscheineContractTest {
      */
     @Test
     fun `die Gutscheine stehen ganz oben auf der Seite Mehr`() {
-        val rumpf = code(lies("MehrBildschirm.kt")).substringAfter("fun MehrBildschirm(")
-        val erste = Regex("""MehrEintrag\(R\.string\.(\w+)""").find(rumpf)?.groupValues?.get(1)
+        // Die Seite zeichnet die Gruppen ab 0; der erste Eintrag ist der erste der Gruppe 0.
+        val quelle = code(lies("MehrBildschirm.kt"))
+        val seite = quelle.substringAfter("fun MehrBildschirm(").substringBefore("fun MehrGruppeInhalt(")
+        assert(Regex("""for \(i in 0 until""").containsMatchIn(seite)) { "Die Seite Mehr beginnt nicht mit Gruppe 0" }
+        val gruppeNull = quelle.substringAfter("fun MehrGruppeInhalt(").substringAfter("0 ->")
+        val erste = Regex("""MehrEintrag\(R\.string\.(\w+)""").find(gruppeNull)?.groupValues?.get(1)
         assert(erste == "vouchers_title") {
             "Der erste Eintrag der Seite Mehr fuehrt zu $erste statt zu den " +
                 "GUTSCHEINEN — dann muss Marco fuer seine Karten wieder suchen."
