@@ -125,7 +125,7 @@ test('das Etikett verschwindet nach dem Ziehen wieder', () => {
 });
 
 test('das Etikett wird beim Verlassen des Katalogs abgemeldet', () => {
-  const gal = fs.readFileSync(path.join(ROOT, 'public', 'js', '02-gallery.js'), 'utf8');
+  const gal = fs.readFileSync(path.join(ROOT, 'public', 'js', '25-navigation.js'), 'utf8');
   assert.match(gal, /if \(tab !== 'catalog'\) setScrollLabel\(null\)/,
     'Beim Reiterwechsel wird die Etikett-Funktion nicht abgemeldet');
 });

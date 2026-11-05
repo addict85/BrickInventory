@@ -1,18 +1,94 @@
-// ═══ LOG-FENSTER ══════════════════════════════════════════════════════════
-//
-// Läuft im per window.open geöffneten Log-Fenster.
-//
-// Warum als eigene Datei und nicht mehr inline: Ein mit document.write
-// gefülltes Fenster erbt die CSP des Öffners. Seit script-src ohne
-// 'unsafe-inline' wurde das frühere Inline-<script> dort blockiert — die Logs
-// blieben leer, und Level-Umschalter, Neu laden und Auto reagierten auf nichts.
-// Nur die Dauer liess sich noch ändern, weil ein <select> seinen Wert ohne
-// JavaScript anzeigt.
-//
-// Als externe Datei ist das Skript von 'self' gedeckt. Daten kommen über
-// data-Attribute am <body>; angemeldet ist das Fenster über die Sitzung.
+// Protokollfenster (01-monitor.js öffnet es per window.open). Externe Datei,
+// weil das Fenster die CSP des Öffners erbt und die Inline-Skripte sperrt.
+// Übersetzungen kommen als data-Attribute am <body>, die Anmeldung im
+// Sitzungscookie. Eigene Funktion: Nichts davon soll global werden.
+(function () {
+  'use strict';
+  const body = document.body;
+  const BASE = body.dataset.base || '';
+  /** @type {Record<string, string>} */
+  const L = (() => { try { return JSON.parse(body.dataset.i18n || '{}'); } catch (_) { return {}; } })();
 
-var _logs=[],_autoTimer=null,_levels=new Set(["warn","error"]);var BASE=document.body.dataset.base||"";
-// Übersetzungen kommen als JSON vom Öffner — im eigenen Fenster gibt es kein t().
-var L=(function(){try{return JSON.parse(document.body.dataset.i18n||"{}");}catch(_){return {};}})();
-function tx(k){return L[k]||k;}function toggleLevel(l){var btn=document.getElementById("btn-"+l);if(_levels.has(l)){_levels.delete(l);btn.classList.remove("active");}else{_levels.add(l);btn.classList.add("active");}renderLogs();}async function loadLogs(){var mins=document.getElementById("period").value;document.getElementById("status").textContent=tx("common.loading");try{var r=await fetch(BASE+"/api/v1/admin/logs?minutes="+mins,{credentials:"same-origin"});var d=await r.json();if(d.success){_logs=d.logs;renderLogs();}else{document.getElementById("status").textContent=tx("toast.error")+": "+d.error;}}catch(e){document.getElementById("status").textContent=tx("common.network_error");}}function esc(s){return s.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");}function highlight(t,q){if(!q)return esc(t);var parts=esc(t).split(new RegExp("("+q.replace(/[.*+?^${}()|[\]\\]/g,"\\$&")+")", "gi"));return parts.map(function(p,i){return i%2===1?"<mark>"+p+"</mark>":p;}).join("");}function renderLogs(){var search=document.getElementById("search").value.toLowerCase().trim();var wrap=document.getElementById("log-wrap");var filtered=_logs.filter(function(l){if(!_levels.has(l.level))return false;if(search&&!l.message.toLowerCase().includes(search))return false;return true;});document.getElementById("status").textContent=filtered.length+" / "+_logs.length+" "+tx("log.entries");if(!filtered.length){wrap.innerHTML="<div class=\"leer\">"+tx("log.none_found")+"</div>";return;}wrap.innerHTML=filtered.map(function(l){var dt=new Date(l.logged_at);var ts=dt.toLocaleTimeString("de-CH",{hour:"2-digit",minute:"2-digit",second:"2-digit"});var msg=highlight(l.message,search);return "<div class=\"ll "+l.level+"\">"+"<span class=\"ts\">"+ts+"</span>"+"<span class=\"lv "+l.level+"\">"+l.level+"</span>"+"<span class=\"msg\">"+msg+"</span></div>";}).join("");wrap.scrollTop=wrap.scrollHeight;}function toggleAuto(){var btn=document.getElementById("btn-auto");if(_autoTimer){clearInterval(_autoTimer);_autoTimer=null;btn.textContent=tx("log.auto");btn.classList.remove("active");}else{_autoTimer=setInterval(loadLogs,5000);btn.textContent=tx("log.stop");btn.classList.add("active");loadLogs();}}document.querySelectorAll("[data-click]").forEach(function(el){var fn=window[el.getAttribute("data-click")];if(typeof fn!=="function")return;var a=el.getAttribute("data-arg");el.addEventListener("click",function(ev){a!==null?fn.call(el,a,ev):fn.call(el,ev);});});document.querySelectorAll("[data-change]").forEach(function(el){var fn=window[el.getAttribute("data-change")];if(typeof fn==="function")el.addEventListener("change",function(ev){fn.call(el,ev);});});document.querySelectorAll("[data-input]").forEach(function(el){var fn=window[el.getAttribute("data-input")];if(typeof fn==="function")el.addEventListener("input",function(ev){fn.call(el,ev);});});loadLogs();
+  /** @type {Array<{ level: string, message: string, logged_at: string }>} */
+  let _logs = [];
+  /** @type {ReturnType<typeof setInterval> | null} */
+  let _autoTimer = null;
+  const _levels = new Set(['warn', 'error']);
+
+  /** @param {string} id */
+  const el = (id) => /** @type {HTMLElement} */ (document.getElementById(id));
+  /** @param {string} k */
+  const tx = (k) => L[k] || k;
+  /** @param {string} s */
+  const esc = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+
+  /** @param {string} text @param {string} q */
+  function highlight(text, q) {
+    if (!q) return esc(text);
+    const teile = esc(text).split(new RegExp('(' + q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + ')', 'gi'));
+    return teile.map((p, i) => (i % 2 === 1 ? '<mark>' + p + '</mark>' : p)).join('');
+  }
+
+  /** @param {string} stufe */
+  function toggleLevel(stufe) {
+    const btn = el('btn-' + stufe);
+    if (_levels.has(stufe)) { _levels.delete(stufe); btn.classList.remove('active'); }
+    else { _levels.add(stufe); btn.classList.add('active'); }
+    renderLogs();
+  }
+
+  async function loadLogs() {
+    const minuten = /** @type {HTMLSelectElement} */ (el('period')).value;
+    el('status').textContent = tx('common.loading');
+    try {
+      const r = await fetch(BASE + '/api/v1/admin/logs?minutes=' + minuten, { credentials: 'same-origin' });
+      const d = await r.json();
+      if (d.success) { _logs = d.logs; renderLogs(); }
+      else el('status').textContent = tx('toast.error') + ': ' + d.error;
+    } catch (_) {
+      el('status').textContent = tx('common.network_error');
+    }
+  }
+
+  function renderLogs() {
+    const suche = /** @type {HTMLInputElement} */ (el('search')).value.toLowerCase().trim();
+    const wrap = el('log-wrap');
+    const treffer = _logs.filter(l => _levels.has(l.level) && (!suche || l.message.toLowerCase().includes(suche)));
+    el('status').textContent = treffer.length + ' / ' + _logs.length + ' ' + tx('log.entries');
+    if (!treffer.length) { wrap.innerHTML = '<div class="leer">' + tx('log.none_found') + '</div>'; return; }
+    wrap.innerHTML = treffer.map(l => {
+      const zeit = new Date(l.logged_at).toLocaleTimeString('de-CH', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+      const stufe = esc(l.level);
+      return `<div class="ll ${stufe}"><span class="ts">${zeit}</span>` +
+        `<span class="lv ${stufe}">${stufe}</span><span class="msg">${highlight(l.message, suche)}</span></div>`;
+    }).join('');
+    wrap.scrollTop = wrap.scrollHeight;
+  }
+
+  function toggleAuto() {
+    const btn = el('btn-auto');
+    if (_autoTimer) {
+      clearInterval(_autoTimer); _autoTimer = null;
+      btn.textContent = tx('log.auto'); btn.classList.remove('active');
+    } else {
+      _autoTimer = setInterval(loadLogs, 5000);
+      btn.textContent = tx('log.stop'); btn.classList.add('active');
+      loadLogs();
+    }
+  }
+
+  // Wie 00-registry.js in der Anwendung: nur diese Namen sind aus dem Markup
+  // erreichbar, nicht jede Funktion auf window.
+  /** @type {Record<string, (arg?: string) => unknown>} */
+  const HANDLER = { loadLogs, renderLogs, toggleAuto, toggleLevel };
+  for (const [attr, ereignis] of [['data-click', 'click'], ['data-change', 'change'], ['data-input', 'input']]) {
+    document.querySelectorAll('[' + attr + ']').forEach(knoten => {
+      const fn = HANDLER[knoten.getAttribute(attr) || ''];
+      if (!fn) return;
+      const arg = knoten.getAttribute('data-arg');
+      knoten.addEventListener(ereignis, () => { fn(arg ?? undefined); });
+    });
+  }
+
+  loadLogs();
+})();

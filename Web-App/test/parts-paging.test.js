@@ -172,7 +172,10 @@ test('Teilebilder werden als Vorschau angefordert', () => {
   // Anzeigegrösse und 100 Bildern je Seite.
   const imgs = [...SRC.matchAll(/bildTag\(\{ src: ([^\n]*?), alt:/g)].map(m => m[1]);
   assert.ok(imgs.length >= 2, 'Kachel und Tabellenzeile erwartet');
-  for (const expr of imgs) {
+  for (let expr of imgs) {
+    // Eine Variable (manuelle Teile: `src: imgSrc`) zählt mit ihrer Zuweisung.
+    const zuweisung = /^\w+$/.test(expr) && SRC.match(new RegExp(`const ${expr} = ([^\\n]*)`));
+    if (zuweisung) expr = zuweisung[1];
     assert.match(expr, /imgUrl\(/, `Bild läuft nicht über imgUrl(): ${expr.slice(0, 70)}`);
     assert.match(expr, /,\s*true\)/, `Vorschau nicht angefordert: ${expr.slice(0, 70)}`);
   }

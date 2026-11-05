@@ -350,7 +350,7 @@ test('die Teile-Zusammenfassung trägt auch über mehrere Konten', () => {
 
 test('die Oberfläche zeigt Besitzer und Kontoauswahl nur im Haushalt', () => {
   // Im Einzelkonto stünde an jeder Kachel „gehört mir" — reines Rauschen.
-  const gal = read('public/js/02-gallery.js');
+  const gal = require('./helpers/sources').frontendQuelle();
   assert.match(gal, /export function ownerBadges/);
   assert.match(gal, /if \(!item\?\.owners\?\.length\) return '';/);
   // Eine Auswahl mit einer einzigen Möglichkeit ist keine Auswahl.
@@ -369,7 +369,7 @@ test('die Oberfläche zeigt Besitzer und Kontoauswahl nur im Haushalt', () => {
   }
   assert.match(gal, /\['add-owner', 'ap-owner', 'af-owner'/,
     'Die Kontoauswahl gehört in alle drei Erfassen-Formulare');
-  const fig = read('public/js/06-minifigs.js');
+  const fig = require('./helpers/sources').frontendQuelle();
   assert.match(fig, /owner_user_id: selectedOwner\('ap-owner'\)/);
   assert.match(fig, /owner_user_id: selectedOwner\('af-owner'\)/);
   // Und die Besitzer-Plakette auf den manuellen Kacheln.
@@ -423,7 +423,7 @@ test('der Kontofilter gilt je Ansicht und wird überall mitgeschickt', () => {
 test('der Umschalter lädt nur die betroffene Ansicht neu', () => {
   // Alle vier gleichzeitig neu zu laden würde drei Ansichten anfassen, die
   // niemand ansieht — und dabei Preisabrufe auslösen.
-  const gal = read('public/js/02-gallery.js');
+  const gal = require('./helpers/sources').frontendQuelle();
   assert.match(gal, /export function onScopeChange\(view\)/);
   assert.match(gal, /if \(view === 'finance'\)  loadFinance\(\);/);
   // Die Reiter Teile und Minifiguren haben ZWEI Listen — die aus Sets und die

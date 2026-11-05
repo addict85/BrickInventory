@@ -1,29 +1,16 @@
 import { echt, registerActions } from './00-registry.js';
-import { locale, t, tRaw } from '../i18n.js';
-import { antwortFehler, fmtDatum, ico, G, api, esc, fmtN, toast, betragAusFeld, betragFuerFeld, CURRENCY, _settingsCache } from './01-core.js';
+import { t, tRaw } from '../i18n.js';
+import { antwortFehler, fmtDatum, ico, G, api, apiRoh, fmtN, toast, betragAusFeld, betragFuerFeld } from './01-core.js';
 import { openPdfViewer } from './12-pdfviewer.js';
-import { bestaetigeMitPasswort, mitZweitemFaktor } from './07-admin.js';
+import { CURRENCY, _settingsCache } from './00-zustand.js';
+import { esc } from './00-escapen.js';
+import { bestaetigeMitPasswort, mitZweitemFaktor } from './01-rueckfrage.js';
 
-// ═══ Gutscheine (LEGO-Geschenkkarten) ══════════════════════════════════════
-//
-// ── Marcos Vorgabe ─────────────────────────────────────────────────────────
-//
 // „Im Eigenen Profil sollen Lego-Gutscheine mit Gutscheinnummer und Pins und
 // Betrag hinterlegt werden können. […] Die Erfassung, Änderung und Anzeige
 // soll sowohl in der Android-App als auch in der Webapp möglich sein und
 // möglichst einfach erreichbar sein."
-//
-// Deshalb steht der Abschnitt direkt in den Profil-Einstellungen und nicht in
-// einem eigenen Reiter: „möglichst einfach erreichbar" heisst hier, am selben
-// Ort wie alles andere, was einem selbst gehört.
-//
-// ── Was hier NICHT passiert ────────────────────────────────────────────────
-//
-// Kein Auslesen des PDFs im Browser. Die Datei geht zum Server, der liest sie
-// und schickt die Werte zurück. Das ist Marcos Vorgabe („die gleichen
-// Services des Backends") und zugleich das einzig Sinnvolle: Eine zweite
-// Fassung der Leselogik in JavaScript müsste mit der auf dem Server Schritt
-// halten, und die Android-App bräuchte eine dritte.
+// Ausführlich: docs/begruendungen/public/js/17-gutscheine.js.md#im-eigenen-profil-sollen-lego-gutscheine
 
 /** Die zuletzt geladene Liste — für die Knöpfe, die auf eine Zeile zeigen. */
 let _gutscheine = [];
@@ -31,7 +18,8 @@ let _gutscheine = [];
 /** Die id des Gutscheins, der gerade bearbeitet wird; null = neuer Eintrag. */
 let _bearbeitet = null;
 
-const el = (id) => document.getElementById(id);
+/** @param {string} id */
+const el = (id) => /** @type {Feld} */ (document.getElementById(id));
 
 // Die Handler nehmen die id als ERSTES Argument und kein Ereignis: Der
 // Verteiler in 11-actions.js reicht `data-arg`, `data-arg2` … in dieser
@@ -217,12 +205,7 @@ export function gutscheinAbbrechen() {
 
 /**
  * Speichern — der eine Knopf für beide Wege.
- *
- * Liegt eine Datei im Feld, geht sie mit: Dann liest der Server die Werte und
- * die ausgefüllten Felder gewinnen gegen das Gelesene. Liegt keine da, ist es
- * eine ganz gewöhnliche manuelle Erfassung. Marcos „entweder … oder" ist
- * damit kein Entweder-oder in der Bedienung — man kann ein PDF hochladen UND
- * den Betrag selbst eintragen, wenn das PDF ihn nicht hergibt.
+ * Ausführlich: docs/begruendungen/public/js/17-gutscheine.js.md#speichern-der-eine-knopf-fuer-beide-wege
  */
 /** Fehlercodes des Servers → Feld im Formular (Meldung am Feld statt Toast). */
 const GUTSCHEIN_FELDER = { nummer_ungueltig: 'v-number', gutschein_existiert: 'v-number',
@@ -261,7 +244,7 @@ export async function gutscheinSpeichern() {
     if (currency) form.append('currency', currency);
     let r, d;
     try {
-      r = await fetch('/api/v1/vouchers/pdf', { method: 'POST', body: form });
+      r = await apiRoh('POST', '/v1/vouchers/pdf', { body: form });
       d = await r.json();
     } catch { toast(tRaw('vouchers.save_error'), 'error'); return; }
 
@@ -280,16 +263,11 @@ export async function gutscheinSpeichern() {
     }
     if (!d?.success) { antwortFehler(d, GUTSCHEIN_FELDER, tRaw('vouchers.save_error')); return; }
 
-    // ── Ein PDF, zwei mögliche Antworten ────────────────────────────────────
-    //
     // Marcos Vorgabe: „Wenn ein PDF mit mehreren Seiten selektiert wird,
     // sollen mehrere Gutscheine erfasst werden." Welcher Fall es ist,
     // entscheidet der SERVER — er liest die Datei. Hier wird nur die Antwort
     // gezeigt, und `mehrere` sagt, welche es ist.
-    //
-    // Dieselben Felder wie bei den CSV-Importen (added/updated/errors), also
-    // dieselbe Meldung: Wer drei Gutscheine auf einmal erfasst, soll nicht
-    // „Gutschein gespeichert" lesen und raten, wie viele es wurden.
+    // Ausführlich: docs/begruendungen/public/js/17-gutscheine.js.md#if
     if (d.mehrere) {
       toast(tRaw('import.summary', { added: d.mehrere.added, updated: d.mehrere.updated,
                                      errors: d.mehrere.errors }),
@@ -339,29 +317,13 @@ export async function gutscheinPinUmschalten(id) {
 
 /**
  * Das PDF im Betrachter der App — derselbe wie bei den Bauanleitungen.
- *
- * ── Marcos Vorgabe ─────────────────────────────────────────────────────────
- *
- *   „Die beiden Buttons PDF Download und PDF im neuen Fenster öffnen
- *    entfernen und durch den PDF-Viewer der Anleitungen ersetzen → Analog wie
- *    es in der Android-App umgesetzt ist."
- *
- * Hier standen zwei Knöpfe: `window.open` für die Anzeige und ein zweiter
- * mit `?download=1` für das Herunterladen. Beide sind entfallen, und zwar
- * ersatzlos — der Betrachter trägt seinen Download-Knopf selbst
- * (`pdf-viewer-download` in index.html, er bekommt dieselbe Adresse).
- * Zwei Knöpfe für eine Sache waren eine Zeile Platz und eine Entscheidung
- * zu viel.
- *
- * Damit verhalten sich beide Apps gleich: Die Android-App zeigt Gutschein-
- * PDFs im PdfViewerScreen, demselben, der auch Anleitungen und Teilelisten
- * zeigt. Genau das meint „analog".
+ * Ausführlich: docs/begruendungen/public/js/17-gutscheine.js.md#gutscheinpdfoeffnen
  */
 export async function gutscheinPdfOeffnen(id) {
   const g = _gutscheine.find(x => String(x.id) === String(id));
   const f = await pdfFreigabe(`/v1/vouchers/${id}/pdf-freigabe`);
   if (!f) return;
-  const r = await fetch(`/api/v1/vouchers/${id}/pdf?ticket=${encodeURIComponent(f.ticket)}`, { signal: f.frist });
+  const r = await apiRoh('GET', `/v1/vouchers/${id}/pdf?ticket=${encodeURIComponent(f.ticket)}`, { signal: f.frist });
   if (!r.ok) { toast((await r.json().catch(() => ({}))).error || tRaw('settings.error'), 'error'); return; }
   const daten = await r.arrayBuffer();
   openPdfViewer(URL.createObjectURL(new Blob([daten], { type: 'application/pdf' })), g ? g.number : 'PDF',
@@ -380,22 +342,7 @@ async function pdfFreigabe(pfad) {
 
 /**
  * Gutscheinnummer oder PIN in die Zwischenablage.
- *
- * ── Marcos Vorgabe ─────────────────────────────────────────────────────────
- *
- *   „Kannst du in der Webapp hinter den Gutscheincode und den Pin jeweils
- *    einen Kopieren Button einfügen (mit einem Icon)."
- *
- * Kopiert wird die ROHE Nummer, nicht die mit Leerzeichen gruppierte Anzeige:
- * Die Gruppierung ist eine Lesehilfe fürs Abtippen an der Kasse — ein
- * Bezahlfeld nimmt sie nicht an.
- *
- * `navigator.clipboard` braucht einen sicheren Kontext (HTTPS oder
- * localhost). Auf einem Server, der nur über HTTP läuft, fehlt das Objekt
- * ganz; deshalb der Rückfall über ein unsichtbares Textfeld und
- * `execCommand('copy')`. Das ist veraltet, aber es ist der einzige Weg, der
- * dort noch funktioniert — und ein Kopieren-Knopf, der auf halben Servern
- * stumm nichts tut, wäre schlimmer als sein Fehlen.
+ * Ausführlich: docs/begruendungen/public/js/17-gutscheine.js.md#gutscheinkopieren
  */
 export async function gutscheinKopieren(id, feld) {
   const g = _gutscheine.find(x => String(x.id) === String(id));
@@ -429,31 +376,14 @@ export async function gutscheinKopieren(id, feld) {
 
 /**
  * Alle Gutscheine als EIN PDF herunterladen.
- *
- * ── Warum fetch und kein Link ───────────────────────────────────────────────
- *
- * Die Antwort trägt neben dem PDF eine Kopfzeile `X-Gutschein-Befunde`: je
- * Gutschein, ob der Betrag ersetzt wurde, schon stimmte, unverändert blieb
- * (mit Grund) oder die Seite erzeugt wurde. Ein `<a href>` bekäme die Datei
- * und würde die Auskunft wegwerfen — und genau die ist hier wichtig: Ein
- * Gutschein, dessen Betrag NICHT ersetzt werden konnte, zeigt auf dem Papier
- * den alten Wert. Das muss dastehen, nicht verschwiegen werden.
- *
- * ── Was hier NICHT mehr steht (Marcos Durchsicht vom 15.10.) ───────────────
- *
- * Die Liste der Befunde unter den Knöpfen. Sie zeigte „⚠ …: Der Betrag im PDF
- * stimmt schon" — also eine Warnung davor, dass alles in Ordnung ist. Der
- * Fehler lag nicht in dieser Anzeige, sondern eine Schicht tiefer: „stimmte
- * schon" und „liess sich nicht ersetzen" trugen dieselbe Art. Seit es
- * 'stimmte_schon' gibt (src/gutscheine/gutscheinPdfSchreiben.ts), zählt `offen` nur
- * noch das, was wirklich offen ist — und das sagt die Meldung.
+ * Ausführlich: docs/begruendungen/public/js/17-gutscheine.js.md#gutscheineexportieren
  */
 async function gutscheineExportieren() {
   const f = await pdfFreigabe('/v1/vouchers/export/pdf-freigabe');
   if (!f) return;
   toast(tRaw('vouchers.export_running'), 'info');
   try {
-    const r = await fetch(`/api/v1/vouchers/export/pdf?ticket=${encodeURIComponent(f.ticket)}`, { signal: f.frist });
+    const r = await apiRoh('GET', `/v1/vouchers/export/pdf?ticket=${encodeURIComponent(f.ticket)}`, { signal: f.frist });
     if (!r.ok) {
       const d = await r.json().catch(() => ({}));
       toast(d.error || tRaw('settings.error'), 'error');
@@ -487,11 +417,8 @@ async function gutscheineExportieren() {
       // tRaw und nicht t: Das Ziel ist ein TOAST, also reiner Text. t()
       // maskiert die eingesetzten Werte, und die Maskierung erscheint dort
       // WOERTLICH — aus 9'325 wurde im Katalog sichtbar „9&#39;325".
-      // test/frontend-escaping.test.js faengt genau das, und es hat es
-      // gefangen: Mein erster Entwurf stand hier mit t().
-      // Die Nummern stehen IN der Meldung: Ohne sie wüsste niemand, welche
-      // Karte auf dem Papier den alten Betrag trägt — und eine Liste, die
-      // dauerhaft unter den Knöpfen steht, will Marco nicht.
+      // test/frontend-escaping.test.js faengt genau das, und es hat es …
+      // Ausführlich: docs/begruendungen/public/js/17-gutscheine.js.md#toast
       toast(tRaw('vouchers.export_done', { n: befunde.length }) + ' — '
           + tRaw('vouchers.export_offen', { n: offen.length }) + ': '
           + offen.map(b => b.number).join(', '), 'info');
@@ -501,30 +428,9 @@ async function gutscheineExportieren() {
   }
 }
 
-// ═══ Guthaben bei LEGO abfragen ════════════════════════════════════════════
-//
-// ── Marcos Vorgaben ────────────────────────────────────────────────────────
-//
 // „Kannst du dies bei den Gutscheinen einbauen, damit dies auf Knopfdruck
 //  abgefragt und gespeichert werden kann?"
-//
-// „Bitte auch dafür sorgen dass maximal 1 Request pro 30sek abgesetzt werden
-//  kann. (über alle Benutzer)"
-//
-// ── Warum die OBERFLÄCHE taktet und nicht der Server ───────────────────────
-//
-// Die Grenze selbst steht auf dem Server (src/gutscheine/gutscheinGuthabenSchranke.ts)
-// und gilt dort für alle Benutzer und alle Arbeitsprozesse — hier wird sie
-// nicht nachgebaut, sondern BEFOLGT: Kommt 429 mit `wartenSek`, wartet diese
-// Schleife die Zeit ab und fragt dieselbe Karte erneut.
-//
-// Eine Sammelroute auf dem Server hätte dieselbe Wartezeit innerhalb EINER
-// HTTP-Anfrage absitzen müssen — bei fünf Karten über zwei Minuten mit offener
-// Verbindung. Die Begründung steht ausführlich an der Route.
-//
-// Und deshalb zählt der Fortschritt mit: Wer „alle abfragen" drückt, wartet
-// Minuten, und ein Knopf, der nur ausgegraut ist, sagt ihm nicht, ob noch
-// etwas passiert.
+// Ausführlich: docs/begruendungen/public/js/17-gutscheine.js.md#kannst-du-dies-bei-den-gutscheinen-einba
 
 /** Höchstens so oft dieselbe Karte erneut versuchen, wenn die Schranke bremst. */
 const ABSTAND_VERSUCHE = 4;

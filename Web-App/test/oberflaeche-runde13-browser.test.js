@@ -21,7 +21,8 @@
  *   H  priceStatusBadge ohne neutralen Zweig → rot: „Preis fehlt: grau, wenn er
  *      fast überall fehlt“ (6 rote Dreiecke)
  *   I  die Regeln .knopf-schwebend > span { display: none } entfernt → rot:
- *      „Schwebender Knopf: nur Symbol“
+ *      „Schwebender Knopf: nur Symbol“ (05.11.2026 mit Warten auf den Zustand
+ *      erneut gemessen: rot nach 5 s bei „beim Rollen nur das Symbol“)
  *   K  bezugsLinie ohne den Platz-Test oben → rot: „Unterkonto: Kaufpreis-
  *      Beschriftung im Diagramm“ (abgeschnitten oben)
  *   L  zeigeBestaetigungsziel nicht aufgerufen → rot: „Bestätigungsseite nennt
@@ -159,13 +160,18 @@ test('UI-Prüfung 13: Haushalt, Dialoge, Finanzen', { timeout: 280_000 }, async 
   await t.test('Schwebender Knopf: nur Symbol', async () => {
     const knopf = `(() => { const k = document.querySelector('#tab-gallery .knopf-schwebend');
       return { breit: Math.round(k.getBoundingClientRect().width), text: k.querySelector('span').checkVisibility(), name: k.getAttribute('aria-label') }; })()`;
+    // Unter Last kommen Scroll-Ereignis und Neuberechnung spät: Gewartet wird auf
+    // den Zustand (höchstens 5 s), geprüft danach — eine feste Pause kippte.
+    const sobald = async (bedingung) => {
+      for (let i = 0; i < 50 && !(await b.auswerten(`(() => { const z = ${knopf}; return ${bedingung}; })()`).catch(() => false)); i++) await warte(100);
+    };
     await geh('sammlung');
     await bis(`document.querySelectorAll('#gallery .sc').length >= 4`, 'Kacheln');
-    await b.auswerten(`scrollTo(0, 0); true`); await warte(200);
+    await b.auswerten(`scrollTo(0, 0); true`); await sobald('z.text');
     assert.equal((await b.auswerten(knopf)).text, true, 'oben mit Beschriftung');
-    await b.auswerten(`scrollTo(0, 400); true`); await warte(300);
+    await b.auswerten(`scrollTo(0, 400); true`); await sobald('!z.text && z.breit === 56');
     assert.deepEqual(await b.auswerten(knopf), { breit: 56, text: false, name: 'Set hinzufügen' }, 'beim Rollen nur das Symbol');
-    await b.auswerten(`scrollTo(0, 0); document.documentElement.style.fontSize = '200%'; true`); await warte(300);
+    await b.auswerten(`scrollTo(0, 0); document.documentElement.style.fontSize = '200%'; true`); await sobald('!z.text && z.breit <= 120');
     try {
       const z = await b.auswerten(knopf);
       assert.equal(z.text, false, 'bei 200 % nur das Symbol');

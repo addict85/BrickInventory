@@ -120,8 +120,8 @@ test('renderGallery filtert und sortiert nicht mehr selbst', () => {
 
 test('Suche, Sortierung und Themenfilter lösen einen Neuaufbau aus', () => {
   assert.match(GAL, /_t=setTimeout\(loadGallery,250\)/, 'Suche muss neu laden, nicht neu zeichnen');
-  assert.match(GAL, /G\('gsort'\)\.addEventListener\('change',loadGallery\)/, 'Sortierung ebenso');
-  assert.match(GAL, /themeEl\.addEventListener\('change', loadGallery\)/, 'Themenfilter ebenso');
+  assert.match(GAL, /G\('gsort'\)\.addEventListener\('change',\s*\(\) => loadGallery\(\)\)/, 'Sortierung ebenso');
+  assert.match(GAL, /themeEl\.addEventListener\('change', \(\) => loadGallery\(\)\)/, 'Themenfilter ebenso');
 });
 
 test('Endlos-Scroll nach demselben Muster wie Katalog und Teile', () => {

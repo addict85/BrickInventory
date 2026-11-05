@@ -1,47 +1,15 @@
-import { bindTabs } from './02-gallery.js';
 import { registerActions } from './00-registry.js';
 import { locale, t, tRaw} from '../i18n.js';
-import { fehlerMeldung, bildTag, feldFehler, istSetnummer, platzhalterInhalt, leerZustand, ico, escHex, G, api, checkAuth, esc, escUrl, imgUrl, knopfBesetzt, thumbUrl, toast } from './01-core.js';
-import { initScrollbalken } from './15-scrollbar.js';
+import { fehlerMeldung, bildTag, feldFehler, istSetnummer, platzhalterInhalt, leerZustand, ico, escHex, G, api, apiRoh, imgUrl, knopfBesetzt, thumbUrl, toast, alle } from './01-core.js';
 import { baueWantedXmlStuecke } from './19-bricklink-xml.js';
+import { esc } from './00-escapen.js';
 
-// ═══ App-Initialisierung + temporaere Teileliste ═══
-//
-// ── Warum der Start nicht mehr hier steht ───────────────────────────────────
-// Hier stand `checkAuth();` direkt im Modulrumpf. Mit klassischen Skripten war
-// das unproblematisch: Alle Dateien waren zu diesem Zeitpunkt geladen.
-//
-// Als ES-Modul ist es das nicht. Bei gegenseitigen Importen wertet JavaScript
-// das importierte Modul VOR dem importierenden aus — und weil i18n.js aus
-// 01-core.js importiert, war das Übersetzungsobjekt `I18N` noch nicht
-// initialisiert, wenn checkAuth() darüber applyLang() aufrief. Ergebnis:
-// "Cannot read properties of undefined" beim Laden der Seite, also ein
-// vollständig toter Start.
-//
-// Der Start gehört deshalb NACH die Auswertung aller Module: js/main.js ruft
-// startApp() als letzten Schritt auf. Das ist auch unabhängig vom Modulsystem
-// die sauberere Aufteilung — ein Modul beschreibt, was es kann, und startet
-// nicht beim Geladenwerden die Anwendung.
+// Auffangnetz für unbehandelte Fehler und die temporäre Teileliste. Gestartet
+// wird die Anwendung von 26-sitzung.js (startApp), nicht beim Laden dieses Moduls.
 
 /**
  * Auffangnetz für Fehler, die niemand behandelt.
- *
- * ── Wozu ────────────────────────────────────────────────────────────────────
- * api() liefert inzwischen bei jedem Fehlschlag ein Objekt statt zu werfen
- * (siehe 01-core.js), damit die bestehenden success/error-Pfade greifen. Das
- * deckt den Regelfall ab — aber nicht einen Programmierfehler in einem
- * Rückruf, einen fehlgeschlagenen Aufruf ausserhalb von api() oder ein
- * Promise, das niemand einsammelt. Ohne dieses Netz endet so etwas
- * ausschliesslich in der Browser-Konsole: Der Benutzer klickt, nichts
- * passiert, und niemand erfährt, dass etwas kaputt war.
- *
- * Eine sichtbare Meldung ist hier nicht Selbstzweck: Sie unterscheidet für den
- * Benutzer „hat nicht funktioniert" von „hat nichts getan" — und im
- * Fehlerbericht steht dann eine Beobachtung statt „irgendwie ging es nicht".
- *
- * Bewusst knapp gehalten: eine kurze Meldung, die Einzelheiten bleiben in der
- * Konsole. Und höchstens eine alle fünf Sekunden — ein Fehler in einer
- * Schleife soll den Bildschirm nicht zupflastern.
+ * Ausführlich: docs/begruendungen/public/js/08-init.js.md#letztefehlermeldung
  */
 let _letzteFehlermeldung = 0;
 function meldeUnerwartet(quelle, fehler) {
@@ -57,31 +25,7 @@ function meldeUnerwartet(quelle, fehler) {
 
 /**
  * Stammt der Fehler aus UNSEREM Code?
- *
- * ── Der Befund aus dem Betrieb ──────────────────────────────────────────────
- *
- * Marcos Konsole zeigte (rot, aus app.bundle.js):
- *
- *     [promise] i: Failed to connect to MetaMask
- *     Caused by: Error: MetaMask extension not found
- *       at inpage.js:4:42708
- *
- * Das Auffangnetz unten hoert am FENSTER, und dort landet jede unbehandelte
- * Ablehnung der Seite — auch die einer Browser-Erweiterung, die mit
- * BrickInventory nichts zu tun hat. Wir haben sie als unsere protokolliert
- * und Marco dazu eine Meldung „Unerwarteter Fehler" angezeigt. Er sollte also
- * einen Fehler unserer Anwendung sehen, weil seine MetaMask-Erweiterung ihre
- * eigene Wallet nicht fand.
- *
- * ── Woran man es unterscheidet ──────────────────────────────────────────────
- *
- * Am Aufrufstapel. Unsere Bilder liegen alle unter unserem Ursprung; eine
- * Erweiterung bringt `chrome-extension://…` oder `moz-extension://…` mit.
- * Traegt der Stapel KEINE einzige Adresse von uns, ist es nicht unserer.
- *
- * Im Zweifel unserer: Ohne Stapel (etwa `Promise.reject('kaputt')`) und ohne
- * erkennbare Adresse wird weiter gemeldet. Ein verschwiegener eigener Fehler
- * waere der teurere der beiden Irrtuemer — genau darum gibt es dieses Netz.
+ * Ausführlich: docs/begruendungen/public/js/08-init.js.md#vonuns
  */
 function vonUns(fehler) {
   const stapel = typeof fehler?.stack === 'string' ? fehler.stack : '';
@@ -90,7 +34,7 @@ function vonUns(fehler) {
   return adressen.some(a => a.startsWith(location.origin + '/'));
 }
 
-function bindGlobalErrorHandlers() {
+export function bindGlobalErrorHandlers() {
   window.addEventListener('unhandledrejection', (ev) => {
     if (vonUns(ev.reason)) meldeUnerwartet('promise', ev.reason);
   });
@@ -102,19 +46,10 @@ function bindGlobalErrorHandlers() {
   });
 }
 
-/** Startet die Anwendung. Aufruf ausschliesslich aus js/main.js. */
-export function startApp() {
-  bindGlobalErrorHandlers();
-  bindTabs();
-  plRenderSets();
-  // Eigener Scrollbalken für die ganze Anwendung. Der des
-  // Browsers ist per CSS ausgeblendet; ohne diesen Aufruf gäbe es gar keinen.
-  initScrollbalken();
-  checkAuth();
-}
 // ── TEILELISTE (temporary parts list, resets on page leave) ──────────────────
-export let _plSets = []; // { set_number, name }
-export let _plParts = null; // generated parts list
+let _plSets = []; // { set_number, name }
+/** @type {any[] | null} */
+let _plParts = null; // generated parts list
 let _rbToBlColor = {}; // Rebrickable → BrickLink color ID mapping
 
 function plAddSet() {
@@ -131,6 +66,7 @@ function plAddSet() {
     _plSets.push(eintrag);
     // Name aus dem Katalog; kennt er die Nummer nicht, sagt es der Chip, statt
     // sie still als Set ohne Teile mitzuzählen.
+    // Try to get set name from catalog (works for any set, not just owned ones)
     api('GET', `/v1/sets/info/${normalized}`).then(d => {
       if (!d.success) return;
       if (d.name && d.name !== normalized) eintrag.name = d.name;
@@ -145,7 +81,7 @@ function plAddSet() {
 
 G('pl-setnr')?.addEventListener('keydown', e => e.key === 'Enter' && plAddSet());
 
-function plRenderSets() {
+export function plRenderSets() {
   const c = G('pl-sets'); if (!c) return;
   // Zurücksetzen hat erst etwas zu tun, wenn Sets oder eine fertige Liste da sind.
   G('btn-pl-reset').disabled = !_plSets.length && !_plParts;
@@ -203,26 +139,10 @@ async function plGenerate() {
       if (d.success && d.parts?.length) {
         for (const p of d.parts) {
           const blNum = p.bl_part_number || p.part_number;
-          // ── Zusammengefasst wird nach der REBRICKABLE-Nummer ─────────────
-          //
           // Marcos Frage: „Kann der Abgleich im Hintergrund nicht über die
           // Rebrickable ID erfolgen, die Anzeige aber weiterhin über die
           // BrickLink ID?" — Ja, und genau hier lag der Fehler.
-          //
-          // Hier stand `${blNum}|…`. Zusammengefasst wurde also nach der
-          // BrickLink-Nummer, nachgefragt wird der Bestand aber mit der
-          // REBRICKABLE-Nummer (plRenderTable: data-key). Mehrere
-          // Rebrickable-Teile teilen sich regelmässig EINE BrickLink-Nummer —
-          // Formvarianten sind genau das. Für die fielen zwei Zeilen zu einer
-          // zusammen: Der BEDARF beider addiert, gesucht wurde aber nur nach
-          // der Nummer, die zufällig zuerst kam. Das Teil galt als fehlend,
-          // obwohl es im Bestand lag.
-          //
-          // Angezeigt wird weiterhin die BrickLink-Nummer (der Titel nennt
-          // die Rebrickable-Nummer daneben), und der BrickLink-Export fasst
-          // ohnehin selbst noch einmal zusammen — `blMap` in
-          // plExportBricklink schlüsselt nach `type|partNum|colorId`. Die
-          // feinere Aufteilung hier kostet dort also nichts.
+          // Ausführlich: docs/begruendungen/public/js/08-init.js.md#key
           const key = `${p.part_number}|${p.color_id||0}`;
           if (combined[key]) {
             combined[key].quantity += parseInt(p.total_quantity || p.quantity || 1);
@@ -282,24 +202,10 @@ async function plGenerate() {
 
 /**
  * „Kann ich das bauen?" — die Spalte „Vorhanden" aus dem eigenen Bestand füllen.
- *
- * ── Warum das hier und nicht als eigene Ansicht steht ────────
- *
- * Die Teileliste hatte die Spalte schon, nur als leeres Feld: Man trug von
- * Hand ein, was man besitzt, und die BrickLink-Wunschliste zog es vom Bedarf
- * ab. Es fehlte also nicht die Ansicht, sondern nur die Antwort auf „was davon
- * habe ich schon?". Eine zweite Ansicht daneben hätte dieselbe Tabelle noch
- * einmal gebaut — und zwei Orte geschaffen, an denen sich die Rechnung
- * unterscheiden kann.
- *
- * ── Die Zahl überschreibt, was von Hand dasteht ─────────────────────────────
- *
- * Absicht: Der Knopf heisst „eintragen", nicht „ergänzen". Wer ihn drückt,
- * will den gemessenen Stand, nicht eine Summe aus Schätzung und Messung. Die
- * Eingabefelder bleiben danach von Hand änderbar.
+ * Ausführlich: docs/begruendungen/public/js/08-init.js.md#plfuellebestand
  */
 async function plFuelleBestand() {
-  const felder = [...document.querySelectorAll('.pl-have-input')];
+  const felder = /** @type {HTMLInputElement[]} */ (alle('.pl-have-input'));
   if (!felder.length) return;
   const nurLose = !!G('pl-bestand-lose')?.checked;
 
@@ -359,7 +265,6 @@ function plExportStand() {
 }
 
 function plRenderTable(fehler = 0) {
-  let _imgLogged = false;
   if (!_plParts?.length) {
     // Die Ursache nennen: Fehlende Teilelisten kommen aus dem Rebrickable-Katalog, nicht aus der Eingabe.
     G('pl-result').innerHTML = leerZustand({ ico: 'warnung', titelKey: fehler ? 'pl.leer_fehler_titel' : 'pl.leer_titel',
@@ -391,16 +296,11 @@ function plRenderTable(fehler = 0) {
         ? bildTag({ src: imgUrl(thumbUrl(imgSrc)||imgSrc, true), alt: '', klasse: 'bild-44', ph: 'teil' })
         : `<span class="bild-ph bild-44" aria-hidden="true">${platzhalterInhalt('teil')}</span>`;
       const pkey = `${esc(p.part_number)}__${p.color_id||0}`;
-      // ── Kein Rückfall auf die REBRICKABLE-Nummer ─────────────────────────
-      //
       // Hier stand `… ?? p.color_id ?? 0`. Fehlte die Zuordnung, ging damit
       // die Rebrickable-Farbnummer als BrickLink-Farbnummer hinaus — eine
       // gültige Datei mit der FALSCHEN Farbe. Das ist der Fehler vom 19.10.
-      // spiegelverkehrt: Dort wurde beim Import eine Farbe erfunden, hier
-      // würde eine falsche bestellt.
-      //
-      // Leer heisst jetzt „unbekannt". plExportBricklink lässt solche Posten
-      // weg und NENNT sie, statt zu raten.
+      // spiegelverkehrt: Dort wurde beim Import eine Farbe erfunden, hier …
+      // Ausführlich: docs/begruendungen/public/js/08-init.js.md#blcolorid
       const blColorId = p.bl_color_id ?? _rbToBlColor[p.color_id] ?? '';
       html += `<div data-stil="display:flex;align-items:center;gap:10px;padding:5px 4px;border-bottom:1px solid var(--bdr)">${img}<span data-stil="font-family:monospace;font-size:var(--fs-2);color:var(--b600);min-width:65px;flex-shrink:0" title="Rebrickable: ${esc(p.part_number)}">${esc(p.bl_part_number||p.part_number)}</span><span data-stil="flex:1;font-size:var(--fs-3)">${esc(p.part_name)}</span><span data-stil="font-weight:700;font-size:var(--fs-3);width:70px;text-align:right;flex-shrink:0">×${p.quantity.toLocaleString(locale())}</span><span data-stil="width:70px;flex-shrink:0;padding-left:6px"><input inputmode="numeric" type="number" min="0" value="0" data-key="${pkey}" data-need="${p.quantity}" data-part="${esc(p.bl_part_number||p.part_number)}" data-color="${blColorId}" data-rb-color="${p.color_id||0}" data-color-name="${esc(p.color_name||'')}" data-type="${(p.bl_part_number||p.part_number||'P').startsWith('fig-')?'M':'P'}" class="pl-have-input" aria-label="${esc(tRaw('pl.col_have'))}: ${esc(p.bl_part_number||p.part_number)} ${esc(p.color_name||'')}" data-stil="width:58px;height:28px;border:1px solid var(--feldrand);border-radius:5px;padding:0 6px;font-size:var(--fs-2);text-align:center" /></span></div>`;
     }
@@ -432,12 +332,7 @@ async function plExportPdf() {
     }));
 
     // Step 1: Async PDF-Job starten
-    const startResp = await fetch('/api/v1/sets/partslist-pdf', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      credentials: 'include',
-      body: JSON.stringify({ sets: _plSets, parts: pdfParts })
-    });
+    const startResp = await apiRoh('POST', '/v1/sets/partslist-pdf', { body: { sets: _plSets, parts: pdfParts } });
     if (!startResp.ok) throw new Error(`HTTP ${startResp.status}`);
     const { jobId } = await startResp.json();
     if (!jobId) throw new Error(t('pdf.no_job_id'));
@@ -445,10 +340,12 @@ async function plExportPdf() {
     // Step 2: SSE statt Polling — Ergebnis kommt sofort wenn fertig.
     // Fallback auf Polling falls EventSource nicht verfügbar.
     if (btn) btn.textContent = tRaw('pdf.loading_images');
-    await new Promise((resolve, reject) => {
+    await /** @type {Promise<void>} */ (new Promise((resolve, reject) => {
       let settled = false;
       // Countdown der geschätzten Restzeit (aus etaSeconds vom Server).
-      let etaTimer = null, etaRemaining = null;
+      /** @type {number | null} */
+      let etaTimer = null;
+      let etaRemaining = null;
       const stopEta = () => { if (etaTimer) { clearInterval(etaTimer); etaTimer = null; } };
       const startEta = (sec) => {
         if (etaTimer || !sec || sec <= 0) return;
@@ -476,10 +373,10 @@ async function plExportPdf() {
         es.onerror = () => { es.close(); if (!settled) pollPdfStatus(jobId, btn, finish, startEta); };
       };
       trySSE();
-    });
+    }));
 
     // Step 3: Download
-    const dlResp = await fetch(`/api/v1/sets/partslist-pdf/download/${jobId}`, { credentials: 'include' });
+    const dlResp = await apiRoh('GET', `/v1/sets/partslist-pdf/download/${jobId}`);
     if (!dlResp.ok) throw new Error(t('pdf.download_error',{status:dlResp.status}));
     const blob = await dlResp.blob();
     const url = URL.createObjectURL(blob);
@@ -501,7 +398,9 @@ async function pollPdfStatus(jobId, btn, finish, startEta) {
   while (Date.now() < deadline) {
     await new Promise(r => setTimeout(r, 1500));
     try {
-      const r = await fetch(`/api/v1/sets/partslist-pdf/status/${jobId}`, { credentials: 'include' });
+      const r = await apiRoh('GET', `/v1/sets/partslist-pdf/status/${jobId}`);
+      // Ein Fehlerstatus (Auftrag unbekannt, Server weg) beendet das Warten gleich.
+      if (!r.ok) { finish(t('pdf.server_error')); return; }
       const { status, error, etaSeconds } = await r.json();
       if (status === 'running' && etaSeconds != null && startEta) startEta(etaSeconds);
       if (status === 'done') { finish(null); return; }
@@ -518,18 +417,11 @@ export function plInit() {
 }
 
 
-async function plExportBricklink() {
-  // Ensure BL color mapping is loaded (may be empty if plGenerate was called before sync)
-  if (!Object.keys(_rbToBlColor).length) {
-    try {
-      const cm = await api('GET', '/v1/parts/bl-color-map');
-      if (cm?.success && cm.map) _rbToBlColor = cm.map;
-    } catch(_) {}
-  }
+/** Was laut Tabelle fehlt (Bedarf minus vorhanden), mit BrickLink-Farbe. */
+function fehlendeTeile() {
   // Collect all "vorhanden" inputs from the table
-  const inputs = document.querySelectorAll('.pl-have-input');
+  const inputs = /** @type {HTMLInputElement[]} */ (alle('.pl-have-input'));
   const missing = [];
-  const condition = G('pl-bl-condition')?.value || 'X';
   inputs.forEach(inp => {
     const need = parseInt(inp.dataset.need) || 0;
     const have = parseInt(inp.value) || 0;
@@ -551,8 +443,12 @@ async function plExportBricklink() {
       });
     }
   });
-  if (!missing.length) { toast(tRaw('pl.none_missing'), 'info'); return; }
+  return missing;
+}
 
+/** Figuren in ihre Teile auflösen und gleiche BrickLink-Nummer+Farbe zusammenzählen.
+ * @param {any[]} missing @returns {Promise<any[]>} */
+async function figurenAufloesen(missing) {
   // Expand minifigs into individual parts and deduplicate by BL-ID + color
   const blMap = {}; // key: "type|partNum|colorId" → {type,part,color,qty}
   for (const m of missing) {
@@ -583,29 +479,11 @@ async function plExportBricklink() {
       else blMap[key] = { ...m };
     }
   }
-  const expanded = Object.values(blMap);
+  return Object.values(blMap);
+}
 
-  // ── Posten OHNE bekannte BrickLink-Farbe gehen NICHT mit ────────────────
-  //
-  // Sie werden genannt. Eine geratene Farbnummer ergibt eine gültige Datei,
-  // die das falsche Teil bestellt — und das fällt erst auf, wenn das Paket da
-  // ist. Dieselbe Regel wie beim Import (src/merkliste/wantedListe.ts): Was sich
-  // nicht abbilden lässt, bleibt offen und wird gesagt.
-  //
-  // Minifiguren (Typ M) haben keine Farbe und sind deshalb nie betroffen.
-  const ohneFarbe = expanded.filter(m => m.type !== 'M' && (m.color === null || m.color === undefined));
-  const exportierbar = expanded.filter(m => !ohneFarbe.includes(m));
-
-  const stuecke = baueWantedXmlStuecke(
-    exportierbar.map(m => ({ ...m, condition })));
-
-  // ── Eine Datei oder mehrere ─────────────────────────────────────────────
-  //
-  // BrickLink nimmt höchstens BL_UPLOAD_MAX_BYTES je Upload und weist eine
-  // grössere Datei GANZ ab. Passt alles in ein Stück, bleibt es beim alten
-  // Verhalten: in einem neuen Tab öffnen, damit man den Text kopieren kann.
-  // Sonst werden die Stücke heruntergeladen — ein Tab je Stück wäre ein
-  // Popup-Gewitter.
+/** Ein Stück im neuen Tab (zum Kopieren), mehrere als Downloads. @param {string[]} stuecke */
+function wantedXmlAusliefern(stuecke) {
   if (stuecke.length === 1) {
     const blob = new Blob([stuecke[0]], { type: 'text/plain; charset=utf-8' });
     const url = URL.createObjectURL(blob);
@@ -625,6 +503,40 @@ async function plExportBricklink() {
       setTimeout(() => URL.revokeObjectURL(url), 5000);
     }
   }
+
+}
+
+async function plExportBricklink() {
+  // Ensure BL color mapping is loaded (may be empty if plGenerate was called before sync)
+  if (!Object.keys(_rbToBlColor).length) {
+    try {
+      const cm = await api('GET', '/v1/parts/bl-color-map');
+      if (cm?.success && cm.map) _rbToBlColor = cm.map;
+    } catch(_) {}
+  }
+  const condition = G('pl-bl-condition')?.value || 'X';
+  const missing = fehlendeTeile();
+  if (!missing.length) { toast(tRaw('pl.none_missing'), 'info'); return; }
+
+  const expanded = await figurenAufloesen(missing);
+
+  // Sie werden genannt. Eine geratene Farbnummer ergibt eine gültige Datei,
+  // die das falsche Teil bestellt — und das fällt erst auf, wenn das Paket da
+  // ist. Dieselbe Regel wie beim Import (src/merkliste/wantedListe.ts): Was sich
+  // nicht abbilden lässt, bleibt offen und wird gesagt.
+  // Ausführlich: docs/begruendungen/public/js/08-init.js.md#ohnefarbe
+  const ohneFarbe = expanded.filter(m => m.type !== 'M' && (m.color === null || m.color === undefined));
+  const exportierbar = expanded.filter(m => !ohneFarbe.includes(m));
+
+  const stuecke = baueWantedXmlStuecke(
+    exportierbar.map(m => ({ ...m, condition })));
+
+  // BrickLink nimmt höchstens BL_UPLOAD_MAX_BYTES je Upload und weist eine
+  // grössere Datei GANZ ab. Passt alles in ein Stück, bleibt es beim alten
+  // Verhalten: in einem neuen Tab öffnen, damit man den Text kopieren kann.
+  // Sonst werden die Stücke heruntergeladen — ein Tab je Stück wäre ein …
+  // Ausführlich: docs/begruendungen/public/js/08-init.js.md#if
+  wantedXmlAusliefern(stuecke);
 
   toast(tRaw('pl.bl_exported', { n: exportierbar.length }), 'success');
   if (stuecke.length > 1) toast(tRaw('pl.bl_split', { n: stuecke.length }), 'info');
@@ -661,7 +573,7 @@ function ansichtWaehlen(id, wert) {
   const feld = G(id);
   if (!feld || feld.value === wert) return;
   feld.value = wert;
-  document.querySelectorAll(`[data-click="ansichtWaehlen"][data-arg="${id}"]`).forEach(b => {
+  alle(`[data-click="ansichtWaehlen"][data-arg="${id}"]`).forEach(b => {
     const an = b.dataset.arg2 === wert;
     b.classList.toggle('active', an);
     b.setAttribute('aria-pressed', String(an));

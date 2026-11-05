@@ -1,10 +1,8 @@
-// ── Stile ohne 'unsafe-inline' ───────────────────────────────────────────────
-//
 // Die CSP erlaubt keine style-Attribute im Markup: Eine eingeschleuste
 // Auszeichnung soll die Seite nicht umgestalten können (falsches Formular über
 // dem echten). Das Markup trägt den Stil deshalb als data-stil, und diese Datei
-// setzt ihn per CSSOM — aber nur Werte, die so im Quelltext stehen. Die Liste
-// baut scripts/build-frontend.js; was nicht darauf steht, bleibt wirkungslos.
+// setzt ihn per CSSOM — aber nur Werte, die so im Quelltext stehen. Die Liste …
+// Ausführlich: docs/begruendungen/public/js/00-stile.js.md#die-csp-erlaubt-keine-style-attribute-im
 
 /* global __ERLAUBTE_STILE__ */
 const ERLAUBT = new Set(typeof __ERLAUBTE_STILE__ === 'undefined' ? [] : __ERLAUBTE_STILE__);
@@ -14,6 +12,7 @@ const ERLAUBT = new Set(typeof __ERLAUBTE_STILE__ === 'undefined' ? [] : __ERLAU
 // sie nicht setzen.
 const FARBE = /^(#[0-9A-Fa-f]{6}|var\(--[a-z0-9-]+\))$/;
 const ZAHL = /^\d{1,5}(\.\d{1,3})?$/;
+/** @type {Array<[string, (el: HTMLElement, v: string) => void]>} */
 const FREI = [
   ['data-farbe', (el, v) => { if (FARBE.test(v)) el.style.background = v; }],
   ['data-breite', (el, v) => { if (ZAHL.test(v)) el.style.width = Math.min(100, Number(v)) + '%'; }],

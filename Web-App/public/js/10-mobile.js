@@ -1,24 +1,6 @@
-// ═══ MOBILE-VERHALTEN ═══════════════════════════════════════════════════════
-//
 // Ergänzt mobile.css um die zwei Dinge, die sich nicht rein deklarativ lösen
 // lassen. Läuft auf jeder Bildschirmgrösse, tut aber nur auf schmalen etwas.
-//
-// 1. Tabellen-Beschriftungen
-//    mobile.css verwandelt jede .dt-Tabelle unter 640px in eine Kartenliste.
-//    Damit man dann noch weiss, welcher Wert wozu gehört, braucht jede <td>
-//    die Beschriftung ihrer Spalte in data-label — das CSS blendet sie über
-//    ::before ein.
-//
-//    Statt alle zehn Tabellen-Templates in sechs Dateien anzufassen (und
-//    künftige zu vergessen), stempelt ein MutationObserver die Attribute
-//    nachträglich. Er liest die <th>-Texte des zugehörigen <thead> und
-//    verteilt sie spaltenweise. Neue Tabellen bekommen das Verhalten damit
-//    automatisch, ohne dass jemand daran denken muss.
-//
-// 2. Aktiver Reiter im Blick
-//    Die Navigation ist auf dem Telefon horizontal scrollbar. Nach einem
-//    Tabwechsel — oder direkt nach dem Login, wenn ein hinterer Reiter aktiv
-//    ist — steht der aktive Eintrag sonst ausserhalb des sichtbaren Bereichs.
+// Ausführlich: docs/begruendungen/public/js/10-mobile.js.md#ergaenzt-mobile-css-um-die-zwei-dinge-di
 
 (function () {
   'use strict';
@@ -84,7 +66,7 @@
 
   function scrollActiveTabIntoView() {
     const nav = document.querySelector('nav');
-    const active = document.querySelector('.ntab.active');
+    const active = /** @type {HTMLElement | null} */ (document.querySelector('.ntab.active'));
     if (!nav || !active) return;
     // Nur wenn die Leiste überhaupt scrollt — auf dem Desktop passiert nichts.
     if (nav.scrollWidth <= nav.clientWidth + 4) return;
@@ -106,9 +88,8 @@
   // Bedingung ist das Vorhandensein von <body>, nicht der readyState: Das
   // Skript steht am Ende des Body, dort ist der Baum bereits da und die
   // Beschriftungen greifen noch vor dem ersten Paint. Auf DOMContentLoaded zu
-  // warten wäre nicht nur unnötig spät — würde das Skript jemals NACH diesem
-  // Ereignis geladen (nachträglich eingefügt, defer-Sonderfälle), liefe die
-  // Initialisierung überhaupt nicht mehr an.
+  // warten wäre nicht nur unnötig spät — würde das Skript jemals NACH diesem …
+  // Ausführlich: docs/begruendungen/public/js/10-mobile.js.md#start
   start();
   if (!started) document.addEventListener('DOMContentLoaded', start);
 
@@ -127,9 +108,9 @@
   }
 
   // ── 4. Kopf beim Rollen nach unten ausblenden ───────────────────────────
-  // Nur die Klassen; mobile.css blendet aus, und zwar nur bei geringer Höhe
-  // (Querformat) oder grosser Schrift, wo Kopf und Leiste fast die Hälfte
-  // belegen. Rollen nach oben oder Fokus in Kopf oder Leiste holt sie zurück.
+  // Nur die Klasse; mobile.css blendet aus, und zwar nur bei geringer Höhe
+  // (200 % Zoom, Querformat), wo Kopf, Band und Leiste fast die Hälfte belegen.
+  // Rollen nach oben oder Fokus im Kopf holt ihn zurück.
   let letzteHoehe = window.scrollY;
   window.addEventListener('scroll', () => {
     const y = window.scrollY, wurzel = document.documentElement;

@@ -1,25 +1,24 @@
-// ── PDF-Viewer (PDF.js, lokal eingebunden) ────────────────────────────────────
-//
-// ── Warum eigene Datei ────────────────────────────────────────
-//
 // Diese 110 Zeilen standen in js/01-core.js. Deren Kopfzeile nennt als Inhalt
 // „Utils, i18n-Glue, Auth & Panels, Login/Logout, CSV-Import-Fortschrittsbalken"
 // — ein PDF-Betrachter ist nichts davon. Die Datei war 1479 Zeilen lang und
 // hiess nach ihrer Geschichte, nicht nach ihrem Inhalt.
-//
-// Der Betrachter hängt an genau zwei Dingen aus dem Kern (G, esc) und wird von
-// aussen über openPdfViewer() gerufen; die Knöpfe meldet er selbst beim
-// Dispatcher an. Damit ist er ein sauberer Schnitt.
+// Ausführlich: docs/begruendungen/public/js/12-pdfviewer.js.md#diese-110-zeilen-standen-in-js-01-core-j
 import { registerActions } from './00-registry.js';
-import { G, esc } from './01-core.js';
+import { G } from './01-core.js';
 // t() wird für die Lade- und Fehlermeldung gebraucht. Beim Herauslösen aus
 // 01-core.js früher blieb der Import zurück — dort war t() über den
 // Dateikopf verfügbar. Der Fehler flog erst beim ÖFFNEN eines PDFs
 // („ReferenceError: t is not defined"), also nicht beim Laden der Seite und
 // damit auch nicht beim Bündeln.
 import { t } from '../i18n.js';
+import { esc } from './00-escapen.js';
 
-let _pdfDoc = null, _pdfObserver = null, _pdfCurrentUrl = null;
+/** @type {PdfDokument | null} */
+let _pdfDoc = null;
+/** @type {IntersectionObserver | null} */
+let _pdfObserver = null;
+/** @type {string | null} */
+let _pdfCurrentUrl = null;
 const _pdfRenderTasks = new Map();
 
 // ── Zoom ─────────────────────────────────────────────────────────────────────
@@ -33,23 +32,7 @@ const PDF_ZOOM_MAX = 5;
 const PDF_ZOOM_SCHRITT = 1.25;   // ein Druck auf + bzw. −
 
 // Obergrenze für die Leinwand, in Pixeln der Fläche.
-//
-// GEMESSEN in Chromium 142 (headless, playwright-core), A4-Verhältnis 1 : 1,414:
-//
-//   Breite    Höhe   MPixel      RAM   brauchbar
-//     4096    5793    23,7    91 MB   ja
-//     6144    8689    53,4   204 MB   ja
-//    11586   16385   189,8   724 MB   ja
-//    16384   23170   379,6  1448 MB   NEIN   (16384 ist die harte Grenze)
-//
-// „Brauchbar" heisst hier: ein gesetztes Pixel kommt per getImageData auch
-// zurück. Die harte Grenze liegt also weit über allem, was man wollen würde —
-// der Riegel hier ist der SPEICHER, nicht die Grenze. 16 MPixel sind rund
-// 64 MB je Seite; der IntersectionObserver unten hält nur die sichtbaren
-// Seiten, bei starkem Zoom also eine bis zwei.
-//
-// Wird der Riegel erreicht, bleibt die Anzeige richtig und wird nur weicher:
-// die Leinwand ist dann kleiner als ihr CSS-Kasten und wird hochskaliert.
+// Ausführlich: docs/begruendungen/public/js/12-pdfviewer.js.md#pdf-leinwand-max-px
 const PDF_LEINWAND_MAX_PX = 16e6;
 
 let _pdfZoom = 1;
@@ -115,33 +98,7 @@ function _pdfMasse() {
 
 /**
  * Einen Platzhalter auf die aktuelle Zoomgrösse bringen.
- *
- * Das `margin:0 auto` ist kein Geschmack, es ist der Riegel gegen eine
- * GEMESSENE Falle. Behälter 400px breit mit den Stilen aus index.html,
- * Zeile 1526, Chromium 142 (headless, playwright-core):
- *
- *                              Seite 1200px breit        Seite 200px breit
- *                           scrollW  linker Rand         Lage
- *   align-items:center (heute)  800        −400   weg    mittig
- *   center + margin:0 auto     1200           0   da     mittig
- *   flex-start + margin:0 auto 1200           0   da     mittig
- *
- * Erste Zeile: Ist die Seite breiter als der Behälter, sind 400 von 1200 Pixeln
- * links NICHT erreichbar. Der Behälter rollt nicht dorthin — sein scrollWidth
- * kennt sie gar nicht (800 statt 1200). Das ist die alte Flexbox-Eigenheit:
- * zentriert wird auch NEGATIVER Platz, und die Hälfte davon landet vor dem
- * Rollbereich. Ohne diesen Riegel wäre beim Hineinzoomen die linke
- * Seitenhälfte verloren — genau die Hälfte, auf der bei Anleitungen die
- * Teileliste steht.
- *
- * Zweite Zeile ist, was ausgeliefert wird: auto-Ränder schlagen align-self,
- * zentrieren weiter, solange Platz da ist, und werden zu 0, sobald es eng wird.
- * Der Behälter in index.html bleibt deshalb unangetastet.
- *
- * Nicht genommen: `align-items:safe center` tut dasselbe (ebenfalls gemessen),
- * fällt aber auf älteren Browsern als ganze Deklaration aus — dann gilt
- * `normal`, also stretch, und die Seiten wären verzerrt. `margin:auto` gibt es
- * überall.
+ * Ausführlich: docs/begruendungen/public/js/12-pdfviewer.js.md#pdfmassplatzhalter
  */
 function _pdfMassPlatzhalter(ph) {
   const m = _pdfMasse();
@@ -159,7 +116,7 @@ async function _renderPdfLazy(pdf, container) {
   for (let n = 1; n <= pdf.numPages; n++) {
     const ph = document.createElement('div');
     ph.className = 'pdf-page-ph';
-    ph.dataset.page = n;
+    ph.dataset.page = String(n);
     ph.style.cssText = 'background:#fff;box-shadow:0 1px 5px rgba(0,0,0,.35);flex-shrink:0;margin:0 auto';
     _pdfMassPlatzhalter(ph);
     container.appendChild(ph);
@@ -168,7 +125,7 @@ async function _renderPdfLazy(pdf, container) {
   if (_pdfObserver) _pdfObserver.disconnect();
   _pdfObserver = new IntersectionObserver((entries) => {
     entries.forEach(entry => {
-      const n = parseInt(entry.target.dataset.page);
+      const n = parseInt(/** @type {HTMLElement} */ (entry.target).dataset.page);
       if (entry.isIntersecting) _renderPdfPage(pdf, n, entry.target);
       else _unloadPdfPage(n, entry.target);
     });
@@ -204,15 +161,7 @@ async function _renderPdfPage(pdf, n, ph) {
     await task.promise;
     _pdfRenderTasks.delete(n);
     // Zwischenzeitlich gezoomt. Diese Leinwand hat die Auflösung von VORHER.
-    //
-    // Verzerrt wäre sie nicht — das Seitenverhältnis ist dasselbe, width:100%
-    // streckt sie nur. Der Schaden ist ein anderer: Hängt sie erst einmal
-    // drin, kehrt der neue Durchlauf gleich oben wieder um
-    // (`if (ph.querySelector('canvas')) return`), und die Seite bleibt bis zum
-    // nächsten Zoom oder Rollen in der alten, zu groben Auflösung stehen.
-    // Genau das ist der Fall, den man nicht sieht, solange der alte Durchlauf
-    // schneller fertig wird als der neue — und bei starkem Zoom ist er das,
-    // denn er hat weniger zu rendern.
+    // Ausführlich: docs/begruendungen/public/js/12-pdfviewer.js.md#if
     if (gen !== _pdfZoomGen) { canvas.width = 0; canvas.height = 0; ph.dataset.rendering = '0'; return; }
     ph.innerHTML = ''; ph.appendChild(canvas);
   } catch (e) { /* Render abgebrochen (Scroll) o.ä. */ }
@@ -256,7 +205,7 @@ function _pdfSetzeZoom(neu, ankerX, ankerY) {
 
   // Erst alle Leinwände weg, dann die Platzhalter neu bemessen: eine Leinwand
   // mit width:100% würde sonst kurz verzerrt dastehen.
-  container.querySelectorAll('.pdf-page-ph').forEach(ph => {
+  /** @type {NodeListOf<HTMLElement>} */ (container.querySelectorAll('.pdf-page-ph')).forEach(ph => {
     _unloadPdfPage(parseInt(ph.dataset.page), ph);
     _pdfMassPlatzhalter(ph);
   });
@@ -289,13 +238,7 @@ function pdfZoomReset() { _pdfSetzeZoom(1, null, null); }
 
 /**
  * Mausrad mit Strg/⌘ zoomt, ohne Zusatztaste rollt es weiter.
- *
- * Strg+Rad ist die Geste, mit der Browser seit je die Seite zoomen; genau die
- * fängt der Betrachter hier ab, damit sie das PDF zoomt und nicht die ganze
- * Oberfläche. Ohne Zusatztaste bleibt das Rad beim Rollen — wer durch eine
- * 80-seitige Anleitung blättert, will nicht zoomen.
- *
- * Der Zeiger ist der Anker: man zoomt auf das, worauf man zeigt.
+ * Ausführlich: docs/begruendungen/public/js/12-pdfviewer.js.md#pdfrad
  */
 function _pdfRad(ev) {
   if (!ev.ctrlKey && !ev.metaKey) return;
@@ -313,7 +256,7 @@ function _pdfTaste(ev) {
   const modal = G('pdf-viewer-modal');
   if (!modal || modal.style.display !== 'flex') return;
   // In einem Eingabefeld hat + eine andere Bedeutung.
-  const a = document.activeElement;
+  const a = /** @type {HTMLElement | null} */ (document.activeElement);
   if (a && (a.tagName === 'INPUT' || a.tagName === 'TEXTAREA' || a.isContentEditable)) return;
   if (ev.key === '+' || ev.key === '=') { ev.preventDefault(); pdfZoomIn(); }
   else if (ev.key === '-' || ev.key === '_') { ev.preventDefault(); pdfZoomOut(); }
@@ -360,10 +303,7 @@ function _pdfTouchEnd(ev) {
  * angemeldet — beim Laden des Moduls, nicht bei jedem openPdfViewer(). Sonst
  * sammelt jedes geöffnete PDF einen weiteren Zuhörer an, und nach zehn
  * Anleitungen zoomt ein Raddreh um das Zehnfache.
- *
- * `passive:false` ist bei wheel und touchmove nötig: ohne das darf
- * preventDefault() nicht wirken, und der Browser zoomt zusätzlich die ganze
- * Oberfläche.
+ * Ausführlich: docs/begruendungen/public/js/12-pdfviewer.js.md#pdfhaengezuhoererein
  */
 function _pdfHaengeZuhoererEin() {
   const container = G('pdf-viewer-pages');

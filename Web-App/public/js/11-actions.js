@@ -3,37 +3,18 @@ import { G, bildPlatzhalter, bildVorlaeufig, bildGeladen, fullUrl, setLang, toas
 import { tRaw } from '../i18n.js';
 import { saveJobSchedule } from './01-monitor.js';
 import { openPdfViewer } from './12-pdfviewer.js';
-import { autosaveSet, closeImageLightbox, delSet, hideProgress, openImageLightbox } from './02-gallery.js';
-import { allFigsCache, deleteManualFig, renderFigs, renderManualFigsTable, updateManualFig, deleteManualPart} from './06-minifigs.js';
+import { delSet } from './02-gallery.js';
+import { alleFiguren, deleteManualFig, renderFigs, renderManualFigsTable, updateManualFig } from './06-minifigs.js';
 import { merkpostenLoeschen } from './16-merkliste.js';
+import { autosaveSet, closeImageLightbox, openImageLightbox } from './07-set-detail.js';
+import { hideProgress } from './01-fortschritt.js';
+import { deleteManualPart } from './03-parts.js';
 
-// ═══ AKTIONEN OHNE INLINE-HANDLER ═══════════════════════════════════════════
-//
 // Ziel: `script-src 'unsafe-inline'` aus der CSP entfernen. Solange irgendwo
 // `onclick="…"` im Markup steht, muss der Browser Inline-Skript erlauben — und
 // damit fehlt genau die Verteidigungslinie, die bei einer übersehenen
 // XSS-Lücke greifen würde.
-//
-// Statt 140 Handler einzeln in addEventListener-Aufrufe zu übersetzen, gibt es
-// hier einen delegierten Dispatcher. Aus
-//
-//     <button onclick="plGenerate()">
-//     <button onclick="setChartPeriod('year')">
-//     <div onclick="openModal('${escJs(s.set_number)}')">
-//
-// wird
-//
-//     <button data-click="plGenerate">
-//     <button data-click="setChartPeriod" data-arg="year">
-//     <div data-click="openModal" data-arg="${esc(s.set_number)}">
-//
-// Das löst zwei Probleme auf einmal: Die CSP kann zumachen, UND der ganze
-// escJs-Kontext verschwindet. Ein Wert in einem data-Attribut wird nie als
-// Code gelesen — es gibt keinen JS-String mehr, aus dem ein Apostroph
-// ausbrechen könnte.
-//
-// Kein eval, kein new Function: Der Name wird in einer Tabelle nachgeschlagen.
-// Steht er nicht drin, passiert nichts (und es gibt eine Konsolenmeldung).
+// Ausführlich: docs/begruendungen/public/js/11-actions.js.md#ziel-script-src-unsafe-inline-aus-der-cs
 
 (function () {
   'use strict';
@@ -82,16 +63,7 @@ import { merkpostenLoeschen } from './16-merkliste.js';
 
   /**
    * Löst den Handlernamen über die Registry auf (js/00-registry.js).
-   *
-   * VORHER: `window[name]`. Das setzte voraus, dass alle Handler globale
-   * Funktionsdeklarationen sind — eine Annahme, die mit der Umstellung auf
-   * ES-Module wegfällt, weil Modul-Deklarationen nicht auf window liegen.
-   * Ohne Ersatz wären schlagartig alle Handler tot gewesen, und zwar erst
-   * beim Klicken sichtbar.
-   *
-   * resolveAction() fällt intern weiterhin auf window zurück — das brauchen
-   * die vier Handler des Log-Betrachters, der als klassisches Skript in ein
-   * eigenes Popup geladen wird.
+   * Ausführlich: docs/begruendungen/public/js/11-actions.js.md#resolve
    */
   function resolve(name) {
     return resolveAction(name);
@@ -134,10 +106,9 @@ import { merkpostenLoeschen } from './16-merkliste.js';
   const NATIV = new Set(['BUTTON', 'A', 'INPUT', 'SELECT', 'TEXTAREA', 'LABEL', 'SUMMARY']);
   document.addEventListener('keydown', ev => {
     const el = ev.target;
-    if (!el || NATIV.has(el.tagName) || !el.hasAttribute?.('data-click') || !el.hasAttribute('tabindex')) return;
+    if (!(el instanceof HTMLElement) || NATIV.has(el.tagName) || !el.hasAttribute?.('data-click') || !el.hasAttribute('tabindex')) return;
     // Das Lösch-Kreuz der Karte ist ein Mauskürzel (aria-hidden, in der Karte kein Knopf erlaubt); Entf ist sein Tastaturweg.
-    const karte = /** @type {HTMLElement} */ (el);
-    const kreuz = ev.key === 'Delete' && karte.matches('[aria-keyshortcuts~="Delete"]') ? karte.querySelector(':scope > .ca > .delbtn') : null;
+    const kreuz = ev.key === 'Delete' && el.matches('[aria-keyshortcuts~="Delete"]') ? el.querySelector(':scope > .ca > .delbtn') : null;
     if (kreuz?.checkVisibility()) { ev.preventDefault(); /** @type {HTMLElement} */ (kreuz).click(); return; }
     const leer = ev.key === ' ' && el.getAttribute('role') === 'button';
     if (ev.key !== 'Enter' && !leer) return;
@@ -145,34 +116,18 @@ import { merkpostenLoeschen } from './16-merkliste.js';
     el.click();
   });
 
-  // ── Formulare: absenden heisst hier „den Knopf druecken" ──────────────────
-  //
   // Die Anmelde-, Registrier- und Passwortfelder liegen seit Nachtrag … in
   // einem <form>. Nicht aus Formtreue: Ohne umgebendes Formular meldet Chrome
   // „Password field is not contained in a form", und Passwortmanager bieten
-  // Speichern und Ausfuellen dann nur noch nach Heuristik an — mal ja, mal
-  // nein, ohne dass jemand sagen koennte warum.
-  //
-  // Abgesendet wird aber NICHTS: Die Oberflaeche spricht ueber fetch() mit dem
-  // Server, ein echtes Absenden wuerde die Seite neu laden und den Zustand
-  // verlieren. Deshalb hier abbrechen und stattdessen den Knopf ausloesen, den
-  // `data-submit` nennt. Nebeneffekt, und ein erwuenschter: Die EINGABETASTE
-  // im Passwortfeld meldet jetzt an, statt nichts zu tun.
-  //
-  // Warum kein onsubmit="…" im HTML: Das waere ein Inline-Handler, und die
-  // CSP dieses Projekts kommt ohne `unsafe-inline` aus (siehe den Kopf dieser
-  // Datei und test/csp-actions.test.js).
-  //
-  // Die Knoepfe tragen type="button". Ohne das waeren sie Absendeknoepfe, ihr
-  // Klick loeste wieder ein submit aus, und .click() hier drehte sich im
-  // Kreis.
+  // Speichern und Ausfuellen dann nur noch nach Heuristik an — mal ja, mal …
+  // Ausführlich: docs/begruendungen/public/js/11-actions.js.md#die-anmelde-registrier-und-passwortfelde
   document.addEventListener('submit', ev => {
     const form = ev.target;
-    if (!form || form.tagName !== 'FORM') return;
+    if (!(form instanceof HTMLFormElement)) return;
     ev.preventDefault();
     const id = form.getAttribute('data-submit');
     if (!id) return;
-    const knopf = document.getElementById(id);
+    const knopf = /** @type {HTMLButtonElement | null} */ (document.getElementById(id));
     if (knopf && !knopf.disabled) knopf.click();
   });
   // Mit mehr als einem Textfeld und ohne Absendeknopf sendet der Browser bei
@@ -183,7 +138,7 @@ import { merkpostenLoeschen } from './16-merkliste.js';
     const feld = ev.target;
     if (!(feld instanceof HTMLInputElement) || /^(button|submit|reset|checkbox|radio|file|image)$/.test(feld.type)) return;
     const id = feld.form?.getAttribute('data-submit');
-    if (!id || feld.form.querySelector('[type="submit"]')) return;
+    if (!id || feld.form?.querySelector('[type="submit"]')) return;
     ev.preventDefault();
     const knopf = /** @type {HTMLButtonElement|null} */ (document.getElementById(id));
     if (knopf && !knopf.disabled) knopf.click();
@@ -195,15 +150,10 @@ import { merkpostenLoeschen } from './16-merkliste.js';
   // den Kachel-Templates.
   document.addEventListener('error', ev => {
     const el = ev.target;
-    if (!el || el.tagName !== 'IMG') return;
+    if (!(el instanceof HTMLImageElement)) return;
 
     // Erst einmal wiederholen, bevor aufgegeben wird.
-    //
-    // Ein einzelner Verbindungsfehler — gemessen ETIMEDOUT beim CDN-Abruf —
-    // liess die Kachel bisher dauerhaft leer: Der Rückfall entfernte das src
-    // oder blendete das Bild aus, und `fallbackDone` verhinderte jeden weiteren
-    // Versuch. Das Bild selbst war in Ordnung. Ein Versuch nach einer Sekunde
-    // fängt genau diese Aussetzer ab.
+    // Ausführlich: docs/begruendungen/public/js/11-actions.js.md#if
     if (!el.dataset.retried && el.src) {
       el.dataset.retried = '1';
       if (/** @type {HTMLImageElement} */ (el).dataset.ph) bildVorlaeufig(el);
@@ -237,9 +187,8 @@ import { merkpostenLoeschen } from './16-merkliste.js';
   // styles.css blendet JEDES img[loading=lazy] auf opacity:0 aus und erst die
   // Klasse .loaded wieder ein. Die Markierung darf deshalb nicht an data-fade
   // hängen — sonst bleibt jedes Bild unsichtbar, dem beim Ergänzen von
-  // loading="lazy" das Zusatzattribut gefehlt hat. Genau das ist passiert:
-  // sieben Stellen in Finanzen, Minifiguren, Galerie, Teilen und der
-  // Startübersicht waren dauerhaft leer, obwohl das Bild geladen war.
+  // loading="lazy" das Zusatzattribut gefehlt hat. Genau das ist passiert: …
+  // Ausführlich: docs/begruendungen/public/js/11-actions.js.md#markloaded
   function markLoaded(el) {
     if (el && el.tagName === 'IMG' && el.getAttribute('loading') === 'lazy') {
       el.classList.add('loaded');
@@ -255,9 +204,9 @@ import { merkpostenLoeschen } from './16-merkliste.js';
   const imgObserver = new MutationObserver(muts => {
     for (const m of muts) {
       for (const node of m.addedNodes) {
-        if (node.nodeType !== 1) continue;
-        if (node.tagName === 'IMG') { if (node.complete) markLoaded(node); continue; }
-        node.querySelectorAll?.('img[loading=lazy]').forEach(i => { if (i.complete) markLoaded(i); });
+        if (!(node instanceof Element)) continue;
+        if (node instanceof HTMLImageElement) { if (node.complete) markLoaded(node); continue; }
+        /** @type {NodeListOf<HTMLImageElement>} */ (node.querySelectorAll('img[loading=lazy]')).forEach(i => { if (i.complete) markLoaded(i); });
       }
     }
   });
@@ -302,19 +251,15 @@ function openImageLightboxFromEl() {
 /** War: onchange="setLang(this.value)" */
 function setLangFromEl() { setLang(this.value); }
 /** Darstellung je Gerät — die Logik steht in 00-theme-boot.js. */
+/** @this {HTMLSelectElement} */
 function setzeDunkel() { window.__bimDunkel?.(this.value); }
 
-/** War: onchange="renderFigs(allFigsCache)" */
+/** Neu zeichnen mit der zuletzt geladenen Liste. */
 /**
  * Der Ansichtsumschalter des Figuren-Reiters — fuer BEIDE Listen.
- *
- * Dieselbe Luecke wie bei den Teilen (Marcos Befund vom 20.10.) und aus
- * demselben Grund: Hier stand allein renderFigs(), also nur die Figuren aus
- * Sets. Die manuell erfassten darunter blieben Kacheln, obwohl der Umschalter
- * ueber beiden steht. Marco hat es an den Teilen gesehen; die Figuren trugen
- * es unbemerkt mit.
+ * Ausführlich: docs/begruendungen/public/js/11-actions.js.md#renderfigsall
  */
-function renderFigsAll() { renderFigs(allFigsCache); renderManualFigsTable(); }
+function renderFigsAll() { renderFigs(alleFiguren()); renderManualFigsTable(); }
 
 // ── Wrapper für Handler, die vorher als Ausdruck im Attribut standen ────────
 // Alle bekommen `this` = auslösendes Element und das Ereignis als letztes
@@ -354,21 +299,7 @@ export function delSetStop(sn, ev) { ev?.stopPropagation(); delSet(sn); }
 
 /**
  * Löschen von einer KACHEL aus — Figur, Teil, Merkposten.
- *
- * ── Warum es diese Stop-Fassungen gibt ──────────────────────────────────────
- *
- * Die Kachel traegt selbst ein data-click (openManDetail bzw.
- * oeffneMerkpostenDetail). Ohne stopPropagation oeffnete der Klick auf den
- * Papierkorb ZUSAETZLICH den Dialog — hinter der Loeschabfrage.
- *
- * ── Hin und zurueck, und warum ──────────────────────────────────────────────
- *
- * Am 24.09. waren sie kurz weg: „Den Papierkorb auf den Kacheln der manuell
- * erfassten Teilen und manuell erfassten Minifiguren entfernen." Marcos
- * naechste Vorgabe hat das fuer die WEBAPP zurueckgenommen — „soll auf den
- * Kacheln […] der Papierkorb oben rechts angezeigt werden analog den Kacheln
- * bei den Sets. Dies aber nur in der webapp." In der App bleibt es beim
- * Entfernen; dort loescht man im Detail.
+ * Ausführlich: docs/begruendungen/public/js/11-actions.js.md#deletemanualfigstop
  */
 export function deleteManualFigStop(n, owner, ev) { ev?.stopPropagation(); deleteManualFig(n, owner); }
 
@@ -398,10 +329,10 @@ export function merkpostenLoeschenStop(arg, ev) {
 export function openPdfViewerLink(href, desc, ev) { ev?.preventDefault(); openPdfViewer(href, desc || ''); }
 
 /** War: onclick="const q=G('m-qty');q.value=Math.max(1,parseInt(q.value||1)-1);autosaveSet()" */
-export function mQtyDec() { const q = G('m-qty'); q.value = Math.max(1, parseInt(q.value || 1) - 1); autosaveSet(); }
+export function mQtyDec() { const q = G('m-qty'); q.value = String(Math.max(1, parseInt(q.value || '1') - 1)); autosaveSet(); }
 
 /** War: onclick="const q=G('m-qty');q.value=parseInt(q.value||1)+1;autosaveSet()" */
-export function mQtyInc() { const q = G('m-qty'); q.value = parseInt(q.value || 1) + 1; autosaveSet(); }
+export function mQtyInc() { const q = G('m-qty'); q.value = String(parseInt(q.value || '1') + 1); autosaveSet(); }
 
 
 // ── Handler beim Dispatcher anmelden (siehe js/00-registry.js) ──────────────

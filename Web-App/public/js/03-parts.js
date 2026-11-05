@@ -1,20 +1,26 @@
-import { ladeAnzeige, skelettKacheln, listeLadefehler } from './01-bausteine.js';
-import { registerActions } from './00-registry.js';
+// Der Reiter Teile: Teile aus Sets (seitenweise) und die manuell erfassten
+// Teile samt Erfassen, Farbwahl und CSV-Import — beide Listen teilen Filter
+// und Leerzustand.
+import { abonniere } from './00-ereignisse.js';
+import { ladeAnzeige, skelettKacheln, listeLadefehler, teileAufschluesselung, condBadges, ownerBadges, schliesseErfassen, csvHochladen } from './01-bausteine.js';
+import { registerActions, echt } from './00-registry.js';
 import { colorName, locale, t, tRaw } from '../i18n.js';
-import { bildTag, ico, G, api, esc, escHex, escHtml, escJs, escUrl, fmtBig, fullUrl, imgUrl, leerZustand, observeLazyImages, platzhalterInhalt, thumbUrl, zuruecksetzenKnopf } from './01-core.js';
+import { bildTag, G, api, escHex, escHtml, escJs, fmtBig, fullUrl, imgUrl, leerZustand, observeLazyImages, platzhalterInhalt, thumbUrl, zuruecksetzenKnopf, TRASH_ICON_SVG, betragAusFeld, fmtN, hexZiffern, toast, aktiverReiter } from './01-core.js';
 import { addScopeParam, addLagerParam, scopeQuery } from './14-scope.js';
-import { allSets, teileAufschluesselung } from './02-gallery.js';
-import { loadManualParts, manualPartsCache, renderManualParts } from './06-minifigs.js';
-
-// ═══ Teile-Inventar (Liste, Suche, Filter) ═══
-// Teil von app.js — die Dateien in public/js/ werden in nummerierter
-// Reihenfolge geladen und teilen sich den globalen Scope (kein Modul-
-// System noetig, Inline-onclick-Handler in index.html funktionieren
-// unveraendert). Der Split ist rein sequenziell und verhaelt sich
-// identisch zur frueheren Einzeldatei.
+import { allSets, CURRENCY } from './00-zustand.js';
+import { esc } from './00-escapen.js';
+import { confirmDelete } from './01-rueckfrage.js';
+import { csvImportStatus, manuellQuery, manuelleTabelle, preisHerkunftHinweis, tabellenAnsicht } from './06-minifigs.js';
+import { geloeschtMitRueckgaengig } from './20-papierkorb.js';
+import { leereLagerortFeld, selectedOwner, selectedStorage } from './02-konten-orte.js';
+import { loadFinance } from './04-finance.js';
 
 // ── PARTS ─────────────────────────────────────────────
-let partsColors=[], partsCats=[], activeColor=null, activeCat=null;
+let partsColors=[], partsCats=[];
+/** @type {string | null} */
+let activeColor = null;
+/** @type {string | null} */
+let activeCat=null;
 // Kategorie-ID (part_cat_id) -> Klartextname via geladenem partsCats-Mapping.
 // Ohne Namen ist eine bare ID unbekannt; ein eingetragener Name bleibt stehen, wie im Teiledetail.
 const katName = (cn, label) => label || (cn == null || cn === '' || /^\d+$/.test(String(cn)) ? tRaw('common.unknown') : String(cn));
@@ -25,9 +31,9 @@ export async function loadParts(){
   await Promise.all([loadPartsStats(), loadPartsFilters()]);
   await loadPartsData();
 }
-
 /** Platzhalter einer Kennzahl, solange sie lädt — „—“ hiesse „kein Wert“. */
 const WERT_SKELETT = '<span class="skelett-zeile skelett-wert" aria-hidden="true"></span>';
+
 
 async function loadPartsStats(){
   const felder = ['ps-total', 'ps-unique', 'ps-colors'];
@@ -90,6 +96,7 @@ export function teilPasstZumFilter(p){
   return true;
 }
 
+/** @type {boolean | null} */
 let _setTeileLeer = null;   // null: noch nicht geladen
 let _manuelleLeer = null;
 
@@ -110,8 +117,8 @@ export function teileLeerAbgleichen(manuelleLeer){
   if (_manuelleLeer === false) { main.innerHTML = ''; return; }
   const q = G('parts-search')?.value.trim() || '';
   const gefiltert = !!(activeColor || activeCat || q || G('parts-spare')?.value);
-  // Wie in allen Listen: „Noch keine …“ ohne Filter, sonst „Keine Treffer“.
   G('tab-parts')?.classList.toggle('sammlung-leer', !gefiltert);
+  // Wie in allen Listen: „Noch keine …“ ohne Filter, sonst „Keine Treffer“.
   main.innerHTML = gefiltert
     ? leerZustand({ ico: 'suche', titel: q ? tRaw('common.no_hits', { query: q }) : tRaw('parts.no_filter_match'),
                     knopf: zuruecksetzenKnopf('parts') })
@@ -131,25 +138,11 @@ export function teileFilterZuruecksetzen(){
 // von Dateien, die VOR dieser geladen werden. Das ging nur gut, weil die
 // Aufrufe erst nach dem Laden aller Skripte passieren.
 
-// ═══ TEILE-LISTE: SEITENWEISE MIT ENDLOS-SCROLL ═════════════════════════════
-//
 // Vorher holte diese Ansicht in einem Zug JEDE Teil/Farb-Kombination der
 // Sammlung und baute daraus in einem Rutsch die komplette Kachelwand. An einem
 // Datensatz mit 380 Sets (171'000 parts-Zeilen) gemessen: 20,65 MB Nutzlast und
-// zehntausende DOM-Knoten pro Tabwechsel. Mit Seiten zu 100 sind es 0,03 MB und
-// 100 Kacheln; nachgeladen wird erst beim Scrollen.
-//
-// Muster wie im Katalog (09-catalog.js): Sentinel plus IntersectionObserver,
-// Scroll-Fallback, und ein Generationszähler, damit eine langsame Antwort einer
-// verworfenen Filterkombination nicht in eine neuere Liste hineinschreibt.
-//
-// Die eine Stelle, die hier eigenes Nachdenken braucht: Die Kachelansicht
-// gruppiert nach Farbe mit Zwischenüberschrift, und eine Farbe kann über eine
-// Seitengrenze laufen. Der Server sortiert nach MIN(color_name), MIN(part_name),
-// die Seiten kommen also farbsortiert an — die neue Seite hängt ihre ersten
-// Karten deshalb in die BESTEHENDE letzte Gruppe ein, statt eine zweite
-// Überschrift derselben Farbe zu erzeugen. _partsLastColor merkt sich, welche
-// das war.
+// zehntausende DOM-Knoten pro Tabwechsel. Mit Seiten zu 100 sind es 0,03 MB und …
+// Ausführlich: docs/begruendungen/public/js/03-parts.js.md#parts-page-size
 
 const PARTS_PAGE_SIZE = 100;
 let _partsPage = 0;          // zuletzt geladene Seite
@@ -177,7 +170,7 @@ function partsParams(page){
   // Nur die Tabellenansicht hat eine Spalte dafür, die Kachel nicht.
   if (G('parts-view').value === 'table') p.set('with_sets','1');
   p.set('page', page);
-  p.set('page_size', PARTS_PAGE_SIZE);
+  p.set('page_size', String(PARTS_PAGE_SIZE));
   addScopeParam(p, 'parts');
   addLagerParam(p, 'parts');
   return p;
@@ -332,19 +325,13 @@ function bumpGroupCount(groupEl, add){
 /**
  * Ersatzteil-Plakette. Sets enthalten ein Tütchen Ersatzteile; Rebrickable
  * kennzeichnet sie.
- *
- * Der Text `parts.spare_tag` liegt seit jeher in beiden Sprachdateien —
- * gezeichnet hat ihn nie jemand. Der Grund stand im Feld selbst: `is_spare`
- * kam in vier Schreibweisen an, und die naheliegende Prüfung wäre falsch
- * gewesen, weil der Server "0" als ZEICHENKETTE lieferte und die in
- * JavaScript WAHR ist — jedes Teil wäre als Ersatzteil markiert worden.
- *
- * Seit der Server die Schreibweisen an einer Stelle liest (istErsatzteil() in
- * src/infra/validate.ts), ist es ein echter Wahrheitswert und `p.is_spare` genügt.
+ * Ausführlich: docs/begruendungen/public/js/03-parts.js.md#ersatzteilplakette
  */
 function ersatzteilPlakette(p){
   return p.is_spare ? `<span class="spare-tag">${esc(t('parts.spare_tag'))}</span>` : '';
 }
+
+/** Alternativtext eines Teilbilds: Name und Farbe, wie sie auf der Kachel stehen. */
 
 function partsCard(p){
   // data-orig speist den Zoom (11-actions.js, openImageLightboxFromEl):
@@ -397,6 +384,7 @@ function updatePartsSentinel(){
   }
 }
 
+/** @type {IntersectionObserver | null} */
 let _partsIO = null;
 function bindPartsSentinel(){
   const s = G('parts-sentinel');
@@ -428,15 +416,7 @@ function maybeLoadMoreParts(){
 
 /**
  * Suchtext — und zwar fuer BEIDE Listen des Reiters.
- *
- * Marcos Befund vom 20.10.: „Wenn ich im Filter z.b. nach 3001 suche passiert
- * nichts." Hier stand allein loadPartsData(), also nur die Wand der Set-Teile.
- * Die manuell erfassten Kacheln darueber blieben unberuehrt, obwohl die
- * Filterleiste ausdruecklich UEBER ihnen steht (public/index.html, geprueft in
- * test/tab-layout.test.js).
- *
- * Eine Entprellung fuer beide: Zwei Zeitgeber auf demselben Feld waeren zwei
- * Stellen, an denen die naechste Liste vergessen wird.
+ * Ausführlich: docs/begruendungen/public/js/03-parts.js.md#teilefiltergeaendert
  */
 function teileFilterGeaendert() {
   loadPartsData();
@@ -456,16 +436,7 @@ G('parts-ordnung').addEventListener('change', () => {
 });
 /**
  * Der Ansichtsumschalter — fuer BEIDE Listen des Reiters.
- *
- * Marcos Befund vom 20.10.: „Wenn ich bei den Teilen auf Tabelle umschalte,
- * werden nur die Teile aus den Sets als Tabelle angezeigt. Die manuell
- * erfassten sind immer Kacheln." Hier stand allein loadPartsData() — derselbe
- * halbe Anschluss wie beim Suchtext darueber.
- *
- * Neu GEZEICHNET, nicht neu geladen: Die Wand der Set-Teile braucht in der
- * Tabellenansicht andere Daten (`with_sets=1`, siehe partsQuery) und muss
- * deshalb neu abrufen. Die manuelle Liste braucht dieselben Daten in einer
- * anderen Form — ein zweiter Abruf waere nur Wartezeit.
+ * Ausführlich: docs/begruendungen/public/js/03-parts.js.md#teileansichtgeaendert
  */
 function teileAnsichtGeaendert() {
   loadPartsData();
@@ -474,10 +445,189 @@ function teileAnsichtGeaendert() {
 G('parts-view').addEventListener('change', teileAnsichtGeaendert);
 
 
+// ── MANUAL PARTS ─────────────────────────────────────────────────────────────
+let manualPartsCache = [];
+/** Die zuletzt geladenen manuell erfassten Teile (nur lesen). */
+export function manuelleTeile() { return manualPartsCache; }
+
+export async function loadManualParts() {
+  const [d, v] = await Promise.all([
+    api('GET', '/v1/parts/manual'+manuellQuery('parts', 'parts-search')),
+    // Derselbe Filter wie die Liste darüber: Sonst stünden Zähler und Menge
+    // aus dem einen Blickfeld neben einer Summe aus einem anderen.
+    api('GET', '/v1/finance/parts-valuation'+scopeQuery('parts')),
+  ]);
+  if (!d.success) return;
+  manualPartsCache = d.parts || [];
+  renderManualParts();
+  if (v.success) {
+    if(G('mp-count')) G('mp-count').textContent = d.parts.length;
+    if(G('mp-qty'))   G('mp-qty').textContent   = d.parts.reduce((s,p) => s + (p.quantity||0), 0);
+    if(G('mp-val'))   G('mp-val').textContent   = fmtN(v.total_value, v.currency || CURRENCY);
+  }
+}
+
+export function renderManualParts() {
+  const el = G('manual-parts-list');
+  zeichneTeileFilter();
+  const teile = manualPartsCache.filter(teilPasstZumFilter);
+  teileLeerAbgleichen(!teile.length);
+  if (G('manual-parts-n')) G('manual-parts-n').textContent = teile.length ? tRaw('parts.group_types', { n: teile.length }) : '';
+  if (!teile.length) { el.innerHTML = ''; return; }
+  if (tabellenAnsicht('parts-view')) {
+    el.innerHTML = manuelleTabelle(teile, 'part');
+    if (typeof window.__bimLabelTables === 'function')
+      window.__bimLabelTables(el.querySelector('table'));
+    return;
+  }
+  el.innerHTML = `<div class="man-grid">
+    ${teile.map(p => {
+      // War: p.image_local || p.image_url roh, ohne Vorschau und ohne Proxy —
+      // einzige Stelle im ganzen Projekt, die das CDN-Bild direkt und in
+      // voller Auflösung in eine Kachel geladen hat. Jetzt wie überall sonst:
+      // Vorschau über den Server-Proxy.
+      const imgSrc = imgUrl(thumbUrl(p.image_local || p.image_url) || p.image_local || p.image_url || '', true);
+      const img = imgSrc
+        ? bildTag({ src: imgSrc, alt: '', klasse: 'man-tile-img', ph: 'teil' })
+        : `<span class="bild-ph man-tile-img" aria-hidden="true">${platzhalterInhalt('teil')}</span>`;
+      const colorRow = p.color_name
+        ? `<div class="man-tile-color">${p.color_hex ? `<span class="man-tile-swatch" data-farbe="${escHex(p.color_hex, 'var(--s300)')}"></span>` : ''}${esc(colorName(p.color_name))}</div>`
+        : '';
+      // Wie bei den Minifiguren: mengengewichtet über die Erfassungen.
+      const partPrice = p.avg_purchase_price ?? p.unit_price ?? p.purchase_price;
+      const priceStr = partPrice!=null ? fmtN(partPrice, CURRENCY) : '—';
+      const condBadge = condBadges(p);
+      return `<div class="man-tile" tabindex="0" role="button" aria-keyshortcuts="Delete" data-click="openManDetail" data-arg="part" data-arg2="${esc(p.part_number)}" data-arg3="${p.color_id||0}" data-stil="cursor:pointer">
+        <div class="ca"><span class="delbtn" data-click="deleteManualPartStop"${echt()} aria-hidden="true" data-arg="${esc(p.part_number)}" data-arg2="${p.color_id||0}" data-arg3="${p.user_id||''}" title="${esc(t('parts.delete.title'))}">${TRASH_ICON_SVG}</span></div>
+        ${img}
+        <div class="man-tile-num" title="${esc(p.part_number)}">${esc(p.bl_part_number||p.part_number)}</div>
+        <div class="man-tile-name">${esc(p.part_name) || '—'}</div>
+        ${colorRow}
+        <div data-stil="display:flex;gap:4px;align-items:center;flex-wrap:wrap;margin-top:2px">
+          <span class="qbadge">×${p.quantity}</span>${condBadge}${ownerBadges(p)}
+        </div>
+        <div class="preis man-preis">${priceStr}</div>
+      </div>`;
+    }).join('')}
+  </div>`;
+}
+
+/** @param {number} [owner] Besitzer der Karte — siehe deleteManualPart. */
+export async function updateManualPart(partNumber, colorId, body, owner) {
+  const d = await api('PUT', `/v1/parts/${encodeURIComponent(partNumber)}/${colorId}${owner ? `?owner=${encodeURIComponent(owner)}` : ''}`, body);
+  if (d.success) { toast(tRaw('settings.saved'),'success'); loadManualParts(); if(aktiverReiter()==='finance') loadFinance(); }
+  else toast(d.error||t('settings.error'),'error');
+}
+
+/**
+ * @param {string} partNumber
+ * @param {number} colorId
+ * @param {number|string} [owner]  Besitzer der KARTE. Im Haushalt zeigt der
+ *   manuelle Bereich die Einträge aller Konten mit Plakette und Papierkorb;
+ *   ohne diese Angabe löschte der Server immer die Zeile des Aufrufers —
+ *   geklickt war die fremde Karte, weg war die eigene, und die Antwort sagte
+ *   „success". Begründung und Messung in src/haushalt/haushalt.ts.
+ */
+export async function deleteManualPart(partNumber, colorId, owner) {
+  if (!await confirmDelete(tRaw('parts.delete.title'), t('gallery.delete.text',{name:partNumber}), 'teil')) return false;
+  const d = await api('DELETE', `/v1/parts/${encodeURIComponent(partNumber)}/${colorId}${owner ? `?owner=${encodeURIComponent(owner)}` : ''}`);
+  if (d.success) { geloeschtMitRueckgaengig(tRaw('parts.deleted'), d); loadManualParts(); return true; }
+  else { toast(d.error || t('settings.error'), 'error'); return false; }
+}
+
+// Inline add-part form (zuoberst im Teile-Tab)
+let _brickColors = [];
+
+export async function loadBrickColors(){
+  if(_brickColors.length) return _brickColors;
+  const d = await api('GET','/v1/parts/brick-colors');
+  if(d.success){ _brickColors=d.colors; renderColorDropdown(); }
+  return _brickColors;
+}
+
+function updateColorDot(){
+  const sel = G('ap-color-select');
+  const dot = G('ap-color-dot');
+  if(!sel||!dot) return;
+  const hex = sel.options[sel.selectedIndex]?.dataset.hex;
+  dot.style.background = hex ? '#'+hex : 'var(--s200)';
+}
+
+function renderColorDropdown(){
+  const sel = G('ap-color-select'); if(!sel) return;
+  // data-name bleibt der englische Rebrickable-Name — er wird beim Speichern
+  // als parts.color_name übernommen und für BrickLink-Abgleiche gebraucht.
+  // Übersetzt wird nur der sichtbare Text, mit derselben Funktion wie die
+  // Farbanzeige und der Filter im Teile-Reiter.
+  sel.innerHTML = `<option value="">${t('parts.no_color_dash')}</option>`
+    + _brickColors.map(c=>`<option value="${c.id}" data-name="${esc((c.name||'').replace(/"/g,'&quot;'))}" data-hex="${hexZiffern(c.hex)}">${esc(colorName(c.name))}</option>`).join('');
+}
+
+G('btn-add-part')?.addEventListener('click', async () => {
+  const num = G('ap-num-inline')?.value.trim();
+  const res = G('ap-inline-result');
+  res.style.color = 'var(--r500)';
+  if(!num){ res.textContent=tRaw('parts.number_required'); return; }
+  const colorSel = G('ap-color-select');
+  // "Keine Farbe" ist NICHT 0.
+  // Ausführlich: docs/begruendungen/public/js/03-parts.js.md#rawcolor
+  const rawColor = colorSel?.value ?? '';
+  const colorId  = String(rawColor).trim() === '' ? null : (parseInt(rawColor) || 0);
+  const colorOpt  = colorSel?.options[colorSel.selectedIndex];
+  const colorName = colorOpt?.dataset.name || null;
+  const colorHex  = colorOpt?.dataset.hex  || null;
+  const preis = betragAusFeld('ap-price-inline');
+  if (!preis.ok) return;
+  const btn = G('btn-add-part'); btn.disabled=true; btn.textContent='…';
+  res.style.color='var(--mut)'; res.textContent=tRaw('adding.progress');
+  const d = await api('POST','/v1/parts',{
+    part_number: num, color_id: colorId, color_name: colorName, color_hex: colorHex,
+    quantity: parseInt(G('ap-qty-inline')?.value)||1,
+    unit_price: preis.wert,
+    condition: G('ap-condition')?.value || 'N',
+    owner_user_id: selectedOwner('ap-owner'),
+    storage: selectedStorage('ap-storage'),
+  });
+  btn.disabled=false; btn.textContent=tRaw('gallery.add.submit');
+  if(d.success){
+    const hinweisT = preisHerkunftHinweis(d.price_from_condition);
+    res.style.color='var(--g700)';
+    res.textContent=`${d.part_number} ${d.action==='added'?t('common.added'):t('common.updated')}`
+      + (hinweisT ? ` — ${hinweisT}` : '');
+    schliesseErfassen('part'); toast(res.textContent.replace(/^\u2705\s*/, ''), 'success');
+    G('ap-num-inline').value=''; G('ap-qty-inline').value='1'; G('ap-price-inline').value='';
+    leereLagerortFeld('ap-storage');
+    if(colorSel) colorSel.selectedIndex=0;
+    loadManualParts();
+    // Siehe die Figuren-Erfassung darueber: ein Satz braucht laenger als ein
+    // Haekchen.
+    setTimeout(()=>{ res.textContent=''; }, hinweisT ? 9000 : 3000);
+  } else { res.style.color='var(--r500)'; res.textContent=d.error||t('settings.error'); }
+});
+
+// CSV import
+async function importPartsCsv() {
+  const d = await csvHochladen({ feld: 'part-csv-file', pfad: '/v1/parts/import/csv',
+    zeige: (l) => csvImportStatus('part-csv-status', l ? 'running' : 'hide', t('import.running')) });
+  if (d) loadManualParts();
+}
+
+G('btn-csv-template').onclick = (e) => {
+  e.preventDefault();
+  const csv = 'part_number,quantity,color_id,color_name,unit_price,condition,acquired_at\n3001,5,4,Red,,N,2024-01-15\n3003,2,0,White,0.15,U,\n';
+  const a = document.createElement('a');
+  a.href = 'data:text/csv;charset=utf-8,' + encodeURIComponent(csv);
+  a.download = 'parts-template.csv';
+  a.click();
+};
+
+abonniere('bestandGeaendert', () => { loadParts(); loadManualParts(); });
 
 // ── Handler beim Dispatcher anmelden (siehe js/00-registry.js) ──────────────
 registerActions({
   loadParts,
   setCatFilter,
   setColorFilter,
+  importPartsCsv,
+  updateColorDot,
 });

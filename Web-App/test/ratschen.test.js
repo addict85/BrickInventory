@@ -243,7 +243,8 @@ test('Inline-Stile in index.html werden weniger, nie mehr', () => {
 /** Quelltext von Server und Oberfläche — für die beiden Kommentar-Ratschen unten. */
 function serverUndOberflaeche() {
   const js = path.join(WEB, 'public', 'js');
-  return [...quellen(), ...fs.readdirSync(js).filter(f => /^\d\d-.*\.js$/.test(f)).map(f => path.join(js, f))];
+  return [...quellen(), ...fs.readdirSync(js).filter(f => /^\d\d-.*\.js$/.test(f)).map(f => path.join(js, f)),
+          path.join(WEB, 'public', 'i18n.js')];
 }
 
 test('kein Verweis auf „Nachtrag N" im Code', () => {
@@ -273,6 +274,94 @@ test('der Kommentaranteil im Server sinkt, nie steigt', () => {
   const anteil = Math.round(1000 * kommentar / zeilen) / 10;
   assert.ok(anteil <= SCHRANKE, `${anteil} % Kommentarzeilen, erlaubt sind ${SCHRANKE} %`);
   if (anteil < SCHRANKE - 0.5) console.log(`  ℹ Kommentaranteil: ${anteil} % (Schranke ${SCHRANKE}) — Schranke nachziehen`);
+});
+
+/** Quellen der Oberfläche: public/js ohne Bündel, dazu i18n.js. */
+function oberflaeche() {
+  const js = path.join(WEB, 'public', 'js');
+  return [...fs.readdirSync(js).filter(f => f.endsWith('.js') && f !== 'app.bundle.js').map(f => path.join(js, f)),
+          path.join(WEB, 'public', 'i18n.js')];
+}
+
+test('der Kommentaranteil der Oberfläche sinkt, nie steigt', () => {
+  // Gemessen am 05.11.2026: 35,9 %; nach dem Auslagern der langen Kommentare
+  // nach docs/begruendungen/public/ 26,1 %. Gegenprobe: 300 Kommentarzeilen
+  // an 01-core.js gehängt → rot.
+  const SCHRANKE = 26.1;
+  let zeilen = 0, kommentar = 0;
+  for (const f of oberflaeche()) {
+    for (const z of fs.readFileSync(f, 'utf8').split('\n')) {
+      const t = z.trim();
+      if (!t) continue;
+      zeilen++;
+      if (t.startsWith('//') || t.startsWith('*') || t.startsWith('/*')) kommentar++;
+    }
+  }
+  assert.ok(zeilen > 8000, `nur ${zeilen} Zeilen gefunden — greift die Suche noch?`);
+  const anteil = Math.round(1000 * kommentar / zeilen) / 10;
+  assert.ok(anteil <= SCHRANKE, `${anteil} % Kommentarzeilen in der Oberfläche, erlaubt sind ${SCHRANKE} %`);
+  if (anteil < SCHRANKE - 0.5) console.log(`  ℹ Kommentaranteil Oberfläche: ${anteil} % (Schranke ${SCHRANKE}) — Schranke nachziehen`);
+});
+
+test('kein Kommentar der Oberfläche hat mehr als fünf Zeilen Prosa', () => {
+  // CLAUDE.md: Ein Kommentar sagt in zwei bis fünf Zeilen, warum. JSDoc-Tags
+  // (@param, @returns …) zählen nicht mit. Gemessen am 05.11.2026: 206 Blöcke,
+  // ausgelagert nach docs/begruendungen/public/; seitdem 0.
+  // Gegenprobe: ein //-Block mit sechs Zeilen in 01-core.js → rot mit Fundstelle.
+  const lang = [];
+  let bloecke = 0;
+  for (const f of oberflaeche()) {
+    const z = fs.readFileSync(f, 'utf8').split('\n');
+    for (let i = 0; i < z.length; i++) {
+      const t = z[i].trim();
+      let prosa = null, j = i;
+      if (t.startsWith('//')) {
+        while (j + 1 < z.length && z[j + 1].trim().startsWith('//')) j++;
+        prosa = z.slice(i, j + 1).map(l => l.trim().replace(/^\/\/ ?/, ''));
+      } else if (t.startsWith('/*') && !t.includes('*/')) {
+        while (j + 1 < z.length && !z[j].includes('*/')) j++;
+        const innen = [t.replace(/^\/\*\*?/, ''), ...z.slice(i + 1, j).map(l => l.trim().replace(/^\* ?/, ''))];
+        const k = innen.findIndex(l => l.trim().startsWith('@'));
+        prosa = k < 0 ? innen : innen.slice(0, k);
+      }
+      if (!prosa) continue;
+      bloecke++;
+      if (prosa.filter(l => l.trim()).length > 5) lang.push(`${path.relative(WEB, f)}:${i + 1}`);
+      i = j;
+    }
+  }
+  assert.ok(bloecke > 300, `nur ${bloecke} Kommentarblöcke gefunden — greift die Suche noch?`);
+  assert.deepEqual(lang, [], 'Lange Begründung: Warum in den Code (höchstens fünf Zeilen), Geschichte in den Commit');
+});
+
+/** Funktionen der Oberfläche mit ihrer Länge (Deklaration bis zur schliessenden Klammer gleicher Einrückung). */
+function funktionsLaengen() {
+  const raus = [];
+  for (const f of oberflaeche()) {
+    const z = fs.readFileSync(f, 'utf8').split('\n');
+    z.forEach((l, i) => {
+      const m = l.match(/^(\s*)(?:export\s+)?(?:async\s+)?function\s*\*?\s*(\w+)\s*\(/);
+      if (!m || /\}\s*;?\s*$/.test(l)) return;
+      const ende = z.findIndex((x, j) => j > i && x.startsWith(m[1] + '}'));
+      if (ende > i) raus.push({ ort: `${path.relative(WEB, f)}:${i + 1} ${m[2]}`, zeilen: ende - i + 1 });
+    });
+  }
+  return raus;
+}
+
+test('keine Funktion der Oberfläche über 100 Zeilen, über 80 werden weniger', () => {
+  // Gemessen am 05.11.2026: 13 über 100 (loadFinance 262); nach dem Aufteilen
+  // 0 über 100 und 8 über 80. Gegenprobe: loadFinance wieder in einem Stück
+  // (vor dem Aufteilen) → rot mit „04-finance.js … loadFinance“.
+  const SCHRANKE_80 = 8;
+  const alle = funktionsLaengen();
+  assert.ok(alle.length > 500, `nur ${alle.length} Funktionen gefunden — greift die Suche noch?`);
+  const ueber100 = alle.filter(x => x.zeilen > 100).map(x => `${x.ort} (${x.zeilen})`);
+  assert.deepEqual(ueber100, [], 'Eine Funktion über 100 Zeilen: in benannte Teile zerlegen');
+  const ueber80 = alle.filter(x => x.zeilen > 80);
+  assert.ok(ueber80.length <= SCHRANKE_80,
+    `${ueber80.length} Funktionen über 80 Zeilen, erlaubt sind ${SCHRANKE_80}:\n${ueber80.map(x => x.ort).join('\n')}`);
+  if (ueber80.length < SCHRANKE_80) console.log(`  ℹ Funktionen über 80 Zeilen: ${ueber80.length} (Schranke ${SCHRANKE_80}) — Schranke nachziehen`);
 });
 
 test('der Kommentaranteil der Tests sinkt, nie steigt', () => {

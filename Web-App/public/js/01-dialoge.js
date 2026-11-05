@@ -1,11 +1,7 @@
-// ═══ Tastaturbedienung aller Dialoge ════════════════════════════════════════
-//
 // Für jedes `.ovl[role=dialog]` an EINER Stelle: Escape schliesst den
 // obersten offenen Dialog, beim Öffnen springt der Fokus hinein, Tab bleibt
 // darin, und beim Schliessen kehrt der Fokus dorthin zurück, wo er vorher war.
-//
-// Geschlossen wird über den Knopf mit `data-dialog-zu` — so läuft dieselbe
-// Aufräumarbeit wie beim Klick auf ✕, statt sie hier nachzubauen.
+// Ausführlich: docs/begruendungen/public/js/01-dialoge.js.md#fuer-jedes-ovl-role-dialog-an-einer-stel
 
 // `summary` gehört dazu: Fehlt es, springt die Falle vor „Weitere Aktionen“
 // zurück an den Anfang, und alles dahinter ist per Tastatur unerreichbar.
@@ -17,12 +13,14 @@ export function istOffen(el) {
 }
 
 function dialoge() {
-  return [...document.querySelectorAll('.ovl[role="dialog"]')];
+  return /** @type {HTMLElement[]} */ ([...document.querySelectorAll('.ovl[role="dialog"]')]);
 }
 
 /** Der oberste offene Dialog: höchster z-index, bei Gleichstand der spätere im Markup. */
 export function obersterDialog() {
-  let bester = null, bestZ = -Infinity;
+  /** @type {HTMLElement | null} */
+  let bester = null;
+  let bestZ = -Infinity;
   for (const el of dialoge()) {
     if (!istOffen(el)) continue;
     const z = parseInt(el.style.zIndex || getComputedStyle(el).zIndex, 10) || 0;
@@ -107,7 +105,7 @@ function tasteGedrueckt(ev) {
     // Escape schliesst beim ersten Druck, auch aus einem Feld. Ausnahme sind
     // Felder in einer Tabelle (Korrekturen der Wanted-Vorschau): Dort verlässt
     // es nur die Zelle, damit nicht alle Korrekturen mit dem Dialog verschwinden.
-    const aktiv = document.activeElement;
+    const aktiv = /** @type {HTMLElement | null} */ (document.activeElement);
     if (aktiv && dialog.contains(aktiv) && /^(INPUT|TEXTAREA|SELECT)$/.test(aktiv.tagName) && aktiv.closest('table')) {
       ev.preventDefault();
       aktiv.blur();
@@ -116,7 +114,7 @@ function tasteGedrueckt(ev) {
       fokussiereFlaeche(dialog);
       return;
     }
-    const zu = dialog.querySelector('[data-dialog-zu]');
+    const zu = /** @type {HTMLElement | null} */ (dialog.querySelector('[data-dialog-zu]'));
     if (!zu) return;
     ev.preventDefault();
     ev.stopPropagation();

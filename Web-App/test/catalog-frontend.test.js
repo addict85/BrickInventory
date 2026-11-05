@@ -125,6 +125,7 @@ function fakeApi(_method, url) {
 // ── Globale Stubs, wie sie 01-core/i18n bereitstellen ────────────────────────
 w.eval(`
   window.G = id => document.getElementById(id);
+  window.alle = (s, w = document) => [...w.querySelectorAll(s)]; window.eins = (s, w = document) => w.querySelector(s);
   window.t = (k, v) => { let s = k; if (v) for (const [a,b] of Object.entries(v)) s += ' ' + b; return s; };
   window.esc = s => String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
   window.locale = () => 'de-CH';

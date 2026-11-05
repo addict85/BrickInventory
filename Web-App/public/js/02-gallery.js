@@ -1,350 +1,34 @@
-import { skelettKacheln, listeLadefehler } from './01-bausteine.js';
+// Die Sammlung: Kennzahlen, Galerie (Kacheln und Liste), Set erfassen, Set-
+// CSV-Import und Löschen. Neu geladen wird sie auch, wenn ein tieferes Modul
+// 'setsGeaendert' oder 'bestandGeaendert' meldet.
+import { abonniere } from './00-ereignisse.js';
+import { skelettKacheln, listeLadefehler, condBadges, ownerBadges, pnlBadge, schliesseErfassen, teileAufschluesselung } from './01-bausteine.js';
 import { echt, registerActions } from './00-registry.js';
 import { locale, t, tRaw} from '../i18n.js';
-import { fehlerMeldung, fmtDatum, bildTag, fullUrl, platzhalterInhalt, setnummerFeldGueltig, leerZustand, ico, CURRENCY, G, ME, TRASH_ICON_SVG, api, esc, escJs, escUrl, fmtBig, fmtGeld, fmtN, fmtPct, istGeschenk, imgUrl, observeLazyImages, thumbUrl, toast, zuruecksetzenKnopf, betragAusFeld } from './01-core.js';
-import { _gibSse, _gibTimer, gibStart, protokollZeile } from './01-fortschritt.js';
-import { _monitorTimer, loadMonitor, set_monitorTimer } from './01-monitor.js';
-import { SCOPE_VIEWS, addScopeParam, scopeMode, scopeQuery, setScopeMode,
-         LAGER_VIEWS, addLagerParam, lagerModus, setLagerModus } from './14-scope.js';
-import { setScrollLabel } from './15-scrollbar.js';
-import { loadParts, teileFilterZuruecksetzen } from './03-parts.js';
-import { loadFinance } from './04-finance.js';
-import { loadApiLimits, loadCacheStats, loadCacheTtl, loadHousehold, loadProfile, loadRateLimitStats, loadSettings, loadTokens, ladeTls, ladeAlarmUebersicht, ladeLagerortVerwaltung } from './05-settings.js';
-import { figurenFilterZuruecksetzen, loadBrickColors, loadManualFigsTable, loadManualParts, loadMinifigs } from './06-minifigs.js';
-import { ladeGutscheine } from './17-gutscheine.js';
-import { geloeschtMitRueckgaengig, ladePapierkorb } from './20-papierkorb.js';
-import { ladeZweitenFaktor } from './21-zweiter-faktor.js';
-import { ladePasskeys } from './23-passkeys.js';
-import { _lastImportAt, confirmDelete, enrichGalleryWithPrices, jobPollTimer, ladeLagerorte, lagerortBlock, openModal, pollJobStatus, set_jobPollTimer, set_lastImportAt } from './07-admin.js';
-import { openAcqModal, renderAcqModalBody, renderAcquisitionSummary } from './13-acquisition-modals.js';
-import { ladeMerkliste, merklisteZuruecksetzen } from './16-merkliste.js';
-import { initCatalog, katalogZuruecksetzen } from './09-catalog.js';
-import { delSetStop, openPdfViewerLink, stopEvent } from './11-actions.js';
-import { meldeAnsicht, meldeFilter } from './24-router.js';
-
-// ═══ Navigation, Stats, Progress-Overlay, Galerie, CSV-Polling, Set-Detail-Modal ═══
-// Teil von app.js — die Dateien in public/js/ werden in nummerierter
-// Reihenfolge geladen und teilen sich den globalen Scope (kein Modul-
-// System noetig, Inline-onclick-Handler in index.html funktionieren
-// unveraendert). Der Split ist rein sequenziell und verhaelt sich
-// identisch zur frueheren Einzeldatei.
-
-// ── NAVIGATION ────────────────────────────────────────
-// Icon des Reiters in den Seitentitel spiegeln (links vom Text), damit
-// oben derselbe Icon wie im Nav-Tab erscheint. Quelle ist der Nav-Tab
-// selbst — Emoji ODER Inline-SVG —, so bleibt beides automatisch synchron.
-function syncTabTitleIcon(tab){
-  const nav = document.querySelector(`.ntab[data-tab="${tab}"]`);
-  const slot = document.querySelector(`.ptitle[data-tab-title="${esc(tab)}"] .ptitle-icon`);
-  if(!nav || !slot) return;
-  // Alles vor dem .tab-label ist das Icon (Emoji-Textknoten oder <svg>).
-  const label = nav.querySelector('.tab-label');
-  // Kopien statt outerHTML: Als Text neu eingelesen, stünde der Stil des
-  // Symbols wieder als style-Attribut da, und das verbietet die CSP.
-  const kopien = [];
-  for(const node of nav.childNodes){
-    if(node === label) break;
-    if(node.nodeType === Node.TEXT_NODE ? node.textContent.trim() : true) kopien.push(node.cloneNode(true));
-  }
-  slot.replaceChildren(...kopien);
-}
+import { fehlerMeldung, fmtDatum, bildTag, fullUrl, platzhalterInhalt, setnummerFeldGueltig, leerZustand, ico, G, TRASH_ICON_SVG, api, escJs, fmtBig, fmtGeld, fmtN, fmtPct, istGeschenk, imgUrl, observeLazyImages, thumbUrl, toast, zuruecksetzenKnopf, betragAusFeld, aktiverReiter, alle } from './01-core.js';
+import { gibStart, protokollZeile, csvPollAktiv, addCsvLog, handleSseEvent, hideProgress, setProgBar, showProgress, streamFertig, streamRequest, setzeCsvPollAktiv } from './01-fortschritt.js';
+import { addScopeParam, scopeQuery, addLagerParam, lagerModus } from './14-scope.js';
+import { loadParts, loadManualParts } from './03-parts.js';
+import { loadMinifigs } from './06-minifigs.js';
+import { geloeschtMitRueckgaengig } from './20-papierkorb.js';
+import { CURRENCY, _lastImportAt, set_lastImportAt, setAllSets, allSets, curSet, _pnlCache, set_pnlCache } from './00-zustand.js';
+import { esc } from './00-escapen.js';
+import { confirmDelete } from './01-rueckfrage.js';
+import { springe } from './00-ziele.js';
+import { leereLagerortFeld, selectedOwner, selectedStorage } from './02-konten-orte.js';
 
 /**
- * Sets, Teile und Minifiguren teilen sich in der Leiste EIN Ziel („Sammlung");
- * umgeschaltet wird oben auf der Seite. Teile und Minifiguren behalten ihren
- * unsichtbaren Reiter — Code und Wiederherstellung sprechen sie darüber an.
- */
-const SAMMLUNG = ['gallery', 'parts', 'minifigs'];
-function markiereGruppe(tab){
-  // Eigene Klasse statt .active: `.ntab.active` nennt überall den offenen Reiter.
-  const sammlung = document.querySelector('.ntab[data-tab="gallery"]');
-  sammlung?.classList.toggle('gruppe-aktiv', SAMMLUNG.includes(tab));
-  // Die drei Knöpfe wechseln die Ansicht; die offene ist die aktuelle Seite.
-  document.querySelectorAll('.sammlung-wahl [data-arg]').forEach(b => {
-    if (b.dataset.arg === tab) b.setAttribute('aria-current', 'page'); else b.removeAttribute('aria-current');
-  });
-  // Vorleseprogramme erfahren so, welcher Reiter offen ist.
-  // „Sammlung“ gilt nur dann als aktuelle Seite, wenn der eigene Reiter der
-  // Ansicht nicht zu sehen ist (am Telefon).
-  const offen = document.querySelector('.ntab.active');
-  const offenSichtbar = !!offen?.getClientRects().length;
-  document.querySelectorAll('.ntab').forEach(x => {
-    if (x.classList.contains('active') || (x.classList.contains('gruppe-aktiv') && !offenSichtbar && x !== offen)) x.setAttribute('aria-current', 'page');
-    else x.removeAttribute('aria-current');
-  });
-}
-
-/** Am Handy: die Filter hinter einem Knopf, damit die Liste oben beginnt. */
-export function filterUmschalten(){
-  const leiste = this?.closest?.('.filterleiste');
-  if (!leiste) return;
-  const offen = leiste.classList.toggle('offen');
-  this.setAttribute('aria-expanded', String(offen));
-}
-
-/** Wer kein Verwalter ist, sieht im Reiter Einstellungen einen Satz statt einer leeren Seite. */
-function zeigeEinstellungsZugriff(){
-  const f = G('einst-kein-zugriff');
-  if (!f) return;
-  f.hidden = !!ME?.isAdmin;
-  f.innerHTML = ME?.isAdmin ? '' : leerZustand({ ico: 'schloss', titel: tRaw('settings.kein_zugriff'), text: tRaw('settings.kein_zugriff_text') });
-}
-
-/** Einen Reiter öffnen — aus dem Umschalter der Sammlung oder dem Menü. */
-export function oeffneReiter(name){
-  const ausMenue = !!G('umenu-pop')?.contains(document.activeElement);
-  menueSchliessen();
-  document.querySelector(`.ntab[data-tab="${name}"]`)?.click();
-  if (ausMenue) fokusAufTitel(G('tab-'+name));
-}
-
-/**
- * Nach einer Wahl im Menü steht der Fokus auf einem nun verborgenen Eintrag
- * und fiele an den Seitenanfang; die Überschrift der neuen Seite ist der Ort,
- * an dem Tastatur und Bildschirmleser weitermachen.
- */
-function fokusAufTitel(flaeche){
-  const titel = /** @type {HTMLElement|null} */ (flaeche?.querySelector('.ptitle') ?? null);
-  if (!titel) { G('btn-umenu')?.focus(); return; }
-  if (!titel.hasAttribute('tabindex')) titel.setAttribute('tabindex', '-1');
-  titel.focus({ preventScroll: true });
-}
-
-export function bindTabs(){
-  document.querySelectorAll('.ntab').forEach(t=>{
-    // Avoid duplicate listeners
-    if(t._tabBound) return; t._tabBound=true;
-    t.addEventListener('click',()=>{
-      document.querySelectorAll('.ntab').forEach(x=>x.classList.remove('active'));
-      document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));
-      // Unsichtbare Reiter (Einstellungen, Monitoring) öffnet das Kontomenü —
-      // dann markiert der Menüknopf, wo man ist.
-      const unter = t.classList.contains('ntab-unter');
-      G('btn-umenu')?.classList.toggle('aktiv', unter);
-      if (unter) G('btn-umenu')?.setAttribute('aria-current', 'page'); else G('btn-umenu')?.removeAttribute('aria-current');
-      t.classList.add('active'); G('tab-'+t.dataset.tab).classList.add('active');
-      const tab = t.dataset.tab;
-      meldeAnsicht(tab);
-      markiereGruppe(tab);
-      zeigeSeitenname(G('tab-'+tab), unter);
-      syncTabTitleIcon(tab);
-      // Das Jahres-Etikett am Scrollbalken gehört NUR in den Katalog. Ohne
-      // dieses Abmelden lieferte die dort angemeldete Funktion weiterhin ein
-      // Jahr — auch in der Galerie, wo die Zahl nichts bedeutet.
-      if (tab !== 'catalog') setScrollLabel(null);
-      if(tab==='gallery')      { loadGallery(); loadStats(); }
-      if(tab==='catalog')      { initCatalog(); }
-      if(tab==='wanted')     { ladeMerkliste(); }
-      if(tab==='parts')        {
-        loadParts(); loadManualParts(); loadBrickColors();
-        // If import was recent, reload again after background job completes
-        if(Date.now()-_lastImportAt<30000) setTimeout(()=>{ loadParts(); loadManualParts(); },5000);
-      }
-      if(tab==='minifigs')     {
-        loadMinifigs();
-        if(Date.now()-_lastImportAt<30000) setTimeout(loadMinifigs,5000);
-      }
-      if(tab==='finance')      { loadFinance(); } // loadFinance already fetches parts+minifigs valuation in parallel
-      if(tab==='partslist')    { /* session-only, no server load needed */ }
-      // Der Reiter traegt seit dem 16.10. nur noch die Verwalter-Rubriken; was
-      // frueher hier alles mitgeladen wurde, holt jetzt die jeweilige Sicht
-      // beim Oeffnen (siehe oeffneSicht unten). Wer die API-Schluessel
-      // nachsieht, braucht keine Gutscheinliste.
-      if(tab==='settings')     { zeigeEinstellungsZugriff(); loadSettings(); if(ME?.isAdmin) loadApiLimits(); }
-      if(tab==='monitor')      { loadMonitor(); loadCacheStats(); loadRateLimitStats(); loadCacheTtl(); if(jobPollTimer) clearTimeout(jobPollTimer); pollJobStatus(); }
-      if(tab!=='monitor' && _monitorTimer) { clearInterval(_monitorTimer); set_monitorTimer(null); if(jobPollTimer){clearTimeout(jobPollTimer);set_jobPollTimer(null);} }
-    });
-  });
-  // Alle Seitentitel-Icons füllen — läuft bei jedem bindTabs()-Aufruf, also
-  // auch nach dem Login (showApp ruft bindTabs erneut), wenn der Inhalt
-  // sichtbar wird. So erscheint das Icon links vom Titel auf allen Tabs,
-  // nicht nur nach einem Klick.
-  document.querySelectorAll('.ptitle[data-tab-title]').forEach(h=>syncTabTitleIcon(h.dataset.tabTitle));
-}
-// Aufruf verschoben nach startApp() (js/08-init.js), das js/main.js NACH der
-// Auswertung aller Module aufruft. Im Modulrumpf lief er zu früh: Bei
-// gegenseitigen Importen ist das Übersetzungsobjekt aus i18n.js dann noch
-// nicht initialisiert, und t() wirft.
-
-
-// ── DIE SICHTEN HINTER DEM BENUTZERMENÜ ───────────────
-//
-// ── Marcos Vorgabe vom 16.10. ──────────────────────────────────────────────
-//
-//   „Kannst du in der Webapp die Punkte analog der Android-App in
-//    verschiedenen Sichten aufteilen? Gerne den Reiter Einstellungen mit den
-//    Punkten belassen die nur der Administrator setzen kann, und die
-//    restlichen Seiten oben Rechts hinter dem Benutzernamen als Aufklappbares
-//    Menu mit 3 - anzeigen."
-//
-// Die sieben Sichten sind gewöhnliche `.tab`-Flächen wie die der Reiter —
-// nur ohne Eintrag in der Leiste. Damit gelten für sie dieselben Regeln
-// (eine ist sichtbar, der Rest nicht), und bindTabs() oben schaltet sie
-// genauso wieder ab, wenn jemand einen Reiter anklickt.
-//
-// ── Warum jede Sicht ihr eigenes Laden mitbringt ───────────────────────────
-//
-// Vorher holte der Einstellungs-Reiter bei JEDEM Öffnen alles: Profil,
-// Gutscheine, Geräte, Alarme, Lagerorte. Das waren fünf Abfragen für eine
-// Seite, von der man meist nur eine Rubrik sehen wollte. Jetzt holt jede
-// Sicht, was sie zeigt — dieselbe Regel wie in der Android-App.
-const SICHTEN = {
-  profil:     () => { loadSettings(); loadProfile(); ladeZweitenFaktor(); ladePasskeys(); },
-  gutscheine: () => ladeGutscheine(),
-  alarme:     () => ladeAlarmUebersicht(),
-  lagerorte:  () => ladeLagerortVerwaltung(),
-  haushalt:   () => loadHousehold(),
-  daten:      () => ladePapierkorb(),
-  app:        () => { loadTokens(); ladeTls(); },
-};
-
-/** Eine Sicht aus dem Menü öffnen. */
-export function oeffneSicht(name){
-  if(!SICHTEN[name]) return;
-  const flaeche = G('tab-'+name);
-  if(!flaeche) return;
-  const ausMenue = !!G('umenu-pop')?.contains(document.activeElement);
-  document.querySelectorAll('.ntab').forEach(x=>x.classList.remove('active'));
-  document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));
-  flaeche.classList.add('active');
-  markiereGruppe(null);
-  zeigeSeitenname(flaeche, true);
-  menueSchliessen();
-  meldeAnsicht(name);
-  // Die Sichten liegen im Kontomenü, nicht in der Leiste: Dann zeigt der
-  // Menüknopf, wo man ist — sonst wäre kein Reiter als aktiv markiert.
-  G('btn-umenu')?.classList.add('aktiv');
-  G('btn-umenu')?.setAttribute('aria-current', 'page');
-  // Nach oben: Die Sicht öffnet sich sonst an der Stelle, an der die vorige
-  // gerollt war, und man sieht die Mitte einer fremden Seite.
-  window.scrollTo({ top: 0, behavior: 'smooth' });
-  if (ausMenue) fokusAufTitel(flaeche);
-  SICHTEN[name]();
-}
-
-/**
- * Seitenname im Fenstertitel und, für Seiten hinter dem Menü, im Kopf: Dort
- * markiert kein Reiter die offene Seite, sonst wüsste man nur am Inhalt, wo man ist.
- */
-function zeigeSeitenname(flaeche, imKopf){
-  const titel = flaeche?.querySelector('.ptitle')?.textContent.trim() || '';
-  const kopf = G('kopf-sicht');
-  if (kopf) { kopf.textContent = imKopf ? titel : ''; kopf.hidden = !(imKopf && titel); }
-  document.title = titel ? `${titel} – BrickInventory` : 'BrickInventory Manager';
-  beobachteTitel(flaeche);
-}
-
-/** Beim Start ist die Sammlung schon offen, ohne dass ein Reiter geklickt wurde: Titel trotzdem setzen. */
-export function seitennameAktualisieren(){
-  const flaeche = document.querySelector('.tab.active');
-  const reiter = flaeche && document.querySelector(`.ntab[data-tab="${flaeche.id.replace(/^tab-/, '')}"]`);
-  zeigeSeitenname(flaeche, !reiter || reiter.classList.contains('ntab-unter'));
-}
-
-/**
- * Am Telefon steht der Seitenname nur dann im Kopf, wenn die Überschrift
- * hinausgerollt ist; sonst stünde er zweimal untereinander.
- */
-let _titelBeobachter = null;
-function beobachteTitel(flaeche){
-  const kopf = G('kopf-sicht'), h1 = flaeche?.querySelector('.ptitle');
-  _titelBeobachter?.disconnect();
-  if (!kopf || !h1 || typeof IntersectionObserver !== 'function') return;
-  _titelBeobachter = new IntersectionObserver(([e]) => kopf.classList.toggle('titel-sichtbar', e.isIntersecting),
-    { rootMargin: '-64px 0px 0px 0px' });
-  _titelBeobachter.observe(h1);
-}
-
-function menueSchliessen(fokusZurueck = false){
-  const pop = G('umenu-pop');
-  const drin = !!pop && pop.contains(document.activeElement);
-  if(pop) pop.style.display = 'none';
-  const knopf = G('btn-umenu');
-  if(knopf) knopf.setAttribute('aria-expanded','false');
-  if(knopf && fokusZurueck && drin) knopf.focus();
-}
-
-/** Die sichtbaren Einträge; `admin-only` ist für andere Konten ausgeblendet. */
-function menueEintraege(){
-  return /** @type {HTMLElement[]} */ ([...(G('umenu-pop')?.querySelectorAll('[role="menuitem"]') ?? [])])
-    .filter(e => e.style.display !== 'none');
-}
-
-/** Öffnet das Menü und setzt den Fokus auf den ersten (oder letzten) Eintrag. */
-function menueOeffnen(letzter = false){
-  const pop = G('umenu-pop');
-  if(!pop) return;
-  pop.style.display = 'block';
-  G('btn-umenu')?.setAttribute('aria-expanded','true');
-  const e = menueEintraege();
-  (letzter ? e[e.length - 1] : e[0])?.focus();
-}
-
-/** Das Menü auf- und zuklappen. */
-export function benutzerMenue(){
-  const pop = G('umenu-pop');
-  if(!pop) return;
-  if(pop.style.display !== 'none'){ menueSchliessen(); return; }
-  menueOeffnen();
-}
-
-// Tastatur nach dem APG-Muster „Menu Button": Ein Bildschirmleser kündigt
-// role=menu an, und Nutzer erwarten dann Pfeiltasten statt Tab.
-document.addEventListener('keydown', (ev) => {
-  const ziel = ev.target instanceof Element ? ev.target : null;
-  if(ziel?.id === 'btn-umenu' && (ev.key === 'ArrowDown' || ev.key === 'ArrowUp')){
-    ev.preventDefault(); menueOeffnen(ev.key === 'ArrowUp'); return;
-  }
-  if(!ziel?.closest('#umenu-pop')) return;
-  const e = menueEintraege(), i = e.indexOf(/** @type {HTMLElement} */ (ziel));
-  const nach = { ArrowDown: (i + 1) % e.length, ArrowUp: (i - 1 + e.length) % e.length, Home: 0, End: e.length - 1 }[ev.key];
-  if(nach !== undefined){ ev.preventDefault(); e[nach]?.focus(); return; }
-  if(ev.key === 'Tab') menueSchliessen();
-});
-
-// Zuklappen, wenn jemand daneben tippt oder Escape drückt. Escape bringt den
-// Fokus zurück auf den Menüknopf, sonst fiele er auf den Seitenanfang.
-document.addEventListener('click', (ev) => {
-  const pop = G('umenu-pop');
-  if(!pop || pop.style.display === 'none') return;
-  if(ev.target.closest?.('.umenu-wrap')) return;
-  menueSchliessen();
-});
-document.addEventListener('keydown', (ev) => {
-  if(ev.key === 'Escape') { menueSchliessen(true); importMenuesSchliessen(null, true); }
-});
-
-/** Offene Import-Menüs schliessen, ausser dem, in dem `ausser` liegt. */
-function importMenuesSchliessen(ausser, fokusZurueck = false){
-  /** @type {NodeListOf<HTMLDetailsElement>} */ (document.querySelectorAll('details.import-menue[open]')).forEach(d => {
-    if (ausser && d.contains(ausser)) return;
-    d.open = false;
-    if (fokusZurueck && d.contains(document.activeElement)) d.querySelector('summary')?.focus();
-  });
-}
-// Ein Klick daneben schliesst das Menü; eine Wahl darin (Datei, Vorlage) ebenso.
-document.addEventListener('click', (ev) => {
-  const ziel = ev.target instanceof Element ? ev.target : null;
-  importMenuesSchliessen(ziel);
-  const d = /** @type {HTMLDetailsElement|null} */ (ziel?.closest('.import-klappe a')?.closest('details') ?? null);
-  if (d) d.open = false;
-});
-document.addEventListener('change', (ev) => {
-  const d = ev.target instanceof Element ? /** @type {HTMLDetailsElement|null} */ (ev.target.closest('details.import-menue')) : null;
-  if (d) d.open = false;
-});
-
-/**
- * Der Thementon für das Design „Farbfächer“ — auch in der Sammlung, nicht nur
- * im Katalog: Ohne ihn war das Design dort grau in grau. Ohne Thema-Nummer
- * entscheidet der Themenname, damit ein Thema immer denselben Ton trägt.
+ * Der Thementon für das Design „Farbfächer“ — auch in der Sammlung: Ohne ihn
+ * war das Design dort grau in grau. Ohne Thema-Nummer entscheidet der
+ * Themenname, damit ein Thema immer denselben Ton trägt.
+ * @param {any} s
  */
 function faecherTon(s) {
   if (Number.isInteger(s.theme_id)) return ` data-faecher="${((s.theme_id % 12) + 12) % 12}"`;
   const name = String(s.theme || '').split(' / ')[0];
   if (!name) return '';
   let h = 0;
-  for (const z of name) h = (h * 31 + z.codePointAt(0)) >>> 0;
+  for (const z of name) h = (h * 31 + (z.codePointAt(0) ?? 0)) >>> 0;
   return ` data-faecher="${h % 12}"`;
 }
 
@@ -353,13 +37,8 @@ export async function loadStats(){
   // Mit Kontofilter. Hier stand `api('GET', '/v1/stats')` ohne ihn — und das
   // war nachweislich nicht so gemeint: onScopeChange('gallery') ruft
   // ausgerechnet loadStats() gleich nach loadGallery() auf. Etwas neu zu laden,
-  // das sich nicht ändern kann, ergibt nur einen Sinn, wenn es sich ändern
-  // SOLLTE.
-  //
-  // Die Wirkung: Wer auf „nur meine" stellte, sah darunter eine gefilterte
-  // Liste und darüber weiter die Zahlen des ganzen Haushalts. Am Telefon
-  // stimmten beide — die App schickt accounts an /v1/stats seit jeher
-  // (BrickApiService.getStats).
+  // das sich nicht ändern kann, ergibt nur einen Sinn, wenn es sich ändern …
+  // Ausführlich: docs/begruendungen/public/js/02-gallery.js.md#d
   const d = await api('GET', '/v1/stats' + scopeQuery('gallery'));
   if (d.success) {
     // Die Kennzahlen stehen in jedem Design als Kacheln über der Sammlung.
@@ -379,119 +58,20 @@ export async function loadStats(){
   }
 }
 
-/** „144 aus Sets · 250 einzeln“ — leer, solange nur eine der beiden Quellen etwas hat. */
-export function teileAufschluesselung(ausSets, einzeln) {
-  if (!ausSets || !einzeln) return '';
-  return t('parts.stat.breakdown', { sets: fmtBig(ausSets), einzeln: fmtBig(einzeln) });
-}
-
-// ── PROGRESS OVERLAY ─────────────────────────────────
-export function showProgress(title, csvMode){
-  G('prog-title-txt').textContent=title;
-  G('prog-bar').style.width='0%';
-  G('prog-footer').textContent=tRaw('common.please_wait');
-  G('prog-set-name').textContent='';
-  G('csv-log').style.display=csvMode?'block':'none';
-  G('csv-log').innerHTML='';
-  G('prog-steps').style.display=csvMode?'none':'';
-  // Der Hintergrund-Hinweis gilt nur fürs Erfassen eines einzelnen Sets. Beim
-  // CSV-Import ist die Schrittliste ohnehin ausgeblendet, dort zeigt das
-  // Protokoll (`csv-log`) je Zeile ein echtes Ergebnis.
-  if (G('prog-hint')) G('prog-hint').style.display=csvMode?'none':'';
-  ['ps-meta','ps-image'].forEach(id=>{
-    const el=G(id); el.classList.remove('active','done','err');
-  });
-  G('progress-overlay').classList.add('open');
-  // Reset buttons for new import
-  G('btn-cancel-import').style.display='none';
-  const btnClose = G('btn-close-import');
-  if (btnClose) btnClose.style.display='none';
-}
-export function hideProgress(){
-  G('progress-overlay').classList.remove('open');
-  G('prog-steps').style.display='';
-  // Show header bar when minimizing if import is polling
-  if ((_gibTimer || _gibSse) && ME) {
-    G('global-import-bar').style.display = 'flex';
-  }
-}
-
-// Call this whenever progress changes to sync header bar
-function syncGibFromProgress(pct, text) {
-  const bar = G('global-import-bar');
-  if (!bar) return;
-  bar.style.display = 'flex';
-  G('gib-fill').style.width = pct + '%';
-  G('gib-text').textContent = text;
-}
-// `extra` fiel weg: Es schrieb in ein `.step-count`-Feld, das nur die
-// entfernten Teile-/Teilbilder-Schritte hatten. Ohne diese Schritte gibt es
-// kein Element mehr, in das es hätte schreiben können.
-function setStep(stepId, state){
-  const el=G('ps-'+stepId); if(!el) return;
-  el.classList.remove('active','done','err'); el.classList.add(state);
-}
-function setProgBar(pct){ G('prog-bar').style.width=Math.min(100,pct)+'%'; }
-function addCsvLog(text, ok){
-  const d=G('csv-log'), line=document.createElement('div');
-  line.className='csv-log-line '+(ok?'ok':'er');
-  line.textContent=text; d.appendChild(line); d.scrollTop=d.scrollHeight;
-}
-
-// Verarbeitet die SSE-Ereignisse beim Erfassen EINES Sets.
-//
-// ── Warum hier nur noch zwei Schritte stehen ────────────────────────────────
-// Der Dialog listete früher sechs Schritte: Set-Infos, Bild, Anleitungen,
-// Teile, Teilbilder, Preis. Davon wartet der Aufrufer heute nur noch auf die
-// ersten beiden — `addSet()` (src/sets/setService.ts) holt Set-Daten und Bild
-// synchron und schiebt alles Übrige in ein `setTimeout`, das erst nach der
-// Antwort läuft. Die vier hinteren Schritte konnten den Browser deshalb gar
-// nicht mehr erreichen:
-//   • `instructions` wurde zwar noch gesendet, aber der Download lief bereits
-//     in einem `setImmediate` — der Punkt sprang auf „aktiv" und blieb dort
-//     stehen, weil ihn nie ein Abschluss erreichte.
-//   • `parts_start`, `parts_importing`, `parts_done`, `parts_images` und
-//     `parts_error` stammen aus `importPartsForSet()`. NACHGEMESSEN: alle fünf
-//     Aufrufstellen übergeben dort `null` als Fortschritts-Melder.
-//   • `step:'price'` wurde von KEINER Serverstelle je gesendet.
-// Ein Fortschrittsbalken, der Arbeit anzeigt, auf die niemand wartet, ist
-// keine Auskunft, sondern eine Behauptung. Statt der vier Punkte steht jetzt
-// ein fester Hinweis im Dialog (`prog-hint`), dass diese Arbeit im Hintergrund
-// weiterläuft — was zutrifft und den Dialog nicht künstlich offen hält.
-//
-// `done_meta` markiert die Stelle, an der der synchrone Teil fertig ist. Der
-// Schritt wurde bisher gesendet und vom Browser verworfen; er schliesst jetzt
-// den Bild-Schritt ab. Ohne ihn bliebe „Bild herunterladen" bis zum Ende auf
-// „aktiv", weil das früher der `instructions`-Zweig erledigt hat.
-export function handleSseEvent(ev, singleSetName){
-  switch(ev.step){
-    case 'meta':      setStep('meta','active'); setProgBar(10); G('prog-set-name').textContent=ev.set||singleSetName||''; break;
-    case 'image':     setStep('meta','done'); setStep('image','active'); setProgBar(35); break;
-    case 'done_meta': setStep('image','done'); setProgBar(90); break;
-    case 'done':      setProgBar(100); G('prog-footer').textContent=`${ev.action==='added'?tRaw('common.added_cap'):tRaw('common.updated_cap')}: ${ev.set_number ?? ''}`; break;
-    case 'error':     G('prog-footer').textContent=String(ev.error ?? ''); break;
-  }
-}
-
 // ── GALLERY ───────────────────────────────────────────
-export let allSets=[], curView='grid';
+let curView='grid';
 
 /**
  * Übernimmt das vom Server gelieferte Zustands-Aggregat eines Sets in die
  * Galerie-Liste und zeichnet neu.
- *
- * Vorher hat das Frontend die Regel selbst nachgebaut und dabei die Bedingung
- * der ZULETZT erfassten Position genommen. Der Server sagt aber: sobald EINE
- * Erfassung "U" ist, gilt das Set als gebraucht. Bei der Reihenfolge [U, N]
- * zeigte die Kachel deshalb "neu", bis die Liste neu geladen wurde.
- *
+ * Ausführlich: docs/begruendungen/public/js/02-gallery.js.md#applysetaggregate
  * @param {{set_number:string, condition?:string, acq_count?:number,
  *          used_count?:number, max_purchase_price?:number|null}|undefined} agg
  */
 export function applySetAggregate(agg){
   if (!agg?.set_number) return;
   const before = allSets;
-  allSets = allSets.map(s => s.set_number === agg.set_number ? { ...s, ...agg } : s);
+  setAllSets(allSets.map(s => s.set_number === agg.set_number ? { ...s, ...agg } : s));
   if (allSets !== before) renderGallery();
 }
 // ── Endlos-Scroll der Galerie ───────────────────────────────────────────────
@@ -505,8 +85,8 @@ let _galGen = 0, _galPage = 1, _galDone = false, _galLoadingMore = false, _galTo
 /** Aktuelle Filter- und Sortierwerte als Query-Parameter. */
 function galleryParams(page, pageSize = GAL_PAGE_SIZE){
   const p = new URLSearchParams();
-  p.set('page', page);
-  p.set('page_size', pageSize);
+  p.set('page', String(page));
+  p.set('page_size', String(pageSize));
   const q = G('gs')?.value?.trim();      if (q)     p.set('search', q);
   const th = G('gtheme')?.value;         if (th)    p.set('theme', th);
   const so = G('gsort')?.value;          if (so)    p.set('sort', so);
@@ -525,7 +105,7 @@ async function loadGalleryMore(){
     const batch = d.sets || [];
     if (!batch.length) { _galDone = true; return; }
     _galPage++;
-    allSets = allSets.concat(batch);
+    setAllSets(allSets.concat(batch));
     if (allSets.length >= (_galTotal || 0)) _galDone = true;
     appendGallery(batch);
     updateGalleryPrices();
@@ -556,12 +136,7 @@ function maybeLoadMoreGallery(){
 
 /**
  * Nachfassen, wenn der Sentinel OHNE Zustandswechsel sichtbar bleibt.
- *
- * IntersectionObserver meldet nur ÜBERGÄNGE. Steht der Sentinel schon im
- * Sichtfeld und der Inhalt wird darunter ersetzt (Eigentümerwechsel, Filter,
- * kurze Seite), kommt kein neues Ereignis — es lädt nichts mehr, bis der
- * Nutzer erst hoch- und wieder runterscrollt. Genau das hat Marco gemeldet.
- * Deshalb nach jedem Anhängen selbst nachsehen.
+ * Ausführlich: docs/begruendungen/public/js/02-gallery.js.md#kickgallerysentinel
  */
 function kickGallerySentinel(){
   const sent = G('gallery-sentinel');
@@ -575,7 +150,7 @@ function bindGallerySentinel(){
   const sent = G('gallery-sentinel');
   if (!sent || sent._bound) return;
   sent._bound = true;
-  if ('IntersectionObserver' in window) {
+  if (typeof IntersectionObserver === 'function') {
     new IntersectionObserver(es => { if (es.some(e => e.isIntersecting)) maybeLoadMoreGallery(); },
       { rootMargin: '600px' }).observe(sent);
   } else {
@@ -585,354 +160,6 @@ function bindGallerySentinel(){
   }
 }
 
-
-/**
- * Kontoauswahl beim Erfassen — nur im Haushalt.
- *
- * Die Liste kommt vom Server (/sets/household-members) und enthält bei einem
- * Konto ohne Verknüpfung genau einen Eintrag. Dann bleibt das Feld verborgen:
- * Eine Auswahl mit einer einzigen Möglichkeit ist keine Auswahl, sondern eine
- * Frage, die sich nicht stellt.
- */
-/**
- * Kontofilter je Ansicht sichtbar machen und mit dem gespeicherten Wert füllen.
- *
- * Bleibt verborgen, solange das Konto keine Unterkonten hat: Ein Filter mit
- * genau einer möglichen Antwort ist keine Wahl, sondern eine Frage, die sich
- * nicht stellt.
- */
-export function initScopeSelects(members) {
-  const isMain = members.length > 1;
-  // Einträge: Alle Konten, Eigene, dann JEDES Unterkonto namentlich.
-  //
-  // Der Sammelposten „Unterkonten" ist auf Marcos Wunsch entfallen: Er
-  // beantwortete nur „nicht mir" und stand zwischen zwei Einträgen, die
-  // dieselbe Frage genauer beantworten. Bei zwei Kindern war die Auswahl
-  // damit fünf Zeilen lang, von denen eine nichts hinzufügte.
-  //
-  // Der Server versteht `accounts=subs` weiterhin (src/haushalt/haushalt.ts) — eine
-  // ältere App-Fassung auf einem Gerät schickt es sonst ins Leere.
-  const subs = members.filter(m => !m.is_self);
-  const opts = [
-    `<option value="all">${esc(tRaw('household.scope_all'))}</option>`,
-    `<option value="own">${esc(tRaw('household.scope_own'))}</option>`,
-    ...subs.map(m => `<option value="${m.id}">${esc(m.username)}</option>`),
-  ].join('');
-
-  for (const view of SCOPE_VIEWS) {
-    const el = G('scope-' + view);
-    if (!el) continue;
-    if (!isMain) { el.style.display = 'none'; continue; }
-    el.innerHTML = opts;
-    // Gespeicherte Wahl kann auf ein inzwischen entkoppeltes Konto zeigen —
-    // dann auf „Alle" zurückfallen statt eine leere Auswahl zu zeigen.
-    const saved = scopeMode(view);
-    el.value = [...el.options].some(o => o.value === saved) ? saved : 'all';
-    if (el.value !== saved) setScopeMode(view, el.value);
-    el.style.display = '';
-  }
-
-  // Die Teileliste hat kein Auswahlfeld, sondern eine Wahl mit zwei
-  // Möglichkeiten („Unterkonten mit einbeziehen", index.html). Sie beantwortet
-  // dort dieselbe Frage und gehorcht deshalb derselben Regel: Wer keine
-  // Unterkonten hat, bekommt sie nicht zu sehen — ein Schalter ohne Wirkung
-  // ist schlechter als keiner.
-  //
-  // Hier und nicht in 08-init.js, weil `isMain` genau hier feststeht: Es
-  // ergibt sich aus der Haushaltsantwort, die diese Funktion ohnehin schon
-  // gelesen hat. Ein zweiter Abruf dafür wäre eine zweite Wahrheit.
-  const subsBox = G('pl-bestand-subs-box');
-  if (subsBox) {
-    subsBox.style.display = isMain ? 'inline-flex' : 'none';
-    // Kein Haken, wenn es nichts einzubeziehen gibt: Sonst bliebe die Wahl
-    // beim Entkoppeln des letzten Unterkontos unsichtbar gesetzt stehen und
-    // wirkte weiter.
-    if (!isMain) { const cb = G('pl-bestand-subs'); if (cb) cb.checked = false; }
-  }
-}
-
-/**
- * Die Lagerort-Auswahlfelder füllen.
- *
- * ── Warum sie verborgen bleiben, solange es keine Orte gibt ────────────────
- *
- * Ein Auswahlfeld mit genau einem Eintrag („Alle Lagerorte") beantwortet
- * nichts und steht trotzdem in der Filterzeile. Genau so verhält sich der
- * Kontofilter daneben, wenn es keine Unterkonten gibt — dieselbe Regel, weil
- * es dieselbe Art von Wahl ist.
- */
-export function initStorageSelects(orte) {
-  const opts = [`<option value="">${esc(tRaw('filter.storage_all'))}</option>`,
-    ...orte.map(o => `<option value="${esc(o.ort)}">${esc(o.ort)}</option>`)].join('');
-  for (const view of LAGER_VIEWS) {
-    const el = G('storage-' + view);
-    if (!el) continue;
-    if (!orte.length) { el.style.display = 'none'; continue; }
-    el.innerHTML = opts;
-    // Zeigt die gespeicherte Wahl auf einen inzwischen leeren Ort, steht hier
-    // sonst eine leere Beschriftung über einer gefilterten Liste — dieselbe
-    // Falle wie beim Kontofilter.
-    const gespeichert = lagerModus(view);
-    el.value = [...el.options].some(o => o.value === gespeichert) ? gespeichert : '';
-    if (el.value !== gespeichert) setLagerModus(view, el.value);
-    el.style.display = '';
-  }
-}
-
-/**
- * Umschalten — lädt NUR die betroffene Ansicht neu, wie beim Kontofilter.
- *
- * Im Reiter Teile BEIDE Listen: Seit der Lagerortfilter auch die manuell
- * erfassten Teile trifft (getManualParts), waere ein Umschalten ohne
- * loadManualParts() ein halb angewandter Filter — oben ungefiltert, unten
- * gefiltert. Dieselbe Begruendung wie bei onScopeChange() darunter.
- */
-/** Alle Filter einer Ansicht leeren (Knopf im Leerzustand ohne Treffer). */
-/** Am Telefon steckt der Filter hinter einem Sinnbild; die Zahl sagt, dass gerade gefiltert wird. */
-function filterZahlZeigen() {
-  const zahl = G('gallery-filter-zahl'); if (!zahl) return;
-  const n = ['gtheme', 'storage-gallery'].filter(id => G(id)?.value).length;
-  zahl.textContent = n ? String(n) : ''; zahl.hidden = !n;
-}
-
-function filterZuruecksetzen(ansicht) {
-  if (ansicht === 'gallery') {
-    G('gs').value = ''; G('gtheme').value = '';
-    setLagerModus('gallery', ''); if (G('storage-gallery')) G('storage-gallery').value = '';
-    loadGallery();
-  } else if (ansicht === 'merkliste') merklisteZuruecksetzen();
-  else if (ansicht === 'catalog') katalogZuruecksetzen();
-  else if (ansicht === 'parts') teileFilterZuruecksetzen();
-  else if (ansicht === 'minifigs') figurenFilterZuruecksetzen();
-  meldeFilter();
-}
-
-export function onStorageChange(view) {
-  const el = G('storage-' + view);
-  if (!el) return;
-  setLagerModus(view, el.value);
-  if (view === 'gallery') loadGallery();
-  if (view === 'parts')   { loadParts(); loadManualParts(); }
-}
-
-/**
- * Umschalten — lädt NUR die betroffene Ansicht neu.
- *
- * Die Wahl gilt pro Ansicht; alle vier gleichzeitig neu zu laden würde drei
- * Ansichten anfassen, die niemand gerade ansieht, und dabei Preisabrufe
- * auslösen.
- */
-export function onScopeChange(view) {
-  const el = G('scope-' + view);
-  if (!el) return;
-  setScopeMode(view, el.value);
-  if (view === 'gallery')  { loadGallery(); loadStats(); }
-  // Die Reiter Teile und Minifiguren haben je ZWEI Listen: die aus Sets und
-  // die manuell erfassten. Nur loadParts() neu zu laden liess den manuellen
-  // Bereich ungefiltert stehen — er lädt über einen eigenen Endpunkt.
-  if (view === 'parts')    { loadParts(); loadManualParts(); }
-  // Der Reiter Minifiguren hat dieselben zwei Listen — hier stand trotzdem nur
-  // loadMinifigs(). Die manuellen Karten hingen damit am Kontofilter des
-  // LETZTEN Ladens: loadManualFigsTable() schickt den Filter mit, wurde beim
-  // Umschalten aber nie gerufen. Genau die Luecke, die der Satz darueber fuer
-  // beide Reiter beschreibt.
-  if (view === 'minifigs') { loadMinifigs(); loadManualFigsTable(); }
-  if (view === 'finance')  loadFinance();
-  // Die Merkliste laedt EINE Liste und hat keine Kennzahlen darueber — anders
-  // als die Galerie, wo loadStats() mitmuss.
-  if (view === 'merkliste') ladeMerkliste();
-}
-
-/**
- * Die Konten des Haushalts, wie sie zuletzt geladen wurden.
- *
- * Gemerkt, weil nicht jede Auswahl in index.html steht: Das Detail der
- * Merkliste baut seine Zeilen beim Oeffnen und braucht die Liste dann —
- * lange nach loadHouseholdMembers(). Ein zweiter Abruf waere ein zweiter
- * Stand derselben Antwort.
- */
-let _haushalt = [];
-
-/** Die gemerkten Konten. Leer, solange noch keine Antwort da war. */
-export function haushaltsKonten() { return _haushalt; }
-
-export async function loadHouseholdMembers() {
-  const d = await api('GET', '/v1/sets/household-members').catch(() => null);
-  const members = d?.members || [];
-  _haushalt = members;
-  // Dieselbe Antwort entscheidet über den Kontofilter: mehr als ein Konto
-  // heisst Hauptkonto mit Unterkonten.
-  initScopeSelects(members);
-  // Die Lagerorte in EINEM Zug: Sie fuellen die Auswahlfelder der Filter UND
-  // die gemeinsame <datalist> der Eingabefelder. Zwei Aufrufe waeren zwei
-  // Staende derselben Liste.
-  ladeLagerorte().catch(() => {});
-  // Die Vorgabe fuer die Erfassungsfelder (Marcos Stern) — eigener Abruf,
-  // Begruendung bei ladeLagerortVorgabe().
-  ladeLagerortVorgabe().catch(() => {});
-  const html = members.map(m =>
-    `<option value="${m.id}"${m.is_self ? ' selected' : ''}>${esc(m.username)}${m.is_self ? ' ' + esc(tRaw('household.ich')) : ''}</option>`
-  ).join('');
-  // Alle drei Erfassen-Formulare: Set, manuelles Teil, manuelle Minifigur.
-  // Dieselbe Liste, dieselbe Regel — ein Kaufpreis für ein Kind zu erfassen
-  // soll für alle drei gleich gehen.
-  // cat-m-owner dabei — der Katalog-Dialog ist der vierte
-  // Erfassungsweg und war als einziger nicht angeschlossen.
-  // mk-owner ist der fuenfte Erfassungsweg (Merkliste) — dieselbe Liste,
-  // dieselbe Regel. Der Grossvater traegt einen Wunsch fuer den Enkel ein.
-  for (const id of ['add-owner', 'ap-owner', 'af-owner', 'cat-m-owner', 'mk-owner']) {
-    const box = G(`${id}-box`), sel = G(id);
-    if (!box || !sel) continue;
-    if (members.length < 2) { box.style.display = 'none'; continue; }
-    sel.innerHTML = html;
-    box.style.display = '';
-  }
-  zeichneLagerortFelder();
-}
-
-/**
- * Die Lagerortfelder der fuenf ERFASSUNGSWEGE einmal zeichnen.
- *
- * ── Marcos Befund vom 24.09. ────────────────────────────────────────────────
- *
- * „Wenn ich ein Set in der Galerie hinzufuegen will, kann ich den Lagerort
- * nicht waehlen. Egal ob ich das manuell oder per Barcode hinzufuege. Bei den
- * manuell erfassten Teilen kann ich beim Erfassen keinen Lagerort setzen. Bei
- * manuelle erfassten Minifiguren kann ich beim Erfassen keinen Lagerort
- * setzen." Dazu die beiden Wege in die Galerie, aus dem Katalog und aus der
- * Merkliste.
- *
- * ── Warum hier und nicht fuenfmal im HTML ───────────────────────────────────
- *
- * Das Bedienelement ist zusammengesetzt (Auswahl + Textfeld fuer einen neuen
- * Ort) und steht als EINE Fassung in lagerortBlock() — dieselbe, die die
- * Detailansichten benutzen. Fuenfmal von Hand ausgeschrieben waeren fuenf
- * Fassungen, die auseinanderlaufen koennen.
- *
- * Gezeichnet wird zusammen mit der Kontoauswahl, weil beides denselben Anlass
- * hat: Der Haushalt ist geladen, die Erfassungsformulare stehen. setzeOrtVorrat()
- * zieht die Auswahlen danach von selbst nach, sobald der Vorrat eintrifft —
- * sie tragen data-ortauswahl.
- */
-export const ERFASSUNGS_ORTFELDER = ['add-storage', 'ap-storage', 'af-storage',
-                                     'cat-m-storage', 'mk-take-storage'];
-
-/**
- * Der Lagerort, der beim Erfassen schon dastehen soll — Marcos Stern.
- *
- * „Weiter möchte ich ein Lagerort in den Einstellungen als Default setzen
- *  können. Der soll dann bei einer Neuerfassung bereits vorausgewählt sein."
- *
- * Leer heisst: keine Vorgabe, die Felder stehen auf „—" wie bisher.
- */
-let _ortVorgabe = '';
-
-/** Ein Lagerortfeld eines Erfassungswegs neu zeichnen. */
-function zeichneOrtFeld(id, wert) {
-  const slot = G(`${id}-slot`);
-  if (!slot) return;
-  slot.innerHTML = lagerortBlock(id, wert);
-  // Die sichtbare Beschriftung steht im HTML, die beiden Bedienelemente
-  // entstehen hier — ein `for=` darauf waere im Quelltext ein Verweis ins
-  // Leere (test/a11y.test.js meldet genau das, zu Recht). aria-labelledby
-  // stellt die Verbindung zur Laufzeit her, und zwar fuer BEIDE: Auswahl und
-  // Textfeld tragen denselben Namen, weil sie dasselbe Feld sind.
-  for (const el of slot.children) el.setAttribute('aria-labelledby', `${id}-label`);
-  slot.dataset.gezeichnet = '1';
-}
-
-export function zeichneLagerortFelder() {
-  for (const id of ERFASSUNGS_ORTFELDER) {
-    const slot = G(`${id}-slot`);
-    // Nur einmal: Ein zweiter Durchlauf wuerfe eine bereits getroffene Wahl weg.
-    if (!slot || slot.dataset.gezeichnet === '1') continue;
-    zeichneOrtFeld(id, _ortVorgabe);
-  }
-}
-
-/**
- * Die Vorgabe holen und die Erfassungsfelder darauf stellen.
- *
- * ── Warum ein eigener Abruf und nicht der Vorrat von ladeLagerorte() ────────
- *
- * ladeLagerorte() liest /v1/storage — das sind die BELEGTEN Orte mit ihrer
- * Anzahl, und die Antwort hat keine Vorgabe (sie ist je Konto, die Uebersicht
- * spannt das ganze Blickfeld). Die Vorgabe steht in /v1/storage/locations,
- * also beim Vorrat, zu dem sie gehoert.
- *
- * Das Vorbild ist initDefaultCondition() in 01-core.js: Derselbe Gedanke —
- * eine Einstellung aus den Einstellungen belegt die Erfassungsformulare vor —,
- * nur fuer den Ort statt fuer den Zustand.
- *
- * NACHZIEHEN, weil die Felder schon stehen: Sie werden mit dem Haushalt
- * gezeichnet, die Antwort kommt ueber das Netz. Nachgezogen wird aber nur, was
- * noch LEER ist; wer in der Zwischenzeit selbst etwas gewaehlt hat, behaelt es.
- */
-export async function ladeLagerortVorgabe() {
-  const d = await api('GET', '/v1/storage/locations').catch(() => null);
-  if (!d?.success) return;
-  _ortVorgabe = d.vorgabe?.name || '';
-  if (!_ortVorgabe) return;
-  for (const id of ERFASSUNGS_ORTFELDER) {
-    if (!(G(id)?.value || '').trim()) zeichneOrtFeld(id, _ortVorgabe);
-  }
-}
-
-/**
- * Das Lagerortfeld eines Erfassungswegs auf den Ausgangszustand stellen.
- *
- * Beim Oeffnen des Formulars, wie Anzahl und Kaufpreis auch: Ein Ort von
- * vorhin sieht aus wie eine Vorgabe, ist aber ein Rest.
- *
- * Seit es Marcos Stern gibt, ist der Ausgangszustand nicht mehr zwangslaeufig
- * leer: Gibt es eine Vorgabe, steht SIE wieder da. Genau das ist der Sinn der
- * Sache — und deshalb heisst die Funktion nicht mehr „leeren", sondern stellt
- * den Anfang wieder her.
- *
- * Gezeichnet statt gesetzt: ortOptionen() legt fuer einen Ort, den der Vorrat
- * noch nicht kennt (die Liste kommt ueber das Netz), eine eigene Option an.
- * Setzte man nur `sel.value`, stuende die Auswahl auf „—", waehrend im
- * Textfeld der Ort steht — ein Feld mit zwei Aussagen.
- */
-export function leereLagerortFeld(id) {
-  if (G(`${id}-slot`)) { zeichneOrtFeld(id, _ortVorgabe); return; }
-  // Ohne Slot gibt es das zusammengesetzte Feld nicht; dann bleibt es beim
-  // alten Weg. Heute hat jeder der fuenf Erfassungswege einen (public/
-  // index.html), aber ein Formular ohne Slot soll hier nicht abstuerzen.
-  const feld = G(id), sel = G(`${id}-sel`);
-  if (feld) { feld.value = _ortVorgabe; feld.style.display = 'none'; }
-  if (sel) sel.selectedIndex = 0;
-}
-
-/**
- * Der gewaehlte Lagerort eines Formulars — `''`, wenn keiner dasteht.
- *
- * ── Warum `''` und nicht `undefined` (Marcos Befund vom 20.10.) ─────────────
- *
- * Hier stand `wert || undefined`. Damit fiel der Schluessel aus dem Rumpf, und
- * der Server sah zwei voellig verschiedene Lagen gleich:
- *
- *   - ein Formular, in dem jemand die vorbefuellte Vorgabe weggeraeumt hat,
- *   - ein Import, der von Lagerorten ueberhaupt nichts weiss.
- *
- * Seit ortFuerNeuerfassung() (src/bestand/lagerort.ts) die Vorgabe auch
- * serverseitig einsetzt, ist das ein Unterschied: Die zweite Lage SOLL die
- * Vorgabe bekommen, die erste nicht. Ein leeres Feld sagt es deshalb
- * ausdruecklich, statt zu schweigen.
- *
- * Fuer das Anlegen selbst aendert sich nichts: normalisiereLagerort('') ist
- * weiterhin null, und bei null wird kein Ort geschrieben.
- */
-export function selectedStorage(id) {
-  return (G(id)?.value || '').trim();
-}
-
-/** Gewähltes Zielkonto eines Formulars — undefined, solange es keines gibt. */
-export function selectedOwner(selectId) {
-  const box = G(`${selectId}-box`), sel = G(selectId);
-  if (!box || box.style.display === 'none' || !sel?.value) return undefined;
-  return parseInt(sel.value);
-}
 
 /**
  * @param {{restore?: boolean}} [opts] restore=true behält die bereits
@@ -975,7 +202,7 @@ export async function loadGallery(opts = {}){
   const d=await api('GET', `/v1/sets?${galleryParams(1, holen)}`);
   if (gen !== _galGen) return;
   if (listeLadefehler(gal, d, { erneut: 'loadGallery', behalten: hatteListe })) { if (hatteListe) renderGallery(); return; }
-  allSets=d.sets||[];
+  setAllSets(d.sets||[]);
   _galTotal = d.total ?? allSets.length;
   // Seitenzähler an die tatsächlich geholte Menge angleichen, damit die nächste
   // Folgeseite am richtigen Versatz ansetzt.
@@ -995,7 +222,7 @@ export async function loadGallery(opts = {}){
       d.themes.map(th=>`<option value="${esc(th)}"${th===current?' selected':''}>${esc(th)}</option>`).join('');
     themeEl.value = current;
   }
-  if (themeEl && !themeEl._bound) { themeEl._bound = true; themeEl.addEventListener('change', loadGallery); }
+  if (themeEl && !themeEl._bound) { themeEl._bound = true; themeEl.addEventListener('change', () => loadGallery()); }
   renderGallery(); loadStats();
   // Erst NACH dem Zeichnen zurückspringen — vorher ist das Dokument noch kurz
   // und der Browser würde die Position wieder abschneiden.
@@ -1018,6 +245,7 @@ export function renderGallery(){
     c.innerHTML = gefiltert
       ? leerZustand({ ico: 'suche', titel: q ? tRaw('common.no_hits', { query: q }) : tRaw('gallery.no_results_filter'),
                       knopf: zuruecksetzenKnopf('gallery') })
+      // Ohne eigenen Knopf: „Set hinzufügen“ steht direkt darüber in der Erfassen-Leiste.
       : leerZustand({ ico: 'set', titel: tRaw('gallery.empty'), text: tRaw('gallery.empty_hint'),
                       knopf: { text: tRaw('gallery.add.title'), click: 'oeffneErfassen', arg: 'set' } });
     return;
@@ -1032,19 +260,11 @@ export function renderGallery(){
 }
 /**
  * Trägt Marktpreis und Gewinn/Verlust in die bestehenden Kacheln nach.
- *
- * Ersetzt den früheren renderGallery()-Aufruf am Ende von
- * enrichGalleryWithPrices(): Der hat die komplette Kachelwand per innerHTML neu
- * gebaut, nur um pro Kachel eine Zeile zu ergänzen. Alle <img> waren dadurch
- * neue Elemente und blendeten erneut ein — das sichtbare Flackern ein paar
- * Sekunden nach dem Laden bzw. direkt nach dem Login.
- *
- * Hier wird ausschliesslich der Preis-Container angefasst; Bilder, Scrollposition
- * und Fokus bleiben unberührt.
+ * Ausführlich: docs/begruendungen/public/js/02-gallery.js.md#updategalleryprices
  */
 export function updateGalleryPrices(){
   const bySet = new Map(allSets.map(x => [x.set_number, x]));
-  document.querySelectorAll('[data-price-for]').forEach(el => {
+  alle('[data-price-for]').forEach(el => {
     const s = bySet.get(el.dataset.priceFor);
     if (!s) return;
     const inhalt = preisZeile(s);
@@ -1069,67 +289,6 @@ function preisZeile(s){
   const art = betrag ? `<span class="preis-art">${t(markt ? 'gallery.card.market' : 'gallery.card.paid')}</span>` : '';
   const pct = pnl ? `<span title="${esc(tRaw('gallery.card.pnl_hint'))}"><span class="vh">${t('gallery.card.pnl_hint')}: </span>${pnl}</span>` : '';
   return `${art}<span class="preis">${betrag}</span>${pct ? `<span class="preis-pnl">${pct}</span>` : ''}`;
-}
-
-/**
- * G&V-Plakette. Bei Kaufpreis 0 „Geschenk“ statt einer Prozentzahl: Gegen 0
- * gerechnet stünde dort „+327.600 %“, und das sagt nichts.
- */
-export function pnlBadge(pct, kauf){
-  if(istGeschenk(kauf)) return `<span class="pnl-geschenk">${t('finance.gift')}</span>`;
-  if(pct===null||pct===undefined) return '';
-  const v=parseFloat(pct); const cls=v>0?'pnl-pos':v<0?'pnl-neg':'pnl-neu';
-  return `<span class="${cls}">${fmtPct(v)}</span>`;
-}
-
-/**
- * Zustands-Plaketten eines Eintrags — eine je erfasstem Zustand.
- *
- * ── Warum eine Liste ────────────────────────────────────────────────────────
- * `condition` ist ein Aggregat und liefert genau einen Wert („gebraucht,
- * sobald eine Erfassung gebraucht ist"). Wer ein Exemplar neu und eines
- * gebraucht gekauft hat, sah damit nur „Gebraucht" — die Neu-Erfassung war
- * unsichtbar, obwohl sie mit ihrem eigenen Preis in die Bewertung eingeht.
- *
- * `conditions` kommt vom Server (utils/handlers.ts, conditionsFromAcquisitions)
- * und ist die EINE Stelle, an der entschieden wird, welche Plaketten es gibt.
- * Hier wird nichts nachgerechnet; ältere Antworten ohne das Feld fallen auf
- * `condition` zurück.
- *
- * Steht in dieser Datei, weil Galerie-, Minifiguren- und Teile-Kacheln sie
- * alle brauchen — vorher stand dieselbe Plakette viermal im Code, dreimal
- * davon mit fest eingetragenen Farben statt der CSS-Klassen.
- */
-/**
- * Besitzer-Plaketten — nur im Haushalt.
- *
- * Der Server hängt `owners` nur an, wenn mehrere Konten im Blickfeld sind. Im
- * Einzelkonto stünde an jeder Kachel „gehört mir", und das ist reines
- * Rauschen. Im Haushalt ist es dagegen die wichtigste Angabe der Kachel: Ohne
- * sie verschiebt man das falsche Exemplar.
- *
- * Mehrere Namen heisst, dass dasselbe Set in mehreren Konten liegt — die
- * Kachel zeigt es bewusst nur EINMAL, mit der Summe der Mengen.
- */
-/**
- * Wem gehört das? Nur gezeigt, wenn ein ANDERES Konto des Haushalts mit
- * drinsteckt — ein Etikett mit dem eigenen Namen auf jeder Kachel beantwortet
- * keine Frage. Ohne Haushalt gibt es kein anderes Konto, also keins.
- */
-export function ownerBadges(item) {
-  if (!item?.owners?.length) return '';
-  if (item.owners.every(o => ME && o.id === ME.id)) return '';
-  return item.owners.map(o => `<span class="cond-badge besitzer-badge" title="${esc(o.username)}">${esc(o.username)}</span>`).join('');
-}
-
-export function condBadges(item) {
-  const list = Array.isArray(item?.conditions) && item.conditions.length
-    ? item.conditions
-    : [item?.condition === 'U' ? 'U' : 'N'];
-  return list.map(c => c === 'U'
-    ? `<span class="cond-badge cond-used"><span class="vh">${t('common.condition')}: </span>${t('common.condition_used')}</span>`
-    : `<span class="cond-badge cond-new"><span class="vh">${t('common.condition')}: </span>${t('common.condition_badge_new')}</span>`
-  ).join('');
 }
 
 function gridCard(s){
@@ -1195,12 +354,6 @@ function tableRow(s){
 G('btn-add').onclick=doAddSet;
 G('add-num').addEventListener('input', unbekanntZuruecksetzen);
 G('add-num').addEventListener('keydown',e=>e.key==='Enter'&&doAddSet());
-/** Erfassen-Dialoge der Sammlung: set, part, fig — gleich aufgebaut (Erstfokus: data-erstfokus). */
-// Ohne data-arg reicht der Dispatcher das Ereignis als erstes Argument.
-const erfassenDialog = (art) => G(`add-${typeof art === 'string' ? art : 'set'}-modal`);
-export function oeffneErfassen(art){ erfassenDialog(art)?.classList.add('open'); }
-export function schliesseErfassen(art){ erfassenDialog(art)?.classList.remove('open'); }
-
 /**
  * Eine Nummer, die der Katalog nicht kennt, wird erst nach Rückfrage
  * angelegt: Sonst entsteht aus einem Tippfehler ein Set ohne Namen und Bild.
@@ -1238,14 +391,21 @@ async function setUnbekannt(num) {
   G('btn-add-text').textContent = tRaw('gallery.add.trotzdem');
   return true;
 }
-
 /** Aus dem Erfassen-Dialog direkt zum vorhandenen Set. */
 export function erfassenZumSet(nr) {
   G('add-num').value = '';
   unbekanntZuruecksetzen();
   schliesseErfassen();
-  openModal(nr);
+  springe('setDetail', nr);
 }
+
+/** Am Telefon steckt der Filter hinter einem Sinnbild; die Zahl sagt, dass gerade gefiltert wird. */
+export function filterZahlZeigen() {
+  const zahl = G('gallery-filter-zahl'); if (!zahl) return;
+  const n = ['gtheme', 'storage-gallery'].filter(id => /** @type {HTMLInputElement | null} */ (G(id))?.value).length;
+  zahl.textContent = n ? String(n) : ''; zahl.hidden = !n;
+}
+
 
 async function doAddSet(){
   const num=G('add-num').value.trim(), qty=parseInt(G('add-qty').value)||1;
@@ -1261,7 +421,7 @@ async function doAddSet(){
   unbekanntZuruecksetzen();
   showProgress(t('gallery.adding_set',{num}), false);
   try{
-    await streamRequest('/api/v1/sets/add-stream', {set_number:num,quantity:qty,purchase_price,condition,owner_user_id,storage:selectedStorage('add-storage')}, (ev)=>{
+    await streamRequest('/v1/sets/add-stream', {set_number:num,quantity:qty,purchase_price,condition,owner_user_id,storage:selectedStorage('add-storage')}, (ev)=>{
       handleSseEvent(ev, num);
       if(ev.step==='done' && ev.action==='exists'){
         // Set steht schon im Blickfeld — der Server hat NICHTS geschrieben
@@ -1271,7 +431,7 @@ async function doAddSet(){
         hideProgress();
         G('add-num').value='';
         schliesseErfassen();
-        openModal(ev.set_number);
+        springe('setDetail', ev.set_number);
         return;
       }
       if(ev.step==='done'){
@@ -1287,7 +447,7 @@ async function doAddSet(){
           set_lastImportAt(Date.now());
           [3000, 8000, 15000, 25000].forEach(delay => setTimeout(()=>{
             loadGallery(); loadStats();
-            const activeTab = document.querySelector('.ntab.active')?.dataset?.tab;
+            const activeTab = aktiverReiter();
             if(activeTab==='parts')    { loadParts(); loadManualParts(); }
             if(activeTab==='minifigs') { loadMinifigs(); }
           }, delay));
@@ -1305,8 +465,7 @@ async function startSetCsvImport(){
   const fd=new FormData(); fd.append('file',fi.files[0]);
   try{
     // Start import job (returns immediately)
-    const start = await fetch('/api/v1/sets/import/csv',{method:'POST',body:fd});
-    const startData = await start.json();
+    const startData = await api('POST', '/v1/sets/import/csv', fd);
     if(!startData.success){ hideProgress(); toast(startData.error||t('settings.error'),'error'); return; }
     const total = startData.total;
     // Übersprungene Zeilen nennen — der Import läuft trotzdem weiter, aber wer
@@ -1314,7 +473,7 @@ async function startSetCsvImport(){
     if (startData.skipped_hint) toast(startData.skipped_hint, 'info');
     G('prog-footer').textContent=tRaw('csv.items_progress',{done:0,total});
 
-    _csvPollActive = true;
+    setzeCsvPollAktiv(true);
     gibStart(); // globalen Balken zeigen (dieses + andere Fenster)
     G('btn-cancel-import').style.display='inline-flex';
 
@@ -1324,16 +483,14 @@ async function startSetCsvImport(){
     // 01-core.js: das Cookie trägt den Kanal, der Token in der Adresse wäre
     // nur der Sitzungstoken im Protokoll.
     const url = '/api/v1/sets/import/csv/stream';
-    let usedSse = false;
 
-    await new Promise((resolve) => {
+    await /** @type {Promise<void>} */ (new Promise((resolve) => {
       let settled = false;
       const finish = () => { if (!settled) { settled = true; resolve(); } };
 
       if (typeof EventSource !== 'undefined') {
         try {
           const es = new EventSource(url, { withCredentials: true });
-          usedSse = true;
           es.onmessage = (e) => {
             let s; try { s = JSON.parse(e.data); } catch(_) { return; }
             const finished = csvApplyOverlayStatus(s, ctx, fi);
@@ -1343,7 +500,6 @@ async function startSetCsvImport(){
             es.close();
             if (!settled) {
               // SSE weg → auf Polling zurückfallen
-              usedSse = false;
               csvPollLoop(ctx, fi).then(finish);
             }
           };
@@ -1353,7 +509,7 @@ async function startSetCsvImport(){
       } else {
         csvPollLoop(ctx, fi).then(finish);
       }
-    });
+    }));
   }catch(e){ hideProgress(); toast(fehlerMeldung(e),'error'); }
 }
 
@@ -1383,7 +539,7 @@ function csvApplyOverlayStatus(s, ctx, fi){
     }
   }
   if(s.status==='done'||s.status==='cancelled'||s.status==='error'){
-    _csvPollActive=false;
+    setzeCsvPollAktiv(false);
     G('btn-cancel-import').style.display='none';
     setProgBar(100);
     if(s.status==='error'){ hideProgress(); toast(s.error||t('csv.import_error'),'error'); }
@@ -1396,11 +552,7 @@ function csvApplyOverlayStatus(s, ctx, fi){
           // DRITTE Fassung derselben drei Zeilen — und es ist die, die Marco
           // am 21.10. fotografiert hat: der Dialog NACH dem Import, in der
           // Sitzung, die ihn gestartet hat.
-          //
-          // Ohne esc(): addCsvLog setzt textContent, nicht innerHTML. Eine
-          // Maskierung davor wird dort nicht aufgeloest, sondern sichtbar
-          // („Brick &amp; Co"). Der Zeitueberschreitungs-Hinweis bleibt — er
-          // gilt nur fuer den CSV-Import und reist deshalb als Zusatz mit.
+          // Ausführlich: docs/begruendungen/public/js/02-gallery.js.md#z
           const z = protokollZeile(r, t('csv.timeout_retry'));
           if (z) addCsvLog(z.text, z.ok);
         });
@@ -1427,9 +579,9 @@ function csvApplyOverlayStatus(s, ctx, fi){
 
 // Polling-Fallback für das startende Fenster (nur wenn SSE nicht verfügbar).
 async function csvPollLoop(ctx, fi){
-  while(_csvPollActive){
+  while(csvPollAktiv()){
     await new Promise(r=>setTimeout(r,1500));
-    if(!_csvPollActive) break;
+    if(!csvPollAktiv()) break;
     try{
       const s = await api('GET','/v1/sets/import/csv/status');
       if(csvApplyOverlayStatus(s, ctx, fi)) break;
@@ -1438,80 +590,6 @@ async function csvPollLoop(ctx, fi){
 }
 
 
-// ── CSV import polling state ─────────────────────────────────────────────────
-export let _csvPollActive = false;
-
-/** Der laufende Ereignisstrom (Set erfassen) — damit „Abbrechen" ihn beenden kann. */
-let _activeAbort = null;
-export function streamFertig(){ _activeAbort = null; G('btn-cancel-import').style.display='none'; }
-
-function cancelImport(){
-  _csvPollActive = false;
-  _activeAbort?.abort();
-  _activeAbort = null;
-  api('POST','/v1/sets/import/csv/cancel').catch(()=>{});
-  G('btn-cancel-import').style.display='none';
-  hideProgress();
-  toast(tRaw('csv.cancelled'),'info');
-  loadGallery();
-}
-G('btn-cancel-import').onclick = cancelImport;
-
-// SSE helper for JSON body — abortable
-export function streamRequest(url, body, onEvent){
-  const ac = _activeAbort = new AbortController();
-  G('btn-cancel-import').style.display='inline-flex';
-  return new Promise((resolve,reject)=>{
-    fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body),signal:ac.signal})
-      .then(res=>readSSE(res,onEvent,ac.signal)).then(resolve).catch(e=>{
-        if(e.name==='AbortError') resolve(); else reject(e);
-      });
-  });
-}
-// SSE helper for FormData — abortable
-function streamRequestForm(url, formData, onEvent){
-  const ac = _activeAbort = new AbortController();
-  G('btn-cancel-import').style.display='inline-flex';
-  return new Promise((resolve,reject)=>{
-    fetch(url,{method:'POST',body:formData,signal:ac.signal})
-      .then(res=>readSSE(res,onEvent,ac.signal)).then(resolve).catch(e=>{
-        if(e.name==='AbortError') resolve(); else reject(e);
-      });
-  });
-}
-async function readSSE(res, onEvent, signal){
-  // Antwortet der Server mit gewöhnlichem JSON statt einem Ereignisstrom, ist
-  // die Sache schon entschieden — beim Erfassen etwa, wenn das Set bereits im
-  // Blickfeld steht (src/sets/setAdd.ts). Dann gibt es nichts zu verfolgen, und
-  // die eine Antwort wird wie ein einzelnes Ereignis durchgereicht. Ohne
-  // diesen Zweig liefe der Leser über JSON-Text, fände keine `data:`-Zeile und
-  // der Aufrufer bekäme nie ein Ereignis — die Anzeige bliebe hängen.
-  if ((res.headers.get('content-type') || '').includes('application/json')) {
-    const daten = await res.json().catch(() => null);
-    if (daten) onEvent({ step: daten.success === false ? 'error' : 'done', ...daten });
-    return;
-  }
-  const reader=res.body.getReader(), dec=new TextDecoder(); let buf='';
-  try{
-    while(true){
-      if(signal?.aborted) break;
-      const {done,value}=await reader.read();
-      if(done) break;
-      buf+=dec.decode(value,{stream:true});
-      const lines=buf.split('\n'); buf=lines.pop();
-      for(const line of lines){
-        if(line.startsWith('data: ')){
-          try{ onEvent(JSON.parse(line.slice(6))); }catch(e){}
-        }
-      }
-    }
-  } catch(e){
-    if(e.name!=='AbortError') throw e;
-  } finally {
-    try{ reader.cancel(); }catch(_){}
-  }
-}
-
 G('vg').onclick=()=>{ curView='grid'; G('vg').classList.add('active'); G('vl').classList.remove('active'); G('vg').setAttribute('aria-pressed','true'); G('vl').setAttribute('aria-pressed','false'); renderGallery(); };
 G('vl').onclick=()=>{ curView='list'; G('vl').classList.add('active'); G('vg').classList.remove('active'); G('vl').setAttribute('aria-pressed','true'); G('vg').setAttribute('aria-pressed','false'); renderGallery(); };
 // Suche entprellt: renderGallery baut das komplette Grid per innerHTML neu auf
@@ -1519,29 +597,11 @@ G('vl').onclick=()=>{ curView='list'; G('vl').classList.add('active'); G('vg').c
 // Sammlungen spürbar ruckelig. 250ms Debounce, wie bei der Parts-Suche.
 // Suche und Sortierung gehen an den Server, also neu LADEN statt neu zeichnen.
 G('gs').addEventListener('input',()=>{ clearTimeout(G('gs')._t); G('gs')._t=setTimeout(loadGallery,250); });
-G('gsort').addEventListener('change',loadGallery);
+G('gsort').addEventListener('change',() => loadGallery());
 
 /**
  * Ein Set löschen — mit GENAU EINER Rückfrage.
- *
- * ── Marcos Befund ──────────────────────────────────────────────────────────
- * „Wenn ich in der Webapp ein Set lösche, erscheinen 2 Rückfragen."
- *
- * Der Löschknopf im Detail-Dialog fragte selbst nach und rief danach diese
- * Funktion, die ein zweites Mal fragte. Von der Kachel und aus der Listenzeile
- * kam nur eine — dieselbe Handlung, drei Einstiege, zwei verschiedene
- * Erlebnisse.
- *
- * Die Rückfrage steht jetzt NUR hier, an der einen Stelle, die tatsächlich
- * löscht. Ein Aufrufer, der selbst fragt, ist damit gar nicht mehr möglich,
- * ohne dass es auffällt.
- *
- * Der Text nennt den Namen, wenn er bekannt ist. Das war vorher der einzige
- * Vorzug der Extra-Rückfrage im Dialog, und der bleibt erhalten.
- *
- * Gelöscht wird beim Server in einer Transaktion: Set, seine Teile, seine
- * Minifiguren und die Kaufpreise (deleteSetRows in utils/handlers.ts).
- *
+ * Ausführlich: docs/begruendungen/public/js/02-gallery.js.md#delset
  * @returns {Promise<boolean>} true, wenn wirklich gelöscht wurde
  */
 export async function delSet(sn){
@@ -1558,233 +618,65 @@ export async function delSet(sn){
   loadGallery(); loadParts(); loadStats();
   return true;
 }
-/** Aus „Weitere Aktionen“ im Set-Detail: das offene Set. */
-function teileNeuImportieren(){ if (curSet?.set_number) reimportParts(curSet.set_number); }
 export async function reimportParts(sn){ toast(tRaw('detail.importing_parts',{sn}),'info'); const d=await api('POST',`/v1/sets/${sn}/parts`); if(d.success){toast(tRaw('detail.parts_imported',{count:d.count}),'success');loadParts();} else toast(d.error,'error'); }
 
 // ── MODAL ─────────────────────────────────────────────
-export let curSet=null;
-export let _pnlCache = {};
 // Gemeinsames "Haufen von Steinen"-Icon für Teile (Nav-Tab, Platzhalter, Überschriften)
 export const PARTS_ICON_SVG = '<svg viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg" data-stil="width:1em;height:1em;vertical-align:middle"><rect x="18" y="62" width="56" height="26" rx="2.5" fill="#0055BF"/><circle cx="28" cy="62" r="5.5" fill="#0055BF"/><circle cx="46" cy="62" r="5.5" fill="#0055BF"/><circle cx="64" cy="62" r="5.5" fill="#0055BF"/><g transform="rotate(-9 66 55)"><rect x="38" y="42" width="52" height="24" rx="2.5" fill="#F2CD37"/><circle cx="49" cy="42" r="5" fill="#F2CD37"/><circle cx="64" cy="42" r="5" fill="#F2CD37"/><circle cx="79" cy="42" r="5" fill="#F2CD37"/></g><g transform="rotate(7 58 80)"><rect x="26" y="76" width="58" height="26" rx="2.5" fill="#E63329"/><circle cx="37" cy="76" r="5.5" fill="#E63329"/><circle cx="55" cy="76" r="5.5" fill="#E63329"/><circle cx="73" cy="76" r="5.5" fill="#E63329"/></g></svg>';
-// openModal defined below (with price history)
-
-export function renderInstructions(instr, sn) {
-  const items = instr.map(i => {
-    const href = i.local_path || i.url;
-    const isLocal = !!i.local_path;
-    // Selbst hochgeladen oder automatisch importiert? Das sagt der Server
-    // (is_manual, siehe utils/instructions.anleitungenZusammenlegen). Vorher
-    // stand die Regel hier als Pfadvergleich — eine zweite Fassung derselben
-    // Frage, die die Android-App gar nicht erst nachbauen konnte.
-    const isUpload = !!i.is_manual;
-    const label = esc(i.description) || t('instr.label');
-    // Lokale Dateien (PDF/Bild) im In-App-Viewer öffnen; externe URLs im neuen Tab.
-    const link = isLocal
-      ? `<a href="${escUrl(href)}" data-click="openPdfViewerLink" data-arg="${esc(href)}" data-arg2="${esc(i.description||'')}" data-stil="cursor:pointer">${label}</a>`
-      : `<a href="${escUrl(href)}" target="_blank" rel="noopener">${label}</a>`;
-    return `<div class="ii" id="instr-${i.id}">
-      ${link}
-      ${isUpload ? `<span class="lv" data-stil="background:var(--p100);color:var(--p600)">${t('instr.badge_manual')}</span>` : isLocal ? `<span class="lc">${ico('speichern')}</span>` : `<span class="lv">${ico('globus')}</span>`}
-      ${isUpload ? `<button data-click="delInstr"${echt()} data-arg="${esc(sn)}" data-arg2="${i.id}" title="${t('instr.delete_tooltip')}" data-stil="background:none;border:none;cursor:pointer;color:var(--s400);font-size:var(--fs-3);padding:0 2px" aria-label="${t('instr.delete_tooltip')}">${ico('schliessen')}</button>` : ''}
-    </div>`;
-  }).join('');
-
-  const uploadForm = `
-    <div id="instr-upload-form" data-stil="margin-top:10px;padding:10px;background:var(--s50);border:1px dashed var(--bdr);border-radius:8px">
-      <div data-stil="font-size:var(--fs-1);font-weight:600;color:var(--mut);margin-bottom:7px">${t('instr.upload_title')}</div>
-      <div data-stil="display:flex;gap:6px;flex-wrap:wrap;align-items:flex-end">
-        <div data-stil="flex:1;min-width:140px">
-          <label for="instr-desc" class="feld-titel-klein">${t('instr.desc_placeholder')}</label>
-          <input type="text" id="instr-desc" data-stil="font-size:var(--fs-2);padding:6px 10px" />
-        </div>
-        <label class="btn bs btn-sm zeiger">
-          ${ico('datei')} ${t('instr.choose_file')}
-          <input type="file" id="instr-file" accept=".pdf,.jpg,.jpeg,.png" class="datei-versteckt" data-change="uploadInstr" data-arg="${escJs(sn)}" />
-        </label>
-      </div>
-      <div id="instr-upload-status" role="status" data-stil="font-size:var(--fs-1);margin-top:6px;color:var(--mut)"></div>
-    </div>`;
-
-  G('m-instr').innerHTML = `
-    <div data-stil="font-size:var(--fs-1);font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--mut);margin:12px 0 7px">
-      ${t('instr.section_title')} ${instr.length ? `(${instr.length})` : ''}
-      ${ME?.isAdmin || !instr.some(i => !i.is_manual) ? `<button data-click="redownloadInstr" data-arg="${escJs(sn)}" class="btn bs btn-sm" data-stil="margin-left:8px;font-size:var(--fs-0);padding:3px 8px">${t('instr.reload')}</button>` : ''}
-    </div>
-    ${items || `<div data-stil="color:var(--mut);font-size:var(--fs-2)">${t('instr.none_auto')}</div>`}
-    ${uploadForm}`;
+export async function enrichGalleryWithPrices(){
+  // Mit Kontofilter — aus demselben Grund wie loadStats(): Diese Funktion
+  // steht am Ende von loadGallery(), und loadGallery() laeuft bei jedem
+  // Wechsel des Kontofilters. Etwas neu zu laden, das sich dadurch nicht
+  // aendern kann, ergibt nur einen Sinn, wenn es sich aendern sollte.
+  //
+  const pnl = await api('GET','/v1/finance/pnl' + scopeQuery('gallery'));
+  if(!pnl.success) return;
+  set_pnlCache({});
+  // Betrag und G&V der Kachel rechnet der Server (kachel_preis,
+  // kachel_pnl_pct in /finance/pnl, src/finanzen/setValue.ts kachelWerte); im
+  // Haushalt tragen alle Zeilen eines Sets dieselben Werte.
+  for(const s of pnl.sets){
+    if(!_pnlCache[s.set_number]) _pnlCache[s.set_number] = { price: s.kachel_preis, pnl_pct: s.kachel_pnl_pct, quelle: s.kachel_quelle };
+  }
+  // Inject price data into cached sets
+  setAllSets(allSets.map(s => ({
+    ...s,
+    _price:   _pnlCache[s.set_number]?.price || 0,
+    _quelle:  _pnlCache[s.set_number]?.quelle,
+    _pnl_pct: _pnlCache[s.set_number]?.pnl_pct ?? undefined
+  })));
+  // Nur die Preis-Container nachtragen statt die ganze Galerie neu zu bauen —
+  // ein voller renderGallery() erzeugt alle <img> neu und lässt sie erneut
+  // einblenden (sichtbares Flackern nach dem Laden).
+  updateGalleryPrices();
 }
 
-async function delInstr(sn, instrId) {
-  if (!await confirmDelete(tRaw('instr.delete_title'),t('instr.delete_text'),'datei')) return;
-  const d = await api('DELETE', `/v1/sets/${sn}/instructions/${instrId}`);
-  if (d.success) { toast(tRaw('instr.deleted'), 'success'); openModal(sn); }
-  else toast(d.error || t('settings.error'), 'error');
-}
+// CSV template download
+G('btn-set-csv-template').onclick = (e) => {
+  e.preventDefault();
+  const csv = 'set_number,quantity,purchase_price,condition,acquired_at\n60098-1,1,49.99,N,2024-01-15\n75192-1,2,,U,\n10497-1,1,,,\n';
+  const a = document.createElement('a');
+  a.href = 'data:text/csv;charset=utf-8,' + encodeURIComponent(csv);
+  a.download = 'sets-template.csv';
+  a.click();
+};
 
-async function uploadInstr(sn) {
-  const fi = G('instr-file');
-  if (!fi.files[0]) return;
-  const status = G('instr-upload-status');
-  status.textContent = tRaw('common.uploading');
-  const fd = new FormData();
-  fd.append('file', fi.files[0]);
-  const desc = G('instr-desc').value.trim();
-  if (desc) fd.append('description', desc);
-  try {
-    const r = await fetch(`/api/v1/sets/${sn}/instructions/upload`, { method: 'POST', body: fd });
-    const d = await r.json();
-    if (d.success) { toast(tRaw('instr.uploaded'), 'success'); openModal(sn); }
-    else { status.textContent = d.error || tRaw('settings.error'); status.style.color = 'var(--r500)'; }
-  } catch (e) { status.textContent = tRaw('common.network_error'); }
-}
+// Andere Module melden, dass sich der Bestand geändert hat; neu geladen wird hier.
+abonniere('setsGeaendert', () => { loadGallery(); loadStats(); });
+abonniere('bestandGeaendert', () => { loadGallery(); loadStats(); });
 
-// export, weil 07-admin.js die Funktion nach einem Eigentümerwechsel aufruft.
-// Ohne das war sie dort schlicht nicht vorhanden: „closeModal is not defined",
-// geworfen aus dem <select> für das Zielkonto. Der Wechsel war zu dem Zeitpunkt
-// schon gespeichert — sichtbar blieb ein offener Dialog und eine Galerie mit
-// altem Stand. Die Anmeldung über registerActions() reicht nur für
-// data-click-Knöpfe im HTML, nicht für Aufrufe aus anderen Modulen.
-export function closeModal(){ G('set-modal').classList.remove('open'); curSet=null; }
-export function openImageLightbox(src){
-  if(!src || src.endsWith('/assets/set-placeholder.svg')) return;
-  G('lightbox-img').src = src;
-  G('img-lightbox').classList.add('open');
-}
-// `removeAttribute` und NICHT `src=''`: Ein leeres src ist keine leere
-// Adresse, sondern die Adresse der SEITE. Der Browser laedt sie als Bild,
-// scheitert daran, und der Fehlerlauscher in 11-actions.js meldete bei jedem
-// Schliessen des Zooms `[img] konnte nicht geladen werden: https://<host>/`.
-// Ohne Attribut laedt der Browser gar nichts.
-export function closeImageLightbox(){ G('img-lightbox').classList.remove('open'); G('lightbox-img').removeAttribute('src'); }
-// Escape schliesst den Zoom über js/01-dialoge.js, wie jeden Dialog.
-G('set-modal').addEventListener('click',e=>e.target.id==='set-modal'&&closeModal());
-
-let _autosaveTimer=null;
-export function autosaveSet(){
-  if(!curSet) return;
-  clearTimeout(_autosaveTimer);
-  _autosaveTimer=setTimeout(async ()=>{
-    const qty = parseInt(G('m-qty').value)||1;
-    const prevQty = curSet.quantity || qty;
-    const d = await api('PUT',`/v1/sets/${esc(curSet.set_number)}`,{quantity:qty});
-    if(d.success){
-      // Die WIRKLICHE Gesamtmenge kommt vom Server.
-      //
-      // Angezeigt wird die Menge aller Konten, geschrieben wird die Differenz
-      // auf das eigene. Beim VERRINGERN deckelt der Server bei den eigenen
-      // Exemplaren — fremde lassen sich nicht wegnehmen —, und dann steht in
-      // der Antwort eine andere Zahl als die gesendete. Ohne diese Übernahme
-      // bliebe im Feld die eigene Annahme stehen, bis der Dialog neu geöffnet
-      // wird.
-      const echt = Number.isInteger(d.quantity) ? d.quantity : qty;
-      curSet.quantity = echt;
-      if (echt !== qty) G('m-qty').value = echt;
-      // Bei jeder Mengenänderung die Erfassungs-Übersicht neu laden: beim
-      // Erhöhen entsteht eine neue Zeile, beim Reduzieren fällt (LIFO) die
-      // letzte weg — sonst blieb die entfernte Zeile in der Detailsicht stehen.
-      const sn = curSet.set_number;
-      if (echt !== prevQty && typeof renderAcquisitionSummary === 'function') {
-        api('GET', `/v1/sets/${esc(sn)}/acquisitions`).then(ad => {
-          if (!ad?.success) return;
-          if (echt > prevQty) meldeNeueExemplare(sn, ad.acquisitions, echt - prevQty);
-          const sumEl = G('m-acq-summary');
-          if (sumEl) sumEl.innerHTML = renderAcquisitionSummary(ad.acquisitions, curSet.set_number) +
-            `<button class="btn bs btn-sm" data-click="openAcqModal" data-arg="${escJs(curSet.set_number)}" data-stil="margin-top:4px;font-size:var(--fs-1);padding:2px 10px">${ico('bearbeiten')} ${t('detail.edit_prices')}</button>`;
-          if (G('acq-modal').classList.contains('open') && typeof renderAcqModalBody === 'function') {
-            renderAcqModalBody(curSet.set_number, ad.acquisitions);
-          }
-        }).catch(()=>{});
-      }
-      // Mehr Exemplare melden sich mit Preis (meldeNeueExemplare), sobald die Erfassungen da sind.
-      if (!(echt > prevQty)) toast(tRaw('settings.saved'),'success');
-      loadGallery();
-      if(document.querySelector('.ntab.active')?.dataset?.tab==='finance') loadFinance();
-    } else { toast(d.error||t('settings.error'),'error'); }
-  }, 400);
-}
-
-/**
- * „+“ legt eine Kauferfassung an, meist mit dem Marktpreis als Schätzung. Das
- * verändert die Finanzen, also sagt der Toast es samt Betrag und bietet
- * „Ändern“ an, statt nur „Gespeichert“ zu melden.
- */
-function meldeNeueExemplare(sn, acqs, n) {
-  const neu = [...(acqs || [])].sort((a, b) => (b.id || 0) - (a.id || 0))[0];
-  const preis = neu?.purchase_price;
-  const mehrere = n > 1 ? 'exemplare' : 'exemplar';
-  const text = preis != null && neu.price_estimated
-    ? tRaw(`acq.${mehrere}_geschaetzt`, { n, preis: fmtGeld(preis, neu.currency || CURRENCY) })
-    : preis == null ? tRaw(`acq.${mehrere}_ohne_preis`, { n }) : tRaw('settings.saved');
-  toast(text, 'success', { text: tRaw('acq.aendern'), fn: () => openAcqModal(sn) });
-}
-
-// Keine eigene Rückfrage mehr — delSet() fragt (siehe dort). Der Dialog
-// schliesst nur, wenn wirklich gelöscht wurde; sonst stünde er nach einem
-// „Abbrechen" leer da.
-G('btn-md').onclick=async()=>{ if(!curSet) return; if(await delSet(curSet.set_number)) closeModal(); };
-async function redownloadInstr(sn){ toast(tRaw('instr.loading'),'info'); const d=await api('POST',`/v1/sets/${sn}/instructions`); if(d.success){toast(tRaw('instr.loaded',{count:d.instructions.length}),'success');if(curSet){openModal(sn);}loadStats();} else toast(d.error,'error'); }
-
-
-
-// ── Handler beim Dispatcher anmelden (siehe js/00-registry.js) ──────────────
 // `benutzerMenue` und `oeffneSicht` sind das Menü hinter dem Benutzernamen.
 // Der Hinweis steht VOR dem Aufruf und nicht zwischen den Namen: Die Prüfung
 // in test/bundle-smoke.test.js liest die Schlüssel, indem sie den Inhalt an
-// Kommas trennt — ein Kommentar vor dem ersten Namen wandert dabei IN den
-// Namen, und der Handler gilt als nicht angemeldet. GEMESSEN: genau so ist
-// der erste Lauf dieses Umbaus rot geworden.
+// Kommas trennt — ein Kommentar vor dem ersten Namen wandert dabei IN den …
+// Ausführlich: docs/begruendungen/public/js/02-gallery.js.md#registeractions
 registerActions({
   loadGallery,
-  teileNeuImportieren,
-  filterUmschalten,
-  filterZuruecksetzen,
-  benutzerMenue,
-  oeffneSicht,
-  oeffneReiter,
-  oeffneErfassen,
-  schliesseErfassen,
-  erfassenZumSet,
-  onScopeChange,
-  onStorageChange,
-  autosaveSet,
-  closeImageLightbox,
-  closeModal,
-  delInstr,
   delSet,
-  hideProgress,
-  redownloadInstr,
   reimportParts,
   renderGallery,
   startSetCsvImport,
-  uploadInstr,
+  erfassenZumSet,
 });
 
 
-/**
- * allSets von aussen setzen.
- *
- * Importierte Bindungen sind in ES-Modulen schreibgeschützt — mit den früheren
- * Globals ging `allSets = […]` aus jeder Datei, jetzt braucht es einen Setter.
- * Bewusst eine Funktion statt eines Zustandsobjekts: Die Aufrufstellen bleiben
- * so an einer Hand abzählbar und der Schreibzugriff ist im Code sichtbar.
- *
- * @param {any[]} v
- */
-export function setAllSets(v) { allSets = v; }
-
-/**
- * Setter für _pnlCache — importierte Bindungen sind in ES-Modulen schreibgeschützt.
- * Ersetzt die frühere direkte Zuweisung aus einer anderen Datei, die mit
- * globalen Variablen noch möglich war.
- * @param {any} v
- */
-export function set_pnlCache(v) { _pnlCache = v; }
-
-/**
- * Setter für curSet — importierte Bindungen sind in ES-Modulen schreibgeschützt.
- * Ersetzt die frühere direkte Zuweisung aus einer anderen Datei, die mit
- * globalen Variablen noch möglich war.
- * @param {any} v
- */
-export function set_curSet(v) { curSet = v; }

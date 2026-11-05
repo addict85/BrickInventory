@@ -157,7 +157,7 @@ test('die Farbauswahl im Formular „Teil erfassen" zeigt deutsche Namen', () =>
   // data-name muss englisch bleiben — es wird beim Speichern als
   // parts.color_name übernommen und für BrickLink-Abgleiche gebraucht.
   // Übersetzt wird nur der sichtbare Options-Text.
-  const src = fs.readFileSync(path.join(__dirname, '..', 'public', 'js', '06-minifigs.js'), 'utf8');
+  const src = fs.readFileSync(path.join(__dirname, '..', 'public', 'js', '03-parts.js'), 'utf8');
   const fn = src.slice(src.indexOf('function renderColorDropdown'),
                        src.indexOf('function renderColorDropdown') + 900);
   assert.match(fn, />\$\{esc\(colorName\(c\.name\)\)\}<\/option>/,
@@ -205,11 +205,11 @@ test('Teile-Kacheln laden das Zoom-Bild über den Server-Proxy, nicht direkt vom
     'data-orig muss über imgUrl(...) proxy-gewickelt sein, nicht die rohe Adresse');
 });
 
-test('die manuelle Teile-Kachel in 06-minifigs.js zeigt keine rohe CDN-Adresse mehr', () => {
+test('die manuelle Teile-Kachel zeigt keine rohe CDN-Adresse mehr', () => {
   // Gefunden beim Umsetzen des vorigen Punkts: renderManualParts() lud das
   // Bild komplett unverarbeitet — einzige Stelle im Projekt ohne Vorschau
   // und ohne Proxy, obwohl es sich um eine gewöhnliche Kachel handelt.
-  const src = fs.readFileSync(path.join(__dirname, '..', 'public', 'js', '06-minifigs.js'), 'utf8');
+  const src = fs.readFileSync(path.join(__dirname, '..', 'public', 'js', '03-parts.js'), 'utf8');
   const fn = src.slice(src.indexOf('function renderManualParts'));
   assert.doesNotMatch(fn, /const imgSrc = p\.image_local \|\| p\.image_url \|\| '';/,
     'Die rohe Zuweisung darf nicht mehr vorkommen');

@@ -81,7 +81,7 @@ test('3. der Lagerort steht im Detail der MANUELLEN Einträge', () => {
   // Bis zum 24.09. gab es die Zeile nur im Set-Detail und im Dialog der Teile
   // AUS SETS. Bei den manuell erfassten fehlte sie in beiden Oberflächen.
   const webDetail = rumpf(web('public/js/13-acquisition-modals.js'),
-    'export async function openManDetail(', /\nfunction |\nexport /);
+    'function manDetailZeilen(', /\nfunction |\nexport /);
   assert.match(webDetail, /lagerortBlock\('man-storage'/,
     'Der manuelle Detaildialog der Webapp hat keine Lagerortzeile.');
 
@@ -122,7 +122,7 @@ test('5. Löschen: Papierkorb in der Webapp, nur im Detail in der App', () => {
   //   d) Den Papierkorb im Webapp-Detail entfernt  → Schritt 5 rot.
 
   // ── Webapp: auf den Kacheln UND in der Merklisten-Zeile ──────────────────
-  const kacheln = web('public/js/06-minifigs.js');
+  const kacheln = web('public/js/06-minifigs.js') + web('public/js/03-parts.js');
   assert.match(kacheln, /class="delbtn" data-click="deleteManualFigStop"/,
     'Auf den Kacheln der manuell erfassten Minifiguren fehlt der Papierkorb.');
   assert.match(kacheln, /class="delbtn" data-click="deleteManualPartStop"/,

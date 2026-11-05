@@ -1,17 +1,14 @@
-import { G, ME, toast, verwirfToasts } from './01-core.js';
+import { G, toast, verwirfToasts } from './01-core.js';
 import { tRaw } from '../i18n.js';
 import { beiDialogWechsel, istOffen, obersterDialog } from './01-dialoge.js';
-import { oeffneSicht } from './02-gallery.js';
-import { openModal } from './07-admin.js';
-import { einstAbschnitt } from './05-settings.js';
+import { springe } from './00-ziele.js';
+import { ME } from './00-zustand.js';
 
-// ═══ Adresse und Verlauf ════════════════════════════════════════════════════
-//
 // Jede Ansicht steht als `#/pfad` in der Adresse, Filter als Query dahinter.
 // Ein Hash-Router, damit der Server für Unterseiten nichts ausliefern muss
 // und die Anmeldelinks (?token=, ?set=) unverändert bleiben. Jeder offene
-// Dialog ist ein Verlaufseintrag: Die Zurück-Geste schliesst ihn, statt die
-// App zu verlassen.
+// Dialog ist ein Verlaufseintrag: Die Zurück-Geste schliesst ihn, statt die …
+// Ausführlich: docs/begruendungen/public/js/24-router.js.md#jede-ansicht-steht-als-pfad-in-der-adres
 
 /** Ansicht (data-tab bzw. Sicht) → Pfad in der Adresse. */
 export const PFADE = {
@@ -178,9 +175,9 @@ function zeigeAnsicht(ansicht, unter) {
   const abgewiesen = NUR_VERWALTER.has(ansicht) && !ME?.isAdmin;
   if (abgewiesen) ansicht = 'gallery';
   mitRouter(() => {
-    if (ansicht === 'settings' && ABSCHNITT_ID[unter]) einstAbschnitt(ABSCHNITT_ID[unter]);
+    if (ansicht === 'settings' && ABSCHNITT_ID[unter]) springe('einstAbschnitt', ABSCHNITT_ID[unter]);
     if (ansicht !== _ansicht || !document.getElementById('tab-' + ansicht)?.classList.contains('active')) {
-      if (SICHTEN.has(ansicht)) oeffneSicht(ansicht);
+      if (SICHTEN.has(ansicht)) springe('sicht', ansicht);
       else /** @type {HTMLElement|null} */ (document.querySelector(`.ntab[data-tab="${ansicht}"]`))?.click();
     }
   });
@@ -239,7 +236,7 @@ function wendeAn(ziel, dlg) {
   const abgewiesen = zeigeAnsicht(ziel.ansicht, ziel.unter);
   if (abgewiesen) return true;
   setzeFilter(ziel.ansicht, ziel.filter || {});
-  if (ziel.set && !G('set-modal')?.classList.contains('open')) mitRouter(() => openModal(ziel.set));
+  if (ziel.set && !G('set-modal')?.classList.contains('open')) mitRouter(() => springe('setDetail', ziel.set));
   return false;
 }
 
@@ -284,7 +281,7 @@ export function routeBeimStart() {
   history.replaceState({ brick: 1, ansicht: _ansicht, dlg: [] }, '', adresse());
   if (abgewiesen) { sageUmleitung('verwalter'); return; }
   // Ein Set-Link öffnet den Dialog über der Ansicht; „Zurück“ schliesst ihn.
-  if (ziel.set) openModal(ziel.set);
+  if (ziel.set) springe('setDetail', ziel.set);
 }
 
 // Filtereingaben laufen über die Felder; die Adresse folgt nach.

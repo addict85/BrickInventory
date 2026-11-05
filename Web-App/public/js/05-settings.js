@@ -1,20 +1,21 @@
+// Einstellungen, Konto, Benutzerverwaltung, Haushalt, Lagerorte und
+// Konfigurations-Import/-Export.
+import { stelleZielBereit } from './00-ziele.js';
 import { echt, registerActions } from './00-registry.js';
 import { I18N, LANG, applyLang, locale, t, tRaw} from '../i18n.js';
-import { antwortFehler, feldFehler, fehlerMeldung, fmtN, fmtDatum, bildTag, platzhalterInhalt, ico, CURRENCY, G, ME, _settingsCache, _updateLangSelect, api, applyTheme, esc, escUrl, imgUrl, initDefaultCondition, knopfBesetzt, thumbUrl, toast, zeigeBenutzernamen , set_CURRENCY, set_settingsCache, passwortRegelText, leseBetrag, betragFuerFeld } from './01-core.js';
-import { LAND_ZUR_WAEHRUNG } from './17-gutscheine.js';
-import { allSets, loadGallery, loadStats } from './02-gallery.js';
+import { antwortFehler, feldFehler, fehlerMeldung, fmtN, fmtDatum, bildTag, platzhalterInhalt, ico, G, _updateLangSelect, api, applyTheme, imgUrl, initDefaultCondition, knopfBesetzt, thumbUrl, toast, zeigeBenutzernamen, passwortRegelText, leseBetrag, betragFuerFeld } from './01-core.js';
+import { loadGallery, loadStats } from './02-gallery.js';
 import { loadParts } from './03-parts.js';
 import { loadMinifigs } from './06-minifigs.js';
-import { confirmDelete, bestaetigeMitPasswort, mitPasswortBestaetigen, mitZweitemFaktor, speichereEinstellungen } from './07-admin.js';
 import { meldeAbschnitt } from './24-router.js';
 import { verstaendlicherGrund } from './01-bausteine.js';
-
-// ═══ Einstellungen, SMTP, Profil, API-Keys, Benutzerverwaltung ═══
-// Teil von app.js — die Dateien in public/js/ werden in nummerierter
-// Reihenfolge geladen und teilen sich den globalen Scope (kein Modul-
-// System noetig, Inline-onclick-Handler in index.html funktionieren
-// unveraendert). Der Split ist rein sequenziell und verhaelt sich
-// identisch zur frueheren Einzeldatei.
+import { CURRENCY, ME, _settingsCache, set_CURRENCY, set_settingsCache, allSets } from './00-zustand.js';
+import { esc } from './00-escapen.js';
+import { confirmDelete, bestaetigeMitPasswort, mitZweitemFaktor, mitPasswortBestaetigen, speichereEinstellungen } from './01-rueckfrage.js';
+import { loadFinance } from './04-finance.js';
+import { ladeLagerortVorgabe } from './02-konten-orte.js';
+import { csvHochladen } from './01-bausteine.js';
+import { LAND_ZUR_WAEHRUNG } from './17-gutscheine.js';
 
 // ── SETTINGS ──────────────────────────────────────────
 // SMTP + Registration settings load/save
@@ -188,11 +189,8 @@ async function generateQrCode() {
     // POST, nicht GET: Der Aufruf LEGT eine Nonce AN. Als GET war
     // er über eine Navigation von einer fremden Seite auslösbar, weil
     // SameSite=lax das Cookie dort mitschickt.
-    // Die gewaehlte Laufzeit des SPAETEREN Geraete-Tokens reist mit der
-    // Erzeugung, nicht mit dem Einloesen: POST /v1/auth/qr-login ist
-    // unangemeldet erreichbar, und wer einen Code abfotografiert, duerfte sich
-    // sonst selbst die laengste Frist aussuchen (Begruendung ausfuehrlich in
-    // db/migrations/0016-token-laufzeit.sql).
+    // Die gewaehlte Laufzeit des SPAETEREN Geraete-Tokens reist mit der …
+    // Ausführlich: docs/begruendungen/public/js/05-settings.js.md#gueltigkeit
     const gueltigkeit = G('qr-validity')?.value || '';
     const pw = G('qr-password');
     const password = pw?.value || '';
@@ -208,23 +206,9 @@ async function generateQrCode() {
       container.innerHTML = '';
       frei(); return;
     }
-    // ── Welche Adresse in den Code kommt ───────────────────────
-    //
     // Genau eine: die, die der Server nennt (`url`, aus APP_BASE_URL). Der
     // Klient hat hier NICHTS zu entscheiden.
-    //
-    // Hier stand erst `window.location.origin`, dann `d.url || origin`. Beides
-    // war falsch, und das zweite war das gefaehrlichere: Es sah nach einem
-    // vernuenftigen Rueckfall aus. Aber die Adresse in der Browserzeile ist
-    // die des BETRACHTERS, nicht die des Servers — wer die Webapp ueber
-    // http://192.168.x.x:3000 oeffnet, haette dem Telefon eine Adresse
-    // gereicht, die ausser Haus nicht existiert. Gescannt wird der Code
-    // trotzdem; die App findet den Server dann nie wieder.
-    //
-    // Ohne APP_BASE_URL kommt hier gar kein Erfolg mehr an: Die Route
-    // antwortet mit 503 und einem Satz, der sagt, was zu tun ist — der wird
-    // im Zweig darueber angezeigt. Nichts zu zeigen ist besser als etwas
-    // Falsches zu zeigen, das sich anstandslos scannen laesst.
+    // Ausführlich: docs/begruendungen/public/js/05-settings.js.md#serverurl
     const serverUrl = d.url;
 
     // Mit `fp` (Fingerabdruck der CA-Wurzel) pinnt die App das Zertifikat;
@@ -261,12 +245,7 @@ async function generateQrCode() {
     // Auswahl daneben: Kennt er den Wert nicht, hat er nichts vermerkt, und
     // dann gilt die Gleitfrist. Eigene Zeile, weil die darueber im
     // Sekundentakt neu geschrieben wird (der Zaehler des Codes).
-    //
-    // Drei Faelle, nicht zwei: `0` heisst „unbegrenzt" und ist nicht dasselbe
-    // wie „nichts gewaehlt" (null). Ein `d.token_days ? … : …` wuerde beide
-    // in denselben Zweig werfen und bei „unbegrenzt" die Gleitfrist ansagen —
-    // also genau das Gegenteil.
-    // Ohne TLS verbindet sich die Android-App nicht (sie nimmt nur HTTPS an).
+    // Ausführlich: docs/begruendungen/public/js/05-settings.js.md#klartext
     const klartext = G('qr-tls-hint');
     if (klartext) {
       klartext.hidden = !/^http:\/\//i.test(serverUrl || '');
@@ -285,19 +264,11 @@ async function generateQrCode() {
 
 G('btn-gen-qr').onclick = generateQrCode;
 
-// ── ANGEMELDETE GERÄTE ────────────────────────────────────────────────────
-//
 // Die Endpunkte /v1/settings/tokens gab es schon, einen Weg dorthin nicht:
 // Ein verlorenes Telefon war nur loszuwerden, indem man das Passwort ändert
 // (das verwirft ALLE Zugänge). Wer nur eines aussperren wollte, sperrte alle
 // aus.
-//
-// Der Browser selbst ist kein Token, sondern die Sitzung; die Liste zeigt die
-// Geräte mit Token (App, ältere Browser-Anmeldungen).
-async function tokenRuf(pfad, method = 'GET') {
-  const r = await fetch('/api/v1/settings' + pfad, { method, credentials: 'include' });
-  return r.json().catch(() => ({ success: false, error: 'HTTP ' + r.status }));
-}
+// Ausführlich: docs/begruendungen/public/js/05-settings.js.md#die-endpunkte-v1-settings-tokens-gab-es
 
 /** „—", wenn nie benutzt: `new Date(null)` wäre der 1.1.1970. */
 function tokenDatum(wert) {
@@ -308,7 +279,7 @@ function tokenDatum(wert) {
 export async function loadTokens() {
   const ziel = G('tokens-tbl');
   if (!ziel) return;
-  const d = await tokenRuf('/tokens');
+  const d = await api('GET', '/v1/settings/tokens');
   if (!d.success) { ziel.innerHTML = `<p data-stil="color:var(--mut)">${esc(d.error || t('settings.error'))}</p>`; return; }
   if (!d.tokens.length) { ziel.innerHTML = `<p data-stil="color:var(--mut)">${t('tokens.none')}</p>`; return; }
   ziel.innerHTML = `<div class="tw"><table class="dt"><thead><tr>
@@ -356,24 +327,17 @@ export async function ladeTls() {
 
 async function revokeToken(tokenId, label) {
   if (!await confirmDelete(tRaw('tokens.revoke.title'), tRaw('tokens.revoke.text', { name: label || '—' }), 'schluessel', { knopf: 'confirm.btn.geraet_abmelden', art: 'bp' })) return;
-  const d = await tokenRuf('/tokens/' + encodeURIComponent(tokenId), 'DELETE');
+  const d = await api('DELETE', `/v1/settings/tokens/${encodeURIComponent(tokenId)}`);
   if (d.success) { toast(tRaw('tokens.revoked'), 'success'); loadTokens(); }
   else toast(d.error || t('settings.error'), 'error');
 }
 
 /**
  * Alle Zugänge ausser dem eigenen entwerten.
- *
- * Nacheinander über den bestehenden Endpunkt, statt dafür einen neuen zu
- * bauen: Es sind eine Handvoll Zeilen, und eine zweite Adresse für „dasselbe,
- * nur mehrfach" wäre genau die Art Doppelung, die dieses Projekt sonst
- * abbaut. Gezählt wird, was WIRKLICH weg ist — nicht, wie oft geklickt wurde.
- *
- * Dieser Browser hängt an der Sitzung, nicht an einem Token — „alle anderen"
- * sind darum alle Token und alle übrigen Sitzungen.
+ * Ausführlich: docs/begruendungen/public/js/05-settings.js.md#revokeothertokens
  */
 async function revokeOtherTokens() {
-  const d = await tokenRuf('/tokens');
+  const d = await api('GET', '/v1/settings/tokens');
   if (!d.success) { toast(d.error || t('settings.error'), 'error'); return; }
   const andere = d.tokens.filter(tk => !tk.aktuell);
   const password = await bestaetigeMitPasswort(tRaw('tokens.revoke_others.title'),
@@ -385,7 +349,7 @@ async function revokeOtherTokens() {
   if (!s.success) { toast(s.error || t('settings.error'), 'error'); return; }
   let weg = 0;
   for (const tk of andere) {
-    const r = await tokenRuf('/tokens/' + encodeURIComponent(tk.token_id), 'DELETE');
+    const r = await api('DELETE', `/v1/settings/tokens/${encodeURIComponent(tk.token_id)}`);
     weg += r.deleted || 0;
   }
   toast(tRaw('tokens.revoked_n', { n: weg + (s.deleted || 0) }), weg === andere.length ? 'success' : 'error');
@@ -473,6 +437,8 @@ async function speichereZustand() {
   initDefaultCondition();
   toast(tRaw('settings.saved'), 'success');
 }
+
+/** Eine neue E-Mail-Adresse verlangt das aktuelle Passwort; das Feld steht erst dann da. */
 
 G('btn-sav-prof').onclick = async () => {
   const first_name = G('prof-first').value.trim();
@@ -569,12 +535,7 @@ export async function loadSettings(){
  * Ablauf: Das Hauptkonto erzeugt einen Einladungscode, das andere Konto gibt
  * ihn hier ein. Zustimmen muss zwingend BEIDE Seiten — der eine durch
  * Erzeugen, der andere durch Einlösen.
- *
- * Die Karte zeigt je nach Rolle nur EINEN der beiden Kästen. Wer schon
- * Unterkonto ist, sieht keinen Einladungsknopf (Konten lassen sich nur über
- * eine Stufe verknüpfen), und wer Unterkonten hat, sieht kein Eingabefeld.
- * Beides würde der Server ohnehin ablehnen — aber ein Knopf, der immer eine
- * Fehlermeldung erzeugt, ist schlimmer als keiner.
+ * Ausführlich: docs/begruendungen/public/js/05-settings.js.md#loadhousehold
  */
 export async function loadHousehold(){
   const [d, zf] = await Promise.all([api('GET','/v1/settings/household').catch(()=>null),
@@ -598,6 +559,7 @@ function renderHousehold(d){
   if(!stateEl) return;
 
   // Ein Raster auf der Liste, die Zeilen als display:contents: So stehen alle
+  // Namen und alle Knöpfe in denselben zwei Spalten.
   // Namen und alle Knöpfe in denselben zwei Spalten; das Sinnbild macht die Namen als Konten kenntlich.
   const liste = (eintraege, aktion) => `<ul class="haushalt-liste">${
     eintraege.map(a => `<li data-stil="display:contents">
@@ -710,6 +672,7 @@ G('btn-save-theme').onclick=async()=>{
   if(d.success){ const w=await api('GET','/v1/settings/theme'); if(w.success){ applyTheme(w.theme); if(_settingsCache) _settingsCache.app_theme=w.theme; } }
   toast(d.success?t('settings.theme_saved'):t('settings.error'),d.success?'success':'error');
 };
+G('btn-clr').onclick=async()=>{ await api('POST','/v1/admin/cache-clear'); toast(tRaw('settings.cache_cleared'),'info'); loadCacheStats(); loadFinance(); };
 /** Vor dem Leeren steht da, was verloren geht und was der Neuabruf kostet — mit den Zahlen von jetzt. */
 async function zwischenspeicherLeeren(alle) {
   const z = await api('GET', '/v1/admin/cache-stats');
@@ -734,7 +697,6 @@ G('btn-dall').onclick=async()=>{
   toast(tRaw('settings.delete_all.done',{n:d.sets+d.teile+d.figuren}),'success');
   loadGallery(); loadParts(); loadMinifigs(); loadStats();
 };
-
 G('btn-konto-loeschen').onclick=async()=>{
   // Endgültig und ohne Papierkorb: Passwort und, falls eingerichtet, der zweite Faktor.
   const password=await bestaetigeMitPasswort(tRaw('settings.delete_account.title'),tRaw('settings.delete_account.text'),'loeschen', { knopf: 'confirm.btn.konto_loeschen', art: 'bd' });
@@ -744,6 +706,7 @@ G('btn-konto-loeschen').onclick=async()=>{
   if(!d?.success){ toast(d?.error||tRaw('settings.error'),'error'); return; }
   location.href='/';
 };
+
 
 // ── USER MGMT ─────────────────────────────────────────
 export async function loadUsers(){
@@ -885,48 +848,50 @@ async function delUser(uid,name){
 }
 
 
+// ── CONFIG EXPORT / IMPORT ───────────────────────────────────
+G('btn-cfg-export').onclick = async () => {
+  const a = document.createElement('a');
+  a.href = '/api/v1/settings/export';
+  a.download = `brickinventory-manager-config-${new Date().toISOString().substring(0,10)}.json`;
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+};
 
-// ── Handler beim Dispatcher anmelden (siehe js/00-registry.js) ──────────────
-// ═══ LAGERORTE VERWALTEN ════════════════════════════════════════════════════
-//
-// ── Marcos Vorgabe ──────────────────────────────────────────────────────────
-//
+async function importConfig() {
+  const fi = G('cfg-import-file');
+  if (!fi.files[0]) return;
+  const st = G('cfg-import-status');
+  st.textContent = tRaw('settings.importing');
+  const fd = new FormData(); fd.append('file', fi.files[0]);
+  try {
+    const d = await api('POST', '/v1/settings/import', fd);
+    if (d.success) {
+      // Welche SMTP-Werte die Datei mitbrachte, steht dabei: Sie werden nur im Formular gesetzt.
+      const smtp = (d.smtp_uebergangen || []).join(', ');
+      st.textContent = tRaw('settings.imported_note',{n:d.imported,note:[d.note, smtp].filter(Boolean).join(': ')});
+      st.style.color = 'var(--g500)';
+      toast(tRaw('admin.config_imported'), 'success');
+      // SMTP-Werte übernimmt der Import nie (Passwortbestätigung); welche, steht hier.
+      if (d.smtp_uebergangen?.length) toast(tRaw('settings.smtp_skipped', { keys: d.smtp_uebergangen.join(', ') }), 'info');
+      loadSettings();
+      set_settingsCache(null); // invalidate cache so next loadSettings fetches fresh
+      if (ME?.isAdmin) { loadCacheTtl(); loadApiLimits(); }
+    } else {
+      st.textContent = d.error || t('settings.error');
+      st.style.color = 'var(--r500)';
+    }
+  } catch(e) { st.textContent = tRaw('common.network_error'); }
+  fi.value = '';
+}
+
 // „Der Lagerort soll ein Auswahlfeld mit einem Dropdown sein, bei dem man auch
 // gleich neue Auswahlwerte erfassen kann. Die Werte sollen pro User verwaltet
 // werden können und sollen in den Einstellungen bearbeitbar sein."
-//
-// Hier ist die Verwaltung; die Auswahl selbst steckt im Detailfenster
-// (ladeOrtAuswahl in js/07-admin.js). Diese Seite zeigt NUR die eigenen Orte:
-// Ein Lagerort ist ein Regal in der eigenen Wohnung, und fremde Regale
-// umzubenennen ist keine Einstellung, sondern ein Versehen.
+// Ausführlich: docs/begruendungen/public/js/05-settings.js.md#der-lagerort-soll-ein-auswahlfeld-mit-ei
 
 /** Die eigenen Orte samt Belegung. */
 /**
  * Alle Preisalarme des Kontos — die Uebersicht in den Einstellungen.
- *
- * ── Marcos Frage vom 25.09. ─────────────────────────────────────────────────
- *
- *   „Wie finde ich alle Preisalarme?"
- *
- * Bis hierher: gar nicht. Ein Alarm war nur im Detaildialog SEINES Sets zu
- * sehen — man musste das Set also schon gefunden haben. Wer fuenfzig setzt,
- * hatte keinen Ort, an dem sie zusammen stehen, und keinen, an dem er sieht,
- * welche noch scharf sind.
- *
- * ── Warum die Zeile so aussieht, wie sie aussieht ───────────────────────────
- *
- * Setnummer UND Name: `40820-1` sagt niemandem etwas. Der Zustand daneben,
- * weil derselbe Set zwei Alarme haben kann (neu und gebraucht) und die Zeilen
- * sich sonst nur an einem Buchstaben im Schluessel unterscheiden wuerden.
- *
- * Die Schwelle ist ein Eingabefeld und kein Text: Marcos Wunsch war, den Wert
- * HIER anpassen zu koennen. Gespeichert wird beim Verlassen des Feldes —
- * dieselbe Geste wie im Wunsch-Detail, damit man nicht nach
- * einem Knopf suchen muss, den es anderswo nicht gibt.
- *
- * Der letzte Preis steht dabei, weil eine Schwelle ohne ihn nicht zu beurteilen
- * ist: „unter 30" heisst etwas anderes, wenn das Set bei 28 steht, als wenn es
- * bei 300 steht.
+ * Ausführlich: docs/begruendungen/public/js/05-settings.js.md#alle-preisalarme-des-kontos-die-uebersic
  */
 /** Ein Preisalarm direkt in der Übersicht, ohne Umweg über das Set. */
 async function legeAlarmAn() {
@@ -967,9 +932,8 @@ export async function ladeAlarmUebersicht() {
     // „scharf" gegen „unscharf" — und der Unterschied darf NICHT in der Farbe
     // liegen. Marco ist rot-gruen-schwach; gruen gegen grau ist fuer ihn
     // zweimal dasselbe, und damit stand die Aussage bisher nirgends. Sie
-    // haengt jetzt an drei Dingen, von denen jedes einzeln reicht: am Wort
-    // (ein echtes Gegensatzpaar), an der Flaeche (gefuellt gegen umrandet)
-    // und am Zeichen davor (● gegen ○). Dieselben drei wie in der App.
+    // haengt jetzt an drei Dingen, von denen jedes einzeln reicht: am Wort …
+    // Ausführlich: docs/begruendungen/public/js/05-settings.js.md#marke
     const marke = a.ausgeloest
       ? `<span class="alarm-marke alarm-marke-aus">${esc(tRaw('alerts.fired'))}</span>`
       : `<span class="alarm-marke alarm-marke-an">${esc(tRaw('alerts.armed'))}</span>`;
@@ -985,14 +949,7 @@ export async function ladeAlarmUebersicht() {
     // den Finanzen und in der Galerie. Weil der Dialog ueber der Seite liegt
     // und diese nicht verlaesst, steht man nach dem Schliessen wieder an
     // derselben Stelle; dafuer ist nichts zu merken.
-    //
-    // Feld und Loeschknopf tragen deshalb ihr eigenes data-click: Der
-    // Verteiler nimmt das NAECHSTGELEGENE Element mit data-click, und ohne
-    // `stopEvent` oeffnete jeder Klick ins Zahlenfeld den Dialog ueber dem
-    // Feld, in das man gerade tippen wollte.
-    // Anklickbar nur, wenn es das Set in der Sammlung gibt — `openModal` holt
-    // `/v1/sets/:nummer`, und fuer ein Set, das man nicht (mehr) besitzt,
-    // waere der Klick eine Fehlermeldung statt eines Dialogs.
+    // Ausführlich: docs/begruendungen/public/js/05-settings.js.md#oeffnet
     const oeffnet = a.besitzt
       ? ` class="zeiger" data-click="openModal" data-arg="${esc(a.set_number)}"`
       : '';
@@ -1065,25 +1022,9 @@ export async function ladeLagerortVerwaltung() {
   // Marcos Stern: „Weiter möchte ich ein Lagerort in den Einstellungen als
   // Default setzen können. […] Ich stelle mir das mit einem Sternicon vor."
   const vorgabeId = v.vorgabe?.id ?? null;
-  // ── Vier Spalten wie in einer Tabelle ───────────────────────────────────
-  //
   // Marcos Befund: „dass die Felder alle schön gleich ausgerichtet sind wie in
   // einer Tabelle? aktuell sind sie alle unterschiedlich lang".
-  //
-  // Vorher war jede Zeile ein eigenes Flexfeld mit `flex:1` auf dem
-  // Eingabefeld. Der Platz, der dem Feld blieb, haengt damit an der LAENGE DES
-  // BELEGUNGSTEXTES daneben — „406 Sets, 0 Teilesorten, 0 Figuren" ist
-  // breiter als „leer", und das Feld daneben entsprechend schmaler.
-  //
-  // Jetzt traegt die LISTE das Raster und die Zeilen sind display:contents.
-  // Damit teilen sich alle Zeilen dieselben vier Spaltenbreiten: Das Feld
-  // nimmt den Rest (minmax(0,1fr) — nicht 1fr, sonst sprengt ein langer Name
-  // die Spalte), die drei anderen genau so viel, wie ihr laengster Inhalt
-  // braucht.
-  //
-  // Der Trennstrich sass an der Zeile. Ein display:contents-Element erzeugt
-  // keinen Kasten und kann keinen Rahmen tragen — er liegt deshalb an jeder
-  // Zelle und ergibt zusammen dieselbe durchgehende Linie.
+  // Ausführlich: docs/begruendungen/public/js/05-settings.js.md#marcos-befund-dass-die-felder-alle-schoe
   el.innerHTML = `<div data-stil="font-size:var(--fs-1);color:var(--mut);margin-bottom:6px">` +
                  `${esc(tRaw('storage.default_hint'))}</div>` +
                  `<div class="lager-raster" data-stil="display:grid;grid-template-columns:minmax(0,1fr) max-content max-content max-content;align-items:center;column-gap:8px">` +
@@ -1145,17 +1086,7 @@ async function benenneLagerortUm(id, wert) {
 
 /**
  * Den Stern umschalten.
- *
- * ── Warum der Stern und nicht eine Farbe ────────────────────────────────────
- *
- * ★ und ☆ unterscheiden sich in der FORM. Marco ist rot-gruen-schwach; ein
- * farbig hervorgehobener Eintrag waere fuer ihn kein Unterschied. Dazu tragen
- * beide Zustaende einen eigenen Titel (und aria-pressed), damit die Aussage
- * auch dort ankommt, wo niemand hinsieht.
- *
- * `war` kommt aus dem Knopf: Der zweite Druck auf denselben Stern schaltet die
- * Vorgabe ab. Ein eigener Knopf dafuer waere ein zweites Bedienelement fuer
- * eine Frage mit zwei Antworten.
+ * Ausführlich: docs/begruendungen/public/js/05-settings.js.md#schaltelagerortvorgabe
  */
 async function schalteLagerortVorgabe(id, war) {
   const d = await api('PUT', '/v1/storage/default',
@@ -1165,7 +1096,7 @@ async function schalteLagerortVorgabe(id, war) {
   // Die Erfassungsformulare stehen schon — ohne das Nachziehen zeigten sie
   // den alten Stand, bis jemand die Seite neu laedt. Dieselbe Geste wie beim
   // Erfassungs-Zustand, der nach dem Speichern initDefaultCondition() ruft.
-  import('./02-gallery.js').then(m => m.ladeLagerortVorgabe?.()).catch(() => {});
+  ladeLagerortVorgabe();
 }
 
 async function loescheLagerort(id, name) {
@@ -1178,55 +1109,19 @@ async function loescheLagerort(id, name) {
 
 /**
  * Preisalarme aus einer CSV einlesen.
- *
- * ── Warum der Währungshinweis gesondert gemeldet wird ───────────────────────
- *
- * Die Route übernimmt die Schwellen UNVERÄNDERT und setzt sie in die Währung
- * des Kontos — sie rechnet nicht um (ein falscher Kurs wäre schlimmer als
- * eine genannte Abweichung). Damit bedeutet dieselbe Zahl unter Umständen
- * etwas anderes als in der Datei, und genau das darf nicht im Erfolgston
- * untergehen. Steht `waehrung_hinweis` in der Antwort, wird daraus eine
- * Meldung der Stufe „info" statt „success" — Form und Wort tragen die
- * Aussage, nicht die Farbe.
+ * Ausführlich: docs/begruendungen/public/js/05-settings.js.md#importalarmecsv
  */
 async function importAlarmeCsv() {
-  const fi = G('alerts-csv-file');
-  if (!fi?.files[0]) return;
-  const fd = new FormData();
-  fd.append('file', fi.files[0]);
-
   const status = G('alerts-csv-status');
-  if (status) status.textContent = tRaw('import.running');
-  try {
-    const r = await fetch('/api/v1/alerts/import/csv', { method: 'POST', body: fd });
-    const d = await r.json();
-    fi.value = '';
-    if (status) status.textContent = '';
-    if (d.success) {
-      const summary = t('import.summary', { added: d.added, updated: d.updated, errors: d.errors });
-      const zusatz = [d.skipped_hint, d.waehrung_hinweis].filter(Boolean).join(' — ');
-      toast(summary + (zusatz ? ` — ${zusatz}` : ''),
-        (d.errors || d.skipped || d.waehrung_hinweis) ? 'info' : 'success');
-      await ladeAlarmUebersicht();
-    } else {
-      toast(d.error || tRaw('settings.error'), 'error');
-    }
-  } catch (e) {
-    fi.value = '';
-    if (status) status.textContent = '';
-    toast(tRaw('settings.error'), 'error');
-  }
+  const d = await csvHochladen({ feld: 'alerts-csv-file', pfad: '/v1/alerts/import/csv',
+    hinweise: (a) => [a.waehrung_hinweis],
+    zeige: (l) => { if (status) status.textContent = l ? tRaw('import.running') : ''; } });
+  if (d) await ladeAlarmUebersicht();
 }
 
-// ── Die Wanted-Liste ist UMGEZOGEN (19.10.) ────────────────────────────────
-//
 // Marcos Vorgabe: „Bitte auch den Import der xml Files für wanted listen in den
 // Sets, teilen und Minifiguren ergänzen und aus den Einstellungen entfernen."
-//
-// Hier standen `_wantedDatei`, `zeichneWantedBericht`, `wantedListeVorschau`,
-// `wantedListeSchreiben` und `wantedListeSenden` — rund 110 Zeilen. Sie liegen
-// jetzt in js/18-wanted-xml.js, zusammen mit der Vorschautabelle und dem
-// Export, den es damals noch nicht gab.
+// Ausführlich: docs/begruendungen/public/js/05-settings.js.md#marcos-vorgabe-bitte-auch-den-import-der
 
 /** Ein verdecktes Feld zeigen oder wieder verdecken (Knopf mit dem Auge). */
 function geheimUmschalten(id) {
@@ -1263,7 +1158,8 @@ export function einstAbschnitt(id, ev){
 }
 einstAbschnitt((() => { try { return localStorage.getItem(EINST_KEY); } catch (_) { return null; } })());
 
-/** Prüft den gespeicherten Zugang, wie der Einrichtungsassistent — auch später, ohne ihn erneut zu öffnen. */
+/** Prüft den gespeicherten Zugang, wie der Einrichtungsassistent — auch später, ohne ihn erneut zu öffnen.
+ * @this {HTMLButtonElement} @param {string} quelle */
 async function einstellungenQuellePruefen(quelle) {
   const stand = G('pruef-' + quelle); if (!stand) return;
   const frei = knopfBesetzt(this);
@@ -1274,6 +1170,8 @@ async function einstellungenQuellePruefen(quelle) {
   stand.classList.add(d?.success ? 'quelle-ok' : 'quelle-fehler');
   stand.innerHTML = `${ico(d?.success ? 'ok' : 'fehler')}<span>${esc(d?.success ? tRaw('setup.test_ok') : grund || tRaw('setup.test_failed'))}</span>`;
 }
+
+stelleZielBereit({ einstAbschnitt });
 
 registerActions({
   einstellungenQuellePruefen,
@@ -1306,4 +1204,5 @@ registerActions({
   unlinkHousehold,
   unlinkFromParent,
   dismissFormerLink,
+  importConfig,
 });

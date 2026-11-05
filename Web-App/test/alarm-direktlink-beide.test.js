@@ -116,13 +116,13 @@ test('3. die Mail trägt einen Link', () => {
 
 test('4. und die Webapp löst ihn ein', () => {
   // DER Schritt, der am 25.09. gefehlt hat.
-  const core = web('public/js/01-core.js');
+  const core = web('public/js/26-sitzung.js');
   const i = core.indexOf('function showApp()');
   assert.ok(i > 0, 'showApp() nicht gefunden');
   const block = core.slice(i, i + 3000);
   assert.match(block, /new URLSearchParams\(location\.search\)\.get\('set'\)/,
     'Die Webapp liest ?set= nicht — der Knopf in der Mail öffnet nur die Startseite.');
-  assert.match(block, /openModal\?\.\(/, 'Die Webapp öffnet das Set-Detail nicht.');
+  assert.match(block, /openModal\(setAusLink\)/, 'Die Webapp öffnet das Set-Detail nicht.');
   assert.match(block, /history\.replaceState/,
     'Die Adresse wird nicht bereinigt — ein F5 reisst das Detail erneut auf.');
 });

@@ -1,20 +1,12 @@
-// ── Überwachung: Jobliste im Reiter „Monitoring" und das Protokollfenster ────
-//
-// ── Warum eine eigene Datei ──────────────────────────────────
-//
 // Dieser Block lag in js/01-core.js. Deren Kopfzeile nennt als Inhalt „Utils,
 // i18n-Glue, Auth & Panels, Login/Logout, CSV-Import-Fortschrittsbalken" — die
 // Überwachung stand nicht darin. Sie war damit nicht nur gross, sondern in
 // einer Datei, die selbst behauptete, sie nicht zu enthalten.
-//
-// Dass openLogViewer() zwischen dem Fortschrittsbalken und der Jobliste
-// eingekeilt war, statt bei ihr, ist das Merkmal einer Ablage: Wer etwas
-// hinzufügt, hängt es dort an, wo er gerade liest. Hier stehen jetzt beide
-// Seiten der Überwachung beieinander — die Liste, die zeigt, was läuft, und
-// das Fenster, das zeigt, was dabei protokolliert wurde.
+// Ausführlich: docs/begruendungen/public/js/01-monitor.js.md#dieser-block-lag-in-js-01-core-js-deren
 import { echt, registerActions } from './00-registry.js';
-import { fmtDatum, ico, G, api, esc, escHtmlAttr, toast } from './01-core.js';
+import { fmtDatum, ico, G, api, escHtmlAttr, toast, apiDaten } from './01-core.js';
 import { LANG, locale, t, tRaw } from '../i18n.js';
+import { esc } from './00-escapen.js';
 
 /**
  * Zeitgeber, der die Jobliste nachzieht, solange der Reiter offen ist.
@@ -23,7 +15,8 @@ import { LANG, locale, t, tRaw } from '../i18n.js';
  * js/02-gallery.js hält ihn beim Reiterwechsel an, dafür gibt es den Setter
  * unten.
  */
-export let _monitorTimer = null;
+/** @type {ReturnType<typeof setInterval> | null} */
+let _monitorTimer = null;
 
 function openLogViewer() {
   const win = window.open('', '_blank', 'width=1200,height=750,resizable=yes,scrollbars=yes');
@@ -110,73 +103,76 @@ export async function saveJobSchedule(name, payload) {
 }
 
 
+// Bausteine der Dienstetabelle im Monitor.
+// Die Uhrzeit als Textfeld mit 24-h-Form: <input type="time"> zeigt die
+// Form des Browsers („03:00 AM“), unabhängig von der Sprache der Seite.
+/** @param {any} schedules @param {string} k */
+const schedInput = (schedules, k) => {
+  const sc = schedules?.[k];
+  if (!sc) return `<span class="mon-leise">${t('monitor.sched.keiner')}</span>`;
+  if (sc.type === 'daily') {
+    return `<label class="mon-plan">${t('monitor.sched.taeglich')} <input type="text" inputmode="numeric" maxlength="5" placeholder="HH:MM" class="job-sched-input mon-zeit" value="${esc(sc.time)}" aria-label="${t('monitor.sched.daily_hint')}" data-change="saveJobTime" data-arg="${esc(k)}"></label>`;
+  }
+  if (sc.type === 'interval') {
+    return `<label class="mon-plan">${t('monitor.sched.alle')} <input inputmode="numeric" type="number" min="5" class="job-sched-input mon-minuten" aria-label="${t('monitor.sched.interval_hint')}" value="${esc(sc.minutes)}" data-change="saveJobMinutes" data-arg="${esc(k)}"> ${t('monitor.sched.min')}</label>`;
+  }
+  return '';
+};
+const jobIconSvg = (k) => {
+  const svgs = {
+    // CSV-Import (Rebrickable): kleine Tabelle/Raster mit farbigen Zeilen
+    csvImport: '<rect x="12" y="20" width="96" height="18" rx="2" fill="#0055BF"/><rect x="12" y="44" width="96" height="18" rx="2" fill="#F2CD37"/><rect x="12" y="68" width="96" height="18" rx="2" fill="#E63329"/><rect x="12" y="92" width="96" height="18" rx="2" fill="#9BA19D"/>',
+    // BrickLink IDs nachladen: zwei verbundene Ringe (Verknüpfung/Mapping)
+    blIds: '<path d="M40,45 a20,20 0 1,0 0.1,0" fill="none" stroke="#0055BF" stroke-width="12"/><path d="M80,75 a20,20 0 1,0 0.1,0" fill="none" stroke="#E63329" stroke-width="12"/>',
+    // Handbücher herunterladen: kleines aufgeschlagenes Buch
+    instrQueue: '<path d="M60,28 C50,22 30,20 16,24 L16,92 C30,88 50,90 60,96 Z" fill="#E63329"/><path d="M60,28 C70,22 90,20 104,24 L104,92 C90,88 70,90 60,96 Z" fill="#CC2A21"/><rect x="24" y="38" width="28" height="4" rx="2" fill="#fff"/><rect x="24" y="50" width="28" height="4" rx="2" fill="#fff"/><rect x="24" y="62" width="20" height="4" rx="2" fill="#fff"/>',
+    // Preise aktualisieren: Preisschild (Gold) mit Loch
+    brickset: '<rect x="10" y="48" width="28" height="24" rx="3" fill="#0055BF"/><circle cx="24" cy="48" r="4.5" fill="#0055BF"/><rect x="46" y="48" width="28" height="24" rx="3" fill="#F2CD37"/><circle cx="60" cy="48" r="4.5" fill="#F2CD37"/><rect x="82" y="48" width="28" height="24" rx="3" fill="#E63329"/><circle cx="96" cy="48" r="4.5" fill="#E63329"/>',
+    priceJob: '<path d="M18,60 L58,20 L100,20 Q108,20 108,28 L108,70 Q108,78 100,78 L58,100 Z" fill="#F2CD37"/><circle cx="84" cy="42" r="9" fill="#fff"/>',
+        // Bild-Download: Bilderrahmen mit Berg und Sonne
+        imgDl: '<rect x="10" y="20" width="100" height="80" rx="8" fill="#0055BF"/><circle cx="82" cy="44" r="10" fill="#F2CD37"/><path d="M18,92 L48,52 L70,80 L82,66 L102,92 Z" fill="#fff"/>',
+        // PDF-Aufträge: Blatt mit roter Leiste
+        pdfJobs: '<path d="M26,10 L76,10 L98,32 L98,110 L26,110 Z" fill="#9BA19D"/><path d="M76,10 L76,32 L98,32 Z" fill="#fff" fill-opacity=".6"/><rect x="16" y="56" width="70" height="26" rx="4" fill="#E63329"/><rect x="38" y="90" width="44" height="5" rx="2.5" fill="#fff"/>',
+  };
+  return svgs[k] ? `<svg class="mon-sinnbild" viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">${svgs[k]}</svg>` : '<span class="mon-sinnbild" aria-hidden="true"></span>';
+};
+const jobZustand = (s) => ({ running: tRaw('monitor.state.running'), done: tRaw('monitor.state.done'),
+  error: tRaw('monitor.state.error') })[s] || tRaw('monitor.state.idle');
+const statusIcon = (s, j) => {
+  if (s === 'running') return ico('uhr');
+  if (s === 'done')    return ico('ok');
+  if (s === 'error')   return ico('fehler');
+  // idle: show warning if there's pending work (total > progress or sub mentions pending)
+  if (s === 'idle' && j.total > 0 && j.progress < j.total) return ico('warnung');
+  return ico('pause');
+};
+const bar = (v, gesamt) => {
+  if (!gesamt) return '';
+  const pct = Math.min(100, Math.round(v / gesamt * 100));
+  return `<div class="mon-balken"><div data-breite="${pct}"></div></div>`;
+};
+const aktionen = (k, j) => [
+  k === 'priceJob' ? `<button class="btn bs btn-sm" type="button" data-click="clickJobTrigger">${t('monitor.run_now')}</button>` : '',
+  k === 'instrQueue' ? `<button class="btn bs btn-sm" type="button" data-click="reimportMissingInstructions" data-self="1">${t('monitor.import_missing')}</button>` : '',
+  k === 'csvImport' ? `<button class="btn bs btn-sm" type="button" data-click="triggerCsvSync" data-self="1">${t('monitor.sync_now')}</button>` : '',
+  k === 'imgDl' && j.canRedownload ? `<button class="btn bs btn-sm" type="button" data-click="redownloadMissingImages" data-self="1">${t('monitor.redownload_missing')}</button>` : '',
+  k === 'imgDl' ? `<button class="btn bs btn-sm" type="button" data-click="queueCatalogImages" data-self="1">${t('monitor.catalog_images')}</button>` : '',
+  k === 'bricksetRetry' && j.total > 0 ? `<button class="btn bs btn-sm" type="button" data-click="toggleBricksetQueue" data-self="1"><span>${t('monitor.show')}</span></button>` : '',
+].join('');
+const dienstName = (k, j) => t('monitor.job.' + k, {}) !== 'monitor.job.' + k ? t('monitor.job.' + k) : esc(j.label || k);
+
 export async function loadMonitor() {
   const el = G('monitor-content');
   if (!el) return;
   if (_monitorTimer) clearInterval(_monitorTimer);
   const render = async () => {
-    const d = await fetch('/api/v1/admin/jobs').then(r=>r.json()).catch(()=>null);
+    const d = await apiDaten('GET', '/v1/admin/jobs');
     if (!d?.success) return;
     // Nicht neu rendern, während der Nutzer gerade eine Zeitplan-Eingabe bearbeitet
     // (sonst würde das 3s-Re-Render die Eingabe/den Fokus verwerfen).
     const _ae = document.activeElement;
     if (_ae && _ae.classList && _ae.classList.contains('job-sched-input')) return;
     const { jobs, db: dbStats, schedules } = d;
-    // Die Uhrzeit als Textfeld mit 24-h-Form: <input type="time"> zeigt die
-    // Form des Browsers („03:00 AM“), unabhängig von der Sprache der Seite.
-    const schedInput = (k) => {
-      const sc = schedules?.[k];
-      if (!sc) return `<span class="mon-leise">${t('monitor.sched.keiner')}</span>`;
-      if (sc.type === 'daily') {
-        return `<label class="mon-plan">${t('monitor.sched.taeglich')} <input type="text" inputmode="numeric" maxlength="5" placeholder="HH:MM" class="job-sched-input mon-zeit" value="${esc(sc.time)}" aria-label="${t('monitor.sched.daily_hint')}" data-change="saveJobTime" data-arg="${esc(k)}"></label>`;
-      }
-      if (sc.type === 'interval') {
-        return `<label class="mon-plan">${t('monitor.sched.alle')} <input inputmode="numeric" type="number" min="5" class="job-sched-input mon-minuten" aria-label="${t('monitor.sched.interval_hint')}" value="${esc(sc.minutes)}" data-change="saveJobMinutes" data-arg="${esc(k)}"> ${t('monitor.sched.min')}</label>`;
-      }
-      return '';
-    };
-    const jobIconSvg = (k) => {
-      const svgs = {
-        // CSV-Import (Rebrickable): kleine Tabelle/Raster mit farbigen Zeilen
-        csvImport: '<rect x="12" y="20" width="96" height="18" rx="2" fill="#0055BF"/><rect x="12" y="44" width="96" height="18" rx="2" fill="#F2CD37"/><rect x="12" y="68" width="96" height="18" rx="2" fill="#E63329"/><rect x="12" y="92" width="96" height="18" rx="2" fill="#9BA19D"/>',
-        // BrickLink IDs nachladen: zwei verbundene Ringe (Verknüpfung/Mapping)
-        blIds: '<path d="M40,45 a20,20 0 1,0 0.1,0" fill="none" stroke="#0055BF" stroke-width="12"/><path d="M80,75 a20,20 0 1,0 0.1,0" fill="none" stroke="#E63329" stroke-width="12"/>',
-        // Anleitungen herunterladen: kleines aufgeschlagenes Buch
-        instrQueue: '<path d="M60,28 C50,22 30,20 16,24 L16,92 C30,88 50,90 60,96 Z" fill="#E63329"/><path d="M60,28 C70,22 90,20 104,24 L104,92 C90,88 70,90 60,96 Z" fill="#CC2A21"/><rect x="24" y="38" width="28" height="4" rx="2" fill="#fff"/><rect x="24" y="50" width="28" height="4" rx="2" fill="#fff"/><rect x="24" y="62" width="20" height="4" rx="2" fill="#fff"/>',
-        // Preise aktualisieren: Preisschild (Gold) mit Loch
-        brickset: '<rect x="10" y="48" width="28" height="24" rx="3" fill="#0055BF"/><circle cx="24" cy="48" r="4.5" fill="#0055BF"/><rect x="46" y="48" width="28" height="24" rx="3" fill="#F2CD37"/><circle cx="60" cy="48" r="4.5" fill="#F2CD37"/><rect x="82" y="48" width="28" height="24" rx="3" fill="#E63329"/><circle cx="96" cy="48" r="4.5" fill="#E63329"/>',
-        priceJob: '<path d="M18,60 L58,20 L100,20 Q108,20 108,28 L108,70 Q108,78 100,78 L58,100 Z" fill="#F2CD37"/><circle cx="84" cy="42" r="9" fill="#fff"/>',
-        // Bild-Download: Bilderrahmen mit Berg und Sonne
-        imgDl: '<rect x="10" y="20" width="100" height="80" rx="8" fill="#0055BF"/><circle cx="82" cy="44" r="10" fill="#F2CD37"/><path d="M18,92 L48,52 L70,80 L82,66 L102,92 Z" fill="#fff"/>',
-        // PDF-Aufträge: Blatt mit roter Leiste
-        pdfJobs: '<path d="M26,10 L76,10 L98,32 L98,110 L26,110 Z" fill="#9BA19D"/><path d="M76,10 L76,32 L98,32 Z" fill="#fff" fill-opacity=".6"/><rect x="16" y="56" width="70" height="26" rx="4" fill="#E63329"/><rect x="38" y="90" width="44" height="5" rx="2.5" fill="#fff"/>',
-      };
-      return svgs[k] ? `<svg class="mon-sinnbild" viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">${svgs[k]}</svg>` : '<span class="mon-sinnbild" aria-hidden="true"></span>';
-    };
-    const jobZustand = (s) => ({ running: tRaw('monitor.state.running'), done: tRaw('monitor.state.done'),
-      error: tRaw('monitor.state.error') })[s] || tRaw('monitor.state.idle');
-    const statusIcon = (s, j) => {
-      if (s === 'running') return ico('uhr');
-      if (s === 'done')    return ico('ok');
-      if (s === 'error')   return ico('fehler');
-      // idle: show warning if there's pending work (total > progress or sub mentions pending)
-      if (s === 'idle' && j.total > 0 && j.progress < j.total) return ico('warnung');
-      return ico('pause');
-    };
-    const bar = (v, gesamt) => {
-      if (!gesamt) return '';
-      const pct = Math.min(100, Math.round(v / gesamt * 100));
-      return `<div class="mon-balken"><div data-breite="${pct}"></div></div>`;
-    };
-    const aktionen = (k, j) => [
-      k === 'priceJob' ? `<button class="btn bs btn-sm" type="button" data-click="clickJobTrigger">${t('monitor.run_now')}</button>` : '',
-      k === 'instrQueue' ? `<button class="btn bs btn-sm" type="button" data-click="reimportMissingInstructions" data-self="1">${t('monitor.import_missing')}</button>` : '',
-      k === 'csvImport' ? `<button class="btn bs btn-sm" type="button" data-click="triggerCsvSync" data-self="1">${t('monitor.sync_now')}</button>` : '',
-      k === 'imgDl' && j.canRedownload ? `<button class="btn bs btn-sm" type="button" data-click="redownloadMissingImages" data-self="1">${t('monitor.redownload_missing')}</button>` : '',
-      k === 'imgDl' ? `<button class="btn bs btn-sm" type="button" data-click="queueCatalogImages" data-self="1">${t('monitor.catalog_images')}</button>` : '',
-      k === 'bricksetRetry' && j.total > 0 ? `<button class="btn bs btn-sm" type="button" data-click="toggleBricksetQueue" data-self="1"><span>${t('monitor.show')}</span></button>` : '',
-    ].join('');
-    const name = (k, j) => t('monitor.job.' + k, {}) !== 'monitor.job.' + k ? t('monitor.job.' + k) : esc(j.label || k);
     const panel = G('brickset-queue-panel');
     const panelHTML = panel && panel.style.display !== 'none' ? panel.innerHTML : null;
     const zahl = (n) => (n || 0).toLocaleString(locale());
@@ -191,10 +187,10 @@ export async function loadMonitor() {
       <div class="tw"><table class="dt mon-tabelle mon-dienste">
         <thead><tr><th>${t('monitor.col.dienst')}</th><th>${t('monitor.col.zustand')}</th><th>${t('monitor.col.zeitplan')}</th><th>${t('monitor.col.zuletzt')}</th><th>${t('monitor.col.aktionen')}</th></tr></thead>
         <tbody>${Object.entries(jobs).map(([k, j]) => `<tr>
-          <td><span class="mon-name">${k === 'bricksetRetry' ? jobIconSvg('brickset') : jobIconSvg(k)}${name(k, j)}</span></td>
+          <td><span class="mon-name">${k === 'bricksetRetry' ? jobIconSvg('brickset') : jobIconSvg(k)}${dienstName(k, j)}</span></td>
           <td><span class="mon-zustand mon-${esc(j.status || 'idle')}">${statusIcon(j.status, j)} ${esc(jobZustand(j.status))}</span>
             ${j.sub ? `<div class="mon-leise">${translateJobSub(j.sub)}</div>` : ''}${j.total > 0 ? bar(j.progress, j.total) : ''}</td>
-          <td>${schedInput(k)}</td>
+          <td>${schedInput(schedules, k)}</td>
           <td>${j.lastRun ? fmtDatum(j.lastRun, 'zeit') : ''}</td>
           <td><div class="mon-knoepfe">${aktionen(k, j) || '<span class="mon-leise">–</span>'}</div></td>
         </tr>`).join('')}</tbody>
@@ -332,7 +328,6 @@ async function zeigeAuftraege() {
       ${mehr > 0 ? `<p class="mon-leise">${t('monitor.auftraege.mehr', { n: mehr })}</p>` : ''}</details>`
       : `<h3 class="mon-untertitel">${t('monitor.auftraege.einzeln')}</h3><p class="mon-leise">${t('monitor.auftraege.leer')}</p>`}`;
 }
-
 /** Die Liste der einzelnen Aufträge ist am Telefon zu, sonst offen; ein Klick
  * gilt bis zum Neuladen, auch über das Nachzeichnen alle paar Sekunden. */
 let _einzelnOffen = null;
@@ -341,6 +336,7 @@ if (typeof document !== 'undefined') document.addEventListener('toggle', (ev) =>
   const d = ev.target;
   if (d instanceof HTMLDetailsElement && d.classList.contains('mon-einzeln')) _einzelnOffen = d.open;
 }, true);
+
 
 async function auftragAbbrechen(id) {
   const d = await api('POST', `/v1/admin/auftraege/${encodeURIComponent(id)}/abbrechen`).catch(() => null);
@@ -367,13 +363,12 @@ async function auftragsArtLeeren(art) {
   await zeigeAuftraege();
 }
 
-/**
- * Setter für _monitorTimer — importierte Bindungen sind in ES-Modulen schreibgeschützt.
- * Ersetzt die frühere direkte Zuweisung aus einer anderen Datei, die mit
- * globalen Variablen noch möglich war.
- * @param {any} v
- */
-export function set_monitorTimer(v) { _monitorTimer = v; }
+/** Beim Verlassen des Reiters: die Abfrage anhalten. @returns {boolean} ob sie lief */
+export function stoppeMonitor() {
+  if (!_monitorTimer) return false;
+  clearInterval(_monitorTimer); _monitorTimer = null;
+  return true;
+}
 
 // ── Handler beim Dispatcher anmelden (siehe js/00-registry.js) ──────────────
 // Der Handler gehört zu dem Modul, das ihn umsetzt.

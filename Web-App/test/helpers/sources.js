@@ -144,12 +144,13 @@ function proxyThumbQuelle() {
 }
 module.exports.proxyThumbQuelle = proxyThumbQuelle;
 
-/** Die Oberfläche rund um Erfassungen: js/07-admin.js samt Kaufpreis-Modal und
- *  Detailfenstern. */
+/** Die Oberfläche rund um Erfassungen: Set-Detail, Kaufpreis-Modal, Detailfenster
+ *  und ihre Bausteine (Lagerort, Preisalarm, Diagramme, Rückfragen). */
 function adminQuelle() {
   const path = require('path'), fs = require('fs');
   const ROOT = path.join(__dirname, '..', '..');
-  return ['07-admin.js', '13-acquisition-modals.js']
+  return ['07-admin.js', '07-set-detail.js', '02-detailfelder.js', '01-diagramme.js', '01-rueckfrage.js',
+          '13-acquisition-modals.js']
     .map(f => fs.readFileSync(path.join(ROOT, 'public', 'js', f), 'utf8'))
     .join('\n');
 }
@@ -225,8 +226,8 @@ function coreQuelle() {
   const dir = path.join(__dirname, '..', '..', 'public', 'js');
   // 00-escapen.js VORNE: esc() gehört zur Grundausstattung, und
   // test/frontend-escaping.test.js schneidet seinen Sandkasten ab `function esc(s)`.
-  return ['00-escapen.js', '01-core.js', '01-fortschritt.js', '01-monitor.js',
-          '14-scope.js', '15-scrollbar.js']
+  return ['00-escapen.js', '00-zustand.js', '00-ereignisse.js', '01-core.js', '01-fortschritt.js',
+          '01-monitor.js', '14-scope.js', '15-scrollbar.js', '26-sitzung.js']
     .map(f => fs.readFileSync(path.join(dir, f), 'utf8')).join('\n');
 }
 module.exports.coreQuelle = coreQuelle;
@@ -455,3 +456,14 @@ function dienstQuelle(rel) {
   return [s, ...[...repos].map(r => fs.readFileSync(path.join(ROOT, r), 'utf8'))].join('\n');
 }
 module.exports.dienstQuelle = dienstQuelle;
+
+/** Alle Quellen der Oberfläche (public/js ohne Bündel, dazu i18n.js) als EIN
+ *  Text: für Prüfungen, die nicht an der Datei hängen sollen, in der eine
+ *  Funktion gerade steht. */
+function frontendQuelle() {
+  const path = require('path'), fs = require('fs');
+  const pub = path.join(__dirname, '..', '..', 'public');
+  return [...fs.readdirSync(path.join(pub, 'js')).filter(f => /^\d\d-.*\.js$/.test(f)).sort().map(f => path.join(pub, 'js', f)),
+          path.join(pub, 'i18n.js')].map(f => fs.readFileSync(f, 'utf8')).join('\n');
+}
+module.exports.frontendQuelle = frontendQuelle;

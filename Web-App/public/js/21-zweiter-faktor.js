@@ -1,8 +1,9 @@
 import { echt, registerActions } from './00-registry.js';
 import { t, tRaw } from '../i18n.js';
-import { ico, G, api, esc, toast, formularFehler } from './01-core.js';
-import { confirmDelete, bestaetigeMitPasswort, mitPasswortBestaetigen, mitZweitemFaktor } from './07-admin.js';
+import { ico, G, api, toast, formularFehler } from './01-core.js';
 import { loadUsers } from './05-settings.js';
+import { esc } from './00-escapen.js';
+import { confirmDelete, bestaetigeMitPasswort, mitZweitemFaktor, mitPasswortBestaetigen } from './01-rueckfrage.js';
 
 // ═══ Zweiter Faktor im Profil (Server: src/konto/zweiterFaktor.ts) ══════════════
 // Ablauf: Passwort → QR-Code und Schlüssel → Code bestätigen → die zehn
@@ -20,13 +21,14 @@ function pflichtHinweis(schluessel) {
 }
 
 function zeichne(html) { const f = flaeche(); if (f) f.innerHTML = html; }
-
 // Im Anmeldebildschirm stehen die Knöpfe breit untereinander wie „Abmelden“ darunter.
 const knopfArt = () => pflicht ? 'knopf-breit' : 'btn-sm';
+
 const knopf = (aktion, text, art = 'bs') =>
   `<button type="button" class="btn ${art} ${knopfArt()}" data-click="${aktion}"${echt()}>${text}</button>`;
 const reihe = (inhalt) => `<div class="${pflicht ? 'zf-knoepfe-breit' : 'zf-knoepfe'}">${inhalt}</div>`;
 // Die Felder stehen ausgeschrieben da, nicht über einen Helfer: test/dom-ids.test.js
+// findet nur wörtliche id-Angaben.
 // findet nur wörtliche id-Angaben. Das Passwort fragt der Dialog beim Auslösen.
 const CODEFELD = (label, laenge = 24) =>
   `<div class="fg"><label for="zf-code">${label}</label><input type="text" id="zf-code" inputmode="numeric" autocomplete="one-time-code" maxlength="${laenge}" data-erstfokus /></div>`;

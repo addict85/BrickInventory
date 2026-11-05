@@ -129,7 +129,7 @@ test('Anleitungen: der Server sagt, welche selbst hochgeladen ist',
 test('Anleitungen: beide Oberflaechen haengen den Papierkorb an is_manual', () => {
   // ── Webapp ────────────────────────────────────────────────────────────────
   const galerie = ohneKommentare(
-    fs.readFileSync(path.join(ROOT, 'public/js/02-gallery.js'), 'utf8'));
+    fs.readFileSync(path.join(ROOT, 'public/js/07-set-detail.js'), 'utf8'));
 
   assert.ok(/const isUpload = !!i\.is_manual;/.test(galerie),
     'Die Webapp soll die Herkunft vom Server nehmen, nicht selbst am Pfad ablesen');

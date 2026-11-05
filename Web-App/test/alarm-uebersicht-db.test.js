@@ -163,7 +163,7 @@ test('Preisalarm-Übersicht: eigene Alarme, mit Namen, änderbar, löschbar',
     const html = fs.readFileSync(path.join(ROOT, 'public/index.html'), 'utf8');
     assert.match(html, /id="alerts-list"/, 'Die Rubrik fehlt im Markup.');
     assert.match(html, /data-i18n="alerts\.group"/, 'Die Rubrik hat keine Überschrift.');
-    const galerie = ohneKommentare(fs.readFileSync(path.join(ROOT, 'public/js/02-gallery.js'), 'utf8'));
+    const galerie = ohneKommentare(fs.readFileSync(path.join(ROOT, 'public/js/25-navigation.js'), 'utf8'));
     assert.match(galerie, /ladeAlarmUebersicht\(\)/,
       'Beim Öffnen der Einstellungen wird die Übersicht nicht geladen — die Rubrik bliebe leer.');
     const js = ohneKommentare(fs.readFileSync(path.join(ROOT, 'public/js/05-settings.js'), 'utf8'));

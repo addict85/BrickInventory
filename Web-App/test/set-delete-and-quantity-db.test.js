@@ -56,9 +56,10 @@ const { haeltFigur, haeltSet, haeltTeil, mengeVon } = require('./helpers/bestand
 
 test('das Löschen fragt genau einmal', () => {
   const src = ohneKommentare(fs.readFileSync(path.join(ROOT, 'public/js/02-gallery.js'), 'utf8'));
+  const detail = ohneKommentare(fs.readFileSync(path.join(ROOT, 'public/js/07-set-detail.js'), 'utf8'));
 
   // Der Knopf im Detail-Dialog darf NICHT selbst fragen.
-  const btn = src.slice(src.indexOf("G('btn-md').onclick"));
+  const btn = detail.slice(detail.indexOf("G('btn-md').onclick"));
   const zeile = btn.slice(0, btn.indexOf('\n'));
   assert.doesNotMatch(zeile, /confirmDelete/,
     'Der Löschknopf im Dialog fragt wieder selbst — zusammen mit der Rückfrage ' +

@@ -85,12 +85,13 @@ test('beide Galerie-Ansichten beobachten ihre Bilder', () => {
 });
 
 test('Preisdaten lösen keinen kompletten Neuaufbau mehr aus', () => {
-  const src = code(admin);
+  const src = code(gallery);
   // Ankertext angepasst: `_pnlCache = {}` ist mit den ES-Modulen zu
   // `set_pnlCache({})` geworden — importierte Bindungen sind schreibgeschützt,
   // deshalb der Setter (siehe js/02-gallery.js). Der geprüfte Sachverhalt ist
   // unverändert.
-  const fn = src.slice(src.indexOf('set_pnlCache({})'), src.indexOf('function sparklineSVG'));
+  const von = src.indexOf('set_pnlCache({})');
+  const fn = src.slice(von, src.indexOf('\n}\n', von));
   assert.ok(fn.length > 0, 'Anker set_pnlCache({}) nicht gefunden — Prüfung liefe ins Leere');
   assert.doesNotMatch(fn, /renderGallery\(\)/,
     'enrichGalleryWithPrices() darf die Kachelwand nicht neu bauen — jedes <img> ' +

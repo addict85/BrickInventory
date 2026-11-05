@@ -1,7 +1,9 @@
 import { echt, registerActions } from './00-registry.js';
 import { t, tRaw } from '../i18n.js';
-import { ico, G, api, esc, toast, fmtDatum, ME } from './01-core.js';
-import { bestaetigeMitPasswort, mitZweitemFaktor, setzePasskeyHolen } from './07-admin.js';
+import { ico, G, api, toast, fmtDatum } from './01-core.js';
+import { ME } from './00-zustand.js';
+import { esc } from './00-escapen.js';
+import { bestaetigeMitPasswort, mitZweitemFaktor, setzePasskeyHolen } from './01-rueckfrage.js';
 
 // ═══ Passkeys (Server: src/konto/passkeys.ts, routes/passkeys.ts) ═══════════════
 // Ohne Fremdskript: Der Server schickt die Optionen als JSON (Base64URL), der

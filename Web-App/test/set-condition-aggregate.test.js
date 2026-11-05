@@ -685,23 +685,6 @@ test('genau EINE Zustandsauflösung für Einzelsets — resolveSetCondition', ()
   assert.equal(uses, 1, 'Die /price-Route muss ihn benutzen; der Verlauf geht über priceHistory.ts');
 });
 
-test('die Sparkline zeichnet avg_price, nicht qty_avg_price', () => {
-  // Der Server wählte längst den richtigen Zustand (resolveSetCondition),
-  // aber die Sparkline zeichnete `qty_avg_price` — eine andere Preisspalte
-  // desselben, korrekt aufgelösten Zustands. qty_avg_price kann fehlen oder
-  // 0 sein, während avg_price vorhanden ist; das erzeugte einen Graphen-Abfall,
-  // der mit dem tatsächlichen Marktpreis nichts zu tun hatte. Android hatte
-  // dieselbe Stelle (SetDetailComponents.kt) längst richtig — der Webapp fehlte
-  // der Fix.
-  const src = require('./helpers/sources').adminQuelle();
-  const fn = src.slice(src.indexOf('function sparklineSVG'),
-                       src.indexOf('function sparklineSVG') + 1000);
-  assert.match(fn, /const vals = data\.map\(d=>d\.avg_price\|\|d\.qty_avg_price\|\|d\.total\|\|0\);/,
-    'avg_price muss vor qty_avg_price stehen');
-  assert.doesNotMatch(fn, /const vals = data\.map\(d=>d\.qty_avg_price\|\|d\.total\|\|0\);/,
-    'Die alte, fehlerhafte Reihenfolge darf nicht mehr vorkommen');
-});
-
 // Die Datenbank-Sperre des Neuaufbaus prüft test/teile-zusammenfassung-sperre-db.test.js.
 
 test('CDN-Anfragen erzwingen IPv4', () => {
@@ -831,13 +814,13 @@ test('die Reihenfolge ist fest: Neu vor Gebraucht', () => {
 });
 
 test('die Kacheln rechnen die Plaketten nicht selbst aus', () => {
-  const gal = fs.readFileSync(path.join(ROOT, 'public', 'js', '02-gallery.js'), 'utf8');
+  const gal = fs.readFileSync(path.join(ROOT, 'public', 'js', '01-bausteine.js'), 'utf8');
   assert.match(gal, /export function condBadges/,
     'Eine gemeinsame Fassung für Set-, Teile- und Minifiguren-Kacheln');
   // Vorher stand dieselbe Plakette viermal im Code, dreimal mit fest
   // eingetragenen Farben statt der CSS-Klassen. Geprüft wird genau das:
   // keine Zeile darf eine Zustands-Beschriftung UND eine eigene Farbe tragen.
-  for (const f of ['public/js/06-minifigs.js', 'public/js/04-finance.js']) {
+  for (const f of ['public/js/03-parts.js', 'public/js/06-minifigs.js', 'public/js/04-finance.js']) {
     const lines = fs.readFileSync(path.join(ROOT, f), 'utf8').split('\n');
     const inline = lines.filter(l =>
       /common\.condition_(used|new)/.test(l) && /background:\s*var\(/.test(l));

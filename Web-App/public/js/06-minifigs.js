@@ -1,24 +1,22 @@
+// Der Reiter Minifiguren: Figuren aus Sets und manuell erfasste Figuren, dazu
+// die gemeinsamen Hilfen für manuelle Tabellen und CSV-Status.
+import { abonniere } from './00-ereignisse.js';
 import { echt, registerActions } from './00-registry.js';
-import { listeLadefehler } from './01-bausteine.js';
-import { colorName, locale, t, tRaw} from '../i18n.js';
-import { fmtDatum, bildTag, platzhalterInhalt, leerZustand, ico, escHex, hexZiffern, CURRENCY, G, TRASH_ICON_SVG, api, esc, escJs, escUrl, fmtN, fullUrl, imgUrl, thumbUrl, toast, zuruecksetzenKnopf, betragAusFeld } from './01-core.js';
+import { listeLadefehler, condBadges, ownerBadges, schliesseErfassen, csvHochladen } from './01-bausteine.js';
+import { colorName, t, tRaw } from '../i18n.js';
+import { fmtDatum, bildTag, platzhalterInhalt, leerZustand, escHex, G, TRASH_ICON_SVG, api, escJs, fmtN, fullUrl, imgUrl, thumbUrl, toast, zuruecksetzenKnopf, betragAusFeld, aktiverReiter, ico } from './01-core.js';
 import { addLagerParam, addScopeParam, scopeQuery } from './14-scope.js';
-import { condBadges, leereLagerortFeld, ownerBadges, schliesseErfassen, selectedOwner, selectedStorage } from './02-gallery.js';
 import { loadFinance } from './04-finance.js';
-import { confirmDelete } from './07-admin.js';
-import { openManDetail } from './13-acquisition-modals.js';
-import { teileLeerAbgleichen, teilPasstZumFilter, zeichneTeileFilter } from './03-parts.js';
 import { geloeschtMitRueckgaengig } from './20-papierkorb.js';
-
-// ═══ Minifiguren + manuelle Teile (Erfassung, Bewertung) ═══
-// Teil von app.js — die Dateien in public/js/ werden in nummerierter
-// Reihenfolge geladen und teilen sich den globalen Scope (kein Modul-
-// System noetig, Inline-onclick-Handler in index.html funktionieren
-// unveraendert). Der Split ist rein sequenziell und verhaelt sich
-// identisch zur frueheren Einzeldatei.
+import { CURRENCY } from './00-zustand.js';
+import { esc } from './00-escapen.js';
+import { leereLagerortFeld, selectedOwner, selectedStorage } from './02-konten-orte.js';
+import { confirmDelete } from './01-rueckfrage.js';
 
 // ── MINIFIGUREN ──────────────────────────────────────────────────────────────
-export let allFigsCache = [];
+let allFigsCache = [];
+/** Die zuletzt geladenen Figuren aus Sets (nur lesen). */
+export function alleFiguren() { return allFigsCache; }
 
 // ── Endlos-Scroll der Minifiguren ──────────────────────────────────────────
 // Wie in Galerie, Katalog und Teileansicht. Suche und Quellenfilter gehen an
@@ -30,20 +28,12 @@ let _figGen = 0, _figPage = 1, _figDone = false, _figLoadingMore = false, _figTo
 function figParams(page) {
   const p = new URLSearchParams();
   p.set('page', page);
-  p.set('page_size', FIG_PAGE_SIZE);
+  p.set('page_size', String(FIG_PAGE_SIZE));
   // Manuell erfasste Figuren haben oben eine eigene Sektion. Der Ausschluss
   // gehört auf den Server — clientseitig gefiltert könnte eine ganze Seite
   // wegfallen und die Liste bliebe scheinbar leer.
-  // Fest 'set': Manuell erfasste Figuren haben ihren eigenen Bereich mit
-  // editierbaren Karten (manual-figs-list) — in dieser Liste waeren sie
-  // doppelt. Der Ausschluss gehoert auf den Server; clientseitig gefiltert
-  // koennte eine ganze Seite wegfallen und die Liste bliebe scheinbar leer.
-  //
-  // Hier stand `G('fig-source')?.value || 'set'`. Das Auswahlfeld daneben trug
-  // GENAU EINE Option mit dem Wert "" und wurde von nirgends gefuellt — der
-  // Ausdruck ergab also immer 'set', und sein change-Ereignis konnte nie
-  // eintreten. Ein Bedienelement, das eine Wahl verspricht und keine anbietet,
-  // ist raus (die Android-App zeigt an dieser Stelle ebenfalls keines).
+  // Fest 'set': Manuell erfasste Figuren haben ihren eigenen Bereich mit …
+  // Ausführlich: docs/begruendungen/public/js/06-minifigs.js.md#manuell-erfasste-figuren-haben-oben-eine
   p.set('source', 'set');
   const q = G('fig-search')?.value?.trim();
   if (q) p.set('search', q);
@@ -77,7 +67,7 @@ function bindFigsSentinel() {
   const sent = G('figs-sentinel');
   if (!sent || sent._bound) return;
   sent._bound = true;
-  if ('IntersectionObserver' in window) {
+  if (typeof IntersectionObserver === 'function') {
     new IntersectionObserver(es => { if (es.some(e => e.isIntersecting)) maybeLoadMoreFigs(); },
       { rootMargin: '600px' }).observe(sent);
   } else {
@@ -104,9 +94,8 @@ export async function loadMinifigs() {
   // Stats
   // Kennzahlen MIT dem Filter des Reiters — vorher lief die Abfrage ohne ihn
   // und ohne Blickfeld: Im Haushalt zeigte die Kachel die eigenen Zahlen,
-  // während die Liste darunter alle Konten zeigte, und Umschalten änderte oben
-  // nichts. Gezählt wird jetzt serverseitig über dieselbe Gruppierung wie die
-  // Liste (utils/handlers.ts, getMinifigStats).
+  // während die Liste darunter alle Konten zeigte, und Umschalten änderte oben …
+  // Ausführlich: docs/begruendungen/public/js/06-minifigs.js.md#s
   const s = await api('GET', '/v1/minifigs/stats'+scopeQuery('minifigs'));
   if (s.success) {
     G('mf-unique').textContent = s.stats.types;
@@ -126,25 +115,13 @@ export async function loadMinifigs() {
  * Suche und Quellenfilter liegen auf dem Server (getMinifigs kannte beide
  * schon). Hier wird deshalb neu GELADEN statt clientseitig gefiltert — sonst
  * durchsuchte der Filter nur die bereits geladene Seite.
- *
- * BEIDE Listen des Reiters, nicht nur die aus Sets: Die manuell erfassten
- * Figuren stehen unter derselben Filterleiste (public/index.html begruendet
- * die Anordnung genau damit, test/tab-layout.test.js prueft sie). Vorher lief
- * nur loadMinifigs() — dieselbe Luecke, die Marco bei den Teilen gemeldet hat.
+ * Ausführlich: docs/begruendungen/public/js/06-minifigs.js.md#filterfigs
  */
 function filterFigs() { loadMinifigs(); loadManualFigsTable(); }
 
 /**
  * Hängt eine nachgeladene Seite an, statt die Liste neu zu bauen.
- *
- * Vorher rief jede Folgeseite renderFigs(allFigsCache) auf — die komplette
- * Liste wurde per innerHTML ersetzt. Damit verschwinden ALLE <img>-Elemente aus
- * dem DOM, und der Browser bricht ihre laufenden Anfragen ab. Im Server-Log
- * schlug das als Dutzende „Client hat abgebrochen" auf, und Kacheln, deren Bild
- * es nie über eine Nachladerunde hinaus schaffte, blieben leer.
- *
- * Die Galerie macht es seit ihrer Umstellung richtig (appendGallery); bei den
- * Minifiguren war es liegen geblieben.
+ * Ausführlich: docs/begruendungen/public/js/06-minifigs.js.md#appendfigs
  */
 function appendFigs(batch) {
   const el = G('figs-list');
@@ -191,16 +168,7 @@ export function renderFigs(list, target) {
 
   if (viewMode === 'table') {
     // Ohne die Spalten „Quelle" und Papierkorb.
-    //
-    // Beide waren KONSTANT: renderFigs() bekommt ausschliesslich
-    // `allFigsCache`, und der wird mit `source=set` geladen (figParams). Die
-    // Quelle stand also in jeder Zeile auf „aus Set", und der Papierkorb —
-    // `f.source==='manual' ? … : ''` — war in jeder Zeile leer. Zwei von
-    // sieben Spalten, die etwas versprachen und nichts zeigten. Manuell
-    // erfasste Figuren haben ihren eigenen Bereich mit editierbaren Karten.
-    //
-    // Aufgefallen beim Uebertragen der Tabelle in die App: Was dort nachgebaut
-    // wird, muss vorher stimmen.
+    // Ausführlich: docs/begruendungen/public/js/06-minifigs.js.md#ohne-die-spalten-quelle-und-papierkorb
     el.innerHTML = `<div class="tw"><table class="dt">
       <thead><tr>
         <th>${t('col.image')}</th><th>${t('col.number')}</th><th>${t('col.name')}</th><th>${t('detail.qty')}</th><th>${t('detail.created')}</th>
@@ -248,18 +216,8 @@ export function renderFigs(list, target) {
           // Zustand nur bei manuell erfassten Minifiguren anzeigen (automatisch
           // hinzugefügte aus Sets haben keinen eigenen Zustand).
           // Eine Plakette je erfasstem Zustand — gemeinsame Fassung in
-          // 02-gallery.js. Die frühere Inline-Fassung hier trug dieselben
-          // Farben noch einmal von Hand ein.
-          // Zustand nur bei manuell erfassten — die Begruendung darueber gilt.
-          // Die BESITZER-Plakette dagegen unbedingt: Sie beantwortet „wem
-          // gehoert das?", und diese Frage stellt sich bei einer Figur aus dem
-          // Set eines Kindes genauso wie bei einer selbst erfassten. Die
-          // Galerie-Kachel daneben zeigt sie seit jeher.
-          //
-          // Sie stand hier INNERHALB der manual-Bedingung — und diese Liste
-          // laedt ausschliesslich `source=set` (figParams). Die Plakette war
-          // also unerreichbar. Ohne Haushalt ist `owners` leer und
-          // ownerBadges() liefert '' — im Einzelkonto aendert sich nichts.
+          // 02-gallery.js. Die frühere Inline-Fassung hier trug dieselben …
+          // Ausführlich: docs/begruendungen/public/js/06-minifigs.js.md#condbadge
           const condBadge = f.source==='manual'
             ? `<div data-stil="display:flex;gap:3px;justify-content:center;flex-wrap:wrap;margin-top:3px">${condBadges(f)}</div>`
             : '';
@@ -295,7 +253,9 @@ export async function deleteManualFig(figNumber, owner) {
   else { toast(d.error || t('settings.error'), 'error'); return false; }
 }
 
-export let manualFigsCache = [];
+let manualFigsCache = [];
+/** Die zuletzt geladenen manuell erfassten Figuren (nur lesen). */
+export function manuelleFiguren() { return manualFigsCache; }
 export async function loadManualFigsTable() {
   const d = await api('GET', '/v1/minifigs/manual'+manuellQuery('minifigs', 'fig-search'));
   if (!d.success) return;
@@ -303,7 +263,9 @@ export async function loadManualFigsTable() {
   renderManualFigsTable();
 }
 
+/** @type {boolean | null} */
 let _setFigurenLeer = null;   // null: noch nicht geladen
+/** @type {boolean | null} */
 let _manuelleFigurenLeer = null;
 
 /**
@@ -374,31 +336,16 @@ export function renderManualFigsTable() {
 /** @param {number} [owner] Besitzer der Karte — siehe deleteManualPart. */
 export async function updateManualFig(figNumber, body, owner) {
   const d = await api('PUT', `/v1/minifigs/${encodeURIComponent(figNumber)}${owner ? `?owner=${encodeURIComponent(owner)}` : ''}`, body);
-  if (d.success) { toast(tRaw('settings.saved'),'success'); loadManualFigsTable(); loadMinifigs(); if(document.querySelector('.ntab.active')?.dataset?.tab==='finance') loadFinance(); }
+  if (d.success) { toast(tRaw('settings.saved'),'success'); loadManualFigsTable(); loadMinifigs(); if(aktiverReiter()==='finance') loadFinance(); }
   else toast(d.error||t('settings.error'),'error');
 }
 
 /**
  * Der Hinweis, wenn der Kaufpreis aus dem ANDEREN Zustand stammt.
- *
- * ── Warum es ihn gibt ────────────────────────────────────────
- * Marcos zwei Befunde waren zwei Seiten derselben Tatsache: BrickLink fuehrt
- * zu vielen Teilen und Figuren nur EINEN Zustand.
- *
- *   „Der Zustand hat keinen Einfluss auf den Preis"   → der Rueckfall war unsichtbar
- *   „Teilweise wird der Kaufpreis nicht geladen"      → ohne Rueckfall blieb es leer
- *
- * Seine Entscheidung: uebernehmen und kennzeichnen. Der Server sagt in
- * `price_from_condition`, aus welchem Zustand der Wert stammt; hier steht der
- * Satz dazu.
- *
- * EIN Helfer fuer beide Erfassungen: Teile und Figuren hatten denselben
- * Erfolgsblock in zwei Kopien, und in diesem Baum ist schon mehrfach eine
- * Regel nur in einer davon nachgezogen worden.
- *
+ * Ausführlich: docs/begruendungen/public/js/06-minifigs.js.md#preisherkunfthinweis
  * @param zustand 'N' | 'U' | null — null heisst „nichts zu sagen".
  */
-function preisHerkunftHinweis(zustand) {
+export function preisHerkunftHinweis(zustand) {
   if (zustand !== 'N' && zustand !== 'U') return '';
   return t(zustand === 'N' ? 'price.from_other_condition_new' : 'price.from_other_condition_used');
 }
@@ -438,7 +385,7 @@ G('btn-add-fig')?.addEventListener('click', async () => {
 });
 
 // Persistente Status-/Hinweiszeile für den CSV-Import (Teile & Minifiguren)
-function csvImportStatus(elId, state, msg) {
+export function csvImportStatus(elId, state, msg) {
   const el = G(elId);
   if (!el) return;
   if (state === 'hide') { el.style.display = 'none'; el.textContent = ''; return; }
@@ -453,30 +400,9 @@ function csvImportStatus(elId, state, msg) {
 }
 
 async function importFigsCsv() {
-  const fi = G('fig-csv-file');
-  if (!fi.files[0]) return;
-  const fd = new FormData(); fd.append('file', fi.files[0]);
-  csvImportStatus('fig-csv-status', 'running', t('import.running'));
-  try {
-    const r = await fetch('/api/v1/minifigs/import/csv', { method: 'POST', body: fd });
-    const d = await r.json();
-    fi.value = '';
-    if (d.success) {
-      const summary = t('import.summary', { added: d.added, updated: d.updated, errors: d.errors });
-      // Übersprungene Zeilen anhängen — sonst sieht ein Import mit stillen
-      // Lücken aus wie ein vollständiger.
-      toast(summary + (d.skipped_hint ? ` — ${d.skipped_hint}` : ''),
-        (d.errors || d.skipped) ? 'info' : 'success');
-      loadMinifigs();
-    } else {
-      toast(d.error || t('settings.error'), 'error');
-    }
-    csvImportStatus('fig-csv-status', 'hide');
-  } catch (e) {
-    fi.value = '';
-    csvImportStatus('fig-csv-status', 'hide');
-    toast(tRaw('settings.error'), 'error');
-  }
+  const d = await csvHochladen({ feld: 'fig-csv-file', pfad: '/v1/minifigs/import/csv',
+    zeige: (l) => csvImportStatus('fig-csv-status', l ? 'running' : 'hide', t('import.running')) });
+  if (d) loadMinifigs();
 }
 
 G('btn-fig-csv-template').onclick = (e) => {
@@ -488,46 +414,14 @@ G('btn-fig-csv-template').onclick = (e) => {
   a.click();
 };
 
-async function loadMinifigsValuation() {
-  // Dieser Banner steht im FINANZEN-Reiter — also dessen Filter.
-  const v = await api('GET', '/v1/finance/minifigs-valuation'+scopeQuery('finance'));
-  const banner = G('fin-figs-banner');
-  const valEl  = G('fin-figs-val');
-  if (!v.success || !v.figs?.length || parseFloat(v.total_value) === 0) {
-    if (banner) banner.style.display = 'none';
-    return;
-  }
-  if (banner && valEl) {
-    banner.style.display = 'flex';
-    valEl.textContent = fmtN(v.total_value, v.currency || CURRENCY);
-  }
-}
 
 /**
  * Abfrageteil für die MANUELL erfassten Listen: Kontofilter und Suchtext.
- *
- * ── Warum nicht scopeQuery() allein (Marcos Befund vom 20.10.) ──────────────
- *
- * „Wenn ich im Filter z.b. nach 3001 suche passiert nichts."
- *
- * Hier stand `scopeQuery('parts')` — nur der Kontofilter. Der Suchtext ging
- * über partsParams() (03-parts.js) ausschliesslich an die Set-Teile-Wand, und
- * die manuellen Kacheln blieben unberührt. public/index.html stellt die
- * Filterleiste aber über den manuellen Bereich und begründet das dort
- * ausdrücklich damit, dass der Filter auf BEIDE Listen wirkt.
- *
- * Gefiltert wird am Server (die Begründung steht in 14-scope.js beim
- * Lagerortfilter), deshalb reist der Text als Abfrageparameter mit — und
- * deshalb muss jeder Weg, der eine dieser Listen neu lädt, hier vorbei.
- *
- * EIN Helfer für Teile und Figuren: Dieselbe Lücke bestand in beiden Reitern,
- * und zwei Fassungen wären zwei Stellen, an denen der nächste Filter vergessen
- * wird.
- *
+ * Ausführlich: docs/begruendungen/public/js/06-minifigs.js.md#manuellquery
  * @param {string} view     Name des Blickfelds ('parts' | 'minifigs')
  * @param {string} sucheId  ID des Suchfelds der Filterleiste
  */
-function manuellQuery(view, sucheId) {
+export function manuellQuery(view, sucheId) {
   const p = new URLSearchParams();
   addScopeParam(p, view);
   // Der Lagerortfilter steht in derselben Leiste und gehoert damit zum
@@ -543,44 +437,11 @@ function manuellQuery(view, sucheId) {
 
 /**
  * Die manuell erfassten Posten als TABELLE — Teile und Figuren.
- *
- * ── Marcos Befund vom 20.10. ────────────────────────────────────────────────
- *
- *   „Wenn ich bei den Teilen auf Tabelle umschalte, werden nur die Teile aus
- *    den Sets als Tabelle angezeigt. Die manuell erfassten sind immer
- *    Kacheln."
- *
- * Das stimmte, und zwar doppelt: renderManualParts() zeichnete unbedingt
- * `man-grid`, und der Umschalter hing allein an loadPartsData() — derselbe
- * halbe Anschluss wie beim Suchtext (siehe teileFilterGeaendert in
- * public/js/03-parts.js und test/manuelle-listen-filter-db.test.js). Die
- * Filterleiste MIT dem Umschalter steht ueber beiden Listen; was dort
- * eingestellt wird, gilt fuer beide.
- *
- * ── EIN Bauer fuer Teile und Figuren ────────────────────────────────────────
- *
- * Dieselbe Luecke bestand in beiden Reitern (figs-view rief renderFigsAll(),
- * also nur die Figuren aus Sets). Zwei Fassungen waeren zwei Stellen, an denen
- * die naechste Spalte vergisst, dass es die andere Liste gibt — genau die
- * Begruendung, die schon an manuellQuery() oben steht.
- *
- * ── Was die Tabelle zeigt ───────────────────────────────────────────────────
- *
- * Alles, was auch auf der Kachel steht, und den Lagerort dazu: Beide
- * Abfragen liefern ihn langst (`lo.name AS storage`), die Kachel hat nur
- * keinen Platz dafuer. Eine Tabelle ist der Ort, an dem eine solche Spalte
- * etwas nutzt — Marco hat den Lagerort am selben Tag zum Thema gemacht.
- *
- * Die Handlungen sind dieselben wie auf der Kachel — Zeile klicken oeffnet das
- * Detail, der Papierkorb loescht. Eine Ansicht darf nicht koennen, was die
- * andere nicht kann; der Satz steht so schon an partsTableRow()
- * (public/js/03-parts.js), und dort steht auch, dass in diesem Projekt genau
- * daran mehrfach etwas auseinandergelaufen ist.
- *
+ * Ausführlich: docs/begruendungen/public/js/06-minifigs.js.md#manuelletabelle
  * @param {Array}  posten  Die Einträge aus dem jeweiligen Cache.
  * @param {'part'|'fig'} art
  */
-function manuelleTabelle(posten, art) {
+export function manuelleTabelle(posten, art) {
   const istTeil = art === 'part';
   const kopf = [
     t('col.image_th'),
@@ -628,240 +489,11 @@ function manuelleTabelle(posten, art) {
 }
 
 /** Steht der Umschalter des Reiters auf „Tabelle"? */
-function tabellenAnsicht(id) {
+export function tabellenAnsicht(id) {
   return G(id)?.value === 'table';
 }
 
-// ── MANUAL PARTS ─────────────────────────────────────────────────────────────
-export let manualPartsCache = [];
-
-export async function loadManualParts() {
-  const [d, v] = await Promise.all([
-    api('GET', '/v1/parts/manual'+manuellQuery('parts', 'parts-search')),
-    // Derselbe Filter wie die Liste darüber: Sonst stünden Zähler und Menge
-    // aus dem einen Blickfeld neben einer Summe aus einem anderen.
-    api('GET', '/v1/finance/parts-valuation'+scopeQuery('parts')),
-  ]);
-  if (!d.success) return;
-  manualPartsCache = d.parts || [];
-  renderManualParts();
-  if (v.success) {
-    if(G('mp-count')) G('mp-count').textContent = d.parts.length;
-    if(G('mp-qty'))   G('mp-qty').textContent   = d.parts.reduce((s,p) => s + (p.quantity||0), 0);
-    if(G('mp-val'))   G('mp-val').textContent   = fmtN(v.total_value, v.currency || CURRENCY);
-  }
-}
-
-export function renderManualParts() {
-  const el = G('manual-parts-list');
-  zeichneTeileFilter();
-  const teile = manualPartsCache.filter(teilPasstZumFilter);
-  teileLeerAbgleichen(!teile.length);
-  if (G('manual-parts-n')) G('manual-parts-n').textContent = teile.length ? tRaw('parts.group_types', { n: teile.length }) : '';
-  if (!teile.length) { el.innerHTML = ''; return; }
-  if (tabellenAnsicht('parts-view')) {
-    el.innerHTML = manuelleTabelle(teile, 'part');
-    if (typeof window.__bimLabelTables === 'function')
-      window.__bimLabelTables(el.querySelector('table'));
-    return;
-  }
-  el.innerHTML = `<div class="man-grid">
-    ${teile.map(p => {
-      // War: p.image_local || p.image_url roh, ohne Vorschau und ohne Proxy —
-      // einzige Stelle im ganzen Projekt, die das CDN-Bild direkt und in
-      // voller Auflösung in eine Kachel geladen hat. Jetzt wie überall sonst:
-      // Vorschau über den Server-Proxy.
-      const imgSrc = imgUrl(thumbUrl(p.image_local || p.image_url) || p.image_local || p.image_url || '', true);
-      const img = imgSrc
-        ? bildTag({ src: imgSrc, alt: '', klasse: 'man-tile-img', ph: 'teil' })
-        : `<span class="bild-ph man-tile-img" aria-hidden="true">${platzhalterInhalt('teil')}</span>`;
-      const colorRow = p.color_name
-        ? `<div class="man-tile-color">${p.color_hex ? `<span class="man-tile-swatch" data-farbe="${escHex(p.color_hex, 'var(--s300)')}"></span>` : ''}${esc(colorName(p.color_name))}</div>`
-        : '';
-      // Wie bei den Minifiguren: mengengewichtet über die Erfassungen.
-      const partPrice = p.avg_purchase_price ?? p.unit_price ?? p.purchase_price;
-      const priceStr = partPrice!=null ? fmtN(partPrice, CURRENCY) : '—';
-      const condBadge = condBadges(p);
-      return `<div class="man-tile" tabindex="0" role="button" aria-keyshortcuts="Delete" data-click="openManDetail" data-arg="part" data-arg2="${esc(p.part_number)}" data-arg3="${p.color_id||0}" data-stil="cursor:pointer">
-        <div class="ca"><span class="delbtn" data-click="deleteManualPartStop"${echt()} aria-hidden="true" data-arg="${esc(p.part_number)}" data-arg2="${p.color_id||0}" data-arg3="${p.user_id||''}" title="${esc(t('parts.delete.title'))}">${TRASH_ICON_SVG}</span></div>
-        ${img}
-        <div class="man-tile-num" title="${esc(p.part_number)}">${esc(p.bl_part_number||p.part_number)}</div>
-        <div class="man-tile-name">${esc(p.part_name) || '—'}</div>
-        ${colorRow}
-        <div data-stil="display:flex;gap:4px;align-items:center;flex-wrap:wrap;margin-top:2px">
-          <span class="qbadge">×${p.quantity}</span>${condBadge}${ownerBadges(p)}
-        </div>
-        <div class="preis man-preis">${priceStr}</div>
-      </div>`;
-    }).join('')}
-  </div>`;
-}
-
-/** @param {number} [owner] Besitzer der Karte — siehe deleteManualPart. */
-export async function updateManualPart(partNumber, colorId, body, owner) {
-  const d = await api('PUT', `/v1/parts/${encodeURIComponent(partNumber)}/${colorId}${owner ? `?owner=${encodeURIComponent(owner)}` : ''}`, body);
-  if (d.success) { toast(tRaw('settings.saved'),'success'); loadManualParts(); if(document.querySelector('.ntab.active')?.dataset?.tab==='finance') loadFinance(); }
-  else toast(d.error||t('settings.error'),'error');
-}
-
-/**
- * @param {string} partNumber
- * @param {number} colorId
- * @param {number|string} [owner]  Besitzer der KARTE. Im Haushalt zeigt der
- *   manuelle Bereich die Einträge aller Konten mit Plakette und Papierkorb;
- *   ohne diese Angabe löschte der Server immer die Zeile des Aufrufers —
- *   geklickt war die fremde Karte, weg war die eigene, und die Antwort sagte
- *   „success". Begründung und Messung in src/haushalt/haushalt.ts.
- */
-export async function deleteManualPart(partNumber, colorId, owner) {
-  if (!await confirmDelete(tRaw('parts.delete.title'), t('gallery.delete.text',{name:partNumber}), 'teil')) return false;
-  const d = await api('DELETE', `/v1/parts/${encodeURIComponent(partNumber)}/${colorId}${owner ? `?owner=${encodeURIComponent(owner)}` : ''}`);
-  if (d.success) { geloeschtMitRueckgaengig(tRaw('parts.deleted'), d); loadManualParts(); return true; }
-  else { toast(d.error || t('settings.error'), 'error'); return false; }
-}
-
-// Inline add-part form (zuoberst im Teile-Tab)
-let _brickColors = [];
-export async function loadBrickColors(){
-  if(_brickColors.length) return _brickColors;
-  const d = await api('GET','/v1/parts/brick-colors');
-  if(d.success){ _brickColors=d.colors; renderColorDropdown(); }
-  return _brickColors;
-}
-function updateColorDot(){
-  const sel = G('ap-color-select');
-  const dot = G('ap-color-dot');
-  if(!sel||!dot) return;
-  const hex = sel.options[sel.selectedIndex]?.dataset.hex;
-  dot.style.background = hex ? '#'+hex : 'var(--s200)';
-}
-
-function renderColorDropdown(){
-  const sel = G('ap-color-select'); if(!sel) return;
-  // data-name bleibt der englische Rebrickable-Name — er wird beim Speichern
-  // als parts.color_name übernommen und für BrickLink-Abgleiche gebraucht.
-  // Übersetzt wird nur der sichtbare Text, mit derselben Funktion wie die
-  // Farbanzeige und der Filter im Teile-Reiter.
-  sel.innerHTML = `<option value="">${t('parts.no_color_dash')}</option>`
-    + _brickColors.map(c=>`<option value="${c.id}" data-name="${esc((c.name||'').replace(/"/g,'&quot;'))}" data-hex="${hexZiffern(c.hex)}">${esc(colorName(c.name))}</option>`).join('');
-}
-
-G('btn-add-part')?.addEventListener('click', async () => {
-  const num = G('ap-num-inline')?.value.trim();
-  const res = G('ap-inline-result');
-  res.style.color = 'var(--r500)';
-  if(!num){ res.textContent=tRaw('parts.number_required'); return; }
-  const colorSel = G('ap-color-select');
-  // "Keine Farbe" ist NICHT 0.
-  //
-  // Der Ausdruck lautete `parseInt(colorSel.value) || 0` — die leere Auswahl
-  // ergab damit 0, und 0 ist bei Rebrickable die Farb-ID von SCHWARZ. Beide
-  // Fälle kamen also als 0 am Server an, und der übersprang daraufhin die
-  // Suche nach dem farbigen Teilebild (`if (colorId && colorId !== 0)`).
-  // Ergebnis: Ein schwarz erfasstes Teil bekam das allgemeine, meist weisse
-  // Bild — sichtbar beim Vergleich mit demselben Teil aus einem Set.
-  //
-  // null statt 0 für "keine Farbe": Der Server erkennt daran den Unterschied
-  // und legt weiterhin 0 in der Datenbank ab (Spaltenvorgabe), sucht das
-  // Farbbild aber nur, wenn wirklich eine Farbe gewählt wurde.
-  const rawColor = colorSel?.value ?? '';
-  const colorId  = String(rawColor).trim() === '' ? null : (parseInt(rawColor) || 0);
-  const colorOpt  = colorSel?.options[colorSel.selectedIndex];
-  const colorName = colorOpt?.dataset.name || null;
-  const colorHex  = colorOpt?.dataset.hex  || null;
-  const preis = betragAusFeld('ap-price-inline');
-  if (!preis.ok) return;
-  const btn = G('btn-add-part'); btn.disabled=true; btn.textContent='…';
-  res.style.color='var(--mut)'; res.textContent=tRaw('adding.progress');
-  const d = await api('POST','/v1/parts',{
-    part_number: num, color_id: colorId, color_name: colorName, color_hex: colorHex,
-    quantity: parseInt(G('ap-qty-inline')?.value)||1,
-    unit_price: preis.wert,
-    condition: G('ap-condition')?.value || 'N',
-    owner_user_id: selectedOwner('ap-owner'),
-    storage: selectedStorage('ap-storage'),
-  });
-  btn.disabled=false; btn.textContent=tRaw('gallery.add.submit');
-  if(d.success){
-    const hinweisT = preisHerkunftHinweis(d.price_from_condition);
-    res.style.color='var(--g700)';
-    res.textContent=`${d.part_number} ${d.action==='added'?t('common.added'):t('common.updated')}`
-      + (hinweisT ? ` — ${hinweisT}` : '');
-    schliesseErfassen('part'); toast(res.textContent.replace(/^\u2705\s*/, ''), 'success');
-    G('ap-num-inline').value=''; G('ap-qty-inline').value='1'; G('ap-price-inline').value='';
-    leereLagerortFeld('ap-storage');
-    if(colorSel) colorSel.selectedIndex=0;
-    loadManualParts();
-    // Siehe die Figuren-Erfassung darueber: ein Satz braucht laenger als ein
-    // Haekchen.
-    setTimeout(()=>{ res.textContent=''; }, hinweisT ? 9000 : 3000);
-  } else { res.style.color='var(--r500)'; res.textContent=d.error||t('settings.error'); }
-});
-
-// CSV import
-async function importPartsCsv() {
-  const fi = G('part-csv-file');
-  if (!fi.files[0]) return;
-  const fd = new FormData(); fd.append('file', fi.files[0]);
-  csvImportStatus('part-csv-status', 'running', t('import.running'));
-  try {
-    const r = await fetch('/api/v1/parts/import/csv', { method: 'POST', body: fd });
-    const d = await r.json();
-    fi.value = '';
-    if (d.success) {
-      const summary = t('import.summary', { added: d.added, updated: d.updated, errors: d.errors });
-      // Übersprungene Zeilen anhängen — sonst sieht ein Import mit stillen
-      // Lücken aus wie ein vollständiger.
-      toast(summary + (d.skipped_hint ? ` — ${d.skipped_hint}` : ''),
-        (d.errors || d.skipped) ? 'info' : 'success');
-      loadManualParts();
-    } else {
-      toast(d.error || t('settings.error'), 'error');
-    }
-    csvImportStatus('part-csv-status', 'hide');
-  } catch (e) {
-    fi.value = '';
-    csvImportStatus('part-csv-status', 'hide');
-    toast(tRaw('settings.error'), 'error');
-  }
-}
-
-// CSV template download
-G('btn-set-csv-template').onclick = (e) => {
-  e.preventDefault();
-  const csv = 'set_number,quantity,purchase_price,condition,acquired_at\n60098-1,1,49.99,N,2024-01-15\n75192-1,2,,U,\n10497-1,1,,,\n';
-  const a = document.createElement('a');
-  a.href = 'data:text/csv;charset=utf-8,' + encodeURIComponent(csv);
-  a.download = 'sets-template.csv';
-  a.click();
-};
-
-G('btn-csv-template').onclick = (e) => {
-  e.preventDefault();
-  const csv = 'part_number,quantity,color_id,color_name,unit_price,condition,acquired_at\n3001,5,4,Red,,N,2024-01-15\n3003,2,0,White,0.15,U,\n';
-  const a = document.createElement('a');
-  a.href = 'data:text/csv;charset=utf-8,' + encodeURIComponent(csv);
-  a.download = 'parts-template.csv';
-  a.click();
-};
-
-// Parts valuation for finance tab
-async function loadPartsValuation() {
-  // Steht im FINANZEN-Reiter — also dessen Filter, nicht der des Teile-Reiters.
-  const v = await api('GET', '/v1/finance/parts-valuation'+scopeQuery('finance'));
-  if (!v.success || !v.parts?.length) {
-    const b = G('fin-parts-banner'); if(b) b.style.display='none';
-    return;
-  }
-  const banner = G('fin-parts-banner');
-  const valEl  = G('fin-parts-val');
-  if (banner && valEl) {
-    banner.style.display = 'flex';
-    valEl.textContent = fmtN(v.total_value, v.currency || CURRENCY);
-  }
-}
-
-
+abonniere('bestandGeaendert', () => { loadMinifigs(); loadManualFigsTable(); });
 
 // ── Handler beim Dispatcher anmelden (siehe js/00-registry.js) ──────────────
 registerActions({
@@ -869,6 +501,4 @@ registerActions({
   deleteManualFig,
   filterFigs,
   importFigsCsv,
-  importPartsCsv,
-  updateColorDot,
 });

@@ -12,7 +12,7 @@
  *      nehmen → rot: „nach Menge gewichtet“ (750 statt 142,9)
  *   B  bei einer Zeile pnl_pct vor baseline_pnl_pct → rot: „der Wert des
  *      Servers bleibt“ (1,1 statt 77,7)
- *   C  in 07-admin.js wieder `price: s.current_price` → rot: „das Web
+ *   C  in 02-gallery.js wieder `price: s.current_price` → rot: „das Web
  *      übernimmt die Werte des Servers“
  */
 const test = require('node:test');
@@ -69,7 +69,7 @@ test('ohne Kaufpreis und ohne Marktpreis steht kein Prozentwert und kein Betrag'
 test('das Web übernimmt die Werte des Servers', () => {
   // enrichGalleryWithPrices() mit einer Antwort ausführen und nachsehen, was
   // an der Kachel ankommt — ohne Browser, über die Modulfunktion selbst.
-  const src = fs.readFileSync(path.join(__dirname, '..', 'public', 'js', '07-admin.js'), 'utf8');
+  const src = fs.readFileSync(path.join(__dirname, '..', 'public', 'js', '02-gallery.js'), 'utf8');
   const von = src.indexOf('  set_pnlCache({});');
   const bis = src.indexOf('  // Inject price data into cached sets');
   assert.ok(von > 0 && bis > von, 'enrichGalleryWithPrices() nicht gefunden — umgebaut?');

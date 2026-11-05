@@ -1,34 +1,19 @@
-// ── CSV-Import-Fortschrittsbalken (der Balken im Kopf der Seite) ─────────────
-//
-// ── Warum eine eigene Datei ──────────────────────────────────
-//
 // Der Block lag in js/01-core.js und war dort mit 211 Zeilen der zweitgrösste
 // zusammenhängende Gegenstand. Er ist geschlossen: zwölf Namen, von denen drei
 // nach aussen gebraucht werden — der Rest ist Innenleben (zwei Zeitgeber, ein
-// EventSource, zwei Merker). Genau deshalb fiel er beim Lesen von 01-core.js
-// nie auf: Wer dort nach esc() oder api() sucht, scrollt an 211 Zeilen
-// Fortschrittsanzeige vorbei, ohne dass sie ihn etwas angingen.
-//
-// Diese Datei greift nach unten: sie holt aus 01-core.js nur Allgemeingut (G,
-// api, ME) und aus 02-gallery.js die Ladefunktionen. Umgekehrt ruft 01-core.js
-// GENAU ZWEI Namen von hier — gibCheckOnLoad() beim Anmelden und
-// gibZuruecksetzen() beim Abmelden. Das ist ein Ring, und er ist Absicht: Der
-// Balken hängt an der Sitzung, also muss die Sitzung ihn starten und stoppen
-// können. Entscheidend ist, dass es zwei benannte Funktionen sind und nicht
-// fünf Variablen — vorher stand das Innenleben des Balkens in showLogin()
-// ausgeschrieben, und wer eine sechste Variable hinzufügte, musste daran
-// denken. ES-Module tragen den Ring (01-core.js und 02-gallery.js bilden
-// längst denselben); kritisch wäre nur ein const-Zugriff während der
-// Auswertung, und den gibt es hier nicht.
+// EventSource, zwei Merker). Genau deshalb fiel er beim Lesen von 01-core.js …
+// Ausführlich: docs/begruendungen/public/js/01-fortschritt.js.md#der-block-lag-in-js-01-core-js-und-war-d
 import { registerActions } from './00-registry.js';
-import { ico, G, ME, api, fmtPct } from './01-core.js';
-import { _csvPollActive, hideProgress, loadGallery, loadStats, showProgress } from './02-gallery.js';
+import { ico, G, apiRoh, fmtPct, api, toast, apiDaten } from './01-core.js';
+import { melde } from './00-ereignisse.js';
 import { t, tRaw } from '../i18n.js';
+import { ME } from './00-zustand.js';
 
 // ── Global CSV Import Progress Bar ───────────────────────────────────────────
-export let _gibTimer       = null;   // Polling-Fallback-Timer (nur wenn SSE scheitert)
-export let _gibSse         = null;   // aktive EventSource (SSE), falls verfügbar
-let _gibExpanded    = false;
+/** @type {ReturnType<typeof setInterval> | null} */
+let _gibTimer       = null;   // Polling-Fallback-Timer (nur wenn SSE scheitert)
+/** @type {EventSource | null} */
+let _gibSse         = null;   // aktive EventSource (SSE), falls verfügbar
 let _gibLastCount   = 0;
 
 // Rendert einen Import-Status ins UI. Quelle (SSE oder Polling) ist egal.
@@ -90,13 +75,12 @@ function gibApplyStatus(s) {
     setTimeout(() => {
       G('global-import-bar').style.display='none';
       G('import-detail-panel').classList.remove('open');
-      _gibExpanded = false;
       // Don't clear log or close overlay — user may still be reading results
     }, 5000);
     // Show close button so user can dismiss the overlay when ready
     const btnClose = G('btn-close-import');
     if (btnClose) btnClose.style.display = '';
-    loadGallery(); loadStats();
+    melde('setsGeaendert');
     gibStop();
   }
 }
@@ -104,8 +88,8 @@ function gibApplyStatus(s) {
 // Polling-Fallback: einmalig den Status holen und rendern.
 async function gibPoll() {
   try {
-    const s = await fetch('/api/v1/sets/import/csv/status', { credentials: 'include' }).then(r=>r.json());
-    gibApplyStatus(s);
+    const s = await apiDaten('GET', '/v1/sets/import/csv/status');
+    if (s) gibApplyStatus(s);
   } catch(_) {}
 }
 
@@ -132,31 +116,7 @@ function gibToggle() {
 
 /**
  * Eine Zeile fuers Import-Protokoll — oder null, wenn es nichts zu sagen gibt.
- *
- * ── Marcos Befund vom 21.10. ────────────────────────────────────────────────
- *
- *   „Nach dem Import erscheint dann ganz viele Zeilen mit
- *    Undefined - aktualisiert"
- *
- * `results` traegt zweierlei: beim CSV-Import je Set ein echtes Ergebnis, beim
- * Wanted-Listen-Import bis zum 21.10. nur Zaehl-Platzhalter (`{success:true}`),
- * aus denen buildJobStatus ok/warn/err rechnet. Die hatten kein `set_number` —
- * und daraus wurde 322-mal „undefined – aktualisiert".
- *
- * Die Platzhalter sind weg (beendeAuftrag bekommt jetzt echte Zeilen, siehe
- * src/auftraege/importAuftrag.ts), aber die Schranke bleibt: Eine Zeile, die nichts
- * benennt, sagt dem Betrachter nichts und kostet ihn das Vertrauen in die
- * uebrigen. Die ZAEHLUNG darueber ist davon unberuehrt — sie kommt aus
- * `s.ok`/`s.warn`/`s.err` und nicht von hier.
- *
- * ── Warum EINE Fassung ──────────────────────────────────────────────────────
- *
- * Diese drei Zeilen standen zweimal: hier fuer die zuschauende Sitzung und in
- * public/js/02-gallery.js fuer die, die den Import gestartet hat. Zwei
- * Fassungen heissen zwei Stellen, an denen die naechste Schranke fehlt — und
- * genau das war hier der Fall. Der SCHREIBER bleibt verschieden (gibAddLog
- * schreibt in beide Protokolle, addCsvLog nur in das des Dialogs); gemeinsam
- * ist, WAS dasteht.
+ * Ausführlich: docs/begruendungen/public/js/01-fortschritt.js.md#protokollzeile
  */
 export function protokollZeile(r, warnZusatz = '') {
   if (!r?.set_number) return null;
@@ -201,10 +161,8 @@ export function gibStart() {
   // Kein Token in der Adresse. EventSource kann zwar keine Kopfzeile setzen,
   // schickt mit `withCredentials: true` aber das Sitzungs-Cookie — und genau
   // das war schon vorher der Weg, auf dem dieser Kanal wirklich lief. Der
-  // angehängte `?token=` war der Sitzungstoken selbst; er hätte im
-  // Reverse-Proxy-Protokoll und im Browserverlauf gestanden. Den „Bearer-Fall"
-  // ohne Cookie gibt es hier nicht: `webToken` entsteht erst nach der
-  // Anmeldung, die das Cookie setzt. Siehe src/konto/auth.ts.
+  // angehängte `?token=` war der Sitzungstoken selbst; er hätte im …
+  // Ausführlich: docs/begruendungen/public/js/01-fortschritt.js.md#url
   const url = '/api/v1/sets/import/csv/stream';
 
   if (typeof EventSource !== 'undefined') {
@@ -245,7 +203,7 @@ export async function gibCheckOnLoad() {
     // auf dem Login-Screen im Drei-Sekunden-Takt weiter.
     if (!ME) return;
     try {
-      const r = await fetch('/api/v1/sets/import/csv/status', { credentials: 'include' });
+      const r = await apiRoh('GET', '/v1/sets/import/csv/status');
 
       // Antwort erst prüfen, dann parsen. Steht ein Reverse-Proxy oder Tunnel
       // davor, liefert der bei Neustart oder Aussetzer eine HTML-Fehlerseite —
@@ -275,16 +233,12 @@ export async function gibCheckOnLoad() {
   doCheck(); // fire immediately on login
   _gibCheckTimer = setInterval(doCheck, 3000); // then every 3s
 }
+/** @type {number | null} */
 let _gibCheckTimer = null;
 /**
  * Setzt den Balken auf „nichts läuft" zurück: Anzeige aus, beide Abfragen
  * gestoppt, Protokoll geleert.
- *
- * Warum das eine Funktion ist und nicht beim Abmelden steht (dem einzigen
- * Aufrufer): `_gibCheckTimer` und `_gibLastCount` sind Innenleben dieses
- * Balkens. Wer sie von aussen zurückdreht, muss wissen, welche der fünf
- * Variablen dieser Datei dazugehören — und beim Hinzufügen einer sechsten
- * daran denken. Die Abmeldung soll nur sagen, WAS sie will.
+ * Ausführlich: docs/begruendungen/public/js/01-fortschritt.js.md#gibzuruecksetzen
  */
 export function gibZuruecksetzen() {
   const balken = G('global-import-bar');
@@ -300,4 +254,134 @@ export function gibZuruecksetzen() {
 // Der Handler gehört zu dem Modul, das ihn umsetzt.
 registerActions({
   gibToggle,
+  hideProgress,
 });
+
+// ── PROGRESS OVERLAY ─────────────────────────────────
+export function showProgress(title, csvMode){
+  G('prog-title-txt').textContent=title;
+  G('prog-bar').style.width='0%';
+  G('prog-footer').textContent=tRaw('common.please_wait');
+  G('prog-set-name').textContent='';
+  G('csv-log').style.display=csvMode?'block':'none';
+  G('csv-log').innerHTML='';
+  G('prog-steps').style.display=csvMode?'none':'';
+  // Der Hintergrund-Hinweis gilt nur fürs Erfassen eines einzelnen Sets. Beim
+  // CSV-Import ist die Schrittliste ohnehin ausgeblendet, dort zeigt das
+  // Protokoll (`csv-log`) je Zeile ein echtes Ergebnis.
+  if (G('prog-hint')) G('prog-hint').style.display=csvMode?'none':'';
+  ['ps-meta','ps-image'].forEach(id=>{
+    const el=G(id); el.classList.remove('active','done','err');
+  });
+  G('progress-overlay').classList.add('open');
+  // Reset buttons for new import
+  G('btn-cancel-import').style.display='none';
+  const btnClose = G('btn-close-import');
+  if (btnClose) btnClose.style.display='none';
+}
+
+export function hideProgress(){
+  G('progress-overlay').classList.remove('open');
+  G('prog-steps').style.display='';
+  // Show header bar when minimizing if import is polling
+  if ((_gibTimer || _gibSse) && ME) {
+    G('global-import-bar').style.display = 'flex';
+  }
+}
+
+// `extra` fiel weg: Es schrieb in ein `.step-count`-Feld, das nur die
+// entfernten Teile-/Teilbilder-Schritte hatten. Ohne diese Schritte gibt es
+// kein Element mehr, in das es hätte schreiben können.
+function setStep(stepId, state){
+  const el=G('ps-'+stepId); if(!el) return;
+  el.classList.remove('active','done','err'); el.classList.add(state);
+}
+
+export function setProgBar(pct){ G('prog-bar').style.width=Math.min(100,pct)+'%'; }
+
+export function addCsvLog(text, ok){
+  const d=G('csv-log'), line=document.createElement('div');
+  line.className='csv-log-line '+(ok?'ok':'er');
+  line.textContent=text; d.appendChild(line); d.scrollTop=d.scrollHeight;
+}
+
+// Verarbeitet die SSE-Ereignisse beim Erfassen EINES Sets.
+// Ausführlich: docs/begruendungen/public/js/01-fortschritt.js.md#handlesseevent
+export function handleSseEvent(ev, singleSetName){
+  switch(ev.step){
+    case 'meta':      setStep('meta','active'); setProgBar(10); G('prog-set-name').textContent=ev.set||singleSetName||''; break;
+    case 'image':     setStep('meta','done'); setStep('image','active'); setProgBar(35); break;
+    case 'done_meta': setStep('image','done'); setProgBar(90); break;
+    case 'done':      setProgBar(100); G('prog-footer').textContent=`${ev.action==='added'?tRaw('common.added_cap'):tRaw('common.updated_cap')}: ${ev.set_number ?? ''}`; break;
+    case 'error':     G('prog-footer').textContent=String(ev.error ?? ''); break;
+  }
+}
+
+// ── CSV import polling state ─────────────────────────────────────────────────
+let _csvPollActive = false;
+/** Läuft der CSV-Import aus diesem Fenster (dann zeigt dessen Schleife das Protokoll)? */
+export function csvPollAktiv() { return _csvPollActive; }
+/** @param {boolean} v */
+export function setzeCsvPollAktiv(v) { _csvPollActive = v; }
+
+/** Der laufende Ereignisstrom (Set erfassen) — damit „Abbrechen" ihn beenden kann. */
+/** @type {AbortController | null} */
+let _activeAbort = null;
+
+export function streamFertig(){ _activeAbort = null; G('btn-cancel-import').style.display='none'; }
+
+function cancelImport(){
+  _csvPollActive = false;
+  _activeAbort?.abort();
+  _activeAbort = null;
+  api('POST','/v1/sets/import/csv/cancel').catch(()=>{});
+  G('btn-cancel-import').style.display='none';
+  hideProgress();
+  toast(tRaw('csv.cancelled'),'info');
+  melde('setsGeaendert');
+}
+
+/** Abbrechbarer Ereignisstrom (POST mit JSON-Körper); ein Abbruch endet ohne Fehler.
+ * @param {string} path @param {object} body @param {(ev: any) => void} onEvent
+ * @returns {Promise<void>} */
+export function streamRequest(path, body, onEvent){
+  const ac = _activeAbort = new AbortController();
+  G('btn-cancel-import').style.display='inline-flex';
+  return apiRoh('POST', path, { body, signal: ac.signal })
+    .then(res=>readSSE(res,onEvent,ac.signal))
+    .catch(e=>{ if(e.name!=='AbortError') throw e; });
+}
+
+async function readSSE(res, onEvent, signal){
+  // Antwortet der Server mit gewöhnlichem JSON statt einem Ereignisstrom, ist
+  // die Sache schon entschieden — beim Erfassen etwa, wenn das Set bereits im
+  // Blickfeld steht (src/sets/setAdd.ts). Dann gibt es nichts zu verfolgen, und
+  // die eine Antwort wird wie ein einzelnes Ereignis durchgereicht. Ohne …
+  // Ausführlich: docs/begruendungen/public/js/01-fortschritt.js.md#if
+  if ((res.headers.get('content-type') || '').includes('application/json')) {
+    const daten = await res.json().catch(() => null);
+    if (daten) onEvent({ step: daten.success === false ? 'error' : 'done', ...daten });
+    return;
+  }
+  const reader=res.body.getReader(), dec=new TextDecoder(); let buf='';
+  try{
+    while(true){
+      if(signal?.aborted) break;
+      const {done,value}=await reader.read();
+      if(done) break;
+      buf+=dec.decode(value,{stream:true});
+      const lines=buf.split('\n'); buf=lines.pop();
+      for(const line of lines){
+        if(line.startsWith('data: ')){
+          try{ onEvent(JSON.parse(line.slice(6))); }catch(e){}
+        }
+      }
+    }
+  } catch(e){
+    if(e.name!=='AbortError') throw e;
+  } finally {
+    try{ reader.cancel(); }catch(_){}
+  }
+}
+
+G('btn-cancel-import').onclick = cancelImport;

@@ -169,9 +169,8 @@ test('jeder in Vorlagen referenzierte Handler ist bei der Registry angemeldet', 
       }
   }
 
-  // logviewer.js läuft als klassisches Skript in einem eigenen Popup-Fenster
-  // und meldet sich nicht an — für seine vier Handler gilt weiterhin die
-  // window-Auflösung (Rückfall in resolveAction).
+  // logviewer.js läuft in einem eigenen Popup-Fenster und löst seine vier
+  // Handler über eine eigene Tabelle auf (test/logviewer-oberflaeche.test.js).
   const logviewer = strip(fs.readFileSync(path.join(PUB, 'js', 'logviewer.js'), 'utf8'));
 
   const missing = [...names].filter(n =>
@@ -304,7 +303,7 @@ test('Löschknöpfe auf Kacheln tragen einen Papierkorb, kein ✕', () => {
   // Nämlich: Ein Löschknopf auf einer Kachel trägt den Papierkorb, und es gibt
   // überhaupt noch einen.
   let knoepfeGesamt = 0;
-  for (const file of ['02-gallery.js', '06-minifigs.js']) {
+  for (const file of ['02-gallery.js', '03-parts.js', '06-minifigs.js', '07-set-detail.js']) {
     const src = fs.readFileSync(path.join(PUB, 'js', file), 'utf8');
     // `del\w*` und nicht `delete\w*`: Die Galerie-Kachel ruft `delSetStop`.
     // Mit dem engeren Muster fand die Suche dort NICHTS — und der Selbstbeweis
@@ -346,13 +345,13 @@ test('Löschknöpfe auf Kacheln tragen einen Papierkorb, kein ✕', () => {
   // .delbtn darin. Vorher war der Minifiguren-Knopf ein "btn bd" mit eigenem
   // Inline-Style und dauerhaft sichtbar, Teile hatten gar keinen.
   //
-  // Die drei in 06-minifigs.js: die Minifiguren-Kachel im Reiter „Minifiguren"
-  // (nur bei source==='manual'), das Kachelraster der manuell erfassten
-  // Minifiguren und das der manuell erfassten Teile. Marcos Vorgabe vom 24.09.:
+  // Die zwei in 06-minifigs.js: die Minifiguren-Kachel im Reiter „Minifiguren"
+  // (nur bei source==='manual') und das Kachelraster der manuell erfassten
+  // Minifiguren; die manuell erfassten Teile stehen in 03-parts.js. Marcos Vorgabe vom 24.09.:
   // „Im der Webapp soll auf den Kacheln bei den manuell erfassten Minifiguren
   // und den manuell erfassten Teilen […] der Papierkorb oben rechts angezeigt
   // werden analog den Kacheln bei den Sets. Dies aber nur in der webapp."
-  for (const [file, expected] of [['02-gallery.js', 1], ['06-minifigs.js', 3]]) {
+  for (const [file, expected] of [['02-gallery.js', 1], ['03-parts.js', 1], ['06-minifigs.js', 2]]) {
     const src = fs.readFileSync(path.join(PUB, 'js', file), 'utf8');
     const n = (src.match(/<div class="ca"><(?:button|span) class="delbtn"/g) || []).length;
     assert.equal(n, expected, `${file}: ${n} statt ${expected} Kachel-Löschknöpfe im .ca/.delbtn-Muster`);

@@ -1,35 +1,12 @@
-// ── Bausteine für Ansichten ──────────────────────────────────────────────────
-//
 // 01-core.js sammelt WERKZEUGE: Escaping, Bild-URLs, Formatierung, Toasts,
 // Theme. Was dort fehlte, sind Bausteine für die ANSICHT — und die standen
 // deshalb als HTML-Zeichenkette in jedem Modul neu.
-//
-// ── Warum das mehr ist als Kosmetik ─────────────────────────────────────────
-//
-// Die Detailzeile stand fünfzehnmal von Hand geschrieben, in vier Modulen:
-//
-//     <div class="dr"><span class="dl">Label</span><span class="dv">Wert</span></div>
-//
-// Wer die Zeile ändern will — Abstand, Trennlinie, Umbruchverhalten auf dem
-// Telefon —, muss heute alle fünfzehn finden. Und wer eine neue Detailansicht
-// baut, schreibt die sechzehnte ab, samt der Frage, ob `dl` oder `dt` die
-// richtige Klasse war.
-//
-// Dieselbe Überlegung wie bei AppKarte und Formen.kachelBreite in der
-// Android-App: Was ALLE gleich aussehen soll, gehört an eine Stelle; was sich
-// unterscheidet, bleibt beim Aufrufer.
-//
-// ── Die Klassennamen bleiben, wie sie sind ──────────────────────────────────
-//
-// `dr`, `dl`, `dv` sagen niemandem etwas ("detail row / label / value"). Sie
-// stehen aber auch in styles.css, mobile.css und brick.css; sie umzubenennen
-// hiesse, drei Stylesheets und ein Theme anzufassen, ohne dass sich etwas
-// verbessert, das man sehen kann. Ab jetzt sind sie eine INNERE Angelegenheit
-// dieser Datei — wer eine Detailzeile braucht, schreibt `detailZeile(…)` und
-// sieht die Kürzel nie. In styles.css steht daneben, wofür sie stehen.
-import { esc, ico, toast } from './01-core.js';
-import { tRaw } from '../i18n.js';
-import { resolveAction } from './00-registry.js';
+// Ausführlich: docs/begruendungen/public/js/01-bausteine.js.md#01-core-js-sammelt-werkzeuge-escaping-bi
+import { ico, toast, G, fmtBig, fmtPct, istGeschenk, api } from './01-core.js';
+import { tRaw, t } from '../i18n.js';
+import { registerActions, resolveAction } from './00-registry.js';
+import { esc } from './00-escapen.js';
+import { ME } from './00-zustand.js';
 
 /**
  * Eine Zeile „Label — Wert" in einer Detailansicht.
@@ -58,15 +35,15 @@ export function detailZeile(label, wert, o = {}) {
 }
 
 /**
- * Die Ladeanzeige: Gerüstzeilen wie bei Karten und Listen. Ein Muster für die
- * ganze App — Kreisel hier und Schimmer dort sahen nach zwei Programmen aus.
- * Der Text ist für Vorleseprogramme.
+ * Die Ladeanzeige — Kringel und Text, wie sie fünf Stellen bauten.
  *
  * @param {string} text bereits übersetzter Text
  * @param {{ stil?: string, klein?: boolean }} [o]  klein: eine Fläche, etwa für das Diagramm
  */
 export function ladeAnzeige(text, o = {}) {
   const stil = o.stil ? ` data-stil="${o.stil}"` : '';
+  // Ohne Text nur der Kringel — so macht es die Teile-Zusammenfassung, wo
+  // daneben schon steht, worauf gewartet wird.
   const inhalt = o.klein ? '<div class="skelett-flaeche"></div>'
     : '<div class="skelett-zeile"></div><div class="skelett-zeile"></div><div class="skelett-zeile kurz"></div>';
   return `<div class="lade-geruest${o.klein ? ' klein' : ''}" role="status" aria-busy="true"${stil}>` +
@@ -147,9 +124,9 @@ export function listeLadefehler(ziel, d, o) {
 }
 
 /**
- * Ein Serverfehler (5xx) sagt dem Laien nichts („interner Fehler“). Gezeigt
- * wird, was er tun kann; der Rohtext steht unter „Details“ für die Meldung an
- * den Verwalter. 4xx-Texte schreibt der Server selbst verständlich.
+ * Ein Serverfehler (5xx) sagt dem Laien nichts. Gezeigt wird, was er tun kann;
+ * der Rohtext steht unter „Details“ für die Meldung an den Verwalter.
+ * 4xx-Texte schreibt der Server selbst verständlich.
  * @param {any} d Antwort von api()
  * @returns {{ grund: string, details?: string }}
  */
@@ -158,3 +135,85 @@ export function verstaendlicherGrund(d) {
   if (!d || d.status >= 500 || !d.error) return { grund: tRaw('liste.server_fehler'), details: d?.error || undefined };
   return { grund: d.error };
 }
+
+/** „144 aus Sets · 250 einzeln“ — leer, solange nur eine der beiden Quellen etwas hat. */
+export function teileAufschluesselung(ausSets, einzeln) {
+  if (!ausSets || !einzeln) return '';
+  return t('parts.stat.breakdown', { sets: fmtBig(ausSets), einzeln: fmtBig(einzeln) });
+}
+
+/**
+ * G&V-Plakette. Bei Kaufpreis 0 „Geschenk“ statt einer Prozentzahl: Gegen 0
+ * gerechnet stünde dort „+327.600 %“, und das sagt nichts.
+ */
+export function pnlBadge(pct, kauf){
+  if(istGeschenk(kauf)) return `<span class="pnl-geschenk">${t('finance.gift')}</span>`;
+  if(pct===null||pct===undefined) return '';
+  const v=parseFloat(pct); const cls=v>0?'pnl-pos':v<0?'pnl-neg':'pnl-neu';
+  return `<span class="${cls}">${fmtPct(v)}</span>`;
+}
+
+/**
+ * Besitzer-Plaketten — nur im Haushalt. Gezeigt nur, wenn ein ANDERES Konto
+ * mit drinsteckt: Der eigene Name auf jeder Kachel beantwortet keine Frage.
+ * Ausführlich: docs/begruendungen/public/js/01-bausteine.js.md#besitzer-plaketten-nur-im-haushalt
+ */
+export function ownerBadges(item) {
+  if (!item?.owners?.length) return '';
+  if (item.owners.every(o => ME && o.id === ME.id)) return '';
+  return item.owners.map(o => `<span class="cond-badge besitzer-badge" title="${esc(o.username)}">${esc(o.username)}</span>`).join('');
+}
+
+/**
+ * Zustands-Plaketten eines Eintrags — eine je erfasstem Zustand.
+ * Ausführlich: docs/begruendungen/public/js/01-bausteine.js.md#zustands-plaketten-eines-eintrags-eine-j
+ */
+export function condBadges(item) {
+  const list = Array.isArray(item?.conditions) && item.conditions.length
+    ? item.conditions
+    : [item?.condition === 'U' ? 'U' : 'N'];
+  return list.map(c => c === 'U'
+    ? `<span class="cond-badge cond-used"><span class="vh">${t('common.condition')}: </span>${t('common.condition_used')}</span>`
+    : `<span class="cond-badge cond-new"><span class="vh">${t('common.condition')}: </span>${t('common.condition_badge_new')}</span>`
+  ).join('');
+}
+
+/** Erfassen-Dialoge der Sammlung: set, part, fig — gleich aufgebaut (Erstfokus: data-erstfokus). */
+// Ohne data-arg reicht der Dispatcher das Ereignis als erstes Argument.
+const erfassenDialog = (art) => G(`add-${typeof art === 'string' ? art : 'set'}-modal`);
+
+export function oeffneErfassen(art){ erfassenDialog(art)?.classList.add('open'); }
+
+export function schliesseErfassen(art){ erfassenDialog(art)?.classList.remove('open'); }
+
+/**
+ * Gewählte CSV-Datei hochladen und das Ergebnis melden — eine Fassung für
+ * Teile, Figuren, Merkliste und Alarme. Übersprungene Zeilen und Zusatz-
+ * hinweise stehen überall in der Meldung, sonst sähe ein lückenhafter Import
+ * aus wie ein vollständiger.
+ * @param {{ feld: string, pfad: string, felder?: Record<string, string>,
+ *           zeige?: (laeuft: boolean) => void, hinweise?: (d: any) => unknown[] }} o
+ * @returns {Promise<any>} die Antwort bei Erfolg, sonst null
+ */
+export async function csvHochladen(o) {
+  const fi = G(o.feld);
+  if (!fi?.files?.[0]) return null;
+  const fd = new FormData();
+  fd.append('file', fi.files[0]);
+  for (const [k, v] of Object.entries(o.felder ?? {})) fd.append(k, v);
+  o.zeige?.(true);
+  const d = await api('POST', o.pfad, fd);
+  fi.value = '';
+  o.zeige?.(false);
+  if (!d.success) { toast(d.error || tRaw('settings.error'), 'error'); return null; }
+  const extra = (o.hinweise?.(d) ?? []).filter(Boolean);
+  const zusatz = [d.skipped_hint, ...extra].filter(Boolean).join(' — ');
+  toast(tRaw('import.summary', { added: d.added, updated: d.updated, errors: d.errors }) + (zusatz ? ` — ${zusatz}` : ''),
+    (d.errors || d.skipped || extra.length) ? 'info' : 'success');
+  return d;
+}
+
+registerActions({
+  oeffneErfassen,
+  schliesseErfassen,
+});
