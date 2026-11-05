@@ -8,7 +8,8 @@ import * as pgNotify from '../../db/pgNotify';
 import crypto from 'crypto';
 import bcrypt from 'bcryptjs';
 import { passwortPasst, BcryptUeberlast } from './bcryptSchranke';
-import { checkLoginAllowed, bekannteAnmeldung, gibAnmeldeplatzFrei, recordLoginFailure, recordLoginSuccess, meldeAnmeldeereignis, MAX_ATTEMPTS } from './loginLimiter';
+import { checkLoginAllowed, bekannteAnmeldung, gibAnmeldeplatzFrei, recordLoginFailure, recordLoginSuccess, meldeAnmeldeereignis, meldeAnmeldung, MAX_ATTEMPTS } from './loginLimiter';
+import type { Anmeldeweg } from './loginLimiter';
 import type { Anmeldeereignis } from './loginLimiter';
 import { kontoGedrosselt } from './zielDrossel';
 import * as zf from './zweiterFaktor';
@@ -335,9 +336,11 @@ export async function pruefeAnmeldedaten(herkunft: Herkunft, username: unknown, 
     return absage(401, 'anmeldedaten_ungueltig');
   }
 
+  let zugang: Anmeldeweg = 'passwort';
   if (await zf.istAktiv(user.id)) {
     // Ein Passkey ersetzt den Code — gebunden an DIESES Konto, dessen Passwort stimmte.
     const mitPasskey = passkeyAntwort !== undefined && passkeyAntwort !== null;
+    zugang = mitPasskey ? 'passwort+passkey' : 'passwort+code';
     const hatPasskey = await passkeys.hatPasskeys(user.id);
     const ergaenzt = (e: AnmeldeErgebnis) => { if (!e.ok && hatPasskey) e.absage.passkey = true; return e; };
     if (!mitPasskey && !String(code ?? '').trim()) {
@@ -354,6 +357,7 @@ export async function pruefeAnmeldedaten(herkunft: Herkunft, username: unknown, 
     }
   }
   await recordLoginSuccess(ip, name);
+  meldeAnmeldung({ ip, konto: Number(user.id), zugang });
   return { ok: true, user };
 }
 

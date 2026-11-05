@@ -8,6 +8,7 @@ import { logAndContinue, meldeUndWeiter, fehlertext, meldeUndLiefere } from '../
 import { fehlerAntwort, pfadParam } from '../src/infra/httpAntwort';
 import { hashToken, createToken, pruefeToken, assertLoginAllowed, revokeAllSessions, deleteToken, USERNAME_RE, emailGueltig, leereTokenCache, laufzeitTage, rotiereToken, rotationFaellig, UNBEGRENZT, UEBERLAPPUNG_MS, nameGueltig } from '../src/konto/auth';
 import { kontoGedrosselt } from '../src/konto/zielDrossel';
+import { meldeAnmeldung } from '../src/konto/loginLimiter';
 import { perSitzung, anmelden, establishSession, requireLoginOrToken, nutzerId, angemeldeteNutzerId, ipThrottle, bestaetigeMitFaktor, zweiterFaktorPflicht } from '../src/konto/http/anmeldung';
 import type { TokenScope } from '../src/konto/auth';
 import { tlsStand } from '../src/infra/tlsWurzel';
@@ -358,6 +359,7 @@ router.post('/qr-login', ipThrottle('qr-login', 30, 60 * 60 * 1000), async (req:
   if (!user) return sendeFehler(req, res, 401, 'token_ungueltig');
   const blocked = assertLoginAllowed(user);
   if (blocked) return sendeFehler(req, res, blocked.status, blocked.code);
+  meldeAnmeldung({ ip: req.ip, konto: user.id, zugang: 'qr' });
 
   // Keine Sitzung: Sie trüge die vollen Rechte des Kontos an Scope `app` vorbei.
   // Die Laufzeit kommt aus der Zeile der Nonce, nicht aus der Anfrage.
@@ -421,6 +423,7 @@ router.post('/passkey/anmelden', ipThrottle('passkey-anmelden', 30, 60 * 60 * 10
   if (!user) return sendeFehler(req, res, 401, 'passkey_ungueltig');
   const gesperrt = assertLoginAllowed(user);
   if (gesperrt) return sendeFehler(req, res, gesperrt.status, gesperrt.code);
+  meldeAnmeldung({ ip: req.ip, konto: user.id, zugang: 'passkey' });
   await angemeldetAntworten(req, res, user, req.eingabe, req.eingabe.mit_token === true);
 });
 
