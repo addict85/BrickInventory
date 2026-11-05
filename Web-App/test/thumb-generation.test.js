@@ -86,9 +86,12 @@ test('die Bildroute stösst eine fehlende Vorschau selbst an', () => {
   // ohneKommentare() statt eines //-Filters (Nachtrag 155): Der Filter liess
   // Blockkommentare stehen, und einer davon enthielt "app.get('/images/*', …)"
   // als Beispiel. indexOf() landete dadurch im Dateikopf statt an der Route.
+  // Die Bildroute (routes/seiten.ts) liefert über src/katalog/http/bildAuslieferung.ts;
+  // die Vorschau stösst originalStattVorschau() dort an.
   const src = require('./helpers/sources').ohneKommentare(
-    require('./helpers/sources').startQuelle());
-  const start = src.indexOf("app.get('/images/*pfad'");
+    require('fs').readFileSync(path.join(__dirname, '..', 'src/katalog/http/bildAuslieferung.ts'), 'utf8'));
+  const start = src.indexOf('function originalStattVorschau(');
+  assert.ok(start > 0 && src.indexOf('originalStattVorschau(', start + 10) > 0, 'die Bildroute ruft den Vorschau-Rückfall nicht');
   const block = src.slice(start, start + 4000);
   assert.ok(/generateThumb/.test(block),
     'ohne diesen Anstoss bleibt eine einmal verpasste Vorschau für immer aus — ' +

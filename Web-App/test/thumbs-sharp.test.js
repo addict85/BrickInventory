@@ -87,7 +87,7 @@ test('der Code nutzt sharp und behält Jimp als Rückfall', () => {
   // Und er darf NUR beim Ladefehler greifen, nicht bei einem defekten Bild:
   // Ein defektes Bild soll scheitern und gemerkt werden, nicht zweimal
   // gerechnet.
-  assert.match(fn, /catch \(e: any\) \{[\s\S]{0,200}nutze Jimp/,
+  assert.match(fn, /catch \(e(?:: \w+)?\) \{[\s\S]{0,200}nutze Jimp/,
     'Der Rückfall hängt nicht am LADEN von sharp');
 
   // Das unteilbare Schreiben bleibt (Nachtrag 41/48).

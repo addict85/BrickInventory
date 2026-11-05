@@ -8,7 +8,8 @@ import { resolveUserId, istVerwalter } from '../src/konto/http/anmeldung';
 import { aktuellerStartZustand, oeffentlicherStartZustand } from '../src/auftraege/startZustand';
 import { gesundheitsBericht, datenbankBereit } from '../src/verwaltung/gesundheit';
 
-const router = express.Router();
+// Wie der Vertrag: eine andere Schreibung ist eine andere Route (404).
+const router = express.Router({ caseSensitive: true });
 
 router.get('/startup-status', async (req, res) => {
   res.set('Cache-Control', 'no-store, no-cache, must-revalidate');
