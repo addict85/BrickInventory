@@ -46,6 +46,7 @@ test('Masse der Oberfläche', { concurrency: 1, timeout: 300_000 }, async (t) =>
   const reiter = async (name) => { await b.auswerten(`document.querySelector('.ntab[data-tab="${name}"]').click(); true`); await warte(500); };
   const groesse = async (w, h, mobil) => {
     await b.tab('Emulation.setDeviceMetricsOverride', { width: w, height: h, deviceScaleFactor: mobil ? 2 : 1, mobile: mobil });
+    await bis(`innerWidth === ${w}`, 'Fensterbreite');
     await ruhig();
   };
 

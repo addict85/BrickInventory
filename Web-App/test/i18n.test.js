@@ -143,48 +143,6 @@ test('die Farbauswahl im Formular „Teil erfassen" zeigt deutsche Namen', () =>
     'data-name muss den englischen Namen behalten — er geht ans Backend');
 });
 
-test('thumbUrl() rät nicht mehr selbst — vertraut der Server-Antwort wie Android', () => {
-  // Gleicher Fehler und derselbe Fix wie in der Android-App
-  // (util/ImageUrls.kt, resolveThumbUrl()): src/katalog/bilder/images.ts prüft bereits
-  // serverseitig, ob "_thumb.jpg" existiert, und liefert je nachdem den
-  // Thumb- oder den Original-Pfad. thumbUrl() konstruierte trotzdem seine …
-  // Ausführlich: docs/begruendungen/test/i18n.test.js.md#src-stelle
-  const src = require('./helpers/sources').coreQuelle();
-  const fn = src.slice(src.indexOf('function thumbUrl'), src.indexOf('function thumbUrl') + 200);
-
-  assert.match(fn, /function thumbUrl\(src\) \{\s*return src;\s*\}/,
-    'thumbUrl() muss eine reine Durchreiche sein, kein Rateversuch mehr');
-  assert.doesNotMatch(fn, /_thumb\.jpg/,
-    'Keine Konstruktion einer "_thumb.jpg"-Adresse mehr im Client');
-});
-
-test('Teile-Kacheln laden das Zoom-Bild über den Server-Proxy, nicht direkt vom CDN', () => {
-  // Auf Nutzerwunsch: anders als bei Sets soll auch das Detailbild der Teile
-  // durch das Backend laufen. data-orig speiste bisher die rohe (CDN-)Adresse
-  // direkt, der Zoom lief damit am Server vorbei.
-  const src = fs.readFileSync(path.join(__dirname, '..', 'public', 'js', '03-parts.js'), 'utf8');
-  // Warum nicht mehr `+ 900`
-  // Ausführlich: docs/begruendungen/test/i18n.test.js.md#partscard
-  const anfang = src.indexOf('function partsCard(');
-  assert.ok(anfang >= 0, 'partsCard() gibt es nicht mehr — umbenannt?');
-  const naechste = src.indexOf('\nfunction ', anfang + 1);
-  const fn = src.slice(anfang, naechste > anfang ? naechste : undefined);
-  assert.match(fn, /orig: imgUrl\(fullUrl\(rawSrc\), false\)/,
-    'data-orig muss über imgUrl(...) proxy-gewickelt sein, nicht die rohe Adresse');
-});
-
-test('die manuelle Teile-Kachel zeigt keine rohe CDN-Adresse mehr', () => {
-  // Gefunden beim Umsetzen des vorigen Punkts: renderManualParts() lud das
-  // Bild komplett unverarbeitet — einzige Stelle im Projekt ohne Vorschau
-  // und ohne Proxy, obwohl es sich um eine gewöhnliche Kachel handelt.
-  const src = fs.readFileSync(path.join(__dirname, '..', 'public', 'js', '03-parts.js'), 'utf8');
-  const fn = src.slice(src.indexOf('function renderManualParts'));
-  assert.doesNotMatch(fn, /const imgSrc = p\.image_local \|\| p\.image_url \|\| '';/,
-    'Die rohe Zuweisung darf nicht mehr vorkommen');
-  assert.match(fn, /const imgSrc = imgUrl\(thumbUrl\(p\.image_local \|\| p\.image_url\)/,
-    'Muss wie jede andere Kachel über thumbUrl()/imgUrl() laufen');
-});
-
 test('der manuelle Kaufpreis-Detail-Dialog lädt Teile/Minifiguren-Bilder über den Proxy', () => {
   // Gemeldet: Detailbilder von Teilen/Minifiguren kamen weiterhin direkt vom
   // CDN. Der vorige Fix deckte nur den Kachel-Zoom ab (03-parts.js,

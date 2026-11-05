@@ -10,6 +10,7 @@
     "typecheck": "tsc --noEmit",
     "typecheck:strict": "node scripts/check-noimplicitany.js",
     "typecheck:frontend": "node scripts/check-frontend-typen.js",
+    "typecheck:tests": "node scripts/check-test-typen.js",
     "lint": "node scripts/lint-ratsche.js lint",
     "format:pruefen": "node scripts/lint-ratsche.js format",
     "format:alles": "biome format --write .",

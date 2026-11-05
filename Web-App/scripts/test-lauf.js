@@ -134,6 +134,8 @@ async function main() {
     fs.rmSync(ABDECKUNG, { recursive: true, force: true });
     fs.mkdirSync(path.join(ABDECKUNG, 'v8'), { recursive: true });
     Object.assign(messung, { NODE_V8_COVERAGE: path.join(ABDECKUNG, 'v8'), TEST_BUENDEL: mitKarte });
+    const erledigt = new Set();
+    setInterval(() => require('./abdeckung').verdichte(path.join(ABDECKUNG, 'v8'), erledigt), 5000).unref();
   }
 
   const dateien = auswahl.length ? auswahl

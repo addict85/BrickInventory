@@ -8,6 +8,8 @@
  *   A  `if (ist > schranke)` → `if (false)` → „eine zu niedrige Schranke ist rot“ rot
  *   B  nur `lint/style` gezählt statt aller Regeln → „lint: der Bestand hält die
  *      Schranke, und sie ist knapp“ rot (Zählung weit unter der Schranke)
+ *   C  check-test-typen.js: `if (meldungen.length > schranke)` → `if (false)`
+ *      → „typecheck:tests …“ rot
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -51,3 +53,18 @@ for (const art of ['lint', 'format']) {
     assert.match(r.aus, /erlaubt sind 10/);
   });
 }
+
+test('typecheck:tests: rot über der Schranke, der Bestand hält sie', () => {
+  // Ein Lauf genügt: Mit Schranke 10 ist er rot und nennt die Zahl, die die echte Schranke halten muss.
+  const datei = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'tt-')), 's.json');
+  fs.writeFileSync(datei, JSON.stringify({ testtypen: 10 }));
+  const r = spawnSync(process.execPath, [path.join(ROOT, 'scripts', 'check-test-typen.js')], {
+    cwd: ROOT,
+    env: { ...process.env, LINT_SCHRANKEN: datei },
+    encoding: 'utf8',
+    timeout: 300_000,
+  });
+  assert.equal(r.status, 1, r.stdout + r.stderr);
+  const ist = Number(/(\d+) Meldungen, erlaubt sind 10/.exec(r.stderr)?.[1]);
+  assert.ok(ist > 10 && ist <= SCHRANKEN.testtypen, `${ist} Meldungen, Schranke ${SCHRANKEN.testtypen}`);
+});

@@ -183,12 +183,14 @@ test('Telefon', { concurrency: 1, timeout: 240_000 }, async (t) => {
     // Am Rechner EINE Navigation: „Sammlung“ in der Leiste, Sets/Teile/
     // Minifiguren nur im Umschalter auf der Seite (vorher beides).
     await b.tab('Emulation.setDeviceMetricsOverride', { width: 1280, height: 900, deviceScaleFactor: 1, mobile: false });
+    await bis('innerWidth === 1280', 'Fensterbreite');
     await ruhig();
     const rechner = await b.auswerten(`(() => { const r = n => document.querySelector('.ntab[data-tab="' + n + '"]');
       return { teile: r('parts').getClientRects().length > 0, figuren: r('minifigs').getClientRects().length > 0,
                umschalter: document.querySelector('#tab-parts .sammlung-wahl').getClientRects().length > 0,
                sammlungAktiv: r('gallery').classList.contains('gruppe-aktiv') }; })()`);
     await b.tab('Emulation.setDeviceMetricsOverride', { width: 390, height: 844, deviceScaleFactor: 2, mobile: true });
+    await bis('innerWidth === 390', 'Fensterbreite');
     await ruhig();
     assert.deepEqual(rechner, { teile: false, figuren: false, umschalter: true, sammlungAktiv: true });
     await reiter('gallery');
@@ -231,6 +233,7 @@ test('Telefon', { concurrency: 1, timeout: 240_000 }, async (t) => {
     })`);
     for (const [breite, hoehe, mobil] of [[1280, 900, false], [390, 844, true]]) {
       await b.tab('Emulation.setDeviceMetricsOverride', { width: breite, height: hoehe, deviceScaleFactor: mobil ? 2 : 1, mobile: mobil });
+      await bis(`innerWidth === ${breite}`, 'Fensterbreite');
       await ruhig();
       const m = await messen();
       // Am Telefon brechen die Felder um; dort zählt nur die gleiche Höhe.

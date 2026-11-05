@@ -159,31 +159,17 @@ test('@types/* beschreiben dieselbe Hauptversion wie das Paket selbst', () => {
     'Typpaket und Paket in verschiedenen Hauptversionen:\n  ' + abweichend.join('\n  '));
 });
 
-// ── strictNullChecks bleibt an — und muss durchlaufen ───────────────────────
-/**
- * Der Schalter allein wäre wertlos: `strictNullChecks: true` mit roten
- * Meldungen ist kein Versprechen. Der Lauf dauert ein paar Sekunden und ist die
- * einzige Stelle, an der „tsc ist sauber" geprüft wird.
- */
-test('tsconfig hat strictNullChecks an und tsc läuft sauber durch', { timeout: 120000 }, () => {
-  // JSON mit Kommentaren — tsc erlaubt sie, JSON.parse nicht.
+// strictNullChecks bleibt an, und tsc muss sauber durchlaufen (CI-Schritt).
+test('tsconfig hat strictNullChecks an, und die CI prüft die Typen als eigenen Schritt', () => {
+  // Den tsc-Lauf selbst macht die CI (Schritt „Typprüfung“); hier doppelt
+  // gelaufen kostete er jeden Testlauf rund 15 s (Prüfbericht arch17-web-b, N7).
+  // Gegenprobe (05.11.2026): den Schritt `npx tsc --noEmit` aus web-ci.yml entfernt → rot.
   const roh = read('tsconfig.json').replace(/^\s*\/\/[^\n]*$/gm, '');
   const cfg = JSON.parse(roh);
   assert.equal(cfg.compilerOptions.strictNullChecks, true,
     'strictNullChecks wurde in der tsconfig wieder abgeschaltet');
-
-  const { execFileSync } = require('node:child_process');
-  let ausgabe = '';
-  try {
-    execFileSync(process.execPath,
-      [path.join(ROOT, 'node_modules', 'typescript', 'bin', 'tsc'), '--noEmit'],
-      { cwd: ROOT, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] });
-  } catch (e) {
-    ausgabe = String(e.stdout || '') + String(e.stderr || '');
-  }
-  const fehler = ausgabe.split('\n').filter(l => /error TS\d+/.test(l));
-  assert.deepEqual(fehler.slice(0, 10), [],
-    `tsc meldet ${fehler.length} Fehler (erste zehn oben)`);
+  const ci = fs.readFileSync(path.join(ROOT, '..', '.github', 'workflows', 'web-ci.yml'), 'utf8');
+  assert.match(ci, /^\s+run: npx tsc --noEmit\s*$/m, 'die CI prüft die Typen des Servers nicht mehr');
 });
 
 /**

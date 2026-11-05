@@ -443,7 +443,7 @@ export function plInit() {
 
 /** Was laut Tabelle fehlt (Bedarf minus vorhanden), mit BrickLink-Farbe. */
 function fehlendeTeile() {
-  // Collect all "vorhanden" inputs from the table
+  // Alle Felder „vorhanden“ aus der Tabelle einsammeln
   const inputs = /** @type {HTMLInputElement[]} */ (alle('.pl-have-input'));
   /** @type {Fehlteil[]} */
   const missing = [];

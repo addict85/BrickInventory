@@ -23,23 +23,45 @@ const BEREICHE = {
 
 const nm = (/** @type {string} */ p) => require(path.join(ROOT, 'node_modules', p));
 
+const DIST = path.join(ROOT, 'dist') + path.sep;
+/** Nur Server (dist/) und das Mess-Bündel zählen; node_modules, jsdom und Node selbst nicht. */
+const relevant = (/** @type {{ url: string }} */ s) => {
+  if (!s.url.startsWith('file://')) return false;
+  const p = new URL(s.url).pathname;
+  return p === BUENDEL || (p.startsWith(DIST) && !p.startsWith(path.dirname(BUENDEL)));
+};
+
+/**
+ * Schreibt fertige V8-Dateien gefiltert zurück: Ein Prozess mit jsdom hinterlässt
+ * sonst einige MB, ein ganzer Lauf mehrere GB. Halb geschriebene Dateien bleiben
+ * für den nächsten Durchgang liegen.
+ * @param {string} v8 @param {Set<string>} erledigt
+ */
+function verdichte(v8, erledigt = new Set()) {
+  for (const f of fs.readdirSync(v8).filter(n => n.endsWith('.json') && !erledigt.has(n))) {
+    const datei = path.join(v8, f);
+    let daten;
+    try {
+      daten = JSON.parse(fs.readFileSync(datei, 'utf8'));
+    } catch {
+      continue;
+    }
+    fs.writeFileSync(datei, JSON.stringify({ result: daten.result.filter(relevant) }));
+    erledigt.add(f);
+  }
+  return erledigt;
+}
+
 async function bericht(v8 = path.join(ZIEL, 'v8'), ziel = ZIEL) {
   const { mergeProcessCovs } = nm('@bcoe/v8-coverage');
   const v2i = nm('v8-to-istanbul');
   const libCoverage = nm('istanbul-lib-coverage');
   const libReport = nm('istanbul-lib-report');
   const reports = nm('istanbul-reports');
-  const dist = path.join(ROOT, 'dist') + path.sep;
   const gemessen = [];
   for (const f of fs.readdirSync(v8).filter(n => n.endsWith('.json'))) {
     const { result } = JSON.parse(fs.readFileSync(path.join(v8, f), 'utf8'));
-    gemessen.push({
-      result: result.filter(s => {
-        if (!s.url.startsWith('file://')) return false;
-        const p = new URL(s.url).pathname;
-        return p === BUENDEL || (p.startsWith(dist) && !p.startsWith(path.dirname(BUENDEL)));
-      }),
-    });
+    gemessen.push({ result: result.filter(relevant) });
   }
   const karte = libCoverage.createCoverageMap({});
   for (const skript of mergeProcessCovs(gemessen).result) {
@@ -72,9 +94,10 @@ function zusammenfassung(/** @type {any} */ karte) {
     const rel = path.relative(ROOT, datei).split(path.sep).join('/');
     const z = karte.fileCoverageFor(datei).toSummary().lines;
     for (const [k, praefix] of Object.entries(BEREICHE)) {
-      if (!rel.startsWith(praefix)) continue;
-      summe[k].gedeckt += z.covered;
-      summe[k].gesamt += z.total;
+      const b = summe[k];
+      if (!b || !rel.startsWith(praefix)) continue;
+      b.gedeckt += z.covered;
+      b.gesamt += z.total;
     }
   }
   return Object.fromEntries(
@@ -87,16 +110,17 @@ function pruefen(
   /** @type {Record<string, number>} */ ist,
   schrankenDatei = path.join(__dirname, 'abdeckung-schranken.json'),
 ) {
+  /** @type {Record<string, number>} */
   const schranken = JSON.parse(fs.readFileSync(schrankenDatei, 'utf8'));
-  const zuWenig = Object.entries(schranken).filter(([k, s]) => !(ist[k] >= s));
+  const zuWenig = Object.entries(schranken).filter(([k, s]) => !((ist[k] ?? -1) >= s));
   for (const [k, s] of Object.entries(schranken))
     console.log(
-      `[abdeckung] ${k.padEnd(12)} ${String(ist[k]).padStart(5)} % (Schranke ${s} %)${ist[k] >= s + 1 ? ' — nachziehen' : ''}`,
+      `[abdeckung] ${k.padEnd(12)} ${String(ist[k]).padStart(5)} % (Schranke ${s} %)${(ist[k] ?? -1) >= s + 1 ? ' — nachziehen' : ''}`,
     );
   return zuWenig.map(([k, s]) => `${k}: ${ist[k]} % < ${s} %`);
 }
 
-module.exports = { bericht, pruefen, zusammenfassung, BEREICHE };
+module.exports = { bericht, pruefen, verdichte, zusammenfassung, BEREICHE };
 
 if (require.main === module) {
   const art = process.argv[2];

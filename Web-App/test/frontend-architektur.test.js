@@ -14,6 +14,8 @@
  *      Zustand nur in 00-zustand.js“
  *   E  in 01-bausteine.js `import { loadGallery } from './02-gallery.js'` → rot:
  *      „Kern importiert keine Ansicht“ (und der Kreis-Test)
+ *   F  im Kapitel „Oberfläche“ von docs/architektur.md `00-zustand.js` in
+ *      `00-staat.js` umbenannt → rot; das Kapitel gestrichen → rot
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -119,4 +121,13 @@ test('kein fetch an der API-Hülle vorbei', () => {
   }
   assert.ok(gesehen >= 1, 'Nicht einmal der Aufruf in apiRoh() gefunden — greift die Suche noch?');
   assert.deepEqual(treffer, [], 'Aufrufe der eigenen API gehen über api() oder apiRoh() (js/01-api.js)');
+});
+
+test('docs/architektur.md beschreibt die Oberfläche mit Dateien, die es gibt', () => {
+  const doc = fs.readFileSync(path.join(__dirname, '..', 'docs', 'architektur.md'), 'utf8');
+  const kapitel = doc.split(/^## Oberfläche$/m)[1]?.split(/^## /m)[0] ?? '';
+  const pfade = [...kapitel.matchAll(/`((?:public|test|frontend-typen|scripts)\/[\w./-]+)`/g)].map(m => m[1]);
+  assert.ok(pfade.length >= 10, `nur ${pfade.length} Pfade im Kapitel „Oberfläche“`);
+  const fehlt = pfade.filter(p => !fs.existsSync(path.join(__dirname, '..', p)));
+  assert.deepEqual(fehlt, []);
 });

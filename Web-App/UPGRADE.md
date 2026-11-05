@@ -6,7 +6,7 @@ Installation heute aussieht, steht in `README.md` („Docker“). Wo ein ältere
 Abschnitt dem heutigen Verhalten widerspricht, steht dort
 **„Überholt durch Abschnitt N“**; der alte Text bleibt als Beleg stehen.
 
-Die ersten Abschnitte (1–7) gehören zu einer Fassung, die an drei Stellen
+Die ersten Abschnitte (1–7d) gehören zu einer Fassung, die an drei Stellen
 etwas änderte, das beim Deployment auffiel.
 
 ## 1. Der Startbefehl hat sich geändert
@@ -106,7 +106,7 @@ geladen. Danach überleben sie jeden Rebuild.
 Tags funktioniert nicht** — die genauen Schritte stehen unten in dieser Datei
 unter „PostgreSQL 16 → 18".
 
-## 6. Übersetzungen liegen jetzt in eigenen Dateien
+## 7a. Übersetzungen liegen jetzt in eigenen Dateien
 
 `public/i18n.js` enthielt beide Wörterbücher (~60 KB), die vollständig ins
 Frontend-Bündel wanderten — jeder Nutzer lud dauerhaft die Sprache mit, die er
@@ -123,7 +123,7 @@ Schlüsselvorrat haben.
 
 Bündelgrösse dadurch: **218 KB → 169 KB**.
 
-## 7. Barrierefreiheit
+## 7b. Barrierefreiheit
 
 Vorher stand in 83 KB `index.html` genau ein `aria`-Attribut, kein `role=`, und
 **kein einziges** der 59 `<label>` war mit seinem Feld verknüpft (Muster:
@@ -138,7 +138,7 @@ Tippen), sieben modale Overlays mit `role="dialog"` und `aria-modal`.
 `test/a11y.test.js` hält das fest. Wer ein neues Formularfeld einbaut, bekommt
 einen roten Test, wenn die Beschriftung fehlt.
 
-## 6. Frontend läuft jetzt auf ES-Modulen
+## 7c. Frontend läuft jetzt auf ES-Modulen
 
 `public/js/*.js` und `public/i18n.js` sind echte Module mit `import`/`export`.
 Für den Betrieb ändert sich nichts — das Bündel wird weiterhin als klassisches
@@ -161,7 +161,7 @@ Nach jeder Änderung an `public/js/` oder `public/i18n.js`:
 
 Das Bündel ist durch Tree-Shaking von 218 KB auf **148 KB** geschrumpft.
 
-## 7. Build ist deutlich schneller — und `npm ci` ist Pflicht
+## 7d. Build ist deutlich schneller — und `npm ci` ist Pflicht
 
 **Vor dem ersten `npm test` unbedingt `npm ci` ausführen.** Ohne installierte
 Abhängigkeiten fehlen `express`, `jsdom`, `pg` und `tsc`, und die Build-Skripte

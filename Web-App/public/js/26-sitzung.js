@@ -440,7 +440,7 @@ function showApp(){ bindTabs(); plInit(); setTimeout(()=>{ gibCheckOnLoad(); }, 
       set_settingsCache(d.settings);
       set_CURRENCY(d.settings.currency||'EUR');
       applyTheme(d.settings.app_theme);
-      // Server language wins (explicit user choice), update localStorage too
+      // Die Sprache des Servers gewinnt (ausdrückliche Wahl); localStorage mitziehen
       const srvLang = d.settings.language;
       // Auch eine noch nicht geladene Sprache: applyLang lädt sie nach.
       if (srvLang === 'de' || srvLang === 'en') {

@@ -157,17 +157,46 @@ environment:
 ```bash
 npm ci --ignore-scripts && npm rebuild esbuild   # exakt die Lockfile, Install-Skripte nur für esbuild
 npm run build      # .ts → dist/, Frontend → public/js/app.bundle.js
-npm start          # → node dist/server.js
+npm start          # → node dist/server.js, NODE_ENV=production
 # → http://localhost:3000  (PostgreSQL muss separat laufen)
 ```
+
+`npm start` verlangt wie im Betrieb `SESSION_SECRET` (mindestens 32 Zeichen),
+`APP_BASE_URL` und eine Datenbank. Die Verbindung kommt aus `DATABASE_URL`
+oder aus `PGHOST`, `PGPORT`, `PGUSER`, `PGPASSWORD`, `PGDATABASE`; ohne beides
+ist der Host `postgres`, den es nur im Compose-Netz gibt.
+
+## Lokal entwickeln
+
+```bash
+# PostgreSQL 18 lokal (eigene Installation oder ein Container mit veröffentlichtem Port)
+export DATABASE_URL=postgres://bim:geheim@127.0.0.1:5432/bim
+npm ci --ignore-scripts && npm rebuild esbuild
+npm run dev        # baut das Bündel, startet den Server mit tsx watch (NODE_ENV=development)
+# → http://localhost:3000, Konto `admin`: Passwort aus ADMIN_PASSWORD oder einmalig im Log
+```
+
+Ohne `npm run dev` geht es auch gebaut: `npm run build`, dann
+`NODE_ENV=development node dist/server.js`. In der Entwicklung sind
+`SESSION_SECRET` und `APP_BASE_URL` nicht Pflicht.
 
 ## Entwickeln
 
 ```bash
-npm run dev        # tsx watch, baut das Frontend-Bündel selbst
-npm run typecheck
-npm test           # siehe „Tests“
+npm run dev             # tsx watch, baut das Frontend-Bündel selbst
+npm run typecheck       # Server; :frontend Oberfläche, :tests Tests (Ratsche)
+npm run lint            # Biome, Ratsche: Funde dürfen nur weniger werden
+npm run format:pruefen  # Biome, Ratsche: nicht formatierte Dateien
+npm test                # siehe „Tests“
+npm run check-contract  # Vertrag gegen einen laufenden Server (BASE_URL), nur von Hand
 ```
+
+Lint und Format sind Ratschen (`scripts/lint-schranken.json`): Neuer Code ist
+sauber und formatiert (`npx biome format --write <datei>`), der Bestand wird
+nach und nach nachgezogen. Den Bestand auf einmal formatiert `npm run
+format:alles`; danach `format` in `scripts/lint-schranken.json` auf 0 setzen,
+den Commit-Hash in `.git-blame-ignore-revs` (Wurzel) eintragen und
+`git config blame.ignoreRevsFile .git-blame-ignore-revs` empfehlen.
 
 **Fassungen.** Massgeblich ist, was ausgeliefert und in der CI geprüft wird:
 
@@ -389,18 +418,27 @@ Dateien (Datenbankrolle, Sicherung) Superuser-Rechte.
 | `REQUIRE_BROWSER=1` | Dasselbe für Chrome: Ohne Browser schlagen die Browser-Tests fehl, statt still zu überspringen. In der CI gesetzt. |
 | `CHROME_BIN` | Pfad zu Chrome/Chromium, falls nicht unter `/usr/bin/google-chrome` oder `/usr/bin/chromium`. |
 | `CADDY_BIN` | Pfad zu `caddy` für die Caddyfile-Tests; ohne ihn übersprungen. |
+| `REQUIRE_CADDY=1` | Ein fehlender Caddy ist ein Fehler. In der CI gesetzt (Caddy aus dem Image in `compose.yaml`). |
+| `TEST_PARALLEL_BROWSER` | Browser-Dateien gleichzeitig (Vorgabe 1; je Datei eigene Datenbank, Port und Chrome-Profil). In der CI 2. |
+| `TEST_NACHLAUF=aus` | Eine Fristüberschreitung ist rot. Sonst läuft die Datei einzeln nach und erscheint als Warnung am Ende des Laufs. |
 
 Ohne `REQUIRE_DB=1` und `REQUIRE_BROWSER=1` ist ein grüner Lauf kein Beleg:
 Die betroffenen Dateien überspringen sich dann selbst.
 
-**Aufbau** (gezählt am 04.11.2026, 578 Testdateien, flach in `test/`):
+**Aufbau** (flach in `test/`; die Zahlen nennt `ls test/*.test.js` bzw. die Ratschen):
 
-| Art | Dateien | Woran erkennbar |
-|---|---|---|
-| mit Datenbank | 280 | Name endet auf `-db.test.js` |
-| im echten Chrome (Layout, Tastatur, CSP) | 31 | `CHROME_BIN` oder `helpers/app-browser` |
-| Oberfläche in jsdom | 61 | `jsdom` |
-| liest nur Quelltext (Struktur, Verbote) | 86 | Ratsche in `test/ratschen.test.js`, darf nur sinken |
+| Art | Woran erkennbar |
+|---|---|
+| mit Datenbank | Name endet auf `-db.test.js` |
+| im echten Chrome (Layout, Tastatur, CSP) | Name endet auf `-browser.test.js`, `helpers/app-browser` |
+| Oberfläche in jsdom | `helpers/oberflaeche` (Antworten gegen den API-Vertrag geprüft) |
+| liest nur Quelltext (Struktur, Verbote) | Ratschen in `test/ratschen.test.js`, dürfen nur sinken |
+
+**Abdeckung:** `npm run abdeckung` (= `npm test -- --abdeckung`) misst Server
+(`dist/`) und Oberfläche (über ein Mess-Bündel mit Sourcemap bis `public/js/`)
+und schreibt `coverage/lcov.info`, `coverage-summary.json` und
+`coverage/bereiche.json`. `node scripts/abdeckung.js pruefen` vergleicht die
+Bereiche mit `scripts/abdeckung-schranken.json`; die CI macht beides.
 
 Die API gibt es nur unter `/api/v1/`. Ihr Vertrag (zod-Schemata in
 `src/infra/vertrag/`) wird im Testlauf an jeder Antwort geprüft; der Abgleich

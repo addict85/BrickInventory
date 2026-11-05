@@ -132,9 +132,12 @@ async function starteApp(t, opt = {}) {
   for (let i = 0; i < 240 && !/localhost:\d+|Startup complete/.test(server.log()); i++) await warte(250);
   for (let i = 0; i < 40 && (await fetch(`http://127.0.0.1:${port}/api/v1/`).catch(() => null)) === null; i++) await warte(250);
 
-  const profil = fs.mkdtempSync(path.join(os.tmpdir(), 'app-browser-'));
+  // Chrome legt unter TMPDIR einen Unix-Socket an (höchstens 107 Zeichen); bei langem
+  // TMPDIR bräche es mit „Socket path too long“ ab, also Profil und TMPDIR dann unter /tmp.
+  const basis = os.tmpdir().length > 60 && fs.existsSync('/tmp') ? '/tmp' : os.tmpdir();
+  const profil = fs.mkdtempSync(path.join(basis, 'app-browser-'));
   const browser = starte(t, bin, ['--headless=new', '--no-sandbox', '--disable-gpu', '--remote-debugging-port=0',
-    `--user-data-dir=${profil}`, '--window-size=1280,900', 'about:blank'], { detached: true });
+    `--user-data-dir=${profil}`, '--window-size=1280,900', 'about:blank'], { detached: true, env: { ...process.env, TMPDIR: basis } });
   // Erst nach Chromes Ende löschen: t.after läuft in Registrierreihenfolge, und
   // ein Hook, der wirft, lässt die folgenden aus — Chrome liefe dann weiter.
   t.after(() => { try { fs.rmSync(profil, { recursive: true, force: true, maxRetries: 5 }); } catch { /* tmp räumt das System */ } });
@@ -144,7 +147,10 @@ async function starteApp(t, opt = {}) {
   for (let i = 0; i < 300 && !wsUrl && browser.p.exitCode === null && browser.p.signalCode === null; i++) {
     wsUrl = /DevTools listening on (ws:\/\/\S+)/.exec(browser.log())?.[1]; if (!wsUrl) await warte(100);
   }
-  if (!wsUrl) throw new Error(`Chrome meldet keinen DevTools-Zugang (Ende: ${browser.p.exitCode ?? browser.p.signalCode ?? 'läuft'}):\n`
+  // Die Ursache steht in Chromes erster FATAL-Zeile; sie gehört an den Anfang der Meldung.
+  const ursache = /^.*(?:FATAL|Socket path too long).*$/m.exec(browser.log())?.[0]?.trim();
+  if (!wsUrl) throw new Error(`Chrome meldet keinen DevTools-Zugang (Ende: ${browser.p.exitCode ?? browser.p.signalCode ?? 'läuft'})`
+    + `${ursache ? ` — ${ursache}` : ''}:\n`
     + browser.log().slice(-1500));
   const b = await cdp(wsUrl);
   t.after(() => b.schliessen());

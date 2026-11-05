@@ -44,7 +44,7 @@ function gibApplyStatus(s) {
   const total   = s.total || 0;
   const pct     = total > 0 ? Math.round(done / total * 100) : 0;
 
-  // Update header bar
+  // Kopfleiste nachführen
   const _gibEl = G('global-import-bar');
   if (_gibEl) {
     if (running) _gibEl.style.display = 'flex';
@@ -54,7 +54,7 @@ function gibApplyStatus(s) {
       : importZaehler(s);
   }
 
-  // Update overlay whenever it's open (both browser 1 minimized+reopened, and browser 2)
+  // Überlagerung nachführen, solange sie offen ist (auch im zweiten Fenster oder nach Minimieren)
   const overlayOpen = G('progress-overlay')?.classList.contains('open');
   if (overlayOpen) {
     G('prog-title-txt').textContent = tRaw('csv.import_title');
@@ -68,7 +68,7 @@ function gibApplyStatus(s) {
     }
   }
 
-  // Update detail panel
+  // Detailbereich nachführen
   setzeHtml(G('gib-stats'), html`${Number(s.ok) || 0} ${ico('ok')} · ${Number(s.warn) || 0} ${ico('warnung')} · ${Number(s.err) || 0} ${ico('fehler')}`);
   const gpw = G('gib-prog-wrap');
   if (gpw && running) {
@@ -79,8 +79,8 @@ function gibApplyStatus(s) {
   }
   G('gib-stats').textContent = [`${s.ok || 0} ok`, tRaw('csv.warnings_n', { n: s.warn || 0 }), tRaw('csv.errors_n', { n: s.err || 0 })].join(' · ');
 
-  // Add new log entries — but only if the CSV poll loop isn't already writing them (_csvPollActive = true
-  // means this window started the import and the CSV loop handles logs)
+  // Neue Protokollzeilen anhängen — nur wenn die CSV-Abfrageschleife sie nicht schon schreibt (_csvPollActive = true
+  // heisst: dieses Fenster hat den Import gestartet, die Schleife schreibt das Protokoll)
   if (!_csvPollActive && s.results && s.results.length > _gibLastCount) {
     s.results.slice(_gibLastCount).forEach(r => {
       const z = protokollZeile(r);
@@ -90,13 +90,13 @@ function gibApplyStatus(s) {
   if (s.results) _gibLastCount = s.results.length;
 
   if (!running) {
-    // Import done — only hide the header bar, never auto-close the overlay dialog
+    // Import fertig: nur die Kopfleiste ausblenden, die Überlagerung nie selbst schliessen
     setTimeout(() => {
       G('global-import-bar').style.display='none';
       G('import-detail-panel').classList.remove('open');
       // Don't clear log or close overlay — user may still be reading results
     }, 5000);
-    // Show close button so user can dismiss the overlay when ready
+    // Schliessen-Knopf zeigen, damit man die Überlagerung selbst schliesst
     const btnClose = G('btn-close-import');
     if (btnClose) btnClose.style.display = '';
     melde('setsGeaendert');
@@ -120,13 +120,13 @@ function gibToggle() {
     hideProgress();
   } else if (overlay) {
     // Opening from header bar click — initialize overlay in CSV mode so gibPoll() can write into it (needed
-    // when this is a 2nd browser window)
+    // wenn dies ein zweites Browserfenster ist)
     if (!_csvPollActive) {
       showProgress(t('csv.import_title'), true);
       // Immediately fill with whatever gibPoll already knows
       gibPoll();
     } else {
-      // This window already owns the import loop — just re-show
+      // Dieses Fenster führt die Importschleife schon — nur wieder zeigen
       overlay.classList.add('open');
     }
   }
@@ -166,7 +166,7 @@ export function protokollZeile(r, warnZusatz = '') {
  * @param {boolean} ok
  */
 function gibAddLog(text, ok) {
-  // Write to both the overlay csv-log AND the gib detail log
+  // In das CSV-Protokoll der Überlagerung UND in das Detailprotokoll schreiben
   for (const logId of ['csv-log', 'gib-log']) {
     const log = G(logId);
     if (!log) continue;
@@ -220,7 +220,7 @@ function gibStop() {
   if (_gibTimer) { clearInterval(_gibTimer); _gibTimer = null; }
 }
 
-// Start polling when app loads (picks up import from any window)
+// Beim Laden mit dem Abfragen beginnen (findet einen Import aus jedem Fenster)
 export async function gibCheckOnLoad() {
   if (_gibCheckTimer) return;
   let failures = 0;
@@ -313,7 +313,7 @@ export function showProgress(title, csvMode){
 export function hideProgress(){
   G('progress-overlay').classList.remove('open');
   G('prog-steps').style.display='';
-  // Show header bar when minimizing if import is polling
+  // Beim Minimieren die Kopfleiste zeigen, wenn ein Import läuft
   if ((_gibTimer || _gibSse) && ME) {
     G('global-import-bar').style.display = 'flex';
   }

@@ -38,10 +38,17 @@ test('das Skript erzeugt genau die ausgelieferten Dateien', () => {
     assert.match(r.stdout, new RegExp(`qrcodejs ${fassung.replace(/\./g, '\\.')} → public/vendor/qrcode/`));
     const kopie = path.join(ziel, 'public', 'vendor', 'qrcode');
     assert.deepEqual(fs.readdirSync(kopie).sort(), [...DATEIEN].sort());
-    for (const d of DATEIEN) {
-      const ausgeliefert = fs.readFileSync(path.join(ROOT, 'public', 'vendor', 'qrcode', d));
-      assert.ok(ausgeliefert.equals(fs.readFileSync(path.join(kopie, d))), `${d} weicht von qrcodejs ${fassung} ab`);
-    }
+    // Die Pfade wörtlich: eigenbruecken.test.js lässt Pfade mit variablem Segment nicht mehr werden.
+    assert.deepEqual(DATEIEN, ['qrcode.min.js', 'LICENSE']);
+    const gleich = (a, b) => fs.readFileSync(a).equals(fs.readFileSync(b));
+    assert.ok(
+      gleich(path.join(ROOT, 'public/vendor/qrcode/qrcode.min.js'), path.join(kopie, 'qrcode.min.js')),
+      `qrcode.min.js weicht von qrcodejs ${fassung} ab`,
+    );
+    assert.ok(
+      gleich(path.join(ROOT, 'public/vendor/qrcode/LICENSE'), path.join(kopie, 'LICENSE')),
+      `LICENSE weicht von qrcodejs ${fassung} ab`,
+    );
   } finally {
     fs.rmSync(ziel, { recursive: true, force: true });
   }

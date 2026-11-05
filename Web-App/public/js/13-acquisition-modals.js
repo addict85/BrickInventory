@@ -278,7 +278,7 @@ async function acqSave(sn, id, field, value) {
     }).catch(()=>{});
     return;
   }
-  // If price was empty → server fetched market price; reload to show real value
+  // War der Preis leer, hat der Server den Marktpreis geholt; neu laden, um ihn zu zeigen
   if (field === 'price' && (value === '' || value === null)) {
     loadAcqModal(sn);
     return;
@@ -292,10 +292,10 @@ async function acqSave(sn, id, field, value) {
       if (sumEl) setzeHtml(sumEl, html`${ungeprueft(renderAcquisitionSummary(ad.acquisitions, sn))}${html`<button class="btn bs btn-sm" data-click="openAcqModal" data-arg="${sn}" data-stil="margin-top:4px;font-size:var(--fs-1);padding:2px 10px">${ico('bearbeiten')} ${tRaw('detail.edit_prices')}</button>`}`);
     }).catch(()=>{});
   }
-  // If qty changed → reload whole modal to update summary + refresh set-detail qty
+  // Menge geändert: ganzen Dialog neu laden (Zusammenfassung, Menge im Set-Detail)
   if (field === 'qty') {
     loadAcqModal(sn);
-    // Also refresh the set detail modal summary
+    // Auch die Zusammenfassung im Set-Detail auffrischen
     api('GET', `/v1/sets/${sn}/acquisitions`).then(ad => {
       if (ad.success && curSet?.set_number === sn) {
         const summaryEl = G('m-acq-summary');
@@ -314,17 +314,17 @@ async function acqDelete(sn, id) {
   if (!await confirmDelete(tRaw('acq.delete_title'), t('acq.delete_text'), 'loeschen')) return;
   const d = await api('DELETE', `/v1/sets/${sn}/acquisitions/${id}`);
   if (!d.success) { toast(tRaw('settings.error'), 'error'); return; }
-  // Update curSet + qty input in set-detail modal
+  // curSet und das Mengenfeld im Set-Detail nachführen
   if (curSet?.set_number === sn) {
     curSet.quantity = /** @type {number} */ (d.new_quantity);
     const qEl = G('m-qty');
     if (qEl) qEl.value = String(d.new_quantity);
   }
-  // Reload acq modal
+  // Erfassungsdialog neu laden
   const ad = await api('GET', `/v1/sets/${sn}/acquisitions`).catch(()=>null);
   if (!ad?.acquisitions?.length) { closeAcqModal(); return; }
   renderAcqModalBody(sn, ad.acquisitions, ad.totals);
-  // Refresh compact summary in set-detail modal
+  // Kurzübersicht im Set-Detail auffrischen
   const dvEl = G('m-acq-summary');
   if (dvEl) setzeHtml(dvEl, html`${ungeprueft(renderAcquisitionSummary(ad.acquisitions, sn))}${html`<button class="btn bs btn-sm" data-click="openAcqModal" data-arg="${sn}" data-stil="margin-top:4px;font-size:var(--fs-1);padding:2px 10px">${ico('bearbeiten')} ${tRaw('detail.edit_prices')}</button>`}`);
   // Wie in acqSave(): Eine gelöschte Erfassung verändert Bestand und Wert — und lässt eine Zustands-Zeile
@@ -348,7 +348,7 @@ export function erfassungsPreis(a, betrag) {
   return html`<span title="${hinweis}"><span role="img" aria-label="${hinweis}">≈</span> ${zahl}</span>`;
 }
 
-// Compact link shown in set-detail-modal → opens the full acq-modal
+// Kurzer Verweis im Set-Detail: öffnet den vollen Erfassungsdialog
 /**
  * Erklärt das „≈“, sobald eine Zeile einen geschätzten Preis trägt.
  * @param {Erfassung[]} acqs
@@ -667,12 +667,12 @@ async function manQtySave() {
     if (G('acq-modal').classList.contains('open')) renderManAcqBody(type, id, colorId, acqs2, ad2?.totals);
   }).catch(()=>{});
 
-  // Refresh tile cache
+  // Zwischenspeicher der Kacheln auffrischen
   if (type==='fig') loadManualFigsTable();
   else loadManualParts();
 }
 
-// Opens the shared acq-modal for manual parts/minifigs
+// Öffnet den gemeinsamen Erfassungsdialog für manuelle Teile und Figuren
 function openManAcqModal() {
   if (!_manItem) return;
   const { type, id, colorId } = _manItem;
@@ -745,7 +745,7 @@ async function loadManAcqModal(type, id, colorId) {
  * @param {Erfassungssumme | undefined} totals
  */
 function renderManAcqBody(type, id, colorId, acqs, totals) {
-  // Reuse the same table renderer with type-specific save/delete
+  // Derselbe Tabellenbauer, mit Speichern und Löschen je Art
   if (!acqs.length) {
     setzeHtml(G('acq-modal-body'), html`<div data-stil="color:var(--mut);font-size:var(--fs-3);padding:.5rem 0">—</div>`);
     return;
@@ -844,11 +844,11 @@ async function manAcqSave(type, id, colorId, acqId, field, value) {
       if (type==='fig') loadManualFigsTable(); else loadManualParts();
       return;
     }
-    // Reload modal for price (to show fetched market price), qty (new row possible) or date (Reihenfolge)
+    // Dialog neu laden bei Preis (geholter Marktpreis), Menge (neue Zeile möglich) oder Datum (Reihenfolge)
     if ((field==='price' && (value===''||value===null)) || field==='qty' || field==='date') {
       await loadManAcqModal(type, id, colorId);
     }
-    // Always refresh tile to reflect updated badge/price
+    // Kachel immer auffrischen, damit Plakette und Preis stimmen
     if (type==='fig') loadManualFigsTable();
     else loadManualParts();
   } catch(e) { console.error('[manAcqSave]', e); toast(tRaw('settings.error'),'error'); }
@@ -879,12 +879,12 @@ async function manAcqDelete(type, id, colorId, acqId) {
     : `/v1/parts/${encodeURIComponent(id)}/${colorId}/acquisitions`;
   const d = await api('DELETE', delUrl);
   if (!d.success) { toast(tRaw('settings.error'),'error'); return; }
-  // Update qty input in man-detail-modal
+  // Mengenfeld im Detaildialog nachführen
   const qEl = G('man-det-qty');
   if (qEl && d.new_quantity !== undefined) qEl.value = d.new_quantity;
   const ad = await api('GET', listUrl).catch(()=>null);
   const acqs = ad?.acquisitions || [];
-  // Refresh inline summary in detail modal
+  // Zusammenfassung im Detaildialog auffrischen
   const sumEl = G('man-acq-summary');
   if (sumEl) setzeHtml(sumEl, html`${ungeprueft(renderManAcqSummary(acqs, type, id, colorId))}${html`<button class="btn bs btn-sm" data-click="openManAcqModal" data-stil="margin-top:4px;font-size:var(--fs-1);padding:2px 10px">${ico('bearbeiten')} ${tRaw('detail.edit_prices')}</button>`}`);
   if (!acqs.length) { closeAcqModal(); return; }
