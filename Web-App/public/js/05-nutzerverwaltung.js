@@ -3,7 +3,7 @@ import { locale, t, tRaw } from '../i18n.js';
 import { api } from './01-api.js';
 import { ico, G, setzeHtml } from './01-dom.js';
 import { fmtDatum } from './01-format.js';
-import { passwortRegelText } from './01-formular.js';
+import { feldFehler, passwortRegelText } from './01-formular.js';
 import { toast } from './01-meldungen.js';
 import { ME } from './00-zustand.js';
 import { html, ungeprueft } from './00-escapen.js';
@@ -92,9 +92,10 @@ function nutzerKnopf(u, art, klick, symbol, wortKey, titelKey, arg2, arg3) {
 }
 G('btn-cu').onclick=async()=>{
   const n=G('nu-n').value.trim(),p=G('nu-p').value,a=G('nu-a').checked;
-  if(!n||!p){toast(tRaw('users.name_pw_req'),'error');return;}
-  const regel = passwortRegelText(p);
-  if (regel) { toast(regel,'error');return;}
+  // Die Regeln vor der Rückfrage und am Feld: Vorher kam „nur Buchstaben …“ erst nach Passwort und Code.
+  if (!n || !/^[A-Za-z0-9_.-]{3,32}$/.test(n)) { feldFehler('nu-n', tRaw(n ? 'users.name_regel_fehler' : 'users.name_fehlt')); return; }
+  const regel = p ? passwortRegelText(p) : tRaw('users.pw_fehlt');
+  if (regel) { feldFehler('nu-p', regel); return; }
   const admin_password = await bestaetigeMitPasswort(tRaw('users.create_title'), tRaw('users.admin_confirm_text'), 'schloss', { knopf: 'confirm.btn.konto_anlegen', art: 'bp' });
   if (admin_password === null) return;
   const d=await mitZweitemFaktor(z => api('POST','/v1/auth/users',{username:n,password:p,is_admin:a,admin_password,...z}));

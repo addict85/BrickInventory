@@ -42,7 +42,7 @@ import { deleteManualPart } from './03-parts.js';
       'speichereTeilLagerort', 'startSetCsvImport', 'updateColorDot', 'uploadInstr', 'waehrungPruefen',
       'wantedKorrekturFarbe', 'wantedKorrekturNummer', 'wantedKorrekturWert',
       'wantedXmlGewaehlt', 'wechsleAlarmZustand']),
-    input: new Set(['alarmGetippt', 'filterFigs']),
+    input: new Set(['alarmGetippt', 'filterFigs', 'finSuchen']),
     blur: new Set(['acqSave', 'lagerortGetippt', 'manAcqSave', 'saveManualFigBl']),
     keydown: new Set(['blurOnEnter', 'lagerortTaste']),
   };

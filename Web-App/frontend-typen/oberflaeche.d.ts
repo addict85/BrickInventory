@@ -8,7 +8,7 @@ interface Window {
   __APP_VERSION: string;
   __bimApplyTheme: (name: string) => void;
   __bimDunkel: ((wert: string) => void) | undefined;
-  __bimDunkelWert: (() => 'server' | 'system') | undefined;
+  __bimDunkelWert: (() => 'server' | 'system' | 'immer') | undefined;
   __bimNurDunkel: (theme: string) => boolean;
   __bimLabelTables: ((tabelle: Element | null) => void) | undefined;
   _finGrandTotal: number;

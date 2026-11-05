@@ -56,7 +56,7 @@ function setDetailHtml(sn, acqs) {
     ${qtyRow}
     ${detailZeile(t('detail.pieces'), set.pieces ? set.pieces.toLocaleString(locale()) : '—')}
     ${detailZeile(t('detail.minifigs'), oderStrich(set.minifigs), { wertId: 'm-minifigs-val' })}
-    ${detailZeile(t('detail.alert'), alarmBlock(sn), { klasse: 'alarm-zeile',
+    ${detailZeile(t('detail.alert'), alarmBlock(sn, 'm', (curSet?.conditions || []).includes('N') || !(curSet?.conditions || []).length ? 'N' : 'U'), { klasse: 'alarm-zeile',
          zeilenStil: 'align-items:flex-start',
          wertStil: 'display:flex;align-items:center;gap:6px;flex-wrap:wrap;justify-content:flex-end' })}
     ${detailZeile(t('detail.storage'),

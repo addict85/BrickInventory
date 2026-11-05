@@ -86,7 +86,7 @@ test('ein leeres Feld löscht — in beiden', () => {
   // Beide entscheiden es an derselben Stelle: „ist das eine Zahl > 0?". Die
   // Webapp misst es zusätzlich am Verhalten (test/alarm-entprellt.test.js),
   // die App an der Umrechnung (AlarmeingabeTest).
-  assert.match(web('public/js/02-detailfelder.js'), /const loeschen = !\((zahl != null && )?zahl > 0\);/,
+  assert.match(web('public/js/02-detailfelder.js'), /const loeschen = (zahl == null|!\((zahl != null && )?zahl > 0\));/,
     'Die Webapp löscht bei leerem Feld nicht');
   assert.match(KT_ALARMEINGABE, /return if \(z > 0\.0\) z else null/,
     'Die App löscht bei leerem Feld nicht');

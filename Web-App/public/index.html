@@ -831,6 +831,7 @@
         <button class="period-btn" aria-pressed="false" data-art="parts" data-click="finFilter" data-arg="parts" data-i18n="finance.filter.parts">Teile</button>
         <button class="period-btn" aria-pressed="false" data-art="figs"  data-click="finFilter" data-arg="figs"  data-i18n="finance.filter.minifigs">Minifiguren</button>
       </div>
+      <div class="fin-suche-zeile"><input type="search" class="si suchfeld" id="fin-suche" placeholder="Positionen suchen…" aria-label="Positionen suchen" data-i18n="finance.suche" data-i18n-attr="placeholder" data-i18n-aria="finance.suche" data-input="finSuchen" autocomplete="off" /></div>
       <div id="fin-tbl"><div class="empty"><div class="icon"><svg class="ico" aria-hidden="true"><use href="#i-finanzen"/></svg></div><h2 data-i18n="finance.not_loaded">Preise noch nicht geladen</h2><p>Klicke auf «Preise laden»</p></div></div>
     </div>
 
@@ -1004,8 +1005,10 @@
                  Zeile (.frow) unveraendert. -->
             <form class="nur-inhalt" data-submit="btn-cu">
             <div class="frow">
-              <div class="fg"><label for="nu-n" data-i18n="settings.users_username">Benutzername</label><input type="text" id="nu-n" /></div>
-              <div class="fg"><label for="nu-p" data-i18n="settings.users_password">Passwort</label><input type="password" id="nu-p" /></div>
+              <div class="fg"><label for="nu-n" data-i18n="settings.users_username">Benutzername</label><input type="text" id="nu-n" autocomplete="off" aria-describedby="nu-n-regel" />
+                <div class="text-klein" id="nu-n-regel" data-i18n="users.name_regel">3–32 Zeichen: Buchstaben, Zahlen und _ . - (ohne Leerzeichen)</div></div>
+              <div class="fg"><label for="nu-p" data-i18n="settings.users_password">Passwort</label><input type="password" id="nu-p" autocomplete="new-password" aria-describedby="nu-p-regel" />
+                <div class="text-klein" id="nu-p-regel" data-i18n="pflicht.regel" data-i18n-vars='{"n":"12"}'>Mindestens 12 Zeichen, kein häufig verwendetes Passwort.</div></div>
               <div class="fg max-130-rechts">
                 <!-- Umschliessendes Label: die Checkbox liegt darin, ein for= wäre falsch
                      (und zeigte hier versehentlich auf ein fremdes Feld). -->
@@ -1087,6 +1090,7 @@
             <select id="dunkel-wahl" data-change="setzeDunkel" aria-describedby="dunkel-hinweis">
               <option value="system" data-i18n="settings.dark.system">Wie das System (hell/dunkel)</option>
               <option value="server" data-i18n="settings.dark.server">Ohne Dunkelmodus</option>
+              <option value="immer" data-i18n="settings.dark.immer">Immer dunkel</option>
             </select>
             <div class="text-klein" id="dunkel-hinweis" hidden data-i18n="settings.werkbank_hint">Werkbank gibt es nur dunkel — die Darstellung hell/dunkel wirkt bei diesem Design nicht.</div>
           </div>
@@ -1402,7 +1406,7 @@
           <div class="sgrid2" data-stil="gap:.5rem;grid-template-columns:1fr auto">
             <div class="fg">
               <label for="storage-new" data-i18n="col.name">Name</label>
-              <input type="text" id="storage-new" maxlength="60"
+              <input type="text" id="storage-new" data-zaehler maxlength="60"
                      data-i18n="storage.new_ph" data-i18n-attr="placeholder"
                      placeholder="Neuer Lagerort" data-keydown="lagerortTaste" />
             </div>

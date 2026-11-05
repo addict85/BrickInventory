@@ -49,9 +49,11 @@ export async function ladeLagerortVerwaltung() {
     const wie = n ? [tRaw('storage.belegt.sets', { n: Number(n.sets) || 0 }), tRaw('storage.belegt.teile', { n: Number(n.teile) || 0 }),
                      tRaw('storage.belegt.figuren', { n: Number(n.figuren) || 0 })].filter(x => !x.startsWith('0 ')).join(', ')
                   : tRaw('storage.leer');
+    // Belegt: Der Server lehnte das Löschen erst nach der Rückfrage ab. Gesperrt sagt es vorher, mit dem Grund.
+    const belegt = !!n && (Number(n.sets) || 0) + (Number(n.teile) || 0) + (Number(n.figuren) || 0) > 0;
     return html`<div data-stil="display:contents">
       <span class="lager-feld" data-stil="padding:6px 0;border-bottom:1px solid var(--bdr);display:flex;align-items:center"><input type="text" maxlength="60" value="${o.name}" aria-label="${tRaw('detail.storage')}"
-             data-change="benenneLagerortUm" data-arg="${o.id}" data-val="1" class="lager-eingabe" /></span>
+             data-change="benenneLagerortUm" data-arg="${o.id}" data-val="1" data-zaehler class="lager-eingabe" /></span>
       <span class="lager-belegt" data-stil="padding:6px 0;border-bottom:1px solid var(--bdr);display:flex;align-items:center;font-size:var(--fs-1);color:var(--mut);white-space:nowrap;justify-content:flex-end"><span class="lager-marke${n ? '' : ' lager-frei'}">${wie}</span></span>
       <span data-stil="padding:6px 0;border-bottom:1px solid var(--bdr);display:flex;align-items:center"><button class="btn bs lager-sinnbild" data-click="schalteLagerortVorgabe" data-arg="${o.id}"
               data-arg2="${o.id === vorgabeId ? 1 : 0}"
@@ -59,8 +61,8 @@ export async function ladeLagerortVerwaltung() {
               aria-label="${tRaw(o.id === vorgabeId ? 'storage.default_is' : 'storage.default_set')}"
               aria-pressed="${o.id === vorgabeId ? 'true' : 'false'}">${ico(o.id === vorgabeId ? 'stern-voll' : 'merkliste')}</button></span>
       <span data-stil="padding:6px 0;border-bottom:1px solid var(--bdr);display:flex;align-items:center"><button class="btn bs lager-sinnbild" data-click="loescheLagerort"${echt()} data-arg="${o.id}"
-              aria-label="${tRaw('common.delete')}: ${o.name}" title="${tRaw('common.delete')}"
-              data-arg2="${o.name}">${ico('loeschen')}</button></span>
+              aria-label="${tRaw('common.delete')}: ${o.name}${belegt ? ` (${tRaw('storage.erst_umraeumen', { wie })})` : ''}" title="${belegt ? tRaw('storage.erst_umraeumen', { wie }) : tRaw('common.delete')}"
+              data-arg2="${o.name}"${belegt ? ' disabled' : ''}>${ico('loeschen')}</button></span>
     </div>`;
   })}${html`</div>`}`);
 }
@@ -96,9 +98,10 @@ async function benenneLagerortUm(id, wert) {
   // Leer heisst hier NICHT löschen: Beim Umbenennen ist ein leergeräumtes Feld fast immer ein Versehen, und
   // das Löschen hat seinen eigenen Knopf daneben. (Beim Lagerort AM SET ist es umgekehrt — dort ist Leeren
   // die natürliche Geste, um die Zuordnung loszuwerden.)
-  if (!name) { await ladeLagerortVerwaltung(); return; }
+  if (!name) { toast(tRaw('storage.name_fehlt'), 'error'); await ladeLagerortVerwaltung(); return; }
   const d = await api('PUT', `/v1/storage/locations/${encodeURIComponent(id)}`, { name });
   if (!d?.success) { toast(d?.error || tRaw('settings.error'), 'error'); }
+  else toast(tRaw('storage.umbenannt', { name }), 'success');
   await ladeLagerortVerwaltung();
   // Die Zuordnungen sind mitgewandert (benenneOrtUm im Server) — die Galerie zeigt sonst weiter den alten
   // Namen.

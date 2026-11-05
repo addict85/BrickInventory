@@ -5,7 +5,7 @@ import { colorName, t, tRaw } from '../i18n.js';
 import { escJs, esc, html, ungeprueft } from './00-escapen.js';
 import { api } from './01-api.js';
 import { bildTag, platzhalterInhalt, imgUrl, thumbUrl } from './01-bilder.js';
-import { leerZustand, ico, G, alle, setzeHtml } from './01-dom.js';
+import { leerZustand, meldeTreffer, ico, G, alle, setzeHtml } from './01-dom.js';
 import { fmtDatum, fmtGeld, fmtN } from './01-format.js';
 import { scopeMode, scopeQuery } from './14-scope.js';
 import { CURRENCY, _pnlCache } from './00-zustand.js';
@@ -299,7 +299,7 @@ function setRow(s, acq, lage){
 
 /** @param {string} rows @param {{ sets: number }} einstand @param {number} setsQtyAvg @param {string} cur */
 function setsTabelle(rows, einstand, setsQtyAvg, cur) {
-  return html`<div class="tw" data-fin-art="sets" tabindex="0" role="region" aria-label="${t('finance.filter.sets')}"><h2 class="ctitle fin-abschnitt">${ico('set')} ${tRaw('finance.filter.sets')}</h2><table class="dt dt-fin" aria-label="${tRaw('finance.filter.sets')}"><colgroup><col class="sp-60"><col class="sp-90 fin-k-zusatz"><col class="sp-235 fin-k-name"><col class="sp-70 fin-k-zusatz"><col class="sp-100 fin-k-zusatz"><col class="sp-110"><col class="sp-110 fin-k-markt"><col class="sp-110"><col class="sp-90"><col class="sp-55"></colgroup><thead><tr><th><span class="vh">${tRaw('col.image')}</span></th><th>${tRaw('col.nr')}</th><th>${tRaw('col.name')}</th><th class="zahl">${tRaw('detail.qty')}</th><th>${tRaw('detail.added')}</th>${preisKoepfe()}<th title="${t('finance.price_status')}"><span aria-hidden="true">${tRaw('finance.price_status_kurz')}</span><span class="vh">${t('finance.price_status')}</span></th></tr></thead><tbody>${ungeprueft(rows)}</tbody><tfoot><tr><td colspan="5" class="fin-fuss-l">${tRaw('finance.sum')}</td>${ungeprueft(summenZellen(einstand.sets, setsQtyAvg, cur, 1))}<td colspan="2"></td></tr></tfoot></table></div>${legende()}`;
+  return html`<div class="tw" data-fin-art="sets" tabindex="0" role="region" aria-label="${t('finance.filter.sets')}"><h2 class="ctitle fin-abschnitt">${ico('set')} ${tRaw('finance.filter.sets')}</h2><table class="dt dt-fin" aria-label="${tRaw('finance.filter.sets')}"><colgroup><col class="sp-60"><col class="sp-90 fin-k-zusatz"><col class="sp-235 fin-k-name"><col class="sp-70 fin-k-zusatz"><col class="sp-100 fin-k-zusatz"><col class="sp-110"><col class="sp-110 fin-k-markt"><col class="sp-110"><col class="sp-90"><col class="sp-55"></colgroup><thead><tr><th><span class="vh">${tRaw('col.image')}</span></th><th>${tRaw('col.nr')}</th><th${sortStand('name', true)}>${sortKnopf('name', true, tRaw('col.name'))}</th><th class="zahl">${tRaw('detail.qty')}</th><th>${tRaw('detail.added')}</th>${preisKoepfe(true)}<th title="${t('finance.price_status')}"><span aria-hidden="true">${tRaw('finance.price_status_kurz')}</span><span class="vh">${t('finance.price_status')}</span></th></tr></thead><tbody>${ungeprueft(rows)}</tbody><tfoot><tr><td colspan="5" class="fin-fuss-l">${tRaw('finance.sum')}</td>${ungeprueft(summenZellen(einstand.sets, setsQtyAvg, cur, 1))}<td colspan="2"></td></tr></tfoot></table></div>${legende()}`;
 }
 
 /** Gesamtübersicht: Einstand und Wert je Bereich und zusammen.
@@ -413,20 +413,8 @@ export async function loadFinance(){
   const fehlerZeilen = d.sets.filter(s => s.error).length;
   /** @type {Zeilenlage} */
   const lage = { cur, mehrereKonten, fehlerNeutral: fehlerZeilen >= 3 && fehlerZeilen * 2 >= d.sets.length };
-  const rows = d.sets.map(s => {
-    const acqs = s.acquisitions || [];
-    if (acqs.length <= 1) return setRow(s, acqs[0] || null, lage);
-    return acqs.map(a => setRow(s, a, lage)).join('');
-  }).join('');
-  const partsRows = partsItems.map(p => pmRows(p, `${esc(p.part_name||p.part_number)}${p.color_name?html` <span class="text-mut schrift-1">(${colorName(p.color_name)})</span>`:''}`, lage)).join('');
-  const figsRows  = figsItems.map(f => pmRows(f, esc(f.fig_name||f.fig_number), lage)).join('');
-  setzeHtml(G('fin-tbl'), html`${setsTabelle(rows, einstand, setsQtyAvg, cur)}${
-    manuellerAbschnitt({ art: 'parts', titel: tRaw('parts.manual_section'), symbol: 'teil', zeilen: partsRows, anzahl: partsItems.length, kauf: einstand.parts, wert: wert.parts, cur })}${
-    manuellerAbschnitt({ art: 'figs', titel: tRaw('finance.figs_section'), symbol: 'figur', zeilen: figsRows, anzahl: figsItems.length, kauf: einstand.figs, wert: wert.figs, cur })}${
-    summenTabelle(einstand, wert, cur, basis)}`);
-  // Der Filter überlebt das Neuzeichnen; sonst zeigten die Chips eine Auswahl, die die Tabelle nicht mehr
-  // hat.
-  finFilterAnwenden();
+  _finStand = { sets: d.sets, parts: partsItems, figs: figsItems, einstand, wert, setsQtyAvg, cur, basis, lage };
+  zeichneFinanzTabellen();
 }
 
 /**
@@ -461,14 +449,85 @@ function einstandBetrag(stueck, menge, cur, acq) {
  * Die Köpfe der Preisspalten. Sie brechen nicht um: „Gewinn/Verlust“ steht gekürzt da, der volle Name im
  * title und für Vorleser.
  */
-function preisKoepfe() {
-  const kurz = (/** @type {string} */ lang, /** @type {string} */ kurzTxt) => html`<th class="zahl" title="${tRaw(lang)}"><span aria-hidden="true">${ungeprueft(kurzTxt)}</span><span class="vh">${tRaw(lang)}</span></th>`;
-  return html`${html`<th class="zahl">${tRaw('finance.col.purchase')}</th>`}${html`<th class="zahl" title="${tRaw('finance.market_price_stueck')}">${tRaw('detail.market_price')}</th>`}${html`<th class="zahl">${tRaw('finance.grand.value')}</th>`}${kurz('finance.total_pnl', tRaw('finance.pnl_kurz'))}`;
+function preisKoepfe(sortierbar = false) {
+  const kurz = (/** @type {string} */ lang, /** @type {string} */ kurzTxt) => html`<th class="zahl" title="${tRaw(lang)}"${sortStand('guv', sortierbar)}>${sortKnopf('guv', sortierbar, html`<span aria-hidden="true">${ungeprueft(kurzTxt)}</span><span class="vh">${tRaw(lang)}</span>`)}</th>`;
+  return html`${html`<th class="zahl"${sortStand('kauf', sortierbar)}>${sortKnopf('kauf', sortierbar, tRaw('finance.col.purchase'))}</th>`}${html`<th class="zahl" title="${tRaw('finance.market_price_stueck')}">${tRaw('detail.market_price')}</th>`}${html`<th class="zahl"${sortStand('wert', sortierbar)}>${sortKnopf('wert', sortierbar, tRaw('finance.grand.value'))}</th>`}${kurz('finance.total_pnl', tRaw('finance.pnl_kurz'))}`;
 }
+
+// ── Viele Positionen: Suche, Sortierung, blockweise ──────────────────────────
+// 1.500 Sets ergaben 1.578 Zeilen auf einmal (101.738 px, 51.000 Knoten). Gezeigt wird blockweise; Suche und
+// Sortierung wirken auf alle Positionen, die Summen beschreiben weiter den ganzen Bestand.
+const FIN_BLOCK = 100;
+let _finSuche = '', _finGrenze = FIN_BLOCK;
+/** @type {{ feld: string, ab: boolean }} */
+let _finSort = { feld: '', ab: false };
+/** @type {null | { sets: BewertetesSet[], parts: import('../../frontend-typen/vertrag').PartsValuationResponse['parts'], figs: import('../../frontend-typen/vertrag').FigsValuationResponse['figs'], einstand: { sets: number, parts: number, figs: number, alle: number }, wert: { sets: number, parts: number, figs: number, alle: number }, setsQtyAvg: number, cur: string, basis: Basis, lage: Zeilenlage }} */
+let _finStand = null;
+
+/** @param {string} feld @param {boolean} an */
+function sortStand(feld, an) {
+  if (!an) return '';
+  return html` aria-sort="${_finSort.feld === feld ? (_finSort.ab ? 'descending' : 'ascending') : 'none'}"`;
+}
+/** @param {string} feld @param {boolean} an @param {import('./00-escapen.js').Markup | string} inhalt */
+function sortKnopf(feld, an, inhalt) {
+  return an ? html`<button type="button" class="sort-knopf" data-click="finSortiere" data-arg="${feld}">${inhalt}</button>` : inhalt;
+}
+
+/** @param {BewertetesSet} s @returns {number | string} */
+function sortWert(s) {
+  const f = _finSort.feld;
+  if (f === 'name') return String(s.name || s.set_number).toLocaleLowerCase();
+  if (f === 'kauf') return (Number(s.purchase_price) || 0) * (s.quantity || 1);
+  if (f === 'wert') return Number(s.wert_gesamt) || 0;
+  return Number(s.pnl_prozent ?? -Infinity);
+}
+
+/** Tabellen aus dem Stand: Suche, Sortierung und Blockgrenze. */
+function zeichneFinanzTabellen() {
+  const st = _finStand;
+  if (!st) return;
+  const q = _finSuche.toLocaleLowerCase();
+  const passt = (/** @type {unknown[]} */ ...felder) => !q || felder.some(f => String(f ?? '').toLocaleLowerCase().includes(q));
+  const sets = st.sets.filter(s => passt(s.name, s.set_number));
+  if (_finSort.feld) sets.sort((a, b) => { const x = sortWert(a), y = sortWert(b); const r = x < y ? -1 : x > y ? 1 : 0; return _finSort.ab ? -r : r; });
+  const parts = st.parts.filter(p => passt(p.part_name, p.part_number, p.color_name));
+  const figs = st.figs.filter(f => passt(f.fig_name, f.fig_number));
+  const setZeilen = sets.flatMap(s => { const acqs = s.acquisitions || []; return acqs.length <= 1 ? [setRow(s, acqs[0] || null, st.lage)] : acqs.map(a => setRow(s, a, st.lage)); });
+  const grenzeMan = Math.round(_finGrenze / 2);
+  const partsRows = parts.slice(0, grenzeMan).map(p => pmRows(p, `${esc(p.part_name||p.part_number)}${p.color_name?html` <span class="text-mut schrift-1">(${colorName(p.color_name)})</span>`:''}`, st.lage)).join('');
+  const figsRows  = figs.slice(0, grenzeMan).map(f => pmRows(f, esc(f.fig_name||f.fig_number), st.lage)).join('');
+  const rest = Math.max(0, setZeilen.length - _finGrenze) + Math.max(0, parts.length - grenzeMan) + Math.max(0, figs.length - grenzeMan);
+  const mehr = rest ? html`<div class="fin-mehr"><button type="button" class="btn bs" data-click="finMehr">${tRaw('finance.mehr', { n: rest })}</button></div>` : '';
+  const leer = q && !setZeilen.length && !parts.length && !figs.length ? html`<p class="text-mut">${tRaw('common.no_hits', { query: _finSuche })}</p>` : '';
+  setzeHtml(G('fin-tbl'), html`${leer}${setsTabelle(setZeilen.slice(0, _finGrenze).join(''), st.einstand, st.setsQtyAvg, st.cur)}${
+    manuellerAbschnitt({ art: 'parts', titel: tRaw('parts.manual_section'), symbol: 'teil', zeilen: partsRows, anzahl: parts.length, kauf: st.einstand.parts, wert: st.wert.parts, cur: st.cur })}${
+    manuellerAbschnitt({ art: 'figs', titel: tRaw('finance.figs_section'), symbol: 'figur', zeilen: figsRows, anzahl: figs.length, kauf: st.einstand.figs, wert: st.wert.figs, cur: st.cur })}${
+    mehr}${summenTabelle(st.einstand, st.wert, st.cur, st.basis)}`);
+  if (q) meldeTreffer(tRaw('treffer.eintraege', { n: sets.length + parts.length + figs.length }));
+  // Der Filter überlebt das Neuzeichnen; sonst zeigten die Chips eine Auswahl, die die Tabelle nicht mehr hat.
+  finFilterAnwenden();
+}
+
+/** @type {ReturnType<typeof setTimeout> | undefined} */
+let _finSucheUhr;
+/** @this {HTMLInputElement} */
+function finSuchen() {
+  const wert = this.value.trim();
+  clearTimeout(_finSucheUhr);
+  _finSucheUhr = setTimeout(() => { _finSuche = wert; _finGrenze = FIN_BLOCK; zeichneFinanzTabellen(); }, 200);
+}
+/** @param {string} feld */
+function finSortiere(feld) {
+  _finSort = { feld, ab: _finSort.feld === feld ? !_finSort.ab : feld !== 'name' };
+  zeichneFinanzTabellen();
+  /** @type {HTMLElement | null} */ (document.querySelector(`#fin-tbl [data-click="finSortiere"][data-arg="${feld}"]`))?.focus();
+}
+function finMehr() { _finGrenze += FIN_BLOCK; zeichneFinanzTabellen(); }
 /** Was das Zeichen in der Spalte „Status“ heisst — ein Häkchen allein sagt es nicht. */
 function legende() {
-  return html`<p class="fin-legende">${tRaw('finance.legende', { ok: `<span class="legende-zeichen pst pst-ok" aria-hidden="true">${ico('ok')}</span>`,
-    fehlt: '<span class="legende-zeichen pst pst-leer" aria-hidden="true">–</span>', fehler: `<span class="legende-zeichen pst pst-err" aria-hidden="true">${ico('warnung')}</span>` })}</p>`;
+  return html`<p class="fin-legende">${ungeprueft(tRaw('finance.legende', { ok: `<span class="legende-zeichen pst pst-ok" aria-hidden="true">${ico('ok')}</span>`,
+    fehlt: '<span class="legende-zeichen pst pst-leer" aria-hidden="true">–</span>', fehler: `<span class="legende-zeichen pst pst-err" aria-hidden="true">${ico('warnung')}</span>` }))}</p>`;
 }
 
 
@@ -630,6 +689,9 @@ function finFilter(art){
 // ── Handler beim Dispatcher anmelden (siehe js/00-registry.js) ──────────────
 registerActions({
   loadFinance,
+  finSuchen,
+  finSortiere,
+  finMehr,
   loadPortfolioChart,
   setChartPeriod,
   finFilter,
