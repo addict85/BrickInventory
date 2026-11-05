@@ -270,6 +270,21 @@ export function setnummerFeldGueltig(id, wert) {
   return true;
 }
 
+/** @type {ReturnType<typeof setTimeout> | undefined} */
+let _trefferUhr;
+/**
+ * Das Ergebnis einer Suche oder eines Filters für Vorleser (WCAG 4.1.3). Entprellt, damit nicht
+ * jeder Tastendruck spricht; ein Zeichen wechselt, damit derselbe Text erneut angesagt wird.
+ * @param {string} text
+ */
+export function meldeTreffer(text) {
+  clearTimeout(_trefferUhr);
+  _trefferUhr = setTimeout(() => {
+    const el = G('treffer-live');
+    if (el) el.textContent = el.textContent === text ? text + '\u00a0' : text;
+  }, 700);
+}
+
 /**
  * Ein leerer Zustand: Symbol, ein Satz, und wenn es einen gibt, der nächste
  * Schritt als Knopf. Texte kommen fertig übersetzt oder als Schlüssel; maskiert wird hier.

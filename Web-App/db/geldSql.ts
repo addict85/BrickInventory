@@ -19,6 +19,7 @@ export function kaufpreisSpalten(spalte: string, w: string): string {
   const k = kaufpreisIn(spalte, w);
   return `${k} AS ${spalte},
             (currency <> ${w} AND ${spalte} IS NOT NULL AND ${k} IS NULL) AS kaufpreis_fremd,
+            CASE WHEN currency <> ${w} AND ${k} IS NULL THEN ${spalte} END AS kaufpreis_original,
             (currency <> ${w} AND ${k} IS NOT NULL) AS kaufpreis_umgerechnet`;
 }
 

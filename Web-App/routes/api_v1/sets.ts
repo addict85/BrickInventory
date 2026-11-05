@@ -23,7 +23,7 @@ import { deleteSet, getSet, getSets } from '../../src/sets/abfragen';
 import { getSetPriceHistory } from '../../src/finanzen/priceHistory';
 import * as V from '../../src/infra/validate';
 import { mitVersion, normalisiereSetNummer, moeglicheSetNummer } from '../../src/infra/setNummer';
-import { sendeFehler, dateiFehler } from '../../src/infra/fehlerTexte';
+import { sendeFehler, dateiFehler, antwortSprache } from '../../src/infra/fehlerTexte';
 import { setTeileAnreichern } from '../../src/auftraege/nacharbeit';
 import { setInfo, setZumBarcode, teilelisteDesSets, figurenlisteDesSets, setPreis, rebrickableListe,
          setGehoertKonto, anleitungMerken, anleitungLoeschen, setCsvImportStarten, setCsvImportAbbrechen } from '../../src/sets/dienst';
@@ -335,10 +335,12 @@ router.get('/sets/import/csv/stream', zustandsWaechter, kontoSchranke('strom'), 
       cleanup();
     }
   };
-  const stand = async () => buildJobStatus(await jobGet(uid).catch(meldeUndLiefere('sets:jobGet', null)), req);
+  // EventSource setzt keine eigenen Kopfzeilen; die Sprache der Oberfläche kommt als ?sprache=.
+  const sprache = req.query.sprache === 'en' || req.query.sprache === 'de' ? req.query.sprache : antwortSprache(req);
+  const stand = async () => buildJobStatus(await jobGet(uid).catch(meldeUndLiefere('sets:jobGet', null)), req, sprache);
   // Erst anmelden, dann den ersten Stand schicken: Sonst geht ein Ereignis
   // zwischen Lesen und Anmelden verloren.
-  const onProgress = (status: unknown) => { send(status); };
+  const onProgress = async () => { send(await stand()); };
   csvImportBus.on(`progress:${uid}`, onProgress);
   // Andere Worker melden über LISTEN/NOTIFY; der Takt fängt Verpasstes auf.
   const onNotify = async (payload: unknown) => { if (String(payload) === String(uid)) send(await stand()); };
@@ -366,7 +368,7 @@ router.post('/sets/import/csv', requireToken, kontoSchranke('upload'), csvEmpfan
   // Übersprungene Zeilen gehören in die sofortige Antwort; der Import läuft weiter.
   res.json({ success: true, total,
     skipped: uebersprungen.length || undefined,
-    skipped_hint: uebersprungenHinweis(uebersprungen) || undefined });
+    skipped_hint: uebersprungenHinweis(uebersprungen, antwortSprache(req)) || undefined });
 });
 
 router.post('/sets/import/csv/cancel', requireToken, async (req, res: Antwort<'POST /api/v1/sets/import/csv/cancel'>) => {

@@ -1,5 +1,5 @@
 /**
- * Bauliste: „Teileliste erstellen“ ist der Hauptknopf, „Zurücksetzen“ nicht
+ * Bauliste: „Bauliste erstellen“ ist der Hauptknopf, „Zurücksetzen“ nicht
  * rot; das Set-Feld hat eine sichtbare Beschriftung, die Zustandswahl auch.
  * Export und Optionen erscheinen erst mit Teilen; das leere Ergebnis nennt den
  * Grund, eine Nummer, die der Katalog nicht kennt, steht als solche da und
@@ -46,7 +46,7 @@ test('Aufbau: Hauptknopf, Beschriftungen, Zurücksetzen nicht rot', async () => 
     assert.equal(text(d.querySelector('label[for="pl-setnr"]')), 'Set-Nummern (mehrere mit Komma trennen)');
     assert.equal(text(d.querySelector('label[for="pl-bl-condition"]')), 'Zustand für BrickLink');
     assert.ok(d.getElementById('btn-pl-gen').classList.contains('bp'), 'Erstellen ist der Hauptknopf');
-    assert.equal(text(d.getElementById('btn-pl-gen')), 'Teileliste erstellen');
+    assert.equal(text(d.getElementById('btn-pl-gen')), 'Bauliste erstellen');
     assert.equal(d.getElementById('btn-pl-reset').classList.contains('bd'), false, 'Zurücksetzen ist rot');
     assert.equal(d.getElementById('pl-export').hidden, true, 'Exportieren vor dem ersten Ergebnis');
   } finally { w.close(); }

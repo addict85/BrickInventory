@@ -273,11 +273,12 @@ function yBetraegeInnen(teilung, min, yOf, links, cur, f, meiden = []) {
  * @param {string} text
  * @param {string} [farbe]
  */
-function bezugsLinie(wert, yOf, links, rechts, text, farbe = 'var(--txt)', /** @type {number | null} */ endeY = null, /** @type {number} */ f = 1) {
+function bezugsLinie(wert, yOf, links, rechts, text, farbe = 'var(--txt)', /** @type {number | null} */ endeY = null, /** @type {number} */ f = 1, /** @type {number} */ unten = Infinity) {
   const y = yOf(wert);
   // Breiter als die Zeichenfläche: umbrechen statt links über die Achse hinaus
   // (am Telefon und bei grosser Schrift stand sonst nur „…rkpreis 2.149 €“).
-  const platz = rechts - links - 8, zeichen = 12 * f * 0.62, zeilen = [];
+  // 0,68 em je Zeichen: Mit 0,62 passte „Kaufpreis 205,00 €“ rechnerisch in eine Zeile und wurde links abgeschnitten.
+  const platz = rechts - links - 8, zeichen = 12 * f * 0.68, zeilen = [];
   for (const wort of String(text).split(' ')) {
     /** @type {string} */
     const z = zeilen.length ? zeilen[zeilen.length - 1] + ' ' + wort : wort;
@@ -285,7 +286,9 @@ function bezugsLinie(wert, yOf, links, rechts, text, farbe = 'var(--txt)', /** @
   }
   const hoehe = 14 * f * (zeilen.length - 1);
   // Über der Linie, ausser die Kurve endet dort oder oben ist kein Platz (Linie am oberen Rand).
-  const darunter = (endeY != null && endeY < y && y - endeY < 26 * f + hoehe) || y - 6 * f - hoehe - 10 * f < 0;
+  const obenKeinPlatz = y - 6 * f - hoehe - 12 * f < 0;   // 12 px je Faktor: die Oberlänge der Schrift
+  // Darunter nur, wenn es dort Platz hat: Zwei Zeilen am unteren Rand liefen sonst aus dem Diagramm.
+  const darunter = ((endeY != null && endeY < y && y - endeY < 26 * f + hoehe) && y + 16 * f + hoehe + 4 * f <= unten) || obenKeinPlatz;
   const erste = darunter ? y + 16 * f : y - 6 * f - hoehe;
   const tspans = zeilen.map((z, i) => i ? `<tspan x="${rechts - 4}" dy="${14 * f}">${esc(z)}</tspan>` : esc(z)).join('');
   return `<g class="einstand-linie"><line x1="${links}" y1="${y.toFixed(1)}" x2="${rechts}" y2="${y.toFixed(1)}" stroke="${farbe}" stroke-width="1.5" stroke-dasharray="6 4"/>
@@ -506,7 +509,7 @@ export function priceChartSVG(data, uid = String(Math.random()).slice(2, 8), bre
 
   const kaufLinien = kaeufe.map(sd => bezugsLinie(sd.kauf, yOf, PAD.l, W - PAD.r,
     `${tRaw('detail.purchase_price')}${series.length > 1 ? ' ' + sd.name : ''} ${fmtN(sd.kauf, CURRENCY)}`, sd.color,
-    yOf(sd.pts[sd.pts.length - 1].y), f)).join('');
+    yOf(sd.pts[sd.pts.length - 1].y), f, H)).join('');
 
   const kaufPunkte = kaeufe.flatMap(sd => sd.kaufTag ? [{ ...sd, kaufTag: sd.kaufTag }] : []).map(sd =>
     `<circle cx="${Math.max(PAD.l, xOf(sd.kaufTag)).toFixed(1)}" cy="${yOf(sd.kauf).toFixed(1)}" r="${4.5 * f}" fill="var(--sur)" stroke="${sd.color}" stroke-width="2" class="kaufpunkt"><title>${esc(tRaw('detail.purchase_price'))} ${esc(fmtN(sd.kauf, CURRENCY))}</title></circle>`).join('');
@@ -601,7 +604,7 @@ export function portfolioChartSVG(data, period, breite = 700, einstand = 0, cur 
   const letzter = `<circle cx="${px(n-1).toFixed(1)}" cy="${py(vals[n-1]).toFixed(1)}" r="${4 * f}" fill="${color}" stroke="var(--sur)" stroke-width="1.5"/>`;
   // Schmal nur „Kaufpreis“: Der Zusatz („nur bewertete Posten“) steht in der Kennzahl darunter.
   const linienText = W < 560 ? tRaw('finance.chart.kaufpreis') : einstandText;
-  const linie = mitEinstand ? bezugsLinie(einstand, py, PAD.l, W - PAD.r, `${linienText} ${fmtN(einstand, cur)}`, 'var(--txt)', py(vals[n-1]), f) : '';
+  const linie = mitEinstand ? bezugsLinie(einstand, py, PAD.l, W - PAD.r, `${linienText} ${fmtN(einstand, cur)}`, 'var(--txt)', py(vals[n-1]), f, H) : '';
   const fk = fadenkreuzTeile(vals.map((v, i) => ({ x: +px(i).toFixed(1), y: [+py(v).toFixed(1)], t: [wann(i), fmtN(v, cur)] })), [color], PAD.t, unten, f);
 
   const zusammenfassung = [tRaw('finance.chart.summary', { titel: tRaw('finance.chart.label'),

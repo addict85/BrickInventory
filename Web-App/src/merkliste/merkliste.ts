@@ -25,7 +25,8 @@ export async function preiseBeiderZustaende(uid: number, setNumber: string) {
   for (const c of ['N', 'U']) {
     const pd = await fetchPrice(setNumber, c, guideType, currency, ttlHours)
       .catch(meldeUndLiefere(`merkliste:preis ${setNumber} ${c}`, null));
-    if (pd) current[c] = { condition: c, avg_price: pd.avg_price, min_price: pd.min_price, max_price: pd.max_price };
+    // Ein Ersatzpreis des anderen Zustands stünde sonst als „Marktpreis (Neuware)“ da, die Liste sagt „keiner“.
+    if (pd && !pd.is_fallback) current[c] = { condition: c, avg_price: pd.avg_price, min_price: pd.min_price, max_price: pd.max_price };
   }
   return { currency, current };
 }

@@ -22,7 +22,8 @@ const assert = require('node:assert/strict');
 const { oeffneOberflaeche, reiter, warte } = require('./helpers/oberflaeche');
 
 const text = el => (el?.textContent || '').replace(/\s+/g, ' ').trim();
-const zahl = s => s.replace(/[’'’\s]/g, '');
+// Beide Schreibweisen: de-DE (1.097,93) und de-CH (1’097.93).
+const zahl = s => s.replace(/[’'’\s]/g, '').replace(/\.(?=\d{3}\b)/g, '').replace(',', '.');
 
 function antworten({ mitPreis }) {
   const setPreis = mitPreis ? 700 : 0;
@@ -81,7 +82,7 @@ test('mit Marktpreisen: Gesamtwert und G&V', async () => {
     assert.match(zahl(text(d.getElementById('fin-wert'))), /700\.00/);
     assert.match(text(d.getElementById('fin-basis')), /3 Positionen ohne Marktpreis nicht gerechnet/);
     assert.notEqual(d.getElementById('fin-stat-pnl').style.display, 'none');
-    assert.match(text(d.getElementById('fin-total-pnl')), /11\.3/);
+    assert.match(text(d.getElementById('fin-total-pnl')), /11[.,]3/);
     // Betrag aus denselben Posten wie die Prozentzahl: 700 − 629, nicht 700 − 1097.93.
     // Dahinter steht, wogegen gerechnet ist; das Prozent im Diagramm rechnet gegen den Zeitraum.
     assert.match(zahl(text(d.getElementById('fin-pnl-sub'))), /^\+[^0-9]*71\.00[^0-9]*$/,

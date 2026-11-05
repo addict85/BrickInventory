@@ -15,12 +15,12 @@ import { fetchPrice, resolveSetCondition } from '../finanzen/financeCalc';
 import { neuestesInventar } from '../katalog/rbInventar';
 import { mitVersion, ohneVersion } from '../infra/setNummer';
 import { figurenAusKatalog } from '../katalog/minifigsImport';
-import { csvEinlesen, entschaerfungRueckgaengig, parseCsvDate, uebersprungenHinweis } from '../infra/csvExport';
+import { csvEinlesen, entschaerfungRueckgaengig, parseCsvDate, zeilenListe } from '../infra/csvExport';
 import { jobGet, jobSet, jobUpdate, emitJobStatus } from '../auftraege/importAuftrag';
 import { getSetByBarcode, getSetByEan, getMinifigInfo, getSetMinifigs, rebrickableJson, produktTitel } from '../katalog/quellen';
 import { getAllSetParts } from '../katalog/rebrickableKatalog';
 import type { RbSetTeil } from '../../clients/rebrickable';
-import { fehlerWerfen, Meldung } from '../infra/fehlerTexte';
+import { fehlerWerfen } from '../infra/fehlerTexte';
 import { merkeFigur, merkeSetFiguren } from '../katalog/katalogPflege';
 import { randomUUID } from 'crypto';
 import * as repo from './repository/setDetail';
@@ -290,9 +290,8 @@ export function setCsvZeilen(text: string): { rows: ImportZeile[]; uebersprungen
   try { gelesen = csvEinlesen(text); }
   catch (e) { fehlerWerfen('csv_parse_fehler', 400, { grund: fehlertext(e) }); }
   if (!gelesen.records.length) {
-    throw new Meldung(gelesen.uebersprungen.length
-      ? `Keine brauchbare Zeile gefunden — ${uebersprungenHinweis(gelesen.uebersprungen)}`
-      : 'Keine Datenzeilen in der Datei', 400);
+    if (gelesen.uebersprungen.length) fehlerWerfen('csv_keine_brauchbare_zeile', 400, { zeilen: zeilenListe(gelesen.uebersprungen) });
+    fehlerWerfen('csv_keine_datenzeilen', 400);
   }
   const rows: ImportZeile[] = [];
   for (const roh of gelesen.records) {

@@ -2,7 +2,7 @@ import { konfig } from '../src/infra/konfig';
 import { addSetWithDate, nacharbeitEinstellen } from '../src/sets/setService';
 import { emitJobStatus, jobUpdate, setzeImportFort, type ImportErgebnis } from '../src/auftraege/importAuftrag';
 import { fehlertext } from '../src/infra/fehler';
-import { fehlerText } from '../src/infra/fehlerTexte';
+import { Fachfehler, fehlerText, type FehlerCode } from '../src/infra/fehlerTexte';
 import { AuftragUnterbrochen, type AuftragsKontext } from './auftragsWorker';
 
 /** Nach jedem Set steht der Stand in import_stand; ein Neustart setzt dort
@@ -22,7 +22,8 @@ async function importiereZeile(z: CsvZeile, userId: number): Promise<ImportErgeb
         new Promise<never>((_, rej) => { wecker = setTimeout(() => rej(new Error('Timeout')), zeilenFrist()); }),
       ]).finally(() => clearTimeout(wecker));
       await nacharbeitEinstellen(r.set_number ?? z.sn, userId, 'csv');
-      return { set_number: z.sn, success: true, action: r.action };
+      return { set_number: z.sn, success: true, action: r.action, menge: z.qty,
+               ...('katalog_offen' in r && r.katalog_offen ? { katalog_offen: true } : {}) };
     } catch (e) {
       const msg = fehlertext(e) || 'Unbekannter Fehler';
       const isTimeout = msg.includes('Timeout');
@@ -36,7 +37,11 @@ async function importiereZeile(z: CsvZeile, userId: number): Promise<ImportErgeb
       }
       const isWarning = isTimeout || isRateLimit;
       console[isWarning ? 'warn' : 'error'](`CSV: ${z.sn} ${isWarning ? 'WARNING' : 'FAILED'}: ${msg}`);
-      return { set_number: z.sn, success: false, error: msg, isWarning };
+      // Der Code reist mit; buildJobStatus() schreibt den Satz in der Sprache des Lesers.
+      const code: FehlerCode | undefined = e instanceof Fachfehler ? e.code
+        : isTimeout ? 'import_zeitueberschreitung' : isRateLimit ? 'import_kontingent' : undefined;
+      return { set_number: z.sn, success: false, error: msg, isWarning,
+               ...(code ? { code, ...(e instanceof Fachfehler && e.vars ? { vars: e.vars } : {}) } : {}) };
     }
   }
 }
@@ -50,7 +55,7 @@ async function fuehreCsvImportAus(n: CsvNutzlast, k: AuftragsKontext): Promise<v
 
   if (stand.current && results.length < rows.length) {
     results.push({ set_number: rows[results.length]!.sn, success: false, isWarning: true,
-                   error: fehlerText('import_zeile_unterbrochen', 'de') });
+                   code: 'import_zeile_unterbrochen', error: fehlerText('import_zeile_unterbrochen', 'de') });
     if (!await schreibe()) return;
   }
   for (let i = results.length; i < rows.length; i++) {

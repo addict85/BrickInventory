@@ -86,7 +86,7 @@ test('ein einziger Bestätigungsweg', { concurrency: 1 }, async (t) => {
   t.after(async () => {
     await db.run('DELETE FROM users WHERE id = ANY($1) OR username = $2', [[chef, ziel, ohne], ZUSATZ['POST /api/v1/auth/users'].username]).catch(() => {});
     await db.run("DELETE FROM global_settings WHERE key = 'smtp_host' AND value = 'mail.bv.example'").catch(() => {});
-    await db.run('DELETE FROM rate_limit_attempts WHERE key LIKE $1 OR key LIKE $2', [`%-bestaetigen|${chef}|%`, `%-bestaetigen|${ohne}|%`]).catch(() => {});
+    await db.run('DELETE FROM rate_limit_attempts WHERE key LIKE $1 OR key LIKE $2 OR key LIKE $3', [`%-bestaetigen|${chef}|%`, `%-bestaetigen|${ohne}|%`, `%-bestaetigen-konto|${chef}`]).catch(() => {});
     await db.pool.end().catch(() => {});
   });
   const codes = await mitFaktor(chef);
@@ -114,7 +114,8 @@ test('ein einziger Bestätigungsweg', { concurrency: 1 }, async (t) => {
 
   for (const [schluessel, route] of markiert) {
     await t.test(`${schluessel}: Passwort allein genügt nicht`, async () => {
-      await db.run('DELETE FROM rate_limit_attempts WHERE key LIKE $1', [`%-bestaetigen|${chef}|%`]);
+      // Auch die Kontobremse (20 am Tag): Hier rät eine Sitzung absichtlich bei jeder Route falsch.
+      await db.run('DELETE FROM rate_limit_attempts WHERE key LIKE $1 OR key LIKE $2', [`%-bestaetigen|${chef}|%`, `%-bestaetigen-konto|${chef}`]);
       const { passwort, code } = route.bestaetigung;
       const rumpf = { ...ZUSATZ[schluessel], [passwort]: PASS };
       const ohneCode = await ruf(basis, schluessel, rumpf);

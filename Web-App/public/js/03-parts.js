@@ -5,7 +5,7 @@ import { abonniere } from './00-ereignisse.js';
 import { ladeAnzeige, skelettKacheln, listeLadefehler, teileAufschluesselung, condBadges, ownerBadges, schliesseErfassen, csvHochladen } from './01-bausteine.js';
 import { registerActions, echt } from './00-registry.js';
 import { colorName, locale, t, tRaw } from '../i18n.js';
-import { bildTag, G, api, escHex, escHtml, escJs, fmtBig, fullUrl, imgUrl, leerZustand, observeLazyImages, platzhalterInhalt, thumbUrl, zuruecksetzenKnopf, TRASH_ICON_SVG, betragAusFeld, fmtN, hexZiffern, toast, aktiverReiter } from './01-core.js';
+import { bildTag, G, api, escHex, escHtml, escJs, fmtBig, fullUrl, imgUrl, leerZustand, meldeTreffer, observeLazyImages, platzhalterInhalt, thumbUrl, zuruecksetzenKnopf, TRASH_ICON_SVG, betragAusFeld, fmtN, hexZiffern, toast, aktiverReiter } from './01-core.js';
 import { addScopeParam, addLagerParam, scopeQuery } from './14-scope.js';
 import { allSets, CURRENCY } from './00-zustand.js';
 import { esc } from './00-escapen.js';
@@ -140,6 +140,7 @@ export function teileLeerAbgleichen(manuelleLeer){
   const gefiltert = !!(activeColor || activeCat || q || G('parts-spare')?.value);
   G('tab-parts')?.classList.toggle('sammlung-leer', !gefiltert);
   // Wie in allen Listen: „Noch keine …“ ohne Filter, sonst „Keine Treffer“.
+  if (gefiltert) meldeTreffer(q ? tRaw('common.no_hits', { query: q }) : tRaw('parts.no_filter_match'));
   main.innerHTML = gefiltert
     ? leerZustand({ ico: 'suche', titel: q ? tRaw('common.no_hits', { query: q }) : tRaw('parts.no_filter_match'),
                     knopf: zuruecksetzenKnopf('parts') })
@@ -304,7 +305,7 @@ function appendParts(parts){
   for (const p of parts){
     // Gruppiert wird über den ENGLISCHEN Namen — er ist der stabile Schlüssel
     // aus der Datenbank. Übersetzt wird erst die Überschrift beim Zeichnen.
-    const key = p.color_name || tRaw('common.unknown');
+    const key = p.color_name || '';
     const last = groups[groups.length - 1];
     if (last && last.color === key) last.parts.push(p);
     else groups.push({ color: key, hex: p.color_hex, parts: [p] });
@@ -326,7 +327,7 @@ function appendParts(parts){
     html += `<div class="parts-group" data-count="${g.parts.length}">
       <div class="group-hd">
         <div class="color-dot gross" data-farbe="${escHex(g.hex, 'var(--s300)')}"></div>
-        <span class="group-title">${esc(colorName(g.color))}</span>
+        <span class="group-title">${esc(g.color ? colorName(g.color) : tRaw('parts.farbe_unbekannt'))}</span>
         <span class="group-sub">${t('parts.group_types', { n: g.parts.length })}</span>
       </div>
       <div class="parts-grid">${g.parts.map(partsCard).join('')}</div>

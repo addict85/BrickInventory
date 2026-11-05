@@ -44,19 +44,27 @@ export let LANG = localStorage.getItem('bim_lang') || _browserLang;
  * Translate a key. Supports {placeholder} substitution.
  * Falls back to the key itself if not found.
  */
+/** Währung des Kontos; ohne passende Browserregion bestimmt sie das Zahlenformat. */
+let _waehrung = 'EUR';
+/** @param {string | null | undefined} cur */
+export function setzeZahlenWaehrung(cur) {
+  const neu = String(cur || 'EUR').toUpperCase();
+  if (neu === _waehrung) return;
+  _waehrung = neu;
+  if (typeof document !== 'undefined') document.querySelectorAll('[data-i18n-betrag]').forEach(el => schreibeI18n(/** @type {HTMLElement} */ (el)));
+}
+
 /**
- * Sprachabhängige Zahlen-/Datumslocale für toLocaleString & Intl.NumberFormat.
- * 'de-CH' behält das gewohnte CH-Format (Apostroph-Tausendertrennung) bei Deutsch.
- */
-/**
- * Zahlen- und Datumsformat: die Landesform des Browsers, wenn sie zur
- * gewählten Sprache passt (de-DE schreibt 1.097,93, de-CH 1’097.93), sonst
- * de-CH bzw. en-GB.
+ * Zahlen- und Datumsformat: die Landesform des Browsers, wenn sie zur Sprache passt (de-DE
+ * 1.097,93, de-CH 1’097.93). Sonst bei Deutsch die Form zur Kontowährung: CHF schreibt
+ * Schweizer, alles andere deutsches Format; ein Browser ohne Region („de“) ist kein Hinweis auf die Schweiz.
  */
 export function locale() {
   const browser = (typeof navigator !== 'undefined' && navigator.language) || '';
   const passt = new RegExp(`^${LANG === 'en' ? 'en' : 'de'}-[A-Za-z]{2}$`).test(browser);
-  return passt ? browser : (LANG === 'en' ? 'en-GB' : 'de-CH');
+  if (passt) return browser;
+  if (LANG === 'en') return 'en-GB';
+  return _waehrung === 'CHF' ? 'de-CH' : 'de-DE';
 }
 
 /**
@@ -216,6 +224,30 @@ export function colorName(en) {
   return res.replace(/\s{2,}/g, ' ').trim();
 }
 
+/** Ein Element mit data-i18n neu schreiben. @param {HTMLElement} el */
+function schreibeI18n(el) {
+  const key = el.dataset.i18n;
+  const attr = el.dataset.i18nAttr;   // optional: 'placeholder', 'title', etc.
+  // optional: data-i18n-vars='{"n":"4000"}' für parametrisierte statische Texte
+  let vars;
+  if (el.dataset.i18nVars) { try { vars = JSON.parse(el.dataset.i18nVars); } catch (_) {} }
+  // data-i18n-betrag: ein Beispielbetrag im Zahlenformat der Oberfläche („z. B. 79,99“).
+  if (el.dataset.i18nBetrag) vars = { ...vars, betrag: new Intl.NumberFormat(locale(), { minimumFractionDigits: 2, useGrouping: false }).format(Number(el.dataset.i18nBetrag)) };
+  const val = t(key ?? '', vars);
+  if (attr) el.setAttribute(attr, val);
+  else if (el.dataset.ico) {
+    // Symbol vor dem Text: data-ico nennt es, der Text bleibt übersetzbar.
+    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    svg.setAttribute('class', 'ico'); svg.setAttribute('aria-hidden', 'true');
+    const use = document.createElementNS('http://www.w3.org/2000/svg', 'use');
+    use.setAttribute('href', '#i-' + el.dataset.ico);
+    svg.appendChild(use);
+    const text = document.createElement('span');
+    text.className = 'ico-text'; text.textContent = val;
+    el.replaceChildren(svg, text);
+  } else el.textContent = val;
+}
+
 /**
  * Sprache anwenden und alle statisch übersetzten Stellen neu schreiben.
  * @param {string} lang 'de' oder 'en'
@@ -239,25 +271,11 @@ export function applyLang(lang, persist) {
   document.documentElement.lang = lang;
 
   // Re-render all elements that carry a data-i18n attribute
-  /** @type {NodeListOf<HTMLElement>} */ (document.querySelectorAll('[data-i18n]')).forEach(el => {
-    const key = el.dataset.i18n;
-    const attr = el.dataset.i18nAttr;   // optional: 'placeholder', 'title', etc.
-    // optional: data-i18n-vars='{"n":"4000"}' für parametrisierte statische Texte
-    let vars;
-    if (el.dataset.i18nVars) { try { vars = JSON.parse(el.dataset.i18nVars); } catch (_) {} }
-    const val = t(key ?? '', vars);
-    if (attr) el.setAttribute(attr, val);
-    else if (el.dataset.ico) {
-      // Symbol vor dem Text: data-ico nennt es, der Text bleibt übersetzbar.
-      const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-      svg.setAttribute('class', 'ico'); svg.setAttribute('aria-hidden', 'true');
-      const use = document.createElementNS('http://www.w3.org/2000/svg', 'use');
-      use.setAttribute('href', '#i-' + el.dataset.ico);
-      svg.appendChild(use);
-      const text = document.createElement('span');
-      text.className = 'ico-text'; text.textContent = val;
-      el.replaceChildren(svg, text);
-    } else el.textContent = val;
+  /** @type {NodeListOf<HTMLElement>} */ (document.querySelectorAll('[data-i18n]')).forEach(schreibeI18n);
+
+  // Ein zweites Attribut je Element, meist der Name eines Feldes neben seinem Platzhalter.
+  /** @type {NodeListOf<HTMLElement>} */ (document.querySelectorAll('[data-i18n-aria]')).forEach(el => {
+    el.setAttribute('aria-label', t(el.dataset.i18nAria ?? ''));
   });
 
   // Re-render nav tab labels

@@ -2,6 +2,7 @@
 // CSV mit richtigem Quoting, damit ein Export mit dem passenden Import
 // unverändert wieder eingelesen werden kann.
 import { parse } from 'csv-parse/sync';
+import { fehlerText, type Sprache } from './fehlerTexte';
 
 /** Tabulator und Wagenrücklauf gehören dazu: Excel liest sie als Trennzeichen
  * und behandelt das folgende Feld wieder als Formel. Auch nach Leerraum und in
@@ -126,11 +127,14 @@ export function csvEinlesen(csvText: string): { records: any[]; delimiter: strin
 }
 
 /** Höchstens zehn Zeilennummern, sonst wird die Meldung länger als hilfreich. */
-export function uebersprungenHinweis(zeilen: number[]): string | null {
+/** Höchstens zehn Nummern, danach „…“: Eine lange Liste sprengte die Meldung. */
+export function zeilenListe(zeilen: number[]): string {
+  return zeilen.slice(0, 10).join(', ') + (zeilen.length > 10 ? ', …' : '');
+}
+
+export function uebersprungenHinweis(zeilen: number[], sprache: Sprache = 'de'): string | null {
   if (!zeilen.length) return null;
-  const liste = zeilen.slice(0, 10).join(', ');
-  const rest  = zeilen.length > 10 ? ` und ${zeilen.length - 10} weitere` : '';
-  return `${zeilen.length} Zeile(n) übersprungen (Zeile ${liste}${rest})`;
+  return fehlerText('csv_uebersprungen', sprache, { anzahl: zeilen.length, zeilen: zeilenListe(zeilen) });
 }
 
 // Ausführlich: docs/begruendungen/src/infra/csvExport.ts.md#csvgemeinsamefelder

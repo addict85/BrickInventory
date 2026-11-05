@@ -14,6 +14,7 @@ import { esc } from './00-escapen.js';
 import { confirmDelete, bestaetigeMitPasswort, mitZweitemFaktor, mitPasswortBestaetigen, speichereEinstellungen } from './01-rueckfrage.js';
 import { loadFinance } from './04-finance.js';
 import { ladeLagerortVorgabe } from './02-konten-orte.js';
+import { ladeLagerorte } from './02-detailfelder.js';
 import { csvHochladen } from './01-bausteine.js';
 import { LAND_ZUR_WAEHRUNG } from './17-gutscheine.js';
 /** @typedef {import('../../frontend-typen/vertrag').KontoInListe} Konto */
@@ -1085,6 +1086,8 @@ export async function ladeLagerortVerwaltung() {
     api('GET', '/v1/storage?accounts=own'),
   ]);
   if (!v?.success) return;
+  // Ein neuer oder umbenannter Ort steht gleich in den Auswahlfeldern der Erfassung.
+  ladeLagerorte().catch(() => {});
   const belegung = new Map((b?.orte || []).map(o => [o.ort, o]));
   const orte = v.orte || [];
   if (!orte.length) {
@@ -1107,7 +1110,8 @@ export async function ladeLagerortVerwaltung() {
     // Figuren stehen EIGEN da, nicht bei den Teilesorten (src/bestand/lagerort.ts):
     // „18 Teilesorten" hiesse sonst mal 18 Teilesorten und mal 12 plus 6
     // Figuren, und niemand koennte der Zahl ansehen, was gemeint ist.
-    const wie = n ? t('storage.belegt', { sets: n.sets, teile: n.teile, figuren: n.figuren ?? 0 })
+    const wie = n ? [t('storage.belegt.sets', { n: Number(n.sets) || 0 }), t('storage.belegt.teile', { n: Number(n.teile) || 0 }),
+                     t('storage.belegt.figuren', { n: Number(n.figuren) || 0 })].filter(x => !x.startsWith('0 ')).join(', ')
                   : esc(tRaw('storage.leer'));
     return `<div data-stil="display:contents">
       <span class="lager-feld" data-stil="padding:6px 0;border-bottom:1px solid var(--bdr);display:flex;align-items:center"><input type="text" maxlength="60" value="${esc(o.name)}" aria-label="${esc(tRaw('detail.storage'))}"

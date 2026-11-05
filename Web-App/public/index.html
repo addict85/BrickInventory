@@ -440,6 +440,7 @@
     <button type="button" class="btn bs btn-sm hinweis-zu" data-click="rbHinweisWeg" aria-label="Hinweis ausblenden" data-i18n="rb_key.banner_close" data-i18n-attr="aria-label"><svg class="ico" aria-hidden="true"><use href="#i-schliessen"/></svg></button>
   </div>
   <main id="inhalt" tabindex="-1">
+    <div id="treffer-live" class="vh" role="status" aria-live="polite" aria-atomic="true"></div>
 
     <!-- ══ GALERIE ══ -->
     <div class="tab active" id="tab-gallery">
@@ -475,7 +476,7 @@
            Container anfassen — die IDs darin sind der Vertrag mit dem JS. -->
       <div class="filterleiste filterzeile">
           <button type="button" class="btn bs filter-knopf" data-click="filterUmschalten" aria-expanded="false"><svg class="ico" aria-hidden="true"><use href="#i-filter"/></svg><span class="filter-text" data-i18n="common.filter">Filter</span><span class="vh nur-telefon" data-i18n="common.filter">Filter</span><span class="filter-zahl" id="gallery-filter-zahl" hidden></span></button>
-          <input type="text" class="si suchfeld" id="gs" placeholder="Sets suchen…" data-i18n="gallery.search" data-i18n-attr="placeholder" / aria-label="Sets suchen">
+          <input type="text" class="si suchfeld" id="gs" placeholder="Sets suchen…" data-i18n="gallery.search" data-i18n-attr="placeholder" data-i18n-aria="gallery.search_aria" aria-label="Sets suchen">
           <select class="w-auto" id="gtheme" aria-label="Thema filtern" data-i18n="gallery.theme_label" data-i18n-attr="aria-label" data-change="renderGallery">
             <option value="" data-i18n="gallery.filter.all">Alle Themen</option>
           </select>
@@ -516,7 +517,7 @@
            (Nachtrag 34). Der Katalog hat keine Erfassung, hier steht die
            Leiste also direkt unter der Überschrift. -->
       <div class="filterzeile">
-          <input type="text" class="si suchfeld" id="cat-search" placeholder="Set-Nummer / Name…" data-i18n="catalog.search" data-i18n-attr="placeholder" aria-label="Set-Nummer / Name">
+          <input type="text" class="si suchfeld" id="cat-search" placeholder="Set-Nummer / Name…" data-i18n="catalog.search" data-i18n-attr="placeholder" data-i18n-aria="catalog.search_aria" aria-label="Katalog nach Set-Nummer oder Name durchsuchen">
           <select class="w-auto max-240" id="cat-theme" aria-label="Thema filtern" data-i18n="gallery.theme_label" data-i18n-attr="aria-label">
             <option value="" data-i18n="catalog.filter.all_themes">Alle Themen</option>
           </select>
@@ -566,7 +567,7 @@
       -->
       <!-- Aufklappbar: Am Telefon steht die Liste vorn, sobald sie Einträge hat (16-merkliste.js). -->
       <details class="merk-kasten" id="mk-kasten" open>
-        <summary class="merk-kasten-kopf"><h2 class="stit" data-ico="plus" data-i18n="wanted.add.title">Merkposten hinzufügen</h2></summary>
+        <summary class="merk-kasten-kopf"><h2 class="stit" data-ico="plus" data-i18n="wanted.add.title">Zur Merkliste hinzufügen</h2></summary>
         <div class="zeile luecke-8 unten umbruch merk-erfassen">
           <div class="fg"><label for="mk-num" data-i18n="gallery.add.number">Set-Nummer</label><input inputmode="numeric" type="text" id="mk-num" placeholder="z. B. 75192" data-i18n="gallery.add.number_ph" data-i18n-attr="placeholder" /></div>
           <div class="fg max-110"><label for="mk-cond" data-i18n="common.condition">Zustand</label><select class="auswahl-kompakt" id="mk-cond"><option value="N" data-i18n="common.condition_new">Neuware</option><option value="U" data-i18n="common.condition_used">Gebraucht</option></select></div>
@@ -600,7 +601,7 @@
            gebraucht, und genau das ist die Frage, die man an eine Merkliste
            stellt. -->
       <div class="filterzeile">
-        <input type="text" class="si suchfeld" id="mks" placeholder="Merkliste durchsuchen…" data-i18n="wanted.search" data-i18n-attr="placeholder" aria-label="Merkliste durchsuchen" />
+        <input type="text" class="si suchfeld" id="mks" placeholder="Merkliste durchsuchen…" data-i18n="wanted.search" data-i18n-attr="placeholder" data-i18n-aria="wanted.search_aria" aria-label="Merkliste durchsuchen" />
         <select class="w-auto" id="mkcond" aria-label="Zustand" data-i18n="common.condition" data-i18n-attr="aria-label" data-change="ladeMerkliste">
           <option value="" data-i18n="filter.condition_all">Alle Zustände</option>
           <option value="N" data-i18n="common.condition_new">Neuware</option>
@@ -657,7 +658,7 @@
            Container anfassen — die IDs darin sind der Vertrag mit dem JS. -->
       <div class="filterleiste filterzeile">
           <button type="button" class="btn bs filter-knopf" data-click="filterUmschalten" aria-expanded="false" data-i18n="common.filter" data-ico="filter">Filter</button>
-          <input class="suchfeld" type="text" id="parts-search" placeholder="Teilenummer / Name…" data-i18n="parts.search" data-i18n-attr="placeholder" / aria-label="Teilenummer / Name">
+          <input class="suchfeld" type="text" id="parts-search" placeholder="Teile suchen…" data-i18n="parts.search" data-i18n-attr="placeholder" data-i18n-aria="parts.search_aria" aria-label="Teile suchen">
           <select class="w-auto" id="parts-spare" aria-label="Ersatzteile" data-i18n="parts.spare_label" data-i18n-attr="aria-label">
             <option value="" data-i18n="parts.filter.all">Alle Teile</option>
             <option value="0" data-i18n="parts.filter.no_spare">Ohne Ersatzteile</option>
@@ -741,7 +742,7 @@
            direkt über der Liste, auf die sie wirken. Beim Verschieben nur den
            Container anfassen — die IDs darin sind der Vertrag mit dem JS. -->
       <div class="filterzeile">
-          <input class="suchfeld" type="text" id="fig-search" placeholder="Minifiguren suchen…" data-i18n="figs.search" data-i18n-attr="placeholder" data-input="filterFigs" / aria-label="Minifiguren suchen">
+          <input class="suchfeld" type="text" id="fig-search" placeholder="Minifiguren suchen…" data-i18n="figs.search" data-i18n-attr="placeholder" data-input="filterFigs" data-i18n-aria="figs.search_aria" aria-label="Minifiguren suchen">
           <select id="scope-minifigs" class="scope-select" aria-label="Konten" data-i18n="household.scope_label" data-i18n-attr="aria-label" data-change="onScopeChange" data-arg="minifigs" data-stil="display:none"></select>
           <!-- Wertträger für die Knöpfe daneben: Dieselbe Ansichtswahl wie bei den Sets. -->
           <select class="vh" tabindex="-1" aria-hidden="true" id="figs-view" aria-label="Ansicht" data-i18n="parts.view_label" data-i18n-attr="aria-label" data-change="renderFigsAll">
@@ -814,7 +815,7 @@
       <!-- Kennzahlen: der Einstand steht immer da, Gesamtwert und G&V nur mit Marktpreisen. -->
       <div class="fgrid" id="fin-sum">
         <div class="fstat"><div class="flbl" id="fin-einstand-titel" data-i18n="finance.stat.purchase">Kaufpreis gesamt</div><div class="fval" id="fin-einstand">—</div><div class="fsub" id="fin-einstand-sub" data-i18n="finance.stat.purchase_hint">Summe der Kaufpreise</div></div>
-        <div class="fstat hi"><div class="flbl" data-i18n="finance.stat.value">Marktwert</div><div class="fval" id="fin-wert">—</div><div class="fsub" id="fin-wert-sub"></div></div>
+        <div class="fstat hi"><div class="flbl" id="fin-wert-titel" data-i18n="finance.stat.value">Marktwert</div><div class="fval" id="fin-wert">—</div><div class="fsub" id="fin-wert-sub"></div></div>
         <div class="fstat" id="fin-stat-pnl"><div class="flbl" data-i18n="finance.stat.pnl">Gewinn/Verlust zum Kaufpreis</div><div class="fval" id="fin-total-pnl">—</div><div class="fsub" id="fin-pnl-sub"></div></div>
       </div>
       <p id="fin-basis" class="fin-basis" role="note" hidden></p>
@@ -846,7 +847,7 @@
             </div>
           </div>
           <div class="zeile mittig luecke-05 umbruch">
-            <button class="btn bp fest" data-click="plGenerate" id="btn-pl-gen" aria-disabled="true" data-i18n="pl.generate" data-ico="werkzeug">Teileliste erstellen</button>
+            <button class="btn bp fest" data-click="plGenerate" id="btn-pl-gen" aria-disabled="true" data-i18n="pl.generate" data-ico="werkzeug">Bauliste erstellen</button>
             <button class="btn bs fest" data-click="plReset" id="btn-pl-reset" disabled data-i18n="partslist.reset" data-ico="aktualisieren">Zurücksetzen</button>
           </div>
         </div>
@@ -1771,7 +1772,7 @@
     <div class="erfassen-raster">
       <div class="fg"><label for="add-num" data-i18n="gallery.add.number">Set-Nummer</label><input inputmode="numeric" type="text" id="add-num" data-erstfokus placeholder="z. B. 75192" data-i18n="gallery.add.number_ph" data-i18n-attr="placeholder" /></div>
       <div class="fg"><label for="add-qty" data-i18n="gallery.add.qty">Anzahl</label><input inputmode="numeric" type="number" id="add-qty" value="1" min="1" /></div>
-      <div class="fg"><label for="add-price" data-i18n="gallery.add.price">Kaufpreis (optional)</label><input inputmode="decimal" type="text" autocomplete="off" id="add-price" placeholder="z. B. 79,99" data-i18n="gallery.add.price_ph" data-i18n-attr="placeholder" /></div>
+      <div class="fg"><label for="add-price" data-i18n="gallery.add.price">Kaufpreis (optional)</label><input inputmode="decimal" type="text" autocomplete="off" id="add-price" placeholder="z. B. 79,99" data-i18n="gallery.add.price_ph" data-i18n-attr="placeholder" data-i18n-betrag="79.99" /></div>
       <div class="fg"><label for="add-condition" data-i18n="common.condition">Zustand</label><select class="auswahl-kompakt" id="add-condition"><option value="N" data-i18n="common.condition_new">Neuware</option><option value="U" data-i18n="common.condition_used">Gebraucht</option></select></div>
       <!-- Kontoauswahl: nur im Haushalt sichtbar (siehe loadHouseholdMembers) -->
       <div class="fg" id="add-owner-box" data-stil="display:none"><label for="add-owner" data-i18n="household.for_account">Für Konto</label><select class="auswahl-kompakt" id="add-owner"></select></div>
@@ -1856,7 +1857,7 @@
       <div class="sparkline-wrap" id="mk-m-sparkline-content"></div>
     </div>
     <div class="mfooter verteilt umbruch luecke-8">
-      <button class="btn bd" id="mk-m-del" data-click="merkpostenDetailLoeschen" aria-label="Merkposten löschen" data-i18n="wanted.delete_item" data-i18n-attr="aria-label"><svg class="ico" aria-hidden="true"><use href="#i-loeschen"/></svg><span data-i18n="common.delete">Löschen</span></button>
+      <button class="btn bd" id="mk-m-del" data-click="merkpostenDetailLoeschen" aria-label="Von der Merkliste löschen" data-i18n="wanted.delete_item" data-i18n-attr="aria-label"><svg class="ico" aria-hidden="true"><use href="#i-loeschen"/></svg><span data-i18n="common.delete">Löschen</span></button>
       <!-- Marcos Vorgabe: die beiden Kaufadressen NEBENEINANDER, und darunter
            mit ABSTAND die Uebernahme. Der groessere Abstand ist die ganze
            Aussage: Oben zwei Wege nach draussen, unten der eine Griff, der
