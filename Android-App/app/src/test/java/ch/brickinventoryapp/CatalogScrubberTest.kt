@@ -91,11 +91,8 @@ class CatalogScrubberTest {
         assert(s.contains("state.loadedPages[seite]")) {
             "Die Plätze werden nicht aus den geladenen Seiten bedient"
         }
-        // Vorlauf in BEIDE Richtungen: (von - 1) .. (bis + 1)
-        assert(Regex("""\(von - 1\)\.\.\(bis \+ 1\)""").containsMatchIn(s)) {
-            "Es wird nur in eine Richtung nachgeladen — nach einem Sprung fehlt " +
-                "alles oberhalb der Sprungstelle"
-        }
+        // Den Vorlauf in beide Richtungen prüft KatalogSprungEntprelltTest ausgeführt
+        // am Sichtfensterlader (Seiten 99..102 für das Fenster 100..101).
         assert(s.contains("CatalogPlaceholderCard()")) { "Der Platzhalter fehlt" }
         assert(Regex("""CatalogPlaceholderCard[\s\S]{0,400}\.height\(""").containsMatchIn(s)) {
             "Der Platzhalter hat keine feste Höhe — die Liste springt, sobald die " +

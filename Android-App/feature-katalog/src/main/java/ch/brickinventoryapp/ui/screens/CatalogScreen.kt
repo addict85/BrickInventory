@@ -33,7 +33,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import ch.brickinventoryapp.ressourcen.R
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import kotlinx.coroutines.flow.collectLatest
 import ch.brickinventoryapp.ui.AppViewModel
 import ch.brickinventoryapp.ui.viewmodel.CatalogViewModel
 import ch.brickinventoryapp.ui.*
@@ -61,14 +60,6 @@ import ch.brickinventoryapp.ui.theme.Abstaende
 import ch.brickinventoryapp.ui.components.LeerSymbol
 
 /**
- * Wie lange die Liste ruhig stehen muss, bevor ihre sichtbaren Seiten geholt
- * werden: 150 ms wie in der Webapp (`_ladeSichtbareSeiten`). Beim Scrollen merkt
- * man sie nicht, ein Zug über die ganze Leiste fällt auf einen Abruf zusammen;
- * kürzer als ein Berührungsabstand entprellte sie nichts.
- */
-private const val SICHTFENSTER_RUHE_MS = 150L
-
-/**
  * Katalog-Screen: gesamter Rebrickable-Set-Katalog, serverseitig paginiert.
  * Aufbau analog GalleryScreen (Suche oben, Filter-Chips, Grid) — Filter
  * laufen aber serverseitig, das Grid lädt beim Scrollen seitenweise nach.
@@ -93,8 +84,8 @@ fun CatalogScreen(
     val onThemeChange: (Int?) -> Unit = { t -> katalog.setCatalogTheme(t) }
     val onYearChange: (Int?) -> Unit = { y -> katalog.setCatalogYear(y) }
     val onSortChange: (String) -> Unit = { srt -> katalog.setCatalogSort(srt) }
-    /** Eine Seite laden, die gerade ins Bild kommt (vorwärts wie rückwärts). */
-    val onEnsurePage: (Int) -> Unit = { seite -> katalog.ensureCatalogPage(seite) }
+    /** Das sichtbare Fenster melden; das ViewModel lädt, sobald die Liste ruht. */
+    val onSichtbar: (Int, Int) -> Unit = { von, bis -> katalog.catalogSichtbar(von, bis) }
     /** Die Leiste rechts rollt die Liste an eine Stelle — ohne zu filtern. */
     val onScrollTo: (Int) -> Unit = { nummer -> katalog.scrollCatalogTo(nummer) }
     /** Meldet, dass der Sprung ausgeführt wurde. */
@@ -116,21 +107,14 @@ fun CatalogScreen(
     // gewordenen Platzes, mit einer Seite Vorlauf — so kann die Leiste rechts
     // überallhin springen. Erst wenn die Liste ruht: Die Leiste rollt beim Ziehen
     // durch jede Zwischenposition, und ohne Ruhe stünde die Zielseite hinter Hunderten
-    // angeforderter Seiten in der Schlange.
+    // angeforderter Seiten in der Schlange. Die Ruhe hält der Sichtfensterlader im ViewModel.
     LaunchedEffect(gridState, state.total, state.loadedPages.size) {
         snapshotFlow {
             val sichtbar = gridState.layoutInfo.visibleItemsInfo
             val ersteSeite = ((sichtbar.firstOrNull()?.index ?: 0) / CATALOG_PAGE_SIZE) + 1
             val letzteSeite = ((sichtbar.lastOrNull()?.index ?: 0) / CATALOG_PAGE_SIZE) + 1
             ersteSeite to letzteSeite
-        }.collectLatest { (von, bis) ->
-            // `collectLatest`, nicht `collect`: Trifft waehrend der Wartezeit
-            // ein neues Sichtfenster ein, bricht Kotlin diesen Durchlauf ab.
-            // Mit `collect` wuerde jeder Punkt des Zuges nur VERZOEGERT
-            // geladen statt gar nicht — die Abrufe blieben dieselben.
-            kotlinx.coroutines.delay(SICHTFENSTER_RUHE_MS)
-            for (seite in (von - 1)..(bis + 1)) if (seite >= 1) onEnsurePage(seite)
-        }
+        }.collect { (von, bis) -> onSichtbar(von, bis) }
     }
 
     // Kein eigener Sprung-Abruf daneben: Beide Wege — Rollen und Leiste — enden im

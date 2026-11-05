@@ -28,6 +28,13 @@ private const val CATALOG_RETRIES = 2
 private const val CATALOG_RETRY_DELAY_MS = 500L
 
 /**
+ * Wie lange die Liste ruhig stehen muss, bevor ihre sichtbaren Seiten geholt werden:
+ * 150 ms wie in der Webapp (`_ladeSichtbareSeiten`). Ein Zug über die ganze Leiste
+ * fällt so auf einen Abruf zusammen; kürzer als ein Berührungsabstand entprellte nichts.
+ */
+internal const val SICHTFENSTER_RUHE_MS = 150L
+
+/**
  * Der Katalog als eigenes ViewModel: Suche, Liste und Detail haben Jobs und eine
  * Filter-Generation, die als Felder einer Instanz gehören und nicht prozessweit.
  * Nicht über hiltViewModel(): Liste und Detail sind zwei NavHost-Ziele, und zwei
@@ -162,6 +169,11 @@ class CatalogViewModel @Inject constructor(
      * übersprungen; Antworten einer älteren Filter-Generation verworfen, sonst hinge
      * eine späte Seite des alten Filters in der neuen Liste.
      */
+    private val sichtfenster = Sichtfensterlader(viewModelScope, SICHTFENSTER_RUHE_MS, ::ensureCatalogPage)
+
+    /** Was das Raster gerade zeigt (Seiten, 1-basiert); geladen wird erst, wenn es ruht. */
+    fun catalogSichtbar(ersteSeite: Int, letzteSeite: Int) = sichtfenster.sichtbar(ersteSeite, letzteSeite)
+
     fun ensureCatalogPage(seite: Int) {
         if (seite < 1) return
         val s = _catalogState.value

@@ -1,0 +1,18 @@
+Gegenprobe: Der Sichtfensterlader sammelt mit collect statt collectLatest; jedes Fenster eines Zuges wird geladen
+Modul: feature-katalog
+Test: ch.brickinventoryapp.KatalogSprungEntprelltTest
+Rot: der Sichtfenster-Lader wartet
+
+diff --git a/Android-App/feature-katalog/src/main/java/ch/brickinventoryapp/ui/viewmodel/Sichtfensterlader.kt b/Android-App/feature-katalog/src/main/java/ch/brickinventoryapp/ui/viewmodel/Sichtfensterlader.kt
+index 6e2ab3f..4e0ae31 100644
+--- a/Android-App/feature-katalog/src/main/java/ch/brickinventoryapp/ui/viewmodel/Sichtfensterlader.kt
++++ b/Android-App/feature-katalog/src/main/java/ch/brickinventoryapp/ui/viewmodel/Sichtfensterlader.kt
+@@ -19,7 +19,7 @@ internal class Sichtfensterlader(bereich: CoroutineScope, ruheMs: Long, lade: (I
+ 
+     init {
+         bereich.launch {
+-            fenster.collectLatest { (von, bis) ->
++            fenster.collect { (von, bis) ->
+                 delay(ruheMs)
+                 for (seite in (von - 1)..(bis + 1)) if (seite >= 1) lade(seite)
+             }
