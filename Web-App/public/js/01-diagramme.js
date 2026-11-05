@@ -268,7 +268,8 @@ document.addEventListener('keydown', (e) => {
  * Preisverlauf mit zwei Linien (neu und gebraucht) auf gemeinsamer Skala. Die
  * x-Position kommt vom Datum, nicht vom Index: Gebrauchtpreise setzen oft
  * später ein, und gestreckte Reihen zeigten einen Vergleich, den es nicht gibt.
- * @param {{ chart?: any }} data  Antwort von /v1/sets/:nummer/price-history
+ * @param {{ chart?: any, history_new?: any[], history_used?: any[], by_condition?: Record<string, any> }} data
+ *   Antwort von /v1/sets/:nummer/price-history
  * @param {string} [uid]  Kürzel für die Verlaufs-IDs im SVG
  * @param {number} [breite]
  * @returns {string} SVG-Markup oder ein Hinweistext

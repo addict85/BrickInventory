@@ -1,6 +1,6 @@
 import { registerActions } from './00-registry.js';
 import { tRaw } from '../i18n.js';
-import { ico, G, api, toast, passwortRegelText, rbHinweisVerbergen, rbHinweisZeigen } from './01-core.js';
+import { ico, G, api, toast, passwortRegelText, rbHinweisVerbergen, rbHinweisZeigen, alle, eins } from './01-core.js';
 import { oeffneErfassen } from './01-bausteine.js';
 import { mitZweitemFaktor } from './01-rueckfrage.js';
 
@@ -21,7 +21,7 @@ const QUELLEN_FELDER = {
 
 function zeige() {
   const modal = G('einrichtung-modal');
-  modal.querySelectorAll('.ew-schritt').forEach(el =>
+  alle('.ew-schritt', modal).forEach(el =>
     el.classList.toggle('aktiv', el.dataset.schritt === _schritte[_jetzt]));
   G('ew-schritte').textContent = tRaw('setup.step', { n: _jetzt + 1, von: _schritte.length });
   G('ew-spaeter').hidden = _jetzt === _schritte.length - 1;
@@ -110,7 +110,7 @@ export async function einrichtungQuelle(quelle) {
 
 /** Letzter Schritt: dorthin, wo das erste Set entsteht. */
 export function einrichtungZiel(ziel) {
-  const reiter = (name) => document.querySelector(`.ntab[data-tab="${name}"]`)?.click();
+  const reiter = (name) => eins(`.ntab[data-tab="${name}"]`)?.click();
   if (ziel === 'katalog') reiter('catalog');
   else {
     reiter('gallery');

@@ -5,7 +5,7 @@ import { abonniere } from './00-ereignisse.js';
 import { skelettKacheln, listeLadefehler, condBadges, ownerBadges, pnlBadge, schliesseErfassen, teileAufschluesselung } from './01-bausteine.js';
 import { echt, registerActions } from './00-registry.js';
 import { locale, t, tRaw} from '../i18n.js';
-import { fehlerMeldung, fmtDatum, bildTag, fullUrl, platzhalterInhalt, setnummerFeldGueltig, leerZustand, ico, G, TRASH_ICON_SVG, api, escJs, fmtBig, fmtGeld, fmtN, fmtPct, istGeschenk, imgUrl, observeLazyImages, thumbUrl, toast, zuruecksetzenKnopf, betragAusFeld } from './01-core.js';
+import { fehlerMeldung, fmtDatum, bildTag, fullUrl, platzhalterInhalt, setnummerFeldGueltig, leerZustand, ico, G, TRASH_ICON_SVG, api, escJs, fmtBig, fmtGeld, fmtN, fmtPct, istGeschenk, imgUrl, observeLazyImages, thumbUrl, toast, zuruecksetzenKnopf, betragAusFeld, aktiverReiter, alle } from './01-core.js';
 import { _gibSse, _gibTimer, gibStart, protokollZeile, _csvPollActive, addCsvLog, handleSseEvent, hideProgress, setProgBar, showProgress, streamFertig, streamRequest, setzeCsvPollAktiv } from './01-fortschritt.js';
 import { _monitorTimer } from './01-monitor.js';
 import { addScopeParam, scopeQuery, addLagerParam, lagerModus } from './14-scope.js';
@@ -73,8 +73,8 @@ let _galGen = 0, _galPage = 1, _galDone = false, _galLoadingMore = false, _galTo
 /** Aktuelle Filter- und Sortierwerte als Query-Parameter. */
 function galleryParams(page, pageSize = GAL_PAGE_SIZE){
   const p = new URLSearchParams();
-  p.set('page', page);
-  p.set('page_size', pageSize);
+  p.set('page', String(page));
+  p.set('page_size', String(pageSize));
   const q = G('gs')?.value?.trim();      if (q)     p.set('search', q);
   const th = G('gtheme')?.value;         if (th)    p.set('theme', th);
   const so = G('gsort')?.value;          if (so)    p.set('sort', so);
@@ -143,7 +143,7 @@ function bindGallerySentinel(){
   const sent = G('gallery-sentinel');
   if (!sent || sent._bound) return;
   sent._bound = true;
-  if ('IntersectionObserver' in window) {
+  if (typeof IntersectionObserver === 'function') {
     new IntersectionObserver(es => { if (es.some(e => e.isIntersecting)) maybeLoadMoreGallery(); },
       { rootMargin: '600px' }).observe(sent);
   } else {
@@ -214,7 +214,7 @@ export async function loadGallery(opts = {}){
       d.themes.map(th=>`<option value="${esc(th)}"${th===current?' selected':''}>${esc(th)}</option>`).join('');
     themeEl.value = current;
   }
-  if (themeEl && !themeEl._bound) { themeEl._bound = true; themeEl.addEventListener('change', loadGallery); }
+  if (themeEl && !themeEl._bound) { themeEl._bound = true; themeEl.addEventListener('change', () => loadGallery()); }
   renderGallery(); loadStats();
   // Erst NACH dem Zeichnen zurückspringen — vorher ist das Dokument noch kurz
   // und der Browser würde die Position wieder abschneiden.
@@ -264,7 +264,7 @@ export function renderGallery(){
  */
 export function updateGalleryPrices(){
   const bySet = new Map(allSets.map(x => [x.set_number, x]));
-  document.querySelectorAll('[data-price-for]').forEach(el => {
+  alle('[data-price-for]').forEach(el => {
     const s = bySet.get(el.dataset.priceFor);
     if (!s) return;
     const inhalt = preisZeile(s);
@@ -417,7 +417,7 @@ async function doAddSet(){
           set_lastImportAt(Date.now());
           [3000, 8000, 15000, 25000].forEach(delay => setTimeout(()=>{
             loadGallery(); loadStats();
-            const activeTab = document.querySelector('.ntab.active')?.dataset?.tab;
+            const activeTab = aktiverReiter();
             if(activeTab==='parts')    { loadParts(); loadManualParts(); }
             if(activeTab==='minifigs') { loadMinifigs(); }
           }, delay));
@@ -454,7 +454,7 @@ async function startSetCsvImport(){
     // nur der Sitzungstoken im Protokoll.
     const url = '/api/v1/sets/import/csv/stream';
 
-    await new Promise((resolve) => {
+    await /** @type {Promise<void>} */ (new Promise((resolve) => {
       let settled = false;
       const finish = () => { if (!settled) { settled = true; resolve(); } };
 
@@ -479,7 +479,7 @@ async function startSetCsvImport(){
       } else {
         csvPollLoop(ctx, fi).then(finish);
       }
-    });
+    }));
   }catch(e){ hideProgress(); toast(fehlerMeldung(e),'error'); }
 }
 
@@ -571,7 +571,7 @@ G('vl').onclick=()=>{ curView='list'; G('vl').classList.add('active'); G('vg').c
 // Sammlungen spürbar ruckelig. 250ms Debounce, wie bei der Parts-Suche.
 // Suche und Sortierung gehen an den Server, also neu LADEN statt neu zeichnen.
 G('gs').addEventListener('input',()=>{ clearTimeout(G('gs')._t); G('gs')._t=setTimeout(loadGallery,250); });
-G('gsort').addEventListener('change',loadGallery);
+G('gsort').addEventListener('change',() => loadGallery());
 
 /**
  * Ein Set löschen — mit GENAU EINER Rückfrage.

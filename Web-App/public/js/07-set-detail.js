@@ -4,7 +4,7 @@
 import { stelleZielBereit } from './00-ziele.js';
 import { registerActions, echt } from './00-registry.js';
 import { CURRENCY, ME, curSet, set_curSet } from './00-zustand.js';
-import { G, api, escJs, escUrl, fmtDatum, fmtGeld, fullUrl, ico, toast } from './01-core.js';
+import { G, api, escJs, escUrl, fmtDatum, fmtGeld, fullUrl, ico, toast, aktiverReiter } from './01-core.js';
 import { alarmBlock, closeModal, ladeAlarm, ladeOrtAuswahl, lagerortBlock, setzeAlarmFeld } from './02-detailfelder.js';
 import { confirmDelete } from './01-rueckfrage.js';
 import { delSet, loadGallery, loadStats, reimportParts } from './02-gallery.js';
@@ -227,7 +227,7 @@ export function openImageLightbox(src){
 export function closeImageLightbox(){ G('img-lightbox').classList.remove('open'); G('lightbox-img').removeAttribute('src'); }
 
 // Escape schliesst den Zoom über js/01-dialoge.js, wie jeden Dialog.
-G('set-modal').addEventListener('click',e=>e.target.id==='set-modal'&&closeModal());
+G('set-modal').addEventListener('click',e=>e.target===e.currentTarget&&closeModal());
 
 let _autosaveTimer=null;
 
@@ -269,7 +269,7 @@ export function autosaveSet(){
       // Mehr Exemplare melden sich mit Preis (meldeNeueExemplare), sobald die Erfassungen da sind.
       if (!(echt > prevQty)) toast(tRaw('settings.saved'),'success');
       loadGallery();
-      if(document.querySelector('.ntab.active')?.dataset?.tab==='finance') loadFinance();
+      if(aktiverReiter()==='finance') loadFinance();
     } else { toast(d.error||t('settings.error'),'error'); }
   }, 400);
 }

@@ -170,7 +170,7 @@ let _orte = [];
 export function setzeOrtVorrat(namen) {
   _orte = [...new Set((namen || []).filter(Boolean).map(String))]
     .sort((a, b) => a.localeCompare(b));
-  for (const sel of document.querySelectorAll('select[data-ortauswahl]')) {
+  for (const sel of /** @type {NodeListOf<HTMLSelectElement>} */ (document.querySelectorAll('select[data-ortauswahl]'))) {
     // Steht die Auswahl gerade auf „neuer Ort", soll sie dort stehen bleiben —
     // sonst spraenge sie jemandem beim Tippen unter der Hand weg.
     const warNeu = istNeuEintrag(sel);

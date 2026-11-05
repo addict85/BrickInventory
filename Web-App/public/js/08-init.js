@@ -1,6 +1,6 @@
 import { registerActions } from './00-registry.js';
 import { locale, t, tRaw} from '../i18n.js';
-import { fehlerMeldung, bildTag, feldFehler, istSetnummer, platzhalterInhalt, leerZustand, ico, escHex, G, api, apiRoh, imgUrl, knopfBesetzt, thumbUrl, toast } from './01-core.js';
+import { fehlerMeldung, bildTag, feldFehler, istSetnummer, platzhalterInhalt, leerZustand, ico, escHex, G, api, apiRoh, imgUrl, knopfBesetzt, thumbUrl, toast, alle } from './01-core.js';
 import { baueWantedXmlStuecke } from './19-bricklink-xml.js';
 import { esc } from './00-escapen.js';
 
@@ -280,7 +280,7 @@ async function plGenerate() {
  * Eingabefelder bleiben danach von Hand änderbar.
  */
 async function plFuelleBestand() {
-  const felder = [...document.querySelectorAll('.pl-have-input')];
+  const felder = /** @type {HTMLInputElement[]} */ (alle('.pl-have-input'));
   if (!felder.length) return;
   const nurLose = !!G('pl-bestand-lose')?.checked;
 
@@ -398,7 +398,7 @@ async function plExportPdf() {
     // Step 2: SSE statt Polling — Ergebnis kommt sofort wenn fertig.
     // Fallback auf Polling falls EventSource nicht verfügbar.
     if (btn) btn.textContent = tRaw('pdf.loading_images');
-    await new Promise((resolve, reject) => {
+    await /** @type {Promise<void>} */ (new Promise((resolve, reject) => {
       let settled = false;
       // Countdown der geschätzten Restzeit (aus etaSeconds vom Server).
       let etaTimer = null, etaRemaining = null;
@@ -429,7 +429,7 @@ async function plExportPdf() {
         es.onerror = () => { es.close(); if (!settled) pollPdfStatus(jobId, btn, finish, startEta); };
       };
       trySSE();
-    });
+    }));
 
     // Step 3: Download
     const dlResp = await apiRoh('GET', `/v1/sets/partslist-pdf/download/${jobId}`);
@@ -480,7 +480,7 @@ async function plExportBricklink() {
     } catch(_) {}
   }
   // Collect all "vorhanden" inputs from the table
-  const inputs = document.querySelectorAll('.pl-have-input');
+  const inputs = /** @type {HTMLInputElement[]} */ (alle('.pl-have-input'));
   const missing = [];
   const condition = G('pl-bl-condition')?.value || 'X';
   inputs.forEach(inp => {
@@ -617,7 +617,7 @@ function ansichtWaehlen(id, wert) {
   const feld = G(id);
   if (!feld || feld.value === wert) return;
   feld.value = wert;
-  document.querySelectorAll(`[data-click="ansichtWaehlen"][data-arg="${id}"]`).forEach(b => {
+  alle(`[data-click="ansichtWaehlen"][data-arg="${id}"]`).forEach(b => {
     const an = b.dataset.arg2 === wert;
     b.classList.toggle('active', an);
     b.setAttribute('aria-pressed', String(an));

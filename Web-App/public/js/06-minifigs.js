@@ -4,7 +4,7 @@ import { abonniere } from './00-ereignisse.js';
 import { echt, registerActions } from './00-registry.js';
 import { listeLadefehler, condBadges, ownerBadges, schliesseErfassen } from './01-bausteine.js';
 import { colorName, t, tRaw } from '../i18n.js';
-import { fmtDatum, bildTag, platzhalterInhalt, leerZustand, escHex, G, TRASH_ICON_SVG, api, escJs, fmtN, fullUrl, imgUrl, thumbUrl, toast, zuruecksetzenKnopf, betragAusFeld } from './01-core.js';
+import { fmtDatum, bildTag, platzhalterInhalt, leerZustand, escHex, G, TRASH_ICON_SVG, api, escJs, fmtN, fullUrl, imgUrl, thumbUrl, toast, zuruecksetzenKnopf, betragAusFeld, aktiverReiter } from './01-core.js';
 import { addLagerParam, addScopeParam, scopeQuery } from './14-scope.js';
 import { loadFinance } from './04-finance.js';
 import { geloeschtMitRueckgaengig } from './20-papierkorb.js';
@@ -26,7 +26,7 @@ let _figGen = 0, _figPage = 1, _figDone = false, _figLoadingMore = false, _figTo
 function figParams(page) {
   const p = new URLSearchParams();
   p.set('page', page);
-  p.set('page_size', FIG_PAGE_SIZE);
+  p.set('page_size', String(FIG_PAGE_SIZE));
   // Manuell erfasste Figuren haben oben eine eigene Sektion. Der Ausschluss
   // gehört auf den Server — clientseitig gefiltert könnte eine ganze Seite
   // wegfallen und die Liste bliebe scheinbar leer.
@@ -73,7 +73,7 @@ function bindFigsSentinel() {
   const sent = G('figs-sentinel');
   if (!sent || sent._bound) return;
   sent._bound = true;
-  if ('IntersectionObserver' in window) {
+  if (typeof IntersectionObserver === 'function') {
     new IntersectionObserver(es => { if (es.some(e => e.isIntersecting)) maybeLoadMoreFigs(); },
       { rootMargin: '600px' }).observe(sent);
   } else {
@@ -366,7 +366,7 @@ export function renderManualFigsTable() {
 /** @param {number} [owner] Besitzer der Karte — siehe deleteManualPart. */
 export async function updateManualFig(figNumber, body, owner) {
   const d = await api('PUT', `/v1/minifigs/${encodeURIComponent(figNumber)}${owner ? `?owner=${encodeURIComponent(owner)}` : ''}`, body);
-  if (d.success) { toast(tRaw('settings.saved'),'success'); loadManualFigsTable(); loadMinifigs(); if(document.querySelector('.ntab.active')?.dataset?.tab==='finance') loadFinance(); }
+  if (d.success) { toast(tRaw('settings.saved'),'success'); loadManualFigsTable(); loadMinifigs(); if(aktiverReiter()==='finance') loadFinance(); }
   else toast(d.error||t('settings.error'),'error');
 }
 

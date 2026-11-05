@@ -3,7 +3,7 @@
 // Sichten über 00-ziele.js, nicht über einen Import.
 import { stelleZielBereit } from './00-ziele.js';
 import { registerActions } from './00-registry.js';
-import { G, leerZustand } from './01-core.js';
+import { G, leerZustand, alle, eins } from './01-core.js';
 import { ME, _lastImportAt } from './00-zustand.js';
 import { _monitorTimer, loadMonitor, set_monitorTimer } from './01-monitor.js';
 import { figurenFilterZuruecksetzen, loadManualFigsTable, loadMinifigs } from './06-minifigs.js';
@@ -56,7 +56,7 @@ function markiereGruppe(tab){
   const sammlung = document.querySelector('.ntab[data-tab="gallery"]');
   sammlung?.classList.toggle('gruppe-aktiv', SAMMLUNG.includes(tab));
   // Die drei Knöpfe wechseln die Ansicht; die offene ist die aktuelle Seite.
-  document.querySelectorAll('.sammlung-wahl [data-arg]').forEach(b => {
+  alle('.sammlung-wahl [data-arg]').forEach(b => {
     if (b.dataset.arg === tab) b.setAttribute('aria-current', 'page'); else b.removeAttribute('aria-current');
   });
   // Vorleseprogramme erfahren so, welcher Reiter offen ist.
@@ -90,7 +90,7 @@ function zeigeEinstellungsZugriff(){
 export function oeffneReiter(name){
   const ausMenue = !!G('umenu-pop')?.contains(document.activeElement);
   menueSchliessen();
-  document.querySelector(`.ntab[data-tab="${name}"]`)?.click();
+  eins(`.ntab[data-tab="${name}"]`)?.click();
   if (ausMenue) fokusAufTitel(G('tab-'+name));
 }
 
@@ -107,7 +107,7 @@ function fokusAufTitel(flaeche){
 }
 
 export function bindTabs(){
-  document.querySelectorAll('.ntab').forEach(t=>{
+  alle('.ntab').forEach(t=>{
     // Avoid duplicate listeners
     if(t._tabBound) return; t._tabBound=true;
     t.addEventListener('click',()=>{
@@ -155,7 +155,7 @@ export function bindTabs(){
   // auch nach dem Login (showApp ruft bindTabs erneut), wenn der Inhalt
   // sichtbar wird. So erscheint das Icon links vom Titel auf allen Tabs,
   // nicht nur nach einem Klick.
-  document.querySelectorAll('.ptitle[data-tab-title]').forEach(h=>syncTabTitleIcon(h.dataset.tabTitle));
+  alle('.ptitle[data-tab-title]').forEach(h=>syncTabTitleIcon(h.dataset.tabTitle));
 }
 
 // Aufruf verschoben nach startApp() (js/08-init.js), das js/main.js NACH der
@@ -282,7 +282,7 @@ document.addEventListener('keydown', (ev) => {
 document.addEventListener('click', (ev) => {
   const pop = G('umenu-pop');
   if(!pop || pop.style.display === 'none') return;
-  if(ev.target.closest?.('.umenu-wrap')) return;
+  if(ev.target instanceof Element && ev.target.closest('.umenu-wrap')) return;
   menueSchliessen();
 });
 

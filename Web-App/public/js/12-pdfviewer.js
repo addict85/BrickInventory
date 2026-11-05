@@ -160,7 +160,7 @@ async function _renderPdfLazy(pdf, container) {
   for (let n = 1; n <= pdf.numPages; n++) {
     const ph = document.createElement('div');
     ph.className = 'pdf-page-ph';
-    ph.dataset.page = n;
+    ph.dataset.page = String(n);
     ph.style.cssText = 'background:#fff;box-shadow:0 1px 5px rgba(0,0,0,.35);flex-shrink:0;margin:0 auto';
     _pdfMassPlatzhalter(ph);
     container.appendChild(ph);
@@ -169,7 +169,7 @@ async function _renderPdfLazy(pdf, container) {
   if (_pdfObserver) _pdfObserver.disconnect();
   _pdfObserver = new IntersectionObserver((entries) => {
     entries.forEach(entry => {
-      const n = parseInt(entry.target.dataset.page);
+      const n = parseInt(/** @type {HTMLElement} */ (entry.target).dataset.page);
       if (entry.isIntersecting) _renderPdfPage(pdf, n, entry.target);
       else _unloadPdfPage(n, entry.target);
     });
@@ -257,7 +257,7 @@ function _pdfSetzeZoom(neu, ankerX, ankerY) {
 
   // Erst alle Leinwände weg, dann die Platzhalter neu bemessen: eine Leinwand
   // mit width:100% würde sonst kurz verzerrt dastehen.
-  container.querySelectorAll('.pdf-page-ph').forEach(ph => {
+  /** @type {NodeListOf<HTMLElement>} */ (container.querySelectorAll('.pdf-page-ph')).forEach(ph => {
     _unloadPdfPage(parseInt(ph.dataset.page), ph);
     _pdfMassPlatzhalter(ph);
   });
@@ -314,7 +314,7 @@ function _pdfTaste(ev) {
   const modal = G('pdf-viewer-modal');
   if (!modal || modal.style.display !== 'flex') return;
   // In einem Eingabefeld hat + eine andere Bedeutung.
-  const a = document.activeElement;
+  const a = /** @type {HTMLElement | null} */ (document.activeElement);
   if (a && (a.tagName === 'INPUT' || a.tagName === 'TEXTAREA' || a.isContentEditable)) return;
   if (ev.key === '+' || ev.key === '=') { ev.preventDefault(); pdfZoomIn(); }
   else if (ev.key === '-' || ev.key === '_') { ev.preventDefault(); pdfZoomOut(); }

@@ -142,9 +142,20 @@ export const escHtml = escJs;
  * oder .disabled. Für ein anderes Element sind diese Felder schlicht leer —
  * die Typprüfung soll an den echten Fehlern hängen, nicht an jedem Feldzugriff.
  * @param {string} id
- * @returns {HTMLInputElement}
+ * @returns {Feld}
  */
-export function G(id) { return /** @type {HTMLInputElement} */ (document.getElementById(id)); }
+export function G(id) { return /** @type {Feld} */ (document.getElementById(id)); }
+/**
+ * querySelectorAll als HTMLElement[]: Die Oberfläche fragt nur HTML-Elemente
+ * ab, und dataset, style und hidden gehören zu HTMLElement, nicht zu Element.
+ * @param {string} sel @param {ParentNode} [wurzel]
+ * @returns {HTMLElement[]}
+ */
+export function alle(sel, wurzel = document) { return /** @type {HTMLElement[]} */ ([...wurzel.querySelectorAll(sel)]); }
+/** querySelector als HTMLElement, siehe alle(). @param {string} sel @param {ParentNode} [wurzel] */
+export function eins(sel, wurzel = document) { return /** @type {HTMLElement | null} */ (wurzel.querySelector(sel)); }
+/** Der offene Reiter (data-tab des aktiven Knopfs in der Leiste). */
+export function aktiverReiter() { return eins('.ntab.active')?.dataset.tab; }
 /** Ein Symbol aus der Symbolfamilie (Sprite in index.html) als HTML. */
 export function ico(name) { return `<svg class="ico" aria-hidden="true"><use href="#i-${esc(name)}"/></svg>`; }
 /**
@@ -224,6 +235,7 @@ export function istSetnummer(eingabe) {
 export function feldFehler(id, text) {
   const feld = G(id);
   if (!feld) return;
+  /** @type {HTMLElement | null} */
   let el = G(id + '-fehler');
   if (!el) {
     el = document.createElement('div');
@@ -316,7 +328,7 @@ export function zuruecksetzenKnopf(ansicht) {
  *
  * Sprachfrei bleibt es damit erst recht: Es kommt gar kein Wort hinzu.
  *
- * @param {HTMLButtonElement} btn
+ * @param {HTMLButtonElement | HTMLInputElement} btn
  * @param {string} [laeuft] Andere Beschriftung waehrend der Arbeit. NUR
  *   angeben, wenn der Knopf wirklich etwas anderes sagen soll: Die
  *   PDF-Erzeugung tut das, weil sie den Fortschritt hineinschreibt
@@ -599,7 +611,7 @@ export function observeLazyImages(root) {
     window._imgObserver = new IntersectionObserver((entries) => {
       entries.forEach(e => {
         if(e.isIntersecting){
-          const img = e.target;
+          const img = /** @type {HTMLImageElement} */ (e.target);
           if(img.complete) img.classList.add('loaded');
           img.addEventListener('load', ()=>img.classList.add('loaded'), {once:true});
           window._imgObserver.unobserve(img);
@@ -763,7 +775,7 @@ export function rbHinweisZeigen() {
 export function rbHinweisVerbergen() { const b = G('rb-hinweis'); if (b) b.hidden = true; }
 function rbHinweisOeffnen() {
   rbHinweisVerbergen();
-  document.querySelector('.ntab[data-tab="settings"]')?.click();
+  eins('.ntab[data-tab="settings"]')?.click();
   /** @type {HTMLElement|null} */ (document.querySelector('.einst-nav a[data-arg="einst-rb"]'))?.click();
   G('rb-key')?.focus();
 }
@@ -985,7 +997,7 @@ export function setLang(lang) {
   _updateLangSelect();
 }
 export function _updateLangSelect() {
-  const sel = document.getElementById('lang-select');
+  const sel = /** @type {HTMLSelectElement | null} */ (document.getElementById('lang-select'));
   if (sel) sel.value = LANG;
 }
 

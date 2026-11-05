@@ -61,6 +61,7 @@ export function zeichneScrollbalken() {
  * Selbst erzeugt hängt der Balken an keiner Reihenfolge im HTML.
  */
 function _erzeugeScrollbalken() {
+  /** @type {HTMLElement} */
   let bar = G('app-scrollbar');
   if (!bar) {
     bar = document.createElement('div');

@@ -2,7 +2,7 @@
 import { detailZeile, ladeAnzeige, listeLadefehler } from './01-bausteine.js';
 import { registerActions } from './00-registry.js';
 import { locale, t, tRaw} from '../i18n.js';
-import { fehlerMeldung, bildTag, platzhalterInhalt, leerZustand, ico, G, api, fullUrl, imgUrl, thumbUrl, toast, zuruecksetzenKnopf, betragAusFeld } from './01-core.js';
+import { fehlerMeldung, bildTag, platzhalterInhalt, leerZustand, ico, G, api, fullUrl, imgUrl, thumbUrl, toast, zuruecksetzenKnopf, betragAusFeld, alle, eins } from './01-core.js';
 import { setScrollLabel } from './15-scrollbar.js';
 import { PARTS_ICON_SVG, loadGallery, loadStats } from './02-gallery.js';
 import { _lastImportAt, set_lastImportAt } from './00-zustand.js';
@@ -82,7 +82,7 @@ function _bindCatalogControls(){
   // beiden Auswahlfelder oben, gesprungen über die Leiste am rechten Rand.
   // Auch der Sentinel des Endlos-Scrolls ist weg: Geladen wird die Seite, die
   // gerade ins Bild kommt (siehe _beobachteSeiten).
-  G('cat-modal').addEventListener('click', e=>{ if(e.target.id==='cat-modal') closeCatModal(); });
+  G('cat-modal').addEventListener('click', e=>{ if(e.target===e.currentTarget) closeCatModal(); });
   G('cat-m-add').onclick = addCatalogSetToGallery;
 }
 
@@ -214,12 +214,12 @@ async function loadCatalogSets(){
  * verliert die Stelle, an der man gerade war.
  */
 function _setzePlatzhalterHoehe(){
-  const erste = document.querySelector('#catalog-grid .cat-page[data-page="1"]');
+  const erste = eins('#catalog-grid .cat-page[data-page="1"]');
   if (!erste) return;
   const hoehe = erste.offsetHeight;
   if (hoehe < 10) return;   // noch nicht gezeichnet
   const proKachel = hoehe / Math.max(1, _catItems.length);
-  for (const el of document.querySelectorAll('#catalog-grid .cat-page-ph')) {
+  for (const el of alle('#catalog-grid .cat-page-ph')) {
     const anzahl = parseInt(el.dataset.anzahl) || CAT_LIMIT;
     el.style.height = Math.round(anzahl * proKachel) + 'px';
   }
@@ -248,7 +248,7 @@ let _catJahrVerteilung = [];
 
 function _messeBloecke(){
   _catBlockLagen = [];
-  for (const el of document.querySelectorAll('#catalog-grid .cat-page')) {
+  for (const el of alle('#catalog-grid .cat-page')) {
     const r = el.getBoundingClientRect();
     _catBlockLagen.push({
       seite: parseInt(el.dataset.page),
@@ -326,7 +326,7 @@ export async function ladeSeite(seite){
     const d = await api('GET', '/v1/catalog/sets?' + _catQuery(seite));
     if (gen !== _catGen) return;   // Filter hat inzwischen gewechselt
     if (!d.success || !d.sets?.length) return;
-    const block = document.querySelector(`#catalog-grid .cat-page[data-page="${seite}"]`);
+    const block = eins(`#catalog-grid .cat-page[data-page="${seite}"]`);
     if (!block) return;
     block.classList.remove('cat-page-ph');
     block.classList.add('sgrid');
@@ -520,7 +520,7 @@ function _jahrAnPosition(){
   if (!grid) return null;
   // Erste Wahl: die oberste SICHTBARE Kachel. Sobald die Seite geladen ist, ist
   // das die Wahrheit und keine Rechnung.
-  for (const karte of grid.querySelectorAll('.sc:not(.cat-page-ph)')) {
+  for (const karte of alle('.sc:not(.cat-page-ph)', grid)) {
     const r = karte.getBoundingClientRect();
     if (r.bottom >= 0) {
       const jahr = karte.dataset.year;

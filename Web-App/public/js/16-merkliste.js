@@ -620,7 +620,7 @@ async function importMerklisteCsv() {
   const fd = new FormData();
   fd.append('file', fi.files[0]);
   const owner = selectedOwner();
-  if (owner) fd.append('owner_user_id', owner);
+  if (owner) fd.append('owner_user_id', String(owner));
 
   const status = G('mk-status');
   if (status) status.textContent = tRaw('import.running');

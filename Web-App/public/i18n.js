@@ -281,7 +281,7 @@ export function applyLang(lang, persist) {
   document.documentElement.lang = lang;
 
   // Re-render all elements that carry a data-i18n attribute
-  document.querySelectorAll('[data-i18n]').forEach(el => {
+  /** @type {NodeListOf<HTMLElement>} */ (document.querySelectorAll('[data-i18n]')).forEach(el => {
     const key = el.dataset.i18n;
     const attr = el.dataset.i18nAttr;   // optional: 'placeholder', 'title', etc.
     // optional: data-i18n-vars='{"n":"4000"}' für parametrisierte statische Texte
@@ -303,13 +303,13 @@ export function applyLang(lang, persist) {
   });
 
   // Re-render nav tab labels
-  document.querySelectorAll('.ntab[data-i18n-tab]').forEach(el => {
+  /** @type {NodeListOf<HTMLElement>} */ (document.querySelectorAll('.ntab[data-i18n-tab]')).forEach(el => {
     const label = el.querySelector('.tab-label');
     if (label) label.textContent = t(el.dataset.i18nTab);
   });
 
   // Sync the language dropdown in settings (if rendered)
-  const sel = document.getElementById('lang-select');
+  const sel = /** @type {HTMLSelectElement | null} */ (document.getElementById('lang-select'));
   if (sel) sel.value = lang;
 
   // Speichern (01-core.js) und das Neuladen des offenen Reiters (25-navigation.js)

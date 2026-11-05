@@ -17,7 +17,7 @@ export function istOffen(el) {
 }
 
 function dialoge() {
-  return [...document.querySelectorAll('.ovl[role="dialog"]')];
+  return /** @type {HTMLElement[]} */ ([...document.querySelectorAll('.ovl[role="dialog"]')]);
 }
 
 /** Der oberste offene Dialog: höchster z-index, bei Gleichstand der spätere im Markup. */
@@ -104,7 +104,7 @@ function tasteGedrueckt(ev) {
     // Escape schliesst beim ersten Druck, auch aus einem Feld. Ausnahme sind
     // Felder in einer Tabelle (Korrekturen der Wanted-Vorschau): Dort verlässt
     // es nur die Zelle, damit nicht alle Korrekturen mit dem Dialog verschwinden.
-    const aktiv = document.activeElement;
+    const aktiv = /** @type {HTMLElement | null} */ (document.activeElement);
     if (aktiv && dialog.contains(aktiv) && /^(INPUT|TEXTAREA|SELECT)$/.test(aktiv.tagName) && aktiv.closest('table')) {
       ev.preventDefault();
       aktiv.blur();

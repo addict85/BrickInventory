@@ -7,7 +7,7 @@ import { esc } from './00-escapen.js';
 import { abonniere } from './00-ereignisse.js';
 import { resetScopeModes } from './14-scope.js';
 import { LANG, applyLang, t, setLangValue, tRaw } from '../i18n.js';
-import { G, api, apiRoh, toast, knopfBesetzt, formularFehler, passwortRegelText, applyTheme, initDefaultCondition, zeigeBenutzernamen, rbHinweisZeigen, _updateLangSelect } from './01-core.js';
+import { G, api, apiRoh, toast, knopfBesetzt, formularFehler, passwortRegelText, applyTheme, initDefaultCondition, zeigeBenutzernamen, rbHinweisZeigen, _updateLangSelect, alle } from './01-core.js';
 import { setAllSets, set_ME, set_settingsCache, set_CURRENCY, ME } from './00-zustand.js';
 import { loadGallery, loadStats } from './02-gallery.js';
 import { routeBeimStart } from './24-router.js';
@@ -360,7 +360,7 @@ function showApp(){ bindTabs(); plInit(); setTimeout(()=>{ gibCheckOnLoad(); }, 
   // erst hier eingeblendet. Fuer alle anderen waere er leer, und ein leerer
   // Reiter ist schlimmer als keiner: Man klickt ihn an und sucht.
   if(ME.isAdmin){ const ns=G('ntab-settings'); if(ns) ns.style.display=''; }
-  if(ME.isAdmin){ document.querySelectorAll('.admin-only').forEach(el=>el.style.display=''); const nm=G('ntab-monitor'); if(nm){ nm.style.display=''; const lbl=nm.querySelector('.tab-label'); if(lbl) lbl.textContent=tRaw('nav.monitoring'); } G('usermgmt').style.display='block'; ['bl-ao','rb-ao','bs-ao'].forEach(id=>{ const el=G(id); if(el) el.style.display='none'; }); const gg=G('global-settings-grid'); if(gg) gg.style.display='grid'; const gl=G('global-settings-label'); if(gl) gl.style.display='block'; }
+  if(ME.isAdmin){ alle('.admin-only').forEach(el=>el.style.display=''); const nm=G('ntab-monitor'); if(nm){ nm.style.display=''; const lbl=nm.querySelector('.tab-label'); if(lbl) lbl.textContent=tRaw('nav.monitoring'); } G('usermgmt').style.display='block'; ['bl-ao','rb-ao','bs-ao'].forEach(id=>{ const el=G(id); if(el) el.style.display='none'; }); const gg=G('global-settings-grid'); if(gg) gg.style.display='grid'; const gl=G('global-settings-label'); if(gl) gl.style.display='block'; }
   else { ['bl-ck','bl-cs','bl-tok','bl-ts','rb-key','bs-key','lim-rb','lim-bl','lim-bs'].forEach(id=>{const el=G(id);if(el){el.disabled=true;if(el.type!=='number')el.placeholder=tRaw('settings.admins_only_ph')}}); G('btn-sav-bl').disabled=true; G('btn-sav-rb').disabled=true; G('btn-sav-bs').disabled=true; }
   // Ohne Rebrickable-Schlüssel öffnet trotzdem die Sammlung: Ein Sprung in
   // die Einstellungen bei jeder Anmeldung nimmt dem Verwalter seine Startseite.
@@ -409,7 +409,7 @@ G('btn-logout').onclick=async()=>{
   const ns=G('ntab-settings'); if(ns) ns.style.display='none';
   // Auch die Verwaltereinträge im Menü: Meldet sich danach ein anderes Konto an,
   // stünden sie sonst noch da.
-  document.querySelectorAll('.admin-only').forEach(el=>{ el.style.display='none'; });
+  alle('.admin-only').forEach(el=>{ el.style.display='none'; });
   G('usermgmt').style.display='none';
 
   ['bl-ao','rb-ao','bs-ao'].forEach(id=>{ const el=G(id); if(el) el.style.display=''; });

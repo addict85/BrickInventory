@@ -16,7 +16,7 @@
 import { detailZeile, ladeAnzeige } from './01-bausteine.js';
 import { echt, registerActions } from './00-registry.js';
 import { colorName, locale, t, tRaw } from '../i18n.js';
-import { fmtDatum, fmtGeld, bildTag, platzhalterInhalt, ico, escHex, G, api, escJs, fmtN, fullUrl, hexZiffern, imgUrl, thumbUrl, toast, betragAusFeld, betragFuerFeld } from './01-core.js';
+import { fmtDatum, fmtGeld, bildTag, platzhalterInhalt, ico, escHex, G, api, escJs, fmtN, fullUrl, hexZiffern, imgUrl, thumbUrl, toast, betragAusFeld, betragFuerFeld, aktiverReiter } from './01-core.js';
 import { applySetAggregate, loadGallery } from './02-gallery.js';
 import { loadFinance } from './04-finance.js';
 import { deleteManualFig, loadManualFigsTable, manualFigsCache, updateManualFig } from './06-minifigs.js';
@@ -50,7 +50,7 @@ export function openAcqModal(sn) {
 // _acqModalSn) hat sie stillschweigend überschrieben. Die kurze Fassung war
 // also seit jeher toter Code und ist entfernt; im ES-Modul wäre sie ohnehin
 // ein harter Fehler ("Duplicate top-level function declarations").
-G('acq-modal').addEventListener('click', e => e.target.id === 'acq-modal' && closeAcqModal());
+G('acq-modal').addEventListener('click', e => e.target === e.currentTarget && closeAcqModal());
 
 /**
  * Wessen Kaufpreise gerade im Dialog stehen.
@@ -839,7 +839,7 @@ async function speichereTeilFarbe() {
   if (d.bild === null) toast(tRaw('parts.color.saved_no_image'), 'info');
   else                 toast(tRaw('settings.saved'), 'success');
   await loadManualParts().catch(() => {});
-  if (document.querySelector('.ntab.active')?.dataset?.tab === 'finance') loadFinance();
+  if (aktiverReiter() === 'finance') loadFinance();
   await openManDetail('part', nummer, neu);
 }
 
@@ -847,7 +847,7 @@ function closeSetItemDetail() {
   G('setitem-modal').classList.remove('open');
 }
 G('setitem-modal').addEventListener('click',
-  e => e.target.id === 'setitem-modal' && closeSetItemDetail());
+  e => e.target === e.currentTarget && closeSetItemDetail());
 
 /** Aus dem Teil-Dialog ins Set-Detail — der eine schliesst, der andere öffnet. */
 function openSetAusItem(setNumber) {
@@ -859,7 +859,7 @@ function closeManDetail() {
   G('man-detail-modal').classList.remove('open');
   _manItem = null;
 }
-G('man-detail-modal').addEventListener('click', e => e.target.id === 'man-detail-modal' && closeManDetail());
+G('man-detail-modal').addEventListener('click', e => e.target === e.currentTarget && closeManDetail());
 
 function manQtyChange(delta) {
   const inp = G('man-det-qty');
@@ -867,7 +867,7 @@ function manQtyChange(delta) {
   // parseInt auf delta: Seit der Umstellung auf data-arg kommt der Wert als
   // Zeichenkette ("1"/"-1"). Ohne Umwandlung wäre 1 + "1" die Zeichenkette
   // "11" — aus einer 1 wurde beim Klick auf + eine 11.
-  inp.value = Math.max(1, parseInt(inp.value || 1) + (parseInt(delta) || 0));
+  inp.value = String(Math.max(1, parseInt(inp.value || '1') + (parseInt(delta) || 0)));
   manQtySave();
 }
 

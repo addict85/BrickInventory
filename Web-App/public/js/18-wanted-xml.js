@@ -476,7 +476,7 @@ async function fuelleFarbwahlen() {
   if (!farben?.length) return;
   const opts = farben.map(c =>
     `<option value="${c.id}" data-hex="${hexZiffern(c.hex)}">${esc(colorName(c.name))}</option>`).join('');
-  for (const sel of G('wanted-xml-tabelle').querySelectorAll('select[data-change="wantedKorrekturFarbe"]')) {
+  for (const sel of /** @type {NodeListOf<HTMLSelectElement>} */ (G('wanted-xml-tabelle').querySelectorAll('select[data-change="wantedKorrekturFarbe"]'))) {
     const i = Number(sel.dataset.i);
     const gewaehlt = _korrekturen.get(i)?.rbFarbe;
     sel.innerHTML = `<option value="">${esc(tRaw('wanted.keep'))}</option>${opts}`;
@@ -584,7 +584,7 @@ function setzeKorrektur(i, k) {
 }
 
 G('wanted-xml-modal')?.addEventListener('click',
-  e => e.target.id === 'wanted-xml-modal' && wantedXmlSchliessen());
+  e => e.target === e.currentTarget && wantedXmlSchliessen());
 
 // ── Das Symbol an die drei Knöpfe hängen ───────────────────────────────────
 //

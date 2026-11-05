@@ -2,7 +2,7 @@
 import { ladeAnzeige, listeLadefehler, condBadges, ownerBadges, pnlBadge } from './01-bausteine.js';
 import { registerActions } from './00-registry.js';
 import { colorName, t, tRaw } from '../i18n.js';
-import { fmtDatum, fmtGeld, bildTag, platzhalterInhalt, leerZustand, ico, G, api, escJs, fmtN, imgUrl, thumbUrl } from './01-core.js';
+import { fmtDatum, fmtGeld, bildTag, platzhalterInhalt, leerZustand, ico, G, api, escJs, fmtN, imgUrl, thumbUrl, alle } from './01-core.js';
 import { scopeMode, scopeQuery } from './14-scope.js';
 import { CURRENCY, _pnlCache } from './00-zustand.js';
 import { esc } from './00-escapen.js';
@@ -96,7 +96,7 @@ async function loadPortfolioChart(){
     const zeitraumText = { week: 'finance.change.week', month: 'finance.change.month',
                            year: 'finance.change.year', max: 'finance.change.max' }[_chartPeriod];
     const zeitraum = zeitraumText ? `<span class="pnl-zeitraum">${t(zeitraumText)}</span>` : '';
-    if(!(window._finGrandTotal > 0)) pnlEl.innerHTML = '';
+    if(!(Number(window._finGrandTotal) > 0)) pnlEl.innerHTML = '';
     else if(d.period_change_pct != null){
       pnlEl.innerHTML = pnlBadge(d.period_change_pct) + zeitraum;
     } else {
@@ -503,10 +503,10 @@ function finFilterAnwenden(){
   // style.display statt des hidden-Attributs: `.tw` setzt in styles.css eine
   // eigene Darstellung, und eine Autoren-Regel schlaegt das `[hidden]` des
   // Browsers. Der Abschnitt bliebe sichtbar, ohne dass etwas scheitert.
-  document.querySelectorAll('#fin-tbl [data-fin-art]').forEach(el => {
+  alle('#fin-tbl [data-fin-art]').forEach(el => {
     el.style.display = finZeigt(el.dataset.finArt) ? '' : 'none';
   });
-  document.querySelectorAll('#fin-filter button').forEach(b => {
+  alle('#fin-filter button').forEach(b => {
     const art = b.dataset.art;
     const an = art ? finKategorien.has(art) : finKategorien.size === 0;
     b.classList.toggle('active', an);

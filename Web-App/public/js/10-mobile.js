@@ -84,7 +84,7 @@
 
   function scrollActiveTabIntoView() {
     const nav = document.querySelector('nav');
-    const active = document.querySelector('.ntab.active');
+    const active = /** @type {HTMLElement | null} */ (document.querySelector('.ntab.active'));
     if (!nav || !active) return;
     // Nur wenn die Leiste überhaupt scrollt — auf dem Desktop passiert nichts.
     if (nav.scrollWidth <= nav.clientWidth + 4) return;

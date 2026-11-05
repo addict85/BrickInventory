@@ -33,7 +33,8 @@ let _gutscheine = [];
 /** Die id des Gutscheins, der gerade bearbeitet wird; null = neuer Eintrag. */
 let _bearbeitet = null;
 
-const el = (id) => document.getElementById(id);
+/** @param {string} id */
+const el = (id) => /** @type {Feld} */ (document.getElementById(id));
 
 // Die Handler nehmen die id als ERSTES Argument und kein Ereignis: Der
 // Verteiler in 11-actions.js reicht `data-arg`, `data-arg2` … in dieser

@@ -5,7 +5,7 @@ import { abonniere } from './00-ereignisse.js';
 import { ladeAnzeige, skelettKacheln, listeLadefehler, teileAufschluesselung, condBadges, ownerBadges, schliesseErfassen } from './01-bausteine.js';
 import { registerActions, echt } from './00-registry.js';
 import { colorName, locale, t, tRaw } from '../i18n.js';
-import { bildTag, G, api, escHex, escHtml, escJs, fmtBig, fullUrl, imgUrl, leerZustand, observeLazyImages, platzhalterInhalt, thumbUrl, zuruecksetzenKnopf, TRASH_ICON_SVG, betragAusFeld, fmtN, hexZiffern, toast } from './01-core.js';
+import { bildTag, G, api, escHex, escHtml, escJs, fmtBig, fullUrl, imgUrl, leerZustand, observeLazyImages, platzhalterInhalt, thumbUrl, zuruecksetzenKnopf, TRASH_ICON_SVG, betragAusFeld, fmtN, hexZiffern, toast, aktiverReiter } from './01-core.js';
 import { addScopeParam, addLagerParam, scopeQuery } from './14-scope.js';
 import { allSets, CURRENCY } from './00-zustand.js';
 import { esc } from './00-escapen.js';
@@ -167,7 +167,7 @@ function partsParams(page){
   // Nur die Tabellenansicht hat eine Spalte dafür, die Kachel nicht.
   if (G('parts-view').value === 'table') p.set('with_sets','1');
   p.set('page', page);
-  p.set('page_size', PARTS_PAGE_SIZE);
+  p.set('page_size', String(PARTS_PAGE_SIZE));
   addScopeParam(p, 'parts');
   addLagerParam(p, 'parts');
   return p;
@@ -534,7 +534,7 @@ export function renderManualParts() {
 /** @param {number} [owner] Besitzer der Karte — siehe deleteManualPart. */
 export async function updateManualPart(partNumber, colorId, body, owner) {
   const d = await api('PUT', `/v1/parts/${encodeURIComponent(partNumber)}/${colorId}${owner ? `?owner=${encodeURIComponent(owner)}` : ''}`, body);
-  if (d.success) { toast(tRaw('settings.saved'),'success'); loadManualParts(); if(document.querySelector('.ntab.active')?.dataset?.tab==='finance') loadFinance(); }
+  if (d.success) { toast(tRaw('settings.saved'),'success'); loadManualParts(); if(aktiverReiter()==='finance') loadFinance(); }
   else toast(d.error||t('settings.error'),'error');
 }
 

@@ -1,0 +1,25 @@
+{
+  // Typprüfung der Oberfläche (ES-Module unter public/js und i18n.js), ohne
+  // Übersetzen: esbuild bündelt, tsc prüft nur. moduleDetection "force", weil
+  // sonst die Namen der klassischen Skripte als globale gelten und ein
+  // fehlender Import nicht auffällt. Die zwei klassischen Skripte prüft
+  // tsconfig.frontend-skripte.json; beide laufen über scripts/check-frontend-typen.js.
+  "compilerOptions": {
+    "allowJs": true,
+    "checkJs": true,
+    "noEmit": true,
+    "target": "es2022",
+    "module": "es2022",
+    "moduleResolution": "bundler",
+    "moduleDetection": "force",
+    "lib": ["es2022", "dom", "dom.iterable"],
+    "skipLibCheck": true,
+    "types": [],
+    "strict": false,
+    "noUnusedLocals": true,
+    "noFallthroughCasesInSwitch": true,
+    "strictBindCallApply": true
+  },
+  "include": ["public/js/*.js", "public/i18n.js", "frontend-typen/*.d.ts"],
+  "exclude": ["public/js/app.bundle.js", "public/js/00-theme-boot.js", "public/js/logviewer.js"]
+}

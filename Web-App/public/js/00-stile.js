@@ -14,6 +14,7 @@ const ERLAUBT = new Set(typeof __ERLAUBTE_STILE__ === 'undefined' ? [] : __ERLAU
 // sie nicht setzen.
 const FARBE = /^(#[0-9A-Fa-f]{6}|var\(--[a-z0-9-]+\))$/;
 const ZAHL = /^\d{1,5}(\.\d{1,3})?$/;
+/** @type {Array<[string, (el: HTMLElement, v: string) => void]>} */
 const FREI = [
   ['data-farbe', (el, v) => { if (FARBE.test(v)) el.style.background = v; }],
   ['data-breite', (el, v) => { if (ZAHL.test(v)) el.style.width = Math.min(100, Number(v)) + '%'; }],

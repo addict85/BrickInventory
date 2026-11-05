@@ -137,7 +137,7 @@ import { deleteManualPart } from './03-parts.js';
   const NATIV = new Set(['BUTTON', 'A', 'INPUT', 'SELECT', 'TEXTAREA', 'LABEL', 'SUMMARY']);
   document.addEventListener('keydown', ev => {
     const el = ev.target;
-    if (!el || NATIV.has(el.tagName) || !el.hasAttribute?.('data-click') || !el.hasAttribute('tabindex')) return;
+    if (!(el instanceof HTMLElement) || NATIV.has(el.tagName) || !el.hasAttribute?.('data-click') || !el.hasAttribute('tabindex')) return;
     const leer = ev.key === ' ' && el.getAttribute('role') === 'button';
     if (ev.key !== 'Enter' && !leer) return;
     ev.preventDefault();
@@ -167,11 +167,11 @@ import { deleteManualPart } from './03-parts.js';
   // Kreis.
   document.addEventListener('submit', ev => {
     const form = ev.target;
-    if (!form || form.tagName !== 'FORM') return;
+    if (!(form instanceof HTMLFormElement)) return;
     ev.preventDefault();
     const id = form.getAttribute('data-submit');
     if (!id) return;
-    const knopf = document.getElementById(id);
+    const knopf = /** @type {HTMLButtonElement | null} */ (document.getElementById(id));
     if (knopf && !knopf.disabled) knopf.click();
   });
 
@@ -181,7 +181,7 @@ import { deleteManualPart } from './03-parts.js';
   // den Kachel-Templates.
   document.addEventListener('error', ev => {
     const el = ev.target;
-    if (!el || el.tagName !== 'IMG') return;
+    if (!(el instanceof HTMLImageElement)) return;
 
     // Erst einmal wiederholen, bevor aufgegeben wird.
     //
@@ -241,9 +241,9 @@ import { deleteManualPart } from './03-parts.js';
   const imgObserver = new MutationObserver(muts => {
     for (const m of muts) {
       for (const node of m.addedNodes) {
-        if (node.nodeType !== 1) continue;
-        if (node.tagName === 'IMG') { if (node.complete) markLoaded(node); continue; }
-        node.querySelectorAll?.('img[loading=lazy]').forEach(i => { if (i.complete) markLoaded(i); });
+        if (!(node instanceof Element)) continue;
+        if (node instanceof HTMLImageElement) { if (node.complete) markLoaded(node); continue; }
+        /** @type {NodeListOf<HTMLImageElement>} */ (node.querySelectorAll('img[loading=lazy]')).forEach(i => { if (i.complete) markLoaded(i); });
       }
     }
   });
@@ -288,6 +288,7 @@ function openImageLightboxFromEl() {
 /** War: onchange="setLang(this.value)" */
 function setLangFromEl() { setLang(this.value); }
 /** Darstellung je Gerät — die Logik steht in 00-theme-boot.js. */
+/** @this {HTMLSelectElement} */
 function setzeDunkel() { window.__bimDunkel?.(this.value); }
 
 /** War: onchange="renderFigs(allFigsCache)" */
@@ -384,10 +385,10 @@ export function merkpostenLoeschenStop(arg, ev) {
 export function openPdfViewerLink(href, desc, ev) { ev?.preventDefault(); openPdfViewer(href, desc || ''); }
 
 /** War: onclick="const q=G('m-qty');q.value=Math.max(1,parseInt(q.value||1)-1);autosaveSet()" */
-export function mQtyDec() { const q = G('m-qty'); q.value = Math.max(1, parseInt(q.value || 1) - 1); autosaveSet(); }
+export function mQtyDec() { const q = G('m-qty'); q.value = String(Math.max(1, parseInt(q.value || '1') - 1)); autosaveSet(); }
 
 /** War: onclick="const q=G('m-qty');q.value=parseInt(q.value||1)+1;autosaveSet()" */
-export function mQtyInc() { const q = G('m-qty'); q.value = parseInt(q.value || 1) + 1; autosaveSet(); }
+export function mQtyInc() { const q = G('m-qty'); q.value = String(parseInt(q.value || '1') + 1); autosaveSet(); }
 
 
 // ── Handler beim Dispatcher anmelden (siehe js/00-registry.js) ──────────────

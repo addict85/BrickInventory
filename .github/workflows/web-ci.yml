@@ -243,6 +243,11 @@ jobs:
       - name: Typprüfung (noImplicitAny, gestaffelt)
         run: npm run typecheck:strict
 
+      # Die Oberfläche (public/js, i18n.js) hat eigene Konfigurationen: ES-Module
+      # und die zwei klassischen Skripte. Beide müssen ohne Meldung durchlaufen.
+      - name: Typprüfung Oberfläche
+        run: npm run typecheck:frontend
+
       # Vor den Tests bauen. Die Testhelfer bauen zwar bei Bedarf selbst
       # (test/helpers/sources.js), aber ein eigener Schritt macht sichtbar, WO
       # es klemmt: ein Build-Fehler soll nicht als "Test rot" erscheinen.
