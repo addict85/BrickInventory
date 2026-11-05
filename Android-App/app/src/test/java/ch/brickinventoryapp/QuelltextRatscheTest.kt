@@ -38,7 +38,7 @@ import org.junit.Test
  *   kommentar-zu-lang    sechs Zeilen Prosa über AppViewModel → rot „kein Kommentar hat …“
  *   verweis-ins-leere    ein Anker in Vorwaermen.kt verschrieben → rot „jeder Verweis …“
  * detekt-Baseline (05.11.2026, gemessen mit kotlinc lokal):
- *   detekt-baseline-waechst       Obergrenze 133 statt 134 → rot „die detekt-Baseline …“
+ *   detekt-baseline-waechst       Obergrenze eins unter den Einträgen → rot „die detekt-Baseline …“
  *   detekt-baseline-fremde-regel  ein MagicNumber-Eintrag → rot, derselbe Test
  * Abbruch (05.11.2026): cache-schluckt-abbruch macht auch „kein breiter Fang …“ rot.
  * Namen (05.11.2026, gemessen mit kotlinc lokal): voll-qualifiziert schreibt in
@@ -117,15 +117,19 @@ class QuelltextRatscheTest {
                 }
                 else -> { i++; continue }
             }
-            var imTag = false
-            val prosa = text.count { z ->
-                if (z.startsWith("@")) imTag = true else if (z.isEmpty()) imTag = false
-                z.isNotEmpty() && !imTag
-            }
-            ergebnis += (i + 1) to prosa
+            ergebnis += (i + 1) to prosa(text)
             i = j + 1
         }
         return ergebnis
+    }
+
+    /** Prosazeilen ohne KDoc-Tags; ein Tag gilt bis zur nächsten Leerzeile. */
+    private fun prosa(text: List<String>): Int {
+        var imTag = false
+        return text.count { z ->
+            if (z.startsWith("@")) imTag = true else if (z.isEmpty()) imTag = false
+            z.isNotEmpty() && !imTag
+        }
     }
 
     @Test

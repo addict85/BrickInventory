@@ -101,41 +101,45 @@ fun CsvImportBanner(
                 }
             }
         }
-        if (expanded) {
-            Surface(
-                color = MaterialTheme.colorScheme.surfaceVariant,
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Row(
-                    Modifier.padding(horizontal = Abstaende.gross, vertical = 10.dp),
-                    horizontalArrangement = Arrangement.spacedBy(Abstaende.gross)
-                ) {
-                    val farben = LocalStatusFarben.current
-                    listOf(
-                        Triple(ok, Icons.Default.CheckCircle to farben.erfolg, stringResource(R.string.csv_stat_success)),
-                        Triple(warn, Icons.Default.Warning to farben.warnung, stringResource(R.string.csv_stat_warnings)),
-                        Triple(err, Icons.Default.Error to farben.fehler, stringResource(R.string.csv_stat_errors))
-                    ).forEach { (v, symbol, l) ->
-                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            Row(verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(Abstaende.winzig)) {
-                                Icon(symbol.first, null, Modifier.size(mitSchrift(16.dp)), tint = symbol.second)
-                                Text("$v", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.bodyMedium)
-                            }
-                            Text(l, style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        }
+        if (expanded) CsvImportZahlen(ok, warn, err, running)
+    }
+}
+
+/** Aufgeklappt: Erfolge, Warnungen und Fehler einzeln, nach dem Lauf mit „fertig“. */
+@Composable
+private fun CsvImportZahlen(ok: Int, warn: Int, err: Int, running: Boolean) {
+    Surface(
+        color = MaterialTheme.colorScheme.surfaceVariant,
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Row(
+            Modifier.padding(horizontal = Abstaende.gross, vertical = 10.dp),
+            horizontalArrangement = Arrangement.spacedBy(Abstaende.gross)
+        ) {
+            val farben = LocalStatusFarben.current
+            listOf(
+                Triple(ok, Icons.Default.CheckCircle to farben.erfolg, stringResource(R.string.csv_stat_success)),
+                Triple(warn, Icons.Default.Warning to farben.warnung, stringResource(R.string.csv_stat_warnings)),
+                Triple(err, Icons.Default.Error to farben.fehler, stringResource(R.string.csv_stat_errors))
+            ).forEach { (v, symbol, l) ->
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Row(verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(Abstaende.winzig)) {
+                        Icon(symbol.first, null, Modifier.size(mitSchrift(16.dp)), tint = symbol.second)
+                        Text("$v", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.bodyMedium)
                     }
-                    if (!running) {
-                        Spacer(Modifier.weight(1f))
-                        Text(
-                            stringResource(R.string.csv_import_done),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.align(Alignment.CenterVertically)
-                        )
-                    }
+                    Text(l, style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
+            }
+            if (!running) {
+                Spacer(Modifier.weight(1f))
+                Text(
+                    stringResource(R.string.csv_import_done),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.align(Alignment.CenterVertically)
+                )
             }
         }
     }

@@ -18,6 +18,12 @@ import ch.brickinventoryapp.ui.screens.ServerStartAnzeige
 
 /** Navigationsziele der Anmeldung; die ViewModels holt jedes Ziel selbst. */
 fun NavGraphBuilder.authGraph(navController: NavHostController) {
+    einrichtungsZiel(navController)
+    anmeldeZiel(navController)
+}
+
+/** Serveradresse eintragen oder per QR-Code übernehmen. */
+private fun NavGraphBuilder.einrichtungsZiel(navController: NavHostController) {
         composable<Screen.Setup> {
             val vm: AppViewModel = aktivitaetsViewModel()
             // Zustand INNERHALB des Ziels lesen — als Parameter wäre es eine
@@ -49,6 +55,10 @@ fun NavGraphBuilder.authGraph(navController: NavHostController) {
                 mussAbtippen = anmeldungVm::mussAbtippen,
             )
         }
+}
+
+/** Anmelden, Registrieren und Passkey; während der Server startet, sein Fortschritt. */
+private fun NavGraphBuilder.anmeldeZiel(navController: NavHostController) {
         composable<Screen.Login> {
             // Zustand INNERHALB des Ziels lesen — als Parameter wäre es eine
             // Momentaufnahme vom Aufbau des Graphen (der NavHost-Builder läuft nur einmal).

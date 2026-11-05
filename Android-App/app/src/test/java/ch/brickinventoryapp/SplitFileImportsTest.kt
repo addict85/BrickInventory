@@ -207,37 +207,6 @@ class SplitFileImportsTest {
         }
     }
 
-    /** Kommentare und Zeichenketten durch Leerzeichen ersetzen, Zeilen erhalten. */
-    private fun entkleide(src: String): String {
-        val out = StringBuilder()
-        var i = 0
-        while (i < src.length) {
-            when {
-                src.startsWith("//", i) -> {
-                    val j = src.indexOf('\n', i).let { if (it < 0) src.length else it }
-                    repeat(j - i) { out.append(' ') }; i = j
-                }
-                src.startsWith("/*", i) -> {
-                    val j = src.indexOf("*/", i + 2).let { if (it < 0) src.length else it + 2 }
-                    for (c in src.substring(i, j)) out.append(if (c == '\n') '\n' else ' '); i = j
-                }
-                src.startsWith("\"\"\"", i) -> {
-                    val j = src.indexOf("\"\"\"", i + 3).let { if (it < 0) src.length else it + 3 }
-                    for (c in src.substring(i, j)) out.append(if (c == '\n') '\n' else ' '); i = j
-                }
-                src[i] == '"' -> {
-                    var j = i + 1
-                    while (j < src.length && src[j] != '"') j += if (src[j] == '\\') 2 else 1
-                    j++
-                    for (c in src.substring(i, minOf(j, src.length))) out.append(if (c == '\n') '\n' else ' ')
-                    i = j
-                }
-                else -> { out.append(src[i]); i++ }
-            }
-        }
-        return out.toString()
-    }
-
     @Test
     fun `keine Datei ruft eine private Deklaration einer anderen`() {
         // ── Marcos zweiter Build brach hier ab (Nachtrag 101) ────────────────
@@ -265,7 +234,7 @@ class SplitFileImportsTest {
             """^private\s+(?:@\w+\s+)?(?:const\s+)?(?:suspend\s+)?(?:fun|val|var|class|object)\s+(?:<[^>]*>\s*)?(\w+)""",
             RegexOption.MULTILINE)
         for (f in dateien) {
-            for (m in deklaration.findAll(entkleide(f.readText()))) {
+            for (m in deklaration.findAll(Quellen.entkleide(f.readText()))) {
                 privat.getOrPut(m.groupValues[1]) { mutableListOf() }.add(f.name)
             }
         }
@@ -273,7 +242,7 @@ class SplitFileImportsTest {
         val fehler = mutableListOf<String>()
         for (f in dateien) {
             val roh = f.readText()
-            val code = entkleide(roh)
+            val code = Quellen.entkleide(roh)
             val eigen = Regex(
                 """^(?:private\s+|internal\s+)?(?:@\w+\s+)?(?:const\s+)?(?:suspend\s+)?(?:fun|val|var|class|object)\s+(?:<[^>]*>\s*)?(\w+)""",
                 RegexOption.MULTILINE).findAll(code).map { it.groupValues[1] }.toMutableSet()
@@ -333,7 +302,7 @@ class SplitFileImportsTest {
         }
         for (f in wurzel.walkTopDown().filter { it.extension == "kt" }) {
             val roh = f.readText()
-            val code = entkleide(roh).lines()
+            val code = Quellen.entkleide(roh).lines()
             val dateiweit = Regex("""@file:OptIn\(([^)]*)\)""").findAll(roh)
                 .flatMap { it.groupValues[1].split(",").asSequence() }
                 .map { it.trim().removeSuffix("::class") }.toSet()
@@ -406,7 +375,22 @@ class SplitFileImportsTest {
             "Zu wenige Kotlin-Dateien unter ${'$'}{wurzel.path} — Pfad veraltet?"
         }
         val dateien = wurzel.walkTopDown().filter { it.extension == "kt" }.toList()
+        val deklariert = deklarierteNamen(dateien)
+        val fehler = mutableListOf<String>()
+        for (f in dateien) {
+            for (m in Regex("""^import (ch\.brickinventoryapp\.[\w.]+)\s*(?://.*)?$""",
+                    RegexOption.MULTILINE).findAll(f.readText())) {
+                val voll = m.groupValues[1]
+                if (!hatZiel(voll, deklariert)) fehler += "${f.name}: import $voll — kein solches Ziel im Projekt"
+            }
+        }
+        assert(fehler.isEmpty()) {
+            "Importe ohne Ziel:\n  " + fehler.joinToString("\n  ")
+        }
+    }
 
+    /** Paket.Name jeder Deklaration auf oberster Ebene. */
+    private fun deklarierteNamen(dateien: List<java.io.File>): Set<String> {
         val deklariert = mutableSetOf<String>()
         for (f in dateien) {
             val src = f.readText()
@@ -421,24 +405,14 @@ class SplitFileImportsTest {
                 deklariert += "$paket.${m.groupValues[1]}"
             }
         }
-
-        val fehler = mutableListOf<String>()
-        for (f in dateien) {
-            for (m in Regex("""^import (ch\.brickinventoryapp\.[\w.]+)\s*(?://.*)?$""",
-                    RegexOption.MULTILINE).findAll(f.readText())) {
-                val voll = m.groupValues[1]
-                if (voll.endsWith(".*")) continue
-                // R und BuildConfig erzeugt das Bauwerkzeug, nicht der Quellbaum.
-                if (voll.substringAfterLast('.') in setOf("R", "BuildConfig")) continue
-                if (voll.contains(".R.")) continue
-                if (voll in deklariert) continue
-                // Geschachteltes Mitglied: die umgebende Klasse genügt.
-                if (voll.substringBeforeLast('.') in deklariert) continue
-                fehler += "${f.name}: import $voll — kein solches Ziel im Projekt"
-            }
-        }
-        assert(fehler.isEmpty()) {
-            "Importe ohne Ziel:\n  " + fehler.joinToString("\n  ")
-        }
+        return deklariert
     }
+
+    /**
+     * R und BuildConfig erzeugt das Bauwerkzeug, nicht der Quellbaum; bei einem
+     * geschachtelten Mitglied genügt die umgebende Klasse.
+     */
+    private fun hatZiel(voll: String, deklariert: Set<String>): Boolean =
+        voll.endsWith(".*") || voll.substringAfterLast('.') in setOf("R", "BuildConfig") || voll.contains(".R.") ||
+            voll in deklariert || voll.substringBeforeLast('.') in deklariert
 }

@@ -90,7 +90,12 @@ internal fun CsvImportCard(
             )
         }
     }
+    CsvRueckmeldung(csvZustand, onSchliessen)
+}
 
+/** Was der letzte Import gebracht hat, oder warum er scheiterte; beides lässt sich schliessen. */
+@Composable
+private fun CsvRueckmeldung(csvZustand: CsvHochladenUiState, onSchliessen: () -> Unit) {
     val ergebnis = csvZustand.ergebnis
     if (ergebnis != null) {
         Text(

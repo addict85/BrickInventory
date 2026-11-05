@@ -179,20 +179,11 @@ class AnmeldungViewModel @Inject constructor(
         pinWechselEingabe: String? = null,
     ) {
         val neu = NetworkPolicy.normalisiere(serverUrl)
-        val fehler = NetworkPolicy.adressfehler(serverUrl, NetworkPolicy.entwicklung)
-        if (fehler != null) {
-            val satz = if (fehler == NetworkPolicy.Adressfehler.KLARTEXT) R.string.setup_qr_klartext_abgelehnt else R.string.setup_invalid_qr
+        qrAbgelehnt(serverUrl, neu, fingerabdruck, pinWechselEingabe)?.let { satz ->
             _anmeldeState.update { it.copy(loginLaeuft = false, loginError = text(satz)) }
             return
         }
         val schluessel = if (fingerabdruck != null) pinSchluessel(neu) else null
-        if (schluessel != null && fingerabdruck != null && mussAbtippen(neu, fingerabdruck) &&
-            !bestaetigtFingerabdruck(pinWechselEingabe, fingerabdruck)) {
-            val satz = if (bisherigerPin(neu, fingerabdruck) != null) R.string.setup_qr_pin_wechsel_abgelehnt
-                else R.string.setup_qr_pin_abtippen_abgelehnt
-            _anmeldeState.update { it.copy(loginLaeuft = false, loginError = text(satz)) }
-            return
-        }
         viewModelScope.launch {
             _anmeldeState.update { it.copy(loginLaeuft = true, loginError = null) }
             if (schluessel != null && fingerabdruck != null) ablage.halteVor(schluessel, fingerabdruck)
@@ -214,6 +205,23 @@ class AnmeldungViewModel @Inject constructor(
                 if (schluessel != null) ablage.vergissVorgehaltenen(schluessel)
             }
         }
+    }
+
+    /**
+     * Warum der Code nicht angenommen wird, als Satz; null, wenn er gilt. Ein fremder
+     * Schlüssel aus dem Code gilt nur abgetippt (mussAbtippen), sonst bliebe der Pin
+     * des Angreifers gemerkt.
+     */
+    private fun qrAbgelehnt(serverUrl: String, neu: String, fingerabdruck: String?, eingabe: String?): Int? {
+        when (NetworkPolicy.adressfehler(serverUrl, NetworkPolicy.entwicklung)) {
+            null -> Unit
+            NetworkPolicy.Adressfehler.KLARTEXT -> return R.string.setup_qr_klartext_abgelehnt
+            else -> return R.string.setup_invalid_qr
+        }
+        if (fingerabdruck == null || pinSchluessel(neu) == null || !mussAbtippen(neu, fingerabdruck) ||
+            bestaetigtFingerabdruck(eingabe, fingerabdruck)) return null
+        return if (bisherigerPin(neu, fingerabdruck) != null) R.string.setup_qr_pin_wechsel_abgelehnt
+            else R.string.setup_qr_pin_abtippen_abgelehnt
     }
 
     /**

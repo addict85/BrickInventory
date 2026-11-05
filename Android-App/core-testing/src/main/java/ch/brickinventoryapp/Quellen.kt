@@ -118,6 +118,37 @@ object Quellen {
     }
 
     /**
+     * Kommentare und Zeichenketten durch Leerzeichen ersetzt, Zeilen und Spalten
+     * bleiben: Ein Fund zeigt so auf die echte Stelle, und ein Dateiname in einem
+     * Text ist kein Aufruf.
+     */
+    fun entkleide(src: String): String {
+        val out = StringBuilder(src.length)
+        var i = 0
+        while (i < src.length) {
+            val ende = endeVonKommentarOderText(src, i)
+            if (ende == i) out.append(src[i++])
+            else { for (c in src.substring(i, ende)) out.append(if (c == '\n') '\n' else ' '); i = ende }
+        }
+        return out.toString()
+    }
+
+    /** Wo ein Kommentar oder eine Zeichenkette ab [i] endet; [i], wenn dort keine beginnt. */
+    private fun endeVonKommentarOderText(src: String, i: Int): Int = when {
+        src.startsWith("//", i) -> src.indexOf('\n', i).let { if (it < 0) src.length else it }
+        src.startsWith("/*", i) -> src.indexOf("*/", i + 2).let { if (it < 0) src.length else it + 2 }
+        src.startsWith("\"\"\"", i) -> src.indexOf("\"\"\"", i + 3).let { if (it < 0) src.length else it + 3 }
+        src[i] == '"' -> endeDerZeichenkette(src, i)
+        else -> i
+    }
+
+    private fun endeDerZeichenkette(src: String, i: Int): Int {
+        var j = i + 1
+        while (j < src.length && src[j] != '"') j += if (src[j] == '\\') 2 else 1
+        return minOf(j + 1, src.length)
+    }
+
+    /**
      * Kommentare ausblenden — ZEILENWEISE und bewusst konservativ.
      * Ausführlich: docs/begruendungen/core-testing/Quellen.kt.md#ohnekommentare
      */

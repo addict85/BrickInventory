@@ -4,15 +4,15 @@ Test: ch.brickinventoryapp.UpdateViewModelTest
 Rot: mehr als angekuendigt wird nicht geschrieben
 
 diff --git a/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/ui/viewmodel/UpdateViewModel.kt b/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/ui/viewmodel/UpdateViewModel.kt
-index 6451a93..25d8426 100644
+index 9d7b71a..ba682f1 100644
 --- a/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/ui/viewmodel/UpdateViewModel.kt
 +++ b/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/ui/viewmodel/UpdateViewModel.kt
-@@ -184,7 +184,7 @@ class UpdateViewModel @Inject constructor(
-                                         geladen += n
-                                         // Abbrechen, BEVOR geschrieben wird: Sonst
-                                         // liegt das Zuviel schon auf der Platte.
--                                        if (geladen > obergrenze)
-+                                        if (geladen > obergrenze * 1000)
-                                             throw java.io.IOException(
-                                                 "Update groesser als erlaubt ($geladen > $obergrenze)")
-                                         aus.write(puffer, 0, n)
+@@ -197,7 +197,7 @@ class UpdateViewModel @Inject constructor(
+                         if (n < 0) break
+                         geladen += n
+                         // Abbrechen, BEVOR geschrieben wird: Sonst liegt das Zuviel schon auf der Platte.
+-                        if (geladen > obergrenze) throw IOException("Update groesser als erlaubt ($geladen > $obergrenze)")
++                        if (geladen > obergrenze * 1000) throw IOException("Update groesser als erlaubt ($geladen > $obergrenze)")
+                         aus.write(puffer, 0, n)
+                         val p = if (gesamt > 0) ((geladen * 100) / gesamt).toInt().coerceIn(0, 100) else zuletzt
+                         if (p != zuletzt) {

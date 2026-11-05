@@ -138,10 +138,7 @@ class TokenTausch(
             // Abgemeldet oder anderer Server: Der alte Token geht nicht noch einmal hinaus.
             if (versuch > 0 && stand() != vorher) return Tauschergebnis.VERWORFEN
             when (val r = rotiere(alterToken)) {
-                is Result.Success -> {
-                    val neu = r.data.rotation.token?.takeIf { it.isNotBlank() } ?: return Tauschergebnis.SPAETER
-                    return if (ersetze(vorher, neu, r.data.herkunft)) Tauschergebnis.GETAUSCHT else Tauschergebnis.VERWORFEN
-                }
+                is Result.Success -> return gelungen(vorher, r.data)
                 is Result.Error -> {
                     // 401: Der alte Token gilt nicht mehr (Überlappung vorbei, widerrufen).
                     if (r.httpCode == 401) return Tauschergebnis.NEU_KOPPELN
@@ -153,6 +150,12 @@ class TokenTausch(
             }
         }
         return Tauschergebnis.SPAETER
+    }
+
+    /** Eine Antwort ohne neuen Token ist kein Tausch; passt der Stand nicht mehr, wird verworfen. */
+    private suspend fun gelungen(vorher: TokenStand, antwort: GetauschterToken): Tauschergebnis {
+        val neu = antwort.rotation.token?.takeIf { it.isNotBlank() } ?: return Tauschergebnis.SPAETER
+        return if (ersetze(vorher, neu, antwort.herkunft)) Tauschergebnis.GETAUSCHT else Tauschergebnis.VERWORFEN
     }
 
     companion object {

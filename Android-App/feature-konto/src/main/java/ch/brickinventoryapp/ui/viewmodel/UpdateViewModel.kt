@@ -36,6 +36,9 @@ import ch.brickinventoryapp.util.AppFassung
 import ch.brickinventoryapp.data.Anmeldestand
 import ch.brickinventoryapp.util.UpdateGeraet
 import ch.brickinventoryapp.util.UpdateStandAblage
+import ch.brickinventoryapp.util.UpdateBeschreibung
+import java.io.File
+import java.io.IOException
 
 /**
  * Selbstaktualisierung: nachsehen, laden, installieren lassen. Beim Start still
@@ -88,7 +91,7 @@ class UpdateViewModel @Inject constructor(
                 val roh = withContext(io) {
                     updateHttpClient.newCall(Request.Builder().url(UPDATE_VERSION_URL).build())
                         .execute().use { antwort ->
-                            if (!antwort.isSuccessful) throw java.io.IOException("HTTP ${antwort.code}")
+                            if (!antwort.isSuccessful) throw IOException("HTTP ${antwort.code}")
                             // peekBody statt body.string(): liest HOECHSTENS so viele
                             // Bytes. Ohne die Grenze koennte eine manipulierte
                             // Antwort die App umbringen, ohne je ein APK anfassen zu
@@ -152,94 +155,16 @@ class UpdateViewModel @Inject constructor(
             _state.update { it.copy(fortschritt = 0, fehler = null, bereitZurInstallation = false) }
             val ziel = geraet.updateDatei()
             fangeAusserAbbruch {
-                withContext(io) {
-                    updateHttpClient.newCall(Request.Builder().url(fassung.apkUrl).build())
-                        .execute().use { antwort ->
-                            if (!antwort.isSuccessful) throw java.io.IOException("HTTP ${antwort.code}")
-                            // Kein `?:` mehr: `antwort.body` ist seit OkHttp 5
-                            // nicht nullbar, der Elvis-Operator gab darum immer
-                            // den linken Teil zurueck und die Ausnahme rechts war
-                            // unerreichbar.
-                            val koerper = antwort.body
-                            // Die Gesamtgrösse kommt bevorzugt aus version.json: Ein Release-Anhang
-                            // kommt über eine Umleitung, und contentLength ist dabei gelegentlich
-                            // -1 — ohne Bezugsgrösse gäbe es keinen Fortschritt, nur einen
-                            // wachsenden Zähler.
-                            val gesamt = if (fassung.apkSize > 0) fassung.apkSize
-                            else koerper.contentLength()
-                            // Die angekündigte Grösse (plus ein Megabyte Luft) oder die feste
-                            // Obergrenze — was kleiner ist.
-                            // Ausführlich: docs/begruendungen/feature-konto/ui/viewmodel/UpdateViewModel.kt.md#obergrenze
-                            val obergrenze =
-                                if (gesamt in 1..UPDATE_MAX_BYTES) minOf(gesamt + 1024 * 1024, UPDATE_MAX_BYTES)
-                                else UPDATE_MAX_BYTES
-                            koerper.byteStream().use { ein ->
-                                ziel.outputStream().use { aus ->
-                                    val puffer = ByteArray(64 * 1024)
-                                    var geladen = 0L
-                                    var zuletzt = -1
-                                    while (true) {
-                                        val n = ein.read(puffer)
-                                        if (n < 0) break
-                                        geladen += n
-                                        // Abbrechen, BEVOR geschrieben wird: Sonst
-                                        // liegt das Zuviel schon auf der Platte.
-                                        if (geladen > obergrenze)
-                                            throw java.io.IOException(
-                                                "Update groesser als erlaubt ($geladen > $obergrenze)")
-                                        aus.write(puffer, 0, n)
-                                        if (gesamt > 0) {
-                                            val p = ((geladen * 100) / gesamt).toInt().coerceIn(0, 100)
-                                            // Nur bei Aenderung melden: sonst
-                                            // schriebe jede 64-KB-Portion in den
-                                            // Zustand und loeste eine
-                                            // Rekomposition aus.
-                                            if (p != zuletzt) {
-                                                zuletzt = p
-                                                _state.update { it.copy(fortschritt = p) }
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                }
-                // Genau das APK, das der Signierjob beschrieben hat — nicht ein anderes
-                // mit derselben Signatur (etwa eine ältere Fassung).
-                if (!withContext(io) { pruefsummePasst(ziel, fassung.apkSha256) }) {
+                withContext(io) { ladeApk(fassung, ziel) }
+                val falsch = withContext(io) { ungueltigesApk(fassung, ziel) }
+                if (falsch != null) {
                     ziel.delete()
-                    _state.update {
-                        it.copy(fortschritt = null, fehler = texte.text(R.string.update_pruefsumme_falsch))
-                    }
+                    _state.update { it.copy(fortschritt = null, fehler = texte.text(falsch)) }
                     return@launch
                 }
-                // Die Signatur wird geprueft, BEVOR der Nutzer gefragt wird —
-                // siehe util/AppUpdate.kt. Passt sie nicht, wird die Datei
-                // geloescht: Ein APK unbekannter Herkunft soll nicht liegenbleiben.
-                if (!withContext(io) { geraet.signaturPasst(ziel) }) {
-                    ziel.delete()
-                    _state.update {
-                        it.copy(fortschritt = null, fehler = texte.text(R.string.update_signatur_falsch))
-                    }
-                    return@launch
-                }
-                if (!fassungPasst(withContext(io) { geraet.apkFassung(ziel) }, fassung.versionCode, this@UpdateViewModel.fassung.code)) {
-                    ziel.delete()
-                    _state.update {
-                        it.copy(fortschritt = null, fehler = texte.text(R.string.update_fassung_falsch))
-                    }
-                    return@launch
-                }
-                if (!geraet.darfInstallieren()) {
-                    _state.update {
-                        it.copy(fortschritt = null, bereitZurInstallation = true, erlaubnisFehlt = true)
-                    }
-                    return@launch
-                }
-                _state.update {
-                    it.copy(fortschritt = null, bereitZurInstallation = true, erlaubnisFehlt = false)
-                }
-                starteInstallation()
+                val erlaubt = geraet.darfInstallieren()
+                _state.update { it.copy(fortschritt = null, bereitZurInstallation = true, erlaubnisFehlt = !erlaubt) }
+                if (erlaubt) starteInstallation()
             }.onFailure { _ ->
                 ziel.delete()
                 _state.update {
@@ -247,6 +172,54 @@ class UpdateViewModel @Inject constructor(
                 }
             }
         }
+    }
+
+    /**
+     * Lädt das APK nach [ziel], höchstens die angekündigte Grösse plus ein Megabyte
+     * (oder die feste Obergrenze), und meldet den Fortschritt nur bei Änderung.
+     * Ausführlich: docs/begruendungen/feature-konto/ui/viewmodel/UpdateViewModel.kt.md#obergrenze
+     */
+    private fun ladeApk(beschreibung: UpdateBeschreibung, ziel: File) {
+        updateHttpClient.newCall(Request.Builder().url(beschreibung.apkUrl).build()).execute().use { antwort ->
+            if (!antwort.isSuccessful) throw IOException("HTTP ${antwort.code}")
+            // Bevorzugt aus der Beschreibung: Hinter der Umleitung ist contentLength oft -1.
+            val gesamt = if (beschreibung.apkSize > 0) beschreibung.apkSize else antwort.body.contentLength()
+            val obergrenze =
+                if (gesamt in 1..UPDATE_MAX_BYTES) minOf(gesamt + 1024 * 1024, UPDATE_MAX_BYTES)
+                else UPDATE_MAX_BYTES
+            antwort.body.byteStream().use { ein ->
+                ziel.outputStream().use { aus ->
+                    val puffer = ByteArray(64 * 1024)
+                    var geladen = 0L
+                    var zuletzt = -1
+                    while (true) {
+                        val n = ein.read(puffer)
+                        if (n < 0) break
+                        geladen += n
+                        // Abbrechen, BEVOR geschrieben wird: Sonst liegt das Zuviel schon auf der Platte.
+                        if (geladen > obergrenze) throw IOException("Update groesser als erlaubt ($geladen > $obergrenze)")
+                        aus.write(puffer, 0, n)
+                        val p = if (gesamt > 0) ((geladen * 100) / gesamt).toInt().coerceIn(0, 100) else zuletzt
+                        if (p != zuletzt) {
+                            zuletzt = p
+                            _state.update { it.copy(fortschritt = p) }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    /**
+     * Der Text zur ersten Prüfung, die das geladene APK nicht besteht, sonst null. Erst
+     * die signierte Prüfsumme (genau dieses APK), dann die Signatur, dann die Fassung —
+     * alles, bevor der Nutzer gefragt wird (util/AppUpdate.kt).
+     */
+    private fun ungueltigesApk(beschreibung: UpdateBeschreibung, ziel: File): Int? = when {
+        !pruefsummePasst(ziel, beschreibung.apkSha256) -> R.string.update_pruefsumme_falsch
+        !geraet.signaturPasst(ziel) -> R.string.update_signatur_falsch
+        !fassungPasst(geraet.apkFassung(ziel), beschreibung.versionCode, fassung.code) -> R.string.update_fassung_falsch
+        else -> null
     }
 
     /**

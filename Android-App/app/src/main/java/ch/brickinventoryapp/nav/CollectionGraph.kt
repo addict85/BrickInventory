@@ -35,11 +35,13 @@ import ch.brickinventoryapp.ui.viewmodel.ErfassungViewModel
 /** Navigationsziele des Bestands: Galerie, Teile, Minifiguren und ihre Details. */
 fun NavGraphBuilder.collectionGraph(u: ZielUmgebung) {
     galerieZiele(u)
+    setDetailZiel(u)
     teileZiele(u)
+    figurenZiele(u)
     einzelstueckZiele(u.navController, u.imageLoader)
 }
 
-/** Galerie und Set-Detail: Auf breiten Fenstern stehen sie nebeneinander. */
+/** Die Galerie; auf breiten Fenstern steht das Set-Detail daneben ([setDetailZiel]). */
 private fun NavGraphBuilder.galerieZiele(u: ZielUmgebung) {
     val navController = u.navController
     val imageLoader = u.imageLoader
@@ -100,6 +102,12 @@ private fun NavGraphBuilder.galerieZiele(u: ZielUmgebung) {
                 }
             }
         }
+}
+
+/** Set-Detail; auf breiten Fenstern mit der Galerie links daneben. */
+private fun NavGraphBuilder.setDetailZiel(u: ZielUmgebung) {
+    val navController = u.navController
+    val imageLoader = u.imageLoader
         composable<Screen.SetDetail> { backStack ->
             val vm: AppViewModel = aktivitaetsViewModel()
             val state by vm.state.collectAsStateWithLifecycle()
@@ -144,41 +152,45 @@ private fun NavGraphBuilder.galerieZiele(u: ZielUmgebung) {
             // anderes Set ersetzt dieses Detail, statt sich darüber zu stapeln. Ohne
             // gemeinsames Bild: Kachel und Detail sind dann beide zu sehen.
             androidx.compose.foundation.layout.BoxWithConstraints {
-                if (galerieUnten != null && listeUndDetail(maxWidth.value)) {
-                    val erfassung = aktivitaetsViewModel<ErfassungViewModel>()
-                    ReiterGeruest(stringResource(R.string.nav_collection), u) {
-                        ListeUndDetail(
-                            liste = {
-                                androidx.compose.runtime.CompositionLocalProvider(
-                                    LocalOffenesDetail provides setNumber) {
-                                GalleryRoute(
-                                    vm = galerieUnten,
-                                    erfassung = erfassung,
-                                    imageLoader = imageLoader,
-                                    onScanBarcode = { erfassung.setScannerSource("gallery_search"); navController.navigate(Screen.BarcodeScanner) },
-                                    onSetClick = { sn ->
-                                        if (sn != setNumber) navController.navigate(Screen.SetDetail(sn)) {
-                                            popUpTo<Screen.SetDetail> { inclusive = true }
-                                        }
-                                    },
-                                    gridState = galleryGridState,
-                                )
-                                }
-                            },
-                            detail = detail,
-                        )
-                    }
-                } else MitZiel(this@composable) { detail() }
+                if (galerieUnten != null && listeUndDetail(maxWidth.value)) GalerieNebenDetailRoute(u, galerieUnten, setNumber, detail)
+                else MitZiel(this@composable) { detail() }
             }
         }
 }
 
-/** Teile, Minifiguren und der Vergleich: Reiter mit Liste und Detail daneben. */
+/** Die Galerie links neben dem Set-Detail; ein anderes Set ersetzt das Detail, statt sich zu stapeln. */
+@Composable
+private fun GalerieNebenDetailRoute(u: ZielUmgebung, galerie: GalerieViewModel, setNumber: String, detail: @Composable () -> Unit) {
+    val navController = u.navController
+    val erfassung = aktivitaetsViewModel<ErfassungViewModel>()
+    ReiterGeruest(stringResource(R.string.nav_collection), u) {
+        ListeUndDetail(
+            liste = {
+                androidx.compose.runtime.CompositionLocalProvider(LocalOffenesDetail provides setNumber) {
+                    GalleryRoute(
+                        vm = galerie,
+                        erfassung = erfassung,
+                        imageLoader = u.imageLoader,
+                        onScanBarcode = { erfassung.setScannerSource("gallery_search"); navController.navigate(Screen.BarcodeScanner) },
+                        onSetClick = { sn ->
+                            if (sn != setNumber) navController.navigate(Screen.SetDetail(sn)) {
+                                popUpTo<Screen.SetDetail> { inclusive = true }
+                            }
+                        },
+                        gridState = u.rollen.galerie,
+                    )
+                }
+            },
+            detail = detail,
+        )
+    }
+}
+
+/** Teile: Reiter mit Liste und Detail daneben. */
 private fun NavGraphBuilder.teileZiele(u: ZielUmgebung) {
     val navController = u.navController
     val imageLoader = u.imageLoader
     val partsGridState = u.rollen.teile
-    val minifigsGridState = u.rollen.minifiguren
         composable<Screen.Parts> {
             val vm: AppViewModel = aktivitaetsViewModel()
             val teileVm: TeileViewModel = hiltViewModel()
@@ -222,6 +234,13 @@ private fun NavGraphBuilder.teileZiele(u: ZielUmgebung) {
                 }
             }
         }
+}
+
+/** Minifiguren und der Vergleich. */
+private fun NavGraphBuilder.figurenZiele(u: ZielUmgebung) {
+    val navController = u.navController
+    val imageLoader = u.imageLoader
+    val minifigsGridState = u.rollen.minifiguren
         composable<Screen.Minifigs> {
             val vm: AppViewModel = aktivitaetsViewModel()
             val teileVm: TeileViewModel = hiltViewModel()

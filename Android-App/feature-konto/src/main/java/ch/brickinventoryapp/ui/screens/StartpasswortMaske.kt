@@ -95,7 +95,7 @@ fun StartpasswortMaske(
                     SperrGrund(stringResource(R.string.passwort_aendern_fehlt))
                 Button(
                     onClick = { onErsetzen(pwAktuell, pwNeu, faktorCode.takeIf { kontoZustand.codeNoetig && it.isNotBlank() }) },
-                    enabled = !kontoZustand.speichert && pwAktuell.isNotEmpty() && pwNeu.isNotEmpty() && !zuKurz && pwWiederholt == pwNeu,
+                    enabled = ersetzenMoeglich(kontoZustand.speichert, pwAktuell, pwNeu, pwWiederholt, zuKurz),
                     modifier = Modifier.fillMaxWidth(),
                 ) { Text(stringResource(R.string.konto_password_button)) }
             }
@@ -104,3 +104,7 @@ fun StartpasswortMaske(
         }
     }
 }
+
+/** Erst wenn alle drei Felder stehen, das neue Passwort lang genug ist und zweimal gleich. */
+private fun ersetzenMoeglich(speichert: Boolean, aktuell: String, neu: String, wiederholt: String, zuKurz: Boolean) =
+    !speichert && aktuell.isNotEmpty() && neu.isNotEmpty() && !zuKurz && wiederholt == neu

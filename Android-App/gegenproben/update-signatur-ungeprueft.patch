@@ -4,15 +4,14 @@ Test: ch.brickinventoryapp.UpdateViewModelTest
 Rot: eine fremde Signatur loescht das APK und installiert nicht
 
 diff --git a/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/ui/viewmodel/UpdateViewModel.kt b/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/ui/viewmodel/UpdateViewModel.kt
-index 6451a93..f01e58d 100644
+index 9d7b71a..992a77a 100644
 --- a/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/ui/viewmodel/UpdateViewModel.kt
 +++ b/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/ui/viewmodel/UpdateViewModel.kt
-@@ -216,7 +216,7 @@ class UpdateViewModel @Inject constructor(
-                 // Die Signatur wird geprueft, BEVOR der Nutzer gefragt wird —
-                 // siehe util/AppUpdate.kt. Passt sie nicht, wird die Datei
-                 // geloescht: Ein APK unbekannter Herkunft soll nicht liegenbleiben.
--                if (!withContext(io) { geraet.signaturPasst(ziel) }) {
-+                if (false && !withContext(io) { geraet.signaturPasst(ziel) }) {
-                     ziel.delete()
-                     _state.update {
-                         it.copy(fortschritt = null, fehler = texte.text(R.string.update_signatur_falsch))
+@@ -217,7 +217,6 @@ class UpdateViewModel @Inject constructor(
+      */
+     private fun ungueltigesApk(beschreibung: UpdateBeschreibung, ziel: File): Int? = when {
+         !pruefsummePasst(ziel, beschreibung.apkSha256) -> R.string.update_pruefsumme_falsch
+-        !geraet.signaturPasst(ziel) -> R.string.update_signatur_falsch
+         !fassungPasst(geraet.apkFassung(ziel), beschreibung.versionCode, fassung.code) -> R.string.update_fassung_falsch
+         else -> null
+     }

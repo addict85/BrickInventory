@@ -33,6 +33,7 @@ import ch.brickinventoryapp.ui.viewmodel.zeigtGutscheine
 fun NavGraphBuilder.toolsGraph(u: ZielUmgebung) {
     finanzZiele(u)
     mehrZiele(u)
+    verwaltungsZiele(u)
     einstellungsZiele(u)
 }
 
@@ -110,7 +111,6 @@ private fun NavGraphBuilder.mehrZiele(u: ZielUmgebung) {
     val navController = u.navController
     val imageLoader = u.imageLoader
     val partsListState = u.rollen.teileliste
-    val settingsScrollState = u.rollen.einstellungen
         composable<Screen.PartsList> {
             val vm: AppViewModel = aktivitaetsViewModel()
             val state by vm.state.collectAsStateWithLifecycle()
@@ -151,6 +151,12 @@ private fun NavGraphBuilder.mehrZiele(u: ZielUmgebung) {
                 )
             }
         }
+}
+
+/** Einstellungen und Verwaltung, ebenfalls über „Mehr“. */
+private fun NavGraphBuilder.verwaltungsZiele(u: ZielUmgebung) {
+    val navController = u.navController
+    val settingsScrollState = u.rollen.einstellungen
         composable<Screen.Settings> {
             val vm: AppViewModel = aktivitaetsViewModel()
             val state by vm.state.collectAsStateWithLifecycle()

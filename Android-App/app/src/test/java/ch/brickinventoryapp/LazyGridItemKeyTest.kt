@@ -30,32 +30,6 @@ import org.junit.Test
  */
 class LazyGridItemKeyTest {
 
-    private fun entkleide(src: String): String {
-        val out = StringBuilder()
-        var i = 0
-        while (i < src.length) {
-            when {
-                src.startsWith("//", i) -> {
-                    val j = src.indexOf('\n', i).let { if (it < 0) src.length else it }
-                    repeat(j - i) { out.append(' ') }; i = j
-                }
-                src.startsWith("/*", i) -> {
-                    val j = src.indexOf("*/", i + 2).let { if (it < 0) src.length else it + 2 }
-                    for (c in src.substring(i, j)) out.append(if (c == '\n') '\n' else ' '); i = j
-                }
-                src[i] == '"' -> {
-                    var j = i + 1
-                    while (j < src.length && src[j] != '"') j += if (src[j] == '\\') 2 else 1
-                    j++
-                    for (c in src.substring(i, minOf(j, src.length))) out.append(if (c == '\n') '\n' else ' ')
-                    i = j
-                }
-                else -> { out.append(src[i]); i++ }
-            }
-        }
-        return out.toString()
-    }
-
     @Test
     fun `kein schluessselloser Eintrag in einer verschluesselten Liste`() {
         // Untergrenze über Quellen.alle() (Nachtrag 118): Fände der Dateilauf
@@ -74,7 +48,7 @@ class LazyGridItemKeyTest {
         val fehler = mutableListOf<String>()
 
         for (f in wurzel.walkTopDown().filter { it.extension == "kt" }) {
-            val code = entkleide(f.readText())
+            val code = Quellen.entkleide(f.readText())
             // Nur Dateien, die überhaupt mit Schlüsseln arbeiten — sonst gibt es
             // keinen Ersatzschlüssel, der wechseln könnte.
             if (!code.contains("key =")) continue

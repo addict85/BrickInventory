@@ -75,41 +75,8 @@ fun MehrBildschirm(
         onAbbrechen = { fragtAbmelden = false },
         symbol = Icons.AutoMirrored.Outlined.Logout,
     )
-    // Je Gruppe ein Block; `trenner` fällt am Kopf einer Spalte weg. Eine Gruppe, eine
-    // Art Seite: Werkzeuge behalten die untere Leiste, Preise und Verwalten öffnen
-    // Unterseiten. Gemischt sah „Vergleich“ neben „Gutscheine“ anders aus als erwartet.
     @Composable
-    fun Gruppe(nummer: Int, trenner: Boolean) {
-        when (nummer) {
-            0 -> {
-                MehrGruppe(R.string.nav_group_prices, trenner)
-                // Gutscheine zuerst: Die braucht man im Laden.
-                MehrEintrag(R.string.vouchers_title, Icons.Outlined.Redeem) { onZiel(Screen.Gutscheine) }
-                MehrEintrag(R.string.alerts_group, Icons.Outlined.NotificationsActive) { onZiel(Screen.Preisalarme) }
-            }
-            1 -> {
-                MehrGruppe(R.string.nav_group_tools, trenner)
-                MehrEintrag(R.string.nav_comparison, Icons.AutoMirrored.Outlined.CompareArrows) { onZiel(Screen.Comparison) }
-                MehrEintrag(R.string.nav_partslist, Icons.AutoMirrored.Outlined.ListAlt) { onZiel(Screen.PartsList) }
-            }
-            2 -> {
-                MehrGruppe(R.string.nav_group_manage, trenner)
-                MehrEintrag(R.string.storage_manage, Icons.Outlined.Inventory2) { onZiel(Screen.Lagerorte) }
-                MehrEintrag(R.string.household_title, Icons.Outlined.Group) { onZiel(Screen.Haushalt) }
-                MehrEintrag(R.string.csv_upload_title, Icons.Outlined.UploadFile) { onZiel(Screen.CsvImport) }
-            }
-            3 -> {
-                MehrGruppe(R.string.nav_group_account, trenner)
-                MehrEintrag(R.string.konto_title, Icons.Outlined.AccountCircle) { onZiel(Screen.Konto) }
-                // Der Punkt allein sagte nicht, wofür er steht: Darunter steht es in Worten.
-                MehrEintrag(R.string.nav_settings, Icons.Outlined.Settings, punkt = updateVerfuegbar) { onZiel(Screen.Settings) }
-            }
-            else -> {
-                MehrGruppe(R.string.nav_group_server, trenner)
-                MehrEintrag(R.string.main_menu_monitoring, Icons.Outlined.Assessment) { onZiel(Screen.Monitoring) }
-            }
-        }
-    }
+    fun Gruppe(nummer: Int, trenner: Boolean) = MehrGruppeInhalt(nummer, trenner, updateVerfuegbar, onZiel)
     // Abmelden für sich am Ende, abgesetzt: Zwischen den Einstellungen sah es aus wie
     // eine von ihnen, beendet aber die Sitzung.
     @Composable
@@ -129,6 +96,44 @@ fun MehrBildschirm(
             Column(Modifier.weight(1f)) { for (i in 0 until 2) Gruppe(i, trenner = i > 0) }
             Column(Modifier.weight(1f)) { for (i in 2 until gruppen) Gruppe(i, trenner = i > 2); Abmelden() }
         } else Column(rahmen) { for (i in 0 until gruppen) Gruppe(i, trenner = i > 0); Abmelden() }
+    }
+}
+
+/**
+ * Je Gruppe ein Block; `trenner` fällt am Kopf einer Spalte weg. Eine Gruppe, eine
+ * Art Seite: Werkzeuge behalten die untere Leiste, Preise und Verwalten öffnen
+ * Unterseiten. Gemischt sah „Vergleich“ neben „Gutscheine“ anders aus als erwartet.
+ */
+@Composable
+private fun MehrGruppeInhalt(nummer: Int, trenner: Boolean, updateVerfuegbar: Boolean, onZiel: (Screen) -> Unit) {
+    when (nummer) {
+        0 -> {
+            MehrGruppe(R.string.nav_group_prices, trenner)
+            // Gutscheine zuerst: Die braucht man im Laden.
+            MehrEintrag(R.string.vouchers_title, Icons.Outlined.Redeem) { onZiel(Screen.Gutscheine) }
+            MehrEintrag(R.string.alerts_group, Icons.Outlined.NotificationsActive) { onZiel(Screen.Preisalarme) }
+        }
+        1 -> {
+            MehrGruppe(R.string.nav_group_tools, trenner)
+            MehrEintrag(R.string.nav_comparison, Icons.AutoMirrored.Outlined.CompareArrows) { onZiel(Screen.Comparison) }
+            MehrEintrag(R.string.nav_partslist, Icons.AutoMirrored.Outlined.ListAlt) { onZiel(Screen.PartsList) }
+        }
+        2 -> {
+            MehrGruppe(R.string.nav_group_manage, trenner)
+            MehrEintrag(R.string.storage_manage, Icons.Outlined.Inventory2) { onZiel(Screen.Lagerorte) }
+            MehrEintrag(R.string.household_title, Icons.Outlined.Group) { onZiel(Screen.Haushalt) }
+            MehrEintrag(R.string.csv_upload_title, Icons.Outlined.UploadFile) { onZiel(Screen.CsvImport) }
+        }
+        3 -> {
+            MehrGruppe(R.string.nav_group_account, trenner)
+            MehrEintrag(R.string.konto_title, Icons.Outlined.AccountCircle) { onZiel(Screen.Konto) }
+            // Der Punkt allein sagte nicht, wofür er steht: Darunter steht es in Worten.
+            MehrEintrag(R.string.nav_settings, Icons.Outlined.Settings, punkt = updateVerfuegbar) { onZiel(Screen.Settings) }
+        }
+        else -> {
+            MehrGruppe(R.string.nav_group_server, trenner)
+            MehrEintrag(R.string.main_menu_monitoring, Icons.Outlined.Assessment) { onZiel(Screen.Monitoring) }
+        }
     }
 }
 

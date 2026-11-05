@@ -57,7 +57,7 @@ class ScannerPerformanceTest {
     @Test
     fun `Tippen stellt scharf`() {
         val c = code(src)
-        assert(c.contains("startFocusAndMetering(")) {
+        assert(c.contains("tippZumFokus(")) {
             "Ohne Tippen zum Scharfstellen bleibt nur der kontinuierliche Autofokus, " +
                 "der bei nahen Vorlagen lange braucht"
         }

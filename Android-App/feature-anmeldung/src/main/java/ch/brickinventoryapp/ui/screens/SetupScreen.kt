@@ -27,11 +27,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
-import android.view.ViewGroup
 import androidx.camera.core.*
-import android.view.MotionEvent
 import androidx.camera.camera2.interop.ExperimentalCamera2Interop
-import androidx.camera.view.PreviewView
 import androidx.compose.foundation.background
 import androidx.compose.ui.graphics.Color
 import androidx.compose.foundation.border
@@ -506,12 +503,7 @@ fun QrCameraPreview(frozen: Boolean, onQrFound: (String) -> Unit) {
 
     AndroidView(
         factory = { ctx ->
-            val previewView = PreviewView(ctx).apply {
-                layoutParams = ViewGroup.LayoutParams(
-                    ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
-                scaleType = PreviewView.ScaleType.FILL_CENTER
-                implementationMode = PreviewView.ImplementationMode.PERFORMANCE
-            }
+            val previewView = kameraVorschau(ctx)
             // Anbieter holen, Vorschau bauen, binden: KameraAufbau.kt. Kein
             // beiFehler: Ist die Kamera nicht verfügbar, bleibt die Vorschau
             // bewusst leer — anders als im Scanner, der einen Hinweis zeigt.
@@ -520,28 +512,7 @@ fun QrCameraPreview(frozen: Boolean, onQrFound: (String) -> Unit) {
                 previewView = previewView,
                 lifecycleOwner = lifecycleOwner,
                 analyse = imageAnalyzer,
-            ) { camera ->
-                // Tap-to-Focus — bewusst mit disableAutoCancel(): Der Nutzer tippt, weil der
-                // kontinuierliche Autofokus gerade danebenliegt. Fiele die Kamera nach ein paar
-                // Sekunden auf ihre eigene Wahl zurück, wäre genau das wieder da, wogegen der
-                // Tipper gerichtet war — man tippt, es wird scharf, und kurz danach ist es wieder
-                // weg.
-                previewView.setOnTouchListener { v, event ->
-                    if (event.action == MotionEvent.ACTION_UP) {
-                        try {
-                            val point = previewView.meteringPointFactory
-                                .createPoint(event.x, event.y)
-                            val action = FocusMeteringAction.Builder(point, FocusMeteringAction.FLAG_AF)
-                                .addPoint(point, FocusMeteringAction.FLAG_AE)
-                                .disableAutoCancel()
-                                .build()
-                            camera.cameraControl.startFocusAndMetering(action)
-                        } catch (_: Exception) {}
-                        v.performClick()
-                    }
-                    true
-                }
-            }
+            ) { camera -> tippZumFokus(previewView) { camera.cameraControl } }
             previewView
         },
         modifier = Modifier.fillMaxSize()

@@ -82,6 +82,19 @@ class PdfExportManager @Inject constructor(
 
     fun reset() { _state.value = PdfExportState.Idle }
 
+    /** Fünf Versuche mit wachsender Pause: Das fertige PDF liegt manchmal erst kurz nach der Meldung bereit. */
+    private suspend fun ladePdf(jobId: String): Result<ByteArray>? {
+        var downloadResult: Result<ByteArray>? = null
+        var dlDelay = 2000L
+        repeat(5) { attempt ->
+            if (downloadResult !is Result.Success) {
+                if (attempt > 0) { delay(dlDelay); dlDelay = minOf(dlDelay * 2, 30_000L) }
+                downloadResult = repo.sets.downloadPdf(jobId)
+            }
+        }
+        return downloadResult
+    }
+
     /** Wird vom PdfExportService aufgerufen. */
     suspend fun run() {
         val body = pendingBody ?: run {
@@ -131,15 +144,7 @@ class PdfExportManager @Inject constructor(
 
             // Step 3: PDF herunterladen
             _state.value = PdfExportState.Running(s(R.string.pdfexp_downloading))
-            var downloadResult: Result<ByteArray>? = null
-            var dlDelay = 2000L
-            repeat(5) { attempt ->
-                if (downloadResult !is Result.Success) {
-                    if (attempt > 0) { delay(dlDelay); dlDelay = minOf(dlDelay * 2, 30_000L) }
-                    downloadResult = repo.sets.downloadPdf(jobId)
-                }
-            }
-            when (val r = downloadResult) {
+            when (val r = ladePdf(jobId)) {
                 is Result.Success -> {
                     val file = teilelistentresor.lege(context.filesDir, context.getExternalFilesDir(null), r.data)
                     // Auch verschlüsselt bleibt das Inventar nur, solange jemand es öffnen will.

@@ -47,12 +47,7 @@ fun ZertifikatDialog(
     var eingabe by rememberSaveable(frage.fingerabdruck) { mutableStateOf("") }
     var falsch by remember(frage.fingerabdruck) { mutableStateOf(false) }
     val host = frage.schluessel.substringBeforeLast(':')
-    val (titel, text) = when (frage.art) {
-        ZertifikatUngeklaert.Art.ERSTKONTAKT -> R.string.zert_titel_erstkontakt to R.string.zert_text_erstkontakt
-        ZertifikatUngeklaert.Art.UNBEKANNTE_CA -> R.string.zert_titel_unbekannt to R.string.zert_text_unbekannt
-        ZertifikatUngeklaert.Art.NUTZER_CA -> R.string.zert_titel_nutzer_ca to R.string.zert_text_nutzer_ca
-        ZertifikatUngeklaert.Art.GEAENDERT -> R.string.zert_titel_geaendert to R.string.zert_text_geaendert
-    }
+    val (titel, text) = titelUndText(frage.art)
     val geaendert = frage.art == ZertifikatUngeklaert.Art.GEAENDERT
     val abschreiben = frage.art != ZertifikatUngeklaert.Art.ERSTKONTAKT
     AlertDialog(
@@ -107,4 +102,12 @@ fun ZertifikatDialog(
         },
         dismissButton = { TextButton(onClick = onAbbrechen) { Text(stringResource(R.string.common_cancel)) } },
     )
+}
+
+/** Überschrift und Erklärung je Art der Frage. */
+private fun titelUndText(art: ZertifikatUngeklaert.Art): Pair<Int, Int> = when (art) {
+    ZertifikatUngeklaert.Art.ERSTKONTAKT -> R.string.zert_titel_erstkontakt to R.string.zert_text_erstkontakt
+    ZertifikatUngeklaert.Art.UNBEKANNTE_CA -> R.string.zert_titel_unbekannt to R.string.zert_text_unbekannt
+    ZertifikatUngeklaert.Art.NUTZER_CA -> R.string.zert_titel_nutzer_ca to R.string.zert_text_nutzer_ca
+    ZertifikatUngeklaert.Art.GEAENDERT -> R.string.zert_titel_geaendert to R.string.zert_text_geaendert
 }

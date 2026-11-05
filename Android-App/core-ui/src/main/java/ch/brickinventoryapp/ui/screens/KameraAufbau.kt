@@ -4,7 +4,11 @@ import android.hardware.camera2.CaptureRequest
 import androidx.camera.camera2.interop.Camera2Interop
 import androidx.camera.camera2.interop.ExperimentalCamera2Interop
 import android.content.Context
+import android.view.MotionEvent
+import android.view.ViewGroup
 import androidx.camera.core.Camera
+import androidx.camera.core.CameraControl
+import androidx.camera.core.FocusMeteringAction
 import androidx.camera.core.CameraSelector
 import androidx.camera.core.ImageAnalysis
 import androidx.camera.core.Preview
@@ -113,4 +117,33 @@ fun kameraBinden(
             beiFehler()
         }
     }, ContextCompat.getMainExecutor(ctx))
+}
+
+/** Die Vorschau beider Scanner: füllt die Fläche und rechnet schnell statt kompatibel. */
+fun kameraVorschau(ctx: Context): PreviewView = PreviewView(ctx).apply {
+    layoutParams = ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
+    scaleType = PreviewView.ScaleType.FILL_CENTER
+    implementationMode = PreviewView.ImplementationMode.PERFORMANCE
+}
+
+/**
+ * Tippen stellt an dieser Stelle scharf und misst dort die Belichtung: Bei einer
+ * Anleitung dicht vor der Linse liegt der Dauer-Autofokus gern daneben. disableAutoCancel(),
+ * sonst fiele die Kamera nach Sekunden auf ihre eigene Wahl zurück. [steuerung] ist null,
+ * solange die Kamera nicht gebunden ist.
+ */
+fun tippZumFokus(previewView: PreviewView, steuerung: () -> CameraControl?) {
+    previewView.setOnTouchListener { v, ev ->
+        if (ev.action == MotionEvent.ACTION_UP) {
+            val punkt = previewView.meteringPointFactory.createPoint(ev.x, ev.y)
+            val aktion = FocusMeteringAction.Builder(punkt, FocusMeteringAction.FLAG_AF)
+                .addPoint(punkt, FocusMeteringAction.FLAG_AE)
+                .disableAutoCancel()
+                .build()
+            // Kamera noch nicht bereit oder schon weg: Der Tipp bleibt ohne Wirkung.
+            runCatching { steuerung()?.startFocusAndMetering(aktion) }
+            v.performClick()
+        }
+        true
+    }
 }

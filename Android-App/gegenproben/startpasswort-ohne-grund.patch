@@ -4,7 +4,7 @@ Test: ch.brickinventoryapp.GeruestUndFormularTest
 Rot: Startpasswort-Maske sagt, was zum Aendern fehlt
 
 diff --git a/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/ui/screens/StartpasswortMaske.kt b/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/ui/screens/StartpasswortMaske.kt
-index b0b3f8c..0ddae8a 100644
+index 18f1c12..843fbb8 100644
 --- a/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/ui/screens/StartpasswortMaske.kt
 +++ b/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/ui/screens/StartpasswortMaske.kt
 @@ -91,8 +91,6 @@ fun StartpasswortMaske(
@@ -15,4 +15,4 @@ index b0b3f8c..0ddae8a 100644
 -                    SperrGrund(stringResource(R.string.passwort_aendern_fehlt))
                  Button(
                      onClick = { onErsetzen(pwAktuell, pwNeu, faktorCode.takeIf { kontoZustand.codeNoetig && it.isNotBlank() }) },
-                     enabled = !kontoZustand.speichert && pwAktuell.isNotEmpty() && pwNeu.isNotEmpty() && !zuKurz && pwWiederholt == pwNeu,
+                     enabled = ersetzenMoeglich(kontoZustand.speichert, pwAktuell, pwNeu, pwWiederholt, zuKurz),
