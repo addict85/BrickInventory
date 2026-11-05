@@ -92,8 +92,8 @@ test('stille Faenge werden weniger, nie mehr', () => {
 });
 
 test('any wird weniger, nie mehr', () => {
-  // Gemessen 152 am 05.11.2026 (vorher 183); wie die Zahl sinkt, steht im git log.
-  const SCHRANKE = 152;
+  // Gemessen 26 am 05.11.2026; wie die Zahl sinkt, steht im git log.
+  const SCHRANKE = 26;
   const ist = zaehle([/\bas any\b/g, /:\s*any\b/g]);
   assert.ok(ist <= SCHRANKE,
     `${ist}-mal \`any\`, erlaubt sind ${SCHRANKE}. Jedes davon schaltet den ` +
@@ -106,9 +106,9 @@ test('any wird weniger, nie mehr', () => {
 
 test('any in allen Formen wird weniger, nie mehr', () => {
   // Auch Promise<any>, any[] und Record<string, any>: Die enge Zählung oben sah
-  // nur `as any` und `: any`. Gemessen 205 am 05.11.2026.
+  // nur `as any` und `: any`. Gemessen 39 am 05.11.2026.
   // Gegenprobe (05.11.2026): getSetting wieder `fallback?: any` ohne Überladungen → rot.
-  const SCHRANKE = 205;
+  const SCHRANKE = 39;
   const ist = zaehle([/\bany\b/g]);
   assert.ok(ist <= SCHRANKE, `${ist}-mal any, erlaubt sind ${SCHRANKE}`);
   if (ist < SCHRANKE) console.log(`  ℹ any (alle Formen): ${ist} (Schranke ${SCHRANKE}) — Schranke nachziehen`);
@@ -117,9 +117,9 @@ test('any in allen Formen wird weniger, nie mehr', () => {
 test('eigene REQUIRE_DB-Blöcke in Tests werden weniger, nie mehr', () => {
   // Die Form steht in test/helpers/db.js (dbOderSkip); was davon abweicht,
   // prüft die Erreichbarkeit anders (Rollen, zweite Datenbank, Server).
-  // Gemessen 117 Dateien am 05.11.2026 (vorher 296).
+  // Gemessen 116 Dateien am 05.11.2026.
   // Gegenprobe (05.11.2026): den Block zurück in acquisition-all-paths-db → rot.
-  const SCHRANKE = 117;
+  const SCHRANKE = 116;
   const ist = fs.readdirSync(__dirname).filter(n => n.endsWith('.js') && n !== path.basename(__filename))
     .filter(n => fs.readFileSync(path.join(__dirname, n), 'utf8').includes('REQUIRE_DB=1, aber')).length;
   assert.ok(ist <= SCHRANKE, `${ist} Testdateien mit eigener REQUIRE_DB-Prüfung, erlaubt sind ${SCHRANKE}`);
@@ -138,9 +138,9 @@ test('Datenbankzeilen sind ohne Typargument unknown', () => {
 
 test('ungetypte Datenbankabfragen werden weniger, nie mehr', () => {
   // Erlaubt, solange niemand Felder der Zeile liest — dann verlangt der
-  // Übersetzer ohnehin ein Typargument. Gemessen 78 am 05.11.2026 (vorher 190).
-  // Gegenprobe (05.11.2026): Schranke auf 77 → rot.
-  const SCHRANKE = 78;
+  // Übersetzer ohnehin ein Typargument. Gemessen 69 am 05.11.2026.
+  // Gegenprobe (05.11.2026): Schranke auf 68 → rot.
+  const SCHRANKE = 69;
   const ist = zaehle([/\b(?:db|tx|dbh|d)\.(?:get|all)\(/g]);
   assert.ok(ist <= SCHRANKE, `${ist} ungetypte db.get/all, erlaubt sind ${SCHRANKE}`);
   if (ist < SCHRANKE) console.log(`  ℹ ungetypte Abfragen: ${ist} (Schranke ${SCHRANKE}) — Schranke nachziehen`);
@@ -149,9 +149,9 @@ test('ungetypte Datenbankabfragen werden weniger, nie mehr', () => {
 test('rohe req.body und req.query in Routen werden weniger, nie mehr', () => {
   // Eine Route liest req.eingabe und req.abfrage: geprüft und getypt aus dem
   // Vertrag. Übrig sind die Middleware vor der Prüfung, der Bild-Proxy (ohne
-  // Vertrag) und routes/auth/registrierung.ts. Gemessen 13 am 05.11.2026 (vorher 229).
+  // Vertrag) und routes/auth/registrierung.ts. Gemessen 4 am 05.11.2026.
   // Gegenprobe (05.11.2026): in routes/api_v1/sets.ts ein `req.body.storage` zurück → rot.
-  const SCHRANKE = 13;
+  const SCHRANKE = 4;
   let ist = 0;
   for (const f of quellen().filter(f => /[\\/]routes[\\/]/.test(f)))
     ist += (require('./helpers/sources').ohneKommentare(fs.readFileSync(f, 'utf8')).match(/\breq\.(?:body|query)\b/g) || []).length;
@@ -461,10 +461,9 @@ test('keine Datei der Oberfläche über 1000 Zeilen, die grossen werden kleiner'
 });
 
 test('Funktionen im Server über 80 und über 150 Zeilen werden weniger, nie mehr', () => {
-  // Gemessen am 05.11.2026 nach dem Zerlegen von computePnl, computeSetsValuation
-  // und jobUebersicht: 18 über 80, 1 über 150 (importiereWantedListe).
-  // Gegenprobe (05.11.2026): computePnl wieder in einem Stück → rot (2 über 150).
-  const SCHRANKE_80 = 18, SCHRANKE_150 = 1;
+  // Gemessen am 05.11.2026: 11 über 80, keine über 150.
+  // Gegenprobe (05.11.2026): computePnl wieder in einem Stück → rot (über 150).
+  const SCHRANKE_80 = 11, SCHRANKE_150 = 0;
   const alle = funktionsLaengen(quellen().filter(f => /[\\/](src|routes|jobs|db|clients|startup)[\\/]|[\\/]server\.ts$/.test(f)));
   assert.ok(alle.length > 1000, `nur ${alle.length} Funktionen gefunden — greift die Suche noch?`);
   const ueber = (n) => alle.filter(x => x.zeilen > n);
@@ -504,9 +503,9 @@ test('der Kommentaranteil in db/, clients/ und scripts/ sinkt, nie steigt', () =
 test('Geschichte in Testkommentaren wird weniger, nie mehr', () => {
   // Ein Testkopf nennt, was geprüft wird, und seine Gegenproben (CLAUDE.md);
   // woher ein Test kam, steht im Commit. Gezählt werden Kommentarzeilen mit
-  // den typischen Erzählmarken. Gemessen 424 am 05.11.2026.
+  // den typischen Erzählmarken. Gemessen 423 am 05.11.2026.
   // Gegenprobe (05.11.2026): den alten Kopf von scope-reset.test.js zurück → rot.
-  const SCHRANKE = 424;
+  const SCHRANKE = 423;
   const MARKE = /(Nachtr(ag|äge) [0-9]|Hier stand|Vorher stand|NACHGEMESSEN|kam(en)? am [0-9]|Marcos (Frage|Wunsch|Bericht|Rückfrage|Konsole))/;
   const dateien = [
     ...fs.readdirSync(__dirname).filter(n => n.endsWith('.js')).map(n => path.join(__dirname, n)),

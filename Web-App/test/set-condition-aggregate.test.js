@@ -414,7 +414,8 @@ test('der Minifiguren-Marktpreis fragt BrickLink auch ohne separate BL-Nummer', 
   // viewerId statt uid: Seit der Haushaltssicht sind „wessen Einstellungen"
   // und „wessen Daten" zwei Grössen. Die Schätzung braucht die EINSTELLUNGEN
   // (Währung) des fragenden Kontos — und weiterhin den Zustand.
-  assert.match(fc, /schaetzeFigurenpreis\(fig\.fig_number, viewerId, cond\)/,
+  // Geschätzt wird im Auftrag preise_nachladen; die Bewertung merkt den Zustand vor.
+  assert.match(fc, /art: 'schaetzung', nummer: key, zustand: cond/,
     'Die Minifiguren-Bewertung muss den Zustand mitgeben');
 });
 

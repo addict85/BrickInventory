@@ -948,7 +948,7 @@ CREATE TABLE vouchers (
   user_id integer NOT NULL,
   number text NOT NULL,
   pin text,
-  amount numeric(12,2) NOT NULL,
+  amount numeric(12,4) NOT NULL,
   currency text NOT NULL,
   pdf_path text,
   created_at timestamp with time zone NOT NULL DEFAULT now(),

@@ -8,13 +8,13 @@ import type { CsvImportBericht } from '../../src/infra/csvExport';
 import { addManualPart, getPartColorList, updateManualPart } from '../../src/teile/manuelleTeile';
 import { getSetting } from '../../src/einstellungen/settings';
 import { getPartPriceHistory } from '../../src/finanzen/priceHistory';
-import * as V from '../../src/infra/validate';
 import { aendereTeilFarbe } from '../../src/teile/teilFarbeAendern';
 import { verwendendeSets } from '../../src/bestand/gemeinsam';
 import { sendeFehler } from '../../src/infra/fehlerTexte';
 import { normalisiereLagerort, setzeLagerort } from '../../src/bestand/lagerort';
 import { loescheTeil } from '../../src/sammlung/loeschen';
 import { vertragsRouter } from '../../src/infra/vertrag/pruefen';
+import { seiteAus } from '../../src/infra/seite';
 import type { Anfrage, Antwort } from '../../src/infra/vertrag';
 const router = vertragsRouter();
 
@@ -55,7 +55,7 @@ router.put('/parts/:partNumber/:colorId', requireToken, async (req: Anfrage<'PUT
   const besitzer = await schreibziel(req.apiUser.user_id, req.abfrage.owner, 'kein_zugriff_konto');
   // Mit Mengenänderung trägt die Antwort die Menge danach (bei quantity_delta
   // weiss der Client sie sonst nicht).
-  const r = await updateManualPart(besitzer, String(req.params.partNumber), V.colorId(req.params.colorId), req.eingabe);
+  const r = await updateManualPart(besitzer, req.pfad.partNumber, req.pfad.colorId, req.eingabe);
   res.json({ success: true, ...r });
 });
 
@@ -68,8 +68,8 @@ router.put('/parts/:partNumber/:colorId/color', requireToken, async (req: Anfrag
   const neueFarbe = Number(roh);
   if (roh === undefined || roh === null || neueFarbe < 0) return sendeFehler(req, res, 400, 'farbe_erforderlich');
   const ergebnis = await aendereTeilFarbe(
-    besitzer, String(req.params.partNumber),
-    V.colorId(req.params.colorId),
+    besitzer, req.pfad.partNumber,
+    req.pfad.colorId,
     neueFarbe,
     { color_name: req.eingabe.color_name ?? null, color_hex: req.eingabe.color_hex ?? null });
   res.json({ success: true, ...ergebnis });
@@ -78,7 +78,7 @@ router.put('/parts/:partNumber/:colorId/color', requireToken, async (req: Anfrag
 router.delete('/parts/:partNumber/:colorId', requireToken, async (req: Anfrage<'DELETE /api/v1/parts/:partNumber/:colorId'>, res: Antwort<'DELETE /api/v1/parts/:partNumber/:colorId'>) => {
   // Ohne Parameter das eigene Konto — unverändert für Clients, die ihn nicht kennen.
   const besitzer = await schreibziel(req.apiUser.user_id, req.abfrage.owner, 'kein_zugriff_konto');
-  const geloescht = await loescheTeil(besitzer, String(req.params.partNumber), V.colorId(req.params.colorId));
+  const geloescht = await loescheTeil(besitzer, req.pfad.partNumber, req.pfad.colorId);
   if (geloescht === null) return sendeFehler(req, res, 404, 'teil_nicht_manuell');
   res.json({ success: true, papierkorb: [geloescht] });
 });
@@ -101,17 +101,15 @@ router.post('/parts/owned', requireToken, async (req: Anfrage<'POST /api/v1/part
 router.put('/parts/:partNumber/:colorId/storage', requireToken, async (req: Anfrage<'PUT /api/v1/parts/:partNumber/:colorId/storage'>, res: Antwort<'PUT /api/v1/parts/:partNumber/:colorId/storage'>) => {
   const ort = normalisiereLagerort(req.eingabe.storage);
   const n = await setzeLagerort('part', { schreiber: req.apiUser.user_id },
-    [String(req.params.partNumber), String(V.colorId(req.params.colorId))], ort);
+    [req.pfad.partNumber, String(req.pfad.colorId)], ort);
   res.json({ success: true, storage: ort, changed: n });
 });
 
 router.get('/parts/manual', requireToken, async (req: Anfrage<'GET /api/v1/parts/manual'>, res: Antwort<'GET /api/v1/parts/manual'>) => {
-  // NUR `search`: Die Liste antwortet ohne Blätterung, ein durchgereichtes
-  // page_size deckelte sie unbemerkt.
-  res.json({ success: true, parts: await getManualParts(
-    sichtVon(req),
-    req.apiUser.user_id,
-    { search: req.abfrage.search ?? '', storage: req.abfrage.storage ?? '' }) });
+  const alle = await getManualParts(sichtVon(req), req.apiUser.user_id,
+    { search: req.abfrage.search ?? '', storage: req.abfrage.storage ?? '' });
+  const { eintraege: parts, ...seite } = seiteAus(alle, req.abfrage);
+  res.json({ success: true, parts, ...seite });
 });
 
 router.get('/parts/colors', requireToken, async (req: Anfrage<'GET /api/v1/parts/colors'>, res: Antwort<'GET /api/v1/parts/colors'>) => {
@@ -129,7 +127,7 @@ router.get('/parts/:partNumber/:colorId/price-history', requireToken, async (req
   const uid = req.apiUser.user_id;
   const currency = await getSetting(uid, 'currency', 'EUR');
   const data = await getPartPriceHistory(
-    sichtVon(req), V.einzelwert(req.params.partNumber), V.colorId(req.params.colorId), currency);
+    sichtVon(req), req.pfad.partNumber, req.pfad.colorId, currency);
   res.json({ success: true, ...data });
 });
 
@@ -137,8 +135,8 @@ router.get('/parts/:partNumber/:colorId/price-history', requireToken, async (req
 router.get('/parts/:partNumber/:colorId/sets', requireToken, async (req: Anfrage<'GET /api/v1/parts/:partNumber/:colorId/sets'>, res: Antwort<'GET /api/v1/parts/:partNumber/:colorId/sets'>) => {
   const uids = sichtVon(req);
   const { item, sets } = await verwendendeSets(uids, 'parts', {
-    part_number: V.einzelwert(req.params.partNumber),
-    color_id: V.colorId(req.params.colorId),
+    part_number: req.pfad.partNumber,
+    color_id: req.pfad.colorId,
   });
   res.json({ success: true, item, sets });
 });

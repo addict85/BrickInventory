@@ -52,6 +52,15 @@ export const ImportNutzlast = z.discriminatedUnion('quelle', [
 ]);
 export const SetCsvNutzlast = z.object({ user_id: KONTO, lauf: z.string().min(1), rows: z.array(CsvZeile) });
 
+/** Preise, die eine Bewertung im Cache nicht fand; geholt werden sie im Job-Prozess. */
+export const PreisPosten = z.discriminatedUnion('art', [
+  z.object({ art: z.literal('set'), nummer: SETNR, zustand: z.enum(['N', 'U']) }),
+  z.object({ art: z.literal('teil'), nummer: SETNR, farbe: z.number().int(), zustand: z.enum(['N', 'U']) }),
+  z.object({ art: z.literal('figur'), nummer: SETNR, zustand: z.enum(['N', 'U']) }),
+  z.object({ art: z.literal('schaetzung'), nummer: SETNR, zustand: z.enum(['N', 'U']) }),
+]);
+const PreiseNachladen = z.object({ user_id: KONTO, waehrung: z.string().min(3).max(3), posten: z.array(PreisPosten).max(2000) });
+
 /** Die Schritte des Nachlaufs nach dem Start; jobs/startNachlaeufe.ts hält genau diese. */
 export const NACHLAUF_SCHRITTE = ['geheimnisse', 'vorschauen', 'katalog', 'anleitungen', 'set_bilder', 'kaufpreise'] as const;
 
@@ -72,6 +81,7 @@ export const NUTZLASTEN = {
   bild_nachlauf: LEER,
   aufraeumen: LEER,
   aufraeumen_taeglich: LEER,
+  preise_nachladen: PreiseNachladen,
 } satisfies Record<AuftragsArt, z.ZodType>;
 
 export type Nutzlast<A extends AuftragsArt> = z.output<(typeof NUTZLASTEN)[A]>;

@@ -16,7 +16,7 @@ export const sichtVon = (req: AuthedRequest & { abfrage: { accounts?: string | u
 import { sendeFehler } from '../../src/infra/fehlerTexte';
 import { waechter } from '../../src/infra/vertrag/pruefen';
 
-export function bearerToken(req: any): string | null {
+export function bearerToken(req: { headers: { authorization?: string | undefined } }): string | null {
   const auth = req.headers.authorization || '';
   return auth.startsWith('Bearer ') ? auth.slice(7) : null;
 }

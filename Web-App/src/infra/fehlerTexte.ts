@@ -385,7 +385,7 @@ export const FEHLER = {
 export type FehlerCode = keyof typeof FEHLER;
 
 // Ausführlich: docs/begruendungen/src/infra/fehlerTexte.ts.md#antwortsprache
-export function antwortSprache(req: { headers?: Record<string, any> } | undefined): Sprache {
+export function antwortSprache(req: { headers?: Record<string, unknown> } | undefined): Sprache {
   const roh = String(req?.headers?.['accept-language'] || '').toLowerCase();
   return roh.startsWith('en') || roh.includes(',en') ? 'en' : 'de';
 }
@@ -448,7 +448,8 @@ export function fehlerText(
 /** `code` steht neben dem Satz, damit ein Client reagieren kann, ohne Text zu
  * vergleichen. */
 export function sendeFehler(
-  req: any, res: any, status: number, code: FehlerCode, vars?: Record<string, string | number>,
+  req: { headers?: Record<string, unknown> } | undefined, res: { status(c: number): { json(b: unknown): unknown } },
+  status: number, code: FehlerCode, vars?: Record<string, string | number>,
 ): void {
   res.status(status).json({
     success: false,

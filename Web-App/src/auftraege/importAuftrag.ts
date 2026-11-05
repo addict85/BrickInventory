@@ -25,7 +25,7 @@ type ImportAuftrag = {
   results?: ImportErgebnis[] | null;
 } | null | undefined;
 
-export function buildJobStatus(job: ImportAuftrag, req?: any, sprache: Sprache = antwortSprache(req)) {
+export function buildJobStatus(job: ImportAuftrag, req?: { headers?: Record<string, unknown> }, sprache: Sprache = antwortSprache(req)) {
   if (!job || !job.status) {
     return { success: false, code: 'kein_import_laeuft',
              error: fehlerText('kein_import_laeuft', sprache) };

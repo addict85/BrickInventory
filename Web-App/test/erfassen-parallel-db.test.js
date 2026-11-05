@@ -108,14 +108,16 @@ test('Mengen und Preise werden geprüft', () => {
   assert.equal(V.acquisitionQuantity('3'), 3);
   assert.equal(V.acquisitionQuantity(undefined), 1);
 
-  // Preis: leer heisst „kein Preis", negativ wird abgelehnt.
-  assert.equal(V.optionalPrice(''), null);
-  assert.equal(V.optionalPrice(null), null);
-  assert.equal(V.optionalPrice('49,90'), 49.9, 'Komma als Dezimaltrenner');
-  assert.equal(V.optionalPrice(0), 0, '0 ist ein gültiger Preis, kein fehlender');
-  assert.throws(() => V.optionalPrice(-20), /negativ/,
+  // Preis: leer heisst „kein Preis", negativ wird abgelehnt (src/infra/geld.ts).
+  const { geldEingabe } = _req('src/infra/geld.js');
+  assert.equal(geldEingabe('', 'Preis'), null);
+  assert.equal(geldEingabe(null, 'Preis'), null);
+  assert.equal(geldEingabe('49,90', 'Preis'), 49.9, 'Komma als Dezimaltrenner');
+  assert.equal(geldEingabe(0, 'Preis'), 0, '0 ist ein gültiger Preis, kein fehlender');
+  assert.throws(() => geldEingabe(-20, 'Preis'), /negativ/,
     'ein negativer Kaufpreis senkt stillschweigend den Gesamtwert der Sammlung');
-  assert.throws(() => V.optionalPrice(5_000_000), /unplausibel/);
+  assert.throws(() => geldEingabe(5_000_000, 'Preis'), /unplausibel/);
+  assert.throws(() => geldEingabe('abc', 'Preis'), /Ungültiger Betrag/, 'Text ist kein Preis, auch kein fehlender');
 });
 
 test('alle Erfassen-Wege nutzen dieselbe Prüfung', () => {
@@ -128,10 +130,10 @@ test('alle Erfassen-Wege nutzen dieselbe Prüfung', () => {
   for (const rel of ['src/teile/manuelleTeile.ts', 'src/figuren/manuelleFiguren.ts']) {
     const src = ohneKommentare(fs.readFileSync(path.join(ROOT, rel), 'utf8'));
     assert.match(src, /acquisitionQuantity\(/, `${rel}: Menge ungeprüft`);
-    assert.match(src, /optionalPrice\(/,       `${rel}: Preis ungeprüft`);
+    assert.match(src, /geldEingabe\(/,         `${rel}: Preis ungeprüft`);
   }
   const vertrag = ohneKommentare(fs.readFileSync(path.join(ROOT, 'src/infra/vertrag/sets.ts'), 'utf8'));
-  assert.match(vertrag, /const NeuesSet = [^;]*quantity: eingabe\.stueckzahl\(\)[^;]*purchase_price: eingabe\.preis\(/,
+  assert.match(vertrag, /const NeuesSet = [^;]*quantity: eingabe\.stueckzahl\(\)[^;]*purchase_price: eingabe\.geld\(/,
     'Sets: Menge oder Preis ungeprüft');
 
   // Und der Erfassen-Pfad schreibt gesperrt.

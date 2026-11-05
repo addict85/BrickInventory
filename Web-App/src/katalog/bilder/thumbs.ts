@@ -1,6 +1,6 @@
 // Ausführlich: docs/begruendungen/src/katalog/bilder/thumbs.ts.md#abschnitt
 
-import { meldeUndWeiter } from '../../infra/fehler';
+import { meldeUndWeiter, fehlertext } from '../../infra/fehler';
 import path from 'path';
 import fs from 'fs';
 import { resolveWebPath } from '../../infra/appPaths';
@@ -11,10 +11,10 @@ const THUMB_SIZE = 200;
 /** Erst sharp, Jimp nur bei einem LADEfehler (native Bibliothek fehlt). Ein
  * defektes Bild soll scheitern und gemerkt werden, nicht zweimal gerechnet. */
 async function verkleinern(quelle: string, ziel: string): Promise<void> {
-  let sharp: any = null;
+  let sharp: typeof import('sharp') | null = null;
   try { sharp = require('sharp'); }
-  catch (e: any) {
-    console.warn(`[thumb] sharp nicht verfügbar (${e?.message || e}) — nutze Jimp`);
+  catch (e) {
+    console.warn(`[thumb] sharp nicht verfügbar (${fehlertext(e)}) — nutze Jimp`);
   }
 
   if (sharp) {
@@ -62,9 +62,9 @@ export async function generateThumb(localPath: string) {
     await verkleinern(fsPath, tmpThumb);
     await fs.promises.rename(tmpThumb, thumbFs);
     return thumbWeb;
-  } catch (e: any) {
+  } catch (e) {
     // NICHT still scheitern.
-    console.error(`[thumb] Vorschau fehlgeschlagen für ${localPath}: ${e?.message || e}`);
+    console.error(`[thumb] Vorschau fehlgeschlagen für ${localPath}: ${fehlertext(e)}`);
     try {
       const reste = fs.readdirSync(path.dirname(fsPath))
         .filter(f => f.startsWith(path.basename(thumbFs)) && f.endsWith('.tmp.jpg'));

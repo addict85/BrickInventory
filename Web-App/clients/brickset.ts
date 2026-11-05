@@ -2,7 +2,7 @@
 
 import { holeHttps, auszug } from '../src/infra/abruf';
 import { zugang } from './zugang';
-import { fehlertext, meldeUndLiefere } from '../src/infra/fehler';
+import { fehlertext, meldeUndLiefere, meldeUndWeiter } from '../src/infra/fehler';
 import { alsAbrufFehler } from './abrufFehler';
 import { mitVersion } from '../src/infra/setNummer';
 
@@ -26,8 +26,8 @@ async function httpsGet(url: string): Promise<{ status: number; body: string }> 
   for (let i = 1; ; i++) {
     try {
       return await httpsGetOnce(url);
-    } catch (e: any) {
-      if (e?.isTransient && i < MAX_ATTEMPTS) {
+    } catch (e) {
+      if ((e as { isTransient?: boolean } | null)?.isTransient && i < MAX_ATTEMPTS) {
         await new Promise(r => setTimeout(r, 1500 * i));
         continue;
       }
@@ -106,7 +106,9 @@ async function checkRateLimit(setNumber: string) {
       return false;
     }
     return true;
-  } catch(_) {
+  } catch (e) {
+    // Lässt sich das Kontingent nicht lesen, wird gefragt: lieber ein Abruf zu viel als ein falsches „voll“.
+    meldeUndWeiter('brickset:kontingent', e);
     return true;
   }
 }

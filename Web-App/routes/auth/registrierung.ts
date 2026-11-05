@@ -16,7 +16,7 @@ import { sendeFehler, fehlerText, antwortSprache, alsDoppelt } from '../../src/i
 import { basisUrl, hinweisOhneBasisUrl, mailBasisUrl } from '../../src/infra/basisUrl';
 import * as P from '../../src/konto/passkeys';
 import { vertragsRouter } from '../../src/infra/vertrag/pruefen';
-import type { Antwort } from '../../src/infra/vertrag';
+import type { Antwort, OffeneAnfrage } from '../../src/infra/vertrag';
 
 const router = vertragsRouter();
 
@@ -27,9 +27,9 @@ router.get('/registration-status', async (_req, res: Antwort<'GET /api/v1/auth/r
              passwort_vergessen: mail, mail_versand: mail });
 });
 
-router.post('/register', ipThrottle('register', 5, 60 * 60 * 1000), async (req, res: Antwort<'POST /api/v1/auth/register'>) => {
-  const { username, email, first_name, last_name, password, language } = req.body;
-  const lang = ['de', 'en'].includes(language) ? language : 'de';
+router.post('/register', ipThrottle('register', 5, 60 * 60 * 1000), async (req: OffeneAnfrage<'POST /api/v1/auth/register'>, res: Antwort<'POST /api/v1/auth/register'>) => {
+  const { username, email, first_name, last_name, password, language } = req.eingabe;
+  const lang = language === 'en' ? 'en' : 'de';
 
   if (!await registrierungOffen() || !await mailBereit()) return sendeFehler(req, res, 403, 'registrierung_deaktiviert');
 
@@ -86,8 +86,8 @@ router.post('/register', ipThrottle('register', 5, 60 * 60 * 1000), async (req, 
 const RUECKSETZ_GUELTIG_MIN = 60, RUECKSETZ_PAUSE_MIN = 15, RUECKSETZ_MINDESTDAUER_MS = 400;
 
 // Wie /forgot-password: gleiche Antwort und Dauer, ob es ein unbestätigtes Konto gibt oder nicht.
-router.post('/bestaetigung-erneut', ipThrottle('bestaetigung-erneut', 5, 60 * 60 * 1000), async (req, res: Antwort<'POST /api/v1/auth/bestaetigung-erneut'>) => {
-  const { email } = req.body ?? {};
+router.post('/bestaetigung-erneut', ipThrottle('bestaetigung-erneut', 5, 60 * 60 * 1000), async (req: OffeneAnfrage<'POST /api/v1/auth/bestaetigung-erneut'>, res: Antwort<'POST /api/v1/auth/bestaetigung-erneut'>) => {
+  const { email } = req.eingabe;
   if (!emailGueltig(email)) return sendeFehler(req, res, 400, email ? 'email_ungueltig' : 'email_erforderlich');
   if (!basisUrl()) {
     hinweisOhneBasisUrl('bestaetigung-erneut', 'Bestätigungs-Mails werden nicht versendet.');
@@ -107,21 +107,21 @@ router.post('/bestaetigung-erneut', ipThrottle('bestaetigung-erneut', 5, 60 * 60
   res.json({ success: true, message: fehlerText('bestaetigung_gesendet', antwortSprache(req)) });
 });
 
-router.post('/email-bestaetigen/vorschau', ipThrottle('email-vorschau', 30, 60 * 60 * 1000), async (req, res: Antwort<'POST /api/v1/auth/email-bestaetigen/vorschau'>) => {
-  const token = req.body?.token;
+router.post('/email-bestaetigen/vorschau', ipThrottle('email-vorschau', 30, 60 * 60 * 1000), async (req: OffeneAnfrage<'POST /api/v1/auth/email-bestaetigen/vorschau'>, res: Antwort<'POST /api/v1/auth/email-bestaetigen/vorschau'>) => {
+  const token = req.eingabe.token;
   const username = token ? await K.nameZuEmailToken(hashToken(String(token))) : null;
   if (!username) return sendeFehler(req, res, 400, 'bestaetigungslink_ungueltig');
   res.json({ success: true, username });
 });
 
-router.post('/email-bestaetigen', ipThrottle('email-bestaetigen', 30, 60 * 60 * 1000), async (req, res: Antwort<'POST /api/v1/auth/email-bestaetigen'>) => {
-  const e = await verifiziereEmailToken(req.body?.token);
+router.post('/email-bestaetigen', ipThrottle('email-bestaetigen', 30, 60 * 60 * 1000), async (req: OffeneAnfrage<'POST /api/v1/auth/email-bestaetigen'>, res: Antwort<'POST /api/v1/auth/email-bestaetigen'>) => {
+  const e = await verifiziereEmailToken(req.eingabe.token);
   if (!e.ok) return sendeFehler(req, res, 400, e.grund === 'vergeben' ? 'email_vergeben' : 'bestaetigungslink_ungueltig');
   res.json({ success: true });
 });
 
-router.post('/forgot-password', ipThrottle('forgot-password', 5, 60 * 60 * 1000), async (req, res: Antwort<'POST /api/v1/auth/forgot-password'>) => {
-  const { email } = req.body;
+router.post('/forgot-password', ipThrottle('forgot-password', 5, 60 * 60 * 1000), async (req: OffeneAnfrage<'POST /api/v1/auth/forgot-password'>, res: Antwort<'POST /api/v1/auth/forgot-password'>) => {
+  const { email } = req.eingabe;
   if (!emailGueltig(email)) return sendeFehler(req, res, 400, email ? 'email_ungueltig' : 'email_erforderlich');
   // Vor der Nutzersuche, damit die Absage nichts über die Adresse verrät.
   if (!basisUrl()) {
@@ -150,8 +150,8 @@ router.post('/forgot-password', ipThrottle('forgot-password', 5, 60 * 60 * 1000)
   res.json({ success: true, message: 'Falls die E-Mail existiert, wurde ein Link gesendet.' });
 });
 
-router.post('/reset-password', ipThrottle('reset-password', 10, 60 * 60 * 1000), async (req, res: Antwort<'POST /api/v1/auth/reset-password'>) => {
-  const { token, password } = req.body;
+router.post('/reset-password', ipThrottle('reset-password', 10, 60 * 60 * 1000), async (req: OffeneAnfrage<'POST /api/v1/auth/reset-password'>, res: Antwort<'POST /api/v1/auth/reset-password'>) => {
+  const { token, password } = req.eingabe;
   if (!token || !password) return sendeFehler(req, res, 400, 'token_passwort_erforderlich');
   const mangel = passwortMangel(password);
   if (mangel) return sendeFehler(req, res, 400, mangel);

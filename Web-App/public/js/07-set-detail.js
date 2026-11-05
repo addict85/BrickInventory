@@ -313,7 +313,7 @@ G('btn-md').onclick=async()=>{ if(!curSet) return; if(await delSet(curSet.set_nu
 /**
  * @param {string} sn
  */
-async function redownloadInstr(sn){ toast(tRaw('instr.loading'),'info'); const d=await api('POST',`/v1/sets/${sn}/instructions`); if(d.success){toast(tRaw('instr.loaded',{count:d.instructions.length}),'success');if(curSet){openModal(sn);}loadStats();} else toast(d.error,'error'); }
+async function redownloadInstr(sn){ toast(tRaw('instr.loading'),'info'); const d=await api('POST',`/v1/sets/${sn}/instructions`); if(d.success){if(!d.auftrag_id)toast(tRaw('instr.loaded',{count:d.instructions.length}),'success');if(curSet){openModal(sn);}loadStats();} else toast(d.error,'error'); }
 
 stelleZielBereit({ setDetail: openModal });
 

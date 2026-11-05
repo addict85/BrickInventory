@@ -3,7 +3,7 @@
  * Routen (Antwort<…>) und die Prüfung der Antworten in den Tests. */
 import type { Request, Response } from 'express';
 import type { z } from 'zod';
-import type { Draht, Route } from './grund';
+import type { Draht, Route, PfadVon } from './grund';
 import { Fehler } from './grund';
 import * as bestand from './bestand';
 import * as einstellungen from './einstellungen';
@@ -40,8 +40,8 @@ type Teil<K extends Schluessel, F extends 'eingabe' | 'abfrage'> =
 export type Eingabe<K extends Schluessel> = Teil<K, 'eingabe'>;
 /** Die geprüfte Abfrage; ohne Schema leer, ein Lesen dort ist ein Übersetzungsfehler. */
 export type Abfrage<K extends Schluessel> = Teil<K, 'abfrage'>;
-/** Der Typ von `req` in einer Route: `eingabe` und `abfrage` so, wie der Vertrag sie geprüft hat. */
-export type Anfrage<K extends Schluessel, R extends Request = AuthedRequest> = R & { eingabe: Eingabe<K>; abfrage: Abfrage<K> };
+/** Der Typ von `req` in einer Route: `eingabe`, `abfrage` und `pfad` so, wie der Vertrag sie geprüft hat. */
+export type Anfrage<K extends Schluessel, R extends Request = AuthedRequest> = R & { eingabe: Eingabe<K>; abfrage: Abfrage<K>; pfad: PfadVon<K> };
 /** Dasselbe ohne requireToken. */
 export type OffeneAnfrage<K extends Schluessel> = Anfrage<K, Request>;
 

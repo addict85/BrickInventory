@@ -145,7 +145,6 @@ async function ladeAlles(lauf: CsvLauf, today: string): Promise<void> {
   }
 }
 
-/** Die BrickLink-Farbzuordnung gibt es nur über die API, nicht als CSV. */
 async function ladeBlFarben(): Promise<void> {
   const key = await getRbKey().catch(meldeUndLiefere('rb-csv:getRbKey', null));
   if (!key) return;

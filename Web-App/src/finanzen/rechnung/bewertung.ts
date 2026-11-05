@@ -1,26 +1,31 @@
 /** Was der Bestand heute wert ist; steht auf der Preisschicht (preise.ts) und
- * trägt die Gewinnrechnung, nicht umgekehrt. */
+ * trägt die Gewinnrechnung, nicht umgekehrt. Gelesen wird nur der Preis-Cache:
+ * Fehlende Preise holt der Auftrag „preise_nachladen“, nicht die Anfrage. */
 
-import { meldeUndLiefere, fehlertext } from '../../infra/fehler';
+import { createHash } from 'node:crypto';
+import { meldeUndLiefere, logAndContinue } from '../../infra/fehler';
 import * as repo from '../repository/bewertung';
 import { setPreiseFrisch } from '../repository/preisCache';
+import { geschaetzteFigurenpreise } from '../repository/marktpreise';
 import { asIds, withOwners, blickfeldAus, type Sicht } from '../../haushalt/haushalt';
 import { getGlobalSetting, getSetting } from '../../einstellungen/settings';
 import { resolveImageLocal, proxyImageUrl } from '../../katalog/bilder/images';
 import { valueSet, valueAcquisitionRows, weightedPurchase, pnlPct as calcPnlPct, pnlProzent } from '../setValue';
 import { mitVersion } from '../../infra/setNummer';
-import { effectiveCondition } from './zustand';
 import {
-  DEFAULT_PRICE_CONDITION, parallelLimit,
-  fetchPrice, fetchPartPrice, fetchMinifigPrice, ladeBlNummernVor,
-  ladeTeilepreiseVor, ladeFigurenpreiseVor,
-  type Blickfeld,
+  DEFAULT_PRICE_CONDITION, parallelLimit, ladeBlNummernVor, ladeTeilepreiseVor, ladeFigurenpreiseVor,
+  preisAusVorrat, setPreisAusVorrat, teilSchluessel, type Blickfeld, type PreisDaten,
 } from './preise';
 import { zaehle } from './abfragen';
 import { ladeSetErfassungen } from '../repository/erfassungen';
-import { schaetzeFigurenpreis } from '../marketPrice';
 import { KEINE_FARBE } from '../../infra/validate';
 import { aufRappen, inZehntel4 } from '../../infra/geld';
+import { stelleAuftragEin } from '../../auftraege/dienst';
+import type { Nutzlast } from '../../auftraege/nutzlasten';
+
+type Zustand = 'N' | 'U';
+type Posten = Nutzlast<'preise_nachladen'>['posten'][number];
+type FigurPreis = PreisDaten & { estimated_from_parts?: true; abdeckung?: number | null };
 
 /** @returns Map key → Erfassungszeilen; key ist `konto|nummer|farbe` bzw. `konto|nummer` */
 async function loadManualAcquisitions(uid: Blickfeld, kind: 'part' | 'fig', waehrung: string) {
@@ -43,35 +48,33 @@ function fremdeKaufpreise(jeEintrag: Map<string, Array<{ kaufpreis_fremd?: boole
   return n;
 }
 
+/** Ein Auftrag je Satz fehlender Preise: Dieselbe Liste stellt keinen zweiten ein. */
+async function merkePreiseVor(viewerId: number, waehrung: string, posten: Posten[]): Promise<number> {
+  if (!posten.length) return 0;
+  const liste = posten.slice(0, 2000);
+  const schluessel = 'preise_nachladen:' + createHash('sha256').update(`${viewerId}|${waehrung}|${JSON.stringify(liste)}`).digest('hex').slice(0, 32);
+  await stelleAuftragEin('preise_nachladen', { user_id: viewerId, waehrung, posten: liste }, { schluessel, userId: viewerId })
+    .catch(logAndContinue('bewertung:preise vormerken'));
+  return posten.length;
+}
+
 type BewertungsSet = Awaited<ReturnType<typeof repo.setsZurBewertung>>[number];
 type SetErfassung = Awaited<ReturnType<typeof ladeSetErfassungen>>[number];
-type Preis = Awaited<ReturnType<typeof fetchPrice>>;
 /** Was jede Zeile braucht: Einstellungen des Betrachters und die vorgeladenen Tabellen. */
-type Bewertungslage = { guideType: string; currency: string; ttlHours: string; pre: NonNullable<Parameters<typeof fetchPrice>[5]> };
-
-/** Preise NUR für die vorkommenden Zustände: Jeder Abruf kostet Kontingent. Ein
- * Fehler gilt nur dem einen Zustand. */
-async function preiseJeZustand(sn: string, zustaende: Array<'N' | 'U'>, l: Bewertungslage) {
-  const preise: Partial<Record<'N' | 'U', Preis | null>> = {};
-  const fehler: string[] = [];
-  for (const cond of zustaende) {
-    try { preise[cond] = await fetchPrice(sn, cond, l.guideType, l.currency, l.ttlHours, l.pre); }
-    catch (e) { preise[cond] = null; fehler.push(fehlertext(e)); }
-  }
-  return { preise, fehler };
-}
+type Bewertungslage = { ttl: number; pre: Parameters<typeof setPreisAusVorrat>[3]; fehlt: Posten[] };
 
 /** Eine Zeile der Bewertung: Je Kaufpreis der Preis SEINES Zustands, verdichtet
  * in valueSet(), damit die Bewertungsregel an EINER Stelle bleibt. */
-async function bewerteSet(set: BewertungsSet, acqs: SetErfassung[], l: Bewertungslage) {
-  const fallbackCond: 'N' | 'U' = effectiveCondition(set);
-  const needed: Array<'N' | 'U'> = acqs.length
-    ? [...new Set(acqs.map(a => (a.condition === 'U' ? 'U' : 'N') as 'N' | 'U'))] : [fallbackCond];
-  const { preise, fehler } = await preiseJeZustand(set.set_number, needed, l);
+function bewerteSet(set: BewertungsSet, acqs: SetErfassung[], l: Bewertungslage) {
+  // Ohne Erfassung gilt das Set als neu (effectiveCondition ohne Zähler).
+  const fallbackCond: Zustand = 'N';
+  const needed: Zustand[] = acqs.length
+    ? [...new Set(acqs.map(a => (a.condition === 'U' ? 'U' : 'N') as Zustand))] : [fallbackCond];
+  const preise = new Map<Zustand, PreisDaten>(needed.map(c => [c, setPreisAusVorrat(set.set_number, c, l.ttl, l.pre)]));
   const preisMap = new Map<string, number>();
-  for (const cond of needed) {
-    const v = parseFloat(String(preise[cond]?.avg_price || 0));
-    if (v > 0) preisMap.set(`${set.set_number}|${cond}`, v);
+  for (const [cond, p] of preise) {
+    if (p.avg_price > 0) preisMap.set(`${set.set_number}|${cond}`, p.avg_price);
+    if (p.ausstehend) l.fehlt.push({ art: 'set', nummer: set.set_number, zustand: cond });
   }
   const valued = valueSet(set.set_number, acqs, preisMap, fallbackCond, set.quantity || 1);
   const rows = valueAcquisitionRows(set.set_number, acqs, preisMap);
@@ -80,12 +83,10 @@ async function bewerteSet(set: BewertungsSet, acqs: SetErfassung[], l: Bewertung
   // Min/Max müssen zur selben Mengenaufteilung passen wie der Schnitt.
   const qty = valued.quantity || 1;
   const gewichtet = (key: 'min_price' | 'max_price' | 'qty_avg_price') => valued.by_condition
-    .map(bc => (parseFloat(String(preise[bc.condition as 'N' | 'U']?.[key] || 0)) || 0) * bc.quantity)
+    .map(bc => (preise.get(bc.condition as Zustand)?.[key] ?? 0) * bc.quantity)
     .reduce((a, b) => a + b, 0) / qty;
-  const einPreis = needed.map(c => preise[c]).find(p => p);
+  const einPreis = needed.map(c => preise.get(c)).find(p => p && !p.ausstehend);
   const unitAvg = valued.unit_price ?? 0;
-  // Fehler nur, wenn KEIN Zustand einen Preis hat: Die gelungene Hälfte soll nicht an der anderen scheitern.
-  const allesFehlt = fehler.length === needed.length;
   const conditions = valued.by_condition.map(bc => bc.condition);
   return {
     user_id: set.user_id, set_number: set.set_number, name: set.name, year: set.year,
@@ -101,11 +102,11 @@ async function bewerteSet(set: BewertungsSet, acqs: SetErfassung[], l: Bewertung
     total_qty_avg: aufRappen((inZehntel4(gewichtet('qty_avg_price')) ?? 0) * qty).toFixed(2),
     pnl_pct: calcPnlPct(purchase, unitAvg), pnl_prozent: pnlProzent(purchase, unitAvg),
     acquisitions: rows,
-    from_cache: einPreis ? !!einPreis.from_cache : true,
-    is_fallback: einPreis ? !!einPreis.is_fallback : false,
-    no_price: !allesFehlt && valued.unit_price == null,
-    bl_unbekannt: needed.some(c => preise[c]?.bl_unbekannt === true),
-    ...(allesFehlt ? { error: fehler[0] } : {}),
+    from_cache: true,
+    is_fallback: einPreis?.is_fallback === true,
+    no_price: !!einPreis && valued.unit_price == null,
+    bl_unbekannt: needed.some(c => preise.get(c)?.bl_unbekannt === true),
+    preis_ausstehend: needed.some(c => preise.get(c)?.ausstehend === true),
   };
 }
 
@@ -134,18 +135,19 @@ export async function computeSetsValuation(viewerId: number, idsWahl: Sicht | Bl
     // ttl_hours bleibt für ältere Clients Text.
     ttl_stunden: Number(ttlHours) || 24 };
   const sets = await repo.setsZurBewertung(uids);
-  if (!sets.length) return { ...kopf, kaufpreise_fremde_waehrung: 0, kaufpreise_umgerechnet: 0, sets: [],
+  if (!sets.length) return { ...kopf, kaufpreise_fremde_waehrung: 0, kaufpreise_umgerechnet: 0, sets: [], preise_ausstehend: 0,
     totals: { min: '0.00', avg: '0.00', max: '0.00', qty_avg: '0.00' } };
 
   // Je eine Abfrage für Katalog, Preiscache und Erfassungen statt einer je Set.
   const setNumbers = sets.map(s => s.set_number);
+  const ttl = Math.max(1, parseInt(ttlHours) || 24);
   const [catRows, cacheRows, acqRows] = await Promise.all([
     // catalog_cache führt Nummern mit Versionsanhang, price_cache unter der Schreibweise des Aufrufers.
     repo.katalogMerkmale(setNumbers.map(mitVersion)),
-    setPreiseFrisch(setNumbers, currency, Math.max(1, parseInt(ttlHours))),
+    setPreiseFrisch(setNumbers, currency, ttl),
     ladeSetErfassungen(uids, currency),
   ]);
-  const lage: Bewertungslage = { guideType, currency, ttlHours, pre: {
+  const lage: Bewertungslage = { ttl, fehlt: [], pre: {
     catalog: new Map(catRows.map(r => [r.set_number, r])),
     cache:   new Map(cacheRows.map(r => [`${r.set_number}|${r.condition}`, r])),
   } };
@@ -155,8 +157,8 @@ export async function computeSetsValuation(viewerId: number, idsWahl: Sicht | Bl
     const k = `${a.user_id}|${a.set_number}`, l = jeKontoUndSet.get(k);
     if (l) l.push(a); else jeKontoUndSet.set(k, [a]);
   }
-  const results = await withOwnerNames(uids, await parallelLimit(
-    sets.map(set => () => bewerteSet(set, jeKontoUndSet.get(`${set.user_id}|${set.set_number}`) || [], lage)), 5));
+  const results = await withOwners(uids,
+    sets.map(set => bewerteSet(set, jeKontoUndSet.get(`${set.user_id}|${set.set_number}`) || [], lage)));
   return {
     ...kopf,
     // Fremde Kaufpreise fehlen in den Summen (keine Kurse); die Zahl sagt, wie viele es sind.
@@ -164,179 +166,145 @@ export async function computeSetsValuation(viewerId: number, idsWahl: Sicht | Bl
     kaufpreise_umgerechnet: zaehle(acqRows, 'kaufpreis_umgerechnet'),
     sets: results,
     totals: bewertungsSummen(results),
+    preise_ausstehend: await merkePreiseVor(viewerId, currency, lage.fehlt),
   };
 }
 
-/** Eine Umsetzung für Sitzungsroute und Token-API. */
-export async function computeMinifigsValuation(viewerId: number, idsWahl: Sicht | Blickfeld) {
-  const ids = await blickfeldAus(idsWahl);
-  const uids = asIds(ids);
-  const [currency, ttlHours] = await Promise.all([
-    getSetting(viewerId, 'currency', 'EUR'),
-    getGlobalSetting('price_cache_ttl', '24'),
-  ]);
-  const manualFigs = await repo.manuelleFigurenZurBewertung(uids);
-  if (!manualFigs.length) return { currency, figs: [], total_value: '0.00', kaufpreise_fremde_waehrung: 0, kaufpreise_umgerechnet: 0 };
-
-  const acqByFig = await loadManualAcquisitions(uids, 'fig', String(currency));
-  const figVorrat = await ladeFigurenpreiseVor(
-    manualFigs.filter(f => f.bl_fig_number).map(f => String(f.bl_fig_number)), String(currency), ttlHours);
-
-  const tasks = manualFigs.map(fig => async () => {
-    // Je vorkommendem Zustand: Ein neu gekauftes Exemplar bekommt den Neupreis,
-    // auch wenn ein anderes gebraucht ist.
-    const key  = String(fig.fig_number);
-    const acqs = acqByFig.get(`${fig.user_id}|${key}`) || [];
-    const conds  = conditionsOf(acqs);
-
-    const priceMap = new Map<string, number>();
-    let priceData: any = null;
-    for (const cond of conds) {
-      let pd: any;
-      if (fig.bl_fig_number) {
-        try { pd = await fetchMinifigPrice(fig.bl_fig_number, cond, currency, ttlHours, figVorrat); }
-        catch (e) { pd = { avg_price: 0, qty_avg_price: 0, error: fehlertext(e) }; }
-      } else {
-        // Ohne BL-Nummer aus den Teilepreisen schätzen: Die Zuordnung RB→BL ist für
-        // Teile verlässlich, für Figuren nicht.
-        const s = await schaetzeFigurenpreis(fig.fig_number, viewerId, cond).catch(meldeUndLiefere('bewertung:schaetzeFigurenpreis', null));
-        pd = s != null
-          ? { avg_price: s.preis, qty_avg_price: s.preis, from_cache: false, estimated_from_parts: true, abdeckung: s.abdeckung }
-          : { avg_price: 0, qty_avg_price: 0 };
-      }
-      // avg_price zuerst: Das ist BrickLinks angezeigter Preis, qty_avg_price liegt
-      // darunter. "0.00" aus Postgres ist truthy und hätte avg_price verdeckt.
-      const v = parseFloat(String(pd.avg_price || 0)) || parseFloat(String(pd.qty_avg_price || 0)) || 0;
-      if (v > 0) priceMap.set(`${key}|${cond}`, v);
-      if (!priceData || (!priceData.avg_price && v > 0)) priceData = pd;
-    }
-
-    const qty = fig.quantity || 1;
-    // 'N': Der Rückfall greift nur ohne Erfassungen, und dort gilt „Neu".
-    const valued  = valueSet(key, acqs, priceMap, 'N', qty);
-    const rows    = valueAcquisitionRows(key, acqs, priceMap);
-    const unitVal = valued.unit_price ?? 0;
-    const totalQty = acqs.length ? valued.quantity : qty;
-    const acqPurchase = acqs.length ? weightedPurchase(rows) : null;
-    // Ein Kaufpreis gilt nur in der Kontowährung; fremde Währung oder „unbekannt"
-    // als 0 trieben die G&V auf Zehntausende Prozent.
-    const hasCost = acqPurchase != null;
-    const purchasePrice = acqPurchase ?? 0;
-    return { ...fig, ...priceData,
-      condition: valued.by_condition.some(b => b.condition === 'U') ? 'U' : 'N',
-      conditions: valued.by_condition.map(b => b.condition),
-      // Dieselbe Form wie bei Sets, damit die Finanztabelle für alle drei gleich aussieht.
-      acquisitions: rows,
-      avg_price: unitVal, qty_avg_price: unitVal,
-      purchase_price: hasCost ? purchasePrice : null,
-      pnl_pct: hasCost ? calcPnlPct(purchasePrice, unitVal) : null,
-      pnl_prozent: hasCost ? pnlProzent(purchasePrice, unitVal) : null,
-      wert_gesamt: aufRappen((valued.unit_z ?? 0) * totalQty),
-      total_value: ((valued.unit_z ?? 0) * totalQty / 10000).toFixed(4), display_value: aufRappen((valued.unit_z ?? 0) * totalQty).toFixed(2) };
-  });
-
-  const results = await withOwnerNames(uids, await parallelLimit(tasks, 5));
-  const total = results.reduce((s, r) => s + (inZehntel4(r.total_value) ?? 0), 0);
-  return { currency, figs: results, total_value: aufRappen(total).toFixed(2),
-           kaufpreise_fremde_waehrung: fremdeKaufpreise(acqByFig),
-           kaufpreise_umgerechnet: zaehle([...acqByFig.values()].flat(), 'kaufpreis_umgerechnet') };
-}
-
-export async function computePartsValuation(viewerId: number, idsWahl: Sicht | Blickfeld) {
-  const ids = await blickfeldAus(idsWahl);
-  const uids = asIds(ids);
-  const [currency, ttlHours] = await Promise.all([
-    getSetting(viewerId, 'currency', 'EUR'),
-    getGlobalSetting('price_cache_ttl', '24'),
-  ]);
-  const manualParts = await repo.manuelleTeileZurBewertung(uids);
-
-  if (!manualParts.length) return { currency, parts: [], total_value: '0.00', kaufpreise_fremde_waehrung: 0, kaufpreise_umgerechnet: 0 };
-
-  // Zwei Abfragen statt 2×N; der Schlüssel muss zeichengleich dem von
-  // fetchPartPrice sein, sonst greift das Gedächtnis daneben.
-  await ladeBlNummernVor(manualParts.map(p => String(p.bl_part_number || p.part_number)));
-
-  const acqByPart = await loadManualAcquisitions(uids, 'part', String(currency));
-  const teilVorrat = await ladeTeilepreiseVor(manualParts.map(p => ({
-    partNumber: String(p.bl_part_number || p.part_number), rbColorId: p.color_id ?? KEINE_FARBE })), String(currency), ttlHours);
-
-  const tasks = manualParts.map(part => async () => {
-    const key    = `${part.part_number}|${part.color_id ?? KEINE_FARBE}`;
-    const acqs   = acqByPart.get(`${part.user_id}|${key}`) || [];
-    const conds  = conditionsOf(acqs);
-
-    const priceMap = new Map<string, number>();
-    let priceData: any = null;
-    for (const cond of conds) {
-      let pd: any;
-      try {
-        pd = await fetchPartPrice(part.bl_part_number || part.part_number, part.color_id ?? KEINE_FARBE, cond, currency, ttlHours, teilVorrat);
-      } catch (e) {
-        pd = { avg_price: 0, qty_avg_price: 0, error: fehlertext(e) };
-      }
-      // avg_price zuerst, wie bei den Figuren.
-      const v = parseFloat(String(pd.avg_price || 0)) || parseFloat(String(pd.qty_avg_price || 0)) || 0;
-      if (v > 0) priceMap.set(`${key}|${cond}`, v);
-      if (!priceData || (!priceData.avg_price && v > 0)) priceData = pd;
-    }
-
-    const qty     = part.quantity || 1;
-    // 'N': Der Rückfall greift nur ohne Erfassungen, und dort gilt „Neu".
-    const valued  = valueSet(key, acqs, priceMap, 'N', qty);
-    const rows    = valueAcquisitionRows(key, acqs, priceMap);
-    const unitVal = valued.unit_price ?? 0;
-    const totalQty = acqs.length ? valued.quantity : qty;
-    const acqPurchase = acqs.length ? weightedPurchase(rows) : null;
-    const hasCost = acqPurchase != null;
-    const purchasePrice = acqPurchase ?? 0;
-    return {
-      id:           part.id,
-      // user_id gehört in die Antwort: withOwnerNames() macht daraus `owners`.
-      user_id:      part.user_id,
-      part_number:  part.part_number,
-      bl_part_number: part.bl_part_number,
-      part_name:    part.part_name,
-      color_id:     part.color_id,
-      color_name:   part.color_name,
-      color_hex:    part.color_hex,
-      quantity:     qty,
-      image_url:    part.image_url,
-      image_local:  part.image_local,
-      // Die neueste Erfassung; die Webapp nimmt den Wert nur als Rückfall.
-      unit_price:   acqs.at(-1)?.unit_price ?? null,
-      purchase_price: hasCost ? purchasePrice : null,
-      condition:    valued.by_condition.some(b => b.condition === 'U') ? 'U' : 'N',
-      conditions:   valued.by_condition.map(b => b.condition),
-      acquisitions: rows,
-      pnl_pct:      hasCost ? calcPnlPct(purchasePrice, unitVal) : null,
-      pnl_prozent:  hasCost ? pnlProzent(purchasePrice, unitVal) : null,
-      ...priceData,
-      // Nach ...priceData, damit der gewichtete Wert gewinnt.
-      avg_price:    unitVal,
-      qty_avg_price: unitVal,
-      total_value:  ((valued.unit_z ?? 0) * totalQty / 10000).toFixed(4),
-      display_value: aufRappen((valued.unit_z ?? 0) * totalQty).toFixed(2),
-      wert_gesamt:  aufRappen((valued.unit_z ?? 0) * totalQty),
-    };
-  });
-
-  const results = await withOwnerNames(uids, await parallelLimit(tasks, 5));
-  const total = results.reduce((sum, r) => sum + (inZehntel4(r.total_value) ?? 0), 0);
-  return { currency, parts: results, total_value: aufRappen(total).toFixed(2),
-           kaufpreise_fremde_waehrung: fremdeKaufpreise(acqByPart),
-           kaufpreise_umgerechnet: zaehle([...acqByPart.values()].flat(), 'kaufpreis_umgerechnet') };
-}
-
-/** Ohne Erfassung „Neu", wie conditionsFromAcquisitions(). */
-function conditionsOf(acqs: { condition?: string | null }[]): ('N' | 'U')[] {
+function conditionsOf(acqs: { condition?: string | null }[]): Zustand[] {
   if (!acqs?.length) return ['N'];
   const set = new Set(acqs.map(a => (a.condition === 'U' ? 'U' : 'N')));
   return (['N', 'U'] as const).filter(c => set.has(c));
 }
 
-/** Nur im Haushalt; manuelle Einträge zweier Konten bleiben getrennte Zeilen. */
-async function withOwnerNames(uids: number[], rows: any[]): Promise<any[]> {
-  return withOwners(uids, rows);
+/** Je vorkommendem Zustand ein Preis; der erste mit Wert trägt die Zusatzangaben der Zeile. */
+function preiseJeZustand<P extends PreisDaten>(key: string, conds: Zustand[], preisVon: (c: Zustand) => P) {
+  const priceMap = new Map<string, number>();
+  let priceData: P | null = null;
+  for (const cond of conds) {
+    const pd = preisVon(cond);
+    // avg_price zuerst: Das ist BrickLinks angezeigter Preis, qty_avg_price liegt darunter.
+    const v = pd.avg_price || pd.qty_avg_price || 0;
+    if (v > 0) priceMap.set(`${key}|${cond}`, v);
+    if (!priceData || (!priceData.avg_price && v > 0)) priceData = pd;
+  }
+  return { priceMap, priceData };
 }
 
+function bewerteManuell(key: string, acqs: repo.ManuelleErfassung[], priceMap: Map<string, number>, menge: number) {
+  // 'N': Der Rückfall greift nur ohne Erfassungen, und dort gilt „Neu".
+  const valued  = valueSet(key, acqs, priceMap, 'N', menge);
+  const rows    = valueAcquisitionRows(key, acqs, priceMap);
+  const unitVal = valued.unit_price ?? 0;
+  const totalQty = acqs.length ? valued.quantity : menge;
+  // Ein Kaufpreis gilt nur in der Kontowährung; fremde Währung oder „unbekannt"
+  // als 0 trieben die G&V auf Zehntausende Prozent.
+  const acqPurchase = acqs.length ? weightedPurchase(rows) : null;
+  const hasCost = acqPurchase != null;
+  const purchasePrice = acqPurchase ?? 0;
+  const wert_z = (valued.unit_z ?? 0) * totalQty;
+  return {
+    condition: valued.by_condition.some(b => b.condition === 'U') ? 'U' : 'N',
+    conditions: valued.by_condition.map(b => b.condition),
+    acquisitions: rows,
+    purchase_price: hasCost ? purchasePrice : null,
+    pnl_pct: hasCost ? calcPnlPct(purchasePrice, unitVal) : null,
+    pnl_prozent: hasCost ? pnlProzent(purchasePrice, unitVal) : null,
+    avg_price: unitVal, qty_avg_price: unitVal,
+    wert_gesamt: aufRappen(wert_z),
+    total_value: (wert_z / 10000).toFixed(4), display_value: aufRappen(wert_z).toFixed(2),
+  };
+}
+
+/** Summe der Zeilenwerte, gerundet erst am Schluss; als Zahl und (veraltet) als Text. */
+function gesamt(zeilen: Array<{ total_value: string }>) {
+  const z = zeilen.reduce((s, r) => s + (inZehntel4(r.total_value) ?? 0), 0);
+  return { wert_gesamt: aufRappen(z), total_value: aufRappen(z).toFixed(2) };
+}
+
+/** Eine Umsetzung für Sitzungsroute und Token-API. */
+export async function computeMinifigsValuation(viewerId: number, idsWahl: Sicht | Blickfeld) {
+  const uids = asIds(await blickfeldAus(idsWahl));
+  const [currency, ttlHours] = await Promise.all([
+    getSetting(viewerId, 'currency', 'EUR'), getGlobalSetting('price_cache_ttl', '24')]);
+  const ttl = Math.max(1, parseInt(ttlHours) || 24);
+  const manualFigs = await repo.manuelleFigurenZurBewertung(uids);
+  if (!manualFigs.length) return { currency, figs: [], ...gesamt([]), kaufpreise_fremde_waehrung: 0, kaufpreise_umgerechnet: 0, preise_ausstehend: 0 };
+
+  const acqByFig = await loadManualAcquisitions(uids, 'fig', currency);
+  const mitBl = manualFigs.filter(f => f.bl_fig_number);
+  const [figVorrat, schaetzungen] = await Promise.all([
+    ladeFigurenpreiseVor(mitBl.map(f => String(f.bl_fig_number)), currency, ttlHours),
+    geschaetzteFigurenpreise(manualFigs.filter(f => !f.bl_fig_number).map(f => f.fig_number), currency, ttl),
+  ]);
+  const fehlt: Posten[] = [];
+
+  const results = await withOwners(uids, manualFigs.map(fig => {
+    // Je vorkommendem Zustand: Ein neu gekauftes Exemplar bekommt den Neupreis,
+    // auch wenn ein anderes gebraucht ist.
+    const key  = fig.fig_number;
+    const acqs = acqByFig.get(`${fig.user_id}|${key}`) || [];
+    const { priceMap, priceData } = preiseJeZustand(key, conditionsOf(acqs), (cond): FigurPreis => {
+      if (fig.bl_fig_number) {
+        const p = preisAusVorrat(c => figVorrat.get(`${fig.bl_fig_number}|${c}`), cond, ttl);
+        if (p.ausstehend) fehlt.push({ art: 'figur', nummer: fig.bl_fig_number, zustand: cond });
+        return p;
+      }
+      // Ohne BL-Nummer aus den Teilepreisen geschätzt (der Auftrag rechnet die Schätzung).
+      const s = schaetzungen.get(`${key}|${cond}`);
+      if (s) return { min_price: 0, avg_price: s.preis, max_price: 0, qty_avg_price: s.preis, from_cache: true,
+        estimated_from_parts: true as const, abdeckung: s.abdeckung };
+      fehlt.push({ art: 'schaetzung', nummer: key, zustand: cond });
+      return { min_price: 0, avg_price: 0, max_price: 0, qty_avg_price: 0, from_cache: false, ausstehend: true as const };
+    });
+    return { ...fig, ...priceData, ...bewerteManuell(key, acqs, priceMap, fig.quantity || 1) };
+  }));
+  return { currency, figs: results, ...gesamt(results),
+           kaufpreise_fremde_waehrung: fremdeKaufpreise(acqByFig),
+           kaufpreise_umgerechnet: zaehle([...acqByFig.values()].flat(), 'kaufpreis_umgerechnet'),
+           preise_ausstehend: await merkePreiseVor(viewerId, currency, fehlt) };
+}
+
+export async function computePartsValuation(viewerId: number, idsWahl: Sicht | Blickfeld) {
+  const uids = asIds(await blickfeldAus(idsWahl));
+  const [currency, ttlHours] = await Promise.all([
+    getSetting(viewerId, 'currency', 'EUR'), getGlobalSetting('price_cache_ttl', '24')]);
+  const ttl = Math.max(1, parseInt(ttlHours) || 24);
+  const manualParts = await repo.manuelleTeileZurBewertung(uids);
+  if (!manualParts.length) return { currency, parts: [], ...gesamt([]), kaufpreise_fremde_waehrung: 0, kaufpreise_umgerechnet: 0, preise_ausstehend: 0 };
+
+  const blNummer = (p: repo.ManuellesTeil) => String(p.bl_part_number || p.part_number);
+  await ladeBlNummernVor(manualParts.map(blNummer));
+  const acqByPart = await loadManualAcquisitions(uids, 'part', currency);
+  const teilVorrat = await ladeTeilepreiseVor(manualParts.map(p => ({
+    partNumber: blNummer(p), rbColorId: p.color_id ?? KEINE_FARBE })), currency, ttlHours);
+  const fehlt: Posten[] = [];
+
+  const tasks = manualParts.map(part => async () => {
+    const key  = `${part.part_number}|${part.color_id ?? KEINE_FARBE}`;
+    const acqs = acqByPart.get(`${part.user_id}|${key}`) || [];
+    const vorratsSchluessel = await teilSchluessel(blNummer(part), part.color_id ?? KEINE_FARBE);
+    const { priceMap, priceData } = preiseJeZustand(key, conditionsOf(acqs), cond => {
+      const p = preisAusVorrat(c => teilVorrat.get(`${vorratsSchluessel}|${c}`), cond, ttl);
+      if (p.ausstehend) fehlt.push({ art: 'teil', nummer: blNummer(part), farbe: part.color_id ?? KEINE_FARBE, zustand: cond });
+      return p;
+    });
+    const wert = bewerteManuell(key, acqs, priceMap, part.quantity || 1);
+    return {
+      id: part.id,
+      user_id: part.user_id, part_number: part.part_number, bl_part_number: part.bl_part_number,
+      part_name: part.part_name, color_id: part.color_id, color_name: part.color_name, color_hex: part.color_hex,
+      quantity: part.quantity || 1, image_url: part.image_url, image_local: part.image_local,
+      // Die neueste Erfassung; die Webapp nimmt den Wert nur als Rückfall.
+      unit_price: acqs.at(-1)?.unit_price ?? null,
+      ...priceData,
+      // Nach ...priceData, damit der gewichtete Wert gewinnt.
+      ...wert,
+    };
+  });
+
+  const results = await withOwners(uids, await parallelLimit(tasks, 5));
+  return { currency, parts: results, ...gesamt(results),
+           kaufpreise_fremde_waehrung: fremdeKaufpreise(acqByPart),
+           kaufpreise_umgerechnet: zaehle([...acqByPart.values()].flat(), 'kaufpreis_umgerechnet'),
+           preise_ausstehend: await merkePreiseVor(viewerId, currency, fehlt) };
+}

@@ -21,7 +21,7 @@ import { csvEinlesen, entschaerfungRueckgaengig, parseCsvDate, zeilenListe } fro
 import { jobGet, jobSet, jobUpdate, emitJobStatus } from '../auftraege/importAuftrag';
 import { getSetByBarcode, getSetByEan, getMinifigInfo, getSetMinifigs, rebrickableJson, produktTitel } from '../katalog/quellen';
 import { getAllSetParts } from '../katalog/rebrickableKatalog';
-import type { RbSetTeil } from '../../clients/rebrickable';
+import type { RbSetTeil } from '../katalog/quellen';
 import { fehlerWerfen } from '../infra/fehlerTexte';
 import { merkeFigur, merkeSetFiguren } from '../katalog/katalogPflege';
 import { randomUUID } from 'crypto';

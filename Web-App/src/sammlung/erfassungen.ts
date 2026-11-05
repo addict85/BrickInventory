@@ -1,4 +1,5 @@
 /** Eine Regel für drei Arten, damit Webapp und App nicht auseinanderlaufen. */
+import { geldEingabe } from '../infra/geld';
 import * as repo from './repository/erfassungen';
 import type { DbSchnittstelle } from '../../db/database';
 import { writableIds, acquisitionMoveSource, resolveWriteTarget, blickfeldAus, type Sicht } from '../haushalt/haushalt';
@@ -97,15 +98,15 @@ export async function erfassungAendern(art: ErfassungsArt, uid: number, id: numb
   let priceVal: number | null = null;
   let preisGeschaetzt = false;
   if (rawPrice !== undefined) {
-    let p = (rawPrice === null || rawPrice === '') ? null : parseFloat(String(rawPrice));
-    if (p === null || isNaN(p)) {
+    let p = geldEingabe(rawPrice, preisSpalte(art) === 'purchase_price' ? 'Kaufpreis' : 'Stückpreis');
+    if (p === null) {
       preisGeschaetzt = true;
       const bisher = condition ? null : await repo.zustandDerErfassung(art, id)
         .catch(meldeUndLiefere('erfassungen:zustand', null));
       p = await a.resolvePrice(uid, keys, String(condition || bisher || '') || null)
         .catch(meldeUndLiefere('erfassungen:resolvePrice', null));
     }
-    priceVal = (p !== null && !isNaN(p)) ? p : null;
+    priceVal = p;
   }
 
   const besitzer = await besitzerDerZeile(art, id, uid);

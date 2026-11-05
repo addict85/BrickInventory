@@ -5,7 +5,7 @@ const router  = vertragsRouter();
 import * as K from '../src/konto/konten';
 import { meldeHaushaltsaenderung } from '../src/haushalt/haushalt';
 import { logAndContinue, meldeUndWeiter, fehlertext, meldeUndLiefere } from '../src/infra/fehler';
-import { fehlerAntwort, pfadParam } from '../src/infra/httpAntwort';
+import { fehlerAntwort } from '../src/infra/httpAntwort';
 import { hashToken, createToken, pruefeToken, assertLoginAllowed, revokeAllSessions, deleteToken, USERNAME_RE, emailGueltig, leereTokenCache, laufzeitTage, rotiereToken, rotationFaellig, UNBEGRENZT, UEBERLAPPUNG_MS, nameGueltig } from '../src/konto/auth';
 import { kontoGedrosselt } from '../src/konto/zielDrossel';
 import { perSitzung, anmelden, establishSession, requireLoginOrToken, nutzerId, angemeldeteNutzerId, ipThrottle, bestaetigeMitFaktor, zweiterFaktorPflicht } from '../src/konto/http/anmeldung';
@@ -19,7 +19,7 @@ import type { Request, Response } from 'express';
 import { getSetting } from '../src/einstellungen/settings';
 import { requireApiAdmin } from './api_v1/middleware';
 import { sendeFehler, fehlerText, antwortSprache } from '../src/infra/fehlerTexte';
-import { basisUrl, hinweisOhneBasisUrl, mailBasisUrl } from '../src/infra/basisUrl';
+import { basisUrl, hinweisOhneBasisUrl, mailBasisUrl, ueberTls, unbegrenztNurMitTls } from '../src/infra/basisUrl';
 import * as zf from '../src/konto/zweiterFaktor';
 import * as P from '../src/konto/passkeys';
 import { loescheKontoDateien } from '../src/gutscheine/gutscheinDateien';
@@ -76,14 +76,13 @@ async function angemeldetAntworten(req: Request, res: Response, user: Angemeldet
   const dauerhaft = never_expires === true;
   let token: string | null = null;
   // Die Webapp nur mit httpOnly-Cookie: Ein Token wäre per Skript auslesbar.
-  if (mitToken) try {
+  if (mitToken) {
     token = await createToken(uid, tokenLabel(label, 'webapp-session'), dauerhaft, dauerhaft ? APP_HOECHSTDAUER_TAGE : null,
-                              { scope: tokenScope(scope), ip: req.ip });
+                              { scope: tokenScope(scope), ip: req.ip })
+      .catch((e: unknown) => { console.warn('[login] Token konnte nicht gespeichert werden:', fehlertext(e)); return null; });
+    if (!token) return sendeFehler(req, res, 500, 'token_nicht_ausgestellt');
     // Ein neues Gerät wie bei token-create und qr-token: Der Inhaber soll es merken.
     hinweisNebenher(uid, 'token_neu', tokenLabel(label, 'webapp-session'));
-  } catch (e) {
-    console.warn('[login] Token konnte nicht gespeichert werden:', fehlertext(e));
-    return sendeFehler(req, res, 500, 'token_nicht_ausgestellt');
   }
   // Verwalterrechte trägt die Sitzung und ein Token mit Scope `voll`, nicht `app`.
   const verwalter = user.is_admin && (!mitToken || tokenScope(scope) === 'voll');
@@ -144,7 +143,7 @@ router.get('/me', async (req: OffeneAnfrage<'GET /api/v1/auth/me'>, res: Antwort
   const ungueltig = (code: 'token_ungueltig' | 'token_rotation_noetig') =>
     res.status(401).json({ success: false, loggedIn: false, user: null,
       code, error: fehlerText(code, antwortSprache(req)) });
-  try {
+  const antworte = async () => {
     if (req.session?.userId) {
       const user = await K.kontoKurz(req.session.userId);
       if (user) return res.json({ success: true, loggedIn: true,
@@ -166,13 +165,14 @@ router.get('/me', async (req: OffeneAnfrage<'GET /api/v1/auth/me'>, res: Antwort
                       rotation_faellig: faellig } });
     }
     if (token) return ungueltig('grund' in p && p.grund ? p.grund : 'token_ungueltig');
-    res.json({ success: true, loggedIn: false, user: null });
-  } catch (e) {
+    return res.json({ success: true, loggedIn: false, user: null });
+  };
+  await antworte().catch((e: unknown) => {
     // Ohne Anmeldung ist die Anmeldemaske die richtige Antwort, keine Fehlerseite.
     meldeUndWeiter('auth:me', e);
     if (token) return ungueltig('token_ungueltig');
-    res.json({ success: true, loggedIn: false, user: null });
-  }
+    return res.json({ success: true, loggedIn: false, user: null });
+  });
 });
 
 /** Öffentlich, weil ein unbegrenzter Token nach der Pflichtfrist nur noch hier
@@ -330,18 +330,15 @@ router.post('/qr-token', requireLogin, async (req: OffeneAnfrage<'POST /api/v1/a
   // Ohne gültige Wahl gilt dieselbe Höchstdauer wie bei der App-Anmeldung.
   // Ausführlich: docs/begruendungen/routes/auth.ts.md#post-qr-token-tage
   const tage = laufzeitTage(req.eingabe.gueltigkeit) ?? APP_HOECHSTDAUER_TAGE;
-  // „Unbegrenzt" nur, wenn die App den Server über HTTPS erreicht: Ohne TLS
-  // ginge ein Token ohne Ablauf im Klartext durchs Netz.
-  if (tage === UNBEGRENZT && !/^https:\/\//i.test(basis))
-    return sendeFehler(req, res, 400, 'unbegrenzt_nur_https');
+  if (tage === UNBEGRENZT) unbegrenztNurMitTls(basis);
   const nonce = crypto.randomBytes(32).toString('base64url');
   await K.legeQrTokenAn(hashToken(nonce), nutzerId(req), new Date(Date.now() + QR_TTL_MS), tage);
   hinweisNebenher(angemeldeteNutzerId(req), 'qr_zugang_neu');
   // `token_days` nennt, was gespeichert wurde, nicht was gewünscht war.
   // Ausführlich: docs/begruendungen/routes/auth.ts.md#post-qr-token-2
-  // `fp` nur zu https: Die App pinnt damit die Wurzel der internen CA; ohne
+  // `fp` nur mit TLS: Die App pinnt damit die Wurzel der internen CA; ohne
   // lesbare CA-Datei vertraut sie dem System.
-  const fp = /^https:\/\//i.test(basis) ? (await tlsStand())?.fp ?? null : null;
+  const fp = ueberTls(basis) ? (await tlsStand())?.fp ?? null : null;
   res.json({ success: true, token: `bim:${nonce}`, expires_in: QR_TTL_MS / 1000,
     token_days: tage, url: basis, ...(fp ? { fp } : {}) });
 });
@@ -399,7 +396,7 @@ router.post('/passkey/registrieren', requireLoginOrToken, async (req: OffeneAnfr
 
 router.delete('/passkeys/:id', requireLoginOrToken, async (req: OffeneAnfrage<'DELETE /api/v1/auth/passkeys/:id'>, res: Antwort<'DELETE /api/v1/auth/passkeys/:id'>) => {
   const uid = angemeldeteNutzerId(req);
-  const id = parseInt(pfadParam(req, 'id'));
+  const id = req.pfad.id;
   if (!Number.isInteger(id)) return sendeFehler(req, res, 400, 'id_ungueltig');
   if (!await bestaetigeMitFaktor(req, res, uid, req.eingabe.password)) return;
   res.json({ success: true, deleted: await P.loeschePasskey(uid, id) ? 1 : 0 });

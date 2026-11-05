@@ -105,6 +105,17 @@ async function httpsGetRobust(url: string, headers: Record<string, string> = {},
   }
 }
 
+/** Ein Abruf ohne eigene Wiederholung: Drossel und Tageskontingent führt der
+ * Aufrufer (Hintergrundläufe). Ein Netzfehler ist Status 0, kein Wurf. */
+export async function rebrickableRoh(url: string, rbKey: string): Promise<{ status: number; body: string }> {
+  return holeHttps(url, { hosts: ERLAUBTE_API_HOSTS, maxBytes: API_MAX_BYTES, zeitlimitMs: 30_000,
+    kopfzeilen: { Authorization: `key ${rbKey}`, 'User-Agent': 'BrickInventory/1.0' } })
+    .then(r => ({ status: r.status, body: r.koerper.toString('utf8') }), (e: unknown) => {
+      meldeUndWeiter('rebrickable:abruf', e);
+      return { status: 0, body: '' };
+    });
+}
+
 async function rbGet(apiPath: string, params: Record<string, string | number> = {}) {
   const key = await getRbKey();
   if (!key) throw new Error('Rebrickable API Key nicht konfiguriert.');
@@ -126,7 +137,7 @@ async function getThemeName(themeId: number | string) {
   if (!themeId) return null;
   if (themeCache.has(themeId)) return themeCache.get(themeId);
   try { const d = await rbGet(`/lego/themes/${pfadSegment(themeId)}/`); const name = d?.name||null; themeCache.set(themeId, name); return name; }
-  catch (_) { return null; }
+  catch (e) { return meldeUndLiefere('rebrickable:thema', null)(e); }
 }
 
 /** Die Stammdaten eines Sets; null, wenn Rebrickable es nicht kennt. */
@@ -159,7 +170,7 @@ async function holeSetTeile(n: string): Promise<{ teile: any[]; verweigert: bool
     }
     if (status === 404) break;
     if (status !== 200) { console.error(`  Parts HTTP ${status}`); break; }
-    let data; try { data = JSON.parse(body); } catch (e) { break; }
+    let data; try { data = JSON.parse(body); } catch (e) { meldeUndWeiter('rebrickable:figuren-seite', e); break; }
     allParts.push(...(data.results || []));
     url = data.next || null;
     if (url) await sleep(500);
@@ -182,7 +193,7 @@ async function scrapeInstructions(setNumber: string) {
       }
     }
     return found;
-  } catch (_) { return []; }
+  } catch (e) { return meldeUndLiefere('rebrickable:figuren', [])(e); }
 }
 
 /**
@@ -257,7 +268,7 @@ async function getMinifigInfo(figNumber: string) {
       fig_name:   data.name || null,
       image_url:  data.set_img_url || null,
     };
-  } catch (_) { return null; }
+  } catch (e) { return meldeUndLiefere('rebrickable:set', null)(e); }
 }
 
 // ── Get color list ──────────────────────────────────────────────────────
@@ -280,7 +291,7 @@ async function getBrickColors() {
       hex:  c.rgb || null,
     }));
     return _colorsCache;
-  } catch (_) { return []; }
+  } catch (e) { return meldeUndLiefere('rebrickable:teile', [])(e); }
 }
 
 /**
@@ -341,7 +352,7 @@ async function lookupPart(partNumber: string, colorId?: number | null) {
           const cd = JSON.parse(colorResp.body);
           if (cd?.part_img_url) image_url = cd.part_img_url;
         }
-      } catch (_) { /* fall back to generic part image */ }
+      } catch (e) { meldeUndWeiter('rebrickable:farbbild', e); }
     }
 
     return {
@@ -349,7 +360,7 @@ async function lookupPart(partNumber: string, colorId?: number | null) {
       category_name: part.part_cat_id ? String(part.part_cat_id) : null,
       image_url,
     };
-  } catch (_) { return null; }
+  } catch (e) { return meldeUndLiefere('rebrickable:teil', null)(e); }
 }
 
 

@@ -3,8 +3,15 @@ import { kaufpreisSpalten } from '../../../db/geldSql';
 
 /** `id` als zweites Sortierkriterium: Zwei Erfassungen können denselben
  * Zeitstempel tragen. */
-export function ladeSetErfassungen(uids: number[], waehrung: string): Promise<any[]> {
-  return db.all(
+export interface SetErfassungsZeile {
+  id: number; user_id: number; set_number: string; quantity: number;
+  purchase_price: number | null; kaufpreis_fremd: boolean; kaufpreis_original: number | null;
+  kaufpreis_umgerechnet: boolean; currency: string | null; price_estimated: boolean;
+  condition: string; created_at: Date | null;
+}
+
+export function ladeSetErfassungen(uids: number[], waehrung: string) {
+  return db.all<SetErfassungsZeile>(
     `SELECT id, user_id, set_number, quantity,
             ${kaufpreisSpalten('purchase_price', '$2')},
             currency, price_estimated,

@@ -4,7 +4,8 @@
 export const ITEM_NUMBER_RE = /^[A-Za-z0-9][A-Za-z0-9._/-]{0,63}$/;
 
 import { z } from 'zod';
-import { fehlerWerfen } from './fehlerTexte';
+import { fehlerWerfen, type FehlerCode } from './fehlerTexte';
+import { geldEingabe } from './geld';
 
 /** Die Spalten sind integer (int4): Ein grösserer Wert endete als 500 in PostgreSQL. */
 export const GROESSTE_ID = 2 ** 31 - 1;
@@ -120,15 +121,12 @@ export function acquisitionQuantity(value: unknown, fallback = 1): number {
   return positiveInt(value, fallback, 10_000);
 }
 
-/** @returns null bei leerer Angabe (= „kein Preis"), sonst der geprüfte Betrag
- * Ausführlich: docs/begruendungen/src/infra/validate.ts.md#optionalprice */
-export function optionalPrice(value: unknown, feld = 'Preis'): number | null {
-  if (value === undefined || value === null || value === '') return null;
-  const n = parseFloat(String(value).replace(',', '.'));
-  if (!Number.isFinite(n)) return null;
-  if (n < 0) fehlerWerfen('feld_negativ', 400, { feld });
-  if (n > 1_000_000) fehlerWerfen('feld_zu_hoch', 400, { feld });
-  return n;
+/** Relativ geänderte Menge (quantity_delta): ganzzahlig, |Δ| ≤ 9999; fehlt sie, null. */
+export function mengenDelta(value: unknown): number | null {
+  if (value === undefined || value === null) return null;
+  const roh = typeof value === 'number' || typeof value === 'string' ? String(value).trim() : '';
+  if (!/^-?\d{1,4}$/.test(roh)) fehlerWerfen('wert_ungueltig', 400);
+  return Number(roh);
 }
 
 /** Streng: Die Zeichenkette "false" ist in JavaScript wahr.
@@ -207,8 +205,13 @@ export const eingabe = {
   stueckzahl: () => alsSchema(v => acquisitionQuantity(v), { type: ['integer', 'string'], minimum: 1, maximum: 10_000 }),
   farbe: () => alsSchema(colorId, { type: ['integer', 'string'], description: `fehlt sie, gilt ${KEINE_FARBE} (keine Farbe)` }),
   farbcode: () => alsSchema(optionalHex, { type: ['string', 'null'], pattern: '^#?[0-9A-Fa-f]{6}$' }),
-  preis: (feld: string) =>
-    alsSchema(v => optionalPrice(v, feld), { type: ['number', 'string', 'null'], minimum: 0, maximum: 1_000_000 }),
+  /** Geld (src/infra/geld.ts). Beschrieben als Zahl; Text mit Punkt oder Komma nimmt der
+   * Server noch an (Formulare), er ist nicht Teil des Vertrags. */
+  geld: (feld: string, o: { nullbar?: boolean; max?: number; einCode?: FehlerCode } = {}) => alsSchema(v => geldEingabe(v, feld, o.max, o.einCode), {
+    ...(o.nullbar === false ? { type: 'number' } : { anyOf: [{ type: 'number' }, { type: 'null' }] }),
+    minimum: 0, maximum: o.max ?? 1_000_000,
+    description: 'Betrag als Zahl, höchstens vier Nachkommastellen; null oder leer: kein Betrag' }),
+  mengenDelta: () => alsSchema(mengenDelta, { anyOf: [{ type: 'integer', minimum: -9999, maximum: 9999 }, { type: 'null' }] }),
   zustand: () => alsSchema(optionalCondition, { enum: ['N', 'U', null] }),
   schalter: (feld: string) => alsSchema(v => strictBool(v, feld),
     { type: ['boolean', 'integer', 'string'], enum: [true, false, 1, 0, 'true', 'false', '1', '0'] }, true),

@@ -2,6 +2,7 @@
 // Express; db/, clients/ und die Dienste melden über fehler.ts.
 import fs from 'fs';
 import type { Request, Response, NextFunction } from 'express';
+import type { ServerResponse } from 'http';
 import { konfig } from './konfig';
 import { FEHLER, fehlerText, antwortSprache, dateiFehler, Meldung, sendeFehler } from './fehlerTexte';
 import type { FehlerCode } from './fehlerTexte';
@@ -86,6 +87,12 @@ export function pfadParam(req: { params: Record<string, string | string[] | unde
   return Array.isArray(wert) ? wert.join('/') : (wert ?? '');
 }
 
+/** Die Abschnitte eines Platzhalters `*name` ohne leere. */
+export function pfadSegmente(req: { params: Record<string, string | string[] | undefined> }, name: string): string[] {
+  const wert = req.params[name];
+  return (Array.isArray(wert) ? wert : wert ? [wert] : []).filter(Boolean);
+}
+
 /** Express 5 reicht auch abgelehnte Promises hierher; ein try/catch je Route
  * braucht es nicht. */
 export function fehlerAntwort(e: unknown, req: Request, res: Response, _next: NextFunction): void {
@@ -99,14 +106,14 @@ export function unbekannterApiPfad(req: Request, res: Response): void {
 }
 
 /** @param req nur für die Sprache der Meldung; ohne ihn Deutsch. */
-export function streamFileToResponse(res: any, filePath: string, onEnd?: () => void, req?: any) {
+export function streamFileToResponse(res: ServerResponse, filePath: string, onEnd?: () => void, req?: { headers?: Record<string, unknown> }) {
   const stream = fs.createReadStream(filePath);
   stream.on('error', (e: NodeJS.ErrnoException) => {
     console.error(`[stream] ${filePath}: ${e?.code || e?.message}`);
     if (!res.headersSent) {
       // Nicht auf Express-Methoden verlassen: Der Helfer läuft auch an einer nackten
       // http-Antwort.
-      if (typeof res.status === 'function') sendeFehler(req, res, 404, 'datei_nicht_verfuegbar');
+      if ('status' in res && typeof res.status === 'function') sendeFehler(req, res as Response, 404, 'datei_nicht_verfuegbar');
       else { res.statusCode = 404; res.end(); }
     } else {
       res.end();

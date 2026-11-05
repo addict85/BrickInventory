@@ -64,7 +64,8 @@ test('ohne Vorgabe kommt undefined statt eines geerbten Werts', () => {
 const STELLEN = [
   ['src/katalog/repository/katalogSuche.ts', 'ORDNUNGEN', /ORDNUNGEN\s*\[/],
   ['src/sets/repository/sets.ts', 'SET_SORTS',     /SET_SORTS\s*\[/],
-  ['routes/api_v1/sets.ts',    'INSTR_EXT_BY_MIME',  /INSTR_EXT_BY_MIME\s*\[/],
+  // Die Endungen je MIME-Typ der Uploads stehen seit 05.11.2026 im Empfang.
+  ['src/infra/dateiEmpfang.ts', 'o.typen',         /o\.typen\s*\[/],
 ];
 
 for (const [datei, name, muster] of STELLEN) {

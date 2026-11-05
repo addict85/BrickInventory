@@ -1,3 +1,4 @@
+import { fehlerWerfen } from './fehlerTexte';
 /** Einmal gelesen statt an drei Stellen mit eigener Schreibweise.
  * Ausführlich: docs/begruendungen/src/infra/basisUrl.ts.md#basisurl */
 import { konfig } from './konfig';
@@ -20,4 +21,13 @@ export function mailBasisUrl(): string | null {
   const basis = basisUrl();
   if (!basis) hinweisOhneBasisUrl('auth', 'Links in E-Mails werden nicht verschickt.');
   return basis;
+}
+
+/** Erreicht die App den Server verschlüsselt? Nur dann gibt es unbegrenzte Zugänge und ein Pinning der CA. */
+export function ueberTls(basis: string | null): boolean {
+  return /^https:\/\//i.test(basis ?? '');
+}
+
+export function unbegrenztNurMitTls(basis: string | null): void {
+  if (!ueberTls(basis)) fehlerWerfen('unbegrenzt_nur_https', 400);
 }

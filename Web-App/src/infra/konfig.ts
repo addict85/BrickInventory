@@ -49,6 +49,9 @@ export interface Konfig {
   pgIdleMs: number;
   pgConnMs: number;
   pgStmtMs: number;
+  /** Eine hängende Transaktion hält sonst Advisory- und Zeilensperren unbegrenzt. */
+  pgLeerlaufTxMs: number;
+  pgSperreMs: number;
   adminPasswort: string;
   appBaseUrl: string | null;
   appRoot: string | null;
@@ -213,6 +216,8 @@ export function ladeKonfig(env: Umgebung = process.env): Konfig {
     pgIdleMs: ganzzahl(env, 'PG_IDLE_MS', 30_000, 0, 86_400_000, f),
     pgConnMs: ganzzahl(env, 'PG_CONN_MS', 30_000, 0, 600_000, f),
     pgStmtMs: ganzzahl(env, 'PG_STMT_MS', 30_000, 0, 86_400_000, f),
+    pgLeerlaufTxMs: ganzzahl(env, 'PG_IDLE_TX_MS', 60_000, 0, 86_400_000, f),
+    pgSperreMs: ganzzahl(env, 'PG_LOCK_MS', 10_000, 0, 86_400_000, f),
     adminPasswort: env.ADMIN_PASSWORD || '',
     appBaseUrl: basis,
     appRoot: env.APP_ROOT?.trim() || null,

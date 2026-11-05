@@ -14,6 +14,7 @@ import { bildNachlauf } from './bildNachlauf';
 import { aufraeumen, aufraeumenTaeglich } from './aufraeumen';
 import type { AuftragsArt } from '../src/auftraege/auftraege';
 import { kursauftrag } from '../src/finanzen/wechselkurse';
+import { preiseNachladen } from './preiseNachladen';
 
 /** Exklusiv sind Arten, die eine Gegenseite schonen oder Tabellen tauschen. */
 const BEARBEITER: Bearbeitertabelle = {
@@ -43,6 +44,7 @@ const BEARBEITER: Bearbeitertabelle = {
   bild_nachlauf:       { ausfuehren: (_n, k) => bildNachlauf(k), exklusiv: true },
   aufraeumen:          { ausfuehren: (_n, k) => aufraeumen(k), exklusiv: true },
   aufraeumen_taeglich: { ausfuehren: (_n, k) => aufraeumenTaeglich(k), exklusiv: true },
+  preise_nachladen:    { ausfuehren: (n, k) => preiseNachladen(n, k), exklusiv: true },
 };
 
 let _worker: ReturnType<typeof erzeugeWorker> | null = null;

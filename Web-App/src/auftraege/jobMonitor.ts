@@ -53,7 +53,6 @@ export async function get(name: string): Promise<Kachel | null> {
   return (await all())[name] ?? null;
 }
 
-// Über ALLE Stapel beider Prozesse summiert, atomar in einer Anweisung.
 const IMGDL_PENDING_KEY = 'imgdl_pending_count';
 
 export async function imgDlAdd(delta: number) {

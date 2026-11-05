@@ -5,7 +5,7 @@ import type { BlickfeldEingabe, BlickfeldEingabe as Blickfeld } from '../haushal
 import { istErsatzteil, colorId } from '../infra/validate';
 import { ensureFresh } from './partsSummary';
 import { fetchMissingBlIds } from '../katalog/partsImport';
-import type { RbSetTeil } from '../../clients/rebrickable';
+import type { RbSetTeil } from '../katalog/quellen';
 import { getRbKey, httpsGetRobust } from '../katalog/quellen';
 import { getAllSetParts } from '../katalog/rebrickableKatalog';
 import { clampPageSize, applyManualCondition, MAX_PAGE_SIZE, UNPAGED_LIMIT, SET_PARTS_MAX_PAGE_SIZE } from '../bestand/gemeinsam';

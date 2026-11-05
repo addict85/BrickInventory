@@ -14,8 +14,8 @@ export interface SetValue {
 }
 
 /** `"0.00"` aus NUMERIC ergibt 0, nicht truthy. */
-function num(v: any): number {
-  const n = parseFloat(v);
+function num(v: unknown): number {
+  const n = parseFloat(String(v));
   return Number.isFinite(n) && n > 0 ? n : 0;
 }
 
@@ -29,7 +29,7 @@ export async function loadConditionPrices(
   if (!list.length) return out;
 
   const ttlClause = ttlHours ? ' AND fetched_at > NOW() - make_interval(hours => $3)' : '';
-  const params: any[] = [list, currency];
+  const params: (string[] | string | number)[] = [list, currency];
   if (ttlHours) params.push(ttlHours);
 
   // avg_price, NICHT qty_avg_price: BrickLinks angezeigter Preis.
@@ -129,16 +129,24 @@ export interface AcquisitionValueRow {
   wert_gesamt: number | null;
   pnl_pct: string | null;
   pnl_prozent: number | null;
-  created_at: any;
+  created_at: Date | string | null;
   /** Ein Kaufpreis in fremder Währung ohne Kurs: Er zählt nicht mit, steht aber da. */
   kaufpreis_original?: number;
   kaufpreis_waehrung?: string;
 }
 
+/** Was eine Erfassung für ihren Wert mitbringt; purchase_price bei Sets, unit_price sonst. */
+export interface ErfassungFuerWert {
+  id: number; condition?: string | null; quantity: number | string;
+  purchase_price?: number | string | null; unit_price?: number | string | null;
+  created_at?: Date | string | null; currency?: string | null;
+  kaufpreis_fremd?: boolean | null; kaufpreis_original?: number | string | null;
+}
+
 /** @param prices Map "setNumber|condition" → avg_price (loadConditionPrices) */
 export function valueAcquisitionRows(
   setNumber: string,
-  acquisitions: any[],
+  acquisitions: ErfassungFuerWert[],
   prices: Map<string, number>
 ): AcquisitionValueRow[] {
   return (acquisitions || []).map(a => {

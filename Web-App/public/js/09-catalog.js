@@ -154,7 +154,7 @@ function _catQuery(page){
   if (_catState.yearTo)   p.set('year_to', _catState.yearTo);
   p.set('sort', _catState.sort);
   p.set('page', String(page));
-  p.set('limit', '60');
+  p.set('page_size', '60');
   return p.toString();
 }
 

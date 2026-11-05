@@ -1,7 +1,7 @@
 /** /api/v1/wanted — die Merkliste. Die Regeln stehen in src/merkliste/; hier
  * nur Blickfeld, Schreibrecht und Fehlerübersetzung. */
 import { oeffentlicherFehler } from '../../src/infra/fehler';
-import { fehlerAntwort, pfadParam } from '../../src/infra/httpAntwort';
+import { fehlerAntwort } from '../../src/infra/httpAntwort';
 import { sendeFehler } from '../../src/infra/fehlerTexte';
 import { requireToken, kontoSchranke, sichtVon } from './middleware';
 import { schreibziel } from '../../src/haushalt/haushalt';
@@ -17,6 +17,7 @@ import type { WantedXmlErgebnis } from '../../src/infra/vertrag/merkliste';
 
 import { jsonOderNull } from '../../src/infra/validate';
 import { vertragsRouter } from '../../src/infra/vertrag/pruefen';
+import { seiteAus } from '../../src/infra/seite';
 import type { Anfrage, Antwort } from '../../src/infra/vertrag';
 const router = vertragsRouter();
 type WantedXmlBericht = z.infer<typeof WantedXmlErgebnis>;
@@ -32,7 +33,8 @@ router.get('/wanted', requireToken, async (req: Anfrage<'GET /api/v1/wanted'>, r
     zustand:    req.abfrage.condition,
     sortierung: req.abfrage.sort,
   });
-  res.json({ success: true, merkposten });
+  const { eintraege, ...seite } = seiteAus(merkposten, req.abfrage);
+  res.json({ success: true, merkposten: eintraege, ...seite });
 });
 
 /** Alle drei Wege (Katalog, Setnummer, Barcode) landen hier, damit die Regeln
@@ -50,8 +52,8 @@ router.post('/wanted', requireToken, async (req: Anfrage<'POST /api/v1/wanted'>,
 router.put('/wanted/:setNumber/:condition/inhaber', requireToken, async (req: Anfrage<'PUT /api/v1/wanted/:setNumber/:condition/inhaber'>, res: Antwort<'PUT /api/v1/wanted/:setNumber/:condition/inhaber'>) => {
   const von = await schreibziel(req.apiUser.user_id, req.eingabe.owner_user_id);
   const zu  = await schreibziel(req.apiUser.user_id, req.eingabe.neuer_inhaber);
-  const r = await verschiebeMerkposten(von, pfadParam(req, 'setNumber'),
-                                   pfadParam(req, 'condition'), zu);
+  const r = await verschiebeMerkposten(von, req.pfad.setNumber,
+                                   req.pfad.condition, zu);
   res.json({ success: true, ...r, owner_user_id: zu });
 });
 
@@ -59,14 +61,14 @@ router.put('/wanted/:setNumber/:condition/inhaber', requireToken, async (req: An
  * neu UND gebraucht gewünscht sein. */
 router.delete('/wanted/:setNumber/:condition', requireToken, async (req: Anfrage<'DELETE /api/v1/wanted/:setNumber/:condition'>, res: Antwort<'DELETE /api/v1/wanted/:setNumber/:condition'>) => {
   const owner = await schreibziel(req.apiUser.user_id, req.abfrage.owner_user_id);
-  const weg = await loescheMerkposten(owner, pfadParam(req, 'setNumber'), pfadParam(req, 'condition'));
+  const weg = await loescheMerkposten(owner, req.pfad.setNumber, req.pfad.condition);
   res.json({ success: true, geloescht: weg });
 });
 
 /** BEIDE Zustände, frisch geholt.
  * Ausführlich: docs/begruendungen/routes/api_v1/wanted.ts.md#get-wanted-setnumber-preise */
 router.get('/wanted/:setNumber/preise', requireToken, async (req: Anfrage<'GET /api/v1/wanted/:setNumber/preise'>, res: Antwort<'GET /api/v1/wanted/:setNumber/preise'>) => {
-  const sn = pfadParam(req, 'setNumber');
+  const sn = req.pfad.setNumber;
   const { currency, current } = await preiseBeiderZustaende(req.apiUser.user_id, sn);
   res.json({ success: true, set_number: sn, currency, current });
 });
@@ -76,7 +78,7 @@ router.get('/wanted/:setNumber/preise', requireToken, async (req: Anfrage<'GET /
 router.post('/wanted/:setNumber/:condition/uebernehmen', requireToken, async (req: Anfrage<'POST /api/v1/wanted/:setNumber/:condition/uebernehmen'>, res: Antwort<'POST /api/v1/wanted/:setNumber/:condition/uebernehmen'>) => {
   const owner = await schreibziel(req.apiUser.user_id, req.eingabe.owner_user_id);
   const r = await uebernimm(req.apiUser.user_id, owner,
-    pfadParam(req, 'setNumber'), pfadParam(req, 'condition'), req.eingabe ?? {});
+    req.pfad.setNumber, req.pfad.condition, req.eingabe ?? {});
   res.json({ success: true, ...r });
 });
 
@@ -130,13 +132,10 @@ router.post('/wanted-list/import/xml', requireToken, kontoSchranke('upload'), xm
       res.write(JSON.stringify(o) + '\n');
       (res as unknown as { flush?: () => void }).flush?.();
     };
-    try {
-      zeile(await importAlsAuftrag(uid, 'wanted_xml', eingabe, { fortschritt: (f) => zeile({ fortschritt: f }) }));
-    } catch (e) {
-      // Die Kopfzeilen sind hinaus: Der Fehler kommt als letzte ZEILE, sonst
-      // wartet der Client auf einen Bericht, der nie kommt.
-      zeile({ success: false, ...oeffentlicherFehler(e, 'wanted-import:strom', req) });
-    }
+    // Die Kopfzeilen sind hinaus: Ein Fehler kommt als letzte ZEILE, sonst
+    // wartet der Client auf einen Bericht, der nie kommt.
+    await importAlsAuftrag(uid, 'wanted_xml', eingabe, { fortschritt: (f) => zeile({ fortschritt: f }) })
+      .then(zeile, (e: unknown) => zeile({ success: false, ...oeffentlicherFehler(e, 'wanted-import:strom', req) }));
     res.end();
   });
 

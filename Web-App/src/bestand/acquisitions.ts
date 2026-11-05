@@ -56,11 +56,11 @@ export async function recordAcquisitionForDay(
 export async function findSameDayAcquisition(
   kind: AcquisitionKind,
   userId: number,
-  keyValues: any[],
+  keyValues: unknown[],
   day: string,
   excludeId: number | null,
   condition: string | null = null,
-  dbh: any = db,
+  dbh: DbSchnittstelle = db,
   merkmale: { preis?: unknown; geschaetzt?: boolean; waehrung?: string | null } = {}
 ): Promise<number | null> {
   const cond = ['N', 'U'].includes(String(condition)) ? String(condition) : 'N';
@@ -69,7 +69,7 @@ export async function findSameDayAcquisition(
 }
 
 /** @returns {{quantity:number, amount:number|null, priced_rows:number}} */
-export function acquisitionTotals(rows: any[]): {
+export function acquisitionTotals(rows: { quantity?: unknown; purchase_price?: unknown; unit_price?: unknown }[]): {
   quantity: number; amount: number | null; priced_rows: number;
 } {
   let quantity = 0, amount = 0, priced = 0;

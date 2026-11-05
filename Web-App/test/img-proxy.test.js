@@ -110,8 +110,10 @@ test('abgebrochene Client-Anfragen geben die CDN-Verbindung frei', () => {
 test('der Verbindungs-Pool ist weit genug', () => {
   // Mit 8 wartete ein einzeln geöffnetes Bild hinter 60 Kachel-Anfragen
   // 1195 ms; mit 32 sind es 282 ms, ohne Grenze 153 ms.
-  const agent = SERVER.slice(SERVER.indexOf('const _cdnAgent = new'),
-                             SERVER.indexOf('const _cdnAgent = new') + 220);
+  // Der Pool steht im Klienten (clients/bildCdn.ts), der Proxy nimmt ihn mit `pool: true`.
+  const cdn = fs.readFileSync(path.join(ROOT, 'clients/bildCdn.ts'), 'utf8');
+  const agent = cdn.slice(cdn.indexOf('const POOL = new'), cdn.indexOf('const POOL = new') + 220);
+  assert.match(SERVER, /pool: true/, 'der Proxy nimmt den Pool nicht');
   const m = /maxSockets: (\d+)/.exec(agent);
   assert.ok(m, 'Pool-Konfiguration nicht gefunden');
   assert.ok(parseInt(m[1]) >= 32, `maxSockets ${m[1]} ist zu eng — Einzelabrufe warten spürbar`);
@@ -367,7 +369,7 @@ test('der Cache-Aufräumlauf ist ein geplanter Auftrag', () => {
  */
 test('ein fehlendes Bild kommt als Platzhalter, und der Server merkt es sich', () => {
   const proxy = fs.readFileSync(
-    path.join(__dirname, '..', 'routes/imgProxy.ts'), 'utf8');
+    path.join(__dirname, '..', 'src/katalog/http/bildProxy.ts'), 'utf8');
 
   assert.match(proxy, /function sendePlatzhalter\(/,
     'Es gibt keinen Platzhalter-Weg mehr — dann steht die Konsole wieder voller 404');

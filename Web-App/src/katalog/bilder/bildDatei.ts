@@ -5,7 +5,8 @@ import crypto from 'crypto';
 import fs from 'fs';
 import { pipeline } from 'stream/promises';
 import path from 'path';
-import { oeffneHttps, AbrufFehler } from '../../infra/abruf';
+import { AbrufFehler } from '../../infra/abruf';
+import { oeffneBild } from '../quellen';
 
 /** Bewusst ohne SVG. */
 const ENDUNG_ZU_TYP: Record<string, string> = {
@@ -47,7 +48,7 @@ export async function ladeBild(
   kopfzeilen: Record<string, string> = {}, warnen: (text: string) => void = () => {},
 ): Promise<boolean> {
   let a;
-  try { a = await oeffneHttps(adresse, { hosts: erlaubteHosts, maxBytes: BILD_MAX_BYTES, zeitlimitMs: 30_000, kopfzeilen }); }
+  try { a = await oeffneBild(adresse, { hosts: erlaubteHosts, maxBytes: BILD_MAX_BYTES, zeitlimitMs: 30_000, kopfzeilen }); }
   catch (e) { warnen(e instanceof Error ? e.message : String(e)); return false; }
   if (a.status !== 200) { a.verwerfen(); warnen(`HTTP ${a.status}: ${adresse.slice(0, 80)}`); return false; }
   if (!bildTypErlaubt(a.kopf['content-type'])) {

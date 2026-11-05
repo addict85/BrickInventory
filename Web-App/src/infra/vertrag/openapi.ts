@@ -2,7 +2,7 @@
  * eine Komponente; so steht ein Set einmal in der Datei, nicht in jeder Route. */
 import { z } from 'zod';
 import type { Route } from './grund';
-import { Fehler } from './grund';
+import { Fehler, PFAD } from './grund';
 import { BEREICHE } from './index';
 import { API_VERSION } from '../apiVersion';
 
@@ -44,13 +44,17 @@ export function openapi(): Record<string, unknown> {
   for (const [bereich, modul] of Object.entries(BEREICHE)) {
     for (const [schluessel, r] of Object.entries(modul.routen as Record<string, Route>)) {
       const [methode = '', pfad = ''] = schluessel.split(' ');
-      const parameters: Record<string, unknown>[] = [...pfad.matchAll(/:(\w+)/g)].map(m =>
-        ({ name: m[1], in: 'path', required: true, schema: { type: 'string' } }));
+      const parameters: Record<string, unknown>[] = [...pfad.matchAll(/:(\w+)/g)].map(m => {
+        const p = z.toJSONSchema((PFAD as Record<string, z.ZodType>)[m[1] ?? ''] ?? z.never(), { io: 'input', unrepresentable: 'any' });
+        delete p.$schema;
+        return { name: m[1], in: 'path', required: true, schema: p };
+      });
       if (r.abfrage) {
         const s = z.toJSONSchema(r.abfrage, { io: 'input', unrepresentable: 'any' });
         const pflicht = new Set(s.required ?? []);
         for (const [name, schema] of Object.entries(s.properties ?? {}))
-          parameters.push({ name, in: 'query', required: pflicht.has(name), schema });
+          parameters.push({ name, in: 'query', required: pflicht.has(name), schema,
+            ...((schema as { deprecated?: boolean }).deprecated ? { deprecated: true } : {}) });
       }
       const ok = r.antwort
         ? { description: 'Erfolg', content: { 'application/json': { schema: { $ref: URI(benannt.get(r.antwort) ?? '') } } } }
@@ -66,6 +70,7 @@ export function openapi(): Record<string, unknown> {
       else if (rumpf) op.requestBody = { content: { 'application/json': { schema: rumpf } } };
       if (r.bestaetigung) op['x-bestaetigung'] = r.bestaetigung;
       if (r.geheim) op['x-geheim'] = true;
+      if (r.klein) op['x-klein'] = true;
       const oaPfad = pfad.replace(/:(\w+)/g, '{$1}');
       (paths[oaPfad] ??= {})[methode.toLowerCase()] = op;
     }

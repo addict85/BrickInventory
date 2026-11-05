@@ -42,7 +42,6 @@ class AuftragVerschieben extends Error {
 export interface Bearbeiter<A extends AuftragsArt = AuftragsArt> {
   ausfuehren(nutzlast: Nutzlast<A>, k: AuftragsKontext, a: AuftragsZeile): Promise<void>;
   aufgegeben?(nutzlast: Nutzlast<A>, fehler: string, a: AuftragsZeile): Promise<void>;
-  /** Höchstens einer dieser Art gleichzeitig, auch über Prozesse hinweg (Migration 0099). */
   exklusiv?: boolean;
 }
 
@@ -81,6 +80,59 @@ function fortschrittsKette(a: AuftragsZeile, ac: AbortController, fristSek: numb
   };
 }
 
+/** Auch nach einem endgültigen Fehler, sonst endete der Zeitplan. */
+async function folgeplan(a: AuftragsZeile): Promise<void> {
+  if (hatZeitplan(a.art)) await planeNaechsten(a.art).catch(logAndContinue(`auftraege:plan ${a.art}`));
+}
+
+function kontextFuer(a: AuftragsZeile, ac: AbortController, fristSek: number, istBeendet: () => boolean): AuftragsKontext {
+  return {
+    lebenszeichen: async () => {
+      const ok = await lebenszeichen(a, fristSek);
+      if (!ok && !ac.signal.aborted) ac.abort(new AuftragVerloren());
+      return ok;
+    },
+    fortschritt: fortschrittsKette(a, ac, fristSek),
+    signal: ac.signal,
+    get beendet() { return istBeendet() || ac.signal.aborted; },
+    versuch: a.versuche,
+  };
+}
+
+async function fuehreAus(a: AuftragsZeile, ac: AbortController, b: Bearbeiter | undefined, fristSek: number,
+                         istBeendet: () => boolean): Promise<void> {
+  let nutzlast: Nutzlast<AuftragsArt> | undefined;
+  const k = kontextFuer(a, ac, fristSek, istBeendet);
+  const lasseLos = haltePacht(a, ac, fristSek);
+  try {
+    // Mehr Versuche als erlaubt: Die früheren stürzten ab, ein weiterer vermutlich auch.
+    if (!b || a.versuche > a.max_versuche) throw new Error(b ? 'ohne Rückmeldung abgebrochen' : `keine Bearbeitung für ${a.art}`);
+    const geprueft = nutzlast = pruefeNutzlast(a.art, a.nutzlast);
+    await imNamenDesAuftrags(a, () => b.ausfuehren(geprueft, k, a));
+    if (await erledigt(a)) await folgeplan(a);
+  } catch (e) {
+    await nachFehler(a, b, nutzlast, ac, e);
+  } finally { lasseLos(); }
+}
+
+async function nachFehler(a: AuftragsZeile, b: Bearbeiter | undefined, nutzlast: Nutzlast<AuftragsArt> | undefined,
+                          ac: AbortController, e: unknown): Promise<void> {
+  // Nach einem Abbruch zählt der Grund des Signals, nicht die Ausnahme, die er im Handler auslöste.
+  const grund: unknown = ac.signal.aborted ? ac.signal.reason : e;
+  if (grund instanceof AuftragVerloren) { console.warn(`[auftraege] ${a.art} #${a.id}: ${grund.message}`); return; }
+  if (grund instanceof AuftragUnterbrochen) { await gibZurueck(a); return; }
+  if (e instanceof AuftragVerschieben) {
+    if (await verschoben(a, e.bis, e.grund, e.zaehlt)) { if (nutzlast) await b?.aufgegeben?.(nutzlast, e.grund, a); await folgeplan(a); }
+    return;
+  }
+  const text = fehlertext(e) || 'Unbekannter Fehler';
+  console.warn(`[auftraege] ${a.art} #${a.id} Versuch ${a.versuche}/${a.max_versuche}: ${text}`);
+  if (await fehlgeschlagen(a, text, e instanceof NutzlastUngueltig)) {
+    if (nutzlast) await b?.aufgegeben?.(nutzlast, text, a);
+    await folgeplan(a);
+  }
+}
+
 /** Mehrere Worker teilen sich die Arbeit über SKIP LOCKED; das NOTIFY beim
  * Einstellen weckt früher als der Takt. */
 function erzeugeWorker(bearbeiter: Bearbeitertabelle, o: WorkerOptionen = {}) {
@@ -95,57 +147,6 @@ function erzeugeWorker(bearbeiter: Bearbeitertabelle, o: WorkerOptionen = {}) {
   let letzteRunde = 0;
   const exklusivGemerkt = merkeExklusive(exklusiv).catch(logAndContinue('auftraege:exklusiv'));
 
-  /** Auch nach einem endgültigen Fehler, sonst endete der Zeitplan. */
-  async function folgeplan(a: AuftragsZeile): Promise<void> {
-    if (hatZeitplan(a.art)) await planeNaechsten(a.art).catch(logAndContinue(`auftraege:plan ${a.art}`));
-  }
-
-  async function fuehreAus(a: AuftragsZeile, ac: AbortController): Promise<void> {
-    const b: Bearbeiter | undefined = bearbeiter[a.art];
-    let nutzlast: Nutzlast<AuftragsArt> | undefined;
-    const k: AuftragsKontext = {
-      lebenszeichen: async () => {
-        const ok = await lebenszeichen(a, fristSek);
-        if (!ok && !ac.signal.aborted) ac.abort(new AuftragVerloren());
-        return ok;
-      },
-      fortschritt: fortschrittsKette(a, ac, fristSek),
-      signal: ac.signal,
-      get beendet() { return beendet || ac.signal.aborted; },
-      versuch: a.versuche,
-    };
-    const lasseLos = haltePacht(a, ac, fristSek);
-    try {
-      // Mehr Versuche als erlaubt: Die früheren endeten ohne Rückmeldung (Absturz),
-      // ein weiterer Lauf stürzte vermutlich genauso ab.
-      if (!b || a.versuche > a.max_versuche) throw new Error(b ? 'ohne Rückmeldung abgebrochen' : `keine Bearbeitung für ${a.art}`);
-      const geprueft = nutzlast = pruefeNutzlast(a.art, a.nutzlast);
-      await imNamenDesAuftrags(a, () => b.ausfuehren(geprueft, k, a));
-      if (await erledigt(a)) await folgeplan(a);
-    } catch (e) {
-      await nachFehler(a, b, nutzlast, ac, e);
-    } finally { lasseLos(); }
-  }
-
-  async function nachFehler(a: AuftragsZeile, b: Bearbeiter | undefined, nutzlast: Nutzlast<AuftragsArt> | undefined,
-                            ac: AbortController, e: unknown): Promise<void> {
-    // Nach einem Abbruch zählt der Grund des Signals, nicht die Ausnahme, die er im Handler auslöste.
-    const grund: unknown = ac.signal.aborted ? ac.signal.reason : e;
-    if (grund instanceof AuftragVerloren) { console.warn(`[auftraege] ${a.art} #${a.id}: ${grund.message}`); return; }
-    if (grund instanceof AuftragUnterbrochen) { await gibZurueck(a); return; }
-    if (e instanceof AuftragVerschieben) {
-      if (await verschoben(a, e.bis, e.grund, e.zaehlt)) { if (nutzlast) await b?.aufgegeben?.(nutzlast, e.grund, a); await folgeplan(a); }
-      return;
-    }
-    const text = fehlertext(e) || 'Unbekannter Fehler';
-    console.warn(`[auftraege] ${a.art} #${a.id} Versuch ${a.versuche}/${a.max_versuche}: ${text}`);
-    // Eine ungültige Nutzlast bleibt ungültig: kein zweiter Versuch.
-    if (await fehlgeschlagen(a, text, e instanceof NutzlastUngueltig)) {
-      if (nutzlast) await b?.aufgegeben?.(nutzlast, text, a);
-      await folgeplan(a);
-    }
-  }
-
   async function belegeUndStarte(): Promise<Lauf | null> {
     await exklusivGemerkt;
     const a = await belegeAuftrag(arten, fristSek, randomUUID(), exklusiv, [...laufend.keys()]);
@@ -154,7 +155,7 @@ function erzeugeWorker(bearbeiter: Bearbeitertabelle, o: WorkerOptionen = {}) {
     const ac = new AbortController();
     const lauf: Lauf = { a, ac, fertig: Promise.resolve() };
     laufend.set(a.id, lauf);
-    lauf.fertig = fuehreAus(a, ac).catch(logAndContinue(`auftraege:${a.art}`)).finally(() => { laufend.delete(a.id); });
+    lauf.fertig = fuehreAus(a, ac, bearbeiter[a.art], fristSek, () => beendet).catch(logAndContinue(`auftraege:${a.art}`)).finally(() => { laufend.delete(a.id); });
     return lauf;
   }
 

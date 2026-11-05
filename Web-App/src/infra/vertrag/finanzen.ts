@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { type Route, KontoName, zeit, abfrage, Q } from './grund';
+import { type Route, KontoName, zeit, abfrage, Q, veraltet, PROZENT_TEXT, SEITE, SEITEN_ANGABE } from './grund';
 import { FigValuationItem, PartValuationItem, ValuationAcquisition } from './gemeinsam';
 
 export const ChartPoint = z.looseObject({
@@ -17,7 +17,8 @@ export const ChartYAxis = z.looseObject({
 export const ConditionValuation = z.looseObject({
   market_price: z.number().nullable().optional(),
   purchase_price: z.number().nullable().optional(),
-  pnl_pct: z.number().nullable().optional(),
+  pnl_pct: PROZENT_TEXT,
+  pnl_prozent: z.number().nullable().optional(),
 });
 
 export const DashboardStats = z.looseObject({
@@ -33,18 +34,24 @@ export const DashboardStats = z.looseObject({
 
 export const FigsValuationResponse = z.looseObject({
   success: z.boolean(),
+  ...SEITEN_ANGABE,
   currency: z.string(),
   figs: z.array(FigValuationItem),
-  total_value: z.string(),
+  total_value: veraltet(z.string(), 'wert_gesamt'),
+  wert_gesamt: z.number().nullable(),
+  preise_ausstehend: z.number().int().optional(),
   kaufpreise_fremde_waehrung: z.number().int(),
   error: z.string().nullable().optional(),
 });
 
 export const PartsValuationResponse = z.looseObject({
   success: z.boolean(),
+  ...SEITEN_ANGABE,
   currency: z.string(),
   parts: z.array(PartValuationItem),
-  total_value: z.string(),
+  total_value: veraltet(z.string(), 'wert_gesamt'),
+  wert_gesamt: z.number().nullable(),
+  preise_ausstehend: z.number().int().optional(),
   kaufpreise_fremde_waehrung: z.number().int(),
   error: z.string().nullable().optional(),
 });
@@ -52,7 +59,7 @@ export const PartsValuationResponse = z.looseObject({
 export const PnlTotals = z.looseObject({
   purchase: z.string(),
   current: z.string(),
-  pnl_pct: z.string().nullable().optional(),
+  pnl_pct: PROZENT_TEXT,
   pnl_prozent: z.number().nullable().optional(),
   kaufpreise_fremde_waehrung: z.number().int(),
   sets_purchase: z.string().nullable().optional(),
@@ -75,8 +82,8 @@ export const PnlSetZeile = z.looseObject({
   quantity: z.number().int(),
   current_price: z.number().nullable().optional(),
   baseline_price: z.number().nullable().optional(),
-  pnl_pct: z.string().nullable().optional(),
-  baseline_pnl_pct: z.string().nullable().optional(),
+  pnl_pct: PROZENT_TEXT,
+  baseline_pnl_pct: veraltet(z.string().nullable().optional(), 'baseline_pnl_prozent'),
   pnl_betrag: z.number().nullable().optional(),
   pnl_prozent: z.number().nullable().optional(),
   baseline_pnl_prozent: z.number().nullable().optional(),
@@ -87,6 +94,7 @@ export const PnlSetZeile = z.looseObject({
 
 export const PnlResponse = z.looseObject({
   success: z.boolean(),
+  ...SEITEN_ANGABE,
   currency: z.string(),
   totals: PnlTotals,
   sets: z.array(PnlSetZeile),
@@ -141,7 +149,7 @@ export const PriceHistoryResponse = z.looseObject({
   history_used: z.array(PriceHistoryPoint),
   by_condition: PriceByCondition,
   chart: PriceChartData,
-  pnl_pct: z.string().nullable().optional(),
+  pnl_pct: PROZENT_TEXT,
   pnl_prozent: z.number().nullable().optional(),
   purchase_price: z.number().nullable().optional(),
 });
@@ -182,6 +190,7 @@ export const ValuationSet = z.looseObject({
   max_price: z.number().nullable().optional(),
   qty_avg_price: z.number().nullable().optional(),
   total_qty_avg: z.string().nullable().optional(),
+  preis_ausstehend: z.boolean().optional(),
   total_avg: z.string().nullable().optional(),
   wert_gesamt: z.number().nullable().optional(),
   pnl_prozent: z.number().nullable().optional(),
@@ -199,7 +208,10 @@ export const ValuationSet = z.looseObject({
 
 export const ValuationResponse = z.looseObject({
   success: z.boolean(),
-  total_value: z.string(),
+  ...SEITEN_ANGABE,
+  total_value: veraltet(z.string(), 'wert_gesamt'),
+  wert_gesamt: z.number().nullable(),
+  preise_ausstehend: z.number().int().optional(),
   currency: z.string(),
   condition: z.string(),
   ttl_stunden: z.number().int().nullable().optional(),
@@ -212,14 +224,14 @@ export const ValuationResponse = z.looseObject({
 export const routen = {
   'GET /api/v1/sets/:setNumber/price': { antwort: SetPriceResponse, abfrage: abfrage({ accounts: Q.konten,
     currency: Q.text(8).meta({ deprecated: true, description: 'wird nicht ausgewertet: Es gilt die Währung des Kontos' }) }) },
-  'GET /api/v1/sets/:setNumber/price-history': { antwort: PriceHistoryResponse, abfrage: abfrage({ accounts: Q.konten }) },
-  'GET /api/v1/parts/:partNumber/:colorId/price-history': { antwort: PriceHistoryResponse, abfrage: abfrage({ accounts: Q.konten }) },
-  'GET /api/v1/minifigs/:figNumber/price-history': { antwort: PriceHistoryResponse, abfrage: abfrage({ accounts: Q.konten }) },
-  'GET /api/v1/finance/parts-valuation': { antwort: PartsValuationResponse, abfrage: abfrage({ accounts: Q.konten }) },
-  'GET /api/v1/finance/minifigs-valuation': { antwort: FigsValuationResponse, abfrage: abfrage({ accounts: Q.konten }) },
-  'GET /api/v1/finance/pnl': { antwort: PnlResponse, abfrage: abfrage({ accounts: Q.konten }) },
-  'GET /api/v1/finance/valuation': { antwort: ValuationResponse, abfrage: abfrage({ accounts: Q.konten }) },
-  'GET /api/v1/finance/portfolio-history': { antwort: PortfolioHistoryResponse,
+  'GET /api/v1/sets/:setNumber/price-history': { klein: true, antwort: PriceHistoryResponse, abfrage: abfrage({ accounts: Q.konten }) },
+  'GET /api/v1/parts/:partNumber/:colorId/price-history': { klein: true, antwort: PriceHistoryResponse, abfrage: abfrage({ accounts: Q.konten }) },
+  'GET /api/v1/minifigs/:figNumber/price-history': { klein: true, antwort: PriceHistoryResponse, abfrage: abfrage({ accounts: Q.konten }) },
+  'GET /api/v1/finance/parts-valuation': { antwort: PartsValuationResponse, abfrage: abfrage({ accounts: Q.konten, ...SEITE }) },
+  'GET /api/v1/finance/minifigs-valuation': { antwort: FigsValuationResponse, abfrage: abfrage({ accounts: Q.konten, ...SEITE }) },
+  'GET /api/v1/finance/pnl': { antwort: PnlResponse, abfrage: abfrage({ accounts: Q.konten, ...SEITE }) },
+  'GET /api/v1/finance/valuation': { antwort: ValuationResponse, abfrage: abfrage({ accounts: Q.konten, ...SEITE }) },
+  'GET /api/v1/finance/portfolio-history': { klein: true, antwort: PortfolioHistoryResponse,
     abfrage: abfrage({ accounts: Q.konten, period: Q.text(20) }) },
   'GET /api/v1/stats': { antwort: StatsResponse, abfrage: abfrage({ accounts: Q.konten }) },
 } satisfies Record<string, Route>;

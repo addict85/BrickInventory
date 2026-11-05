@@ -1,7 +1,7 @@
 /** Vorberechnet, weil die Live-Abfrage über alle Set-Teile eines Haushalts
  * Sekunden braucht.
  * Ausführlich: docs/begruendungen/src/teile/partsSummary.ts.md#abschnitt */
-import { meldeUndLiefere } from '../infra/fehler';
+import { meldeUndLiefere, fehlertext } from '../infra/fehler';
 import * as db from '../../db/database';
 import * as repo from './repository/teileZusammenfassung';
 
@@ -67,9 +67,9 @@ export async function ensureFresh(userId: number | number[], opts?: { strict?: b
     // Veraltete Zahlen sind besser als drei Sekunden Wartezeit; gibt es noch
     // gar keinen Stand, muss der Aufrufer live abfragen.
     return state !== null;
-  } catch (e: any) {
+  } catch (e) {
     // Der Aufrufer fällt auf die Live-Abfrage zurück — langsamer, aber nie falsch.
-    console.error('[partsSummary]', e.message);
+    console.error('[partsSummary]', fehlertext(e));
     return false;
   }
 }

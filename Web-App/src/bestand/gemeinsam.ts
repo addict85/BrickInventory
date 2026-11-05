@@ -1,4 +1,5 @@
 import * as repo from './repository/gemeinsam';
+import type { DbSchnittstelle } from '../../db/database';
 import { istErsatzteil, KEINE_FARBE } from '../infra/validate';
 import { asIds, blickfeldAus, type Sicht } from '../haushalt/haushalt';
 
@@ -16,7 +17,7 @@ export const UNPAGED_LIMIT = 2000;
  * Ausführlich: docs/begruendungen/src/bestand/gemeinsam.ts.md#set-parts-max-page-size */
 export const SET_PARTS_MAX_PAGE_SIZE = 5000;
 
-export function clampPageSize(value: any, fallback: number): number {
+export function clampPageSize(value: unknown, fallback: number): number {
   return Math.min(MAX_PAGE_SIZE, Math.max(1, parseInt(String(value)) || fallback));
 }
 
@@ -48,27 +49,25 @@ export function conditionsFromAcquisitions(acqCount: Zaehlwert, usedCount: Zaehl
 }
 
 // Ausführlich: docs/begruendungen/src/bestand/gemeinsam.ts.md#abschnitt-2
-export async function applyManualCondition(userId: unknown, rows: any[], kind: 'part' | 'fig') {
+type Schluessel = { part_number?: string; color_id?: number | null; fig_number?: string };
+export async function applyManualCondition<R extends Schluessel>(userId: number | number[], rows: R[], kind: 'part' | 'fig') {
   // asIds(), damit ältere Aufrufer mit einer nackten ID weiter gehen.
-  const uids = asIds(userId as any);
+  const uids = asIds(userId);
   if (!rows?.length) return rows;
 
   const isPart = kind === 'part';
-  const keyOf = (r: any) => isPart
+  const keyOf = (r: Schluessel) => isPart
     ? `${r.part_number}|${r.color_id ?? KEINE_FARBE}`
     : String(r.fig_number);
 
   const acq = await repo.erfassungsKennzahlen(isPart ? 'part' : 'fig', uids);
 
-  const byKey = new Map<string, any>(acq.map((a: any) => [
-    isPart ? `${a.part_number}|${a.color_id ?? KEINE_FARBE}` : String(a.fig_number),
-    a,
-  ] as [string, any]));
+  const byKey = new Map(acq.map(a => [keyOf(a), a]));
 
   return rows.map(r => {
     const a = byKey.get(keyOf(r));
-    const acqCount = parseInt(a?.acq_count) || 0;
-    const usedCount = parseInt(a?.used_count) || 0;
+    const acqCount = parseInt(String(a?.acq_count)) || 0;
+    const usedCount = parseInt(String(a?.used_count)) || 0;
     return {
       ...r,
       condition: conditionFromAcquisitions(acqCount, usedCount),
@@ -76,7 +75,7 @@ export async function applyManualCondition(userId: unknown, rows: any[], kind: '
       acq_count: acqCount,
       used_count: usedCount,
       // Mengengewichtet über die Erfassungen, nicht der zuletzt geschriebene Einzelpreis.
-      avg_purchase_price: a?.avg_purchase_price != null ? parseFloat(a.avg_purchase_price) : null,
+      avg_purchase_price: a?.avg_purchase_price != null ? Number(a.avg_purchase_price) : null,
     };
   });
 }
@@ -122,22 +121,22 @@ export async function verwendendeSets(
   const uids = await blickfeldAus(uidsWahl);
   const rows = await repo.setsMitBestandteil(uids, tabelle, schluessel);
 
-  const sets: VerwendendesSet[] = rows.map((r: any) => ({
+  const sets: VerwendendesSet[] = rows.map(r => ({
     set_number:    String(r.set_number),
     set_name:      r.set_name ?? null,
-    quantity:      parseInt(r.quantity, 10) || 0,
+    quantity:      parseInt(String(r.quantity), 10) || 0,
     image_local:   r.set_image_local ?? null,
     image_url:     r.set_image_url ?? null,
-    owner_user_id: parseInt(r.owner_user_id, 10),
+    owner_user_id: parseInt(String(r.owner_user_id), 10),
   }));
 
   // Der Kopf aus denselben Zeilen wie die Liste; das Bild von der ersten mit Bild.
-  const erste = rows[0] as any;
-  const mitBild = (rows as any[]).find(r => r.teil_image_local || r.teil_image_url);
+  const erste = rows[0];
+  const mitBild = rows.find(r => r.teil_image_local || r.teil_image_url);
   const item: BestandteilKopf | null = erste ? {
     nummer:         String(erste.nummer),
     name:           erste.name ?? null,
-    color_id:       erste.color_id == null ? null : parseInt(erste.color_id, 10),
+    color_id:       erste.color_id == null ? null : parseInt(String(erste.color_id), 10),
     color_name:     erste.color_name ?? null,
     color_hex:      erste.color_hex ?? null,
     category_name:  erste.category_name ?? null,
@@ -157,13 +156,13 @@ export async function verwendendeSets(
  * Ausführlich: docs/begruendungen/src/bestand/gemeinsam.ts.md#loeschemanuellesteil
  * @param dbh Transaktionsgriff, wo einer gebraucht wird */
 export async function loescheManuellesTeil(
-  dbh: { run: (sql: string, p?: any[]) => Promise<any> }, ownerId: number, partNumber: string, colorId: number,
+  dbh: Pick<DbSchnittstelle, 'run'>, ownerId: number, partNumber: string, colorId: number,
 ) {
   return repo.loescheTeilZeile(dbh, ownerId, partNumber, colorId);
 }
 
 export async function loescheManuelleFigur(
-  dbh: { run: (sql: string, p?: any[]) => Promise<any> }, ownerId: number, figNumber: string,
+  dbh: Pick<DbSchnittstelle, 'run'>, ownerId: number, figNumber: string,
 ) {
   return repo.loescheFigurZeile(dbh, ownerId, figNumber);
 }

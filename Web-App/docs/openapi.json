@@ -173,7 +173,8 @@
               }
             }
           }
-        }
+        },
+        "x-klein": true
       }
     },
     "/api/v1/admin/auftraege/{id}/abbrechen": {
@@ -187,7 +188,8 @@
             "in": "path",
             "required": true,
             "schema": {
-              "type": "string"
+              "type": "string",
+              "pattern": "^\\d{1,15}$"
             }
           }
         ],
@@ -237,7 +239,8 @@
             "in": "path",
             "required": true,
             "schema": {
-              "type": "string"
+              "type": "string",
+              "pattern": "^\\d{1,15}$"
             }
           }
         ],
@@ -287,7 +290,8 @@
             "in": "path",
             "required": true,
             "schema": {
-              "type": "string"
+              "type": "string",
+              "pattern": "^[a-z_]{1,40}$"
             }
           }
         ],
@@ -337,7 +341,8 @@
             "in": "path",
             "required": true,
             "schema": {
-              "type": "string"
+              "type": "string",
+              "pattern": "^[a-z_]{1,40}$"
             }
           }
         ],
@@ -381,6 +386,26 @@
         "tags": [
           "verwaltung"
         ],
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "pattern": "^\\d{1,10}$"
+            }
+          },
+          {
+            "name": "page_size",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "pattern": "^\\d{1,10}$"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "description": "Erfolg",
@@ -416,7 +441,8 @@
             "in": "path",
             "required": true,
             "schema": {
-              "type": "string"
+              "type": "string",
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$"
             }
           }
         ],
@@ -466,7 +492,8 @@
             "in": "path",
             "required": true,
             "schema": {
-              "type": "string"
+              "type": "string",
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$"
             }
           }
         ],
@@ -876,7 +903,8 @@
             "in": "path",
             "required": true,
             "schema": {
-              "type": "string"
+              "type": "string",
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$"
             }
           }
         ],
@@ -901,7 +929,8 @@
               }
             }
           }
-        }
+        },
+        "x-klein": true
       }
     },
     "/api/v1/admin/img-probe": {
@@ -995,15 +1024,12 @@
                   "minutes": {
                     "anyOf": [
                       {
-                        "anyOf": [
-                          {
-                            "type": "number"
-                          },
-                          {
-                            "type": "string",
-                            "maxLength": 40
-                          }
-                        ]
+                        "type": [
+                          "integer",
+                          "string"
+                        ],
+                        "minimum": 5,
+                        "maximum": 10080
                       },
                       {
                         "type": "null"
@@ -1116,7 +1142,8 @@
               }
             }
           }
-        }
+        },
+        "x-klein": true
       }
     },
     "/api/v1/admin/price-probe": {
@@ -1199,7 +1226,8 @@
               }
             }
           }
-        }
+        },
+        "x-klein": true
       }
     },
     "/api/v1/admin/redownload-missing-images": {
@@ -1388,7 +1416,8 @@
               }
             }
           }
-        }
+        },
+        "x-klein": true
       }
     },
     "/api/v1/alerts/import/csv": {
@@ -1472,7 +1501,8 @@
               }
             }
           }
-        }
+        },
+        "x-klein": true
       }
     },
     "/api/v1/auth/bestaetigung-erneut": {
@@ -2292,7 +2322,8 @@
               }
             }
           }
-        }
+        },
+        "x-klein": true
       }
     },
     "/api/v1/auth/passkeys/{id}": {
@@ -2306,7 +2337,8 @@
             "in": "path",
             "required": true,
             "schema": {
-              "type": "string"
+              "type": "string",
+              "pattern": "^\\d{1,15}$"
             }
           }
         ],
@@ -3025,7 +3057,8 @@
               }
             }
           }
-        }
+        },
+        "x-klein": true
       },
       "post": {
         "tags": [
@@ -3169,7 +3202,8 @@
             "in": "path",
             "required": true,
             "schema": {
-              "type": "string"
+              "type": "string",
+              "pattern": "^\\d{1,15}$"
             }
           }
         ],
@@ -3267,7 +3301,8 @@
             "in": "path",
             "required": true,
             "schema": {
-              "type": "string"
+              "type": "string",
+              "pattern": "^\\d{1,15}$"
             }
           }
         ],
@@ -3385,7 +3420,8 @@
             "in": "path",
             "required": true,
             "schema": {
-              "type": "string"
+              "type": "string",
+              "pattern": "^\\d{1,15}$"
             }
           }
         ],
@@ -3503,7 +3539,8 @@
             "in": "path",
             "required": true,
             "schema": {
-              "type": "string"
+              "type": "string",
+              "pattern": "^\\d{1,15}$"
             }
           }
         ],
@@ -3601,7 +3638,8 @@
             "in": "path",
             "required": true,
             "schema": {
-              "type": "string"
+              "type": "string",
+              "pattern": "^\\d{1,15}$"
             }
           }
         ],
@@ -3703,7 +3741,8 @@
             "in": "path",
             "required": true,
             "schema": {
-              "type": "string"
+              "type": "string",
+              "pattern": "^\\d{1,15}$"
             }
           }
         ],
@@ -4276,7 +4315,8 @@
               }
             }
           }
-        }
+        },
+        "x-klein": true
       }
     },
     "/api/v1/catalog/sets": {
@@ -4340,13 +4380,25 @@
             }
           },
           {
-            "name": "limit",
+            "name": "page_size",
             "in": "query",
             "required": false,
             "schema": {
               "type": "string",
               "pattern": "^\\d{1,10}$"
             }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "deprecated": true,
+              "description": "veraltet, entfällt mit API-Version 3; stattdessen page_size",
+              "type": "string",
+              "pattern": "^\\d{1,10}$"
+            },
+            "deprecated": true
           }
         ],
         "responses": {
@@ -4384,7 +4436,8 @@
             "in": "path",
             "required": true,
             "schema": {
-              "type": "string"
+              "type": "string",
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$"
             }
           }
         ],
@@ -4467,7 +4520,8 @@
               }
             }
           }
-        }
+        },
+        "x-klein": true
       }
     },
     "/api/v1/finance/minifigs-valuation": {
@@ -4496,6 +4550,24 @@
                   "pattern": "^\\d{1,10}$"
                 }
               ]
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "pattern": "^\\d{1,10}$"
+            }
+          },
+          {
+            "name": "page_size",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "pattern": "^\\d{1,10}$"
             }
           }
         ],
@@ -4550,6 +4622,24 @@
                 }
               ]
             }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "pattern": "^\\d{1,10}$"
+            }
+          },
+          {
+            "name": "page_size",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "pattern": "^\\d{1,10}$"
+            }
           }
         ],
         "responses": {
@@ -4602,6 +4692,24 @@
                   "pattern": "^\\d{1,10}$"
                 }
               ]
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "pattern": "^\\d{1,10}$"
+            }
+          },
+          {
+            "name": "page_size",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "pattern": "^\\d{1,10}$"
             }
           }
         ],
@@ -4688,7 +4796,8 @@
               }
             }
           }
-        }
+        },
+        "x-klein": true
       }
     },
     "/api/v1/finance/valuation": {
@@ -4717,6 +4826,24 @@
                   "pattern": "^\\d{1,10}$"
                 }
               ]
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "pattern": "^\\d{1,10}$"
+            }
+          },
+          {
+            "name": "page_size",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "pattern": "^\\d{1,10}$"
             }
           }
         ],
@@ -4980,13 +5107,13 @@
                     ]
                   },
                   "unit_price": {
+                    "minimum": 0,
+                    "maximum": 1000000,
+                    "description": "Betrag als Zahl, höchstens vier Nachkommastellen; null oder leer: kein Betrag",
                     "type": [
                       "number",
-                      "string",
                       "null"
-                    ],
-                    "minimum": 0,
-                    "maximum": 1000000
+                    ]
                   },
                   "fig_name": {
                     "type": [
@@ -5078,7 +5205,8 @@
             "in": "path",
             "required": true,
             "schema": {
-              "type": "string"
+              "type": "string",
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$"
             }
           },
           {
@@ -5120,28 +5248,20 @@
                 "type": "object",
                 "properties": {
                   "quantity": {
-                    "anyOf": [
-                      {
-                        "type": "number"
-                      },
-                      {
-                        "type": "string",
-                        "maxLength": 40
-                      }
-                    ]
+                    "type": [
+                      "integer",
+                      "string",
+                      "null"
+                    ],
+                    "minimum": 0,
+                    "maximum": 100000
                   },
                   "quantity_delta": {
                     "anyOf": [
                       {
-                        "anyOf": [
-                          {
-                            "type": "number"
-                          },
-                          {
-                            "type": "string",
-                            "maxLength": 40
-                          }
-                        ]
+                        "type": "integer",
+                        "minimum": -9999,
+                        "maximum": 9999
                       },
                       {
                         "type": "null"
@@ -5149,21 +5269,12 @@
                     ]
                   },
                   "unit_price": {
-                    "anyOf": [
-                      {
-                        "anyOf": [
-                          {
-                            "type": "number"
-                          },
-                          {
-                            "type": "string",
-                            "maxLength": 40
-                          }
-                        ]
-                      },
-                      {
-                        "type": "null"
-                      }
+                    "minimum": 0,
+                    "maximum": 1000000,
+                    "description": "Betrag als Zahl, höchstens vier Nachkommastellen; null oder leer: kein Betrag",
+                    "type": [
+                      "number",
+                      "null"
                     ]
                   },
                   "condition": {
@@ -5218,7 +5329,8 @@
             "in": "path",
             "required": true,
             "schema": {
-              "type": "string"
+              "type": "string",
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$"
             }
           },
           {
@@ -5277,7 +5389,8 @@
             "in": "path",
             "required": true,
             "schema": {
-              "type": "string"
+              "type": "string",
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$"
             }
           },
           {
@@ -5324,7 +5437,8 @@
               }
             }
           }
-        }
+        },
+        "x-klein": true
       }
     },
     "/api/v1/minifigs/{figNumber}/acquisitions/{acqId}": {
@@ -5338,7 +5452,8 @@
             "in": "path",
             "required": true,
             "schema": {
-              "type": "string"
+              "type": "string",
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$"
             }
           },
           {
@@ -5346,7 +5461,8 @@
             "in": "path",
             "required": true,
             "schema": {
-              "type": "string"
+              "type": "string",
+              "pattern": "^\\d{1,15}$"
             }
           }
         ],
@@ -5388,39 +5504,21 @@
                     "maximum": 100000
                   },
                   "purchase_price": {
-                    "anyOf": [
-                      {
-                        "anyOf": [
-                          {
-                            "type": "number"
-                          },
-                          {
-                            "type": "string",
-                            "maxLength": 40
-                          }
-                        ]
-                      },
-                      {
-                        "type": "null"
-                      }
+                    "minimum": 0,
+                    "maximum": 1000000,
+                    "description": "Betrag als Zahl, höchstens vier Nachkommastellen; null oder leer: kein Betrag",
+                    "type": [
+                      "number",
+                      "null"
                     ]
                   },
                   "unit_price": {
-                    "anyOf": [
-                      {
-                        "anyOf": [
-                          {
-                            "type": "number"
-                          },
-                          {
-                            "type": "string",
-                            "maxLength": 40
-                          }
-                        ]
-                      },
-                      {
-                        "type": "null"
-                      }
+                    "minimum": 0,
+                    "maximum": 1000000,
+                    "description": "Betrag als Zahl, höchstens vier Nachkommastellen; null oder leer: kein Betrag",
+                    "type": [
+                      "number",
+                      "null"
                     ]
                   },
                   "condition": {
@@ -5517,7 +5615,8 @@
             "in": "path",
             "required": true,
             "schema": {
-              "type": "string"
+              "type": "string",
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$"
             }
           },
           {
@@ -5525,7 +5624,8 @@
             "in": "path",
             "required": true,
             "schema": {
-              "type": "string"
+              "type": "string",
+              "pattern": "^\\d{1,15}$"
             }
           }
         ],
@@ -5575,7 +5675,8 @@
             "in": "path",
             "required": true,
             "schema": {
-              "type": "string"
+              "type": "string",
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$"
             }
           }
         ],
@@ -5600,7 +5701,8 @@
               }
             }
           }
-        }
+        },
+        "x-klein": true
       }
     },
     "/api/v1/minifigs/{figNumber}/price-history": {
@@ -5614,7 +5716,8 @@
             "in": "path",
             "required": true,
             "schema": {
-              "type": "string"
+              "type": "string",
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$"
             }
           },
           {
@@ -5661,7 +5764,8 @@
               }
             }
           }
-        }
+        },
+        "x-klein": true
       }
     },
     "/api/v1/minifigs/{figNumber}/sets": {
@@ -5675,7 +5779,8 @@
             "in": "path",
             "required": true,
             "schema": {
-              "type": "string"
+              "type": "string",
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$"
             }
           },
           {
@@ -5722,7 +5827,8 @@
               }
             }
           }
-        }
+        },
+        "x-klein": true
       }
     },
     "/api/v1/minifigs/{figNumber}/storage": {
@@ -5736,7 +5842,8 @@
             "in": "path",
             "required": true,
             "schema": {
-              "type": "string"
+              "type": "string",
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$"
             }
           }
         ],
@@ -5867,6 +5974,24 @@
               "type": "string",
               "maxLength": 200
             }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "pattern": "^\\d{1,10}$"
+            }
+          },
+          {
+            "name": "page_size",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "pattern": "^\\d{1,10}$"
+            }
           }
         ],
         "responses": {
@@ -5972,7 +6097,8 @@
               }
             }
           }
-        }
+        },
+        "x-klein": true
       },
       "delete": {
         "tags": [
@@ -6072,7 +6198,8 @@
             "in": "path",
             "required": true,
             "schema": {
-              "type": "string"
+              "type": "string",
+              "pattern": "^\\d{1,15}$"
             }
           }
         ],
@@ -6170,7 +6297,8 @@
             "in": "path",
             "required": true,
             "schema": {
-              "type": "string"
+              "type": "string",
+              "pattern": "^\\d{1,15}$"
             }
           }
         ],
@@ -6451,13 +6579,13 @@
                     ]
                   },
                   "unit_price": {
+                    "minimum": 0,
+                    "maximum": 1000000,
+                    "description": "Betrag als Zahl, höchstens vier Nachkommastellen; null oder leer: kein Betrag",
                     "type": [
                       "number",
-                      "string",
                       "null"
-                    ],
-                    "minimum": 0,
-                    "maximum": 1000000
+                    ]
                   },
                   "part_name": {
                     "type": [
@@ -6545,7 +6673,8 @@
             "in": "path",
             "required": true,
             "schema": {
-              "type": "string"
+              "type": "string",
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$"
             }
           },
           {
@@ -6553,7 +6682,8 @@
             "in": "path",
             "required": true,
             "schema": {
-              "type": "string"
+              "type": "string",
+              "pattern": "^\\d{1,6}$"
             }
           },
           {
@@ -6595,28 +6725,20 @@
                 "type": "object",
                 "properties": {
                   "quantity": {
-                    "anyOf": [
-                      {
-                        "type": "number"
-                      },
-                      {
-                        "type": "string",
-                        "maxLength": 40
-                      }
-                    ]
+                    "type": [
+                      "integer",
+                      "string",
+                      "null"
+                    ],
+                    "minimum": 0,
+                    "maximum": 100000
                   },
                   "quantity_delta": {
                     "anyOf": [
                       {
-                        "anyOf": [
-                          {
-                            "type": "number"
-                          },
-                          {
-                            "type": "string",
-                            "maxLength": 40
-                          }
-                        ]
+                        "type": "integer",
+                        "minimum": -9999,
+                        "maximum": 9999
                       },
                       {
                         "type": "null"
@@ -6624,21 +6746,12 @@
                     ]
                   },
                   "unit_price": {
-                    "anyOf": [
-                      {
-                        "anyOf": [
-                          {
-                            "type": "number"
-                          },
-                          {
-                            "type": "string",
-                            "maxLength": 40
-                          }
-                        ]
-                      },
-                      {
-                        "type": "null"
-                      }
+                    "minimum": 0,
+                    "maximum": 1000000,
+                    "description": "Betrag als Zahl, höchstens vier Nachkommastellen; null oder leer: kein Betrag",
+                    "type": [
+                      "number",
+                      "null"
                     ]
                   },
                   "condition": {
@@ -6682,7 +6795,8 @@
             "in": "path",
             "required": true,
             "schema": {
-              "type": "string"
+              "type": "string",
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$"
             }
           },
           {
@@ -6690,7 +6804,8 @@
             "in": "path",
             "required": true,
             "schema": {
-              "type": "string"
+              "type": "string",
+              "pattern": "^\\d{1,6}$"
             }
           },
           {
@@ -6749,7 +6864,8 @@
             "in": "path",
             "required": true,
             "schema": {
-              "type": "string"
+              "type": "string",
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$"
             }
           },
           {
@@ -6757,7 +6873,8 @@
             "in": "path",
             "required": true,
             "schema": {
-              "type": "string"
+              "type": "string",
+              "pattern": "^\\d{1,6}$"
             }
           },
           {
@@ -6804,7 +6921,8 @@
               }
             }
           }
-        }
+        },
+        "x-klein": true
       }
     },
     "/api/v1/parts/{partNumber}/{colorId}/acquisitions/{acqId}": {
@@ -6818,7 +6936,8 @@
             "in": "path",
             "required": true,
             "schema": {
-              "type": "string"
+              "type": "string",
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$"
             }
           },
           {
@@ -6826,7 +6945,8 @@
             "in": "path",
             "required": true,
             "schema": {
-              "type": "string"
+              "type": "string",
+              "pattern": "^\\d{1,6}$"
             }
           },
           {
@@ -6834,7 +6954,8 @@
             "in": "path",
             "required": true,
             "schema": {
-              "type": "string"
+              "type": "string",
+              "pattern": "^\\d{1,15}$"
             }
           }
         ],
@@ -6876,39 +6997,21 @@
                     "maximum": 100000
                   },
                   "purchase_price": {
-                    "anyOf": [
-                      {
-                        "anyOf": [
-                          {
-                            "type": "number"
-                          },
-                          {
-                            "type": "string",
-                            "maxLength": 40
-                          }
-                        ]
-                      },
-                      {
-                        "type": "null"
-                      }
+                    "minimum": 0,
+                    "maximum": 1000000,
+                    "description": "Betrag als Zahl, höchstens vier Nachkommastellen; null oder leer: kein Betrag",
+                    "type": [
+                      "number",
+                      "null"
                     ]
                   },
                   "unit_price": {
-                    "anyOf": [
-                      {
-                        "anyOf": [
-                          {
-                            "type": "number"
-                          },
-                          {
-                            "type": "string",
-                            "maxLength": 40
-                          }
-                        ]
-                      },
-                      {
-                        "type": "null"
-                      }
+                    "minimum": 0,
+                    "maximum": 1000000,
+                    "description": "Betrag als Zahl, höchstens vier Nachkommastellen; null oder leer: kein Betrag",
+                    "type": [
+                      "number",
+                      "null"
                     ]
                   },
                   "condition": {
@@ -7005,7 +7108,8 @@
             "in": "path",
             "required": true,
             "schema": {
-              "type": "string"
+              "type": "string",
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$"
             }
           },
           {
@@ -7013,7 +7117,8 @@
             "in": "path",
             "required": true,
             "schema": {
-              "type": "string"
+              "type": "string",
+              "pattern": "^\\d{1,6}$"
             }
           },
           {
@@ -7021,7 +7126,8 @@
             "in": "path",
             "required": true,
             "schema": {
-              "type": "string"
+              "type": "string",
+              "pattern": "^\\d{1,15}$"
             }
           }
         ],
@@ -7071,7 +7177,8 @@
             "in": "path",
             "required": true,
             "schema": {
-              "type": "string"
+              "type": "string",
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$"
             }
           },
           {
@@ -7079,7 +7186,8 @@
             "in": "path",
             "required": true,
             "schema": {
-              "type": "string"
+              "type": "string",
+              "pattern": "^\\d{1,6}$"
             }
           },
           {
@@ -7173,7 +7281,8 @@
             "in": "path",
             "required": true,
             "schema": {
-              "type": "string"
+              "type": "string",
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$"
             }
           },
           {
@@ -7181,7 +7290,8 @@
             "in": "path",
             "required": true,
             "schema": {
-              "type": "string"
+              "type": "string",
+              "pattern": "^\\d{1,6}$"
             }
           },
           {
@@ -7228,7 +7338,8 @@
               }
             }
           }
-        }
+        },
+        "x-klein": true
       }
     },
     "/api/v1/parts/{partNumber}/{colorId}/sets": {
@@ -7242,7 +7353,8 @@
             "in": "path",
             "required": true,
             "schema": {
-              "type": "string"
+              "type": "string",
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$"
             }
           },
           {
@@ -7250,7 +7362,8 @@
             "in": "path",
             "required": true,
             "schema": {
-              "type": "string"
+              "type": "string",
+              "pattern": "^\\d{1,6}$"
             }
           },
           {
@@ -7297,7 +7410,8 @@
               }
             }
           }
-        }
+        },
+        "x-klein": true
       }
     },
     "/api/v1/parts/{partNumber}/{colorId}/storage": {
@@ -7311,7 +7425,8 @@
             "in": "path",
             "required": true,
             "schema": {
-              "type": "string"
+              "type": "string",
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$"
             }
           },
           {
@@ -7319,7 +7434,8 @@
             "in": "path",
             "required": true,
             "schema": {
-              "type": "string"
+              "type": "string",
+              "pattern": "^\\d{1,6}$"
             }
           }
         ],
@@ -7425,7 +7541,8 @@
               }
             }
           }
-        }
+        },
+        "x-klein": true
       }
     },
     "/api/v1/parts/categories": {
@@ -7478,7 +7595,8 @@
               }
             }
           }
-        }
+        },
+        "x-klein": true
       }
     },
     "/api/v1/parts/colors": {
@@ -7531,7 +7649,8 @@
               }
             }
           }
-        }
+        },
+        "x-klein": true
       }
     },
     "/api/v1/parts/import/csv": {
@@ -7622,6 +7741,24 @@
             "schema": {
               "type": "string",
               "maxLength": 200
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "pattern": "^\\d{1,10}$"
+            }
+          },
+          {
+            "name": "page_size",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "pattern": "^\\d{1,10}$"
             }
           }
         ],
@@ -7947,13 +8084,13 @@
                     "maximum": 10000
                   },
                   "purchase_price": {
+                    "minimum": 0,
+                    "maximum": 1000000,
+                    "description": "Betrag als Zahl, höchstens vier Nachkommastellen; null oder leer: kein Betrag",
                     "type": [
                       "number",
-                      "string",
                       "null"
-                    ],
-                    "minimum": 0,
-                    "maximum": 1000000
+                    ]
                   },
                   "condition": {
                     "anyOf": [
@@ -8029,7 +8166,8 @@
             "in": "path",
             "required": true,
             "schema": {
-              "type": "string"
+              "type": "string",
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$"
             }
           },
           {
@@ -8088,7 +8226,8 @@
             "in": "path",
             "required": true,
             "schema": {
-              "type": "string"
+              "type": "string",
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$"
             }
           }
         ],
@@ -8121,28 +8260,20 @@
                 "type": "object",
                 "properties": {
                   "quantity": {
-                    "anyOf": [
-                      {
-                        "type": "number"
-                      },
-                      {
-                        "type": "string",
-                        "maxLength": 40
-                      }
-                    ]
+                    "type": [
+                      "integer",
+                      "string",
+                      "null"
+                    ],
+                    "minimum": 0,
+                    "maximum": 100000
                   },
                   "quantity_delta": {
                     "anyOf": [
                       {
-                        "anyOf": [
-                          {
-                            "type": "number"
-                          },
-                          {
-                            "type": "string",
-                            "maxLength": 40
-                          }
-                        ]
+                        "type": "integer",
+                        "minimum": -9999,
+                        "maximum": 9999
                       },
                       {
                         "type": "null"
@@ -8150,21 +8281,12 @@
                     ]
                   },
                   "purchase_price": {
-                    "anyOf": [
-                      {
-                        "anyOf": [
-                          {
-                            "type": "number"
-                          },
-                          {
-                            "type": "string",
-                            "maxLength": 40
-                          }
-                        ]
-                      },
-                      {
-                        "type": "null"
-                      }
+                    "minimum": 0,
+                    "maximum": 1000000,
+                    "description": "Betrag als Zahl, höchstens vier Nachkommastellen; null oder leer: kein Betrag",
+                    "type": [
+                      "number",
+                      "null"
                     ]
                   },
                   "condition": {
@@ -8228,7 +8350,8 @@
             "in": "path",
             "required": true,
             "schema": {
-              "type": "string"
+              "type": "string",
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$"
             }
           },
           {
@@ -8300,7 +8423,8 @@
             "in": "path",
             "required": true,
             "schema": {
-              "type": "string"
+              "type": "string",
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$"
             }
           },
           {
@@ -8347,7 +8471,8 @@
               }
             }
           }
-        }
+        },
+        "x-klein": true
       }
     },
     "/api/v1/sets/{setNumber}/acquisitions/{acqId}": {
@@ -8361,7 +8486,8 @@
             "in": "path",
             "required": true,
             "schema": {
-              "type": "string"
+              "type": "string",
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$"
             }
           },
           {
@@ -8369,7 +8495,8 @@
             "in": "path",
             "required": true,
             "schema": {
-              "type": "string"
+              "type": "string",
+              "pattern": "^\\d{1,15}$"
             }
           }
         ],
@@ -8411,39 +8538,21 @@
                     "maximum": 100000
                   },
                   "purchase_price": {
-                    "anyOf": [
-                      {
-                        "anyOf": [
-                          {
-                            "type": "number"
-                          },
-                          {
-                            "type": "string",
-                            "maxLength": 40
-                          }
-                        ]
-                      },
-                      {
-                        "type": "null"
-                      }
+                    "minimum": 0,
+                    "maximum": 1000000,
+                    "description": "Betrag als Zahl, höchstens vier Nachkommastellen; null oder leer: kein Betrag",
+                    "type": [
+                      "number",
+                      "null"
                     ]
                   },
                   "unit_price": {
-                    "anyOf": [
-                      {
-                        "anyOf": [
-                          {
-                            "type": "number"
-                          },
-                          {
-                            "type": "string",
-                            "maxLength": 40
-                          }
-                        ]
-                      },
-                      {
-                        "type": "null"
-                      }
+                    "minimum": 0,
+                    "maximum": 1000000,
+                    "description": "Betrag als Zahl, höchstens vier Nachkommastellen; null oder leer: kein Betrag",
+                    "type": [
+                      "number",
+                      "null"
                     ]
                   },
                   "condition": {
@@ -8540,7 +8649,8 @@
             "in": "path",
             "required": true,
             "schema": {
-              "type": "string"
+              "type": "string",
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$"
             }
           },
           {
@@ -8548,7 +8658,8 @@
             "in": "path",
             "required": true,
             "schema": {
-              "type": "string"
+              "type": "string",
+              "pattern": "^\\d{1,15}$"
             }
           }
         ],
@@ -8598,7 +8709,8 @@
             "in": "path",
             "required": true,
             "schema": {
-              "type": "string"
+              "type": "string",
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$"
             }
           }
         ],
@@ -8623,7 +8735,8 @@
               }
             }
           }
-        }
+        },
+        "x-klein": true
       },
       "put": {
         "tags": [
@@ -8635,7 +8748,8 @@
             "in": "path",
             "required": true,
             "schema": {
-              "type": "string"
+              "type": "string",
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$"
             }
           }
         ],
@@ -8675,15 +8789,10 @@
                     ]
                   },
                   "schwelle": {
-                    "anyOf": [
-                      {
-                        "type": "number"
-                      },
-                      {
-                        "type": "string",
-                        "maxLength": 40
-                      }
-                    ]
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 1000000,
+                    "description": "Betrag als Zahl, höchstens vier Nachkommastellen; null oder leer: kein Betrag"
                   },
                   "condition": {
                     "anyOf": [
@@ -8704,8 +8813,7 @@
                   }
                 },
                 "required": [
-                  "richtung",
-                  "schwelle"
+                  "richtung"
                 ],
                 "additionalProperties": false
               }
@@ -8723,7 +8831,8 @@
             "in": "path",
             "required": true,
             "schema": {
-              "type": "string"
+              "type": "string",
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$"
             }
           },
           {
@@ -8787,7 +8896,8 @@
             "in": "path",
             "required": true,
             "schema": {
-              "type": "string"
+              "type": "string",
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$"
             }
           }
         ],
@@ -8837,7 +8947,8 @@
             "in": "path",
             "required": true,
             "schema": {
-              "type": "string"
+              "type": "string",
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$"
             }
           },
           {
@@ -8845,7 +8956,8 @@
             "in": "path",
             "required": true,
             "schema": {
-              "type": "string"
+              "type": "string",
+              "pattern": "^\\d{1,15}$"
             }
           }
         ],
@@ -8895,7 +9007,8 @@
             "in": "path",
             "required": true,
             "schema": {
-              "type": "string"
+              "type": "string",
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$"
             }
           }
         ],
@@ -8954,7 +9067,8 @@
             "in": "path",
             "required": true,
             "schema": {
-              "type": "string"
+              "type": "string",
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$"
             }
           }
         ],
@@ -8979,7 +9093,8 @@
               }
             }
           }
-        }
+        },
+        "x-klein": true
       }
     },
     "/api/v1/sets/{setNumber}/parts": {
@@ -8993,7 +9108,8 @@
             "in": "path",
             "required": true,
             "schema": {
-              "type": "string"
+              "type": "string",
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$"
             }
           }
         ],
@@ -9043,7 +9159,8 @@
             "in": "path",
             "required": true,
             "schema": {
-              "type": "string"
+              "type": "string",
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$"
             }
           }
         ],
@@ -9068,7 +9185,8 @@
               }
             }
           }
-        }
+        },
+        "x-klein": true
       }
     },
     "/api/v1/sets/{setNumber}/price": {
@@ -9082,7 +9200,8 @@
             "in": "path",
             "required": true,
             "schema": {
-              "type": "string"
+              "type": "string",
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$"
             }
           },
           {
@@ -9116,7 +9235,8 @@
               "maxLength": 8,
               "deprecated": true,
               "description": "wird nicht ausgewertet: Es gilt die Währung des Kontos"
-            }
+            },
+            "deprecated": true
           }
         ],
         "responses": {
@@ -9154,7 +9274,8 @@
             "in": "path",
             "required": true,
             "schema": {
-              "type": "string"
+              "type": "string",
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$"
             }
           },
           {
@@ -9201,7 +9322,8 @@
               }
             }
           }
-        }
+        },
+        "x-klein": true
       }
     },
     "/api/v1/sets/{setNumber}/storage": {
@@ -9215,7 +9337,8 @@
             "in": "path",
             "required": true,
             "schema": {
-              "type": "string"
+              "type": "string",
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$"
             }
           }
         ],
@@ -9277,7 +9400,8 @@
             "in": "path",
             "required": true,
             "schema": {
-              "type": "string"
+              "type": "string",
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$"
             }
           }
         ],
@@ -9426,13 +9550,13 @@
                     "maximum": 10000
                   },
                   "purchase_price": {
+                    "minimum": 0,
+                    "maximum": 1000000,
+                    "description": "Betrag als Zahl, höchstens vier Nachkommastellen; null oder leer: kein Betrag",
                     "type": [
                       "number",
-                      "string",
                       "null"
-                    ],
-                    "minimum": 0,
-                    "maximum": 1000000
+                    ]
                   },
                   "condition": {
                     "anyOf": [
@@ -9508,7 +9632,8 @@
             "in": "path",
             "required": true,
             "schema": {
-              "type": "string"
+              "type": "string",
+              "pattern": "^[A-Za-z0-9-]{1,64}$"
             }
           }
         ],
@@ -9547,7 +9672,8 @@
             "in": "path",
             "required": true,
             "schema": {
-              "type": "string"
+              "type": "string",
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$"
             }
           }
         ],
@@ -9626,7 +9752,8 @@
               }
             }
           }
-        }
+        },
+        "x-klein": true
       }
     },
     "/api/v1/sets/import/csv": {
@@ -9789,7 +9916,8 @@
             "in": "path",
             "required": true,
             "schema": {
-              "type": "string"
+              "type": "string",
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$"
             }
           }
         ],
@@ -10013,7 +10141,8 @@
             "in": "path",
             "required": true,
             "schema": {
-              "type": "string"
+              "type": "string",
+              "pattern": "^\\d{10,16}-[a-z0-9]{4,12}$"
             }
           }
         ],
@@ -10048,7 +10177,8 @@
             "in": "path",
             "required": true,
             "schema": {
-              "type": "string"
+              "type": "string",
+              "pattern": "^\\d{10,16}-[a-z0-9]{4,12}$"
             }
           }
         ],
@@ -10087,7 +10217,8 @@
             "in": "path",
             "required": true,
             "schema": {
-              "type": "string"
+              "type": "string",
+              "pattern": "^\\d{10,16}-[a-z0-9]{4,12}$"
             }
           }
         ],
@@ -10706,7 +10837,8 @@
               }
             }
           }
-        }
+        },
+        "x-klein": true
       }
     },
     "/api/v1/settings/household/former/dismiss": {
@@ -11377,7 +11509,8 @@
               }
             }
           }
-        }
+        },
+        "x-klein": true
       }
     },
     "/api/v1/settings/tokens/{tokenId}": {
@@ -11391,7 +11524,8 @@
             "in": "path",
             "required": true,
             "schema": {
-              "type": "string"
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{1,64}$"
             }
           }
         ],
@@ -11706,7 +11840,8 @@
               }
             }
           }
-        }
+        },
+        "x-klein": true
       }
     },
     "/api/v1/storage/default": {
@@ -11807,7 +11942,8 @@
               ],
               "deprecated": true,
               "description": "wird nicht ausgewertet: Die Liste folgt dem Recht"
-            }
+            },
+            "deprecated": true
           }
         ],
         "responses": {
@@ -11831,7 +11967,8 @@
               }
             }
           }
-        }
+        },
+        "x-klein": true
       },
       "post": {
         "tags": [
@@ -11912,7 +12049,8 @@
             "in": "path",
             "required": true,
             "schema": {
-              "type": "string"
+              "type": "string",
+              "pattern": "^\\d{1,15}$"
             }
           },
           {
@@ -11987,7 +12125,8 @@
             "in": "path",
             "required": true,
             "schema": {
-              "type": "string"
+              "type": "string",
+              "pattern": "^\\d{1,15}$"
             }
           },
           {
@@ -12039,6 +12178,26 @@
       "get": {
         "tags": [
           "gutscheine"
+        ],
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "pattern": "^\\d{1,10}$"
+            }
+          },
+          {
+            "name": "page_size",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "pattern": "^\\d{1,10}$"
+            }
+          }
         ],
         "responses": {
           "200": {
@@ -12096,28 +12255,14 @@
                 "type": "object",
                 "properties": {
                   "number": {
-                    "anyOf": [
-                      {
-                        "type": "number"
-                      },
-                      {
-                        "type": "string",
-                        "maxLength": 40
-                      }
-                    ]
+                    "type": "string",
+                    "maxLength": 40
                   },
                   "pin": {
                     "anyOf": [
                       {
-                        "anyOf": [
-                          {
-                            "type": "number"
-                          },
-                          {
-                            "type": "string",
-                            "maxLength": 40
-                          }
-                        ]
+                        "type": "string",
+                        "maxLength": 40
                       },
                       {
                         "type": "null"
@@ -12125,22 +12270,10 @@
                     ]
                   },
                   "amount": {
-                    "anyOf": [
-                      {
-                        "anyOf": [
-                          {
-                            "type": "number"
-                          },
-                          {
-                            "type": "string",
-                            "maxLength": 40
-                          }
-                        ]
-                      },
-                      {
-                        "type": "null"
-                      }
-                    ]
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 1000000,
+                    "description": "Betrag als Zahl, höchstens vier Nachkommastellen; null oder leer: kein Betrag"
                   },
                   "currency": {
                     "anyOf": [
@@ -12175,7 +12308,8 @@
             "in": "path",
             "required": true,
             "schema": {
-              "type": "string"
+              "type": "string",
+              "pattern": "^\\d{1,15}$"
             }
           }
         ],
@@ -12208,28 +12342,14 @@
                 "type": "object",
                 "properties": {
                   "number": {
-                    "anyOf": [
-                      {
-                        "type": "number"
-                      },
-                      {
-                        "type": "string",
-                        "maxLength": 40
-                      }
-                    ]
+                    "type": "string",
+                    "maxLength": 40
                   },
                   "pin": {
                     "anyOf": [
                       {
-                        "anyOf": [
-                          {
-                            "type": "number"
-                          },
-                          {
-                            "type": "string",
-                            "maxLength": 40
-                          }
-                        ]
+                        "type": "string",
+                        "maxLength": 40
                       },
                       {
                         "type": "null"
@@ -12237,15 +12357,10 @@
                     ]
                   },
                   "amount": {
-                    "anyOf": [
-                      {
-                        "type": "number"
-                      },
-                      {
-                        "type": "string",
-                        "maxLength": 40
-                      }
-                    ]
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 1000000,
+                    "description": "Betrag als Zahl, höchstens vier Nachkommastellen; null oder leer: kein Betrag"
                   },
                   "currency": {
                     "anyOf": [
@@ -12275,7 +12390,8 @@
             "in": "path",
             "required": true,
             "schema": {
-              "type": "string"
+              "type": "string",
+              "pattern": "^\\d{1,15}$"
             }
           }
         ],
@@ -12373,7 +12489,8 @@
             "in": "path",
             "required": true,
             "schema": {
-              "type": "string"
+              "type": "string",
+              "pattern": "^\\d{1,15}$"
             }
           }
         ],
@@ -12423,7 +12540,8 @@
             "in": "path",
             "required": true,
             "schema": {
-              "type": "string"
+              "type": "string",
+              "pattern": "^\\d{1,15}$"
             }
           }
         ],
@@ -12522,7 +12640,8 @@
             "in": "path",
             "required": true,
             "schema": {
-              "type": "string"
+              "type": "string",
+              "pattern": "^\\d{1,15}$"
             }
           },
           {
@@ -12580,7 +12699,8 @@
             "in": "path",
             "required": true,
             "schema": {
-              "type": "string"
+              "type": "string",
+              "pattern": "^\\d{1,15}$"
             }
           }
         ],
@@ -12839,8 +12959,10 @@
                     "maxLength": 40
                   },
                   "amount": {
-                    "type": "string",
-                    "maxLength": 40
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 1000000,
+                    "description": "Betrag als Zahl, höchstens vier Nachkommastellen; null oder leer: kein Betrag"
                   },
                   "currency": {
                     "type": "string",
@@ -12913,6 +13035,24 @@
             "schema": {
               "type": "string",
               "maxLength": 40
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "pattern": "^\\d{1,10}$"
+            }
+          },
+          {
+            "name": "page_size",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "pattern": "^\\d{1,10}$"
             }
           }
         ],
@@ -13134,7 +13274,8 @@
             "in": "path",
             "required": true,
             "schema": {
-              "type": "string"
+              "type": "string",
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$"
             }
           },
           {
@@ -13142,7 +13283,8 @@
             "in": "path",
             "required": true,
             "schema": {
-              "type": "string"
+              "type": "string",
+              "pattern": "^[NUnu]$"
             }
           },
           {
@@ -13201,7 +13343,8 @@
             "in": "path",
             "required": true,
             "schema": {
-              "type": "string"
+              "type": "string",
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$"
             }
           },
           {
@@ -13209,7 +13352,8 @@
             "in": "path",
             "required": true,
             "schema": {
-              "type": "string"
+              "type": "string",
+              "pattern": "^[NUnu]$"
             }
           }
         ],
@@ -13296,7 +13440,8 @@
             "in": "path",
             "required": true,
             "schema": {
-              "type": "string"
+              "type": "string",
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$"
             }
           },
           {
@@ -13304,7 +13449,8 @@
             "in": "path",
             "required": true,
             "schema": {
-              "type": "string"
+              "type": "string",
+              "pattern": "^[NUnu]$"
             }
           }
         ],
@@ -13345,13 +13491,13 @@
                     "maximum": 10000
                   },
                   "purchase_price": {
+                    "minimum": 0,
+                    "maximum": 1000000,
+                    "description": "Betrag als Zahl, höchstens vier Nachkommastellen; null oder leer: kein Betrag",
                     "type": [
                       "number",
-                      "string",
                       "null"
-                    ],
-                    "minimum": 0,
-                    "maximum": 1000000
+                    ]
                   },
                   "condition": {
                     "anyOf": [
@@ -13427,7 +13573,8 @@
             "in": "path",
             "required": true,
             "schema": {
-              "type": "string"
+              "type": "string",
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$"
             }
           }
         ],
@@ -13608,10 +13755,7 @@
             "maximum": 9007199254740991
           },
           "amount": {
-            "type": [
-              "number",
-              "null"
-            ]
+            "type": "number"
           },
           "priced_rows": {
             "type": "integer",
@@ -13762,6 +13906,12 @@
             "items": {
               "$ref": "#/components/schemas/Instruction"
             }
+          },
+          "auftrag_id": {
+            "type": [
+              "string",
+              "null"
+            ]
           }
         },
         "required": [
@@ -14871,6 +15021,21 @@
           "success": {
             "type": "boolean"
           },
+          "total": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          },
+          "page": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          },
+          "page_size": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          },
           "count": {
             "type": "integer",
             "minimum": -9007199254740991,
@@ -14885,6 +15050,9 @@
         },
         "required": [
           "success",
+          "total",
+          "page",
+          "page_size",
           "count",
           "entries"
         ],
@@ -15265,6 +15433,11 @@
             "minimum": -9007199254740991,
             "maximum": 9007199254740991
           },
+          "page_size": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          },
           "pages": {
             "type": "integer",
             "minimum": -9007199254740991,
@@ -15287,6 +15460,7 @@
           "success",
           "total",
           "page",
+          "page_size",
           "pages",
           "sets"
         ],
@@ -15411,6 +15585,14 @@
             ]
           },
           "pnl_pct": {
+            "deprecated": true,
+            "description": "veraltet, entfällt mit API-Version 3; stattdessen pnl_prozent",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "pnl_prozent": {
             "type": [
               "number",
               "null"
@@ -16030,6 +16212,21 @@
           "success": {
             "type": "boolean"
           },
+          "total": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          },
+          "page": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          },
+          "page_size": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          },
           "currency": {
             "type": "string"
           },
@@ -16101,6 +16298,8 @@
                   ]
                 },
                 "qty_avg_price": {
+                  "deprecated": true,
+                  "description": "veraltet, entfällt mit API-Version 3; stattdessen avg_price",
                   "type": [
                     "number",
                     "null"
@@ -16113,6 +16312,8 @@
                   ]
                 },
                 "pnl_pct": {
+                  "deprecated": true,
+                  "description": "veraltet, entfällt mit API-Version 3; stattdessen pnl_prozent",
                   "type": [
                     "string",
                     "null"
@@ -16125,10 +16326,17 @@
                   ]
                 },
                 "display_value": {
+                  "deprecated": true,
+                  "description": "veraltet, entfällt mit API-Version 3; stattdessen wert_gesamt",
                   "type": [
                     "string",
                     "null"
                   ]
+                },
+                "total_value": {
+                  "deprecated": true,
+                  "description": "veraltet, entfällt mit API-Version 3; stattdessen wert_gesamt",
+                  "type": "string"
                 },
                 "wert_gesamt": {
                   "type": [
@@ -16224,6 +16432,8 @@
                         ]
                       },
                       "pnl_pct": {
+                        "deprecated": true,
+                        "description": "veraltet, entfällt mit API-Version 3; stattdessen pnl_prozent",
                         "type": [
                           "string",
                           "null"
@@ -16285,7 +16495,20 @@
             }
           },
           "total_value": {
-            "type": "string"
+            "type": "string",
+            "deprecated": true,
+            "description": "veraltet, entfällt mit API-Version 3; stattdessen wert_gesamt"
+          },
+          "wert_gesamt": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "preise_ausstehend": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
           },
           "kaufpreise_fremde_waehrung": {
             "type": "integer",
@@ -16301,9 +16524,13 @@
         },
         "required": [
           "success",
+          "total",
+          "page",
+          "page_size",
           "currency",
           "figs",
           "total_value",
+          "wert_gesamt",
           "kaufpreise_fremde_waehrung"
         ],
         "additionalProperties": {}
@@ -16376,10 +16603,7 @@
             ]
           },
           "amount": {
-            "type": [
-              "number",
-              "null"
-            ]
+            "type": "number"
           },
           "currency": {
             "type": [
@@ -17075,6 +17299,21 @@
           "success": {
             "type": "boolean"
           },
+          "total": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          },
+          "page": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          },
+          "page_size": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          },
           "vouchers": {
             "type": "array",
             "items": {
@@ -17084,6 +17323,9 @@
         },
         "required": [
           "success",
+          "total",
+          "page",
+          "page_size",
           "vouchers"
         ],
         "additionalProperties": {}
@@ -17895,6 +18137,21 @@
           "success": {
             "type": "boolean"
           },
+          "total": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          },
+          "page": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          },
+          "page_size": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          },
           "figs": {
             "type": "array",
             "items": {
@@ -17963,6 +18220,8 @@
                   ]
                 },
                 "qty_avg_price": {
+                  "deprecated": true,
+                  "description": "veraltet, entfällt mit API-Version 3; stattdessen avg_price",
                   "type": [
                     "number",
                     "null"
@@ -17975,6 +18234,8 @@
                   ]
                 },
                 "pnl_pct": {
+                  "deprecated": true,
+                  "description": "veraltet, entfällt mit API-Version 3; stattdessen pnl_prozent",
                   "type": [
                     "string",
                     "null"
@@ -17987,10 +18248,17 @@
                   ]
                 },
                 "display_value": {
+                  "deprecated": true,
+                  "description": "veraltet, entfällt mit API-Version 3; stattdessen wert_gesamt",
                   "type": [
                     "string",
                     "null"
                   ]
+                },
+                "total_value": {
+                  "deprecated": true,
+                  "description": "veraltet, entfällt mit API-Version 3; stattdessen wert_gesamt",
+                  "type": "string"
                 },
                 "wert_gesamt": {
                   "type": [
@@ -18086,6 +18354,8 @@
                         ]
                       },
                       "pnl_pct": {
+                        "deprecated": true,
+                        "description": "veraltet, entfällt mit API-Version 3; stattdessen pnl_prozent",
                         "type": [
                           "string",
                           "null"
@@ -18154,6 +18424,9 @@
         },
         "required": [
           "success",
+          "total",
+          "page",
+          "page_size",
           "figs"
         ],
         "additionalProperties": {}
@@ -18163,6 +18436,21 @@
         "properties": {
           "success": {
             "type": "boolean"
+          },
+          "total": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          },
+          "page": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          },
+          "page_size": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
           },
           "parts": {
             "type": "array",
@@ -18249,6 +18537,8 @@
                   ]
                 },
                 "qty_avg_price": {
+                  "deprecated": true,
+                  "description": "veraltet, entfällt mit API-Version 3; stattdessen avg_price",
                   "type": [
                     "number",
                     "null"
@@ -18261,6 +18551,8 @@
                   ]
                 },
                 "pnl_pct": {
+                  "deprecated": true,
+                  "description": "veraltet, entfällt mit API-Version 3; stattdessen pnl_prozent",
                   "type": [
                     "string",
                     "null"
@@ -18273,10 +18565,17 @@
                   ]
                 },
                 "display_value": {
+                  "deprecated": true,
+                  "description": "veraltet, entfällt mit API-Version 3; stattdessen wert_gesamt",
                   "type": [
                     "string",
                     "null"
                   ]
+                },
+                "total_value": {
+                  "deprecated": true,
+                  "description": "veraltet, entfällt mit API-Version 3; stattdessen wert_gesamt",
+                  "type": "string"
                 },
                 "wert_gesamt": {
                   "type": [
@@ -18372,6 +18671,8 @@
                         ]
                       },
                       "pnl_pct": {
+                        "deprecated": true,
+                        "description": "veraltet, entfällt mit API-Version 3; stattdessen pnl_prozent",
                         "type": [
                           "string",
                           "null"
@@ -18441,6 +18742,9 @@
         },
         "required": [
           "success",
+          "total",
+          "page",
+          "page_size",
           "parts"
         ],
         "additionalProperties": {}
@@ -18525,6 +18829,21 @@
           "success": {
             "type": "boolean"
           },
+          "total": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          },
+          "page": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          },
+          "page_size": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          },
           "merkposten": {
             "type": "array",
             "items": {
@@ -18540,6 +18859,9 @@
         },
         "required": [
           "success",
+          "total",
+          "page",
+          "page_size",
           "merkposten"
         ],
         "additionalProperties": {}
@@ -19277,6 +19599,21 @@
           "success": {
             "type": "boolean"
           },
+          "total": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          },
+          "page": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          },
+          "page_size": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          },
           "currency": {
             "type": "string"
           },
@@ -19365,6 +19702,8 @@
                   ]
                 },
                 "qty_avg_price": {
+                  "deprecated": true,
+                  "description": "veraltet, entfällt mit API-Version 3; stattdessen avg_price",
                   "type": [
                     "number",
                     "null"
@@ -19377,6 +19716,8 @@
                   ]
                 },
                 "pnl_pct": {
+                  "deprecated": true,
+                  "description": "veraltet, entfällt mit API-Version 3; stattdessen pnl_prozent",
                   "type": [
                     "string",
                     "null"
@@ -19389,10 +19730,17 @@
                   ]
                 },
                 "display_value": {
+                  "deprecated": true,
+                  "description": "veraltet, entfällt mit API-Version 3; stattdessen wert_gesamt",
                   "type": [
                     "string",
                     "null"
                   ]
+                },
+                "total_value": {
+                  "deprecated": true,
+                  "description": "veraltet, entfällt mit API-Version 3; stattdessen wert_gesamt",
+                  "type": "string"
                 },
                 "wert_gesamt": {
                   "type": [
@@ -19488,6 +19836,8 @@
                         ]
                       },
                       "pnl_pct": {
+                        "deprecated": true,
+                        "description": "veraltet, entfällt mit API-Version 3; stattdessen pnl_prozent",
                         "type": [
                           "string",
                           "null"
@@ -19550,7 +19900,20 @@
             }
           },
           "total_value": {
-            "type": "string"
+            "type": "string",
+            "deprecated": true,
+            "description": "veraltet, entfällt mit API-Version 3; stattdessen wert_gesamt"
+          },
+          "wert_gesamt": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "preise_ausstehend": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
           },
           "kaufpreise_fremde_waehrung": {
             "type": "integer",
@@ -19566,9 +19929,13 @@
         },
         "required": [
           "success",
+          "total",
+          "page",
+          "page_size",
           "currency",
           "parts",
           "total_value",
+          "wert_gesamt",
           "kaufpreise_fremde_waehrung"
         ],
         "additionalProperties": {}
@@ -20020,6 +20387,21 @@
           "success": {
             "type": "boolean"
           },
+          "total": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          },
+          "page": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          },
+          "page_size": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          },
           "currency": {
             "type": "string"
           },
@@ -20041,6 +20423,9 @@
         },
         "required": [
           "success",
+          "total",
+          "page",
+          "page_size",
           "currency",
           "totals",
           "sets"
@@ -20071,12 +20456,16 @@
             ]
           },
           "pnl_pct": {
+            "deprecated": true,
+            "description": "veraltet, entfällt mit API-Version 3; stattdessen pnl_prozent",
             "type": [
               "string",
               "null"
             ]
           },
           "baseline_pnl_pct": {
+            "deprecated": true,
+            "description": "veraltet, entfällt mit API-Version 3; stattdessen baseline_pnl_prozent",
             "type": [
               "string",
               "null"
@@ -20143,6 +20532,8 @@
             "type": "string"
           },
           "pnl_pct": {
+            "deprecated": true,
+            "description": "veraltet, entfällt mit API-Version 3; stattdessen pnl_prozent",
             "type": [
               "string",
               "null"
@@ -20723,6 +21114,8 @@
             "$ref": "#/components/schemas/PriceChartData"
           },
           "pnl_pct": {
+            "deprecated": true,
+            "description": "veraltet, entfällt mit API-Version 3; stattdessen pnl_prozent",
             "type": [
               "string",
               "null"
@@ -22312,8 +22705,36 @@
           "success": {
             "type": "boolean"
           },
+          "total": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          },
+          "page": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          },
+          "page_size": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          },
           "total_value": {
-            "type": "string"
+            "type": "string",
+            "deprecated": true,
+            "description": "veraltet, entfällt mit API-Version 3; stattdessen wert_gesamt"
+          },
+          "wert_gesamt": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "preise_ausstehend": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
           },
           "currency": {
             "type": "string"
@@ -22356,7 +22777,11 @@
         },
         "required": [
           "success",
+          "total",
+          "page",
+          "page_size",
           "total_value",
+          "wert_gesamt",
           "currency",
           "condition",
           "kaufpreise_fremde_waehrung",
@@ -22442,6 +22867,9 @@
               "null"
             ]
           },
+          "preis_ausstehend": {
+            "type": "boolean"
+          },
           "total_avg": {
             "type": [
               "string",
@@ -22524,6 +22952,8 @@
                   ]
                 },
                 "pnl_pct": {
+                  "deprecated": true,
+                  "description": "veraltet, entfällt mit API-Version 3; stattdessen pnl_prozent",
                   "type": [
                     "string",
                     "null"

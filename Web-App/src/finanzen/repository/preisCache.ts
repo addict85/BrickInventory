@@ -5,10 +5,11 @@ export const PRICE_CACHE_COLS = 'set_number, condition, min_price, avg_price, ma
 
 /** numeric kommt aus dem Treiber als Text. */
 export interface SetPreiszeile {
-  set_number: string; condition: string; min_price: string | null; avg_price: string | null;
-  max_price: string | null; qty_avg_price: string | null; fetched_at: Date | null;
+  set_number: string; condition: string; min_price: number | null; avg_price: number | null;
+  max_price: number | null; qty_avg_price: number | null; fetched_at: Date | null;
 }
-export interface Preiszeile { avg_price: string | null; qty_avg_price: string | null; condition: string }
+/** NUMERIC kommt als Zahl an (db/database.ts). */
+export interface Preiszeile { avg_price: number | null; qty_avg_price: number | null; condition: string; fetched_at: Date | null }
 
 /** `dbh` erlaubt das Lesen in einer offenen Transaktion. */
 export function setZustandsZaehler(uids: number[], setNumber: string, dbh: Pick<DbSchnittstelle, 'get'> = db) {
@@ -55,7 +56,7 @@ export function blFarben() {
 
 export function teilepreiseFrisch(nummern: string[], farben: number[], currency: string, ttlStunden: number) {
   return db.all<Preiszeile & { part_number: string; color_id: number }>(
-    `SELECT c.part_number, c.color_id, c.condition, c.avg_price, c.qty_avg_price
+    `SELECT c.part_number, c.color_id, c.condition, c.avg_price, c.qty_avg_price, c.fetched_at
        FROM part_price_cache c
        JOIN unnest($1::text[], $2::int[]) AS k(nr, farbe)
          ON c.part_number = k.nr AND c.color_id = k.farbe
@@ -66,7 +67,7 @@ export function teilepreiseFrisch(nummern: string[], farben: number[], currency:
 /** Nur echte, keine geschätzten. */
 export function figurenpreiseFrisch(figuren: string[], currency: string, ttlStunden: number) {
   return db.all<Preiszeile & { fig_number: string }>(
-    `SELECT fig_number, condition, avg_price, qty_avg_price FROM minifig_price_cache
+    `SELECT fig_number, condition, avg_price, qty_avg_price, fetched_at FROM minifig_price_cache
       WHERE fig_number = ANY($1) AND currency_code = $2 AND NOT geschaetzt
         AND fetched_at > NOW() - make_interval(hours => $3)`, [figuren, currency, ttlStunden]);
 }

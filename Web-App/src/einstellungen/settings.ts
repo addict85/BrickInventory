@@ -152,8 +152,8 @@ export function isMaskedValue(value: unknown) {
 }
 
 /** Nicht-Verwalter sehen die Schlüssel nicht, Verwalter maskiert. */
-export function sanitizeGlobal(global: any, isAdmin: boolean) {
-  const out: any = {};
+export function sanitizeGlobal(global: Record<string, unknown>, isAdmin: boolean) {
+  const out: Record<string, unknown> = {};
   for (const [k, v] of Object.entries(global)) {
     if (SECRET_KEYS.has(k)) {
       if (isAdmin) out[k] = maskSecret(v as string | null | undefined);
@@ -165,7 +165,7 @@ export function sanitizeGlobal(global: any, isAdmin: boolean) {
   return out;
 }
 
-export async function nutzerEinstellungen(userId: number): Promise<Record<string, any>> {
+export async function nutzerEinstellungen(userId: number) {
   return Object.fromEntries((await repo.nutzerWerte(userId)).map(r => [r.key, r.value]));
 }
 

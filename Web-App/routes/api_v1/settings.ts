@@ -5,14 +5,9 @@ import { FORMULAR_GRENZEN } from '../../src/infra/dateiEmpfang';
 import { logAndContinue, meldeUndLiefere } from '../../src/infra/fehler';
 import { fehlerAntwort } from '../../src/infra/httpAntwort';
 import { requireApiAdmin as requireAdmin, requireToken, bearerToken, kontoSchranke } from './middleware';
-import { SECRET_KEYS, isMaskedValue, readSettings, globaleWerteOhneGeheimnisse, designFuer, nutzerEinstellungen, deleteUserSetting, setGlobalSetting, globalerWertGueltig, deleteGlobalSetting, globalDefaultCondition, nutzerStandardZustand, getGlobalSetting, getSetting } from '../../src/einstellungen/settings';
+import { SECRET_KEYS, isMaskedValue, readSettings, designFuer, deleteUserSetting, setGlobalSetting, globalerWertGueltig, deleteGlobalSetting, globalDefaultCondition, nutzerStandardZustand, getGlobalSetting, getSetting } from '../../src/einstellungen/settings';
 import { setzeEigenesDesign, setUserSetting } from '../../src/konto/nutzerEinstellung';
-import { buildSetsCsv } from '../../src/sets/setService';
-import { buildPartsCsv, buildFigsCsv } from '../../src/bestand/bestandExport';
-import { buildMerklisteCsv } from '../../src/merkliste/merkliste';
-import { buildPreisalarmeCsv } from '../../src/finanzen/preisalarm';
-import { DAILY_JOBS } from '../../src/auftraege/zeitplan';
-import { quellePruefen, bricksetLimitGesetzt, zeitplanNeuPlanen, protokolliere } from '../../src/verwaltung/dienst';
+import { quellePruefen, bricksetLimitGesetzt, protokolliere } from '../../src/verwaltung/dienst';
 import { zugaengeDesKontos, zugaengeLoeschen, andereSitzungenBeenden, mussPasswortAendern, profil } from '../../src/konto/konten';
 import { escapeLike, hashToken, leereTokenCache } from '../../src/konto/auth';
 import { kontoGedrosselt } from '../../src/konto/zielDrossel';
@@ -21,12 +16,12 @@ import { verwalterHinweisNebenher } from '../../src/konto/kontoHinweis';
 import { householdStatus, createInvite, redeemInvite, pruefeEinladung, unlink, verwerfeGetrennt } from '../../src/haushalt/haushalt';
 import { sendMail, testSmtp, sendHaushaltVerknuepftMail, mailBereit } from '../../src/mail/mailer';
 import { sendeFehler, fehlerText, antwortSprache } from '../../src/infra/fehlerTexte';
-import { tlsStand } from '../../src/infra/tlsWurzel';
-import { konfig } from '../../src/infra/konfig';
+import { tlsAuskunft } from '../../src/infra/tlsWurzel';
 import { invalidateTheme } from '../../src/konto/indexHtml';
-import { jsonOderNull, emailGueltig } from '../../src/infra/validate';
+import { emailGueltig } from '../../src/infra/validate';
 import { vertragsRouter } from '../../src/infra/vertrag/pruefen';
-import { GLOBALE_EINSTELLUNGEN, KONTO_EINSTELLUNGEN, KonfigExport } from '../../src/infra/vertrag/einstellungen';
+import { konfigExport, datenZip, konfigImport, istHeikel } from '../../src/verwaltung/datenexport';
+import { GLOBALE_EINSTELLUNGEN, KONTO_EINSTELLUNGEN } from '../../src/infra/vertrag/einstellungen';
 import type { Request } from 'express';
 import type { Anfrage, Antwort, OffeneAnfrage } from '../../src/infra/vertrag';
 const router = vertragsRouter();
@@ -71,7 +66,7 @@ router.get('/settings/tokens', requireLoginOrToken, async (req: OffeneAnfrage<'G
  * Ausführlich: docs/begruendungen/routes/api_v1/settings.ts.md#delete-tokens-tokenid */
 router.delete('/settings/tokens/:tokenId', requireLoginOrToken, async (req: OffeneAnfrage<'DELETE /api/v1/settings/tokens/:tokenId'>, res: Antwort<'DELETE /api/v1/settings/tokens/:tokenId'>) => {
   // escapeLike: ohne das löscht ein "%" als tokenId ALLE Tokens des Nutzers.
-  const prefix = escapeLike(String(req.params.tokenId || '')).slice(0, 64);
+  const prefix = escapeLike(req.pfad.tokenId).slice(0, 64);
   if (!prefix) return sendeFehler(req, res, 400, 'token_id_fehlt');
   const geloescht = await zugaengeLoeschen(angemeldeteNutzerId(req), prefix);
   if (geloescht) leereTokenCache();
@@ -158,7 +153,7 @@ router.get('/settings/household', requireToken, async (req: Anfrage<'GET /api/v1
 
 router.post('/settings/household/invite', requireToken, async (req: Anfrage<'POST /api/v1/settings/household/invite'>, res: Antwort<'POST /api/v1/settings/household/invite'>) => {
   const r = await createInvite(req.apiUser.user_id);
-  if ((r as any).fehler) return sendeFehler(req, res, 409, (r as any).fehler, (r as any).vars);
+  if ('fehler' in r) return sendeFehler(req, res, 409, r.fehler, 'vars' in r ? r.vars : undefined);
   res.json({ success: true, ...r });
 });
 
@@ -178,7 +173,7 @@ router.post('/settings/household/redeem', requireToken, async (req: Anfrage<'POS
   // Die Verknüpfung ist ein Zugang zur Sammlung wie ein Passkey: bei aktivem zweitem Faktor nur mit Code.
   if (!await bestaetigeMitFaktor(req, res, uid, req.eingabe.password, 'faktor_code')) return;
   const r = await redeemInvite(uid, String(req.eingabe.code || ''));
-  if ((r as any).fehler) return sendeFehler(req, res, 409, (r as any).fehler, (r as any).vars);
+  if ('fehler' in r) return sendeFehler(req, res, 409, r.fehler, 'vars' in r ? r.vars : undefined);
   const ich = await profil(uid);
   if (ich?.email) {
     const sprache = await getSetting(uid, 'language', 'de').catch(meldeUndLiefere('einstellungen:sprache', 'de'));
@@ -206,13 +201,9 @@ router.use('/settings', requireLogin);
 
 /** Zum Abgleich von Hand; derselbe Wert steht als `fp` im QR-Code der App. */
 router.get('/settings/tls', async (_req, res: Antwort<'GET /api/v1/settings/tls'>) => {
-  const stand = await tlsStand();
-  res.json({ success: true, https: konfig().hinterTls,
-    ...(stand ? { fp: stand.fp, fp_hex: stand.fp_hex, subject: stand.subject,
-                  gueltig_bis: stand.gueltig_bis, download: '/ca.crt' } : { fp: null }) });
+  res.json({ success: true, ...await tlsAuskunft() });
 });
 
-const istHeikel = (k: string) => k.startsWith('smtp_') || k === 'registration_enabled' || /api_key$|^bricklink_(consumer|token)/.test(k);
 
 router.post('/settings', async (req: OffeneAnfrage<'POST /api/v1/settings'>, res: Antwort<'POST /api/v1/settings'>) => {
   const uid = angemeldeteNutzerId(req);
@@ -275,94 +266,21 @@ router.get('/settings/raw', async (req: OffeneAnfrage<'GET /api/v1/settings/raw'
 });
 
 router.get('/settings/export', async (req: OffeneAnfrage<'GET /api/v1/settings/export'>, res: Antwort<'GET /api/v1/settings/export'>) => {
-  // Nur Verwalter: Der Import nimmt globale Werte nur von ihnen an, und
-  // SMTP-Daten gehen ein Unterkonto nichts an.
-  const global = istVerwalter(req) ? await globaleWerteOhneGeheimnisse() : {};
-  const userSettings: any = await nutzerEinstellungen(nutzerId(req)!);
   res.setHeader('Content-Type', 'application/json');
   res.setHeader('Content-Disposition', `attachment; filename="brickinventory-config-${new Date().toISOString().substring(0,10)}.json"`);
-  res.json({ exported_at: new Date().toISOString(), exported_by: nutzerName(req), version: '3.0', global, user_settings: userSettings });
+  res.json(await konfigExport(nutzerId(req)!, istVerwalter(req), nutzerName(req) ?? null));
 });
 
 router.get('/settings/export/data', async (req: Request, res) => {
-  // archiver 8 ist ein ES-Modul; aus CommonJS geht nur require(), kein Import.
-  const { ZipArchive } = require('archiver');
-  const uid = angemeldeteNutzerId(req);
-
-  // Alles im selben Archiv: Die Konfigurationsexporte können Bestandsdaten nicht tragen.
-  // Ausführlich: docs/begruendungen/routes/api_v1/settings.ts.md#get-export-data
-  const [setsCsv, partsCsv, figsCsv, merkCsv, alarmCsv] = await Promise.all([
-    buildSetsCsv(uid), buildPartsCsv(uid), buildFigsCsv(uid), buildMerklisteCsv(uid),
-    buildPreisalarmeCsv(uid),
-  ]);
-
-  const dateStr = new Date().toISOString().substring(0, 10);
   res.setHeader('Content-Type', 'application/zip');
-  res.setHeader('Content-Disposition', `attachment; filename="brickinventory-export-${dateStr}.zip"`);
-
-  const archive = new ZipArchive({ zlib: { level: 9 } });
-  archive.on('error', (err: any) => { console.error('[export-zip]', err.message); res.status(500).end(); });
-  archive.pipe(res);
-  archive.append('\uFEFF' + setsCsv,  { name: 'sets.csv' });
-  archive.append('\uFEFF' + partsCsv, { name: 'teile.csv' });
-  archive.append('\uFEFF' + figsCsv,  { name: 'minifiguren.csv' });
-  archive.append('\uFEFF' + merkCsv,  { name: 'merkliste.csv' });
-  archive.append('\uFEFF' + alarmCsv, { name: 'preisalarme.csv' });
-  await archive.finalize();
+  res.setHeader('Content-Disposition', `attachment; filename="brickinventory-export-${new Date().toISOString().substring(0, 10)}.zip"`);
+  await datenZip(angemeldeteNutzerId(req), res, (e) => { console.error('[export-zip]', e.message); res.status(500).end(); });
 });
 
 const importUpload = multer({ storage: multer.memoryStorage(), limits: { ...FORMULAR_GRENZEN, fileSize: 1024 * 1024 } });
 router.post('/settings/import', kontoSchranke('upload'), importUpload.single('file'), async (req: OffeneAnfrage<'POST /api/v1/settings/import'>, res: Antwort<'POST /api/v1/settings/import'>) => {
   if (!req.file) return sendeFehler(req, res, 400, 'keine_datei');
-  const gelesen = jsonOderNull(req.file.buffer.toString('utf-8'));
-  if (!gelesen) return sendeFehler(req, res, 400, 'json_ungueltig');
-  const geprueft = KonfigExport.safeParse(gelesen.wert);
-  if (!geprueft.success) return sendeFehler(req, res, 400, 'json_ungueltig');
-  const config = geprueft.data;
-
-  const globalKeys = ['bricklink_consumer_key','bricklink_consumer_secret','bricklink_token',
-    'bricklink_token_secret','brickset_api_key','rebrickable_api_key','price_job_interval_minutes',
-    'price_cache_ttl','api_limit_rebrickable','api_limit_bricklink','api_limit_brickset',
-    // Ohne die heiklen Schlüssel: Eine Importdatei kommt von irgendwoher und trägt keine Bestätigung.
-    'registration_enabled', 'default_price_condition', 'gutschein_land',
-    ...DAILY_JOBS.map(j => `job_time_${j.name}`)].filter(k => !istHeikel(k));
-  const userKeys = ['currency', 'user_default_condition'];
-  const uid = angemeldeteNutzerId(req);
-  let imported = 0;
-  const global = config.global;
-  const smtpUebergangen = global ? Object.keys(global).filter(istHeikel) : [];
-  if (global && istVerwalter(req)) {
-    if (globalKeys.some(k => global[k] !== undefined && !globalerWertGueltig(k, global[k])))
-      return sendeFehler(req, res, 400, 'wert_ungueltig');
-    const geaendert: string[] = [];
-    for (const key of globalKeys) {
-      if (global[key] !== undefined) {
-        // Maskierte Werte aus älteren Exporten dürfen echte Schlüssel nicht überschreiben.
-        if (SECRET_KEYS.has(key) && isMaskedValue(global[key])) continue;
-        if (String(global[key]) !== String(await getGlobalSetting(key) ?? '')) geaendert.push(key);
-        await setGlobalSetting(key, global[key]);
-        imported++;
-      }
-    }
-    if (geaendert.length) await protokolliere(uid, uid, 'einstellungen_geaendert', `Import: ${geaendert.join(', ')}`);
-  }
-  if (config.user_settings) {
-    for (const key of userKeys) {
-      if (config.user_settings[key] !== undefined) {
-        // Zentrale Stelle: Eine importierte Währungsänderung stösst den Preis-Job an.
-        await setUserSetting(uid, key, config.user_settings[key]);
-        imported++;
-      }
-    }
-  }
-  // Nur Verwalter: Sonst könnte jedes Konto per Ein-Zeilen-Datei den Preis-Cache
-  // der ganzen Installation leeren.
-  // Ausführlich: docs/begruendungen/routes/api_v1/settings.ts.md#abschnitt-2
-
-  if (istVerwalter(req)) await zeitplanNeuPlanen();
-  const note = (istVerwalter(req) ? 'Globale + Benutzer-Einstellungen importiert' : 'Nur Benutzer-Einstellungen importiert')
-    + (istVerwalter(req) && smtpUebergangen.length ? '; Mailserver, Registrierung und API-Schlüssel nicht übernommen — bitte im Formular setzen' : '');
-  res.json({ success: true, imported, note, smtp_uebergangen: istVerwalter(req) ? smtpUebergangen : [] });
+  res.json(await konfigImport(angemeldeteNutzerId(req), istVerwalter(req), req.file.buffer));
 });
 
 router.post('/settings/smtp-test', async (req: OffeneAnfrage<'POST /api/v1/settings/smtp-test'>, res: Antwort<'POST /api/v1/settings/smtp-test'>) => {

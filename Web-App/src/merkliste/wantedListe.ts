@@ -454,9 +454,93 @@ export interface Anleger {
         zustand: string | null, kaufpreis: number | null) => Promise<unknown>;
 }
 
-export async function importiereWantedListe(
-  uid: number, xml: string,
-  opt: {
+/** Nach dem Auflösen die Korrekturen, weil sie es überstimmen; vor dem Zählen,
+ * weil der Bericht sonst Zahlen von vor der Korrektur nennt. */
+async function loeseVollstaendigAuf(posten: WantedPosten[], uid: number, opt: WantedOptionen) {
+  let auf = await loeseLokalAuf(posten, uid);
+  let rebrickable: WantedBericht['rebrickable'];
+  if (opt.ueberRebrickable) {
+    const r = await loeseUeberRebrickableAuf(auf, 250, opt.fortschritt);
+    auf = r.auf;
+    rebrickable = { gefragt: r.gefragt, gefunden: r.gefunden,
+                    filterWirkungslos: r.filterWirkungslos };
+  }
+  let korrekturen: WantedBericht['korrekturen'];
+  if (opt.korrekturen?.length) {
+    const k = wendeKorrekturenAn(auf, opt.korrekturen);
+    auf = await farbenNachtragen(k.auf);
+    korrekturen = { angewandt: k.angewandt, abgewiesen: k.abgewiesen };
+  }
+  return { auf, rebrickable, korrekturen };
+}
+
+/** Die Berichtszeile eines Postens, vor dem Schreiben. */
+function postenZeile(a: Aufloesung): PostenErgebnis {
+  // Eine nicht abbildbare Farbe wird nicht erfunden: color_id 0 ist bei
+  // Rebrickable Schwarz, nicht „keine Farbe".
+  // Ausführlich: docs/begruendungen/src/merkliste/wantedListe.ts.md#importierewantedliste-grund
+  const grund = a.rbId === null
+    ? 'Zu dieser BrickLink-Nummer ist keine Rebrickable-Nummer bekannt'
+    : a.farbeOffen
+      ? `BrickLink-Farbe ${a.posten.blFarbe} ist im Katalog keiner Rebrickable-Farbe zugeordnet`
+      : undefined;
+  const grundCode: PostenErgebnis['grundCode'] = a.rbId === null
+    ? 'nummer_unbekannt'
+    : a.farbeOffen ? 'farbe_unbekannt' : undefined;
+  return {
+    blId: a.posten.blId, art: a.posten.art,
+    blFarbe: a.posten.blFarbe, menge: a.posten.menge, zustand: a.posten.zustand ?? null,
+    maxPreis: a.posten.maxPreis ?? null,
+    rbId: a.rbId, rbFarbe: a.rbFarbe,
+    sicherheit: a.sicherheit, ausgang: a.rbId === null ? 'offen' : 'angelegt',
+    ...(grund ? { grund } : {}),
+    ...(grundCode ? { grundCode } : {}),
+    farbName: a.rbFarbName, farbHex: a.rbFarbHex,
+  };
+}
+
+/** Legt einen aufgelösten Posten an. @returns ob er neu ist oder aufgestockt wurde */
+async function schreibePosten(uid: number, a: Aufloesung, rbId: string, opt: WantedOptionen): Promise<'angelegt' | 'aufgestockt'> {
+  if (!opt.anleger) throw new Error('Kein Anleger übergeben — siehe Anleger');
+  let rueckmeldung: unknown;
+  if (a.posten.art === 'part') {
+    // Der Farbname reist mit: Die Teileliste liest ihn von der Zeile, ohne ihn
+    // fällt sie nicht auf den Katalog zurück.
+    rueckmeldung = await opt.anleger.teil(uid, {
+      part_number: rbId,
+      color_id: a.rbFarbe ?? 0,
+      ...(a.rbFarbName ? { color_name: a.rbFarbName } : {}),
+      ...(a.rbFarbHex ? { color_hex: a.rbFarbHex } : {}),
+      quantity: a.posten.menge,
+      condition: a.posten.zustand ?? undefined,
+      // `undefined` statt `null`: Die Anleger unterscheiden „nichts angegeben"
+      // (Marktpreis) von einer ausdrücklichen Null.
+      ...(a.posten.maxPreis !== null ? { unit_price: a.posten.maxPreis } : {}),
+    });
+  } else if (a.posten.art === 'fig') {
+    rueckmeldung = await opt.anleger.figur(uid, {
+      fig_number: rbId,
+      quantity: a.posten.menge,
+      condition: a.posten.zustand ?? undefined,
+      ...(a.posten.maxPreis !== null ? { unit_price: a.posten.maxPreis } : {}),
+    });
+  } else {
+    rueckmeldung = await opt.anleger.set(uid, rbId, a.posten.menge,
+                                         a.posten.zustand, a.posten.maxPreis);
+  }
+  // Auch 'rebrickable' wird gemerkt: blTeilZuRb prüft jeden Treffer gegen die
+  // gesuchte BL-Nummer, es ist eine Abbildung, keine Vermutung.
+  // Ausführlich: docs/begruendungen/src/merkliste/wantedListe.ts.md#importierewantedliste-4
+  if ((a.sicherheit === 'korrigiert' || a.sicherheit === 'rebrickable') && opt.merkeNummer) {
+    await opt.merkeNummer(a.posten.art, rbId, a.posten.blId, a.sicherheit)
+      .catch(() => { /* siehe oben */ });
+  }
+  // Der Anleger weiss, ob angelegt oder aufgestockt; ohne die Frage zählte ein
+  // zweiter Import alles als angelegt.
+  return (rueckmeldung as { action?: string } | null | undefined)?.action !== 'updated' ? 'angelegt' : 'aufgestockt';
+}
+
+export interface WantedOptionen {
     vorschau?: boolean; ueberRebrickable?: boolean; anleger?: Anleger;
     korrekturen?: Korrektur[];
     /** Hereingegeben, damit diese Funktion bis auf den Anleger schreibfrei bleibt.
@@ -469,27 +553,13 @@ export async function importiereWantedListe(
      * Abbrechen-Knopf, der lügt.
      * Ausführlich: docs/begruendungen/src/merkliste/wantedListe.ts.md#importierewantedliste-3 */
     abbruch?: () => Promise<boolean>;
-  } = {},
+}
+
+export async function importiereWantedListe(
+  uid: number, xml: string, opt: WantedOptionen = {},
 ): Promise<WantedBericht> {
   const gelesen = leseWantedListe(xml);
-  let auf = await loeseLokalAuf(gelesen.posten, uid);
-
-  let rebrickable: WantedBericht['rebrickable'];
-  if (opt.ueberRebrickable) {
-    const r = await loeseUeberRebrickableAuf(auf, 250, opt.fortschritt);
-    auf = r.auf;
-    rebrickable = { gefragt: r.gefragt, gefunden: r.gefunden,
-                    filterWirkungslos: r.filterWirkungslos };
-  }
-
-  // Nach dem Auflösen, weil Korrekturen es überstimmen; vor dem Zählen, weil der
-  // Bericht sonst Zahlen von vor der Korrektur nennt.
-  let korrekturen: WantedBericht['korrekturen'];
-  if (opt.korrekturen?.length) {
-    const k = wendeKorrekturenAn(auf, opt.korrekturen);
-    auf = await farbenNachtragen(k.auf);
-    korrekturen = { angewandt: k.angewandt, abgewiesen: k.abgewiesen };
-  }
+  const { auf, rebrickable, korrekturen } = await loeseVollstaendigAuf(gelesen.posten, uid, opt);
 
   const bericht: WantedBericht = {
     gelesen: gelesen.posten.length,
@@ -516,31 +586,11 @@ export async function importiereWantedListe(
     if (opt.abbruch && !opt.vorschau && lfd >= 0 && (lfd + 1) % 10 === 0) {
       if (await opt.abbruch()) { bericht.abgebrochen = true; break; }
     }
-    // Eine nicht abbildbare Farbe wird nicht erfunden: color_id 0 ist bei
-    // Rebrickable Schwarz, nicht „keine Farbe".
-    // Ausführlich: docs/begruendungen/src/merkliste/wantedListe.ts.md#importierewantedliste-grund
-    const grund = a.rbId === null
-      ? 'Zu dieser BrickLink-Nummer ist keine Rebrickable-Nummer bekannt'
-      : a.farbeOffen
-        ? `BrickLink-Farbe ${a.posten.blFarbe} ist im Katalog keiner Rebrickable-Farbe zugeordnet`
-        : undefined;
-    const grundCode: PostenErgebnis['grundCode'] = a.rbId === null
-      ? 'nummer_unbekannt'
-      : a.farbeOffen ? 'farbe_unbekannt' : undefined;
     // Eigene Bindung: TypeScript verengt `a.rbId` über eine Hilfsvariable nicht.
     const rbId = a.rbId;
     const offen = rbId === null || a.farbeOffen;
     lfd++;
-    const zeile: PostenErgebnis = {
-      blId: a.posten.blId, art: a.posten.art,
-      blFarbe: a.posten.blFarbe, menge: a.posten.menge, zustand: a.posten.zustand ?? null,
-      maxPreis: a.posten.maxPreis ?? null,
-      rbId: a.rbId, rbFarbe: a.rbFarbe,
-      sicherheit: a.sicherheit, ausgang: a.rbId === null ? 'offen' : 'angelegt',
-      ...(grund ? { grund } : {}),
-      ...(grundCode ? { grundCode } : {}),
-      farbName: a.rbFarbName, farbHex: a.rbFarbHex,
-    };
+    const zeile = postenZeile(a);
     if (rbId === null || a.farbeOffen || opt.vorschau) {
       // In der Vorschau heisst „angelegt" „würde angelegt".
       if (offen) zeile.ausgang = 'offen';
@@ -551,46 +601,9 @@ export async function importiereWantedListe(
     }
 
     try {
-      if (!opt.anleger) throw new Error('Kein Anleger übergeben — siehe Anleger');
-      let rueckmeldung: unknown;
-      if (a.posten.art === 'part') {
-        // Der Farbname reist mit: Die Teileliste liest ihn von der Zeile, ohne ihn
-        // fällt sie nicht auf den Katalog zurück.
-        rueckmeldung = await opt.anleger.teil(uid, {
-          part_number: rbId,
-          color_id: a.rbFarbe ?? 0,
-          ...(a.rbFarbName ? { color_name: a.rbFarbName } : {}),
-          ...(a.rbFarbHex ? { color_hex: a.rbFarbHex } : {}),
-          quantity: a.posten.menge,
-          condition: a.posten.zustand ?? undefined,
-          // `undefined` statt `null`: Die Anleger unterscheiden „nichts angegeben"
-          // (Marktpreis) von einer ausdrücklichen Null.
-          ...(a.posten.maxPreis !== null ? { unit_price: a.posten.maxPreis } : {}),
-        });
-      } else if (a.posten.art === 'fig') {
-        rueckmeldung = await opt.anleger.figur(uid, {
-          fig_number: rbId,
-          quantity: a.posten.menge,
-          condition: a.posten.zustand ?? undefined,
-          ...(a.posten.maxPreis !== null ? { unit_price: a.posten.maxPreis } : {}),
-        });
-      } else {
-        rueckmeldung = await opt.anleger.set(uid, rbId, a.posten.menge,
-                                             a.posten.zustand, a.posten.maxPreis);
-      }
-      // Der Anleger weiss, ob angelegt oder aufgestockt; ohne die Frage zählte ein
-      // zweiter Import alles als angelegt.
-      const wieAngelegt = (rueckmeldung as { action?: string } | null | undefined)?.action !== 'updated';
-      if (wieAngelegt) bericht.angelegt++; else bericht.aufgestockt++;
-      zeile.ausgang = wieAngelegt ? 'angelegt' : 'aufgestockt';
-
-      // Auch 'rebrickable' wird gemerkt: blTeilZuRb prüft jeden Treffer gegen die
-      // gesuchte BL-Nummer, es ist eine Abbildung, keine Vermutung.
-      // Ausführlich: docs/begruendungen/src/merkliste/wantedListe.ts.md#importierewantedliste-4
-      if ((a.sicherheit === 'korrigiert' || a.sicherheit === 'rebrickable') && opt.merkeNummer) {
-        await opt.merkeNummer(a.posten.art, rbId, a.posten.blId, a.sicherheit)
-          .catch(() => { /* siehe oben */ });
-      }
+      const wie = await schreibePosten(uid, a, rbId, opt);
+      if (wie === 'angelegt') bericht.angelegt++; else bericht.aufgestockt++;
+      zeile.ausgang = wie;
     } catch (e: unknown) {
       bericht.fehler++;
       zeile.ausgang = 'fehler';

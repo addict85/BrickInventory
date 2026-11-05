@@ -22,7 +22,7 @@ export type AcquisitionsResponse = {
 };
 export type AcquisitionTotals = {
   quantity: number;
-  amount?: number | null;
+  amount?: number;
   priced_rows: number;
   [feld: string]: unknown;
 };
@@ -57,6 +57,7 @@ export type AnleitungenGeladen = {
   success: true;
   count: number;
   instructions: Instruction[];
+  auftrag_id?: string | null;
   [feld: string]: unknown;
 };
 export type AnleitungHochgeladen = {
@@ -298,6 +299,9 @@ export type BricksetQueueEntry = {
 };
 export type BricksetQueueResponse = {
   success: boolean;
+  total: number;
+  page: number;
+  page_size: number;
   count: number;
   entries: BricksetQueueEntry[];
   [feld: string]: unknown;
@@ -371,6 +375,7 @@ export type CatalogSetsResponse = {
   success: boolean;
   total: number;
   page: number;
+  page_size: number;
   pages: number;
   sets: CatalogSetItem[];
   error?: string | null;
@@ -407,7 +412,8 @@ export type ChartYAxis = {
 export type ConditionValuation = {
   market_price?: number | null;
   purchase_price?: number | null;
-  pnl_pct?: number | null;
+  pnl_pct?: string | null;
+  pnl_prozent?: number | null;
   [feld: string]: unknown;
 };
 export type CsvImportStatus = {
@@ -527,6 +533,9 @@ export type Fehler = {
 };
 export type FigsValuationResponse = {
   success: boolean;
+  total: number;
+  page: number;
+  page_size: number;
   currency: string;
   figs: Array<{
     id?: number | null;
@@ -544,6 +553,7 @@ export type FigsValuationResponse = {
     pnl_pct?: string | null;
     pnl_prozent?: number | null;
     display_value?: string | null;
+    total_value?: string;
     wert_gesamt?: number | null;
     condition?: string | null;
     conditions: string[];
@@ -573,6 +583,8 @@ export type FigsValuationResponse = {
     [feld: string]: unknown;
   }>;
   total_value: string;
+  wert_gesamt: number | null;
+  preise_ausstehend?: number;
   kaufpreise_fremde_waehrung: number;
   error?: string | null;
   [feld: string]: unknown;
@@ -592,7 +604,7 @@ export type ForgotPasswordResponse = {
 export type GelesenerGutschein = {
   number?: string | null;
   pin?: string | null;
-  amount?: number | null;
+  amount?: number;
   currency?: string | null;
   [feld: string]: unknown;
 };
@@ -734,6 +746,9 @@ export type GutscheinKlartext = {
 };
 export type GutscheinListe = {
   success: boolean;
+  total: number;
+  page: number;
+  page_size: number;
   vouchers: Gutschein[];
   [feld: string]: unknown;
 };
@@ -918,6 +933,9 @@ export type LoginResponse = {
 };
 export type ManualFigsResponse = {
   success: boolean;
+  total: number;
+  page: number;
+  page_size: number;
   figs: Array<{
     id?: number | null;
     fig_number: string;
@@ -934,6 +952,7 @@ export type ManualFigsResponse = {
     pnl_pct?: string | null;
     pnl_prozent?: number | null;
     display_value?: string | null;
+    total_value?: string;
     wert_gesamt?: number | null;
     condition?: string | null;
     conditions: string[];
@@ -967,6 +986,9 @@ export type ManualFigsResponse = {
 };
 export type ManualPartsResponse = {
   success: boolean;
+  total: number;
+  page: number;
+  page_size: number;
   parts: Array<{
     id?: number | null;
     part_number: string;
@@ -986,6 +1008,7 @@ export type ManualPartsResponse = {
     pnl_pct?: string | null;
     pnl_prozent?: number | null;
     display_value?: string | null;
+    total_value?: string;
     wert_gesamt?: number | null;
     condition?: string | null;
     conditions: string[];
@@ -1035,6 +1058,9 @@ export type MeResponse = {
 };
 export type MerklisteResponse = {
   success: boolean;
+  total: number;
+  page: number;
+  page_size: number;
   merkposten: Merkposten[];
   error?: string | null;
   [feld: string]: unknown;
@@ -1198,6 +1224,9 @@ export type PartsStatsResponse = {
 };
 export type PartsValuationResponse = {
   success: boolean;
+  total: number;
+  page: number;
+  page_size: number;
   currency: string;
   parts: Array<{
     id?: number | null;
@@ -1218,6 +1247,7 @@ export type PartsValuationResponse = {
     pnl_pct?: string | null;
     pnl_prozent?: number | null;
     display_value?: string | null;
+    total_value?: string;
     wert_gesamt?: number | null;
     condition?: string | null;
     conditions: string[];
@@ -1247,6 +1277,8 @@ export type PartsValuationResponse = {
     [feld: string]: unknown;
   }>;
   total_value: string;
+  wert_gesamt: number | null;
+  preise_ausstehend?: number;
   kaufpreise_fremde_waehrung: number;
   error?: string | null;
   [feld: string]: unknown;
@@ -1342,6 +1374,9 @@ export type PendingAlertsResponse = {
 };
 export type PnlResponse = {
   success: boolean;
+  total: number;
+  page: number;
+  page_size: number;
   currency: string;
   totals: PnlTotals;
   sets: PnlSetZeile[];
@@ -1842,7 +1877,12 @@ export type UserSettings = {
 };
 export type ValuationResponse = {
   success: boolean;
+  total: number;
+  page: number;
+  page_size: number;
   total_value: string;
+  wert_gesamt: number | null;
+  preise_ausstehend?: number;
   currency: string;
   condition: string;
   ttl_stunden?: number | null;
@@ -1865,6 +1905,7 @@ export type ValuationSet = {
   max_price?: number | null;
   qty_avg_price?: number | null;
   total_qty_avg?: string | null;
+  preis_ausstehend?: boolean;
   total_avg?: string | null;
   wert_gesamt?: number | null;
   pnl_prozent?: number | null;

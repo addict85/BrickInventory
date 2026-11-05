@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { eingabe } from '../validate';
-import { type Route, zeit, Erfolg, ganz, bestaetigt, OHNE_RUMPF, KENNUNG, TEXT, ZAHL, ZUSTAND, abfrage, Q } from './grund';
+import { type Route, zeit, Erfolg, ganz, bestaetigt, OHNE_RUMPF, KENNUNG, TEXT, ZUSTAND, abfrage, Q } from './grund';
 /** Ein Konto oder mehrere, durch Komma getrennt (Lagerorte über den Haushalt). */
 const LAGER_KONTEN = z.string().regex(/^[0-9,]{0,200}$/);
 import { GenericResponse } from './gemeinsam';
@@ -19,7 +19,7 @@ export const Acquisition = z.looseObject({
 
 export const AcquisitionTotals = z.looseObject({
   quantity: z.number().int(),
-  amount: z.number().nullable().optional(),
+  amount: z.number().optional(),
   priced_rows: z.number().int(),
 });
 
@@ -94,20 +94,19 @@ export const BestandGeleert = z.looseObject({
   success: z.literal(true), sets: ganz, teile: ganz, figuren: ganz, papierkorb: z.array(ganz),
 });
 
-/** Nur die Menge prüft validate.ts; Preis, Datum und Zustand prüft die Erfassung selbst. */
 /** Der Preis heisst bei Sets purchase_price, sonst unit_price; die App schickt beide. */
 const Erfassungsaenderung = z.strictObject({ quantity: eingabe.mengeOderNichts(1, 100_000),
-  purchase_price: ZAHL.nullable().optional(), unit_price: ZAHL.nullable().optional(), condition: ZUSTAND.nullable().optional(),
+  purchase_price: eingabe.geld('Kaufpreis'), unit_price: eingabe.geld('Stückpreis'), condition: ZUSTAND.nullable().optional(),
   date: TEXT(40).nullable().optional(), owner_user_id: KENNUNG.nullable().optional(),
   from_user_id: KENNUNG.nullable().optional().meta({ deprecated: true, description: 'wird nicht ausgewertet: Der Besitzer kommt aus der Zeile' }) });
 
 export const routen = {
-  'GET /api/v1/sets/:setNumber/acquisitions': { antwort: AcquisitionsResponse, abfrage: abfrage({ accounts: Q.konten }) },
-  'GET /api/v1/parts/:partNumber/:colorId/acquisitions': { antwort: AcquisitionsResponse, abfrage: abfrage({ accounts: Q.konten }) },
-  'GET /api/v1/minifigs/:figNumber/acquisitions': { antwort: AcquisitionsResponse, abfrage: abfrage({ accounts: Q.konten }) },
-  'GET /api/v1/storage/locations': { antwort: LagerortVorratResponse, abfrage: abfrage({ owner: LAGER_KONTEN,
+  'GET /api/v1/sets/:setNumber/acquisitions': { klein: true, antwort: AcquisitionsResponse, abfrage: abfrage({ accounts: Q.konten }) },
+  'GET /api/v1/parts/:partNumber/:colorId/acquisitions': { klein: true, antwort: AcquisitionsResponse, abfrage: abfrage({ accounts: Q.konten }) },
+  'GET /api/v1/minifigs/:figNumber/acquisitions': { klein: true, antwort: AcquisitionsResponse, abfrage: abfrage({ accounts: Q.konten }) },
+  'GET /api/v1/storage/locations': { klein: true, antwort: LagerortVorratResponse, abfrage: abfrage({ owner: LAGER_KONTEN,
     accounts: Q.konten.meta({ deprecated: true, description: 'wird nicht ausgewertet: Die Liste folgt dem Recht' }) }) },
-  'GET /api/v1/storage': { antwort: LagerorteResponse, abfrage: abfrage({ accounts: Q.konten }) },
+  'GET /api/v1/storage': { klein: true, antwort: LagerorteResponse, abfrage: abfrage({ accounts: Q.konten }) },
   'PUT /api/v1/minifigs/:figNumber/storage': { eingabe: z.strictObject({ storage: TEXT().nullable().optional() }), antwort: LagerortResponse },
   'PUT /api/v1/sets/:setNumber/acquisitions/:acqId': { antwort: GenericResponse, eingabe: Erfassungsaenderung },
   'DELETE /api/v1/sets/:setNumber/acquisitions/:acqId': { eingabe: OHNE_RUMPF, antwort: GenericResponse },
@@ -123,7 +122,7 @@ export const routen = {
     abfrage: abfrage({ owner: LAGER_KONTEN }) },
   'DELETE /api/v1/storage/locations/:id': { eingabe: OHNE_RUMPF, antwort: LagerortResponse, abfrage: abfrage({ owner: LAGER_KONTEN }) },
   'PUT /api/v1/storage/default': { eingabe: z.strictObject({ id: KENNUNG.nullable().optional() }), antwort: LagerortVorgabeResponse },
-  'GET /api/v1/papierkorb': { antwort: Papierkorb },
+  'GET /api/v1/papierkorb': { klein: true, antwort: Papierkorb },
   'POST /api/v1/papierkorb/:id/wiederherstellen': { eingabe: OHNE_RUMPF, antwort: Wiederhergestellt },
   'DELETE /api/v1/papierkorb/:id': { antwort: Erfolg, ...bestaetigt() },
   'DELETE /api/v1/papierkorb': { antwort: PapierkorbGeleert, ...bestaetigt() },

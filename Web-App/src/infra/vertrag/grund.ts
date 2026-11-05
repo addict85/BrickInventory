@@ -19,6 +19,8 @@ export interface Route {
   bestaetigung?: { passwort: string; code: string };
   /** Die Antwort trägt einen Zugang, Code oder Klartext: Sie wird nie gespeichert. */
   geheim?: true;
+  /** Die Liste ist von Natur aus kurz (ein Set, eine Zeitspanne); sonst SEITE. */
+  klein?: true;
 }
 
 /** Bestätigte und geheime Antworten wiederholt die Idempotenz nie: Eine
@@ -28,6 +30,32 @@ export function nichtWiederholbar(route: Route | undefined): boolean {
 }
 
 export const ganz = z.number().int();
+
+/** Ein Doppelfeld aus der Zeit vor einheitlichem Geld: bleibt für ältere Apps, entfällt mit API-Version 3. */
+export const veraltet = <T extends z.ZodType>(s: T, statt: string) =>
+  s.meta({ deprecated: true, description: `veraltet, entfällt mit API-Version 3; stattdessen ${statt}` });
+/** Prozent als Text („12.3“); die Zahl steht in pnl_prozent. */
+export const PROZENT_TEXT = veraltet(z.string().nullable().optional(), 'pnl_prozent');
+
+const imPfad = (muster: RegExp) => z.string().regex(muster);
+/** Eine Zeilenkennung im Pfad; aus Ziffern wird eine Zahl. Die Obergrenze (int4
+ * oder bigint der Aufträge) setzt vertragsRouter je Router. */
+const kennungImPfad = imPfad(/^\d{1,15}$/).transform(Number).pipe(z.number().int().min(1));
+const nummerImPfad = imPfad(/^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/);
+/** Jeder Pfadparameter, nach Namen: eingabePruefen prüft ihn, die Route liest `req.pfad`. */
+export const PFAD = {
+  setNumber: nummerImPfad, sn: nummerImPfad, partNumber: nummerImPfad, figNumber: nummerImPfad,
+  colorId: imPfad(/^\d{1,6}$/).transform(Number),
+  id: kennungImPfad, acqId: kennungImPfad, instrId: kennungImPfad,
+  jobId: imPfad(/^\d{10,16}-[a-z0-9]{4,12}$/),
+  condition: imPfad(/^[NUnu]$/).transform(v => v.toUpperCase() as 'N' | 'U'),
+  art: imPfad(/^[a-z_]{1,40}$/),
+  tokenId: imPfad(/^[A-Za-z0-9_-]{1,64}$/),
+  barcode: imPfad(/^[A-Za-z0-9-]{1,64}$/),
+} as const;
+type Namen<P extends string> = P extends `${string}/:${infer N}/${infer R}` ? N | Namen<`/${R}`>
+  : P extends `${string}/:${infer N}` ? N : never;
+export type PfadVon<K extends string> = { [N in Namen<K> & keyof typeof PFAD]: z.output<(typeof PFAD)[N]> };
 /** Ein Zeitpunkt als ISO-Text. Die Marke trägt nur der TS-Typ: In der Route
  * darf dort noch ein Date stehen, res.json schreibt es als Text (Draht). */
 export const zeit = z.string().brand<'Zeit'>();
@@ -88,8 +116,10 @@ export const Q = {
   /** Ein Konto als Besitzer oder Ziel; leer heisst „das eigene“. */
   konto: z.string().regex(/^\d{0,10}$/),
 };
-/** Formulare und Apps schicken Zahlen auch als Text; geprüft wird im Dienst. */
-export const ZAHL = z.union([z.number(), z.string().max(40)]);
+/** Seiten einer langen Liste; ohne page_size alles (ältere App-Stände). */
+export const SEITE = { page: Q.zahl(), page_size: Q.zahl() };
+/** Was eine Seite über die ganze Liste sagt (src/infra/seite.ts). */
+export const SEITEN_ANGABE = { total: ganz, page: ganz, page_size: ganz };
 export const KENNUNG = z.union([ganz, z.string().regex(/^-?\d{1,12}$/)]);
 export const TEXT = (max = 200) => z.string().max(max);
 export const ZUSTAND = z.union([z.enum(['N', 'U', 'n', 'u']), z.literal('')]);

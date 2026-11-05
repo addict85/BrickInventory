@@ -14,7 +14,7 @@ function figurenSuche(nummer: string, name: string, pi: number) {
 export async function figurenGruppiert(uids: number[], f: { search?: string | null; source?: string | null; setNumber: string | null;
   seite: { groesse: number; versatz: number } | null }) {
   const { search, source } = f;
-  const params: any[] = [uids]; let pi = 2;
+  const params: unknown[] = [uids]; let pi = 2;
   let where = 'm.user_id = ANY($1)';
   if (f.setNumber) {
     where += ` AND m.set_number = $${pi++}`;
@@ -44,63 +44,34 @@ export async function figurenGruppiert(uids: number[], f: { search?: string | nu
 
   const figs = await db.all<Zeile<{ fig_number: string; image_local: string | null; owner_ids: number[] | null }>>(`
     SELECT MIN(m.id) AS id,
-           -- Besitzer der GRUPPE. Die Zeile fasst dieselbe Figur ueber alle
-           -- Konten des Haushalts zusammen, hat also keine einzelne user_id
-           -- mehr — genau wie die Galerie-Kachel (owner_ids in
-           -- handlers/sets.ts). Ohne dieses Aggregat blieb die
-           -- Besitzer-Plakette leer, obwohl beide Clients sie zeichnen:
-           -- ownerBadges(f) in public/js/06-minifigs.js und OwnerBadges in
-           -- MinifigsScreen.kt. NACHGEMESSEN im Haushalt: Galerie JA,
-           -- manuelle Figuren JA, Set-Figuren nein.
+           -- Besitzer der GRUPPE: Die Zeile fasst die Figur über alle Konten
+           -- zusammen und hat keine einzelne user_id mehr.
            array_agg(DISTINCT m.user_id) AS owner_ids,
            MIN(TRIM(m.fig_number)) AS fig_number,
            -- MAX, weil die Gruppe mehrere Schreibweisen derselben Nummer zusammenfasst.
            MAX(${FIGUR.name}) AS fig_name,
-           -- Die Stückzahl der Bestandszeile (Migration 0038): manuell die
-           -- Summe der Erfassungen, aus einem Set die Katalogzahl. Hier
-           -- stand m.quantity.
+           -- Manuell die Summe der Erfassungen, aus einem Set die Katalogzahl.
            SUM(${teilmengeAus('m', 'fig')})::int AS quantity,
            MAX(${FIGUR.bild}) AS image_url,
            MAX(${FIGUR.bildDatei}) AS image_local,
            m.source,
-           -- Preis aus der neuesten Erfassung. Hier stand
-           -- MAX(m.unit_price) — eine Abschrift an der Bestandszeile, die
-           -- Migration 0035 geloescht hat. MAX ueber die Gruppe bleibt, weil
-           -- sie mehrere Schreibweisen derselben Figurennummer zusammenfasst.
-           --
-           -- stored_condition ist mitentfallen: Den gespeicherten Zustand
-           -- gibt es nicht mehr, und fuer Set-Figuren stand er seit jeher auf
-           -- dem Vorgabewert 'N'.
+           -- Preis aus der neuesten Erfassung; MAX, weil die Gruppe mehrere
+           -- Schreibweisen derselben Nummer zusammenfasst.
            MAX(neu.unit_price) AS unit_price,
            MIN(m.set_number) AS set_number,
-           -- Die Set-Menge als Faktor, aus den Erfassungen (Migration 0036
-           -- hat sets.quantity geloescht). Der zweite Parameter 1 steht fuer
-           -- „keine Erfassung", weil der Wert in einer
-           -- MULTIPLIKATION steht: eine manuell erfasste Figur zaehlt einfach.
+           -- Die Set-Menge als Faktor; 1 ohne Erfassung, damit eine manuelle
+           -- Figur einfach zählt.
            SUM(${teilmengeAus('m', 'fig')} * ${mengeAus('sm', 1)})::int AS total_quantity,
            STRING_AGG(DISTINCT m.set_number, ',') FILTER (WHERE m.set_number IS NOT NULL) AS in_sets,
-           -- Lagerort der GRUPPE, wortgleich zu handlers/parts.ts: Dieselbe
-           -- Figur steckt in mehreren Sets und damit in mehreren Zeilen. Liegen
-           -- die an verschiedenen Orten, sollen beide dastehen statt einer
-           -- willkuerlich gewaehlt zu werden; NULLIF macht aus dem leeren
-           -- Ergebnis wieder NULL, also „nicht erfasst".
+           -- Lagerort der GRUPPE: Liegt die Figur an zwei Orten, stehen beide da.
            NULLIF(STRING_AGG(DISTINCT lo.name, ', '), '') AS storage,
            MAX(s.added_at) AS set_added_at
     FROM minifigs m
     ${mengeJoin('m')}
     ${teilmengeJoin('m', 'fig')}
-    -- Die sets-Zeile bleibt verbunden — aber nur noch fuer added_at („seit
-    -- wann haelt dieses Konto das Set?"). Keine Gegenstriche um den
-    -- Spaltennamen: Der Kommentar steht in einem Template-Literal, und ein
-    -- Gegenstrich beendet es (gemessen, tsc meldete „',' expected").
-    -- Die MENGE kommt aus mengeJoin()
-    -- darueber; sie stand bis Migration 0036 in derselben Zeile, und genau
-    -- deshalb war beim Entfernen der Spalte nicht zu sehen, dass dieser JOIN
-    -- noch eine zweite Aufgabe hat. GEMESSEN: „missing FROM-clause entry for
-    -- table s" in vier Testdateien.
+    -- Die sets-Zeile nur für added_at; die Menge kommt aus mengeJoin().
     LEFT JOIN sets s ON s.user_id = m.user_id AND s.set_number = m.set_number
-    -- Der Name aus dem Vorrat (Migration 0031: die Zeile traegt eine ID).
-    -- LEFT JOIN, damit eine Figur ohne Ort nicht aus der Liste faellt.
+    -- LEFT JOIN, damit eine Figur ohne Ort nicht aus der Liste fällt.
     LEFT JOIN storage_locations lo ON lo.id = m.storage_id
     -- Über den Primärschlüssel, also höchstens eine Zeile je Treffer.
     ${figurSichtJoin('m.user_id', 'm.fig_number')}
@@ -124,7 +95,7 @@ export async function figurenGruppiert(uids: number[], f: { search?: string | nu
 }
 
 export async function manuelleFigurenListe(uids: number[], search: string | null | undefined, seite: { groesse: number; versatz: number } | null) {
-  const params: any[] = [uids];
+  const params: unknown[] = [uids];
   // Platzhalter vor LIMIT/OFFSET.
   let suche = '';
   if (search) {

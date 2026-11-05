@@ -3,7 +3,7 @@ import type { z } from 'zod';
 import type { Request, Response, NextFunction } from 'express';
 import { konfig } from '../konfig';
 import { routeZu } from './index';
-import { FLACHE_EINGABE, Fehler } from './grund';
+import { FLACHE_EINGABE, Fehler, PFAD } from './grund';
 import { GROESSTE_ID, idWert } from '../validate';
 import { sendeFehler } from '../fehlerTexte';
 import { handleRouteError } from '../httpAntwort';
@@ -15,12 +15,22 @@ const ABFRAGE_HOECHSTENS = 4000;
 /** Im Betrieb, unmittelbar vor der Route: Abfrage und Rumpf gegen den Vertrag.
  * Die Route bekommt das Ergebnis (req.abfrage, req.eingabe), nicht den rohen
  * Rumpf: Was das Schema umwandelt oder abweist, sieht sie nie anders. */
+const KENNUNGEN = new Set(['id', 'acqId', 'instrId']);
+
 export function eingabePruefen(req: Request, res: Response, next: NextFunction): void {
   for (const [name, wert] of Object.entries(req.query ?? {}))
     if (typeof wert !== 'string' || wert.length > ABFRAGE_HOECHSTENS)
       return sendeFehler(req, res, 400, 'eingabe_ungueltig', { feld: name.slice(0, 40) });
   const route = req.route ? routeZu(`${req.method} ${req.baseUrl}${req.route.path}`) : undefined;
-  const geprueft = req as unknown as { eingabe: unknown; abfrage: unknown };
+  const geprueft = req as unknown as { eingabe: unknown; abfrage: unknown; pfad: Record<string, unknown> };
+  geprueft.pfad = {};
+  if (route) for (const [name, wert] of Object.entries(req.params ?? {})) {
+    const schema = (PFAD as Record<string, z.ZodType>)[name];
+    const r = schema?.safeParse(wert);
+    if (!r?.success) return KENNUNGEN.has(name) ? sendeFehler(req, res, 400, 'id_ungueltig')
+      : sendeFehler(req, res, 400, 'eingabe_ungueltig', { feld: name.slice(0, 40) });
+    geprueft.pfad[name] = r.data;
+  }
   if (route?.abfrage) {
     const q = route.abfrage.safeParse(req.query ?? {});
     if (!q.success) return meldeAbweichung(req, res, q.error);
@@ -86,7 +96,7 @@ export function waechter<R extends Request>(f: (req: Request, res: Response, nex
 }
 type Schritt<R extends Request, S extends Response> = (req: R & Geprueft, res: S, next: NextFunction) => unknown;
 /** Was eingabePruefen setzt, passt zu jedem Anfrage<K>: Den Typ nennt der Vertrag der Route. */
-type Geprueft = { eingabe: never; abfrage: never };
+type Geprueft = { eingabe: never; abfrage: never; pfad: never };
 type Bewacht = <R extends Request, S extends Response>(pfad: string, w: Waechter<R>, ...schritte: Schritt<R, S>[]) => VertragsRouter;
 type Offen = <S extends Response>(pfad: string, ...schritte: Schritt<Request, S>[]) => VertragsRouter;
 /** Wie express.Router; steht ein Wächter vorn, bekommen die Schritte dahinter seinen Request-Typ. */

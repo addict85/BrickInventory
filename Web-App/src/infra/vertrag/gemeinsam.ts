@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { KontoName, zeit } from './grund';
+import { KontoName, zeit, veraltet, PROZENT_TEXT } from './grund';
 
 export const BestandteilKopf = z.looseObject({
   nummer: z.string(),
@@ -44,7 +44,7 @@ export const ValuationAcquisition = z.looseObject({
   avg_price: z.number().nullable().optional(),
   total_avg: z.string().nullable().optional(),
   wert_gesamt: z.number().nullable().optional(),
-  pnl_pct: z.string().nullable().optional(),
+  pnl_pct: PROZENT_TEXT,
   pnl_prozent: z.number().nullable().optional(),
   created_at: zeit.nullable().optional(),
   owner_user_id: z.number().int().nullable().optional(),
@@ -63,11 +63,12 @@ export const FigValuationItem = z.looseObject({
   unit_price: z.number().nullable().optional(),
   purchase_price: z.number().nullable().optional(),
   avg_purchase_price: z.number().nullable().optional(),
-  qty_avg_price: z.number().nullable().optional(),
+  qty_avg_price: veraltet(z.number().nullable().optional(), 'avg_price'),
   avg_price: z.number().nullable().optional(),
-  pnl_pct: z.string().nullable().optional(),
+  pnl_pct: PROZENT_TEXT,
   pnl_prozent: z.number().nullable().optional(),
-  display_value: z.string().nullable().optional(),
+  display_value: veraltet(z.string().nullable().optional(), 'wert_gesamt'),
+  total_value: veraltet(z.string().optional(), 'wert_gesamt'),
   wert_gesamt: z.number().nullable().optional(),
   condition: z.string().nullable().optional(),
   conditions: z.array(z.string()),
@@ -159,11 +160,12 @@ export const PartValuationItem = z.looseObject({
   unit_price: z.number().nullable().optional(),
   purchase_price: z.number().nullable().optional(),
   avg_purchase_price: z.number().nullable().optional(),
-  qty_avg_price: z.number().nullable().optional(),
+  qty_avg_price: veraltet(z.number().nullable().optional(), 'avg_price'),
   avg_price: z.number().nullable().optional(),
-  pnl_pct: z.string().nullable().optional(),
+  pnl_pct: PROZENT_TEXT,
   pnl_prozent: z.number().nullable().optional(),
-  display_value: z.string().nullable().optional(),
+  display_value: veraltet(z.string().nullable().optional(), 'wert_gesamt'),
+  total_value: veraltet(z.string().optional(), 'wert_gesamt'),
   wert_gesamt: z.number().nullable().optional(),
   condition: z.string().nullable().optional(),
   conditions: z.array(z.string()),

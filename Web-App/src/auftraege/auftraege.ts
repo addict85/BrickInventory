@@ -3,7 +3,7 @@
 export const AUFTRAGS_ARTEN = [
   'nacharbeit', 'bilder', 'pdf', 'csv_import', 'wechselkurse',
   'anleitung', 'brickset', 'bildbedarf', 'bilder_neu_laden', 'nachlauf',
-  'csv_sync', 'preise', 'bild_nachlauf', 'aufraeumen', 'aufraeumen_taeglich',
+  'csv_sync', 'preise', 'bild_nachlauf', 'aufraeumen', 'aufraeumen_taeglich', 'preise_nachladen',
 ] as const;
 export type AuftragsArt = typeof AUFTRAGS_ARTEN[number];
 

@@ -31,7 +31,7 @@ export function merkeGebraucht(url: string, setNumber: string | null): void {
   if (_puffer.size < 500) _puffer.set(url, setNumber);
 }
 
-export async function notiereBildbedarf(urls: string[], sets: string[]): Promise<void> {
+export async function notiereBildbedarf(urls: string[], sets: (string | null)[]): Promise<void> {
   await repo.merkeBildwuensche(urls, sets);
 }
 

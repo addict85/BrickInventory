@@ -49,7 +49,11 @@ test('ein Router je Einhängepunkt', () => {
   for (const m of server.matchAll(/app\.use\(\s*'(\/api[^']*)'\s*,\s*(\w+Router)\s*\)/g))
     je.set(m[1], [...(je.get(m[1]) || []), m[2]]);
   assert.ok(je.size >= 2, `nur ${je.size} Router-Einhängungen in server.ts gefunden`);
-  const doppelt = [...je].filter(([, r]) => r.length > 1).map(([p, r]) => `${p}: ${r.join(', ')}`);
+  // Gesundheit und Startstatus antworten VOR dem Eingang (anmeldungAmEingang),
+  // der Router der API dahinter: zwei Stellen im Stapel, deshalb zwei Router.
+  const VOR_DEM_EINGANG = new Set(['gesundheitRouter']);
+  const doppelt = [...je].map(([p, r]) => [p, r.filter(n => !VOR_DEM_EINGANG.has(n))])
+    .filter(([, r]) => r.length > 1).map(([p, r]) => `${p}: ${r.join(', ')}`);
   assert.deepEqual(doppelt, []);
 });
 

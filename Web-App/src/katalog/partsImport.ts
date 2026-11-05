@@ -1,15 +1,14 @@
 import path from 'path';
 import type { AuftragsLauf } from '../auftraege/auftraege';
 import fs from 'fs';
-import { holeHttps } from '../infra/abruf';
 import * as db from '../../db/database';
 import { PART_IMAGES_DIR } from '../infra/appPaths';
-import { type RbSetTeil, parseThrottleWait } from './quellen';
+import { type RbSetTeil, parseThrottleWait, rebrickableRoh } from './quellen';
 import { getAllSetParts } from './rebrickableKatalog';
 import { fehlertext, logAndContinue, meldeUndWeiter } from '../infra/fehler';
 import { getGlobalSetting } from '../einstellungen/settings';
 import { mitVersion } from '../infra/setNummer';
-import { nummernListe, ERLAUBTE_API_HOSTS } from '../infra/fremdeAdressen';
+import { nummernListe } from '../infra/fremdeAdressen';
 import { merkeBlNummer, merkeBlNummern, merkeBlNummerUnveraendert } from './blZuordnung';
 import { merkeSetTeile, type SetTeilZeile } from './katalogPflege';
 import { stelleAuftragEin } from '../auftraege/dienst';
@@ -87,13 +86,10 @@ export async function importPartsForSet(setNumber: string, userId: number): Prom
 }
 
 function holeSeite(url: string, rbKey: string): Promise<{ status: number; body: string }> {
-  return holeHttps(url, { hosts: ERLAUBTE_API_HOSTS, maxBytes: 32 * 1024 * 1024, zeitlimitMs: 30_000,
-    kopfzeilen: { Authorization: `key ${rbKey}`, 'User-Agent': 'BrickInventory/1.0' } })
-    .then(r => ({ status: r.status, body: r.koerper.toString('utf8') }), () => ({ status: 0, body: '' }));
+  return rebrickableRoh(url, rbKey);
 }
 
 /** Eine leere bl_id heisst „nachgesehen" und löst kein zweites Nachladen aus. */
-/** Im Auftrag mit Stand und Abbruch; aus einer Anfrage ohne. */
 export async function fetchMissingBlIds(lauf: AuftragsLauf = {}) {
   try {
     const rbKey = await getGlobalSetting('rebrickable_api_key');

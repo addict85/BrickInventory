@@ -12,6 +12,8 @@
  *   B  MIN_GEPRUEFT auf 59 gesetzt → rot: „so viele Routen geprüft“
  *   C  in src/sets/dienst.ts `...eineSeite(…)` aus der Teileliste entfernt →
  *      rot: „jede Route antwortet“ (parts-list: 500 vertrag_verletzt)
+ *   D  in src/infra/seite.ts slice() durch die ganze Liste ersetzt → rot:
+ *      „lange Listen blättern“ (05.11.2026)
  *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL.
  */
@@ -201,4 +203,29 @@ test('die Antworten der App-Routen halten ihren Vertrag', { concurrency: 1, time
   await t.test('keine Liste ist unbemerkt leer', () =>
     assert.deepEqual(leer.filter(l => !LEER_ERLAUBT.has(l)), [], 'Eine leere Liste prüft kein einziges Feld'));
   t.diagnostic(`geprüft: ${geprueft}`);
+
+  // Jede Route mit page_size: Seite 2 der Grösse 1 ist leer, total zählt trotzdem
+  // die ganze Liste, und ohne page_size kommt alles.
+  const { openapi } = _req('src/infra/vertrag/openapi.js');
+  const geblaettert = Object.entries(openapi().paths)
+    .filter(([p, ops]) => !p.includes('{') && ops.get?.parameters?.some(x => x.name === 'page_size'))
+    .map(([p]) => p);
+  const seitenFehler = [];
+  for (const p of geblaettert) {
+    const hol = async (q) => (await fetch(`${basis}${p}${q}`)).json();
+    const ganz = await hol(''), zweite = await hol('?page_size=1&page=2');
+    const feld = Object.keys(ganz).find(k => Array.isArray(ganz[k]) && ganz[k].length > 0);
+    if (!feld) {
+      if (![...LEER_ERLAUBT.keys()].some(k => k.startsWith(p + ' '))) seitenFehler.push(`${p}: keine gefüllte Liste`);
+      continue;
+    }
+    // Der Katalog hat zehntausende Sets: Er blättert immer, ohne page_size zu 60.
+    if (p !== '/api/v1/catalog/sets' && ganz.total !== ganz[feld].length) seitenFehler.push(`${p}: ohne page_size nicht alles (${ganz[feld].length}/${ganz.total})`);
+    if (zweite[feld]?.length !== Math.max(0, Math.min(1, ganz.total - 1))) seitenFehler.push(`${p}: Seite 2 hat ${zweite[feld]?.length} Einträge`);
+    if (zweite.total !== ganz.total) seitenFehler.push(`${p}: total ${zweite.total} statt ${ganz.total}`);
+  }
+  await t.test('lange Listen blättern', () => {
+    assert.ok(geblaettert.length >= 10, `nur ${geblaettert.length} geblätterte Routen gefunden`);
+    assert.deepEqual(seitenFehler, []);
+  });
 });

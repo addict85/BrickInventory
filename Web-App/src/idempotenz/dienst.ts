@@ -2,12 +2,14 @@
  * demselben Schlüssel und bekommt die gespeicherte Antwort — ohne zweite
  * Wirkung. Derselbe Schlüssel mit anderem Inhalt ist ein Fehler des Clients. */
 import * as repo from './repository';
+import { HTTP_FRISTEN } from '../infra/httpFristen';
 import { verschluessele, entschluessele, istVerschluesselt, kontext, umschluesseln, suchwert } from '../infra/geheimnis';
 
 /** Die App wiederholt innerhalb von Stunden, nicht Tagen. */
 export const FRIST_STUNDEN = 24;
-/** Danach gilt die erste Anfrage als abgebrochen (Absturz, Neustart). */
-const VERWAIST_NACH_S = 120;
+/** Danach gilt die erste Anfrage als abgebrochen (Absturz, Neustart): erst nach
+ * der längsten erlaubten Anfrage, sonst liefe eine langsame zweimal. */
+export const VERWAIST_NACH_S = HTTP_FRISTEN.requestTimeout / 1000 + 60;
 
 /** Konto und Schlüssel im Kontext: Eine gespeicherte Antwort gilt nur für ihren Eintrag. */
 export const antwortKontext = (uid: number, schluessel: string) => kontext('idempotenz.antwort', uid, schluessel);

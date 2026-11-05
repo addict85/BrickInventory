@@ -41,17 +41,18 @@ async function runMigrations(client: any, { sichern = false, bis }: { sichern?: 
       // Die 30 s des Pools gelten für Anfragen, nicht für den Umbau einer
       // grossen Tabelle; ein Abbruch mittendrin hiesse Neustart in Schleife.
       await client.query('SET LOCAL statement_timeout = 0');
+      await client.query('SET LOCAL lock_timeout = 0');
       await client.query(sql);
       await client.query('INSERT INTO schema_migrations (name, pruefsumme) VALUES ($1, $2)', [file, pruefsumme(sql)]);
       await client.query('COMMIT');
       applied.push(file);
       console.log(`  ✅ Migration angewandt: ${file}`);
-    } catch (e: any) {
+    } catch (e) {
       await client.query('ROLLBACK').catch(logAndContinue('migration:query'));
       // Bewusst weiterwerfen: Der Start bricht ab. Ein Server, der auf einem
       // halb migrierten Schema weiterläuft, produziert Folgefehler, die
       // niemand mehr auf diese Stelle zurückführt.
-      throw new Error(`Migration ${file} fehlgeschlagen: ${e.message}`);
+      throw new Error(`Migration ${file} fehlgeschlagen: ${(e as Error).message}`);
     }
   }
   return applied;
@@ -104,6 +105,7 @@ async function sichereNutzerdaten(client: import('pg').ClientBase, offen: string
   await client.query('BEGIN');
   try {
     await client.query('SET LOCAL statement_timeout = 0');
+    await client.query('SET LOCAL lock_timeout = 0');
     await client.query(`CREATE SCHEMA ${schema}`);
     for (const { name } of rows) {
       const t = client.escapeIdentifier(name);

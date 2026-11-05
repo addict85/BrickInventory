@@ -20,7 +20,7 @@ import { passwortMangel } from '../src/infra/passwortRegel';
 // NUMERIC als Zahl: NUMERIC(12,4) bleibt weit unter 2^53, gerechnet wird in
 // src/infra/geld.ts in Zehntausendsteln.
 // Ausführlich: docs/begruendungen/db/database.ts.md#numeric-als-zahl
-pgTypes.setTypeParser(pgTypes.builtins.NUMERIC, (v: any) => (v === null ? null : parseFloat(v)));
+pgTypes.setTypeParser(pgTypes.builtins.NUMERIC, (v: string | null) => (v === null ? null : parseFloat(v)));
 
 // ── Connection pool ───────────────────────────────────────────────────────────
 // Höchstens zwei Prozesse (web und jobs) mit je 15 Verbindungen: weit unter
@@ -35,7 +35,7 @@ const POOL_CONFIG = {
   connectionTimeoutMillis:K.pgConnMs,
   // Über die Verbindungsoptionen statt je Anfrage. Die Zeitzone des
   // Erfassungstags steht in der Datenbank (schreibeErfassungsZeitzone).
-  options:                `-c statement_timeout=${K.pgStmtMs}`,
+  options:                `-c statement_timeout=${K.pgStmtMs} -c idle_in_transaction_session_timeout=${K.pgLeerlaufTxMs} -c lock_timeout=${K.pgSperreMs}`,
   keepAlive:              true,
   keepAliveInitialDelayMillis: 10000,
 };
@@ -72,7 +72,7 @@ export function istLesend(sql: string): boolean {
 /** Mit Wiederholung bei transienten Fehlern.
  * Ausführlich: docs/begruendungen/db/database.ts.md#querywithretry */
 export async function queryWithRetry<T>(queryFn: () => Promise<T>, lesend: boolean, maxRetries = 2): Promise<T> {
-  let lastErr: any;
+  let lastErr: unknown;
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
     try {
       return await queryFn();
@@ -302,6 +302,8 @@ async function initSchemaOnce() {
   const LOCK_ID = LOCKS.SCHEMA_INIT;
   const client = await pool.connect();
   try {
+    // Warten auf den anderen Prozess ist hier gewollt, auch länger als lock_timeout.
+    await client.query('SET lock_timeout = 0');
     await client.query(`SELECT pg_advisory_lock(${LOCK_ID})`);
     const neu = await initSchema();
     const alt = !neu && await istAltbestand(client);
@@ -314,6 +316,7 @@ async function initSchemaOnce() {
     else if (!neu) console.log('✅ Schema aktuell — keine offenen Migrationen');
   } finally {
     await client.query(`SELECT pg_advisory_unlock(${LOCK_ID})`).catch(logAndContinue('db:pg_advisory_unlock'));
+    await client.query('RESET lock_timeout').catch(logAndContinue('db:lock_timeout'));
     client.release();
   }
 }

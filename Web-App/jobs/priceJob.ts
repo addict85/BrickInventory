@@ -1,5 +1,3 @@
-'use strict';
-
 import { kontingentFrei, speicherePreis, cacheUsable, preisAusCache, parallelLimit, bestandsPlaetze, merklistenPlaetze,
   erfassteZustaende, gewuenschteZustaende, schreibeTagesstand, setsMitAlarm } from '../src/finanzen/financeCalc';
 import { meldeUndWeiter, fehlertext, meldeUndLiefere, logAndContinue } from '../src/infra/fehler';
@@ -103,7 +101,7 @@ async function runPriceRefresh(k?: AuftragsKontext) {
     log(`Starting: ${allSets.length} set-slots`);
     fortschritt.total = allSets.length;
     await k?.fortschritt({ erledigt: 0, gesamt: allSets.length, text: `0/${allSets.length} Sets` });
-    const byUser: any = {};
+    const byUser: Record<string, string[]> = {};
     for (const row of allSets) (byUser[row.user_id] = byUser[row.user_id] || []).push(row.set_number);
     for (const [userId, setNumbers] of Object.entries(byUser)) {
       // Number(): Object.entries() liefert Schlüssel als Zeichenketten.
@@ -111,7 +109,7 @@ async function runPriceRefresh(k?: AuftragsKontext) {
       // 'sold' = tatsächlich erzielte Preise der letzten sechs Monate.
       const guideType = 'sold';
       const ttlHours  = (await getGlobalSetting('price_cache_ttl', '24')) || '24';
-      const valid = (setNumbers as string[]).filter(sn => /^[a-zA-Z0-9]+-\d+$/.test(sn));
+      const valid = setNumbers.filter(sn => /^[a-zA-Z0-9]+-\d+$/.test(sn));
 
       // Drei Abfragen je Nutzer statt je Set; jeder überflüssige Abruf ginge auf
       // das BrickLink-Tageskontingent.
