@@ -3,8 +3,9 @@ import { requireToken, kontoSchranke } from './middleware';
 import { scopeIds, parseScopeMode, resolveWriteTarget, writableIds } from '../../src/haushalt/haushalt';
 import { getBlColorMap, getManualParts, getOwnedQuantities, getParts, getPartsColors, getPartsStats, getPartsCategories } from '../../src/teile/abfragen';
 import { csvEmpfang } from '../../src/infra/dateiEmpfang';
-import { csvImportAntwort } from '../../src/infra/csvExport';
-import { addManualPart, getPartColorList, updateManualPart, importiereTeileCsv } from '../../src/teile/manuelleTeile';
+import { importAlsAuftrag } from '../../src/auftraege/importAlsAuftrag';
+import type { CsvImportBericht } from '../../src/infra/csvExport';
+import { addManualPart, getPartColorList, updateManualPart } from '../../src/teile/manuelleTeile';
 import { getSetting } from '../../src/einstellungen/settings';
 import { getPartPriceHistory } from '../../src/finanzen/priceHistory';
 import * as V from '../../src/infra/validate';
@@ -32,7 +33,7 @@ router.get('/parts/categories', requireToken, async (req: AuthedRequest, res: An
 
 router.post('/parts/import/csv', requireToken, kontoSchranke('upload'), csvEmpfang.single('file'), async (req: AuthedRequest & { file?: { buffer: Buffer } }, res: Antwort<'POST /api/v1/parts/import/csv'>) => {
   if (!req.file) return sendeFehler(req, res, 400, 'keine_datei');
-  csvImportAntwort(res, await importiereTeileCsv(req.apiUser.user_id, req.file.buffer.toString('utf-8')));
+  res.json(await importAlsAuftrag<CsvImportBericht>(req.apiUser.user_id, 'teile_csv', { text: req.file.buffer.toString('utf-8') }));
 });
 
 router.get('/parts/brick-colors', requireToken, async (_req: AuthedRequest, res: Antwort<'GET /api/v1/parts/brick-colors'>) => {

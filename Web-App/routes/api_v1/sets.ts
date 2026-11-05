@@ -15,7 +15,7 @@ import { moveSetBetweenAccounts } from '../../src/sets/setMove';
 import { normalisiereLagerort, setzeLagerort, lagerorte,
          orteVon, legeOrtAn, benenneOrtUm, loescheOrt,
          vorgabeVon, setzeVorgabe } from '../../src/bestand/lagerort';
-import { alarmeFuer, alleAlarme, ausgeloesteSeit, loescheAlarm, setzeAlarm, alarmeAusCsv } from '../../src/finanzen/preisalarm';
+import { alarmeFuer, alleAlarme, ausgeloesteSeit, loescheAlarm, setzeAlarm } from '../../src/finanzen/preisalarm';
 import { csvEmpfang, inhaltPasstZuTyp, uploadKontingentBytes, belegterPlatz, FORMULAR_GRENZEN, privaterOrdner } from '../../src/infra/dateiEmpfang';
 import { sendCsv, uebersprungenHinweis } from '../../src/infra/csvExport';
 import { withInventoryLock } from '../../db/txLock';
@@ -39,6 +39,8 @@ import { setBildSichtbar } from '../../src/katalog/bilder/bildBlickfeld';
 import { zaehleAnfrage } from '../../src/konto/loginLimiter';
 import { vertragsRouter } from '../../src/infra/vertrag/pruefen';
 import type { Antwort } from '../../src/infra/vertrag';
+import { importAlsAuftrag } from '../../src/auftraege/importAlsAuftrag';
+import type { CsvImportBericht } from '../../src/infra/csvExport';
 const router = vertragsRouter();
 
 // ── Feste Pfade VOR den Pfaden mit :setNumber ────────────────────────────────
@@ -123,7 +125,7 @@ router.post('/alerts/import/csv', requireToken, kontoSchranke('upload'), csvEmpf
     if (!req.file) return sendeFehler(req, res, 400, 'keine_datei');
     const uid = req.apiUser.user_id;
     const waehrung = String(await getSetting(uid, 'currency', 'EUR'));
-    res.json(await alarmeAusCsv(uid, waehrung, req.file.buffer.toString('utf-8')));
+    res.json(await importAlsAuftrag<CsvImportBericht>(uid, 'alarme_csv', { waehrung, text: req.file.buffer.toString('utf-8') }));
   });
 
 /** Der Vorrat an Lagerorten ist je Konto; wer ihn sehen darf, entscheidet das Recht.

@@ -38,6 +38,7 @@ process.env.SESSION_SECRET = 'test-secret-lang-genug-fuer-die-pruefung';
 
 const ROOT = path.join(__dirname, '..');
 const _req = require('./helpers/sources').buildAndRequire();
+const { importWorker } = require('./helpers/auftraege');
 const { dbOderSkip } = require('./helpers/db');
 const { routerEinhaengungen } = require('./helpers/sources');
 const db = _req('db/database.js');
@@ -90,6 +91,7 @@ function formular(inhalt, typ, name, felder = {}) {
 
 test('die Schreibantworten der App halten ihren Vertrag', { concurrency: 1, timeout: 180_000 }, async (t) => {
   if (!await dbOderSkip(t, _req)) return;
+  importWorker(t, _req);
 
   // ── Drei Konten: Haupt, Unterkonto, ein drittes für die Einladung ──────
   const namen = [NAME, `${NAME}_sub`, `${NAME}_neu`, `${NAME}_reg`];

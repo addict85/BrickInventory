@@ -223,3 +223,12 @@ export function zahlenJeArtUndStatus() {
 export function laufendePausen() {
   return db.all<z.infer<typeof AuftragPause>>(`SELECT art, bis, grund FROM auftrag_pausen WHERE bis > NOW() ORDER BY bis`);
 }
+
+export function auftragsStand(id: string) {
+  return db.get<{ status: AuftragsStatus; fortschritt: Fortschritt | null; ergebnis: Record<string, unknown> | null }>(
+    'SELECT status, fortschritt, ergebnis FROM auftraege WHERE id = $1', [id]);
+}
+
+export async function schreibeErgebnis(id: string, ergebnis: Record<string, unknown> | null): Promise<void> {
+  await db.run('UPDATE auftraege SET ergebnis = $2 WHERE id = $1', [id, ergebnis === null ? null : JSON.stringify(ergebnis)]);
+}

@@ -16,10 +16,6 @@ type ExpressAntwort = {
   send(body: string | Buffer): unknown;
 };
 
-type ExpressJsonAntwort = {
-  json(body: unknown): unknown;
-};
-
 // Ausführlich: docs/begruendungen/src/infra/csvExport.ts.md#entschaerfe
 export function entschaerfe(s: string): string {
   if (!FORMEL_START.test(s)) return s;
@@ -170,15 +166,17 @@ export function csvZeilenAusAnfrage(text: string): {
 }
 
 /** An einer Stelle, damit beide Oberflächen dieselben Felder bekommen. */
-export function csvImportAntwort(res: ExpressJsonAntwort, d: {
+/** Was jeder CSV-Import antwortet; `records` zählt nur. */
+export function csvImportBericht(d: {
   added: number; updated: number; errors: number;
-  records: any[]; results: any[]; uebersprungen: number[];
+  records: unknown[]; results: unknown[]; uebersprungen: number[];
 }) {
-  res.json({
-    success: true, added: d.added, updated: d.updated, errors: d.errors,
+  return {
+    success: true as const, added: d.added, updated: d.updated, errors: d.errors,
     total: d.records.length, results: d.results,
     skipped: d.uebersprungen.length || undefined,
     skipped_hint: uebersprungenHinweis(d.uebersprungen) || undefined,
-  });
+  };
 }
+export type CsvImportBericht = ReturnType<typeof csvImportBericht>;
 

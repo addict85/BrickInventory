@@ -47,6 +47,7 @@ const assert = require('node:assert/strict');
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
 const _req = require('./helpers/sources').buildAndRequire();
+const { importWorker } = require('./helpers/auftraege');
 const db = _req('db/database.js');
 const { testServer } = require('./helpers/server');
 
@@ -115,6 +116,7 @@ test('Wanted-Liste: Vorschau und Schreiben über die echte Adresse', { concurren
   }
   await aufbau();
 
+  importWorker(t, _req);
   const srv = testServer(_req, {
     sitzung: { userId: HAUPT }, apiNutzer: { user_id: HAUPT, is_admin: 0 },
     routen: { '/api/v1': 'routes/api_v1/index.js' }, t,
@@ -228,12 +230,13 @@ test('Wanted-Liste: Vorschau und Schreiben über die echte Adresse', { concurren
       `Content-Type „${typ}" — eine Zeilen-Antwort darf nicht als application/json ` +
       'ausgegeben werden, sonst versucht der Browser sie als EIN Dokument zu lesen');
 
+    // Der Import läuft als Auftrag; die Anfrage liest seinen Stand im Takt,
+    // Zwischenstände können darum zusammenfallen. Der letzte kommt immer an.
     const melde = zeilen.filter(z => z.fortschritt);
-    assert.equal(melde.length, 3,
-      `${melde.length} Fortschrittszeilen für drei Posten — erwartet drei. Eine je ` +
-      'Posten, auch für den offenen (sonst bliebe der Balken vor dem Ende stehen).');
-    assert.deepEqual(melde.map(z => z.fortschritt.fertig), [1, 2, 3],
-      'Die Zählung muss lückenlos und aufsteigend sein');
+    assert.ok(melde.length >= 1, 'keine Fortschrittszeile');
+    const fertig = melde.map(z => z.fortschritt.fertig);
+    assert.deepEqual(fertig, [...fertig].sort((a, b) => a - b), 'Die Zählung muss aufsteigen');
+    assert.equal(fertig.at(-1), 3, 'Der letzte Stand nennt alle Posten (sonst bliebe der Balken vor dem Ende stehen)');
     for (const z of melde) {
       assert.equal(z.fortschritt.gesamt, 3, 'Der Nenner ist die Zahl der Posten');
       assert.equal(z.fortschritt.phase, 'schreiben');

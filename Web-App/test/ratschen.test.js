@@ -129,8 +129,8 @@ test('stille Faenge werden weniger, nie mehr', () => {
 });
 
 test('any wird weniger, nie mehr', () => {
-  // Gemessen 194 am 05.11.2026; wie die Zahl gesunken ist, steht im git log.
-  const SCHRANKE = 194;
+  // Gemessen 192 am 05.11.2026; wie die Zahl gesunken ist, steht im git log.
+  const SCHRANKE = 192;
   const ist = zaehle([/\bas any\b/g, /:\s*any\b/g]);
   assert.ok(ist <= SCHRANKE,
     `${ist}-mal \`any\`, erlaubt sind ${SCHRANKE}. Jedes davon schaltet den ` +
@@ -317,9 +317,9 @@ test('der Kommentaranteil im Server sinkt, nie steigt', () => {
 test('der Kommentaranteil der Tests sinkt, nie steigt', () => {
   // Eigene Schranke: Testköpfe zählen ihre Gegenproben auf (CLAUDE.md), der
   // Anteil liegt deshalb höher als im Server. Geschichte gehört auch hier in
-  // den Commit. Gemessen 34,4 % in test/*.js und test/helpers/; Schranke 34,4.
+  // den Commit. Gemessen 33,3 % in test/*.js und test/helpers/ (05.11.2026); Schranke 33,4.
   // Gegenprobe: 300 Kommentarzeilen an eine Testdatei gehängt → rot.
-  const SCHRANKE = 34.4;
+  const SCHRANKE = 33.4;
   const dateien = [
     ...fs.readdirSync(__dirname).filter(n => n.endsWith('.js')).map(n => path.join(__dirname, n)),
     ...fs.readdirSync(path.join(__dirname, 'helpers')).filter(n => n.endsWith('.js')).map(n => path.join(__dirname, 'helpers', n)),

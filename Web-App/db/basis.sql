@@ -398,6 +398,7 @@ CREATE TABLE public.auftraege (
     frist_bis timestamp with time zone,
     gestartet timestamp with time zone,
     fortschritt jsonb,
+    ergebnis jsonb,
     CONSTRAINT auftraege_max_versuche_check CHECK ((max_versuche > 0)),
     CONSTRAINT auftraege_status_check CHECK ((status = ANY (ARRAY['offen'::text, 'laeuft'::text, 'erledigt'::text, 'fehler'::text, 'abgebrochen'::text])))
 );
@@ -3877,6 +3878,8 @@ INSERT INTO public.schema_migrations (name, applied_at, pruefsumme) VALUES ('009
 INSERT INTO public.schema_migrations (name, applied_at, pruefsumme) VALUES ('0094-bl-zuordnung-eigen.sql', '2026-11-04 00:03:46.442444+00', '9bdbdba4a0b83487d236fc8e8e6e3953a075112da3ecc40b9058b2d28ff91fed');
 INSERT INTO public.schema_migrations (name, applied_at, pruefsumme) VALUES ('0095-registrierung-offen.sql', '2026-11-04 00:57:21.00727+00', '707e2679155f70b7d64048fe8bd01ebbad13e95e4d7a98e875a5d741677a3c88');
 INSERT INTO public.schema_migrations (name, applied_at, pruefsumme) VALUES ('0096-email-neu.sql', '2026-11-04 16:14:17.013655+00', '01bf63d8a31f98e576e7c46c7023743fae6cba6d8e8cacee8c846d2c710d2c7a');
+INSERT INTO public.schema_migrations (name, applied_at, pruefsumme) VALUES ('0097-registrierung-ausstehend.sql', '2026-11-05 06:06:22.870077+00', 'e33185a316d352398c5dd3c392f462d1494233c261d33e368f98bef3eec8cff8');
+INSERT INTO public.schema_migrations (name, applied_at, pruefsumme) VALUES ('0098-auftrag-ergebnis.sql', '2026-11-05 06:06:22.87462+00', 'dba73f3660407e202cbad6ca49ad5f3406dd45b758bc6a14cb9c54d0b97bdeea');
 
 --
 -- PostgreSQL database dump complete

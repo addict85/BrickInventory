@@ -57,6 +57,7 @@ const assert = require('node:assert/strict');
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
 const _req = require('./helpers/sources').buildAndRequire();
+const { importWorker } = require('./helpers/auftraege');
 const db = _req('db/database.js');
 const { testServer } = require('./helpers/server');
 
@@ -156,6 +157,7 @@ test('Merkliste: Rundlauf über die echten Adressen', { concurrency: 1 }, async 
   }
   await aufbau();
 
+  importWorker(t, _req);
   const srv = testServer(_req, {
     sitzung: { userId: HAUPT }, apiNutzer: { user_id: HAUPT, is_admin: 0 },
     routen: { '/api/v1': 'routes/api_v1/index.js' }, t,
