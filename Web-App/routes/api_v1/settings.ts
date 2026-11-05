@@ -5,7 +5,7 @@ import { FORMULAR_GRENZEN } from '../../src/infra/dateiEmpfang';
 import { logAndContinue, meldeUndLiefere } from '../../src/infra/fehler';
 import { fehlerAntwort } from '../../src/infra/httpAntwort';
 import { requireApiAdmin as requireAdmin, requireToken, bearerToken, kontoSchranke } from './middleware';
-import { SECRET_KEYS, isMaskedValue, readSettings, globaleWerteOhneGeheimnisse, DESIGNS, designFuer, nutzerEinstellungen, deleteUserSetting, setGlobalSetting, globalerWertGueltig, deleteGlobalSetting, globalDefaultCondition, nutzerStandardZustand, getGlobalSetting, getSetting } from '../../src/einstellungen/settings';
+import { SECRET_KEYS, isMaskedValue, readSettings, globaleWerteOhneGeheimnisse, designFuer, nutzerEinstellungen, deleteUserSetting, setGlobalSetting, globalerWertGueltig, deleteGlobalSetting, globalDefaultCondition, nutzerStandardZustand, getGlobalSetting, getSetting } from '../../src/einstellungen/settings';
 import { setzeEigenesDesign, setUserSetting } from '../../src/konto/nutzerEinstellung';
 import { buildSetsCsv } from '../../src/sets/setService';
 import { buildPartsCsv, buildFigsCsv } from '../../src/bestand/bestandExport';
@@ -26,7 +26,7 @@ import { konfig } from '../../src/infra/konfig';
 import { invalidateTheme } from '../../src/konto/indexHtml';
 import { jsonOderNull, emailGueltig } from '../../src/infra/validate';
 import { vertragsRouter } from '../../src/infra/vertrag/pruefen';
-import { GLOBALE_EINSTELLUNGEN, KONTO_EINSTELLUNGEN } from '../../src/infra/vertrag/einstellungen';
+import { GLOBALE_EINSTELLUNGEN, KONTO_EINSTELLUNGEN, KonfigExport } from '../../src/infra/vertrag/einstellungen';
 import type { Request } from 'express';
 import type { Anfrage, Antwort, OffeneAnfrage } from '../../src/infra/vertrag';
 const router = vertragsRouter();
@@ -183,7 +183,7 @@ router.post('/settings/household/redeem', requireToken, async (req: Anfrage<'POS
   if (ich?.email) {
     const sprache = await getSetting(uid, 'language', 'de').catch(meldeUndLiefere('einstellungen:sprache', 'de'));
     const hauptkonto = 'linked_to' in r ? r.linked_to.username : '';
-    sendHaushaltVerknuepftMail(ich.email, ich.username, hauptkonto, String(sprache ?? 'de'))
+    void sendHaushaltVerknuepftMail(ich.email, ich.username, hauptkonto, String(sprache ?? 'de'))
       .catch(logAndContinue('haushalt:hinweismail'));
   }
   res.json({ success: true, ...r });
@@ -316,7 +316,9 @@ router.post('/settings/import', kontoSchranke('upload'), importUpload.single('fi
   if (!req.file) return sendeFehler(req, res, 400, 'keine_datei');
   const gelesen = jsonOderNull(req.file.buffer.toString('utf-8'));
   if (!gelesen) return sendeFehler(req, res, 400, 'json_ungueltig');
-  const config = gelesen.wert as any;
+  const geprueft = KonfigExport.safeParse(gelesen.wert);
+  if (!geprueft.success) return sendeFehler(req, res, 400, 'json_ungueltig');
+  const config = geprueft.data;
 
   const globalKeys = ['bricklink_consumer_key','bricklink_consumer_secret','bricklink_token',
     'bricklink_token_secret','brickset_api_key','rebrickable_api_key','price_job_interval_minutes',
@@ -327,18 +329,18 @@ router.post('/settings/import', kontoSchranke('upload'), importUpload.single('fi
   const userKeys = ['currency', 'user_default_condition'];
   const uid = angemeldeteNutzerId(req);
   let imported = 0;
-  const smtpUebergangen = config.global && typeof config.global === 'object'
-    ? Object.keys(config.global).filter(istHeikel) : [];
-  if (config.global && istVerwalter(req)) {
-    if (globalKeys.some(k => config.global[k] !== undefined && !globalerWertGueltig(k, config.global[k])))
+  const global = config.global;
+  const smtpUebergangen = global ? Object.keys(global).filter(istHeikel) : [];
+  if (global && istVerwalter(req)) {
+    if (globalKeys.some(k => global[k] !== undefined && !globalerWertGueltig(k, global[k])))
       return sendeFehler(req, res, 400, 'wert_ungueltig');
     const geaendert: string[] = [];
     for (const key of globalKeys) {
-      if (config.global[key] !== undefined) {
+      if (global[key] !== undefined) {
         // Maskierte Werte aus älteren Exporten dürfen echte Schlüssel nicht überschreiben.
-        if (SECRET_KEYS.has(key) && isMaskedValue(config.global[key])) continue;
-        if (String(config.global[key]) !== String(await getGlobalSetting(key) ?? '')) geaendert.push(key);
-        await setGlobalSetting(key, config.global[key]);
+        if (SECRET_KEYS.has(key) && isMaskedValue(global[key])) continue;
+        if (String(global[key]) !== String(await getGlobalSetting(key) ?? '')) geaendert.push(key);
+        await setGlobalSetting(key, global[key]);
         imported++;
       }
     }
@@ -425,11 +427,8 @@ router.post('/settings/user/theme', async (req: OffeneAnfrage<'POST /api/v1/sett
 });
 
 router.post('/settings/admin/theme', requireAdmin, async (req: OffeneAnfrage<'POST /api/v1/settings/admin/theme'>, res: Antwort<'POST /api/v1/settings/admin/theme'>) => {
-  const theme = String(req.eingabe.theme || 'classic');
-  if (!DESIGNS.includes(theme)) {
-    return sendeFehler(req, res, 400, 'design_ungueltig');
-  }
-  setGlobalSetting('app_theme', theme);
+  const theme = req.eingabe.theme;
+  await setGlobalSetting('app_theme', theme);
   // Das Design steckt im serverseitig gerenderten <html data-theme>; ohne
   // Verwerfen käme bis zum Neustart das alte.
   invalidateTheme();

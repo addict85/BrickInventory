@@ -135,8 +135,8 @@ test('fuenf Listen nennen dieselben Designs', () => {
 
   const boot = liste(fs.readFileSync(path.join(PUB, 'js', '00-theme-boot.js'), 'utf8'),
     /var ALLOWED = \[([^\]]*)\]/, 'js/00-theme-boot.js');
-  const server = liste(fs.readFileSync(path.join(__dirname, '..', 'src/einstellungen/settings.ts'), 'utf8'),
-    /const DESIGNS: readonly string\[\] = \[([^\]]*)\]/, 'src/einstellungen/settings.ts');
+  const server = liste(fs.readFileSync(path.join(__dirname, '..', 'src/infra/vertrag/globaleRegeln.ts'), 'utf8'),
+    /const DESIGNS: readonly string\[\] = \[([^\]]*)\]/, 'src/infra/vertrag/globaleRegeln.ts');
   const app = liste(fs.readFileSync(path.join(__dirname, '..', '..', 'Android-App', 'core-data', 'src', 'main', 'java', 'ch', 'brickinventoryapp', 'data', 'PreferencesManager.kt'), 'utf8'),
     /ERLAUBTE_DESIGNS = setOf\(([^)]*)\)/, 'PreferencesManager.kt');
 

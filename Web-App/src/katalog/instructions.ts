@@ -79,7 +79,7 @@ export async function scrapeInstructionsFromFallback(setNumber: string) {
       const relPath  = `/data/instructions/${pdfName}`;
       const desc     = `Anleitung ${n} (BrickInstructions)`;
       await repo.merkeAnleitung(n, pageUrl, desc, null).catch(logAndContinue('anleitung:desc'));
-      setImmediate(() => { collectAndBuildPDF(baseUrl, hdrs, fund.erstesBild, pdfDest, relPath, n).catch(logAndContinue('anleitung:collectAndBuildPDF')); });
+      setImmediate(() => { void collectAndBuildPDF(baseUrl, hdrs, fund.erstesBild, pdfDest, relPath, n).catch(logAndContinue('anleitung:collectAndBuildPDF')); });
       console.log(`[brickinstructions] Fallback triggered for ${n}`);
       return 1;
     }
@@ -161,7 +161,7 @@ export async function downloadSetInstructions(setNumber: string,
       const pdfDest = path.join(instrDir, pdfName);
       const relPath = `/data/instructions/${pdfName}`;
       try { await repo.merkeAnleitung(n, instr.url, instr.description, null); saved++; } catch (e) { meldeUndWeiter('anleitungen:pdf-eintragen', e); }
-      setImmediate(() => { collectAndBuildPDF(instr.brickinstructions_base, instr.brickinstructions_hdrs, instr.brickinstructions_first, pdfDest, relPath, n).catch(logAndContinue('anleitung:collectAndBuildPDF')); });
+      setImmediate(() => { void collectAndBuildPDF(instr.brickinstructions_base, instr.brickinstructions_hdrs, instr.brickinstructions_first, pdfDest, relPath, n).catch(logAndContinue('anleitung:collectAndBuildPDF')); });
       continue;
     }
     const safeName = `${safeBase}_${i + 1}.pdf`;

@@ -110,7 +110,7 @@ export async function preisJobStand() {
 /** false, wenn er schon läuft. */
 export const preisJobJetzt = () => ziehePlanVor('preise');
 export const fehlendeBilderNachladen = () => {
-  stelleAuftragEin('bilder_neu_laden', {}, { schluessel: 'bilder_neu_laden', maxVersuche: 2 })
+  void stelleAuftragEin('bilder_neu_laden', {}, { schluessel: 'bilder_neu_laden', maxVersuche: 2 })
     .catch(logAndContinue('verwaltung:bilder nachladen'));
 };
 

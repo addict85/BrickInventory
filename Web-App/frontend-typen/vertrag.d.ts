@@ -831,6 +831,14 @@ export type JobStatus = {
   sub?: string | null;
   [feld: string]: unknown;
 };
+export type KonfigExport = {
+  version?: string;
+  exported_at?: string;
+  exported_by?: string | null;
+  global?: Record<string, string | number | boolean | null>;
+  user_settings?: Record<string, string | number | boolean | null>;
+  [feld: string]: unknown;
+};
 export type KontenListe = {
   success: true;
   users: KontoInListe[];

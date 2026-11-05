@@ -96,58 +96,28 @@
                 "type": "object",
                 "properties": {
                   "rebrickable": {
-                    "anyOf": [
-                      {
-                        "anyOf": [
-                          {
-                            "type": "number"
-                          },
-                          {
-                            "type": "string",
-                            "maxLength": 40
-                          }
-                        ]
-                      },
-                      {
-                        "type": "null"
-                      }
-                    ]
+                    "type": [
+                      "integer",
+                      "string"
+                    ],
+                    "minimum": 1,
+                    "maximum": 100000
                   },
                   "bricklink": {
-                    "anyOf": [
-                      {
-                        "anyOf": [
-                          {
-                            "type": "number"
-                          },
-                          {
-                            "type": "string",
-                            "maxLength": 40
-                          }
-                        ]
-                      },
-                      {
-                        "type": "null"
-                      }
-                    ]
+                    "type": [
+                      "integer",
+                      "string"
+                    ],
+                    "minimum": 1,
+                    "maximum": 100000
                   },
                   "brickset": {
-                    "anyOf": [
-                      {
-                        "anyOf": [
-                          {
-                            "type": "number"
-                          },
-                          {
-                            "type": "string",
-                            "maxLength": 40
-                          }
-                        ]
-                      },
-                      {
-                        "type": "null"
-                      }
-                    ]
+                    "type": [
+                      "integer",
+                      "string"
+                    ],
+                    "minimum": 1,
+                    "maximum": 100000
                   }
                 },
                 "additionalProperties": false
@@ -690,14 +660,10 @@
                 "type": "object",
                 "properties": {
                   "ttl": {
-                    "anyOf": [
-                      {
-                        "type": "number"
-                      },
-                      {
-                        "type": "string",
-                        "maxLength": 40
-                      }
+                    "enum": [
+                      "12",
+                      "24",
+                      "168"
                     ]
                   }
                 },
@@ -810,20 +776,9 @@
                 "type": "object",
                 "properties": {
                   "condition": {
-                    "anyOf": [
-                      {
-                        "type": "string",
-                        "enum": [
-                          "N",
-                          "U",
-                          "n",
-                          "u"
-                        ]
-                      },
-                      {
-                        "type": "string",
-                        "const": ""
-                      }
+                    "enum": [
+                      "N",
+                      "U"
                     ]
                   }
                 },
@@ -10553,10 +10508,19 @@
                 "type": "object",
                 "properties": {
                   "theme": {
-                    "type": "string",
-                    "maxLength": 40
+                    "enum": [
+                      "classic",
+                      "brick",
+                      "werkbank",
+                      "farbfaecher",
+                      "noppe",
+                      "hochglanz"
+                    ]
                   }
                 },
+                "required": [
+                  "theme"
+                ],
                 "additionalProperties": false
               }
             }
@@ -17544,6 +17508,61 @@
           "progress",
           "total"
         ],
+        "additionalProperties": {}
+      },
+      "KonfigExport": {
+        "type": "object",
+        "properties": {
+          "version": {
+            "type": "string",
+            "maxLength": 20
+          },
+          "exported_at": {
+            "type": "string",
+            "maxLength": 40
+          },
+          "exported_by": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 200
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "global": {
+            "type": "object",
+            "propertyNames": {
+              "type": "string",
+              "maxLength": 64
+            },
+            "additionalProperties": {
+              "type": [
+                "string",
+                "number",
+                "boolean",
+                "null"
+              ]
+            }
+          },
+          "user_settings": {
+            "type": "object",
+            "propertyNames": {
+              "type": "string",
+              "maxLength": 64
+            },
+            "additionalProperties": {
+              "type": [
+                "string",
+                "number",
+                "boolean",
+                "null"
+              ]
+            }
+          }
+        },
         "additionalProperties": {}
       },
       "KontenListe": {

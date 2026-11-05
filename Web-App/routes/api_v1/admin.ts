@@ -147,17 +147,13 @@ router.get('/admin/cache-ttl', requireApiAdmin, async (_req: AuthedRequest, res:
 });
 
 router.post('/admin/cache-ttl', requireApiAdmin, async (req: Anfrage<'POST /api/v1/admin/cache-ttl'>, res: Antwort<'POST /api/v1/admin/cache-ttl'>) => {
-  const ttl = String(req.eingabe.ttl || '24');
-  if (!['12','24','168'].includes(ttl)) return sendeFehler(req, res, 400, 'wert_ungueltig');
-  setGlobalSetting('price_cache_ttl', ttl);
-  res.json({ success:true, ttl });
+  await setGlobalSetting('price_cache_ttl', req.eingabe.ttl);
+  res.json({ success: true, ttl: req.eingabe.ttl });
 });
 
 router.post('/admin/default-condition', requireApiAdmin, async (req: Anfrage<'POST /api/v1/admin/default-condition'>, res: Antwort<'POST /api/v1/admin/default-condition'>) => {
-  const condition = String(req.eingabe.condition || 'N');
-  if (!['N','U'].includes(condition)) return sendeFehler(req, res, 400, 'zustand_n_oder_u');
-  setGlobalSetting('default_price_condition', condition);
-  res.json({ success: true, condition });
+  await setGlobalSetting('default_price_condition', req.eingabe.condition);
+  res.json({ success: true, condition: req.eingabe.condition });
 });
 
 router.get('/admin/api-limits', requireApiAdmin, async (_req: AuthedRequest, res: Antwort<'GET /api/v1/admin/api-limits'>) => {
@@ -169,23 +165,14 @@ router.get('/admin/api-limits', requireApiAdmin, async (_req: AuthedRequest, res
 
 router.put('/admin/api-limits', requireApiAdmin, async (req: Anfrage<'PUT /api/v1/admin/api-limits'>, res: Antwort<'PUT /api/v1/admin/api-limits'>) => {
   const { rebrickable, bricklink, brickset } = req.eingabe;
-  if (rebrickable) {
-    // Ungeprüft landete "NaN" in global_settings und liess jeden Aufruf scheitern.
-    const n = parseInt(String(rebrickable), 10);
-    if (!Number.isFinite(n) || n < 1 || n > 100000)
-      return sendeFehler(req, res, 400, 'tageslimit_bereich');
-    setGlobalSetting('api_limit_rebrickable', String(n));
-  }
-  if (bricklink) {
-    setGlobalSetting('api_limit_bricklink', String(parseInt(String(bricklink))));
-  }
-  if (brickset) {
-    const newLimit = parseInt(String(brickset));
+  if (rebrickable !== undefined) await setGlobalSetting('api_limit_rebrickable', rebrickable);
+  if (bricklink !== undefined) await setGlobalSetting('api_limit_bricklink', bricklink);
+  if (brickset !== undefined) {
     const oldLimit = parseInt(await getGlobalSetting('api_limit_brickset') || '100');
-    setGlobalSetting('api_limit_brickset', String(newLimit));
-    await bricksetLimitGesetzt(oldLimit, newLimit);
+    await setGlobalSetting('api_limit_brickset', brickset);
+    await bricksetLimitGesetzt(oldLimit, Number(brickset));
   }
-  res.json({ success:true });
+  res.json({ success: true });
 });
 
 router.post('/admin/reimport-instructions', requireApiAdmin, async (_req: AuthedRequest, res: Antwort<'POST /api/v1/admin/reimport-instructions'>) => {

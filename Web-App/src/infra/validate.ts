@@ -192,6 +192,8 @@ function alsSchema<T>(pruefe: (v: unknown) => T, json: Record<string, unknown>, 
 }
 
 export const eingabe = {
+  /** Eine eigene Regel mit eigenem Fehlercode; Pflicht. */
+  regel: <T>(pruefe: (v: unknown) => T, json: Record<string, unknown>) => alsSchema(pruefe, json, true),
   artikelnummer: (feld: string) =>
     alsSchema(v => requireItemNumber(v, feld), { type: 'string', pattern: ITEM_NUMBER_RE.source }, true),
   text: (max = 200) => alsSchema(v => optionalText(v, max), { type: ['string', 'null'], maxLength: max }),

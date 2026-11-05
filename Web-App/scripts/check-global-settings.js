@@ -46,9 +46,7 @@ const ERLAUBT = new Map([
  * weil sie nur nach dem Tabellennamen sucht — Absicht: lieber eine Zahl zu
  * hoch als eine echte Fundstelle uebersehen.
  */
-const OFFEN = new Map([
-  ['routes/api_v1/admin.ts', 1],
-]);
+const OFFEN = new Map([]);
 
 function dateien() {
   const out = [];

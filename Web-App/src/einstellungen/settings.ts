@@ -1,9 +1,9 @@
 
 import * as repo from './repository';
 import { verschluessele, entschluessele, umschluesseln, kontext } from '../infra/geheimnis';
-import { fehlerWerfen } from '../infra/fehlerTexte';
+import { fehlerWerfen, dateiFehler } from '../infra/fehlerTexte';
 import { meldeUndLiefere } from '../infra/fehler';
-import crypto from 'node:crypto';
+import { GLOBALE_REGELN, DESIGNS, type GlobalerSchluessel } from '../infra/vertrag/globaleRegeln';
 
 /** Gespeichert ist Text; mit Vorgabe ist das Ergebnis Text oder die Vorgabe, nie `any`. */
 export async function getSetting(userId: number, key: string): Promise<string | null | undefined>;
@@ -32,8 +32,7 @@ export async function getGlobalSetting(key: string, fallback: unknown = null): P
 // Was ein Konto selbst setzen darf: Die Werte landen in Seiten, PDFs und
 // Preisabfragen; „XYZ" als Währung setzte jede Bewertung still auf null.
 export const WAEHRUNGEN = new Set(['CHF', 'EUR', 'USD', 'GBP', 'SEK', 'NOK', 'AUD', 'CAD', 'DKK']);
-/** Dieselbe Liste wie ALLOWED in public/js/00-theme-boot.js (theme.test.js). */
-export const DESIGNS: readonly string[] = ['classic', 'brick', 'werkbank', 'farbfaecher', 'noppe', 'hochglanz'];
+export { DESIGNS };
 const NUTZER_REGELN: Record<string, (v: string) => boolean> = {
   currency: v => WAEHRUNGEN.has(v),
   language: v => v === 'de' || v === 'en',
@@ -82,28 +81,18 @@ export async function globalDefaultCondition(): Promise<'N' | 'U'> {
   return g === 'U' ? 'U' : 'N';
 }
 
-/** Ja/Nein nur als 0 oder 1: "false" las die Anzeige als aus, die Durchsetzung als an. */
-const JA_NEIN = new Set(['registration_enabled', 'smtp_secure', 'einrichtung_erledigt']);
-/** Ein unlesbarer Fingerabdruck oder ein kaputtes PEM fiele sonst erst beim Versand auf. */
-const GLOBALE_REGELN: Record<string, (v: string) => boolean> = {
-  smtp_tls_fingerprint: v => v === '' || /^[0-9A-F]{64}$/.test(v.replace(/[\s:]/g, '').toUpperCase()),
-  smtp_tls_ca: v => {
-    if (v.trim() === '') return true;
-    try { return !!new crypto.X509Certificate(v); } catch { return false; }
-  },
-};
+const regelFuer = (key: string) => Object.hasOwn(GLOBALE_REGELN, key) ? GLOBALE_REGELN[key as GlobalerSchluessel] : undefined;
 
 export function globalerWertGueltig(key: string, value: unknown): boolean {
-  if (JA_NEIN.has(key)) return String(value) === '0' || String(value) === '1';
-  return GLOBALE_REGELN[key]?.(String(value)) ?? true;
+  return regelFuer(key)?.safeParse(value).success ?? false;
 }
 
-/** Die EINE Schreibstelle: global_settings wurde vorher an vielen Stellen
- * verschieden angefasst.
+/** Die EINE Schreibstelle; jeder Schlüssel braucht eine Regel in GLOBALE_REGELN.
  * Ausführlich: docs/begruendungen/src/einstellungen/settings.ts.md#setglobalsetting */
 export async function setGlobalSetting(key: string, value: unknown) {
-  if (!globalerWertGueltig(key, value)) fehlerWerfen('wert_ungueltig', 400);
-  await repo.schreibeGlobalenWert(key, SECRET_KEYS.has(key) ? verschluessele(String(value), globalerKontext(key)) : String(value));
+  const r = regelFuer(key)?.safeParse(value);
+  if (!r?.success) throw (r?.error.issues[0] as { params?: { fehler?: unknown } } | undefined)?.params?.fehler ?? dateiFehler('wert_ungueltig', 400);
+  await repo.schreibeGlobalenWert(key, SECRET_KEYS.has(key) ? verschluessele(r.data, globalerKontext(key)) : r.data);
 }
 
 /** Offen nur bei genau '1'; fehlt die Zeile oder ist sie unlesbar, bleibt sie zu. */

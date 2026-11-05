@@ -196,7 +196,7 @@ function _touchLastUsed(entry: CacheEintrag, ip?: string | null): void {
     && new Date(u.expires_at).getTime() < ziel - TAG_MS;
   if ((jetzt - zuletzt < TAG_MS && !fristHinkt) || entry.schreibt) return;
   entry.schreibt = true;
-  repo.beruehreToken(entry.dbKey, TOKEN_IDLE_DAYS, ipBereich(ip))
+  void repo.beruehreToken(entry.dbKey, TOKEN_IDLE_DAYS, ipBereich(ip))
     .then(() => {
       // Den Cache mitziehen, sonst wiese der Treffer-Zweig einen gerade
       // erneuerten Token am alten Fristende einmal ab.
