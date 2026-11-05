@@ -9,6 +9,7 @@
  *     src/infra/             fachfreie Helfer, kennen nichts darüber
  *
  * Ausnahmen stehen namentlich in den Listen und dürfen nur kürzer werden.
+ * Überblick für Menschen: docs/architektur.md (der letzte Test hält ihn aktuell).
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -530,4 +531,13 @@ test('Klienten erreicht man nur über src/katalog/quellen.ts', () => {
     .map(k => `${k.d} -> ${k.ziel}`);
   assert.deepEqual(treffer, []);
   assert.ok(kanten.some(k => k.d === 'src/katalog/quellen.ts' && k.nach === 'clients'), 'quellen.ts holt keinen Klienten mehr?');
+});
+
+test('docs/architektur.md nennt die Rangfolge der Bereiche wie STUFEN', () => {
+  // Gegenprobe: in der Tabelle `src/mail` und `src/einstellungen` vertauscht → rot.
+  const doc = fs.readFileSync(path.join(ROOT, 'docs', 'architektur.md'), 'utf8');
+  const tabelle = doc.slice(doc.indexOf('## Rangfolge der Bereiche'), doc.indexOf('## API-Vertrag'));
+  const stufen = [...tabelle.matchAll(/^\| (\d+) \| (.+) \|$/gm)].map(m => [...m[2].matchAll(/`([^`]+)`/g)].map(b => b[1]));
+  assert.ok(stufen.length > 5, 'Die Tabelle der Rangfolge ist nicht zu finden');
+  assert.deepEqual(stufen, STUFEN);
 });

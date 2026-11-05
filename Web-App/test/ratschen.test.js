@@ -6,37 +6,13 @@ const path = require('node:path');
 const WEB = path.join(__dirname, '..');
 
 /**
- * Zwei Ratschen: der Bestand darf sinken, nie steigen.
+ * Ratschen: Ein gemessener Bestand darf sinken, nie steigen.
  *
- * ── Warum eine Ratsche und keine harte Regel ────────────────────────────────
- *
- * Marcos Frage war, ob es in Sicherheit, Architektur und Codequalitaet noch
- * etwas anzugehen gibt. Zwei Zahlen stechen heraus, und beide sind zu gross
- * fuer einen Durchgang:
- *
- *   • STILLE FAENGE — `catch {}` und `.catch(() => null)`. Jeder einzelne kann
- *     richtig sein (ein fehlendes Vorschaubild ist kein Fehler). Zusammen sind
- *     sie die Stellen, an denen die Anwendung etwas verschluckt und weiterlaeuft
- *     — genau das hat in dieser Sitzung dreimal Stunden gekostet.
- *
- *   • `any` — jedes davon schaltet den Typpruefer fuer diesen Ausdruck ab.
- *     Der Baum steht sonst auf `noImplicitAny` mit leerer Ausnahmeliste; diese
- *     Stellen sind die verbliebenen Loecher darin.
- *
- * Sie alle auf einmal anzufassen waere ein Umbau von hunderten Stellen, jede
- * mit eigener Begruendung, und niemand koennte das Ergebnis pruefen. Eine harte
- * Regel waere sofort rot und muesste hunderte Ausnahmen auffuehren — eine
- * Ausnahmeliste dieser Laenge liest niemand mehr.
- *
- * Die Ratsche loest beides, genau wie AbstandsskalaTest in der App: Sie haelt
- * den GEMESSENEN Stand fest, laesst ihn sinken und schlaegt an, sobald er
- * steigt. Neuer Code bekommt damit den hoeheren Anspruch, ohne dass der
- * Bestand angefasst werden muss.
- *
- * ── Wer die Schranke senkt ──────────────────────────────────────────────────
- *
- * Wer eine Stelle aufraeumt, setzt die Zahl hier herunter. Das ist Absicht:
- * Die Schranke soll den Fortschritt festhalten, sonst schleicht er zurueck.
+ * Für Dinge, die zu zahlreich sind, um sie auf einmal aufzuräumen (stille
+ * Fänge, `any`, reine Quelltext-Tests, Kommentaranteil …). Eine harte Regel
+ * wäre sofort rot und bräuchte eine Ausnahmeliste, die niemand mehr liest;
+ * die Ratsche gibt neuem Code den höheren Anspruch, ohne den Bestand
+ * anzufassen. Wer eine Stelle aufräumt, senkt die Schranke hier.
  */
 
 /** Alle TypeScript-Quellen ohne Tests und ohne Erzeugnisse. */
@@ -101,22 +77,8 @@ test('die Suche findet die Quellen ueberhaupt', () => {
 });
 
 test('stille Faenge werden weniger, nie mehr', () => {
-  // GEMESSEN am 18.09.2026: 340 Stellen in 97 Dateien.
-  // GEMESSEN am 19.09.2026: 325. Die Schranke stand auf
-  // 340, solange der Zaehler auch Kommentare las.
-  // GEMESSEN am 20.10.2026: 323. Die Ratsche hatte beim Auftragsdatensatz des
-  // Wanted-Imports angeschlagen (327 gegen 325); statt die Schranke zu heben
-  // sind die vier neuen Faenge sprechend gemacht worden — zwei brauchte es gar
-  // nicht (die Meldekette traegt ihr logAndContinue schon), zwei melden jetzt
-  // ueber meldeUndWeiter. Die Schranke zieht nach, wie die Regel es vorsieht.
-  // 29.10.2026: 41 — die übrigen Fänge melden über logAndContinue/meldeUndWeiter.
-  // 30.10.2026: 39 (Schichtumbau: die Routenfänge stehen gemeldet in den Diensten).
-  // 30.10.2026: 36 (Protokoll: Schreibfehler nach app_logs werden gezählt und gemeldet).
-  // 30.10.2026: 32 (Cluster, Planer und eigene Warteschlangen entfallen).
-  // 31.10.2026: 21 (Schichtumbau: Routen ohne try/catch, Repositories melden).
-  // 31.10.2026: 12 (Wanted-Liste und CSV-Tausch melden über meldeUndLiefere/logAndContinue).
-  // 31.10.2026: 2 (Abmeldung, Schema-Aufbau, Bildcache und Brickset melden; die
-  // beiden übrigen sind Rebrickable-Vermutungen, deren 404 die Antwort ist).
+  // Die beiden übrigen sind Rebrickable-Vermutungen, deren 404 die Antwort
+  // ist; wie die Zahl gesunken ist, steht im git log.
   const SCHRANKE = 2;
   const ist = zaehle(STILLE_FAENGE);
   assert.ok(ist <= SCHRANKE,
@@ -191,12 +153,7 @@ function reineQuelltextTests() {
 }
 
 test('reine Quelltext-Tests werden weniger, nie mehr', () => {
-  // GEMESSEN am 25.10.2026: 103 von 312 Testdateien; am 28.10.2026: 100
-  // (routen-bewacht ging in api-eingang-db auf, das den echten Server fragt).
-  // 30.10.2026: 92 — acht Dateien prüfen jetzt Verhalten (Erfassungen, Summen,
-  // Mengen-Echo, Preisverlauf, Figurenschätzung, LISTEN/NOTIFY, CSV, Katalogbilder).
-  // 30.10.2026: 90 — der Start des Job-Prozesses wird ausgeführt statt gelesen.
-  // 02.11.2026: 87 — workflow-ort führt das Skript des Sicherheitslaufs aus. 03.11.2026: 86.
+  // Gemessen 86 am 03.11.2026; wie die Zahl gesunken ist, steht im git log.
   const SCHRANKE = 86;
   const alle = fs.readdirSync(__dirname).filter(n => n.endsWith('.test.js')).length;
   assert.ok(alle >= 300, `Nur ${alle} Testdateien gefunden — greift die Suche noch?`);
@@ -226,9 +183,7 @@ function emojiInDerOberflaeche() {
 }
 
 test('Emoji in der Oberfläche werden weniger, nie mehr', () => {
-  // GEMESSEN am 25.10.2026: 275, nachdem Leiste und Benutzermenü auf die
-  // Symbolfamilie umgestellt waren; 274 nach den Erfassen-Dialogen; 0 am 27.10.
-  // Am 27.10. auf 0: Alle Stellen nutzen die Symbolfamilie oder kommen ohne aus.
+  // Seit dem 27.10.2026 0: Alle Stellen nutzen die Symbolfamilie oder kommen ohne aus.
   const SCHRANKE = 0;
   const ist = emojiInDerOberflaeche();
   // Selbstbeweis an einer Probe statt an der Zahl — die ist jetzt 0.
@@ -272,8 +227,7 @@ function serverUndOberflaeche() {
 test('kein Verweis auf „Nachtrag N" im Code', () => {
   // Die Geschichte einer Stelle steht im Commit (CLAUDE.md); eine Nummer im
   // Kommentar verweist auf eine Liste, die es im Baum nicht gibt.
-  // GEMESSEN am 28.10.2026: 0 (vorher 138). Gegenprobe: ein „(Nachtrag 1)" in
-  // src/konto/auth.ts → rot.
+  // Gegenprobe: ein „(Nachtrag 1)" in src/konto/auth.ts → rot.
   const treffer = serverUndOberflaeche().flatMap(f =>
     (fs.readFileSync(f, 'utf8').match(/Nachtr(?:ag|äge|aege) \d+/g) || []).map(m => `${path.relative(WEB, f)}: ${m}`));
   assert.deepEqual(treffer, []);
