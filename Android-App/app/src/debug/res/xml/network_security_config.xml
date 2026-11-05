@@ -9,6 +9,7 @@
     <domain-config cleartextTrafficPermitted="false">
         <domain includeSubdomains="true">github.com</domain>
         <domain includeSubdomains="true">githubusercontent.com</domain>
+        <certificateTransparency enabled="true" />
         <trust-anchors>
             <certificates src="system" />
         </trust-anchors>
@@ -24,6 +25,7 @@
     </domain-config>
 
     <base-config cleartextTrafficPermitted="false">
+        <certificateTransparency enabled="true" />
         <trust-anchors>
             <certificates src="system" />
         </trust-anchors>

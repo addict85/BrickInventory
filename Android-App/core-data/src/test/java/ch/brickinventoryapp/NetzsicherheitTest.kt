@@ -31,6 +31,8 @@ import javax.xml.parsers.DocumentBuilderFactory
  *   H  (03.11.2026, sec8 H3, kotlinc lokal) in src/main die Zeile
  *      <certificateTransparency> der base-config entfernt → rot „der Release-Build
  *      verlangt Certificate Transparency“
+ *   J  (05.11.2026, sec16 N10, kotlinc lokal) gegenproben/debug-ohne-ct.patch: in
+ *      src/debug <certificateTransparency> der base-config entfernt → rot „der Debug-Build …“
  *   I  (04.11.2026, sec12 H8) in data_extraction_rules.xml unter device-transfer die
  *      Zeile androidx.work.workdb entfernt → rot „Kontodaten verlassen das Geraet nicht“
  */
@@ -74,6 +76,16 @@ class NetzsicherheitTest {
         val bereiche = cfg.kinder("domain-config") + cfg.kinder("base-config")
         val ohne = bereiche.filter { b -> b.kinder("certificateTransparency").none { it.getAttribute("enabled") == "true" } }
         assertTrue("Ohne Certificate Transparency: " + ohne.map { it.tagName }, bereiche.isNotEmpty() && ohne.isEmpty())
+    }
+
+    /** Wie Release, ausser für die Entwicklungshosts im Klartext; sonst prüfte der Debug-Bau eine andere Kette. */
+    @Test
+    fun `der Debug-Build verlangt Certificate Transparency wie Release`() {
+        val cfg = lies("debug")
+        val bereiche = (cfg.kinder("domain-config") + cfg.kinder("base-config"))
+            .filter { it.getAttribute("cleartextTrafficPermitted") != "true" }
+        val ohne = bereiche.filter { b -> b.kinder("certificateTransparency").none { it.getAttribute("enabled") == "true" } }
+        assertTrue("Ohne Certificate Transparency: " + ohne.map { it.tagName }, bereiche.size == 2 && ohne.isEmpty())
     }
 
     @Test

@@ -620,6 +620,17 @@ jobs:
             exit 1
           fi
 
+      # Das zusammengeführte Manifest des fertigen APK (sec16 N7): Bibliotheken bringen
+      # eigene Komponenten mit. Jede exportierte steht in tools/manifest-exportiert.txt,
+      # debuggable, allowBackup und Klartext sind aus.
+      - name: Manifest des APK prüfen
+        run: |
+          set -euo pipefail
+          WERKZEUGE=$(ls -d "$ANDROID_HOME"/build-tools/*/ | sort -V | tail -1)
+          "$WERKZEUGE/aapt2" dump xmltree --file AndroidManifest.xml \
+            app/build/outputs/apk/release/BrickInventory.apk > "$RUNNER_TEMP/manifest.txt"
+          python3 tools/manifest-pruefen.py "$RUNNER_TEMP/manifest.txt" tools/manifest-exportiert.txt
+
       # Die signierte Beschreibung (sec8 N4): vom selben Zertifikat wie das APK
       # signiert, und sie beschreibt genau dieses APK. Nennt die App Beschreibungs-
       # schlüssel (sec11 H1), muss ein Etikett mit einem davon signiert sein. Sonst böte
