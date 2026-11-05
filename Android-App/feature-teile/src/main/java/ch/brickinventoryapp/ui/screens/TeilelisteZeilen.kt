@@ -3,6 +3,9 @@ package ch.brickinventoryapp.ui.screens
 // Die Zeilen der temporären Teileliste. Eigene Datei ohne Compose, damit die
 // Auflösung eines Sets (ui/Teileliste.kt) ohne Oberfläche prüfbar ist.
 
+/** „10294“ heisst „10294-1“ — wie überall, wo eine Setnummer getippt wird. */
+internal fun normalisiert(nr: String): String = if (nr.contains("-")) nr.trim() else "${nr.trim()}-1"
+
 data class PlSet(val setNumber: String, var name: String = "")
 
 data class PlPart(

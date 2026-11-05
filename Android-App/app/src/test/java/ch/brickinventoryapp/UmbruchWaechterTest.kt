@@ -24,7 +24,7 @@ import ch.brickinventoryapp.data.repository.KatalogRepository
 import ch.brickinventoryapp.data.repository.SetsRepository
 import ch.brickinventoryapp.ui.AnmeldeFormular
 import ch.brickinventoryapp.ui.screens.CatalogDetailScreen
-import ch.brickinventoryapp.ui.screens.GalleryScreen
+import ch.brickinventoryapp.ui.screens.GalleryRoute
 import ch.brickinventoryapp.ui.screens.LoginScreen
 import ch.brickinventoryapp.ui.screens.PreisalarmeUnterseite
 import ch.brickinventoryapp.ui.screens.SetDetailScreen
@@ -200,7 +200,7 @@ class UmbruchWaechterTest {
         val vm = welt.galerie().also { it.loadSets(); it.loadStats() }
         pruefe("Sammlung $schrift", schrift,
             { vm.galleryState.value.let { it.sets.isNotEmpty() && it.stats != null && !it.galleryLoading } }) {
-            GalleryScreen(vm = vm, erfassung = erfassung(), imageLoader = bilder, onScanBarcode = {}, onSetClick = {})
+            GalleryRoute(vm = vm, erfassung = erfassung(), imageLoader = bilder, onScanBarcode = {}, onSetClick = {})
         }
     }
 

@@ -102,7 +102,8 @@ class MediaAuthTest {
         // Beide Knöpfe arbeiten auf der geladenen Quelle des Ready-Zustands und dürfen
         // nur dort sichtbar sein. Das Feld wird aus Ready gelesen, nicht fest benannt.
         // Gegenprobe: gegenproben/pdf-download-ausserhalb-ready.patch → rot hier.
-        val feld = Regex("""class Ready\(val (\w+): \w+,""").find(viewer)?.groupValues?.get(1)
+        val zustand = code(read("ui/pdf/PdfQuelle.kt"))
+        val feld = Regex("""class Ready\(val (\w+): \w+,""").find(zustand)?.groupValues?.get(1)
         assert(feld != null) { "PdfLoadState.Ready trägt keine geladene Quelle mehr" }
         assert(actions.contains("if (s is PdfLoadState.Ready)")) { "Ready-Prüfung fehlt" }
         val ready = actions.substringAfter("if (s is PdfLoadState.Ready)")
@@ -114,7 +115,8 @@ class MediaAuthTest {
 
     @Test
     fun `die Anzeige selbst laeuft ueber den authentifizierten Client`() {
-        val viewer = code(read("ui/screens/PdfViewerScreen.kt"))
+        // Geladen wird im AnleitungsLader (ViewModel), nicht mehr im Bildschirm.
+        val viewer = code(read("ui/pdf/AnleitungsLader.kt"))
         // Geprüft wird die AUSSAGE, nicht der Wortlaut des Aufrufs: Der
         // Download läuft über den injizierten Client. Die frühere Fassung
         // suchte die Argumentliste zeichengenau und wurde in Nachtrag 115 rot,
@@ -128,6 +130,9 @@ class MediaAuthTest {
         }
         assert(!viewer.contains("OkHttpClient()")) {
             "Ein frei gebauter Client kennt den Bearer-Token nicht"
+        }
+        assert(viewer.contains("""@param:Named("api") private val httpClient: OkHttpClient""")) {
+            "Der Lader bekommt nicht den api-Client mit Token und Klartext-Verbot"
         }
     }
 

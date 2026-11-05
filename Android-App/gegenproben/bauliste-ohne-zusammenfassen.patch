@@ -1,0 +1,18 @@
+Gegenprobe: Die Bauliste zählt gleiche Teile mehrerer Sets nicht mehr zusammen
+Modul: feature-teile
+Test: ch.brickinventoryapp.TeilelisteViewModelTest
+Rot: gleiche Teile mehrerer Sets werden zusammengezaehlt
+
+diff --git a/Android-App/feature-teile/src/main/java/ch/brickinventoryapp/ui/viewmodel/TeilelisteViewModel.kt b/Android-App/feature-teile/src/main/java/ch/brickinventoryapp/ui/viewmodel/TeilelisteViewModel.kt
+index c61fe00..1b303c0 100644
+--- a/Android-App/feature-teile/src/main/java/ch/brickinventoryapp/ui/viewmodel/TeilelisteViewModel.kt
++++ b/Android-App/feature-teile/src/main/java/ch/brickinventoryapp/ui/viewmodel/TeilelisteViewModel.kt
+@@ -141,7 +141,7 @@ class TeilelisteViewModel @Inject constructor(
+                     val (name, neu) = quelle.loeseSetAuf(s.setNumber, server)
+                     setzeListe { z -> z.copy(sets = z.sets.map { if (it.setNumber == s.setNumber) it.copy(name = name) else it }) }
+                     neu.forEach { p ->
+-                        val key = "${p.blPartNumber ?: p.partNumber}|${p.colorName}"
++                        val key = "${p.partNumber}|${p.colorName}|${combined.size}"
+                         combined[key] = combined[key]?.let { it.copy(quantity = it.quantity + p.quantity) } ?: p
+                     }
+                 } catch (e: CancellationException) {

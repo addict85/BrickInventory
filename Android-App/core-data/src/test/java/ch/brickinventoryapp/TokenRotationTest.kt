@@ -23,6 +23,10 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import retrofit2.Retrofit
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
 import java.io.File
 import java.util.Collections
 import java.util.concurrent.TimeUnit
@@ -72,6 +76,8 @@ class TokenRotationTest {
         override fun generation() = schranke.generation
     }
     private val schranke = TokenSchranke()
+    /** Echte Fäden: Der Tausch läuft hier gegen einen echten Testserver. */
+    private val hintergrund = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
     /** Wie PreferencesManager.tokenStand(): ohne Bindung gilt die eingetragene Adresse. */
     private fun stand() = TokenStand(gespeichert, NetworkPolicy.herkunft(adresse()), schranke.generation)
@@ -81,6 +87,7 @@ class TokenRotationTest {
         ersetze = { vorher, neu, h -> schranke.ersetzeFalls(vorher, h, { stand() }) { speichern(neu) } },
         rotiere = { k().tokenRotieren(it) },
         pausen = listOf(50, 50, 50),
+        hintergrund = hintergrund,
     )
 
     init {
@@ -119,6 +126,7 @@ class TokenRotationTest {
 
     @After
     fun zu() {
+        hintergrund.cancel()
         server.shutdown()
         dir.deleteRecursively()
     }

@@ -86,7 +86,7 @@ class PdfCacheTest {
      */
     @Test
     fun `der Download schreibt in die Teildatei und benennt erst am Ende um`() {
-        val src = Quellen.ohneKommentare(Quellen.lies("ui/screens/PdfViewerScreen.kt"))
+        val src = Quellen.ohneKommentare(Quellen.lies("ui/pdf/AnleitungsLader.kt"))
         assert(src.contains("""val teil = File(dest.path + ".part")""")) {
             "Die Teildatei wird nicht mehr angelegt — schreibt der Download wieder direkt ins Ziel?"
         }

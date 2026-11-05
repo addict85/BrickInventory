@@ -14,7 +14,7 @@ import javax.inject.Inject
 const val ANLEITUNG_PRAEFIX = "anleitung_"
 const val ANLEITUNG_ENDUNG = ".bin"
 
-/** Hier entstehen die Anzeige-Dateien grosser Anleitungen, ihr Name wird sofort gelöscht (PdfViewerScreen). */
+/** Hier entstehen die Anzeige-Dateien grosser Anleitungen, ihr Name wird sofort gelöscht (ui/pdf/PdfQuelle.kt). */
 const val ANLEITUNG_ANZEIGE_ORDNER = "anleitung_anzeige"
 
 /**

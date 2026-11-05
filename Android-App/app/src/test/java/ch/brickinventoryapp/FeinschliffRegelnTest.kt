@@ -193,7 +193,7 @@ class FeinschliffRegelnTest {
                         kotlinx.coroutines.flow.emptyFlow<ch.brickinventoryapp.data.SetAnlegenSchritt>()
                 }))
             zeige(schrift) {
-                ch.brickinventoryapp.ui.screens.GalleryScreen(vm = vm, erfassung = erfassung,
+                ch.brickinventoryapp.ui.screens.GalleryRoute(vm = vm, erfassung = erfassung,
                     imageLoader = coil3.ImageLoader.Builder(ctx).build(), onScanBarcode = {}, onSetClick = {})
             }
             val ende = System.nanoTime() + 10_000_000_000L

@@ -13,9 +13,8 @@ import androidx.datastore.preferences.preferencesDataStore
 import ch.brickinventoryapp.util.TokenVerschluesselung
 import ch.brickinventoryapp.util.liesToken
 import dagger.hilt.android.qualifiers.ApplicationContext
+import ch.brickinventoryapp.di.ApplicationScope
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.StateFlow
@@ -34,6 +33,8 @@ val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "ap
 class PreferencesManager @Inject constructor(
     @param:ApplicationContext private val context: Context,
     private val tresor: TokenVerschluesselung,
+    /** Die Spiegel laufen, solange die App lebt; kein eigener Bereich ohne Besitzer. */
+    @param:ApplicationScope private val prefsScope: CoroutineScope,
 ) : Anmeldeablage, ch.brickinventoryapp.data.cache.CacheBesitzer, ch.brickinventoryapp.util.PinAblage, Entwertungsquelle,
     ch.brickinventoryapp.util.UpdateStandAblage {
     companion object {
@@ -168,7 +169,6 @@ class PreferencesManager @Inject constructor(
     // blockieren. Diese StateFlows spiegeln DataStore-Werte im Speicher, sodass
     // pro Request nur ein synchroner .value-Read nötig ist (statt runBlocking).
     // null = DataStore noch nicht gelesen (nur ganz kurz beim Kaltstart).
-    private val prefsScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
     // Der Speicherwert führt, der DataStore folgt: Die Anmeldung feuert sofort
     // Abrufe, und ein nachlaufender Wert gäbe dem Interceptor den alten Token.

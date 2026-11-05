@@ -64,7 +64,11 @@ class PdfExportService : Service() {
         ch.brickinventoryapp.util.LanguageManager.localizedContext(this)
     }
 
-    private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    @Inject lateinit var bereiche: ch.brickinventoryapp.di.Anwendungsbereiche
+
+    // Lebt mit dem Dienst (onDestroy bricht ab). lazy, weil Hilt die Felder erst
+    // in super.onCreate() setzt.
+    private val serviceScope by lazy { CoroutineScope(SupervisorJob() + bereiche.io) }
     private var exportJob: Job? = null
 
     override fun onCreate() {

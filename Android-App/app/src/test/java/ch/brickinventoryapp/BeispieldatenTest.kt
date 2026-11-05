@@ -13,6 +13,12 @@ import ch.brickinventoryapp.ui.viewmodel.GalerieViewModel
 import ch.brickinventoryapp.ui.viewmodel.MerklisteViewModel
 import ch.brickinventoryapp.ui.viewmodel.SetDetailViewModel
 import ch.brickinventoryapp.ui.viewmodel.TeileViewModel
+import ch.brickinventoryapp.ui.TeilelistenQuelle
+import ch.brickinventoryapp.ui.screens.PlPart
+import ch.brickinventoryapp.ui.viewmodel.ExportErgebnis
+import ch.brickinventoryapp.ui.viewmodel.TeilelistenExport
+import ch.brickinventoryapp.ui.viewmodel.TeilelisteViewModel
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
@@ -290,6 +296,17 @@ object Beispiele {
             FinanzenRepository(t.api, t.cache), HaushaltRepository(t.api, t.cache),
             object : DateiLeser { override suspend fun lies(uri: android.net.Uri): Pair<String?, ByteArray>? = null },
             SavedStateHandle(mapOf("setNumber" to SET))))
+
+        /** Die Bauliste ohne Netz: [aufloesen] liefert Name und Teile je Setnummer. */
+        fun bauliste(aufloesen: (String) -> Pair<String, List<PlPart>> = { error("nichts aufzulösen") }) =
+            t.merke(TeilelisteViewModel(t.dienste, object : TeilelistenQuelle {
+                override suspend fun loeseSetAuf(setNumber: String, serverUrl: String) = aufloesen(setNumber)
+                override suspend fun mitBestand(teile: List<PlPart>, nurLose: Boolean, mitUnterkonten: Boolean) = teile
+                override fun sortiert(teile: Collection<PlPart>) = teile.toList()
+            }, object : TeilelistenExport {
+                override val status = flowOf<String?>(null)
+                override suspend fun erzeuge(rumpf: String): ExportErgebnis = ExportErgebnis.Fehler(null)
+            }, SavedStateHandle()))
 
         override fun close() {
             t.aufraeumen()

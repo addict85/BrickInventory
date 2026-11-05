@@ -80,6 +80,36 @@ fun MonitoringScreen(vm: AppViewModel) {
     LaunchedEffect(snack) {
         snack?.let { vm.showSnackbar(it); snack = null }
     }
+    val hintergrund by mon.hintergrund.collectAsStateWithLifecycle()
+
+    // Der Cache-Abschnitt bekommt Zustand und Ereignisse; verdrahtet wird hier.
+    // Die Netzerlaubnisse sind Geräte-Einstellungen und kommen direkt aus ihnen.
+    val netzWlan    by vm.prefs.vorwaermenWlan.collectAsStateWithLifecycle(initialValue = true)
+    val netzMobil   by vm.prefs.vorwaermenMobil.collectAsStateWithLifecycle(initialValue = false)
+    val netzRoaming by vm.prefs.vorwaermenRoaming.collectAsStateWithLifecycle(initialValue = false)
+    val appState by vm.state.collectAsStateWithLifecycle()
+    // remember, nicht rememberSaveable: eine Messung der Platte (BildschirmZustandTest, „gemessen“).
+    var ablageBytes by remember { mutableStateOf(vm.vorschauAblageBytes()) }
+    val cacheEreignisse = remember(vm, mon) {
+        CacheEreignisse(
+            vorgabeZustand = mon::vorgabeZustandWaehlen,
+            ablageLeeren = { vm.vorschauAblageLeeren(); ablageBytes = vm.vorschauAblageBytes(); mon.ablageGeleert() },
+            netz = { schluessel, an -> scope.launch { vm.prefs.saveVorwaermenNetz(schluessel, an) } },
+            design = mon::designWaehlen,
+            cacheDauer = mon::cacheDauerSpeichern,
+            cacheLeeren = mon::cacheLeeren,
+            grenzwerte = mon::grenzwerteSpeichern,
+        )
+    }
+    LaunchedEffect(Unit) { mon.ladeCacheAbschnitt() }
+    val einstellungenNeu by mon.einstellungenNeu.collectAsStateWithLifecycle()
+    LaunchedEffect(einstellungenNeu) {
+        if (einstellungenNeu) { vm.loadSettings(); mon.einstellungenGeladen() }
+    }
+    val auftragsMeldung by mon.meldung.collectAsStateWithLifecycle()
+    LaunchedEffect(auftragsMeldung) {
+        auftragsMeldung?.let { snack = it; mon.meldungGezeigt() }
+    }
 
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
@@ -100,11 +130,15 @@ fun MonitoringScreen(vm: AppViewModel) {
             }
 
             // Die Auftragstabelle: was im Hintergrund wartet, läuft oder scheiterte.
-            item { HintergrundSection(mon, onSnack = { snack = it }) }
+            item {
+                HintergrundSection(hintergrund, mon::auftragsArtStarten, mon::auftragsArtLeeren,
+                    mon::auftragAbbrechen, mon::auftragWiederholen)
+            }
 
             // Cache stats + API limits
             item {
-                CacheAndLimitsSection(vm, onSnack = { snack = it })
+                CacheAndLimitsSection(monState, netzWlan, netzMobil, netzRoaming, appState.appTheme,
+                    ablageBytes, cacheEreignisse)
             }
 
             // Das Server-Protokoll — dieselbe Ansicht wie in der Webapp. Keine eigene

@@ -21,7 +21,7 @@ class StateDomainBoundaryTest {
     /** Datei → Felder, die sie im gemeinsamen Zustand setzen darf. */
     private val erlaubt = mapOf(
         // Sitzung beginnen und beenden, Design, Sprache, Serverstart.
-        "AppViewModel.kt" to setOf("appTheme", "serverUrl", "isLoggedIn", "authToken", "isAdmin",
+        "AppViewModel.kt" to setOf("appTheme", "serverUrl", "isLoggedIn", "isAdmin",
                                    "currency", "language", "startupStatus"),
         // isAdmin: rechteNachziehen() nach einem 403 `nur_admins`.
         "Sitzung.kt" to setOf("currency", "priceCondition", "defaultPriceCondition",

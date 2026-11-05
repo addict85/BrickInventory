@@ -17,7 +17,16 @@ import ch.brickinventoryapp.ui.model.AuftragStatus
 import ch.brickinventoryapp.ui.screens.auftragsArtText
 import ch.brickinventoryapp.ui.viewmodel.MonitoringViewModel
 import ch.brickinventoryapp.ui.viewmodel.Texte
+import androidx.lifecycle.viewModelScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.test.UnconfinedTestDispatcher
+import kotlinx.coroutines.test.resetMain
+import kotlinx.coroutines.test.setMain
+import kotlinx.coroutines.withTimeout
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -37,6 +46,9 @@ import java.io.File
  *   C  bei Result.Error den Erfolgssatz statt texte.meldung → rot „ein 409
  *      zeigt den Satz des Servers“
  *   D  `jobProzessLaeuft = true` fest → rot „ohne Job-Prozess steht die Warnung an“
+ * Gegenprobe (05.11.2026, gegenproben/auftrag-meldung-verloren.patch): melde()
+ *   startet die Aktion, legt den Satz aber nicht in `meldung` → rot „eine Aktion
+ *   laeuft im ViewModel …“
  */
 class HintergrundarbeitenTest {
 
@@ -97,6 +109,24 @@ class HintergrundarbeitenTest {
     fun `ohne Job-Prozess steht die Warnung an`() = runBlocking {
         vm.ladeHintergrund()
         assertFalse(vm.hintergrund.value.ansicht!!.jobProzessLaeuft)
+    }
+
+    /** Die Aktion läuft im viewModelScope; der Satz kommt über den Zustand, nicht über den Bildschirm. */
+    @OptIn(ExperimentalCoroutinesApi::class)
+    @Test
+    fun `eine Aktion laeuft im ViewModel und meldet ueber den Zustand`() = runBlocking {
+        pfade.antworten["/api/v1/admin/auftraege/17/abbrechen"] = """{"success":true,"id":"17","status":"abgebrochen"}"""
+        Dispatchers.setMain(UnconfinedTestDispatcher())
+        try {
+            vm.auftragAbbrechen("17")
+            val satz = withTimeout(5_000) { vm.meldung.first { it != null } }
+            assertEquals("t${R.string.hintergrund_abgebrochen_ok}()", satz)
+            vm.meldungGezeigt()
+            assertEquals(null, vm.meldung.value)
+        } finally {
+            vm.viewModelScope.cancel()
+            Dispatchers.resetMain()
+        }
     }
 
     @Test

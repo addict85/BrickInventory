@@ -36,7 +36,9 @@ class ScreenViewModelWiringTest {
 
     /** Die umgestellten Bildschirme und ihre Composable-Namen. */
     private val umgestellt = listOf(
-        "GalleryScreen" to "ui/screens/GalleryScreen.kt",
+        // Die Galerie ist zweigeteilt (arch14 M2): Die Route nimmt das ViewModel,
+        // GalleryScreen nur Zustand und Ereignisse (siehe Test unten).
+        "GalleryRoute" to "ui/screens/GalleryScreen.kt",
         "PartsScreen" to "ui/screens/PartsScreen.kt",
         "MinifigsScreen" to "ui/screens/MinifigsScreen.kt",
         "FinanceScreen" to "ui/screens/FinanceScreen.kt",
@@ -86,7 +88,7 @@ class ScreenViewModelWiringTest {
         // Welcher Rückruf das ist, unterscheidet sich je Bildschirm — deshalb
         // hier namentlich und nicht als ein Muster für alle.
         val rueckrufe = mapOf(
-            "GalleryScreen" to listOf("onSetClick", "onScanBarcode"),
+            "GalleryRoute" to listOf("onSetClick", "onScanBarcode"),
             "PartsScreen" to listOf("onOpenDetail"),
             "MinifigsScreen" to listOf("onOpenDetail"),
             "FinanceScreen" to listOf("onSetClick", "onManualClick"),
@@ -179,5 +181,15 @@ class ScreenViewModelWiringTest {
         assert(ziele == listOf("Gallery", "Finance", "Wanted", "Catalog", "Mehr")) {
             "Die Leiste zeigt $ziele — erwartet: vier Bestandsziele der Webapp und „Mehr“"
         }
+    }
+
+    @Test
+    fun `der Galerie-Bildschirm nimmt Zustand statt ViewModel`() {
+        val src = code(read("ui/screens/GalleryScreen.kt"))
+        val sig = signatur(src, "GalleryScreen")
+        assert(sig.none { Regex("""ViewModel\b""").containsMatchIn(it) }) {
+            "GalleryScreen nimmt wieder ein ViewModel: ${sig.joinToString()}"
+        }
+        assert(sig.any { it.trim().startsWith("zustand: GalerieZustand") }) { "GalleryScreen nimmt keinen Zustand" }
     }
 }

@@ -104,7 +104,7 @@ private fun NavGraphBuilder.galerieZiele(
             val ziel = this
             ReiterGeruest(stringResource(R.string.nav_collection), vm, navController, bottomNavItems, snackbarHostState) {
                 ch.brickinventoryapp.ui.components.MitZiel(ziel) {
-                GalleryScreen(
+                GalleryRoute(
                     vm = galerieVm,
                     erfassung = erfassung,
                     imageLoader = imageLoader,
@@ -170,7 +170,7 @@ private fun NavGraphBuilder.galerieZiele(
                             liste = {
                                 androidx.compose.runtime.CompositionLocalProvider(
                                     ch.brickinventoryapp.ui.components.LocalOffenesDetail provides setNumber) {
-                                GalleryScreen(
+                                GalleryRoute(
                                     vm = galerieUnten,
                                     erfassung = erfassung,
                                     imageLoader = imageLoader,

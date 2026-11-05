@@ -2,6 +2,9 @@ package ch.brickinventoryapp.data.cache
 
 import android.content.Context
 import dagger.hilt.android.qualifiers.ApplicationContext
+import ch.brickinventoryapp.di.BrickDispatchers
+import ch.brickinventoryapp.di.Dispatcher
+import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -46,6 +49,8 @@ class ResponseCache(
      * oder einem ausgelesenen Datenverzeichnis offen. Null nur in Tests ohne Keystore.
      */
     private val chiffre: AblageChiffre? = null,
+    /** Für Platte und Verschlüsselung; Hilt gibt den injizierten, Tests die Vorgabe. */
+    private val io: CoroutineDispatcher = Dispatchers.IO,
     /**
      * Woher der Ablageordner kommt. Eine Funktion, damit `context` erst beim
      * ersten Zugriff gefragt wird und der Test ein Wegwerf-Verzeichnis geben kann.
@@ -57,10 +62,16 @@ class ResponseCache(
      * leeren — offline wäre die App dann leer. Ohne Sicherung, weil die
      * Antworten zum Konto gehören und das Gerät nicht verlassen sollen.
      */
-    @Inject constructor(@ApplicationContext context: Context, besitzer: CacheBesitzer, ablage: Ablageschluessel) : this(
+    @Inject constructor(
+        @ApplicationContext context: Context,
+        besitzer: CacheBesitzer,
+        ablage: Ablageschluessel,
+        @Dispatcher(BrickDispatchers.IO) io: CoroutineDispatcher,
+    ) : this(
         bereichQuelle = { besitzer.cacheBereich() },
         altlast = { File(context.cacheDir, "api-1") },
         chiffre = AblageChiffre { ablage.fuer("antworten") },
+        io = io,
         ordnerQuelle = { context.noBackupFilesDir },
     )
 
@@ -113,7 +124,7 @@ class ResponseCache(
      * nichts mehr zu suchen. Fehler werden geschluckt — ein nicht schreibbarer
      * Cache darf einen erfolgreichen Abruf nicht zum Fehler machen.
      */
-    suspend fun <T> put(bereich: String, key: String, serializer: KSerializer<T>, value: T) = withContext(Dispatchers.IO) {
+    suspend fun <T> put(bereich: String, key: String, serializer: KSerializer<T>, value: T) = withContext(io) {
         try {
             mutex.withLock {
                 val fach = fach(bereich).apply { mkdirs() }
@@ -134,7 +145,7 @@ class ResponseCache(
      */
     suspend fun <T> getMitStand(bereich: String, key: String, serializer: KSerializer<T>,
                                 maxAgeMs: Long = MAX_AGE_MS): Pair<T, Long>? =
-        withContext(Dispatchers.IO) {
+        withContext(io) {
             try {
                 val f = fileFor(bereich, key)
                 if (!f.exists()) return@withContext null
@@ -149,7 +160,7 @@ class ResponseCache(
         }
 
     /** Beim Abmelden aufrufen — alle Bereiche, nicht nur der aktuelle. */
-    suspend fun clear() = withContext(Dispatchers.IO) {
+    suspend fun clear() = withContext(io) {
         try { mutex.withLock { basis.listFiles()?.forEach { it.deleteRecursively() } } } catch (_: Throwable) {}
     }
 

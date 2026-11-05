@@ -28,10 +28,10 @@ import ch.brickinventoryapp.util.fmtUhrzeit
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
-import ch.brickinventoryapp.ui.AppViewModel
 import ch.brickinventoryapp.ui.viewmodel.MonitoringViewModel
+import ch.brickinventoryapp.ui.viewmodel.MonitoringUiState
+import androidx.datastore.preferences.core.Preferences
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import ch.brickinventoryapp.ui.*
 import kotlinx.coroutines.launch
 import ch.brickinventoryapp.util.NumericInput
@@ -123,35 +123,38 @@ internal fun BricksetQueueRow(
     }
 }
 
+/** Was der Cache-Abschnitt auslöst; MonitoringScreen verdrahtet die ViewModels. */
+class CacheEreignisse(
+    val vorgabeZustand: (String) -> Unit,
+    val ablageLeeren: () -> Unit,
+    val netz: (Preferences.Key<Boolean>, Boolean) -> Unit,
+    val design: (String) -> Unit,
+    val cacheDauer: (Int) -> Unit,
+    val cacheLeeren: (Boolean) -> Unit,
+    val grenzwerte: (rebrickable: Int, bricklink: Int, brickset: Int) -> Unit,
+)
+
 // ExperimentalLayoutApi: fuer die FlowRow der Design-Auswahl weiter unten.
 // Seit es vier Designs gibt, passen die Chips nicht mehr in eine Zeile.
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-fun CacheAndLimitsSection(vm: AppViewModel, onSnack: (String) -> Unit = {}) {
-    val scope = rememberCoroutineScope()
-    val cacheSavedMsg  = stringResource(R.string.monitoring_cache_saved)
-    val cacheGeleertMsg = stringResource(R.string.monitoring_cache_cleared)
+fun CacheAndLimitsSection(
+    monState: MonitoringUiState,
+    /** Die drei Netzerlaubnisse fürs Vorwärmen (WLAN, mobil, Roaming), Geräte-Einstellungen. */
+    netzWlan: Boolean,
+    netzMobil: Boolean,
+    netzRoaming: Boolean,
+    /** Das wirksame Design, wenn der Server noch keine Vorgabe nannte. */
+    wirksamesDesign: String,
+    ablageBytes: Long,
+    ereignisse: CacheEreignisse,
+) {
     var zeigeLeerenFrage by rememberSaveable { mutableStateOf(false) }
     var leerenAlles by rememberSaveable { mutableStateOf(false) }
-    val limitsSavedMsg = stringResource(R.string.monitoring_limits_saved)
-
-    // Die drei Netzerlaubnisse direkt aus den Einstellungen, nicht über AppUiState: Es
-    // sind Geräte-Einstellungen, und eine Kopie im gemeinsamen Zustand wäre eine
-    // zweite Fassung derselben Wahrheit. hiltViewModel() liefert im selben Ziel
-    // dieselbe Instanz wie MonitoringScreen.
-    val netzWlan    by vm.prefs.vorwaermenWlan.collectAsStateWithLifecycle(initialValue = true)
-    val netzMobil   by vm.prefs.vorwaermenMobil.collectAsStateWithLifecycle(initialValue = false)
-    val netzRoaming by vm.prefs.vorwaermenRoaming.collectAsStateWithLifecycle(initialValue = false)
-
-    val mon: MonitoringViewModel = hiltViewModel()
-    val monState by mon.state.collectAsStateWithLifecycle()
     val cacheStats = monState.cacheStats
     val apiLimits  = monState.apiLimits
     val cacheTtl   = monState.cacheTtl
     val defaultCondition = monState.vorgabeZustand
-    // Das wirksame Design steht im App-Zustand; die Auswahl hier zeigt aber die
-    // Vorgabe des Verwalters, die mit einem eigenen Design des Kontos abweicht.
-    val appState by vm.state.collectAsStateWithLifecycle()
 
     // Bedienzustand: was gerade bearbeitet und halb eingetippt ist. Bleibt hier
     // und speicherbar — das ueberlebt auch den Prozesstod, ein ViewModel nicht.
@@ -161,8 +164,6 @@ fun CacheAndLimitsSection(vm: AppViewModel, onSnack: (String) -> Unit = {}) {
     var rbInput    by rememberSaveable { mutableStateOf("0") }
     var blInput    by rememberSaveable { mutableStateOf("0") }
     var bsInput    by rememberSaveable { mutableStateOf("0") }
-
-    LaunchedEffect(Unit) { mon.ladeCacheUndGrenzen(); mon.ladeDesignVorgabe() }
 
     // Die Eingabefelder mit den geladenen Werten vorbelegen — aber nur, solange
     // NICHT bearbeitet wird. Das Speichern laedt die Grenzwerte selbst neu; ohne
@@ -206,14 +207,7 @@ fun CacheAndLimitsSection(vm: AppViewModel, onSnack: (String) -> Unit = {}) {
                     color = MaterialTheme.colorScheme.onSurfaceVariant)
                 ch.brickinventoryapp.ui.screens.ConditionToggle(
                     selected = defaultCondition,
-                    onSelect = { newCond ->
-                        scope.launch {
-                            if (mon.setzeVorgabeZustand(newCond)) {
-                                vm.loadSettings()
-                                onSnack(cacheSavedMsg)
-                            }
-                        }
-                    }
+                    onSelect = ereignisse.vorgabeZustand
                 )
             }
 
@@ -227,7 +221,6 @@ fun CacheAndLimitsSection(vm: AppViewModel, onSnack: (String) -> Unit = {}) {
             // sie hier sehen und leeren können. `remember`, nicht `rememberSaveable`: Die Zahl
             // ist eine Messung der Platte und stünde nach einem Prozesstod falsch da
             // (BildschirmZustandTest, Sorte „gemessen“).
-            var ablageBytes by remember { mutableStateOf(vm.vorschauAblageBytes()) }
             Row(
                 Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically,
@@ -240,11 +233,7 @@ fun CacheAndLimitsSection(vm: AppViewModel, onSnack: (String) -> Unit = {}) {
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.weight(1f),
                 )
-                TextButton(onClick = {
-                    vm.vorschauAblageLeeren()
-                    ablageBytes = vm.vorschauAblageBytes()
-                    onSnack(cacheSavedMsg)
-                }) { Text(stringResource(R.string.monitoring_vorschau_leeren), style = MaterialTheme.typography.labelMedium) }
+                TextButton(onClick = ereignisse.ablageLeeren) { Text(stringResource(R.string.monitoring_vorschau_leeren), style = MaterialTheme.typography.labelMedium) }
             }
 
             // ── In welchen Netzen darf vorgewärmt werden ──
@@ -268,11 +257,7 @@ fun CacheAndLimitsSection(vm: AppViewModel, onSnack: (String) -> Unit = {}) {
                 )) {
                     AuswahlChip(
                         selected = erlaubt,
-                        onClick = {
-                            scope.launch {
-                                vm.prefs.saveVorwaermenNetz(schluessel, !erlaubt)
-                            }
-                        },
+                        onClick = { ereignisse.netz(schluessel, !erlaubt) },
                         label = { Text(stringResource(text), style = MaterialTheme.typography.labelMedium) },
                     )
                 }
@@ -294,15 +279,8 @@ fun CacheAndLimitsSection(vm: AppViewModel, onSnack: (String) -> Unit = {}) {
             // Eine Wahl aus mehreren: dieselben Radio-Chips wie in den Einstellungen.
             ch.brickinventoryapp.ui.components.WahlChips(
                 optionen = ch.brickinventoryapp.ui.DESIGN_NAMEN.map { (wert, text) -> wert to stringResource(text) },
-                gewaehlt = monState.vorgabeDesign ?: appState.appTheme,
-                onWahl = { wert ->
-                    scope.launch {
-                        if (mon.setzeDesign(wert)) {
-                            vm.loadSettings()
-                            onSnack(cacheSavedMsg)
-                        }
-                    }
-                },
+                gewaehlt = monState.vorgabeDesign ?: wirksamesDesign,
+                onWahl = ereignisse.design,
             )
             // Die Netze darüber sind Schalter (mehrere zugleich), das Design eine
             // Einfachwahl: zwei Bauformen, weil es zwei Entscheidungen sind.
@@ -315,11 +293,8 @@ fun CacheAndLimitsSection(vm: AppViewModel, onSnack: (String) -> Unit = {}) {
                 eingabe = ttlInput,
                 onEingabe = { ttlInput = it },
                 onSpeichern = {
-                    scope.launch {
-                        val h = ttlInput.toIntOrNull() ?: 24
-                        if (mon.setzeCacheDauer(h)) onSnack(cacheSavedMsg)
-                        editingTtl = false
-                    }
+                    ereignisse.cacheDauer(ttlInput.toIntOrNull() ?: 24)
+                    editingTtl = false
                 },
             )
 
@@ -353,7 +328,7 @@ fun CacheAndLimitsSection(vm: AppViewModel, onSnack: (String) -> Unit = {}) {
             onSchliessen = { zeigeLeerenFrage = false },
             onLeeren = {
                 zeigeLeerenFrage = false
-                scope.launch { if (mon.leereCache(leerenAlles)) onSnack(cacheGeleertMsg) }
+                ereignisse.cacheLeeren(leerenAlles)
             },
         )
     }
@@ -368,14 +343,9 @@ fun CacheAndLimitsSection(vm: AppViewModel, onSnack: (String) -> Unit = {}) {
         onBricklink = { blInput = it },
         onRebrickable = { rbInput = it },
         onSpeichern = {
-            scope.launch {
-                val rb = rbInput.toIntOrNull() ?: 0
-                val bl = blInput.toIntOrNull() ?: 0
-                val bs = bsInput.toIntOrNull() ?: 0
-                // Das Nachladen der Grenzwerte steht im ViewModel.
-                if (mon.setzeGrenzwerte(rb, bl, bs)) onSnack(limitsSavedMsg)
-                editingLimits = false
-            }
+            // Das Nachladen der Grenzwerte steht im ViewModel.
+            ereignisse.grenzwerte(rbInput.toIntOrNull() ?: 0, blInput.toIntOrNull() ?: 0, bsInput.toIntOrNull() ?: 0)
+            editingLimits = false
         },
     )
 }

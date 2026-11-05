@@ -30,6 +30,9 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 
 /**
  * Schutz auf dem Gerät: Ein Tipp, während ein fremdes Fenster einen Teil des
@@ -167,7 +170,7 @@ class GeraeteSchutzTest {
         val prefs = PreferencesManager(ApplicationProvider.getApplicationContext<Context>(), object : TokenVerschluesselung {
             override fun verschluessle(klartext: String) = klartext
             override fun entschluessle(gespeichert: String) = gespeichert
-        })
+        }, CoroutineScope(SupervisorJob() + Dispatchers.IO))
         var abgebrochen = 0
         var nutzerCa = 0
         prefs.beimServerwechsel { abgebrochen++ }
@@ -192,7 +195,7 @@ class GeraeteSchutzTest {
         val prefs = PreferencesManager(ApplicationProvider.getApplicationContext<Context>(), object : TokenVerschluesselung {
             override fun verschluessle(klartext: String) = klartext
             override fun entschluessle(gespeichert: String) = gespeichert
-        })
+        }, CoroutineScope(SupervisorJob() + Dispatchers.IO))
         kotlinx.coroutines.runBlocking {
             prefs.saveServerUrl("https://geteilt.example/brick")
             prefs.saveAuthToken("token-brick")
@@ -209,7 +212,7 @@ class GeraeteSchutzTest {
         val prefs = PreferencesManager(ctx, object : TokenVerschluesselung {
             override fun verschluessle(klartext: String) = klartext
             override fun entschluessle(gespeichert: String) = gespeichert
-        })
+        }, CoroutineScope(SupervisorJob() + Dispatchers.IO))
         assertTrue("Ohne Wahl zeigt die App-Übersicht alles", prefs.vorschauVerbergen())
         prefs.setzeVorschauVerbergen(false)
         assertFalse(prefs.vorschauVerbergen())

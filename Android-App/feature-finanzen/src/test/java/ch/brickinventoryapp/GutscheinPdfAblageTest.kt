@@ -41,7 +41,7 @@ import java.io.File
  *   H  pdfAblage() gibt auch für vertrauliche PDFs eine Datei im Zwischenspeicher
  *      → rot „ein Gutschein-PDF bekommt keine Datei …“;
  *      gegenproben/gutschein-pdf-auf-platte.patch
- *   I  im PdfViewerScreen `if (ablage == null)` durch `if (false)` ersetzt → rot
+ *   I  im Lader (damals PdfViewerScreen) `if (ablage == null)` durch `if (false)` ersetzt → rot
  *      „Betrachter, Abmelden und Start raeumen auf“ (Speicherweg nicht gewählt)
  * Gegenproben (04.11.2026, sec12 H5 und N1):
  *   J  im PdfViewerScreen den Drucken-Knopf vor `if (speicherbar)` gezogen → rot
@@ -109,13 +109,16 @@ class GutscheinPdfAblageTest {
     @Test
     fun `Betrachter, Abmelden und Start raeumen auf`() {
         val betrachter = Quellen.ohneKommentare(Quellen.lies("ui/screens/PdfViewerScreen.kt"))
-        assertTrue("Der Betrachter legt nicht über pdfAblage() ab", betrachter.contains("pdfAblage(ctx.cacheDir, pdfUrl, vertraulich)"))
+        // Laden und Halten liegen seit M1 (arch14) im Lader und im ViewModel.
+        val lader = Quellen.ohneKommentare(Quellen.lies("ui/pdf/AnleitungsLader.kt") + Quellen.lies("ui/pdf/PdfQuelle.kt"))
+        val vm = Quellen.ohneKommentare(Quellen.lies("ui/viewmodel/PdfBetrachterViewModel.kt"))
+        assertTrue("Der Betrachter legt nicht über pdfAblage() ab", lader.contains("pdfAblage(ctx.cacheDir, pdfUrl, vertraulich)"))
         assertTrue("Ohne Datei nimmt der Betrachter nicht den Weg über den Speicher",
-            Regex("""if \(ablage == null\) \{\s*ladeInDenSpeicherUndZaehle\(""").containsMatchIn(betrachter))
-        assertTrue("Der Speicherweg lädt nicht über ladePdfInDenSpeicher()", betrachter.contains("ladePdfInDenSpeicher(ladeClient(httpClient), url)"))
-        assertTrue("Das Gutschein-PDF liegt nicht in einem memfd", betrachter.contains("Os.memfd_create("))
+            Regex("""if \(ablage == null\) \{\s*ladeInDenSpeicherUndZaehle\(""").containsMatchIn(lader))
+        assertTrue("Der Speicherweg lädt nicht über ladePdfInDenSpeicher()", lader.contains("ladePdfInDenSpeicher(ladeClient(httpClient), url)"))
+        assertTrue("Das Gutschein-PDF liegt nicht in einem memfd", lader.contains("Os.memfd_create("))
         assertTrue("Der Speicherbereich bleibt nach dem Verlassen offen",
-            Regex("""onDispose\s*\{\s*offen\.close\(\)""").containsMatchIn(betrachter))
+            Regex("""override fun onCleared\(\)\s*\{\s*offen\.close\(\)""").containsMatchIn(vm))
         assertTrue("Herunterladen steht ohne Prüfung da",
             Regex("""if \(speicherbar\) \{\s*(ch\.brickinventoryapp\.ui\.components\.MitTooltip\([^\n]*\{\s*)?IconButton\(onClick = \{ (melde\()?savePdfToDownloads\(""").containsMatchIn(betrachter))
         // Der Druckdialog bietet „Als PDF speichern“: Drucken nur, wo auch Speichern erlaubt ist.

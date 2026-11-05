@@ -10,6 +10,7 @@ import kotlinx.coroutines.launch
 @HiltAndroidApp
 class BrickInventoryApp : Application(), Configuration.Provider {
     @Inject lateinit var preferencesManager: ch.brickinventoryapp.data.PreferencesManager
+    @Inject lateinit var bereiche: ch.brickinventoryapp.di.Anwendungsbereiche
 
     /**
      * WorkManager auf Abruf statt beim Start, das Gegenstück zum tools:node="remove"
@@ -24,7 +25,7 @@ class BrickInventoryApp : Application(), Configuration.Provider {
 
         // Ein Klartext-Token älterer Fassungen einmalig verschlüsselt ablegen, im
         // Hintergrund: Der Lesepfad kommt auch ohne Übernahme an das alte Token.
-        kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.IO).launch {
+        bereiche.anwendung.launch {
             // Gutschein-PDFs eines abgebrochenen Laufs: Das Verlassen des Betrachters kam nie.
             runCatching { ch.brickinventoryapp.util.raeumeVertraulichePdfsAuf(cacheDir) }
             // Anleitungen älterer Fassungen lagen im Klartext; neu liegen sie verschlüsselt.
@@ -53,7 +54,7 @@ class BrickInventoryApp : Application(), Configuration.Provider {
             if (gemerkt != null) {
                 ch.brickinventoryapp.util.LanguageManager.applyLanguage(gemerkt)
             } else {
-                kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.Main).launch {
+                bereiche.anwendung.launch(bereiche.haupt) {
                     val lang = runCatching { preferencesManager.spracheNachziehen() }.getOrNull() ?: return@launch
                     ch.brickinventoryapp.util.LanguageManager.applyLanguage(lang)
                 }

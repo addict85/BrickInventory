@@ -57,10 +57,12 @@ object DatenModule {
     fun provideTokenTausch(
         p: ch.brickinventoryapp.data.PreferencesManager,
         konto: javax.inject.Provider<ch.brickinventoryapp.data.repository.KontoRepository>,
+        @ApplicationScope bereich: kotlinx.coroutines.CoroutineScope,
     ): ch.brickinventoryapp.data.TokenTausch = ch.brickinventoryapp.data.TokenTausch(
         stand = { p.tokenStand() },
         ersetze = { vorher, neu, herkunft -> p.ersetzeGetauschtenToken(vorher, neu, herkunft) },
         rotiere = { konto.get().tokenRotieren(it) },
+        hintergrund = bereich,
     )
 
     @Provides

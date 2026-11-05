@@ -129,14 +129,14 @@ niemals wieder ganze Wurzeln (`path="."`), sonst ist auch der API-Cache
 
 ## Ein OkHttp-Interceptor-Stack, keine Nebenclients
 
-**Dateien:** `ui/screens/PdfViewerScreen.kt`, `ui/MainViewModel.kt`
+**Dateien:** `ui/pdf/AnleitungsLader.kt`, `ui/AppViewModel.kt`
 **Test:** `ServicePolishTest`
 
 Jeder eigenständig gebaute `OkHttpClient.Builder()` läuft am DI-Interceptor
 vorbei: kein Bearer-Token, kein Klartext-Verbot, keine 401-Meldung — jede
 Regel müsste dort von Hand nachgezogen werden (und genau so eine
 handgepflegte Kopie stand hier bereits). Abweichende Timeouts holt man sich
-per `apiHttpClient.newBuilder()`, nicht mit einem neuen Client.
+per `newBuilder()` vom injizierten api-Client, nicht mit einem neuen Client.
 
 ## Kamera-Screens räumen ihre Ressourcen auf
 
@@ -154,7 +154,7 @@ des Screens und darf den Autofokus nie berühren.
 
 ## PDF-Ansichts-Cache mit Budget
 
-**Datei:** `ui/screens/PdfViewerScreen.kt`
+**Datei:** `ui/pdf/AnleitungsLader.kt`
 **Test:** `ResourceAndCacheTest`
 
 Angesehene Anleitungen bleiben absichtlich liegen (Resume, erneutes Öffnen
