@@ -104,7 +104,7 @@ export async function openModal(sn){
   // ein zweiter Tipp öffnete ihn doppelt.
   G('m-tit').textContent = sn; G('m-untertit').textContent = '';
   const bild = G('m-img'); bild.src = '/assets/set-placeholder.svg';
-  setzeHtml(G('m-det'), skelettZeilen(4, t('common.loading')));
+  setzeHtml(G('m-det'), skelettZeilen(4, tRaw('common.loading')));
   G('m-instr').replaceChildren();
   G('set-modal').dataset.nummer = sn;
   G('set-modal').classList.add('open');
@@ -204,7 +204,7 @@ export function renderInstructions(instr, sn) {
 
 /** @param {string} sn @param {string} instrId */
 async function delInstr(sn, instrId) {
-  if (!await confirmDelete(tRaw('instr.delete_title'),t('instr.delete_text'),'datei')) return;
+  if (!await confirmDelete(tRaw('instr.delete_title'),tRaw('instr.delete_text'),'datei')) return;
   const d = await api('DELETE', `/v1/sets/${sn}/instructions/${instrId}`);
   if (d.success) { toast(tRaw('instr.deleted'), 'success'); openModal(sn); }
   else toast(d.error || t('settings.error'), 'error');

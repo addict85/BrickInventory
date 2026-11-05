@@ -43,7 +43,7 @@ export async function pollJobStatus() {
       pwrap.style.display = 'flex';
       pbar.style.width = pct + '%';
       ptxt.textContent = `${progress.current}/${progress.total}`;
-      sdet.textContent = progress.set ? t('monitor.current',{set:progress.set}) : '';
+      sdet.textContent = progress.set ? tRaw('monitor.current',{set:progress.set}) : '';
     }
     btn.disabled = true;
     // Poll faster while running
@@ -57,10 +57,10 @@ export async function pollJobStatus() {
       dot.style.background = j.lastErrors > 0 ? 'var(--a500)' : 'var(--g500)';
       stxt.textContent = tRaw('monitor.last_run_at',{time:new Date(j.lastRun).toLocaleString(locale())});
       const parts = [];
-      if (j.lastUpdated) parts.push(`${j.lastUpdated} ${t('common.updated')}`);
-      if (j.lastErrors)  parts.push(t('monitor.errors_n',{n:j.lastErrors}));
+      if (j.lastUpdated) parts.push(`${j.lastUpdated} ${tRaw('common.updated')}`);
+      if (j.lastErrors)  parts.push(tRaw('monitor.errors_n',{n:j.lastErrors}));
       if (j.lastDuration) parts.push(formatDur(Number(j.lastDuration)));
-      sdet.textContent = parts.join(' · ') + (j.nextRun ? ` · ${t('monitor.next_run')} ${fmtDatum(j.nextRun, 'zeit')}` : '');
+      sdet.textContent = parts.join(' · ') + (j.nextRun ? ` · ${tRaw('monitor.next_run')} ${fmtDatum(j.nextRun, 'zeit')}` : '');
     } else {
       dot.style.background = 'var(--s300)';
       stxt.textContent = tRaw('monitor.waiting_first');

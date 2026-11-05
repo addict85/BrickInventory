@@ -198,7 +198,7 @@ async function plGenerate() {
               part_number:    f.fig_number,
               bl_part_number: f.fig_number,
               part_name:      f.fig_name || f.fig_number,
-              color_name:     t('detail.minifigs'),
+              color_name:     tRaw('detail.minifigs'),
               color_hex:      'f5a800',
               color_id:       0,
               quantity:       figQty,
@@ -213,7 +213,7 @@ async function plGenerate() {
 
   _plParts = Object.values(combined);
   G('pl-status').textContent = `${tRaw('pl.summary_teile', { n: _plParts.length })} ${tRaw('pl.summary_sets', { n: bekannt.length })}`
-    + (errors ? ` (${t('monitor.errors_n',{n:errors})})` : '')
+    + (errors ? ` (${tRaw('monitor.errors_n',{n:errors})})` : '')
     + (unbekannt.length ? ` · ${tRaw('pl.unbekannt_n', { n: unbekannt.length, nummern: unbekannt.map(s => s.set_number).join(', ') })}` : '');
   G('btn-pl-gen').disabled = false;
   plRenderTable(errors);
@@ -354,7 +354,7 @@ async function plExportPdf() {
     const startResp = await apiRoh('POST', '/v1/sets/partslist-pdf', { body: { sets: _plSets, parts: pdfParts } });
     if (!startResp.ok) throw new Error(`HTTP ${startResp.status}`);
     const { jobId } = await startResp.json();
-    if (!jobId) throw new Error(t('pdf.no_job_id'));
+    if (!jobId) throw new Error(tRaw('pdf.no_job_id'));
 
     // Step 2: SSE statt Polling — Ergebnis kommt sofort wenn fertig. Fallback auf Polling falls EventSource
     // nicht verfügbar.
@@ -371,7 +371,7 @@ async function plExportPdf() {
         if (etaTimer || !sec || sec <= 0) return;
         etaRemaining = sec;
         const tick = () => {
-          if (btn) btn.textContent = etaRemaining > 0 ? t('pdf.eta', { sec: etaRemaining }) : t('pdf.almost_done');
+          if (btn) btn.textContent = etaRemaining > 0 ? tRaw('pdf.eta', { sec: etaRemaining }) : tRaw('pdf.almost_done');
           if (etaRemaining > 0) etaRemaining--;
         };
         tick();
@@ -397,7 +397,7 @@ async function plExportPdf() {
 
     // Step 3: Download
     const dlResp = await apiRoh('GET', `/v1/sets/partslist-pdf/download/${jobId}`);
-    if (!dlResp.ok) throw new Error(t('pdf.download_error',{status:dlResp.status}));
+    if (!dlResp.ok) throw new Error(tRaw('pdf.download_error',{status:dlResp.status}));
     const blob = await dlResp.blob();
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -424,14 +424,14 @@ async function pollPdfStatus(jobId, btn, finish, startEta) {
     try {
       const r = await apiRoh('GET', `/v1/sets/partslist-pdf/status/${jobId}`);
       // Ein Fehlerstatus (Auftrag unbekannt, Server weg) beendet das Warten gleich.
-      if (!r.ok) { finish(t('pdf.server_error')); return; }
+      if (!r.ok) { finish(tRaw('pdf.server_error')); return; }
       const { status, error, etaSeconds } = await r.json();
       if (status === 'running' && etaSeconds != null && startEta) startEta(etaSeconds);
       if (status === 'done') { finish(null); return; }
       if (status === 'error') { finish(error || t('pdf.server_error')); return; }
     } catch(e) { finish(fehlerMeldung(e)); return; }
   }
-  finish(t('pdf.timeout'));
+  finish(tRaw('pdf.timeout'));
 }
 
 export function plInit() {

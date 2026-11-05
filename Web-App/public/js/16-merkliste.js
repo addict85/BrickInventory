@@ -149,7 +149,7 @@ export async function ladeMerkliste() {
   // Das Fragezeichen steht HIER und nicht in merklisteParams(): Dieselbe Schreibweise wie bei der Galerie,
   // und test/frontend-api-paths.test.js liest den Pfad aus genau dieser Zeile — mit dem Fragezeichen im
   // Rueckgabe-wert las sie „/v1/wanted:x" und meldete eine Route, die es nicht gibt.
-  if (!_merkposten.length && !ziel.querySelector('.mk-zeile, .leer')) setzeHtml(ziel, skelettZeilen(4, t('common.loading')));
+  if (!_merkposten.length && !ziel.querySelector('.mk-zeile, .leer')) setzeHtml(ziel, skelettZeilen(4, tRaw('common.loading')));
   const d = await api('GET', `/v1/wanted?${merklisteParams()}`);
   const kasten = /** @type {HTMLDetailsElement | null} */ (document.getElementById('mk-kasten'));
   if (listeLadefehler(ziel, d, { erneut: 'ladeMerkliste', behalten: _merkposten.length > 0 })) {

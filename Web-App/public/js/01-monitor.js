@@ -36,7 +36,7 @@ function openLogViewer() {
   }).join('');
 
   const markup = '<!DOCTYPE html><html lang="' + escHtmlAttr(LANG) + '"><head>' +
-    '<meta charset="UTF-8"><title>' + esc(t('log.title')) + '</title>' +
+    '<meta charset="UTF-8"><title>' + esc(tRaw('log.title')) + '</title>' +
     '<link rel="stylesheet" href="/tokens.css?v=' + (window.__APP_VERSION || Date.now()) + '">' +
     '<link rel="stylesheet" href="/logviewer.css?v=' + (window.__APP_VERSION || Date.now()) + '">' +
     '</head><body' +
@@ -53,7 +53,7 @@ function openLogViewer() {
         'log.stop':             t('log.stop'),
       })) + '">' +
     '<header>' +
-      '<h1>' + esc(t('log.title')) + '</h1>' +
+      '<h1>' + esc(tRaw('log.title')) + '</h1>' +
       '<div class="toolbar">' +
         '<select id="period" data-change="loadLogs">' + spannen + '</select>' +
         '<span class="sep">|</span>' +
@@ -61,10 +61,10 @@ function openLogViewer() {
         '<button class="lvbtn warn-btn active" id="btn-warn" data-click="toggleLevel" data-arg="warn">\u26A0 Warn</button>' +
         '<button class="lvbtn error-btn active" id="btn-error" data-click="toggleLevel" data-arg="error">\u2716 Error</button>' +
         '<span class="sep">|</span>' +
-        '<input id="search" type="text" placeholder="' + escHtmlAttr(t('log.search')) + '" data-input="renderLogs">' +
+        '<input id="search" type="text" placeholder="' + escHtmlAttr(tRaw('log.search')) + '" data-input="renderLogs">' +
         '<span class="sep">|</span>' +
         '<button data-click="loadLogs">'+t('log.reload')+'</button>' +
-        '<button data-click="toggleAuto" id="btn-auto">' + esc(t('log.auto')) + '</button>' +
+        '<button data-click="toggleAuto" id="btn-auto">' + esc(tRaw('log.auto')) + '</button>' +
         '<span id="status">\u2013</span>' +
       '</div>' +
     '</header>' +
@@ -85,18 +85,18 @@ function translateJobSub(sub) {
   if (!sub) return '';
   let m;
   m = sub.match(/^Alle (\d+) gemappt$/);
-  if (m) return t('monitor.sub.all_mapped', {n: m[1]});
-  if (sub === 'Alle erledigt') return t('monitor.sub.all_done');
+  if (m) return tRaw('monitor.sub.all_mapped', {n: m[1]});
+  if (sub === 'Alle erledigt') return tRaw('monitor.sub.all_done');
   m = sub.match(/^Alle (\d+) Bilder gecacht$/);
-  if (m) return t(m[1] === '0' ? 'monitor.sub.imgs_none' : 'monitor.sub.imgs_cached', {n: m[1]});
-  if (sub === 'Alle Bilder gecacht') return t('monitor.sub.imgs_cached', {n: ''}).trim();
-  if (/^Keine aktiven/.test(sub)) return t('monitor.sub.no_active');
+  if (m) return tRaw(m[1] === '0' ? 'monitor.sub.imgs_none' : 'monitor.sub.imgs_cached', {n: m[1]});
+  if (sub === 'Alle Bilder gecacht') return tRaw('monitor.sub.imgs_cached', {n: ''}).trim();
+  if (/^Keine aktiven/.test(sub)) return tRaw('monitor.sub.no_active');
   m = sub.match(/^(\d+) Sets bereit zum Retry, (\d+) warten$/);
-  if (m) return t('monitor.sub.retry_ready', {n: m[1], w: m[2]});
+  if (m) return tRaw('monitor.sub.retry_ready', {n: m[1], w: m[2]});
   m = sub.match(/^(\d+) aktualisiert, (\d+) Fehler — ([\d.]+)s$/);
-  if (m) return t('monitor.sub.updated_errors', {upd: m[1], err: m[2], sec: m[3]});
-  if (sub === 'Starte\u2026' || sub === 'Starte...') return t('monitor.starting');
-  return esc(sub); // unbekannt: unverändert, aber als Text
+  if (m) return tRaw('monitor.sub.updated_errors', {upd: m[1], err: m[2], sec: m[3]});
+  if (sub === 'Starte\u2026' || sub === 'Starte...') return tRaw('monitor.starting');
+  return sub; // unbekannt: unverändert
 }
 
 // Speichert den Zeitplan eines Jobs (Monitoring). payload = {time:"HH:MM"} oder {minutes:n}.
@@ -167,7 +167,7 @@ const aktionen = (/** @type {string} */ k, /** @type {JobStatus} */ j) => [
   k === 'imgDl' ? html`<button class="btn bs btn-sm" type="button" data-click="queueCatalogImages" data-self="1">${tRaw('monitor.catalog_images')}</button>` : '',
   k === 'bricksetRetry' && j.total > 0 ? html`<button class="btn bs btn-sm" type="button" data-click="toggleBricksetQueue" data-self="1"><span>${tRaw('monitor.show')}</span></button>` : '',
 ].join('');
-const dienstName = (/** @type {string} */ k, /** @type {JobStatus} */ j) => t('monitor.job.' + k, {}) !== 'monitor.job.' + k ? t('monitor.job.' + k) : esc(j.label || k);
+const dienstName = (/** @type {string} */ k, /** @type {JobStatus} */ j) => tRaw('monitor.job.' + k) !== 'monitor.job.' + k ? tRaw('monitor.job.' + k) : (j.label || k);
 
 export async function loadMonitor() {
   const el = G('monitor-content');
@@ -197,9 +197,9 @@ export async function loadMonitor() {
       <div class="tw"><table class="dt mon-tabelle mon-dienste">
         <thead><tr><th>${tRaw('monitor.col.dienst')}</th><th>${tRaw('monitor.col.zustand')}</th><th>${tRaw('monitor.col.zeitplan')}</th><th>${tRaw('monitor.col.zuletzt')}</th><th>${tRaw('monitor.col.aktionen')}</th></tr></thead>
         <tbody>${Object.entries(jobs).map(([k, j]) => html`<tr>
-          <td><span class="mon-name">${k === 'bricksetRetry' ? ungeprueft(jobIconSvg('brickset')) : ungeprueft(jobIconSvg(k))}${ungeprueft(dienstName(k, j))}</span></td>
+          <td><span class="mon-name">${k === 'bricksetRetry' ? ungeprueft(jobIconSvg('brickset')) : ungeprueft(jobIconSvg(k))}${dienstName(k, j)}</span></td>
           <td><span class="mon-zustand mon-${j.status || 'idle'}">${statusIcon(j.status, j)} ${jobZustand(j.status)}</span>
-            ${j.sub ? html`<div class="mon-leise">${ungeprueft(translateJobSub(j.sub))}</div>` : ''}${j.total > 0 ? bar(j.progress, j.total) : ''}</td>
+            ${j.sub ? html`<div class="mon-leise">${translateJobSub(j.sub)}</div>` : ''}${j.total > 0 ? bar(j.progress, j.total) : ''}</td>
           <td>${schedInput(schedules, k)}</td>
           <td>${j.lastRun ? fmtDatum(/** @type {string} */ (j.lastRun), 'zeit') : ''}</td>
           <td><div class="mon-knoepfe">${(aktionen(k, j)) ? ungeprueft(aktionen(k, j)) : html`<span class="mon-leise">–</span>`}</div></td>
@@ -233,31 +233,31 @@ export async function loadMonitor() {
  * @type {Record<string, () => string>}
  */
 const ARTNAMEN = {
-  nacharbeit: () => t('monitor.art.nacharbeit'),
-  bilder: () => t('monitor.art.bilder'),
-  pdf: () => t('monitor.art.pdf'),
-  csv_import: () => t('monitor.art.csv_import'),
-  wechselkurse: () => t('monitor.art.wechselkurse'),
-  anleitung: () => t('monitor.art.anleitung'),
-  brickset: () => t('monitor.art.brickset'),
-  bildbedarf: () => t('monitor.art.bildbedarf'),
-  bilder_neu_laden: () => t('monitor.art.bilder_neu_laden'),
-  nachlauf: () => t('monitor.art.nachlauf'),
-  csv_sync: () => t('monitor.art.csv_sync'),
-  preise: () => t('monitor.art.preise'),
-  bild_nachlauf: () => t('monitor.art.bild_nachlauf'),
-  aufraeumen: () => t('monitor.art.aufraeumen'),
-  aufraeumen_taeglich: () => t('monitor.art.aufraeumen_taeglich'),
+  nacharbeit: () => tRaw('monitor.art.nacharbeit'),
+  bilder: () => tRaw('monitor.art.bilder'),
+  pdf: () => tRaw('monitor.art.pdf'),
+  csv_import: () => tRaw('monitor.art.csv_import'),
+  wechselkurse: () => tRaw('monitor.art.wechselkurse'),
+  anleitung: () => tRaw('monitor.art.anleitung'),
+  brickset: () => tRaw('monitor.art.brickset'),
+  bildbedarf: () => tRaw('monitor.art.bildbedarf'),
+  bilder_neu_laden: () => tRaw('monitor.art.bilder_neu_laden'),
+  nachlauf: () => tRaw('monitor.art.nachlauf'),
+  csv_sync: () => tRaw('monitor.art.csv_sync'),
+  preise: () => tRaw('monitor.art.preise'),
+  bild_nachlauf: () => tRaw('monitor.art.bild_nachlauf'),
+  aufraeumen: () => tRaw('monitor.art.aufraeumen'),
+  aufraeumen_taeglich: () => tRaw('monitor.art.aufraeumen_taeglich'),
 };
 /** @type {Record<string, () => string>} */
 const STATUSNAMEN = {
-  offen: () => t('monitor.auftraege.offen'),
-  laeuft: () => t('monitor.auftraege.laeuft'),
-  fehler: () => t('monitor.auftraege.fehler'),
-  abgebrochen: () => t('monitor.auftraege.abgebrochen'),
+  offen: () => tRaw('monitor.auftraege.offen'),
+  laeuft: () => tRaw('monitor.auftraege.laeuft'),
+  fehler: () => tRaw('monitor.auftraege.fehler'),
+  abgebrochen: () => tRaw('monitor.auftraege.abgebrochen'),
 };
 /** Der Name einer Auftragsart in der Oberflächensprache, fertig maskiert; unbekannte bleiben, wie sie sind. */
-const artName = (/** @type {string} */ art) => (Object.hasOwn(ARTNAMEN, art) ? ARTNAMEN[art]() : esc(art));
+const artName = (/** @type {string} */ art) => (Object.hasOwn(ARTNAMEN, art) ? ARTNAMEN[art]() : art);
 
 /**
  * Eine Fehlermeldung des Servers in einem Satz, den man ohne Netzwerkwissen versteht; der Originaltext bleibt
@@ -298,9 +298,9 @@ async function zeigeAuftraege() {
     if (a.status === 'offen' && a.faellig_ab && (!naechster[a.art] || a.faellig_ab < naechster[a.art])) naechster[a.art] = a.faellig_ab;
   // Sieben gleiche „Jetzt starten“ sind für Vorleser ununterscheidbar: Der Name nennt die Art mit.
   const knopf = (/** @type {string} */ aktion, /** @type {string} */ arg, /** @type {string} */ text, wofuer = '') =>
-    html`<button class="btn bs btn-sm" type="button" data-click="${aktion}"${echt()} data-arg="${arg}"${wofuer ? html` aria-label="${text}: ${ungeprueft(wofuer)}"` : ''}>${ungeprueft(text)}</button>`;
+    html`<button class="btn bs btn-sm" type="button" data-click="${aktion}"${echt()} data-arg="${arg}"${wofuer ? html` aria-label="${text}: ${wofuer}"` : ''}>${text}</button>`;
   const arten = Object.keys(zahl).sort((a, b) => artName(a).localeCompare(artName(b), locale()));
-  const status = (/** @type {string} */ s) => Object.hasOwn(STATUSNAMEN, s) ? STATUSNAMEN[s]() : esc(s);
+  const status = (/** @type {string} */ s) => Object.hasOwn(STATUSNAMEN, s) ? STATUSNAMEN[s]() : s;
   const ziffer = (/** @type {number | undefined} */ n, klasse = '') => html`<span class="mon-ziffer${n ? html`${' '}${ungeprueft(klasse)}` : ' null'}">${n || 0}</span>`;
   const zeile = (/** @type {Auftrag} */ a) => {
     const zeit = fmtDatum(a.status === 'laeuft' ? a.gestartet : a.faellig_ab, 'zeit');
@@ -309,33 +309,33 @@ async function zeigeAuftraege() {
     const hinweis = [a.fehler && a.status !== 'laeuft' ? fehlerKasten(a.fehler) : '',
       a.versuche > 1 ? html`<span class="mon-leise">${tRaw('monitor.auftraege.versuch', { n: a.versuche, max: a.max_versuche })}</span>` : '',
       stand ? html`<span class="mon-leise">${stand}</span>` : ''].filter(Boolean).join(' ');
-    const aktion = a.status === 'offen' || a.status === 'laeuft' ? knopf('auftragAbbrechen', a.id, t('monitor.auftraege.abbrechen'))
-      : a.status === 'fehler' || a.status === 'abgebrochen' ? knopf('auftragWiederholen', a.id, t('monitor.auftraege.wiederholen')) : '';
+    const aktion = a.status === 'offen' || a.status === 'laeuft' ? knopf('auftragAbbrechen', a.id, tRaw('monitor.auftraege.abbrechen'))
+      : a.status === 'fehler' || a.status === 'abgebrochen' ? knopf('auftragWiederholen', a.id, tRaw('monitor.auftraege.wiederholen')) : '';
     return html`<tr>
-      <td><strong>${ungeprueft(artName(a.art))}</strong>${a.set_number ? html` <span class="mon-leise">${a.set_number}</span>` : ''}</td>
-      <td><span class="mon-zustand mon-${a.status}">${ungeprueft(status(a.status))}</span></td>
+      <td><strong>${artName(a.art)}</strong>${a.set_number ? html` <span class="mon-leise">${a.set_number}</span>` : ''}</td>
+      <td><span class="mon-zustand mon-${a.status}">${status(a.status)}</span></td>
       <td>${ungeprueft(wann)}</td>
       <td>${ungeprueft(hinweis)}</td>
       <td><div class="mon-knoepfe">${aktion}</div></td>
     </tr>`;
   };
   const mehr = d.auftraege.length - 40;
-  const pause = (/** @type {AuftragPause} */ p) => t('monitor.auftraege.pause', { art: Object.hasOwn(ARTNAMEN, p.art) ? ARTNAMEN[p.art]() : esc(p.art), bis: fmtDatum(p.bis, 'zeit'), grund: p.grund || '' });
+  const pause = (/** @type {AuftragPause} */ p) => t('monitor.auftraege.pause', { art: artName(p.art), bis: fmtDatum(p.bis, 'zeit'), grund: p.grund || '' });
   setzeHtml(el, html`
     <h2 class="mon-titel" id="mon-t-auftraege">${ico('liste')}<span>${tRaw('monitor.auftraege.titel')}</span></h2>
     <p class="mon-hinweis">${tRaw('monitor.auftraege.hinweis')}</p>
     ${d.job_prozess.laeuft ? '' : html`<p class="mon-warnung">${ico('warnung')} ${tRaw('monitor.auftraege.kein_prozess')}</p>`}
-    ${d.pausen.map(p => html`<p class="mon-leise">${ico('pause')} ${ungeprueft(pause(p))}</p>`)}
+    ${d.pausen.map(p => html`<p class="mon-leise">${ico('pause')} ${pause(p)}</p>`)}
     ${d.bildbedarf ? html`<p class="mon-leise">${tRaw('monitor.auftraege.bildbedarf', { n: d.bildbedarf })}</p>` : ''}
     ${arten.length ? html`<div class="tw"><table class="dt mon-tabelle mon-arten">
       <thead><tr><th>${tRaw('monitor.col.art')}</th><th class="zahl">${tRaw('monitor.col.offen')}</th><th class="zahl">${tRaw('monitor.col.laeuft')}</th><th class="zahl">${tRaw('monitor.col.fehler')}</th><th>${tRaw('monitor.col.naechster')}</th><th>${tRaw('monitor.col.aktionen')}</th></tr></thead>
       <tbody>${arten.map(art => html`<tr>
-        <td>${ungeprueft(artName(art))}</td>
+        <td>${artName(art)}</td>
         <td class="zahl">${ziffer(zahl[art].offen)}</td>
         <td class="zahl">${ziffer(zahl[art].laeuft, 'mon-laeuft')}</td>
         <td class="zahl">${ziffer(zahl[art].fehler, 'mon-fehler')}</td>
         <td>${naechster[art] ? fmtDatum(naechster[art], 'zeit') : ''}</td>
-        <td><div class="mon-knoepfe">${knopf('auftragsArtJetzt', art, t('monitor.auftraege.jetzt'), artName(art))}${zahl[art].offen ? knopf('auftragsArtLeeren', art, t('monitor.auftraege.leeren'), artName(art)) : ''}</div></td>
+        <td><div class="mon-knoepfe">${knopf('auftragsArtJetzt', art, tRaw('monitor.auftraege.jetzt'), artName(art))}${zahl[art].offen ? knopf('auftragsArtLeeren', art, tRaw('monitor.auftraege.leeren'), artName(art)) : ''}</div></td>
       </tr>`)}</tbody></table></div>` : ''}
     ${d.auftraege.length ? html`<details class="mon-einzeln"${einzelnOffen() ? ' open' : ''}>
       <summary class="mon-untertitel">${tRaw('monitor.auftraege.einzeln')} <span class="mon-leise">(${d.auftraege.length})</span></summary>

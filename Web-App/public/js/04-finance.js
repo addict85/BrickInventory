@@ -57,7 +57,7 @@ function diagrammNichtDa(offline, d){
 async function loadPortfolioChart(){
   const el  = G('portfolio-chart');
   if(!el) return;
-  setzeHtml(el, ladeAnzeige(t('common.loading'), { klein: true }));
+  setzeHtml(el, ladeAnzeige(tRaw('common.loading'), { klein: true }));
 
   const d = await api('GET', `/v1/finance/portfolio-history?period=${_chartPeriod}${scopeMode('finance') !== 'all' ? '&accounts=' + scopeMode('finance') : ''}`);
   if(!d.success){
@@ -301,11 +301,11 @@ function summenTabelle(einstand, wert, cur, basis) {
       <table class="dt dt-summe">
         <thead><tr><th><span class="vh">${tRaw('finance.bereich')}</span></th><th>${tRaw('finance.col.purchase')}</th><th>${tRaw('finance.grand.value')}</th></tr></thead>
         <tbody>
-          ${zeile(t('finance.filter.sets'), einstand.sets, wert.sets)}
-          ${zeile(t('finance.grand.parts'), einstand.parts, wert.parts)}
-          ${zeile(t('finance.figs_section'), einstand.figs, wert.figs)}
+          ${zeile(tRaw('finance.filter.sets'), einstand.sets, wert.sets)}
+          ${zeile(tRaw('finance.grand.parts'), einstand.parts, wert.parts)}
+          ${zeile(tRaw('finance.figs_section'), einstand.figs, wert.figs)}
         </tbody>
-        <tfoot>${zeile(t('finance.grand.total'), einstand.alle, wert.alle, basis.ohneMarkt > 0 ? tRaw('finance.ohne_n', { n: basis.ohneMarkt }) : '')}</tfoot>
+        <tfoot>${zeile(tRaw('finance.grand.total'), einstand.alle, wert.alle, basis.ohneMarkt > 0 ? tRaw('finance.ohne_n', { n: basis.ohneMarkt }) : '')}</tfoot>
       </table>
       ${basis.ohneMarkt > 0 ? html`<p class="fin-fussnote">${tRaw('finance.summe_ohne_markt', { n: basis.ohneMarkt })}</p>` : ''}
     </div>`;
@@ -314,14 +314,14 @@ function summenTabelle(einstand, wert, cur, basis) {
 /** Platzhalter, solange geladen wird; eine vorhandene Tabelle bleibt stehen. @returns {boolean} ob schon eine Tabelle da war */
 function finanzenLaedt() {
   const hatteTabelle = !!G('fin-tbl').querySelector('table');
-  if (!hatteTabelle) setzeHtml(G('fin-tbl'), ladeAnzeige(t('finance.fetch_prices')));
+  if (!hatteTabelle) setzeHtml(G('fin-tbl'), ladeAnzeige(tRaw('finance.fetch_prices')));
   if (!G('fin-sum').dataset.geladen) {
     G('fin-sum').setAttribute('aria-busy', 'true');
     for (const id of KENNZAHLEN) setzeHtml(G(id), ungeprueft(WERT_SKELETT));
   }
   // Ein Fehler vom letzten Mal bleibt nicht stehen, während neu geladen wird.
   const kurve = G('portfolio-chart');
-  if (kurve?.querySelector('.fehler-zustand')) setzeHtml(kurve, ladeAnzeige(t('common.loading'), { klein: true }));
+  if (kurve?.querySelector('.fehler-zustand')) setzeHtml(kurve, ladeAnzeige(tRaw('common.loading'), { klein: true }));
   return hatteTabelle;
 }
 
@@ -408,8 +408,8 @@ export async function loadFinance(){
   const partsRows = partsItems.map(p => pmRows(p, `${esc(p.part_name||p.part_number)}${p.color_name?html` <span class="text-mut schrift-1">(${colorName(p.color_name)})</span>`:''}`, lage)).join('');
   const figsRows  = figsItems.map(f => pmRows(f, esc(f.fig_name||f.fig_number), lage)).join('');
   setzeHtml(G('fin-tbl'), html`${setsTabelle(rows, einstand, setsQtyAvg, cur)}${
-    manuellerAbschnitt({ art: 'parts', titel: t('parts.manual_section'), symbol: 'teil', zeilen: partsRows, anzahl: partsItems.length, kauf: einstand.parts, wert: wert.parts, cur })}${
-    manuellerAbschnitt({ art: 'figs', titel: t('finance.figs_section'), symbol: 'figur', zeilen: figsRows, anzahl: figsItems.length, kauf: einstand.figs, wert: wert.figs, cur })}${
+    manuellerAbschnitt({ art: 'parts', titel: tRaw('parts.manual_section'), symbol: 'teil', zeilen: partsRows, anzahl: partsItems.length, kauf: einstand.parts, wert: wert.parts, cur })}${
+    manuellerAbschnitt({ art: 'figs', titel: tRaw('finance.figs_section'), symbol: 'figur', zeilen: figsRows, anzahl: figsItems.length, kauf: einstand.figs, wert: wert.figs, cur })}${
     summenTabelle(einstand, wert, cur, basis)}`);
   // Der Filter überlebt das Neuzeichnen; sonst zeigten die Chips eine Auswahl, die die Tabelle nicht mehr
   // hat.
@@ -441,7 +441,7 @@ function einstandZelle(stueck, menge, cur, acq) {
  */
 function preisKoepfe() {
   const kurz = (/** @type {string} */ lang, /** @type {string} */ kurzTxt) => html`<th class="zahl" title="${tRaw(lang)}"><span aria-hidden="true">${ungeprueft(kurzTxt)}</span><span class="vh">${tRaw(lang)}</span></th>`;
-  return html`${html`<th class="zahl">${tRaw('finance.col.purchase')}</th>`}${html`<th class="zahl" title="${tRaw('finance.market_price_stueck')}">${tRaw('detail.market_price')}</th>`}${html`<th class="zahl">${tRaw('finance.grand.value')}</th>`}${kurz('finance.total_pnl', t('finance.pnl_kurz'))}`;
+  return html`${html`<th class="zahl">${tRaw('finance.col.purchase')}</th>`}${html`<th class="zahl" title="${tRaw('finance.market_price_stueck')}">${tRaw('detail.market_price')}</th>`}${html`<th class="zahl">${tRaw('finance.grand.value')}</th>`}${kurz('finance.total_pnl', tRaw('finance.pnl_kurz'))}`;
 }
 /** Was das Zeichen in der Spalte „Status“ heisst — ein Häkchen allein sagt es nicht. */
 function legende() {

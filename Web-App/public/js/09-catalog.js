@@ -169,7 +169,7 @@ async function loadCatalogSets(){
   _catLoadedPages = new Set();
   _catLoadingPages = new Set();
   const grid = G('catalog-grid');
-  setzeHtml(grid, ladeAnzeige(t('catalog.loading')));
+  setzeHtml(grid, ladeAnzeige(tRaw('catalog.loading')));
   _catState.page = 1;
   const d = await api('GET', `/v1/catalog/sets?${_catQuery(1)}`);
   if (gen !== _catGen) return;   // inzwischen neuer Filter — Antwort verwerfen
@@ -392,12 +392,12 @@ async function openCatModal(setNumber){
   G('cat-m-img').src = detailSrc ? fullUrl(detailSrc) : '/assets/set-placeholder.svg';
   /** @type {[string, string | number][]} */
   const rows = [
-    [t('detail.year'),     s.year || '—'],
-    [t('detail.theme'),    s.theme_name || '—'],
-    [t('detail.pieces'),   s.num_parts ? s.num_parts.toLocaleString(locale()) : '—'],
-    [t('detail.minifigs'), s.minifigs || '—'],
+    [tRaw('detail.year'),     s.year || '—'],
+    [tRaw('detail.theme'),    s.theme_name || '—'],
+    [tRaw('detail.pieces'),   s.num_parts ? s.num_parts.toLocaleString(locale()) : '—'],
+    [tRaw('detail.minifigs'), s.minifigs || '—'],
   ];
-  if (s.owned) rows.push([t('catalog.owned'), '×' + s.owned_quantity]);
+  if (s.owned) rows.push([tRaw('catalog.owned'), '×' + s.owned_quantity]);
   setzeHtml(G('cat-m-det'), rows.map(([k, v]) => detailZeile(k, esc(String(v)))));
   // Der Kauf-Link kommt fertig vom Server (bricklinkLink.ts): Aus der Rebrickable-Nummer gebaut, war er für
   // Gear, Bücher und Sammelfiguren falsch. Ist der Artikel nicht eindeutig, zeigt er auf die Suche — nie
@@ -407,12 +407,12 @@ async function openCatModal(setNumber){
   const blBtn = G('cat-m-bricklink');
   blBtn.style.display = '';
   blBtn.href = bl?.url || `https://www.bricklink.com/v2/search.page?q=${encodeURIComponent(s.set_number)}`;
-  blBtn.textContent = (bl && bl.exact === false) ? t('catalog.search_bricklink') : t('catalog.buy_bricklink');
+  blBtn.textContent = (bl && bl.exact === false) ? tRaw('catalog.search_bricklink') : tRaw('catalog.buy_bricklink');
   blBtn.title = (bl && bl.exact === false)
-    ? t('catalog.search_bricklink_hint')
+    ? tRaw('catalog.search_bricklink_hint')
     : (bl && bl.type !== 'SET' ? `BrickLink: ${bl.type} ${bl.number}` : '');
   // Button-Zustand: bereits im Besitz → Beschriftung "erneut aufnehmen"
-  G('cat-m-add').textContent = s.owned ? t('catalog.add_again') : t('catalog.add_to_gallery');
+  G('cat-m-add').textContent = s.owned ? tRaw('catalog.add_again') : tRaw('catalog.add_to_gallery');
   G('cat-m-qty').value = '1';
   G('cat-m-price').value = '';
   // Die Setnummer hängt am Modal: Der Merklisten-Knopf liegt in einem anderen Modul, und das Modal weiss
@@ -443,7 +443,7 @@ async function addCatalogSetToGallery(){
   // behoben.
   const storage = selectedStorage('cat-m-storage');
   closeCatModal();
-  showProgress(t('gallery.adding_set', { num }), false);
+  showProgress(tRaw('gallery.adding_set', { num }), false);
   try {
     await streamRequest('/v1/sets/add-stream', { set_number: num, quantity: qty, purchase_price, condition, owner_user_id, storage }, (ev)=>{
       handleSseEvent(ev, num);

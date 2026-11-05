@@ -60,7 +60,7 @@ function gibApplyStatus(s) {
     G('prog-title-txt').textContent = tRaw('csv.import_title');
     G('prog-bar').style.width = pct + '%';
     if (running) {
-      G('prog-footer').textContent = `${t('csv.items_progress',{done,total})} (${importZaehler(s)})`;
+      G('prog-footer').textContent = `${tRaw('csv.items_progress',{done,total})} (${importZaehler(s)})`;
       if (s.current) G('prog-set-name').textContent = tRaw('csv.verarbeite', { set: s.current, done, total });
     } else {
       G('prog-footer').textContent = `${t('csv.finished')} ${importZaehler(s)}`;
@@ -74,7 +74,7 @@ function gibApplyStatus(s) {
   if (gpw && running) {
     gpw.style.display = 'block';
     G('gib-panel-fill').style.width = pct + '%';
-    G('gib-panel-footer').textContent = `${t('csv.items_progress',{done,total})} (${fmtPct(pct, { vorzeichen: false, stellen: 0 })})`;
+    G('gib-panel-footer').textContent = `${tRaw('csv.items_progress',{done,total})} (${fmtPct(pct, { vorzeichen: false, stellen: 0 })})`;
     if(s.current) G('gib-panel-set').textContent = tRaw('csv.verarbeite', { set: s.current, done, total });
   }
   G('gib-stats').textContent = [`${s.ok || 0} ok`, tRaw('csv.warnings_n', { n: s.warn || 0 }), tRaw('csv.errors_n', { n: s.err || 0 })].join(' · ');
@@ -122,7 +122,7 @@ function gibToggle() {
     // Opening from header bar click — initialize overlay in CSV mode so gibPoll() can write into it (needed
     // when this is a 2nd browser window)
     if (!_csvPollActive) {
-      showProgress(t('csv.import_title'), true);
+      showProgress(tRaw('csv.import_title'), true);
       // Immediately fill with whatever gibPoll already knows
       gibPoll();
     } else {

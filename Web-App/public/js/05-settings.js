@@ -99,11 +99,11 @@ G('btn-test-smtp')?.addEventListener('click', async()=>{
   if(d.success) {
     res.style.background = 'var(--g50)'; res.style.color = 'var(--g700)'; res.style.border = '1px solid var(--g300)';
     // Die Kennung des Mailservers hilft, die Nachricht in dessen Protokoll zu finden.
-    res.textContent = d.mode === 'console' ? t('smtp.console')
+    res.textContent = d.mode === 'console' ? tRaw('smtp.console')
       : [d.message || t('smtp.ok'), d.messageId].filter(Boolean).join(' · ');
   } else {
     res.style.background = 'var(--r100)'; res.style.color = 'var(--r500)'; res.style.border = '1px solid var(--r300)';
-    res.textContent = d.error || t('settings.error');
+    res.textContent = d.error || tRaw('settings.error');
   }
 });
 
@@ -608,7 +608,7 @@ async function importConfig() {
       set_settingsCache(null); // invalidate cache so next loadSettings fetches fresh
       if (ME?.isAdmin) { loadCacheTtl(); loadApiLimits(); }
     } else {
-      st.textContent = d.error || t('settings.error');
+      st.textContent = d.error || tRaw('settings.error');
       st.style.color = 'var(--r500)';
     }
   } catch(e) { st.textContent = tRaw('common.network_error'); }

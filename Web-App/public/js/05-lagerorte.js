@@ -1,11 +1,11 @@
 import { echt, registerActions } from './00-registry.js';
-import { t, tRaw } from '../i18n.js';
+import { tRaw } from '../i18n.js';
 import { api } from './01-api.js';
 import { ico, G, setzeHtml } from './01-dom.js';
 import { antwortFehler, feldFehler } from './01-formular.js';
 import { toast } from './01-meldungen.js';
 import { loadGallery } from './02-gallery.js';
-import { esc, html, ungeprueft } from './00-escapen.js';
+import { html } from './00-escapen.js';
 import { confirmDelete } from './01-rueckfrage.js';
 import { ladeLagerortVorgabe } from './02-konten-orte.js';
 import { ladeLagerorte } from './02-detailfelder.js';
@@ -46,13 +46,13 @@ export async function ladeLagerortVerwaltung() {
     // Figuren stehen EIGEN da, nicht bei den Teilesorten (src/bestand/lagerort.ts): „18 Teilesorten" hiesse
     // sonst mal 18 Teilesorten und mal 12 plus 6 Figuren, und niemand koennte der Zahl ansehen, was gemeint
     // ist.
-    const wie = n ? [t('storage.belegt.sets', { n: Number(n.sets) || 0 }), t('storage.belegt.teile', { n: Number(n.teile) || 0 }),
-                     t('storage.belegt.figuren', { n: Number(n.figuren) || 0 })].filter(x => !x.startsWith('0 ')).join(', ')
-                  : esc(tRaw('storage.leer'));
+    const wie = n ? [tRaw('storage.belegt.sets', { n: Number(n.sets) || 0 }), tRaw('storage.belegt.teile', { n: Number(n.teile) || 0 }),
+                     tRaw('storage.belegt.figuren', { n: Number(n.figuren) || 0 })].filter(x => !x.startsWith('0 ')).join(', ')
+                  : tRaw('storage.leer');
     return html`<div data-stil="display:contents">
       <span class="lager-feld" data-stil="padding:6px 0;border-bottom:1px solid var(--bdr);display:flex;align-items:center"><input type="text" maxlength="60" value="${o.name}" aria-label="${tRaw('detail.storage')}"
              data-change="benenneLagerortUm" data-arg="${o.id}" data-val="1" class="lager-eingabe" /></span>
-      <span class="lager-belegt" data-stil="padding:6px 0;border-bottom:1px solid var(--bdr);display:flex;align-items:center;font-size:var(--fs-1);color:var(--mut);white-space:nowrap;justify-content:flex-end"><span class="lager-marke${n ? '' : ' lager-frei'}">${ungeprueft(wie)}</span></span>
+      <span class="lager-belegt" data-stil="padding:6px 0;border-bottom:1px solid var(--bdr);display:flex;align-items:center;font-size:var(--fs-1);color:var(--mut);white-space:nowrap;justify-content:flex-end"><span class="lager-marke${n ? '' : ' lager-frei'}">${wie}</span></span>
       <span data-stil="padding:6px 0;border-bottom:1px solid var(--bdr);display:flex;align-items:center"><button class="btn bs lager-sinnbild" data-click="schalteLagerortVorgabe" data-arg="${o.id}"
               data-arg2="${o.id === vorgabeId ? 1 : 0}"
               title="${tRaw(o.id === vorgabeId ? 'storage.default_is' : 'storage.default_set')}"

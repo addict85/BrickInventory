@@ -55,10 +55,10 @@ export async function ladeZweitenFaktor() {
   }
   zeichne(html`<p data-stil="font-size:var(--fs-3);margin:0 0 .75rem 0">${ico('ok')} ${tRaw('zf.active', { n: d.codes_uebrig })}</p>
     <form class="sform" data-stil="max-width:420px">
-      ${CODEFELD(t('login.code'))}
+      ${CODEFELD(tRaw('login.code'))}
       <div data-stil="display:flex;gap:.5rem;flex-wrap:wrap">
-        ${knopf('zfNeueCodes', t('zf.new_codes'))}
-        ${knopf('zfAbschalten', t('zf.disable'), 'bd')}
+        ${knopf('zfNeueCodes', tRaw('zf.new_codes'))}
+        ${knopf('zfAbschalten', tRaw('zf.disable'), 'bd')}
       </div>
     </form>`);
 }
@@ -77,9 +77,9 @@ export async function zfEinrichten() {
       <div id="zf-qr" data-stil="background:#fff;padding:8px;align-self:flex-start;border-radius:8px"></div>
       <div data-stil="font-size:var(--fs-1);color:var(--mut)">${tRaw('zf.manual')}<br><code data-stil="user-select:all;font-size:var(--fs-3)">${lesbar}</code></div>
       <div class="lerr" id="zf-fehler" role="alert"></div>
-      ${CODEFELD(t('zf.confirm_code'), 6)}
+      ${CODEFELD(tRaw('zf.confirm_code'), 6)}
       ${reihe(`<button type="button" class="btn bp ${knopfArt()}" id="zf-bestaetigen" data-click="zfBestaetigen">${t('zf.confirm')}</button>
-        ${pflicht ? '' : knopf('ladeZweitenFaktor', t('common.cancel'))}`)}
+        ${pflicht ? '' : knopf('ladeZweitenFaktor', tRaw('common.cancel'))}`)}
     </form>`);
   const qr = G('zf-qr');
   if (qr && typeof QRCode !== 'undefined') {
@@ -97,7 +97,7 @@ function zeigeCodes(codes) {
   zeichne(html`<div class="sform" data-stil="max-width:420px">
       <p data-stil="font-size:var(--fs-2);margin:0"><strong>${tRaw('zf.codes_title')}</strong><br>${tRaw('zf.codes_hint')}</p>
       <pre id="zf-codes" data-stil="font-size:var(--fs-3);line-height:1.6;background:var(--s50,#f8fafc);border:1px solid var(--bdr);border-radius:8px;padding:.6rem .9rem;margin:0;user-select:all">${ungeprueft(codes.map(esc).join('\n'))}</pre>
-      ${reihe(`${knopf('zfCodesKopieren', t('zf.copy'))}
+      ${reihe(`${knopf('zfCodesKopieren', tRaw('zf.copy'))}
         <button type="button" class="btn bp ${knopfArt()}" id="zf-gespeichert" data-click="${pflicht ? 'zfPflichtFertig' : 'ladeZweitenFaktor'}">${t('zf.codes_done')}</button>`)}
     </div>`);
   G('zf-gespeichert')?.focus();
@@ -127,7 +127,7 @@ export async function zfNeueCodes() {
 
 export async function zfAbschalten() {
   const code = G('zf-code')?.value || '';
-  if (!await confirmDelete(tRaw('zf.disable'), t('zf.disable_confirm'), 'schloss', { knopf: 'confirm.btn.abschalten', art: 'bd' })) return;
+  if (!await confirmDelete(tRaw('zf.disable'), tRaw('zf.disable_confirm'), 'schloss', { knopf: 'confirm.btn.abschalten', art: 'bd' })) return;
   const d = await mitPasswortBestaetigen(tRaw('zf.disable'), (password, z) =>
     api('POST', '/v1/auth/zweiter-faktor/abschalten', { password, ...(code ? { code } : {}), ...z }));
   if (!d) return;

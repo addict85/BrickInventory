@@ -311,7 +311,7 @@ async function acqSave(sn, id, field, value) {
  * @param {string} id
  */
 async function acqDelete(sn, id) {
-  if (!await confirmDelete(tRaw('acq.delete_title'), t('acq.delete_text'), 'loeschen')) return;
+  if (!await confirmDelete(tRaw('acq.delete_title'), tRaw('acq.delete_text'), 'loeschen')) return;
   const d = await api('DELETE', `/v1/sets/${sn}/acquisitions/${id}`);
   if (!d.success) { toast(tRaw('settings.error'), 'error'); return; }
   // Update curSet + qty input in set-detail modal
@@ -870,7 +870,7 @@ async function manAcqSave(type, id, colorId, acqId, field, value) {
  * @param {string} acqId
  */
 async function manAcqDelete(type, id, colorId, acqId) {
-  if (!await confirmDelete(tRaw('acq.delete_title'), t('acq.delete_text'), 'loeschen')) return;
+  if (!await confirmDelete(tRaw('acq.delete_title'), tRaw('acq.delete_text'), 'loeschen')) return;
   const delUrl = type === 'fig'
     ? `/v1/minifigs/${encodeURIComponent(id)}/acquisitions/${acqId}`
     : `/v1/parts/${encodeURIComponent(id)}/${colorId}/acquisitions/${acqId}`;

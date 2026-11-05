@@ -2,7 +2,7 @@
 // damit jede Ansicht sie nutzen kann, ohne eine andere Ansicht zu importieren.
 import { api } from './01-api.js';
 import { G, ico, setzeHtml } from './01-dom.js';
-import { t, tRaw } from '../i18n.js';
+import { tRaw } from '../i18n.js';
 
 /**
  * Ohne `knopf` heisst der Hauptknopf rot „Löschen“; wer etwas anderes bestätigt, nennt sein Verb.
@@ -114,8 +114,8 @@ function dialogOeffnen(title, msg, icon, mitPasswort, mitCode = false, mitPasske
     if (pkKnopf) pkKnopf.hidden = !mitPasskey;
     if (pw) pw.value = '';
     if (codeFeld) codeFeld.value = '';
-    G('cd-title').textContent = title || t('common.delete_title');
-    G('cd-msg').textContent   = msg   || t('common.delete_text');
+    G('cd-title').textContent = title || tRaw('common.delete_title');
+    G('cd-msg').textContent   = msg   || tRaw('common.delete_text');
     setzeHtml(G('cd-icon'), ico(icon || 'loeschen'));
     modal.style.display = 'flex';
     const btnYes = G('cd-confirm');

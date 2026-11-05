@@ -201,7 +201,7 @@ export function renderFigs(list, target) {
   /** @type {Record<string, (Figur | ManuelleFigur)[]>} */
   const groups = {};
   for (const f of list) {
-    const key = f.source === 'manual' ? t('figs.group_manual') : t('figs.group_sets');
+    const key = f.source === 'manual' ? tRaw('figs.group_manual') : tRaw('figs.group_sets');
     if (!groups[key]) groups[key] = [];
     groups[key].push(f);
   }
@@ -219,7 +219,7 @@ export function renderFigs(list, target) {
           // Papierkorb oben rechts, wie auf der Set-Kachel: .ca setzt top:6px;right:6px und blendet ihn beim
           // Ueberfahren ein (styles.css). Marcos Vorgabe vom 24.09., zweiter Teil: „analog den Kacheln bei
           // den Sets. Dies aber nur in der webapp."
-          const delBtn = f.source==='manual' ? `<div class="ca"><span class="delbtn" data-click="deleteManualFigStop"${echt()} aria-hidden="true" data-arg="${esc(f.fig_number)}" data-arg2="${f.user_id||''}" title="${esc(t('figs.delete'))}">${TRASH_ICON_SVG}</span></div>` : '';
+          const delBtn = f.source==='manual' ? `<div class="ca"><span class="delbtn" data-click="deleteManualFigStop"${echt()} aria-hidden="true" data-arg="${esc(f.fig_number)}" data-arg2="${f.user_id||''}" title="${esc(tRaw('figs.delete'))}">${TRASH_ICON_SVG}</span></div>` : '';
           // Zustand nur bei manuell erfassten Figuren — aus Sets haben sie keinen eigenen. Die
           // Besitzer-Plakette dagegen immer: „Wem gehört das?“ stellt sich bei der Figur aus dem Set eines
           // Kindes genauso.
@@ -251,7 +251,7 @@ export function renderFigs(list, target) {
 
 /** @param {string} figNumber @param {number|string} [owner] siehe deleteManualPart */
 export async function deleteManualFig(figNumber, owner) {
-  if (!await confirmDelete(tRaw('figs.delete.title'), t('gallery.delete.text',{name:figNumber}), 'figur')) return false;
+  if (!await confirmDelete(tRaw('figs.delete.title'), tRaw('gallery.delete.text',{name:figNumber}), 'figur')) return false;
   const d = await api('DELETE', `/v1/minifigs/${encodeURIComponent(figNumber)}${owner ? `?owner=${encodeURIComponent(owner)}` : ''}`);
   if (d.success) { geloeschtMitRueckgaengig(tRaw('figs.deleted'), d); loadMinifigs(); loadManualFigsTable(); return true; }
   else { toast(d.error || t('settings.error'), 'error'); return false; }
@@ -387,7 +387,7 @@ G('btn-add-fig')?.addEventListener('click', async () => {
     // Mit Hinweis laenger stehen lassen: Drei Sekunden reichen fuer ein Haekchen, nicht fuer einen Satz, den
     // man lesen soll.
     setTimeout(()=>{ res.textContent=''; }, hinweisF ? 9000 : 3000);
-  } else { res.style.color='var(--r500)'; res.textContent=d.error||t('settings.error'); }
+  } else { res.style.color='var(--r500)'; res.textContent=d.error||tRaw('settings.error'); }
 });
 
 // Persistente Status-/Hinweiszeile für den CSV-Import (Teile & Minifiguren)
@@ -413,7 +413,7 @@ export function csvImportStatus(elId, state, msg) {
 
 async function importFigsCsv() {
   const d = await csvHochladen({ feld: 'fig-csv-file', pfad: '/v1/minifigs/import/csv',
-    zeige: (l) => csvImportStatus('fig-csv-status', l ? 'running' : 'hide', t('import.running')) });
+    zeige: (l) => csvImportStatus('fig-csv-status', l ? 'running' : 'hide', tRaw('import.running')) });
   if (d) loadMinifigs();
 }
 

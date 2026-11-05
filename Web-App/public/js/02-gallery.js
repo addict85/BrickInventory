@@ -200,7 +200,7 @@ export async function loadGallery(opts = {}){
   // dann wird einmal neu gezeichnet.
   const gal = G('gallery');
   if (!allSets.length || !gal.querySelector('.sgrid, .tw, .empty')) {
-    setzeHtml(gal, skelettKacheln(8, t('gallery.loading')));
+    setzeHtml(gal, skelettKacheln(8, tRaw('gallery.loading')));
   }
   _galGen++; _galPage = 1; _galDone = false; _galLoadingMore = false;
   const gen = _galGen;
@@ -429,7 +429,7 @@ async function doAddSet(){
   if(!setnummerFeldGueltig('add-num', num) || !preis.ok) return;
   if (await setUnbekannt(num)) return;
   unbekanntZuruecksetzen();
-  showProgress(t('gallery.adding_set',{num}), false);
+  showProgress(tRaw('gallery.adding_set',{num}), false);
   try{
     await streamRequest('/v1/sets/add-stream', {set_number:num,quantity:qty,purchase_price,condition,owner_user_id,storage:selectedStorage('add-storage')}, (ev)=>{
       handleSseEvent(ev, num);
@@ -470,7 +470,7 @@ async function doAddSet(){
 // CSV import via SSE stream — Datei-Auswahl startet den Import direkt (analog Teile-Import)
 async function startSetCsvImport(){
   const fi=G('csv-file'); if(!fi.files?.[0]){toast(tRaw('csv.select_file'),'error');return;}
-  showProgress(t('csv.import_title'), true);
+  showProgress(tRaw('csv.import_title'), true);
   const fd=new FormData(); fd.append('file',/** @type {File} */ (fi.files?.[0]));
   try{
     // Start import job (returns immediately)
@@ -536,7 +536,7 @@ function csvApplyOverlayStatus(s, ctx, fi){
     const done = s.done ?? 0;
     const pct = total>0 ? (done/total)*95 : 0;
     setProgBar(pct);
-    G('prog-footer').textContent=`${t('csv.items_progress',{done,total})} (${importZaehler(s)})`;
+    G('prog-footer').textContent=`${tRaw('csv.items_progress',{done,total})} (${importZaehler(s)})`;
     if(s.current) G('prog-set-name').textContent=tRaw('csv.verarbeite', { set: s.current, done, total });
     // Update header progress bar directly
     { const _p=total>0?Math.round(done/total*100):0; const _b=G('global-import-bar'); if(_b){_b.style.display='flex';G('gib-fill').style.width=_p+'%';G('gib-text').textContent=done+'/'+total+' ('+fmtPct(_p,{vorzeichen:false,stellen:0})+')';} }
@@ -564,7 +564,7 @@ function csvApplyOverlayStatus(s, ctx, fi){
           // Derselbe Zeilenbauer wie in 01-fortschritt.js. Ohne esc(), weil addCsvLog textContent setzt; der
           // Hinweis auf Zeitüberschreitung gilt nur hier.
           // Ausführlich: docs/begruendungen/public/js/02-gallery.js.md#z
-          const z = protokollZeile(r, t('csv.timeout_retry'));
+          const z = protokollZeile(r, tRaw('csv.timeout_retry'));
           if (z) addCsvLog(z.text, z.ok);
         });
         ctx.prevResultCount = s.results.length;
@@ -623,7 +623,7 @@ export async function delSet(sn){
   const bekannt = (curSet && curSet.set_number === sn ? curSet : null)
     || (allSets || []).find(x => x.set_number === sn);
   const name = bekannt?.name || sn;
-  if(!await confirmDelete(tRaw('gallery.delete.title'), t('gallery.delete.name_parts',{name}))) return false;
+  if(!await confirmDelete(tRaw('gallery.delete.title'), tRaw('gallery.delete.name_parts',{name}))) return false;
   const d=await api('DELETE',`/v1/sets/${sn}`);
   if(!d.success){ toast(d.error,'error'); return false; }
   geloeschtMitRueckgaengig(tRaw('users.deleted',{name}), d);

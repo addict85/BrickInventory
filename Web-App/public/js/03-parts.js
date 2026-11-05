@@ -83,8 +83,8 @@ export function zeichneTeileFilter(){
     if (p.category_name != null && p.category_name !== '' && !kategorien.has(String(p.category_name)))
       kategorien.set(String(p.category_name), catLabel(p.category_name));
   }
-  fuelleFilter('parts-color', t('parts.filter.all_colors'), farben, activeColor);
-  fuelleFilter('parts-cat', t('parts.filter.all_categories'), kategorien, activeCat);
+  fuelleFilter('parts-color', tRaw('parts.filter.all_colors'), farben, activeColor);
+  fuelleFilter('parts-cat', tRaw('parts.filter.all_categories'), kategorien, activeCat);
 }
 
 /**
@@ -205,7 +205,7 @@ async function loadPartsData(){
   _setTeileLeer = null;
 
   const main = G('parts-main');
-  setzeHtml(main, skelettKacheln(12, t('parts.loading'), 'teil'));
+  setzeHtml(main, skelettKacheln(12, tRaw('parts.loading'), 'teil'));
   await loadPartsPage(true);
 }
 
@@ -554,7 +554,7 @@ export async function updateManualPart(partNumber, colorId, body, owner) {
  *   „success". Begründung und Messung in src/haushalt/haushalt.ts.
  */
 export async function deleteManualPart(partNumber, colorId, owner) {
-  if (!await confirmDelete(tRaw('parts.delete.title'), t('gallery.delete.text',{name:partNumber}), 'teil')) return false;
+  if (!await confirmDelete(tRaw('parts.delete.title'), tRaw('gallery.delete.text',{name:partNumber}), 'teil')) return false;
   const d = await api('DELETE', `/v1/parts/${encodeURIComponent(partNumber)}/${colorId}${owner ? `?owner=${encodeURIComponent(owner)}` : ''}`);
   if (d.success) { geloeschtMitRueckgaengig(tRaw('parts.deleted'), d); loadManualParts(); return true; }
   else { toast(d.error || t('settings.error'), 'error'); return false; }
@@ -626,13 +626,13 @@ G('btn-add-part')?.addEventListener('click', async () => {
     loadManualParts();
     // Siehe die Figuren-Erfassung darueber: ein Satz braucht laenger als ein Haekchen.
     setTimeout(()=>{ res.textContent=''; }, hinweisT ? 9000 : 3000);
-  } else { res.style.color='var(--r500)'; res.textContent=d.error||t('settings.error'); }
+  } else { res.style.color='var(--r500)'; res.textContent=d.error||tRaw('settings.error'); }
 });
 
 // CSV import
 async function importPartsCsv() {
   const d = await csvHochladen({ feld: 'part-csv-file', pfad: '/v1/parts/import/csv',
-    zeige: (l) => csvImportStatus('part-csv-status', l ? 'running' : 'hide', t('import.running')) });
+    zeige: (l) => csvImportStatus('part-csv-status', l ? 'running' : 'hide', tRaw('import.running')) });
   if (d) loadManualParts();
 }
 

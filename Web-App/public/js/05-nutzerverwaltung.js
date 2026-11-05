@@ -6,7 +6,7 @@ import { fmtDatum } from './01-format.js';
 import { passwortRegelText } from './01-formular.js';
 import { toast } from './01-meldungen.js';
 import { ME } from './00-zustand.js';
-import { esc, html, ungeprueft } from './00-escapen.js';
+import { html, ungeprueft } from './00-escapen.js';
 import { bestaetigeMitPasswort, mitZweitemFaktor } from './01-rueckfrage.js';
 // Einstellungen, Abschnitt Verwaltung: Konten anlegen, sperren, freischalten, Rechte. Nur Verwalter sehen
 // ihn, der Server prüft jede Aktion selbst.
@@ -27,26 +27,26 @@ export async function loadUsers(){
 // Ausgeschrieben statt zusammengesetzt, damit jeder Schlüssel als Aufruf im Quelltext steht und die
 // Wörterbuchprüfung ihn findet.
 const AKTIONEN = {
-  konto_angelegt:          () => t('users.aktion.konto_angelegt'),
-  einstellungen_geaendert: () => t('users.aktion.einstellungen_geaendert'),
-  passwort_gesetzt:        () => t('users.aktion.passwort_gesetzt'),
-  zweiter_faktor_entfernt: () => t('users.aktion.zweiter_faktor_entfernt'),
-  verwalter_ernannt:       () => t('users.aktion.verwalter_ernannt'),
-  verwalter_entzogen:      () => t('users.aktion.verwalter_entzogen'),
-  konto_geloescht:         () => t('users.aktion.konto_geloescht'),
-  konto_deaktiviert:       () => t('users.aktion.konto_deaktiviert'),
-  konto_reaktiviert:       () => t('users.aktion.konto_reaktiviert'),
-  konto_freigeschaltet:    () => t('users.aktion.konto_freigeschaltet'),
-  gutschein_klartext:      () => t('users.aktion.gutschein_klartext'),
-  gutschein_pdf:           () => t('users.aktion.gutschein_pdf'),
-  gutschein_export:        () => t('users.aktion.gutschein_export'),
+  konto_angelegt:          () => tRaw('users.aktion.konto_angelegt'),
+  einstellungen_geaendert: () => tRaw('users.aktion.einstellungen_geaendert'),
+  passwort_gesetzt:        () => tRaw('users.aktion.passwort_gesetzt'),
+  zweiter_faktor_entfernt: () => tRaw('users.aktion.zweiter_faktor_entfernt'),
+  verwalter_ernannt:       () => tRaw('users.aktion.verwalter_ernannt'),
+  verwalter_entzogen:      () => tRaw('users.aktion.verwalter_entzogen'),
+  konto_geloescht:         () => tRaw('users.aktion.konto_geloescht'),
+  konto_deaktiviert:       () => tRaw('users.aktion.konto_deaktiviert'),
+  konto_reaktiviert:       () => tRaw('users.aktion.konto_reaktiviert'),
+  konto_freigeschaltet:    () => tRaw('users.aktion.konto_freigeschaltet'),
+  gutschein_klartext:      () => tRaw('users.aktion.gutschein_klartext'),
+  gutschein_pdf:           () => tRaw('users.aktion.gutschein_pdf'),
+  gutschein_export:        () => tRaw('users.aktion.gutschein_export'),
 };
 /** Wer hat an welchem fremden Konto was geändert — die letzten Einträge. */
 async function ladeProtokoll(){
   const d=await api('GET','/v1/admin/protokoll'); if(!d.success) return;
   const eintraege = d.eintraege || [];
   setzeHtml(G('vw-protokoll'), eintraege.length ? html`<div class="tw"><table class="dt"><thead><tr><th>${tRaw('users.protokoll.zeit')}</th><th>${tRaw('users.protokoll.verwalter')}</th><th>${tRaw('users.protokoll.aktion')}</th><th>${tRaw('users.protokoll.konto')}</th></tr></thead><tbody>${eintraege.map(e=>html`<tr><td>${ungeprueft(new Date(String(e.zeit)).toLocaleString(locale()))}</td><td>${e.verwalter_name||'—'}</td>
-      <td>${ungeprueft((/** @type {Record<string, () => string>} */ (AKTIONEN)[String(e.aktion)] || (() => esc(e.aktion)))())}${e.einzelheiten ? html`: ${e.einzelheiten}` : ''}</td><td>${e.ziel_name||'#'+e.ziel_id}</td></tr>`)}</tbody></table></div>` : html`<p data-stil="color:var(--mut);font-size:var(--fs-2)">${tRaw('users.protokoll.leer')}</p>`);
+      <td>${((/** @type {Record<string, () => string>} */ (AKTIONEN))[String(e.aktion)] || (() => String(e.aktion)))()}${e.einzelheiten ? html`: ${e.einzelheiten}` : ''}</td><td>${e.ziel_name||'#'+e.ziel_id}</td></tr>`)}</tbody></table></div>` : html`<p data-stil="color:var(--mut);font-size:var(--fs-2)">${tRaw('users.protokoll.leer')}</p>`);
 }
 /**
  * Gegen das eigene Konto gibt es hier nichts zu tun (der Server lehnt es ohnehin ab); das sagt die Zeile. Die

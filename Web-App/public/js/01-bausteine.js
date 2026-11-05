@@ -5,7 +5,7 @@ import { api } from './01-api.js';
 import { ico, G, setzeHtml } from './01-dom.js';
 import { fmtBig, fmtPct, istGeschenk } from './01-format.js';
 import { toast } from './01-meldungen.js';
-import { tRaw, t } from '../i18n.js';
+import { tRaw } from '../i18n.js';
 import { registerActions, resolveAction } from './00-registry.js';
 import { esc, html, ungeprueft } from './00-escapen.js';
 import { ME } from './00-zustand.js';
@@ -145,7 +145,7 @@ export function verstaendlicherGrund(d) {
  */
 export function teileAufschluesselung(ausSets, einzeln) {
   if (!ausSets || !einzeln) return '';
-  return t('parts.stat.breakdown', { sets: fmtBig(ausSets), einzeln: fmtBig(einzeln) });
+  return tRaw('parts.stat.breakdown', { sets: fmtBig(ausSets), einzeln: fmtBig(einzeln) });
 }
 
 /**
