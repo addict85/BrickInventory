@@ -602,7 +602,7 @@ internal fun ProtokollSection(verwaltung: VerwaltungUiState, aktionen: Monitorin
                     // Der Fehler statt der Leermeldung: „keine Einträge“ wäre falsch, wenn der
                     // Abruf scheiterte.
                     if (verwaltung.fehler != null) {
-                        Text(verwaltung.fehler!!, style = MaterialTheme.typography.bodySmall,
+                        Text(verwaltung.fehler, style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.error)
                     } else if (verwaltung.protokoll.isEmpty() && !verwaltung.protokollLaden) {
                         Text(stringResource(R.string.admin_log_empty),
