@@ -46,7 +46,7 @@ import ch.brickinventoryapp.data.api.ApiJson
  *      schickt genau dieses Token …“ (kein Authorization-Kopf)
  *   D  entwertungsSchritt(): Gesperrt → AUFGEGEBEN → rot „ein gesperrter Keystore
  *      wartet …“
- *   E  (05.11.2026, sec17 N1, kotlinc lokal) in entwerte() die Prüfung der Herkunft entfernt → rot
+ *   E in entwerte() die Prüfung der Herkunft entfernt → rot
  *      „ein Auftrag für einen anderen Server schickt nichts“ (gegenproben/entwerter-ohne-herkunft.patch)
  */
 class EntwertungTest {

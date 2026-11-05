@@ -22,7 +22,7 @@ import org.robolectric.shadows.ShadowDialog
 
 /**
  * Ein aufgedecktes Passwort in einer Rückfrage steht sofort unter FLAG_SECURE, auch
- * wenn die App-Übersicht nicht verborgen ist (sec17 N2): Der Dialog hat ein eigenes
+ * wenn die App-Übersicht nicht verborgen ist: Der Dialog hat ein eigenes
  * Fenster, das den Schutz der Seite erst bei seinem nächsten Neuaufbau übernähme.
  *
  * Gegenprobe (Robolectric, misst die CI; Job `gegenproben`):

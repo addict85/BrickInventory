@@ -26,7 +26,7 @@ import org.junit.Test
  * Gegenproben:
  *   A  in vorbereitet() jede Anfrage durchgelassen → rot „ein fremder Host wird
  *      nicht angefragt“ und „eine Umleitung zu einem fremden Host …“
- *   C  (05.11.2026, sec17 A-N7) die CDN-Freigabe wieder eingebaut
+ *   C die CDN-Freigabe wieder eingebaut
  *      (gegenproben/bild-cdn-wieder-frei.patch) → rot „auch ein Bild-CDN …“
  *   D  den Zweig `eigenerServer(r.url) -> r` entfernt → rot „der eigene Server
  *      bekommt die Anfrage unveraendert“ und beide Umleitungstests

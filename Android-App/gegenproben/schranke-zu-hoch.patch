@@ -11,8 +11,8 @@ index 34e91e3..32f734b 100644
  
      @Test
      fun `Testfunktionen, die Quelltext lesen, werden weniger, nie mehr`() {
--        val FUNKTIONEN = 331
-+        val FUNKTIONEN = 332
-         val NUR_QUELLTEXT = 53
+-        val FUNKTIONEN = 325
++        val FUNKTIONEN = 326
+         val NUR_QUELLTEXT = 52
          val alle = Quellen.tests.walkTopDown().filter { it.isFile && it.name.endsWith("Test.kt") }
              .filter { it.name != "QuelltextRatscheTest.kt" }.toList()

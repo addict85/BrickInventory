@@ -28,13 +28,13 @@ import java.io.File
  *      trägt core-ui ein → rot „Konventionen tragen keine Modulkanten ein“
  *   G  in build-logic/settings.gradle.kts `google()` ohne Filter →
  *      rot „Ohne Inhaltsfilter in build-logic/settings.gradle.kts“
- *   I  (05.11.2026, sec17 B-N4, kotlinc lokal) in settings.gradle.kts ein exclusiveContent
+ *   I in settings.gradle.kts ein exclusiveContent
  *      gestrichen → rot „exclusiveContent je Block in settings.gradle.kts“
- *   J  (05.11.2026, sec17 B-N3, kotlinc lokal) ein `regex="true"` zurück in
+ *   J ein `regex="true"` zurück in
  *      verification-metadata.xml → rot „kein Schlüssel gilt für eine ganze Gruppe …“
- *   K  (05.11.2026, sec17 B-N5, kotlinc lokal) in bauwerkzeug-luecken.txt die Fassung auf 3.15.0
+ *   K in bauwerkzeug-luecken.txt die Fassung auf 3.15.0
  *      → rot „jede Lücke im Bauwerkzeug …“ (steht nicht in verification-metadata.xml)
- *   H  (05.11.2026, sec17 A-N6, kotlinc lokal) ein `PdfRenderer(` in PdfSeite.kt →
+ *   H ein `PdfRenderer(` in PdfSeite.kt →
  *      rot „PdfRenderer steht nur im isolierten Render-Dienst“
  */
 class ModulgrenzenTest {

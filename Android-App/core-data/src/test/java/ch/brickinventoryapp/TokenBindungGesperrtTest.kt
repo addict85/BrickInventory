@@ -30,7 +30,7 @@ import java.util.concurrent.atomic.AtomicInteger
 
 /**
  * Ein Token geht nur an den Server, der es ausgab — auch wenn der Keystore beim
- * Serverwechsel gesperrt ist und der Speicher deshalb „kein Token“ meldet (sec17 N1).
+ * Serverwechsel gesperrt ist und der Speicher deshalb „kein Token“ meldet.
  * Echter PreferencesManager auf Robolectric, ein Neustart ist eine neue Instanz.
  *
  * Gegenproben (Robolectric, misst die CI; Job `gegenproben`):

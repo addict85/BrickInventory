@@ -28,7 +28,7 @@ import java.util.Base64
  *   G  in schluessel() die Zeile `if geliefert[0] not in app`
  *      samt Rückgabe gestrichen → rot „ein Beschreibungsschluessel, den die App nicht
  *      kennt, wird abgelehnt“; gegenproben/beschreibungsschluessel-ungeprueft.patch
- *   H  (05.11.2026, sec17 A-N8, python3 lokal) der Übergangsweg wieder mit Rückgabe 0 →
+ *   H der Übergangsweg wieder mit Rückgabe 0 →
  *      rot „ein Beschreibungsschluessel, den die App nicht kennt …“ (Übergang unsichtbar)
  */
 class ReleasePruefenTest {

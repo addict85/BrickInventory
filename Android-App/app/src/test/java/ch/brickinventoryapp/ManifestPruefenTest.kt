@@ -14,9 +14,9 @@ import java.util.concurrent.TimeUnit
  *   manifest-export-ungeprueft  der Vergleich mit der Positivliste gestrichen → rot
  *                               „eine fremde exportierte Komponente …“
  *   manifest-debuggable-egal    die Prüfung auf debuggable gestrichen → rot „ein debuggable …“
- *   (05.11.2026, python3 lokal) ProfileInstallReceiver wieder in manifest-exportiert.txt →
+ * ProfileInstallReceiver wieder in manifest-exportiert.txt →
  *                               rot „herausgenommene Bibliothekskomponenten …“
- *   (05.11.2026, sec17 B-N12, python3 lokal) die Schleife über uses-permission gestrichen →
+ * die Schleife über uses-permission gestrichen →
  *                               rot „eine Berechtigung ausserhalb der Liste …“
  */
 class ManifestPruefenTest {

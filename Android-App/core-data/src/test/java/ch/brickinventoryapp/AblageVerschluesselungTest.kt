@@ -45,7 +45,7 @@ import javax.crypto.spec.SecretKeySpec
  *   E  im Antwort-Cache den Aufruf uebernimm(…) gestrichen → rot „der Bestand ohne
  *      Bindung wird uebernommen …“ (der Cache war nach dem Update leer);
  *      gegenproben/antwort-cache-ohne-uebernahme.patch
- *   F  (05.11.2026, sec17 A-N5, kotlinc lokal) in erneuere() `bekannt = null` gestrichen →
+ *   F in erneuere() `bekannt = null` gestrichen →
  *      rot „nach dem Erneuern ist alles Alte unlesbar …“
  */
 class AblageVerschluesselungTest {
