@@ -26,6 +26,7 @@ import { konfig } from '../../src/infra/konfig';
 import { invalidateTheme } from '../../src/konto/indexHtml';
 import { jsonOderNull, emailGueltig } from '../../src/infra/validate';
 import { vertragsRouter } from '../../src/infra/vertrag/pruefen';
+import type { Request } from 'express';
 import type { Antwort } from '../../src/infra/vertrag';
 const router = vertragsRouter();
 
@@ -43,7 +44,7 @@ router.get('/settings/theme', async (req, res: Antwort<'GET /api/v1/settings/the
 // Vor router.use(requireLogin), weil requireLogin nur die Sitzung kennt und
 // die App ihre Zugänge mit Token verwaltet.
 // Ausführlich: docs/begruendungen/routes/api_v1/settings.ts.md#abschnitt
-router.get('/settings/tokens', requireLoginOrToken, async (req: LoggedInRequest, res: Antwort<'GET /api/v1/settings/tokens'>) => {
+router.get('/settings/tokens', requireLoginOrToken, async (req: Request, res: Antwort<'GET /api/v1/settings/tokens'>) => {
   const eigener = bearerToken(req);
   const eigenerHash = eigener ? hashToken(eigener) : null;
   // LEAST über beide Fristen: Den Nutzer interessiert der Tag, an dem dieses
@@ -67,7 +68,7 @@ router.get('/settings/tokens', requireLoginOrToken, async (req: LoggedInRequest,
 
 /** Die Zeile ist sofort weg, der Token-Cache gilt aber noch kurz nach.
  * Ausführlich: docs/begruendungen/routes/api_v1/settings.ts.md#delete-tokens-tokenid */
-router.delete('/settings/tokens/:tokenId', requireLoginOrToken, async (req: LoggedInRequest, res: Antwort<'DELETE /api/v1/settings/tokens/:tokenId'>) => {
+router.delete('/settings/tokens/:tokenId', requireLoginOrToken, async (req: Request, res: Antwort<'DELETE /api/v1/settings/tokens/:tokenId'>) => {
   // escapeLike: ohne das löscht ein "%" als tokenId ALLE Tokens des Nutzers.
   const prefix = escapeLike(String(req.params.tokenId || '')).slice(0, 64);
   if (!prefix) return sendeFehler(req, res, 400, 'token_id_fehlt');
@@ -77,7 +78,7 @@ router.delete('/settings/tokens/:tokenId', requireLoginOrToken, async (req: Logg
 });
 
 // Mit Passwort: Eine erbeutete Sitzung soll den Inhaber nicht aussperren können.
-router.post('/settings/sessions/andere-beenden', requireLogin, async (req: LoggedInRequest, res: Antwort<'POST /api/v1/settings/sessions/andere-beenden'>) => {
+router.post('/settings/sessions/andere-beenden', requireLogin, async (req: Request, res: Antwort<'POST /api/v1/settings/sessions/andere-beenden'>) => {
   if (!await bestaetigeMitFaktor(req, res, angemeldeteNutzerId(req), req.body?.password)) return;
   const { beendet, version } = await andereSitzungenBeenden(angemeldeteNutzerId(req), req.sessionID);
   req.session.sitzungsVersion = version;
@@ -210,7 +211,7 @@ router.get('/settings/tls', async (_req, res: Antwort<'GET /api/v1/settings/tls'
 
 const istHeikel = (k: string) => k.startsWith('smtp_') || k === 'registration_enabled' || /api_key$|^bricklink_(consumer|token)/.test(k);
 
-router.post('/settings', async (req: LoggedInRequest, res: Antwort<'POST /api/v1/settings'>) => {
+router.post('/settings', async (req: Request, res: Antwort<'POST /api/v1/settings'>) => {
   const uid = angemeldeteNutzerId(req);
   const globalKeys = ['bricklink_consumer_key','bricklink_consumer_secret','bricklink_token',
     'bricklink_token_secret','brickset_api_key','rebrickable_api_key','price_job_interval_minutes',
@@ -274,7 +275,7 @@ router.post('/settings', async (req: LoggedInRequest, res: Antwort<'POST /api/v1
 });
 
 // Über readSettings(), damit die Maskierung nicht an der Verpackung vorbeigeht.
-router.get('/settings/raw', async (req: LoggedInRequest, res: Antwort<'GET /api/v1/settings/raw'>) => {
+router.get('/settings/raw', async (req: Request, res: Antwort<'GET /api/v1/settings/raw'>) => {
   res.json({ success: true, settings: await readSettings(angemeldeteNutzerId(req), istVerwalter(req)) });
 });
 
@@ -288,7 +289,7 @@ router.get('/settings/export', async (req, res: Antwort<'GET /api/v1/settings/ex
   res.json({ exported_at: new Date().toISOString(), exported_by: nutzerName(req), version: '3.0', global, user_settings: userSettings });
 });
 
-router.get('/settings/export/data', async (req: LoggedInRequest, res) => {
+router.get('/settings/export/data', async (req: Request, res) => {
   // archiver 8 ist ein ES-Modul; aus CommonJS geht nur require(), kein Import.
   const { ZipArchive } = require('archiver');
   const uid = angemeldeteNutzerId(req);
@@ -316,7 +317,7 @@ router.get('/settings/export/data', async (req: LoggedInRequest, res) => {
 });
 
 const importUpload = multer({ storage: multer.memoryStorage(), limits: { ...FORMULAR_GRENZEN, fileSize: 1024 * 1024 } });
-router.post('/settings/import', kontoSchranke('upload'), importUpload.single('file'), async (req: LoggedInRequest, res: Antwort<'POST /api/v1/settings/import'>) => {
+router.post('/settings/import', kontoSchranke('upload'), importUpload.single('file'), async (req: Request, res: Antwort<'POST /api/v1/settings/import'>) => {
   if (!req.file) return sendeFehler(req, res, 400, 'keine_datei');
   const gelesen = jsonOderNull(req.file.buffer.toString('utf-8'));
   if (!gelesen) return sendeFehler(req, res, 400, 'json_ungueltig');
@@ -422,7 +423,7 @@ router.post('/settings/quelle-testen', async (req, res: Antwort<'POST /api/v1/se
 });
 
 // Leer heisst „Vorgabe des Verwalters".
-router.post('/settings/user/theme', async (req: LoggedInRequest, res: Antwort<'POST /api/v1/settings/user/theme'>) => {
+router.post('/settings/user/theme', async (req: Request, res: Antwort<'POST /api/v1/settings/user/theme'>) => {
   const uid = angemeldeteNutzerId(req);
   await setzeEigenesDesign(uid, req.body?.theme);
   res.json({ success: true, ...await designFuer(uid) });

@@ -266,7 +266,7 @@ router.put('/profile', requireLogin, async (req, res: Antwort<'PUT /api/v1/auth/
 });
 
 // Das eigene Konto, endgültig: Passwort und, falls eingerichtet, zweiter Faktor.
-router.delete('/konto', requireLogin, async (req: LoggedInRequest, res: Antwort<'DELETE /api/v1/auth/konto'>) => {
+router.delete('/konto', requireLogin, async (req: Request, res: Antwort<'DELETE /api/v1/auth/konto'>) => {
   const uid = angemeldeteNutzerId(req);
   if (!await bestaetigeMitFaktor(req, res, uid, req.body?.password)) return;
   if (!await K.loescheEigenesKonto(uid)) return sendeFehler(req, res, 409, 'letzter_verwalter');
@@ -278,7 +278,7 @@ router.delete('/konto', requireLogin, async (req: LoggedInRequest, res: Antwort<
   req.session.destroy(() => res.clearCookie(sitzungsKeksName(), sitzungsKeksOptionen()).json({ success: true }));
 });
 
-router.post('/change-password', requireLogin, async (req: LoggedInRequest, res: Antwort<'POST /api/v1/auth/change-password'>) => {
+router.post('/change-password', requireLogin, async (req: Request, res: Antwort<'POST /api/v1/auth/change-password'>) => {
   const { current, newPassword } = req.body;
   if (!current || !newPassword) return sendeFehler(req, res, 400, 'alle_felder_erforderlich');
   const uid = nutzerId(req);
@@ -286,15 +286,15 @@ router.post('/change-password', requireLogin, async (req: LoggedInRequest, res: 
   if (!await bestaetigeMitFaktor(req, res, uid, String(current))) return;
   // NACH der Prüfung des alten Passworts: Ein Fremder erfährt über das neue nichts.
   // Der Name aus der Tabelle: Mit App-Token gibt es keine Sitzung, die ihn trägt.
-  const mangel = passwortMangel(newPassword, (await K.kontoKurz(uid))?.username);
+  const konto = await K.kontoKurz(uid);
+  const mangel = passwortMangel(newPassword, konto?.username);
   if (mangel) return sendeFehler(req, res, 400, mangel);
   // Beendet alle Zugänge, auch den eigenen; die Sitzung wird danach neu aufgebaut.
   await K.aendereEigenesPasswort(uid, newPassword, { passkeysWiderrufen: req.body?.passkeys_widerrufen === true });
   hinweisNebenher(uid, 'passwort_geaendert');
-  if (req.session?.userId) {
-    const _self = { userId: uid, username: req.session.username, isAdmin: req.session.isAdmin, mussPasswortAendern: false,
-                    passwortBestaetigtAm: Date.now() };
-    await establishSession(req, _self);
+  if (req.session?.userId && konto) {
+    await establishSession(req, { userId: uid, username: konto.username, isAdmin: req.session.isAdmin === true,
+                                  mussPasswortAendern: false, passwortBestaetigtAm: Date.now() });
   }
   res.json({ success: true });
 });

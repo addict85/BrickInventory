@@ -9,6 +9,7 @@ import { resolveUserId, nutzerId, zweiterFaktorPflicht } from '../../src/konto/h
 import { belegeKontoPlatz, type Schranke } from '../../src/infra/kontoSchranke';
 import { mussPasswortAendern } from '../../src/konto/konten';
 import { sendeFehler } from '../../src/infra/fehlerTexte';
+import { waechter } from '../../src/infra/vertrag/pruefen';
 
 export function bearerToken(req: any): string | null {
   const auth = req.headers.authorization || '';
@@ -59,27 +60,28 @@ export async function anmeldungAmEingang(req: Request, res: Response, next: Next
   next();
 }
 
-export function requireToken(req: any, res: any, next: any) {
+export const requireToken = waechter<AuthedRequest>((req, res, next) => {
   // Schon am Eingang geprüft: kein zweiter Datenbankzugriff.
   if (req.apiUser) return next();
   if (req.session?.userId) {
-    req.apiUser = { user_id: req.session.userId, is_admin: req.session.isAdmin ? 1 : 0, username: req.session.username };
+    req.apiUser = { user_id: req.session.userId, is_admin: req.session.isAdmin ? 1 : 0,
+      ...(req.session.username ? { username: req.session.username } : {}) };
     return next();
   }
   const token = bearerToken(req);
   validateToken(token, { ip: req.ip }).then(user => {
     if (!user) return sendeFehler(req, res, 401, 'token_ungueltig');
-    req.apiUser = user;
+    req.apiUser = { ...user, is_admin: user.is_admin ?? 0 };
     next();
   }).catch(() => sendeFehler(req, res, 401, 'auth_fehler'));
-}
+});
 
-export function requireApiAdmin(req: any, res: any, next: any) {
+export const requireApiAdmin = waechter<AuthedRequest>((req, res, next) => {
   requireToken(req, res, () => {
     if (!req.apiUser?.is_admin) return sendeFehler(req, res, 403, 'nur_admins');
     next();
   });
-}
+});
 
 const nurWenn = (soll: (req: Request) => boolean, schritt: RequestHandler): RequestHandler =>
   (req, res, next) => soll(req) ? schritt(req, res, next) : next();

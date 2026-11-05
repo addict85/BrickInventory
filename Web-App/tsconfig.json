@@ -32,10 +32,10 @@
     "useUnknownInCatchVariables": true,
     "noUncheckedIndexedAccess": true,
     "noUnusedLocals": true,
-    "noUnusedParameters": true
-    // strictFunctionTypes bleibt aus: Handler, die AuthedRequest verlangen,
-    // wären kontravariant nicht mehr an Express' Request zuweisbar, obwohl die
-    // Middleware davor das Feld setzt. Alle Meldungen sind dieser eine Fall.
+    "noUnusedParameters": true,
+    // Ein Handler mit AuthedRequest passt nur hinter einen Wächter, der es
+    // zusichert (Waechter/VertragsRouter in src/infra/vertrag/pruefen.ts).
+    "strictFunctionTypes": true
   },
   "include": [
     "server.ts",
