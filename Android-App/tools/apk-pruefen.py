@@ -37,6 +37,9 @@ Code weg war. Er hatte recht — die Ursache lag eine Stufe davor.
    die Erklaerung fuer den ungeklaerten Start-Absturz, der im Manifest
    beschrieben steht.
 
+4. Die API-Modelle sind umbenannt (sec17 B-N10): Eine Keep-Regel für ganz
+   data.model legte die API-Oberfläche im Klartext offen. Stichprobe: SetItem.
+
 Aufruf: apk-pruefen.py <app.apk> <quellverzeichnis> [<quellverzeichnis> …]
 """
 import re
@@ -58,6 +61,10 @@ ERBE  = 'Landroidx/work/'
 UEBER_NAMEN = {
     'Landroidx/work/impl/WorkDatabase_Impl;': '<init>',
 }
+
+# Stichprobe für das Umbenennen der API-Modelle: Steht sie mit ihrem Namen im APK,
+# hält eine Regel wieder das ganze Paket.
+MODELL_STICHPROBE = "Lch/brickinventoryapp/data/model/SetItem;"
 
 
 class Dex:
@@ -181,6 +188,19 @@ def main() -> int:
                 f'Uebrig: {", ".join(methoden) or "nichts ausser der Klasse"}')
         else:
             print(f'  OK   {name}  ({glied} vorhanden)')
+
+    # ── 4. API-Modelle umbenannt ────────────────────────────────────────────
+    namen = set()
+    for eintrag in z.namelist():
+        if re.fullmatch(r'classes\d*\.dex', eintrag):
+            namen.update(name for name, _o, _m in Dex(z.read(eintrag)).klassen())
+    modelle = sorted(n for n in namen if n.startswith('Lch/brickinventoryapp/data/model/'))
+    if MODELL_STICHPROBE in namen:
+        schlimm.append(
+            f'{MODELL_STICHPROBE} steht mit seinem Namen im APK: Eine Keep-Regel hält die '
+            f'API-Modelle wieder im Klartext ({len(modelle)} Klassen unter data/model).')
+    else:
+        print(f'  OK   API-Modelle umbenannt ({len(modelle)} Klassen behielten ihren Namen)')
 
     # ── 2. Benutzte Strings muessen im APK stehen ───────────────────────────
     arsc = z.read('resources.arsc')
