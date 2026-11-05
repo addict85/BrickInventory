@@ -22,46 +22,24 @@ import ch.brickinventoryapp.ui.viewmodel.TeileViewModel
 import ch.brickinventoryapp.ui.viewmodel.SetDetailViewModel
 import ch.brickinventoryapp.ui.viewmodel.KaeufeViewModel
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.navigation.toRoute
+import ch.brickinventoryapp.ui.viewmodel.aktivitaetsViewModel
 
-/**
- * Navigationsziele des Bestands: Galerie, Teile, Minifiguren und ihre Details. Die
- * Werte aus AppNavigation kommen als Parameter herein, damit kein Ziel Zustand aus
- * einem umgebenden Scope einfängt.
- */
-fun NavGraphBuilder.collectionGraph(
-    vm: AppViewModel,
-    navController: NavHostController,
-    imageLoader: coil3.ImageLoader,
-    bottomNavItems: List<Triple<Screen, @Composable () -> Unit, String>>,
-    snackbarHostState: SnackbarHostState,
-    /**
-     * Scroll-Zustände der drei Listen. Sie liegen ausserhalb dieser Ziele, weil
-     * jedes davon beim Öffnen einer Detailansicht verlassen und danach neu
-     * zusammengesetzt wird — ein `rememberLazyGridState()` im Ziel selbst wäre
-     * bei der Rückkehr zurückgesetzt und die Liste spränge nach oben. Genau so
-     * hält es das Finanz-Ziel seit jeher (ToolsGraph.kt).
-     */
-    galleryGridState: androidx.compose.foundation.lazy.grid.LazyGridState,
-    partsGridState: androidx.compose.foundation.lazy.grid.LazyGridState,
-    minifigsGridState: androidx.compose.foundation.lazy.grid.LazyGridState,
-) {
-    galerieZiele(vm, navController, imageLoader, bottomNavItems, snackbarHostState, galleryGridState)
-    teileZiele(vm, navController, imageLoader, bottomNavItems, snackbarHostState, partsGridState, minifigsGridState)
-    einzelstueckZiele(navController, imageLoader)
+/** Navigationsziele des Bestands: Galerie, Teile, Minifiguren und ihre Details. */
+fun NavGraphBuilder.collectionGraph(u: ZielUmgebung) {
+    galerieZiele(u)
+    teileZiele(u)
+    einzelstueckZiele(u.navController, u.imageLoader)
 }
 
 /** Galerie und Set-Detail: Auf breiten Fenstern stehen sie nebeneinander. */
-private fun NavGraphBuilder.galerieZiele(
-    vm: AppViewModel,
-    navController: NavHostController,
-    imageLoader: coil3.ImageLoader,
-    bottomNavItems: List<Triple<Screen, @Composable () -> Unit, String>>,
-    snackbarHostState: SnackbarHostState,
-    galleryGridState: androidx.compose.foundation.lazy.grid.LazyGridState,
-) {
-        composable(Screen.Gallery.route) {
-            // Zustand INNERHALB des Ziels lesen — als Parameter wäre es eine
-            // Momentaufnahme vom Aufbau des Graphen (der NavHost-Builder läuft nur einmal).
+private fun NavGraphBuilder.galerieZiele(u: ZielUmgebung) {
+    val navController = u.navController
+    val imageLoader = u.imageLoader
+    val snackbarHostState = u.snackbarHostState
+    val galleryGridState = u.rollen.galerie
+        composable<Screen.Gallery> {
+            val vm: AppViewModel = aktivitaetsViewModel()
             val galerieVm: GalerieViewModel = hiltViewModel()
             val state by galerieVm.state.collectAsStateWithLifecycle()
             val galerie by galerieVm.galleryState.collectAsStateWithLifecycle()
@@ -83,7 +61,7 @@ private fun NavGraphBuilder.galerieZiele(
                 val found = barcode.gefundenesSet
                 if (found != null) {
                     erfassung.gallerySearchFoundConsumed()
-                    navController.navigate(Screen.SetDetail.createRoute(found))
+                    navController.navigate(Screen.SetDetail(found))
                 }
             }
             // Gelöscht wird erst, wenn die Snackbar ohne „Rückgängig“ endet — auch wenn
@@ -102,31 +80,27 @@ private fun NavGraphBuilder.galerieZiele(
                 }
             }
             val ziel = this
-            ReiterGeruest(stringResource(R.string.nav_collection), vm, navController, bottomNavItems, snackbarHostState) {
+            ReiterGeruest(stringResource(R.string.nav_collection), u) {
                 ch.brickinventoryapp.ui.components.MitZiel(ziel) {
                 GalleryRoute(
                     vm = galerieVm,
                     erfassung = erfassung,
                     imageLoader = imageLoader,
-                    onScanBarcode = { erfassung.setScannerSource("gallery_search"); navController.navigate(Screen.BarcodeScanner.route) },
-                    onSetClick = { navController.navigate(Screen.SetDetail.createRoute(it)) },
+                    onScanBarcode = { erfassung.setScannerSource("gallery_search"); navController.navigate(Screen.BarcodeScanner) },
+                    onSetClick = { navController.navigate(Screen.SetDetail(it)) },
                     gridState = galleryGridState
                 )
                 }
             }
         }
-        composable(
-            route = Screen.SetDetail.route,
-            arguments = setArgumente,
-        ) { backStack ->
-            // Zustand INNERHALB des Ziels lesen — als Parameter wäre es eine
-            // Momentaufnahme vom Aufbau des Graphen (der NavHost-Builder läuft nur einmal).
+        composable<Screen.SetDetail> { backStack ->
+            val vm: AppViewModel = aktivitaetsViewModel()
             val state by vm.state.collectAsStateWithLifecycle()
-            val setNumber = backStack.textArgument("setNumber")
+            val setNumber = backStack.toRoute<Screen.SetDetail>().setNumber
             // Die Galerie liegt als Startziel immer darunter; ihre geladene
             // Kachel zeigt das Set sofort, bis das Detail da ist.
             val galerieEintrag = remember(backStack) {
-                runCatching { navController.getBackStackEntry(Screen.Gallery.route) }.getOrNull()
+                runCatching { navController.getBackStackEntry<Screen.Gallery>() }.getOrNull()
             }
             val galerieUnten = galerieEintrag?.let { hiltViewModel<GalerieViewModel>(it) }
             val vorschau = galerieUnten?.let { g ->
@@ -152,10 +126,10 @@ private fun NavGraphBuilder.galerieZiele(
                 },
                 rueckgaengigMoeglich = galerieUnten != null,
                 onNavigateToAcqMgmt = { type, id, colorId, title ->
-                    navController.navigate(Screen.AcquisitionManagement.createRoute(type, id, colorId, title))
+                    navController.navigate(Screen.AcquisitionManagement(type, id, colorId, title))
                 },
                 onOpenPdf = { url, title ->
-                    navController.navigate(Screen.PdfViewer.createRoute(url, title))
+                    navController.navigate(Screen.PdfViewer(url, title))
                 }
             )
             }
@@ -165,7 +139,7 @@ private fun NavGraphBuilder.galerieZiele(
             androidx.compose.foundation.layout.BoxWithConstraints {
                 if (galerieUnten != null && ch.brickinventoryapp.ui.listeUndDetail(maxWidth.value)) {
                     val erfassung = ch.brickinventoryapp.ui.viewmodel.aktivitaetsViewModel<ch.brickinventoryapp.ui.viewmodel.ErfassungViewModel>()
-                    ReiterGeruest(stringResource(R.string.nav_collection), vm, navController, bottomNavItems, snackbarHostState) {
+                    ReiterGeruest(stringResource(R.string.nav_collection), u) {
                         ch.brickinventoryapp.ui.components.ListeUndDetail(
                             liste = {
                                 androidx.compose.runtime.CompositionLocalProvider(
@@ -174,10 +148,10 @@ private fun NavGraphBuilder.galerieZiele(
                                     vm = galerieUnten,
                                     erfassung = erfassung,
                                     imageLoader = imageLoader,
-                                    onScanBarcode = { erfassung.setScannerSource("gallery_search"); navController.navigate(Screen.BarcodeScanner.route) },
+                                    onScanBarcode = { erfassung.setScannerSource("gallery_search"); navController.navigate(Screen.BarcodeScanner) },
                                     onSetClick = { sn ->
-                                        if (sn != setNumber) navController.navigate(Screen.SetDetail.createRoute(sn)) {
-                                            popUpTo(Screen.SetDetail.route) { inclusive = true }
+                                        if (sn != setNumber) navController.navigate(Screen.SetDetail(sn)) {
+                                            popUpTo<Screen.SetDetail> { inclusive = true }
                                         }
                                     },
                                     gridState = galleryGridState,
@@ -193,18 +167,13 @@ private fun NavGraphBuilder.galerieZiele(
 }
 
 /** Teile, Minifiguren und der Vergleich: Reiter mit Liste und Detail daneben. */
-private fun NavGraphBuilder.teileZiele(
-    vm: AppViewModel,
-    navController: NavHostController,
-    imageLoader: coil3.ImageLoader,
-    bottomNavItems: List<Triple<Screen, @Composable () -> Unit, String>>,
-    snackbarHostState: SnackbarHostState,
-    partsGridState: androidx.compose.foundation.lazy.grid.LazyGridState,
-    minifigsGridState: androidx.compose.foundation.lazy.grid.LazyGridState,
-) {
-        composable(Screen.Parts.route) {
-            // Zustand INNERHALB des Ziels lesen — als Parameter wäre es eine
-            // Momentaufnahme vom Aufbau des Graphen (der NavHost-Builder läuft nur einmal).
+private fun NavGraphBuilder.teileZiele(u: ZielUmgebung) {
+    val navController = u.navController
+    val imageLoader = u.imageLoader
+    val partsGridState = u.rollen.teile
+    val minifigsGridState = u.rollen.minifiguren
+        composable<Screen.Parts> {
+            val vm: AppViewModel = aktivitaetsViewModel()
             val teileVm: TeileViewModel = hiltViewModel()
             val state by teileVm.state.collectAsStateWithLifecycle()
             val partsState by teileVm.partsState.collectAsStateWithLifecycle()
@@ -218,7 +187,7 @@ private fun NavGraphBuilder.teileZiele(
                     teileVm.loadPartsFilters()
                 }
             }
-            ReiterGeruest(stringResource(R.string.nav_parts), vm, navController, bottomNavItems, snackbarHostState) {
+            ReiterGeruest(stringResource(R.string.nav_parts), u) {
                 ch.brickinventoryapp.ui.ScrollPositionKeeper(
                     "parts", partsGridState,
                     // Beide Ladevorgänge, nicht nur die Set-Teile. `manualParts != null` heisst
@@ -246,14 +215,13 @@ private fun NavGraphBuilder.teileZiele(
                 }
             }
         }
-        composable(Screen.Minifigs.route) {
-            // Zustand INNERHALB des Ziels lesen — als Parameter wäre es eine
-            // Momentaufnahme vom Aufbau des Graphen (der NavHost-Builder läuft nur einmal).
+        composable<Screen.Minifigs> {
+            val vm: AppViewModel = aktivitaetsViewModel()
             val teileVm: TeileViewModel = hiltViewModel()
             val state by teileVm.state.collectAsStateWithLifecycle()
             val partsState by teileVm.partsState.collectAsStateWithLifecycle()
             LaunchedEffect(state.serverUrl) { if (state.serverUrl.isNotBlank()) { if (partsState.minifigs.isEmpty()) teileVm.loadMinifigs() } }
-            ReiterGeruest(stringResource(R.string.nav_minifigs), vm, navController, bottomNavItems, snackbarHostState) {
+            ReiterGeruest(stringResource(R.string.nav_minifigs), u) {
                 ch.brickinventoryapp.ui.ScrollPositionKeeper(
                     "minifigs", minifigsGridState,
                     // Auf abgeschlossen statt auf Inhalt prüfen, wie bei den Teilen: Sonst bekäme,
@@ -277,8 +245,8 @@ private fun NavGraphBuilder.teileZiele(
                 }
             }
         }
-        composable(Screen.Comparison.route) {
-            ReiterGeruest(stringResource(R.string.nav_comparison), vm, navController, bottomNavItems, snackbarHostState) {
+        composable<Screen.Comparison> {
+            ReiterGeruest(stringResource(R.string.nav_comparison), u) {
                 ComparisonScreen()
             }
         }
@@ -291,14 +259,12 @@ private fun NavGraphBuilder.einzelstueckZiele(
 ) {
         // ── Detailansicht manueller Teile und Minifiguren ────────────────────
         // Ein ganzer Screen, kein Dialog mehr — Aufbau wie beim Set-Detail.
-        composable(
-            route = Screen.ManualItemDetail.route,
-            arguments = einzelstueckArgumente,
-        ) { backStackEntry ->
-            val itemType  = backStackEntry.textArgument("type", ersatz = "part")
-            val itemId    = backStackEntry.textArgument("id")
-            val colorId   = backStackEntry.farbArgument()
-            val itemTitle = backStackEntry.textArgument("title")
+        composable<Screen.ManualItemDetail> { backStackEntry ->
+            val ziel = backStackEntry.toRoute<Screen.ManualItemDetail>()
+            val itemType  = ziel.type
+            val itemId    = ziel.id
+            val colorId   = ziel.colorId
+            val itemTitle = ziel.title
             ManualItemDetailScreen(
                 vm = hiltViewModel<KaeufeViewModel>(),
                 teile = hiltViewModel(),
@@ -309,34 +275,26 @@ private fun NavGraphBuilder.einzelstueckZiele(
                 imageLoader = imageLoader,
                 onBack = { navController.popBackStack() },
                 onNavigateToAcqMgmt = { t, i, c, title ->
-                    navController.navigate(Screen.AcquisitionManagement.createRoute(t, i, c, title))
+                    navController.navigate(Screen.AcquisitionManagement(t, i, c, title))
                 },
-                // Die Farbe ist Teil der Route (manual_detail/.../{colorId}/...) und der Suche im
-                // Screen; nach einer Änderung muss er mit der neuen Farbe neu geöffnet werden,
-                // sonst sucht er eine Zeile, die es nicht mehr gibt. Erst zurück, dann hin: Sonst
+                // Die Farbe ist Teil der Route und der Suche im Screen; nach einer Änderung
+                // wird er mit der neuen Farbe neu geöffnet. Erst zurück, dann hin: Sonst
                 // landete ein Zurück-Tipp auf genau der Farbe, die gerade korrigiert wurde.
                 onFarbeGeaendert = { neueFarbe ->
                     navController.popBackStack()
-                    navController.navigate(Screen.ManualItemDetail.createRoute(
-                        itemType, itemId, neueFarbe, itemTitle))
+                    navController.navigate(ziel.copy(colorId = neueFarbe))
                 },
             )
         }
 
-        composable(
-            route = Screen.AcquisitionManagement.route,
-            arguments = einzelstueckArgumente,
-        ) { backStackEntry ->
-            val itemType  = backStackEntry.textArgument("type", ersatz = "set")
-            val itemId    = backStackEntry.textArgument("id")
-            val colorId   = backStackEntry.farbArgument()
-            val itemTitle = backStackEntry.textArgument("title")
+        composable<Screen.AcquisitionManagement> { backStackEntry ->
+            val ziel = backStackEntry.toRoute<Screen.AcquisitionManagement>()
             AcquisitionManagementScreen(
                 vm      = hiltViewModel<KaeufeViewModel>(),
-                type    = itemType,
-                id      = itemId,
-                colorId = colorId,
-                title   = itemTitle,
+                type    = ziel.type,
+                id      = ziel.id,
+                colorId = ziel.colorId,
+                title   = ziel.title,
                 onBack  = { navController.popBackStack() }
             )
         }
@@ -365,9 +323,9 @@ internal fun TeileListeUndDetail(
             if (nebeneinander) {
                 teileVm.schliesseSetItem()
                 manuell = listOf(typ, id, farbe.toString(), titel)
-            } else navController.navigate(Screen.ManualItemDetail.createRoute(typ, id, farbe, titel))
+            } else navController.navigate(Screen.ManualItemDetail(typ, id, farbe, titel))
         }
-        val oeffneSet: (String) -> Unit = { navController.navigate(Screen.SetDetail.createRoute(it)) }
+        val oeffneSet: (String) -> Unit = { navController.navigate(Screen.SetDetail(it)) }
         val offen = manuell
         if (nebeneinander && (setItem.offen || offen != null)) {
             // Die Kachel des offenen Teils ist markiert wie in Merkliste und Galerie.
@@ -396,7 +354,7 @@ internal fun TeileListeUndDetail(
                             imageLoader = imageLoader,
                             onBack = { manuell = null },
                             onNavigateToAcqMgmt = { t, i, c, title ->
-                                navController.navigate(Screen.AcquisitionManagement.createRoute(t, i, c, title))
+                                navController.navigate(Screen.AcquisitionManagement(t, i, c, title))
                             },
                             onFarbeGeaendert = { neueFarbe -> manuell = listOf(offen[0], offen[1], neueFarbe.toString(), offen[3]) },
                         )

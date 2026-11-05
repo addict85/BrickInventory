@@ -14,15 +14,10 @@ import ch.brickinventoryapp.*
 import ch.brickinventoryapp.ui.viewmodel.AnmeldungViewModel
 import ch.brickinventoryapp.ui.viewmodel.aktivitaetsViewModel
 
-/**
- * Navigationsziele der Anmeldung. Die Werte aus AppNavigation kommen als Parameter
- * herein, damit kein Ziel Zustand aus einem umgebenden Scope einfängt.
- */
-fun NavGraphBuilder.authGraph(
-    vm: AppViewModel,
-    navController: NavHostController,
-) {
-        composable(Screen.Setup.route) {
+/** Navigationsziele der Anmeldung; die ViewModels holt jedes Ziel selbst. */
+fun NavGraphBuilder.authGraph(navController: NavHostController) {
+        composable<Screen.Setup> {
+            val vm: AppViewModel = aktivitaetsViewModel()
             // Zustand INNERHALB des Ziels lesen — als Parameter wäre es eine
             // Momentaufnahme vom Aufbau des Graphen (der NavHost-Builder läuft nur einmal).
             val anmeldungVm: AnmeldungViewModel = aktivitaetsViewModel()
@@ -33,8 +28,8 @@ fun NavGraphBuilder.authGraph(
                 // neue Adresse gilt (AnmeldungViewModel.saveServerUrl).
                 onSave = { url ->
                     if (anmeldungVm.saveServerUrl(url, abmelden = { vm.logout().join() })) {
-                        navController.navigate(Screen.Login.route) {
-                            popUpTo(Screen.Setup.route) { inclusive = true }
+                        navController.navigate(Screen.Login) {
+                            popUpTo<Screen.Setup> { inclusive = true }
                         }
                     }
                 },
@@ -44,15 +39,15 @@ fun NavGraphBuilder.authGraph(
                     anmeldungVm.loginWithQrToken(qr.url, qr.token,
                         abmelden = { vm.logout().join() }, fingerabdruck = qr.fingerabdruck,
                         pinWechselEingabe = pinEingabe)
-                    navController.navigate(Screen.Login.route) {
-                        popUpTo(Screen.Setup.route) { inclusive = true }
+                    navController.navigate(Screen.Login) {
+                        popUpTo<Screen.Setup> { inclusive = true }
                     }
                 },
                 bisherigerPin = anmeldungVm::bisherigerPin,
                 mussAbtippen = anmeldungVm::mussAbtippen,
             )
         }
-        composable(Screen.Login.route) {
+        composable<Screen.Login> {
             // Zustand INNERHALB des Ziels lesen — als Parameter wäre es eine
             // Momentaufnahme vom Aufbau des Graphen (der NavHost-Builder läuft nur einmal).
             val anmeldungVm: AnmeldungViewModel = aktivitaetsViewModel()
@@ -92,8 +87,8 @@ fun NavGraphBuilder.authGraph(
                 onRegistrieren = { u, e, v, n, pw -> anmeldungVm.registriere(u, e, v, n, pw) },
                 onPasswortVergessen = { anmeldungVm.passwortVergessen(it) },
                 onChangeServer = {
-                    navController.navigate(Screen.Setup.route) {
-                        popUpTo(Screen.Login.route) { inclusive = true }
+                    navController.navigate(Screen.Setup) {
+                        popUpTo<Screen.Login> { inclusive = true }
                     }
                 }
             )
@@ -102,8 +97,8 @@ fun NavGraphBuilder.authGraph(
             // soll der Sprung in die Galerie trotzdem passieren.
             LaunchedEffect(state.isLoggedIn) {
                 if (state.isLoggedIn) {
-                    navController.navigate(Screen.Gallery.route) {
-                        popUpTo(Screen.Login.route) { inclusive = true }
+                    navController.navigate(Screen.Gallery) {
+                        popUpTo<Screen.Login> { inclusive = true }
                     }
                 }
             }

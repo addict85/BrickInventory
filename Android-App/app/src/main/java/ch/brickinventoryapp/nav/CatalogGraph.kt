@@ -7,7 +7,6 @@ import androidx.compose.runtime.*
 import androidx.navigation.compose.*
 import ch.brickinventoryapp.ui.*
 import ch.brickinventoryapp.ui.screens.*
-import coil3.ImageLoader
 import ch.brickinventoryapp.ressourcen.R
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.ui.res.stringResource
@@ -17,59 +16,61 @@ import ch.brickinventoryapp.*
 import ch.brickinventoryapp.ui.AppViewModel
 import ch.brickinventoryapp.ui.viewmodel.MerklisteViewModel
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.navigation.NavBackStackEntry
+import androidx.navigation.toRoute
+import kotlinx.serialization.Serializable
+import ch.brickinventoryapp.ui.viewmodel.aktivitaetsViewModel
 import ch.brickinventoryapp.ui.viewmodel.CatalogViewModel
 
 /**
- * Navigationsziele von Katalog und Merkliste. Die Werte aus AppNavigation kommen
- * als Parameter herein, damit kein Ziel Zustand aus einem umgebenden Scope
- * einfängt.
+ * Liste und Detail des Katalogs als eigener Teilgraph: Beide holen ihr ViewModel
+ * an dessen Eintrag, so sieht die Liste das „besitze ich“ aus dem Detail, und das
+ * ViewModel endet mit dem Katalog statt mit der Activity.
  */
-fun NavGraphBuilder.catalogGraph(
-    vm: AppViewModel,
-    katalog: CatalogViewModel,
-    navController: NavHostController,
-    imageLoader: coil3.ImageLoader,
-    bottomNavItems: List<Triple<Screen, @Composable () -> Unit, String>>,
-    snackbarHostState: SnackbarHostState,
-) {
+@Serializable
+internal data object KatalogBereich
+
+/** Navigationsziele von Katalog und Merkliste. */
+fun NavGraphBuilder.catalogGraph(u: ZielUmgebung) {
+    val navController = u.navController
+    val imageLoader = u.imageLoader
         // ── Merkliste ──
         //
         // Hier und nicht im CollectionGraph: Eine Merkliste ist kein Bestand. Sie steht
         // dem Katalog näher — von dort kommt der häufigste Weg hinein, und wie er zeigt
         // sie Sets, die einem nicht gehören.
-        composable(Screen.Wanted.route) {
+        composable<Screen.Wanted> {
             // Auf breiten Fenstern Liste und Detail nebeneinander (Lesebreite.kt).
             androidx.compose.foundation.layout.BoxWithConstraints {
                 val nebeneinander = ch.brickinventoryapp.ui.listeUndDetail(maxWidth.value)
-                ReiterGeruest(stringResource(R.string.nav_wanted), vm, navController, bottomNavItems, snackbarHostState) {
+                ReiterGeruest(stringResource(R.string.nav_wanted), u) {
                     val erfassung = ch.brickinventoryapp.ui.viewmodel.aktivitaetsViewModel<ch.brickinventoryapp.ui.viewmodel.ErfassungViewModel>()
                     ch.brickinventoryapp.ui.screens.MerklisteUndDetail(
                         vm = hiltViewModel<MerklisteViewModel>(),
                         imageLoader = imageLoader,
                         nebeneinander = nebeneinander,
-                        onScan = { erfassung.setScannerSource("wanted"); navController.navigate(Screen.BarcodeScanner.route) },
+                        onScan = { erfassung.setScannerSource("wanted"); navController.navigate(Screen.BarcodeScanner) },
                         onOeffnenEinzeln = { sn, zustand ->
-                            navController.navigate(Screen.MerkpostenDetail.createRoute(sn, zustand))
+                            navController.navigate(Screen.MerkpostenDetail(sn, zustand))
                         },
                     )
                 }
             }
         }
-        composable(
-            route = Screen.MerkpostenDetail.route,
-            arguments = merkpostenArgumente,
-        ) { backStack ->
+        composable<Screen.MerkpostenDetail> { backStack ->
+            val ziel = backStack.toRoute<Screen.MerkpostenDetail>()
             ch.brickinventoryapp.ui.screens.MerkpostenDetailScreen(
                 vm = hiltViewModel<MerklisteViewModel>(),
-                setNumber = backStack.textArgument("setNumber"),
-                condition = backStack.textArgument("condition", ersatz = "N"),
+                setNumber = ziel.setNumber,
+                condition = ziel.condition,
                 imageLoader = imageLoader,
                 onBack = { navController.popBackStack() },
             )
         }
-        composable(Screen.Catalog.route) {
-            // Zustand INNERHALB des Ziels lesen — als Parameter wäre es eine
-            // Momentaufnahme vom Aufbau des Graphen (der NavHost-Builder läuft nur einmal).
+    navigation<KatalogBereich>(startDestination = Screen.Catalog) {
+        composable<Screen.Catalog> { eintrag ->
+            val vm: AppViewModel = aktivitaetsViewModel()
+            val katalog = katalogViewModel(navController, eintrag)
             val state by vm.state.collectAsStateWithLifecycle()
             val catalogState by katalog.state.collectAsStateWithLifecycle()
             LaunchedEffect(state.serverUrl) {
@@ -77,24 +78,21 @@ fun NavGraphBuilder.catalogGraph(
                     katalog.loadCatalogMeta(); katalog.loadCatalogSets()
                 }
             }
-            ReiterGeruest(stringResource(R.string.nav_catalog), vm, navController, bottomNavItems, snackbarHostState) {
+            ReiterGeruest(stringResource(R.string.nav_catalog), u) {
                 CatalogScreen(
                     vm = vm,
                     katalog = katalog,
                     imageLoader = imageLoader,
-                    onSetClick = { navController.navigate(Screen.CatalogDetail.createRoute(it)) },
+                    onSetClick = { navController.navigate(Screen.CatalogDetail(it)) },
                 )
             }
         }
-        composable(
-            route = Screen.CatalogDetail.route,
-            arguments = setArgumente,
-        ) { backStack ->
-            // Zustand INNERHALB des Ziels lesen — als Parameter wäre es eine
-            // Momentaufnahme vom Aufbau des Graphen (der NavHost-Builder läuft nur einmal).
+        composable<Screen.CatalogDetail> { backStack ->
+            val vm: AppViewModel = aktivitaetsViewModel()
+            val katalog = katalogViewModel(navController, backStack)
             val state by vm.state.collectAsStateWithLifecycle()
             val blick by vm.blickfeld.collectAsStateWithLifecycle()
-            val catSetNumber = backStack.textArgument("setNumber")
+            val catSetNumber = backStack.toRoute<Screen.CatalogDetail>().setNumber
             val merkliste: MerklisteViewModel = hiltViewModel()
             val erfassung = ch.brickinventoryapp.ui.viewmodel.aktivitaetsViewModel<ch.brickinventoryapp.ui.viewmodel.ErfassungViewModel>()
             val catalogState by katalog.state.collectAsStateWithLifecycle()
@@ -126,8 +124,16 @@ fun NavGraphBuilder.catalogGraph(
                 onWish = { sn, zustand, richtung, schwelle, konto ->
                     merkliste.merkpostenMitAlarm(sn, zustand, richtung, schwelle, konto)
                 },
-                onOpenInGallery = { sn -> navController.navigate(Screen.SetDetail.createRoute(sn)) },
+                onOpenInGallery = { sn -> navController.navigate(Screen.SetDetail(sn)) },
                 onBack = { navController.popBackStack() }
             )
         }
+    }
+}
+
+/** Das ViewModel des Teilgraphen, an dessen Eintrag gebunden. */
+@Composable
+private fun katalogViewModel(navController: NavHostController, eintrag: NavBackStackEntry): CatalogViewModel {
+    val bereich = remember(eintrag) { navController.getBackStackEntry<KatalogBereich>() }
+    return hiltViewModel(bereich)
 }

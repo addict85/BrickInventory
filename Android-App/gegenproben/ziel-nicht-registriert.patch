@@ -1,0 +1,18 @@
+Gegenprobe: Ein Ziel (Konto) fehlt im Graphen der App
+Modul: app
+Test: ch.brickinventoryapp.ErreichbareRoutenTest
+Rot: jedes Ziel steht im Graphen der App
+
+diff --git a/Android-App/app/src/main/java/ch/brickinventoryapp/nav/ToolsGraph.kt b/Android-App/app/src/main/java/ch/brickinventoryapp/nav/ToolsGraph.kt
+index 6acc2f5..f8a1788 100644
+--- a/Android-App/app/src/main/java/ch/brickinventoryapp/nav/ToolsGraph.kt
++++ b/Android-App/app/src/main/java/ch/brickinventoryapp/nav/ToolsGraph.kt
+@@ -240,8 +240,4 @@ private fun NavGraphBuilder.einstellungsZiele(u: ZielUmgebung) {
+             CsvImportUnterseite(hiltViewModel<EinstellungenViewModel>(), snackbarHostState) { navController.popBackStack() }
+         }
+ 
+-        composable<Screen.Konto> {
+-            val vm: AppViewModel = aktivitaetsViewModel()
+-            KontoUnterseite({ vm.logout() }, snackbarHostState) { navController.popBackStack() }
+-        }
+ }

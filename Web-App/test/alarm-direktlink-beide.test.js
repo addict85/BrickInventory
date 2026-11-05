@@ -92,12 +92,12 @@ test('2. und die App löst es ein', () => {
 
   // Und der NavHost navigiert.
   const nav = app('AppNavigation.kt');
-  assert.match(nav, /Screen\.SetDetail\.createRoute\(/,
+  assert.match(nav, /Screen\.SetDetail\(/,
     'Die App springt nicht ins Set-Detail.');
   assert.match(nav, /setAusMeldungQuittieren\(\)/,
     'Ohne Quittieren springt die App bei jeder Rekomposition erneut.');
   // Nicht im abgemeldeten Zustand: Das Detail kann dann nichts laden.
-  assert.match(nav, /startDest == Screen\.Gallery\.route/,
+  assert.match(nav, /startDest == Screen\.Gallery\b/,
     'Der Sprung prüft nicht, ob überhaupt jemand angemeldet ist.');
 });
 

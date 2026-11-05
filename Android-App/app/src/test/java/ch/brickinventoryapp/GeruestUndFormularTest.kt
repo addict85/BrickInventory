@@ -155,7 +155,7 @@ class GeruestUndFormularTest {
             csvImportState = remember { MutableStateFlow(CsvImportUiState()) },
             onCsvAbbrechen = {}, serverUrl = "", onTabAngetippt = {}, offeneAenderungen = offen,
         ) {
-            NavHost(nav, startDestination = Screen.Gallery.route) { composable(Screen.Gallery.route) { inhalt() } }
+            NavHost(nav, startDestination = Screen.Gallery) { composable<Screen.Gallery> { inhalt() } }
         }
     }
 

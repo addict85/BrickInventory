@@ -129,7 +129,7 @@ class UnterseitenTest {
     @Test
     fun `Abmelden fragt erst nach`() {
         var abgemeldet = 0
-        zeige { MehrBildschirm(rememberNavController(), isAdmin = false, updateVerfuegbar = false, onAbmelden = { abgemeldet++ }) }
+        zeige { MehrBildschirm({}, isAdmin = false, updateVerfuegbar = false, onAbmelden = { abgemeldet++ }) }
         val abmelden = ctx.getString(R.string.main_menu_logout)
         compose.onNodeWithText(abmelden).performClick()
         compose.waitForIdle()
@@ -143,7 +143,7 @@ class UnterseitenTest {
     /** Der Punkt an den Einstellungen sagt in Worten, wofür er steht. */
     @Test
     fun `Update-Punkt ist beschriftet`() {
-        zeige { MehrBildschirm(rememberNavController(), isAdmin = false, updateVerfuegbar = true, onAbmelden = {}) }
+        zeige { MehrBildschirm({}, isAdmin = false, updateVerfuegbar = true, onAbmelden = {}) }
         compose.onNodeWithText(ctx.getString(R.string.update_badge)).fetchSemanticsNode()
     }
 
