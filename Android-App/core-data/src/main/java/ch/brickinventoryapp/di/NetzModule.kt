@@ -274,6 +274,11 @@ object NetzModule {
     // auch an Bild- und SSE-Wege aus. Wer einen Client braucht, nennt @Named("api"),
     // @Named("image") oder @Named("sse").
 
+    /** Nach einer Änderung des Vertrauens: Offene Verbindungen trugen das alte. */
+    @Provides
+    fun provideVerbindungsabwurf(@Named("api") client: OkHttpClient): ch.brickinventoryapp.data.Verbindungsabwurf =
+        ch.brickinventoryapp.data.Verbindungsabwurf { client.connectionPool.evictAll() }
+
     @Provides
     @Singleton
     fun provideRetrofit(json: Json, @Named("api") client: OkHttpClient): Retrofit =

@@ -40,10 +40,8 @@ import org.junit.Test
  * Gegenstueck sind SharedPreferences — synchron lesbar, und genau dafuer
  * benutzt Android sie selbst.
  *
- * Entscheidend ist, WO der Wert landet: im Startwert des Zustands, nicht in
- * einer Korrektur danach. `appTheme` wird als
- * `stateIn(..., _state.value.appTheme)` abgeleitet, und Kotlin wertet diese
- * Eigenschaft VOR dem init-Block aus.
+ * Dass der Zustand MIT dem gemerkten Design geboren wird, prüft
+ * DarstellungUndVertrauenTest am ausgeführten DarstellungViewModel.
  *
  * Gefunden durch Messen: Ein Vergleich der Server-Adressen beider Clients
  * meldete /v1/settings/theme als eine der Adressen, die nur die Webapp ruft.
@@ -83,22 +81,6 @@ class DesignVorAnmeldungTest {
         assert(schreiben.contains("dataStore.edit") && schreiben.contains("designSpiegel")) {
             "saveAppTheme schreibt nur eine der beiden Ablagen — dann zeigt der " +
                 "naechste Kaltstart das vorletzte Design"
-        }
-    }
-
-    @Test
-    fun `Stufe null - der Zustand wird MIT dem Design geboren`() {
-        val vm = code(read("ui/viewmodel/DarstellungViewModel.kt"))
-        // Der Startwert, nicht eine Korrektur danach: `appTheme` leitet sich
-        // ueber `stateIn(..., sitzung.state.value.appTheme)` ab. Der gemerkte
-        // Wert muss in der Sitzung stehen, BEVOR diese Eigenschaft entsteht —
-        // sonst haette MainActivity schon im Vorgabe-Design komponiert.
-        val gesetzt = vm.indexOf("sitzung.setzeDesign(prefs.gemerktesDesign())")
-        val abgeleitet = vm.indexOf("val appTheme: StateFlow<String> = ")
-        assert(gesetzt in 0 until abgeleitet) {
-            "Der Zustand startet wieder im Vorgabe-Design. Ein Wert, der erst im " +
-                "init-Block gesetzt wird, kommt nach der ersten Komposition — " +
-                "genau das war Marcos aufblitzendes Design."
         }
     }
 

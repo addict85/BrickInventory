@@ -1,23 +1,22 @@
 package ch.brickinventoryapp.ui.viewmodel
 
 import androidx.lifecycle.ViewModel
-import ch.brickinventoryapp.data.PreferencesManager
+import ch.brickinventoryapp.data.Verbindungsabwurf
+import ch.brickinventoryapp.data.Vertrauensablage
 import ch.brickinventoryapp.ui.NutzerCaSchalter
 import ch.brickinventoryapp.util.ZertifikatsFrage
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
-import javax.inject.Named
-import okhttp3.OkHttpClient
 
 /**
  * Wem die App beim eigenen Server vertraut: ein gezeigtes Zertifikat und die
- * Nutzer-CAs. Den API-Client kennt nur dieses ViewModel; es verwirft seine offenen
- * Verbindungen, sobald sich das Vertrauen ändert.
+ * Nutzer-CAs. Ändert sich das Vertrauen, verwirft es die offenen Verbindungen des
+ * API-Clients; sie trugen das alte.
  */
 @HiltViewModel
 class VertrauenViewModel @Inject constructor(
-    private val prefs: PreferencesManager,
-    @param:Named("api") private val apiHttpClient: OkHttpClient,
+    private val prefs: Vertrauensablage,
+    private val abwurf: Verbindungsabwurf,
     private val zertifikatsFrage: ZertifikatsFrage,
 ) : ViewModel() {
 
@@ -28,13 +27,13 @@ class VertrauenViewModel @Inject constructor(
     val nutzerCa = NutzerCaSchalter(
         lies = prefs::nutzerCaErlaubt,
         schreibe = prefs::setzeNutzerCa,
-        nachAenderung = { apiHttpClient.connectionPool.evictAll() },
+        nachAenderung = abwurf::verwirf,
     )
 
     /** Ja zum gezeigten Zertifikat. Ohne bekannte CA oder geändert nur mit [eingabe]. */
     fun zertifikatVertrauen(eingabe: String? = null): Boolean {
         if (!zertifikatsFrage.bestaetige(prefs, eingabe)) return false
-        apiHttpClient.connectionPool.evictAll()
+        abwurf.verwirf()
         return true
     }
 

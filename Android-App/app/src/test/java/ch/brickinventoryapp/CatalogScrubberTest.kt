@@ -132,22 +132,6 @@ class CatalogScrubberTest {
     }
 
     @Test
-    fun `eine Seite wird nicht mehrfach geladen`() {
-        // Beim Scrollen kommt derselbe Bereich vielfach vorbei. Ohne diese
-        // Prüfung löste jeder Schritt denselben Abruf erneut aus.
-        val f = code(read("ui/viewmodel/CatalogViewModel.kt"))
-        // Funktionsrumpf statt 700 fester Zeichen (Nachtrag 115) — siehe Quellen.kt.
-        val fn = Quellen.funktion(f, "fun ensureCatalogPage(")
-        assert(fn.isNotEmpty()) { "ensureCatalogPage fehlt" }
-        assert(fn.contains("loadedPages.containsKey(seite)") && fn.contains("loadingPages.contains(seite)")) {
-            "Bereits geladene oder ladende Seiten werden nicht übersprungen"
-        }
-        assert(fn.contains("catalogGeneration")) {
-            "Ohne Filter-Generation landet eine späte Seite des ALTEN Filters in der neuen Liste"
-        }
-    }
-
-    @Test
     fun `die Rollposition ueberlebt den Wechsel zur Detailseite`() {
         // ── Marcos Befund ───────────────────────────────────────────────────
         // „Wenn im Katalog eine Detailseite aufgerufen und wieder geschlossen
@@ -184,14 +168,7 @@ class CatalogScrubberTest {
             "Ohne Merker würde bei jeder Änderung von total erneut gesprungen — " +
                 "auch mitten im Scrollen"
         }
-
-        // Und beim FILTERWECHSEL muss sie zurückgesetzt werden: Die alte
-        // Position zeigte sonst auf Sets, die es in der neuen Liste nicht gibt.
-        val f = code(read("ui/viewmodel/CatalogViewModel.kt"))
-        val block = Quellen.funktion(f, "fun loadCatalogSets(")
-        assert(block.isNotEmpty()) { "loadCatalogSets fehlt" }
-        assert(block.contains("scrollIndex = 0")) {
-            "Beim Neuaufbau der Liste bleibt die alte Rollposition stehen"
-        }
+        // Das Zurücksetzen beim Filterwechsel und „jede Seite einmal“ prüft
+        // CatalogViewModelTest (feature-katalog) am ausgeführten ViewModel.
     }
 }

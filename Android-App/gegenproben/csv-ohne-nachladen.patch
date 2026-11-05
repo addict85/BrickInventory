@@ -1,0 +1,17 @@
+Gegenprobe: Nach einem fertigen CSV-Import lädt die Galerie nicht nach
+Modul: core-zustand
+Test: ch.brickinventoryapp.CsvImportViewModelTest
+Rot: ein laufender Import startet den Dienst einmal
+
+diff --git a/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/ui/viewmodel/CsvImportViewModel.kt b/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/ui/viewmodel/CsvImportViewModel.kt
+index 4bdd5d9..b9098c8 100644
+--- a/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/ui/viewmodel/CsvImportViewModel.kt
++++ b/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/ui/viewmodel/CsvImportViewModel.kt
+@@ -134,7 +134,6 @@ class CsvImportViewModel @Inject constructor(
+         if (csvFinishing) return
+         csvFinishing = true
+         try {
+-            bestand.melde(Aenderung.Sets)
+             delay(BALKEN_STEHT_MS)
+             _csvImportState.value = CsvImportUiState()
+             dienst.stop()

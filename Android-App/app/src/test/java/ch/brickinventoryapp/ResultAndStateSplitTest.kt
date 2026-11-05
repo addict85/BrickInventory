@@ -179,10 +179,6 @@ class ResultAndStateSplitTest {
         for (reset in listOf("sitzung.abgemeldet()", "blickfeld.zuruecksetzen()")) {
             assert(abmelden.contains(reset)) { "Abmelden ruft $reset nicht mehr" }
         }
-        val csv = code(read("ui/viewmodel/CsvImportViewModel.kt"))
-        assert(Regex("""abmeldungen\.collect \{[^}]*CsvImportUiState\(\)""").containsMatchIn(csv)) {
-            "Der CSV-Balken bleibt nach dem Abmelden stehen"
-        }
         val bereiche = Quellen.unter("ui/viewmodel").filter {
             code(it.readText()).contains(": BereichsViewModel(dienste)")
         }

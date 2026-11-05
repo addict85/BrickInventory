@@ -87,25 +87,6 @@ class CsvAbbruchTest {
     }
 
     @Test
-    fun `der Abbruch meldet seinen Fehler`() {
-        // Dieselbe Regel wie fuer jede andere aendernde Handlung
-        // (AktionMeldetFehlerTest): Scheitert sie lautlos, tippt der Nutzer
-        // weiter und wundert sich, dass der Balken laeuft.
-        val s = code(read("ui/viewmodel/CsvImportViewModel.kt"))
-        val ab = s.indexOf("fun cancelCsvImport(")
-        assert(ab > 0) { "cancelCsvImport fehlt" }
-        val rumpf = s.substring(ab, minOf(ab + 500, s.length))
-        // meldungFuerSnackbar statt meldung: Seit Marcos Befund („Sitzung
-        // abgelaufen" beim Anmelden) geht JEDE Snackbar ueber diesen Trichter.
-        // Er reicht den Satz durch — ausser bei einem 401, den die
-        // Sitzungsschicht schon behandelt hat. Die REGEL hier ist unveraendert:
-        // Der Abbruch darf nicht lautlos scheitern.
-        assert(rumpf.contains("meldungen.zeige(texte.meldungFuerSnackbar(r))")) {
-            "Der Abbruch scheitert lautlos"
-        }
-    }
-
-    @Test
     fun `der Knopf steht in der Kopfzeile, nicht im aufgeklappten Teil`() {
         // Wer abbrechen will, soll nicht erst herausfinden muessen, dass der
         // Balken sich aufklappen laesst. In der Webapp steht der Knopf

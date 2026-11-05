@@ -1,6 +1,5 @@
 package ch.brickinventoryapp.ui.viewmodel
 
-import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import ch.brickinventoryapp.ui.model.KatalogSetAnsicht
@@ -8,11 +7,8 @@ import ch.brickinventoryapp.ui.model.alsAnsicht
 import ch.brickinventoryapp.data.repository.BrickRepository
 import ch.brickinventoryapp.data.repository.Result
 import ch.brickinventoryapp.ui.CatalogUiState
-import ch.brickinventoryapp.ui.fehlerTextBrauchtCode
-import ch.brickinventoryapp.ui.fehlerTextId
 import ch.brickinventoryapp.ui.retryOnNetwork
 import dagger.hilt.android.lifecycle.HiltViewModel
-import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -44,25 +40,13 @@ internal const val SICHTFENSTER_RUHE_MS = 150L
 @HiltViewModel
 class CatalogViewModel @Inject constructor(
     private val repo: BrickRepository,
-    @param:ApplicationContext private val ctx: Context,
     private val meldungen: ch.brickinventoryapp.data.MeldungsKanal,
-    // Nur fuer die EINE Frage „liegt ein Token vor?“ — siehe
-    // meldungFuerSnackbar() weiter unten.
-    private val prefs: ch.brickinventoryapp.data.PreferencesManager,
+    /** Texte in der Sprache der App und Fehlermeldungen wie überall (AppTexte). */
+    private val texte: Texte,
 ) : ViewModel(), KatalogAktionen {
 
     private val _catalogState = MutableStateFlow(CatalogUiState())
     val state = _catalogState.asStateFlow()
-
-    /**
-     * Text in der Sprache der App, wie AppTexte.text(): Den Application-Context
-     * lokalisiert setApplicationLocales() unter Android 13 nicht, ctx.getString() gäbe
-     * die Systemsprache aus.
-     */
-    private fun text(id: Int, vararg args: Any?): String {
-        val c = ch.brickinventoryapp.util.LanguageManager.localizedContext(ctx)
-        return if (args.isEmpty()) c.getString(id) else c.getString(id, *args)
-    }
 
     // Entprellte Suche: pro Tastendruck wird der vorherige Lade-Job
     // abgebrochen, geladen wird erst 350ms nach dem letzten.
@@ -80,30 +64,6 @@ class CatalogViewModel @Inject constructor(
     // verhindert, dass eine spaete Seite-2-Antwort des ALTEN Filters an die
     // neue Liste angehaengt wird (gemischte Inhalte + doppelte LazyGrid-Keys).
     private var catalogGeneration = 0
-
-    /**
-     * Wie Texte.meldungFuerSnackbar() — null heisst: Der Kanal schweigt. Ein 401 ist
-     * hier schon von der Sitzungsschicht behandelt (util/Abgewiesen.kt). „Angemeldet“
-     * heisst: Es liegt ein Token vor — dieselbe Quelle, die der Interceptor liest,
-     * nicht ein Flag der Oberfläche, das beim Anmelden zu früh wahr ist.
-     */
-    private fun meldungFuerSnackbar(fehler: Result.Error): String? =
-        if (ch.brickinventoryapp.util.meldetDieSitzungsschicht(
-                fehler.unauthorized,
-                prefs.authTokenState.value?.isNotBlank() == true)) null
-        else meldung(fehler)
-
-    /**
-     * Derselbe Satz wie in AppTexte.meldung(), über dieselbe Zuordnung fehlerTextId().
-     * Die Servermeldung hat Vorrang — sie kennt ihren Fall genauer und kommt in der
-     * Sprache des Kontos.
-     */
-    private fun meldung(fehler: Result.Error): String {
-        if (fehler.message.isNotBlank()) return fehler.message
-        val id = fehlerTextId(fehler.art)
-        return if (fehlerTextBrauchtCode(fehler.art)) text(id, fehler.httpCode ?: 0)
-        else text(id)
-    }
 
     override fun loadCatalogMeta() {
         viewModelScope.launch {
@@ -150,8 +110,8 @@ class CatalogViewModel @Inject constructor(
                     } else _catalogState.update { it.copy(isLoading = false, error = r.data.error) }
                 }
                 is Result.Error -> {
-                    _catalogState.update { it.copy(isLoading = false, error = meldung(r)) }
-                    if (_catalogState.value.loadedPages.isNotEmpty()) meldungen.zeige(meldungFuerSnackbar(r))
+                    _catalogState.update { it.copy(isLoading = false, error = texte.meldung(r)) }
+                    if (_catalogState.value.loadedPages.isNotEmpty()) meldungen.zeige(texte.meldungFuerSnackbar(r))
                 }
             }
         }
@@ -273,12 +233,12 @@ class CatalogViewModel @Inject constructor(
                         _catalogState.update { it.copy(detailLoading = false, detail = r.data.set?.alsAnsicht()) }
                     else {
                         _catalogState.update { it.copy(detailLoading = false) }
-                        meldungen.zeige(r.data.error ?: text(R.string.err_set_not_found))
+                        meldungen.zeige(r.data.error ?: texte.text(R.string.err_set_not_found))
                     }
                 }
                 is Result.Error -> {
                     _catalogState.update { it.copy(detailLoading = false) }
-                    meldungen.zeige(meldungFuerSnackbar(r))
+                    meldungen.zeige(texte.meldungFuerSnackbar(r))
                 }
             }
         }
