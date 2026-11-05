@@ -1,0 +1,62 @@
+name: Android-Herkunft
+
+# Bescheinigt APK, signierte Beschreibung und Bundle eines Etiketts (sec17 B-N7).
+# Nur als wiederverwendbarer Workflow, aufgerufen vom Job `bescheinigen` in
+# android.yml: Der Aussteller in der Bescheinigung ist dann diese Datei, in der
+# weder Gradle noch ein Plugin noch Code aus dem Repository läuft. Prüfen:
+#   gh attestation verify <datei> --repo <owner/repo> \
+#     --signer-workflow <owner/repo>/.github/workflows/android-bescheinigung.yml
+on:
+  workflow_call:
+    inputs:
+      sha256_apk:
+        type: string
+        required: true
+      sha256_beschreibung:
+        type: string
+        required: true
+      sha256_aab:
+        type: string
+        required: true
+
+permissions:
+  contents: read
+
+jobs:
+  bescheinigen:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      id-token: write
+      attestations: write
+    steps:
+      - name: Signiertes Ergebnis holen
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
+        with:
+          name: apk-signiert
+          path: ${{ runner.temp }}/signiert
+
+      # Jeder Job eines Laufs kann Artefakte ersetzen: bescheinigt wird nur, was der
+      # Signierjob ausgegeben hat.
+      - name: Gegen die Prüfsummen des Signierjobs
+        env:
+          APK_SOLL: ${{ inputs.sha256_apk }}
+          BESCHREIBUNG_SOLL: ${{ inputs.sha256_beschreibung }}
+          AAB_SOLL: ${{ inputs.sha256_aab }}
+        run: |
+          set -euo pipefail
+          A="$RUNNER_TEMP/signiert"
+          for s in "$APK_SOLL" "$BESCHREIBUNG_SOLL" "$AAB_SOLL"; do
+            printf '%s' "$s" | grep -Eq '^[0-9a-f]{64}$' || { echo "::error::Der Signierjob hat keine Prüfsumme gemeldet."; exit 1; }
+          done
+          printf '%s  %s\n' "$APK_SOLL" "$A/apk/release/BrickInventory.apk" \
+            "$BESCHREIBUNG_SOLL" "$A/version-signiert.json" "$AAB_SOLL" "$A/bundle/release/app-release.aab" | sha256sum -c -
+
+      - name: Herkunft bescheinigen
+        uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
+        with:
+          subject-path: |
+            ${{ runner.temp }}/signiert/apk/release/BrickInventory.apk
+            ${{ runner.temp }}/signiert/version-signiert.json
+            ${{ runner.temp }}/signiert/bundle/release/app-release.aab

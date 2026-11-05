@@ -573,7 +573,48 @@ Ablaufdatum statt klassischer PATs mit `repo`-Scope.
 braucht sie nicht mehr; solange sie bestehen, könnte jeder Job auf `main` sie
 lesen, auch ohne Freigabe.
 
+### Was ein Etikett vor dem Signieren erfüllen muss (sec17)
+
+Der Job `signieren` bricht ab, statt zu signieren, wenn eine dieser Bedingungen fehlt;
+die Meldung nennt jeweils die Einstellung:
+
+- **Environment `release`:** mindestens ein Pflichtprüfer, nur das Etikett `android-v*`
+  und *Allow administrators to bypass* **aus** (`can_admins_bypass: false`).
+  *Prevent self-review* ergibt nur eine Warnung, solange nur eine Person prüft.
+- **`main` geschützt per Ruleset** (Settings → Rules → Rulesets → New branch ruleset,
+  Ziel `main`): *Require a pull request before merging*, *Require status checks to
+  pass* (Android-App, Sicherheit) und *Block force pushes*. Gelesen wird
+  `GET /repos/{repo}/rules/branches/main`; klassische Branch Protection allein zählt
+  dort nicht.
+- **Sicherheitslauf grün:** Der Job `Trivy (Android-Abhängigkeiten)` in `sicherheit.yml`
+  muss für genau den Commit des Etiketts grün sein (läuft bei jedem Push auf `main`).
+  Ist er noch nicht fertig, den Android-Lauf danach neu starten. Ausnahmen nur mit
+  Grund und Frist in `.github/trivy-android.ignore`.
+- **Werkzeuge:** `zipalign` und `apksigner.jar` aus `build-tools/37.0.0` des Images
+  `ubuntu-24.04`, gegen feste Prüfsummen. Verschwindet die Fassung aus dem Image,
+  bricht der Schritt ab; die neuen Werte stehen dann im Protokoll eines Probelaufs und
+  werden nach Prüfung im Schritt „Signieren“ eingetragen.
+
+Etiketten bauen ohne Gradle-Cache aus anderen Läufen und mit leerem
+Gradle-Benutzerverzeichnis; den Cache schreibt sonst nur der Baujob. Ausserhalb von
+Etiketten liegt das probe-signierte APK als `BrickInventory.apk.probe-nicht-installieren`
+im Artefakt. Die Herkunft bescheinigt `.github/workflows/android-bescheinigung.yml`
+(APK, Beschreibung, Bundle); `release` veröffentlicht nur Dateien mit den Prüfsummen,
+die `signieren` ausgab.
+
 ### Release-Zertifikat und Fassung
+
+**Vor einer Neuinstallation prüfen** (der feste Link `apk-neuste` kann von jedem mit
+Schreibrecht ersetzt werden; ein Update prüft die App selbst): Das Release-APK ist
+mit dem Zertifikat
+
+    SHA-256 a51ff2f425d94b6f31a06b7805013cc801791b28e58404dc26c7c8298380af06
+
+signiert. `apksigner verify --print-certs BrickInventory.apk` muss in der Zeile
+„certificate SHA-256 digest“ genau diesen Wert zeigen; derselbe steht im Text jedes
+Release. Herkunft: `gh attestation verify BrickInventory.apk --repo addict85/BrickInventory
+--signer-workflow addict85/BrickInventory/.github/workflows/android-bescheinigung.yml`
+(ebenso für `version-signiert.json` und das Bundle).
 
 Vor dem Veröffentlichen prüft der Job `apk-pruefen` zweierlei
 (`tools/release-pruefen.py`):

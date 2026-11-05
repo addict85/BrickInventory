@@ -18,10 +18,14 @@ on:
       # den Android-Lauf bekommen, sonst prueft ihn nur noch die Web-Seite.
       - 'shared/**'
       - '.github/workflows/android.yml'
+      - '.github/workflows/android-bescheinigung.yml'
   pull_request:
     paths:
       - 'Android-App/**'
       - 'shared/**'
+      # Auch ein Fork-PR, der nur den Workflow ändert, bekommt einen Lauf (sec17 B-N14).
+      - '.github/workflows/android.yml'
+      - '.github/workflows/android-bescheinigung.yml'
   workflow_dispatch:
     inputs:
       pruefsummen:
@@ -46,7 +50,8 @@ jobs:
   build:
     # Ein Lauf nur für die Prüfsummen oder die Referenzbilder (Jobs unten) baut nicht mit.
     if: ${{ !inputs.pruefsummen && !inputs.bildschirmfotos }}
-    runs-on: ubuntu-latest
+    # Festes Image wie im Signierjob: Ein Wechsel des Runner-Images ändert sonst still die Werkzeuge.
+    runs-on: ubuntu-24.04
     # Grün 15–23 min; mehr als 60 heisst: Gradle hängt.
     timeout-minutes: 60
     defaults:
@@ -117,10 +122,19 @@ jobs:
       - name: Gradle-Prüfsumme gegen die amtliche
         run: python3 tools/gradle-wrapper-pruefen.py gradle/wrapper/gradle-wrapper.properties
 
-      # Legt den Gradle-Cache an. Ohne das lädt jeder Lauf alle Abhängigkeiten
-      # neu — mehrere Minuten pro Bau.
+      # Ein Etikett baut, was ausgeliefert wird: mit leerem Gradle-Benutzerverzeichnis,
+      # denn Transform-Ausgaben, instrumentierte Jars und übersetzte Skripte nimmt Gradle
+      # von dort ungeprüft. Ein Cache aus einem anderen Lauf käme so ins APK (sec17 M1).
+      - name: Frisches Gradle-Verzeichnis für Etiketten
+        if: startsWith(github.ref, 'refs/tags/android-v')
+        run: echo "GRADLE_USER_HOME=$RUNNER_TEMP/gradle-etikett" >> "$GITHUB_ENV"
+
+      # Der Gradle-Cache spart Minuten je Bau. Schreiben darf ihn nur dieser Job (auf
+      # main), alle anderen lesen nur; ein Etikett liest ihn gar nicht (oben).
       - name: Gradle einrichten
         uses: gradle/actions/setup-gradle@8da46b539cd8fe6ab27ca75128919a18d757604c # v6
+        with:
+          cache-disabled: ${{ startsWith(github.ref, 'refs/tags/android-v') }}
 
       # Auf Windows committete Dateien tragen das Ausführbar-Bit oft nicht.
       - name: gradlew ausführbar machen
@@ -227,8 +241,9 @@ jobs:
         run: |
           set -o pipefail
           # Ohne Build-Cache: Auf main kam R8 samt Ressourcen-Schrumpfen aus
-          # dem Cache, und dem Ergebnis fehlten 80 Texte, die frisch gebaut
-          # da sind. Das ausgelieferte APK wird deshalb immer frisch gerechnet.
+          # dem Cache, und dem Ergebnis fehlten 80 Texte. --no-build-cache gilt nur
+          # für Gradles Build-Cache; Transforms und Skripte im Benutzerverzeichnis
+          # sind für Etiketten leer (Schritt „Frisches Gradle-Verzeichnis“).
           ./gradlew --no-daemon --no-build-cache assembleRelease bundleRelease 2>&1 \
             | tee "$RUNNER_TEMP/bau.log"
 
@@ -364,11 +379,17 @@ jobs:
   # derselbe Ablauf mit einem Wegwerfschlüssel, ohne Environment und ohne Secrets.
   signieren:
     needs: build
-    runs-on: ubuntu-latest
+    # Festes Image, festgelegte Werkzeuge mit Prüfsumme (Schritt „Signieren“, sec17 B-N6).
+    runs-on: ubuntu-24.04
     environment: ${{ github.event_name == 'push' && startsWith(github.ref, 'refs/tags/android-v') && 'release' || '' }}
     permissions:
       actions: read
       contents: read
+    # Was signiert wurde; `release` und `bescheinigen` vergleichen damit (sec17 B-N1).
+    outputs:
+      sha256_apk: ${{ steps.signiert.outputs.apk }}
+      sha256_beschreibung: ${{ steps.signiert.outputs.beschreibung }}
+      sha256_aab: ${{ steps.signiert.outputs.aab }}
     steps:
       - name: Unsigniertes APK holen
         uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
@@ -408,9 +429,20 @@ jobs:
           fi
           PRUEFER=$(printf '%s' "$U" | jq '[.protection_rules[]? | select(.type == "required_reviewers") | .reviewers[]?] | length')
           EIGENE=$(printf '%s' "$U" | jq -r '.deployment_branch_policy.custom_branch_policies // false')
+          UMGEHEN=$(printf '%s' "$U" | jq -r '.can_admins_bypass')
+          SELBST=$(printf '%s' "$U" | jq -r '[.protection_rules[]? | select(.type == "required_reviewers") | .prevent_self_review] | any')
           if [ "$PRUEFER" -lt 1 ]; then
             echo "::error::Die Environment release hat keinen Pflichtprüfer (Settings → Environments → release → Required reviewers). Nichts wird signiert."
             exit 1
+          fi
+          # Sonst gäbe ein Administrator die Freigabe an den Pflichtprüfern vorbei (sec17 B1).
+          if [ "$UMGEHEN" != false ]; then
+            echo "::error::Die Environment release lässt Administratoren die Regeln umgehen (Allow administrators to bypass: aus). Nichts wird signiert."
+            exit 1
+          fi
+          # Mit nur einer Person mit Schreibrecht ginge es nicht anders; darum nur ein Hinweis.
+          if [ "$SELBST" != true ]; then
+            echo "::warning title=Selbstfreigabe::Die Environment release erlaubt, eigene Etiketten selbst freizugeben (Prevent self-review). Einschalten, sobald zwei Personen prüfen."
           fi
           if [ "$EIGENE" != true ]; then
             echo "::error::Die Environment release lässt jeden Zweig zu (Deployment branches and tags: Selected, nur das Etikett android-v*). Nichts wird signiert."
@@ -440,6 +472,48 @@ jobs:
             identical|behind) echo "$GITHUB_REF_NAME ($GITHUB_SHA) liegt auf main." ;;
             *) echo "::error::$GITHUB_REF_NAME zeigt auf $GITHUB_SHA, der nicht auf main liegt ($STAND). Nichts wird signiert."; exit 1 ;;
           esac
+
+      # „Liegt auf main“ heisst nur dann „ging durch Review und CI“, wenn main das
+      # erzwingt. Gelesen werden die Regeln des Zweigs (Ruleset), wie die der Environment (sec17 B3).
+      - name: main ist geschützt
+        if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/android-v')
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          if ! ARTEN=$(gh api "repos/$GITHUB_REPOSITORY/rules/branches/main" --jq '[.[].type] | unique | join(",")'); then
+            echo "::error::Die Regeln von main liessen sich nicht lesen. Nichts wird signiert."
+            exit 1
+          fi
+          for regel in pull_request required_status_checks non_fast_forward; do
+            case ",$ARTEN," in
+              *",$regel,"*) ;;
+              *) echo "::error::main hat keine Regel $regel (Settings → Rules → Rulesets, README „Release signieren“). Nichts wird signiert."; exit 1 ;;
+            esac
+          done
+          echo "main: $ARTEN"
+
+      # Die Lückenprüfung der Laufzeit-Abhängigkeiten (sicherheit.yml, Job
+      # android-abhaengigkeiten) muss für genau diesen Commit grün sein (sec17 M2).
+      - name: Abhängigkeiten ohne bekannte Lücke
+        if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/android-v')
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          LAUF=$(gh api "repos/$GITHUB_REPOSITORY/actions/workflows/sicherheit.yml/runs?head_sha=$GITHUB_SHA&status=completed&per_page=20" \
+            --jq '.workflow_runs | sort_by(.created_at) | last | .id // empty')
+          if [ -z "$LAUF" ]; then
+            echo "::error::Für $GITHUB_SHA gibt es noch keinen abgeschlossenen Sicherheitslauf. Abwarten, dann diesen Lauf neu starten."
+            exit 1
+          fi
+          ERGEBNIS=$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$LAUF/jobs?per_page=100" \
+            --jq '[.jobs[] | select(.name | startswith("Trivy (Android-Abhängigkeiten")) | .conclusion] | first // "fehlt"')
+          if [ "$ERGEBNIS" != success ]; then
+            echo "::error::Die Lückenprüfung der Android-Abhängigkeiten war für $GITHUB_SHA nicht grün ($ERGEBNIS, Lauf $LAUF). Nichts wird signiert."
+            exit 1
+          fi
+          echo "Android-Abhängigkeiten ohne bekannte Lücke (Sicherheitslauf $LAUF)."
 
       - name: Release-Schlüssel bereitstellen
         if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/android-v')
@@ -479,13 +553,19 @@ jobs:
           openssl genpkey -algorithm EC -pkeyopt ec_paramgen_curve:P-256 -aes256 -pass "file:$S/ks_pass" -out "$S/beschreibung.pem"
 
       - name: Signieren
+        id: signiert
         env:
           ECHT: ${{ github.event_name == 'push' && startsWith(github.ref, 'refs/tags/android-v') }}
         run: |
           set -euo pipefail
-          WERKZEUGE=$(ls -d "$ANDROID_HOME"/build-tools/*/ | sort -V | tail -1)
-          echo "Werkzeuge: $WERKZEUGE"
-          sha256sum "$WERKZEUGE/zipalign" "$WERKZEUGE/lib/apksigner.jar"
+          # Festgelegt statt „das neueste des Images“; eine andere Fassung oder andere
+          # Bytes brechen hier ab (sec17 B-N6). Heben: Prüfsummen aus dem Protokoll übernehmen.
+          WERKZEUGE="$ANDROID_HOME/build-tools/37.0.0"
+          printf '%s  %s\n' \
+            0859ed6e59d3ded7519cd6e6409c0d9ce914af0e09dadc2dce7965ee2e991852 "$WERKZEUGE/zipalign" \
+            2defad215d7ff52968a409cde528cdaef7918b115e276b8e3378ca7a178e4180 "$WERKZEUGE/lib/apksigner.jar" \
+            | sha256sum -c -
+          APKSIGNER=(java -jar "$WERKZEUGE/lib/apksigner.jar")
           EIN="$RUNNER_TEMP/eingang"
           AUS="$RUNNER_TEMP/ausgang"
           mkdir -p "$AUS/apk/release" "$AUS/bundle/release"
@@ -498,10 +578,10 @@ jobs:
           # 16-KB-Seiten (geprüft im Job `apk-pruefen`).
           "$WERKZEUGE/zipalign" -f -P 16 4 "$EIN/apk/release/app-release-unsigned.apk" "$RUNNER_TEMP/ausgerichtet.apk"
           # v1 (JAR) braucht kein Gerät ab minSdk 30; v3 trägt eine spätere Schlüsselrotation.
-          "$WERKZEUGE/apksigner" sign --ks "$KS" --ks-pass env:KS_PASS --ks-key-alias "$KEY_ALIAS" \
+          "${APKSIGNER[@]}" sign --ks "$KS" --ks-pass env:KS_PASS --ks-key-alias "$KEY_ALIAS" \
             --key-pass env:KEY_PASS --v1-signing-enabled false --v2-signing-enabled true --v3-signing-enabled true \
             --out "$AUS/apk/release/BrickInventory.apk" "$RUNNER_TEMP/ausgerichtet.apk"
-          "$WERKZEUGE/apksigner" verify --print-certs "$AUS/apk/release/BrickInventory.apk" > "$RUNNER_TEMP/zertifikat.txt"
+          "${APKSIGNER[@]}" verify --print-certs "$AUS/apk/release/BrickInventory.apk" > "$RUNNER_TEMP/zertifikat.txt"
           head -3 "$RUNNER_TEMP/zertifikat.txt"
           install -m 644 "$EIN/apk/release/output-metadata.json" "$AUS/apk/release/output-metadata.json"
           install -m 644 "$EIN/bundle/release/app-release.aab" "$RUNNER_TEMP/bundle.aab"
@@ -548,6 +628,17 @@ jobs:
             install -m 644 "$EIN/bundle/release/app-release.aab" "$AUS/bundle/release/app-release.aab"
             echo "Probe-Signatur gelungen; geprüft wird das probe-signierte APK, veröffentlicht wird nichts."
           fi
+          {
+            echo "apk=$(sha256sum "$APK_AUS" | cut -d' ' -f1)"
+            echo "beschreibung=$(sha256sum "$AUS/version-signiert.json" | cut -d' ' -f1)"
+            echo "aab=$(sha256sum "$AUS/bundle/release/app-release.aab" | cut -d' ' -f1)"
+          } >> "$GITHUB_OUTPUT"
+          # Ein probe-signiertes APK (jeder Lauf ausser einem Etikett, auch aus Forks) liegt
+          # nicht installierbar im Artefakt: Ein Link darauf verteilte fremden Code unter
+          # dem Namen des Projekts (sec17 B-N15). apk-pruefen benennt es zurück.
+          if [ "$ECHT" != "true" ]; then
+            mv "$APK_AUS" "$AUS/apk/release/BrickInventory.apk.probe-nicht-installieren"
+          fi
 
       # Nur das Ergebnis geht weiter, nicht der Schlüssel: Prüfen und
       # Veröffentlichen laufen in eigenen Jobs ohne Secrets.
@@ -576,7 +667,7 @@ jobs:
   # Signierjob. Geprüft wird das APK, das gleich veröffentlicht wird.
   apk-pruefen:
     needs: signieren
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     permissions:
       contents: read
     defaults:
@@ -593,6 +684,13 @@ jobs:
           name: apk-signiert
           path: Android-App/app/build/outputs
 
+      # Ausserhalb von Etiketten liegt das APK unter einem Namen, der nicht installiert (signieren).
+      - name: Probe-APK für die Prüfung benennen
+        run: |
+          set -euo pipefail
+          P=app/build/outputs/apk/release/BrickInventory.apk.probe-nicht-installieren
+          if [ -f "$P" ]; then mv "$P" app/build/outputs/apk/release/BrickInventory.apk; fi
+
       # Das Release-Zertifikat steht fest in tools/release-zertifikat.sha256: Ein
       # ausgetauschter Schlüssel in der Environment fiele sonst erst auf, wenn
       # Updates scheitern, und eine Neuinstallation nähme ihn still an. Ein
@@ -605,8 +703,7 @@ jobs:
           set -euo pipefail
           cd app/build/outputs/apk/release
           ls -la
-          WERKZEUGE=$(ls -d "$ANDROID_HOME"/build-tools/*/ | sort -V | tail -1)
-          "$WERKZEUGE/apksigner" verify --print-certs BrickInventory.apk > "$RUNNER_TEMP/zertifikat.txt"
+          java -jar "$ANDROID_HOME/build-tools/37.0.0/lib/apksigner.jar" verify --print-certs BrickInventory.apk > "$RUNNER_TEMP/zertifikat.txt"
           head -3 "$RUNNER_TEMP/zertifikat.txt"
           cd "$GITHUB_WORKSPACE/Android-App"
           ERGEBNIS=0
@@ -626,8 +723,7 @@ jobs:
       - name: Manifest des APK prüfen
         run: |
           set -euo pipefail
-          WERKZEUGE=$(ls -d "$ANDROID_HOME"/build-tools/*/ | sort -V | tail -1)
-          "$WERKZEUGE/aapt2" dump xmltree --file AndroidManifest.xml \
+          "$ANDROID_HOME/build-tools/37.0.0/aapt2" dump xmltree --file AndroidManifest.xml \
             app/build/outputs/apk/release/BrickInventory.apk > "$RUNNER_TEMP/manifest.txt"
           python3 tools/manifest-pruefen.py "$RUNNER_TEMP/manifest.txt" tools/manifest-exportiert.txt \
             tools/manifest-berechtigungen.txt
@@ -717,17 +813,36 @@ jobs:
           python3 tools/apk-ausrichtung.py \
             app/build/outputs/apk/release/BrickInventory.apk
 
+  # ── Herkunft bescheinigen: in einem eigenen, wiederverwendbaren Workflow ──
+  #
+  # Der Aussteller der Bescheinigung ist android-bescheinigung.yml, nicht dieser
+  # Workflow mit Gradle und Plugins (sec17 B-N7). Bescheinigt werden APK,
+  # signierte Beschreibung und Bundle, nachdem ihre Prüfsummen mit denen des
+  # Signierjobs verglichen sind.
+  bescheinigen:
+    needs: [signieren, apk-pruefen]
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/android-v')
+    permissions:
+      contents: read
+      id-token: write
+      attestations: write
+    uses: ./.github/workflows/android-bescheinigung.yml
+    with:
+      sha256_apk: ${{ needs.signieren.outputs.sha256_apk }}
+      sha256_beschreibung: ${{ needs.signieren.outputs.sha256_beschreibung }}
+      sha256_aab: ${{ needs.signieren.outputs.sha256_aab }}
+
   # ── Veröffentlichen: der einzige Job mit Schreibrecht ─────────────────────
   #
   # Was hier landet, holt sich jede installierte App als Update. Darum hängt
   # auch dieser Job an der Environment `release`: Ihre Pflichtprüfer geben die
-  # Veröffentlichung frei, nicht schon das Etikett allein. id-token und
-  # attestations nur für die Herkunftsbescheinigung des APK.
+  # Veröffentlichung frei, nicht schon das Etikett allein. Bescheinigt hat der
+  # Job `bescheinigen`; hier wird nur noch veröffentlicht.
   release:
-    needs: [signieren, apk-pruefen]
+    needs: [signieren, apk-pruefen, bescheinigen]
     if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/android-v')
     environment: release
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     # Zwei Etiketten zugleich: Sonst prüften beide gegen dieselbe alte Fassung,
     # und das ältere könnte nach dem neueren hochladen.
     concurrency:
@@ -735,8 +850,6 @@ jobs:
       cancel-in-progress: false
     permissions:
       contents: write
-      id-token: write
-      attestations: write
     defaults:
       run:
         working-directory: Android-App
@@ -751,18 +864,24 @@ jobs:
           name: apk-signiert
           path: Android-App/app/build/outputs
 
+      # Jeder Job eines Laufs kann Artefakte ersetzen; veröffentlicht wird nur, was
+      # der Signierjob ausgegeben hat (sec17 B-N1).
+      - name: Artefakt gegen die Prüfsummen des Signierjobs
+        env:
+          APK_SOLL: ${{ needs.signieren.outputs.sha256_apk }}
+          BESCHREIBUNG_SOLL: ${{ needs.signieren.outputs.sha256_beschreibung }}
+          AAB_SOLL: ${{ needs.signieren.outputs.sha256_aab }}
+        run: |
+          set -euo pipefail
+          A=app/build/outputs
+          printf '%s  %s\n' "$APK_SOLL" "$A/apk/release/BrickInventory.apk" \
+            "$BESCHREIBUNG_SOLL" "$A/version-signiert.json" "$AAB_SOLL" "$A/bundle/release/app-release.aab" | sha256sum -c -
+
       # Ein Release-Anhang statt eines Artefakts: Artefakte liefert GitHub nur
       # als Zip, ein Anhang kommt roh, ohne Konto und ohne Verfall. Die Datei
       # hinter dem festen Etikett wird ersetzt, damit der Link bleibt; woher
       # sie stammt, steht im Text des Release. Nur aus android-v… auf main,
       # sonst holte sich die App ein ungeprüftes APK als Update.
-      # Bescheinigt, aus welchem Lauf, Commit und Workflow das signierte APK
-      # stammt (Sigstore, öffentlich prüfbar mit `gh attestation verify`).
-      - name: Herkunft des APK bescheinigen
-        uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
-        with:
-          subject-path: Android-App/app/build/outputs/apk/release/BrickInventory.apk
-
       - name: BrickInventory.apk als Release bereitstellen
         if: success() && github.event_name == 'push' && startsWith(github.ref, 'refs/tags/android-v')
         env:
@@ -772,8 +891,14 @@ jobs:
           ETIKETT=apk-neuste
           APK=app/build/outputs/apk/release/BrickInventory.apk
           LINK="https://github.com/$GITHUB_REPOSITORY/releases/download/$ETIKETT/BrickInventory.apk"
+          # Neuinstallationen prüfen gegen den festgenagelten Wert (sec17 B-N9), nicht gegen GitHub.
+          ZERT=$(grep -Eo '^[0-9a-f]{64}' tools/release-zertifikat.sha256 | head -1)
           TEXT="Gebaut aus dem Etikett \`$GITHUB_REF_NAME\` ($GITHUB_SHA) am $(date -u '+%d.%m.%Y %H:%M UTC').
-          Herkunft prüfen: gh attestation verify BrickInventory.apk --repo $GITHUB_REPOSITORY
+
+          Signierzertifikat SHA-256: \`$ZERT\`
+          Vor einer Neuinstallation prüfen: apksigner verify --print-certs BrickInventory.apk
+          (die Zeile „certificate SHA-256 digest“ muss genau diesen Wert zeigen).
+          Herkunft prüfen: gh attestation verify BrickInventory.apk --repo $GITHUB_REPOSITORY --signer-workflow $GITHUB_REPOSITORY/.github/workflows/android-bescheinigung.yml
 
           Direkter Download (immer die neuste Fassung, kein Zip):
           $LINK"
@@ -924,7 +1049,10 @@ jobs:
           distribution: temurin
           java-version: '17'
       - run: python3 tools/gradle-wrapper-pruefen.py gradle/wrapper/gradle-wrapper.properties
+      # Nur lesen: Den Cache schreibt allein der Baujob (sec17 M1).
       - uses: gradle/actions/setup-gradle@8da46b539cd8fe6ab27ca75128919a18d757604c # v6
+        with:
+          cache-read-only: true
       - name: Gegenproben messen
         run: |
           chmod +x gradlew
@@ -956,7 +1084,10 @@ jobs:
           distribution: temurin
           java-version: '17'
       - run: python3 tools/gradle-wrapper-pruefen.py gradle/wrapper/gradle-wrapper.properties
+      # Nur lesen: Den Cache schreibt allein der Baujob (sec17 M1).
       - uses: gradle/actions/setup-gradle@8da46b539cd8fe6ab27ca75128919a18d757604c # v6
+        with:
+          cache-read-only: true
       # Dieselben Aufgaben wie der Bau oben: Nur was aufgelöst wird, bekommt
       # eine Prüfsumme, und Lint holt eigene Pakete.
       # Lint ist wie im Bau oben nur ein Befund (dort continue-on-error); hier
@@ -969,15 +1100,6 @@ jobs:
             || echo "::warning::Gradle meldete einen Fehler (Lint oder Test); die Prüfsummen sind trotzdem geschrieben."
           test -s gradle/verification-metadata.xml
           test -s gradle/verification-keyring.keys
-      # Hier, ohne Schreibrecht: Das Werkzeug kommt aus dem Repository. Neu
-      # vertraute Schlüssel mit Gruppen-Regex stehen hervorgehoben vorn.
-      - name: Änderungen zusammenfassen
-        if: ${{ !cancelled() }}
-        run: |
-          git show HEAD:Android-App/gradle/verification-metadata.xml > "$RUNNER_TEMP/alt.xml" 2>/dev/null || true
-          python3 tools/pruefsummen-vergleich.py "$RUNNER_TEMP/alt.xml" gradle/verification-metadata.xml \
-            > gradle/pruefsummen-zusammenfassung.md
-          cat gradle/pruefsummen-zusammenfassung.md >> "$GITHUB_STEP_SUMMARY"
       # Auch nach einem roten Test: Gradle schreibt die Datei am Ende jedes
       # Laufs, und die Prüfsummen hängen nicht am Testergebnis.
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
@@ -987,14 +1109,44 @@ jobs:
           path: |
             Android-App/gradle/verification-metadata.xml
             Android-App/gradle/verification-keyring.*
-            Android-App/gradle/pruefsummen-zusammenfassung.md
+          if-no-files-found: error
+
+  # Die Zusammenfassung, auf die sich das Review verlässt, entsteht ohne Gradle:
+  # Im Job `pruefsummen` liefen alle Plugins und hätten sie fälschen können
+  # (sec17 B-N2). Frischer Checkout, nur Lesen, das Werkzeug aus dem Repository.
+  pruefsummen-zusammenfassen:
+    needs: pruefsummen
+    if: github.event_name == 'workflow_dispatch' && inputs.pruefsummen
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
+        with:
+          name: verification-metadata
+          path: ${{ runner.temp }}/neu
+      # Neu vertraute Schlüssel mit Gruppen-Regex stehen hervorgehoben vorn.
+      - name: Änderungen zusammenfassen
+        run: |
+          set -euo pipefail
+          git show HEAD:Android-App/gradle/verification-metadata.xml > "$RUNNER_TEMP/alt.xml" 2>/dev/null || true
+          python3 Android-App/tools/pruefsummen-vergleich.py "$RUNNER_TEMP/alt.xml" "$RUNNER_TEMP/neu/verification-metadata.xml" \
+            > "$RUNNER_TEMP/pruefsummen-zusammenfassung.md"
+          cat "$RUNNER_TEMP/pruefsummen-zusammenfassung.md" >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        with:
+          name: pruefsummen-zusammenfassung
+          path: ${{ runner.temp }}/pruefsummen-zusammenfassung.md
           if-no-files-found: error
 
   # Neue Prüfsummen kommen als Pull-Request, nie als Push: Sie entscheiden, welche
   # Bytes der Bau als echt annimmt, und ein Schlüssel mit Gruppen-Regex deckt
   # jedes künftige Paket der Gruppe. Das sieht ein Mensch im Review, bevor es gilt.
   pruefsummen-vorschlagen:
-    needs: pruefsummen
+    needs: [pruefsummen, pruefsummen-zusammenfassen]
     if: github.event_name == 'workflow_dispatch' && inputs.pruefsummen && github.ref != 'refs/heads/main'
     runs-on: ubuntu-latest
     permissions:
@@ -1005,6 +1157,10 @@ jobs:
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
         with:
           name: verification-metadata
+          path: ${{ runner.temp }}/pruefsummen
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
+        with:
+          name: pruefsummen-zusammenfassung
           path: ${{ runner.temp }}/pruefsummen
       # Ein eigener Zweig je Lauf; der Zweig des Laufs bleibt unberührt. Ein mit
       # GITHUB_TOKEN angelegter Pull-Request startet keine CI von selbst.
@@ -1058,7 +1214,10 @@ jobs:
           distribution: temurin
           java-version: '17'
       - run: python3 tools/gradle-wrapper-pruefen.py gradle/wrapper/gradle-wrapper.properties
+      # Nur lesen: Den Cache schreibt allein der Baujob (sec17 M1).
       - uses: gradle/actions/setup-gradle@8da46b539cd8fe6ab27ca75128919a18d757604c # v6
+        with:
+          cache-read-only: true
       # Alte Referenzen weg, damit ein umbenannter Fall keine Leiche hinterlässt.
       - name: Bildschirmfotos aufnehmen
         run: |
