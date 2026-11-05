@@ -31,15 +31,15 @@ fun Sichtschutz(ueberdeckung: Boolean = true) {
     }
 }
 
-private fun anzahl(f: Window) = f.decorView.getTag(R.id.sichtschutz_anzahl) as? Int ?: 0
+private fun geschuetzteAnzahl(f: Window) = f.decorView.getTag(R.id.sichtschutz_anzahl) as? Int ?: 0
 
 private fun sichere(f: Window) {
-    if (anzahl(f) == 0) f.addFlags(WindowManager.LayoutParams.FLAG_SECURE)
-    f.decorView.setTag(R.id.sichtschutz_anzahl, anzahl(f) + 1)
+    if (geschuetzteAnzahl(f) == 0) f.addFlags(WindowManager.LayoutParams.FLAG_SECURE)
+    f.decorView.setTag(R.id.sichtschutz_anzahl, geschuetzteAnzahl(f) + 1)
 }
 
 private fun gibFrei(f: Window) {
-    val rest = anzahl(f) - 1
+    val rest = geschuetzteAnzahl(f) - 1
     f.decorView.setTag(R.id.sichtschutz_anzahl, rest)
     if (rest <= 0) f.clearFlags(WindowManager.LayoutParams.FLAG_SECURE)
 }

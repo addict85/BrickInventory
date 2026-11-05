@@ -387,9 +387,9 @@ jobs:
       contents: read
     # Was signiert wurde; `release` und `bescheinigen` vergleichen damit (sec17 B-N1).
     outputs:
-      sha256_apk: ${{ steps.signiert.outputs.apk }}
-      sha256_beschreibung: ${{ steps.signiert.outputs.beschreibung }}
-      sha256_aab: ${{ steps.signiert.outputs.aab }}
+      sha256_apk: ${{ steps.signiert.outputs.summe_paket }}
+      sha256_beschreibung: ${{ steps.signiert.outputs.summe_beschreibung }}
+      sha256_aab: ${{ steps.signiert.outputs.summe_bundle }}
     steps:
       - name: Unsigniertes APK holen
         uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
@@ -629,9 +629,9 @@ jobs:
             echo "Probe-Signatur gelungen; geprüft wird das probe-signierte APK, veröffentlicht wird nichts."
           fi
           {
-            echo "apk=$(sha256sum "$APK_AUS" | cut -d' ' -f1)"
-            echo "beschreibung=$(sha256sum "$AUS/version-signiert.json" | cut -d' ' -f1)"
-            echo "aab=$(sha256sum "$AUS/bundle/release/app-release.aab" | cut -d' ' -f1)"
+            echo "summe_paket=$(sha256sum "$APK_AUS" | cut -d' ' -f1)"
+            echo "summe_beschreibung=$(sha256sum "$AUS/version-signiert.json" | cut -d' ' -f1)"
+            echo "summe_bundle=$(sha256sum "$AUS/bundle/release/app-release.aab" | cut -d' ' -f1)"
           } >> "$GITHUB_OUTPUT"
           # Ein probe-signiertes APK (jeder Lauf ausser einem Etikett, auch aus Forks) liegt
           # nicht installierbar im Artefakt: Ein Link darauf verteilte fremden Code unter
