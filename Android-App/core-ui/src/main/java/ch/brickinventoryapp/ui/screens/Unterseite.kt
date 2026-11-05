@@ -1,23 +1,16 @@
 package ch.brickinventoryapp.ui.screens
 
 import ch.brickinventoryapp.ui.components.DetailTopAppBar
-import androidx.compose.ui.semantics.heading
-import androidx.compose.ui.semantics.semantics
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.res.stringResource
-import ch.brickinventoryapp.ressourcen.R
 import ch.brickinventoryapp.ui.*
 import ch.brickinventoryapp.ui.theme.Abstaende
 import ch.brickinventoryapp.ui.theme.mittigBis
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import ch.brickinventoryapp.ui.components.MitTooltip
 import ch.brickinventoryapp.ui.theme.Lesebreite
 
 /**

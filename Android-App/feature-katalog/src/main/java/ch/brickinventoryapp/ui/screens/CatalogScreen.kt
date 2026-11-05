@@ -69,7 +69,6 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.graphics.Color
 import ch.brickinventoryapp.data.repository.CATALOG_PAGE_SIZE
 import ch.brickinventoryapp.ui.theme.Abstaende
-import ch.brickinventoryapp.ui.components.LeerSymbol
 import ch.brickinventoryapp.ui.components.vorgelesenAls
 import ch.brickinventoryapp.util.fmtInt
 import ch.brickinventoryapp.ui.components.LesbareSpalten
@@ -403,9 +402,9 @@ private fun YearScrubber(
     }
 }
 
+/** Eine Zeile der Themen- und Jahreswahl; öffentlich, damit der Barrierefreiheitstest sie zeigen kann. */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-/** Eine Zeile der Themen- und Jahreswahl; öffentlich, damit der Barrierefreiheitstest sie zeigen kann. */
 fun ThemeRow(label: String, selected: Boolean, onClick: () -> Unit) {
     // Ein Optionsfeld: TalkBack nennt Rolle und Wahl, das Häkchen allein sah nur, wer sieht.
     Surface(

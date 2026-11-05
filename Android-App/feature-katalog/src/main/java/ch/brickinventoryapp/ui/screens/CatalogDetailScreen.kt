@@ -228,6 +228,24 @@ private const val BILD_VERHAELTNIS = 4f / 3f
 /** Grösser als die Vorlage wird ein Setbild nur unscharf; daneben bleibt Platz für die Angaben. */
 private val BILD_HOECHSTENS = 480.dp
 
+/** Die Angaben des Sets als Tabelle, mit Besitz und Merkposten, wenn es sie gibt. */
+@Composable
+private fun KatalogTabelle(detail: KatalogDetailAnsicht, gemerkt: MerkpostenAnsicht?) {
+    Card(shape = Formen.karte, colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f))) {
+        Column(Modifier.padding(Abstaende.rand), verticalArrangement = Arrangement.spacedBy(Abstaende.klein)) {
+            CatalogDetailRow(stringResource(R.string.catalog_detail_year),   detail.year?.toString() ?: "—")
+            CatalogDetailRow(stringResource(R.string.catalog_detail_theme),  detail.themeName ?: "—")
+            CatalogDetailRow(stringResource(R.string.catalog_detail_parts),  detail.numParts?.takeIf { it > 0 }?.let { fmtInt(it) } ?: "—")
+            CatalogDetailRow(stringResource(R.string.catalog_detail_minifigs), if (detail.minifigs > 0) detail.minifigs.toString() else "—")
+            if (detail.owned) {
+                CatalogDetailRow(stringResource(R.string.catalog_owned), "✓ ×${detail.ownedQuantity}")
+            }
+            // Steht das Set schon auf der Merkliste, sagt es die Tabelle — mit Zustand und Alarm.
+            if (gemerkt != null) CatalogDetailRow(stringResource(R.string.catalog_auf_merkliste), merkpostenText(gemerkt))
+        }
+    }
+}
+
 /**
  * Nummer, Angaben und Handlungen; der Name steht in der Leiste. Die eigenen Handlungen
  * zuerst (Aufnehmen, Merken), der Weg nach draussen als Textknopf mit Pfeil darunter:
@@ -245,19 +263,7 @@ private fun ColumnScope.KatalogAngaben(
     Text(detail.setNumber, color = MaterialTheme.colorScheme.primary,
         fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.bodyMedium)
 
-    Card(shape = Formen.karte, colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f))) {
-        Column(Modifier.padding(Abstaende.rand), verticalArrangement = Arrangement.spacedBy(Abstaende.klein)) {
-            CatalogDetailRow(stringResource(R.string.catalog_detail_year),   detail.year?.toString() ?: "—")
-            CatalogDetailRow(stringResource(R.string.catalog_detail_theme),  detail.themeName ?: "—")
-            CatalogDetailRow(stringResource(R.string.catalog_detail_parts),  detail.numParts?.takeIf { it > 0 }?.let { fmtInt(it) } ?: "—")
-            CatalogDetailRow(stringResource(R.string.catalog_detail_minifigs), if (detail.minifigs > 0) detail.minifigs.toString() else "—")
-            if (detail.owned) {
-                CatalogDetailRow(stringResource(R.string.catalog_owned), "✓ ×${detail.ownedQuantity}")
-            }
-            // Steht das Set schon auf der Merkliste, sagt es die Tabelle — mit Zustand und Alarm.
-            if (gemerkt != null) CatalogDetailRow(stringResource(R.string.catalog_auf_merkliste), merkpostenText(gemerkt))
-        }
-    }
+    KatalogTabelle(detail, gemerkt)
 
     // Untereinander in voller Breite wie im Merkposten-Detail: Nebeneinander war
     // „Zur Sammlung hinzufügen“ schon bei normaler Schrift gekürzt. Aufnehmen ist die
