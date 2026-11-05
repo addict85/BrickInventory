@@ -61,6 +61,8 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import kotlin.math.ceil
 import kotlin.math.roundToInt
+import ch.brickinventoryapp.ui.components.MitTooltip
+import ch.brickinventoryapp.ui.viewmodel.pdfDarfGespeichertWerden
 
 /**
  * In-App PDF-Viewer für grosse Anleitungen: Der Download läuft streamend und
@@ -104,7 +106,7 @@ fun PdfViewerRoute(
     PdfViewerScreen(
         state = state,
         title = title,
-        speicherbar = remember(pdfUrl) { ch.brickinventoryapp.ui.viewmodel.pdfDarfGespeichertWerden(pdfUrl) },
+        speicherbar = remember(pdfUrl) { pdfDarfGespeichertWerden(pdfUrl) },
         onBack = onBack,
         rendereSeite = vm::seite,
         schreibe = vm.schreiber,
@@ -157,7 +159,7 @@ fun PdfViewerScreen(
             TopAppBar(
                 title = { Text(title.ifBlank { "PDF" }, maxLines = 1, overflow = TextOverflow.Ellipsis) },
                 navigationIcon = {
-                    ch.brickinventoryapp.ui.components.MitTooltip(stringResource(R.string.common_back)) {
+                    MitTooltip(stringResource(R.string.common_back)) {
                         IconButton(onClick = onBack) {
                             Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.common_back))
                         }
@@ -170,12 +172,12 @@ fun PdfViewerScreen(
                     val s = state
                     if (s is PdfLoadState.Ready) {
                         if (speicherbar) {
-                            ch.brickinventoryapp.ui.components.MitTooltip(stringResource(R.string.pdfview_download)) {
+                            MitTooltip(stringResource(R.string.pdfview_download)) {
                                 IconButton(onClick = { melde(savePdfToDownloads(ctx, s.quelle, title)) }) {
                                     Icon(Icons.Default.Download, contentDescription = stringResource(R.string.pdfview_download))
                                 }
                             }
-                            ch.brickinventoryapp.ui.components.MitTooltip(stringResource(R.string.pdfview_print)) {
+                            MitTooltip(stringResource(R.string.pdfview_print)) {
                                 IconButton(onClick = { melde(printPdf(ctx, s.quelle, title, schreibe, bereich)) }) {
                                     Icon(Icons.Default.Print, contentDescription = stringResource(R.string.pdfview_print))
                                 }
@@ -275,7 +277,7 @@ private fun ZoomLeiste(zoom: Float, setzeZoom: (Float) -> Unit, modifier: Modifi
         // Am Anschlag abgeschaltet. `enabled` ist fuer Tastatur und Screenreader
         // verbindlich; die Ausgrauung ist nur die Begleitung davon, nicht das
         // Signal.
-        ch.brickinventoryapp.ui.components.MitTooltip(stringResource(R.string.pdfview_zoom_out)) {
+        MitTooltip(stringResource(R.string.pdfview_zoom_out)) {
             IconButton(
                 onClick = { setzeZoom(zoom / PDF_ZOOM_SCHRITT) },
                 enabled = zoom > PDF_ZOOM_MIN + 0.01f
@@ -304,7 +306,7 @@ private fun ZoomLeiste(zoom: Float, setzeZoom: (Float) -> Unit, modifier: Modifi
                 style = MaterialTheme.typography.labelMedium
             )
         }
-        ch.brickinventoryapp.ui.components.MitTooltip(stringResource(R.string.pdfview_zoom_in)) {
+        MitTooltip(stringResource(R.string.pdfview_zoom_in)) {
             IconButton(
                 onClick = { setzeZoom(zoom * PDF_ZOOM_SCHRITT) },
                 enabled = zoom < PDF_ZOOM_MAX - 0.01f

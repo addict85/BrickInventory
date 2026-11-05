@@ -46,6 +46,7 @@ import dagger.hilt.InstallIn
 import dagger.hilt.android.EntryPointAccessors
 import dagger.hilt.components.SingletonComponent
 import java.util.concurrent.TimeUnit
+import ch.brickinventoryapp.data.repository.Result
 
 /**
  * Die zuletzt geholten Zahlen. Das Widget liest nur hier und zeigt so auch ohne
@@ -121,8 +122,8 @@ class WidgetArbeiter(context: Context, params: WorkerParameters) : CoroutineWork
                 SammlungsWidget().updateAll(ctx)
                 return
             }
-            val pnl = (zugang.finanzen().getPnl() as? ch.brickinventoryapp.data.repository.Result.Success)?.data
-            val verlauf = (zugang.finanzen().getPortfolioHistory("week") as? ch.brickinventoryapp.data.repository.Result.Success)?.data
+            val pnl = (zugang.finanzen().getPnl() as? Result.Success)?.data
+            val verlauf = (zugang.finanzen().getPortfolioHistory("week") as? Result.Success)?.data
             widgetZahlen(pnl, verlauf, System.currentTimeMillis())?.let { WidgetAblage.schreibe(ctx, it) }
             SammlungsWidget().updateAll(ctx)
         }

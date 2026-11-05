@@ -10,8 +10,9 @@ import org.junit.Test
  * Quelltext, weil ein echter Nachweis Gerät, DataStore und ein Zeitfenster von
  * Millisekunden bräuchte; die Reihenfolge ist eine Tatsache der Datei.
  *
- * Gegenprobe (29.10.2026): `spiegle(authToken, _authTokenState)` entfernt → rot
- * „der DataStore füllt weiterhin nach“.
+ * Gegenprobe (29.10.2026): den Spiegel für `_authTokenState` entfernt → rot
+ * „der DataStore füllt weiterhin nach“. Dass er nichts zurückdreht, prüft
+ * SpiegelNachlaufTest ausgeführt.
  */
 class TokenVorDerSchreibungTest {
 
@@ -66,9 +67,9 @@ class TokenVorDerSchreibungTest {
     fun `der DataStore fuellt weiterhin nach`() {
         // Ohne den Nachlauf traegt der Speicherwert nach einem Kaltstart null,
         // und die App waere abgemeldet, obwohl der Token auf der Platte liegt.
-        for ((fluss, ziel) in listOf("serverUrl" to "_serverUrlState", "authToken" to "_authTokenState")) {
-            assert(quelle.contains("spiegle($fluss, $ziel)")) {
-                "Der Nachlauf aus dem DataStore fehlt fuer $fluss — nach einem " +
+        for (ziel in listOf("_serverUrlState", "_authTokenState")) {
+            assert(Regex("""\bspiegle(<[^(\n]*>)?\([^\n]*, $ziel\)""").containsMatchIn(quelle)) {
+                "Der Nachlauf aus dem DataStore fehlt fuer $ziel — nach einem " +
                     "Kaltstart bliebe der Wert leer"
             }
         }

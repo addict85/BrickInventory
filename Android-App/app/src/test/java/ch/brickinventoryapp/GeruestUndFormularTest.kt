@@ -66,6 +66,28 @@ import org.robolectric.RuntimeEnvironment
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
+import ch.brickinventoryapp.data.repository.VerwaltungRepository
+import ch.brickinventoryapp.ui.components.BILD_ERSATZ
+import ch.brickinventoryapp.ui.components.ErfassenFab
+import ch.brickinventoryapp.ui.components.MarkenKopf
+import ch.brickinventoryapp.ui.components.OfflineHinweis
+import ch.brickinventoryapp.ui.components.bewegungReduziert
+import ch.brickinventoryapp.ui.model.BrickLinkAnsicht
+import ch.brickinventoryapp.ui.model.KatalogDetailAnsicht
+import ch.brickinventoryapp.ui.screens.CatalogDetailScreen
+import ch.brickinventoryapp.ui.screens.FinanceRoute
+import ch.brickinventoryapp.ui.screens.GalleryStatChip
+import ch.brickinventoryapp.ui.screens.KennzahlenReihe
+import ch.brickinventoryapp.ui.screens.LoginScreen
+import ch.brickinventoryapp.ui.screens.PreisalarmeRoute
+import ch.brickinventoryapp.ui.screens.SetupScreen
+import ch.brickinventoryapp.ui.screens.StartpasswortMaske
+import ch.brickinventoryapp.ui.screens.StatChipV2
+import ch.brickinventoryapp.ui.screens.ZweiterFaktorPflichtMaske
+import ch.brickinventoryapp.ui.theme.Lesebreite
+import ch.brickinventoryapp.ui.viewmodel.DateiLeser
+import ch.brickinventoryapp.ui.viewmodel.EinstellungenViewModel
+import ch.brickinventoryapp.util.fmtInt
 
 /**
  * Befunde der zehnten und elften UI-Prüfung (Android), als Verhalten ausgeführt: Der
@@ -161,7 +183,7 @@ class GeruestUndFormularTest {
         zeige {
             Geruest(meldung) {
                 Box(Modifier.fillMaxSize()) {
-                    ch.brickinventoryapp.ui.components.ErfassenFab(erfassen, {},
+                    ErfassenFab(erfassen, {},
                         Modifier.align(Alignment.BottomEnd).padding(Abstaende.gross))
                 }
             }
@@ -179,7 +201,7 @@ class GeruestUndFormularTest {
     fun `Offline-Hinweis nennt die wartenden Aenderungen in einem Banner`() {
         zeige {
             Geruest(remember { SnackbarHostState() }, offen = 3) {
-                Column { ch.brickinventoryapp.ui.components.OfflineHinweis(1_793_000_000_000L) }
+                Column { OfflineHinweis(1_793_000_000_000L) }
             }
         }
         compose.waitForIdle()
@@ -199,16 +221,16 @@ class GeruestUndFormularTest {
         try {
             welt.pfade.antworten["/api/v1/alerts"] = """{"success":true,"alerts":[
                 {"set_number":"75192-1","condition":"N","richtung":"unter","schwelle":750.0,"currency_code":"CHF"}]}"""
-            val vm = welt.t.merke(ch.brickinventoryapp.ui.viewmodel.EinstellungenViewModel(welt.t.dienste,
+            val vm = welt.t.merke(EinstellungenViewModel(welt.t.dienste,
                 KontoRepository(welt.t.api, welt.t.cache),
-                ch.brickinventoryapp.data.repository.VerwaltungRepository(welt.t.api, welt.t.cache),
+                VerwaltungRepository(welt.t.api, welt.t.cache),
                 SetsRepository(welt.t.api, welt.t.cache),
                 TeileRepository(welt.t.api, welt.t.cache),
-                object : ch.brickinventoryapp.ui.viewmodel.DateiLeser {
+                object : DateiLeser {
                     override suspend fun lies(uri: android.net.Uri): Pair<String?, ByteArray>? = null
                 }))
             zeige {
-                ch.brickinventoryapp.ui.screens.PreisalarmeRoute(vm = vm,
+                PreisalarmeRoute(vm = vm,
                     imageLoader = coil3.ImageLoader.Builder(ctx).build(), serverUrl = "",
                     snackbarHostState = remember { SnackbarHostState() }, onSetClick = {}, onZurueck = {}, meldeSchalter = {})
             }
@@ -229,14 +251,14 @@ class GeruestUndFormularTest {
         val fehler = listOf("Benutzername oder Passwort falsch", "Das aktuelle Passwort stimmt nicht", "Der Code stimmt nicht")
         zeige {
             when (fall.intValue) {
-                0 -> ch.brickinventoryapp.ui.screens.LoginScreen(
+                0 -> LoginScreen(
                     serverUrl = "https://brick.example.org", isLoading = false, error = fehler[0], codeNoetig = false,
                     formular = AnmeldeFormular.ANMELDEN, registrierungOffen = false, kontoLaeuft = false,
                     kontoMeldung = null, kontoFehler = null, onLogin = { _, _, _ -> },
                     onFormular = {}, onRegistrieren = { _, _, _, _, _ -> }, onPasswortVergessen = {}, onChangeServer = {},
                 )
-                1 -> ch.brickinventoryapp.ui.screens.StartpasswortMaske(KontoUiState(fehler = fehler[1]), { _, _, _ -> }, {})
-                else -> ch.brickinventoryapp.ui.screens.ZweiterFaktorPflichtMaske(
+                1 -> StartpasswortMaske(KontoUiState(fehler = fehler[1]), { _, _, _ -> }, {})
+                else -> ZweiterFaktorPflichtMaske(
                     ZweiterFaktorUiState(aktiv = false, fehler = fehler[2]), {}, {}, {}, {})
             }
         }
@@ -254,7 +276,7 @@ class GeruestUndFormularTest {
 
     @Test
     fun `Startpasswort-Maske fuellt Passwoerter automatisch und zeigt sie auf Wunsch`() {
-        zeige { ch.brickinventoryapp.ui.screens.StartpasswortMaske(KontoUiState(), { _, _, _ -> }, {}) }
+        zeige { StartpasswortMaske(KontoUiState(), { _, _, _ -> }, {}) }
         val felder = compose.onAllNodes(hasSetTextAction()).fetchSemanticsNodes()
         assertEquals("Aktuelles, neues und wiederholtes Passwort",
             listOf(ContentType.Password, ContentType.NewPassword, ContentType.NewPassword), felder.map(::autofill))
@@ -266,7 +288,7 @@ class GeruestUndFormularTest {
     @Test
     fun `Startpasswort-Maske steht auf dem Tablet in Lesebreite`() {
         RuntimeEnvironment.setQualifiers("de-rCH-w1280dp-h800dp-land-xhdpi")
-        zeige { ch.brickinventoryapp.ui.screens.StartpasswortMaske(KontoUiState(), { _, _, _ -> }, {}) }
+        zeige { StartpasswortMaske(KontoUiState(), { _, _, _ -> }, {}) }
         val dichte = ctx.resources.displayMetrics.density
         val feld = compose.onAllNodes(hasSetTextAction()).fetchSemanticsNodes().first().boundsInRoot
         assertTrue("Feld ${feld.width / dichte} dp breit", feld.width / dichte <= 561f)
@@ -280,16 +302,16 @@ class GeruestUndFormularTest {
         try {
             welt.pfade.antworten["/api/v1/alerts"] = """{"success":true,"alerts":[
                 {"set_number":"75192-1","condition":"N","richtung":"unter","schwelle":750.0,"currency_code":"CHF","name":"Millennium Falcon"}]}"""
-            val vm = welt.t.merke(ch.brickinventoryapp.ui.viewmodel.EinstellungenViewModel(welt.t.dienste,
+            val vm = welt.t.merke(EinstellungenViewModel(welt.t.dienste,
                 KontoRepository(welt.t.api, welt.t.cache),
-                ch.brickinventoryapp.data.repository.VerwaltungRepository(welt.t.api, welt.t.cache),
+                VerwaltungRepository(welt.t.api, welt.t.cache),
                 SetsRepository(welt.t.api, welt.t.cache),
                 TeileRepository(welt.t.api, welt.t.cache),
-                object : ch.brickinventoryapp.ui.viewmodel.DateiLeser {
+                object : DateiLeser {
                     override suspend fun lies(uri: android.net.Uri): Pair<String?, ByteArray>? = null
                 }))
             zeige {
-                ch.brickinventoryapp.ui.screens.PreisalarmeRoute(vm = vm,
+                PreisalarmeRoute(vm = vm,
                     imageLoader = coil3.ImageLoader.Builder(ctx).build(), serverUrl = "",
                     snackbarHostState = remember { SnackbarHostState() }, onSetClick = {}, onZurueck = {}, meldeSchalter = {})
             }
@@ -308,7 +330,7 @@ class GeruestUndFormularTest {
     @Test
     fun `Einrichtung im Querformat zeigt Weiter ohne Rollen`() {
         RuntimeEnvironment.setQualifiers("de-rCH-w1280dp-h800dp-land-xhdpi")
-        zeige { ch.brickinventoryapp.ui.screens.SetupScreen(currentUrl = "http://nas:3000", onSave = {}, entwicklung = false) }
+        zeige { SetupScreen(currentUrl = "http://nas:3000", onSave = {}, entwicklung = false) }
         val hoehe = compose.onRoot().fetchSemanticsNode().boundsInRoot.height
         // Ungekürzt gemessen: boundsInRoot schnitte einen Knopf unter dem Falz am Rand ab.
         val weiter = compose.onNode(hasText(ctx.getString(R.string.setup_continue)) and hasClickAction()).fetchSemanticsNode()
@@ -319,7 +341,7 @@ class GeruestUndFormularTest {
     /** Bei 200 % steht der Markenkopf klein in einer Zeile; das erste Feld bleibt oben. */
     @Test
     fun `Markenkopf bei 200 Prozent nimmt hoechstens ein Achtel der Hoehe`() {
-        zeige(schrift = 2f) { ch.brickinventoryapp.ui.components.MarkenKopf() }
+        zeige(schrift = 2f) { MarkenKopf() }
         val dichte = ctx.resources.displayMetrics.density
         val kopf = compose.onNodeWithText(ctx.getString(R.string.app_name)).fetchSemanticsNode().boundsInRoot
         assertTrue("Markenkopf endet erst bei ${kopf.bottom / dichte} dp", kopf.bottom / dichte <= 891f / 8)
@@ -331,7 +353,7 @@ class GeruestUndFormularTest {
         val aufloesung = ctx.contentResolver
         android.provider.Settings.Global.putFloat(aufloesung, android.provider.Settings.Global.ANIMATOR_DURATION_SCALE, 0f)
         var ruhig: Boolean? = null
-        zeige { ruhig = ch.brickinventoryapp.ui.components.bewegungReduziert() }
+        zeige { ruhig = bewegungReduziert() }
         assertEquals("Mit Animator-Dauer 0 ruht alles", true, ruhig)
         android.provider.Settings.Global.putFloat(aufloesung, android.provider.Settings.Global.ANIMATOR_DURATION_SCALE, 1f)
     }
@@ -343,7 +365,7 @@ class GeruestUndFormularTest {
         val dauer = android.provider.Settings.Global.ANIMATOR_DURATION_SCALE
         android.provider.Settings.Global.putFloat(aufloesung, dauer, 1f)
         var ruhig: Boolean? = null
-        zeige { ruhig = ch.brickinventoryapp.ui.components.bewegungReduziert() }
+        zeige { ruhig = bewegungReduziert() }
         assertEquals("Mit Animator-Dauer 1 bewegt sich alles", false, ruhig)
         try {
             android.provider.Settings.Global.putFloat(aufloesung, dauer, 0f)
@@ -359,7 +381,7 @@ class GeruestUndFormularTest {
     /** Ein gesperrter Hauptknopf sagt, was fehlt, bis alles da ist. */
     @Test
     fun `Startpasswort-Maske sagt, was zum Aendern fehlt`() {
-        zeige { ch.brickinventoryapp.ui.screens.StartpasswortMaske(KontoUiState(), { _, _, _ -> }, {}) }
+        zeige { StartpasswortMaske(KontoUiState(), { _, _, _ -> }, {}) }
         val grund = ctx.getString(R.string.passwort_aendern_fehlt)
         compose.onNodeWithText(grund).fetchSemanticsNode()
         val felder = compose.onAllNodes(hasSetTextAction())
@@ -373,7 +395,7 @@ class GeruestUndFormularTest {
     @Test
     fun `Verwalterrechte stehen eingeklappt unter Erweitert`() {
         zeige {
-            ch.brickinventoryapp.ui.screens.LoginScreen(
+            LoginScreen(
                 serverUrl = "https://brick.example.org", isLoading = false, error = null, codeNoetig = false,
                 formular = AnmeldeFormular.ANMELDEN, registrierungOffen = false, kontoLaeuft = false,
                 kontoMeldung = null, kontoFehler = null, onLogin = { _, _, _ -> },
@@ -394,14 +416,14 @@ class GeruestUndFormularTest {
     fun `Kennzahlen der Sammlung brechen bei 200 Prozent um und bleiben ganz sichtbar`() {
         zeige(schrift = 2f) {
             Box(Modifier.width(360.dp)) {
-                ch.brickinventoryapp.ui.screens.KennzahlenReihe {
-                    kennzahlen.forEach { (n, id) -> ch.brickinventoryapp.ui.screens.GalleryStatChip(n, id) }
+                KennzahlenReihe {
+                    kennzahlen.forEach { (n, id) -> GalleryStatChip(n, id) }
                 }
             }
         }
         val rand = 360f * ctx.resources.displayMetrics.density
         kennzahlen.forEach { (n, id) ->
-            val text = ctx.resources.getQuantityString(id, n, ch.brickinventoryapp.util.fmtInt(n))
+            val text = ctx.resources.getQuantityString(id, n, fmtInt(n))
             val b = compose.onNodeWithText(text, useUnmergedTree = true).fetchSemanticsNode().boundsInRoot
             assertTrue("„$text“ ragt über den Rand ($b, Rand $rand)", b.right <= rand + 1f && b.width > 0f)
         }
@@ -413,8 +435,8 @@ class GeruestUndFormularTest {
             ctx.getString(R.string.detail_theme) to "Star Wars")
         zeige(schrift = 2f) {
             Box(Modifier.width(360.dp)) {
-                ch.brickinventoryapp.ui.screens.KennzahlenReihe {
-                    werte.forEach { (label, wert) -> ch.brickinventoryapp.ui.screens.StatChipV2(label, wert) }
+                KennzahlenReihe {
+                    werte.forEach { (label, wert) -> StatChipV2(label, wert) }
                 }
             }
         }
@@ -433,7 +455,7 @@ class GeruestUndFormularTest {
     fun `Offline-Hinweis meldet keinen Fehler mit roter Flaeche`() {
         zeige {
             Geruest(remember { SnackbarHostState() }, offen = 3) {
-                Column { ch.brickinventoryapp.ui.components.OfflineHinweis(1_793_000_000_000L) }
+                Column { OfflineHinweis(1_793_000_000_000L) }
             }
         }
         val warten = ctx.resources.getQuantityString(R.plurals.offline_warten, 3, 3)
@@ -448,7 +470,7 @@ class GeruestUndFormularTest {
     fun `Server-Chip nennt seine Aufgabe als Schaltflaeche`() {
         var geaendert = 0
         zeige(schrift = 2f) {
-            ch.brickinventoryapp.ui.screens.LoginScreen(
+            LoginScreen(
                 serverUrl = "https://brick.example.org", isLoading = false, error = null, codeNoetig = false,
                 formular = AnmeldeFormular.ANMELDEN, registrierungOffen = false, kontoLaeuft = false,
                 kontoMeldung = null, kontoFehler = null, onLogin = { _, _, _ -> },
@@ -462,10 +484,10 @@ class GeruestUndFormularTest {
         assertEquals("Ein Tipp öffnet den Serverwechsel", 1, geaendert)
     }
 
-    private val katalogDetail = ch.brickinventoryapp.ui.model.KatalogDetailAnsicht(
+    private val katalogDetail = KatalogDetailAnsicht(
         setNumber = "10305-1", name = "Lion Knights' Castle", year = 2022, themeId = 721, themeName = "Icons",
         numParts = 4514, imageLocal = "/beispiel/set1.png", minifigs = 22,
-        bricklink = ch.brickinventoryapp.ui.model.BrickLinkAnsicht(number = "10305-1",
+        bricklink = BrickLinkAnsicht(number = "10305-1",
             url = "https://www.bricklink.com/v2/catalog/catalogitem.page?S=10305-1"))
 
     /**
@@ -476,7 +498,7 @@ class GeruestUndFormularTest {
     fun `Detailkarten stehen auf dem Tablet in Lesebreite`() {
         RuntimeEnvironment.setQualifiers("de-rCH-w1280dp-h800dp-land-xhdpi")
         zeige {
-            ch.brickinventoryapp.ui.screens.CatalogDetailScreen(setNumber = "10305-1", detail = katalogDetail,
+            CatalogDetailScreen(setNumber = "10305-1", detail = katalogDetail,
                 isLoading = false, imageLoader = coil3.ImageLoader.Builder(ctx).build(), serverUrl = "", onLoad = {},
                 onAddToGallery = { _, _, _, _, _, _ -> }, onWish = { _, _, _, _, _ -> },
                 onOpenInGallery = {}, onBack = {})
@@ -485,19 +507,19 @@ class GeruestUndFormularTest {
         val jahr = compose.onNodeWithText(ctx.getString(R.string.catalog_detail_year)).fetchSemanticsNode().boundsInRoot
         val wert = compose.onNodeWithText("2022").fetchSemanticsNode().boundsInRoot
         val zeile = (wert.right - jahr.left) / dichte
-        assertTrue("Bezeichnung und Wert über $zeile dp", zeile <= ch.brickinventoryapp.ui.theme.Lesebreite.wertzeile.value + 1f)
+        assertTrue("Bezeichnung und Wert über $zeile dp", zeile <= Lesebreite.wertzeile.value + 1f)
         val aufnehmen = compose.onNode(hasText(ctx.getString(R.string.catalog_add_to_gallery)) and hasClickAction())
             .fetchSemanticsNode().boundsInRoot
         assertTrue("Knopf ${aufnehmen.width / dichte} dp breit",
-            aufnehmen.width / dichte <= ch.brickinventoryapp.ui.theme.Lesebreite.bedienung.value + 1f)
-        compose.onNodeWithText(ch.brickinventoryapp.util.fmtInt(4514)).fetchSemanticsNode()
+            aufnehmen.width / dichte <= Lesebreite.bedienung.value + 1f)
+        compose.onNodeWithText(fmtInt(4514)).fetchSemanticsNode()
     }
 
     @Test
     fun `Katalog-Detail steht auf dem Tablet in zwei Spalten, Aufnehmen vor BrickLink`() {
         RuntimeEnvironment.setQualifiers("de-rCH-w1280dp-h800dp-land-xhdpi")
         zeige {
-            ch.brickinventoryapp.ui.screens.CatalogDetailScreen(setNumber = "10305-1", detail = katalogDetail,
+            CatalogDetailScreen(setNumber = "10305-1", detail = katalogDetail,
                 isLoading = false, imageLoader = coil3.ImageLoader.Builder(ctx).build(), serverUrl = "", onLoad = {},
                 onAddToGallery = { _, _, _, _, _, _ -> }, onWish = { _, _, _, _, _ -> },
                 onOpenInGallery = {}, onBack = {})
@@ -505,7 +527,7 @@ class GeruestUndFormularTest {
         // Der Name steht einmal da, in der Leiste wie im Set-Detail; die Angaben rechts vom Bild.
         compose.onAllNodesWithText("Lion Knights' Castle").assertCountEquals(1)
         val nummer = compose.onNodeWithText("10305-1").fetchSemanticsNode().boundsInRoot
-        val bild = compose.onNode(hasTestTag(ch.brickinventoryapp.ui.components.BILD_ERSATZ), useUnmergedTree = true)
+        val bild = compose.onNode(hasTestTag(BILD_ERSATZ), useUnmergedTree = true)
             .fetchSemanticsNode().boundsInRoot
         assertTrue("Die Angaben stehen rechts vom Bild ($bild / $nummer)", nummer.left >= bild.right)
         val dichte = ctx.resources.displayMetrics.density
@@ -522,7 +544,7 @@ class GeruestUndFormularTest {
         val welt = Beispiele.Welt(KontextTexte())
         try {
             val vm = welt.finanzen().also { it.loadValuation(); it.loadPortfolioHistory("week") }
-            zeige { ch.brickinventoryapp.ui.screens.FinanceRoute(vm = vm, imageLoader = coil3.ImageLoader.Builder(ctx).build()) }
+            zeige { FinanceRoute(vm = vm, imageLoader = coil3.ImageLoader.Builder(ctx).build()) }
             warte("Finanzen") { vm.financeState.value.let { it.valuation != null && !it.valuationLoading && !it.historyLoading } }
             val kopf = compose.onNodeWithText(ctx.getString(R.string.finance_market_avg), useUnmergedTree = true)
                 .fetchSemanticsNode().boundsInRoot

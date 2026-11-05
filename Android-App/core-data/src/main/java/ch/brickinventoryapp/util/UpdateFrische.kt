@@ -38,7 +38,7 @@ fun anzubietendeFassung(b: UpdateBeschreibung, frische: UpdateFrische, laufend: 
  * Signatur gilt, sie meldet nur nichts Neues. Darum zählt neben der Signatur die
  * Frist, und keine Beschreibung darf hinter das zurückfallen, was die App schon kennt.
  */
-fun bewerteFrische(b: UpdateBeschreibung, gesehen: UpdateStand?, laufend: Int, jetztSek: Long): UpdateFrische = when {
+internal fun bewerteFrische(b: UpdateBeschreibung, gesehen: UpdateStand?, laufend: Int, jetztSek: Long): UpdateFrische = when {
     b.versionCode < laufend -> UpdateFrische.ZURUECKGESETZT
     gesehen != null && (b.versionCode < gesehen.hoechsterCode || b.ausgestellt < gesehen.ausgestellt) ->
         UpdateFrische.ZURUECKGESETZT

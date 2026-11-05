@@ -11,6 +11,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
 import ch.brickinventoryapp.ui.*
 import coil3.ImageLoader
+import ch.brickinventoryapp.ui.components.ProduktBild
 
 /**
  * Das Vorschaubild einer Finanzzeile — 52 dp, Rückfall auf das gemeinsame Ersatzbild. Eine Funktion
@@ -24,7 +25,7 @@ fun FinanzBild(imageUrl: String?, imageLoader: ImageLoader, beschreibung: String
         color = MaterialTheme.colorScheme.surfaceVariant,
         modifier = Modifier.size(52.dp)
     ) {
-        ch.brickinventoryapp.ui.components.ProduktBild(
+        ProduktBild(
             model = imageUrl, imageLoader = imageLoader,
             contentDescription = beschreibung,
             modifier = Modifier.fillMaxSize().clip(Formen.kachel),

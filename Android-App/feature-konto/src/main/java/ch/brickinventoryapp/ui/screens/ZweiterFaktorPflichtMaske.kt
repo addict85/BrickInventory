@@ -61,6 +61,7 @@ import ch.brickinventoryapp.ui.theme.mittigBis
 import ch.brickinventoryapp.util.GeheimeZwischenablage
 import ch.brickinventoryapp.util.NumericInput
 import ch.brickinventoryapp.util.otpauthAdresse
+import ch.brickinventoryapp.ui.components.ErklaerText
 
 /**
  * Verwalterrechte ohne zweiten Faktor: Der Server weist bis zur Einrichtung fast
@@ -180,7 +181,7 @@ fun ZweiterFaktorPflichtMaske(
                         AnmeldeTitel(stringResource(R.string.zf_pflicht_titel))
                         // Der Grund kurz, die Einzelheiten auf Wunsch: Bei 200 % Schrift
                         // füllten drei Absätze den Bildschirm vor dem Passwortfeld.
-                        ch.brickinventoryapp.ui.components.ErklaerText(stringResource(R.string.zf_pflicht_kurz),
+                        ErklaerText(stringResource(R.string.zf_pflicht_kurz),
                             stringResource(R.string.zf_pflicht_text), farbe = MaterialTheme.colorScheme.onSurface)
                         Text(stringResource(R.string.zf_pflicht_passwort), style = MaterialTheme.typography.bodyMedium)
                         PasswortFeld(pwAktuell, { pwAktuell = it }, stringResource(R.string.konto_password_current),

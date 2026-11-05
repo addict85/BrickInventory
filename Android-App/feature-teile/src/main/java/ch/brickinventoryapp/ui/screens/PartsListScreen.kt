@@ -43,6 +43,18 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import ch.brickinventoryapp.ui.theme.Abstaende
 import androidx.compose.material.icons.automirrored.filled.ListAlt
 import ch.brickinventoryapp.ui.components.vorgelesenAls
+import ch.brickinventoryapp.service.teilelistenAuswahl
+import ch.brickinventoryapp.ui.components.HinweisText
+import ch.brickinventoryapp.ui.components.MitTooltip
+import ch.brickinventoryapp.ui.components.ProduktBild
+import ch.brickinventoryapp.ui.components.ScanKnopf
+import ch.brickinventoryapp.ui.components.ZustandsHinweis
+import ch.brickinventoryapp.ui.components.bewegungReduziert
+import ch.brickinventoryapp.ui.components.farbUebersetzer
+import ch.brickinventoryapp.ui.components.katalogName
+import ch.brickinventoryapp.ui.components.mitSchrift
+import ch.brickinventoryapp.ui.components.stueckzahl
+import ch.brickinventoryapp.ui.mengeAusSet
 
 // ── Sortierung wie Webapp und PDF ──
 //
@@ -88,7 +100,7 @@ fun PartsListRoute(
     // Das fertige PDF einmal zur Auswahl anbieten; ein Activity-Start gehört nicht ins ViewModel.
     LaunchedEffect(zustand.pdfDatei) {
         if (zustand.pdfDatei != null) {
-            ctx.startActivity(ch.brickinventoryapp.service.teilelistenAuswahl(ctx, oeffnenMit))
+            ctx.startActivity(teilelistenAuswahl(ctx, oeffnenMit))
             vm.pdfGeoeffnet()
         }
     }
@@ -204,7 +216,7 @@ fun PartsListScreen(
                         singleLine = true,
                         shape = MaterialTheme.shapes.large,
                         trailingIcon = {
-                            if (setInput.isNotBlank()) ch.brickinventoryapp.ui.components.MitTooltip(stringResource(R.string.partslist_add_set)) {
+                            if (setInput.isNotBlank()) MitTooltip(stringResource(R.string.partslist_add_set)) {
                                 IconButton(onClick = { addSet(setInput) }) {
                                     Icon(Icons.Default.Add, stringResource(R.string.partslist_add_set))
                                 }
@@ -213,7 +225,7 @@ fun PartsListScreen(
                     )
                     // Derselbe Scan-Knopf wie neben jeder Suche; ein schwebender Knopf mitten
                     // in einer Zeile sah aus wie der eine Hauptknopf des Bildschirms.
-                    ch.brickinventoryapp.ui.components.ScanKnopf(onScanBarcode)
+                    ScanKnopf(onScanBarcode)
                 }
 
                 // Die gesammelten Sets mit ihrem Zurücksetzen: Es leert diese Liste und steht
@@ -238,7 +250,7 @@ fun PartsListScreen(
                                 onClick = { onEntferne(i) },
                                 label = { Text(if (s.name != s.setNumber) "${s.setNumber} — ${s.name}" else s.setNumber,
                                     style = MaterialTheme.typography.bodySmall) },
-                                trailingIcon = { Icon(Icons.Default.Close, null, Modifier.size(ch.brickinventoryapp.ui.components.mitSchrift(14.dp))) }
+                                trailingIcon = { Icon(Icons.Default.Close, null, Modifier.size(mitSchrift(14.dp))) }
                             )
                         }
                     }
@@ -257,7 +269,7 @@ fun PartsListScreen(
                     // beide 16 dp breit.
                     if (isLoading) CircularProgressIndicator(Modifier.size(16.dp),
                         color = MaterialTheme.colorScheme.onPrimary, strokeWidth = 2.dp)
-                    else Icon(Icons.AutoMirrored.Filled.ListAlt, null, Modifier.size(ch.brickinventoryapp.ui.components.mitSchrift(16.dp)))
+                    else Icon(Icons.AutoMirrored.Filled.ListAlt, null, Modifier.size(mitSchrift(16.dp)))
                     Spacer(Modifier.width(Abstaende.winzig))
                     Text(stringResource(R.string.partslist_generate))
                     if (anzahl > 0) {
@@ -291,7 +303,7 @@ fun PartsListScreen(
                             // beide 16 dp breit.
                             if (bestandLaeuft) CircularProgressIndicator(Modifier.size(16.dp),
                                 color = MaterialTheme.colorScheme.onSecondary, strokeWidth = 2.dp)
-                            else Icon(Icons.Default.Inventory2, null, Modifier.size(ch.brickinventoryapp.ui.components.mitSchrift(16.dp)))
+                            else Icon(Icons.Default.Inventory2, null, Modifier.size(mitSchrift(16.dp)))
                             Spacer(Modifier.width(Abstaende.winzig))
                             Text(stringResource(R.string.partslist_fill_owned))
                         }
@@ -335,8 +347,8 @@ fun PartsListScreen(
 
         if (!generated || parts.isEmpty()) {
             // Derselbe Leerzustand wie jede Liste (ZustandsHinweis): mittig, mit Rand.
-            if (!isLoading) ch.brickinventoryapp.ui.components.ZustandsHinweis {
-                ch.brickinventoryapp.ui.components.HinweisText(Icons.AutoMirrored.Filled.ListAlt,
+            if (!isLoading) ZustandsHinweis {
+                HinweisText(Icons.AutoMirrored.Filled.ListAlt,
                     stringResource(R.string.partslist_empty_title), stringResource(R.string.partslist_empty_hint))
             }
             return@Column
@@ -388,7 +400,7 @@ private fun PdfKnopf(isExporting: Boolean, pdfError: String?, onExport: () -> Un
         // Nur das Symbol wird zum Kreisel, die Beschriftung bleibt (wie oben).
         if (isExporting) CircularProgressIndicator(Modifier.size(16.dp),
             strokeWidth = 2.dp)
-        else Icon(Icons.Default.PictureAsPdf, null, Modifier.size(ch.brickinventoryapp.ui.components.mitSchrift(16.dp)))
+        else Icon(Icons.Default.PictureAsPdf, null, Modifier.size(mitSchrift(16.dp)))
         Spacer(Modifier.width(Abstaende.winzig))
         Text("PDF")
     }
@@ -398,7 +410,7 @@ private fun PdfKnopf(isExporting: Boolean, pdfError: String?, onExport: () -> Un
 @Composable
 private fun FarbGruppenKopf(colorName: String, colorParts: List<PlPart>) {
     val mengen = androidx.compose.ui.platform.LocalResources.current
-    val farbe = ch.brickinventoryapp.ui.components.farbUebersetzer()
+    val farbe = farbUebersetzer()
     Row(verticalAlignment = Alignment.CenterVertically) {
         val hex = colorParts.first().colorHex
         if (hex != null && !colorParts.first().isFig) {
@@ -443,8 +455,8 @@ fun PartListRow(
         horizontalArrangement = Arrangement.spacedBy(10.dp)
     ) {
         // Image
-        ch.brickinventoryapp.ui.components.ProduktBild(
-            model = imgUrl?.let { ImageRequest.Builder(ctx).data(it).crossfade(!ch.brickinventoryapp.ui.components.bewegungReduziert()).build() },
+        ProduktBild(
+            model = imgUrl?.let { ImageRequest.Builder(ctx).data(it).crossfade(!bewegungReduziert()).build() },
             imageLoader = imageLoader,
             contentDescription = part.partName,
             modifier = Modifier.size(48.dp).clip(MaterialTheme.shapes.small),
@@ -461,15 +473,15 @@ fun PartListRow(
                 Text(String.format(rbPrefixFmt, part.partNumber), style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
-            Text(ch.brickinventoryapp.ui.components.katalogName(part.partName), style = MaterialTheme.typography.bodySmall,
+            Text(katalogName(part.partName), style = MaterialTheme.typography.bodySmall,
                 maxLines = 2, overflow = TextOverflow.Ellipsis)
         }
         // Quantity badge
         Surface(color = if (part.isFig) MaterialTheme.colorScheme.tertiaryContainer
                         else MaterialTheme.colorScheme.primaryContainer,
                 shape = MaterialTheme.shapes.small) {
-            Text(ch.brickinventoryapp.ui.mengeAusSet(part.quantity), Modifier.padding(horizontal = Abstaende.klein, vertical = Abstaende.winzig)
-                .vorgelesenAls(ch.brickinventoryapp.ui.components.stueckzahl(part.quantity)),
+            Text(mengeAusSet(part.quantity), Modifier.padding(horizontal = Abstaende.klein, vertical = Abstaende.winzig)
+                .vorgelesenAls(stueckzahl(part.quantity)),
                 fontWeight = FontWeight.Bold,
                 color = if (part.isFig) MaterialTheme.colorScheme.onTertiaryContainer
                         else MaterialTheme.colorScheme.onPrimaryContainer)

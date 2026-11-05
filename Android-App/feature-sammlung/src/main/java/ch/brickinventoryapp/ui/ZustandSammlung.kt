@@ -1,6 +1,7 @@
 package ch.brickinventoryapp.ui
 
 import ch.brickinventoryapp.ui.model.*
+import ch.brickinventoryapp.data.repository.GALLERY_DEFAULT_SORT
 
 /**
  * Galerie: Liste, Filter, Blätterstand und Kennzahlen. Eigener Fluss, weil sich
@@ -16,7 +17,7 @@ data class GalleryUiState(
      */
     val galleryQuery: String = "",
     val galleryTheme: String = "",
-    val gallerySort: String = ch.brickinventoryapp.data.repository.GALLERY_DEFAULT_SORT,
+    val gallerySort: String = GALLERY_DEFAULT_SORT,
     /** Themen des ganzen Bestands — vom Server, nicht aus der geladenen Seite. */
     val galleryThemes: List<String> = emptyList(),
     val galleryTotal: Int = 0,

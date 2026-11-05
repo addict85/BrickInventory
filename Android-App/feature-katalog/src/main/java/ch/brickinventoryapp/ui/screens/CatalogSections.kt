@@ -30,6 +30,8 @@ import ch.brickinventoryapp.ui.CatalogUiState
 import androidx.compose.foundation.lazy.grid.*
 import androidx.compose.material.icons.filled.*
 import ch.brickinventoryapp.ui.theme.Abstaende
+import ch.brickinventoryapp.ui.components.SortierMenue
+import ch.brickinventoryapp.ui.components.mitSchrift
 
 /** Filterzeile: Thema und Jahr; sortiert wird über das Menü neben der Suche. */
 @Composable
@@ -47,7 +49,7 @@ fun CatalogFilterRow(state: CatalogUiState, selectedThemeName: String?, showThem
                     Text(selectedThemeName ?: stringResource(R.string.catalog_filter_theme),
                         style = MaterialTheme.typography.labelMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 },
-                trailingIcon = { Icon(Icons.Default.ArrowDropDown, null, Modifier.size(ch.brickinventoryapp.ui.components.mitSchrift(16.dp))) },
+                trailingIcon = { Icon(Icons.Default.ArrowDropDown, null, Modifier.size(mitSchrift(16.dp))) },
                 modifier = Modifier.widthIn(max = 180.dp),
             )
         }
@@ -56,7 +58,7 @@ fun CatalogFilterRow(state: CatalogUiState, selectedThemeName: String?, showThem
                 selected = state.year != null,
                 onClick = { showYearSheet.value = true },
                 label = { Text(state.year?.toString() ?: stringResource(R.string.catalog_filter_year), style = MaterialTheme.typography.labelMedium) },
-                trailingIcon = { Icon(Icons.Default.ArrowDropDown, null, Modifier.size(ch.brickinventoryapp.ui.components.mitSchrift(16.dp))) },
+                trailingIcon = { Icon(Icons.Default.ArrowDropDown, null, Modifier.size(mitSchrift(16.dp))) },
             )
         }
     }
@@ -74,7 +76,7 @@ fun CatalogSearchField(state: CatalogUiState, onQueryChange: (String) -> Unit, o
             platzhalter = stringResource(R.string.catalog_search_placeholder),
             modifier = Modifier.weight(1f),
         )
-        ch.brickinventoryapp.ui.components.SortierMenue(
+        SortierMenue(
             optionen = listOf("year_desc", "year_asc", "name_asc", "num_asc", "parts_desc", "parts_asc")
                 .map { it to sortLabel(it) },
             gewaehlt = state.sort,

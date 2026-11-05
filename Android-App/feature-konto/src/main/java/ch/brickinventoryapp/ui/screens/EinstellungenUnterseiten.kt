@@ -14,6 +14,9 @@ import ch.brickinventoryapp.ui.viewmodel.HaushaltViewModel
 import ch.brickinventoryapp.ui.viewmodel.GeraeteEinstellungenViewModel
 import ch.brickinventoryapp.ui.*
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import ch.brickinventoryapp.ui.components.Ueberdeckungsschutz
+import ch.brickinventoryapp.ui.theme.Lesebreite
+import ch.brickinventoryapp.ui.viewmodel.KontoViewModel
 
 /**
  * Die Unterseiten der Einstellungen: je Rubrik eine Seite mit Titel und
@@ -61,7 +64,7 @@ fun PreisalarmeUnterseite(
     meldeSchalter: @Composable () -> Unit,
 ) {
     Unterseite(stringResource(R.string.alerts_group), snackbarHostState, onZurueck,
-        breite = ch.brickinventoryapp.ui.theme.Lesebreite.formular) {
+        breite = Lesebreite.formular) {
         meldeSchalter()
         PreisalarmeCard(uebersicht, aktionen, imageLoader, serverUrl, onSetClick)
     }
@@ -91,7 +94,7 @@ fun HaushaltRoute(
     val haushalt by vm.householdState.collectAsStateWithLifecycle()
     LaunchedEffect(Unit) { vm.loadHouseholdStatus() }
     // Einladung einlösen und Konten trennen: kein Tipp durch eine Überlagerung.
-    ch.brickinventoryapp.ui.components.Ueberdeckungsschutz()
+    Ueberdeckungsschutz()
     Unterseite(stringResource(R.string.household_title), snackbarHostState, onZurueck) {
         HouseholdCard(
             state = haushalt,
@@ -112,7 +115,7 @@ fun KontoRoute(
     snackbarHostState: SnackbarHostState,
     // An das Ziel gebunden: Profil, Geräte und ein halb eingerichteter
     // zweiter Faktor leben nur, solange die Seite offen ist.
-    konto: ch.brickinventoryapp.ui.viewmodel.KontoViewModel = hiltViewModel(),
+    konto: KontoViewModel = hiltViewModel(),
     onZurueck: () -> Unit,
 ) {
     val kontoZustand by konto.kontoState.collectAsStateWithLifecycle()
@@ -123,9 +126,9 @@ fun KontoRoute(
     LaunchedEffect(Unit) { konto.ladeZweitenFaktor() }
     LaunchedEffect(Unit) { konto.ladeDesign() }
     // Passwort, zweiter Faktor, Geräte: Ein untergeschobener Tipp schaltete hier Schutz ab.
-    ch.brickinventoryapp.ui.components.Ueberdeckungsschutz()
+    Ueberdeckungsschutz()
     Unterseite(stringResource(R.string.konto_title), snackbarHostState, onZurueck,
-        breite = ch.brickinventoryapp.ui.theme.Lesebreite.formular) {
+        breite = Lesebreite.formular) {
         KontoCard(
             kontoZustand = kontoZustand,
             onSpeichern = { b, e, v, n, p, c -> konto.speichereProfil(b, e, v, n, p, c) },

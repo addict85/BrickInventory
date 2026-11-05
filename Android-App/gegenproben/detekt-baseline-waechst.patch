@@ -4,12 +4,12 @@ Test: ch.brickinventoryapp.QuelltextRatscheTest
 Rot: die detekt-Baseline haelt nur Laenge und Verzweigung
 
 diff --git a/Android-App/tools/detekt-obergrenze.txt b/Android-App/tools/detekt-obergrenze.txt
-index 9a8885f..f3cb12a 100644
+index b80a449..3b3040e 100644
 --- a/Android-App/tools/detekt-obergrenze.txt
 +++ b/Android-App/tools/detekt-obergrenze.txt
 @@ -1,4 +1,4 @@
  # Obergrenze fuer die Eintraege in config/detekt/baseline.xml (LongMethod, CyclomaticComplexMethod
  # mit detekts Vorgabe: 60 Zeilen, 15 Zweige). Darf sinken, nie steigen; geprueft in
  # QuelltextRatscheTest. Wer eine Funktion zerlegt, streicht ihren Eintrag und senkt die Zahl.
--131
-+130
+-103
++102

@@ -4,6 +4,7 @@ import ch.brickinventoryapp.ui.theme.Formen
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectTransformGestures
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -34,6 +35,7 @@ import androidx.compose.ui.window.DialogProperties
 import ch.brickinventoryapp.ressourcen.R
 import coil3.ImageLoader
 import ch.brickinventoryapp.ui.theme.Abstaende
+import ch.brickinventoryapp.util.appNumberLocale
 
 /**
  * Bild bildschirmfuellend anzeigen, mit Zoom und Verschieben.
@@ -81,19 +83,10 @@ fun ZoomableImageDialog(
                     ),
                 contentScale = ContentScale.Fit
             )
-            MitTooltip(stringResource(R.string.detail_close), Modifier.align(Alignment.TopEnd)) {
-                IconButton(
-                    onClick = onDismiss,
-                    modifier = Modifier
-                        .padding(20.dp)
-                        .background(Color.Black.copy(alpha = 0.08f), shape = CircleShape)
-                ) {
-                    Icon(Icons.Default.Close, stringResource(R.string.detail_close), tint = Color.Black)
-                }
-            }
+            SchliessenKnopf(onDismiss)
             if (zoomScale > 1.01f) {
                 Text(
-                    String.format(ch.brickinventoryapp.util.appNumberLocale(), "%.1f×", zoomScale),
+                    String.format(appNumberLocale(), "%.1f×", zoomScale),
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     style = MaterialTheme.typography.labelMedium,
                     modifier = Modifier
@@ -103,6 +96,21 @@ fun ZoomableImageDialog(
                         .padding(horizontal = Abstaende.mittel, vertical = Abstaende.winzig)
                 )
             }
+        }
+    }
+}
+
+/** Oben rechts auf eigenem Kreis: Das Bild füllt den Schirm, der Knopf muss sich davon abheben. */
+@Composable
+private fun BoxScope.SchliessenKnopf(onDismiss: () -> Unit) {
+    MitTooltip(stringResource(R.string.detail_close), Modifier.align(Alignment.TopEnd)) {
+        IconButton(
+            onClick = onDismiss,
+            modifier = Modifier
+                .padding(20.dp)
+                .background(Color.Black.copy(alpha = 0.08f), shape = CircleShape)
+        ) {
+            Icon(Icons.Default.Close, stringResource(R.string.detail_close), tint = Color.Black)
         }
     }
 }

@@ -28,32 +28,6 @@ import org.junit.Test
  */
 class ClientRendersOnlyTest {
 
-    private fun entkleide(src: String): String {
-        val out = StringBuilder()
-        var i = 0
-        while (i < src.length) {
-            when {
-                src.startsWith("//", i) -> {
-                    val j = src.indexOf('\n', i).let { if (it < 0) src.length else it }
-                    repeat(j - i) { out.append(' ') }; i = j
-                }
-                src.startsWith("/*", i) -> {
-                    val j = src.indexOf("*/", i + 2).let { if (it < 0) src.length else it + 2 }
-                    for (c in src.substring(i, j)) out.append(if (c == '\n') '\n' else ' '); i = j
-                }
-                src[i] == '"' -> {
-                    var j = i + 1
-                    while (j < src.length && src[j] != '"') j += if (src[j] == '\\') 2 else 1
-                    j++
-                    for (c in src.substring(i, minOf(j, src.length))) out.append(if (c == '\n') '\n' else ' ')
-                    i = j
-                }
-                else -> { out.append(src[i]); i++ }
-            }
-        }
-        return out.toString()
-    }
-
     @Test
     fun `die Oberflaeche summiert keine Geldbetraege selbst`() {
         val wurzel = java.io.File(Quellen.wurzel, "ui")
@@ -65,7 +39,7 @@ class ClientRendersOnlyTest {
             "Zu wenige Kotlin-Dateien unter ${'$'}{wurzel.path} — Pfad veraltet?"
         }
         for (f in wurzel.walkTopDown().filter { it.extension == "kt" }) {
-            val code = entkleide(f.readText())
+            val code = Quellen.entkleide(f.readText())
             for (m in geld.findAll(code)) {
                 val zeile = code.substring(0, m.range.first).count { it == '\n' } + 1
                 treffer += "${f.name}:$zeile — ${m.value.take(60)}"

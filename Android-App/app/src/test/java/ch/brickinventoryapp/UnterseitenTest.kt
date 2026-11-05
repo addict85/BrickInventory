@@ -43,6 +43,21 @@ import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
+import ch.brickinventoryapp.data.repository.HaushaltRepository
+import ch.brickinventoryapp.data.repository.VerwaltungRepository
+import ch.brickinventoryapp.ui.TeilelisteUiState
+import ch.brickinventoryapp.ui.screens.CsvImportRoute
+import ch.brickinventoryapp.ui.screens.HaushaltRoute
+import ch.brickinventoryapp.ui.screens.KontoRoute
+import ch.brickinventoryapp.ui.screens.LagerorteRoute
+import ch.brickinventoryapp.ui.screens.PartsListRoute
+import ch.brickinventoryapp.ui.screens.PartsListScreen
+import ch.brickinventoryapp.ui.screens.PreisalarmeRoute
+import ch.brickinventoryapp.ui.viewmodel.DateiLeser
+import ch.brickinventoryapp.ui.viewmodel.EinstellungenViewModel
+import ch.brickinventoryapp.ui.viewmodel.HaushaltViewModel
+import ch.brickinventoryapp.ui.viewmodel.KontoViewModel
+import ch.brickinventoryapp.ui.viewmodel.TeilelisteViewModel
 
 /**
  * Die Unterseiten unter „Mehr“ und die Rückfragen vor Aktionen ohne Weg zurück:
@@ -108,20 +123,20 @@ class UnterseitenTest {
 
     /** Die Bauliste, wie der Graph sie zeigt: Route mit ViewModel, ohne Netz. */
     @Composable
-    private fun bauliste(vm: ch.brickinventoryapp.ui.viewmodel.TeilelisteViewModel) =
-        ch.brickinventoryapp.ui.screens.PartsListRoute(serverUrl = "", imageLoader = coil3.ImageLoader.Builder(ctx).build(),
+    private fun bauliste(vm: TeilelisteViewModel) =
+        PartsListRoute(serverUrl = "", imageLoader = coil3.ImageLoader.Builder(ctx).build(),
             onScanBarcode = {}, hatUnterkonten = false, barcodeSetNumber = null, onBarcodeConsumed = {},
             listState = androidx.compose.foundation.lazy.rememberLazyListState(), manuelleErfassungAnfordern = false,
             onManuelleErfassungQuittiert = {}, vm = vm)
 
     private fun imDialog(text: String) = compose.onNode(hasText(text) and hasClickAction() and hasAnyAncestor(isDialog()))
 
-    private fun einstellungen() = welt.t.merke(ch.brickinventoryapp.ui.viewmodel.EinstellungenViewModel(welt.t.dienste,
+    private fun einstellungen() = welt.t.merke(EinstellungenViewModel(welt.t.dienste,
         KontoRepository(welt.t.api, welt.t.cache),
-        ch.brickinventoryapp.data.repository.VerwaltungRepository(welt.t.api, welt.t.cache),
+        VerwaltungRepository(welt.t.api, welt.t.cache),
         SetsRepository(welt.t.api, welt.t.cache),
         TeileRepository(welt.t.api, welt.t.cache),
-        object : ch.brickinventoryapp.ui.viewmodel.DateiLeser {
+        object : DateiLeser {
             override suspend fun lies(uri: android.net.Uri): Pair<String?, ByteArray>? = null
         }))
 
@@ -151,7 +166,7 @@ class UnterseitenTest {
         welt.pfade.antworten["/api/v1/storage/locations"] = """{"success":true,"orte":[
             {"id":3,"name":"Keller"},{"id":4,"name":"Estrich"},{"id":5,"name":"Regal Wohnzimmer"}]}"""
         val vm = einstellungen().also { it.ladeEigeneLagerorte() }
-        zeige { ch.brickinventoryapp.ui.screens.LagerorteRoute(vm, remember { SnackbarHostState() }, onZurueck = {}) }
+        zeige { LagerorteRoute(vm, remember { SnackbarHostState() }, onZurueck = {}) }
         warte("Lagerorte") { vm.lagerState.value.eigene.size == 3 }
         // Kein Ort als Dauer-Textfeld, der Titel nur in der App-Leiste.
         compose.onAllNodes(hasSetTextAction()).assertCountEquals(0)
@@ -172,10 +187,10 @@ class UnterseitenTest {
     fun `Haushalt gliedert Einladen und Annehmen und entfernt erst nach Rueckfrage`() {
         welt.pfade.antworten["/api/v1/settings/household"] = """{"success":true,"is_main":true,"currency":"CHF",
             "sub_accounts":[{"id":2,"username":"lena"},{"id":3,"username":"tim"}],"open_invites":1}"""
-        val vm = welt.t.merke(ch.brickinventoryapp.ui.viewmodel.HaushaltViewModel(welt.t.dienste,
-            ch.brickinventoryapp.data.repository.HaushaltRepository(welt.t.api, welt.t.cache),
+        val vm = welt.t.merke(HaushaltViewModel(welt.t.dienste,
+            HaushaltRepository(welt.t.api, welt.t.cache),
             KontoRepository(welt.t.api, welt.t.cache))).also { it.loadHouseholdStatus() }
-        zeige { ch.brickinventoryapp.ui.screens.HaushaltRoute(vm, remember { SnackbarHostState() }, onZurueck = {}) }
+        zeige { HaushaltRoute(vm, remember { SnackbarHostState() }, onZurueck = {}) }
         warte("Haushalt") { vm.householdState.value.status != null }
 
         val ueberschrift = SemanticsMatcher.keyIsDefined(SemanticsProperties.Heading)
@@ -197,7 +212,7 @@ class UnterseitenTest {
     @Test
     fun `CSV-Import zeigt je Art eine Aktion mit ihren Spalten und den Titel einmal`() {
         val vm = einstellungen()
-        zeige { ch.brickinventoryapp.ui.screens.CsvImportRoute(vm, remember { SnackbarHostState() }, onZurueck = {}) }
+        zeige { CsvImportRoute(vm, remember { SnackbarHostState() }, onZurueck = {}) }
         compose.onAllNodesWithText(ctx.getString(R.string.csv_upload_title), ignoreCase = true).assertCountEquals(1)
         compose.onNode(hasText(ctx.getString(R.string.csv_upload_sets)) and hasClickAction() and
             SemanticsMatcher.expectValue(SemanticsProperties.Role, Role.Button)).fetchSemanticsNode()
@@ -207,7 +222,7 @@ class UnterseitenTest {
     @Test
     fun `leere Bauliste steht mittig und bietet kein Zuruecksetzen an`() {
         zeige {
-            ch.brickinventoryapp.ui.screens.PartsListScreen(ch.brickinventoryapp.ui.TeilelisteUiState(),
+            PartsListScreen(TeilelisteUiState(),
                 serverUrl = "", imageLoader = coil3.ImageLoader.Builder(ctx).build(), onScanBarcode = {})
         }
         compose.onAllNodes(hasText(ctx.getString(R.string.partslist_reset)) and hasClickAction()).assertCountEquals(0)
@@ -225,7 +240,7 @@ class UnterseitenTest {
     fun `Der Vorgabe-Stern ist ein Schalter mit dem Namen des Orts`() {
         welt.pfade.antworten["/api/v1/storage/locations"] = """{"success":true,"orte":[{"id":3,"name":"Keller"}]}"""
         val vm = einstellungen().also { it.ladeEigeneLagerorte() }
-        zeige { ch.brickinventoryapp.ui.screens.LagerorteRoute(vm, remember { SnackbarHostState() }, onZurueck = {}) }
+        zeige { LagerorteRoute(vm, remember { SnackbarHostState() }, onZurueck = {}) }
         warte("Lagerorte") { vm.lagerState.value.eigene.size == 1 }
         val stern = compose.onNodeWithContentDescription(ctx.getString(R.string.storage_vorgabe_cd, "Keller")).fetchSemanticsNode()
         assertEquals("TalkBack hört an/aus", ToggleableState.Off, stern.config.getOrNull(SemanticsProperties.ToggleableState))
@@ -235,10 +250,10 @@ class UnterseitenTest {
     fun `Entfernen nennt das Konto im Haushalt`() {
         welt.pfade.antworten["/api/v1/settings/household"] = """{"success":true,"is_main":true,"currency":"CHF",
             "sub_accounts":[{"id":2,"username":"lena"},{"id":3,"username":"tim"}],"open_invites":1}"""
-        val vm = welt.t.merke(ch.brickinventoryapp.ui.viewmodel.HaushaltViewModel(welt.t.dienste,
-            ch.brickinventoryapp.data.repository.HaushaltRepository(welt.t.api, welt.t.cache),
+        val vm = welt.t.merke(HaushaltViewModel(welt.t.dienste,
+            HaushaltRepository(welt.t.api, welt.t.cache),
             KontoRepository(welt.t.api, welt.t.cache))).also { it.loadHouseholdStatus() }
-        zeige { ch.brickinventoryapp.ui.screens.HaushaltRoute(vm, remember { SnackbarHostState() }, onZurueck = {}) }
+        zeige { HaushaltRoute(vm, remember { SnackbarHostState() }, onZurueck = {}) }
         warte("Haushalt") { vm.householdState.value.status != null }
         val entfernen = ctx.getString(R.string.household_remove)
         for (name in listOf("lena", "tim")) {
@@ -253,7 +268,7 @@ class UnterseitenTest {
             {"set_number":"75192-1","condition":"N","richtung":"unter","schwelle":750.0,"currency_code":"CHF","name":"Millennium Falcon"}]}"""
         val vm = einstellungen()
         zeige {
-            ch.brickinventoryapp.ui.screens.PreisalarmeRoute(vm = vm,
+            PreisalarmeRoute(vm = vm,
                 imageLoader = coil3.ImageLoader.Builder(ctx).build(), serverUrl = "",
                 snackbarHostState = remember { SnackbarHostState() }, onSetClick = {}, onZurueck = {}, meldeSchalter = {})
         }
@@ -270,11 +285,11 @@ class UnterseitenTest {
     fun `Konto wechselt das Passwort erst mit passender Wiederholung`() {
         welt.pfade.antworten["/api/v1/auth/profile"] = """{"success":true,"user":{"id":1,"username":"marco",
             "email":"marco@example.org","first_name":"Marco","last_name":"Muster","email_verified":true}}"""
-        val konto = welt.t.merke(ch.brickinventoryapp.ui.viewmodel.KontoViewModel(
+        val konto = welt.t.merke(KontoViewModel(
             KontoRepository(welt.t.api, welt.t.cache), KontextTexte(),
             welt.t.meldungen, welt.t.sitzung))
         zeige {
-            ch.brickinventoryapp.ui.screens.KontoRoute(onAbmelden = {}, snackbarHostState = remember { SnackbarHostState() },
+            KontoRoute(onAbmelden = {}, snackbarHostState = remember { SnackbarHostState() },
                 konto = konto, onZurueck = {})
         }
         warte("Profil") { konto.kontoState.value.profil != null }
@@ -297,11 +312,11 @@ class UnterseitenTest {
         welt.pfade.antworten["/api/v1/auth/profile"] = """{"success":true,"user":{"id":1,"username":"marco",
             "email":"marco@example.org","first_name":"Marco","last_name":"Muster","email_verified":true,
             "email_neu":"neu@example.org"}}"""
-        val konto = welt.t.merke(ch.brickinventoryapp.ui.viewmodel.KontoViewModel(
+        val konto = welt.t.merke(KontoViewModel(
             KontoRepository(welt.t.api, welt.t.cache), KontextTexte(),
             welt.t.meldungen, welt.t.sitzung))
         zeige {
-            ch.brickinventoryapp.ui.screens.KontoRoute(onAbmelden = {}, snackbarHostState = remember { SnackbarHostState() },
+            KontoRoute(onAbmelden = {}, snackbarHostState = remember { SnackbarHostState() },
                 konto = konto, onZurueck = {})
         }
         warte("Profil") { konto.kontoState.value.profil != null }
@@ -315,11 +330,11 @@ class UnterseitenTest {
     fun `Konto fragt beim Speichern des Profils nach dem Passwort`() {
         welt.pfade.antworten["/api/v1/auth/profile"] = """{"success":true,"user":{"id":1,"username":"marco",
             "email":"marco@example.org","first_name":"Marco","last_name":"Muster","email_verified":true}}"""
-        val konto = welt.t.merke(ch.brickinventoryapp.ui.viewmodel.KontoViewModel(
+        val konto = welt.t.merke(KontoViewModel(
             KontoRepository(welt.t.api, welt.t.cache), KontextTexte(),
             welt.t.meldungen, welt.t.sitzung))
         zeige {
-            ch.brickinventoryapp.ui.screens.KontoRoute(onAbmelden = {}, snackbarHostState = remember { SnackbarHostState() },
+            KontoRoute(onAbmelden = {}, snackbarHostState = remember { SnackbarHostState() },
                 konto = konto, onZurueck = {})
         }
         warte("Profil") { konto.kontoState.value.profil != null }

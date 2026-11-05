@@ -17,6 +17,7 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 import ch.brickinventoryapp.ressourcen.R
+import ch.brickinventoryapp.data.MeldungsKanal
 
 // Interaktive Katalog-Calls: schnell scheitern statt still minutenlang
 // weiterversuchen — der Fehlerzustand hat einen Retry-Button.
@@ -40,7 +41,7 @@ internal const val SICHTFENSTER_RUHE_MS = 150L
 @HiltViewModel
 class CatalogViewModel @Inject constructor(
     private val repo: BrickRepository,
-    private val meldungen: ch.brickinventoryapp.data.MeldungsKanal,
+    private val meldungen: MeldungsKanal,
     /** Texte in der Sprache der App und Fehlermeldungen wie überall (AppTexte). */
     private val texte: Texte,
 ) : ViewModel(), KatalogAktionen {

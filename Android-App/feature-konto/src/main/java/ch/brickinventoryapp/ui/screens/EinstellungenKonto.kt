@@ -33,6 +33,22 @@ import ch.brickinventoryapp.ressourcen.R
 import ch.brickinventoryapp.ui.*
 import ch.brickinventoryapp.util.passwortZuKurz
 import ch.brickinventoryapp.ui.theme.Abstaende
+import ch.brickinventoryapp.ui.DESIGN_NAMEN
+import ch.brickinventoryapp.ui.DESIGN_TEXTE
+import ch.brickinventoryapp.ui.DesignWahl
+import ch.brickinventoryapp.ui.GeraeteUiState
+import ch.brickinventoryapp.ui.KontoUiState
+import ch.brickinventoryapp.ui.ZweiterFaktorUiState
+import ch.brickinventoryapp.ui.components.LocalSchrittschutz
+import ch.brickinventoryapp.ui.components.MitTooltip
+import ch.brickinventoryapp.ui.components.PasswortRueckfrage
+import ch.brickinventoryapp.ui.components.Sichtschutz
+import ch.brickinventoryapp.ui.components.SperrGrund
+import ch.brickinventoryapp.ui.components.Ueberdeckungsschutz
+import ch.brickinventoryapp.ui.components.WahlChips
+import ch.brickinventoryapp.util.GeheimeZwischenablage
+import ch.brickinventoryapp.util.fmtTag
+import ch.brickinventoryapp.util.otpauthAdresse
 
 /**
  * Das eigene Konto: Profil und Passwort. Über /auth/profile und
@@ -44,7 +60,7 @@ internal fun KontoCard(
     // Parameter `zustand` vom Typ GeraeteUiState. Der Compiler trennt die
     // Gültigkeitsbereiche, UiStateFieldsTest bestimmt den Typ aber je Name und Datei
     // und hielte die Felder für fehlend.
-    kontoZustand: ch.brickinventoryapp.ui.KontoUiState,
+    kontoZustand: KontoUiState,
     onSpeichern: (String, String, String, String, String?, String?) -> Unit,
     onPasswort: (String, String, String?) -> Unit,
     onMeldungWeg: () -> Unit,
@@ -156,7 +172,7 @@ internal fun KontoCard(
                 hinweis = if (verschieden) stringResource(R.string.startpasswort_verschieden) else null,
                 fehlerhaft = verschieden)
             if (pwAktuell.isBlank() || pwNeu.isEmpty() || pwWiederholt.isEmpty())
-                ch.brickinventoryapp.ui.components.SperrGrund(stringResource(R.string.passwort_aendern_fehlt))
+                SperrGrund(stringResource(R.string.passwort_aendern_fehlt))
             // Tonal statt umrandet: Ein deaktivierter umrandeter Knopf war kaum zu sehen.
             FilledTonalButton(
                 onClick = { onPasswort(pwAktuell, pwNeu, code) },
@@ -169,7 +185,7 @@ internal fun KontoCard(
 
     // Der Server bestätigt jede Profiländerung mit dem Passwort: Sonst liesse sich über
     // eine neue Adresse das Passwort zurücksetzen. Gefragt wird erst beim Speichern.
-    if (fragtPasswort) ch.brickinventoryapp.ui.components.PasswortRueckfrage(
+    if (fragtPasswort) PasswortRueckfrage(
         titel = stringResource(R.string.konto_save),
         text = stringResource(R.string.konto_profil_password_needed),
         bestaetigen = stringResource(R.string.konto_save),
@@ -209,7 +225,7 @@ internal fun oeffneMitAuswahl(ctx: android.content.Context, uri: String, titel: 
  */
 @Composable
 internal fun ZweiterFaktorCard(
-    zfZustand: ch.brickinventoryapp.ui.ZweiterFaktorUiState,
+    zfZustand: ZweiterFaktorUiState,
     onEinrichten: (String) -> Unit,
     onBestaetigen: (String) -> Unit,
     onNeueCodes: (String) -> Unit,
@@ -226,11 +242,11 @@ internal fun ZweiterFaktorCard(
     val schluesselEtikett = stringResource(R.string.app_name)
     val teilenTitel = stringResource(R.string.zf_share_title)
     val kopieren: (String) -> Unit = { text ->
-        ch.brickinventoryapp.util.GeheimeZwischenablage.kopiere(kontext, schluesselEtikett, text)
+        GeheimeZwischenablage.kopiere(kontext, schluesselEtikett, text)
     }
     // Neue Codes und ein neuer Schlüssel erscheinen gleich danach im Klartext: erst
     // nach der Gerätesperre (Schrittschutz), zusätzlich zu Passwort bzw. Code.
-    val schutz = ch.brickinventoryapp.ui.components.LocalSchrittschutz.current
+    val schutz = LocalSchrittschutz.current
     val codesGrund = stringResource(R.string.schritt_codes)
     // Felder leeren, sobald ein Schritt gelungen ist — sonst stuende das
     // Passwort beim naechsten Schritt noch da.
@@ -258,7 +274,7 @@ internal fun ZweiterFaktorCard(
         when {
             // 1. Frische Codes: einmal zeigen, dann wegraeumen. Kein Bildschirmfoto davon.
             zfZustand.codes.isNotEmpty() -> {
-                ch.brickinventoryapp.ui.components.Sichtschutz()
+                Sichtschutz()
                 Text(stringResource(R.string.zf_codes_title), fontWeight = FontWeight.SemiBold)
                 Text(stringResource(R.string.zf_codes_hint), style = MaterialTheme.typography.bodySmall)
                 Text(zfZustand.codes.joinToString("\n"),
@@ -270,11 +286,11 @@ internal fun ZweiterFaktorCard(
             }
             // 2. Einrichtung laeuft: Schluessel in die App, Code bestaetigen.
             zfZustand.geheimnis != null -> {
-                ch.brickinventoryapp.ui.components.Sichtschutz()
+                Sichtschutz()
                 Text(stringResource(R.string.zf_step_app), style = MaterialTheme.typography.bodySmall)
                 Button(
                     onClick = {
-                        val uri = ch.brickinventoryapp.util.otpauthAdresse(zfZustand.otpauth)
+                        val uri = otpauthAdresse(zfZustand.otpauth)
                         ohneApp = uri == null || !oeffneMitAuswahl(kontext, uri, auswahlTitel)
                     },
                     modifier = Modifier.fillMaxWidth()
@@ -325,7 +341,7 @@ internal fun ZweiterFaktorCard(
  */
 @Composable
 internal fun GeraeteCard(
-    zustand: ch.brickinventoryapp.ui.GeraeteUiState,
+    zustand: GeraeteUiState,
     onReload: () -> Unit,
     onRevoke: (String) -> Unit,
     onRevokeOthers: () -> Unit,
@@ -379,13 +395,13 @@ internal fun GeraeteCard(
                             }
                             Text(
                                 stringResource(R.string.tokens_row_hint,
-                                    ch.brickinventoryapp.util.fmtTag(g.angelegt) ?: "—",
-                                    ch.brickinventoryapp.util.fmtTag(g.zuletztBenutzt) ?: stringResource(R.string.tokens_unused),
-                                    g.laeuftAb?.let { ch.brickinventoryapp.util.fmtTag(it) ?: "—" } ?: stringResource(R.string.tokens_never)),
+                                    fmtTag(g.angelegt) ?: "—",
+                                    fmtTag(g.zuletztBenutzt) ?: stringResource(R.string.tokens_unused),
+                                    g.laeuftAb?.let { fmtTag(it) ?: "—" } ?: stringResource(R.string.tokens_never)),
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
-                        if (!g.aktuell) ch.brickinventoryapp.ui.components.MitTooltip(stringResource(R.string.tokens_revoke_title)) {
+                        if (!g.aktuell) MitTooltip(stringResource(R.string.tokens_revoke_title)) {
                             IconButton(onClick = { fragt = g.tokenId }) {
                                 Icon(Icons.Default.Delete,
                                     stringResource(R.string.tokens_revoke_title),
@@ -420,7 +436,7 @@ internal fun GeraeteCard(
         onDismissRequest = { fragt = null },
         title = { Text(stringResource(R.string.tokens_revoke_title)) },
         text = {
-            ch.brickinventoryapp.ui.components.Ueberdeckungsschutz()
+            Ueberdeckungsschutz()
             Text(stringResource(R.string.tokens_revoke_text,
                 zustand.geraete.firstOrNull { it.tokenId == zuEntwerten }?.bezeichnung ?: "—"))
         },
@@ -439,7 +455,7 @@ internal fun GeraeteCard(
         onDismissRequest = { fragtAlle = false },
         title = { Text(stringResource(R.string.tokens_revoke_others_title)) },
         text = {
-            ch.brickinventoryapp.ui.components.Ueberdeckungsschutz()
+            Ueberdeckungsschutz()
             val betroffen = zustand.geraete.count { !it.aktuell }
             Text(pluralStringResource(
                 R.plurals.tokens_revoke_others_text, betroffen, betroffen))
@@ -463,24 +479,24 @@ internal fun GeraeteCard(
  */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-internal fun DesignCard(design: ch.brickinventoryapp.ui.DesignWahl?, onWahl: (String) -> Unit) {
+internal fun DesignCard(design: DesignWahl?, onWahl: (String) -> Unit) {
     if (design == null) return
-    val namen = ch.brickinventoryapp.ui.DESIGN_NAMEN.toMap()
+    val namen = DESIGN_NAMEN.toMap()
     SettingsCard(title = stringResource(R.string.monitoring_theme), icon = Icons.Default.Palette) {
         Text(stringResource(R.string.konto_design_hint), style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant)
         // Eine Wahl aus mehreren — dieselben Radio-Chips wie in den Einstellungen;
         // "" steht für „die Vorgabe des Servers“.
         val vorgabe = namen[design.vorgabe]?.let { stringResource(it) } ?: design.vorgabe
-        ch.brickinventoryapp.ui.components.WahlChips(
+        WahlChips(
             optionen = listOf("" to stringResource(R.string.konto_design_vorgabe, vorgabe)) +
-                ch.brickinventoryapp.ui.DESIGN_NAMEN.map { (wert, text) -> wert to stringResource(text) },
+                DESIGN_NAMEN.map { (wert, text) -> wert to stringResource(text) },
             gewaehlt = design.eigenes ?: "",
             onWahl = { wert -> if (wert != (design.eigenes ?: "")) onWahl(wert) },
         )
         // Was das gewählte Design ausmacht — Werkbank allein am Bild vom dunklen Classic zu
         // unterscheiden, gelang kaum.
-        ch.brickinventoryapp.ui.DESIGN_TEXTE[design.eigenes ?: design.vorgabe]?.let {
+        DESIGN_TEXTE[design.eigenes ?: design.vorgabe]?.let {
             Text(stringResource(it), style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant)
         }

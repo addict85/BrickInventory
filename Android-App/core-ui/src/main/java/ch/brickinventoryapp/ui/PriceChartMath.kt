@@ -1,6 +1,8 @@
 package ch.brickinventoryapp.ui
 
 import ch.brickinventoryapp.ui.model.PreisDiagrammAnsicht
+import ch.brickinventoryapp.util.appNumberLocale
+import ch.brickinventoryapp.util.fmtDatum
 
 /**
  * Rechnen für das Preisdiagramm, ohne Compose und damit prüfbar. Die vom Server
@@ -49,7 +51,7 @@ object PriceChartMath {
      */
     fun zusammenfassung(
         lines: List<ChartLine>,
-        locale: java.util.Locale = ch.brickinventoryapp.util.appNumberLocale(),
+        locale: java.util.Locale = appNumberLocale(),
     ): List<LinienZusammenfassung> = lines.map { l ->
         val erst = l.points.minBy { it.day }
         val letzt = l.points.maxBy { it.day }
@@ -137,8 +139,8 @@ object PriceChartMath {
      * die Achse dieselbe Form zeigt wie das Erfassungsdatum darüber. Unbrauchbare
      * Eingaben bleiben unverändert.
      */
-    fun formatDay(iso: String, locale: java.util.Locale = ch.brickinventoryapp.util.appNumberLocale()): String =
-        ch.brickinventoryapp.util.fmtDatum(iso, locale) ?: iso
+    fun formatDay(iso: String, locale: java.util.Locale = appNumberLocale()): String =
+        fmtDatum(iso, locale) ?: iso
 
     /** Erster und letzter Tag der gemeinsamen Achse (für die Randbeschriftung). */
     fun axisRange(chart: PreisDiagrammAnsicht?): Pair<String, String>? {

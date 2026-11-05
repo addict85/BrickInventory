@@ -6,6 +6,22 @@ import ch.brickinventoryapp.util.NetworkPolicy
 import ch.brickinventoryapp.util.VersionsHinweis
 import okhttp3.OkHttpClient
 import java.util.concurrent.TimeUnit
+import ch.brickinventoryapp.data.MeldungsKanal
+import ch.brickinventoryapp.data.PasswortPflicht
+import ch.brickinventoryapp.data.RechteSignal
+import ch.brickinventoryapp.data.SessionExpiredSignal
+import ch.brickinventoryapp.data.ZweiterFaktorPflicht
+import ch.brickinventoryapp.util.ErneuerbareTlsFabrik
+import ch.brickinventoryapp.util.LanguageManager
+import ch.brickinventoryapp.util.PinVertrauen
+import ch.brickinventoryapp.util.WahlVertrauen
+import ch.brickinventoryapp.util.ZertifikatsFrage
+import ch.brickinventoryapp.util.auftragsVertrauen
+import ch.brickinventoryapp.util.netzMitschnitt
+import ch.brickinventoryapp.util.pinSchluessel
+import ch.brickinventoryapp.util.spkiFingerabdruck
+import ch.brickinventoryapp.util.SystemWurzeln
+import ch.brickinventoryapp.ressourcen.R
 
 /**
  * Die Zugangslage des Geräts. Die Werte kommen aus dem Speicherspiegel des
@@ -29,9 +45,9 @@ private fun vertrauen(ks: java.security.KeyStore?): javax.net.ssl.X509ExtendedTr
 }
 
 /** Dieselben System-Wurzeln wie im Pinning (ohne Nutzer-CAs), erst beim ersten Bedarf gelesen. */
-internal fun systemWurzeln(): ch.brickinventoryapp.util.SystemWurzeln {
-    val fingerabdruecke by lazy { vertrauen(null).acceptedIssuers.map { ch.brickinventoryapp.util.spkiFingerabdruck(it) }.toSet() }
-    return ch.brickinventoryapp.util.SystemWurzeln { it in fingerabdruecke }
+internal fun systemWurzeln(): SystemWurzeln {
+    val fingerabdruecke by lazy { vertrauen(null).acceptedIssuers.map { spkiFingerabdruck(it) }.toSet() }
+    return SystemWurzeln { it in fingerabdruecke }
 }
 
 /**
@@ -39,14 +55,14 @@ internal fun systemWurzeln(): ch.brickinventoryapp.util.SystemWurzeln {
  * AndroidCAStore samt Nutzer-CAs für die ausdrückliche Einstellung — nur für den
  * eigenen Server; darüber dessen Pinning (util/ServerVertrauen.kt).
  */
-private var gemeinsamesVertrauen: ch.brickinventoryapp.util.PinVertrauen? = null
-private var gemeinsameTls: ch.brickinventoryapp.util.ErneuerbareTlsFabrik? = null
+private var gemeinsamesVertrauen: PinVertrauen? = null
+private var gemeinsameTls: ErneuerbareTlsFabrik? = null
 
 /** Ein SSLContext für alle Server-Clients; neu, sobald die Nutzer-CAs umschalten. */
 @Synchronized
-private fun serverTls(prefs: PreferencesManager, tm: ch.brickinventoryapp.util.PinVertrauen): ch.brickinventoryapp.util.ErneuerbareTlsFabrik {
+private fun serverTls(prefs: PreferencesManager, tm: PinVertrauen): ErneuerbareTlsFabrik {
     gemeinsameTls?.let { return it }
-    val fabrik = ch.brickinventoryapp.util.ErneuerbareTlsFabrik {
+    val fabrik = ErneuerbareTlsFabrik {
         javax.net.ssl.SSLContext.getInstance("TLS").apply { init(null, arrayOf(tm), null) }.socketFactory
     }
     prefs.beimNutzerCaWechsel { fabrik.erneuere() }
@@ -54,17 +70,17 @@ private fun serverTls(prefs: PreferencesManager, tm: ch.brickinventoryapp.util.P
 }
 
 @Synchronized
-private fun serverVertrauen(prefs: PreferencesManager, frage: ch.brickinventoryapp.util.ZertifikatsFrage): ch.brickinventoryapp.util.PinVertrauen {
+private fun serverVertrauen(prefs: PreferencesManager, frage: ZertifikatsFrage): PinVertrauen {
     gemeinsamesVertrauen?.let { return it }
     val system = vertrauen(null)
-    return ch.brickinventoryapp.util.PinVertrauen(
-        kette = ch.brickinventoryapp.util.WahlVertrauen(
+    return PinVertrauen(
+        kette = WahlVertrauen(
             system = system,
             mitNutzer = lazy { vertrauen(java.security.KeyStore.getInstance("AndroidCAStore").apply { load(null) }) },
             nutzerErlaubt = { prefs.nutzerCaErlaubt() },
         ),
         pins = prefs,
-        eigenerServer = { ch.brickinventoryapp.util.pinSchluessel(prefs.serverUrlState.value.orEmpty()) },
+        eigenerServer = { pinSchluessel(prefs.serverUrlState.value.orEmpty()) },
         frage = frage,
         fremdeHosts = system,
     ).also { gemeinsamesVertrauen = it }
@@ -75,26 +91,26 @@ private fun serverVertrauen(prefs: PreferencesManager, frage: ch.brickinventorya
 internal fun buildInterceptorClient(
     prefs: PreferencesManager,
     isApiClient: Boolean,
-    sessionExpired: ch.brickinventoryapp.data.SessionExpiredSignal,
+    sessionExpired: SessionExpiredSignal,
     ctx: android.content.Context,
     /** Wohin ein Versionshinweis geht; nur der API-Client meldet. */
-    meldungen: ch.brickinventoryapp.data.MeldungsKanal? = null,
+    meldungen: MeldungsKanal? = null,
     /** Wartet auf die Entscheidung über ein unbekanntes Zertifikat. */
-    frage: ch.brickinventoryapp.util.ZertifikatsFrage,
+    frage: ZertifikatsFrage,
     /** Tauscht den Token, wenn der Server es verlangt; nur für Clients mit Token. */
     rotation: Rotationsanlass? = null,
     /** Nur der API-Client: Dort kommen die Verwalteraufrufe an. */
-    rechte: ch.brickinventoryapp.data.RechteSignal? = null,
+    rechte: RechteSignal? = null,
     /** Nur der API-Client: Mit Startpasswort weist der Server jeden Abruf ab. */
-    pflicht: ch.brickinventoryapp.data.PasswortPflicht? = null,
+    pflicht: PasswortPflicht? = null,
     /** Nur der API-Client: Verwalterrechte ohne zweiten Faktor weist der Server ab. */
-    faktorPflicht: ch.brickinventoryapp.data.ZweiterFaktorPflicht? = null,
+    faktorPflicht: ZweiterFaktorPflicht? = null,
 ): OkHttpClient {
     val versionsMeldung: ((VersionsHinweis) -> Unit)? = meldungen?.let { kanal ->
         { hinweis: VersionsHinweis ->
-            kanal.zeige(ch.brickinventoryapp.util.LanguageManager.localizedContext(ctx).getString(
-                if (hinweis == VersionsHinweis.APP_ZU_ALT) ch.brickinventoryapp.ressourcen.R.string.api_app_zu_alt
-                else ch.brickinventoryapp.ressourcen.R.string.api_server_zu_alt))
+            kanal.zeige(LanguageManager.localizedContext(ctx).getString(
+                if (hinweis == VersionsHinweis.APP_ZU_ALT) R.string.api_app_zu_alt
+                else R.string.api_server_zu_alt))
         }
     }
     val client = OkHttpClient.Builder()
@@ -102,7 +118,7 @@ internal fun buildInterceptorClient(
             // Auch der Bild-Client: Sonst fehlten Bildanfragen im Logcat, und ihr
             // Fehlen sähe aus wie ein Befund statt wie eine Lücke der Beobachtung.
             if (BuildConfig.DEBUG) {
-                addInterceptor(ch.brickinventoryapp.util.netzMitschnitt())
+                addInterceptor(netzMitschnitt())
             }
         }
         // Keine Umleitung am Wächter vorbei: Er sieht nur, was er selbst schickt, und
@@ -114,8 +130,8 @@ internal fun buildInterceptorClient(
             // Die Sprache aus den Ressourcen: Der Server antwortet in der, die die Oberfläche zeigt.
             eigeneKoepfe = { original, ziel ->
                 if (original.header("Accept-Language") == null) ziel.header("Accept-Language",
-                    ch.brickinventoryapp.util.LanguageManager.localizedContext(ctx)
-                        .getString(ch.brickinventoryapp.ressourcen.R.string.lang_code))
+                    LanguageManager.localizedContext(ctx)
+                        .getString(R.string.lang_code))
             }, rotation = rotation, rechteEntzogen = { rechte?.melde() },
             passwortWechselNoetig = { pflicht?.melde() }, zweiterFaktorPflicht = { faktorPflicht?.melde() }))
         .apply {
@@ -137,7 +153,7 @@ internal fun buildInterceptorClient(
  */
 internal fun buildEntwertungsBasis(
     prefs: PreferencesManager,
-    frage: ch.brickinventoryapp.util.ZertifikatsFrage,
+    frage: ZertifikatsFrage,
 ): OkHttpClient = OkHttpClient.Builder()
     .followRedirects(false)
     .followSslRedirects(false)
@@ -156,12 +172,12 @@ internal fun buildEntwertungsBasis(
  */
 internal fun auftragsVertrauenFabrik(prefs: PreferencesManager): (String, String?) -> javax.net.ssl.X509ExtendedTrustManager {
     val system = vertrauen(null)
-    val kette = ch.brickinventoryapp.util.WahlVertrauen(
+    val kette = WahlVertrauen(
         system = system,
         mitNutzer = lazy { vertrauen(java.security.KeyStore.getInstance("AndroidCAStore").apply { load(null) }) },
         nutzerErlaubt = { prefs.nutzerCaErlaubt() },
     )
-    return { schluessel, pin -> ch.brickinventoryapp.util.auftragsVertrauen(kette, system, schluessel, pin ?: prefs.pin(schluessel)) }
+    return { schluessel, pin -> auftragsVertrauen(kette, system, schluessel, pin ?: prefs.pin(schluessel)) }
 }
 
 /**

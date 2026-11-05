@@ -20,11 +20,20 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.navigation.toRoute
 import ch.brickinventoryapp.ui.viewmodel.GutscheinViewModel
 import ch.brickinventoryapp.ui.viewmodel.aktivitaetsViewModel
+import ch.brickinventoryapp.ui.ScrollPositionKeeper
+import ch.brickinventoryapp.ui.components.Schrittsperre
+import ch.brickinventoryapp.ui.components.Sichtschutz
+import ch.brickinventoryapp.ui.components.Ueberdeckungsschutz
+import ch.brickinventoryapp.ui.viewmodel.ErfassungViewModel
+import ch.brickinventoryapp.ui.viewmodel.UpdateViewModel
+import ch.brickinventoryapp.ui.viewmodel.gutscheinPdfAdresse
+import ch.brickinventoryapp.ui.viewmodel.zeigtGutscheine
 
 /** Navigationsziele der Werkzeuge, von „Mehr“ und der Einstellungen. */
 fun NavGraphBuilder.toolsGraph(u: ZielUmgebung) {
     finanzZiele(u)
     mehrZiele(u)
+    verwaltungsZiele(u)
     einstellungsZiele(u)
 }
 
@@ -43,7 +52,7 @@ private fun NavGraphBuilder.finanzZiele(u: ZielUmgebung) {
             LaunchedEffect(state.serverUrl) {
                 if (state.serverUrl.isNotBlank() && financeState.historyPoints.isEmpty()) finanzen.loadPortfolioHistory()
             }
-            ch.brickinventoryapp.ui.ScrollPositionKeeper(
+            ScrollPositionKeeper(
                 Screen.Finance.rollSchluessel, financeListState,
                 financeState.valuation != null, vm.scrollMemory)
             FinanceRoute(
@@ -63,7 +72,7 @@ private fun NavGraphBuilder.finanzZiele(u: ZielUmgebung) {
         }
     }
     composable<Screen.BarcodeScanner> {
-        val erfassung = ch.brickinventoryapp.ui.viewmodel.aktivitaetsViewModel<ch.brickinventoryapp.ui.viewmodel.ErfassungViewModel>()
+        val erfassung = aktivitaetsViewModel<ErfassungViewModel>()
         BarcodeScannerScreen(
             // Texterkennung nur hier: Dieser Scanner bedient „Set hinzufügen“ (Galerie) und
             // „Teileliste hinzufügen“. Der Preisvergleich hat einen eigenen Aufruf und lässt
@@ -85,7 +94,7 @@ private fun NavGraphBuilder.finanzZiele(u: ZielUmgebung) {
     }
     composable<Screen.PdfViewer> { backStackEntry ->
         val ziel = backStackEntry.toRoute<Screen.PdfViewer>()
-        if (ch.brickinventoryapp.ui.viewmodel.zeigtGutscheine(ziel.url)) ch.brickinventoryapp.ui.components.Sichtschutz()
+        if (zeigtGutscheine(ziel.url)) Sichtschutz()
         val vm: AppViewModel = aktivitaetsViewModel()
         val state by vm.state.collectAsStateWithLifecycle()
         PdfViewerRoute(
@@ -102,12 +111,11 @@ private fun NavGraphBuilder.mehrZiele(u: ZielUmgebung) {
     val navController = u.navController
     val imageLoader = u.imageLoader
     val partsListState = u.rollen.teileliste
-    val settingsScrollState = u.rollen.einstellungen
     composable<Screen.PartsList> {
         val vm: AppViewModel = aktivitaetsViewModel()
         val state by vm.state.collectAsStateWithLifecycle()
         val blick by vm.blickfeld.collectAsStateWithLifecycle()
-        val erfassung = ch.brickinventoryapp.ui.viewmodel.aktivitaetsViewModel<ch.brickinventoryapp.ui.viewmodel.ErfassungViewModel>()
+        val erfassung = aktivitaetsViewModel<ErfassungViewModel>()
         val barcodeState by erfassung.barcodeState.collectAsStateWithLifecycle()
         ReiterGeruest(stringResource(R.string.nav_partslist), u) {
             PartsListRoute(
@@ -129,7 +137,7 @@ private fun NavGraphBuilder.mehrZiele(u: ZielUmgebung) {
     composable<Screen.Mehr> {
         val vm: AppViewModel = aktivitaetsViewModel()
         val state by vm.state.collectAsStateWithLifecycle()
-        val selbstUpdate: ch.brickinventoryapp.ui.viewmodel.UpdateViewModel = ch.brickinventoryapp.ui.viewmodel.aktivitaetsViewModel()
+        val selbstUpdate: UpdateViewModel = aktivitaetsViewModel()
         val update by selbstUpdate.updateState.collectAsStateWithLifecycle()
         ReiterGeruest(stringResource(R.string.nav_more), u) {
             MehrBildschirm(
@@ -143,6 +151,12 @@ private fun NavGraphBuilder.mehrZiele(u: ZielUmgebung) {
             )
         }
     }
+}
+
+/** Einstellungen und Verwaltung, ebenfalls über „Mehr“. */
+private fun NavGraphBuilder.verwaltungsZiele(u: ZielUmgebung) {
+    val navController = u.navController
+    val settingsScrollState = u.rollen.einstellungen
     composable<Screen.Settings> {
         val vm: AppViewModel = aktivitaetsViewModel()
         val state by vm.state.collectAsStateWithLifecycle()
@@ -152,7 +166,7 @@ private fun NavGraphBuilder.mehrZiele(u: ZielUmgebung) {
         // braucht keine Gutscheinliste.
         LaunchedEffect(state.serverUrl) { if (state.serverUrl.isNotBlank()) vm.loadSettings() }
         ReiterGeruest(stringResource(R.string.nav_settings), u) {
-            ch.brickinventoryapp.ui.ScrollPositionKeeper(
+            ScrollPositionKeeper(
                 Screen.Settings.rollSchluessel, settingsScrollState, vm.scrollMemory)
             SettingsRoute(
                 vm = hiltViewModel<EinstellungenViewModel>(),
@@ -172,8 +186,8 @@ private fun NavGraphBuilder.mehrZiele(u: ZielUmgebung) {
         LaunchedEffect(stand.isAdmin) { if (!stand.isAdmin) navController.popBackStack() }
         ReiterGeruest(stringResource(R.string.nav_monitoring), u) {
             // Verwalteraktionen nur nach der Gerätesperre; kein Tipp durch eine Überlagerung.
-            ch.brickinventoryapp.ui.components.Ueberdeckungsschutz()
-            ch.brickinventoryapp.ui.components.Schrittsperre(stringResource(R.string.schritt_verwaltung)) {
+            Ueberdeckungsschutz()
+            Schrittsperre(stringResource(R.string.schritt_verwaltung)) {
                 MonitoringRoute(appTheme = stand.appTheme, onEinstellungenNeu = { vm.loadSettings() })
             }
         }
@@ -204,7 +218,7 @@ private fun NavGraphBuilder.einstellungsZiele(u: ZielUmgebung) {
             val titel = if (ziel.id == null) exportTitel
                 else gutscheine.gutscheine.find { it.id == ziel.id }?.number.orEmpty()
             navController.navigate(Screen.PdfViewer(
-                ch.brickinventoryapp.ui.viewmodel.gutscheinPdfAdresse(state.serverUrl, ziel), titel))
+                gutscheinPdfAdresse(state.serverUrl, ziel), titel))
             gutscheinVm.gutscheinPdfQuittieren()
         }
         GutscheineRoute(gutscheinVm, snackbarHostState) { navController.popBackStack() }

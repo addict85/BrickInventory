@@ -22,10 +22,10 @@ import dagger.hilt.components.SingletonComponent
 import java.io.FileNotFoundException
 
 /** Der Name, unter dem die Ziel-App die Teileliste sieht. */
-const val TEILELISTE_NAME = "teileliste.pdf"
+internal const val TEILELISTE_NAME = "teileliste.pdf"
 
 /** Die Adresse der Teileliste beim [TeilelistenProvider]; die Authority steht so im Manifest. */
-fun teilelistenUri(ctx: Context): Uri =
+internal fun teilelistenUri(ctx: Context): Uri =
     Uri.Builder().scheme("content").authority("${ctx.packageName}.teileliste").path(TEILELISTE_NAME).build()
 
 /**

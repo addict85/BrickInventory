@@ -92,7 +92,7 @@ class ListenfilterImZustandTest {
 
     /**
      * Ausgeführt: Erste Seite, Nachladen und der Abschnitt der manuellen Teile
-     * tragen Blickfeld und Suchtext (TeileViewModel gegen einen Testserver).
+     * tragen Blickfeld und Suchtext (TeileViewModel gegen einen PfadServer ohne Netz).
      * Gegenprobe (31.10.2026, gemessen): in TeileViewModel.manuelleTeile
      * `teileSicht` → `null` → rot „… ohne accounts=own“.
      */
@@ -102,16 +102,16 @@ class ListenfilterImZustandTest {
         val pfade = PfadServer(
             "/api/v1/parts" to """{"success":true,"total":900,"parts":[{"part_number":"3001"}]}""",
             "/api/v1/parts/manual" to """{"success":true,"parts":[{"part_number":"3002"}]}""")
-        val t = TestDienste(pfade.server)
+        val t = TestDienste(pfade.imTakt(), io = Dispatchers.Main)
         try {
             val vm = t.merke(TeileViewModel(t.dienste, TeileRepository(t.api, t.cache),
                 FigurenRepository(t.api, t.cache), SavedStateHandle(mapOf("teile_suche" to "Stein"))))
             vm.setScope(ScopeFilter.View.PARTS, "own")
             // Seite 1 zieht die manuellen Teile nach; erst danach blättern, sonst
             // bricht das Nachladen diesen Abruf ab.
-            TestApi.warteBis("manuelle Teile") { vm.partsState.value.manualParts != null }
+            assertTrue("manuelle Teile", vm.partsState.value.manualParts != null)
             vm.loadParts(page = 2)
-            TestApi.warteBis("zweite Seite") { pfade.anfragenAn("page=2").isNotEmpty() }
+            assertTrue("zweite Seite", pfade.anfragenAn("page=2").isNotEmpty())
             val abrufe = pfade.anfragenAn("GET /api/v1/parts?") + pfade.anfragenAn("GET /api/v1/parts/manual")
             assertTrue("Keine zwei Seiten: $abrufe", abrufe.count { it.startsWith("GET /api/v1/parts?") } >= 2)
             for (a in abrufe) for (teil in listOf("accounts=own", "search=Stein")) assertTrue("$a ohne $teil", teil in a)

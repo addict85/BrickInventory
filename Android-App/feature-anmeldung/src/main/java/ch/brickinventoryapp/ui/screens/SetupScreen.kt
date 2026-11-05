@@ -27,11 +27,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
-import android.view.ViewGroup
 import androidx.camera.core.*
-import android.view.MotionEvent
 import androidx.camera.camera2.interop.ExperimentalCamera2Interop
-import androidx.camera.view.PreviewView
 import androidx.compose.foundation.background
 import androidx.compose.ui.graphics.Color
 import androidx.compose.foundation.border
@@ -55,6 +52,12 @@ import ch.brickinventoryapp.ui.parseQrPayload
 import ch.brickinventoryapp.ui.qrWechseltServer
 import ch.brickinventoryapp.ui.theme.Abstaende
 import ch.brickinventoryapp.ui.components.ausserhalbDerSystemleisten
+import ch.brickinventoryapp.ui.components.LocalAppFassung
+import ch.brickinventoryapp.ui.components.MarkenKopf
+import ch.brickinventoryapp.ui.components.MitTooltip
+import ch.brickinventoryapp.ui.components.Ueberdeckungsschutz
+import ch.brickinventoryapp.ui.components.mitSchrift
+import ch.brickinventoryapp.ui.theme.Lesebreite
 
 /**
  * Server einrichten: per QR-Code oder von Hand, nur mit https. Steht noch eine
@@ -124,7 +127,7 @@ fun SetupScreen(
     // Kopf (Marke, Hinweis zum Altbestand) und Handlung (QR, Adresse, Weiter) als zwei
     // Teile: Im Querformat stehen sie nebeneinander, sonst lag „Weiter“ unter dem Falz.
     val kopfTeil: @Composable ColumnScope.() -> Unit = {
-        ch.brickinventoryapp.ui.components.MarkenKopf(untertitel = stringResource(R.string.setup_subtitle))
+        MarkenKopf(untertitel = stringResource(R.string.setup_subtitle))
 
         if (altbestand) {
             Spacer(Modifier.height(Abstaende.gross))
@@ -138,7 +141,7 @@ fun SetupScreen(
                 border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
             ) {
                 Row(Modifier.padding(Abstaende.gross), horizontalArrangement = Arrangement.spacedBy(Abstaende.mittel)) {
-                    Icon(Icons.Default.Lock, null, Modifier.size(ch.brickinventoryapp.ui.components.mitSchrift(24.dp)),
+                    Icon(Icons.Default.Lock, null, Modifier.size(mitSchrift(24.dp)),
                         tint = MaterialTheme.colorScheme.primary)
                     Column(verticalArrangement = Arrangement.spacedBy(Abstaende.klein)) {
                         Text(stringResource(R.string.setup_altbestand_titel), fontWeight = FontWeight.Bold)
@@ -149,7 +152,7 @@ fun SetupScreen(
                                 Row(horizontalArrangement = Arrangement.spacedBy(Abstaende.klein)) {
                                     // Feste Ziffernspalte mit Tabellenziffern: „1.“ ist schmaler als
                                     // „2.“, und die Schritte begannen verschieden weit rechts.
-                                    Text("${i + 1}.", Modifier.width(ch.brickinventoryapp.ui.components.mitSchrift(20.dp)),
+                                    Text("${i + 1}.", Modifier.width(mitSchrift(20.dp)),
                                         style = MaterialTheme.typography.bodyMedium.copy(fontFeatureSettings = "tnum"),
                                         fontWeight = FontWeight.SemiBold)
                                     Text(stringResource(schritt), style = MaterialTheme.typography.bodyMedium)
@@ -172,7 +175,7 @@ fun SetupScreen(
             onClick = { scanError = null; showScanner = true },
             modifier = Modifier.fillMaxWidth().heightIn(min = 56.dp)
         ) {
-            Icon(Icons.Default.QrCodeScanner, null, Modifier.size(ch.brickinventoryapp.ui.components.mitSchrift(20.dp)))
+            Icon(Icons.Default.QrCodeScanner, null, Modifier.size(mitSchrift(20.dp)))
             Spacer(Modifier.width(Abstaende.klein))
             Text(stringResource(R.string.setup_scan_qr), fontWeight = FontWeight.SemiBold)
         }
@@ -246,7 +249,7 @@ fun SetupScreen(
         }
         // Aus der App-Fassung statt als Literal: versionName entsteht bei jedem Build
         // (app/build.gradle.kts). Ohne Namen (Vorschau, Test) bliebe nur „Build “ stehen.
-        val fassung = ch.brickinventoryapp.ui.components.LocalAppFassung.current.name
+        val fassung = LocalAppFassung.current.name
         if (fassung.isNotBlank()) {
             Spacer(Modifier.height(Abstaende.gross))
             Text(
@@ -265,7 +268,7 @@ fun SetupScreen(
         val hoehe = maxHeight
         if (maxWidth > hoehe && maxWidth >= QUER_ZWEISPALTIG) {
             Row(
-                Modifier.fillMaxSize().mittigBis(ch.brickinventoryapp.ui.theme.Lesebreite.formular * 2)
+                Modifier.fillMaxSize().mittigBis(Lesebreite.formular * 2)
                     .padding(horizontal = Abstaende.riesig),
                 horizontalArrangement = Arrangement.spacedBy(Abstaende.riesig),
             ) {
@@ -281,7 +284,7 @@ fun SetupScreen(
             }
         } else Column(
             modifier = Modifier.verticalScroll(rememberScrollState()).heightIn(min = hoehe)
-                .mittigBis(ch.brickinventoryapp.ui.theme.Lesebreite.formular).padding(Abstaende.riesig),
+                .mittigBis(Lesebreite.formular).padding(Abstaende.riesig),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
@@ -325,7 +328,7 @@ private fun QrVorschlagDialog(
         title = { Text(stringResource(if (bisher != null) R.string.zert_titel_geaendert else R.string.setup_qr_titel)) },
         text = {
             // Die Bestätigung schickt die Anmeldung an diesen Server: kein Tippen durch eine Überlagerung.
-            ch.brickinventoryapp.ui.components.Ueberdeckungsschutz()
+            Ueberdeckungsschutz()
             Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(Abstaende.klein)) {
                 // Geparst statt roh: Ein Code wie `https://mein.server@fremd.example` oder mit
                 // Zeilenumbruch zeigte sonst einen Namen, der nicht das Ziel ist.
@@ -441,7 +444,7 @@ fun QrSetupScannerScreen(onResult: (String) -> Unit, onDismiss: () -> Unit) {
                 KameraErlaubnisHinweis { cameraPermission.anfragen() }
             }
         }
-        ch.brickinventoryapp.ui.components.MitTooltip(stringResource(R.string.scanner_close), Modifier.align(Alignment.TopEnd)) {
+        MitTooltip(stringResource(R.string.scanner_close), Modifier.align(Alignment.TopEnd)) {
             IconButton(onClick = onDismiss, Modifier.padding(Abstaende.gross)) {
                 Icon(Icons.Default.Close, stringResource(R.string.scanner_close), tint = Color.White)
             }
@@ -500,12 +503,7 @@ fun QrCameraPreview(frozen: Boolean, onQrFound: (String) -> Unit) {
 
     AndroidView(
         factory = { ctx ->
-            val previewView = PreviewView(ctx).apply {
-                layoutParams = ViewGroup.LayoutParams(
-                    ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
-                scaleType = PreviewView.ScaleType.FILL_CENTER
-                implementationMode = PreviewView.ImplementationMode.PERFORMANCE
-            }
+            val previewView = kameraVorschau(ctx)
             // Anbieter holen, Vorschau bauen, binden: KameraAufbau.kt. Kein
             // beiFehler: Ist die Kamera nicht verfügbar, bleibt die Vorschau
             // bewusst leer — anders als im Scanner, der einen Hinweis zeigt.
@@ -514,28 +512,7 @@ fun QrCameraPreview(frozen: Boolean, onQrFound: (String) -> Unit) {
                 previewView = previewView,
                 lifecycleOwner = lifecycleOwner,
                 analyse = imageAnalyzer,
-            ) { camera ->
-                // Tap-to-Focus — bewusst mit disableAutoCancel(): Der Nutzer tippt, weil der
-                // kontinuierliche Autofokus gerade danebenliegt. Fiele die Kamera nach ein paar
-                // Sekunden auf ihre eigene Wahl zurück, wäre genau das wieder da, wogegen der
-                // Tipper gerichtet war — man tippt, es wird scharf, und kurz danach ist es wieder
-                // weg.
-                previewView.setOnTouchListener { v, event ->
-                    if (event.action == MotionEvent.ACTION_UP) {
-                        try {
-                            val point = previewView.meteringPointFactory
-                                .createPoint(event.x, event.y)
-                            val action = FocusMeteringAction.Builder(point, FocusMeteringAction.FLAG_AF)
-                                .addPoint(point, FocusMeteringAction.FLAG_AE)
-                                .disableAutoCancel()
-                                .build()
-                            camera.cameraControl.startFocusAndMetering(action)
-                        } catch (_: Exception) {}
-                        v.performClick()
-                    }
-                    true
-                }
-            }
+            ) { camera -> tippZumFokus(previewView) { camera.cameraControl } }
             previewView
         },
         modifier = Modifier.fillMaxSize()

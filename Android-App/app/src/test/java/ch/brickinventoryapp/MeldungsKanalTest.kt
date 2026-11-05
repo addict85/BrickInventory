@@ -41,7 +41,7 @@ import org.junit.Test
  * herausgelöste ViewModel bringt sonst einen weiteren Kanal mit.
  *
  * Teilschritt 3 und 4 laufen ausgeführt (Kanal, Reflexion, zwei ViewModels
- * gegen einen Testserver); 1 und 2 sind Struktur über alle Dateien.
+ * gegen einen PfadServer ohne Netz); 1 und 2 sind Struktur über alle Dateien.
  *
  * Gegenproben (29.10.2026 gemessen: c, d, e; die übrigen früher, über das
  * Ersatz-Skript im Werkzeugordner):
@@ -144,16 +144,16 @@ class MeldungsKanalTest {
         val pfade = PfadServer()
         pfade.codes["/api/v1/sets/75192-1"] = 500
         pfade.codes["/api/v1/parts/3001/5/color"] = 500
-        val t = TestDienste(pfade.server)
+        val t = TestDienste(pfade.imTakt(), io = Dispatchers.Main)
         try {
             val galerie = t.merke(GalerieViewModel(t.dienste, SetsRepository(t.api, t.cache),
                 FinanzenRepository(t.api, t.cache), SavedStateHandle()))
             galerie.deleteSet("75192-1")
-            TestApi.warteBis("Meldung der Galerie") { t.meldungen.meldung.value != null }
+            assertTrue("Meldung der Galerie", t.meldungen.meldung.value != null)
             t.meldungen.quittiere()
             val teile = t.merke(TeileViewModel(t.dienste, TeileRepository(t.api, t.cache), FigurenRepository(t.api, t.cache), SavedStateHandle()))
             teile.setzeTeilFarbe("3001", 5, 11)
-            TestApi.warteBis("Meldung der Teile") { t.meldungen.meldung.value != null }
+            assertTrue("Meldung der Teile", t.meldungen.meldung.value != null)
         } finally {
             t.aufraeumen()
             Dispatchers.resetMain()

@@ -5,6 +5,7 @@ import ch.brickinventoryapp.data.cache.ResponseCache
 import ch.brickinventoryapp.data.model.*
 import javax.inject.Inject
 import javax.inject.Singleton
+import ch.brickinventoryapp.data.model.CatalogYearVerteilungResponse
 
 /**
  * Der Set-Katalog des Servers. Erreichbar über `repo.katalog.…`.
@@ -32,6 +33,6 @@ class KatalogRepository @Inject constructor(
      */
     suspend fun getCatalogYearVerteilung(
         q: String? = null, themeId: Int? = null, sort: String = "year_desc"
-    ): Result<ch.brickinventoryapp.data.model.CatalogYearVerteilungResponse> =
+    ): Result<CatalogYearVerteilungResponse> =
         safeCall { api.getCatalogYearVerteilung(q, themeId, sort) }
 }

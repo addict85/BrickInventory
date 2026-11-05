@@ -61,6 +61,37 @@ import org.robolectric.Shadows.shadowOf
 import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
 import java.util.Locale
+import ch.brickinventoryapp.data.repository.HaushaltRepository
+import ch.brickinventoryapp.data.repository.VerwaltungRepository
+import ch.brickinventoryapp.nav.TeileListeUndDetailRoute
+import ch.brickinventoryapp.ui.CatalogUiState
+import ch.brickinventoryapp.ui.KontoUiState
+import ch.brickinventoryapp.ui.TeilelisteUiState
+import ch.brickinventoryapp.ui.ZweiterFaktorUiState
+import ch.brickinventoryapp.ui.components.OfflineHinweis
+import ch.brickinventoryapp.ui.model.BrickLinkAnsicht
+import ch.brickinventoryapp.ui.model.KatalogDetailAnsicht
+import ch.brickinventoryapp.ui.model.KatalogSetAnsicht
+import ch.brickinventoryapp.ui.screens.AddSetDialog
+import ch.brickinventoryapp.ui.screens.CatalogDetailScreen
+import ch.brickinventoryapp.ui.screens.CatalogScreen
+import ch.brickinventoryapp.ui.screens.ComparisonScreen
+import ch.brickinventoryapp.ui.screens.CsvImportRoute
+import ch.brickinventoryapp.ui.screens.HaushaltRoute
+import ch.brickinventoryapp.ui.screens.KontoRoute
+import ch.brickinventoryapp.ui.screens.LagerorteRoute
+import ch.brickinventoryapp.ui.screens.PartsListScreen
+import ch.brickinventoryapp.ui.screens.PreisalarmeRoute
+import ch.brickinventoryapp.ui.screens.SetupScreen
+import ch.brickinventoryapp.ui.screens.StartpasswortMaske
+import ch.brickinventoryapp.ui.screens.ZweiterFaktorPflichtMaske
+import ch.brickinventoryapp.ui.viewmodel.DateiLeser
+import ch.brickinventoryapp.ui.viewmodel.EinstellungenViewModel
+import ch.brickinventoryapp.ui.viewmodel.GalerieViewModel
+import ch.brickinventoryapp.ui.viewmodel.HaushaltViewModel
+import ch.brickinventoryapp.ui.viewmodel.KatalogAktionen
+import ch.brickinventoryapp.ui.viewmodel.KontoViewModel
+import ch.brickinventoryapp.ui.viewmodel.SetDetailViewModel
 
 /**
  * Was BildschirmFotoTest nicht abdeckt, je einmal statt im vollen Raster (die
@@ -178,21 +209,21 @@ class BildschirmFotoVariantenTest {
                                  ownerUserId: Int?, storage: String?): Flow<SetAnlegenSchritt> = emptyFlow()
         }))
 
-    private fun galerieFertig(vm: ch.brickinventoryapp.ui.viewmodel.GalerieViewModel) =
+    private fun galerieFertig(vm: GalerieViewModel) =
         { vm.galleryState.value.let { it.sets.isNotEmpty() && it.stats != null && !it.galleryLoading } }
 
-    private fun detailFertig(vm: ch.brickinventoryapp.ui.viewmodel.SetDetailViewModel) = {
+    private fun detailFertig(vm: SetDetailViewModel) = {
         vm.setDetailState.value.let { s ->
             s.setDetail != null && s.setPrice != null && s.priceHistory != null && s.acquisitions.isNotEmpty() &&
                 !s.setDetailLoading && !s.setPriceLoading && !s.priceHistoryLoading && !s.acquisitionsLoading }
     }
 
     @Composable
-    private fun Galerie(vm: ch.brickinventoryapp.ui.viewmodel.GalerieViewModel) =
+    private fun Galerie(vm: GalerieViewModel) =
         GalleryRoute(vm = vm, erfassung = erfassung(), imageLoader = bilder, onScanBarcode = {}, onSetClick = {})
 
     @Composable
-    private fun Detail(vm: ch.brickinventoryapp.ui.viewmodel.SetDetailViewModel) =
+    private fun Detail(vm: SetDetailViewModel) =
         SetDetailRoute(setNumber = Beispiele.SET, vm = vm, serverUrl = "", imageLoader = bilder, onBack = {}, onDelete = {})
 
     private fun galerieFoto(name: String, design: String = "classic", dunkel: Boolean = false,
@@ -326,7 +357,7 @@ class BildschirmFotoVariantenTest {
 
     @Composable
     private fun Geruest(
-        galerie: ch.brickinventoryapp.ui.viewmodel.GalerieViewModel,
+        galerie: GalerieViewModel,
         snackbar: SnackbarHostState = remember { SnackbarHostState() },
         offeneAenderungen: Int = 0,
         offlineStand: Long? = null,
@@ -355,7 +386,7 @@ class BildschirmFotoVariantenTest {
             NavHost(nav, startDestination = Screen.Gallery) {
                 composable<Screen.Gallery> {
                     androidx.compose.foundation.layout.Column {
-                        ch.brickinventoryapp.ui.components.OfflineHinweis(offlineStand)
+                        OfflineHinweis(offlineStand)
                         Galerie(galerie)
                     }
                 }
@@ -475,7 +506,7 @@ class BildschirmFotoVariantenTest {
         // Compose nie ruhig werden. Darum die Uhr anhalten und gezielt vorstellen.
         compose.mainClock.autoAdvance = false
         val ctx = ApplicationProvider.getApplicationContext<android.content.Context>()
-        compose.onNodeWithContentDescription(ctx.getString(ch.brickinventoryapp.ressourcen.R.string.wanted_add_title)).performClick()
+        compose.onNodeWithContentDescription(ctx.getString(R.string.wanted_add_title)).performClick()
         // Das Dialogfenster entsteht über den Hauptlooper, nicht über die Compose-Uhr.
         repeat(3) {
             compose.mainClock.advanceTimeBy(200)
@@ -503,7 +534,7 @@ class BildschirmFotoVariantenTest {
         val vm = welt.merkliste().also { it.ladeMerkliste() }
         zeige("merkliste-detail", geraet = "tablet", bereit = { vm.merklisteState.value.merkposten.isNotEmpty() },
             zustand = { vm.merklisteState.value }) {
-            ch.brickinventoryapp.ui.screens.MerklisteRoute(vm = vm, imageLoader = bilder, nebeneinander = true,
+            MerklisteRoute(vm = vm, imageLoader = bilder, nebeneinander = true,
                 onScan = {}, onOeffnenEinzeln = { _, _ -> })
         }
         compose.onNode(androidx.compose.ui.test.hasText("Titanic", substring = true) and
@@ -521,12 +552,12 @@ class BildschirmFotoVariantenTest {
 
     // ── Unterseiten und Erfassen, die sonst kein Foto hatten (I2) ──
 
-    private fun einstellungen() = welt.t.merke(ch.brickinventoryapp.ui.viewmodel.EinstellungenViewModel(welt.t.dienste,
+    private fun einstellungen() = welt.t.merke(EinstellungenViewModel(welt.t.dienste,
         KontoRepository(welt.t.api, welt.t.cache),
-        ch.brickinventoryapp.data.repository.VerwaltungRepository(welt.t.api, welt.t.cache),
+        VerwaltungRepository(welt.t.api, welt.t.cache),
         SetsRepository(welt.t.api, welt.t.cache),
         TeileRepository(welt.t.api, welt.t.cache),
-        object : ch.brickinventoryapp.ui.viewmodel.DateiLeser {
+        object : DateiLeser {
             override suspend fun lies(uri: android.net.Uri): Pair<String?, ByteArray>? = null
         }))
 
@@ -538,7 +569,7 @@ class BildschirmFotoVariantenTest {
         // ohne Aufruf hier fragte erst der Bildschirm selbst.
         val vm = einstellungen().also { it.ladeEigeneLagerorte() }
         zeige("lagerorte", bereit = { vm.lagerState.value.eigene.size == 3 }, zustand = { vm.lagerState.value }) {
-            ch.brickinventoryapp.ui.screens.LagerorteRoute(vm, remember { SnackbarHostState() }, onZurueck = {})
+            LagerorteRoute(vm, remember { SnackbarHostState() }, onZurueck = {})
         }
         anhalten()
         foto("lagerorte")
@@ -548,7 +579,7 @@ class BildschirmFotoVariantenTest {
     fun csvImport() {
         val vm = einstellungen()
         zeige("csv-import") {
-            ch.brickinventoryapp.ui.screens.CsvImportRoute(vm, remember { SnackbarHostState() }, onZurueck = {})
+            CsvImportRoute(vm, remember { SnackbarHostState() }, onZurueck = {})
         }
         anhalten()
         foto("csv-import")
@@ -558,11 +589,11 @@ class BildschirmFotoVariantenTest {
     fun haushalt() {
         welt.pfade.antworten["/api/v1/settings/household"] = """{"success":true,"is_main":true,"currency":"CHF",
             "sub_accounts":[{"id":2,"username":"lena"},{"id":3,"username":"tim"}],"open_invites":1}"""
-        val vm = welt.t.merke(ch.brickinventoryapp.ui.viewmodel.HaushaltViewModel(welt.t.dienste,
-            ch.brickinventoryapp.data.repository.HaushaltRepository(welt.t.api, welt.t.cache),
+        val vm = welt.t.merke(HaushaltViewModel(welt.t.dienste,
+            HaushaltRepository(welt.t.api, welt.t.cache),
             KontoRepository(welt.t.api, welt.t.cache))).also { it.loadHouseholdStatus() }
         zeige("haushalt", bereit = { vm.householdState.value.status != null }, zustand = { vm.householdState.value }) {
-            ch.brickinventoryapp.ui.screens.HaushaltRoute(vm, remember { SnackbarHostState() }, onZurueck = {})
+            HaushaltRoute(vm, remember { SnackbarHostState() }, onZurueck = {})
         }
         anhalten()
         foto("haushalt")
@@ -571,7 +602,7 @@ class BildschirmFotoVariantenTest {
     @Test
     fun bauliste() {
         zeige("bauliste") {
-            ch.brickinventoryapp.ui.screens.PartsListScreen(ch.brickinventoryapp.ui.TeilelisteUiState(),
+            PartsListScreen(TeilelisteUiState(),
                 serverUrl = "", imageLoader = bilder, onScanBarcode = {})
         }
         anhalten()
@@ -592,7 +623,7 @@ class BildschirmFotoVariantenTest {
         // setContent wartet auf Ruhe, darum geht der Dialog erst danach auf.
         val offen = androidx.compose.runtime.mutableStateOf(false)
         zeige(name, geraet = geraet, schrift = schrift, warten = false) {
-            if (offen.value) ch.brickinventoryapp.ui.screens.AddSetDialog(onDismiss = {},
+            if (offen.value) AddSetDialog(onDismiss = {},
                 onAdd = { _, _, _, _, _, _ -> }, lagerorte = listOf("Keller", "Estrich"), sofortFokus = false)
         }
         compose.mainClock.autoAdvance = false
@@ -608,8 +639,8 @@ class BildschirmFotoVariantenTest {
             fun breite(label: Int) = compose.onNode(androidx.compose.ui.test.hasSetTextAction() and
                 androidx.compose.ui.test.hasText(ctx.getString(label))).fetchSemanticsNode().boundsInRoot.width
             org.junit.Assert.assertEquals("Lagerort so breit wie die Set-Nummer",
-                breite(ch.brickinventoryapp.ressourcen.R.string.gallery_set_number),
-                breite(ch.brickinventoryapp.ressourcen.R.string.detail_storage), 1f)
+                breite(R.string.gallery_set_number),
+                breite(R.string.detail_storage), 1f)
         }
     }
 
@@ -649,15 +680,15 @@ class BildschirmFotoVariantenTest {
 
     // ── Bildschirme, die bisher kein Foto hatten (M6) ──
 
-    private val katalogDetail = ch.brickinventoryapp.ui.model.KatalogDetailAnsicht(
+    private val katalogDetail = KatalogDetailAnsicht(
         setNumber = "10305-1", name = "Lion Knights' Castle", year = 2022, themeId = 721, themeName = "Icons",
         numParts = 4514, imageLocal = "/beispiel/set1.png", minifigs = 22,
-        bricklink = ch.brickinventoryapp.ui.model.BrickLinkAnsicht(number = "10305-1",
+        bricklink = BrickLinkAnsicht(number = "10305-1",
             url = "https://www.bricklink.com/v2/catalog/catalogitem.page?S=10305-1"))
 
     private fun katalogDetailFoto(dunkel: Boolean, geraet: String, schrift: Float = 1f, name: String = "katalog-detail") {
         zeige(name, dunkel = dunkel, geraet = geraet, schrift = schrift) {
-            ch.brickinventoryapp.ui.screens.CatalogDetailScreen(setNumber = "10305-1", detail = katalogDetail,
+            CatalogDetailScreen(setNumber = "10305-1", detail = katalogDetail,
                 isLoading = false, imageLoader = bilder, serverUrl = "", onLoad = {},
                 onAddToGallery = { _, _, _, _, _, _ -> }, onWish = { _, _, _, _, _ -> },
                 onOpenInGallery = {}, onBack = {})
@@ -673,7 +704,7 @@ class BildschirmFotoVariantenTest {
 
     @Test
     fun vergleich() {
-        zeige("vergleich") { ch.brickinventoryapp.ui.screens.ComparisonScreen() }
+        zeige("vergleich") { ComparisonScreen() }
         anhalten()
         foto("vergleich")
     }
@@ -688,11 +719,11 @@ class BildschirmFotoVariantenTest {
         welt.pfade.antworten["/api/v1/settings/tokens"] = """{"success":true,"tokens":[
             {"token_id":"a1","label":"Pixel 8","created_at":"2026-09-01T10:00:00Z","last_used":"2026-11-02T18:00:00Z","aktuell":true,"scope":"app"},
             {"token_id":"b2","label":"Galaxy Tab","created_at":"2026-06-12T10:00:00Z","last_used":"2026-10-20T08:00:00Z","scope":"app"}]}"""
-        val konto = welt.t.merke(ch.brickinventoryapp.ui.viewmodel.KontoViewModel(
+        val konto = welt.t.merke(KontoViewModel(
             KontoRepository(welt.t.api, welt.t.cache), KontextTexte(),
             welt.t.meldungen, welt.t.sitzung))
         zeige(name, dunkel = dunkel, geraet = geraet) {
-            ch.brickinventoryapp.ui.screens.KontoRoute(onAbmelden = {}, snackbarHostState = remember { SnackbarHostState() },
+            KontoRoute(onAbmelden = {}, snackbarHostState = remember { SnackbarHostState() },
                 konto = konto, onZurueck = {})
         }
         anhalten()
@@ -714,7 +745,7 @@ class BildschirmFotoVariantenTest {
              "name":"Titanic","image_local":"/beispiel/set2.png","besitzt":false}]}"""
         val vm = einstellungen()
         zeige(name, dunkel = dunkel, geraet = geraet, schrift = schrift) {
-            ch.brickinventoryapp.ui.screens.PreisalarmeRoute(vm = vm, imageLoader = bilder, serverUrl = "",
+            PreisalarmeRoute(vm = vm, imageLoader = bilder, serverUrl = "",
                 snackbarHostState = remember { SnackbarHostState() }, onSetClick = {}, onZurueck = {}, meldeSchalter = {})
         }
         anhalten()
@@ -736,7 +767,7 @@ class BildschirmFotoVariantenTest {
         val vm = welt.teile().also { it.loadParts() }
         zeige("teil-detail", dunkel = dunkel, geraet = geraet, bereit = { vm.partsState.value.parts.isNotEmpty() },
             zustand = { vm.partsState.value }) {
-            ch.brickinventoryapp.nav.TeileListeUndDetailRoute(vm, bilder, "", rememberNavController()) { _ ->
+            TeileListeUndDetailRoute(vm, bilder, "", rememberNavController()) { _ ->
                 PartsRoute(vm = vm, imageLoader = bilder)
             }
         }
@@ -796,7 +827,7 @@ class BildschirmFotoVariantenTest {
     @Test
     fun startpasswortSchrift200() {
         zeige("startpasswort-schrift200", schrift = 2.0f) {
-            ch.brickinventoryapp.ui.screens.StartpasswortMaske(ch.brickinventoryapp.ui.KontoUiState(), { _, _, _ -> }, {})
+            StartpasswortMaske(KontoUiState(), { _, _, _ -> }, {})
         }
         foto("startpasswort-schrift200")
     }
@@ -804,8 +835,8 @@ class BildschirmFotoVariantenTest {
     @Test
     fun zweiterFaktorSchrift200() {
         zeige("zweiter-faktor-schrift200", schrift = 2.0f) {
-            ch.brickinventoryapp.ui.screens.ZweiterFaktorPflichtMaske(
-                ch.brickinventoryapp.ui.ZweiterFaktorUiState(aktiv = false), {}, {}, {}, {})
+            ZweiterFaktorPflichtMaske(
+                ZweiterFaktorUiState(aktiv = false), {}, {}, {}, {})
         }
         foto("zweiter-faktor-schrift200")
     }
@@ -814,8 +845,8 @@ class BildschirmFotoVariantenTest {
     @Test
     fun zweiterFaktorCodes() {
         zeige("zweiter-faktor-codes", dunkel = true) {
-            ch.brickinventoryapp.ui.screens.ZweiterFaktorPflichtMaske(
-                ch.brickinventoryapp.ui.ZweiterFaktorUiState(aktiv = true,
+            ZweiterFaktorPflichtMaske(
+                ZweiterFaktorUiState(aktiv = true,
                     codes = listOf("a1b2-c3d4", "e5f6-g7h8", "i9j0-k1l2", "m3n4-o5p6")), {}, {}, {}, {})
         }
         foto("zweiter-faktor-codes", dunkel = true)
@@ -851,12 +882,12 @@ class BildschirmFotoVariantenTest {
     // ── Lücken der Prüfung (N17): Katalog, leer und Fehler je Reiter, Tablet 200 %, quer ──
 
     private val katalogSets = (1..6).map { i ->
-        ch.brickinventoryapp.ui.model.KatalogSetAnsicht(setNumber = "1030$i-1", name = "Beispielset $i",
+        KatalogSetAnsicht(setNumber = "1030$i-1", name = "Beispielset $i",
             year = 2020 + i, numParts = 500 * i, imageLocal = "/beispiel/set${(i - 1) % 3 + 1}.png",
             owned = i == 2, ownedQuantity = if (i == 2) 2 else 0)
     }
 
-    private object KeineKatalogAktionen : ch.brickinventoryapp.ui.viewmodel.KatalogAktionen {
+    private object KeineKatalogAktionen : KatalogAktionen {
         override fun loadCatalogMeta() = Unit
         override fun loadCatalogSets() = Unit
         override fun catalogSichtbar(ersteSeite: Int, letzteSeite: Int) = Unit
@@ -871,11 +902,11 @@ class BildschirmFotoVariantenTest {
 
     private fun katalogFoto(
         dunkel: Boolean, geraet: String, name: String = "katalog", schrift: Float = 1f,
-        zustand: ch.brickinventoryapp.ui.CatalogUiState =
-            ch.brickinventoryapp.ui.CatalogUiState(loadedPages = mapOf(1 to katalogSets), total = katalogSets.size),
+        zustand: CatalogUiState =
+            CatalogUiState(loadedPages = mapOf(1 to katalogSets), total = katalogSets.size),
     ) {
         zeige(name, dunkel = dunkel, geraet = geraet, schrift = schrift) {
-            ch.brickinventoryapp.ui.screens.CatalogScreen(zustand, serverUrl = "", katalog = KeineKatalogAktionen,
+            CatalogScreen(zustand, serverUrl = "", katalog = KeineKatalogAktionen,
                 imageLoader = bilder, onSetClick = {})
         }
         anhalten()
@@ -885,9 +916,9 @@ class BildschirmFotoVariantenTest {
     @Test fun katalogTelefon() = katalogFoto(false, "telefon")
     @Test fun katalogTabletDunkel() = katalogFoto(true, "tablet")
     @Test fun katalogSchrift200() = katalogFoto(false, "telefon", "katalog-schrift200", 2f)
-    @Test fun katalogLeer() = katalogFoto(false, "telefon", "katalog-leer", zustand = ch.brickinventoryapp.ui.CatalogUiState())
+    @Test fun katalogLeer() = katalogFoto(false, "telefon", "katalog-leer", zustand = CatalogUiState())
     @Test fun katalogFehler() = katalogFoto(true, "telefon", "katalog-fehler",
-        zustand = ch.brickinventoryapp.ui.CatalogUiState(error = "Serverfehler (500)"))
+        zustand = CatalogUiState(error = "Serverfehler (500)"))
 
     @Test
     fun merklisteFehler() {
@@ -964,7 +995,7 @@ class BildschirmFotoVariantenTest {
     @Test
     fun einrichtenQuer() {
         zeige("einrichten", geraet = "quer") {
-            ch.brickinventoryapp.ui.screens.SetupScreen(currentUrl = "https://brick.fritz.box", onSave = {}, entwicklung = false)
+            SetupScreen(currentUrl = "https://brick.fritz.box", onSave = {}, entwicklung = false)
         }
         foto("einrichten", geraet = "quer")
     }

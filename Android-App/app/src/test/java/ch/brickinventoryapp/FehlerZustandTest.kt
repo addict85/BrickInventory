@@ -28,13 +28,14 @@ import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Before
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
  * Laden, Fehler, Leer und Kein Treffer sind verschiedene Zustände — und jeder
  * Bildschirm mit geladenem Inhalt erfährt den Fehler. Vorher zeigten Merkliste,
  * Finanzen, Teile, Figuren und Gutscheine nach einem Fehler „leer“, das
- * Set-Detail einen Kringel ohne Ende. Ausgeführt gegen einen Testserver, der
+ * Set-Detail einen Kringel ohne Ende. Ausgeführt gegen einen PfadServer ohne Netz, der
  * zuerst 404 antwortet und nach „Erneut versuchen“ Inhalt liefert.
  *
  * Gegenproben (30.10.2026, gemessen):
@@ -60,7 +61,7 @@ class FehlerZustandTest {
     fun auf() {
         Dispatchers.setMain(UnconfinedTestDispatcher())
         pfade = PfadServer()
-        t = TestDienste(pfade.server)
+        t = TestDienste(pfade.imTakt(), io = Dispatchers.Main)
     }
 
     @After
@@ -84,13 +85,13 @@ class FehlerZustandTest {
         val vm = t.merke(MerklisteViewModel(t.dienste, SetsRepository(t.api, t.cache), KatalogRepository(t.api, t.cache),
             FinanzenRepository(t.api, t.cache), SavedStateHandle()))
         vm.ladeMerkliste()
-        TestApi.warteBis("Fehler") { vm.merklisteState.value.fehler != null }
+        assertTrue("Fehler", vm.merklisteState.value.fehler != null)
         assertEquals("fehler", vm.merklisteState.value.fehler)
         assertEquals("404 ohne Rumpf ist ein Serverfehler", Fehlerklasse.SERVER, vm.merklisteState.value.fehlerKlasse)
 
         pfade.antworten["/api/v1/wanted"] = """{"success":true,"merkposten":[{"set_number":"10294-1","condition":"N","user_id":1}]}"""
         vm.ladeMerkliste()
-        TestApi.warteBis("Inhalt") { vm.merklisteState.value.merkposten.isNotEmpty() }
+        assertTrue("Inhalt", vm.merklisteState.value.merkposten.isNotEmpty())
         assertNull(vm.merklisteState.value.fehler)
     }
 
@@ -98,12 +99,12 @@ class FehlerZustandTest {
     fun `die Bewertung meldet den Fehler und vergisst ihn beim Neuladen`() {
         val vm = t.merke(FinanzViewModel(t.dienste, FinanzenRepository(t.api, t.cache), SavedStateHandle()))
         vm.loadValuation()
-        TestApi.warteBis("Fehler") { vm.financeState.value.valuationFehler != null }
+        assertTrue("Fehler", vm.financeState.value.valuationFehler != null)
         assertEquals(Fehlerklasse.SERVER, vm.financeState.value.valuationFehlerKlasse)
 
         pfade.antworten["/api/v1/finance/valuation"] = """{"success":true,"currency":"CHF"}"""
         vm.loadValuation()
-        TestApi.warteBis("Bewertung") { vm.financeState.value.valuation != null }
+        assertTrue("Bewertung", vm.financeState.value.valuation != null)
         assertNull(vm.financeState.value.valuationFehler)
     }
 
@@ -111,9 +112,9 @@ class FehlerZustandTest {
     fun `Teile und Figuren melden den Fehler je fuer sich`() {
         val vm = t.merke(TeileViewModel(t.dienste, TeileRepository(t.api, t.cache), FigurenRepository(t.api, t.cache), SavedStateHandle()))
         vm.loadParts()
-        TestApi.warteBis("Teilefehler") { vm.partsState.value.partsFehler != null }
+        assertTrue("Teilefehler", vm.partsState.value.partsFehler != null)
         vm.loadMinifigs()
-        TestApi.warteBis("Figurenfehler") { vm.partsState.value.minifigsFehler != null }
+        assertTrue("Figurenfehler", vm.partsState.value.minifigsFehler != null)
         assertEquals("fehler", vm.partsState.value.partsFehler)
         assertEquals(Fehlerklasse.SERVER, vm.partsState.value.partsFehlerKlasse)
         assertEquals(Fehlerklasse.SERVER, vm.partsState.value.minifigsFehlerKlasse)
@@ -125,7 +126,7 @@ class FehlerZustandTest {
         val vm = t.merke(SetDetailViewModel(t.dienste, SetsRepository(t.api, t.cache), FinanzenRepository(t.api, t.cache),
             HaushaltRepository(t.api, t.cache), leser, SavedStateHandle(mapOf("setNumber" to "75192-1"))))
         vm.loadSetDetail("75192-1")
-        TestApi.warteBis("Fehler") { vm.setDetailState.value.setDetailFehler != null }
+        assertTrue("Fehler", vm.setDetailState.value.setDetailFehler != null)
         assertEquals(false, vm.setDetailState.value.setDetailLoading)
         assertEquals(Fehlerklasse.SERVER, vm.setDetailState.value.setDetailFehlerKlasse)
     }
@@ -139,7 +140,7 @@ class FehlerZustandTest {
             meldungen = t.meldungen,
         )
         vm.ladeGutscheine()
-        TestApi.warteBis("Fehler") { vm.state.value.fehler != null }
+        assertTrue("Fehler", vm.state.value.fehler != null)
         assertEquals("fehler", vm.state.value.fehler)
     }
 }

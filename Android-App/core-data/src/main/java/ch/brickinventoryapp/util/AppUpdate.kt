@@ -11,6 +11,8 @@ import android.content.pm.PackageManager
 import android.os.Build
 import androidx.core.net.toUri
 import ch.brickinventoryapp.ressourcen.R
+import dagger.hilt.android.qualifiers.ApplicationContext
+import javax.inject.Inject
 import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
@@ -25,7 +27,7 @@ import java.security.MessageDigest
  */
 
 /** Alle Release-Anhänge des Repositorys; darunter je Fassung ein unveränderliches Etikett. */
-const val UPDATE_RELEASE_WURZEL = "https://github.com/addict85/BrickInventory/releases/download"
+internal const val UPDATE_RELEASE_WURZEL = "https://github.com/addict85/BrickInventory/releases/download"
 
 /** Die Release-Ablage der neusten Fassung — EIN Ort, aus dem die Adressen entstehen. */
 const val UPDATE_RELEASE_BASIS = "$UPDATE_RELEASE_WURZEL/apk-neuste"
@@ -55,7 +57,7 @@ const val UPDATE_MAX_BYTES: Long = 300L * 1024 * 1024
 const val UPDATE_JSON_MAX_BYTES: Long = 64L * 1024
 
 /** Wohin das geladene APK kommt; installiert wird per PackageInstaller-Sitzung, ohne FileProvider. */
-const val UPDATE_ORDNER = "update"
+internal const val UPDATE_ORDNER = "update"
 
 /**
  * Was in version.json steht. `apkUrl` wird trotzdem geprüft
@@ -217,7 +219,7 @@ object Installationsmeldung {
 }
 
 /** Die Aktion des Bestätigungsdialogs einer Installer-Sitzung (im SDK nur als SystemApi benannt). */
-const val INSTALLATION_BESTAETIGEN = "android.content.pm.action.CONFIRM_INSTALL"
+internal const val INSTALLATION_BESTAETIGEN = "android.content.pm.action.CONFIRM_INSTALL"
 
 /**
  * Wohin die Bestätigung führt, wenn das ein System-Installer ist, sonst `null`.
@@ -270,3 +272,15 @@ class InstallationsEmpfaenger : BroadcastReceiver() {
 /** Die Datei, in die geladen wird. Immer dieselbe — ein altes APK ist Ballast. */
 fun updateDatei(ctx: Context): File =
     File(File(ctx.filesDir, UPDATE_ORDNER).apply { mkdirs() }, "BrickInventory.apk")
+
+/** Die Gerätefunktionen dieser Datei hinter [UpdateGeraet]. */
+class AndroidUpdateGeraet @Inject constructor(@param:ApplicationContext private val ctx: Context) : UpdateGeraet {
+    override fun beschreibungsSchluessel(): List<ByteArray> = beschreibungsSchluessel(
+        ctx.resources.openRawResource(R.raw.beschreibungs_schluessel).bufferedReader().use { it.readText() })
+    override fun eigeneZertifikate(): List<ByteArray> = eigeneZertifikate(ctx)
+    override fun updateDatei(): File = updateDatei(ctx)
+    override fun signaturPasst(apk: File): Boolean = signaturPasst(ctx, apk)
+    override fun apkFassung(apk: File): Long? = apkFassung(ctx, apk)
+    override fun darfInstallieren(): Boolean = darfInstallieren(ctx)
+    override fun installiere(apk: File) = installiere(ctx, apk)
+}

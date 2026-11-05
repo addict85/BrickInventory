@@ -8,6 +8,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import ch.brickinventoryapp.ui.*
 import ch.brickinventoryapp.ui.theme.Abstaende
+import ch.brickinventoryapp.ui.components.Abschnittstitel
 
 /**
  * Der Rahmen einer Einstellungs-Rubrik. Öffentlich in core-ui, weil Einstellungen
@@ -28,7 +29,7 @@ fun SettingsCard(
             Modifier.padding(Abstaende.gross),
             verticalArrangement = Arrangement.spacedBy(Abstaende.klein),
         ) {
-            if (title != null) ch.brickinventoryapp.ui.components.Abschnittstitel(title, Modifier.padding(bottom = Abstaende.mittel), symbol = icon)
+            if (title != null) Abschnittstitel(title, Modifier.padding(bottom = Abstaende.mittel), symbol = icon)
             content()
         }
     }

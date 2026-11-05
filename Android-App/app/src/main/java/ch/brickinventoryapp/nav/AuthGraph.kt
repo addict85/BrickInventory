@@ -13,9 +13,17 @@ import androidx.navigation.NavHostController
 import ch.brickinventoryapp.*
 import ch.brickinventoryapp.ui.viewmodel.AnmeldungViewModel
 import ch.brickinventoryapp.ui.viewmodel.aktivitaetsViewModel
+import ch.brickinventoryapp.ui.CredentialManagerAbfrage
+import ch.brickinventoryapp.ui.screens.ServerStartAnzeige
 
 /** Navigationsziele der Anmeldung; die ViewModels holt jedes Ziel selbst. */
 fun NavGraphBuilder.authGraph(navController: NavHostController) {
+    einrichtungsZiel(navController)
+    anmeldeZiel(navController)
+}
+
+/** Serveradresse eintragen oder per QR-Code übernehmen. */
+private fun NavGraphBuilder.einrichtungsZiel(navController: NavHostController) {
         composable<Screen.Setup> {
             val vm: AppViewModel = aktivitaetsViewModel()
             // Zustand INNERHALB des Ziels lesen — als Parameter wäre es eine
@@ -47,6 +55,10 @@ fun NavGraphBuilder.authGraph(navController: NavHostController) {
                 mussAbtippen = anmeldungVm::mussAbtippen,
             )
         }
+}
+
+/** Anmelden, Registrieren und Passkey; während der Server startet, sein Fortschritt. */
+private fun NavGraphBuilder.anmeldeZiel(navController: NavHostController) {
         composable<Screen.Login> {
             // Zustand INNERHALB des Ziels lesen — als Parameter wäre es eine
             // Momentaufnahme vom Aufbau des Graphen (der NavHost-Builder läuft nur einmal).
@@ -54,7 +66,7 @@ fun NavGraphBuilder.authGraph(navController: NavHostController) {
             val state by anmeldungVm.state.collectAsStateWithLifecycle()
             val anmeldung by anmeldungVm.anmeldeState.collectAsStateWithLifecycle()
             val aktivitaet = androidx.compose.ui.platform.LocalContext.current
-            val passkeys = remember(aktivitaet) { ch.brickinventoryapp.ui.CredentialManagerAbfrage(aktivitaet) }
+            val passkeys = remember(aktivitaet) { CredentialManagerAbfrage(aktivitaet) }
             // Einmal beim Betreten: Steht die Registrierung ueberhaupt offen?
             // Ohne Anmeldung erreichbar — die Frage kommt ja, bevor es ein
             // Konto gibt. `Unit` als Schluessel: genau einmal je Aufbau, nicht
@@ -65,7 +77,7 @@ fun NavGraphBuilder.authGraph(navController: NavHostController) {
             // wenn der Server antwortet und `ready` verneint.
             val serverStart = state.startupStatus
             if (serverStart != null) {
-                ch.brickinventoryapp.ui.screens.ServerStartAnzeige(serverStart)
+                ServerStartAnzeige(serverStart)
             } else LoginScreen(
                 serverUrl = state.serverUrl,
                 isLoading = anmeldung.loginLaeuft,

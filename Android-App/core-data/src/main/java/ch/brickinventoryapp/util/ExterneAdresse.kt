@@ -9,7 +9,7 @@ import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
  * `content:` darin öffnete sonst beliebige Ziele im Gerät. Den eigenen Server
  * öffnet die App selbst, dafür braucht es hier kein http.
  */
-fun externeAdresse(url: String?): HttpUrl? =
+internal fun externeAdresse(url: String?): HttpUrl? =
     url?.trim()?.toHttpUrlOrNull()?.takeIf { it.isHttps }
 
 /**

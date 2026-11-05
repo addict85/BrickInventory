@@ -20,6 +20,25 @@ import dagger.hilt.InstallIn
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
 import javax.inject.Singleton
+import ch.brickinventoryapp.alarm.WorkManagerAlarmPlaner
+import ch.brickinventoryapp.data.AlarmPlaner
+import ch.brickinventoryapp.data.CsvImportSseClient
+import ch.brickinventoryapp.data.CsvImportStrom
+import ch.brickinventoryapp.data.Darstellungsablage
+import ch.brickinventoryapp.data.GeraeteEinstellungen
+import ch.brickinventoryapp.data.PreferencesManager
+import ch.brickinventoryapp.data.Sitzungsablage
+import ch.brickinventoryapp.data.Vertrauensablage
+import ch.brickinventoryapp.data.Zugangsdaten
+import ch.brickinventoryapp.data.Anmeldestand
+import ch.brickinventoryapp.data.Sitzungsende
+import ch.brickinventoryapp.util.AndroidUpdateGeraet
+import ch.brickinventoryapp.util.UpdateGeraet
+import ch.brickinventoryapp.util.UpdateStandAblage
+import ch.brickinventoryapp.data.lokal.WorkManagerEntwertung
+import ch.brickinventoryapp.service.AndroidCsvImportDienst
+import ch.brickinventoryapp.service.CsvImportDienst
+import ch.brickinventoryapp.data.EntwertungsPlaner
 
 /**
  * Die lokale Ablage: Room für Listen und Ausgang, WorkManager fürs Senden.
@@ -32,16 +51,20 @@ abstract class LokalModule {
     @Binds abstract fun bestand(r: RoomBestand): LokalerBestand
     @Binds abstract fun ausgang(r: RoomAusgang): Ausgang
     @Binds abstract fun planer(p: WorkManagerPlaner): AusgangPlaner
-    @Binds abstract fun entwertung(p: ch.brickinventoryapp.data.lokal.WorkManagerEntwertung): ch.brickinventoryapp.data.EntwertungsPlaner
+    @Binds abstract fun entwertung(p: WorkManagerEntwertung): EntwertungsPlaner
     @Binds abstract fun sender(s: ServerSender): Bearbeitungssender
-    @Binds abstract fun geraet(p: ch.brickinventoryapp.data.PreferencesManager): ch.brickinventoryapp.data.GeraeteEinstellungen
-    @Binds abstract fun sitzungsablage(p: ch.brickinventoryapp.data.PreferencesManager): ch.brickinventoryapp.data.Sitzungsablage
-    @Binds abstract fun darstellung(p: ch.brickinventoryapp.data.PreferencesManager): ch.brickinventoryapp.data.Darstellungsablage
-    @Binds abstract fun vertrauensablage(p: ch.brickinventoryapp.data.PreferencesManager): ch.brickinventoryapp.data.Vertrauensablage
-    @Binds abstract fun zugang(p: ch.brickinventoryapp.data.PreferencesManager): ch.brickinventoryapp.data.Zugangsdaten
-    @Binds abstract fun csvStrom(c: ch.brickinventoryapp.data.CsvImportSseClient): ch.brickinventoryapp.data.CsvImportStrom
-    @Binds abstract fun csvDienst(d: ch.brickinventoryapp.service.AndroidCsvImportDienst): ch.brickinventoryapp.service.CsvImportDienst
-    @Binds abstract fun alarm(p: ch.brickinventoryapp.alarm.WorkManagerAlarmPlaner): ch.brickinventoryapp.data.AlarmPlaner
+    @Binds abstract fun geraet(p: PreferencesManager): GeraeteEinstellungen
+    @Binds abstract fun sitzungsablage(p: PreferencesManager): Sitzungsablage
+    @Binds abstract fun darstellung(p: PreferencesManager): Darstellungsablage
+    @Binds abstract fun vertrauensablage(p: PreferencesManager): Vertrauensablage
+    @Binds abstract fun zugang(p: PreferencesManager): Zugangsdaten
+    @Binds abstract fun anmeldestand(p: PreferencesManager): Anmeldestand
+    @Binds abstract fun sitzungsende(p: PreferencesManager): Sitzungsende
+    @Binds abstract fun updateStand(p: PreferencesManager): UpdateStandAblage
+    @Binds abstract fun updateGeraet(g: AndroidUpdateGeraet): UpdateGeraet
+    @Binds abstract fun csvStrom(c: CsvImportSseClient): CsvImportStrom
+    @Binds abstract fun csvDienst(d: AndroidCsvImportDienst): CsvImportDienst
+    @Binds abstract fun alarm(p: WorkManagerAlarmPlaner): AlarmPlaner
 
     companion object {
         @Provides

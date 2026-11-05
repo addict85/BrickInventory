@@ -67,7 +67,7 @@ enum class Entwertungsergebnis { ENTWERTET, SPAETER, AUFGEBEN }
  * Umleitung (nur innerhalb des Servers verfolgt) oder ein anderer 4xx-Satz wird
  * auch beim zehnten Mal nicht anders; Zeitüberschreitung, 429 und 5xx schon.
  */
-fun einordnenEntwertung(code: Int): Entwertungsergebnis = when {
+internal fun einordnenEntwertung(code: Int): Entwertungsergebnis = when {
     code in 200..299 || code == 401 -> Entwertungsergebnis.ENTWERTET
     code == 408 || code == 429 || code >= 500 -> Entwertungsergebnis.SPAETER
     else -> Entwertungsergebnis.AUFGEBEN
@@ -128,14 +128,14 @@ class Entwerter(
 enum class Entwertungsschritt { FERTIG, NOCHMAL, AUFGEGEBEN }
 
 /** Etwa eine Woche bei WorkManagers Rückzug (30 s, verdoppelt, höchstens 5 h). */
-const val ENTWERTUNG_HOECHSTVERSUCHE = 40
+internal const val ENTWERTUNG_HOECHSTVERSUCHE = 40
 
 /**
  * Ein Lauf des Arbeiters. Ein gesperrter Keystore ist wie ein fehlendes Netz ein
  * Grund zu warten (util/Tresorbefund); ein verlorener Schlüssel macht das Token
  * auch für einen Dieb unbrauchbar, also gibt es nichts mehr zu tun.
  */
-fun entwertungsSchritt(befund: Tresorbefund, versuch: Int, entwerte: (String) -> Entwertungsergebnis): Entwertungsschritt =
+internal fun entwertungsSchritt(befund: Tresorbefund, versuch: Int, entwerte: (String) -> Entwertungsergebnis): Entwertungsschritt =
     when (befund) {
         Tresorbefund.Weg -> Entwertungsschritt.AUFGEGEBEN
         Tresorbefund.Gesperrt -> if (versuch + 1 >= ENTWERTUNG_HOECHSTVERSUCHE) Entwertungsschritt.AUFGEGEBEN else Entwertungsschritt.NOCHMAL

@@ -38,6 +38,8 @@ import ch.brickinventoryapp.ui.theme.Lesebreite
 import ch.brickinventoryapp.ui.theme.mittigBis
 import ch.brickinventoryapp.util.PASSWORT_MIN_ZEICHEN
 import ch.brickinventoryapp.util.passwortZuKurz
+import ch.brickinventoryapp.ui.components.SperrGrund
+import ch.brickinventoryapp.ui.components.Ueberdeckungsschutz
 
 /**
  * Das Konto hat noch sein Startpasswort: Der Server weist bis zum Wechsel jeden
@@ -64,7 +66,7 @@ fun StartpasswortMaske(
     val weiter = KeyboardActions(onNext = { fokus.moveFocus(FocusDirection.Down) })
     Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
         // Ein untergeschobener Tipp setzte hier das Passwort des Kontos.
-        ch.brickinventoryapp.ui.components.Ueberdeckungsschutz()
+        Ueberdeckungsschutz()
         Column(
             Modifier.verticalScroll(rememberScrollState()).mittigBis(Lesebreite.formular)
                 .padding(horizontal = Abstaende.sehrGross, vertical = Abstaende.riesig),
@@ -90,10 +92,10 @@ fun StartpasswortMaske(
                 kontoZustand.fehler?.let { FehlerZeile(it) }
                 if (kontoZustand.codeNoetig) ZweiterFaktorCodeFeld(faktorCode) { faktorCode = it }
                 if (pwAktuell.isEmpty() || pwNeu.isEmpty() || pwWiederholt.isEmpty())
-                    ch.brickinventoryapp.ui.components.SperrGrund(stringResource(R.string.passwort_aendern_fehlt))
+                    SperrGrund(stringResource(R.string.passwort_aendern_fehlt))
                 Button(
                     onClick = { onErsetzen(pwAktuell, pwNeu, faktorCode.takeIf { kontoZustand.codeNoetig && it.isNotBlank() }) },
-                    enabled = !kontoZustand.speichert && pwAktuell.isNotEmpty() && pwNeu.isNotEmpty() && !zuKurz && pwWiederholt == pwNeu,
+                    enabled = ersetzenMoeglich(kontoZustand.speichert, pwAktuell, pwNeu, pwWiederholt, zuKurz),
                     modifier = Modifier.fillMaxWidth(),
                 ) { Text(stringResource(R.string.konto_password_button)) }
             }
@@ -102,3 +104,7 @@ fun StartpasswortMaske(
         }
     }
 }
+
+/** Erst wenn alle drei Felder stehen, das neue Passwort lang genug ist und zweimal gleich. */
+private fun ersetzenMoeglich(speichert: Boolean, aktuell: String, neu: String, wiederholt: String, zuKurz: Boolean) =
+    !speichert && aktuell.isNotEmpty() && neu.isNotEmpty() && !zuKurz && wiederholt == neu

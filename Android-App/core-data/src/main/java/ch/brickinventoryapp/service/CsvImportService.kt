@@ -11,7 +11,7 @@ import android.os.IBinder
 import androidx.core.app.NotificationCompat
 import androidx.core.app.ServiceCompat
 import ch.brickinventoryapp.ressourcen.R
-import ch.brickinventoryapp.data.PreferencesManager
+import ch.brickinventoryapp.data.Zugangsdaten
 import ch.brickinventoryapp.data.repository.Result
 import ch.brickinventoryapp.data.repository.BrickRepository
 import dagger.hilt.android.AndroidEntryPoint
@@ -20,6 +20,8 @@ import kotlinx.coroutines.*
 import ch.brickinventoryapp.data.CsvImportSseClient
 import ch.brickinventoryapp.data.model.CsvImportStatus
 import javax.inject.Inject
+import ch.brickinventoryapp.di.Anwendungsbereiche
+import ch.brickinventoryapp.util.LanguageManager
 
 /** Der Vordergrund-Dienst eines laufenden CSV-Imports; im Test ein Zähler. */
 interface CsvImportDienst {
@@ -64,7 +66,7 @@ class CsvImportService : Service() {
         }
     }
 
-    @Inject lateinit var prefs: PreferencesManager
+    @Inject lateinit var prefs: Zugangsdaten
     @Inject lateinit var repo:  BrickRepository
     @Inject lateinit var sseClient: CsvImportSseClient
 
@@ -73,10 +75,10 @@ class CsvImportService : Service() {
     // Benachrichtigungen unterhalb von Android 13 in der Systemsprache
     // (bzw. vorher: hartkodiert auf Deutsch).
     private val loc: Context by lazy {
-        ch.brickinventoryapp.util.LanguageManager.localizedContext(this)
+        LanguageManager.localizedContext(this)
     }
 
-    @Inject lateinit var bereiche: ch.brickinventoryapp.di.Anwendungsbereiche
+    @Inject lateinit var bereiche: Anwendungsbereiche
 
     // Lebt mit dem Dienst (onDestroy bricht ab). lazy, weil Hilt die Felder erst
     // in super.onCreate() setzt.

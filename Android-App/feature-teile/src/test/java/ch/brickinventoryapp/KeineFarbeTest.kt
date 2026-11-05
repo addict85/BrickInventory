@@ -48,7 +48,7 @@ class KeineFarbeTest {
         "/api/v1/parts" to """{"success":true,"action":"added","part_number":"3001"}""",
         "/api/v1/parts/3001/5/color" to """{"success":true}""",
     )
-    private val t = TestDienste(pfade.server)
+    private val t = TestDienste(pfade.imTakt(), io = Dispatchers.Main)
 
     @Before
     fun auf() = Dispatchers.setMain(UnconfinedTestDispatcher())
@@ -71,12 +71,12 @@ class KeineFarbeTest {
     @Test
     fun `ein Teil ohne Farbe geht als 9999 hinaus`() {
         vm().addPart("3001")
-        TestApi.warteBis("Teil erfasst") { pfade.anfragenAn("POST /api/v1/parts").isNotEmpty() }
+        assertTrue("Teil erfasst", pfade.anfragenAn("POST /api/v1/parts").isNotEmpty())
         val k = koerperZu("POST /api/v1/parts")
         assertTrue(k, k.contains("\"color_id\":9999"))
         // Auch ein mitgegebener Name gehört nicht zu „keine Farbe“.
         vm().addPart("3002", KEINE_FARBE, "[No Color/Any Color]", "05131D")
-        TestApi.warteBis("zweites Teil") { pfade.anfragenAn("POST /api/v1/parts").size == 2 }
+        assertTrue("zweites Teil", pfade.anfragenAn("POST /api/v1/parts").size == 2)
         val k2 = pfade.koerper[pfade.anfragen.indexOfLast { it == "POST /api/v1/parts" }]
         assertFalse(k2, k2.contains("No Color") || k2.contains("05131D"))
     }
@@ -85,7 +85,7 @@ class KeineFarbeTest {
     fun `keine Farbe als neue Farbe schickt keinen Namen mit`() {
         var neu: Int? = null
         vm().setzeTeilFarbe("3001", 5, KEINE_FARBE, "Keine Farbe", null) { neu = it }
-        TestApi.warteBis("geändert") { neu != null }
+        assertTrue("geändert", neu != null)
         val k = koerperZu("PUT /api/v1/parts/3001/5/color")
         assertTrue(k, k.contains("\"color_id\":9999"))
         assertFalse(k, k.contains("Keine Farbe"))

@@ -4,7 +4,7 @@ import ch.brickinventoryapp.data.ScopeFilter
 import ch.brickinventoryapp.data.repository.BrickRepository
 import ch.brickinventoryapp.data.repository.GALLERY_PAGE_SIZE
 import ch.brickinventoryapp.data.repository.Result
-import ch.brickinventoryapp.data.PreferencesManager
+import ch.brickinventoryapp.data.Zugangsdaten
 import ch.brickinventoryapp.data.cache.VorschauVorwaermer
 import ch.brickinventoryapp.di.ApplicationScope
 import ch.brickinventoryapp.util.fangeAusserAbbruch
@@ -77,7 +77,7 @@ class SammlungVorwaermen @Inject constructor(
     private val vorwaermer: VorschauVorwaermer,
     private val repo: BrickRepository,
     private val blickfeld: Blickfeld,
-    private val prefs: PreferencesManager,
+    private val prefs: Zugangsdaten,
     @param:ApplicationScope private val bereich: CoroutineScope,
 ) : Vorwaermung {
     private val gestartet = AtomicBoolean(false)

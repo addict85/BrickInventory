@@ -24,6 +24,10 @@ import ch.brickinventoryapp.ui.components.Rueckfrage
 import ch.brickinventoryapp.ui.components.ansagen
 import ch.brickinventoryapp.ui.theme.Abstaende
 import ch.brickinventoryapp.ui.theme.Formen
+import ch.brickinventoryapp.ui.HouseholdUiState
+import ch.brickinventoryapp.ui.components.ErklaerText
+import ch.brickinventoryapp.ui.components.MitTooltip
+import ch.brickinventoryapp.util.GeheimeZwischenablage
 
 /**
  * Haushalt: verknüpfte Konten, Konto einladen, Einladung annehmen — drei Abschnitte
@@ -35,7 +39,7 @@ import ch.brickinventoryapp.ui.theme.Formen
  */
 @Composable
 internal fun HouseholdCard(
-    state: ch.brickinventoryapp.ui.HouseholdUiState,
+    state: HouseholdUiState,
     onCreateInvite: () -> Unit,
     onRedeemInvite: (code: String, passwort: String, faktorCode: String?) -> Unit,
     onUnlink: (Int) -> Unit,
@@ -64,7 +68,7 @@ internal fun HouseholdCard(
 
     // Zwei Sätze vorn, der Rest auf Wunsch: Sechs Zeilen Erklärung vor dem ersten
     // Knopf las niemand.
-    ch.brickinventoryapp.ui.components.ErklaerText(stringResource(R.string.household_intro),
+    ErklaerText(stringResource(R.string.household_intro),
         stringResource(R.string.household_intro_more))
 
     // Ein Konto kann zugleich Unterkonto (auch mehrerer Hauptkonten) und
@@ -140,9 +144,9 @@ internal fun HouseholdCard(
                 label = { Text(stringResource(R.string.household_invite_label)) },
                 modifier = Modifier.fillMaxWidth(), shape = Formen.feld,
                 trailingIcon = {
-                    ch.brickinventoryapp.ui.components.MitTooltip(stringResource(R.string.household_invite_copy)) {
+                    MitTooltip(stringResource(R.string.household_invite_copy)) {
                         IconButton(onClick = {
-                            ch.brickinventoryapp.util.GeheimeZwischenablage.kopiere(kontext, einladungEtikett, c)
+                            GeheimeZwischenablage.kopiere(kontext, einladungEtikett, c)
                         }) { Icon(Icons.Default.ContentCopy, stringResource(R.string.household_invite_copy)) }
                     }
                 }

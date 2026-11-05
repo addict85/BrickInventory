@@ -21,6 +21,8 @@ import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material.icons.filled.Error
 import ch.brickinventoryapp.ui.theme.LocalStatusFarben
+import ch.brickinventoryapp.ui.components.MitTooltip
+import ch.brickinventoryapp.ui.components.mitSchrift
 
 @Composable
 fun CsvImportBanner(
@@ -50,7 +52,7 @@ fun CsvImportBanner(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(Abstaende.klein)
                 ) {
-                    Icon(Icons.Default.UploadFile, null, Modifier.size(ch.brickinventoryapp.ui.components.mitSchrift(16.dp)),
+                    Icon(Icons.Default.UploadFile, null, Modifier.size(mitSchrift(16.dp)),
                         tint = if (running) MaterialTheme.colorScheme.onPrimary
                                else MaterialTheme.colorScheme.onSecondaryContainer)
                     LinearProgressIndicator(
@@ -75,7 +77,7 @@ fun CsvImportBanner(
                     if (running) {
                         // Volle 48 dp: Der Balken wird dadurch etwas höher, dafür
                         // trifft man das Abbrechen auch unterwegs.
-                        ch.brickinventoryapp.ui.components.MitTooltip(stringResource(R.string.csv_cancel)) {
+                        MitTooltip(stringResource(R.string.csv_cancel)) {
                             IconButton(onClick = onAbbrechen) {
                                 Icon(Icons.Default.Close, stringResource(R.string.csv_cancel),
                                     Modifier.size(16.dp),
@@ -99,41 +101,45 @@ fun CsvImportBanner(
                 }
             }
         }
-        if (expanded) {
-            Surface(
-                color = MaterialTheme.colorScheme.surfaceVariant,
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Row(
-                    Modifier.padding(horizontal = Abstaende.gross, vertical = 10.dp),
-                    horizontalArrangement = Arrangement.spacedBy(Abstaende.gross)
-                ) {
-                    val farben = LocalStatusFarben.current
-                    listOf(
-                        Triple(ok, Icons.Default.CheckCircle to farben.erfolg, stringResource(R.string.csv_stat_success)),
-                        Triple(warn, Icons.Default.Warning to farben.warnung, stringResource(R.string.csv_stat_warnings)),
-                        Triple(err, Icons.Default.Error to farben.fehler, stringResource(R.string.csv_stat_errors))
-                    ).forEach { (v, symbol, l) ->
-                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            Row(verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(Abstaende.winzig)) {
-                                Icon(symbol.first, null, Modifier.size(ch.brickinventoryapp.ui.components.mitSchrift(16.dp)), tint = symbol.second)
-                                Text("$v", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.bodyMedium)
-                            }
-                            Text(l, style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        }
+        if (expanded) CsvImportZahlen(ok, warn, err, running)
+    }
+}
+
+/** Aufgeklappt: Erfolge, Warnungen und Fehler einzeln, nach dem Lauf mit „fertig“. */
+@Composable
+private fun CsvImportZahlen(ok: Int, warn: Int, err: Int, running: Boolean) {
+    Surface(
+        color = MaterialTheme.colorScheme.surfaceVariant,
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Row(
+            Modifier.padding(horizontal = Abstaende.gross, vertical = 10.dp),
+            horizontalArrangement = Arrangement.spacedBy(Abstaende.gross)
+        ) {
+            val farben = LocalStatusFarben.current
+            listOf(
+                Triple(ok, Icons.Default.CheckCircle to farben.erfolg, stringResource(R.string.csv_stat_success)),
+                Triple(warn, Icons.Default.Warning to farben.warnung, stringResource(R.string.csv_stat_warnings)),
+                Triple(err, Icons.Default.Error to farben.fehler, stringResource(R.string.csv_stat_errors))
+            ).forEach { (v, symbol, l) ->
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Row(verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(Abstaende.winzig)) {
+                        Icon(symbol.first, null, Modifier.size(mitSchrift(16.dp)), tint = symbol.second)
+                        Text("$v", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.bodyMedium)
                     }
-                    if (!running) {
-                        Spacer(Modifier.weight(1f))
-                        Text(
-                            stringResource(R.string.csv_import_done),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.align(Alignment.CenterVertically)
-                        )
-                    }
+                    Text(l, style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
+            }
+            if (!running) {
+                Spacer(Modifier.weight(1f))
+                Text(
+                    stringResource(R.string.csv_import_done),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.align(Alignment.CenterVertically)
+                )
             }
         }
     }

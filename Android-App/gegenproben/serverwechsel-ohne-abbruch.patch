@@ -4,12 +4,12 @@ Test: ch.brickinventoryapp.GeraeteSchutzTest
 Rot: ein anderer Server bricht laufende Aufrufe ab
 
 diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/PreferencesManager.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/PreferencesManager.kt
-index dfb5a30..ec6e800 100644
+index c570937..55d3056 100644
 --- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/PreferencesManager.kt
 +++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/PreferencesManager.kt
-@@ -256,7 +256,6 @@ class PreferencesManager @Inject constructor(
+@@ -284,7 +284,6 @@ class PreferencesManager @Inject constructor(
          val neueHerkunft: suspend () -> Boolean = {
-             val anders = !ch.brickinventoryapp.util.NetworkPolicy.gleicherServer(serverUrlJetzt(), normalized)
+             val anders = !NetworkPolicy.gleicherServer(serverUrlJetzt(), normalized)
              // Laufende Aufrufe gehören dem alten Server; ihre Antworten sollen nichts mehr auslösen.
 -            if (anders) serverwechselHoerer.forEach { it() }
              anders

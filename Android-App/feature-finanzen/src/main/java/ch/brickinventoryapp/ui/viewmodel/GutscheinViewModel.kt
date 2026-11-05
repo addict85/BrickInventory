@@ -26,6 +26,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
+import ch.brickinventoryapp.util.fmtMoney
 
 /**
  * Gutscheine im eigenen Profil. Das PDF liest und die Werte prüft der Server, einmal
@@ -110,37 +111,7 @@ class GutscheinViewModel @Inject constructor(
         _state.update { it.copy(bestaetigung = b.copy(laeuft = true, fehler = null)) }
         val anfrage = ZweiterFaktorAnfrage(password = passwort, code = code?.trim()?.ifEmpty { null })
         viewModelScope.launch {
-            val fehler: Result.Error? = when (b.schritt) {
-                GutscheinSchritt.PDF, GutscheinSchritt.EXPORT -> when (val r = repo.pdfFreigabe(b.id, anfrage)) {
-                    is Result.Success -> {
-                        if (nochOffen(b)) _state.update { it.copy(bestaetigung = null, pdfZiel = GutscheinPdfZiel(b.id, r.data.ticket)) }
-                        null
-                    }
-                    is Result.Error -> r
-                }
-                GutscheinSchritt.LOESCHEN -> when (val r = repo.loeschen(b.id ?: return@launch, anfrage)) {
-                    is Result.Success -> {
-                        _state.update { it.copy(bestaetigung = null, klartext = it.klartext - b.id,
-                            pinSichtbar = it.pinSichtbar - b.id) }
-                        melde(R.string.vouchers_deleted)
-                        lade()
-                        null
-                    }
-                    is Result.Error -> r
-                }
-                GutscheinSchritt.PIN_ZEIGEN, GutscheinSchritt.NUMMER_KOPIEREN, GutscheinSchritt.PIN_KOPIEREN ->
-                    when (val r = repo.klartext(b.id ?: return@launch, anfrage)) {
-                        is Result.Success -> {
-                            // Inzwischen verlassen oder abgebrochen: Der Klartext bleibt nicht liegen.
-                            if (nochOffen(b)) {
-                                _state.update { it.copy(bestaetigung = null, klartext = it.klartext + (b.id to r.data.alsAnsicht())) }
-                                fuehreAus(b.schritt, r.data.alsAnsicht())
-                            }
-                            null
-                        }
-                        is Result.Error -> r
-                    }
-            }
+            val fehler = fuehreSchrittAus(b, anfrage)
             if (fehler != null) _state.update {
                 it.copy(bestaetigung = it.bestaetigung?.copy(
                     laeuft = false,
@@ -151,6 +122,40 @@ class GutscheinViewModel @Inject constructor(
             }
         }
     }
+
+    /** Der Schritt der Rückfrage an seiner Route; null heisst erledigt (oder ohne Karte nichts zu tun). */
+    private suspend fun fuehreSchrittAus(b: GutscheinBestaetigung, anfrage: ZweiterFaktorAnfrage): Result.Error? =
+        when (b.schritt) {
+            GutscheinSchritt.PDF, GutscheinSchritt.EXPORT -> when (val r = repo.pdfFreigabe(b.id, anfrage)) {
+                is Result.Success -> {
+                    if (nochOffen(b)) _state.update { it.copy(bestaetigung = null, pdfZiel = GutscheinPdfZiel(b.id, r.data.ticket)) }
+                    null
+                }
+                is Result.Error -> r
+            }
+            GutscheinSchritt.LOESCHEN -> when (val r = repo.loeschen(b.id ?: return null, anfrage)) {
+                is Result.Success -> {
+                    _state.update { it.copy(bestaetigung = null, klartext = it.klartext - b.id,
+                        pinSichtbar = it.pinSichtbar - b.id) }
+                    melde(R.string.vouchers_deleted)
+                    lade()
+                    null
+                }
+                is Result.Error -> r
+            }
+            GutscheinSchritt.PIN_ZEIGEN, GutscheinSchritt.NUMMER_KOPIEREN, GutscheinSchritt.PIN_KOPIEREN ->
+                when (val r = repo.klartext(b.id ?: return null, anfrage)) {
+                    is Result.Success -> {
+                        // Inzwischen verlassen oder abgebrochen: Der Klartext bleibt nicht liegen.
+                        if (nochOffen(b)) {
+                            _state.update { it.copy(bestaetigung = null, klartext = it.klartext + (b.id to r.data.alsAnsicht())) }
+                            fuehreAus(b.schritt, r.data.alsAnsicht())
+                        }
+                        null
+                    }
+                    is Result.Error -> r
+                }
+        }
 
     private fun nochOffen(b: GutscheinBestaetigung) =
         _state.value.bestaetigung.let { it != null && it.schritt == b.schritt && it.id == b.id }
@@ -309,7 +314,7 @@ class GutscheinViewModel @Inject constructor(
                             meldungen.zeige(d.error ?: texte.text(R.string.err_generic))
                             return@launch
                         }
-                        val betrag = d.angezeigt ?: ch.brickinventoryapp.util.fmtMoney(v.amount, v.currency)
+                        val betrag = d.angezeigt ?: fmtMoney(v.amount, v.currency)
                         var satz = texte.text(R.string.vouchers_balance_done, v.number, betrag)
                         // Angehängt statt als zweite Meldung, die die erste überschriebe.
                         if (d.waehrungGeaendert) satz += " " + texte.text(R.string.vouchers_balance_currency, v.currency)

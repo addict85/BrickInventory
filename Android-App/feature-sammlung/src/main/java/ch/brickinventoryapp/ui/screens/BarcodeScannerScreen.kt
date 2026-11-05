@@ -7,10 +7,8 @@ package ch.brickinventoryapp.ui.screens
 
 import ch.brickinventoryapp.ui.theme.Formen
 import ch.brickinventoryapp.ui.theme.LocalStatusFarben
-import android.view.ViewGroup
 import androidx.camera.camera2.interop.ExperimentalCamera2Interop
 import androidx.camera.core.*
-import androidx.camera.view.PreviewView
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.border
@@ -26,11 +24,11 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.compose.ui.res.stringResource
 import ch.brickinventoryapp.ressourcen.R
-import android.view.MotionEvent
 import androidx.compose.foundation.background
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.ui.unit.dp
 import ch.brickinventoryapp.ui.theme.Abstaende
+import ch.brickinventoryapp.ui.components.MitTooltip
 
 @Composable
 fun BarcodeScannerScreen(
@@ -156,7 +154,7 @@ fun BarcodeScannerScreen(
                 KameraErlaubnisHinweis { cameraPermission.anfragen() }
             }
         }
-        ch.brickinventoryapp.ui.components.MitTooltip(stringResource(R.string.scanner_close), Modifier.align(Alignment.TopEnd)) {
+        MitTooltip(stringResource(R.string.scanner_close), Modifier.align(Alignment.TopEnd)) {
             IconButton(onClick = onDismiss, modifier = Modifier.padding(Abstaende.gross)) {
                 Icon(Icons.Default.Close, stringResource(R.string.scanner_close), tint = Color.White)
             }
@@ -259,30 +257,8 @@ fun CameraPreviewBarcode(
 
     AndroidView(
         factory = { ctx ->
-            val previewView = PreviewView(ctx).apply {
-                layoutParams = ViewGroup.LayoutParams(
-                    ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
-                scaleType = PreviewView.ScaleType.FILL_CENTER
-                implementationMode = PreviewView.ImplementationMode.PERFORMANCE
-            }
-
-            // Tippen zum Scharfstellen: Bei einer Anleitung dicht vor der Linse liegt der
-            // kontinuierliche Autofokus gern daneben; ein Tipp gibt einen ausdrücklichen
-            // Messpunkt. disableAutoCancel(), sonst fiele die Kamera nach fünf Sekunden auf
-            // ihre eigene Wahl zurück.
-            previewView.setOnTouchListener { v, ev ->
-                if (ev.action == android.view.MotionEvent.ACTION_UP) {
-                    val punkt = previewView.meteringPointFactory.createPoint(ev.x, ev.y)
-                    try {
-                        val aktion = androidx.camera.core.FocusMeteringAction.Builder(
-                            punkt, androidx.camera.core.FocusMeteringAction.FLAG_AF
-                        ).disableAutoCancel().build()
-                        _kameraCtrl.get()?.startFocusAndMetering(aktion)
-                    } catch (_: Exception) { /* Kamera noch nicht bereit */ }
-                    v.performClick()
-                }
-                true
-            }
+            val previewView = kameraVorschau(ctx)
+            tippZumFokus(previewView) { _kameraCtrl.get() }
 
             // Anbieter holen, Vorschau bauen, binden: KameraAufbau.kt. Hier
             // bleibt nur, was den Scanner betrifft.

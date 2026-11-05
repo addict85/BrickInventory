@@ -22,6 +22,12 @@ import androidx.compose.ui.unit.dp
 import okhttp3.HttpUrl.Companion.toHttpUrl
 import ch.brickinventoryapp.ressourcen.R
 import ch.brickinventoryapp.ui.theme.Abstaende
+import ch.brickinventoryapp.ui.components.HinweisText
+import ch.brickinventoryapp.ui.components.MitTooltip
+import ch.brickinventoryapp.ui.components.ScanKnopf
+import ch.brickinventoryapp.ui.components.ZustandsHinweis
+import ch.brickinventoryapp.ui.components.mitSchrift
+import ch.brickinventoryapp.util.oeffneExtern
 
 @Composable
 fun ComparisonScreen() {
@@ -47,7 +53,7 @@ fun ComparisonScreen() {
     val meldungen = remember { SnackbarHostState() }
     suspend fun openInBrowser(query: String) {
         val url = "https://www.toppreise.ch/produktsuche".toHttpUrl().newBuilder().addQueryParameter("q", query).build()
-        if (!ch.brickinventoryapp.util.oeffneExtern(context, url.toString())) meldungen.showSnackbar(keineAppText)
+        if (!oeffneExtern(context, url.toString())) meldungen.showSnackbar(keineAppText)
     }
 
     LaunchedEffect(activeQuery) {
@@ -93,13 +99,13 @@ fun ComparisonScreen() {
                         if (searchText.isNotBlank()) scannedBarcode = null
                     },
                     placeholder = { Text(stringResource(R.string.comparison_search_placeholder)) },
-                    leadingIcon = { Icon(Icons.Default.Search, null, Modifier.size(ch.brickinventoryapp.ui.components.mitSchrift(20.dp))) },
+                    leadingIcon = { Icon(Icons.Default.Search, null, Modifier.size(mitSchrift(20.dp))) },
                     trailingIcon = {
                         // `cd_search_clear` statt `comparison_clear`: Letzteres heisst „Löschen“ /
                         // „Clear“, und TalkBack sagte am Suche-leeren-Knopf das Wort für „Bestand
                         // vernichten“. Dieses Feld ist kein `Suchfeld`, weil es die Suchtaste der
                         // Tastatur braucht, und nimmt den Text deshalb von Hand.
-                        if (searchText.isNotEmpty()) ch.brickinventoryapp.ui.components.MitTooltip(stringResource(R.string.cd_search_clear)) {
+                        if (searchText.isNotEmpty()) MitTooltip(stringResource(R.string.cd_search_clear)) {
                             IconButton(onClick = { searchText = "" }) { Icon(Icons.Default.Clear, stringResource(R.string.cd_search_clear)) }
                         }
                     },
@@ -109,7 +115,7 @@ fun ComparisonScreen() {
                     keyboardOptions = NumericInput.ganzzahlTastatur(ImeAction.Search),
                     keyboardActions = KeyboardActions(onSearch = { triggerSearch() })
                 )
-                ch.brickinventoryapp.ui.components.ScanKnopf({ showScanner = true })
+                ScanKnopf({ showScanner = true })
                 }
 
                 Button(
@@ -117,7 +123,7 @@ fun ComparisonScreen() {
                     modifier = Modifier.fillMaxWidth(),
                     enabled = searchText.isNotBlank() || scannedBarcode != null
                 ) {
-                    Icon(Icons.Default.OpenInBrowser, null, Modifier.size(ch.brickinventoryapp.ui.components.mitSchrift(16.dp)))
+                    Icon(Icons.Default.OpenInBrowser, null, Modifier.size(mitSchrift(16.dp)))
                     Spacer(Modifier.width(6.dp))
                     Text(stringResource(R.string.comparison_search), fontWeight = FontWeight.SemiBold)
                 }
@@ -140,8 +146,8 @@ fun ComparisonScreen() {
         }
 
         // Derselbe Hinweis wie jeder Leerzustand der App (Symbol auf runder Fläche).
-        ch.brickinventoryapp.ui.components.ZustandsHinweis {
-            ch.brickinventoryapp.ui.components.HinweisText(Icons.Default.Search,
+        ZustandsHinweis {
+            HinweisText(Icons.Default.Search,
                 stringResource(R.string.comparison_title), stringResource(R.string.comparison_hint))
         }
     }

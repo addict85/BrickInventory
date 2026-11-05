@@ -1,0 +1,18 @@
+Gegenprobe: der Plattenspiegel übernimmt jeden Wert, auch einen überholten
+Modul: core-data
+Test: ch.brickinventoryapp.SpiegelNachlaufTest
+Rot: ein ueberholter Plattenwert dreht den Speicher nicht zurueck
+
+diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/TokenTausch.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/TokenTausch.kt
+index b09bf3c..e540b67 100644
+--- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/TokenTausch.kt
++++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/TokenTausch.kt
+@@ -71,7 +71,7 @@ class TokenSchranke {
+         strom.map(roh).distinctUntilChanged()
+             .transformLatest { r -> lies(r) { emit(r to it) } }
+             .collect { (r, wert) ->
+-                sperre.withLock { if (roh(jetzt()) == r) setze(wert) }
++                sperre.withLock { setze(wert) }
+                 if (erster) { erster = false; gelesen() }
+             }
+     }

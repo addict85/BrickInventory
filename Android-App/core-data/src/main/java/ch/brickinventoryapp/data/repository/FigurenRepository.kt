@@ -10,6 +10,7 @@ import ch.brickinventoryapp.data.model.*
 import kotlinx.coroutines.flow.Flow
 import javax.inject.Inject
 import javax.inject.Singleton
+import ch.brickinventoryapp.data.model.MinifigStatsResponse
 
 /**
  * Minifiguren aus Sets und manuell erfasste. Erreichbar über `repo.figuren.…`.
@@ -81,7 +82,7 @@ class FigurenRepository @Inject constructor(
             safeCall { api.deleteMinifig(figNumber, owner, schluessel) }
         }
 
-    suspend fun getMinifigStats(accounts: String? = null): Result<ch.brickinventoryapp.data.model.MinifigStatsResponse> =
+    suspend fun getMinifigStats(accounts: String? = null): Result<MinifigStatsResponse> =
         safeCall { api.getMinifigStats(accounts) }
 
     suspend fun getSetsMitFigur(figNumber: String,

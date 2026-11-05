@@ -30,6 +30,13 @@ import ch.brickinventoryapp.ui.screens.TabellenZeile
 import ch.brickinventoryapp.util.resolveFullUrlViaProxy
 import ch.brickinventoryapp.util.rememberTileImageWithFallback
 import ch.brickinventoryapp.ui.theme.Abstaende
+import ch.brickinventoryapp.ui.components.DetailTopAppBar
+import ch.brickinventoryapp.ui.components.ProduktBild
+import ch.brickinventoryapp.ui.components.ZurueckKnopf
+import ch.brickinventoryapp.ui.components.farbUebersetzer
+import ch.brickinventoryapp.ui.components.kategorieUebersetzer
+import ch.brickinventoryapp.ui.mengeAusSet
+import ch.brickinventoryapp.ui.screens.LagerortFeld
 
 /**
  * Detail für ein Teil / eine Figur aus einem Set, auf dem Telefon als Blatt von unten:
@@ -77,7 +84,7 @@ private fun SetItemDetail(
     onOpenSet: (String) -> Unit,
     alsDialog: Boolean,
 ) {
-    val farbe = ch.brickinventoryapp.ui.components.farbUebersetzer()
+    val farbe = farbUebersetzer()
     // Die Auswahlliste gehoert dem BESITZER des Teils, nicht dem Betrachter —
     // dieselbe Regel wie beim Set. Ohne `kopf` (Dialog gerade erst geoeffnet)
     // bleibt die Liste leer, und der Server antwortet mit der eigenen; der
@@ -124,7 +131,7 @@ private fun SetItemDetail(
                     else -> {
                         // Tippen vergrössert — dasselbe Bauteil wie im Set-Detail
                         // und im Dialog für manuell erfasste Teile.
-                        ch.brickinventoryapp.ui.components.ProduktBild(
+                        ProduktBild(
                             model = bild,
                             imageLoader = imageLoader,
                             contentDescription = kopf?.name,
@@ -138,13 +145,13 @@ private fun SetItemDetail(
                         Spacer(Modifier.height(Abstaende.mittel))
                         SetItemZeile(
                             stringResource(R.string.setitem_total_qty),
-                            ch.brickinventoryapp.ui.mengeAusSet(kopf?.totalQuantity ?: 0))
+                            mengeAusSet(kopf?.totalQuantity ?: 0))
                         kopf?.colorName?.let {
                             SetItemZeile(stringResource(R.string.setitem_color), farbe(it))
                         }
                         kopf?.categoryName?.let {
                             SetItemZeile(stringResource(R.string.setitem_category),
-                                ch.brickinventoryapp.ui.components.kategorieUebersetzer()(it))
+                                kategorieUebersetzer()(it))
                         }
                         if (kopf?.isSpare == true) {
                             SetItemZeile(stringResource(R.string.parts_spare_tag), "✓")
@@ -162,7 +169,7 @@ private fun SetItemDetail(
                                 Text(stringResource(R.string.detail_storage),
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                                     style = MaterialTheme.typography.bodyMedium)
-                                ch.brickinventoryapp.ui.screens.LagerortFeld(
+                                LagerortFeld(
                                     wert = kopf.storage ?: "",
                                     vorrat = lagerZustand.vorrat.map { it.name },
                                     onWert = { aktionen.setzeTeilLagerort(kopf.nummer, kopfFarbe, it) },
@@ -235,7 +242,7 @@ private fun SetItemDetail(
                 verticalArrangement = Arrangement.spacedBy(Abstaende.mittel),
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    ch.brickinventoryapp.ui.components.ZurueckKnopf(schliessen, schliessen = true)
+                    ZurueckKnopf(schliessen, schliessen = true)
                     Box(Modifier.weight(1f)) {
                         ProvideTextStyle(MaterialTheme.typography.titleLarge) { titel() }
                     }
@@ -245,7 +252,7 @@ private fun SetItemDetail(
         }
     } else {
         Column(Modifier.fillMaxSize()) {
-            ch.brickinventoryapp.ui.components.DetailTopAppBar(
+            DetailTopAppBar(
                 titel = kopf?.name ?: zustand.nummer,
                 untertitel = zustand.nummer + (kopf?.colorName?.let { " · " + farbe(it) } ?: ""),
                 onZurueck = schliessen,

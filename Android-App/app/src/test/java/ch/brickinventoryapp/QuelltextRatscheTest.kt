@@ -38,9 +38,15 @@ import org.junit.Test
  *   kommentar-zu-lang    sechs Zeilen Prosa über AppViewModel → rot „kein Kommentar hat …“
  *   verweis-ins-leere    ein Anker in Vorwaermen.kt verschrieben → rot „jeder Verweis …“
  * detekt-Baseline (05.11.2026, gemessen mit kotlinc lokal):
- *   detekt-baseline-waechst       Obergrenze 133 statt 134 → rot „die detekt-Baseline …“
+ *   detekt-baseline-waechst       Obergrenze eins unter den Einträgen → rot „die detekt-Baseline …“
  *   detekt-baseline-fremde-regel  ein MagicNumber-Eintrag → rot, derselbe Test
  * Abbruch (05.11.2026): cache-schluckt-abbruch macht auch „kein breiter Fang …“ rot.
+ * Namen (05.11.2026, gemessen mit kotlinc lokal): voll-qualifiziert schreibt in
+ *   Vorwaermen.kt `ch.brickinventoryapp.util.fangeAusserAbbruch` aus → rot „kein voll …“
+ * Warten (05.11.2026, gemessen mit kotlinc lokal): warten-in-echtzeit schläft in
+ *   TeileViewModelTest wieder 200 ms → rot „Echtzeit-Warten in Tests …“
+ * Fläche (05.11.2026, gemessen mit kotlinc lokal): core-data-oeffentlich nimmt liegtUnter
+ *   das internal → rot „die oeffentliche Flaeche von core-data …“
  */
 class QuelltextRatscheTest {
 
@@ -113,15 +119,19 @@ class QuelltextRatscheTest {
                 }
                 else -> { i++; continue }
             }
-            var imTag = false
-            val prosa = text.count { z ->
-                if (z.startsWith("@")) imTag = true else if (z.isEmpty()) imTag = false
-                z.isNotEmpty() && !imTag
-            }
-            ergebnis += (i + 1) to prosa
+            ergebnis += (i + 1) to prosa(text)
             i = j + 1
         }
         return ergebnis
+    }
+
+    /** Prosazeilen ohne KDoc-Tags; ein Tag gilt bis zur nächsten Leerzeile. */
+    private fun prosa(text: List<String>): Int {
+        var imTag = false
+        return text.count { z ->
+            if (z.startsWith("@")) imTag = true else if (z.isEmpty()) imTag = false
+            z.isNotEmpty() && !imTag
+        }
     }
 
     @Test
@@ -266,6 +276,57 @@ class QuelltextRatscheTest {
                 "oder verzweigte Funktion zerlegen, statt sie einzutragen."
         }
         if (ids.size < grenze) println("  detekt-Baseline: ${ids.size} (Obergrenze $grenze) — tools/detekt-obergrenze.txt nachziehen")
+    }
+
+    @Test
+    fun `Echtzeit-Warten in Tests wird weniger, nie mehr`() {
+        // Ein Test, der schläft, ist langsam und auf einem vollen Runner brüchig. ViewModel-Tests
+        // laufen im Takt (PfadServer.imTakt, Test-Dispatcher); gezählt wird, was noch wartet.
+        val SCHLAFEN = 17
+        val WARTEN = 83
+        val dateien = (Quellen.tests.walkTopDown() + java.io.File(Quellen.projekt, "core-testing/src/main").walkTopDown())
+            .filter { it.isFile && it.extension == "kt" }.toList()
+        val texte = dateien.map { code(it.readText()) }
+        val schlafen = texte.sumOf { Regex("""\bThread\.sleep\(""").findAll(it).count() }
+        val warten = texte.sumOf { Regex("""\bwarteBis\(""").findAll(it).count() }
+        assert(dateien.size > 200) { "Nur ${dateien.size} Testdateien gefunden — greift die Suche noch?" }
+        assert(schlafen <= SCHLAFEN && warten <= WARTEN) {
+            "Thread.sleep $schlafen (erlaubt $SCHLAFEN), warteBis $warten (erlaubt $WARTEN). Neue Tests laufen " +
+                "im Takt: PfadServer.imTakt() oder FakeApi mit Test-Dispatcher, Compose mit waitUntil."
+        }
+        if (schlafen < SCHLAFEN || warten < WARTEN) println("  Echtzeit-Warten: $schlafen / $warten — Schranken nachziehen")
+    }
+
+    @Test
+    fun `die oeffentliche Flaeche von core-data waechst nicht`() {
+        // Was nur core-data selbst braucht, ist internal: Jede öffentliche Deklaration ist
+        // Schnittstelle für alle Bereiche. Gezählt wird auf oberster Ebene.
+        val GRENZE = 236
+        val dekl = Regex("""^(?:@[\w.:]+(?:\([^)\n]*\))?\s+)*((?:(?:public|internal|private|protected|data|sealed|abstract|open|enum|inline|value|annotation|const|suspend|operator|infix|tailrec|lateinit|fun interface)\s+)*)(?:fun\s+interface|class|interface|object|typealias|fun|val|var)\s""", RegexOption.MULTILINE)
+        val dateien = java.io.File(Quellen.projekt, "core-data/src/main").walkTopDown().filter { it.isFile && it.extension == "kt" }.toList()
+        assert(dateien.size > 100) { "Nur ${dateien.size} Dateien in core-data — greift die Suche noch?" }
+        val oeffentlich = dateien.sumOf { f ->
+            dekl.findAll(f.readText()).count { "private" !in it.groupValues[1] && "internal" !in it.groupValues[1] }
+        }
+        assert(oeffentlich <= GRENZE) {
+            "$oeffentlich öffentliche Deklarationen in core-data, erlaubt sind $GRENZE. Was nur das Modul braucht, wird internal."
+        }
+        if (oeffentlich < GRENZE) println("  core-data öffentlich: $oeffentlich (Grenze $GRENZE) — nachziehen")
+    }
+
+    @Test
+    fun `kein voll qualifizierter Projektname im Code`() {
+        // Ein Import zeigt die Abhängigkeit im Kopf der Datei; inline bleibt sie
+        // unsichtbar und die Zeile lang. Kommentare und Zeichenketten zählen nicht.
+        val voll = Regex("""(?<![\w.])ch\.brickinventoryapp(?:\.[a-z]\w*)+\.[A-Za-z_]\w*""")
+        val dateien = produktivDateien() + Quellen.tests.walkTopDown().filter { it.isFile && it.extension == "kt" }
+        assert(dateien.size > 500) { "Nur ${dateien.size} Dateien gefunden — greift die Suche noch?" }
+        val funde = dateien.flatMap { f ->
+            code(f.readText()).lines().map { it.replace(Regex("//.*"), "") }
+                .filterNot { it.trimStart().startsWith("import ") || it.trimStart().startsWith("package ") }
+                .filter { voll.containsMatchIn(it) }.map { "${f.name}: ${it.trim()}" }
+        }
+        assert(funde.isEmpty()) { "Voll qualifizierte Namen; importieren statt ausschreiben:\n  " + funde.joinToString("\n  ") }
     }
 
     @Test

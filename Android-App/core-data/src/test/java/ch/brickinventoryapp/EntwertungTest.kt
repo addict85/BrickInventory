@@ -28,6 +28,7 @@ import org.junit.Test
 import retrofit2.Retrofit
 import java.io.File
 import java.util.concurrent.TimeUnit
+import ch.brickinventoryapp.data.api.ApiJson
 
 /**
  * Abmelden ohne Netz lässt das Token am Server nicht gültig (sec7, N3): Scheitert
@@ -67,7 +68,7 @@ class EntwertungTest {
             .addInterceptor(ServerWaechter(lage, true, entwicklung = true, sitzungAbgelaufen = {}))
             .readTimeout(2, TimeUnit.SECONDS).build()
         return KontoRepository(Retrofit.Builder().baseUrl(server.url("/")).client(client)
-            .addConverterFactory(ch.brickinventoryapp.data.api.ApiJson.asConverterFactory("application/json".toMediaType()))
+            .addConverterFactory(ApiJson.asConverterFactory("application/json".toMediaType()))
             .build().create(KontoApi::class.java), ResponseCache { dir })
     }
 

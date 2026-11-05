@@ -8,6 +8,7 @@ import ch.brickinventoryapp.data.lokal.Fach
 import ch.brickinventoryapp.data.lokal.Offlineablage
 import ch.brickinventoryapp.data.model.*
 import retrofit2.Response
+import ch.brickinventoryapp.util.KlartextAbgelehnt
 
 /**
  * Was die Repositories gemeinsam brauchen: den Abruf mit Plattenspeicher als
@@ -149,7 +150,7 @@ suspend fun <T> sicherAufrufen(call: suspend () -> Response<T>): Result<T> {
         Result.Error("", transient = true, art = Fehlerart.NETZ)
     } catch (_: java.net.SocketTimeoutException) {
         Result.Error("", transient = true, art = Fehlerart.ZEIT)
-    } catch (_: ch.brickinventoryapp.util.KlartextAbgelehnt) {
+    } catch (_: KlartextAbgelehnt) {
         // Nicht vorübergehend: Ein zweiter Versuch ginge genauso an http.
         Result.Error("", art = Fehlerart.KLARTEXT)
     } catch (e: java.io.IOException) {

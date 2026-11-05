@@ -8,7 +8,7 @@ import java.io.ByteArrayOutputStream
 import java.io.IOException
 
 /** Obergrenze eines PDFs, das nur im Speicher liegen darf; ein Gutschein-Export hat wenige hundert kB. */
-const val PDF_SPEICHER_MAX_BYTES: Long = 32L * 1024 * 1024
+internal const val PDF_SPEICHER_MAX_BYTES: Long = 32L * 1024 * 1024
 
 /**
  * Lädt ein vertrauliches PDF (Gutscheine: Nummer und PIN) ganz in den Speicher, ohne

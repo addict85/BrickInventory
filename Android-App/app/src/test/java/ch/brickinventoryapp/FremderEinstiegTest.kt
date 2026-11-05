@@ -29,6 +29,9 @@ import org.robolectric.Robolectric
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 import org.robolectric.shadows.ShadowDialog
+import ch.brickinventoryapp.service.TeilelistenProvider
+import ch.brickinventoryapp.service.teilelistenAuswahl
+import ch.brickinventoryapp.ui.components.Ueberdeckungsschutz
 
 /**
  * Was eine fremde App erreichen kann: Den Einstieg der Meldungen gar nicht, die
@@ -103,7 +106,7 @@ class FremderEinstiegTest {
     @Test
     fun `ein geschuetzter Bildschirm schuetzt die Activity nur, solange er steht`() {
         val zeigen = androidx.compose.runtime.mutableStateOf(true)
-        compose.setContent { if (zeigen.value) ch.brickinventoryapp.ui.components.Ueberdeckungsschutz() }
+        compose.setContent { if (zeigen.value) Ueberdeckungsschutz() }
         compose.waitForIdle()
         val fenster = compose.activity.window.decorView
         assertTrue("Berührungen durch ein fremdes Fenster kämen an", fenster.filterTouchesWhenObscured)
@@ -154,7 +157,7 @@ class FremderEinstiegTest {
 
     @Test
     fun `die Teileliste geht nur ueber die Auswahl des Systems hinaus`() {
-        val auswahl = ch.brickinventoryapp.service.teilelistenAuswahl(ctx, "Teileliste")
+        val auswahl = teilelistenAuswahl(ctx, "Teileliste")
         assertEquals("Ohne Auswahl bekäme die Standard-App das Inventar", Intent.ACTION_CHOOSER, auswahl.action)
         val ziel = androidx.core.content.IntentCompat.getParcelableExtra(auswahl, Intent.EXTRA_INTENT, Intent::class.java)!!
         assertEquals(Intent.ACTION_VIEW, ziel.action)
@@ -162,7 +165,7 @@ class FremderEinstiegTest {
         assertTrue("Ohne Leserecht öffnet keine App die Datei", (ziel.flags and Intent.FLAG_GRANT_READ_URI_PERMISSION) != 0)
         val anbieter = ctx.packageManager.resolveContentProvider(ziel.data!!.authority!!, 0)
         assertEquals("Die Uri zeigt auf den Teilelisten-Provider des Manifests",
-            ch.brickinventoryapp.service.TeilelistenProvider::class.java.name, anbieter?.name)
+            TeilelistenProvider::class.java.name, anbieter?.name)
         assertFalse("Der Teilelisten-Provider ist exportiert", anbieter!!.exported)
     }
 }

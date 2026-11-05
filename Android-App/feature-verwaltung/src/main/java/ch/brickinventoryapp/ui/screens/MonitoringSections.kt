@@ -34,6 +34,12 @@ import ch.brickinventoryapp.ui.*
 import kotlinx.coroutines.launch
 import ch.brickinventoryapp.util.NumericInput
 import ch.brickinventoryapp.ui.theme.Abstaende
+import ch.brickinventoryapp.ui.DESIGN_NAMEN
+import ch.brickinventoryapp.ui.components.Abschnittstitel
+import ch.brickinventoryapp.ui.components.MitTooltip
+import ch.brickinventoryapp.ui.components.SegmentWahl
+import ch.brickinventoryapp.ui.components.WahlChips
+import ch.brickinventoryapp.ui.components.mitSchrift
 
 /**
  * Die Abschnitte der Überwachungsseite unterhalb der Job-Liste — ganze Funktionen
@@ -70,19 +76,19 @@ internal fun BricksetQueueRow(
                         color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
                 Row(horizontalArrangement = Arrangement.spacedBy(Abstaende.winzig)) {
-                    ch.brickinventoryapp.ui.components.MitTooltip(stringResource(R.string.monitoring_icon_retry)) {
+                    MitTooltip(stringResource(R.string.monitoring_icon_retry)) {
                         FilledTonalIconButton(onClick = { onRetry(entry.setNumber) }) {
-                            Icon(Icons.Default.Refresh, stringResource(R.string.monitoring_icon_retry), Modifier.size(ch.brickinventoryapp.ui.components.mitSchrift(14.dp)))
+                            Icon(Icons.Default.Refresh, stringResource(R.string.monitoring_icon_retry), Modifier.size(mitSchrift(14.dp)))
                         }
                     }
-                    ch.brickinventoryapp.ui.components.MitTooltip(stringResource(R.string.common_delete)) {
+                    MitTooltip(stringResource(R.string.common_delete)) {
                         FilledTonalIconButton(
                             onClick = { onDelete(entry.setNumber) },
                             colors = IconButtonDefaults.filledTonalIconButtonColors(
                                 containerColor = MaterialTheme.colorScheme.errorContainer
                             )
                         ) {
-                            Icon(Icons.Default.Delete, stringResource(R.string.common_delete), Modifier.size(ch.brickinventoryapp.ui.components.mitSchrift(14.dp)),
+                            Icon(Icons.Default.Delete, stringResource(R.string.common_delete), Modifier.size(mitSchrift(14.dp)),
                                 tint = MaterialTheme.colorScheme.onErrorContainer)
                         }
                     }
@@ -181,7 +187,7 @@ fun CacheAndLimitsSection(
     // ── Price Cache ───────────────────────────────────────────────────────────
     AppKarte(Modifier.padding(horizontal = Abstaende.gross, vertical = 5.dp)) {
         Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            ch.brickinventoryapp.ui.components.Abschnittstitel(stringResource(R.string.monitoring_price_cache))
+            Abschnittstitel(stringResource(R.string.monitoring_price_cache))
 
             cacheStats?.let { cs ->
                 Row(Modifier.fillMaxWidth(), Arrangement.SpaceAround) {
@@ -201,7 +207,7 @@ fun CacheAndLimitsSection(
                 Text(stringResource(R.string.monitoring_default_condition),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant)
-                ch.brickinventoryapp.ui.screens.ConditionToggle(
+                ConditionToggle(
                     selected = defaultCondition,
                     onSelect = ereignisse.vorgabeZustand
                 )
@@ -271,8 +277,8 @@ fun CacheAndLimitsSection(
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant)
             // Eine Wahl aus mehreren: dieselben Radio-Chips wie in den Einstellungen.
-            ch.brickinventoryapp.ui.components.WahlChips(
-                optionen = ch.brickinventoryapp.ui.DESIGN_NAMEN.map { (wert, text) -> wert to stringResource(text) },
+            WahlChips(
+                optionen = DESIGN_NAMEN.map { (wert, text) -> wert to stringResource(text) },
                 gewaehlt = monState.vorgabeDesign ?: wirksamesDesign,
                 onWahl = ereignisse.design,
             )
@@ -380,7 +386,7 @@ private fun CacheDauerZeile(
                     onClick = onSpeichern,
                     contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp)
                 ) { Text("OK", style = MaterialTheme.typography.labelMedium) }
-                ch.brickinventoryapp.ui.components.MitTooltip(stringResource(R.string.common_cancel)) {
+                MitTooltip(stringResource(R.string.common_cancel)) {
                     IconButton(onClick = { onBearbeiten(false) }) {
                         Icon(Icons.Default.Close, stringResource(R.string.common_cancel))
                     }
@@ -392,10 +398,10 @@ private fun CacheDauerZeile(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(stringResource(R.string.monitoring_cache_ttl_hours, dauer), fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.bodyMedium)
-                ch.brickinventoryapp.ui.components.MitTooltip(stringResource(R.string.cd_edit_cache_ttl)) {
+                MitTooltip(stringResource(R.string.cd_edit_cache_ttl)) {
                     FilledTonalIconButton(
                         onClick = { onBearbeiten(true) },
-                    ) { Icon(Icons.Default.Edit, stringResource(R.string.cd_edit_cache_ttl), Modifier.size(ch.brickinventoryapp.ui.components.mitSchrift(14.dp))) }
+                    ) { Icon(Icons.Default.Edit, stringResource(R.string.cd_edit_cache_ttl), Modifier.size(mitSchrift(14.dp))) }
                 }
             }
         }
@@ -445,11 +451,11 @@ private fun KontingentKarte(
     AppKarte(Modifier.padding(horizontal = Abstaende.gross, vertical = 5.dp)) {
         Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(Abstaende.klein)) {
             Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween, Alignment.CenterVertically) {
-                ch.brickinventoryapp.ui.components.Abschnittstitel(stringResource(R.string.monitoring_api_calls))
-                ch.brickinventoryapp.ui.components.MitTooltip(stringResource(R.string.cd_edit_limits)) {
+                Abschnittstitel(stringResource(R.string.monitoring_api_calls))
+                MitTooltip(stringResource(R.string.cd_edit_limits)) {
                     FilledTonalIconButton(
                         onClick = onBearbeitenUmschalten,
-                    ) { Icon(if (bearbeiten) Icons.Default.Close else Icons.Default.Edit, stringResource(R.string.cd_edit_limits), Modifier.size(ch.brickinventoryapp.ui.components.mitSchrift(14.dp))) }
+                    ) { Icon(if (bearbeiten) Icons.Default.Close else Icons.Default.Edit, stringResource(R.string.cd_edit_limits), Modifier.size(mitSchrift(14.dp))) }
                 }
             }
 
@@ -465,7 +471,7 @@ private fun KontingentKarte(
                     modifier = Modifier.fillMaxWidth(),
                     contentPadding = PaddingValues(vertical = Abstaende.klein)
                 ) {
-                    Icon(Icons.Default.Save, null, Modifier.size(ch.brickinventoryapp.ui.components.mitSchrift(16.dp)))
+                    Icon(Icons.Default.Save, null, Modifier.size(mitSchrift(16.dp)))
                     Spacer(Modifier.width(6.dp))
                     Text(stringResource(R.string.monitoring_limits_save), style = MaterialTheme.typography.bodyMedium)
                 }
@@ -567,14 +573,14 @@ internal fun ProtokollSection(verwaltung: VerwaltungUiState, aktionen: Monitorin
                     if (verwaltung.protokollLaden) {
                         CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp)
                     } else if (offen) {
-                        ch.brickinventoryapp.ui.components.MitTooltip(stringResource(R.string.admin_log_reload)) {
+                        MitTooltip(stringResource(R.string.admin_log_reload)) {
                             IconButton(onClick = { protokollScope.launch { aktionen.ladeProtokoll(verwaltung.protokollMinuten) } }) {
                                 Icon(Icons.Default.Refresh, stringResource(R.string.admin_log_reload),
                                     Modifier.size(18.dp))
                             }
                         }
                     }
-                    ch.brickinventoryapp.ui.components.MitTooltip(stringResource(if (offen) R.string.common_collapse else R.string.common_expand)) {
+                    MitTooltip(stringResource(if (offen) R.string.common_collapse else R.string.common_expand)) {
                     IconButton(onClick = {
                         offen = !offen
                         if (offen && verwaltung.protokoll.isEmpty()) protokollScope.launch { aktionen.ladeProtokoll(verwaltung.protokollMinuten) }
@@ -594,7 +600,7 @@ internal fun ProtokollSection(verwaltung: VerwaltungUiState, aktionen: Monitorin
                 Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                     // Dieselben Spannen wie die Webapp anbietet. Der Server
                     // begrenzt selbst auf 2880 Minuten.
-                    ch.brickinventoryapp.ui.components.SegmentWahl(
+                    SegmentWahl(
                         optionen = listOf(15, 60, 240, 1440).map { it to stringResource(R.string.admin_log_minutes, it) },
                         gewaehlt = verwaltung.protokollMinuten,
                         onWahl = { min -> protokollScope.launch { aktionen.ladeProtokoll(min) } },
@@ -741,7 +747,7 @@ fun ZeitplanZeile(
                     },
                     contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp),
                 ) { Text("OK", style = MaterialTheme.typography.labelMedium) }
-                ch.brickinventoryapp.ui.components.MitTooltip(stringResource(R.string.common_cancel)) {
+                MitTooltip(stringResource(R.string.common_cancel)) {
                     IconButton(onClick = { bearbeiten = false }) {
                         Icon(Icons.Default.Close, stringResource(R.string.common_cancel))
                     }
@@ -755,10 +761,10 @@ fun ZeitplanZeile(
                     else stringResource(R.string.monitoring_schedule_minutes, plan.minutes ?: 60),
                     fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.bodyMedium,
                 )
-                ch.brickinventoryapp.ui.components.MitTooltip(stringResource(R.string.cd_edit_schedule)) {
+                MitTooltip(stringResource(R.string.cd_edit_schedule)) {
                     FilledTonalIconButton(
                         onClick = { bearbeiten = true },
-                    ) { Icon(Icons.Default.Edit, stringResource(R.string.cd_edit_schedule), Modifier.size(ch.brickinventoryapp.ui.components.mitSchrift(14.dp))) }
+                    ) { Icon(Icons.Default.Edit, stringResource(R.string.cd_edit_schedule), Modifier.size(mitSchrift(14.dp))) }
                 }
             }
         }

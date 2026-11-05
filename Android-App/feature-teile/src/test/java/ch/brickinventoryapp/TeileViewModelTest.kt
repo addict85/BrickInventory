@@ -21,8 +21,8 @@ import org.junit.Before
 import org.junit.Test
 
 /**
- * Das Teile-ViewModel, ausgeführt gegen einen Testserver; die Ruhezeit des
- * Lagerortfelds läuft auf der Testuhr.
+ * Das Teile-ViewModel, ausgeführt gegen die Regeln eines PfadServers ohne Netz
+ * (imTakt): Abrufe und Ablage laufen in der Testuhr, kein Test wartet in Echtzeit.
  *
  * Gegenproben (am 28.10.2026 gemessen, kotlinc gegen TeileViewModel.kt):
  *   A  in setPartsColorFilter() das Schreiben in den SavedStateHandle entfernt
@@ -45,6 +45,7 @@ import org.junit.Test
 class TeileViewModelTest {
 
     private val uhr = TestCoroutineScheduler()
+    private val takt = UnconfinedTestDispatcher(uhr)
     private lateinit var pfade: PfadServer
     private lateinit var t: TestDienste
 
@@ -53,7 +54,7 @@ class TeileViewModelTest {
 
     @Before
     fun auf() {
-        Dispatchers.setMain(UnconfinedTestDispatcher(uhr))
+        Dispatchers.setMain(takt)
         pfade = PfadServer(
             "/api/v1/parts" to """{"success":true,"total":1,"parts":[{"part_number":"3001","color_id":5}]}""",
             "/api/v1/parts/manual" to """{"success":true,"parts":[]}""",
@@ -64,7 +65,7 @@ class TeileViewModelTest {
             "/api/v1/parts/3001/5/sets" to """{"success":true,"item":{"nummer":"3001","color_id":5},
                 "sets":[{"set_number":"75192-1","quantity":4}]}""",
         )
-        t = TestDienste(pfade.server)
+        t = TestDienste(pfade.imTakt(), io = takt)
     }
 
     @After
@@ -83,13 +84,13 @@ class TeileViewModelTest {
         erstes.setPartsSpare("1")
         erstes.setPartsView("table")
 
-        pfade.neuerProzess { pfade, t ->
+        pfade.neuerProzess(io = takt) { pfade, t ->
             val neu = vm(gemerkt, t)
             val st = neu.partsState.value
             assertEquals(listOf("5", "11", "1", "table"),
                 listOf(st.partsColorFilter, st.partsCategoryFilter, st.partsSpare, st.partsView))
             neu.loadParts()
-            TestApi.warteBis("Liste geladen") { neu.partsState.value.parts.isNotEmpty() }
+            assertTrue("Liste geladen", neu.partsState.value.parts.isNotEmpty())
             val abruf = pfade.anfragenAn("GET /api/v1/parts?").single()
             assertTrue(abruf, listOf("color=5", "category=11", "spare=1", "with_sets=1").all { it in abruf })
         }
@@ -103,17 +104,13 @@ class TeileViewModelTest {
         vm.setLagerFilter(ScopeFilter.View.PARTS, "Keller")
         vm.setPartsQuery("stein")
         vm.loadParts()
-        TestApi.warteBis("manuelle Teile") {
-            pfade.anfragenAn("GET /api/v1/parts/manual?").any { "search=stein" in it }
-        }
+        assertTrue("manuelle Teile", pfade.anfragenAn("GET /api/v1/parts/manual?").any { "search=stein" in it })
         val teile = pfade.anfragenAn("GET /api/v1/parts/manual?").last { "search=stein" in it }
         assertTrue(teile, "storage=Keller" in teile)
 
         vm.setMinifigsQuery("han")
         vm.loadMinifigs()
-        TestApi.warteBis("manuelle Figuren") {
-            pfade.anfragenAn("GET /api/v1/minifigs/manual?").any { "search=han" in it }
-        }
+        assertTrue("manuelle Figuren", pfade.anfragenAn("GET /api/v1/minifigs/manual?").any { "search=han" in it })
     }
 
     @Test
@@ -121,7 +118,7 @@ class TeileViewModelTest {
         val vm = vm()
         vm.setScope(ScopeFilter.View.MINIFIGS, "own")
         for (pfad in listOf("GET /api/v1/minifigs?", "GET /api/v1/minifigs/stats?", "GET /api/v1/minifigs/manual?")) {
-            TestApi.warteBis(pfad) { pfade.anfragenAn(pfad).any { "accounts=own" in it } }
+            assertTrue(pfad, pfade.anfragenAn(pfad).any { "accounts=own" in it })
         }
     }
 
@@ -129,11 +126,10 @@ class TeileViewModelTest {
     fun `der Kontofilter der Teile reist mit, der einer anderen Ansicht nicht`() {
         val vm = vm()
         vm.setScope(ScopeFilter.View.PARTS, "own")
-        TestApi.warteBis("Liste geladen") { vm.partsState.value.parts.isNotEmpty() }
+        assertTrue("Liste geladen", vm.partsState.value.parts.isNotEmpty())
         assertTrue("accounts=own" in pfade.anfragenAn("GET /api/v1/parts?").last())
         val vorher = pfade.anfragenAn("GET /api/v1/parts?").size
         vm.setScope(ScopeFilter.View.GALLERY, "own")
-        Thread.sleep(200)
         assertEquals(vorher, pfade.anfragenAn("GET /api/v1/parts?").size)
     }
 
@@ -142,7 +138,7 @@ class TeileViewModelTest {
         val vm = vm()
         val liste = t.gemeldet(1) {
             vm.updatePart("3001", 5, quantity = 3, unitPrice = 0.1)
-            TestApi.warteBis("Liste nachgeladen") { vm.partsState.value.parts.isNotEmpty() }
+            assertTrue("Liste nachgeladen", vm.partsState.value.parts.isNotEmpty())
         }
         assertEquals(listOf(Aenderung.Teile), liste)
         assertEquals("t${R.string.vm_saved}", t.meldungen.meldung.value)
@@ -155,8 +151,7 @@ class TeileViewModelTest {
         val vm = vm()
         val liste = t.gemeldet(0) {
             vm.deletePart("3001", 5)
-            TestApi.warteBis("Antwort da") { pfade.anfragenAn("DELETE /api/v1/parts/3001/5").isNotEmpty() }
-            Thread.sleep(200)
+            assertTrue("Antwort da", pfade.anfragenAn("DELETE /api/v1/parts/3001/5").isNotEmpty())
         }
         assertTrue(liste.isEmpty())
         assertNull("Ein 401 ist schon gemeldet — hier kein zweiter, leerer Satz", t.meldungen.meldung.value)
@@ -166,16 +161,15 @@ class TeileViewModelTest {
     fun `der Lagerort wird entprellt gespeichert und im offenen Dialog gezeigt`() {
         val vm = vm()
         vm.oeffneSetItem("part", "3001", 5)
-        TestApi.warteBis("Dialog geladen") { !vm.setItemState.value.laedt }
+        assertTrue("Dialog geladen", !vm.setItemState.value.laedt)
         assertEquals("75192-1", vm.setItemState.value.sets.single().setNumber)
 
         vm.setzeTeilLagerort("3001", 5, "Ki")
         vm.setzeTeilLagerort("3001", 5, "Kiste 3")
         uhr.advanceTimeBy(500)
-        Thread.sleep(200)   // ein schon abgeschickter Abruf hätte den Server jetzt erreicht
         assertTrue("Vor der Ruhezeit geht nichts hinaus", pfade.anfragenAn("/storage").isEmpty())
         uhr.advanceTimeBy(400)
-        TestApi.warteBis("gespeichert") { vm.setItemState.value.kopf?.storage == "Kiste 3" }
+        assertTrue("gespeichert", vm.setItemState.value.kopf?.storage == "Kiste 3")
         assertEquals(1, pfade.anfragenAn("PUT /api/v1/parts/3001/5/storage").size)
     }
 
@@ -185,7 +179,7 @@ class TeileViewModelTest {
         val vm = vm(gemerkt)
         vm.setPartsColorFilter("5")
         vm.oeffneSetItem("part", "3001", 5)
-        TestApi.warteBis("geladen") { vm.partsState.value.parts.isNotEmpty() && !vm.setItemState.value.laedt }
+        assertTrue("geladen", vm.partsState.value.parts.isNotEmpty() && !vm.setItemState.value.laedt)
         t.sitzung.abgemeldet()
         assertTrue(vm.partsState.value.parts.isEmpty())
         assertTrue(!vm.setItemState.value.offen)

@@ -19,6 +19,23 @@ import java.util.concurrent.TimeUnit
 import javax.inject.Named
 import javax.inject.Singleton
 import okio.Path.Companion.toOkioPath
+import ch.brickinventoryapp.data.Entwerter
+import ch.brickinventoryapp.data.MeldungsKanal
+import ch.brickinventoryapp.data.PasswortPflicht
+import ch.brickinventoryapp.data.RechteSignal
+import ch.brickinventoryapp.data.SessionExpiredSignal
+import ch.brickinventoryapp.data.TokenTausch
+import ch.brickinventoryapp.data.ZweiterFaktorPflicht
+import ch.brickinventoryapp.data.cache.VorschauSpeicher
+import ch.brickinventoryapp.data.cache.Vorwaermung
+import ch.brickinventoryapp.util.AblageChiffre
+import ch.brickinventoryapp.util.Ablageschluessel
+import ch.brickinventoryapp.util.BildHostWaechter
+import ch.brickinventoryapp.util.VerschluesseltesDateisystem
+import ch.brickinventoryapp.util.ZertifikatsFrage
+import ch.brickinventoryapp.util.istEigenerBildServer
+import ch.brickinventoryapp.data.Verbindungsabwurf
+import ch.brickinventoryapp.util.SystemWurzeln
 
 /** OkHttp-Clients, Bildlader und Retrofit — alles, was über das Netz geht. */
 @Module
@@ -31,13 +48,13 @@ object NetzModule {
     fun provideApiOkHttpClient(
         @dagger.hilt.android.qualifiers.ApplicationContext context: android.content.Context,
         prefs: PreferencesManager,
-        sessionExpired: ch.brickinventoryapp.data.SessionExpiredSignal,
-        meldungen: ch.brickinventoryapp.data.MeldungsKanal,
-        frage: ch.brickinventoryapp.util.ZertifikatsFrage,
-        tausch: ch.brickinventoryapp.data.TokenTausch,
-        rechte: ch.brickinventoryapp.data.RechteSignal,
-        pflicht: ch.brickinventoryapp.data.PasswortPflicht,
-        faktorPflicht: ch.brickinventoryapp.data.ZweiterFaktorPflicht,
+        sessionExpired: SessionExpiredSignal,
+        meldungen: MeldungsKanal,
+        frage: ZertifikatsFrage,
+        tausch: TokenTausch,
+        rechte: RechteSignal,
+        pflicht: PasswortPflicht,
+        faktorPflicht: ZweiterFaktorPflicht,
     ): OkHttpClient =
         buildInterceptorClient(prefs, isApiClient = true, sessionExpired = sessionExpired, ctx = context,
             meldungen = meldungen, frage = frage, rotation = tausch, rechte = rechte, pflicht = pflicht,
@@ -94,10 +111,10 @@ object NetzModule {
         // wie bei provideImageLoader in dieser Datei.
         @dagger.hilt.android.qualifiers.ApplicationContext context: android.content.Context,
         prefs: PreferencesManager,
-        sessionExpired: ch.brickinventoryapp.data.SessionExpiredSignal,
-        vorschau: ch.brickinventoryapp.data.cache.VorschauSpeicher,
-        frage: ch.brickinventoryapp.util.ZertifikatsFrage,
-        ablage: ch.brickinventoryapp.util.Ablageschluessel,
+        sessionExpired: SessionExpiredSignal,
+        vorschau: VorschauSpeicher,
+        frage: ZertifikatsFrage,
+        ablage: Ablageschluessel,
     ): OkHttpClient =
         buildInterceptorClient(prefs, isApiClient = false, sessionExpired = sessionExpired, ctx = context, frage = frage)
             .newBuilder()
@@ -135,7 +152,7 @@ object NetzModule {
                                 // das Tag (VorschauVorwaermer); ein vorgewärmtes Bild wird beim
                                 // ersten echten Aufruf von selbst zu einem gebrauchten.
                                 val spekulativ = anfrage.tag(
-                                    ch.brickinventoryapp.data.cache.Vorwaermung::class.java
+                                    Vorwaermung::class.java
                                 ) != null
                                 vorschau.schreibe(adresse, bytes, spekulativ)
                             }
@@ -153,9 +170,9 @@ object NetzModule {
             }
             // Nur eigener Server und die Bild-CDNs (util/BildHosts.kt); Umleitungen prüft
             // der Wächter selbst, OkHttp folgte ihnen sonst an ihm vorbei.
-            .addInterceptor(ch.brickinventoryapp.util.BildHostWaechter(
+            .addInterceptor(BildHostWaechter(
                 eigenerServer = { url ->
-                    ch.brickinventoryapp.util.istEigenerBildServer(url, prefs.serverUrlState.value ?: "", NetworkPolicy.entwicklung)
+                    istEigenerBildServer(url, prefs.serverUrlState.value ?: "", NetworkPolicy.entwicklung)
                 },
                 basisPfad = { NetworkPolicy.basisPfad(prefs.serverUrlState.value.orEmpty()).orEmpty() },
             ))
@@ -172,8 +189,8 @@ object NetzModule {
             // braucht es ETag und Ablaufdatum. Verschlüsselt wie Bestand und Antworten, denn die
             // Bilder zeigen, welche Sets jemand besitzt.
             .cache(okhttp3.Cache(
-                ch.brickinventoryapp.util.VerschluesseltesDateisystem(
-                    okio.FileSystem.SYSTEM, ch.brickinventoryapp.util.AblageChiffre { ablage.fuer("bilder") }, "bilder"),
+                VerschluesseltesDateisystem(
+                    okio.FileSystem.SYSTEM, AblageChiffre { ablage.fuer("bilder") }, "bilder"),
                 context.cacheDir.resolve("image_http_cache").toOkioPath(),
                 50L * 1024 * 1024,
             ))
@@ -244,9 +261,9 @@ object NetzModule {
     fun provideSseOkHttpClient(
         @dagger.hilt.android.qualifiers.ApplicationContext context: android.content.Context,
         prefs: PreferencesManager,
-        sessionExpired: ch.brickinventoryapp.data.SessionExpiredSignal,
-        frage: ch.brickinventoryapp.util.ZertifikatsFrage,
-        tausch: ch.brickinventoryapp.data.TokenTausch,
+        sessionExpired: SessionExpiredSignal,
+        frage: ZertifikatsFrage,
+        tausch: TokenTausch,
     ): OkHttpClient =
         buildInterceptorClient(prefs, isApiClient = true, sessionExpired = sessionExpired, ctx = context, frage = frage,
             rotation = tausch)
@@ -260,15 +277,15 @@ object NetzModule {
     @Singleton
     fun provideEntwerter(
         prefs: PreferencesManager,
-        frage: ch.brickinventoryapp.util.ZertifikatsFrage,
-    ): ch.brickinventoryapp.data.Entwerter =
-        ch.brickinventoryapp.data.Entwerter(buildEntwertungsBasis(prefs, frage), NetworkPolicy.entwicklung,
+        frage: ZertifikatsFrage,
+    ): Entwerter =
+        Entwerter(buildEntwertungsBasis(prefs, frage), NetworkPolicy.entwicklung,
             vertrauenFuer = auftragsVertrauenFabrik(prefs))
 
     /** Für die QR-Anmeldung: Ein `fp` auf eine System-Wurzel gilt ohne Abtippen (sec10 N2). */
     @Provides
     @Singleton
-    fun provideSystemWurzeln(): ch.brickinventoryapp.util.SystemWurzeln = systemWurzeln()
+    fun provideSystemWurzeln(): SystemWurzeln = systemWurzeln()
 
     // Kein unqualifiziertes OkHttpClient-Binding: Es lieferte still den api-Client
     // auch an Bild- und SSE-Wege aus. Wer einen Client braucht, nennt @Named("api"),
@@ -276,8 +293,8 @@ object NetzModule {
 
     /** Nach einer Änderung des Vertrauens: Offene Verbindungen trugen das alte. */
     @Provides
-    fun provideVerbindungsabwurf(@Named("api") client: OkHttpClient): ch.brickinventoryapp.data.Verbindungsabwurf =
-        ch.brickinventoryapp.data.Verbindungsabwurf { client.connectionPool.evictAll() }
+    fun provideVerbindungsabwurf(@Named("api") client: OkHttpClient): Verbindungsabwurf =
+        Verbindungsabwurf { client.connectionPool.evictAll() }
 
     @Provides
     @Singleton

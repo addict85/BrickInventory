@@ -20,6 +20,7 @@ import org.junit.Test
 import retrofit2.Retrofit
 import java.io.File
 import java.util.concurrent.TimeUnit
+import ch.brickinventoryapp.data.api.ApiJson
 
 /**
  * Abmelden entwertet den Token am Server (POST /auth/logout mit dem Token), und
@@ -45,7 +46,7 @@ class AbmeldenAmServerTest {
         .addInterceptor(ServerWaechter(lage, true, entwicklung = true, sitzungAbgelaufen = {}))
         .readTimeout(2, TimeUnit.SECONDS).build()
     private val konto = KontoRepository(Retrofit.Builder().baseUrl(server.url("/")).client(client)
-        .addConverterFactory(ch.brickinventoryapp.data.api.ApiJson.asConverterFactory("application/json".toMediaType()))
+        .addConverterFactory(ApiJson.asConverterFactory("application/json".toMediaType()))
         .build().create(KontoApi::class.java), ResponseCache { dir })
 
     @After

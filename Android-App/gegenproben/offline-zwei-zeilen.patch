@@ -4,15 +4,15 @@ Test: ch.brickinventoryapp.GeruestUndFormularTest
 Rot: Offline-Hinweis nennt die wartenden Aenderungen
 
 diff --git a/Android-App/app/src/main/java/ch/brickinventoryapp/MainScaffold.kt b/Android-App/app/src/main/java/ch/brickinventoryapp/MainScaffold.kt
-index 371daf5..50e908e 100644
+index b22d2a1..5165208 100644
 --- a/Android-App/app/src/main/java/ch/brickinventoryapp/MainScaffold.kt
 +++ b/Android-App/app/src/main/java/ch/brickinventoryapp/MainScaffold.kt
-@@ -198,7 +198,7 @@ fun MainScaffold(
+@@ -216,7 +216,7 @@ fun MainScaffold(
                              })
                      }
                      // Steht ein Offline-Hinweis, nennt er die wartenden Änderungen selbst.
--                    if (offlineHinweise.intValue == 0) ch.brickinventoryapp.ui.components.AusgangLeiste(offeneAenderungen)
-+                    ch.brickinventoryapp.ui.components.AusgangLeiste(offeneAenderungen)
+-                    if (offlineHinweise.intValue == 0) AusgangLeiste(offeneAenderungen)
++                    AusgangLeiste(offeneAenderungen)
                      if (csvImport.running) {
                          CsvImportBanner(
                              done = csvImport.done, total = csvImport.total, current = csvImport.current,

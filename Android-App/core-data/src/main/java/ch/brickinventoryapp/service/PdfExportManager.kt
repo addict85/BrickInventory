@@ -2,7 +2,7 @@ package ch.brickinventoryapp.service
 
 import ch.brickinventoryapp.util.fangeAusserAbbruch
 import android.content.Context
-import ch.brickinventoryapp.data.PreferencesManager
+import ch.brickinventoryapp.data.Zugangsdaten
 import ch.brickinventoryapp.data.repository.BrickRepository
 import ch.brickinventoryapp.data.repository.Result
 import ch.brickinventoryapp.util.Teilelistentresor
@@ -29,6 +29,10 @@ import javax.inject.Inject
 import javax.inject.Named
 import javax.inject.Singleton
 import kotlin.coroutines.resume
+import ch.brickinventoryapp.data.api.Fehlerrumpf
+import ch.brickinventoryapp.data.api.fehlerTextZuCode
+import ch.brickinventoryapp.util.LanguageManager
+import ch.brickinventoryapp.ressourcen.R
 
 sealed class PdfExportState {
     data object Idle : PdfExportState()
@@ -45,7 +49,7 @@ sealed class PdfExportState {
 @Singleton
 class PdfExportManager @Inject constructor(
     private val repo: BrickRepository,
-    private val prefs: PreferencesManager,
+    private val prefs: Zugangsdaten,
     @param:Named("sse") private val sseClient: OkHttpClient,
     private val json: Json,
     private val teilelistentresor: Teilelistentresor,
@@ -58,7 +62,7 @@ class PdfExportManager @Inject constructor(
     // der ApplicationContext kennt die per-App-Sprache unterhalb von
     // Android 13 nicht — siehe LanguageManager.localizedContext().
     private fun s(id: Int, vararg args: Any): String =
-        ch.brickinventoryapp.util.LanguageManager.localizedContext(context).getString(id, *args)
+        LanguageManager.localizedContext(context).getString(id, *args)
 
     @Volatile var pendingBody: String? = null
 
@@ -78,14 +82,27 @@ class PdfExportManager @Inject constructor(
 
     fun reset() { _state.value = PdfExportState.Idle }
 
+    /** Fünf Versuche mit wachsender Pause: Das fertige PDF liegt manchmal erst kurz nach der Meldung bereit. */
+    private suspend fun ladePdf(jobId: String): Result<ByteArray>? {
+        var downloadResult: Result<ByteArray>? = null
+        var dlDelay = 2000L
+        repeat(5) { attempt ->
+            if (downloadResult !is Result.Success) {
+                if (attempt > 0) { delay(dlDelay); dlDelay = minOf(dlDelay * 2, 30_000L) }
+                downloadResult = repo.sets.downloadPdf(jobId)
+            }
+        }
+        return downloadResult
+    }
+
     /** Wird vom PdfExportService aufgerufen. */
     suspend fun run() {
         val body = pendingBody ?: run {
-            _state.value = PdfExportState.Error(s(ch.brickinventoryapp.ressourcen.R.string.pdfexp_no_data))
+            _state.value = PdfExportState.Error(s(R.string.pdfexp_no_data))
             return
         }
         pendingBody = null
-        _state.value = PdfExportState.Running(s(ch.brickinventoryapp.ressourcen.R.string.pdfexp_starting))
+        _state.value = PdfExportState.Running(s(R.string.pdfexp_starting))
 
         fangeAusserAbbruch {
             // Step 1: Job starten
@@ -94,7 +111,7 @@ class PdfExportManager @Inject constructor(
                 is Result.Error   -> { _state.value = PdfExportState.Error(r.message); return }
             }
 
-            _state.value = PdfExportState.Running(s(ch.brickinventoryapp.ressourcen.R.string.pdfexp_loading_images))
+            _state.value = PdfExportState.Running(s(R.string.pdfexp_loading_images))
             etaDeadlineMs = 0L
             jobRunning = false
 
@@ -111,8 +128,8 @@ class PdfExportManager @Inject constructor(
                         if (jobRunning && etaDeadlineMs > 0L) {
                             val remaining = ((etaDeadlineMs - System.currentTimeMillis() + 999) / 1000L).toInt()
                             _state.value = PdfExportState.Running(
-                                if (remaining > 0) s(ch.brickinventoryapp.ressourcen.R.string.pdfexp_creating_eta, remaining)
-                                else s(ch.brickinventoryapp.ressourcen.R.string.pdfexp_almost_done)
+                                if (remaining > 0) s(R.string.pdfexp_creating_eta, remaining)
+                                else s(R.string.pdfexp_almost_done)
                             )
                         }
                     }
@@ -121,21 +138,13 @@ class PdfExportManager @Inject constructor(
             }
             if (!done) {
                 if (_state.value !is PdfExportState.Error)
-                    _state.value = PdfExportState.Error(s(ch.brickinventoryapp.ressourcen.R.string.pdfexp_server_error))
+                    _state.value = PdfExportState.Error(s(R.string.pdfexp_server_error))
                 return
             }
 
             // Step 3: PDF herunterladen
-            _state.value = PdfExportState.Running(s(ch.brickinventoryapp.ressourcen.R.string.pdfexp_downloading))
-            var downloadResult: Result<ByteArray>? = null
-            var dlDelay = 2000L
-            repeat(5) { attempt ->
-                if (downloadResult !is Result.Success) {
-                    if (attempt > 0) { delay(dlDelay); dlDelay = minOf(dlDelay * 2, 30_000L) }
-                    downloadResult = repo.sets.downloadPdf(jobId)
-                }
-            }
-            when (val r = downloadResult) {
+            _state.value = PdfExportState.Running(s(R.string.pdfexp_downloading))
+            when (val r = ladePdf(jobId)) {
                 is Result.Success -> {
                     val file = teilelistentresor.lege(context.filesDir, context.getExternalFilesDir(null), r.data)
                     // Auch verschlüsselt bleibt das Inventar nur, solange jemand es öffnen will.
@@ -147,10 +156,10 @@ class PdfExportManager @Inject constructor(
                 // Wiederholschleife oben es überschreiben kann.
                 // Ausführlich: docs/begruendungen/core-data/service/PdfExportManager.kt.md#z146
                 null -> _state.value =
-                    PdfExportState.Error(s(ch.brickinventoryapp.ressourcen.R.string.pdfexp_unknown_error))
+                    PdfExportState.Error(s(R.string.pdfexp_unknown_error))
             }
         }.onFailure { e ->
-            _state.value = PdfExportState.Error(e.message ?: s(ch.brickinventoryapp.ressourcen.R.string.pdfexp_unknown_error))
+            _state.value = PdfExportState.Error(e.message ?: s(R.string.pdfexp_unknown_error))
         }
     }
 
@@ -192,9 +201,9 @@ class PdfExportManager @Inject constructor(
                         val obj = json.parseToJsonElement(data).jsonObject
                         setEtaOnce(obj["etaSeconds"]?.jsonPrimitive?.content?.toIntOrNull())
                         when (obj["status"]?.jsonPrimitive?.content) {
-                            "done"    -> { jobRunning = false; _state.value = PdfExportState.Running(s(ch.brickinventoryapp.ressourcen.R.string.pdfexp_finalizing)); settle(true) }
+                            "done"    -> { jobRunning = false; _state.value = PdfExportState.Running(s(R.string.pdfexp_finalizing)); settle(true) }
                             "error"   -> { jobRunning = false; _state.value = PdfExportState.Error(
-                                obj["error"]?.jsonPrimitive?.content ?: s(ch.brickinventoryapp.ressourcen.R.string.pdfexp_server_error)); settle(false) }
+                                obj["error"]?.jsonPrimitive?.content ?: s(R.string.pdfexp_server_error)); settle(false) }
                             "running" -> jobRunning = true  // Countdown-Anzeige übernimmt der Ticker.
                         }
                     } catch (_: Exception) {}
@@ -205,9 +214,9 @@ class PdfExportManager @Inject constructor(
                     // 404 = Endpoint nicht vorhanden → Fallback; andere Fehler = echter Fehler
                     if (response != null && response.code != 404 && response.code != 0) {
                         // 429 `zu_viele_verbindungen`: Der Rat steht im Code, nicht im Status.
-                        val code = runCatching { ch.brickinventoryapp.data.api.Fehlerrumpf.lies(response.peekBody(4096).string()).code }.getOrNull()
-                        _state.value = PdfExportState.Error(ch.brickinventoryapp.data.api.fehlerTextZuCode(code)?.let { s(it) }
-                            ?: s(ch.brickinventoryapp.ressourcen.R.string.pdfexp_http_error, response.code))
+                        val code = runCatching { Fehlerrumpf.lies(response.peekBody(4096).string()).code }.getOrNull()
+                        _state.value = PdfExportState.Error(fehlerTextZuCode(code)?.let { s(it) }
+                            ?: s(R.string.pdfexp_http_error, response.code))
                         settle(false)
                     } else {
                         settle(null) // Fallback auf Polling

@@ -4,15 +4,15 @@ Test: ch.brickinventoryapp.GeruestUndFormularTest
 Rot: Startpasswort-Maske sagt, was zum Aendern fehlt
 
 diff --git a/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/ui/screens/StartpasswortMaske.kt b/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/ui/screens/StartpasswortMaske.kt
-index ce2fb60..7e7502c 100644
+index 18f1c12..843fbb8 100644
 --- a/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/ui/screens/StartpasswortMaske.kt
 +++ b/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/ui/screens/StartpasswortMaske.kt
-@@ -89,8 +89,6 @@ fun StartpasswortMaske(
+@@ -91,8 +91,6 @@ fun StartpasswortMaske(
                      fehlerhaft = verschieden)
                  kontoZustand.fehler?.let { FehlerZeile(it) }
                  if (kontoZustand.codeNoetig) ZweiterFaktorCodeFeld(faktorCode) { faktorCode = it }
 -                if (pwAktuell.isEmpty() || pwNeu.isEmpty() || pwWiederholt.isEmpty())
--                    ch.brickinventoryapp.ui.components.SperrGrund(stringResource(R.string.passwort_aendern_fehlt))
+-                    SperrGrund(stringResource(R.string.passwort_aendern_fehlt))
                  Button(
                      onClick = { onErsetzen(pwAktuell, pwNeu, faktorCode.takeIf { kontoZustand.codeNoetig && it.isNotBlank() }) },
-                     enabled = !kontoZustand.speichert && pwAktuell.isNotEmpty() && pwNeu.isNotEmpty() && !zuKurz && pwWiederholt == pwNeu,
+                     enabled = ersetzenMoeglich(kontoZustand.speichert, pwAktuell, pwNeu, pwWiederholt, zuKurz),

@@ -11,6 +11,12 @@ import ch.brickinventoryapp.di.Dispatcher
 import kotlinx.coroutines.CoroutineDispatcher
 import javax.inject.Inject
 import javax.inject.Singleton
+import ch.brickinventoryapp.data.Entwertungsergebnis
+import ch.brickinventoryapp.data.GetauschterToken
+import ch.brickinventoryapp.data.einordnenEntwertung
+import ch.brickinventoryapp.data.model.QrLoginRequest
+import ch.brickinventoryapp.util.NetworkPolicy
+import ch.brickinventoryapp.util.Protokoll
 
 /**
  * Anmeldung und das eigene Konto: Profil, Passwort, zweiter Faktor, Geräte,
@@ -40,7 +46,7 @@ class KontoRepository @Inject constructor(
                       scope: String = TOKEN_SCOPE_APP, passkey: JsonObject? = null): Result<Anmeldeantwort> {
         var wege = ZweiterFaktorWege()
         val r = safeCall {
-            val https = ch.brickinventoryapp.util.NetworkPolicy.istHttps(serverUrl)
+            val https = NetworkPolicy.istHttps(serverUrl)
             val antwort = if (passkey != null)
                 api.loginMitPasskey(PasskeyLoginRequest(username, password, passkey, scope = scope, neverExpires = https))
             else api.login(LoginRequest(username, password, code = code, scope = scope, neverExpires = https))
@@ -66,10 +72,10 @@ class KontoRepository @Inject constructor(
     /** Ohne Passwort; derselbe Token wie bei [login], mit denselben Regeln für den Ablauf. */
     suspend fun passkeyAnmelden(serverUrl: String, antwort: JsonObject, scope: String = TOKEN_SCOPE_APP): Result<LoginResponse> =
         safeCall { api.passkeyAnmelden(PasskeyAnmeldung(antwort, scope = scope,
-            neverExpires = ch.brickinventoryapp.util.NetworkPolicy.istHttps(serverUrl))) }
+            neverExpires = NetworkPolicy.istHttps(serverUrl))) }
 
     suspend fun qrLogin(token: String): Result<LoginResponse> =
-        safeCall { api.qrLogin(ch.brickinventoryapp.data.model.QrLoginRequest(token)) }
+        safeCall { api.qrLogin(QrLoginRequest(token)) }
 
     suspend fun getMe(): Result<MeResponse> = safeCall { api.getMe() }
 
@@ -115,14 +121,14 @@ class KontoRepository @Inject constructor(
      * Synchron auf einem IO-Faden, am Dispatcher von OkHttp vorbei (KontoApi.tokenRotieren).
      * Die Herkunft kommt aus der Anfrage, die tatsächlich ging: Nur an sie ist der neue Token gebunden.
      */
-    suspend fun tokenRotieren(alterToken: String): Result<ch.brickinventoryapp.data.GetauschterToken> {
+    suspend fun tokenRotieren(alterToken: String): Result<GetauschterToken> {
         var herkunft: String? = null
         val r = safeCall {
             kotlinx.coroutines.withContext(io) { api.tokenRotieren("Bearer $alterToken").execute() }
-                .also { herkunft = ch.brickinventoryapp.util.NetworkPolicy.herkunft(it.raw().request.url.toString()) }
+                .also { herkunft = NetworkPolicy.herkunft(it.raw().request.url.toString()) }
         }
         return when (r) {
-            is Result.Success -> Result.Success(ch.brickinventoryapp.data.GetauschterToken(r.data, herkunft), stand = r.stand, gepuffert = r.gepuffert)
+            is Result.Success -> Result.Success(GetauschterToken(r.data, herkunft), stand = r.stand, gepuffert = r.gepuffert)
             is Result.Error -> r
         }
     }
@@ -133,17 +139,17 @@ class KontoRepository @Inject constructor(
      * hängen. Was dann noch offen ist, holt data/Abmeldung nach.
      */
     suspend fun abmeldenAmServer(grenzeMs: Long = 3_000): Boolean =
-        entwertenAmServer(grenzeMs) == ch.brickinventoryapp.data.Entwertungsergebnis.ENTWERTET
+        entwertenAmServer(grenzeMs) == Entwertungsergebnis.ENTWERTET
 
     /** Wie [abmeldenAmServer], aber mit dem Grund: Nur SPAETER lohnt eine Wiederholung. */
-    suspend fun entwertenAmServer(grenzeMs: Long = 3_000): ch.brickinventoryapp.data.Entwertungsergebnis = fangeAusserAbbruch {
-        kotlinx.coroutines.withTimeoutOrNull(grenzeMs) { ch.brickinventoryapp.data.einordnenEntwertung(api.logout().code()) }
-            ?: ch.brickinventoryapp.data.Entwertungsergebnis.SPAETER.also {
-                ch.brickinventoryapp.util.Protokoll.warnung("Abmelden", "Server antwortete nicht in $grenzeMs ms")
+    suspend fun entwertenAmServer(grenzeMs: Long = 3_000): Entwertungsergebnis = fangeAusserAbbruch {
+        kotlinx.coroutines.withTimeoutOrNull(grenzeMs) { einordnenEntwertung(api.logout().code()) }
+            ?: Entwertungsergebnis.SPAETER.also {
+                Protokoll.warnung("Abmelden", "Server antwortete nicht in $grenzeMs ms")
             }
     }.getOrElse { e ->
-        ch.brickinventoryapp.util.Protokoll.warnung("Abmelden", "Token am Server nicht entwertet", e)
-        ch.brickinventoryapp.data.Entwertungsergebnis.SPAETER
+        Protokoll.warnung("Abmelden", "Token am Server nicht entwertet", e)
+        Entwertungsergebnis.SPAETER
     }
 
     suspend fun getSettings(): Result<SettingsResponse> =

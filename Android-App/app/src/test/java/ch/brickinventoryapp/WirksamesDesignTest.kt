@@ -8,6 +8,7 @@ import ch.brickinventoryapp.ui.theme.helligkeitGilt
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import ch.brickinventoryapp.ui.theme.helligkeitWaehlbar
 
 /**
  * System, Hell oder Dunkel je Gerät: die dunkle Fassung DESSELBEN Designs bei
@@ -66,9 +67,9 @@ class WirksamesDesignTest {
     // kotlinc): helligkeitWaehlbar gibt immer true zurück → rot.
     @Test
     fun `bei Werkbank ist Hell und Dunkel nicht waehlbar`() {
-        assertTrue(!ch.brickinventoryapp.ui.theme.helligkeitWaehlbar("werkbank"))
-        assertTrue(ch.brickinventoryapp.ui.theme.helligkeitWaehlbar("classic"))
-        assertTrue(ch.brickinventoryapp.ui.theme.helligkeitWaehlbar("werkbank", systemfarben = true, sdk = 31))
+        assertTrue(!helligkeitWaehlbar("werkbank"))
+        assertTrue(helligkeitWaehlbar("classic"))
+        assertTrue(helligkeitWaehlbar("werkbank", systemfarben = true, sdk = 31))
     }
 
     // Gegenprobe (30.10.2026, gemessen): in darstellung() `sdk >= SYSTEMFARBEN_AB_SDK`

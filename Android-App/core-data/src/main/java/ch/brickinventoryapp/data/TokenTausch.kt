@@ -3,11 +3,17 @@ package ch.brickinventoryapp.data
 import ch.brickinventoryapp.data.model.TokenRotation
 import ch.brickinventoryapp.data.repository.Result
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.transformLatest
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import ch.brickinventoryapp.di.Rotationsanlass
 
 /**
  * Wie ein Tausch ausging. VERWORFEN: Während des Tauschs wurde abgemeldet, neu
@@ -47,6 +53,29 @@ class TokenSchranke {
         speichere()
         true
     }
+
+    /**
+     * Spiegelt einen Wert der Platte in den Speicher. Die Schreibungen setzen den
+     * Speicher vor der Platte; ein Wert, der unterwegs schon überholt wurde, darf ihn
+     * nicht zurückdrehen. Darum gilt er nur, wenn die Platte ihn unter der Sperre noch hat.
+     */
+    @OptIn(ExperimentalCoroutinesApi::class)
+    suspend fun <P, R, T> spiegle(
+        strom: Flow<P>,
+        jetzt: suspend () -> P,
+        roh: (P) -> R,
+        lies: suspend (R, suspend (T) -> Unit) -> Unit,
+        setze: (T) -> Unit,
+        gelesen: () -> Unit,
+    ) {
+        var erster = true
+        strom.map(roh).distinctUntilChanged()
+            .transformLatest { r -> lies(r) { emit(r to it) } }
+            .collect { (r, wert) ->
+                sperre.withLock { if (roh(jetzt()) == r) setze(wert) }
+                if (erster) { erster = false; gelesen() }
+            }
+    }
 }
 
 /**
@@ -55,9 +84,9 @@ class TokenSchranke {
  * Prüfung hier ist die zweite Linie: Die App meldet sich selbst ab und entwertet den
  * Token, statt erst am 401 zu merken, dass die Kette zu Ende ist.
  */
-const val TOKEN_HOECHSTDAUER_TAGE = 180L
+internal const val TOKEN_HOECHSTDAUER_TAGE = 180L
 
-fun anmeldungUeberfaellig(angemeldetAm: Long, jetzt: Long): Boolean =
+internal fun anmeldungUeberfaellig(angemeldetAm: Long, jetzt: Long): Boolean =
     jetzt - angemeldetAm > TOKEN_HOECHSTDAUER_TAGE * 24 * 60 * 60 * 1000
 
 /**
@@ -75,7 +104,7 @@ class TokenTausch(
     private val pausen: List<Long> = listOf(2_000, 10_000, 30_000),
     /** Für [faellig]: der Anwendungsbereich, damit der Tausch das Verlassen eines Bildschirms überlebt. */
     private val hintergrund: CoroutineScope,
-) : ch.brickinventoryapp.di.Rotationsanlass {
+) : Rotationsanlass {
     private val sperre = Mutex()
 
     /** Für die Kopfzeile: nicht warten, die Anfrage selbst ist gelungen. */
@@ -109,10 +138,7 @@ class TokenTausch(
             // Abgemeldet oder anderer Server: Der alte Token geht nicht noch einmal hinaus.
             if (versuch > 0 && stand() != vorher) return Tauschergebnis.VERWORFEN
             when (val r = rotiere(alterToken)) {
-                is Result.Success -> {
-                    val neu = r.data.rotation.token?.takeIf { it.isNotBlank() } ?: return Tauschergebnis.SPAETER
-                    return if (ersetze(vorher, neu, r.data.herkunft)) Tauschergebnis.GETAUSCHT else Tauschergebnis.VERWORFEN
-                }
+                is Result.Success -> return gelungen(vorher, r.data)
                 is Result.Error -> {
                     // 401: Der alte Token gilt nicht mehr (Überlappung vorbei, widerrufen).
                     if (r.httpCode == 401) return Tauschergebnis.NEU_KOPPELN
@@ -124,6 +150,12 @@ class TokenTausch(
             }
         }
         return Tauschergebnis.SPAETER
+    }
+
+    /** Eine Antwort ohne neuen Token ist kein Tausch; passt der Stand nicht mehr, wird verworfen. */
+    private suspend fun gelungen(vorher: TokenStand, antwort: GetauschterToken): Tauschergebnis {
+        val neu = antwort.rotation.token?.takeIf { it.isNotBlank() } ?: return Tauschergebnis.SPAETER
+        return if (ersetze(vorher, neu, antwort.herkunft)) Tauschergebnis.GETAUSCHT else Tauschergebnis.VERWORFEN
     }
 
     companion object {

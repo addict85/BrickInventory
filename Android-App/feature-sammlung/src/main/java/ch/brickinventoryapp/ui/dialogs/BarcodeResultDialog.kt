@@ -28,6 +28,14 @@ import androidx.compose.ui.res.stringResource
 import ch.brickinventoryapp.util.NumericInput
 import ch.brickinventoryapp.ui.viewmodel.ErfassungViewModel
 import ch.brickinventoryapp.ui.theme.Abstaende
+import ch.brickinventoryapp.ui.components.ProduktBild
+import ch.brickinventoryapp.ui.components.bewegungReduziert
+import ch.brickinventoryapp.ui.components.mitSchrift
+import ch.brickinventoryapp.ui.screens.LagerortErfassung
+import ch.brickinventoryapp.ui.screens.OwnerPicker
+import ch.brickinventoryapp.ui.screens.Zustandszeile
+import ch.brickinventoryapp.ui.theme.Formen
+import ch.brickinventoryapp.util.fmtInt
 
 /**
  * Der Dialog nach einem erfolgreichen Barcode-Scan: Set (oder Teileliste)
@@ -105,7 +113,7 @@ AlertDialog(
                         horizontalArrangement = Arrangement.spacedBy(Abstaende.klein),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Icon(Icons.Default.Warning, null, Modifier.size(ch.brickinventoryapp.ui.components.mitSchrift(20.dp)),
+                        Icon(Icons.Default.Warning, null, Modifier.size(mitSchrift(20.dp)),
                             tint = MaterialTheme.colorScheme.onErrorContainer)
                         Text(
                             stringResource(R.string.main_barcode_unsure),
@@ -118,8 +126,8 @@ AlertDialog(
             }
             val imgUrl = barcodeState.imageLocal?.let { "${state.serverUrl}$it" } ?: barcodeState.imageUrl
             val ctx = androidx.compose.ui.platform.LocalContext.current
-            ch.brickinventoryapp.ui.components.ProduktBild(
-                model = imgUrl?.let { coil3.request.ImageRequest.Builder(ctx).data(it).crossfade(!ch.brickinventoryapp.ui.components.bewegungReduziert()).build() },
+            ProduktBild(
+                model = imgUrl?.let { coil3.request.ImageRequest.Builder(ctx).data(it).crossfade(!bewegungReduziert()).build() },
                 imageLoader = imageLoader,
                 contentDescription = barcodeState.setName,
                 modifier = Modifier.fillMaxWidth().height(160.dp).clip(MaterialTheme.shapes.medium),
@@ -142,18 +150,18 @@ AlertDialog(
             HorizontalDivider()
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceAround) {
                 if (barcodeState.year != null) Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Icon(Icons.Default.CalendarMonth, null, Modifier.size(ch.brickinventoryapp.ui.components.mitSchrift(18.dp)), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Icon(Icons.Default.CalendarMonth, null, Modifier.size(mitSchrift(18.dp)), tint = MaterialTheme.colorScheme.onSurfaceVariant)
                     Text("${barcodeState.year}", style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Bold)
                     Text(stringResource(R.string.main_barcode_year), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
                 if (barcodeState.pieces != null) Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Icon(ImageVector.vectorResource(R.drawable.ic_parts_bricks), null, Modifier.size(ch.brickinventoryapp.ui.components.mitSchrift(18.dp)), tint = Color.Unspecified)
-                    Text(ch.brickinventoryapp.util.fmtInt(barcodeState.pieces), style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Bold)
+                    Icon(ImageVector.vectorResource(R.drawable.ic_parts_bricks), null, Modifier.size(mitSchrift(18.dp)), tint = Color.Unspecified)
+                    Text(fmtInt(barcodeState.pieces), style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Bold)
                     Text(stringResource(R.string.main_barcode_pieces), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
                 if (barcodeState.minifigs != null && barcodeState.minifigs > 0)
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Icon(Icons.Default.Person, null, Modifier.size(ch.brickinventoryapp.ui.components.mitSchrift(18.dp)), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Icon(Icons.Default.Person, null, Modifier.size(mitSchrift(18.dp)), tint = MaterialTheme.colorScheme.onSurfaceVariant)
                         Text("${barcodeState.minifigs}", style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Bold)
                         Text(stringResource(R.string.main_barcode_figs), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
@@ -168,11 +176,11 @@ AlertDialog(
                 // serverseitig den aktuellen Marktpreis (gleiche Logik wie Webapp).
                 // OwnerPicker blendet sich ohne Haushalt selbst aus
                 // (members.size < 2 → return), deshalb keine Bedingung hier.
-                ch.brickinventoryapp.ui.screens.OwnerPicker(
+                OwnerPicker(
                     blick.householdMembers, barcodeOwner, { barcodeOwner = it }
                 )
                 OutlinedTextField(
-                    shape = ch.brickinventoryapp.ui.theme.Formen.feld,
+                    shape = Formen.feld,
                     value = barcodePriceText,
                     onValueChange = { nv -> barcodePriceText = NumericInput.price(nv) },
                     label = { Text(stringResource(R.string.barcode_purchase_price)) },
@@ -180,11 +188,11 @@ AlertDialog(
                     keyboardOptions = NumericInput.preisTastatur(),
                     modifier = Modifier.fillMaxWidth()
                 )
-                ch.brickinventoryapp.ui.screens.Zustandszeile(
+                Zustandszeile(
                     zustand = barcodeCondition,
                     onZustand = { barcodeCondition = it }
                 )
-                ch.brickinventoryapp.ui.screens.LagerortErfassung(
+                LagerortErfassung(
                     barcodeLagerort,
                     // Der VORRAT, nicht die belegten Orte: Beim Erfassen soll
                     // auch ein leeres Regal zur Wahl stehen.
@@ -229,7 +237,7 @@ AlertDialog(
                 Spacer(Modifier.width(Abstaende.klein))
                 Text(stringResource(R.string.barcode_add))
             } else {
-                Icon(Icons.Default.Check, null, Modifier.size(ch.brickinventoryapp.ui.components.mitSchrift(18.dp)))
+                Icon(Icons.Default.Check, null, Modifier.size(mitSchrift(18.dp)))
                 Spacer(Modifier.width(Abstaende.klein))
                 Text(stringResource(R.string.barcode_add))
             }

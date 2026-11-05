@@ -30,10 +30,17 @@ class CameraFocusConfigTest {
     private fun code(src: String) = src.lines()
         .joinToString("\n") { val t = it.trim(); if (t.startsWith("//") || t.startsWith("*") || t.startsWith("/*")) "" else it }
 
+    private fun aufbau(): String = code(Quellen.lies("ui/screens/KameraAufbau.kt"))
+
     @Test
     fun `genau EIN Tap-to-Focus-Listener`() {
-        val c = code(scanner())
-        val anzahl = Regex("""previewView\.setOnTouchListener""").findAll(c).count()
+        // Seit der Tipper in KameraAufbau.kt steht (tippZumFokus), setzt ihn jeder
+        // Scanner genau einmal und keiner einen eigenen daneben.
+        val anzahl = Regex("""\.setOnTouchListener""").findAll(aufbau()).count() +
+            Regex("""\.setOnTouchListener""").findAll(code(scanner())).count()
+        assert(Regex("""\btippZumFokus\(""").findAll(code(scanner())).count() == 1) {
+            "Der Barcodescanner setzt den Tipper nicht genau einmal"
+        }
         assert(anzahl == 1) {
             "$anzahl Touch-Listener auf previewView. setOnTouchListener ERSETZT — " +
                 "der zuletzt gesetzte gewinnt, und welcher das ist, hängt davon ab, " +
@@ -70,7 +77,7 @@ class CameraFocusConfigTest {
     private fun mitTapToFocus(): List<java.io.File> {
         val ordner = java.io.File(Quellen.wurzel, "ui/screens")
         val treffer = ordner.listFiles { f -> f.extension == "kt" }
-            ?.filter { code(it.readText()).contains("startFocusAndMetering(") }
+            ?.filter { code(it.readText()).let { c -> c.contains("tippZumFokus(") || c.contains("startFocusAndMetering(") } }
             ?: emptyList()
         assert(treffer.size >= 2) {
             "Nur ${treffer.size} Datei(en) mit Tap-to-Focus gefunden. Erwartet " +
@@ -84,7 +91,8 @@ class CameraFocusConfigTest {
     @Test
     fun `der Tap-to-Focus haelt den Fokus`() {
         for (datei in mitTapToFocus()) {
-            val c = code(datei.readText())
+            // Der Tipper selbst steht in KameraAufbau.kt; geprüft wird er dort für jeden Nutzer.
+            val c = code(datei.readText()) + "\n" + aufbau()
             assert(c.contains("disableAutoCancel()")) {
                 "${datei.name}: Ohne disableAutoCancel() fällt die Kamera nach " +
                     "wenigen Sekunden auf ihre eigene Wahl zurück — der Nutzer " +
@@ -173,15 +181,21 @@ class CameraFocusConfigTest {
     }
 
     @Test
+    fun `der Tipper steht nur in KameraAufbau`() {
+        // Wie Vorschau und Bindung: Eine Kopie im Bildschirm verfehlte die nächste Behebung.
+        val eigene = mitTapToFocus().filter { it.name != "KameraAufbau.kt" && code(it.readText()).contains("startFocusAndMetering(") }
+        assert(eigene.isEmpty()) { "Eigener Tap-to-Focus statt tippZumFokus(): ${eigene.joinToString { it.name }}" }
+        assert(aufbau().contains("startFocusAndMetering(")) { "KameraAufbau.kt fokussiert beim Tippen nicht mehr" }
+    }
+
+    @Test
     fun `kein periodisches Nachfokussieren`() {
         // Ein im Takt laufendes startFocusAndMetering unterbricht den
         // kontinuierlichen Autofokus immer wieder. Fokussiert wird NUR beim
         // Antippen.
         val pump = Regex(
-            """(while\s*\(|delay\s*\(|Timer\(|fixedRate|LaunchedEffect)[\s\S]{0,400}?startFocusAndMetering""")
-        val ordner = java.io.File(Quellen.wurzel, "ui/screens")
-        val dateien = (ordner.listFiles { f -> f.extension == "kt" } ?: emptyArray())
-            .filter { code(it.readText()).contains("startFocusAndMetering") }
+            """(while\s*\(|delay\s*\(|Timer\(|fixedRate|LaunchedEffect)[\s\S]{0,400}?(startFocusAndMetering|tippZumFokus)""")
+        val dateien = mitTapToFocus()
         assert(dateien.size >= 2) {
             "Nur ${dateien.size} Datei(en) mit startFocusAndMetering gefunden — " +
                 "erwartet werden mindestens Barcodescanner und SetupScreen. " +

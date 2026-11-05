@@ -23,6 +23,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
+import ch.brickinventoryapp.ui.fehlerklasse
 
 /**
  * Wie gross eine Anleitung sein darf — derselbe Wert wie `limits.fileSize` in
@@ -88,7 +89,7 @@ class SetDetailViewModel @Inject constructor(
             when (val r = sets.getSetDetail(setNumber)) {
                 is Result.Success -> _setDetailState.update { it.copy(setDetail = r.data.set?.alsAnsicht(), setDetailLoading = false) }
                 is Result.Error -> _setDetailState.update { it.copy(setDetailLoading = false, setDetailFehler = meldung(r),
-                    setDetailFehlerKlasse = ch.brickinventoryapp.ui.fehlerklasse(r)) }
+                    setDetailFehlerKlasse = fehlerklasse(r)) }
             }
         }
     }

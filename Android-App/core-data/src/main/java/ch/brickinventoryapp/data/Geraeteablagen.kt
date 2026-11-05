@@ -1,6 +1,7 @@
 package ch.brickinventoryapp.data
 
 import ch.brickinventoryapp.util.PinAblage
+import kotlinx.coroutines.flow.StateFlow
 
 /**
  * Wie die App auf diesem Gerät aussieht. Synchron, weil schon das erste Bild davon
@@ -38,4 +39,14 @@ interface Zugangsdaten {
 /** Offene Verbindungen trugen das alte Vertrauen; nach jeder Änderung werden sie verworfen. */
 fun interface Verbindungsabwurf {
     fun verwirf()
+}
+
+/** Ob jetzt ein Token gilt, als Speicherwert: für Texte und für Zustände, die beim Abmelden verfallen. */
+interface Anmeldestand {
+    val authTokenState: StateFlow<String?>
+}
+
+/** Das Abmelden im Gerät: Token, Herkunft und Benutzername weg, unter der Sperre der Token-Schreibungen. */
+interface Sitzungsende {
+    suspend fun clearSession()
 }

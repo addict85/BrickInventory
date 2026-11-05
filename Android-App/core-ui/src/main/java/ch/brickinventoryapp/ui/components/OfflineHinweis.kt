@@ -30,6 +30,7 @@ import ch.brickinventoryapp.ressourcen.R
 import ch.brickinventoryapp.ui.theme.Abstaende
 import ch.brickinventoryapp.ui.theme.Formen
 import ch.brickinventoryapp.util.fmtStand
+import ch.brickinventoryapp.util.appNumberLocale
 
 /** Wie viele Änderungen im Ausgang warten — das Gerüst setzt es, der Offline-Hinweis nennt es mit. */
 val LocalOffeneAenderungen = compositionLocalOf { 0 }
@@ -57,7 +58,7 @@ fun OfflineHinweis(stand: Long?, modifier: Modifier = Modifier) {
     val offen = LocalOffeneAenderungen.current
     Hinweisbanner(
         symbol = Icons.Default.CloudOff,
-        titel = stringResource(R.string.offline_stand, fmtStand(stand, ch.brickinventoryapp.util.appNumberLocale())),
+        titel = stringResource(R.string.offline_stand, fmtStand(stand, appNumberLocale())),
         text = if (offen > 0) pluralStringResource(R.plurals.offline_warten, offen, offen) else null,
         modifier = modifier,
     )

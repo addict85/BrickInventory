@@ -60,6 +60,12 @@ import ch.brickinventoryapp.ui.theme.Abstaende
 import ch.brickinventoryapp.ui.components.LeerSymbol
 import ch.brickinventoryapp.ui.components.vorgelesenAls
 import ch.brickinventoryapp.util.fmtInt
+import ch.brickinventoryapp.ui.components.LesbareSpalten
+import ch.brickinventoryapp.ui.components.ProduktBild
+import ch.brickinventoryapp.ui.components.bewegungReduziert
+import ch.brickinventoryapp.ui.components.mitSchrift
+import ch.brickinventoryapp.ui.theme.LocalSteinDekor
+import ch.brickinventoryapp.ui.theme.lichtStreifen
 
 /**
  * Katalog-Screen: gesamter Rebrickable-Set-Katalog, serverseitig paginiert.
@@ -184,7 +190,7 @@ fun CatalogScreen(
             when {
                 // Dieselben Masse wie das Raster darunter, damit beim Eintreffen nichts springt.
                 state.isLoading && state.total == 0 -> SkelettRaster(
-                    ch.brickinventoryapp.ui.components.LesbareSpalten(160.dp), kachelHoehe = 200.dp,
+                    LesbareSpalten(160.dp), kachelHoehe = 200.dp,
                     innenabstand = PaddingValues(start = Abstaende.mittel, top = Abstaende.mittel,
                                                  bottom = Abstaende.mittel, end = 30.dp),
                 )
@@ -204,7 +210,7 @@ fun CatalogScreen(
                 else -> Box(Modifier.fillMaxSize()) {
                     LazyVerticalGrid(
                         state = gridState,
-                        columns = ch.brickinventoryapp.ui.components.LesbareSpalten(160.dp),
+                        columns = LesbareSpalten(160.dp),
                         contentPadding = PaddingValues(start = Abstaende.mittel, top = Abstaende.mittel, bottom = Abstaende.mittel, end = 30.dp),
                         horizontalArrangement = Arrangement.spacedBy(10.dp),
                         verticalArrangement = Arrangement.spacedBy(10.dp)
@@ -400,7 +406,7 @@ internal fun ThemeRow(label: String, selected: Boolean, onClick: () -> Unit) {
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text(label, style = MaterialTheme.typography.bodyMedium, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
-            if (selected) Icon(Icons.Default.Check, null, Modifier.size(ch.brickinventoryapp.ui.components.mitSchrift(18.dp)), tint = MaterialTheme.colorScheme.primary)
+            if (selected) Icon(Icons.Default.Check, null, Modifier.size(mitSchrift(18.dp)), tint = MaterialTheme.colorScheme.primary)
         }
     }
 }
@@ -469,8 +475,8 @@ fun CatalogSetCard(
                     // Rückfall auf die volle Auflösung vor dem Platzhalter.
                     val (thumbUrl, onThumbError) = rememberTileImageWithFallback(serverUrl, set.imageLocal, set.imageUrl)
                     // Kaputte oder fehlende CDN-Bilder: das gemeinsame Ersatzbild statt leerer Fläche.
-                    ch.brickinventoryapp.ui.components.ProduktBild(
-                        model = thumbUrl?.let { ImageRequest.Builder(ctx).data(it).crossfade(!ch.brickinventoryapp.ui.components.bewegungReduziert()).build() },
+                    ProduktBild(
+                        model = thumbUrl?.let { ImageRequest.Builder(ctx).data(it).crossfade(!bewegungReduziert()).build() },
                         imageLoader = imageLoader,
                         // Ohne Beschreibung: Der Name steht darunter, TalkBack las ihn sonst zweimal.
                         contentDescription = null,
@@ -500,7 +506,7 @@ fun CatalogSetCard(
                     // ueber dem Bild liegt — und nur hier, nicht ueber der ganzen
                     // Kachel: Ein weisser Schleier ueber weissem Text ist kein
                     // Glanz, sondern Grau (siehe LichtStreifen in BrickDecor.kt).
-                    if (istGlanz) Box(Modifier.matchParentSize().background(ch.brickinventoryapp.ui.theme.lichtStreifen()))
+                    if (istGlanz) Box(Modifier.matchParentSize().background(lichtStreifen()))
                 }
                 Column(Modifier.padding(horizontal = 10.dp, vertical = 7.dp)) {
                     Text(set.setNumber, Modifier.vorgelesenAls(stringResource(R.string.cd_set_nummer, set.setNumber)),
@@ -536,7 +542,7 @@ fun CatalogSetCard(
         if (isBrick) NoppenReihe(
             mass = NoppenMass.Stein,
             modifier = Modifier.align(Alignment.TopStart),
-            farbe = ch.brickinventoryapp.ui.theme.LocalSteinDekor.current.noppen,
+            farbe = LocalSteinDekor.current.noppen,
         )
     }
 }

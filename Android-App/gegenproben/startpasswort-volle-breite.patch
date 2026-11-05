@@ -4,12 +4,12 @@ Test: ch.brickinventoryapp.GeruestUndFormularTest
 Rot: Startpasswort-Maske steht auf dem Tablet in Lesebreite
 
 diff --git a/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/ui/screens/StartpasswortMaske.kt b/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/ui/screens/StartpasswortMaske.kt
-index 14b4748..372d8ed 100644
+index b0b3f8c..b670146 100644
 --- a/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/ui/screens/StartpasswortMaske.kt
 +++ b/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/ui/screens/StartpasswortMaske.kt
-@@ -65,7 +65,7 @@ fun StartpasswortMaske(
+@@ -68,7 +68,7 @@ fun StartpasswortMaske(
          // Ein untergeschobener Tipp setzte hier das Passwort des Kontos.
-         ch.brickinventoryapp.ui.components.Ueberdeckungsschutz()
+         Ueberdeckungsschutz()
          Column(
 -            Modifier.verticalScroll(rememberScrollState()).mittigBis(Lesebreite.formular)
 +            Modifier.verticalScroll(rememberScrollState()).fillMaxWidth()

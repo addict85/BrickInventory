@@ -26,6 +26,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
+import ch.brickinventoryapp.data.model.GenericResponse
 
 /**
  * Teile und Minifiguren: Listen, Filter, Erfassen und Ändern manueller
@@ -222,7 +223,7 @@ class TeileViewModel @Inject constructor(
         }
     }
 
-    private fun Result<ch.brickinventoryapp.data.model.GenericResponse>.erfolg(): Pair<Boolean, String?> =
+    private fun Result<GenericResponse>.erfolg(): Pair<Boolean, String?> =
         when (this) {
             is Result.Success -> data.success to (data.error ?: text(R.string.err_unknown))
             is Result.Error -> false to meldungFuerSnackbar(this)

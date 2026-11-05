@@ -3,6 +3,7 @@ package ch.brickinventoryapp.data.api
 import ch.brickinventoryapp.data.model.*
 import retrofit2.Response
 import retrofit2.http.*
+import ch.brickinventoryapp.data.model.StartupStatus
 
 /**
  * Betrieb des Servers und Datenpflege: CSV-Import, Protokoll, Startzustand,
@@ -54,7 +55,7 @@ interface VerwaltungApi {
      * jemand anmelden kann.
      */
     @GET("api/v1/startup-status")
-    suspend fun getStartupStatus(): Response<ch.brickinventoryapp.data.model.StartupStatus>
+    suspend fun getStartupStatus(): Response<StartupStatus>
 
     // ── Admin / Monitoring ────────────────────────────────────────────────────
     @GET("api/v1/admin/jobs")

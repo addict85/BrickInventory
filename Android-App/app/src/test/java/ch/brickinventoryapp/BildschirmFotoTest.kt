@@ -42,6 +42,10 @@ import org.robolectric.RuntimeEnvironment
 import org.robolectric.Shadows.shadowOf
 import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
+import ch.brickinventoryapp.data.repository.Result
+import ch.brickinventoryapp.ui.fehlerTextBrauchtCode
+import ch.brickinventoryapp.ui.fehlerTextId
+import ch.brickinventoryapp.ui.viewmodel.Texte
 
 /**
  * Bildschirmfotos der Hauptbildschirme mit Beispieldaten (Beispiele), je in
@@ -267,15 +271,15 @@ internal fun Gutscheine() {
  */
 internal class KontextTexte(
     private val ctx: android.content.Context = ApplicationProvider.getApplicationContext(),
-) : ch.brickinventoryapp.ui.viewmodel.Texte {
+) : Texte {
     override fun text(id: Int, vararg args: Any?): String =
         if (args.isEmpty()) ctx.getString(id) else ctx.getString(id, *args)
     override fun menge(id: Int, anzahl: Int, vararg args: Any?): String =
         ctx.resources.getQuantityString(id, anzahl, *args)
-    override fun meldung(fehler: ch.brickinventoryapp.data.repository.Result.Error): String {
+    override fun meldung(fehler: Result.Error): String {
         if (fehler.message.isNotBlank()) return fehler.message
-        val id = ch.brickinventoryapp.ui.fehlerTextId(fehler.art)
-        return if (ch.brickinventoryapp.ui.fehlerTextBrauchtCode(fehler.art)) text(id, fehler.httpCode ?: 0) else text(id)
+        val id = fehlerTextId(fehler.art)
+        return if (fehlerTextBrauchtCode(fehler.art)) text(id, fehler.httpCode ?: 0) else text(id)
     }
     override fun angemeldet() = true
 }

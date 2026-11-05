@@ -8,6 +8,10 @@ import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import ch.brickinventoryapp.ressourcen.R
 import ch.brickinventoryapp.ui.*
+import ch.brickinventoryapp.ui.components.Sichtschutz
+import ch.brickinventoryapp.ui.components.Ueberdeckungsschutz
+import ch.brickinventoryapp.ui.viewmodel.GutscheinViewModel
+import ch.brickinventoryapp.util.GeheimeZwischenablage
 
 /**
  * Gutscheine — der erste Eintrag der Liste, weil sie im Laden gebraucht werden:
@@ -16,14 +20,14 @@ import ch.brickinventoryapp.ui.*
  */
 @Composable
 fun GutscheineRoute(
-    gvm: ch.brickinventoryapp.ui.viewmodel.GutscheinViewModel,
+    gvm: GutscheinViewModel,
     snackbarHostState: SnackbarHostState,
     onZurueck: () -> Unit,
 ) {
     val gutscheinZustand by gvm.state.collectAsStateWithLifecycle()
-    ch.brickinventoryapp.ui.components.Sichtschutz()
+    Sichtschutz()
     // PIN kopieren und Gutscheine löschen: kein Tipp durch eine Überlagerung.
-    ch.brickinventoryapp.ui.components.Ueberdeckungsschutz()
+    Ueberdeckungsschutz()
     // Kopiert wird über GeheimeZwischenablage (nach einer Minute wieder leer); die
     // Rückmeldung läuft über den Snackbar des ViewModels wie alle anderen Meldungen.
     val kontext = androidx.compose.ui.platform.LocalContext.current
@@ -38,7 +42,7 @@ fun GutscheineRoute(
     val auftrag = gutscheinZustand.zuKopieren
     LaunchedEffect(auftrag) {
         if (auftrag == null) return@LaunchedEffect
-        ch.brickinventoryapp.util.GeheimeZwischenablage.kopiere(kontext, etikett, auftrag.wert)
+        GeheimeZwischenablage.kopiere(kontext, etikett, auftrag.wert)
         gvm.meldeGutscheinKopiert(auftrag.istNummer)
         gvm.kopierenQuittieren()
     }

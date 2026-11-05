@@ -95,7 +95,8 @@ class ManualItemsFirstTest {
             "Screen.Parts.rollSchluessel" to "manualParts",
             "Screen.Minifigs.rollSchluessel" to "manualFigs",
         )) {
-            val block = Quellen.fenster(graph, "ScrollPositionKeeper(\n                    $schluessel", 12)
+            // Der Schlüssel steht als erstes Argument auf eigener Zeile; die Einrückung zählt nicht.
+            val block = Quellen.fenster(graph, "$schluessel, ", 12)
             assert(block.isNotEmpty()) { "Kein ScrollPositionKeeper für $schluessel gefunden" }
             assert(block.contains("$liste != null")) {
                 "$schluessel: `bereit` wartet nicht auf $liste — dann wird die " +

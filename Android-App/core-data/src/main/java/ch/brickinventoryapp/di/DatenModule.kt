@@ -9,6 +9,15 @@ import dagger.hilt.InstallIn
 import dagger.hilt.components.SingletonComponent
 import kotlinx.serialization.json.Json
 import javax.inject.Singleton
+import ch.brickinventoryapp.data.Anmeldeablage
+import ch.brickinventoryapp.data.SetAnlegenSseClient
+import ch.brickinventoryapp.data.SetAnleger
+import ch.brickinventoryapp.data.TokenTausch
+import ch.brickinventoryapp.data.api.ApiJson
+import ch.brickinventoryapp.data.repository.KontoRepository
+import ch.brickinventoryapp.util.Ablageschluessel
+import ch.brickinventoryapp.data.Entwertungsquelle
+import ch.brickinventoryapp.data.cache.CacheBesitzer
 
 /** Schnittstellen der Datenschicht und ihre Umsetzungen, wo die Datenschicht sie kennt. */
 @Module
@@ -31,22 +40,22 @@ object DatenModule {
     @Singleton
     fun provideAblageschluessel(
         @dagger.hilt.android.qualifiers.ApplicationContext context: android.content.Context,
-    ): ch.brickinventoryapp.util.Ablageschluessel = ch.brickinventoryapp.util.Ablageschluessel(
+    ): Ablageschluessel = Ablageschluessel(
         java.io.File(context.noBackupFilesDir, "ablage.schluessel"), KeystoreTokenTresor("brickinventory_ablage"),
     )
 
     @Provides
     @Singleton
-    fun provideJson(): Json = ch.brickinventoryapp.data.api.ApiJson
+    fun provideJson(): Json = ApiJson
 
     @Provides
-    fun provideAnmeldeablage(p: ch.brickinventoryapp.data.PreferencesManager): ch.brickinventoryapp.data.Anmeldeablage = p
+    fun provideAnmeldeablage(p: PreferencesManager): Anmeldeablage = p
 
     @Provides
-    fun provideEntwertungsquelle(p: ch.brickinventoryapp.data.PreferencesManager): ch.brickinventoryapp.data.Entwertungsquelle = p
+    fun provideEntwertungsquelle(p: PreferencesManager): Entwertungsquelle = p
 
     @Provides
-    fun provideCacheBesitzer(p: ch.brickinventoryapp.data.PreferencesManager): ch.brickinventoryapp.data.cache.CacheBesitzer = p
+    fun provideCacheBesitzer(p: PreferencesManager): CacheBesitzer = p
 
     /**
      * Der Tausch des Tokens. Provider statt direkt: Das Konto-Repository hängt am
@@ -55,10 +64,10 @@ object DatenModule {
     @Provides
     @javax.inject.Singleton
     fun provideTokenTausch(
-        p: ch.brickinventoryapp.data.PreferencesManager,
-        konto: javax.inject.Provider<ch.brickinventoryapp.data.repository.KontoRepository>,
+        p: PreferencesManager,
+        konto: javax.inject.Provider<KontoRepository>,
         @ApplicationScope bereich: kotlinx.coroutines.CoroutineScope,
-    ): ch.brickinventoryapp.data.TokenTausch = ch.brickinventoryapp.data.TokenTausch(
+    ): TokenTausch = TokenTausch(
         stand = { p.tokenStand() },
         ersetze = { vorher, neu, herkunft -> p.ersetzeGetauschtenToken(vorher, neu, herkunft) },
         rotiere = { konto.get().tokenRotieren(it) },
@@ -66,5 +75,5 @@ object DatenModule {
     )
 
     @Provides
-    fun provideSetAnleger(c: ch.brickinventoryapp.data.SetAnlegenSseClient): ch.brickinventoryapp.data.SetAnleger = c
+    fun provideSetAnleger(c: SetAnlegenSseClient): SetAnleger = c
 }

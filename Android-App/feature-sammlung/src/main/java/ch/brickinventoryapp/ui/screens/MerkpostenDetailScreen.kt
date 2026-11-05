@@ -25,6 +25,17 @@ import ch.brickinventoryapp.ui.components.ZoomableImageDialog
 import ch.brickinventoryapp.ui.theme.Abstaende
 import ch.brickinventoryapp.util.resolveFullUrl
 import kotlinx.coroutines.launch
+import ch.brickinventoryapp.ui.components.Abschnittstitel
+import ch.brickinventoryapp.ui.components.DetailTopAppBar
+import ch.brickinventoryapp.ui.components.MitTooltip
+import ch.brickinventoryapp.ui.components.ProduktBild
+import ch.brickinventoryapp.ui.components.mitSchrift
+import ch.brickinventoryapp.ui.theme.AppKarte
+import ch.brickinventoryapp.ui.theme.Lesebreite
+import ch.brickinventoryapp.util.fmtInt
+import ch.brickinventoryapp.util.fmtMoney
+import ch.brickinventoryapp.util.fmtTag
+import ch.brickinventoryapp.util.oeffneExtern
 
 /**
  * Das Detail eines Merkpostens — dieselben Zeilen in derselben Reihenfolge wie das
@@ -77,18 +88,18 @@ fun MerkpostenDetailScreen(
     }
 
     fun preis(v: Double?) = if (v == null) "—"
-        else ch.brickinventoryapp.util.fmtMoney(v, appState.currency)
+        else fmtMoney(v, appState.currency)
 
     Scaffold(
         snackbarHost = { SnackbarHost(meldungen) },
         topBar = {
             // Derselbe Kopf wie Set-, Katalog- und Teile-Detail (DetailTopAppBar).
-            ch.brickinventoryapp.ui.components.DetailTopAppBar(titel = merkposten?.name ?: setNumber, onZurueck = onBack,
+            DetailTopAppBar(titel = merkposten?.name ?: setNumber, onZurueck = onBack,
                 // Ohne Rückfrage wie in der Webapp: Ein Merkposten ist kein Besitz und schnell
                 // wieder eingetragen. `let`, weil der Merkposten hier oben noch nullbar ist.
                 actions = {
                     merkposten?.let { w ->
-                        ch.brickinventoryapp.ui.components.MitTooltip(stringResource(R.string.common_delete)) {
+                        MitTooltip(stringResource(R.string.common_delete)) {
                             IconButton(onClick = {
                                 aktionen.loescheMerkposten(w.setNumber, w.condition, w.userId)
                             }) {
@@ -116,7 +127,7 @@ fun MerkpostenDetailScreen(
             verticalArrangement = Arrangement.spacedBy(Abstaende.mittel),
         ) {
             item {
-                ch.brickinventoryapp.ui.components.ProduktBild(
+                ProduktBild(
                     model = bildUrl,
                     contentDescription = merkposten.name,
                     imageLoader = imageLoader,
@@ -132,7 +143,7 @@ fun MerkpostenDetailScreen(
             }
 
             item {
-                ch.brickinventoryapp.ui.theme.AppKarte {
+                AppKarte {
                     // Mit Abstand zwischen den Zeilen wie im Katalog-Detail: Dicht gestapelt
                     // las sich die Karte als ein Block.
                     Column(Modifier.padding(Abstaende.mittel), verticalArrangement = Arrangement.spacedBy(Abstaende.klein)) {
@@ -142,16 +153,16 @@ fun MerkpostenDetailScreen(
                         merkposten.year?.let { CatalogDetailRow(stringResource(R.string.detail_year), it.toString()) }
                         detail.katalog?.themeName?.let { CatalogDetailRow(stringResource(R.string.detail_theme), it) }
                         (detail.katalog?.numParts ?: merkposten.numParts)?.let {
-                            CatalogDetailRow(stringResource(R.string.detail_pieces), ch.brickinventoryapp.util.fmtInt(it))
+                            CatalogDetailRow(stringResource(R.string.detail_pieces), fmtInt(it))
                         }
                         detail.katalog?.minifigs?.let {
-                            CatalogDetailRow(stringResource(R.string.detail_minifigs), ch.brickinventoryapp.util.fmtInt(it))
+                            CatalogDetailRow(stringResource(R.string.detail_minifigs), fmtInt(it))
                         }
                         CatalogDetailRow(stringResource(R.string.common_condition),
                             stringResource(if (merkposten.condition == "U") R.string.condition_used
                                            else R.string.condition_new))
                         CatalogDetailRow(stringResource(R.string.wanted_since),
-                            ch.brickinventoryapp.util.fmtTag(merkposten.createdAt) ?: "—")
+                            fmtTag(merkposten.createdAt) ?: "—")
 
                         // ── Der Inhaber, änderbar ──
                         //
@@ -178,9 +189,9 @@ fun MerkpostenDetailScreen(
                 aussenAbstand = false)
 
             item {
-                ch.brickinventoryapp.ui.theme.AppKarte {
+                AppKarte {
                     Column(Modifier.padding(Abstaende.mittel)) {
-                        ch.brickinventoryapp.ui.components.Abschnittstitel(stringResource(R.string.detail_section_market))
+                        Abschnittstitel(stringResource(R.string.detail_section_market))
                         Spacer(Modifier.height(Abstaende.klein))
                         // Aus der PREIS-Antwort, nicht aus dem Verlauf: Die
                         // holt frisch, der Verlauf liest nur den Cache.
@@ -218,7 +229,7 @@ fun MerkpostenDetailScreen(
                             ?.let { R.string.detail_compare to it },
                     )
                     // Höchstens Bedienbreite: Auf dem Tablet liefen die Knöpfe sonst über die ganze Spalte.
-                    val breite = Modifier.widthIn(max = ch.brickinventoryapp.ui.theme.Lesebreite.bedienung).fillMaxWidth()
+                    val breite = Modifier.widthIn(max = Lesebreite.bedienung).fillMaxWidth()
                     if (adressen.isNotEmpty()) {
                         Row(
                             breite,
@@ -227,7 +238,7 @@ fun MerkpostenDetailScreen(
                             for ((beschriftung, url) in adressen) {
                                 OutlinedButton(
                                     onClick = {
-                                        if (!ch.brickinventoryapp.util.oeffneExtern(ctx, url)) {
+                                        if (!oeffneExtern(ctx, url)) {
                                             bereich.launch { meldungen.showSnackbar(keineAppText) }
                                         }
                                     },
@@ -253,7 +264,7 @@ fun MerkpostenDetailScreen(
                         onClick = { uebernahmeOffen = true },
                         modifier = breite,
                     ) {
-                        Icon(Icons.Default.Add, null, Modifier.size(ch.brickinventoryapp.ui.components.mitSchrift(18.dp)))
+                        Icon(Icons.Default.Add, null, Modifier.size(mitSchrift(18.dp)))
                         Spacer(Modifier.width(Abstaende.winzig))
                         Text(stringResource(R.string.wanted_take))
                     }

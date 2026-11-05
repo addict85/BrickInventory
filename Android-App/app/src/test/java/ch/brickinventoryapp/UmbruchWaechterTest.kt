@@ -44,6 +44,10 @@ import org.robolectric.Shadows.shadowOf
 import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
 import java.util.Locale
+import ch.brickinventoryapp.data.repository.VerwaltungRepository
+import ch.brickinventoryapp.ui.model.BrickLinkAnsicht
+import ch.brickinventoryapp.ui.model.KatalogDetailAnsicht
+import ch.brickinventoryapp.ui.viewmodel.DateiLeser
 
 /**
  * Kein Text bricht Zeichen für Zeichen um, und kein Knopf und keine Überschrift wird
@@ -176,10 +180,10 @@ class UmbruchWaechterTest {
 
     private fun einstellungen() = welt.t.merke(EinstellungenViewModel(welt.t.dienste,
         KontoRepository(welt.t.api, welt.t.cache),
-        ch.brickinventoryapp.data.repository.VerwaltungRepository(welt.t.api, welt.t.cache),
+        VerwaltungRepository(welt.t.api, welt.t.cache),
         SetsRepository(welt.t.api, welt.t.cache),
         TeileRepository(welt.t.api, welt.t.cache),
-        object : ch.brickinventoryapp.ui.viewmodel.DateiLeser {
+        object : DateiLeser {
             override suspend fun lies(uri: android.net.Uri): Pair<String?, ByteArray>? = null
         }))
 
@@ -214,10 +218,10 @@ class UmbruchWaechterTest {
     }
 
     private fun katalogDetail(schrift: Float) {
-        val detail = ch.brickinventoryapp.ui.model.KatalogDetailAnsicht(
+        val detail = KatalogDetailAnsicht(
             setNumber = "10305-1", name = "Lion Knights' Castle", year = 2022, themeId = 721, themeName = "Icons",
             numParts = 4514, imageLocal = "/beispiel/set1.png", minifigs = 22,
-            bricklink = ch.brickinventoryapp.ui.model.BrickLinkAnsicht(number = "10305-1",
+            bricklink = BrickLinkAnsicht(number = "10305-1",
                 url = "https://www.bricklink.com/v2/catalog/catalogitem.page?S=10305-1"))
         pruefe("Katalog-Detail $schrift", schrift) {
             CatalogDetailScreen(setNumber = "10305-1", detail = detail, isLoading = false, imageLoader = bilder,

@@ -37,6 +37,14 @@ import ch.brickinventoryapp.ui.components.WahlChips
 import ch.brickinventoryapp.ui.viewmodel.aktivitaetsViewModel
 import ch.brickinventoryapp.ui.viewmodel.UpdateViewModel
 import ch.brickinventoryapp.util.quelleVeraltet
+import ch.brickinventoryapp.ui.components.LocalAppFassung
+import ch.brickinventoryapp.ui.components.Rueckfrage
+import ch.brickinventoryapp.ui.components.mitSchrift
+import ch.brickinventoryapp.ui.theme.Lesebreite
+import ch.brickinventoryapp.ui.theme.SYSTEMFARBEN_AB_SDK
+import ch.brickinventoryapp.ui.theme.helligkeitWaehlbar
+import ch.brickinventoryapp.util.UpdateFrische
+import ch.brickinventoryapp.util.erlaubnisAbsicht
 
 /** Was die Einstellungen zeigen; die Route sammelt es aus vier Flüssen dreier ViewModels. */
 data class EinstellungenZustand(
@@ -125,7 +133,7 @@ fun SettingsScreen(
         Modifier
             .fillMaxSize()
             .verticalScroll(scrollState)
-            .mittigBis(ch.brickinventoryapp.ui.theme.Lesebreite.formular)
+            .mittigBis(Lesebreite.formular)
             .padding(horizontal = Abstaende.gross, vertical = Abstaende.gross),
         // gross statt der blanken 10 dp von vorher: Die Karten sind jetzt
         // wenige und gross, und zwischen ihnen soll Luft sein.
@@ -154,7 +162,7 @@ fun SettingsScreen(
             val helligkeit = zustand.helligkeit
             val design = zustand.design
             val farbenDesSystems = zustand.systemfarben
-            val waehlbar = ch.brickinventoryapp.ui.theme.helligkeitWaehlbar(design, farbenDesSystems, android.os.Build.VERSION.SDK_INT)
+            val waehlbar = helligkeitWaehlbar(design, farbenDesSystems, android.os.Build.VERSION.SDK_INT)
             WahlChips(
                 listOf(Helligkeit.SYSTEM to stringResource(R.string.settings_hell_system),
                        Helligkeit.HELL to stringResource(R.string.settings_hell_hell),
@@ -168,7 +176,7 @@ fun SettingsScreen(
 
             // Material You: zusätzlich zu den sechs Designs, je Gerät. Erst ab
             // Android 12 gibt es Systemfarben; darunter fehlt der Schalter ganz.
-            if (android.os.Build.VERSION.SDK_INT >= ch.brickinventoryapp.ui.theme.SYSTEMFARBEN_AB_SDK) {
+            if (android.os.Build.VERSION.SDK_INT >= SYSTEMFARBEN_AB_SDK) {
                 val systemfarben = zustand.systemfarben
                 Row(
                     Modifier.fillMaxWidth().heightIn(min = 48.dp)
@@ -275,7 +283,7 @@ fun SettingsScreen(
 
         // Dieselbe Rückfrage wie unter „Mehr“: Abmelden ist von beiden Stellen gleich schwer.
         var fragtAbmelden by rememberSaveable { mutableStateOf(false) }
-        if (fragtAbmelden) ch.brickinventoryapp.ui.components.Rueckfrage(
+        if (fragtAbmelden) Rueckfrage(
             titel = stringResource(R.string.logout_confirm_title),
             text = stringResource(R.string.logout_confirm_text),
             bestaetigen = stringResource(R.string.settings_logout),
@@ -289,7 +297,7 @@ fun SettingsScreen(
             colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error),
             border = BorderStroke(1.dp, MaterialTheme.colorScheme.error.copy(alpha = 0.5f))
         ) {
-            Icon(Icons.AutoMirrored.Filled.Logout, null, Modifier.size(ch.brickinventoryapp.ui.components.mitSchrift(18.dp)))
+            Icon(Icons.AutoMirrored.Filled.Logout, null, Modifier.size(mitSchrift(18.dp)))
             Spacer(Modifier.width(Abstaende.klein))
             Text(stringResource(R.string.settings_logout), fontWeight = FontWeight.SemiBold)
         }
@@ -322,7 +330,7 @@ private fun ServerCard(
         )
         Spacer(Modifier.height(Abstaende.klein))
         OutlinedButton(onClick = onWechseln, colors = nebenKnopfFarben(), border = nebenKnopfRand()) {
-            Icon(Icons.Default.Cloud, null, modifier = Modifier.size(ch.brickinventoryapp.ui.components.mitSchrift(18.dp)))
+            Icon(Icons.Default.Cloud, null, modifier = Modifier.size(mitSchrift(18.dp)))
             Spacer(Modifier.width(Abstaende.klein))
             Text(stringResource(R.string.main_menu_change_server))
         }
@@ -356,7 +364,7 @@ private fun ServerCard(
 private fun UpdateCard(
     // `updateZustand`, nicht `zustand`: Die Prüfung „welcher Name trägt in dieser
     // Datei welchen Zustandstyp“ unterscheidet keine Gültigkeitsbereiche.
-    updateZustand: ch.brickinventoryapp.ui.UpdateUiState,
+    updateZustand: UpdateUiState,
     onPruefen: () -> Unit,
     onLaden: () -> Unit,
     onInstallieren: () -> Unit,
@@ -364,7 +372,7 @@ private fun UpdateCard(
     val ctx = androidx.compose.ui.platform.LocalContext.current
     SettingsCard(title = stringResource(R.string.update_title), icon = Icons.Default.SystemUpdate) {
         Text(
-            stringResource(R.string.update_installed, ch.brickinventoryapp.ui.components.LocalAppFassung.current.name),
+            stringResource(R.string.update_installed, LocalAppFassung.current.name),
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
@@ -382,7 +390,7 @@ private fun UpdateCard(
             // ueber etwas, das niemand nachgesehen hat. Eine veraltete Quelle
             // ist nie „aktuell“ (Hinweis darunter).
             updateZustand.geprueft && !quelleVeraltet(updateZustand.frische) -> Text(
-                stringResource(R.string.update_current, ch.brickinventoryapp.ui.components.LocalAppFassung.current.name),
+                stringResource(R.string.update_current, LocalAppFassung.current.name),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -390,7 +398,7 @@ private fun UpdateCard(
         if (quelleVeraltet(updateZustand.frische)) {
             Spacer(Modifier.height(Abstaende.klein))
             Text(
-                stringResource(if (updateZustand.frische == ch.brickinventoryapp.util.UpdateFrische.ABGELAUFEN)
+                stringResource(if (updateZustand.frische == UpdateFrische.ABGELAUFEN)
                     R.string.update_quelle_abgelaufen else R.string.update_quelle_zurueckgesetzt),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.error,
@@ -417,7 +425,7 @@ private fun UpdateCard(
             )
             Spacer(Modifier.height(Abstaende.winzig))
             TextButton(onClick = {
-                ctx.startActivity(ch.brickinventoryapp.util.erlaubnisAbsicht(ctx))
+                ctx.startActivity(erlaubnisAbsicht(ctx))
             }) { Text(stringResource(R.string.update_permission_grant)) }
         }
 

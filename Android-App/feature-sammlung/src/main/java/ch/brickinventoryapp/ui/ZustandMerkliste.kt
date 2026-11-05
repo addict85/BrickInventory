@@ -1,6 +1,7 @@
 package ch.brickinventoryapp.ui
 
 import ch.brickinventoryapp.ui.model.*
+import ch.brickinventoryapp.data.repository.MERKLISTE_DEFAULT_SORT
 
 /**
  * Die Merkliste — was man haben möchte, getrennt vom Besitz. Eigener Zustand statt
@@ -21,7 +22,7 @@ data class MerklisteUiState(
     val query: String = "",
     /** "N", "U" — oder leer fuer beide Zustaende. */
     val zustandFilter: String = "",
-    val sortierung: String = ch.brickinventoryapp.data.repository.MERKLISTE_DEFAULT_SORT,
+    val sortierung: String = MERKLISTE_DEFAULT_SORT,
 )
 
 /**

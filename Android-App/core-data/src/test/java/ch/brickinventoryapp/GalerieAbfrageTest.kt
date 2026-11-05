@@ -18,6 +18,7 @@ import org.junit.Test
 import retrofit2.Retrofit
 import java.io.File
 import java.util.concurrent.TimeUnit
+import ch.brickinventoryapp.data.api.ApiJson
 
 /**
  * Was die Galerie beim Server BESTELLT — und was davon auf der Platte landet.
@@ -81,7 +82,7 @@ class GalerieAbfrageTest {
         cacheDir.mkdirs()
         val client = OkHttpClient.Builder()
             .readTimeout(1, TimeUnit.SECONDS).connectTimeout(1, TimeUnit.SECONDS).build()
-        val json = ch.brickinventoryapp.data.api.ApiJson
+        val json = ApiJson
         val api = Retrofit.Builder()
             .baseUrl(server.url("/")).client(client)
             .addConverterFactory(json.asConverterFactory("application/json".toMediaType()))

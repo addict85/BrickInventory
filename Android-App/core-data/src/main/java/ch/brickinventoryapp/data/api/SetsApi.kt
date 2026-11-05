@@ -3,6 +3,9 @@ package ch.brickinventoryapp.data.api
 import ch.brickinventoryapp.data.model.*
 import retrofit2.Response
 import retrofit2.http.*
+import ch.brickinventoryapp.data.model.CsvImportStatus
+import ch.brickinventoryapp.data.model.SetExistsResponse
+import ch.brickinventoryapp.data.model.SetInfoResponse
 
 /**
  * Sets, Anleitungen, Preisalarme, Lagerort je Set, Merkliste, PDF-Export und
@@ -15,7 +18,7 @@ interface SetsApi : TeileAbfrageApi, FigurenAbfrageApi {
     // Adressraum. Der Router dahinter ist derselbe wie vorher — nur die Adresse
     // hat sich geaendert (siehe server.ts).
     @GET("api/v1/sets/import/csv/status")
-    suspend fun getCsvImportStatus(): Response<ch.brickinventoryapp.data.model.CsvImportStatus>
+    suspend fun getCsvImportStatus(): Response<CsvImportStatus>
 
     /**
      * Einen laufenden CSV-Import abbrechen. Der Server vermerkt nur `cancelled`; schon
@@ -29,7 +32,7 @@ interface SetsApi : TeileAbfrageApi, FigurenAbfrageApi {
     suspend fun getCsvImportStatusDirect(
         @retrofit2.http.Url url: String,
         @Header("Authorization") token: String
-    ): Response<ch.brickinventoryapp.data.model.CsvImportStatus>
+    ): Response<CsvImportStatus>
 
     // ── Anleitungen: hinzufügen und entfernen ──
     //
@@ -57,7 +60,7 @@ interface SetsApi : TeileAbfrageApi, FigurenAbfrageApi {
     @GET("api/v1/sets/info/{setNumber}")
     suspend fun getSetInfo(
         @Path("setNumber") setNumber: String
-    ): Response<ch.brickinventoryapp.data.model.SetInfoResponse>
+    ): Response<SetInfoResponse>
 
     @GET("api/v1/sets/{setNumber}")
     suspend fun getSetDetail(
@@ -248,7 +251,7 @@ interface SetsApi : TeileAbfrageApi, FigurenAbfrageApi {
     @GET("api/v1/sets/exists/{setNumber}")
     suspend fun getSetExists(
         @Path("setNumber") setNumber: String
-    ): Response<ch.brickinventoryapp.data.model.SetExistsResponse>
+    ): Response<SetExistsResponse>
 
     @GET("api/v1/sets/barcode/{barcode}")
     suspend fun getBarcodeSet(

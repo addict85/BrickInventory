@@ -18,6 +18,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import ch.brickinventoryapp.ressourcen.R
+import ch.brickinventoryapp.ui.theme.Formen
 
 /**
  * Das Lagerort-Feld: auswählen oder neu eintippen, in einem Bedienelement — ein
@@ -59,7 +60,7 @@ fun LagerortFeld(
         modifier = modifier,
     ) {
         OutlinedTextField(
-            shape = ch.brickinventoryapp.ui.theme.Formen.feld,
+            shape = Formen.feld,
             value = text,
             onValueChange = {
                 if (it.length <= 60) { text = it; offen = true; onWert(it) }

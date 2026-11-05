@@ -30,6 +30,9 @@ import kotlinx.coroutines.cancel
 import java.io.File
 import java.util.Collections
 import java.util.concurrent.TimeUnit
+import ch.brickinventoryapp.data.api.ApiJson
+import ch.brickinventoryapp.data.repository.Result
+import ch.brickinventoryapp.di.PLATZHALTER_BASIS
 
 /**
  * Der Tausch des Tokens im echten Netzweg: Wächter, Konto-Repository und
@@ -119,8 +122,8 @@ class TokenRotationTest {
         .readTimeout(2, TimeUnit.SECONDS).build()
 
     init {
-        konto = KontoRepository(Retrofit.Builder().baseUrl(ch.brickinventoryapp.di.PLATZHALTER_BASIS).client(client)
-            .addConverterFactory(ch.brickinventoryapp.data.api.ApiJson.asConverterFactory("application/json".toMediaType()))
+        konto = KontoRepository(Retrofit.Builder().baseUrl(PLATZHALTER_BASIS).client(client)
+            .addConverterFactory(ApiJson.asConverterFactory("application/json".toMediaType()))
             .build().create(KontoApi::class.java), ResponseCache { dir })
     }
 
@@ -154,7 +157,7 @@ class TokenRotationTest {
             .addInterceptor(ServerWaechter(lage, true, entwicklung = true, sitzungAbgelaufen = { abgelaufen++ }, rotation = t))
             .readTimeout(2, TimeUnit.SECONDS).build()
         k = KontoRepository(Retrofit.Builder().baseUrl(server.url("/")).client(c)
-            .addConverterFactory(ch.brickinventoryapp.data.api.ApiJson.asConverterFactory("application/json".toMediaType()))
+            .addConverterFactory(ApiJson.asConverterFactory("application/json".toMediaType()))
             .build().create(KontoApi::class.java), ResponseCache { dir })
         val codes: MutableList<Int> = Collections.synchronizedList(mutableListOf())
         repeat(2) {
@@ -227,7 +230,7 @@ class TokenRotationTest {
             gespeichert = ""
             umgezogen = neuer.url("/").toString().trimEnd('/')
             val r = kotlinx.coroutines.runBlocking { konto.tokenRotieren("alt") }
-            assertTrue(r is ch.brickinventoryapp.data.repository.Result.Error)
+            assertTrue(r is Result.Error)
             assertEquals(listOf<String?>(null), dort.toList())
         } finally {
             neuer.shutdown()

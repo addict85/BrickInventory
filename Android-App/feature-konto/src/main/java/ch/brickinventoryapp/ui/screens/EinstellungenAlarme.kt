@@ -26,6 +26,11 @@ import coil3.ImageLoader
 import ch.brickinventoryapp.ui.viewmodel.EinstellungenAktionen
 import ch.brickinventoryapp.ui.*
 import ch.brickinventoryapp.ui.theme.Abstaende
+import ch.brickinventoryapp.ui.components.ErklaerText
+import ch.brickinventoryapp.ui.components.MitTooltip
+import ch.brickinventoryapp.ui.components.mitSchrift
+import ch.brickinventoryapp.util.fmtEingabe
+import ch.brickinventoryapp.util.fmtMoney
 
 /**
  * Alle Preisalarme an einem Ort — ändern und löschen wie im Web. Der letzte Preis
@@ -50,7 +55,7 @@ internal fun PreisalarmeCard(
         title = stringResource(R.string.alerts_liste_titel),
         icon = Icons.Default.NotificationsActive,
     ) {
-        ch.brickinventoryapp.ui.components.ErklaerText(stringResource(R.string.alerts_intro),
+        ErklaerText(stringResource(R.string.alerts_intro),
             stringResource(R.string.alerts_intro_more), stil = MaterialTheme.typography.bodySmall)
 
         // `geladen` und nicht nur „Liste leer": Beim Aufbau stuende sonst kurz
@@ -65,7 +70,7 @@ internal fun PreisalarmeCard(
             // einen Alarms den Wert des anderen, wenn ein Set beide hat.
             // Als Betrag wie überall („750.00“), nicht als Rohzahl „750.0“.
             var wert by rememberSaveable(a.setNumber + a.condition) {
-                mutableStateOf(ch.brickinventoryapp.util.fmtEingabe(a.schwelle))
+                mutableStateOf(fmtEingabe(a.schwelle))
             }
             // Reihenfolge wie in den Finanzen und in der Webapp: heruntergeladene
             // Kopie, eigene Adresse, Katalog. Fuer ein Set, das man nicht besitzt,
@@ -106,7 +111,7 @@ internal fun PreisalarmeCard(
                             AlarmZustandPlakette(a.ausgeloest)
                             a.zuletztPreis?.let {
                                 Text(stringResource(R.string.alerts_last,
-                                        ch.brickinventoryapp.util.fmtMoney(it, a.currencyCode)),
+                                        fmtMoney(it, a.currencyCode)),
                                     style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant)
                             }
@@ -114,7 +119,7 @@ internal fun PreisalarmeCard(
                     }
                     // Leise wie jede Zeilenaktion: Rot je Zeile übertönte die Preise; die
                     // Rückfrage danach trägt das Gewicht.
-                    ch.brickinventoryapp.ui.components.MitTooltip(stringResource(R.string.alerts_delete_fuer, a.name ?: a.setNumber)) {
+                    MitTooltip(stringResource(R.string.alerts_delete_fuer, a.name ?: a.setNumber)) {
                         IconButton(onClick = { fragtLoeschen = a }) {
                             Icon(Icons.Default.Delete, stringResource(R.string.alerts_delete_fuer, a.name ?: a.setNumber),
                                 tint = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -142,7 +147,7 @@ internal fun PreisalarmeCard(
                     supportingText = {
                         if (zahl == a.schwelle) Row(verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.spacedBy(Abstaende.haar)) {
-                            Icon(Icons.Default.Check, null, Modifier.size(ch.brickinventoryapp.ui.components.mitSchrift(14.dp)))
+                            Icon(Icons.Default.Check, null, Modifier.size(mitSchrift(14.dp)))
                             Text(stringResource(R.string.vm_saved))
                         } else Text(stringResource(R.string.detail_alert_hint))
                     },

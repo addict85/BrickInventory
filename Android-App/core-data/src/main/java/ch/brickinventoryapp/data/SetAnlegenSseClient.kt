@@ -28,7 +28,7 @@ import javax.inject.Singleton
 @Singleton
 class SetAnlegenSseClient @Inject constructor(
     @Named("sse") private val client: OkHttpClient,
-    private val prefs: PreferencesManager,
+    private val prefs: Zugangsdaten,
     @param:Dispatcher(BrickDispatchers.IO) private val io: CoroutineDispatcher,
 ) : SetAnleger {
     private val json = Json { ignoreUnknownKeys = true }

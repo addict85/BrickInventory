@@ -36,6 +36,19 @@ import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
+import ch.brickinventoryapp.data.SetAnlegenSchritt
+import ch.brickinventoryapp.data.SetAnleger
+import ch.brickinventoryapp.data.repository.KatalogRepository
+import ch.brickinventoryapp.nav.TeileListeUndDetailRoute
+import ch.brickinventoryapp.ui.model.PreisDiagrammAnsicht
+import ch.brickinventoryapp.ui.model.PreisPunktAnsicht
+import ch.brickinventoryapp.ui.model.PreisReiheAnsicht
+import ch.brickinventoryapp.ui.screens.GalleryRoute
+import ch.brickinventoryapp.ui.screens.PartsRoute
+import ch.brickinventoryapp.ui.screens.PriceChart
+import ch.brickinventoryapp.ui.screens.Zustandszeile
+import ch.brickinventoryapp.ui.viewmodel.ErfassungViewModel
+import ch.brickinventoryapp.util.fmtMoney
 
 /**
  * Regeln aus der achten UI-Prüfung, als Verhalten ausgeführt: Navigationsziele stehen
@@ -168,7 +181,7 @@ class FeinschliffRegelnTest {
     // 90-dp-Spalte → rot „Zustandszeile: „Zustand“ steht in 2 Zeilen“.
     @Test
     fun `Zustandszeile bricht bei 200 Prozent kein Wort um`() {
-        zeige(schrift = 2f) { ch.brickinventoryapp.ui.screens.Zustandszeile(zustand = "N", onZustand = {}) }
+        zeige(schrift = 2f) { Zustandszeile(zustand = "N", onZustand = {}) }
         ganzEineZeile(ctx.getString(R.string.common_condition), "Zustandszeile")
     }
 
@@ -184,16 +197,16 @@ class FeinschliffRegelnTest {
         val welt = Beispiele.Welt(KontextTexte())
         try {
             val vm = welt.galerie().also { it.loadSets() }
-            val erfassung = welt.t.merke(ch.brickinventoryapp.ui.viewmodel.ErfassungViewModel(welt.t.dienste,
+            val erfassung = welt.t.merke(ErfassungViewModel(welt.t.dienste,
                 SetsRepository(welt.t.api, welt.t.cache),
-                ch.brickinventoryapp.data.repository.KatalogRepository(welt.t.api, welt.t.cache),
-                object : ch.brickinventoryapp.data.SetAnleger {
+                KatalogRepository(welt.t.api, welt.t.cache),
+                object : SetAnleger {
                     override fun anlegen(setNumber: String, quantity: Int, purchasePrice: Double?, condition: String?,
                                          ownerUserId: Int?, storage: String?) =
-                        kotlinx.coroutines.flow.emptyFlow<ch.brickinventoryapp.data.SetAnlegenSchritt>()
+                        kotlinx.coroutines.flow.emptyFlow<SetAnlegenSchritt>()
                 }))
             zeige(schrift) {
-                ch.brickinventoryapp.ui.screens.GalleryRoute(vm = vm, erfassung = erfassung,
+                GalleryRoute(vm = vm, erfassung = erfassung,
                     imageLoader = coil3.ImageLoader.Builder(ctx).build(), onScanBarcode = {}, onSetClick = {})
             }
             val ende = System.nanoTime() + 10_000_000_000L
@@ -210,9 +223,9 @@ class FeinschliffRegelnTest {
         }
     }
 
-    private fun verlauf(punkte: Int) = ch.brickinventoryapp.ui.model.PreisDiagrammAnsicht(
-        values = listOf(ch.brickinventoryapp.ui.model.PreisReiheAnsicht("N",
-            (1..punkte).map { ch.brickinventoryapp.ui.model.PreisPunktAnsicht("2026-0$it-01", 700.0 + 10 * it) })))
+    private fun verlauf(punkte: Int) = PreisDiagrammAnsicht(
+        values = listOf(PreisReiheAnsicht("N",
+            (1..punkte).map { PreisPunktAnsicht("2026-0$it-01", 700.0 + 10 * it) })))
 
     /** Zwei Punkte ohne Achse lasen sich wie ein Trend; erst ab drei steht eine Linie da. */
     @Test
@@ -220,14 +233,14 @@ class FeinschliffRegelnTest {
         val punkte = androidx.compose.runtime.mutableIntStateOf(2)
         zeige {
             androidx.compose.foundation.layout.Column {
-                ch.brickinventoryapp.ui.screens.PriceChart(verlauf(punkte.intValue), "CHF")
+                PriceChart(verlauf(punkte.intValue), "CHF")
             }
         }
         val zuWenig = ctx.getString(R.string.price_chart_too_few)
         assertTrue("Preisverlauf mit zwei Punkten sagt, warum kein Diagramm",
             compose.onAllNodes(hasText(zuWenig)).fetchSemanticsNodes().size == 1)
         val tiefHoch = ctx.getString(R.string.price_chart_low_high,
-            ch.brickinventoryapp.util.fmtMoney(710.0, "CHF"), ch.brickinventoryapp.util.fmtMoney(720.0, "CHF"))
+            fmtMoney(710.0, "CHF"), fmtMoney(720.0, "CHF"))
         assertTrue("Preisverlauf nennt Tief und Hoch",
             compose.onAllNodes(hasText(tiefHoch)).fetchSemanticsNodes().size == 1)
         punkte.intValue = 3
@@ -259,8 +272,8 @@ class FeinschliffRegelnTest {
             val vm = welt.teile().also { it.loadParts() }
             val bilder = coil3.ImageLoader.Builder(ctx).build()
             zeige {
-                ch.brickinventoryapp.nav.TeileListeUndDetailRoute(vm, bilder, "", rememberNavController()) { _ ->
-                    ch.brickinventoryapp.ui.screens.PartsRoute(vm = vm, imageLoader = bilder)
+                TeileListeUndDetailRoute(vm, bilder, "", rememberNavController()) { _ ->
+                    PartsRoute(vm = vm, imageLoader = bilder)
                 }
             }
             warte("Teile") { vm.partsState.value.parts.isNotEmpty() }

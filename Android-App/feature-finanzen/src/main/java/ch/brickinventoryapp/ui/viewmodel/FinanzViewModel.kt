@@ -15,6 +15,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
+import ch.brickinventoryapp.ui.fehlerklasse
 
 /**
  * Der Finanz-Reiter: Bewertung von Sets, Teilen und Figuren, Gewinn und
@@ -52,7 +53,7 @@ class FinanzViewModel @Inject constructor(
                 }
                 is Result.Error -> {
                     _financeState.update { it.copy(valuationLoading = false, valuationFehler = meldung(r),
-                        valuationFehlerKlasse = ch.brickinventoryapp.ui.fehlerklasse(r)) }
+                        valuationFehlerKlasse = fehlerklasse(r)) }
                     zeigeMeldung(meldungFuerSnackbar(r))
                 }
             }

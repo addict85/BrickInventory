@@ -4,7 +4,7 @@ import android.content.Context
 import ch.brickinventoryapp.data.Abmeldeweg
 import ch.brickinventoryapp.data.Abmeldung
 import ch.brickinventoryapp.data.PasswortPflicht
-import ch.brickinventoryapp.data.PreferencesManager
+import ch.brickinventoryapp.data.Sitzungsende
 import ch.brickinventoryapp.data.ZweiterFaktorPflicht
 import ch.brickinventoryapp.data.cache.VorschauSpeicher
 import ch.brickinventoryapp.data.repository.BrickRepository
@@ -30,7 +30,7 @@ import okhttp3.OkHttpClient
  */
 class Abmelden @Inject constructor(
     @param:ApplicationContext private val ctx: Context,
-    private val prefs: PreferencesManager,
+    private val prefs: Sitzungsende,
     private val repo: BrickRepository,
     private val passwortPflicht: PasswortPflicht,
     private val zweiterFaktorPflicht: ZweiterFaktorPflicht,

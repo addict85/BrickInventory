@@ -24,6 +24,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
+import ch.brickinventoryapp.ui.fehlerklasse
 
 /**
  * Merkliste und Merkposten-Detail — was man haben möchte, getrennt vom Besitz.
@@ -96,7 +97,7 @@ class MerklisteViewModel @Inject constructor(
                     _merklisteState.update { it.copy(merkposten = r.data.merkposten.map { m -> m.alsAnsicht() }, laedt = false) }
                 is Result.Error -> {
                     _merklisteState.update { it.copy(laedt = false, fehler = meldung(r),
-                        fehlerKlasse = ch.brickinventoryapp.ui.fehlerklasse(r)) }
+                        fehlerKlasse = fehlerklasse(r)) }
                     zeigeMeldung(meldungFuerSnackbar(r)?.let { text(R.string.vm_error, it) })
                 }
             }

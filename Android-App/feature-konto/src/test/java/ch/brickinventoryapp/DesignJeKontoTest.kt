@@ -14,6 +14,7 @@ import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Before
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
@@ -40,7 +41,7 @@ class DesignJeKontoTest {
         "/api/v1/settings/theme" to """{"success":true,"theme":"brick","vorgabe":"classic","eigenes":"brick"}""",
         "/api/v1/settings/user/theme" to """{"success":true,"theme":"noppe","vorgabe":"classic","eigenes":"noppe"}""",
     )
-    private val t = TestDienste(pfade.server)
+    private val t = TestDienste(pfade.imTakt(), io = Dispatchers.Main)
 
     @Before
     fun auf() = Dispatchers.setMain(UnconfinedTestDispatcher())
@@ -58,7 +59,7 @@ class DesignJeKontoTest {
     fun `das Konto zeigt Vorgabe und eigenes Design`() {
         val vm = vm()
         vm.ladeDesign()
-        TestApi.warteBis("Design") { vm.kontoState.value.design != null }
+        assertTrue("Design", vm.kontoState.value.design != null)
         assertEquals(DesignWahl("brick", "classic", "brick"), vm.kontoState.value.design)
         assertEquals(listOf("GET /api/v1/settings/theme"), pfade.anfragen.toList())
     }
@@ -67,7 +68,7 @@ class DesignJeKontoTest {
     fun `die Wahl geht an den Server und gilt sofort in der ganzen App`() {
         val vm = vm()
         vm.waehleDesign("noppe")
-        TestApi.warteBis("gewählt") { vm.kontoState.value.design != null }
+        assertTrue("gewählt", vm.kontoState.value.design != null)
         assertEquals(listOf("POST /api/v1/settings/user/theme"), pfade.anfragen.toList())
         assertEquals("""{"theme":"noppe"}""", pfade.koerper.single())
         assertEquals(DesignWahl("noppe", "classic", "noppe"), vm.kontoState.value.design)
@@ -76,7 +77,7 @@ class DesignJeKontoTest {
         // Zurück zur Vorgabe: leerer Wert, die Antwort nennt das wirksame Design.
         pfade.antworten["/api/v1/settings/user/theme"] = """{"success":true,"theme":"classic","vorgabe":"classic","eigenes":null}"""
         vm.waehleDesign("")
-        TestApi.warteBis("Vorgabe") { vm.kontoState.value.design?.eigenes == null }
+        assertTrue("Vorgabe", vm.kontoState.value.design?.eigenes == null)
         assertEquals("""{"theme":""}""", pfade.koerper.last())
         assertEquals("classic", t.sitzung.state.value.appTheme)
     }
@@ -86,8 +87,7 @@ class DesignJeKontoTest {
         pfade.antworten["/api/v1/settings/theme"] = """{"success":true,"theme":"brick"}"""
         val vm = vm()
         vm.ladeDesign()
-        TestApi.warteBis("Antwort") { pfade.anfragen.isNotEmpty() }
-        Thread.sleep(100)
+        assertTrue("Antwort", pfade.anfragen.isNotEmpty())
         assertNull(vm.kontoState.value.design)
     }
 

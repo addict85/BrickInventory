@@ -27,6 +27,12 @@ import androidx.compose.material.icons.filled.Clear
 import ch.brickinventoryapp.ui.theme.Abstaende
 import ch.brickinventoryapp.ui.components.stueckzahl
 import ch.brickinventoryapp.ui.components.vorgelesenAls
+import ch.brickinventoryapp.ui.components.MitTooltip
+import ch.brickinventoryapp.ui.components.ProduktBild
+import ch.brickinventoryapp.ui.components.SegmentWahl
+import ch.brickinventoryapp.ui.components.bewegungReduziert
+import ch.brickinventoryapp.ui.components.mitSchrift
+import ch.brickinventoryapp.util.fmtInt
 
 /**
  * Eine Zeile der Tabellenansicht — für Teile und Figuren, wie die beiden gleich
@@ -79,8 +85,8 @@ fun TabellenZeile(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(10.dp),
             ) {
-                ch.brickinventoryapp.ui.components.ProduktBild(
-                    model = bildUrl?.let { ImageRequest.Builder(ctx).data(it).crossfade(!ch.brickinventoryapp.ui.components.bewegungReduziert()).build() },
+                ProduktBild(
+                    model = bildUrl?.let { ImageRequest.Builder(ctx).data(it).crossfade(!bewegungReduziert()).build() },
                     imageLoader = imageLoader,
                     // Ohne Beschreibung: Der Name steht daneben, TalkBack las ihn sonst zweimal.
                     contentDescription = null,
@@ -127,7 +133,7 @@ fun TabellenZeile(
                     }
                 }
                 Text(
-                    ch.brickinventoryapp.util.fmtInt(menge),
+                    fmtInt(menge),
                     Modifier.vorgelesenAls(stueckzahl(menge)),
                     fontFamily = FontFamily.Monospace,
                     fontWeight = FontWeight.Bold,
@@ -149,7 +155,7 @@ fun AnsichtUmschalter(
     onWechsel: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    ch.brickinventoryapp.ui.components.SegmentWahl(
+    SegmentWahl(
         optionen = listOf("grid" to stringResource(R.string.view_cards), "table" to stringResource(R.string.view_table)),
         gewaehlt = aktuell,
         onWahl = onWechsel,
@@ -176,10 +182,10 @@ fun Suchfeld(
         // Eine Zeile: Ein umbrechender Platzhalter machte das Feld doppelt so hoch
         // wie den Filterknopf daneben.
         placeholder = { Text(platzhalter, maxLines = 1, overflow = TextOverflow.Ellipsis) },
-        leadingIcon = { Icon(Icons.Default.Search, null, Modifier.size(ch.brickinventoryapp.ui.components.mitSchrift(20.dp))) },
+        leadingIcon = { Icon(Icons.Default.Search, null, Modifier.size(mitSchrift(20.dp))) },
         trailingIcon = {
             if (wert.isNotEmpty()) {
-                ch.brickinventoryapp.ui.components.MitTooltip(stringResource(R.string.cd_search_clear)) {
+                MitTooltip(stringResource(R.string.cd_search_clear)) {
                     IconButton(onClick = { onWert("") }) {
                         Icon(Icons.Default.Clear, stringResource(R.string.cd_search_clear))
                     }
@@ -256,7 +262,7 @@ fun ConditionToggle(
 ) {
     // Dieselbe Segmentschaltfläche wie jede Einfachwahl der App (SegmentWahl): Die
     // eigene Fassung mit Flächen ohne Rand liess „Gebraucht“ wie Text aussehen.
-    ch.brickinventoryapp.ui.components.SegmentWahl(
+    SegmentWahl(
         optionen = optionen.map { (wert, text) -> wert to stringResource(text) },
         gewaehlt = selected,
         onWahl = onSelect,

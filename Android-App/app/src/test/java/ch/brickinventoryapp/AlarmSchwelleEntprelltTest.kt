@@ -43,7 +43,7 @@ class AlarmSchwelleEntprelltTest {
             "/api/v1/alerts" to """{"success":true,"alerts":[{"set_number":"75192-1","condition":"N","schwelle":500.0}]}""",
             "/api/v1/sets/75192-1/alert" to """{"success":true}""",
         )
-        t = TestDienste(pfade.server)
+        t = TestDienste(pfade.imTakt(), io = Dispatchers.Main)
     }
 
     @After
@@ -60,11 +60,9 @@ class AlarmSchwelleEntprelltTest {
         vm.setzeAlarmSchwelle("75192-1", "N", "unter", "4")
         vm.setzeAlarmSchwelle("75192-1", "N", "unter", "449,90")
         uhr.advanceTimeBy(500)
-        Thread.sleep(200)
         assertTrue("Vor der Ruhezeit nichts gesendet", pfade.anfragenAn("PUT /api/v1/sets/75192-1/alert").isEmpty())
         uhr.advanceTimeBy(500)
-        TestApi.warteBis("gespeichert") { pfade.anfragenAn("PUT /api/v1/sets/75192-1/alert").isNotEmpty() }
-        Thread.sleep(200)
+        assertTrue("gespeichert", pfade.anfragenAn("PUT /api/v1/sets/75192-1/alert").isNotEmpty())
         val puts = synchronized(pfade.anfragen) {
             pfade.anfragen.indices.filter { pfade.anfragen[it] == "PUT /api/v1/sets/75192-1/alert" }.map { pfade.koerper[it] }
         }

@@ -24,6 +24,10 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import javax.inject.Inject
+import ch.brickinventoryapp.data.model.LagerortEintragResponse
+import ch.brickinventoryapp.data.model.LagerortResponse
+import ch.brickinventoryapp.data.model.LagerortVorgabeResponse
+import ch.brickinventoryapp.data.model.PreisalarmResponse
 
 /**
  * Wie gross eine CSV-Datei sein darf — derselbe Wert wie CSV_MAX_BYTES in
@@ -165,7 +169,7 @@ class EinstellungenViewModel @Inject constructor(
         alarmSchleuse { sets.deletePreisalarm(setNumber, condition) }
 
     /** Ändern und Löschen: rufen, melden, die Übersicht lädt auf das Signal nach. */
-    private fun alarmSchleuse(tun: suspend () -> Result<ch.brickinventoryapp.data.model.PreisalarmResponse>) {
+    private fun alarmSchleuse(tun: suspend () -> Result<PreisalarmResponse>) {
         viewModelScope.launch {
             when (val r = tun()) {
                 is Result.Success -> if (!r.data.success) zeigeMeldung(r.data.error)
@@ -204,9 +208,9 @@ class EinstellungenViewModel @Inject constructor(
     }
 
     private fun erfolgUndSatz(antwort: Any?): Pair<Boolean, String?> = when (antwort) {
-        is ch.brickinventoryapp.data.model.LagerortEintragResponse -> antwort.success to antwort.error
-        is ch.brickinventoryapp.data.model.LagerortVorgabeResponse -> antwort.success to antwort.error
-        is ch.brickinventoryapp.data.model.LagerortResponse -> antwort.success to antwort.error
+        is LagerortEintragResponse -> antwort.success to antwort.error
+        is LagerortVorgabeResponse -> antwort.success to antwort.error
+        is LagerortResponse -> antwort.success to antwort.error
         else -> true to null
     }
 

@@ -11,6 +11,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import ch.brickinventoryapp.data.repository.Result
 
 /**
  * Verwalterrechte ohne zweiten Faktor: Anmeldung und /auth/me nennen das Feld
@@ -69,7 +70,7 @@ class ZweiterFaktorUebernahmeTest {
         pfade.antworten["/api/v1/auth/me"] =
             """{"success":true,"user":{"id":1,"username":"marco","is_admin":true,"zweiterFaktorPflicht":true}}"""
         val me = konto.getMe()
-        assertTrue("aus /auth/me", me is ch.brickinventoryapp.data.repository.Result.Success &&
+        assertTrue("aus /auth/me", me is Result.Success &&
             me.data.user?.zweiterFaktorPflicht == true)
     }
 }
