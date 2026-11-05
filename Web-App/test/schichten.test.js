@@ -260,14 +260,16 @@ test('startup/ importiert nichts aus routes/', () => {
 
 test('keine Importzyklen in den inneren Schichten', () => {
   // Ein Zyklus zwingt zu verzögertem require() und macht die Ladereihenfolge
-  // zum Glücksspiel. `import type` zählt nicht, es verschwindet beim Übersetzen.
-  // Gegenprobe (28.10.2026): marketPrice.ts wieder über financeCalc → rot
-  // (bewertung → marketPrice → financeCalc → bewertung).
+  // zum Glücksspiel. `import type` zählt mit: Ein Typzyklus ist dieselbe
+  // Verflechtung, nur ohne Folgen beim Laden.
+  // Gegenproben: marketPrice.ts wieder über financeCalc → rot (28.10.2026);
+  // (05.11.2026) `import type { SetStamm } from '../dienst'` in
+  // src/sets/repository/setDetail.ts → rot (setDetail → dienst → setDetail).
   const dateien = new Set(innereDateien());
   const kanten = new Map();
   for (const d of dateien) {
     const src = quelltext(d);
-    const ziele = [...src.matchAll(/^\s*(import|export)\s(?!type\b)[^;]*?from\s+['"](\.[^'"]+)['"]|require\(\s*['"](\.[^'"]+)['"]/gm)]
+    const ziele = [...src.matchAll(/^\s*(import|export)\s[^;]*?from\s+['"](\.[^'"]+)['"]|require\(\s*['"](\.[^'"]+)['"]/gm)]
       .map(m => path.posix.normalize(path.posix.join(path.posix.dirname(d), m[2] || m[3])).replace(/\.js$/, ''))
       .flatMap(z => [z + '.ts', z + '/index.ts']).filter(z => dateien.has(z));
     kanten.set(d, ziele);
@@ -348,10 +350,12 @@ const istRepository = (rel) => /(^|\/)repository(\/|\.ts$)/.test(rel);
 /** Der Fachbereich einer Datei unter src/, sonst null. */
 const bereichVon = (rel) => (rel.match(/^src\/([^/]+)\//) || [])[1] || null;
 
-/** Alle Ziele relativer Importe einer Datei, aufgelöst auf ROOT, mit `import type` und import(). */
-function aufgeloesteImporte(rel) {
-  // `import type` zählt nicht: Typen verschwinden beim Übersetzen.
-  const src = quelltext(rel).replace(/^\s*(?:import|export) type\b[^;]*;/gm, '');
+/** Alle Ziele relativer Importe einer Datei, aufgelöst auf ROOT, mit import().
+ * `import type` nur mit `mitTypen`: Für die Ladereihenfolge verschwinden Typen
+ * beim Übersetzen, für die Abhängigkeit zwischen Schichten nicht. */
+function aufgeloesteImporte(rel, { mitTypen = false } = {}) {
+  const roh = quelltext(rel);
+  const src = mitTypen ? roh : roh.replace(/^\s*(?:import|export) type\b[^;]*;/gm, '');
   return [...src.matchAll(/(?:from\s+|import\(\s*)['"](\.[^'"]+)['"]/g)]
     .map(m => path.posix.normalize(path.posix.join(path.posix.dirname(rel), m[1])).replace(/\.js$/, ''));
 }
@@ -410,13 +414,18 @@ test('ein Fachbereich greift auf einen anderen nur über dessen Dienste zu', () 
   assert.deepEqual(treffer, []);
 });
 
-test('ein Repository kennt keine Dienste', () => {
-  // Gegenprobe (31.10.2026): `import { getSetting } from '../settings'` in
-  // src/einstellungen/repository.ts → rot.
+/** Ein Modul ohne relative Importe (Zeilentypen, Konstanten) hängt an nichts. */
+const istBlatt = (rel) => !/(?:from\s+|import\(\s*)['"]\./.test(quelltext(rel + '.ts'));
+
+test('ein Repository kennt keine Dienste, auch nicht deren Typen', () => {
+  // Gegenproben: `import { getSetting } from '../settings'` in
+  // src/einstellungen/repository.ts → rot (31.10.2026); (05.11.2026)
+  // `import type { SetStamm } from '../dienst'` zurück in
+  // src/sets/repository/setDetail.ts → rot.
   const treffer = [];
   for (const d of tsUnter('src').filter(istRepository))
-    for (const z of aufgeloesteImporte(d))
-      if (z.startsWith('src/') && !istRepository(z) && bereichVon(z) !== 'infra') treffer.push(`${d} -> ${z}`);
+    for (const z of aufgeloesteImporte(d, { mitTypen: true }))
+      if (z.startsWith('src/') && !istRepository(z) && bereichVon(z) !== 'infra' && !istBlatt(z)) treffer.push(`${d} -> ${z}`);
   assert.deepEqual(treffer, []);
 });
 

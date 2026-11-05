@@ -24,13 +24,9 @@ import { fehlerWerfen, Meldung } from '../infra/fehlerTexte';
 import { merkeFigur, merkeSetFiguren } from '../katalog/katalogPflege';
 import { randomUUID } from 'crypto';
 import * as repo from './repository/setDetail';
+import type { KatalogTeil, ListenTeil, SetStamm } from './zeilen';
+export type { KatalogTeil, ListenTeil, SetStamm } from './zeilen';
 
-export interface SetStamm {
-  name: string | null; year: number | null; theme: string | null; pieces: number | null;
-  minifigs?: number | null; image_url: string | null; image_local: string | null;
-  /** Von addSet ohne Katalogtreffer angelegt: sagt nur, dass irgendein Konto die Nummer erfasst hat. */
-  platzhalter?: boolean;
-}
 
 /** Ohne Eintrag null. */
 export async function setInfo(setNumber: string): Promise<SetStamm | null> {
@@ -125,15 +121,6 @@ export async function setZumBarcode(rohBarcode: string): Promise<BarcodeTreffer 
   return null;
 }
 
-export interface ListenTeil {
-  part_number: string; color_id: number; total_quantity: number | string; is_spare: unknown;
-  bl_part_number?: string | null; part_name?: string | null; rb_image_url?: string | null;
-  color_name?: string | null; color_hex?: string | null; bl_color_id?: number | null;
-}
-export interface KatalogTeil {
-  part_number: string; color_id: number; bl_part_number: string | null; part_name: string | null;
-  color_name: string | null; color_hex: string | null; image_url: string | null; image_local: string | null;
-}
 
 function katalogDesSets(setNumber: string): Promise<KatalogTeil[]> {
   return repo.katalogTeileDesSets(mitVersion(setNumber));
