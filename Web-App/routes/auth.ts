@@ -259,9 +259,8 @@ router.put('/profile', requireLogin, async (req: OffeneAnfrage<'PUT /api/v1/auth
     let emailSent = false;
     const lang = String(await getSetting(user.id, 'language', 'de').catch(meldeUndLiefere('anmeldung:sprache', 'de')));
     const basis = mailBasisUrl();
-    // Eine belegte Adresse antwortet wie eine freie, sonst liessen sich Adressen
-    // abfragen; ihr Inhaber bekommt statt des Links einen Hinweis, und
-    // uebernimmEmailNeu() wiese den Link ohnehin ab.
+    // Belegt antwortet wie frei, sonst liessen sich Adressen abfragen; der Inhaber
+    // bekommt einen Hinweis statt des Links (uebernimmEmailNeu() wiese ihn ab).
     const inhaber = await K.kontoMitEmail(email);
     if (inhaber && inhaber.id !== user.id) {
       const sprache = String(await getSetting(inhaber.id, 'language', 'de').catch(meldeUndLiefere('anmeldung:sprache', 'de')));

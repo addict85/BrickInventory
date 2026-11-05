@@ -109,9 +109,8 @@ export async function nummernNachverschluesseln(): Promise<number> {
   return n;
 }
 
-/** Nach einem Schlüsselwechsel: Nummer und PIN mit dem neuen Schlüssel, und der
- * Suchwert neu, denn er hängt am Schlüssel. Dieselbe Bedingung wie oben lässt
- * eine inzwischen geänderte Zeile stehen. */
+/** Nach einem Schlüsselwechsel, samt Suchwert (er hängt am Schlüssel). Dieselbe
+ * Bedingung wie oben lässt eine inzwischen geänderte Zeile stehen. */
 export async function gutscheineNeuVerschluesseln(): Promise<number> {
   let n = 0;
   for (const z of await db.all<{ id: number; user_id: number; number: string; pin: string | null; nummer_suche: string | null }>(
@@ -128,8 +127,7 @@ export async function gutscheineNeuVerschluesseln(): Promise<number> {
   return n;
 }
 
-/** Kopien vor einer Migration (db/migrate.ts); der Schemaname ist durch das Muster geprüft.
- * `alle` auch v2-Zeilen: nach einem Schlüsselwechsel. */
+/** Kopien vor einer Migration (Schemaname durch das Muster geprüft); `alle` nach einem Schlüsselwechsel. */
 export async function kopienVerschluesseln(alle = false): Promise<number> {
   let n = 0;
   for (const { schema } of await db.all<{ schema: string }>(

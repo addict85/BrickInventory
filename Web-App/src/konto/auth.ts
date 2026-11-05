@@ -9,8 +9,7 @@ import crypto from 'crypto';
 import bcrypt from 'bcryptjs';
 import { passwortPasst, BcryptUeberlast } from './bcryptSchranke';
 import { checkLoginAllowed, bekannteAnmeldung, gibAnmeldeplatzFrei, recordLoginFailure, recordLoginSuccess, meldeAnmeldeereignis, meldeAnmeldung, MAX_ATTEMPTS } from './loginLimiter';
-import type { Anmeldeweg } from './loginLimiter';
-import type { Anmeldeereignis } from './loginLimiter';
+import type { Anmeldeereignis, Anmeldeweg } from './loginLimiter';
 import { kontoGedrosselt } from './zielDrossel';
 import * as zf from './zweiterFaktor';
 import * as passkeys from './passkeys';
@@ -250,9 +249,8 @@ export function nameGueltig(v: unknown): boolean {
   return s.length <= 100 && !/[\p{Cc}\u2028\u2029]/u.test(s) && !/:\/\/|www\.|https?:/i.test(s);
 }
 
-/** Geräte- und Passkey-Namen stehen wörtlich in den Hinweismails an den Inhaber.
- * Ohne Adressen und Anführungszeichen kann ein Eindringling dort keinen Satz
- * anfügen, der entwarnt und auf eine fremde Seite zeigt. */
+/** Geräte- und Passkey-Namen stehen wörtlich in den Hinweismails: Ohne Adressen und
+ * Anführungszeichen fügt ein Eindringling dort keinen entwarnenden Satz mit Link an. */
 export function geraeteNameGueltig(v: unknown): boolean {
   if (!nameGueltig(v)) return false;
   const s = String(v ?? '');
@@ -443,15 +441,11 @@ export interface Tausch {
   alt_gueltig_bis: Date;
 }
 
-/** So lange nach einem Tausch gilt ein zweiter mit demselben alten Token als
- * gleichzeitig (409): Sonst verdrängte eine Kopie den Nachfolger des echten Geräts. */
+/** Ein zweiter Tausch so kurz danach ist gleichzeitig (409), keine verlorene Antwort. */
 export const TAUSCH_SPERRE_S = 30;
 
-/** Der alte gilt danach höchstens UEBERLAPPUNG_MS, bis zur ersten Nutzung des
- * neuen. Ein zweiter Tausch (Antwort verloren) ersetzt den unbenutzten
- * Nachfolger erst nach TAUSCH_SPERRE_S und nur aus demselben Netz; aus einem
- * anderen ist es eine Kopie, und die Familie endet.
- * @returns null, wenn der alte Token nicht (mehr) gilt; 'laeuft' im Sperrfenster. */
+/** Der alte gilt danach höchstens UEBERLAPPUNG_MS. Ein zweiter Tausch ersetzt den unbenutzten
+ * Nachfolger nur aus demselben Netz (sonst Kopie: Familie endet) und erst nach TAUSCH_SPERRE_S. */
 export async function rotiereToken(alt: string, ip?: string | null): Promise<Tausch | null | 'laeuft'> {
   const altHash = hashToken(alt);
   const neu = crypto.randomBytes(32).toString('hex');

@@ -12,10 +12,8 @@ import { anleitungFreigegeben } from '../src/katalog/bilder/bildBlickfeld';
 type WildcardRequest = Request<{ pfad: string[] }>;
 const router = express.Router();
 
-/** Hochgeladenes kommt von anderen Konten (Unterkonto → Hauptkonto) und ist nur
- * nach den ersten Bytes geprüft. Als Anhang in einer Sandbox läuft ein PDF mit
- * Skript oder Formularaktion nie unter der Herkunft der App; der eigene Betrachter
- * lädt per fetch und braucht keine Inline-Anzeige. */
+/** Fremd Hochgeladenes (nur die ersten Bytes geprüft) läuft so nie unter der Herkunft
+ * der App; der eigene Betrachter lädt per fetch und braucht keine Inline-Anzeige. */
 function alsAnhang(res: Response, datei: string): void {
   res.setHeader('Content-Security-Policy', "sandbox; default-src 'none'");
   res.attachment(path.basename(datei));

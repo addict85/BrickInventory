@@ -65,9 +65,8 @@ export function datenSchluessel(): Buffer {
   finally { fs.rmSync(tmp, { force: true }); }
 }
 
-/** Während eines Schlüsselwechsels (scripts/datenschluessel-wechseln.sh) der
- * vorige Schlüssel: Was nur er öffnet, liest der Server noch und schreibt es beim
- * Start mit dem neuen neu. Eine fehlende Datei heisst „kein Wechsel“. */
+/** Der vorige Schlüssel eines Wechsels: Was nur er öffnet, bleibt lesbar, bis der Start
+ * es neu schreibt (scripts/datenschluessel-wechseln.sh). Fehlende Datei: kein Wechsel. */
 let alt: Buffer | null | undefined;
 export function altSchluessel(): Buffer | null {
   if (alt !== undefined) return alt;

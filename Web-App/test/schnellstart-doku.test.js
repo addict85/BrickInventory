@@ -135,3 +135,45 @@ for (const { datei, abschnitt } of DOKUS) {
     assert.deepEqual(gebaut, ['app'], 'genau ein Dienst baut das Dockerfile');
   });
 }
+
+// ── Das Bedrohungsmodell (docs/SICHERHEIT.md) nennt nur, was es gibt ────────
+// Gegenproben (05.11.2026 gemessen, je einzeln): einen Verweis wieder auf
+// `utils/konfig.ts` → rot „jeder genannte Pfad …“; „Dependabot“ in einen
+// Absatz → rot „kein Dependabot …“; einen Beleg `compose-pgweb` ergänzt → rot
+// „jeder genannte Test existiert“.
+const WURZEL_DOKU = path.join(__dirname, '..', '..');
+const TEXT = fs.readFileSync(path.join(WURZEL_DOKU, 'docs', 'SICHERHEIT.md'), 'utf8');
+
+function alleDateien() {
+  const raus = [];
+  (function lauf(d) {
+    for (const n of fs.readdirSync(d)) {
+      if (['node_modules', 'dist', '.git', 'build', '.gradle'].includes(n)) continue;
+      const p = path.join(d, n);
+      if (fs.statSync(p).isDirectory()) lauf(p); else raus.push(path.relative(WURZEL_DOKU, p).split(path.sep).join('/'));
+    }
+  })(WURZEL_DOKU);
+  return raus;
+}
+
+test('jeder genannte Pfad auf .ts, .sh, .yml und .yaml existiert', () => {
+  const dateien = alleDateien();
+  const pfade = [...TEXT.matchAll(/[\w./-]+\.(?:ts|sh|ya?ml)\b/g)].map(m => m[0].replace(/^\.\//, ''));
+  assert.ok(pfade.length > 40, `nur ${pfade.length} Pfade gefunden — greift die Suche noch?`);
+  const fehlt = pfade.filter(p => !dateien.some(d => d === p || d.endsWith('/' + p)));
+  assert.deepEqual([...new Set(fehlt)], []);
+});
+
+test('kein Dependabot: Neue Fassungen schlägt Renovate vor', () => {
+  assert.doesNotMatch(TEXT, /dependabot/i);
+});
+
+test('jeder genannte Test existiert', () => {
+  const tests = new Set(fs.readdirSync(path.join(WURZEL_DOKU, 'Web-App', 'test')).filter(n => n.endsWith('.test.js'))
+    .map(n => n.replace(/\.test\.js$/, '')));
+  // Belege stehen nach einem Gedankenstrich, als `name` mit Bindestrich, durch Kommas getrennt.
+  const belege = [...TEXT.matchAll(/ —\s+((?:`[a-z0-9-]+`(?:,\s*)?)+)/g)]
+    .flatMap(m => [...m[1].matchAll(/`([a-z0-9-]+)`/g)].map(x => x[1]));
+  assert.ok(belege.length > 40, `nur ${belege.length} Belege gefunden — greift die Suche noch?`);
+  assert.deepEqual([...new Set(belege.filter(b => !tests.has(b)))], []);
+});

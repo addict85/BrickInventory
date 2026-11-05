@@ -30,8 +30,7 @@ export interface Konfig {
   nodeEnv: string;
   /** Nur ausdrücklich development oder test: ohne NODE_ENV gelten die Regeln des Betriebs. */
   entwicklung: boolean;
-  /** Alles ausser development/test. Ein Start ohne NODE_ENV (eigener systemd-Dienst)
-   * bekommt so dieselben Verbote wie Docker, statt still die Entwicklungsregeln. */
+  /** Alles ausser development/test: Auch ohne NODE_ENV gelten die Verbote des Betriebs. */
   betrieb: boolean;
   /** Ausweg für den Start als Datenbank-Superuser in Produktion (UPGRADE.md). */
   dbSuperuserErlaubt: boolean;
@@ -348,8 +347,7 @@ export function startWarnungen(env: NodeJS.ProcessEnv = process.env): string[] {
   return w;
 }
 
-/** Auf demselben Rechner (Compose-Dienst `postgres`, Loopback, Unix-Socket) ist
- * Klartext vertretbar; jede andere Adresse braucht ein geprüftes Zertifikat. */
+/** Klartext nur auf demselben Rechner (Dienst `postgres`, Loopback, Socket). */
 function dbOhneTls(env: NodeJS.ProcessEnv): boolean {
   let host = env.PGHOST?.trim() || 'postgres', modus = env.PGSSLMODE?.trim() || '';
   if (env.DATABASE_URL) {

@@ -39,8 +39,7 @@ type Eintrag = { count: number; firstAt: number; lastAt: number | null; laufend:
 /** Rückfall, falls die Datenbank klemmt: Die Bremse soll dann nicht offen stehen. */
 const _attempts = new Map<string, Eintrag>();
 
-/** Der Rückfall in den Prozessspeicher zählt nur je Prozess; das soll im Protokoll
- * stehen, aber bei einer klemmenden Datenbank nicht jede Anmeldung eine Zeile. */
+/** Der Rückfall zählt nur je Prozess: melden, aber höchstens einmal je Minute. */
 let _gemeldetAm = 0;
 function imSpeicher(wo: string, e: unknown): void {
   if (Date.now() - _gemeldetAm < 60_000) return;
@@ -161,9 +160,8 @@ async function kontoKennung(username: unknown): Promise<string> {
   return `name:${namensAbdruck(z?.kennung ?? einzelwert(username).toLowerCase())}`;
 }
 
-/** Ein unbekannter Name ist oft ein vertipptes Passwort; die Zählertabelle liest
- * die Leserolle und steht in jeder Sicherung. Deshalb nur der HMAC, der für
- * denselben Namen derselbe bleibt und so weiter zählt. */
+/** Ein unbekannter Name ist oft ein vertipptes Passwort, und die Tabelle liest die
+ * Leserolle: nur der HMAC, der für denselben Namen gleich bleibt und weiter zählt. */
 function namensAbdruck(name: string): string {
   try { return suchwert('anmeldename', name); }
   // Ohne Datenschlüssel (Werkzeuge, frühe Tests) wenigstens kein Klartext.
@@ -227,8 +225,7 @@ export function meldeAnmeldeereignis(ereignis: Anmeldeereignis, angaben: { ip?: 
     konto: konto ?? 'unbekannt', ...rest });
 }
 
-/** Auch der Erfolg steht im Protokoll: Erst er zeigt, ob nach einer Reihe von
- * Fehlversuchen jemand hineinkam, und von wo. Eine Infozeile, nie der Name. */
+/** Erst der Erfolg zeigt, ob nach Fehlversuchen jemand hineinkam, und von wo; nie der Name. */
 export type Anmeldeweg = 'passwort' | 'passwort+code' | 'passwort+passkey' | 'passkey' | 'qr';
 export function meldeAnmeldung(angaben: { ip?: string | undefined; konto: number; zugang: Anmeldeweg }): void {
   const { ip, konto, zugang } = angaben;

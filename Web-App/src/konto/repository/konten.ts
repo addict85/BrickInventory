@@ -122,8 +122,7 @@ export async function aktiveVerwalter(): Promise<number[]> {
     .map(z => z.id);
 }
 
-/** Das Passwort hat der Verwalter vergeben und weitergegeben; es gilt nur bis zur
- * ersten Anmeldung, danach kennt es allein der Inhaber. */
+/** Ein vergebenes Passwort kennen Verwalter und Weitergabe: nur bis zum ersten Wechsel. */
 export async function fuegeKontoEin(username: string, hash: string, verwalter: boolean): Promise<number | null> {
   const neu = await db.get<{ id: number }>(
     'INSERT INTO users (username, password_hash, is_admin, must_change_password) VALUES ($1, $2, $3, true) RETURNING id',
@@ -149,8 +148,7 @@ export async function schreibeAktiv(id: number, ja: boolean): Promise<{ vorher: 
  * der Zeit davor und ginge sonst eine Stunde lang weiter. */
 const OHNE_RUECKSETZLINK = 'reset_token = NULL, reset_token_expires = NULL';
 
-/** Ein fremd gesetztes Passwort kennt auch der Verwalter: Der Inhaber muss es
- * beim nächsten Anmelden ersetzen, sonst bliebe es ein zweiter Schlüssel. */
+/** Ein fremd gesetztes Passwort kennt auch der Verwalter: der Inhaber ersetzt es. */
 export async function setzePasswortHash(id: number, hash: string): Promise<boolean> {
   return !!(await db.run(`UPDATE users SET password_hash = $1, must_change_password = true, ${OHNE_RUECKSETZLINK} WHERE id = $2`,
     [hash, id])).changes;
@@ -165,8 +163,7 @@ export async function kontoExistiert(id: number): Promise<boolean> {
   return !!await db.get('SELECT 1 FROM users WHERE id = $1', [id]);
 }
 
-/** Gelöscht heisst auch in den Kopien vor Migrationen gelöscht. Den Namen im
- * Verwaltungsprotokoll nimmt erst der Aufräumlauf (raeumeProtokollAuf). */
+/** Auch aus den Kopien vor Migrationen; den Namen im Protokoll nimmt raeumeProtokollAuf(). */
 async function spurenLoeschen(tx: db.DbSchnittstelle, id: number): Promise<void> {
   await entferneKontoAusSicherungen(tx, id);
 }

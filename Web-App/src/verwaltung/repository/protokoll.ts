@@ -23,9 +23,8 @@ export async function letzteEintraege(anzahl = 200) {
       ORDER BY p.zeit DESC, p.id DESC LIMIT $1`, [anzahl]);
 }
 
-/** Ein Jahr genügt, um eine Verwalteraktion nachzuvollziehen. Der Name eines
- * gelöschten Kontos bleibt bis zum nächsten Lauf lesbar (wer wurde gelöscht?),
- * danach nur noch die Kennung. */
+/** Ein Jahr genügt zum Nachvollziehen; der Name eines gelöschten Kontos bleibt bis zum
+ * nächsten Lauf lesbar (wer wurde gelöscht?), danach nur die Kennung. */
 export const PROTOKOLL_FRIST_TAGE = 365;
 export async function raeumeProtokollAuf(tage = PROTOKOLL_FRIST_TAGE): Promise<number> {
   const alt = (await db.run('DELETE FROM verwaltungsprotokoll WHERE zeit < NOW() - make_interval(days => $1::int)', [tage])).changes ?? 0;

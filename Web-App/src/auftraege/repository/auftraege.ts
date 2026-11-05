@@ -202,8 +202,7 @@ export function bricksetWartende() {
        FROM auftraege WHERE art = 'brickset' AND status IN ('offen', 'laeuft')`);
 }
 
-/** Ohne Nutzlast (sie trägt ganze Listen) und ohne Konto: Die Liste sieht der
- * Verwalter, wessen Set ein Auftrag betrifft, gehört nicht dazu. */
+/** Ohne Nutzlast (ganze Listen) und ohne Konto, denn die Liste sieht der Verwalter. */
 export function auftragsListe(status: string[], art: string | null) {
   return db.all<z.infer<typeof Auftrag>>(
     `SELECT id::text AS id, art, status, versuche, max_versuche, faellig_ab, frist_bis, gestartet, erstellt,
