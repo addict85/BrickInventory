@@ -45,6 +45,8 @@ import javax.crypto.spec.SecretKeySpec
  *   E  im Antwort-Cache den Aufruf uebernimm(…) gestrichen → rot „der Bestand ohne
  *      Bindung wird uebernommen …“ (der Cache war nach dem Update leer);
  *      gegenproben/antwort-cache-ohne-uebernahme.patch
+ *   F  (05.11.2026, sec17 A-N5, kotlinc lokal) in erneuere() `bekannt = null` gestrichen →
+ *      rot „nach dem Erneuern ist alles Alte unlesbar …“
  */
 class AblageVerschluesselungTest {
 
@@ -77,6 +79,22 @@ class AblageVerschluesselungTest {
         assertArrayEquals("Nach dem Neustart derselbe", k, zweiter.hole())
         assertFalse(zweiter.neuAngelegt)
         assertNotEquals("Je Zweck ein eigener", zweiter.fuer("bestand.db").toList(), zweiter.fuer("antworten").toList())
+    }
+
+    @Test
+    fun `nach dem Erneuern ist alles Alte unlesbar, auch nach einem Neustart`() {
+        val k = Ablageschluessel(datei, tresor)
+        var geschlossen = 0
+        k.vorErneuerung { geschlossen++ }
+        val alt = k.hole().copyOf()
+        val geheim = AblageChiffre { k.fuer("antworten") }.verschluessle("Kaufpreis 499.99".toByteArray(), "a")
+        k.erneuere()
+        assertEquals("Wer den Schlüssel hält, schliesst vorher", 1, geschlossen)
+        assertNotEquals(alt.toList(), k.hole().toList())
+        assertTrue("Der neue Schlüssel ist als neu gemeldet", k.neuAngelegt)
+        assertNull(AblageChiffre { k.fuer("antworten") }.entschluessle(geheim, "a"))
+        assertNull("Auch die Platte hat nur den neuen",
+            AblageChiffre { Ablageschluessel(datei, tresor).fuer("antworten") }.entschluessle(geheim, "a"))
     }
 
     @Test

@@ -622,6 +622,8 @@ class PreferencesManager @Inject constructor(
             it.remove(TOKEN_HERKUNFT)
             it.remove(USERNAME)
             it.remove(ANGEMELDET_AM)
+            // Die Marke des Preisalarms gehört dem Konto; das nächste bekäme sonst dessen Stand.
+            it.remove(ALARM_MARKE)
         }
     }
 }

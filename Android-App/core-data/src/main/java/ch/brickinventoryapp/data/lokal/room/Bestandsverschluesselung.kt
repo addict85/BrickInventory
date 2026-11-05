@@ -8,6 +8,7 @@ import net.zetetic.database.sqlcipher.SQLiteDatabase
 import net.zetetic.database.sqlcipher.SupportOpenHelperFactory
 import java.io.File
 import java.io.IOException
+import java.util.concurrent.atomic.AtomicReference
 
 /**
  * Die Datenbank des Bestands (Inventar, Kaufpreise, Ausgang) liegt mit SQLCipher
@@ -19,34 +20,62 @@ internal class VerschluesselteBestandsfabrik(
     private val context: Context,
     private val ablage: Ablageschluessel,
 ) : SupportSQLiteOpenHelper.Factory {
-    override fun create(configuration: SupportSQLiteOpenHelper.Configuration): SupportSQLiteOpenHelper =
-        SpaeterGeoeffnet(configuration.name) {
+    override fun create(configuration: SupportSQLiteOpenHelper.Configuration): SupportSQLiteOpenHelper {
+        val datei = context.getDatabasePath(configuration.name ?: BestandDatenbank.NAME)
+        val helfer = SpaeterGeoeffnet(configuration.name, { ablage.stand }) {
             System.loadLibrary("sqlcipher")
             val passwort = sqlcipherPasswort(ablage.fuer(ZWECK))
-            bereite(context.getDatabasePath(configuration.name ?: BestandDatenbank.NAME), passwort, ablage.neuAngelegt)
+            bereite(datei, passwort, ablage.neuAngelegt)
             SupportOpenHelperFactory(passwort).create(configuration)
         }
+        // Beim Abmelden (Ablageschluessel.erneuere): Mit dem alten Schlüssel bleibt nichts liegen.
+        ablage.vorErneuerung {
+            helfer.schliesse()
+            loescheDatenbank(datei)
+        }
+        return helfer
+    }
 
     private companion object {
         const val ZWECK = "bestand.db"
     }
 }
 
-/** Reicht an den eigentlichen Helfer weiter, den es erst beim ersten Zugriff gibt. */
+/**
+ * Reicht an den eigentlichen Helfer weiter, den es erst beim ersten Zugriff gibt. Nach
+ * einem neuen Ablageschlüssel ([stand]) wird er neu gebaut, leer und mit dem neuen.
+ */
 private class SpaeterGeoeffnet(
     override val databaseName: String?,
-    erzeuge: () -> SupportSQLiteOpenHelper,
+    private val stand: () -> Long,
+    private val erzeuge: () -> SupportSQLiteOpenHelper,
 ) : SupportSQLiteOpenHelper {
     @Volatile private var wal: Boolean? = null
-    private val innen by lazy { erzeuge().also { h -> wal?.let(h::setWriteAheadLoggingEnabled) } }
+    private val innen = AtomicReference<Pair<Long, SupportSQLiteOpenHelper>?>(null)
+
+    private fun helfer(): SupportSQLiteOpenHelper {
+        innen.get()?.takeIf { it.first == stand() }?.let { return it.second }
+        synchronized(this) {
+            innen.get()?.takeIf { it.first == stand() }?.let { return it.second }
+            val vorher = stand()
+            val neu = erzeuge().also { h -> wal?.let(h::setWriteAheadLoggingEnabled) }
+            innen.getAndSet(vorher to neu)?.second?.close()
+            return neu
+        }
+    }
+
+    /** Ohne eigene Sperre: Der Aufruf kommt unter der Sperre des Ablageschlüssels. */
+    fun schliesse() {
+        innen.getAndSet(null)?.second?.close()
+    }
 
     override fun setWriteAheadLoggingEnabled(enabled: Boolean) {
         wal = enabled
     }
 
-    override val writableDatabase: SupportSQLiteDatabase get() = innen.writableDatabase
-    override val readableDatabase: SupportSQLiteDatabase get() = innen.readableDatabase
-    override fun close() = innen.close()
+    override val writableDatabase: SupportSQLiteDatabase get() = helfer().writableDatabase
+    override val readableDatabase: SupportSQLiteDatabase get() = helfer().readableDatabase
+    override fun close() = schliesse()
 }
 
 /** SQLCipher nimmt x'…' als fertigen Schlüssel, ohne die langsame Ableitung aus einem Passwort. */

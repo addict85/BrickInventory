@@ -33,6 +33,8 @@ import org.junit.Test
  * strenger, KatalogSprungEntprelltTest zählt weiter als ausführend (er rechnet).
  * Gegenprobe (05.11.2026, gemessen mit kotlinc lokal): ein Import gilt wieder als
  * Ausführen (gegenproben/ratsche-import-zaehlt.patch) → rot „ein Import allein …“.
+ * 53 seit TokenTresorTest den echten PreferencesManager ausführt (sec17 A-N4); mit 52
+ * gemessen rot (05.11.2026, kotlinc lokal).
  *
  * Kommentare (05.11.2026, gemessen mit kotlinc lokal):
  *   kommentar-zu-lang    sechs Zeilen Prosa über AppViewModel → rot „kein Kommentar hat …“
@@ -74,7 +76,7 @@ class QuelltextRatscheTest {
 
     @Test
     fun `reine Quelltext-Tests werden weniger, nie mehr`() {
-        val SCHRANKE = 54
+        val SCHRANKE = 53
         // Die Tests aller Module; seit der Aufteilung liegen sie neben ihrem Code.
         val alle = Quellen.tests.walkTopDown().filter { it.isFile && it.name.endsWith("Test.kt") }.toList()
         assert(alle.size >= 100) { "Nur ${alle.size} Testdateien gefunden — greift die Suche noch?" }

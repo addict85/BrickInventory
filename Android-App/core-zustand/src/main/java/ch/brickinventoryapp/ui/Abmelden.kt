@@ -10,11 +10,13 @@ import ch.brickinventoryapp.data.cache.VorschauSpeicher
 import ch.brickinventoryapp.data.repository.BrickRepository
 import ch.brickinventoryapp.di.BrickDispatchers
 import ch.brickinventoryapp.di.Dispatcher
+import ch.brickinventoryapp.util.Ablageschluessel
 import ch.brickinventoryapp.util.fangeAusserAbbruch
 import ch.brickinventoryapp.util.raeumeAnleitungenAuf
 import ch.brickinventoryapp.util.raeumeKontoDateienAuf
 import ch.brickinventoryapp.util.raeumeVertraulichePdfsAuf
 import coil3.ImageLoader
+import androidx.core.app.NotificationManagerCompat
 import coil3.annotation.ExperimentalCoilApi
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CoroutineDispatcher
@@ -42,6 +44,7 @@ class Abmelden @Inject constructor(
     private val blickfeld: Blickfeld,
     private val abmeldung: Abmeldung,
     @param:Dispatcher(BrickDispatchers.IO) private val io: CoroutineDispatcher,
+    private val ablage: Ablageschluessel,
 ) : Abmeldevorgang {
     /** Liefert, ob der Server den Token erst später entwertet (aus der Warteschlange). */
     @OptIn(ExperimentalCoilApi::class)
@@ -65,6 +68,10 @@ class Abmelden @Inject constructor(
         }
         // Das Widget zeigt sonst die Zahlen des abgemeldeten Kontos weiter.
         fangeAusserAbbruch { abmeldehaken.abgemeldet() }
+        // Preisalarme nennen Sets und Preise; die Leiste gehört dem abgemeldeten Konto.
+        fangeAusserAbbruch { NotificationManagerCompat.from(ctx).cancelAll() }
+        // Zuletzt ein neuer Ablageschlüssel: Reste auf dem Flash sind danach nicht mehr lesbar.
+        withContext(io) { fangeAusserAbbruch { ablage.erneuere() } }
         sitzung.abgemeldet()
         blickfeld.zuruecksetzen()
         return weg

@@ -11,19 +11,15 @@ import org.junit.Test
  * Nummer und PIN der Gutscheine erscheinen nicht auf Bildschirmfotos und nicht
  * im Vorschaubild der App-Übersicht (FLAG_SECURE).
  *
- * Ausgeführt: welche PDF-Adressen den Schutz brauchen. Das Setzen des Flags
- * selbst braucht ein Gerät; die Struktur-Prüfung unten hält fest, dass beide
- * Bildschirme ihn anfordern.
+ * Ausgeführt: welche PDF-Adressen den Schutz brauchen. Dass Gutscheinseite und
+ * Gutschein-PDF das Flag wirklich setzen, prüft GutscheinSichtschutzAnzeigeTest (app,
+ * Robolectric).
  *
  * Gegenproben (29.10.2026, gemessen):
  *   A  zeigtGutscheine() prüft "/vouchers/export" statt "/api/v1/vouchers/" → rot
  *      „ein einzelner Gutschein und der Export brauchen Sichtschutz“
- *   B  Sichtschutz() aus GutscheineUnterseite entfernt → rot „Gutscheinseite und
- *      Gutschein-PDF fordern den Sichtschutz an“
  *   C  (01.11.2026) Sichtschutz() aus dem Zweig `zfZustand.geheimnis != null` in
  *      EinstellungenKonto entfernt → rot „Schlüssel und Codes des zweiten Faktors …“
- *   D  (03.11.2026, kotlinc lokal) Ueberdeckungsschutz() aus GutscheineUnterseite
- *      entfernt → rot „Gutscheinseite und Gutschein-PDF fordern den Sichtschutz an“
  */
 class GutscheinSichtschutzTest {
 
@@ -36,18 +32,6 @@ class GutscheinSichtschutzTest {
     @Test
     fun `eine Bauanleitung braucht keinen`() {
         assertFalse(zeigtGutscheine("https://brick.example/api/v1/instructions/42/file"))
-    }
-
-    @Test
-    fun `Gutscheinseite und Gutschein-PDF fordern den Sichtschutz an`() {
-        val seite = Quellen.funktion(Quellen.ohneKommentare(Quellen.lies("ui/screens/GutscheineUnterseite.kt")),
-            "fun GutscheineRoute(")
-        assertTrue("Die Gutscheinseite setzt keinen Sichtschutz", seite.contains("Sichtschutz()"))
-        // Kopieren der PIN und Löschen: kein Tipp durch ein fremdes Fenster (Android 8 bis 11).
-        assertTrue("Die Gutscheinseite setzt keinen Überdeckungsschutz", seite.contains("Ueberdeckungsschutz()"))
-        val graph = Quellen.ohneKommentare(Quellen.lies("nav/ToolsGraph.kt"))
-        assertTrue("Das Gutschein-PDF setzt keinen Sichtschutz",
-            Regex("""zeigtGutscheine\(ziel\.url\)\)\s*(?:ch\.brickinventoryapp\.ui\.components\.)?Sichtschutz\(\)""").containsMatchIn(graph))
     }
 
     /** Dieselbe Regel für den TOTP-Schlüssel und die Wiederherstellungscodes. */
