@@ -5,13 +5,16 @@
   diesem Gerät: Token (Datastore, verschlüsselt — doppelt hält besser), lokale
   Ablage, Zahlen des Widgets, Vorschaubilder, PDFs (Gutscheine) und das geladene
   Update. Dazu design_spiegel.xml: Pins und der Schalter für Nutzer-CAs sind
-  Vertrauensentscheidungen für dieses Gerät, nicht für ein anderes.
+  Vertrauensentscheidungen für dieses Gerät, nicht für ein anderes. Die
+  WorkManager-Datenbank trägt die nachgeholte Abmeldung (Adresse, Pin, Token);
+  sie liegt heute in no_backup, das nie mitgeht, die Zeile deckt databases/ ab.
   Neue Ablagen mit Kontodaten gehören in beide Listen.
 -->
 <data-extraction-rules>
     <cloud-backup>
         <exclude domain="file" path="datastore" />
         <exclude domain="database" path="bestand.db" />
+        <exclude domain="database" path="androidx.work.workdb" />
         <exclude domain="sharedpref" path="widget.xml" />
         <exclude domain="sharedpref" path="design_spiegel.xml" />
         <exclude domain="file" path="vorschau" />
@@ -22,6 +25,7 @@
     <device-transfer>
         <exclude domain="file" path="datastore" />
         <exclude domain="database" path="bestand.db" />
+        <exclude domain="database" path="androidx.work.workdb" />
         <exclude domain="sharedpref" path="widget.xml" />
         <exclude domain="sharedpref" path="design_spiegel.xml" />
         <exclude domain="file" path="vorschau" />

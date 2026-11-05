@@ -1,12 +1,10 @@
-// Protokollfenster (01-monitor.js öffnet es per window.open). Als externe
-// Datei, weil die CSP Inline-Skripte sperrt und das Fenster die CSP des
-// Öffners erbt; Zugang und Übersetzungen kommen als data-Attribute am <body>.
-// Klassisches Skript in einer eigenen Funktion: Das Fenster lädt kein Bündel,
-// und nichts davon soll global werden.
+// Protokollfenster (01-monitor.js öffnet es per window.open). Externe Datei,
+// weil das Fenster die CSP des Öffners erbt und die Inline-Skripte sperrt.
+// Übersetzungen kommen als data-Attribute am <body>, die Anmeldung im
+// Sitzungscookie. Eigene Funktion: Nichts davon soll global werden.
 (function () {
   'use strict';
   const body = document.body;
-  const AUTH = body.dataset.auth || '';
   const BASE = body.dataset.base || '';
   /** @type {Record<string, string>} */
   const L = (() => { try { return JSON.parse(body.dataset.i18n || '{}'); } catch (_) { return {}; } })();
@@ -43,7 +41,7 @@
     const minuten = /** @type {HTMLSelectElement} */ (el('period')).value;
     el('status').textContent = tx('common.loading');
     try {
-      const r = await fetch(BASE + '/api/v1/admin/logs?minutes=' + minuten, { headers: { Authorization: 'Bearer ' + AUTH } });
+      const r = await fetch(BASE + '/api/v1/admin/logs?minutes=' + minuten, { credentials: 'same-origin' });
       const d = await r.json();
       if (d.success) { _logs = d.logs; renderLogs(); }
       else el('status').textContent = tx('toast.error') + ': ' + d.error;

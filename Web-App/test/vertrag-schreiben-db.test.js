@@ -45,6 +45,8 @@ const bcrypt  = require(path.join(ROOT, 'node_modules', 'bcryptjs'));
 const PDFDocument = require('pdfkit');
 const { schreibRouten } = require(path.join(ROOT, 'scripts', 'kotlin-vertrag.js'));
 const { vertragZu } = require('./helpers/vertrag');
+const { mailAttrappe, mailserverEintragen } = require('./helpers/mail-attrappe');
+mailAttrappe();
 
 const NAME = `kschreib_${process.pid}`, PASS = 'VertragsPasswort1!';
 const SET = '99075-1', SET2 = '99076-1', TEIL = '3001ks', FARBE = 5, FARBE2 = 1, FIGUR = 'ks0001';
@@ -110,7 +112,9 @@ test('die Schreibantworten der App halten ihren Vertrag', { concurrency: 1, time
     `SELECT key, value FROM global_settings WHERE key = ANY($1)`,
     [['cache_ttl_hours', 'default_price_condition', 'app_theme', 'rate_limit_rebrickable',
       'rate_limit_bricklink', 'rate_limit_brickset', 'registration_enabled', 'price_job_interval_minutes']]).catch(() => []);
+  const mailZurueck = await mailserverEintragen(db);
   t.after(async () => {
+    await mailZurueck();
     await db.run('DELETE FROM users WHERE username = ANY($1)', [namen]).catch(() => {});
     for (const tab of ['set_catalog', 'set_parts_catalog', 'set_minifigs_catalog', 'brickset_queue'])
       await db.run(`DELETE FROM ${tab} WHERE set_number = ANY($1)`, [[SET, SET2]]).catch(() => {});
@@ -181,10 +185,10 @@ test('die Schreibantworten der App halten ihren Vertrag', { concurrency: 1, time
         w.qr = 'bim:' + nonce;
       }, body: () => ({ token: w.qr }) },
     { m: 'POST', p: '/api/v1/auth/register', davor: async () => {
-        await db.run(`UPDATE global_settings SET value = '1' WHERE key = 'registration_enabled'`).catch(() => {});
+        await db.run(`INSERT INTO global_settings (key, value) VALUES ('registration_enabled', '1') ON CONFLICT (key) DO UPDATE SET value = '1'`);
       }, body: { username: `${NAME}_reg`, email: `${NAME}_reg@example.org`, password: PASS, language: 'de' } },
     { m: 'POST', p: '/api/v1/auth/forgot-password', body: { email: `${NAME}@example.org` } },
-    { m: 'PUT',  p: '/api/v1/auth/profile', body: { username: NAME, email: `${NAME}@example.org`, first_name: 'Vera', last_name: 'Trag' } },
+    { m: 'PUT',  p: '/api/v1/auth/profile', body: { username: NAME, email: `${NAME}@example.org`, first_name: 'Vera', last_name: 'Trag', password_current: PASS } },
     { m: 'POST', p: '/api/v1/auth/zweiter-faktor/einrichten', body: { password: PASS },
       danach: (j) => { w.geheimnis = j.geheimnis; } },
     { m: 'POST', p: '/api/v1/auth/zweiter-faktor/bestaetigen', body: () => {

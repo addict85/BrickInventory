@@ -72,7 +72,7 @@ test('die Sortierung ist eine Whitelist, kein interpolierter Parameter', () => {
     'Unbekannte Werte müssen auf die Vorgabe fallen');
   // Der Suchbegriff gehört als Parameter gebunden, nicht in den String
   const fn = require('./helpers/sources').funktionsRumpf(H_SRC, 'setListe');
-  assert.match(fn, /params\.push\(`%\$\{String\(search\)\.toLowerCase\(\)\}%`\)/,
+  assert.match(fn, /params\.push\(enthaeltMuster\(String\(search\)\.toLowerCase\(\)\)\)/,
     'Der Suchbegriff muss als Parameter gebunden werden');
 });
 

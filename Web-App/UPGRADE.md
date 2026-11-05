@@ -1,7 +1,13 @@
 # Upgrade-Hinweise
 
-Diese Fassung ändert an drei Stellen etwas, das beim Deployment auffällt.
-Alles andere ist abwärtskompatibel.
+Die Abschnitte stehen in der Reihenfolge, in der die Änderungen kamen; ein
+Update über mehrere Fassungen geht sie der Reihe nach durch. Wie eine
+Installation heute aussieht, steht in `README.md` („Docker“). Wo ein älterer
+Abschnitt dem heutigen Verhalten widerspricht, steht dort
+**„Überholt durch Abschnitt N“**; der alte Text bleibt als Beleg stehen.
+
+Die ersten Abschnitte (1–7) gehören zu einer Fassung, die an drei Stellen
+etwas änderte, das beim Deployment auffiel.
 
 ## 1. Der Startbefehl hat sich geändert
 
@@ -25,7 +31,7 @@ Bedienung.
 
 | Variable | Wirkung |
 |---|---|
-| `APP_BASE_URL` | Basis-URL für Links in Mails. **Sollte gesetzt werden** — ohne sie stammt der Host aus dem Request-Header. |
+| `APP_BASE_URL` | Basis-URL für Links in Mails. **Sollte gesetzt werden** — ohne sie stammt der Host aus dem Request-Header. **Überholt durch Abschnitt 25 und 38:** Der Host kommt nie aus dem Request; ohne `APP_BASE_URL` startet der Web-Prozess im Betrieb nicht. |
 | `ADMIN_PASSWORD` | Passwort des beim ersten Start angelegten Admins. Ohne die Variable wird ein Zufallspasswort erzeugt und einmalig ins Log geschrieben. |
 | `REQUIRE_DB=1` | Nur für CI: Tests dürfen sich nicht mehr überspringen, wenn keine Datenbank erreichbar ist. |
 
@@ -77,6 +83,9 @@ eine Sicherung von `data/` erfasste sie nie.
 `image_local`-Werte mit diesem Präfix, und die Android-App baut ihre Bild-URLs
 daraus — beides bleibt unverändert. Es ändert sich nur, welches Verzeichnis
 dahinter liegt.
+
+> **Überholt durch Abschnitt 11:** Der Umzug ist erledigt, der Code dafür
+> (`utils/migrateImages.ts`) entfernt.
 
 Beim ersten Start nach dem Update verschiebt `utils/migrateImages.ts` die
 vorhandenen Dateien einmalig von `public/images/` nach `data/images/`
@@ -358,6 +367,9 @@ Bereits geschützt und unverändert: PDF-Export
 
 ## 13. Datenbankpasswort, TRUST_PROXY und verschlüsselte Gutscheine
 
+> **Überholt durch Abschnitt 33:** Das Datenbankpasswort steht nicht mehr in
+> `.env`, sondern in `./geheimnisse/db_password`.
+
 - **`DB_PASSWORD` ist Pflicht.** `compose.yaml` hat keinen Ersatzwert mehr, und
   mit dem alten Beispielpasswort `brickinventory_secret` verweigert der Server
   in Produktion den Start. Bestehende Datenbank umstellen:
@@ -397,6 +409,9 @@ wird nicht mehr veröffentlicht.
    `TRUST_PROXY` auf dessen Adresse und den Dienst `caddy` weglassen.
 3. `docker compose up -d --build`. Caddy legt beim ersten Start seine CA unter
    `./caddy/data/` an (Wurzel 10 Jahre gültig). Port 443 und 80 müssen frei sein.
+   **Überholt durch Abschnitt 32 und 33:** Caddy startet nur noch mit der
+   eigenen, auf `BRICK_HOST` beschränkten CA (`scripts/ca-einrichten.sh`),
+   mit `BRICK_TLS=acme` oder ausdrücklich `CA_OHNE_NAMENSBESCHRAENKUNG=ja`.
 4. Das Wurzelzertifikat auf die Geräte bringen (unten).
 5. Die Android-App einmal neu verknüpfen (QR-Code): Erst dann kennt sie den
    Fingerabdruck und die https-Adresse. Bis dahin meldet sie sich mit dem
@@ -838,6 +853,8 @@ Was sich für Nutzer und Clients ändert:
   Sichten und Funktionen, die Migrationen laufen also weiter. Umstellung:
   1. In `.env` ein zweites, anderes Passwort eintragen:
      `echo "DB_APP_PASSWORD=$(openssl rand -hex 24)" >> .env`
+     **Überholt durch Abschnitt 33:** heute `./geheimnisse/db_app_password`
+     (`sh scripts/geheimnisse-einrichten.sh`).
      (ohne den Wert bricht `docker compose up` mit einer Meldung ab).
   2. Wie gewohnt aktualisieren: `docker compose up -d --build`. Der neue,
      einmalige Dienst `db-rolle` startet nach der Datenbank, legt die Rolle an
@@ -909,7 +926,8 @@ Was sich für Nutzer und Clients ändert:
   `docker compose exec -e PGOPTIONS='-c search_path=pg_catalog,pg_temp' postgres psql -U brickinventory`.
 - **pgweb mit eigener Leserolle**: Neu in `.env`:
   `PGWEB_DB_PASSWORD=$(openssl rand -hex 24)` (anders als `DB_PASSWORD` und
-  `DB_APP_PASSWORD`). `db-rolle` legt `brickinventory_lesen` an: nur `SELECT`,
+  `DB_APP_PASSWORD`). **Überholt durch Abschnitt 33:** heute
+  `./geheimnisse/pgweb_db_password` (`PGWEB=ja sh scripts/geheimnisse-einrichten.sh`). `db-rolle` legt `brickinventory_lesen` an: nur `SELECT`,
   ohne die Tabellen `api_tokens`, `qr_login_tokens`, `user_sessions`,
   `webauthn_challenges`, `zweiter_faktor_codes`, `account_link_invites` und
   ohne die Spalten `users.password_hash/verification_token/reset_token`,
@@ -980,7 +998,9 @@ Was der Betrieb tun muss, steht zuerst; danach, was sich für Clients ändert.
 
 - **Geheimnisse als Dateien** (Docker-Secrets): `SESSION_SECRET_FILE`,
   `PGPASSWORD_FILE`, `DATABASE_URL_FILE`, `ADMIN_PASSWORD_FILE` statt der
-  Variablen (nie beide). Beispiel als `compose.override.yaml` neben
+  Variablen (nie beide). **Überholt durch Abschnitt 33:** `compose.yaml` hängt
+  die Secrets selbst ein; ein Override wie unten ist nicht mehr nötig und
+  gehört entfernt. Beispiel als `compose.override.yaml` neben
   `compose.yaml`:
 
   ```yaml
@@ -1187,3 +1207,576 @@ unbeschränkte Wurzel an (Schritte 3–4).
   Kartennummer. Die Web-App lädt das PDF einmal und zeigt es aus dem
   Speicher. Die Android-App muss nachziehen: Bis dahin öffnet sie keine
   Gutschein-PDFs (403).
+
+## 33. Runde 9 – Sichere Vorgaben im Betrieb
+
+Bisher waren die sicheren Wege angeboten, ab dieser Fassung sind sie
+**Pflicht**. Ein `docker compose up -d --build` ohne die Schritte unten
+scheitert mit einer Meldung, die auf diesen Abschnitt zeigt. Reihenfolge
+einhalten; alles im Ordner mit `compose.yaml`.
+
+**1. Geheimnisse als Dateien (Pflicht)**
+
+`SESSION_SECRET`, `DB_PASSWORD`, `DB_APP_PASSWORD` und die pgweb-Passwörter
+stehen nicht mehr in der Umgebung der Container (die zeigt `docker inspect`
+jedem mit Zugang zu Docker), sondern als Docker-Secrets unter
+`/run/secrets/`. Die Dateien liegen in `./geheimnisse/`:
+
+```
+sh scripts/geheimnisse-einrichten.sh
+```
+
+Das Skript übernimmt die Werte aus der bisherigen `.env` und erzeugt fehlende
+zufällig. Vorhandene Dateien überschreibt es nie. Liegt `./pgdata18` schon da
+und fehlt `DB_PASSWORD` in `.env`, bricht es ab: Das Superuser-Passwort steht
+in der Datenbank, ein neues passte nicht. Danach:
+
+- Die Zeilen `SESSION_SECRET`, `DB_PASSWORD`, `DB_APP_PASSWORD`,
+  `PGWEB_PASSWORD` und `PGWEB_DB_PASSWORD` aus `.env` löschen. Das Skript
+  nennt sie am Ende.
+- `./geheimnisse/` wie `schluessel/` behandeln. Der Ordner ist nur für seinen
+  Besitzer offen (700), die Dateien darin sind lesbar (444), damit die
+  Dienste sie ohne root lesen. Nicht ins Repository, nicht neben die
+  Sicherungen.
+- Wer `compose.override.yaml` aus Abschnitt 31 („Geheimnisse als Dateien“)
+  angelegt hat, löscht dort die `secrets`- und `*_FILE`-Einträge.
+  `compose.yaml` macht das jetzt selbst.
+
+**2. Zertifikat: eigene CA, Let's Encrypt oder ausdrücklich Caddys CA (Pflicht)**
+
+Caddy fällt nicht mehr still auf seine eigene CA zurück. Diese CA hat keine
+Namensbeschränkung: Ein Gerät mit ihrer Wurzel traut ihr für jede Adresse.
+Ohne eine der drei Angaben startet Caddy nicht. `docker compose logs caddy`
+zeigt dann „keine eigene, auf BRICK_HOST beschränkte CA“.
+
+- **Empfohlen, im Heimnetz:** `sudo sh scripts/ca-einrichten.sh`, danach
+  weiter wie in Abschnitt 32 (alte CA entfernen, neue Wurzel auf die Geräte,
+  App neu verknüpfen). Wer das schon gemacht hat, muss nichts tun.
+- **Öffentlicher Name** (aus dem Internet auf Port 80 und 443 erreichbar): in
+  `.env` `BRICK_TLS=acme` und optional `ACME_EMAIL=…`. Das Zertifikat kommt
+  dann von Let's Encrypt, auf die Geräte muss keine Wurzel, und `/ca.crt`
+  antwortet 404. Die Android-App einmal neu verknüpfen.
+- **Übergang, bewusst:** `CA_OHNE_NAMENSBESCHRAENKUNG=ja` in `.env` startet
+  wie bisher mit Caddys CA und schreibt bei jedem Start eine Warnung ins
+  Protokoll.
+
+**Fingerabdruck vergleichen (Pflichtschritt beim Installieren der Wurzel).**
+`http://<BRICK_HOST>/ca.crt` ist unverschlüsselt. Wer im Netz mitliest, kann
+die Datei austauschen. Vor dem Installieren den SHA-256-Fingerabdruck, den
+das Gerät anzeigt, mit dem auf dem Server vergleichen:
+
+```
+docker compose logs caddy | grep Fingerabdruck
+```
+
+`scripts/ca-einrichten.sh` nennt denselben Wert bei der Einrichtung. Weicht er
+ab, nicht installieren.
+
+**3. Sicherungen nur verschlüsselt (Pflicht)**
+
+`scripts/backup.sh` sichert ohne Empfänger nichts mehr. Ein Cron-Lauf meldet
+dann `FEHLER: kein Empfänger`. Einmalig einrichten:
+
+1. Auf einem **anderen** Rechner: `age-keygen -o backup-schluessel.txt`.
+   Diese Datei offline aufbewahren (Passwort-Safe, USB-Stick). Sie ist der
+   einzige Weg zurück an die Daten.
+2. Den öffentlichen Schlüssel (`age1…`, steht in der Ausgabe) auf dem Server
+   in `./backup-empfaenger.txt` eintragen, einen je Zeile. Für einen zweiten
+   Verwahrer eine zweite Zeile anlegen.
+3. `apt install age` auf dem Server, dann einmal `./scripts/backup.sh`. Es
+   entstehen nur noch `db_….sql.gz.age` und `data_….tar.gz.age`.
+4. Zurückspielen probehalber: `BACKUP_AGE_IDENTITAET=backup-schluessel.txt
+   ./scripts/restore.sh backups/db_….sql.gz.age backups/data_….tar.gz.age`.
+
+Unverschlüsselte Sicherungen gibt es nur noch mit ausdrücklichem
+`BACKUP_KLARTEXT=ja`. Alte `*.sql.gz` lassen sich weiter einspielen. Den
+Datenschlüssel (`BACKUP_SCHLUESSEL_ZIEL`) weiter getrennt aufbewahren.
+
+**4. pgweb (nur wer es benutzt)**
+
+- Die Passwörter kommen jetzt aus `./geheimnisse/`:
+  `PGWEB=ja sh scripts/geheimnisse-einrichten.sh`, danach
+  `docker compose up -d db-rolle`. Das Passwort für die Anmeldung im Browser
+  steht in `geheimnisse/pgweb_password` (bisheriges `PGWEB_PASSWORD` wird
+  übernommen). Ohne diesen Schritt hat die Leserolle kein Passwort und pgweb
+  startet nicht.
+- pgweb läuft als uid 1000, schreibgeschützt, ohne Capabilities und in einem
+  eigenen Netz `pgweb-net` nur mit `postgres`. App, Jobs und Caddy erreichen
+  es nicht mehr.
+- Die Leserolle liest nur noch eine **Allowlist** je Tabelle
+  (`LESEN_SPALTEN` in `postgres/app-rolle.sh`). Eine neue Tabelle oder
+  Spalte ist für pgweb unsichtbar, bis sie dort eingetragen ist. Nicht mehr
+  lesbar sind zusätzlich `auftraege.nutzlast`, `vouchers.number` und
+  `nummer_suche`, `passkeys.credential_id` und `public_key`,
+  `zweiter_faktor.letzter_schritt` und die ganze Tabelle `idempotenz`.
+
+**5. Anmeldebremse an Caddy (nichts zu tun)**
+
+Die Anmeldewege (`/api/v1/auth/login`, `register`, `forgot-password`,
+`reset-password`, `bestaetigung-erneut`, `qr-login`, `token-rotieren`,
+`passkey/anmelden`) gehen höchstens zu viert gleichzeitig an die App, mit
+Rümpfen bis 16 KB. Der Rest wartet bei Caddy. Eine Flut aus vielen Adressen
+verlangsamt so die Anmeldung, belegt aber nicht alle Kerne mit bcrypt.
+Echte Raten je Adresse kann das Standard-Image von Caddy nicht zählen (dafür
+bräuchte es ein eigenes Caddy-Image mit Zusatzmodul). Die Grenzen je
+Adresse und Konto setzt weiterhin der Server.
+
+**6. Lieferkette (nichts zu tun; zum Prüfen)**
+
+- Das Image installiert Abhängigkeiten mit `npm ci --ignore-scripts`; nur
+  esbuild baut sein Install-Skript gezielt (`npm rebuild esbuild`). Die CI
+  macht es genauso und ist ab einer Lücke der Stufe `moderate` rot.
+- Jedes veröffentlichte Image trägt eine Herkunftsbescheinigung und eine
+  Stückliste. Prüfen: siehe README im Wurzelverzeichnis
+  (`cosign verify …`, `gh attestation verify …`). In den
+  GitHub-Einstellungen ist nichts zu tun: Der Workflow braucht nur
+  `attestations: write`, das er selbst anfordert.
+
+## 34. Runde 10 – Mandantentrennung, Routing und Verwalter
+
+Für Betreiber in Docker ist nichts umzustellen, ausser beim zweiten Faktor
+der Verwalter (Punkt 1). Wer ausserhalb von Docker betreibt, beachtet Punkt 4.
+
+**1. Verwalter brauchen einen zweiten Faktor**
+
+Ein Konto mit Verwalterrechten ohne Code-Generator (TOTP) kommt nach der
+Anmeldung nur noch bis zu dessen Einrichtung. Ein Passkey allein genügt
+nicht: Die Anmeldung mit Passwort verlangt den zweiten Faktor nur bei
+eingerichtetem Code-Generator. Die Webapp
+zeigt dafür eine eigene Seite; alle anderen Anfragen antworten mit 403
+`zweiter_faktor_pflicht`. Empfehlung: Vor dem Update in der Webapp unter
+Einstellungen → Zweiter Faktor einrichten, solange niemand sonst das
+Passwort kennen kann. App-Zugänge mit Scope `app` tragen keine
+Verwalterrechte und sind nicht betroffen. Hat ein Verwalter Telefon und
+Codes verloren, setzt ein anderer Verwalter den Faktor zurück (wie bisher);
+danach verlangt die Anmeldung die neue Einrichtung.
+
+**2. BrickLink-Nummern je Konto**
+
+Korrekturen beim Wanted-Import und die BrickLink-Nr. einer eigenen Figur
+gelten nur noch für das eigene Konto (Tabelle `bl_zuordnung_eigen`,
+Migration 0094). Die gemeinsame Zuordnung schreiben nur noch Rebrickable und
+BrickLink, und ein dort vorhandener Wert wird nicht mehr ersetzt. Was vor
+dem Update ein Konto in die gemeinsame Zuordnung geschrieben hat, lässt sich
+von geprüften Werten nicht unterscheiden. Wer fremde Konten auf dem Server
+hat und an Figurenpreisen oder -bildern zweifelt, leert die Figurenzeilen;
+abweichende Nummern trägt danach jedes Konto selbst wieder ein:
+
+```
+docker compose exec postgres psql -U brickinventory -c "DELETE FROM bl_zuordnung WHERE art IN ('fig','set')"
+```
+
+**3. Weitere Härtungen**
+
+- Pfade unterscheiden Gross- und Kleinschreibung: `/api/v1/Sets` ist 404.
+- Ohne Anmeldung liest der Server höchstens 16 KB Rumpf (Anmelden,
+  Registrieren, Zurücksetzen); alles andere erst nach der Anmeldung.
+- Gutschein-PDFs: höchstens 200 Seiten (sonst 422 mit Hinweis), gelesen in
+  einem eigenen Thread, je Konto eines zugleich. Uploads allgemein höchstens
+  zwei, Ereignisströme sechs je Konto zugleich (sonst 429).
+- Passwörter: mindestens **12** Zeichen. Bestehende Passwörter gelten weiter;
+  die Regel greift beim nächsten Wechsel.
+- Eine Anmeldung der App mit Passwort schickt wie `token-create` eine
+  Hinweis-Mail „neuer App-Zugang“.
+- Registrierungen, deren Adresse nach 7 Tagen nicht bestätigt ist, löscht der
+  tägliche Aufräumlauf (Migration 0095). Konten, die nur eine neue Adresse
+  noch nicht bestätigt haben, bleiben.
+- Jedes Konto kann sich unter Einstellungen → Gefahrenzone selbst löschen
+  (Passwort und, falls eingerichtet, zweiter Faktor). Das letzte aktive
+  Verwalterkonto kann es nicht.
+
+**4. Betrieb ohne Docker: NODE_ENV und Superuser**
+
+- `npm start` setzt jetzt `NODE_ENV=production`. Ohne `NODE_ENV` gelten die
+  Regeln des Betriebs: Ohne eigenes `SESSION_SECRET` (mindestens 32 Zeichen)
+  startet der Server nicht. Das Entwicklungsgeheimnis gibt es nur bei
+  ausdrücklichem `NODE_ENV=development` oder `test` (`npm run dev` setzt es).
+- In Produktion verweigert der Server den Start als Datenbank-Superuser
+  (`COPY … PROGRAM` hiesse bei einer Lücke Codeausführung auf dem
+  Datenbankhost). Richtig ist eine eigene Rolle (Abschnitt 29; in Docker
+  richtet `db-rolle` sie ein). Wer bewusst als Superuser betreibt, setzt
+  `DB_SUPERUSER_ERLAUBT=1`; der Start warnt dann bei jedem Lauf.
+
+## 35. Runde 11 – Langsame Anfragen, Host-Kopf und E-Mail-Bestätigung
+
+Für Betreiber in Docker hinter Caddy ist nichts umzustellen; das neue
+`Caddyfile` kommt mit dem Update. Wer ohne Caddy (Klartext, Port 3000) oder
+mit eigenem Reverse-Proxy betreibt, beachtet Punkt 2.
+
+**1. Langsame Clients blockieren die Anmeldung nicht mehr**
+
+- Caddy liest den Rumpf der Anmeldewege ganz, bevor er eine der vier
+  Verbindungen zur App belegt (`request_buffers 32KB`); vorher konnten vier
+  absichtlich langsame Rümpfe die Anmeldung für alle anhalten. Köpfe müssen
+  in 10 s ankommen (`timeouts { read_header 10s }`, Vorgabe von Caddy: eine
+  Minute). Eine harte Frist für Rümpfe setzt das Caddyfile bewusst nicht: Sie
+  bräche lange Uploads (Anleitungen bis 50 MB) ab.
+- Die App selbst: Kopf 15 s, ganze Anfrage fünf Minuten (wie bisher die
+  Vorgabe von Node, jetzt ausdrücklich). Ohne Anmeldung muss der Rumpf
+  (höchstens 16 KB) in 10 s da sein, sonst `408 anfrage_zu_langsam`. Wer
+  einen eigenen Reverse-Proxy vor die App stellt, sollte dort die
+  Anmeldewege ebenso puffern.
+
+**2. Mit `APP_BASE_URL` nur noch unter diesem Namen**
+
+Ist `APP_BASE_URL` gesetzt, antwortet die App auf einen anderen `Host`-Kopf
+mit `421 fremder_host` („Dieser Server antwortet nur unter …"). Das schützt
+im Klartextbetrieb gegen DNS-Rebinding. Frei bleiben `localhost`/`127.0.0.1`,
+Anfragen mit App-Token (`Authorization: Bearer`), `/ca.crt` und
+`/api/v1/health…`. Hinter Caddy ändert sich nichts, weil Caddy ohnehin nur
+`BRICK_HOST` bedient. Wer im Klartextbetrieb den Server im Browser unter
+einer IP-Adresse aufruft, `APP_BASE_URL` aber auf einen Namen gesetzt hat,
+nimmt künftig diesen Namen (oder setzt `APP_BASE_URL` auf die Adresse, die
+alle Geräte benutzen). Die Android-App mit eingerichtetem Zugang ist nicht
+betroffen; eine neue Anmeldung der App braucht dieselbe Adresse wie
+`APP_BASE_URL` (der QR-Code trägt sie ohnehin).
+
+**3. E-Mail-Bestätigung per Knopf**
+
+Der Link in der Bestätigungsmail (`/verify?token=…`) bestätigt nicht mehr
+beim Öffnen. Er öffnet eine Seite mit dem Knopf „Adresse bestätigen"; erst
+der Knopf bestätigt (`POST /api/v1/auth/email-bestaetigen` `{ token }`,
+ohne Anmeldung, 400 `bestaetigungslink_ungueltig` bei falschem oder
+abgelaufenem Link). So bestätigt kein Link-Scanner eines Mailanbieters eine
+fremde Adresse. Links aus älteren Mails gelten weiter, brauchen aber den
+Klick. Die Android-App ruft `/verify` nicht auf; der Link öffnet auch auf dem
+Telefon die Webseite.
+
+**4. Weitere Härtungen**
+
+- Fehler mit Status 4xx ohne eigenen Code nennen nicht mehr den Text einer
+  Bibliothek (z. B. „Failed to decode param", „incorrect header check",
+  Dateipfade), sondern `anfrage_ungueltig`, `nicht_gefunden` oder
+  `anfrage_zu_gross` mit Satz in der Sprache des Anfragenden. Der Rohtext
+  steht im Protokoll.
+- Kaufpreis umhängen (`PUT …/acquisitions/:id` mit `owner_user_id`): Eine
+  Erfassung eines fremden Kontos antwortet wie eine fehlende mit 404
+  `kaufpreis_nicht_gefunden` statt 403 `kein_schreibrecht`.
+- Bild-Proxy: Der `Content-Type` geht nur noch aus einer festen Liste hinaus
+  (JPEG, PNG, GIF, WebP, AVIF), sonst `image/jpeg`; der rohe Wert des CDN
+  nie mehr. Vorhandene Cache-Einträge werden beim Ausliefern ebenso normiert.
+
+## 36. Runde 11 – Erststart des Verwalters ohne dritte Passwortabfrage
+
+- `POST /api/v1/auth/zweiter-faktor/einrichten` geht bis fünf Minuten nach
+  einer Anmeldung mit Passwort (oder einem Passwortwechsel) in **derselben
+  Sitzung** einmal ohne `password`. Mit App-Token gibt es diese Frist nie; die
+  Android-App schickt das Passwort wie bisher mit.
+- Ohne Passwort und ohne Frist antwortet die Route jetzt mit 400
+  `aktuelles_passwort_erforderlich` (vorher `aktuelles_passwort_falsch`); die
+  Bremse für Fehlversuche zählt das nicht mehr mit.
+- Eingerichtet ist der zweite Faktor weiterhin erst mit dem Code aus der App.
+  Sitzungen von vor dem Update haben keine Frist; nach dem Update genügt eine
+  neue Anmeldung.
+
+## 37. Runde 12 – Mailadressen, zweiter Faktor, Protokoll und Sicherung
+
+**1. Nur noch reine E-Mail-Adressen**
+
+- Registrierung, Profil, „Passwort vergessen“, „Bestätigung erneut senden“
+  und der SMTP-Test nehmen nur noch eine einzelne Adresse an: kein
+  Anzeigename (`Name <a@b.de>`), keine Liste (`a@b.de,c@d.de`), keine der
+  Zeichen `< > " , ; : ( ) [ ] \`, keine Leer- oder Steuerzeichen. Sonst 400
+  `email_ungueltig`.
+- Der Versand prüft jede Adresse ein zweites Mal und gibt sie nodemailer als
+  Umschlag (`envelope`) vor; an eine unreine gespeicherte Adresse geht keine
+  Mail mehr.
+- **Bestand:** Beim Start meldet der Server Konten, deren gespeicherte Adresse
+  die Regel verletzt (`[konto] … Konto/Konten mit einer E-Mail-Adresse, die
+  keine einzelne reine Adresse ist (IDs …)`). Geändert wird nichts. Diese
+  Konten melden sich weiter mit dem Benutzernamen an, bekommen aber keine
+  Mails; im Konto eine gültige Adresse eintragen oder, wenn es ein
+  Spam-Konto ist, unter Verwaltung löschen. Prüfen von Hand:
+  `SELECT id, username FROM users WHERE email ~ '[<>",;:() ]';`
+
+**2. Zweiter Faktor: Passwort nur beim Pflicht-Erststart entbehrlich**
+
+- `POST /api/v1/auth/zweiter-faktor/einrichten` ohne `password` geht nur noch
+  für einen **Verwalter ohne Faktor** in den fünf Minuten nach seiner
+  Anmeldung (Abschnitt 36). Jedes andere Konto bekommt 400
+  `aktuelles_passwort_erforderlich`; Webapp und Android-App fragen dann nach
+  dem Passwort (die App schickt es ohnehin immer mit).
+- Neue Mails an den Inhaber, wenn SMTP eingerichtet ist: „zweiter Faktor
+  eingerichtet“ und „zweiter Faktor abgeschaltet“. Scheitert der Versand,
+  bleibt die Änderung bestehen; der Fehler steht im Protokoll.
+
+**3. Anmeldeereignisse im Protokoll**
+
+- Je fehlgeschlagener Anmeldung, Sperre, falschem Code und falscher
+  Bestätigung eine Warnzeile `[anmeldung] <ereignis>` mit JSON-Kontext
+  `{"ereignis", "adresse", "konto"}` (bei Bestätigungen `art`, `zugang`),
+  auf stderr (Docker-Log) und in `app_logs` (Verwaltung → Protokoll).
+  Ereignisse: `anmeldung_fehlgeschlagen`, `anmeldung_gesperrt`,
+  `zweiter_faktor_falsch`, `bestaetigung_fehlgeschlagen`,
+  `bestaetigung_gesperrt`. Nie Passwort oder Code; ein unbekannter Name
+  erscheint nur als `"konto":"unbekannt"`. `adresse` ist die IPv4-Adresse
+  bzw. das IPv6-/64.
+- fail2ban-Beispiel (Docker-Log als Quelle):
+  `failregex = "nachricht":"\[anmeldung\] anmeldung_fehlgeschlagen".*"adresse":"<HOST>"`
+  Hinter Caddy steht dort die echte Adresse nur mit `TRUST_PROXY`.
+- Erreicht ein Konto die Kontosperre (fünf Fehlversuche in 15 Minuten),
+  bekommt der Inhaber eine Mail „mehrere fehlgeschlagene Anmeldeversuche“,
+  höchstens einmal am Tag.
+
+**4. Einstellungen: Registrierung und API-Schlüssel nur mit Passwort**
+
+- `POST /api/v1/settings` verlangt für `registration_enabled`,
+  `rebrickable_api_key`, `brickset_api_key` und die vier BrickLink-Schlüssel
+  (wie bisher für `smtp_*`) `admin_password` und bei aktivem Faktor den Code —
+  nur wenn sich der Wert wirklich ändert. Ohne Passwort 400
+  `aktuelles_passwort_erforderlich`. Alle Verwalter bekommen eine Mail.
+- Der Konfigurations-Import übernimmt diese Schlüssel nicht mehr; sie stehen
+  in `smtp_uebergangen` (Name aus Kompatibilität) und in der Meldung.
+- Skripte, die diese Werte per API setzen, müssen `admin_password`
+  mitschicken. Die Android-App ändert sie nicht.
+
+**5. Sicherung ohne Klartext am Ziel**
+
+- `scripts/backup.sh` leitet `pg_dump | gzip` und `tar` direkt in `age`; am
+  Ziel liegt bis zum Umbenennen nur `….age.teil`, nie Klartext. Für die
+  Endmarke bleibt das letzte Kilobyte des Dumps in einem privaten
+  Arbeitsordner (`mktemp -d`, 0700, unter `$TMPDIR`), der am Ende
+  verschwindet. Dateinamen bleiben gleich; `restore.sh` liest alte und neue
+  Sicherungen.
+- Bricht die Sicherung ab, bleibt am Ziel nichts liegen (vorher: eine halbe
+  `.gz`-Datei, die das Skript erst danach löschte).
+- Älteres Klartext-Material aus früheren Abbrüchen am Ziel bitte von Hand
+  prüfen: `ls "$ZIEL" | grep -v '\.age$'`.
+
+**6. Wiederherstellen weist psql-Befehle ab**
+
+- `scripts/restore.sh` lehnt einen Dump ab, der ausserhalb der COPY-Daten eine
+  Zeile mit `\` trägt (ausser `\restrict`/`\unrestrict` von pg_dump), und
+  stellt dem Dump ein eigenes `\restrict <zufall>` voran: psql führt dann gar
+  keinen Backslash-Befehl aus. `psql -X` liest keine `.psqlrc`. Nötig ist ein
+  psql ab 16.10/17.6/18.0 — das Image aus `compose.yaml` hat ihn.
+
+**7. Mehrere Web-Prozesse: Token-Widerruf sofort**
+
+- Ein Widerruf (Abmelden, Löschen, Passwortwechsel, Faktor) meldet sich über
+  `NOTIFY token_widerrufen`; jeder Web-Prozess leert seinen Token-Speicher.
+  Mit einem Web-Prozess ändert sich nichts.
+
+**8. Ohne APP_BASE_URL im Betrieb**
+
+- Mit `NODE_ENV=production` und ohne `APP_BASE_URL` schreibt der Web-Prozess
+  beim Start eine Fehlerzeile (`❌ [start] APP_BASE_URL fehlt im Betrieb …`):
+  Der Host-Filter gegen DNS-Rebinding ist dann aus. Er startet trotzdem —
+  `compose.yaml` setzt die Variable immer; wer ohne Compose startet, sollte
+  sie setzen. (Seit Abschnitt 38, Punkt 5: Startverbot.)
+
+## 38. Runde 12 – Neue E-Mail-Adresse erst nach Bestätigung, Rechte und Startverbot
+
+**1. Eine geänderte E-Mail-Adresse gilt erst nach dem Link**
+
+- `PUT /api/v1/auth/profile` mit neuer Adresse trägt sie nur noch als
+  *ausstehend* ein (neue Spalten `users.email_neu`, `email_neu_token`,
+  `email_neu_bis`, Migration 0096). Der Link (24 Stunden) geht an die neue
+  Adresse, ein Hinweis an die bisherige. Bis zum Klick gelten die bisherige
+  Adresse, ihre Anmeldung und ihre Mails weiter; das Konto bleibt benutzbar.
+- Beim Einlösen wird erneut geprüft, ob die Adresse frei ist. Ist sie
+  inzwischen vergeben, antwortet `POST /auth/email-bestaetigen` mit
+  `email_vergeben`, und die ausstehende Adresse fällt weg.
+- `GET /api/v1/auth/profile` liefert zusätzlich `email_neu` (optional, `null`
+  ohne Antrag); die Weboberfläche zeigt sie unter dem Feld. Die Android-App
+  liest das Feld nicht; nach dem Speichern zeigt sie die bisherige Adresse,
+  bis der Link geöffnet ist.
+- Vergeben ist eine Adresse nur noch, wenn sie bestätigt ist, einem Verwalter
+  oder einem Konto ohne offene Registrierung gehört, oder einer offenen
+  Registrierung, die jünger als 24 Stunden ist. Eine ältere, nie bestätigte
+  Registrierung räumt eine neue Registrierung (oder Bestätigung) mit derselben
+  Adresse ab; sie war nie benutzbar. *Passwort vergessen* findet nur noch
+  Konten mit bestätigter Adresse.
+- Ohne Mailversand (kein SMTP, keine `APP_BASE_URL`) wird eine neue Adresse
+  nie gültig. Im Konsolenmodus (ohne SMTP) steht der Link nur mit
+  `MAIL_KONSOLE_MIT_TOKEN=1` lesbar im Server-Protokoll.
+
+**2. Altbestand: unbestätigte Adressen werden ausstehend**
+
+- Migration 0096 verschiebt jede unbestätigte Adresse, die nicht zu einer
+  offenen Registrierung gehört, nach `email_neu` (`users.email` wird leer).
+  Ein noch gültiger Link gilt weiter. So eine Adresse stammte aus einer
+  Profiländerung und konnte einer fremden Person gehören; gelöscht wird nichts.
+- Diese Konten melden sich danach ohne Adresse an (vorher waren
+  Nicht-Verwalter bis zur Bestätigung gesperrt). Verwalter darunter bekommen
+  Verwalter-Mails erst wieder nach der Bestätigung.
+- Der Start meldet Konten mit ausstehender Adresse ohne gültigen Link:
+  `⚠️ [konto] … nie bestätigten Adresse (IDs …)`. Abhilfe: Die Adresse im
+  Profil erneut eintragen, dann kommt ein neuer Link. Nachsehen:
+  `SELECT id, username, email_neu FROM users WHERE email_neu IS NOT NULL;`
+
+**3. Erster API-Schlüssel ohne Passwort nur im Einrichtungsassistenten**
+
+- Einen bisher leeren Rebrickable-, Brickset- oder BrickLink-Schlüssel setzt
+  ein Verwalter ohne Passwort nur noch, solange die Einrichtung nicht
+  abgeschlossen ist (`einrichtung_erledigt`). Danach fragt auch der erste
+  Schlüssel nach dem Passwort (`aktuelles_passwort_erforderlich`).
+
+**4. Hochgeladene Dateien nur für den Dienst lesbar**
+
+- Der Entrypoint setzt `umask 077`: Was der Dienst unter `./data` neu anlegt,
+  ist 0600 bzw. 0700. Bei jedem Start zieht er `data/uploads` nach
+  (`chmod -R go-rwx`, als `brickinv`). Der Upload selbst setzt Datei 0600 und
+  Ordner 0700, auch ohne Entrypoint; ohne Docker einmal von Hand:
+  `chmod -R go-rwx data/uploads`.
+- `backup.sh` liest neue Dateien unter `./data` daher nur als root (wie im
+  Cron-Beispiel) oder unter der UID von `brickinv`.
+
+**5. Ohne APP_BASE_URL im Betrieb startet der Web-Prozess nicht**
+
+- Mit `NODE_ENV=production`, ohne `APP_BASE_URL` und nicht als `ROLLE=jobs`
+  bricht der Start ab (`[start] APP_BASE_URL fehlt im Betrieb … Start
+  verweigert`). `compose.yaml` setzt die Variable immer; betroffen ist nur ein
+  Start ohne Compose. Wer bewusst ohne Host-Filter laufen will, setzt
+  `APP_BASE_URL_FEHLT_OK=1`; dann startet er mit der bisherigen Fehlerzeile.
+
+**6. Anmeldung unter Last**
+
+- Ist die Warteschlange der Passwortprüfungen voll, kommt eine Anmeldung, die
+  zuletzt von derselben Adresse (IPv6: /64) mit demselben Namen gelang, vorne
+  in die Schlange und wird nicht wegen deren Länge abgewiesen. Eine Flut aus
+  fremden Adressen sperrt bekannte Geräte so nicht aus. Nichts zu tun.
+
+## 39. Runde 13 – Registrierung ohne Adresssperre, Obergrenzen, Sicherung
+
+**1. Eine Registrierung belegt ihre Adresse erst mit der Bestätigung**
+
+- `POST /api/v1/auth/register` legt die Adresse wie eine Profiländerung nur
+  als *ausstehend* ab (`users.email_neu`, Link in `email_neu_token`, 24
+  Stunden). `users.email` bleibt bis zum Klick leer. Mehrere offene
+  Registrierungen mit derselben Adresse dürfen nebeneinander stehen; die
+  erste Bestätigung gewinnt, jede spätere antwortet `email_vergeben`. Damit
+  gilt Abschnitt 38.1 („eine offene Registrierung jünger als 24 Stunden
+  belegt“) nicht mehr: Eine fremde, unbestätigte Registrierung sperrt
+  niemanden.
+- Unverändert: Eine offene Registrierung meldet sich nicht an (Absage wie
+  ein falsches Passwort), *Passwort vergessen* findet nur bestätigte
+  Adressen, der Aufräumlauf löscht offene Registrierungen nach 7 Tagen, und
+  die Antwort der Registrierung verrät nichts. Die Mail „Registrierung mit
+  deiner E-Mail-Adresse“ geht nur noch an bestätigte Adressen und nennt
+  keinen Benutzernamen mehr.
+- *Bestätigung erneut senden* schickt einen neuen Link nur, wenn genau eine
+  offene Registrierung die Adresse nennt; sonst ginge ein Link zu einem fremd
+  angelegten Konto mit. Wer dann keinen gültigen Link hat, registriert sich
+  unter einem anderen Namen neu.
+- Migration 0097 verschiebt bestehende offene Registrierungen in diese Form
+  (ein gültiger Link gilt weiter). `verification_token` und `token_expires`
+  werden nicht mehr benutzt. Nichts zu tun; die Android-App registriert
+  unverändert (dieselbe Anfrage, dieselbe Antwort).
+
+**2. Höchstens 50 Sitzungen und 50 Tokens je Konto**
+
+- Bei jeder Anmeldung fallen über 50 hinaus die am längsten unbenutzten
+  Browser-Sitzungen weg, ebenso bei jedem neuen Token die am längsten
+  unbenutzten App-Tokens (ein gerade getauschter in seiner Überlappung zählt
+  nicht). Ein so entferntes Gerät muss sich neu anmelden.
+- Weiche Grenze: Nach 30 erfolgreichen Anmeldungen in 15 Minuten von
+  derselben Adresse mit demselben Konto entfällt der Vorrang aus Abschnitt
+  38.6; gesperrt wird nichts.
+
+**3. Passwortprüfung in Worker-Threads**
+
+- bcrypt rechnet nicht mehr im Hauptthread, sondern in höchstens so vielen
+  Worker-Threads, wie die Schranke gleichzeitig zulässt (Kerne, mindestens
+  2). Sie entstehen erst bei Bedarf; jeder kostet einige MB Speicher und
+  einen Thread (innerhalb von `pids_limit` und `mem_limit` reichlich Platz).
+  Startet ein Worker nicht, meldet das Protokoll `[bcrypt] Worker-Thread
+  startet nicht …`, und geprüft wird wie bisher im Hauptthread.
+
+**4. `backup.sh` bricht ab, statt unvollständig zu sichern**
+
+- Vor dem Dump prüft das Skript, ob alles unter `data/` lesbar ist, und
+  bricht sonst mit `data/ ist nicht vollständig lesbar (…)` und Exit 1 ab.
+  Ein Fehler von `tar` (auch „Datei hat sich beim Lesen geändert“) beendet
+  es ebenfalls mit Exit 1; das halbe Archiv wird entfernt.
+- Das Skript muss als **root** oder unter der UID des Dienstes (`brickinv`)
+  laufen, weil der Dienst seit Abschnitt 38.4 nur für sich lesbar schreibt.
+  Wer es bisher unter einem Benutzer der Gruppe `docker` aufrief, bekommt
+  jetzt diesen Fehler statt einer stillen Lücke: Cron-Eintrag auf root
+  umstellen (`sudo crontab -e`, Beispiel im Kopf von `scripts/backup.sh`).
+
+**5. `GET /api/v1/sets/info/:nummer` und fremde Platzhalter**
+
+- Ein Katalog-Platzhalter („Set <Nummer>“ ohne Jahr, Thema und Teilezahl),
+  den ein anderes Konto beim Erfassen einer unbekannten Nummer anlegte,
+  antwortet wie eine nie erfasste Nummer (`im_katalog: false`). Eigene Sets,
+  Sets des Haushalts und echte Katalogeinträge antworten wie bisher.
+
+**6. Bewusst unverändert: Vergabeprüfung beim Ändern der Adresse**
+
+- `PUT /profile` meldet weiter `email_vergeben`, wenn eine Adresse bestätigt
+  einem anderen Konto gehört. Die Auskunft verlangt Anmeldung, Passwort und
+  gegebenenfalls den zweiten Faktor und ist auf 10 je Stunde und Konto
+  gebremst; eine stille Antwort liesse den Nutzer dagegen im Unklaren,
+  warum seine Adresse nie gilt.
+
+## 40. Runde 14 – Anmeldung hinter Caddy, Bestätigungslink, bcrypt-Pool
+
+**1. Caddy reicht die Anmeldewege ohne Verbindungsgrenze weiter**
+
+- Im Block `(anmeldung)` des `Caddyfile` entfällt `max_conns_per_host 4`
+  (Abschnitt 33.5 gilt insoweit nicht mehr). Die Grenze stellte eine Flut aus
+  vielen Adressen bei Caddy in eine Schlange ohne Ende, Frist und Vorrang;
+  die Schranke des Servers (Vorrang bekannter Anmeldungen aus 38.6, 503
+  `server_ausgelastet` bei Überlast) kam nie zum Zug.
+- `max_size 16KB` und `request_buffers 32KB` bleiben: Überlange Rümpfe enden
+  mit 413, langsame erreichen die App erst vollständig.
+- Wer ein eigenes Caddyfile pflegt, streicht dort `transport http {
+  max_conns_per_host … }` im Anmeldeblock ebenso. Unter einer Flut sehen
+  Clients jetzt schneller 503 statt langer Wartezeit.
+
+**2. Bestätigungsseite nennt das Konto des Links**
+
+- Neu: `POST /api/v1/auth/email-bestaetigen/vorschau` mit `{ token }` antwortet
+  `{ success: true, username }`, ohne den Link einzulösen (30 je Stunde und
+  Adresse); ein ungültiger Link antwortet 400 `bestaetigungslink_ungueltig`.
+- Die Seite `/verify` nennt vor dem Klick den Benutzernamen, angemeldet unter
+  einem anderen Konto beide Namen; der Knopf heisst „Ja, „…“ ist mein Konto –
+  bestätigen“ und ist bis dahin gesperrt.
+- Nennen mehrere offene Registrierungen dieselbe Adresse, trägt die
+  Bestätigungsmail einen Hinweis darauf (ohne Namen: Die Mail geht an eine
+  unbestätigte Adresse und enthält keinen gewählten Text).
+- Unverändert: Eine offene Registrierung meldet sich nicht an (39.1), kann
+  also vor der Bestätigung auch keinen zweiten Faktor oder Passkey
+  einrichten. Nichts zu tun.
+
+**3. Höchstens 4 bcrypt-Arbeiter, untätige enden**
+
+- Die Zahl der Worker-Threads und der gleichzeitigen Passwortprüfungen ist
+  `min(Kerne, cgroup-CPU-Kontingent, 4)`, mindestens 2 (vorher: alle Kerne
+  des Hosts, Abschnitt 39.3). Das Kontingent liest der Server aus
+  `/sys/fs/cgroup/cpu.max` (v2) oder `cpu.cfs_quota_us` (v1); `cpus:` in
+  `compose.yaml` wirkt so mit.
+- Optional: `BCRYPT_ARBEITER=<1–64>` setzt die Zahl ausdrücklich (z. B. auf
+  einem grossen Host mit vielen gleichzeitigen Anmeldungen); ein Wert
+  ausserhalb davon hält den Start an. Jeder Arbeiter belegt gut 12 MB;
+  `mem_limit` im Blick behalten.
+- Ein Arbeiter ohne Auftrag endet nach 60 s und gibt seinen Speicher frei.
+
+**4. Prüfung eines Haushaltscodes gebremst**
+
+- `POST /api/v1/settings/household/redeem/pruefen` antwortet nach 30
+  Prüfungen je Stunde und Konto mit 429 `zu_viele_anfragen`. Nichts zu tun.
+
+## 41. Ein Image für app, jobs und schluessel, gezogen statt gebaut
+
+`compose.yaml` nennt für `app`, `jobs` und `schluessel` jetzt dasselbe Image
+`addict85/brickinventory:${BRICK_TAG:-latest}` (`pull_policy: missing`); nur
+`app` hat noch `build:`.
+
+- **Ohne weiteres Zutun** holt `docker compose up -d` beim ersten Mal das
+  signierte Image von Docker Hub, statt lokal zu bauen. Danach bleibt es, bis
+  `docker compose pull` eine neuere Fassung holt. Update also:
+  `docker compose pull && docker compose up -d`.
+- **Wer selbst baut** (eigene Änderungen am Quelltext), nimmt wie bisher
+  `docker compose up -d --build`. Das Dockerfile wird dabei einmal gebaut,
+  nicht dreimal; das Ergebnis trägt den Namen des veröffentlichten Images und
+  gilt für alle drei Dienste, bis ein `pull` es ersetzt.
+- **Fester Stand:** `BRICK_TAG=sha-1a2b3c4` (oder ein Datums-Tag) in `.env`.
+- Die alten lokalen Images (`<ordner>-app`, `<ordner>-jobs`,
+  `<ordner>-schluessel`) werden nicht mehr benutzt und können mit
+  `docker image rm` weg.
+- Das Passwort des ersten Verwalters steht beim allerersten Start im
+  Protokoll von `app` oder `jobs` (wer zuerst migriert):
+  `docker compose logs app jobs | grep -A2 Standard-Admin`. `ADMIN_PASSWORD`
+  reicht `compose.yaml` nicht durch.

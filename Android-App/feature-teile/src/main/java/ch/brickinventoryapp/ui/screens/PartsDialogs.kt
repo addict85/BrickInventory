@@ -1,45 +1,29 @@
 package ch.brickinventoryapp.ui.screens
 
 import ch.brickinventoryapp.ui.erfassungsWerte
-import ch.brickinventoryapp.ui.model.ManuellesTeilAnsicht
 import ch.brickinventoryapp.ui.model.MitgliedAnsicht
-import ch.brickinventoryapp.ui.model.TeileKennzahlenAnsicht
 import ch.brickinventoryapp.ui.theme.Formen
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.*
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
-import androidx.compose.ui.res.vectorResource
-import androidx.compose.ui.graphics.vector.ImageVector
 import ch.brickinventoryapp.ressourcen.R
 import androidx.compose.ui.res.stringResource
 import ch.brickinventoryapp.ui.model.FarbeAnsicht
 import ch.brickinventoryapp.ui.model.OHNE_FARBE
 import ch.brickinventoryapp.ui.ohneKeineFarbe
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.core.graphics.toColorInt
-import coil3.ImageLoader
-import coil3.request.ImageRequest
-import ch.brickinventoryapp.util.NumericInput
 import ch.brickinventoryapp.ui.theme.Abstaende
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -71,7 +55,6 @@ fun AddPartDialog(
         mutableStateOf(householdMembers.firstOrNull { it.isSelf }?.id)
     }
 
-
     fun submit() {
         if (partNumber.isNotBlank()) {
             // Die Umrechnung steht in erfassungsWerte() — dieselbe wie im
@@ -97,7 +80,7 @@ fun AddPartDialog(
                     value = partNumber, onValueChange = { partNumber = it },
                     label = { Text(stringResource(R.string.parts_part_number)) }, placeholder = { Text(stringResource(R.string.parts_part_number_placeholder)) },
                     modifier = Modifier.fillMaxWidth(), singleLine = true,
-                    shape = Formen.knopf
+                    shape = Formen.feld
                 )
                 ExposedDropdownMenuBox(
                     expanded = colorMenuExpanded,
@@ -120,7 +103,7 @@ fun AddPartDialog(
                         trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = colorMenuExpanded) },
                         modifier = Modifier.fillMaxWidth().menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable, enabled = true),
                         singleLine = true,
-                        shape = Formen.knopf
+                        shape = Formen.feld
                     )
                     ExposedDropdownMenu(expanded = colorMenuExpanded, onDismissRequest = { colorMenuExpanded = false }) {
                         DropdownMenuItem(

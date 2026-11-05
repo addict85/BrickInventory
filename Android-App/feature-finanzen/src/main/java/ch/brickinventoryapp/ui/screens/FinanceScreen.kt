@@ -1,24 +1,18 @@
 package ch.brickinventoryapp.ui.screens
 
 import ch.brickinventoryapp.ui.theme.Formen
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import ch.brickinventoryapp.ressourcen.R
 import ch.brickinventoryapp.ui.viewmodel.FinanzViewModel
@@ -66,9 +60,11 @@ fun FinanceScreen(
     val historyPoints = remember(financeState.historyPoints, financeState.historyTage, zahlen) {
         lokaleAchse(financeState.historyPoints, financeState.historyTage, zahlen)
     }
-    val historyYAxis = remember(financeState.historyYAxis, financeState.historyWaehrung, valuation?.currency, zahlen) {
+    // Bei grosser Schrift kurz („1,7k“): Ausgeschrieben nahm die Achse ein Drittel der Breite.
+    val kompakt = ch.brickinventoryapp.ui.components.grosseSchrift()
+    val historyYAxis = remember(financeState.historyYAxis, financeState.historyWaehrung, valuation?.currency, zahlen, kompakt) {
         val w = financeState.historyWaehrung ?: valuation?.currency
-        if (w == null) financeState.historyYAxis else lokaleWerte(financeState.historyYAxis, w, zahlen)
+        if (w == null) financeState.historyYAxis else lokaleWerte(financeState.historyYAxis, w, zahlen, kompakt)
     }
     val partsValuation = financeState.partsValuation
     val figsValuation = financeState.figsValuation
@@ -107,8 +103,8 @@ fun FinanceScreen(
             leer = {
                 LeerSymbol(Icons.Default.Savings, 48.dp)
                 Text(stringResource(R.string.finance_no_data), fontWeight = FontWeight.SemiBold)
-                Button(onClick = onRefresh, shape = Formen.knopf) {
-                    Icon(Icons.Default.Refresh, null, Modifier.size(16.dp))
+                Button(onClick = onRefresh) {
+                    Icon(Icons.Default.Refresh, null, Modifier.size(ch.brickinventoryapp.ui.components.mitSchrift(16.dp)))
                     Spacer(Modifier.width(6.dp))
                     Text(stringResource(R.string.finance_load_prices))
                 }
@@ -129,8 +125,9 @@ fun FinanceScreen(
       BoxWithConstraints(Modifier.fillMaxSize()) {
         val rand = PaddingValues(horizontal = Abstaende.gross, vertical = Abstaende.mittel)
         val abstand = Arrangement.spacedBy(10.dp)
-        // Überblick: Kontofilter, Verlauf, Kopfkachel und Summe.
-        val ueberblick: androidx.compose.foundation.lazy.LazyListScope.(mitSumme: Boolean) -> Unit = { mitSumme ->
+        // Überblick: Kontofilter, Kopfkachel, dann der Verlauf — der Marktwert ist die erste
+        // Frage, die Kurve erklärt ihn. Die Summe steht nach den Zeilen.
+        val ueberblick: androidx.compose.foundation.lazy.LazyListScope.() -> Unit = {
             // Kontofilter — erscheint nur bei einem Hauptkonto mit Unterkonten. Er gilt für
             // ALLE Zahlen dieses Reiters: Kurve, Kacheln, Sets, Teile und Minifiguren.
             if (householdMembers.size > 1) {
@@ -142,16 +139,18 @@ fun FinanceScreen(
                     }
                 }
             }
+            financeSummaryCards(valuation, partsValuation, figsValuation, pnl, ::fmtPrice)
             item {
+                // Ohne Marktwert keine Entwicklung, wie im Web: Der Verlauf trüge dann nur
+                // Kaufpreise, und „+0.0 %“ neben „—“ behauptete Stillstand.
+                val mitWert = finanzKopf(valuation, partsValuation, figsValuation, pnl).wert.signum() > 0
                 PortfolioChart(
                     points = historyPoints, yAxis = historyYAxis,
                     currency = currencyCode, isLoading = historyLoading,
-                    selectedPeriod = historyPeriod, periodChangePct = historyPeriodChangePct,
+                    selectedPeriod = historyPeriod, periodChangePct = historyPeriodChangePct.takeIf { mitWert },
                     onPeriodChange = onPeriodChange
                 )
             }
-            financeSummaryCards(valuation, partsValuation, figsValuation, pnl, ::fmtPrice)
-            if (mitSumme) financeGrandTotal(valuation, partsValuation, figsValuation, pnl, ::fmtPrice)
         }
         // Die Zeilen: Filter, Sets, Teile, Minifiguren.
         val zeilen: androidx.compose.foundation.lazy.LazyListScope.() -> Unit = {
@@ -166,17 +165,22 @@ fun FinanceScreen(
         }
         // Ab Tabletbreite zwei Spalten wie die Set-Detailseite: links der Überblick, rechts
         // die Zeilen. Einspaltig lagen Betrag und Bezeichnung einer Zeile eine Armlänge auseinander.
+        // Die Summe schliesst die Zeilen rechts ab: Links unter dem Überblick stand sie
+        // neben einer halb leeren rechten Spalte.
         if (zweiSpaltig(maxWidth.value)) {
             Row(Modifier.fillMaxSize()) {
                 LazyColumn(Modifier.weight(1f).fillMaxHeight(), contentPadding = rand, verticalArrangement = abstand) {
-                    ueberblick(true)
+                    ueberblick()
                 }
                 LazyColumn(Modifier.weight(1f).fillMaxHeight(), state = listState, contentPadding = rand,
-                    verticalArrangement = abstand) { zeilen() }
+                    verticalArrangement = abstand) {
+                    zeilen()
+                    financeGrandTotal(valuation, partsValuation, figsValuation, pnl, ::fmtPrice)
+                }
             }
         } else {
             LazyColumn(state = listState, contentPadding = rand, verticalArrangement = abstand) {
-                ueberblick(false)
+                ueberblick()
                 zeilen()
                 financeGrandTotal(valuation, partsValuation, figsValuation, pnl, ::fmtPrice)
             }

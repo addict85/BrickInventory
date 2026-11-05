@@ -223,19 +223,25 @@ jobs:
 
       - name: Bauen
         run: |
-          npm ci
+          npm ci --ignore-scripts
+          npm rebuild esbuild
           npm run build
 
       # Wie im Betrieb: NODE_ENV=production (Startverbote, Cookies, CSP).
       # Das Protokoll geht in eine Datei, damit ein Fehlstart lesbar ist.
+      # Der Dienstcontainer kennt nur den Superuser; ZAP prüft die HTTP-Seite,
+      # die Datenbankrolle prüft db-rolle-db.test.js.
       - name: Server starten
         env:
           NODE_ENV: production
+          DB_SUPERUSER_ERLAUBT: '1'
           PORT: '3000'
           WEB_WORKERS: '1'
           DATABASE_URL: postgres://zap:zap-nur-im-lauf@localhost:5432/zap
           SESSION_SECRET: zap-lauf-geheimnis-lang-genug-fuer-den-start
           ADMIN_PASSWORD: zap-lauf-verwalter-passwort
+          # Ohne Adresse verweigert der Betrieb den Start; so prüft ZAP auch den Host-Filter mit.
+          APP_BASE_URL: http://localhost:3000
         run: |
           nohup node dist/server.js > "$RUNNER_TEMP/server.log" 2>&1 &
           for i in $(seq 1 90); do

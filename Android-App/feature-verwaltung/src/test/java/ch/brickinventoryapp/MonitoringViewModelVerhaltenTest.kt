@@ -15,7 +15,6 @@ import ch.brickinventoryapp.data.repository.TeileRepository
 import ch.brickinventoryapp.ui.viewmodel.MonitoringViewModel
 import com.jakewharton.retrofit2.converter.kotlinx.serialization.asConverterFactory
 import kotlinx.coroutines.test.runTest
-import kotlinx.serialization.json.Json
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.mockwebserver.MockResponse

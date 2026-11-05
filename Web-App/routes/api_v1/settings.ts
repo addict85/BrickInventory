@@ -3,7 +3,7 @@
 import multer from 'multer';
 import { FORMULAR_GRENZEN } from '../../src/infra/dateiEmpfang';
 import { fehlerAntwort, logAndContinue } from '../../src/infra/httpError';
-import { requireApiAdmin as requireAdmin, requireToken, bearerToken } from './middleware';
+import { requireApiAdmin as requireAdmin, requireToken, bearerToken, kontoSchranke } from './middleware';
 import {
   SECRET_KEYS, isMaskedValue,
   readSettings, globaleWerteOhneGeheimnisse, 
@@ -25,14 +25,16 @@ import { DAILY_JOBS } from '../../src/auftraege/zeitplan';
 import { quellePruefen, bricksetLimitGesetzt, zeitplanNeuPlanen, protokolliere } from '../../src/verwaltung/dienst';
 import { zugaengeDesKontos, zugaengeLoeschen, andereSitzungenBeenden, mussPasswortAendern, profil } from '../../src/konto/konten';
 import { escapeLike, hashToken, leereTokenCache } from '../../src/konto/auth';
+import { kontoGedrosselt } from '../../src/konto/zielDrossel';
 import { resolveUserId, requireLoginOrToken, nutzerId, angemeldeteNutzerId, istVerwalter, nutzerName, bestaetigeMitFaktor } from '../../src/konto/http/anmeldung';
-import { householdStatus, createInvite, redeemInvite, unlink, verwerfeGetrennt } from '../../src/haushalt/haushalt';
-import { sendMail, testSmtp, sendHaushaltVerknuepftMail } from '../../src/infra/mailer';
-import { sendeFehler } from '../../src/infra/fehlerTexte';
+import { verwalterHinweisNebenher } from '../../src/konto/kontoHinweis';
+import { householdStatus, createInvite, redeemInvite, pruefeEinladung, unlink, verwerfeGetrennt } from '../../src/haushalt/haushalt';
+import { sendMail, testSmtp, sendHaushaltVerknuepftMail, mailBereit } from '../../src/infra/mailer';
+import { sendeFehler, fehlerText, antwortSprache } from '../../src/infra/fehlerTexte';
 import { tlsStand } from '../../src/infra/tlsWurzel';
 import { konfig } from '../../src/infra/konfig';
 import { invalidateTheme } from '../../src/konto/indexHtml';
-import { jsonOderNull } from '../../src/infra/validate';
+import { jsonOderNull, emailGueltig } from '../../src/infra/validate';
 import { vertragsRouter } from '../../src/infra/vertrag/pruefen';
 import type { Antwort } from '../../src/infra/vertrag';
 const router = vertragsRouter();
@@ -168,6 +170,14 @@ router.post('/settings/household/invite', requireToken, async (req: AuthedReques
   res.json({ success: true, ...r });
 });
 
+router.post('/settings/household/redeem/pruefen', requireToken, async (req: AuthedRequest, res: Antwort<'POST /api/v1/settings/household/redeem/pruefen'>) => {
+  const zuOft = await kontoGedrosselt('haushalt-pruefen', req.apiUser.user_id, 30, 60 * 60 * 1000);
+  if (zuOft) return sendeFehler(req, res, 429, 'zu_viele_anfragen', { minuten: zuOft.waitMin });
+  const r = await pruefeEinladung(req.apiUser.user_id, String(req.body?.code || ''));
+  if ('fehler' in r) return sendeFehler(req, res, 409, r.fehler);
+  res.json({ success: true, ...r });
+});
+
 // Mit Passwort: Das Hauptkonto liest und schreibt danach den Bestand dieses
 // Kontos, auch über einen Passwortwechsel hinweg. Ein erbeutetes Token allein
 // soll das nicht einrichten können.
@@ -208,6 +218,8 @@ router.get('/settings/tls', async (_req, res: Antwort<'GET /api/v1/settings/tls'
                   gueltig_bis: stand.gueltig_bis, download: '/ca.crt' } : { fp: null }) });
 });
 
+const istHeikel = (k: string) => k.startsWith('smtp_') || k === 'registration_enabled' || /api_key$|^bricklink_(consumer|token)/.test(k);
+
 router.post('/settings', async (req: LoggedInRequest, res: Antwort<'POST /api/v1/settings'>) => {
   const uid = angemeldeteNutzerId(req);
   const globalKeys = ['bricklink_consumer_key','bricklink_consumer_secret','bricklink_token',
@@ -223,15 +235,24 @@ router.post('/settings', async (req: LoggedInRequest, res: Antwort<'POST /api/v1
   if (istVerwalter(req)) {
     if (globalKeys.some(k => req.body[k] !== undefined && !globalerWertGueltig(k, req.body[k])))
       return sendeFehler(req, res, 400, 'wert_ungueltig');
-    // Mailserver nur mit Passwort umstellen: Wer eine Verwaltersitzung erbeutet,
-    // läse sonst alle künftigen Rücksetz-Mails mit. Nur bei echter Änderung.
-    const smtpGeaendert: string[] = [];
-    for (const key of globalKeys.filter(k => k.startsWith('smtp_'))) {
+    if (String(req.body.registration_enabled) === '1' && await getGlobalSetting('registration_enabled') !== '1' && !await mailBereit(req.body))
+      return sendeFehler(req, res, 400, 'registrierung_braucht_mail');
+    // Mailserver, Registrierung und API-Schlüssel nur mit Passwort: Eine erbeutete
+    // Verwaltersitzung läse sonst Rücksetz-Mails mit oder öffnete still die Registrierung.
+    // Ein erster API-Schlüssel lenkt nichts um; nur der Einrichtungsassistent fragt dafür nicht nach.
+    const heikel: string[] = [];
+    const einrichtung = !await getGlobalSetting('einrichtung_erledigt');
+    for (const key of globalKeys.filter(istHeikel)) {
       const neu = req.body[key];
       if (neu === undefined || (SECRET_KEYS.has(key) && isMaskedValue(neu))) continue;
-      if (String(neu) !== String(await getGlobalSetting(key) ?? '')) smtpGeaendert.push(key);
+      const alt = String(await getGlobalSetting(key) ?? '');
+      if (String(neu) === alt || (einrichtung && alt === '' && !key.startsWith('smtp_') && key !== 'registration_enabled')) continue;
+      heikel.push(key);
     }
-    if (smtpGeaendert.length && !await bestaetigeMitFaktor(req, res, uid, req.body.admin_password)) return;
+    if (heikel.length && !req.body.admin_password) return sendeFehler(req, res, 400, 'aktuelles_passwort_erforderlich');
+    if (heikel.length && !await bestaetigeMitFaktor(req, res, uid, req.body.admin_password)) return;
+    if (heikel.some(k => !k.startsWith('smtp_')))
+      verwalterHinweisNebenher('einstellungen_geaendert', { konto: heikel.join(', '), durch: nutzerName(req) ?? '' });
 
     const oldBricksetLimit = req.body.api_limit_brickset !== undefined
       ? parseInt(await getGlobalSetting('api_limit_brickset') || '100')
@@ -305,7 +326,7 @@ router.get('/settings/export/data', async (req: LoggedInRequest, res) => {
 });
 
 const importUpload = multer({ storage: multer.memoryStorage(), limits: { ...FORMULAR_GRENZEN, fileSize: 1024 * 1024 } });
-router.post('/settings/import', importUpload.single('file'), async (req: LoggedInRequest, res: Antwort<'POST /api/v1/settings/import'>) => {
+router.post('/settings/import', kontoSchranke('upload'), importUpload.single('file'), async (req: LoggedInRequest, res: Antwort<'POST /api/v1/settings/import'>) => {
   if (!req.file) return sendeFehler(req, res, 400, 'keine_datei');
   const gelesen = jsonOderNull(req.file.buffer.toString('utf-8'));
   if (!gelesen) return sendeFehler(req, res, 400, 'json_ungueltig');
@@ -314,15 +335,14 @@ router.post('/settings/import', importUpload.single('file'), async (req: LoggedI
   const globalKeys = ['bricklink_consumer_key','bricklink_consumer_secret','bricklink_token',
     'bricklink_token_secret','brickset_api_key','rebrickable_api_key','price_job_interval_minutes',
     'price_cache_ttl','api_limit_rebrickable','api_limit_bricklink','api_limit_brickset',
-    // smtp_* fehlen mit Absicht: Eine Importdatei kommt von irgendwoher, und mit
-    // smtp_host + smtp_tls_ca gingen Rücksetz-Mails an einen fremden Server.
+    // Ohne die heiklen Schlüssel: Eine Importdatei kommt von irgendwoher und trägt keine Bestätigung.
     'registration_enabled', 'default_price_condition', 'gutschein_land',
-    ...DAILY_JOBS.map(j => `job_time_${j.name}`)];
+    ...DAILY_JOBS.map(j => `job_time_${j.name}`)].filter(k => !istHeikel(k));
   const userKeys = ['currency', 'user_default_condition'];
   const uid = angemeldeteNutzerId(req);
   let imported = 0;
   const smtpUebergangen = config.global && typeof config.global === 'object'
-    ? Object.keys(config.global).filter(k => k.startsWith('smtp_')) : [];
+    ? Object.keys(config.global).filter(istHeikel) : [];
   if (config.global && istVerwalter(req)) {
     if (globalKeys.some(k => config.global[k] !== undefined && !globalerWertGueltig(k, config.global[k])))
       return sendeFehler(req, res, 400, 'wert_ungueltig');
@@ -353,7 +373,7 @@ router.post('/settings/import', importUpload.single('file'), async (req: LoggedI
 
   if (istVerwalter(req)) await zeitplanNeuPlanen();
   const note = (istVerwalter(req) ? 'Globale + Benutzer-Einstellungen importiert' : 'Nur Benutzer-Einstellungen importiert')
-    + (istVerwalter(req) && smtpUebergangen.length ? '; SMTP nicht übernommen — bitte im Formular setzen' : '');
+    + (istVerwalter(req) && smtpUebergangen.length ? '; Mailserver, Registrierung und API-Schlüssel nicht übernommen — bitte im Formular setzen' : '');
   res.json({ success: true, imported, note, smtp_uebergangen: istVerwalter(req) ? smtpUebergangen : [] });
 });
 
@@ -366,7 +386,7 @@ router.post('/settings/smtp-test', async (req, res: Antwort<'POST /api/v1/settin
   if (!to) {
     to = (await profil(angemeldeteNutzerId(req)))?.email || '';
   }
-  if (!to || !to.includes('@')) {
+  if (!emailGueltig(to)) {
     return sendeFehler(req, res, 400, 'keine_ziel_email');
   }
 
@@ -405,8 +425,10 @@ router.post('/settings/einrichtung/fertig', async (req, res: Antwort<'POST /api/
 // Prüft den GESPEICHERTEN Zugang mit einem kleinen Abruf.
 router.post('/settings/quelle-testen', async (req, res: Antwort<'POST /api/v1/settings/quelle-testen'>) => {
   if (!istVerwalter(req)) return sendeFehler(req, res, 403, 'nur_admins');
-  await quellePruefen(String(req.body?.quelle ?? ''));
-  res.json({ success: true });
+  const absage = await quellePruefen(String(req.body?.quelle ?? ''));
+  if (!absage) return res.json({ success: true });
+  res.status(400).json({ success: false, code: absage.code, details: absage.grund,
+    error: fehlerText(absage.code, antwortSprache(req), { quelle: absage.quelle, grund: absage.grund }) });
 });
 
 // Leer heisst „Vorgabe des Verwalters".

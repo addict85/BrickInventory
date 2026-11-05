@@ -4,7 +4,7 @@ import { abonniere } from './00-ereignisse.js';
 import { echt, registerActions } from './00-registry.js';
 import { listeLadefehler, condBadges, ownerBadges, schliesseErfassen, csvHochladen } from './01-bausteine.js';
 import { colorName, t, tRaw } from '../i18n.js';
-import { fmtDatum, bildTag, platzhalterInhalt, leerZustand, escHex, G, TRASH_ICON_SVG, api, escJs, fmtN, fullUrl, imgUrl, thumbUrl, toast, zuruecksetzenKnopf, betragAusFeld, aktiverReiter } from './01-core.js';
+import { fmtDatum, bildTag, platzhalterInhalt, leerZustand, escHex, G, TRASH_ICON_SVG, api, escJs, fmtN, fullUrl, imgUrl, thumbUrl, toast, zuruecksetzenKnopf, betragAusFeld, aktiverReiter, ico } from './01-core.js';
 import { addLagerParam, addScopeParam, scopeQuery } from './14-scope.js';
 import { loadFinance } from './04-finance.js';
 import { geloeschtMitRueckgaengig } from './20-papierkorb.js';
@@ -179,7 +179,7 @@ export function renderFigs(list, target) {
         const erfasst = dateVal ? fmtDatum(dateVal) : '—';
         // Anklickbar wie die Kachel darunter — dieselbe Handlung in beiden
         // Ansichten (Marcos Detail-Dialog fuer automatisch erfasste Figuren).
-        return `<tr data-stil="cursor:pointer" data-click="${f.source==='manual'?'openManDetail':'openSetItemDetail'}" data-arg="fig" data-arg2="${escJs(f.fig_number)}" data-arg3="0">
+        return `<tr data-stil="cursor:pointer" tabindex="0" data-click="${f.source==='manual'?'openManDetail':'openSetItemDetail'}" data-arg="fig" data-arg2="${escJs(f.fig_number)}" data-arg3="0">
           <td>${imgSrc?bildTag({ src: imgSrc, alt: '', klasse: 'bild-klein', ph: 'figur' }):`<span class="bild-ph bild-klein" aria-hidden="true">${platzhalterInhalt('figur')}</span>`}</td>
           <td><span data-stil="font-family:var(--mono);font-size:var(--fs-1);color:var(--b600)">${esc(f.fig_number)}</span></td>
           <td data-stil="max-width:200px">${esc(f.fig_name)||'—'}</td>
@@ -200,7 +200,7 @@ export function renderFigs(list, target) {
   el.innerHTML = Object.entries(groups).map(([label, figs]) => `
     <div class="parts-group">
       <div class="group-hd">
-        <span class="group-title">${label}</span>
+        ${ico('set')}<span class="group-title">${label}</span>
         <span class="group-sub">${t('parts.group_types', { n: figs.length })}</span>
       </div>
       <div class="parts-grid">
@@ -229,10 +229,10 @@ export function renderFigs(list, target) {
           // Mengenaenderung. Die Kachel entscheidet nach der Quelle, damit
           // BEIDE Faelle richtig sind — auch wenn diese Liste heute nur
           // `source=set` laedt.
-          return `<div class="part-card" data-stil="position:relative;cursor:pointer" data-click="${f.source==='manual'?'openManDetail':'openSetItemDetail'}" data-arg="fig" data-arg2="${escJs(f.fig_number)}" data-arg3="0">
+          return `<div class="part-card" tabindex="0" role="button"${f.source==='manual' ? ' aria-keyshortcuts="Delete"' : ''} data-stil="position:relative;cursor:pointer" data-click="${f.source==='manual'?'openManDetail':'openSetItemDetail'}" data-arg="fig" data-arg2="${escJs(f.fig_number)}" data-arg3="0">
             ${delBtn}
-            ${imgSrc ? bildTag({ src: imgSrc, alt: f.fig_name || f.fig_number, klasse: 'part-img', fade: true, orig: fullUrl(imgSrc), ph: 'figur' })
-                     : `<span class="bild-ph part-img" role="img" aria-label="${esc(f.fig_name || f.fig_number)}">${platzhalterInhalt('figur')}</span>`}
+            ${imgSrc ? bildTag({ src: imgSrc, alt: '', klasse: 'part-img', fade: true, orig: fullUrl(imgSrc), ph: 'figur' })
+                     : `<span class="bild-ph part-img" aria-hidden="true">${platzhalterInhalt('figur')}</span>`}
             <div class="part-num">${esc(f.fig_number)}</div>
             <div class="part-name">${esc(f.fig_name)||'—'}</div>
             <div class="part-qty">×${f.total_quantity||f.quantity}</div>
@@ -274,11 +274,15 @@ let _manuelleFigurenLeer = null;
  */
 function figurenLeerAbgleichen() {
   const box = G('manual-figs-box');
+  G('tab-minifigs')?.classList.remove('sammlung-leer');
   if (box) box.style.display = _manuelleFigurenLeer === false ? '' : 'none';
+  const n = manualFigsCache.length;
+  if (G('manual-figs-n')) G('manual-figs-n').textContent = n ? tRaw('parts.group_types', { n }) : '';
   if (_setFigurenLeer !== true) return;
   const el = G('figs-list');
   if (_manuelleFigurenLeer === false) { el.innerHTML = ''; return; }
   const q = G('fig-search')?.value.trim() || '';
+  G('tab-minifigs')?.classList.toggle('sammlung-leer', !q);
   el.innerHTML = q
     ? leerZustand({ ico: 'suche', titel: tRaw('common.no_hits', { query: q }), knopf: zuruecksetzenKnopf('minifigs') })
     : leerZustand({ ico: 'figur', titel: tRaw('figs.empty'), text: tRaw('figs.auto_hint'),
@@ -307,15 +311,15 @@ export function renderManualFigsTable() {
     ${manualFigsCache.map(f => {
       const imgSrc = imgUrl(thumbUrl(f.image_local || f.image_url) || f.image_local || f.image_url || '', true);
       const img = imgSrc
-        ? bildTag({ src: imgSrc, alt: f.fig_name || f.fig_number, klasse: 'man-tile-img', ph: 'figur' })
-        : `<span class="bild-ph man-tile-img" role="img" aria-label="${esc(f.fig_name || f.fig_number)}">${platzhalterInhalt('figur')}</span>`;
+        ? bildTag({ src: imgSrc, alt: '', klasse: 'man-tile-img', ph: 'figur' })
+        : `<span class="bild-ph man-tile-img" aria-hidden="true">${platzhalterInhalt('figur')}</span>`;
       // Mengengewichteter Kaufpreis über die Erfassungen (Server rechnet ihn).
       // unit_price ist der zuletzt geschriebene Einzelwert der Stammzeile —
       // bei zwei Erfassungen zu verschiedenen Preisen stimmte er nicht.
       const figPrice = f.avg_purchase_price ?? f.unit_price ?? f.purchase_price;
       const priceStr = figPrice!=null ? fmtN(figPrice, CURRENCY) : '—';
       const condBadge = condBadges(f);
-      return `<div class="man-tile" tabindex="0" role="button" data-click="openManDetail" data-arg="fig" data-arg2="${esc(f.fig_number)}" data-arg3="0" data-stil="cursor:pointer">
+      return `<div class="man-tile" tabindex="0" role="button" aria-keyshortcuts="Delete" data-click="openManDetail" data-arg="fig" data-arg2="${esc(f.fig_number)}" data-arg3="0" data-stil="cursor:pointer">
         <div class="ca"><span class="delbtn" data-click="deleteManualFigStop"${echt()} aria-hidden="true" data-arg="${esc(f.fig_number)}" data-arg2="${f.user_id||''}" title="${esc(t('figs.delete'))}">${TRASH_ICON_SVG}</span></div>
         ${img}
         <div class="man-tile-num">${esc(f.fig_number)}</div>

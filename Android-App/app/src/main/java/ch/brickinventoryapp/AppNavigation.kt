@@ -1,5 +1,10 @@
 package ch.brickinventoryapp
 
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.MenuBook
@@ -27,7 +32,6 @@ import ch.brickinventoryapp.ui.viewmodel.UpdateViewModel
 import ch.brickinventoryapp.util.NetworkPolicy
 
 // Die Navigationsziele liegen seit der Aufteilung in nav/ (eigenes Paket).
-
 
 /**
  * App-Navigation und Haupt-Gerüst: der NavHost mit allen Routen, die Dialoge, die
@@ -152,7 +156,6 @@ fun BrickInventoryManagerApp(
     // steht ein paar Zeilen weiter oben.
     ch.brickinventoryapp.ui.dialogs.UpdateDialog(selbstUpdate)
 
-
     // Eine angetippte Preisalarm-Meldung öffnet ihr Set — hier, weil es den
     // NavController erst in dieser Composition gibt. Nur angemeldet; sonst bleibt
     // das Ziel stehen und wird nach der Anmeldung eingelöst.
@@ -168,11 +171,17 @@ fun BrickInventoryManagerApp(
         }
     }
 
-    val activity = androidx.compose.ui.platform.LocalContext.current
     // Der gemeinsame Raum für Elementübergänge (Galerie → Set-Detail); das
     // vorhersagbare Zurück spielt denselben Übergang rückwärts.
     ch.brickinventoryapp.ui.components.UebergangsRahmen {
-    NavHost(navController, startDestination = startDest) {
+    // Dezente Übergänge: kurz einblenden und ein Stück nachrücken, zurück in die
+    // Gegenrichtung. Die Vorgabe (700 ms reines Überblenden) wirkte träge.
+    NavHost(navController, startDestination = startDest,
+        enterTransition = { fadeIn(tween(UEBERGANG_MS)) + slideInHorizontally(tween(UEBERGANG_MS)) { it / 16 } },
+        exitTransition = { fadeOut(tween(UEBERGANG_MS / 2)) },
+        popEnterTransition = { fadeIn(tween(UEBERGANG_MS)) },
+        popExitTransition = { fadeOut(tween(UEBERGANG_MS / 2)) + slideOutHorizontally(tween(UEBERGANG_MS)) { it / 16 } },
+    ) {
         // Die Ziele liegen in nav/*.kt. state/manDetailState werden nicht übergeben: Der
         // NavHost-Builder läuft nur einmal, ein durchgereichter Wert bliebe die
         // Momentaufnahme des ersten Frames. Die Ziele lesen den Zustand selbst per
@@ -181,8 +190,11 @@ fun BrickInventoryManagerApp(
         collectionGraph(vm, navController, imageLoader, bottomNavItems, snackbarHostState,
             galleryGridState, partsGridState, minifigsGridState)
         catalogGraph(vm, katalog, navController, imageLoader, bottomNavItems, snackbarHostState)
-        toolsGraph(vm, gutscheine, navController, imageLoader, bottomNavItems, snackbarHostState, activity,
+        toolsGraph(vm, gutscheine, navController, imageLoader, bottomNavItems, snackbarHostState,
             financeListState, partsListState, settingsScrollState)
     }
     }
 }
+
+/** Dauer eines Seitenwechsels; kurz genug, dass er nicht aufhält. */
+private const val UEBERGANG_MS = 220

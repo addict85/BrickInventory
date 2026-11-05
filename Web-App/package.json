@@ -4,8 +4,8 @@
   "description": "BrickInventory Manager",
   "main": "dist/server.js",
   "scripts": {
-    "start": "node dist/server.js",
-    "dev": "node scripts/build-frontend.js && tsx watch server.ts",
+    "start": "NODE_ENV=production node dist/server.js",
+    "dev": "node scripts/build-frontend.js && NODE_ENV=development tsx watch server.ts",
     "build": "node scripts/generate-design-tokens.js && node scripts/build-ts.js --outdir dist && node scripts/build-frontend.js",
     "typecheck": "tsc --noEmit",
     "typecheck:strict": "node scripts/check-noimplicitany.js",

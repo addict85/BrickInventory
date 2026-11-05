@@ -1,6 +1,22 @@
 package ch.brickinventoryapp.ui.components
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.imePadding
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.Surface
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalWindowInfo
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
+import ch.brickinventoryapp.ui.MITTLERE_BREITE_DP
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -23,8 +39,9 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.contentType
+import androidx.compose.ui.autofill.ContentType
 import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.ui.text.input.PasswordVisualTransformation
 import ch.brickinventoryapp.ressourcen.R
 import ch.brickinventoryapp.ui.theme.Abstaende
 import ch.brickinventoryapp.ui.theme.AppKarte
@@ -49,7 +66,8 @@ fun Rueckfrage(
         onDismissRequest = onAbbrechen,
         icon = symbol?.let { s -> { Icon(s, null, tint = MaterialTheme.colorScheme.error) } },
         title = { Text(titel) },
-        text = { Text(text) },
+        // Rollbar: Bei 200 % Schrift reicht ein langer Satz sonst unter die Knöpfe.
+        text = { Text(text, Modifier.verticalScroll(rememberScrollState())) },
         confirmButton = {
             TextButton(onClick = onBestaetigen) { Text(bestaetigen, color = MaterialTheme.colorScheme.error) }
         },
@@ -61,6 +79,7 @@ fun Rueckfrage(
  * Der Rahmen jedes Erfassen-Dialogs: Titel links ohne Symbol, die Felder mit
  * gleichem Abstand untereinander, rechts der volle Knopf. Set, Merkposten,
  * Übernahme und Lagerort sahen vorher je anders aus (Symbol, Mitte, Rundung).
+ * Auf dem Telefon mit grosser Schrift als Vollbild ([vollbildErfassen]).
  */
 @Composable
 fun ErfassenDialog(
@@ -71,15 +90,74 @@ fun ErfassenDialog(
     bestaetigenAn: Boolean = true,
     inhalt: @Composable ColumnScope.() -> Unit,
 ) {
+    if (vollbildErfassen()) {
+        VollbildErfassen(titel, bestaetigen, onBestaetigen, onAbbrechen, bestaetigenAn, inhalt)
+        return
+    }
     AlertDialog(
         onDismissRequest = onAbbrechen,
         title = { Text(titel) },
-        text = { Column(verticalArrangement = Arrangement.spacedBy(Abstaende.mittel), content = inhalt) },
+        // Rollbar: Ist die Schrift gross, sind die Felder höher als das Fenster; die
+        // Knöpfe bleiben dabei stehen, nur die Felder rollen.
+        text = {
+            Column(Modifier.verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(Abstaende.mittel)) { inhalt() }
+        },
         confirmButton = {
-            Button(onClick = onBestaetigen, enabled = bestaetigenAn, shape = Formen.knopf) { Text(bestaetigen) }
+            Button(onClick = onBestaetigen, enabled = bestaetigenAn) { Text(bestaetigen) }
         },
         dismissButton = { TextButton(onClick = onAbbrechen) { Text(stringResource(R.string.common_cancel)) } },
     )
+}
+
+/**
+ * Vollbild statt schwebendem Dialog: auf schmalem Fenster ab grosser Schrift. Dort
+ * füllte der AlertDialog den Schirm ohnehin, und seine Rollkante schnitt Zeilen mitten
+ * durch (Material: „full-screen dialog“ für Eingaben auf dem Telefon).
+ */
+@Composable
+fun vollbildErfassen(): Boolean {
+    val breiteDp = LocalWindowInfo.current.containerSize.width / LocalDensity.current.density
+    return grosseSchrift() && breiteDp < MITTLERE_BREITE_DP
+}
+
+/**
+ * Kopf mit Schliessen und Titel, die Felder rollen, der Bestätigen-Knopf steht fest
+ * am Fuss in voller Breite: Neben einem Titel in 200 % Schrift hätte er oben keinen Platz.
+ */
+@Composable
+private fun VollbildErfassen(
+    titel: String,
+    bestaetigen: String,
+    onBestaetigen: () -> Unit,
+    onAbbrechen: () -> Unit,
+    bestaetigenAn: Boolean,
+    inhalt: @Composable ColumnScope.() -> Unit,
+) {
+    Dialog(onDismissRequest = onAbbrechen, properties = DialogProperties(usePlatformDefaultWidth = false)) {
+        Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.surface) {
+            Column(Modifier.fillMaxSize().imePadding()) {
+                Row(Modifier.fillMaxWidth().padding(horizontal = Abstaende.winzig, vertical = Abstaende.klein),
+                    verticalAlignment = Alignment.CenterVertically) {
+                    MitTooltip(stringResource(R.string.common_cancel)) {
+                        IconButton(onClick = onAbbrechen) {
+                            Icon(Icons.Default.Close, contentDescription = stringResource(R.string.common_cancel))
+                        }
+                    }
+                    Text(titel, style = MaterialTheme.typography.titleLarge,
+                        modifier = Modifier.weight(1f).semantics { heading() })
+                }
+                Column(
+                    Modifier.weight(1f).fillMaxWidth().verticalScroll(rememberScrollState())
+                        .padding(horizontal = Abstaende.gross, vertical = Abstaende.klein),
+                    verticalArrangement = Arrangement.spacedBy(Abstaende.mittel),
+                ) { inhalt() }
+                HorizontalDivider()
+                Button(onClick = onBestaetigen, enabled = bestaetigenAn,
+                    modifier = Modifier.fillMaxWidth().padding(Abstaende.gross)) { Text(bestaetigen) }
+            }
+        }
+    }
 }
 
 /**
@@ -100,10 +178,10 @@ fun Abschnitt(
             if (innenAbstand) Modifier.fillMaxWidth().padding(Abstaende.gross) else Modifier.fillMaxWidth(),
             verticalArrangement = Arrangement.spacedBy(Abstaende.klein),
         ) {
-            if (titel != null) Text(titel, style = MaterialTheme.typography.titleSmall,
-                color = MaterialTheme.colorScheme.primary,
-                modifier = (if (innenAbstand) Modifier else Modifier.padding(start = Abstaende.gross,
-                    end = Abstaende.gross, top = Abstaende.gross)).semantics { heading() })
+            // Dieselbe Überschrift wie jede Karte (Abschnittstitel).
+            if (titel != null) Abschnittstitel(titel,
+                if (innenAbstand) Modifier else Modifier.padding(start = Abstaende.gross,
+                    end = Abstaende.gross, top = Abstaende.gross))
             inhalt()
         }
     }
@@ -138,16 +216,10 @@ fun PasswortRueckfrage(
         // Ein Dialog hat sein eigenes Fenster; der Schutz der Seite reicht nicht hinein.
         Ueberdeckungsschutz()
         Text(text, style = MaterialTheme.typography.bodyMedium)
-        OutlinedTextField(
-            value = passwort, onValueChange = { passwort = it },
-            label = { Text(stringResource(R.string.konto_password_current)) },
-            visualTransformation = PasswordVisualTransformation(),
-            modifier = Modifier.fillMaxWidth(), singleLine = true, shape = Formen.knopf,
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password))
+        PasswortFeld(passwort, { passwort = it }, stringResource(R.string.konto_password_current),
+            Modifier.fillMaxWidth())
         if (codeNoetig) ZweiterFaktorCodeFeld(code) { code = it }
-        if (fehler != null) {
-            Text(fehler, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
-        }
+        if (fehler != null) FehlerZeile(fehler)
     }
 }
 
@@ -158,6 +230,8 @@ fun ZweiterFaktorCodeFeld(code: String, onCode: (String) -> Unit) {
         value = code, onValueChange = { onCode(it.take(24)) },
         label = { Text(stringResource(R.string.login_code)) },
         supportingText = { Text(stringResource(R.string.login_code_hint)) },
-        modifier = Modifier.fillMaxWidth(), singleLine = true, shape = Formen.knopf,
+        // Das System bietet einen eben empfangenen Code zum Einsetzen an.
+        modifier = Modifier.fillMaxWidth().semantics { contentType = ContentType.SmsOtpCode },
+        singleLine = true, shape = Formen.feld,
         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Ascii))
 }

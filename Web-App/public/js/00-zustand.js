@@ -21,7 +21,7 @@ export let _settingsCache = null;
 export let allSets = [];
 /** Das Set im Detail-Dialog; null, wenn er zu ist. @type {any} */
 export let curSet = null;
-/** Kachelpreis und G&V je Setnummer aus /v1/finance/pnl. @type {Record<string, { price: any, pnl_pct: any }>} */
+/** Kachelpreis und G&V je Setnummer aus /v1/finance/pnl. @type {Record<string, { price: any, pnl_pct: any, quelle?: string }>} */
 export let _pnlCache = {};
 /** Zeitpunkt (ms) des letzten Set-Imports; die Auftragsanzeige wartet danach kurz. */
 export let _lastImportAt = 0;

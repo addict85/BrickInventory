@@ -123,7 +123,7 @@ fun <T> WahlChips(
                 Row(Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    if (an) Icon(Icons.Default.Check, null, Modifier.size(18.dp))
+                    if (an) Icon(Icons.Default.Check, null, Modifier.size(ch.brickinventoryapp.ui.components.mitSchrift(18.dp)))
                     Text(text, style = MaterialTheme.typography.labelLarge)
                 }
             }
@@ -148,11 +148,13 @@ fun SortierMenue(
     val aktuell = optionen.firstOrNull { it.first == gewaehlt }?.second ?: ""
     Box(modifier) {
         BadgedBox(badge = { if (vorgabe != null && gewaehlt != vorgabe) Badge() }) {
-            OutlinedIconButton(
-                onClick = { offen = true },
-                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
-            ) {
-                Icon(Icons.AutoMirrored.Filled.Sort, stringResource(R.string.sort_menu_cd, aktuell))
+            MitTooltip(stringResource(R.string.sort_menu_cd, aktuell)) {
+                OutlinedIconButton(
+                    onClick = { offen = true },
+                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
+                ) {
+                    Icon(Icons.AutoMirrored.Filled.Sort, stringResource(R.string.sort_menu_cd, aktuell))
+                }
             }
         }
         DropdownMenu(offen, { offen = false }) {
@@ -165,7 +167,7 @@ fun SortierMenue(
                     text = { Text(text) },
                     onClick = { offen = false; if (wert != gewaehlt) onWahl(wert) },
                     leadingIcon = {
-                        if (wert == gewaehlt) Icon(Icons.Default.Check, null, Modifier.size(18.dp))
+                        if (wert == gewaehlt) Icon(Icons.Default.Check, null, Modifier.size(ch.brickinventoryapp.ui.components.mitSchrift(18.dp)))
                         else Spacer(Modifier.size(18.dp))
                     },
                     modifier = Modifier.semantics { selected = wert == gewaehlt },

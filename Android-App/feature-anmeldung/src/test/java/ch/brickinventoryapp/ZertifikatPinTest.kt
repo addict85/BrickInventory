@@ -86,6 +86,10 @@ import javax.net.ssl.X509ExtendedTrustManager
  *      Handshake-Sitzung gilt der Pin des eigenen Servers“
  *   S  ErneuerbareTlsFabrik.erneuere() ohne Wirkung → rot „nach dem Erneuern prueft
  *      eine neue Verbindung die Kette wieder“ (die Sitzung wurde wiederaufgenommen)
+ * Gegenprobe (04.11.2026, gemessen mit kotlinc lokal; sec11 H6):
+ *   T  in pruefe() wieder `if (pin != null && passtZumPin(chain, pin)) return` (auch
+ *      für eine System-Wurzel) → rot „ein Pin auf eine System-Wurzel gilt nur mit der
+ *      System-Pruefung …“; gegenproben/wurzelpin-ohne-ct.patch
  */
 class ZertifikatPinTest {
 
@@ -371,6 +375,36 @@ class ZertifikatPinTest {
         assertEquals("Nur die eine gültige Anfrage kam an", 1, server.requestCount)
     }
 
+    /**
+     * Ein Pin auf eine System-Wurzel heisst „öffentlich gültig“, und dazu gehört die
+     * CT-Prüfung des Systems. Schickt der Server die Wurzel mit, darf der Abgleich mit
+     * dem Pin diese Prüfung nicht ersetzen. Das „System“ hier kennt die Wurzel, lehnt
+     * aber jede Kette ab, wie es eine nicht protokollierte Ausstellung täte.
+     */
+    @Test
+    fun `ein Pin auf eine System-Wurzel gilt nur mit der System-Pruefung, auch wenn der Server sie mitschickt`() {
+        starte(WURZEL_BLATT_KEY, listOf(WURZEL_BLATT, WURZEL))
+        val basis = system(WURZEL)
+        val ohneCt = object : X509ExtendedTrustManager() {
+            private fun nein(): Nothing = throw java.security.cert.CertificateException("nicht in den CT-Protokollen")
+            override fun checkServerTrusted(c: Array<X509Certificate>, a: String, s: java.net.Socket?) { nein() }
+            override fun checkServerTrusted(c: Array<X509Certificate>, a: String, e: javax.net.ssl.SSLEngine?) { nein() }
+            override fun checkServerTrusted(c: Array<X509Certificate>, a: String) { nein() }
+            override fun checkClientTrusted(c: Array<X509Certificate>, a: String, s: java.net.Socket?) = basis.checkClientTrusted(c, a, s)
+            override fun checkClientTrusted(c: Array<X509Certificate>, a: String, e: javax.net.ssl.SSLEngine?) = basis.checkClientTrusted(c, a, e)
+            override fun checkClientTrusted(c: Array<X509Certificate>, a: String) = basis.checkClientTrusted(c, a)
+            override fun getAcceptedIssuers(): Array<X509Certificate> = basis.acceptedIssuers
+        }
+        pins.merkePin(eigener(), spkiFingerabdruck(zert(WURZEL)))
+        assertFalse("Die mitgeschickte Wurzel ersetzt die System-Prüfung", hole(basis, fremd = ohneCt))
+        assertEquals(0, server.requestCount)
+        assertEquals(ZertifikatUngeklaert.Art.GEAENDERT, frage.offen.value?.art)
+
+        frage.verwerfen()
+        assertTrue("Mit bestandener System-Prüfung gilt der Pin", hole(basis, fremd = basis))
+        assertNull(frage.offen.value)
+    }
+
     /** Die Fassung ohne Socket kennt den Host nicht; ein Pin des eigenen Servers gilt trotzdem. */
     @Test
     fun `ohne Host faellt ein gepinnter Server nicht auf die System-CAs zurueck`() {
@@ -503,6 +537,6 @@ class ZertifikatPinTest {
         const val OEFF2_WURZEL = "MIIBqDCCAU2gAwIBAgIUeQfiSvXaOs9VQ7JOTGuYq9+9io8wCgYIKoZIzj0EAwIwIDEeMBwGA1UEAwwVT2VmZmVudGxpY2hlIFd1cnplbCAyMCAXDTI2MTEwMjA0NDcyMFoYDzIxMjYxMDA5MDQ0NzIwWjAgMR4wHAYDVQQDDBVPZWZmZW50bGljaGUgV3VyemVsIDIwWTATBgcqhkjOPQIBBggqhkjOPQMBBwNCAARXPBIUHUcx0gndNtCFWOsc9VK1UCPYVdTt/elmdGtOr+QqU+2kj82x5bM5PwwxyeTMI0l/0m7+IhRHasjTD3wAo2MwYTAdBgNVHQ4EFgQUNiOkY9V+q2qKkLNO3YzYDvJSMtgwHwYDVR0jBBgwFoAUNiOkY9V+q2qKkLNO3YzYDvJSMtgwDwYDVR0TAQH/BAUwAwEB/zAOBgNVHQ8BAf8EBAMCAQYwCgYIKoZIzj0EAwIDSQAwRgIhAOtFyStygsxuZ82WUpQfgs4yEc9yd5SHXzEeM5gxXWiHAiEAxq1QdZDQEZLbpSZkktaMa/gUng+ruXUCb7bbSSw+VW4="
         const val OEFF2_BLATT = "MIIByjCCAXGgAwIBAgIUBZldxIW8pDuyAwDmNEUH+CvVA/8wCgYIKoZIzj0EAwIwIDEeMBwGA1UEAwwVT2VmZmVudGxpY2hlIFd1cnplbCAyMCAXDTI2MTEwMjA0NDcyMFoYDzIxMjYxMDA5MDQ0NzIwWjAUMRIwEAYDVQQDDAlsb2NhbGhvc3QwWTATBgcqhkjOPQIBBggqhkjOPQMBBwNCAAR3UZCup1reCVwcdpUWXuBroLN2Ae2orBEjO/63RFn9ppwOTZcXNQbuX2J20HqKFM7F5pgpPdZWoCx5CuuTDLkco4GSMIGPMAwGA1UdEwEB/wQCMAAwDgYDVR0PAQH/BAQDAgeAMBMGA1UdJQQMMAoGCCsGAQUFBwMBMBoGA1UdEQQTMBGCCWxvY2FsaG9zdIcEfwAAATAdBgNVHQ4EFgQU0+JHa2fUKgS1c8Qpf2MPvkf10x0wHwYDVR0jBBgwFoAUNiOkY9V+q2qKkLNO3YzYDvJSMtgwCgYIKoZIzj0EAwIDRwAwRAIgaI3NXaJqaJPF9F3F5MA/uHYXmLEMDGlz2rerz62IXIACIGGccRCorHmF04MB3oFogbyx7s3cjhOWNIM2PivVGTsj"
         const val OEFF2_BLATT_KEY = "MIGHAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBG0wawIBAQQgkJUGxWpt9r1Mxq/Kodx7mWejKYEWCr0nz2zAkQCUrm2hRANCAAR3UZCup1reCVwcdpUWXuBroLN2Ae2orBEjO/63RFn9ppwOTZcXNQbuX2J20HqKFM7F5pgpPdZWoCx5CuuTDLkc"
-        const val FREMD ="MIIBmDCCAT6gAwIBAgIUBpLM0+8DZR9WqDw7DqtrEKH9KDswCgYIKoZIzj0EAwIwFDESMBAGA1UEAwwJbG9jYWxob3N0MCAXDTI2MTAzMDE1NDI1OFoYDzIxMjYxMDA2MTU0MjU4WjAUMRIwEAYDVQQDDAlsb2NhbGhvc3QwWTATBgcqhkjOPQIBBggqhkjOPQMBBwNCAATSAfTFPtfDF3dy0bcjX8dCElM9oKs2NYwoZEyfWsb5EIpbYtqP7F6JCLbrsb7GVytdEqsatNJDifymfYNnIJPjo2wwajAdBgNVHQ4EFgQU5NOS8aVLD/bPQjWQ5foWE5AcTIQwHwYDVR0jBBgwFoAU5NOS8aVLD/bPQjWQ5foWE5AcTIQwGgYDVR0RBBMwEYIJbG9jYWxob3N0hwR/AAABMAwGA1UdEwEB/wQCMAAwCgYIKoZIzj0EAwIDSAAwRQIgD2hCTe+02K17PzDfV7EgrTEgIV1C99ShlLSwHZsc1IICIQCknNnfSKSNOc+Kilyyna8ag4H9A8XH9kfcAia1XVWbDg=="
+        const val FREMD = "MIIBmDCCAT6gAwIBAgIUBpLM0+8DZR9WqDw7DqtrEKH9KDswCgYIKoZIzj0EAwIwFDESMBAGA1UEAwwJbG9jYWxob3N0MCAXDTI2MTAzMDE1NDI1OFoYDzIxMjYxMDA2MTU0MjU4WjAUMRIwEAYDVQQDDAlsb2NhbGhvc3QwWTATBgcqhkjOPQIBBggqhkjOPQMBBwNCAATSAfTFPtfDF3dy0bcjX8dCElM9oKs2NYwoZEyfWsb5EIpbYtqP7F6JCLbrsb7GVytdEqsatNJDifymfYNnIJPjo2wwajAdBgNVHQ4EFgQU5NOS8aVLD/bPQjWQ5foWE5AcTIQwHwYDVR0jBBgwFoAU5NOS8aVLD/bPQjWQ5foWE5AcTIQwGgYDVR0RBBMwEYIJbG9jYWxob3N0hwR/AAABMAwGA1UdEwEB/wQCMAAwCgYIKoZIzj0EAwIDSAAwRQIgD2hCTe+02K17PzDfV7EgrTEgIV1C99ShlLSwHZsc1IICIQCknNnfSKSNOc+Kilyyna8ag4H9A8XH9kfcAia1XVWbDg=="
     }
 }

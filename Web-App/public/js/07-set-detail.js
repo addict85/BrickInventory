@@ -4,11 +4,11 @@
 import { stelleZielBereit } from './00-ziele.js';
 import { registerActions, echt } from './00-registry.js';
 import { CURRENCY, ME, curSet, set_curSet } from './00-zustand.js';
-import { G, api, escJs, escUrl, fmtDatum, fmtGeld, fullUrl, ico, toast, aktiverReiter } from './01-core.js';
+import { G, api, escJs, escUrl, fmtDatum, fmtGeld, fullUrl, ico, toast, aktiverReiter, verwirfToasts } from './01-core.js';
 import { alarmBlock, closeModal, ladeAlarm, ladeOrtAuswahl, lagerortBlock, setzeAlarmFeld } from './02-detailfelder.js';
 import { confirmDelete } from './01-rueckfrage.js';
 import { delSet, loadGallery, loadStats, reimportParts } from './02-gallery.js';
-import { detailZeile, oderStrich, skelettZeilen } from './01-bausteine.js';
+import { detailZeile, oderStrich, skelettZeilen, oeffneErfassen } from './01-bausteine.js';
 import { diagrammBreite, priceChartSVG, renderMarketRows } from './01-diagramme.js';
 import { loadFinance } from './04-finance.js';
 import { locale, t, tRaw } from '../i18n.js';
@@ -28,7 +28,7 @@ function setDetailHtml(sn, acqs) {
   // der Platzhalter; gefüllt wird er in renderMarketRows() weiter unten,
   // sobald die Antwort da ist.
   // Ausführlich: docs/begruendungen/public/js/07-set-detail.js.md#pricerow
-  const priceRow = '<div id="m-market-rows"></div>';
+  const priceRow = `<div class="m-wertkopf" id="m-market-rows" data-kopf="1" role="group" aria-label="${esc(tRaw('detail.wert'))}"><div class="skelett-zeile"></div><div class="skelett-zeile kurz"></div></div>`;
   const pnlRow  = '';
   const qtyRow = detailZeile(t('detail.qty'), `
       <button class="btn bs btn-sm detail-knopf menge-knopf" data-click="mQtyDec" aria-label="${esc(tRaw('detail.qty_less'))}">−</button>
@@ -45,12 +45,13 @@ function setDetailHtml(sn, acqs) {
          wertStil: 'flex-direction:column;align-items:flex-end;gap:3px' });
 
   return `
+    ${priceRow}${pnlRow}
+    ${acqRows}
     ${detailZeile(t('detail.year'), oderStrich(curSet.year))}
     ${detailZeile(t('detail.theme'), esc(oderStrich(curSet.theme)))}
     ${qtyRow}
     ${detailZeile(t('detail.pieces'), curSet.pieces ? curSet.pieces.toLocaleString(locale()) : '—')}
     ${detailZeile(t('detail.minifigs'), oderStrich(curSet.minifigs), { wertId: 'm-minifigs-val' })}
-    ${detailZeile(t('detail.created'), `${ico('kalender')} ${addedFmt}`)}
     ${detailZeile(t('detail.alert'), alarmBlock(sn), { klasse: 'alarm-zeile',
          zeilenStil: 'align-items:flex-start',
          wertStil: 'display:flex;align-items:center;gap:6px;flex-wrap:wrap;justify-content:flex-end' })}
@@ -58,8 +59,7 @@ function setDetailHtml(sn, acqs) {
         lagerortBlock('m-storage', curSet.storage,
                       `data-change="speichereSetLagerort" data-arg="${escJs(sn)}"`),
         { wertStil: 'display:flex;align-items:center;gap:6px;flex-wrap:wrap;justify-content:flex-end' })}
-    ${acqRows}
-    ${priceRow}${pnlRow}
+    ${detailZeile(t('detail.created'), `${ico('kalender')} ${addedFmt}`, { klasse: 'dr-leise' })}
     <div id="m-price-chart" data-stil="margin-top:.75rem">
       <div data-stil="font-size:var(--fs-1);font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--mut);margin-bottom:4px">${t('detail.price_history')}</div>
       <div class="sparkline-wrap" id="m-sparkline-content"><span data-stil="color:var(--mut);font-size:var(--fs-1)">${t('common.loading')}</span></div>
@@ -109,7 +109,16 @@ export async function openModal(sn){
   ]);
   // Inzwischen geschlossen oder ein anderes Set geöffnet: nichts mehr zeichnen.
   if (lauf !== _detailLauf || !G('set-modal').classList.contains('open')) return;
-  if(!d?.success){ G('set-modal').classList.remove('open'); toast(tRaw('settings.error'),'error'); return; }
+  if(!d?.success){
+    G('set-modal').classList.remove('open');
+    // Meist ein Link auf ein Set, das (noch) nicht in diesem Konto ist: das sagen und das Anlegen anbieten.
+    if (d?.status === 404) {
+      verwirfToasts();
+      toast(tRaw('detail.nicht_in_sammlung', { nr: sn }), 'info', { text: tRaw('detail.jetzt_hinzufuegen'), fn: () => {
+        oeffneErfassen('set'); const f = G('add-num'); if (f) { f.value = sn; f.focus(); } } });
+    } else toast(d?.error || tRaw('settings.error'), 'error');
+    return;
+  }
   set_curSet(d.set);
   document.querySelector('#set-modal .mehr-menue')?.removeAttribute('open');
   G('m-tit').textContent=curSet.name||curSet.set_number;
@@ -164,7 +173,8 @@ export function renderInstructions(instr, sn) {
       <div data-stil="font-size:var(--fs-1);font-weight:600;color:var(--mut);margin-bottom:7px">${t('instr.upload_title')}</div>
       <div data-stil="display:flex;gap:6px;flex-wrap:wrap;align-items:flex-end">
         <div data-stil="flex:1;min-width:140px">
-          <input type="text" id="instr-desc" placeholder="${t('instr.desc_placeholder')}" data-stil="font-size:var(--fs-2);padding:6px 10px" />
+          <label for="instr-desc" class="feld-titel-klein">${t('instr.desc_placeholder')}</label>
+          <input type="text" id="instr-desc" data-stil="font-size:var(--fs-2);padding:6px 10px" />
         </div>
         <label class="btn bs btn-sm zeiger">
           ${ico('datei')} ${t('instr.choose_file')}

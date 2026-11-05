@@ -212,6 +212,28 @@ function zeigeSeitenname(flaeche, imKopf){
   const kopf = G('kopf-sicht');
   if (kopf) { kopf.textContent = imKopf ? titel : ''; kopf.hidden = !(imKopf && titel); }
   document.title = titel ? `${titel} – BrickInventory` : 'BrickInventory Manager';
+  beobachteTitel(flaeche);
+}
+
+/** Beim Start ist die Sammlung schon offen, ohne dass ein Reiter geklickt wurde: Titel trotzdem setzen. */
+export function seitennameAktualisieren(){
+  const flaeche = document.querySelector('.tab.active');
+  const reiter = flaeche && document.querySelector(`.ntab[data-tab="${flaeche.id.replace(/^tab-/, '')}"]`);
+  zeigeSeitenname(flaeche, !reiter || reiter.classList.contains('ntab-unter'));
+}
+
+/**
+ * Am Telefon steht der Seitenname nur dann im Kopf, wenn die Überschrift
+ * hinausgerollt ist; sonst stünde er zweimal untereinander.
+ */
+let _titelBeobachter = null;
+function beobachteTitel(flaeche){
+  const kopf = G('kopf-sicht'), h1 = flaeche?.querySelector('.ptitle');
+  _titelBeobachter?.disconnect();
+  if (!kopf || !h1 || typeof IntersectionObserver !== 'function') return;
+  _titelBeobachter = new IntersectionObserver(([e]) => kopf.classList.toggle('titel-sichtbar', e.isIntersecting),
+    { rootMargin: '-64px 0px 0px 0px' });
+  _titelBeobachter.observe(h1);
 }
 
 function menueSchliessen(fokusZurueck = false){
@@ -296,14 +318,6 @@ document.addEventListener('change', (ev) => {
   if (d) d.open = false;
 });
 
-/**
- * Umschalten — lädt NUR die betroffene Ansicht neu, wie beim Kontofilter.
- *
- * Im Reiter Teile BEIDE Listen: Seit der Lagerortfilter auch die manuell
- * erfassten Teile trifft (getManualParts), waere ein Umschalten ohne
- * loadManualParts() ein halb angewandter Filter — oben ungefiltert, unten
- * gefiltert. Dieselbe Begruendung wie bei onScopeChange() darunter.
- */
 /** Alle Filter einer Ansicht leeren (Knopf im Leerzustand ohne Treffer). */
 function filterZuruecksetzen(ansicht) {
   if (ansicht === 'gallery') {
@@ -317,6 +331,14 @@ function filterZuruecksetzen(ansicht) {
   meldeFilter();
 }
 
+/**
+ * Umschalten — lädt NUR die betroffene Ansicht neu, wie beim Kontofilter.
+ *
+ * Im Reiter Teile BEIDE Listen: Seit der Lagerortfilter auch die manuell
+ * erfassten Teile trifft (getManualParts), waere ein Umschalten ohne
+ * loadManualParts() ein halb angewandter Filter — oben ungefiltert, unten
+ * gefiltert. Dieselbe Begruendung wie bei onScopeChange() darunter.
+ */
 export function onStorageChange(view) {
   const el = G('storage-' + view);
   if (!el) return;

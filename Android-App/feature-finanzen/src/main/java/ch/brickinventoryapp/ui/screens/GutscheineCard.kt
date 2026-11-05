@@ -1,5 +1,7 @@
 package ch.brickinventoryapp.ui.screens
 
+import ch.brickinventoryapp.ui.components.nebenKnopfFarben
+import ch.brickinventoryapp.ui.components.nebenKnopfRand
 import androidx.compose.foundation.clickable
 import androidx.compose.ui.semantics.Role
 import androidx.compose.foundation.layout.*
@@ -100,33 +102,39 @@ fun GutscheineCard(
             if (zustand.nummer.isEmpty() && zustand.bearbeitet == null) neu = false
         }
     }
-    SettingsCard(title = stringResource(R.string.vouchers_title), icon = Icons.Default.Redeem) {
+    // Ohne Kopf: Die Karte ist allein auf ihrer Seite, deren Leiste „Gutscheine“ schon nennt.
+    SettingsCard(title = null, icon = Icons.Default.Redeem) {
       BoxWithConstraints {
         // Ab Tabletbreite zwei Karten nebeneinander: Eine Gutscheinkarte über 1000 dp
         // zog Nummer und Menü weit auseinander.
         val breit = maxWidth >= 720.dp
         Column(verticalArrangement = Arrangement.spacedBy(Abstaende.klein)) {
-
         // ── Kopf: hinzufügen, Guthaben aller Karten, alle als PDF ──
         //
         // Drei Knöpfe derselben Bauform mit Symbol; hinzufügen ist die Hauptaktion. Der
         // Fortschritt der Guthaben-Abfrage steht darunter im Text: Bei einer Abfrage je
         // 30 Sekunden dauern vier Karten gut anderthalb Minuten.
         val lauf = zustand.guthabenLauf
+        // Auf dem Telefon stehen die drei untereinander und gleich breit: Mit ihrer eigenen
+        // Breite ergaben sie eine Treppe aus drei Längen.
+        val knopfBreite = if (breit) Modifier else Modifier.fillMaxWidth()
         FlowRow(verticalArrangement = Arrangement.spacedBy(Abstaende.klein),
             horizontalArrangement = Arrangement.spacedBy(Abstaende.klein)) {
-            Button(onClick = { neu = true }) {
-                Icon(Icons.Default.Add, null, Modifier.size(18.dp))
+            Button(onClick = { neu = true }, modifier = knopfBreite) {
+                Icon(Icons.Default.Add, null, Modifier.size(ch.brickinventoryapp.ui.components.mitSchrift(18.dp)))
                 Spacer(Modifier.width(Abstaende.klein))
                 Text(stringResource(R.string.vouchers_add))
             }
             OutlinedButton(
                 onClick = onGuthabenAlle,
+                modifier = knopfBreite,
                 enabled = lauf == null && zustand.gutscheine.any { !it.pin.isNullOrBlank() },
+                colors = nebenKnopfFarben(),
+                border = nebenKnopfRand(lauf == null && zustand.gutscheine.any { !it.pin.isNullOrBlank() }),
             ) {
                 // Kreisel an der Stelle des Symbols, nicht der Beschriftung (KnopfBreiteTest).
                 if (lauf != null) CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp)
-                else Icon(Icons.Default.Sync, null, Modifier.size(18.dp))
+                else Icon(Icons.Default.Sync, null, Modifier.size(ch.brickinventoryapp.ui.components.mitSchrift(18.dp)))
                 Spacer(Modifier.width(Abstaende.klein))
                 Text(stringResource(R.string.vouchers_balance_all))
             }
@@ -137,8 +145,8 @@ fun GutscheineCard(
             }
             // Ohne Gutscheine aus: Der Server antwortete mit 404, ein Betrachter mit
             // Fehlermeldung wäre der umständlichste Weg zu „du hast noch keine“.
-            OutlinedButton(onClick = { geschuetzt(onExportieren) }, enabled = zustand.gutscheine.isNotEmpty()) {
-                Icon(Icons.Default.PictureAsPdf, null, Modifier.size(18.dp))
+            OutlinedButton(onClick = { geschuetzt(onExportieren) }, modifier = knopfBreite, enabled = zustand.gutscheine.isNotEmpty(), colors = nebenKnopfFarben(), border = nebenKnopfRand(zustand.gutscheine.isNotEmpty())) {
+                Icon(Icons.Default.PictureAsPdf, null, Modifier.size(ch.brickinventoryapp.ui.components.mitSchrift(18.dp)))
                 Spacer(Modifier.width(Abstaende.klein))
                 Text(stringResource(R.string.vouchers_export))
             }
@@ -282,6 +290,7 @@ private fun GutscheinFormularBlatt(
         // behandelt sie als Ganzes, gespeichert heisst sie „unverändert“.
         val nummerMaske = ch.brickinventoryapp.ui.model.istMaskierteNummer(zustand.nummer)
         OutlinedTextField(
+            shape = ch.brickinventoryapp.ui.theme.Formen.feld,
             value = zustand.nummer,
             onValueChange = {
                 onFeld(NumericInput.quantity(eingabeUeberMaske(zustand.nummer, it, nummerMaske)), null, null, null)
@@ -296,6 +305,7 @@ private fun GutscheinFormularBlatt(
         Row(horizontalArrangement = Arrangement.spacedBy(Abstaende.klein)) {
             val pinMaske = zustand.pin == ch.brickinventoryapp.ui.model.PIN_MASKE_ANZEIGE
             OutlinedTextField(
+                shape = ch.brickinventoryapp.ui.theme.Formen.feld,
                 value = zustand.pin,
                 onValueChange = { onFeld(null, NumericInput.quantity(eingabeUeberMaske(zustand.pin, it, pinMaske)), null, null) },
                 label = { Text(stringResource(R.string.vouchers_pin)) },
@@ -304,6 +314,7 @@ private fun GutscheinFormularBlatt(
                 modifier = Modifier.weight(1f),
             )
             OutlinedTextField(
+                shape = ch.brickinventoryapp.ui.theme.Formen.feld,
                 value = zustand.betrag,
                 onValueChange = { onFeld(null, null, NumericInput.price(it), null) },
                 label = { Text(stringResource(R.string.vouchers_amount)) },
@@ -325,8 +336,8 @@ private fun GutscheinFormularBlatt(
         if (zustand.bearbeitet == null) {
             Row(verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(Abstaende.klein)) {
-                OutlinedButton(onClick = onPdfWaehlen) {
-                    Icon(Icons.Default.UploadFile, null, Modifier.size(18.dp))
+                OutlinedButton(onClick = onPdfWaehlen, colors = nebenKnopfFarben(), border = nebenKnopfRand()) {
+                    Icon(Icons.Default.UploadFile, null, Modifier.size(ch.brickinventoryapp.ui.components.mitSchrift(18.dp)))
                     Spacer(Modifier.width(Abstaende.klein))
                     Text(stringResource(R.string.vouchers_pick_pdf))
                 }
@@ -393,9 +404,11 @@ private fun GutscheinKarte(
                 Text(nummer, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
             }
             Box {
-                IconButton(onClick = { menue = true }) {
-                    if (guthabenLaeuft) CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp)
-                    else Icon(Icons.Default.MoreVert, stringResource(R.string.vouchers_cd_menu, nummer))
+                ch.brickinventoryapp.ui.components.MitTooltip(stringResource(R.string.vouchers_cd_menu, nummer)) {
+                    IconButton(onClick = { menue = true }) {
+                        if (guthabenLaeuft) CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp)
+                        else Icon(Icons.Default.MoreVert, stringResource(R.string.vouchers_cd_menu, nummer))
+                    }
                 }
                 DropdownMenu(menue, { menue = false }) {
                     // Guthaben NUR mit PIN: LEGO fragt Nummer UND PIN ab; ohne PIN wäre
@@ -436,11 +449,16 @@ private fun GutscheinKarte(
             KopierZeile(stringResource(R.string.vouchers_cd_copy_pin, nummer), { onKopieren(false) }) {
                 Text(pinText, style = MaterialTheme.typography.bodyMedium)
             }
-            IconButton(onClick = onPinSchalten) {
-                Icon(
-                    if (pinSichtbar) Icons.Default.VisibilityOff else Icons.Default.Visibility,
-                    stringResource(if (pinSichtbar) R.string.vouchers_pin_hide else R.string.vouchers_pin_show),
-                )
+            val pinSchalter = stringResource(if (pinSichtbar) R.string.vouchers_pin_hide else R.string.vouchers_pin_show)
+            ch.brickinventoryapp.ui.components.MitTooltip(pinSchalter) {
+                IconButton(onClick = onPinSchalten) {
+                    // In primary wie das Kopiersymbol daneben: gleichrangige Handlungen, eine Farbe.
+                    Icon(
+                        if (pinSichtbar) Icons.Default.VisibilityOff else Icons.Default.Visibility,
+                        contentDescription = pinSchalter,
+                        tint = MaterialTheme.colorScheme.primary,
+                    )
+                }
             }
         }
       }
@@ -486,7 +504,7 @@ private fun KopierZeile(
     ) {
         inhalt()
         // Dieselbe Grösse an Nummer und PIN (vorher 24 und 18 dp).
-        Icon(Icons.Default.ContentCopy, null, Modifier.size(18.dp), tint = MaterialTheme.colorScheme.primary)
+        Icon(Icons.Default.ContentCopy, null, Modifier.size(ch.brickinventoryapp.ui.components.mitSchrift(18.dp)), tint = MaterialTheme.colorScheme.primary)
     }
 }
 
@@ -499,6 +517,7 @@ private fun WaehrungsWahl(gewaehlt: String, onWahl: (String) -> Unit) {
     var offen by rememberSaveable { mutableStateOf(false) }
     ExposedDropdownMenuBox(expanded = offen, onExpandedChange = { offen = it }) {
         OutlinedTextField(
+            shape = ch.brickinventoryapp.ui.theme.Formen.feld,
             value = gewaehlt,
             onValueChange = {},
             readOnly = true,

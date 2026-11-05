@@ -1,5 +1,5 @@
-import bcrypt from 'bcryptjs';
-import { bestaetigungGesperrt, bestaetigungFehlgeschlagen, bestaetigungGelungen } from './loginLimiter';
+import { passwortPasst, BcryptUeberlast } from './bcryptSchranke';
+import { bestaetigungGesperrt, bestaetigungFehlgeschlagen, bestaetigungGelungen, meldeAnmeldeereignis } from './loginLimiter';
 import type { Bremse } from './loginLimiter';
 import type { FehlerCode } from '../infra/fehlerTexte';
 import * as zugaenge from './repository/zugaenge';
@@ -14,8 +14,12 @@ const leer = (w: unknown) => w === undefined || w === null || String(w).trim() =
 async function gebremst(art: Bremse, uid: number, zugang: string, pruefung: () => Promise<boolean>,
                         absage: FehlerCode): Promise<BestaetigungsAbsage | null> {
   const gesperrt = await bestaetigungGesperrt(art, uid, zugang);
-  if (gesperrt) return { status: 429, ...gesperrt };
+  if (gesperrt) {
+    meldeAnmeldeereignis('bestaetigung_gesperrt', { konto: uid, art, zugang });
+    return { status: 429, ...gesperrt };
+  }
   if (!await pruefung()) {
+    meldeAnmeldeereignis('bestaetigung_fehlgeschlagen', { konto: uid, art, zugang });
     await bestaetigungFehlgeschlagen(art, uid, zugang);
     return { status: 400, code: absage };
   }
@@ -34,8 +38,12 @@ export async function pruefeBestaetigung(uid: number, zugang: string, passwort: 
     return { status: 400, code: 'zweiter_faktor_noetig', ...(await P.hatPasskeys(uid) ? { passkey: true } : {}) };
   const pw = await gebremst('passwort', uid, zugang, async () => {
     const u = await zugaenge.passwortHash(uid);
-    return !!u && typeof passwort === 'string' && passwort !== '' && bcrypt.compare(passwort, u.password_hash);
-  }, 'aktuelles_passwort_falsch');
+    return !!u && typeof passwort === 'string' && passwort !== ''
+      && passwortPasst(passwort, u.password_hash);
+  }, 'aktuelles_passwort_falsch').catch((e: unknown) => {
+    if (e instanceof BcryptUeberlast) return { status: 503, code: 'server_ausgelastet' } as BestaetigungsAbsage;
+    throw e;
+  });
   if (pw || !mitFaktor) return pw;
   return leer(faktor.passkey)
     ? gebremst('faktor', uid, zugang, async () => !!await zf.pruefeCode(uid, faktor.code), 'zweiter_faktor_falsch')

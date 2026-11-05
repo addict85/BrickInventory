@@ -1,0 +1,18 @@
+Gegenprobe: Knöpfe auch bei grosser Schrift neben dem Suchfeld
+Modul: app
+Test: ch.brickinventoryapp.FeinschliffRegelnTest
+Rot: Such-Platzhalter der Galerie steht auch bei 200 Prozent
+
+diff --git a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/screens/Filterblatt.kt b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/screens/Filterblatt.kt
+index 02f02c6..2701dee 100644
+--- a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/screens/Filterblatt.kt
++++ b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/screens/Filterblatt.kt
+@@ -99,7 +99,7 @@ fun SucheMitFilter(
+         // nur „Suche…“. Ein Filterknopf allein bleibt daneben; auf eigener Zeile stand
+         // er verloren über dem Raster (Teile, Figuren).
+         val untereinander = gross && (onScannen != null || sortierung != null || erfassenHier != null)
+-        if (untereinander) Column {
++        if (false) Column {
+             Suchfeld(wert = wert, onWert = onWert, platzhalter = platzhalter, modifier = Modifier.fillMaxWidth())
+             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End,
+                 verticalAlignment = Alignment.CenterVertically) { knoepfe() }

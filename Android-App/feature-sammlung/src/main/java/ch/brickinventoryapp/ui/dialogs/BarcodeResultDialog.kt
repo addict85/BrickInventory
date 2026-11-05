@@ -3,45 +3,27 @@ package ch.brickinventoryapp.ui.dialogs
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
-import androidx.compose.material.icons.automirrored.filled.Logout
-import androidx.compose.material.icons.automirrored.filled.OpenInNew
-import androidx.compose.material.icons.automirrored.filled.ListAlt
 import androidx.compose.material3.*
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.ui.window.Dialog
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
-import androidx.navigation.NavDestination.Companion.hierarchy
-import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.compose.*
 import ch.brickinventoryapp.ui.*
 import ch.brickinventoryapp.ui.screens.*
 import coil3.ImageLoader
-import coil3.util.DebugLogger
 import coil3.request.crossfade
-import androidx.compose.foundation.Image
-import androidx.compose.foundation.background
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.ui.res.painterResource
 import ch.brickinventoryapp.ressourcen.R
 import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.graphics.Color
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
-import androidx.compose.material3.LinearProgressIndicator
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.lifecycle.compose.LocalLifecycleOwner
-import androidx.lifecycle.Lifecycle
-import androidx.lifecycle.LifecycleEventObserver
 import androidx.compose.ui.res.stringResource
-import javax.inject.Named
-import javax.inject.Inject
 import ch.brickinventoryapp.util.NumericInput
 import ch.brickinventoryapp.ui.viewmodel.ErfassungViewModel
 import ch.brickinventoryapp.ui.theme.Abstaende
@@ -108,7 +90,7 @@ AlertDialog(
                         horizontalArrangement = Arrangement.spacedBy(Abstaende.klein),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Icon(Icons.Default.Warning, null, Modifier.size(20.dp),
+                        Icon(Icons.Default.Warning, null, Modifier.size(ch.brickinventoryapp.ui.components.mitSchrift(20.dp)),
                             tint = MaterialTheme.colorScheme.onErrorContainer)
                         Text(
                             stringResource(R.string.main_barcode_unsure),
@@ -122,7 +104,7 @@ AlertDialog(
             val imgUrl = barcodeState.imageLocal?.let { "${state.serverUrl}$it" } ?: barcodeState.imageUrl
             val ctx = androidx.compose.ui.platform.LocalContext.current
             ch.brickinventoryapp.ui.components.ProduktBild(
-                model = imgUrl?.let { coil3.request.ImageRequest.Builder(ctx).data(it).crossfade(true).build() },
+                model = imgUrl?.let { coil3.request.ImageRequest.Builder(ctx).data(it).crossfade(!ch.brickinventoryapp.ui.components.bewegungReduziert()).build() },
                 imageLoader = imageLoader,
                 contentDescription = barcodeState.setName,
                 modifier = Modifier.fillMaxWidth().height(160.dp).clip(MaterialTheme.shapes.medium),
@@ -137,7 +119,7 @@ AlertDialog(
                     color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.SemiBold)
                 if (barcodeState.theme != null)
                     Surface(color = MaterialTheme.colorScheme.primaryContainer, shape = MaterialTheme.shapes.small) {
-                        Text(barcodeState.theme!!, Modifier.padding(horizontal=6.dp, vertical=2.dp),
+                        Text(barcodeState.theme!!, Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.onPrimaryContainer)
                     }
@@ -145,18 +127,18 @@ AlertDialog(
             HorizontalDivider()
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceAround) {
                 if (barcodeState.year != null) Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Icon(Icons.Default.CalendarMonth, null, Modifier.size(18.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Icon(Icons.Default.CalendarMonth, null, Modifier.size(ch.brickinventoryapp.ui.components.mitSchrift(18.dp)), tint = MaterialTheme.colorScheme.onSurfaceVariant)
                     Text("${barcodeState.year}", style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold)
                     Text(stringResource(R.string.main_barcode_year), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
                 if (barcodeState.pieces != null) Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Icon(ImageVector.vectorResource(R.drawable.ic_parts_bricks), null, Modifier.size(18.dp), tint = Color.Unspecified)
+                    Icon(ImageVector.vectorResource(R.drawable.ic_parts_bricks), null, Modifier.size(ch.brickinventoryapp.ui.components.mitSchrift(18.dp)), tint = Color.Unspecified)
                     Text(ch.brickinventoryapp.util.fmtInt(barcodeState.pieces!!), style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold)
                     Text(stringResource(R.string.main_barcode_pieces), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
                 if (barcodeState.minifigs != null && barcodeState.minifigs!! > 0)
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Icon(Icons.Default.Person, null, Modifier.size(18.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Icon(Icons.Default.Person, null, Modifier.size(ch.brickinventoryapp.ui.components.mitSchrift(18.dp)), tint = MaterialTheme.colorScheme.onSurfaceVariant)
                         Text("${barcodeState.minifigs}", style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold)
                         Text(stringResource(R.string.main_barcode_figs), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
@@ -175,6 +157,7 @@ AlertDialog(
                     blick.householdMembers, barcodeOwner, { barcodeOwner = it }
                 )
                 OutlinedTextField(
+                    shape = ch.brickinventoryapp.ui.theme.Formen.feld,
                     value = barcodePriceText,
                     onValueChange = { nv -> barcodePriceText = NumericInput.price(nv) },
                     label = { Text(stringResource(R.string.barcode_purchase_price)) },
@@ -231,7 +214,7 @@ AlertDialog(
                 Spacer(Modifier.width(Abstaende.klein))
                 Text(stringResource(R.string.barcode_add))
             } else {
-                Icon(Icons.Default.Check, null, Modifier.size(18.dp))
+                Icon(Icons.Default.Check, null, Modifier.size(ch.brickinventoryapp.ui.components.mitSchrift(18.dp)))
                 Spacer(Modifier.width(Abstaende.klein))
                 Text(stringResource(R.string.barcode_add))
             }

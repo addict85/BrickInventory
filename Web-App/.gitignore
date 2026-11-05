@@ -31,6 +31,9 @@ dist
 # Laufzeitdaten: Bilder, Vorschaubilder, Uploads, Zwischenstände
 data/
 schluessel/
+# Docker-Secrets (scripts/geheimnisse-einrichten.sh) und Empfänger der Sicherung
+geheimnisse/
+backup-empfaenger.txt
 # Standardziel von scripts/backup.sh: Dumps samt Schlüsselkopie
 backups/
 pgdata/

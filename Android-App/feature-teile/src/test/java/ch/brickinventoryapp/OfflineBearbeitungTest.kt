@@ -63,7 +63,7 @@ class OfflineBearbeitungTest {
         /** Je Anfrage „METHODE pfad“ → Idempotency-Key, null ohne. */
         val schluessel: MutableList<Pair<String, String?>> = Collections.synchronizedList(mutableListOf())
         val codes: MutableMap<String, Pair<Int, String>> = Collections.synchronizedMap(mutableMapOf())
-        val server = MockWebServer().apply {
+        val mock = MockWebServer().apply {
             dispatcher = object : Dispatcher() {
                 override fun dispatch(request: RecordedRequest): MockResponse {
                     val pfad = request.path.orEmpty().substringBefore('?')
@@ -92,7 +92,7 @@ class OfflineBearbeitungTest {
     private val cacheDir = File(System.getProperty("java.io.tmpdir"), "bim-offline-${System.nanoTime()}")
     private val ablage = Offlineablage(SpeicherBestand(), SpeicherAusgang(), { "konto" })
     /** Ohne Netz: Die Verbindung kommt gar nicht erst zustande, wie im Funkloch. */
-    private val api = retrofit2.Retrofit.Builder().baseUrl(s.server.url("/"))
+    private val api = retrofit2.Retrofit.Builder().baseUrl(s.mock.url("/"))
         .client(okhttp3.OkHttpClient.Builder().addInterceptor { kette ->
             if (s.offline) throw java.net.ConnectException("kein Netz")
             val antwort = kette.proceed(kette.request())
@@ -112,7 +112,7 @@ class OfflineBearbeitungTest {
 
     @After
     fun zu() {
-        s.server.shutdown()
+        s.mock.shutdown()
         cacheDir.deleteRecursively()
     }
 

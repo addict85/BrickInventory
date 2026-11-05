@@ -1,7 +1,7 @@
 /** Hier wird nur aus dem Request gelesen und in die Antwort geschrieben; die
  * Regeln stehen in src/konto/auth.ts und loginLimiter.ts. */
 import type { Request, Response, NextFunction } from 'express';
-import { pruefeToken, rotationFaellig, pruefeAnmeldedaten } from '../auth';
+import { pruefeToken, rotationFaellig, pruefeAnmeldedaten, begrenzeSitzungen } from '../auth';
 import type { TokenPruefung, AnmeldeErgebnis } from '../auth';
 import { zaehleAnfrage } from '../loginLimiter';
 import { pruefeBestaetigung, pruefeCodeBestaetigung } from '../passwortBestaetigung';
@@ -12,6 +12,16 @@ import { routeZu } from '../../infra/vertrag';
 import { sendeFehler, fehlerText, antwortSprache } from '../../infra/fehlerTexte';
 import { meldeUndLiefere } from '../../infra/httpError';
 import { sitzungsVersionAusDb } from '../sitzungsVersion';
+import { istAktiv } from '../zweiterFaktor';
+
+/** Verwalterrechte ohne TOTP: Das Passwort allein soll sie nicht tragen, bis zur
+ * Einrichtung geht nur diese (anmeldungAmEingang). Ein Passkey zählt nicht, denn
+ * die Anmeldung mit Passwort verlangt nur bei aktivem TOTP einen zweiten Faktor. */
+export async function zweiterFaktorPflicht(req: Request): Promise<boolean> {
+  const uid = nutzerId(req);
+  const verwalter = req.session?.userId ? !!req.session.isAdmin : Number(req.apiUser?.is_admin) === 1;
+  return uid !== null && verwalter && !await istAktiv(uid);
+}
 
 /** req.ip statt X-Forwarded-For: Express wertet den Kopf nur aus, wenn er von
  * einem vertrauten Proxy kommt.
@@ -29,7 +39,7 @@ export function anmelden(req: Request, username: unknown, password: unknown, cod
  * Anfrage die neue ID schon kennt.
  * Ausführlich: docs/begruendungen/src/konto/auth.ts.md#establishsession */
 export async function establishSession(req: Request, data: { userId: number; username: string; isAdmin: boolean;
-                                                       mussPasswortAendern?: boolean }): Promise<void> {
+                                                       mussPasswortAendern?: boolean; passwortBestaetigtAm?: number }): Promise<void> {
   // Ohne Antwort 0: Im Zweifel meldet der Vergleich der nächsten Anfrage ab.
   const sitzungsVersion = await sitzungsVersionAusDb(data.userId)
     .catch(meldeUndLiefere<number | null>('anmeldung:sitzungsVersion', 0)) ?? 0;
@@ -42,9 +52,24 @@ export async function establishSession(req: Request, data: { userId: number; use
     req.session.regenerate((err?: Error) => {
       if (err) return reject(err);
       Object.assign(req.session, data, { angemeldetAm: Date.now(), sitzungsVersion });
-      req.session.save((e2?: Error) => (e2 ? reject(e2) : resolve(undefined)));
+      req.session.save((e2?: Error) => (e2 ? reject(e2)
+        : begrenzeSitzungen(data.userId, req.sessionID).catch(meldeUndLiefere('anmeldung:sitzungen-begrenzen', 0))
+          .then(() => resolve(undefined))));
     });
   });
+}
+
+/** Gnadenfrist nach einer Passworteingabe; kurz, weil eine in dieser Zeit erbeutete
+ * Sitzung sonst den Faktor setzen und das Konto aussperren könnte. */
+export const PASSWORT_GNADENFRIST_MS = 5 * 60 * 1000;
+
+/** Nur mit Sitzung, nie mit Token, und nur einmal: Der Aufruf verbraucht die Frist. */
+export function gnadenfristVerbrauchen(req: Request): boolean {
+  const s = req.session, am = s?.passwortBestaetigtAm;
+  if (!s?.userId || req.tokenUserId || typeof am !== 'number') return false;
+  delete s.passwortBestaetigtAm;
+  const alter = Date.now() - am;
+  return alter >= 0 && alter < PASSWORT_GNADENFRIST_MS;
 }
 
 /** Der ganze Nutzer, nicht nur die Kennung: Sonst wüsste ein Handler nicht, ob

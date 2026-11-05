@@ -90,11 +90,20 @@ async function main() {
   process.exit(code);
 }
 
-/** Kopien eines früheren Laufs und (mit `auchVorlage`) die Vorlage löschen. */
+/**
+ * Kopien eines früheren Laufs und (mit `auchVorlage`) die Vorlage löschen,
+ * dazu Datenbanken und Rollen, die Tests unter demselben Stamm angelegt haben
+ * (test/helpers/testnamen.js). Rollen danach: Sie können Datenbanken besitzen.
+ */
 async function raeumeAuf(/** @type {import('pg').Client} */ admin, /** @type {string} */ vorlage, auchVorlage = false) {
   const { rows } = await admin.query(
     `SELECT datname FROM pg_database WHERE datname LIKE $1 || '\\_%' OR ($2 AND datname = $1)`, [vorlage, auchVorlage]);
   for (const r of rows) await admin.query(`DROP DATABASE IF EXISTS ${id(r.datname)} WITH (FORCE)`);
+  const rollen = await admin.query(`SELECT rolname FROM pg_roles WHERE rolname LIKE $1 || '\\_%'`, [vorlage]);
+  for (const r of rollen.rows) {
+    await admin.query(`DROP ROLE IF EXISTS ${id(r.rolname)}`)
+      .catch((/** @type {Error} */ e) => console.warn(`[test-lauf] Rolle ${r.rolname} bleibt: ${e.message}`));
+  }
 }
 
 main().catch((e) => { console.error(`[test-lauf] ${e instanceof Error ? e.message : String(e)}`); process.exit(1); });

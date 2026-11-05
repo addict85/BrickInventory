@@ -1,8 +1,6 @@
 package ch.brickinventoryapp
 
-import android.app.Application
 import android.os.Bundle
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 import androidx.activity.compose.setContent
@@ -10,54 +8,27 @@ import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.compose.foundation.layout.*
-import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
-import androidx.compose.material.icons.automirrored.filled.Logout
-import androidx.compose.material.icons.automirrored.filled.OpenInNew
-import androidx.compose.material.icons.automirrored.filled.ListAlt
 import androidx.compose.material3.*
-import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.draw.clip
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.ui.window.Dialog
 import androidx.compose.runtime.*
-import androidx.compose.ui.Alignment
-import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.font.FontWeight
-import androidx.navigation.NavDestination.Companion.hierarchy
-import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.compose.*
 import ch.brickinventoryapp.ui.*
-import ch.brickinventoryapp.ui.AppUiState
 import ch.brickinventoryapp.ui.screens.*
 import ch.brickinventoryapp.ui.theme.BrickInventoryManagerTheme
 import ch.brickinventoryapp.ui.theme.darstellung
 import androidx.compose.foundation.isSystemInDarkTheme
 import coil3.ImageLoader
-import androidx.compose.foundation.Image
-import androidx.compose.ui.res.painterResource
 import androidx.compose.runtime.CompositionLocalProvider
 import ch.brickinventoryapp.ressourcen.R
 import ch.brickinventoryapp.ui.components.LocalAppFassung
 import ch.brickinventoryapp.util.AppFassung
 import ch.brickinventoryapp.ui.viewmodel.CatalogViewModel
-import androidx.compose.ui.res.vectorResource
-import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.graphics.Color
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Column
-import androidx.compose.material3.LinearProgressIndicator
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import android.content.Intent
 import androidx.lifecycle.lifecycleScope
 import kotlinx.coroutines.launch
 import dagger.hilt.android.AndroidEntryPoint
-import androidx.compose.ui.res.stringResource
-import dagger.hilt.android.HiltAndroidApp
 import javax.inject.Inject
-
 
 @AndroidEntryPoint
 class MainActivity : NurLauncherStart() {
@@ -72,7 +43,7 @@ class MainActivity : NurLauncherStart() {
     // Ebenso: Eine Guthabenabfrage über alle Karten soll weiterlaufen, wenn
     // man die Gutschein-Seite verlässt.
     private val gutscheinVm: ch.brickinventoryapp.ui.viewmodel.GutscheinViewModel by viewModels()
-    // Nur für die Maske „Startpasswort ersetzen“, die über allem liegt.
+    // Nur für die Pflichtmasken (Startpasswort, zweiter Faktor), die über allem liegen.
     private val startKontoVm: ch.brickinventoryapp.ui.viewmodel.KontoViewModel by viewModels()
 
     // ImageLoader als Hilt-Singleton aus NetzModule — eine Instanz je Prozess statt je
@@ -82,7 +53,10 @@ class MainActivity : NurLauncherStart() {
 
     /** Rückfrage per Gerätesperre vor heiklen Schritten; gilt bis die App in den Hintergrund geht. */
     private val schrittschutz by lazy {
-        ch.brickinventoryapp.ui.components.GeraeteSchrittschutz(this) {
+        ch.brickinventoryapp.ui.components.GeraeteSchrittschutz(this, keinSchluessel = {
+            android.widget.Toast.makeText(this, ch.brickinventoryapp.util.LanguageManager.localizedContext(this).getString(R.string.schritt_kein_schluessel),
+                android.widget.Toast.LENGTH_LONG).show()
+        }) {
             ch.brickinventoryapp.util.LanguageManager.localizedContext(this)
                 .getString(R.string.schritt_untertitel)
         }
@@ -151,27 +125,43 @@ class MainActivity : NurLauncherStart() {
             // Über den Zähler von Sichtschutz, damit ein Bildschirm, der ihn selbst
             // setzt, beim Verlassen den Wunsch des Nutzers nicht aufhebt.
             val vorschauVerbergen by vm.vorschauVerbergen.collectAsStateWithLifecycle()
-            if (vorschauVerbergen) ch.brickinventoryapp.ui.components.Sichtschutz()
+            if (vorschauVerbergen) ch.brickinventoryapp.ui.components.Sichtschutz(ueberdeckung = false)
             val sicht = darstellung(theme, helligkeit, isSystemInDarkTheme(), systemfarben, android.os.Build.VERSION.SDK_INT)
             BrickInventoryManagerTheme(theme = sicht.design, dunkel = sicht.dunkel, systemfarben = sicht.systemfarben) {
                 // Die Fassung kennt nur dieses Modul; die Bereiche lesen sie hier.
                 CompositionLocalProvider(
                     LocalAppFassung provides AppFassung(BuildConfig.VERSION_NAME, BuildConfig.VERSION_CODE),
                     ch.brickinventoryapp.ui.components.LocalSchrittschutz provides schrittschutz,
-                ) {
+                ) { ch.brickinventoryapp.ui.components.TastaturOhneLernen {
+                    // App-weit (sec8 H4): Gutschein-Nummer und PIN, Passwörter, Codes und
+                    // Einladungen; Setnamen lernt die Tastatur dafür auch nicht mit.
                     BrickInventoryManagerApp(vm, katalogVm, gutscheinVm, imageLoader)
+                    // Ohne Displaysperre fragt der Schrittschutz hier nach, statt still durchzulassen (sec10 H3).
+                    ch.brickinventoryapp.ui.components.OhneSperreWarnung(schrittschutz.ohneSperre)
                     // Mit Startpasswort weist der Server alles ab: nur die Maske, bis es ersetzt ist.
                     val startpasswort by vm.passwortPflicht.noetig.collectAsStateWithLifecycle()
                     // Startwert false: Die Maske erscheint erst mit beiden Zuständen,
                     // und StateFlow.value in der Komposition verbietet Lint.
                     val angemeldet by remember { vm.state.map { it.isLoggedIn }.distinctUntilChanged() }
                         .collectAsStateWithLifecycle(false)
+                    // Ebenso Verwalterrechte ohne zweiten Faktor; das Startpasswort kommt zuerst.
+                    val faktorPflicht by vm.zweiterFaktorPflicht.noetig.collectAsStateWithLifecycle()
                     if (startpasswort && angemeldet) {
                         val kontoZustand by startKontoVm.kontoState.collectAsStateWithLifecycle()
                         ch.brickinventoryapp.ui.screens.StartpasswortMaske(
                             kontoZustand = kontoZustand,
                             onErsetzen = { alt, neu, code -> startKontoVm.aenderePasswort(alt, neu, code) { vm.logout() } },
                             onAbmelden = { vm.logout() },
+                        )
+                    } else if (faktorPflicht && angemeldet) {
+                        val faktorZustand by startKontoVm.zweiterFaktorState.collectAsStateWithLifecycle()
+                        LaunchedEffect(Unit) { startKontoVm.ladeZweitenFaktor() }
+                        ch.brickinventoryapp.ui.screens.ZweiterFaktorPflichtMaske(
+                            zustand = faktorZustand,
+                            onEinrichten = startKontoVm::richteZweitenFaktorEin,
+                            onBestaetigen = startKontoVm::bestaetigeZweitenFaktor,
+                            onWeiter = { startKontoVm.zweiterFaktorZurueck(); vm.zweiterFaktorEingerichtet() },
+                            onAbmelden = { startKontoVm.zweiterFaktorZurueck(); vm.logout() },
                         )
                     }
                     // Über allem: Ein unbekanntes Zertifikat kann jeder Abruf treffen.
@@ -194,9 +184,8 @@ class MainActivity : NurLauncherStart() {
                             onAbbrechen = vm.nutzerCa::abbrechen,
                         )
                     }
-                }
+                } }
             }
         }
     }
 }
-

@@ -62,16 +62,16 @@ function plAddSet() {
   feldFehler('pl-setnr', '');
   nrs.forEach(nr => {
     const normalized = nr.includes('-') ? nr : nr + '-1';
-    _plSets.push({ set_number: normalized, name: normalized });
+    const eintrag = { set_number: normalized, name: normalized, unbekannt: false };
+    _plSets.push(eintrag);
+    // Name aus dem Katalog; kennt er die Nummer nicht, sagt es der Chip, statt
+    // sie still als Set ohne Teile mitzuzählen.
     // Try to get set name from catalog (works for any set, not just owned ones)
     api('GET', `/v1/sets/info/${normalized}`).then(d => {
-      if (d.success && d.name && d.name !== normalized) {
-        for (let i = _plSets.length-1; i >= 0; i--) {
-          if (_plSets[i].set_number === normalized && _plSets[i].name === normalized) {
-            _plSets[i].name = d.name; plRenderSets(); break;
-          }
-        }
-      }
+      if (!d.success) return;
+      if (d.name && d.name !== normalized) eintrag.name = d.name;
+      eintrag.unbekannt = d.im_katalog === false;
+      plRenderSets();
     }).catch(() => {});
   });
   G('pl-setnr').value = '';
@@ -86,15 +86,16 @@ export function plRenderSets() {
   // Zurücksetzen hat erst etwas zu tun, wenn Sets oder eine fertige Liste da sind.
   G('btn-pl-reset').disabled = !_plSets.length && !_plParts;
   if (!_plSets.length) {
-    c.innerHTML = leerZustand({ ico: 'liste', titel: tRaw('pl.no_sets'), text: tRaw('pl.no_sets_hint') });
-    G('btn-pl-gen').disabled = true; return;
+    c.innerHTML = leerZustand({ ico: 'liste', titelKey: 'pl.no_sets', textKey: 'pl.no_sets_hint',
+                                knopf: { textKey: 'pl.erstes_set', click: 'feldFokussieren', arg: 'pl-setnr', art: 'bs' } });
+    G('btn-pl-gen').setAttribute('aria-disabled', 'true'); return;
   }
-  G('btn-pl-gen').disabled = false;
+  G('btn-pl-gen').removeAttribute('aria-disabled');
   c.innerHTML = _plSets.map((s,i) => `
-    <div data-stil="display:inline-flex;align-items:center;gap:6px;background:var(--b50);border:1px solid var(--b200);border-radius:20px;padding:3px 10px 3px 8px;font-size:var(--fs-3)">
-      <span data-stil="font-weight:600;color:var(--b700)">${esc(s.set_number)}</span>
-      <span data-stil="color:var(--mut)">${s.name !== s.set_number ? '— '+esc(s.name) : ''}</span>
-      <button data-click="plRemoveSet" data-arg="${i}" data-stil="background:none;border:none;cursor:pointer;color:var(--mut);padding:0;font-size:var(--fs-3);line-height:1" aria-label="${esc(tRaw('common.remove'))}">${ico('schliessen')}</button>
+    <div class="pl-chip${s.unbekannt ? ' unbekannt' : ''}">
+      <span class="pl-chip-nr">${esc(s.set_number)}</span>
+      <span class="pl-chip-name">${s.unbekannt ? '— ' + esc(tRaw('pl.nicht_im_katalog')) : s.name !== s.set_number ? '— '+esc(s.name) : ''}</span>
+      <button type="button" class="pl-chip-weg" data-click="plRemoveSet" data-arg="${i}" aria-label="${esc(tRaw('pl.entfernen', { set: s.set_number }))}">${ico('schliessen')}</button>
     </div>`).join('');
 }
 // Aufruf verschoben nach startApp() (js/08-init.js), das js/main.js NACH der
@@ -107,20 +108,16 @@ function plRemoveSet(i) {
   _plSets.splice(i, 1);
   _plParts = null;
   G('pl-result').innerHTML = '';
-  G('btn-pl-pdf').style.display = 'none';
-  G('btn-pl-bl').style.display = 'none';
-  G('pl-bl-condition').style.display = 'none';
+  plExportStand();
   plRenderSets();
 }
 
 async function plGenerate() {
-  if (!_plSets.length) return;
+  if (!_plSets.length) { feldFehler('pl-setnr', tRaw('pl.erst_set')); return; }
   G('pl-status').textContent = tRaw('pl.loading_lists');
   G('btn-pl-gen').disabled = true;
   G('pl-result').innerHTML = '';
-  G('btn-pl-pdf').style.display = 'none';
-  G('btn-pl-bl').style.display = 'none';
-  G('pl-bl-condition').style.display = 'none';
+  _plParts = null; plExportStand();
 
   const combined = {}; // key: „partNum|colorId" → { part_number, part_name, color_name, color_hex, quantity }
   let errors = 0;
@@ -133,7 +130,8 @@ async function plGenerate() {
   } catch(_) {}
   _rbToBlColor = rbToBlColor;
 
-  for (const s of _plSets) {
+  const bekannt = _plSets.filter(s => !s.unbekannt), unbekannt = _plSets.filter(s => s.unbekannt);
+  for (const s of bekannt) {
     G('pl-status').textContent = tRaw('pl.loading_set',{set:s.set_number});
     // Use user-independent CSV endpoints (work for all users regardless of import history)
     try {
@@ -194,16 +192,12 @@ async function plGenerate() {
   }
 
   _plParts = Object.values(combined);
-  G('pl-status').textContent = tRaw('pl.summary',{parts:_plParts.length,sets:_plSets.length}) + (errors ? ` (${t('monitor.errors_n',{n:errors})})` : '');
+  G('pl-status').textContent = `${tRaw('pl.summary_teile', { n: _plParts.length })} ${tRaw('pl.summary_sets', { n: bekannt.length })}`
+    + (errors ? ` (${t('monitor.errors_n',{n:errors})})` : '')
+    + (unbekannt.length ? ` · ${tRaw('pl.unbekannt_n', { n: unbekannt.length, nummern: unbekannt.map(s => s.set_number).join(', ') })}` : '');
   G('btn-pl-gen').disabled = false;
-  plRenderTable();
-  G('btn-pl-pdf').style.display = '';
-  G('btn-pl-bl').style.display = '';
-  G('pl-bl-condition').style.display = '';
-  // Die ganze Zeile, nicht die zwei Knoepfe einzeln — sonst bliebe ein
-  // leerer Streifen stehen, solange keine Liste erzeugt ist (index.html
-  // erklaert es an Ort und Stelle).
-  G('pl-bestand-zeile').style.display = 'flex';
+  plRenderTable(errors);
+  plExportStand();
 }
 
 /**
@@ -254,8 +248,30 @@ async function plFuelleBestand() {
                           + ' ' + tRaw('pl.owned_missing', { n: fehlend, m: fehlendeArten });
 }
 
-function plRenderTable() {
-  if (!_plParts?.length) { G('pl-result').innerHTML = `<div class="empty"><p>${t('parts.none_found')}</p></div>`; return; }
+/** Export und Bestand erst, wenn die Liste Teile hat: Eine leere Datei hilft niemandem.
+ * Am Telefon beim ersten Mal zugeklappt, damit das Ergebnis vorn steht. */
+function plExportStand() {
+  const box = G('pl-export'), optionen = /** @type {HTMLDetailsElement | null} */ (document.getElementById('pl-optionen')); if (!box) return;
+  const leer = !_plParts?.length;
+  box.hidden = leer;
+  if (optionen) {
+    optionen.hidden = leer;
+    if (!leer && !optionen.dataset.entschieden) {
+      optionen.dataset.entschieden = '1';
+      optionen.open = !window.matchMedia?.('(max-width: 640px)').matches;
+    }
+  }
+  for (const id of ['btn-pl-pdf', 'btn-pl-bl', 'pl-bl-condition']) G(id).disabled = leer;
+}
+
+function plRenderTable(fehler = 0) {
+  if (!_plParts?.length) {
+    // Die Ursache nennen: Fehlende Teilelisten kommen aus dem Rebrickable-Katalog, nicht aus der Eingabe.
+    G('pl-result').innerHTML = leerZustand({ ico: 'warnung', titelKey: fehler ? 'pl.leer_fehler_titel' : 'pl.leer_titel',
+      textKey: fehler ? 'pl.leer_fehler_text' : 'pl.leer_text',
+      knopf: { textKey: 'liste.erneut', click: 'plGenerate', ico: 'aktualisieren', art: 'bs' } });
+    return;
+  }
 
   // Group by color
   const byColor = {};
@@ -286,7 +302,7 @@ function plRenderTable() {
       // spiegelverkehrt: Dort wurde beim Import eine Farbe erfunden, hier …
       // Ausführlich: docs/begruendungen/public/js/08-init.js.md#blcolorid
       const blColorId = p.bl_color_id ?? _rbToBlColor[p.color_id] ?? '';
-      html += `<div data-stil="display:flex;align-items:center;gap:10px;padding:5px 4px;border-bottom:1px solid var(--bdr)">${img}<span data-stil="font-family:monospace;font-size:var(--fs-2);color:var(--b600);min-width:65px;flex-shrink:0" title="Rebrickable: ${esc(p.part_number)}">${esc(p.bl_part_number||p.part_number)}</span><span data-stil="flex:1;font-size:var(--fs-3)">${esc(p.part_name)}</span><span data-stil="font-weight:700;font-size:var(--fs-3);width:70px;text-align:right;flex-shrink:0">×${p.quantity.toLocaleString(locale())}</span><span data-stil="width:70px;flex-shrink:0;padding-left:6px"><input inputmode="numeric" type="number" min="0" value="0" data-key="${pkey}" data-need="${p.quantity}" data-part="${esc(p.bl_part_number||p.part_number)}" data-color="${blColorId}" data-rb-color="${p.color_id||0}" data-color-name="${esc(p.color_name||'')}" data-type="${(p.bl_part_number||p.part_number||'P').startsWith('fig-')?'M':'P'}" class="pl-have-input" data-stil="width:58px;height:28px;border:1px solid var(--feldrand);border-radius:5px;padding:0 6px;font-size:var(--fs-2);text-align:center" /></span></div>`;
+      html += `<div data-stil="display:flex;align-items:center;gap:10px;padding:5px 4px;border-bottom:1px solid var(--bdr)">${img}<span data-stil="font-family:monospace;font-size:var(--fs-2);color:var(--b600);min-width:65px;flex-shrink:0" title="Rebrickable: ${esc(p.part_number)}">${esc(p.bl_part_number||p.part_number)}</span><span data-stil="flex:1;font-size:var(--fs-3)">${esc(p.part_name)}</span><span data-stil="font-weight:700;font-size:var(--fs-3);width:70px;text-align:right;flex-shrink:0">×${p.quantity.toLocaleString(locale())}</span><span data-stil="width:70px;flex-shrink:0;padding-left:6px"><input inputmode="numeric" type="number" min="0" value="0" data-key="${pkey}" data-need="${p.quantity}" data-part="${esc(p.bl_part_number||p.part_number)}" data-color="${blColorId}" data-rb-color="${p.color_id||0}" data-color-name="${esc(p.color_name||'')}" data-type="${(p.bl_part_number||p.part_number||'P').startsWith('fig-')?'M':'P'}" class="pl-have-input" aria-label="${esc(tRaw('pl.col_have'))}: ${esc(p.bl_part_number||p.part_number)} ${esc(p.color_name||'')}" data-stil="width:58px;height:28px;border:1px solid var(--feldrand);border-radius:5px;padding:0 6px;font-size:var(--fs-2);text-align:center" /></span></div>`;
     }
     html += '</div></div>';
   }
@@ -537,13 +553,10 @@ async function plExportBricklink() {
 }
 
 function plReset() {
-  const bz = G('pl-bestand-zeile'); if (bz) bz.style.display = 'none';
   _plSets = []; _plParts = null;
   G('pl-result').innerHTML = '';
   G('pl-status').textContent = '';
-  G('btn-pl-pdf').style.display = 'none';
-  G('btn-pl-bl').style.display = 'none';
-  G('pl-bl-condition').style.display = 'none';
+  plExportStand();
   plRenderSets();
 }
 

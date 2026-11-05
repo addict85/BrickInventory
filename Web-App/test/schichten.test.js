@@ -427,7 +427,7 @@ test('nur Routen, Server und HTTP-Seiten importieren eine HTTP-Seite', () => {
 
 /** Routen, die etwas anderes tun als antworten (Strom, Teilergebnis, Aufräumen) — je Datei die Zahl. */
 const TRY_IN_ROUTEN = new Map([
-  ['routes/auth.ts', 2], ['routes/imgProxy.ts', 3], ['routes/api_v1/vouchers.ts', 1],
+  ['routes/auth.ts', 2], ['routes/imgProxy.ts', 3],
   ['routes/api_v1/sets.ts', 1], ['routes/api_v1/wanted.ts', 2],
 ]);
 

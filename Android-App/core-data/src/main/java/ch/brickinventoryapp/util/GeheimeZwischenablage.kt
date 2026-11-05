@@ -3,7 +3,6 @@ package ch.brickinventoryapp.util
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
-import android.os.Build
 import android.os.Handler
 import android.os.Looper
 import android.os.PersistableBundle
@@ -51,14 +50,13 @@ object GeheimeZwischenablage {
     fun pruefe(ctx: Context) {
         val cm = ctx.applicationContext.getSystemService(ClipboardManager::class.java) ?: return
         val clip = runCatching { cm.primaryClip }.getOrNull()
-        val lesbar = clip != null || Build.VERSION.SDK_INT < Build.VERSION_CODES.Q
+        val lesbar = clip != null
         val imClip = clip?.description?.extras?.getString(GEHEIM_KENNUNG)
         when (geheimSchritt(kennung, faelligAb, SystemClock.elapsedRealtime(), lesbar, imClip)) {
             GeheimSchritt.WARTEN -> Unit
             GeheimSchritt.VERGESSEN -> kennung = null
             GeheimSchritt.LEEREN -> {
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) cm.clearPrimaryClip()
-                else cm.setPrimaryClip(ClipData.newPlainText("", ""))
+                cm.clearPrimaryClip()
                 kennung = null
             }
         }

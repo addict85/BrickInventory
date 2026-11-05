@@ -21,6 +21,10 @@ import org.junit.Test
  * Zwei der Pruefungen fuehren echten Code aus (istNeuer, istErlaubteApkAdresse
  * sind reine Funktionen). Die uebrigen lesen Quelltext — die Alternative waere
  * ein Geraet, und das hat dieser Lauf nicht.
+ *
+ * Gegenprobe (04.11.2026, sec12 H2): im UpdateViewModel wieder
+ * `neuereFassung = if (istNeuer(…)) beschreibung else null` → rot „angeboten wird nur
+ * ueber anzubietendeFassung“.
  */
 class SelbstUpdateTest {
 
@@ -165,6 +169,16 @@ class SelbstUpdateTest {
             "Der Start stoesst das Herunterladen an — Marcos Vorgabe war ausdruecklich " +
                 "„nie von allein laden\""
         }
+    }
+
+    /** Die Regel selbst rechnet UpdateFrischeTest; hier nur, dass das Angebot über sie läuft (sec12 H2). */
+    @Test
+    fun `angeboten wird nur ueber anzubietendeFassung`() {
+        val feature = quelle("ui/viewmodel/UpdateViewModel.kt")
+        assert(feature.contains("neuereFassung = anzubietendeFassung(beschreibung, frische, fassung.code)")) {
+            "Das ViewModel bietet eine neuere Fassung an, ohne die Frische der Beschreibung zu beachten"
+        }
+        assert(!feature.contains("istNeuer(")) { "Ein zweiter Weg entscheidet über das Angebot" }
     }
 
     @Test

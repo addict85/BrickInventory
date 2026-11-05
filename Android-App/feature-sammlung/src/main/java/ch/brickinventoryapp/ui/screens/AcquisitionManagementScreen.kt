@@ -9,9 +9,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Delete
@@ -22,15 +20,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.focus.onFocusChanged
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
-import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import ch.brickinventoryapp.ressourcen.R
 import ch.brickinventoryapp.ui.viewmodel.KaeufeViewModel
@@ -68,9 +63,8 @@ fun AcquisitionManagementScreen(
     // Rückmeldung nach einem Eigentümerwechsel — der Server sagt, ob und was
     // mitgewandert ist.
     var moveMessage by remember { mutableStateOf<String?>(null) }
-    // Für die Erfolgsmeldung mit den echten Zahlen aus der Antwort.
-    val ctx = LocalContext.current
-    // Nicht `ctx.getString`: Ein gegriffener Context liefert nach einem
+    // Für die Erfolgsmeldung mit den echten Zahlen aus der Antwort. Nicht
+    // `LocalContext.current.getString`: Ein gegriffener Context liefert nach einem
     // Konfigurationswechsel veraltete Werte (Lint: LocalContextGetResourceValueCall).
     // `stringResource` geht nicht, weil die Zahlen erst in der Antwort entstehen;
     // LocalResources ist die konfigurationsbewusste Form.
@@ -89,8 +83,10 @@ fun AcquisitionManagementScreen(
             TopAppBar(
                 title = { Text(title, fontWeight = FontWeight.Bold, maxLines = 1) },
                 navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(R.string.common_back))
+                    ch.brickinventoryapp.ui.components.MitTooltip(stringResource(R.string.common_back)) {
+                        IconButton(onClick = onBack) {
+                            Icon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(R.string.common_back))
+                        }
                     }
                 }
             )
@@ -397,9 +393,11 @@ private fun AcquisitionManagementRow(
         )
 
         // Delete
-        IconButton(onClick = { showDeleteConfirm = true }) {
-            Icon(Icons.Default.Delete, stringResource(R.string.acq_delete_title),
-                tint = MaterialTheme.colorScheme.error, modifier = Modifier.size(20.dp))
+        ch.brickinventoryapp.ui.components.MitTooltip(stringResource(R.string.acq_delete_title)) {
+            IconButton(onClick = { showDeleteConfirm = true }) {
+                Icon(Icons.Default.Delete, stringResource(R.string.acq_delete_title),
+                    tint = MaterialTheme.colorScheme.error, modifier = Modifier.size(20.dp))
+            }
         }
     }
     // Der Zustand unter Anzahl und Preis über die volle Breite: In der Zeile liess

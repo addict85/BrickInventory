@@ -150,7 +150,7 @@ test('die Filterleisten halten Abstand zur Liste', () => {
  */
 test('der eigene Bestand steht nicht in der Werkzeugzeile der Teileliste', () => {
   const ab = html.indexOf('id="tab-partslist"');
-  const bis = html.indexOf('id="pl-sets"', ab);
+  const bis = html.indexOf('id="pl-result"', ab);
   assert.ok(ab >= 0 && bis > ab, 'Der Teileliste-Reiter ist nicht mehr zu finden');
   const kopf = html.slice(ab, bis);
 

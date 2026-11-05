@@ -127,9 +127,10 @@ test('Schreib-Endpunkte ohne Anmeldung tragen eine Drossel', () => {
 test('der Sitzungsschlüssel darf in Produktion kein Beispielwert sein', () => {
   const src = quelle('server.ts');
   const compose = fs.readFileSync(path.join(ROOT, 'compose.yaml'), 'utf8');
-  // compose.yaml trägt keinen Wert mehr, sie verlangt ihn aus .env; der
-  // frühere Beispielwert steht in alten Kopien und bleibt gesperrt.
-  assert.match(compose, /SESSION_SECRET:\s*\$\{SESSION_SECRET:\?/, 'compose.yaml verlangt SESSION_SECRET aus .env');
+  // compose.yaml trägt keinen Wert mehr, sie reicht ihn als Docker-Secret
+  // herein; der frühere Beispielwert steht in alten Kopien und bleibt gesperrt.
+  assert.match(compose, /SESSION_SECRET_FILE:\s*\/run\/secrets\/session_secret/, 'compose.yaml reicht SESSION_SECRET als Datei herein');
+  assert.doesNotMatch(compose, /^\s*SESSION_SECRET:/m, 'SESSION_SECRET steht als Umgebungsvariable in compose.yaml');
   assert.ok(src.includes("'change-me-to-a-long-random-string'"),
     'server.ts weist den früheren Beispielwert aus compose.yaml nicht zurück');
   assert.match(src, /SESSION_SECRET[\s\S]{0,1200}?length\s*<\s*\d+/,
@@ -184,6 +185,28 @@ test('CSV-Export entschärft Formeln, der eigene Import macht es rückgängig', 
   // Und die Zitierung bleibt korrekt: Das Hochkomma steht INNERHALB der
   // Anführungszeichen, sonst wäre die Zeile kaputt.
   assert.equal(csvField('=A1,B1'), `"'=A1,B1"`);
+});
+
+/**
+ * Semikolon, Tabulator und Wagenrücklauf trennen in Excel Felder bzw. Zeilen:
+ * Ungequotet begänne die nächste Zelle mit einer Formel. Gegenproben
+ * (03.11.2026 gemessen): A  csvField quotet wieder nur bei `",\n` → rot:
+ * „Rot;=1+1 bleibt eine Zelle“; B  FORMEL_START ohne Leerraum und volle
+ * Breite → rot: „ =1+1 …“.
+ */
+test('CSV-Export: Trennzeichen im Feld werden gequotet, Formeln auch nach Leerraum entschärft', () => {
+  const { csvField, toCsv, entschaerfe, entschaerfungRueckgaengig, csvZeilenAusAnfrage } = _reqCsv('src/infra/csvExport.js');
+  assert.equal(csvField('Rot;=1+1'), '"Rot;=1+1"', 'Rot;=1+1 bleibt eine Zelle');
+  for (const t of ['a\rb', 'a\tb', 'a\nb', 'a,b', 'a"b']) assert.equal(csvField(t)[0], '"', JSON.stringify(t));
+  for (const boese of [' =1+1', '\u3000=1+1', '＝1+1', '＋1', '\n=1']) {
+    assert.equal(entschaerfe(boese)[0], "'", `${JSON.stringify(boese)} nicht entschärft`);
+    assert.equal(entschaerfungRueckgaengig(entschaerfe(boese)), boese);
+  }
+  assert.equal(entschaerfe(' -5 '), ' -5 ', 'Zahlen mit Leerraum bleiben Zahlen');
+  const csv = toCsv(['a', 'b'], [{ a: 'Rot;=1+1\r=2', b: ' @SUMME(1)' }]);
+  assert.deepEqual(csvZeilenAusAnfrage(csv).bereinigt, [{ a: 'Rot;=1+1\r=2', b: ' @SUMME(1)' }], 'Rundlauf');
+  const zeile = csv.split('\r\n')[1];
+  assert.ok(zeile.startsWith('"Rot;=1+1\r=2",') && zeile.includes("' @SUMME(1)"), JSON.stringify(zeile));
 });
 
 test('alle drei CSV-Importwege entschärfen zurück', () => {

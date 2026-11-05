@@ -9,6 +9,7 @@
  * @typedef {object} Ereignisse
  * @property {string} sitzungBeendet        Pfad des Aufrufs, der mit 401 endete
  * @property {undefined} passwortWechselNoetig
+ * @property {undefined} zweiterFaktorPflicht  Verwalter ohne zweiten Faktor: nur dessen Einrichtung ist erlaubt
  * @property {undefined} setsGeaendert      Sets sind anders als angezeigt (Import fertig oder abgebrochen)
  * @property {undefined} bestandGeaendert   Sets, Teile und Figuren sind anders als angezeigt (Wiederherstellung)
  * @property {string} ansichtGewechselt     Name des Reiters oder der Sicht

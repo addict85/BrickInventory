@@ -51,7 +51,7 @@ test('Fehler am Feld, Toasts an der Ansicht', { concurrency: 1, timeout: 300_000
     await b.auswerten(`location.hash = '#/konto'; true`);
     await bis(`!!document.getElementById('btn-sav-pw')?.getClientRects().length`, 'Kontoseite');
     await toastsWeg();
-    await b.auswerten(`(() => { const G = id => document.getElementById(id); G('pw-c').value = 'alt-Passwort-1'; G('pw-n').value = 'neu-Passwort-1';
+    await b.auswerten(`(() => { const G = id => document.getElementById(id); G('pw-n').value = 'neu-Passwort-1';
       G('pw-r').value = 'anders-Passwort-1'; G('btn-sav-pw').click(); return true; })()`);
     await warte(300);
     const z = await b.auswerten(FELD('pw-r'));

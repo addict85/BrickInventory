@@ -36,7 +36,9 @@ test('Eingaben gegen den Vertrag', { concurrency: 1 }, async (t) => {
   try { await _req('db/migrate.js').runMigrations(c); } finally { c.release(); }
   const NAME = `eingabe_${process.pid}`;
   await db.run('DELETE FROM users WHERE username = $1', [NAME]);
-  const uid = (await db.get(`INSERT INTO users (username, password_hash, is_admin) VALUES ($1, 'x', true) RETURNING id`, [NAME])).id;
+  const PASS = 'Eingabe-Passwort-1';
+  const hash = await require(require('node:path').join(__dirname, '..', 'node_modules', 'bcryptjs')).hash(PASS, 4);
+  const uid = (await db.get(`INSERT INTO users (username, password_hash, is_admin) VALUES ($1, $2, true) RETURNING id`, [NAME, hash])).id;
   t.after(async () => { await db.run('DELETE FROM users WHERE id = $1', [uid]); await db.pool.end().catch(() => {}); });
   const { base } = testServer(_req, { sitzung: { userId: uid, isAdmin: true }, apiNutzer: { user_id: uid, is_admin: 1 },
     routen: { '/api/v1/auth': 'routes/auth.js' }, t });
@@ -59,7 +61,7 @@ test('Eingaben gegen den Vertrag', { concurrency: 1 }, async (t) => {
   await t.test('Freitext ist begrenzt', async () => {
     const r = await sende('PUT', '/api/v1/auth/profile', { first_name: 'x'.repeat(101) });
     assert.deepEqual([r.status, r.code], [400, 'eingabe_ungueltig']);
-    const ok = await sende('PUT', '/api/v1/auth/profile', { first_name: 'Marco', last_name: null });
+    const ok = await sende('PUT', '/api/v1/auth/profile', { first_name: 'Marco', last_name: null, password_current: PASS });
     assert.equal(ok.status, 200, `gültige Eingabe abgewiesen: ${ok.code}`);
     assert.equal((await db.get('SELECT first_name FROM users WHERE id = $1', [uid])).first_name, 'Marco');
   });

@@ -11,6 +11,9 @@
  *   D  vorDemUpload aus der Route entfernt → rot: „abgewiesen, bevor der
  *      Inhalt ankommt“ (keine Antwort, solange der Inhalt fehlt) und „für ein
  *      Set, das das Konto nicht hat“ — die Besitzprüfung steht jetzt dort (28.10.2026)
+ *   E  (04.11.2026) chmod der Datei im Upload entfernt → rot: „nur für den Dienst
+ *      lesbar“ (0644); privaterOrdner() ohne chmod → rot: dieselbe Prüfung
+ *      (der schon bestehende Ordner blieb 0755)
  *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL.
  */
@@ -68,6 +71,16 @@ test('Anleitung hochladen', { concurrency: 1 }, async (t) => {
     const r = await hochladen(PDF, 'application/pdf', 'anleitung.pdf');
     assert.equal(r.status, 200, JSON.stringify(r.body));
     assert.equal(dateien().length, 1);
+  });
+
+  await t.test('nur für den Dienst lesbar, auch in einem älteren Ordner', async () => {
+    for (const o of [path.dirname(ordner), ordner]) fs.chmodSync(o, 0o755);
+    const r = await hochladen(PDF, 'application/pdf', 'zweite.pdf');
+    assert.equal(r.status, 200, JSON.stringify(r.body));
+    const rechte = (p) => (fs.statSync(p).mode & 0o777).toString(8);
+    const datei = path.join(ordner, path.basename(r.body.instruction.url));
+    assert.deepEqual([rechte(datei), rechte(ordner), rechte(path.dirname(ordner))], ['600', '700', '700']);
+    fs.rmSync(datei);
   });
 
   await t.test('ein Text als PDF', async () => {

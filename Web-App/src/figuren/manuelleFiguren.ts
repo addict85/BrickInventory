@@ -12,8 +12,9 @@ import { figMarktpreisMitHerkunft, getCurrentFigMarketPrice } from '../finanzen/
 import { kaufpreisAusEingabe, manuellerKaufpreis } from '../finanzen/preisRegel';
 import { setzeLagerort, ortFuerNeuerfassung } from '../bestand/lagerort';
 import { merkeFigur, katalogFigur } from '../katalog/katalogPflege';
-import { merkeBlNummer } from '../katalog/blZuordnung';
+import { merkeEigeneBlNummer } from '../katalog/blZuordnung';
 import * as V from '../infra/validate';
+import { Meldung } from '../infra/fehlerTexte';
 
 // Ohne BrickLink-Figurennummer wird der Marktpreis aus den Teilepreisen
 // geschätzt: Für Teile ist die Zuordnung RB→BL verlässlich, für Figuren nicht.
@@ -111,7 +112,7 @@ async function addManualFigIntern(uid: number, body: any) {
   await merkeFigur(num, eingabe.name, eingabe.bild, null, db, uid);
   // Ohne Menge, Preis und Zustand: Sie stehen in der Erfassung darunter.
   await repo.legeFigurManuellAn(uid, num);
-  if (blNum) await merkeBlNummer('fig', num, blNum).catch(
+  if (blNum) await merkeEigeneBlNummer(uid, 'fig', num, blNum).catch(
     logAndContinue(`minifiguren:bl-nummer ${num}`));
   // Mit dem tatsächlich verwendeten Kaufpreis (Marktpreis oder Schätzung), damit
   // Erfassungshistorie und G&V stimmen.
@@ -127,7 +128,7 @@ async function addManualFigIntern(uid: number, body: any) {
  * @returns die Menge danach, wenn sie Teil der Anfrage war */
 export async function updateManualFig(uid: number, figNumber: string, body: any): Promise<{ quantity?: number }> {
   const existing = await repo.figurZeileMitZustand(uid, figNumber);
-  if (!existing) { const e = Object.assign(new Error('Minifigur nicht gefunden oder nicht manuell hinzugefügt'), { status: 404 }); throw e; }
+  if (!existing) throw new Meldung('Minifigur nicht gefunden oder nicht manuell hinzugefügt', 404);
 
   const raus: { quantity?: number } = {};
   const wunsch = mengenwunsch(body);
@@ -140,7 +141,7 @@ export async function updateManualFig(uid: number, figNumber: string, body: any)
   if (body.bl_fig_number !== undefined) {
     newBlNum = body.bl_fig_number ? String(body.bl_fig_number).trim() : null;
     // Geleert heisst „keine abweichende Nummer", nicht „nie nachgesehen".
-    await merkeBlNummer('fig', figNumber, newBlNum || figNumber);
+    await merkeEigeneBlNummer(uid, 'fig', figNumber, newBlNum || figNumber);
   }
   if (body.unit_price !== undefined) {
     // Dieselbe Regel wie bei den Teilen (src/finanzen/preisRegel.ts).
@@ -201,7 +202,7 @@ export async function importiereFigurenCsv(uid: number, text: string) {
       // Ein Name aus der Datei ist eine Eingabe dieses Kontos (katalogPflege.ts).
       await merkeFigur(figNumber, figName, imageUrl, null, db, eingetippt ? uid : null);
       await repo.legeFigurManuellAn(uid, figNumber);
-      if (blFigNumber) await merkeBlNummer('fig', figNumber, blFigNumber)
+      if (blFigNumber) await merkeEigeneBlNummer(uid, 'fig', figNumber, blFigNumber)
         .catch(logAndContinue(`minifigs:import ${figNumber} (bl-nummer)`));
       await recordAcquisitionForDay('fig', uid, [figNumber], erfassung);
       added++;

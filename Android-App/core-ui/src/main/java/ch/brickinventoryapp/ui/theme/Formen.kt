@@ -30,8 +30,12 @@ object Formen {
     val karte = RoundedCornerShape(16.dp)
     /** Chips (Filter, Auswahl) — die häufigste Form im Baum. */
     val chip = RoundedCornerShape(20.dp)
-    /** Knöpfe und Eingabefelder. */
-    val knopf = RoundedCornerShape(12.dp)
+    /**
+     * Eingabefelder. Knöpfe haben keine eigene Form: Sie tragen alle die Pille der
+     * Material-Vorgabe, damit Einrichten, Anmelden und Dialoge gleich aussehen
+     * (DesignTokensTest verbietet `shape =` an Knöpfen).
+     */
+    val feld = RoundedCornerShape(12.dp)
     /** Kachelbilder und kleinere Flächen. */
     val kachel = RoundedCornerShape(10.dp)
     /** Hinweisleisten und eingebettete Flächen. */

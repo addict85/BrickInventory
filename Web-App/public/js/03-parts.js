@@ -22,17 +22,27 @@ let activeColor = null;
 /** @type {string | null} */
 let activeCat=null;
 // Kategorie-ID (part_cat_id) -> Klartextname via geladenem partsCats-Mapping.
-function catLabel(cn){ if(cn==null||cn==='') return '—'; const c=partsCats.find(x=>String(x.category_name)===String(cn)); return (c&&c.label)?c.label:String(cn); }
+// Ohne Namen ist eine bare ID unbekannt; ein eingetragener Name bleibt stehen, wie im Teiledetail.
+const katName = (cn, label) => label || (cn == null || cn === '' || /^\d+$/.test(String(cn)) ? tRaw('common.unknown') : String(cn));
+function catLabel(cn){ const c=partsCats.find(x=>String(x.category_name)===String(cn)); return katName(cn, c?.label); }
 
 export async function loadParts(){
   // Run stats + filters in parallel, then load data (needs filters first for UI)
   await Promise.all([loadPartsStats(), loadPartsFilters()]);
   await loadPartsData();
 }
+/** Platzhalter einer Kennzahl, solange sie lädt — „—“ hiesse „kein Wert“. */
+const WERT_SKELETT = '<span class="skelett-zeile skelett-wert" aria-hidden="true"></span>';
+
 
 async function loadPartsStats(){
+  const felder = ['ps-total', 'ps-unique', 'ps-colors'];
+  const box = G('parts-stats-bar');
+  if (!G('ps-total').dataset.geladen) { for (const id of felder) G(id).innerHTML = WERT_SKELETT; box?.setAttribute('aria-busy', 'true'); }
   const d=await api('GET','/v1/parts/stats'+scopeQuery('parts'));
-  if(!d.success) return;
+  box?.removeAttribute('aria-busy');
+  if(!d.success){ if (!G('ps-total').dataset.geladen) for (const id of felder) G(id).textContent = '—'; return; }
+  G('ps-total').dataset.geladen = '1';
   const s=d.stats;
   // Wie die Kachel der Sammlung: Teile aus Sets und einzeln erfasste zusammen.
   const einzeln=s.manual_parts||0;
@@ -55,7 +65,7 @@ async function loadPartsFilters(){
  */
 export function zeichneTeileFilter(){
   const farben = new Map(partsColors.map(c => [c.color_name, `${colorName(c.color_name)} (${c.unique_parts} ${t('parts.stat.types')})`]));
-  const kategorien = new Map(partsCats.map(c => [String(c.category_name), c.label || String(c.category_name)]));
+  const kategorien = new Map(partsCats.map(c => [String(c.category_name), katName(c.category_name, c.label)]));
   for (const p of manualPartsCache) {
     if (p.color_name && !farben.has(p.color_name)) farben.set(p.color_name, colorName(p.color_name));
     if (p.category_name != null && p.category_name !== '' && !kategorien.has(String(p.category_name)))
@@ -97,6 +107,7 @@ let _manuelleLeer = null;
  */
 export function teileLeerAbgleichen(manuelleLeer){
   if (manuelleLeer !== undefined) _manuelleLeer = manuelleLeer;
+  G('tab-parts')?.classList.remove('sammlung-leer');
   const box = G('manual-parts-box');
   // Erst sichtbar, wenn die Liste geladen ist und etwas zeigt: Vorher stand
   // die leere Box „Manuell erfasste Teile“ über dem Skelett.
@@ -106,6 +117,7 @@ export function teileLeerAbgleichen(manuelleLeer){
   if (_manuelleLeer === false) { main.innerHTML = ''; return; }
   const q = G('parts-search')?.value.trim() || '';
   const gefiltert = !!(activeColor || activeCat || q || G('parts-spare')?.value);
+  G('tab-parts')?.classList.toggle('sammlung-leer', !gefiltert);
   // Wie in allen Listen: „Noch keine …“ ohne Filter, sonst „Keine Treffer“.
   main.innerHTML = gefiltert
     ? leerZustand({ ico: 'suche', titel: q ? tRaw('common.no_hits', { query: q }) : tRaw('parts.no_filter_match'),
@@ -320,7 +332,6 @@ function ersatzteilPlakette(p){
 }
 
 /** Alternativtext eines Teilbilds: Name und Farbe, wie sie auf der Kachel stehen. */
-function teilAlt(p){ return [p.part_name || p.part_number, p.color_name ? colorName(p.color_name) : ''].filter(Boolean).join(', '); }
 
 function partsCard(p){
   // data-orig speist den Zoom (11-actions.js, openImageLightboxFromEl):
@@ -334,8 +345,8 @@ function partsCard(p){
   // Set nichts zu sehen — kein Bild in voller Groesse, keine Angabe, aus
   // welchem Set es stammt.
   return `<div class="part-card" data-stil="cursor:pointer" tabindex="0" role="button" data-click="openSetItemDetail" data-arg="part" data-arg2="${escJs(p.part_number)}" data-arg3="${p.color_id||0}">
-    ${rawSrc ? bildTag({ src: imgUrl(thumbUrl(rawSrc)||rawSrc, true), alt: teilAlt(p), klasse: 'part-img', fade: true, orig: imgUrl(fullUrl(rawSrc), false), ph: 'teil' })
-             : `<span class="bild-ph part-img" role="img" aria-label="${esc(teilAlt(p))}">${platzhalterInhalt('teil')}</span>`}
+    ${rawSrc ? bildTag({ src: imgUrl(thumbUrl(rawSrc)||rawSrc, true), alt: '', klasse: 'part-img', fade: true, orig: imgUrl(fullUrl(rawSrc), false), ph: 'teil' })
+             : `<span class="bild-ph part-img" aria-hidden="true">${platzhalterInhalt('teil')}</span>`}
     <div class="part-num" title="${esc(p.part_number)}">${esc(p.bl_part_number||p.part_number)}</div>
     <div class="part-name">${esc(p.part_name)||'—'}</div>
     <div class="part-color"><div class="color-dot" data-farbe="${escHex(p.color_hex, 'var(--s300)')}"></div>${esc(colorName(p.color_name))}</div>
@@ -366,7 +377,7 @@ function updatePartsSentinel(){
   if (!s) return;
   if (_partsDone){
     s.innerHTML = _partsTotal
-      ? `<div data-stil="text-align:center;color:var(--mut);font-size:var(--fs-2);padding:1rem">${_partsTotal.toLocaleString(locale())} ${t('parts.stat.types')}</div>`
+      ? `<div data-stil="text-align:center;color:var(--mut);font-size:var(--fs-2);padding:1rem">${esc(tRaw('parts.eintraege', { n: _partsTotal }))}</div>`
       : '';
   } else {
     s.innerHTML = ladeAnzeige('', { stil: 'padding:1rem' });
@@ -461,6 +472,7 @@ export function renderManualParts() {
   zeichneTeileFilter();
   const teile = manualPartsCache.filter(teilPasstZumFilter);
   teileLeerAbgleichen(!teile.length);
+  if (G('manual-parts-n')) G('manual-parts-n').textContent = teile.length ? tRaw('parts.group_types', { n: teile.length }) : '';
   if (!teile.length) { el.innerHTML = ''; return; }
   if (tabellenAnsicht('parts-view')) {
     el.innerHTML = manuelleTabelle(teile, 'part');
@@ -476,8 +488,8 @@ export function renderManualParts() {
       // Vorschau über den Server-Proxy.
       const imgSrc = imgUrl(thumbUrl(p.image_local || p.image_url) || p.image_local || p.image_url || '', true);
       const img = imgSrc
-        ? bildTag({ src: imgSrc, alt: [p.part_name || p.part_number, p.color_name ? colorName(p.color_name) : ''].filter(Boolean).join(', '), klasse: 'man-tile-img', ph: 'teil' })
-        : `<span class="bild-ph man-tile-img" role="img" aria-label="${esc(p.part_name || p.part_number)}">${platzhalterInhalt('teil')}</span>`;
+        ? bildTag({ src: imgSrc, alt: '', klasse: 'man-tile-img', ph: 'teil' })
+        : `<span class="bild-ph man-tile-img" aria-hidden="true">${platzhalterInhalt('teil')}</span>`;
       const colorRow = p.color_name
         ? `<div class="man-tile-color">${p.color_hex ? `<span class="man-tile-swatch" data-farbe="${escHex(p.color_hex, 'var(--s300)')}"></span>` : ''}${esc(colorName(p.color_name))}</div>`
         : '';
@@ -485,7 +497,7 @@ export function renderManualParts() {
       const partPrice = p.avg_purchase_price ?? p.unit_price ?? p.purchase_price;
       const priceStr = partPrice!=null ? fmtN(partPrice, CURRENCY) : '—';
       const condBadge = condBadges(p);
-      return `<div class="man-tile" tabindex="0" role="button" data-click="openManDetail" data-arg="part" data-arg2="${esc(p.part_number)}" data-arg3="${p.color_id||0}" data-stil="cursor:pointer">
+      return `<div class="man-tile" tabindex="0" role="button" aria-keyshortcuts="Delete" data-click="openManDetail" data-arg="part" data-arg2="${esc(p.part_number)}" data-arg3="${p.color_id||0}" data-stil="cursor:pointer">
         <div class="ca"><span class="delbtn" data-click="deleteManualPartStop"${echt()} aria-hidden="true" data-arg="${esc(p.part_number)}" data-arg2="${p.color_id||0}" data-arg3="${p.user_id||''}" title="${esc(t('parts.delete.title'))}">${TRASH_ICON_SVG}</span></div>
         ${img}
         <div class="man-tile-num" title="${esc(p.part_number)}">${esc(p.bl_part_number||p.part_number)}</div>

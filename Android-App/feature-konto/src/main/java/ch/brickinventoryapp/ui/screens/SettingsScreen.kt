@@ -1,14 +1,13 @@
 package ch.brickinventoryapp.ui.screens
 
+import ch.brickinventoryapp.ui.components.nebenKnopfFarben
+import ch.brickinventoryapp.ui.components.nebenKnopfRand
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.Role
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.ui.semantics.semantics
-import ch.brickinventoryapp.ui.theme.Formen
-import ch.brickinventoryapp.ui.theme.AppKarte
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.ScrollState
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -22,7 +21,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import ch.brickinventoryapp.ressourcen.R
 import ch.brickinventoryapp.ui.AppViewModel
@@ -32,10 +30,9 @@ import ch.brickinventoryapp.ui.theme.Abstaende
 import ch.brickinventoryapp.ui.theme.Helligkeit
 import ch.brickinventoryapp.ui.theme.mittigBis
 import ch.brickinventoryapp.ui.components.WahlChips
-import androidx.compose.ui.draw.clip
-import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import ch.brickinventoryapp.ui.viewmodel.aktivitaetsViewModel
 import ch.brickinventoryapp.ui.viewmodel.UpdateViewModel
+import ch.brickinventoryapp.util.quelleVeraltet
 
 /**
  * Die Einstellungen — wenige Karten statt eines Stapels: Anzeige & Preise (jede
@@ -159,6 +156,21 @@ fun SettingsScreen(
                 Switch(checked = vorschauVerbergen, onCheckedChange = null)
             }
 
+            // Je Gerät, Vorgabe aus: Das Widget liegt ohne Entsperren auf dem Startbildschirm.
+            val widgetWerte by app.widgetWerte.collectAsStateWithLifecycle()
+            Row(
+                Modifier.fillMaxWidth().heightIn(min = 48.dp)
+                    .toggleable(value = widgetWerte, role = Role.Switch, onValueChange = { app.setWidgetWerte(it) }),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Column(Modifier.weight(1f)) {
+                    Text(stringResource(R.string.settings_widget_werte), style = MaterialTheme.typography.bodyMedium)
+                    Text(stringResource(R.string.settings_widget_werte_hint), style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+                Switch(checked = widgetWerte, onCheckedChange = null)
+            }
+
             HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
 
             // Währung und Preisgrundlage gehen zusammen an den Server (ein Endpunkt).
@@ -232,11 +244,10 @@ fun SettingsScreen(
         OutlinedButton(
             onClick = { fragtAbmelden = true },
             modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
-            shape = Formen.knopf,
             colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error),
             border = BorderStroke(1.dp, MaterialTheme.colorScheme.error.copy(alpha = 0.5f))
         ) {
-            Icon(Icons.AutoMirrored.Filled.Logout, null, Modifier.size(18.dp))
+            Icon(Icons.AutoMirrored.Filled.Logout, null, Modifier.size(ch.brickinventoryapp.ui.components.mitSchrift(18.dp)))
             Spacer(Modifier.width(Abstaende.klein))
             Text(stringResource(R.string.settings_logout), fontWeight = FontWeight.SemiBold)
         }
@@ -275,8 +286,8 @@ private fun ServerCard(
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
         Spacer(Modifier.height(Abstaende.klein))
-        OutlinedButton(onClick = onWechseln) {
-            Icon(Icons.Default.Cloud, null, modifier = Modifier.size(18.dp))
+        OutlinedButton(onClick = onWechseln, colors = nebenKnopfFarben(), border = nebenKnopfRand()) {
+            Icon(Icons.Default.Cloud, null, modifier = Modifier.size(ch.brickinventoryapp.ui.components.mitSchrift(18.dp)))
             Spacer(Modifier.width(Abstaende.klein))
             Text(stringResource(R.string.main_menu_change_server))
         }
@@ -326,11 +337,21 @@ private fun UpdateCard(
                 color = MaterialTheme.colorScheme.primary,
             )
             // Nur nach einer Pruefung: Vorher waere „aktuell" eine Aussage
-            // ueber etwas, das niemand nachgesehen hat.
-            updateZustand.geprueft -> Text(
+            // ueber etwas, das niemand nachgesehen hat. Eine veraltete Quelle
+            // ist nie „aktuell“ (Hinweis darunter).
+            updateZustand.geprueft && !quelleVeraltet(updateZustand.frische) -> Text(
                 stringResource(R.string.update_current, ch.brickinventoryapp.ui.components.LocalAppFassung.current.name),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+        if (quelleVeraltet(updateZustand.frische)) {
+            Spacer(Modifier.height(Abstaende.klein))
+            Text(
+                stringResource(if (updateZustand.frische == ch.brickinventoryapp.util.UpdateFrische.ABGELAUFEN)
+                    R.string.update_quelle_abgelaufen else R.string.update_quelle_zurueckgesetzt),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.error,
             )
         }
 
@@ -367,7 +388,7 @@ private fun UpdateCard(
         Spacer(Modifier.height(Abstaende.mittel))
         Row(horizontalArrangement = Arrangement.spacedBy(Abstaende.klein),
             verticalAlignment = Alignment.CenterVertically) {
-            OutlinedButton(onClick = onPruefen, enabled = !updateZustand.laedtPruefung && updateZustand.fortschritt == null) {
+            OutlinedButton(onClick = onPruefen, enabled = !updateZustand.laedtPruefung && updateZustand.fortschritt == null, colors = nebenKnopfFarben(), border = nebenKnopfRand(!updateZustand.laedtPruefung && updateZustand.fortschritt == null)) {
                 if (updateZustand.laedtPruefung) {
                     CircularProgressIndicator(Modifier.size(16.dp), strokeWidth = 2.dp)
                     Spacer(Modifier.width(Abstaende.klein))

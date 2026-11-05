@@ -14,10 +14,20 @@ const { spawn } = require('node:child_process');
 const ROOT = path.join(__dirname, '..', '..');
 const warte = (ms) => new Promise(r => setTimeout(r, ms));
 
+/**
+ * Pfad zu Chrome oder null (der Test überspringt). Mit REQUIRE_BROWSER=1 wirft
+ * ein fehlender Browser, wie REQUIRE_DB=1 bei der Datenbank: In der CI wäre
+ * ein grüner Lauf ohne Browser-Tests sonst kein Beleg.
+ * Gegenprobe (04.11.2026): CHROME_BIN leer, REQUIRE_BROWSER=1 → telefon-browser
+ * und anmeldefelder-leer-browser rot; ohne die Variable übersprungen.
+ */
 function chrome() {
   const kandidaten = [process.env.CHROME_BIN, '/usr/bin/google-chrome', '/usr/bin/google-chrome-stable',
     '/usr/bin/chromium', '/usr/bin/chromium-browser', '/opt/pw-browsers/chromium-1194/chrome-linux/chrome'];
-  return kandidaten.find(k => k && fs.existsSync(k)) ?? null;
+  const bin = kandidaten.find(k => k && fs.existsSync(k)) ?? null;
+  if (!bin && process.env.REQUIRE_BROWSER === '1')
+    throw new Error(`REQUIRE_BROWSER=1, aber kein Chrome gefunden (CHROME_BIN=${process.env.CHROME_BIN || 'leer'})`);
+  return bin;
 }
 
 const freierPort = () => new Promise(r => { const s = net.createServer().listen(0, () => { const p = s.address().port; s.close(() => r(p)); }); });
@@ -97,11 +107,15 @@ async function starteApp(t, opt = {}) {
     VALUES ($1, $2, $3, true, true, true) RETURNING id`, [NAME, `${NAME}@example.org`, await bcrypt.hash(PASS, 4)])).id;
   await db.run(`INSERT INTO user_settings (user_id, key, value) VALUES ($1, 'language', $2)`, [uid, opt.sprache || 'de']);
   if (opt.bestand) await opt.bestand(db, uid);
+  // Verwalter ohne Code-Generator kämen nur bis zu dessen Einrichtung; angemeldet
+  // wird mit einem Wiederherstellungscode im Codefeld.
+  const verwalter = (await db.get('SELECT is_admin FROM users WHERE id = $1', [uid])).is_admin;
+  const [wiederherstellung = '', ...weitereCodes] = verwalter ? await require('./verwalter').verwalterMitFaktor(_req, uid) : [];
   for (const k of ['rb_csv_last_sync', 'rb_part_categories_last_sync', 'rb_catalog_extras_last_sync'])
     await db.run(`INSERT INTO laufzustand (schluessel, wert) VALUES ($1, to_char(NOW(), 'YYYY-MM-DD'))
                   ON CONFLICT (schluessel) DO UPDATE SET wert = EXCLUDED.wert`, [k]);
   t.after(async () => {
-    await db.run('DELETE FROM users WHERE id = $1', [uid]).catch(() => {});
+    await db.run(`DELETE FROM users WHERE id = $1 OR username LIKE $2`, [uid, `${NAME.replace(/_/g, '\\_')}\\_%`]).catch(() => {});
     await db.pool.end().catch(() => {});
   });
 
@@ -172,6 +186,7 @@ async function starteApp(t, opt = {}) {
   await bis(`typeof document.getElementById('btn-login')?.onclick === 'function'`, 'Anmeldemaske');
   await b.auswerten(`document.getElementById('lu').value = ${JSON.stringify(NAME)};
     document.getElementById('lp').value = ${JSON.stringify(PASS)};
+    document.getElementById('lc').value = ${JSON.stringify(wiederherstellung)};
     document.getElementById('btn-login').click(); true`);
   // 30 s wie beim Chrome-Start: Die Anmeldung rechnet bcrypt mit 12 Runden und
   // schreibt die Sitzung; auf einem ausgelasteten Läufer dauerte das über 10 s.
@@ -184,7 +199,7 @@ async function starteApp(t, opt = {}) {
     if (document.querySelector('.ntab[data-tab="settings"]')?.classList.contains('active')) return true;
     const g = document.getElementById('gallery');
     return !!g && g.children.length > 0 && !g.querySelector('.skelett-raster'); })()`, 'Start abgeschlossen');
-  return { b, bis, warte, port, uid, db, abgewiesen };
+  return { b, bis, warte, port, uid, db, abgewiesen, weitereCodes };
 }
 
-module.exports = { starteApp, warte };
+module.exports = { starteApp, warte, chrome };

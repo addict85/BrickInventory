@@ -332,8 +332,8 @@ export function renderAcquisitionSummary(acqs, sn) {
       : `<span class="cond-badge cond-new">${t('common.condition_new')}</span>`;
     const price = erfassungsPreis(a, a.purchase_price);
     const dateFmt = a.created_at ? fmtDatum(a.created_at) : '';
-    return `<div data-stil="display:flex;align-items:center;gap:6px;padding:2px 0">
-      <span data-stil="color:var(--mut);font-size:var(--fs-1);min-width:24px">×${a.quantity}</span>
+    return `<div data-stil="display:flex;flex-wrap:wrap;align-items:center;gap:6px;padding:2px 0">
+      <span data-stil="color:var(--mut);font-size:var(--fs-1);min-width:24px;white-space:nowrap">×${a.quantity}</span>
       ${cond}
       ${price}
       ${dateFmt ? `<span data-stil="font-size:var(--fs-1);color:var(--mut)">${dateFmt}</span>` : ''}
@@ -354,8 +354,8 @@ function renderManAcqSummary(acqs, type, id, colorId) {
       : `<span class="cond-badge cond-new">${t('common.condition_new')}</span>`;
     const price = erfassungsPreis(a, a.unit_price);
     const dateFmt = a.created_at ? fmtDatum(a.created_at) : '';
-    return `<div data-stil="display:flex;align-items:center;gap:6px;padding:2px 0">
-      <span data-stil="color:var(--mut);font-size:var(--fs-1);min-width:24px">×${a.quantity}</span>
+    return `<div data-stil="display:flex;flex-wrap:wrap;align-items:center;gap:6px;padding:2px 0">
+      <span data-stil="color:var(--mut);font-size:var(--fs-1);min-width:24px;white-space:nowrap">×${a.quantity}</span>
       ${cond}
       ${price}
       ${dateFmt ? `<span data-stil="font-size:var(--fs-1);color:var(--mut)">${dateFmt}</span>` : ''}
@@ -396,7 +396,7 @@ function manDetailZeilen(type, id, colorId, item, acqs, ad) {
       <select id="man-farb-wahl" aria-label="${esc(tRaw('parts.color_label'))}" data-stil="max-width:150px;border:1px solid var(--feldrand);border-radius:6px;padding:2px 4px;font-size:var(--fs-2)"
         data-change="speichereTeilFarbe" data-part="${escJs(id)}" data-color="${_manItem.colorId}"
         data-owner="${esc(item?.user_id ?? '')}">
-        <option value="${_manItem.colorId}">${esc(item.color_name || tRaw('parts.no_color_dash'))}</option>
+        <option value="${_manItem.colorId}">${esc(item.color_name ? colorName(item.color_name) : tRaw('parts.no_color_dash'))}</option>
       </select>`,
       { wertStil: 'display:flex;align-items:center;gap:6px;justify-content:flex-end' }));
   }
@@ -489,7 +489,7 @@ export async function openManDetail(type, id, colorId) {
   if (!item) return;
 
   G('man-detail-tit').textContent = item.fig_name || item.part_name || id;
-  G('man-detail-sub').textContent = id + (item.color_name ? ' · ' + item.color_name : '');
+  G('man-detail-sub').textContent = id + (item.color_name ? ' · ' + colorName(item.color_name) : '');
 
   // War: fullUrl(...) allein — bei einer CDN-Quelle ohne imgUrl()-Umwicklung
   // lädt der Browser direkt von Rebrickable, am Server vorbei. Das ist der
@@ -586,7 +586,7 @@ export async function openSetItemDetail(type, id, colorId) {
   const sets = d?.sets || [];
 
   G('setitem-tit').textContent = item?.name || id;
-  G('setitem-sub').textContent = id + (item?.color_name ? ' · ' + item.color_name : '');
+  G('setitem-sub').textContent = id + (item?.color_name ? ' · ' + colorName(item.color_name) : '');
 
   // Bild wie im manuellen Dialog: über den Server-Proxy in voller Auflösung.
   // data-orig speist den Zoom (openImageLightboxFromEl in 11-actions.js) —
@@ -615,7 +615,7 @@ export async function openSetItemDetail(type, id, colorId) {
     const punkt = item.color_hex
       ? `<span data-stil="display:inline-block;width:12px;height:12px;border-radius:50%;border:1px solid rgba(0,0,0,.15);margin-right:4px;vertical-align:middle" data-farbe="${escHex(item.color_hex, 'var(--s300)')}"></span>`
       : '';
-    zeilen.push(detailZeile(t('parts.color_label'), `${punkt}${esc(item.color_name)}`));
+    zeilen.push(detailZeile(t('parts.color_label'), `${punkt}${esc(colorName(item.color_name))}`));
   }
   if (item?.category_name) zeilen.push(detailZeile(t('setitem.category'), esc(item.category_name)));
   if (item?.is_spare) zeilen.push(detailZeile(t('parts.spare_tag'), ico('ok')));

@@ -28,6 +28,12 @@ private fun vertrauen(ks: java.security.KeyStore?): javax.net.ssl.X509ExtendedTr
     return tmf.trustManagers.filterIsInstance<javax.net.ssl.X509ExtendedTrustManager>().first()
 }
 
+/** Dieselben System-Wurzeln wie im Pinning (ohne Nutzer-CAs), erst beim ersten Bedarf gelesen. */
+internal fun systemWurzeln(): ch.brickinventoryapp.util.SystemWurzeln {
+    val fingerabdruecke by lazy { vertrauen(null).acceptedIssuers.map { ch.brickinventoryapp.util.spkiFingerabdruck(it) }.toSet() }
+    return ch.brickinventoryapp.util.SystemWurzeln { it in fingerabdruecke }
+}
+
 /**
  * System-CAs nach network_security_config (ohne Nutzer-CAs), dazu der
  * AndroidCAStore samt Nutzer-CAs für die ausdrückliche Einstellung — nur für den
@@ -80,6 +86,8 @@ internal fun buildInterceptorClient(
     rechte: ch.brickinventoryapp.data.RechteSignal? = null,
     /** Nur der API-Client: Mit Startpasswort weist der Server jeden Abruf ab. */
     pflicht: ch.brickinventoryapp.data.PasswortPflicht? = null,
+    /** Nur der API-Client: Verwalterrechte ohne zweiten Faktor weist der Server ab. */
+    faktorPflicht: ch.brickinventoryapp.data.ZweiterFaktorPflicht? = null,
 ): OkHttpClient {
     val versionsMeldung: ((VersionsHinweis) -> Unit)? = meldungen?.let { kanal ->
         { hinweis: VersionsHinweis ->
@@ -108,7 +116,7 @@ internal fun buildInterceptorClient(
                     ch.brickinventoryapp.util.LanguageManager.localizedContext(ctx)
                         .getString(ch.brickinventoryapp.ressourcen.R.string.lang_code))
             }, rotation = rotation, rechteEntzogen = { rechte?.melde() },
-            passwortWechselNoetig = { pflicht?.melde() }))
+            passwortWechselNoetig = { pflicht?.melde() }, zweiterFaktorPflicht = { faktorPflicht?.melde() }))
         .apply {
             val tm = serverVertrauen(prefs, frage)
             sslSocketFactory(serverTls(prefs, tm), tm)
@@ -139,6 +147,21 @@ internal fun buildEntwertungsBasis(
     .connectTimeout(15, TimeUnit.SECONDS)
     .readTimeout(30, TimeUnit.SECONDS)
     .build()
+
+/**
+ * Vertrauen je Entwertungsauftrag (data/Entwertung.kt): der Pin aus dem Auftrag,
+ * sonst der gemerkte — Pins bleiben beim Abmelden stehen. Nutzer-CAs wie beim
+ * eigenen Server nur auf ausdrückliche Einstellung.
+ */
+internal fun auftragsVertrauenFabrik(prefs: PreferencesManager): (String, String?) -> javax.net.ssl.X509ExtendedTrustManager {
+    val system = vertrauen(null)
+    val kette = ch.brickinventoryapp.util.WahlVertrauen(
+        system = system,
+        mitNutzer = lazy { vertrauen(java.security.KeyStore.getInstance("AndroidCAStore").apply { load(null) }) },
+        nutzerErlaubt = { prefs.nutzerCaErlaubt() },
+    )
+    return { schluessel, pin -> ch.brickinventoryapp.util.auftragsVertrauen(kette, system, schluessel, pin ?: prefs.pin(schluessel)) }
+}
 
 /**
  * Beim Wechsel auf einen anderen Server laufende Aufrufe abbrechen; nach dem

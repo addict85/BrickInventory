@@ -47,6 +47,8 @@ const _req = require('./helpers/sources').buildAndRequire();
 const db = _req('db/database.js');
 const { testServer } = require('./helpers/server');
 const { haeltSet } = require('./helpers/bestand');
+const { mailAttrappe, mailserverEintragen } = require('./helpers/mail-attrappe');
+mailAttrappe();
 
 test.after(async () => { await db.pool.end().catch(() => {}); });
 
@@ -132,31 +134,35 @@ test('die fünf Verdrahtungen über ihre echten Adressen', { concurrency: 1 }, a
     // die Routen die Funktion NENNEN.
     await db.run(`INSERT INTO global_settings (key,value) VALUES ('registration_enabled','1')
                   ON CONFLICT (key) DO UPDATE SET value='1'`);
+    await mailserverEintragen(db);
+    const basisVorher = process.env.APP_BASE_URL;
+    process.env.APP_BASE_URL = 'http://localhost';
+    t.after(() => { if (basisVorher === undefined) delete process.env.APP_BASE_URL; else process.env.APP_BASE_URL = basisVorher; });
     const r = await fetch(`${mit.base}/api/v1/auth/register`, {
       method: 'POST', headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ username: 'neuling', email: 'n@example.org',
-                             password: '1234567', language: 'de' }),
+                             password: '12345678901', language: 'de' }),
     });
     const b = await r.json().catch(() => ({}));
     assert.equal(r.status, 400, `Erwartet 400, bekam ${r.status}: ${JSON.stringify(b)}`);
     // Die Antwort traegt den uebersetzten SATZ, nicht den Schluessel — die
     // Fehlersprache liegt zentral (src/infra/fehlerTexte.ts). Geprueft wird
     // deshalb der Satz; er nennt die Zahl, auf die es ankommt.
-    assert.match(String(b.error || ''), /mindestens 8 Zeichen/,
+    assert.match(String(b.error || ''), /mindestens 12 Zeichen/,
       `Abgelehnt wurde mit „${b.error}" — erwartet die Passwortlänge. Ein anderer ` +
       'Grund hiesse, die Länge wurde gar nicht geprüft.');
     assert.equal((await db.get(`SELECT COUNT(*)::int c FROM users WHERE username='neuling'`)).c, 0,
       'Das Konto wurde trotz Ablehnung angelegt');
 
-    // Gegenrichtung: acht Zeichen gehen durch. Ohne sie wäre die Regel auch
+    // Gegenrichtung: zwölf Zeichen gehen durch. Ohne sie wäre die Regel auch
     // erfüllt, wenn JEDE Registrierung scheiterte.
     const r2 = await fetch(`${mit.base}/api/v1/auth/register`, {
       method: 'POST', headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ username: 'neuling2', email: 'n2@example.org',
-                             password: 'acht8Zch', language: 'de' }),
+                             password: 'zwoelf12Zchn', language: 'de' }),
     });
     assert.notEqual(r2.status, 400,
-      'Auch acht Zeichen wurden mit 400 abgelehnt — dann ist die Grenze nicht acht');
+      'Auch zwölf Zeichen wurden mit 400 abgelehnt — dann ist die Grenze nicht zwölf');
   });
 
   await t.test('4. ein Datum, an dem schon ein Kauf steht, wird abgelehnt', async () => {

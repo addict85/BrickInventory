@@ -18,7 +18,7 @@ import ch.brickinventoryapp.service.CsvImportService
 import ch.brickinventoryapp.ui.viewmodel.Texte
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
-import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -35,6 +35,8 @@ import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 import javax.inject.Named
+import ch.brickinventoryapp.di.BrickDispatchers
+import ch.brickinventoryapp.di.Dispatcher
 
 /**
  * Was der ganzen App gehört: Sitzung beginnen und beenden, Design und Sprache,
@@ -54,9 +56,8 @@ class AppViewModel @Inject constructor(
     private val rechte: ch.brickinventoryapp.data.RechteSignal,
     meldungen: MeldungsKanal,
     private val texte: Texte,
-    // Der PdfViewer leitet seinen Download-Client hiervon ab, damit Token,
-    // Klartext-Verbot und 401-Meldung auch dort gelten.
-    @param:Named("api") val apiHttpClient: okhttp3.OkHttpClient,
+    // Nur für seinen Verbindungspool: Ein neu vertrautes Zertifikat verwirft offene Verbindungen.
+    @param:Named("api") private val apiHttpClient: okhttp3.OkHttpClient,
     // Nur für seinen Zwischenspeicher: Beim Abmelden geleert wie Coils eigene Caches.
     @param:Named("image") private val bildHttpClient: okhttp3.OkHttpClient,
     // Beim Abmelden mit geleert: Die Vorschaubilder gehören zum Konto.
@@ -71,7 +72,12 @@ class AppViewModel @Inject constructor(
     private val abmeldehaken: Abmeldehaken,
     /** Mit Startpasswort zeigt MainActivity statt der App die Maske zum Ersetzen. */
     val passwortPflicht: ch.brickinventoryapp.data.PasswortPflicht,
+    /** Verwalterrechte ohne zweiten Faktor: MainActivity zeigt statt der App dessen Einrichtung. */
+    val zweiterFaktorPflicht: ch.brickinventoryapp.data.ZweiterFaktorPflicht,
     private val abmeldung: ch.brickinventoryapp.data.Abmeldung,
+    /** Zeichnet das Startbildschirm-Widget neu (AppModule); core-zustand kennt es nicht. */
+    private val widget: Widgetanstoss,
+    @param:Dispatcher(BrickDispatchers.IO) private val io: CoroutineDispatcher,
 ) : ViewModel() {
 
     // Der Zustand wird mit dem gemerkten Design geboren: appTheme unten nimmt
@@ -89,6 +95,16 @@ class AppViewModel @Inject constructor(
     val offeneAenderungen: StateFlow<Int> = ausgangsmelder.starte(viewModelScope)
     fun clearSnackbar() { _snackbar.value = null }
     fun showSnackbar(msg: String) { _snackbar.value = msg }
+
+    // Eine nachgeholte Abmeldung, die endgültig scheiterte (EntwertungsWorker): Die
+    // Benachrichtigung kann fehlen, also hier noch einmal, einmalig.
+    init {
+        prefs.gescheiterteEntwertungen().firstOrNull()?.let { server ->
+            _snackbar.value = texte.text(R.string.abmeldung_gescheitert_text,
+                ch.brickinventoryapp.util.NetworkPolicy.ansicht(server)?.adresse ?: server)
+            prefs.quittiereGescheiterteEntwertungen()
+        }
+    }
 
     val blickfeld = blickfeldDienst.konten
     val lagerState = blickfeldDienst.lager
@@ -130,6 +146,15 @@ class AppViewModel @Inject constructor(
         _vorschauVerbergen.value = an
     }
 
+    /** Je Gerät: Geldwerte im Startbildschirm-Widget, Vorgabe aus (sec8 H5). */
+    private val _widgetWerte = MutableStateFlow(prefs.widgetWerteZeigen())
+    val widgetWerte: StateFlow<Boolean> = _widgetWerte.asStateFlow()
+    fun setWidgetWerte(an: Boolean) {
+        prefs.setzeWidgetWerteZeigen(an)
+        _widgetWerte.value = an
+        viewModelScope.launch { runCatching { widget.aktualisiere() } }
+    }
+
     /** Ja zum gezeigten Zertifikat: gepinnt, offene Verbindungen verworfen. Ohne bekannte CA oder geändert nur mit [eingabe]. */
     fun zertifikatVertrauen(eingabe: String? = null): Boolean {
         if (!zertifikatsFrage.bestaetige(prefs, eingabe)) return false
@@ -162,7 +187,7 @@ class AppViewModel @Inject constructor(
             combine(prefs.serverUrl, prefs.authToken) { url, token -> url to token }
                 .distinctUntilChanged()
                 .collect { (url, token) ->
-                    sitzung.aendere { it.copy(serverUrl = url, isLoggedIn = token.isNotBlank(), authToken = token) }
+                    sitzung.aendere { it.copy(serverUrl = url, isLoggedIn = token.isNotBlank()) }
                     if (token.isNotBlank() && prefs.anmeldungAbgelaufen()) {
                         _snackbar.value = texte.text(R.string.vm_anmeldung_zu_alt)
                         logout()
@@ -172,10 +197,7 @@ class AppViewModel @Inject constructor(
                     // dorthin scheiterten nur und füllten die Leiste mit Netzfehlern.
                     if (token.isNotBlank() && url.isNotBlank() &&
                         !ch.brickinventoryapp.util.NetworkPolicy.klartextAltbestand(url, ch.brickinventoryapp.util.NetworkPolicy.entwicklung)) {
-                        launch {
-                            val me = repo.konto.getMe()
-                            if (me is Result.Success) sitzung.aendere { it.copy(isAdmin = me.data.user?.isAdmin == true) }
-                        }
+                        launch { sitzung.kontoUebernehmen(repo.konto, zweiterFaktorPflicht) }
                         nachAnmeldung()
                         loadSettings()
                         vorwaermenAnstossen()
@@ -224,6 +246,16 @@ class AppViewModel @Inject constructor(
         }
     }
 
+    /**
+     * Der zweite Faktor ist bestätigt: Was bis dahin mit 403 abgewiesen wurde,
+     * jetzt laden. Die Codes hat die Maske vorher gezeigt; der Token bleibt gültig.
+     */
+    fun zweiterFaktorEingerichtet() {
+        zweiterFaktorPflicht.erledigt()
+        nachAnmeldung()
+        loadSettings()
+    }
+
     /** Nach dem Anmelden: Filter, Konten und Orte; die Bereiche laden ihre Listen selbst. */
     private fun nachAnmeldung() {
         _csvImportState.value = CsvImportUiState()
@@ -252,9 +284,11 @@ class AppViewModel @Inject constructor(
             }
             prefs.clearSession()
             passwortPflicht.erledigt()
+            zweiterFaktorPflicht.erledigt()
             repo.clearCache()
-            kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+            kotlinx.coroutines.withContext(io) {
                 runCatching { ch.brickinventoryapp.util.raeumeVertraulichePdfsAuf(ctx.cacheDir) }
+                runCatching { ch.brickinventoryapp.util.raeumeAnleitungenAuf(ctx.cacheDir) }
                 runCatching { ch.brickinventoryapp.util.raeumeKontoDateienAuf(ctx.filesDir, ctx.getExternalFilesDir(null)) }
                 // Bilder des Kontos liegen auch hier: HTTP-Zwischenspeicher und Vorschau-Ablage.
                 runCatching { bildHttpClient.cache?.evictAll() }
@@ -359,7 +393,7 @@ class AppViewModel @Inject constructor(
     private fun vorwaermenAnstossen() {
         if (vorwaermenLaeuft) return
         vorwaermenLaeuft = true
-        viewModelScope.launch(Dispatchers.IO) {
+        viewModelScope.launch(io) {
             delay(VorschauVorwaermer.ANLAUF_MS)
             // Erst Netzlage und Platz prüfen, sonst kostet jeder Start vier Listenabrufe umsonst.
             if (!vorwaermer.darfStarten()) return@launch

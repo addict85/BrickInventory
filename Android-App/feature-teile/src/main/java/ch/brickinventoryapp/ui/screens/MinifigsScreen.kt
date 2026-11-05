@@ -7,12 +7,12 @@ import ch.brickinventoryapp.ui.model.ManuelleFigurAnsicht
 import ch.brickinventoryapp.ui.model.MitgliedAnsicht
 import ch.brickinventoryapp.ui.theme.Formen
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.border
+import androidx.compose.ui.semantics.selected
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.Role
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.*
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
@@ -30,14 +30,11 @@ import ch.brickinventoryapp.util.rememberTileImageWithFallback
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import coil3.ImageLoader
-import coil3.request.ImageRequest
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import ch.brickinventoryapp.ressourcen.R
 import ch.brickinventoryapp.ui.viewmodel.TeileViewModel
 import ch.brickinventoryapp.ui.*
-import ch.brickinventoryapp.util.NumericInput
 import ch.brickinventoryapp.ui.theme.Abstaende
 import ch.brickinventoryapp.ui.components.LeerSymbol
 import ch.brickinventoryapp.ui.components.Bewegt
@@ -73,6 +70,8 @@ fun MinifigsScreen(
         ?: ch.brickinventoryapp.data.ScopeFilter.ALL
     val manualFigs = partsState.manualFigs ?: emptyList()
     val lagerState by vm.lagerState.collectAsStateWithLifecycle()
+    // Die Figur, deren Detail daneben offen ist (breites Fenster); ihre Kachel ist markiert.
+    val gewaehlt = ch.brickinventoryapp.ui.components.LocalOffenesDetail.current
 
     val onRefresh: () -> Unit = { vm.loadMinifigs() }
     val onScopeChange: (String) -> Unit = { vm.setScope(ch.brickinventoryapp.data.ScopeFilter.View.MINIFIGS, it) }
@@ -95,6 +94,9 @@ fun MinifigsScreen(
 
     var zeigeFilter by rememberSaveable { mutableStateOf(false) }
 
+    // Ab grosser Schrift steht Erfassen in der Knopfzeile unter der Suche (SucheMitFilter).
+    val gross = ch.brickinventoryapp.ui.components.grosseSchrift()
+    val erfassenText = stringResource(R.string.minifigs_add)
     Box(Modifier.fillMaxSize()) {
     Column(Modifier.fillMaxSize()) {
         // Vorher stand der Fall „keine Treffer“ hinter derselben Bedingung wie „leer“
@@ -109,6 +111,7 @@ fun MinifigsScreen(
             platzhalter = stringResource(R.string.minifigs_search_placeholder),
             aktiveFilter = Filterzahl.konto(householdMembers, scopeMode),
             onFilter = { zeigeFilter = true },
+            erfassen = erfassenText to { showAddDialog = true },
         )
 
         ch.brickinventoryapp.ui.components.OfflineHinweis(partsState.figurenOfflineStand)
@@ -185,7 +188,8 @@ fun MinifigsScreen(
                         val oeffne = { vm.oeffneSetItem("fig", fig.figNumber) }
                         Bewegt {
                             if (ansicht == "table") MinifigTableRow(fig, serverUrl, imageLoader, oeffne)
-                            else MinifigCard(fig, serverUrl, imageLoader, oeffne)
+                            else MinifigCard(fig, serverUrl, imageLoader, oeffne,
+                                ausgewaehlt = gewaehlt == ch.brickinventoryapp.ui.components.detailSchluessel("fig", fig.figNumber))
                         }
                     }
                 }
@@ -193,8 +197,8 @@ fun MinifigsScreen(
         }
     }
 
-        ch.brickinventoryapp.ui.components.ErfassenFab(
-            stringResource(R.string.minifigs_add), { showAddDialog = true },
+        if (!gross) ch.brickinventoryapp.ui.components.ErfassenFab(
+            erfassenText, { showAddDialog = true },
             Modifier.align(Alignment.BottomEnd).padding(Abstaende.gross),
         )
     }
@@ -291,7 +295,6 @@ fun AddMinifigDialog(
         mutableStateOf(householdMembers.firstOrNull { it.isSelf }?.id)
     }
 
-
     fun submit() {
         if (figNumber.isNotBlank()) {
             // Siehe erfassungsWerte() — dieselbe Umrechnung wie im Teile-Dialog.
@@ -316,13 +319,13 @@ fun AddMinifigDialog(
                     value = figNumber, onValueChange = { figNumber = it },
                     label = { Text(stringResource(R.string.minifigs_fig_number)) }, placeholder = { Text(stringResource(R.string.minifigs_fig_number_placeholder)) },
                     modifier = Modifier.fillMaxWidth(), singleLine = true,
-                    shape = Formen.knopf
+                    shape = Formen.feld
                 )
                 OutlinedTextField(
                     value = blFigNumber, onValueChange = { blFigNumber = it },
                     label = { Text(stringResource(R.string.minifigs_bl_number)) }, placeholder = { Text(stringResource(R.string.minifigs_bl_number_placeholder)) },
                     modifier = Modifier.fillMaxWidth(), singleLine = true,
-                    shape = Formen.knopf
+                    shape = Formen.feld
                 )
                 Text(
                     stringResource(R.string.minifigs_bl_hint),
@@ -345,12 +348,14 @@ fun AddMinifigDialog(
 
 @Composable
 fun MinifigCard(fig: FigurAnsicht, serverUrl: String, imageLoader: ImageLoader,
-                onClick: (() -> Unit)? = null) {
+                onClick: (() -> Unit)? = null, ausgewaehlt: Boolean = false) {
     val qty = fig.totalQuantity ?: fig.quantity
 
     Card(
         // Antippen oeffnet den Detail-Dialog — wie bei den Teilen daneben.
         modifier = Modifier.fillMaxWidth().heightIn(min = 196.dp)
+            .semantics { selected = ausgewaehlt }
+            .then(if (ausgewaehlt) Modifier.border(2.dp, MaterialTheme.colorScheme.primary, Formen.leiste) else Modifier)
             .let { if (onClick != null) it.clickable(role = Role.Button, onClick = onClick) else it },
         shape = Formen.leiste,
         elevation = CardDefaults.cardElevation(defaultElevation = Formen.karteErhebung),
@@ -371,6 +376,10 @@ fun MinifigCard(fig: FigurAnsicht, serverUrl: String, imageLoader: ImageLoader,
                     modifier = Modifier.fillMaxSize()
                         .clip(Formen.kachelBildEcken),
                     contentScale = ContentScale.Fit,
+                    // Bildgrund über die ganze Kachelbreite wie bei Sets und Teilen: Das hohe
+                    // Figurenbild stand sonst schmal in der Mitte mit weissen Rändern.
+                    bildgrund = true,
+                    innenAbstand = Abstaende.winzig,
                 )
                 if (qty > 1) {
                     Surface(

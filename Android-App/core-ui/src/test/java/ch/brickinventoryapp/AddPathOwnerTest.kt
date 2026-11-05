@@ -98,5 +98,4 @@ class AddPathOwnerTest {
         assertEquals(ErfassungsWerte(anzahl = 3, preis = null, zustand = "N", besitzer = 7),
             erfassungsWerte(anzahl = "3", preis = "", zustand = "N", besitzer = 7, haushalt = haushalt))
     }
-
 }

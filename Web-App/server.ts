@@ -7,7 +7,7 @@ import { installiereProtokoll, protokollInDieDatenbank, leereProtokoll, anfrageK
 installiereProtokoll();
 
 import fs from 'fs';
-import type { Server } from 'http';
+import http, { type Server } from 'http';
 import express from 'express';
 import session from 'express-session';
 import compression from 'compression';
@@ -29,32 +29,30 @@ import { bildFreigegeben } from './src/katalog/bilder/bildBlickfeld';
 import { aktuellerStartZustand, oeffentlicherStartZustand } from './src/infra/startZustand';
 import { merkeAnfrage } from './src/infra/anfrageKonto';
 import { proxyVertrauen, proxyHinweis } from './src/infra/proxyVertrauen';
-import { nurEigeneHerkunft } from './src/infra/herkunft';
+import { nurEigeneHerkunft, nurEigenerHost } from './src/infra/herkunft';
 import { API_VERSION, API_MIN_APP, appFassungPruefen } from './src/infra/apiVersion';
-import { verifiziereEmailToken } from './src/konto/auth';
 import { resolveUserId, istVerwalter } from './src/konto/http/anmeldung';
 import { PUBLIC_DIR } from './src/infra/appPaths';
 import { IMG_PROXY_PFAD } from './src/katalog/bilder/images';
 import { safeDataPath } from './src/infra/datenPfad';
 import { generateThumb } from './src/katalog/bilder/thumbs';
 import { closeAllSse } from './src/infra/sseRegistry';
-import { renderIndexHtml } from './src/konto/indexHtml';
+import { renderIndexHtml, startStilHash } from './src/konto/indexHtml';
 import { meldeSmtpAltlast } from './src/infra/mailer';
+import { meldeUngueltigeAdressen, meldeAusstehendeAdressen } from './src/konto/konten';
+import { horcheAufTokenWiderruf } from './src/konto/auth';
 import * as pgNotify from './db/pgNotify';
 import { registerImgProxy } from './routes/imgProxy';
-import { anmeldungAmEingang } from './routes/api_v1/middleware';
+import { anmeldungAmEingang, rumpfLesen } from './routes/api_v1/middleware';
 import { idempotenz } from './src/idempotenz/http/middleware';
 import { vertragPruefen } from './src/infra/vertrag/pruefen';
-import { zuGrosseId } from './src/infra/validate';
-import { sendeFehler } from './src/infra/fehlerTexte';
 import datenDateien = require('./routes/datenDateien');
 import apiV1Router = require('./routes/api_v1/index');
 import authRouter = require('./routes/auth');
 import zertifikatRouter = require('./routes/zertifikat');
 import wellKnownRouter = require('./routes/wellKnown');
 
-/** Benannt, weil `params` auf dem allgemeinen Request-Typ leer ist und der
- * erfasste Pfad sonst ein implizites `any`. */
+/** Mit benanntem `params`, sonst wäre der erfasste Pfad implizit `any`. */
 type WildcardRequest = Request<{ pfad: string[] }>;
 
 process.on('unhandledRejection', (reason: unknown) => {
@@ -76,10 +74,13 @@ const PLATZHALTER_GEHEIMNISSE = [
   'brickinventory-manager-dev-secret',
 ];
 
+/** Das Entwicklungsgeheimnis nur bei ausdrücklichem NODE_ENV=development/test;
+ * ohne NODE_ENV gelten dieselben Regeln wie in Produktion. */
 function sitzungsGeheimnis(): string {
   const gesetzt = konfig().sessionSecret?.trim();
-  if (!konfig().produktion) return gesetzt || 'brickinventory-manager-dev-secret';
-  const grund = !gesetzt ? 'SESSION_SECRET ist nicht gesetzt — Start verweigert. Bitte in compose.yaml/ENV setzen.'
+  if (konfig().entwicklung) return gesetzt || 'brickinventory-manager-dev-secret';
+  const grund = !gesetzt ? 'SESSION_SECRET ist nicht gesetzt — Start verweigert. Bitte in compose.yaml/ENV setzen'
+      + (konfig().produktion ? '.' : ', oder für die Entwicklung NODE_ENV=development.')
     : PLATZHALTER_GEHEIMNISSE.includes(gesetzt) ? 'SESSION_SECRET steht noch auf dem Beispielwert aus compose.yaml — Start verweigert. Bitte einen eigenen Zufallswert eintragen, z. B. `openssl rand -base64 48`.'
     : gesetzt.length < 32 ? `SESSION_SECRET ist zu kurz (${gesetzt.length} Zeichen, nötig sind mindestens 32) — Start verweigert.`
     : null;
@@ -91,6 +92,8 @@ function baueApp(): express.Express {
 const app  = express();
 // Verrät nur, womit der Server gebaut ist — wer sucht, soll es nicht geschenkt bekommen.
 app.disable('x-powered-by');
+// Vor dem ersten app.use: Ein /API/… träfe sonst dieselbe Route, aber keinen Vertragseintrag.
+app.set('case sensitive routing', true);
 
 // Gzip/Brotli für alles ab 1 KB; index.html schrumpft um rund 80 %.
 app.use(compression({
@@ -132,8 +135,8 @@ app.use((req, res, next) => {
     // Ohne 'unsafe-inline': Alle Handler laufen über den Dispatcher in
     // js/11-actions.js, die CSP ist damit eine echte zweite Verteidigungslinie.
     "script-src 'self'",
-    // Stile setzt js/00-stile.js per CSSOM, das die CSP nicht betrifft.
-    "style-src 'self'",
+    // Stile setzt js/00-stile.js per CSSOM; inline nur das Startgerüst, per Hash.
+    `style-src 'self'${startStilHash() ? ' ' + startStilHash() : ''}`,
     "font-src 'self'",
     // Ohne https:: Fremde Bilder gehen durch den Bild-Proxy, und ein eingeschleustes
     // <img src="https://fremd/?daten"> wäre sonst ein Kanal nach draussen.
@@ -150,27 +153,14 @@ app.use((req, res, next) => {
   next();
 });
 
-// 256 KB: Ein grosses Limit überall liesse jeden Client den Heap füllen. Nur der
-// PDF-Auftrag trägt die ganze Teileliste; sein Parser muss VOR dem allgemeinen stehen.
-app.post('/api/v1/sets/partslist-pdf', express.json({ limit: '4mb' }));
-app.use(express.json({ limit: '256kb' }));
 // Das Konto der Anfrage für Zähler tief unten (src/katalog/apiKontingent.ts).
 app.use(merkeAnfrage);
-app.use(express.urlencoded({ extended: true, limit: '256kb' }));
 
-/** Express 5 lässt `req.body` ohne Parser `undefined`; die Routen verlassen
- * sich auf ein Objekt. */
-app.use((req, _res, next) => { if (req.body === undefined) req.body = {}; next(); });
-// IDs in Rumpf und Abfrage an einer Stelle, wie die Pfad-IDs in vertragsRouter().
-app.use((req, res, next) => zuGrosseId(req.body) || zuGrosseId(req.query) ? sendeFehler(req, res, 400, 'id_ungueltig') : next());
-
-// Hinter einem TLS-terminierenden Proxy muss Express X-Forwarded-Proto
-// glauben, sonst setzt es das secure-Cookie nie (src/infra/proxyVertrauen.ts).
+// Sonst glaubt Express X-Forwarded-Proto nie und setzt kein secure-Cookie (src/infra/proxyVertrauen.ts).
 if (konfig().produktion) {
   app.set('trust proxy', proxyVertrauen(konfig().trustProxy));
 }
-// Auch ausserhalb der Produktion: Dort wird X-Forwarded-For ohne Vertrauen
-// verworfen, und genau das meldet er.
+// Auch ausserhalb der Produktion: Er meldet ein verworfenes X-Forwarded-For.
 app.use(proxyHinweis(konfig().trustProxy));
 
 // Doppelte Schrägstriche zusammenfassen: `//api/…` fiele sonst bis zum
@@ -186,6 +176,7 @@ app.use((req, _res, next) => {
   next();
 });
 
+app.use(nurEigenerHost);
 app.use(nurEigeneHerkunft);
 // no-store als Vorgabe: Antworten tragen Konten, Gutscheine und Tokens. Was bewusst
 // gecacht wird (img-proxy, Design), setzt seinen Kopf selbst und überschreibt ihn.
@@ -196,16 +187,14 @@ app.use('/api', (_req, res, next) => {
   next();
 }, appFassungPruefen);
 
-// Eine kurze Kennung je Anfrage für alle ihre Logzeilen; die des Proxys nur,
-// wenn sie die Prüfung in src/infra/protokoll.ts besteht.
+// Eine Kennung je Anfrage für ihre Logzeilen; die des Proxys nur, wenn sie src/infra/protokoll.ts besteht.
 app.use((req, res, next) => {
   const rid = anfrageKennung(req.headers['x-request-id']);
   res.setHeader('X-Request-Id', rid);
   anfrageKontext.run({ rid }, () => next());
 });
 
-// In PostgreSQL, damit Sitzungen einen Neustart überleben. Die Tabelle legt
-// das Schema an, bevor der Server Anfragen annimmt.
+// In PostgreSQL, damit Sitzungen einen Neustart überleben; die Tabelle legt das Schema an.
 const PgSession = connectPgSimple(session);
 const sitzungsSpeicher = new PgSession({
   pool: db.pool,
@@ -347,30 +336,17 @@ app.get('/api/v1/health', async (req, res) => {
 // bleibt als zweite Linie.
 // Ausführlich: docs/begruendungen/server.ts.md#abschnitt-7
 app.use('/api/v1',          anmeldungAmEingang);
+// Rümpfe erst nach der Anmeldung lesen: Unangemeldet gibt es nur 16 KB (rumpfLesen).
+app.use('/api/v1',          rumpfLesen);
 app.use('/api/v1',          idempotenz);
 app.use('/api/v1',          apiV1Router);
 app.use('/api/v1/auth',     authRouter);
 
-// Der Link kommt aus einer E-Mail: Die Antwort ist eine Seite, kein JSON.
-app.get('/verify', async (req, res) => {
+// Links aus einer E-Mail: Erst ein Knopf auf der Seite wirkt (POST), sonst
+// bestätigte schon der Link-Scanner des Mailanbieters eine fremde Adresse.
+app.get(['/verify', '/reset-password'], async (_req, res) => {
+  // Renderer statt sendFile, sonst gingen die Assets ohne Stempel hinaus.
   res.set('Cache-Control', 'no-store');
-  try {
-    const e = await verifiziereEmailToken(req.query.token);
-    res.redirect(e.ok ? '/?verified=1' : '/?verified=invalid');
-  } catch (e) {
-    // Dem Klickenden keine Fehlerseite — er kann nichts damit anfangen. Ins
-    // Protokoll gehört der Fehler trotzdem.
-    console.error('Verify error:', fehlertext(e));
-    res.redirect('/?verified=invalid');
-  }
-});
-
-// Ausdrücklich, damit location.pathname === '/reset-password' stimmt.
-app.get('/reset-password', async (_req, res) => {
-  // Die Adresse trägt das Rücksetz-Token.
-  res.set('Cache-Control', 'no-store');
-  // Über den Renderer statt sendFile: sonst gingen die Assets ohne Stempel
-  // und im Standarddesign hinaus.
   try {
     res.type('html').send(await renderIndexHtml());
   } catch {
@@ -379,8 +355,9 @@ app.get('/reset-password', async (_req, res) => {
 });
 
 // VOR dem SPA-Catch-all: Sonst bekäme ein Tippfehler im API-Pfad die
-// index.html mit 200, und die App meldete einen Serialisierungsfehler.
-app.use('/api', (_req, res) => res.status(404).json({ success: false, error: 'Endpoint nicht gefunden' }));
+// index.html mit 200. Ohne Rücksicht auf die Schreibung, die Routen davor achten darauf.
+app.use((req, res, next) => /^\/api(\/|$)/i.test(req.path)
+  ? res.status(404).json({ success: false, error: 'Endpoint nicht gefunden' }) : next());
 
 // '{*splat}' statt '/*splat': Express 5 verlangt einen Namen, und die
 // naheliegende Form träfe die Startseite `/` nicht.
@@ -449,6 +426,9 @@ async function starte(): Promise<void> {
   for (const v of k.veraltet) console.warn(`⚠️ [start] ${v} wird nicht mehr ausgewertet und kann weg (siehe UPGRADE.md).`);
   if (!k.appBaseUrl) hinweisOhneBasisUrl('start', 'Mails enthalten keine Links (Bestätigung, Passwort vergessen), Passkeys und QR-Code der App sind aus.');
   const web = k.rolle !== 'jobs', jobs = k.rolle !== 'web';
+  if (!k.appBaseUrl && k.produktion && web) console.error('❌ [start] APP_BASE_URL fehlt im Betrieb (APP_BASE_URL_FEHLT_OK=1): '
+    + 'Der Host-Filter gegen DNS-Rebinding ist aus, jede Webseite im Heimnetz erreicht die Anmeldung.');
+  if (web) sitzungsGeheimnis();   // vor der Datenbank: Ein Startverbot soll nicht auf sie warten
   console.log(`[start] Prozess ${process.pid}, Rolle ${k.rolle}`);
   // Erfassungen und Einstellungen stossen ihre Nacharbeit in jedem Prozess an.
   verdrahte();
@@ -461,9 +441,14 @@ async function starte(): Promise<void> {
   }
   protokollInDieDatenbank(db.pool);
   if (web) await meldeSmtpAltlast().catch(logAndContinue('start:smtp-altlast'));
+  if (web) await meldeUngueltigeAdressen().catch(logAndContinue('start:adressen'));
+  if (web) await meldeAusstehendeAdressen().catch(logAndContinue('start:ausstehende-adressen'));
+  if (web) horcheAufTokenWiderruf();
 
   // Erst nach dem Schema Anfragen annehmen: Der Sitzungsspeicher braucht user_sessions.
-  const httpServer = web ? baueApp().listen(k.port, () => {
+  // Fünf Minuten für 50-MB-Uploads; ohne kurzes Prüfintervall griffe die Kopffrist erst nach 45 s.
+  const fristen = { headersTimeout: 15_000, requestTimeout: 300_000, connectionsCheckingInterval: 1_000 };
+  const httpServer = web ? http.createServer(fristen, baueApp()).listen(k.port, () => {
     console.log(`🧱 BrickInventory Manager — http://localhost:${k.port}`);
   }) : null;
   process.on('SIGTERM', () => { void herunterfahren('SIGTERM', httpServer, jobs); });

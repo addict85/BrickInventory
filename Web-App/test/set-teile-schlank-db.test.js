@@ -47,6 +47,9 @@ test('Migration 0062: schlanke Setliste', { concurrency: 1 }, async (t) => {
   // Der Altbestand: Kataloge wie heute, die Setliste in ihrer Form vor 0062.
   await c.query(`CREATE TABLE part_catalog (LIKE public.part_catalog INCLUDING ALL)`);
   await c.query(`CREATE TABLE part_color_catalog (LIKE public.part_color_catalog INCLUDING ALL)`);
+  // Die Herkunftsspalten von 0060 bis 0093.
+  await c.query(`ALTER TABLE part_catalog ADD COLUMN name_von integer, ADD COLUMN kategorie_von integer`);
+  await c.query(`ALTER TABLE part_color_catalog ADD COLUMN farbname_von integer, ADD COLUMN farbcode_von integer, ADD COLUMN bild_von integer`);
   await c.query(`CREATE TABLE set_parts_catalog (
     set_number text NOT NULL, part_number text NOT NULL, part_name text, color_id integer NOT NULL,
     color_name text, color_hex text, category_name text, image_url text, image_local text,

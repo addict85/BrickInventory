@@ -1,6 +1,7 @@
 package ch.brickinventoryapp
 
 import ch.brickinventoryapp.data.api.Fehlerrumpf
+import ch.brickinventoryapp.data.api.fehlerTextZuCode
 import ch.brickinventoryapp.data.cache.ResponseCache
 import ch.brickinventoryapp.data.repository.KontoRepository
 import ch.brickinventoryapp.data.repository.Fehlerart
@@ -12,6 +13,7 @@ import okhttp3.mockwebserver.MockWebServer
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 import java.io.File
@@ -27,6 +29,11 @@ import java.io.File
  *      „eine andere 429 bleibt ein Fehler mit Satz und Code“
  *   C  in guthaben() den gelesenen Rumpf nicht neu übergeben → rot „eine
  *      andere 429 …“ (Code fehlt)
+ * Gegenproben (04.11.2026, misst die CI — tools/gegenproben.py):
+ *   fehlercode-ohne-verbindungstext   `zu_viele_verbindungen` aus fehlerTextZuCode()
+ *      gestrichen → rot „Upload-Sperre, Verbindungsgrenze und Seitengrenze …“
+ *   pdf-seitengrenze-als-gelesen      der Code in ausPdf() verfehlt → rot „ein PDF über
+ *      der Seitengrenze …“ (wieder ein „halb gelesenes“ PDF statt eines Fehlers)
  * Nicht messbar: die isNull-Prüfung in Fehlerrumpf.lies(). Das org.json der
  * Tests gibt für JSON-null ohnehin "" zurück, das von Android "null".
  */
@@ -98,5 +105,24 @@ class FehlercodeTest {
         val e = fehler(gutscheine().guthaben(1))
         assertEquals("zu_viele_anfragen", e.code)
         assertEquals("Zu viele Anfragen", e.message)
+    }
+
+    @Test
+    fun `Upload-Sperre, Verbindungsgrenze und Seitengrenze haben je einen eigenen Satz`() {
+        val texte = listOf("upload_laeuft", "zu_viele_verbindungen", "pdf_zu_viele_seiten").map { fehlerTextZuCode(it) }
+        assertTrue("jeder dieser Codes hat einen Satz der App: $texte", texte.all { it != null })
+        assertEquals("keine zwei teilen sich einen Satz", 3, texte.toSet().size)
+        assertNull("sonst gilt der Satz des Servers", fehlerTextZuCode("zu_viele_anfragen"))
+        assertNull(fehlerTextZuCode(null))
+    }
+
+    @Test
+    fun `ein PDF über der Seitengrenze ist ein Fehler mit Satz und Code, kein halb gelesenes`() = runTest {
+        server.enqueue(TestApi.antwort(
+            """{"success":false,"code":"pdf_zu_viele_seiten","error":"Das PDF hat 40 Seiten, höchstens 20 sind möglich."}""", 422))
+        val e = fehler(gutscheine().ausPdf("karten.pdf", "application/pdf", byteArrayOf(37, 80, 68, 70)))
+        assertEquals("pdf_zu_viele_seiten", e.code)
+        assertEquals("Das PDF hat 40 Seiten, höchstens 20 sind möglich.", e.message)
+        assertEquals(422, e.httpCode)
     }
 }

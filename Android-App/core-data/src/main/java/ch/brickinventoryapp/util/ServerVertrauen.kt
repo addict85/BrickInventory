@@ -92,6 +92,15 @@ fun pinSchluessel(serverUrl: String): String? {
     return if (url.isHttps) "${url.host.lowercase()}:${url.port}" else null
 }
 
+/**
+ * Zeigt ein Fingerabdruck auf eine System-Wurzel (ohne Nutzer-CAs)? Ein solcher Pin
+ * verlangt ohnehin eine öffentlich gültige, CT-geprüfte Kette; jeder andere aus einer
+ * fremden Quelle (QR-Code) gilt erst abgetippt.
+ */
+fun interface SystemWurzeln {
+    fun enthaelt(fingerabdruck: String): Boolean
+}
+
 /** Die gemerkten Pins: im Gerät SharedPreferences (PreferencesManager), im Test eine Map. */
 interface PinAblage {
     fun pin(schluessel: String): String?
@@ -197,12 +206,15 @@ class PinVertrauen(
         if (schluessel == null) return ohneHost(chain) { mit(fremdeHosts) }
         if (chain.isEmpty() || schluessel != eigenerServer()) return mit(fremdeHosts)
         val pin = pins.pin(schluessel)
-        if (pin != null && passtZumPin(chain, pin)) return
+        // Ein Pin auf eine System-Wurzel gilt nur über die System-Prüfung samt Certificate
+        // Transparency: Schickt der Server die Wurzel mit, umginge der Abgleich die CT-Prüfung.
+        val oeffentlicherPin = pin != null && pin in systemWurzeln
+        if (pin != null && !oeffentlicherPin && passtZumPin(chain, pin)) return
         // Öffentlich heisst: allein mit den System-CAs, nie über eine Nutzer-CA.
         val oeffentlich = runCatching { mit(fremdeHosts) }.isSuccess
         // Ein öffentlicher Pin bindet Host und System-Gültigkeit, nicht eine Wurzel:
         // Wechselt die CA ihre Wurzel (Let's Encrypt X1 → X2), fragt die App nicht neu.
-        if (pin != null && oeffentlich && pin in systemWurzeln) return
+        if (oeffentlicherPin && oeffentlich) return
         val ueberNutzerCa = !oeffentlich && runCatching { mit(kette) }.isSuccess
         val wurzel = when {
             oeffentlich -> anker(chain, fremdeHosts.acceptedIssuers)
@@ -212,7 +224,7 @@ class PinVertrauen(
         val fp = spkiFingerabdruck(wurzel ?: chain.last())
         if (pin != null) {
             // Gepinnte Nutzer-CA: Die Kette hat eben bis zu ihr gegolten.
-            if (ueberNutzerCa && wurzel != null && fp == pin) return
+            if (ueberNutzerCa && wurzel != null && fp == pin && !oeffentlicherPin) return
             throw gemeldet(ZertifikatUngeklaert(schluessel, fp, ZertifikatUngeklaert.Art.GEAENDERT, erwartet = pin))
         }
         val art = when {
@@ -263,6 +275,26 @@ class PinVertrauen(
 }
 
 /**
+ * Vertrauen für einen Server, der nicht (mehr) der eingerichtete sein muss: die
+ * nachgeholte Entwertung nach einem Serverwechsel. Es gilt [pin] unter [schluessel]
+ * wie für den eigenen Server. Eine Abweichung fragt niemanden (eigene
+ * [ZertifikatsFrage]) und merkt nichts — sie bricht den Handshake nur ab.
+ */
+fun auftragsVertrauen(
+    kette: X509ExtendedTrustManager,
+    system: X509ExtendedTrustManager,
+    schluessel: String,
+    pin: String?,
+): PinVertrauen {
+    val auftrag = schluessel
+    val ablage = object : PinAblage {
+        override fun pin(schluessel: String): String? = pin.takeIf { schluessel == auftrag }
+        override fun merkePin(schluessel: String, fingerabdruck: String) = Unit
+    }
+    return PinVertrauen(kette, ablage, eigenerServer = { auftrag }, frage = ZertifikatsFrage(), fremdeHosts = system)
+}
+
+/**
  * Trägt ein Zertifikat der Kette den Pin, und ist alles darunter von ihm aus
  * gültig signiert? Nur den Pin irgendwo in der Kette zu finden genügte nicht:
  * Das Zertifikat einer internen CA ist öffentlich, ein Angreifer könnte es an
@@ -270,7 +302,7 @@ class PinVertrauen(
  */
 fun passtZumPin(chain: Array<X509Certificate>, pin: String): Boolean {
     val i = chain.indexOfFirst { spkiFingerabdruck(it) == pin }
-    if (i < 0) return false
+    if (i < 0 || !fuerServer(chain[0])) return false
     if (i == 0) return runCatching { chain[0].checkValidity() }.isSuccess
     return runCatching {
         val pfad = CertificateFactory.getInstance("X.509").generateCertPath(chain.take(i))
@@ -278,6 +310,20 @@ fun passtZumPin(chain: Array<X509Certificate>, pin: String): Boolean {
         CertPathValidator.getInstance("PKIX").validate(pfad, parameter)
     }.isSuccess
 }
+
+/**
+ * Darf das Blatt einen Server ausweisen? Die PKIX-Prüfung bis zum Pin fragt den
+ * Zweck nicht; ohne diese Prüfung ginge unter einer gepinnten eigenen CA auch ein
+ * Zertifikat für Code-Signatur oder E-Mail durch. Ohne EKU-Erweiterung ist jeder
+ * Zweck erlaubt (RFC 5280).
+ */
+internal fun fuerServer(blatt: X509Certificate): Boolean {
+    val zwecke = runCatching { blatt.extendedKeyUsage }.getOrElse { return false } ?: return true
+    return EKU_SERVER in zwecke || EKU_JEDER in zwecke
+}
+
+private const val EKU_SERVER = "1.3.6.1.5.5.7.3.1"
+private const val EKU_JEDER = "2.5.29.37.0"
 
 /**
  * Die Stelle aus dem Vertrauensspeicher, die das oberste gesendete Zertifikat

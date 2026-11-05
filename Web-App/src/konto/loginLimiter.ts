@@ -55,6 +55,7 @@ const _key = (ip: string, name: unknown) => `login|${drosselAdresse(ip)}|${einze
 const _adressKey = (ip: string) => `login-adresse|${drosselAdresse(ip)}`;
 const _nameKey = (name: unknown) => `login-name|${einzelwert(name).toLowerCase()}`;
 const _bekanntKey = (ip: string, name: unknown) => `login-bekannt|${drosselAdresse(ip)}|${einzelwert(name).toLowerCase()}`;
+const _erfolgKey = (ip: string, kennung: string) => `login-erfolg|${drosselAdresse(ip)}|${kennung}`;
 
 function _prune() {
   if (_attempts.size <= 5000) return;
@@ -78,15 +79,16 @@ async function _read(key: string, windowMin: number): Promise<Zaehlerstand | nul
   }
 }
 
-async function _bump(key: string, windowMin: number): Promise<void> {
+async function _bump(key: string, windowMin: number): Promise<number> {
   try {
-    await repo.erhoehe(key, windowMin);
+    return await repo.erhoehe(key, windowMin);
   } catch (_) {
     const now = Date.now();
     const e = _attempts.get(key);
     if (!e || now - e.firstAt > windowMin * 60000) _attempts.set(key, { count: 1, firstAt: now, lastAt: now, laufend: 0 });
     else { e.count++; e.lastAt = now; e.laufend = Math.max(0, (e.laufend || 0) - 1); }
     _prune();
+    return _attempts.get(key)?.count ?? 1;
   }
 }
 
@@ -180,11 +182,23 @@ export async function gibAnmeldeplatzFrei(ip: string, username: unknown): Promis
   await _freigeben(_adressKey(ip));
 }
 
-export async function recordLoginFailure(ip: string, username: unknown): Promise<void> {
+/** @returns die Fehlversuche des Kontos im Fenster */
+export async function recordLoginFailure(ip: string, username: unknown): Promise<number> {
   const kennung = await kontoKennung(username);
   await _bump(_key(ip, kennung), WINDOW_MIN);
-  await _bump(_nameKey(kennung), WINDOW_MIN);
+  const n = await _bump(_nameKey(kennung), WINDOW_MIN);
   await _bump(_adressKey(ip), WINDOW_MIN);
+  return n;
+}
+
+export type Anmeldeereignis = 'anmeldung_fehlgeschlagen' | 'anmeldung_gesperrt' | 'zweiter_faktor_falsch'
+  | 'bestaetigung_fehlgeschlagen' | 'bestaetigung_gesperrt';
+/** Eine Warnzeile je Ereignis für Protokoll, app_logs und fail2ban; nie Passwort, Code
+ * oder eingegebener Name, denn im Namensfeld landet auch einmal ein Passwort. */
+export function meldeAnmeldeereignis(ereignis: Anmeldeereignis, angaben: { ip?: string; konto?: number | null; art?: Bremse; zugang?: string }): void {
+  const { ip, konto, ...rest } = angaben;
+  console.warn(`[anmeldung] ${ereignis}`, { ereignis, ...(ip ? { adresse: drosselAdresse(ip) } : {}),
+    konto: konto ?? 'unbekannt', ...rest });
 }
 
 export async function recordLoginSuccess(ip: string, username: unknown): Promise<void> {
@@ -195,6 +209,18 @@ export async function recordLoginSuccess(ip: string, username: unknown): Promise
   // Fehlversuchen gegen andere Konten nicht zurücksetzen.
   await _freigeben(_adressKey(ip));
   await _bump(_bekanntKey(ip, kennung), BEKANNT_MIN);
+  await _bump(_erfolgKey(ip, kennung), WINDOW_MIN);
+}
+
+/** Weiche Grenze: Wer sich öfter anmeldet, verliert nur den Vorrang. Eine harte träfe
+ * den Inhaber, und gegen die Last wirken schon Sperren und Schranke. */
+export const ERFOLGE_MIT_VORRANG = 30;
+
+/** Diese Adresse hat sich mit diesem Namen zuletzt angemeldet, und nicht zu oft. */
+export async function bekannteAnmeldung(ip: string, username: unknown): Promise<boolean> {
+  const kennung = await kontoKennung(username);
+  if (!await _read(_bekanntKey(ip, kennung), BEKANNT_MIN)) return false;
+  return ((await _read(_erfolgKey(ip, kennung), WINDOW_MIN))?.count ?? 0) < ERFOLGE_MIT_VORRANG;
 }
 
 /** Jeder unbekannte Name legt eine Zeile an; ohne Aufräumen wüchse die Tabelle mit jedem Rateversuch. */

@@ -184,3 +184,25 @@ test('die Marke schreibt nicht durch einen Symlink', (t) => {
   assert.equal(fs.lstatSync(marke).isSymbolicLink(), false);
   assert.equal(fs.readFileSync(marke, 'utf8'), '1234');
 });
+
+// Gegenproben (04.11.2026 gemessen, Runde 12 H2): nach `umask 077` wieder
+// `umask 022` → rot (neue Ordner 755); das chmod der Uploads gestrichen → rot
+// (alte Datei 644).
+test('was der Dienst anlegt und hochgeladen hat, liest nur er', (t) => {
+  const os = require('node:os');
+  const { spawnSync } = require('node:child_process');
+  const ordner = fs.mkdtempSync(path.join(os.tmpdir(), 'bi-umask-'));
+  t.after(() => fs.rmSync(ordner, { recursive: true, force: true }));
+  const daten = path.join(ordner, 'data'), alt = path.join(daten, 'uploads', '3', 'rechnung.pdf');
+  fs.mkdirSync(path.dirname(alt), { recursive: true });
+  fs.writeFileSync(alt, '%PDF');
+  fs.chmodSync(alt, 0o644);
+  fs.mkdirSync(path.join(ordner, 'bin'));
+  fs.writeFileSync(path.join(ordner, 'bin', 'su-exec'), '#!/bin/sh\nshift\nexec "$@"\n', { mode: 0o755 });
+  const teil = ep.slice(ep.indexOf('umask 077'), ep.indexOf('echo "[entrypoint] Server wird gestartet')).replaceAll('/app/data', daten);
+  const r = spawnSync('sh', ['-c', `umask 022\n${teil}`],
+    { env: { PATH: `${path.join(ordner, 'bin')}:${process.env.PATH}` }, encoding: 'utf8' });
+  assert.equal(r.status, 0, r.stderr);
+  const rechte = (p) => (fs.statSync(p).mode & 0o777).toString(8);
+  assert.deepEqual([rechte(path.join(daten, 'images', 'sets')), rechte(alt), rechte(path.dirname(alt))], ['700', '600', '700']);
+});

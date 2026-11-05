@@ -173,10 +173,11 @@ test('die App ist nur über Caddy erreichbar', () => {
   assert.match(app, /^\s*-\s*ca-wurzel:\/caddy-ca:ro\s*$/m, 'das Wurzelzertifikat ist nicht nur lesend eingehängt');
 });
 
-test('Caddy: interne CA, Wurzel in der Kette, eigene Anfragekennung, /ca.crt im Klartext', () => {
+test('Caddy: Aussteller aus dem Startskript, eigene Anfragekennung, /ca.crt im Klartext', () => {
   const datei = fs.readFileSync(path.join(ROOT, 'Caddyfile'), 'utf8')
     .split('\n').filter(z => !/^\s*#/.test(z)).join('\n');
-  assert.match(datei, /issuer internal \{\s*\{\$BRICK_CA_SIGNIEREN:sign_with_root\}\s*\}/, 'Caddy liefert die Wurzel nicht in der Kette aus');
+  // Ohne Vorgabe: Fehlt BRICK_TLS_AUSSTELLER, ist das Caddyfile ungültig (ca-eigene-wurzel prüft das mit Caddy).
+  assert.match(datei, /issuer \{\$BRICK_TLS_AUSSTELLER\} \{\s*\{\$BRICK_TLS_OPTIONEN\}\s*\}/, 'der Aussteller hat eine Vorgabe');
   assert.match(datei, /reverse_proxy app:3000 \{[^}]*header_up X-Request-Id \{http\.request\.uuid\}/);
   assert.match(datei, /http:\/\/ \{[\s\S]*handle \/ca\.crt[\s\S]*redir /, 'Port 80 leitet nicht um');
   assert.match(datei, /default_sni \{\$BRICK_HOST\}/);
@@ -188,23 +189,27 @@ test('pgweb ist per Digest festgelegt, kein Dienst hat ein Ersatz-Datenbankpassw
   assert.doesNotMatch(compose, /DB_APP_PASSWORD:-/, 'ein Dienst fällt auf ein Beispielpasswort zurück');
 });
 
-// Gegenproben (02.11.2026 gemessen): bei jobs PGPASSWORD wieder aus DB_PASSWORD
-// → rot „jobs kennt das Passwort des Superusers“; bei jobs die Abhängigkeit
-// wieder auf postgres → rot „jobs wartet nicht auf db-rolle“; im Dienst db-rolle
-// ein anderer Digest → rot „db-rolle nimmt ein anderes Postgres-Image“.
+// Gegenproben (02.11.2026 gemessen): bei jobs die Abhängigkeit wieder auf
+// postgres → rot „jobs wartet nicht auf db-rolle“; im Dienst db-rolle ein anderer
+// Digest → rot „db-rolle nimmt ein anderes Postgres-Image“. (03.11.2026) bei jobs
+// db_password unter secrets ergänzt → rot „jobs kennt das Passwort des
+// Superusers“; bei app PGPASSWORD_FILE auf /run/secrets/db_password → rot
+// „app: PGPASSWORD_FILE nicht aus db_app_password“.
+const geheimnisse = (block) => (block.match(/^\s*secrets:\s*\[([^\]]*)\]/m)?.[1] ?? '')
+  .split(',').map(x => x.trim()).filter(Boolean).sort();
 test('nur postgres und db-rolle kennen den Superuser, App und Jobs die App-Rolle, pgweb die Leserolle', () => {
   const dienste = ['postgres', 'db-rolle', 'app', 'jobs', 'pgweb'];
-  const mitSuperuser = dienste.filter(d => /\$\{DB_PASSWORD:\?/.test(leseDienst(compose, d)));
+  const mitSuperuser = dienste.filter(d => geheimnisse(leseDienst(compose, d)).includes('db_password'));
   assert.deepEqual(mitSuperuser, ['postgres', 'db-rolle']);
+  assert.deepEqual(geheimnisse(leseDienst(compose, 'app')), ['db_app_password', 'session_secret']);
+  assert.deepEqual(geheimnisse(leseDienst(compose, 'jobs')), ['db_app_password'], 'jobs kennt das Passwort des Superusers');
+  assert.deepEqual(geheimnisse(leseDienst(compose, 'pgweb')), ['pgweb_db_password', 'pgweb_password'], 'pgweb kennt das Passwort der App-Rolle');
   for (const d of ['app', 'jobs']) {
     const block = leseDienst(compose, d);
-    assert.doesNotMatch(block, /DB_PASSWORD:\?/, `${d} kennt das Passwort des Superusers`);
     assert.match(block, /^\s*PGUSER:\s*brickinventory_app\s*$/m, `${d} verbindet sich nicht als App-Rolle`);
-    assert.match(block, /^\s*PGPASSWORD:\s*\$\{DB_APP_PASSWORD:\?/m, `${d}: PGPASSWORD nicht aus DB_APP_PASSWORD`);
+    assert.match(block, /^\s*PGPASSWORD_FILE:\s*\/run\/secrets\/db_app_password\s*$/m, `${d}: PGPASSWORD_FILE nicht aus db_app_password`);
   }
-  assert.match(leseDienst(compose, 'pgweb'), /PGWEB_DATABASE_URL: postgres:\/\/brickinventory_lesen:\$\{PGWEB_DB_PASSWORD:-\}@/);
-  assert.doesNotMatch(leseDienst(compose, 'pgweb'), /DB_APP_PASSWORD/, 'pgweb kennt das Passwort der App-Rolle');
-  assert.match(leseDienst(compose, 'db-rolle'), /^\s*PGWEB_DB_PASSWORD:\s*\$\{PGWEB_DB_PASSWORD:-\}\s*$/m,
+  assert.match(leseDienst(compose, 'db-rolle'), /^\s*PGWEB_DB_PASSWORD_FILE:\s*\/run\/secrets\/pgweb_db_password\s*$/m,
     'db-rolle setzt das Passwort der Leserolle nicht');
   for (const d of ['app', 'jobs', 'pgweb'])
     assert.match(leseDienst(compose, d), /depends_on:\s*\n\s*db-rolle:\s*\n\s*condition: service_completed_successfully/,
@@ -223,34 +228,64 @@ test('nur postgres und db-rolle kennen den Superuser, App und Jobs die App-Rolle
 
 // Gegenproben (01.11.2026 gemessen, je einzeln): die Passwortprüfung im
 // entrypoint gestrichen → rot „ohne PGWEB_PASSWORD startet pgweb nicht“;
-// (02.11.2026) die Prüfung auf PGWEB_DB_PASSWORD gestrichen → rot „… ohne
-// PGWEB_DB_PASSWORD startet pgweb nicht“;
-// `--readonly` gestrichen → rot „… nur lesend“; PGWEB_AUTH_PASS nicht mehr aus
-// PGWEB_PASSWORD → rot „die Anmeldung kommt aus .env“; (03.11.2026)
-// `--lock-session` gestrichen → rot „… nur zur eigenen Datenbank“.
-test('ohne PGWEB_PASSWORD startet pgweb nicht, mit Passwort nur lesend', () => {
+// `--readonly` gestrichen → rot „… nur lesend“; (03.11.2026)
+// `--lock-session` gestrichen → rot „… nur zur eigenen Datenbank“;
+// (03.11.2026, Secrets) die Prüfung der Zeichen im Passwort der Leserolle
+// gestrichen → rot „ein Passwort, das die Adresse sprengt, …“.
+test('ohne Passwörter startet pgweb nicht, mit Passwort nur lesend und ohne Passwort in der Umgebung', (t) => {
   const block = leseDienst(compose, 'pgweb');
-  assert.match(block, /^\s*PGWEB_AUTH_PASS:\s*\$\{PGWEB_PASSWORD:-\}\s*$/m, 'die Anmeldung kommt aus .env');
   assert.match(block, /^\s*PGWEB_AUTH_USER:\s*\$\{PGWEB_USER:-pgweb\}\s*$/m);
+  assert.doesNotMatch(block, /PGWEB_AUTH_PASS:|PGWEB_DATABASE_URL:/, 'ein Passwort steht in der Umgebung des Dienstes');
   const z = block.split('\n');
   const i = z.findIndex(l => /^\s+- \|\s*$/.test(l));
   assert.ok(i > 0, 'entrypoint-Skript von pgweb nicht gefunden');
   const rumpf = [];
   for (const l of z.slice(i + 1)) { if (!/^ {8}/.test(l)) break; rumpf.push(l.slice(8)); }
-  // Wie Compose es übergibt ($$ → $); pgweb selbst durch ein Echo ersetzt.
-  const skript = rumpf.join('\n').replace(/\$\$/g, '$');
+  const ort = fs.mkdtempSync(path.join(require('node:os').tmpdir(), 'pgweb-start-'));
+  t.after(() => fs.rmSync(ort, { recursive: true, force: true }));
+  // Wie Compose es übergibt ($$ → $); pgweb selbst durch ein Echo ersetzt, /run/secrets umgebogen.
+  const skript = rumpf.join('\n').replace(/\$\$/g, '$').replaceAll('/run/secrets/', `${ort}/`);
   assert.match(skript, /exec \/usr\/bin\/pgweb /);
-  const lauf = (pass, dbPass = 'lesen') => spawnSync('sh', ['-c', skript.replace('exec /usr/bin/pgweb', 'echo PGWEB')],
-    { encoding: 'utf8', env: { PATH: process.env.PATH, PGWEB_AUTH_USER: 'pgweb', PGWEB_AUTH_PASS: pass, PGWEB_DB_PASSWORD: dbPass } });
-  const ohne = lauf('');
-  assert.notEqual(ohne.status, 0, 'ohne PGWEB_PASSWORD startet pgweb nicht');
-  assert.match(ohne.stderr, /PGWEB_PASSWORD/);
-  assert.doesNotMatch(ohne.stdout, /PGWEB/);
-  const ohneDb = lauf('geheim', '');
-  assert.notEqual(ohneDb.status, 0, 'ohne PGWEB_DB_PASSWORD startet pgweb nicht');
-  assert.match(ohneDb.stderr, /PGWEB_DB_PASSWORD/);
-  const mit = lauf('geheim');
+  const lauf = (pass, dbPass) => {
+    for (const [n, w] of [['pgweb_password', pass], ['pgweb_db_password', dbPass]]) {
+      fs.rmSync(path.join(ort, n), { force: true });
+      if (w !== null) fs.writeFileSync(path.join(ort, n), w);
+    }
+    return spawnSync('sh', ['-c', skript.replace('exec /usr/bin/pgweb', 'echo "PGWEB $PGWEB_AUTH_PASS $PGWEB_DATABASE_URL"; echo PGWEB')],
+      { encoding: 'utf8', env: { PATH: process.env.PATH, PGWEB_AUTH_USER: 'pgweb' } });
+  };
+  for (const [pass, db] of [[null, 'lesen'], ['', 'lesen'], ['geheim', ''], ['geheim', null]]) {
+    const r = lauf(pass, db);
+    assert.notEqual(r.status, 0, `ohne Passwörter startet pgweb nicht (${pass}/${db})`);
+    assert.match(r.stderr, /geheimnisse-einrichten\.sh/);
+    assert.doesNotMatch(r.stdout, /PGWEB/);
+  }
+  const boese = lauf('geheim', 'a@b/c');
+  assert.notEqual(boese.status, 0, 'ein Passwort, das die Adresse sprengt, geht durch');
+  const mit = lauf('geheim', 'abc123');
   assert.equal(mit.status, 0, mit.stderr);
+  assert.match(mit.stdout, /^PGWEB geheim postgres:\/\/brickinventory_lesen:abc123@postgres:5432\/brickinventory\?sslmode=disable$/m);
   assert.match(mit.stdout, /^PGWEB .*--readonly/m, 'pgweb startet nur lesend');
   assert.match(mit.stdout, /^PGWEB .*--lock-session/m, 'pgweb verbindet nur zur eigenen Datenbank');
+});
+
+// Gegenproben (03.11.2026 gemessen, je einzeln): bei pgweb `read_only: true`
+// gestrichen → rot „pgweb: read_only fehlt“; pgweb wieder in brickinventory-net
+// → rot „pgweb hängt nur im eigenen Netz“; postgres ohne pgweb-net → rot
+// „postgres fehlt im Netz von pgweb“.
+test('pgweb läuft ohne root, nur lesend und in einem eigenen Netz nur mit postgres', () => {
+  const block = leseDienst(compose, 'pgweb');
+  assert.match(block, /^\s*user:\s*"1000:1000"\s*$/m, 'pgweb: kein fester Benutzer');
+  assert.match(block, /^\s*read_only:\s*true\s*$/m, 'pgweb: read_only fehlt');
+  assert.match(block, /^\s*tmpfs:\s*\n\s*-\s*\/tmp\s*$/m, 'pgweb: /tmp als tmpfs fehlt');
+  const netze = (d) => {
+    const z = leseDienst(compose, d).split('\n');
+    const i = z.findIndex(l => /^\s{4}networks:\s*$/.test(l));
+    const raus = [];
+    for (const l of z.slice(i + 1)) { const m = l.match(/^\s{6}-\s*(\S+)\s*$/) || l.match(/^\s{6}(\S+):\s*$/); if (!m) break; raus.push(m[1]); }
+    return raus.sort();
+  };
+  assert.deepEqual(netze('pgweb'), ['pgweb-net'], 'pgweb hängt nur im eigenen Netz');
+  assert.ok(netze('postgres').includes('pgweb-net'), 'postgres fehlt im Netz von pgweb');
+  for (const d of ['app', 'jobs', 'caddy', 'db-rolle']) assert.ok(!netze(d).includes('pgweb-net'), `${d} erreicht pgweb`);
 });

@@ -1,0 +1,18 @@
+Gegenprobe: Der Pfeil auf weitere Kennzahlen erscheint nie
+Modul: app
+Test: ch.brickinventoryapp.GeruestUndFormularTest
+Rot: Kennzahlen der Sammlung
+
+diff --git a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/screens/GalleryStatChip.kt b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/screens/GalleryStatChip.kt
+index e5d0529..0fcecee 100644
+--- a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/screens/GalleryStatChip.kt
++++ b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/screens/GalleryStatChip.kt
+@@ -76,7 +76,7 @@ fun KennzahlenReihe(modifier: Modifier = Modifier, umbrechen: Boolean = false, i
+                         .horizontalScroll(rolle),
+                     horizontalArrangement = Arrangement.spacedBy(Abstaende.gross),
+                 ) { inhalt() }
+-                if (rolle.canScrollForward) Icon(
++                if (rolle.canScrollForward && false) Icon(
+                     Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = null,
+                     modifier = pfeil.testTag(KENNZAHLEN_MEHR),
+                     tint = MaterialTheme.colorScheme.onSurfaceVariant,

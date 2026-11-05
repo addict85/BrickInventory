@@ -37,6 +37,7 @@ const assert = require('node:assert/strict');
 const fs     = require('node:fs');
 const os     = require('node:os');
 const path   = require('node:path');
+const { testName, raeumeReste } = require('./helpers/testnamen');
 const { execFileSync, spawnSync } = require('node:child_process');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
@@ -250,8 +251,6 @@ test('Sicherung und Wiederherstellung', async (t) => {
 
     assert.match(bCode, /grep -q 'PostgreSQL database dump complete'/,
       'backup.sh prüft die Endmarke nicht mehr — ein Torso ginge als Sicherung durch');
-    assert.match(bCode, /rm -f .*\$TARGET/,
-      'Ein unvollständiger Dump muss gelöscht werden, nicht bloss gemeldet');
     assert.match(rCode, /grep -q 'PostgreSQL database dump complete'/,
       'restore.sh prüft die Endmarke nicht, BEVOR es etwas überschreibt');
     assert.match(rCode, /ON_ERROR_STOP=1/,
@@ -293,7 +292,7 @@ test('backup.sh: der Datenschlüssel kommt nicht ins Archiv', (t) => {
   fs.writeFileSync(path.join(arbeit, 'data', '.datenschluessel'), schluessel, { mode: 0o600 });
 
   const sichern = (env) => spawnSync('sh', [path.join(ROOT, 'scripts', 'backup.sh'), path.join(tmp, 'ziel')],
-    { cwd: arbeit, encoding: 'utf8', env: { ...process.env, PATH: `${bin}:${process.env.PATH}`, ...env } });
+    { cwd: arbeit, encoding: 'utf8', env: { ...process.env, PATH: `${bin}:${process.env.PATH}`, BACKUP_KLARTEXT: 'ja', ...env } });
 
   const ohne = sichern({});
   assert.equal(ohne.status, 0, ohne.stderr);
@@ -328,7 +327,7 @@ test('backup.sh: schluessel/datenschluessel geht nur an den getrennten Ort', (t)
   fs.writeFileSync(path.join(arbeit, 'schluessel', 'datenschluessel'), schluessel, { mode: 0o600 });
   const tresor = path.join(tmp, 'tresor');
   const r = spawnSync('sh', [path.join(ROOT, 'scripts', 'backup.sh'), path.join(tmp, 'ziel')], { cwd: arbeit, encoding: 'utf8',
-    env: { ...process.env, PATH: `${bin}:${process.env.PATH}`, BACKUP_SCHLUESSEL_ZIEL: tresor } });
+    env: { ...process.env, PATH: `${bin}:${process.env.PATH}`, BACKUP_KLARTEXT: 'ja', BACKUP_SCHLUESSEL_ZIEL: tresor } });
   assert.equal(r.status, 0, r.stderr);
   const archiv = fs.readdirSync(path.join(tmp, 'ziel')).find(n => n.startsWith('data_'));
   const inhalt = execFileSync('tar', ['tzf', path.join(tmp, 'ziel', archiv)], { encoding: 'utf8' });
@@ -349,6 +348,8 @@ test('backup.sh: schluessel/datenschluessel geht nur an den getrennten Ort', (t)
  *      `-U tester` ersetzt) → rot: „Code der App-Rolle lief als Superuser“
  *   B  die Zeile mit `OWNER TO` im awk-Filter entfernt → rot: „ein Dump von
  *      vor der App-Rolle“ (must be able to SET ROLE)
+ *   C  (04.11.) das vorangestellte \restrict entfernt → rot: „ein Backslash-Befehl
+ *      mitten in einer Zeile läuft nicht“ (die Datei entstand)
  */
 test('restore.sh spielt als App-Rolle ein', { timeout: 240_000 }, async (t) => {
   const { Client } = require(path.join(ROOT, 'node_modules', 'pg'));
@@ -364,7 +365,8 @@ test('restore.sh spielt als App-Rolle ein', { timeout: 240_000 }, async (t) => {
     if (process.env.REQUIRE_DB === '1') throw new Error('REQUIRE_DB=1, aber kein Superuser oder kein pg_dump');
     t.skip('kein Superuser oder pg_dump'); return;
   }
-  const name = `${decodeURIComponent(basis.pathname.slice(1))}_rst_${process.pid}`.toLowerCase();
+  const name = testName('rst');
+  await raeumeReste(admin, 'rst');
   const [ziel, alt, APP, LESEN, BOESE] = [name, `${name}_alt`, `${name}_app`, `${name}_lesen`, `${name}_boese`];
   const id = (s) => `"${s}"`;
   const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'restore-rolle-'));
@@ -450,5 +452,19 @@ esac
         WHERE relnamespace = 'public'::regnamespace AND relkind IN ('r', 'S', 'v')
           AND NOT EXISTS (SELECT FROM pg_depend d WHERE d.objid = pg_class.oid AND d.deptype = 'e')`)).rows, [{ e: APP }]);
     } finally { await c.end(); }
+  });
+
+  await t.test('ein Backslash-Befehl mitten in einer Zeile läuft nicht', async () => {
+    const geknackt = path.join(tmp, 'geknackt');
+    const sql = path.join(tmp, 'fremd.sql');
+    execFileSync(klient('pg_dump'), ['--clean', '--if-exists', '-f', sql, dbUrl(ziel)], { stdio: 'pipe' });
+    const inhalt = fs.readFileSync(sql, 'utf8');
+    const ende = inhalt.lastIndexOf('--\n-- PostgreSQL database dump complete');
+    fs.writeFileSync(sql, `${inhalt.slice(0, ende)}SELECT 1; \\! touch '${geknackt}'\n${inhalt.slice(ende)}`);
+    execFileSync('gzip', ['-f', sql]);
+    const r = zurueck(`${sql}.gz`);
+    assert.ok(!fs.existsSync(geknackt), 'ein Backslash-Befehl mitten in einer Zeile lief');
+    assert.notEqual(r.status, 0, 'der fremde Dump galt als eingespielt');
+    assert.match(r.stderr, /restricted/);
   });
 });

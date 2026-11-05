@@ -1,6 +1,7 @@
 package ch.brickinventoryapp.ui.viewmodel
 
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
 import ch.brickinventoryapp.data.repository.BrickRepository
 import ch.brickinventoryapp.data.repository.Result
 import ch.brickinventoryapp.ui.VerwaltungUiState
@@ -15,6 +16,7 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 /**
@@ -108,19 +110,74 @@ class MonitoringViewModel @Inject constructor(
      * Meldung — bei 409 der des Servers, denn nur er weiss, warum der Auftrag
      * inzwischen nicht mehr passt. Danach wird die Liste neu geholt, so oder so.
      */
-    suspend fun brichAuftragAb(id: String): String =
+    internal suspend fun brichAuftragAb(id: String): String =
         nachAuftrag(repo.verwaltung.brichAuftragAb(id)) { texte.text(R.string.hintergrund_abgebrochen_ok) }
 
-    suspend fun wiederholeAuftrag(id: String): String =
+    internal suspend fun wiederholeAuftrag(id: String): String =
         nachAuftrag(repo.verwaltung.wiederholeAuftrag(id)) { texte.text(R.string.hintergrund_wiederholt_ok) }
 
-    suspend fun starteAuftragsArt(art: String, name: String): String =
+    internal suspend fun starteAuftragsArt(art: String, name: String): String =
         nachAuftrag(repo.verwaltung.starteAuftragsArt(art)) {
             texte.text(if (it.gestartet) R.string.hintergrund_gestartet else R.string.hintergrund_nichts_gestartet, name)
         }
 
-    suspend fun leereAuftragsArt(art: String): String =
+    internal suspend fun leereAuftragsArt(art: String): String =
         nachAuftrag(repo.verwaltung.leereAuftragsArt(art)) { texte.menge(R.plurals.hintergrund_geleert, it.entfernt, it.entfernt) }
+
+    private val _meldung = MutableStateFlow<String?>(null)
+
+    /** Satz zur letzten Auftragsaktion; der Bildschirm zeigt ihn und quittiert mit [meldungGezeigt]. */
+    val meldung = _meldung.asStateFlow()
+
+    fun meldungGezeigt() {
+        _meldung.value = null
+    }
+
+    // Im viewModelScope, nicht im Scope des Bildschirms: Wer die Seite verlässt,
+    // bricht die Aktion nicht ab, und der Satz geht nicht am Zustand vorbei.
+    fun auftragAbbrechen(id: String) = melde { brichAuftragAb(id) }
+    fun auftragWiederholen(id: String) = melde { wiederholeAuftrag(id) }
+    fun auftragsArtStarten(art: String, name: String) = melde { starteAuftragsArt(art, name) }
+    fun auftragsArtLeeren(art: String) = melde { leereAuftragsArt(art) }
+
+    private val _einstellungenNeu = MutableStateFlow(false)
+
+    /** Design oder Vorgabe-Zustand geändert: Die App lädt ihre Einstellungen nach und quittiert. */
+    val einstellungenNeu = _einstellungenNeu.asStateFlow()
+
+    /** Die Vorschau-Ablage liegt beim AppViewModel; gemeldet wird hier wie jedes Speichern. */
+    fun ablageGeleert() {
+        _meldung.value = texte.text(R.string.monitoring_cache_saved)
+    }
+
+    fun einstellungenGeladen() {
+        _einstellungenNeu.value = false
+    }
+
+    /** Cache-Zahlen, Grenzwerte und Design-Vorgabe für den Cache-Abschnitt. */
+    fun ladeCacheAbschnitt() {
+        viewModelScope.launch { ladeCacheUndGrenzen(); ladeDesignVorgabe() }
+    }
+
+    fun vorgabeZustandWaehlen(zustand: String) = gespeichert(einstellungen = true) { setzeVorgabeZustand(zustand) }
+    fun designWaehlen(theme: String) = gespeichert(einstellungen = true) { setzeDesign(theme) }
+    fun cacheDauerSpeichern(stunden: Int) = gespeichert { setzeCacheDauer(stunden) }
+    fun cacheLeeren(alles: Boolean) = gespeichert(R.string.monitoring_cache_cleared) { leereCache(alles) }
+    fun grenzwerteSpeichern(rebrickable: Int, bricklink: Int, brickset: Int) =
+        gespeichert(R.string.monitoring_limits_saved) { setzeGrenzwerte(rebrickable, bricklink, brickset) }
+
+    // Nur ein Erfolg meldet sich; ein Fehlschlag lässt den angezeigten Stand stehen.
+    private fun gespeichert(satz: Int = R.string.monitoring_cache_saved, einstellungen: Boolean = false, aktion: suspend () -> Boolean) {
+        viewModelScope.launch {
+            if (!aktion()) return@launch
+            if (einstellungen) _einstellungenNeu.value = true
+            _meldung.value = texte.text(satz)
+        }
+    }
+
+    private fun melde(aktion: suspend () -> String) {
+        viewModelScope.launch { _meldung.value = aktion() }
+    }
 
     private suspend fun <T> nachAuftrag(r: Result<T>, erfolg: (T) -> String): String {
         val satz = when (r) {
@@ -186,7 +243,7 @@ class MonitoringViewModel @Inject constructor(
      * nacheinander, weil es parallel nicht sichtbar schneller wäre, die Reihenfolge
      * der Zustandsänderungen aber unbestimmt.
      */
-    suspend fun ladeCacheUndGrenzen() {
+    internal suspend fun ladeCacheUndGrenzen() {
         (repo.verwaltung.getCacheStats() as? Result.Success)?.let { r ->
             _state.update { it.copy(cacheStats = r.data.alsAnsicht()) }
         }
@@ -201,7 +258,7 @@ class MonitoringViewModel @Inject constructor(
         }
     }
 
-    suspend fun setzeCacheDauer(stunden: Int): Boolean {
+    internal suspend fun setzeCacheDauer(stunden: Int): Boolean {
         val ok = repo.verwaltung.setCacheTtl(stunden) is Result.Success
         if (ok) _state.update { it.copy(cacheTtl = stunden.toString()) }
         return ok
@@ -211,7 +268,7 @@ class MonitoringViewModel @Inject constructor(
      * Cache leeren und die Zahlen sofort neu holen — sonst stünden die alten da, und
      * nichts zeigte, dass etwas passiert ist.
      */
-    suspend fun leereCache(alles: Boolean): Boolean {
+    internal suspend fun leereCache(alles: Boolean): Boolean {
         val ok = repo.verwaltung.clearCache(alles) is Result.Success
         if (ok) ladeCacheUndGrenzen()
         return ok
@@ -240,19 +297,19 @@ class MonitoringViewModel @Inject constructor(
      * Die Vorgabe aus /settings/theme. Ein älterer Server kennt `vorgabe` noch
      * nicht; dort war das wirksame Design zugleich die Vorgabe.
      */
-    suspend fun ladeDesignVorgabe() {
+    internal suspend fun ladeDesignVorgabe() {
         (repo.konto.getAppTheme() as? Result.Success)?.let { r ->
             if (r.data.success) _state.update { it.copy(vorgabeDesign = r.data.vorgabe ?: r.data.theme) }
         }
     }
 
-    suspend fun setzeDesign(theme: String): Boolean {
+    internal suspend fun setzeDesign(theme: String): Boolean {
         val ok = repo.verwaltung.setAppTheme(theme) is Result.Success
         if (ok) _state.update { it.copy(vorgabeDesign = theme) }
         return ok
     }
 
-    suspend fun setzeGrenzwerte(rebrickable: Int, bricklink: Int, brickset: Int): Boolean {
+    internal suspend fun setzeGrenzwerte(rebrickable: Int, bricklink: Int, brickset: Int): Boolean {
         val ok = repo.verwaltung.setApiLimits(rebrickable, bricklink, brickset) is Result.Success
         if (ok) {
             (repo.verwaltung.getApiLimits() as? Result.Success)?.let { r ->
@@ -267,7 +324,7 @@ class MonitoringViewModel @Inject constructor(
      * der Aufruf, wird zurückgestellt, sonst behauptete die Oberfläche etwas, das nie
      * gespeichert wurde.
      */
-    suspend fun setzeVorgabeZustand(zustand: String): Boolean {
+    internal suspend fun setzeVorgabeZustand(zustand: String): Boolean {
         val vorher = _state.value.vorgabeZustand
         _state.update { it.copy(vorgabeZustand = zustand) }
         val ok = repo.verwaltung.setDefaultCondition(zustand) is Result.Success

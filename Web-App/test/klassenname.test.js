@@ -84,6 +84,10 @@ test('jeder Klassenname gestaltet etwas oder ist ein Griff', () => {
   for (const [rel, s] of dateien)
     if (/\.(css|js)$/.test(rel))
       for (const m of s.matchAll(KLASSE)) definiert.add(m[1]);
+  // Dazu der eine Inline-Stil in index.html (Startgerüst, per Hash in der CSP).
+  for (const [rel, s] of dateien)
+    if (rel.endsWith('index.html'))
+      for (const m of (/<style id="startstil">([\s\S]*?)<\/style>/.exec(s)?.[1] ?? '').matchAll(KLASSE)) definiert.add(m[1]);
   // GEMESSEN sind es 600.
   assert.ok(definiert.size >= 300,
     `Nur ${definiert.size} Klassennamen in den Stylesheets — Muster veraltet?`);

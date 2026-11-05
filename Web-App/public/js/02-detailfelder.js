@@ -79,9 +79,10 @@ export function alarmBlock(sn, praefix = 'm') {
         <option value="unter">${esc(tRaw('detail.alert_below'))}</option>
         <option value="ueber">${esc(tRaw('detail.alert_above'))}</option>
       </select>
-      <input inputmode="decimal" type="text" autocomplete="off" id="${p}-alert-val" class="alarm-feld" placeholder="${esc(tRaw('detail.alert_preis_ph'))}" aria-label="${esc(tRaw('detail.alert_price'))}"
+      <label class="alarm-preis" for="${p}-alert-val"><span class="alarm-preis-titel">${esc(tRaw('detail.alert_preis_ph'))}</span>
+      <input inputmode="decimal" type="text" autocomplete="off" id="${p}-alert-val" class="alarm-feld" aria-label="${esc(tRaw('detail.alert_price'))}"
              data-input="alarmGetippt" data-arg="${escJs(sn)}"
-             data-change="speichereAlarm" />
+             data-change="speichereAlarm" /></label>
       <span id="${p}-alert-state" data-stil="font-size:var(--fs-1);color:var(--mut)"></span>
     `;
 }

@@ -1,0 +1,25 @@
+Gegenprobe: Verlauf wieder vor der Kopfkachel der Finanzen
+Modul: app
+Test: ch.brickinventoryapp.GeruestUndFormularTest
+Rot: Finanzen nennen den Marktwert vor dem Verlauf
+
+diff --git a/Android-App/feature-finanzen/src/main/java/ch/brickinventoryapp/ui/screens/FinanceScreen.kt b/Android-App/feature-finanzen/src/main/java/ch/brickinventoryapp/ui/screens/FinanceScreen.kt
+index c2696a2..cf3bae4 100644
+--- a/Android-App/feature-finanzen/src/main/java/ch/brickinventoryapp/ui/screens/FinanceScreen.kt
++++ b/Android-App/feature-finanzen/src/main/java/ch/brickinventoryapp/ui/screens/FinanceScreen.kt
+@@ -145,7 +145,6 @@ fun FinanceScreen(
+                     }
+                 }
+             }
+-            financeSummaryCards(valuation, partsValuation, figsValuation, pnl, ::fmtPrice)
+             item {
+                 // Ohne Marktwert keine Entwicklung, wie im Web: Der Verlauf trüge dann nur
+                 // Kaufpreise, und „+0.0 %“ neben „—“ behauptete Stillstand.
+@@ -157,6 +156,7 @@ fun FinanceScreen(
+                     onPeriodChange = onPeriodChange
+                 )
+             }
++            financeSummaryCards(valuation, partsValuation, figsValuation, pnl, ::fmtPrice)
+         }
+         // Die Zeilen: Filter, Sets, Teile, Minifiguren.
+         val zeilen: androidx.compose.foundation.lazy.LazyListScope.() -> Unit = {

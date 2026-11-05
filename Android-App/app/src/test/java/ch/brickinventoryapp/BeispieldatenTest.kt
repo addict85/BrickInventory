@@ -13,6 +13,12 @@ import ch.brickinventoryapp.ui.viewmodel.GalerieViewModel
 import ch.brickinventoryapp.ui.viewmodel.MerklisteViewModel
 import ch.brickinventoryapp.ui.viewmodel.SetDetailViewModel
 import ch.brickinventoryapp.ui.viewmodel.TeileViewModel
+import ch.brickinventoryapp.ui.TeilelistenQuelle
+import ch.brickinventoryapp.ui.screens.PlPart
+import ch.brickinventoryapp.ui.viewmodel.ExportErgebnis
+import ch.brickinventoryapp.ui.viewmodel.TeilelistenExport
+import ch.brickinventoryapp.ui.viewmodel.TeilelisteViewModel
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
@@ -46,6 +52,8 @@ import org.junit.Test
  * "total_quantity" → rot „die Teilekacheln ergeben die Gesamtzahl“ (82 gegen 0).
  * Gegenprobe (02.11.2026, kotlinc): beim Teil 3039 "image_local" entfernt → rot
  * „jede Kachel hat ein Beispielbild“ ([(3039, null)]).
+ * Gegenprobe (03.11.2026, von Hand durchgespielt, kein SDK): das Baumhaus aus
+ * /finance/valuation entfernt → rot „jede Finanzzeile trägt …“ (2 statt 3 Zeilen).
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 class BeispieldatenTest {
@@ -184,10 +192,14 @@ class BeispieldatenTest {
         TestApi.warteBis("Finanzen") { finanzen.financeState.value.let { it.valuation != null && it.pnl != null } }
         val z = finanzen.financeState.value
         val zeilen = ch.brickinventoryapp.ui.setZeilen(z.valuation!!.sets).map { it.second }
-        assertEquals(2, zeilen.size)
-        assertTrue(zeilen.toString(), zeilen.all { it.wert != null && it.kaufpreis != null && it.zustand != null && it.pnlProzent != null })
+        // Zwei bewertete Zeilen und das Baumhaus ohne Marktpreis — der Fall der Basiszeile.
+        assertEquals(3, zeilen.size)
+        val bewertet = zeilen.filter { it.wert != null }
+        assertEquals(2, bewertet.size)
+        assertTrue(bewertet.toString(), bewertet.all { it.kaufpreis != null && it.zustand != null && it.pnlProzent != null })
+        assertTrue("ohne Marktpreis, mit Kaufpreis", zeilen.single { it.wert == null }.kaufpreis != null)
         val kopf = ch.brickinventoryapp.ui.finanzSummen(z.valuation!!, z.partsValuation, z.figsValuation, z.pnl).gesamt
-        assertEquals(0, kopf.compareTo(zeilen.sumOf { java.math.BigDecimal.valueOf(it.wert!!) }))
+        assertEquals(0, kopf.compareTo(bewertet.sumOf { java.math.BigDecimal.valueOf(it.wert!!) }))
     }
 }
 
@@ -203,9 +215,16 @@ object Beispiele {
             {"set_number":"10294-1","image_local":"/beispiel/set2.png","name":"Titanic","year":2021,"theme":"Icons","quantity":2,"num_parts":9090},
             {"set_number":"21318-1","image_local":"/beispiel/set3.png","name":"Baumhaus","year":2019,"theme":"Ideas","quantity":1,"num_parts":3036}]}""",
         "/api/v1/stats" to """{"success":true,"stats":{"total_sets":3,"total_quantity":4,"total_pieces":28757,"total_instructions":2,"total_parts":82,"total_minifigs":2,"set_parts":42,"manual_parts":40}}""",
-        "/api/v1/finance/pnl" to """{"success":true,"currency":"CHF","totals":{"purchase":"1500.00","current":"1712.40","pnl_prozent":14.2},"sets":[
-            {"set_number":"75192-1","quantity":1,"current_price":812.5,"baseline_price":700,"pnl_pct":"16.1","kachel_preis":812.5,"kachel_pnl_pct":16.1},
-            {"set_number":"10294-1","quantity":2,"current_price":449.95,"baseline_price":400,"pnl_pct":"12.5","kachel_preis":449.95,"kachel_pnl_pct":12.5}]}""",
+        // Das Baumhaus hat noch keinen Marktpreis: Die Kopfkarte rechnet über die zwei
+        // übrigen Positionen (1500 + 212.40 = 1712.40) und nennt es in der Basiszeile, die
+        // Galeriekachel zeigt seinen Kaufpreis als solchen (kachel_quelle "kauf").
+        "/api/v1/finance/pnl" to """{"success":true,"currency":"CHF","totals":{"purchase":"1680.00","current":"1712.40","pnl_prozent":14.2,
+            "grand_total":"1712.40","sets_purchase":"1680.00","positionen":3,"positionen_bewertet":2,"positionen_ohne_marktpreis":1,
+            "positionen_ohne_kaufpreis":0,"basis_einstand":"1500.00","basis_marktwert":"1712.40","basis_guv_betrag":"212.40",
+            "ohne_marktpreis_einstand":"180.00","ohne_kaufpreis_marktwert":"0.00"},"sets":[
+            {"set_number":"75192-1","quantity":1,"current_price":812.5,"baseline_price":700,"pnl_pct":"16.1","kachel_preis":812.5,"kachel_pnl_pct":16.1,"kachel_quelle":"markt"},
+            {"set_number":"10294-1","quantity":2,"current_price":449.95,"baseline_price":400,"pnl_pct":"12.5","kachel_preis":449.95,"kachel_pnl_pct":12.5,"kachel_quelle":"markt"},
+            {"set_number":"21318-1","quantity":1,"current_price":null,"baseline_price":180,"kachel_preis":180.0,"kachel_pnl_pct":null,"kachel_quelle":"kauf"}]}""",
         // Wie der Server (finanzen/rechnung/bewertung.ts): wert_gesamt, Kaufpreis, G&V und
         // je Erfassung eine Zeile mit Zustand. Ohne wert_gesamt zeigt jede Zeile „noch
         // kein Preis“ unter einer gefüllten Kopfkachel.
@@ -217,7 +236,9 @@ object Beispiele {
             {"set_number":"10294-1","image_local":"/beispiel/set2.png","name":"Titanic","quantity":2,"avg_price":449.95,"qty_avg_price":449.95,
              "min_price":420.0,"max_price":480.0,"total_avg":"899.90","wert_gesamt":899.9,"purchase_price":400.0,"pnl_prozent":12.5,
              "acquisitions":[{"id":2,"condition":"N","quantity":2,"purchase_price":400.0,"avg_price":449.95,
-                              "total_avg":"899.90","wert_gesamt":899.9,"pnl_prozent":12.5}]}],
+                              "total_avg":"899.90","wert_gesamt":899.9,"pnl_prozent":12.5}]},
+            {"set_number":"21318-1","image_local":"/beispiel/set3.png","name":"Baumhaus","quantity":1,"purchase_price":180.0,"no_price":true,
+             "acquisitions":[{"id":3,"condition":"N","quantity":1,"purchase_price":180.0}]}],
             "totals":{"min":"1600.00","avg":"1712.40","max":"1840.00","qty_avg":"1712.40"}}""",
         // Wie der Server: x_label in Schweizer Form, chart.x mit den ISO-Tagen derselben Punkte.
         "/api/v1/finance/portfolio-history" to """{"success":true,"currency":"CHF","period":"week","points":[
@@ -243,10 +264,10 @@ object Beispiele {
         "/api/v1/minifigs/stats" to """{"success":true,"stats":{"types":2,"total_quantity":3,"manual":0}}""",
         // Drei Fälle der Merkliste: mit Preis und Alarm, ohne Preis („Preis folgt“), schon vorhanden.
         "/api/v1/wanted" to """{"success":true,"merkposten":[
-            {"set_number":"10305-1","image_local":"/beispiel/set1.png","name":"Lion Knights' Castle","year":2022,"condition":"N","user_id":1,
+            {"set_number":"10305-1","image_local":"/beispiel/set1.png","name":"Lion Knights' Castle","year":2022,"condition":"N","user_id":1,"created_at":"2026-08-21T09:00:00Z",
              "marktpreis":399.9,"waehrung":"CHF","alarm":{"richtung":"unter","schwelle":349.0,"ausgeloest":false}},
-            {"set_number":"42115-1","image_local":"/beispiel/set3.png","name":"Lamborghini Sián FKP 37","year":2020,"condition":"U","user_id":1,"waehrung":"CHF"},
-            {"set_number":"10294-1","image_local":"/beispiel/set2.png","name":"Titanic","year":2021,"condition":"N","user_id":1,"marktpreis":449.95,"waehrung":"CHF","owned":true}]}""",
+            {"set_number":"42115-1","image_local":"/beispiel/set3.png","name":"Lamborghini Sián FKP 37","year":2020,"condition":"U","user_id":1,"created_at":"2026-09-05T18:30:00Z","waehrung":"CHF"},
+            {"set_number":"10294-1","image_local":"/beispiel/set2.png","name":"Titanic","year":2021,"condition":"N","user_id":1,"created_at":"2026-10-12T07:15:00Z","marktpreis":449.95,"waehrung":"CHF","owned":true}]}""",
         "/api/v1/sets/75192-1" to """{"success":true,"quantity":1,"set":{"set_number":"75192-1","image_local":"/beispiel/set1.png","name":"Millennium Falcon","year":2017,
             "theme":"Star Wars","quantity":1,"num_parts":7541,"minifigs":7,"added_at":"2026-03-14T10:00:00Z","avg_purchase_price":700.0}}""",
         "/api/v1/sets/75192-1/price" to """{"success":true,"set_number":"75192-1","currency":"CHF","avg_price":812.5,"min_price":760.0,"max_price":880.0,"qty_avg_price":812.5}""",
@@ -275,6 +296,17 @@ object Beispiele {
             FinanzenRepository(t.api, t.cache), HaushaltRepository(t.api, t.cache),
             object : DateiLeser { override suspend fun lies(uri: android.net.Uri): Pair<String?, ByteArray>? = null },
             SavedStateHandle(mapOf("setNumber" to SET))))
+
+        /** Die Bauliste ohne Netz: [aufloesen] liefert Name und Teile je Setnummer. */
+        fun bauliste(aufloesen: (String) -> Pair<String, List<PlPart>> = { error("nichts aufzulösen") }) =
+            t.merke(TeilelisteViewModel(t.dienste, object : TeilelistenQuelle {
+                override suspend fun loeseSetAuf(setNumber: String, serverUrl: String) = aufloesen(setNumber)
+                override suspend fun mitBestand(teile: List<PlPart>, nurLose: Boolean, mitUnterkonten: Boolean) = teile
+                override fun sortiert(teile: Collection<PlPart>) = teile.toList()
+            }, object : TeilelistenExport {
+                override val status = flowOf<String?>(null)
+                override suspend fun erzeuge(rumpf: String): ExportErgebnis = ExportErgebnis.Fehler(null)
+            }, SavedStateHandle()))
 
         override fun close() {
             t.aufraeumen()

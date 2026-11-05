@@ -63,7 +63,7 @@ function zeile(w) {
     ? `<span class="mk-etikett">
          ${ico(w.alarm.ausgeloest ? 'alarm' : 'uhr')}
          ${esc(tRaw(w.alarm.richtung === 'ueber' ? 'detail.alert_above' : 'detail.alert_below'))}
-         ${esc(String(w.alarm.schwelle))}
+         ${esc(fmtN(Number(w.alarm.schwelle), CURRENCY))}
        </span>` : '';
 
   // „Habe ich das inzwischen?" ist die Frage, die in der Liste sofort
@@ -97,7 +97,7 @@ function zeile(w) {
          Template-Literals und wuerde es sonst beenden. Genau daran ist der
          erste Entwurf gescheitert — dieselbe Falle wie in
          src/teile/abfragen.ts, wo derselbe Hinweis steht. -->
-    <div class="mk-zeile" tabindex="0" role="button" data-click="oeffneMerkpostenDetail" data-arg="${arg}">
+    <div class="mk-zeile" tabindex="0" role="button" aria-keyshortcuts="Delete" data-click="oeffneMerkpostenDetail" data-arg="${arg}">
       <div class="ca"><span class="delbtn" data-click="merkpostenLoeschenStop"${echt()} aria-hidden="true" data-arg="${arg}"
            title="${esc(tRaw('wanted.remove'))}">${TRASH_ICON_SVG}</span></div>
       ${bild}
@@ -141,8 +141,19 @@ export async function ladeMerkliste() {
   // wert las sie „/v1/wanted:x" und meldete eine Route, die es nicht gibt.
   if (!_merkposten.length && !ziel.querySelector('.mk-zeile, .leer')) ziel.innerHTML = skelettZeilen(4, t('common.loading'));
   const d = await api('GET', `/v1/wanted?${merklisteParams()}`);
-  if (listeLadefehler(ziel, d, { erneut: 'ladeMerkliste', behalten: _merkposten.length > 0 })) return;
+  const kasten = /** @type {HTMLDetailsElement | null} */ (document.getElementById('mk-kasten'));
+  if (listeLadefehler(ziel, d, { erneut: 'ladeMerkliste', behalten: _merkposten.length > 0 })) {
+    // Das offene Formular schob die Fehlermeldung unter die Falz.
+    if (kasten && !kasten.dataset.entschieden) kasten.open = false;
+    return;
+  }
   _merkposten = d.merkposten || [];
+  // Einmal je Laden der Seite: Am Telefon mit Einträgen zugeklappt, damit die
+  // Liste im ersten Bild steht; danach bleibt, was der Nutzer gewählt hat.
+  if (kasten && !kasten.dataset.entschieden) {
+    kasten.dataset.entschieden = '1';
+    kasten.open = !(_merkposten.length && window.matchMedia?.('(max-width: 640px)').matches);
+  }
   // Zwei verschiedene Leermeldungen: „Noch keine Merkposten" ist eine Aussage
   // ueber die Liste, „Nichts gefunden" eine ueber den Filter. Stuende hier
   // immer die erste, saehe eine Suche ohne Treffer wie eine geleerte Merkliste
@@ -154,7 +165,8 @@ export async function ladeMerkliste() {
     ? _merkposten.map(zeile).join('')
     : (gefiltert
       ? leerZustand({ ico: 'suche', titel: G('mks')?.value.trim() ? tRaw('common.no_hits', { query: G('mks').value.trim() }) : tRaw('wanted.no_results'), knopf: zuruecksetzenKnopf('merkliste') })
-      : leerZustand({ ico: 'merkliste', titel: tRaw('wanted.empty'), text: tRaw('wanted.empty_hint') }));
+      : leerZustand({ ico: 'merkliste', titel: tRaw('wanted.empty'), text: tRaw('wanted.empty_hint'),
+                      knopf: { text: tRaw('wanted.erster'), click: 'feldFokussieren', arg: 'mk-num', art: 'bs' } }));
 }
 
 /**
@@ -225,7 +237,7 @@ export async function merkpostenLoeschen(arg) {
     `/v1/wanted/${encodeURIComponent(set_number)}/${encodeURIComponent(condition)}?${p}`);
   if (!d?.success) { toast(d?.error || tRaw('settings.error'), 'error'); return; }
   // Rückgängig legt den Posten neu an; er hat ausser Nummer, Zustand und Inhaber nichts Eigenes.
-  toast(tRaw('wanted.deleted'), 'success', { text: tRaw('trash.undo'), fn: async () => {
+  toast(tRaw('wanted.deleted'), 'success', { text: tRaw('trash.undo'), bleibt: true, fn: async () => {
     const r = await api('POST', '/v1/wanted', { set_number, condition, owner_user_id });
     if (!r?.success) { toast(r?.error || tRaw('settings.error'), 'error'); return; }
     toast(tRaw('trash.restored'), 'success');
@@ -401,10 +413,10 @@ function zeilen(w) {
 function inhaberWahl(w) {
   const konten = haushaltsKonten();
   if (konten.length < 2) return '';
-  return `<select id="mk-m-owner" class="alarm-feld"
+  return `<select id="mk-m-owner" class="alarm-feld" aria-label="${esc(tRaw('household.for_account'))}"
                   data-change="merkpostenInhaberGewaehlt" data-arg="${escJs(`${w.set_number}|${w.condition}|${w.user_id}`)}">`
     + konten.map(k => `<option value="${k.id}"${k.id === w.user_id ? ' selected' : ''}>`
-                    + `${esc(k.username)}${k.is_self ? ' (ich)' : ''}</option>`).join('')
+                    + `${esc(k.username)}${k.is_self ? ' ' + esc(tRaw('household.ich')) : ''}</option>`).join('')
     + '</select>';
 }
 

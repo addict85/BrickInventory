@@ -50,9 +50,9 @@ test("die CSP erlaubt kein 'unsafe-inline' für script-src mehr", () => {
   assert.doesNotMatch(line, /unsafe-eval/, "'unsafe-eval' wäre dasselbe Problem in Grün");
 });
 
-test('kein style-Attribut und kein <style> im Markup — die CSP verbietet beide', () => {
+test('kein style-Attribut und kein <style> im Markup — ausser dem Startgerüst, das die CSP per Hash erlaubt', () => {
   // Gegenprobe: ein data-stil in index.html wieder als style= → rot.
-  const strip = t => t.replace(/<!--[\s\S]*?-->/g, '').replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/[^\n]*$/gm, '');
+  const strip = t => t.replace(/<!--[\s\S]*?-->/g, '').replace(/<style id="startstil">[\s\S]*?<\/style>/, '').replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/[^\n]*$/gm, '');
   const found = [];
   for (const [name, src] of [['index.html', HTML], ['logviewer.js', fs.readFileSync(path.join(PUB, 'js', 'logviewer.js'), 'utf8')],
        ...JS_FILES.map(f => [f, fs.readFileSync(path.join(PUB, 'js', f), 'utf8')])]) {
@@ -227,9 +227,11 @@ test('das Log-Fenster lädt sein Skript als Datei, nicht inline', () => {
                          core.indexOf('function openLogViewer') + 9000);
   assert.doesNotMatch(win, /'<script>'/, 'Inline-<script> wird von der CSP blockiert');
   assert.match(win, /logviewer\.js/, 'Externes Skript fehlt');
-  for (const attr of ['data-auth', 'data-base', 'data-i18n']) {
+  for (const attr of ['data-base', 'data-i18n']) {
     assert.ok(win.includes(attr), `${attr} fehlt — das Skript kommt sonst nicht an seine Daten`);
   }
+  // Die Sitzung meldet das Fenster an; ein Token aus localStorage legt die Webapp nicht mehr ab.
+  assert.doesNotMatch(win, /localStorage|data-auth/, 'Altlast authToken aus localStorage');
   assert.match(win, /escHtmlAttr\(/, 'Attributwerte müssen abgesichert werden');
   assert.ok(fs.existsSync(path.join(PUB, 'js', 'logviewer.js')), 'logviewer.js fehlt');
 });

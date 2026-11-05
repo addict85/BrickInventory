@@ -50,6 +50,12 @@ export async function belegeEinladung(tokenHash: string, sub: number): Promise<n
   return r ? zahl(r.main_user_id) : null;
 }
 
+export async function einladenderZuCode(tokenHash: string): Promise<number | null> {
+  const r = await db.get<{ main_user_id: number | string }>(
+    'SELECT main_user_id FROM account_link_invites WHERE token_hash = $1 AND used_at IS NULL AND expires_at > NOW()', [tokenHash]);
+  return r ? zahl(r.main_user_id) : null;
+}
+
 export async function gibEinladungFrei(tokenHash: string): Promise<void> {
   await db.run('UPDATE account_link_invites SET used_at = NULL, used_by = NULL WHERE token_hash = $1', [tokenHash]);
 }

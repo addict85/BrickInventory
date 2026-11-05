@@ -5,20 +5,32 @@ import ch.brickinventoryapp.data.repository.Result
 import ch.brickinventoryapp.data.repository.SetsRepository
 import ch.brickinventoryapp.data.repository.TeileRepository
 import ch.brickinventoryapp.ui.screens.PlPart
+import ch.brickinventoryapp.ui.screens.comparePartNumbers
+import ch.brickinventoryapp.ui.screens.plColorCollator
 import ch.brickinventoryapp.util.IMG_PROXY
+import dagger.Binds
+import dagger.Module
+import dagger.hilt.InstallIn
+import dagger.hilt.components.SingletonComponent
+import javax.inject.Inject
+
+@Module
+@InstallIn(SingletonComponent::class)
+internal interface TeilelistenModul {
+    @Binds fun quelle(t: Teileliste): TeilelistenQuelle
+}
 
 /**
  * Die temporäre Teileliste: Ein Set in seine Teile und Figuren auflösen und
- * den eigenen Bestand dazu holen. Ohne Zustand — die Liste selbst lebt bewusst
- * flüchtig im Bildschirm; hier stehen nur die Abläufe, damit sie ohne Gerät
- * prüfbar sind.
+ * den eigenen Bestand dazu holen. Ohne Zustand — die Liste hält
+ * TeilelisteViewModel; hier stehen nur die Abläufe gegen die Repositories.
  */
-internal class Teileliste(
+internal class Teileliste @Inject constructor(
     private val sets: SetsRepository,
     private val teileRepo: TeileRepository,
-) {
+) : TeilelistenQuelle {
     /** Name und Zeilen eines Sets; gleiche Teile (Rebrickable-Nummer + Farbe) zusammengefasst. */
-    suspend fun loeseSetAuf(setNumber: String, serverUrl: String): Pair<String, List<PlPart>> {
+    override suspend fun loeseSetAuf(setNumber: String, serverUrl: String): Pair<String, List<PlPart>> {
         return try {
             // Die CSV-Endpunkte hängen nicht am Konto und gehen für jedes Set.
             val partsResult = sets.getSetPartsList(setNumber)
@@ -105,7 +117,7 @@ internal class Teileliste(
      * stecken (sonst müsste man ein anderes Set zerlegen); [mitUnterkonten]
      * false fragt nur das eigene Konto.
      */
-    suspend fun mitBestand(
+    override suspend fun mitBestand(
         teile: List<PlPart>,
         nurLose: Boolean,
         mitUnterkonten: Boolean,
@@ -124,5 +136,10 @@ internal class Teileliste(
             p.copy(vorhanden = if (eintrag == null) 0 else if (nurLose) eintrag.lose else eintrag.gesamt)
         }
     }
-}
 
+    override fun sortiert(teile: Collection<PlPart>): List<PlPart> = teile.sortedWith { a, b ->
+        val cmp = plColorCollator.compare(a.colorName, b.colorName)
+        if (cmp != 0) cmp
+        else comparePartNumbers(a.blPartNumber ?: a.partNumber, b.blPartNumber ?: b.partNumber)
+    }
+}

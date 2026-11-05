@@ -157,5 +157,4 @@ class SessionAndLifecycleTest {
     // Die Autofokus-Regel stand hier ein viertes Mal. Sie gehoert nicht zum
     // Thema dieser Datei (Sitzung und Lebenszyklus) und steht jetzt
     // vollstaendig in CameraFocusConfigTest.
-
 }

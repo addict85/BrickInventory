@@ -85,6 +85,7 @@ data class GewinnZeileAnsicht(
     val baselinePnlProzent: Double? = null,
     val kachelPreis: Double? = null,
     val kachelPnlPct: Double? = null,
+    val kachelQuelle: String? = null,
 )
 
 fun PnlSetZeile.alsAnsicht() = GewinnZeileAnsicht(
@@ -99,6 +100,7 @@ fun PnlSetZeile.alsAnsicht() = GewinnZeileAnsicht(
     baselinePnlProzent = baselinePnlProzent,
     kachelPreis = kachelPreis,
     kachelPnlPct = kachelPnlPct,
+    kachelQuelle = kachelQuelle,
 )
 
 data class GewinnSummenAnsicht(
@@ -108,6 +110,15 @@ data class GewinnSummenAnsicht(
     val pnlProzent: Double? = null,
     val kaufpreiseFremdeWaehrung: Int = 0,
     val grandTotal: String? = null,
+    val positionen: Int? = null,
+    val positionenBewertet: Int? = null,
+    val positionenOhneMarktpreis: Int? = null,
+    val positionenOhneKaufpreis: Int? = null,
+    val basisEinstand: String? = null,
+    val basisMarktwert: String? = null,
+    val basisGuvBetrag: String? = null,
+    val ohneMarktpreisEinstand: String? = null,
+    val ohneKaufpreisMarktwert: String? = null,
 )
 
 fun PnlTotals.alsAnsicht() = GewinnSummenAnsicht(
@@ -117,6 +128,15 @@ fun PnlTotals.alsAnsicht() = GewinnSummenAnsicht(
     pnlProzent = pnlProzent,
     kaufpreiseFremdeWaehrung = kaufpreiseFremdeWaehrung,
     grandTotal = grandTotal,
+    positionen = positionen,
+    positionenBewertet = positionenBewertet,
+    positionenOhneMarktpreis = positionenOhneMarktpreis,
+    positionenOhneKaufpreis = positionenOhneKaufpreis,
+    basisEinstand = basisEinstand,
+    basisMarktwert = basisMarktwert,
+    basisGuvBetrag = basisGuvBetrag,
+    ohneMarktpreisEinstand = ohneMarktpreisEinstand,
+    ohneKaufpreisMarktwert = ohneKaufpreisMarktwert,
 )
 
 data class BewertungAnsicht(

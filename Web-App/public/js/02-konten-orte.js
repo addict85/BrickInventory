@@ -89,7 +89,7 @@ export async function loadHouseholdMembers() {
   // Begruendung bei ladeLagerortVorgabe().
   ladeLagerortVorgabe().catch(() => {});
   const html = members.map(m =>
-    `<option value="${m.id}"${m.is_self ? ' selected' : ''}>${esc(m.username)}${m.is_self ? ' (ich)' : ''}</option>`
+    `<option value="${m.id}"${m.is_self ? ' selected' : ''}>${esc(m.username)}${m.is_self ? ' ' + esc(tRaw('household.ich')) : ''}</option>`
   ).join('');
   // Alle drei Erfassen-Formulare: Set, manuelles Teil, manuelle Minifigur.
   // Dieselbe Liste, dieselbe Regel — ein Kaufpreis für ein Kind zu erfassen

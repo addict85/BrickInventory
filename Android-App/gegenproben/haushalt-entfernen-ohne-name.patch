@@ -1,0 +1,18 @@
+Gegenprobe: „Entfernen“ im Haushalt ohne Kontonamen für TalkBack
+Modul: app
+Test: ch.brickinventoryapp.UnterseitenTest
+Rot: Entfernen nennt
+
+diff --git a/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/ui/screens/EinstellungenHaushalt.kt b/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/ui/screens/EinstellungenHaushalt.kt
+index cb5137a..3efb636 100644
+--- a/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/ui/screens/EinstellungenHaushalt.kt
++++ b/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/ui/screens/EinstellungenHaushalt.kt
+@@ -229,7 +229,7 @@ private fun KontoZeile(name: String, aktion: String, onAktion: () -> Unit) {
+         horizontalArrangement = Arrangement.spacedBy(Abstaende.klein)) {
+         Icon(Icons.Default.AccountCircle, null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+         Text(name, modifier = Modifier.weight(1f), fontWeight = FontWeight.SemiBold)
+-        TextButton(onClick = onAktion, modifier = Modifier.semantics { contentDescription = beschreibung }) {
++        TextButton(onClick = onAktion, modifier = Modifier.semantics { contentDescription = beschreibung.take(0) + aktion }) {
+             Text(aktion, color = MaterialTheme.colorScheme.error)
+         }
+     }

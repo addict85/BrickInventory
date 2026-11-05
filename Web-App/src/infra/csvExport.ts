@@ -4,8 +4,11 @@
 import { parse } from 'csv-parse/sync';
 
 /** Tabulator und Wagenrücklauf gehören dazu: Excel liest sie als Trennzeichen
- * und behandelt das folgende Feld wieder als Formel. */
-const FORMEL_START = /^[=+\-@\t\r]/;
+ * und behandelt das folgende Feld wieder als Formel. Auch nach Leerraum und in
+ * voller Breite (＝＋－＠): Manche Programme trimmen oder falten sie. */
+const FORMEL_START = /^[\s\u3000]*[=+\-@\uFF1D\uFF0B\uFF0D\uFF20]|^[\t\r\n]/;
+/** Komma, Semikolon (deutsches Excel) und Tabulator trennen Felder, CR und LF Zeilen. */
+const MUSS_IN_ANFUEHRUNG = /[",;\t\r\n]/;
 
 /** Ein Ausschnitt statt @types/express: Er sagt genauer, was diese Datei tut. */
 type ExpressAntwort = {
@@ -20,7 +23,7 @@ type ExpressJsonAntwort = {
 // Ausführlich: docs/begruendungen/src/infra/csvExport.ts.md#entschaerfe
 export function entschaerfe(s: string): string {
   if (!FORMEL_START.test(s)) return s;
-  if (/^-?\d+([.,]\d+)?$/.test(s)) return s;   // reine Zahl, auch negativ
+  if (/^\s*-?\d+([.,]\d+)?\s*$/.test(s)) return s;   // reine Zahl, auch negativ
   return "'" + s;
 }
 
@@ -44,7 +47,7 @@ export function csvZeilenBereinigen(records: any[]): any[] {
 export function csvField(v: unknown) {
   if (v === null || v === undefined) return '';
   const s = entschaerfe(String(v));
-  if (/[",\n]/.test(s)) return '"' + s.replace(/"/g, '""') + '"';
+  if (MUSS_IN_ANFUEHRUNG.test(s)) return '"' + s.replace(/"/g, '""') + '"';
   return s;
 }
 

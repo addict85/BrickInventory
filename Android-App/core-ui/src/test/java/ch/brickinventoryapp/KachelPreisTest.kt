@@ -3,6 +3,8 @@ package ch.brickinventoryapp
 import ch.brickinventoryapp.ui.model.SetAnsicht
 import ch.brickinventoryapp.data.model.PnlSetZeile
 import ch.brickinventoryapp.ui.KachelPreis
+import ch.brickinventoryapp.ui.KachelQuelle
+import ch.brickinventoryapp.ui.kachelQuelle
 import ch.brickinventoryapp.ui.kachelBetrag
 import ch.brickinventoryapp.ui.kachelPreise
 import org.junit.Assert.assertEquals
@@ -26,6 +28,11 @@ import org.junit.Test
  *      Kaufpreis …“
  *   C  in kachelBetrag() den Kaufpreis vor den Marktpreis gestellt → rot
  *      „der Marktpreis geht vor …“
+ *
+ * Gegenprobe (03.11.2026, von Hand durchgespielt, kein SDK in der Sitzung):
+ *   Q  in kachelQuelle() `preis.quelle == "kauf"` nicht beachtet → rot „die
+ *      Quelle des Servers …“ (MARKT statt KAUF); in der Oberfläche misst es
+ *      gegenproben/kachel-quelle-ignoriert.patch
  */
 class KachelPreisTest {
 
@@ -66,5 +73,18 @@ class KachelPreisTest {
         assertEquals(40.0, kachelBetrag(set, KachelPreis(0.0, null)) ?: -1.0, 1e-9)
         assertEquals(40.0, kachelBetrag(set, null) ?: -1.0, 1e-9)
         assertNull(kachelBetrag(SetAnsicht(setNumber = "2-1"), null))
+    }
+
+    @Test
+    fun `die Quelle des Servers bestimmt die Beschriftung der Kachel`() {
+        val p = kachelPreise(listOf(PnlSetZeile("21318-1", 1, null, 180.0, kachelPreis = 180.0, kachelQuelle = "kauf")))
+        assertEquals(KachelPreis(180.0, null, "kauf"), p["21318-1"])
+        val set = SetAnsicht(setNumber = "21318-1")
+        assertEquals(KachelQuelle.KAUF, kachelQuelle(set, p["21318-1"]))
+        assertEquals(KachelQuelle.MARKT, kachelQuelle(set, KachelPreis(812.5, 16.1, "markt")))
+        // Ältere Server ohne kachel_quelle lieferten nur Marktpreise.
+        assertEquals(KachelQuelle.MARKT, kachelQuelle(set, KachelPreis(812.5, 16.1)))
+        assertEquals(KachelQuelle.KAUF, kachelQuelle(SetAnsicht(setNumber = "1-1", avgPurchasePrice = 40.0), null))
+        assertNull(kachelQuelle(set, null))
     }
 }

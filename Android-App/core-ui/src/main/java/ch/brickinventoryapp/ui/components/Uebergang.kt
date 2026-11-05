@@ -45,7 +45,9 @@ fun MitZiel(ziel: AnimatedVisibilityScope, inhalt: @Composable () -> Unit) {
 fun GemeinsamesBild(setNumber: String, inhalt: @Composable (Modifier) -> Unit) {
     val uebergang = LocalUebergang.current
     val ziel = LocalZielSichtbarkeit.current
-    if (uebergang == null || ziel == null) return inhalt(Modifier)
+    // Ohne Bewegung bleibt nur das Überblenden des Navigationsziels.
+    val ruhig = bewegungReduziert()
+    if (uebergang == null || ziel == null || ruhig) return inhalt(Modifier)
     with(uebergang) {
         inhalt(Modifier.sharedElement(rememberSharedContentState("set-bild-$setNumber"), ziel))
     }

@@ -1,6 +1,8 @@
 import * as db from '../../../db/database';
 import { mengeJoin, mengeAus, teilmengeJoin, teilmengeAus } from '../../../db/bestandsmenge';
 import { blJoin, blNummerSql } from '../../../db/blZuordnungSql';
+import { teilSichtJoin, TEIL } from '../../../db/katalogSicht';
+import { LIKE_ESCAPE as E, enthaeltMuster } from '../../../db/likeSuche';
 
 /** Beide Wege (Zusammenfassung und live) liefern dieselbe Form, damit die
  * Oberflächen nicht wissen müssen, woher die Zeilen kommen. */
@@ -24,7 +26,7 @@ function ordnungSql(o: TeileOrdnung, sp: { farbe: string; name: string; menge: s
 
 /** `pi` ist der Platzhalter für `%text%`. */
 function teileSuche(nummer: string, name: string, blNummer: string, pi: number) {
-  return `(${nummer} ILIKE $${pi} OR ${name} ILIKE $${pi} OR ${blNummer} ILIKE $${pi})`;
+  return `(${nummer} ILIKE $${pi}${E} OR ${name} ILIKE $${pi}${E} OR ${blNummer} ILIKE $${pi}${E})`;
 }
 
 export interface TeilZeile {
@@ -49,17 +51,16 @@ export function farbenDesBestands(uids: number[], ausZusammenfassung: boolean) {
       GROUP BY ps.color_name, COALESCE(ps.color_hex, rc.rgb)
       ORDER BY total_quantity DESC`, [uids]);
   return db.all<Farbe>(`
-    SELECT pcc.color_name, COALESCE(pcc.color_hex, rc.rgb) AS color_hex,
+    SELECT ${TEIL.farbname} AS color_name, COALESCE(${TEIL.farbcode}, rc.rgb) AS color_hex,
            COUNT(DISTINCT p.part_number)::int AS unique_parts,
            SUM(${teilmengeAus('p', 'part')} * ${mengeAus('sm', 1)})::int AS total_quantity
     FROM parts p
     ${mengeJoin('p', 'sm', '= ANY($1)')}
     ${teilmengeJoin('p', 'part')}
-    LEFT JOIN part_color_catalog pcc ON pcc.part_number = p.part_number
-                                    AND pcc.color_id    = p.color_id
+    ${teilSichtJoin('p.user_id', 'p.part_number', 'p.color_id')}
     LEFT JOIN rb_colors rc ON rc.id = p.color_id
     WHERE p.user_id = ANY($1) AND COALESCE(p.source,'set') <> 'manual'
-    GROUP BY pcc.color_name, COALESCE(pcc.color_hex, rc.rgb) ORDER BY total_quantity DESC`, [uids]);
+    GROUP BY 1, 2 ORDER BY total_quantity DESC`, [uids]);
 }
 
 export async function seiteAusZusammenfassung(uids: number[], f: TeileFilter, s: Seite) {
@@ -80,7 +81,7 @@ export async function seiteAusZusammenfassung(uids: number[], f: TeileFilter, s:
   }
   if (f.search) {
     cond.push(teileSuche('part_number', 'part_name', 'bl_part_number', params.length + 1));
-    params.push(`%${f.search}%`);
+    params.push(enthaeltMuster(f.search));
   }
   const where = cond.join(' AND ');
   const multi = uids.length > 1;
@@ -118,11 +119,11 @@ function teileWo(uids: number[], f: TeileFilter) {
   if (f.set_number) { where += ` AND p.set_number = $${pi++}`; params.push(f.set_number); }
   // Farbe, Kategorie und Name stehen in den Katalogen (pc/pcc), das
   // Ersatzteilkennzeichen in der Setliste (tm_k aus teilmengeJoin).
-  if (f.color) { where += ` AND pcc.color_name = $${pi++}`; params.push(f.color); }
+  if (f.color) { where += ` AND ${TEIL.farbname} = $${pi++}`; params.push(f.color); }
   // Kategorie auch über rb_parts: Die Set-Teile-Antwort von Rebrickable
   // liefert oft keine, die Filterliste zeigt deshalb die aufgelöste ID.
   if (f.category) {
-    where += ` AND (pc.category_name = $${pi}
+    where += ` AND (${TEIL.kategorie} = $${pi}
                     OR EXISTS (SELECT 1 FROM rb_parts rp
                                 WHERE rp.part_num = p.part_number
                                   AND rp.part_cat_id::text = $${pi}))`;
@@ -133,8 +134,8 @@ function teileWo(uids: number[], f: TeileFilter) {
   if (f.spare === '1') where += ' AND COALESCE(tm_k.is_spare, false)';
   if (f.ohneManuelle) where += " AND COALESCE(p.source,'set') <> 'manual'";
   if (f.search) {
-    where += ` AND ${teileSuche('p.part_number', 'pc.part_name', blNummerSql('p.part_number'), pi)}`;
-    params.push(`%${f.search}%`); pi++;
+    where += ` AND ${teileSuche('p.part_number', TEIL.name, blNummerSql('p.part_number'), pi)}`;
+    params.push(enthaeltMuster(f.search)); pi++;
   }
   // Lagerort als eigener Filter über den Namen aus dem Vorrat (lo).
   if (f.storage) { where += ` AND lo.name = $${pi++}`; params.push(String(f.storage)); }
@@ -151,11 +152,9 @@ export async function seiteLive(uids: number[], f: TeileFilter, s: Seite) {
     : `SUM(${teilmengeAus('p', 'part')} * ${mengeAus('sm', 1)})::int`;
   const joinClause = (f.set_number ? 'FROM parts p' : `FROM parts p ${mengeJoin('p')}`)
     + ` ${teilmengeJoin('p', 'part', 'tm', '= ANY($1)')}`
-    + ` ${blJoin('p.part_number', 'part')}`
+    + ` ${blJoin('p.part_number', 'part', 'p.user_id')}`
     + ' LEFT JOIN storage_locations lo ON lo.id = p.storage_id'
-    + ' LEFT JOIN part_catalog pc ON pc.part_number = p.part_number'
-    + ' LEFT JOIN part_color_catalog pcc ON pcc.part_number = p.part_number'
-    + '                                 AND pcc.color_id    = p.color_id';
+    + ` ${teilSichtJoin('p.user_id', 'p.part_number', 'p.color_id')}`;
   // Dieselben Joins wie die Hauptabfrage: Jeder hängt am Primärschlüssel und ändert die Zahl nicht.
   const countSql = `SELECT COUNT(*)::int AS c FROM (
        SELECT 1 ${joinClause} WHERE ${where}
@@ -166,13 +165,13 @@ export async function seiteLive(uids: number[], f: TeileFilter, s: Seite) {
       ${blNummerSql('p.part_number')} AS part_number,
       ${blNummerSql('p.part_number')} AS bl_part_number,
       -- Die Gruppe fasst mehrere Rebrickable-Nummern derselben BrickLink-Nummer zusammen.
-      MIN(pc.part_name)    AS part_name,
+      MIN(${TEIL.name})      AS part_name,
       p.color_id,
-      MIN(pcc.color_name)  AS color_name,
-      MIN(pcc.color_hex)   AS color_hex,
-      MIN(pc.category_name) AS category_name,
-      MIN(pcc.image_url)   AS image_url,
-      MIN(pcc.image_local) AS image_local,
+      MIN(${TEIL.farbname})  AS color_name,
+      MIN(${TEIL.farbcode})  AS color_hex,
+      MIN(${TEIL.kategorie}) AS category_name,
+      MIN(${TEIL.bild})      AS image_url,
+      MIN(${TEIL.bildDatei}) AS image_local,
       bool_or(COALESCE(tm_k.is_spare, false)) AS is_spare,
       -- Alle Lagerorte: Dasselbe Teil liegt aus verschiedenen Sets in verschiedenen Kisten.
       NULLIF(STRING_AGG(DISTINCT lo.name, ', '), '') AS storage,
@@ -181,7 +180,7 @@ export async function seiteLive(uids: number[], f: TeileFilter, s: Seite) {
     ${joinClause}
     WHERE ${where}
     GROUP BY ${blNummerSql('p.part_number')}, p.color_id
-    ORDER BY ${ordnungSql(s.ordnung, { farbe: 'MIN(pcc.color_name)', name: 'MIN(pc.part_name)',
+    ORDER BY ${ordnungSql(s.ordnung, { farbe: `MIN(${TEIL.farbname})`, name: `MIN(${TEIL.name})`,
       menge: qtyExpr, nummer: `${blNummerSql('p.part_number')}, p.color_id` })} LIMIT $${pi} OFFSET $${pi + 1}`;
   const [anzahl, zeilen] = await Promise.all([
     db.get<{ c: number }>(countSql, params),
@@ -195,7 +194,7 @@ export function gebrauchteManuelle(uids: number[]) {
     `SELECT ${blNummerSql('p.part_number')} AS pid, p.color_id,
             MAX(CASE WHEN pa.condition='U' THEN 1 ELSE 0 END) AS any_used
      FROM parts p
-     ${blJoin('p.part_number', 'part')}
+     ${blJoin('p.part_number', 'part', 'p.user_id')}
      JOIN part_acquisitions pa ON pa.user_id=p.user_id AND pa.part_number=p.part_number AND pa.color_id=p.color_id
      WHERE p.user_id = ANY($1) AND p.source='manual'
      GROUP BY ${blNummerSql('p.part_number')}, p.color_id`, [uids]);
@@ -227,35 +226,37 @@ export function inventarAlsTeile(inventarId: number, setNumber: string) {
 }
 
 export function kategorien(uids: number[], ausZusammenfassung: boolean) {
-  type Kategorie = { category_name: string | null; label: string; unique_parts: number; total_quantity: number };
+  type Kategorie = { category_name: string | null; label: string | null; unique_parts: number; total_quantity: number };
   const kategorie = (spalte: string, nummer: string) => `
       LEFT JOIN rb_part_categories rc
              ON rc.id = (CASE WHEN ${spalte} ~ '^[0-9]+$' THEN ${spalte}::int ELSE NULL END)
       LEFT JOIN rb_parts rp ON rp.part_num = ${nummer}
       LEFT JOIN rb_part_categories rp_cat ON rp_cat.id = rp.part_cat_id`;
-  const gruppe = (k: string) => `GROUP BY COALESCE(rc.id::text, rp_cat.id::text, ${k}), COALESCE(rc.name, rp_cat.name, 'Unbekannt')
-      ORDER BY total_quantity DESC`;
+  // Ohne Katalog bleibt ein eingetragener Name („Bricks“); was keinen hat, steht als EIN Eintrag ohne Namen da.
+  const name = (k: string) => `COALESCE(rc.name, rp_cat.name, CASE WHEN ${k} ~ '^[0-9]+$' THEN NULL ELSE NULLIF(${k}, '') END)`;
+  const schluessel = (k: string) => `CASE WHEN ${name(k)} IS NULL THEN NULL ELSE COALESCE(rc.id::text, rp_cat.id::text, ${k}) END`;
+  const gruppe = 'GROUP BY 1, 2 ORDER BY total_quantity DESC';
   if (ausZusammenfassung) return db.all<Kategorie>(`
-      SELECT COALESCE(rc.id::text, rp_cat.id::text, ps.category_name) AS category_name,
-             COALESCE(rc.name, rp_cat.name, 'Unbekannt')                AS label,
+      SELECT ${schluessel('ps.category_name')}                         AS category_name,
+             ${name('ps.category_name')}                                AS label,
              COUNT(DISTINCT ps.part_key)::int AS unique_parts,
              SUM(ps.total_quantity)::int      AS total_quantity
         FROM parts_summary ps
         ${kategorie('ps.category_name', 'ps.part_number')}
        WHERE ps.user_id = ANY($1)
-      ${gruppe('ps.category_name')}`, [uids]);
+      ${gruppe}`, [uids]);
   return db.all<Kategorie>(`
-    SELECT COALESCE(rc.id::text, rp_cat.id::text, pc.category_name) AS category_name,
-           COALESCE(rc.name, rp_cat.name, 'Unbekannt')              AS label,
+    SELECT ${schluessel(TEIL.kategorie)}                             AS category_name,
+           ${name(TEIL.kategorie)}                                    AS label,
            COUNT(DISTINCT p.part_number)::int AS unique_parts,
            SUM(${teilmengeAus('p', 'part')} * ${mengeAus('sm', 1)})::int AS total_quantity
     FROM parts p
     ${mengeJoin('p', 'sm', '= ANY($1)')}
     ${teilmengeJoin('p', 'part', 'tm', '= ANY($1)')}
-    LEFT JOIN part_catalog pc ON pc.part_number = p.part_number
-    ${kategorie('pc.category_name', 'p.part_number')}
+    ${teilSichtJoin('p.user_id', 'p.part_number', 'p.color_id')}
+    ${kategorie(TEIL.kategorie, 'p.part_number')}
     WHERE p.user_id = ANY($1) AND COALESCE(p.source,'set') <> 'manual'
-    ${gruppe('pc.category_name')}`, [uids]);
+    ${gruppe}`, [uids]);
 }
 
 export async function kennzahlen(uids: number[], ausZusammenfassung: boolean) {
@@ -307,8 +308,8 @@ export function manuelleTeile(uids: number[], f: { search?: string | null; stora
   const params: unknown[] = [uids];
   let filter = '';
   if (f.search) {
-    params.push(`%${f.search}%`);
-    filter = ` AND ${teileSuche('t.part_number', 'pc.part_name', blNummerSql('t.part_number'), params.length)}`;
+    params.push(enthaeltMuster(f.search));
+    filter = ` AND ${teileSuche('t.part_number', TEIL.name, blNummerSql('t.part_number'), params.length)}`;
   }
   if (f.storage) { params.push(String(f.storage)); filter += ` AND lo.name = $${params.length}`; }
   let limit = '';
@@ -319,11 +320,11 @@ export function manuelleTeile(uids: number[], f: { search?: string | null; stora
   return db.all<ManuellesTeil>(`
     SELECT t.id, t.user_id, t.part_number,
            ${blNummerSql('t.part_number')} AS bl_part_number,
-           pc.part_name, t.color_id,
-           pcc.color_name, pcc.color_hex,
-           pc.category_name,
+           ${TEIL.name} AS part_name, t.color_id,
+           ${TEIL.farbname} AS color_name, ${TEIL.farbcode} AS color_hex,
+           ${TEIL.kategorie} AS category_name,
            ${teilmengeAus('t', 'part')} AS quantity,
-           pcc.image_url, pcc.image_local,
+           ${TEIL.bild} AS image_url, ${TEIL.bildDatei} AS image_local,
            -- unit_price ist der eingegebene Preis und darf leer sein, purchase_price
            -- der Anzeigewert (0 heisst „nichts bekannt“), siehe src/finanzen/preisRegel.ts.
            neu.unit_price,
@@ -335,10 +336,8 @@ export function manuelleTeile(uids: number[], f: { search?: string | null; stora
            t.added_at AS created_at
     FROM parts t
     ${teilmengeJoin('t', 'part')}
-    ${blJoin('t.part_number', 'part')}
-    LEFT JOIN part_catalog pc ON pc.part_number = t.part_number
-    LEFT JOIN part_color_catalog pcc ON pcc.part_number = t.part_number
-                                    AND pcc.color_id    = t.color_id
+    ${blJoin('t.part_number', 'part', 't.user_id')}
+    ${teilSichtJoin('t.user_id', 't.part_number', 't.color_id')}
     LEFT JOIN storage_locations lo ON lo.id = t.storage_id
     -- Die neueste Erfassung: dieselbe Ordnung wie überall, sonst hätten
     -- „neuester Preis“ und „neueste Erfassung“ zwei Bedeutungen.
@@ -351,7 +350,7 @@ export function manuelleTeile(uids: number[], f: { search?: string | null; stora
        LIMIT 1
     ) neu ON TRUE
     WHERE t.user_id = ANY($1) AND t.source = 'manual'${filter}
-    ORDER BY pc.part_name ASC, t.part_number ASC${limit}`, params);
+    ORDER BY ${TEIL.name} ASC, t.part_number ASC${limit}`, params);
 }
 
 type Bestand = { gesamt: number; lose: number };

@@ -1,0 +1,18 @@
+Gegenprobe: Der Antwort-Cache schreibt wieder Klartext (Stand vor sec8 N5)
+Modul: core-data
+Test: ch.brickinventoryapp.AblageVerschluesselungTest
+Rot: Klartext auf der Platte
+
+diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/cache/ResponseCache.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/cache/ResponseCache.kt
+index 950990d..74a8275 100644
+--- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/cache/ResponseCache.kt
++++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/cache/ResponseCache.kt
+@@ -121,7 +121,7 @@ class ResponseCache(
+                 val ziel = fileFor(bereich, key)
+                 val tmp = File(fach, ziel.name + ".tmp")
+                 val text = json.encodeToString(serializer, value).toByteArray(Charsets.UTF_8)
+-                tmp.writeBytes(chiffre?.verschluessle(text, bindung(ziel)) ?: text)
++                tmp.writeBytes(text)
+                 tmp.renameTo(ziel)      // atomar, nie halbe Dateien lesen
+             }
+         } catch (_: Throwable) { /* Best effort */ }

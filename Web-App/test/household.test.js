@@ -322,7 +322,8 @@ test('manuelle Teile und Minifiguren tragen den Besitzer', () => {
   const fc = require('./helpers/sources').finanzQuelle();
   pruefeParameter(fc, 'withOwnerNames', ['uids', 'rows']);
   const uses = (fc.match(/await withOwnerNames\(uids, await parallelLimit\(tasks, 5\)\)/g) || []).length;
-  assert.equal(uses, 2, 'Teile- und Minifiguren-Bewertung brauchen beide den Besitzer');
+  // Seit der UI-Prüfung 12 auch die Sets: Jede Zeile ist der Bestand eines Kontos.
+  assert.equal(uses, 3, 'Set-, Teile- und Minifiguren-Bewertung brauchen den Besitzer');
 });
 
 test('die Teile-Zusammenfassung trägt auch über mehrere Konten', () => {

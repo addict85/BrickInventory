@@ -4,13 +4,13 @@ Test: ch.brickinventoryapp.AblaufTest
 Rot: anmelden reicht Name und Passwort weiter
 
 diff --git a/Android-App/feature-anmeldung/src/main/java/ch/brickinventoryapp/ui/screens/LoginScreen.kt b/Android-App/feature-anmeldung/src/main/java/ch/brickinventoryapp/ui/screens/LoginScreen.kt
-index 7cb41ea..c48705c 100644
+index 8df5f34..0223279 100644
 --- a/Android-App/feature-anmeldung/src/main/java/ch/brickinventoryapp/ui/screens/LoginScreen.kt
 +++ b/Android-App/feature-anmeldung/src/main/java/ch/brickinventoryapp/ui/screens/LoginScreen.kt
-@@ -316,7 +316,7 @@ private fun AnmeldeFelder(
-         stringResource(R.string.login_button),
-         laeuft = isLoading,
-         aktiv = username.isNotBlank() && password.isNotBlank() && (!codeNoetig || code.isNotBlank())
+@@ -299,7 +299,7 @@ private fun AnmeldeFelder(
+             username.isBlank() || password.isBlank() -> R.string.login_missing_credentials
+             else -> R.string.login_missing_code
+         }),
 -    ) { onLogin(username, password, code.takeIf { codeNoetig }) }
 +    ) { onLogin(password, username, code.takeIf { codeNoetig }) }
  

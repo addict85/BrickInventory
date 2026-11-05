@@ -4,6 +4,7 @@
 <full-backup-content>
     <exclude domain="file" path="datastore" />
     <exclude domain="database" path="bestand.db" />
+    <exclude domain="database" path="androidx.work.workdb" />
     <exclude domain="sharedpref" path="widget.xml" />
     <exclude domain="sharedpref" path="design_spiegel.xml" />
     <exclude domain="file" path="vorschau" />

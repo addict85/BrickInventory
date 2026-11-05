@@ -17,6 +17,11 @@ export const LAENDER = [
 
 export const LAND_STANDARD = 'de-CH';
 
+/** Ohne gespeichertes Ausgabeland das Land zur Kontowährung — dieselbe Regel wie in 05-settings.js. */
+export function landFuerWaehrung(waehrung: unknown): string {
+  return ({ CHF: 'de-CH', EUR: 'de-DE', GBP: 'en-GB', USD: 'en-US' } as Record<string, string>)[String(waehrung)] ?? LAND_STANDARD;
+}
+
 export function landErlaubt(land: unknown): boolean {
   return typeof land === 'string' && (LAENDER as readonly string[]).includes(land);
 }

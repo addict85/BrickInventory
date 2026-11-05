@@ -71,6 +71,30 @@ class IconButtonLabelTest {
         }
     }
 
+    /**
+     * Jeder reine Symbolknopf liegt in MitTooltip: Sehende Nutzer konnten Filter und
+     * Sortieren (beides Linien) nur raten, Material zeigt den Namen beim langen Drücken.
+     * Der Aufruf steht auf derselben Zeile oder bis zu zwei Zeilen darüber. Ausnahme ist
+     * nur MitTooltip.kt selbst, das den Knopf als Inhalt bekommt.
+     *
+     * Gegenprobe (gegenproben/symbolknopf-ohne-tooltip.patch): der Zurück-Pfeil der
+     * Unterseite ohne MitTooltip → rot mit Unterseite.kt.
+     */
+    @Test
+    fun `jeder Symbolknopf zeigt seinen Namen als Tooltip`() {
+        val ohne = mutableListOf<String>()
+        for (datei in screens()) {
+            if (datei.name == "MitTooltip.kt") continue
+            val zeilen = Quellen.ohneKommentare(datei.readText()).lines()
+            zeilen.forEachIndexed { i, zeile ->
+                if (!zeile.contains("IconButton(")) return@forEachIndexed
+                val davor = zeilen.subList(maxOf(0, i - 2), i + 1).joinToString("\n")
+                if (!davor.contains("MitTooltip(")) ohne += "${datei.name}:${i + 1}"
+            }
+        }
+        assert(ohne.isEmpty()) { "Symbolknopf ohne Tooltip (MitTooltip): $ohne" }
+    }
+
     @Test
     fun `die Beschriftungen liegen in beiden Sprachen vor`() {
         // Ein fehlender Eintrag in values-de führt nicht zum Fehler, sondern

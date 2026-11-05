@@ -73,9 +73,9 @@ export const routen = {
   'DELETE /api/v1/vouchers/:id': { antwort: GenericResponse, ...bestaetigt() },
   'POST /api/v1/vouchers/pdf': { antwort: GutscheinAntwort },
   'POST /api/v1/vouchers/:id/guthaben': { antwort: GuthabenAntwort },
-  'POST /api/v1/vouchers/:id/klartext': { antwort: GutscheinKlartext, ...bestaetigt() },
-  'POST /api/v1/vouchers/:id/pdf-freigabe': { antwort: PdfFreigabe, ...bestaetigt() },
-  'POST /api/v1/vouchers/export/pdf-freigabe': { antwort: PdfFreigabe, ...bestaetigt() },
+  'POST /api/v1/vouchers/:id/klartext': { antwort: GutscheinKlartext, ...bestaetigt(), geheim: true },
+  'POST /api/v1/vouchers/:id/pdf-freigabe': { antwort: PdfFreigabe, ...bestaetigt(), geheim: true },
+  'POST /api/v1/vouchers/export/pdf-freigabe': { antwort: PdfFreigabe, ...bestaetigt(), geheim: true },
   'GET /api/v1/vouchers/:id/pdf': { art: 'pdf' },
   'GET /api/v1/vouchers/export/pdf': { art: 'pdf' },
 } satisfies Record<string, Route>;

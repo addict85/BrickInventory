@@ -1,5 +1,6 @@
 import * as db from '../../../db/database';
 import { erfassungsTagSql } from '../../../db/bestandsmenge';
+import { teilSichtJoin, figurSichtJoin, TEIL, FIGUR } from '../../../db/katalogSicht';
 
 // Eine Zeile je Erfassung in einer Abfrage statt einer je Teil.
 // Ausführlich: docs/begruendungen/src/teile/manuelleTeile.ts.md#parts-csv-sql
@@ -12,7 +13,7 @@ const PARTS_CSV_SQL = `
          -- Lesart wie im Sets-Export (src/sets/setService.ts).
          COALESCE(a.quantity, 0) AS quantity,
          p.color_id,
-         COALESCE(pcc.color_name,'') AS color_name,
+         COALESCE(${TEIL.farbname},'') AS color_name,
          a.unit_price,
          COALESCE(a.condition, 'N') AS condition,
          CASE WHEN a.id IS NULL THEN ''
@@ -22,13 +23,9 @@ const PARTS_CSV_SQL = `
            ON a.user_id = p.user_id
           AND a.part_number = p.part_number
           AND a.color_id = p.color_id
-    -- Name und Farbbezeichnung aus den Katalogen (Migration 0034). LEFT JOIN,
-    -- damit ein Teil ohne Katalogzeile nicht aus dem Export faellt.
-    LEFT JOIN part_catalog pc ON pc.part_number = p.part_number
-    LEFT JOIN part_color_catalog pcc ON pcc.part_number = p.part_number
-                                    AND pcc.color_id    = p.color_id
+    ${teilSichtJoin('p.user_id', 'p.part_number', 'p.color_id')}
    WHERE p.user_id = $1 AND p.source = 'manual'
-   ORDER BY pc.part_name ASC, p.part_number ASC, a.created_at ASC, a.id ASC`;
+   ORDER BY ${TEIL.name} ASC, p.part_number ASC, a.created_at ASC, a.id ASC`;
 
 // Zu einer Erfassung OHNE Preis gehört ein leeres Feld, nicht der Preis der
 // Figuren-Zeile — deshalb `a.id IS NULL` statt COALESCE über die Werte.
@@ -38,7 +35,7 @@ const FIGS_CSV_SQL = `
          -- stand COALESCE(f.bl_fig_number,''), eine Abschrift je Konto.
          -- Das leere Feld bleibt die Ausgabe fuer „keine abweichende
          -- Nummer" — in der Zuordnung ist das eine leere bl_id.
-         COALESCE(z.bl_id,'') AS bl_fig_number,
+         COALESCE(CASE WHEN ze.rb_id IS NULL THEN z.bl_id ELSE NULLIF(ze.bl_id, f.fig_number) END, '') AS bl_fig_number,
          -- Der Rueckfall auf die Stammzeile ist weg: Migration 0035 hat
          -- f.unit_price und f.condition geloescht und traegt fuer jede
          -- manuelle Figur eine Erfassung nach. Dieselbe Aenderung wie bei
@@ -52,13 +49,12 @@ const FIGS_CSV_SQL = `
               ELSE TO_CHAR(${erfassungsTagSql('a')}, 'YYYY-MM-DD') END AS acquired_at
     FROM minifigs f
     LEFT JOIN bl_zuordnung z ON z.art = 'fig' AND z.rb_id = f.fig_number
+    LEFT JOIN bl_zuordnung_eigen ze ON ze.user_id = f.user_id AND ze.art = 'fig' AND ze.rb_id = f.fig_number
     LEFT JOIN minifig_acquisitions a
            ON a.user_id = f.user_id AND a.fig_number = f.fig_number
-    -- Der Figurenname steht seit Migration 0034 im Katalog. LEFT JOIN, damit
-    -- eine Figur ohne Katalogzeile nicht aus dem Export faellt.
-    LEFT JOIN minifigs_catalog mc ON mc.fig_number = f.fig_number
+    ${figurSichtJoin('f.user_id', 'f.fig_number')}
    WHERE f.user_id = $1 AND f.source = 'manual'
-   ORDER BY mc.fig_name ASC, f.fig_number ASC, a.created_at ASC, a.id ASC`;
+   ORDER BY ${FIGUR.name} ASC, f.fig_number ASC, a.created_at ASC, a.id ASC`;
 
 export function teileFuerCsv(uid: number) {
   return db.all(PARTS_CSV_SQL, [uid]);

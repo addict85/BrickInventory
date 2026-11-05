@@ -78,5 +78,4 @@ class PartsListScannerTest {
                 "niemand eingeben konnte, verschleiert beim Lesen, was gemeint ist"
         }
     }
-
 }

@@ -95,7 +95,8 @@ object PriceChartMath {
     /**
      * Gemeinsame Skala über alle Linien, weil der Abstand zwischen Neu- und
      * Gebrauchtpreis der interessante Vergleich ist. 15 % Rand, damit keine Linie am
-     * Rand klebt; gleiche Werte spannen 10 % des Wertes auf.
+     * Rand klebt; gleiche Werte spannen 10 % des Wertes auf. Die Ränder landen auf
+     * runden Werten (siehe [schritt]), damit die Achse 790/800/810 liest statt 787/801/816.
      */
     fun bounds(lines: List<ChartLine>): ChartBounds? {
         val pts = lines.flatMap { it.points }
@@ -106,14 +107,28 @@ object PriceChartMath {
         val rawMax = pts.maxOf { it.value }
         val spread = rawMax - rawMin
         val pad = if (spread > 0) spread * 0.15 else (rawMax * 0.1).takeIf { it > 0 } ?: 1.0
-        return ChartBounds(
-            minDay = minDay, maxDay = maxDay,
-            minValue = (rawMin - pad).coerceAtLeast(0.0),
-            maxValue = rawMax + pad,
-        )
+        val unten = (rawMin - pad).coerceAtLeast(0.0)
+        val oben = rawMax + pad
+        val s = schritt((oben - unten) / 4)
+        val minValue = kotlin.math.floor(unten / s) * s
+        var maxValue = kotlin.math.ceil(oben / s) * s
+        // Eine gerade Zahl von Schritten, damit auch die Mitte auf einem runden Wert liegt.
+        if (kotlin.math.round((maxValue - minValue) / s).toLong() % 2L != 0L) maxValue += s
+        return ChartBounds(minDay = minDay, maxDay = maxDay, minValue = minValue, maxValue = maxValue)
     }
 
-    /** Drei Beschriftungen der Wertachse: unten, Mitte, oben. */
+    /**
+     * Ein runder Schritt nahe [roh]: 1, 2 oder 5 mal einer Zehnerpotenz, nie unter
+     * 1 — die Achse zeigt ganze Beträge, und ein kleinerer Schritt stünde doppelt da.
+     */
+    fun schritt(roh: Double): Double {
+        if (roh <= 1.0) return 1.0
+        val potenz = Math.pow(10.0, kotlin.math.floor(kotlin.math.log10(roh)))
+        val faktor = listOf(1.0, 2.0, 5.0, 10.0).first { it * potenz >= roh }
+        return faktor * potenz
+    }
+
+    /** Drei Beschriftungen der Wertachse: unten, Mitte, oben — alle drei runde Werte. */
     fun yTicks(b: ChartBounds): List<Double> =
         listOf(b.minValue, (b.minValue + b.maxValue) / 2, b.maxValue)
 

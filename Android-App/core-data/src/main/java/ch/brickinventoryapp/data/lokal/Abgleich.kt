@@ -76,6 +76,9 @@ class Abgleich @Inject constructor(
     private suspend fun lauf(bereich: String, betroffen: MutableSet<Bestandsart>): Abgleichsergebnis {
         var p = ablage.ausgang.erster(bereich)
         while (p != null) {
+            // Unmittelbar vor jedem Senden: Der Wächter hängt das Token an, das JETZT
+            // gilt. Nach einem Konto-Wechsel ginge der Posten sonst unter fremdem Konto raus.
+            if (ablage.bereich() != bereich) return Abgleichsergebnis.NICHT_ANGEMELDET
             when (val e = sender.sende(p.bearbeitung, p.schluessel)) {
                 Sendeergebnis.Angenommen -> {
                     ablage.ausgang.entferne(p.id)
@@ -90,8 +93,6 @@ class Abgleich @Inject constructor(
                     verwirf(p, "", null, betroffen)
                 }
             }
-            // Abgemeldet oder Konto gewechselt: Der Rest gehört nicht mehr diesem Lauf.
-            if (ablage.bereich() != bereich) return Abgleichsergebnis.NICHT_ANGEMELDET
             p = ablage.ausgang.erster(bereich)
         }
         return Abgleichsergebnis.FERTIG

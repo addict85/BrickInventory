@@ -67,7 +67,6 @@ fun rememberBarcodeAnalyzer(
     val textRecognizer = remember { TextRecognition.getClient(TextRecognizerOptions.DEFAULT_OPTIONS) }
     DisposableEffect(Unit) { onDispose { textRecognizer.close() } }
 
-
     // remember() hat keinen Aufräum-Hook: Ohne dieses DisposableEffect blieben
     // Analyse-Thread und ML-Kit-Client (native Ressourcen) bei jedem Besuch des
     // Scanners liegen. Die Kamera selbst hängt am lifecycleOwner und wird von CameraX

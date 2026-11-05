@@ -84,7 +84,7 @@ test('Teile-Zahl: Sammlung und Teile-Reiter zeigen dieselbe Summe mit Aufschlüs
 });
 
 test('Preis auf der Kachel ist beschriftet, Zustand und Datum benannt (de und en)', async () => {
-  for (const [sprache, art, zustand, gekauft, unbekannt] of [['de', 'Kauf', 'Neuware', 'Gekauft', 'Unbekannt'], ['en', 'Paid', 'New', 'Bought', 'Unknown']]) {
+  for (const [sprache, art, zustand, gekauft, unbekannt] of [['de', 'Kaufpreis', 'Neuware', 'Gekauft', 'Unbekannt'], ['en', 'Purchase price', 'New', 'Bought', 'Unknown']]) {
     const { w, d } = await oeffneOberflaeche({ '/v1/sets': { success: true, sets: [SET], total: 1, themes: ['Ideas'] } }, { sprache });
     try {
       await warte(() => d.querySelector('#gallery .sc'));
@@ -97,13 +97,13 @@ test('Preis auf der Kachel ist beschriftet, Zustand und Datum benannt (de und en
   }
 });
 
-test('offline: Das Diagramm sagt „Nicht verfügbar – offline“ statt weiter „Laden…“', async () => {
+test('offline: Das Diagramm sagt „nicht verfügbar“ mit Grund und Knopf statt weiter „Laden…“', async () => {
   const netzweg = () => { throw new TypeError('Failed to fetch'); };
   const { w, d } = await oeffneOberflaeche({ '/v1/finance/valuation': netzweg, '/v1/finance/portfolio-history': netzweg });
   try {
     await reiter(w, 'finance');
-    await warte(() => /offline/.test(text(d.getElementById('portfolio-chart'))));
-    assert.equal(text(d.getElementById('portfolio-chart')), 'Nicht verfügbar – offline');
+    await warte(() => /nicht erreichbar/.test(text(d.getElementById('portfolio-chart'))));
+    assert.match(text(d.getElementById('portfolio-chart')), /^Diagramm nicht verfügbar ?Keine Verbindung zum Server.*Erneut versuchen$/);
   } finally { w.close(); }
 });
 

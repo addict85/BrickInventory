@@ -79,6 +79,22 @@ suspend fun Sitzung.rechteNachziehen(konto: ch.brickinventoryapp.data.repository
     return !verwalter
 }
 
+/**
+ * Nach dem Anmelden: Verwalterrecht und Pflicht zum zweiten Faktor aus /auth/me.
+ * /me antwortet auch ohne eingerichteten Faktor; so steht die Einrichtungsmaske
+ * da, bevor die übrigen Abrufe mit 403 scheitern. Ohne Antwort bleibt alles, wie es ist.
+ */
+suspend fun Sitzung.kontoUebernehmen(
+    konto: ch.brickinventoryapp.data.repository.KontoRepository,
+    faktorPflicht: ch.brickinventoryapp.data.ZweiterFaktorPflicht,
+) {
+    val me = konto.getMe()
+    if (me !is ch.brickinventoryapp.data.repository.Result.Success) return
+    val nutzer = me.data.user
+    aendere { it.copy(isAdmin = nutzer?.isAdmin == true) }
+    if (nutzer?.zweiterFaktorPflicht == true) faktorPflicht.melde()
+}
+
 /** Das wirksame Design, z. B. nach einer Wahl im Konto; das AppViewModel merkt es sich für den Kaltstart. */
 fun Sitzung.setzeDesign(theme: String) = aendere { it.copy(appTheme = theme) }
 

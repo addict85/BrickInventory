@@ -1,0 +1,17 @@
+Gegenprobe: Lagerortfeld wieder in der eckigen Material-Vorgabe
+Modul: app
+Test: ch.brickinventoryapp.DesignTokensTest
+Rot: kein Eingabefeld steht in der eckigen Vorgabe
+
+diff --git a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/screens/LagerortFeld.kt b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/screens/LagerortFeld.kt
+index c6e7e6d..1e0acbe 100644
+--- a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/screens/LagerortFeld.kt
++++ b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/screens/LagerortFeld.kt
+@@ -68,7 +68,6 @@ fun LagerortFeld(
+         modifier = modifier,
+     ) {
+         OutlinedTextField(
+-            shape = ch.brickinventoryapp.ui.theme.Formen.feld,
+             value = text,
+             onValueChange = {
+                 if (it.length <= 60) { text = it; offen = true; onWert(it) }

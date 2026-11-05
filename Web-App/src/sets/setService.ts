@@ -17,7 +17,7 @@ import { getItemImageUrl } from '../../clients/bricklink';
 import { generateThumb } from '../katalog/bilder/thumbs';
 import { stelleAuftragEin } from '../auftraege/dienst';
 import { normalisiereSetNummer, moeglicheSetNummer } from './setNummer';
-import { fehlerWerfen } from '../infra/fehlerTexte';
+import { fehlerWerfen, Meldung } from '../infra/fehlerTexte';
 import { setzeLagerort, ortFuerNeuerfassung } from '../bestand/lagerort';
 import { bestandsMenge } from '../infra/validate';
 import { resolveSetCondition } from '../finanzen/financeCalc';
@@ -240,7 +240,7 @@ export async function updateSet(uid: number, sn: string, body: any) {
   const _wids = await writableIds(uid);
   // Die EIGENE Zeile gewinnt, sonst entschiede die Tabellenreihenfolge.
   const existing = await repo.setZeileImSchreibfeld(_wids, sn, uid);
-  if (!existing) { const e = Object.assign(new Error('Set nicht gefunden'), { status: 404 }); throw e; }
+  if (!existing) throw new Meldung('Set nicht gefunden', 404);
   // Ab hier zählt der BESITZER, sonst entstünden Erfassungen im falschen Konto.
   const ownerId = parseInt(String(existing.user_id));
 

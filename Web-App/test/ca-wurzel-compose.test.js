@@ -68,7 +68,8 @@ test('die Schleife kopiert nur root.crt, auch wenn Caddy die CA erst später anl
   assert.match(skript, /exec caddy run /, 'Caddy startet nicht mehr am Ende des Skripts');
   const umgebogen = skript.replaceAll('/data/', `${tmp}/data/`).replaceAll('/ca-wurzel', vol)
     .replace(/exec caddy run .*/, 'exec sleep 60');
-  const p = spawn('sh', ['-c', umgebogen], { detached: true, stdio: 'ignore' });
+  const p = spawn('sh', ['-c', umgebogen], { detached: true, stdio: 'ignore',
+    env: { PATH: process.env.PATH, CA_OHNE_NAMENSBESCHRAENKUNG: 'ja' } });
   t.after(() => { try { process.kill(-p.pid, 'SIGKILL'); } catch { /* schon beendet */ } fs.rmSync(tmp, { recursive: true, force: true }); });
 
   await new Promise(r => setTimeout(r, 500));

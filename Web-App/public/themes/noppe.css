@@ -65,6 +65,9 @@
   /* Die Noppenform steht in styles.css unter :root — seit auch das
      Stein-Design sie benutzt, gehoert sie keinem Design mehr allein. */
 }
+/* Hell liegen Setnummer und Gewinn in Tabellen auf getöntem Grund; mit dem
+   Markenrot und dem Standardgrün waren es 4,44:1 bzw. 4,43:1. */
+[data-theme="noppe"]:not([data-dunkel]),[data-theme="hochglanz"]:not([data-dunkel]){--b600:#c01b21;--gewinn:#11652f}
 /* Dunkel ist die Kante fast schwarz; Preise stehen dann in der Schriftfarbe. */
 [data-theme="noppe"][data-dunkel],[data-theme="hochglanz"][data-dunkel]{--preis:var(--txt)}
 
@@ -262,3 +265,12 @@
 [data-theme="noppe"] .fstat.hi,[data-theme="hochglanz"] .fstat.hi{
   background:var(--sur);border-color:var(--bdr);border-top:6px solid var(--chart-new);
 }
+
+/* Noppe dunkel: Kopf- und Reiterleiste neutral dunkel mit roter Kante. Das
+   gesättigte Rot über die ganze Breite war auf Dunkel grell, und das Hinweis-
+   band auf Dunkelrot las sich wie eine Fehlermeldung. */
+[data-theme="noppe"][data-dunkel] header,[data-theme="noppe"][data-dunkel] nav{background:#1b1e25}
+[data-theme="noppe"][data-dunkel] nav{border-bottom:3px solid var(--b400)}
+[data-theme="noppe"][data-dunkel] nav .ntab{color:#e6e8ee}
+[data-theme="noppe"] .hinweis-band{background:var(--sur);border-left:4px solid var(--chart-new)}
+[data-theme="noppe"] .hinweis-band > .ico{color:var(--chart-new)}

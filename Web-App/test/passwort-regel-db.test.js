@@ -7,7 +7,7 @@
  *
  * Gegenproben (01.11.2026 gemessen):
  *   A  Listenprüfung in passwortMangel() gestrichen → rot: alle Fälle,
- *      zuerst „häufige Passwörter …" (alle fünf Routen nehmen 1234567890 an)
+ *      zuerst „häufige Passwörter …" (alle fünf Routen nehmen das häufige an)
  *   B  Byte-Grenze gestrichen → rot: „die Regel selbst" und „mehr als 72
  *      Byte …" (danach „ein gutes Passwort …": das Konto gibt es schon)
  *   C  /reset-password prüft wieder nur die Länge → rot: „häufige
@@ -23,10 +23,13 @@ const assert = require('node:assert/strict');
 const path = require('node:path');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
+process.env.APP_BASE_URL = 'http://localhost';
 delete process.env.ADMIN_PASSWORD;
 
 const _req = require('./helpers/sources').buildAndRequire();
 const { testServer } = require('./helpers/server');
+const { mailAttrappe, mailserverEintragen } = require('./helpers/mail-attrappe');
+mailAttrappe();
 const db = _req('db/database.js');
 const { passwortMangel } = _req('src/infra/passwortRegel.js');
 const bcrypt = require(path.join(__dirname, '..', 'node_modules', 'bcryptjs'));
@@ -34,7 +37,9 @@ const bcrypt = require(path.join(__dirname, '..', 'node_modules', 'bcryptjs'));
 test('die Regel selbst', () => {
   assert.equal(passwortMangel('Brick-Sammlung-2026'), null);
   assert.equal(passwortMangel('1234567'), 'passwort_zu_kurz');
-  for (const p of ['12345678', 'password1', 'PassWord1', 'qwertzuiop', 'passwort123'])
+  // Seit dem 04.11.2026 mindestens 12 Zeichen: Die häufigen darunter fallen schon an der Länge.
+  assert.equal(passwortMangel('password1'), 'passwort_zu_kurz');
+  for (const p of ['ichliebedich', 'Sonnenschein', 'SONNENSCHEIN'])
     assert.equal(passwortMangel(p), 'passwort_zu_haeufig', p);
   assert.equal(passwortMangel('Mein-Name-Ist-Lego', 'mein-name-ist-lego'), 'passwort_zu_haeufig', 'der Benutzername als Passwort');
   assert.equal(passwortMangel('a'.repeat(72)), null, '72 Byte gehen noch');
@@ -60,9 +65,11 @@ test('Passwortregel auf allen Wegen', { concurrency: 1, timeout: 120_000 }, asyn
     VALUES ($1, $2, true, true) RETURNING id`, [ZIEL, hash])).id;
   const regVorher = await db.get("SELECT value FROM global_settings WHERE key = 'registration_enabled'");
   await db.run("INSERT INTO global_settings (key, value) VALUES ('registration_enabled', '1') ON CONFLICT (key) DO UPDATE SET value = '1'");
+  const mailZurueck = await mailserverEintragen(db);
   t.after(async () => {
     await db.run("DELETE FROM global_settings WHERE key = 'registration_enabled'");
     if (regVorher) await db.run("INSERT INTO global_settings (key, value) VALUES ('registration_enabled', $1)", [regVorher.value]);
+    await mailZurueck();
     await db.run('DELETE FROM users WHERE id = ANY($1)', [[chef, ziel]]);
   });
   const { base } = testServer(_req, { sitzung: { userId: chef, username: CHEF, isAdmin: true },
@@ -83,10 +90,10 @@ test('Passwortregel auf allen Wegen', { concurrency: 1, timeout: 120_000 }, asyn
 
   await t.test('häufige Passwörter werden auf allen fünf Wegen abgewiesen', async () => {
     const ist = [];
-    for (const w of wege('1234567890')) ist.push(await ruf(w));
+    for (const w of wege('sonnenschein')) ist.push(await ruf(w));
     assert.deepEqual(ist, wege('').map(([, p]) => `${p} 400 passwort_zu_haeufig`));
     const text = (await (await fetch(`${base}/api/v1/auth/reset-password`, { method: 'POST', headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ token: 'x', password: 'PASSWORD1' }) })).json()).error;
+      body: JSON.stringify({ token: 'x', password: 'ICHLIEBEDICH' }) })).json()).error;
     assert.match(text, /zu häufig oder aus Datenlecks bekannt/);
   });
 

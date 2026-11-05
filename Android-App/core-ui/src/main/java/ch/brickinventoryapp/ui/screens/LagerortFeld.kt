@@ -1,9 +1,6 @@
 package ch.brickinventoryapp.ui.screens
 
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.widthIn
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExposedDropdownMenuBox
@@ -21,7 +18,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import ch.brickinventoryapp.ressourcen.R
-import ch.brickinventoryapp.ui.theme.Abstaende
 
 /**
  * Das Lagerort-Feld: auswählen oder neu eintippen, in einem Bedienelement — ein
@@ -68,6 +64,7 @@ fun LagerortFeld(
         modifier = modifier,
     ) {
         OutlinedTextField(
+            shape = ch.brickinventoryapp.ui.theme.Formen.feld,
             value = text,
             onValueChange = {
                 if (it.length <= 60) { text = it; offen = true; onWert(it) }
@@ -75,17 +72,19 @@ fun LagerortFeld(
             singleLine = true,
             label = beschriftung?.let { { Text(it) } },
             placeholder = if (beschriftung == null) {
-                { Text(platzhalter, style = MaterialTheme.typography.bodySmall, maxLines = 1, overflow = TextOverflow.Ellipsis) }
+                // Feldschrift wie jedes Eingabefeld: Kleiner als die Beschriftung daneben sah
+                // „Kein Lagerort“ wie eine Fussnote aus.
+                { Text(platzhalter, maxLines = 1, overflow = TextOverflow.Ellipsis) }
             } else null,
             supportingText = beschriftung?.let { { Text(platzhalter) } },
             trailingIcon = {
                 ExposedDropdownMenuDefaults.TrailingIcon(expanded = offen)
             },
-            // Mit Beschriftung so breit wie die Felder darüber; ohne Breite blieb das
-            // Feld bei Materials 280 dp stehen und war im Dialog schmaler als die anderen.
+            // So breit, wie der Aufrufer es vorgibt: Ohne Breite blieb das Feld bei Materials
+            // 280 dp stehen — im Dialog schmaler als die anderen, im Detail halb so breit.
             modifier = Modifier.menuAnchor(
                 ExposedDropdownMenuAnchorType.PrimaryEditable, true)
-                .then(if (beschriftung != null) Modifier.fillMaxWidth() else Modifier),
+                .fillMaxWidth(),
         )
         ExposedDropdownMenu(
             expanded = offen && passend.isNotEmpty(),
@@ -114,7 +113,10 @@ fun LagerortErfassung(
     onWert: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    // Gibt es schon Orte, ist das Feld eine Auswahl; ein Beispiel wie „Kiste 3“
+    // passte dort nicht zur Liste, die aufklappt.
+    val hilfe = if (vorrat.isNotEmpty()) R.string.detail_storage_choose else R.string.detail_storage_ph
     LagerortFeld(wert = wert, vorrat = vorrat, onWert = onWert,
-                 modifier = modifier.fillMaxWidth(), platzhalter = stringResource(R.string.detail_storage_ph),
+                 modifier = modifier.fillMaxWidth(), platzhalter = stringResource(hilfe),
                  beschriftung = stringResource(R.string.detail_storage))
 }

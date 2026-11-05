@@ -5,6 +5,7 @@ plugins {
     alias(libs.plugins.kotlin.serialization)
     // Lint der App (checkDependencies) schliesst das Modul nur mit diesem Plugin ein.
     alias(libs.plugins.android.lint)
+    alias(libs.plugins.brickinventory.detekt)
 }
 
 java {

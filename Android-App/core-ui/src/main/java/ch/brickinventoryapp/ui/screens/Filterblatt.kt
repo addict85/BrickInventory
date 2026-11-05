@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.ui.screens
 
+import ch.brickinventoryapp.ui.components.nebenKnopfFarben
 import ch.brickinventoryapp.ui.components.AuswahlChip
 import ch.brickinventoryapp.ui.model.kontoOptionen
 import ch.brickinventoryapp.ui.model.LagerortAnsicht
@@ -21,13 +22,16 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.FilterList
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.FilterAlt
 import androidx.compose.material3.Badge
 import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilledIconButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedIconButton
 import androidx.compose.material3.Text
@@ -64,22 +68,56 @@ fun SucheMitFilter(
     onScannen: (() -> Unit)? = null,
     /** Das Sortiermenü (SortierMenue) zwischen Filter und Scannen; null = keine Sortierung. */
     sortierung: (@Composable () -> Unit)? = null,
+    /**
+     * Erfassen mit seiner Beschreibung; steht nur bei grosser Schrift hier, sonst schwebt
+     * es als ErfassenFab. Null = dieser Bildschirm erfasst nichts.
+     */
+    erfassen: Pair<String, () -> Unit>? = null,
 ) {
     // So breit wie das Raster darunter (Lesebreite.kt): Endete die Leiste bei 840 dp,
     // stand sie auf dem Tablet mitten über den Kacheln.
     BoxWithConstraints(Modifier.fillMaxWidth()) {
-        // Wenig Platz oder grosse Schrift: Der Filter wird zum Symbol, damit dem
-        // Suchfeld genug Breite für seinen Platzhalter bleibt.
-        val nurSymbol = maxWidth < 360.dp || ch.brickinventoryapp.ui.components.grosseSchrift()
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Suchfeld(wert = wert, onWert = onWert, platzhalter = platzhalter, modifier = Modifier.weight(1f))
-            val folgt = onScannen != null || sortierung != null
+        // Auf dem Telefon immer als Symbol: Neben „Filter“ mit Text, Sortieren und
+        // Scannen blieb dem Suchfeld bei 411 dp nur „Such…“. Die Zahl am Symbol
+        // sagt weiter, wie viele Filter wirken.
+        val gross = ch.brickinventoryapp.ui.components.grosseSchrift()
+        val nurSymbol = maxWidth < FILTER_TEXT_AB || gross
+        // Bei grosser Schrift steht Erfassen in dieser Zeile statt schwebend: Über einer
+        // Liste, die nur zwei Einträge zeigt, verdeckte der schwebende Knopf ihren Text.
+        val erfassenHier = erfassen.takeIf { gross }
+        val knoepfe: @Composable () -> Unit = {
+            val folgt = onScannen != null || sortierung != null || erfassenHier != null
             FilterKnopf(aktiveFilter, onFilter, nurSymbol, Modifier.padding(end = if (folgt) Abstaende.winzig else 14.dp))
-            if (sortierung != null) Box(Modifier.padding(end = if (onScannen != null) Abstaende.winzig else 14.dp)) { sortierung() }
-            if (onScannen != null) ch.brickinventoryapp.ui.components.ScanKnopf(onScannen, Modifier.padding(end = 14.dp))
+            if (sortierung != null) Box(Modifier.padding(end = if (onScannen != null || erfassenHier != null) Abstaende.winzig else 14.dp)) { sortierung() }
+            if (onScannen != null) ch.brickinventoryapp.ui.components.ScanKnopf(onScannen,
+                Modifier.padding(end = if (erfassenHier != null) Abstaende.winzig else 14.dp))
+            if (erfassenHier != null) ch.brickinventoryapp.ui.components.MitTooltip(erfassenHier.first, Modifier.padding(end = 14.dp)) {
+                FilledIconButton(onClick = erfassenHier.second) { Icon(Icons.Default.Add, contentDescription = erfassenHier.first) }
+            }
+        }
+        // Bei grosser Schrift die Knöpfe unter das Feld: Daneben blieb vom Platzhalter
+        // nur „Suche…“. Ein Filterknopf allein bleibt daneben; auf eigener Zeile stand
+        // er verloren über dem Raster (Teile, Figuren).
+        val untereinander = gross && (onScannen != null || sortierung != null || erfassenHier != null)
+        if (untereinander) Column {
+            Suchfeld(wert = wert, onWert = onWert, platzhalter = platzhalter, modifier = Modifier.fillMaxWidth())
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End,
+                verticalAlignment = Alignment.CenterVertically) { knoepfe() }
+        } else Row(verticalAlignment = Alignment.CenterVertically) {
+            // Höchstens SUCHE_MAX breit, die Knöpfe gleich daneben: Über die ganze Tabletbreite
+            // war das Feld 1 800 px lang und die Knöpfe standen weit weg.
+            Suchfeld(wert = wert, onWert = onWert, platzhalter = platzhalter,
+                modifier = Modifier.weight(1f, fill = false).widthIn(max = SUCHE_MAX).fillMaxWidth())
+            knoepfe()
         }
     }
 }
+
+/** Ab dieser Breite (Tablet, Querformat) trägt der Filterknopf seinen Namen. */
+private val FILTER_TEXT_AB = 600.dp
+
+/** Breiteste Suchzeile: genug für jeden Suchbegriff, ohne über das ganze Tablet zu laufen. */
+private val SUCHE_MAX = 720.dp
 
 @Composable
 private fun FilterKnopf(aktiv: Int, onClick: () -> Unit, nurSymbol: Boolean, modifier: Modifier = Modifier) {
@@ -91,20 +129,22 @@ private fun FilterKnopf(aktiv: Int, onClick: () -> Unit, nurSymbol: Boolean, mod
         modifier = modifier,
     ) {
         if (nurSymbol) {
-            OutlinedIconButton(
-                onClick = onClick,
-                modifier = Modifier.semantics { if (aktiv > 0) stateDescription = zustand },
-                border = rand,
-            ) {
-                Icon(Icons.Default.FilterList, stringResource(R.string.filter_button))
+            ch.brickinventoryapp.ui.components.MitTooltip(stringResource(R.string.filter_button)) {
+                OutlinedIconButton(
+                    onClick = onClick,
+                    modifier = Modifier.semantics { if (aktiv > 0) stateDescription = zustand },
+                    border = rand,
+                ) {
+                    Icon(Icons.Default.FilterAlt, stringResource(R.string.filter_button))
+                }
             }
         } else OutlinedButton(
             onClick = onClick,
-            shape = Formen.knopf,
             modifier = Modifier.semantics { if (aktiv > 0) stateDescription = zustand },
             border = rand,
+            colors = nebenKnopfFarben(),
         ) {
-            Icon(Icons.Default.FilterList, null, Modifier.size(18.dp))
+            Icon(Icons.Default.FilterAlt, null, Modifier.size(ch.brickinventoryapp.ui.components.mitSchrift(18.dp)))
             Spacer(Modifier.width(Abstaende.winzig))
             Text(stringResource(R.string.filter_button))
         }
@@ -122,7 +162,10 @@ fun FilterBlattRahmen(
     onZuruecksetzen: (() -> Unit)?,
     inhalt: @Composable ColumnScope.() -> Unit,
 ) {
-    ModalBottomSheet(onDismissRequest = onSchliessen) {
+    // Gleich ganz offen: Halb offen stand bei grosser Schrift nur Titel und erster Abschnitt
+    // da, und wer „Zurücksetzen“ suchte, musste erst ziehen.
+    ModalBottomSheet(onDismissRequest = onSchliessen,
+        sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)) {
         Column(
             Modifier.fillMaxWidth().verticalScroll(rememberScrollState())
                 .padding(horizontal = Abstaende.gross).padding(bottom = Abstaende.sehrGross),
@@ -180,15 +223,23 @@ fun KontoFilterAbschnitt(members: List<MitgliedAnsicht>, current: String, onSele
     }
 }
 
-/** Lagerortfilter als Abschnitt — nur, wenn irgendwo ein Ort erfasst ist. */
+/**
+ * Lagerortfilter als Abschnitt — nur, wenn irgendwo ein Ort erfasst ist. Die Zahl zählt,
+ * was der Filter filtert ([nachTeilen]), mit Einheit: „Keller (42)“ bei drei Sets las
+ * sich wie ein Fehler.
+ */
 @Composable
-fun LagerortFilterAbschnitt(orte: List<LagerortAnsicht>, current: String, onSelect: (String) -> Unit) {
+fun LagerortFilterAbschnitt(orte: List<LagerortAnsicht>, current: String, onSelect: (String) -> Unit,
+                            nachTeilen: Boolean = false) {
     if (orte.isEmpty()) return
     val wert = if (orte.any { it.ort == current }) current else ""
     FilterAbschnitt(stringResource(R.string.detail_storage)) {
         FilterWahl(stringResource(R.string.filter_storage_all), wert.isBlank()) { if (wert.isNotBlank()) onSelect("") }
         orte.forEach { o ->
-            FilterWahl("${o.ort}  (${o.sets + o.teile})", o.ort == wert) { if (o.ort != wert) onSelect(o.ort) }
+            val zahl = if (nachTeilen) o.teile else o.sets
+            val text = pluralStringResource(if (nachTeilen) R.plurals.filter_lagerort_teile else R.plurals.filter_lagerort_sets,
+                zahl, o.ort, zahl)
+            FilterWahl(text, o.ort == wert) { if (o.ort != wert) onSelect(o.ort) }
         }
     }
 }

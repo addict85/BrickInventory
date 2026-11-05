@@ -100,4 +100,6 @@ else
 fi
 FP=$(openssl x509 -in "$ORDNER/root.crt" -pubkey -noout | openssl pkey -pubin -outform der | openssl dgst -sha256 -binary | base64)
 echo "[ca] Wurzel für $HOST in $ORDNER/root.crt, Fingerabdruck (fp) $FP"
+# Diesen Wert zeigt ein Gerät beim Installieren an; er steht auch im Protokoll von Caddy.
+echo "[ca] SHA-256 des Zertifikats zum Abgleich auf jedem Gerät: $(openssl x509 -in "$ORDNER/root.crt" -noout -fingerprint -sha256 | sed 's/^[^=]*=//')"
 echo "[ca] Weiter: docker compose up -d caddy, dann die Wurzel auf die Geräte und die App neu verknüpfen."

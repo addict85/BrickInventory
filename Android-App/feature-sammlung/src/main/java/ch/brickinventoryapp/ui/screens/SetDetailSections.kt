@@ -1,6 +1,7 @@
 package ch.brickinventoryapp.ui.screens
 
-import ch.brickinventoryapp.ui.components.AuswahlChip
+import ch.brickinventoryapp.ui.components.nebenKnopfFarben
+import ch.brickinventoryapp.ui.components.nebenKnopfRand
 /**
  * Die Abschnitte der Set-Detailseite. Erweiterungen auf LazyListScope und keine
  * Composables, weil sie Einträge in die LazyColumn der Seite eintragen; die
@@ -12,21 +13,15 @@ import ch.brickinventoryapp.ui.model.PreisverlaufAnsicht
 import ch.brickinventoryapp.ui.model.SetAnsicht
 import ch.brickinventoryapp.ui.model.SetPreisAnsicht
 import ch.brickinventoryapp.ui.theme.Formen
-import android.net.Uri
-import android.widget.Toast
-import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyListScope
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.Role
@@ -46,17 +41,13 @@ import ch.brickinventoryapp.ui.viewmodel.SetDetailViewModel
 import ch.brickinventoryapp.ui.*
 import ch.brickinventoryapp.ui.SetDetailUiState
 import kotlinx.coroutines.CoroutineScope
-import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.PictureAsPdf
 import androidx.compose.material.icons.filled.Remove
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.ViewModule
 import androidx.compose.material.icons.automirrored.filled.OpenInNew
 import androidx.compose.runtime.mutableIntStateOf
 import kotlinx.coroutines.launch
-import ch.brickinventoryapp.ui.theme.Petrol
 import androidx.compose.material.icons.filled.*
 import ch.brickinventoryapp.ui.theme.Abstaende
 
@@ -69,6 +60,8 @@ fun LazyListScope.setDetailInstructionsSection(
     onOpenPdf: (url: String, title: String) -> Unit,
     onAnleitungWaehlen: () -> Unit,
     onAnleitungLoeschen: (Int) -> Unit,
+    /** Kein Programm öffnet die Adresse — der Bildschirm meldet es in seinem Gerüst. */
+    onKeineApp: () -> Unit,
 ) {
         // ── Instructions section ───────────────────────────────────────────
         val instructions = set.instructions
@@ -90,11 +83,6 @@ fun LazyListScope.setDetailInstructionsSection(
                         }
                     } else {
                         val ctx = LocalContext.current
-                        // Siehe CatalogDetailScreen: Lint meldet
-                        // LocalContextGetResourceValueCall als ERROR, weil ein
-                        // gegriffener Context nach einem Wechsel der
-                        // Konfiguration veraltete Werte liefern kann.
-                        val keineAppText = stringResource(R.string.common_no_app_to_open)
                         instructions.forEachIndexed { idx, instr ->
                             // Kein `?token=` an der Adresse: Der Sitzungstoken läge sonst im
                             // Backstack, als Text unter der Anleitung und im Zugriffsprotokoll. Der
@@ -116,9 +104,7 @@ fun LazyListScope.setDetailInstructionsSection(
                                     onOpenPdf(eigene, instr.description ?: "")
                                 } else if (!ch.brickinventoryapp.util.oeffneExtern(ctx, instr.url)) {
                                     // Rückmeldung statt Stille, siehe CatalogDetailScreen.
-                                    android.widget.Toast.makeText(ctx,
-                                        keineAppText,
-                                        android.widget.Toast.LENGTH_SHORT).show()
+                                    onKeineApp()
                                 }
                             }
                             Row(
@@ -184,27 +170,31 @@ fun LazyListScope.setDetailInstructionsSection(
                                 // treffen.
                                 val id = instr.id
                                 if (id != null && instr.isManual) {
-                                    IconButton(
-                                        onClick = { onAnleitungLoeschen(id) },
-                                    ) {
-                                        Icon(
-                                            Icons.Default.Delete,
-                                            stringResource(R.string.instr_delete),
-                                            tint = MaterialTheme.colorScheme.error,
-                                            modifier = Modifier.size(18.dp)
-                                        )
+                                    ch.brickinventoryapp.ui.components.MitTooltip(stringResource(R.string.instr_delete)) {
+                                        IconButton(
+                                            onClick = { onAnleitungLoeschen(id) },
+                                        ) {
+                                            Icon(
+                                                Icons.Default.Delete,
+                                                stringResource(R.string.instr_delete),
+                                                tint = MaterialTheme.colorScheme.error,
+                                                modifier = Modifier.size(18.dp)
+                                            )
+                                        }
                                     }
                                 }
                             }
                         }
                         // Der Weg, eine erste Anleitung hinzuzufügen — unter der Liste, weil das
-                        // Ansehen häufiger ist; volle Breite wie die übrigen Aktionen der Karte.
+                        // Ansehen häufiger ist; höchstens Bedienbreite, auf dem Tablet nicht über die Spalte.
                         OutlinedButton(
                             onClick = onAnleitungWaehlen,
-                            modifier = Modifier.fillMaxWidth().padding(top = Abstaende.klein),
-                            shape = Formen.knopf
+                            modifier = Modifier.padding(top = Abstaende.klein)
+                                .widthIn(max = ch.brickinventoryapp.ui.theme.Lesebreite.bedienung).fillMaxWidth(),
+                            colors = nebenKnopfFarben(),
+                            border = nebenKnopfRand(),
                         ) {
-                            Icon(Icons.Default.Add, null, Modifier.size(18.dp))
+                            Icon(Icons.Default.Add, null, Modifier.size(ch.brickinventoryapp.ui.components.mitSchrift(18.dp)))
                             Spacer(Modifier.width(Abstaende.klein))
                             Text(stringResource(R.string.instr_upload))
                         }
@@ -222,7 +212,10 @@ fun LazyListScope.setDetailInstructionsSection(
 fun LazyListScope.setDetailPriceSection(detailState: SetDetailUiState, price: SetPreisAnsicht?, history: PreisverlaufAnsicht?, currency: String) {
     if (price != null && !price.noPrice || detailState.setPriceLoading) {
         item {
-            SectionCard(title = stringResource(R.string.detail_section_market)) {
+            // „Preisverlauf“, sobald ein Verlauf da ist: Direkt über der Karte steht schon
+            // die Kachel „Marktpreis“, zweimal derselbe Titel las sich wie ein Doppel.
+            val verlauf = history?.chart?.values?.isNotEmpty() == true || detailState.priceHistoryLoading
+            SectionCard(title = stringResource(if (verlauf) R.string.detail_section_price_history else R.string.detail_section_market)) {
                 if (detailState.setPriceLoading && price == null) {
                     PreisLaedtZeile()
                 } else if (price != null && !price.noPrice) {
@@ -281,7 +274,8 @@ fun LazyListScope.setDetailDetailsSection(set: SetAnsicht, setNumber: String, vm
                         modifier = Modifier.fillMaxWidth(),
                     )
                 }
-            } else Row(Modifier.fillMaxWidth().padding(vertical = Abstaende.haar),
+            } else Row(Modifier.widthIn(max = ch.brickinventoryapp.ui.theme.Lesebreite.wertzeile).fillMaxWidth()
+                    .padding(vertical = Abstaende.haar),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically) {
                 lagerBezeichnung()
@@ -289,7 +283,9 @@ fun LazyListScope.setDetailDetailsSection(set: SetAnsicht, setNumber: String, vm
                     wert = set.storage ?: "",
                     vorrat = lagerZustand.vorrat.map { it.name },
                     onWert = { vm.setzeSetLagerort(setNumber, it) },
-                    modifier = Modifier.padding(start = Abstaende.gross).widthIn(max = 180.dp),
+                    // Der ganze Rest der Zeile: Mit fester Breite war „No storage location“
+                    // abgeschnitten, und auf dem Tablet stand das Feld halb so breit wie die Karte.
+                    modifier = Modifier.padding(start = Abstaende.gross).weight(1f),
                 )
             }
             HorizontalDivider(
@@ -300,6 +296,9 @@ fun LazyListScope.setDetailDetailsSection(set: SetAnsicht, setNumber: String, vm
             // deckeln und meldet die wirkliche Menge zurück; ohne die Kopplung behielte der
             // Regler seine Annahme.
             var qty by remember(set.setNumber, set.quantity) { mutableIntStateOf(set.quantity) }
+            // Ein leiser Takt je Schritt: Die Zahl ändert sich, ohne dass man hinsehen muss.
+            val haptik = androidx.compose.ui.platform.LocalHapticFeedback.current
+            val takt = { haptik.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.SegmentTick) }
             Row(
                 Modifier.fillMaxWidth().padding(vertical = Abstaende.winzig),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -314,12 +313,14 @@ fun LazyListScope.setDetailDetailsSection(set: SetAnsicht, setNumber: String, vm
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(Abstaende.mittel)
                 ) {
-                    FilledTonalIconButton(
-                        onClick = { if (qty > 1) { qty--; vm.aendereMengeUm(set.setNumber, -1) } },
-                        shape = Formen.etikett
-                    ) {
-                        Icon(Icons.Default.Remove, stringResource(R.string.cd_qty_decrease),
-                            Modifier.size(ch.brickinventoryapp.ui.components.mitSchrift(18.dp)))
+                    ch.brickinventoryapp.ui.components.MitTooltip(stringResource(R.string.cd_qty_decrease)) {
+                        FilledTonalIconButton(
+                            onClick = { if (qty > 1) { qty--; takt(); vm.aendereMengeUm(set.setNumber, -1) } },
+                            shape = Formen.etikett
+                        ) {
+                            Icon(Icons.Default.Remove, stringResource(R.string.cd_qty_decrease),
+                                Modifier.size(ch.brickinventoryapp.ui.components.mitSchrift(18.dp)))
+                        }
                     }
                     Text(
                         "$qty",
@@ -328,12 +329,14 @@ fun LazyListScope.setDetailDetailsSection(set: SetAnsicht, setNumber: String, vm
                         modifier = Modifier.widthIn(min = 24.dp),
                         textAlign = TextAlign.Center
                     )
-                    FilledTonalIconButton(
-                        onClick = { qty++; vm.aendereMengeUm(set.setNumber, 1) },
-                        shape = Formen.etikett
-                    ) {
-                        Icon(Icons.Default.Add, stringResource(R.string.cd_qty_increase),
-                            Modifier.size(ch.brickinventoryapp.ui.components.mitSchrift(18.dp)))
+                    ch.brickinventoryapp.ui.components.MitTooltip(stringResource(R.string.cd_qty_increase)) {
+                        FilledTonalIconButton(
+                            onClick = { qty++; takt(); vm.aendereMengeUm(set.setNumber, 1) },
+                            shape = Formen.etikett
+                        ) {
+                            Icon(Icons.Default.Add, stringResource(R.string.cd_qty_increase),
+                                Modifier.size(ch.brickinventoryapp.ui.components.mitSchrift(18.dp)))
+                        }
                     }
                 }
             }
@@ -350,7 +353,6 @@ fun LazyListScope.setDetailDetailsSection(set: SetAnsicht, setNumber: String, vm
             )
         }
     }
-
 }
 
 /** Wert-Kacheln über den Angaben — in jedem Design (WertKacheln, core-ui). */
@@ -380,11 +382,10 @@ fun LazyListScope.setDetailStatChips(set: SetAnsicht) {
             set.minifigs?.let { add(labelMinifigs to "$it")  }
             set.theme?.let    { add(labelTheme    to it)     }
         }
-        if (chips.isNotEmpty()) KennzahlenReihe(Modifier.padding(horizontal = Abstaende.gross).padding(bottom = Abstaende.mittel)) {
+        if (chips.isNotEmpty()) KennzahlenReihe(Modifier.padding(horizontal = Abstaende.gross).padding(bottom = Abstaende.mittel), umbrechen = true) {
             chips.forEach { (label, value) -> StatChipV2(label = label, value = value) }
         }
     }
-
 }
 
 /** Das grosse Set-Bild samt Nachladeversuch und Zoom-Auslöser. */
@@ -417,7 +418,7 @@ fun LazyListScope.setDetailHeroImage(
                         coil3.request.ImageRequest.Builder(LocalContext.current)
                             .data(it)
                             .memoryCacheKeyExtra("retry", detailRetry.intValue.toString())
-                            .crossfade(true)
+                            .crossfade(!ch.brickinventoryapp.ui.components.bewegungReduziert())
                             .build()
                     },
                     imageLoader = imageLoader,
@@ -489,7 +490,7 @@ fun LazyListScope.setDetailAlarmSection(
                 mutableStateOf(alarm?.richtung ?: "unter")
             }
             var schwelle by rememberSaveable(alarm?.schwelle) {
-                mutableStateOf(alarm?.let { if (it.schwelle > 0) it.schwelle.toString() else "" } ?: "")
+                mutableStateOf(alarm?.let { if (it.schwelle > 0) ch.brickinventoryapp.util.fmtEingabe(it.schwelle) else "" } ?: "")
             }
 
             // Segmente statt eines Auswahlfelds: genau zwei Möglichkeiten, beide ohne
@@ -526,7 +527,9 @@ fun LazyListScope.setDetailAlarmSection(
                     )
                 },
                 keyboardOptions = NumericInput.preisTastatur(),
-                modifier = Modifier.fillMaxWidth(),
+                shape = Formen.feld,
+                // Ein Betrag, keine Zeile Text: auf dem Tablet nicht über die ganze Karte.
+                modifier = Modifier.widthIn(max = ch.brickinventoryapp.ui.theme.Lesebreite.bedienung).fillMaxWidth(),
             )
         }
     }

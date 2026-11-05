@@ -1,6 +1,5 @@
 package ch.brickinventoryapp
 
-import ch.brickinventoryapp.ressourcen.R
 import org.junit.Test
 
 /**
@@ -9,6 +8,10 @@ import org.junit.Test
  * PDF-Download.
  *
  * Alle Prüfungen lesen nur Quell- und Ressourcendateien.
+ *
+ * Gegenprobe (04.11.2026, sec12 H11): in file_paths.xml wieder
+ * `<external-files-path name="pdf_external" path="pdf/" />` → rot „FileProvider teilt
+ * nur das pdf-Unterverzeichnis“.
  */
 class ServicePolishTest {
 
@@ -123,6 +126,10 @@ class ServicePolishTest {
             "file_paths.xml teilt den Cache — dort liegt nichts, das über den Provider " +
                 "weitergegeben wird"
         }
+        // Der externe App-Bereich trägt seit minSdk 30 nichts mehr, was geteilt wird (sec12 H11).
+        assert(!fp.contains("external")) {
+            "file_paths.xml gibt wieder einen externen Bereich frei — dort liegt nichts, das geteilt wird"
+        }
         assert(fp.contains("path=\"pdf/\"")) {
             "file_paths.xml deckt das pdf/-Verzeichnis nicht mehr ab — das Öffnen des " +
                 "exportierten Teilelisten-PDFs bricht dann mit SecurityException ab"
@@ -140,18 +147,17 @@ class ServicePolishTest {
 
     @Test
     fun `der PdfViewer leitet seinen Client vom api-Client ab`() {
-        val pv = code(read("java/ch/brickinventoryapp/ui/screens/PdfViewerScreen.kt"))
+        val pv = code(read("java/ch/brickinventoryapp/ui/pdf/AnleitungsLader.kt"))
         assert(!pv.contains("OkHttpClient.Builder()")) {
-            "PdfViewerScreen baut wieder einen eigenständigen OkHttpClient. Der läuft am " +
+            "Der AnleitungsLader baut wieder einen eigenständigen OkHttpClient. Der läuft am " +
                 "DI-Interceptor vorbei: kein Bearer-Token, kein Klartext-Verbot, keine " +
                 "401-Meldung — jede dieser Regeln müsste dort von Hand nachgezogen werden."
         }
         assert(pv.contains(".newBuilder()")) {
-            "PdfViewerScreen leitet den Download-Client nicht per newBuilder() ab"
+            "Der AnleitungsLader leitet den Download-Client nicht per newBuilder() ab"
         }
-        assert(code(read("java/ch/brickinventoryapp/ui/AppViewModel.kt"))
-            .contains("apiHttpClient")) {
-            "Das AppViewModel stellt den api-Client nicht mehr bereit"
+        assert(pv.contains("""@param:Named("api")""")) {
+            "Der AnleitungsLader bekommt nicht den api-Client"
         }
     }
 

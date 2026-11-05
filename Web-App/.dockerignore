@@ -13,3 +13,5 @@ caddy
 test
 *.log
 public/js/app.bundle.js
+geheimnisse
+backup-empfaenger.txt

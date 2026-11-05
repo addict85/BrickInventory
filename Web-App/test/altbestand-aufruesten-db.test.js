@@ -29,7 +29,8 @@ const path = require('node:path');
 
 const ROOT = path.join(__dirname, '..');
 const BASIS = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
-const NAME = `altbestand_${process.pid}`, REF = `altbestand_ref_${process.pid}`;
+const { testName, raeumeReste, id } = require('./helpers/testnamen');
+const NAME = testName('altbestand'), REF = `${NAME}_ref`;
 const url = (db) => { const u = new URL(BASIS); u.pathname = '/' + db; return u.toString(); };
 process.env.DATABASE_URL = url(NAME);
 
@@ -67,13 +68,14 @@ test('Altbestand aufrüsten', { concurrency: 1, timeout: 300_000 }, async (t) =>
       throw new Error(`REQUIRE_DB=1, aber die Test-DB ist nicht erreichbar: ${e.message}`);
     t.skip('Test-DB nicht erreichbar'); return;
   }
-  for (const d of [NAME, REF]) { await admin.query(`DROP DATABASE IF EXISTS ${d}`); await admin.query(`CREATE DATABASE ${d}`); }
+  await raeumeReste(admin, 'altbestand');
+  for (const d of [NAME, REF]) { await admin.query(`DROP DATABASE IF EXISTS ${id(d)}`); await admin.query(`CREATE DATABASE ${id(d)}`); }
   const db = _req('db/database.js');
   const ref = new Client({ connectionString: url(REF) });
   t.after(async () => {
     await ref.end().catch(() => {});
     await db.pool.end().catch(() => {});
-    for (const d of [NAME, REF]) await admin.query(`DROP DATABASE IF EXISTS ${d} WITH (FORCE)`).catch(() => {});
+    for (const d of [NAME, REF]) await admin.query(`DROP DATABASE IF EXISTS ${id(d)} WITH (FORCE)`).catch(() => {});
     await admin.end().catch(() => {});
   });
 

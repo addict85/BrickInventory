@@ -6,7 +6,7 @@ import fs from 'fs';
 import { resolveUserId } from '../src/konto/http/anmeldung';
 import { streamFileToResponse, vorDem, ohneFehlendeDatei, fehlertext } from '../src/infra/httpError';
 import { queueThumb } from '../src/katalog/bilder/proxyThumbs';
-import { liefereAusCache, merkeCacheZuwachs } from '../src/katalog/bilder/imgCacheServe';
+import { liefereAusCache, merkeCacheZuwachs, bildTyp } from '../src/katalog/bilder/imgCacheServe';
 import { imgProxyFailures } from '../src/katalog/bilder/imgProxyStats';
 import { istBekanntFehlend, merkeFehlend } from '../src/katalog/bilder/imageMisses';
 import { IMG_PROXY_PFAD, IMG_PROXY_PFAD_ALT, proxyAdresse, proxyCacheSchluessel } from '../src/katalog/bilder/images';
@@ -162,12 +162,12 @@ export async function bildDurchreichen(req: Request, res: Response) {
     if (r.status === 404) console.info(meldung); else console.error(meldung);
     return r.status === 404 ? sendePlatzhalter(res) : res.status(r.status || 502).end();
   }
-  const contentType = String(r.kopf['content-type'] || 'image/jpeg');
+  const rohTyp = String(r.kopf['content-type'] || 'image/jpeg');
 
   // Nur Bilder: Auf den erlaubten CDNs liegen teils Nutzer-Uploads, und ein SVG
   // oder HTML liefe sonst unter unserer Herkunft.
   // Ausführlich: docs/begruendungen/routes/imgProxy.ts.md#bilddurchreichen-mime
-  const mime = vorDem(contentType, ';').trim().toLowerCase();
+  const mime = vorDem(rohTyp, ';').trim().toLowerCase();
   if (!mime.startsWith('image/') || mime === 'image/svg+xml') {
     r.verwerfen();
     imgProxyFailures.other++;
@@ -178,6 +178,7 @@ export async function bildDurchreichen(req: Request, res: Response) {
 
   // Nur eine vollständige Datei darf in den Cache.
   const expected = parseInt(String(r.kopf['content-length'] || '0'), 10) || 0;
+  const contentType = bildTyp(rohTyp);
   res.setHeader('Content-Type', contentType);
   // Mit Länge: Eine chunked-Antwort puffert ein Reverse-Proxy womöglich lange.
   if (expected > 0) res.setHeader('Content-Length', String(expected));

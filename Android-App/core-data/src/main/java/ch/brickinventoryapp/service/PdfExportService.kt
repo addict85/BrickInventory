@@ -7,7 +7,6 @@ import android.app.Service
 import android.content.Context
 import android.content.Intent
 import android.content.pm.ServiceInfo
-import android.os.Build
 import android.os.IBinder
 import androidx.core.app.NotificationCompat
 import androidx.core.app.ServiceCompat
@@ -43,6 +42,8 @@ class PdfExportService : Service() {
     companion object {
         const val CHANNEL_ID      = "pdf_export_channel"
         const val NOTIFICATION_ID = 43
+        /** Die Abschlussmeldung; [TeilelistenAufraeumer] nimmt sie mit der Datei weg. */
+        const val FERTIG_ID = NOTIFICATION_ID + 1
 
         fun start(context: Context) {
             // Siehe CsvImportService: startForegroundService kann an der
@@ -63,22 +64,22 @@ class PdfExportService : Service() {
         ch.brickinventoryapp.util.LanguageManager.localizedContext(this)
     }
 
-    private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    @Inject lateinit var bereiche: ch.brickinventoryapp.di.Anwendungsbereiche
+
+    // Lebt mit dem Dienst (onDestroy bricht ab). lazy, weil Hilt die Felder erst
+    // in super.onCreate() setzt.
+    private val serviceScope by lazy { CoroutineScope(SupervisorJob() + bereiche.io) }
     private var exportJob: Job? = null
 
     override fun onCreate() {
         super.onCreate()
         createNotificationChannel()
         try {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                ServiceCompat.startForeground(
-                    this, NOTIFICATION_ID,
-                    buildNotification(loc.getString(R.string.notif_pdf_running)),
-                    ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC
-                )
-            } else {
-                startForeground(NOTIFICATION_ID, buildNotification(loc.getString(R.string.notif_pdf_running)))
-            }
+            ServiceCompat.startForeground(
+                this, NOTIFICATION_ID,
+                buildNotification(loc.getString(R.string.notif_pdf_running)),
+                ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC
+            )
         } catch (e: Exception) {
             stopSelf()
         }
@@ -145,7 +146,7 @@ class PdfExportService : Service() {
             .build()
         // Andere ID, damit die Abschluss-Notification das Foreground-Ende überlebt
         (getSystemService(NOTIFICATION_SERVICE) as NotificationManager)
-            .notify(NOTIFICATION_ID + 1, n)
+            .notify(FERTIG_ID, n)
     }
 
     private fun createNotificationChannel() {

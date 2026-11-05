@@ -1,27 +1,17 @@
 package ch.brickinventoryapp.ui.screens
 
-import androidx.compose.ui.semantics.heading
-import androidx.compose.ui.semantics.semantics
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
-import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import ch.brickinventoryapp.ressourcen.R
 import coil3.ImageLoader
-import ch.brickinventoryapp.ui.AppViewModel
 import ch.brickinventoryapp.ui.viewmodel.EinstellungenViewModel
 import ch.brickinventoryapp.ui.viewmodel.HaushaltViewModel
 import ch.brickinventoryapp.ui.viewmodel.aktivitaetsViewModel
 import ch.brickinventoryapp.ui.*
-import ch.brickinventoryapp.ui.theme.Abstaende
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 
 /**
@@ -43,9 +33,12 @@ fun PreisalarmeUnterseite(
     snackbarHostState: SnackbarHostState,
     onSetClick: (String) -> Unit,
     onZurueck: () -> Unit,
+    /** Der Melde-Schalter; als Platz, weil er die Geräte-Einstellungen der Aktivität liest. */
+    meldeSchalter: @Composable () -> Unit = { PreisalarmCard(aktivitaetsViewModel()) },
 ) {
-    Unterseite(stringResource(R.string.alerts_group), snackbarHostState, onZurueck) {
-        PreisalarmCard(aktivitaetsViewModel())
+    Unterseite(stringResource(R.string.alerts_group), snackbarHostState, onZurueck,
+        breite = ch.brickinventoryapp.ui.theme.Lesebreite.formular) {
+        meldeSchalter()
         PreisalarmeCard(vm, imageLoader, serverUrl, onSetClick)
     }
 }
@@ -88,7 +81,8 @@ fun HaushaltUnterseite(
 /** Konto und angemeldete Geraete — beides betrifft den Zugang. */
 @Composable
 fun KontoUnterseite(
-    vm: AppViewModel,
+    /** Nach einem geänderten Passwort abmelden — der Rest der Sitzung gilt dann nicht mehr. */
+    onAbmelden: () -> Unit,
     snackbarHostState: SnackbarHostState,
     // An das Ziel gebunden: Profil, Geräte und ein halb eingerichteter
     // zweiter Faktor leben nur, solange die Seite offen ist.
@@ -104,11 +98,12 @@ fun KontoUnterseite(
     LaunchedEffect(Unit) { konto.ladeDesign() }
     // Passwort, zweiter Faktor, Geräte: Ein untergeschobener Tipp schaltete hier Schutz ab.
     ch.brickinventoryapp.ui.components.Ueberdeckungsschutz()
-    Unterseite(stringResource(R.string.konto_title), snackbarHostState, onZurueck) {
+    Unterseite(stringResource(R.string.konto_title), snackbarHostState, onZurueck,
+        breite = ch.brickinventoryapp.ui.theme.Lesebreite.formular) {
         KontoCard(
             kontoZustand = kontoZustand,
             onSpeichern = { b, e, v, n, p, c -> konto.speichereProfil(b, e, v, n, p, c) },
-            onPasswort = { alt, neu, c -> konto.aenderePasswort(alt, neu, c) { vm.logout() } },
+            onPasswort = { alt, neu, c -> konto.aenderePasswort(alt, neu, c) { onAbmelden() } },
             onMeldungWeg = { konto.kontoMeldungWeg() },
         )
         DesignCard(design = kontoZustand.design, onWahl = { konto.waehleDesign(it) })

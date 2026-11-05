@@ -179,8 +179,10 @@ class StringResourceParityTest {
         // Begriffe, Eigennamen und Formatvorlagen, die in beiden Sprachen
         // gleich lauten. Jeder Eintrag ist eine Entscheidung, keine Nachsicht.
         val gewolltGleich = setOf(
+            // Reines Format „Aktion: Name“ für Screenreader, ohne Wörter.
+            "aktion_fuer",
             "acq_total_quantity", "app_name", "catalog_sort_name", "chart_period_max",
-            "comparison_barcode_label", "comparison_scan", "csv_ok_count",
+            "comparison_barcode_label", "csv_ok_count",
             "detail_section_item", "finance_filter_sets",
             "finance_grand_total", "finance_section_sets", "finance_total_sets",
             "gallery_quantity_badge", "gallery_sort_name", "gallery_stat_sets",
@@ -189,7 +191,7 @@ class StringResourceParityTest {
             // System und Server heissen in beiden Sprachen so.
             "nav_group_server", "settings_hell_system",
             "partslist_ok", "partslist_rb_prefix",
-            "partslist_scan", "setup_build",
+            "setup_build",
             "setup_url_placeholder",
             // PIN ist in beiden Sprachen PIN — ein Begriff, kein Satz.
             "vouchers_pin",
@@ -346,7 +348,7 @@ class StringResourceParityTest {
         // Test selbst: Am Ende muss jeder Eintrag mindestens einmal gegriffen
         // haben. Ein Eintrag, der nichts mehr beschreibt, sieht aus wie eine
         // Entscheidung und ist doch bloss eine Vermutung.
-        val erlaubt = setOf("BrickInventory", "Manager", "BrickInventory Manager", "PDF")
+        val erlaubt = setOf("PDF")
         val erlaubtGesehen = mutableSetOf<String>()
 
         val fehler = mutableListOf<String>()

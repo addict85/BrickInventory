@@ -129,14 +129,14 @@ niemals wieder ganze Wurzeln (`path="."`), sonst ist auch der API-Cache
 
 ## Ein OkHttp-Interceptor-Stack, keine Nebenclients
 
-**Dateien:** `ui/screens/PdfViewerScreen.kt`, `ui/MainViewModel.kt`
+**Dateien:** `ui/pdf/AnleitungsLader.kt`, `ui/AppViewModel.kt`
 **Test:** `ServicePolishTest`
 
 Jeder eigenständig gebaute `OkHttpClient.Builder()` läuft am DI-Interceptor
 vorbei: kein Bearer-Token, kein Klartext-Verbot, keine 401-Meldung — jede
 Regel müsste dort von Hand nachgezogen werden (und genau so eine
 handgepflegte Kopie stand hier bereits). Abweichende Timeouts holt man sich
-per `apiHttpClient.newBuilder()`, nicht mit einem neuen Client.
+per `newBuilder()` vom injizierten api-Client, nicht mit einem neuen Client.
 
 ## Kamera-Screens räumen ihre Ressourcen auf
 
@@ -154,11 +154,12 @@ des Screens und darf den Autofokus nie berühren.
 
 ## PDF-Ansichts-Cache mit Budget
 
-**Datei:** `ui/screens/PdfViewerScreen.kt`
+**Datei:** `ui/pdf/AnleitungsLader.kt`
 **Test:** `ResourceAndCacheTest`
 
 Angesehene Anleitungen bleiben absichtlich liegen (Resume, erneutes Öffnen
-ohne Neudownload). Bei Dateien bis 300 MB braucht das eine Obergrenze:
+ohne Neudownload), verschlüsselt über `AnleitungsAblage` (`AnleitungsAblageTest`)
+und beim Abmelden gelöscht. Bei Dateien bis 300 MB braucht das eine Obergrenze:
 `prunePdfCache()` hält den Cache unter `PDF_CACHE_BUDGET_BYTES`, älteste
 zuerst. Die gerade angeforderte Datei ist ausgenommen — sonst löscht das
 Aufräumen den Teil-Download, auf dem der Resume-Mechanismus aufsetzen will.
@@ -244,7 +245,8 @@ Zwei Folgeregeln:
 
 `compileSdk` und `targetSdk` stehen beide auf 36 und werden bewusst
 gleichgezogen: Ein höherer `compileSdk` wäre erlaubt, verdeckt aber, welche
-Verhaltensänderungen tatsächlich aktiv sind. `minSdk` bleibt bei 26.
+Verhaltensänderungen tatsächlich aktiv sind. `minSdk` ist 30 (Android 11, siehe
+`TargetSdkConfigTest`): Darunter gibt es keine Sicherheitsupdates mehr.
 
 Der Sprung ist deshalb harmlos, weil die App zwei Dinge **nicht** tut:
 
@@ -753,9 +755,6 @@ braucht, ist eine Erlaubnis, die niemand mehr prüft.
 
 Damit der nächste Durchgang nicht dieselben Fragen neu aufwirft:
 
-- **Keine Verschlüsselung von `bestand.db`, Antwort-Cache und Vorschaubildern**
-  (SQLCipher o. ä.). Begründung und Datenklassen unter „Daten auf dem Gerät“.
-  Der Token dagegen liegt nur verschlüsselt (`util/TokenTresor.kt`, Keystore).
 - **Kein `SavedStateHandle`.** Nach Prozesstod sind Filter und Rollposition
   weg. Alles lädt ohnehin vom Server nach, und der Scroll-Merker ist eine
   Bequemlichkeit innerhalb einer Sitzung — nicht etwas, das einen Prozesstod
@@ -775,33 +774,25 @@ Handlungsmacht.
 | Klasse | Inhalt | Ablage |
 |---|---|---|
 | geheim | Token | nur AES-GCM mit Keystore-Schlüssel (`TokenTresor`) |
-| geheim | Gutschein-PIN, Passwörter, TOTP-Schlüssel, Wiederherstellungscodes | **nie** auf der Platte; die PIN wird vor dem Ablegen entfernt (`GutscheineRepository.ohneGeheimnis`), Gutschein-PDFs liegen in einem eigenen Ordner und werden beim Verlassen gelöscht |
-| vertraulich | Sets, Teile, Figuren, Merkliste, Bewertungen, Gutschein-Nummer und -Betrag (Room `bestand.db`, Fächer in `Bestandsart`), Ausgang | unverschlüsselt, App-Sandbox |
-| vertraulich | Katalog-Metadaten und Statistik (`ResponseCache`, nur diese zwei Schlüssel) | unverschlüsselt, `noBackupFilesDir` |
-| öffentlich | Vorschaubilder der Sets | unverschlüsselt, `filesDir/vorschau` |
+| geheim | Gutschein-PIN, Passwörter, TOTP-Schlüssel, Wiederherstellungscodes | **nie** auf der Platte; die PIN wird vor dem Ablegen entfernt (`GutscheineRepository.ohneGeheimnis`), ein Gutschein-PDF liegt nur im Speicher (memfd, `PdfViewerScreen`) |
+| vertraulich | Sets, Teile, Figuren, Merkliste, Bewertungen, Gutschein-Nummer und -Betrag (Room `bestand.db`), Ausgang | SQLCipher |
+| vertraulich | API-Antworten, Widget-Zahlen, Vorschaubilder, Bild-Zwischenspeicher, Bauanleitungen | `AblageChiffre` (AES-GCM, Schlüssel aus dem Keystore umhüllt); Anleitungen angezeigt aus memfd oder namenloser Datei |
+| vertraulich | Teileliste-PDF | Klartext für die Ziel-App, nach 30 Minuten gelöscht |
 
 Für alle gilt: `allowBackup="false"`, Cloud-Sicherung und Geräteumzug
 ausgeschlossen (`NetzsicherheitTest`), beim Abmelden geleert, und jede Ablage
-gehört Server und Konto (`CacheBereichTest`).
-
-**Warum nicht verschlüsselt (pruef6 N3):** Gegen ein verlorenes, gesperrtes
-Gerät schützt die dateibasierte Verschlüsselung von Android (ab Android 10
-Pflicht): Vor dem ersten Entsperren ist der Speicher der App unlesbar. Gegen
-Root oder fremden Code in der App hülfe SQLCipher nicht: Der Schlüssel müsste
-ohne Nutzerauthentisierung im Keystore liegen, weil Abgleich, Widget und
-Preisalarm im Hintergrund lesen — dort käme ein Angreifer an ihn wie die App.
-Dafür brächte es native Bibliotheken (16-KB-Ausrichtung, R8, Prüfsummen) und
-eine Migration des Ausgangs. Darum gilt stattdessen: Geheimes kommt gar nicht
-erst auf die Platte; ein neues Fach in `Bestandsart` lässt `CacheBereichTest`
-scheitern, bis es hier eingeordnet ist.
+gehört Server und Konto (`CacheBereichTest`). Ein neues Fach in `Bestandsart`
+lässt `CacheBereichTest` scheitern, bis es hier eingeordnet ist.
 
 ## Restrisiken, bewusst getragen (pruef6)
 
 - **H2 — Pin auf eine System-Wurzel:** Hat der Nutzer beim Erstkontakt ein
   öffentlich gültiges Zertifikat bestätigt, gilt danach jede öffentlich gültige
-  Kette für diesen Host. Sonst fragte die App bei jedem Wechsel der
-  Zwischenstelle (Let's Encrypt) neu. Restrisiko: ein fehlausgestelltes
-  öffentliches Zertifikat für den Host. Wer das ausschliessen will, betreibt
+  Kette für diesen Host, und zwar nur über die System-Prüfung samt Certificate
+  Transparency, auch wenn der Server die Wurzel mitschickt (sec11 H6,
+  `ZertifikatPinTest`). Sonst fragte die App bei jedem Wechsel der
+  Zwischenstelle (Let's Encrypt) neu. Restrisiko: ein fehlausgestelltes, aber
+  protokolliertes öffentliches Zertifikat für den Host. Wer das ausschliessen will, betreibt
   eine eigene CA (Caddy `sign_with_root`); deren Pin bleibt an ihren Schlüssel
   gebunden.
 - **H7 — keine Root- oder Integritätserkennung:** Die App wird ausserhalb von
@@ -811,13 +802,50 @@ scheitern, bis es hier eingeordnet ist.
 - **H9 — Widget mit Sammlungswert:** Der Nutzer legt es selbst auf den
   Startbildschirm; es zeigt eine Summe, keine Einzelheiten, und wird beim
   Abmelden geleert. Wer den Wert nicht zeigen will, legt es nicht an.
-- **QR-Code beim ersten Einrichten (H6):** Ein Code mit `fp` bestimmt den
-  Schlüssel ohne Abtippen; der Dialog warnt und zeigt den Anfang zum Vergleich
-  mit der Webapp. Abtippen bleibt dem Wechsel eines gemerkten Schlüssels
-  vorbehalten (Begründung im Commit).
-- **Schritt-Schutz (N2):** Ein Gerät ohne Displaysperre lässt die Rückfrage
-  durch; dort gibt es nichts zu fragen. Eine Bestätigung gilt 60 s und
-  verfällt, sobald die App in den Hintergrund geht.
+- **QR-Code beim ersten Einrichten (seit sec10 N2 geschlossen):** Ein `fp`
+  gilt ohne Abtippen nur als System-Wurzel oder als schon bestätigter Pin;
+  sonst die letzten 24 Zeichen aus der Webapp (`AnmeldungViewModel.mussAbtippen`).
+- **Schritt-Schutz ohne Displaysperre (sec10 H3):** Es gibt nichts zu prüfen;
+  die App warnt darum (`OhneSperreWarnung`), und erst ein „Ungeschützt
+  fortfahren“ öffnet den Schritt. Eine Bestätigung gilt 60 s und verfällt,
+  sobald die App in den Hintergrund geht.
+- **Token-Schlüssel ohne Nutzerauthentisierung (sec10 H1):** Preisalarm,
+  Widget, Ausgang und nachgeholte Entwertung lesen das Token im Hintergrund,
+  ohne dass jemand entsperren könnte. Wer Code mit der UID der App ausführt,
+  kommt an das Token wie die App; dagegen stehen 180 Tage Höchstdauer,
+  Rotation und Entwertung beim Abmelden.
+- **Eigener Schlüssel für die Update-Beschreibung (sec11 H1):** Kennt die App
+  einen Beschreibungsschlüssel (`res/raw/beschreibungs_schluessel.pem`), gilt
+  nur dessen Signatur; der APK-Schlüssel signiert dann nichts, was sie als
+  Beschreibung annimmt. Bis der Betreiber ihn einrichtet (README,
+  „Beschreibungsschlüssel“), gilt der Übergangsweg über die Signierer der App.
+  Auf dem Runner liegen beide nur verschlüsselt und werden nach dem Schritt
+  gelöscht. Solange das Secret `BESCHREIBUNG_SCHLUESSEL` fehlt, warnt der
+  Release-Lauf (sec12 H1); einrichten muss es der Betreiber.
+- **Unsignierte `version.json` bis 01.02.2027 (sec12 H3):** nur für Fassungen vor
+  sec8 N4, die die signierte Beschreibung nicht kennen. Die Frist wird nicht
+  verlängert; danach löscht der Release-Lauf den Anhang selbst.
+- **Teileliste 30 Minuten im Klartext (sec12 H4):** Die Ziel-App liest sie über
+  den FileProvider und kann keinen Geheimtext lesen; gelöscht nach der Frist,
+  beim Start und beim Abmelden.
+- **Pins ohne HMAC (sec12 H6), Token-Schlüssel bei gesperrtem Gerät (sec12 H7),
+  keine RESILIENCE-Prüfungen (sec12 H10):** Begründung in README, „Daten auf dem
+  Gerät“ und „Manipulationsschutz“. Wer in `shared_prefs` schreiben kann, kann
+  auch den Keystore der App benutzen; ein HMAC hielte ihn nicht auf.
+- **Anleitung in einer namenlosen Datei (sec12 N1):** Über 64 MB wird zur Anzeige
+  in eine Datei entschlüsselt, deren Name vor dem ersten Byte gelöscht ist. Der
+  Klartext liegt dann in freien Blöcken des (dateibasiert verschlüsselten)
+  Speichers, erreichbar nur über den offenen Deskriptor. Ein memfd dieser Grösse
+  kostete Arbeitsspeicher, den das System der App mit einem Kill zurückholte.
+- **Endmarker im verschlüsselten Dateisystem (sec12 H9):** Jeder flush schliesst
+  mit einem Marker ab, weil OkHttp sein Journal nach jeder Zeile flusht und nie
+  schliesst. Eine Kürzung genau auf einen früheren flush bleibt darum unentdeckt;
+  sie setzt nur das Journal auf einen älteren Stand zurück. Ein Zähler oder die
+  Länge im Marker hülfe nicht (sec13 H7): Der frühere Marker trug den Stand, der
+  damals galt, und nach einem Absturz muss genau dieser Stand lesbar sein. Erkennen
+  liesse sich die Kürzung nur mit einer zweiten Ablage je Datei, die bei jedem flush
+  mitgeschrieben wird. Ein zurückgesetztes Journal ist für OkHttp ein Absturzfall
+  (fehlende Einträge sind Fehltreffer); eine gekürzte Anleitung ist kein gültiges PDF mehr.
 
 ## Token nur an die eigene Herkunft
 

@@ -1,12 +1,13 @@
 package ch.brickinventoryapp.ui.screens
 
+import ch.brickinventoryapp.ui.components.nebenKnopfFarben
+import ch.brickinventoryapp.ui.components.nebenKnopfRand
 import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.clickable
 import androidx.compose.ui.semantics.Role
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material3.*
@@ -16,7 +17,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -24,8 +24,8 @@ import ch.brickinventoryapp.ressourcen.R
 import ch.brickinventoryapp.ui.viewmodel.MerklisteViewModel
 import ch.brickinventoryapp.ui.components.ZoomableImageDialog
 import ch.brickinventoryapp.ui.theme.Abstaende
-import ch.brickinventoryapp.ui.theme.Formen
 import ch.brickinventoryapp.util.resolveFullUrl
+import kotlinx.coroutines.launch
 
 /**
  * Das Detail eines Merkpostens — dieselben Zeilen in derselben Reihenfolge wie das
@@ -55,6 +55,9 @@ fun MerkpostenDetailScreen(
     // Context liefert nach einem Konfigurationswechsel veraltete Werte (Lint
     // LocalContextGetResourceValueCall).
     val keineAppText = stringResource(R.string.common_no_app_to_open)
+    // Snackbar im eigenen Gerüst statt Toast: bleibt lesbar, bis TalkBack fertig ist.
+    val meldungen = remember { SnackbarHostState() }
+    val bereich = rememberCoroutineScope()
     // Derselbe Dialog wie in der Liste, nicht ein zweiter: Anzahl, Kaufpreis
     // und Zustand muessen hier dieselbe Maske sein.
     var uebernahmeOffen by rememberSaveable { mutableStateOf(false) }
@@ -78,25 +81,20 @@ fun MerkpostenDetailScreen(
         else ch.brickinventoryapp.util.fmtMoney(v, appState.currency)
 
     Scaffold(
+        snackbarHost = { SnackbarHost(meldungen) },
         topBar = {
-            TopAppBar(
-                title = { Text(merkposten?.name ?: setNumber, maxLines = 1) },
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(R.string.common_back))
-                    }
-                },
-                // Der Papierkorb in der Kopfleiste wie in Set- und Teile-Detail — wer von dort
-                // kommt, sucht ihn oben. Ohne Rückfrage wie in der Webapp: Ein Merkposten ist kein
-                // Besitz und schnell wieder eingetragen. Beschriftung `common_delete` wie dort,
-                // damit der Bildschirmleser alle gleich ansagt. `let`, weil der Merkposten hier
-                // oben noch nullbar ist.
+            // Derselbe Kopf wie Set-, Katalog- und Teile-Detail (DetailTopAppBar).
+            ch.brickinventoryapp.ui.components.DetailTopAppBar(titel = merkposten?.name ?: setNumber, onZurueck = onBack,
+                // Ohne Rückfrage wie in der Webapp: Ein Merkposten ist kein Besitz und schnell
+                // wieder eingetragen. `let`, weil der Merkposten hier oben noch nullbar ist.
                 actions = {
                     merkposten?.let { w ->
-                        IconButton(onClick = {
-                            vm.loescheMerkposten(w.setNumber, w.condition, w.userId)
-                        }) {
-                            Icon(Icons.Default.Delete, stringResource(R.string.common_delete))
+                        ch.brickinventoryapp.ui.components.MitTooltip(stringResource(R.string.common_delete)) {
+                            IconButton(onClick = {
+                                vm.loescheMerkposten(w.setNumber, w.condition, w.userId)
+                            }) {
+                                Icon(Icons.Default.Delete, stringResource(R.string.common_delete))
+                            }
                         }
                     }
                 },
@@ -136,16 +134,20 @@ fun MerkpostenDetailScreen(
 
             item {
                 ch.brickinventoryapp.ui.theme.AppKarte {
-                    Column(Modifier.padding(Abstaende.mittel)) {
+                    // Mit Abstand zwischen den Zeilen wie im Katalog-Detail: Dicht gestapelt
+                    // las sich die Karte als ein Block.
+                    Column(Modifier.padding(Abstaende.mittel), verticalArrangement = Arrangement.spacedBy(Abstaende.klein)) {
+                        // Nur Zeilen mit Wert: Vier Gedankenstriche untereinander sagten nur,
+                        // dass der Katalog das Set nicht kennt.
                         CatalogDetailRow(stringResource(R.string.detail_set_number), merkposten.setNumber)
-                        CatalogDetailRow(stringResource(R.string.detail_year),
-                            merkposten.year?.toString() ?: "—")
-                        CatalogDetailRow(stringResource(R.string.detail_theme),
-                            detail.katalog?.themeName ?: "—")
-                        CatalogDetailRow(stringResource(R.string.detail_pieces),
-                            (detail.katalog?.numParts ?: merkposten.numParts)?.toString() ?: "—")
-                        CatalogDetailRow(stringResource(R.string.detail_minifigs),
-                            detail.katalog?.minifigs?.toString() ?: "—")
+                        merkposten.year?.let { CatalogDetailRow(stringResource(R.string.detail_year), it.toString()) }
+                        detail.katalog?.themeName?.let { CatalogDetailRow(stringResource(R.string.detail_theme), it) }
+                        (detail.katalog?.numParts ?: merkposten.numParts)?.let {
+                            CatalogDetailRow(stringResource(R.string.detail_pieces), ch.brickinventoryapp.util.fmtInt(it))
+                        }
+                        detail.katalog?.minifigs?.let {
+                            CatalogDetailRow(stringResource(R.string.detail_minifigs), ch.brickinventoryapp.util.fmtInt(it))
+                        }
                         CatalogDetailRow(stringResource(R.string.common_condition),
                             stringResource(if (merkposten.condition == "U") R.string.condition_used
                                            else R.string.condition_new))
@@ -179,7 +181,7 @@ fun MerkpostenDetailScreen(
             item {
                 ch.brickinventoryapp.ui.theme.AppKarte {
                     Column(Modifier.padding(Abstaende.mittel)) {
-                        Text(stringResource(R.string.detail_section_market), fontWeight = FontWeight.Bold)
+                        ch.brickinventoryapp.ui.components.Abschnittstitel(stringResource(R.string.detail_section_market))
                         Spacer(Modifier.height(Abstaende.klein))
                         // Aus der PREIS-Antwort, nicht aus dem Verlauf: Die
                         // holt frisch, der Verlauf liest nur den Cache.
@@ -216,24 +218,25 @@ fun MerkpostenDetailScreen(
                             ?.takeIf { it.isNotBlank() }
                             ?.let { R.string.detail_compare to it },
                     )
+                    // Höchstens Bedienbreite: Auf dem Tablet liefen die Knöpfe sonst über die ganze Spalte.
+                    val breite = Modifier.widthIn(max = ch.brickinventoryapp.ui.theme.Lesebreite.bedienung).fillMaxWidth()
                     if (adressen.isNotEmpty()) {
                         Row(
-                            Modifier.fillMaxWidth(),
+                            breite,
                             horizontalArrangement = Arrangement.spacedBy(Abstaende.klein),
                         ) {
                             for ((beschriftung, url) in adressen) {
                                 OutlinedButton(
                                     onClick = {
                                         if (!ch.brickinventoryapp.util.oeffneExtern(ctx, url)) {
-                                            android.widget.Toast.makeText(
-                                                ctx, keineAppText,
-                                                android.widget.Toast.LENGTH_SHORT).show()
+                                            bereich.launch { meldungen.showSnackbar(keineAppText) }
                                         }
                                     },
                                     modifier = Modifier.weight(1f),
-                                    shape = Formen.leiste,
                                     contentPadding = PaddingValues(
                                         horizontal = Abstaende.klein, vertical = Abstaende.klein),
+                                    colors = nebenKnopfFarben(),
+                                    border = nebenKnopfRand(),
                                 ) {
                                     // Eine Stufe kleiner, aus demselben Grund wie im
                                     // Katalog-Detail: Zwei Knoepfe teilen sich die
@@ -249,10 +252,9 @@ fun MerkpostenDetailScreen(
 
                     Button(
                         onClick = { uebernahmeOffen = true },
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = Formen.leiste,
+                        modifier = breite,
                     ) {
-                        Icon(Icons.Default.Add, null, Modifier.size(18.dp))
+                        Icon(Icons.Default.Add, null, Modifier.size(ch.brickinventoryapp.ui.components.mitSchrift(18.dp)))
                         Spacer(Modifier.width(Abstaende.winzig))
                         Text(stringResource(R.string.wanted_take))
                     }

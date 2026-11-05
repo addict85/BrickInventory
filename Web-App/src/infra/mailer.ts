@@ -5,7 +5,8 @@ import tls from 'node:tls';
 import type { PeerCertificate } from 'node:tls';
 import { konfig } from './konfig';
 import { getGlobalSetting } from '../konto/settings';
-import { ausTabelle } from './validate';
+import addressparser from 'nodemailer/lib/addressparser';
+import { ausTabelle, emailGueltig } from './validate';
 import { fehlertext } from './httpError';
 import { basisUrl, hinweisOhneBasisUrl } from './basisUrl';
 const getSetting = (key: string) => getGlobalSetting(key, '');
@@ -84,11 +85,22 @@ export function maskiereAdresse(adresse: string, voll = konfig().mailKonsoleMitT
   return at < 1 ? '…' : `${adresse[0]}…${adresse.slice(at)}`;
 }
 
+/** Die Zeichenkette muss für nodemailer genau diese eine Adresse sein, sonst
+ * ginge die Mail an eine andere als die geprüfte (Anzeigename, Liste). */
+export function einzigerEmpfaenger(to: string): boolean {
+  const liste = emailGueltig(to) ? addressparser(to, { flatten: true }) : [];
+  return liste.length === 1 && liste[0]!.address === to && !liste[0]!.name;
+}
+
 /** Ohne SMTP auf der Konsole; `html` und `text` optional, weil die Konsole
  * nur `text` liest. */
 export async function sendMail({ to, subject, html, text, link: echterLink }: {
   to: string; subject: string; html?: string; text?: string; link?: string;
 }) {
+  if (!einzigerEmpfaenger(to)) {
+    console.warn(`📧 Empfänger abgelehnt (${maskiereAdresse(to)}): keine einzelne reine Adresse`);
+    return { success: false, error: 'empfaenger_ungueltig', mode: 'smtp' };
+  }
   const transporter = await getTransporter();
   const from = await getFrom();
   if (!transporter) {
@@ -102,7 +114,9 @@ export async function sendMail({ to, subject, html, text, link: echterLink }: {
     return { success: true, mode: 'console' };
   }
   try {
-    const info = await transporter.sendMail({ from, to, subject, text, html });
+    const absender = addressparser(from, { flatten: true })[0]?.address;
+    const info = await transporter.sendMail({ from, to, subject, text, html,
+      ...(absender ? { envelope: { from: absender, to: [to] } } : {}) });
     console.log(`📧 E-Mail gesendet an ${maskiereAdresse(to)}: ${info.messageId}`);
     return { success: true, mode: 'smtp', messageId: info.messageId };
   } catch (e) {
@@ -319,22 +333,28 @@ const DIVIDER = `<table role="presentation" cellspacing="0" cellpadding="0" bord
 </table>`;
 
 /** Ohne Namen: Die Adresse ist unbestätigt, und Name wie Benutzername wählt,
- * wer registriert — eine Anrede daraus trüge fremden Text in eine Mail des Servers. */
-export async function sendVerificationMail(to: string, token: string, baseUrl: string, lang = 'de') {
+ * wer registriert — eine Anrede daraus trüge fremden Text in eine Mail des Servers.
+ * Nennen mehrere Registrierungen die Adresse, verweist `mehrere` auf die Bestätigungsseite. */
+export async function sendVerificationMail(to: string, token: string, baseUrl: string, lang = 'de',
+                                           art: 'registrierung' | 'adresse' = 'registrierung', mehrere = false) {
   // Beim Versand laden: Das Design kann sich zwischen zwei Mails geändert haben.
   const theme = await getMailTheme();
   const url = `${baseUrl}/verify?token=${token}`;
+  const adresse = art === 'adresse';
   const L = lang === 'en' ? {
     subject: 'BrickInventory Manager — Confirm your email',
     text: `Hello,\n\nplease confirm your email address:\n${url}\n\nThe link is valid for 24 hours.\n\nBrickInventory Manager`,
     title: 'Confirm email',
     preheader: 'Please confirm your email address.',
     greetHtml: `<p style="margin:0 0 8px">Hello,</p>
-       <p style="margin:0 0 20px">welcome to BrickInventory Manager! Please confirm your email address to activate your account.</p>`,
+       <p style="margin:0 0 20px">${adresse
+         ? 'this address is to become the new email address of a BrickInventory Manager account. It only takes effect once you confirm it.'
+         : 'welcome to BrickInventory Manager! Please confirm your email address to activate your account.'}</p>`,
     btn: '✓  Confirm email',
+    mehrere: 'Several sign-ups name this address. Before confirming, the page shows the username this link belongs to: confirm only if it is yours.',
     note: `<p style="margin:0;font-size:13px;color:#6b7280">
          The link is valid for <strong>24 hours</strong>.<br>
-         If you did not sign up, you can safely ignore this email.
+         ${adresse ? 'If you did not request this, ignore this email; nothing changes.' : 'If you did not sign up, you can safely ignore this email.'}
        </p>`,
   } : {
     subject: 'BrickInventory Manager — E-Mail bestätigen',
@@ -342,22 +362,27 @@ export async function sendVerificationMail(to: string, token: string, baseUrl: s
     title: 'E-Mail bestätigen',
     preheader: 'Bitte bestätige deine E-Mail-Adresse.',
     greetHtml: `<p style="margin:0 0 8px">Hallo,</p>
-       <p style="margin:0 0 20px">willkommen bei BrickInventory Manager! Bitte bestätige deine E-Mail-Adresse um dein Konto zu aktivieren.</p>`,
+       <p style="margin:0 0 20px">${adresse
+         ? 'diese Adresse soll die neue E-Mail-Adresse eines Kontos bei BrickInventory Manager werden. Sie gilt erst, wenn du sie bestätigst.'
+         : 'willkommen bei BrickInventory Manager! Bitte bestätige deine E-Mail-Adresse um dein Konto zu aktivieren.'}</p>`,
     btn: '✓  E-Mail bestätigen',
+    mehrere: 'Mehrere Registrierungen nennen diese Adresse. Vor dem Bestätigen zeigt die Seite den Benutzernamen, zu dem dieser Link gehört: Bestätige nur, wenn es deiner ist.',
     note: `<p style="margin:0;font-size:13px;color:#6b7280">
          Der Link ist <strong>24 Stunden</strong> gültig.<br>
-         Falls du dich nicht registriert hast, kannst du diese E-Mail ignorieren.
+         ${adresse ? 'Hast du das nicht veranlasst, ignoriere diese E-Mail; es ändert sich nichts.' : 'Falls du dich nicht registriert hast, kannst du diese E-Mail ignorieren.'}
        </p>`,
   };
+  const hinweis = mehrere && !adresse;
   return sendMail({
     to,
     subject: L.subject,
-    text: L.text,
+    text: hinweis ? L.text.replace('\n\n', `\n\n${L.mehrere}\n\n`) : L.text,
     link: url,
     html: emailTemplate(
       L.title,
       L.preheader,
       `${L.greetHtml}
+       ${hinweis ? `<p style="margin:0 0 20px"><strong>${L.mehrere}</strong></p>` : ''}
        ${emailBtn(url, L.btn, theme)}
        ${DIVIDER}
        ${L.note}`,
@@ -369,39 +394,39 @@ export async function sendVerificationMail(to: string, token: string, baseUrl: s
 export async function sendEmailGeaendertMail(to: string, username: string, neueAdresse: string, lang = 'de') {
   const theme = await getMailTheme();
   const L = lang === 'en' ? {
-    subject: 'BrickInventory Manager — Your email address was changed',
-    title: 'Email address changed',
-    text: `Hello ${username},\n\nthe email address of your account was changed to ${neueAdresse}.\n\nIf this was not you, sign in, change your password and set the old address again — or ask the administrator.\n\nBrickInventory Manager`,
+    subject: 'BrickInventory Manager — New email address requested',
+    title: 'Email address change requested',
+    text: `Hello ${username},\n\na change of your account's email address to ${neueAdresse} was requested. It takes effect once it is confirmed there; until then this address stays.\n\nIf this was not you, sign in and change your password — or ask the administrator.\n\nBrickInventory Manager`,
     html: `<p style="margin:0 0 8px">Hello <strong>${esc(username)}</strong>,</p>
-       <p style="margin:0 0 16px">the email address of your account was changed to <strong>${esc(neueAdresse)}</strong>.</p>`,
-    note: 'If this was not you, sign in, change your password and set the old address again — or ask the administrator.',
+       <p style="margin:0 0 16px">a change of your account's email address to <strong>${esc(neueAdresse)}</strong> was requested. It takes effect once it is confirmed there; until then this address stays.</p>`,
+    note: 'If this was not you, sign in and change your password — or ask the administrator.',
   } : {
-    subject: 'BrickInventory Manager — Deine E-Mail-Adresse wurde geändert',
-    title: 'E-Mail-Adresse geändert',
-    text: `Hallo ${username},\n\ndie E-Mail-Adresse deines Kontos wurde auf ${neueAdresse} geändert.\n\nWarst du das nicht, melde dich an, ändere dein Passwort und trage die alte Adresse wieder ein — oder wende dich an den Verwalter.\n\nBrickInventory Manager`,
+    subject: 'BrickInventory Manager — Neue E-Mail-Adresse beantragt',
+    title: 'Neue E-Mail-Adresse beantragt',
+    text: `Hallo ${username},\n\nfür dein Konto wurde die E-Mail-Adresse ${neueAdresse} beantragt. Sie gilt erst, wenn sie dort bestätigt ist; bis dahin bleibt diese Adresse eingetragen.\n\nWarst du das nicht, melde dich an und ändere dein Passwort — oder wende dich an den Verwalter.\n\nBrickInventory Manager`,
     html: `<p style="margin:0 0 8px">Hallo <strong>${esc(username)}</strong>,</p>
-       <p style="margin:0 0 16px">die E-Mail-Adresse deines Kontos wurde auf <strong>${esc(neueAdresse)}</strong> geändert.</p>`,
-    note: 'Warst du das nicht, melde dich an, ändere dein Passwort und trage die alte Adresse wieder ein — oder wende dich an den Verwalter.',
+       <p style="margin:0 0 16px">für dein Konto wurde die E-Mail-Adresse <strong>${esc(neueAdresse)}</strong> beantragt. Sie gilt erst, wenn sie dort bestätigt ist; bis dahin bleibt diese Adresse eingetragen.</p>`,
+    note: 'Warst du das nicht, melde dich an und ändere dein Passwort — oder wende dich an den Verwalter.',
   };
   return sendMail({ to, subject: L.subject, text: L.text,
     html: emailTemplate(L.title, L.subject, `${L.html}${infoBox(L.note, theme)}`, theme) });
 }
 
 /** Die Registrierung antwortet auf eine vergebene Adresse wie auf eine neue; das hier erfährt ihr Inhaber. */
-export async function sendRegistrierungsVersuchMail(to: string, username: string, lang = 'de') {
+export async function sendRegistrierungsVersuchMail(to: string, lang = 'de') {
   const theme = await getMailTheme();
   const L = lang === 'en' ? {
     subject: 'BrickInventory Manager — Registration with your email address',
     title: 'Registration attempt',
-    text: `Hello ${username},\n\nsomeone tried to register a new account with your email address. You already have an account; nothing was changed.\n\nIf you forgot your password, use “Forgot password” on the sign-in page.\n\nBrickInventory Manager`,
-    html: `<p style="margin:0 0 8px">Hello <strong>${esc(username)}</strong>,</p>
+    text: `Hello,\n\nsomeone tried to register a new account with your email address. You already have an account; nothing was changed.\n\nIf you forgot your password, use “Forgot password” on the sign-in page.\n\nBrickInventory Manager`,
+    html: `<p style="margin:0 0 8px">Hello,</p>
        <p style="margin:0 0 16px">someone tried to register a new account with your email address. You already have an account; nothing was changed.</p>`,
     note: 'If you forgot your password, use “Forgot password” on the sign-in page.',
   } : {
     subject: 'BrickInventory Manager — Registrierung mit deiner E-Mail-Adresse',
     title: 'Registrierungsversuch',
-    text: `Hallo ${username},\n\njemand hat versucht, mit deiner E-Mail-Adresse ein neues Konto anzulegen. Du hast schon eines; geändert wurde nichts.\n\nHast du dein Passwort vergessen, nutze „Passwort vergessen“ auf der Anmeldeseite.\n\nBrickInventory Manager`,
-    html: `<p style="margin:0 0 8px">Hallo <strong>${esc(username)}</strong>,</p>
+    text: `Hallo,\n\njemand hat versucht, mit deiner E-Mail-Adresse ein neues Konto anzulegen. Du hast schon eines; geändert wurde nichts.\n\nHast du dein Passwort vergessen, nutze „Passwort vergessen“ auf der Anmeldeseite.\n\nBrickInventory Manager`,
+    html: `<p style="margin:0 0 8px">Hallo,</p>
        <p style="margin:0 0 16px">jemand hat versucht, mit deiner E-Mail-Adresse ein neues Konto anzulegen. Du hast schon eines; geändert wurde nichts.</p>`,
     note: 'Hast du dein Passwort vergessen, nutze „Passwort vergessen“ auf der Anmeldeseite.',
   };
@@ -471,8 +496,16 @@ export async function mailEingerichtet(): Promise<boolean> {
   return !!(await getSetting('smtp_host')) && !!(await getSetting('smtp_user'));
 }
 
+/** Ein Link per Mail kommt nur mit Mailserver UND eigener Adresse an; `neu` sind Werte, die gerade gespeichert werden. */
+export async function mailBereit(neu: { smtp_host?: unknown; smtp_user?: unknown } = {}): Promise<boolean> {
+  const wert = async (k: 'smtp_host' | 'smtp_user') => neu[k] !== undefined ? String(neu[k] ?? '') : await getSetting(k);
+  return !!basisUrl() && !!(await wert('smtp_host')) && !!(await wert('smtp_user'));
+}
+
 export type KontoHinweis = 'passkey_neu' | 'passwort_geaendert' | 'passwort_zurueckgesetzt' | 'token_neu' | 'qr_zugang_neu'
-  | 'zweiter_faktor_entfernt' | 'verwalter_ernannt' | 'verwaltung_faktor_entfernt' | 'token_wiederverwendet';
+  | 'zweiter_faktor_entfernt' | 'verwalter_ernannt' | 'verwaltung_faktor_entfernt' | 'token_wiederverwendet'
+  | 'passwort_durch_verwalter' | 'verwaltung_passwort_gesetzt' | 'zweiter_faktor_eingerichtet' | 'zweiter_faktor_abgeschaltet'
+  | 'anmeldung_gebremst' | 'einstellungen_geaendert';
 
 /** Ohne Geheimnisse und ohne Link. `haushalt` nennt die Konten, die diese
  * Sammlung sehen: Ein Eindringling könnte sich dort eingetragen haben. */
@@ -496,6 +529,17 @@ export async function sendKontoHinweisMail(to: string, username: string, art: Ko
                           : `„${o.durch ?? ''}“ hat das Konto „${o.konto ?? ''}“ zum Verwalter gemacht.`,
     verwaltung_faktor_entfernt: en ? `“${o.durch ?? ''}” removed the second factor of the account “${o.konto ?? ''}”.`
                                    : `„${o.durch ?? ''}“ hat den zweiten Faktor des Kontos „${o.konto ?? ''}“ entfernt.`,
+    passwort_durch_verwalter: en ? `the administrator “${o.durch ?? ''}” set a new password for your account. All sign-ins and app tokens were ended.`
+                                 : `der Verwalter „${o.durch ?? ''}“ hat ein neues Passwort für dein Konto gesetzt. Alle Anmeldungen und App-Zugänge wurden beendet.`,
+    verwaltung_passwort_gesetzt: en ? `“${o.durch ?? ''}” set a new password for the account “${o.konto ?? ''}”.`
+                                    : `„${o.durch ?? ''}“ hat ein neues Passwort für das Konto „${o.konto ?? ''}“ gesetzt.`,
+    zweiter_faktor_eingerichtet: en ? 'a second factor (authenticator app) was set up for your account. All other sign-ins and app tokens were ended.'
+                                    : 'für dein Konto wurde ein zweiter Faktor (Authenticator-App) eingerichtet. Alle anderen Anmeldungen und App-Zugänge wurden beendet.',
+    zweiter_faktor_abgeschaltet: en ? 'the second factor of your account was turned off.' : 'der zweite Faktor deines Kontos wurde abgeschaltet.',
+    anmeldung_gebremst: en ? 'there were several failed sign-in attempts for your account; further attempts are slowed down for now.'
+                           : 'für dein Konto gab es mehrere fehlgeschlagene Anmeldeversuche; weitere Versuche werden vorerst gebremst.',
+    einstellungen_geaendert: en ? `“${o.durch ?? ''}” changed security-relevant settings: ${o.konto ?? ''}.`
+                                : `„${o.durch ?? ''}“ hat sicherheitsrelevante Einstellungen geändert: ${o.konto ?? ''}.`,
     token_wiederverwendet: en ? `an already replaced app token (“${o.passkey ?? ''}”) was used again, so someone has a copy. All tokens of that device were ended; sign in to the app again.`
                               : `ein schon ersetzter App-Zugang („${o.passkey ?? ''}“) wurde erneut benutzt, jemand hat also eine Kopie. Alle Zugänge dieses Geräts sind beendet; melde die App neu an.`,
   }[art];

@@ -228,7 +228,8 @@ test('Inline-Stile in index.html werden weniger, nie mehr', () => {
   // davon 56 reines display:none. 112 am 29.10. (Merkliste-Kasten als Klasse),
   // 52 am selben Tag (Diagramm, Banner, Dialogfüsse, PDF-Ansicht als Klassen).
   // 51 am 30.10. (Kennzahlen der Minifiguren ohne eigenes Raster). 47 am 03.11.
-  const SCHRANKE = 47;
+  // 38 am 04.11. (Bauliste und Zwischenspeicher als Klassen); 36 am selben Tag (Bauliste-Chips und Status).
+  const SCHRANKE = 36;
   const html = fs.readFileSync(path.join(WEB, 'public', 'index.html'), 'utf8').replace(/<!--[\s\S]*?-->/g, '');
   const stile = [...html.matchAll(/<[a-zA-Z][^>]*?\sdata-stil="([^"]*)"/g)].map(m => m[1].trim().replace(/;$/, ''));
   assert.ok(stile.length > 50, 'Keine Inline-Stile gefunden — greift die Suche noch?');
@@ -428,4 +429,31 @@ test('jedes Dokument unter docs/begruendungen wird vom Code erreicht', () => {
   })(wurzel);
   assert.ok(dokumente.length > 50, `nur ${dokumente.length} Dokumente gefunden — greift die Suche noch?`);
   assert.deepEqual(dokumente.filter(d => !verwiesen.has(d)), []);
+});
+
+test('der Kommentaranteil der Betriebsdateien sinkt, nie steigt', () => {
+  // Workflows, Dockerfile, compose.yaml, tsconfig.json: Auch dort steht das
+  // Warum in wenigen Zeilen, die Geschichte im Commit (CLAUDE.md). Gemessen
+  // am 04.11.2026: 24,5 % (vorher 44,0 %). Das Caddyfile zählt nicht mit:
+  // Kein Block darin ist länger als fünf Zeilen.
+  // Gegenprobe (04.11.2026): 60 Kommentarzeilen an das Dockerfile → rot.
+  const SCHRANKE = 24.5;
+  const wf = path.join(WEB, '..', '.github', 'workflows');
+  const dateien = [
+    ...fs.readdirSync(wf).filter(f => /\.ya?ml$/.test(f)).map(f => path.join(wf, f)),
+    ...['Dockerfile', 'compose.yaml', 'tsconfig.json'].map(f => path.join(WEB, f)),
+  ];
+  let zeilen = 0, kommentar = 0;
+  for (const f of dateien) {
+    for (const z of fs.readFileSync(f, 'utf8').split('\n')) {
+      const t = z.trim();
+      if (!t) continue;
+      zeilen++;
+      if (t.startsWith('#') || t.startsWith('//')) kommentar++;
+    }
+  }
+  assert.ok(dateien.length >= 6 && zeilen > 1000, `nur ${dateien.length} Dateien, ${zeilen} Zeilen — greift die Suche noch?`);
+  const anteil = Math.round(1000 * kommentar / zeilen) / 10;
+  assert.ok(anteil <= SCHRANKE, `${anteil} % Kommentarzeilen in den Betriebsdateien, erlaubt sind ${SCHRANKE} %`);
+  if (anteil < SCHRANKE - 0.5) console.log(`  ℹ Kommentaranteil Betrieb: ${anteil} % (Schranke ${SCHRANKE}) — Schranke nachziehen`);
 });

@@ -6,15 +6,15 @@ import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.booleanPreferencesKey
+import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import ch.brickinventoryapp.util.TokenVerschluesselung
 import ch.brickinventoryapp.util.liesToken
 import dagger.hilt.android.qualifiers.ApplicationContext
+import ch.brickinventoryapp.di.ApplicationScope
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.StateFlow
@@ -33,7 +33,10 @@ val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "ap
 class PreferencesManager @Inject constructor(
     @param:ApplicationContext private val context: Context,
     private val tresor: TokenVerschluesselung,
-) : Anmeldeablage, ch.brickinventoryapp.data.cache.CacheBesitzer, ch.brickinventoryapp.util.PinAblage, Entwertungsquelle {
+    /** Die Spiegel laufen, solange die App lebt; kein eigener Bereich ohne Besitzer. */
+    @param:ApplicationScope private val prefsScope: CoroutineScope,
+) : Anmeldeablage, ch.brickinventoryapp.data.cache.CacheBesitzer, ch.brickinventoryapp.util.PinAblage, Entwertungsquelle,
+    ch.brickinventoryapp.util.UpdateStandAblage {
     companion object {
         /**
          * Der synchron lesbare Spiegel des Designs — eigene Datei, damit er
@@ -59,6 +62,8 @@ class PreferencesManager @Inject constructor(
         const val PIN_PRAEFIX = "pin:"
         const val SYSTEMFARBEN = "systemfarben"
         const val VORSCHAU_VERBERGEN = "vorschau_verbergen"
+        const val ENTWERTUNG_GESCHEITERT = "entwertung_gescheitert"
+        const val WIDGET_WERTE = "widget_werte"
 
         /**
          * In welchen Netzen darf das Vorwärmen der Vorschaubilder holen? Auf dem Gerät,
@@ -111,6 +116,14 @@ class PreferencesManager @Inject constructor(
          * Umrechnung die Zeitzone verlöre.
          */
         val ALARM_MARKE = stringPreferencesKey("alarm_marke")
+
+        /**
+         * Der höchste gesehene versionCode und der späteste Ausstellungszeitpunkt einer
+         * aktuellen Update-Beschreibung (util/UpdateFrische.kt). Je Gerät; das Abmelden
+         * lässt sie stehen, sonst setzte es die Messlatte für ein Zurückhalten zurück.
+         */
+        val UPDATE_HOECHSTER_CODE = intPreferencesKey("update_hoechster_code")
+        val UPDATE_AUSGESTELLT = longPreferencesKey("update_ausgestellt")
     }
 
     val serverUrl: Flow<String> = context.dataStore.data.map { prefs ->
@@ -156,7 +169,6 @@ class PreferencesManager @Inject constructor(
     // blockieren. Diese StateFlows spiegeln DataStore-Werte im Speicher, sodass
     // pro Request nur ein synchroner .value-Read nötig ist (statt runBlocking).
     // null = DataStore noch nicht gelesen (nur ganz kurz beim Kaltstart).
-    private val prefsScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
     // Der Speicherwert führt, der DataStore folgt: Die Anmeldung feuert sofort
     // Abrufe, und ein nachlaufender Wert gäbe dem Interceptor den alten Token.
@@ -478,6 +490,15 @@ class PreferencesManager @Inject constructor(
     override fun vergissVorgehaltenen(schluessel: String) { vorgehalten.remove(schluessel) }
     private val vorgehalten = java.util.concurrent.ConcurrentHashMap<String, String>()
 
+    /**
+     * Geldwerte im Startbildschirm-Widget zeigen? Je Gerät, Vorgabe aus: Das Widget
+     * ist ohne Entsperren für jeden lesbar, der das Telefon sieht.
+     */
+    fun widgetWerteZeigen(): Boolean = designSpiegel.getBoolean(WIDGET_WERTE, false)
+    fun setzeWidgetWerteZeigen(an: Boolean) {
+        designSpiegel.edit { putBoolean(WIDGET_WERTE, an) }
+    }
+
     /** Material You statt der Farben des Designs; je Gerät, wirkt ab Android 12. */
     fun systemfarben(): Boolean = designSpiegel.getBoolean(SYSTEMFARBEN, false)
     fun setzeSystemfarben(an: Boolean) {
@@ -494,12 +515,37 @@ class PreferencesManager @Inject constructor(
         designSpiegel.edit { putBoolean(VORSCHAU_VERBERGEN, an) }
     }
 
+    /**
+     * Server, an denen eine nachgeholte Abmeldung endgültig scheiterte. Die Meldung
+     * des Arbeiters kann abgeschaltet sein; die App sagt es darum beim nächsten Start
+     * noch einmal (AppViewModel), danach ist die Liste leer.
+     */
+    fun merkeGescheiterteEntwertung(server: String) {
+        designSpiegel.edit { putStringSet(ENTWERTUNG_GESCHEITERT, gescheiterteEntwertungen() + server) }
+    }
+    fun gescheiterteEntwertungen(): Set<String> = designSpiegel.getStringSet(ENTWERTUNG_GESCHEITERT, null).orEmpty().toSet()
+    fun quittiereGescheiterteEntwertungen() {
+        designSpiegel.edit { remove(ENTWERTUNG_GESCHEITERT) }
+    }
+
+    override suspend fun updateStand(): ch.brickinventoryapp.util.UpdateStand? {
+        val p = context.dataStore.data.first()
+        val code = p[UPDATE_HOECHSTER_CODE] ?: return null
+        return ch.brickinventoryapp.util.UpdateStand(code, p[UPDATE_AUSGESTELLT] ?: 0L)
+    }
+
+    override suspend fun merkeUpdateStand(stand: ch.brickinventoryapp.util.UpdateStand) {
+        context.dataStore.edit {
+            it[UPDATE_HOECHSTER_CODE] = stand.hoechsterCode
+            it[UPDATE_AUSGESTELLT] = stand.ausgestellt
+        }
+    }
 
     /** Der Geheimtext wie abgelegt: Der Auftrag braucht das Token nie im Klartext. */
     override suspend fun entwertungsauftrag(): Entwertungsauftrag? {
         val geheim = context.dataStore.data.first()[AUTH_TOKEN_ENC] ?: return null
         val server = serverUrlJetzt().ifBlank { return null }
-        return Entwertungsauftrag(server, geheim)
+        return Entwertungsauftrag(server, geheim, ch.brickinventoryapp.util.pinSchluessel(server)?.let(::pin))
     }
 
     suspend fun clearSession() = tokenSchranke.schreibe {

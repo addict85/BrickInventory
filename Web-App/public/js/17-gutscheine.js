@@ -35,7 +35,7 @@ const _klartext = new Map();
 
 async function holeKlartext(id) {
   if (_klartext.has(id)) return _klartext.get(id);
-  const password = await bestaetigeMitPasswort(tRaw('vouchers.klartext_title'), tRaw('vouchers.klartext_text'), 'schloss');
+  const password = await bestaetigeMitPasswort(tRaw('vouchers.klartext_title'), tRaw('vouchers.klartext_text'), 'schloss', { knopf: 'confirm.btn.anzeigen', art: 'bp' });
   if (password === null) return null;
   const d = await mitZweitemFaktor(z => api('POST', `/v1/vouchers/${id}/klartext`, { password, ...z }));
   if (!d?.success) { if (d) toast(d.error || tRaw('vouchers.load_error'), 'error'); return null; }
@@ -63,6 +63,8 @@ export function gruppiereNummer(roh) {
 
 /** Die Währung der Karten des Ausgabelandes; ohne Land die des Kontos. */
 const LAND_WAEHRUNG = { 'de-CH': 'CHF', 'de-DE': 'EUR', 'de-AT': 'EUR', 'fr-FR': 'EUR', 'it-IT': 'EUR', 'nl-NL': 'EUR', 'en-GB': 'GBP', 'en-US': 'USD' };
+/** Ohne gespeichertes Ausgabeland das Land zur Kontowährung (wie landFuerWaehrung im Server). */
+export const LAND_ZUR_WAEHRUNG = { CHF: 'de-CH', EUR: 'de-DE', GBP: 'en-GB', USD: 'en-US' };
 export function landWaehrung() {
   const land = G('gutschein-land')?.value || _settingsCache?.gutschein_land || '';
   return LAND_WAEHRUNG[land] || CURRENCY;
@@ -92,12 +94,11 @@ function zeile(g) {
           <span class="voucher-num">${esc(nummer)}</span>
           <button class="v-btn" data-click="gutscheinKopieren" data-arg="${g.id}" data-arg2="nummer"
                   title="${tRaw('vouchers.copy_number')}"
-                  aria-label="${tRaw('vouchers.copy_number')}">${KOPIE_ICON_SVG}</button>
+                  aria-label="${tRaw('vouchers.copy_number')}">${KOPIE_ICON_SVG}<span class="v-btn-text">${t('vouchers.kurz_kopieren')}</span></button>
         </div>
         <div class="voucher-meta">
           <span class="voucher-amount">${fmtN(g.amount, g.currency)}</span>
           ${landWaehrung() && g.currency !== landWaehrung() ? `<span class="voucher-abweichung">${t('vouchers.waehrung_abweichend', { w: landWaehrung() })}</span>` : ''}
-          ${g.hat_pdf ? '' : `<span class="voucher-nopdf">${t('vouchers.no_pdf_kurz')}</span>`}
           <!-- Der Stand NEBEN dem Betrag, nicht statt ihm: „250 CHF" allein
                ist keine Auskunft, „250 CHF, abgefragt am 15.10." ist eine.
                Und eine Karte, deren Guthaben noch nie abgefragt wurde, sagt
@@ -105,7 +106,7 @@ function zeile(g) {
           <span class="voucher-stand">${g.guthaben_geprueft_am
             ? t('vouchers.balance_as_of',
                 { datum: fmtDatum(g.guthaben_geprueft_am) })
-            : t('vouchers.balance_never')}</span>
+            : t('vouchers.balance_never')}${g.hat_pdf ? '' : ` · <span class="voucher-nopdf">${t('vouchers.no_pdf_kurz')}</span>`}</span>
         </div>
       </div>
       <div class="voucher-pin">
@@ -114,10 +115,10 @@ function zeile(g) {
         ${g.pin ? `<button class="v-btn" data-click="gutscheinPinUmschalten" data-arg="${g.id}"
                      title="${tRaw(pinOffen ? 'vouchers.pin_hide' : 'vouchers.pin_show')}"
                      aria-label="${tRaw(pinOffen ? 'vouchers.pin_hide' : 'vouchers.pin_show')}">
-                     ${ico(pinOffen ? 'auge-zu' : 'auge')}</button>
+                     ${ico(pinOffen ? 'auge-zu' : 'auge')}<span class="v-btn-text">${t(pinOffen ? 'vouchers.kurz_verbergen' : 'vouchers.kurz_anzeigen')}</span></button>
                    <button class="v-btn" data-click="gutscheinKopieren" data-arg="${g.id}" data-arg2="pin"
                      title="${tRaw('vouchers.copy_pin')}"
-                     aria-label="${tRaw('vouchers.copy_pin')}">${KOPIE_ICON_SVG}</button>` : ''}
+                     aria-label="${tRaw('vouchers.copy_pin')}">${KOPIE_ICON_SVG}<span class="v-btn-text">${t('vouchers.kurz_kopieren')}</span></button>` : ''}
       </div>
       <div class="voucher-actions">
         <button class="btn bs btn-sm v-text" type="button" data-click="gutscheinBearbeiten" data-arg="${g.id}"
@@ -142,6 +143,8 @@ export async function ladeGutscheine() {
   const d = await api('GET', '/v1/vouchers');
   if (!d?.success) { liste.innerHTML = `<div class="voucher-leer">${t('vouchers.load_error')}</div>`; return; }
   _gutscheine = d.vouchers || [];
+  const landFeld = G('gutschein-land');
+  if (landFeld) landFeld.value = _settingsCache?.gutschein_land || LAND_ZUR_WAEHRUNG[CURRENCY] || 'de-CH';
   zeigeLandWaehrung();
   const cur = G('v-currency');
   if (cur && !_bearbeitet && !G('v-amount')?.value) cur.value = landWaehrung();
@@ -287,7 +290,7 @@ export async function gutscheinSpeichern() {
 export async function gutscheinLoeschen(id) {
   const g = _gutscheine.find(x => String(x.id) === String(id));
   if (!g) return;
-  const password = await bestaetigeMitPasswort(tRaw('vouchers.delete_title'), tRaw('vouchers.delete_confirm', { nummer: gruppiereNummer(g.number) }), 'loeschen');
+  const password = await bestaetigeMitPasswort(tRaw('vouchers.delete_title'), tRaw('vouchers.delete_confirm', { nummer: gruppiereNummer(g.number) }), 'loeschen', { knopf: 'confirm.btn.endgueltig_loeschen', art: 'bd' });
   if (password === null) return;
   const d = await mitZweitemFaktor(z => api('DELETE', `/v1/vouchers/${id}`, { password, ...z }));
   if (d === null) return;
@@ -295,7 +298,7 @@ export async function gutscheinLoeschen(id) {
   // Rückgängig legt die Karte neu an: nur mit abgerufenem Klartext und ohne PDF, das verloren ginge.
   const k = _klartext.get(g.id);
   _klartext.delete(g.id);
-  toast(tRaw('vouchers.deleted'), 'success', g.hat_pdf || !k ? undefined : { text: tRaw('trash.undo'), fn: async () => {
+  toast(tRaw('vouchers.deleted'), 'success', g.hat_pdf || !k ? undefined : { text: tRaw('trash.undo'), bleibt: true, fn: async () => {
     const r = await api('POST', '/v1/vouchers', { number: k.number, pin: k.pin || '', amount: g.amount, currency: g.currency });
     if (!r?.success) { toast(r?.error || tRaw('vouchers.save_error'), 'error'); return; }
     toast(tRaw('trash.restored'), 'success');
@@ -329,7 +332,7 @@ export async function gutscheinPdfOeffnen(id) {
 
 /** Bestätigung, dann ein Ticket für genau einen Abruf des PDFs (60 s). */
 async function pdfFreigabe(pfad) {
-  const password = await bestaetigeMitPasswort(tRaw('vouchers.pdf_freigabe_title'), tRaw('vouchers.pdf_freigabe_text'), 'schloss');
+  const password = await bestaetigeMitPasswort(tRaw('vouchers.pdf_freigabe_title'), tRaw('vouchers.pdf_freigabe_text'), 'schloss', { knopf: 'confirm.btn.pdf_oeffnen', art: 'bp' });
   if (password === null) return null;
   const d = await mitZweitemFaktor(z => api('POST', pfad, { password, ...z }));
   if (!d?.success) { if (d) toast(d.error || tRaw('settings.error'), 'error'); return null; }
@@ -557,6 +560,7 @@ export async function gutscheinLandSpeichern() {
   const feld = el('gutschein-land');
   if (!feld) return;
   const d = await api('POST', '/v1/settings', { gutschein_land: feld.value });
+  if (d?.success && _settingsCache) _settingsCache.gutschein_land = G('gutschein-land')?.value;
   if (!_bearbeitet) { const cur = G('v-currency'); if (cur) cur.value = landWaehrung(); }
   waehrungPruefen();
   zeigeLandWaehrung();

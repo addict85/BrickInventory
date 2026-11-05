@@ -2,6 +2,7 @@ import * as db from '../../../db/database';
 import type { DbSchnittstelle } from '../../../db/database';
 import { mengeJoin, mengeAus, teilmengeJoin, teilmengeAus } from '../../../db/bestandsmenge';
 import { blJoin, blNummerSql } from '../../../db/blZuordnungSql';
+import { teilSichtJoin, TEIL } from '../../../db/katalogSicht';
 import { LOCKS } from '../../infra/lockNamespaces';
 
 /** Stand der Rohdaten eines Kontos und ob Katalogänderungen offen sind (Migration 0079). */
@@ -29,8 +30,8 @@ function zusammenfassungEinfuegen(nurGruppen: boolean): string {
              ${blNummerSql('p.part_number')},
              p.color_id,
              MIN(p.part_number), MIN(${blNummerSql('p.part_number')}),
-             MIN(pc.part_name), MIN(pcc.color_name), MIN(pcc.color_hex), MIN(pc.category_name),
-             MIN(pcc.image_url), MIN(pcc.image_local),
+             MIN(${TEIL.name}), MIN(${TEIL.farbname}), MIN(${TEIL.farbcode}), MIN(${TEIL.kategorie}),
+             MIN(${TEIL.bild}), MIN(${TEIL.bildDatei}),
              -- Ersatzteil ist eine Angabe der Setliste; dasselbe Teil kann in
              -- einem Set Ersatz und im nächsten Pflicht sein.
              bool_or(COALESCE(tm_k.is_spare, false)),
@@ -41,11 +42,9 @@ function zusammenfassungEinfuegen(nurGruppen: boolean): string {
         FROM parts p
         ${mengeJoin('p', 'sm', '= $1')}
         ${teilmengeJoin('p', 'part', 'tm', '= $1')}
-        ${blJoin('p.part_number', 'part')}
+        ${blJoin('p.part_number', 'part', 'p.user_id')}
         LEFT JOIN storage_locations lo ON lo.id = p.storage_id
-        LEFT JOIN part_catalog pc ON pc.part_number = p.part_number
-        LEFT JOIN part_color_catalog pcc ON pcc.part_number = p.part_number
-                                        AND pcc.color_id    = p.color_id
+        ${teilSichtJoin('p.user_id', 'p.part_number', 'p.color_id')}
        WHERE p.user_id = $1 AND COALESCE(p.source, 'set') <> 'manual'${nurGruppen ? `
          AND ${blNummerSql('p.part_number')} = ANY($2)` : ''}
        GROUP BY p.user_id, ${blNummerSql('p.part_number')}, p.color_id`;
@@ -97,7 +96,7 @@ export function betroffeneGruppen(tx: DbSchnittstelle, nummern: string[]) {
   return tx.all<{ user_id: number; part_key: string }>(`
       SELECT DISTINCT p.user_id, ${blNummerSql('p.part_number')} AS part_key
         FROM parts p
-        ${blJoin('p.part_number', 'part')}
+        ${blJoin('p.part_number', 'part', 'p.user_id')}
         JOIN parts_summary_state st ON st.user_id = p.user_id
        WHERE COALESCE(p.source, 'set') <> 'manual'
          AND (p.part_number = ANY($1) OR ${blNummerSql('p.part_number')} = ANY($1))

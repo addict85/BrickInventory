@@ -1,0 +1,18 @@
+Gegenprobe: Erfassen schwebt auch bei 200 % über der Teileliste
+Modul: app
+Test: ch.brickinventoryapp.OberflaechenRegelnTest
+Rot: Teile bei 200 Prozent zeigen mehrere Teile ganz
+
+diff --git a/Android-App/feature-teile/src/main/java/ch/brickinventoryapp/ui/screens/PartsScreen.kt b/Android-App/feature-teile/src/main/java/ch/brickinventoryapp/ui/screens/PartsScreen.kt
+index 4f5f3e1..c994fc3 100644
+--- a/Android-App/feature-teile/src/main/java/ch/brickinventoryapp/ui/screens/PartsScreen.kt
++++ b/Android-App/feature-teile/src/main/java/ch/brickinventoryapp/ui/screens/PartsScreen.kt
+@@ -262,7 +262,7 @@ fun PartsScreen(
+         }
+     }
+ 
+-        if (!gross) ch.brickinventoryapp.ui.components.ErfassenFab(
++        if (!gross || gross) ch.brickinventoryapp.ui.components.ErfassenFab(
+             erfassenText, { showAddDialog = true },
+             Modifier.align(Alignment.BottomEnd).padding(Abstaende.gross),
+         )

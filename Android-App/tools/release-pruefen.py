@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Zwei Prüfungen vor dem Veröffentlichen eines APK (Job `apk-pruefen`).
+"""Prüfungen vor dem Veröffentlichen eines APK (Job `apk-pruefen`).
 
   release-pruefen.py zertifikat ZERTIFIKAT_TXT SOLL_DATEI
       ZERTIFIKAT_TXT ist die Ausgabe von `apksigner verify --print-certs`. Jedes
@@ -14,13 +14,35 @@
       von main als „neustes APK“ hinaus. ALT_VERSION_JSON `-`: noch nichts
       veröffentlicht.
 
+  release-pruefen.py beschreibung DATEN_JSON APK OUTPUT_METADATA COMMIT ABLAGE
+      DATEN_JSON ist der signierte Inhalt von version-signiert.json (die
+      Signatur prüft openssl im Workflow). Er muss genau dieses APK beschreiben:
+      versionCode und versionName wie in AGPs output-metadata.json, Grösse und
+      SHA-256 der Datei, der Commit, und die Adresse
+      ABLAGE/BrickInventory-<versionCode>.apk — der unveränderliche Anhang
+      dieser Fassung. Sonst signierte der Workflow eine Beschreibung, die die
+      App beim Laden ablehnt. Dazu eine Frist (sec10 N1): `ausgestellt` jetzt
+      (höchstens einen Tag alt) und `gueltigBis` danach, höchstens 90 Tage —
+      ohne sie liesse sich eine ältere Beschreibung still wieder hochladen.
+
+  release-pruefen.py schluessel GELIEFERT_PEM APP_PEM
+      GELIEFERT_PEM ist der öffentliche Beschreibungsschlüssel, mit dem der
+      Signierjob signiert hat (fehlt die Datei: keiner). APP_PEM ist
+      res/raw/beschreibungs_schluessel.pem der App. Nennt die App Schlüssel, muss
+      der gelieferte darunter sein; sonst lehnten die Geräte die Beschreibung ab
+      (sec11 H1). Nennt sie keinen, gilt der Übergangsweg über den APK-Schlüssel.
+
 Rückgabe 0 = in Ordnung, 1 = abgelehnt, 2 = Eingabe unbrauchbar. Die Meldung
 geht auf stdout; das ::error:: setzt der Workflow, denn ein erwartetes Nein
 (Probe-Schlüssel) ist dort kein Fehler.
 """
+import base64
+import hashlib
 import json
+import os
 import re
 import sys
+import time
 
 
 def sollwerte(pfad):
@@ -80,11 +102,88 @@ def fassung(alt_pfad, neu_code, commit):
     return 1
 
 
+TAG = 86400
+
+
+def frist(ausgestellt, gueltig, jetzt):
+    """Was an `ausgestellt`/`gueltigBis` nicht stimmt; leer, wenn beides passt."""
+    if not all(isinstance(w, int) and not isinstance(w, bool) for w in (ausgestellt, gueltig)):
+        return [f'ausgestellt/gueltigBis fehlen oder sind keine Zahlen ({ausgestellt!r}, {gueltig!r})']
+    if not jetzt - TAG <= ausgestellt <= jetzt + 300:
+        return [f'ausgestellt {ausgestellt} liegt nicht bei jetzt ({jetzt})']
+    if not 0 < gueltig - ausgestellt <= 90 * TAG:
+        return [f'gueltigBis {gueltig} liegt nicht 1 Sekunde bis 90 Tage nach ausgestellt']
+    return []
+
+
+def beschreibung(daten_pfad, apk_pfad, meta_pfad, commit, ablage):
+    try:
+        with open(daten_pfad, encoding='utf-8') as f:
+            daten = json.load(f)
+        with open(meta_pfad, encoding='utf-8') as f:
+            element = json.load(f)['elements'][0]
+        with open(apk_pfad, 'rb') as f:
+            pruefsumme = hashlib.sha256(f.read()).hexdigest()
+        groesse = os.path.getsize(apk_pfad)
+    except (OSError, ValueError, KeyError, IndexError, TypeError) as e:
+        print(f'Eingabe unlesbar: {e}')
+        return 2
+    soll = {
+        'versionCode': element.get('versionCode'),
+        'versionName': element.get('versionName'),
+        'commit': commit,
+        'apkSize': groesse,
+        'apkSha256': pruefsumme,
+        'apkUrl': f"{ablage.rstrip('/')}/BrickInventory-{element.get('versionCode')}.apk",
+    }
+    falsch = [f'{k}: {daten.get(k)!r} statt {v!r}' for k, v in soll.items() if daten.get(k) != v]
+    falsch += frist(daten.get('ausgestellt'), daten.get('gueltigBis'), int(time.time()))
+    if falsch:
+        print('Die Beschreibung passt nicht zum APK: ' + '; '.join(falsch))
+        return 1
+    print(f'Beschreibung passt zum APK (versionCode {soll["versionCode"]}).')
+    return 0
+
+
+def pem_schluessel(pfad):
+    """Die öffentlichen Schlüssel (DER) einer PEM-Datei; Text ausserhalb der Blöcke zählt nicht."""
+    with open(pfad, encoding='utf-8') as f:
+        text = f.read()
+    bloecke = re.findall(r'-----BEGIN PUBLIC KEY-----([A-Za-z0-9+/=\s]+)-----END PUBLIC KEY-----', text)
+    if text.count('-----BEGIN') != len(bloecke):
+        raise ValueError(f'{pfad}: ein Block ist kein öffentlicher Schlüssel')
+    return [base64.b64decode(''.join(b.split()), validate=True) for b in bloecke]
+
+
+def schluessel(geliefert_pfad, app_pfad):
+    try:
+        app = pem_schluessel(app_pfad)
+        geliefert = pem_schluessel(geliefert_pfad) if os.path.exists(geliefert_pfad) else []
+    except (OSError, ValueError) as e:
+        print(f'Schlüssel unlesbar: {e}')
+        return 2
+    if not app:
+        print('Die App nennt keinen Beschreibungsschlüssel; es gilt der Übergangsweg über den APK-Schlüssel.')
+        return 0
+    if len(geliefert) != 1:
+        print('Die App verlangt einen Beschreibungsschlüssel, die Beschreibung trägt keinen.')
+        return 1
+    if geliefert[0] not in app:
+        print('Der Beschreibungsschlüssel des Signierjobs steht nicht in der App.')
+        return 1
+    print('Beschreibungsschlüssel steht in der App.')
+    return 0
+
+
 def main(argv):
     if len(argv) == 4 and argv[1] == 'zertifikat':
         return zertifikat(argv[2], argv[3])
     if len(argv) == 5 and argv[1] == 'fassung':
         return fassung(argv[2], argv[3], argv[4])
+    if len(argv) == 7 and argv[1] == 'beschreibung':
+        return beschreibung(*argv[2:7])
+    if len(argv) == 4 and argv[1] == 'schluessel':
+        return schluessel(argv[2], argv[3])
     print(__doc__)
     return 2
 

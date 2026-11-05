@@ -103,7 +103,7 @@ class QrAdresseTest {
         override fun merkePin(schluessel: String, fingerabdruck: String) { protokoll += "pin" }
         override fun gemerkterPin(schluessel: String): String? = null
         override fun halteVor(schluessel: String, fingerabdruck: String) { protokoll += "vor" }
-        override fun vergissVorgehaltenen(schluessel: String) {}
+        override fun vergissVorgehaltenen(schluessel: String) = Unit
     }
 
     private lateinit var pfade: PfadServer
@@ -131,7 +131,7 @@ class QrAdresseTest {
                 ch.brickinventoryapp.data.repository.HaushaltRepository(t.api, t.cache),
                 ch.brickinventoryapp.data.repository.TeileRepository(t.api, t.cache)),
             t.meldungen, NummernTexte, t.bestand, t.scrollMemory)
-        val vm = t.merke(AnmeldungViewModel(dienste, KontoRepository(t.api, t.cache), ablage))
+        val vm = t.merke(AnmeldungViewModel(dienste, KontoRepository(t.api, t.cache), ablage, { false }))
         var abgemeldet = false
         vm.loginWithQrToken("https://brick.meinserver.ch@evil.example", "bim:x", abmelden = { abgemeldet = true })
         assertFalse(vm.saveServerUrl("https://brick.meinserver.ch@evil.example"))

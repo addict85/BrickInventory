@@ -47,8 +47,9 @@ const { PASSWORT_MIN_ZEICHEN, passwortZuKurz } = _req('src/konto/auth.js');
 // test/baumbruecken.test.js, das diese Bruecken statisch aufloest.
 
 test('die Regel selbst haelt auch das, was kein String ist', () => {
-  assert.equal(passwortZuKurz('1234567'), true);
-  assert.equal(passwortZuKurz('12345678'), false);
+  // Seit dem 04.11.2026 zwölf statt acht.
+  assert.equal(passwortZuKurz('12345678901'), true);
+  assert.equal(passwortZuKurz('123456789012'), false);
   assert.equal(passwortZuKurz(''), true);
   assert.equal(passwortZuKurz(null), true);
   assert.equal(passwortZuKurz(undefined), true);
@@ -62,7 +63,7 @@ test('die Regel selbst haelt auch das, was kein String ist', () => {
   // kurz" beweist: Aus der Zahl wird ihre Ziffernfolge, und die ist lang
   // genug. (Hier stand zuerst `true` — ein Irrtum beim Schreiben dieses
   // Tests, nicht im Code: `String(123456789)` hat neun Zeichen.)
-  assert.equal(passwortZuKurz(123456789), false);
+  assert.equal(passwortZuKurz(123456789012), false);
 });
 
 test('alle fuenf Routen, die ein Passwort setzen, pruefen die Laenge', () => {
@@ -169,7 +170,9 @@ test('beide Oberflaechen pruefen vor dem Absenden', () => {
   for (const [voll, anzahl, name] of [
     // Seit dem 16.10. steht die Kontokarte auf ihrer eigenen Seite: Der
     // Einstellungsbildschirm traegt nur noch die Liste dorthin.
-    [path.join(__dirname, '..', '..', 'Android-App', 'feature-konto', 'src', 'main', 'java', 'ch', 'brickinventoryapp', 'ui', 'screens', 'EinstellungenKonto.kt'), 3, 'Passwort aendern'],
+    [path.join(__dirname, '..', '..', 'Android-App', 'feature-konto', 'src', 'main', 'java', 'ch', 'brickinventoryapp', 'ui', 'screens', 'EinstellungenKonto.kt'), 2, 'Passwort aendern'],
+    // Hinweis und Fehlermarkierung teilen sich seit dem PasswortFeld einen Wert.
+    [path.join(__dirname, '..', '..', 'Android-App', 'feature-konto', 'src', 'main', 'java', 'ch', 'brickinventoryapp', 'ui', 'screens', 'StartpasswortMaske.kt'), 1, 'Startpasswort'],
     [path.join(__dirname, '..', '..', 'Android-App', 'feature-anmeldung', 'src', 'main', 'java', 'ch', 'brickinventoryapp', 'ui', 'screens', 'LoginScreen.kt'),    1, 'Registrieren'],
   ]) {
     const kurz = path.basename(voll);

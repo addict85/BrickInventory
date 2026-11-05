@@ -1,19 +1,19 @@
 package ch.brickinventoryapp.ui.screens
 
+import ch.brickinventoryapp.ui.components.nebenKnopfFarben
+import ch.brickinventoryapp.ui.components.nebenKnopfRand
 import androidx.compose.ui.draw.clip
-import ch.brickinventoryapp.ui.components.AuswahlChip
 import ch.brickinventoryapp.ui.model.MerkpostenAnsicht
 import ch.brickinventoryapp.ui.model.MitgliedAnsicht
 import androidx.compose.foundation.clickable
 import androidx.compose.ui.semantics.Role
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.selected
 import ch.brickinventoryapp.ui.components.Bewegt
+import ch.brickinventoryapp.ui.components.ansagen
 import ch.brickinventoryapp.ui.components.HinweisText
 import ch.brickinventoryapp.ui.components.KeinTrefferHinweis
 import ch.brickinventoryapp.ui.components.Ladezustand
@@ -21,7 +21,6 @@ import ch.brickinventoryapp.ui.Ladeanzeige
 import ch.brickinventoryapp.ui.ladeanzeige
 import androidx.compose.material.icons.filled.BookmarkBorder
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.Sort
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material3.*
@@ -40,8 +39,6 @@ import ch.brickinventoryapp.data.repository.MERKLISTE_DEFAULT_SORT
 import ch.brickinventoryapp.ui.viewmodel.MerklisteViewModel
 import ch.brickinventoryapp.ui.theme.Abstaende
 import ch.brickinventoryapp.ui.theme.Formen
-import ch.brickinventoryapp.ui.theme.LocalIsBrickTheme
-import ch.brickinventoryapp.ui.theme.mittigBis
 import ch.brickinventoryapp.util.NumericInput
 import ch.brickinventoryapp.util.resolveThumbUrl
 import androidx.compose.material.icons.filled.NotificationsActive
@@ -102,7 +99,6 @@ fun MerklisteScreen(
         // Volle Breite wie jedes Raster (Lesebreite.kt): Mittig auf 840 dp stand der Preis
         // auf dem Tablet 1200 px vom Titel entfernt; im Raster bleibt er neben ihm.
         Column(Modifier.fillMaxSize()) {
-
             ScopeFilterZeile(
                 members  = blick.householdMembers,
                 current  = scopeModus,
@@ -158,15 +154,17 @@ fun MerklisteScreen(
                     leer = {
                         HinweisText(Icons.Default.BookmarkBorder, stringResource(R.string.wanted_empty),
                             stringResource(R.string.wanted_empty_hint))
-                        Button(onClick = { maskeOffen = true }, shape = Formen.knopf) {
-                            Icon(Icons.Default.Add, null, Modifier.size(18.dp))
-                            Spacer(Modifier.width(Abstaende.klein))
-                            Text(stringResource(R.string.wanted_add_first))
-                        }
-                        OutlinedButton(onClick = { onScan() }, shape = Formen.knopf) {
-                            Icon(ch.brickinventoryapp.ui.components.BarcodeSymbol, null, Modifier.size(18.dp))
-                            Spacer(Modifier.width(Abstaende.klein))
-                            Text(stringResource(R.string.gallery_scan_barcode))
+                        ch.brickinventoryapp.ui.components.KnopfStapel {
+                            Button(onClick = { maskeOffen = true }, modifier = Modifier.fillMaxWidth()) {
+                                Icon(Icons.Default.Add, null, Modifier.size(ch.brickinventoryapp.ui.components.mitSchrift(18.dp)))
+                                Spacer(Modifier.width(Abstaende.klein))
+                                Text(stringResource(R.string.wanted_add_first))
+                            }
+                            OutlinedButton(onClick = { onScan() }, modifier = Modifier.fillMaxWidth(), colors = nebenKnopfFarben(), border = nebenKnopfRand()) {
+                                Icon(ch.brickinventoryapp.ui.components.BarcodeSymbol, null, Modifier.size(ch.brickinventoryapp.ui.components.mitSchrift(18.dp)))
+                                Spacer(Modifier.width(Abstaende.klein))
+                                Text(stringResource(R.string.gallery_scan_barcode))
+                            }
                         }
                     },
                     keineTreffer = { KeinTrefferHinweis(stringResource(R.string.wanted_no_results)) },
@@ -211,7 +209,6 @@ fun MerklisteScreen(
             },
         )
     }
-
 }
 
 /**
@@ -282,6 +279,7 @@ internal fun UebernahmeDialog(
             // NumericInput statt eigener Filterung: Die Regel, was eine Zahl ist (genau ein
             // Trennzeichen), steht einmal in util/NumericInput.kt.
             OutlinedTextField(
+                shape = Formen.feld,
                 value = anzahl,
                 onValueChange = { anzahl = NumericInput.quantity(it) },
                 label = { Text(stringResource(R.string.common_quantity)) },
@@ -290,6 +288,7 @@ internal fun UebernahmeDialog(
                 modifier = Modifier.weight(1f),
             )
             OutlinedTextField(
+                shape = Formen.feld,
                 value = preis,
                 onValueChange = { preis = NumericInput.price(it) },
                 label = { Text(stringResource(R.string.gallery_purchase_price)) },
@@ -326,6 +325,9 @@ private fun MerkpostenErfassenDialog(
         mutableStateOf(householdMembers.firstOrNull { it.isSelf }?.id)
     }
 
+    // „Auf die Merkliste“ bleibt antippbar und markiert dann das leere Feld: Grau ohne
+    // Grund liess raten, warum nichts geschah.
+    var nummerFehlt by rememberSaveable { mutableStateOf(false) }
     val nummerFokus = remember { FocusRequester() }
     LaunchedEffect(Unit) {
         kotlinx.coroutines.delay(120)
@@ -337,9 +339,11 @@ private fun MerkpostenErfassenDialog(
         bestaetigen = stringResource(R.string.wanted_add_submit),
         // Nur mitschicken, wenn es ueberhaupt eine Wahl gab — sonst schreibt der
         // Server auf das eigene Konto.
-        onBestaetigen = { onAnlegen(nummer, zustand, if (householdMembers.size > 1) besitzer else null) },
+        onBestaetigen = {
+            if (nummer.isBlank()) nummerFehlt = true
+            else onAnlegen(nummer, zustand, if (householdMembers.size > 1) besitzer else null)
+        },
         onAbbrechen = onDismiss,
-        bestaetigenAn = nummer.isNotBlank(),
     ) {
         OutlinedTextField(
             value = nummer,
@@ -347,9 +351,13 @@ private fun MerkpostenErfassenDialog(
             label = { Text(stringResource(R.string.gallery_set_number)) },
             // Als Hilfetext statt Platzhalter: Der Platzhalter verschwand mit dem
             // Fokus, und der Dialog fokussiert das Feld sofort.
-            supportingText = { Text(stringResource(R.string.gallery_set_number_placeholder)) },
+            isError = nummerFehlt && nummer.isBlank(),
+            supportingText = {
+                if (nummerFehlt && nummer.isBlank()) Text(stringResource(R.string.erfassen_nummer_fehlt), Modifier.ansagen())
+                else Text(stringResource(R.string.gallery_set_number_placeholder))
+            },
             singleLine = true,
-            shape = Formen.knopf,
+            shape = Formen.feld,
             // Dieselbe Tastatur wie im AddSetDialog. Ein Zahlenfeld
             // ohne Tastaturwahl oeffnet die Buchstabentastatur — die
             // Regel dazu steht in NumericInputTest.
@@ -363,8 +371,6 @@ private fun MerkpostenErfassenDialog(
         OwnerPicker(householdMembers, besitzer, { besitzer = it })
     }
 }
-
-
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
@@ -388,6 +394,10 @@ private fun MerkpostenZeile(
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         elevation = CardDefaults.cardElevation(defaultElevation = ch.brickinventoryapp.ui.theme.Formen.karteErhebung),
     ) {
+        // Ohne Preis im Cache war der Preisjob seit dem Eintragen noch nicht da. „Preis
+        // folgt“ steht dann in der Zeile mit Nummer und Jahr: Allein rechts unten liess es
+        // eine leere Zeile in der Karte.
+        val preis = w.marktpreis
         Column(Modifier.padding(Abstaende.mittel), verticalArrangement = Arrangement.spacedBy(Abstaende.winzig)) {
             Row(horizontalArrangement = Arrangement.spacedBy(Abstaende.klein),
                 verticalAlignment = Alignment.CenterVertically) {
@@ -410,6 +420,7 @@ private fun MerkpostenZeile(
                             w.year?.toString(),
                             stringResource(if (w.condition == "U") R.string.condition_used
                                            else R.string.condition_new),
+                            if (preis == null) stringResource(R.string.wanted_price_pending) else null,
                         ).joinToString(" · "),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -418,7 +429,7 @@ private fun MerkpostenZeile(
             }
             // FlowRow: Bei grosser Schrift rückt der Preis unter die Plaketten, statt sie zu quetschen.
             // Mindesthöhe einer Plakette: Karten mit und ohne Plakette sind dann gleich hoch.
-            FlowRow(Modifier.heightIn(min = 32.dp),
+            if (preis != null || w.alarm != null || w.owned) FlowRow(Modifier.heightIn(min = 32.dp),
                     horizontalArrangement = Arrangement.spacedBy(Abstaende.klein),
                     verticalArrangement = Arrangement.spacedBy(Abstaende.winzig)) {
                 w.alarm?.let { a ->
@@ -432,17 +443,10 @@ private fun MerkpostenZeile(
                 // Grossvater heisst „ich habe es" auch „der Enkel hat es".
                 if (w.owned) InfoPlakette(stringResource(R.string.wanted_owned), icon = Icons.Default.Check)
                 Spacer(Modifier.weight(1f))
-                // ── Marktpreis statt Knopf ──
-                //
-                // In die Galerie übernommen wird im Merkposten-Detail. Ohne Preis im Cache war der
-                // Preisjob seit dem Eintragen noch nicht da — das sagt der Text, ein Strich sagte nichts.
-                val preis = w.marktpreis
+                // Marktpreis statt Knopf: In die Sammlung übernommen wird im Merkposten-Detail.
                 if (preis != null) {
                     Text(ch.brickinventoryapp.util.fmtMoney(preis, w.waehrung), fontWeight = FontWeight.Bold,
                          maxLines = 1, softWrap = false, modifier = Modifier.align(Alignment.CenterVertically))
-                } else {
-                    Text(stringResource(R.string.wanted_price_pending), style = MaterialTheme.typography.bodySmall,
-                         color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
         }

@@ -42,6 +42,8 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const express = require('express');
+const fs = require('node:fs');
+const path = require('node:path');
 const { serverAll, ohneKommentare } = require('./helpers/sources');
 
 test('1. die Startseite ist auch ohne Pfad erreichbar', async () => {
@@ -124,9 +126,10 @@ test('2. req.body ist immer ein Objekt, auch ohne passenden Parser', async () =>
   // Und jetzt die Zusicherung selbst. Gelesen wird ohne Kommentare: Der
   // Erklaerblock darueber nennt `req.body` reichlich, ein blosses indexOf
   // waere damit fuer immer zufrieden.
-  const code = ohneKommentare(serverAll());
+  // Seit dem 04.11.2026 in rumpfLesen: Die Rümpfe werden erst nach der Anmeldung gelesen.
+  const code = ohneKommentare(fs.readFileSync(path.join(__dirname, '..', 'routes', 'api_v1', 'middleware.ts'), 'utf8'));
   assert.match(code, /req\.body === undefined.*req\.body = \{\}/,
-    'In server.ts fehlt die Zusicherung, dass req.body ein Objekt ist. ' +
+    'In rumpfLesen fehlt die Zusicherung, dass req.body ein Objekt ist. ' +
     'Ohne sie antworten vierzehn Handler mit 500 statt mit ihrem eigenen 400, ' +
     'sobald ein Client den Content-Type vergisst.');
 

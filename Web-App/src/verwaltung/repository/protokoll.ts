@@ -4,7 +4,7 @@
 import * as db from '../../../db/database';
 
 export type VerwalterAktion = 'konto_angelegt' | 'passwort_gesetzt' | 'zweiter_faktor_entfernt'
-  | 'verwalter_ernannt' | 'verwalter_entzogen' | 'konto_geloescht' | 'konto_deaktiviert' | 'konto_reaktiviert'
+  | 'verwalter_ernannt' | 'verwalter_entzogen' | 'konto_geloescht' | 'konto_deaktiviert' | 'konto_reaktiviert' | 'konto_freigeschaltet'
   | 'einstellungen_geaendert' | 'gutschein_klartext' | 'gutschein_pdf' | 'gutschein_export';
 
 /** Vor dem Löschen aufrufen — danach ist der Name nicht mehr zu ermitteln. */

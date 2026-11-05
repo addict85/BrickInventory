@@ -32,8 +32,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.lifecycle.compose.LocalLifecycleOwner
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.compose.ui.res.stringResource
 import ch.brickinventoryapp.ressourcen.R
@@ -41,7 +39,6 @@ import android.view.MotionEvent
 import androidx.compose.foundation.background
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import ch.brickinventoryapp.ui.theme.Abstaende
 
 @Composable
@@ -79,6 +76,10 @@ fun BarcodeScannerScreen(
     // (autofokusDauerhaft() in KameraAufbau.kt); ein Takt liesse die Kamera dauernd
     // nachpumpen. Manuell fokussiert wird nur beim Antippen.
 
+    // Der Treffer ist auch zu spüren: Wer auf die Schachtel zielt, sieht nicht aufs Telefon.
+    val haptik = androidx.compose.ui.platform.LocalHapticFeedback.current
+    val treffer = { haptik.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.Confirm) }
+
     val borderColor by animateColorAsState(
         if (frozen) LocalStatusFarben.current.erfolg else MaterialTheme.colorScheme.primary,
         label = "border"
@@ -93,6 +94,7 @@ fun BarcodeScannerScreen(
                     onBarcodeFound = { value ->
                         if (!frozen) {
                             frozen = true
+                            treffer()
                             statusText = detectedHintFmt.replace("%1\$s", value)
                             onResult(value)
                         }
@@ -103,6 +105,7 @@ fun BarcodeScannerScreen(
                     onSetNumberFound = { value ->
                         if (!frozen) {
                             frozen = true
+                            treffer()
                             statusText = detectedHintFmt.replace("%1\$s", value)
                             onSetNumberResult(value)
                         }
@@ -137,7 +140,7 @@ fun BarcodeScannerScreen(
                         Modifier
                             .fillMaxWidth(0.88f)
                             .aspectRatio(1.8f)
-                            .border(2.dp, borderColor, Formen.knopf)
+                            .border(2.dp, borderColor, Formen.feld)
                     ) {
                         // Corner accents
                         val accent = borderColor
@@ -156,15 +159,16 @@ fun BarcodeScannerScreen(
                         Box(Modifier.size(cs, ct).align(Alignment.BottomEnd).background(accent))
                         Box(Modifier.size(ct, cs).align(Alignment.BottomEnd).background(accent))
                     }
-
                 }
             }
             else -> {
                 KameraErlaubnisHinweis { cameraPermission.anfragen() }
             }
         }
-        IconButton(onClick = onDismiss, modifier = Modifier.align(Alignment.TopEnd).padding(Abstaende.gross)) {
-            Icon(Icons.Default.Close, stringResource(R.string.scanner_close), tint = Color.White)
+        ch.brickinventoryapp.ui.components.MitTooltip(stringResource(R.string.scanner_close), Modifier.align(Alignment.TopEnd)) {
+            IconButton(onClick = onDismiss, modifier = Modifier.padding(Abstaende.gross)) {
+                Icon(Icons.Default.Close, stringResource(R.string.scanner_close), tint = Color.White)
+            }
         }
     }
 }

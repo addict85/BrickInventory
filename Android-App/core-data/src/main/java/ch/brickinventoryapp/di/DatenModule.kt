@@ -26,6 +26,15 @@ object DatenModule {
     @Singleton
     fun provideTokenVerschluesselung(): TokenVerschluesselung = KeystoreTokenTresor()
 
+    /** Der Schlüssel der lokalen Ablagen; umhüllt unter eigenem Alias, abgelegt ohne Sicherung. */
+    @Provides
+    @Singleton
+    fun provideAblageschluessel(
+        @dagger.hilt.android.qualifiers.ApplicationContext context: android.content.Context,
+    ): ch.brickinventoryapp.util.Ablageschluessel = ch.brickinventoryapp.util.Ablageschluessel(
+        java.io.File(context.noBackupFilesDir, "ablage.schluessel"), KeystoreTokenTresor("brickinventory_ablage"),
+    )
+
     @Provides
     @Singleton
     fun provideJson(): Json = ch.brickinventoryapp.data.api.ApiJson
@@ -48,10 +57,12 @@ object DatenModule {
     fun provideTokenTausch(
         p: ch.brickinventoryapp.data.PreferencesManager,
         konto: javax.inject.Provider<ch.brickinventoryapp.data.repository.KontoRepository>,
+        @ApplicationScope bereich: kotlinx.coroutines.CoroutineScope,
     ): ch.brickinventoryapp.data.TokenTausch = ch.brickinventoryapp.data.TokenTausch(
         stand = { p.tokenStand() },
         ersetze = { vorher, neu, herkunft -> p.ersetzeGetauschtenToken(vorher, neu, herkunft) },
         rotiere = { konto.get().tokenRotieren(it) },
+        hintergrund = bereich,
     )
 
     @Provides

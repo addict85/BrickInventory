@@ -15,6 +15,7 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.test.core.app.ApplicationProvider
 import ch.brickinventoryapp.data.PreferencesManager
 import ch.brickinventoryapp.ui.components.LocalSchrittschutz
+import ch.brickinventoryapp.ui.components.Sichtschutz
 import ch.brickinventoryapp.ui.components.Schrittschutz
 import ch.brickinventoryapp.ui.components.Schrittsperre
 import ch.brickinventoryapp.ui.components.Ueberdeckungsschutz
@@ -29,6 +30,9 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 
 /**
  * Schutz auf dem Gerät: Ein Tipp, während ein fremdes Fenster einen Teil des
@@ -47,6 +51,8 @@ import org.robolectric.annotation.Config
  *       laufende Aufrufe ab …“ (gegenproben/serverwechsel-ohne-abbruch.patch)
  *   (e) saveServerUrl() vergleicht beim Token nur die Herkunft → rot „ein anderer
  *       Pfad auf demselben Host verwirft den Token“ (gegenproben/pfadwechsel-behaelt-token.patch)
+ *   (f) (sec8 H8) Sichtschutz() ohne Ueberdeckungsschutz() → rot „heikle Seiten sind
+ *       vor Ueberlagerung geschuetzt“ (gegenproben/sichtschutz-ohne-ueberdeckung.patch)
  */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [35])
@@ -108,6 +114,34 @@ class GeraeteSchutzTest {
         assertEquals(1, klicks)
     }
 
+    /**
+     * Wächter für jede heikle Seite (sec8 H8): Wer Sichtschutz oder die Schrittsperre
+     * setzt, bekommt den Schutz vor Überlagerung mit — auch vor der Bestätigung. Nur
+     * der app-weite Wunsch „Vorschau verbergen“ bleibt ohne.
+     */
+    @Test
+    fun `heikle Seiten sind vor Ueberlagerung geschuetzt`() {
+        val seite = mutableStateOf("keine")
+        compose.setContent {
+            BrickInventoryManagerTheme {
+                CompositionLocalProvider(LocalSchrittschutz provides Schrittschutz { _, _ -> }) {
+                    when (seite.value) {
+                        "sichtschutz" -> Sichtschutz()
+                        "schrittsperre" -> Schrittsperre("Verwaltung") { Text("Verwalteraktion") }
+                        "vorschau" -> Sichtschutz(ueberdeckung = false)
+                    }
+                    Text("Seite")
+                }
+            }
+        }
+        val fenster = compose.activity.window.decorView
+        for ((name, erwartet) in listOf("sichtschutz" to true, "keine" to false, "schrittsperre" to true, "vorschau" to false)) {
+            compose.runOnUiThread { seite.value = name }
+            compose.waitForIdle()
+            assertEquals("$name: Schutz vor Überlagerung", erwartet, fenster.filterTouchesWhenObscured)
+        }
+    }
+
     @Test
     fun `die Verwaltung zeigt sich erst nach der Geraetesperre`() {
         var bestaetigen: (() -> Unit)? = null
@@ -136,7 +170,7 @@ class GeraeteSchutzTest {
         val prefs = PreferencesManager(ApplicationProvider.getApplicationContext<Context>(), object : TokenVerschluesselung {
             override fun verschluessle(klartext: String) = klartext
             override fun entschluessle(gespeichert: String) = gespeichert
-        })
+        }, CoroutineScope(SupervisorJob() + Dispatchers.IO))
         var abgebrochen = 0
         var nutzerCa = 0
         prefs.beimServerwechsel { abgebrochen++ }
@@ -161,7 +195,7 @@ class GeraeteSchutzTest {
         val prefs = PreferencesManager(ApplicationProvider.getApplicationContext<Context>(), object : TokenVerschluesselung {
             override fun verschluessle(klartext: String) = klartext
             override fun entschluessle(gespeichert: String) = gespeichert
-        })
+        }, CoroutineScope(SupervisorJob() + Dispatchers.IO))
         kotlinx.coroutines.runBlocking {
             prefs.saveServerUrl("https://geteilt.example/brick")
             prefs.saveAuthToken("token-brick")
@@ -178,7 +212,7 @@ class GeraeteSchutzTest {
         val prefs = PreferencesManager(ctx, object : TokenVerschluesselung {
             override fun verschluessle(klartext: String) = klartext
             override fun entschluessle(gespeichert: String) = gespeichert
-        })
+        }, CoroutineScope(SupervisorJob() + Dispatchers.IO))
         assertTrue("Ohne Wahl zeigt die App-Übersicht alles", prefs.vorschauVerbergen())
         prefs.setzeVorschauVerbergen(false)
         assertFalse(prefs.vorschauVerbergen())

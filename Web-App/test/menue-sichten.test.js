@@ -259,7 +259,8 @@ test('die Kopfleiste behaelt ihre bewusste Hoehe', () => {
     'Der Namensknopf nimmt die Hoehe nicht mehr.');
   // Nicht an `.btn-sm`: die Klasse haengt an 28 Stellen in index.html und in
   // fuenf JS-Dateien. Eine Hoehe dort verschoebe die halbe Oberflaeche.
-  assert.doesNotMatch(css, /\.btn-sm\{[^}]*height:/,
+  // min-height 32 px ist die kompakte Knopfgrösse (zwei Grössen); feste Höhe bleibt verboten.
+  assert.doesNotMatch(css, /\.btn-sm\{[^}]*(?<!min-)height:/,
     '`.btn-sm` hat eine feste Hoehe bekommen — diese Klasse traegt die halbe ' +
     'Oberflaeche, die Hoehe gehoert in die Kopfleiste.');
 });

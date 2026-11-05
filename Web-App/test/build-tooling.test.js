@@ -10,7 +10,7 @@ const fs     = require('node:fs');
 const path   = require('node:path');
 
 const os     = require('node:os');
-const { execFileSync } = require('node:child_process');
+const { execFileSync, spawnSync } = require('node:child_process');
 
 const ROOT = path.join(__dirname, '..');
 const read = f => fs.readFileSync(path.join(ROOT, f), 'utf8');
@@ -339,6 +339,32 @@ test('die Sicherheitsprüfung sagt, was sie gefunden hat', () => {
     'Ohne eigenes Zeitlimit haengt eine stumme Registry fuenf Minuten je Versuch');
 });
 
+// Die Auswertung aus dem Workflow läuft hier wirklich, mit einem nachgebauten
+// Bericht. Gegenprobe (03.11.2026 gemessen): `m.moderate` aus der Summe
+// gestrichen → rot „ein Befund „moderate“ macht den Lauf rot“.
+test('npm audit: ein Befund ab „moderate“ macht den Lauf rot', (t) => {
+  const yml = fs.readFileSync(path.join(ROOT, '..', '.github', 'workflows', 'web-ci.yml'), 'utf8');
+  const rumpf = schrittRumpf(yml, 'Sicherheitsprüfung');
+  const stuecke = [...rumpf.matchAll(/node -e '\n([\s\S]*?)\n\s*'/g)].map(m => m[1]);
+  const auswertung = stuecke.find(s => s.includes('process.env.BERICHT'));
+  assert.ok(auswertung, 'die Auswertung des Berichts ist nicht zu finden');
+  const ort = fs.mkdtempSync(path.join(os.tmpdir(), 'audit-'));
+  t.after(() => fs.rmSync(ort, { recursive: true, force: true }));
+  const lauf = (stufe) => {
+    const m = { info: 0, low: 0, moderate: 0, high: 0, critical: 0 };
+    const vulnerabilities = {};
+    if (stufe) { m[stufe] = 1; vulnerabilities.probe = { severity: stufe, via: ['GHSA-probe'] }; }
+    fs.writeFileSync(path.join(ort, 'audit.json'), JSON.stringify({ metadata: { vulnerabilities: m }, vulnerabilities }));
+    return spawnSync(process.execPath, ['-e', auswertung], { encoding: 'utf8', env: { ...process.env, BERICHT: path.join(ort, 'audit.json') } });
+  };
+  assert.equal(lauf(null).status, 0, 'ohne Befund rot');
+  assert.equal(lauf('low').status, 0, '„low“ macht den Lauf rot');
+  const mittel = lauf('moderate');
+  assert.notEqual(mittel.status, 0, 'ein Befund „moderate“ macht den Lauf rot');
+  assert.match(mittel.stdout, /::error title=Schwachstelle \(moderate\)::probe/);
+  assert.notEqual(lauf('critical').status, 0);
+});
+
 test('der CI-Workflow prüft, was er prüfen soll', () => {
   const p = path.join(ROOT, '..', '.github', 'workflows', 'web-ci.yml');
   assert.ok(fs.existsSync(p), 'Es gibt keinen CI-Workflow mehr');
@@ -493,6 +519,10 @@ test('Dockerfile und CI laufen auf derselben, unterstützten Node-Version', () =
   assert.equal(imCi, imBild[0],
     `CI prüft auf Node ${imCi}, ausgeliefert wird Node ${imBild[0]} — ` +
     'dann sagt ein grüner Lauf nichts über das Image');
+  // .nvmrc für die lokale Entwicklung (`nvm use`). Gegenprobe (04.11.2026):
+  // .nvmrc auf 24 → rot „.nvmrc nennt Node 24“.
+  const nvmrc = read('.nvmrc').trim();
+  assert.equal(nvmrc, imBild[0], `.nvmrc nennt Node ${nvmrc}, ausgeliefert wird Node ${imBild[0]}`);
 
   // Abgelaufene Zeilen. Beim Ergänzen bitte das Datum dazuschreiben.
   const abgelaufen = {

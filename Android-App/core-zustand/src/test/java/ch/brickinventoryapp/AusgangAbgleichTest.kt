@@ -44,6 +44,8 @@ import java.util.Collections
  *   F  in Abgleich.lauf `p.schluessel` → `java.util.UUID.randomUUID().toString()`
  *      → rot „Die Wiederholung trägt denselben Schlüssel“
  *   G  in einordnenLoeschen die 404-Ausnahme entfernt → rot „beim Löschen …“
+ *   H  in Abgleich.lauf die Bereichsprüfung vor dem Senden entfernt → rot „ein
+ *      Konto-Wechsel vor dem Senden …“ (gegenproben/ausgang-ohne-pruefung-vor-senden.patch)
  */
 class AusgangAbgleichTest {
 
@@ -155,6 +157,23 @@ class AusgangAbgleichTest {
         repeat(Abgleich.MAX_VERSUCHE - 1) { assertEquals(Abgleichsergebnis.SPAETER, Abgleich(a, s).sende()) }
         assertEquals(Abgleichsergebnis.FERTIG, Abgleich(a, s).sende())
         assertEquals(0, a.ausgang.alle("konto-a").size)
+    }
+
+    @Test
+    fun `ein Konto-Wechsel vor dem Senden schickt keinen Posten mit dem neuen Konto`() = runBlocking {
+        var konto = "konto-a"
+        var wechsleNachAbfrage = false
+        val a = Offlineablage(SpeicherBestand(), SpeicherAusgang(), {
+            konto.also { if (wechsleNachAbfrage) { konto = "konto-b"; wechsleNachAbfrage = false } }
+        })
+        for (n in 1..2) a.puffere(menge(n))
+        // Der Lauf beginnt unter konto-a, vor dem ersten Senden gilt schon konto-b.
+        wechsleNachAbfrage = true
+        val s = Sender()
+        assertEquals(Abgleichsergebnis.NICHT_ANGEMELDET, Abgleich(a, s).sende())
+        assertEquals("Kein Posten von konto-a geht mit dem Token von konto-b raus",
+            emptyList<Bearbeitung>(), s.gesendet.toList())
+        assertEquals(2, a.ausgang.alle("konto-a").size)
     }
 
     @Test

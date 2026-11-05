@@ -73,16 +73,18 @@
     body{background:var(--bg);color:var(--txt);font-family:var(--font);font-size:calc(var(--fs-4) * .9375);line-height:1.5;min-height:100vh;word-spacing:.08em;overflow-wrap:break-word}
 
     /* LOGIN */
-    #startup-screen{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;background:var(--screen-bg)}
+    #startup-screen{display:none;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;background:var(--screen-bg)}
     #login-screen{display:none;align-items:center;justify-content:center;min-height:100vh;background:var(--screen-bg)}
     .lcard{background:var(--sur);border-radius:16px;padding:2.5rem;width:100%;max-width:400px;box-shadow:var(--sh2);border:1px solid var(--bdr)}
-    .llogo{display:flex;align-items:center;gap:10px;margin-bottom:2rem;justify-content:center}
+    .llogo{display:flex;flex-wrap:wrap;align-items:center;gap:10px;margin-bottom:2rem;justify-content:center}
     .llogo .icon{width:44px;height:44px;background:var(--b600);border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:22px}
-    .llogo h1{font-size:var(--fs-6);font-weight:800}
+    .llogo h1{font-size:var(--fs-6);font-weight:800;min-width:0;text-align:center;overflow-wrap:break-word;hyphens:auto}
     .llogo h1 span{color:var(--b600)}
     /* Fehlermeldung direkt am Feld (feldFehler in 01-core.js). */
     .feld-fehler{color:var(--r700);font-size:var(--fs-2);margin-top:4px;flex-basis:100%}
     input[aria-invalid="true"]{border-color:var(--r500)}
+    .login-hinweis{background:var(--b50);color:var(--b700);border:1px solid var(--b200);padding:10px 14px;border-radius:8px;font-size:var(--fs-3);margin-bottom:1rem}
+    .login-hinweis[hidden]{display:none}
     .lerr{background:var(--r100);color:var(--r700);padding:10px 14px;border-radius:8px;font-size:var(--fs-3);margin-bottom:1rem;display:none}
 
     /* APP */
@@ -168,8 +170,8 @@
                 background:var(--sur);color:var(--txt);border:0;
                 border-radius:8px;cursor:pointer;
                 padding:.5rem .7rem;font-size:var(--fs-3)}
-    /* Ohne Trennwörterbuch bleibt ein langes Wort ganz; es bricht dann im Wort. */
-    .umenu-item>span{min-width:0;overflow-wrap:anywhere}
+    /* Ein Wort bricht nur, wenn es allein nicht in die Zeile passt („Hintergrund|a|rbeiten“ las niemand). */
+    .umenu-item>span{min-width:0;overflow-wrap:break-word;hyphens:auto}
     @media (hover:hover){.umenu-item:hover{background:var(--b50,var(--s100))}}
     /* Der Strich trennt die sieben Sichten von der einen Handlung darunter.
        `border:0` zuerst: ein <hr> bringt von sich aus einen Rahmen mit, und
@@ -217,7 +219,7 @@
                   font-family:inherit;line-height:1.5;cursor:pointer;
                   max-width:min(14rem,28vw)}
     @media (hover:hover){.ubadge-knopf:hover{filter:brightness(.96)}}
-    .ubadge-knopf.aktiv{box-shadow:0 0 0 2px var(--b600)}
+    .ubadge-knopf.aktiv{box-shadow:inset 0 -3px 0 var(--b600)}
     .ubadge-knopf:focus-visible{outline:3px solid var(--fokus,var(--b700));outline-offset:2px}
     /* Ein langer Benutzername kürzt sich, die Striche bleiben: Sie stehen in
        einem eigenen Feld, das nicht schrumpft. Lag das Überlaufen am Knopf,
@@ -430,7 +432,7 @@
     [data-dunkel] .sci,[data-theme="werkbank"] .sci{background:#2b3139}
     [data-dunkel] .sci img,[data-theme="werkbank"] .sci img{filter:brightness(.75);border-radius:6px;padding:10px}
     /* Platzhalter in der Grauschrift des Designs: Das Browsergrau hielt im Dunkeln keine 4,5:1. */
-    ::placeholder{color:var(--mut);opacity:1}
+    ::placeholder{color:var(--mut);opacity:1;font-style:italic}
     [data-dunkel]{color-scheme:dark;--farbpunkt-rand:rgba(255,255,255,.55)}
     .sci .ni{font-size:var(--fs-8)}
     .scb{padding:11px}
@@ -448,7 +450,7 @@
     .diagramm-leer{display:flex;flex-direction:column;gap:4px;align-items:center;text-align:center;padding:1.5rem 1rem;color:var(--mut);font-size:var(--fs-2)}
     .diagramm-leer strong{color:var(--txt);font-weight:600}
     .pnl-zeitraum{margin-left:6px;font-size:var(--fs-1);color:var(--mut)}
-    .period-btn{padding:4px 14px;font-size:var(--fs-1);font-weight:600;border:1.5px solid var(--feldrand);border-radius:999px;background:var(--sur);color:var(--mut);cursor:pointer;transition:all .15s}
+    .period-btn{padding:4px 14px;font-size:var(--fs-1);font-weight:600;white-space:nowrap;overflow-wrap:normal;border:1.5px solid var(--feldrand);border-radius:999px;background:var(--sur);color:var(--mut);cursor:pointer;transition:all .15s}
     @media (hover:hover){.period-btn:hover{border-color:var(--b600);color:var(--b600)}}
     .period-btn.active{background:var(--b600);color:var(--auf-primaer,#fff);border-color:var(--b600)}
     .snum{white-space:nowrap;font-family:var(--mono);font-size:var(--fs-1);color:var(--b600);font-weight:500;margin-bottom:2px}
@@ -469,6 +471,7 @@
     /* .mk-zeile dazu (24.09.): Die Merklisten-Zeile ist keine Kachel, soll den
        Papierkorb aber genauso zeigen — „analog den Kacheln bei den Sets". */
     @media (hover:hover){.sc:hover .ca, .man-tile:hover .ca, .mk-zeile:hover .ca{opacity:1}}
+    :is(.sc, .man-tile, .mk-zeile, .part-card):focus-visible > .ca{opacity:1}
     /* Auf Geräten ohne Zeigegerät gibt es kein Überfahren — dort dauerhaft
        sichtbar, sonst wäre Löschen per Touch gar nicht erreichbar. */
     @media (hover: none){ .ca{opacity:1} }
@@ -530,6 +533,12 @@
     .fcur{font-size:var(--fs-1);color:var(--mut);margin-left:3px}
     .fsub{font-size:var(--fs-1);color:var(--mut);margin-top:4px}
     .fsub:empty{display:none}
+    /* Grundlage der drei Karten: was gerechnet ist und was nicht. */
+    .fin-basis{display:flex;gap:8px;align-items:flex-start;margin:-0.5rem 0 1.5rem;font-size:var(--fs-2);color:var(--mut);line-height:1.45}
+    .fin-basis[hidden]{display:none}
+    .fin-basis .ico{flex:none;width:16px;height:16px;margin-top:2px}
+    .fin-basis strong{color:var(--txt);font-weight:600}
+    .fin-fussnote{margin:8px 13px 0;font-size:var(--fs-1);color:var(--mut);text-align:right}
     .fval-hinweis{display:block;font-size:var(--fs-4);font-weight:600;color:var(--a-schrift);line-height:1.35}
     /* Summenzeilen der Finanztabellen: Einstand und Marktwert. */
     .fin-fuss-l{text-align:right;padding:11px 13px;font-weight:600}
@@ -574,6 +583,9 @@
     .part-card.skelett .skelett-bild{width:70px;height:70px;margin:0 auto}
     .skelett-zeile{height:12px;margin-top:10px}
     .skelett-zeile.kurz{width:60%}
+    .lade-geruest{padding:1rem 0;max-width:36rem}
+    .lade-geruest.klein{padding:0;max-width:none;height:100%;min-height:8rem;display:flex}
+    .skelett-flaeche{flex:1;border-radius:8px;background:linear-gradient(90deg,var(--s100) 25%,var(--s50) 50%,var(--s100) 75%);background-size:200% 100%;animation:shimmer 1.4s infinite}
     .skelett-liste{display:grid;gap:.75rem}
     .skelett-listenzeile{display:grid;grid-template-columns:3.5rem 1fr;gap:.75rem;align-items:center}
     .skelett-listenzeile .skelett-bild{aspect-ratio:1;width:3.5rem}
@@ -588,9 +600,8 @@
        zwölf Teile in zwölf Farben zwölf fast leere Zeilen. */
     .parts-list{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,8.125rem),1fr));gap:.85rem}
     .parts-list > .parts-group,.parts-list .parts-grid{display:contents}
-    .parts-list .group-hd{flex-direction:column;align-items:flex-start;justify-content:center;gap:4px;margin:0;padding:.6rem .7rem;border:1.5px solid var(--bdr);border-radius:var(--rad);background:var(--s50)}
     /* Manuell erfasste Teile/Minifiguren — einheitliche editierbare Tiles */
-    .man-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,11.25rem),1fr));gap:.85rem}
+    .man-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,8.125rem),1fr));gap:.85rem}
     .man-tile{background:var(--sur);border:1.5px solid var(--bdr);border-radius:10px;padding:.9rem;box-shadow:var(--sh0);position:relative}
     .man-tile-del{position:absolute;top:6px;right:6px}
     .man-tile-img{width:64px;height:64px;object-fit:contain;background:var(--s50);border-radius:6px;margin:0 auto 8px;display:block}
@@ -602,9 +613,11 @@
     .man-tile-row label{color:var(--mut)}
     .man-tile-row input{width:64px;text-align:right;border:1px solid var(--bdr);border-radius:6px;padding:2px 6px;font-size:var(--fs-1);font-weight:600;background:var(--sur);color:var(--txt)}
     .man-tile-kp{font-size:var(--fs-1);color:var(--mut);text-align:center;margin-top:4px;padding-top:6px;border-top:1px dashed var(--bdr)}
-    .group-hd{display:flex;align-items:center;gap:10px;margin-bottom:.75rem;padding-bottom:.5rem;border-bottom:1.5px solid var(--bdr)}
-    .group-title{font-size:var(--fs-3);font-weight:700;color:var(--s800)}
-    .group-sub{font-size:var(--fs-1);color:var(--mut)}
+    /* Ein Gruppenkopf für Farben, „Aus Sets“ und „Manuell erfasst“: getönte Leiste über die volle Breite. */
+    .group-hd{display:flex;flex-wrap:wrap;align-items:center;gap:4px 10px;margin:0 0 .75rem;padding:.45rem .75rem;border-left:4px solid var(--s300);border-radius:8px;background:var(--s100)}
+    .group-hd > .ico{width:18px;height:18px;flex:none;color:var(--mut)}
+    .group-title{font-size:var(--fs-3);font-weight:700;color:var(--txt);margin:0;hyphens:manual;overflow-wrap:normal}
+    .group-sub{font-size:var(--fs-2);color:var(--s600)}
     .no-parts{text-align:center;padding:3rem;color:var(--mut)}
     .no-parts .icon{font-size:var(--fs-8);margin-bottom:.75rem}
     .no-parts h3{font-weight:700;color:var(--txt);margin-bottom:.3rem}
@@ -700,9 +713,9 @@
       #set-modal .m-kopfteil .mimg{position:sticky;top:3.5rem;margin-bottom:0}
     }
     .mimg{width:100%;aspect-ratio:4/3;object-fit:contain;background:var(--s50);border-radius:8px;border:1px solid var(--bdr);margin-bottom:1rem}
-    .dr{display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--bdr);font-size:var(--fs-3)}
+    .dr{display:flex;justify-content:space-between;gap:.25rem .75rem;padding:7px 0;border-bottom:1px solid var(--bdr);font-size:var(--fs-3)}
     .dr:last-child{border-bottom:none}
-    .dl{color:var(--mut);font-weight:500}.dv{font-weight:600}
+    .dl{color:var(--mut);font-weight:500}.dv{font-weight:600;min-width:0;text-align:right}
     .mfooter{position:sticky;bottom:calc(var(--modal-padb) * -1);z-index:3;background:var(--sur);
              border-top:1px solid var(--bdr);
              margin:1.25rem calc(var(--modal-padx) * -1) calc(var(--modal-padb) * -1);
@@ -716,12 +729,17 @@
     /* TOAST */
     #toasts{position:fixed;bottom:1.25rem;right:1.25rem;display:flex;flex-direction:column;gap:7px;z-index:9999}
     .toast{background:var(--sur);border:1px solid var(--bdr);border-radius:10px;padding:11px 15px;font-size:var(--fs-3);min-width:240px;max-width:360px;display:flex;align-items:center;gap:9px;box-shadow:var(--sh2);animation:tIn .25s ease}
-    .toast{cursor:default}
+    .toast{cursor:default;flex-wrap:wrap}
+    /* Bei grosser Schrift rückt der Knopf unter den Text, statt ihn auf eine Spalte zu drücken. */
+    .toast-text{flex:1 1 9em;min-width:0}
+    .toast-details{margin-top:.35rem;font-size:var(--fs-2)}
+    .toast-details>summary{cursor:pointer;color:var(--mut);min-height:24px}
+    .toast-details>p{margin:.3rem 0 0}
     .toast-anzahl{margin-left:auto;font-weight:700;font-variant-numeric:tabular-nums;color:var(--mut)}
     .toast.success{border-left:3px solid var(--g500)}
     .toast.error{border-left:3px solid var(--r500)}
     .toast.info{border-left:3px solid var(--b500)}
-    .toast-aktion{margin-left:auto;background:none;border:1px solid var(--bdr);border-radius:6px;padding:3px 10px;font:inherit;font-weight:600;color:var(--b500);cursor:pointer;white-space:nowrap}
+    .toast-aktion{margin-left:auto;background:none;border:1px solid var(--bdr);border-radius:6px;padding:3px 10px;font:inherit;font-weight:600;color:var(--b600);cursor:pointer;white-space:nowrap}
     @media (hover:hover){.toast-aktion:hover{background:var(--b50)}}
     @keyframes tIn{from{transform:translateX(100%);opacity:0}to{transform:none;opacity:1}}
     .spin{width:28px;height:28px;border:3px solid var(--s200);border-top-color:var(--b500);border-radius:50%;animation:sp .7s linear infinite;display:inline-block}
@@ -735,6 +753,7 @@
        Verlust zeigt die G&V-Spalte. */
     .price-cell{font-variant-numeric:tabular-nums;color:var(--txt);font-size:var(--fs-2)}
     .fin-fehlt{color:var(--a-schrift);font-size:var(--fs-1);cursor:help;border-bottom:1px dotted currentColor}
+    .fin-fehlt.neutral{color:var(--mut)}
     .price-total{font-variant-numeric:tabular-nums;color:var(--preis,var(--b700));font-weight:600}
     .lv{display:inline-flex;align-items:center;background:var(--g100);color:var(--g700);font-size:var(--fs-0);font-weight:600;padding:2px 6px;border-radius:999px}
     .lc{display:inline-flex;align-items:center;background:var(--b100);color:var(--b700);font-size:var(--fs-0);font-weight:600;padding:2px 6px;border-radius:999px}
@@ -750,11 +769,11 @@
     .vh{position:absolute;width:1px;height:1px;margin:-1px;padding:0;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0}
     .user-tbl td,.user-tbl th{vertical-align:middle}
     .rb{display:inline-flex;padding:2px 8px;border-radius:999px;font-size:var(--fs-0);font-weight:600}
-    .ra{background:var(--a100);color:var(--a-schrift)}.ru{background:var(--s100);color:var(--s600)}
-    .cond-badge{font-size:var(--fs-0);padding:1px 5px;border-radius:10px;font-weight:600;display:inline-block}
+    .ra{background:var(--a100);color:var(--a-schrift)}.rv{background:var(--p100);color:var(--p600)}.ru{background:var(--s100);color:var(--s600)}
+    .cond-badge{font-size:var(--fs-0);padding:1px 5px;border-radius:10px;font-weight:600;display:inline-block;white-space:nowrap}
     .cond-new{background:var(--b100);color:var(--b700)}
-    .besitzer-badge{background:var(--b100);color:var(--b700)}
-    .admin-hinweis{font-size:var(--fs-1);color:var(--a-schrift);font-weight:400}
+    .besitzer-badge{background:var(--b100);color:var(--b700);max-width:100%;min-width:0;overflow:hidden;text-overflow:ellipsis;vertical-align:bottom}
+    .admin-hinweis{font-size:var(--fs-1);color:var(--mut);font-weight:400}
     .cond-used{background:var(--a100);color:var(--a-schrift)}
     /* Ersatzteil: dieselbe Form wie die Zustands-Plakette, aber ruhiger —
        ein Ersatzteil ist eine Nebeninformation, kein Zustand. Gegenstueck zu
@@ -772,6 +791,8 @@
    die Katalogseiten nachlädt, misst gegen das Fenster. */
 html{scrollbar-width:none;-ms-overflow-style:none}
 html::-webkit-scrollbar{width:0;height:0}
+/* Fokus nie unter Kopf oder unterer Leiste (WCAG 2.4.11); die Höhen misst js/10-mobile.js. */
+html{scroll-padding-top:calc(var(--leiste-oben,0px) + .5rem);scroll-padding-bottom:calc(var(--leiste-unten,0px) + .5rem)}
 
 #app-scrollbar{
   position:fixed;top:0;right:0;width:14px;height:100vh;z-index:200;
@@ -854,9 +875,9 @@ html::-webkit-scrollbar{width:0;height:0}
        Bedeutung haengt nirgends an der FARBE: Jeder Knopf traegt ein Symbol
        und einen Titel, der verdeckte PIN steht als Punkte da, nicht als
        graues Feld. */
-    .voucher-list{display:flex;flex-direction:column;gap:.45rem}
-    .voucher-row{display:flex;flex-wrap:wrap;align-items:center;gap:.5rem;
-                 padding:.55rem .7rem;border:1px solid var(--bdr);
+    .voucher-list{display:flex;flex-direction:column;gap:.75rem}
+    .voucher-row{display:flex;flex-wrap:wrap;align-items:center;gap:.75rem 1rem;
+                 padding:.9rem 1rem;border:1px solid var(--bdr);
                  border-radius:var(--rad);background:var(--sur)}
     .voucher-main{flex:1 1 12rem;min-width:0}
     /* Tabellenziffern: Die Vierergruppen stehen sonst je nach Ziffer
@@ -864,8 +885,8 @@ html::-webkit-scrollbar{width:0;height:0}
     .voucher-num{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;
                  font-size:var(--fs-3);font-variant-numeric:tabular-nums;
                  overflow-wrap:anywhere}
-    .voucher-meta{font-size:var(--fs-1);color:var(--mut);margin-top:2px}
-    .voucher-amount{font-weight:600;color:var(--txt)}
+    .voucher-meta{font-size:var(--fs-1);color:var(--mut);margin-top:.35rem;display:flex;flex-direction:column;gap:.25rem}
+    .voucher-amount{font-weight:600;color:var(--txt);font-size:var(--fs-3)}
     /* Der Stand der Guthaben-Abfrage. Eigene Zeile und KEINE eigene
        Farbe: Die Aussage steht im Wort („abgefragt am …" bzw. „noch nie
        abgefragt"), nicht in einem Farbton — Marco sieht Rot und Gruen
@@ -875,10 +896,10 @@ html::-webkit-scrollbar{width:0;height:0}
     .voucher-pin-label{color:var(--mut);text-transform:uppercase;
                        letter-spacing:.5px;font-size:var(--fs-0)}
     .voucher-pin code{font-size:var(--fs-2);letter-spacing:.08em}
-    .voucher-nopdf{color:var(--mut);font-size:var(--fs-1);padding:0 .35rem;white-space:nowrap}
+    .voucher-nopdf{white-space:nowrap}
     .v-btn.v-btn-gefahr{color:var(--r700)}
     [data-nur-mit-gutscheinen][hidden]{display:none}
-    .voucher-actions{display:flex;align-items:center;gap:.3rem;margin-left:auto}
+    .voucher-actions{display:flex;flex-wrap:wrap;align-items:center;gap:.3rem;margin-left:auto}
     .v-btn{width:1.625rem;height:1.625rem;border-radius:6px;border:1px solid var(--bedienrand);
            cursor:pointer;background:transparent;color:var(--txt);font-size:var(--fs-2);
            display:flex;align-items:center;justify-content:center;
@@ -907,6 +928,7 @@ html::-webkit-scrollbar{width:0;height:0}
     .empty .icon .ico,.no-parts .icon .ico,.leer-ico .ico{width:2.75rem;height:2.75rem;color:var(--s400);stroke-width:1.6}
     .leer-ico{margin-bottom:.5rem}
     #cd-icon .ico{width:2.75rem;height:2.75rem;color:var(--r500);stroke-width:1.6}
+    #cd-icon.neutral .ico{color:var(--b600)}
     .step-icon .ico{width:1.125rem;height:1.125rem}
     .toast-ico{display:inline-flex}
     .toast.success .toast-ico{color:var(--g500)} .toast.error .toast-ico{color:var(--r500)} .toast.info .toast-ico{color:var(--b600)}
@@ -967,6 +989,8 @@ html::-webkit-scrollbar{width:0;height:0}
 .block{display:block}
 .knopf-fuellend{flex:1;justify-content:center}
 .btn.knopf-breit{width:100%;justify-content:center;padding:11px}
+.zf-knoepfe{display:flex;gap:.5rem;flex-wrap:wrap}
+.zf-knoepfe-breit{display:flex;flex-direction:column;gap:.5rem}
 .voll-breit{width:100%}
 select.w-auto,input.w-auto,.fg select.w-auto,.w-auto{width:auto}
 /* Häkchen selbst 24 × 24 px (WCAG 2.5.8), nicht nur über die Beschriftung;
@@ -979,7 +1003,11 @@ input[type="checkbox"]{width:24px;height:24px;margin:0;flex:none;accent-color:va
 /* Ohne Verbindung kein Löschen auf der Kachel (siehe schreibenSperren). */
 html[data-offline] .delbtn{display:none}
 html[data-offline] summary[aria-disabled="true"]{opacity:.55;cursor:not-allowed}
+/* Eine Datei-Wahl ist ein Label um ein verstecktes Feld: Es zeigt die Sperre wie jeder Knopf. */
+html[data-offline] label:has(> input[data-offline-gesperrt]){opacity:.5;cursor:not-allowed;pointer-events:none}
 input.suchfeld{width:220px}
+/* Die Suche nimmt den Rest der Zeile: Die Filterzeile endet an der Rasterkante. */
+.filterzeile > input.suchfeld{flex:1 1 14rem;width:auto;min-width:0}
 .hoehe-38,.fg .hoehe-38{height:max(38px,2.6em)}
 .min-100{min-width:min(100px,100%)}
 .max-82{max-width:82px}.max-110{max-width:110px}.max-120{max-width:120px}.max-150{max-width:150px}
@@ -1005,6 +1033,9 @@ input.suchfeld{width:220px}
 .mehr-liste{display:flex;gap:8px;flex-wrap:wrap}
 .merk-kasten{background:var(--sur);border:1px solid var(--bdr);border-radius:var(--rad);padding:1.25rem;margin-bottom:1.25rem;box-shadow:var(--sh0)}
 .merk-kasten-titel{margin:0;font-size:var(--fs-4);font-weight:700}
+.merk-kasten-kopf{list-style:none;cursor:pointer;border-radius:6px}
+.merk-kasten-kopf::-webkit-details-marker{display:none}
+.merk-kasten:not([open]) .merk-kasten-kopf .stit{margin-bottom:0;padding-bottom:0;border-bottom:0}
 /* Feld, Auswahl und Knöpfe einer Zeile gleich hoch — wie die Felder (38 px). */
 .merk-erfassen > .btn{height:max(38px,2.6em);box-sizing:border-box}
 /* Geheimnisse verdeckt, mit Knopf zum Anzeigen daneben. */
@@ -1063,6 +1094,8 @@ input.suchfeld{width:220px}
 #tab-daten .ssec{max-width:52rem}
 .trenner-oben-13{border-top:1px solid var(--bdr);padding-top:13px}
 .login-unterzeile{font-weight:600;margin-bottom:1rem;color:var(--s600);text-align:center}
+h2.login-unterzeile{font-size:inherit;margin-top:0}
+.reg-mail-hinweis{margin:.25rem 0 0 24px;color:var(--a-schrift)}
 .login-fuss{text-align:center;margin-top:.85rem;font-size:var(--fs-2)}
 .status-zeile{min-height:1rem}
 .erfolg-box{padding:.75rem;background:var(--g50);border:1px solid var(--g300);border-radius:8px;color:var(--g700);font-size:var(--fs-3);margin-bottom:.75rem}
@@ -1097,6 +1130,8 @@ a{color:var(--b600);text-underline-offset:2px}
   .hinweis-band > .btn{flex:0 1 auto;min-width:44px}
   .hinweis-band .hinweis-lang{display:none}
   .hinweis-band .hinweis-kurz{display:inline}
+  /* Der kurze Satz bleibt stehen (warum), Knopf und Schliessen folgen in derselben Zeile, wenn Platz ist. */
+  .hinweis-band > .btn.bp{flex:0 1 auto;font-size:var(--fs-2);min-width:0;white-space:normal;overflow-wrap:break-word;hyphens:auto}
 }
 /* Der Schlüssel betrifft Sammlung und Katalog; auf anderen Seiten wäre das Band nur Lärm. */
 body:not(:has(:is(#tab-gallery,#tab-parts,#tab-minifigs,#tab-catalog).active)) #rb-hinweis{display:none}
@@ -1112,13 +1147,18 @@ body:not(:has(:is(#tab-gallery,#tab-parts,#tab-minifigs,#tab-catalog).active)) #
 .fin-abschnitt{margin:0 0 6px;display:flex;align-items:center;gap:6px}
 .fin-name-text{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:380px}
 .fin-datum{font-size:var(--fs-1);color:var(--mut)}
-.dt-fin{table-layout:fixed;width:100%;min-width:1065px}
+.dt-fin{table-layout:fixed;width:100%;min-width:1030px}
+/* Datum, Beträge und G/V brechen nie mitten im Wort um; Spalten sind breit genug. */
+.dt-fin td{padding-left:8px;padding-right:8px}
+.dt-fin :is(.fin-datum,.zahl,.fin-guv,.pnl-geschenk){white-space:nowrap}
+.fin-jahr{color:var(--mut);font-size:var(--fs-1);font-variant-numeric:tabular-nums}
 .sp-40{width:40px}.sp-55{width:55px}.sp-60{width:60px}.sp-70{width:70px}.sp-80{width:80px}.sp-90{width:90px}
-.sp-110{width:110px}.sp-235{width:235px}.sp-380{width:380px}
+.sp-100{width:100px}.sp-110{width:110px}.sp-235{width:235px}.sp-325{width:325px}.sp-380{width:380px}
 /* Köpfe brechen nicht um; die Spalten sind dafür breit genug (Kurzform G/V). */
 .dt-fin th{white-space:nowrap;padding-left:8px;padding-right:8px}
 .acq-legende{font-size:var(--fs-0);color:var(--mut);margin-top:2px}
 .fin-je{display:block;font-size:var(--fs-0);color:var(--mut);white-space:nowrap}
+.fin-fuss-wert .fin-je{white-space:normal;font-weight:500;color:var(--txt)}
 /* Zahlen rechtsbündig, samt Köpfen: So stehen Stellen untereinander. */
 .dt-fin .zahl,.dt-fin th.zahl,.dt-fin .fin-fuss-wert{text-align:right}
 .dt-fin .zahl .qbadge{margin-left:auto}
@@ -1130,12 +1170,12 @@ body:not(:has(:is(#tab-gallery,#tab-parts,#tab-minifigs,#tab-catalog).active)) #
 
 /* ── Diagramme ───────────────────────────────────────────────────────── */
 .diagramm-preis{width:100%;height:auto}
-.diagramm-wert{width:100%;max-height:180px;display:block}
+.diagramm-wert{width:100%;height:auto;display:block}
 
 /* ── Merkliste: die Zeile ──────────────────────────────────────────────── */
 .mk-zeile{position:relative;display:flex;gap:12px;align-items:center;padding:10px 44px 10px 10px;border:1px solid var(--bdr);
   border-radius:var(--rad);background:var(--sur);margin-bottom:8px;cursor:pointer}
-.mk-text{flex:1;min-width:0}
+.mk-text{flex:1 1 10rem;min-width:0}
 .mk-titel{font-weight:600}
 .mk-unter{font-size:var(--fs-1);color:var(--mut)}
 .mk-rechts{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
@@ -1145,11 +1185,9 @@ body:not(:has(:is(#tab-gallery,#tab-parts,#tab-minifigs,#tab-catalog).active)) #
 /* ── Teile: die Farbe als Zwischenüberschrift über die ganze Breite ─────────
    Als Kachel im Raster las sie sich wie ein Teil; als Zeile beginnt sie
    sichtbar eine Gruppe. Der Farbname wird nie getrennt. */
-.parts-list .group-hd{grid-column:1/-1;flex-direction:row;align-items:center;justify-content:flex-start;gap:10px;
-  margin:.5rem 0 0;padding:.45rem .75rem;border:0;border-left:4px solid var(--s300);border-radius:8px;background:var(--s100)}
+.parts-list .group-hd{grid-column:1/-1;flex-direction:row;justify-content:flex-start;margin:.5rem 0 0}
 .parts-list .parts-group:first-child .group-hd{margin-top:0}
-.parts-list .group-title{font-weight:700;white-space:nowrap;hyphens:manual;overflow-wrap:normal}
-.parts-list .group-sub{color:var(--s600);font-size:var(--fs-2)}
+.gruppe-manuell{margin-bottom:1.75rem}
 .color-dot.gross{width:18px;height:18px}
 
 
@@ -1167,7 +1205,7 @@ body:not(:has(:is(#tab-gallery,#tab-parts,#tab-minifigs,#tab-catalog).active)) #
 .profil-raster{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,15rem),1fr));gap:.75rem 1rem}
 .profil-raster .fg{min-width:0}
 .profil-raster-3{grid-template-columns:repeat(auto-fill,minmax(min(100%,12rem),1fr))}
-#tab-profil .btn{font-size:var(--fs-3);padding:var(--sp-2) var(--sp-4);min-height:38px}
+#tab-profil .btn{font-size:var(--fs-3);padding:var(--sp-2) var(--sp-4)}
 .email-status{font-size:var(--fs-1);margin-left:4px}
 .email-ok{color:var(--g700)}
 .email-offen{color:var(--a-schrift)}
@@ -1248,8 +1286,6 @@ body:not(:has(:is(#tab-gallery,#tab-parts,#tab-minifigs,#tab-catalog).active)) #
 @media (hover:none) and (pointer:coarse){ #tab-gallery .sc .ca{display:none} }
 /* Warnhinweis neben einem Ergebnis: Rand in der Bernsteinfarbe jedes Designs, Text in Grundfarbe für vollen Kontrast. */
 .hinweis-warnung{color:var(--txt);font-weight:600;border-left:3px solid var(--chart-used);padding-left:8px;margin-top:6px}
-/* Leere Liste: „hinzufügen“ steht im Leerzustand, wo der Blick ist – nicht doppelt in der Leiste. */
-.tab:has(.empty.leer [data-click="oeffneErfassen"]) .erfassen-leiste > [data-click="oeffneErfassen"]{display:none}
 /* Die weisse QR-Fläche erst, wenn ein Code darin steht. */
 #qr-code:empty{display:none !important}
 
@@ -1312,9 +1348,10 @@ p.mon-leise{margin:0 0 .35rem}
 .v-text.v-btn-gefahr{color:var(--r700)}
 .v-mehr{position:relative}
 .v-mehr > .mehr-liste{position:absolute;right:0;top:calc(100% + 4px);z-index:20;display:flex;flex-direction:column;align-items:stretch;gap:4px;
-  min-width:14rem;max-width:calc(100vw - 2rem);padding:6px;background:var(--sur);border:1px solid var(--bdr);border-radius:var(--rad);box-shadow:var(--sh2)}
+  min-width:min(14rem, calc(100vw - 1rem));max-width:calc(100vw - 1rem);padding:6px;background:var(--sur);border:1px solid var(--bdr);border-radius:var(--rad);box-shadow:var(--sh2)}
 .v-mehr > .mehr-liste .btn{justify-content:flex-start;text-align:left}
 .v-mehr:not([open]) > .mehr-liste{display:none}
+.v-mehr.nach-oben > .mehr-liste{top:auto;bottom:calc(100% + 4px);left:0;right:auto}
 
 /* Sichten aus dem Kontomenü: am breiten Bildschirm zwei Spalten Karten statt
    einer schmalen Spalte neben leerer Fläche (I4). */
@@ -1331,15 +1368,30 @@ p.mon-leise{margin:0 0 .35rem}
 
 /* Kacheln einer Reihe gleich hoch: Name höchstens zwei Zeilen, Jahr/Thema und
    Plaketten je eine eigene Zeile, Preis und Datum unten bündig (N1). */
-#gallery .sc{display:flex;flex-direction:column}
-#gallery .sc > .scb{flex:1 1 auto;display:flex;flex-direction:column}
-#gallery .sname{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;line-clamp:2;overflow:hidden;min-height:2.6em}
-#gallery .smeta{flex-direction:column;align-items:flex-start;gap:4px}
-#gallery .scb > .price-badge{margin-top:auto}
+:is(#gallery,#catalog-grid) .sc{display:flex;flex-direction:column}
+:is(#gallery,#catalog-grid) .sc > .scb{flex:1 1 auto;display:flex;flex-direction:column}
+:is(#gallery,#catalog-grid) .sname{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;line-clamp:2;overflow:hidden;min-height:2.6em}
+:is(#gallery,#catalog-grid) .smeta{flex-direction:column;align-items:flex-start;gap:4px}
+:is(#gallery,#catalog-grid) .smeta-text{display:block;width:100%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.splaketten{display:flex;gap:4px 6px;align-items:center;flex-wrap:wrap;min-height:1.5rem;max-width:100%;min-width:0}
+.besitz-badge{display:inline-flex;align-items:center;gap:3px}
+.besitz-badge .ico{width:12px;height:12px}
+.teile-zahl{font-size:var(--fs-1);color:var(--mut);font-variant-numeric:tabular-nums}
+/* Preis in festen Zeilen: Art darüber, Betrag links, Entwicklung rechts — auch mit „Geschenk“. */
+/* Flex mit Umbruch statt Raster: Passt der Gewinn nicht neben den Betrag,
+   rückt er in die nächste Zeile, statt in den Betrag zu laufen. */
+#gallery .price-badge{display:flex;flex-wrap:wrap;align-items:baseline;justify-content:space-between;gap:0 6px;margin-top:auto}
+#gallery .price-badge[hidden]{display:none}
+#gallery .price-badge .preis-art{flex:1 1 100%;font-size:var(--fs-0);line-height:1.3}
+#gallery .price-badge .preis{white-space:nowrap}
+#gallery .price-badge .preis-pnl{white-space:nowrap;text-align:right;margin-left:auto}
 #gallery .scb > .price-badge[hidden] + .kachel-datum{margin-top:auto}
+#gallery .kachel-datum{min-height:1.35em}
+.geschenk-badge{display:inline-block;padding:1px 7px;border-radius:999px;background:var(--s100);color:var(--txt);font-size:var(--fs-0);font-weight:600}
 .unbekannt-badge{display:inline-block;padding:1px 7px;border-radius:999px;border:1px dashed var(--feldrand);color:var(--txt);font-size:var(--fs-0);font-weight:600}
 .erfassen-unbekannt{grid-column:1 / -1;margin:0}
 .erfassen-unbekannt[hidden]{display:none}
+.erfassen-unbekannt .btn{margin-top:.5rem}
 
 /* Set-Detail: Felder und Knöpfe in einer Höhe wie in den übrigen Formularen (N6). */
 @media (min-width:641px){
@@ -1357,7 +1409,38 @@ input.alarm-feld[inputmode=decimal]{width:7.5em}
    mit Inhalt — ein gesperrter roter Knopf las sich wie ein aktiver (N4). */
 #pl-sets > .empty{flex:1 1 100%}
 #btn-pl-reset:disabled{display:none}
-#tab-gallery.sammlung-leer .filterleiste{display:none}
+/* Bauliste in drei Schritten: Sets wählen, erstellen, exportieren. */
+.pl-leiste{display:flex;flex-direction:column;gap:.75rem;align-items:flex-start}
+.pl-feld{display:flex;flex-direction:column;gap:.3rem;max-width:100%}
+.pl-feld label,.pl-zustand label{font-size:var(--fs-2);font-weight:600}
+.pl-setnr{width:14em;max-width:100%;flex:0 1 auto}
+/* Bauliste: Set-Chips (Name in Textfarbe: --mut auf --b50 kam nur auf 4,4:1) und Optionen. */
+.pl-chips{display:flex;flex-wrap:wrap;gap:.5rem;margin-bottom:1rem;min-height:32px}
+.pl-chip{display:inline-flex;align-items:center;gap:6px;background:var(--b50);border:1px solid var(--b200);border-radius:20px;padding:3px 10px 3px 8px;font-size:var(--fs-3);max-width:100%}
+.pl-chip-nr{font-weight:600;color:var(--b700)}
+.pl-chip-name{color:var(--txt);overflow-wrap:anywhere}
+.pl-chip.unbekannt{background:var(--sur);border-style:dashed;border-color:var(--feldrand)}
+.pl-chip.unbekannt .pl-chip-nr{color:var(--txt)}
+.pl-chip-weg{background:none;border:none;cursor:pointer;color:var(--txt);padding:0;font-size:var(--fs-3);line-height:1;display:inline-flex;align-items:center;justify-content:center;min-width:24px;min-height:24px}
+.pl-status{color:var(--mut);font-size:var(--fs-3);margin-bottom:.75rem}
+.pl-optionen{margin-bottom:1rem}
+.pl-optionen[hidden]{display:none}
+.pl-optionen-kopf{cursor:pointer;font-weight:700;font-size:var(--fs-2);min-height:24px;padding:.25rem 0}
+.pl-optionen[open] > .pl-optionen-kopf{margin-bottom:.5rem}
+.pl-export{display:flex;flex-wrap:wrap;align-items:flex-end;gap:.5rem;padding-top:.75rem;border-top:1px solid var(--bdr);width:100%}
+.pl-export[hidden]{display:none}
+.pl-export-titel{flex:1 1 100%;font-weight:700;font-size:var(--fs-2)}
+.pl-zustand{display:inline-flex;flex-direction:column;gap:.2rem}
+.pl-zustand select{width:auto}
+.pl-bl-zeichen{vertical-align:middle;margin-right:4px;flex-shrink:0}
+.pl-bestand-zeile{display:flex;margin-top:.75rem;align-items:center;gap:.5rem;flex-wrap:wrap}
+.pl-wahl{display:inline-flex;align-items:center;gap:5px;font-size:var(--fs-2);color:var(--mut);flex-shrink:0}
+/* Leere Sammlung und leere Finanzen: keine Nullkarten, Filter und Zeiträume ohne Wirkung. */
+#tab-gallery.sammlung-leer :is(.filterleiste,.brick-stats){display:none}
+/* Leer: Der Hauptknopf steht im Leerzustand; oben bliebe er doppelt. */
+.tab.sammlung-leer .erfassen-leiste > .btn.bp{display:none}
+.import-mehr,.nur-telefon{display:none}
+#tab-finance.finanzen-leer :is(#portfolio-chart-section,#fin-sum,#fin-basis,#fin-filter){display:none}
 
 /* Einstellungen: eine Seitennavigation mit aktivem Balken statt einer Reihe
    kleiner Umrandungsknöpfe (I5). Am Telefon eine rollende Reihe von Reitern. */
@@ -1394,3 +1477,88 @@ input.alarm-feld[inputmode=decimal]{width:7.5em}
 
 /* Ein Sinnbild aus data-ico klebt sonst am Text, wo der Behälter keinen Abstand setzt. */
 [data-ico]:not(.btn):not(.stit) > .ico + .ico-text{margin-left:.35em}
+/* Fehlerzustand: der Rohtext des Servers nur auf Wunsch, für die Meldung an den Verwalter. */
+.fehler-details{margin:-.5rem auto 1rem;max-width:42ch;font-size:var(--fs-2);color:var(--mut)}
+.fehler-details summary{cursor:pointer;min-height:24px}
+.fehler-details code{display:block;margin-top:.35rem;word-break:break-word}
+.lerr .fehler-details{margin:.4rem 0 0;max-width:none;color:inherit}
+.ew-stand{display:inline-flex;align-items:center}.ew-stand.ok{color:var(--g700)}.ew-stand.fehlt{color:var(--r700)}
+.empty.leer.klein{padding:1.25rem 1rem}
+.empty.leer.klein h2{font-size:var(--fs-3)}
+.empty.leer.klein .leer-ico .ico{width:2rem;height:2rem}
+
+/* Set-Dialog: Marktwert und Gewinn als Kopf über den Angaben. */
+.m-wertkopf{display:grid;gap:.6rem;padding:.75rem .9rem;margin-bottom:.5rem;background:var(--s50);border:1px solid var(--bdr);border-radius:10px}
+.m-wertkopf .skelett-zeile{margin-top:0}
+.wk-zeile{display:flex;flex-wrap:wrap;align-items:baseline;gap:.1rem .6rem}
+.wk-label{flex:1 1 100%;font-size:var(--fs-1);color:var(--mut);font-weight:600}
+.wk-wert{font-size:var(--fs-5);font-weight:700;line-height:1.2}
+.wk-guv{font-size:var(--fs-2)}
+.wk-bezug{color:var(--mut);font-weight:500}
+.dr.dr-leise{font-size:var(--fs-2)}
+.fin-legende{display:flex;flex-wrap:wrap;align-items:center;gap:.25rem;margin:.5rem 0 0;font-size:var(--fs-1);color:var(--mut)}
+.fin-legende .legende-zeichen{display:inline-flex;vertical-align:middle}
+@media (max-width:640px){.fin-legende{display:none}}
+
+/* Genau zwei Knopfgrössen: Standard 38 px wie die Eingabefelder, kompakt 32 px
+   (am Telefon beide 44 px, mobile.css). Vorher lagen sie zwischen 26 und 44 px. */
+@media (min-width:641px){
+  .btn:not(.btn-sm){min-height:38px}
+  .btn.btn-sm{min-height:32px}
+  #set-modal :is(.detail-knopf,select.alarm-feld,input.alarm-feld,.detail-feld,.dr select){min-height:32px}
+}
+/* Kartenköpfe: Haushalt, Gutscheine und Konto tragen denselben Kopf (.stit). */
+#tab-haushalt.tab.active{align-items:stretch}
+#tab-haushalt .stit,#tab-gutscheine .stit{margin-bottom:.75rem}
+.mon-einzeln > summary{cursor:pointer;min-height:32px;display:flex;align-items:center;gap:.4rem}
+.btn[aria-disabled="true"]{opacity:.6}
+/* Klappen öffnen mit kurzem Einblenden statt zu springen; bei reduzierter
+   Bewegung schaltet die Regel oben jede Animation ab. */
+@keyframes aufklappen{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:none}}
+.umenu-pop:not([hidden]),details[open] > :is(.import-klappe,.mehr-liste){animation:aufklappen .14s ease-out}
+/* Die Wertlinie in Finanzen bleibt blau, auch wo die Marke rot ist (Noppe,
+   Hochglanz): Rot liest sich bei Beträgen als Verlust. Werkbank hat kein Rot. */
+:root{--chart-wert:var(--chart-new)}
+[data-theme="werkbank"]{--chart-wert:var(--messing)}
+/* Der Dialog selbst bekommt beim Öffnen den Fokus nur als Ausgangspunkt für Tab; ein Ring um die ganze Fläche lenkt ab. */
+.ovl > [tabindex="-1"]:focus-visible{outline:none}
+/* Grosse Schrift auf schmalem Schirm: Knopftexte brechen im Knopf um, statt über den Rand zu ragen. */
+.ssec .btn,.lcard .btn,.sform .btn,.ew-aktion .btn,#tab-monitor .btn{white-space:normal;overflow-wrap:break-word;hyphens:auto;max-width:100%;text-align:center}
+.btn > span{min-width:0}
+/* Das Ausgabeland gilt für alle Konten; der Kasten setzt es von den eigenen Gutscheinen ab. */
+.voucher-land{border:1px dashed var(--bdr);border-radius:var(--rad);padding:.75rem;margin-bottom:.75rem}
+.qr-form{max-width:420px;width:100%}
+
+/* Hintergrundarbeiten: Leeren steht abgesetzt, nicht neben „Speichern“. */
+.mon-aktionen.gefahrenzone{margin-top:var(--sp-4);align-items:center}
+.mon-gefahr-titel{flex:1 1 100%;font-size:var(--fs-2);font-weight:700;margin:0}
+.alarm-preis{display:inline-flex;align-items:center;gap:6px}
+.alarm-preis-titel{font-size:var(--fs-1);color:var(--mut)}
+/* Preisalarme: Name, Stand und Löschen oben, die Schwelle darunter — so rutscht
+   der Löschknopf in der halben Spalte nicht allein in eine eigene Zeile. */
+.alarm-ue{display:grid;grid-template-columns:auto minmax(0,1fr) auto;grid-template-areas:"bild text stand" "bild schwelle loeschen";
+  gap:6px 10px;align-items:center;padding:8px 0;border-bottom:1px solid var(--bdr)}
+.alarm-ue > :first-child{grid-area:bild;align-self:start}
+.alarm-ue-text{grid-area:text;min-width:0}
+.alarm-ue-unter,.alarm-ue-richtung,.alarm-ue-waehrung{font-size:var(--fs-1);color:var(--mut)}
+.alarm-ue-stand{grid-area:stand;display:flex;flex-direction:column;align-items:flex-end}
+.alarm-ue-zuletzt{font-size:var(--fs-0);color:var(--mut);white-space:nowrap}
+.alarm-ue-schwelle{grid-area:schwelle;display:flex;align-items:center;gap:6px;flex-wrap:wrap;min-width:0}
+.alarm-ue-feld{width:7em;border:1px solid var(--feldrand);border-radius:6px;padding:3px 7px;font-size:var(--fs-3);background:var(--sur);color:var(--txt)}
+.alarm-ue-loeschen{grid-area:loeschen;justify-self:end}
+.filter-zahl{display:inline-grid;place-items:center;min-width:1.25rem;height:1.25rem;padding:0 4px;border-radius:999px;background:var(--b600);color:var(--auf-primaer,#fff);font-size:var(--fs-0);font-weight:700}
+.filter-zahl[hidden]{display:none}
+#tab-gallery .filterleiste > .filter-knopf{position:relative}
+#tab-gallery .filterleiste > .filter-knopf > .filter-zahl{position:absolute;top:-6px;right:-6px}
+/* minmax(0, …): Bei grosser Schrift schrumpfen die Spalten und der Knopf bricht
+   um, statt die Seite seitlich zu verschieben (WCAG 1.4.10). */
+.haushalt-liste{list-style:none;padding:0;margin:.4rem 0 0;display:grid;grid-template-columns:minmax(0,max-content) minmax(0,max-content);align-items:center;column-gap:.6rem;row-gap:.4rem}
+.haushalt-aktion .btn{white-space:normal;max-width:100%;text-align:left}
+@container haupt (max-width: 22em){ .haushalt-liste{grid-template-columns:minmax(0,1fr)} }
+.haushalt-name{display:inline-flex;align-items:center;gap:.4rem;font-weight:600;padding:.3rem 0;overflow-wrap:anywhere}
+.haushalt-aktion{display:flex;align-items:center;gap:.4rem;flex-wrap:wrap;padding:.3rem 0}
+.feld-titel-klein{display:block;font-size:var(--fs-1);color:var(--mut);margin-bottom:3px}
+.quelle-stand{display:flex;align-items:center;gap:6px;font-size:var(--fs-2);min-height:1.2em}
+.quelle-stand.quelle-ok{color:var(--gewinn,var(--g700))}
+.quelle-stand.quelle-fehler{color:var(--r700)}
+.v-btn-text{display:none}

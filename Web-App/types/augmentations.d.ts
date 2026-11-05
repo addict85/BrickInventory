@@ -15,6 +15,8 @@ declare module 'express-session' {
     angemeldetAm?: number;
     /** Startpasswort noch nicht ersetzt; undefined bei Sitzungen von vor dem Feld. */
     mussPasswortAendern?: boolean;
+    /** Wann in dieser Sitzung zuletzt das Passwort eingegeben wurde (ms); Grundlage der Gnadenfrist. */
+    passwortBestaetigtAm?: number;
     /** users.sitzungs_version bei der Anmeldung; weicht sie ab, ist die Sitzung beendet. */
     sitzungsVersion?: number;
   }

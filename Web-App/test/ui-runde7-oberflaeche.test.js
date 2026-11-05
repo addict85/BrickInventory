@@ -70,9 +70,11 @@ test('Konto: Währung wirkt sofort, Passwort hat seinen eigenen Knopf', async ()
     feld.dispatchEvent(new w.Event('change', { bubbles: true }));
     await warte(() => aufrufe.some(a => a.method === 'POST' && a.url.endsWith('/v1/settings') && /CHF/.test(a.body)));
     assert.ok(aufrufe.some(a => a.method === 'POST' && a.url.endsWith('/v1/settings') && JSON.parse(a.body).currency === 'CHF'));
-    d.getElementById('pw-c').value = 'alt-Passwort-1';
     d.getElementById('pw-n').value = d.getElementById('pw-r').value = 'neu-Passwort-1';
     d.getElementById('btn-sav-pw').click();
+    await warte(() => d.getElementById('confirm-modal').style.display === 'flex');
+    d.getElementById('cd-pw').value = 'alt-Passwort-1';
+    d.getElementById('cd-confirm').click();
     await warte(() => aufrufe.some(a => a.url.endsWith('/v1/auth/change-password')));
     assert.equal(aufrufe.some(a => a.url.endsWith('/v1/auth/profile') && a.method === 'PUT'), false, 'Passwort speichert das Profil mit');
   } finally { w.close(); }

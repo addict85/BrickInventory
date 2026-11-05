@@ -12,7 +12,6 @@ import okhttp3.mockwebserver.RecordedRequest
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
-import org.junit.Assert.assertTrue
 import org.junit.Assert.fail
 import org.junit.Before
 import org.junit.Test
@@ -56,6 +55,8 @@ import java.util.concurrent.atomic.AtomicInteger
  *      der jetzige Token ist) → rot „ein selbst gesetzter Kopf mit einem aelteren
  *      Token …“ und „nach dem Abmelden geht kein selbst gesetzter Kopf hinaus …“
  *   P  nur `!tokenGehoertHierher` statt `!mitToken` → rot „nach dem Abmelden …“
+ *   Q  (04.11.2026, misst die CI) gegenproben/waechter-ohne-faktorpflicht.patch nimmt
+ *      die Zeile für ZWEITER_FAKTOR_PFLICHT heraus → rot „ein 403 zweiter_faktor_pflicht …“
  */
 class ServerWaechterTest {
 
@@ -65,6 +66,7 @@ class ServerWaechterTest {
     private val abgelaufen = AtomicInteger()
     private val entzogen = AtomicInteger()
     private val wechsel = AtomicInteger()
+    private val faktor = AtomicInteger()
     /** Rumpf je Pfad für Antworten mit Fehlercode. */
     private val ruempfe = Collections.synchronizedMap(mutableMapOf<String, String>())
 
@@ -100,7 +102,7 @@ class ServerWaechterTest {
     private fun client(lage: Zugangslage, api: Boolean = true, entwicklung: Boolean = true) = OkHttpClient.Builder()
         .addInterceptor(ServerWaechter(lage, api, entwicklung, sitzungAbgelaufen = { abgelaufen.incrementAndGet() },
             eigeneKoepfe = { _, ziel -> ziel.header("Accept-Language", "de") }, rechteEntzogen = { entzogen.incrementAndGet() },
-            passwortWechselNoetig = { wechsel.incrementAndGet() }))
+            passwortWechselNoetig = { wechsel.incrementAndGet() }, zweiterFaktorPflicht = { faktor.incrementAndGet() }))
         .readTimeout(2, TimeUnit.SECONDS).build()
 
     private fun hole(c: OkHttpClient, url: String): Int =
@@ -290,6 +292,24 @@ class ServerWaechterTest {
         hole(c, "http://localhost:3000/api/v1/admin/jobs")
         assertEquals("Ein anderes 403 verlangt keinen Wechsel", 1, wechsel.get())
         assertEquals("Kein Abmelden", 0, abgelaufen.get())
+    }
+
+    @Test
+    fun `ein 403 zweiter_faktor_pflicht verlangt die Einrichtung, ohne abzumelden`() {
+        codes["/api/v1/sets"] = 403
+        ruempfe["/api/v1/sets"] = """{"success":false,"code":"zweiter_faktor_pflicht","error":"Bitte zuerst einen Code-Generator einrichten."}"""
+        codes["/api/v1/admin/jobs"] = 403
+        ruempfe["/api/v1/admin/jobs"] = """{"success":false,"code":"passwort_wechsel_noetig"}"""
+        val c = client(Lage(basis()))
+        assertEquals(403, hole(c, "http://localhost:3000/api/v1/sets"))
+        assertEquals(1, faktor.get())
+        hole(c, "http://localhost:3000/api/v1/admin/jobs")
+        assertEquals("Ein anderes 403 verlangt keinen zweiten Faktor", 1, faktor.get())
+        assertEquals("Kein Abmelden", 0, abgelaufen.get())
+        assertEquals("Kein entzogenes Recht", 0, entzogen.get())
+
+        hole(client(Lage(basis(), tokens = ArrayDeque(listOf("")))), "http://localhost:3000/api/v1/sets")
+        assertEquals("Ohne Token sagt ein 403 nichts über dieses Konto", 1, faktor.get())
     }
 
     @Test

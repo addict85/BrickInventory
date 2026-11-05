@@ -18,12 +18,8 @@ data class AppUiState(
     val serverUrl: String = "",
     val isLoggedIn: Boolean = false,
     val isAdmin: Boolean = false,
-    // `username` stand hier und wurde aus den Einstellungen gefuellt — gelesen
-    // hat es niemand. Was die Oberflaeche zeigt, ist `HouseholdMember.username`
-    // aus der Haushalts-Antwort, ein anderer Wert. Gefunden von der Regel
-    // „kein Zustandsfeld wird geschrieben, ohne je gelesen zu werden"
-    // (UiStateFieldsTest).
-    val authToken: String = "",
+    // Kein Token hier: Ihn liest allein der Interceptor (PreferencesManager); im
+    // Zustand stünde er für jede Oberfläche offen, als zweite Wahrheit.
     val currency: String = "EUR",
     val priceCondition: String = "N",
     val defaultPriceCondition: String = "N", // server-side default condition for new items (N=New, U=Used)

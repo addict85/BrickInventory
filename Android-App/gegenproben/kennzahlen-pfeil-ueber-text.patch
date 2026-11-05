@@ -1,0 +1,28 @@
+Gegenprobe: Der Pfeil liegt wieder über dem Rand der wischbaren Zeile
+Modul: app
+Test: ch.brickinventoryapp.GeruestUndFormularTest
+Rot: Kennzahlen der Sammlung
+
+diff --git a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/screens/GalleryStatChip.kt b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/screens/GalleryStatChip.kt
+index e5d0529..b12d26a 100644
+--- a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/screens/GalleryStatChip.kt
++++ b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/screens/GalleryStatChip.kt
+@@ -70,15 +70,15 @@ fun KennzahlenReihe(modifier: Modifier = Modifier, umbrechen: Boolean = false, i
+             // Verlauf stand er auf halben Buchstaben („82 Tei›“). Die Spalte bleibt,
+             // solange gewischt werden kann, damit die Zeile am Ende nicht springt.
+             val pfeil = Modifier.padding(end = Abstaende.winzig).size(mitSchrift(20.dp))
+-            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
++            Box(Modifier.fillMaxWidth()) {
+                 Row(
+-                    innen.weight(1f).randVerlauf(flaeche, links = rolle.canScrollBackward, rechts = rolle.canScrollForward)
++                    innen.fillMaxWidth().randVerlauf(flaeche, links = rolle.canScrollBackward, rechts = rolle.canScrollForward)
+                         .horizontalScroll(rolle),
+                     horizontalArrangement = Arrangement.spacedBy(Abstaende.gross),
+                 ) { inhalt() }
+                 if (rolle.canScrollForward) Icon(
+                     Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = null,
+-                    modifier = pfeil.testTag(KENNZAHLEN_MEHR),
++                    modifier = Modifier.align(Alignment.CenterEnd).then(pfeil).testTag(KENNZAHLEN_MEHR),
+                     tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                 ) else if (rolle.maxValue > 0) Spacer(pfeil)
+             }

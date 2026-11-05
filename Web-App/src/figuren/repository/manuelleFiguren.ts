@@ -14,7 +14,7 @@ export function figurZeileMitZustand(uid: number, figNumber: string) {
               WHERE a.user_id = m.user_id AND a.fig_number = m.fig_number
               ORDER BY a.created_at DESC, a.id DESC LIMIT 1) AS condition
        FROM minifigs m
-       ${blJoin('m.fig_number', 'fig', 'z')}
+       ${blJoin('m.fig_number', 'fig', 'm.user_id', 'z')}
       WHERE m.user_id=$1 AND m.fig_number=$2 AND m.source='manual'`, [uid, figNumber]);
 }
 

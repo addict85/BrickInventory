@@ -27,7 +27,8 @@ import { stelleAuftragEin } from '../auftraege/dienst';
 import { anleitungEinreihen } from '../auftraege/anleitungsAuftrag';
 import { bricksetJetzt, bricksetZahlen } from '../auftraege/bricksetAuftrag';
 import { anfragenJeMinute, bildbedarfAnstossen } from '../katalog/bilder/bildbedarf';
-import { fehlerWerfen } from '../infra/fehlerTexte';
+import { fehlerWerfen, type FehlerCode } from '../infra/fehlerTexte';
+import { alsAbrufFehler } from '../../clients/abrufFehler';
 import { pruefeBricklinkZugang } from '../../clients/bricklink';
 import { ausRetryWarteschlange, pruefeBricksetZugang } from '../../clients/brickset';
 import { pruefeRebrickableZugang } from '../../clients/rebrickable';
@@ -40,12 +41,24 @@ const QUELLEN: Record<string, () => Promise<void>> = {
   rebrickable: pruefeRebrickableZugang, brickset: pruefeBricksetZugang, bricklink: pruefeBricklinkZugang,
 };
 
-/** Wirft mit dem Grund. */
-export async function quellePruefen(quelle: string) {
+const QUELLEN_NAME: Record<string, string> = { rebrickable: 'Rebrickable', brickset: 'Brickset', bricklink: 'BrickLink' };
+
+/** Der Assistent zeigt dem Verwalter, was zu tun ist; der rohe Text bleibt als `grund` für „Details“. */
+function quellenAbsage(e: unknown): FehlerCode {
+  const f = alsAbrufFehler(e), text = f.message;
+  if (/nicht konfiguriert|nicht vollständig|not configured/i.test(text)) return 'quelle_ohne_schluessel';
+  if (f.isTransient || (e instanceof AbrufFehler && (e.grund === 'netz' || e.grund === 'zeitlimit'))
+      || /ENOTFOUND|EAI_AGAIN|ECONNREFUSED|ECONNRESET|ETIMEDOUT|socket hang up/i.test(text)) return 'quelle_nicht_erreichbar';
+  if (/\b(401|403)\b|invalid|ungültig|unauthori[sz]ed/i.test(text)) return 'quelle_abgelehnt';
+  return 'quelle_test_fehlgeschlagen';
+}
+
+/** null, wenn der Zugang antwortet; sonst Code, Name und roher Grund. Wirft nur bei unbekannter Quelle. */
+export async function quellePruefen(quelle: string): Promise<{ code: FehlerCode; quelle: string; grund: string } | null> {
   const pruefe = Object.hasOwn(QUELLEN, quelle) ? QUELLEN[quelle] : undefined;
   if (!pruefe) fehlerWerfen('quelle_unbekannt', 400);
-  try { await pruefe(); }
-  catch (e) { fehlerWerfen('quelle_test_fehlgeschlagen', 400, { grund: fehlertext(e).slice(0, 200) }); }
+  try { await pruefe(); return null; }
+  catch (e) { return { code: quellenAbsage(e), quelle: QUELLEN_NAME[quelle] ?? quelle, grund: fehlertext(e).slice(0, 200) }; }
 }
 
 export async function cacheStatistik() {

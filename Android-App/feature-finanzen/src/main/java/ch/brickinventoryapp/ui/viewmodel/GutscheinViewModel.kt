@@ -352,8 +352,9 @@ class GutscheinViewModel @Inject constructor(
                         when (val r = repo.guthaben(g.id)) {
                             is Result.Success -> {
                                 val d = r.data
-                                if (d.success) { fertig++; erledigt = true }
-                                else if (d.grund == "abstand" && (d.wartenSek ?: 0) > 0) {
+                                if (d.success) {
+                                    fertig++; erledigt = true
+                                } else if (d.grund == "abstand" && (d.wartenSek ?: 0) > 0) {
                                     warteSichtbar(d.wartenSek ?: 0, g.number)
                                     versuch++
                                 } else {

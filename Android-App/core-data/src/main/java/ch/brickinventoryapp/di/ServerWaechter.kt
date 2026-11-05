@@ -62,6 +62,9 @@ const val NUR_ADMINS = "nur_admins"
 /** 403 mit diesem Code: Erst das Startpasswort ersetzen (data/PasswortPflicht). */
 const val PASSWORT_WECHSEL_NOETIG = "passwort_wechsel_noetig"
 
+/** 403 mit diesem Code: Verwalterrechte ohne zweiten Faktor (data/ZweiterFaktorPflicht). */
+const val ZWEITER_FAKTOR_PFLICHT = "zweiter_faktor_pflicht"
+
 /**
  * Token, Sprache und das Klartext-Verbot für alle Anfragen der Server-Clients.
  * Eine Anfrage ohne TLS bricht hier ab, bevor ein Kopf gebaut wird; die
@@ -81,6 +84,8 @@ class ServerWaechter(
     private val rechteEntzogen: () -> Unit = {},
     /** Ein 403 `passwort_wechsel_noetig`: Die App zeigt die Maske für das Startpasswort. */
     private val passwortWechselNoetig: () -> Unit = {},
+    /** Ein 403 `zweiter_faktor_pflicht`: Die App zeigt die Einrichtung des zweiten Faktors. */
+    private val zweiterFaktorPflicht: () -> Unit = {},
 ) : Interceptor {
 
     private val versionGemeldet = AtomicBoolean(false)
@@ -172,6 +177,7 @@ class ServerWaechter(
             if (antwort.code == 401 && code !in BESTAETIGUNG_NOETIG) sitzungAbgelaufen()
             if (antwort.code == 403 && code == NUR_ADMINS) rechteEntzogen()
             if (antwort.code == 403 && code == PASSWORT_WECHSEL_NOETIG) passwortWechselNoetig()
+            if (antwort.code == 403 && code == ZWEITER_FAKTOR_PFLICHT) zweiterFaktorPflicht()
         }
 
         val melden = versionsMeldung

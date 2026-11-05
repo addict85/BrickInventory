@@ -121,7 +121,7 @@ test('ein Passwortwechsel beendet Sitzungen UND Token — gegen echten Store',
 
       const r = await fetch(`${basis}${AUTH}/change-password`, {
         method: 'POST', headers: { 'content-type': 'application/json', cookie: fensterA.cookie },
-        body: JSON.stringify({ current: 'altesPasswort1', newPassword: 'nochNeuer12' }),
+        body: JSON.stringify({ current: 'altesPasswort1', newPassword: 'nochNeuer1234' }),
       });
       assert.equal(r.status, 200, await r.text());
 
@@ -143,13 +143,13 @@ test('ein Passwortwechsel beendet Sitzungen UND Token — gegen echten Store',
         [hashToken(tok), opferId]);
       assert.ok(await validateToken(tok), 'Vorbedingung: Token gilt');
 
-      // 'nochNeuer12' — der Subtest davor hat es geändert.
-      const chef = await anmelden('pw_chef', 'nochNeuer12');
+      // 'nochNeuer1234' — der Subtest davor hat es geändert.
+      const chef = await anmelden('pw_chef', 'nochNeuer1234');
       // Das Passwort des OPFERS wurde im ersten Subtest geändert — hier zählt nur, dass
       // der Reset läuft; der Admin-Weg verlangt kein altes Passwort.
       const r = await fetch(`${basis}${AUTH}/users/${opferId}/password`, {
         method: 'PUT', headers: { 'content-type': 'application/json', cookie: chef.cookie },
-        body: JSON.stringify({ password: 'wiederNeu123', admin_password: 'nochNeuer12' }),
+        body: JSON.stringify({ password: 'wiederNeu123', admin_password: 'nochNeuer1234' }),
       });
       assert.equal(r.status, 200, await r.text());
       assert.equal(await validateToken(tok), null,

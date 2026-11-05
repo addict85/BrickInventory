@@ -106,6 +106,12 @@ data class UpdateUiState(
      */
     val dialogAbgelehnt: Boolean = false,
     val fehler: String? = null,
+    /**
+     * Wie frisch die zuletzt geprüfte Beschreibung war; null vor der ersten Prüfung.
+     * Auch nach der stillen Prüfung gesetzt: Ein Zurückhalten soll man in den
+     * Einstellungen sehen, ohne erst den Knopf zu drücken.
+     */
+    val frische: ch.brickinventoryapp.util.UpdateFrische? = null,
 )
 
 /**

@@ -6,7 +6,7 @@ import path from 'path';
 import fs from 'fs';
 import crypto from 'crypto';
 import { fehlerAntwort, fehlertext, pfadParam, meldeUndLiefere, logAndContinue, oeffentlicherFehler } from '../../src/infra/httpError';
-import { requireToken } from './middleware';
+import { requireToken, kontoSchranke } from './middleware';
 import { getSetting } from '../../src/konto/settings';
 import { findSetInScope, normalizeSetNumber } from '../../src/sets/setAdd';
 import { scopeIds, parseScopeMode, writableIds, householdMembers, resolveWriteTarget } from '../../src/haushalt/haushalt';
@@ -15,7 +15,7 @@ import { normalisiereLagerort, setzeLagerort, lagerorte,
          orteVon, legeOrtAn, benenneOrtUm, loescheOrt,
          vorgabeVon, setzeVorgabe } from '../../src/bestand/lagerort';
 import { alarmeFuer, alleAlarme, ausgeloesteSeit, loescheAlarm, setzeAlarm, alarmeAusCsv } from '../../src/finanzen/preisalarm';
-import { csvEmpfang, inhaltPasstZuTyp, uploadKontingentBytes, belegterPlatz, FORMULAR_GRENZEN } from '../../src/infra/dateiEmpfang';
+import { csvEmpfang, inhaltPasstZuTyp, uploadKontingentBytes, belegterPlatz, FORMULAR_GRENZEN, privaterOrdner } from '../../src/infra/dateiEmpfang';
 import { sendCsv, uebersprungenHinweis } from '../../src/infra/csvExport';
 import { withInventoryLock } from '../../db/txLock';
 import { addSet, updateSet } from '../../src/sets/setService';
@@ -46,10 +46,14 @@ const router = vertragsRouter();
 
 router.get('/sets/info/:setNumber', requireToken, async (req: AuthedRequest, res: Antwort<'GET /api/v1/sets/info/:setNumber'>) => {
   const n = mitVersion(pfadParam(req, 'setNumber'));
-  // Ohne Katalogzeile zeigt die Oberfläche die Nummer als Namen.
-  const row = await setInfo(n);
-  if (row?.image_local && !await setBildSichtbar(req.apiUser.user_id, n)) row.image_local = null;
-  res.json(row ? { success: true, set_number: n, ...row, name: row.name || n } : { success: true, set_number: n, name: n });
+  const stamm = await setInfo(n);
+  const imBlickfeld = !!(stamm?.image_local || stamm?.platzhalter) && await setBildSichtbar(req.apiUser.user_id, n);
+  // Ein fremder Platzhalter antwortet wie eine nie erfasste Nummer; die Oberfläche zeigt dann die Nummer als Namen.
+  if (!stamm || (stamm.platzhalter && !imBlickfeld)) return res.json({ success: true, set_number: n, name: n, im_katalog: false });
+  const row = { ...stamm };
+  delete row.platzhalter;
+  if (!imBlickfeld) row.image_local = null;
+  res.json({ success: true, set_number: n, ...row, name: row.name || n, im_katalog: true });
 });
 
 /** Nur das Blickfeld des fragenden Kontos (eigenes Konto oder Haushalt).
@@ -114,7 +118,7 @@ router.get('/alerts', requireToken, async (req: AuthedRequest, res: Antwort<'GET
   res.json({ success: true, alerts: await alleAlarme(req.apiUser.user_id) });
 });
 
-router.post('/alerts/import/csv', requireToken, csvEmpfang.single('file'),
+router.post('/alerts/import/csv', requireToken, kontoSchranke('upload'), csvEmpfang.single('file'),
   async (req: AuthedRequest & { file?: { buffer: Buffer } }, res: Antwort<'POST /api/v1/alerts/import/csv'>) => {
     if (!req.file) return sendeFehler(req, res, 400, 'keine_datei');
     const uid = req.apiUser.user_id;
@@ -309,18 +313,9 @@ router.get('/sets/import/csv/status', zustandsWaechter, async (req, res: Antwort
   res.json(buildJobStatus(await jobGet(angemeldeteNutzerId(req)), req));
 });
 
-/** Offene Ströme je Konto: Jede Ansicht öffnet einen, mehr als sechs sind ein Leck. */
-const _sseCounts = new Map<number, number>();
-const MAX_SSE_PER_USER = 6;
-
-router.get('/sets/import/csv/stream', zustandsWaechter, async (req, res) => {
+// Offene Ströme je Konto zählt kontoSchranke('strom') für alle Ströme gemeinsam.
+router.get('/sets/import/csv/stream', zustandsWaechter, kontoSchranke('strom'), async (req, res) => {
   const uid = angemeldeteNutzerId(req);
-  const offen = _sseCounts.get(uid) || 0;
-  if (offen >= MAX_SSE_PER_USER) {
-    console.warn(`[csv-stream] Nutzer ${uid} hat bereits ${offen} offene Streams — abgelehnt`);
-    return sendeFehler(req, res, 429, 'zu_viele_verbindungen');
-  }
-  _sseCounts.set(uid, offen + 1);
   res.setHeader('Content-Type', 'text/event-stream');
   res.setHeader('Cache-Control', 'no-store, no-transform');
   res.setHeader('Connection', 'keep-alive');
@@ -356,8 +351,6 @@ router.get('/sets/import/csv/stream', zustandsWaechter, async (req, res) => {
   function cleanup() {
     if (closed) return;
     closed = true;
-    const rest = (_sseCounts.get(uid) || 1) - 1;
-    if (rest > 0) _sseCounts.set(uid, rest); else _sseCounts.delete(uid);
     csvImportBus.off(`progress:${uid}`, onProgress);
     pgNotify.unlisten('csv_import_progress', onNotify);
     clearInterval(fallbackTimer);
@@ -368,7 +361,7 @@ router.get('/sets/import/csv/stream', zustandsWaechter, async (req, res) => {
   req.on('close', cleanup);
 });
 
-router.post('/sets/import/csv', requireToken, csvEmpfang.single('file'), async (req, res: Antwort<'POST /api/v1/sets/import/csv'>) => {
+router.post('/sets/import/csv', requireToken, kontoSchranke('upload'), csvEmpfang.single('file'), async (req, res: Antwort<'POST /api/v1/sets/import/csv'>) => {
   if (!req.file) return sendeFehler(req, res, 400, 'keine_datei');
   const { total, uebersprungen } = await setCsvImportStarten(angemeldeteNutzerId(req), req.file.buffer.toString('utf-8'));
   // Übersprungene Zeilen gehören in die sofortige Antwort; der Import läuft weiter.
@@ -387,7 +380,7 @@ router.get('/sets/export/rebrickable', requireToken, async (req, res) => {
     ['Set Number', 'Quantity'], await rebrickableListe(angemeldeteNutzerId(req)));
 });
 
-router.post('/sets/add-stream', requireToken, async (req: LoggedInRequest, res) => {
+router.post('/sets/add-stream', requireToken, kontoSchranke('strom'), async (req: LoggedInRequest, res) => {
   const { set_number, quantity = 1, purchase_price, condition: setCondition, owner_user_id, storage } = req.body;
   if (!set_number) { sendeFehler(req, res, 400, 'set_number_erforderlich'); return; }
   const owner = await resolveWriteTarget(angemeldeteNutzerId(req), owner_user_id);
@@ -444,7 +437,7 @@ const INSTR_EXT_BY_MIME = { 'application/pdf': '.pdf', 'image/jpeg': '.jpg', 'im
 
 const uploadInstr = multer({
   storage: multer.diskStorage({
-    destination: (req, _file, cb) => { const dir = path.join(DATA_DIR, 'uploads', String(angemeldeteNutzerId(req))); fs.mkdirSync(dir, { recursive: true }); cb(null, dir); },
+    destination: (req, _file, cb) => { cb(null, privaterOrdner(path.join(DATA_DIR, 'uploads'), String(angemeldeteNutzerId(req)))); },
     filename: (req, file, cb) => {
       const safe = String(req.params.setNumber).replace(/[^a-z0-9-]/gi, '_');
       // ausTabelle: Ein geerbter Schlüssel wie 'constructor' ist keine Endung.
@@ -471,8 +464,9 @@ async function vorDemUpload(req: express.Request, res: express.Response, next: e
   next();
 }
 
-router.post('/sets/:setNumber/instructions/upload', requireToken, vorDemUpload, uploadInstr.single('file'), async (req, res: Antwort<'POST /api/v1/sets/:setNumber/instructions/upload'>) => {
+router.post('/sets/:setNumber/instructions/upload', requireToken, kontoSchranke('upload'), vorDemUpload, uploadInstr.single('file'), async (req, res: Antwort<'POST /api/v1/sets/:setNumber/instructions/upload'>) => {
   if (!req.file) return sendeFehler(req, res, 400, 'keine_datei');
+  fs.chmodSync(req.file.path, 0o600);
   const verwerfen = () => fs.rmSync(req.file!.path, { force: true });
   if (!inhaltPasstZuTyp(req.file.path, req.file.mimetype)) { verwerfen(); return sendeFehler(req, res, 400, 'datei_inhalt_falsch'); }
   // Noch einmal nach dem Schreiben: Ohne Content-Length (chunked) greift die Vorabprüfung nicht.

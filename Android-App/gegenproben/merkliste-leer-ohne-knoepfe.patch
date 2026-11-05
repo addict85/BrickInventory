@@ -1,18 +1,17 @@
-Gegenprobe: Die leere Merkliste ohne den Knopf „Set merken“
+Gegenprobe: Die leere Merkliste ohne die Beschriftung „Set merken“ am Knopf
 Modul: app
 Test: ch.brickinventoryapp.OberflaechenRegelnTest
 Rot: leere Merkliste
 
 diff --git a/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/ui/screens/MerklisteScreen.kt b/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/ui/screens/MerklisteScreen.kt
-index df3c45f..8dfb792 100644
+index 78d2b95..721d568 100644
 --- a/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/ui/screens/MerklisteScreen.kt
 +++ b/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/ui/screens/MerklisteScreen.kt
-@@ -176,7 +176,7 @@ fun MerklisteScreen(
-                         Button(onClick = { maskeOffen = true }, shape = Formen.knopf) {
-                             Icon(Icons.Default.Add, null, Modifier.size(18.dp))
-                             Spacer(Modifier.width(Abstaende.klein))
--                            Text(stringResource(R.string.wanted_add_first))
-+                            Text(stringResource(R.string.wanted_add_title))
-                         }
-                         OutlinedButton(onClick = { onScan() }, shape = Formen.knopf) {
-                             Icon(ch.brickinventoryapp.ui.components.BarcodeSymbol, null, Modifier.size(18.dp))
+@@ -164,7 +164,6 @@ fun MerklisteScreen(
+                             Button(onClick = { maskeOffen = true }, modifier = Modifier.fillMaxWidth()) {
+                                 Icon(Icons.Default.Add, null, Modifier.size(ch.brickinventoryapp.ui.components.mitSchrift(18.dp)))
+                                 Spacer(Modifier.width(Abstaende.klein))
+-                                Text(stringResource(R.string.wanted_add_first))
+                             }
+                             OutlinedButton(onClick = { onScan() }, modifier = Modifier.fillMaxWidth(), colors = nebenKnopfFarben(), border = nebenKnopfRand()) {
+                                 Icon(ch.brickinventoryapp.ui.components.BarcodeSymbol, null, Modifier.size(ch.brickinventoryapp.ui.components.mitSchrift(18.dp)))

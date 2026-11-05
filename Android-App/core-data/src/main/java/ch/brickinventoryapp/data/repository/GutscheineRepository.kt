@@ -2,7 +2,6 @@ package ch.brickinventoryapp.data.repository
 
 import ch.brickinventoryapp.data.api.GutscheineApi
 import ch.brickinventoryapp.data.cache.ResponseCache
-import ch.brickinventoryapp.data.lokal.Bearbeitung
 import ch.brickinventoryapp.data.lokal.Faecher
 import ch.brickinventoryapp.data.lokal.Offlineablage
 import ch.brickinventoryapp.data.model.*
@@ -103,16 +102,23 @@ class GutscheineRepository @Inject constructor(
             // Satz und Code, deshalb wird die Antwort hier zu success=false.
             if (antwort.code() == 422) {
                 val roh = antwort.errorBody()?.string()
-                val geparst = roh?.let {
+                // Zu viele Seiten: Gelesen wurde nichts, das Formular hat nichts vorzubelegen.
+                // Ein Fehler mit Satz und Code, sonst hiesse es „unvollständig gelesen“.
+                val zuLang = Fehlerrumpf.lies(roh).code == PDF_ZU_VIELE_SEITEN
+                val geparst = roh?.takeIf { !zuLang }?.let {
                     runCatching { nachsichtigesJson.decodeFromString<GutscheinAntwort>(it) }.getOrNull()
                 }
-                if (geparst != null) retrofit2.Response.success(geparst) else antwort
+                when {
+                    geparst != null -> retrofit2.Response.success(geparst)
+                    zuLang -> retrofit2.Response.error<GutscheinAntwort>(antwort.code(), (roh ?: "").toResponseBody("application/json".toMediaType()))
+                    else -> antwort
+                }
             } else antwort
         }
     }
 
-    // Kein eigener PDF-Download: PdfViewerScreen bekommt eine Adresse und lädt sie mit
-    // dem angemeldeten Client (vm.apiHttpClient — Token, Klartext-Verbot und
+    // Kein eigener PDF-Download: Der PDF-Betrachter bekommt eine Adresse und lädt sie mit
+    // dem angemeldeten Client (AnleitungsLader — Token, Klartext-Verbot und
     // 401-Meldung hängen daran). Ein eigener Weg wäre eine zweite Fassung und legte
     // Nummer und PIN in den Cache des Geräts.
 
@@ -129,6 +135,9 @@ class GutscheineRepository @Inject constructor(
         fun ohneGeheimnis(g: Gutschein): Gutschein =
             g.copy(number = if (g.number.length > 4) "…" + g.number.takeLast(4) else g.number, pin = null)
 
+        /** 422 auf ein PDF über der Seitengrenze des Servers. */
+        private const val PDF_ZU_VIELE_SEITEN = "pdf_zu_viele_seiten"
+
         /** Die Codes, unter denen der Server eine Guthabenabfrage zurückstellt. */
         private val GUTHABEN_GESPERRT = setOf("guthaben_abstand", "guthaben_botschutz")
 
@@ -142,5 +151,4 @@ class GutscheineRepository @Inject constructor(
     /** Leer heisst „nicht mitschicken" — siehe die Begruendung bei ausPdf(). */
     private fun alsTeil(wert: String?): okhttp3.RequestBody? =
         wert?.trim()?.takeIf { it.isNotEmpty() }?.toRequestBody("text/plain".toMediaType())
-
 }

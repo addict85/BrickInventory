@@ -1,0 +1,124 @@
+# Regeln für detekt (Konvention brickinventory.detekt in build-logic, Detekt.kt).
+#
+# Grundlage ist detekts Vorgabe (buildUponDefaultConfig); hier steht nur, was
+# davon abweicht, und jeweils warum. Es gibt keine Baseline: Was hier aktiv
+# ist, gilt für jede Zeile, auch für die alten.
+
+config:
+  validation: true
+
+complexity:
+  # Schwellen knapp über dem heutigen Höchstwert: Neues darf nicht länger,
+  # verschachtelter oder verzweigter werden als das Schlimmste von heute.
+  # Wer eine der Funktionen aufteilt, senkt die Zahl nach.
+  LongMethod:
+    threshold: 200
+  CyclomaticComplexMethod:
+    threshold: 60
+    ignoreSimpleWhenEntries: true
+  LongParameterList:
+    # Composables bekommen Zustand und Rückrufe einzeln herein, statt ein
+    # ViewModel zu kennen (ScreenViewModelWiringTest); das ergibt lange Listen.
+    ignoreAnnotated: ['Composable']
+    functionThreshold: 12
+    constructorThreshold: 26
+  NestedBlockDepth:
+    threshold: 9
+  TooManyFunctions:
+    # Dateien sind nach Bereichen geschnitten, nicht nach Anzahl Funktionen.
+    active: false
+  ComplexCondition:
+    threshold: 9
+  LargeClass:
+    excludes: ['**/test/**']
+
+exceptions:
+  # Fehler aus Netz und Datei werden an einer Stelle in Result bzw. eine
+  # Meldung übersetzt; der breite Fang ist dort Absicht, nicht Versehen.
+  TooGenericExceptionCaught:
+    active: false
+  SwallowedException:
+    active: false
+
+naming:
+  FunctionNaming:
+    # Composables heissen wie Klassen (Compose-Konvention).
+    ignoreAnnotated: ['Composable']
+  VariableNaming:
+    # Lokale Konstanten in GROSSBUCHSTABEN und `_name` für das veränderliche
+    # Gegenstück eines öffentlichen Werts.
+    variablePattern: '(_)?([a-z][A-Za-z0-9]*|[A-Z][A-Z0-9_]*)'
+    privateVariablePattern: '(_)?([a-z][A-Za-z0-9]*|[A-Z][A-Z0-9_]*)'
+  MatchingDeclarationName:
+    # Dateien heissen nach ihrem Bereich (ZustandKatalog.kt), nicht nach der
+    # ersten Klasse darin.
+    active: false
+
+performance:
+  SpreadOperator:
+    # Nur beim Start (Migrationen) und in Testhilfen; die Kopie kostet nichts.
+    active: false
+
+style:
+  MagicNumber:
+    # Masse, Farben und Zeitspannen stehen in Compose dort, wo sie wirken.
+    active: false
+  MaxLineLength:
+    # Lange Zeilen sind meist Compose-Aufrufe und Testdaten; ein Umbruchlauf
+    # über rund 1100 Zeilen brächte nur Rauschen in jeden Diff.
+    active: false
+  WildcardImport:
+    # Stern-Importe für die Compose-Pakete sind Projektstil.
+    active: false
+  ReturnCount:
+    # Früh zurückgeben statt verschachteln ist Projektstil, auch nach der
+    # Prüfung mitten in der Funktion (Netzantworten, Passkeys).
+    active: false
+  LoopWithTooManyJumpStatements:
+    maxJumpCount: 4
+    excludes: ['**/test/**']
+  DestructuringDeclarationWithTooManyEntries:
+    maxDestructuringEntries: 4
+  ThrowsCount:
+    max: 3
+
+formatting:
+  # Die Ausrichtung mit Leerzeichen (`val a   = …`), lange Aufruflisten und
+  # die Reihenfolge der Importe sind Projektstil; ktlints Umbruch- und
+  # Einrückregeln schrieben fast jede Datei um.
+  ArgumentListWrapping:
+    active: false
+  Wrapping:
+    active: false
+  Indentation:
+    active: false
+  MaximumLineLength:
+    active: false
+  ParameterListWrapping:
+    active: false
+  NoMultipleSpaces:
+    active: false
+  ModifierListSpacing:
+    active: false
+  FunctionReturnTypeSpacing:
+    active: false
+  MultiLineIfElse:
+    active: false
+  PropertyWrapping:
+    active: false
+  AnnotationOnSeparateLine:
+    active: false
+  SpacingBetweenDeclarationsWithComments:
+    active: false
+  SpacingBetweenDeclarationsWithAnnotations:
+    active: false
+  ImportOrdering:
+    active: false
+  NoWildcardImports:
+    active: false
+  Filename:
+    active: false
+  NoConsecutiveBlankLines:
+    # Die beiden Dateien schreibt `npm run design:tokens` (Web-App); ihre Form
+    # prüft design-abschrift.test.js Zeichen für Zeichen.
+    excludes: ['**/ui/theme/DesignTokens.kt', '**/ui/theme/DunkelTokens.kt']

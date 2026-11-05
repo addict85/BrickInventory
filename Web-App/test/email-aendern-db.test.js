@@ -14,6 +14,15 @@
  *   D  getBaseUrl() fällt in Produktion wieder auf den Host-Kopf zurück → rot:
  *      „in Produktion ohne APP_BASE_URL kein Link aus dem Host-Kopf"
  *
+ * Gegenproben zur Kontenaufzählung (03.11.2026 gemessen):
+ *   E  emailVergeben() wieder vor der Passwortprüfung → rot: „eine belegte
+ *      Adresse verrät sich nur mit Passwort“
+ *   F  kontoGedrosselt() in PUT /profile entfernt → rot: „Vergabeprüfungen
+ *      sind gebremst“
+ *   G  Passwortpflicht wieder nur bei neuer Adresse → rot: „auch ohne neue
+ *      Adresse nur mit Passwort“ und „ein belegter Benutzername verrät sich
+ *      nur mit Passwort“
+ *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL.
  */
 const test   = require('node:test');
@@ -51,13 +60,15 @@ test('E-Mail ändern', { concurrency: 1 }, async (t) => {
   const client = await db.pool.connect();
   try { await _req('db/migrate.js').runMigrations(client); } finally { client.release(); }
 
-  await db.run('DELETE FROM users WHERE username = $1', [NAME]);
+  await db.run('DELETE FROM users WHERE username = ANY($1)', [[NAME, `${NAME}_b`]]);
+  const anderes = (await db.get(`INSERT INTO users (username, email, password_hash) VALUES ($1, $2, 'x') RETURNING id`,
+    [`${NAME}_b`, `${NAME}@belegt.example`])).id;
   const uid = (await db.get(
     `INSERT INTO users (username, email, password_hash, is_active, email_verified)
      VALUES ($1, $2, $3, true, true) RETURNING id`,
     [NAME, `${NAME}@alt.example`, await bcrypt.hash(PASS, 4)])).id;
   t.after(async () => {
-    await db.run('DELETE FROM users WHERE id = $1', [uid]).catch(() => {});
+    await db.run('DELETE FROM users WHERE id = ANY($1)', [[uid, anderes]]).catch(() => {});
     await db.pool.end().catch(() => {});
   });
 
@@ -89,14 +100,23 @@ test('E-Mail ändern', { concurrency: 1 }, async (t) => {
     const r = await profil({ email: `${NAME}@neu.example`, password_current: PASS });
     assert.equal(r.status, 200, JSON.stringify(r.body));
     assert.equal(r.body.emailChanged, true);
-    assert.equal(await adresse(), `${NAME}@neu.example`);
+    assert.equal(await adresse(), `${NAME}@alt.example`, 'die neue gilt erst nach dem Link (email-neu-db)');
     assert.deepEqual(gesendet, [{ an: `${NAME}@alt.example`, name: NAME, neu: `${NAME}@neu.example` }],
       'Die bisherige Adresse muss erfahren, dass das Konto eine neue hat');
   });
 
-  await t.test('ohne neue Adresse kein Passwort nötig', async () => {
-    const r = await profil({ email: `${NAME}@neu.example`, first_name: 'Neu' });
-    assert.equal(r.status, 200, JSON.stringify(r.body));
+  await t.test('auch ohne neue Adresse nur mit Passwort', async () => {
+    const ohne = await profil({ email: `${NAME}@neu.example`, first_name: 'Neu' });
+    assert.deepEqual([ohne.status, ohne.body.code], [400, 'aktuelles_passwort_erforderlich']);
+    assert.equal((await profil({ first_name: 'Neu', password_current: 'falsch-falsch' })).body.code, 'aktuelles_passwort_falsch');
+    const mit = await profil({ email: `${NAME}@neu.example`, first_name: 'Neu', password_current: PASS });
+    assert.equal(mit.status, 200, JSON.stringify(mit.body));
+    assert.equal((await db.get('SELECT first_name FROM users WHERE id = $1', [uid])).first_name, 'Neu');
+  });
+
+  await t.test('ein belegter Benutzername verrät sich nur mit Passwort', async () => {
+    assert.equal((await profil({ username: `${NAME}_b` })).body.code, 'aktuelles_passwort_erforderlich');
+    assert.equal((await profil({ username: `${NAME}_b`, password_current: 'falsch-falsch' })).body.code, 'aktuelles_passwort_falsch');
   });
 
   await t.test('in Produktion ohne APP_BASE_URL kein Link aus dem Host-Kopf', async () => {
@@ -116,6 +136,22 @@ test('E-Mail ändern', { concurrency: 1 }, async (t) => {
       process.env.NODE_ENV = vorher.env;
       if (vorher.basis === undefined) delete process.env.APP_BASE_URL; else process.env.APP_BASE_URL = vorher.basis;
     }
+  });
+
+  await t.test('eine belegte Adresse verrät sich nur mit Passwort', async () => {
+    const belegt = `${NAME}@belegt.example`;
+    assert.equal((await profil({ email: belegt })).body.code, 'aktuelles_passwort_erforderlich');
+    assert.equal((await profil({ email: belegt, password_current: 'falsch-falsch' })).body.code, 'aktuelles_passwort_falsch');
+    assert.equal((await profil({ email: belegt, password_current: PASS })).body.code, 'email_vergeben');
+  });
+
+  await t.test('Vergabeprüfungen sind gebremst', async () => {
+    const codes = [];
+    for (let i = 0; i < 12; i++) codes.push((await profil({ username: `${NAME}_b`, password_current: PASS })).body.code);
+    assert.equal(codes[0], 'benutzername_vergeben');
+    const ab = codes.indexOf('zu_viele_anfragen');
+    assert.ok(ab > 0, codes.join(', '));
+    assert.ok(codes.slice(ab).every(c => c === 'zu_viele_anfragen'), codes.join(', '));
   });
 
   await t.test('Passwort nur über change-password', async () => {

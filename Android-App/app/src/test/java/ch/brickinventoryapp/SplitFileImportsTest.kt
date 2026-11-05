@@ -137,7 +137,7 @@ class SplitFileImportsTest {
             val importe = Regex("""^import ([\w.]+)${'$'}""", RegexOption.MULTILINE)
                 .findAll(f.readText()).map { it.groupValues[1] }.toSet()
             for ((name, grund) in nichtImportierbar) {
-                if (name in importe) fehler += "${'$'}{f.name}: import ${'$'}name — ${'$'}grund"
+                if (name in importe) fehler += "${f.name}: import $name — $grund"
             }
         }
         assert(fehler.isEmpty()) {
@@ -317,6 +317,7 @@ class SplitFileImportsTest {
             "TopAppBarDefaults" to "ExperimentalMaterial3Api",
             "PullToRefreshBox" to "ExperimentalMaterial3Api",
             "SearchBar" to "ExperimentalMaterial3Api",
+            "TooltipBox" to "ExperimentalMaterial3Api",
             "combinedClickable" to "ExperimentalFoundationApi",
             "stickyHeader" to "ExperimentalFoundationApi",
             "FlowRow" to "ExperimentalLayoutApi",
@@ -414,7 +415,7 @@ class SplitFileImportsTest {
             for (m in Regex(
                 """^(?:@\w+\s+)?(?:internal |public |private )?(?:const )?(?:suspend |inline )?""" +
                 // `fun interface` vor `fun`, sonst gilt „interface“ als Name.
-                """(?:fun interface|fun|val|var|class|object|interface|enum class|data class|sealed class|sealed interface|abstract class|typealias)""" +
+                """(?:fun interface|fun|val|var|class|object|interface|enum class|data class|annotation class|sealed class|sealed interface|abstract class|typealias)""" +
                 """\s+(?:<[^>]*>\s*)?(?:\w+\.)?(\w+)""",
                 RegexOption.MULTILINE).findAll(src)) {
                 deklariert += "$paket.${m.groupValues[1]}"

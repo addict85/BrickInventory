@@ -34,9 +34,31 @@ den Commits, nicht hier.
 ## Schutzmaßnahmen
 
 ### Transport (1)
-- HTTPS als Standard: Caddy mit eigener CA (`tls internal`) vor der App, die
-  App veröffentlicht keinen Port; Port 80 leitet um und liefert nur `/ca.crt`:
-  `compose.yaml`, `Caddyfile` — `compose-pgweb`.
+- HTTPS als Standard: Caddy vor der App, die App veröffentlicht keinen Port;
+  Port 80 leitet um und liefert nur `/ca.crt`: `compose.yaml`, `Caddyfile` —
+  `compose-pgweb`.
+- Keine CA ohne Namensbeschränkung als stiller Rückfall: Caddy startet nur mit
+  eigener, auf `BRICK_HOST` beschränkter CA (`scripts/ca-einrichten.sh`), mit
+  `BRICK_TLS=acme` (öffentlicher Name) oder ausdrücklich mit
+  `CA_OHNE_NAMENSBESCHRAENKUNG=ja`; ohne Aussteller aus dem Startskript ist
+  das Caddyfile ungültig. Das Protokoll von Caddy und `ca-einrichten.sh`
+  nennen den SHA-256-Fingerabdruck der Wurzel zum Abgleich auf dem Gerät —
+  `ca-eigene-wurzel`.
+- Anmeldewege (Passwort, Passkey, QR, Registrierung, Rücksetzen) nehmen an
+  Caddy Rümpfe bis 16 KB an und gehen ohne Verbindungsgrenze an die App: Die
+  Zahl gleichzeitiger Passwortprüfungen begrenzt die bcrypt-Schranke des
+  Servers (Vorrang bekannter Anmeldungen, sonst 503), die Raten je Adresse
+  und Konto zählt der Server — `caddy-anmeldebremse`, `bcrypt-schranke-db`.
+- bcrypt rechnet in höchstens 4 Worker-Threads (weniger bei kleinerem
+  cgroup-Kontingent, mehr mit `BCRYPT_ARBEITER`); untätige enden nach 60 s —
+  `bcrypt-pool`.
+- Langsame Clients erreichen die App nicht: Caddy liest den Rumpf der
+  Anmeldewege ganz (`request_buffers 32KB`, grösser als `max_size`), bevor er
+  ihn weiterreicht; Köpfe müssen in 10 s da sein. Die App
+  selbst: Kopf 15 s, ganze Anfrage 5 min (Uploads), ohne Anmeldung Rumpf
+  10 s (sonst 408 `anfrage_zu_langsam`): `Caddyfile`, `server.ts`,
+  `rumpfFrist` in `routes/api_v1/middleware.ts` — `caddy-anmeldebremse`,
+  `sicherheit-runde11-db`.
 - Die Wurzel signiert die Blätter (`sign_with_root`) und steht in der
   ausgelieferten Kette; die App pinnt ihren SPKI-Fingerabdruck aus dem QR-Code
   (`fp`): `utils/tlsWurzel.ts`, `routes/auth.ts` — `tls-wurzel-db`.
@@ -136,11 +158,21 @@ den Commits, nicht hier.
 - Ändernde Anfragen: `Sec-Fetch-Site`, sonst `Origin`/`Referer` gegen Host
   und `APP_BASE_URL`; Cookie-Sitzung ohne Herkunft wird abgelehnt, Bearer
   ohne Cookie ausgenommen: `utils/herkunft.ts` — `herkunft`.
+- Mit `APP_BASE_URL` antwortet die App nur unter deren Namen (sonst 421
+  `fremder_host`), gegen DNS-Rebinding im Klartextbetrieb. Frei bleiben
+  Loopback, Bearer-Token, `/ca.crt` und die Gesundheitspfade:
+  `nurEigenerHost` in `src/infra/herkunft.ts` — `sicherheit-runde11-db`.
+- E-Mail-Bestätigung erst per Knopf: `GET /verify` zeigt die Seite,
+  `POST /auth/email-bestaetigen` bestätigt; ein Link-Scanner bestätigt nichts
+  — `sicherheit-runde11-db`.
 
 ### Zugriff auf fremde Daten (3)
 - Jede Abfrage über `scopeIds()`/`writableIds()` (Haushalt):
   `utils/household.ts` — `erfassung-fremd-loeschen-db`, `gutscheine-db`, `pdf-jobs-db`.
 - Uploads nur für Besitzer und Hauptkonto: `routes/datenDateien.ts` — `daten-dateien-db`, `media-auth`.
+- Kaufpreis umhängen: Eine fremde Erfassungs-ID antwortet wie eine fehlende
+  (404 `kaufpreis_nicht_gefunden`), kein Orakel für vergebene IDs:
+  `acquisitionMoveSource` in `src/haushalt/haushalt.ts` — `sicherheit-runde11-db`.
 - Set-Bilder (`/images/sets/…`) nur im Blickfeld (Bestand, Merkliste,
   Preisalarme des Haushalts), Anleitungen (`/data/instructions/…`) nur zu Sets
   im Bestand; fremd und fehlend antworten gleich (404). Teile- und
@@ -192,6 +224,9 @@ den Commits, nicht hier.
   Konto gedrosselt (`BILD_ABRUFE_JE_MINUTE`), Cache gedeckelt
   (`BILD_CACHE_MAX_MB`), Antworten `Cache-Control: private`:
   `routes/imgProxy.ts`, `src/katalog/bilder/imgCacheServe.ts` — `bild-proxy-deckel`.
+  Hinaus geht nur ein Bildtyp aus einer Liste (JPEG, PNG, GIF, WebP, AVIF),
+  nie der rohe Kopf des CDN; sonst JPEG (`bildTyp`) — `img-cache-serve`,
+  `bild-proxy-deckel`.
 - Nummern als kodiertes Pfadsegment (`pfadSegment`) — `fremde-pfade-db`.
 
 ### Eingaben (2, 3)
@@ -215,6 +250,10 @@ den Commits, nicht hier.
 - Ströme und Sammelberichte (Erfassungsstrom, CSV-/XML-Importe) melden
   Fachfehler mit Code, alles andere als `interner_fehler`; der Text steht nur
   im Protokoll: `oeffentlicherFehler` in `src/infra/httpError.ts` — `fehlertext-intern-db`.
+- 4xx ohne Code nennen nie den Text einer Bibliothek (Parser, Dateipfad,
+  zlib), sondern `anfrage_ungueltig`, `nicht_gefunden` oder
+  `anfrage_zu_gross`; eigene Sätze tragen die Klasse `Meldung`:
+  `handleRouteError` — `sicherheit-runde11-db`.
 - Aktions-Dispatcher kein Skript-Gadget: kein `mouseenter`, je Ereignis nur
   die genutzten Handler, kein Rückfall auf `window`; Löschen, Konto, Tokens
   und Verwaltung nur von Elementen aus dem Markup beim Laden oder aus
@@ -234,6 +273,13 @@ den Commits, nicht hier.
   `utils/apiKontingent.ts`, `utils/auftraege.ts` — `api-kontingent-konto-db`.
 - Je Zieladresse (gehasht): Registrierung 3/h (429), „Passwort vergessen“ 3/h
   (still keine Mail): `src/konto/zielDrossel.ts` — `mail-fremder-text-db`.
+- Prüfung eines Haushaltscodes (`redeem/pruefen`) 30/h je Konto —
+  `haushalt-beitreten-db`.
+- Bestätigungslink: Vor dem Einlösen nennt `POST /auth/email-bestaetigen/vorschau`
+  nur den Benutzernamen des Kontos (30/h je Adresse), die Seite und ihr Knopf
+  nennen ihn; nennen mehrere offene Registrierungen die Adresse, verweist die
+  Mail ohne Namen darauf — `email-neu-db`, `email-bestaetigen-browser`,
+  `mail-fremder-text-db`.
 - Teile-Import 30/h je Konto, leere Rebrickable-Antworten 10 min gemerkt;
   Währungswechsel 5/h je Konto (jeder zieht den Preislauf vor).
 - Rumpf höchstens 256 KB, nur der PDF-Auftrag 4 MB (pfadgenau vor dem
@@ -253,7 +299,26 @@ den Commits, nicht hier.
   in `compose.yaml` (`docker-compose`); npm und Gradle über Renovate
   (`renovate.json` im Wurzelverzeichnis), frühestens drei Tage nach
   Erscheinen (`minimumReleaseAge`).
-- `npm ci` aus dem Lockfile; `npm audit --omit=dev` (web-ci.yml).
+- `npm ci --ignore-scripts` aus dem Lockfile (Dockerfile, CI); Install-Skripte
+  nur gezielt für die Pakete, die eines haben (`npm rebuild esbuild`) —
+  `dockerfile`. `npm audit --omit=dev` ist rot ab `moderate` (web-ci.yml) —
+  `build-tooling`.
+- Images mit Herkunft (SLSA-Provenance `mode=max`) und Stückliste (BuildKit
+  mit per Digest festem Scanner; npm als CycloneDX) am Image, dazu
+  `actions/attest-build-provenance` und `actions/attest-sbom` am signierten
+  Digest; prüfen mit `cosign verify` und `gh attestation verify` (README) —
+  `workflow-ort`.
+- Der Test-Schlüssel `Web-App/test/fixtures/abruf-test.key` (mit
+  `abruf-test.crt`, selbstsigniert, `CN=abruf-test`, SHA-256
+  `25:B4:03:BD:C0:2F:3B:87:7B:DC:7F:B6:69:4D:C3:AF:FE:79:C1:42:C9:CE:DD:1E:C1:B2:6C:EF:F7:96:B3:BC`)
+  steht seit Commit `227229e` öffentlich in der Historie. Er war nie
+  produktiv: Nur zwei Tests (`abruf-helfer`, `gutschein-guthaben-abruf`)
+  starten damit einen HTTPS-Server auf `127.0.0.1` und reichen das Zertifikat
+  ihrem eigenen Client als `ca` — kein Image, kein Truststore, keine
+  Konfiguration enthält es. Trotz der Namen im Zertifikat (`localhost`,
+  `cdn.rebrickable.com`, `example.org`) ist es öffentlich und darf nirgends
+  als vertrauenswürdig eingetragen werden; ein Gerät, das es zeigt, wird
+  getäuscht. Die Historie bleibt unverändert.
 - PDF.js lädt ohne eval (`isEvalSupported: false`) und ohne Skripte im PDF;
   die ausgelieferten Dateien enthalten weder `eval(` noch `new Function(` —
   `pdf-zoom`, `pdfjs-fassung`.
@@ -299,14 +364,21 @@ den Commits, nicht hier.
 - `scripts/restore.sh` spielt den Dump als App-Rolle ein, in einer
   Transaktion; Funktionen und Prüfregeln aus dem Dump laufen nie als
   Superuser — `backup-restore-db`.
-- `DB_PASSWORD`, `DB_APP_PASSWORD` und `BRICK_HOST` sind Pflicht; Klartext nur als bewusste
-  Ausnahme (Port 3000 in `compose.yaml` einkommentieren, `COOKIE_SECURE=0`).
+- Sitzungsgeheimnis und alle Datenbankpasswörter nur als Docker-Secrets
+  (`./geheimnisse/`, Ordner 700, `scripts/geheimnisse-einrichten.sh`), kein
+  Dienst bekommt sie als Umgebungsvariable (`docker inspect`) —
+  `compose-geheimnisse`, `geheimnisse-einrichten`, `db-rolle-db`. Klartext
+  nur als bewusste Ausnahme (Port 3000 in `compose.yaml` einkommentieren,
+  `COOKIE_SECURE=0`).
 - `caddy/data/` mitsichern und wie ein Passwort behandeln (Schlüssel der CA).
-- pgweb nur auf `127.0.0.1`, nur mit Profil `tools`, nur mit Anmeldung
-  (`PGWEB_PASSWORD`) und als Leserolle `brickinventory_lesen`
-  (`PGWEB_DB_PASSWORD`): nur `SELECT`, ohne Tokens, Sitzungen, Passwort-Hashes,
-  TOTP-Geheimnisse, Einstellungswerte und Gutschein-PINs — `compose-pgweb`,
-  `db-rolle-db`.
+- pgweb nur auf `127.0.0.1`, nur mit Profil `tools`, nur mit Anmeldung und
+  als Leserolle `brickinventory_lesen`; als uid 1000, `read_only`, ohne
+  Capabilities und in einem eigenen Netz nur mit `postgres` —
+  `compose-pgweb`, `compose-geheimnisse`. Die Leserolle liest nur eine
+  Allowlist je Tabelle (`LESEN_SPALTEN` in `postgres/app-rolle.sh`): eine neue
+  Tabelle oder Spalte bleibt unlesbar, bis sie dort steht; Tokens, Sitzungen,
+  Passwort-Hashes, TOTP, Einstellungswerte und Gutschein-PINs stehen nicht
+  darin — `db-rolle-db`.
 - `scripts/restore.sh` entpackt ein data-Archiv nur, wenn es aus Dateien und
   Ordnern unter `data/` besteht (`scripts/archiv-pruefen.sh`) — `restore-archiv`.
 - Container ohne Capabilities ausser den nötigen, `read_only`,
@@ -316,11 +388,12 @@ den Commits, nicht hier.
   (`schluessel-anlegen.sh`, ohne Netz); app und jobs sehen ihn nur lesend —
   `compose-grenzen-schluessel`. Getrennt von `data/` sichern, sonst sind
   Geheimnisse und Gutschein-PDFs einer Sicherung nicht lesbar.
-- Geheimnisse wahlweise aus Dateien (`SESSION_SECRET_FILE`,
-  `PGPASSWORD_FILE`, `DATABASE_URL_FILE`, `ADMIN_PASSWORD_FILE`) statt aus der
-  Umgebung — `geheimnis-dateien`.
-- Sicherungen auf Wunsch mit age an einen öffentlichen Schlüssel
-  verschlüsselt (`BACKUP_AGE_EMPFAENGER`), ohne Klartext daneben; der private
+- Der Server liest Geheimnisse aus Dateien (`SESSION_SECRET_FILE`,
+  `PGPASSWORD_FILE`, `DATABASE_URL_FILE`, `ADMIN_PASSWORD_FILE`) —
+  `geheimnis-dateien`.
+- Sicherungen immer mit age an öffentliche Schlüssel verschlüsselt
+  (`./backup-empfaenger.txt`), ohne Klartext daneben; ohne Empfänger keine
+  Sicherung, ausser mit ausdrücklichem `BACKUP_KLARTEXT=ja`. Der private
   Schlüssel liegt nicht auf dem Server — `backup-verschluesselt`.
 
 ## Bekannte Restrisiken
@@ -359,9 +432,11 @@ den Commits, nicht hier.
   5 Codes je Stunde. Einen neuen Zugang prägt nur, wer den zweiten Faktor
   hat. Bei der Anmeldung zählen falsche Codes in die Anmeldebremse je
   Adresse und Konto.
-- **Passwörter von Postgres und `db-rolle`** stehen weiter in deren
-  Umgebung (das offizielle Image liest `POSTGRES_PASSWORD_FILE`, `db-rolle`
-  noch keine Datei).
+- **Geheimnisse auf demselben Rechner**: `./geheimnisse/` ist nur für seinen
+  Besitzer offen; wer root auf dem Server ist, liest sie trotzdem.
+- **Anfrage-Raten am Rand**: Caddy begrenzt die gleichzeitigen Anmeldungen,
+  zählt aber keine Raten je Adresse (kein Modul im Standard-Image). Eine Flut
+  verlangsamt deshalb die Anmeldung für alle, statt den Server zu belegen.
 - **Altbestand im Bildcache**: Bilder, die vor dieser Fassung aus Angaben
   eines Clients geladen wurden, bleiben liegen, bis sie neu geladen werden.
 - **Fremdkontingent**: Nicht-Verwalter bekommen zusammen höchstens die Hälfte;

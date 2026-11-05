@@ -8,20 +8,15 @@ type Schreiber = stamm.Schreiber;
 
 // Ausführlich: docs/begruendungen/src/katalog/katalogPflege.ts.md#merketeil
 
-/** `null` heisst: aus einer geprüften Quelle. Der Katalog gilt für alle Konten,
- * eine Eingabe ist deshalb nur ein Platzhalter, den die geprüfte Quelle ersetzt. */
+/** `null` heisst: aus einer geprüften Quelle, sonst das Konto, das es eingetippt
+ * hat. Eingetipptes landet in dessen eigenen Angaben, nie im gemeinsamen Katalog. */
 type Von = number | null;
 
-/** Alle Ausdrücke in ON CONFLICT sehen die alte Zeile, deshalb können Feld und
- * Herkunft getrennt stehen. */
-function mitHerkunft(tabelle: string, feld: string, von: string): string {
-  const ersetzt = `${tabelle}.${von} IS NOT NULL AND EXCLUDED.${von} IS NULL AND EXCLUDED.${feld} IS NOT NULL`;
-  return `${feld} = CASE WHEN ${ersetzt} THEN EXCLUDED.${feld} ELSE COALESCE(${tabelle}.${feld}, EXCLUDED.${feld}) END,
-      ${von} = CASE WHEN ${ersetzt} THEN NULL WHEN ${tabelle}.${feld} IS NULL THEN EXCLUDED.${von} ELSE ${tabelle}.${von} END`;
-}
+/** Im gemeinsamen Katalog stehen nur geprüfte Werte; der erste bleibt. */
+const ersterWert = (tabelle: string, feld: string): string =>
+  `${feld} = COALESCE(${tabelle}.${feld}, EXCLUDED.${feld})`;
 
 const leer = (v: string | null | undefined): string | null => (v === undefined || v === null || v === '') ? null : v;
-const herkunft = (wert: string | null, von: Von): Von => wert === null ? null : von;
 /** Ein eingetipptes Bild nur von den Hosts, die der Bild-Proxy ohnehin zeigt. */
 const bildEingabe = (url: string | null, von: Von): string | null =>
   url !== null && von !== null && !hostErlaubt(url, ERLAUBTE_BILD_HOSTS) ? null : url;
@@ -38,7 +33,8 @@ export async function merkeTeil(
   // nicht blockieren.
   const name = leer(partName);
   const kategorie = leer(categoryName) === 'Unknown' ? null : leer(categoryName);
-  await stamm.schreibeTeilKatalog(dbh, partNumber, name, kategorie, herkunft(name, von), herkunft(kategorie, von), mitHerkunft('part_catalog', 'part_name', 'name_von'), mitHerkunft('part_catalog', 'category_name', 'kategorie_von'));
+  if (von !== null) { await stamm.schreibeTeilEigen(dbh, von, partNumber, name, kategorie); return; }
+  await stamm.schreibeTeilKatalog(dbh, partNumber, name, kategorie, ersterWert('part_catalog', 'part_name'), ersterWert('part_catalog', 'category_name'));
 }
 
 /** Je Teil UND Farbe — ein roter Stein sieht anders aus als ein blauer. */
@@ -58,7 +54,8 @@ export async function merkeTeilFarbe(
   const name = leer(colorName), code = leer(colorHex);
   const bild = bildEingabe(leer(imageUrl), von);
   // image_local schreibt nur der Server selbst (heruntergeladene Datei).
-  await stamm.schreibeTeilFarbe(dbh, partNumber, farbe, name, code, bild, von === null ? (imageLocal ?? null) : null, herkunft(name, von), herkunft(code, von), herkunft(bild, von), mitHerkunft('part_color_catalog', 'color_name', 'farbname_von'), mitHerkunft('part_color_catalog', 'color_hex', 'farbcode_von'), mitHerkunft('part_color_catalog', 'image_url', 'bild_von'));
+  if (von !== null) { await stamm.schreibeTeilFarbeEigen(dbh, von, partNumber, farbe, name, code, bild); return; }
+  await stamm.schreibeTeilFarbe(dbh, partNumber, farbe, name, code, bild, imageLocal ?? null, ersterWert('part_color_catalog', 'color_name'), ersterWert('part_color_catalog', 'color_hex'), ersterWert('part_color_catalog', 'image_url'));
 }
 
 export async function merkeFigur(
@@ -72,7 +69,8 @@ export async function merkeFigur(
   if (!figNumber) return;
   const name = leer(figName);
   const bild = bildEingabe(leer(imageUrl), von);
-  await stamm.schreibeFigurKatalog(dbh, figNumber, name, bild, von === null ? (imageLocal ?? null) : null, herkunft(name, von), herkunft(bild, von), mitHerkunft('minifigs_catalog', 'fig_name', 'name_von'), mitHerkunft('minifigs_catalog', 'image_url', 'bild_von'));
+  if (von !== null) { await stamm.schreibeFigurEigen(dbh, von, figNumber, name, bild); return; }
+  await stamm.schreibeFigurKatalog(dbh, figNumber, name, bild, imageLocal ?? null, ersterWert('minifigs_catalog', 'fig_name'), ersterWert('minifigs_catalog', 'image_url'));
 }
 
 /** Nur Menge und Ersatzteil-Kennzeichen; Name, Farbe und Bild stehen je Teil
@@ -113,10 +111,10 @@ export async function merkeSetTeile(setNumber: string, zeilen: SetTeilZeile[], d
   if (!setNumber || !zeilen.length) return;
   const teile = jeSchluessel(zeilen, z => z.partNumber);
   const kat = (v: string | null) => leer(v) === 'Unknown' ? null : leer(v);
-  await stamm.schreibeTeileKatalog(dbh, teile.map(z => z.partNumber), teile.map(z => leer(z.partName)), teile.map(z => kat(z.kategorie)), mitHerkunft('part_catalog', 'part_name', 'name_von'), mitHerkunft('part_catalog', 'category_name', 'kategorie_von'));
+  await stamm.schreibeTeileKatalog(dbh, teile.map(z => z.partNumber), teile.map(z => leer(z.partName)), teile.map(z => kat(z.kategorie)), ersterWert('part_catalog', 'part_name'), ersterWert('part_catalog', 'category_name'));
 
   const farben = jeSchluessel(zeilen, z => `${z.partNumber}|${z.colorId}`);
-  await stamm.schreibeTeilFarben(dbh, farben.map(z => z.partNumber), farben.map(z => z.colorId), farben.map(z => leer(z.colorName)), farben.map(z => leer(z.colorHex)), farben.map(z => leer(z.imageUrl)), farben.map(z => z.imageLocal), mitHerkunft('part_color_catalog', 'color_name', 'farbname_von'), mitHerkunft('part_color_catalog', 'color_hex', 'farbcode_von'), mitHerkunft('part_color_catalog', 'image_url', 'bild_von'));
+  await stamm.schreibeTeilFarben(dbh, farben.map(z => z.partNumber), farben.map(z => z.colorId), farben.map(z => leer(z.colorName)), farben.map(z => leer(z.colorHex)), farben.map(z => leer(z.imageUrl)), farben.map(z => z.imageLocal), ersterWert('part_color_catalog', 'color_name'), ersterWert('part_color_catalog', 'color_hex'), ersterWert('part_color_catalog', 'image_url'));
 
   const liste = jeSchluessel(zeilen.map(z => ({ ...z })), z => `${z.partNumber}|${z.colorId}`, (a, b) => {
     if (a.isSpare === b.isSpare) return { ...a, quantity: a.quantity + b.quantity };
@@ -130,7 +128,7 @@ export async function merkeFiguren(
 ) {
   const f = jeSchluessel(figuren.filter(x => x.figNumber), x => x.figNumber);
   if (!f.length) return;
-  await stamm.schreibeFigurenKatalog(dbh, f.map(x => x.figNumber), f.map(x => leer(x.figName)), f.map(x => leer(x.imageUrl)), mitHerkunft('minifigs_catalog', 'fig_name', 'name_von'), mitHerkunft('minifigs_catalog', 'image_url', 'bild_von'));
+  await stamm.schreibeFigurenKatalog(dbh, f.map(x => x.figNumber), f.map(x => leer(x.figName)), f.map(x => leer(x.imageUrl)), ersterWert('minifigs_catalog', 'fig_name'), ersterWert('minifigs_catalog', 'image_url'));
 }
 
 /** Ohne COALESCE: Nach einem echten Download ist der neue Pfad richtig, der
@@ -182,8 +180,8 @@ export interface KatalogTeil {
   bildDatei: string | null;
 }
 
-/** `fuer`: Was ein ANDERES Konto eingetippt hat, zählt nicht als bekannt —
- * sonst würde der Platzhalter nie durch die geprüfte Quelle ersetzt. */
+/** `fuer`: Nur dessen eigene Angaben zählen als bekannt, die anderer Konten
+ * sieht diese Abfrage nicht. */
 export async function katalogTeil(
   partNumber: string, colorId: number | null, fuer: Von = null,
 ): Promise<KatalogTeil | null> {
@@ -213,7 +211,6 @@ export async function katalogFigur(
   figNumber: string, fuer: Von = null,
 ): Promise<{ name: string | null; bild: string | null; hatBild: boolean } | null> {
   if (!figNumber) return null;
-  // `fuer` wie bei katalogTeil(): fremde Eingaben zählen nicht als bekannt.
   const z = await stamm.figurAusKatalog(figNumber, fuer).catch(meldeUndLiefere('katalog:figur lesen', null));
   if (!z) return null;
   return {

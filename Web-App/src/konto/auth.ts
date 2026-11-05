@@ -4,14 +4,20 @@
 import * as passwortRegel from '../infra/passwortRegel';
 import { konfig } from '../infra/konfig';
 import * as db from '../../db/database';
+import * as pgNotify from '../../db/pgNotify';
 import crypto from 'crypto';
 import bcrypt from 'bcryptjs';
-import { checkLoginAllowed, gibAnmeldeplatzFrei, recordLoginFailure, recordLoginSuccess } from './loginLimiter';
+import { passwortPasst, BcryptUeberlast } from './bcryptSchranke';
+import { checkLoginAllowed, bekannteAnmeldung, gibAnmeldeplatzFrei, recordLoginFailure, recordLoginSuccess, meldeAnmeldeereignis, MAX_ATTEMPTS } from './loginLimiter';
+import type { Anmeldeereignis } from './loginLimiter';
+import { kontoGedrosselt } from './zielDrossel';
 import * as zf from './zweiterFaktor';
 import * as passkeys from './passkeys';
 import { ausTabelle } from '../infra/validate';
+import * as V from '../infra/validate';
 import type { FehlerCode } from '../infra/fehlerTexte';
 import * as repo from './repository/zugaenge';
+import * as kontenRepo from './repository/konten';
 import type { TokenScope } from './repository/zugaenge';
 import { erhoeheSitzungsVersion } from './sitzungsVersion';
 import { hinweisNebenher } from './kontoHinweis';
@@ -50,6 +56,7 @@ export interface KontoZustand {
   email_verified: boolean;
   email?: string | null;
   is_admin: boolean;
+  registrierung_offen?: boolean;
   [k: string]: unknown;
 }
 
@@ -63,10 +70,9 @@ export async function verifiziereEmailToken(token: unknown): Promise<{ ok: boole
   if (token === undefined || token === null || String(token).trim() === '') {
     return { ok: false, grund: 'fehlt' };
   }
-  const user = await repo.kontoZuEmailToken(hashToken(String(token)));
-  if (!user) return { ok: false, grund: 'ungueltig' };
-  await repo.bestaetigeEmail(user.id);
-  return { ok: true, userId: user.id };
+  const neu = await kontenRepo.uebernimmEmailNeu(hashToken(String(token)));
+  if (!neu) return { ok: false, grund: 'ungueltig' };
+  return neu.ok ? { ok: true, userId: neu.id } : { ok: false, grund: 'vergeben', userId: neu.id };
 }
 
 const TOKEN_TTL_MS = 60 * 1000;       // Cache-Gültigkeit
@@ -206,12 +212,25 @@ function _touchLastUsed(entry: CacheEintrag, ip?: string | null): void {
 export function invalidateToken(token: string | null | undefined): void {
   if (!token) return;
   _tokenCache.delete(token);
+  meldeWiderruf();
+}
+
+/** Jeder Web-Prozess hält seinen eigenen Cache; ein Widerruf leert ihn in allen. */
+const WIDERRUF_KANAL = 'token_widerrufen';
+let _verteilt = false;
+export function horcheAufTokenWiderruf(): void {
+  _verteilt = true;
+  pgNotify.listen(WIDERRUF_KANAL, () => { _tokenCache.clear(); });
+}
+function meldeWiderruf(): void {
+  if (_verteilt) void pgNotify.notify(WIDERRUF_KANAL);
 }
 
 /** Für Löschungen ohne Klartext (die Token-Verwaltung kennt nur den
  * Hash-Anfang). Den Cache hält nur der Web-Prozess. */
 export function leereTokenCache(): void {
   _tokenCache.clear();
+  meldeWiderruf();
 }
 
 export const BCRYPT_ROUNDS = 12;
@@ -231,15 +250,13 @@ export function nameGueltig(v: unknown): boolean {
   return s.length <= 100 && !/[\p{Cc}\u2028\u2029]/u.test(s) && !/:\/\/|www\.|https?:/i.test(s);
 }
 
-/** Bewusst grob: Die Adresse wird ohnehin gegen die Datenbank geprüft, und
- * strengere Muster lehnen regelmässig gültige Adressen ab. */
-export const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+export const EMAIL_RE = V.EMAIL_RE, emailGueltig: typeof V.emailGueltig = V.emailGueltig;
 
 /** Name ODER E-Mail, weil die Anmeldung in beiden Spalten sucht.
  * Ausführlich: docs/begruendungen/src/konto/auth.ts.md#isvalidloginidentifier */
 export function isValidLoginIdentifier(value: unknown): boolean {
   const v = String(value || '');
-  return USERNAME_RE.test(v) || (v.length <= 254 && EMAIL_RE.test(v));
+  return USERNAME_RE.test(v) || emailGueltig(v);
 }
 
 /** Nach erfolgreicher Passwortprüfung. Die Absage kommt als CODE, weil die
@@ -249,7 +266,7 @@ export function assertLoginAllowed(user: KontoZustand):
     { status: number; code: FehlerCode; unverified?: boolean } | null {
   if (!user.is_active)
     return { status: 403, code: 'konto_deaktiviert' };
-  if (!user.email_verified && user.email && !user.is_admin)
+  if (user.registrierung_offen === true && !user.is_admin)
     return { status: 403, code: 'email_nicht_bestaetigt', unverified: true };
   return null;
 }
@@ -297,14 +314,25 @@ export async function pruefeAnmeldedaten(herkunft: Herkunft, username: unknown, 
   const ip = herkunft.ip || '?';
   const name = String(username);
   const gesperrt = await checkLoginAllowed(ip, name);
-  if (gesperrt) return absage(429, gesperrt.code, gesperrt.vars);
+  if (gesperrt) {
+    meldeAnmeldeereignis('anmeldung_gesperrt', { ip, konto: (await repo.kontoZurAnmeldung(name))?.id });
+    return absage(429, gesperrt.code, gesperrt.vars);
+  }
 
   const user = await repo.kontoZurAnmeldung(name);
-  // Auch ohne Treffer, gegen DUMMY_HASH: gleiche Zeit für unbekannte Namen.
-  const passtDasPasswort = await bcrypt.compare(String(password), user?.password_hash || DUMMY_HASH);
+  // Auch ohne Treffer, gegen DUMMY_HASH: gleiche Zeit für unbekannte Namen. Wer sich von
+  // hier zuletzt angemeldet hat, wartet unter Last vorne: Eine Flut fremder Adressen sperrt ihn nicht aus.
+  const vorrang = await bekannteAnmeldung(ip, name);
+  let passtDasPasswort: boolean;
+  try { passtDasPasswort = await passwortPasst(password, user?.password_hash || DUMMY_HASH, vorrang); }
+  catch (e) {
+    if (!(e instanceof BcryptUeberlast)) throw e;
+    await gibAnmeldeplatzFrei(ip, name);
+    return absage(503, 'server_ausgelastet');
+  }
   // Gesperrt oder unbestätigt wie falsches Passwort: Eine eigene Absage verriete, dass es stimmte.
   if (!user || !passtDasPasswort || assertLoginAllowed(user)) {
-    await recordLoginFailure(ip, name);
+    await fehlversuch('anmeldung_fehlgeschlagen', ip, name, user?.id);
     return absage(401, 'anmeldedaten_ungueltig');
   }
 
@@ -322,12 +350,20 @@ export async function pruefeAnmeldedaten(herkunft: Herkunft, username: unknown, 
       ? await passkeys.anmeldungPruefen(passkeyAntwort, 'zweiter_faktor', user.id) === user.id
       : await zf.pruefeCode(user.id, code);
     if (!gilt) {
-      await recordLoginFailure(ip, name);
+      await fehlversuch('zweiter_faktor_falsch', ip, name, user.id);
       return ergaenzt(absage(401, 'zweiter_faktor_falsch', undefined, false, true));
     }
   }
   await recordLoginSuccess(ip, name);
   return { ok: true, user };
+}
+
+/** Beim Erreichen der Kontosperre erfährt es der Inhaber, höchstens einmal am Tag:
+ * Nur er weiss, ob er sich vertippt hat. */
+async function fehlversuch(ereignis: Anmeldeereignis, ip: string, name: string, konto?: number): Promise<void> {
+  meldeAnmeldeereignis(ereignis, { ip, konto: konto ?? null });
+  if (await recordLoginFailure(ip, name) !== MAX_ATTEMPTS || konto === undefined) return;
+  if (!await kontoGedrosselt('sperr-hinweis', konto, 1, TAG_MS)) hinweisNebenher(konto, 'anmeldung_gebremst');
 }
 
 /** Ohne das löscht ein "%" als tokenId alle Tokens des Nutzers auf einmal. */
@@ -368,12 +404,21 @@ export interface TokenOptionen {
 export async function createToken(userId: number, label = 'Android App', dauerhaft = false,
                            festeTage: number | null = null, o: TokenOptionen = {}): Promise<string> {
   const token = crypto.randomBytes(32).toString('hex');
+  const hash = hashToken(token);
   await repo.legeTokenAn({
-    hash: hashToken(token), userId, label, scope: o.scope === 'voll' ? 'voll' : 'app', bereich: ipBereich(o.ip),
+    hash, userId, label, scope: o.scope === 'voll' ? 'voll' : 'app', bereich: ipBereich(o.ip),
     art: !dauerhaft ? 'kurz' : festeTage === UNBEGRENZT ? 'unbegrenzt' : 'gleitend',
     leerlaufTage: TOKEN_IDLE_DAYS, festeTage: festeTage && festeTage > 0 ? festeTage : null,
   });
+  if (await repo.kappeTokens(userId, hash, ZUGAENGE_HOECHSTENS - 1)) leereTokenCache();
   return token;
+}
+
+/** Je Konto und Art (Sitzung, Token): Anmelden darf die Tabellen nicht beliebig füllen.
+ * Es fällt der am längsten unbenutzte Zugang. */
+export const ZUGAENGE_HOECHSTENS = 50;
+export function begrenzeSitzungen(userId: number, eigene: string): Promise<number> {
+  return repo.kappeSitzungen(userId, eigene, ZUGAENGE_HOECHSTENS - 1);
 }
 
 export interface Tausch {

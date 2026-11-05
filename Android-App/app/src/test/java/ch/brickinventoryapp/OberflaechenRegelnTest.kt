@@ -16,6 +16,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.semantics.getOrNull
+import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.test.SemanticsNodeInteraction
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.hasClickAction
@@ -74,15 +75,15 @@ import ch.brickinventoryapp.ressourcen.R
  * seine Klasse, und die leere Merkliste bietet beide Wege zum ersten Eintrag.
  *
  * Gegenproben (Patches unter gegenproben/, gemessen nur in der CI — Robolectric):
- *   grosse-schrift-kachel-row       Prozent in der Kachel wieder in einer Row → rot „Kachel …“
+ *   grosse-schrift-kachel-row       Prozent wieder neben dem Betrag in einer Row → rot „Kachel …“
  *   grosse-schrift-kaufpreis-daneben Kaufpreis neben der Bezeichnung → rot „Kaufpreis …“
  *   tablet-umschalter-oben          Umschalter auch auf dem Tablet in der App-Leiste → rot „Tablet …“
  *   fehlerhinweis-roher-satz        der Satz der Datenschicht auch bei OFFLINE → rot „Fehlerhinweis …“
- *   merkliste-leer-ohne-knoepfe     leere Merkliste ohne Knöpfe → rot „leere Merkliste …“
+ *   merkliste-leer-ohne-knoepfe     Knopf „Set merken“ ohne Beschriftung → rot „leere Merkliste …“
  *   detail-ohne-wertkacheln         Set-Detail ohne Wert-Kacheln → rot „Set-Detail zeigt Marktwert …“
  *   galerie-zwei-knoepfe            Scannen wieder als zweiter schwebender Knopf → rot „Galerie hat einen …“
  *   telefon-kontomenue              Kontosymbol wieder in der App-Leiste → rot „Telefon navigiert ohne …“
- *   teile-raster-fest               Teileraster wieder fest 110 dp → rot „Teile bei 200 Prozent …“
+ *   teile-raster-fest               Teileraster wieder fest 120 dp → rot „Teile bei 200 Prozent …“
  *   finanzen-einspaltig             Finanzen auch auf dem Tablet einspaltig → rot „Finanzen stehen auf dem Tablet …“
  *   gutschein-pin-klein             PIN-Zeile ohne Mindesthöhe → rot „Gutschein-Knoepfe …“
  *   wertkacheln-immer-drei          Wert-Kacheln immer zu dritt nebeneinander → rot „Wert-Kacheln … 100 Prozent“
@@ -90,12 +91,20 @@ import ch.brickinventoryapp.ressourcen.R
  *   leiste-klappt-nicht-ein         TopAppBar ohne scrollBehavior → rot „App-Leiste weicht beim Rollen“
  *   merkliste-zustand-als-chips     Zustandsfilter der Merkliste als Radio-Chips → rot „Merkliste waehlt …“
  *   merkliste-detail-ersetzt-liste  Merkposten-Detail nie neben der Liste → rot „Tablet zeigt Merkliste und Detail …“
+ *   detail-mit-zurueckpfeil         Detail neben der Liste mit Zurück-Pfeil statt X → rot „Tablet zeigt Merkliste und Detail …“
  *   gutschein-formular-immer-offen  Formular wieder fest unter der Liste → rot „Gutschein hinzufuegen oeffnet …“
  *   teile-farben-englisch           Farbnamen unübersetzt, Teilenamen ohne Sprache → rot „Teile nennen Farben …“
  *   merkliste-leer-dreifach         leere Merkliste wieder mit Knopf und Suchzeile → rot „leere Merkliste …“
  *   segmente-bei-grosser-schrift    Einfachwahl auch bei 200 % als Segmente → rot „Einfachwahl bricht …“
- *   kachel-hoehe-nach-inhalt        Thema nur, wenn es eines gibt → rot „Kacheln einer Reihe …“
+ *   kachel-hoehe-nach-inhalt        Name ohne zwei feste Zeilen → rot „Kacheln einer Reihe …“
  *   finanzen-kauf-je-stueck         Kauf der Zeile wieder je Stück → rot „Finanzen nennen …“
+ *   finanzen-kopf-ohne-basis        Kopfkarte aus allen Positionen statt der Basis → rot „Finanzkopf …“
+ *   kachel-quelle-ignoriert         Kachel nennt auch den Kaufpreis „Marktpreis“ → rot „Galeriekachel …“
+ *   mehr-ohne-vergleich             Vergleich nicht unter „Mehr“ → rot „Vergleich und Bauliste markieren …“
+ *   galerie-kachel-gross            Setkachel auch bei 200 % mit Bild über die Breite → rot „Galerie bei 200 Prozent …“
+ *   galerie-erfassen-schwebt        Erfassen auch bei 200 % schwebend → rot „Galerie bei 200 Prozent …“
+ *   teile-erfassen-schwebt          Erfassen auch bei 200 % schwebend → rot „Teile bei 200 Prozent …“
+ *   teile-kachel-gross              Teilekachel auch bei 200 % mit Bild über die Breite → rot „Teile bei 200 Prozent zeigen …“
  */
 @RunWith(RobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
@@ -333,7 +342,7 @@ class OberflaechenRegelnTest {
     }
 
     /** Eine Galerie mit [bilder]; wartet, bis die Sets da sind. */
-    private fun galerieMit(welt: Beispiele.Welt, bilder: coil3.ImageLoader) {
+    private fun galerieMit(welt: Beispiele.Welt, bilder: coil3.ImageLoader, schrift: Float = 1f) {
         val vm = welt.galerie().also { it.loadSets() }
         val erfassung = welt.t.merke(ch.brickinventoryapp.ui.viewmodel.ErfassungViewModel(welt.t.dienste,
             ch.brickinventoryapp.data.repository.SetsRepository(welt.t.api, welt.t.cache),
@@ -343,11 +352,123 @@ class OberflaechenRegelnTest {
                                      ownerUserId: Int?, storage: String?) =
                     kotlinx.coroutines.flow.emptyFlow<ch.brickinventoryapp.data.SetAnlegenSchritt>()
             }))
-        zeige {
-            ch.brickinventoryapp.ui.screens.GalleryScreen(vm = vm, erfassung = erfassung,
+        zeige(schrift) {
+            ch.brickinventoryapp.ui.screens.GalleryRoute(vm = vm, erfassung = erfassung,
                 imageLoader = bilder, onScanBarcode = {}, onSetClick = {})
         }
         warte("Galerie") { vm.galleryState.value.sets.isNotEmpty() && !vm.galleryState.value.galleryLoading }
+    }
+
+    /**
+     * Wie viele der [namen] stehen ganz im Raster? Ungekürzte Lage statt boundsInRoot: Das
+     * Raster schneidet eine halb sichtbare Kachel ab, und abgeschnitten läge sie scheinbar drin.
+     */
+    private fun ganzSichtbar(namen: List<String>): Int {
+        val raster = compose.onNode(androidx.compose.ui.test.hasScrollToNodeAction()).fetchSemanticsNode().boundsInRoot
+        return namen.count { name ->
+            compose.onAllNodes(hasClickAction() and hasText(name, substring = true)).fetchSemanticsNodes().any { k ->
+                val oben = k.positionInRoot.y
+                k.size.height > 0 && oben >= raster.top - 0.5f && oben + k.size.height <= raster.bottom + 0.5f
+            }
+        }
+    }
+
+    /**
+     * Erfassen-Knöpfe mit [beschreibung], die nicht über der Liste stehen. Bei 200 % gehört
+     * Erfassen in die Zeile unter der Suche; ein schwebender Knopf liegt unterhalb des
+     * Listenanfangs, auch wenn die Liste bei wenigen Sets kürzer ist als der Bildschirm.
+     */
+    private fun erfassenNichtUeberListe(beschreibung: String): List<androidx.compose.ui.geometry.Rect> {
+        val liste = compose.onNode(androidx.compose.ui.test.hasScrollToNodeAction()).fetchSemanticsNode().boundsInRoot
+        val knoepfe = compose.onAllNodesWithContentDescription(beschreibung).fetchSemanticsNodes().map { it.boundsInRoot }
+        assertTrue("Erfassen ist da", knoepfe.isNotEmpty())
+        return knoepfe.filter { it.bottom > liste.top + 0.5f }
+    }
+
+    /**
+     * Bei 200 % Schrift ist eine Kachel eine Listenzeile, und Erfassen steht über der Liste:
+     * Mit dem Bild über die volle Breite stand ein Set je Bildschirm, und der schwebende
+     * Knopf lag auf dem Text der untersten Kachel.
+     */
+    @Test
+    fun `Galerie bei 200 Prozent zeigt mehrere Sets ganz und Erfassen liegt auf keinem`() {
+        val welt = Beispiele.Welt(KontextTexte())
+        try {
+            galerieMit(welt, coil3.ImageLoader.Builder(ctx).build(), schrift = 2f)
+            val namen = listOf("Millennium Falcon", "Titanic", "Baumhaus")
+            val ganz = ganzSichtbar(namen)
+            assertTrue("Nur $ganz Set(s) ganz sichtbar", ganz >= 2)
+            val daneben = erfassenNichtUeberListe(ctx.getString(R.string.gallery_add_set))
+            assertTrue("Erfassen steht nicht über der Liste: $daneben", daneben.isEmpty())
+        } finally {
+            welt.close()
+        }
+    }
+
+    @Test
+    fun `Teile bei 200 Prozent zeigen mehrere Teile ganz und Erfassen liegt auf keinem`() {
+        val welt = Beispiele.Welt(KontextTexte())
+        try {
+            val vm = welt.teile().also { it.loadParts() }
+            zeige(schrift = 2f) {
+                ch.brickinventoryapp.ui.screens.PartsScreen(vm = vm, imageLoader = coil3.ImageLoader.Builder(ctx).build())
+            }
+            warte("Teile") { vm.partsState.value.parts.isNotEmpty() }
+            val namen = vm.partsState.value.parts.mapNotNull { it.partName }
+            assertTrue(namen.size >= 3)
+            val ganz = ganzSichtbar(namen)
+            assertTrue("Nur $ganz Teil(e) ganz sichtbar", ganz >= 2)
+            val daneben = erfassenNichtUeberListe(ctx.getString(R.string.parts_add))
+            assertTrue("Erfassen steht nicht über der Liste: $daneben", daneben.isEmpty())
+        } finally {
+            welt.close()
+        }
+    }
+
+    /**
+     * Vergleich und Bauliste erreicht man über „Mehr“: Dort bleibt „Mehr“ gewählt, und der
+     * Pfeil oben führt dorthin zurück wie auf den übrigen Mehr-Unterseiten.
+     */
+    @Test
+    fun `Vergleich und Bauliste markieren Mehr und fuehren mit Zurueck dorthin`() {
+        val mehr = ctx.getString(R.string.nav_more)
+        zeige {
+            val nav = rememberNavController()
+            val reiter = remember {
+                listOf<Triple<Screen, @Composable () -> Unit, String>>(
+                    Triple(Screen.Gallery, { Icon(Icons.Default.ViewInAr, null) }, "Sammlung"),
+                    Triple(Screen.Mehr, { Icon(Icons.Default.ViewInAr, null) }, mehr))
+            }
+            MainScaffold(
+                title = "Seite", navController = nav, bottomNavItems = reiter,
+                snackbarHostState = remember { SnackbarHostState() },
+                csvImportState = remember { MutableStateFlow(CsvImportUiState()) },
+                onCsvAbbrechen = {}, serverUrl = "", onTabAngetippt = {},
+            ) {
+                NavHost(nav, startDestination = Screen.Gallery.route) {
+                    composable(Screen.Gallery.route) { }
+                    composable(Screen.Mehr.route) { MehrBildschirm(nav, isAdmin = false, updateVerfuegbar = false, onAbmelden = {}) }
+                    composable(Screen.Comparison.route) { Text("Vergleichsseite") }
+                    composable(Screen.PartsList.route) { Text("Baulistenseite") }
+                }
+            }
+        }
+        val zurueck = ctx.getString(R.string.common_back)
+        // Auf einem Reiter selbst kein Zurück: Er ist eine Wurzel.
+        compose.onAllNodesWithContentDescription(zurueck).assertCountEquals(0)
+        for ((eintrag, inhalt) in listOf(R.string.nav_comparison to "Vergleichsseite", R.string.nav_partslist to "Baulistenseite")) {
+            compose.onNode(hasText(mehr) and hasClickAction()).performClick()
+            compose.waitForIdle()
+            compose.onNodeWithText(ctx.getString(eintrag)).performClick()
+            compose.waitForIdle()
+            compose.onNodeWithText(inhalt).fetchSemanticsNode()
+            compose.onNode(hasText(mehr) and androidx.compose.ui.test.isSelected())
+                .fetchSemanticsNode("„Mehr“ ist auf ${ctx.getString(eintrag)} nicht gewählt")
+            compose.onNodeWithContentDescription(zurueck).performClick()
+            compose.waitForIdle()
+            // Zurück auf „Mehr“: dessen Einträge stehen wieder da.
+            compose.onNodeWithText(ctx.getString(R.string.vouchers_title)).fetchSemanticsNode()
+        }
     }
 
     private fun ersatzbilder() = compose.onAllNodes(
@@ -402,7 +523,7 @@ class OberflaechenRegelnTest {
                         kotlinx.coroutines.flow.emptyFlow<ch.brickinventoryapp.data.SetAnlegenSchritt>()
                 }))
             zeige {
-                ch.brickinventoryapp.ui.screens.GalleryScreen(vm = vm, erfassung = erfassung,
+                ch.brickinventoryapp.ui.screens.GalleryRoute(vm = vm, erfassung = erfassung,
                     imageLoader = coil3.ImageLoader.Builder(ctx).build(), onScanBarcode = {}, onSetClick = {})
             }
             warte("Galerie") { vm.galleryState.value.sets.isNotEmpty() && !vm.galleryState.value.galleryLoading }
@@ -431,7 +552,10 @@ class OberflaechenRegelnTest {
             assertTrue(namen.size >= 3)
             val dichte = ctx.resources.displayMetrics.density
             for (name in namen) {
-                // Die Kachel ist mit der Schrift gewachsen (110 dp × 2) …
+                // Die Kachel ist mit der Schrift gewachsen (120 dp × 2) …
+                // Die Bilder wachsen mit der Kachel: Nicht jede Kachel liegt im sichtbaren Raster.
+                compose.onNode(androidx.compose.ui.test.hasScrollToNodeAction())
+                    .performScrollToNode(hasText(name) and hasClickAction())
                 val kachel = compose.onNode(hasText(name) and hasClickAction()).fetchSemanticsNode().boundsInRoot
                 assertTrue("Kachel von $name nur ${kachel.width / dichte} dp breit", kachel.width / dichte >= 200f)
                 // … und der Name steht ganz da: Die letzte sichtbare Zeile endet mit dem
@@ -558,7 +682,8 @@ class OberflaechenRegelnTest {
 
     /**
      * List-Detail auf dem Tablet: Der geöffnete Merkposten steht rechts neben der
-     * Liste, die Liste bleibt sichtbar, und seine Karte ist als gewählt markiert.
+     * Liste, die Liste bleibt sichtbar, und seine Karte ist als gewählt markiert. Oben
+     * im Detail steht Schliessen statt eines Zurück-Pfeils, der eine Seite versprach.
      */
     @Test
     fun `Tablet zeigt Merkliste und Detail nebeneinander`() {
@@ -575,7 +700,8 @@ class OberflaechenRegelnTest {
             val karte = compose.onNode(hasText("Titanic", substring = true) and hasClickAction())
             karte.performClick()
             compose.waitForIdle()
-            val zurueck = compose.onNodeWithContentDescription(ctx.getString(R.string.common_back)).fetchSemanticsNode().boundsInRoot
+            compose.onAllNodesWithContentDescription(ctx.getString(R.string.common_back)).assertCountEquals(0)
+            val zurueck = compose.onNodeWithContentDescription(ctx.getString(R.string.detail_close)).fetchSemanticsNode().boundsInRoot
             val liste = compose.onNode(hasText("Lion Knights' Castle", substring = true) and hasClickAction()).fetchSemanticsNode().boundsInRoot
             assertTrue("Das Detail steht rechts der Liste ($liste / $zurueck)", zurueck.left >= liste.right)
             compose.onNode(hasText("Titanic", substring = true) and hasClickAction() and
@@ -683,5 +809,66 @@ class OberflaechenRegelnTest {
         } finally {
             welt.close()
         }
+    }
+
+    private fun stehtDa(text: String, substring: Boolean = false) =
+        compose.onAllNodesWithText(text, substring = substring, useUnmergedTree = true).fetchSemanticsNodes().isNotEmpty()
+
+    /**
+     * Die Kopfkarte zeigt Einstand, G/V und Marktwert aus einer Basis, so dass sie
+     * aufgehen, und nennt darunter die Position ohne Marktpreis — wie das Web.
+     */
+    @Test
+    fun `Finanzkopf zeigt Einstand plus G und V gleich Marktwert und die Basiszeile`() {
+        val welt = Beispiele.Welt(KontextTexte())
+        try {
+            val vm = welt.finanzen().also { it.loadValuation() }
+            zeige { ch.brickinventoryapp.ui.screens.FinanceScreen(vm = vm, imageLoader = coil3.ImageLoader.Builder(ctx).build()) }
+            warte("Finanzen") { vm.financeState.value.let { it.valuation != null && it.pnl != null && !it.valuationLoading } }
+            compose.waitForIdle()
+            // Die Zahlen der Beispiele, nicht aus finanzKopf: Sonst prüfte der Test die Rechnung mit sich selbst.
+            val einstand = java.math.BigDecimal("1500.00")
+            val guv = java.math.BigDecimal("212.40")
+            val wert = java.math.BigDecimal("1712.40")
+            assertEquals(0, einstand.add(guv).compareTo(wert))
+            val einstandText = ctx.getString(R.string.finance_einstand_zeile, fmtMoney(einstand.toDouble(), "CHF"))
+            assertTrue(einstandText, stehtDa(einstandText))
+            val guvText = ctx.getString(R.string.finance_guv_zeile, "+" + fmtMoney(guv.toDouble(), "CHF"))
+            assertTrue(guvText, stehtDa(guvText))
+            assertTrue("Marktwert", stehtDa(fmtMoney(wert.toDouble(), "CHF")))
+            // Der Einstand ALLER Positionen (mit dem Baumhaus) stünde neben einem Marktwert ohne es.
+            val alle = ctx.getString(R.string.finance_einstand_zeile, fmtMoney(1680.0, "CHF"))
+            assertTrue("kein Einstand aller Positionen", !stehtDa(alle))
+            val gerechnet = ctx.resources.getQuantityString(R.plurals.finance_basis_gerechnet, 3, 2, 3)
+            val ohne = ctx.resources.getQuantityString(R.plurals.finance_basis_ohne_markt, 1, 1, fmtMoney(180.0, "CHF"))
+            assertTrue(gerechnet, stehtDa(gerechnet, substring = true))
+            assertTrue(ohne, stehtDa(ohne, substring = true))
+        } finally {
+            welt.close()
+        }
+    }
+
+    /** Ohne Marktpreis liefert der Server den Kaufpreis (kachel_quelle "kauf"); die Kachel sagt es. */
+    @Test
+    fun `Galeriekachel nennt den Kaufpreis als Kaufpreis`() {
+        val bilder = coil3.ImageLoader.Builder(ctx).build()
+        val markt = ctx.getString(R.string.gallery_card_market)
+        val kauf = ctx.getString(R.string.gallery_card_paid)
+        zeige {
+            androidx.compose.foundation.layout.Row(Modifier.width(380.dp)) {
+                Box(Modifier.weight(1f)) {
+                    SetCard(SetAnsicht(setNumber = "21318-1", name = "Baumhaus"), "", bilder, {},
+                        preis = KachelPreis(180.0, null, "kauf"), waehrung = "CHF")
+                }
+                // Ältere Server ohne kachel_quelle lieferten nur Marktpreise.
+                Box(Modifier.weight(1f)) {
+                    SetCard(SetAnsicht(setNumber = "75192-1", name = "Millennium Falcon"), "", bilder, {},
+                        preis = KachelPreis(812.5, 16.1), waehrung = "CHF")
+                }
+            }
+        }
+        compose.onAllNodesWithText(kauf, useUnmergedTree = true).assertCountEquals(1)
+        compose.onAllNodesWithText(markt, useUnmergedTree = true).assertCountEquals(1)
+        assertTrue(stehtDa(fmtMoney(180.0, "CHF")))
     }
 }

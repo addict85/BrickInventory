@@ -28,6 +28,11 @@ import javax.xml.parsers.DocumentBuilderFactory
  *   G  (03.11.2026) in buildInterceptorClient `.followRedirects(false)` entfernt →
  *      rot „die Server-Clients folgen keiner Umleitung selbst“. Was der Wächter
  *      stattdessen tut, prüft UmleitungTest ausgeführt.
+ *   H  (03.11.2026, sec8 H3, kotlinc lokal) in src/main die Zeile
+ *      <certificateTransparency> der base-config entfernt → rot „der Release-Build
+ *      verlangt Certificate Transparency“
+ *   I  (04.11.2026, sec12 H8) in data_extraction_rules.xml unter device-transfer die
+ *      Zeile androidx.work.workdb entfernt → rot „Kontodaten verlassen das Geraet nicht“
  */
 class NetzsicherheitTest {
 
@@ -64,6 +69,14 @@ class NetzsicherheitTest {
     }
 
     @Test
+    fun `der Release-Build verlangt Certificate Transparency`() {
+        val cfg = lies("main")
+        val bereiche = cfg.kinder("domain-config") + cfg.kinder("base-config")
+        val ohne = bereiche.filter { b -> b.kinder("certificateTransparency").none { it.getAttribute("enabled") == "true" } }
+        assertTrue("Ohne Certificate Transparency: " + ohne.map { it.tagName }, bereiche.isNotEmpty() && ohne.isEmpty())
+    }
+
+    @Test
     fun `beide Fassungen vertrauen nur System-CAs`() {
         for (variante in listOf("main", "debug")) {
             val quellen = lies(variante).alle("certificates").map { it.getAttribute("src") }
@@ -91,7 +104,7 @@ class NetzsicherheitTest {
     /** Die dritte Linie: Was zum Konto gehört, wandert weder per Transfer noch per Sicherung mit. */
     @Test
     fun `Kontodaten verlassen das Geraet nicht`() {
-        val noetig = setOf("file:datastore", "database:bestand.db", "sharedpref:widget.xml",
+        val noetig = setOf("file:datastore", "database:bestand.db", "database:androidx.work.workdb", "sharedpref:widget.xml",
             "sharedpref:design_spiegel.xml", "file:vorschau", "file:pdf", "file:update", "external:pdf")
         val r = regeln("data_extraction_rules.xml")
         val listen = mapOf(

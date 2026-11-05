@@ -7,6 +7,11 @@
 
   Nur System-CAs. Nutzer-CAs und Pins des eigenen Servers entscheidet
   util/ServerVertrauen.kt zur Laufzeit.
+
+  Certificate Transparency (ab Android 16): Ein Zertifikat einer öffentlichen CA
+  gilt nur, wenn es in den öffentlichen Logs steht. Für einen Server ohne eigenen
+  Pin auf eine bestimmte Wurzel ist das die zweite Linie gegen eine falsch
+  ausgestellte Kette; eigene und Nutzer-CAs nimmt Android davon aus.
 -->
 <network-security-config>
     <!--
@@ -19,12 +24,14 @@
     <domain-config cleartextTrafficPermitted="false">
         <domain includeSubdomains="true">github.com</domain>
         <domain includeSubdomains="true">githubusercontent.com</domain>
+        <certificateTransparency enabled="true" />
         <trust-anchors>
             <certificates src="system" />
         </trust-anchors>
     </domain-config>
 
     <base-config cleartextTrafficPermitted="false">
+        <certificateTransparency enabled="true" />
         <trust-anchors>
             <certificates src="system" />
         </trust-anchors>

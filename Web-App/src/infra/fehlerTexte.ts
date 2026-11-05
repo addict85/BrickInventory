@@ -37,6 +37,10 @@ export const FEHLER = {
   // ── Registrierung und Passwort ───────────────────────────────────────────
   registrierung_deaktiviert:   { de: 'Registrierung ist deaktiviert.',
                                  en: 'Registration is disabled.' },
+  registrierung_braucht_mail:  { de: 'Die Registrierung braucht den E-Mail-Versand: Zuerst unter „E-Mail“ den Mailserver eintragen (und APP_BASE_URL setzen).',
+                                 en: 'Registration needs e-mail delivery: first set up the mail server under “E-mail” (and set APP_BASE_URL).' },
+  konto_nicht_wartend:         { de: 'Dieses Konto wartet nicht auf Freischaltung.',
+                                 en: 'This account is not waiting for approval.' },
   registrierung_felder:        { de: 'Benutzername, E-Mail und Passwort sind erforderlich.',
                                  en: 'Username, email address and password are required.' },
   benutzername_passwort:       { de: 'Benutzername und Passwort erforderlich',
@@ -52,8 +56,8 @@ export const FEHLER = {
   name_ungueltig:              { de: 'Vor- und Nachname: höchstens 100 Zeichen, ohne Steuerzeichen und ohne Webadressen.',
                                  en: 'First and last name: at most 100 characters, without control characters or web addresses.' },
   email_erforderlich:          { de: 'E-Mail erforderlich.', en: 'Email address required.' },
-  passwort_zu_kurz:            { de: 'Passwort muss mindestens 8 Zeichen lang sein.',
-                                 en: 'The password must be at least 8 characters long.' },
+  passwort_zu_kurz:            { de: 'Passwort muss mindestens 12 Zeichen lang sein.',
+                                 en: 'The password must be at least 12 characters long.' },
   passwort_zu_lang:            { de: 'Das Passwort ist zu lang: höchstens 72 Byte (Umlaute und Sonderzeichen zählen doppelt).',
                                  en: 'The password is too long: at most 72 bytes (accented letters and symbols count double).' },
   passwort_zu_haeufig:         { de: 'Dieses Passwort ist zu häufig oder aus Datenlecks bekannt. Bitte ein anderes wählen.',
@@ -64,6 +68,10 @@ export const FEHLER = {
                                  en: 'Change the password via "Change password".' },
   fremde_herkunft:             { de: 'Diese Anfrage kam nicht von dieser Seite.',
                                  en: 'This request did not come from this site.' },
+  fremder_host:                { de: 'Dieser Server antwortet nur unter {adresse}.',
+                                 en: 'This server only answers at {adresse}.' },
+  bestaetigungslink_ungueltig: { de: 'Der Bestätigungslink ist ungültig oder abgelaufen.',
+                                 en: 'The confirmation link is invalid or has expired.' },
   app_zu_alt:                  { de: 'Diese App ist zu alt für den Server (nötig: Schnittstelle {min}) — bitte die App aktualisieren.',
                                  en: 'This app is too old for the server (needs interface {min}) — please update the app.' },
   nur_mit_sitzung:             { de: 'Das geht nur aus einer angemeldeten Browser-Sitzung.',
@@ -74,6 +82,10 @@ export const FEHLER = {
                                  en: 'The server restarted while importing this set — please check the quantity.' },
   aktuelles_passwort_falsch:   { de: 'Aktuelles Passwort falsch', en: 'Current password is wrong' },
   passwort_wechsel_noetig:     { de: 'Bitte zuerst das Startpasswort ändern.', en: 'Please change the initial password first.' },
+  letzter_verwalter:           { de: 'Das letzte Verwalterkonto kann sich nicht selbst löschen. Bitte zuerst ein anderes Konto zum Verwalter machen.',
+                                 en: 'The last administrator account cannot delete itself. Please make another account an administrator first.' },
+  zweiter_faktor_pflicht:      { de: 'Verwalterkonten brauchen einen zweiten Faktor. Bitte zuerst einen Code-Generator einrichten.',
+                                 en: 'Administrator accounts need a second factor. Please set up an authenticator app first.' },
   alle_felder_erforderlich:    { de: 'Alle Felder erforderlich', en: 'All fields are required' },
   passwort_reset_nicht_eingerichtet: {
     de: 'Passwort-Zurücksetzen per E-Mail ist auf diesem Server nicht eingerichtet. Bitte wende dich an die Person, die ihn betreibt.',
@@ -155,6 +167,8 @@ export const FEHLER = {
   setnummer_ungueltig:         { de: 'Das ist keine Setnummer (Buchstaben und Ziffern, z. B. 10294).',
                                  en: 'That is not a set number (letters and digits, e.g. 10294).' },
   set_nicht_im_katalog:        { de: 'Set nicht im Katalog gefunden', en: 'Set not found in the catalogue' },
+  katalog_nicht_geladen:       { de: 'Der Set-Katalog ist noch nicht geladen; Rebrickable war bisher nicht erreichbar oder der Schlüssel fehlt.',
+                                 en: 'The set catalogue has not been loaded yet; Rebrickable was not reachable so far or the key is missing.' },
   set_number_erforderlich:     { de: 'set_number erforderlich', en: 'set_number is required' },
   parameter_set_fehlt:         { de: 'Parameter set fehlt', en: 'Parameter “set” is missing' },
   barcode_kein_set:            { de: 'Kein Set für "{barcode}" gefunden. Bitte Set-Nummer manuell eingeben.',
@@ -186,6 +200,8 @@ export const FEHLER = {
   anfrage_json_ungueltig:      { de: 'Die Anfrage ist kein gültiges JSON', en: 'The request body is not valid JSON' },
   anfrage_zu_gross:            { de: 'Die Anfrage ist zu gross', en: 'The request is too large' },
   anfrage_unlesbar:            { de: 'Die Anfrage ist nicht lesbar', en: 'The request cannot be read' },
+  anfrage_ungueltig:           { de: 'Die Anfrage ist ungültig', en: 'The request is invalid' },
+  anfrage_zu_langsam:          { de: 'Die Anfrage kam zu langsam an', en: 'The request arrived too slowly' },
   interner_fehler:             { de: 'Interner Fehler — Einzelheiten stehen im Protokoll.', en: 'Internal error — see the server log for details.' },
   csv_parse_fehler:            { de: 'CSV Parse Fehler: {grund}', en: 'CSV parse error: {grund}' },
   kein_import_laeuft:          { de: 'Kein Import läuft', en: 'No import is running' },
@@ -218,10 +234,20 @@ export const FEHLER = {
   gutschein_existiert:         { de: 'Diesen Gutschein gibt es bereits.',
                                  en: 'This voucher already exists.' },
   nur_pdf:                     { de: 'Nur PDF-Dateien', en: 'PDF files only' },
+  pdf_zu_viele_seiten:         { de: 'Das PDF hat {seiten} Seiten, höchstens {max} sind möglich. Bitte in kleinere Dateien teilen.',
+                                 en: 'The PDF has {seiten} pages; at most {max} are possible. Please split it into smaller files.' },
+  upload_laeuft:               { de: 'Für dieses Konto läuft schon ein Upload dieser Art — bitte warten, bis er fertig ist.',
+                                 en: 'An upload of this kind is already running for this account — please wait until it has finished.' },
 
   // ── Einrichtung ──────────────────────────────────────────────────────────
   quelle_unbekannt:            { de: 'Unbekannte Quelle', en: 'Unknown source' },
   quelle_test_fehlgeschlagen:  { de: 'Verbindung fehlgeschlagen: {grund}', en: 'Connection failed: {grund}' },
+  quelle_ohne_schluessel:      { de: 'Für {quelle} ist noch kein Zugang gespeichert. Bitte eintragen und erneut prüfen.',
+                                 en: 'No access for {quelle} is saved yet. Please enter it and check again.' },
+  quelle_nicht_erreichbar:     { de: '{quelle} ist nicht erreichbar. Bitte die Internetverbindung des Servers prüfen.',
+                                 en: '{quelle} cannot be reached. Please check the server’s internet connection.' },
+  quelle_abgelehnt:            { de: '{quelle} hat den Zugang abgelehnt. Bitte die eingetragenen Werte prüfen.',
+                                 en: '{quelle} rejected the access. Please check the values you entered.' },
 
   // ── Zweiter Faktor ───────────────────────────────────────────────────────
   zweiter_faktor_noetig:       { de: 'Bitte den Code aus der Authenticator-App eingeben.',
@@ -304,8 +330,8 @@ export const FEHLER = {
                                  en: 'This Idempotency-Key belongs to a different request.' },
   idempotenz_laeuft:           { de: 'Die Anfrage mit diesem Idempotency-Key läuft noch.',
                                  en: 'The request with this Idempotency-Key is still running.' },
-  idempotenz_nicht_wiederholbar: { de: 'Diese Antwort wird nicht wiederholt. Bitte mit neuem Idempotency-Key erneut senden.',
-                                 en: 'This response is not replayed. Please resend with a new Idempotency-Key.' },
+  idempotenz_nicht_wiederholbar: { de: 'Diese Änderung wurde schon einmal gesendet; ihr Ergebnis wird aus Sicherheitsgründen nicht wiederholt. Bitte den Stand prüfen und sie bei Bedarf neu ausführen.',
+                                 en: 'This change was already sent; for security its result is not repeated. Please check the current state and run it again if needed.' },
   zu_viele_verbindungen:       { de: 'Zu viele offene Verbindungen', en: 'Too many open connections' },
   zeitlimit:                   { de: 'Zeitlimit überschritten', en: 'Timed out' },
   wert_ungueltig:              { de: 'Ungültiger Wert', en: 'Invalid value' },
@@ -346,6 +372,15 @@ export class Fachfehler extends Error {
   constructor(readonly code: FehlerCode, readonly status: number, readonly vars?: Record<string, string | number>) {
     super(fehlerText(code, 'de', vars));
     this.name = 'Fachfehler';
+  }
+}
+
+/** Ein eigener Satz ohne Code: handleRouteError zeigt ihn, den Text einer
+ * Bibliothek dagegen nicht. */
+export class Meldung extends Error {
+  constructor(message: string, readonly status: number) {
+    super(message);
+    this.name = 'Meldung';
   }
 }
 

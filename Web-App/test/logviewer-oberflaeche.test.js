@@ -1,6 +1,6 @@
 /**
- * Das Protokollfenster (public/js/logviewer.js) in jsdom: lädt mit dem Token
- * vom <body>, filtert nach Stufe und Suche, und nur seine eigenen vier
+ * Das Protokollfenster (public/js/logviewer.js) in jsdom: lädt mit dem
+ * Sitzungscookie (kein Token im Markup), filtert nach Stufe und Suche, und nur seine eigenen vier
  * Handler sind aus dem Markup erreichbar — nicht beliebige Funktionen auf window.
  *
  * Gegenproben (am 05.11.2026 gemessen):
@@ -8,6 +8,8 @@
  *      zuschalten“ (die Info-Zeile bleibt verborgen)
  *   B  Rückfall auf `window[name]` in der Auflösung ergänzt → rot: „fremder
  *      Name bleibt wirkungslos“ (window.alert wurde gerufen)
+ *   C  fetch wieder mit Bearer-Header statt credentials → rot: „lädt mit dem
+ *      Sitzungscookie …“ (credentials undefined statt same-origin)
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -20,7 +22,7 @@ const takt = (ms = 0) => new Promise(r => setTimeout(r, ms));
 
 function oeffne() {
   const { JSDOM } = require(path.join(ROOT, 'node_modules', 'jsdom'));
-  const dom = new JSDOM(`<!doctype html><html><body data-auth="geheim" data-base="" data-i18n='{"log.entries":"Einträge"}'>
+  const dom = new JSDOM(`<!doctype html><html><body data-base="" data-i18n='{"log.entries":"Einträge"}'>
     <select id="period" data-change="loadLogs"><option value="15">15</option></select>
     <button id="btn-info" data-click="toggleLevel" data-arg="info"></button>
     <button id="btn-warn" class="active" data-click="toggleLevel" data-arg="warn"></button>
@@ -33,7 +35,7 @@ function oeffne() {
   const w = dom.window;
   const aufrufe = [];
   w.fetch = async (url, o = {}) => {
-    aufrufe.push({ url: String(url), headers: o.headers || {} });
+    aufrufe.push({ url: String(url), headers: o.headers || {}, credentials: o.credentials });
     return { ok: true, json: async () => ({ success: true, logs: [
       { level: 'info', message: 'Start fertig', logged_at: '2026-11-05T10:00:00Z' },
       { level: 'error', message: 'Abruf <b>kaputt</b>', logged_at: '2026-11-05T10:01:00Z' },
@@ -45,13 +47,14 @@ function oeffne() {
   return { w, d: w.document, aufrufe, alarm: () => alarm };
 }
 
-test('lädt mit dem Token und zeigt nur die gewählten Stufen, maskiert', async () => {
+test('lädt mit dem Sitzungscookie und zeigt nur die gewählten Stufen, maskiert', async () => {
   const { w, d, aufrufe } = oeffne();
   try {
     await takt(10);
     assert.equal(aufrufe.length, 1);
     assert.match(aufrufe[0].url, /\/api\/v1\/admin\/logs\?minutes=15$/);
-    assert.equal(aufrufe[0].headers.Authorization, 'Bearer geheim');
+    assert.equal(aufrufe[0].credentials, 'same-origin');
+    assert.equal(aufrufe[0].headers.Authorization, undefined, 'kein Token mehr');
     const zeilen = d.querySelectorAll('#log-wrap .ll');
     assert.equal(zeilen.length, 1, 'info ist zu Beginn ausgeblendet');
     assert.match(zeilen[0].innerHTML, /&lt;b&gt;kaputt/, 'Meldungstext wird maskiert');

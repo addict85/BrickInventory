@@ -21,7 +21,6 @@ let _monitorTimer = null;
 function openLogViewer() {
   const win = window.open('', '_blank', 'width=1200,height=750,resizable=yes,scrollbars=yes');
   if (!win) { alert(tRaw('popup.blocked')); return; }
-  const token = localStorage.getItem('authToken') || '';
   const base  = window.location.origin;
 
   // Die Zeitspannen als Daten statt als sechs ausgeschriebene <option>: So
@@ -40,7 +39,6 @@ function openLogViewer() {
     '<link rel="stylesheet" href="/tokens.css?v=' + (window.__APP_VERSION || Date.now()) + '">' +
     '<link rel="stylesheet" href="/logviewer.css?v=' + (window.__APP_VERSION || Date.now()) + '">' +
     '</head><body' +
-      ' data-auth="' + escHtmlAttr(token) + '"' +
       ' data-base="' + escHtmlAttr(base) + '"' +
       ' data-i18n="' + escHtmlAttr(JSON.stringify({
         'common.loading':       t('common.loading'),
@@ -86,7 +84,7 @@ function translateJobSub(sub) {
   if (m) return t('monitor.sub.all_mapped', {n: m[1]});
   if (sub === 'Alle erledigt') return t('monitor.sub.all_done');
   m = sub.match(/^Alle (\d+) Bilder gecacht$/);
-  if (m) return t('monitor.sub.imgs_cached', {n: m[1]});
+  if (m) return t(m[1] === '0' ? 'monitor.sub.imgs_none' : 'monitor.sub.imgs_cached', {n: m[1]});
   if (sub === 'Alle Bilder gecacht') return t('monitor.sub.imgs_cached', {n: ''}).trim();
   if (/^Keine aktiven/.test(sub)) return t('monitor.sub.no_active');
   m = sub.match(/^(\d+) Sets bereit zum Retry, (\d+) warten$/);
@@ -94,7 +92,7 @@ function translateJobSub(sub) {
   m = sub.match(/^(\d+) aktualisiert, (\d+) Fehler — ([\d.]+)s$/);
   if (m) return t('monitor.sub.updated_errors', {upd: m[1], err: m[2], sec: m[3]});
   if (sub === 'Starte\u2026' || sub === 'Starte...') return t('monitor.starting');
-  return sub; // unrecognised: pass through as-is
+  return esc(sub); // unbekannt: unverändert, aber als Text
 }
 
 // Speichert den Zeitplan eines Jobs (Monitoring). payload = {time:"HH:MM"} oder {minutes:n}.
@@ -131,6 +129,10 @@ const jobIconSvg = (k) => {
     // Preise aktualisieren: Preisschild (Gold) mit Loch
     brickset: '<rect x="10" y="48" width="28" height="24" rx="3" fill="#0055BF"/><circle cx="24" cy="48" r="4.5" fill="#0055BF"/><rect x="46" y="48" width="28" height="24" rx="3" fill="#F2CD37"/><circle cx="60" cy="48" r="4.5" fill="#F2CD37"/><rect x="82" y="48" width="28" height="24" rx="3" fill="#E63329"/><circle cx="96" cy="48" r="4.5" fill="#E63329"/>',
     priceJob: '<path d="M18,60 L58,20 L100,20 Q108,20 108,28 L108,70 Q108,78 100,78 L58,100 Z" fill="#F2CD37"/><circle cx="84" cy="42" r="9" fill="#fff"/>',
+        // Bild-Download: Bilderrahmen mit Berg und Sonne
+        imgDl: '<rect x="10" y="20" width="100" height="80" rx="8" fill="#0055BF"/><circle cx="82" cy="44" r="10" fill="#F2CD37"/><path d="M18,92 L48,52 L70,80 L82,66 L102,92 Z" fill="#fff"/>',
+        // PDF-Aufträge: Blatt mit roter Leiste
+        pdfJobs: '<path d="M26,10 L76,10 L98,32 L98,110 L26,110 Z" fill="#9BA19D"/><path d="M76,10 L76,32 L98,32 Z" fill="#fff" fill-opacity=".6"/><rect x="16" y="56" width="70" height="26" rx="4" fill="#E63329"/><rect x="38" y="90" width="44" height="5" rx="2.5" fill="#fff"/>',
   };
   return svgs[k] ? `<svg class="mon-sinnbild" viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">${svgs[k]}</svg>` : '<span class="mon-sinnbild" aria-hidden="true"></span>';
 };
@@ -182,14 +184,14 @@ export async function loadMonitor() {
 
     el.innerHTML = `
       <p class="mon-hinweis">${t('monitor.services_hint')}</p>
-      <div class="tw"><table class="dt mon-tabelle">
+      <div class="tw"><table class="dt mon-tabelle mon-dienste">
         <thead><tr><th>${t('monitor.col.dienst')}</th><th>${t('monitor.col.zustand')}</th><th>${t('monitor.col.zeitplan')}</th><th>${t('monitor.col.zuletzt')}</th><th>${t('monitor.col.aktionen')}</th></tr></thead>
         <tbody>${Object.entries(jobs).map(([k, j]) => `<tr>
           <td><span class="mon-name">${k === 'bricksetRetry' ? jobIconSvg('brickset') : jobIconSvg(k)}${dienstName(k, j)}</span></td>
           <td><span class="mon-zustand mon-${esc(j.status || 'idle')}">${statusIcon(j.status, j)} ${esc(jobZustand(j.status))}</span>
             ${j.sub ? `<div class="mon-leise">${translateJobSub(j.sub)}</div>` : ''}${j.total > 0 ? bar(j.progress, j.total) : ''}</td>
           <td>${schedInput(schedules, k)}</td>
-          <td>${j.lastRun ? fmtDatum(j.lastRun, 'zeit') : '–'}</td>
+          <td>${j.lastRun ? fmtDatum(j.lastRun, 'zeit') : ''}</td>
           <td><div class="mon-knoepfe">${aktionen(k, j) || '<span class="mon-leise">–</span>'}</div></td>
         </tr>`).join('')}</tbody>
       </table></div>
@@ -277,11 +279,12 @@ async function zeigeAuftraege() {
   const naechster = {};
   for (const a of d.auftraege)
     if (a.status === 'offen' && a.faellig_ab && (!naechster[a.art] || a.faellig_ab < naechster[a.art])) naechster[a.art] = a.faellig_ab;
-  const knopf = (aktion, arg, text) =>
-    `<button class="btn bs btn-sm" type="button" data-click="${aktion}"${echt()} data-arg="${esc(arg)}">${text}</button>`;
+  // Sieben gleiche „Jetzt starten“ sind für Vorleser ununterscheidbar: Der Name nennt die Art mit.
+  const knopf = (aktion, arg, text, wofuer = '') =>
+    `<button class="btn bs btn-sm" type="button" data-click="${aktion}"${echt()} data-arg="${esc(arg)}"${wofuer ? ` aria-label="${text}: ${wofuer}"` : ''}>${text}</button>`;
   const arten = Object.keys(zahl).sort((a, b) => artName(a).localeCompare(artName(b), locale()));
   const status = (s) => Object.hasOwn(STATUSNAMEN, s) ? STATUSNAMEN[s]() : esc(s);
-  const ziffer = (n, klasse = '') => `<span class="mon-ziffer${n ? ' ' + klasse : ''}">${n || 0}</span>`;
+  const ziffer = (n, klasse = '') => `<span class="mon-ziffer${n ? ' ' + klasse : ' null'}">${n || 0}</span>`;
   const zeile = (a) => {
     const zeit = fmtDatum(a.status === 'laeuft' ? a.gestartet : a.faellig_ab, 'zeit');
     const wann = a.status === 'offen' ? t(a.geplant ? 'monitor.auftraege.geplant' : 'monitor.auftraege.faellig', { zeit }) : (a.status === 'laeuft' ? zeit : '');
@@ -294,8 +297,8 @@ async function zeigeAuftraege() {
     return `<tr>
       <td><strong>${artName(a.art)}</strong>${a.set_number ? ` <span class="mon-leise">${esc(a.set_number)}</span>` : ''}</td>
       <td><span class="mon-zustand mon-${esc(a.status)}">${status(a.status)}</span></td>
-      <td>${wann || '–'}</td>
-      <td>${hinweis || '–'}</td>
+      <td>${wann}</td>
+      <td>${hinweis}</td>
       <td><div class="mon-knoepfe">${aktion}</div></td>
     </tr>`;
   };
@@ -314,16 +317,26 @@ async function zeigeAuftraege() {
         <td class="zahl">${ziffer(zahl[art].offen)}</td>
         <td class="zahl">${ziffer(zahl[art].laeuft, 'mon-laeuft')}</td>
         <td class="zahl">${ziffer(zahl[art].fehler, 'mon-fehler')}</td>
-        <td>${naechster[art] ? fmtDatum(naechster[art], 'zeit') : '–'}</td>
-        <td><div class="mon-knoepfe">${knopf('auftragsArtJetzt', art, t('monitor.auftraege.jetzt'))}${zahl[art].offen ? knopf('auftragsArtLeeren', art, t('monitor.auftraege.leeren')) : ''}</div></td>
+        <td>${naechster[art] ? fmtDatum(naechster[art], 'zeit') : ''}</td>
+        <td><div class="mon-knoepfe">${knopf('auftragsArtJetzt', art, t('monitor.auftraege.jetzt'), artName(art))}${zahl[art].offen ? knopf('auftragsArtLeeren', art, t('monitor.auftraege.leeren'), artName(art)) : ''}</div></td>
       </tr>`).join('')}</tbody></table></div>` : ''}
-    <h3 class="mon-untertitel">${t('monitor.auftraege.einzeln')}</h3>
-    ${d.auftraege.length ? `<div class="tw"><table class="dt mon-tabelle">
+    ${d.auftraege.length ? `<details class="mon-einzeln"${einzelnOffen() ? ' open' : ''}>
+      <summary class="mon-untertitel">${t('monitor.auftraege.einzeln')} <span class="mon-leise">(${d.auftraege.length})</span></summary>
+      <div class="tw"><table class="dt mon-tabelle">
       <thead><tr><th>${t('monitor.col.auftrag')}</th><th>${t('monitor.col.zustand')}</th><th>${t('monitor.col.zeit')}</th><th>${t('monitor.col.hinweis')}</th><th>${t('monitor.col.aktionen')}</th></tr></thead>
       <tbody>${d.auftraege.slice(0, 40).map(zeile).join('')}</tbody></table></div>
-      ${mehr > 0 ? `<p class="mon-leise">${t('monitor.auftraege.mehr', { n: mehr })}</p>` : ''}`
-      : `<p class="mon-leise">${t('monitor.auftraege.leer')}</p>`}`;
+      ${mehr > 0 ? `<p class="mon-leise">${t('monitor.auftraege.mehr', { n: mehr })}</p>` : ''}</details>`
+      : `<h3 class="mon-untertitel">${t('monitor.auftraege.einzeln')}</h3><p class="mon-leise">${t('monitor.auftraege.leer')}</p>`}`;
 }
+/** Die Liste der einzelnen Aufträge ist am Telefon zu, sonst offen; ein Klick
+ * gilt bis zum Neuladen, auch über das Nachzeichnen alle paar Sekunden. */
+let _einzelnOffen = null;
+const einzelnOffen = () => _einzelnOffen ?? !(typeof matchMedia === 'function' && matchMedia('(max-width: 640px)').matches);
+if (typeof document !== 'undefined') document.addEventListener('toggle', (ev) => {
+  const d = ev.target;
+  if (d instanceof HTMLDetailsElement && d.classList.contains('mon-einzeln')) _einzelnOffen = d.open;
+}, true);
+
 
 async function auftragAbbrechen(id) {
   const d = await api('POST', `/v1/admin/auftraege/${encodeURIComponent(id)}/abbrechen`).catch(() => null);

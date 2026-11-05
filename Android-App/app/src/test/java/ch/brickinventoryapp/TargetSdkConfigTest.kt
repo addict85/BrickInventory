@@ -8,12 +8,21 @@ import org.junit.Test
  * Der Sprung von 35 auf 36 ist deshalb harmlos, weil das Manifest bestimmte
  * Dinge NICHT tut. Genau das prüft diese Klasse — sonst fällt es erst auf
  * einem Tablet oder beim Zurückwischen auf.
+ *
+ * Die SDK-Stände stehen in build-logic (Sdk.kt); ein Modulskript darf sie nicht
+ * überschreiben, sonst prüfte diese Klasse eine Zahl, die nicht gilt.
+ * Gegenproben (Patches unter gegenproben/, am 04.11.2026 rot wie angegeben):
+ *   sdk-minsdk-gehoben.patch   minSdk in Sdk.kt auf 31 → rot „minSdk ist Android 11“
+ *   sdk-im-modulskript.patch   `minSdk = 31` in app/build.gradle.kts → rot
+ *                              „kein Modulskript setzt die SDK-Stände selbst“
  */
 class TargetSdkConfigTest {
 
+    private val buildLogic = java.io.File(Quellen.projekt, "build-logic/convention/src/main/kotlin/ch/brickinventoryapp/buildlogic")
+
     private val gradle: String by lazy {
-        val f = java.io.File("build.gradle.kts")
-        assert(f.exists()) { "app/build.gradle.kts nicht gefunden" }
+        val f = java.io.File(buildLogic, "Sdk.kt")
+        assert(f.exists()) { "build-logic/…/Sdk.kt nicht gefunden" }
         f.readText()
     }
 
@@ -31,9 +40,25 @@ class TargetSdkConfigTest {
         s.lines().filterNot { it.trim().startsWith("//") }.joinToString("\n")
 
     private fun intAfter(key: String): Int {
-        val m = Regex("""$key\s*=\s*(\d+)""").find(kotlinCode(gradle))
-        assert(m != null) { "$key nicht in build.gradle.kts gefunden" }
+        val m = Regex("""\b$key\s*=\s*(\d+)""").find(Quellen.ohneKommentare(gradle))
+        assert(m != null) { "$key nicht in Sdk.kt gefunden" }
         return m!!.groupValues[1].toInt()
+    }
+
+    @Test
+    fun `kein Modulskript setzt die SDK-Stände selbst`() {
+        val skripte = Quellen.module.map { java.io.File(it, "build.gradle.kts") }
+        assert(skripte.size >= 12) { "Nur ${skripte.size} Modulskripte gefunden — Suche veraltet?" }
+        val setzen = Regex("""\b(compileSdk|minSdk|targetSdk)\s*=""")
+        val eigene = skripte.filter { setzen.containsMatchIn(Quellen.ohneKommentare(it.readText())) }
+            .map { it.parentFile.name }
+        assert(eigene.isEmpty()) { "Diese Module setzen SDK-Stände selbst statt über build-logic: $eigene" }
+        // Und die Konventionen nehmen sie aus Sdk.kt, nicht als eigene Zahl.
+        val konventionen = buildLogic.listFiles { f -> f.extension == "kt" && f.name != "Sdk.kt" }.orEmpty()
+        assert(konventionen.size >= 2) { "Keine Konventionen unter ${buildLogic.path}" }
+        val zahl = Regex("""\b(compileSdk|minSdk|targetSdk)\s*=\s*\d""")
+        val fest = konventionen.filter { zahl.containsMatchIn(Quellen.ohneKommentare(it.readText())) }.map { it.name }
+        assert(fest.isEmpty()) { "SDK-Stand als Zahl neben Sdk.kt: $fest" }
     }
 
     @Test
@@ -48,11 +73,14 @@ class TargetSdkConfigTest {
         }
     }
 
+    // Android 11 als Untergrenze (sec8 H11): Darunter keine Sicherheitsupdates, und
+    // erst ab 30 bindet die Gerätesperre einen Keystore-Schlüssel samt PIN/Muster
+    // (Schrittschutz). Wer sie senkt, holt die Sonderwege für 8 bis 10 zurück.
     @Test
-    fun `minSdk bleibt unveraendert`() {
-        assert(intAfter("minSdk") == 26) {
-            "minSdk wurde mitgezogen. Der Sprung auf targetSdk 36 betrifft nur das " +
-                "Verhalten auf neuen Geräten — ältere sollen weiter unterstützt bleiben."
+    fun `minSdk ist Android 11`() {
+        assert(intAfter("minSdk") == 30) {
+            "minSdk ist nicht mehr 30. Gesenkt fehlt die schlüsselgebundene Gerätesperre " +
+                "für PIN und Muster; gehoben fallen Geräte weg, ohne dass es jemand entschieden hat."
         }
     }
 

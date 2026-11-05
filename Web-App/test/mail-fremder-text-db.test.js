@@ -14,6 +14,8 @@
  *      linkFuerKonsole() → rot: „die Konsole zeigt den echten Link“
  *   E  zielGedrosselt() in /forgot-password entfernt → rot: „der vierte
  *      Rücksetzlink an dieselbe Adresse bleibt aus“
+ *   F  sendVerificationMail() übergeht `mehrere` → rot: „die zweite Mail
+ *      verweist auf die Bestätigungsseite“ (04.11.2026 gemessen)
  *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL.
  */
@@ -89,12 +91,13 @@ test('Mails ohne fremden Text', { concurrency: 1 }, async (t) => {
     }
     const lang = await registriere(`lang_${P}`, `lang_${P}@example.org`, { first_name: 'x'.repeat(101) });
     assert.equal(lang.status, 400, 'über 100 Zeichen weist der Eingabevertrag ab');
+    const hash = await require(require('node:path').join(__dirname, '..', 'node_modules', 'bcryptjs')).hash('Profil-Passwort-1', 4);
     sitzung.userId = (await db.get(`INSERT INTO users (username, password_hash, is_active, email_verified)
-      VALUES ($1, 'x', true, true) RETURNING id`, [`profil_${P}`])).id;
+      VALUES ($1, $2, true, true) RETURNING id`, [`profil_${P}`, hash])).id;
     const p = await rufe('PUT', '/profile', { first_name: 'Anna\u0007' });
     assert.equal(p.status, 400, JSON.stringify(p.body));
     assert.equal(p.body.code, 'name_ungueltig');
-    assert.equal((await rufe('PUT', '/profile', { first_name: 'Anna-Lena', last_name: "O'Brien" })).status, 200);
+    assert.equal((await rufe('PUT', '/profile', { first_name: 'Anna-Lena', last_name: "O'Brien", password_current: 'Profil-Passwort-1' })).status, 200);
     await leereZaehler();
   });
 
@@ -117,6 +120,21 @@ test('Mails ohne fremden Text', { concurrency: 1 }, async (t) => {
     const m = await warteAufMail(an);
     assert.ok(m, 'keine Mail an die zweite Adresse');
     assert.ok(!m.text.includes(BOESE.slice(0, 14)) && !m.html.includes(BOESE.slice(0, 14)), m.text);
+  });
+
+  await t.test('mehrere Registrierungen: die Mail verweist ohne Namen auf die Bestätigungsseite', async () => {
+    await leereZaehler();
+    const an = `doppelt_${P}@example.org`;
+    for (const n of [`${BOESE.slice(0, 14)}x_${P}`, `echt_${P}`]) assert.equal((await registriere(n, an)).status, 200);
+    for (let i = 0; i < 50 && gesendet.filter(m => m.to === an).length < 2; i++) await new Promise(r => setTimeout(r, 20));
+    const [erste, zweite] = gesendet.filter(m => m.to === an);
+    assert.ok(zweite, 'keine zweite Mail');
+    assert.doesNotMatch(erste.text, /Mehrere Registrierungen/);
+    for (const teil of [zweite.text, zweite.html]) {
+      assert.match(teil, /Mehrere Registrierungen nennen diese Adresse/, 'die zweite Mail verweist auf die Bestätigungsseite');
+      assert.ok(!teil.includes(BOESE.slice(0, 14)) && !teil.includes(`echt_${P}`), 'die Mail nennt keinen Namen');
+    }
+    await leereZaehler();
   });
 
   await t.test('je Zieladresse höchstens drei Registrierungen', async () => {

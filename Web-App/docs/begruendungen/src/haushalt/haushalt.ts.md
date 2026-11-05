@@ -332,25 +332,3 @@ bei der irgendwann eine davon grosszügiger ist als die anderen.
 
 @returns die Ziel-ID, oder null wenn nicht erlaubt (Aufrufer antwortet 403)
 ```
-
-<a id="acquisitionmovesource"></a>
-## `acquisitionMoveSource`
-
-```text
-Absender eines Eigentümerwechsels aus der ERFASSUNGSZEILE ermitteln.
-
-Beim Umhängen eines Kaufpreises ist die Zeilen-ID eindeutig — wem sie
-gehört, weiss die Datenbank besser als jeder Dialog. Die Webapp schickte
-hier den BETRACHTER als from_user_id mit (die Zeilen-Eigentümer standen nur
-im Select der Anzeige): Zog das Hauptkonto die Zeile eines Unterkontos zu
-sich, suchte der Server sie unter dem falschen Konto und antwortete 404.
-Deshalb ermittelt der Server den Absender jetzt selbst; ein mitgeschickter
-from_user_id wird ignoriert.
-
-Geprüft wird ausschliesslich die Schreib-Richtung (`canWriteFor`): eigene
-Zeile immer, fremde nur als Hauptkonto für ein eigenes Unterkonto. Eine
-Zeile ausserhalb dieser Menge antwortet 403 — nicht 404, denn ob es sie
-gibt, geht den Anfragenden dann nichts an.
-
-@throws mit e.status 404 (Zeile existiert nicht) oder 403 (keine Richtung)
-```

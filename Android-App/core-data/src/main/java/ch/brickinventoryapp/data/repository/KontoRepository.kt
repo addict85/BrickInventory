@@ -3,10 +3,12 @@ package ch.brickinventoryapp.data.repository
 import ch.brickinventoryapp.data.api.KontoApi
 import ch.brickinventoryapp.data.cache.ResponseCache
 import ch.brickinventoryapp.data.model.*
-import okhttp3.MediaType.Companion.toMediaType
-import okhttp3.RequestBody.Companion.toRequestBody
 import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.json.JsonObject
+import ch.brickinventoryapp.di.BrickDispatchers
+import ch.brickinventoryapp.di.Dispatcher
+import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.Dispatchers
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -18,6 +20,8 @@ import javax.inject.Singleton
 class KontoRepository @Inject constructor(
     api: KontoApi,
     cache: ResponseCache,
+    /** Für den blockierenden Tausch; Hilt gibt den injizierten, Tests die Vorgabe. */
+    @param:Dispatcher(BrickDispatchers.IO) private val io: CoroutineDispatcher = Dispatchers.IO,
 ) : RepoBasis<KontoApi>(api, cache) {
 
     // Kein Authorization-Header hier: Der OkHttp-Interceptor in di/ServerClient.kt
@@ -97,7 +101,7 @@ class KontoRepository @Inject constructor(
     suspend fun zweiterFaktorNeueCodes(code: String): Result<ZweiterFaktorCodes> =
         safeCall { api.zweiterFaktorNeueCodes(ZweiterFaktorAnfrage(code = code)) }
 
-    suspend fun updateProfil(aenderung: ProfilAenderung): Result<GenericResponse> =
+    suspend fun updateProfil(aenderung: ProfilAenderung): Result<ProfilGespeichert> =
         safeCall { api.updateProfil(aenderung) }
 
     suspend fun changePassword(aktuell: String, neu: String, code: String? = null): Result<GenericResponse> =
@@ -116,7 +120,7 @@ class KontoRepository @Inject constructor(
     suspend fun tokenRotieren(alterToken: String): Result<ch.brickinventoryapp.data.GetauschterToken> {
         var herkunft: String? = null
         val r = safeCall {
-            kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) { api.tokenRotieren("Bearer $alterToken").execute() }
+            kotlinx.coroutines.withContext(io) { api.tokenRotieren("Bearer $alterToken").execute() }
                 .also { herkunft = ch.brickinventoryapp.util.NetworkPolicy.herkunft(it.raw().request.url.toString()) }
         }
         return when (r) {

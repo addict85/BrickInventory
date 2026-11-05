@@ -1,6 +1,5 @@
 package ch.brickinventoryapp.ui.components
 
-import android.os.Build
 import android.view.KeyboardShortcutGroup
 import android.view.Menu
 import android.view.MotionEvent
@@ -13,11 +12,11 @@ import ch.brickinventoryapp.ressourcen.R
 
 /**
  * Berührungen verwerfen, solange ein fremdes Fenster darüber liegt (Tapjacking;
- * ab Android 12 blockiert das System selbst, betroffen sind 8 bis 11). In einem
+ * ab Android 12 blockiert das System selbst, betroffen ist Android 11). In einem
  * Dialog gilt es für dessen Fenster, sonst für die Activity, solange der
  * Bildschirm steht — nur dort, wo ein untergeschobener Tipp schadet (Konto,
  * Haushalt, Bestätigungen). App-weit verlören Nutzer von Bildschirmfiltern auf
- * 8 bis 11 jede Bedienung. Gezählt wie beim Sichtschutz.
+ * Android 11 jede Bedienung. Gezählt wie beim Sichtschutz.
  */
 @Composable
 fun Ueberdeckungsschutz() {
@@ -45,7 +44,7 @@ private fun activityFenster(context: android.content.Context): Window? =
 
 /**
  * filterTouchesWhenObscured greift nur, wenn das fremde Fenster genau über dem
- * Tipp liegt. Liegt es daneben (FLAG_WINDOW_IS_PARTIALLY_OBSCURED, ab Android 10),
+ * Tipp liegt. Liegt es daneben (FLAG_WINDOW_IS_PARTIALLY_OBSCURED),
  * kann es Text verdecken oder vortäuschen, während der Tipp durchgeht — darum
  * wird er hier vor dem ganzen Fenster verworfen. Ein laufender Zug endet mit
  * ACTION_CANCEL, damit kein Knopf gedrückt stehen bleibt.
@@ -81,5 +80,4 @@ internal class TeilweiseVerdecktFilter(val alt: Window.Callback) : Window.Callba
 }
 
 internal fun teilweiseVerdeckt(event: MotionEvent): Boolean =
-    Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q &&
-        (event.flags and MotionEvent.FLAG_WINDOW_IS_PARTIALLY_OBSCURED) != 0
+    (event.flags and MotionEvent.FLAG_WINDOW_IS_PARTIALLY_OBSCURED) != 0

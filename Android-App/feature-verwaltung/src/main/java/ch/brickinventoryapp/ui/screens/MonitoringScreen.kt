@@ -3,14 +3,12 @@ package ch.brickinventoryapp.ui.screens
 import ch.brickinventoryapp.ui.model.BricksetEintragAnsicht
 import ch.brickinventoryapp.ui.model.JobZustandAnsicht
 import ch.brickinventoryapp.ui.model.ZeitplanAnsicht
-import ch.brickinventoryapp.ui.theme.Formen
 import ch.brickinventoryapp.ui.theme.AppKarte
 import ch.brickinventoryapp.ui.theme.LocalStatusFarben
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
@@ -18,10 +16,8 @@ import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import ch.brickinventoryapp.ui.model.*
 import androidx.compose.ui.res.stringResource
 import ch.brickinventoryapp.ressourcen.R
@@ -59,7 +55,6 @@ fun MonitoringScreen(vm: AppViewModel) {
     var reimportMsg    by remember { mutableStateOf<String?>(null) }
     var snack          by remember { mutableStateOf<String?>(null) }
 
-    val monCtx = androidx.compose.ui.platform.LocalContext.current
     // Siehe AcquisitionManagementScreen: LocalResources statt Context, weil
     // Lint LocalContextGetResourceValueCall als ERROR meldet und die Zahl fuer
     // den Platzhalter erst im Rueckruf bekannt ist.
@@ -85,6 +80,36 @@ fun MonitoringScreen(vm: AppViewModel) {
     LaunchedEffect(snack) {
         snack?.let { vm.showSnackbar(it); snack = null }
     }
+    val hintergrund by mon.hintergrund.collectAsStateWithLifecycle()
+
+    // Der Cache-Abschnitt bekommt Zustand und Ereignisse; verdrahtet wird hier.
+    // Die Netzerlaubnisse sind Geräte-Einstellungen und kommen direkt aus ihnen.
+    val netzWlan    by vm.prefs.vorwaermenWlan.collectAsStateWithLifecycle(initialValue = true)
+    val netzMobil   by vm.prefs.vorwaermenMobil.collectAsStateWithLifecycle(initialValue = false)
+    val netzRoaming by vm.prefs.vorwaermenRoaming.collectAsStateWithLifecycle(initialValue = false)
+    val appState by vm.state.collectAsStateWithLifecycle()
+    // remember, nicht rememberSaveable: eine Messung der Platte (BildschirmZustandTest, „gemessen“).
+    var ablageBytes by remember { mutableStateOf(vm.vorschauAblageBytes()) }
+    val cacheEreignisse = remember(vm, mon) {
+        CacheEreignisse(
+            vorgabeZustand = mon::vorgabeZustandWaehlen,
+            ablageLeeren = { vm.vorschauAblageLeeren(); ablageBytes = vm.vorschauAblageBytes(); mon.ablageGeleert() },
+            netz = { schluessel, an -> scope.launch { vm.prefs.saveVorwaermenNetz(schluessel, an) } },
+            design = mon::designWaehlen,
+            cacheDauer = mon::cacheDauerSpeichern,
+            cacheLeeren = mon::cacheLeeren,
+            grenzwerte = mon::grenzwerteSpeichern,
+        )
+    }
+    LaunchedEffect(Unit) { mon.ladeCacheAbschnitt() }
+    val einstellungenNeu by mon.einstellungenNeu.collectAsStateWithLifecycle()
+    LaunchedEffect(einstellungenNeu) {
+        if (einstellungenNeu) { vm.loadSettings(); mon.einstellungenGeladen() }
+    }
+    val auftragsMeldung by mon.meldung.collectAsStateWithLifecycle()
+    LaunchedEffect(auftragsMeldung) {
+        auftragsMeldung?.let { snack = it; mon.meldungGezeigt() }
+    }
 
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
@@ -96,18 +121,24 @@ fun MonitoringScreen(vm: AppViewModel) {
                 Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween, Alignment.CenterVertically) {
                     Text(stringResource(R.string.monitoring_title), fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleLarge)
                     if (isRefreshing) CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp)
-                    else IconButton(onClick = { scope.launch { mon.ladeJobs() } }) {
-                        Icon(Icons.Default.Refresh, stringResource(R.string.monitoring_refresh))
+                    else ch.brickinventoryapp.ui.components.MitTooltip(stringResource(R.string.monitoring_refresh)) {
+                        IconButton(onClick = { scope.launch { mon.ladeJobs() } }) {
+                            Icon(Icons.Default.Refresh, stringResource(R.string.monitoring_refresh))
+                        }
                     }
                 }
             }
 
             // Die Auftragstabelle: was im Hintergrund wartet, läuft oder scheiterte.
-            item { HintergrundSection(mon, onSnack = { snack = it }) }
+            item {
+                HintergrundSection(hintergrund, mon::auftragsArtStarten, mon::auftragsArtLeeren,
+                    mon::auftragAbbrechen, mon::auftragWiederholen)
+            }
 
             // Cache stats + API limits
             item {
-                CacheAndLimitsSection(vm, onSnack = { snack = it })
+                CacheAndLimitsSection(monState, netzWlan, netzMobil, netzRoaming, appState.appTheme,
+                    ablageBytes, cacheEreignisse)
             }
 
             // Das Server-Protokoll — dieselbe Ansicht wie in der Webapp. Keine eigene
@@ -188,8 +219,6 @@ private fun JobCard(
     val startingMsg      = stringResource(R.string.monitoring_starting)
     val startedMsg       = stringResource(R.string.monitoring_started)
     val syncStartedMsg   = stringResource(R.string.monitoring_sync_started_short)
-    val cacheSavedMsg  = stringResource(R.string.monitoring_cache_saved)
-    val limitsSavedMsg = stringResource(R.string.monitoring_limits_saved)
     val queueShowFmt   = stringResource(R.string.monitoring_queue_show)
     val statusColor = when (job.status) {
         "running" -> MaterialTheme.colorScheme.primary
@@ -213,7 +242,7 @@ private fun JobCard(
                     modifier = Modifier.weight(1f))
                 Row(verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(Abstaende.winzig)) {
-                    Icon(statusIcon, null, Modifier.size(14.dp), tint = statusColor)
+                    Icon(statusIcon, null, Modifier.size(ch.brickinventoryapp.ui.components.mitSchrift(14.dp)), tint = statusColor)
                     Text(job.status, color = statusColor,
                         style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold)
                 }
@@ -257,11 +286,10 @@ private fun JobCard(
                             } else { csvMsg = null; onSnack(startErrorMsg) }
                         }
                     },
-                    shape = Formen.kachel,
                     contentPadding = PaddingValues(horizontal = Abstaende.mittel, vertical = 6.dp),
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    Icon(Icons.Default.Sync, null, Modifier.size(16.dp))
+                    Icon(Icons.Default.Sync, null, Modifier.size(ch.brickinventoryapp.ui.components.mitSchrift(16.dp)))
                     Spacer(Modifier.width(6.dp))
                     Text(csvMsg ?: stringResource(R.string.monitoring_sync_now), style = MaterialTheme.typography.labelMedium)
                 }
@@ -280,11 +308,10 @@ private fun JobCard(
                             } else { priceMsg = null; onSnack(startErrorMsg) }
                         }
                     },
-                    shape = Formen.kachel,
                     contentPadding = PaddingValues(horizontal = Abstaende.mittel, vertical = 6.dp),
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    Icon(Icons.Default.Refresh, null, Modifier.size(16.dp))
+                    Icon(Icons.Default.Refresh, null, Modifier.size(ch.brickinventoryapp.ui.components.mitSchrift(16.dp)))
                     Spacer(Modifier.width(6.dp))
                     Text(priceMsg ?: stringResource(R.string.monitoring_price_update), style = MaterialTheme.typography.labelMedium)
                 }
@@ -303,11 +330,10 @@ private fun JobCard(
                             } else { redlMsg = null; onSnack(startErrorMsg) }
                         }
                     },
-                    shape = Formen.kachel,
                     contentPadding = PaddingValues(horizontal = Abstaende.mittel, vertical = 6.dp),
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    Icon(Icons.Default.Download, null, Modifier.size(16.dp))
+                    Icon(Icons.Default.Download, null, Modifier.size(ch.brickinventoryapp.ui.components.mitSchrift(16.dp)))
                     Spacer(Modifier.width(6.dp))
                     Text(redlMsg ?: stringResource(R.string.monitoring_redownload_missing), style = MaterialTheme.typography.labelMedium)
                 }
@@ -326,11 +352,10 @@ private fun JobCard(
                             } else { katMsg = null; onSnack(startErrorMsg) }
                         }
                     },
-                    shape = Formen.kachel,
                     contentPadding = PaddingValues(horizontal = Abstaende.mittel, vertical = 6.dp),
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    Icon(Icons.Default.Download, null, Modifier.size(16.dp))
+                    Icon(Icons.Default.Download, null, Modifier.size(ch.brickinventoryapp.ui.components.mitSchrift(16.dp)))
                     Spacer(Modifier.width(6.dp))
                     Text(katMsg ?: stringResource(R.string.monitoring_catalog_images), style = MaterialTheme.typography.labelMedium)
                 }
@@ -339,11 +364,10 @@ private fun JobCard(
             if (jobKey == "instrQueue") {
                 FilledTonalButton(
                     onClick = onReimport,
-                    shape = Formen.kachel,
                     contentPadding = PaddingValues(horizontal = Abstaende.mittel, vertical = 6.dp),
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    Icon(Icons.Default.Download, null, Modifier.size(16.dp))
+                    Icon(Icons.Default.Download, null, Modifier.size(ch.brickinventoryapp.ui.components.mitSchrift(16.dp)))
                     Spacer(Modifier.width(6.dp))
                     Text(reimportMsg ?: stringResource(R.string.monitoring_import_missing_instr), style = MaterialTheme.typography.labelMedium)
                 }
@@ -352,7 +376,6 @@ private fun JobCard(
             if (jobKey == "bricksetRetry" && job.total > 0) {
                 FilledTonalButton(
                     onClick = onToggleQueue,
-                    shape = Formen.kachel,
                     contentPadding = PaddingValues(horizontal = Abstaende.mittel, vertical = 6.dp),
                     modifier = Modifier.fillMaxWidth()
                 ) {
@@ -381,8 +404,4 @@ private fun JobCard(
     }
 }
 
-
 // ── Cache & API Limits section ────────────────────────────────────────────────
-
-
-

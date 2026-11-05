@@ -1,74 +1,22 @@
-# ═══════════════════════════════════════════════════════════════════════════
-# CI — läuft bei jedem Push und jedem Pull Request
-# ═══════════════════════════════════════════════════════════════════════════
-#
-# ── Warum es das gibt (Nachtrag 150) ────────────────────────────────────────
-# Bis hierher lief die Suite nur, wenn jemand sie von Hand anstiess — mit den
-# richtigen Umgebungsvariablen und auf einem gewachsenen Arbeitsverzeichnis.
-# Genau daran ist in Nachtrag 148 ein Fehler durchgerutscht: Eine Testdatei
-# holte `dist/utils/handlers.js`, das es seit einer Aufteilung nicht mehr gibt.
-# Lokal blieb sie grün, weil in `dist/` noch eine alte Datei aus der Zeit davor
-# lag; die zehn Prüfungen darunter liefen monatelang nicht.
-#
-# Der Lauf hier hat kein gewachsenes Verzeichnis. Er checkt aus, installiert
-# aus dem Lockfile, baut neu und startet ein leeres PostgreSQL. Was hier grün
-# ist, ist grün — nicht bloss auf einem Rechner grün.
-#
-# ── REQUIRE_DB=1 ───────────────────────────────────────────────────────────
-# Ohne diese Variable ÜBERSPRINGEN die Datenbank-Suiten sich selbst, wenn sie
-# keine Verbindung bekommen. Das ist lokal richtig und in CI das Schlimmste,
-# was passieren kann: ein grüner Lauf, der die Hälfte gar nicht geprüft hat.
-# Mit REQUIRE_DB=1 wirft eine unerreichbare Datenbank statt zu überspringen.
-#
-# ── Warum diese Datei UMGEZOGEN ist ────────────────────────────────────────
-#
-# Sie lag in `Web-App/.github/workflows/ci.yml`. GitHub liest Workflows
-# AUSSCHLIESSLICH aus `.github/workflows/` im Wurzelverzeichnis des
-# Repositories; in einem Unterordner ist eine solche Datei nichts als Text.
-#
-# NACHGEMESSEN über die Actions-API: Das Repository kannte drei Workflows —
-# android.yml, android-playstore.yml, docker-publish.yml. Dieser hier war
-# keiner davon. Er ist nie gelaufen, kein einziges Mal.
-#
-# (android-playstore.yml ist inzwischen entfernt — die App wird als APK über die
-# GitHub-Releases ausgeliefert. Die Messung oben bleibt stehen, wie sie war: Sie
-# beschreibt den Stand von damals, und nachträglich umgeschrieben wäre sie keine
-# Messung mehr.)
-#
-# Bitter daran: Der Kopf oben beschreibt genau den Fehler, gegen den er gebaut
-# wurde („die zehn Prüfungen darunter liefen monatelang nicht"), und
-# test/build-tooling.test.js bewacht seinen INHALT seither zuverlässig. Eine
-# Regel, ein Wächter — und beide zeigten auf eine Datei, die niemand ausführt.
-# Genau dieselbe Fehlerklasse, nur eine Ebene höher.
-#
-# ── Warum KEIN paths-Filter ────────────────────────────────────────────────
-#
-# Naheliegend wäre `paths: ['Web-App/**']`, wie android.yml es macht. Das wäre
-# falsch: Die Web-Suite prüft ausdrücklich BEIDE Bäume — app-endpunkte.test.js
-# liest die Retrofit-Schnittstelle der App, setnummer-korpus.test.js die
-# Kotlin-Fassung der Setnummer-Regel. Eine Änderung, die nur `Android-App/**`
-# anfasst, kann sie also rot machen. Ein Filter auf Web-App/** würde genau
-# diese Läufe überspringen.
+# CI der Web-App: frisch ausgecheckt, aus der Lockfile installiert, neu gebaut,
+# gegen ein leeres PostgreSQL. REQUIRE_DB und REQUIRE_BROWSER machen aus einer
+# fehlenden Datenbank oder einem fehlenden Chrome einen Fehler statt eines
+# stillen Überspringens. Kein paths-Filter: Die Suite liest auch Android-App/
+# (Retrofit-Schnittstelle, Setnummer-Regel).
 name: CI
 
 on:
   push:
     branches: ['**']
   pull_request:
-  # Von Hand anstossbar, etwa um nach einer Änderung an diesem Workflow selbst
-  # einen Lauf zu sehen, ohne einen leeren Commit zu bauen.
   workflow_dispatch:
 
-# Ein neuer Push auf denselben Zweig bricht den vorherigen Lauf ab. Die Suite
-# braucht rund vier Minuten; zwei parallele Läufe auf demselben Stand sind
-# verschenkte Zeit.
+# Ein neuer Push auf denselben Zweig bricht den vorherigen Lauf ab.
 concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true
 
-# Der Lauf liest nur: auschecken, installieren, testen. Ohne diese Zeile gälten
-# die Vorgaben des Repositorys, je nach Einstellung mit Schreibrecht auf den
-# Code — für npm-Pakete und Testdateien eines Pull-Requests zu viel.
+# Nur lesen: Pakete und Testdateien eines Pull-Requests bekommen kein Schreibrecht.
 permissions:
   contents: read
 
@@ -78,19 +26,14 @@ jobs:
     # Regulär rund 12 Minuten, davon 6 für die Browser-Dateien nacheinander.
     timeout-minutes: 30
 
-    # Die Datei lag frueher IN Web-App/ und ging davon aus, dass das das
-    # Wurzelverzeichnis ist. Vom Repositoriums-Wurzelverzeichnis aus muss jeder
-    # Befehl dorthin — sonst findet `npm ci` keine package.json.
     defaults:
       run:
         working-directory: Web-App
 
     services:
       postgres:
-        # Dieselbe Hauptversion wie im Betrieb (compose.yaml: postgres:18-alpine).
-        # Eine andere zu nehmen hiesse, gegen eine Datenbank zu prüfen, die
-        # nirgends läuft — Indizes, Sperren und Planerverhalten unterscheiden
-        # sich zwischen Hauptversionen durchaus.
+        # Dieselbe Hauptversion wie im Betrieb (compose.yaml); Sperren und
+        # Planer unterscheiden sich zwischen Hauptversionen.
         image: postgres:18-alpine@sha256:10a5c69a83035ab5239f5620d708520e8b28f5aa1f2b20143e6024532edadfb5
         env:
           POSTGRES_USER: tester
@@ -98,9 +41,7 @@ jobs:
           POSTGRES_DB: cattest
         ports:
           - 5432:5432
-        # Ohne den Health-Check startet der erste Test, bevor die Datenbank
-        # Verbindungen annimmt — und scheitert an etwas, das nichts mit dem
-        # Code zu tun hat.
+        # Erst testen, wenn die Datenbank Verbindungen annimmt.
         options: >-
           --health-cmd "pg_isready -U tester -d cattest"
           --health-interval 5s
@@ -110,12 +51,12 @@ jobs:
     env:
       TEST_DATABASE_URL: postgres://tester:tester@localhost:5432/cattest
       REQUIRE_DB: '1'
+      # Ohne Chrome schlagen die Browser-Tests fehl statt zu überspringen
+      # (ubuntu-latest bringt google-chrome mit).
+      REQUIRE_BROWSER: '1'
       # Einige Suiten bauen eine echte Session auf. Der Wert ist beliebig, muss
       # aber die Mindestlänge aus server.ts erfüllen (32 Zeichen).
       SESSION_SECRET: ci-secret-nur-fuer-den-testlauf-lang-genug
-      # Kein Cluster im Test: Die Sperr-Suiten stellen mehrere Worker selbst
-      # nach, indem sie eigene Verbindungen aufmachen.
-      WEB_WORKERS: '1'
       # npm test (scripts/test-lauf.js) gibt jeder Testdatei eine eigene Kopie
       # der Vorlage-Datenbank; vier zugleich passen zu den vier Kernen des
       # Runners und bleiben unter max_connections=100 des Dienstes.
@@ -126,34 +67,15 @@ jobs:
         with:
           persist-credentials: false
 
-      # pg_dump/psql für test/backup-restore-db.test.js. Der Postgres-DIENST
-      # oben ist ein Container — die Klienten laufen auf dem Runner.
-      #
-      # ── Warum die VERSION zählt (gemessen an Lauf 15) ────────────────────────
-      # Hier stand `command -v pg_dump || apt-get install postgresql-client`
-      # mit der Begründung, auf ubuntu-latest seien die Klienten „in aller Regel
-      # vorinstalliert; die Zeile stellt es sicher". Beides stimmte — und genau
-      # deshalb griff es daneben: Der vorinstallierte Klient IST da, aber in
-      # Version 16, während der Dienst oben 18 ist. pg_dump verweigert das:
-      #
-      #     pg_dump: error: aborting because of server version mismatch
-      #     pg_dump: detail: server version: 18.6; pg_dump version: 16.15
-      #
-      # Vier rote Tests, alle in backup-restore-db — der Sicherungsweg war
-      # damit genauso ungeprüft wie vorher, nur lauter.
-      #
-      # Die Hauptversion wird aus der Dienstdefinition OBEN GELESEN, nicht
-      # danebengeschrieben: Zwei Zahlen für dieselbe Sache laufen auseinander,
-      # und diese hier tat es schon.
+      # pg_dump/psql auf dem Runner für backup-restore-db. pg_dump verweigert
+      # einen neueren Server, und der Runner bringt eine ältere Fassung mit;
+      # die Hauptversion wird aus dem Dienst oben gelesen, damit es nur eine
+      # Zahl gibt.
       - name: PostgreSQL-Klienten in der Version des Dienstes bereitstellen
         working-directory: ${{ github.workspace }}
         run: |
           set -euo pipefail
-          # awk statt `grep | head`: Eine Kette, deren letztes Glied nur
-          # durchreicht, verliert unter pipefail den Rueckgabewert davor — und
-          # `head` schliesst die Leitung, sobald es genug hat (SIGPIPE fuer
-          # grep). Die Regel dagegen steht in test/build-tooling.test.js; hier
-          # gibt es schlicht keine Kette.
+          # awk statt `grep | head`: head schlösse die Leitung (SIGPIPE).
           haupt=$(awk -F'image: postgres:' '/image: postgres:/ { split($2, a, /[^0-9]/); print a[1]; exit }' .github/workflows/web-ci.yml)
           [ -n "$haupt" ] || { echo "::error::Hauptversion des Postgres-Dienstes nicht gefunden"; exit 1; }
           if pg_dump --version 2>/dev/null | grep -qE "\\) ${haupt}\\."; then
@@ -167,13 +89,11 @@ jobs:
               | sudo tee /etc/apt/sources.list.d/pgdg.list >/dev/null
             sudo apt-get update -qq
             sudo apt-get install -y -qq "postgresql-client-${haupt}"
-            # Der neue Klient liegt neben dem alten; ohne diese Zeile gewinnt
-            # weiterhin /usr/bin/pg_dump aus der Version 16.
+            # Sonst gewinnt weiterhin der ältere /usr/bin/pg_dump.
             echo "/usr/lib/postgresql/${haupt}/bin" >> "$GITHUB_PATH"
           fi
 
-      # Eigener Schritt, damit $GITHUB_PATH von oben schon gilt: Innerhalb des
-      # Schrittes, der ihn schreibt, wirkt er noch nicht.
+      # Eigener Schritt: $GITHUB_PATH wirkt erst im nächsten.
       - name: pg_dump passt zum Dienst
         working-directory: ${{ github.workspace }}
         run: |
@@ -189,57 +109,25 @@ jobs:
       - name: age bereitstellen
         run: command -v age || { sudo apt-get update -qq && sudo apt-get install -y -qq age; }
 
-      # v4 und v5 nachgesehen statt geraten (dieselbe Methode wie in android.yml):
-      #     actions/setup-node@v4 -> runs.using: node20   (warnt)
-      #     actions/setup-node@v5 -> runs.using: node24    (still)
-      #
-      # ── Nachtrag: eine Hauptversion weiter, aus anderem Grund ─────────────
-      #
-      # Die Tabelle darueber bleibt richtig. Gehoben wurde jetzt NICHT wegen
-      # einer Warnung, sondern weil die Frage „sind alle verwendeten Fassungen
-      # die neuesten" auch fuer die Actions gilt — und die standen in keinem
-      # Katalog und in keiner package.json, also hat sie niemand gemessen.
-      #
-      # Gemessen wurde mit demselben Handgriff wie oben, nur umgedreht: ob ein
-      # hoeherer Haupt-Tag UEBERHAUPT existiert. api.github.com ist aus dieser
-      # Umgebung gesperrt (403), raw.githubusercontent.com nicht:
-      #
-      #     raw.githubusercontent.com/<action>/v7/action.yml  -> 200 = gibt es
-      #                                      .../v9, v42, v99 -> 404 = gibt es nicht
-      #
-      # Die Gegenprobe mit v9, v42, v99 und vXYZ war noetig: Ohne sie waere
-      # „200 bei jedem geprueften Tag" nicht von „der Abruf antwortet immer
-      # 200" zu unterscheiden gewesen.
-      #
-      # Jede neue Hauptversion laeuft auf node24 — die Laufzeit aendert sich
-      # also nicht, es gibt hier keine Warnung zu beseitigen und auch keine
-      # einzufangen.
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7
         with:
-          # Wie im Dockerfile (node:26-alpine) — geprüft werden soll, was auch
-          # ausgeliefert wird. Node 20 stand hier bis Nachtrag 152 und war zu
-          # dem Zeitpunkt bereits seit dem 30.04.2026 ohne Sicherheits-Patches.
-          # test/build-tooling.test.js hält diese Zahl und das Dockerfile
-          # zusammen. Die Begründung für gerade 26 steht im Dockerfile.
+          # Wie im Dockerfile: geprüft wird, was ausgeliefert wird
+          # (test/build-tooling.test.js hält beide zusammen).
           node-version: '26'
           cache: npm
-          # Ohne diesen Pfad sucht setup-node die package-lock.json im
-          # Wurzelverzeichnis — `defaults.run.working-directory` gilt nur fuer
-          # `run:`-Schritte, nicht fuer Actions.
+          # working-directory gilt nur für run-Schritte, nicht für Actions.
           cache-dependency-path: Web-App/package-lock.json
 
-      # npm ci statt npm install: installiert exakt das Lockfile und scheitert,
-      # wenn package.json und package-lock.json auseinanderlaufen.
+      # npm ci scheitert, wenn package.json und Lockfile auseinanderlaufen.
+      # Install-Skripte nur für esbuild, wie im Dockerfile.
       - name: Abhängigkeiten installieren
-        run: npm ci
+        run: npm ci --ignore-scripts && npm rebuild esbuild
 
       - name: Typprüfung
         run: npx tsc --noEmit
 
-      # Zweite Front (Nachtrag 150): noImplicitAny ist für alle Dateien scharf
-      # ausser den in scripts/check-noimplicitany.js namentlich aufgeführten.
-      # Der Schritt schlägt fehl, wenn eine saubere Datei neue Schuld aufnimmt
-      # ODER wenn ein Eintrag der Liste verwaist ist.
+      # Rot bei neuer Schuld oder bei einem verwaisten Eintrag der
+      # Ausnahmeliste in scripts/check-noimplicitany.js.
       - name: Typprüfung (noImplicitAny, gestaffelt)
         run: npm run typecheck:strict
 
@@ -248,28 +136,13 @@ jobs:
       - name: Typprüfung Oberfläche
         run: npm run typecheck:frontend
 
-      # Vor den Tests bauen. Die Testhelfer bauen zwar bei Bedarf selbst
-      # (test/helpers/sources.js), aber ein eigener Schritt macht sichtbar, WO
-      # es klemmt: ein Build-Fehler soll nicht als "Test rot" erscheinen.
+      # Eigener Schritt, damit ein Baufehler nicht als roter Test erscheint.
       - name: Bauen
         run: npm run build
 
-      # ── Warum das Protokoll umgeleitet wird ─────────────────────────────────
-      #
-      # Ein roter Lauf muss LESBAR sein. GitHub haengt am Ende jedes Jobs das
-      # Protokoll der Dienst-Container an — hier mehrere hundert Zeilen
-      # PostgreSQL. Genau darunter liegen die `not ok`-Zeilen, und das rohe
-      # Protokoll laesst sich nicht ohne weiteres herunterladen (der Ablageort
-      # liegt hinter einer Weiterleitung).
-      #
-      # Nachgemessen an Lauf 33794579113: Die letzten 210 Zeilen waren
-      # ausschliesslich Container-Protokoll. Wer wissen will, WAS rot war,
-      # findet es nicht.
-      #
-      # `set -o pipefail` ist dabei nicht Kosmetik: Ohne diese Zeile ist der
-      # Rueckgabewert der von `tee`, also immer 0 — der Schritt waere bei
-      # gescheiterten Tests GRUEN. Genau die Sorte stiller Fehlschlag, gegen
-      # die dieser ganze Workflow gebaut ist.
+      # Mitschnitt für den Schritt danach: Am Jobende überdeckt das Protokoll
+      # des Postgres-Dienstes die roten Zeilen. pipefail, sonst bestimmt tee
+      # den Rückgabewert und der Schritt wäre bei roten Tests grün.
       - name: Tests
         run: |
           set -o pipefail
@@ -281,20 +154,8 @@ jobs:
           set -eu
           [ -f "$RUNNER_TEMP/test.log" ] || { echo "Kein Testprotokoll — der Lauf ist vorher gescheitert."; exit 0; }
 
-          # ── Zwei Reporter, ein Muster ──────────────────────────────────────
-          #
-          # `node --test` schreibt TAP („not ok 12 - …"), WENN die Ausgabe kein
-          # Terminal ist — so war es, als dieser Schritt entstand. Node 26
-          # nimmt den spec-Reporter, und der schreibt „✖ Name (12.3ms)".
-          #
-          # GEMESSEN an Lauf 15 (dem ersten, der auf main ueberhaupt lief):
-          # Vier Tests waren rot, `grep '^not ok'` fand KEINEN einzigen, und
-          # die Diagnose fiel in den Rueckfall „rot ohne einzelnen Fehlschlag"
-          # — die vier Namen standen nirgends in einer Annotation.
-          #
-          # Beide Formen, weil beide vorkommen koennen: Die Node-Fassung steht
-          # im Workflow, der Reporter haengt an ihr, und diese Zeile soll nicht
-          # das naechste Mal danebenliegen.
+          # Beide Reporter-Formen: TAP („not ok“) und spec („✖ “); welcher
+          # schreibt, hängt an der Node-Fassung.
           ROT_MUSTER='^(not ok|✖ )'
           {
             echo "## Rote Tests"
@@ -306,115 +167,44 @@ jobs:
             grep -E '^(#|ℹ) (tests|pass|fail) ' "$RUNNER_TEMP/test.log" || true
           } >> "$GITHUB_STEP_SUMMARY"
           echo "── Rote Tests samt Begruendung ──"
-          # `-m 20` statt `| head`: Eine Kette, deren letztes Glied nur
-          # durchreicht, verschluckt den Rueckgabewert davor. Hier waere das
-          # harmlos — aber die Regel dagegen (test/build-tooling.test.js) soll
-          # ohne Ausnahmeliste auskommen, und grep kann selbst begrenzen.
+          # `-m 20` statt `| head`: keine Kette, deren letztes Glied nur durchreicht.
           grep -E -m 20 -A 12 "$ROT_MUSTER" "$RUNNER_TEMP/test.log" || true
 
-          # ── Und dasselbe noch einmal als ANNOTATION ────────────────────────
-          #
-          # Klartext im Protokoll reicht NICHT, und das ist gemessen: Der
-          # Runner haengt beim Aufraeumen das Postgres-Containerprotokoll an,
-          # und das sind mehrere hundert Zeilen. Wer das Joblog vom Ende her
-          # liest — die API tut genau das —, kommt an dieser Stelle nicht mehr
-          # vorbei. Zweimal (Laeufe 208 und 211) liess sich ein roter Lauf
-          # deshalb nicht diagnostizieren: Dass er rot war, stand fest, WELCHER
-          # Test nicht.
-          #
-          # `::error::` macht daraus eine Annotation. Die steht im Joblog ganz
-          # oben, erscheint in der Oberfläche über dem Lauf und ist einzeln
-          # abrufbar. Genau so macht es der Android-Workflow seit jeher, und
-          # genau deshalb war dort jeder rote Lauf in einem Blick erklaert.
+          # Annotationen stehen oben im Joblog und sind über die API lesbar;
+          # das rohe Protokoll ist von aussen nicht zu holen.
           grep -E -m 20 "$ROT_MUSTER" "$RUNNER_TEMP/test.log" | while IFS= read -r zeile; do
             echo "::error title=Roter Test::${zeile}"
           done
 
-          # ── Und den Befund als ANNOTATION ───────────────────────────────────
-          #
-          # Warum zusaetzlich: Die Zusammenfassung oben steht nur auf der
-          # Weboberflaeche, und das rohe Protokoll ist von hier aus nicht zu
-          # holen — der Ablageort liegt hinter einer Weiterleitung, die der
-          # Proxy mit 403 ablehnt. GEMESSEN an Lauf 33799134289: Die einzige
-          # Annotation war „Process completed with exit code 1".
-          #
-          # `::error::`-Zeilen werden zu Annotationen und sind ueber
-          # /check-runs/<id>/annotations abrufbar.
-          #
-          # ── Und warum BEIDE Faelle ──────────────────────────────────────────
-          #
-          # Der erste Entwurf meldete nur `not ok`-Zeilen. GEMESSEN an Lauf
-          # 33804... : Der Schritt lief, fand KEINE einzige — und lieferte
-          # damit genau nichts. Das war selbst der Befund: Der Testlauf
-          # scheitert, OHNE dass ein einzelner Test fehlschlaegt (ein Modul
-          # laedt nicht, eine Ausnahme fliegt ausserhalb eines Tests, der
-          # Prozess stirbt). Eine Diagnose, die nur den erwarteten Ausgang
-          # abdeckt, schweigt genau dann, wenn etwas Unerwartetes passiert.
+          # Auch der Fall „rot ohne einzelnen roten Test“ (Modul lädt nicht,
+          # Prozess stirbt) bekommt eine Annotation, sonst schwiege die Diagnose.
           rot=$(grep -E -c "$ROT_MUSTER" "$RUNNER_TEMP/test.log" || true)
           if [ "${rot:-0}" -gt 0 ]; then
-            # ── Mit BEGRUENDUNG, nicht nur mit dem Namen ────────────────────
-            #
-            # Hier stand eine Schleife, die je rote Zeile eine Annotation aus
-            # dem NAMEN machte. GEMESSEN an einem roten Lauf auf main: Ueber die
-            # API war nur „Roter Test: Sitzung: gelesen wird immer, geschrieben
-            # nur alle paar Minuten (3178ms)" zu sehen. Dass er rot war, stand
-            # fest; warum nicht — und das Joblog mit dem `grep -A 12` darueber
-            # ist von aussen nicht zu holen (anderer Host, der Proxy lehnt die
-            # Weiterleitung mit 403 ab).
-            #
-            # Das Auslesen steht in .github/rote-tests.awk, damit es pruefbar
-            # ist (Web-App/test/ci-rote-tests.test.js). Ein Diagnoseschritt, der
-            # nur im Ernstfall laeuft, ist sonst der am wenigsten gepruefte Teil
-            # des Workflows — und genau dann ist keine Zeit, ihn zu reparieren.
+            # Mit Begründung, nicht nur dem Namen; das Auslesen steht in
+            # .github/rote-tests.awk, damit es prüfbar ist (ci-rote-tests.test.js).
             awk -f "$GITHUB_WORKSPACE/.github/rote-tests.awk" "$RUNNER_TEMP/test.log" || true
           else
-            # Kein einziger fehlgeschlagener Test, und trotzdem rot. Dann sagt
-            # das ENDE des Protokolls, was los war — als eine Annotation, damit
-            # sie ueber die API lesbar ist.
+            # Rot ohne roten Test: das Ende des Protokolls als Annotation.
             ende=$(tail -n 40 "$RUNNER_TEMP/test.log" | tr '\n' '~' | sed 's/%/%25/g; s/\r/%0D/g; s/~/%0A/g')
             echo "::error title=Testlauf ohne einzelnen Fehlschlag::$ende"
           fi
-          # Die Summenzeile immer — sie sagt, ob ueberhaupt etwas gelaufen ist.
+          # Die Summenzeile immer: Sie sagt, ob überhaupt etwas gelaufen ist.
           summe=$(grep -E '^(#|ℹ) (tests|pass|fail) ' "$RUNNER_TEMP/test.log" | tr '\n' ' ' || true)
           echo "::notice title=Testsumme::${summe:-keine Summenzeile — der Lauf ist vor dem ersten Test gescheitert}"
 
-      # npm audit hat einen eigenen Schritt, damit ein neuer Befund nicht in
-      # den Testausgaben untergeht. --omit=dev: Was nur beim Bauen läuft, ist
-      # kein Angriffsweg auf den laufenden Dienst.
+      # Eigener Schritt, damit ein Befund nicht in den Testausgaben untergeht.
+      # --omit=dev: Was nur beim Bauen läuft, erreicht den Dienst nicht. Rot ab
+      # „moderate“: Bei einem kleinen Baum ist jeder Befund ein Update.
       - name: Sicherheitsprüfung der Abhängigkeiten
         env:
           BERICHT: ${{ runner.temp }}/audit.json
           FEHLER: ${{ runner.temp }}/audit.err
         run: |
           set -uo pipefail
-          # ── Warum nicht mehr eine Zeile ─────────────────────────────────────
-          #
-          # Hier stand `npm audit --omit=dev --audit-level=high`. GEMESSEN an
-          # Lauf 33867656667: Der Schritt lief GENAU 5:00 min und fiel dann um.
-          # Die einzige Annotation war „Process completed with exit code 1",
-          # und das rohe Protokoll ist von hier aus nicht zu holen — der
-          # Ablageort liegt hinter einer Weiterleitung, die der Proxy mit 403
-          # ablehnt (dieselbe Begruendung wie beim Testschritt oben). Von
-          # aussen war damit NICHT zu unterscheiden:
-          #
-          #   * eine echte Luecke ab „high" — dann gehoert der Lauf rot, oder
-          #   * die Registry antwortet nicht — dann sagt der Lauf nichts aus.
-          #
-          # Derselbe Befehl meldet lokal „found 0 vulnerabilities" in Sekunden.
-          # Die fuenf Minuten sind npms Vorgabe fuer --fetch-timeout (300000
-          # ms), also die Laufzeit einer haengenden Anfrage, nicht die einer
-          # Antwort.
-          #
-          # Deshalb wird die Antwort jetzt GELESEN statt nur ihr Rueckgabewert
-          # betrachtet: --json liefert entweder einen auswertbaren Befund oder
-          # eben keinen, und beide Faelle werden gemeldet. Eine Diagnose, die
-          # nur den erwarteten Ausgang abdeckt, schweigt genau dann, wenn etwas
-          # Unerwartetes passiert — dieselbe Ueberlegung wie beim Testschritt.
-          #
-          # --fetch-timeout kurz und EINMAL wiederholen: Eine echte Luecke
-          # meldet sich in Sekunden, eine haengende Registry kostet so 2x60 s
-          # statt 5 min. Wiederholt wird NUR die unlesbare Antwort — ein
-          # Befund wird nicht so lange abgefragt, bis er passt.
+          # Die Antwort wird gelesen, nicht nur der Rückgabewert: Eine hängende
+          # Registry und eine echte Lücke sind sonst nicht zu unterscheiden.
+          # Kurze Frist und genau eine Wiederholung, und nur für eine unlesbare
+          # Antwort; ein Befund wird nicht so lange abgefragt, bis er passt.
           for versuch in 1 2; do
             npm audit --omit=dev --json --fetch-timeout=60000 \
               > "$BERICHT" 2> "$FEHLER" || true
@@ -435,7 +225,7 @@ jobs:
             let r; try { r = JSON.parse(require("fs").readFileSync(process.argv[1], "utf8")); }
             catch { console.log("::warning title=npm audit (pdfjs-dist)::keine auswertbare Antwort"); process.exit(0); }
             const v = (r.vulnerabilities || {})["pdfjs-dist"];
-            if (v && (v.severity === "high" || v.severity === "critical")) {
+            if (v && ["moderate", "high", "critical"].includes(v.severity)) {
               console.log("::error title=Schwachstelle (" + v.severity + ")::pdfjs-dist (public/vendor/pdfjs)");
               process.exit(1);
             }
@@ -444,19 +234,19 @@ jobs:
             const r = JSON.parse(require("fs").readFileSync(process.env.BERICHT, "utf8"));
             const m = r.metadata.vulnerabilities;
             const stand = Object.entries(m).map(([k, v]) => k + "=" + v).join(" ");
-            const schwer = (m.high || 0) + (m.critical || 0);
+            const schwer = (m.moderate || 0) + (m.high || 0) + (m.critical || 0);
             if (schwer === 0) {
-              console.log("::notice title=npm audit::keine Luecke ab \"high\" — " + stand);
+              console.log("::notice title=npm audit::keine Luecke ab \"moderate\" — " + stand);
             } else {
               // Jede einzeln als Annotation: „5 Luecken" allein zwingt wieder
               // zum Protokoll, das von hier aus nicht zu holen ist.
               for (const [name, v] of Object.entries(r.vulnerabilities || {})) {
-                if (v.severity !== "high" && v.severity !== "critical") continue;
+                if (!["moderate", "high", "critical"].includes(v.severity)) continue;
                 const woher = (v.via || [])
                   .map(x => typeof x === "string" ? x : x.title).join("; ");
                 console.log("::error title=Schwachstelle (" + v.severity + ")::" + name + " — " + woher);
               }
-              console.log("::error title=npm audit::" + schwer + " Luecken ab \"high\" — " + stand);
+              console.log("::error title=npm audit::" + schwer + " Luecken ab \"moderate\" — " + stand);
               process.exit(1);
             }
           '

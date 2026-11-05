@@ -79,7 +79,10 @@ function zustandGeaendert(dialog) {
     const ziel = rueckziel(zurueck);
     if (ziel) { ziel.focus({ preventScroll: true }); return; }
     const darunter = obersterDialog();
-    if (darunter) fokussiereFlaeche(darunter);
+    if (darunter) { fokussiereFlaeche(darunter); return; }
+    // Per Adresse geöffnet gibt es keinen Auslöser: dann die Überschrift der Ansicht statt <body>.
+    const kopf = /** @type {HTMLElement|null} */ (document.querySelector('#app .tab.active h1'));
+    if (kopf && sichtbar(kopf)) { if (!kopf.hasAttribute('tabindex')) kopf.tabIndex = -1; kopf.focus({ preventScroll: true }); }
   }
 }
 

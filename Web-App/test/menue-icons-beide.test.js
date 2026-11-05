@@ -10,7 +10,7 @@
  *
  * Buchstäblich dieselben Zeichen können es nicht sein: Die Webapp zeichnet
  * ihre eigene Symbolfamilie (das Sprite in index.html), die App
- * Material-Symbole. `#i-gutschein` und `Icons.Default.Redeem` sind
+ * Material-Symbole. `#i-gutschein` und `Icons.Outlined.Redeem` sind
  * verschiedene Dateien aus verschiedenen Systemen — gleich ist das GEMEINTE.
  * (Bis zum 25.10. stand im Web ein Emoji im Sprachtext; die Tabelle hält
  * seither die Symbol-IDs.)
@@ -72,15 +72,15 @@ const lies = p => fs.readFileSync(p, 'utf8');
  * rechts sieht — und ein Zahnrad soll in beiden Oberflächen ein Zahnrad sein.
  */
 const ZUORDNUNG = [
-  { web: 'settings.group.profile', app: 'konto_title',          sinnbild: 'Person',       symbol: 'i-profil',        vektor: 'Icons.Default.AccountCircle' },
-  { web: 'vouchers.group',         app: 'vouchers_title',       sinnbild: 'Gutschein',    symbol: 'i-gutschein',     vektor: 'Icons.Default.Redeem' },
-  { web: 'alerts.group',           app: 'alerts_group',         sinnbild: 'Glocke',       symbol: 'i-alarm',         vektor: 'Icons.Default.NotificationsActive' },
-  { web: 'storage.group',          app: 'storage_manage',       sinnbild: 'Kiste',        symbol: 'i-lagerort',      vektor: 'Icons.Default.Inventory2' },
-  { web: 'household.group',        app: 'household_title',      sinnbild: 'Gruppe',       symbol: 'i-haushalt',      vektor: 'Icons.Default.Group' },
-  { web: 'settings.data_export',   app: 'csv_upload_title',     sinnbild: 'Datei+Pfeil',  symbol: 'i-daten',         vektor: 'Icons.Default.UploadFile' },
-  { web: 'nav.settings',           app: 'nav_settings',         sinnbild: 'Zahnrad',      symbol: 'i-einstellungen', vektor: 'Icons.Default.Settings' },
-  { web: 'nav.monitoring',         app: 'main_menu_monitoring', sinnbild: 'Diagramm',     symbol: 'i-monitoring',    vektor: 'Icons.Default.Assessment' },
-  { web: 'settings.logout',        app: 'main_menu_logout',     sinnbild: 'Hinausgehen',  symbol: 'i-abmelden',      vektor: 'Icons.AutoMirrored.Filled.Logout' },
+  { web: 'settings.group.profile', app: 'konto_title',          sinnbild: 'Person',       symbol: 'i-profil',        vektor: 'Icons.Outlined.AccountCircle' },
+  { web: 'vouchers.group',         app: 'vouchers_title',       sinnbild: 'Gutschein',    symbol: 'i-gutschein',     vektor: 'Icons.Outlined.Redeem' },
+  { web: 'alerts.group',           app: 'alerts_group',         sinnbild: 'Glocke',       symbol: 'i-alarm',         vektor: 'Icons.Outlined.NotificationsActive' },
+  { web: 'storage.group',          app: 'storage_manage',       sinnbild: 'Kiste',        symbol: 'i-lagerort',      vektor: 'Icons.Outlined.Inventory2' },
+  { web: 'household.group',        app: 'household_title',      sinnbild: 'Gruppe',       symbol: 'i-haushalt',      vektor: 'Icons.Outlined.Group' },
+  { web: 'settings.data_export',   app: 'csv_upload_title',     sinnbild: 'Datei+Pfeil',  symbol: 'i-daten',         vektor: 'Icons.Outlined.UploadFile' },
+  { web: 'nav.settings',           app: 'nav_settings',         sinnbild: 'Zahnrad',      symbol: 'i-einstellungen', vektor: 'Icons.Outlined.Settings' },
+  { web: 'nav.monitoring',         app: 'main_menu_monitoring', sinnbild: 'Diagramm',     symbol: 'i-monitoring',    vektor: 'Icons.Outlined.Assessment' },
+  { web: 'settings.logout',        app: 'main_menu_logout',     sinnbild: 'Hinausgehen',  symbol: 'i-abmelden',      vektor: 'Icons.AutoMirrored.Outlined.Logout' },
 ];
 
 /** Einträge, die es nur auf EINER Seite gibt — ausdrücklich, mit Grund. */

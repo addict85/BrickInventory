@@ -62,8 +62,10 @@ internal fun LagerorteCard(vm: EinstellungenViewModel) {
         }
     }
 
-    Button(onClick = { neu = true }, shape = Formen.knopf) {
-        Icon(Icons.Default.Add, null, Modifier.size(18.dp))
+    // Hinzufügen in einer Unterseite: Knopf in voller Breite wie in Konto und Haushalt.
+    // Der schwebende Knopf gehört dem Hauptobjekt eines Reiters (Sets, Merkposten).
+    Button(onClick = { neu = true }, modifier = Modifier.fillMaxWidth()) {
+        Icon(Icons.Default.Add, null, Modifier.size(ch.brickinventoryapp.ui.components.mitSchrift(18.dp)))
         Spacer(Modifier.width(8.dp))
         Text(stringResource(R.string.storage_add_button))
     }
@@ -99,9 +101,9 @@ internal fun LagerorteCard(vm: EinstellungenViewModel) {
 }
 
 /**
- * Eine Zeile: Name, darunter „Vorgabe“, rechts Stern und Menü. Der Stern unterscheidet
- * sich in der Form (gefüllt/umrissen), nicht nur in der Farbe, und seine Beschreibung
- * sagt, was ein Tipp tut.
+ * Eine Zeile: Name, darunter „Vorgabe“, rechts Stern und Menü. Der Stern ist ein
+ * Schalter: TalkBack sagt „an/aus“ und nennt den Ort wie das Menü daneben; sichtbar
+ * unterscheidet er sich in der Form (gefüllt/umrissen), nicht nur in der Farbe.
  */
 @Composable
 private fun LagerortZeile(
@@ -118,14 +120,16 @@ private fun LagerortZeile(
         leadingContent = { Icon(Icons.Default.Inventory2, null, tint = MaterialTheme.colorScheme.onSurfaceVariant) },
         trailingContent = {
             Row {
-                IconButton(onClick = { onVorgabe(istVorgabe) }) {
+                IconToggleButton(checked = istVorgabe, onCheckedChange = { onVorgabe(istVorgabe) }) {
                     Icon(if (istVorgabe) Icons.Default.Star else Icons.Default.StarBorder,
-                        stringResource(if (istVorgabe) R.string.storage_default_is else R.string.storage_default_set),
+                        stringResource(R.string.storage_vorgabe_cd, ort.name),
                         tint = if (istVorgabe) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant)
                 }
                 Box {
-                    IconButton(onClick = { menue = true }) {
-                        Icon(Icons.Default.MoreVert, stringResource(R.string.storage_menu_cd, ort.name))
+                    ch.brickinventoryapp.ui.components.MitTooltip(stringResource(R.string.storage_menu_cd, ort.name)) {
+                        IconButton(onClick = { menue = true }) {
+                            Icon(Icons.Default.MoreVert, stringResource(R.string.storage_menu_cd, ort.name))
+                        }
                     }
                     DropdownMenu(menue, { menue = false }) {
                         DropdownMenuItem(
@@ -164,6 +168,7 @@ private fun LagerortNameDialog(
         bestaetigenAn = name.isNotBlank(),
     ) {
         OutlinedTextField(
+            shape = Formen.feld,
             value = name,
             onValueChange = { if (it.length <= 60) name = it },
             label = { Text(stringResource(R.string.storage_name)) },

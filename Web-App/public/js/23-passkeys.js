@@ -119,7 +119,7 @@ export async function passkeyHinzufuegen() {
 }
 
 export async function passkeyLoeschen(id, name) {
-  const password = await bestaetigeMitPasswort(tRaw('pk.delete_title'), tRaw('pk.delete_text', { name: name || '—' }), 'schluessel');
+  const password = await bestaetigeMitPasswort(tRaw('pk.delete_title'), tRaw('pk.delete_text', { name: name || '—' }), 'schluessel', { knopf: 'confirm.btn.entfernen', art: 'bd' });
   if (password === null) return;
   const d = await mitZweitemFaktor(z => api('DELETE', `/v1/auth/passkeys/${encodeURIComponent(id)}`, { password, ...z }));
   if (!d) return;

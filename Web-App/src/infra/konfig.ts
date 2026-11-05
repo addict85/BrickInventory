@@ -28,6 +28,10 @@ export function geheimnisseAusDateien(env: Umgebung): string[] {
 export interface Konfig {
   produktion: boolean;
   nodeEnv: string;
+  /** Nur ausdrücklich development oder test: ohne NODE_ENV gelten die Regeln des Betriebs. */
+  entwicklung: boolean;
+  /** Ausweg für den Start als Datenbank-Superuser in Produktion (UPGRADE.md). */
+  dbSuperuserErlaubt: boolean;
   port: number;
   hstsMaxAge: number;
   trustProxy: string | undefined;
@@ -61,6 +65,8 @@ export interface Konfig {
   bildAbrufeJeMinute: number;
   csvZeileFristMs: number;
   auftragParallel: number;
+  /** null: nach Kernen und cgroup-Kontingent (src/konto/bcryptSchranke.ts). */
+  bcryptArbeiter: number | null;
   auftragFristSek: number;
   /** PEM; null: keine eigene CA. */
   caZertifikat: string | null;
@@ -92,11 +98,11 @@ export const VARIABLEN = [
   'SESSION_IDLE_MINUTES', 'SESSION_MAX_HOURS', 'TOKEN_IDLE_DAYS', 'ROLLE',
   'DATABASE_URL', 'PGHOST', 'PGPORT', 'PGUSER', 'PGPASSWORD', 'PGDATABASE',
   'PG_POOL_MAX', 'PG_POOL_MIN', 'PG_IDLE_MS', 'PG_CONN_MS', 'PG_STMT_MS', 'ADMIN_PASSWORD',
-  'APP_BASE_URL', 'APP_ROOT', 'APP_VERSION', 'DATA_KEY', 'DATA_KEY_FILE', 'ERFASSUNG_ZEITZONE', 'TZ',
+  'APP_BASE_URL', 'APP_BASE_URL_FEHLT_OK', 'APP_ROOT', 'APP_VERSION', 'DATA_KEY', 'DATA_KEY_FILE', 'ERFASSUNG_ZEITZONE', 'TZ',
   'PRICE_HISTORY_KEEP_DAYS', 'UPLOAD_KONTINGENT_MB', 'MAIL_KONSOLE_MIT_TOKEN', 'IMG_USER_AGENT',
   'BILD_CACHE_MAX_MB', 'BILD_ABRUFE_JE_MINUTE',
-  'CSV_ZEILE_FRIST_MS', 'AUFTRAG_PARALLEL', 'AUFTRAG_FRIST_SEK', 'CA_ZERTIFIKAT', 'VERTRAG_PRUEFEN',
-  'PASSKEY_ANDROID_ZERTIFIKATE', 'PASSKEY_ANDROID_PAKET', ...DATEI_VARIABLEN.map(n => `${n}_FILE` as const),
+  'CSV_ZEILE_FRIST_MS', 'AUFTRAG_PARALLEL', 'BCRYPT_ARBEITER', 'AUFTRAG_FRIST_SEK', 'CA_ZERTIFIKAT', 'VERTRAG_PRUEFEN',
+  'PASSKEY_ANDROID_ZERTIFIKATE', 'PASSKEY_ANDROID_PAKET', 'DB_SUPERUSER_ERLAUBT', ...DATEI_VARIABLEN.map(n => `${n}_FILE` as const),
 ] as const;
 
 /** Steht sie noch in einer alten compose.yaml, sagt der Start es. */
@@ -190,6 +196,8 @@ export function ladeKonfig(env: Umgebung = process.env): Konfig {
   const k: Konfig = {
     produktion: nodeEnv === 'production',
     nodeEnv,
+    entwicklung: ['development', 'test'].includes(env.NODE_ENV?.trim() ?? ''),
+    dbSuperuserErlaubt: schalter(env, 'DB_SUPERUSER_ERLAUBT', f) === true,
     port: ganzzahl(env, 'PORT', 3000, 1, 65535, f),
     hstsMaxAge: ganzzahl(env, 'HSTS_MAX_AGE', 31_536_000, 0, 2 ** 31 - 1, f),
     trustProxy: env.TRUST_PROXY,
@@ -221,6 +229,7 @@ export function ladeKonfig(env: Umgebung = process.env): Konfig {
     bildAbrufeJeMinute: ganzzahl(env, 'BILD_ABRUFE_JE_MINUTE', 240, 1, 100_000, f),
     csvZeileFristMs: ganzzahl(env, 'CSV_ZEILE_FRIST_MS', 120_000, 1, 86_400_000, f),
     auftragParallel: ganzzahl(env, 'AUFTRAG_PARALLEL', 4, 1, 64, f),
+    bcryptArbeiter: env.BCRYPT_ARBEITER?.trim() ? ganzzahl(env, 'BCRYPT_ARBEITER', 4, 1, 64, f) : null,
     auftragFristSek: ganzzahl(env, 'AUFTRAG_FRIST_SEK', 300, 1, 86_400, f),
     caZertifikat: env.CA_ZERTIFIKAT?.trim() || null,
     hinterTls: !!basis && /^https:\/\//i.test(basis),
@@ -296,5 +305,9 @@ export function startVerbote(env: NodeJS.ProcessEnv = process.env): string[] {
       + 'Wert als DB_PASSWORD in .env (siehe UPGRADE.md).');
   try { proxyVertrauen(env.TRUST_PROXY); }
   catch (e) { gruende.push(`[proxy] ${(e as Error).message} Start verweigert.`); }
+  // Ohne die Adresse gibt es keinen Host-Filter gegen DNS-Rebinding; wer das will, sagt es ausdrücklich.
+  if (!env.APP_BASE_URL?.trim() && env.ROLLE?.trim().toLowerCase() !== 'jobs' && env.APP_BASE_URL_FEHLT_OK?.trim() !== '1')
+    gruende.push('[start] APP_BASE_URL fehlt im Betrieb: Der Host-Filter gegen DNS-Rebinding wäre aus — Start verweigert. '
+      + 'In .env setzen (README.md); nur bewusst ohne: APP_BASE_URL_FEHLT_OK=1 (UPGRADE.md).');
   return gruende;
 }

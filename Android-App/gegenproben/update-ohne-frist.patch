@@ -1,0 +1,18 @@
+Gegenprobe: Die App beachtet gueltigBis nicht (eine abgelaufene Beschreibung gilt als aktuell)
+Modul: core-data
+Test: ch.brickinventoryapp.UpdateFrischeTest
+Rot: eine abgelaufene oder fristlose Beschreibung ist nie aktuell
+
+diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/util/UpdateFrische.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/util/UpdateFrische.kt
+index ed233cc..29ea1d7 100644
+--- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/util/UpdateFrische.kt
++++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/util/UpdateFrische.kt
+@@ -34,7 +34,7 @@ fun bewerteFrische(b: UpdateBeschreibung, gesehen: UpdateStand?, laufend: Int, j
+     b.versionCode < laufend -> UpdateFrische.ZURUECKGESETZT
+     gesehen != null && (b.versionCode < gesehen.hoechsterCode || b.ausgestellt < gesehen.ausgestellt) ->
+         UpdateFrische.ZURUECKGESETZT
+-    b.ausgestellt <= 0 || b.gueltigBis <= b.ausgestellt || b.gueltigBis <= jetztSek -> UpdateFrische.ABGELAUFEN
++    b.ausgestellt <= 0 || b.gueltigBis <= b.ausgestellt -> UpdateFrische.ABGELAUFEN
+     else -> UpdateFrische.AKTUELL
+ }
+ 

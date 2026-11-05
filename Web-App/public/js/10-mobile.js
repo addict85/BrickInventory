@@ -114,11 +114,32 @@
   let letzteHoehe = window.scrollY;
   window.addEventListener('scroll', () => {
     const y = window.scrollY, wurzel = document.documentElement;
+    wurzel.classList.toggle('schrift-gross', parseFloat(getComputedStyle(wurzel).fontSize) >= 24);
     if (y < 60 || y < letzteHoehe - 4) wurzel.classList.remove('kopf-weg');
     else if (y > letzteHoehe + 4) wurzel.classList.add('kopf-weg');
     if (Math.abs(y - letzteHoehe) > 4) letzteHoehe = y;
   }, { passive: true });
-  document.querySelector('header')?.addEventListener('focusin', () => document.documentElement.classList.remove('kopf-weg'));
+  for (const leiste of document.querySelectorAll('header, nav:not(.einst-nav)'))
+    leiste.addEventListener('focusin', () => document.documentElement.classList.remove('kopf-weg'));
+
+  // ── 5. Platz für die festen Leisten ─────────────────────────────────────
+  // Tab rollte ein Feld nur knapp ins Bild, und die Leiste lag darüber
+  // (WCAG 2.4.11). Die Höhen wechseln mit Schriftgrösse und Breite; das
+  // scroll-padding in styles.css liest sie. Gemessen wird vor dem Rollen (focusin).
+  function leistenMessen() {
+    const wurzel = document.documentElement, kopf = /** @type {HTMLElement|null} */ (document.querySelector('header'));
+    const nav = /** @type {HTMLElement|null} */ (document.querySelector('nav:not(.einst-nav)')), band = document.getElementById('offline-band');
+    const navUnten = !!nav && getComputedStyle(nav).position === 'fixed';
+    const oben = (kopf?.offsetHeight || 0) + (nav && !navUnten ? nav.offsetHeight : 0) + (band && !band.hidden ? band.offsetHeight : 0);
+    const unten = navUnten ? nav.offsetHeight : 0;
+    wurzel.style.setProperty('--leiste-oben', `${Math.round(oben)}px`);
+    wurzel.style.setProperty('--leiste-unten', `${Math.round(unten)}px`);
+  }
+  document.addEventListener('focusin', leistenMessen, true);
+  window.addEventListener('resize', leistenMessen, { passive: true });
+  if (typeof ResizeObserver === 'function')
+    for (const l of document.querySelectorAll('header, nav:not(.einst-nav)')) new ResizeObserver(leistenMessen).observe(l);
+  leistenMessen();
 
   // Für Tests und für Code, der Tabellen ausserhalb des Observers erzeugt.
   window.__bimLabelTables = labelAll;

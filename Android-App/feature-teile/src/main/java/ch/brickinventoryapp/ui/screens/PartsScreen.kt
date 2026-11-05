@@ -3,19 +3,16 @@ package ch.brickinventoryapp.ui.screens
 import ch.brickinventoryapp.ui.model.ManuellesTeilAnsicht
 import ch.brickinventoryapp.ui.model.TeilAnsicht
 import ch.brickinventoryapp.ui.model.TeileKennzahlenAnsicht
-import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import ch.brickinventoryapp.ui.theme.Formen
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.border
+import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.Role
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.*
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -29,7 +26,6 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -37,7 +33,6 @@ import ch.brickinventoryapp.ressourcen.R
 import ch.brickinventoryapp.ui.viewmodel.TeileViewModel
 import ch.brickinventoryapp.ui.*
 import androidx.compose.ui.res.stringResource
-import ch.brickinventoryapp.ui.model.FarbeAnsicht
 import ch.brickinventoryapp.util.rememberTileImageWithFallback
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
@@ -82,6 +77,8 @@ fun PartsScreen(
     // Eigener Fluss: Der Lagerortfilter gehoert nicht in AppUiState, das
     // sechzehn Dateien sammeln (siehe LagerUiState).
     val lagerState by vm.lagerState.collectAsStateWithLifecycle()
+    // Das Teil, dessen Detail daneben offen ist (breites Fenster); seine Kachel ist markiert.
+    val gewaehlt = ch.brickinventoryapp.ui.components.LocalOffenesDetail.current
 
     val parts = partsState.parts
     val stats = partsState.partsStats
@@ -143,8 +140,7 @@ fun PartsScreen(
                 TeileFilterEintrag(
                     wert = name, text = farbe(name), anzahl = f.uniqueParts,
                     farbe = f.colorHex?.let {
-                        try { Color("#$it".toColorInt()) }
-                        catch (_: Exception) { null }
+                        try { Color("#$it".toColorInt()) } catch (_: Exception) { null }
                     },
                 )
             }
@@ -158,6 +154,9 @@ fun PartsScreen(
         }
     }
 
+    // Ab grosser Schrift steht Erfassen in der Knopfzeile unter der Suche (SucheMitFilter).
+    val gross = ch.brickinventoryapp.ui.components.grosseSchrift()
+    val erfassenText = stringResource(R.string.parts_add)
     Box(Modifier.fillMaxSize()) {
     Column(Modifier.fillMaxSize()) {
         // Suche und „Filter“: Konto, Lagerort, Ersatzteile, Farbe, Kategorie
@@ -173,11 +172,12 @@ fun PartsScreen(
             aktiveFilter = Filterzahl.teile(householdMembers, scopeMode, lagerorte, lagerModus,
                 partsState.partsSpare, partsState.partsColorFilter, partsState.partsCategoryFilter),
             onFilter = { zeigeFilter = true },
+            erfassen = erfassenText to { showAddDialog = true },
         )
 
         ch.brickinventoryapp.ui.components.OfflineHinweis(partsState.teileOfflineStand)
         if (anzeige == Ladeanzeige.LAEDT) {
-            SkelettRaster(ch.brickinventoryapp.ui.components.LesbareSpalten(110.dp), kachelHoehe = 164.dp, abstand = Abstaende.klein)
+            SkelettRaster(ch.brickinventoryapp.ui.components.LesbareSpalten(120.dp), kachelHoehe = 164.dp, abstand = Abstaende.klein)
         } else if (anzeige == Ladeanzeige.FEHLER) {
             ZustandsHinweis { FehlerHinweis(partsState.partsFehler, onRefresh, partsState.partsFehlerKlasse) }
         } else if (anzeige != Ladeanzeige.LISTE) {
@@ -196,7 +196,7 @@ fun PartsScreen(
             PullToRefreshBox(isRefreshing = isLoading && parts.isNotEmpty(), onRefresh = onRefresh) {
                 LazyVerticalGrid(
                     state = gridState,
-                    columns = ch.brickinventoryapp.ui.components.LesbareSpalten(110.dp),
+                    columns = ch.brickinventoryapp.ui.components.LesbareSpalten(120.dp),
                     // Unten Platz für den Erfassen-Knopf, sonst verdeckt er die letzte Reihe.
                     contentPadding = PaddingValues(start = Abstaende.mittel, top = Abstaende.mittel,
                         end = Abstaende.mittel, bottom = ch.brickinventoryapp.ui.components.FabPlatz),
@@ -244,7 +244,8 @@ fun PartsScreen(
                         val oeffne = { vm.oeffneSetItem("part", part.partNumber, part.colorId) }
                         Bewegt {
                             if (ansicht == "table") PartTableRow(part, serverUrl, imageLoader, oeffne)
-                            else PartCard(part, serverUrl, imageLoader, oeffne)
+                            else PartCard(part, serverUrl, imageLoader, oeffne,
+                                ausgewaehlt = gewaehlt == ch.brickinventoryapp.ui.components.detailSchluessel("part", part.partNumber, part.colorId))
                         }
                     }
                     if (isLoading) {
@@ -261,53 +262,26 @@ fun PartsScreen(
         }
     }
 
-        ch.brickinventoryapp.ui.components.ErfassenFab(
-            stringResource(R.string.parts_add), { showAddDialog = true },
+        if (!gross) ch.brickinventoryapp.ui.components.ErfassenFab(
+            erfassenText, { showAddDialog = true },
             Modifier.align(Alignment.BottomEnd).padding(Abstaende.gross),
         )
     }
 
     if (zeigeFilter) {
-        val ersatz = partsState.partsSpare
-        val farbe = partsState.partsColorFilter
-        val kategorie = partsState.partsCategoryFilter
-        // Nur zurücksetzen, was abweicht: Jede Änderung lädt die Liste neu.
-        val zuruecksetzen: () -> Unit = {
-            if (Filterzahl.konto(householdMembers, scopeMode) > 0) onScopeChange(ch.brickinventoryapp.data.ScopeFilter.ALL)
-            if (Filterzahl.lager(lagerorte, lagerModus) > 0) onLagerChange("")
-            if (ersatz.isNotBlank()) vm.setPartsSpare("")
-            if (farbe.isNotBlank()) vm.setPartsColorFilter("")
-            if (kategorie.isNotBlank()) vm.setPartsCategoryFilter("")
-        }
-        val aktiv = Filterzahl.teile(householdMembers, scopeMode, lagerorte, lagerModus, ersatz, farbe, kategorie)
-        FilterBlattRahmen(onSchliessen = { zeigeFilter = false }, onZuruecksetzen = zuruecksetzen.takeIf { aktiv > 0 }) {
-            KontoFilterAbschnitt(householdMembers, scopeMode, onScopeChange)
-            LagerortFilterAbschnitt(lagerorte, lagerModus, onLagerChange)
-            // Ersatzteile — dieselben drei Werte wie parts-spare in der Webapp,
-            // gefiltert auf dem SERVER (partsSpare im Zustand).
-            FilterAbschnitt(stringResource(R.string.filter_section_spare)) {
-                for ((wert, text) in listOf(
-                    "" to R.string.parts_filter_all,
-                    "0" to R.string.parts_filter_no_spare,
-                    "1" to R.string.parts_filter_spare,
-                )) {
-                    FilterWahl(stringResource(text), ersatz == wert) { vm.setPartsSpare(wert) }
-                }
-            }
-            if (farbEintraege.isNotEmpty() || kategorieEintraege.isNotEmpty()) {
-                FilterAbschnitt(stringResource(R.string.filter_section_color_category)) {
-                    TeileFilterZeile(
-                        farben = farbEintraege,
-                        kategorien = kategorieEintraege,
-                        farbeGewaehlt = farbe,
-                        kategorieGewaehlt = kategorie,
-                        onFarbe = { vm.setPartsColorFilter(it) },
-                        onKategorie = { vm.setPartsCategoryFilter(it) },
-                    )
-                }
-            }
-            AnsichtAbschnitt(ansicht) { vm.setPartsView(it) }
-        }
+        TeileFilterBlatt(
+            vm = vm,
+            partsState = partsState,
+            householdMembers = householdMembers,
+            scopeMode = scopeMode,
+            onScopeChange = onScopeChange,
+            lagerorte = lagerorte,
+            lagerModus = lagerModus,
+            onLagerChange = onLagerChange,
+            farbEintraege = farbEintraege,
+            kategorieEintraege = kategorieEintraege,
+            onSchliessen = { zeigeFilter = false },
+        )
     }
 
     if (showAddDialog) {
@@ -327,6 +301,63 @@ fun PartsScreen(
 
     // Gelöscht wird im Detail (ManualItemDetailScreen, showDeleteConfirm), nicht auf
     // der Kachel.
+}
+
+/** Das Filterblatt der Teile: Konto, Lagerort, Ersatzteile, Farbe und Kategorie, Ansicht. */
+@Composable
+private fun TeileFilterBlatt(
+    vm: TeileViewModel,
+    partsState: PartsUiState,
+    householdMembers: List<ch.brickinventoryapp.ui.model.MitgliedAnsicht>,
+    scopeMode: String,
+    onScopeChange: (String) -> Unit,
+    lagerorte: List<ch.brickinventoryapp.ui.model.LagerortAnsicht>,
+    lagerModus: String,
+    onLagerChange: (String) -> Unit,
+    farbEintraege: List<TeileFilterEintrag>,
+    kategorieEintraege: List<TeileFilterEintrag>,
+    onSchliessen: () -> Unit,
+) {
+    val ersatz = partsState.partsSpare
+    val farbe = partsState.partsColorFilter
+    val kategorie = partsState.partsCategoryFilter
+    // Nur zurücksetzen, was abweicht: Jede Änderung lädt die Liste neu.
+    val zuruecksetzen: () -> Unit = {
+        if (Filterzahl.konto(householdMembers, scopeMode) > 0) onScopeChange(ch.brickinventoryapp.data.ScopeFilter.ALL)
+        if (Filterzahl.lager(lagerorte, lagerModus) > 0) onLagerChange("")
+        if (ersatz.isNotBlank()) vm.setPartsSpare("")
+        if (farbe.isNotBlank()) vm.setPartsColorFilter("")
+        if (kategorie.isNotBlank()) vm.setPartsCategoryFilter("")
+    }
+    val aktiv = Filterzahl.teile(householdMembers, scopeMode, lagerorte, lagerModus, ersatz, farbe, kategorie)
+    FilterBlattRahmen(onSchliessen = onSchliessen, onZuruecksetzen = zuruecksetzen.takeIf { aktiv > 0 }) {
+        KontoFilterAbschnitt(householdMembers, scopeMode, onScopeChange)
+        LagerortFilterAbschnitt(lagerorte, lagerModus, onLagerChange, nachTeilen = true)
+        // Ersatzteile — dieselben drei Werte wie parts-spare in der Webapp,
+        // gefiltert auf dem SERVER (partsSpare im Zustand).
+        FilterAbschnitt(stringResource(R.string.filter_section_spare)) {
+            for ((wert, text) in listOf(
+                "" to R.string.parts_filter_all,
+                "0" to R.string.parts_filter_no_spare,
+                "1" to R.string.parts_filter_spare,
+            )) {
+                FilterWahl(stringResource(text), ersatz == wert) { vm.setPartsSpare(wert) }
+            }
+        }
+        if (farbEintraege.isNotEmpty() || kategorieEintraege.isNotEmpty()) {
+            FilterAbschnitt(stringResource(R.string.filter_section_color_category)) {
+                TeileFilterZeile(
+                    farben = farbEintraege,
+                    kategorien = kategorieEintraege,
+                    farbeGewaehlt = farbe,
+                    kategorieGewaehlt = kategorie,
+                    onFarbe = { vm.setPartsColorFilter(it) },
+                    onKategorie = { vm.setPartsCategoryFilter(it) },
+                )
+            }
+        }
+        AnsichtAbschnitt(partsState.partsView) { vm.setPartsView(it) }
+    }
 }
 
 /** Die Kennzahlen der Teile — erste Zeile des Rasters, sie rollt mit. */
@@ -370,93 +401,119 @@ fun ManualPartTile(part: ManuellesTeilAnsicht, serverUrl: String, imageLoader: I
     )
 }
 
+/** Bildfläche der Teilekachel: wächst mit der Kachel, auf dem Telefon wie bisher rund 90 dp hoch. */
+private const val TEIL_BILD_VERHAELTNIS = 4f / 3f
+
 @Composable
 fun PartCard(part: TeilAnsicht, serverUrl: String, imageLoader: ImageLoader,
-             onClick: (() -> Unit)? = null) {
+             onClick: (() -> Unit)? = null, ausgewaehlt: Boolean = false) {
     val ctx = LocalContext.current
     val qty = part.totalQuantity.takeIf { it > 0 } ?: 1
     val colorObj = remember(part.colorHex) {
         part.colorHex?.let {
-            try { Color("#$it".toColorInt()) }
-            catch (_: Exception) { null }
+            try { Color("#$it".toColorInt()) } catch (_: Exception) { null }
         }
     }
     // Auf Nutzerwunsch läuft auch die volle Auflösung (Rückfall) über
     // den Server-Proxy, nicht direkt zum CDN — anders als bei Sets/Katalog.
     val (imageUrl, onImageError) = rememberTileImageWithFallback(serverUrl, part.imageLocal, part.imageUrl, fullViaProxy = true)
+    // Ab grosser Schrift eine Listenzeile wie die Sets: Das Bild über die volle Breite
+    // liess ein Teil je Bildschirm. Die Menge rückt dann vom Bild in den Text.
+    val zeile = ch.brickinventoryapp.ui.components.grosseSchrift()
+    val weich = !ch.brickinventoryapp.ui.components.bewegungReduziert()
+    val menge: @Composable () -> Unit = {
+        Surface(color = MaterialTheme.colorScheme.primary, shape = Formen.marke) {
+            Text(mengeAusSet(qty), Modifier.padding(horizontal = Abstaende.winzig, vertical = 1.dp),
+                color = MaterialTheme.colorScheme.onPrimary,
+                style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold)
+        }
+    }
+
+    // Mit der Kachel wachsend statt fest 90 dp: Auf dem Tablet stand sonst ein kleines
+    // Bild über einer breiten Kachel.
+    val bildflaeche: @Composable (Modifier) -> Unit = { flaeche ->
+        Box(flaeche) {
+            ch.brickinventoryapp.ui.components.ProduktBild(
+                model = imageUrl?.let { ImageRequest.Builder(ctx).data(it).crossfade(weich).build() },
+                imageLoader = imageLoader,
+                contentDescription = part.partName,
+                onState = { st ->
+                    if (st is coil3.compose.AsyncImagePainter.State.Error) onImageError()
+                },
+                modifier = Modifier.fillMaxSize()
+                    .clip(Formen.kachelBildEcken),
+                contentScale = ContentScale.Fit,
+                ersatzGroesse = 32.dp,
+                // Der Bildgrund über die ganze Kachelbreite wie bei den Sets: Ein schmales
+                // Bild stand sonst als Kasten mit weissen Rändern in der Karte.
+                bildgrund = true,
+                innenAbstand = Abstaende.winzig,
+            )
+            if (!zeile) Box(Modifier.align(Alignment.TopEnd).padding(Abstaende.winzig)) { menge() }
+            // Color dot
+            if (colorObj != null) {
+                Box(
+                    Modifier.size(14.dp).align(Alignment.BottomStart).padding(3.dp)
+                        .clip(CircleShape).background(colorObj)
+                )
+            }
+        }
+    }
+
+    val texte: @Composable (Modifier) -> Unit = { spalte ->
+        Column(spalte.padding(horizontal = 7.dp, vertical = 5.dp), verticalArrangement = Arrangement.spacedBy(1.dp)) {
+            if (zeile) menge()
+            Text(part.blPartNumber ?: part.partNumber,
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.primary,
+                fontWeight = FontWeight.SemiBold)
+            Text(part.partName?.let { ch.brickinventoryapp.ui.components.katalogName(it) }
+                    ?: androidx.compose.ui.text.AnnotatedString(stringResource(R.string.name_unknown)),
+                style = MaterialTheme.typography.labelSmall,
+                color = if (part.partName == null) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurface,
+                // Im Raster immer zwei Zeilen Platz: Kacheln einer Reihe sind gleich hoch,
+                // auch wenn ein Name kurz ist. Die Zeile muss niemandem gleichen.
+                minLines = if (zeile) 1 else 2,
+                maxLines = if (zeile) 4 else 2, overflow = TextOverflow.Ellipsis)
+            part.colorName?.let {
+                Text(ch.brickinventoryapp.ui.components.farbUebersetzer()(it), style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1)
+            }
+            // Ersatzteil — Sets enthalten ein Tuetchen davon. Nur wenn es
+            // eines IST: eine Plakette „kein Ersatzteil" an jeder Kachel
+            // waere Rauschen.
+            if (part.isSpare) ErsatzteilPlakette(Modifier.padding(top = Abstaende.haar))
+        }
+    }
 
     Card(
         // Antippen öffnet den Detail-Dialog, wie bei manuell erfassten Teilen.
-        modifier = Modifier.fillMaxWidth().heightIn(min = 164.dp)
+        modifier = Modifier.fillMaxWidth().heightIn(min = if (zeile) 0.dp else 164.dp)
+            .semantics { selected = ausgewaehlt }
+            .then(if (ausgewaehlt) Modifier.border(2.dp, MaterialTheme.colorScheme.primary, Formen.leiste) else Modifier)
             .let { if (onClick != null) it.clickable(role = Role.Button, onClick = onClick) else it },
         shape = Formen.leiste,
         elevation = CardDefaults.cardElevation(defaultElevation = Formen.karteErhebung),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
     ) {
-        Column {
-            Box(Modifier.fillMaxWidth().height(90.dp)) {
-                ch.brickinventoryapp.ui.components.ProduktBild(
-                    model = imageUrl?.let { ImageRequest.Builder(ctx).data(it).crossfade(true).build() },
-                    imageLoader = imageLoader,
-                    contentDescription = part.partName,
-                    onState = { st ->
-                        if (st is coil3.compose.AsyncImagePainter.State.Error) onImageError()
-                    },
-                    modifier = Modifier.fillMaxSize()
-                        .clip(Formen.kachelBildEcken),
-                    contentScale = ContentScale.Fit,
-                    ersatzGroesse = 32.dp,
-                )
-                // Qty badge
-                Surface(
-                    color = MaterialTheme.colorScheme.primary,
-                    shape = Formen.marke,
-                    modifier = Modifier.align(Alignment.TopEnd).padding(Abstaende.winzig)
-                ) {
-                    Text(mengeAusSet(qty), Modifier.padding(horizontal = Abstaende.winzig, vertical = 1.dp),
-                        color = MaterialTheme.colorScheme.onPrimary,
-                        style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold)
-                }
-                // Color dot
-                if (colorObj != null) {
-                    Box(
-                        Modifier.size(14.dp).align(Alignment.BottomStart).padding(3.dp)
-                            .clip(CircleShape).background(colorObj)
-                    )
-                }
-            }
-            Column(Modifier.padding(horizontal = 7.dp, vertical = 5.dp), verticalArrangement = Arrangement.spacedBy(1.dp)) {
-                Text(part.blPartNumber ?: part.partNumber,
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.primary,
-                    fontWeight = FontWeight.SemiBold)
-                Text(part.partName?.let { ch.brickinventoryapp.ui.components.katalogName(it) }
-                        ?: androidx.compose.ui.text.AnnotatedString(stringResource(R.string.name_unknown)),
-                    style = MaterialTheme.typography.labelSmall,
-                    color = if (part.partName == null) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurface,
-                    maxLines = if (ch.brickinventoryapp.ui.components.grosseSchrift()) 3 else 2, overflow = TextOverflow.Ellipsis)
-                part.colorName?.let {
-                    Text(ch.brickinventoryapp.ui.components.farbUebersetzer()(it), style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1)
-                }
-                // Ersatzteil — Sets enthalten ein Tuetchen davon. Nur wenn es
-                // eines IST: eine Plakette „kein Ersatzteil" an jeder Kachel
-                // waere Rauschen.
-                if (part.isSpare) ErsatzteilPlakette(Modifier.padding(top = Abstaende.haar))
-            }
+        if (zeile) Row(verticalAlignment = Alignment.Top) {
+            bildflaeche(Modifier.width(ZEILE_BILD_BREITE).aspectRatio(TEIL_BILD_VERHAELTNIS))
+            texte(Modifier.weight(1f))
+        } else Column {
+            bildflaeche(Modifier.fillMaxWidth().aspectRatio(TEIL_BILD_VERHAELTNIS))
+            texte(Modifier)
         }
     }
 }
 
+/** Breite des Vorschaubilds, wenn die Kachel bei grosser Schrift eine Listenzeile ist. */
+private val ZEILE_BILD_BREITE = 96.dp
+
 /** Sektions-Überschrift innerhalb der Grids (Manuell erfasst / Aus Sets). */
 @Composable
 fun SectionHeader(text: String) {
-    Text(text.uppercase(),
-        style = MaterialTheme.typography.labelSmall,
-        fontWeight = FontWeight.Bold,
-        color = MaterialTheme.colorScheme.onSurfaceVariant,
-        letterSpacing = 0.8.sp,
-        modifier = Modifier.padding(horizontal = Abstaende.haar, vertical = Abstaende.winzig).semantics { heading() })
+    ch.brickinventoryapp.ui.components.Abschnittstitel(text,
+        Modifier.padding(horizontal = Abstaende.haar, vertical = Abstaende.winzig))
 }
 
 /**
@@ -475,8 +532,7 @@ fun PartTableRow(part: TeilAnsicht, serverUrl: String, imageLoader: ImageLoader,
                  onClick: (() -> Unit)? = null) {
     val farbe = remember(part.colorHex) {
         part.colorHex?.let {
-            try { Color("#$it".toColorInt()) }
-            catch (_: Exception) { null }
+            try { Color("#$it".toColorInt()) } catch (_: Exception) { null }
         }
     }
     val (bildUrl, onFehler) = rememberTileImageWithFallback(

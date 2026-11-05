@@ -44,7 +44,11 @@ function antworten({ mitPreis }) {
     '/v1/finance/pnl': { success: true, currency: 'EUR', sets: [],
       totals: { purchase: '1097.93', sets_purchase: '1028.00', parts_purchase: '69.93', figs_purchase: '0.00',
                 grand_total: String(setPreis), pnl_pct: mitPreis ? 11.3 : null, pnl_prozent: mitPreis ? 11.3 : null,
-                pnl_purchase: mitPreis ? '629.00' : '0.00', pnl_current: mitPreis ? '700.00' : '0.00' } },
+                pnl_purchase: mitPreis ? '629.00' : '0.00', pnl_current: mitPreis ? '700.00' : '0.00',
+                positionen: 4, positionen_bewertet: mitPreis ? 1 : 0, positionen_ohne_marktpreis: mitPreis ? 3 : 4,
+                positionen_ohne_kaufpreis: 0, basis_einstand: mitPreis ? '629.00' : '0.00',
+                basis_marktwert: mitPreis ? '700.00' : '0.00', basis_guv_betrag: mitPreis ? '71.00' : '0.00',
+                ohne_marktpreis_einstand: mitPreis ? '468.93' : '1097.93', ohne_kaufpreis_marktwert: '0.00' } },
   };
 }
 
@@ -75,14 +79,14 @@ test('mit Marktpreisen: Gesamtwert und G&V', async () => {
   const { w, d } = await finanzen({ mitPreis: true });
   try {
     assert.match(zahl(text(d.getElementById('fin-wert'))), /700\.00/);
-    assert.match(text(d.getElementById('fin-wert-sub')), /Marktpreis fehlt für 3 Positionen/);
+    assert.match(text(d.getElementById('fin-basis')), /3 Positionen ohne Marktpreis nicht gerechnet/);
     assert.notEqual(d.getElementById('fin-stat-pnl').style.display, 'none');
     assert.match(text(d.getElementById('fin-total-pnl')), /11\.3/);
     // Betrag aus denselben Posten wie die Prozentzahl: 700 − 629, nicht 700 − 1097.93.
     // Dahinter steht, wogegen gerechnet ist; das Prozent im Diagramm rechnet gegen den Zeitraum.
     assert.match(zahl(text(d.getElementById('fin-pnl-sub'))), /^\+[^0-9]*71\.00[^0-9]*$/,
       `Betrag passt nicht zur Prozentzahl: ${text(d.getElementById('fin-pnl-sub'))}`);
-    assert.match(text(d.getElementById('fin-pnl-sub')), /gegenüber dem Einstand/);
+    assert.match(text(d.getElementById('fin-pnl-sub')), /zum Kaufpreis/);
   } finally { w.close(); }
 });
 

@@ -93,7 +93,13 @@ class BildschirmHoltDatenNichtSelbstTest {
                 "nicht angekommen: ${fehlend.joinToString()}"
         }
 
-        for (rel in listOf("ui/screens/MonitoringScreen.kt", "ui/screens/MonitoringSections.kt")) {
+        // Die Abschnitte bekommen Zustand und Ereignisse (arch14 M2); das ViewModel
+        // holt allein der Bildschirm.
+        val abschnitte = ohneKommentare(File(Quellen.wurzel, "ui/screens/MonitoringSections.kt").readText())
+        assert(!abschnitte.contains("hiltViewModel()")) {
+            "MonitoringSections.kt holt sich wieder selbst ein ViewModel, statt Zustand zu bekommen"
+        }
+        for (rel in listOf("ui/screens/MonitoringScreen.kt")) {
             val src = ohneKommentare(File(Quellen.wurzel, "$rel").readText())
             assert(src.contains("hiltViewModel()")) { "$rel haengt das ViewModel nicht ein" }
             assert(src.contains("mon.state.collectAsStateWithLifecycle()")) {
@@ -120,7 +126,13 @@ class BildschirmHoltDatenNichtSelbstTest {
         assert(felder.size >= 5) { "MonitoringUiState hat nur ${felder.size} Felder — Klammersuche daneben?" }
 
         val fehler = mutableListOf<String>()
-        for (rel in listOf("ui/screens/MonitoringScreen.kt", "ui/screens/MonitoringSections.kt")) {
+        // Die Abschnitte bekommen Zustand und Ereignisse (arch14 M2); das ViewModel
+        // holt allein der Bildschirm.
+        val abschnitte = ohneKommentare(File(Quellen.wurzel, "ui/screens/MonitoringSections.kt").readText())
+        assert(!abschnitte.contains("hiltViewModel()")) {
+            "MonitoringSections.kt holt sich wieder selbst ein ViewModel, statt Zustand zu bekommen"
+        }
+        for (rel in listOf("ui/screens/MonitoringScreen.kt")) {
             val src = ohneKommentare(File(Quellen.wurzel, "$rel").readText())
             for (m in Regex("""\bmonState\.(\w+)""").findAll(src)) {
                 if (m.groupValues[1] !in felder) fehler += "$rel: monState.${m.groupValues[1]}"

@@ -5,6 +5,8 @@ package ch.brickinventoryapp.ui.dialogs
 // `by` vor collectAsStateWithLifecycle braucht runtime.getValue.
 import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.ui.semantics.Role
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -21,7 +23,6 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil3.ImageLoader
 import ch.brickinventoryapp.ressourcen.R
@@ -33,8 +34,10 @@ import ch.brickinventoryapp.util.rememberTileImageWithFallback
 import ch.brickinventoryapp.ui.theme.Abstaende
 
 /**
- * Detail-Dialog für ein Teil / eine Figur aus einem Set: Bild mit Zoom und die
- * Sets, die es verwenden, mit Link zum Set-Detail.
+ * Detail für ein Teil / eine Figur aus einem Set, auf dem Telefon als Blatt von unten:
+ * Bild mit Zoom und die Sets, die es verwenden, mit Link zum Set-Detail. Ein Blatt
+ * statt eines Dialogs, weil Lagerort und Liste Platz brauchen und das Wischen nach
+ * unten schliesst wie überall.
  *
  * Was er bewusst nicht hat: • Keinen Marktpreis — gewünscht ohne. • Keine
  * Mengenwahl. Die Zahl entsteht aus den Inventaren der Sets; eine Änderung
@@ -54,6 +57,32 @@ fun SetItemDetailDialog(
     imageLoader: ImageLoader,
     serverUrl: String,
     onOpenSet: (String) -> Unit,
+) {
+    SetItemDetail(vm, imageLoader, serverUrl, onOpenSet, alsDialog = true)
+}
+
+/**
+ * Dasselbe Detail als rechte Hälfte neben der Liste (Tablet, Listen-Detail wie in
+ * der Merkliste): Titel mit Schliessen-Knopf, darunter der Inhalt, rollbar.
+ */
+@Composable
+fun SetItemDetailBereich(
+    vm: TeileViewModel,
+    imageLoader: ImageLoader,
+    serverUrl: String,
+    onOpenSet: (String) -> Unit,
+) {
+    SetItemDetail(vm, imageLoader, serverUrl, onOpenSet, alsDialog = false)
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun SetItemDetail(
+    vm: TeileViewModel,
+    imageLoader: ImageLoader,
+    serverUrl: String,
+    onOpenSet: (String) -> Unit,
+    alsDialog: Boolean,
 ) {
     val zustand by vm.setItemState.collectAsStateWithLifecycle()
     val farbe = ch.brickinventoryapp.ui.components.farbUebersetzer()
@@ -84,14 +113,7 @@ fun SetItemDetailDialog(
     // trifft der Dialog fuer manuell erfasste Teile.
     val bild = kopf?.let { resolveFullUrlViaProxy(serverUrl, it.imageLocal, it.imageUrl) }
 
-    AlertDialog(
-        onDismissRequest = { vm.schliesseSetItem() },
-        confirmButton = {
-            TextButton(onClick = { vm.schliesseSetItem() }) {
-                Text(stringResource(R.string.detail_close))
-            }
-        },
-        title = {
+    val titel: @Composable () -> Unit = {
             Column {
                 Text(kopf?.name ?: zustand.nummer, fontWeight = FontWeight.SemiBold)
                 Text(
@@ -100,8 +122,8 @@ fun SetItemDetailDialog(
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
-        },
-        text = {
+    }
+    val inhalt: @Composable () -> Unit = {
             Column(Modifier.fillMaxWidth()) {
                 when {
                     zustand.laedt -> Box(Modifier.fillMaxWidth().padding(Abstaende.sehrGross), Alignment.Center) {
@@ -158,7 +180,7 @@ fun SetItemDetailDialog(
                                     vorrat = lagerZustand.vorrat.map { it.name },
                                     onWert = { vm.setzeTeilLagerort(kopf.nummer, kopfFarbe, it) },
                                     modifier = Modifier.padding(start = Abstaende.gross)
-                                        .widthIn(max = 180.dp),
+                                        .weight(1f).widthIn(max = 320.dp),
                                 )
                             }
                         }
@@ -214,8 +236,40 @@ fun SetItemDetailDialog(
                     }
                 }
             }
-        },
-    )
+    }
+
+    // Schliessen links wie in jedem Detailkopf (DetailTopAppBar), im Blatt wie neben der Liste.
+    val schliessen = { vm.schliesseSetItem() }
+    if (alsDialog) {
+        ModalBottomSheet(onDismissRequest = schliessen) {
+            Column(
+                Modifier.padding(start = Abstaende.gross, end = Abstaende.sehrGross, bottom = Abstaende.sehrGross)
+                    .verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(Abstaende.mittel),
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    ch.brickinventoryapp.ui.components.ZurueckKnopf(schliessen, schliessen = true)
+                    Box(Modifier.weight(1f)) {
+                        ProvideTextStyle(MaterialTheme.typography.titleLarge) { titel() }
+                    }
+                }
+                inhalt()
+            }
+        }
+    } else {
+        Column(Modifier.fillMaxSize()) {
+            ch.brickinventoryapp.ui.components.DetailTopAppBar(
+                titel = kopf?.name ?: zustand.nummer,
+                untertitel = zustand.nummer + (kopf?.colorName?.let { " · " + farbe(it) } ?: ""),
+                onZurueck = schliessen,
+                schliessen = true,
+            )
+            Column(
+                Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(Abstaende.gross),
+                verticalArrangement = Arrangement.spacedBy(Abstaende.mittel),
+            ) { inhalt() }
+        }
+    }
 
     if (zeigeZoom && bild != null) {
         ZoomableImageDialog(

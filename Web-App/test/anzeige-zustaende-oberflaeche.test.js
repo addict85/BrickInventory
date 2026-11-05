@@ -28,6 +28,8 @@
  *      → rot: „kein Hinweis über dem Assistenten“ (02.11.2026 erneut gemessen)
  *   G  in setzeEigenesDesign applyTheme() entfernt → rot: „eigenes Design“
  *      (data-theme blieb classic)
+ *   H  (04.11.2026) in loadProfile den Hinweis auf email_neu entfernt → rot:
+ *      „ausstehende Adresse“ (der Hinweis blieb leer)
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -71,7 +73,8 @@ test('Wertdiagramm: Teilung nach 1-2-5, echte Zeitachse, Monatsnamen', async () 
     assert.ok(y.every(v => v % schritt === 0), `krumme Werte: ${y}`);
     const x = texte.filter(t => +t.getAttribute('y') > 160).map(t => t.textContent);
     assert.ok(x.length >= 3, `nur ${x.length} Beschriftungen an der Zeitachse`);
-    assert.ok(x.every(t => /^[A-Za-zäÄ]{3,4}\.? \d{2}$/.test(t)), `uneinheitlich: ${x.join(' | ')}`);
+    // Ganzes Jahr: „Juli 26“ las sich auch als 26. Juli.
+    assert.ok(x.every(t => /^[A-Za-zäÄ]{3,5}\.? \d{4}$/.test(t)), `uneinheitlich: ${x.join(' | ')}`);
     // Zwischen den letzten beiden Punkten liegt ein Tag, davor ein Monat.
     const cx = JSON.parse(svg.dataset.punkte).map(p => p.x);
     const tag = cx[13] - cx[12], monat = cx[12] - cx[11];
@@ -119,6 +122,17 @@ test('Konto: ohne E-Mail steht nicht „verifiziert“', async () => {
     await sicht(w, 'profil');
     await warte(() => d.getElementById('prof-user').value === 'anna');
     assert.equal(d.getElementById('prof-email-verified').textContent.trim(), '');
+  } finally { w.close(); }
+});
+
+test('Konto: eine ausstehende Adresse steht unter dem Feld, im Feld die geltende', async () => {
+  const { w, d } = await oeffneOberflaeche({ '/v1/auth/profile': { success: true, user: { username: 'anna',
+    email: 'alt@example.org', email_verified: true, email_neu: 'neu@example.org', first_name: '', last_name: '' } } });
+  try {
+    await sicht(w, 'profil');
+    await warte(() => d.getElementById('prof-user').value === 'anna');
+    assert.equal(d.getElementById('prof-email').value, 'alt@example.org');
+    assert.match(d.getElementById('prof-email-hint').textContent, /^Ausstehend: neu@example\.org\. Sie gilt erst/);
   } finally { w.close(); }
 });
 

@@ -1,9 +1,7 @@
 package ch.brickinventoryapp.ui.screens
 
 import ch.brickinventoryapp.ui.theme.Formen
-import android.net.Uri
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Clear
@@ -20,9 +18,7 @@ import ch.brickinventoryapp.util.NumericInput
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import okhttp3.HttpUrl.Companion.toHttpUrl
 import ch.brickinventoryapp.ressourcen.R
 import ch.brickinventoryapp.ui.theme.Abstaende
@@ -47,11 +43,11 @@ fun ComparisonScreen() {
 
     // Die Eingabe als Abfragewert kodiert: Ein `#` oder `&` darin veränderte sonst die Adresse.
     val keineAppText = stringResource(R.string.common_no_app_to_open)
-    fun openInBrowser(query: String) {
+    // Snackbar statt Toast wie in den Detailseiten: bleibt lesbar, bis TalkBack fertig ist.
+    val meldungen = remember { SnackbarHostState() }
+    suspend fun openInBrowser(query: String) {
         val url = "https://www.toppreise.ch/produktsuche".toHttpUrl().newBuilder().addQueryParameter("q", query).build()
-        if (!ch.brickinventoryapp.util.oeffneExtern(context, url.toString())) {
-            android.widget.Toast.makeText(context, keineAppText, android.widget.Toast.LENGTH_SHORT).show()
-        }
+        if (!ch.brickinventoryapp.util.oeffneExtern(context, url.toString())) meldungen.showSnackbar(keineAppText)
     }
 
     LaunchedEffect(activeQuery) {
@@ -71,6 +67,7 @@ fun ComparisonScreen() {
         return
     }
 
+    Box(Modifier.fillMaxSize()) {
     Column(Modifier.fillMaxSize()) {
         // Toolbar card
         Surface(
@@ -81,7 +78,10 @@ fun ComparisonScreen() {
                 Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 10.dp),
                 verticalArrangement = Arrangement.spacedBy(Abstaende.klein)
             ) {
-                // Search field
+                // Suchfeld mit Scannen daneben, wie in Galerie und Merkliste: ein Muster für
+                // Scan-Knöpfe statt eines eigenen Tonal-Knopfs mit englischem „Scan“.
+                Row(verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(Abstaende.klein)) {
                 OutlinedTextField(
                     value = searchText,
                     // ── Zahlentastatur statt Freitext ──
@@ -96,47 +96,33 @@ fun ComparisonScreen() {
                         if (searchText.isNotBlank()) scannedBarcode = null
                     },
                     placeholder = { Text(stringResource(R.string.comparison_search_placeholder)) },
-                    leadingIcon = { Icon(Icons.Default.Search, null, Modifier.size(20.dp)) },
+                    leadingIcon = { Icon(Icons.Default.Search, null, Modifier.size(ch.brickinventoryapp.ui.components.mitSchrift(20.dp))) },
                     trailingIcon = {
                         // `cd_search_clear` statt `comparison_clear`: Letzteres heisst „Löschen“ /
                         // „Clear“, und TalkBack sagte am Suche-leeren-Knopf das Wort für „Bestand
                         // vernichten“. Dieses Feld ist kein `Suchfeld`, weil es die Suchtaste der
                         // Tastatur braucht, und nimmt den Text deshalb von Hand.
-                        if (searchText.isNotEmpty())
+                        if (searchText.isNotEmpty()) ch.brickinventoryapp.ui.components.MitTooltip(stringResource(R.string.cd_search_clear)) {
                             IconButton(onClick = { searchText = "" }) { Icon(Icons.Default.Clear, stringResource(R.string.cd_search_clear)) }
+                        }
                     },
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier.weight(1f),
                     singleLine = true,
                     shape = Formen.karte,
                     keyboardOptions = NumericInput.ganzzahlTastatur(ImeAction.Search),
                     keyboardActions = KeyboardActions(onSearch = { triggerSearch() })
                 )
+                ch.brickinventoryapp.ui.components.ScanKnopf({ showScanner = true })
+                }
 
-                // Action row
-                Row(
-                    Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(Abstaende.klein),
-                    verticalAlignment = Alignment.CenterVertically
+                Button(
+                    onClick = { triggerSearch() },
+                    modifier = Modifier.fillMaxWidth(),
+                    enabled = searchText.isNotBlank() || scannedBarcode != null
                 ) {
-                    Button(
-                        onClick = { triggerSearch() },
-                        modifier = Modifier.weight(1f),
-                        enabled = searchText.isNotBlank() || scannedBarcode != null,
-                        shape = Formen.knopf
-                    ) {
-                        Icon(Icons.Default.OpenInBrowser, null, Modifier.size(16.dp))
-                        Spacer(Modifier.width(6.dp))
-                        Text(stringResource(R.string.comparison_search), fontWeight = FontWeight.SemiBold)
-                    }
-                    FilledTonalButton(
-                        onClick = { showScanner = true },
-                        shape = Formen.knopf,
-                        contentPadding = PaddingValues(horizontal = Abstaende.gross, vertical = Abstaende.klein)
-                    ) {
-                        Icon(ch.brickinventoryapp.ui.components.BarcodeSymbol, null, Modifier.size(16.dp))
-                        Spacer(Modifier.width(6.dp))
-                        Text(if (scannedBarcode != null) stringResource(R.string.comparison_scan_new) else stringResource(R.string.comparison_scan))
-                    }
+                    Icon(Icons.Default.OpenInBrowser, null, Modifier.size(ch.brickinventoryapp.ui.components.mitSchrift(16.dp)))
+                    Spacer(Modifier.width(6.dp))
+                    Text(stringResource(R.string.comparison_search), fontWeight = FontWeight.SemiBold)
                 }
 
                 // Scanned barcode hint
@@ -156,32 +142,12 @@ fun ComparisonScreen() {
             }
         }
 
-        // Placeholder
-        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-            Column(
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(14.dp),
-                modifier = Modifier.padding(Abstaende.riesig)
-            ) {
-                Surface(
-                    shape = Formen.chip,
-                    color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f),
-                    modifier = Modifier.size(80.dp)
-                ) {
-                    Box(Modifier.fillMaxSize(), Alignment.Center) {
-                        Icon(Icons.Default.Search, null, Modifier.size(36.dp),
-                            tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.6f))
-                    }
-                }
-                Text(stringResource(R.string.comparison_title),
-                    fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.bodyLarge)
-                Text(
-                    stringResource(R.string.comparison_hint),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    textAlign = TextAlign.Center
-                )
-            }
+        // Derselbe Hinweis wie jeder Leerzustand der App (Symbol auf runder Fläche).
+        ch.brickinventoryapp.ui.components.ZustandsHinweis {
+            ch.brickinventoryapp.ui.components.HinweisText(Icons.Default.Search,
+                stringResource(R.string.comparison_title), stringResource(R.string.comparison_hint))
         }
+    }
+    SnackbarHost(meldungen, Modifier.align(Alignment.BottomCenter))
     }
 }

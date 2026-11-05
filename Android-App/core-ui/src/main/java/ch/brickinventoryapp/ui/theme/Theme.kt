@@ -189,24 +189,27 @@ private val FarbfaecherColors = lightColorScheme(
     error                = Color(0xFFB91C1C),
 )
 
-// Noppe: weisse Flächen, Tintenkante, roter Kopf; Werte aus DesignTokens.kt.
+// Noppe: weisse Flächen, Tintenkante; Werte aus DesignTokens.kt.
 // `outline` ist die TINTE, weil in diesem Design der Rahmen trägt, nicht der Schatten.
-// Rot färbt nur Flächen und Akzente (Container, tertiary): Als primary sah es aus
-// wie die Fehlerfarbe, jeder Knopf wirkte wie „Löschen“.
+// Rot steht in keiner Rolle, nur auf den Steindeckeln: In Wertkarte, „Neu“-Plakette
+// und Knöpfen las es sich als Verlust oder Fehler. Blau führt, Gelb ist der Akzent.
 private val NoppeBlau = Color(0xFF1A5FB8)
+private val NoppeBlauHell = Color(0xFFE3EDFA)
+private val NoppeGelbHell = Color(0xFFFFF3C4)
+private val NoppeOcker = Color(0xFF7A5200)
 
 private val NoppeColors = lightColorScheme(
     primary              = NoppeBlau,
     onPrimary            = Color.White,
-    primaryContainer     = NoppeRotHell,
+    primaryContainer     = NoppeBlauHell,
     onPrimaryContainer   = NoppeTinte,
     secondary            = NoppeTinte,
     onSecondary          = Color.White,
     secondaryContainer   = Color(0xFFEEF1F6),
     onSecondaryContainer = NoppeTinte,
-    tertiary             = NoppeRot,
+    tertiary             = NoppeOcker,
     onTertiary           = Color.White,
-    tertiaryContainer    = NoppeRotHell,
+    tertiaryContainer    = NoppeGelbHell,
     onTertiaryContainer  = NoppeTinte,
     background           = Color(0xFFEEF1F6),
     surface              = Color.White,
@@ -327,9 +330,12 @@ private fun dunklesSchema(theme: String): ColorScheme = dunkleRollen(theme).let 
  */
 internal fun farbschema(theme: String, dunkel: Boolean = false): ColorScheme =
     if (dunkel && hatDunkleFassung(theme)) ergaenzeRollen(dunklesSchema(theme).let {
-        // Wie hell: Im Dunkeln ist das Noppe-Rot (#ff7479) kaum von der Fehlerfarbe zu
-        // unterscheiden; Hauptfarbe wird das Blau der Diagrammlinie, Rot bleibt Akzent.
-        if (theme == "noppe" || theme == "hochglanz") it.copy(primary = Color(0xFF6AA8FF), tertiary = it.primary)
+        // Wie hell: Das Noppe-Rot ist im Dunkeln kaum von der Fehlerfarbe zu unterscheiden.
+        // Hauptfarbe wird das Blau der Diagrammlinie, die Container nehmen die blauen Stufen
+        // von classic, und der Akzent bleibt das Bernstein der Basis.
+        if (theme == "noppe" || theme == "hochglanz") it.copy(primary = Color(0xFF6AA8FF),
+            primaryContainer = Color(argb(dunkelToken("classic", "b50") ?: "#13233d")),
+            onPrimaryContainer = Color(argb(dunkelToken("classic", "b700") ?: "#a9caff")))
         else it
     }, dunkel = true)
     else when (theme) {
@@ -374,7 +380,9 @@ internal fun akzentflaechen(theme: String, dunkel: Boolean, s: ColorScheme): Akz
         leiste = if (stein) s.primary else s.surface, aufLeiste = if (stein) s.onPrimary else s.onSurface,
         detailLeiste = if (stein) s.secondary else s.surface, aufDetailLeiste = if (stein) s.onSecondary else s.onSurface,
         markt = markt, aufMarkt = if (stein) Color.White else if (nacht) s.onSurface else s.onPrimary,
-        kauf = s.surfaceContainerHigh, aufKauf = s.onSurface,
+        // Kaufpreis wie G&V auf surface mit Rand: zwei Stufen (Marktwert hervorgehoben,
+        // der Rest ruhig) statt dreier Kartenstile nebeneinander.
+        kauf = s.surface, aufKauf = s.onSurface,
     )
 }
 

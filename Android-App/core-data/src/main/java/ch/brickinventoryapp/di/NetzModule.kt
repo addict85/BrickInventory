@@ -37,9 +37,11 @@ object NetzModule {
         tausch: ch.brickinventoryapp.data.TokenTausch,
         rechte: ch.brickinventoryapp.data.RechteSignal,
         pflicht: ch.brickinventoryapp.data.PasswortPflicht,
+        faktorPflicht: ch.brickinventoryapp.data.ZweiterFaktorPflicht,
     ): OkHttpClient =
         buildInterceptorClient(prefs, isApiClient = true, sessionExpired = sessionExpired, ctx = context,
-            meldungen = meldungen, frage = frage, rotation = tausch, rechte = rechte, pflicht = pflicht)
+            meldungen = meldungen, frage = frage, rotation = tausch, rechte = rechte, pflicht = pflicht,
+            faktorPflicht = faktorPflicht)
 
     /**
      * Der Client für die Selbstaktualisierung — bewusst blank: Server, Bearer-Token
@@ -95,14 +97,15 @@ object NetzModule {
         sessionExpired: ch.brickinventoryapp.data.SessionExpiredSignal,
         vorschau: ch.brickinventoryapp.data.cache.VorschauSpeicher,
         frage: ch.brickinventoryapp.util.ZertifikatsFrage,
+        ablage: ch.brickinventoryapp.util.Ablageschluessel,
     ): OkHttpClient =
         buildInterceptorClient(prefs, isApiClient = false, sessionExpired = sessionExpired, ctx = context, frage = frage)
             .newBuilder()
             // ── Dauerhafte Ablage der Vorschaubilder ──
             //
             // Zuerst in der Kette, damit der Abgriff das Endergebnis sieht — der
-            // Offline-Rückfall unten ist der innere. Er ergänzt die beiden
-            // LRU-Zwischenspeicher unter `cacheDir`, die Android jederzeit leeren darf; diese
+            // Offline-Rückfall unten ist der innere. Er ergänzt den
+            // LRU-Zwischenspeicher unter `cacheDir`, den Android jederzeit leeren darf; diese
             // Ablage liegt unter `filesDir` und räumt nur selbst (VorschauSpeicher).
             .addInterceptor { chain ->
                 val anfrage = chain.request()
@@ -150,9 +153,12 @@ object NetzModule {
             }
             // Nur eigener Server und die Bild-CDNs (util/BildHosts.kt); Umleitungen prüft
             // der Wächter selbst, OkHttp folgte ihnen sonst an ihm vorbei.
-            .addInterceptor(ch.brickinventoryapp.util.BildHostWaechter { url ->
-                ch.brickinventoryapp.util.istEigenerBildServer(url, prefs.serverUrlState.value ?: "", NetworkPolicy.entwicklung)
-            })
+            .addInterceptor(ch.brickinventoryapp.util.BildHostWaechter(
+                eigenerServer = { url ->
+                    ch.brickinventoryapp.util.istEigenerBildServer(url, prefs.serverUrlState.value ?: "", NetworkPolicy.entwicklung)
+                },
+                basisPfad = { NetworkPolicy.basisPfad(prefs.serverUrlState.value.orEmpty()).orEmpty() },
+            ))
             .followRedirects(false)
             // Bild-Downloads drosseln, aber nicht so eng, dass Kacheln verhungern: Dies ist
             // der eine ImageLoader der App. Bei 3 Verbindungen je Host warteten Kacheln, Coil
@@ -162,9 +168,15 @@ object NetzModule {
                 maxRequests = 12
                 maxRequestsPerHost = 6
             })
-            // HTTP-Zwischenspeicher für Bilder: Coils Plattencache hält nur fertige Bytes; für
-            // bedingte Anfragen und den Offline-Rückfall braucht es ETag und Ablaufdatum.
-            .cache(okhttp3.Cache(context.cacheDir.resolve("image_http_cache"), 50L * 1024 * 1024))
+            // HTTP-Zwischenspeicher für Bilder: Für bedingte Anfragen und den Offline-Rückfall
+            // braucht es ETag und Ablaufdatum. Verschlüsselt wie Bestand und Antworten, denn die
+            // Bilder zeigen, welche Sets jemand besitzt.
+            .cache(okhttp3.Cache(
+                ch.brickinventoryapp.util.VerschluesseltesDateisystem(
+                    okio.FileSystem.SYSTEM, ch.brickinventoryapp.util.AblageChiffre { ablage.fuer("bilder") }, "bilder"),
+                context.cacheDir.resolve("image_http_cache").toOkioPath(),
+                50L * 1024 * 1024,
+            ))
             // Offline-Rückfall: Ist der Server nicht erreichbar, kommen die Bilder aus dem
             // Cache. Am Fehler festgemacht, nicht am Verbindungsstatus — im WLAN kann der
             // Heimserver trotzdem schweigen. FORCE_CACHE liefert die Kopie ohne Rücksicht auf
@@ -212,15 +224,9 @@ object NetzModule {
                     .maxSizePercent(context, 0.15) // 15 % des App-Speichers
                     .build()
             }
-            .diskCache {
-                coil3.disk.DiskCache.Builder()
-                    // directory() nimmt in Coil 3 einen okio.Path statt einer
-                    // java.io.File. Derselbe Ordner wie bisher, damit ein
-                    // bestehender Zwischenspeicher nicht verwaist.
-                    .directory(context.cacheDir.resolve("image_cache").toOkioPath())
-                    .maxSizeBytes(50L * 1024 * 1024) // 50 MB auf der Platte
-                    .build()
-            }
+            // Kein eigener Plattencache: Er hielte dieselben Bytes wie der HTTP-Zwischenspeicher
+            // des Clients, aber im Klartext. Ohne diese Zeile legte Coil 3 seinen eigenen an.
+            .diskCache { null }
             // Cache-Köpfe beachten (ein falsches Bild soll sich vom Server erneuern lassen)
             // ist in Coil 3 keine Einstellung mehr: Die einzige CacheStrategy, DEFAULT, ist
             // die Vorgabe der Fabrik oben. Ob sie sich im Einzelnen wie
@@ -256,7 +262,13 @@ object NetzModule {
         prefs: PreferencesManager,
         frage: ch.brickinventoryapp.util.ZertifikatsFrage,
     ): ch.brickinventoryapp.data.Entwerter =
-        ch.brickinventoryapp.data.Entwerter(buildEntwertungsBasis(prefs, frage), NetworkPolicy.entwicklung)
+        ch.brickinventoryapp.data.Entwerter(buildEntwertungsBasis(prefs, frage), NetworkPolicy.entwicklung,
+            vertrauenFuer = auftragsVertrauenFabrik(prefs))
+
+    /** Für die QR-Anmeldung: Ein `fp` auf eine System-Wurzel gilt ohne Abtippen (sec10 N2). */
+    @Provides
+    @Singleton
+    fun provideSystemWurzeln(): ch.brickinventoryapp.util.SystemWurzeln = systemWurzeln()
 
     // Kein unqualifiziertes OkHttpClient-Binding: Es lieferte still den api-Client
     // auch an Bild- und SSE-Wege aus. Wer einen Client braucht, nennt @Named("api"),

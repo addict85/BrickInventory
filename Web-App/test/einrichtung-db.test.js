@@ -6,6 +6,8 @@
  *   A  `!erledigt &&` aus der Bedingung entfernt   → rot: „erscheint nach Fertig weiter"
  *   B  Object.hasOwn in /quelle-testen entfernt   → rot: „__proto__ gilt als Quelle"
  *   C  istVerwalter-Prüfung in /einrichtung weg   → rot: „Nicht-Verwalter sieht den Stand"
+ *   D  (04.11.) in quellenAbsage die Zeile für fehlende Schlüssel entfernt
+ *      → rot: „fehlender Schlüssel in Klartext" (quelle_test_fehlgeschlagen)
  *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL.
  */
@@ -81,10 +83,12 @@ test('Einrichtungs-Assistent', { concurrency: 1 }, async (t) => {
       }
       const bs = await ruf(V, '/quelle-testen', { quelle: 'brickset' });
       assert.equal(bs.status, 400);
-      assert.equal(bs.body.code, 'quelle_test_fehlgeschlagen');
-      assert.match(bs.body.error, /nicht konfiguriert/);
+      assert.equal(bs.body.code, 'quelle_ohne_schluessel', 'fehlender Schlüssel in Klartext');
+      assert.match(bs.body.error, /Für Brickset ist noch kein Zugang gespeichert/);
+      assert.match(bs.body.details, /nicht konfiguriert/, 'der rohe Grund steht unter „Details“');
       const bl = await ruf(V, '/quelle-testen', { quelle: 'bricklink' });
-      assert.match(bl.body.error, /nicht vollständig/);
+      assert.equal(bl.body.code, 'quelle_ohne_schluessel');
+      assert.match(bl.body.details, /nicht vollständig/);
       assert.equal((await ruf(N, '/quelle-testen', { quelle: 'brickset' })).status, 403);
     });
   } finally {

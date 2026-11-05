@@ -22,7 +22,7 @@ import { CURRENCY, _settingsCache, ME } from './00-zustand.js';
  * (PASSWORT_MIN_ZEICHEN in src/konto/auth.ts) und in der App.
  * Ausführlich: docs/begruendungen/public/js/01-core.js.md#passwort-min-zeichen
  */
-export const PASSWORT_MIN_ZEICHEN = 8;
+export const PASSWORT_MIN_ZEICHEN = 12;
 
 /**
  * Ist dieses Passwort zu kurz?
@@ -245,12 +245,15 @@ export function setnummerFeldGueltig(id, wert) {
 
 /**
  * Ein leerer Zustand: Symbol, ein Satz, und wenn es einen gibt, der nächste
- * Schritt als Knopf. Texte kommen fertig übersetzt; maskiert wird hier.
- * @param {{ ico: string, titel: string, text?: string, knopf?: { text: string, click: string, arg?: string, ico?: string, art?: string } }} o
+ * Schritt als Knopf. Texte kommen fertig übersetzt oder als Schlüssel; maskiert wird hier.
+ * @param {{ ico: string, titel?: string, text?: string, titelKey?: string, textKey?: string, knopf?: { text?: string, textKey?: string, click: string, arg?: string, ico?: string, art?: string } }} o
  */
 export function leerZustand(o) {
-  const knopf = o.knopf ? `<button type="button" class="btn ${o.knopf.art || 'bp'}" data-click="${esc(o.knopf.click)}"${o.knopf.arg ? ` data-arg="${esc(o.knopf.arg)}"` : ''}>${ico(o.knopf.ico || 'plus')}<span>${esc(o.knopf.text)}</span></button>` : '';
-  return `<div class="empty leer"><div class="leer-ico">${ico(o.ico)}</div><h2>${esc(o.titel)}</h2>${o.text ? `<p>${esc(o.text)}</p>` : ''}${knopf}</div>`;
+  const knopfText = o.knopf?.textKey ? `<span data-i18n="${esc(o.knopf.textKey)}">${esc(tRaw(o.knopf.textKey))}</span>` : `<span>${esc(o.knopf?.text)}</span>`;
+  const knopf = o.knopf ? `<button type="button" class="btn ${o.knopf.art || 'bp'}" data-click="${esc(o.knopf.click)}"${o.knopf.arg ? ` data-arg="${esc(o.knopf.arg)}"` : ''}>${ico(o.knopf.ico || 'plus')}${knopfText}</button>` : '';
+  // Mit Schlüssel übersetzt applyLang den Text nach, wenn die Kontosprache erst später feststeht.
+  const k = (/** @type {string | undefined} */ key) => key ? ` data-i18n="${esc(key)}"` : '';
+  return `<div class="empty leer"><div class="leer-ico">${ico(o.ico)}</div><h2${k(o.titelKey)}>${esc(o.titelKey ? tRaw(o.titelKey) : o.titel)}</h2>${o.text || o.textKey ? `<p${k(o.textKey)}>${esc(o.textKey ? tRaw(o.textKey) : o.text)}</p>` : ''}${knopf}</div>`;
 }
 
 /** Der Knopf „Filter zurücksetzen“ für einen Leerzustand ohne Treffer. */
@@ -444,14 +447,21 @@ export function observeLazyImages(root) {
 const TOAST_DAUER = { success: 3500, info: 5000, error: 9000 };
 /** @type {WeakMap<Element, {schluessel: string, anzahl: number, frist: any}>} */
 const _toastStand = new WeakMap();
-/** @param {{text: string, fn: () => any}} [aktion] Knopf in der Meldung, z. B. „Rückgängig" */
-export function toast(msg, type='info', aktion) {
+/** Fehlertexte der 401-Antworten: Noch laufende Anfragen scheitern nach dem
+ * Ende der Sitzung mit genau diesem Text. Als Toast widerspräche er dem einen
+ * Hinweis in der Anmeldekarte; toast() lässt ihn deshalb weg. */
+const _meldungenDerAbgelaufenenSitzung = new Set();
+/** @param {{text: string, fn: () => any, bleibt?: boolean}} [aktion] Knopf in der Meldung, z. B. „Rückgängig";
+ *  `bleibt` hält ihn über einen Ansichtswechsel (verwirfToasts).
+ * @param {string} [details] aufklappbare Ursache unter der Meldung */
+export function toast(msg, type='info', aktion, details) {
   const c = G('toasts');
+  if (type === 'error' && !ME && [..._meldungenDerAbgelaufenenSitzung].some(m => String(msg ?? '').startsWith(m))) return null;
   // Dieselbe Meldung noch einmal: zählen statt stapeln, und die Frist beginnt neu.
   const schluessel = `${type}|${String(msg ?? '')}`;
   const gleich = aktion ? null : [...c.children].find(x => _toastStand.get(x)?.schluessel === schluessel);
   if (gleich) {
-    const stand = _toastStand.get(gleich);
+    const stand = /** @type {{schluessel: string, anzahl: number, frist: any}} */ (_toastStand.get(gleich));
     stand.anzahl++;
     const zahl = /** @type {HTMLElement} */ (gleich.querySelector('.toast-anzahl'));
     zahl.textContent = `×${stand.anzahl}`; zahl.hidden = false;
@@ -468,10 +478,22 @@ export function toast(msg, type='info', aktion) {
   icon.className = 'toast-ico';
   icon.innerHTML = ico({ success: 'ok', error: 'fehler' }[type] || 'info');
   const text = document.createElement('span');
+  text.className = 'toast-text';
   text.textContent = String(msg ?? '');
   const anzahl = document.createElement('span');
   anzahl.className = 'toast-anzahl'; anzahl.hidden = true;
   el.append(icon, text, anzahl);
+  // Die Ursache aufklappbar: Sieben Zeilen Meldung verdeckten am Telefon die Liste.
+  if (details) {
+    const mehr = document.createElement('details');
+    mehr.className = 'toast-details';
+    const kopf = document.createElement('summary');
+    kopf.textContent = tRaw('liste.details');
+    const inhalt = document.createElement('p');
+    inhalt.textContent = details;
+    mehr.append(kopf, inhalt);
+    text.append(mehr);
+  }
   if (aktion) {
     const knopf = document.createElement('button');
     knopf.type = 'button';
@@ -479,11 +501,12 @@ export function toast(msg, type='info', aktion) {
     knopf.textContent = aktion.text;
     knopf.onclick = () => { el.remove(); aktion.fn(); };
     el.append(knopf);
+    if (aktion.bleibt) el.dataset.bleibt = '';
   }
   // Ein Fehler will gelesen werden, eine Bestätigung nur gesehen; mit Knopf
   // muss man ihn auch treffen. Ein Klick auf die Meldung räumt sie weg, damit
   // sie keine Karte verdeckt.
-  el.addEventListener('click', e => { if (e.target === el || !(/** @type {Element} */ (e.target)).closest('button')) el.remove(); });
+  el.addEventListener('click', e => { if (e.target === el || !(/** @type {Element} */ (e.target)).closest('button, details')) el.remove(); });
   c.appendChild(el);
   _toastStand.set(el, { schluessel, anzahl: 1, frist: setTimeout(() => el.remove(), Math.max(aktion ? 9000 : 0, TOAST_DAUER[type] ?? 4500)) });
   return el;
@@ -493,7 +516,7 @@ export function toast(msg, type='info', aktion) {
  * entstanden; nur solche mit Knopf (Rückgängig, Ändern) bleiben bis zur Frist.
  */
 export function verwirfToasts() {
-  for (const el of [...(G('toasts')?.children || [])]) if (!el.querySelector('.toast-aktion')) el.remove();
+  for (const el of [...(G('toasts')?.children || [])]) if (!(/** @type {HTMLElement} */ (el)).hasAttribute('data-bleibt')) el.remove();
 }
 /**
  * Jeder Weg zur eigenen API läuft hierüber: Sprache, Verbindungsband und das
@@ -557,8 +580,11 @@ export async function api(method, path, body, o = {}) {
   try {
     res = await apiRoh(method, path, { ...o, body: body ?? null });
   } catch (_) {
+    const alt = method === 'GET' ? ausZwischenspeicher(path) : null;
+    if (alt) return { ...alt, ausZwischenspeicher: true };
     return { success:false, error:tRaw('api.unreachable'), networkError:true, status:0 };
   }
+  /** @type {any} */
   let daten = null;
   try {
     daten = await res.json();
@@ -572,7 +598,10 @@ export async function api(method, path, body, o = {}) {
              error: daten.error || tRaw('api.server_error', { status:res.status }) };
   }
   if (daten && typeof daten === 'object') daten.status = res.status;
+  if (method === 'GET' && res.ok && daten?.success !== false) inZwischenspeicher(path, daten);
+  if (res.status === 401 && daten?.error && !/^\/v1\/auth\/(me|login)/.test(path)) _meldungenDerAbgelaufenenSitzung.add(String(daten.error));
   if (res.status === 403 && daten?.code === 'passwort_wechsel_noetig') melde('passwortWechselNoetig');
+  if (res.status === 403 && daten?.code === 'zweiter_faktor_pflicht') melde('zweiterFaktorPflicht');
   return daten;
 }
 
@@ -618,6 +647,24 @@ function rbHinweisWeg() {
   try { localStorage.setItem(RB_HINWEIS_WEG, String(Date.now())); } catch (_) { /* dann eben bis zum Neuladen */ }
   G('inhalt')?.focus({ preventScroll: true });
 }
+// ── Zwischenspeicher für Lesezugriffe ──────────────────────────────────────
+// Ohne Netz zeigen Listen den zuletzt geladenen Stand dieses Tabs statt eines
+// Fehlers. sessionStorage: nur dieser Tab, weg beim Abmelden (leereZwischenspeicher).
+const ZS = 'bim_api:';
+const ZS_PFADE = /^\/v1\/(wanted|sets|stats|parts|minifigs|finance\/|catalog\/sets\?)/;
+/** @param {string} pfad @param {unknown} daten */
+function inZwischenspeicher(pfad, daten) {
+  if (!ZS_PFADE.test(pfad)) return;
+  try { const s = JSON.stringify(daten); if (s.length < 400_000) sessionStorage.setItem(ZS + pfad, s); } catch (_) { /* voll oder gesperrt: dann ohne */ }
+}
+/** @param {string} pfad */
+function ausZwischenspeicher(pfad) {
+  try { const s = sessionStorage.getItem(ZS + pfad); return s ? JSON.parse(s) : null; } catch (_) { return null; }
+}
+export function leereZwischenspeicher() {
+  try { for (const k of Object.keys(sessionStorage)) if (k.startsWith(ZS)) sessionStorage.removeItem(k); } catch (_) { /* ohne Speicher nichts zu leeren */ }
+}
+
 
 // ── Verbindung ──────────────────────────────────────────────────────────────
 // Ohne Netz zeigt die Seite weiter den letzten Stand. Das Band sagt, dass es
@@ -633,10 +680,14 @@ export function zeigeVerbindung(erreichbar) {
   if (erreichbar) {
     if (_offline) toast(tRaw('net.back'), 'success');
     if (_offline) schreibenSperren(false);
+    // Was ohne Netz nicht laden konnte, lädt jetzt von selbst.
+    if (_offline) document.querySelectorAll('.tab.active .fehler-zustand [data-lesend]').forEach(k => /** @type {HTMLElement} */ (k).click());
     _offline = false; band.hidden = true; return;
   }
   _offline = true;
-  band.textContent = (_letzteAntwort ? tRaw('net.offline_since', { zeit: fmtDatum(_letzteAntwort, 'tagzeit') }) : tRaw('net.offline'))
+  const heute = _letzteAntwort && new Date(_letzteAntwort).toDateString() === new Date().toDateString();
+  const seit = heute ? tRaw('net.heute', { zeit: fmtDatum(_letzteAntwort, 'zeit') }) : fmtDatum(_letzteAntwort, 'tagzeit');
+  band.textContent = (_letzteAntwort ? tRaw('net.offline_since', { zeit: seit }) : tRaw('net.offline'))
     + ' ' + tRaw('net.offline_gesperrt');
   band.hidden = false;
   schreibenSperren(true);
@@ -649,7 +700,7 @@ export function zeigeVerbindung(erreichbar) {
 const BEDIENT = 'button, input[type=file], .import-menue > summary';
 const IMMER_SCHREIBEND = 'button.bp, button.bd, input[type=file], .import-menue > summary';
 const SCHREIB_VERBEN = /speicher|save|loesch|delete|import|hinzufueg|add|anleg|erfass|uebernehm|eintrag|abfrag|aktualis|refresh|sync|hochlad|upload|rotier|widerruf|einlad|verknuepf|aendere|bearbeit|entfern|wiederherst|restore|generier|erzeug|verschieb|qty|menge|alarm/i;
-const NICHT_SPERREN = '#login-screen, .toast, [data-dialog-zu], .hinweis-zu';
+const NICHT_SPERREN = '#login-screen, .toast, [data-dialog-zu], .hinweis-zu, [data-lesend]';
 /** @param {Element} k */
 function schreibt(k) {
   if (k.closest(NICHT_SPERREN)) return false;
@@ -896,6 +947,8 @@ registerActions({
 });
 
 // Die gewählte Sprache am Konto speichern (i18n.js meldet den Wechsel).
+// Was der Code zur Laufzeit schreibt (Kontoschild „Name (Verwalter)“), zieht nach.
 abonniere('spracheGewechselt', ({ sprache, speichern }) => {
+  if (ME) zeigeBenutzernamen();
   if (speichern) api('POST', '/v1/settings', { language: sprache });
 });

@@ -46,7 +46,10 @@ object FarbeDeutsch {
         val sb = StringBuilder()
         var anhaengen = false
         for (t in raus) {
-            if (t == " ") { if (!anhaengen) sb.append(' '); continue }
+            if (t == " ") {
+                if (!anhaengen) sb.append(' ')
+                continue
+            }
             if (t == "-") { sb.append('-'); anhaengen = false; continue }
             sb.append(if (anhaengen) t.replaceFirstChar { it.lowercaseChar() } else t)
             anhaengen = t in vorsilben

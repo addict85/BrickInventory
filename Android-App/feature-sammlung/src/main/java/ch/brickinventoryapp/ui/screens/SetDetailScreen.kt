@@ -1,15 +1,12 @@
 package ch.brickinventoryapp.ui.screens
 
 import ch.brickinventoryapp.ui.model.SetAnsicht
-import androidx.compose.ui.semantics.heading
-import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.res.pluralStringResource
 import ch.brickinventoryapp.ressourcen.R
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -17,17 +14,13 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.unit.dp
 import ch.brickinventoryapp.ui.viewmodel.SetDetailViewModel
 import ch.brickinventoryapp.ui.*
-import ch.brickinventoryapp.ui.theme.LocalIsBrickTheme
 import ch.brickinventoryapp.ui.components.ZoomableImageDialog
 import ch.brickinventoryapp.util.resolveFullUrl
 import coil3.ImageLoader
+import kotlinx.coroutines.launch
 import ch.brickinventoryapp.ui.theme.Abstaende
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -45,6 +38,11 @@ fun SetDetailScreen(
     imageLoader: ImageLoader,
     onBack: () -> Unit,
     onDelete: (String) -> Unit,
+    /**
+     * Fängt die Liste darunter das Löschen mit „Rückgängig“ auf? Dann löscht der Papierkorb
+     * ohne Rückfrage — eine Sicherung genügt. Ohne Liste (Einstieg von aussen) fragt er.
+     */
+    rueckgaengigMoeglich: Boolean = false,
     onNavigateToAcqMgmt: (type: String, id: String, colorId: Int, title: String) -> Unit = { _, _, _, _ -> },
     onOpenPdf: (url: String, title: String) -> Unit = { _, _ -> }
 ) {
@@ -82,39 +80,36 @@ fun SetDetailScreen(
     fun fmtDate(iso: String?) = ch.brickinventoryapp.util.fmtTag(iso) ?: iso ?: "—"
 
     val akzent = ch.brickinventoryapp.ui.theme.LocalAkzentflaechen.current
+    // Snackbar im eigenen Gerüst statt Toast: bleibt lesbar, bis TalkBack fertig ist.
+    val meldungen = remember { SnackbarHostState() }
+    val keineAppText = stringResource(R.string.common_no_app_to_open)
+    val haptik = androidx.compose.ui.platform.LocalHapticFeedback.current
     Scaffold(
+        snackbarHost = { SnackbarHost(meldungen) },
         topBar = {
-            TopAppBar(
-                title = {
-                    Text(
-                        set?.name ?: setNumber,
-                        fontWeight = FontWeight.SemiBold,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier.semantics { heading() },
-                    )
-                },
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(R.string.common_back))
-                    }
-                },
-                actions = {
-                    // Kein Verschieben-Knopf: Verschoben wird über den Kaufpreis, im
-                    // Kaufpreis-Screen, Zeile für Zeile. Ein Set mit drei Erfassungen sind drei
-                    // Käufe, die verschiedenen Kindern gehören können — „das Set verschieben“
-                    // verdeckte, was wandert. Der Server erzwingt dieselbe Regel: move ohne
-                    // acquisition_ids antwortet mit 400.
-                    IconButton(onClick = { showSetDeleteConfirm = true }) {
-                        Icon(Icons.Default.Delete, stringResource(R.string.cd_set_delete, set?.name ?: setNumber))
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
+            // Derselbe Kopf wie in Katalog, Merkliste und Teilen (DetailTopAppBar).
+            ch.brickinventoryapp.ui.components.DetailTopAppBar(
+                titel = set?.name ?: setNumber,
+                onZurueck = onBack,
+                farben = TopAppBarDefaults.topAppBarColors(
                     containerColor = akzent.detailLeiste,
                     titleContentColor = akzent.aufDetailLeiste,
                     navigationIconContentColor = akzent.aufDetailLeiste,
                     actionIconContentColor = akzent.aufDetailLeiste,
-                )
+                ),
+                actions = {
+                    // Kein Verschieben-Knopf: Verschoben wird über den Kaufpreis, Zeile für Zeile —
+                    // ein Set mit drei Erfassungen sind drei Käufe, die verschiedenen Kindern gehören
+                    // können. Der Server erzwingt dasselbe (move ohne acquisition_ids: 400).
+                    ch.brickinventoryapp.ui.components.MitTooltip(stringResource(R.string.cd_set_delete, set?.name ?: setNumber)) {
+                        IconButton(onClick = {
+                            haptik.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress)
+                            if (rueckgaengigMoeglich) onDelete(setNumber) else showSetDeleteConfirm = true
+                        }) {
+                            Icon(Icons.Default.Delete, stringResource(R.string.cd_set_delete, set?.name ?: setNumber))
+                        }
+                    }
+                },
             )
         },
         containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
@@ -174,6 +169,7 @@ fun SetDetailScreen(
                 set, detailState, serverUrl, onOpenPdf,
                 onAnleitungWaehlen = { anleitungAuswahl.launch(ch.brickinventoryapp.ui.viewmodel.ANLEITUNG_TYPEN) },
                 onAnleitungLoeschen = { vm.loescheAnleitung(setNumber, it) },
+                onKeineApp = { coroutineScope.launch { meldungen.showSnackbar(keineAppText) } },
             )
         }
         // Ab „expanded“ zwei Spalten — Bild und Preise links, Angaben, Alarm und
@@ -219,4 +215,3 @@ fun SetDetailScreen(
         }
     }
 }
-

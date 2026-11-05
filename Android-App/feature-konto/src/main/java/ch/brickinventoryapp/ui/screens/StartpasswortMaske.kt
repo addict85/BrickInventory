@@ -6,11 +6,10 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -20,22 +19,32 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusDirection
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.semantics.heading
-import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.ImeAction
 import ch.brickinventoryapp.ressourcen.R
 import ch.brickinventoryapp.ui.KontoUiState
+import ch.brickinventoryapp.ui.components.AnmeldeKarte
+import ch.brickinventoryapp.ui.components.AnmeldeTitel
+import ch.brickinventoryapp.ui.components.FehlerZeile
+import ch.brickinventoryapp.ui.components.MarkenKopf
+import ch.brickinventoryapp.ui.components.PasswortArt
+import ch.brickinventoryapp.ui.components.PasswortFeld
 import ch.brickinventoryapp.ui.components.ZweiterFaktorCodeFeld
 import ch.brickinventoryapp.ui.theme.Abstaende
+import ch.brickinventoryapp.ui.theme.Lesebreite
+import ch.brickinventoryapp.ui.theme.mittigBis
+import ch.brickinventoryapp.util.PASSWORT_MIN_ZEICHEN
 import ch.brickinventoryapp.util.passwortZuKurz
 
 /**
  * Das Konto hat noch sein Startpasswort: Der Server weist bis zum Wechsel jeden
  * Abruf ab (403 `passwort_wechsel_noetig`). Statt einer App voller Fehlermeldungen
- * steht nur diese Maske da. Der Wechsel beendet alle Zugänge, danach meldet man
- * sich mit dem neuen Passwort an ([onErsetzen] meldet bei Erfolg ab).
+ * steht nur diese Maske da, gebaut wie die Maske für den zweiten Faktor (Markenkopf,
+ * Lesebreite). Der Wechsel beendet alle Zugänge, danach meldet man sich mit dem neuen
+ * Passwort an ([onErsetzen] meldet bei Erfolg ab).
  */
 @Composable
 fun StartpasswortMaske(
@@ -51,46 +60,45 @@ fun StartpasswortMaske(
     var faktorCode by remember { mutableStateOf("") }
     val zuKurz = pwNeu.isNotEmpty() && passwortZuKurz(pwNeu)
     val verschieden = pwWiederholt.isNotEmpty() && pwWiederholt != pwNeu
+    val fokus = LocalFocusManager.current
+    val weiter = KeyboardActions(onNext = { fokus.moveFocus(FocusDirection.Down) })
     Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
         // Ein untergeschobener Tipp setzte hier das Passwort des Kontos.
         ch.brickinventoryapp.ui.components.Ueberdeckungsschutz()
         Column(
-            Modifier.verticalScroll(rememberScrollState()).padding(Abstaende.riesig),
+            Modifier.verticalScroll(rememberScrollState()).mittigBis(Lesebreite.formular)
+                .padding(horizontal = Abstaende.sehrGross, vertical = Abstaende.riesig),
             verticalArrangement = Arrangement.spacedBy(Abstaende.mittel),
         ) {
-            Text(stringResource(R.string.startpasswort_titel), style = MaterialTheme.typography.headlineSmall,
-                modifier = Modifier.semantics { heading() })
-            Text(stringResource(R.string.startpasswort_text), style = MaterialTheme.typography.bodyMedium)
-            OutlinedTextField(
-                value = pwAktuell, onValueChange = { pwAktuell = it }, singleLine = true,
-                label = { Text(stringResource(R.string.konto_password_current)) },
-                visualTransformation = PasswordVisualTransformation(),
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
-                modifier = Modifier.fillMaxWidth())
-            OutlinedTextField(
-                value = pwNeu, onValueChange = { pwNeu = it }, singleLine = true,
-                label = { Text(stringResource(R.string.konto_password_new)) },
-                visualTransformation = PasswordVisualTransformation(),
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
-                isError = zuKurz,
-                supportingText = if (zuKurz) { { Text(stringResource(R.string.register_password_short)) } } else null,
-                modifier = Modifier.fillMaxWidth())
-            OutlinedTextField(
-                value = pwWiederholt, onValueChange = { pwWiederholt = it }, singleLine = true,
-                label = { Text(stringResource(R.string.startpasswort_wiederholen)) },
-                visualTransformation = PasswordVisualTransformation(),
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
-                isError = verschieden,
-                supportingText = if (verschieden) { { Text(stringResource(R.string.startpasswort_verschieden)) } } else null,
-                modifier = Modifier.fillMaxWidth())
-            kontoZustand.fehler?.let { Text(it, color = MaterialTheme.colorScheme.error) }
-            if (kontoZustand.codeNoetig) ZweiterFaktorCodeFeld(faktorCode) { faktorCode = it }
-            Button(
-                onClick = { onErsetzen(pwAktuell, pwNeu, faktorCode.takeIf { kontoZustand.codeNoetig && it.isNotBlank() }) },
-                enabled = !kontoZustand.speichert && pwAktuell.isNotEmpty() && pwNeu.isNotEmpty() && !zuKurz && pwWiederholt == pwNeu,
-                modifier = Modifier.fillMaxWidth(),
-            ) { Text(stringResource(R.string.konto_password_button)) }
-            TextButton(onClick = onAbmelden) { Text(stringResource(R.string.settings_logout)) }
+            MarkenKopf(Modifier.fillMaxWidth())
+            // Dieselbe Karte wie Anmelden und Registrieren, das Abmelden darunter wie dort „Zurück“.
+            AnmeldeKarte {
+                AnmeldeTitel(stringResource(R.string.startpasswort_titel))
+                Text(stringResource(R.string.startpasswort_text), style = MaterialTheme.typography.bodyMedium)
+                PasswortFeld(pwAktuell, { pwAktuell = it }, stringResource(R.string.konto_password_current),
+                    Modifier.fillMaxWidth(), imeAction = ImeAction.Next, keyboardActions = weiter)
+                // Die Mindestlänge steht von Anfang an da, nicht erst als Fehler.
+                PasswortFeld(pwNeu, { pwNeu = it }, stringResource(R.string.konto_password_new), Modifier.fillMaxWidth(),
+                    art = PasswortArt.NEU,
+                    hinweis = if (zuKurz) stringResource(R.string.register_password_short)
+                              else pluralStringResource(R.plurals.passwort_mindestens, PASSWORT_MIN_ZEICHEN, PASSWORT_MIN_ZEICHEN),
+                    fehlerhaft = zuKurz, imeAction = ImeAction.Next, keyboardActions = weiter)
+                PasswortFeld(pwWiederholt, { pwWiederholt = it }, stringResource(R.string.startpasswort_wiederholen),
+                    Modifier.fillMaxWidth(), art = PasswortArt.WIEDERHOLUNG,
+                    hinweis = if (verschieden) stringResource(R.string.startpasswort_verschieden) else null,
+                    fehlerhaft = verschieden)
+                kontoZustand.fehler?.let { FehlerZeile(it) }
+                if (kontoZustand.codeNoetig) ZweiterFaktorCodeFeld(faktorCode) { faktorCode = it }
+                if (pwAktuell.isEmpty() || pwNeu.isEmpty() || pwWiederholt.isEmpty())
+                    ch.brickinventoryapp.ui.components.SperrGrund(stringResource(R.string.passwort_aendern_fehlt))
+                Button(
+                    onClick = { onErsetzen(pwAktuell, pwNeu, faktorCode.takeIf { kontoZustand.codeNoetig && it.isNotBlank() }) },
+                    enabled = !kontoZustand.speichert && pwAktuell.isNotEmpty() && pwNeu.isNotEmpty() && !zuKurz && pwWiederholt == pwNeu,
+                    modifier = Modifier.fillMaxWidth(),
+                ) { Text(stringResource(R.string.konto_password_button)) }
+            }
+            // Mittig in voller Breite wie „Zurück zur Anmeldung“: Eingerückt stand es neben nichts.
+            TextButton(onClick = onAbmelden, modifier = Modifier.fillMaxWidth()) { Text(stringResource(R.string.settings_logout)) }
         }
     }
 }

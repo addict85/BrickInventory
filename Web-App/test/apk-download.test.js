@@ -73,7 +73,10 @@ test('2. dieselbe Adresse wie im Workflow und in der App', () => {
 
   // ── Aus der App: dieselbe Ablage, aus der sie sich selbst aktualisiert ────
   const kt = fs.readFileSync(path.join(__dirname, '..', '..', 'Android-App', 'core-data', 'src', 'main', 'java', 'ch', 'brickinventoryapp', 'util', 'AppUpdate.kt'), 'utf8');
-  const basis = kt.match(/UPDATE_RELEASE_BASIS\s*=\s*\n?\s*"([^"]+)"/)?.[1];
+  // Die Basis darf auf die Wurzel verweisen; Kotlin setzt $NAME beim Übersetzen ein.
+  const wurzel = kt.match(/UPDATE_RELEASE_WURZEL\s*=\s*\n?\s*"([^"]+)"/)?.[1];
+  const basis = kt.match(/UPDATE_RELEASE_BASIS\s*=\s*\n?\s*"([^"]+)"/)?.[1]
+    ?.replace('$UPDATE_RELEASE_WURZEL', wurzel ?? '$UPDATE_RELEASE_WURZEL');
   assert.ok(basis, 'UPDATE_RELEASE_BASIS ist in AppUpdate.kt nicht mehr zu finden.');
   assert.equal(adresse, `${basis}/${apkName}`,
     'Knopf und Selbst-Aktualisierung der App zeigen auf verschiedene Ablagen. ' +

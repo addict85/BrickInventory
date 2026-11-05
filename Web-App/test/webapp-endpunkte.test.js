@@ -178,6 +178,11 @@ const NUR_WEB = new Map([
    'die WEBSEITE (src/infra/mailer.ts: `${baseUrl}/reset-password?token=`), also ' +
    'landet auch ein App-Nutzer dort. Was die App braucht, hat sie: ' +
    '/auth/forgot-password löst die Mail aus.'],
+  ['/api/v1/auth/email-bestaetigen',
+   'Der Knopf auf der Seite hinter dem Link aus der Mail (/verify). Der Link ' +
+   'öffnet die Webseite, auch auf dem Telefon; die App hat dafür keinen Bildschirm.'],
+  ['/api/v1/auth/email-bestaetigen/vorschau',
+   'Nennt auf derselben Seite (/verify) vor dem Knopf das Konto des Links.'],
   ['/api/v1/auth/bestaetigung-erneut',
    'Neuer Bestätigungslink; er zeigt auf die Webseite (/verify), dort wird bestätigt. ' +
    'Neu seit Runde 6 – die App kann den Knopf nachziehen, bis dahin hilft die Webseite.'],
@@ -188,6 +193,7 @@ const NUR_WEB = new Map([
   ['/api/v1/auth/users/:X/admin',  'Verwalterrecht umschalten — siehe /auth/users.'],
   ['/api/v1/auth/users/:X/password', 'Fremdes Passwort zurücksetzen — siehe /auth/users.'],
   ['/api/v1/auth/users/:X/aktiv',  'Fremdes Konto deaktivieren — siehe /auth/users.'],
+  ['/api/v1/auth/users/:X/freischalten', 'Offene Registrierung ohne Mail freischalten — siehe /auth/users.'],
   ['/api/v1/wanted-list/import/xml',
    'BrickLink-Wanted-Liste einlesen. NOCH NICHT in der App, und der Grund ' +
    'steht hier, damit ihn der Naechste nicht neu herleitet: Dieser Import ist ' +
@@ -274,6 +280,12 @@ const NUR_WEB = new Map([
    EINRICHTUNG],
   ['/api/v1/bestand',
    ALLES_LOESCHEN],
+  ['/api/v1/auth/konto',
+   'Das eigene Konto endgültig löschen (Sicherheitsprüfung Runde 9, H4): mit Passwort und ' +
+   'zweitem Faktor in der Webapp; in der App wäre ein Fehlgriff auf dem Telefon zu teuer.'],
+  ['/api/v1/settings/household/redeem/pruefen',
+   'Nennt vor dem Annehmen einer Haushaltseinladung das einladende Konto (UI-Prüfung 13, M2). ' +
+   'Die App fragt beim Annehmen nur das Passwort ab; sie bekommt die Prüfung mit ihrem eigenen Befund.'],
   ['/api/v1/vouchers/:X/pdf',
    'Die App holt das Gutschein-PDF nicht über Retrofit, sondern über seine Adresse im ' +
    'PdfViewerScreen (gutscheinPdfAdresse); die Webapp lädt es seit dem Einmal-Ticket per fetch.'],

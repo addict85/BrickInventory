@@ -1,13 +1,11 @@
 package ch.brickinventoryapp.ui.screens
 
+import ch.brickinventoryapp.ui.components.nebenKnopfFarben
+import ch.brickinventoryapp.ui.components.nebenKnopfRand
 import ch.brickinventoryapp.ui.model.KaufAnsicht
 import ch.brickinventoryapp.ui.model.KontoAnsicht
-import ch.brickinventoryapp.ui.model.MitgliedAnsicht
 import ch.brickinventoryapp.ui.theme.Formen
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.foundation.background
@@ -23,16 +21,10 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.runtime.DisposableEffect
-import androidx.compose.ui.focus.onFocusChanged
-import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.text.input.ImeAction
-import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import ch.brickinventoryapp.ressourcen.R
 import ch.brickinventoryapp.util.fmtMoney
 import ch.brickinventoryapp.ui.theme.LocalIsBrickTheme
@@ -69,7 +61,9 @@ fun AcquisitionSummarySection(
             Spacer(Modifier.height(Abstaende.winzig))
             OutlinedButton(onClick = onEditPrices,
                 contentPadding = PaddingValues(horizontal = 10.dp, vertical = Abstaende.haar),
-                modifier = Modifier.heightIn(min = 28.dp)) {
+                modifier = Modifier.heightIn(min = 28.dp),
+                colors = nebenKnopfFarben(),
+                border = nebenKnopfRand()) {
                 Icon(Icons.Default.Edit, null, Modifier.size(ch.brickinventoryapp.ui.components.mitSchrift(14.dp)))
                 Spacer(Modifier.width(Abstaende.winzig))
                 Text(stringResource(R.string.detail_edit_prices), style = MaterialTheme.typography.labelMedium)
@@ -195,7 +189,7 @@ fun InfoPlakette(text: String, modifier: Modifier = Modifier, icon: androidx.com
             contentColor = MaterialTheme.colorScheme.onSecondaryContainer, modifier = modifier) {
         Row(Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
             verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-            if (icon != null) Icon(icon, null, Modifier.size(16.dp))
+            if (icon != null) Icon(icon, null, Modifier.size(ch.brickinventoryapp.ui.components.mitSchrift(16.dp)))
             Text(text, style = MaterialTheme.typography.labelMedium)
         }
     }
@@ -258,7 +252,7 @@ fun ErfassungsFelder(
         value = anzahl, onValueChange = { onAnzahl(NumericInput.quantity(it)) },
         label = { Text(stringResource(R.string.common_quantity)) },
         modifier = Modifier.fillMaxWidth(), singleLine = true,
-        shape = Formen.knopf,
+        shape = Formen.feld,
         keyboardOptions = NumericInput.ganzzahlTastatur(),
     )
     OutlinedTextField(
@@ -266,7 +260,7 @@ fun ErfassungsFelder(
         label = { Text(stringResource(R.string.common_unit_price)) },
         placeholder = { Text(stringResource(R.string.common_unit_price_placeholder)) },
         modifier = Modifier.fillMaxWidth(), singleLine = true,
-        shape = Formen.knopf,
+        shape = Formen.feld,
         keyboardOptions = NumericInput.preisTastatur(),
     )
     Zustandszeile(zustand = zustand, onZustand = onZustand)
@@ -306,7 +300,7 @@ fun ManuelleKachel(
         Column {
             Box(Modifier.fillMaxWidth().height(76.dp)) {
                 ch.brickinventoryapp.ui.components.ProduktBild(
-                    model = bildUrl?.let { ImageRequest.Builder(ctx).data(it).crossfade(true).build() },
+                    model = bildUrl?.let { ImageRequest.Builder(ctx).data(it).crossfade(!ch.brickinventoryapp.ui.components.bewegungReduziert()).build() },
                     imageLoader = imageLoader,
                     contentDescription = name,
                     onState = { st ->
@@ -334,9 +328,11 @@ fun ManuelleKachel(
                         .clip(CircleShape).background(farbe))
                 }
                 Row(Modifier.align(Alignment.TopStart).padding(Abstaende.haar)) {
-                    IconButton(onClick = onEdit) {
-                        Icon(Icons.Default.Edit, stringResource(R.string.common_edit),
-                            Modifier.size(14.dp), tint = MaterialTheme.colorScheme.primary)
+                    ch.brickinventoryapp.ui.components.MitTooltip(stringResource(R.string.common_edit)) {
+                        IconButton(onClick = onEdit) {
+                            Icon(Icons.Default.Edit, stringResource(R.string.common_edit),
+                                Modifier.size(14.dp), tint = MaterialTheme.colorScheme.primary)
+                        }
                     }
                 }
                 // Kein Papierkorb auf der Kachel: Die Karte öffnet das Detail, und dort steht er

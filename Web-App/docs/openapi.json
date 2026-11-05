@@ -1159,6 +1159,96 @@
         }
       }
     },
+    "/api/v1/auth/email-bestaetigen": {
+      "post": {
+        "tags": [
+          "konto"
+        ],
+        "responses": {
+          "200": {
+            "description": "Erfolg",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DELETE_api_v1_papierkorb_id"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Fehler",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Fehler"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "token": {
+                    "type": "string",
+                    "maxLength": 200
+                  }
+                },
+                "additionalProperties": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/auth/email-bestaetigen/vorschau": {
+      "post": {
+        "tags": [
+          "konto"
+        ],
+        "responses": {
+          "200": {
+            "description": "Erfolg",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/POST_api_v1_auth_email_bestaetigen_vorschau"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Fehler",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Fehler"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "token": {
+                    "type": "string",
+                    "maxLength": 200
+                  }
+                },
+                "additionalProperties": {}
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/auth/forgot-password": {
       "post": {
         "tags": [
@@ -1201,6 +1291,87 @@
               }
             }
           }
+        }
+      }
+    },
+    "/api/v1/auth/konto": {
+      "delete": {
+        "tags": [
+          "konto"
+        ],
+        "responses": {
+          "200": {
+            "description": "Erfolg",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DELETE_api_v1_papierkorb_id"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Fehler",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Fehler"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "password": {
+                    "type": "string",
+                    "maxLength": 1024
+                  },
+                  "code": {
+                    "anyOf": [
+                      {
+                        "anyOf": [
+                          {
+                            "type": "string",
+                            "maxLength": 64
+                          },
+                          {
+                            "type": "number"
+                          }
+                        ]
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "passkey": {
+                    "anyOf": [
+                      {
+                        "type": "object",
+                        "propertyNames": {
+                          "type": "string"
+                        },
+                        "additionalProperties": {}
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  }
+                },
+                "additionalProperties": {}
+              }
+            }
+          }
+        },
+        "x-bestaetigung": {
+          "passwort": "password",
+          "code": "code"
         }
       }
     },
@@ -1292,7 +1463,8 @@
               }
             }
           }
-        }
+        },
+        "x-geheim": true
       }
     },
     "/api/v1/auth/logout": {
@@ -1379,7 +1551,37 @@
               }
             }
           }
-        }
+        },
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "antwort": {
+                    "anyOf": [
+                      {
+                        "type": "object",
+                        "propertyNames": {
+                          "type": "string"
+                        },
+                        "additionalProperties": {}
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "mit_token": {
+                    "type": "boolean"
+                  }
+                },
+                "additionalProperties": {}
+              }
+            }
+          }
+        },
+        "x-geheim": true
       }
     },
     "/api/v1/auth/passkey/anmelden/optionen": {
@@ -1851,7 +2053,8 @@
               }
             }
           }
-        }
+        },
+        "x-geheim": true
       }
     },
     "/api/v1/auth/qr-token": {
@@ -1932,7 +2135,8 @@
         "x-bestaetigung": {
           "passwort": "password",
           "code": "code"
-        }
+        },
+        "x-geheim": true
       }
     },
     "/api/v1/auth/register": {
@@ -2174,7 +2378,8 @@
         "x-bestaetigung": {
           "passwort": "password",
           "code": "code"
-        }
+        },
+        "x-geheim": true
       }
     },
     "/api/v1/auth/token-rotieren": {
@@ -2203,7 +2408,8 @@
               }
             }
           }
-        }
+        },
+        "x-geheim": true
       }
     },
     "/api/v1/auth/users": {
@@ -2652,6 +2858,97 @@
         }
       }
     },
+    "/api/v1/auth/users/{id}/freischalten": {
+      "put": {
+        "tags": [
+          "konto"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Erfolg",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DELETE_api_v1_papierkorb_id"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Fehler",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Fehler"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "admin_password": {
+                    "type": "string",
+                    "maxLength": 1024
+                  },
+                  "code": {
+                    "anyOf": [
+                      {
+                        "anyOf": [
+                          {
+                            "type": "string",
+                            "maxLength": 64
+                          },
+                          {
+                            "type": "number"
+                          }
+                        ]
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "passkey": {
+                    "anyOf": [
+                      {
+                        "type": "object",
+                        "propertyNames": {
+                          "type": "string"
+                        },
+                        "additionalProperties": {}
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  }
+                },
+                "additionalProperties": {}
+              }
+            }
+          }
+        },
+        "x-bestaetigung": {
+          "passwort": "admin_password",
+          "code": "code"
+        }
+      }
+    },
     "/api/v1/auth/users/{id}/password": {
       "put": {
         "tags": [
@@ -3004,7 +3301,8 @@
               }
             }
           }
-        }
+        },
+        "x-geheim": true
       }
     },
     "/api/v1/auth/zweiter-faktor/codes": {
@@ -3063,7 +3361,8 @@
               }
             }
           }
-        }
+        },
+        "x-geheim": true
       }
     },
     "/api/v1/auth/zweiter-faktor/einrichten": {
@@ -3144,7 +3443,8 @@
         "x-bestaetigung": {
           "passwort": "password",
           "code": "code"
-        }
+        },
+        "x-geheim": true
       }
     },
     "/api/v1/bestand": {
@@ -5260,6 +5560,40 @@
               }
             }
           }
+        },
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "teile": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "part_number": {
+                          "type": [
+                            "string",
+                            "number"
+                          ]
+                        },
+                        "color_id": {
+                          "type": [
+                            "string",
+                            "number",
+                            "null"
+                          ]
+                        }
+                      },
+                      "additionalProperties": {}
+                    }
+                  }
+                },
+                "additionalProperties": {}
+              }
+            }
+          }
         }
       }
     },
@@ -5881,6 +6215,21 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/Fehler"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "file": {
+                    "type": "string",
+                    "format": "binary"
+                  }
                 }
               }
             }
@@ -7151,7 +7500,8 @@
               }
             }
           }
-        }
+        },
+        "x-geheim": true
       }
     },
     "/api/v1/settings/household/redeem": {
@@ -7243,6 +7593,58 @@
         "x-bestaetigung": {
           "passwort": "password",
           "code": "faktor_code"
+        }
+      }
+    },
+    "/api/v1/settings/household/redeem/pruefen": {
+      "post": {
+        "tags": [
+          "haushalt"
+        ],
+        "responses": {
+          "200": {
+            "description": "Erfolg",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HouseholdInviteCheckResponse"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Fehler",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Fehler"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "code": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "maxLength": 64
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  }
+                },
+                "additionalProperties": {}
+              }
+            }
+          }
         }
       }
     },
@@ -8242,7 +8644,8 @@
         "x-bestaetigung": {
           "passwort": "password",
           "code": "code"
-        }
+        },
+        "x-geheim": true
       }
     },
     "/api/v1/vouchers/{id}/pdf": {
@@ -8368,7 +8771,8 @@
         "x-bestaetigung": {
           "passwort": "password",
           "code": "code"
-        }
+        },
+        "x-geheim": true
       }
     },
     "/api/v1/vouchers/export/pdf": {
@@ -8474,7 +8878,8 @@
         "x-bestaetigung": {
           "passwort": "password",
           "code": "code"
-        }
+        },
+        "x-geheim": true
       }
     },
     "/api/v1/vouchers/pdf": {
@@ -9271,6 +9676,9 @@
             "type": "boolean"
           },
           "mustChangePassword": {
+            "type": "boolean"
+          },
+          "zweiterFaktorPflicht": {
             "type": "boolean"
           }
         },
@@ -12442,6 +12850,37 @@
         },
         "additionalProperties": {}
       },
+      "HouseholdInviteCheckResponse": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean"
+          },
+          "inviter": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              "username": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "id",
+              "username"
+            ],
+            "additionalProperties": {}
+          }
+        },
+        "required": [
+          "success",
+          "inviter"
+        ],
+        "additionalProperties": {}
+      },
       "HouseholdInviteResponse": {
         "type": "object",
         "properties": {
@@ -12868,6 +13307,9 @@
             ]
           },
           "zweiter_faktor": {
+            "type": "boolean"
+          },
+          "wartet_auf_bestaetigung": {
             "type": "boolean"
           }
         },
@@ -13699,12 +14141,16 @@
                   },
                   "mustChangePassword": {
                     "type": "boolean"
+                  },
+                  "zweiterFaktorPflicht": {
+                    "type": "boolean"
                   }
                 },
                 "required": [
                   "id",
                   "username",
-                  "is_admin"
+                  "is_admin",
+                  "zweiterFaktorPflicht"
                 ],
                 "additionalProperties": {}
               },
@@ -14882,6 +15328,9 @@
               },
               "mustChangePassword": {
                 "type": "boolean"
+              },
+              "zweiterFaktorPflicht": {
+                "type": "boolean"
               }
             },
             "required": [
@@ -15315,6 +15764,20 @@
               "number",
               "null"
             ]
+          },
+          "kachel_quelle": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "markt",
+                  "kauf"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "required": [
@@ -15372,6 +15835,41 @@
               "string",
               "null"
             ]
+          },
+          "positionen": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          },
+          "positionen_bewertet": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          },
+          "positionen_ohne_marktpreis": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          },
+          "positionen_ohne_kaufpreis": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          },
+          "basis_einstand": {
+            "type": "string"
+          },
+          "basis_marktwert": {
+            "type": "string"
+          },
+          "basis_guv_betrag": {
+            "type": "string"
+          },
+          "ohne_marktpreis_einstand": {
+            "type": "string"
+          },
+          "ohne_kaufpreis_marktwert": {
+            "type": "string"
           }
         },
         "required": [
@@ -15424,6 +15922,23 @@
           "period",
           "points",
           "y_axis"
+        ],
+        "additionalProperties": {}
+      },
+      "POST_api_v1_auth_email_bestaetigen_vorschau": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "const": true
+          },
+          "username": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "success",
+          "username"
         ],
         "additionalProperties": {}
       },
@@ -15920,6 +16435,12 @@
           },
           "email_verified": {
             "type": "boolean"
+          },
+          "email_neu": {
+            "type": [
+              "string",
+              "null"
+            ]
           }
         },
         "required": [
@@ -16496,6 +17017,9 @@
           },
           "passwort_vergessen": {
             "type": "boolean"
+          },
+          "mail_versand": {
+            "type": "boolean"
           }
         },
         "required": [
@@ -16575,6 +17099,9 @@
               "string",
               "null"
             ]
+          },
+          "im_katalog": {
+            "type": "boolean"
           }
         },
         "required": [
@@ -17690,6 +18217,27 @@
           },
           "mixed": {
             "type": "boolean"
+          },
+          "owners": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "integer",
+                  "minimum": -9007199254740991,
+                  "maximum": 9007199254740991
+                },
+                "username": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "id",
+                "username"
+              ],
+              "additionalProperties": {}
+            }
           },
           "error": {
             "type": [

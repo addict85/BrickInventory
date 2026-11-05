@@ -1,19 +1,28 @@
 package ch.brickinventoryapp
 
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.layout.layout
+import androidx.compose.ui.layout.onSizeChanged
+import kotlin.math.roundToInt
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.compose.ui.unit.TextUnit
+import androidx.compose.ui.unit.isSpecified
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavDestination.Companion.hierarchy
 import androidx.navigation.NavGraph.Companion.findStartDestination
@@ -74,6 +83,13 @@ fun MainScaffold(
     fun istGewaehlt(screen: Screen) =
         currentDest?.hierarchy?.any { d -> d.route?.let { it in zieleVon(screen) } == true } == true
 
+    // Unterseiten von „Mehr“ mit unterer Leiste tragen den Zurück-Pfeil wie die übrigen
+    // Mehr-Unterseiten; er führt auf „Mehr“, auch wenn die Seite nicht von dort kam.
+    val mehrUnterseite = currentDest?.route.let { it != null && it in MEHR && it != Screen.Mehr.route }
+    fun zurueckZuMehr() {
+        if (!navController.popBackStack(Screen.Mehr.route, inclusive = false)) navController.zuReiter(Screen.Mehr.route)
+    }
+
     // Leiste unten und Seitenleiste teilen sich diesen Weg, damit beide die
     // Rollposition gleich behandeln.
     fun reiterWaehlen(screen: Screen) {
@@ -92,6 +108,15 @@ fun MainScaffold(
 
     // Die Fensterbreite entscheidet, nicht das Gerät: Ein Tablet im geteilten
     // Bildschirm ist schmal und bekommt die Leiste unten.
+    // Eine Grösse für alle Beschriftungen: Schrumpft jede für sich, steht „Sammlung“
+    // klein neben grossem „Mehr“.
+    val reiterSchrift = remember(LocalDensity.current.fontScale) { mutableStateOf(REITER_SCHRIFT_START) }
+    // Passt eine Beschriftung auch in Normalgrösse nicht, stehen nur Symbole da (Name für
+    // TalkBack); das gewählte Ziel nennt der Titel oben.
+    val beschriftet = remember(LocalDensity.current.fontScale) { mutableStateOf(true) }
+    // Die Snackbar liegt über dem Inhalt; ihre Höhe hebt den Erfassen-Knopf darüber.
+    var snackbarHoehe by remember { mutableIntStateOf(0) }
+    val offlineHinweise = remember { mutableIntStateOf(0) }
     BoxWithConstraints(Modifier.fillMaxSize()) {
         val art = navigationsart(maxWidth.value)
         // Auf breiten Fenstern steht die Seitenleiste über die volle Höhe links, App-Leiste
@@ -104,8 +129,8 @@ fun MainScaffold(
                     NavigationRailItem(
                         selected = istGewaehlt(screen),
                         onClick = { reiterWaehlen(screen) },
-                        icon = { Symbol(screen, icon) },
-                        label = { Text(label, style = MaterialTheme.typography.labelSmall) }
+                        icon = { ReiterSymbol(label, beschriftet.value) { Symbol(screen, icon) } },
+                        label = if (beschriftet.value) ({ ReiterBeschriftung(label, reiterSchrift, beschriftet) }) else null,
                     )
                 }
             }
@@ -115,27 +140,20 @@ fun MainScaffold(
             topBar = {
               Column {
                 TopAppBar(
-                    title = {
-                        // Der Seitentitel ist die Überschrift der Ansicht — Vorleseprogramme
-                        // springen dorthin.
-                        Row(Modifier.semantics(mergeDescendants = true) { heading() },
-                            verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            // Dasselbe Symbol wie in der unteren Leiste, damit oben und unten
-                            // zusammenpassen.
-                            val currentTabIcon = bottomNavItems.firstOrNull { (screen, _, _) ->
-                                istGewaehlt(screen)
-                            }?.second
-                            if (currentTabIcon != null) {
-                                Box(Modifier.size(28.dp), contentAlignment = Alignment.Center) {
-                                    currentTabIcon()
-                                }
+                    // Reiner Text wie jeder Material-Titel: Ein Symbol davor las sich bei
+                    // „Mehr“ als Menüknopf. Vorleseprogramme springen zur Überschrift.
+                    title = { Text(title, fontWeight = FontWeight.SemiBold, modifier = Modifier.semantics { heading() }) },
+                    navigationIcon = {
+                        if (mehrUnterseite) ch.brickinventoryapp.ui.components.MitTooltip(stringResource(R.string.common_back)) {
+                            IconButton(onClick = { zurueckZuMehr() }) {
+                                Icon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(R.string.common_back))
                             }
-                            Text(title, fontWeight = FontWeight.SemiBold)
                         }
                     },
                     colors = TopAppBarDefaults.topAppBarColors(
                         containerColor = akzent.leiste,
                         titleContentColor = akzent.aufLeiste,
+                        navigationIconContentColor = akzent.aufLeiste,
                         actionIconContentColor = akzent.aufLeiste,
                         scrolledContainerColor = akzent.leiste,
                     ),
@@ -145,7 +163,7 @@ fun MainScaffold(
                     SammlungUmschalter(currentDest.route, onWahl = { ziel ->
                         onTabAngetippt(ziel)
                         navController.zuReiter(ziel.route)
-                    })
+                    }, modifier = Modifier.mitLeisteEinklappen { einklappen.state.collapsedFraction })
                 }
               }
             },
@@ -157,8 +175,8 @@ fun MainScaffold(
                     ) {
                         bottomNavItems.forEach { (screen, icon, label) ->
                             NavigationBarItem(
-                                icon = { Symbol(screen, icon) },
-                                label = { Text(label, style = MaterialTheme.typography.labelSmall) },
+                                icon = { ReiterSymbol(label, beschriftet.value) { Symbol(screen, icon) } },
+                                label = if (beschriftet.value) ({ ReiterBeschriftung(label, reiterSchrift, beschriftet) }) else null,
                                 selected = istGewaehlt(screen),
                                 onClick = { reiterWaehlen(screen) }
                             )
@@ -166,7 +184,7 @@ fun MainScaffold(
                     }
                 }
             },
-            snackbarHost = { SnackbarHost(snackbarHostState) },
+            snackbarHost = { SnackbarHost(snackbarHostState, Modifier.onSizeChanged { snackbarHoehe = it.height }) },
             containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
         ) { padding ->
             // Globaler CSV-Import-Balken: erscheint auf allen Tabs (wie in der
@@ -183,7 +201,8 @@ fun MainScaffold(
                                 navController.zuReiter(ziel.route)
                             })
                     }
-                    ch.brickinventoryapp.ui.components.AusgangLeiste(offeneAenderungen)
+                    // Steht ein Offline-Hinweis, nennt er die wartenden Änderungen selbst.
+                    if (offlineHinweise.intValue == 0) ch.brickinventoryapp.ui.components.AusgangLeiste(offeneAenderungen)
                     if (csvImport.running) {
                         CsvImportBanner(
                             done = csvImport.done, total = csvImport.total, current = csvImport.current,
@@ -191,7 +210,14 @@ fun MainScaffold(
                             onAbbrechen = onCsvAbbrechen,
                         )
                     }
-                    Box(Modifier.fillMaxSize()) { content() }
+                    Box(Modifier.fillMaxSize()) {
+                        CompositionLocalProvider(
+                            ch.brickinventoryapp.ui.components.LocalSnackbarPlatz provides
+                                with(LocalDensity.current) { snackbarHoehe.toDp() },
+                            ch.brickinventoryapp.ui.components.LocalOffeneAenderungen provides offeneAenderungen,
+                            ch.brickinventoryapp.ui.components.LocalOfflineHinweise provides offlineHinweise,
+                        ) { content() }
+                    }
                 }
             }
         }
@@ -235,11 +261,47 @@ fun ReiterGeruest(
     )
 }
 
+/**
+ * Beschriftung eines Ziels in Leiste und Seitenleiste: immer eine Zeile, alle in einer
+ * Grösse. Reicht die Breite nicht, wird die Schrift kleiner, aber nie kleiner als ohne
+ * Vergrösserung — sonst hebt die Leiste die Systemeinstellung auf. Passt sie dann noch
+ * nicht, fällt die Beschriftung weg ([beschriftet]).
+ */
+@Composable
+private fun ReiterBeschriftung(text: String, groesse: MutableState<TextUnit>, beschriftet: MutableState<Boolean>) {
+    val stil = MaterialTheme.typography.labelSmall
+    val boden = stil.fontSize / LocalDensity.current.fontScale.coerceAtLeast(1f)
+    val aktuell = if (groesse.value.isSpecified) groesse.value else stil.fontSize
+    Text(
+        text, style = stil.copy(fontSize = aktuell), maxLines = 1, softWrap = false,
+        overflow = TextOverflow.Clip,
+        onTextLayout = { l ->
+            if (l.hasVisualOverflow) {
+                if (aktuell.value - REITER_SCHRIFT_SCHRITT >= boden.value) groesse.value = (aktuell.value - REITER_SCHRIFT_SCHRITT).sp
+                else beschriftet.value = false
+            }
+        },
+    )
+}
+
+/** Ohne Beschriftung trägt das Symbol den Namen des Ziels. */
+@Composable
+private fun ReiterSymbol(name: String, beschriftet: Boolean, symbol: @Composable () -> Unit) {
+    if (beschriftet) symbol() else Box(Modifier.semantics { contentDescription = name }) { symbol() }
+}
+
+/** Unbestimmt: Die Beschriftung beginnt bei der Grösse des Themas. */
+private val REITER_SCHRIFT_START = TextUnit.Unspecified
+
+/** Um so viel Punkt schrumpft die gemeinsame Grösse je Messung mit Überstand. */
+private const val REITER_SCHRIFT_SCHRITT = 0.5f
+
 /** Sets, Teile und Minifiguren teilen sich in der Leiste EIN Ziel. */
 private val SAMMLUNG = setOf(Screen.Gallery.route, Screen.Parts.route, Screen.Minifigs.route)
 
 /** Seiten mit unterer Leiste, die man über „Mehr“ erreicht — dort bleibt „Mehr“ gewählt. */
-private val MEHR = setOf(Screen.Mehr.route, Screen.PartsList.route, Screen.Settings.route, Screen.Monitoring.route)
+private val MEHR = setOf(Screen.Mehr.route, Screen.PartsList.route, Screen.Comparison.route, Screen.Settings.route,
+    Screen.Monitoring.route)
 
 /** Die Routen, bei denen ein Ziel der Leiste als gewaehlt gilt. */
 private fun zieleVon(screen: Screen): Set<String> = when (screen) {
@@ -274,4 +336,14 @@ private fun SammlungUmschalter(aktuell: String?, onWahl: (Screen) -> Unit, modif
         modifier = modifier.padding(horizontal = ch.brickinventoryapp.ui.theme.Abstaende.mittel,
             vertical = ch.brickinventoryapp.ui.theme.Abstaende.winzig),
     )
+}
+
+/**
+ * Der Umschalter unter der App-Leiste weicht mit ihr: Bei 200 % Schrift blieben
+ * sonst Umschalter und Suche stehen, und vom ersten Set war kaum etwas zu sehen.
+ */
+private fun Modifier.mitLeisteEinklappen(anteil: () -> Float): Modifier = clipToBounds().layout { messbar, grenzen ->
+    val platz = messbar.measure(grenzen)
+    val hoehe = (platz.height * (1f - anteil())).roundToInt()
+    layout(platz.width, hoehe) { platz.place(0, hoehe - platz.height) }
 }

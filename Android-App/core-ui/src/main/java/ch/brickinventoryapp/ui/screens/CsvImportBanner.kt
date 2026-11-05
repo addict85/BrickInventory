@@ -50,7 +50,7 @@ fun CsvImportBanner(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(Abstaende.klein)
                 ) {
-                    Icon(Icons.Default.UploadFile, null, Modifier.size(16.dp),
+                    Icon(Icons.Default.UploadFile, null, Modifier.size(ch.brickinventoryapp.ui.components.mitSchrift(16.dp)),
                         tint = if (running) MaterialTheme.colorScheme.onPrimary
                                else MaterialTheme.colorScheme.onSecondaryContainer)
                     LinearProgressIndicator(
@@ -77,10 +77,12 @@ fun CsvImportBanner(
                     if (running) {
                         // Volle 48 dp: Der Balken wird dadurch etwas höher, dafür
                         // trifft man das Abbrechen auch unterwegs.
-                        IconButton(onClick = onAbbrechen) {
-                            Icon(Icons.Default.Close, stringResource(R.string.csv_cancel),
-                                Modifier.size(16.dp),
-                                tint = MaterialTheme.colorScheme.onPrimary)
+                        ch.brickinventoryapp.ui.components.MitTooltip(stringResource(R.string.csv_cancel)) {
+                            IconButton(onClick = onAbbrechen) {
+                                Icon(Icons.Default.Close, stringResource(R.string.csv_cancel),
+                                    Modifier.size(16.dp),
+                                    tint = MaterialTheme.colorScheme.onPrimary)
+                            }
                         }
                     }
                     Text(
@@ -117,7 +119,7 @@ fun CsvImportBanner(
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
                             Row(verticalAlignment = Alignment.CenterVertically,
                                 horizontalArrangement = Arrangement.spacedBy(Abstaende.winzig)) {
-                                Icon(symbol.first, null, Modifier.size(16.dp), tint = symbol.second)
+                                Icon(symbol.first, null, Modifier.size(ch.brickinventoryapp.ui.components.mitSchrift(16.dp)), tint = symbol.second)
                                 Text("$v", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.bodyMedium)
                             }
                             Text(l, style = MaterialTheme.typography.labelSmall,

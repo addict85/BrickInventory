@@ -44,7 +44,9 @@ export const TokenAngaben = z.looseObject({
 export const TokenInfo = TokenAngaben.extend({ rotation_faellig: z.boolean() });
 
 /** Die QR-Anmeldung gibt nur App-Rechte; sie nennt kein is_admin. */
-export const AnmeldeNutzer = User.extend({ is_admin: z.boolean().optional(), mustChangePassword: z.boolean().optional() });
+/** zweiterFaktorPflicht: Verwalterrechte ohne TOTP; bis zur Einrichtung antwortet alles andere 403. */
+export const AnmeldeNutzer = User.extend({ is_admin: z.boolean().optional(), mustChangePassword: z.boolean().optional(),
+  zweiterFaktorPflicht: z.boolean().optional() });
 
 export const LoginResponse = z.looseObject({
   success: z.boolean(),
@@ -59,7 +61,7 @@ export const LoginResponse = z.looseObject({
 export const MeResponse = z.looseObject({
   success: z.boolean(),
   loggedIn: z.boolean(),
-  user: User.extend({ mustChangePassword: z.boolean().optional() }).nullable().optional(),
+  user: User.extend({ mustChangePassword: z.boolean().optional(), zweiterFaktorPflicht: z.boolean() }).nullable().optional(),
   token_expires: zeit.nullable().optional(),
   token_last_used: zeit.nullable().optional(),
   token_info: TokenInfo.nullable().optional(),
@@ -72,6 +74,8 @@ export const Profil = z.looseObject({
   first_name: z.string().nullable().optional(),
   last_name: z.string().nullable().optional(),
   email_verified: z.boolean(),
+  /** Beantragt, aber noch nicht bestätigt; bis dahin gilt `email`. */
+  email_neu: z.string().nullable().optional(),
 });
 
 export const ProfilResponse = z.looseObject({
@@ -92,6 +96,7 @@ export const RegistrationStatusResponse = z.looseObject({
   enabled: z.boolean(),
   passkey: z.boolean().optional(),
   passwort_vergessen: z.boolean().optional(),
+  mail_versand: z.boolean().optional(),
 });
 
 export const TokenRotation = z.looseObject({
@@ -137,6 +142,7 @@ export const ZweiterFaktorStand = z.looseObject({
 export const KontoInListe = z.looseObject({
   id: ganz, username: z.string(), is_admin: z.boolean(), is_active: z.boolean(), created_at: zeit.nullable(),
   zweiter_faktor: z.boolean(),
+  wartet_auf_bestaetigung: z.boolean().optional(),
 });
 export const KontenListe = z.looseObject({ success: z.literal(true), users: z.array(KontoInListe) });
 export const KontoAktiv = z.looseObject({ success: z.literal(true), is_active: z.boolean() });
@@ -160,7 +166,8 @@ export const PasskeyAngelegt = z.looseObject({ success: z.literal(true), passkey
 /** Wie die Passwort-Anmeldung: Mit `mit_token` (App) kommt auch der Token. */
 export const PasskeyAnmeldung = LoginResponse.extend({
   success: z.literal(true),
-  user: z.looseObject({ id: ganz, username: z.string(), is_admin: z.boolean(), mustChangePassword: z.boolean().optional() }),
+  user: z.looseObject({ id: ganz, username: z.string(), is_admin: z.boolean(), mustChangePassword: z.boolean().optional(),
+    zweiterFaktorPflicht: z.boolean().optional() }),
 });
 /** Anzahl gelöschter Zeilen, wie beim Widerruf eines Tokens. */
 export const Geloescht = z.looseObject({ success: z.literal(true), deleted: ganz });
@@ -191,35 +198,41 @@ export const routen = {
   'GET /api/v1/auth/zweiter-faktor': { antwort: ZweiterFaktorStand },
   'GET /api/v1/auth/me': { antwort: MeResponse },
   'GET /api/v1/settings/tokens': { antwort: TokensResponse },
-  'POST /api/v1/auth/login': { antwort: LoginResponse, eingabe: Anmeldedaten },
-  'POST /api/v1/auth/qr-login': { antwort: QrLoginResponse, eingabe: z.looseObject({ token: txt(200) }) },
+  'POST /api/v1/auth/login': { antwort: LoginResponse, eingabe: Anmeldedaten, geheim: true },
+  'POST /api/v1/auth/qr-login': { antwort: QrLoginResponse, eingabe: z.looseObject({ token: txt(200) }), geheim: true },
   'POST /api/v1/auth/logout': { antwort: GenericResponse },
   'POST /api/v1/auth/register': { antwort: RegisterResponse, eingabe: Registrierung },
   'POST /api/v1/auth/forgot-password': { antwort: ForgotPasswordResponse, eingabe: z.looseObject({ email: txt(254) }) },
   'POST /api/v1/auth/bestaetigung-erneut': { antwort: ForgotPasswordResponse, eingabe: z.looseObject({ email: txt(254) }) },
+  'POST /api/v1/auth/email-bestaetigen': { antwort: Erfolg, eingabe: z.looseObject({ token: txt(200) }) },
+  'POST /api/v1/auth/email-bestaetigen/vorschau': { antwort: z.looseObject({ success: z.literal(true), username: z.string() }),
+    eingabe: z.looseObject({ token: txt(200) }) },
   'PUT /api/v1/auth/profile': { antwort: ProfilGespeichert, ...bestaetigt(ProfilAenderung.shape, 'password_current') },
   'POST /api/v1/auth/change-password': { antwort: GenericResponse, ...bestaetigt({ newPassword: z.string().max(PASSWORT).optional() }, 'current') },
-  'POST /api/v1/auth/zweiter-faktor/einrichten': { antwort: ZweiterFaktorEinrichtung, ...bestaetigt() },
-  'POST /api/v1/auth/zweiter-faktor/bestaetigen': { antwort: ZweiterFaktorCodes, eingabe: NurCode },
+  'POST /api/v1/auth/zweiter-faktor/einrichten': { antwort: ZweiterFaktorEinrichtung, ...bestaetigt(), geheim: true },
+  'POST /api/v1/auth/zweiter-faktor/bestaetigen': { antwort: ZweiterFaktorCodes, eingabe: NurCode, geheim: true },
   'POST /api/v1/auth/zweiter-faktor/abschalten': { antwort: GenericResponse, ...bestaetigt() },
-  'POST /api/v1/auth/zweiter-faktor/codes': { antwort: ZweiterFaktorCodes, eingabe: NurCode },
+  'POST /api/v1/auth/zweiter-faktor/codes': { antwort: ZweiterFaktorCodes, eingabe: NurCode, geheim: true },
   'DELETE /api/v1/settings/tokens/:tokenId': { antwort: TokenWiderruf },
-  'POST /api/v1/auth/token-rotieren': { antwort: TokenRotation },
+  'POST /api/v1/auth/token-rotieren': { antwort: TokenRotation, geheim: true },
   'GET /api/v1/auth/users': { antwort: KontenListe },
   'POST /api/v1/auth/users': { antwort: Erfolg, ...verwalterBestaetigt({ is_admin: eingabe.schalter('is_admin', false), username: z.string().max(64).optional(), password: z.string().max(PASSWORT).optional() }) },
   'PUT /api/v1/auth/users/:id/admin': { antwort: Erfolg, ...verwalterBestaetigt({ is_admin: eingabe.schalter('is_admin') }) },
   'PUT /api/v1/auth/users/:id/aktiv': { antwort: KontoAktiv, ...verwalterBestaetigt({ is_active: eingabe.schalter('is_active') }) },
+  'PUT /api/v1/auth/users/:id/freischalten': { antwort: Erfolg, ...verwalterBestaetigt() },
   'PUT /api/v1/auth/users/:id/password': { antwort: Erfolg, ...verwalterBestaetigt({ password: z.string().max(PASSWORT).optional() }) },
   'DELETE /api/v1/auth/users/:id': { antwort: Erfolg, ...verwalterBestaetigt() },
+  'DELETE /api/v1/auth/konto': { antwort: Erfolg, ...bestaetigt() },
   'DELETE /api/v1/auth/users/:id/zweiter-faktor': { antwort: Erfolg, ...verwalterBestaetigt() },
-  'POST /api/v1/auth/token-create': { antwort: TokenErstellt, ...bestaetigt({ scope: z.string().max(20).optional() }) },
-  'POST /api/v1/auth/qr-token': { antwort: QrToken, ...bestaetigt() },
+  'POST /api/v1/auth/token-create': { antwort: TokenErstellt, ...bestaetigt({ scope: z.string().max(20).optional() }), geheim: true },
+  'POST /api/v1/auth/qr-token': { antwort: QrToken, ...bestaetigt(), geheim: true },
   'POST /api/v1/auth/reset-password': { antwort: ForgotPasswordResponse, eingabe: z.looseObject({ token: txt(200), password: txt(PASSWORT) }) },
   'GET /api/v1/auth/passkeys': { antwort: PasskeyListe },
   'DELETE /api/v1/auth/passkeys/:id': { antwort: Geloescht, ...bestaetigt() },
   'POST /api/v1/auth/passkey/registrieren/optionen': { antwort: PasskeyOptionen, ...bestaetigt() },
   'POST /api/v1/auth/passkey/registrieren': { antwort: PasskeyAngelegt, eingabe: z.looseObject({ name: txtLeer(100) }) },
   'POST /api/v1/auth/passkey/anmelden/optionen': { antwort: PasskeyOptionen },
-  'POST /api/v1/auth/passkey/anmelden': { antwort: PasskeyAnmeldung },
+  'POST /api/v1/auth/passkey/anmelden': { antwort: PasskeyAnmeldung, geheim: true,
+    eingabe: z.looseObject({ antwort: z.record(z.string(), z.unknown()).nullable().optional(), mit_token: z.boolean().optional() }) },
   'POST /api/v1/settings/sessions/andere-beenden': { antwort: Geloescht, ...bestaetigt() },
 } satisfies Record<string, Route>;

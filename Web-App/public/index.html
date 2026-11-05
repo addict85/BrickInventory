@@ -17,6 +17,37 @@
   <script defer src="/vendor/qrcode/qrcode.min.js"></script>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>BrickInventory Manager</title>
+  <!-- Startgerüst: Kopf, Leiste und Kacheln als Platzhalter, bis Stile, Sprache
+       und Bündel da sind. Diese Regeln stehen im Dokument, weil jede externe Datei
+       bei langsamem Netz eine weitere Rundreise kostet; die CSP erlaubt genau
+       diesen Block über seinen Hash (src/konto/indexHtml.ts). -->
+  <style id="startstil">
+#startgeruest{--sg-bg:#f6f7f9;--sg-sur:#fff;--sg-bdr:#e3e6ea;--sg-ph:#eceff3;--sg-txt:#1e293b;position:fixed;inset:0;z-index:2;overflow:hidden;background:var(--sg-bg);font-family:system-ui,-apple-system,"Segoe UI",sans-serif}
+@media (prefers-color-scheme:dark){#startgeruest{--sg-bg:#14181d;--sg-sur:#1b2027;--sg-bdr:#2f3843;--sg-ph:#262d36;--sg-txt:#e6e9ee}}
+[data-theme=werkbank] #startgeruest{--sg-bg:#14181d;--sg-sur:#1b2027;--sg-bdr:#2f3843;--sg-ph:#262d36;--sg-txt:#e6e9ee}
+.sg-kopf{display:flex;align-items:center;gap:9px;height:58px;padding:0 1.5rem;background:var(--sg-sur);border-bottom:1px solid var(--sg-bdr);color:var(--sg-txt);font-weight:800;font-size:17px}
+.sg-leiste{display:flex;gap:28px;height:46px;align-items:center;padding:0 1.5rem;background:var(--sg-sur);border-bottom:1px solid var(--sg-bdr)}
+.sg-leiste i,.sg-titel,.sg-karten i,.sg-kacheln i{display:block;background:var(--sg-ph);border-radius:8px}
+.sg-leiste i{width:84px;height:12px}
+.sg-inhalt{max-width:1720px;margin:0 auto;padding:2rem 1.5rem}
+.sg-titel{width:min(260px,60%);height:28px;margin-bottom:1.5rem}
+.sg-karten{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:1rem;margin-bottom:1.75rem}
+.sg-karten i{height:84px;background:var(--sg-sur);border:1px solid var(--sg-bdr)}
+.sg-kacheln{display:grid;grid-template-columns:repeat(auto-fill,minmax(11.5rem,1fr));gap:1rem}
+.sg-kacheln i{aspect-ratio:3/4;background:var(--sg-sur);border:1px solid var(--sg-bdr)}
+@media (max-width:640px){.sg-leiste{display:none}.sg-inhalt{padding:1rem}.sg-karten{grid-template-columns:repeat(2,1fr)}.sg-kacheln{grid-template-columns:1fr}.sg-kacheln i{aspect-ratio:auto;height:120px}}
+@media (prefers-reduced-motion:no-preference){.sg-inhalt i,.sg-titel{animation:sg-puls 1.4s ease-in-out infinite alternate}}
+@keyframes sg-puls{from{opacity:1}to{opacity:.55}}
+  </style>
+</head>
+<body>
+<a class="sprunglink" href="#inhalt" data-i18n="a11y.skip_to_content">Zum Inhalt</a>
+<div id="startgeruest" aria-hidden="true">
+  <div class="sg-kopf"><svg width="28" height="28" viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false"><rect x="18" y="38" width="84" height="68" rx="3" fill="#e63329"/><polygon points="18,38 30,20 102,20 102,38" fill="#cc2a21"/><polygon points="102,20 118,30 118,86 102,106" fill="#b5231c"/><rect x="24" y="54" width="72" height="40" rx="2" fill="#fff"/><rect x="29" y="58" width="46" height="15" rx="2" fill="#f5a800"/></svg>BrickInventory</div>
+  <div class="sg-leiste"><i></i><i></i><i></i><i></i><i></i></div>
+  <div class="sg-inhalt"><i class="sg-titel"></i><div class="sg-karten"><i></i><i></i><i></i><i></i></div><div class="sg-kacheln"><i></i><i></i><i></i><i></i><i></i><i></i></div></div>
+</div>
+<!-- Erst nach dem Startgerüst: Stile und Design-Skript halten nur den Rest der Seite an. -->
   <link rel="stylesheet" href="/vendor/fonts/fonts.css?v=2026.10.27.1901">
   <!-- Gemeinsame Farbtokens, ERZEUGT aus shared/design-tokens.json. Zuerst
        geladen: Sie sind die Grundlage, styles.css und die Designs bauen
@@ -32,20 +63,10 @@
   <!-- Responsive-Regeln, nach beiden Designs geladen: das Layout ist in
        classic und brick identisch, die Regeln gelten daher für beide. -->
   <link rel="stylesheet" href="/mobile.css?v=2026.10.27.1901">
-  <!-- Setzt data-theme aus dem localStorage-Cache VOR dem ersten Paint und
-       gleicht danach gegen GET /api/v1/settings/theme ab. Blockierend und im
-       <head>, sonst blitzt auf Login-/Startup-Screen kurz das falsche Design auf. -->
+  <!-- Setzt data-theme aus dem localStorage-Cache, bevor Anmeldung oder App
+       gezeichnet werden, und gleicht danach gegen GET /api/v1/settings/theme ab.
+       Blockierend, sonst blitzt kurz das falsche Design auf. -->
   <script src="/js/00-theme-boot.js?v=2026.10.27.1901"></script>
-  <!-- Aktive Sprachdatei. Blockierend und VOR dem Bündel, weil i18n.js beim
-       Auswerten window.I18N_DE / window.I18N_EN erwartet.
-       Welche Datei hier steht, entscheidet der Server (utils/indexHtml.ts)
-       anhand der gespeicherten Sprache — genauso wie beim Design darüber.
-       Der Wechsel zur anderen Sprache lädt sie zur Laufzeit nach
-       (loadLang() in i18n.js). -->
-  <script src="/locales/de.js?v=2026.10.27.1901" data-i18n-locale></script>
-</head>
-<body>
-<a class="sprunglink" href="#inhalt" data-i18n="a11y.skip_to_content">Zum Inhalt</a>
 <!-- Die Symbolfamilie: Strichsymbole auf 24er-Raster, Farbe aus dem Text.
      Verwendung: <svg class="ico" aria-hidden="true"><use href="#i-NAME"/></svg> -->
 <svg xmlns="http://www.w3.org/2000/svg" data-stil="display:none" aria-hidden="true">
@@ -54,6 +75,7 @@
   <symbol id="i-set" viewBox="0 0 24 24"><path d="M21 8l-9-5-9 5 9 5 9-5z"/><path d="M3 8v8l9 5 9-5V8"/><path d="M12 13v8"/></symbol>
   <symbol id="i-teil" viewBox="0 0 24 24"><rect x="3" y="10" width="18" height="9" rx="1.5"/><path d="M6.5 10V7.5h4V10M13.5 10V7.5h4V10"/></symbol>
   <symbol id="i-figur" viewBox="0 0 24 24"><circle cx="12" cy="7" r="3.5"/><path d="M6 21v-3a6 6 0 0 1 12 0v3"/></symbol>
+  <symbol id="i-filter" viewBox="0 0 24 24"><path d="M3 5h18l-7 8.5V19l-4 2v-7.5z"/></symbol>
   <symbol id="i-liste" viewBox="0 0 24 24"><rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 4V3h6v1"/><path d="M9 10h6M9 14h6M9 18h3"/></symbol>
   <symbol id="i-finanzen" viewBox="0 0 24 24"><path d="M3 3v18h18"/><path d="M7 15l4-4 3 3 5-6"/></symbol>
   <symbol id="i-merkliste" viewBox="0 0 24 24"><path d="M12 3l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1-4.4-4.3 6.1-.9z"/></symbol>
@@ -94,6 +116,7 @@
   <symbol id="i-uhr" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></symbol>
   <symbol id="i-auge" viewBox="0 0 24 24"><path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></symbol>
   <symbol id="i-auge-zu" viewBox="0 0 24 24"><path d="M3 3l18 18"/><path d="M10.6 5.1A10 10 0 0 1 12 5c6 0 10 7 10 7a17 17 0 0 1-3.1 3.9M6.6 6.6C3.8 8.4 2 12 2 12s4 7 10 7a9.7 9.7 0 0 0 5.4-1.6"/></symbol>
+  <symbol id="i-mehr" viewBox="0 0 24 24"><circle cx="5" cy="12" r="1.6" fill="currentColor"/><circle cx="12" cy="12" r="1.6" fill="currentColor"/><circle cx="19" cy="12" r="1.6" fill="currentColor"/></symbol>
   <symbol id="i-menue" viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h16"/></symbol>
   <symbol id="i-idee" viewBox="0 0 24 24"><path d="M9 18h6M10 21h4"/><path d="M12 3a6 6 0 0 0-4 10.5c.8.7 1 1.5 1 2.5h6c0-1 .2-1.8 1-2.5A6 6 0 0 0 12 3z"/></symbol>
   <symbol id="i-anhang" viewBox="0 0 24 24"><path d="M21 11l-8.5 8.5a5 5 0 0 1-7-7L14 4a3.5 3.5 0 0 1 5 5l-8.5 8.5a2 2 0 0 1-3-3L15 7"/></symbol>
@@ -112,7 +135,7 @@
 <!-- kein inline background mehr: das hat jede Theme-Regel überstimmt, siehe --screen-bg in styles.css -->
 <div id="startup-screen" class="start-flaeche">
   <div class="start-marke">
-    <svg width="48" height="48" viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg"><rect x="18" y="38" width="84" height="68" rx="3" fill="#e63329"/><polygon points="18,38 30,20 102,20 102,38" fill="#cc2a21"/><polygon points="102,20 118,30 118,86 102,106" fill="#b5231c"/><rect x="24" y="54" width="72" height="40" rx="2" fill="#fff"/><rect x="29" y="58" width="46" height="15" rx="2" fill="#f5a800"/><text x="52" y="69" text-anchor="middle" font-family="Arial,sans-serif" font-weight="800" font-size="11" fill="#3b2600">BIM</text></svg>
+    <svg width="48" height="48" viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false"><rect x="18" y="38" width="84" height="68" rx="3" fill="#e63329"/><polygon points="18,38 30,20 102,20 102,38" fill="#cc2a21"/><polygon points="102,20 118,30 118,86 102,106" fill="#b5231c"/><rect x="24" y="54" width="72" height="40" rx="2" fill="#fff"/><rect x="29" y="58" width="46" height="15" rx="2" fill="#f5a800"/><text x="52" y="69" text-anchor="middle" font-family="Arial,sans-serif" font-weight="800" font-size="11" fill="#3b2600">BIM</text></svg>
     <div>
       <div class="start-titel">BrickInventory</div>
       <div class="text-3-mut">Manager</div>
@@ -144,7 +167,7 @@
 
 <main id="login-screen">
   <div class="lcard max-440">
-    <div class="llogo"><svg width="44" height="44" viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg" class="logo-bild">
+    <div class="llogo"><svg width="44" height="44" viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg" class="logo-bild" aria-hidden="true" focusable="false">
   <rect x="18" y="38" width="84" height="68" rx="3" fill="#e63329"/>
   <polygon points="18,38 30,20 102,20 102,38" fill="#cc2a21"/>
   <polygon points="102,20 118,30 118,86 102,106" fill="#b5231c"/>
@@ -158,6 +181,7 @@
     <!-- ── LOGIN ─────────────────────────────────────────────────────── -->
     <div id="panel-login">
       <div class="lerr" id="lerr" role="alert"></div>
+      <div class="login-hinweis" id="login-hinweis" role="status" hidden></div>
       <!-- Ein FORM, damit Passwortmanager Speichern und Ausfuellen anbieten:
            Chrome meldet sonst „Password field is not contained in a form", und
            das Anbieten haengt dann an Heuristiken statt am Dokument.
@@ -166,7 +190,7 @@
            sonst sendet er das Formular ein zweites Mal ab. -->
       <form class="sform" data-submit="btn-login">
         <div class="fg"><label for="lu" data-i18n="login.email_or_user">Benutzername oder E-Mail</label><input type="text" id="lu" autocomplete="username" /></div>
-        <div class="fg"><label for="lp" data-i18n="login.password">Passwort</label><input type="password" id="lp" autocomplete="current-password" /></div>
+        <div class="fg"><label for="lp" data-i18n="login.password">Passwort</label><div class="geheim-feld"><input type="password" id="lp" autocomplete="current-password" /><button type="button" class="btn bs geheim-knopf" data-click="geheimUmschalten" data-arg="lp" aria-pressed="false" aria-controls="lp" aria-label="Passwort anzeigen" data-i18n="login.passwort_zeigen" data-i18n-attr="aria-label"><svg class="ico" aria-hidden="true"><use href="#i-auge"/></svg></button></div></div>
         <!-- Erst sichtbar, wenn der Server einen zweiten Faktor verlangt (utils/zweiterFaktor.ts). -->
         <div class="fg" id="lc-zeile" data-stil="display:none"><label for="lc" data-i18n="login.code">Code aus der Authenticator-App</label><input type="text" id="lc" inputmode="numeric" autocomplete="one-time-code" maxlength="24" /><div class="text-klein abstand-o-3" data-i18n="login.code_hint">Oder einer deiner Wiederherstellungscodes.</div>
           <button type="button" class="btn bs btn-sm abstand-o-075" id="lc-passkey" data-click="passkeyZweiterFaktor" data-i18n="pk.statt_code" hidden>Passkey statt Code verwenden</button></div>
@@ -175,7 +199,8 @@
       </form>
       <div data-stil="display:flex;justify-content:space-between;margin-top:.85rem;font-size:var(--fs-2)">
         <a class="farbe-primaer" href="#" id="link-forgot" data-i18n="login.forgot">Passwort vergessen?</a>
-        <span id="link-register-wrap" data-stil="display:none"><span data-i18n="login.register_prompt">Neu hier?</span> <a href="#" id="link-register" data-stil="color:var(--b600);font-weight:600">Registrieren</a></span>
+        <span class="text-mut" id="forgot-verwalter" data-i18n="login.forgot_admin" hidden>Passwort vergessen? Der Verwalter kann es zurücksetzen.</span>
+        <span id="link-register-wrap" data-stil="display:none"><span data-i18n="login.register_prompt">Neu hier?</span> <a href="#" id="link-register" data-stil="color:var(--b600);font-weight:600" data-i18n="login.register_link">Registrieren</a></span>
       </div>
       <div class="start-fuss">Build 2026.10.27.1901</div>
       <div id="verified-msg" role="status" data-stil="display:none;margin-top:.75rem;padding:.65rem .9rem;background:var(--g50);border:1px solid var(--g300);border-radius:7px;font-size:var(--fs-2);color:var(--g700)"><span data-i18n="verify.success" data-ico="ok">E-Mail erfolgreich bestätigt. Du kannst dich jetzt anmelden.</span></div>
@@ -183,7 +208,7 @@
 
     <!-- ── REGISTRIERUNG ─────────────────────────────────────────────── -->
     <div id="panel-register" data-stil="display:none">
-      <p class="login-unterzeile" data-i18n="register.title">Registrieren</p>
+      <h2 class="login-unterzeile" data-i18n="register.title">Registrieren</h2>
       <div class="lerr" id="reg-err" role="alert"></div>
       <div class="erfolg-box" id="reg-success" data-stil="display:none"></div>
       <form class="sform" id="reg-form" data-submit="btn-register">
@@ -191,10 +216,11 @@
           <div class="fg"><label for="reg-first" data-i18n="register.firstname">Vorname</label><input type="text" id="reg-first" autocomplete="given-name" /></div>
           <div class="fg"><label for="reg-last" data-i18n="register.lastname">Nachname</label><input type="text" id="reg-last" autocomplete="family-name" /></div>
         </div>
-        <div class="fg"><label for="reg-user" data-i18n="register.username">Benutzername *</label><input type="text" id="reg-user" autocomplete="username" /></div>
-        <div class="fg"><label for="reg-email" data-i18n="register.email_label">E-Mail *</label><input type="email" id="reg-email" autocomplete="email" /></div>
-        <div class="fg"><label for="reg-pass" data-i18n="register.password">Passwort * (min. 8 Zeichen, kein häufiges)</label><input type="password" id="reg-pass" autocomplete="new-password" /></div>
-        <div class="fg"><label for="reg-pass2" data-i18n="register.password_repeat">Passwort wiederholen *</label><input type="password" id="reg-pass2" autocomplete="new-password" /></div>
+        <div class="fg"><label for="reg-user" data-i18n="register.username">Benutzername *</label><input type="text" id="reg-user" autocomplete="username" required aria-required="true" /></div>
+        <div class="fg"><label for="reg-email" data-i18n="register.email_label">E-Mail *</label><input type="email" id="reg-email" autocomplete="email" required aria-required="true" /></div>
+        <div class="fg"><label for="reg-pass" data-i18n="register.password">Passwort *</label><input type="password" id="reg-pass" autocomplete="new-password" required aria-required="true" aria-describedby="reg-pass-regel" />
+          <div class="text-klein" id="reg-pass-regel" data-i18n="pflicht.regel" data-i18n-vars='{"n":"12"}'>Mindestens 12 Zeichen, kein häufig verwendetes Passwort.</div></div>
+        <div class="fg"><label for="reg-pass2" data-i18n="register.password_repeat">Passwort wiederholen *</label><input type="password" id="reg-pass2" autocomplete="new-password" required aria-required="true" /></div>
         <div class="fg"><label for="reg-lang" data-i18n="register.language">Sprache</label>
           <select id="reg-lang">
             <option value="de">Deutsch</option>
@@ -228,10 +254,21 @@
       <div class="lerr" id="reset-err" role="alert"></div>
       <div class="erfolg-box" id="reset-success" data-stil="display:none"></div>
       <form class="sform" id="reset-form" data-submit="btn-reset">
-        <div class="fg"><label for="reset-pass" data-i18n="reset.new_password_label">Neues Passwort (min. 8 Zeichen, kein häufiges)</label><input type="password" id="reset-pass" autocomplete="new-password" /></div>
+        <div class="fg"><label for="reset-pass" data-i18n="reset.new_password_label">Neues Passwort (min. 12 Zeichen, kein häufiges)</label><input type="password" id="reset-pass" autocomplete="new-password" /></div>
         <div class="fg"><label for="reset-pass2" data-i18n="reset.repeat">Passwort wiederholen</label><input type="password" id="reset-pass2" autocomplete="new-password" /></div>
         <button type="button" class="btn bp knopf-breit" id="btn-reset" data-i18n="reset.button">Passwort ändern</button>
       </form>
+    </div>
+
+    <!-- ── E-MAIL BESTÄTIGEN (Link aus der Mail, Bestätigung erst per Knopf) ─ -->
+    <div id="panel-verify" data-stil="display:none">
+      <p class="login-unterzeile" data-i18n="verify.title">E-Mail-Adresse bestätigen</p>
+      <p class="text-klein abstand-u-075" id="verify-ziel"></p>
+      <div class="lerr" id="verify-err" role="alert"></div>
+      <button type="button" class="btn bp knopf-breit" id="btn-verify" data-i18n="verify.button">Adresse bestätigen</button>
+      <div class="login-fuss">
+        <a class="farbe-primaer" href="#" id="link-verify-to-login" data-i18n="auth.back_to_login">← Zurück zur Anmeldung</a>
+      </div>
     </div>
 
     <!-- ── STARTPASSWORT ERSETZEN (Server: 403 passwort_wechsel_noetig) ─ -->
@@ -240,11 +277,18 @@
       <div class="text-klein abstand-u-075" data-i18n="pflicht.hint">Dieses Konto hat noch das Startpasswort aus dem Protokoll. Bitte zuerst ein eigenes setzen.</div>
       <div class="lerr" id="pflicht-err" role="alert"></div>
       <form class="sform" data-submit="btn-pflicht">
-        <div class="fg"><label for="pflicht-alt" data-i18n="settings.password.current">Aktuelles Passwort</label><input type="password" id="pflicht-alt" autocomplete="current-password" /></div>
-        <div class="fg"><label for="pflicht-neu" data-i18n="settings.password.new">Neues Passwort</label><input type="password" id="pflicht-neu" autocomplete="new-password" /></div>
+        <div class="fg" id="pflicht-alt-zeile"><label for="pflicht-alt" data-i18n="pflicht.alt">Startpasswort (aus dem Serverprotokoll)</label><input type="password" id="pflicht-alt" autocomplete="current-password" /></div>
+        <div class="fg"><label for="pflicht-neu" data-i18n="settings.password.new">Neues Passwort</label><input type="password" id="pflicht-neu" autocomplete="new-password" aria-describedby="pflicht-regel" />
+          <div class="text-klein" id="pflicht-regel" data-i18n="pflicht.regel" data-i18n-vars='{"n":"12"}'>Mindestens 12 Zeichen, kein häufig verwendetes Passwort.</div></div>
         <div class="fg"><label for="pflicht-wdh" data-i18n="settings.password.repeat">Passwort wiederholen</label><input type="password" id="pflicht-wdh" autocomplete="new-password" /></div>
         <button type="button" class="btn bp knopf-breit" id="btn-pflicht" data-i18n="reset.button">Passwort ändern</button>
       </form>
+    </div>
+    <div id="panel-zweitpflicht" data-stil="display:none">
+      <p class="login-unterzeile" data-i18n="zfpflicht.title">Zweiten Faktor einrichten</p>
+      <div class="text-klein abstand-u-075" id="zfpflicht-hinweis" data-i18n="zfpflicht.hint">Verwalterkonten brauchen einen zweiten Faktor. Bitte jetzt einen Code-Generator einrichten, danach öffnet sich die Anwendung.</div>
+      <div id="zf-pflicht-flaeche" class="abstand-u-075"></div>
+      <button type="button" class="btn bs knopf-breit" data-click="pflichtAbmelden" data-i18n="zfpflicht.logout">Abmelden</button>
     </div>
   </div>
 </main>
@@ -273,7 +317,7 @@
 <!-- APP -->
 <div id="app">
   <header>
-    <div class="logo"><svg width="28" height="28" viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg" class="logo-bild">
+    <div class="logo"><svg width="28" height="28" viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg" class="logo-bild" aria-hidden="true" focusable="false">
   <rect x="18" y="38" width="84" height="68" rx="3" fill="#e63329"/>
   <polygon points="18,38 30,20 102,20 102,38" fill="#cc2a21"/>
   <polygon points="102,20 118,30 118,86 102,106" fill="#b5231c"/>
@@ -365,7 +409,7 @@
                  inzwischen ab, denn dieser Text hier enthielt den Tag
                  ausgeschrieben und hat GENAU DAS ausgeloest.) -->
             <button class="umenu-item admin-only" role="menuitem" tabindex="-1" data-stil="display:none" data-click="oeffneReiter" data-arg="settings"><svg class="ico" aria-hidden="true"><use href="#i-einstellungen"/></svg><span data-i18n="nav.settings">Einstellungen</span></button>
-            <button class="umenu-item admin-only" role="menuitem" tabindex="-1" data-stil="display:none" data-click="oeffneReiter" data-arg="monitor"><svg class="ico" aria-hidden="true"><use href="#i-monitoring"/></svg><span data-i18n="nav.monitoring">Hintergrund­arbeiten</span></button>
+            <button class="umenu-item admin-only" role="menuitem" tabindex="-1" data-stil="display:none" data-click="oeffneReiter" data-arg="monitor"><svg class="ico" aria-hidden="true"><use href="#i-monitoring"/></svg><span data-i18n="nav.monitoring">Hinter­grund­arbeiten</span></button>
             <hr class="umenu-trenner">
             <button class="umenu-item umenu-abmelden" role="menuitem" tabindex="-1" id="btn-logout"><svg class="ico" aria-hidden="true"><use href="#i-abmelden"/></svg><span data-i18n="settings.logout">Abmelden</span></button>
           </div>
@@ -385,14 +429,14 @@
     <button type="button" class="ntab" data-tab="catalog" data-i18n-tab="nav.catalog"><svg class="ico" aria-hidden="true"><use href="#i-katalog"/></svg> <span class="tab-label">Katalog</span></button>
     <!-- Verwalterseiten: ohne Platz in der Leiste, geöffnet über das Benutzermenü. -->
     <button type="button" class="ntab ntab-unter" id="ntab-settings" data-tab="settings" data-i18n-tab="nav.settings" data-stil="display:none"><svg class="ico" aria-hidden="true"><use href="#i-einstellungen"/></svg> <span class="tab-label">Einstellungen</span></button>
-    <button type="button" class="ntab ntab-unter" id="ntab-monitor" data-tab="monitor" data-i18n-tab="nav.monitoring" data-stil="display:none"><svg class="ico" aria-hidden="true"><use href="#i-monitoring"/></svg> <span class="tab-label">Hintergrund­arbeiten</span></button>
+    <button type="button" class="ntab ntab-unter" id="ntab-monitor" data-tab="monitor" data-i18n-tab="nav.monitoring" data-stil="display:none"><svg class="ico" aria-hidden="true"><use href="#i-monitoring"/></svg> <span class="tab-label">Hinter­grund­arbeiten</span></button>
   </nav>
 
   <div class="offline-band" id="offline-band" role="status" hidden></div>
   <div class="hinweis-band" id="rb-hinweis" role="region" aria-labelledby="rb-hinweis-text" hidden>
     <svg class="ico" aria-hidden="true"><use href="#i-info"/></svg>
-    <span id="rb-hinweis-text"><span class="hinweis-lang" data-i18n="rb_key.banner">Ohne Rebrickable-Schlüssel kommen keine neuen Sets, Teile und Bilder dazu.</span><span class="hinweis-kurz" data-i18n="rb_key.banner_short">Rebrickable-Schlüssel fehlt.</span></span>
-    <button type="button" class="btn bp btn-sm" data-click="rbHinweisOeffnen"><span class="hinweis-lang" data-i18n="rb_key.banner_link">Schlüssel eintragen</span><span class="hinweis-kurz" data-i18n="rb_key.banner_link_short">Eintragen</span></button>
+    <span id="rb-hinweis-text"><span class="hinweis-lang" data-i18n="rb_key.banner">Ohne Rebrickable-Schlüssel kommen keine neuen Sets, Teile und Bilder dazu.</span><span class="hinweis-kurz" data-i18n="rb_key.banner_short">Ohne Rebrickable-Schlüssel keine neuen Sets.</span></span>
+    <button type="button" class="btn bp btn-sm" data-click="rbHinweisOeffnen"><span class="hinweis-lang" data-i18n="rb_key.banner_link">Schlüssel eintragen</span><span class="hinweis-kurz" data-i18n="rb_key.banner_link_short">Schlüssel eintragen</span></button>
     <button type="button" class="btn bs btn-sm hinweis-zu" data-click="rbHinweisWeg" aria-label="Hinweis ausblenden" data-i18n="rb_key.banner_close" data-i18n-attr="aria-label"><svg class="ico" aria-hidden="true"><use href="#i-schliessen"/></svg></button>
   </div>
   <main id="inhalt" tabindex="-1">
@@ -405,7 +449,7 @@
       </div>
 
       <div class="brick-stats">
-        <div class="bstat bstat-slate"><div class="bstat-l" data-i18n="header.sets">Sets</div><div class="bstat-v" id="bstat-sets">—</div></div>
+        <div class="bstat bstat-slate"><div class="bstat-l" data-i18n="header.sets">Sets</div><div class="bstat-v" id="bstat-sets">—</div><div class="bstat-s" id="bstat-sets-sub"></div></div>
         <div class="bstat bstat-petrol"><div class="bstat-l" data-i18n="nav.parts">Teile</div><div class="bstat-v" id="bstat-parts">—</div><div class="bstat-s" id="bstat-parts-sub"></div></div>
         <div class="bstat bstat-light"><div class="bstat-l" data-i18n="nav.minifigs">Minifiguren</div><div class="bstat-v" id="bstat-minifigs">—</div></div>
         <div class="bstat bstat-slate"><div class="bstat-l" data-i18n="header.instr">Anleitungen</div><div class="bstat-v" id="bstat-instr">—</div></div>
@@ -414,9 +458,9 @@
       <!-- Inhalt zuerst: Erfassen ist eine Handlung, kein Dauerformular.
            Das Formular steht im Dialog #add-set-modal. -->
       <div class="erfassen-leiste">
-        <button class="btn bp" type="button" data-click="oeffneErfassen" data-arg="set"><svg class="ico" aria-hidden="true"><use href="#i-plus"/></svg><span data-i18n="gallery.add.title">Set hinzufügen</span></button>
+        <button class="btn bp knopf-schwebend" type="button" data-click="oeffneErfassen" data-arg="set" aria-label="Set hinzufügen" data-i18n="gallery.add.title" data-i18n-attr="aria-label"><svg class="ico" aria-hidden="true"><use href="#i-plus"/></svg><span data-i18n="gallery.add.title">Set hinzufügen</span></button>
         <details class="import-menue">
-          <summary class="btn bs"><svg class="ico" aria-hidden="true"><use href="#i-datei"/></svg><span data-i18n="import.menu">Importieren</span><svg class="ico import-pfeil" aria-hidden="true"><use href="#i-aufklappen"/></svg></summary>
+          <summary class="btn bs"><svg class="ico import-datei" aria-hidden="true"><use href="#i-datei"/></svg><svg class="ico import-mehr" aria-hidden="true"><use href="#i-mehr"/></svg><span class="import-text" data-i18n="import.menu">Importieren</span><span class="vh nur-telefon" data-i18n="import.menu">Importieren</span><svg class="ico import-pfeil" aria-hidden="true"><use href="#i-aufklappen"/></svg></summary>
           <div class="import-klappe">
             <label for="csv-file" class="import-eintrag zeiger"><svg class="ico" aria-hidden="true"><use href="#i-datei"/></svg><span data-i18n="import.csv_read">CSV-Datei einlesen</span><input type="file" id="csv-file" aria-label="CSV-Datei" data-i18n="import.csv_file" data-i18n-attr="aria-label" accept=".csv" class="datei-versteckt" data-change="startSetCsvImport" /></label>
             <a class="import-eintrag" id="btn-set-csv-template" href="#" data-i18n="import.template_download" data-ico="import">CSV-Vorlage herunterladen</a>
@@ -430,13 +474,13 @@
            direkt über der Liste, auf die sie wirken. Beim Verschieben nur den
            Container anfassen — die IDs darin sind der Vertrag mit dem JS. -->
       <div class="filterleiste filterzeile">
-          <button type="button" class="btn bs filter-knopf" data-click="filterUmschalten" aria-expanded="false" data-i18n="common.filter" data-ico="liste">Filter</button>
+          <button type="button" class="btn bs filter-knopf" data-click="filterUmschalten" aria-expanded="false"><svg class="ico" aria-hidden="true"><use href="#i-filter"/></svg><span class="filter-text" data-i18n="common.filter">Filter</span><span class="vh nur-telefon" data-i18n="common.filter">Filter</span><span class="filter-zahl" id="gallery-filter-zahl" hidden></span></button>
           <input type="text" class="si suchfeld" id="gs" placeholder="Sets suchen…" data-i18n="gallery.search" data-i18n-attr="placeholder" / aria-label="Sets suchen">
           <select class="w-auto" id="gtheme" aria-label="Thema filtern" data-i18n="gallery.theme_label" data-i18n-attr="aria-label" data-change="renderGallery">
             <option value="" data-i18n="gallery.filter.all">Alle Themen</option>
           </select>
           <select class="w-auto" id="gsort" aria-label="Sortierung" data-i18n="gallery.sort_label" data-i18n-attr="aria-label">
-            <option value="added_desc" data-i18n="gallery.sort.added">Zuletzt hinzugefügt</option>
+            <option value="added_desc" data-i18n="gallery.sort.added">Neueste zuerst</option>
             <option value="added_asc" data-i18n="gallery.sort.oldest">Älteste zuerst</option>
             <option value="name_asc" data-i18n="gallery.sort.name">Name A–Z</option>
             <option value="num_asc" data-i18n="gallery.sort.number">Nummer ↑</option>
@@ -472,7 +516,7 @@
            (Nachtrag 34). Der Katalog hat keine Erfassung, hier steht die
            Leiste also direkt unter der Überschrift. -->
       <div class="filterzeile">
-          <input type="text" class="si suchfeld" id="cat-search" placeholder="Setnummer / Name…" data-i18n="catalog.search" data-i18n-attr="placeholder" / aria-label="Setnummer / Name">
+          <input type="text" class="si suchfeld" id="cat-search" placeholder="Set-Nummer / Name…" data-i18n="catalog.search" data-i18n-attr="placeholder" aria-label="Set-Nummer / Name">
           <select class="w-auto max-240" id="cat-theme" aria-label="Thema filtern" data-i18n="gallery.theme_label" data-i18n-attr="aria-label">
             <option value="" data-i18n="catalog.filter.all_themes">Alle Themen</option>
           </select>
@@ -520,12 +564,11 @@
         ein Merkposten hat weder das eine noch das andere; beides wird erst bei
         der Übernahme in die Galerie gefragt.
       -->
-      <div class="merk-kasten">
-        <div class="zeile mittig verteilt abstand-u-075">
-          <h2 class="merk-kasten-titel" data-i18n="wanted.add.title">Merkposten hinzufügen</h2>
-        </div>
+      <!-- Aufklappbar: Am Telefon steht die Liste vorn, sobald sie Einträge hat (16-merkliste.js). -->
+      <details class="merk-kasten" id="mk-kasten" open>
+        <summary class="merk-kasten-kopf"><h2 class="stit" data-ico="plus" data-i18n="wanted.add.title">Merkposten hinzufügen</h2></summary>
         <div class="zeile luecke-8 unten umbruch merk-erfassen">
-          <div class="fg"><label for="mk-num" data-i18n="gallery.add.number">Set-Nummer</label><input inputmode="numeric" type="text" id="mk-num" placeholder="z.B. 75192" data-i18n="gallery.add.number" data-i18n-attr="placeholder" /></div>
+          <div class="fg"><label for="mk-num" data-i18n="gallery.add.number">Set-Nummer</label><input inputmode="numeric" type="text" id="mk-num" placeholder="z. B. 75192" data-i18n="gallery.add.number_ph" data-i18n-attr="placeholder" /></div>
           <div class="fg max-110"><label for="mk-cond" data-i18n="common.condition">Zustand</label><select class="auswahl-kompakt" id="mk-cond"><option value="N" data-i18n="common.condition_new">Neuware</option><option value="U" data-i18n="common.condition_used">Gebraucht</option></select></div>
           <div class="fg max-150" id="mk-owner-box" data-stil="display:none"><label for="mk-owner" data-i18n="household.for_account">Für Konto</label><select class="auswahl-kompakt" id="mk-owner"></select></div>
           <button class="btn bp" id="mk-add" data-click="merkpostenHinzufuegen" data-i18n="wanted.add.submit" data-ico="plus">Auf die Merkliste</button>
@@ -538,7 +581,7 @@
           <label class="btn bs zeiger"><svg class="ico" aria-hidden="true"><use href="#i-datei"/></svg><span data-i18n="import.csv_read">CSV-Datei einlesen</span><input type="file" id="mk-csv-file" aria-label="CSV-Datei" data-i18n="import.csv_file" data-i18n-attr="aria-label" accept=".csv,.txt" class="datei-versteckt" data-change="importMerklisteCsv" /></label>
         </div>
         <div class="abstand-o-8 schrift-2" id="mk-status" role="status"></div>
-      </div>
+      </details>
 
       <!-- Suche/Filter/Sortierung — dieselbe Zeile wie in der Galerie, an
            derselben Stelle: unter dem Erfassen-Kasten und direkt ueber der
@@ -564,7 +607,7 @@
           <option value="U" data-i18n="common.condition_used">Gebraucht</option>
         </select>
         <select class="w-auto" id="mksort" aria-label="Sortierung" data-i18n="gallery.sort_label" data-i18n-attr="aria-label" data-change="ladeMerkliste">
-          <option value="added_desc" data-i18n="gallery.sort.added">Zuletzt hinzugefügt</option>
+          <option value="added_desc" data-i18n="gallery.sort.added">Neueste zuerst</option>
           <option value="added_asc" data-i18n="gallery.sort.oldest">Älteste zuerst</option>
           <option value="name_asc" data-i18n="gallery.sort.name">Name A–Z</option>
           <option value="num_asc" data-i18n="gallery.sort.number">Nummer ↑</option>
@@ -586,14 +629,14 @@
       </div>
       <div class="brick-stats" id="parts-stats-bar">
         <div class="bstat bstat-slate"><div class="bstat-l" data-i18n="parts.stat.total_label">Teile gesamt</div><div class="bstat-v" id="ps-total">—</div><div class="bstat-s" id="ps-total-sub"></div></div>
-        <div class="bstat bstat-petrol"><div class="bstat-l" data-i18n="parts.stat.unique">Sorten</div><div class="bstat-v" id="ps-unique">—</div></div>
+        <div class="bstat bstat-petrol"><div class="bstat-l" data-i18n="parts.stat.unique">Teilesorten</div><div class="bstat-v" id="ps-unique">—</div></div>
         <div class="bstat bstat-light"><div class="bstat-l" data-i18n="parts.stat.colors">Farben</div><div class="bstat-v" id="ps-colors">—</div></div>
       </div>
       <!-- ── Manuell erfasste Teile — vor den Set-Teilen ──────────────────── -->
       <div class="erfassen-leiste">
-        <button class="btn bp" type="button" data-click="oeffneErfassen" data-arg="part"><svg class="ico" aria-hidden="true"><use href="#i-plus"/></svg><span data-i18n="parts.add_title">Teil hinzufügen</span></button>
+        <button class="btn bp knopf-schwebend" type="button" data-click="oeffneErfassen" data-arg="part" aria-label="Teil hinzufügen" data-i18n="parts.add_title" data-i18n-attr="aria-label"><svg class="ico" aria-hidden="true"><use href="#i-plus"/></svg><span data-i18n="parts.add_title">Teil hinzufügen</span></button>
         <details class="import-menue">
-          <summary class="btn bs"><svg class="ico" aria-hidden="true"><use href="#i-datei"/></svg><span data-i18n="import.menu">Importieren</span><svg class="ico import-pfeil" aria-hidden="true"><use href="#i-aufklappen"/></svg></summary>
+          <summary class="btn bs"><svg class="ico import-datei" aria-hidden="true"><use href="#i-datei"/></svg><svg class="ico import-mehr" aria-hidden="true"><use href="#i-mehr"/></svg><span class="import-text" data-i18n="import.menu">Importieren</span><span class="vh nur-telefon" data-i18n="import.menu">Importieren</span><svg class="ico import-pfeil" aria-hidden="true"><use href="#i-aufklappen"/></svg></summary>
           <div class="import-klappe">
             <label for="part-csv-file" class="import-eintrag zeiger"><svg class="ico" aria-hidden="true"><use href="#i-datei"/></svg><span data-i18n="import.csv_read">CSV-Datei einlesen</span><input type="file" id="part-csv-file" aria-label="CSV-Datei" data-i18n="import.csv_file" data-i18n-attr="aria-label" accept=".csv,.txt" class="datei-versteckt" data-change="importPartsCsv" /></label>
             <a class="import-eintrag" id="btn-csv-template" href="#" data-i18n="import.template_download" data-ico="import">CSV-Vorlage herunterladen</a>
@@ -613,7 +656,7 @@
            direkt über der Liste, auf die sie wirken. Beim Verschieben nur den
            Container anfassen — die IDs darin sind der Vertrag mit dem JS. -->
       <div class="filterleiste filterzeile">
-          <button type="button" class="btn bs filter-knopf" data-click="filterUmschalten" aria-expanded="false" data-i18n="common.filter" data-ico="liste">Filter</button>
+          <button type="button" class="btn bs filter-knopf" data-click="filterUmschalten" aria-expanded="false" data-i18n="common.filter" data-ico="filter">Filter</button>
           <input class="suchfeld" type="text" id="parts-search" placeholder="Teilenummer / Name…" data-i18n="parts.search" data-i18n-attr="placeholder" / aria-label="Teilenummer / Name">
           <select class="w-auto" id="parts-spare" aria-label="Ersatzteile" data-i18n="parts.spare_label" data-i18n-attr="aria-label">
             <option value="" data-i18n="parts.filter.all">Alle Teile</option>
@@ -647,14 +690,14 @@
            (Nachtrag 34, Marcos Hinweis): Der Filter wirkt auf beide Listen —
            auf die manuellen und die aus Sets. Stünde er darunter, sähe es aus,
            als beträfe er nur die Set-Teile. -->
-      <div class="bereich-karte" id="manual-parts-box" data-stil="display:none">
-        <div class="bereich-titel" data-i18n="parts.manual_section">Manuell erfasste Teile</div>
+      <section class="parts-group gruppe-manuell" id="manual-parts-box" aria-labelledby="manual-parts-titel" data-stil="display:none">
+        <div class="group-hd"><svg class="ico" aria-hidden="true"><use href="#i-bearbeiten"/></svg><h2 class="group-title" id="manual-parts-titel" data-i18n="parts.manual_section">Manuell erfasste Teile</h2><span class="group-sub" id="manual-parts-n"></span></div>
         <div id="manual-parts-list"></div>
-      </div>
+      </section>
 
       <!-- ── Teile aus Sets ──────────────────────────────────────────────────── -->
       <div id="parts-main">
-        <div class="loading"><div class="spin"></div><span data-i18n="parts.loading_label">Teile laden…</span></div>
+        <div class="lade-geruest" role="status" aria-busy="true"><span class="vh" data-i18n="parts.loading_label">Teile laden…</span><div class="skelett-zeile"></div><div class="skelett-zeile"></div><div class="skelett-zeile kurz"></div></div>
       </div>
       <!-- Ladepunkt für den Endlos-Scroll der Teileliste, analog cat-sentinel.
            Steht bewusst NEBEN #parts-main: dessen Inhalt wird bei jedem
@@ -673,16 +716,16 @@
 
       <!-- Stats (farbig, wie Galerie) -->
       <div class="brick-stats">
-        <div class="bstat bstat-slate"><div class="bstat-l" data-i18n="figs.stat.types">Figurtypen</div><div class="bstat-v" id="mf-unique">—</div></div>
-        <div class="bstat bstat-petrol"><div class="bstat-l" data-i18n="figs.stat.total_qty">Gesamtmenge</div><div class="bstat-v" id="mf-total">—</div></div>
+        <div class="bstat bstat-slate"><div class="bstat-l" data-i18n="figs.stat.types">Figurensorten</div><div class="bstat-v" id="mf-unique">—</div></div>
+        <div class="bstat bstat-petrol"><div class="bstat-l" data-i18n="figs.stat.total_qty">Figuren gesamt</div><div class="bstat-v" id="mf-total">—</div></div>
       </div>
       <span id="mf-val" data-stil="display:none"></span>
 
       <!-- ── Manuell erfasste Minifiguren — grosse Box wie bei Teilen ──────── -->
       <div class="erfassen-leiste">
-        <button class="btn bp" type="button" data-click="oeffneErfassen" data-arg="fig"><svg class="ico" aria-hidden="true"><use href="#i-plus"/></svg><span data-i18n="figs.add_title">Minifigur hinzufügen</span></button>
+        <button class="btn bp knopf-schwebend" type="button" data-click="oeffneErfassen" data-arg="fig" aria-label="Minifigur hinzufügen" data-i18n="figs.add_title" data-i18n-attr="aria-label"><svg class="ico" aria-hidden="true"><use href="#i-plus"/></svg><span data-i18n="figs.add_title">Minifigur hinzufügen</span></button>
         <details class="import-menue">
-          <summary class="btn bs"><svg class="ico" aria-hidden="true"><use href="#i-datei"/></svg><span data-i18n="import.menu">Importieren</span><svg class="ico import-pfeil" aria-hidden="true"><use href="#i-aufklappen"/></svg></summary>
+          <summary class="btn bs"><svg class="ico import-datei" aria-hidden="true"><use href="#i-datei"/></svg><svg class="ico import-mehr" aria-hidden="true"><use href="#i-mehr"/></svg><span class="import-text" data-i18n="import.menu">Importieren</span><span class="vh nur-telefon" data-i18n="import.menu">Importieren</span><svg class="ico import-pfeil" aria-hidden="true"><use href="#i-aufklappen"/></svg></summary>
           <div class="import-klappe">
             <label for="fig-csv-file" class="import-eintrag zeiger"><svg class="ico" aria-hidden="true"><use href="#i-datei"/></svg><span data-i18n="import.csv_read">CSV-Datei einlesen</span><input type="file" id="fig-csv-file" aria-label="CSV-Datei" data-i18n="import.csv_file" data-i18n-attr="aria-label" accept=".csv,.txt" class="datei-versteckt" data-change="importFigsCsv" /></label>
             <a class="import-eintrag" id="btn-fig-csv-template" href="#" data-i18n="import.template_download" data-ico="import">CSV-Vorlage herunterladen</a>
@@ -713,10 +756,10 @@
 
       <!-- Wie bei den Teilen: Die manuell erfassten Minifiguren stehen UNTER
            der Filterleiste, weil der Filter beide Listen betrifft. -->
-      <div class="bereich-karte" id="manual-figs-box" data-stil="display:none">
-        <div class="bereich-titel" data-i18n="figs.manual_section">Manuell erfasste Minifiguren</div>
+      <section class="parts-group gruppe-manuell" id="manual-figs-box" aria-labelledby="manual-figs-titel" data-stil="display:none">
+        <div class="group-hd"><svg class="ico" aria-hidden="true"><use href="#i-bearbeiten"/></svg><h2 class="group-title" id="manual-figs-titel" data-i18n="figs.manual_section">Manuell erfasste Minifiguren</h2><span class="group-sub" id="manual-figs-n"></span></div>
         <div id="manual-figs-list"></div>
-      </div>
+      </section>
 
       <div id="figs-list"></div>
       <!-- Ladepunkt für den Endlos-Scroll der Minifiguren. Steht NEBEN
@@ -727,7 +770,7 @@
     <!-- ══ FINANZEN ══ -->
     <div class="tab" id="tab-finance">
       <div class="ph">
-        <h1 class="ptitle" data-tab-title="finance"><span class="ptitle-icon"></span><span data-i18n="finance.title">Portfolio-Wert</span></h1>
+        <h1 class="ptitle" data-tab-title="finance"><span class="ptitle-icon"></span><span data-i18n="finance.title">Finanzen</span></h1>
         <!-- margin-left:auto (Nachtrag 66, Marcos Wunsch „rechts ausgerichtet"):
              Die Kopfzeile ist flex mit space-between, also stand der Filter auf
              breiten Fenstern schon rechts. Sie bricht aber um (flex-wrap), und
@@ -739,7 +782,7 @@
       <!-- Portfolio Chart -->
       <div id="portfolio-chart-section" class="diagramm-karte">
         <div class="diagramm-kopf">
-          <div class="bereich-titel ohne-abstand-u" data-i18n="finance.chart.label">Wertentwicklung Portfolio</div>
+          <div class="bereich-titel ohne-abstand-u" data-i18n="finance.chart.label">Wert der Sammlung</div>
           <div class="diagramm-werte">
             <div class="text-klein"><span data-i18n="finance.market_label">Marktwert</span>: <span class="wert-primaer" id="portfolio-current">—</span></div>
           </div>
@@ -770,10 +813,11 @@
       </div>
       <!-- Kennzahlen: der Einstand steht immer da, Gesamtwert und G&V nur mit Marktpreisen. -->
       <div class="fgrid" id="fin-sum">
-        <div class="fstat"><div class="flbl" data-i18n="finance.stat.purchase">Einstand</div><div class="fval" id="fin-einstand">—</div><div class="fsub" id="fin-einstand-sub" data-i18n="finance.stat.purchase_hint">Summe der Kaufpreise</div></div>
+        <div class="fstat"><div class="flbl" id="fin-einstand-titel" data-i18n="finance.stat.purchase">Kaufpreis gesamt</div><div class="fval" id="fin-einstand">—</div><div class="fsub" id="fin-einstand-sub" data-i18n="finance.stat.purchase_hint">Summe der Kaufpreise</div></div>
         <div class="fstat hi"><div class="flbl" data-i18n="finance.stat.value">Marktwert</div><div class="fval" id="fin-wert">—</div><div class="fsub" id="fin-wert-sub"></div></div>
-        <div class="fstat" id="fin-stat-pnl"><div class="flbl" data-i18n="finance.stat.pnl">Gewinn/Verlust zum Einstand</div><div class="fval" id="fin-total-pnl">—</div><div class="fsub" id="fin-pnl-sub"></div></div>
+        <div class="fstat" id="fin-stat-pnl"><div class="flbl" data-i18n="finance.stat.pnl">Gewinn/Verlust zum Kaufpreis</div><div class="fval" id="fin-total-pnl">—</div><div class="fsub" id="fin-pnl-sub"></div></div>
       </div>
+      <p id="fin-basis" class="fin-basis" role="note" hidden></p>
       <!-- Kategoriefilter — dieselben vier Chips wie im Finanzen-Reiter der
            Android-App (FinanceSections.financeCategoryFilter). Additiv, und
            „Alle" ist kein vierter Zustand, sondern die LEERE Auswahl: Der Chip
@@ -793,65 +837,47 @@
       <div class="ph spalte-05">
         <h1 class="ptitle" data-tab-title="partslist"><span class="ptitle-icon"></span><span data-i18n="nav.partslist">Bauliste</span></h1>
         <p class="ptitle-unter" data-i18n="pl.subtitle">Stellt die Teile eines oder mehrerer Sets zusammen — zum Nachbauen oder um Fehlendes zu bestellen.</p>
-        <div class="zeile mittig luecke-05 umbruch">
-        <input type="text" id="pl-setnr" placeholder="Set-Nr." data-i18n="pl.set_nr" data-i18n-attr="placeholder" data-stil="width:9em;max-width:100%;flex-shrink:0" aria-label="Set-Nr." />
-        <button class="btn bp fest" data-click="plAddSet" data-i18n="adding.button" data-ico="plus">Hinzufügen</button>
-        <button class="btn bs fest" data-click="plGenerate" id="btn-pl-gen" disabled data-i18n="pl.generate" data-ico="werkzeug">Erstellen</button>
-        <button class="btn bs fest" data-click="plExportPdf" id="btn-pl-pdf" data-stil="display:none"><svg class="ico" aria-hidden="true"><use href="#i-datei"/></svg> PDF</button>
-        <select id="pl-bl-condition" aria-label="Zustand" data-i18n="detail.condition" data-i18n-attr="aria-label" data-stil="display:none;width:auto;flex-shrink:0"><option value="X" data-i18n="pl.condition.any">Beliebig</option><option value="N" data-i18n="pl.condition.new">Neuware</option><option value="U" data-i18n="pl.condition.used">Gebraucht</option></select>
-        <button class="btn bs fest" data-click="plExportBricklink" id="btn-pl-bl" data-stil="display:none"><svg width="14" height="14" viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg" data-stil="vertical-align:middle;margin-right:4px;flex-shrink:0"><rect x="18" y="38" width="84" height="68" rx="3" fill="#e63329"/><polygon points="18,38 30,20 102,20 102,38" fill="#cc2a21"/><polygon points="102,20 118,30 118,86 102,106" fill="#b5231c"/><ellipse cx="43" cy="20" rx="6" ry="3" fill="#cc2a21"/><rect x="37" y="17" width="12" height="3" fill="#cc2a21"/><ellipse cx="43" cy="17" rx="6" ry="3" fill="#b5231c"/><ellipse cx="58" cy="20" rx="6" ry="3" fill="#cc2a21"/><rect x="52" y="17" width="12" height="3" fill="#cc2a21"/><ellipse cx="58" cy="17" rx="6" ry="3" fill="#b5231c"/><ellipse cx="73" cy="20" rx="6" ry="3" fill="#cc2a21"/><rect x="67" y="17" width="12" height="3" fill="#cc2a21"/><ellipse cx="73" cy="17" rx="6" ry="3" fill="#b5231c"/><ellipse cx="88" cy="20" rx="6" ry="3" fill="#cc2a21"/><rect x="82" y="17" width="12" height="3" fill="#cc2a21"/><ellipse cx="88" cy="17" rx="6" ry="3" fill="#b5231c"/><rect x="24" y="54" width="72" height="40" rx="2" fill="#fff"/><rect x="29" y="58" width="46" height="15" rx="2" fill="#f5a800"/><text x="52" y="69" text-anchor="middle" font-family="Arial,sans-serif" font-weight="800" font-size="11" fill="#3b2600">BIM</text></svg>BrickLink XML</button>
-        <button class="btn bd" data-click="plReset" id="btn-pl-reset" disabled data-stil="white-space:nowrap;flex-shrink:0;margin-left:auto" data-i18n="partslist.reset" data-ico="loeschen">Zurücksetzen</button>
-        </div>
-        <!--
-          Eigene ZEILE (Marcos Vorgabe): „Diese gehören thematisch nicht zum
-          Rest."
-
-          Er hat recht, und die Zeile darüber sagt jetzt auch, warum: Dort
-          stehen die Teileliste ZUSAMMENSTELLEN (Set-Nr., Hinzufügen,
-          Erstellen) und sie WEITERGEBEN (PDF, BrickLink, Reset). Der eigene
-          Bestand ist keines von beidem — er trägt Zahlen IN die fertige
-          Liste ein und ändert damit, was dasteht.
-
-          Die Sichtbarkeit hängt jetzt an DIESER Zeile statt an ihren beiden
-          Kindern: Sonst bliebe hier ein 8px-Streifen aus dem gap des
-          Elternteils stehen, solange noch keine Liste erzeugt ist — ein
-          leerer Absatz mitten in der Kopfzeile.
-
-          Zum Namen: Schlüssel und IDs sagen „lose", die Beschriftung sagt
-          „manuell erfasst". Das ist dieselbe Sache — der Server zählt unter
-          `lose` genau die Zeilen mit source='manual' (utils/handlers/parts.ts,
-          getOwnedQuantities). Marcos Beschriftung benennt die Bedingung,
-          die alten Namen benennen die Wirkung.
-        -->
-        <div id="pl-bestand-zeile" data-stil="display:none;align-items:center;gap:.5rem;flex-wrap:wrap">
-          <button class="btn bs fest" data-click="plFuelleBestand" id="btn-pl-bestand" data-i18n="pl.fill_owned" data-ico="set">Bereits vorhandene Teile eintragen</button>
-          <label id="pl-bestand-lose-box" data-stil="display:inline-flex;align-items:center;gap:5px;font-size:var(--fs-2);color:var(--mut);white-space:nowrap;flex-shrink:0">
-            <input class="ohne-rand" type="checkbox" id="pl-bestand-lose" data-change="plFuelleBestand"><span data-i18n="pl.only_loose">nur manuell erfasste Teile berücksichtigen</span></label>
-          <!--
-            Zweite Wahl, andere Frage (Marcos Vorgabe): Die erste sagt, WELCHE
-            ART Teile zählt (manuell erfasst oder auch die aus Sets), diese
-            sagt, WESSEN. Beide wirken zusammen — „nur manuell erfasste" plus
-            „mit Unterkonten" zählt die manuell erfassten Teile des ganzen
-            Haushalts.
-
-            Ohne Haken gilt `accounts=own`, also nur das eigene Konto — Marcos
-            „aber nur die eigenen Sets". Das ist bewusst die Vorgabe und eine
-            Änderung: Bisher übernahm der Abgleich stillschweigend den
-            Kontofilter des TEILE-Reiters, und der steht nach jeder Anmeldung
-            auf „Alle Konten". Eine Einstellung, die woanders sitzt und hier
-            wirkt, ist keine Antwort auf „wessen Teile zähle ich".
-
-            Sichtbar nur für ein Hauptkonto mit Unterkonten — dieselbe Regel
-            wie bei den Kontofiltern der anderen Reiter (02-gallery.js).
-          -->
-          <label id="pl-bestand-subs-box" data-stil="display:none;align-items:center;gap:5px;font-size:var(--fs-2);color:var(--mut);white-space:nowrap;flex-shrink:0">
-            <input class="ohne-rand" type="checkbox" id="pl-bestand-subs" data-change="plFuelleBestand"><span data-i18n="pl.include_subs">Unterkonten mit einbeziehen</span></label>
+        <div class="pl-leiste">
+          <div class="pl-feld">
+            <label for="pl-setnr" data-i18n="pl.feld_setnr">Set-Nummern (mehrere mit Komma trennen)</label>
+            <div class="zeile mittig luecke-05">
+              <input type="text" id="pl-setnr" class="pl-setnr" autocomplete="off" />
+              <button class="btn bs fest" data-click="plAddSet" data-i18n="adding.button" data-ico="plus">Hinzufügen</button>
+            </div>
+          </div>
+          <div class="zeile mittig luecke-05 umbruch">
+            <button class="btn bp fest" data-click="plGenerate" id="btn-pl-gen" aria-disabled="true" data-i18n="pl.generate" data-ico="werkzeug">Teileliste erstellen</button>
+            <button class="btn bs fest" data-click="plReset" id="btn-pl-reset" disabled data-i18n="partslist.reset" data-ico="aktualisieren">Zurücksetzen</button>
+          </div>
         </div>
       </div>
       <!-- Added sets -->
-      <div id="pl-sets" data-stil="display:flex;flex-wrap:wrap;gap:.5rem;margin-bottom:1rem;min-height:32px"></div>
+      <div id="pl-sets" class="pl-chips"></div>
       <!-- Status -->
-      <div id="pl-status" role="status" data-stil="color:var(--mut);font-size:var(--fs-3);margin-bottom:.75rem"></div>
+      <div id="pl-status" class="pl-status" role="status"></div>
+      <!-- Export und Bestand gelten der fertigen Liste: erst mit Teilen sichtbar,
+           am Telefon zugeklappt, damit das Ergebnis im ersten Bild steht. -->
+      <details class="pl-optionen" id="pl-optionen" hidden>
+        <summary class="pl-optionen-kopf" data-i18n="pl.optionen">Export &amp; Optionen</summary>
+        <div class="pl-export" id="pl-export" role="group" aria-labelledby="pl-export-titel" hidden>
+          <span class="pl-export-titel" id="pl-export-titel" data-i18n="pl.export">Exportieren</span>
+          <button class="btn bs fest" data-click="plExportPdf" id="btn-pl-pdf"><svg class="ico" aria-hidden="true"><use href="#i-datei"/></svg> PDF</button>
+          <span class="pl-zustand"><label for="pl-bl-condition" data-i18n="pl.zustand_bl">Zustand für BrickLink</label>
+            <select id="pl-bl-condition"><option value="X" data-i18n="pl.condition.any">Beliebig</option><option value="N" data-i18n="pl.condition.new">Neuware</option><option value="U" data-i18n="pl.condition.used">Gebraucht</option></select></span>
+          <button class="btn bs fest" data-click="plExportBricklink" id="btn-pl-bl"><svg width="14" height="14" viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg" class="pl-bl-zeichen" aria-hidden="true"><rect x="18" y="38" width="84" height="68" rx="3" fill="#e63329"/><polygon points="18,38 30,20 102,20 102,38" fill="#cc2a21"/><polygon points="102,20 118,30 118,86 102,106" fill="#b5231c"/><ellipse cx="43" cy="20" rx="6" ry="3" fill="#cc2a21"/><rect x="37" y="17" width="12" height="3" fill="#cc2a21"/><ellipse cx="43" cy="17" rx="6" ry="3" fill="#b5231c"/><ellipse cx="58" cy="20" rx="6" ry="3" fill="#cc2a21"/><rect x="52" y="17" width="12" height="3" fill="#cc2a21"/><ellipse cx="58" cy="17" rx="6" ry="3" fill="#b5231c"/><ellipse cx="73" cy="20" rx="6" ry="3" fill="#cc2a21"/><rect x="67" y="17" width="12" height="3" fill="#cc2a21"/><ellipse cx="73" cy="17" rx="6" ry="3" fill="#b5231c"/><ellipse cx="88" cy="20" rx="6" ry="3" fill="#cc2a21"/><rect x="82" y="17" width="12" height="3" fill="#cc2a21"/><ellipse cx="88" cy="17" rx="6" ry="3" fill="#b5231c"/><rect x="24" y="54" width="72" height="40" rx="2" fill="#fff"/><rect x="29" y="58" width="46" height="15" rx="2" fill="#f5a800"/><text x="52" y="69" text-anchor="middle" font-family="Arial,sans-serif" font-weight="800" font-size="11" fill="#3b2600">BIM</text></svg>BrickLink XML</button>
+        </div>
+          <!-- Eigene Zeile: Der Bestand trägt Zahlen in die fertige Liste ein; er
+               gehört weder zum Zusammenstellen noch zum Exportieren. -->
+          <div id="pl-bestand-zeile" class="pl-bestand-zeile">
+            <button class="btn bs fest" data-click="plFuelleBestand" id="btn-pl-bestand" data-i18n="pl.fill_owned" data-ico="set">Bereits vorhandene Teile eintragen</button>
+            <label id="pl-bestand-lose-box" class="pl-wahl">
+              <input class="ohne-rand" type="checkbox" id="pl-bestand-lose" data-change="plFuelleBestand"><span data-i18n="pl.only_loose">nur manuell erfasste Teile berücksichtigen</span></label>
+            <!-- Welche Art Teile zählt (oben) und wessen (hier); ohne Haken nur das
+                 eigene Konto. Sichtbar nur für ein Hauptkonto mit Unterkonten. -->
+            <label id="pl-bestand-subs-box" class="pl-wahl" data-stil="display:none">
+              <input class="ohne-rand" type="checkbox" id="pl-bestand-subs" data-change="plFuelleBestand"><span data-i18n="pl.include_subs">Unterkonten mit einbeziehen</span></label>
+          </div>
+      </details>
       <!-- Parts list table -->
       <div id="pl-result"></div>
     </div>
@@ -883,7 +909,7 @@
            (test/benutzername-menueknopf.test.js) und beim Profil-Symbol im
            Menue; dies hier war der einzige verbliebene Fall im ganzen
            index.html — nachgezaehlt. -->
-      <div class="sgroup-label" id="global-settings-label" data-stil="display:none"><span data-i18n="settings.global_title" data-ico="globus">Globale Einstellungen</span> <span class="admin-hinweis">(Admin)</span></div>
+      <div class="sgroup-label" id="global-settings-label" data-stil="display:none"><span data-i18n="settings.global_title" data-ico="globus">Globale Einstellungen</span> <span class="admin-hinweis" data-i18n="settings.users_admin_badge">(Verwalter)</span></div>
       <div class="sgrid2" id="global-settings-grid" data-stil="display:none">
         <nav class="einst-nav full" aria-label="Abschnitte" data-i18n="settings.sections" data-i18n-attr="aria-label">
           <a class="einst-link" href="#einst-design" data-click="einstAbschnitt" data-arg="einst-design" data-i18n="settings.general_title">Erscheinungsbild</a>
@@ -912,36 +938,48 @@
           </div>
         </div>
         <div class="ssec" id="einst-bl">
-          <div class="stit"><svg class="ico" aria-hidden="true"><use href="#i-schluessel"/></svg> BrickLink API <span class="ao" id="bl-ao" data-i18n="settings.admins_only" data-ico="warnung">Nur Admins</span></div>
+          <div class="stit"><svg class="ico" aria-hidden="true"><use href="#i-schluessel"/></svg> BrickLink API <span class="ao" id="bl-ao" data-i18n="settings.admins_only" data-ico="warnung">Nur Verwalter</span></div>
           <div class="sform">
             <div class="fg"><label for="bl-ck">Consumer Key</label><input type="text" id="bl-ck" autocomplete="off" /></div>
             <div class="fg"><label for="bl-cs">Consumer Secret</label><div class="geheim-feld"><input type="password" id="bl-cs" autocomplete="off" spellcheck="false" /><button type="button" class="btn bs geheim-knopf" data-click="geheimUmschalten" data-arg="bl-cs" aria-pressed="false" aria-controls="bl-cs" aria-label="Anzeigen" data-i18n="settings.secret_show" data-i18n-attr="aria-label"><svg class="ico" aria-hidden="true"><use href="#i-auge"/></svg></button></div></div>
             <div class="fg"><label for="bl-tok">Token Value</label><input type="text" id="bl-tok" autocomplete="off" /></div>
             <div class="fg"><label for="bl-ts">Token Secret</label><div class="geheim-feld"><input type="password" id="bl-ts" autocomplete="off" spellcheck="false" /><button type="button" class="btn bs geheim-knopf" data-click="geheimUmschalten" data-arg="bl-ts" aria-pressed="false" aria-controls="bl-ts" aria-label="Anzeigen" data-i18n="settings.secret_show" data-i18n-attr="aria-label"><svg class="ico" aria-hidden="true"><use href="#i-auge"/></svg></button></div></div>
             <div class="fg"><label for="lim-bl"><span data-i18n="settings.max_calls">Max. Aufrufe pro Tag</span> <span class="text-klein" data-i18n="settings.default_n" data-i18n-vars='{"n":"4000"}'>(Standard: 4000)</span></label><input class="max-160" inputmode="numeric" type="number" id="lim-bl" min="1" max="100000" value="4000" /></div>
-            <button class="btn bp btn-speichern" id="btn-sav-bl" data-i18n="settings.save" data-ico="speichern">Speichern</button>
+            <div class="zeile mittig luecke-8 umbruch">
+              <button class="btn bp btn-speichern" id="btn-sav-bl" data-i18n="settings.save" data-ico="speichern">Speichern</button>
+              <button class="btn bs" type="button" data-click="einstellungenQuellePruefen" data-arg="bricklink" data-i18n="settings.zugang_pruefen" data-ico="ok">Gespeicherten Zugang prüfen</button>
+            </div>
+            <div class="quelle-stand" id="pruef-bricklink" role="status"></div>
           </div>
         </div>
         <div class="ssec" id="einst-rb">
-          <div class="stit"><svg class="ico" aria-hidden="true"><use href="#i-link"/></svg> Rebrickable API <span class="ao" id="rb-ao" data-i18n="settings.admins_only" data-ico="warnung">Nur Admins</span></div>
+          <div class="stit"><svg class="ico" aria-hidden="true"><use href="#i-link"/></svg> Rebrickable API <span class="ao" id="rb-ao" data-i18n="settings.admins_only" data-ico="warnung">Nur Verwalter</span></div>
           <div class="sform">
             <div class="ibox abstand-u-4"><a href="https://rebrickable.com/api/" target="_blank" rel="noopener noreferrer">rebrickable.com → API → Generate Key</a><br><span class="schrift-1" data-i18n="settings.rebrickable_hint">Set-Infos, Teile &amp; Bilder</span></div>
             <div class="fg"><label for="rb-key">Rebrickable API Key</label><div class="geheim-feld"><input type="password" id="rb-key" autocomplete="off" spellcheck="false" /><button type="button" class="btn bs geheim-knopf" data-click="geheimUmschalten" data-arg="rb-key" aria-pressed="false" aria-controls="rb-key" aria-label="Anzeigen" data-i18n="settings.secret_show" data-i18n-attr="aria-label"><svg class="ico" aria-hidden="true"><use href="#i-auge"/></svg></button></div></div>
             <div class="fg"><label for="lim-rb"><span data-i18n="settings.max_calls">Max. Aufrufe pro Tag</span> <span class="text-klein" data-i18n="settings.default_n" data-i18n-vars='{"n":"25000"}'>(Standard: 25000)</span></label><input class="max-160" inputmode="numeric" type="number" id="lim-rb" min="1" max="100000" value="25000" /></div>
-            <button class="btn bp btn-speichern" id="btn-sav-rb" data-i18n="settings.save" data-ico="speichern">Speichern</button>
+            <div class="zeile mittig luecke-8 umbruch">
+              <button class="btn bp btn-speichern" id="btn-sav-rb" data-i18n="settings.save" data-ico="speichern">Speichern</button>
+              <button class="btn bs" type="button" data-click="einstellungenQuellePruefen" data-arg="rebrickable" data-i18n="settings.zugang_pruefen" data-ico="ok">Gespeicherten Zugang prüfen</button>
+            </div>
+            <div class="quelle-stand" id="pruef-rebrickable" role="status"></div>
           </div>
         </div>
         <div class="ssec" id="einst-bs">
-          <div class="stit"><svg class="ico" aria-hidden="true"><use href="#i-katalog"/></svg> Brickset API <span class="ao" id="bs-ao" data-i18n="settings.admins_only" data-ico="warnung">Nur Admins</span></div>
+          <div class="stit"><svg class="ico" aria-hidden="true"><use href="#i-katalog"/></svg> Brickset API <span class="ao" id="bs-ao" data-i18n="settings.admins_only" data-ico="warnung">Nur Verwalter</span></div>
           <div class="sform">
             <div class="ibox abstand-u-4"><a href="https://brickset.com/tools/webservices/requestkey" target="_blank" rel="noopener noreferrer"><span data-i18n="settings.brickset_link">brickset.com → Tools → API Key anfordern</span></a><br><span class="schrift-1" data-i18n="settings.brickset_hint">Anleitungen, Fallback Set-Infos</span></div>
             <div class="fg"><label for="bs-key">Brickset API Key</label><div class="geheim-feld"><input type="password" id="bs-key" autocomplete="off" spellcheck="false" /><button type="button" class="btn bs geheim-knopf" data-click="geheimUmschalten" data-arg="bs-key" aria-pressed="false" aria-controls="bs-key" aria-label="Anzeigen" data-i18n="settings.secret_show" data-i18n-attr="aria-label"><svg class="ico" aria-hidden="true"><use href="#i-auge"/></svg></button></div></div>
             <div class="fg"><label for="lim-bs"><span data-i18n="settings.max_calls">Max. Aufrufe pro Tag</span> <span class="text-klein" data-i18n="settings.default_n" data-i18n-vars='{"n":"100"}'>(Standard: 100)</span></label><input class="max-160" inputmode="numeric" type="number" id="lim-bs" min="1" max="100000" value="100" /></div>
-            <button class="btn bp btn-speichern" id="btn-sav-bs" data-i18n="settings.save" data-ico="speichern">Speichern</button>
+            <div class="zeile mittig luecke-8 umbruch">
+              <button class="btn bp btn-speichern" id="btn-sav-bs" data-i18n="settings.save" data-ico="speichern">Speichern</button>
+              <button class="btn bs" type="button" data-click="einstellungenQuellePruefen" data-arg="brickset" data-i18n="settings.zugang_pruefen" data-ico="ok">Gespeicherten Zugang prüfen</button>
+            </div>
+            <div class="quelle-stand" id="pruef-brickset" role="status"></div>
           </div>
         </div>
         <div class="ssec full" id="usermgmt" data-stil="display:none">
-          <div class="stit"><svg class="ico" aria-hidden="true"><use href="#i-haushalt"/></svg> <span data-i18n="settings.users_title">Benutzerverwaltung</span> <span class="admin-hinweis" data-i18n="settings.users_admin_badge">(Admin)</span></div>
+          <div class="stit"><svg class="ico" aria-hidden="true"><use href="#i-haushalt"/></svg> <span data-i18n="settings.users_title">Benutzerverwaltung</span> <span class="admin-hinweis" data-i18n="settings.users_admin_badge">(Verwalter)</span></div>
           <div data-stil="display:flex;align-items:center;justify-content:space-between;padding:.65rem .9rem;background:var(--s50);border:1px solid var(--bdr);border-radius:var(--rad);margin-bottom:1rem">
             <div>
               <!-- Umschliessendes Label (die Checkbox liegt darin) — kein for= nötig. -->
@@ -949,12 +987,13 @@
                 <input class="w-auto" type="checkbox" id="reg-enabled" aria-label="Registrierung erlauben" data-i18n="settings.registration_label" data-i18n-attr="aria-label" data-change="saveRegEnabled" />
                 <span data-i18n="settings.public_reg">Öffentliche Registrierung erlauben</span>
               </label>
-              <div data-stil="font-size:var(--fs-1);color:var(--mut);margin-left:24px" data-i18n="settings.public_reg.hint">Wenn deaktiviert, können nur Admins neue Benutzer anlegen.</div>
+              <div data-stil="font-size:var(--fs-1);color:var(--mut);margin-left:24px" data-i18n="settings.public_reg.hint">Wenn deaktiviert, können nur Verwalter neue Benutzer anlegen.</div>
+              <div class="text-klein reg-mail-hinweis" id="reg-mail-hinweis" role="status" hidden></div>
             </div>
           </div>
           <div class="abstand-u-125" id="users-tbl"></div>
           <details class="abstand-u-125">
-            <summary class="ctitle zeiger" data-i18n="users.protokoll">Protokoll der Verwalteraktionen</summary>
+            <summary class="ctitle zeiger" data-i18n="users.protokoll">Protokoll der Verwalter­aktionen</summary>
             <div id="vw-protokoll"></div>
           </details>
           <div class="trenner-oben">
@@ -968,7 +1007,7 @@
               <div class="fg max-130-rechts">
                 <!-- Umschliessendes Label: die Checkbox liegt darin, ein for= wäre falsch
                      (und zeigte hier versehentlich auf ein fremdes Feld). -->
-                <label data-stil="display:flex;align-items:center;gap:6px;cursor:pointer;margin-bottom:9px"><input class="w-auto" type="checkbox" id="nu-a" /> Admin</label>
+                <label data-stil="display:flex;align-items:center;gap:6px;cursor:pointer;margin-bottom:9px"><input class="w-auto" type="checkbox" id="nu-a" /> <span data-i18n="users.role.admin">Verwalter</span></label>
               </div>
               <button type="button" class="btn bp" id="btn-cu" data-i18n="settings.users_create" data-ico="plus">Erstellen</button>
             </div>
@@ -976,7 +1015,7 @@
           </div>
         </div>
         <div class="ssec full" id="einst-smtp">
-          <div class="stit"><svg class="ico" aria-hidden="true"><use href="#i-mail"/></svg> E-Mail / SMTP <span class="ao" data-stil="display:none" data-i18n="settings.admins_only" data-ico="warnung">Nur Admins</span></div>
+          <div class="stit"><svg class="ico" aria-hidden="true"><use href="#i-mail"/></svg> E-Mail / SMTP <span class="ao" data-stil="display:none" data-i18n="settings.admins_only" data-ico="warnung">Nur Verwalter</span></div>
           <div class="sform">
             <div class="ibox abstand-u-075" data-i18n="settings.smtp.hint">Für Registrierungsbestätigungen und Passwort-Rücksetzungen. Ohne SMTP-Konfiguration werden Links in der Server-Konsole ausgegeben.</div>
             <div class="host-port">
@@ -1043,10 +1082,11 @@
             <div class="text-klein" id="design-hinweis"></div>
           </div>
           <div class="fg"><label for="dunkel-wahl" data-i18n="settings.dark.label">Darstellung auf diesem Gerät</label>
-            <select id="dunkel-wahl" data-change="setzeDunkel">
+            <select id="dunkel-wahl" data-change="setzeDunkel" aria-describedby="dunkel-hinweis">
               <option value="system" data-i18n="settings.dark.system">Wie das System (hell/dunkel)</option>
               <option value="server" data-i18n="settings.dark.server">Ohne Dunkelmodus</option>
             </select>
+            <div class="text-klein" id="dunkel-hinweis" hidden data-i18n="settings.werkbank_hint">Werkbank gibt es nur dunkel — die Darstellung hell/dunkel wirkt bei diesem Design nicht.</div>
           </div>
           <div class="fg"><label for="lang-select" data-i18n="settings.language">Sprache</label>
             <select id="lang-select" data-change="setLangFromEl">
@@ -1084,10 +1124,9 @@
             <div class="fg"><label for="prof-user" data-i18n="users.col.username">Benutzername</label><input type="text" id="prof-user" autocomplete="username" /></div>
             <div class="fg">
               <label for="prof-email">E-Mail <span id="prof-email-verified" class="email-status"></span></label>
-              <input type="email" id="prof-email" autocomplete="email" data-input="emailGetippt" />
+              <input type="email" id="prof-email" autocomplete="email" />
               <div class="text-klein abstand-o-3" id="prof-email-hint"></div>
             </div>
-            <div class="fg" id="prof-pw-zeile" hidden><label for="prof-pw" data-i18n="konto.email_passwort">Aktuelles Passwort (für die neue E-Mail-Adresse)</label><input type="password" id="prof-pw" autocomplete="current-password" /></div>
           </div>
           <div class="konto-fuss"><button type="button" class="btn bp btn-speichern" id="btn-sav-prof" data-i18n="settings.save" data-ico="speichern">Speichern</button></div>
         </form>
@@ -1096,8 +1135,7 @@
       <section class="ssec abstand-u-125" aria-labelledby="konto-t-passwort">
         <h2 class="stit" id="konto-t-passwort"><svg class="ico" aria-hidden="true"><use href="#i-schloss"/></svg> <span data-i18n="settings.password.change">Passwort ändern</span></h2>
         <form class="nur-inhalt sform" data-submit="btn-sav-pw">
-          <div class="profil-raster profil-raster-3">
-            <div class="fg"><label for="pw-c" data-i18n="settings.password.current">Aktuelles Passwort</label><input type="password" id="pw-c" autocomplete="current-password" /></div>
+          <div class="profil-raster">
             <div class="fg"><label for="pw-n" data-i18n="settings.password.new">Neues Passwort</label><input type="password" id="pw-n" autocomplete="new-password" /></div>
             <div class="fg"><label for="pw-r" data-i18n="settings.password.repeat">Passwort wiederholen</label><input type="password" id="pw-r" autocomplete="new-password" /></div>
           </div>
@@ -1126,6 +1164,8 @@
       <div class="ssec gefahrenzone">
         <p class="text-mittel abstand-u-075" data-i18n="settings.danger.hint">Gelöschtes liegt 30 Tage im Papierkorb (Menü → Daten und Papierkorb) und wird danach endgültig entfernt.</p>
         <button class="btn bd" id="btn-dall" data-i18n="settings.delete_all_btn" data-ico="loeschen">Alle meine Daten löschen</button>
+        <p class="text-mittel abstand-o-125 abstand-u-075" data-i18n="settings.delete_account.hint">Das Konto selbst löschen: endgültig, ohne Papierkorb, mit Passwort und zweitem Faktor.</p>
+        <button class="btn bd" id="btn-konto-loeschen" data-i18n="settings.delete_account.btn" data-ico="loeschen">Konto endgültig löschen</button>
       </div>
     </div>
 
@@ -1144,6 +1184,7 @@
       -->
 
       <div class="ssec abstand-u-125" id="vouchers-card">
+        <h2 class="stit" data-ico="gutschein" data-i18n="vouchers.meine">Meine Gutscheine</h2>
         <div class="sform">
 
           <!-- Das Ausgabeland. Marcos Vorgaben:
@@ -1166,7 +1207,7 @@
                Konten. -->
           <div class="admin-only voucher-land" data-stil="display:none">
             <div class="fg max-17rem">
-              <label for="gutschein-land" data-i18n="vouchers.country">Ausgabeland</label>
+              <label for="gutschein-land"><span data-i18n="vouchers.country">Ausgabeland</span> <span class="rb rv" data-i18n="vouchers.fuer_alle">für alle Konten</span></label>
               <select id="gutschein-land" data-change="gutscheinLandSpeichern">
                 <option value="de-CH" data-i18n="vouchers.country_de_ch">Schweiz</option>
                 <option value="de-DE" data-i18n="vouchers.country_de_de">Deutschland</option>
@@ -1237,7 +1278,7 @@
       <div class="ssec abstand-u-125" id="voucher-form-card">
         <div class="sform">
           <div>
-            <h2 class="stit" id="vouchers-form-title" data-i18n="vouchers.add">Gutschein hinzufügen</h2>
+            <h2 class="stit" id="vouchers-form-title" data-ico="plus" data-i18n="vouchers.add">Gutschein hinzufügen</h2>
 
             <div class="sgrid2 luecke-075 voucher-felder">
               <div class="fg">
@@ -1300,16 +1341,10 @@
     <div class="tab" id="tab-alarme">
       <div class="ph"><h1 class="ptitle"><span class="ptitle-icon"><svg class="ico" aria-hidden="true"><use href="#i-alarm"/></svg></span><span data-i18n="alerts.group">Preisalarme</span></h1></div>
 
-      <!-- ── PREISALARME: ALLE AUF EINEN BLICK ───────────────────────────── -->
-      <!--
-        Marcos Frage vom 25.09.: „Wie finde ich alle Preisalarme?" — bis hierher
-        gar nicht. Ein Alarm war nur im Detaildialog des Sets zu sehen, das man
-        schon gefunden hatte. Diese Rubrik ist der Ort, an dem sie zusammen
-        stehen, sich ändern und abstellen lassen.
-      -->
-
+      <!-- Alle Preisalarme an einem Ort; im Set-Detail sieht man nur den eines Sets. -->
       <div class="ssec abstand-u-125" id="alerts-card">
         <div class="sform">
+          <h2 class="stit" data-i18n="alerts.list_title">Deine Preisalarme</h2>
           <div class="text-mittel" data-i18n="alerts.intro">
             Alle Schwellen, die du gesetzt hast. Der Wert lässt sich hier ändern, der Alarm entfernen. Gemeldet wird einmal je Übergang — erst wenn der Preis wieder auf die andere Seite wechselt, kann derselbe Alarm erneut auslösen.
           </div>
@@ -1322,8 +1357,8 @@
         <form class="sform nur-inhalt" data-submit="alarm-neu-knopf">
           <h2 class="stit" data-i18n="alerts.new_title">Preisalarm anlegen</h2>
           <div class="profil-raster">
-            <div class="fg"><label for="alarm-neu-set" data-i18n="alerts.new_set">Setnummer</label>
-              <input type="text" id="alarm-neu-set" list="alarm-neu-sets" autocomplete="off" inputmode="text" placeholder="10294-1" /></div>
+            <div class="fg"><label for="alarm-neu-set" data-i18n="alerts.new_set">Set-Nummer</label>
+              <input type="text" id="alarm-neu-set" list="alarm-neu-sets" autocomplete="off" inputmode="text" placeholder="z. B. 10294-1" data-i18n="alerts.set_ph" data-i18n-attr="placeholder" /></div>
             <div class="fg"><label for="alarm-neu-zustand" data-i18n="common.condition">Zustand</label>
               <select id="alarm-neu-zustand"><option value="N" data-i18n="common.condition_new">Neuware</option><option value="U" data-i18n="common.condition_used">Gebraucht</option></select></div>
             <div class="fg"><label for="alarm-neu-richtung" data-i18n="alerts.new_dir">Melden, wenn der Preis</label>
@@ -1383,6 +1418,7 @@
       <!-- ── HAUSHALT: KONTEN VERKNÜPFEN ─────────────────────────────────── -->
 
       <div class="ssec abstand-u-125" id="household-card">
+        <h2 class="stit" data-ico="haushalt" data-i18n="household.verknuepft">Verknüpfte Konten</h2>
         <div class="sform">
           <div class="text-mittel" data-i18n="household.intro">
             Verknüpfe Konten zu einem Haushalt: Ein Hauptkonto sieht die Sets, Teile und Minifiguren seiner direkten Unterkonten zusammengefasst. Ein Konto kann zu mehreren Hauptkonten gehören, wenn es jede Einladung selbst annimmt. Beide Konten müssen dieselbe Währung verwenden.
@@ -1395,10 +1431,8 @@
         </div>
       </div>
       <div class="ssec abstand-u-125 sform" id="household-invite-box" data-stil="display:none">
-            <div class="etikett-titel">
-              <svg class="ico" aria-hidden="true"><use href="#i-plus"/></svg> <span data-i18n="household.invite_title">Konto einladen</span>
-            </div>
-            <div class="text-klein abstand-u-075" data-i18n="household.invite_hint">
+            <h2 class="stit"><svg class="ico" aria-hidden="true"><use href="#i-plus"/></svg> <span data-i18n="household.invite_title">Konto einladen</span></h2>
+            <div class="text-mittel abstand-u-075" data-i18n="household.invite_hint">
               Erzeuge einen Einladungscode. Im anderen Konto unter Menü → Haushalt → „Einladung annehmen“ eingeben. Der Code gilt 24 Stunden und nur einmal.
             </div>
             <button class="btn bp oben-buendig" data-click="createHouseholdInvite">
@@ -1415,15 +1449,13 @@
 
           <!-- Als eigenständiges Konto: Code einlösen -->
       <div class="ssec abstand-u-125 sform" id="household-redeem-box" data-stil="display:none">
-            <div class="etikett-titel">
-              <svg class="ico" aria-hidden="true"><use href="#i-schluessel"/></svg> <span data-i18n="household.redeem_title">Einladung annehmen</span>
-            </div>
-            <div class="text-klein abstand-u-075" data-i18n="household.redeem_hint">
-              Gib den Code aus dem Hauptkonto ein. Dieses Konto wird danach im Hauptkonto mit angezeigt; deine Daten bleiben deine.
+            <h2 class="stit"><svg class="ico" aria-hidden="true"><use href="#i-schluessel"/></svg> <span data-i18n="household.redeem_title">Einladung annehmen</span></h2>
+            <div class="text-mittel abstand-u-075" data-i18n="household.redeem_hint">
+              Gib den Code aus dem Hauptkonto ein. Das Hauptkonto sieht und bearbeitet danach deine Sammlung; du kannst die Verknüpfung jederzeit lösen.
             </div>
             <div class="fg">
               <label for="household-redeem-code" data-i18n="household.invite_code">Einladungscode</label>
-              <input class="mono-2" type="text" id="household-redeem-code" autocomplete="off" />
+              <input class="mono-2" type="text" id="household-redeem-code" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="XXXX-XXXX-XXXX-XXXX" />
             </div>
             <div class="fg" id="household-redeem-faktor" data-stil="display:none">
               <label for="household-redeem-faktor-code" data-i18n="login.code">Code aus der Authenticator-App</label>
@@ -1536,9 +1568,10 @@
           <!-- Wie lange soll der Zugang gelten, den DIESER Code eroeffnet?
                Die Wahl trifft die angemeldete Sitzung hier; sie wandert mit der
                Nonce zum Server. Siehe db/migrations/0016-token-laufzeit.sql. -->
-          <div data-stil="display:flex;align-items:center;gap:.5rem;font-size:var(--fs-2)">
+          <form class="sform qr-form" data-submit="btn-gen-qr">
+          <div class="fg">
             <label for="qr-validity" data-i18n="qr.validity_label">Zugang gültig für</label>
-            <select id="qr-validity" data-stil="font-size:var(--fs-2);padding:4px 8px">
+            <select id="qr-validity">
               <option value="" data-i18n="qr.validity_default">Standard (6 Monate, 90 Tage ungenutzt)</option>
               <option value="1m" data-i18n="qr.validity_1m">1 Monat</option>
               <option value="2m" data-i18n="qr.validity_2m">2 Monate</option>
@@ -1547,12 +1580,11 @@
               <option value="unbegrenzt" data-i18n="qr.validity_unlimited">Unbegrenzt (nur HTTPS, mit Rotation)</option>
             </select>
           </div>
-          <form class="durchlaessig" data-submit="btn-gen-qr">
-          <div class="passwort-zeile">
+          <div class="fg">
             <label for="qr-password" data-i18n="qr.password_label">Dein Passwort</label>
             <input type="password" id="qr-password" autocomplete="current-password">
           </div>
-          <button type="button" class="btn bp" id="btn-gen-qr" data-i18n="settings.qr.generate" data-ico="aktualisieren">QR-Code generieren</button>
+          <div><button type="button" class="btn bp" id="btn-gen-qr" data-i18n="settings.qr.generate" data-ico="aktualisieren">QR-Code generieren</button></div>
           </form>
           <div id="qr-code" data-stil="background:#fff;padding:12px;border-radius:8px;border:1px solid var(--bdr);display:inline-block"></div>
           <div class="text-klein" id="qr-hint"></div>
@@ -1587,8 +1619,8 @@
     <!-- MONITOR TAB -->
     <div class="tab" id="tab-monitor">
       <div class="ph zeile mittig verteilt umbruch luecke-05">
-        <h1 class="ptitle" data-tab-title="monitor"><span class="ptitle-icon"></span><span data-i18n="monitor.title">Hintergrund­arbeiten</span></h1>
-        <button class="btn bs btn-sm schrift-2" data-click="openLogViewer" data-i18n="monitor.logs_btn" data-ico="liste">Logs anzeigen</button>
+        <h1 class="ptitle" data-tab-title="monitor"><span class="ptitle-icon"></span><span data-i18n="monitor.title">Hinter­grund­arbeiten</span></h1>
+        <button class="btn bs btn-sm schrift-2" data-click="openLogViewer" data-i18n="monitor.logs_btn" data-ico="liste">Protokoll anzeigen</button>
       </div>
       <!-- Hidden stubs so existing JS references don't break -->
       <div data-stil="display:none">
@@ -1640,16 +1672,17 @@
             </select></div>
           <button class="btn bp btn-speichern" type="button" id="btn-save-cache-ttl" data-i18n="settings.save" data-ico="speichern">Speichern</button>
         </div>
-        <div class="mon-aktionen">
-          <button class="btn bs" type="button" id="btn-clr-prices" data-i18n="settings.clear_price_cache">Preis-Cache leeren</button>
-          <button class="btn bs" type="button" id="btn-clr-all-cache" data-i18n="monitor.clear_all">Alle Caches leeren (Preise, Teile, Katalog)</button>
+        <div class="mon-aktionen gefahrenzone" role="group" aria-labelledby="mon-gefahr-titel">
+          <h3 class="mon-gefahr-titel" id="mon-gefahr-titel" data-i18n="monitor.gefahrenzone">Zwischenspeicher leeren</h3>
+          <button class="btn bd" type="button" id="btn-clr-prices" data-i18n="settings.clear_price_cache" data-ico="loeschen">Gespeicherte Preise löschen</button>
+          <button class="btn bd" type="button" id="btn-clr-all-cache" data-i18n="monitor.clear_all" data-ico="loeschen">Zwischenspeicher ganz leeren (Preise, Teile, Katalog)</button>
         </div>
       </section>
 
       <section class="card mon-teil" aria-labelledby="mon-t-dienste">
         <h2 class="mon-titel" id="mon-t-dienste"><svg class="ico" aria-hidden="true"><use href="#i-aktualisieren"/></svg><span data-i18n="monitor.services">Dienste und Zeitpläne</span></h2>
         <div id="monitor-content">
-          <div class="loading"><div class="spin"></div><span data-i18n="monitor.loading">Lade…</span></div>
+          <div class="lade-geruest" role="status" aria-busy="true"><span class="vh" data-i18n="monitor.loading">Lade…</span><div class="skelett-zeile"></div><div class="skelett-zeile"></div><div class="skelett-zeile kurz"></div></div>
         </div>
       </section>
 
@@ -1666,7 +1699,7 @@
     <p class="dialog-text-mitte" id="cd-msg"></p>
     <form class="ohne-rand" data-submit="cd-confirm">
     <div id="cd-pw-wrap" class="bestaetigung-passwort" hidden>
-      <label for="cd-pw" data-i18n="confirm.admin_password">Dein Passwort zur Bestätigung</label>
+      <label for="cd-pw" id="cd-pw-label" data-i18n="confirm.admin_password">Dein Passwort zur Bestätigung</label>
       <input type="password" id="cd-pw" autocomplete="current-password">
     </div>
     <div id="cd-code-wrap" class="bestaetigung-passwort" hidden>
@@ -1713,7 +1746,7 @@
     <div id="add-fig-inline">
         <div class="raster-160">
           <div class="fg"><label for="af-num-inline"><span data-i18n="figs.num_label">Figur-Nummer *</span> <span class="text-klein">(Rebrickable, z.B. fig-007357)</span></label>
-            <input type="text" id="af-num-inline" data-erstfokus placeholder="fig-007357" /></div>
+            <input type="text" id="af-num-inline" data-erstfokus placeholder="z. B. fig-007357" data-i18n="figs.num_ph" data-i18n-attr="placeholder" /></div>
           <div class="fg"><label for="af-blnum-inline"><span data-i18n="figs.blnum_label">BrickLink-Nr. (opt.)</span> <span class="text-klein" data-i18n="parts.add.bl_hint">für Marktpreis</span></label>
             <input type="text" id="af-blnum-inline" placeholder="z.B. sw0001" /></div>
           <div class="fg"><label for="af-qty-inline" data-i18n="figs.qty_label">Anzahl</label>
@@ -1775,7 +1808,7 @@
     <div class="mfooter verteilt umbruch luecke-8">
       <!-- Löschen ist die einzige Aktion hier; hinter „Weitere Aktionen“ steht
            sie nicht mehr allein und rot im Daumenbereich. -->
-      <details class="mehr-menue">
+      <details class="mehr-menue v-mehr nach-oben">
         <summary class="btn bs" data-i18n="common.more_actions" data-ico="menue">Weitere Aktionen</summary>
         <div class="mehr-liste">
       <button class="btn bs" type="button" data-click="teileNeuImportieren"><svg class="ico" aria-hidden="true"><use href="#i-aktualisieren"/></svg><span data-i18n="detail.reimport_parts">Teile neu importieren</span></button>
@@ -1845,7 +1878,7 @@
           <a class="btn bs knopf-fuellend" id="mk-m-bricklink" href="#" target="_blank" rel="noopener" data-stil="display:none" data-i18n="catalog.buy_bricklink" data-ico="korb">Auf BrickLink kaufen</a>
           <a class="btn bs knopf-fuellend" id="mk-m-vergleich" href="#" target="_blank" rel="noopener" data-stil="display:none" data-i18n="detail.compare" data-ico="monitoring">Preisvergleich</a>
         </div>
-        <button class="btn bp zentriert" id="mk-m-take" data-click="merkpostenDetailUebernehmen" data-i18n="wanted.take" data-ico="plus">In Galerie aufnehmen</button>
+        <button class="btn bp zentriert" id="mk-m-take" data-click="merkpostenDetailUebernehmen" data-i18n="wanted.take" data-ico="plus">Zur Sammlung hinzufügen</button>
       </div>
     </div>
   </div>
@@ -1875,7 +1908,7 @@
       <div class="fg max-110"><label for="mk-take-cond" data-i18n="common.condition">Zustand</label><select class="auswahl-kompakt" id="mk-take-cond"><option value="N" data-i18n="common.condition_new">Neuware</option><option value="U" data-i18n="common.condition_used">Gebraucht</option></select></div><div class="fg max-220" id="mk-take-storage-box"><span class="feld-titel" id="mk-take-storage-label" data-i18n="detail.storage">Lagerort</span><span class="zeile luecke-6 mittig" id="mk-take-storage-slot"></span></div>
     </div>
     <div class="mfooter">
-      <button class="btn bp" id="mk-take-ok" data-click="bestaetigeUebernahme" data-i18n="wanted.take" data-ico="plus">In Galerie aufnehmen</button>
+      <button class="btn bp" id="mk-take-ok" data-click="bestaetigeUebernahme" data-i18n="wanted.take" data-ico="plus">Zur Sammlung hinzufügen</button>
     </div>
   </div>
 </div>
@@ -1931,7 +1964,7 @@
       </div>
       <div data-stil="display:flex;gap:8px;align-items:stretch;width:100%">
         <button class="btn bs knopf-fuellend" id="cat-m-wish" data-click="katalogAufMerkliste" data-i18n="wanted.add.submit" data-ico="plus">Auf die Merkliste</button>
-        <button class="btn bp knopf-fuellend" id="cat-m-add" data-i18n="catalog.add_to_gallery" data-ico="plus">In Galerie aufnehmen</button>
+        <button class="btn bp knopf-fuellend" id="cat-m-add" data-i18n="catalog.add_to_gallery" data-ico="plus">Zur Sammlung hinzufügen</button>
       </div>
     </div>
   </div>
@@ -2115,6 +2148,7 @@
 
     <section class="ew-schritt" data-schritt="passwort">
       <p class="schrift-3" data-i18n="setup.pw_hint">Das Startpasswort stand nur im Protokoll des Servers. Bitte jetzt ein eigenes setzen.</p>
+      <div class="lerr" id="ew-pw-fehler" role="alert"></div>
       <form class="sform" data-submit="ew-pw-setzen">
         <div class="fg"><label for="ew-pw-alt" data-i18n="settings.password.current">Aktuelles Passwort</label><input type="password" id="ew-pw-alt" autocomplete="current-password" data-erstfokus /></div>
         <div class="fg"><label for="ew-pw-neu" data-i18n="settings.password.new">Neues Passwort</label><input type="password" id="ew-pw-neu" autocomplete="new-password" /></div>
@@ -2127,6 +2161,7 @@
       <h2 class="ew-titel">Rebrickable <span class="ew-pflicht" data-i18n="setup.required">notwendig</span> <span id="ew-stand-rebrickable"></span></h2>
       <p class="schrift-3" data-i18n="setup.rb_hint">Rebrickable liefert Sets, Teile und Bilder. Ohne diesen Schlüssel kommen keine neuen Sets, Teile und Bilder dazu. Er ist kostenlos.</p>
       <div class="fg"><label for="ew-rb" data-i18n="setup.key">API-Schlüssel</label><input type="text" id="ew-rb" autocomplete="off" spellcheck="false" /></div>
+      <div class="lerr" id="ew-fehler-rebrickable" role="alert"></div>
       <div class="ew-aktion">
         <button type="button" class="btn bs" data-click="einrichtungQuelle" data-arg="rebrickable" data-i18n="setup.check">Schlüssel prüfen</button>
         <a class="ew-link" href="https://rebrickable.com/api/" target="_blank" rel="noopener noreferrer" data-i18n="setup.where_rb">Schlüssel bei rebrickable.com anlegen (Konto → Einstellungen → API)</a>
@@ -2142,6 +2177,7 @@
         <div class="fg"><label for="ew-bl-tv">Token Value</label><input type="text" id="ew-bl-tv" autocomplete="off" spellcheck="false" /></div>
         <div class="fg"><label for="ew-bl-ts">Token Secret</label><input type="text" id="ew-bl-ts" autocomplete="off" spellcheck="false" /></div>
       </div>
+      <div class="lerr" id="ew-fehler-bricklink" role="alert"></div>
       <div class="ew-aktion">
         <button type="button" class="btn bs" data-click="einrichtungQuelle" data-arg="bricklink" data-i18n="setup.check_bl">Zugang prüfen</button>
         <a class="ew-link" href="https://www.bricklink.com/v2/api/register_consumer.page" target="_blank" rel="noopener noreferrer" data-i18n="setup.where_bl">Zugang bei bricklink.com registrieren</a>
@@ -2152,6 +2188,7 @@
       <h2 class="ew-titel">Brickset <span class="ew-pflicht ew-optional" data-i18n="setup.optional">freiwillig</span> <span id="ew-stand-brickset"></span></h2>
       <p class="schrift-3" data-i18n="setup.bs_hint">Brickset liefert Bauanleitungen, wenn Rebrickable keine hat.</p>
       <div class="fg"><label for="ew-bs" data-i18n="setup.key">API-Schlüssel</label><input type="text" id="ew-bs" autocomplete="off" spellcheck="false" /></div>
+      <div class="lerr" id="ew-fehler-brickset" role="alert"></div>
       <div class="ew-aktion">
         <button type="button" class="btn bs" data-click="einrichtungQuelle" data-arg="brickset" data-i18n="setup.check">Schlüssel prüfen</button>
         <a class="ew-link" href="https://brickset.com/tools/webservices/requestkey" target="_blank" rel="noopener noreferrer" data-i18n="setup.where_bs">Schlüssel bei brickset.com anfordern</a>
@@ -2195,6 +2232,13 @@
 <!-- Vorleser hören jede Meldung; Fehler unterbrechen (role="alert" am Eintrag). -->
 <div id="toasts" role="status" aria-live="polite"></div>
 
+<!-- Aktive Sprachdatei. Blockierend und VOR dem Bündel, weil i18n.js beim
+       Auswerten window.I18N_DE / window.I18N_EN erwartet.
+       Welche Datei hier steht, entscheidet der Server (utils/indexHtml.ts)
+       anhand der gespeicherten Sprache — genauso wie beim Design darüber.
+       Der Wechsel zur anderen Sprache lädt sie zur Laufzeit nach
+       (loadLang() in i18n.js). -->
+  <script src="/locales/de.js?v=2026.10.27.1901" data-i18n-locale></script>
 <script type="module" src="/js/pdfjs-boot.js?v=2026.10.27.1901"></script>
 <!-- Ein Bündel statt zwölf Einzeldateien.
      i18n.js und js/01-*.js … js/11-*.js werden von scripts/build-frontend.js in
@@ -2202,7 +2246,7 @@
      bleiben im Repo lesbar und einzeln editierbar; nach einer Änderung an
      public/js/ oder public/i18n.js muss `npm run build:frontend` laufen
      (npm run dev und der Docker-Build tun das automatisch).
-     00-theme-boot.js bleibt oben im <head> (muss vor dem ersten Rendern laufen),
+     00-theme-boot.js bleibt oben (muss vor Anmeldung und App laufen),
      pdfjs-boot.js bleibt separat (ES-Modul), logviewer.js wird bei Bedarf
      zur Laufzeit nachgeladen. -->
 <script src="/js/app.bundle.js?v=2026.10.27.1901"></script>

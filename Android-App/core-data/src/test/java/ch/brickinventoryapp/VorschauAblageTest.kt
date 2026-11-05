@@ -1,6 +1,5 @@
 package ch.brickinventoryapp
 
-import ch.brickinventoryapp.ressourcen.R
 import org.junit.Test
 
 /**
@@ -163,7 +162,8 @@ class VorschauAblageTest {
         // 150 MB unter filesDir raeumt niemand ausser dem Nutzer. Ohne Anzeige
         // waechst auf dem Telefon etwas, das man nicht findet.
         val vm = quelle("ui/AppViewModel.kt")
-        val ui = quelle("ui/screens/MonitoringSections.kt")
+        // Der Abschnitt nimmt Zustand und Ereignisse, verdrahtet wird in MonitoringScreen.
+        val ui = quelle("ui/screens/MonitoringSections.kt") + quelle("ui/screens/MonitoringScreen.kt")
         assert(vm.contains("fun vorschauAblageBytes()") && vm.contains("fun vorschauAblageLeeren()")) {
             "Die Zugaenge zur Ablage fehlen im ViewModel"
         }
@@ -439,16 +439,10 @@ class VorschauAblageTest {
                 "waermt „nur im WLAN\" ueber den Hotspot eines anderen " +
                 "Telefons vor — also ueber dessen Datentarif."
         }
-        // ── Die Falle bei minSdk 26 ─────────────────────────────────────────
-        //
-        // NET_CAPABILITY_NOT_ROAMING gibt es erst ab API 28, die App laeuft ab
-        // 26. Ohne Rueckfall haette die Roaming-Einstellung auf Android 8.0 und
-        // 8.1 stillschweigend nicht gegriffen — und das faellt niemandem auf,
-        // bis die Rechnung kommt.
-        assert(nl.contains("Build.VERSION_CODES.P") && nl.contains("isNetworkRoaming")) {
-            "Der Rueckfall fuer Android 8 fehlt. NET_CAPABILITY_NOT_ROAMING " +
-                "gibt es erst ab API 28, minSdk ist 26 — dort entschiede dann " +
-                "niemand mehr ueber Roaming."
+        // Roaming: seit minSdk 30 allein ueber die Faehigkeit des Netzes.
+        assert(nl.contains("NET_CAPABILITY_NOT_ROAMING")) {
+            "Die Netzlage fragt nicht mehr nach Roaming — dann waermt „nicht " +
+                "im Ausland\" doch vor."
         }
         // Ohne diese Erlaubnis liefert ConnectivityManager nichts, und die
         // ganze Einstellung waere eine Anzeige ohne Wirkung.
@@ -462,7 +456,8 @@ class VorschauAblageTest {
 
     @Test
     fun `die drei Netze lassen sich einstellen`() {
-        val ui = quelle("ui/screens/MonitoringSections.kt")
+        // Der Abschnitt nimmt Zustand und Ereignisse, verdrahtet wird in MonitoringScreen.
+        val ui = quelle("ui/screens/MonitoringSections.kt") + quelle("ui/screens/MonitoringScreen.kt")
         for (fluss in listOf("vorwaermenWlan", "vorwaermenMobil", "vorwaermenRoaming")) {
             assert(ui.contains("vm.prefs.$fluss")) {
                 "Die Einstellung $fluss wird nicht mehr angezeigt"

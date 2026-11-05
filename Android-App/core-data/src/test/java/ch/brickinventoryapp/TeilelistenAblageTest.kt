@@ -1,5 +1,7 @@
 package ch.brickinventoryapp
 
+import ch.brickinventoryapp.util.TEILELISTE_FRIST_MS
+import ch.brickinventoryapp.util.raeumeAlteTeilelisteAuf
 import ch.brickinventoryapp.util.raeumeKontoDateienAuf
 import ch.brickinventoryapp.util.teilelistenAblage
 import org.junit.After
@@ -18,6 +20,9 @@ import java.io.File
  * wieder `extern ?: intern` als Wurzel → rot „die Teileliste liegt intern …“.
  * Gegenprobe (02.11.2026, gemessen): in raeumeKontoDateienAuf() die Zeile für
  * UPDATE_ORDNER entfernt → rot „Abmelden raeumt …“ („Das geladene Update bleibt liegen“).
+ * Gegenprobe (04.11.2026, gemessen mit kotlinc lokal; sec11 N1): in
+ * raeumeAlteTeilelisteAuf() die Altersprüfung umgedreht (`<` statt `>=`) → rot „nach
+ * der Frist verschwindet die Teileliste …“; gegenproben/teileliste-bleibt-liegen.patch
  */
 class TeilelistenAblageTest {
 
@@ -49,6 +54,19 @@ class TeilelistenAblageTest {
         assertFalse("Geteilte PDFs im externen Bereich bleiben", geteilt.exists())
         assertTrue("Anderes in filesDir gehört nicht dazu", bleibt.exists())
         raeumeKontoDateienAuf(intern, null)
+    }
+
+    /** Klartext nur, solange die Ziel-App ihn lesen muss (sec11 N1). */
+    @Test
+    fun `nach der Frist verschwindet die Teileliste, eine frische bleibt`() {
+        val liste = teilelistenAblage(intern, null).apply { writeText("Inventar") }
+        val geschrieben = liste.lastModified()
+        assertFalse("Eine frische Teileliste bleibt für die Ziel-App",
+            raeumeAlteTeilelisteAuf(intern, geschrieben + TEILELISTE_FRIST_MS - 1000))
+        assertTrue(liste.exists())
+        assertTrue(raeumeAlteTeilelisteAuf(intern, geschrieben + TEILELISTE_FRIST_MS))
+        assertFalse("Das Inventar liegt nach der Frist noch im Klartext", liste.exists())
+        assertFalse("Ohne Datei nichts zu tun", raeumeAlteTeilelisteAuf(intern, geschrieben + TEILELISTE_FRIST_MS))
     }
 
     @Test

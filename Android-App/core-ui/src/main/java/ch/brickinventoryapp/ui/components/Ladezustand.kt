@@ -35,7 +35,6 @@ import ch.brickinventoryapp.ressourcen.R
 import ch.brickinventoryapp.ui.Fehlerklasse
 import ch.brickinventoryapp.ui.Ladeanzeige
 import ch.brickinventoryapp.ui.theme.Abstaende
-import ch.brickinventoryapp.ui.theme.Formen
 
 /**
  * Laden, Fehler, Leer, Kein Treffer und Inhalt — derselbe Baustein für jeden
@@ -121,7 +120,7 @@ fun FehlerHinweis(fehler: String?, onErneut: () -> Unit, klasse: Fehlerklasse? =
             Text(fehler, style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.Center)
         }
-        Button(onClick = onErneut, shape = Formen.knopf) { Text(stringResource(R.string.common_retry)) }
+        Button(onClick = onErneut) { Text(stringResource(R.string.common_retry)) }
     }
 }
 

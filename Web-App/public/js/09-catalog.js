@@ -4,8 +4,8 @@ import { registerActions } from './00-registry.js';
 import { locale, t, tRaw} from '../i18n.js';
 import { fehlerMeldung, bildTag, platzhalterInhalt, leerZustand, ico, G, api, fullUrl, imgUrl, thumbUrl, toast, zuruecksetzenKnopf, betragAusFeld, alle, eins } from './01-core.js';
 import { setScrollLabel } from './15-scrollbar.js';
-import { PARTS_ICON_SVG, loadGallery, loadStats } from './02-gallery.js';
-import { _lastImportAt, set_lastImportAt } from './00-zustand.js';
+import { loadGallery, loadStats } from './02-gallery.js';
+import { _lastImportAt, set_lastImportAt, ME, _settingsCache } from './00-zustand.js';
 import { esc } from './00-escapen.js';
 import { handleSseEvent, hideProgress, showProgress, streamFertig, streamRequest } from './01-fortschritt.js';
 import { leereLagerortFeld, selectedOwner, selectedStorage } from './02-konten-orte.js';
@@ -169,9 +169,15 @@ async function loadCatalogSets(){
   if (!_catItems.length) {
     // Ohne Filter heisst „leer": der Katalog ist noch nicht abgeglichen.
     const gefiltert = !!(_catState.q || _catState.theme || _catState.yearFrom || _catState.yearTo);
-    grid.innerHTML = leerZustand({ ico: gefiltert ? 'suche' : 'katalog', titel: tRaw('catalog.no_results'),
-      text: tRaw(gefiltert ? 'catalog.no_results_hint' : 'catalog.empty_hint'),
-      knopf: gefiltert ? zuruecksetzenKnopf('catalog') : undefined });
+    const ohneSchluessel = !gefiltert && !String(_settingsCache?.rebrickable_api_key || '').trim();
+    const leerText = gefiltert ? 'catalog.no_results_hint' : !ME?.isAdmin ? 'catalog.empty_hint_konto'
+      : ohneSchluessel ? 'catalog.empty_ohne_schluessel' : 'catalog.empty_hint';
+    const leerKnopf = gefiltert ? zuruecksetzenKnopf('catalog')
+      : !ME?.isAdmin ? undefined
+      : ohneSchluessel ? { text: tRaw('rb_key.banner_link'), click: 'rbHinweisOeffnen', ico: 'schluessel' }
+      : { text: tRaw('catalog.zum_abgleich'), click: 'oeffneReiter', arg: 'monitor', ico: 'aktualisieren' };
+    grid.innerHTML = leerZustand({ ico: gefiltert ? 'suche' : 'katalog', titel: tRaw(gefiltert ? 'catalog.no_results' : 'catalog.leer_titel'),
+      text: tRaw(leerText), knopf: leerKnopf });
     setScrollLabel(null);
     return;
   }
@@ -324,11 +330,11 @@ function catCard(s){
   // Ausführlich: docs/begruendungen/public/js/09-catalog.js.md#src
   const src = s.image_local || s.image_url;
   const img = src
-    ? bildTag({ src: imgUrl(thumbUrl(src), 'nur'), alt: s.name || s.set_number, fade: true, ph: 'set' })
-    : `<span class="bild-ph" role="img" aria-label="${esc(s.name || s.set_number)}">${platzhalterInhalt('set')}</span>`;
+    ? bildTag({ src: imgUrl(thumbUrl(src), 'nur'), alt: '', fade: true, ph: 'set' })
+    : `<span class="bild-ph" aria-hidden="true">${platzhalterInhalt('set')}</span>`;
   const themeShort = s.theme_name ? s.theme_name.split(' › ').pop() : '';
   const ownedBadge = s.owned
-    ? `<span class="ibadge" title="${t('catalog.owned')}">${ico('ok')}${s.owned_quantity>1?'×'+s.owned_quantity:''}</span>`
+    ? `<span class="ibadge besitz-badge">${ico('ok')}${t('catalog.owned_badge')}${s.owned_quantity>1?' ×'+s.owned_quantity:''}</span>`
     : '';
   // Der Thementon fuer das Design "farbfaecher" (themes/farbfaecher.css liest
   // ihn als --faecher-ton). Immer gesetzt, nicht nur bei aktivem Design: Die
@@ -344,8 +350,8 @@ function catCard(s){
       <div class="sname">${esc(s.name)||'—'}</div>
       <div class="smeta">
         <span class="smeta-text"${themeShort ? ` title="${esc(themeShort)}"` : ''}>${s.year||'—'}${themeShort?' · '+esc(themeShort):''}</span>
-        <div data-stil="display:flex;gap:3px;align-items:center;flex-wrap:wrap">
-          ${s.num_parts?`<span class="qbadge">${PARTS_ICON_SVG}${s.num_parts.toLocaleString(locale())}</span>`:''}
+        <div class="splaketten">
+          ${s.num_parts?`<span class="teile-zahl">${t('catalog.pieces_n', { n: s.num_parts.toLocaleString(locale()) })}</span>`:''}
           ${ownedBadge}
         </div>
       </div>

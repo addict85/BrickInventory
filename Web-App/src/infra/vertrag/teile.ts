@@ -98,7 +98,8 @@ export const routen = {
   'GET /api/v1/parts/categories': { antwort: PartsCategoriesResponse },
   'GET /api/v1/parts/manual': { antwort: ManualPartsResponse },
   'PUT /api/v1/parts/:partNumber/:colorId/color': { antwort: TeilFarbeResponse, eingabe: z.looseObject({ color_name: eingabe.text(100), color_hex: eingabe.farbcode() }) },
-  'POST /api/v1/parts/owned': { antwort: BestandResponse },
+  'POST /api/v1/parts/owned': { antwort: BestandResponse, eingabe: z.looseObject({
+    teile: z.array(z.looseObject({ part_number: z.union([z.string(), z.number()]).optional(), color_id: z.union([z.string(), z.number()]).nullable().optional() })).optional() }) },
   'POST /api/v1/parts': { antwort: AddPartResponse, eingabe: z.looseObject({
     part_number: eingabe.artikelnummer('part_number'), color_id: eingabe.farbe(), color_name: eingabe.text(100),
     color_hex: eingabe.farbcode(), quantity: eingabe.stueckzahl(), condition: eingabe.zustand(),

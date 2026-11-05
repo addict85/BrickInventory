@@ -1,12 +1,13 @@
 package ch.brickinventoryapp.ui.screens
 
+import ch.brickinventoryapp.ui.components.nebenKnopfFarben
+import ch.brickinventoryapp.ui.components.nebenKnopfRand
 import ch.brickinventoryapp.ui.model.kontoOptionen
 import ch.brickinventoryapp.ui.model.KontoAnsicht
 import ch.brickinventoryapp.ui.model.LagerortAnsicht
 import ch.brickinventoryapp.ui.model.MitgliedAnsicht
 import ch.brickinventoryapp.ui.theme.Formen
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material3.*
@@ -18,7 +19,6 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import ch.brickinventoryapp.ressourcen.R
 import ch.brickinventoryapp.data.ScopeFilter
 import ch.brickinventoryapp.ui.theme.Abstaende
@@ -106,7 +106,7 @@ fun LagerortFilterChip(
                     style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Medium)
             },
             trailingIcon = {
-                Icon(Icons.Default.ArrowDropDown, alle, Modifier.size(18.dp))
+                Icon(Icons.Default.ArrowDropDown, alle, Modifier.size(ch.brickinventoryapp.ui.components.mitSchrift(18.dp)))
             },
             shape = Formen.kachel,
         )
@@ -231,10 +231,10 @@ fun OwnerPicker(
     val current = members.firstOrNull { it.id == selected } ?: members.first()
 
     Box(modifier) {
-        OutlinedButton(onClick = { open = true }, shape = Formen.kachel) {
+        OutlinedButton(onClick = { open = true }, colors = nebenKnopfFarben(), border = nebenKnopfRand()) {
             Text(stringResource(R.string.household_for_account) + ": " + current.username,
                 style = MaterialTheme.typography.labelMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
-            Icon(Icons.Default.ArrowDropDown, null, Modifier.size(18.dp))
+            Icon(Icons.Default.ArrowDropDown, null, Modifier.size(ch.brickinventoryapp.ui.components.mitSchrift(18.dp)))
         }
         DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
             members.forEach { m ->

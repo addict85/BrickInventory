@@ -40,7 +40,7 @@ import { deleteManualPart } from './03-parts.js';
       'speichereTeilLagerort', 'startSetCsvImport', 'updateColorDot', 'uploadInstr', 'waehrungPruefen',
       'wantedKorrekturFarbe', 'wantedKorrekturNummer', 'wantedKorrekturWert',
       'wantedXmlGewaehlt', 'wechsleAlarmZustand']),
-    input: new Set(['alarmGetippt', 'emailGetippt', 'filterFigs']),
+    input: new Set(['alarmGetippt', 'filterFigs']),
     blur: new Set(['acqSave', 'lagerortGetippt', 'manAcqSave', 'saveManualFigBl']),
     keydown: new Set(['blurOnEnter', 'lagerortTaste']),
   };
@@ -55,7 +55,7 @@ import { deleteManualPart } from './03-parts.js';
     'revokeToken', 'revokeOtherTokens', 'passkeyHinzufuegen', 'passkeyLoeschen',
     'zfEinrichten', 'zfNeueCodes', 'zfAbschalten', 'zfZuruecksetzen',
     'createHouseholdInvite', 'redeemHouseholdInvite', 'unlinkHousehold', 'unlinkFromParent',
-    'delUser', 'toggleAdmin', 'toggleAktiv', 'openRpw', 'saveRegEnabled', 'importConfig',
+    'delUser', 'kontoFreischalten', 'toggleAdmin', 'toggleAktiv', 'openRpw', 'saveRegEnabled', 'importConfig',
     'auftragAbbrechen', 'auftragsArtLeeren',
   ]);
 
@@ -107,6 +107,9 @@ import { deleteManualPart } from './03-parts.js';
   document.addEventListener('keydown', ev => {
     const el = ev.target;
     if (!(el instanceof HTMLElement) || NATIV.has(el.tagName) || !el.hasAttribute?.('data-click') || !el.hasAttribute('tabindex')) return;
+    // Das Lösch-Kreuz der Karte ist ein Mauskürzel (aria-hidden, in der Karte kein Knopf erlaubt); Entf ist sein Tastaturweg.
+    const kreuz = ev.key === 'Delete' && el.matches('[aria-keyshortcuts~="Delete"]') ? el.querySelector(':scope > .ca > .delbtn') : null;
+    if (kreuz?.checkVisibility()) { ev.preventDefault(); /** @type {HTMLElement} */ (kreuz).click(); return; }
     const leer = ev.key === ' ' && el.getAttribute('role') === 'button';
     if (ev.key !== 'Enter' && !leer) return;
     ev.preventDefault();
@@ -125,6 +128,19 @@ import { deleteManualPart } from './03-parts.js';
     const id = form.getAttribute('data-submit');
     if (!id) return;
     const knopf = /** @type {HTMLButtonElement | null} */ (document.getElementById(id));
+    if (knopf && !knopf.disabled) knopf.click();
+  });
+  // Mit mehr als einem Textfeld und ohne Absendeknopf sendet der Browser bei
+  // Enter nicht ab (auch verborgene Felder zählen). Dann löst Enter hier den
+  // Knopf aus, den `data-submit` nennt.
+  document.addEventListener('keydown', ev => {
+    if (ev.key !== 'Enter' || ev.isComposing || ev.defaultPrevented) return;
+    const feld = ev.target;
+    if (!(feld instanceof HTMLInputElement) || /^(button|submit|reset|checkbox|radio|file|image)$/.test(feld.type)) return;
+    const id = feld.form?.getAttribute('data-submit');
+    if (!id || feld.form?.querySelector('[type="submit"]')) return;
+    ev.preventDefault();
+    const knopf = /** @type {HTMLButtonElement|null} */ (document.getElementById(id));
     if (knopf && !knopf.disabled) knopf.click();
   });
 

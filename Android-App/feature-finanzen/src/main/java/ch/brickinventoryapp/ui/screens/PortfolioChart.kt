@@ -1,12 +1,10 @@
 package ch.brickinventoryapp.ui.screens
 
-import ch.brickinventoryapp.ui.components.AuswahlChip
 import ch.brickinventoryapp.ui.theme.Formen
 import ch.brickinventoryapp.ui.theme.LocalStatusFarben
 import ch.brickinventoryapp.ui.theme.LocalChartColors
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -55,7 +53,6 @@ fun PortfolioChart(
     // Achsenschrift weniger Kontrast als überall sonst.
     Card(Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)) {
         Column(Modifier.padding(Abstaende.gross)) {
-
             // Titel und Veränderung; bei grosser Schrift rückt die Plakette darunter.
             FlowRow(Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -116,7 +113,7 @@ fun PortfolioChart(
                         val ih   = h - padT - padB
 
                         // X position for point i
-                        fun xOf(i: Int) = padL + (if (n == 1) iw/2f else i.toFloat()/(n-1)*iw)
+                        fun xOf(i: Int) = padL + (if (n == 1) iw / 2f else i.toFloat() / (n - 1) * iw)
                         // Y position from server y_frac (0=bottom, 1=top)
                         fun yOf(yFrac: Double) = (padT + ih - yFrac.toFloat() * ih)
 
@@ -127,7 +124,7 @@ fun PortfolioChart(
                             var xd = padL
                             while (xd < padL + iw) {
                                 drawLine(gridColor, Offset(xd, y),
-                                    Offset((xd+3f).coerceAtMost(padL+iw), y), 0.8f)
+                                    Offset((xd + 3f).coerceAtMost(padL + iw), y), 0.8f)
                                 xd += 6f
                             }
                             // Rechtsbündig und nie unter die Grundlinie: Die unterste
@@ -155,11 +152,11 @@ fun PortfolioChart(
                         val fp = Path().apply {
                             moveTo(xOf(0), padT + ih)
                             points.forEachIndexed { i, p -> lineTo(xOf(i), yOf(p.yFrac)) }
-                            lineTo(xOf(n-1), padT + ih)
+                            lineTo(xOf(n - 1), padT + ih)
                             close()
                         }
                         drawPath(fp, Brush.verticalGradient(
-                            listOf(fillStart, Color.Transparent), startY = padT, endY = padT+ih))
+                            listOf(fillStart, Color.Transparent), startY = padT, endY = padT + ih))
 
                         // Line
                         val lp = Path().apply {
@@ -174,7 +171,7 @@ fun PortfolioChart(
                         // Dots
                         points.forEachIndexed { i, p ->
                             val cx = xOf(i); val cy = yOf(p.yFrac)
-                            if (i == n-1) {
+                            if (i == n - 1) {
                                 drawCircle(Color.White, 5.5f, Offset(cx, cy))
                                 drawCircle(lineColor, 4f, Offset(cx, cy))
                             } else {

@@ -3,8 +3,6 @@ package ch.brickinventoryapp.data
 import ch.brickinventoryapp.data.model.TokenRotation
 import ch.brickinventoryapp.data.repository.Result
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
@@ -52,9 +50,10 @@ class TokenSchranke {
 }
 
 /**
- * Höchstdauer einer Anmeldung: Der Server kennt für App-Token nur die Gleitfrist
- * (TOKEN_IDLE_DAYS), und Tausch und Nutzung verlängern sie ohne Ende. Danach meldet
- * die App ab und entwertet den Token am Server; die Kette eines kopierten Tokens endet mit.
+ * Höchstdauer einer Anmeldung, dieselbe wie die harte Frist des Servers
+ * (APP_HOECHSTDAUER_TAGE in Web-App/routes/auth.ts; der Tausch erbt sie). Die
+ * Prüfung hier ist die zweite Linie: Die App meldet sich selbst ab und entwertet den
+ * Token, statt erst am 401 zu merken, dass die Kette zu Ende ist.
  */
 const val TOKEN_HOECHSTDAUER_TAGE = 180L
 
@@ -78,7 +77,8 @@ class TokenTausch(
     private val rotiere: suspend (alterToken: String) -> Result<GetauschterToken>,
     private val uhr: () -> Long = System::currentTimeMillis,
     private val pausen: List<Long> = listOf(2_000, 10_000, 30_000),
-    private val hintergrund: CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.IO),
+    /** Für [faellig]: der Anwendungsbereich, damit der Tausch das Verlassen eines Bildschirms überlebt. */
+    private val hintergrund: CoroutineScope,
 ) : ch.brickinventoryapp.di.Rotationsanlass {
     private val sperre = Mutex()
 

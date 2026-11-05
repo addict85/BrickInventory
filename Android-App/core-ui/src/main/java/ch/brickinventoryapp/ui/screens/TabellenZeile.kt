@@ -1,6 +1,5 @@
 package ch.brickinventoryapp.ui.screens
 
-import ch.brickinventoryapp.ui.components.AuswahlChip
 import androidx.compose.foundation.clickable
 import androidx.compose.ui.semantics.Role
 import androidx.compose.foundation.layout.*
@@ -16,7 +15,6 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.compose.ui.platform.LocalContext
 import coil3.ImageLoader
 import coil3.request.ImageRequest
@@ -80,7 +78,7 @@ fun TabellenZeile(
                 horizontalArrangement = Arrangement.spacedBy(10.dp),
             ) {
                 ch.brickinventoryapp.ui.components.ProduktBild(
-                    model = bildUrl?.let { ImageRequest.Builder(ctx).data(it).crossfade(true).build() },
+                    model = bildUrl?.let { ImageRequest.Builder(ctx).data(it).crossfade(!ch.brickinventoryapp.ui.components.bewegungReduziert()).build() },
                     imageLoader = imageLoader,
                     contentDescription = name,
                     onState = { st ->
@@ -174,11 +172,13 @@ fun Suchfeld(
         // Eine Zeile: Ein umbrechender Platzhalter machte das Feld doppelt so hoch
         // wie den Filterknopf daneben.
         placeholder = { Text(platzhalter, maxLines = 1, overflow = TextOverflow.Ellipsis) },
-        leadingIcon = { Icon(Icons.Default.Search, null, Modifier.size(20.dp)) },
+        leadingIcon = { Icon(Icons.Default.Search, null, Modifier.size(ch.brickinventoryapp.ui.components.mitSchrift(20.dp))) },
         trailingIcon = {
             if (wert.isNotEmpty()) {
-                IconButton(onClick = { onWert("") }) {
-                    Icon(Icons.Default.Clear, stringResource(R.string.cd_search_clear))
+                ch.brickinventoryapp.ui.components.MitTooltip(stringResource(R.string.cd_search_clear)) {
+                    IconButton(onClick = { onWert("") }) {
+                        Icon(Icons.Default.Clear, stringResource(R.string.cd_search_clear))
+                    }
                 }
             }
         },
@@ -203,6 +203,15 @@ fun Zustandszeile(
     /** Durchgereicht an [ConditionToggle] — siehe dort. */
     optionen: List<Pair<String, Int>> = ZUSTAND_NEU_GEBRAUCHT,
 ) {
+    // Ab 130 % Schrift steht die Beschriftung über der Wahl: In der festen Spalte
+    // daneben brach „Zustan|d“ mitten im Wort.
+    if (androidx.compose.ui.platform.LocalDensity.current.fontScale > 1.3f) {
+        Column(modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(Abstaende.klein)) {
+            Text(stringResource(R.string.common_condition), style = MaterialTheme.typography.bodyMedium)
+            ConditionToggle(selected = zustand, onSelect = onZustand, optionen = optionen)
+        }
+        return
+    }
     Row(
         verticalAlignment = Alignment.CenterVertically,
         modifier = modifier.fillMaxWidth(),

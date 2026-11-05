@@ -7,7 +7,6 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
-import androidx.compose.material.icons.automirrored.filled.Label
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -20,6 +19,8 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import ch.brickinventoryapp.ressourcen.R
 import ch.brickinventoryapp.ui.model.PreisalarmAnsicht
+import androidx.compose.foundation.text.KeyboardActions
+import ch.brickinventoryapp.alarm.Alarmeingabe
 import ch.brickinventoryapp.util.NumericInput
 import ch.brickinventoryapp.util.resolveThumbUrl
 import coil3.ImageLoader
@@ -34,6 +35,7 @@ import kotlinx.coroutines.launch
  * steht dabei, weil eine Schwelle ohne ihn nicht zu beurteilen ist; die Zeile
  * öffnet das Set nur, wenn es in der Sammlung liegt.
  */
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 internal fun PreisalarmeCard(
     vm: EinstellungenViewModel,
@@ -50,13 +52,11 @@ internal fun PreisalarmeCard(
     LaunchedEffect(Unit) { vm.ladeAlarmUebersicht() }
 
     SettingsCard(
-        title = stringResource(R.string.alerts_group),
+        title = stringResource(R.string.alerts_liste_titel),
         icon = Icons.Default.NotificationsActive,
     ) {
-        Text(stringResource(R.string.alerts_intro),
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.padding(bottom = Abstaende.klein))
+        ch.brickinventoryapp.ui.components.ErklaerText(stringResource(R.string.alerts_intro),
+            stringResource(R.string.alerts_intro_more), stil = MaterialTheme.typography.bodySmall)
 
         // `geladen` und nicht nur „Liste leer": Beim Aufbau stuende sonst kurz
         // „keine Alarme gesetzt", obwohl noch gar nichts abgerufen wurde.
@@ -68,8 +68,9 @@ internal fun PreisalarmeCard(
         for (a in uebersicht.alarme) {
             // Schluessel ist (Set, Zustand) — beides, sonst traegt das Feld des
             // einen Alarms den Wert des anderen, wenn ein Set beide hat.
+            // Als Betrag wie überall („750.00“), nicht als Rohzahl „750.0“.
             var wert by rememberSaveable(a.setNumber + a.condition) {
-                mutableStateOf(a.schwelle.toString())
+                mutableStateOf(ch.brickinventoryapp.util.fmtEingabe(a.schwelle))
             }
             // Reihenfolge wie in den Finanzen und in der Webapp: heruntergeladene
             // Kopie, eigene Adresse, Katalog. Fuer ein Set, das man nicht besitzt,
@@ -92,21 +93,21 @@ internal fun PreisalarmeCard(
                     FinanzBild(bildUrl, imageLoader, a.name)
                     Column(Modifier.weight(1f),
                            verticalArrangement = Arrangement.spacedBy(Abstaende.haar)) {
-                        // Erst benennen, dann setzen: Eine Zeichenkette mit
-                        // mehrzeiliger Interpolation ist gueltig und trotzdem
-                        // die Zeile, die beim naechsten Anfassen kippt.
+                        // Der Name zuerst wie in der Sammlung; Nummer und Zustand leiser
+                        // darunter. Ohne Namen trägt die Nummer die Zeile.
                         val zustand = if (a.condition == "U")
                             stringResource(R.string.condition_used)
                         else stringResource(R.string.condition_new)
-                        Text("${a.setNumber}  $zustand",
+                        Text(a.name ?: a.setNumber,
                             style = MaterialTheme.typography.bodyMedium,
                             fontWeight = FontWeight.SemiBold)
-                        a.name?.let {
-                            Text(it, style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        }
-                        Row(verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(Abstaende.klein)) {
+                        Text(if (a.name != null) "${a.setNumber} · $zustand" else zustand,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        // FlowRow: In einer Row nahm die Plakette die ganze Breite, und „zuletzt …“
+                        // brach Zeichen für Zeichen um. So rückt der Preis darunter, wenn es eng wird.
+                        FlowRow(horizontalArrangement = Arrangement.spacedBy(Abstaende.klein),
+                            verticalArrangement = Arrangement.spacedBy(Abstaende.haar)) {
                             AlarmZustandPlakette(a.ausgeloest)
                             a.zuletztPreis?.let {
                                 Text(stringResource(R.string.alerts_last,
@@ -116,43 +117,48 @@ internal fun PreisalarmeCard(
                             }
                         }
                     }
-                    IconButton(onClick = { fragtLoeschen = a }) {
-                        Icon(Icons.Default.Delete, stringResource(R.string.alerts_delete),
-                            tint = MaterialTheme.colorScheme.error)
-                    }
-                }
-                Row(verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(Abstaende.klein)) {
-                    Text(if (a.richtung == "unter") stringResource(R.string.alerts_below)
-                         else stringResource(R.string.alerts_above),
-                        style = MaterialTheme.typography.bodySmall)
-                    OutlinedTextField(
-                        value = wert,
-                        // Der Filter fehlte hier, die Zahlentastatur stand schon
-                        // da. Das ist die gefaehrlichere Haelfte: Die
-                        // Tastaturwahl ist eine Bitte, keine Zusicherung —
-                        // angestoepselte Tastatur und Zwischenablage liefern
-                        // trotzdem Buchstaben, und unten wurde daraus eine 0.
-                        onValueChange = { wert = NumericInput.price(it) },
-                        singleLine = true,
-                        suffix = { Text(a.currencyCode) },
-                        keyboardOptions = NumericInput.preisTastatur(),
-                        modifier = Modifier.weight(1f),
-                    )
-                    // Der Knopf erscheint nur, wenn eine andere Zahl im Feld steht — ein dauerhaft
-                    // sichtbarer Haken las sich wie „scharf“. Verglichen wird die Zahl, nicht der
-                    // Text. Ohne lesbare Zahl gibt es keinen Knopf: Eine Schwelle von 0 meldet nie
-                    // oder immer.
-                    val zahl = wert.replace(',', '.').toDoubleOrNull()
-                    if (zahl != null && zahl != a.schwelle) {
-                        IconButton(onClick = {
-                            vm.aendereAlarmSchwelle(a.setNumber, a.condition, a.richtung, zahl)
-                        }) {
-                            Icon(Icons.Default.Save, stringResource(R.string.settings_save),
-                                tint = MaterialTheme.colorScheme.primary)
+                    // Leise wie jede Zeilenaktion: Rot je Zeile übertönte die Preise; die
+                    // Rückfrage danach trägt das Gewicht.
+                    ch.brickinventoryapp.ui.components.MitTooltip(stringResource(R.string.alerts_delete_fuer, a.name ?: a.setNumber)) {
+                        IconButton(onClick = { fragtLoeschen = a }) {
+                            Icon(Icons.Default.Delete, stringResource(R.string.alerts_delete_fuer, a.name ?: a.setNumber),
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
                     }
                 }
+                // Ein Speichermodell wie im Set- und Merkposten-Detail: Getipptes speichert nach
+                // der Ruhezeit von selbst (im ViewModel, damit es das Verlassen übersteht), die
+                // Zeile darunter bestätigt. Die Richtung steht als Beschriftung im Feld, so
+                // beginnen alle Felder an derselben Stelle.
+                val zahl = Alarmeingabe.zahl(wert)
+                OutlinedTextField(
+                    value = wert,
+                    onValueChange = { roh ->
+                        wert = NumericInput.price(roh)
+                        vm.setzeAlarmSchwelle(a.setNumber, a.condition, a.richtung, wert)
+                    },
+                    singleLine = true,
+                    label = { Text(stringResource(if (a.richtung == "unter") R.string.detail_alert_chip_below
+                                                  else R.string.detail_alert_chip_above)) },
+                    suffix = { Text(a.currencyCode) },
+                    // Nur „Gespeichert“: Richtung, Betrag und Zustand stehen schon in Feld und
+                    // Plakette, die ganze Wiederholung darunter verdoppelte jede Zeile.
+                    supportingText = {
+                        if (zahl == a.schwelle) Row(verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(Abstaende.haar)) {
+                            Icon(Icons.Default.Check, null, Modifier.size(ch.brickinventoryapp.ui.components.mitSchrift(14.dp)))
+                            Text(stringResource(R.string.vm_saved))
+                        } else Text(stringResource(R.string.detail_alert_hint))
+                    },
+                    keyboardOptions = NumericInput.preisTastatur(),
+                    // „Fertig“ speichert sofort, ohne die Ruhezeit abzuwarten.
+                    keyboardActions = KeyboardActions(onDone = {
+                        if (zahl != null && zahl != a.schwelle) vm.aendereAlarmSchwelle(a.setNumber, a.condition, a.richtung, zahl)
+                    }),
+                    shape = Formen.feld,
+                    // Ein Betrag, keine Zeile Text: auf dem Tablet nicht über die ganze Karte.
+                    modifier = Modifier.widthIn(max = BETRAG_BREITE).fillMaxWidth(),
+                )
             }
         }
     }
@@ -163,7 +169,7 @@ internal fun PreisalarmeCard(
         AlertDialog(
             onDismissRequest = { fragtLoeschen = null },
             title = { Text(stringResource(R.string.alerts_delete)) },
-            text = { Text(stringResource(R.string.alerts_confirm_delete, a.setNumber)) },
+            text = { Text(stringResource(R.string.alerts_confirm_delete, a.name ?: a.setNumber)) },
             confirmButton = {
                 TextButton(onClick = {
                     fragtLoeschen = null
@@ -182,16 +188,19 @@ internal fun PreisalarmeCard(
     }
 }
 
+/** Breite eines Betragsfelds: Platz für Beschriftung, fünf Stellen und Währung. */
+private val BETRAG_BREITE = 320.dp
+
 /**
- * „scharf“ oder „unscharf“ ohne Farbe lesbar: Wort, Form (gefüllt/umrandet) und
- * Zeichen (● / ○) tragen es je einzeln. Farbe nur als Zugabe und nicht grün gegen
- * rot — bei Rot-Grün-Schwäche wäre das zweimal dasselbe. `secondaryContainer`
- * bringt jedes Design als „hervorgehoben, nicht dringend“ mit.
+ * „Aktiv“ oder „Ausgelöst“ ohne Farbe lesbar: Wort und Form (gefüllt/umrandet) tragen
+ * es je einzeln. Farbe nur als Zugabe und nicht grün gegen rot — bei Rot-Grün-Schwäche
+ * wäre das zweimal dasselbe. `secondaryContainer` bringt jedes Design als
+ * „hervorgehoben, nicht dringend“ mit.
  */
 @Composable
 private fun AlarmZustandPlakette(ausgeloest: Boolean) {
     val text = stringResource(if (ausgeloest) R.string.alerts_fired else R.string.alerts_armed)
-    // Gefuellt = scharf, umrandet = unscharf. Die Flaeche ist der Unterschied,
+    // Gefuellt = aktiv, umrandet = ausgeloest. Die Flaeche ist der Unterschied,
     // den man auch dann sieht, wenn die beiden Farben gleich aussehen.
     Surface(
         shape = Formen.chip,
@@ -200,16 +209,19 @@ private fun AlarmZustandPlakette(ausgeloest: Boolean) {
         border = if (ausgeloest)
             BorderStroke(1.dp, MaterialTheme.colorScheme.outline) else null,
     ) {
+        // Ein Wort, eine Zeile: Was der ausgelöste Alarm abwartet, sagt die Zeile unter dem Feld.
         Text(
             text,
+            maxLines = 1,
             style = MaterialTheme.typography.labelSmall,
-            // Auch das Gewicht traegt mit: Ein scharfer Alarm ist der Zustand,
+            // Auch das Gewicht traegt mit: Ein aktiver Alarm ist der Zustand,
             // auf den es ankommt.
             fontWeight = if (ausgeloest) FontWeight.Normal else FontWeight.SemiBold,
             color = if (ausgeloest) MaterialTheme.colorScheme.onSurfaceVariant
                     else MaterialTheme.colorScheme.onSecondaryContainer,
+            // Innenabstand wie ein Chip: Mit 4 dp berührte „Ausgelöst“ den Rand.
             modifier = Modifier.padding(
-                horizontal = Abstaende.winzig, vertical = Abstaende.haar),
+                horizontal = Abstaende.klein, vertical = Abstaende.haar),
         )
     }
 }

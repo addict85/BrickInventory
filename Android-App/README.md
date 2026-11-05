@@ -5,12 +5,13 @@ Kotlin + Jetpack Compose App für den BrickInventory Manager Server.
 ## Voraussetzungen
 - **JDK 17** (JDK 21 funktioniert ebenfalls) — `java -version` muss 17 oder
   höher melden
-- **Android SDK** mit Plattform **36** und Build-Tools **36.x**
-  (`compileSdk = targetSdk = 36`, siehe `app/build.gradle.kts`)
-- Android Studio in einer Fassung, die **AGP 9.2** versteht — nur nötig, wenn
+- **Android SDK** mit Plattform **37** (`compileSdk = targetSdk = 37`,
+  `minSdk = 30`, siehe `build-logic/…/Sdk.kt`); die passenden Build-Tools holt
+  AGP beim ersten Bau selbst, sobald die SDK-Lizenzen angenommen sind
+- Android Studio in einer Fassung, die **AGP 9.4** versteht — nur nötig, wenn
   in der IDE gearbeitet wird; auf der Kommandozeile reichen JDK und SDK
 - Gradle muss **nicht** installiert sein: der mitgelieferte Wrapper holt
-  Gradle 9.6.1 selbst (siehe *Gradle-Wrapper* weiter unten)
+  Gradle 9.8.2 selbst (siehe *Gradle-Wrapper* weiter unten)
 - BrickInventory Manager Server läuft und ist erreichbar
 
 ## Öffnen in Android Studio
@@ -43,7 +44,7 @@ Ohne Android Studio lässt sich das SDK mit den
 einrichten:
 
 ```bash
-sdkmanager --install "platform-tools" "platforms;android-36" "build-tools;36.0.0"
+sdkmanager --install "platform-tools" "platforms;android-37"
 sdkmanager --licenses
 ```
 
@@ -55,6 +56,7 @@ Danach:
 | `./gradlew assembleDebug` | `app/build/outputs/apk/debug/app-debug.apk` — mit dem Debug-Schlüssel signiert, direkt installierbar |
 | `./gradlew assembleRelease` | `app/build/outputs/apk/release/BrickInventory.apk` — minifiziert; signiert nur, wenn die Schlüsselwerte gesetzt sind (siehe unten) |
 | `./gradlew lintRelease` | `app/build/reports/lint-results-release.html` |
+| `./gradlew detekt` | Kotlin-Prüfung je Modul, Funde unter `*/build/reports/detekt/detekt.txt`; rot bei jedem Fund |
 | `./gradlew installDebug` | baut und installiert auf dem angeschlossenen Gerät (`adb devices`) |
 | `./gradlew clean` | löscht `app/build/` |
 
@@ -74,7 +76,7 @@ unter *Release signieren*.
 
 ### Erster Lauf dauert lange
 
-Der Wrapper lädt beim ersten Aufruf Gradle 9.6.1 (~140 MB), danach ziehen AGP,
+Der Wrapper lädt beim ersten Aufruf Gradle 9.8.2 (~140 MB), danach ziehen AGP,
 Kotlin, KSP und die Abhängigkeiten nochmals einige hundert MB. Das passiert
 einmal pro Rechner; Gradle legt alles unter `~/.gradle/` ab.
 
@@ -163,9 +165,12 @@ https-Adresse eintragen).
 
 | Weg | Was passiert |
 | --- | --- |
-| QR-Code mit `fp` | Der Fingerabdruck (SHA-256 des öffentlichen Schlüssels der Caddy-Wurzel) gilt schon für die erste Anfrage, gespeichert wird er erst nach gelungener Anmeldung. Weicht er von einem gespeicherten ab, zeigt der Dialog bisher/neu und verlangt ein ausdrückliches Ja. |
+| QR-Code mit `fp` | Der Fingerabdruck (SHA-256 des öffentlichen Schlüssels der Caddy-Wurzel) gilt schon für die erste Anfrage, gespeichert wird er erst nach gelungener Anmeldung. Ein Code kann von jedem stammen: Ohne Abtippen gilt er nur, wenn er auf eine System-Wurzel zeigt (deren Kette ohnehin öffentlich gültig sein muss) oder dem schon bestätigten Pin entspricht. Sonst verlangt der Dialog die letzten 24 Zeichen aus der Webapp (Einstellungen → Server-Zertifikat), beim ersten Einrichten wie bei einem abweichenden Pin. |
 | Adresse von Hand | Beim ersten Kontakt bricht der Handshake ab, bevor etwas gesendet wird. Ein Dialog zeigt den Fingerabdruck in derselben Schreibweise wie die Webapp unter Einstellungen → Server-Zertifikat (`AB:CD:…`): bei einer Kette, die das System kennt (öffentliche CA), den der Wurzel aus dem System-Speicher, sonst den des obersten Zertifikats der Kette. Gespeichert wird er erst nach ausdrücklicher Bestätigung (Trust on first use, abgesichert durch den Vergleich). |
-| Zertifikat später anders | Passt keine Kette mehr zum gespeicherten Fingerabdruck, geht nichts hinaus. Der Dialog zeigt den bisherigen und den neuen Fingerabdruck; übernommen wird nur, wenn man mindestens die letzten 16 Zeichen des neuen aus einer zweiten Quelle abschreibt (Webapp oder Zertifikatdetails des Browsers) — oder per neuem QR-Code. |
+| Zertifikat später anders | Passt keine Kette mehr zum gespeicherten Fingerabdruck, geht nichts hinaus. Der Dialog zeigt den bisherigen und den neuen Fingerabdruck; übernommen wird nur, wenn man mindestens die letzten 24 Zeichen des neuen aus einer zweiten Quelle abschreibt (Webapp oder Zertifikatdetails des Browsers) — oder per neuem QR-Code. |
+
+Unter einer gepinnten eigenen CA gilt nur ein Blatt, das einen Server
+ausweisen darf (EKU `serverAuth` oder gar keine EKU-Angabe).
 
 Weil die Wurzel gepinnt wird und nicht das Blatt, übersteht der Pin die
 regelmässige Erneuerung des Serverzertifikats durch Caddy. Andere Hosts
@@ -179,14 +184,106 @@ und schwärzt `Authorization`, `Cookie` und `Set-Cookie`. R8 entfernt im Release
 zusätzlich alle `android.util.Log`-Aufrufe (`proguard-rules.pro`).
 `ProtokollTest` verbietet rohe Log-Aufrufe ausserhalb der Hülle.
 
+## Daten auf dem Gerät
+
+Was zum Konto gehört, liegt verschlüsselt mit einem Schlüssel aus dem Keystore
+(`util/Ablageschluessel.kt`, AES-GCM, je Zweck abgeleitet und an Dateiname und
+Zweck gebunden):
+
+| Ablage | Wie |
+| --- | --- |
+| Bestand (Room) | SQLCipher |
+| API-Antworten, Widget-Zahlen | `AblageChiffre` |
+| Vorschau-Ablage `files/vorschau/` | `AblageChiffre`; Klartext älterer Fassungen wird verworfen |
+| Bild-Zwischenspeicher `cache/image_http_cache` | OkHttp-Cache auf `VerschluesseltesDateisystem`; Coil hat keinen eigenen Plattencache mehr, ein Klartext-Rest älterer Fassungen fällt beim Start weg |
+| Gutschein-PDF (Nummer, PIN) | nie auf der Platte: in den Speicher geladen, gerendert aus einem memfd, der mit dem Betrachter oder dem Prozess vergeht |
+| Bauanleitungen `cache/anleitung_*.bin` (höchstens 500 MB) | `VerschluesseltesDateisystem` (Zweck `anleitungen`, an den Dateinamen gebunden, Endmarker); angezeigt aus einem Bereich ohne Namen (siehe unten); beim Abmelden gelöscht, Klartext älterer Fassungen (`pdfview_*`) beim Start |
+| Teileliste-PDF `files/pdf/teileliste.pdf` | Klartext, weil die Ziel-App sie über den FileProvider liest; nach 30 Minuten gelöscht (WorkManager, dazu beim Start und beim Abmelden) |
+
+**Anleitungen anzeigen:** `PdfRenderer` braucht einen Deskriptor, in dem er
+springt. Bis 64 MB entschlüsselt der Betrachter in einen memfd; darüber
+(Anleitungen haben bis 300 MB) in eine Datei unter `cache/anleitung_anzeige/`,
+deren Name gelöscht wird, bevor das erste Byte Klartext hineinkommt. Ein
+memfd dieser Grösse belegte den Arbeitsspeicher der App und machte sie zum
+ersten Opfer des Low-Memory-Killers. Der Klartext ist dann nur über den
+offenen Deskriptor erreichbar, also für den, der ohnehin im Prozess der App
+steckt; er vergeht mit dem Betrachter oder dem Prozess. Drucken und
+Herunterladen gibt es nur für Anleitungen, nicht für Gutscheine (der
+Druckdialog kann „Als PDF speichern“).
+
+**Token-Schlüssel ohne `setUnlockedDeviceRequired`:** Preisalarm, Widget und
+Ausgang senden im Hintergrund, auch bei gesperrtem Gerät (Begründung in
+`util/TokenTresor.kt`). Abgefedert durch die Rotation mit Wiederverwendungs-
+erkennung am Server und die harte Höchstdauer von 180 Tagen.
+
+**Pins ohne eigenen Integritätsschutz (sec12 H6):** Pins und der Schalter für
+Nutzer-CAs liegen in `design_spiegel.xml` ohne HMAC. Schreiben kann dort nur,
+wer Root hat oder Code mit der UID der App ausführt; beide können den Keystore
+der App ebenso benutzen wie die App und damit auch einen HMAC fälschen. Gegen
+das Einspielen von aussen hilft schon, dass die Datei weder gesichert noch
+übertragen wird.
+
+**Update-Angebot nur aus frischer Beschreibung (sec12 H2):** Ist die signierte
+Beschreibung abgelaufen oder älter als eine schon gesehene, bietet die App kein
+Update an; die Einstellungen sagen, warum. Sonst hielte eine wieder
+eingespielte, echt signierte Beschreibung auf einer bekannt verwundbaren
+Zwischenfassung fest.
+
+## Manipulationsschutz (MASVS-RESILIENCE)
+
+Bewusst keine Root-, Debugger-, Hook- oder Play-Integrity-Prüfung. Die App ist
+quelloffen und selbst gehostet; wer sie auf seinem Gerät untersucht, ist in der
+Regel ihr Besitzer. Solche Prüfungen lassen sich mit Frida oder Magisk umgehen
+und sperren Nutzer eigener ROMs aus, ohne die Daten zu schützen. Was sie
+schützen soll, liegt an anderer Stelle: Der Server prüft jeden Zugriff,
+lokale Ablagen sind verschlüsselt, Updates sind signiert und werden vor der
+Installation geprüft.
+
+R8 verkleinert und benennt um. Die eigenen Keep-Regeln (`app/proguard-rules.pro`)
+halten nur, was über Reflexion oder das Framework erreicht wird: bei Workern
+Konstruktor und `doWork()`, Rooms Datenbank-Konstruktoren und die Modelle unter
+`data.model`. Die Modelle bleiben ganz, weil Retrofit ihre Serializer zur
+Laufzeit über den Typ sucht; das prüft keine Probe am fertigen APK, und die Namen
+stehen ohnehin im Vertrag mit dem Server.
+
+**PDFs im App-Prozess:** `PdfRenderer` (pdfium) öffnet nur PDFs des eigenen
+Servers (`pdfImBetrachter`). Ein kompromittierter eigener Server liegt
+ausserhalb des Bedrohungsmodells; pdfium gehört zum System und wird mit dessen
+Updates gepflegt, nicht mit der App.
+
+**TOTP-Geheimnis an die Authenticator-App:** immer über die Systemauswahl
+(`oeffneMitAuswahl`), nur `otpauth://totp|hotp`. Eine fremde App bekommt das
+Geheimnis nur, wenn man sie dort auswählt.
+
 ## Hinweise
-- Bildcaching erfolgt via Coil (automatisch)
+- Bilder lädt Coil über den Bild-Client; auf der Platte liegen nur dessen
+  verschlüsselter HTTP-Zwischenspeicher und die Vorschau-Ablage.
 
 
 ## Module
 
 Abhängigkeiten nur in diese Richtung: `app → feature-* → core-*`; kein Bereich
 kennt einen anderen (`ModulgrenzenTest` prüft es an den Build-Dateien).
+
+Den gemeinsamen Android-Block setzen Konventions-Plugins aus `build-logic/`
+(ein eigener Gradle-Bau, eingebunden in `settings.gradle.kts`, Plugin-IDs im
+Versionskatalog). Ein Modulskript nennt nur seine Plugins, den Namespace, seine
+Modulkanten und echte Zusatzabhängigkeiten:
+
+| Plugin | setzt |
+| --- | --- |
+| `brickinventory.android.library` | `com.android.library`, compileSdk/minSdk aus `Sdk.kt`, Java und Kotlin 17 |
+| `brickinventory.android.application` | dasselbe für `com.android.application`, dazu targetSdk |
+| `brickinventory.android.unittests` | JVM-Tests: `isReturnDefaultValues`, voller Stack im Protokoll, Gruppe `unit-tests` |
+| `brickinventory.android.compose` | Compose-Übersetzer, `buildFeatures.compose`, BOM und Gruppe `compose` |
+| `brickinventory.android.hilt` | KSP, Hilt, `hilt-android` und `hilt-compiler` |
+| `brickinventory.android.feature` | die vier oben und `core-ktx` — ein Bereich |
+| `brickinventory.detekt` | Aufgabe `detekt` (Regeln in `config/detekt/detekt.yml`, ohne Baseline); kommt mit library/application, `core-model` nennt es selbst |
+
+Modulkanten (`project(":…")`) trägt keine Konvention ein; sie stehen im Skript
+des Moduls, wo `ModulgrenzenTest` sie liest. Ein SDK-Sprung ist eine Zeile in
+`build-logic/convention/src/main/kotlin/ch/brickinventoryapp/buildlogic/Sdk.kt`.
+`core-model` bleibt reines Kotlin und braucht ausser detekt keine Konvention.
 
 | Modul | Inhalt |
 | --- | --- |
@@ -216,17 +313,14 @@ dem anderen zeigt, ist öffentlich, der Rest `internal`.
 ```
 
 Die Tests liegen neben dem Code ihres Moduls; was mehrere Bereiche zusammen
-prüft (Bildschirmfotos, Abläufe, Struktur), liegt in `app/src/test`.
+prüft (Bildschirmfotos, Abläufe, Struktur), liegt in `app/src/test`. Robolectric
+und Roborazzi laufen auf der JVM, ein Gerät braucht kein Test.
 
-- **CatalogYearMathTest** — Mathematik des Jahres-Scrubbers (Position ↔ Jahr,
-  Klemmen, Monotonie, Roundtrip, degenerierte Layouts). Die Logik ist dafür aus
-  der Composable nach `ui/CatalogYearMath.kt` extrahiert.
-- **CatalogSerializationTest** — Client-seitiger API-Vertrag: die Katalog-Modelle
-  parsen realistische Server-Antworten (gleiche Payload-Form wie im Server-
-  Integrationstest), inkl. unbekannter Zusatzfelder und fehlender Optionalfelder.
-  Nutzt dieselbe Json-Konfiguration wie `di/AppModule`.
-- **BrickLinkUrlsTest** — Kauf-Link-Format identisch zur Webapp
-  (`util/BrickLinkUrls.kt`).
+- `QuelltextRatscheTest` hält fest, wie viele Testdateien nur Quelltext lesen;
+  die Zahl darf sinken, nie steigen (siehe *Zwei Arten von Tests*).
+- `gegenproben/` enthält je Test einen Patch, der etwas kaputt macht; der
+  CI-Job `gegenproben` misst, dass der genannte Test dann rot wird
+  (`tools/gegenproben.py`).
 
 ## Abhängigkeiten und Lieferkette
 
@@ -253,8 +347,8 @@ gradle/wrapper/gradle-wrapper.properties   welche Fassung, und ihr Hash
 
 `gradle-wrapper.jar` wird bei **jedem** Build ausgeführt. Eine untergeschobene
 Fassung wäre beliebiger Code auf jedem Entwicklerrechner und in der CI —
-`.github/workflows/android.yml` prüft die Datei deshalb mit
-`gradle/actions/wrapper-validation` gegen die von Gradle veröffentlichten
+`gradle/actions/setup-gradle` prüft die Datei in jedem Gradle-Job von
+`.github/workflows/android.yml` gegen die von Gradle veröffentlichten
 Prüfsummen.
 
 Die Zeilenenden der beiden Startskripte hält `.gitattributes` fest: `gradlew`
@@ -268,12 +362,9 @@ heruntergeladene Gradle-Distribution gegen einen erwarteten Hash geprüft, statt
 blind ausgepackt zu werden — bei einer App, die einen langlebigen Bearer-Token
 hält, ist das die billigste Absicherung, die es gibt.
 
-Der eingetragene Wert stammt aus Gradles Veröffentlichung und gilt für
-`gradle-9.6.1-bin.zip`:
-
-```
-distributionSha256Sum=9c0f7faeeb306cb14e4279a3e084ca6b596894089a0638e68a07c945a32c9e14
-```
+Der eingetragene Wert stammt aus Gradles Veröffentlichung und gilt nur für die
+Fassung in `distributionUrl` derselben Datei. Ob er die amtliche Prüfsumme ist,
+misst `tools/gradle-wrapper-pruefen.py` in jedem CI-Job, bevor Gradle startet.
 
 **Beim Anheben der Gradle-Fassung muss die Zeile mitwandern**, sonst bricht der
 nächste Build mit „Verification of Gradle distribution failed" ab. Die neue
@@ -301,6 +392,10 @@ workflow* den Zweig wählen und `pruefsummen` ankreuzen. Der Lauf legt einen
 Zweig `pruefsummen/<Lauf>` und einen Pull-Request an; dessen Text listet neue
 Komponenten, geänderte Prüfsummen und neu vertraute Schlüssel — solche mit
 Gruppen-Regex zuerst, denn sie gelten für jedes künftige Paket der Gruppe.
+Solche Regex fasst Gradle selbst zusammen. Eine Liste einzelner Gruppen statt
+der Regex verfehlte Plugin-Marker (z. B. `com.android.library`), die nur über
+die Regex vertraut waren; deshalb bleibt es bei der Regex, und die Prüfsumme
+jedes Artefakts gilt zusätzlich.
 Dafür einmalig *Settings → Actions → General → Allow GitHub Actions to create
 and approve pull requests* einschalten; sonst bleibt nur der Zweig, und der
 Pull-Request wird von Hand gestellt. Die CI des Zweigs startet nicht von selbst
@@ -310,16 +405,15 @@ Pull-Request wird von Hand gestellt. Die CI des Zweigs startet nicht von selbst
 
 Diese Sprünge sind Umbauten und gehören einzeln gebaut und ausprobiert:
 
-- **Coil 2 → 3**: anderer Paketname (`coil3`), anderer `ImageLoader`-Aufbau.
-  Betrifft `di/AppModule.kt` und jede Kachel.
-- **OkHttp 4 → 5**: Interceptor-Stack und `okhttp-sse` sind betroffen; der
-  CSV-Import hängt daran.
 - **Navigation 2 → 3**: anderes Navigationsmodell, betrifft alle vier
   Teilgraphen.
-- **Compose BOM**: Der Sprung von `2024.09.03` auf eine aktuelle BOM zieht
-  Material3 und Foundation mehrere Minor-Versionen weiter. Einmal gross
-  springen und danach die Bildschirme durchklicken ist ehrlicher, als es in
-  einem Sammel-PR mitlaufen zu lassen.
+- **AGP 9.5**: Mit 9.5.0 fehlten im Release-APK Texte, die erreichbarer Code
+  benutzt; AGP bleibt auf 9.4.1, bis das geklärt ist (Begründung im
+  Versionskatalog bei `agp`).
+
+Die Stände stehen in `gradle/libs.versions.toml`; welche neuere Fassung es
+gibt, meldet der CI-Schritt „Sind die Abhängigkeiten auf der neuesten Fassung?“
+(`tools/fassungen-pruefen.py`).
 
 ## Zwei Arten von Tests
 
@@ -426,14 +520,32 @@ Unter **Settings → Environments → New environment** die Environment `release
 anlegen: *Deployment branches and tags* auf *Selected branches and tags* mit
 der **Etikett-Regel** `android-v*` (keine Zweig-Regel, auch nicht `main`) und
 *Required reviewers* setzen, *Prevent self-review* an. Die Jobs `signieren` und
-`release` warten dann je auf ein Ja. Dort unter *Environment secrets* vier
-Secrets anlegen.
+`release` warten dann je auf ein Ja. Dort unter *Environment secrets* die
+Secrets der Tabelle unten anlegen. Der Job `signieren` liest diese Regeln über die API und
+signiert nicht, wenn kein Pflichtprüfer eingetragen ist oder die Environment
+mehr als das Etikett `android-v*` zulässt.
+
+Unter **Settings → General → Releases** *Immutable releases* einschalten: Der
+Anhang `BrickInventory-<versionCode>.apk` im Release jedes Etiketts ist das,
+worauf die signierte Beschreibung zeigt; er soll sich nach dem Veröffentlichen
+nicht mehr ändern lassen. Der Workflow ersetzt ihn ohnehin nie.
 
 Dazu ein **Tag-Ruleset** (Settings → Rules → Rulesets → New tag ruleset) für
 `refs/tags/android-v*`: Anlegen, Ändern und Löschen nur für Administratoren
 (Bypass-Liste), *Restrict updates* und *Restrict deletions* an. Ein Etikett
 lässt sich sonst von jedem mit Schreibrecht setzen oder umhängen; der Workflow
-signiert ohnehin nur Commits, die auf `main` liegen.
+signiert ohnehin nur Commits, die auf `main` liegen. Dasselbe Ruleset auch für
+`refs/tags/apk-neuste` (*Restrict deletions*, *Restrict updates*).
+
+Das Release `apk-neuste` muss veränderlich bleiben (der Workflow ersetzt dort
+APK und Beschreibung); *Immutable releases* gilt nur für Releases, die nach dem
+Einschalten veröffentlicht werden, und schützt es darum nicht. Umgekehrt darf
+es bei eingeschalteter Einstellung nie gelöscht werden: Neu angelegt wäre es
+unveränderlich, und jedes weitere Hochladen scheiterte. Gegen ein
+Zurückhalten dort wirkt die Frist der Beschreibung (unten). Wer `contents:
+write` hat, kann Anhänge ersetzen: Schreibrecht nur an wenige Personen,
+Zwei-Faktor-Pflicht für die Organisation und fein granulierte Token mit
+Ablaufdatum statt klassischer PATs mit `repo`-Scope.
 
 **Übergang:** Gleichnamige Repository-Secrets danach löschen. Der Workflow
 braucht sie nicht mehr; solange sie bestehen, könnte jeder Job auf `main` sie
@@ -451,11 +563,74 @@ Vor dem Veröffentlichen prüft der Job `apk-pruefen` zweierlei
   (Rotation), kommt der neue Wert als zweite Zeile dazu. Ein Lauf ohne Etikett
   signiert mit einem Wegwerfschlüssel und muss genau an dieser Prüfung
   scheitern; so läuft sie bei jedem Bau.
-- **Fassung:** Der versionCode muss über dem des veröffentlichten
-  `version.json` liegen (gleich nur für denselben Commit). Ein Etikett auf einem
+- **Fassung:** Der versionCode muss über dem der veröffentlichten
+  Beschreibung liegen (gleich nur für denselben Commit); gelesen wird die
+  signierte, `version.json` nur, solange `apk-neuste` noch keine trägt. Ein Etikett auf einem
   älteren Commit von `main` wird so nicht zum „neusten APK“. Der Job `release`
   prüft dasselbe unmittelbar vor dem Hochladen noch einmal; zwei Etiketten
   laufen dort nacheinander (`concurrency: apk-neuste`).
+
+### Signierte Beschreibung, Prüfsumme des Baus
+
+- **`version-signiert.json`** (im Release `apk-neuste`): Der Job `signieren`
+  schreibt versionCode, versionName, Commit, die Adresse des
+  Fassungsanhangs, Grösse und SHA-256 des APK und signiert das zweimal
+  (`openssl dgst -sha256`): mit dem eigenen **Beschreibungsschlüssel**
+  (`beschreibungssignatur`, unten) und mit dem APK-Schlüssel (`signatur`, nur
+  noch für Fassungen ohne Beschreibungsschlüssel). Die App liest nur diese Datei
+  und prüft das geladene APK danach gegen die Prüfsumme. Wer nur Schreibrecht am
+  Repository hat, kann so kein Update umleiten oder eine ältere Fassung
+  anbieten. `apk-pruefen` prüft Signaturen und Inhalt vor dem Veröffentlichen.
+- **Frist (sec10 N1):** Die Beschreibung trägt `ausgestellt` und `gueltigBis`
+  (30 Tage, Sekunden seit 1970, UTC). Die App merkt sich den höchsten gesehenen
+  versionCode und den spätesten Ausstellungszeitpunkt. Eine ältere oder
+  abgelaufene Beschreibung meldet sie in den Einstellungen („veraltet oder
+  manipuliert“) statt „aktuell“; ein Zurückhalten durch erneutes Hochladen einer
+  alten Datei bleibt so nicht mehr still. **Auffrischen:** Spätestens alle 30
+  Tage ein neues Etikett `android-v…` setzen, notfalls auf denselben Commit von
+  `main`. Gleicher versionCode und Commit gelten dabei als Wiederholung, die App
+  bietet nichts an und sieht nur die neue Frist.
+- **`version.json` (unsigniert):** Nur noch bis zum Stichtag 01.02.2027 für
+  Fassungen vor sec8 N4, die die signierte Beschreibung nicht kennen; danach
+  löscht der Job `release` den Anhang. Ohne sie blieben diese Geräte ohne
+  Meldung auf ihrer Fassung; mit ihr holen sie sich einmal die neue und lesen
+  ab dann die signierte.
+- **Prüfsumme des Baus:** Der Baujob misst das unsignierte APK und Bundle gleich
+  nach `assembleRelease`, bevor Lint und weitere Gradle-Läufe Projektcode
+  ausführen; `signieren` signiert nur genau diese Bytes.
+- **Schlüsselrotation:** Mit Beschreibungsschlüssel hängt das Finden von Updates
+  nicht mehr am APK-Schlüssel; eine v3-Rotation betrifft nur noch Fassungen ohne
+  ihn. Für die muss eine Fassung lang auch die Beschreibung mit dem alten
+  APK-Schlüssel signiert sein (sie kennen nur ihren Signierer).
+
+### Beschreibungsschlüssel (sec11 H1)
+
+Ein Schlüssel signiert Daten nur für einen Zweck: Der APK-Schlüssel signiert
+APKs, die Beschreibung bekommt einen eigenen ECDSA-Schlüssel (P-256). Kennt die
+App einen solchen Schlüssel (`core-ressourcen/src/main/res/raw/beschreibungs_schluessel.pem`),
+nimmt sie nur noch dessen Signatur an; solange die Datei leer ist, gilt der
+Übergangsweg über die Signierer der App.
+
+Einrichten (einmalig, in dieser Reihenfolge):
+
+1. Schlüssel erzeugen, ausserhalb des Repositorys:
+   `openssl genpkey -algorithm EC -pkeyopt ec_paramgen_curve:P-256 -out beschreibung.pem`
+2. Den Inhalt von `beschreibung.pem` als Secret `BESCHREIBUNG_SCHLUESSEL` in die
+   Environment `release` legen. Ab dem nächsten Etikett trägt die Beschreibung
+   beide Signaturen.
+3. Den öffentlichen Teil (`openssl pkey -in beschreibung.pem -pubout`) an
+   `beschreibungs_schluessel.pem` anhängen und veröffentlichen. Ab dieser
+   Fassung gilt für die App nur noch die Beschreibungssignatur. Fehlt das Secret
+   bei einem Etikett, obwohl die App einen Schlüssel nennt, bricht `apk-pruefen`
+   ab, statt eine Beschreibung zu veröffentlichen, die die Geräte ablehnen.
+
+Wechseln: den neuen öffentlichen Schlüssel dazuschreiben und veröffentlichen,
+erst danach das Secret tauschen, den alten Eintrag später entfernen. Die App
+nimmt jeden Schlüssel der Datei an.
+
+Die Signatur mit dem APK-Schlüssel (`signatur`) bleibt, bis keine Fassung ohne
+Beschreibungsschlüssel mehr verbreitet ist; danach im Job `signieren` diese
+Signatur und in `apk-pruefen` ihre Prüfung entfernen.
 
 Dazu gehört eine Branch-Protection (oder ein Ruleset) auf `main`: Merge nur
 über Pull-Request mit grüner CI, kein Force-Push. Sonst genügt ein direkter
@@ -467,6 +642,7 @@ Push, um Code bis vor die Freigabe zu bringen.
 | `KEYSTORE_PASSWORT` | Passwort des Schlüsselspeichers |
 | `KEY_ALIAS`         | `brickinventory`              |
 | `KEY_PASSWORT`      | Passwort des Schlüssels       |
+| `BESCHREIBUNG_SCHLUESSEL` | privater Beschreibungsschlüssel (PEM, oben); bis zur Einrichtung leer |
 
 Der Job `signieren` schreibt den Schlüsselspeicher nach `$RUNNER_TEMP`, signiert
 das unsignierte APK aus dem Bau-Job mit `apksigner` aus dem SDK des Runners und

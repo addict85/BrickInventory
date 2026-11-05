@@ -229,6 +229,7 @@ const C = {
   'GET /api/v1/settings/household': 'nur-v1',
   'POST /api/v1/settings/household/invite': 'nur-v1',
   'POST /api/v1/settings/household/redeem': 'nur-v1',
+  'POST /api/v1/settings/household/redeem/pruefen': 'nur-web',
   'POST /api/v1/settings/household/unlink': 'nur-v1',
   'POST /api/v1/settings/household/former/dismiss': 'nur-v1',
   'POST /api/v1/admin/redownload-missing-images': 'nur-v1',
@@ -255,6 +256,8 @@ const C = {
   'POST /api/v1/auth/change-password': 'nur-v1',
   'POST /api/v1/auth/forgot-password': 'nur-v1',
   'POST /api/v1/auth/bestaetigung-erneut': 'nur-v1',
+  'POST /api/v1/auth/email-bestaetigen': 'nur-v1',
+  'POST /api/v1/auth/email-bestaetigen/vorschau': 'nur-v1',
   'POST /api/v1/auth/register': 'nur-v1',
   'POST /api/v1/minifigs/import/csv': 'nur-v1',
   // „Kann ich das bauen?“ (Nachtrag 174) — beide Oberflaechen rufen ihn,
@@ -398,8 +401,11 @@ const C = {
   'GET /api/v1/auth/users': 'nur-web',
   'POST /api/v1/auth/users': 'nur-web',
   'DELETE /api/v1/auth/users/:id': 'nur-web',
+  // Das eigene Konto löschen: endgültig, mit Passwort und zweitem Faktor; bewusst nur in der Webapp.
+  'DELETE /api/v1/auth/konto': 'nur-web',
   'PUT /api/v1/auth/users/:id/admin': 'nur-web',
   'PUT /api/v1/auth/users/:id/aktiv': 'nur-web',
+  'PUT /api/v1/auth/users/:id/freischalten': 'nur-web',
   'GET /api/v1/admin/protokoll': 'nur-web',
   'GET /api/v1/sets/export/rebrickable': 'nur-web',
   // Nachtrag 159: Beide waren „nur-web", weil die App sie nicht kannte — und

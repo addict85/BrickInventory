@@ -1,0 +1,23 @@
+Gegenprobe: die Anleitungen landen wieder im Klartext im Zwischenspeicher (Stand vor sec12 N1)
+Modul: core-data
+Test: ch.brickinventoryapp.AnleitungsAblageTest
+Rot: eine Anleitung liegt verschluesselt
+
+diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/util/AnleitungsAblage.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/util/AnleitungsAblage.kt
+index db3267a..0c99320 100644
+--- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/util/AnleitungsAblage.kt
++++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/util/AnleitungsAblage.kt
+@@ -48,11 +48,11 @@ class AnleitungsAblage(chiffre: AblageChiffre) {
+     /** Neu oder hinten anfügend; erst `close` schliesst mit dem Endmarker ab. */
+     fun schreibe(datei: File, fortsetzen: Boolean): OutputStream {
+         val pfad = datei.toOkioPath()
+-        return (if (fortsetzen) fs.appendingSink(pfad) else fs.sink(pfad)).buffer().outputStream()
++        return (if (fortsetzen) FileSystem.SYSTEM.appendingSink(pfad) else FileSystem.SYSTEM.sink(pfad)).buffer().outputStream()
+     }
+ 
+     /** Entschlüsselt beim Lesen; wirft IOException, wenn die Datei verändert oder gekürzt ist. */
+-    fun lies(datei: File): InputStream = fs.source(datei.toOkioPath()).buffer().inputStream()
++    fun lies(datei: File): InputStream = FileSystem.SYSTEM.source(datei.toOkioPath()).buffer().inputStream()
+ 
+     private companion object {
+         const val ZWECK = "anleitungen"

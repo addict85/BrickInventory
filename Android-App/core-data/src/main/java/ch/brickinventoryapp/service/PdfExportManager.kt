@@ -137,6 +137,8 @@ class PdfExportManager @Inject constructor(
                 is Result.Success -> {
                     val file = teilelistenAblage(context.filesDir, context.getExternalFilesDir(null))
                     file.outputStream().use { it.write(r.data) }
+                    // Das Inventar liegt im Klartext, solange die Ziel-App es lesen muss, nicht länger.
+                    runCatching { TeilelistenAufraeumer.plane(context) }
                     _state.value = PdfExportState.Done(file)
                 }
                 is Result.Error -> _state.value = PdfExportState.Error(r.message)
@@ -212,7 +214,10 @@ class PdfExportManager @Inject constructor(
                 override fun onFailure(eventSource: EventSource, t: Throwable?, response: Response?) {
                     // 404 = Endpoint nicht vorhanden → Fallback; andere Fehler = echter Fehler
                     if (response != null && response.code != 404 && response.code != 0) {
-                        _state.value = PdfExportState.Error(s(ch.brickinventoryapp.ressourcen.R.string.pdfexp_http_error, response.code))
+                        // 429 `zu_viele_verbindungen`: Der Rat steht im Code, nicht im Status.
+                        val code = runCatching { ch.brickinventoryapp.data.api.Fehlerrumpf.lies(response.peekBody(4096).string()).code }.getOrNull()
+                        _state.value = PdfExportState.Error(ch.brickinventoryapp.data.api.fehlerTextZuCode(code)?.let { s(it) }
+                            ?: s(ch.brickinventoryapp.ressourcen.R.string.pdfexp_http_error, response.code))
                         settle(false)
                     } else {
                         settle(null) // Fallback auf Polling

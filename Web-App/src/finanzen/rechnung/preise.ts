@@ -241,8 +241,11 @@ const _blTeil = nachschlagwerk(async (partNumber: string) => {
   return await blAbrufNummer('part', partNumber);
 });
 
-export async function resolveBlPartNumber(partNumber: string) {
+/** Mit `konto` zuerst dessen eigene Zuordnung (Migration 0094); sie geht am
+ * gemeinsamen Gedächtnis vorbei, weil sie nur für dieses Konto gilt. */
+export async function resolveBlPartNumber(partNumber: string, konto: number | null = null) {
   try {
+    if (konto !== null) return (await blAbrufNummer('part', partNumber, konto)) ?? partNumber;
     return (await _blTeil(partNumber)) ?? partNumber;
   } catch (_) { return partNumber; }
 }
@@ -290,10 +293,10 @@ export async function ladeFigurenpreiseVor(figuren: string[], currency: string, 
  * Ausführlich: docs/begruendungen/src/finanzen/rechnung/preise.ts.md#fetchpartprice
  * @param vorrat aus ladeTeilepreiseVor; fehlt ein Schlüssel, gibt es keinen frischen Eintrag. */
 export async function fetchPartPrice(partNumber: string, rbColorId: number, condition: string, currency: string, ttlHours: Stunden,
-                              vorrat: Map<string, any> | null = null) {
+                              vorrat: Map<string, any> | null = null, konto: number | null = null) {
   const ttl = Math.max(1, parseInt(String(ttlHours)));
   const colorId = await resolveBlColorId(rbColorId);
-  const blPartNumber = await resolveBlPartNumber(partNumber);
+  const blPartNumber = await resolveBlPartNumber(partNumber, konto);
   const fallbackCondition = condition === 'N' ? 'U' : 'N';
 
   const readCache = async (cond: string) => vorrat

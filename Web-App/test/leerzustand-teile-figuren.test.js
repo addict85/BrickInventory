@@ -47,7 +47,7 @@ test('Teile: beide leer — genau ein Leerzustand, der leere Kasten verschwindet
     const leer = d.querySelectorAll('#tab-parts .leer');
     assert.equal(leer.length, 1, `${leer.length} Leerzustände`);
     assert.ok(text(leer[0]).includes('Noch keine Teile'));
-    assert.ok(leer[0].querySelector('[data-click="oeffneErfassen"][data-arg="part"]'), 'Der Leerzustand bietet das Erfassen an');
+    assert.ok(d.querySelector('#tab-parts .erfassen-leiste [data-click="oeffneErfassen"][data-arg="part"]'), 'Die Leiste bietet das Erfassen an');
     // Dasselbe Symbol wie der Reiter „Teile" — kein Puzzleteil.
     assert.equal(leer[0].querySelector('.leer-ico use')?.getAttribute('href'),
       d.querySelector('.sammlung-wahl [data-arg="parts"] use')?.getAttribute('href'));

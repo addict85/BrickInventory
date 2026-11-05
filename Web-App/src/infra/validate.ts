@@ -4,7 +4,7 @@
 export const ITEM_NUMBER_RE = /^[A-Za-z0-9][A-Za-z0-9._/-]{0,63}$/;
 
 import { z } from 'zod';
-import { fehlerWerfen } from './fehlerTexte';
+import { fehlerWerfen, Meldung } from './fehlerTexte';
 
 /** Die Spalten sind integer (int4): Ein grösserer Wert endete als 500 in PostgreSQL. */
 export const GROESSTE_ID = 2 ** 31 - 1;
@@ -42,14 +42,19 @@ export function urlOderNull(text: string): URL | null {
   try { return new URL(text); } catch { return null; }
 }
 
+/** Nur eine reine Adresse: nodemailer liest `x<a@b.de>` oder `a@b.de,c` als Liste mit
+ * Anzeigenamen, Vergabeprüfung und Zieldrossel zählten dann eine andere Zeichenkette. */
+export const EMAIL_RE = /^[^\s@<>",;:()[\]\\]+@[^\s@<>",;:()[\]\\]+\.[^\s@<>",;:()[\]\\]+$/;
+export function emailGueltig(v: unknown): v is string {
+  return typeof v === 'string' && v.length <= 254 && EMAIL_RE.test(v) && !/\p{Cc}/u.test(v);
+}
+
 export function einmalDekodiert(text: string): string {
   try { return decodeURIComponent(text); } catch { return text; }
 }
 
 function fail(msg: string): never {
-  const e: any = new Error(msg);
-  e.status = 400;
-  throw e;
+  throw new Meldung(msg, 400);
 }
 
 export function requireItemNumber(value: any, field = 'part_number'): string {

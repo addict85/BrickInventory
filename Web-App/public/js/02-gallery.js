@@ -17,6 +17,21 @@ import { confirmDelete } from './01-rueckfrage.js';
 import { springe } from './00-ziele.js';
 import { leereLagerortFeld, selectedOwner, selectedStorage } from './02-konten-orte.js';
 
+/**
+ * Der Thementon für das Design „Farbfächer“ — auch in der Sammlung: Ohne ihn
+ * war das Design dort grau in grau. Ohne Thema-Nummer entscheidet der
+ * Themenname, damit ein Thema immer denselben Ton trägt.
+ * @param {any} s
+ */
+function faecherTon(s) {
+  if (Number.isInteger(s.theme_id)) return ` data-faecher="${((s.theme_id % 12) + 12) % 12}"`;
+  const name = String(s.theme || '').split(' / ')[0];
+  if (!name) return '';
+  let h = 0;
+  for (const z of name) h = (h * 31 + (z.codePointAt(0) ?? 0)) >>> 0;
+  return ` data-faecher="${h % 12}"`;
+}
+
 // ── STATS ─────────────────────────────────────────────
 export async function loadStats(){
   // Mit Kontofilter. Hier stand `api('GET', '/v1/stats')` ohne ihn — und das
@@ -27,9 +42,17 @@ export async function loadStats(){
   const d = await api('GET', '/v1/stats' + scopeQuery('gallery'));
   if (d.success) {
     // Die Kennzahlen stehen in jedem Design als Kacheln über der Sammlung.
-    G('bstat-sets').textContent     = d.stats.total_sets;
+    // Stück wie Teile und Figuren daneben; die Zahl der verschiedenen Sets steht darunter.
+    const stueck = d.stats.total_quantity || d.stats.total_sets;
+    G('bstat-sets').textContent     = fmtBig(stueck);
+    const verschieden = G('bstat-sets').parentElement?.querySelector('.bstat-s');
+    if (verschieden) verschieden.textContent = stueck !== d.stats.total_sets ? tRaw('gallery.stat.verschieden', { n: d.stats.total_sets }) : '';
     G('bstat-parts').textContent    = fmtBig(d.stats.total_parts    || 0);
-    G('bstat-parts-sub').textContent = teileAufschluesselung(d.stats.set_parts, d.stats.manual_parts);
+    // 0 Teile trotz Sets heisst: Die Teilelisten fehlen noch. Ohne den Satz sähe es nach einem Fehler aus.
+    const ohneListen = !d.stats.total_parts && d.stats.total_sets > 0;
+    G('bstat-parts-sub').textContent = ohneListen ? tRaw('parts.stat.ohne_listen', { n: d.stats.total_sets })
+      : teileAufschluesselung(d.stats.set_parts, d.stats.manual_parts);
+    G('bstat-parts').closest('.bstat')?.classList.toggle('bstat-erklaert', ohneListen);
     G('bstat-minifigs').textContent = fmtBig(d.stats.total_minifigs || 0);
     G('bstat-instr').textContent    = d.stats.total_instructions;
   }
@@ -156,6 +179,7 @@ function bindGallerySentinel(){
  * und stellt die Scrollposition nach dem Zeichnen wieder her.
  */
 export async function loadGallery(opts = {}){
+  filterZahlZeigen();
   // Tiefe und Position merken, BEVOR irgendetwas zurückgesetzt wird.
   const tiefe   = opts.restore ? Math.max(1, _galPage) : 1;
   const scrollY = opts.restore ? window.scrollY : null;
@@ -256,14 +280,15 @@ export function updateGalleryPrices(){
  */
 function preisZeile(s){
   const kauf = s.avg_purchase_price ?? s.max_purchase_price;
-  const markt = !!s._price;
-  const betrag = markt ? fmtN(s._price, CURRENCY) : (kauf != null ? fmtGeld(kauf, CURRENCY) : '');
-  const pnl = pnlBadge(s._pnl_pct, kauf);
+  // Der Server sagt, woher kachel_preis stammt: Ohne Marktpreis ist es der Kaufpreis.
+  const markt = !!s._price && (s._quelle ? s._quelle === 'markt' : true);
+  const betrag = markt ? fmtN(s._price, CURRENCY) : (kauf != null ? fmtGeld(kauf, CURRENCY) : (s._price ? fmtGeld(s._price, CURRENCY) : ''));
+  // Ein Geschenk steht als Plakette beim Zustand: Im Preiskasten las es sich als Eigenschaft des Marktpreises.
+  const pnl = istGeschenk(kauf) ? '' : pnlBadge(s._pnl_pct, kauf);
   if (!betrag && !pnl) return '';
-  const art = betrag ? `<span class="preis-art">${t(markt ? 'gallery.card.market' : 'gallery.card.paid')}</span> ` : '';
-  const pct = pnl && !istGeschenk(kauf)
-    ? `<span title="${esc(tRaw('gallery.card.pnl_hint'))}"><span class="vh">${t('gallery.card.pnl_hint')}: </span>${pnl}</span>` : pnl;
-  return `<span>${art}<span class="preis">${betrag}</span></span>${pct}`;
+  const art = betrag ? `<span class="preis-art">${t(markt ? 'gallery.card.market' : 'gallery.card.paid')}</span>` : '';
+  const pct = pnl ? `<span title="${esc(tRaw('gallery.card.pnl_hint'))}"><span class="vh">${t('gallery.card.pnl_hint')}: </span>${pnl}</span>` : '';
+  return `${art}<span class="preis">${betrag}</span>${pct ? `<span class="preis-pnl">${pct}</span>` : ''}`;
 }
 
 function gridCard(s){
@@ -272,8 +297,8 @@ function gridCard(s){
   // Sets ohne lokale Kopie laufen über den Proxy — dort erzeugt imgUrl(…, true)
   // die verkleinerte Fassung, sonst käme die volle Auflösung für eine Kachel.
   const thumb=src?imgUrl(thumbUrl(src)||src, true):null;
-  const alt = s.name || s.set_number;
-  const img=src?bildTag({ src: thumb||src, alt, orig: imgUrl(fullUrl(src)), fade: true, ph: 'set' }):`<span class="bild-ph" role="img" aria-label="${esc(alt)}">${platzhalterInhalt('set')}</span>`;
+  // Ohne Alternativtext: Die Kachel ist ein Knopf, ihr Text nennt das Set schon.
+  const img=src?bildTag({ src: thumb||src, alt: '', orig: imgUrl(fullUrl(src)), fade: true, ph: 'set' }):`<span class="bild-ph" aria-hidden="true">${platzhalterInhalt('set')}</span>`;
   // Ohne geladenen Marktpreis der mengengewichtete Kaufpreis. Vorher stand
   // hier max_purchase_price — bei 2x100 und 1x160 zeigte die Kachel 160 statt
   // der tatsächlichen 120.
@@ -287,7 +312,7 @@ function gridCard(s){
   // Ohne Jahr, Thema und echten Namen kennt der Katalog die Nummer (noch) nicht.
   const unbekannt = !s.year && !s.theme && (!s.name || s.name === 'Set ' + s.set_number);
   // Kein aria-label: Der Name kommt aus dem Inhalt, sonst fehlte dem Vorleser, was sichtbar dasteht.
-  return `<div class="sc" tabindex="0" role="button" data-click="openModal" data-arg="${escJs(s.set_number)}">
+  return `<div class="sc"${faecherTon(s)} tabindex="0" role="button" aria-keyshortcuts="Delete" data-click="openModal" data-arg="${escJs(s.set_number)}">
     <div class="ca"><span class="delbtn" data-click="delSetStop"${echt()} aria-hidden="true" data-arg="${esc(s.set_number)}" title="${esc(t('detail.delete'))}">${TRASH_ICON_SVG}</span></div>
     <div class="sci">${img}</div>
     <div class="scb">
@@ -295,16 +320,17 @@ function gridCard(s){
       <div class="sname">${esc(s.name)||t('common.unknown')}</div>
       <div class="smeta">
         <span class="smeta-text"${s.theme ? ` title="${esc(s.theme)}"` : ''}>${s.year||'—'}${s.theme?' · '+esc(s.theme):''}</span>
-        <div data-stil="display:flex;gap:3px;align-items:center;flex-wrap:wrap">
+        <div class="splaketten">
           ${s.instructions?.length?`<span class="ibadge">${ico('liste')}${s.instructions.length}</span>`:''}
           ${s.quantity>1?`<span class="qbadge">×${s.quantity}</span>`:''}
           ${condBadge}
+          ${istGeschenk(s.avg_purchase_price ?? s.max_purchase_price) ? `<span class="geschenk-badge">${t('finance.gift')}</span>` : ''}
           ${unbekannt ? `<span class="unbekannt-badge" title="${esc(tRaw('gallery.card.unbekannt_hint'))}">${t('gallery.card.unbekannt')}</span>` : ''}
           ${ownerBadges(s)}
         </div>
       </div>
       <div class="price-badge" data-price-for="${esc(s.set_number)}"${preis ? '' : ' hidden'}>${preis}</div>
-      ${kaufFmt ? `<div class="kachel-datum" title="${esc(t('gallery.card.bought'))}">${ico('kalender')} <span>${t('detail.added')}</span> ${kaufFmt}</div>` : ''}
+      ${kaufFmt ? `<div class="kachel-datum" title="${esc(t('gallery.card.bought'))}">${ico('kalender')} <span>${t('detail.added')}</span> ${kaufFmt}</div>` : '<div class="kachel-datum" aria-hidden="true"></div>'}
     </div>
   </div>`;
 }
@@ -342,16 +368,44 @@ function unbekanntZuruecksetzen() {
 async function setUnbekannt(num) {
   const nr = /-\d+$/.test(num) ? num : num + '-1';
   if (G('add-num').dataset.bestaetigt === nr) return false;
+  const box = G('add-unbekannt');
+  // Erst die eigene Sammlung: Ein vorhandenes Set ist nie „unbekannt“, und
+  // der Server legt es ohnehin nicht doppelt an, sondern öffnet es.
+  const eigen = await api('GET', `/v1/sets/${encodeURIComponent(nr)}`);
+  if (eigen?.success && eigen.set) {
+    G('add-num').dataset.bestaetigt = nr;
+    box.innerHTML = `${esc(tRaw('gallery.add.schon_da', { num: nr, name: eigen.set.name || nr, n: eigen.set.quantity || 1 }))}
+      <button type="button" class="btn bs btn-sm" data-click="erfassenZumSet" data-arg="${esc(nr)}">${ico('set')}${esc(tRaw('gallery.add.zum_set'))}</button>`;
+    box.hidden = false;
+    G('btn-add-text').textContent = tRaw('gallery.add.zum_set');
+    return true;
+  }
   const d = await api('GET', `/v1/catalog/sets/${encodeURIComponent(nr)}`);
   if (d?.success) return false;
-  if (d?.status && d.status !== 404 && d.code !== 'set_nicht_im_katalog') return false;
+  const ursache = d?.code === 'katalog_nicht_geladen' ? 'gallery.add.katalog_fehlt'
+    : d?.code === 'set_nicht_im_katalog' || d?.status === 404 ? 'gallery.add.unbekannt' : null;
+  if (!ursache) return false;
   G('add-num').dataset.bestaetigt = nr;
-  const box = G('add-unbekannt');
-  box.textContent = tRaw('gallery.add.unbekannt', { num: nr });
+  box.textContent = tRaw(ursache, { num: nr });
   box.hidden = false;
   G('btn-add-text').textContent = tRaw('gallery.add.trotzdem');
   return true;
 }
+/** Aus dem Erfassen-Dialog direkt zum vorhandenen Set. */
+export function erfassenZumSet(nr) {
+  G('add-num').value = '';
+  unbekanntZuruecksetzen();
+  schliesseErfassen();
+  springe('setDetail', nr);
+}
+
+/** Am Telefon steckt der Filter hinter einem Sinnbild; die Zahl sagt, dass gerade gefiltert wird. */
+export function filterZahlZeigen() {
+  const zahl = G('gallery-filter-zahl'); if (!zahl) return;
+  const n = ['gtheme', 'storage-gallery'].filter(id => /** @type {HTMLInputElement | null} */ (G(id))?.value).length;
+  zahl.textContent = n ? String(n) : ''; zahl.hidden = !n;
+}
+
 
 async function doAddSet(){
   const num=G('add-num').value.trim(), qty=parseInt(G('add-qty').value)||1;
@@ -557,7 +611,7 @@ export async function delSet(sn){
   if(!await confirmDelete(tRaw('gallery.delete.title'), t('gallery.delete.name_parts',{name}))) return false;
   const d=await api('DELETE',`/v1/sets/${sn}`);
   if(!d.success){ toast(d.error,'error'); return false; }
-  geloeschtMitRueckgaengig(tRaw('users.deleted',{name:sn}), d);
+  geloeschtMitRueckgaengig(tRaw('users.deleted',{name}), d);
   // Alles nachladen, was mitgelöscht wurde. loadStats() fehlte: Die Kennzahlen
   // im Kopf (Sets, Einheiten, Teile, Minifiguren) blieben nach dem Löschen auf
   // dem alten Stand, obwohl die Teile und Minifiguren des Sets mit weg sind.
@@ -582,12 +636,13 @@ export async function enrichGalleryWithPrices(){
   // kachel_pnl_pct in /finance/pnl, src/finanzen/setValue.ts kachelWerte); im
   // Haushalt tragen alle Zeilen eines Sets dieselben Werte.
   for(const s of pnl.sets){
-    if(!_pnlCache[s.set_number]) _pnlCache[s.set_number] = { price: s.kachel_preis, pnl_pct: s.kachel_pnl_pct };
+    if(!_pnlCache[s.set_number]) _pnlCache[s.set_number] = { price: s.kachel_preis, pnl_pct: s.kachel_pnl_pct, quelle: s.kachel_quelle };
   }
   // Inject price data into cached sets
   setAllSets(allSets.map(s => ({
     ...s,
     _price:   _pnlCache[s.set_number]?.price || 0,
+    _quelle:  _pnlCache[s.set_number]?.quelle,
     _pnl_pct: _pnlCache[s.set_number]?.pnl_pct ?? undefined
   })));
   // Nur die Preis-Container nachtragen statt die ganze Galerie neu zu bauen —
@@ -621,6 +676,7 @@ registerActions({
   reimportParts,
   renderGallery,
   startSetCsvImport,
+  erfassenZumSet,
 });
 
 

@@ -4,7 +4,9 @@ import type { KatalogTeil, ListenTeil, SetStamm } from '../dienst';
 import * as db from '../../../db/database';
 
 export function setStamm(setNumber: string) {
-  return db.get<SetStamm>('SELECT name, year, theme, pieces, image_url, image_local FROM set_stamm WHERE set_number = $1', [setNumber]);
+  return db.get<SetStamm>(`SELECT name, year, theme, pieces, image_url, image_local,
+    name = 'Set ' || set_number AND year IS NULL AND theme IS NULL AND pieces IS NULL AS platzhalter
+    FROM set_stamm WHERE set_number = $1`, [setNumber]);
 }
 
 export function setKatalog(setNumber: string) {
@@ -31,7 +33,7 @@ export function katalogTeileDesSets(setNumber: string) {
   return db.all<KatalogTeil>(`SELECT c.part_number, c.color_id, ${blNummerSql('c.part_number')} AS bl_part_number,
             c.part_name, c.color_name, c.color_hex, c.image_url, c.image_local
        FROM set_parts_catalog c
-       ${blJoin('c.part_number', 'part')}
+       ${blJoin('c.part_number', 'part', null)}
       WHERE c.set_number = $1`, [setNumber]);
 }
 
