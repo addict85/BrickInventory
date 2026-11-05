@@ -16,6 +16,7 @@ import { esc } from './00-escapen.js';
 import { confirmDelete } from './01-rueckfrage.js';
 import { springe } from './00-ziele.js';
 import { leereLagerortFeld, selectedOwner, selectedStorage } from './02-konten-orte.js';
+/** @typedef {import('./00-zustand.js').Kachel} Kachel */
 
 /**
  * Der Thementon für das Design „Farbfächer“ — auch in der Sammlung: Ohne ihn
@@ -39,8 +40,8 @@ export async function loadStats(){
   // ausgerechnet loadStats() gleich nach loadGallery() auf. Etwas neu zu laden,
   // das sich nicht ändern kann, ergibt nur einen Sinn, wenn es sich ändern …
   // Ausführlich: docs/begruendungen/public/js/02-gallery.js.md#d
-  const d = await api('GET', '/v1/stats' + scopeQuery('gallery'));
-  if (d.success) {
+  const d = await api('GET', `/v1/stats${scopeQuery('gallery')}`);
+  if (d.success && d.stats) {
     // Die Kennzahlen stehen in jedem Design als Kacheln über der Sammlung.
     // Stück wie Teile und Figuren daneben; die Zahl der verschiedenen Sets steht darunter.
     const stueck = d.stats.total_quantity || d.stats.total_sets;
@@ -51,10 +52,10 @@ export async function loadStats(){
     // 0 Teile trotz Sets heisst: Die Teilelisten fehlen noch. Ohne den Satz sähe es nach einem Fehler aus.
     const ohneListen = !d.stats.total_parts && d.stats.total_sets > 0;
     G('bstat-parts-sub').textContent = ohneListen ? tRaw('parts.stat.ohne_listen', { n: d.stats.total_sets })
-      : teileAufschluesselung(d.stats.set_parts, d.stats.manual_parts);
+      : teileAufschluesselung(d.stats.set_parts ?? 0, d.stats.manual_parts ?? 0);
     G('bstat-parts').closest('.bstat')?.classList.toggle('bstat-erklaert', ohneListen);
     G('bstat-minifigs').textContent = fmtBig(d.stats.total_minifigs || 0);
-    G('bstat-instr').textContent    = d.stats.total_instructions;
+    G('bstat-instr').textContent    = String(d.stats.total_instructions);
   }
 }
 
@@ -65,8 +66,7 @@ let curView='grid';
  * Übernimmt das vom Server gelieferte Zustands-Aggregat eines Sets in die
  * Galerie-Liste und zeichnet neu.
  * Ausführlich: docs/begruendungen/public/js/02-gallery.js.md#applysetaggregate
- * @param {{set_number:string, condition?:string, acq_count?:number,
- *          used_count?:number, max_purchase_price?:number|null}|undefined} agg
+ * @param {Partial<Kachel> | null | undefined} agg
  */
 export function applySetAggregate(agg){
   if (!agg?.set_number) return;
@@ -82,7 +82,10 @@ export function applySetAggregate(agg){
 const GAL_PAGE_SIZE = 60;
 let _galGen = 0, _galPage = 1, _galDone = false, _galLoadingMore = false, _galTotal = 0;
 
-/** Aktuelle Filter- und Sortierwerte als Query-Parameter. */
+/**
+ * Aktuelle Filter- und Sortierwerte als Query-Parameter.
+ * @param {number} page
+ */
 function galleryParams(page, pageSize = GAL_PAGE_SIZE){
   const p = new URLSearchParams();
   p.set('page', String(page));
@@ -114,7 +117,10 @@ async function loadGalleryMore(){
   finally { if (gen === _galGen) _galLoadingMore = false; }
 }
 
-/** Hängt eine Folgeseite an, ohne die bereits gezeichneten Kacheln neu zu bauen. */
+/**
+ * Hängt eine Folgeseite an, ohne die bereits gezeichneten Kacheln neu zu bauen.
+ * @param {Kachel[]} batch
+ */
 function appendGallery(batch){
   const c = G('gallery');
   const grid = c.querySelector('.sgrid');
@@ -265,7 +271,7 @@ export function renderGallery(){
 export function updateGalleryPrices(){
   const bySet = new Map(allSets.map(x => [x.set_number, x]));
   alle('[data-price-for]').forEach(el => {
-    const s = bySet.get(el.dataset.priceFor);
+    const s = bySet.get(el.dataset.priceFor ?? '');
     if (!s) return;
     const inhalt = preisZeile(s);
     el.innerHTML = inhalt;
@@ -277,6 +283,7 @@ export function updateGalleryPrices(){
  * Preis und Prozent der Kachel mit Beschriftung: Ohne sie war nicht zu sehen,
  * ob der Betrag Markt- oder Kaufpreis ist und wogegen das Prozent rechnet.
  * Ohne geladenen Marktpreis steht der mengengewichtete Kaufpreis da.
+ * @param {Kachel} s
  */
 function preisZeile(s){
   const kauf = s.avg_purchase_price ?? s.max_purchase_price;
@@ -291,6 +298,7 @@ function preisZeile(s){
   return `${art}<span class="preis">${betrag}</span>${pct ? `<span class="preis-pnl">${pct}</span>` : ''}`;
 }
 
+/** @param {Kachel} s */
 function gridCard(s){
   const src=s.image_local||s.image_url||'';
   // thumbUrl() greift nur bei lokal abgelegten Bildern (_thumb-Variante).
@@ -334,6 +342,7 @@ function gridCard(s){
     </div>
   </div>`;
 }
+/** @param {Kachel} s */
 function tableRow(s){
   const src=s.image_local||s.image_url||'';
   const addedFmt = s.added_at ? fmtDatum(s.added_at) : '—';
@@ -365,6 +374,9 @@ function unbekanntZuruecksetzen() {
   G('btn-add-text').textContent = tRaw('gallery.add.submit');
 }
 
+/**
+ * @param {string} num
+ */
 async function setUnbekannt(num) {
   const nr = /-\d+$/.test(num) ? num : num + '-1';
   if (G('add-num').dataset.bestaetigt === nr) return false;
@@ -391,7 +403,10 @@ async function setUnbekannt(num) {
   G('btn-add-text').textContent = tRaw('gallery.add.trotzdem');
   return true;
 }
-/** Aus dem Erfassen-Dialog direkt zum vorhandenen Set. */
+/**
+ * Aus dem Erfassen-Dialog direkt zum vorhandenen Set.
+ * @param {string} nr
+ */
 export function erfassenZumSet(nr) {
   G('add-num').value = '';
   unbekanntZuruecksetzen();
@@ -460,9 +475,9 @@ async function doAddSet(){
 
 // CSV import via SSE stream — Datei-Auswahl startet den Import direkt (analog Teile-Import)
 async function startSetCsvImport(){
-  const fi=G('csv-file'); if(!fi.files[0]){toast(tRaw('csv.select_file'),'error');return;}
+  const fi=G('csv-file'); if(!fi.files?.[0]){toast(tRaw('csv.select_file'),'error');return;}
   showProgress(t('csv.import_title'), true);
-  const fd=new FormData(); fd.append('file',fi.files[0]);
+  const fd=new FormData(); fd.append('file',/** @type {File} */ (fi.files?.[0]));
   try{
     // Start import job (returns immediately)
     const startData = await api('POST', '/v1/sets/import/csv', fd);
@@ -478,7 +493,7 @@ async function startSetCsvImport(){
     G('btn-cancel-import').style.display='inline-flex';
 
     // Fortschritt bevorzugt über SSE; nur bei Ausfall Polling-Fallback.
-    const ctx = { total, prevDone:-1, prevResultCount:0 };
+    const ctx = { total: total ?? 0, prevDone: /** @type {number | null | undefined} */ (-1), prevResultCount:0 };
     // Ohne `?token=` — dieselbe Begründung wie an der Zwillingsstelle in
     // 01-core.js: das Cookie trägt den Kanal, der Token in der Adresse wäre
     // nur der Sitzungstoken im Protokoll.
@@ -515,12 +530,17 @@ async function startSetCsvImport(){
 
 // Verarbeitet ein CSV-Status-Objekt fürs Overlay des startenden Fensters.
 // Gibt true zurück, wenn der Import abgeschlossen ist.
+/**
+ * @param {import('./01-fortschritt.js').ImportStand} s
+ * @param {{ total: number, prevDone: number | null | undefined, prevResultCount: number }} ctx
+ * @param {HTMLInputElement | null} fi
+ */
 function csvApplyOverlayStatus(s, ctx, fi){
   if(!s.success) return true;
   const total = ctx.total;
   if(s.done !== ctx.prevDone){
     ctx.prevDone = s.done;
-    const done = s.done;
+    const done = s.done ?? 0;
     const pct = total>0 ? (done/total)*95 : 0;
     setProgBar(pct);
     G('prog-footer').textContent=`${t('csv.items_progress',{done,total})} (${s.ok} ok${s.warn?', '+s.warn+' '+t('csv.warnings'):''}${s.err?', '+s.err+' '+t('csv.errors'):''})`;
@@ -558,7 +578,7 @@ function csvApplyOverlayStatus(s, ctx, fi){
         });
         ctx.prevResultCount = s.results.length;
       }
-      if(s.err>0){
+      if((s.err ?? 0)>0){
         const errSets = (s.results||[]).filter(r=>!r.success);
         const errList = errSets.map(r=>r.set_number+': '+(r.error||'?')).join('; ');
         console.warn('[CSV Import] Fehler: '+errList);
@@ -578,13 +598,17 @@ function csvApplyOverlayStatus(s, ctx, fi){
 }
 
 // Polling-Fallback für das startende Fenster (nur wenn SSE nicht verfügbar).
+/**
+ * @param {{ total: number, prevDone: number | null | undefined, prevResultCount: number }} ctx
+ * @param {HTMLInputElement | null} fi
+ */
 async function csvPollLoop(ctx, fi){
   while(csvPollAktiv()){
     await new Promise(r=>setTimeout(r,1500));
     if(!csvPollAktiv()) break;
     try{
       const s = await api('GET','/v1/sets/import/csv/status');
-      if(csvApplyOverlayStatus(s, ctx, fi)) break;
+      if(csvApplyOverlayStatus(/** @type {import('./01-fortschritt.js').ImportStand} */ (s), ctx, fi)) break;
     }catch(e){ console.warn('Poll error:',e); }
   }
 }
@@ -603,6 +627,7 @@ G('gsort').addEventListener('change',() => loadGallery());
  * Ein Set löschen — mit GENAU EINER Rückfrage.
  * Ausführlich: docs/begruendungen/public/js/02-gallery.js.md#delset
  * @returns {Promise<boolean>} true, wenn wirklich gelöscht wurde
+ * @param {string} sn
  */
 export async function delSet(sn){
   const bekannt = (curSet && curSet.set_number === sn ? curSet : null)
@@ -618,6 +643,7 @@ export async function delSet(sn){
   loadGallery(); loadParts(); loadStats();
   return true;
 }
+/** @param {string} sn */
 export async function reimportParts(sn){ toast(tRaw('detail.importing_parts',{sn}),'info'); const d=await api('POST',`/v1/sets/${sn}/parts`); if(d.success){toast(tRaw('detail.parts_imported',{count:d.count}),'success');loadParts();} else toast(d.error,'error'); }
 
 // ── MODAL ─────────────────────────────────────────────
@@ -629,7 +655,7 @@ export async function enrichGalleryWithPrices(){
   // Wechsel des Kontofilters. Etwas neu zu laden, das sich dadurch nicht
   // aendern kann, ergibt nur einen Sinn, wenn es sich aendern sollte.
   //
-  const pnl = await api('GET','/v1/finance/pnl' + scopeQuery('gallery'));
+  const pnl = await api('GET',`/v1/finance/pnl${scopeQuery('gallery')}`);
   if(!pnl.success) return;
   set_pnlCache({});
   // Betrag und G&V der Kachel rechnet der Server (kachel_preis,

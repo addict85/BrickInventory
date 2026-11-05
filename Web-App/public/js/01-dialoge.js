@@ -7,7 +7,10 @@
 // zurück an den Anfang, und alles dahinter ist per Tastatur unerreichbar.
 const FOKUSSIERBAR = 'a[href], button, input:not([type="hidden"]), select, textarea, summary, [tabindex]:not([tabindex="-1"])';
 
-/** Offen heisst: Klasse `open`, oder ein Inline-`display` ausser none (confirm, PDF). */
+/**
+ * Offen heisst: Klasse `open`, oder ein Inline-`display` ausser none (confirm, PDF).
+ * @param {HTMLElement} el
+ */
 export function istOffen(el) {
   return el.style.display ? el.style.display !== 'none' : el.classList.contains('open');
 }
@@ -29,36 +32,47 @@ export function obersterDialog() {
   return bester;
 }
 
+/** @param {HTMLElement & { disabled?: boolean }} el */
 function sichtbar(el) {
   if (el.disabled || el.closest('[hidden]')) return false;
   return typeof el.checkVisibility === 'function' ? el.checkVisibility() : true;
 }
 
+/** @param {HTMLElement} dialog */
 function fokusZiele(dialog) {
-  return [...dialog.querySelectorAll(FOKUSSIERBAR)].filter(sichtbar);
+  return /** @type {HTMLElement[]} */ ([...dialog.querySelectorAll(FOKUSSIERBAR)]).filter(sichtbar);
 }
 
-/** Erstfokus: `[data-erstfokus]`, sonst der Dialog selbst — ein Eingabefeld öffnete auf dem Handy die Tastatur. */
+/**
+ * Erstfokus: `[data-erstfokus]`, sonst der Dialog selbst — ein Eingabefeld öffnete auf dem Handy die Tastatur.
+ * @param {HTMLElement} dialog
+ */
 function fokussiereHinein(dialog) {
   if (dialog.contains(document.activeElement)) return;
-  const ziel = dialog.querySelector('[data-erstfokus]');
+  const ziel = /** @type {HTMLElement | null} */ (dialog.querySelector('[data-erstfokus]'));
   if (ziel && sichtbar(ziel)) { ziel.focus(); return; }
   fokussiereFlaeche(dialog);
 }
 
+/** @param {HTMLElement} dialog */
 function fokussiereFlaeche(dialog) {
-  const flaeche = dialog.firstElementChild || dialog;
+  const flaeche = /** @type {HTMLElement} */ (dialog.firstElementChild || dialog);
   if (!flaeche.hasAttribute('tabindex')) flaeche.setAttribute('tabindex', '-1');
   flaeche.focus({ preventScroll: true });
 }
 
 const _vorher = new WeakMap();
 const _warOffen = new WeakMap();
+/** @type {((dialog: HTMLElement, offen: boolean) => void)[]} */
 const _hoerer = [];
 
-/** Rückruf für jedes Öffnen und Schliessen (der Router führt damit den Verlauf). */
+/**
+ * Rückruf für jedes Öffnen und Schliessen (der Router führt damit den Verlauf).
+ * @param {(dialog: HTMLElement, offen: boolean) => void} fn
+ */
 export function beiDialogWechsel(fn) { _hoerer.push(fn); }
 
+/** @param {HTMLElement} dialog */
 function zustandGeaendert(dialog) {
   const offen = istOffen(dialog);
   if (offen === _warOffen.get(dialog)) return;
@@ -90,14 +104,16 @@ function zustandGeaendert(dialog) {
  * Wohin der Fokus nach dem Schliessen zurückgeht. Lag der Auslöser in einem
  * inzwischen zugeklappten <details> („Weitere Aktionen“), ist er unsichtbar
  * und nähme keinen Fokus — dann dessen <summary>.
+ * @param {HTMLElement} el
  */
 function rueckziel(el) {
   if (!el?.isConnected) return null;
   if (sichtbar(el)) return el;
-  const summary = el.closest('details:not([open])')?.querySelector(':scope > summary');
+  const summary = /** @type {HTMLElement | null | undefined} */ (el.closest('details:not([open])')?.querySelector(':scope > summary'));
   return summary && sichtbar(summary) ? summary : null;
 }
 
+/** @param {KeyboardEvent} ev */
 function tasteGedrueckt(ev) {
   const dialog = obersterDialog();
   if (!dialog) return;
@@ -127,7 +143,7 @@ function tasteGedrueckt(ev) {
   const erstes = ziele[0], letztes = ziele[ziele.length - 1];
   const aktiv = document.activeElement;
   if (!dialog.contains(aktiv)) { ev.preventDefault(); erstes.focus(); }
-  else if (ev.shiftKey && (aktiv === erstes || !ziele.includes(aktiv))) { ev.preventDefault(); letztes.focus(); }
+  else if (ev.shiftKey && (aktiv === erstes || !ziele.includes(/** @type {HTMLElement} */ (aktiv)))) { ev.preventDefault(); letztes.focus(); }
   else if (!ev.shiftKey && aktiv === letztes) { ev.preventDefault(); erstes.focus(); }
 }
 

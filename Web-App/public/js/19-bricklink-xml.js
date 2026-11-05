@@ -37,6 +37,7 @@ function item(p) {
 }
 
 /** Eine Liste als BrickLink-XML — als EIN Stück, ohne Rücksicht auf die Grösse. */
+/** @param {Parameters<typeof item>[0][]} posten */
 export function baueWantedXml(posten) {
   // KEINE XML-Deklaration — siehe Punkt 1 im Kopf dieser Datei.
   return `<INVENTORY>\n${posten.map(item).join('\n')}\n</INVENTORY>\n`;
@@ -46,10 +47,11 @@ export function baueWantedXml(posten) {
  * Dieselbe Liste, in Stücke geschnitten, die BrickLink annimmt.
  * Ausführlich: docs/begruendungen/public/js/19-bricklink-xml.js.md#bauewantedxmlstuecke
  */
+/** @param {Parameters<typeof item>[0][]} posten */
 export function baueWantedXmlStuecke(posten, grenze = BL_UPLOAD_MAX_BYTES) {
   if (!posten.length) return [baueWantedXml([])];
   const enc = new TextEncoder();
-  const bytes = (s) => enc.encode(s).length;
+  const bytes = (/** @type {string} */ s) => enc.encode(s).length;
   const RUMPF = bytes('<INVENTORY>\n\n</INVENTORY>\n');
   const stuecke = [];
   let aktuell = [];

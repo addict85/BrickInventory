@@ -16,6 +16,7 @@ import { esc } from './00-escapen.js';
  * Wie die Menge daneben (`autosaveSet`): Ein Lagerort wird getippt, nicht
  * gewählt. Ein Speichern je Zeichen erzeugte sechs Anfragen für „Kiste 3" und
  * hinterliesse dabei fünf Zwischenstände in der Datenbank.
+ * @param {string} sn
  */
 export async function speichereSetLagerort(sn) {
   const el = G('m-storage');
@@ -53,17 +54,21 @@ export async function speichereSetLagerort(sn) {
  */
 let _alarmFeld = 'm';
 
+/**
+ * @param {string} praefix
+ */
 export function setzeAlarmFeld(praefix) { _alarmFeld = praefix === 'mk-m' ? 'mk-m' : 'm'; }
 
-const alarmId = (teil) => `${_alarmFeld}-alert-${teil}`;
+const alarmId = (/** @type {string} */ teil) => `${_alarmFeld}-alert-${teil}`;
 
 /**
  * Der Alarmblock — EINMAL formuliert, von beiden Dialogen benutzt.
- *
+ * 
  * Das Merkposten-Detail zeigt denselben Alarm: Es ist derselbe Eintrag in
  * price_alerts, am selben Schlüssel. Eine zweite Maske dafür wäre die
  * nächste Stelle, an der eine Regel nur an einem der beiden Wege nachgezogen
  * wird — das ist in diesem Baum schon mehrfach passiert.
+ * @param {string} sn
  */
 export function alarmBlock(sn, praefix = 'm') {
   const p = praefix === 'mk-m' ? 'mk-m' : 'm';
@@ -101,8 +106,9 @@ export function alarmBlock(sn, praefix = 'm') {
  */
 const ORT_NEU_MARKE = 'data-neu="1"';
 
-const istNeuEintrag = (sel) => sel?.selectedOptions?.[0]?.dataset?.neu === '1';
+const istNeuEintrag = (/** @type {Pick<HTMLSelectElement, 'selectedOptions'> | null | undefined} */ sel) => sel?.selectedOptions?.[0]?.dataset?.neu === '1';
 
+/** @type {string[]} */
 let _orte = [];
 
 /**
@@ -111,6 +117,7 @@ let _orte = [];
  * Die Orte kommen ueber das Netz, der Dialog steht aber schon. Ohne das
  * Nachziehen zeigte die erste Anzeige eine leere Auswahl — und genau dann
  * schaut man hin.
+ * @param {unknown[] | null | undefined} namen
  */
 export function setzeOrtVorrat(namen) {
   _orte = [...new Set((namen || []).filter(Boolean).map(String))]
@@ -126,6 +133,9 @@ export function setzeOrtVorrat(namen) {
   }
 }
 
+/**
+ * @param {string} wert
+ */
 function ortOptionen(wert) {
   const bekannt = _orte.includes(wert);
   return [
@@ -140,6 +150,11 @@ function ortOptionen(wert) {
   ].join('');
 }
 
+/**
+ * @param {string} id
+ * @param {string | null | undefined} wert
+ * @param {string} [attrs]
+ */
 export function lagerortBlock(id, wert, attrs = '') {
   const ort = String(wert || '');
   return `
@@ -153,8 +168,7 @@ export function lagerortBlock(id, wert, attrs = '') {
 
 /**
  * Aus der Liste gewaehlt — oder „neuer Ort".
- *
- * @param id Kennung des Textfeldes; die Auswahl heisst id + "-sel".
+ * @param {string} id Kennung des Textfeldes; die Auswahl heisst id + "-sel".
  */
 export function lagerortGewaehlt(id) {
   const sel = G(`${id}-sel`), feld = G(id);
@@ -194,6 +208,7 @@ function alarmZustand() {
   return G(alarmId('cond'))?.value === 'U' ? 'U' : 'N';
 }
 
+/** @param {string} sn */
 export async function ladeAlarm(sn) {
   const d = await api('GET', `/v1/sets/${encodeURIComponent(sn)}/alert`).catch(() => null);
   const dir = G(alarmId('dir')), val = G(alarmId('val'));
@@ -207,6 +222,7 @@ export async function ladeAlarm(sn) {
 /**
  * Nur den Merker nachführen — OHNE das Eingabefeld anzufassen.
  * Ausführlich: docs/begruendungen/public/js/02-detailfelder.js.md#zeigealarmmerker
+ * @param {import('../../frontend-typen/vertrag').Preisalarm | undefined} a
  */
 function zeigeAlarmMerker(a) {
   const st = G(alarmId('state'));
@@ -221,6 +237,7 @@ function zeigeAlarmMerker(a) {
 /**
  * Auf den anderen Zustand umschalten.
  * Ausführlich: docs/begruendungen/public/js/02-detailfelder.js.md#wechslealarmzustand
+ * @param {string} sn
  */
 export function wechsleAlarmZustand(sn) {
   clearTimeout(_alarmRuhe); _alarmRuhe = null;
@@ -236,12 +253,15 @@ export function wechsleAlarmZustand(sn) {
  */
 const ALARM_RUHE = 800;
 
-/** @type {number | null} */
+/**
+ * @type {ReturnType<typeof setTimeout> | null}
+ */
 let _alarmRuhe = null;
 
 /**
  * Beim Tippen speichern — entprellt.
  * Ausführlich: docs/begruendungen/public/js/02-detailfelder.js.md#alarmgetippt
+ * @param {string} sn
  */
 export function alarmGetippt(sn) {
   const dir = G(alarmId('dir')), val = G(alarmId('val'));
@@ -258,6 +278,7 @@ export function alarmGetippt(sn) {
  * eine einzelne Wahl wäre nur eine Verzögerung ohne Gewinn. Eine noch
  * laufende Ruhezeit wird dabei verworfen, damit nicht kurz darauf die alte
  * Richtung hinterherkommt.
+ * @param {string} sn
  */
 export function speichereAlarm(sn) {
   const dir = G(alarmId('dir')), val = G(alarmId('val'));
@@ -269,10 +290,13 @@ export function speichereAlarm(sn) {
 /**
  * Der eine Weg zum Server.
  * Ausführlich: docs/begruendungen/public/js/02-detailfelder.js.md#sendealarm
+ * @param {string} sn
+ * @param {string} richtung
+ * @param {string} roh
  */
 async function sendeAlarm(sn, richtung, roh) {
   const zahl = leseBetrag(roh);
-  const loeschen = !(zahl > 0);
+  const loeschen = !(zahl != null && zahl > 0);
   const cond = alarmZustand();
   const d = loeschen
     ? await api('DELETE', `/v1/sets/${encodeURIComponent(sn)}/alert?condition=${cond}`)
@@ -280,7 +304,7 @@ async function sendeAlarm(sn, richtung, roh) {
                 { richtung, schwelle: zahl, condition: cond });
   if (!d?.success) { toast(d?.error || tRaw('settings.error'), 'error'); return; }
   // Nur den Merker, nicht das Feld — die Begründung steht an zeigeAlarmMerker().
-  zeigeAlarmMerker(loeschen ? null : d.alert);
+  zeigeAlarmMerker(loeschen ? undefined : d.alert ?? undefined);
 }
 
 /**
@@ -293,7 +317,7 @@ export async function zeigeOffeneAlarme() {
   /** @type {string | null} */
   let marke = null;
   try { marke = localStorage.getItem(schluessel); } catch (_) {}
-  const d = await api('GET', '/v1/alerts/pending' + (marke ? '?since=' + encodeURIComponent(marke) : ''))
+  const d = await api('GET', `/v1/alerts/pending${marke ? '?since=' + encodeURIComponent(marke) : ''}`)
     .catch(() => null);
   // Ohne `now` keine neue Marke — und ohne neue Marke lieber gar nichts
   // speichern als eine falsche.
@@ -319,13 +343,14 @@ export async function zeigeOffeneAlarme() {
 /**
  * Die Auswahlliste im Detailfenster — der VORRAT des Besitzers.
  * Ausführlich: docs/begruendungen/public/js/02-detailfelder.js.md#ladeortauswahl
+ * @param {({ id: number } | number)[] | null | undefined} besitzer
  */
 export async function ladeOrtAuswahl(besitzer) {
   const dl = G('lagerorte');
   if (!dl) return;
-  const ids = (besitzer || []).map(o => o?.id ?? o).filter(n => Number.isFinite(Number(n)));
+  const ids = (besitzer || []).map((/** @type {{ id: number } | number} */ o) => typeof o === 'number' ? o : o?.id ?? o).filter(n => Number.isFinite(Number(n)));
   const frage = ids.length ? '?owner=' + encodeURIComponent(ids.join(',')) : '';
-  const d = await api('GET', '/v1/storage/locations' + frage).catch(() => null);
+  const d = await api('GET', `/v1/storage/locations${frage}`).catch(() => null);
   if (!d?.success) return;
   dl.innerHTML = (d.orte || []).map(o => `<option value="${esc(o.name)}"></option>`).join('');
   // Dieselbe Liste speist das Auswahlfeld im Detail (lagerortBlock).
@@ -333,7 +358,7 @@ export async function ladeOrtAuswahl(besitzer) {
 }
 
 export async function ladeLagerorte() {
-  const d = await api('GET', '/v1/storage' + scopeQuery('gallery')).catch(() => null);
+  const d = await api('GET', `/v1/storage${scopeQuery('gallery')}`).catch(() => null);
   if (!d?.success) return;
   const orte = d.orte || [];
   const dl = G('lagerorte');
@@ -361,6 +386,7 @@ registerActions({
 /**
  * Die Lagerort-Auswahlfelder füllen.
  * Ausführlich: docs/begruendungen/public/js/02-detailfelder.js.md#initstorageselects
+ * @param {import('../../frontend-typen/vertrag').Lagerort[]} orte
  */
 export function initStorageSelects(orte) {
   const opts = [`<option value="">${esc(tRaw('filter.storage_all'))}</option>`,

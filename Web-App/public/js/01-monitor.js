@@ -7,6 +7,9 @@ import { echt, registerActions } from './00-registry.js';
 import { fmtDatum, ico, G, api, escHtmlAttr, toast, apiDaten } from './01-core.js';
 import { LANG, locale, t, tRaw } from '../i18n.js';
 import { esc } from './00-escapen.js';
+/** @typedef {import('../../frontend-typen/vertrag').AuftragPause} AuftragPause */
+/** @typedef {import('../../frontend-typen/vertrag').Auftrag} Auftrag */
+/** @typedef {import('../../frontend-typen/vertrag').JobStatus} JobStatus */
 
 /**
  * Zeitgeber, der die Jobliste nachzieht, solange der Reiter offen ist.
@@ -77,6 +80,9 @@ function openLogViewer() {
 
 // Übersetzt Server-seitige Job-Sub-Texte (background jobs kennen die
 // Nutzersprache nicht). Bekannte Muster werden clientseitig ersetzt.
+/**
+ * @param {string} sub
+ */
 function translateJobSub(sub) {
   if (!sub) return '';
   let m;
@@ -96,6 +102,10 @@ function translateJobSub(sub) {
 }
 
 // Speichert den Zeitplan eines Jobs (Monitoring). payload = {time:"HH:MM"} oder {minutes:n}.
+/**
+ * @param {string} name
+ * @param {{ time?: string, minutes?: number }} payload
+ */
 export async function saveJobSchedule(name, payload) {
   const d = await api('POST', '/v1/admin/job-schedule', { name, ...payload }).catch(() => null);
   if (d?.success) toast(tRaw('monitor.sched.saved'), 'success');
@@ -118,7 +128,8 @@ const schedInput = (schedules, k) => {
   }
   return '';
 };
-const jobIconSvg = (k) => {
+const jobIconSvg = (/** @type {string} */ k) => {
+  /** @type {Record<string, string>} */
   const svgs = {
     // CSV-Import (Rebrickable): kleine Tabelle/Raster mit farbigen Zeilen
     csvImport: '<rect x="12" y="20" width="96" height="18" rx="2" fill="#0055BF"/><rect x="12" y="44" width="96" height="18" rx="2" fill="#F2CD37"/><rect x="12" y="68" width="96" height="18" rx="2" fill="#E63329"/><rect x="12" y="92" width="96" height="18" rx="2" fill="#9BA19D"/>',
@@ -136,9 +147,9 @@ const jobIconSvg = (k) => {
   };
   return svgs[k] ? `<svg class="mon-sinnbild" viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">${svgs[k]}</svg>` : '<span class="mon-sinnbild" aria-hidden="true"></span>';
 };
-const jobZustand = (s) => ({ running: tRaw('monitor.state.running'), done: tRaw('monitor.state.done'),
+const jobZustand = (/** @type {string} */ s) => ({ running: tRaw('monitor.state.running'), done: tRaw('monitor.state.done'),
   error: tRaw('monitor.state.error') })[s] || tRaw('monitor.state.idle');
-const statusIcon = (s, j) => {
+const statusIcon = (/** @type {string} */ s, /** @type {JobStatus} */ j) => {
   if (s === 'running') return ico('uhr');
   if (s === 'done')    return ico('ok');
   if (s === 'error')   return ico('fehler');
@@ -146,12 +157,12 @@ const statusIcon = (s, j) => {
   if (s === 'idle' && j.total > 0 && j.progress < j.total) return ico('warnung');
   return ico('pause');
 };
-const bar = (v, gesamt) => {
+const bar = (/** @type {number} */ v, /** @type {number} */ gesamt) => {
   if (!gesamt) return '';
   const pct = Math.min(100, Math.round(v / gesamt * 100));
   return `<div class="mon-balken"><div data-breite="${pct}"></div></div>`;
 };
-const aktionen = (k, j) => [
+const aktionen = (/** @type {string} */ k, /** @type {JobStatus} */ j) => [
   k === 'priceJob' ? `<button class="btn bs btn-sm" type="button" data-click="clickJobTrigger">${t('monitor.run_now')}</button>` : '',
   k === 'instrQueue' ? `<button class="btn bs btn-sm" type="button" data-click="reimportMissingInstructions" data-self="1">${t('monitor.import_missing')}</button>` : '',
   k === 'csvImport' ? `<button class="btn bs btn-sm" type="button" data-click="triggerCsvSync" data-self="1">${t('monitor.sync_now')}</button>` : '',
@@ -159,7 +170,7 @@ const aktionen = (k, j) => [
   k === 'imgDl' ? `<button class="btn bs btn-sm" type="button" data-click="queueCatalogImages" data-self="1">${t('monitor.catalog_images')}</button>` : '',
   k === 'bricksetRetry' && j.total > 0 ? `<button class="btn bs btn-sm" type="button" data-click="toggleBricksetQueue" data-self="1"><span>${t('monitor.show')}</span></button>` : '',
 ].join('');
-const dienstName = (k, j) => t('monitor.job.' + k, {}) !== 'monitor.job.' + k ? t('monitor.job.' + k) : esc(j.label || k);
+const dienstName = (/** @type {string} */ k, /** @type {JobStatus} */ j) => t('monitor.job.' + k, {}) !== 'monitor.job.' + k ? t('monitor.job.' + k) : esc(j.label || k);
 
 export async function loadMonitor() {
   const el = G('monitor-content');
@@ -172,11 +183,13 @@ export async function loadMonitor() {
     // (sonst würde das 3s-Re-Render die Eingabe/den Fokus verwerfen).
     const _ae = document.activeElement;
     if (_ae && _ae.classList && _ae.classList.contains('job-sched-input')) return;
-    const { jobs, db: dbStats, schedules } = d;
+    const { jobs, schedules } = d;
+    // db und lastRun nennt der Vertrag nicht (JobsResponse); der Server schickt sie mit.
+    const dbStats = /** @type {{ csvCache: { lastSync?: string, parts?: number, inventoryParts?: number }, blMapping: { mapped?: number, total?: number } }} */ (d.db);
     const panel = G('brickset-queue-panel');
     const panelHTML = panel && panel.style.display !== 'none' ? panel.innerHTML : null;
-    const zahl = (n) => (n || 0).toLocaleString(locale());
-    const setze = (id, v) => { const e = G(id); if (e) e.textContent = v; };
+    const zahl = (/** @type {number | null | undefined} */ n) => (n || 0).toLocaleString(locale());
+    const setze = (/** @type {string} */ id, /** @type {string} */ v) => { const e = G(id); if (e) e.textContent = v; };
     setze('mon-db-sync', dbStats.csvCache.lastSync ? fmtDatum(dbStats.csvCache.lastSync) : '–');
     setze('mon-db-teile', zahl(dbStats.csvCache.parts));
     setze('mon-db-inventar', zahl(dbStats.csvCache.inventoryParts));
@@ -191,7 +204,7 @@ export async function loadMonitor() {
           <td><span class="mon-zustand mon-${esc(j.status || 'idle')}">${statusIcon(j.status, j)} ${esc(jobZustand(j.status))}</span>
             ${j.sub ? `<div class="mon-leise">${translateJobSub(j.sub)}</div>` : ''}${j.total > 0 ? bar(j.progress, j.total) : ''}</td>
           <td>${schedInput(schedules, k)}</td>
-          <td>${j.lastRun ? fmtDatum(j.lastRun, 'zeit') : ''}</td>
+          <td>${j.lastRun ? fmtDatum(/** @type {string} */ (j.lastRun), 'zeit') : ''}</td>
           <td><div class="mon-knoepfe">${aktionen(k, j) || '<span class="mon-leise">–</span>'}</div></td>
         </tr>`).join('')}</tbody>
       </table></div>
@@ -218,7 +231,10 @@ export async function loadMonitor() {
   await render();
 }
 
-/** Namen der Auftragsarten und Status — ausgeschrieben, damit jeder Schlüssel prüfbar im Wörterbuch steht. */
+/**
+ * Namen der Auftragsarten und Status — ausgeschrieben, damit jeder Schlüssel prüfbar im Wörterbuch steht.
+ * @type {Record<string, () => string>}
+ */
 const ARTNAMEN = {
   nacharbeit: () => t('monitor.art.nacharbeit'),
   bilder: () => t('monitor.art.bilder'),
@@ -236,6 +252,7 @@ const ARTNAMEN = {
   aufraeumen: () => t('monitor.art.aufraeumen'),
   aufraeumen_taeglich: () => t('monitor.art.aufraeumen_taeglich'),
 };
+/** @type {Record<string, () => string>} */
 const STATUSNAMEN = {
   offen: () => t('monitor.auftraege.offen'),
   laeuft: () => t('monitor.auftraege.laeuft'),
@@ -243,7 +260,7 @@ const STATUSNAMEN = {
   abgebrochen: () => t('monitor.auftraege.abgebrochen'),
 };
 /** Der Name einer Auftragsart in der Oberflächensprache, fertig maskiert; unbekannte bleiben, wie sie sind. */
-const artName = (art) => (Object.hasOwn(ARTNAMEN, art) ? ARTNAMEN[art]() : esc(art));
+const artName = (/** @type {string} */ art) => (Object.hasOwn(ARTNAMEN, art) ? ARTNAMEN[art]() : esc(art));
 
 /**
  * Die Karte „Hintergrundarbeiten“: die Auftragstabelle des Servers
@@ -253,6 +270,7 @@ const artName = (art) => (Object.hasOwn(ARTNAMEN, art) ? ARTNAMEN[art]() : esc(a
 /**
  * Eine Fehlermeldung des Servers in einem Satz, den man ohne Netzwerkwissen
  * versteht; der Originaltext bleibt aufklappbar, er ist für die Fehlersuche da.
+ * @param {unknown} text
  */
 export function fehlerKurz(text) {
   const s = String(text || '');
@@ -264,6 +282,7 @@ export function fehlerKurz(text) {
   return tRaw('monitor.err.other');
 }
 
+/** @param {unknown} text */
 function fehlerKasten(text) {
   return `<details class="fehler-kasten"><summary>${ico('warnung')} ${esc(fehlerKurz(text))}</summary><code>${esc(text)}</code></details>`;
 }
@@ -273,19 +292,21 @@ async function zeigeAuftraege() {
   if (!el) return;
   const d = await api('GET', '/v1/admin/auftraege').catch(() => null);
   if (!d?.success) { el.innerHTML = ''; return; }
+  /** @type {Record<string, Record<string, number>>} */
   const zahl = {};
   for (const z of d.zusammenfassung) (zahl[z.art] ||= {})[z.status] = z.anzahl;
   // Der nächste Lauf je Art: der früheste wartende Auftrag dieser Art.
+  /** @type {Record<string, string>} */
   const naechster = {};
   for (const a of d.auftraege)
     if (a.status === 'offen' && a.faellig_ab && (!naechster[a.art] || a.faellig_ab < naechster[a.art])) naechster[a.art] = a.faellig_ab;
   // Sieben gleiche „Jetzt starten“ sind für Vorleser ununterscheidbar: Der Name nennt die Art mit.
-  const knopf = (aktion, arg, text, wofuer = '') =>
+  const knopf = (/** @type {string} */ aktion, /** @type {string} */ arg, /** @type {string} */ text, wofuer = '') =>
     `<button class="btn bs btn-sm" type="button" data-click="${aktion}"${echt()} data-arg="${esc(arg)}"${wofuer ? ` aria-label="${text}: ${wofuer}"` : ''}>${text}</button>`;
   const arten = Object.keys(zahl).sort((a, b) => artName(a).localeCompare(artName(b), locale()));
-  const status = (s) => Object.hasOwn(STATUSNAMEN, s) ? STATUSNAMEN[s]() : esc(s);
-  const ziffer = (n, klasse = '') => `<span class="mon-ziffer${n ? ' ' + klasse : ' null'}">${n || 0}</span>`;
-  const zeile = (a) => {
+  const status = (/** @type {string} */ s) => Object.hasOwn(STATUSNAMEN, s) ? STATUSNAMEN[s]() : esc(s);
+  const ziffer = (/** @type {number | undefined} */ n, klasse = '') => `<span class="mon-ziffer${n ? ' ' + klasse : ' null'}">${n || 0}</span>`;
+  const zeile = (/** @type {Auftrag} */ a) => {
     const zeit = fmtDatum(a.status === 'laeuft' ? a.gestartet : a.faellig_ab, 'zeit');
     const wann = a.status === 'offen' ? t(a.geplant ? 'monitor.auftraege.geplant' : 'monitor.auftraege.faellig', { zeit }) : (a.status === 'laeuft' ? zeit : '');
     const stand = a.fortschritt?.gesamt ? `${a.fortschritt.erledigt ?? 0} / ${a.fortschritt.gesamt}` : (a.fortschritt?.text || '');
@@ -303,7 +324,7 @@ async function zeigeAuftraege() {
     </tr>`;
   };
   const mehr = d.auftraege.length - 40;
-  const pause = (p) => t('monitor.auftraege.pause', { art: Object.hasOwn(ARTNAMEN, p.art) ? ARTNAMEN[p.art]() : esc(p.art), bis: fmtDatum(p.bis, 'zeit'), grund: p.grund || '' });
+  const pause = (/** @type {AuftragPause} */ p) => t('monitor.auftraege.pause', { art: Object.hasOwn(ARTNAMEN, p.art) ? ARTNAMEN[p.art]() : esc(p.art), bis: fmtDatum(p.bis, 'zeit'), grund: p.grund || '' });
   el.innerHTML = `
     <h2 class="mon-titel" id="mon-t-auftraege">${ico('liste')}<span>${t('monitor.auftraege.titel')}</span></h2>
     <p class="mon-hinweis">${t('monitor.auftraege.hinweis')}</p>
@@ -328,8 +349,11 @@ async function zeigeAuftraege() {
       ${mehr > 0 ? `<p class="mon-leise">${t('monitor.auftraege.mehr', { n: mehr })}</p>` : ''}</details>`
       : `<h3 class="mon-untertitel">${t('monitor.auftraege.einzeln')}</h3><p class="mon-leise">${t('monitor.auftraege.leer')}</p>`}`;
 }
-/** Die Liste der einzelnen Aufträge ist am Telefon zu, sonst offen; ein Klick
- * gilt bis zum Neuladen, auch über das Nachzeichnen alle paar Sekunden. */
+/**
+ * Die Liste der einzelnen Aufträge ist am Telefon zu, sonst offen; ein Klick
+ * gilt bis zum Neuladen, auch über das Nachzeichnen alle paar Sekunden.
+ * @type {boolean | null}
+ */
 let _einzelnOffen = null;
 const einzelnOffen = () => _einzelnOffen ?? !(typeof matchMedia === 'function' && matchMedia('(max-width: 640px)').matches);
 if (typeof document !== 'undefined') document.addEventListener('toggle', (ev) => {
@@ -338,24 +362,28 @@ if (typeof document !== 'undefined') document.addEventListener('toggle', (ev) =>
 }, true);
 
 
+/** @param {string} id */
 async function auftragAbbrechen(id) {
   const d = await api('POST', `/v1/admin/auftraege/${encodeURIComponent(id)}/abbrechen`).catch(() => null);
   if (!d?.success) toast(d?.error || t('settings.error'), 'error');
   await zeigeAuftraege();
 }
 
+/** @param {string} id */
 async function auftragWiederholen(id) {
   const d = await api('POST', `/v1/admin/auftraege/${encodeURIComponent(id)}/wiederholen`).catch(() => null);
   if (!d?.success) toast(d?.error || t('settings.error'), 'error');
   await zeigeAuftraege();
 }
 
+/** @param {string} art */
 async function auftragsArtJetzt(art) {
   const d = await api('POST', `/v1/admin/auftraege/art/${encodeURIComponent(art)}/jetzt`).catch(() => null);
   if (!d?.success) toast(d?.error || t('settings.error'), 'error');
   await zeigeAuftraege();
 }
 
+/** @param {string} art */
 async function auftragsArtLeeren(art) {
   const d = await api('DELETE', `/v1/admin/auftraege/art/${encodeURIComponent(art)}`).catch(() => null);
   if (d?.success) toast(tRaw('monitor.auftraege.geleert', { n: d.entfernt }), 'success');

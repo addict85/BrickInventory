@@ -16,9 +16,11 @@ import { loadFinance } from './04-finance.js';
 import { ladeLagerortVorgabe } from './02-konten-orte.js';
 import { csvHochladen } from './01-bausteine.js';
 import { LAND_ZUR_WAEHRUNG } from './17-gutscheine.js';
+/** @typedef {import('../../frontend-typen/vertrag').KontoInListe} Konto */
 
 // ── SETTINGS ──────────────────────────────────────────
 // SMTP + Registration settings load/save
+/** @param {Record<string, string> | null | undefined} settings */
 async function loadSmtpSettings(settings){
   if(!settings) return;
   const s=settings;
@@ -156,8 +158,8 @@ function initCacheTtlBtn() {
 export async function loadRateLimitStats(){
   const d = await api('GET','/v1/admin/cache-stats');
   if(!d.success || !d.rate_limits) return;
-  const fmt = (rl) => rl ? `${rl.count.toLocaleString(locale())} / ${rl.limit.toLocaleString(locale())}` : '—';
-  for (const dienst of ['bricklink', 'rebrickable', 'brickset']) {
+  const fmt = (/** @type {import('../../frontend-typen/vertrag').RateLimit | null | undefined} */ rl) => rl ? `${rl.count.toLocaleString(locale())} / ${rl.limit.toLocaleString(locale())}` : '—';
+  for (const dienst of /** @type {const} */ (['bricklink', 'rebrickable', 'brickset'])) {
     const rl = d.rate_limits[dienst];
     if (G('rl-' + dienst)) G('rl-' + dienst).textContent = fmt(rl);
     const balken = G('rl-' + dienst + '-balken');
@@ -167,16 +169,16 @@ export async function loadRateLimitStats(){
 export async function loadCacheStats(){
   const d = await api('GET','/v1/admin/cache-stats');
   if(!d.success) return;
-  if(G('cs-prices'))  G('cs-prices').textContent  = d.prices  || 0;
-  if(G('cs-subsets')) G('cs-subsets').textContent = d.subsets || 0;
-  if(G('cs-catalog')) G('cs-catalog').textContent = d.catalog || 0;
+  if(G('cs-prices'))  G('cs-prices').textContent  = String(d.prices  || 0);
+  if(G('cs-subsets')) G('cs-subsets').textContent = String(d.subsets || 0);
+  if(G('cs-catalog')) G('cs-catalog').textContent = String(d.catalog || 0);
 }
 export async function loadApiLimits() {
   const d = await api('GET', '/v1/admin/api-limits');
   if (!d.success) return;
-  G('lim-rb').value = d.limits.rebrickable;
-  G('lim-bl').value = d.limits.bricklink;
-  G('lim-bs').value = d.limits.brickset;
+  G('lim-rb').value = String(d.limits.rebrickable);
+  G('lim-bl').value = String(d.limits.bricklink);
+  G('lim-bs').value = String(d.limits.brickset);
 }
 
 // QR Code generation using qrcode.js CDN
@@ -234,7 +236,7 @@ async function generateQrCode() {
     // Sicherheitshärtung nach 5 Minuten abläuft — der Zähler lief also 25
     // Minuten weiter, obwohl der Code längst ungültig war.
     let secs = parseInt(d.expires_in) || 300;
-    const fmt = (v) => `${Math.floor(v/60)}:${(v%60).toString().padStart(2,'0')}`;
+    const fmt = (/** @type {number} */ v) => `${Math.floor(v/60)}:${(v%60).toString().padStart(2,'0')}`;
     const timer = setInterval(() => {
       secs--;
       hint.textContent = tRaw('qr.valid_for',{t:fmt(secs)});
@@ -270,7 +272,10 @@ G('btn-gen-qr').onclick = generateQrCode;
 // aus.
 // Ausführlich: docs/begruendungen/public/js/05-settings.js.md#die-endpunkte-v1-settings-tokens-gab-es
 
-/** „—", wenn nie benutzt: `new Date(null)` wäre der 1.1.1970. */
+/**
+ * „—", wenn nie benutzt: `new Date(null)` wäre der 1.1.1970.
+ * @param {string | null | undefined} wert
+ */
 function tokenDatum(wert) {
   if (!wert) return '—';
   return new Date(wert).toLocaleString(locale());
@@ -325,6 +330,10 @@ export async function ladeTls() {
     <div class="abstand-o-075"><a class="btn bs btn-sm" href="${esc(d.download)}" download>${t('tls.download')}</a></div>`;
 }
 
+/**
+ * @param {string} tokenId
+ * @param {string} label
+ */
 async function revokeToken(tokenId, label) {
   if (!await confirmDelete(tRaw('tokens.revoke.title'), tRaw('tokens.revoke.text', { name: label || '—' }), 'schluessel', { knopf: 'confirm.btn.geraet_abmelden', art: 'bp' })) return;
   const d = await api('DELETE', `/v1/settings/tokens/${encodeURIComponent(tokenId)}`);
@@ -361,8 +370,8 @@ export async function loadProfile() {
   if (dw && window.__bimDunkelWert) dw.value = window.__bimDunkelWert();
   ladeEigenesDesign();
   const d = await api('GET', '/v1/auth/profile');
-  if (!d.success) return;
-  const u = d.user;
+  const u = d.success ? d.user : null;
+  if (!u) return;
   G('prof-first').value = u.first_name || '';
   G('prof-last').value  = u.last_name  || '';
   G('prof-user').value  = u.username   || '';
@@ -388,11 +397,12 @@ async function ladeEigenesDesign() {
   zeigeDesignWahl(d);
 }
 
+/** @param {import('../../frontend-typen/vertrag').AppThemeResponse} d */
 function zeigeDesignWahl(d) {
   const sel = /** @type {HTMLSelectElement} */ (/** @type {unknown} */ (G('design-wahl')));
   const NAMEN = { classic: 'settings.theme_classic', brick: 'settings.theme_brick', werkbank: 'settings.theme_werkbank',
     farbfaecher: 'settings.theme_farbfaecher', noppe: 'settings.theme_noppe', hochglanz: 'settings.theme_hochglanz' };
-  const vorgabeName = tRaw(NAMEN[d.vorgabe] || NAMEN.classic);
+  const vorgabeName = tRaw(/** @type {Record<string, string>} */ (NAMEN)[d.vorgabe ?? ''] || NAMEN.classic);
   sel.options[0].textContent = tRaw('settings.own_theme_default', { name: vorgabeName });
   sel.value = d.eigenes || '';
   // Ein Satz zum gewählten Design: Namen wie „Noppe“ und „Hochglanz“ sagen allein
@@ -401,7 +411,8 @@ function zeigeDesignWahl(d) {
   const aktiv = d.eigenes || d.vorgabe || 'classic';
   const BESCHREIBUNG = { classic: 'settings.theme_desc.classic', brick: 'settings.theme_desc.brick', werkbank: 'settings.theme_desc.werkbank',
     farbfaecher: 'settings.theme_desc.farbfaecher', noppe: 'settings.theme_desc.noppe', hochglanz: 'settings.theme_desc.hochglanz' };
-  if (hinweis) hinweis.textContent = BESCHREIBUNG[aktiv] ? tRaw(BESCHREIBUNG[aktiv]) : '';
+  const beschreibung = /** @type {Record<string, string>} */ (BESCHREIBUNG)[aktiv];
+  if (hinweis) hinweis.textContent = beschreibung ? tRaw(beschreibung) : '';
   // Bei einem Design ohne helle Fassung wirkt die Wahl darunter nicht; das steht dort, wo man sie trifft.
   const nurDunkel = !!window.__bimNurDunkel?.(aktiv), dw = G('dunkel-wahl'), dh = G('dunkel-hinweis');
   if (dw) dw.disabled = nurDunkel;
@@ -470,7 +481,8 @@ G('btn-sav-pw').onclick = async () => {
   const pwN = G('pw-n').value, pwR = G('pw-r').value;
   if (!pwN) { feldFehler('pw-n', tRaw('settings.password.fill_all')); return; }
   if (pwN !== pwR)  { feldFehler('pw-r', tRaw('settings.password.mismatch')); return; }
-  if (passwortRegelText(pwN)) { feldFehler('pw-n', passwortRegelText(pwN)); return; }
+  const regel = passwortRegelText(pwN);
+  if (regel) { feldFehler('pw-n', regel); return; }
   const btn = G('btn-sav-pw'); btn.disabled = true;
   try {
     const dPw = await mitPasswortBestaetigen(tRaw('settings.password.change'), (pwC, z) => api('POST', '/v1/auth/change-password',
@@ -489,6 +501,7 @@ G('btn-sav-pw').onclick = async () => {
   }
 };
 
+/** @param {Record<string, string>} s */
 function applySettings(s){
   // Only apply if the settings tab fields are present in the DOM
   if(!G('s-cur') && !G('bl-ck')) return;
@@ -496,7 +509,7 @@ function applySettings(s){
   // Apply language preference from server only if explicitly set
   if(s.language && I18N[s.language] && s.language !== LANG) applyLang(s.language, false);
   _updateLangSelect();
-  const _set = (id, v) => { const el=G(id); if(el) el.value=v; };
+  const _set = (/** @type {string} */ id, /** @type {string} */ v) => { const el=G(id); if(el) el.value=v; };
   _set('s-cur',          CURRENCY);
   _set('s-default-condition', s.user_default_condition || s.default_price_condition || 'N');
   // Das Ausgabeland der Gutscheine. AUSSERHALB des isAdmin-Blocks: Der Wert
@@ -504,7 +517,7 @@ function applySettings(s){
   // ihn durch) — gesetzt werden darf er nur von einem Verwalter, und
   // deshalb ist das Feld selbst `admin-only` (index.html). Ohne diese Zeile
   // stuende im Auswahlfeld immer der erste Eintrag, egal was gespeichert ist.
-  _set('gutschein-land', s.gutschein_land || LAND_ZUR_WAEHRUNG[CURRENCY] || 'de-CH');
+  _set('gutschein-land', s.gutschein_land || /** @type {Record<string, string>} */ (LAND_ZUR_WAEHRUNG)[CURRENCY] || 'de-CH');
   if(ME?.isAdmin){
     _set('bl-ck',  s.bricklink_consumer_key||'');
     _set('bl-cs',  s.bricklink_consumer_secret||'');
@@ -514,7 +527,7 @@ function applySettings(s){
     _set('bs-key', s.brickset_api_key||'');
     _set('mon-app-theme', s.app_theme||'classic');
     // s.app_theme ist das wirksame Design DIESES Kontos; der Verwalter stellt hier die Vorgabe.
-    api('GET', '/v1/settings/theme').then(d => { if (d.success) _set('mon-app-theme', d.vorgabe); });
+    api('GET', '/v1/settings/theme').then(d => { if (d.success) _set('mon-app-theme', d.vorgabe ?? 'classic'); });
     loadUsers(); loadSmtpSettings(s);
   }
   if(ME?.isAdmin) loadRateLimitStats();
@@ -525,7 +538,7 @@ export async function loadSettings(){
   loadHousehold();
   const d=await api('GET','/v1/settings/raw'); if(!d.success) return;
   set_settingsCache(d.settings);
-  applySettings(_settingsCache);
+  applySettings(d.settings);
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -551,6 +564,7 @@ export async function loadHousehold(){
  * Die Haushaltskarte: Elternkonten und Unterkonten sind zwei unabhängige
  * Abschnitte, weil ein Konto beides zugleich sein kann. Darunter der Hinweis
  * auf Konten, die nur über eine Kette sichtbar waren und es nicht mehr sind.
+ * @param {import('../../frontend-typen/vertrag').HouseholdStatusResponse} d
  */
 function renderHousehold(d){
   const stateEl  = G('household-state');
@@ -561,7 +575,7 @@ function renderHousehold(d){
   // Ein Raster auf der Liste, die Zeilen als display:contents: So stehen alle
   // Namen und alle Knöpfe in denselben zwei Spalten.
   // Namen und alle Knöpfe in denselben zwei Spalten; das Sinnbild macht die Namen als Konten kenntlich.
-  const liste = (eintraege, aktion) => `<ul class="haushalt-liste">${
+  const liste = (/** @type {{ id: number, username?: string | null, via?: string | null }[]} */ eintraege, /** @type {(a: { id: number, username?: string | null, via?: string | null }) => string} */ aktion) => `<ul class="haushalt-liste">${
     eintraege.map(a => `<li data-stil="display:contents">
       <span class="haushalt-name"><svg class="ico" aria-hidden="true"><use href="#i-profil"/></svg>${esc(a.username)}</span>
       <span class="haushalt-aktion">${aktion(a)}</span>
@@ -599,7 +613,7 @@ export async function createHouseholdInvite(){
   const d = await api('POST','/v1/settings/household/invite',{});
   if(!d.success){ toast(d.error || t('settings.error'),'error'); return; }
   const out = G('household-invite-out');
-  G('household-invite-code').value = d.code;
+  G('household-invite-code').value = d.code ?? '';
   if(out) out.style.display = '';
   toast(tRaw('household.invite_created'),'success');
 }
@@ -641,6 +655,10 @@ export async function redeemHouseholdInvite(){
   loadHousehold();
 }
 
+/**
+ * @param {string} mainUserId
+ * @param {string} name
+ */
 export async function unlinkFromParent(mainUserId, name){
   if(!await confirmDelete(tRaw('household.unlink_confirm_title', { name }), tRaw('household.unlink_confirm_text_eltern', { name }), 'link', { knopf: 'confirm.btn.verknuepfung_loesen', art: 'bp' })) return;
   const d = await api('POST','/v1/settings/household/unlink', { main_user_id: parseInt(mainUserId) });
@@ -649,12 +667,19 @@ export async function unlinkFromParent(mainUserId, name){
   loadHousehold();
 }
 
+/**
+ * @param {string} subUserId
+ */
 export async function dismissFormerLink(subUserId){
   const d = await api('POST','/v1/settings/household/former/dismiss', { sub_user_id: parseInt(subUserId) });
   if(!d.success){ toast(d.error || t('settings.error'),'error'); return; }
   loadHousehold();
 }
 
+/**
+ * @param {string} subUserId
+ * @param {string} name
+ */
 export async function unlinkHousehold(subUserId, name){
   if(!await confirmDelete(tRaw('household.unlink_confirm_title', { name }), tRaw('household.unlink_confirm_text', { name }), 'link', { knopf: 'confirm.btn.verknuepfung_loesen', art: 'bp' })) return;
   const d = await api('POST','/v1/settings/household/unlink', subUserId ? { sub_user_id: parseInt(subUserId) } : {});
@@ -673,7 +698,10 @@ G('btn-save-theme').onclick=async()=>{
   toast(d.success?t('settings.theme_saved'):t('settings.error'),d.success?'success':'error');
 };
 G('btn-clr').onclick=async()=>{ await api('POST','/v1/admin/cache-clear'); toast(tRaw('settings.cache_cleared'),'info'); loadCacheStats(); loadFinance(); };
-/** Vor dem Leeren steht da, was verloren geht und was der Neuabruf kostet — mit den Zahlen von jetzt. */
+/**
+ * Vor dem Leeren steht da, was verloren geht und was der Neuabruf kostet — mit den Zahlen von jetzt.
+ * @param {boolean} alle
+ */
 async function zwischenspeicherLeeren(alle) {
   const z = await api('GET', '/v1/admin/cache-stats');
   const n = { p: z?.prices || 0, s: z?.subsets || 0, c: z?.catalog || 0 };
@@ -744,14 +772,15 @@ async function ladeProtokoll(){
   const d=await api('GET','/v1/admin/protokoll'); if(!d.success) return;
   const eintraege = d.eintraege || [];
   G('vw-protokoll').innerHTML = eintraege.length ? `<div class="tw"><table class="dt"><thead><tr><th>${t('users.protokoll.zeit')}</th><th>${t('users.protokoll.verwalter')}</th><th>${t('users.protokoll.aktion')}</th><th>${t('users.protokoll.konto')}</th></tr></thead><tbody>${
-    eintraege.map(e=>`<tr><td>${new Date(e.zeit).toLocaleString(locale())}</td><td>${esc(e.verwalter_name||'—')}</td>
-      <td>${(AKTIONEN[e.aktion] || (() => esc(e.aktion)))()}${e.einzelheiten ? `: ${esc(e.einzelheiten)}` : ''}</td><td>${esc(e.ziel_name||'#'+e.ziel_id)}</td></tr>`).join('')
+    eintraege.map(e=>`<tr><td>${new Date(String(e.zeit)).toLocaleString(locale())}</td><td>${esc(e.verwalter_name||'—')}</td>
+      <td>${(/** @type {Record<string, () => string>} */ (AKTIONEN)[String(e.aktion)] || (() => esc(e.aktion)))()}${e.einzelheiten ? `: ${esc(e.einzelheiten)}` : ''}</td><td>${esc(e.ziel_name||'#'+e.ziel_id)}</td></tr>`).join('')
   }</tbody></table></div>` : `<p data-stil="color:var(--mut);font-size:var(--fs-2)">${t('users.protokoll.leer')}</p>`;
 }
 /**
  * Gegen das eigene Konto gibt es hier nichts zu tun (der Server lehnt es
  * ohnehin ab); das sagt die Zeile. Die seltenen und harten Aktionen stehen
  * hinter „Weitere“, damit eine Zeile nicht aus fünf Rahmenknöpfen besteht.
+ * @param {Konto} u
  */
 function nutzerAktionen(u) {
   if (ME && u.id === ME.id) return `<span class="text-klein">${t('users.selbst')}</span>`;
@@ -776,6 +805,14 @@ function nutzerAktionen(u) {
 /**
  * Ein Knopf der Benutzertabelle: Symbol und Wort sichtbar, die längere
  * Beschreibung als Tooltip, der Name des Kontos für Vorleser im Namen.
+ * @param {Konto} u
+ * @param {string} art
+ * @param {string} klick
+ * @param {string} symbol
+ * @param {string} wortKey
+ * @param {string} titelKey
+ * @param {unknown} [arg2]
+ * @param {unknown} [arg3]
  */
 function nutzerKnopf(u, art, klick, symbol, wortKey, titelKey, arg2, arg3) {
   const wort = tRaw(wortKey), titel = tRaw(titelKey);
@@ -787,13 +824,18 @@ function nutzerKnopf(u, art, klick, symbol, wortKey, titelKey, arg2, arg3) {
 G('btn-cu').onclick=async()=>{
   const n=G('nu-n').value.trim(),p=G('nu-p').value,a=G('nu-a').checked;
   if(!n||!p){toast(tRaw('users.name_pw_req'),'error');return;}
-  if(passwortRegelText(p)){toast(passwortRegelText(p),'error');return;}
+  const regel = passwortRegelText(p);
+  if (regel) { toast(regel,'error');return;}
   const admin_password = await bestaetigeMitPasswort(tRaw('users.create_title'), tRaw('users.admin_confirm_text'), 'schloss', { knopf: 'confirm.btn.konto_anlegen', art: 'bp' });
   if (admin_password === null) return;
   const d=await mitZweitemFaktor(z => api('POST','/v1/auth/users',{username:n,password:p,is_admin:a,admin_password,...z}));
   if(d===null) return;
   if(d.success){toast(tRaw('users.created',{name:n}),'success');G('nu-n').value=G('nu-p').value='';G('nu-a').checked=false;loadUsers();} else toast(d.error||t('settings.error'),'error');
 };
+/**
+ * @param {string} uid
+ * @param {string} name
+ */
 function openRpw(uid, name){
   G('rpw-uid').value=uid; G('rpw-uid').dataset.name = name || ''; G('rpw-v').value='';
   G('pw-tit').textContent = name ? tRaw('users.pw_reset_title_name', { name }) : tRaw('users.pw_reset_title');
@@ -801,7 +843,8 @@ function openRpw(uid, name){
 }
 G('btn-rpw').onclick=async()=>{
   const neuesPw = G('rpw-v').value;
-  if(passwortRegelText(neuesPw)){toast(passwortRegelText(neuesPw),'error');return;}
+  const regel = passwortRegelText(neuesPw);
+  if (regel) { toast(regel,'error');return;}
   const name = G('rpw-uid').dataset.name;
   const admin_password = await bestaetigeMitPasswort(name ? tRaw('users.reset_pw_title_name', { name }) : tRaw('users.reset_pw_title'), tRaw('users.admin_confirm_text'), 'schloss', { knopf: 'confirm.btn.passwort_setzen', art: 'bp' });
   if (admin_password === null) return;
@@ -809,6 +852,11 @@ G('btn-rpw').onclick=async()=>{
   if(d===null) return;
   if(d.success){toast(tRaw('users.pw_reset'),'success');G('pw-modal').classList.remove('open');} else toast(d.error||t('settings.error'),'error');
 };
+/**
+ * @param {string} uid
+ * @param {string | number | boolean} isAdmin
+ * @param {string} name
+ */
 async function toggleAdmin(uid,isAdmin,name){
   // isAdmin kommt seit der data-arg-Umstellung als Zeichenkette. `!"0"` ist
   // false — das Umschalten hätte damit IMMER auf "kein Admin" gesetzt.
@@ -818,7 +866,12 @@ async function toggleAdmin(uid,isAdmin,name){
   const admin_password = await bestaetigeMitPasswort(titel, tRaw('users.admin_confirm_text'), 'schloss', { knopf: 'confirm.btn.rolle_aendern', art: 'bp' });
   if (admin_password === null) return;
   const d=await mitZweitemFaktor(z => api('PUT',`/v1/auth/users/${uid}/admin`,{is_admin:!cur, admin_password, ...z})); if(d===null) return; if(d.success){toast(tRaw('users.role_changed'),'success');loadUsers();} else toast(d.error||t('settings.error'),'error'); }
-/** Deaktivieren meldet das Konto auf allen Geräten ab; die Daten bleiben. */
+/**
+ * Deaktivieren meldet das Konto auf allen Geräten ab; die Daten bleiben.
+ * @param {string} uid
+ * @param {string} aktiv
+ * @param {string} name
+ */
 async function toggleAktiv(uid, aktiv, name){
   const istAktiv = String(aktiv) === '1';
   const admin_password = await bestaetigeMitPasswort(
@@ -829,6 +882,10 @@ async function toggleAktiv(uid, aktiv, name){
   if (d.success) { toast(tRaw(istAktiv ? 'users.deactivated' : 'users.activated'), 'success'); loadUsers(); }
   else toast(d.error || t('settings.error'), 'error');
 }
+/**
+ * @param {string} uid
+ * @param {string} name
+ */
 async function kontoFreischalten(uid, name){
   const admin_password = await bestaetigeMitPasswort(tRaw('users.freischalten_title', { name }), tRaw('users.freischalten_text', { name }), 'ok',
     { knopf: 'confirm.btn.freischalten', art: 'bp' });
@@ -838,6 +895,10 @@ async function kontoFreischalten(uid, name){
   if (d.success) { toast(tRaw('users.freigeschaltet', { name }), 'success'); loadUsers(); }
   else toast(d.error || t('settings.error'), 'error');
 }
+/**
+ * @param {string} uid
+ * @param {string} name
+ */
 async function delUser(uid,name){
   const admin_password = await bestaetigeMitPasswort(tRaw('users.delete.title', { name }), tRaw('users.delete.text'), 'profil',
     { knopf: 'confirm.btn.konto_name_loeschen', werte: { name }, art: 'bd' });
@@ -858,10 +919,11 @@ G('btn-cfg-export').onclick = async () => {
 
 async function importConfig() {
   const fi = G('cfg-import-file');
-  if (!fi.files[0]) return;
+  const datei = fi.files?.[0];
+  if (!datei) return;
   const st = G('cfg-import-status');
   st.textContent = tRaw('settings.importing');
-  const fd = new FormData(); fd.append('file', fi.files[0]);
+  const fd = new FormData(); fd.append('file', datei);
   try {
     const d = await api('POST', '/v1/settings/import', fd);
     if (d.success) {
@@ -973,18 +1035,25 @@ export async function ladeAlarmUebersicht() {
   }).join('');
 }
 
-/** (Set, Zustand) aus dem Schluessel der Zeile — eine Stelle, zwei Leser. */
+/**
+ * (Set, Zustand) aus dem Schluessel der Zeile — eine Stelle, zwei Leser.
+ * @param {string} s
+ */
 function alarmSchluessel(s) {
   const i = String(s).lastIndexOf('|');
   return { setNumber: String(s).slice(0, i), condition: String(s).slice(i + 1) };
 }
 
+/**
+ * @param {string} schluessel
+ * @param {string} wert
+ */
 async function aendereAlarmSchwelle(schluessel, wert) {
   const schwelle = leseBetrag(wert);
   // Kein stilles Zurueckschreiben bei Unsinn: Wer 0 oder Text eingibt, soll
   // sehen, dass nichts passiert ist, statt spaeter einen Alarm zu suchen, den
   // es nicht gibt.
-  if (!(schwelle > 0)) { toast(tRaw('alerts.bad_value'), 'error'); await ladeAlarmUebersicht(); return; }
+  if (!(schwelle != null && schwelle > 0)) { toast(tRaw('alerts.bad_value'), 'error'); await ladeAlarmUebersicht(); return; }
   const { setNumber, condition } = alarmSchluessel(schluessel);
   // Geschrieben wird ueber die BESTEHENDE Route zum Set — die Uebersicht
   // bekommt keinen eigenen Schreibweg (siehe routes/api_v1/sets.ts).
@@ -994,6 +1063,10 @@ async function aendereAlarmSchwelle(schluessel, wert) {
   await ladeAlarmUebersicht();
 }
 
+/**
+ * @param {string} schluessel
+ * @param {string} setNumber
+ */
 async function loescheAlarm(schluessel, setNumber) {
   if (!confirm(tRaw('alerts.confirm_delete', { set: setNumber }))) return;
   const { setNumber: sn, condition } = alarmSchluessel(schluessel);
@@ -1064,11 +1137,19 @@ async function legeLagerortAn() {
   await ladeLagerortVerwaltung();
 }
 
-/** Enter im Eingabefeld legt an — dieselbe Geste wie überall sonst im Baum. */
+/**
+ * Enter im Eingabefeld legt an — dieselbe Geste wie überall sonst im Baum.
+ * @param {string} id
+ * @param {KeyboardEvent} ev
+ */
 function lagerortTaste(id, ev) {
   if (ev?.key === 'Enter') { ev.preventDefault(); legeLagerortAn(); }
 }
 
+/**
+ * @param {string} id
+ * @param {string} wert
+ */
 async function benenneLagerortUm(id, wert) {
   const name = String(wert || '').trim();
   // Leer heisst hier NICHT löschen: Beim Umbenennen ist ein leergeräumtes Feld
@@ -1087,6 +1168,8 @@ async function benenneLagerortUm(id, wert) {
 /**
  * Den Stern umschalten.
  * Ausführlich: docs/begruendungen/public/js/05-settings.js.md#schaltelagerortvorgabe
+ * @param {string} id
+ * @param {string} war
  */
 async function schalteLagerortVorgabe(id, war) {
   const d = await api('PUT', '/v1/storage/default',
@@ -1099,6 +1182,10 @@ async function schalteLagerortVorgabe(id, war) {
   ladeLagerortVorgabe();
 }
 
+/**
+ * @param {string} id
+ * @param {string} name
+ */
 async function loescheLagerort(id, name) {
   if (!await confirmDelete(tRaw('storage.delete_title'),
                            `${name} — ${tRaw('storage.delete_text')}`, 'lagerort')) return;
@@ -1123,7 +1210,10 @@ async function importAlarmeCsv() {
 // Sets, teilen und Minifiguren ergänzen und aus den Einstellungen entfernen."
 // Ausführlich: docs/begruendungen/public/js/05-settings.js.md#marcos-vorgabe-bitte-auch-den-import-der
 
-/** Ein verdecktes Feld zeigen oder wieder verdecken (Knopf mit dem Auge). */
+/**
+ * Ein verdecktes Feld zeigen oder wieder verdecken (Knopf mit dem Auge).
+ * @param {string} id
+ */
 function geheimUmschalten(id) {
   const feld = G(id);
   const knopf = document.querySelector(`[data-click="geheimUmschalten"][data-arg="${id}"]`);

@@ -20,7 +20,8 @@
     "build:frontend": "node scripts/build-frontend.js",
     "design:tokens": "node scripts/generate-design-tokens.js",
     "schema:stand": "node scripts/schema-stand.js",
-    "vertrag:openapi": "node scripts/vertrag-openapi.js"
+    "vertrag:openapi": "node scripts/vertrag-openapi.js",
+    "vertrag:frontend": "node scripts/vertrag-frontend-typen.js"
   },
   "dependencies": {
     "@cantoo/pdf-lib": "^2.11.1",

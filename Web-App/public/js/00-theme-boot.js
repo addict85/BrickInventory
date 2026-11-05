@@ -12,9 +12,10 @@
    * Wendet ein Design an. Unbekannte Werte (null, '', undefined) bedeuten
    * "keine Information" und ändern NICHTS.
    * Ausführlich: docs/begruendungen/public/js/00-theme-boot.js.md#apply
+   * @param {string | null | undefined} theme
    */
   function apply(theme) {
-    if (ALLOWED.indexOf(theme) === -1) return null;
+    if (!theme || ALLOWED.indexOf(theme) === -1) return null;
     serverDesign = theme;
     document.documentElement.setAttribute('data-theme', wirksam(theme));
     return theme;
@@ -26,10 +27,12 @@
   // aus tokens.css). Wer „server“ wählt, behält das Design ohne Variante.
   var DUNKEL_KEY = 'bim_dunkel';
   var systemDunkel = window.matchMedia ? window.matchMedia('(prefers-color-scheme: dark)') : null;
+  /** @type {string | null} */
   var serverDesign = null;
   function folgtSystem() {
     try { return localStorage.getItem(DUNKEL_KEY) !== 'server'; } catch (_) { return true; }
   }
+  /** @param {string} theme */
   function wirksam(theme) {
     var dunkel = folgtSystem() && systemDunkel && systemDunkel.matches && theme !== 'werkbank';
     if (dunkel) document.documentElement.setAttribute('data-dunkel', '');
@@ -52,6 +55,7 @@
    * Setter für 01-core.js und den Admin-Speichern-Handler. Nur gültige Werte
    * werden angewendet UND gecacht — ein leerer oder fehlender Wert darf den
    * Cache nicht überschreiben.
+   * @param {string} theme
    */
   function applier(theme) {
     var val = apply(theme);
@@ -65,7 +69,7 @@
   //    nachführen — kein Anwenden, kein Abgleich, also weder ein sichtbarer
   //    Sprung noch eine zusätzliche Anfrage pro Seitenaufruf.
   var served = document.documentElement.getAttribute('data-theme');
-  if (ALLOWED.indexOf(served) !== -1) {
+  if (served && ALLOWED.indexOf(served) !== -1) {
     try { localStorage.setItem(KEY, served); } catch (_) {}
     serverDesign = served;
     neuAnwenden();
@@ -76,6 +80,7 @@
   // 1) Fallback, wenn der Server nichts gesetzt hat (statisch ausgelieferte
   //    Datei, vorgelagerter Cache, Renderfehler): zuletzt bekanntes Design
   //    sofort anwenden, danach gegen den Server abgleichen.
+  /** @type {string | null} */
   var cached = null;
   try { cached = localStorage.getItem(KEY); } catch (_) {}
   apply(cached);

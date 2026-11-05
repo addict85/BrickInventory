@@ -12,6 +12,7 @@ import { esc } from './00-escapen.js';
  * Ausführlich: docs/begruendungen/public/js/08-init.js.md#letztefehlermeldung
  */
 let _letzteFehlermeldung = 0;
+/** @param {string} quelle @param {unknown} fehler */
 function meldeUnerwartet(quelle, fehler) {
   console.error(`[${quelle}]`, fehler);
   const jetzt = Date.now();
@@ -26,12 +27,14 @@ function meldeUnerwartet(quelle, fehler) {
 /**
  * Stammt der Fehler aus UNSEREM Code?
  * Ausführlich: docs/begruendungen/public/js/08-init.js.md#vonuns
+ * @param {unknown} fehler
  */
 function vonUns(fehler) {
-  const stapel = typeof fehler?.stack === 'string' ? fehler.stack : '';
+  const roh = /** @type {{ stack?: unknown } | null | undefined} */ (fehler)?.stack;
+  const stapel = typeof roh === 'string' ? roh : '';
   const adressen = stapel.match(/\b[a-z][\w.+-]*:\/\/[^\s)]+/gi) || [];
   if (!adressen.length) return true;
-  return adressen.some(a => a.startsWith(location.origin + '/'));
+  return adressen.some((/** @type {string} */ a) => a.startsWith(location.origin + '/'));
 }
 
 export function bindGlobalErrorHandlers() {
@@ -47,10 +50,18 @@ export function bindGlobalErrorHandlers() {
 }
 
 // ── TEILELISTE (temporary parts list, resets on page leave) ──────────────────
-let _plSets = []; // { set_number, name }
-/** @type {any[] | null} */
-let _plParts = null; // generated parts list
-let _rbToBlColor = {}; // Rebrickable → BrickLink color ID mapping
+/**
+ * @typedef {{ set_number: string, name: string, unbekannt?: boolean }} PlSet
+ * @typedef {{ part_number: string, bl_part_number: string, part_name: string, color_name: string, color_hex: string | null,
+ *   color_id: number, bl_color_id?: number | null, quantity: number, image_local?: string | null, image_url: string | null, is_fig?: boolean }} PlTeil
+ * @typedef {{ type: string, part: string, color: number | null, colorName?: string, qty: number }} Fehlteil
+ */
+/** Die Sets der Teileliste; sie gilt nur bis zum Verlassen der Seite. @type {PlSet[]} */
+let _plSets = [];
+/** Die erzeugte Teileliste. @type {PlTeil[] | null} */
+let _plParts = null;
+/** Rebrickable- → BrickLink-Farbnummer. @type {Record<string, number>} */
+let _rbToBlColor = {};
 
 function plAddSet() {
   const raw = G('pl-setnr').value.trim();
@@ -104,6 +115,9 @@ export function plRenderSets() {
 // nicht initialisiert, und t() wirft.
 
 
+/**
+ * @param {number} i
+ */
 function plRemoveSet(i) {
   _plSets.splice(i, 1);
   _plParts = null;
@@ -119,14 +133,17 @@ async function plGenerate() {
   G('pl-result').innerHTML = '';
   _plParts = null; plExportStand();
 
-  const combined = {}; // key: „partNum|colorId" → { part_number, part_name, color_name, color_hex, quantity }
+  /** @type {Record<string, PlTeil>} Schlüssel „Teilnummer|Farbe“ bzw. „fig:Nummer“ */
+  const combined = {};
   let errors = 0;
 
   // Load RB→BL color mapping from server (from rb_colors.bl_color_id)
+  /** @type {Record<string, number>} */
   let rbToBlColor = {};
   try {
     const cm = await api('GET', '/v1/parts/bl-color-map');
-    if (cm?.success) rbToBlColor = cm.map;
+    // Die Werte sind Farbnummern; der Vertrag nennt die Karte nur offen (Record<string, unknown>).
+    if (cm?.success) rbToBlColor = /** @type {Record<string, number>} */ (cm.map);
   } catch(_) {}
   _rbToBlColor = rbToBlColor;
 
@@ -145,7 +162,7 @@ async function plGenerate() {
           // Ausführlich: docs/begruendungen/public/js/08-init.js.md#key
           const key = `${p.part_number}|${p.color_id||0}`;
           if (combined[key]) {
-            combined[key].quantity += parseInt(p.total_quantity || p.quantity || 1);
+            combined[key].quantity += parseInt(String(p.total_quantity || p.quantity || 1));
           } else {
             combined[key] = {
               part_number:    p.part_number,
@@ -155,7 +172,7 @@ async function plGenerate() {
               color_hex:      p.color_hex || null,
               color_id:       p.color_id || 0,
               bl_color_id:    p.bl_color_id ?? rbToBlColor[p.color_id] ?? null,
-              quantity:       parseInt(p.total_quantity || p.quantity || 1),
+              quantity:       parseInt(String(p.total_quantity || p.quantity || 1)),
               image_local:    p.image_local || null,
               image_url:      p.image_url || null
             };
@@ -169,7 +186,7 @@ async function plGenerate() {
       const dm = await api('GET', `/v1/sets/${encodeURIComponent(s.set_number)}/minifigs-list`);
       if (dm?.success && dm.figs?.length) {
         for (const f of dm.figs) {
-          const figQty = parseInt(f.quantity || 1);
+          const figQty = parseInt(String(f.quantity || 1));
           const key = `fig:${esc(f.fig_number)}`;
           if (combined[key]) {
             combined[key].quantity += figQty;
@@ -224,7 +241,7 @@ async function plFuelleBestand() {
   // (src/haushalt/haushalt.ts, parseScopeMode) — die Wahl ist also nur eine andere
   // Bedienung derselben Sache, kein zweiter Begriff daneben.
   const mitSubs = !!G('pl-bestand-subs')?.checked;
-  const d = await api('POST', '/v1/parts/owned' + (mitSubs ? '' : '?accounts=own'),
+  const d = await api('POST', `/v1/parts/owned${(mitSubs ? '' : '?accounts=own')}`,
     { teile }).catch(() => null);
   frei();
   if (!d?.success) { toast(d?.error || t('settings.error'), 'error'); return; }
@@ -232,11 +249,11 @@ async function plFuelleBestand() {
   let getroffen = 0, fehlend = 0, fehlendeArten = 0;
   for (const el of felder) {
     const [num, farbe] = String(el.dataset.key || '').split('__');
-    const eintrag = d.bestand[`${num}|${parseInt(farbe) || 0}`];
-    const habe = eintrag ? (nurLose ? eintrag.lose : eintrag.gesamt) : 0;
+    const eintrag = d.bestand?.[`${num}|${parseInt(farbe) || 0}`];
+    const habe = (eintrag ? (nurLose ? eintrag.lose : eintrag.gesamt) : 0) ?? 0;
     el.value = String(habe);
     if (habe > 0) getroffen++;
-    const braucht = parseInt(el.dataset.need) || 0;
+    const braucht = parseInt(el.dataset.need ?? '') || 0;
     if (habe < braucht) { fehlend += braucht - habe; fehlendeArten++; }
   }
 
@@ -274,6 +291,7 @@ function plRenderTable(fehler = 0) {
   }
 
   // Group by color
+  /** @type {Record<string, { color_name: string, color_hex: string | null, parts: PlTeil[] }>} */
   const byColor = {};
   for (const p of _plParts) {
     const k = p.color_name;
@@ -345,9 +363,10 @@ async function plExportPdf() {
       // Countdown der geschätzten Restzeit (aus etaSeconds vom Server).
       /** @type {number | null} */
       let etaTimer = null;
-      let etaRemaining = null;
+      /** @type {number} */
+      let etaRemaining = 0;
       const stopEta = () => { if (etaTimer) { clearInterval(etaTimer); etaTimer = null; } };
-      const startEta = (sec) => {
+      const startEta = (/** @type {number} */ sec) => {
         if (etaTimer || !sec || sec <= 0) return;
         etaRemaining = sec;
         const tick = () => {
@@ -357,7 +376,7 @@ async function plExportPdf() {
         tick();
         etaTimer = setInterval(tick, 1000);
       };
-      const finish = (err) => { stopEta(); if (!settled) { settled = true; err ? reject(new Error(err)) : resolve(); } };
+      const finish = (/** @type {string | null} */ err) => { stopEta(); if (!settled) { settled = true; err ? reject(new Error(err)) : resolve(); } };
 
       const trySSE = () => {
         if (typeof EventSource === 'undefined') { pollPdfStatus(jobId, btn, finish, startEta); return; }
@@ -393,6 +412,10 @@ async function plExportPdf() {
 }
 
 // Polling-Fallback für PDF-Export (nur wenn EventSource nicht verfügbar).
+/**
+ * @param {string} jobId @param {HTMLElement | null} btn
+ * @param {(err: string | null) => void} finish @param {(sec: number) => void} startEta
+ */
 async function pollPdfStatus(jobId, btn, finish, startEta) {
   const deadline = Date.now() + 10 * 60 * 1000;
   while (Date.now() < deadline) {
@@ -421,13 +444,14 @@ export function plInit() {
 function fehlendeTeile() {
   // Collect all "vorhanden" inputs from the table
   const inputs = /** @type {HTMLInputElement[]} */ (alle('.pl-have-input'));
+  /** @type {Fehlteil[]} */
   const missing = [];
   inputs.forEach(inp => {
-    const need = parseInt(inp.dataset.need) || 0;
+    const need = parseInt(inp.dataset.need ?? '') || 0;
     const have = parseInt(inp.value) || 0;
     const diff = need - have;
     if (diff > 0) {
-      const rbColor = parseInt(inp.dataset.rbColor) || 0;
+      const rbColor = parseInt(inp.dataset.rbColor ?? '') || 0;
       // `data-color` ist leer, wenn der Katalog keine BrickLink-Farbe kennt
       // (siehe plRenderTable). Die Karte wird noch einmal befragt, weil sie
       // beim Zeichnen der Tabelle vielleicht noch nicht geladen war.
@@ -436,8 +460,8 @@ function fehlendeTeile() {
       const blColor = ausKarte ?? (roh === '' || roh === undefined ? null : parseInt(roh));
       missing.push({
         type:    inp.dataset.type || 'P',
-        part:    inp.dataset.part,
-        color:   Number.isFinite(blColor) ? blColor : null,
+        part:    inp.dataset.part ?? '',
+        color:   blColor != null && Number.isFinite(blColor) ? blColor : null,
         colorName: inp.dataset.colorName || '',
         qty:     diff
       });
@@ -447,22 +471,25 @@ function fehlendeTeile() {
 }
 
 /** Figuren in ihre Teile auflösen und gleiche BrickLink-Nummer+Farbe zusammenzählen.
- * @param {any[]} missing @returns {Promise<any[]>} */
+ * @param {Fehlteil[]} missing @returns {Promise<Fehlteil[]>} */
 async function figurenAufloesen(missing) {
   // Expand minifigs into individual parts and deduplicate by BL-ID + color
-  const blMap = {}; // key: "type|partNum|colorId" → {type,part,color,qty}
+  /** @type {Record<string, Fehlteil>} Schlüssel „Art|Teilnummer|Farbe“ */
+  const blMap = {};
   for (const m of missing) {
     if (m.type === 'M') {
       try {
         const dp = await api('GET', `/v1/minifigs/${encodeURIComponent(m.part)}/parts`);
         if (dp?.success && dp.parts?.length) {
-          for (const p of dp.parts) {
+          // FigurTeile nennt die Felder einer Zeile nicht; so liefert sie src/figuren.
+          const teile = /** @type {{ part_number: string, bl_part_number?: string | null, color_id: number, bl_color_id?: number | null, quantity?: number }[]} */ (dp.parts);
+          for (const p of teile) {
             const blNum  = p.bl_part_number || p.part_number;
             // Dieselbe Regel wie in der Tabelle: keine Zuordnung heisst
             // UNBEKANNT, nicht „nimm die Rebrickable-Nummer".
             const blColId = p.bl_color_id ?? _rbToBlColor[p.color_id] ?? null;
             const key    = `P|${blNum}|${blColId}`;
-            const qty    = parseInt(p.quantity || 1) * m.qty;
+            const qty    = parseInt(String(p.quantity || 1)) * m.qty;
             if (blMap[key]) blMap[key].qty += qty;
             else blMap[key] = { type: 'P', part: blNum, color: blColId, qty };
           }
@@ -511,7 +538,7 @@ async function plExportBricklink() {
   if (!Object.keys(_rbToBlColor).length) {
     try {
       const cm = await api('GET', '/v1/parts/bl-color-map');
-      if (cm?.success && cm.map) _rbToBlColor = cm.map;
+      if (cm?.success && cm.map) _rbToBlColor = /** @type {Record<string, number>} */ (cm.map);
     } catch(_) {}
   }
   const condition = G('pl-bl-condition')?.value || 'X';
@@ -568,6 +595,8 @@ function plReset() {
  * Ansichtswahl Karten/Tabelle bei Teilen und Minifiguren: dieselben Knöpfe wie
  * bei den Sets. Der Wert liegt weiter im (versteckten) Auswahlfeld, an dem die
  * Lade- und Zeichenlogik hängt.
+ * @param {string} id
+ * @param {string} wert
  */
 function ansichtWaehlen(id, wert) {
   const feld = G(id);

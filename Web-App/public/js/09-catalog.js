@@ -28,11 +28,17 @@ let _catPageCount = 0;
 let _catLoadedPages = new Set();
 let _catLoadingPages = new Set();
 let _catScrollGebunden = false;
+/** @type {import('../../frontend-typen/vertrag').CatalogSetItem[]} */
 let _catItems = [];
-let _catYearMin = null, _catYearMax = null;   // Datenbereich aus /catalog/meta
+/** Datenbereich aus /catalog/meta. @type {number | null} */
+let _catYearMin = null;
+/** @type {number | null} */
+let _catYearMax = null;
 let _catMetaLoaded = false;
-let _catCurSet = null;      // aktuell im Modal geöffnetes Set
-let _catYearCounts = {};    // Jahr -> Set-Zahl (für Slider-Badge)
+/** Das Set im Detail-Dialog. @type {import('../../frontend-typen/vertrag').CatalogSetDetail | null} */
+let _catCurSet = null;
+/** Jahr → Zahl der Sets (Etikett am Jahresregler). @type {Record<number, number>} */
+let _catYearCounts = {};
 
 
 export function initCatalog(){
@@ -88,13 +94,14 @@ async function loadCatalogMeta(){
   themeEl.innerHTML = `<option value="">${t('catalog.filter.all_themes')}</option>` +
     (d.themes||[]).map(th=>`<option value="${th.id}"${String(th.id)===cur?' selected':''}>${esc(th.name)} (${th.set_count})</option>`).join('');
   // Jahr-Dropdowns (Von/Bis): absteigend von max bis min
-  if (d.year_min && d.year_max) {
-    const mk = (el, placeholderKey, cur)=>{
+  const { year_min: von, year_max: bis } = d;
+  if (von && bis) {
+    const mk = (/** @type {HTMLElement | null} */ el, /** @type {string} */ placeholderKey, /** @type {string} */ cur)=>{
       let opts = `<option value="">${t(placeholderKey)}</option>`;
-      for (let y = d.year_max; y >= d.year_min; y--) {
+      for (let y = bis; y >= von; y--) {
         opts += `<option value="${y}"${String(y)===cur?' selected':''}>${y}</option>`;
       }
-      el.innerHTML = opts;
+      if (el) el.innerHTML = opts;
     };
     mk(G('cat-year-from'), 'catalog.filter.year_from', _catState.yearFrom);
     mk(G('cat-year-to'),   'catalog.filter.year_to',   _catState.yearTo);
@@ -113,7 +120,11 @@ export function katalogZuruecksetzen(){
   setCatalogYearRange('', '');
 }
 
-/** Zentrale Stelle für Jahresbereichs-Änderungen — hält Dropdowns, Slider und Badge synchron. */
+/**
+ * Zentrale Stelle für Jahresbereichs-Änderungen — hält Dropdowns, Slider und Badge synchron.
+ * @param {string} from
+ * @param {string} to
+ */
 function setCatalogYearRange(from, to){
   from = from ? String(from) : '';
   to   = to   ? String(to)   : '';
@@ -132,6 +143,9 @@ function _syncYearUI(){
   G('cat-year-to').value   = _catState.yearTo   || '';
 }
 
+/**
+ * @param {number} page
+ */
 function _catQuery(page){
   const p = new URLSearchParams();
   if (_catState.q)        p.set('q', _catState.q);
@@ -157,7 +171,7 @@ async function loadCatalogSets(){
   const grid = G('catalog-grid');
   grid.innerHTML = ladeAnzeige(t('catalog.loading'));
   _catState.page = 1;
-  const d = await api('GET', '/v1/catalog/sets?' + _catQuery(1));
+  const d = await api('GET', `/v1/catalog/sets?${_catQuery(1)}`);
   if (gen !== _catGen) return;   // inzwischen neuer Filter — Antwort verwerfen
   if (listeLadefehler(grid, d, { erneut: 'loadCatalogSets' })) return;
 
@@ -218,7 +232,7 @@ function _setzePlatzhalterHoehe(){
   if (hoehe < 10) return;   // noch nicht gezeichnet
   const proKachel = hoehe / Math.max(1, _catItems.length);
   for (const el of alle('#catalog-grid .cat-page-ph')) {
-    const anzahl = parseInt(el.dataset.anzahl) || CAT_LIMIT;
+    const anzahl = parseInt(el.dataset.anzahl ?? '') || CAT_LIMIT;
     el.style.height = Math.round(anzahl * proKachel) + 'px';
   }
 }
@@ -227,9 +241,11 @@ function _setzePlatzhalterHoehe(){
  * Wo liegt welcher Seitenblock? EINMAL gemessen, dann aus dem Gedächtnis.
  * Ausführlich: docs/begruendungen/public/js/09-catalog.js.md#catblocklagen
  */
+/** @type {{ seite: number, oben: number, unten: number }[]} */
 let _catBlockLagen = [];
 // Jahre mit ihrer Anzahl, in der Reihenfolge der Liste — die Grundlage für das
 // Etikett am Scrollbalken (siehe _jahrAnPosition).
+/** @type {import('../../frontend-typen/vertrag').JahrAnzahl[]} */
 let _catJahrVerteilung = [];
 
 function _messeBloecke(){
@@ -237,7 +253,7 @@ function _messeBloecke(){
   for (const el of alle('#catalog-grid .cat-page')) {
     const r = el.getBoundingClientRect();
     _catBlockLagen.push({
-      seite: parseInt(el.dataset.page),
+      seite: parseInt(el.dataset.page ?? ''),
       oben:  r.top + window.scrollY,
       unten: r.bottom + window.scrollY,
     });
@@ -250,6 +266,9 @@ function _messeBloecke(){
  */
 /** @type {number | null} */
 let _catLadeTimer = null;
+/**
+ * @param {boolean} [sofort]
+ */
 function _ladeSichtbareSeiten(sofort){
   clearTimeout(_catLadeTimer);
   const tun = () => {
@@ -291,9 +310,10 @@ function _beobachteSeiten(){
 
 /**
  * Eine Seite nachladen und ihren Block füllen.
- *
+ * 
  * Bereits geladene oder gerade ladende Seiten werden übersprungen — ohne diese
  * Prüfung löste jeder Scroll-Schritt denselben Abruf mehrfach aus.
+ * @param {number} seite
  */
 export async function ladeSeite(seite){
   if (seite < 1 || seite > _catPageCount) return;
@@ -301,7 +321,7 @@ export async function ladeSeite(seite){
   _catLoadingPages.add(seite);
   const gen = _catGen;
   try {
-    const d = await api('GET', '/v1/catalog/sets?' + _catQuery(seite));
+    const d = await api('GET', `/v1/catalog/sets?${_catQuery(seite)}`);
     if (gen !== _catGen) return;   // Filter hat inzwischen gewechselt
     if (!d.success || !d.sets?.length) return;
     const block = eins(`#catalog-grid .cat-page[data-page="${seite}"]`);
@@ -322,6 +342,7 @@ export async function ladeSeite(seite){
   }
 }
 
+/** @param {import('../../frontend-typen/vertrag').CatalogSetItem} s */
 function catCard(s){
   // Über den Server statt direkt im Browser vom CDN — dieselbe Logik wie
   // Sets, Teile und Minifiguren (imgUrl(thumbUrl(...), true)), auf Wunsch
@@ -341,8 +362,9 @@ function catCard(s){
   // Variable kostet nichts, und eine Abfrage des aktiven Designs hier waere
   // eine zweite Stelle, die es kennen muss. Ohne Thema-Nummer bleibt sie weg —
   // dann zeigt der Streifen nichts statt etwas Falsches.
-  const ton = Number.isInteger(s.theme_id)
-    ? ` data-faecher="${((s.theme_id % 12) + 12) % 12}"` : '';
+  const thema = s.theme_id;
+  const ton = thema != null && Number.isInteger(thema)
+    ? ` data-faecher="${((thema % 12) + 12) % 12}"` : '';
   return `<div class="sc"${ton} tabindex="0" role="button" data-sn="${esc(s.set_number)}" data-year="${s.year||''}" data-click="openCatModal" data-arg="${esc(s.set_number)}">
     <div class="sci">${img}</div>
     <div class="scb">
@@ -360,10 +382,13 @@ function catCard(s){
 }
 
 // ── Detail-Modal ──────────────────────────────────────────────────────────────
+/** @param {string} setNumber */
 async function openCatModal(setNumber){
-  const d = await api('GET', '/v1/catalog/sets/' + encodeURIComponent(setNumber));
+  const d = await api('GET', `/v1/catalog/sets/${encodeURIComponent(setNumber)}`);
   if (!d.success) { toast(d.error || t('settings.error'), 'error'); return; }
-  const s = d.set; _catCurSet = s;
+  const s = d.set;
+  if (!s) return;
+  _catCurSet = s;
   G('cat-m-tit').textContent = s.name || s.set_number;
   G('cat-m-sub').textContent = s.set_number;
   leereLagerortFeld('cat-m-storage');
@@ -374,6 +399,7 @@ async function openCatModal(setNumber){
   // Ausführlich: docs/begruendungen/public/js/09-catalog.js.md#detailsrc
   const detailSrc = s.image_local || s.image_url;
   G('cat-m-img').src = detailSrc ? fullUrl(detailSrc) : '/assets/set-placeholder.svg';
+  /** @type {[string, string | number][]} */
   const rows = [
     [t('detail.year'),     s.year || '—'],
     [t('detail.theme'),    s.theme_name || '—'],
@@ -450,13 +476,17 @@ async function addCatalogSetToGallery(){
   } catch(e) { if (e.name !== 'AbortError') { hideProgress(); toast(fehlerMeldung(e), 'error'); } }
 }
 
-/** owned-Badge eines Sets in der geladenen Liste aktualisieren, ohne die
- *  Liste neu zu laden (Infinite Scroll: Scroll-Position bleibt erhalten). */
+/**
+ * owned-Badge eines Sets in der geladenen Liste aktualisieren, ohne die
+ * Liste neu zu laden (Infinite Scroll: Scroll-Position bleibt erhalten).
+ * @param {string} setNumber
+ * @param {number} qty
+ */
 function _patchCatalogOwned(setNumber, qty){
   const it = _catItems.find(x => x.set_number === setNumber);
   if (!it) return;
   it.owned = true;
-  it.owned_quantity = (parseInt(it.owned_quantity) || 0) + (qty || 1);
+  it.owned_quantity = (parseInt(String(it.owned_quantity)) || 0) + (qty || 1);
   const el = document.querySelector(`#catalog-grid .sc[data-sn="${(window.CSS && CSS.escape) ? CSS.escape(setNumber) : setNumber}"]`);
   if (el) el.outerHTML = catCard(it);
 }
@@ -515,7 +545,7 @@ async function _ladeJahrVerteilung(){
   if (_catState.theme) p.set('theme_id', _catState.theme);
   p.set('sort', _catState.sort);
   const gen = _catGen;
-  const d = await api('GET', '/v1/catalog/year-verteilung?' + p.toString()).catch(() => null);
+  const d = await api('GET', `/v1/catalog/year-verteilung?${p.toString()}`).catch(() => null);
   if (gen !== _catGen) return;   // Filter hat inzwischen gewechselt
   if (d?.success) _catJahrVerteilung = (d.years || []).filter(y => y.year);
 }

@@ -6,6 +6,7 @@ import { SCOPE_VIEWS, scopeMode, setScopeMode } from './14-scope.js';
 import { ladeLagerorte, lagerortBlock } from './02-detailfelder.js';
 import { tRaw } from '../i18n.js';
 import { esc } from './00-escapen.js';
+/** @typedef {import('../../frontend-typen/vertrag').HouseholdMember} HouseholdMember */
 
 /**
  * Kontoauswahl beim Erfassen — nur im Haushalt.
@@ -21,6 +22,7 @@ import { esc } from './00-escapen.js';
  * Bleibt verborgen, solange das Konto keine Unterkonten hat: Ein Filter mit
  * genau einer möglichen Antwort ist keine Wahl, sondern eine Frage, die sich
  * nicht stellt.
+ * @param {HouseholdMember[]} members
  */
 export function initScopeSelects(members) {
   const isMain = members.length > 1;
@@ -68,6 +70,7 @@ export function initScopeSelects(members) {
  * Merkliste baut seine Zeilen beim Oeffnen und braucht die Liste dann —
  * lange nach loadHouseholdMembers(). Ein zweiter Abruf waere ein zweiter
  * Stand derselben Antwort.
+ * @type {HouseholdMember[]}
  */
 let _haushalt = [];
 
@@ -123,7 +126,11 @@ export const ERFASSUNGS_ORTFELDER = ['add-storage', 'ap-storage', 'af-storage',
  */
 let _ortVorgabe = '';
 
-/** Ein Lagerortfeld eines Erfassungswegs neu zeichnen. */
+/**
+ * Ein Lagerortfeld eines Erfassungswegs neu zeichnen.
+ * @param {string} id
+ * @param {string} wert
+ */
 function zeichneOrtFeld(id, wert) {
   const slot = G(`${id}-slot`);
   if (!slot) return;
@@ -163,6 +170,7 @@ export async function ladeLagerortVorgabe() {
 /**
  * Das Lagerortfeld eines Erfassungswegs auf den Ausgangszustand stellen.
  * Ausführlich: docs/begruendungen/public/js/02-konten-orte.js.md#leerelagerortfeld
+ * @param {string} id
  */
 export function leereLagerortFeld(id) {
   if (G(`${id}-slot`)) { zeichneOrtFeld(id, _ortVorgabe); return; }
@@ -177,12 +185,16 @@ export function leereLagerortFeld(id) {
 /**
  * Der gewaehlte Lagerort eines Formulars — `''`, wenn keiner dasteht.
  * Ausführlich: docs/begruendungen/public/js/02-konten-orte.js.md#selectedstorage
+ * @param {string} id
  */
 export function selectedStorage(id) {
   return (G(id)?.value || '').trim();
 }
 
-/** Gewähltes Zielkonto eines Formulars — undefined, solange es keines gibt. */
+/**
+ * Gewähltes Zielkonto eines Formulars — undefined, solange es keines gibt.
+ * @param {string} selectId
+ */
 export function selectedOwner(selectId) {
   const box = G(`${selectId}-box`), sel = G(selectId);
   if (!box || box.style.display === 'none' || !sel?.value) return undefined;

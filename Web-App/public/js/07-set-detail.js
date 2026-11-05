@@ -22,7 +22,9 @@ let _detailLauf = 0;
 
 /** Inhalt des Set-Dialogs aus curSet und den Erfassungen. @param {string} sn @param {any[]} acqs */
 function setDetailHtml(sn, acqs) {
-  const addedFmt = curSet.added_at ? fmtDatum(curSet.added_at) : '—';
+  const set = curSet;
+  if (!set) return '';
+  const addedFmt = set.added_at ? fmtDatum(set.added_at) : '—';
   // Marktpreis und Entwicklung stehen jetzt JE ZUSTAND — und die Werte dafür
   // kommen aus derselben Abfrage wie der Preisverlauf (by_condition). Hier nur
   // der Platzhalter; gefüllt wird er in renderMarketRows() weiter unten,
@@ -47,16 +49,16 @@ function setDetailHtml(sn, acqs) {
   return `
     ${priceRow}${pnlRow}
     ${acqRows}
-    ${detailZeile(t('detail.year'), oderStrich(curSet.year))}
-    ${detailZeile(t('detail.theme'), esc(oderStrich(curSet.theme)))}
+    ${detailZeile(t('detail.year'), oderStrich(set.year))}
+    ${detailZeile(t('detail.theme'), esc(oderStrich(set.theme)))}
     ${qtyRow}
-    ${detailZeile(t('detail.pieces'), curSet.pieces ? curSet.pieces.toLocaleString(locale()) : '—')}
-    ${detailZeile(t('detail.minifigs'), oderStrich(curSet.minifigs), { wertId: 'm-minifigs-val' })}
+    ${detailZeile(t('detail.pieces'), set.pieces ? set.pieces.toLocaleString(locale()) : '—')}
+    ${detailZeile(t('detail.minifigs'), oderStrich(set.minifigs), { wertId: 'm-minifigs-val' })}
     ${detailZeile(t('detail.alert'), alarmBlock(sn), { klasse: 'alarm-zeile',
          zeilenStil: 'align-items:flex-start',
          wertStil: 'display:flex;align-items:center;gap:6px;flex-wrap:wrap;justify-content:flex-end' })}
     ${detailZeile(t('detail.storage'),
-        lagerortBlock('m-storage', curSet.storage,
+        lagerortBlock('m-storage', set.storage,
                       `data-change="speichereSetLagerort" data-arg="${escJs(sn)}"`),
         { wertStil: 'display:flex;align-items:center;gap:6px;flex-wrap:wrap;justify-content:flex-end' })}
     ${detailZeile(t('detail.created'), `${ico('kalender')} ${addedFmt}`, { klasse: 'dr-leise' })}
@@ -74,9 +76,9 @@ function ladeSetNachtraege(sn) {
     const el = G('m-minifigs-val');
     if (!el || !curSet || curSet.set_number !== sn) return;
     if (md.success && md.figs) {
-      const setFigs = md.figs.filter(f => f.in_sets && f.in_sets.split(',').includes(sn));
-      const total   = setFigs.reduce((s, f) => s + (parseInt(f.total_quantity) || parseInt(f.quantity) || 0), 0);
-      if (total > 0) el.textContent = total;
+      const setFigs = md.figs.filter(f => f.in_sets && String(f.in_sets).split(',').includes(sn));
+      const total   = setFigs.reduce((s, f) => s + (parseInt(String(f.total_quantity)) || parseInt(String(f.quantity)) || 0), 0);
+      if (total > 0) el.textContent = String(total);
       else if (!curSet.minifigs) el.textContent = '0';
     }
   });
@@ -93,6 +95,9 @@ function ladeSetNachtraege(sn) {
   });
 }
 
+/**
+ * @param {string} sn
+ */
 export async function openModal(sn){
   const lauf = ++_detailLauf;
   // Der Dialog steht sofort da, mit Platzhalter: Bei langsamem Netz geschah
@@ -119,25 +124,27 @@ export async function openModal(sn){
     } else toast(d?.error || tRaw('settings.error'), 'error');
     return;
   }
-  set_curSet(d.set);
+  const set = d.set;
+  if (!set) return;
+  set_curSet(set);
   document.querySelector('#set-modal .mehr-menue')?.removeAttribute('open');
-  G('m-tit').textContent=curSet.name||curSet.set_number;
-  G('m-untertit').textContent=curSet.name?curSet.set_number:'';
+  G('m-tit').textContent=set.name||set.set_number;
+  G('m-untertit').textContent=set.name?set.set_number:'';
   // fullUrl(): volle Auflösung, auch wenn image_local auf die _thumb-Datei zeigt
-  const img=G('m-img'); img.src=fullUrl(curSet.image_local||curSet.image_url)||'/assets/set-placeholder.svg'; img.style.display='block';
+  const img=G('m-img'); img.src=fullUrl(set.image_local||set.image_url)||'/assets/set-placeholder.svg'; img.style.display='block';
 
   G('m-det').innerHTML = setDetailHtml(sn, ad?.acquisitions || []);
 
-  G('m-qty').value=curSet.quantity;
+  G('m-qty').value=String(set.quantity);
 
-  renderInstructions(curSet.instructions||[], sn);
+  renderInstructions(set.instructions||[], sn);
   // Ab hier meinen die Alarm-Handler DIESEN Dialog.
   setzeAlarmFeld('m');
   G('set-modal').classList.add('open');
   ladeAlarm(sn).catch(() => {});
   // Die Auswahlliste gehört dem BESITZER des Sets, nicht dem Betrachter —
   // Begründung an ladeOrtAuswahl().
-  ladeOrtAuswahl(curSet.owners).catch(() => {});
+  ladeOrtAuswahl(set.owners).catch(() => {});
 
   ladeSetNachtraege(sn);
 }
@@ -147,6 +154,7 @@ function teileNeuImportieren(){ if (curSet?.set_number) reimportParts(curSet.set
 
 // openModal defined below (with price history)
 
+/** @param {import('../../frontend-typen/vertrag').Instruction[]} instr @param {string} sn */
 export function renderInstructions(instr, sn) {
   const items = instr.map(i => {
     const href = i.local_path || i.url;
@@ -193,6 +201,7 @@ export function renderInstructions(instr, sn) {
     ${uploadForm}`;
 }
 
+/** @param {string} sn @param {string} instrId */
 async function delInstr(sn, instrId) {
   if (!await confirmDelete(tRaw('instr.delete_title'),t('instr.delete_text'),'datei')) return;
   const d = await api('DELETE', `/v1/sets/${sn}/instructions/${instrId}`);
@@ -200,13 +209,17 @@ async function delInstr(sn, instrId) {
   else toast(d.error || t('settings.error'), 'error');
 }
 
+/**
+ * @param {string} sn
+ */
 async function uploadInstr(sn) {
   const fi = G('instr-file');
-  if (!fi.files[0]) return;
+  const datei = fi.files?.[0];
+  if (!datei) return;
   const status = G('instr-upload-status');
   status.textContent = tRaw('common.uploading');
   const fd = new FormData();
-  fd.append('file', fi.files[0]);
+  fd.append('file', datei);
   const desc = G('instr-desc').value.trim();
   if (desc) fd.append('description', desc);
   try {
@@ -216,6 +229,9 @@ async function uploadInstr(sn) {
   } catch (e) { status.textContent = tRaw('common.network_error'); }
 }
 
+/**
+ * @param {string} src
+ */
 export function openImageLightbox(src){
   if(!src || src.endsWith('/assets/set-placeholder.svg')) return;
   G('lightbox-img').src = src;
@@ -239,28 +255,30 @@ export function autosaveSet(){
   if(!curSet) return;
   clearTimeout(_autosaveTimer);
   _autosaveTimer=setTimeout(async ()=>{
+    const set = curSet;
+    if (!set) return;
     const qty = parseInt(G('m-qty').value)||1;
-    const prevQty = curSet.quantity || qty;
-    const d = await api('PUT',`/v1/sets/${esc(curSet.set_number)}`,{quantity:qty});
+    const prevQty = set.quantity || qty;
+    const d = await api('PUT',`/v1/sets/${esc(set.set_number)}`,{quantity:qty});
     if(d.success){
       // Die WIRKLICHE Gesamtmenge kommt vom Server.
       // Ausführlich: docs/begruendungen/public/js/07-set-detail.js.md#echt
-      const echt = Number.isInteger(d.quantity) ? d.quantity : qty;
-      curSet.quantity = echt;
-      if (echt !== qty) G('m-qty').value = echt;
+      const echt = d.quantity != null && Number.isInteger(d.quantity) ? d.quantity : qty;
+      set.quantity = echt;
+      if (echt !== qty) G('m-qty').value = String(echt);
       // Bei jeder Mengenänderung die Erfassungs-Übersicht neu laden: beim
       // Erhöhen entsteht eine neue Zeile, beim Reduzieren fällt (LIFO) die
       // letzte weg — sonst blieb die entfernte Zeile in der Detailsicht stehen.
-      const sn = curSet.set_number;
+      const sn = set.set_number;
       if (echt !== prevQty && typeof renderAcquisitionSummary === 'function') {
         api('GET', `/v1/sets/${esc(sn)}/acquisitions`).then(ad => {
           if (!ad?.success) return;
           if (echt > prevQty) meldeNeueExemplare(sn, ad.acquisitions, echt - prevQty);
           const sumEl = G('m-acq-summary');
-          if (sumEl) sumEl.innerHTML = renderAcquisitionSummary(ad.acquisitions, curSet.set_number) +
-            `<button class="btn bs btn-sm" data-click="openAcqModal" data-arg="${escJs(curSet.set_number)}" data-stil="margin-top:4px;font-size:var(--fs-1);padding:2px 10px">${ico('bearbeiten')} ${t('detail.edit_prices')}</button>`;
+          if (sumEl) sumEl.innerHTML = renderAcquisitionSummary(ad.acquisitions, set.set_number) +
+            `<button class="btn bs btn-sm" data-click="openAcqModal" data-arg="${escJs(set.set_number)}" data-stil="margin-top:4px;font-size:var(--fs-1);padding:2px 10px">${ico('bearbeiten')} ${t('detail.edit_prices')}</button>`;
           if (G('acq-modal').classList.contains('open') && typeof renderAcqModalBody === 'function') {
-            renderAcqModalBody(curSet.set_number, ad.acquisitions);
+            renderAcqModalBody(set.set_number, ad.acquisitions, undefined);
           }
         }).catch(()=>{});
       }
@@ -277,6 +295,7 @@ export function autosaveSet(){
  * verändert die Finanzen, also sagt der Toast es samt Betrag und bietet
  * „Ändern“ an, statt nur „Gespeichert“ zu melden.
  */
+/** @param {string} sn @param {import('../../frontend-typen/vertrag').Acquisition[] | null | undefined} acqs @param {number} n */
 function meldeNeueExemplare(sn, acqs, n) {
   const neu = [...(acqs || [])].sort((a, b) => (b.id || 0) - (a.id || 0))[0];
   const preis = neu?.purchase_price;
@@ -292,6 +311,9 @@ function meldeNeueExemplare(sn, acqs, n) {
 // „Abbrechen" leer da.
 G('btn-md').onclick=async()=>{ if(!curSet) return; if(await delSet(curSet.set_number)) closeModal(); };
 
+/**
+ * @param {string} sn
+ */
 async function redownloadInstr(sn){ toast(tRaw('instr.loading'),'info'); const d=await api('POST',`/v1/sets/${sn}/instructions`); if(d.success){toast(tRaw('instr.loaded',{count:d.instructions.length}),'success');if(curSet){openModal(sn);}loadStats();} else toast(d.error,'error'); }
 
 stelleZielBereit({ setDetail: openModal });

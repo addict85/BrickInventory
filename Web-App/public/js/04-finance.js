@@ -14,6 +14,9 @@ import { diagrammBreite, portfolioChartSVG, zeitpunkt, diagrammLeer } from './01
 // Vorgewählt ist der längste Zeitraum: Eine Woche hat bei neuem Bestand oft
 // nur einen Messpunkt und zeigte dann eine flache Linie mit „0 %“.
 let _chartPeriod  = 'max';
+/**
+ * @param {string} period
+ */
 function setChartPeriod(period){
   _chartPeriod = period;
   // Nur die Zeitraum-Knöpfe: Die Filterchips darunter tragen dieselbe Klasse.
@@ -25,7 +28,8 @@ function setChartPeriod(period){
   loadPortfolioChart();
 }
 
-/** Zuletzt gezeichnete Kurve — beim Drehen des Telefons neu in der neuen Breite. */
+/** Zuletzt gezeichnete Kurve — beim Drehen des Telefons neu in der neuen Breite.
+ * @type {{ day: string, total: number, zeit?: number }[] | null} */
 let _letzteKurve = null;
 let _kurveBreite = 0;
 /** Einstand und Währung der Kennzahlen — die Bezugslinie im Wertdiagramm. */
@@ -39,9 +43,9 @@ window.addEventListener('resize', () => {
   el.innerHTML = portfolioChartSVG(_letzteKurve, _chartPeriod, b, _einstand, _waehrung || CURRENCY, _einstandText || undefined);
 });
 
-/** Hinweis statt Kurve, wenn der Verlauf nicht zu holen war. */
 /** Hinweis statt Kurve, wenn der Verlauf nicht zu holen war — im selben
- * Muster wie der Fehlerzustand einer Liste, nur kleiner. */
+ * Muster wie der Fehlerzustand einer Liste, nur kleiner.
+ * @param {boolean} offline @param {{ networkError?: boolean, status?: number, error?: unknown } | null | undefined} d */
 function diagrammNichtDa(offline, d){
   const { grund, details } = offline ? { grund: tRaw('api.unreachable') } : verstaendlicherGrund(d);
   return `<div class="empty leer klein fehler-zustand" role="status"><div class="leer-ico">${ico('warnung')}</div>` +
@@ -65,7 +69,9 @@ async function loadPortfolioChart(){
   }
   // Weniger als zwei echte Messpunkte sind kein Verlauf: Der Server ergänzt
   // dann einen künstlichen Startwert, und die Linie behauptete Stillstand.
-  const messpunkte = d.messpunkte ?? d.points?.length ?? 0;
+  // messpunkte und chart nennt der Vertrag nicht (PortfolioHistoryResponse); der Server schickt sie mit.
+  const ungenannt = /** @type {{ messpunkte?: number, chart?: { values?: { values?: { x: string }[] }[] } }} */ (/** @type {unknown} */ (d));
+  const messpunkte = ungenannt.messpunkte ?? d.points?.length ?? 0;
   _letzteKurve = null;
   // Ohne jeden Verlauf („Max“ leer) gibt es keinen Zeitraum zu wählen.
   const ganzLeer = (!d.points?.length || messpunkte < 2) && _chartPeriod === 'max';
@@ -85,7 +91,7 @@ async function loadPortfolioChart(){
   const scale = lastVal > 0 ? grandTotal / lastVal : 1;
   // Die Zeitpunkte stehen in d.chart (dieselbe Reihenfolge wie points); mit
   // ihnen liegen die Punkte auf einer echten Zeitachse statt nach Index.
-  const zeiten = d.chart?.values?.[0]?.values?.map(v => zeitpunkt(v.x)) || [];
+  const zeiten = ungenannt.chart?.values?.[0]?.values?.map(v => zeitpunkt(v.x)) || [];
   const mitZeit = zeiten.length === d.points.length && zeiten.every(Number.isFinite);
   const finalChartData = d.points.map((p, i) => ({
     day:   p.x_label || '',
@@ -105,14 +111,14 @@ async function loadPortfolioChart(){
                            year: 'finance.change.year', max: 'finance.change.max' }[_chartPeriod];
     // „seit 4. Sept.“ statt „seit Beginn“: Der Bezug der Prozentzahl steht dabei.
     const start = finalChartData[0]?.zeit;
-    const seit = _chartPeriod === 'max' && Number.isFinite(start) ? tRaw('finance.change.seit', { datum: fmtDatum(new Date(start)) }) : '';
+    const seit = _chartPeriod === 'max' && start !== undefined && Number.isFinite(start) ? tRaw('finance.change.seit', { datum: fmtDatum(new Date(start)) }) : '';
     const zeitraum = zeitraumText ? `<span class="pnl-zeitraum">${seit ? esc(seit) : t(zeitraumText)}</span>` : '';
     if(!(Number(window._finGrandTotal) > 0)) pnlEl.innerHTML = '';
     else if(d.period_change_pct != null){
       pnlEl.innerHTML = pnlBadge(d.period_change_pct) + zeitraum;
     } else {
       // Fallback: first chart point vs current
-      const purchaseBaseline = parseFloat(d.purchase_total || 0);
+      const purchaseBaseline = parseFloat(d.purchase_total || '0');
       const firstVal = (purchaseBaseline > 0 && finalChartData.length <= 2)
         ? purchaseBaseline : finalChartData[0].total;
       if(firstVal > 0 && grandTotal > 0){
@@ -128,6 +134,7 @@ async function loadPortfolioChart(){
  * Marktpreis da oder nicht?
  * Ausführlich: docs/begruendungen/public/js/04-finance.js.md#pricestatusbadge
  */
+/** @param {{ error?: string | null, no_price?: boolean | null, bl_unbekannt?: boolean | null }} s */
 function priceStatusBadge(s, neutral = false){
   // Fehlt der Preis fast überall (kein Zugang, Dienst noch nicht gelaufen), ist
   // das kein Fehler dieser Zeile: grau statt rot, der Grund im Tooltip.
@@ -173,7 +180,8 @@ const PM_COLGROUP = `<colgroup>
 const manArgs = it => it.fig_number
   ? `data-click="openManDetail" data-arg="fig" data-arg2="${escJs(it.fig_number)}" data-arg3="0"`
   : `data-click="openManDetail" data-arg="part" data-arg2="${escJs(it.part_number)}" data-arg3="${it.color_id||0}"`;
-/** Ein aus Teilepreisen geschätzter Figurenpreis bekommt „≈" und die Abdeckung. */
+/** Ein aus Teilepreisen geschätzter Figurenpreis bekommt „≈" und die Abdeckung.
+ * @param {{ estimated_from_parts?: boolean | null, abdeckung?: number | null }} it @param {string} html */
 function geschaetztMarke(it, html){
   if (!it.estimated_from_parts) return html;
   const p = it.abdeckung != null ? Math.round(it.abdeckung * 100) : '?';
@@ -320,14 +328,14 @@ export async function loadFinance(){
   // Alle vier mit demselben Kontofilter — sonst stünde eine Summe aus einem
   // Blickfeld neben einer Aufstellung aus einem anderen.
   const [d, partsVal, figsVal, pnlData] = await Promise.all([
-    api('GET','/v1/finance/valuation'+scopeQuery('finance')),
-    api('GET','/v1/finance/parts-valuation'+scopeQuery('finance')),
-    api('GET','/v1/finance/minifigs-valuation'+scopeQuery('finance')),
-    api('GET','/v1/finance/pnl'+scopeQuery('finance')),
+    api('GET',`/v1/finance/valuation${scopeQuery('finance')}`),
+    api('GET',`/v1/finance/parts-valuation${scopeQuery('finance')}`),
+    api('GET',`/v1/finance/minifigs-valuation${scopeQuery('finance')}`),
+    api('GET',`/v1/finance/pnl${scopeQuery('finance')}`),
   ]);
   if (listeLadefehler(G('fin-tbl'), d, { erneut: 'loadFinance', behalten: hatteTabelle })) { finanzenFehlen(d); return; }
   const cur=d.currency;
-  const extra = parseFloat(partsVal.success ? partsVal.total_value||0 : 0) + parseFloat(figsVal.success ? figsVal.total_value||0 : 0);
+  const extra = parseFloat(partsVal.success ? partsVal.total_value||'0' : '0') + parseFloat(figsVal.success ? figsVal.total_value||'0' : '0');
   // Ausführlich: docs/begruendungen/public/js/04-finance.js.md#gesamtguv
   const gesamtGuv = pnlData.success ? pnlData.totals?.pnl_prozent : null;
   const alleZeilen = [...(d.sets || []), ...(partsVal.success ? partsVal.parts : []), ...(figsVal.success ? figsVal.figs : [])];
@@ -335,6 +343,7 @@ export async function loadFinance(){
   const partsItems = partsVal.success ? partsVal.parts : [];
   const figsItems  = figsVal.success  ? figsVal.figs   : [];
   // Einstand je Abschnitt: vom Server (pnl), sonst aus den Zeilen gerechnet.
+  /** @type {Partial<import('../../frontend-typen/vertrag').PnlTotals>} */
   const pt = pnlData.success ? (pnlData.totals || {}) : {};
   const einstand = {
     sets:  zahlOder(pt.sets_purchase,  einstandAus(d.sets)),
@@ -343,14 +352,14 @@ export async function loadFinance(){
     alle: 0,
   };
   einstand.alle = zahlOder(pt.purchase, einstand.sets + einstand.parts + einstand.figs);
-  const ohnePreis = d.sets.filter(s => s.error || !(parseFloat(s.avg_price) > 0)).length
-    + [...partsItems, ...figsItems].filter(it => !(parseFloat(it.avg_price ?? it.qty_avg_price) > 0)).length;
+  const ohnePreis = d.sets.filter(s => s.error || !(Number(s.avg_price) > 0)).length
+    + [...partsItems, ...figsItems].filter(it => !(Number(it.avg_price ?? it.qty_avg_price) > 0)).length;
   // Summen vom Server (`total_value`), wie in der App.
-  const setsQtyAvg = parseFloat(d.totals.avg||0);
+  const setsQtyAvg = parseFloat(d.totals.avg||'0');
   // Ausführlich: docs/begruendungen/public/js/04-finance.js.md#grandtotal
-  const grandTotal = parseFloat(pnlData?.totals?.grand_total || 0) || (setsQtyAvg + extra);
+  const grandTotal = parseFloat(pnlData?.totals?.grand_total || '0') || (setsQtyAvg + extra);
   const basis = basisAus(pt, ohnePreis);
-  const wert = { sets: setsQtyAvg, parts: parseFloat(partsVal?.total_value || 0), figs: parseFloat(figsVal?.total_value || 0), alle: grandTotal };
+  const wert = { sets: setsQtyAvg, parts: parseFloat(partsVal?.total_value || '0'), figs: parseFloat(figsVal?.total_value || '0'), alle: grandTotal };
   window._finPartsExtra = extra;
   // Diagramm, Kopfzahl und Karten zeigen denselben Marktwert und Einstand.
   const kopfWert = basis.bewertet > 0 ? basis.wert : grandTotal;
@@ -394,11 +403,14 @@ export async function loadFinance(){
  * Die Kaufpreisspalte zeigt den Einstand der Zeile (Menge × Stückpreis), damit
  * die Summe darunter sich aus der Spalte nachrechnen lässt; der Stückpreis
  * steht bei Menge > 1 als „je …“ darunter.
+ * @param {unknown} stueck
+ * @param {unknown} menge
+ * @param {string} cur
  */
 function einstandZelle(stueck, menge, cur) {
   const p = stueck == null || String(stueck).trim() === '' ? NaN : Number(stueck);
   if (!Number.isFinite(p)) return '<span class="text-mut">—</span>';
-  const n = parseInt(menge) || 1;
+  const n = parseInt(String(menge)) || 1;
   if (n <= 1) return fmtGeld(p, cur);
   return `${fmtGeld(p * n, cur)}<span class="fin-je">${esc(tRaw('finance.je', { preis: fmtGeld(p, cur) }))}</span>`;
 }
@@ -408,7 +420,7 @@ function einstandZelle(stueck, menge, cur) {
  * gekürzt da, der volle Name im title und für Vorleser.
  */
 function preisKoepfe() {
-  const kurz = (lang, kurzTxt) => `<th class="zahl" title="${esc(tRaw(lang))}"><span aria-hidden="true">${kurzTxt}</span><span class="vh">${t(lang)}</span></th>`;
+  const kurz = (/** @type {string} */ lang, /** @type {string} */ kurzTxt) => `<th class="zahl" title="${esc(tRaw(lang))}"><span aria-hidden="true">${kurzTxt}</span><span class="vh">${t(lang)}</span></th>`;
   return `<th class="zahl">${t('finance.col.purchase')}</th>`
     + `<th class="zahl" title="${esc(tRaw('finance.market_price_stueck'))}">${t('detail.market_price')}</th>`
     + `<th class="zahl">${t('finance.grand.value')}</th>`
@@ -421,17 +433,25 @@ function legende() {
 }
 
 
-/** Zahl aus der Serverantwort, sonst der Ersatzwert. */
-function zahlOder(v, ersatz) { const n = parseFloat(v); return Number.isFinite(n) ? n : ersatz; }
+/**
+ * Zahl aus der Serverantwort, sonst der Ersatzwert.
+ * @param {unknown} v
+ * @param {number} ersatz
+ */
+function zahlOder(v, ersatz) { const n = parseFloat(String(v)); return Number.isFinite(n) ? n : ersatz; }
 
-/** Summe der Kaufpreise mal Menge — je Erfassung, sonst je Eintrag. */
+/**
+ * Summe der Kaufpreise mal Menge — je Erfassung, sonst je Eintrag.
+ * @typedef {{ purchase_price?: unknown, quantity?: unknown }} Kaufposten
+ * @param {(Kaufposten & { acquisitions?: Kaufposten[] | null })[] | null | undefined} liste
+ */
 function einstandAus(liste) {
   let s = 0;
   for (const it of liste || []) {
     const acqs = it.acquisitions?.length ? it.acquisitions : [it];
     for (const a of acqs) {
-      const p = parseFloat(a.purchase_price);
-      if (Number.isFinite(p)) s += p * (parseInt(a.quantity) || 1);
+      const p = parseFloat(String(a.purchase_price));
+      if (Number.isFinite(p)) s += p * (parseInt(String(a.quantity)) || 1);
     }
   }
   return s;
@@ -441,15 +461,25 @@ function einstandAus(liste) {
  * Die Zellen einer Summenzeile: Einstand und Marktwert. `luecke` Zellen
  * dazwischen halten die Spalten der Tabelle darüber (Kaufpreis | Marktpreis |
  * Total). Am Telefon tragen beide ihre Beschriftung selbst (data-kurz).
+ * @param {number} kauf
+ * @param {number} wert
+ * @param {string} cur
+ * @param {number} luecke
  */
 function summenZellen(kauf, wert, cur, luecke, zusatz = '') {
   const k = `<td class="price-total fin-fuss-wert" data-kurz="${esc(t('finance.col.purchase'))}">${kauf > 0 ? fmtN(kauf, cur) : '—'}</td>`;
   const w = `<td class="price-total fin-fuss-wert" data-kurz="${esc(t('finance.grand.value'))}">${wert > 0 ? fmtN(wert, cur) + (zusatz ? `<span class="fin-je">${esc(zusatz)}</span>` : '') : `<span class="fin-fehlt-kurz">${t('finance.price_missing_short')}</span>`}</td>`;
   return k + '<td></td>'.repeat(luecke) + w;
 }
-/** Die gemeinsame Basis der Karten vom Server; ohne sie (pnl gescheitert) keine G/V. */
+/**
+ * Die gemeinsame Basis der Karten vom Server; ohne sie (pnl gescheitert) keine G/V.
+ * @typedef {{ bewertet: number, ohneMarkt: number, ohneKauf: number, einstand: number, wert: number, betrag: number,
+ *   gesamt?: number, ohneMarktEinstand?: number, ohneKaufWert?: number }} Basis
+ * @param {Partial<import('../../frontend-typen/vertrag').PnlTotals>} pt @param {number} ohnePreis
+ * @returns {Basis}
+ */
 function basisAus(pt, ohnePreis) {
-  const z = v => parseFloat(v) || 0;
+  const z = (/** @type {unknown} */ v) => parseFloat(String(v)) || 0;
   if (pt.basis_einstand == null) return { bewertet: 0, ohneMarkt: ohnePreis, ohneKauf: 0, einstand: 0, wert: 0, betrag: 0 };
   return {
     gesamt: pt.positionen || 0, bewertet: pt.positionen_bewertet || 0,
@@ -465,6 +495,7 @@ function basisAus(pt, ohnePreis) {
  * und G&V nur, wenn es Marktpreise gibt — sonst sagt die Kachel, für wie
  * viele Positionen der Preis fehlt, statt „—“ zu zeigen.
  */
+/** @param {{ basis: Basis, einstandAlle: number, wertAlle: number, guv: number | null | undefined, cur: string, fremdeWaehrung?: number }} p */
 function zeigeKennzahlen({ basis, einstandAlle, wertAlle, guv, cur, fremdeWaehrung = 0 }) {
   G('fin-sum').dataset.geladen = '1';
   G('fin-sum').removeAttribute('aria-busy');
@@ -516,7 +547,10 @@ function zeigeKennzahlen({ basis, einstandAlle, wertAlle, guv, cur, fremdeWaehru
 // Ausführlich: docs/begruendungen/public/js/04-finance.js.md#finkategorien
 const finKategorien = new Set();
 
-/** Zeigt der Reiter diese Zeilenart? Leere Auswahl heisst: alle. */
+/**
+ * Zeigt der Reiter diese Zeilenart? Leere Auswahl heisst: alle.
+ * @param {string} art
+ */
 function finZeigt(art){ return finKategorien.size === 0 || finKategorien.has(art); }
 
 /** Abschnitte ein-/ausblenden und die Chips nachziehen. */
@@ -525,7 +559,7 @@ function finFilterAnwenden(){
   // eigene Darstellung, und eine Autoren-Regel schlaegt das `[hidden]` des
   // Browsers. Der Abschnitt bliebe sichtbar, ohne dass etwas scheitert.
   alle('#fin-tbl [data-fin-art]').forEach(el => {
-    el.style.display = finZeigt(el.dataset.finArt) ? '' : 'none';
+    el.style.display = finZeigt(el.dataset.finArt ?? '') ? '' : 'none';
   });
   alle('#fin-filter button').forEach(b => {
     const art = b.dataset.art;
@@ -537,11 +571,12 @@ function finFilterAnwenden(){
 
 /**
  * Ein Chip wurde geklickt.
- *
+ * 
  * „alle" raeumt die Auswahl weg; die drei uebrigen schalten ihre Zeilenart
  * einzeln zu und wieder ab. Die letzte Art abzuwaehlen fuehrt auf die leere
  * Menge — und die heisst wieder ALLE. Eine Ansicht, die nach dem Abwaehlen
  * leer bliebe, waere kein Filter, sondern eine leere Seite.
+ * @param {string} art
  */
 function finFilter(art){
   if (art === 'alle') finKategorien.clear();

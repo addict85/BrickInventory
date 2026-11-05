@@ -9,24 +9,33 @@ import { bestaetigeMitPasswort, mitZweitemFaktor, setzePasskeyHolen } from './01
 // Ohne Fremdskript: Der Server schickt die Optionen als JSON (Base64URL), der
 // Browser braucht ArrayBuffer — die Umwandlung in beide Richtungen steht hier.
 
-const zuPuffer = (b64u) => {
+const zuPuffer = (/** @type {string} */ b64u) => {
   const b64 = b64u.replace(/-/g, '+').replace(/_/g, '/').padEnd(Math.ceil(b64u.length / 4) * 4, '=');
   return Uint8Array.from(atob(b64), c => c.charCodeAt(0)).buffer;
 };
-const zuText = (puffer) => {
+const zuText = (/** @type {ArrayBuffer} */ puffer) => {
   let s = '';
   for (const b of new Uint8Array(puffer)) s += String.fromCharCode(b);
   return btoa(s).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 };
-const mitIds = (liste) => (liste || []).map(c => ({ ...c, id: zuPuffer(c.id) }));
+/**
+ * Die Optionen des Servers als JSON: Puffer stehen als Base64url da. Der
+ * Vertrag (PasskeyOptionen) lässt ihre Felder offen; das sind die von WebAuthn.
+ * @typedef {{ id: string, type?: string, transports?: string[] }} KennungJson
+ * @typedef {{ challenge: string, user?: { id: string, name: string, displayName: string },
+ *   excludeCredentials?: KennungJson[], allowCredentials?: KennungJson[], [feld: string]: unknown }} OptionenJson
+ */
+const mitIds = (/** @type {KennungJson[] | null | undefined} */ liste) =>
+  /** @type {PublicKeyCredentialDescriptor[]} */ ((liste || []).map(c => ({ ...c, id: zuPuffer(c.id) })));
 
 /** Kann dieser Browser Passkeys? (Nur in einem sicheren Kontext, also über HTTPS.) */
 export const passkeysMoeglich = () => !!(window.PublicKeyCredential && window.isSecureContext && navigator.credentials);
 
+/** @param {OptionenJson & { user: { id: string, name: string, displayName: string } }} o */
 async function erzeuge(o) {
-  const c = /** @type {PublicKeyCredential} */ (await navigator.credentials.create({ publicKey: {
+  const c = /** @type {PublicKeyCredential} */ (await navigator.credentials.create({ publicKey: /** @type {PublicKeyCredentialCreationOptions} */ ({
     ...o, challenge: zuPuffer(o.challenge), user: { ...o.user, id: zuPuffer(o.user.id) },
-    excludeCredentials: mitIds(o.excludeCredentials) } }));
+    excludeCredentials: mitIds(o.excludeCredentials) }) }));
   const r = /** @type {AuthenticatorAttestationResponse} */ (c.response);
   return { id: c.id, rawId: zuText(c.rawId), type: c.type, clientExtensionResults: c.getClientExtensionResults(),
     authenticatorAttachment: c.authenticatorAttachment ?? undefined,
@@ -34,16 +43,19 @@ async function erzeuge(o) {
       transports: r.getTransports ? r.getTransports() : [] } };
 }
 
-/** Eine Anmeldeantwort für `zweck` holen; null, wenn abgebrochen. */
+/**
+ * Eine Anmeldeantwort für `zweck` holen; null, wenn abgebrochen.
+ * @param {string} zweck
+ */
 async function bestaetige(zweck) {
   const o = await api('POST', '/v1/auth/passkey/anmelden/optionen', { zweck });
   if (!o?.success) { toast(o?.error || tRaw('settings.error'), 'error'); return null; }
-  const p = o.optionen;
+  const p = /** @type {OptionenJson} */ (o.optionen);
   /** @type {PublicKeyCredential} */
   let c;
   try {
-    c = /** @type {PublicKeyCredential} */ (await navigator.credentials.get({ publicKey: { ...p,
-      challenge: zuPuffer(p.challenge), allowCredentials: mitIds(p.allowCredentials) } }));
+    c = /** @type {PublicKeyCredential} */ (await navigator.credentials.get({ publicKey: /** @type {PublicKeyCredentialRequestOptions} */ ({ ...p,
+      challenge: zuPuffer(p.challenge), allowCredentials: mitIds(p.allowCredentials) }) }));
   } catch { toast(tRaw('pk.abgebrochen'), 'info'); return null; }
   const r = /** @type {AuthenticatorAssertionResponse} */ (c.response);
   return { id: c.id, rawId: zuText(c.rawId), type: c.type, clientExtensionResults: c.getClientExtensionResults(),
@@ -110,7 +122,7 @@ export async function passkeyHinzufuegen() {
   for (const id of ['pk-pw', 'pk-code']) if (G(id)) G(id).value = '';
   if (!o?.success) { toast(o?.error || tRaw('settings.error'), 'error'); return; }
   let antwort;
-  try { antwort = await erzeuge(o.optionen); }
+  try { antwort = await erzeuge(/** @type {OptionenJson & { user: { id: string, name: string, displayName: string } }} */ (o.optionen)); }
   catch { toast(tRaw('pk.abgebrochen'), 'info'); return; }
   const d = await api('POST', '/v1/auth/passkey/registrieren', { antwort, name: G('pk-name')?.value || '' });
   if (!d?.success) { toast(d?.error || tRaw('settings.error'), 'error'); return; }
@@ -118,6 +130,7 @@ export async function passkeyHinzufuegen() {
   ladePasskeys();
 }
 
+/** @param {string} id @param {string} name */
 export async function passkeyLoeschen(id, name) {
   const password = await bestaetigeMitPasswort(tRaw('pk.delete_title'), tRaw('pk.delete_text', { name: name || '—' }), 'schluessel', { knopf: 'confirm.btn.entfernen', art: 'bd' });
   if (password === null) return;

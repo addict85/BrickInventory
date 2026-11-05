@@ -28,6 +28,9 @@ import { esc } from './00-escapen.js';
 // Icon des Reiters in den Seitentitel spiegeln (links vom Text), damit
 // oben derselbe Icon wie im Nav-Tab erscheint. Quelle ist der Nav-Tab
 // selbst — Emoji ODER Inline-SVG —, so bleibt beides automatisch synchron.
+/**
+ * @param {string | undefined} tab
+ */
 function syncTabTitleIcon(tab){
   const nav = document.querySelector(`.ntab[data-tab="${tab}"]`);
   const slot = document.querySelector(`.ptitle[data-tab-title="${esc(tab)}"] .ptitle-icon`);
@@ -39,7 +42,7 @@ function syncTabTitleIcon(tab){
   const kopien = [];
   for(const node of nav.childNodes){
     if(node === label) break;
-    if(node.nodeType === Node.TEXT_NODE ? node.textContent.trim() : true) kopien.push(node.cloneNode(true));
+    if(node.nodeType === Node.TEXT_NODE ? (node.textContent ?? '').trim() : true) kopien.push(node.cloneNode(true));
   }
   slot.replaceChildren(...kopien);
 }
@@ -51,10 +54,13 @@ function syncTabTitleIcon(tab){
  */
 const SAMMLUNG = ['gallery', 'parts', 'minifigs'];
 
+/**
+ * @param {string | null | undefined} tab
+ */
 function markiereGruppe(tab){
   // Eigene Klasse statt .active: `.ntab.active` nennt überall den offenen Reiter.
   const sammlung = document.querySelector('.ntab[data-tab="gallery"]');
-  sammlung?.classList.toggle('gruppe-aktiv', SAMMLUNG.includes(tab));
+  sammlung?.classList.toggle('gruppe-aktiv', !!tab && SAMMLUNG.includes(tab));
   // Die drei Knöpfe wechseln die Ansicht; die offene ist die aktuelle Seite.
   alle('.sammlung-wahl [data-arg]').forEach(b => {
     if (b.dataset.arg === tab) b.setAttribute('aria-current', 'page'); else b.removeAttribute('aria-current');
@@ -86,7 +92,10 @@ function zeigeEinstellungsZugriff(){
   f.innerHTML = ME?.isAdmin ? '' : leerZustand({ ico: 'schloss', titel: tRaw('settings.kein_zugriff'), text: tRaw('settings.kein_zugriff_text') });
 }
 
-/** Einen Reiter öffnen — aus dem Umschalter der Sammlung oder dem Menü. */
+/**
+ * Einen Reiter öffnen — aus dem Umschalter der Sammlung oder dem Menü.
+ * @param {string} name
+ */
 export function oeffneReiter(name){
   const ausMenue = !!G('umenu-pop')?.contains(document.activeElement);
   menueSchliessen();
@@ -99,6 +108,7 @@ export function oeffneReiter(name){
  * und fiele an den Seitenanfang; die Überschrift der neuen Seite ist der Ort,
  * an dem Tastatur und Bildschirmleser weitermachen.
  */
+/** @param {HTMLElement | null} flaeche */
 function fokusAufTitel(flaeche){
   const titel = /** @type {HTMLElement|null} */ (flaeche?.querySelector('.ptitle') ?? null);
   if (!titel) { G('btn-umenu')?.focus(); return; }
@@ -119,7 +129,7 @@ export function bindTabs(){
       G('btn-umenu')?.classList.toggle('aktiv', unter);
       if (unter) G('btn-umenu')?.setAttribute('aria-current', 'page'); else G('btn-umenu')?.removeAttribute('aria-current');
       t.classList.add('active'); G('tab-'+t.dataset.tab).classList.add('active');
-      const tab = t.dataset.tab;
+      const tab = t.dataset.tab ?? '';
       meldeAnsicht(tab);
       markiereGruppe(tab);
       zeigeSeitenname(G('tab-'+tab), unter);
@@ -169,6 +179,7 @@ export function bindTabs(){
 //    Punkten belassen die nur der Administrator setzen kann, und die
 //    restlichen Seiten oben Rechts hinter dem Benutzernamen als Aufklappbares …
 // Ausführlich: docs/begruendungen/public/js/25-navigation.js.md#sichten
+/** @type {Record<string, () => unknown>} */
 const SICHTEN = {
   profil:     () => { loadSettings(); loadProfile(); ladeZweitenFaktor(); ladePasskeys(); },
   gutscheine: () => ladeGutscheine(),
@@ -179,7 +190,10 @@ const SICHTEN = {
   app:        () => { loadTokens(); ladeTls(); },
 };
 
-/** Eine Sicht aus dem Menü öffnen. */
+/**
+ * Eine Sicht aus dem Menü öffnen.
+ * @param {string} name
+ */
 export function oeffneSicht(name){
   if(!SICHTEN[name]) return;
   const flaeche = G('tab-'+name);
@@ -206,6 +220,8 @@ export function oeffneSicht(name){
 /**
  * Seitenname im Fenstertitel und, für Seiten hinter dem Menü, im Kopf: Dort
  * markiert kein Reiter die offene Seite, sonst wüsste man nur am Inhalt, wo man ist.
+ * @param {Element | null} flaeche
+ * @param {boolean} imKopf
  */
 function zeigeSeitenname(flaeche, imKopf){
   const titel = flaeche?.querySelector('.ptitle')?.textContent.trim() || '';
@@ -225,8 +241,12 @@ export function seitennameAktualisieren(){
 /**
  * Am Telefon steht der Seitenname nur dann im Kopf, wenn die Überschrift
  * hinausgerollt ist; sonst stünde er zweimal untereinander.
+ * @type {IntersectionObserver | null}
  */
 let _titelBeobachter = null;
+/**
+ * @param {Element | null} flaeche
+ */
 function beobachteTitel(flaeche){
   const kopf = G('kopf-sicht'), h1 = flaeche?.querySelector('.ptitle');
   _titelBeobachter?.disconnect();
@@ -296,7 +316,10 @@ document.addEventListener('keydown', (ev) => {
   if(ev.key === 'Escape') { menueSchliessen(true); importMenuesSchliessen(null, true); }
 });
 
-/** Offene Import-Menüs schliessen, ausser dem, in dem `ausser` liegt. */
+/**
+ * Offene Import-Menüs schliessen, ausser dem, in dem `ausser` liegt.
+ * @param {Node | null} ausser
+ */
 function importMenuesSchliessen(ausser, fokusZurueck = false){
   /** @type {NodeListOf<HTMLDetailsElement>} */ (document.querySelectorAll('details.import-menue[open]')).forEach(d => {
     if (ausser && d.contains(ausser)) return;
@@ -318,7 +341,10 @@ document.addEventListener('change', (ev) => {
   if (d) d.open = false;
 });
 
-/** Alle Filter einer Ansicht leeren (Knopf im Leerzustand ohne Treffer). */
+/**
+ * Alle Filter einer Ansicht leeren (Knopf im Leerzustand ohne Treffer).
+ * @param {string} ansicht
+ */
 function filterZuruecksetzen(ansicht) {
   if (ansicht === 'gallery') {
     G('gs').value = ''; G('gtheme').value = '';
@@ -333,11 +359,12 @@ function filterZuruecksetzen(ansicht) {
 
 /**
  * Umschalten — lädt NUR die betroffene Ansicht neu, wie beim Kontofilter.
- *
+ * 
  * Im Reiter Teile BEIDE Listen: Seit der Lagerortfilter auch die manuell
  * erfassten Teile trifft (getManualParts), waere ein Umschalten ohne
  * loadManualParts() ein halb angewandter Filter — oben ungefiltert, unten
  * gefiltert. Dieselbe Begruendung wie bei onScopeChange() darunter.
+ * @param {string} view
  */
 export function onStorageChange(view) {
   const el = G('storage-' + view);
@@ -349,10 +376,11 @@ export function onStorageChange(view) {
 
 /**
  * Umschalten — lädt NUR die betroffene Ansicht neu.
- *
+ * 
  * Die Wahl gilt pro Ansicht; alle vier gleichzeitig neu zu laden würde drei
  * Ansichten anfassen, die niemand gerade ansieht, und dabei Preisabrufe
  * auslösen.
+ * @param {string} view
  */
 export function onScopeChange(view) {
   const el = G('scope-' + view);

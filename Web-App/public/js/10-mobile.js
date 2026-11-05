@@ -8,6 +8,7 @@
   // ── 1. data-label auf Tabellenzellen ────────────────────────────────────
 
   /** Beschriftungen einer Tabelle aus ihrem <thead> übernehmen. */
+  /** @param {HTMLTableElement | null | undefined} table */
   function labelTable(table) {
     if (!table || table.dataset.labelled === '1') return;
     const head = table.tHead;
@@ -17,7 +18,7 @@
     // darüber) kommen in den Finanztabellen vor.
     const headRow = head.rows[head.rows.length - 1];
     // Nur sichtbarer Text: Ein Kopf, der bloss für Vorleser beschriftet ist (.vh), bleibt in der Karte leer.
-    const labels = [...headRow.cells].map(th => { const k = th.cloneNode(true); k.querySelectorAll('.vh').forEach(v => v.remove()); return (k.textContent || '').trim(); });
+    const labels = [...headRow.cells].map(th => { const k = th.cloneNode(true); /** @type {Element} */ (k).querySelectorAll('.vh').forEach(v => v.remove()); return (k.textContent || '').trim(); });
     if (!labels.length) return;
 
     for (const body of table.tBodies) {
@@ -36,10 +37,11 @@
   }
 
   /** Alle noch unbeschrifteten Tabellen unterhalb von root behandeln. */
+  /** @param {Element | null | undefined} root */
   function labelAll(root) {
-    const scope = root && root.querySelectorAll ? root : document;
-    if (scope.matches && scope.matches('table.dt')) labelTable(scope);
-    scope.querySelectorAll('table.dt:not([data-labelled])').forEach(labelTable);
+    const scope = root ?? document;
+    if (scope instanceof HTMLTableElement && scope.matches('table.dt')) labelTable(scope);
+    /** @type {NodeListOf<HTMLTableElement>} */ (scope.querySelectorAll('table.dt:not([data-labelled])')).forEach(labelTable);
   }
 
   // Die Listen werden per innerHTML gebaut, also beobachten wir Kindknoten.
@@ -48,7 +50,7 @@
   const observer = new MutationObserver(muts => {
     for (const m of muts) {
       for (const node of m.addedNodes) {
-        if (node.nodeType === 1) labelAll(node);
+        if (node instanceof Element) labelAll(node);
       }
     }
   });
@@ -57,7 +59,7 @@
   function start() {
     if (started || !document.body) return;
     started = true;
-    labelAll(document);
+    labelAll(document.documentElement);
     observer.observe(document.body, { childList: true, subtree: true });
     bindNavAutoScroll();
   }
@@ -96,12 +98,15 @@
   // ── 3. Rollende Abschnittsleiste der Einstellungen ──────────────────────
   // Am Telefon rollt sie seitwärts; ohne Hinweis am Rand sah niemand die
   // Abschnitte dahinter. data-mehr sagt dem CSS, auf welcher Seite noch etwas liegt.
+  /**
+   * @param {HTMLElement} nav
+   */
   function randHinweis(nav) {
     const rechts = nav.scrollLeft + nav.clientWidth < nav.scrollWidth - 2;
     const links = nav.scrollLeft > 2;
     nav.dataset.mehr = (links ? 'l' : '') + (rechts ? 'r' : '');
   }
-  const einstNav = document.querySelector('.einst-nav');
+  const einstNav = /** @type {HTMLElement | null} */ (document.querySelector('.einst-nav'));
   if (einstNav) {
     einstNav.addEventListener('scroll', () => randHinweis(einstNav), { passive: true });
     if (typeof ResizeObserver === 'function') new ResizeObserver(() => randHinweis(einstNav)).observe(einstNav);

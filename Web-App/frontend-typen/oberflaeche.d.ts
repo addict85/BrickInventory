@@ -11,8 +11,8 @@ interface Window {
   __bimDunkelWert: (() => 'server' | 'system') | undefined;
   __bimNurDunkel: (theme: string) => boolean;
   __bimLabelTables: ((tabelle: Element | null) => void) | undefined;
-  _finGrandTotal: unknown;
-  _finPartsExtra: unknown;
+  _finGrandTotal: number;
+  _finPartsExtra: number;
   _imgObserver: IntersectionObserver | null;
   _partsScrollBound: boolean;
   _plServerUrl: string;
@@ -27,6 +27,7 @@ interface Element {
   _tabBound?: boolean;
   _mobileScrollBound?: boolean;
   _fk?: number | null;
+  _punkte?: { x: number; y: (number | null)[]; t: string[] }[];
 }
 
 // Was G(id) liefert. Die Kennung bestimmt, ob Eingabe, Auswahl oder Verweis
@@ -59,3 +60,8 @@ declare const QRCode: {
   CorrectLevel: Record<'L' | 'M' | 'Q' | 'H', number>;
 };
 declare const __ERLAUBTE_STILE__: string[];
+
+// Ein Zeitgeber, der nie lief oder schon abgeräumt ist, steht als null da;
+// clearTimeout/clearInterval nehmen null im Browser ohne Fehler hin.
+declare function clearTimeout(id: ReturnType<typeof setTimeout> | null | undefined): void;
+declare function clearInterval(id: ReturnType<typeof setInterval> | null | undefined): void;

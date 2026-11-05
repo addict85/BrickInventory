@@ -44,7 +44,8 @@ let _pdfSeiteW = 0, _pdfSeiteH = 0;   // Seitengrösse bei scale 1, aus PDF.js
 let _pdfZoomGen = 0;
 
 /** @param {{ daten?: ArrayBuffer, dateiname?: string }} [opt] schon geladene Bytes (Gutschein-PDF mit
- * Einmal-Ticket: ein zweiter Abruf schlüge fehl), `url` dient dann nur dem Download. */
+ * Einmal-Ticket: ein zweiter Abruf schlüge fehl), `url` dient dann nur dem Download.
+ * @param {string} url @param {string} title */
 export async function openPdfViewer(url, title, opt = {}) {
   const modal = G('pdf-viewer-modal'); if (!modal) return;
   const loading = G('pdf-viewer-loading'), pages = G('pdf-viewer-pages'), dl = G('pdf-viewer-download');
@@ -99,6 +100,7 @@ function _pdfMasse() {
 /**
  * Einen Platzhalter auf die aktuelle Zoomgrösse bringen.
  * Ausführlich: docs/begruendungen/public/js/12-pdfviewer.js.md#pdfmassplatzhalter
+ * @param {HTMLElement} ph
  */
 function _pdfMassPlatzhalter(ph) {
   const m = _pdfMasse();
@@ -106,6 +108,7 @@ function _pdfMassPlatzhalter(ph) {
   ph.style.height = m.h + 'px';
 }
 
+/** @param {PdfDokument} pdf @param {HTMLElement} container */
 async function _renderPdfLazy(pdf, container) {
   const first = await pdf.getPage(1);
   const vp1 = first.getViewport({ scale: 1 });
@@ -125,20 +128,23 @@ async function _renderPdfLazy(pdf, container) {
   if (_pdfObserver) _pdfObserver.disconnect();
   _pdfObserver = new IntersectionObserver((entries) => {
     entries.forEach(entry => {
-      const n = parseInt(/** @type {HTMLElement} */ (entry.target).dataset.page);
-      if (entry.isIntersecting) _renderPdfPage(pdf, n, entry.target);
-      else _unloadPdfPage(n, entry.target);
+      const n = parseInt(/** @type {HTMLElement} */ (entry.target).dataset.page ?? '');
+      if (entry.isIntersecting) _renderPdfPage(pdf, n, /** @type {HTMLElement} */ (entry.target));
+      else _unloadPdfPage(n, /** @type {HTMLElement} */ (entry.target));
     });
   }, { root: container, rootMargin: '300px 0px' });
   _pdfBeobachteAlle(container);
 }
 
 /** Alle Platzhalter (neu) beobachten. */
+/** @param {HTMLElement | null} container */
 function _pdfBeobachteAlle(container) {
-  if (!_pdfObserver || !container) return;
-  container.querySelectorAll('.pdf-page-ph').forEach(ph => _pdfObserver.observe(ph));
+  const beobachter = _pdfObserver;
+  if (!beobachter || !container) return;
+  container.querySelectorAll('.pdf-page-ph').forEach((/** @type {Element} */ ph) => beobachter.observe(ph));
 }
 
+/** @param {PdfDokument} pdf @param {number} n @param {HTMLElement} ph */
 async function _renderPdfPage(pdf, n, ph) {
   if (ph.querySelector('canvas') || ph.dataset.rendering === '1') return;
   ph.dataset.rendering = '1';
@@ -168,6 +174,10 @@ async function _renderPdfPage(pdf, n, ph) {
   ph.dataset.rendering = '0';
 }
 
+/**
+ * @param {number} n
+ * @param {HTMLElement} ph
+ */
 function _unloadPdfPage(n, ph) {
   const task = _pdfRenderTasks.get(n);
   if (task) { try { task.cancel(); } catch (_) {} _pdfRenderTasks.delete(n); }
@@ -206,7 +216,7 @@ function _pdfSetzeZoom(neu, ankerX, ankerY) {
   // Erst alle Leinwände weg, dann die Platzhalter neu bemessen: eine Leinwand
   // mit width:100% würde sonst kurz verzerrt dastehen.
   /** @type {NodeListOf<HTMLElement>} */ (container.querySelectorAll('.pdf-page-ph')).forEach(ph => {
-    _unloadPdfPage(parseInt(ph.dataset.page), ph);
+    _unloadPdfPage(parseInt(ph.dataset.page ?? ''), ph);
     _pdfMassPlatzhalter(ph);
   });
 
@@ -240,6 +250,7 @@ function pdfZoomReset() { _pdfSetzeZoom(1, null, null); }
  * Mausrad mit Strg/⌘ zoomt, ohne Zusatztaste rollt es weiter.
  * Ausführlich: docs/begruendungen/public/js/12-pdfviewer.js.md#pdfrad
  */
+/** @param {WheelEvent} ev */
 function _pdfRad(ev) {
   if (!ev.ctrlKey && !ev.metaKey) return;
   ev.preventDefault();
@@ -252,6 +263,7 @@ function _pdfRad(ev) {
 }
 
 /** Tastatur: + / − / 0, solange das PDF-Fenster offen ist. */
+/** @param {KeyboardEvent} ev */
 function _pdfTaste(ev) {
   const modal = G('pdf-viewer-modal');
   if (!modal || modal.style.display !== 'flex') return;
@@ -271,17 +283,20 @@ function _pdfTaste(ev) {
 // gezoomt und neu gerendert, deshalb fängt der Betrachter die Geste ab.
 let _pdfPinchAbstand = 0, _pdfPinchZoom = 1;
 
+/** @param {Touch} t1 @param {Touch} t2 */
 function _pdfAbstand(t1, t2) {
   const dx = t1.clientX - t2.clientX, dy = t1.clientY - t2.clientY;
   return Math.sqrt(dx * dx + dy * dy);
 }
 
+/** @param {TouchEvent} ev */
 function _pdfTouchStart(ev) {
   if (ev.touches.length !== 2) { _pdfPinchAbstand = 0; return; }
   _pdfPinchAbstand = _pdfAbstand(ev.touches[0], ev.touches[1]);
   _pdfPinchZoom = _pdfZoom;
 }
 
+/** @param {TouchEvent} ev */
 function _pdfTouchMove(ev) {
   if (ev.touches.length !== 2 || !_pdfPinchAbstand) return;
   ev.preventDefault();
@@ -294,6 +309,7 @@ function _pdfTouchMove(ev) {
   _pdfSetzeZoom(_pdfPinchZoom * (jetzt / _pdfPinchAbstand), mx, my);
 }
 
+/** @param {TouchEvent} ev */
 function _pdfTouchEnd(ev) {
   if (ev.touches.length < 2) _pdfPinchAbstand = 0;
 }

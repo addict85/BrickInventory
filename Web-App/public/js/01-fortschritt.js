@@ -12,11 +12,18 @@ import { ME } from './00-zustand.js';
 // ── Global CSV Import Progress Bar ───────────────────────────────────────────
 /** @type {ReturnType<typeof setInterval> | null} */
 let _gibTimer       = null;   // Polling-Fallback-Timer (nur wenn SSE scheitert)
+/**
+ * Ein Eintrag im Ergebnis eines Imports. `results` nennt der Vertrag nicht
+ * (CsvImportStatus ist offen); so schreibt ihn src/import/csvImport.ts.
+ * @typedef {{ set_number?: string, success?: boolean, action?: string, isWarning?: boolean, error?: string | null }} ImportErgebnis
+ * @typedef {import('../../frontend-typen/vertrag').CsvImportStatus & { results?: ImportErgebnis[] }} ImportStand
+ */
 /** @type {EventSource | null} */
 let _gibSse         = null;   // aktive EventSource (SSE), falls verfügbar
 let _gibLastCount   = 0;
 
 // Rendert einen Import-Status ins UI. Quelle (SSE oder Polling) ist egal.
+/** @param {ImportStand | null | undefined} s */
 function gibApplyStatus(s) {
   if (!s || !s.success || !s.status) { gibStop(); return; }
 
@@ -117,6 +124,8 @@ function gibToggle() {
 /**
  * Eine Zeile fuers Import-Protokoll — oder null, wenn es nichts zu sagen gibt.
  * Ausführlich: docs/begruendungen/public/js/01-fortschritt.js.md#protokollzeile
+ * @param {ImportErgebnis | null | undefined} r
+ * @param {string} [warnZusatz]
  */
 export function protokollZeile(r, warnZusatz = '') {
   if (!r?.set_number) return null;
@@ -135,6 +144,10 @@ export function protokollZeile(r, warnZusatz = '') {
   return { ok: false, text: r.set_number + ': ' + (r.error || t('settings.error')) };
 }
 
+/**
+ * @param {string} text
+ * @param {boolean} ok
+ */
 function gibAddLog(text, ok) {
   // Write to both the overlay csv-log AND the gib detail log
   for (const logId of ['csv-log', 'gib-log']) {
@@ -258,6 +271,10 @@ registerActions({
 });
 
 // ── PROGRESS OVERLAY ─────────────────────────────────
+/**
+ * @param {string} title
+ * @param {boolean} csvMode
+ */
 export function showProgress(title, csvMode){
   G('prog-title-txt').textContent=title;
   G('prog-bar').style.width='0%';
@@ -292,13 +309,24 @@ export function hideProgress(){
 // `extra` fiel weg: Es schrieb in ein `.step-count`-Feld, das nur die
 // entfernten Teile-/Teilbilder-Schritte hatten. Ohne diese Schritte gibt es
 // kein Element mehr, in das es hätte schreiben können.
+/**
+ * @param {string} stepId
+ * @param {string} state
+ */
 function setStep(stepId, state){
   const el=G('ps-'+stepId); if(!el) return;
   el.classList.remove('active','done','err'); el.classList.add(state);
 }
 
+/**
+ * @param {number} pct
+ */
 export function setProgBar(pct){ G('prog-bar').style.width=Math.min(100,pct)+'%'; }
 
+/**
+ * @param {string} text
+ * @param {boolean} ok
+ */
 export function addCsvLog(text, ok){
   const d=G('csv-log'), line=document.createElement('div');
   line.className='csv-log-line '+(ok?'ok':'er');
@@ -307,6 +335,10 @@ export function addCsvLog(text, ok){
 
 // Verarbeitet die SSE-Ereignisse beim Erfassen EINES Sets.
 // Ausführlich: docs/begruendungen/public/js/01-fortschritt.js.md#handlesseevent
+/**
+ * @param {any} ev
+ * @param {string} singleSetName
+ */
 export function handleSseEvent(ev, singleSetName){
   switch(ev.step){
     case 'meta':      setStep('meta','active'); setProgBar(10); G('prog-set-name').textContent=ev.set||singleSetName||''; break;
@@ -352,6 +384,11 @@ export function streamRequest(path, body, onEvent){
     .catch(e=>{ if(e.name!=='AbortError') throw e; });
 }
 
+/**
+ * @param {Response} res
+ * @param {(ev: any) => void} onEvent
+ * @param {AbortSignal} signal
+ */
 async function readSSE(res, onEvent, signal){
   // Antwortet der Server mit gewöhnlichem JSON statt einem Ereignisstrom, ist
   // die Sache schon entschieden — beim Erfassen etwa, wenn das Set bereits im
@@ -363,6 +400,7 @@ async function readSSE(res, onEvent, signal){
     if (daten) onEvent({ step: daten.success === false ? 'error' : 'done', ...daten });
     return;
   }
+  if (!res.body) return;
   const reader=res.body.getReader(), dec=new TextDecoder(); let buf='';
   try{
     while(true){
@@ -370,7 +408,7 @@ async function readSSE(res, onEvent, signal){
       const {done,value}=await reader.read();
       if(done) break;
       buf+=dec.decode(value,{stream:true});
-      const lines=buf.split('\n'); buf=lines.pop();
+      const lines=buf.split('\n'); buf=lines.pop() ?? '';
       for(const line of lines){
         if(line.startsWith('data: ')){
           try{ onEvent(JSON.parse(line.slice(6))); }catch(e){}

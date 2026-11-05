@@ -10,8 +10,12 @@ import { G } from './01-core.js';
 // eigenen ersetzt werden soll. Gerne gleich in der ganzen App."
 // Ausführlich: docs/begruendungen/public/js/15-scrollbar.js.md#marcos-vorgabe-der-rechte-scrollbalken-i
 
-/** Wer beim Ziehen ein Etikett zeigen will, setzt hier eine Funktion. */
+/**
+ * Wer beim Ziehen ein Etikett zeigen will, setzt hier eine Funktion.
+ * @type {(() => string | null | undefined) | null}
+ */
 let scrollLabelFn = null;
+/** @param {(() => string | null | undefined) | null} fn */
 export function setScrollLabel(fn) { scrollLabelFn = fn; }
 
 function _rollbarerBereich() {
@@ -77,7 +81,7 @@ export function initScrollbalken() {
     new ResizeObserver(nachzeichnen).observe(document.body);
   }
 
-  const rollen = (clientY) => {
+  const rollen = (/** @type {number} */ clientY) => {
     const r = bar.getBoundingClientRect();
     const hoehe = thumb.offsetHeight;
     const maxOben = Math.max(1, r.height - hoehe);
@@ -90,8 +94,8 @@ export function initScrollbalken() {
       label.style.top = (oben + hoehe / 2) + 'px';
     }
   };
-  const start = (ev) => {
-    const y = ev.touches ? ev.touches[0].clientY : ev.clientY;
+  const start = (/** @type {MouseEvent | TouchEvent} */ ev) => {
+    const y = 'touches' in ev ? ev.touches[0].clientY : ev.clientY;
     const tr = thumb.getBoundingClientRect();
     // Neben den Griff getippt: erst dorthin springen, dann greifen — wie bei
     // einem gewöhnlichen Scrollbalken.
@@ -99,9 +103,9 @@ export function initScrollbalken() {
     ziehen = true; bar.classList.add('dragging');
     rollen(y); ev.preventDefault();
   };
-  const bewegen = (ev) => {
+  const bewegen = (/** @type {MouseEvent | TouchEvent} */ ev) => {
     if (!ziehen) return;
-    rollen(ev.touches ? ev.touches[0].clientY : ev.clientY);
+    rollen('touches' in ev ? ev.touches[0].clientY : ev.clientY);
     ev.preventDefault();
   };
   const ende = () => {

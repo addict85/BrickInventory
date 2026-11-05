@@ -15,10 +15,24 @@ import { loadBrickColors, loadManualParts } from './03-parts.js';
  * Die gewählte Datei bleibt im Speicher, bis importiert oder geschlossen wird.
  * Ausführlich: docs/begruendungen/public/js/18-wanted-xml.js.md#datei
  */
+/**
+ * Der Bericht des Servers (WantedXmlErgebnis). Die Felder je Posten, die die
+ * Tabelle zeigt, nennt der Vertrag noch nicht; so schreibt sie src/merkliste.
+ * @typedef {import('../../frontend-typen/vertrag').WantedXmlErgebnis['posten'][number] & {
+ *   bild?: string | null, blFarbe?: number | null, farbHex?: string | null, farbName?: string | null,
+ *   grund?: string | null, grundCode?: string | null, maxPreis?: number | null, name?: string | null,
+ *   nameGeraten?: boolean, rbId?: string | null, set?: string | null, zustand?: string | null }} Posten
+ * @typedef {import('../../frontend-typen/vertrag').WantedXmlErgebnis & { posten: Posten[],
+ *   abgebrochen?: boolean, farbeOffen?: number, fremdeArten?: Record<string, number>,
+ *   korrekturen?: { abgewiesen?: unknown[] }, rebrickable?: { gefragt: number, gefunden: number } | null,
+ *   stufen?: Record<string, number>, standardZustand?: string | null }} Bericht
+ */
+/** @type {File | null} */
 let _datei = null;
 /** index → { rbId?, rbFarbe? } — was in der Tabelle geändert wurde. */
+/** @type {Map<number, Record<string, string | number | null>>} */
 let _korrekturen = new Map();
-/** Der letzte Bericht, für die Tabelle. */
+/** Der letzte Bericht, für die Tabelle. @type {Bericht | null} */
 let _bericht = null;
 /**
  * Läuft gerade eine Anfrage an den Server?
@@ -76,10 +90,11 @@ async function wantedXmlSchreiben() { await lies(true); }
 
 /**
  * Der eine Weg zum Server, für beide Schritte.
- *
+ * 
  * Zwei getrennte Wege hätten auseinanderlaufen können — und dann verspräche
  * die Vorschau etwas, das der Import nicht tut. Dieselbe Begründung steht
  * serverseitig an importiereWantedListe().
+ * @param {boolean} schreiben
  */
 async function lies(schreiben) {
   if (!_datei || _laeuft) return;
@@ -127,7 +142,8 @@ function zeichneFortschritt(stand) {
 /**
  * Die Antwort ZEILENWEISE lesen (NDJSON) und dabei den Balken füllen.
  * Ausführlich: docs/begruendungen/public/js/18-wanted-xml.js.md#liesstrom
- * @returns {Promise<object>} der Bericht (die letzte Zeile)
+ * @param {Response} r
+ * @returns {Promise<Partial<Bericht> & { success?: boolean, error?: string }>} der Bericht (die letzte Zeile)
  */
 async function liesStrom(r) {
   if (!r.body?.getReader) return await r.json().catch(() => ({}));
@@ -156,6 +172,9 @@ async function liesStrom(r) {
   return letzte ?? {};
 }
 
+/**
+ * @param {boolean} schreiben
+ */
 async function liesWirklich(schreiben) {
   const tab = G('wanted-xml-tabelle');
   const ber = G('wanted-xml-bericht');
@@ -163,7 +182,7 @@ async function liesWirklich(schreiben) {
   if (!schreiben && tab) tab.innerHTML = '';
 
   const fd = new FormData();
-  fd.append('file', _datei);
+  if (_datei) fd.append('file', _datei);
   if (schreiben && _korrekturen.size) {
     // Der Index reist MIT: Eine Liste darf denselben Posten zweimal
     // enthalten, und ein Schlüssel aus Nummer und Farbe träfe dann beide.
@@ -194,9 +213,11 @@ async function liesWirklich(schreiben) {
     toast(d?.error || tRaw('settings.error'), 'error');
     return;
   }
-  _bericht = d;
-  zeichneBericht(d);
-  zeichneTabelle(d);
+  // success heisst: Der Server hat den ganzen Bericht geschickt.
+  const bericht = /** @type {Bericht} */ (d);
+  _bericht = bericht;
+  zeichneBericht(bericht);
+  zeichneTabelle(bericht);
   if (schreiben) {
     toast(tRaw('import.summary', { added: d.angelegt, updated: d.aufgestockt, errors: d.fehler }),
       d.fehler ? 'info' : 'success');
@@ -213,13 +234,14 @@ async function liesWirklich(schreiben) {
 }
 
 /** Die Zusammenfassung über der Tabelle. */
+/** @param {Bericht} d */
 function zeichneBericht(d) {
   const el = G('wanted-xml-bericht');
   if (!el) return;
   // Die Stufen EINZELN und mit Worten statt Farben: Marco sieht Rot und Grün
   // schlecht, und „wahrscheinlich" ist eine Aussage, die dastehen muss und
   // nicht angedeutet werden darf.
-  const stufe = (k, text) => (d.stufen?.[k]
+  const stufe = (/** @type {string} */ k, /** @type {string} */ text) => (d.stufen?.[k]
     ? `<div>• ${esc(text)}: <strong>${d.stufen[k]}</strong></div>` : '');
   G('wanted-xml-sub').textContent = _datei?.name || '';
   // Der Knopfzustand kommt aus knoepfeStand() — siehe die Begründung dort.
@@ -239,7 +261,7 @@ function zeichneBericht(d) {
         esc(tRaw('settings.wanted_color_open'))}</div>` : ''}
       ${Object.keys(d.fremdeArten || {}).length ? `<div>${ico('warnung')} ${
         esc(tRaw('settings.wanted_other_kinds'))}: ${
-        esc(Object.entries(d.fremdeArten).map(([k, n]) => `${k}=${n}`).join(', '))}</div>` : ''}
+        esc(Object.entries(d.fremdeArten ?? {}).map(([k, n]) => `${k}=${n}`).join(', '))}</div>` : ''}
       ${d.rebrickable ? `<div>${esc(tRaw('settings.wanted_rb_asked'))}: ${
         d.rebrickable.gefragt} → ${d.rebrickable.gefunden}</div>` : ''}
       ${d.korrekturen?.abgewiesen?.length ? `<div>${ico('warnung')} <strong>${
@@ -254,6 +276,7 @@ function zeichneBericht(d) {
 }
 
 /** Was in einer Zeile steht. Siehe die Begründung an PostenErgebnis. */
+/** @param {Posten} p @param {number} i */
 function zeile(p, i) {
   const bild = p.bild
     ? bildTag({ src: imgUrl(fullUrl(p.bild), true), alt: '', klasse: 'bild-40', ph: 'teil' })
@@ -292,7 +315,7 @@ function zeile(p, i) {
   //   „Alle Spalten sollen bearbeitbar sein in der Vorschau, damit der Inhalt
   //    vor dem Import korrigiert werden kann."
   // Ausführlich: docs/begruendungen/public/js/18-wanted-xml.js.md#feld
-  const feld = (name, wert, extra = '', breit = 72) =>
+  const feld = (/** @type {string} */ name, /** @type {unknown} */ wert, extra = '', breit = 72) =>
     `<input data-change="wantedKorrekturWert" data-feld="${name}" data-i="${i}"
        value="${esc(wert)}" ${extra}
        data-breite-px="${breit}"
@@ -306,7 +329,7 @@ function zeile(p, i) {
   // Der Zustand als Auswahl mit DREI Möglichkeiten: Der leere Wert ist keine
   // Lücke, sondern „Standard des Kontos" — dieselbe Aussage wie CONDITION=X.
   const zustandJetzt = korr.zustand !== undefined ? (korr.zustand ?? '') : (p.zustand ?? '');
-  const wahl = (w, text) =>
+  const wahl = (/** @type {string} */ w, /** @type {string} */ text) =>
     `<option value="${w}"${zustandJetzt === w ? ' selected' : ''}>${esc(text)}</option>`;
   const zustandWahl = `<select data-change="wantedKorrekturWert" data-feld="zustand" data-i="${i}"
       data-stil="font-size:var(--fs-1);padding:2px;border:1px solid var(--feldrand);border-radius:5px">
@@ -346,6 +369,7 @@ function zeile(p, i) {
   </tr>`;
 }
 
+/** @param {Bericht} d */
 function zeichneTabelle(d) {
   const el = G('wanted-xml-tabelle');
   if (!el) return;
@@ -452,6 +476,7 @@ function wantedKorrekturWert() {
   setzeKorrektur(i, k);
 }
 
+/** @param {number} i @param {Record<string, string | number | null>} k */
 function setzeKorrektur(i, k) {
   if (Object.keys(k).length === 0) _korrekturen.delete(i);
   else _korrekturen.set(i, k);

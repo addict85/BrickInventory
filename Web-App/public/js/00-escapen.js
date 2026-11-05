@@ -10,6 +10,7 @@
  *
  * `&#39;` statt `&apos;` für den Apostroph: Beides ist in XML gültig, die
  * numerische Form zusätzlich in HTML 4. Eine Form, beide Verwendungen.
+ * @param {unknown} s
  */
 export function esc(s){
   return String(s ?? '')

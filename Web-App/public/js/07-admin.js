@@ -10,6 +10,7 @@ import { esc } from './00-escapen.js';
 /** @type {ReturnType<typeof setInterval> | null} */
 let jobPollTimer = null;
 
+/** @param {number | null | undefined} ms */
 function formatDur(ms) {
   if (!ms) return '';
   if (ms < 60000) return `${(ms/1000).toFixed(1)}s`;
@@ -32,12 +33,14 @@ export async function pollJobStatus() {
     dot.style.background = 'var(--b500)';
     dot.style.animation = 'sp .8s linear infinite';
     stxt.textContent = tRaw('monitor.job_running');
-    if (j.progress) {
-      const pct = j.progress.total ? (j.progress.current / j.progress.total * 100) : 0;
+    // Den Fortschritt nennt der Vertrag nicht (PreisJobStand.job ist offen); der Dienst schreibt ihn so.
+    const progress = /** @type {{ total?: number, current?: number, set?: string } | undefined} */ (j.progress);
+    if (progress) {
+      const pct = progress.total ? ((progress.current ?? 0) / progress.total * 100) : 0;
       pwrap.style.display = 'flex';
       pbar.style.width = pct + '%';
-      ptxt.textContent = `${j.progress.current}/${j.progress.total}`;
-      sdet.textContent = j.progress.set ? t('monitor.current',{set:j.progress.set}) : '';
+      ptxt.textContent = `${progress.current}/${progress.total}`;
+      sdet.textContent = progress.set ? t('monitor.current',{set:progress.set}) : '';
     }
     btn.disabled = true;
     // Poll faster while running
@@ -53,7 +56,7 @@ export async function pollJobStatus() {
       const parts = [];
       if (j.lastUpdated) parts.push(`${j.lastUpdated} ${t('common.updated')}`);
       if (j.lastErrors)  parts.push(t('monitor.errors_n',{n:j.lastErrors}));
-      if (j.lastDuration) parts.push(formatDur(j.lastDuration));
+      if (j.lastDuration) parts.push(formatDur(Number(j.lastDuration)));
       sdet.textContent = parts.join(' · ') + (j.nextRun ? ` · ${t('monitor.next_run')} ${fmtDatum(j.nextRun, 'zeit')}` : '');
     } else {
       dot.style.background = 'var(--s300)';
@@ -66,6 +69,7 @@ export async function pollJobStatus() {
   }
 }
 
+/** @param {HTMLButtonElement} btn */
 export async function triggerCsvSync(btn) {
   btn.disabled = true; btn.textContent = tRaw('monitor.starting');
   const d = await api('POST', '/v1/admin/trigger-csv-sync').catch(() => null);
@@ -83,9 +87,12 @@ export async function triggerCsvSync(btn) {
  * Alle fehlenden Katalogbilder einreihen.
  * Ausführlich: docs/begruendungen/public/js/07-admin.js.md#queuecatalogimages
  */
+/** @param {HTMLButtonElement} btn */
 export async function queueCatalogImages(btn) {
   btn.disabled = true; btn.textContent = tRaw('monitor.starting');
-  const d = await api('POST', '/v1/admin/catalog-images').catch(() => null);
+  // Die Zahlen nennt der Vertrag nicht (GenericAdminResponse); so liefert sie der Dienst.
+  const d = /** @type {{ success?: boolean, error?: string, pending?: number, skipped?: number, verworfen?: number, dauer_minuten?: number } | null} */ (
+    await api('POST', '/v1/admin/catalog-images').catch(() => null));
   if (d?.success) {
     // Beide Zahlen nennen: was ansteht UND was schon fertig war. Ohne die
     // zweite sähe ein „0 Bilder in der Warteschlange" nach einem Fehlschlag
@@ -98,10 +105,10 @@ export async function queueCatalogImages(btn) {
       : tRaw('monitor.catalog_images_queued', { n })];
     // Zurückgenommene Fehlanzeigen und die geschätzte Dauer nur nennen, wenn es
     // etwas zu nennen gibt — sonst wächst die Meldung um zwei Nullen.
-    if (d.verworfen > 0)
+    if (d.verworfen && d.verworfen > 0)
       teile.push(tRaw('monitor.catalog_images_retried',
                       { n: d.verworfen.toLocaleString(locale()) }));
-    if (d.dauer_minuten > 0)
+    if (d.dauer_minuten && d.dauer_minuten > 0)
       teile.push(tRaw('monitor.catalog_images_eta',
                       { n: d.dauer_minuten.toLocaleString(locale()) }));
     toast(teile.join(' · '), 'success');
@@ -113,6 +120,7 @@ export async function queueCatalogImages(btn) {
   }
 }
 
+/** @param {HTMLButtonElement} btn */
 export async function redownloadMissingImages(btn) {
   btn.disabled = true; btn.textContent = tRaw('monitor.starting');
   const d = await api('POST', '/v1/admin/redownload-missing-images').catch(() => null);
@@ -126,6 +134,7 @@ export async function redownloadMissingImages(btn) {
   }
 }
 
+/** @param {HTMLButtonElement} btn */
 export async function reimportMissingInstructions(btn) {
   btn.disabled = true; btn.textContent = tRaw('common.loading');
   const d = await api('POST', '/v1/admin/reimport-instructions').catch(() => null);
@@ -139,6 +148,7 @@ export async function reimportMissingInstructions(btn) {
   }
 }
 
+/** @param {HTMLButtonElement} btn */
 export async function toggleBricksetQueue(btn) {
   const panel = G('brickset-queue-panel');
   if (!panel) return;
@@ -196,6 +206,7 @@ export async function loadBricksetQueue() {
  * an und hängt danach die data-arg-Werte an:
  * Ausführlich: docs/begruendungen/public/js/07-admin.js.md#retrybricksetqueueentry
  */
+/** @param {HTMLButtonElement} btn @param {string} setNumber */
 async function retryBricksetQueueEntry(btn, setNumber) {
   btn.disabled = true; btn.innerHTML = ico('uhr');
   const d = await api('POST', `/v1/admin/brickset-queue/${setNumber}/retry`).catch(() => null);
@@ -214,6 +225,7 @@ async function retryBricksetQueueEntry(btn, setNumber) {
 }
 
 // Gleiche Reihenfolge wie retryBricksetQueueEntry oben — Element zuerst.
+/** @param {HTMLButtonElement} btn @param {string} setNumber */
 async function deleteBricksetQueueEntry(btn, setNumber) {
   const row = G(`bsq-${setNumber}`);
   // Remove immediately from UI

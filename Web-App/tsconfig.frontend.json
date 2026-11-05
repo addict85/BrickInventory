@@ -16,6 +16,8 @@
     "skipLibCheck": true,
     "types": [],
     "strict": false,
+    "strictNullChecks": true,
+    "noImplicitAny": true,
     "noUnusedLocals": true,
     "noFallthroughCasesInSwitch": true,
     "strictBindCallApply": true

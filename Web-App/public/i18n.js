@@ -26,7 +26,7 @@ function loadLang(lang) {
     const s = document.createElement('script');
     s.src = '/locales/' + lang + '.js?v=' + (window.__APP_VERSION || '');
     s.onload = () => {
-      const dict = window['I18N_' + lang.toUpperCase()];
+      const dict = lang === 'en' ? window.I18N_EN : lang === 'de' ? window.I18N_DE : undefined;
       if (dict) I18N[lang] = dict;
       resolve();
     };
@@ -141,15 +141,10 @@ export function tRaw(key, vars) {
   return str;
 }
 
-/**
- * Apply the given language code and re-render all translateable static DOM nodes.
- * @param {string} lang  'de' or 'en'
- * @param {boolean} [persist]  whether to save to localStorage + server
- */
-// Merkt sich, welche Sprache zuletzt tatsächlich angewendet wurde.
-// Beim Start ruft checkAuth() applyLang() auf und showApp() gleich noch einmal
-// mit demselben Wert — ohne diese Sperre lief die komplette Neuübersetzung
+// Die zuletzt angewendete Sprache. checkAuth() und showApp() rufen applyLang()
+// beim Start mit demselben Wert auf; ohne diese Sperre lief die Neuübersetzung
 // samt Neuaufbau der aktiven Liste zweimal.
+/** @type {string | null} */
 let _langApplied = null;
 
 
@@ -157,6 +152,7 @@ let _langApplied = null;
  * Farbnamen übersetzen.
  * Ausführlich: docs/begruendungen/public/i18n.js.md#color-words-de
  */
+/** @type {Record<string, string>} */
 const COLOR_WORDS_DE = {
   // Modifikatoren
   'dark':'Dunkel','light':'Hell','medium':'Mittel','bright':'Leucht','very':'Sehr',
@@ -183,8 +179,13 @@ const COLOR_PREFIX_DE = new Set([
   'Gelblich','Sand','Metallic','Chrom','Satin','Opal','Milchig','Glitzer',
 ]);
 
+/**
+ * Farbname in der Sprache der Oberfläche; ohne Namen ein leerer Text.
+ * @param {string | null | undefined} en
+ * @returns {string}
+ */
 export function colorName(en) {
-  if (!en) return en;
+  if (!en) return '';
   if (LANG !== 'de') return en;
 
   // Bindestriche bleiben erhalten („Trans-Clear" → „Trans-Klar").
@@ -213,6 +214,11 @@ export function colorName(en) {
   return res.replace(/\s{2,}/g, ' ').trim();
 }
 
+/**
+ * Sprache anwenden und alle statisch übersetzten Stellen neu schreiben.
+ * @param {string} lang 'de' oder 'en'
+ * @param {boolean} persist auch am Konto speichern
+ */
 export function applyLang(lang, persist) {
   // Sprache noch nicht geladen? Nachholen und danach erneut anlaufen.
   // Ausführlich: docs/begruendungen/public/i18n.js.md#if
@@ -236,7 +242,7 @@ export function applyLang(lang, persist) {
     // optional: data-i18n-vars='{"n":"4000"}' für parametrisierte statische Texte
     let vars;
     if (el.dataset.i18nVars) { try { vars = JSON.parse(el.dataset.i18nVars); } catch (_) {} }
-    const val = t(key, vars);
+    const val = t(key ?? '', vars);
     if (attr) el.setAttribute(attr, val);
     else if (el.dataset.ico) {
       // Symbol vor dem Text: data-ico nennt es, der Text bleibt übersetzbar.
@@ -254,7 +260,7 @@ export function applyLang(lang, persist) {
   // Re-render nav tab labels
   /** @type {NodeListOf<HTMLElement>} */ (document.querySelectorAll('.ntab[data-i18n-tab]')).forEach(el => {
     const label = el.querySelector('.tab-label');
-    if (label) label.textContent = t(el.dataset.i18nTab);
+    if (label) label.textContent = t(el.dataset.i18nTab ?? '');
   });
 
   // Sync the language dropdown in settings (if rendered)

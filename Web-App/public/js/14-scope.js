@@ -15,10 +15,17 @@
 // fehlte also allein die Wahl.
 export const SCOPE_VIEWS = ['gallery', 'parts', 'minifigs', 'finance', 'merkliste'];
 
+/**
+ * @param {string} view
+ */
 export function scopeMode(view) {
   return localStorage.getItem('bim_scope_' + view) || 'all';
 }
 
+/**
+ * @param {string} view
+ * @param {string} mode
+ */
 export function setScopeMode(view, mode) {
   localStorage.setItem('bim_scope_' + view, mode);
 }
@@ -35,6 +42,7 @@ export function resetScopeModes() {
 }
 
 /** `accounts=` an eine URLSearchParams hängen — nur wenn nötig. */
+/** @param {URLSearchParams} p @param {string} view */
 export function addScopeParam(p, view) {
   const m = scopeMode(view);
   // 'all' ist die Vorgabe des Servers; weglassen hält die Adressen kurz und
@@ -43,7 +51,10 @@ export function addScopeParam(p, view) {
   return p;
 }
 
-/** Fertiges Suffix für Aufrufe ohne URLSearchParams (Finanzen). */
+/**
+ * Fertiges Suffix für Aufrufe ohne URLSearchParams (Finanzen).
+ * @param {string} view
+ */
 export function scopeQuery(view) {
   const m = scopeMode(view);
   return (m && m !== 'all') ? `?accounts=${m}` : '';
@@ -57,10 +68,17 @@ export function scopeQuery(view) {
 /** Ansichten mit einem Lagerortfilter. Sets und Teile — nur die haben einen. */
 export const LAGER_VIEWS = ['gallery', 'parts'];
 
+/**
+ * @param {string} view
+ */
 export function lagerModus(view) {
   return localStorage.getItem('bim_lager_' + view) || '';
 }
 
+/**
+ * @param {string} view
+ * @param {string} wert
+ */
 export function setLagerModus(view, wert) {
   if (wert) localStorage.setItem('bim_lager_' + view, wert);
   else      localStorage.removeItem('bim_lager_' + view);
@@ -78,13 +96,17 @@ export function resetLagerModi() {
  * „was muss ich noch einräumen", und das ist eine andere Frage als „wo liegt
  * X". Sie bekäme eine eigene Antwort, keinen Eintrag in diesem Filter.
  */
+/** @param {URLSearchParams} p @param {string} view */
 export function addLagerParam(p, view) {
   const m = lagerModus(view);
   if (m) p.set('storage', m);
   return p;
 }
 
-/** Fertiges Suffix für Aufrufe ohne URLSearchParams. */
+/**
+ * Fertiges Suffix für Aufrufe ohne URLSearchParams.
+ * @param {string} view
+ */
 export function lagerQuery(view, trenner = '&') {
   const m = lagerModus(view);
   return m ? `${trenner}storage=${encodeURIComponent(m)}` : '';
