@@ -47,7 +47,7 @@ class EinstellungenViewModel @Inject constructor(
     private val sets: SetsRepository,
     private val teile: TeileRepository,
     private val leser: DateiLeser,
-) : BereichsViewModel(dienste) {
+) : BereichsViewModel(dienste), EinstellungenAktionen {
 
     private val _csvHochladenState = MutableStateFlow(CsvHochladenUiState())
     val csvHochladenState: StateFlow<CsvHochladenUiState> = _csvHochladenState.asStateFlow()
@@ -58,7 +58,7 @@ class EinstellungenViewModel @Inject constructor(
     // ── Währung und Zustand ──────────────────────────────────────────────────
 
     /** Eine andere Währung oder ein anderer Zustand ändert jeden Preis: alle Bestandsansichten neu. */
-    fun saveSettings(currency: String, condition: String) {
+    override fun saveSettings(currency: String, condition: String) {
         viewModelScope.launch {
             when (val r = konto.updateSettings(currency, condition)) {
                 is Result.Success -> {
@@ -72,7 +72,7 @@ class EinstellungenViewModel @Inject constructor(
     }
 
     /** Danach die Einstellungen neu: Der Server löst die wirksame Bedingung auf. */
-    fun saveUserDefaultCondition(condition: String) {
+    override fun saveUserDefaultCondition(condition: String) {
         viewModelScope.launch {
             when (val r = konto.setUserDefaultCondition(condition)) {
                 is Result.Success -> {
@@ -124,7 +124,7 @@ class EinstellungenViewModel @Inject constructor(
 
     // ── Preisalarme ──────────────────────────────────────────────────────────
 
-    fun ladeAlarmUebersicht() {
+    override fun ladeAlarmUebersicht() {
         viewModelScope.launch {
             when (val r = sets.getAlleAlarme()) {
                 is Result.Success ->
@@ -135,7 +135,7 @@ class EinstellungenViewModel @Inject constructor(
         }
     }
 
-    fun aendereAlarmSchwelle(setNumber: String, condition: String, richtung: String, schwelle: Double) {
+    override fun aendereAlarmSchwelle(setNumber: String, condition: String, richtung: String, schwelle: Double) {
         wartendeSchwellen.remove(setNumber to condition)?.cancel()
         if (schwelle <= 0.0) { _snackbar.value = text(R.string.alerts_bad_value); return }
         alarmSchleuse { sets.setPreisalarm(setNumber, richtung, schwelle, condition) }
@@ -150,7 +150,7 @@ class EinstellungenViewModel @Inject constructor(
      * erschien. Im ViewModel, damit die Eingabe das Verlassen der Seite übersteht.
      * Ein leeres Feld löscht hier nicht — dafür steht der Papierkorb daneben.
      */
-    fun setzeAlarmSchwelle(setNumber: String, condition: String, richtung: String, roh: String) {
+    override fun setzeAlarmSchwelle(setNumber: String, condition: String, richtung: String, roh: String) {
         val schluessel = setNumber to condition
         wartendeSchwellen.remove(schluessel)?.cancel()
         val schwelle = Alarmeingabe.zahl(roh) ?: return
@@ -161,7 +161,7 @@ class EinstellungenViewModel @Inject constructor(
         }
     }
 
-    fun loescheAlarm(setNumber: String, condition: String) =
+    override fun loescheAlarm(setNumber: String, condition: String) =
         alarmSchleuse { sets.deletePreisalarm(setNumber, condition) }
 
     /** Ändern und Löschen: rufen, melden, die Übersicht lädt auf das Signal nach. */
@@ -177,16 +177,16 @@ class EinstellungenViewModel @Inject constructor(
 
     // ── Lagerorte ────────────────────────────────────────────────────────────
 
-    fun legeLagerortAn(name: String) = lagerortSchleuse(false) { teile.legeLagerortAn(name).auswerten() }
+    override fun legeLagerortAn(name: String) = lagerortSchleuse(false) { teile.legeLagerortAn(name).auswerten() }
 
     /** Umbenennen ändert, was in der Galerie an den Sets steht — die lädt deshalb nach. */
-    fun benenneLagerortUm(id: Int, name: String) = lagerortSchleuse(true) { teile.benenneLagerortUm(id, name).auswerten() }
+    override fun benenneLagerortUm(id: Int, name: String) = lagerortSchleuse(true) { teile.benenneLagerortUm(id, name).auswerten() }
 
     /** Der Stern: Ist der Ort schon Vorgabe, nimmt der zweite Tipp sie wieder weg. */
-    fun schalteLagerortVorgabe(id: Int, istVorgabe: Boolean) =
+    override fun schalteLagerortVorgabe(id: Int, istVorgabe: Boolean) =
         lagerortSchleuse(false) { teile.setzeLagerortVorgabe(if (istVorgabe) null else id).auswerten() }
 
-    fun loescheLagerort(id: Int) = lagerortSchleuse(false) { teile.loescheLagerort(id).auswerten() }
+    override fun loescheLagerort(id: Int) = lagerortSchleuse(false) { teile.loescheLagerort(id).auswerten() }
 
     private fun lagerortSchleuse(galerieNeu: Boolean, tun: suspend () -> Pair<Boolean, String?>) {
         viewModelScope.launch {

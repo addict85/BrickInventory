@@ -31,13 +31,12 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil3.ImageLoader
 import coil3.request.ImageRequest
 import coil3.request.crossfade
 import ch.brickinventoryapp.util.NumericInput
 import ch.brickinventoryapp.ressourcen.R
-import ch.brickinventoryapp.ui.viewmodel.SetDetailViewModel
+import ch.brickinventoryapp.ui.viewmodel.SetDetailAktionen
 import ch.brickinventoryapp.ui.*
 import ch.brickinventoryapp.ui.SetDetailUiState
 import kotlinx.coroutines.CoroutineScope
@@ -241,7 +240,7 @@ fun LazyListScope.setDetailPriceSection(detailState: SetDetailUiState, price: Se
 }
 
 /** Stammdaten: Nummer, Menge (änderbar), Erfassungsdatum. */
-fun LazyListScope.setDetailDetailsSection(set: SetAnsicht, setNumber: String, vm: SetDetailViewModel, acquisitions: List<KaufAnsicht>, currency: String, fmtDate: (String?) -> String, onNavigateToAcqMgmt: (type: String, id: String, colorId: Int, title: String) -> Unit) {
+fun LazyListScope.setDetailDetailsSection(set: SetAnsicht, setNumber: String, lagerZustand: LagerUiState, aktionen: SetDetailAktionen, acquisitions: List<KaufAnsicht>, currency: String, fmtDate: (String?) -> String, onNavigateToAcqMgmt: (type: String, id: String, colorId: Int, title: String) -> Unit) {
     // ── Set details section ────────────────────────────────────────────
     item {
         SectionCard(title = stringResource(R.string.detail_section_details)) {
@@ -252,9 +251,8 @@ fun LazyListScope.setDetailDetailsSection(set: SetAnsicht, setNumber: String, vm
             //
             // Auswahlfeld mit der Möglichkeit, neue Orte zu erfassen. Die Liste gehört dem
             // Besitzer des Sets, nicht dem Betrachter (siehe loadLagerortVorrat()).
-            val lagerZustand by vm.lagerState.collectAsStateWithLifecycle()
             LaunchedEffect(setNumber, set.owners) {
-                vm.loadLagerortVorrat(set.owners.map { it.id })
+                aktionen.loadLagerortVorrat(set.owners.map { it.id })
             }
             // Bei grosser Schrift steht das Feld unter der Bezeichnung in voller Breite:
             // 180 dp neben „Lagerort“ reichten bei 200 % nicht einmal für den Platzhalter.
@@ -270,7 +268,7 @@ fun LazyListScope.setDetailDetailsSection(set: SetAnsicht, setNumber: String, vm
                     LagerortFeld(
                         wert = set.storage ?: "",
                         vorrat = lagerZustand.vorrat.map { it.name },
-                        onWert = { vm.setzeSetLagerort(setNumber, it) },
+                        onWert = { aktionen.setzeSetLagerort(setNumber, it) },
                         modifier = Modifier.fillMaxWidth(),
                     )
                 }
@@ -282,7 +280,7 @@ fun LazyListScope.setDetailDetailsSection(set: SetAnsicht, setNumber: String, vm
                 LagerortFeld(
                     wert = set.storage ?: "",
                     vorrat = lagerZustand.vorrat.map { it.name },
-                    onWert = { vm.setzeSetLagerort(setNumber, it) },
+                    onWert = { aktionen.setzeSetLagerort(setNumber, it) },
                     // Der ganze Rest der Zeile: Mit fester Breite war „No storage location“
                     // abgeschnitten, und auf dem Tablet stand das Feld halb so breit wie die Karte.
                     modifier = Modifier.padding(start = Abstaende.gross).weight(1f),
@@ -315,7 +313,7 @@ fun LazyListScope.setDetailDetailsSection(set: SetAnsicht, setNumber: String, vm
                 ) {
                     ch.brickinventoryapp.ui.components.MitTooltip(stringResource(R.string.cd_qty_decrease)) {
                         FilledTonalIconButton(
-                            onClick = { if (qty > 1) { qty--; takt(); vm.aendereMengeUm(set.setNumber, -1) } },
+                            onClick = { if (qty > 1) { qty--; takt(); aktionen.aendereMengeUm(set.setNumber, -1) } },
                             shape = Formen.etikett
                         ) {
                             Icon(Icons.Default.Remove, stringResource(R.string.cd_qty_decrease),
@@ -331,7 +329,7 @@ fun LazyListScope.setDetailDetailsSection(set: SetAnsicht, setNumber: String, vm
                     )
                     ch.brickinventoryapp.ui.components.MitTooltip(stringResource(R.string.cd_qty_increase)) {
                         FilledTonalIconButton(
-                            onClick = { qty++; takt(); vm.aendereMengeUm(set.setNumber, 1) },
+                            onClick = { qty++; takt(); aktionen.aendereMengeUm(set.setNumber, 1) },
                             shape = Formen.etikett
                         ) {
                             Icon(Icons.Default.Add, stringResource(R.string.cd_qty_increase),

@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.ui.screens
 
+import ch.brickinventoryapp.ui.viewmodel.TeileAktionen
 import ch.brickinventoryapp.ui.erfassungsWerte
 import ch.brickinventoryapp.ui.model.FigurAnsicht
 import ch.brickinventoryapp.ui.model.FigurenKennzahlenAnsicht
@@ -42,22 +43,35 @@ import ch.brickinventoryapp.ui.components.SkelettRaster
 import ch.brickinventoryapp.ui.components.FehlerHinweis
 import ch.brickinventoryapp.ui.components.ZustandsHinweis
 
+/** Der Figuren-Reiter am Navigationsziel: reicht Zustand und Aktionen an [MinifigsScreen]. */
+@Composable
+fun MinifigsRoute(
+    vm: TeileViewModel,
+    imageLoader: ImageLoader,
+    onOpenDetail: (figNumber: String) -> Unit = { _ -> },
+    gridState: LazyGridState = rememberLazyGridState(),
+) {
+    val state by vm.state.collectAsStateWithLifecycle()
+    val blick by vm.blickfeld.collectAsStateWithLifecycle()
+    val partsState by vm.partsState.collectAsStateWithLifecycle()
+    val lagerState by vm.lagerState.collectAsStateWithLifecycle()
+    MinifigsScreen(TeileZustand(state, blick, partsState, lagerState), vm, imageLoader, onOpenDetail, gridState)
+}
+
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 fun MinifigsScreen(
-    vm: TeileViewModel,
+    zustand: TeileZustand,
+    aktionen: TeileAktionen,
     imageLoader: ImageLoader,
     /** Öffnet die Detailansicht — nur der Graph kennt den NavController. */
     onOpenDetail: (figNumber: String) -> Unit = { _ -> },
     /** Scroll-Zustand von aussen: Das Ziel wird beim Öffnen eines Details verworfen. */
     gridState: LazyGridState = rememberLazyGridState(),
 ) {
-    // Zustand und Aktionen vom ViewModel statt über fünfzehn Parameter — Begründung
-    // bei PartsScreen. Die Namen bleiben dieselben, damit der Rumpf darunter
-    // unverändert bleibt.
-    val state by vm.state.collectAsStateWithLifecycle()
-    val blick by vm.blickfeld.collectAsStateWithLifecycle()
-    val partsState by vm.partsState.collectAsStateWithLifecycle()
+    val state = zustand.state
+    val blick = zustand.blick
+    val partsState = zustand.partsState
 
     val figs = partsState.minifigs
     val minifigStats = partsState.minifigStats
@@ -69,15 +83,15 @@ fun MinifigsScreen(
     val scopeMode = blick.scopeModes[ch.brickinventoryapp.data.ScopeFilter.View.MINIFIGS.key]
         ?: ch.brickinventoryapp.data.ScopeFilter.ALL
     val manualFigs = partsState.manualFigs ?: emptyList()
-    val lagerState by vm.lagerState.collectAsStateWithLifecycle()
+    val lagerState = zustand.lagerState
     // Die Figur, deren Detail daneben offen ist (breites Fenster); ihre Kachel ist markiert.
     val gewaehlt = ch.brickinventoryapp.ui.components.LocalOffenesDetail.current
 
-    val onRefresh: () -> Unit = { vm.loadMinifigs() }
-    val onScopeChange: (String) -> Unit = { vm.setScope(ch.brickinventoryapp.data.ScopeFilter.View.MINIFIGS, it) }
+    val onRefresh: () -> Unit = { aktionen.loadMinifigs() }
+    val onScopeChange: (String) -> Unit = { aktionen.setScope(ch.brickinventoryapp.data.ScopeFilter.View.MINIFIGS, it) }
     val onAddMinifig: (String, String?, Int, Double?, String?, Int?, String?) -> Unit =
         { num, blNum, qty, unitPrice, cond, owner, ort ->
-            vm.addMinifig(num, blNum, qty, unitPrice, cond, owner, ort)
+            aktionen.addMinifig(num, blNum, qty, unitPrice, cond, owner, ort)
         }
     // Der VORRAT an Lagerorten (nicht die belegten Orte): Beim Erfassen soll
     // auch ein leeres Regal zur Wahl stehen.
@@ -107,7 +121,7 @@ fun MinifigsScreen(
         // dem Raster. Im Fehlerzustand nicht — ohne Liste gibt es nichts zu suchen.
         if (anzeige != Ladeanzeige.FEHLER) SucheMitFilter(
             wert = search,
-            onWert = { search = it; vm.setMinifigsQuery(it) },
+            onWert = { search = it; aktionen.setMinifigsQuery(it) },
             platzhalter = stringResource(R.string.minifigs_search_placeholder),
             aktiveFilter = Filterzahl.konto(householdMembers, scopeMode),
             onFilter = { zeigeFilter = true },
@@ -185,7 +199,7 @@ fun MinifigsScreen(
                         span = { _, _ -> if (ansicht == "table") GridItemSpan(maxLineSpan) else GridItemSpan(1) },
                     ) { _, fig ->
                         // BEIDE Ansichten oeffnen denselben Dialog.
-                        val oeffne = { vm.oeffneSetItem("fig", fig.figNumber) }
+                        val oeffne = { aktionen.oeffneSetItem("fig", fig.figNumber) }
                         Bewegt {
                             if (ansicht == "table") MinifigTableRow(fig, serverUrl, imageLoader, oeffne)
                             else MinifigCard(fig, serverUrl, imageLoader, oeffne,
@@ -210,7 +224,7 @@ fun MinifigsScreen(
             onZuruecksetzen = zuruecksetzen.takeIf { Filterzahl.konto(householdMembers, scopeMode) > 0 },
         ) {
             KontoFilterAbschnitt(householdMembers, scopeMode, onScopeChange)
-            AnsichtAbschnitt(ansicht) { vm.setMinifigsView(it) }
+            AnsichtAbschnitt(ansicht) { aktionen.setMinifigsView(it) }
         }
     }
 

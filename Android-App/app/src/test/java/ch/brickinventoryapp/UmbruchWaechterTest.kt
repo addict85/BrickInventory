@@ -26,8 +26,8 @@ import ch.brickinventoryapp.ui.AnmeldeFormular
 import ch.brickinventoryapp.ui.screens.CatalogDetailScreen
 import ch.brickinventoryapp.ui.screens.GalleryRoute
 import ch.brickinventoryapp.ui.screens.LoginScreen
-import ch.brickinventoryapp.ui.screens.PreisalarmeUnterseite
-import ch.brickinventoryapp.ui.screens.SetDetailScreen
+import ch.brickinventoryapp.ui.screens.PreisalarmeRoute
+import ch.brickinventoryapp.ui.screens.SetDetailRoute
 import ch.brickinventoryapp.ui.theme.BrickInventoryManagerTheme
 import ch.brickinventoryapp.ui.viewmodel.EinstellungenViewModel
 import ch.brickinventoryapp.ui.viewmodel.ErfassungViewModel
@@ -191,7 +191,7 @@ class UmbruchWaechterTest {
              "ausgeloest":true,"zuletzt_am":"2026-10-30T09:00:00Z","zuletzt_preis":449.95}]}"""
         val vm = einstellungen().also { it.ladeAlarmUebersicht() }
         pruefe("Preisalarme $schrift", schrift, { vm.alarmUebersicht.value.geladen }) {
-            PreisalarmeUnterseite(vm = vm, imageLoader = bilder, serverUrl = "",
+            PreisalarmeRoute(vm = vm, imageLoader = bilder, serverUrl = "",
                 snackbarHostState = remember { SnackbarHostState() }, onSetClick = {}, onZurueck = {}, meldeSchalter = {})
         }
     }
@@ -209,7 +209,7 @@ class UmbruchWaechterTest {
         pruefe("Set-Detail $schrift", schrift, { vm.setDetailState.value.let { s ->
             s.setDetail != null && s.setPrice != null && s.priceHistory != null && s.acquisitions.isNotEmpty() &&
                 !s.setDetailLoading && !s.setPriceLoading && !s.priceHistoryLoading && !s.acquisitionsLoading } }) {
-            SetDetailScreen(setNumber = Beispiele.SET, vm = vm, serverUrl = "", imageLoader = bilder, onBack = {}, onDelete = {})
+            SetDetailRoute(setNumber = Beispiele.SET, vm = vm, serverUrl = "", imageLoader = bilder, onBack = {}, onDelete = {})
         }
     }
 

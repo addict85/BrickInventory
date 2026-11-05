@@ -460,30 +460,21 @@ melden.
   überschreibt er die gemerkte Position, bevor jemand sie lesen kann.
 - `wiederhergestellt = true` steht **nach** dem `scrollToItem`, nicht davor.
 
-## Reiter-Bildschirme lesen ihren Zustand vom ViewModel
+## Bildschirme sind zustandslos, Routen kennen das ViewModel
 
-**Dateien:** `ui/screens/{Gallery,Parts,Minifigs,Finance}Screen.kt`
+**Dateien:** `ui/screens/*`, `ui/dialogs/*`, `ui/viewmodel/*Aktionen.kt`
 **Test:** `ScreenViewModelWiringTest`
 
-Ein Reiter-Bildschirm nimmt `vm: MainViewModel` entgegen und liest Zustand und
-Aktionen selbst. Er hat höchstens sechs Parameter.
+Nur ein Composable, dessen Name auf `Route` endet, nimmt ein ViewModel. Die
+Route sammelt die Flüsse und reicht eine Zustandsklasse und eine
+`…Aktionen`-Schnittstelle weiter, die das ViewModel umsetzt. Feature-Bildschirme
+holen sich kein ViewModel per `hiltViewModel()` oder `aktivitaetsViewModel()`.
 
-Grund: Vorher waren es 26 (Galerie), 21 (Finanzen), 20 (Teile) und 15
-(Minifiguren). Jede Erweiterung fasste dadurch DREI Dateien an — Screen, Graph,
-ViewModel. Beim Kontofilter und beim Scroll-Zustand war das jedes Mal spürbar.
-Die schlanke Bauart gab es längst: `ManualItemDetailScreen` und
-`AcquisitionManagementScreen` kamen mit sechs bis acht aus.
+Grund: So lässt sich jeder Bildschirm mit festem Zustand und einer Attrappe
+zeigen und prüfen (Vorschau, Roborazzi), ohne Hilt und Server.
 
-**Ausnahme, bewusst:** Navigations-Rückrufe (`onSetClick`, `onOpenDetail`,
-`onScanBarcode`, `onManualClick`) und der Scroll-Zustand bleiben Parameter. Nur
-der Navigationsgraph kennt den NavController; ein Screen, der selbst navigiert,
-wäre an seinen Platz im Graphen gebunden.
-
-**Beim Umbauen:** Nur den KOPF tauschen und die Werte unter ihren alten Namen
-neu binden. Dann bleibt der Rumpf Zeile für Zeile unverändert — wichtig, solange
-Kotlin nicht kompiliert werden kann. `ScreenViewModelWiringTest` hält jeden
-`state.X`-Zugriff gegen die Datenklassen in `ui/Zustand*.kt`; das ist der Ersatz für
-den fehlenden Compiler.
+**Ausnahme, bewusst:** Navigations-Rückrufe und Rollzustände bleiben Parameter.
+Nur der Navigationsgraph kennt den NavController.
 
 ## Der Navigationsaufbau baut Navigation
 

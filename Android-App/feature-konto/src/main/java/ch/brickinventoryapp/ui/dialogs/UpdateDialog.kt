@@ -2,6 +2,8 @@ package ch.brickinventoryapp.ui.dialogs
 
 // Sammel-Importe wie in den Nachbardialogen (BarcodeResultDialog.kt,
 // SetPruefungDialog.kt) — siehe die Begruendung dort.
+import ch.brickinventoryapp.ui.UpdateUiState
+import ch.brickinventoryapp.ui.viewmodel.UpdateAktionen
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -30,8 +32,13 @@ import ch.brickinventoryapp.ui.viewmodel.UpdateViewModel
  * Vorgang wäre schlechter als ein Dialog, der stehen bleibt.
  */
 @Composable
-fun UpdateDialog(selbstUpdate: UpdateViewModel) {
+fun UpdateRoute(selbstUpdate: UpdateViewModel) {
     val zustand by selbstUpdate.updateState.collectAsStateWithLifecycle()
+    UpdateDialog(zustand, selbstUpdate)
+}
+
+@Composable
+fun UpdateDialog(zustand: UpdateUiState, selbstUpdate: UpdateAktionen) {
     val neuere = zustand.neuereFassung ?: return
     if (zustand.dialogAbgelehnt) return
     val ctx = LocalContext.current

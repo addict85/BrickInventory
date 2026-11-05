@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.ui.dialogs
 
+import ch.brickinventoryapp.ui.viewmodel.ErfassungAktionen
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
@@ -32,17 +33,31 @@ import ch.brickinventoryapp.ui.theme.Abstaende
  * Der Dialog nach einem erfolgreichen Barcode-Scan: Set (oder Teileliste)
  * bestätigen, Menge, Kaufpreis, Zustand und Eigentümer erfassen.
  *
- * Eigene Datei, damit wer am Navigationsaufbau arbeitet, nicht an einem
- * Erfassungsformular vorbeiliest. Der Dialog liest seinen Zustand selbst vom
- * ViewModel wie die Reiter-Bildschirme; von aussen kommt nur der ImageLoader. Die
- * Bedingung `if (barcodeState.result != null)` bleibt beim Aufrufer: So steht an
- * einer Stelle, wann er erscheint, und hier nur, wie er aussieht.
+ * Die Bedingung `if (barcodeState.result != null)` bleibt beim Aufrufer: So steht
+ * an einer Stelle, wann er erscheint, und hier nur, wie er aussieht.
  */
 @Composable
-fun BarcodeResultDialog(vm: ErfassungViewModel, imageLoader: ImageLoader) {
+fun BarcodeResultRoute(vm: ErfassungViewModel, imageLoader: ImageLoader) {
     val state by vm.state.collectAsStateWithLifecycle()
     val blick by vm.blickfeld.collectAsStateWithLifecycle()
     val barcodeState by vm.barcodeState.collectAsStateWithLifecycle()
+    val lagerZustand by vm.lagerState.collectAsStateWithLifecycle()
+    BarcodeResultDialog(BarcodeDialogZustand(state, blick, barcodeState, lagerZustand), vm, imageLoader)
+}
+
+/** Was der Barcode-Dialog zeigt. */
+data class BarcodeDialogZustand(
+    val state: AppUiState,
+    val blick: BlickfeldUiState,
+    val barcodeState: BarcodeUiState,
+    val lagerZustand: LagerUiState,
+)
+
+@Composable
+fun BarcodeResultDialog(zustand: BarcodeDialogZustand, aktionen: ErfassungAktionen, imageLoader: ImageLoader) {
+    val state = zustand.state
+    val blick = zustand.blick
+    val barcodeState = zustand.barcodeState
     if (barcodeState.result == null) return
 
 // Preisfeld pro gescanntem Barcode zurücksetzen
@@ -57,13 +72,13 @@ var barcodeOwner by remember(barcodeState.result, blick.householdMembers) {
 // dieselben Felder haben wie die übrigen. Zurückgesetzt auf die Vorgabe, nicht auf
 // leer, damit sie bei einer Neuerfassung vorausgewählt ist. Der zweite Schlüssel
 // ist die Vorgabe selbst: Sie kommt übers Netz und kann nach dem Scan eintreffen.
-val lagerZustand by vm.lagerState.collectAsStateWithLifecycle()
+val lagerZustand = zustand.lagerZustand
 val lagerVorgabe = lagerZustand.vorgabe?.name ?: ""
 var barcodeLagerort by remember(barcodeState.result, lagerVorgabe) { mutableStateOf(lagerVorgabe) }
 AlertDialog(
     // Während des Hinzufügens nicht per Tipp daneben schliessbar —
     // sonst verschwindet der Dialog, während der Aufruf noch läuft.
-    onDismissRequest = { if (!barcodeState.adding) vm.cancelBarcode() },
+    onDismissRequest = { if (!barcodeState.adding) aktionen.cancelBarcode() },
     title = {
         Text(
             if (barcodeState.source == "partslist") stringResource(R.string.main_barcode_add_partslist)
@@ -189,10 +204,10 @@ AlertDialog(
                     // Nur die Nummer: Aus der Teileliste entsteht kein Bestand, die Felder sind
                     // oben nicht sichtbar. confirmAddBarcode() verwürfe sie zwar, aber der Aufruf
                     // soll beim Lesen zeigen, was gemeint ist.
-                    vm.confirmAddBarcode(barcodeState.result!!)
+                    aktionen.confirmAddBarcode(barcodeState.result!!)
                 } else {
                     val price = barcodePriceText.replace(',', '.').toDoubleOrNull()
-                    vm.confirmAddBarcode(
+                    aktionen.confirmAddBarcode(
                         barcodeState.result!!, price, barcodeCondition,
                         // Ohne Haushalt gar nichts mitschicken — der Server
                         // bleibt dann beim eigenen Konto (gleiche Regel wie
@@ -222,7 +237,7 @@ AlertDialog(
     },
     dismissButton = {
         TextButton(
-            onClick = { vm.cancelBarcode() },
+            onClick = { aktionen.cancelBarcode() },
             enabled = !barcodeState.adding
         ) { Text(stringResource(R.string.common_cancel)) }
     }

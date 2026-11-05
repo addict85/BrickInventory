@@ -60,7 +60,7 @@ class UpdateViewModel @Inject constructor(
     private val prefs: PreferencesManager,
     private val fassung: ch.brickinventoryapp.util.AppFassung,
     @param:Dispatcher(BrickDispatchers.IO) private val io: CoroutineDispatcher,
-) : ViewModel() {
+) : ViewModel(), UpdateAktionen {
 
     private val _state = MutableStateFlow(UpdateUiState())
     val updateState = _state.asStateFlow()
@@ -88,7 +88,7 @@ class UpdateViewModel @Inject constructor(
      * @param still Beim Start `true`: kein Ladebalken, keine Fehlermeldung. Auf
      *        Knopfdruck `false` — dann sieht der Nutzer beides.
      */
-    fun pruefeAufUpdate(still: Boolean = false) {
+    override fun pruefeAufUpdate(still: Boolean) {
         viewModelScope.launch {
             _state.update { it.copy(laedtPruefung = !still, fehler = null) }
             try {
@@ -139,7 +139,7 @@ class UpdateViewModel @Inject constructor(
      * bleibt — es gibt weiterhin eine neuere Fassung, und der Punkt am Konto-Symbol
      * sagt das weiter. Weggeklickt ist nur die Frage, nicht der Befund.
      */
-    fun updateHinweisSchliessen() {
+    override fun updateHinweisSchliessen() {
         _state.update { it.copy(dialogAbgelehnt = true) }
     }
 
@@ -152,7 +152,7 @@ class UpdateViewModel @Inject constructor(
      *
      * Erst danach öffnet sich der System-Installer, und auch der fragt nochmal.
      */
-    fun ladeUpdate() {
+    override fun ladeUpdate() {
         val fassung = _state.value.neuereFassung ?: return
         viewModelScope.launch {
             if (!istErlaubteApkAdresse(fassung.apkUrl)) {
@@ -269,7 +269,7 @@ class UpdateViewModel @Inject constructor(
      * Die Signatur wird erneut geprüft, weil die Datei während des Ausflugs in die
      * Systemeinstellungen auf der Platte liegt.
      */
-    fun starteInstallation() {
+    override fun starteInstallation() {
         val gemeldet = _state.value.neuereFassung?.versionCode ?: 0
         val pruefsumme = _state.value.neuereFassung?.apkSha256.orEmpty()
         viewModelScope.launch {

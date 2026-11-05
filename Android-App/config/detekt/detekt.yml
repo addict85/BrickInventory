@@ -17,8 +17,8 @@ complexity:
     threshold: 60
     ignoreSimpleWhenEntries: true
   LongParameterList:
-    # Composables bekommen Zustand und Rückrufe einzeln herein, statt ein
-    # ViewModel zu kennen (ScreenViewModelWiringTest); das ergibt lange Listen.
+    # Composables bekommen Zustand und Rückrufe herein, statt ein ViewModel zu
+    # kennen; Routen reichen sie einzeln weiter, das ergibt lange Listen.
     ignoreAnnotated: ['Composable']
     functionThreshold: 12
     constructorThreshold: 26

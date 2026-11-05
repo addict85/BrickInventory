@@ -39,7 +39,7 @@ class MerklisteViewModel @Inject constructor(
     private val katalogRepo: KatalogRepository,
     private val finanzen: FinanzenRepository,
     private val gemerkt: SavedStateHandle,
-) : BereichsViewModel(dienste) {
+) : BereichsViewModel(dienste), MerklisteAktionen {
 
     private val _merklisteState = MutableStateFlow(MerklisteUiState(
         query = gemerkt[SUCHE] ?: "",
@@ -81,7 +81,7 @@ class MerklisteViewModel @Inject constructor(
         },
     )
 
-    fun ladeMerkliste() {
+    override fun ladeMerkliste() {
         viewModelScope.launch {
             val f = _merklisteState.value
             _merklisteState.update { it.copy(laedt = true, fehler = null) }
@@ -103,7 +103,7 @@ class MerklisteViewModel @Inject constructor(
         }
     }
 
-    fun setzeMerklisteSuche(q: String) {
+    override fun setzeMerklisteSuche(q: String) {
         gemerkt[SUCHE] = q
         _merklisteState.update { it.copy(query = q) }
         suchJob?.cancel()
@@ -113,19 +113,19 @@ class MerklisteViewModel @Inject constructor(
         }
     }
 
-    fun setzeMerklisteZustand(zustand: String) {
+    override fun setzeMerklisteZustand(zustand: String) {
         gemerkt[ZUSTAND] = zustand
         _merklisteState.update { it.copy(zustandFilter = zustand) }
         ladeMerkliste()
     }
 
-    fun setzeMerklisteSortierung(sortierung: String) {
+    override fun setzeMerklisteSortierung(sortierung: String) {
         gemerkt[SORTIERUNG] = sortierung
         _merklisteState.update { it.copy(sortierung = sortierung) }
         ladeMerkliste()
     }
 
-    fun legeMerkpostenAn(setNumber: String, zustand: String, besitzer: Int? = null) {
+    override fun legeMerkpostenAn(setNumber: String, zustand: String, besitzer: Int?) {
         val nummer = setNumber.trim()
         if (nummer.isBlank()) { _snackbar.value = text(R.string.wanted_need_number); return }
         viewModelScope.launch {
@@ -134,7 +134,7 @@ class MerklisteViewModel @Inject constructor(
         }
     }
 
-    fun verschiebeMerkposten(setNumber: String, zustand: String, vonId: Int, zuId: Int) {
+    override fun verschiebeMerkposten(setNumber: String, zustand: String, vonId: Int, zuId: Int) {
         if (vonId == zuId) return
         viewModelScope.launch {
             when (val r = sets.verschiebeMerkposten(setNumber, zustand, vonId, zuId)) {
@@ -149,7 +149,7 @@ class MerklisteViewModel @Inject constructor(
         }
     }
 
-    fun loescheMerkposten(setNumber: String, zustand: String, besitzer: Int?) {
+    override fun loescheMerkposten(setNumber: String, zustand: String, besitzer: Int?) {
         viewModelScope.launch {
             when (val r = sets.loescheMerkposten(setNumber, zustand, besitzer)) {
                 is Result.Success -> {
@@ -162,10 +162,10 @@ class MerklisteViewModel @Inject constructor(
     }
 
     /** Aus dem Merkposten wird Besitz; der Server entscheidet, was mit Eintrag und Alarm geschieht. */
-    fun uebernimmMerkposten(
+    override fun uebernimmMerkposten(
         setNumber: String, zustand: String, besitzer: Int?,
-        anzahl: Int = 1, kaufpreisRoh: String = "", erfasstAls: String? = null,
-        lagerort: String? = null,
+        anzahl: Int, kaufpreisRoh: String, erfasstAls: String?,
+        lagerort: String?,
     ) {
         viewModelScope.launch {
             val preis = Alarmeingabe.zahl(kaufpreisRoh)
@@ -206,7 +206,7 @@ class MerklisteViewModel @Inject constructor(
     }
 
     /** Katalogdaten, Preise und Verlauf eines Merkpostens — je für sich, was fehlt, bleibt leer. */
-    fun ladeMerkpostenDetail(setNumber: String) {
+    override fun ladeMerkpostenDetail(setNumber: String) {
         viewModelScope.launch {
             _merkpostenDetailState.value = MerkpostenDetailUiState(setNumber = setNumber, laedt = true)
             if (_merklisteState.value.merkposten.isEmpty()) ladeMerkliste()
@@ -231,7 +231,7 @@ class MerklisteViewModel @Inject constructor(
         }
     }
 
-    fun setzePreisalarm(setNumber: String, richtung: String, roh: String, zustand: String) =
+    override fun setzePreisalarm(setNumber: String, richtung: String, roh: String, zustand: String) =
         alarmEingabe.setze(setNumber, richtung, roh, zustand)
 
     override fun nachFilter(view: ScopeFilter.View) {

@@ -245,13 +245,14 @@ fun ReiterGeruest(
     val selbstUpdate: UpdateViewModel = aktivitaetsViewModel()
     val updateZustand by selbstUpdate.updateState.collectAsStateWithLifecycle()
     val offen by vm.offeneAenderungen.collectAsStateWithLifecycle()
+    val csvImport: ch.brickinventoryapp.ui.viewmodel.CsvImportViewModel = aktivitaetsViewModel()
     MainScaffold(
         title = titel,
         navController = umgebung.navController,
         bottomNavItems = umgebung.reiter,
         snackbarHostState = umgebung.snackbarHostState,
-        csvImportState = vm.csvImportState,
-        onCsvAbbrechen = { vm.cancelCsvImport() },
+        csvImportState = csvImport.csvImportState,
+        onCsvAbbrechen = { csvImport.cancelCsvImport() },
         // Reiter angetippt → oben anfangen.
         onTabAngetippt = { ziel -> vm.scrollMemory.vergissReiter(ziel.rollSchluessel) },
         serverUrl = state.serverUrl,

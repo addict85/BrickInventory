@@ -91,7 +91,7 @@ class CsvAbbruchTest {
         // Dieselbe Regel wie fuer jede andere aendernde Handlung
         // (AktionMeldetFehlerTest): Scheitert sie lautlos, tippt der Nutzer
         // weiter und wundert sich, dass der Balken laeuft.
-        val s = code(read("ui/AppViewModel.kt"))
+        val s = code(read("ui/viewmodel/CsvImportViewModel.kt"))
         val ab = s.indexOf("fun cancelCsvImport(")
         assert(ab > 0) { "cancelCsvImport fehlt" }
         val rumpf = s.substring(ab, minOf(ab + 500, s.length))

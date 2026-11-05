@@ -110,7 +110,7 @@ private fun NavGraphBuilder.galerieZiele(u: ZielUmgebung) {
             val vorschauName = vorschau?.name
             val detailVm: SetDetailViewModel = hiltViewModel()
             val detail: @Composable () -> Unit = {
-            SetDetailScreen(
+            SetDetailRoute(
                 setNumber = setNumber,
                 vm = detailVm,
                 vorschau = vorschau,
@@ -200,8 +200,8 @@ private fun NavGraphBuilder.teileZiele(u: ZielUmgebung) {
                 // Das Detail eines Teils (aus Sets oder manuell) steht auf dem Tablet neben
                 // der Liste, auf dem Telefon als Blatt bzw. eigene Seite. Hier und nicht im
                 // Bildschirm, weil nur der Graph den NavController kennt.
-                TeileListeUndDetail(teileVm, imageLoader, state.serverUrl, navController) { oeffneManuell ->
-                    PartsScreen(
+                TeileListeUndDetailRoute(teileVm, imageLoader, state.serverUrl, navController) { oeffneManuell ->
+                    PartsRoute(
                         vm = teileVm,
                         imageLoader = imageLoader,
                         onOpenDetail = { partNumber, colorId ->
@@ -231,8 +231,8 @@ private fun NavGraphBuilder.teileZiele(u: ZielUmgebung) {
                     speicher = vm.scrollMemory,
                     obenNachziehend = partsState.manualFigs?.size ?: 0)
                 // Wie im Teile-Reiter; das Detail unterscheidet Teile und Figuren selbst.
-                TeileListeUndDetail(teileVm, imageLoader, state.serverUrl, navController) { oeffneManuell ->
-                    MinifigsScreen(
+                TeileListeUndDetailRoute(teileVm, imageLoader, state.serverUrl, navController) { oeffneManuell ->
+                    MinifigsRoute(
                         vm = teileVm,
                         imageLoader = imageLoader,
                         onOpenDetail = { figNumber ->
@@ -265,7 +265,7 @@ private fun NavGraphBuilder.einzelstueckZiele(
             val itemId    = ziel.id
             val colorId   = ziel.colorId
             val itemTitle = ziel.title
-            ManualItemDetailScreen(
+            ManualItemDetailRoute(
                 vm = hiltViewModel<KaeufeViewModel>(),
                 teile = hiltViewModel(),
                 type = itemType,
@@ -289,7 +289,7 @@ private fun NavGraphBuilder.einzelstueckZiele(
 
         composable<Screen.AcquisitionManagement> { backStackEntry ->
             val ziel = backStackEntry.toRoute<Screen.AcquisitionManagement>()
-            AcquisitionManagementScreen(
+            AcquisitionManagementRoute(
                 vm      = hiltViewModel<KaeufeViewModel>(),
                 type    = ziel.type,
                 id      = ziel.id,
@@ -307,7 +307,7 @@ private fun NavGraphBuilder.einzelstueckZiele(
  * bleibt es beim Blatt (Teil aus Sets) bzw. der eigenen Seite (manuell erfasst).
  */
 @Composable
-internal fun TeileListeUndDetail(
+internal fun TeileListeUndDetailRoute(
     teileVm: TeileViewModel,
     imageLoader: ImageLoader,
     serverUrl: String,
@@ -317,6 +317,7 @@ internal fun TeileListeUndDetail(
     BoxWithConstraints(Modifier.fillMaxSize()) {
         val nebeneinander = listeUndDetail(maxWidth.value)
         val setItem by teileVm.setItemState.collectAsStateWithLifecycle()
+        val lager by teileVm.lagerState.collectAsStateWithLifecycle()
         // Typ, Nummer, Farbe, Titel des offenen manuellen Eintrags; Liste, weil sie sich speichern lässt.
         var manuell by androidx.compose.runtime.saveable.rememberSaveable { mutableStateOf<List<String>?>(null) }
         val oeffneManuell: (String, String, Int, String) -> Unit = { typ, id, farbe, titel ->
@@ -342,9 +343,9 @@ internal fun TeileListeUndDetail(
                 },
                 detail = {
                     if (setItem.offen) {
-                        ch.brickinventoryapp.ui.dialogs.SetItemDetailBereich(teileVm, imageLoader, serverUrl, oeffneSet)
+                        ch.brickinventoryapp.ui.dialogs.SetItemDetailBereich(setItem, lager, teileVm, imageLoader, serverUrl, oeffneSet)
                     } else if (offen != null) key(offen) {
-                        ManualItemDetailScreen(
+                        ManualItemDetailRoute(
                             vm = hiltViewModel<KaeufeViewModel>(),
                             teile = teileVm,
                             type = offen[0],
@@ -362,6 +363,6 @@ internal fun TeileListeUndDetail(
                 },
             )
         } else liste(oeffneManuell)
-        if (!nebeneinander) SetItemDetailDialog(teileVm, imageLoader, serverUrl, oeffneSet)
+        if (!nebeneinander) SetItemDetailDialog(setItem, lager, teileVm, imageLoader, serverUrl, oeffneSet)
     }
 }

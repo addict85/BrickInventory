@@ -28,9 +28,8 @@ import ch.brickinventoryapp.util.fmtUhrzeit
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
-import ch.brickinventoryapp.ui.viewmodel.MonitoringViewModel
+import ch.brickinventoryapp.ui.viewmodel.MonitoringAktionen
 import ch.brickinventoryapp.ui.viewmodel.MonitoringUiState
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import ch.brickinventoryapp.ui.*
 import kotlinx.coroutines.launch
 import ch.brickinventoryapp.util.NumericInput
@@ -122,7 +121,7 @@ internal fun BricksetQueueRow(
     }
 }
 
-/** Was der Cache-Abschnitt auslöst; MonitoringScreen verdrahtet die ViewModels. */
+/** Was der Cache-Abschnitt auslöst; MonitoringRoute verdrahtet die ViewModels. */
 class CacheEreignisse(
     val vorgabeZustand: (String) -> Unit,
     val ablageLeeren: () -> Unit,
@@ -551,8 +550,7 @@ private fun RateLimitRow(
 // ergeben.
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-internal fun ProtokollSection(mon: MonitoringViewModel) {
-    val verwaltung by mon.verwaltungState.collectAsStateWithLifecycle()
+internal fun ProtokollSection(verwaltung: VerwaltungUiState, aktionen: MonitoringAktionen) {
     val protokollScope = rememberCoroutineScope()
     var offen by rememberSaveable { mutableStateOf(false) }
     // Beides gehoert dem Menschen und uebersteht deshalb eine Drehung — die
@@ -570,7 +568,7 @@ internal fun ProtokollSection(mon: MonitoringViewModel) {
                         CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp)
                     } else if (offen) {
                         ch.brickinventoryapp.ui.components.MitTooltip(stringResource(R.string.admin_log_reload)) {
-                            IconButton(onClick = { protokollScope.launch { mon.ladeProtokoll() } }) {
+                            IconButton(onClick = { protokollScope.launch { aktionen.ladeProtokoll() } }) {
                                 Icon(Icons.Default.Refresh, stringResource(R.string.admin_log_reload),
                                     Modifier.size(18.dp))
                             }
@@ -579,7 +577,7 @@ internal fun ProtokollSection(mon: MonitoringViewModel) {
                     ch.brickinventoryapp.ui.components.MitTooltip(stringResource(if (offen) R.string.common_collapse else R.string.common_expand)) {
                     IconButton(onClick = {
                         offen = !offen
-                        if (offen && verwaltung.protokoll.isEmpty()) protokollScope.launch { mon.ladeProtokoll() }
+                        if (offen && verwaltung.protokoll.isEmpty()) protokollScope.launch { aktionen.ladeProtokoll() }
                     }) {
                         // Beschreibt die WIRKUNG des Tippens, nicht das
                         // gezeigte Zeichen — genau das braucht TalkBack.
@@ -599,7 +597,7 @@ internal fun ProtokollSection(mon: MonitoringViewModel) {
                     ch.brickinventoryapp.ui.components.SegmentWahl(
                         optionen = listOf(15, 60, 240, 1440).map { it to stringResource(R.string.admin_log_minutes, it) },
                         gewaehlt = verwaltung.protokollMinuten,
-                        onWahl = { min -> protokollScope.launch { mon.ladeProtokoll(min) } },
+                        onWahl = { min -> protokollScope.launch { aktionen.ladeProtokoll(min) } },
                     )
                     // Der Fehler statt der Leermeldung: „keine Einträge“ wäre falsch, wenn der
                     // Abruf scheiterte.
@@ -691,7 +689,7 @@ internal fun ProtokollSection(mon: MonitoringViewModel) {
 fun ZeitplanZeile(
     jobKey: String,
     plan: ZeitplanAnsicht,
-    mon: ch.brickinventoryapp.ui.viewmodel.MonitoringViewModel,
+    aktionen: MonitoringAktionen,
     onSnack: (String) -> Unit,
 ) {
     val scope = rememberCoroutineScope()
@@ -735,8 +733,8 @@ fun ZeitplanZeile(
                 FilledTonalButton(
                     onClick = {
                         scope.launch {
-                            val ok = if (taeglich) mon.setzeJobZeitplan(jobKey, zeit = eingabe.trim())
-                                     else mon.setzeJobZeitplan(jobKey, minuten = eingabe.toIntOrNull() ?: 60)
+                            val ok = if (taeglich) aktionen.setzeJobZeitplan(jobKey, zeit = eingabe.trim())
+                                     else aktionen.setzeJobZeitplan(jobKey, minuten = eingabe.toIntOrNull() ?: 60)
                             if (ok) onSnack(gespeichert)
                             bearbeiten = false
                         }

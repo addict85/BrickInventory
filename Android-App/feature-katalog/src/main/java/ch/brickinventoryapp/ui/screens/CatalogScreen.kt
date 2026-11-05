@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.ui.screens
 
+import ch.brickinventoryapp.ui.viewmodel.KatalogAktionen
 import ch.brickinventoryapp.ui.model.JahrAnzahlAnsicht
 import ch.brickinventoryapp.ui.model.KatalogSetAnsicht
 import ch.brickinventoryapp.ui.components.SkelettRaster
@@ -33,7 +34,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import ch.brickinventoryapp.ressourcen.R
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import ch.brickinventoryapp.ui.AppViewModel
 import ch.brickinventoryapp.ui.viewmodel.CatalogViewModel
 import ch.brickinventoryapp.ui.*
 import ch.brickinventoryapp.ui.CatalogYearMath
@@ -64,22 +64,27 @@ import ch.brickinventoryapp.ui.components.LeerSymbol
  * Aufbau analog GalleryScreen (Suche oben, Filter-Chips, Grid) — Filter
  * laufen aber serverseitig, das Grid lädt beim Scrollen seitenweise nach.
  */
+@Composable
+fun CatalogRoute(
+    katalog: CatalogViewModel,
+    serverUrl: String,
+    imageLoader: ImageLoader,
+    onSetClick: (String) -> Unit,
+) {
+    val state by katalog.state.collectAsStateWithLifecycle()
+    CatalogScreen(state, serverUrl, katalog, imageLoader, onSetClick)
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CatalogScreen(
-    vm: AppViewModel,
-    katalog: CatalogViewModel,
+    state: CatalogUiState,
+    serverUrl: String,
+    katalog: KatalogAktionen,
     imageLoader: ImageLoader,
     /** Klick auf ein Set — nur der Graph kennt den NavController. */
     onSetClick: (String) -> Unit,
 ) {
-    // Zustand und Aktionen vom ViewModel statt über Parameter — dasselbe Muster wie
-    // Galerie, Finanzen, Teile und Minifiguren.
-    val state by katalog.state.collectAsStateWithLifecycle()
-    val appState by vm.state.collectAsStateWithLifecycle()
-
-    val serverUrl = appState.serverUrl
-
     val onQueryChange: (String) -> Unit = { q -> katalog.setCatalogQuery(q) }
     val onThemeChange: (Int?) -> Unit = { t -> katalog.setCatalogTheme(t) }
     val onYearChange: (Int?) -> Unit = { y -> katalog.setCatalogYear(y) }

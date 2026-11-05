@@ -73,7 +73,7 @@ class PartsListScannerTest {
     @Test
     fun `aus der Teileliste wird nur die Setnummer uebergeben`() {
         val c = code(src)
-        assert(c.contains("""vm.confirmAddBarcode(barcodeState.result!!)""")) {
+        assert(c.contains("""aktionen.confirmAddBarcode(barcodeState.result!!)""")) {
             "Der Teilelisten-Weg soll nur die Nummer übergeben — Werte mitzuschicken, die " +
                 "niemand eingeben konnte, verschleiert beim Lesen, was gemeint ist"
         }

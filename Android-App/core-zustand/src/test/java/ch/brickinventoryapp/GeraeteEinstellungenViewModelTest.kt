@@ -1,5 +1,8 @@
 package ch.brickinventoryapp
 
+import org.junit.Assert.assertTrue
+import ch.brickinventoryapp.util.AblageChiffre
+import ch.brickinventoryapp.data.cache.VorschauSpeicher
 import ch.brickinventoryapp.data.AlarmPlaner
 import ch.brickinventoryapp.data.GeraeteEinstellungen
 import ch.brickinventoryapp.data.MeldungsKanal
@@ -31,6 +34,8 @@ import org.junit.Test
  *                                  → rot „der Schalter speichert und plant ein“
  *   geraet-fehler-verschluckt      der Fehler des Einplanens geht nicht in den Kanal
  *                                  → rot „ein Fehlschlag beim Einplanen wird gemeldet“
+ *   geraet-ablage-nicht-geleert    ablageLeeren() leert die Vorschau-Ablage nicht
+ *                                  → rot „die Vorschau-Ablage laesst sich sehen und leeren“
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 class GeraeteEinstellungenViewModelTest {
@@ -60,17 +65,21 @@ class GeraeteEinstellungenViewModelTest {
     private val ablage = Ablage()
     private val planer = Planer()
     private val kanal = MeldungsKanal()
+    private val wurzel = java.nio.file.Files.createTempDirectory("vorschau").toFile()
+    private val vorschau = VorschauSpeicher({ wurzel }, AblageChiffre { ByteArray(32) { 4 } })
     private lateinit var vm: GeraeteEinstellungenViewModel
 
     @Before
     fun auf() {
         Dispatchers.setMain(UnconfinedTestDispatcher())
-        vm = GeraeteEinstellungenViewModel(ablage, planer, Saetze, kanal)
+        vorschau.schreibe("https://brick.example/api/v1/proxy?u=x&thumb=1", ByteArray(500) { 1 })
+        vm = GeraeteEinstellungenViewModel(ablage, planer, Saetze, kanal, vorschau)
     }
 
     @After
     fun zu() {
         Dispatchers.resetMain()
+        wurzel.deleteRecursively()
     }
 
     @Test
@@ -98,5 +107,14 @@ class GeraeteEinstellungenViewModelTest {
         vm.vorwaermen(VorwaermNetz.WLAN, false)
         assertEquals(mapOf(VorwaermNetz.WLAN to false, VorwaermNetz.MOBIL to false, VorwaermNetz.ROAMING to true),
             vm.vorwaermen.value)
+    }
+
+    @Test
+    fun `die Vorschau-Ablage laesst sich sehen und leeren`() {
+        assertTrue("Die belegte Ablage zeigt keine Bytes", vm.ablageBytes.value > 0)
+        vm.ablageLeeren()
+        assertEquals(0L, vm.ablageBytes.value)
+        assertEquals(0L, vorschau.belegt())
+        assertEquals("t${R.string.monitoring_cache_saved}()", kanal.meldung.value)
     }
 }

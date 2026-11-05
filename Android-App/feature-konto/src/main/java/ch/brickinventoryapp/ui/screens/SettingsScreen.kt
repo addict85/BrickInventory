@@ -1,5 +1,10 @@
 package ch.brickinventoryapp.ui.screens
 
+import ch.brickinventoryapp.ui.viewmodel.VertrauenViewModel
+import ch.brickinventoryapp.ui.viewmodel.DarstellungViewModel
+import ch.brickinventoryapp.ui.viewmodel.DarstellungAktionen
+import ch.brickinventoryapp.ui.viewmodel.UpdateAktionen
+import ch.brickinventoryapp.ui.viewmodel.EinstellungenAktionen
 import ch.brickinventoryapp.ui.components.nebenKnopfFarben
 import ch.brickinventoryapp.ui.components.nebenKnopfRand
 import androidx.compose.ui.semantics.heading
@@ -23,7 +28,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import ch.brickinventoryapp.ressourcen.R
-import ch.brickinventoryapp.ui.AppViewModel
 import ch.brickinventoryapp.ui.viewmodel.EinstellungenViewModel
 import ch.brickinventoryapp.ui.*
 import ch.brickinventoryapp.ui.theme.Abstaende
@@ -39,9 +43,54 @@ import ch.brickinventoryapp.util.quelleVeraltet
  * Wahl gilt sofort), Server und Aktualisierung. Die Rubriken mit eigener Seite liegen auf „Mehr“
  * (MehrBildschirm.kt) und in EinstellungenUnterseiten.kt.
  */
+/** Was die Einstellungen zeigen; die Route sammelt es aus vier Flüssen dreier ViewModels. */
+data class EinstellungenZustand(
+    val appState: AppUiState,
+    val updateZustand: UpdateUiState,
+    val helligkeit: String,
+    val design: String,
+    val systemfarben: Boolean,
+    val vorschauVerbergen: Boolean,
+    val widgetWerte: Boolean,
+    val nutzerCa: Boolean,
+)
+
+/** Die Einstellungen am Navigationsziel; Darstellung, Vertrauen und Update leben an der Activity. */
+@Composable
+fun SettingsRoute(
+    vm: EinstellungenViewModel,
+    onLogout: () -> Unit,
+    onServerWechseln: () -> Unit,
+    scrollState: ScrollState,
+    selbstUpdate: UpdateViewModel = aktivitaetsViewModel(),
+    darstellung: DarstellungViewModel = aktivitaetsViewModel(),
+    vertrauen: VertrauenViewModel = aktivitaetsViewModel(),
+) {
+    val appState by vm.state.collectAsStateWithLifecycle()
+    val updateZustand by selbstUpdate.updateState.collectAsStateWithLifecycle()
+    val helligkeit by darstellung.helligkeit.collectAsStateWithLifecycle()
+    val design by darstellung.appTheme.collectAsStateWithLifecycle()
+    val systemfarben by darstellung.systemfarben.collectAsStateWithLifecycle()
+    val vorschauVerbergen by darstellung.vorschauVerbergen.collectAsStateWithLifecycle()
+    val widgetWerte by darstellung.widgetWerte.collectAsStateWithLifecycle()
+    val nutzerCa by vertrauen.nutzerCa.an.collectAsStateWithLifecycle()
+    SettingsScreen(
+        zustand = EinstellungenZustand(appState, updateZustand, helligkeit, design, systemfarben,
+            vorschauVerbergen, widgetWerte, nutzerCa),
+        aktionen = vm, update = selbstUpdate, darstellung = darstellung,
+        // Einschalten fragt erst nach (NutzerCaDialog in MainActivity).
+        onNutzerCa = { if (it) vertrauen.nutzerCa.anfragen() else vertrauen.nutzerCa.ausschalten() },
+        onLogout = onLogout, onServerWechseln = onServerWechseln, scrollState = scrollState,
+    )
+}
+
 @Composable
 fun SettingsScreen(
-    vm: EinstellungenViewModel,
+    zustand: EinstellungenZustand,
+    aktionen: EinstellungenAktionen,
+    update: UpdateAktionen,
+    darstellung: DarstellungAktionen,
+    onNutzerCa: (Boolean) -> Unit,
     /** Abmelden — nur der Graph kennt den NavController. */
     onLogout: () -> Unit,
     /**
@@ -57,14 +106,8 @@ fun SettingsScreen(
      */
     scrollState: ScrollState,
 ) {
-    // Zustand und Aktionen vom ViewModel statt über Parameter. `appState`, nicht
-    // `state`: UiStateFieldsTest bestimmt den Typ je Name und Datei.
-    val appState by vm.state.collectAsStateWithLifecycle()
-    // `updateZustand`, nicht `update`: dieselbe Namensfalle.
-    val selbstUpdate: UpdateViewModel = aktivitaetsViewModel()
-    // Sprache und Design bei Dunkelheit gehören dem Gerät, nicht dem Konto.
-    val app: AppViewModel = aktivitaetsViewModel()
-    val updateZustand by selbstUpdate.updateState.collectAsStateWithLifecycle()
+    val appState = zustand.appState
+    val updateZustand = zustand.updateZustand
 
     val currency = appState.currency
     val priceCondition = appState.priceCondition
@@ -103,20 +146,20 @@ fun SettingsScreen(
                 listOf("system" to stringResource(R.string.settings_language_system),
                        "en" to stringResource(R.string.settings_language_en),
                        "de" to stringResource(R.string.settings_language_de)),
-                gewaehlt = language, onWahl = { app.setLanguage(it) },
+                gewaehlt = language, onWahl = { darstellung.setLanguage(it) },
             )
 
             // Darstellung je Gerät: System folgt dem Telefon, Hell und Dunkel gelten immer.
             Unterschrift(stringResource(R.string.settings_dark_label))
-            val helligkeit by app.helligkeit.collectAsStateWithLifecycle()
-            val design by app.appTheme.collectAsStateWithLifecycle()
-            val farbenDesSystems by app.systemfarben.collectAsStateWithLifecycle()
+            val helligkeit = zustand.helligkeit
+            val design = zustand.design
+            val farbenDesSystems = zustand.systemfarben
             val waehlbar = ch.brickinventoryapp.ui.theme.helligkeitWaehlbar(design, farbenDesSystems, android.os.Build.VERSION.SDK_INT)
             WahlChips(
                 listOf(Helligkeit.SYSTEM to stringResource(R.string.settings_hell_system),
                        Helligkeit.HELL to stringResource(R.string.settings_hell_hell),
                        Helligkeit.DUNKEL to stringResource(R.string.settings_hell_dunkel)),
-                gewaehlt = helligkeit, onWahl = { app.setHelligkeit(it) },
+                gewaehlt = helligkeit, onWahl = { darstellung.setHelligkeit(it) },
                 enabled = waehlbar,
             )
             // Werkbank ist schon dunkel: Die Wahl ist aus, und der Satz sagt, warum.
@@ -126,10 +169,10 @@ fun SettingsScreen(
             // Material You: zusätzlich zu den sechs Designs, je Gerät. Erst ab
             // Android 12 gibt es Systemfarben; darunter fehlt der Schalter ganz.
             if (android.os.Build.VERSION.SDK_INT >= ch.brickinventoryapp.ui.theme.SYSTEMFARBEN_AB_SDK) {
-                val systemfarben by app.systemfarben.collectAsStateWithLifecycle()
+                val systemfarben = zustand.systemfarben
                 Row(
                     Modifier.fillMaxWidth().heightIn(min = 48.dp)
-                        .toggleable(value = systemfarben, role = Role.Switch, onValueChange = { app.setSystemfarben(it) }),
+                        .toggleable(value = systemfarben, role = Role.Switch, onValueChange = { darstellung.setSystemfarben(it) }),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Column(Modifier.weight(1f)) {
@@ -142,10 +185,10 @@ fun SettingsScreen(
             }
 
             // Je Gerät, Vorgabe aus: Wer die Übersicht anderen zeigt, will keine Vorschau.
-            val vorschauVerbergen by app.vorschauVerbergen.collectAsStateWithLifecycle()
+            val vorschauVerbergen = zustand.vorschauVerbergen
             Row(
                 Modifier.fillMaxWidth().heightIn(min = 48.dp)
-                    .toggleable(value = vorschauVerbergen, role = Role.Switch, onValueChange = { app.setVorschauVerbergen(it) }),
+                    .toggleable(value = vorschauVerbergen, role = Role.Switch, onValueChange = { darstellung.setVorschauVerbergen(it) }),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Column(Modifier.weight(1f)) {
@@ -157,10 +200,10 @@ fun SettingsScreen(
             }
 
             // Je Gerät, Vorgabe aus: Das Widget liegt ohne Entsperren auf dem Startbildschirm.
-            val widgetWerte by app.widgetWerte.collectAsStateWithLifecycle()
+            val widgetWerte = zustand.widgetWerte
             Row(
                 Modifier.fillMaxWidth().heightIn(min = 48.dp)
-                    .toggleable(value = widgetWerte, role = Role.Switch, onValueChange = { app.setWidgetWerte(it) }),
+                    .toggleable(value = widgetWerte, role = Role.Switch, onValueChange = { darstellung.setWidgetWerte(it) }),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Column(Modifier.weight(1f)) {
@@ -177,7 +220,7 @@ fun SettingsScreen(
             Unterschrift(stringResource(R.string.settings_currency))
             WahlChips(
                 listOf("CHF", "EUR", "USD", "GBP").map { it to it },
-                gewaehlt = currency, onWahl = { vm.saveSettings(it, priceCondition) },
+                gewaehlt = currency, onWahl = { aktionen.saveSettings(it, priceCondition) },
             )
 
             Unterschrift(stringResource(R.string.settings_price_condition))
@@ -187,7 +230,7 @@ fun SettingsScreen(
             WahlChips(
                 listOf("N" to stringResource(R.string.settings_condition_new),
                        "U" to stringResource(R.string.settings_condition_used)),
-                gewaehlt = priceCondition, onWahl = { vm.saveSettings(currency, it) },
+                gewaehlt = priceCondition, onWahl = { aktionen.saveSettings(currency, it) },
             )
 
             // ── Standard-Zustand beim Erfassen ──
@@ -205,7 +248,7 @@ fun SettingsScreen(
                 listOf("" to stringResource(R.string.settings_default_condition_global),
                        "N" to stringResource(R.string.condition_new),
                        "U" to stringResource(R.string.condition_used)),
-                gewaehlt = eigeneVorgabe ?: "", onWahl = { vm.saveUserDefaultCondition(it) },
+                gewaehlt = eigeneVorgabe ?: "", onWahl = { aktionen.saveUserDefaultCondition(it) },
             )
         }
 
@@ -213,20 +256,19 @@ fun SettingsScreen(
         //
         // Die Serveradresse ist eine Einstellung wie Währung und Sprache, keine Handlung
         // an der laufenden Sitzung.
-        val nutzerCa by app.nutzerCa.an.collectAsStateWithLifecycle()
+        val nutzerCa = zustand.nutzerCa
         ServerCard(
             serverUrl = appState.serverUrl,
             onWechseln = onServerWechseln,
             nutzerCa = nutzerCa,
-            // Einschalten fragt erst nach (NutzerCaDialog in MainActivity).
-            onNutzerCa = { if (it) app.nutzerCa.anfragen() else app.nutzerCa.ausschalten() },
+            onNutzerCa = onNutzerCa,
         )
 
         UpdateCard(
             updateZustand = updateZustand,
-            onPruefen = { selbstUpdate.pruefeAufUpdate() },
-            onLaden = { selbstUpdate.ladeUpdate() },
-            onInstallieren = { selbstUpdate.starteInstallation() },
+            onPruefen = { update.pruefeAufUpdate() },
+            onLaden = { update.ladeUpdate() },
+            onInstallieren = { update.starteInstallation() },
         )
 
         Spacer(Modifier.height(Abstaende.klein))

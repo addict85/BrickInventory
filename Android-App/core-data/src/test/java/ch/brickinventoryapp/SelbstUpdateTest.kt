@@ -353,7 +353,7 @@ class SelbstUpdateTest {
     @Test
     fun `der Dialog haengt ueber der ganzen App, nicht an einem Bildschirm`() {
         val nav = Quellen.ohneKommentare(Quellen.lies("AppNavigation.kt"))
-        assert(nav.contains("dialogs.UpdateDialog(selbstUpdate)")) {
+        assert(nav.contains("dialogs.UpdateRoute(selbstUpdate)")) {
             "Der Update-Hinweis wird nirgends gezeigt. In einem einzelnen Bildschirm " +
                 "aufgerufen bekaeme ihn nur, wer ohnehin dort sitzt — genau der Fehler, " +
                 "den der Punkt in den Einstellungen schon einmal hatte."

@@ -38,13 +38,13 @@ import ch.brickinventoryapp.data.repository.SetsRepository
 import ch.brickinventoryapp.ui.AnmeldeFormular
 import ch.brickinventoryapp.ui.CsvImportUiState
 import ch.brickinventoryapp.ui.Screen
-import ch.brickinventoryapp.ui.screens.FinanceScreen
+import ch.brickinventoryapp.ui.screens.FinanceRoute
 import ch.brickinventoryapp.ui.screens.GalleryRoute
 import ch.brickinventoryapp.ui.screens.LoginScreen
-import ch.brickinventoryapp.ui.screens.MerklisteScreen
-import ch.brickinventoryapp.ui.screens.MinifigsScreen
-import ch.brickinventoryapp.ui.screens.PartsScreen
-import ch.brickinventoryapp.ui.screens.SetDetailScreen
+import ch.brickinventoryapp.ui.screens.MerklisteRoute
+import ch.brickinventoryapp.ui.screens.MinifigsRoute
+import ch.brickinventoryapp.ui.screens.PartsRoute
+import ch.brickinventoryapp.ui.screens.SetDetailRoute
 import ch.brickinventoryapp.ui.theme.BrickInventoryManagerTheme
 import ch.brickinventoryapp.ui.viewmodel.ErfassungViewModel
 import com.github.takahirom.roborazzi.captureRoboImage
@@ -190,7 +190,7 @@ class BildschirmFotoVariantenTest {
 
     @Composable
     private fun Detail(vm: ch.brickinventoryapp.ui.viewmodel.SetDetailViewModel) =
-        SetDetailScreen(setNumber = Beispiele.SET, vm = vm, serverUrl = "", imageLoader = bilder, onBack = {}, onDelete = {})
+        SetDetailRoute(setNumber = Beispiele.SET, vm = vm, serverUrl = "", imageLoader = bilder, onBack = {}, onDelete = {})
 
     private fun galerieFoto(name: String, design: String = "classic", dunkel: Boolean = false,
                             sprache: String? = DEUTSCH, schrift: Float = 1f) {
@@ -272,7 +272,7 @@ class BildschirmFotoVariantenTest {
         val vm = welt.finanzen().also { it.loadValuation(); it.loadPortfolioHistory("week") }
         zeige(name, sprache = sprache, schrift = schrift, bereit = { vm.financeState.value.let { it.valuation != null &&
             it.pnl != null && it.historyPoints.isNotEmpty() && !it.valuationLoading && !it.historyLoading } },
-            zustand = { vm.financeState.value }) { FinanceScreen(vm = vm, imageLoader = bilder) }
+            zustand = { vm.financeState.value }) { FinanceRoute(vm = vm, imageLoader = bilder) }
         foto(name)
     }
 
@@ -291,7 +291,7 @@ class BildschirmFotoVariantenTest {
         val vm = welt.merkliste().also { it.ladeMerkliste() }
         zeige("merkliste-schrift200", schrift = 2.0f, bereit = { vm.merklisteState.value.merkposten.isNotEmpty() },
             zustand = { vm.merklisteState.value }) {
-            MerklisteScreen(vm = vm, imageLoader = bilder, onScan = {}, onOeffnen = { _, _ -> })
+            MerklisteRoute(vm = vm, imageLoader = bilder, onScan = {}, onOeffnenEinzeln = { _, _ -> })
         }
         foto("merkliste-schrift200")
     }
@@ -300,7 +300,7 @@ class BildschirmFotoVariantenTest {
     fun teileSchrift200() {
         val vm = welt.teile().also { it.loadParts() }
         zeige("teile-schrift200", schrift = 2.0f, bereit = { vm.partsState.value.parts.isNotEmpty() },
-            zustand = { vm.partsState.value }) { PartsScreen(vm = vm, imageLoader = bilder) }
+            zustand = { vm.partsState.value }) { PartsRoute(vm = vm, imageLoader = bilder) }
         foto("teile-schrift200")
     }
 
@@ -309,7 +309,7 @@ class BildschirmFotoVariantenTest {
     fun figurenSchrift200() {
         val vm = welt.teile().also { it.loadMinifigs() }
         zeige("figuren-schrift200", schrift = 2.0f, bereit = { vm.partsState.value.minifigs.isNotEmpty() },
-            zustand = { vm.partsState.value }) { MinifigsScreen(vm = vm, imageLoader = bilder) }
+            zustand = { vm.partsState.value }) { MinifigsRoute(vm = vm, imageLoader = bilder) }
         foto("figuren-schrift200")
     }
 
@@ -466,7 +466,7 @@ class BildschirmFotoVariantenTest {
         val vm = welt.merkliste().also { it.ladeMerkliste() }
         zeige(name, dunkel = dunkel, schrift = schrift, bereit = { vm.merklisteState.value.merkposten.isNotEmpty() },
             zustand = { vm.merklisteState.value }) {
-            MerklisteScreen(vm = vm, imageLoader = bilder, onScan = {}, onOeffnen = { _, _ -> })
+            MerklisteRoute(vm = vm, imageLoader = bilder, onScan = {}, onOeffnenEinzeln = { _, _ -> })
         }
         // Der Dialog fokussiert sein erstes Feld; der blinkende Cursor lässt
         // Compose nie ruhig werden. Darum die Uhr anhalten und gezielt vorstellen.
@@ -500,7 +500,7 @@ class BildschirmFotoVariantenTest {
         val vm = welt.merkliste().also { it.ladeMerkliste() }
         zeige("merkliste-detail", geraet = "tablet", bereit = { vm.merklisteState.value.merkposten.isNotEmpty() },
             zustand = { vm.merklisteState.value }) {
-            ch.brickinventoryapp.ui.screens.MerklisteUndDetail(vm = vm, imageLoader = bilder, nebeneinander = true,
+            ch.brickinventoryapp.ui.screens.MerklisteRoute(vm = vm, imageLoader = bilder, nebeneinander = true,
                 onScan = {}, onOeffnenEinzeln = { _, _ -> })
         }
         compose.onNode(androidx.compose.ui.test.hasText("Titanic", substring = true) and
@@ -535,7 +535,7 @@ class BildschirmFotoVariantenTest {
         // ohne Aufruf hier fragte erst der Bildschirm selbst.
         val vm = einstellungen().also { it.ladeEigeneLagerorte() }
         zeige("lagerorte", bereit = { vm.lagerState.value.eigene.size == 3 }, zustand = { vm.lagerState.value }) {
-            ch.brickinventoryapp.ui.screens.LagerorteUnterseite(vm, remember { SnackbarHostState() }, onZurueck = {})
+            ch.brickinventoryapp.ui.screens.LagerorteRoute(vm, remember { SnackbarHostState() }, onZurueck = {})
         }
         anhalten()
         foto("lagerorte")
@@ -545,7 +545,7 @@ class BildschirmFotoVariantenTest {
     fun csvImport() {
         val vm = einstellungen()
         zeige("csv-import") {
-            ch.brickinventoryapp.ui.screens.CsvImportUnterseite(vm, remember { SnackbarHostState() }, onZurueck = {})
+            ch.brickinventoryapp.ui.screens.CsvImportRoute(vm, remember { SnackbarHostState() }, onZurueck = {})
         }
         anhalten()
         foto("csv-import")
@@ -559,7 +559,7 @@ class BildschirmFotoVariantenTest {
             ch.brickinventoryapp.data.repository.HaushaltRepository(welt.t.api, welt.t.cache),
             ch.brickinventoryapp.data.repository.KontoRepository(welt.t.api, welt.t.cache))).also { it.loadHouseholdStatus() }
         zeige("haushalt", bereit = { vm.householdState.value.status != null }, zustand = { vm.householdState.value }) {
-            ch.brickinventoryapp.ui.screens.HaushaltUnterseite(vm, remember { SnackbarHostState() }, onZurueck = {})
+            ch.brickinventoryapp.ui.screens.HaushaltRoute(vm, remember { SnackbarHostState() }, onZurueck = {})
         }
         anhalten()
         foto("haushalt")
@@ -639,7 +639,7 @@ class BildschirmFotoVariantenTest {
         val vm = welt.merkliste().also { it.ladeMerkliste() }
         zeige("merkliste-leer", dunkel = true, bereit = { vm.merklisteState.value.let { !it.laedt && it.fehler == null } },
             zustand = { vm.merklisteState.value }) {
-            MerklisteScreen(vm = vm, imageLoader = bilder, onScan = {}, onOeffnen = { _, _ -> })
+            MerklisteRoute(vm = vm, imageLoader = bilder, onScan = {}, onOeffnenEinzeln = { _, _ -> })
         }
         foto("merkliste-leer", dunkel = true)
     }
@@ -689,7 +689,7 @@ class BildschirmFotoVariantenTest {
             ch.brickinventoryapp.data.repository.KontoRepository(welt.t.api, welt.t.cache), KontextTexte(),
             welt.t.meldungen, welt.t.sitzung))
         zeige(name, dunkel = dunkel, geraet = geraet) {
-            ch.brickinventoryapp.ui.screens.KontoUnterseite(onAbmelden = {}, snackbarHostState = remember { SnackbarHostState() },
+            ch.brickinventoryapp.ui.screens.KontoRoute(onAbmelden = {}, snackbarHostState = remember { SnackbarHostState() },
                 konto = konto, onZurueck = {})
         }
         anhalten()
@@ -711,7 +711,7 @@ class BildschirmFotoVariantenTest {
              "name":"Titanic","image_local":"/beispiel/set2.png","besitzt":false}]}"""
         val vm = einstellungen()
         zeige(name, dunkel = dunkel, geraet = geraet, schrift = schrift) {
-            ch.brickinventoryapp.ui.screens.PreisalarmeUnterseite(vm = vm, imageLoader = bilder, serverUrl = "",
+            ch.brickinventoryapp.ui.screens.PreisalarmeRoute(vm = vm, imageLoader = bilder, serverUrl = "",
                 snackbarHostState = remember { SnackbarHostState() }, onSetClick = {}, onZurueck = {}, meldeSchalter = {})
         }
         anhalten()
@@ -733,8 +733,8 @@ class BildschirmFotoVariantenTest {
         val vm = welt.teile().also { it.loadParts() }
         zeige("teil-detail", dunkel = dunkel, geraet = geraet, bereit = { vm.partsState.value.parts.isNotEmpty() },
             zustand = { vm.partsState.value }) {
-            ch.brickinventoryapp.nav.TeileListeUndDetail(vm, bilder, "", rememberNavController()) { _ ->
-                PartsScreen(vm = vm, imageLoader = bilder)
+            ch.brickinventoryapp.nav.TeileListeUndDetailRoute(vm, bilder, "", rememberNavController()) { _ ->
+                PartsRoute(vm = vm, imageLoader = bilder)
             }
         }
         compose.onNode(androidx.compose.ui.test.hasText("Brick 2 x 4", substring = true) and

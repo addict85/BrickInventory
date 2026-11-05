@@ -259,8 +259,8 @@ class FeinschliffRegelnTest {
             val vm = welt.teile().also { it.loadParts() }
             val bilder = coil3.ImageLoader.Builder(ctx).build()
             zeige {
-                ch.brickinventoryapp.nav.TeileListeUndDetail(vm, bilder, "", rememberNavController()) { _ ->
-                    ch.brickinventoryapp.ui.screens.PartsScreen(vm = vm, imageLoader = bilder)
+                ch.brickinventoryapp.nav.TeileListeUndDetailRoute(vm, bilder, "", rememberNavController()) { _ ->
+                    ch.brickinventoryapp.ui.screens.PartsRoute(vm = vm, imageLoader = bilder)
                 }
             }
             warte("Teile") { vm.partsState.value.parts.isNotEmpty() }

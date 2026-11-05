@@ -4,7 +4,17 @@ import ch.brickinventoryapp.data.ScopeFilter
 import ch.brickinventoryapp.data.repository.BrickRepository
 import ch.brickinventoryapp.data.repository.GALLERY_PAGE_SIZE
 import ch.brickinventoryapp.data.repository.Result
+import ch.brickinventoryapp.data.PreferencesManager
+import ch.brickinventoryapp.data.cache.VorschauVorwaermer
+import ch.brickinventoryapp.di.ApplicationScope
+import ch.brickinventoryapp.util.fangeAusserAbbruch
 import ch.brickinventoryapp.util.resolveThumbUrl
+import java.util.concurrent.atomic.AtomicBoolean
+import javax.inject.Inject
+import javax.inject.Singleton
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 /**
  * Die Adressen aller Kacheln der eigenen Sammlung, zum Vorwärmen.
@@ -62,3 +72,31 @@ private const val TEILE_SEITE = 500
 
 /** Notbremse gegen eine Sammlung, die es so nicht geben sollte. */
 private const val MAX_SEITEN = 50
+
+/**
+ * Wärmt die Vorschaubilder der Sammlung einmal je App-Start vor. Im Bereich der
+ * App, nicht des Bildschirms: Ein Drehen soll die Runde weder abbrechen noch eine
+ * zweite durch dieselben Bilder starten.
+ */
+@Singleton
+class SammlungVorwaermen @Inject constructor(
+    private val vorwaermer: VorschauVorwaermer,
+    private val repo: BrickRepository,
+    private val blickfeld: Blickfeld,
+    private val prefs: PreferencesManager,
+    @param:ApplicationScope private val bereich: CoroutineScope,
+) {
+    private val gestartet = AtomicBoolean(false)
+
+    fun anstossen() {
+        if (!gestartet.compareAndSet(false, true)) return
+        bereich.launch {
+            delay(VorschauVorwaermer.ANLAUF_MS)
+            // Erst Netzlage und Platz prüfen, sonst kostet jeder Start vier Listenabrufe umsonst.
+            if (!vorwaermer.darfStarten()) return@launch
+            val basis = fangeAusserAbbruch { prefs.serverUrlJetzt() }.getOrNull().orEmpty()
+            if (basis.isBlank()) return@launch
+            vorwaermer.vorwaermen(bildAdressenDerSammlung(repo, blickfeld, basis))
+        }
+    }
+}

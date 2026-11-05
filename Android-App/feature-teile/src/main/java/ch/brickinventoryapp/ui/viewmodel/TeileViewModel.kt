@@ -5,7 +5,6 @@ import androidx.lifecycle.viewModelScope
 import ch.brickinventoryapp.ressourcen.R
 import ch.brickinventoryapp.alarm.Alarmeingabe
 import ch.brickinventoryapp.data.ScopeFilter
-import ch.brickinventoryapp.data.model.KEINE_FARBE
 import ch.brickinventoryapp.data.repository.Result
 import ch.brickinventoryapp.data.repository.TeileRepository
 import ch.brickinventoryapp.data.repository.FigurenRepository
@@ -42,7 +41,7 @@ class TeileViewModel @Inject constructor(
     private val repo: TeileRepository,
     private val figuren: FigurenRepository,
     private val gemerkt: SavedStateHandle,
-) : BereichsViewModel(dienste) {
+) : BereichsViewModel(dienste), TeileAktionen {
 
     private val teile = Teile(
         scope = viewModelScope,
@@ -99,18 +98,18 @@ class TeileViewModel @Inject constructor(
 
     // ── Listen und Filter ────────────────────────────────────────────────────
 
-    fun loadParts(page: Int = 1, debounce: Boolean = false) = teile.laden(seite = page, entprellt = debounce)
-    fun loadMinifigs(debounce: Boolean = false) = teile.ladeFiguren(entprellt = debounce)
+    override fun loadParts(page: Int, debounce: Boolean) = teile.laden(seite = page, entprellt = debounce)
+    override fun loadMinifigs(debounce: Boolean) = teile.ladeFiguren(entprellt = debounce)
     fun loadPartsFilters() = teile.ladeFilter()
-    fun loadPartsColors() = teile.ladeFarben()
+    override fun loadPartsColors() = teile.ladeFarben()
 
-    fun setPartsQuery(q: String) { gemerkt[F_SUCHE] = q; teile.setzeSuche(q) }
-    fun setPartsSpare(wert: String) { gemerkt[F_ERSATZ] = wert; teile.setzeErsatzteile(wert) }
-    fun setPartsView(wert: String) { gemerkt[F_ANSICHT] = wert; teile.setzeAnsicht(wert) }
-    fun setPartsColorFilter(wert: String) { gemerkt[F_FARBE] = wert; teile.setzeFarbe(wert) }
-    fun setPartsCategoryFilter(wert: String) { gemerkt[F_KATEGORIE] = wert; teile.setzeKategorie(wert) }
-    fun setMinifigsQuery(q: String) { gemerkt[F_FIGUR_SUCHE] = q; teile.setzeFigurSuche(q) }
-    fun setMinifigsView(wert: String) { gemerkt[F_FIGUR_ANSICHT] = wert; teile.setzeFigurAnsicht(wert) }
+    override fun setPartsQuery(q: String) { gemerkt[F_SUCHE] = q; teile.setzeSuche(q) }
+    override fun setPartsSpare(wert: String) { gemerkt[F_ERSATZ] = wert; teile.setzeErsatzteile(wert) }
+    override fun setPartsView(wert: String) { gemerkt[F_ANSICHT] = wert; teile.setzeAnsicht(wert) }
+    override fun setPartsColorFilter(wert: String) { gemerkt[F_FARBE] = wert; teile.setzeFarbe(wert) }
+    override fun setPartsCategoryFilter(wert: String) { gemerkt[F_KATEGORIE] = wert; teile.setzeKategorie(wert) }
+    override fun setMinifigsQuery(q: String) { gemerkt[F_FIGUR_SUCHE] = q; teile.setzeFigurSuche(q) }
+    override fun setMinifigsView(wert: String) { gemerkt[F_FIGUR_ANSICHT] = wert; teile.setzeFigurAnsicht(wert) }
 
     // ── Erfassen und Ändern ──────────────────────────────────────────────────
 
@@ -129,10 +128,10 @@ class TeileViewModel @Inject constructor(
         return if (hinweis != null) "$kopf — $hinweis" else kopf
     }
 
-    fun addPart(partNumber: String, colorId: Int = KEINE_FARBE, colorName: String? = null, colorHex: String? = null,
-                quantity: Int = 1, unitPrice: Double? = null,
-                condition: String? = null, ownerUserId: Int? = null,
-                storage: String? = null) {
+    override fun addPart(partNumber: String, colorId: Int, colorName: String?, colorHex: String?,
+                quantity: Int, unitPrice: Double?,
+                condition: String?, ownerUserId: Int?,
+                storage: String?) {
         viewModelScope.launch {
             when (val r = repo.addPart(partNumber.trim(), colorId, colorName, colorHex, quantity,
                                        unitPrice, condition, ownerUserId,
@@ -148,9 +147,9 @@ class TeileViewModel @Inject constructor(
         }
     }
 
-    fun addMinifig(figNumber: String, blFigNumber: String? = null, quantity: Int = 1,
-                   unitPrice: Double? = null, condition: String? = null, ownerUserId: Int? = null,
-                   storage: String? = null) {
+    override fun addMinifig(figNumber: String, blFigNumber: String?, quantity: Int,
+                   unitPrice: Double?, condition: String?, ownerUserId: Int?,
+                   storage: String?) {
         viewModelScope.launch {
             when (val r = figuren.addMinifig(figNumber.trim(), blFigNumber, quantity, unitPrice,
                                           condition, ownerUserId,
@@ -166,24 +165,24 @@ class TeileViewModel @Inject constructor(
         }
     }
 
-    fun updatePart(partNumber: String, colorId: Int, quantity: Int, unitPrice: Double?,
-                   condition: String? = null, owner: Int? = null) =
+    override fun updatePart(partNumber: String, colorId: Int, quantity: Int, unitPrice: Double?,
+                   condition: String?, owner: Int?) =
         aendere(Aenderung.Teile, text(R.string.vm_saved)) {
             repo.updatePart(partNumber, colorId, quantity, unitPrice, condition, owner).erfolg()
         }
 
-    fun updateMinifig(figNumber: String, quantity: Int, unitPrice: Double?, blFigNumber: String? = null,
-                      condition: String? = null, owner: Int? = null) =
+    override fun updateMinifig(figNumber: String, quantity: Int, unitPrice: Double?, blFigNumber: String?,
+                      condition: String?, owner: Int?) =
         aendere(Aenderung.Figuren, text(R.string.vm_saved)) {
             figuren.updateMinifig(figNumber, quantity, unitPrice, blFigNumber, condition, owner).erfolg()
         }
 
-    fun deletePart(partNumber: String, colorId: Int, owner: Int? = null) =
+    override fun deletePart(partNumber: String, colorId: Int, owner: Int?) =
         aendere(Aenderung.Teile, text(R.string.vm_part_deleted)) {
             repo.deletePart(partNumber, colorId, owner).erfolg()
         }
 
-    fun deleteMinifig(figNumber: String, owner: Int? = null) =
+    override fun deleteMinifig(figNumber: String, owner: Int?) =
         aendere(Aenderung.Figuren, text(R.string.vm_minifig_deleted)) {
             figuren.deleteMinifig(figNumber, owner).erfolg()
         }
@@ -192,9 +191,9 @@ class TeileViewModel @Inject constructor(
      * Die Farbe eines manuellen Teils ändern. Die Farbe ist Teil des Schlüssels
      * und der Route der Detailansicht — [onFertig] öffnet sie mit der neuen.
      */
-    fun setzeTeilFarbe(partNumber: String, colorId: Int, neueFarbe: Int,
-                       farbName: String? = null, farbHex: String? = null,
-                       owner: Int? = null, onFertig: (Int) -> Unit = {}) {
+    override fun setzeTeilFarbe(partNumber: String, colorId: Int, neueFarbe: Int,
+                       farbName: String?, farbHex: String?,
+                       owner: Int?, onFertig: (Int) -> Unit) {
         if (neueFarbe == colorId) return
         aendere(Aenderung.Teile, text(R.string.vm_saved), danach = { onFertig(neueFarbe) }) {
             when (val r = repo.setPartColor(partNumber, colorId, neueFarbe, farbName, farbHex, owner)) {
@@ -231,7 +230,7 @@ class TeileViewModel @Inject constructor(
 
     // ── „In welchen Sets steckt das?“ ────────────────────────────────────────
 
-    fun oeffneSetItem(art: String, nummer: String, colorId: Int = KEINE_FARBE) {
+    override fun oeffneSetItem(art: String, nummer: String, colorId: Int) {
         _setItemState.value = SetItemUiState(art = art, nummer = nummer, colorId = colorId, laedt = true)
         viewModelScope.launch {
             val blick = scopeFor(if (art == "fig") ScopeFilter.View.MINIFIGS else ScopeFilter.View.PARTS)
@@ -250,11 +249,11 @@ class TeileViewModel @Inject constructor(
         }
     }
 
-    fun schliesseSetItem() {
+    override fun schliesseSetItem() {
         _setItemState.value = SetItemUiState()
     }
 
-    fun setzeTeilLagerort(nummer: String, farbe: Int, ort: String) {
+    override fun setzeTeilLagerort(nummer: String, farbe: Int, ort: String) {
         lagerJob?.cancel()
         lagerJob = viewModelScope.launch {
             delay(Alarmeingabe.RUHE_MS)

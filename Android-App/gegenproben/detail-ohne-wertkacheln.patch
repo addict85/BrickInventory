@@ -4,10 +4,10 @@ Test: ch.brickinventoryapp.OberflaechenRegelnTest
 Rot: Set-Detail zeigt Marktwert
 
 diff --git a/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/ui/screens/SetDetailScreen.kt b/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/ui/screens/SetDetailScreen.kt
-index adf0350..e91b671 100644
+index 00a57f8..5e1cdce 100644
 --- a/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/ui/screens/SetDetailScreen.kt
 +++ b/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/ui/screens/SetDetailScreen.kt
-@@ -159,7 +159,7 @@ fun SetDetailScreen(
+@@ -186,7 +186,7 @@ fun SetDetailScreen(
          val kopf: androidx.compose.foundation.lazy.LazyListScope.() -> Unit = {
              setDetailHeroImage(set, imageUrl, imageLoader, detailRetryState, detailScope) { showImageZoom = true }
              setDetailStatChips(set)
@@ -15,4 +15,4 @@ index adf0350..e91b671 100644
 +            // ohne Kacheln
          }
          val angaben: androidx.compose.foundation.lazy.LazyListScope.() -> Unit = {
-             setDetailDetailsSection(set, setNumber, vm, acquisitions, currency, ::fmtDate, onNavigateToAcqMgmt)
+             setDetailDetailsSection(set, setNumber, zustand.lagerZustand, aktionen, acquisitions, currency, ::fmtDate, onNavigateToAcqMgmt)

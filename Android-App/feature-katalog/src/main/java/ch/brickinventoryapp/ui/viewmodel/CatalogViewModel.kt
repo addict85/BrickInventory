@@ -49,7 +49,7 @@ class CatalogViewModel @Inject constructor(
     // Nur fuer die EINE Frage „liegt ein Token vor?“ — siehe
     // meldungFuerSnackbar() weiter unten.
     private val prefs: ch.brickinventoryapp.data.PreferencesManager,
-) : ViewModel() {
+) : ViewModel(), KatalogAktionen {
 
     private val _catalogState = MutableStateFlow(CatalogUiState())
     val state = _catalogState.asStateFlow()
@@ -111,7 +111,7 @@ class CatalogViewModel @Inject constructor(
         else text(id)
     }
 
-    fun loadCatalogMeta() {
+    override fun loadCatalogMeta() {
         viewModelScope.launch {
             when (val r = retryOnNetwork { repo.katalog.getCatalogMeta() }) {
                 is Result.Success -> if (r.data.success) _catalogState.update {
@@ -128,7 +128,7 @@ class CatalogViewModel @Inject constructor(
      * Erste Seite mit den aktuellen Filtern laden (ersetzt alles Geladene).
      * Bricht eine laufende Ladung ab (cancel-and-replace).
      */
-    fun loadCatalogSets() {
+    override fun loadCatalogSets() {
         val gen = ++catalogGeneration
         catalogListJob?.cancel()
         catalogListJob = viewModelScope.launch {
@@ -172,7 +172,7 @@ class CatalogViewModel @Inject constructor(
     private val sichtfenster = Sichtfensterlader(viewModelScope, SICHTFENSTER_RUHE_MS, ::ensureCatalogPage)
 
     /** Was das Raster gerade zeigt (Seiten, 1-basiert); geladen wird erst, wenn es ruht. */
-    fun catalogSichtbar(ersteSeite: Int, letzteSeite: Int) = sichtfenster.sichtbar(ersteSeite, letzteSeite)
+    override fun catalogSichtbar(ersteSeite: Int, letzteSeite: Int) = sichtfenster.sichtbar(ersteSeite, letzteSeite)
 
     fun ensureCatalogPage(seite: Int) {
         if (seite < 1) return
@@ -227,7 +227,7 @@ class CatalogViewModel @Inject constructor(
      * Zustand an die Ansicht, weil dort gerollt wird; catalogScrollConsumed() setzt
      * sie zurück, sonst liesse sich dieselbe Stelle kein zweites Mal anfahren.
      */
-    fun scrollCatalogTo(nummer: Int) {
+    override fun scrollCatalogTo(nummer: Int) {
         _catalogState.update { it.copy(scrollTo = nummer) }
     }
 
@@ -235,16 +235,16 @@ class CatalogViewModel @Inject constructor(
      * Die Ansicht meldet laufend ihre Rollposition; nur der Zustand wird gesetzt, kein
      * Abruf. Beim Zurückkehren von der Detailseite stellt sie daraus wieder her.
      */
-    fun setCatalogScrollPos(index: Int, offset: Int) {
+    override fun setCatalogScrollPos(index: Int, offset: Int) {
         _catalogState.update { it.copy(scrollIndex = index, scrollOffset = offset) }
     }
 
     /** Die Ansicht meldet, dass sie gesprungen ist. */
-    fun catalogScrollConsumed() {
+    override fun catalogScrollConsumed() {
         _catalogState.update { it.copy(scrollTo = null) }
     }
 
-    fun setCatalogQuery(q: String) {
+    override fun setCatalogQuery(q: String) {
         _catalogState.update { it.copy(query = q) }
         catalogSearchJob?.cancel()
         catalogSearchJob = viewModelScope.launch {
@@ -253,17 +253,17 @@ class CatalogViewModel @Inject constructor(
         }
     }
 
-    fun setCatalogTheme(themeId: Int?) {
+    override fun setCatalogTheme(themeId: Int?) {
         _catalogState.update { it.copy(themeId = themeId) }
         loadCatalogSets()
     }
 
-    fun setCatalogYear(year: Int?) {
+    override fun setCatalogYear(year: Int?) {
         _catalogState.update { it.copy(year = year) }
         loadCatalogSets()
     }
 
-    fun setCatalogSort(sort: String) {
+    override fun setCatalogSort(sort: String) {
         _catalogState.update { it.copy(sort = sort) }
         loadCatalogSets()
     }

@@ -15,15 +15,11 @@ import ch.brickinventoryapp.ui.*
  * anderes sucht.
  */
 @Composable
-fun GutscheineUnterseite(
+fun GutscheineRoute(
     gvm: ch.brickinventoryapp.ui.viewmodel.GutscheinViewModel,
     snackbarHostState: SnackbarHostState,
     onZurueck: () -> Unit,
 ) {
-    // `gutscheinZustand` und nicht `zustand`: UiStateFieldsTest bestimmt den Typ eines
-    // Namens je Datei, und weiter unten steht GeraeteCard(zustand: GeraeteUiState).
-    // Mit dem kurzen Namen hielte die Prüfung jedes `zustand.geraete` für einen
-    // Feldzugriff auf GutscheinUiState.
     val gutscheinZustand by gvm.state.collectAsStateWithLifecycle()
     ch.brickinventoryapp.ui.components.Sichtschutz()
     // PIN kopieren und Gutscheine löschen: kein Tipp durch eine Überlagerung.

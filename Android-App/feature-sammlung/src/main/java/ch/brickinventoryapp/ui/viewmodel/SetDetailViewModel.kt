@@ -52,7 +52,7 @@ class SetDetailViewModel @Inject constructor(
     private val haushalt: HaushaltRepository,
     private val leser: DateiLeser,
     gemerkt: SavedStateHandle,
-) : BereichsViewModel(dienste) {
+) : BereichsViewModel(dienste), SetDetailAktionen {
 
     /** Aus der Route set_detail/{setNumber}. */
     val setNumber: String = gemerkt[ARG_SET] ?: ""
@@ -82,7 +82,7 @@ class SetDetailViewModel @Inject constructor(
         loadPreisalarme(setNumber)
     }
 
-    fun loadSetDetail(setNumber: String) {
+    override fun loadSetDetail(setNumber: String) {
         viewModelScope.launch {
             _setDetailState.update { it.copy(setDetailLoading = true, setDetailFehler = null) }
             when (val r = sets.getSetDetail(setNumber)) {
@@ -93,7 +93,7 @@ class SetDetailViewModel @Inject constructor(
         }
     }
 
-    fun loadSetPrice(setNumber: String) {
+    override fun loadSetPrice(setNumber: String) {
         viewModelScope.launch {
             _setDetailState.update { it.copy(setPriceLoading = true) }
             when (val r = finanzen.getSetPrice(setNumber)) {
@@ -103,7 +103,7 @@ class SetDetailViewModel @Inject constructor(
         }
     }
 
-    fun loadSetPriceHistory(setNumber: String) {
+    override fun loadSetPriceHistory(setNumber: String) {
         viewModelScope.launch {
             _setDetailState.update { it.copy(priceHistoryLoading = true) }
             when (val r = finanzen.getSetPriceHistory(setNumber)) {
@@ -113,7 +113,7 @@ class SetDetailViewModel @Inject constructor(
         }
     }
 
-    fun loadAcquisitions(setNumber: String) {
+    override fun loadAcquisitions(setNumber: String) {
         viewModelScope.launch {
             _setDetailState.update { it.copy(acquisitionsLoading = true) }
             when (val r = haushalt.getAcquisitions(setNumber)) {
@@ -126,7 +126,7 @@ class SetDetailViewModel @Inject constructor(
         }
     }
 
-    fun loadPreisalarme(setNumber: String) {
+    override fun loadPreisalarme(setNumber: String) {
         viewModelScope.launch {
             val r = sets.getPreisalarme(setNumber)
             val alarme = (r as? Result.Success)?.data?.takeIf { it.success }?.alerts?.map { it.alsAnsicht() } ?: emptyList()
@@ -134,7 +134,7 @@ class SetDetailViewModel @Inject constructor(
         }
     }
 
-    fun setzePreisalarm(setNumber: String, richtung: String, roh: String, zustand: String) =
+    override fun setzePreisalarm(setNumber: String, richtung: String, roh: String, zustand: String) =
         alarmEingabe.setze(setNumber, richtung, roh, zustand)
 
     /**
@@ -145,7 +145,7 @@ class SetDetailViewModel @Inject constructor(
         mengeAendern(setNumber) { sets.updateQuantity(setNumber, quantity, purchasePrice, condition) }
 
     /** Der Regler: ein Schritt, damit gleichzeitige Klicks auf zwei Geräten zusammenzählen. */
-    fun aendereMengeUm(setNumber: String, schritt: Int) =
+    override fun aendereMengeUm(setNumber: String, schritt: Int) =
         mengeAendern(setNumber) { sets.aendereMengeUm(setNumber, schritt) }
 
     private fun mengeAendern(setNumber: String, aufruf: suspend () -> Result<GenericResponse>) {
@@ -166,7 +166,7 @@ class SetDetailViewModel @Inject constructor(
     }
 
     /** Lagerort des Sets, entprellt; massgeblich ist der normalisierte Ort aus der Antwort. */
-    fun setzeSetLagerort(setNumber: String, ort: String) {
+    override fun setzeSetLagerort(setNumber: String, ort: String) {
         lagerJob?.cancel()
         lagerJob = viewModelScope.launch {
             delay(Alarmeingabe.RUHE_MS)
@@ -188,7 +188,7 @@ class SetDetailViewModel @Inject constructor(
         }
     }
 
-    fun ladeAnleitungHoch(setNumber: String, uri: Uri) {
+    override fun ladeAnleitungHoch(setNumber: String, uri: Uri) {
         viewModelScope.launch {
             val gelesen = leser.lies(uri)
             val typ = gelesen?.first
@@ -211,7 +211,7 @@ class SetDetailViewModel @Inject constructor(
         }
     }
 
-    fun loescheAnleitung(setNumber: String, instrId: Int) {
+    override fun loescheAnleitung(setNumber: String, instrId: Int) {
         viewModelScope.launch {
             when (val r = sets.deleteAnleitung(setNumber, instrId)) {
                 is Result.Success ->

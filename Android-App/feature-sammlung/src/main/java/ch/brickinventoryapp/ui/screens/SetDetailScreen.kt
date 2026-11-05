@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.ui.screens
 
+import ch.brickinventoryapp.ui.viewmodel.SetDetailAktionen
 import ch.brickinventoryapp.ui.model.SetAnsicht
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.res.pluralStringResource
@@ -23,11 +24,43 @@ import coil3.ImageLoader
 import kotlinx.coroutines.launch
 import ch.brickinventoryapp.ui.theme.Abstaende
 
+/** Das Set-Detail am Navigationsziel: sammelt die Flüsse und reicht sie an [SetDetailScreen]. */
+@Composable
+fun SetDetailRoute(
+    setNumber: String,
+    vm: SetDetailViewModel,
+    vorschau: SetAnsicht? = null,
+    serverUrl: String,
+    imageLoader: ImageLoader,
+    onBack: () -> Unit,
+    onDelete: (String) -> Unit,
+    rueckgaengigMoeglich: Boolean = false,
+    onNavigateToAcqMgmt: (type: String, id: String, colorId: Int, title: String) -> Unit = { _, _, _, _ -> },
+    onOpenPdf: (url: String, title: String) -> Unit = { _, _ -> }
+) {
+    val state by vm.state.collectAsStateWithLifecycle()
+    val detailState by vm.setDetailState.collectAsStateWithLifecycle()
+    val lagerZustand by vm.lagerState.collectAsStateWithLifecycle()
+    SetDetailScreen(
+        setNumber = setNumber, zustand = SetDetailZustand(state, detailState, lagerZustand), aktionen = vm,
+        vorschau = vorschau, serverUrl = serverUrl, imageLoader = imageLoader, onBack = onBack, onDelete = onDelete,
+        rueckgaengigMoeglich = rueckgaengigMoeglich, onNavigateToAcqMgmt = onNavigateToAcqMgmt, onOpenPdf = onOpenPdf,
+    )
+}
+
+/** Was das Set-Detail zeigt. */
+data class SetDetailZustand(
+    val state: AppUiState,
+    val detailState: SetDetailUiState,
+    val lagerZustand: LagerUiState,
+)
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SetDetailScreen(
     setNumber: String,
-    vm: SetDetailViewModel,
+    zustand: SetDetailZustand,
+    aktionen: SetDetailAktionen,
     /** Das Set aus der geladenen Galerie — sofort sichtbar, bis das Detail da ist. */
     vorschau: SetAnsicht? = null,
     serverUrl: String,
@@ -46,10 +79,8 @@ fun SetDetailScreen(
     onNavigateToAcqMgmt: (type: String, id: String, colorId: Int, title: String) -> Unit = { _, _, _, _ -> },
     onOpenPdf: (url: String, title: String) -> Unit = { _, _ -> }
 ) {
-    val state       by vm.state.collectAsStateWithLifecycle()
-    // Detail-Zustand aus eigenem Flow — Preis-/History-Loads rekomponieren
-    // so nur noch diesen Screen, nicht alle AppUiState-Konsumenten.
-    val detailState by vm.setDetailState.collectAsStateWithLifecycle()
+    val state       = zustand.state
+    val detailState = zustand.detailState
     // Die Galerie-Liste dient hier nur als Rueckfall, solange das Detail noch
     // laedt — deshalb der eigene Fluss statt des ganzen App-Zustands.
     val set       = detailState.setDetail?.takeIf { it.setNumber == setNumber }
@@ -65,11 +96,11 @@ fun SetDetailScreen(
     val acquisitions = detailState.acquisitions
 
     LaunchedEffect(setNumber) {
-        vm.loadSetDetail(setNumber)
-        vm.loadSetPrice(setNumber)
-        vm.loadSetPriceHistory(setNumber)
-        vm.loadAcquisitions(setNumber)
-        vm.loadPreisalarme(setNumber)
+        aktionen.loadSetDetail(setNumber)
+        aktionen.loadSetPrice(setNumber)
+        aktionen.loadSetPriceHistory(setNumber)
+        aktionen.loadAcquisitions(setNumber)
+        aktionen.loadPreisalarme(setNumber)
     }
 
     fun fmtPrice(v: Double?) = if (v == null) "—"
@@ -120,7 +151,7 @@ fun SetDetailScreen(
             val fehler = detailState.setDetailFehler
             if (fehler != null && !detailState.setDetailLoading) {
                 ch.brickinventoryapp.ui.components.ZustandsHinweis(Modifier.padding(padding)) {
-                    ch.brickinventoryapp.ui.components.FehlerHinweis(fehler, { vm.loadSetDetail(setNumber) },
+                    ch.brickinventoryapp.ui.components.FehlerHinweis(fehler, { aktionen.loadSetDetail(setNumber) },
                         detailState.setDetailFehlerKlasse)
                 }
             } else ch.brickinventoryapp.ui.components.LadeKreis(Modifier.padding(padding))
@@ -150,7 +181,7 @@ fun SetDetailScreen(
         // SetDetailFeature — dieselbe, die der Server annimmt.
         val anleitungAuswahl = androidx.activity.compose.rememberLauncherForActivityResult(
             androidx.activity.result.contract.ActivityResultContracts.OpenDocument()
-        ) { uri -> if (uri != null) vm.ladeAnleitungHoch(setNumber, uri) }
+        ) { uri -> if (uri != null) aktionen.ladeAnleitungHoch(setNumber, uri) }
 
         val kopf: androidx.compose.foundation.lazy.LazyListScope.() -> Unit = {
             setDetailHeroImage(set, imageUrl, imageLoader, detailRetryState, detailScope) { showImageZoom = true }
@@ -158,8 +189,8 @@ fun SetDetailScreen(
             setDetailValueTiles(set, price, pnlPct, ::fmtPrice)
         }
         val angaben: androidx.compose.foundation.lazy.LazyListScope.() -> Unit = {
-            setDetailDetailsSection(set, setNumber, vm, acquisitions, currency, ::fmtDate, onNavigateToAcqMgmt)
-            setDetailAlarmSection(setNumber, detailState.preisalarme, currency, vm::setzePreisalarm)
+            setDetailDetailsSection(set, setNumber, zustand.lagerZustand, aktionen, acquisitions, currency, ::fmtDate, onNavigateToAcqMgmt)
+            setDetailAlarmSection(setNumber, detailState.preisalarme, currency, aktionen::setzePreisalarm)
         }
         val preise: androidx.compose.foundation.lazy.LazyListScope.() -> Unit = {
             setDetailPriceSection(detailState, price, history, currency)
@@ -168,7 +199,7 @@ fun SetDetailScreen(
             setDetailInstructionsSection(
                 set, detailState, serverUrl, onOpenPdf,
                 onAnleitungWaehlen = { anleitungAuswahl.launch(ch.brickinventoryapp.ui.viewmodel.ANLEITUNG_TYPEN) },
-                onAnleitungLoeschen = { vm.loescheAnleitung(setNumber, it) },
+                onAnleitungLoeschen = { aktionen.loescheAnleitung(setNumber, it) },
                 onKeineApp = { coroutineScope.launch { meldungen.showSnackbar(keineAppText) } },
             )
         }

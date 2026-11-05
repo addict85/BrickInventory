@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.ui.screens
 
+import ch.brickinventoryapp.ui.viewmodel.FinanzAktionen
 import ch.brickinventoryapp.ui.theme.Formen
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -25,10 +26,33 @@ import ch.brickinventoryapp.ui.theme.Abstaende
 import ch.brickinventoryapp.ui.components.LeerSymbol
 import ch.brickinventoryapp.ui.components.Ladezustand
 
+/** Was der Finanzen-Reiter zeigt; die Route sammelt es aus den Flüssen. */
+data class FinanzZustand(
+    val state: AppUiState,
+    val blick: BlickfeldUiState,
+    val financeState: FinanceUiState,
+)
+
+/** Der Finanzen-Reiter am Navigationsziel: reicht Zustand und Aktionen an [FinanceScreen]. */
+@Composable
+fun FinanceRoute(
+    vm: FinanzViewModel,
+    imageLoader: ImageLoader,
+    onSetClick: (String) -> Unit = {},
+    onManualClick: (type: String, id: String, colorId: Int, name: String?) -> Unit = { _, _, _, _ -> },
+    listState: LazyListState = rememberLazyListState(),
+) {
+    val state by vm.state.collectAsStateWithLifecycle()
+    val blick by vm.blickfeld.collectAsStateWithLifecycle()
+    val financeState by vm.financeState.collectAsStateWithLifecycle()
+    FinanceScreen(FinanzZustand(state, blick, financeState), vm, imageLoader, onSetClick, onManualClick, listState)
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun FinanceScreen(
-    vm: FinanzViewModel,
+    zustand: FinanzZustand,
+    aktionen: FinanzAktionen,
     imageLoader: ImageLoader,
     /** Klick auf ein Set — nur der Graph kennt den NavController. */
     onSetClick: (String) -> Unit = {},
@@ -37,12 +61,9 @@ fun FinanceScreen(
     /** Scroll-Zustand von aussen: Das Ziel wird beim Öffnen eines Details verworfen. */
     listState: LazyListState = rememberLazyListState(),
 ) {
-    // Zustand und Aktionen vom ViewModel statt über einundzwanzig Parameter —
-    // Begründung bei PartsScreen. Die Namen bleiben dieselben, damit der Rumpf
-    // darunter unverändert bleibt.
-    val state by vm.state.collectAsStateWithLifecycle()
-    val blick by vm.blickfeld.collectAsStateWithLifecycle()
-    val financeState by vm.financeState.collectAsStateWithLifecycle()
+    val state = zustand.state
+    val blick = zustand.blick
+    val financeState = zustand.financeState
 
     val valuation = financeState.valuation
     val isLoading = financeState.valuationLoading
@@ -73,9 +94,9 @@ fun FinanceScreen(
     val scopeMode = blick.scopeModes[ch.brickinventoryapp.data.ScopeFilter.View.FINANCE.key]
         ?: ch.brickinventoryapp.data.ScopeFilter.ALL
 
-    val onScopeChange: (String) -> Unit = { vm.setScope(ch.brickinventoryapp.data.ScopeFilter.View.FINANCE, it) }
-    val onPeriodChange: (String) -> Unit = { vm.loadPortfolioHistory(it) }
-    val onRefresh: () -> Unit = { vm.loadValuation(); vm.loadPortfolioHistory(financeState.historyPeriod) }
+    val onScopeChange: (String) -> Unit = { aktionen.setScope(ch.brickinventoryapp.data.ScopeFilter.View.FINANCE, it) }
+    val onPeriodChange: (String) -> Unit = { aktionen.loadPortfolioHistory(it) }
+    val onRefresh: () -> Unit = { aktionen.loadValuation(); aktionen.loadPortfolioHistory(financeState.historyPeriod) }
 
     val currencyCode = valuation?.currency ?: "EUR"
     // Gemeinsame Fassung (util/NumberFormatUtils.kt): Die Stellung von Symbol und
@@ -156,8 +177,8 @@ fun FinanceScreen(
         val zeilen: androidx.compose.foundation.lazy.LazyListScope.() -> Unit = {
             financeCategoryFilter(
                 aktive = kategorien,
-                onUmschalten = { vm.finanzKategorieUmschalten(it) },
-                onAlle = { vm.finanzKategorienZuruecksetzen() },
+                onUmschalten = { aktionen.finanzKategorieUmschalten(it) },
+                onAlle = { aktionen.finanzKategorienZuruecksetzen() },
             )
             financeSetRows(valuation, showSets, serverUrl, imageLoader, ::fmtWert, onSetClick)
             financePartRows(partsValuation, showParts, serverUrl, imageLoader, ::fmtPrice, ::fmtWert, onManualClick)

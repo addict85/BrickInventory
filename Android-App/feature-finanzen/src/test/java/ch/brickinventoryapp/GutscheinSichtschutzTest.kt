@@ -41,13 +41,13 @@ class GutscheinSichtschutzTest {
     @Test
     fun `Gutscheinseite und Gutschein-PDF fordern den Sichtschutz an`() {
         val seite = Quellen.funktion(Quellen.ohneKommentare(Quellen.lies("ui/screens/GutscheineUnterseite.kt")),
-            "fun GutscheineUnterseite(")
+            "fun GutscheineRoute(")
         assertTrue("Die Gutscheinseite setzt keinen Sichtschutz", seite.contains("Sichtschutz()"))
         // Kopieren der PIN und Löschen: kein Tipp durch ein fremdes Fenster (Android 8 bis 11).
         assertTrue("Die Gutscheinseite setzt keinen Überdeckungsschutz", seite.contains("Ueberdeckungsschutz()"))
         val graph = Quellen.ohneKommentare(Quellen.lies("nav/ToolsGraph.kt"))
         assertTrue("Das Gutschein-PDF setzt keinen Sichtschutz",
-            Regex("""zeigtGutscheine\(pdfUrl\)\)\s*ch\.brickinventoryapp\.ui\.components\.Sichtschutz\(\)""").containsMatchIn(graph))
+            Regex("""zeigtGutscheine\(ziel\.url\)\)\s*ch\.brickinventoryapp\.ui\.components\.Sichtschutz\(\)""").containsMatchIn(graph))
     }
 
     /** Dieselbe Regel für den TOTP-Schlüssel und die Wiederherstellungscodes. */

@@ -29,7 +29,7 @@ class FinanzViewModel @Inject constructor(
     dienste: AppDienste,
     private val finanzen: FinanzenRepository,
     private val gemerkt: SavedStateHandle,
-) : BereichsViewModel(dienste) {
+) : BereichsViewModel(dienste), FinanzAktionen {
 
     private val _financeState = MutableStateFlow(gemerkterZustand())
     val financeState: StateFlow<FinanceUiState> = _financeState.asStateFlow()
@@ -39,7 +39,7 @@ class FinanzViewModel @Inject constructor(
         historyPeriod = gemerkt.get<String>(ZEITRAUM) ?: "week",
     )
 
-    fun loadValuation() {
+    override fun loadValuation() {
         viewModelScope.launch {
             _financeState.update { it.copy(valuationLoading = true, valuationFehler = null) }
             val konto = scopeFor(ScopeFilter.View.FINANCE)
@@ -65,7 +65,10 @@ class FinanzViewModel @Inject constructor(
         }
     }
 
-    fun loadPortfolioHistory(period: String = _financeState.value.historyPeriod) {
+    /** Den Verlauf für den gewählten Zeitraum neu holen. */
+    fun loadPortfolioHistory() = loadPortfolioHistory(_financeState.value.historyPeriod)
+
+    override fun loadPortfolioHistory(period: String) {
         gemerkt[ZEITRAUM] = period
         viewModelScope.launch {
             _financeState.update { it.copy(historyLoading = true, historyPeriod = period,
@@ -84,12 +87,12 @@ class FinanzViewModel @Inject constructor(
         }
     }
 
-    fun finanzKategorieUmschalten(kategorie: String) {
+    override fun finanzKategorieUmschalten(kategorie: String) {
         _financeState.update { it.mitUmgeschalteterKategorie(kategorie) }
         gemerkt[KATEGORIEN] = ArrayList(_financeState.value.kategorien)
     }
 
-    fun finanzKategorienZuruecksetzen() {
+    override fun finanzKategorienZuruecksetzen() {
         _financeState.update { it.copy(kategorien = emptySet()) }
         gemerkt[KATEGORIEN] = ArrayList<String>()
     }

@@ -37,7 +37,7 @@ class ErfassungViewModel @Inject constructor(
     private val sets: SetsRepository,
     private val katalog: KatalogRepository,
     private val anleger: SetAnleger,
-) : BereichsViewModel(dienste) {
+) : BereichsViewModel(dienste), ErfassungAktionen {
 
     private val _barcodeState = MutableStateFlow(BarcodeUiState())
     val barcodeState: StateFlow<BarcodeUiState> = _barcodeState.asStateFlow()
@@ -168,8 +168,8 @@ class ErfassungViewModel @Inject constructor(
     }
 
     /** Der Bestätigungsdialog nach einem Scan: merken, an die Teileliste geben oder anlegen. */
-    fun confirmAddBarcode(setNum: String, purchasePrice: Double? = null, condition: String? = null,
-                          ownerUserId: Int? = null, storage: String? = null) {
+    override fun confirmAddBarcode(setNum: String, purchasePrice: Double?, condition: String?,
+                          ownerUserId: Int?, storage: String?) {
         val stand = _barcodeState.value
         if (stand.adding) return
         when (stand.source) {
@@ -203,7 +203,7 @@ class ErfassungViewModel @Inject constructor(
         }
     }
 
-    fun cancelBarcode() {
+    override fun cancelBarcode() {
         _barcodeState.update { ohneErgebnis(it) }
     }
 
@@ -287,7 +287,7 @@ class ErfassungViewModel @Inject constructor(
     }
 
     /** Der Abbrechen-Knopf der Prüfanzeige: Ein laufender Scan wird abgebrochen, die Anzeige geräumt. */
-    fun brichPruefungAb() {
+    override fun brichPruefungAb() {
         erfassungsJob?.cancel()
         erfassungsJob = null
         erfassung.fertig()
