@@ -396,6 +396,27 @@ den Commits, nicht hier.
   Sicherung, ausser mit ausdrücklichem `BACKUP_KLARTEXT=ja`. Der private
   Schlüssel liegt nicht auf dem Server — `backup-verschluesselt`.
 
+## Android: Resilienz (MASVS)
+
+Angestrebt ist **MASVS L1 ohne RESILIENCE (Profil „L1“, nicht „R“)**, mit einzelnen
+L2-Massnahmen dort, wo Daten des Kontos liegen (sec17 B-N11):
+
+- Keine Root-, Debugger-, Hook- oder Play-Integrity-Erkennung und kein Abgleich
+  der eigenen Signatur zur Laufzeit. Die App ist quelloffen und selbst verteilt;
+  wer sie auf seinem Gerät untersucht, ist meist ihr Besitzer. Solche Prüfungen
+  lassen sich mit Frida oder Magisk umgehen und sperrten Nutzer eigener ROMs aus,
+  ohne Daten zu schützen.
+- Was sie schützen sollten, liegt an anderer Stelle: Der Server prüft jeden
+  Zugriff; Token und lokale Ablagen sind im Keystore bzw. mit einem davon
+  umhüllten Schlüssel verschlüsselt, beim Abmelden wird dieser erneuert; Updates
+  sind signiert und werden vor der Installation geprüft; PDFs von Dritten
+  rendert ein isolierter Prozess.
+- R8 verkleinert und benennt um, auch die API-Modelle; Keep-Regeln nur, wo
+  Reflexion oder das Framework es verlangen (`Android-App/app/proguard-rules.pro`).
+
+Einzelheiten: `Android-App/README.md`, Abschnitte „Manipulationsschutz“ und
+„Daten auf dem Gerät“. Eine Änderung dieser Entscheidung gehört hierher.
+
 ## Bekannte Restrisiken
 
 - **Erste Kopplung des Wurzelzertifikats**: Wer `/ca.crt` bei der ersten

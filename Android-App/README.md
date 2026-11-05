@@ -225,6 +225,13 @@ steckt; er vergeht mit dem Betrachter oder dem Prozess. Drucken und
 Herunterladen gibt es nur für Anleitungen, nicht für Gutscheine (der
 Druckdialog kann „Als PDF speichern“).
 
+**Abmelden:** Token, Antwort-Cache, Bestand und Ausgang, Vorschauen, beide
+Bildcaches, PDFs, Update-APK, Widget-Zahlen und alle Meldungen der App sind danach
+weg, die Marke des Preisalarms ebenfalls. Zuletzt erneuert `Ablageschluessel` den
+Schlüssel (Datei und Keystore-Alias neu): Was mit dem alten verschlüsselt war, auch
+gelöschte Reste auf dem Flash, ist nicht mehr lesbar. `AbmeldenRaeumtAllesTest`
+prüft das ausgeführt.
+
 **Token-Schlüssel ohne `setUnlockedDeviceRequired`:** Preisalarm, Widget und
 Ausgang senden im Hintergrund, auch bei gesperrtem Gerät (Begründung in
 `util/TokenTresor.kt`). Abgefedert durch die Rotation mit Wiederverwendungs-
@@ -255,15 +262,16 @@ Installation geprüft.
 
 R8 verkleinert und benennt um. Die eigenen Keep-Regeln (`app/proguard-rules.pro`)
 halten nur, was über Reflexion oder das Framework erreicht wird: bei Workern
-Konstruktor und `doWork()`, Rooms Datenbank-Konstruktoren und die Modelle unter
-`data.model`. Die Modelle bleiben ganz, weil Retrofit ihre Serializer zur
-Laufzeit über den Typ sucht; das prüft keine Probe am fertigen APK, und die Namen
-stehen ohnehin im Vertrag mit dem Server.
+Konstruktor und `doWork()` und Rooms Datenbank-Konstruktoren. Die API-Modelle
+werden umbenannt; ihre Serializer hält die Regel von kotlinx.serialization, und
+`tools/apk-pruefen.py` prüft am fertigen APK, dass `data.model.SetItem` nicht
+mehr unter seinem Namen steht.
 
-**PDFs im App-Prozess:** `PdfRenderer` (pdfium) öffnet nur PDFs des eigenen
-Servers (`pdfImBetrachter`). Ein kompromittierter eigener Server liegt
-ausserhalb des Bedrohungsmodells; pdfium gehört zum System und wird mit dessen
-Updates gepflegt, nicht mit der App.
+**PDFs im isolierten Prozess:** `PdfRenderer` (pdfium) läuft nur in
+`ui/pdf/PdfRenderDienst`, einem Dienst mit `isolatedProcess`: ohne
+Berechtigungen, Dateien, Token und Ablageschlüssel. Er bekommt den Deskriptor
+und gibt Bitmaps zurück. Anleitungen stammen inhaltlich von Dritten; eine
+pdfium-Lücke träfe so nur den leeren Render-Prozess.
 
 **TOTP-Geheimnis an die Authenticator-App:** immer über die Systemauswahl
 (`oeffneMitAuswahl`), nur `otpauth://totp|hotp`. Eine fremde App bekommt das
