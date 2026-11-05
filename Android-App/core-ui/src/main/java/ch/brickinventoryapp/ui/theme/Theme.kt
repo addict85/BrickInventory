@@ -502,8 +502,8 @@ internal fun diagrammFarben(theme: String, dunkel: Boolean, s: ColorScheme): Cha
         // Fächer und Noppe färben Themen bzw. Kacheln, NICHT Zustände: Neu bleibt
         // blau, Gebraucht bernstein/orange, damit sich die Farbsysteme nicht verwechseln.
         "farbfaecher" -> ChartColors(ChartNewFarbfaecher, ChartUsedFarbfaecher, gedaempft = gedaempft)
-        // Das Orange des Webs (#FF7A00) erreicht auf Weiss nur 2,6:1; als Linie braucht es 3:1.
-        "noppe", "hochglanz" -> ChartColors(ChartNewNoppe, mitKontrast(ChartUsedNoppe, s.surface, GRAFIK_KONTRAST),
+        // Das Orange des Webs (ChartUsedNoppe) erreicht auf Weiss nur 2,6:1; als Linie braucht es 3:1.
+        "noppe", "hochglanz" -> ChartColors(ChartNewNoppe, ChartUsedNoppe.let { mitKontrast(it, s.surface, GRAFIK_KONTRAST) },
             raster = Color(0xFFE4E8EF), gedaempft = gedaempft)
         else -> ChartColors(ChartNewClassic, ChartUsedClassic, gedaempft = gedaempft)
     }

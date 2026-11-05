@@ -91,7 +91,7 @@ test('beide unterscheiden „alles" von „nur lose"', () => {
     'Die Webapp wertet den Schalter nicht aus');
 
   assert.match(KT_SCREEN,
-    /Checkbox\(checked = nurLose/, 'Der App fehlt der Schalter „nur lose Teile"');
+    /(?:Checkbox\(checked = |KaestchenZeile\(stringResource\(R\.string\.partslist_only_loose\), )nurLose/, 'Der App fehlt der Schalter „nur lose Teile"');
   assert.match(KT_FEAT,
     /if \(nurLose\) eintrag\.lose else eintrag\.gesamt/,
     'Die App wertet den Schalter nicht aus');
@@ -121,7 +121,7 @@ test('beide fragen ihr Blickfeld an DIESER Stelle', () => {
   assert.doesNotMatch(js, /scopeQuery\('parts'\)/,
     'Die Webapp hängt wieder am Kontofilter des Teile-Reiters');
 
-  assert.match(KT_SCREEN, /Checkbox\(checked = mitUnterkonten/,
+  assert.match(KT_SCREEN, /(?:Checkbox\(checked = |KaestchenZeile\(stringResource\(R\.string\.partslist_include_subs\), )mitUnterkonten/,
     'Der App fehlt die Wahl „Unterkonten mit einbeziehen"');
   assert.match(KT_FEAT, /if \(mitUnterkonten\) null else "own"/,
     'Die App schickt ohne Haken kein „own"');
