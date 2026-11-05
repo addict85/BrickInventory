@@ -44,17 +44,17 @@ test('UI-Prüfung 16: Finanzen, Lagerorte, Sprache, Vorleser', { concurrency: 1,
   const NAME = `r16_${process.pid}`, KIND = `${NAME}_kind`;
   const app = await starteApp(t, { name: NAME, bestand: async (db, uid) => {
     const kid = await musterHaushalt(db, uid);
-    // Belegt: Vitrine; leer: Regal Keller (musterSammlung). Ein Kauf in USD ohne Kurs, mit Marktpreis.
+    // Belegt: Vitrine; leer: Regal Keller (musterSammlung). Ein Kauf in ARS mit Marktpreis: Für ARS
+    // veröffentlicht die EZB keinen Kurs, auch nicht in der CI mit Netz.
     const vitrine = (await db.get(`INSERT INTO storage_locations (user_id, name) VALUES ($1, 'Vitrine Wohnzimmer') RETURNING id`, [uid])).id;
     await db.run(`UPDATE sets SET storage_id = $2 WHERE user_id = $1 AND set_number = '10294-1'`, [uid, vitrine]);
     await db.run(`INSERT INTO set_catalog (set_number, name, year, theme, pieces) VALUES ('10497-1', 'Galaxy Explorer', 2022, 'Icons', 1254)
                   ON CONFLICT (set_number) DO NOTHING`);
     await db.run(`INSERT INTO sets (user_id, set_number) VALUES ($1, '10497-1')`, [uid]);
     await db.run(`INSERT INTO set_acquisitions (user_id, set_number, quantity, purchase_price, condition, currency)
-                  VALUES ($1, '10497-1', 1, 99.99, 'N', 'USD')`, [uid]);
+                  VALUES ($1, '10497-1', 1, 99.99, 'N', 'ARS')`, [uid]);
     await db.run(`INSERT INTO price_cache (set_number, condition, currency_code, min_price, avg_price, max_price, qty_avg_price, total_quantity, fetched_at)
                   VALUES ('10497-1', 'N', 'EUR', 80, 90, 100, 90, 5, NOW()) ON CONFLICT (set_number, condition, currency_code) DO UPDATE SET avg_price = 90`);
-    await db.run(`DELETE FROM wechselkurse WHERE waehrung = 'USD'`).catch(() => {});
     // Nur beim Unterkonto: das Set-Detail soll den Besitzer nennen.
     await db.run(`INSERT INTO set_catalog (set_number, name, year, theme, pieces) VALUES ('75313-1', 'AT-AT', 2021, 'Star Wars', 6785)
                   ON CONFLICT (set_number) DO NOTHING`);
@@ -107,10 +107,10 @@ test('UI-Prüfung 16: Finanzen, Lagerorte, Sprache, Vorleser', { concurrency: 1,
     assert.equal(await b.auswerten(`navigator.language.startsWith('de-')`), false, 'Vorbedingung: Browser ohne deutsche Region');
   });
 
-  await t.test('Fremdwährung und Kachel: Kaufpreis in USD sichtbar, Marktwert benannt', async () => {
+  await t.test('Fremdwährung und Kachel: Kaufpreis in ARS sichtbar, Marktwert benannt', async () => {
     const zelle = await b.auswerten(`(() => { const tr = [...document.querySelectorAll('[data-fin-art="sets"] tbody tr')].find(r => r.textContent.includes('Galaxy Explorer'));
       return tr.querySelector('td.price-cell').textContent.replace(/\\s+/g, ' ').trim(); })()`);
-    assert.match(zelle, /99,99\s\$.*nicht umgerechnet/);
+    assert.match(zelle, /99,99\sARS.*nicht umgerechnet/);
     assert.equal(await b.auswerten(text('#fin-wert-titel')), 'Marktwert der bewerteten Posten');
     assert.match(await b.auswerten(text('#fin-wert-sub')), /^von .* Marktwert insgesamt$/);
     // Fehlende Werte sehen gleich aus: Strich mit Vorlesetext, nirgends „Preis fehlt“ als sichtbarer Text.
