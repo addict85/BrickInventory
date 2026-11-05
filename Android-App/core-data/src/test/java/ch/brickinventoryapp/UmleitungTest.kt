@@ -21,7 +21,7 @@ import java.util.concurrent.TimeUnit
  * innerhalb derselben Herkunft. Zwei Testserver auf verschiedenen Ports sind
  * zwei Herkünfte.
  *
- * Gegenproben (03.11.2026, gemessen mit kotlinc lokal):
+ * Gegenproben:
  *   A  in naechsteUmleitung() die Prüfung der Herkunft entfernt → rot „eine
  *      Umleitung zu einem anderen Host erreicht ihn nicht“ (200 von B statt 307)
  *   B  senden() folgt keiner Umleitung (nur `chain.proceed`) → rot „eine

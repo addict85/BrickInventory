@@ -10,7 +10,7 @@ import org.junit.Test
  * Nutzer-CAs gehen nur über die Rückfrage an (AppViewModel.nutzerCa, bedient von
  * den Einstellungen und vom Zertifikatsdialog). Ausschalten braucht keine.
  *
- * Gegenproben (01.11.2026, gemessen gegen ui/NutzerCaSchalter.kt):
+ * Gegenproben:
  *   A  anfragen() schaltet direkt ein (`setze(true)`) → rot „anfragen schaltet
  *      nichts ein“ und „abbrechen laesst alles aus“
  *   B  in bestaetigen() die Abfrage `if (!_frage.value) return` entfernt → rot

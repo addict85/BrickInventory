@@ -24,7 +24,7 @@ import org.junit.Test
  * und Referer bekommen nur die CDNs, ein Token nur der eigene Server. Ein fremder
  * Host wird nicht angefragt, auch nicht über eine Umleitung.
  *
- * Gegenproben (02.11.2026, gemessen mit kotlinc lokal):
+ * Gegenproben:
  *   A  in vorbereitet() `else -> null` → `else -> r` → rot „ein fremder Host wird
  *      nicht angefragt“ und „eine Umleitung zu einem fremden Host …“
  *   B  in intercept() bei fremdem Ziel `anfrage.newBuilder().url(ziel).build()`
@@ -36,7 +36,7 @@ import org.junit.Test
  *   E  istEigenerBildServer() ohne `entwicklung &&` → rot „localhost gilt nur
  *      im Debug-Build als eigener Server“ (200 statt 403)
  *   F  in intercept() naechsteUmleitung ohne basisPfad() aufgerufen (Stand vor
- *      sec8 N1: gleicher Host genügte) → rot „eine Umleitung aus dem Basispfad
+ *      früher genügte der gleiche Host) → rot „eine Umleitung aus dem Basispfad
  *      heraus geht ohne Token“; gegenproben/bild-umleitung-verlaesst-basispfad.patch
  */
 class BildHostWaechterTest {

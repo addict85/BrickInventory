@@ -13,12 +13,12 @@ import org.junit.Test
  * kein Klartext ausser im Debug-Build zum Gerät und zum Emulator-Host.
  *
  * Gegenproben:
- *   (29.10.2026) in herkunft() den Port weggelassen → rot „die Herkunft eines Tokens …“
- *   (01.11.2026) in verbindungErlaubt() `entwicklung &&` weggelassen → rot „https
+ *   in herkunft() den Port weggelassen → rot „die Herkunft eines Tokens …“
+ *   in verbindungErlaubt() `entwicklung &&` weggelassen → rot „https
  *     geht immer, http im Release-Build nie“
- *   (01.11.2026) ENTWICKLUNGS_HOSTS per `startsWith` statt `in` geprüft → rot „der
+ *   ENTWICKLUNGS_HOSTS per `startsWith` statt `in` geprüft → rot „der
  *     Debug-Build darf http nur …“ (localhost.angreifer.tld ging durch)
- *   (01.11.2026) normalisiere() ohne https-Vorsatz → rot „die Einrichtung nimmt
+ *   normalisiere() ohne https-Vorsatz → rot „die Einrichtung nimmt
  *     nur https an …“ (brick.fritz.box unlesbar)
  */
 class NetworkPolicyTest {

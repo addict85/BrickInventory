@@ -36,26 +36,13 @@ import org.junit.Test
  *   1. Die App ruft denselben Dienst wie die Webapp (Marcos Vorgabe: „Bitte
  *      die Login jeweils nur 1x im Backend bauen. Beide Apps sollen die
  *      gleichen Services des Backends verwenden.")
- *   2. Nach der Aenderung wird der Bildschirm mit der NEUEN Farbe neu
- *      geoeffnet. Die Farbe steckt in der Route UND in der Suche nach der
- *      Zeile (`it.colorId == colorId`) — ohne das stuende er leer da, obwohl
- *      die Aenderung geklappt hat.
- *   3. Die Farbzeile haengt NICHT daran, dass ein Farbname da ist. Das war
- *      der Zustand vorher: Der Chip oben stand unter `part?.colorName?.let`,
- *      und ausgerechnet das Teil ohne Farbnamen — genau der Fall, der
- *      korrigiert werden muss — zeigte nichts an.
  *
  * ── Gegenproben ─────────────────────────────────────────────────────────────
  *
  * Fall 1 und 4 laufen gegen einen PfadServer ohne Netz (TeileViewModel, TeileRepository),
- * Fall 2 und 3 lesen Bildschirm und Graph. Gemessen am 29.10.2026:
+ * Fall 2 und 3 lesen Bildschirm und Graph. Gemessen:
  *   A  in TeileApi die Adresse auf "…/colour" → rot „die App ruft denselben
  *      Dienst wie die Webapp“
- *   B  owner in TeileRepository.setPartColor nicht weitergereicht → rot ebenda
- *   D  `if (neueFarbe == colorId) return` aus TeileViewModel entfernt → rot
- *      „dieselbe Farbe nochmal löst keine Anfrage aus“ (PUT …/3001/5/color)
- * Am 19.10. gemessen: B′ `onFarbeGeaendert` aus CollectionGraph.kt entfernt →
- * Fall 2 rot; C die Farbzeile hinter `part?.colorName != null` → Fall 3 rot.
  */
 class TeilFarbeAendernTest {
 

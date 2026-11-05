@@ -35,7 +35,7 @@ import org.junit.Test
  *   d) `angemeldet` in meldetDieSitzungsschicht ignoriert → „ein falsches
  *      Passwort bleibt ein falsches Passwort" rot
  *   e) in Texte.meldungFuerSnackbar() immer meldung(fehler) → „die Snackbar
- *      schweigt …" rot (28.10.2026)
+ *      schweigt …" rot
  * Dass der Interceptor die Regel anwendet, prüft ServerWaechterTest ausgeführt.
  */
 class AbgewiesenTest {

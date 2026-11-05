@@ -1,6 +1,7 @@
 package ch.brickinventoryapp
 
 import org.junit.Test
+import java.io.File
 
 /**
  * Absicherung der beiden Umbauten: erschöpfende `when`-Ausdrücke über
@@ -11,12 +12,12 @@ class ResultAndStateSplitTest {
     private val root = Quellen.wurzel
 
     private fun read(rel: String): String {
-        val f = java.io.File(root, rel)
+        val f = File(root, rel)
         assert(f.exists()) { "Datei nicht gefunden: $rel" }
         return f.readText()
     }
 
-    private fun kotlinSources(): List<java.io.File> =
+    private fun kotlinSources(): List<File> =
         root.walkTopDown().filter { it.isFile && it.extension == "kt" }.toList()
             .also {
                 // Untergrenze (Nachtrag 118): ein leerer Dateilauf lässt jede
@@ -57,7 +58,7 @@ class ResultAndStateSplitTest {
      * nicht eine Datei.
      */
     private fun datenschicht(): String =
-        java.io.File(Quellen.wurzel, "data/repository")
+        File(Quellen.wurzel, "data/repository")
             .listFiles { f -> f.extension == "kt" }
             .orEmpty().sortedBy { it.name }
             .joinToString("\n") { it.readText() }
@@ -174,7 +175,7 @@ class ResultAndStateSplitTest {
         // selbst, auf Sitzung.abgemeldet() hin. Ausgeführt prüfen das die
         // ViewModel-Tests („nach dem Abmelden …“); hier steht die Regel für
         // jedes künftige: Wer Zustand hält, überschreibt zuruecksetzen().
-        // Gegenprobe (28.10.2026): HaushaltViewModel ohne override → rot.
+        // Gegenprobe: HaushaltViewModel ohne override → rot.
         val abmelden = code(read("ui/Abmelden.kt"))
         for (reset in listOf("sitzung.abgemeldet()", "blickfeld.zuruecksetzen()")) {
             assert(abmelden.contains(reset)) { "Abmelden ruft $reset nicht mehr" }

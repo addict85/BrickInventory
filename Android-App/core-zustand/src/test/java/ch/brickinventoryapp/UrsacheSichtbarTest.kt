@@ -28,10 +28,6 @@ import ch.brickinventoryapp.ui.qrFehler
  *
  *  1. Bei UNBEKANNT wird die Ursache ANGEHÄNGT — sonst ist die Meldung wieder
  *     nichtssagend.
- *  2. Bei jeder anderen Ursache wird sie WEGGELASSEN. Nachtrag 116 hat
- *     englischen Bibliothekstext bewusst aus den Meldungen verbannt; „kein
- *     Netz" und „Sitzung abgelaufen" sind fertige Sätze, denen ein
- *     „Socket closed" nichts hinzufügt.
  */
 class UrsacheSichtbarTest {
 

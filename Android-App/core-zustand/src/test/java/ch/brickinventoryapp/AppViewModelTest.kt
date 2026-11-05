@@ -40,7 +40,7 @@ import org.junit.Test
  * Rechteentzug, Design und Serverstart. Ohne Netz (FakeApi) und in virtueller
  * Zeit (StandardTestDispatcher), damit „nichts geschieht“ prüfbar ist, ohne zu warten.
  *
- * Gegenproben (05.11.2026, gemessen mit kotlinc lokal):
+ * Gegenproben:
  *   abmelden-ohne-sitzungspruefung  `isLoggedIn` im 401-Zweig gestrichen → rot „ein 401 …“
  *   rechte-ohne-meldung             die Meldung beim Rechteentzug gestrichen → rot „entzogene …“
  *   design-nicht-gemerkt            der Spiegel nach saveAppTheme gestrichen → rot „das Design …“

@@ -31,7 +31,7 @@ import org.junit.Test
  * 0 ist Schwarz. Die App schickt für ein Teil ohne Farbe 9999, zeigt 9999 als
  * „keine Farbe“ und nimmt ein fehlendes color_id nicht als Schwarz.
  *
- * Gegenproben (30.10.2026, gemessen mit kt-b2/bau.sh):
+ * Gegenproben:
  *   A  in TeileViewModel.addPart die Vorgabe `colorId = 0` → rot „ein Teil
  *      ohne Farbe geht als 9999 hinaus“ ("color_id":0)
  *   B  in TeileRepository.setPartColor den Namen auch bei KEINE_FARBE

@@ -26,7 +26,7 @@ import ch.brickinventoryapp.data.api.ApiJson
  * Abmelden entwertet den Token am Server (POST /auth/logout mit dem Token), und
  * zwar begrenzt: Ein schweigender oder fehlender Server hält das Abmelden nicht auf.
  *
- * Gegenproben (01.11.2026, gemessen gegen KontoRepository.abmeldenAmServer):
+ * Gegenproben:
  *   A  withTimeoutOrNull entfernt → rot „ein schweigender Server haelt das
  *      Abmelden nicht auf“ (erst die Lesegrenze des Clients nach 2 s)
  *   B  der catch-Zweig für Exception entfernt → rot „ein fehlender Server …“

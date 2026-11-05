@@ -11,7 +11,7 @@ import org.junit.Test
 /**
  * Das Ziel einer angetippten Meldung: nur Setnummern, und nur einmal.
  *
- * Gegenproben (01.11.2026, gemessen gegen ui/Meldungseingang.kt):
+ * Gegenproben:
  *   A  SETNUMMER auf `.+` gelockert → rot „was keine Setnummer ist, oeffnet nichts“
  *      und „ein ungueltiges Ziel ueberschreibt kein gueltiges“
  *   B  abholen() mit get() statt getAndSet(null) → rot „abgeholt wird einmal“

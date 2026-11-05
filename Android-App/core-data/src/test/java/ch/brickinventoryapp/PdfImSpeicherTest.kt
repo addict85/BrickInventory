@@ -14,10 +14,10 @@ import org.junit.Test
 import java.io.IOException
 
 /**
- * Ein Gutschein-PDF wird ganz in den Speicher geladen, nie in eine Datei (sec11 N1),
+ * Ein Gutschein-PDF wird ganz in den Speicher geladen, nie in eine Datei,
  * und nur bis zu einer Obergrenze. Ausgeführt gegen einen Testserver.
  *
- * Gegenprobe (04.11.2026, gemessen mit kotlinc lokal): in ladePdfInDenSpeicher() die
+ * Gegenprobe: in ladePdfInDenSpeicher() die
  * Prüfung `inhalt.size() + n > grenze` entfernt → rot „eine Antwort ohne Laenge
  * ueber der Grenze …“; gegenproben/gutschein-pdf-ohne-grenze.patch
  */

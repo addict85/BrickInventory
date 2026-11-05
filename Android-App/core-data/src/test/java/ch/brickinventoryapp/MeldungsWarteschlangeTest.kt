@@ -11,7 +11,7 @@ import java.util.concurrent.Executors
  * Zwei Meldungen kurz nacheinander: Die zweite wartet, bis die erste quittiert
  * ist, statt sie zu ersetzen. Geschrieben wird nur über zeige() und quittiere().
  *
- * Gegenproben (05.11.2026, gemessen mit kotlinc lokal):
+ * Gegenproben:
  *   meldung-ueberschreibt   zeige() setzt den Wert direkt → rot „die zweite …“
  *   meldung-doppelt         ohne Vergleich mit der letzten → rot „dieselbe …“
  */

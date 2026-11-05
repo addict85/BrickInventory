@@ -7,10 +7,10 @@ import java.io.File
 import java.util.concurrent.TimeUnit
 
 /**
- * tools/manifest-pruefen.py (sec16 N7) gegen Ausgaben im Format von
+ * tools/manifest-pruefen.py gegen Ausgaben im Format von
  * `aapt2 dump xmltree --file AndroidManifest.xml`, mit der echten Positivliste.
  *
- * Gegenproben (05.11.2026, gemessen, kotlinc und python3 lokal):
+ * Gegenproben:
  *   manifest-export-ungeprueft  der Vergleich mit der Positivliste gestrichen → rot
  *                               „eine fremde exportierte Komponente …“
  *   manifest-debuggable-egal    die Prüfung auf debuggable gestrichen → rot „ein debuggable …“

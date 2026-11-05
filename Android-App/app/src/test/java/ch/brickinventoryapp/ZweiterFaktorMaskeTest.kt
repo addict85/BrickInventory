@@ -15,7 +15,7 @@ import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.hasClickAction
 import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.hasText
-import androidx.compose.ui.test.junit4.createAndroidComposeRule
+import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
@@ -37,6 +37,11 @@ import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
+import android.content.ClipboardManager
+import android.content.Intent
+import androidx.core.content.IntentCompat
+import java.util.Locale
+import org.robolectric.Shadows
 
 /**
  * Die Maske für den Pflicht-Faktor der Verwalter, ausgeführt: Einrichten erst mit
@@ -58,23 +63,23 @@ import org.robolectric.annotation.GraphicsMode
  */
 @RunWith(RobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
-@Config(sdk = [35], qualifiers = "de-rCH-w411dp-h891dp-port-xxhdpi")
+@Config(qualifiers = "de-rCH-w411dp-h891dp-port-xxhdpi")
 class ZweiterFaktorMaskeTest {
 
     @get:Rule
     val compose = createAndroidComposeRule<ComponentActivity>()
 
-    private val vorher = java.util.Locale.getDefault()
+    private val vorher = Locale.getDefault()
     private val zustand = mutableStateOf(ZweiterFaktorUiState())
     private val eingerichtet = mutableListOf<String>()
     private val bestaetigt = mutableListOf<String>()
     private var weiterGetippt = 0
     private var abgemeldet = 0
 
-    init { java.util.Locale.setDefault(java.util.Locale.forLanguageTag("de-CH")) }
+    init { Locale.setDefault(Locale.forLanguageTag("de-CH")) }
 
     @After
-    fun zu() = java.util.Locale.setDefault(vorher)
+    fun zu() = Locale.setDefault(vorher)
 
     private fun text(id: Int) = compose.activity.getString(id)
 
@@ -157,16 +162,16 @@ class ZweiterFaktorMaskeTest {
         zustand.value = codes
         zeige()
         assertEquals("Vor dem Tipp wird nichts geteilt", null,
-            org.robolectric.Shadows.shadowOf(compose.activity).peekNextStartedActivity())
+            Shadows.shadowOf(compose.activity).peekNextStartedActivity())
         knopf(R.string.zf_share).performScrollTo().performClick()
         compose.waitForIdle()
-        val auswahl = org.robolectric.Shadows.shadowOf(compose.activity).nextStartedActivity
-        assertEquals(android.content.Intent.ACTION_CHOOSER, auswahl?.action)
-        val senden = androidx.core.content.IntentCompat.getParcelableExtra(auswahl!!, android.content.Intent.EXTRA_INTENT,
-            android.content.Intent::class.java)
-        assertEquals(android.content.Intent.ACTION_SEND, senden?.action)
-        assertEquals("aaaa-bbbb\ncccc-dddd", senden?.getStringExtra(android.content.Intent.EXTRA_TEXT))
-        val ablage = compose.activity.getSystemService(android.content.ClipboardManager::class.java)
+        val auswahl = Shadows.shadowOf(compose.activity).nextStartedActivity
+        assertEquals(Intent.ACTION_CHOOSER, auswahl?.action)
+        val senden = IntentCompat.getParcelableExtra(auswahl!!, Intent.EXTRA_INTENT,
+            Intent::class.java)
+        assertEquals(Intent.ACTION_SEND, senden?.action)
+        assertEquals("aaaa-bbbb\ncccc-dddd", senden?.getStringExtra(Intent.EXTRA_TEXT))
+        val ablage = compose.activity.getSystemService(ClipboardManager::class.java)
         assertTrue("Teilen legt nichts in die Zwischenablage", !ablage.hasPrimaryClip())
     }
 

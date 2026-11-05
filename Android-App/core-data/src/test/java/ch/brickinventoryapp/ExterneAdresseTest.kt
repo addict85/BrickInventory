@@ -14,14 +14,14 @@ import org.junit.Test
  * Welche Adressen aus Serverdaten die App an den Browser gibt (nur https) und wie
  * ein `local_path` zur Adresse des eigenen Servers wird (aufgelöst, nie fremd).
  *
- * Gegenproben (01.11.2026, gemessen gegen util/ExterneAdresse.kt):
+ * Gegenproben:
  *   A  in externeAdresse() `.takeIf { it.isHttps }` entfernt → rot „nur https
  *      geht an den Browser“ (http durchgelassen)
  *   B  in eigeneAdresse() die Prüfung auf denselben Host entfernt → rot „ein
  *      local_path bleibt auf dem eigenen Server“
- *   C  (01.11.2026) in otpauthAdresse() die Schema-Prüfung entfernt → rot „an
+ *   C  in otpauthAdresse() die Schema-Prüfung entfernt → rot „an
  *      die Authenticator-App geht nur otpauth“ (https durchgelassen)
- *   D  (03.11.2026, kotlinc lokal) pdfImBetrachter() ohne die Prüfung der
+ *   D  pdfImBetrachter() ohne die Prüfung der
  *      Herkunft (`ziel.isHttps || serverUrl.isNotBlank()`) → rot „der PDF-Betrachter laedt nur vom eigenen Server“
  */
 class ExterneAdresseTest {

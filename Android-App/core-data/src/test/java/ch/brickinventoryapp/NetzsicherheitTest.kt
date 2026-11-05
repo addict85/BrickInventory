@@ -13,7 +13,7 @@ import javax.xml.parsers.DocumentBuilderFactory
  * Release-Build verbietet sie Klartext überall, im Debug-Build erlaubt sie ihn
  * genau zu den Hosts, die auch der Wächter durchlässt.
  *
- * Gegenproben (01.11.2026, gemessen):
+ * Gegenproben:
  *   A  in src/main die base-config wieder auf cleartextTrafficPermitted="true" →
  *      rot „der Release-Build erlaubt nirgends Klartext“
  *   B  in src/debug einen weiteren Host (192.168.1.50) mit Klartext → rot „der
@@ -23,17 +23,17 @@ import javax.xml.parsers.DocumentBuilderFactory
  *   D  in data_extraction_rules.xml unter device-transfer die Zeile widget.xml
  *      entfernt → rot „Kontodaten verlassen das Geraet nicht“
  *   E  in backup_rules.xml die Zeile files/vorschau entfernt → rot (dieselbe Prüfung)
- *   F  (02.11.2026) in backup_rules.xml die Zeile design_spiegel.xml entfernt →
+ *   F  in backup_rules.xml die Zeile design_spiegel.xml entfernt →
  *      rot „Kontodaten verlassen das Geraet nicht“ (Pins, Schalter Nutzer-CA)
- *   G  (03.11.2026) in buildInterceptorClient `.followRedirects(false)` entfernt →
+ *   G  in buildInterceptorClient `.followRedirects(false)` entfernt →
  *      rot „die Server-Clients folgen keiner Umleitung selbst“. Was der Wächter
  *      stattdessen tut, prüft UmleitungTest ausgeführt.
- *   H  (03.11.2026, sec8 H3, kotlinc lokal) in src/main die Zeile
+ *   H  in src/main die Zeile
  *      <certificateTransparency> der base-config entfernt → rot „der Release-Build
  *      verlangt Certificate Transparency“
- *   J  (05.11.2026, sec16 N10, kotlinc lokal) gegenproben/debug-ohne-ct.patch: in
+ *   J  gegenproben/debug-ohne-ct.patch: in
  *      src/debug <certificateTransparency> der base-config entfernt → rot „der Debug-Build …“
- *   I  (04.11.2026, sec12 H8) in data_extraction_rules.xml unter device-transfer die
+ *   I  in data_extraction_rules.xml unter device-transfer die
  *      Zeile androidx.work.workdb entfernt → rot „Kontodaten verlassen das Geraet nicht“
  */
 class NetzsicherheitTest {

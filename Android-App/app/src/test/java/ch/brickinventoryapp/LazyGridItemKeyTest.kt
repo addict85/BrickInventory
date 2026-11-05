@@ -1,6 +1,7 @@
 package ch.brickinventoryapp
 
 import org.junit.Test
+import java.io.File
 
 /**
  * In einer verschlüsselten Liste hat JEDER Eintrag einen Schlüssel.
@@ -37,7 +38,7 @@ class LazyGridItemKeyTest {
         // geprüft zu haben.
         val ui = Quellen.unter("ui")
         assert(ui.size >= 20) { "Nur ${'$'}{ui.size} Dateien unter ui/ — Pfad veraltet?" }
-        val wurzel = java.io.File(Quellen.wurzel, "ui")
+        val wurzel = File(Quellen.wurzel, "ui")
         // Der Aufruf kann über mehrere Zeilen gehen und geschachtelte Klammern
         // enthalten (`span = { GridItemSpan(maxLineSpan) }`). Eine erste Fassung
         // ohne DOT_MATCHES_ALL blieb bei der Gegenprobe grün — sie fand den

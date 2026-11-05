@@ -9,7 +9,7 @@ import org.junit.Test
  * Wann ein kopiertes Geheimnis aus der Zwischenablage verschwindet: nach Ablauf,
  * nur unser eigener Clip, und nie blind, wenn die Ablage nicht lesbar ist.
  *
- * Gegenproben (01.11.2026, gemessen gegen util/GeheimAblauf.kt):
+ * Gegenproben:
  *   A  `!lesbar` aus der WARTEN-Bedingung entfernt → rot „im Hintergrund …“
  *      (VERGESSEN statt WARTEN: Das Geheimnis bliebe für immer liegen)
  *   B  der Vergleich `kennungImClip == kennung` durch `true` ersetzt → rot

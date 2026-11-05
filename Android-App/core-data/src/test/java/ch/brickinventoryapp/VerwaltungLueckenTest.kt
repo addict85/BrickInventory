@@ -8,6 +8,7 @@ import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import java.io.File
 
 /**
  * Drei Verwalter-Handlungen, die nur die Webapp konnte.
@@ -32,12 +33,12 @@ import org.junit.Test
 class VerwaltungLueckenTest {
 
     private fun read(rel: String) =
-        java.io.File(Quellen.wurzel, "$rel").readText()
+        File(Quellen.wurzel, "$rel").readText()
     private fun code(s: String) = s.lines()
         .joinToString("\n") { if (it.trim().startsWith("//") || it.trim().startsWith("*")) "" else it }
 
     /**
-     * Ausgeführt gegen einen Testserver. Gegenproben (29.10.2026, gemessen):
+     * Ausgeführt gegen einen Testserver. Gegenproben:
      *   A  `@POST("api/v1/admin/catalog-images")` auf "…/katalogbilder" → rot
      *   B  setJobSchedule wieder mit `Map<String, Any>` (Stand 8f4f9d3) → rot:
      *      Der kotlinx-Wandler kann `Any` nicht schreiben, der Zeitplan ging nie
@@ -48,7 +49,7 @@ class VerwaltungLueckenTest {
         val pfade = PfadServer()
         try {
             val admin = VerwaltungRepository(TestApi.fuer(pfade.server),
-                ResponseCache { java.io.File(System.getProperty("java.io.tmpdir"), "bim-verwaltung") })
+                ResponseCache { File(System.getProperty("java.io.tmpdir"), "bim-verwaltung") })
             runBlocking {
                 admin.setJobSchedule("prices", zeit = "07:05")
                 admin.queueCatalogImages()

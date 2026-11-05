@@ -6,11 +6,12 @@ import ch.brickinventoryapp.data.repository.TeileRepository
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Test
+import java.io.File
 
 /** Ein Repository gegen einen Testserver; [block] bekommt beides. */
 private fun <T> mitServer(block: (PfadServer, ResponseCache) -> T): T {
     val pfade = PfadServer()
-    val ordner = java.io.File(System.getProperty("java.io.tmpdir"), "bim-filter-${System.nanoTime()}").apply { mkdirs() }
+    val ordner = File(System.getProperty("java.io.tmpdir"), "bim-filter-${System.nanoTime()}").apply { mkdirs() }
     try { return block(pfade, ResponseCache { ordner }) } finally { pfade.server.shutdown(); ordner.deleteRecursively() }
 }
 
@@ -43,7 +44,7 @@ private fun <T> mitServer(block: (PfadServer, ResponseCache) -> T): T {
  * die Filter aus dem Zustand mitreisen und die Scrollstelle vergessen, prüft
  * TeileTest.
  *
- * Gegenprobe (29.10.2026, gemessen): in TeileRepository.getPartsFilterColors
+ * Gegenprobe: in TeileRepository.getPartsFilterColors
  * `accounts` nicht weitergereicht → rot „die App ruft beide Filterlisten …“.
  */
 class TeileFilterTest {
@@ -76,7 +77,7 @@ class TeileFilterTest {
 class CsvAbbruchTest {
 
     private fun read(rel: String) =
-        java.io.File(Quellen.wurzel, "$rel").readText()
+        File(Quellen.wurzel, "$rel").readText()
     private fun code(s: String) = s.lines()
         .joinToString("\n") { if (it.trim().startsWith("//") || it.trim().startsWith("*")) "" else it }
 

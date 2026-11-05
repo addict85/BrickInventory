@@ -33,7 +33,7 @@ import java.io.File
  * Gutscheine mit maskierter Liste: Nummer und PIN, PDF und Löschen erst nach
  * Passwort (und Code), der Klartext nur im ViewModel. Gegen einen Testserver.
  *
- * Gegenproben (03.11.2026, kotlinc lokal gemessen):
+ * Gegenproben:
  *  A  In bestaetige() `codeNoetig = … || fehler.code in FAKTOR_CODES` auf
  *     `it.bestaetigung.codeNoetig` zurückgesetzt → rot „PIN aufdecken …“
  *     (Codefeld erscheint nicht).

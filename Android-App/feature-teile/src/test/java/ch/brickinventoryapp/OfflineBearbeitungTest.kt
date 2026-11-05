@@ -31,12 +31,14 @@ import java.io.File
 import java.util.Collections
 import ch.brickinventoryapp.data.api.ApiJson
 import ch.brickinventoryapp.data.api.BrickApiService
+import java.net.ConnectException
+import java.net.SocketTimeoutException
 
 /**
  * Offline bearbeiten von Anfang bis Ende: Repository, Ausgang und Sender gegen
  * einen Testserver, der die Verbindung auf Wunsch abreisst.
  *
- * Gegenproben (30.10.2026, gemessen):
+ * Gegenproben:
  *   A  in RepoBasis.schreibe den Zweig für transiente Fehler entfernt → rot
  *      „ohne Verbindung geht die Menge in den Ausgang“ (Result.Error statt gepuffert)
  *   B  in RepoBasis.schreibe die Prüfung `ablage.wartet()` entfernt → rot
@@ -45,7 +47,7 @@ import ch.brickinventoryapp.data.api.BrickApiService
  *      rot „gesendet wird der Schritt“
  *   D  in RepoBasis.abgeglichen den Rückfall auf die Ablage entfernt → rot
  *      „ohne Verbindung kommt die Liste aus der Ablage“
- *   (E–I gemessen am 31.10.2026)
+ *   (E–I gemessen)
  *   E  in RepoBasis.schreibe beim Puffern nach dem direkten Versuch einen neuen
  *      Schlüssel nehmen (`puffere(bearbeitung)`) → rot „… denselben Schlüssel“
  *   F  in TeileRepository.deletePart wieder direkt `safeCall` statt `schreibe` →
@@ -96,12 +98,12 @@ class OfflineBearbeitungTest {
     /** Ohne Netz: Die Verbindung kommt gar nicht erst zustande, wie im Funkloch. */
     private val api = retrofit2.Retrofit.Builder().baseUrl(s.mock.url("/"))
         .client(okhttp3.OkHttpClient.Builder().addInterceptor { kette ->
-            if (s.offline) throw java.net.ConnectException("kein Netz")
+            if (s.offline) throw ConnectException("kein Netz")
             val antwort = kette.proceed(kette.request())
             if (s.antwortVerlieren) {
                 s.antwortVerlieren = false
                 antwort.close()
-                throw java.net.SocketTimeoutException("Antwort verloren")
+                throw SocketTimeoutException("Antwort verloren")
             }
             antwort
         }.build())

@@ -1,6 +1,7 @@
 package ch.brickinventoryapp
 
 import org.junit.Test
+import java.io.File
 
 /**
  * Absicherung des CameraX-Sprungs 1.3.4 → 1.6.1.
@@ -28,7 +29,7 @@ class CameraXUpgradeTest {
 
     @Test
     fun `CameraX steht auf einer 16-KB-tauglichen Fassung`() {
-        val toml = java.io.File("../gradle/libs.versions.toml")
+        val toml = File("../gradle/libs.versions.toml")
         assert(toml.exists()) { "gradle/libs.versions.toml nicht gefunden" }
         val m = Regex("""camerax\s*=\s*"(\d+)\.(\d+)\.(\d+)"""").find(toml.readText())
         assert(m != null) { "camerax-Version nicht in libs.versions.toml gefunden" }

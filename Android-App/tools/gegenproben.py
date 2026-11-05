@@ -18,10 +18,13 @@ Rot heisst: Der Testbericht der Klasse existiert und nennt einen Fehlschlag
 
 Aufruf:  python3 tools/gegenproben.py gegenproben
 Gradle-Befehl ersetzbar über GEGENPROBE_GRADLE (für den Test dieses Werkzeugs).
+Mit GEGENPROBE_BASIS=<Commit> nur die Patches, deren Ziel, Test oder Patch seit
+dem Commit geändert ist; ist keiner betroffen, ist das ein Erfolg.
 Rückgabe 0 nur, wenn jede Gegenprobe rot war und es mindestens eine gab.
 """
 import glob
 import os
+import re
 import shlex
 import shutil
 import subprocess
@@ -67,7 +70,8 @@ def miss(projekt, wurzel, patch, gradle):
     klasse = k['Test']
     # Reine JVM-Module (core-model) haben `test` statt `testDebugUnitTest`.
     skript = os.path.join(projekt, k['Modul'], 'build.gradle.kts')
-    jvm = os.path.exists(skript) and 'kotlin.jvm' in open(skript, encoding='utf-8').read()
+    text = open(skript, encoding='utf-8').read() if os.path.exists(skript) else ''
+    jvm = 'kotlin.jvm' in text or 'jvm.library' in text
     aufgabe = 'test' if jvm else 'testDebugUnitTest'
     bericht = os.path.join(projekt, k['Modul'], 'build', 'test-results', aufgabe, f'TEST-{klasse}.xml')
     if os.path.exists(bericht):
@@ -106,12 +110,49 @@ def miss(projekt, wurzel, patch, gradle):
     return True, f'{name}: rot wie verlangt ({", ".join(rot)}) — {k["Gegenprobe"]}'
 
 
+def betroffen(projekt, wurzel, patches, basis):
+    """Die Patches, die eine seit `basis` geänderte Datei berühren; None, wenn die Basis fehlt."""
+    lauf = git(wurzel, 'diff', '--name-only', basis, 'HEAD')
+    if lauf.returncode != 0:
+        return None
+    geaendert = set(lauf.stdout.split())
+    vorsilbe = os.path.relpath(projekt, wurzel).replace(os.sep, '/')
+    # Die Testhilfen und das Werkzeug selbst tragen jede Gegenprobe.
+    if any(p.startswith(vorsilbe + '/core-testing/') or p == vorsilbe + '/tools/gegenproben.py' for p in geaendert):
+        return patches
+    auswahl = []
+    for patch in patches:
+        with open(patch, encoding='utf-8') as f:
+            ziele = set(re.findall(r'^\+\+\+ b/(\S+)', f.read(), re.M))
+        ziele.add(os.path.relpath(os.path.abspath(patch), wurzel).replace(os.sep, '/'))
+        k = kopf(patch)
+        klasse = k.get('Test', '').rsplit('.', 1)[-1]
+        if klasse and k.get('Modul'):
+            muster = os.path.join(projekt, k['Modul'], 'src', 'test', '**', klasse + '.kt')
+            ziele |= {os.path.relpath(t, wurzel).replace(os.sep, '/') for t in glob.glob(muster, recursive=True)}
+        if ziele & geaendert:
+            auswahl.append(patch)
+    return auswahl
+
+
 def main():
     ordner = sys.argv[1] if len(sys.argv) > 1 else 'gegenproben'
     projekt = os.path.dirname(os.path.abspath(ordner))
     wurzel = git(projekt, 'rev-parse', '--show-toplevel').stdout.strip()
-    gradle = shlex.split(os.environ.get('GEGENPROBE_GRADLE', './gradlew --no-daemon --no-build-cache -Pksp.incremental=false'))
+    # Mit Daemon: Alle Patches eines Teils laufen im selben Gradle, statt je Patch neu zu starten.
+    gradle = shlex.split(os.environ.get('GEGENPROBE_GRADLE', './gradlew --no-build-cache -Pksp.incremental=false'))
     patches = sorted(glob.glob(os.path.join(ordner, '*.patch')))
+    basis = os.environ.get('GEGENPROBE_BASIS', '').strip()
+    if basis and patches:
+        auswahl = betroffen(projekt, wurzel, patches, basis)
+        if auswahl is None:
+            print(f'Basis {basis} unbekannt — alle {len(patches)} Gegenproben.')
+        elif not auswahl:
+            print(f'Keine der {len(patches)} Gegenproben berührt eine seit {basis[:12]} geänderte Datei.')
+            return 0
+        else:
+            print(f'{len(auswahl)} von {len(patches)} Gegenproben betroffen.')
+            patches = auswahl
     # Die CI teilt die Patches auf parallele Jobs (GEGENPROBE_TEIL=„2/4“); jeder
     # nimmt jeden n-ten, so bleibt jeder Teil unter seiner Zeitgrenze.
     teil = os.environ.get('GEGENPROBE_TEIL')

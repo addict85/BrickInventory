@@ -28,7 +28,7 @@ data class SignierteBeschreibung(
 /**
  * Die Beschreibung, wenn sie echt ist; sonst null. Kennt die App Beschreibungsschlüssel
  * ([schluessel], SPKI), gilt nur deren Signatur: Der APK-Schlüssel signiert dann nichts,
- * was die App als Beschreibung annimmt (Schlüsseltrennung, sec11 H1). Nur ohne sie gilt
+ * was die App als Beschreibung annimmt (Schlüsseltrennung). Nur ohne sie gilt
  * der Übergangsweg über die Signierer der installierten App ([zertifikate], DER).
  * Erst prüfen, dann lesen: Ein ungeprüftes Feld darf nichts entscheiden.
  */

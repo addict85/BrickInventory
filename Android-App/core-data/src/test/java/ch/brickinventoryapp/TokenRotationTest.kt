@@ -33,6 +33,8 @@ import java.util.concurrent.TimeUnit
 import ch.brickinventoryapp.data.api.ApiJson
 import ch.brickinventoryapp.data.repository.Result
 import ch.brickinventoryapp.di.PLATZHALTER_BASIS
+import java.io.IOException
+import okhttp3.mockwebserver.SocketPolicy
 
 /**
  * Der Tausch des Tokens im echten Netzweg: Wächter, Konto-Repository und
@@ -40,7 +42,7 @@ import ch.brickinventoryapp.di.PLATZHALTER_BASIS
  * abweist oder den Tausch per Kopfzeile verlangt. Der Testserver spricht http
  * auf localhost; der Wächter läuft darum wie im Debug-Build (entwicklung = true).
  *
- * Gegenproben (30.10.2026, gemessen):
+ * Gegenproben:
  *   A  in ServerWaechter den Zweig für 401 `token_rotation_noetig` entfernt →
  *      rot „ein abgewiesener alter Token wird getauscht und die Anfrage wiederholt“
  *      (401 statt 200, Sitzung abgelaufen gemeldet)
@@ -50,7 +52,7 @@ import ch.brickinventoryapp.di.PLATZHALTER_BASIS
  *      rot „gleichzeitig abgewiesene Anfragen blockieren den Tausch nicht“
  *      (Zeitüberschreitung: beide Plätze warten auf den Tausch, der Tausch auf
  *      einen Platz)
- * Gegenproben (02.11.2026, gemessen mit kotlinc lokal):
+ * Gegenproben:
  *   D  in TokenTausch die Prüfung `stand() != vorher` vor der Wiederholung
  *      entfernt → rot „ein Serverwechsel waehrend der Wiederholung …“ (SPAETER)
  *   E  im Wächter wieder die alte Regel (Kopf nur weg, wenn er der jetzige Token
@@ -115,7 +117,7 @@ class TokenRotationTest {
         server.start()
     }
 
-    private lateinit var konto: KontoRepository
+    private val konto: KontoRepository
     private val tausch = tauschFuer({ konto }) { ereignisse += "speichere $it"; gespeichert = it }
     private val client = OkHttpClient.Builder()
         .addInterceptor(ServerWaechter(lage, true, entwicklung = true, sitzungAbgelaufen = { abgelaufen++ }, rotation = tausch))
@@ -162,7 +164,7 @@ class TokenRotationTest {
         val codes: MutableList<Int> = Collections.synchronizedList(mutableListOf())
         repeat(2) {
             c.newCall(Request.Builder().url(server.url("/api/v1/sets")).build()).enqueue(object : okhttp3.Callback {
-                override fun onFailure(call: okhttp3.Call, e: java.io.IOException) { codes += -1 }
+                override fun onFailure(call: okhttp3.Call, e: IOException) { codes += -1 }
                 override fun onResponse(call: okhttp3.Call, response: okhttp3.Response) { response.use { codes += it.code } }
             })
         }
@@ -202,7 +204,7 @@ class TokenRotationTest {
                 kotlinx.coroutines.runBlocking {
                     schranke.schreibe { gespeichert = ""; umgezogen = neuer.url("/").toString().trimEnd('/') }
                 }
-                MockResponse().setSocketPolicy(okhttp3.mockwebserver.SocketPolicy.DISCONNECT_AFTER_REQUEST)
+                MockResponse().setSocketPolicy(SocketPolicy.DISCONNECT_AFTER_REQUEST)
             }
             val ergebnis = kotlinx.coroutines.runBlocking { tausch.tausche("alt") }
             assertEquals(Tauschergebnis.VERWORFEN, ergebnis)

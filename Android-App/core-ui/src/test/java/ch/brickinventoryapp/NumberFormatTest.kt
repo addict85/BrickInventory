@@ -8,6 +8,8 @@ import ch.brickinventoryapp.util.fmtMoneyOrDash
 import ch.brickinventoryapp.util.zahlenLocale
 import org.junit.Assert.assertEquals
 import org.junit.Test
+import java.io.File
+import java.util.Locale
 
 /**
  * Zahlen und Beträge kommen aus EINER Fassung — und die folgt der App-Sprache.
@@ -24,15 +26,12 @@ import org.junit.Test
  *   • die REGEL (Teil 1): keine Ansicht baut sich ihren Betrag mehr selbst
  *     zusammen. Das ist die Aussage, die beim nächsten neuen Bildschirm zählt.
  *   • das ERGEBNIS (Teil 2): die Helfer liefern tatsächlich etwas Brauchbares.
- *     Eine reine Quelltextregel hätte hier nicht gereicht — genau diese Lücke
- *     war die Lehre aus Nachtrag 48 (der Test prüfte die Regel, es entstand
- *     trotzdem nie eine Datei).
  *
  * Bewusst NICHT festgenagelt: wo de-CH das Währungssymbol setzt — das
  * entscheidet die Plattform. Festgenagelt sind dagegen Tausender- und
  * Dezimalzeichen je Landesform (Teil 3), denn die wählt unser Code.
  *
- * Gegenproben Teil 3 (29.10.2026, gemessen gegen util/NumberFormatUtils.kt):
+ * Gegenproben Teil 3 :
  *   A  zahlenLocale() wieder fest de-CH/en-GB → rot „de-DE schreibt Punkt und
  *      Komma …“ und „ohne passende Landesform …“ (de-AT)
  *   B  das Land ohne Sprachprüfung übernommen → rot „ohne passende Landesform …“
@@ -45,7 +44,7 @@ import org.junit.Test
 class NumberFormatTest {
 
     private fun read(rel: String) =
-        java.io.File(Quellen.wurzel, "$rel").readText()
+        File(Quellen.wurzel, "$rel").readText()
 
     /** Kommentare zeilenweise ausblenden — sonst hält der eigene Erklärtext die Prüfung grün. */
     private fun code(s: String) = s.lines()
@@ -77,12 +76,6 @@ class NumberFormatTest {
                     "sonst steht es hier vor und anderswo hinter dem Betrag"
             }
             // Das Dollarzeichen steht als ${'$'} und nicht als Backslash-$.
-            // In einem Rohstring (dreifache Anfuehrungszeichen) wirken KEINE
-            // Backslash-Escapes, die String-Vorlage aber schon. Die alte
-            // Schreibweise war deshalb kein Zeichen, sondern ein Zugriff auf eine
-            // Variable namens currency — die es nicht gibt. Genau daran scheiterte
-            // der Testbau ("Unresolved reference 'currency'"), und zwar seit dem
-            // ersten Commit: ohne Gradle-Wrapper lief hier nie ein Testlauf.
             assert(!Regex("""\{[^}]*fmt[A-Za-z]*\([^)]*\)[^}]*\}\s*\${'$'}currency""").containsMatchIn(c)) {
                 "$f hängt den Währungscode von Hand an einen formatierten Betrag"
             }
@@ -145,9 +138,9 @@ class NumberFormatTest {
     // ── Teil 3: die Landesform folgt dem Gerät, wie im Web ──────────────────
 
     private fun mitGeraet(tag: String, block: () -> Unit) {
-        val vorher = java.util.Locale.getDefault()
-        java.util.Locale.setDefault(java.util.Locale.forLanguageTag(tag))
-        try { block() } finally { java.util.Locale.setDefault(vorher) }
+        val vorher = Locale.getDefault()
+        Locale.setDefault(Locale.forLanguageTag(tag))
+        try { block() } finally { Locale.setDefault(vorher) }
     }
 
     @Test
@@ -167,18 +160,18 @@ class NumberFormatTest {
 
     @Test
     fun `ohne passende Landesform gelten de-CH und en-GB`() {
-        val de = java.util.Locale.forLanguageTag("de")
-        assertEquals("de-CH", zahlenLocale(de, java.util.Locale.forLanguageTag("en-US")).toLanguageTag())
+        val de = Locale.forLanguageTag("de")
+        assertEquals("de-CH", zahlenLocale(de, Locale.forLanguageTag("en-US")).toLanguageTag())
         assertEquals("de-CH", zahlenLocale(de, de).toLanguageTag())
-        assertEquals("en-GB", zahlenLocale(java.util.Locale.forLanguageTag("fr-FR"), java.util.Locale.forLanguageTag("fr-FR")).toLanguageTag())
+        assertEquals("en-GB", zahlenLocale(Locale.forLanguageTag("fr-FR"), Locale.forLanguageTag("fr-FR")).toLanguageTag())
         assertEquals("Das Land kommt vom Gerät, die Sprache von der App",
-            "de-AT", zahlenLocale(de, java.util.Locale.forLanguageTag("de-AT")).toLanguageTag())
-        assertEquals("en-GB", zahlenLocale(java.util.Locale.forLanguageTag("en"), java.util.Locale.forLanguageTag("de-DE")).toLanguageTag())
+            "de-AT", zahlenLocale(de, Locale.forLanguageTag("de-AT")).toLanguageTag())
+        assertEquals("en-GB", zahlenLocale(Locale.forLanguageTag("en"), Locale.forLanguageTag("de-DE")).toLanguageTag())
     }
 
     /**
      * Wie Intl im Web: „CHF 812.50“ mit festem Leerzeichen, nie „CHF812.50“.
-     * Gegenprobe (02.11.2026, kotlinc): mitWaehrungsAbstand() in fmtMoney entfernt →
+     * Gegenprobe: mitWaehrungsAbstand() in fmtMoney entfernt →
      * rot (en-GB ergab „CHF812.50“).
      */
     @Test

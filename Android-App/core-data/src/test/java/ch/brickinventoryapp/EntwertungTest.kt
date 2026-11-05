@@ -36,7 +36,7 @@ import ch.brickinventoryapp.data.api.ApiJson
  * Server bestätigt. Der Arbeiter selbst (WorkManager) läuft nur auf dem Gerät;
  * geprüft werden Abmeldung, Entwerter und die Entscheidung je Lauf.
  *
- * Gegenproben (03.11.2026, kotlinc lokal gemessen):
+ * Gegenproben:
  *   A  Abmeldung.amServer() ohne planer.plane() → rot „scheitert der Versuch, geht
  *      ein Auftrag in die Warteschlange“
  *   B  einordnenEntwertung(): 401 als SPAETER → rot „ein Token, das schon nicht

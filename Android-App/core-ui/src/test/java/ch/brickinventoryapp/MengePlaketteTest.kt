@@ -4,6 +4,7 @@ import ch.brickinventoryapp.ui.mengeAusSet
 import ch.brickinventoryapp.ui.mengeManuell
 import org.junit.Assert.assertEquals
 import org.junit.Test
+import java.io.File
 
 /**
  * Die Mengen-Plakette auf einer Kachel steht ueberall gleich herum.
@@ -43,7 +44,7 @@ import org.junit.Test
 class MengePlaketteTest {
 
     private fun read(rel: String) =
-        java.io.File(Quellen.wurzel, "$rel").readText()
+        File(Quellen.wurzel, "$rel").readText()
     private fun code(s: String) = s.lines()
         .joinToString("\n") { if (it.trim().startsWith("//") || it.trim().startsWith("*")) "" else it }
 
@@ -60,7 +61,7 @@ class MengePlaketteTest {
      * wirklich benutzen. Ohne das zweite koennte eine der beiden wieder eine
      * eigene Kachel bauen, und der Test bliebe still.
      */
-    // Gegenproben (02.11.2026, kotlinc): mengeAusSet() zurück auf "$menge×" → rot;
+    // Gegenproben: mengeAusSet() zurück auf "$menge×" → rot;
     // mengeManuell() auf "$menge×" → rot.
     @Test
     fun `die Menge steht ueberall als Zeichen vor der Zahl`() {
@@ -96,7 +97,7 @@ class MengePlaketteTest {
         // nur, dass hier jemand uebersetzen koennte — und genau das hat den
         // Unterschied ueberhaupt erst verdeckt.
         for (datei in listOf("values/strings.xml", "values-de/strings.xml")) {
-            val xml = java.io.File(Quellen.res, "$datei").readText()
+            val xml = File(Quellen.res, "$datei").readText()
             assert(!xml.contains("minifigs_qty_badge")) {
                 "$datei traegt den Schluessel wieder — die Plakette gehoert direkt in den Quelltext"
             }

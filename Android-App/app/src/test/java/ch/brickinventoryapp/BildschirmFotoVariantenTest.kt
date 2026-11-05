@@ -18,7 +18,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.getOrNull
 import androidx.compose.ui.test.isDialog
-import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onRoot
@@ -92,6 +92,23 @@ import ch.brickinventoryapp.ui.viewmodel.HaushaltViewModel
 import ch.brickinventoryapp.ui.viewmodel.KatalogAktionen
 import ch.brickinventoryapp.ui.viewmodel.KontoViewModel
 import ch.brickinventoryapp.ui.viewmodel.SetDetailViewModel
+import android.content.Context
+import android.graphics.Bitmap
+import android.graphics.Canvas
+import android.net.Uri
+import android.view.View
+import android.view.ViewGroup
+import androidx.compose.foundation.layout.Column
+import androidx.compose.material3.SnackbarDuration
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.ui.platform.ViewRootForTest
+import androidx.compose.ui.semantics.SemanticsActions
+import androidx.compose.ui.semantics.SemanticsNode
+import androidx.compose.ui.text.TextLayoutResult
+import java.time.Duration
+import org.junit.Assert
+import org.robolectric.Shadows
+import org.robolectric.shadows.ShadowDialog
 
 /**
  * Was BildschirmFotoTest nicht abdeckt, je einmal statt im vollen Raster (die
@@ -113,7 +130,6 @@ import ch.brickinventoryapp.ui.viewmodel.SetDetailViewModel
  */
 @RunWith(RobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
-@Config(sdk = [35])
 class BildschirmFotoVariantenTest {
 
     private companion object {
@@ -134,18 +150,9 @@ class BildschirmFotoVariantenTest {
         welt.close()
     }
 
-    /** Wie BildschirmFotoTest.bereitstellen: den Hauptlooper treiben, bis der Server ruht. */
+    /** Wie BildschirmFotoTest.bereitstellen: den Hauptlooper treiben, bis die Welt ruht. */
     private fun bereitstellen(name: String, bereit: () -> Boolean, zustand: () -> Any?) {
-        val ende = System.nanoTime() + 10_000_000_000L
-        var anfragen = welt.pfade.anfragen.size
-        var ruhigSeit = System.nanoTime()
-        while (!bereit() || System.nanoTime() - ruhigSeit < 500_000_000L) {
-            if (System.nanoTime() > ende) throw AssertionError("$name: Daten nach 10 s nicht da: ${zustand()}")
-            shadowOf(Looper.getMainLooper()).idle()
-            Thread.sleep(10)
-            val jetzt = welt.pfade.anfragen.size
-            if (jetzt != anfragen) { anfragen = jetzt; ruhigSeit = System.nanoTime() }
-        }
+        treibeBis(name, anfragen = { welt.pfade.anfragen.size }, zustand = zustand, bereit = bereit)
     }
 
     // Werkbank ist ein dunkles Design ohne helle Fassung; „hell“ im Namen führte in die Irre.
@@ -380,12 +387,12 @@ class BildschirmFotoVariantenTest {
             title = titel, navController = nav, bottomNavItems = reiter,
             snackbarHostState = snackbar,
             csvImportState = remember { MutableStateFlow(CsvImportUiState()) },
-            onCsvAbbrechen = {}, serverUrl = "", updateVerfuegbar = true, onTabAngetippt = {},
+            onCsvAbbrechen = {}, updateVerfuegbar = true, onTabAngetippt = {},
             offeneAenderungen = offeneAenderungen,
         ) {
             NavHost(nav, startDestination = Screen.Gallery) {
                 composable<Screen.Gallery> {
-                    androidx.compose.foundation.layout.Column {
+                    Column {
                         OfflineHinweis(offlineStand)
                         Galerie(galerie)
                     }
@@ -445,29 +452,29 @@ class BildschirmFotoVariantenTest {
         // selbst messen und fotografieren statt über die Synchronisierung von Compose.
         val looper = shadowOf(Looper.getMainLooper())
         repeat(10) { compose.mainClock.advanceTimeBy(50); looper.idle() }
-        val fenster = org.robolectric.shadows.ShadowDialog.getLatestDialog().window!!.decorView
+        val fenster = ShadowDialog.getLatestDialog().window!!.decorView
         val wurzel = composeWurzel(fenster) ?: error("$name: kein Compose im Dialogfenster")
         val skalen = mutableListOf<Float>()
-        fun sammle(n: androidx.compose.ui.semantics.SemanticsNode) {
-            val ergebnis = mutableListOf<androidx.compose.ui.text.TextLayoutResult>()
-            n.config.getOrNull(androidx.compose.ui.semantics.SemanticsActions.GetTextLayoutResult)?.action?.invoke(ergebnis)
+        fun sammle(n: SemanticsNode) {
+            val ergebnis = mutableListOf<TextLayoutResult>()
+            n.config.getOrNull(SemanticsActions.GetTextLayoutResult)?.action?.invoke(ergebnis)
             ergebnis.firstOrNull()?.layoutInput?.density?.fontScale?.let { skalen += it }
             n.children.forEach { sammle(it) }
         }
         sammle(wurzel.semanticsOwner.unmergedRootSemanticsNode)
-        org.junit.Assert.assertTrue("$name: Schrift erreicht den Dialog nicht (Skalen $skalen)",
+        Assert.assertTrue("$name: Schrift erreicht den Dialog nicht (Skalen $skalen)",
             skalen.isNotEmpty() && skalen.all { it >= schrift - 0.05f })
         // Selbst gezeichnet: captureRoboImage(View) sucht die Ansicht über Espresso in der
         // Activity und findet das Dialogfenster dort nicht.
-        val bild = android.graphics.Bitmap.createBitmap(fenster.width, fenster.height, android.graphics.Bitmap.Config.ARGB_8888)
-        fenster.draw(android.graphics.Canvas(bild))
+        val bild = Bitmap.createBitmap(fenster.width, fenster.height, Bitmap.Config.ARGB_8888)
+        fenster.draw(Canvas(bild))
         bild.captureRoboImage(pfad(name, design, dunkel, geraet))
     }
 
     /** Die Compose-Wurzel in einem Fensterbaum, ohne auf Ruhe zu warten. */
-    private fun composeWurzel(v: android.view.View): androidx.compose.ui.platform.ViewRootForTest? = when (v) {
-        is androidx.compose.ui.platform.ViewRootForTest -> v
-        is android.view.ViewGroup -> (0 until v.childCount).firstNotNullOfOrNull { composeWurzel(v.getChildAt(it)) }
+    private fun composeWurzel(v: View): ViewRootForTest? = when (v) {
+        is ViewRootForTest -> v
+        is ViewGroup -> (0 until v.childCount).firstNotNullOfOrNull { composeWurzel(v.getChildAt(it)) }
         else -> null
     }
 
@@ -505,12 +512,12 @@ class BildschirmFotoVariantenTest {
         // Der Dialog fokussiert sein erstes Feld; der blinkende Cursor lässt
         // Compose nie ruhig werden. Darum die Uhr anhalten und gezielt vorstellen.
         compose.mainClock.autoAdvance = false
-        val ctx = ApplicationProvider.getApplicationContext<android.content.Context>()
+        val ctx = ApplicationProvider.getApplicationContext<Context>()
         compose.onNodeWithContentDescription(ctx.getString(R.string.wanted_add_title)).performClick()
         // Das Dialogfenster entsteht über den Hauptlooper, nicht über die Compose-Uhr.
         repeat(3) {
             compose.mainClock.advanceTimeBy(200)
-            org.robolectric.Shadows.shadowOf(android.os.Looper.getMainLooper()).idle()
+            Shadows.shadowOf(Looper.getMainLooper()).idle()
         }
         dialogFoto(name, "classic", dunkel, "telefon", schrift)
     }
@@ -553,12 +560,12 @@ class BildschirmFotoVariantenTest {
     // ── Unterseiten und Erfassen, die sonst kein Foto hatten (I2) ──
 
     private fun einstellungen() = welt.t.merke(EinstellungenViewModel(welt.t.dienste,
-        KontoRepository(welt.t.api, welt.t.cache),
+        KontoRepository(welt.t.api, welt.t.cache, welt.t.io),
         VerwaltungRepository(welt.t.api, welt.t.cache),
         SetsRepository(welt.t.api, welt.t.cache),
         TeileRepository(welt.t.api, welt.t.cache),
         object : DateiLeser {
-            override suspend fun lies(uri: android.net.Uri): Pair<String?, ByteArray>? = null
+            override suspend fun lies(uri: Uri): Pair<String?, ByteArray>? = null
         }))
 
     @Test
@@ -591,7 +598,7 @@ class BildschirmFotoVariantenTest {
             "sub_accounts":[{"id":2,"username":"lena"},{"id":3,"username":"tim"}],"open_invites":1}"""
         val vm = welt.t.merke(HaushaltViewModel(welt.t.dienste,
             HaushaltRepository(welt.t.api, welt.t.cache),
-            KontoRepository(welt.t.api, welt.t.cache))).also { it.loadHouseholdStatus() }
+            KontoRepository(welt.t.api, welt.t.cache, welt.t.io))).also { it.loadHouseholdStatus() }
         zeige("haushalt", bereit = { vm.householdState.value.status != null }, zustand = { vm.householdState.value }) {
             HaushaltRoute(vm, remember { SnackbarHostState() }, onZurueck = {})
         }
@@ -630,15 +637,15 @@ class BildschirmFotoVariantenTest {
         offen.value = true
         repeat(3) {
             compose.mainClock.advanceTimeBy(200)
-            org.robolectric.Shadows.shadowOf(android.os.Looper.getMainLooper()).idle()
+            Shadows.shadowOf(Looper.getMainLooper()).idle()
         }
         dialogFoto(name, "classic", false, geraet, schrift)
         if (schrift == 1f && geraet == "telefon") {
             // Ein Muster für alle Erfassungen: Der Lagerort ist so breit wie die Set-Nummer.
-            val ctx = androidx.test.core.app.ApplicationProvider.getApplicationContext<android.content.Context>()
+            val ctx = ApplicationProvider.getApplicationContext<Context>()
             fun breite(label: Int) = compose.onNode(androidx.compose.ui.test.hasSetTextAction() and
                 androidx.compose.ui.test.hasText(ctx.getString(label))).fetchSemanticsNode().boundsInRoot.width
-            org.junit.Assert.assertEquals("Lagerort so breit wie die Set-Nummer",
+            Assert.assertEquals("Lagerort so breit wie die Set-Nummer",
                 breite(R.string.gallery_set_number),
                 breite(R.string.detail_storage), 1f)
         }
@@ -649,7 +656,7 @@ class BildschirmFotoVariantenTest {
     @Test
     fun galerieLaedt() {
         // Die Antwort bleibt aus; die Uhr steht, damit die Ladeanimation ein festes Bild ergibt.
-        welt.pfade.verzoegert["/api/v1/sets"] = 60_000L
+        welt.pfade.ausbleibend += "/api/v1/sets"
         val galerie = welt.galerie().also { it.loadSets() }
         compose.mainClock.autoAdvance = false
         zeige("galerie-laedt", warten = false) { Galerie(galerie) }
@@ -720,7 +727,7 @@ class BildschirmFotoVariantenTest {
             {"token_id":"a1","label":"Pixel 8","created_at":"2026-09-01T10:00:00Z","last_used":"2026-11-02T18:00:00Z","aktuell":true,"scope":"app"},
             {"token_id":"b2","label":"Galaxy Tab","created_at":"2026-06-12T10:00:00Z","last_used":"2026-10-20T08:00:00Z","scope":"app"}]}"""
         val konto = welt.t.merke(KontoViewModel(
-            KontoRepository(welt.t.api, welt.t.cache), KontextTexte(),
+            KontoRepository(welt.t.api, welt.t.cache, welt.t.io), KontextTexte(),
             welt.t.meldungen, welt.t.sitzung))
         zeige(name, dunkel = dunkel, geraet = geraet) {
             KontoRoute(onAbmelden = {}, snackbarHostState = remember { SnackbarHostState() },
@@ -784,7 +791,7 @@ class BildschirmFotoVariantenTest {
      * fotografiert wird die Wurzel, die [kennung] trägt.
      */
     private fun blattFoto(kennung: Int, name: String, design: String, dunkel: Boolean, geraet: String) {
-        val text = ApplicationProvider.getApplicationContext<android.content.Context>().getString(kennung)
+        val text = ApplicationProvider.getApplicationContext<Context>().getString(kennung)
         compose.onNode(androidx.compose.ui.test.isRoot() and
             androidx.compose.ui.test.hasAnyDescendant(androidx.compose.ui.test.hasText(text)))
             .captureRoboImage(pfad(name, design, dunkel, geraet))
@@ -803,7 +810,7 @@ class BildschirmFotoVariantenTest {
         val vm = welt.galerie().also { it.aktualisieren() }
         zeige("filter-galerie", bereit = { galerieFertig(vm)() && vm.lagerState.value.orte.isNotEmpty() &&
             vm.galleryState.value.galleryThemes.isNotEmpty() }, zustand = { vm.galleryState.value }) { Galerie(vm) }
-        compose.onNodeWithContentDescription(ApplicationProvider.getApplicationContext<android.content.Context>()
+        compose.onNodeWithContentDescription(ApplicationProvider.getApplicationContext<Context>()
             .getString(R.string.filter_button)).performClick()
         compose.waitForIdle()
         blattAufziehen()
@@ -818,7 +825,7 @@ class BildschirmFotoVariantenTest {
         compose.mainClock.autoAdvance = false
         repeat(30) {
             compose.mainClock.advanceTimeBy(50)
-            shadowOf(Looper.getMainLooper()).idleFor(java.time.Duration.ofMillis(50))
+            shadowOf(Looper.getMainLooper()).idleFor(Duration.ofMillis(50))
         }
     }
 
@@ -867,9 +874,9 @@ class BildschirmFotoVariantenTest {
         zeige("snackbar", dunkel = dunkel, geraet = geraet, bereit = galerieFertig(galerie),
             zustand = { galerie.galleryState.value }) {
             Geruest(galerie, snackbar = meldung)
-            androidx.compose.runtime.LaunchedEffect(Unit) {
+            LaunchedEffect(Unit) {
                 meldung.showSnackbar("„Millennium Falcon“ gelöscht", actionLabel = "Rückgängig",
-                    duration = androidx.compose.material3.SnackbarDuration.Indefinite)
+                    duration = SnackbarDuration.Indefinite)
             }
         }
         anhalten()

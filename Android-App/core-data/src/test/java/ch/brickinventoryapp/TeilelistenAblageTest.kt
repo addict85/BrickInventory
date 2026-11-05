@@ -22,14 +22,14 @@ import java.io.File
  * app-eigenen filesDir; eine Kopie älterer Fassungen im externen Bereich
  * verschwindet beim nächsten Export.
  *
- * Gegenprobe (01.11.2026, gemessen mit kotlinc lokal): in teilelistenAblage()
+ * Gegenprobe: in teilelistenAblage()
  * wieder `extern ?: intern` als Wurzel → rot „die Teileliste liegt intern …“.
- * Gegenprobe (02.11.2026, gemessen): in raeumeKontoDateienAuf() die Zeile für
+ * Gegenprobe: in raeumeKontoDateienAuf() die Zeile für
  * UPDATE_ORDNER entfernt → rot „Abmelden raeumt …“ („Das geladene Update bleibt liegen“).
- * Gegenprobe (04.11.2026, gemessen mit kotlinc lokal; sec11 N1): in
+ * Gegenprobe: in
  * raeumeAlteTeilelisteAuf() die Altersprüfung umgedreht (`<` statt `>=`) → rot „nach
  * der Frist verschwindet die Teileliste …“; gegenproben/teileliste-bleibt-liegen.patch
- * Gegenprobe (05.11.2026, gemessen mit kotlinc lokal; sec16 N4): Teilelistentresor.lege()
+ * Gegenprobe: Teilelistentresor.lege()
  * schreibt den Klartext statt des Geheimtexts → rot „die Teileliste liegt nur
  * verschlüsselt …“; gegenproben/teileliste-im-klartext.patch
  */
@@ -44,11 +44,11 @@ class TeilelistenAblageTest {
 
     @Test
     fun `die Teileliste liegt intern, eine alte externe Kopie verschwindet`() {
-        val alt = File(extern, "pdf/teileliste.pdf").apply { parentFile.mkdirs(); writeText("Inventar") }
-        val klartext = File(intern, "pdf/teileliste.pdf").apply { parentFile.mkdirs(); writeText("Inventar") }
+        val alt = File(extern, "pdf/teileliste.pdf").apply { parentFile!!.mkdirs(); writeText("Inventar") }
+        val klartext = File(intern, "pdf/teileliste.pdf").apply { parentFile!!.mkdirs(); writeText("Inventar") }
         val ziel = teilelistenAblage(intern, extern)
         assertEquals(File(intern, "pdf/$TEILELISTE_DATEI"), ziel)
-        assertEquals("pdf/ angelegt", true, ziel.parentFile.isDirectory)
+        assertEquals("pdf/ angelegt", true, ziel.parentFile!!.isDirectory)
         assertFalse("Die alte Kopie im externen Bereich bleibt liegen", alt.exists())
         assertFalse("Die Klartext-Liste älterer Fassungen bleibt liegen", klartext.exists())
     }
@@ -56,9 +56,9 @@ class TeilelistenAblageTest {
     @Test
     fun `Abmelden raeumt Teileliste, geteilte PDFs und Update weg, anderes bleibt`() {
         val liste = teilelistenAblage(intern, extern).apply { writeText("Inventar") }
-        val apk = File(intern, "update/BrickInventory.apk").apply { parentFile.mkdirs(); writeText("apk") }
-        val geteilt = File(extern, "pdf/anleitung.pdf").apply { parentFile.mkdirs(); writeText("pdf") }
-        val bleibt = File(intern, "datastore/einstellungen.pb").apply { parentFile.mkdirs(); writeText("x") }
+        val apk = File(intern, "update/BrickInventory.apk").apply { parentFile!!.mkdirs(); writeText("apk") }
+        val geteilt = File(extern, "pdf/anleitung.pdf").apply { parentFile!!.mkdirs(); writeText("pdf") }
+        val bleibt = File(intern, "datastore/einstellungen.pb").apply { parentFile!!.mkdirs(); writeText("x") }
         raeumeKontoDateienAuf(intern, extern)
         assertFalse("Die Teileliste überlebt das Abmelden", liste.exists())
         assertFalse("Das geladene Update bleibt liegen", apk.exists())
@@ -67,7 +67,7 @@ class TeilelistenAblageTest {
         raeumeKontoDateienAuf(intern, null)
     }
 
-    /** Das Inventar nur, solange jemand die Liste öffnen will (sec11 N1). */
+    /** Das Inventar nur, solange jemand die Liste öffnen will. */
     @Test
     fun `nach der Frist verschwindet die Teileliste, eine frische bleibt`() {
         val liste = teilelistenAblage(intern, null).apply { writeText("Inventar") }

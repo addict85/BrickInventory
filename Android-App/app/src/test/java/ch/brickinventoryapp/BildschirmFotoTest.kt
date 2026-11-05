@@ -1,10 +1,9 @@
 package ch.brickinventoryapp
 
-import android.os.Looper
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onRoot
 import androidx.test.core.app.ApplicationProvider
 import ch.brickinventoryapp.data.SetAnlegenSchritt
@@ -39,13 +38,14 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.ParameterizedRobolectricTestRunner
 import org.robolectric.RuntimeEnvironment
-import org.robolectric.Shadows.shadowOf
-import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
 import ch.brickinventoryapp.data.repository.Result
 import ch.brickinventoryapp.ui.fehlerTextBrauchtCode
 import ch.brickinventoryapp.ui.fehlerTextId
 import ch.brickinventoryapp.ui.viewmodel.Texte
+import android.content.Context
+import androidx.compose.foundation.layout.Column
+import java.util.Locale
 
 /**
  * Bildschirmfotos der Hauptbildschirme mit Beispieldaten (Beispiele), je in
@@ -64,7 +64,6 @@ import ch.brickinventoryapp.ui.viewmodel.Texte
  */
 @RunWith(ParameterizedRobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
-@Config(sdk = [35])
 class BildschirmFotoTest(private val design: String, private val dunkel: Boolean, private val geraet: String) {
 
     companion object {
@@ -86,40 +85,23 @@ class BildschirmFotoTest(private val design: String, private val dunkel: Boolean
 
     private val welt = Beispiele.Welt(KontextTexte())
     private val bilder = Beispielbilder.loader(ApplicationProvider.getApplicationContext())
-    private val vorher = java.util.Locale.getDefault()
+    private val vorher = Locale.getDefault()
 
     @After
     fun zu() {
-        java.util.Locale.setDefault(vorher)
+        Locale.setDefault(vorher)
         welt.close()
     }
 
-    /**
-     * Die Daten kommen vor dem Bildschirm. Ihre Abrufe kehren über den
-     * Hauptlooper zurück; den treibt diese Schleife selbst. Hinge er stattdessen
-     * an compose.waitUntil, läuft er nur so oft, wie die Testuhr Bilder zeichnet
-     * — und solange geladen wird, zeichnet sie Ladeanimationen ohne Ende.
-     */
+    /** Die Daten kommen vor dem Bildschirm; die Welt antwortet im Takt. */
     private fun bereitstellen(name: String, bereit: () -> Boolean, zustand: () -> Any?) {
-        val ende = System.nanoTime() + 10_000_000_000L
-        // Bereit allein genügt nicht: Ein Bildschirm lädt oft noch Beiwerk nach
-        // (Kennzahlen, Bewertungen). Erst wenn der Testserver eine Weile keine
-        // neue Anfrage sah und der Looper ihre Antworten verarbeitet hat.
-        var anfragen = welt.pfade.anfragen.size
-        var ruhigSeit = System.nanoTime()
-        while (!bereit() || System.nanoTime() - ruhigSeit < 500_000_000L) {
-            if (System.nanoTime() > ende) throw AssertionError("$name: Daten nach 10 s nicht da: ${zustand()}")
-            shadowOf(Looper.getMainLooper()).idle()
-            Thread.sleep(10)
-            val jetzt = welt.pfade.anfragen.size
-            if (jetzt != anfragen) { anfragen = jetzt; ruhigSeit = System.nanoTime() }
-        }
+        treibeBis(name, anfragen = { welt.pfade.anfragen.size }, zustand = zustand, bereit = bereit)
     }
 
     private fun foto(name: String, bereit: () -> Boolean = { true }, zustand: () -> Any? = { null },
                      inhalt: @Composable () -> Unit) {
         RuntimeEnvironment.setQualifiers("de-rCH-" + GERAETE.getValue(geraet))
-        java.util.Locale.setDefault(java.util.Locale.forLanguageTag("de-CH"))
+        Locale.setDefault(Locale.forLanguageTag("de-CH"))
         bereitstellen(name, bereit, zustand)
         compose.setContent {
             BrickInventoryManagerTheme(theme = design, dunkel = dunkel) {
@@ -255,7 +237,7 @@ internal fun Gutscheine() {
     val gutscheine = GutscheinUiState(gutscheine = listOf(
         Gutschein(id = 1, number = "6061 2345 6789", pin = "4711", amount = 50.0, currency = "CHF").alsAnsicht(),
         Gutschein(id = 2, number = "6061 9876 5432", amount = 20.0, currency = "CHF").alsAnsicht()))
-    androidx.compose.foundation.layout.Column {
+    Column {
         GutscheineCard(
             zustand = gutscheine, onFeld = { _, _, _, _ -> }, onPinSchalten = {}, onBearbeiten = {},
             onAbbrechen = {}, onSpeichern = {}, onLoeschen = {}, onPdfOeffnen = {}, onKopieren = { _, _ -> },
@@ -270,7 +252,7 @@ internal fun Gutscheine() {
  * zeigt statt des Platzhalters „fehler“ der JVM-Tests (NummernTexte).
  */
 internal class KontextTexte(
-    private val ctx: android.content.Context = ApplicationProvider.getApplicationContext(),
+    private val ctx: Context = ApplicationProvider.getApplicationContext(),
 ) : Texte {
     override fun text(id: Int, vararg args: Any?): String =
         if (args.isEmpty()) ctx.getString(id) else ctx.getString(id, *args)

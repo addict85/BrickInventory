@@ -32,7 +32,7 @@ import androidx.compose.ui.test.hasClickAction
 import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.hasText
-import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithContentDescription
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
@@ -88,6 +88,14 @@ import ch.brickinventoryapp.ui.theme.Lesebreite
 import ch.brickinventoryapp.ui.viewmodel.DateiLeser
 import ch.brickinventoryapp.ui.viewmodel.EinstellungenViewModel
 import ch.brickinventoryapp.util.fmtInt
+import android.content.Context
+import android.net.Uri
+import android.os.Looper
+import android.provider.Settings
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.SemanticsNode
+import java.util.Locale
+import org.robolectric.Shadows
 
 /**
  * Befunde der zehnten und elften UI-Prüfung (Android), als Verhalten ausgeführt: Der
@@ -121,19 +129,19 @@ import ch.brickinventoryapp.util.fmtInt
  */
 @RunWith(RobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
-@Config(sdk = [35], qualifiers = "de-rCH-w411dp-h891dp-port-xxhdpi")
+@Config(qualifiers = "de-rCH-w411dp-h891dp-port-xxhdpi")
 class GeruestUndFormularTest {
 
     @get:Rule
     val compose = createComposeRule()
 
-    private val vorher = java.util.Locale.getDefault()
-    private val ctx: android.content.Context = ApplicationProvider.getApplicationContext()
+    private val vorher = Locale.getDefault()
+    private val ctx: Context = ApplicationProvider.getApplicationContext()
 
-    init { java.util.Locale.setDefault(java.util.Locale.forLanguageTag("de-CH")) }
+    init { Locale.setDefault(Locale.forLanguageTag("de-CH")) }
 
     @After
-    fun zu() = java.util.Locale.setDefault(vorher)
+    fun zu() = Locale.setDefault(vorher)
 
     private fun zeige(schrift: Float = 1f, inhalt: @Composable () -> Unit) {
         compose.setContent {
@@ -147,14 +155,9 @@ class GeruestUndFormularTest {
         compose.waitForIdle()
     }
 
-    /** Antworten des Testservers kommen über den Hauptlooper; ihn selbst treiben. */
+    /** Die Welt antwortet im Takt; den Hauptlooper treiben, bis [fertig] gilt. */
     private fun warte(name: String, fertig: () -> Boolean) {
-        val ende = System.nanoTime() + 10_000_000_000L
-        while (!fertig()) {
-            check(System.nanoTime() < ende) { "$name nach 10 s nicht da" }
-            org.robolectric.Shadows.shadowOf(android.os.Looper.getMainLooper()).idle()
-            Thread.sleep(10)
-        }
+        treibeBis(name, bereit = fertig)
         compose.waitForIdle()
     }
 
@@ -170,7 +173,7 @@ class GeruestUndFormularTest {
             title = "Sammlung", navController = nav, bottomNavItems = reiter,
             snackbarHostState = meldung,
             csvImportState = remember { MutableStateFlow(CsvImportUiState()) },
-            onCsvAbbrechen = {}, serverUrl = "", onTabAngetippt = {}, offeneAenderungen = offen,
+            onCsvAbbrechen = {}, onTabAngetippt = {}, offeneAenderungen = offen,
         ) {
             NavHost(nav, startDestination = Screen.Gallery) { composable<Screen.Gallery> { inhalt() } }
         }
@@ -222,12 +225,12 @@ class GeruestUndFormularTest {
             welt.pfade.antworten["/api/v1/alerts"] = """{"success":true,"alerts":[
                 {"set_number":"75192-1","condition":"N","richtung":"unter","schwelle":750.0,"currency_code":"CHF"}]}"""
             val vm = welt.t.merke(EinstellungenViewModel(welt.t.dienste,
-                KontoRepository(welt.t.api, welt.t.cache),
+                KontoRepository(welt.t.api, welt.t.cache, welt.t.io),
                 VerwaltungRepository(welt.t.api, welt.t.cache),
                 SetsRepository(welt.t.api, welt.t.cache),
                 TeileRepository(welt.t.api, welt.t.cache),
                 object : DateiLeser {
-                    override suspend fun lies(uri: android.net.Uri): Pair<String?, ByteArray>? = null
+                    override suspend fun lies(uri: Uri): Pair<String?, ByteArray>? = null
                 }))
             zeige {
                 PreisalarmeRoute(vm = vm,
@@ -271,7 +274,7 @@ class GeruestUndFormularTest {
     }
 
     /** Die Autofill-Art eines Feldes: der Wert seiner Semantik, der eine ContentType ist. */
-    private fun autofill(knoten: androidx.compose.ui.semantics.SemanticsNode): Any? =
+    private fun autofill(knoten: SemanticsNode): Any? =
         knoten.config.firstOrNull { it.value is ContentType }?.value
 
     @Test
@@ -303,12 +306,12 @@ class GeruestUndFormularTest {
             welt.pfade.antworten["/api/v1/alerts"] = """{"success":true,"alerts":[
                 {"set_number":"75192-1","condition":"N","richtung":"unter","schwelle":750.0,"currency_code":"CHF","name":"Millennium Falcon"}]}"""
             val vm = welt.t.merke(EinstellungenViewModel(welt.t.dienste,
-                KontoRepository(welt.t.api, welt.t.cache),
+                KontoRepository(welt.t.api, welt.t.cache, welt.t.io),
                 VerwaltungRepository(welt.t.api, welt.t.cache),
                 SetsRepository(welt.t.api, welt.t.cache),
                 TeileRepository(welt.t.api, welt.t.cache),
                 object : DateiLeser {
-                    override suspend fun lies(uri: android.net.Uri): Pair<String?, ByteArray>? = null
+                    override suspend fun lies(uri: Uri): Pair<String?, ByteArray>? = null
                 }))
             zeige {
                 PreisalarmeRoute(vm = vm,
@@ -351,30 +354,30 @@ class GeruestUndFormularTest {
     @Test
     fun `reduzierte Bewegung folgt der Animator-Dauer des Systems`() {
         val aufloesung = ctx.contentResolver
-        android.provider.Settings.Global.putFloat(aufloesung, android.provider.Settings.Global.ANIMATOR_DURATION_SCALE, 0f)
+        Settings.Global.putFloat(aufloesung, Settings.Global.ANIMATOR_DURATION_SCALE, 0f)
         var ruhig: Boolean? = null
         zeige { ruhig = bewegungReduziert() }
         assertEquals("Mit Animator-Dauer 0 ruht alles", true, ruhig)
-        android.provider.Settings.Global.putFloat(aufloesung, android.provider.Settings.Global.ANIMATOR_DURATION_SCALE, 1f)
+        Settings.Global.putFloat(aufloesung, Settings.Global.ANIMATOR_DURATION_SCALE, 1f)
     }
 
     /** Umgestellt wird bei offener App in den Systemeinstellungen; die Bewegung folgt sofort. */
     @Test
     fun `reduzierte Bewegung folgt einer Aenderung zur Laufzeit`() {
         val aufloesung = ctx.contentResolver
-        val dauer = android.provider.Settings.Global.ANIMATOR_DURATION_SCALE
-        android.provider.Settings.Global.putFloat(aufloesung, dauer, 1f)
+        val dauer = Settings.Global.ANIMATOR_DURATION_SCALE
+        Settings.Global.putFloat(aufloesung, dauer, 1f)
         var ruhig: Boolean? = null
         zeige { ruhig = bewegungReduziert() }
         assertEquals("Mit Animator-Dauer 1 bewegt sich alles", false, ruhig)
         try {
-            android.provider.Settings.Global.putFloat(aufloesung, dauer, 0f)
-            aufloesung.notifyChange(android.provider.Settings.Global.getUriFor(dauer), null)
-            org.robolectric.Shadows.shadowOf(android.os.Looper.getMainLooper()).idle()
+            Settings.Global.putFloat(aufloesung, dauer, 0f)
+            aufloesung.notifyChange(Settings.Global.getUriFor(dauer), null)
+            Shadows.shadowOf(Looper.getMainLooper()).idle()
             compose.waitForIdle()
             assertEquals("Nach dem Umstellen ruht alles", true, ruhig)
         } finally {
-            android.provider.Settings.Global.putFloat(aufloesung, dauer, 1f)
+            Settings.Global.putFloat(aufloesung, dauer, 1f)
         }
     }
 
@@ -478,7 +481,7 @@ class GeruestUndFormularTest {
             )
         }
         val chip = compose.onNodeWithContentDescription(ctx.getString(R.string.login_server_aendern, "https://brick.example.org"))
-        assertEquals(androidx.compose.ui.semantics.Role.Button, chip.fetchSemanticsNode().config.getOrNull(SemanticsProperties.Role))
+        assertEquals(Role.Button, chip.fetchSemanticsNode().config.getOrNull(SemanticsProperties.Role))
         chip.performClick()
         compose.waitForIdle()
         assertEquals("Ein Tipp öffnet den Serverwechsel", 1, geaendert)

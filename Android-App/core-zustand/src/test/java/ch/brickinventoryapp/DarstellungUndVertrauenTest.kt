@@ -28,7 +28,7 @@ import org.junit.Test
  * DarstellungViewModel und VertrauenViewModel ausgeführt, mit Ablagen im Speicher
  * statt PreferencesManager und in virtueller Zeit.
  *
- * Gegenproben (05.11.2026, gemessen mit kotlinc lokal):
+ * Gegenproben:
  *   design-spaet-gesetzt        `sitzung.setzeDesign(...)` aus dem init → rot „der Zustand wird mit …“
  *   widget-nicht-angestossen    `widget.aktualisiere()` gestrichen → rot „eine Wahl wird gemerkt …“
  *   vertrauen-ohne-abwurf       nach zertifikatVertrauen() kein `abwurf.verwirf()` → rot „ein bestätigter …“

@@ -71,7 +71,7 @@ class FehlerTexteTest {
 
     /**
      * Jede Art landet in der Klasse, deren Rat zu ihr passt; ein 401 und ein 5xx
-     * auch ohne Art. Gegenprobe (02.11.2026, kotlinc): `f.unauthorized ||` aus
+     * auch ohne Art. Gegenprobe: `f.unauthorized ||` aus
      * fehlerklasse() gestrichen → rot (401 ohne Art ergab UNBEKANNT); ZEIT aus dem
      * OFFLINE-Zweig genommen → rot.
      */

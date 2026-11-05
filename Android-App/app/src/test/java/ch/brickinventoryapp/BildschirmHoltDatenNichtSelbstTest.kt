@@ -93,7 +93,7 @@ class BildschirmHoltDatenNichtSelbstTest {
                 "nicht angekommen: ${fehlend.joinToString()}"
         }
 
-        // Die Abschnitte bekommen Zustand und Ereignisse (arch14 M2); das ViewModel
+        // Die Abschnitte bekommen Zustand und Ereignisse; das ViewModel
         // holt allein der Bildschirm.
         val abschnitte = ohneKommentare(File(Quellen.wurzel, "ui/screens/MonitoringSections.kt").readText())
         assert(!abschnitte.contains("hiltViewModel()")) {
@@ -126,7 +126,7 @@ class BildschirmHoltDatenNichtSelbstTest {
         assert(felder.size >= 5) { "MonitoringUiState hat nur ${felder.size} Felder — Klammersuche daneben?" }
 
         val fehler = mutableListOf<String>()
-        // Die Abschnitte bekommen Zustand und Ereignisse (arch14 M2); das ViewModel
+        // Die Abschnitte bekommen Zustand und Ereignisse; das ViewModel
         // holt allein der Bildschirm.
         val abschnitte = ohneKommentare(File(Quellen.wurzel, "ui/screens/MonitoringSections.kt").readText())
         assert(!abschnitte.contains("hiltViewModel()")) {
@@ -144,8 +144,8 @@ class BildschirmHoltDatenNichtSelbstTest {
     /**
      * Bildschirme sehen UI-Modelle (ui/model), keine Server-Modelle: Ein neues
      * Feld oder eine andere Nullbarkeit im DTO soll im Repository oder ViewModel
-     * auffallen, nicht in einem Composable. Seit dem 31.10.2026 ohne Ausnahme.
-     * Gegenprobe (31.10.2026, gemessen): in GutscheineCard.kt wieder
+     * auffallen, nicht in einem Composable. Ohne Ausnahme.
+     * Gegenprobe: in GutscheineCard.kt wieder
      * `import ch.brickinventoryapp.data.model.Gutschein` → rot, nennt die Datei.
      */
     @Test

@@ -1,0 +1,17 @@
+Gegenprobe: Eine Übernahme aus der Merkliste meldet nur die Merkliste, nicht die Sets
+Modul: feature-sammlung
+Test: ch.brickinventoryapp.MerklisteViewModelTest
+Rot: eine Uebernahme meldet Merkliste und Sets
+
+diff --git a/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/ui/viewmodel/MerklisteViewModel.kt b/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/ui/viewmodel/MerklisteViewModel.kt
+--- a/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/ui/viewmodel/MerklisteViewModel.kt
++++ b/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/ui/viewmodel/MerklisteViewModel.kt
+@@ -177,7 +177,7 @@
+                     zeigeMeldung(text(
+                         if (r.data.action == "exists") R.string.wanted_taken_existing
+                         else R.string.wanted_taken))
+-                    dienste.bestand.melde(Aenderung.Merkliste, Aenderung.Sets)
++                    dienste.bestand.melde(Aenderung.Merkliste)
+                 }
+                 is Result.Error -> zeigeMeldung(meldungFuerSnackbar(r)?.let { text(R.string.vm_error, it) })
+             }

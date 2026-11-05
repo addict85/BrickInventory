@@ -19,7 +19,7 @@ import ch.brickinventoryapp.data.repository.Result
  * meldet die Pflicht, damit die Einrichtungsmaske erscheint. Den Weg über ein
  * 403 prüft ServerWaechterTest.
  *
- * Gegenproben (04.11.2026, misst die CI — tools/gegenproben.py):
+ * Gegenproben:
  *   faktorpflicht-aus-me-ignoriert   kontoUebernehmen() meldet nicht → rot „auth me mit Pflicht …“
  *   faktorpflicht-immer              kontoUebernehmen() meldet immer → rot „auth me ohne Pflicht …“
  *   faktorpflicht-feld-umbenannt     User liest `zweiter_faktor_pflicht` → rot „Anmeldung und auth me …“

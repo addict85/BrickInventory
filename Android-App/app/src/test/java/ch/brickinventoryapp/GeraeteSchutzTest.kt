@@ -10,7 +10,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.State
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.ui.test.junit4.createAndroidComposeRule
+import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithText
 import androidx.test.core.app.ApplicationProvider
 import ch.brickinventoryapp.data.PreferencesManager
@@ -29,7 +29,6 @@ import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
-import org.robolectric.annotation.Config
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -51,11 +50,10 @@ import kotlinx.coroutines.SupervisorJob
  *       laufende Aufrufe ab …“ (gegenproben/serverwechsel-ohne-abbruch.patch)
  *   (e) saveServerUrl() vergleicht beim Token nur die Herkunft → rot „ein anderer
  *       Pfad auf demselben Host verwirft den Token“ (gegenproben/pfadwechsel-behaelt-token.patch)
- *   (f) (sec8 H8) Sichtschutz() ohne Ueberdeckungsschutz() → rot „heikle Seiten sind
+ *   (f) Sichtschutz() ohne Ueberdeckungsschutz() → rot „heikle Seiten sind
  *       vor Ueberlagerung geschuetzt“ (gegenproben/sichtschutz-ohne-ueberdeckung.patch)
  */
 @RunWith(RobolectricTestRunner::class)
-@Config(sdk = [35])
 class GeraeteSchutzTest {
 
     @get:Rule
@@ -115,7 +113,7 @@ class GeraeteSchutzTest {
     }
 
     /**
-     * Wächter für jede heikle Seite (sec8 H8): Wer Sichtschutz oder die Schrittsperre
+     * Wächter für jede heikle Seite: Wer Sichtschutz oder die Schrittsperre
      * setzt, bekommt den Schutz vor Überlagerung mit — auch vor der Bestätigung. Nur
      * der app-weite Wunsch „Vorschau verbergen“ bleibt ohne.
      */
@@ -163,7 +161,7 @@ class GeraeteSchutzTest {
 
     /**
      * Die Verdrahtung für M1 (pruef6): Die Server-Clients hören hier mit (di/ServerClient.folgtDemServer).
-     * Seit sec7 N2 ist ein anderer Pfad auf demselben Host ein anderer Server.
+     * Ein anderer Pfad auf demselben Host ein anderer Server.
      */
     @Test
     fun `ein anderer Server bricht laufende Aufrufe ab, derselbe nicht`() {
@@ -189,7 +187,7 @@ class GeraeteSchutzTest {
         assertEquals("Der TLS-Kontext wird nach dem Umschalten neu gebaut", 1, nutzerCa)
     }
 
-    /** sec7 N2: Der Token hält nur die Herkunft; den Pfad trägt die bisherige Adresse bei. */
+    /** Der Token hält nur die Herkunft; den Pfad trägt die bisherige Adresse bei. */
     @Test
     fun `ein anderer Pfad auf demselben Host verwirft den Token`() {
         val prefs = PreferencesManager(ApplicationProvider.getApplicationContext<Context>(), object : TokenVerschluesselung {

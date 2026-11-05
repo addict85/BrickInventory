@@ -1,6 +1,7 @@
 package ch.brickinventoryapp
 
 import org.junit.Test
+import java.io.File
 
 /**
  * Abstaende und Schriftgroessen kommen aus der Skala — und die Ausnahmen
@@ -55,9 +56,9 @@ class AbstandsskalaTest {
 
     /** Die Bildschirme — ui/theme selbst ist die Skala und zaehlt nicht mit. */
     private fun quellen(): List<Pair<String, String>> =
-        java.io.File(Quellen.wurzel, "ui")
+        File(Quellen.wurzel, "ui")
             .walkTopDown()
-            .filter { it.isFile && it.extension == "kt" && "theme" !in it.path.split(java.io.File.separator) }
+            .filter { it.isFile && it.extension == "kt" && "theme" !in it.path.split(File.separator) }
             .map { it.name to Quellen.ohneKommentare(it.readText()) }
             .toList()
 
@@ -113,7 +114,7 @@ class AbstandsskalaTest {
     fun `es gibt nur die Schriftskala von Material`() {
         val zweite = quellen().filter { (_, s) -> Regex("""\bSchrift\.\w+""").containsMatchIn(s) }.map { it.first }
         assert(zweite.isEmpty()) { "Zweite Schriftskala benutzt in: $zweite — nimm MaterialTheme.typography." }
-        assert(!java.io.File(Quellen.wurzel, "ui/theme/Schrift.kt").exists()) {
+        assert(!File(Quellen.wurzel, "ui/theme/Schrift.kt").exists()) {
             "ui/theme/Schrift.kt ist wieder da."
         }
     }
@@ -166,11 +167,6 @@ class AbstandsskalaTest {
         // haette die Zahl auf 55 gehoben.
         //
         // 55 -> 54 (Nachtrag 160): Genau dieser Kandidat ist zweimal gefallen.
-        // In MonitoringSections standen zwei Chip-Reihen direkt uebereinander,
-        // die eine auf 13.sp; als die zweite dazukam, hat diese Ratsche das
-        // gemeldet. Beide stehen jetzt auf Schrift.klein — ein Punkt kleiner,
-        // dafuer gleich. Die Ratsche zieht nach, sonst waere der gewonnene
-        // Platz sofort wieder frei fuer die naechste rohe Zahl.
         //
         // 51 -> 2 (27.10.): Die rohen Groessen sind auf Rollen der Material-
         // Skala umgestellt (bodyMedium, labelSmall, titleMedium …).

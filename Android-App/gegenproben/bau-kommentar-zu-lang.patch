@@ -1,0 +1,22 @@
+Gegenprobe: Sechs Zeilen Prosa in gradle.properties
+Modul: app
+Test: ch.brickinventoryapp.QuelltextRatscheTest
+Rot: kein Kommentar in Build-Dateien
+
+diff --git a/Android-App/gradle.properties b/Android-App/gradle.properties
+index b242758..6528d45 100644
+--- a/Android-App/gradle.properties
++++ b/Android-App/gradle.properties
+@@ -12,6 +12,12 @@ kotlin.code.style=official
+ # Kotlin daemon heap — separate from Gradle daemon, needs its own -Xmx
+ kotlin.daemon.jvm.options=-Xmx3g -XX:MaxMetaspaceSize=768m
+ 
++# eins
++# zwei
++# drei
++# vier
++# fünf
++# sechs
+ ksp.incremental=true
+ 
+ # Jede Gradle-Veraltung einzeln benennen statt einer Sammelzeile: Nur so kann

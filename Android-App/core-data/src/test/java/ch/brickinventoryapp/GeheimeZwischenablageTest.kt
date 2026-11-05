@@ -13,7 +13,6 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
-import org.robolectric.annotation.Config
 import org.robolectric.shadows.ShadowLooper
 import java.util.concurrent.TimeUnit
 
@@ -29,7 +28,6 @@ import java.util.concurrent.TimeUnit
  *       (gegenproben/zwischenablage-leert-nicht.patch)
  */
 @RunWith(RobolectricTestRunner::class)
-@Config(sdk = [35])
 class GeheimeZwischenablageTest {
 
     @Test

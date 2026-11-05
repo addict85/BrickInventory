@@ -1,0 +1,17 @@
+Gegenprobe: Ein geänderter Kauf meldet nur Sets statt der Zusammenfassung des Sets
+Modul: core-zustand
+Test: ch.brickinventoryapp.KaeufeViewModelTest
+Rot: meldet seine Zusammenfassung
+
+diff --git a/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/ui/viewmodel/KaeufeViewModel.kt b/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/ui/viewmodel/KaeufeViewModel.kt
+--- a/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/ui/viewmodel/KaeufeViewModel.kt
++++ b/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/ui/viewmodel/KaeufeViewModel.kt
+@@ -126,7 +126,7 @@
+      */
+     private fun setGeaendert(agg: SetAggregate?) {
+         if (agg != null && agg.setNumber.isNotBlank()) {
+-            dienste.bestand.melde(Aenderung.SetZusammenfassung(agg))
++            dienste.bestand.melde(Aenderung.Sets)
+         } else {
+             neuLaden()
+             dienste.bestand.melde(Aenderung.Sets)

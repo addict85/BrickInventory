@@ -91,7 +91,7 @@ fun LoginScreen(
     // Sichtschutz für ein aufgedecktes Passwort bringt das PasswortFeld selbst mit.
     Ueberdeckungsschutz()
 
-    // Passwort, Code und Adresse lernt die Tastatur nicht mit (sec8 H4).
+    // Passwort, Code und Adresse lernt die Tastatur nicht mit.
     TastaturOhneLernen {
     val kopf: @Composable ColumnScope.() -> Unit = {
             // Derselbe Kopf wie beim Einrichten, das direkt davor kommt.

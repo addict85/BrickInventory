@@ -4,7 +4,7 @@ import android.view.WindowManager
 import android.view.inputmethod.EditorInfo
 import androidx.activity.ComponentActivity
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.ui.test.junit4.createAndroidComposeRule
+import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
@@ -19,7 +19,8 @@ import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
-import org.robolectric.annotation.Config
+import androidx.compose.ui.ExperimentalComposeUiApi
+import androidx.compose.ui.platform.InterceptPlatformTextInput
 
 /**
  * Die Anmeldung schützt vor überlagerten Fenstern (Tapjacking auf Anmelden und
@@ -32,11 +33,10 @@ import org.robolectric.annotation.Config
  *       vor Ueberlagerung geschuetzt …“ (gegenproben/anmeldung-ohne-ueberdeckungsschutz.patch)
  *   (b) Sichtschutz() für das sichtbare Passwort entfernt → rot „ein sichtbares
  *       Passwort …“ (gegenproben/passwort-ohne-sichtschutz.patch)
- *   (c) (sec8 H4) TastaturOhneLernen setzt die Flagge nicht mehr → rot „Passwort
+ *   (c) TastaturOhneLernen setzt die Flagge nicht mehr → rot „Passwort
  *       und Code lernt die Tastatur nicht mit“ (gegenproben/tastatur-lernt-mit.patch)
  */
 @RunWith(RobolectricTestRunner::class)
-@Config(sdk = [35])
 class AnmeldeSchutzTest {
 
     @get:Rule
@@ -64,12 +64,12 @@ class AnmeldeSchutzTest {
 
     // Aussen ein zweiter Abfänger: Er sieht die Anfrage so, wie die Anmeldung sie an die
     // Tastatur weitergibt, und fragt nach dem EditorInfo, das daraus entstünde.
-    @OptIn(androidx.compose.ui.ExperimentalComposeUiApi::class)
+    @OptIn(ExperimentalComposeUiApi::class)
     @Test
     fun `Passwort und Code lernt die Tastatur nicht mit`() {
         var gesehen: EditorInfo? = null
         compose.setContent {
-            androidx.compose.ui.platform.InterceptPlatformTextInput(interceptor = { anfrage, _ ->
+            InterceptPlatformTextInput(interceptor = { anfrage, _ ->
                 gesehen = EditorInfo().also { anfrage.createInputConnection(it) }
                 kotlinx.coroutines.awaitCancellation()
             }) {

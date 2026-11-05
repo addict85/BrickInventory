@@ -1,6 +1,7 @@
 package ch.brickinventoryapp
 
 import org.junit.Test
+import java.io.File
 
 /**
  * Der Barcode-Scanner der TEILELISTE zeigt keine Erfassungsfelder.
@@ -26,14 +27,10 @@ class PartsListScannerTest {
 
     // Der Barcode-Dialog steht seit seiner Auslagerung in
     // ui/dialogs/BarcodeResultDialog.kt; AppNavigation.kt ruft ihn nur noch auf.
-    // Beide Dateien werden aneinandergehaengt gelesen. Die Reihenfolge-Pruefungen
-    // unten bleiben gueltig: Die gesuchten Marken stehen ausschliesslich in der
-    // Dialogdatei, ihre Reihenfolge zueinander aendert sich durch das
-    // Voranstellen von AppNavigation.kt nicht.
     private val src: String by lazy {
         val w = ""
-        java.io.File(Quellen.wurzel, w + "AppNavigation.kt").readText() + "\n" +
-            java.io.File(Quellen.wurzel, w + "ui/dialogs/BarcodeResultDialog.kt").readText()
+        File(Quellen.wurzel, w + "AppNavigation.kt").readText() + "\n" +
+            File(Quellen.wurzel, w + "ui/dialogs/BarcodeResultDialog.kt").readText()
     }
 
     /** Kommentare ausblenden — die Erklärtexte nennen die geprüften Muster selbst. */

@@ -30,7 +30,7 @@ import java.io.InputStream
  * oeffne() erneut, der Download läuft weiter und beginnt nicht von vorn. Mit
  * StandardTestDispatcher und advanceUntilIdle, ohne Netz und ohne Warten.
  *
- * Gegenproben (05.11.2026, gemessen mit kotlinc lokal):
+ * Gegenproben:
  *   A  in oeffne() die Abfrage `pdfUrl == adresse` entfernt
  *      (gegenproben/pdf-drehung-laedt-neu.patch) → rot „eine Drehung laedt nicht neu“
  *   B  den Fortschritt nicht weitergereicht (`{ }` statt `{ _state.value = it }`) →

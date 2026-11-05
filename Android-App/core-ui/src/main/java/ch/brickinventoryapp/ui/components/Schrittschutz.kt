@@ -93,7 +93,7 @@ class GeraeteSchrittschutz(
 }
 
 /**
- * Ein Schritt, der ohne Displaysperre wartet (sec10 H3): Wer ein Gerät ohne Sperre
+ * Ein Schritt, der ohne Displaysperre wartet: Wer ein Gerät ohne Sperre
  * benutzt, soll wissen, dass PIN, Codes und Verwaltung dort jedem offenstehen, der
  * das Telefon kurz hat. Ein Ja gilt wie eine Bestätigung bis zur Frist.
  */
@@ -144,7 +144,7 @@ fun OhneSperreWarnung(ohneSperre: OhneSperre) {
  */
 @Composable
 fun Schrittsperre(grund: String, inhalt: @Composable () -> Unit) {
-    // Eine Seite hinter der Gerätesperre ist heikel: kein untergeschobener Tipp (sec8 H8).
+    // Eine Seite hinter der Gerätesperre ist heikel: kein untergeschobener Tipp.
     Ueberdeckungsschutz()
     val schutz = LocalSchrittschutz.current
     var entsperrt by remember { mutableStateOf(false) }

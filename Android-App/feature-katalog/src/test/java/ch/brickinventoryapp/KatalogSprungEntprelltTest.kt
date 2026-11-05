@@ -26,9 +26,6 @@ import org.junit.Test
  * Ursache festnageln:
  *   • Der Bereich ist in dieser Zeit GANZ LEER — es fehlen die Seitendaten,
  *     nicht die Bilder.
- *   • Beim ZWEITEN Besuch desselben Jahres dauert es genauso lange — also
- *     kein Cache-Problem.
- *   • In der Webapp geht dasselbe sofort — also kein Server-Problem.
  *
  * ── Was gemessen wurde, bevor etwas geaendert wurde ─────────────────────────
  * Zuerst war die Datenbank verdaechtig — ein `ORDER BY year DESC … LIMIT 60
@@ -64,7 +61,7 @@ import org.junit.Test
  * hier mit StandardTestDispatcher: ein Zug mit hundert Fenstern, virtuelle Zeit,
  * gezaehlte Abrufe. Dass die Leiste selbst nicht laedt, bleibt am Quelltext.
  *
- * Gegenproben (05.11.2026, gemessen mit kotlinc lokal):
+ * Gegenproben:
  *   A  `collectLatest` durch `collect` ersetzt
  *      (gegenproben/sichtfenster-ohne-entprellung.patch) → rot „der
  *      Sichtfenster-Lader wartet …“ (jedes Fenster des Zuges wird geladen)

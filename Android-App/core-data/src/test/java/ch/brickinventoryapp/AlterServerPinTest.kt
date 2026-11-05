@@ -24,13 +24,13 @@ import javax.net.ssl.X509ExtendedTrustManager
 
 /**
  * Die nachgeholte Entwertung nach einem Serverwechsel prüft den alten Server mit
- * dessen Pin (sec8 N2), über echtes TLS: Der alte Server hat eine eigene CA, wie
+ * dessen Pin, über echtes TLS: Der alte Server hat eine eigene CA, wie
  * der typische Heimserver; der eingerichtete ist inzwischen ein anderer. Die
  * Zertifikate sind dieselben festen Testdaten wie in ZertifikatPinTest.
  *
- * Gegenproben (03.11.2026, gemessen mit kotlinc lokal):
+ * Gegenproben:
  *   A  auftragsVertrauen() mit `eigenerServer = { null }` (der alte Server gilt als
- *      fremder Host, nur System-CAs — Stand vor sec8 N2) → rot „der alte Server mit
+ *      fremder Host, nur System-CAs — der ältere Stand) → rot „der alte Server mit
  *      eigener CA wird mit seinem Pin erreicht“ (SPAETER statt ENTWERTET);
  *      gegenproben/entwertung-ohne-alten-pin.patch
  *   B  im Entwerter die Ablehnung weder gemerkt (MerktAblehnung) noch in der

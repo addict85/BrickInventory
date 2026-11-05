@@ -282,7 +282,7 @@ object NetzModule {
         Entwerter(buildEntwertungsBasis(prefs, frage), NetworkPolicy.entwicklung,
             vertrauenFuer = auftragsVertrauenFabrik(prefs))
 
-    /** Für die QR-Anmeldung: Ein `fp` auf eine System-Wurzel gilt ohne Abtippen (sec10 N2). */
+    /** Für die QR-Anmeldung: Ein `fp` auf eine System-Wurzel gilt ohne Abtippen. */
     @Provides
     @Singleton
     fun provideSystemWurzeln(): SystemWurzeln = systemWurzeln()

@@ -6,6 +6,7 @@ import ch.brickinventoryapp.ui.model.alsAnsicht
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Test
+import java.io.File
 
 /**
  * Waehrend der Server startet, zeigt die App den Fortschritt — keinen Fehler.
@@ -25,15 +26,15 @@ import org.junit.Test
  * Die Abfrage läuft gegen einen Testserver; die Auswertung im AppViewModel führt
  * AppViewModelTest aus, die Anzeige liest Quelltext (Gerät und Compose fehlen hier).
  *
- * Gegenprobe (29.10.2026, gemessen): in VerwaltungApi `@GET("api/v1/startup-status")`
+ * Gegenprobe: in VerwaltungApi `@GET("api/v1/startup-status")`
  * auf "…/startstatus" → rot „die App fragt den Startzustand ab“.
- * Gegenprobe (01.11.2026, misst die CI): gegenproben/startstatus-ganzzahl.patch
+ * Gegenprobe: gegenproben/startstatus-ganzzahl.patch
  * macht progress wieder zu Int → rot „ein Fortschritt mit Anteil wird gelesen“.
  */
 class ServerStartTest {
 
     private fun read(rel: String) =
-        java.io.File(Quellen.wurzel, "$rel").readText()
+        File(Quellen.wurzel, "$rel").readText()
     private fun code(s: String) = s.lines()
         .joinToString("\n") { if (it.trim().startsWith("//") || it.trim().startsWith("*")) "" else it }
 

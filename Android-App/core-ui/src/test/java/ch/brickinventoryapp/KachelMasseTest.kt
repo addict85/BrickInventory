@@ -1,6 +1,7 @@
 package ch.brickinventoryapp
 
 import org.junit.Test
+import org.junit.Assert
 
 /**
  * Die Masse einer Bestandskachel stehen an EINER Stelle.
@@ -108,8 +109,8 @@ class KachelMasseTest {
                 if (treffer >= 0) verstoesse += "${datei.name}:${nr + treffer + 1}"
             }
         }
-        org.junit.Assert.assertTrue("Keine Karte gefunden — Muster veraltet?", karten >= 10)
-        org.junit.Assert.assertTrue("Feste Kartenhöhe statt heightIn(min = …): $verstoesse", verstoesse.isEmpty())
+        Assert.assertTrue("Keine Karte gefunden — Muster veraltet?", karten >= 10)
+        Assert.assertTrue("Feste Kartenhöhe statt heightIn(min = …): $verstoesse", verstoesse.isEmpty())
     }
 
     /**
@@ -135,8 +136,8 @@ class KachelMasseTest {
                 if (treffer >= 0) verstoesse += "${datei.name}:${nr + treffer + 1}"
             }
         }
-        org.junit.Assert.assertTrue("Keine Knöpfe gefunden — Muster veraltet?", knoepfe >= 20)
-        org.junit.Assert.assertTrue("Feste Höhe an Knopf oder Chip statt heightIn(min = …): $verstoesse", verstoesse.isEmpty())
+        Assert.assertTrue("Keine Knöpfe gefunden — Muster veraltet?", knoepfe >= 20)
+        Assert.assertTrue("Feste Höhe an Knopf oder Chip statt heightIn(min = …): $verstoesse", verstoesse.isEmpty())
     }
 
     @Test

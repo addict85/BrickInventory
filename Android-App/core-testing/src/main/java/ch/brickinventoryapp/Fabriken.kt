@@ -37,7 +37,8 @@ fun FigurenRepository(api: FigurenApi, cache: ResponseCache) = FigurenRepository
 fun GutscheineRepository(api: GutscheineApi, cache: ResponseCache) =
     GutscheineRepository(api, cache, Offlineablage.fluechtig())
 
-fun KontoRepository(api: KontoApi, cache: ResponseCache) = KontoRepository(api, cache, Dispatchers.IO)
+fun KontoRepository(api: KontoApi, cache: ResponseCache, io: CoroutineDispatcher = Dispatchers.IO) =
+    KontoRepository(api, cache, io)
 
 @Suppress("LongParameterList")
 fun BrickRepository(

@@ -15,14 +15,14 @@ import org.junit.Test
  * selbst braucht ein Gerät; die Struktur-Prüfung unten hält fest, dass beide
  * Bildschirme ihn anfordern.
  *
- * Gegenproben (29.10.2026, gemessen):
+ * Gegenproben:
  *   A  zeigtGutscheine() prüft "/vouchers/export" statt "/api/v1/vouchers/" → rot
  *      „ein einzelner Gutschein und der Export brauchen Sichtschutz“
  *   B  Sichtschutz() aus GutscheineUnterseite entfernt → rot „Gutscheinseite und
  *      Gutschein-PDF fordern den Sichtschutz an“
- *   C  (01.11.2026) Sichtschutz() aus dem Zweig `zfZustand.geheimnis != null` in
+ *   C  Sichtschutz() aus dem Zweig `zfZustand.geheimnis != null` in
  *      EinstellungenKonto entfernt → rot „Schlüssel und Codes des zweiten Faktors …“
- *   D  (03.11.2026, kotlinc lokal) Ueberdeckungsschutz() aus GutscheineUnterseite
+ *   D  Ueberdeckungsschutz() aus GutscheineUnterseite
  *      entfernt → rot „Gutscheinseite und Gutschein-PDF fordern den Sichtschutz an“
  */
 class GutscheinSichtschutzTest {

@@ -1,6 +1,7 @@
 package ch.brickinventoryapp
 
 import org.junit.Test
+import java.io.File
 
 /**
  * Aufgeteilte Dateien erben die Wildcard-Importe ihrer Quelldatei.
@@ -24,7 +25,7 @@ import org.junit.Test
 class SplitFileImportsTest {
 
     private fun read(rel: String): String {
-        val f = java.io.File(Quellen.wurzel, "$rel")
+        val f = File(Quellen.wurzel, "$rel")
         assert(f.exists()) { "Datei nicht gefunden: $rel" }
         return f.readText()
     }
@@ -390,7 +391,7 @@ class SplitFileImportsTest {
     }
 
     /** Paket.Name jeder Deklaration auf oberster Ebene. */
-    private fun deklarierteNamen(dateien: List<java.io.File>): Set<String> {
+    private fun deklarierteNamen(dateien: List<File>): Set<String> {
         val deklariert = mutableSetOf<String>()
         for (f in dateien) {
             val src = f.readText()

@@ -19,7 +19,7 @@ import java.util.Collections
  * Was die App ins Logcat schreibt: im Release nichts, im Debug-Build weder Token
  * noch Rümpfe, und ausser der Hülle util/Protokoll.kt schreibt niemand.
  *
- * Gegenproben (01.11.2026, gemessen):
+ * Gegenproben:
  *   A  in Protokoll.warnung() `if (aktiv)` entfernt → rot „im Release-Build
  *      schreibt die Hülle nichts“
  *   B  netzMitschnitt() mit Level.BODY → rot „der Netzmitschnitt nennt weder
