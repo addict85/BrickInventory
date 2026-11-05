@@ -1,5 +1,10 @@
 package ch.brickinventoryapp
 
+import android.content.Context
+import android.net.Uri
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.ui.ExperimentalComposeUiApi
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.width
 import androidx.compose.material3.MaterialTheme
@@ -121,7 +126,7 @@ class BarrierefreiheitBefundeTest {
     val compose = createComposeRule()
 
     private val vorher = Locale.getDefault()
-    private val ctx: android.content.Context = ApplicationProvider.getApplicationContext()
+    private val ctx: Context = ApplicationProvider.getApplicationContext()
     private val bilder = Beispielbilder.loader(ctx)
 
     init { Locale.setDefault(Locale.forLanguageTag("de-CH")) }
@@ -209,7 +214,7 @@ class BarrierefreiheitBefundeTest {
                 SetsRepository(welt.t.api, welt.t.cache),
                 TeileRepository(welt.t.api, welt.t.cache),
                 object : DateiLeser {
-                    override suspend fun lies(uri: android.net.Uri): Pair<String?, ByteArray>? = null
+                    override suspend fun lies(uri: Uri): Pair<String?, ByteArray>? = null
                 }))
             zeige {
                 Column {
@@ -316,7 +321,7 @@ class BarrierefreiheitBefundeTest {
         compose.onNodeWithText("200 %").fetchSemanticsNode("Doppeltipp zoomt nicht")
     }
 
-    @OptIn(androidx.compose.ui.ExperimentalComposeUiApi::class)
+    @OptIn(ExperimentalComposeUiApi::class)
     @Test
     fun `M9 Tastaturfokus zeigt einen Rahmen in der Hauptfarbe`() {
         var hauptfarbe = 0
@@ -324,7 +329,7 @@ class BarrierefreiheitBefundeTest {
             BrickInventoryManagerTheme(theme = "classic") {
                 hauptfarbe = MaterialTheme.colorScheme.primary.toArgb()
                 val modus = LocalInputModeManager.current
-                androidx.compose.runtime.LaunchedEffect(Unit) { modus.requestInputMode(InputMode.Keyboard) }
+                LaunchedEffect(Unit) { modus.requestInputMode(InputMode.Keyboard) }
                 Surface(color = MaterialTheme.colorScheme.background) {
                     AppKarte(Modifier.width(200.dp), onClick = {}) { Text("Millennium Falcon", Modifier.width(200.dp)) }
                 }
@@ -436,7 +441,7 @@ class BarrierefreiheitBefundeTest {
 
     @Test
     fun `N4 Katalognamen sind als Englisch ausgezeichnet`() {
-        var name: androidx.compose.ui.text.AnnotatedString? = null
+        var name: AnnotatedString? = null
         zeige { name = katalogName("Brick 2 x 4") }
         val sprachen = name?.spanStyles?.mapNotNull { it.item.localeList?.firstOrNull()?.language }.orEmpty()
         assertEquals(listOf("en"), sprachen)

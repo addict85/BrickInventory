@@ -1,5 +1,9 @@
 package ch.brickinventoryapp
 
+import android.content.Context
+import androidx.compose.foundation.layout.Box
+import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.test.ComposeTimeoutException
 import android.os.Looper
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
@@ -87,7 +91,7 @@ class AblaufBefundeTest {
     val compose = createComposeRule()
 
     private val vorher = Locale.getDefault()
-    private val ctx: android.content.Context = ApplicationProvider.getApplicationContext()
+    private val ctx: Context = ApplicationProvider.getApplicationContext()
     private val bilder = Beispielbilder.loader(ctx)
     private val welt = Beispiele.Welt(KontextTexte())
 
@@ -112,7 +116,7 @@ class AblaufBefundeTest {
     private fun warte(was: String, bereit: () -> Boolean) {
         try {
             compose.waitUntil(10_000) { shadowOf(Looper.getMainLooper()).idle(); bereit() }
-        } catch (e: androidx.compose.ui.test.ComposeTimeoutException) {
+        } catch (e: ComposeTimeoutException) {
             throw AssertionError("$was: nach 10 s nicht da", e)
         }
         compose.waitForIdle()
@@ -126,7 +130,7 @@ class AblaufBefundeTest {
             val meldung = remember { SnackbarHostState() }
             Scaffold(snackbarHost = { SnackbarHost(meldung) }) { innen ->
                 MerkpostenRueckgaengigRoute(vm, meldung)
-                androidx.compose.foundation.layout.Box(Modifier.padding(innen)) {
+                Box(Modifier.padding(innen)) {
                     MerklisteRoute(vm = vm, imageLoader = bilder, nebeneinander = true, onScan = {}, onOeffnenEinzeln = { _, _ -> })
                 }
             }
@@ -209,7 +213,7 @@ class AblaufBefundeTest {
         compose.onNode(hasSetTextAction() and hasText(ctx.getString(R.string.barcode_purchase_price))).performTextInput("650")
         drehen.emulateSavedInstanceStateRestore()
         compose.onNode(anzahl).fetchSemanticsNode().let { n ->
-            val text = n.config.getOrNull(androidx.compose.ui.semantics.SemanticsProperties.EditableText)?.text
+            val text = n.config.getOrNull(SemanticsProperties.EditableText)?.text
             assertEquals("Anzahl nach der Drehung", "2", text)
         }
         compose.onNodeWithText(ctx.getString(R.string.barcode_add)).performClick()

@@ -1,5 +1,8 @@
 package ch.brickinventoryapp
 
+import androidx.compose.foundation.layout.Box
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.navigation.NavDestination.Companion.hasRoute
 import android.os.Looper
 import androidx.compose.material.icons.Icons
@@ -1080,7 +1083,7 @@ class BildschirmFotoVariantenTest {
         }
         // Die Update-Karte steht weiter unten: Ohne Scrollen fehlte der Fortschritt im Bild.
         update.fortschritt?.let { p ->
-            compose.onNodeWithText(ApplicationProvider.getApplicationContext<android.content.Context>()
+            compose.onNodeWithText(ApplicationProvider.getApplicationContext<Context>()
                 .getString(R.string.update_downloading, p)).performScrollTo()
         }
         anhalten()
@@ -1109,8 +1112,8 @@ class BildschirmFotoVariantenTest {
     @Test
     fun scannerErlaubnis() {
         zeige("scanner-erlaubnis", warten = false) {
-            androidx.compose.foundation.layout.Box(androidx.compose.ui.Modifier.fillMaxSize()
-                .background(androidx.compose.ui.graphics.Color.Black)) { KameraErlaubnisHinweis(onErlauben = {}) }
+            Box(Modifier.fillMaxSize()
+                .background(Color.Black)) { KameraErlaubnisHinweis(onErlauben = {}) }
         }
         anhalten()
         foto("scanner-erlaubnis", dunkel = true)
@@ -1208,12 +1211,12 @@ class BildschirmFotoVariantenTest {
         welt.pfade.antworten["/api/v1/vouchers"] = """{"success":true,"vouchers":[]}"""
         val vm = welt.t.merke(GutscheinViewModel(GutscheineRepository(welt.t.api, welt.t.cache), KontextTexte(),
             object : DateiLeser {
-                override suspend fun lies(uri: android.net.Uri): Pair<String?, ByteArray>? = null
+                override suspend fun lies(uri: Uri): Pair<String?, ByteArray>? = null
             }, welt.t.meldungen))
         zeige("gutschein-formular") {
             GutscheineRoute(vm, remember { SnackbarHostState() }, onZurueck = {})
         }
-        val ctx = ApplicationProvider.getApplicationContext<android.content.Context>()
+        val ctx = ApplicationProvider.getApplicationContext<Context>()
         compose.onNode(androidx.compose.ui.test.hasText(ctx.getString(R.string.vouchers_add)) and
             androidx.compose.ui.test.hasClickAction()).performClick()
         compose.waitForIdle()
@@ -1233,7 +1236,7 @@ class BildschirmFotoVariantenTest {
         zeige("haushalt-code", bereit = { vm.householdState.value.status != null }, zustand = { vm.householdState.value }) {
             HaushaltRoute(vm, remember { SnackbarHostState() }, onZurueck = {})
         }
-        val ctx = ApplicationProvider.getApplicationContext<android.content.Context>()
+        val ctx = ApplicationProvider.getApplicationContext<Context>()
         compose.onNodeWithText(ctx.getString(R.string.household_invite_create)).performScrollTo().performClick()
         bereitstellen("haushalt-code (Code)", { vm.householdState.value.inviteCode != null }, { vm.householdState.value })
         compose.onNodeWithText(ctx.getString(R.string.household_invite_teilen)).performScrollTo()
@@ -1243,7 +1246,7 @@ class BildschirmFotoVariantenTest {
 
     private fun csvLaeuftFoto(dunkel: Boolean, geraet: String) {
         zeige("csv-import-laeuft", dunkel = dunkel, geraet = geraet, warten = false) {
-            androidx.compose.foundation.layout.Column {
+            Column {
                 CsvImportBanner(done = 37, total = 120, current = "75192-1 Millennium Falcon",
                     ok = 35, warn = 1, err = 1, running = true, onAbbrechen = {})
             }

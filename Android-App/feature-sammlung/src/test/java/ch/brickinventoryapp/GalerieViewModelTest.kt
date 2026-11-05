@@ -46,7 +46,7 @@ import org.junit.Test
  *      rot „vorgemerktes Loeschen …“ und „Rueckgaengig …“ (DELETE schon gesendet)
  *   I  in rueckgaengig() loadSets() entfernt → rot
  *      „Rueckgaengig holt das Set zurueck …“
- *   J  (05.11.2026, kotlinc lokal) in galleryState die Kennzahlen nicht angepasst
+ *   J in galleryState die Kennzahlen nicht angepasst
  *      (gegenproben/galerie-kennzahlen-beim-loeschen.patch) → rot „die Kennzahlen
  *      zaehlen das vorgemerkte Set nicht …“ (2 statt 1 Set)
  */
