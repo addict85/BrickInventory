@@ -135,8 +135,8 @@ test('fuenf Listen nennen dieselben Designs', () => {
 
   const boot = liste(fs.readFileSync(path.join(PUB, 'js', '00-theme-boot.js'), 'utf8'),
     /var ALLOWED = \[([^\]]*)\]/, 'js/00-theme-boot.js');
-  const server = liste(fs.readFileSync(path.join(__dirname, '..', 'src/einstellungen/settings.ts'), 'utf8'),
-    /const DESIGNS: readonly string\[\] = \[([^\]]*)\]/, 'src/einstellungen/settings.ts');
+  const server = liste(fs.readFileSync(path.join(__dirname, '..', 'src/infra/vertrag/globaleRegeln.ts'), 'utf8'),
+    /const DESIGNS: readonly string\[\] = \[([^\]]*)\]/, 'src/infra/vertrag/globaleRegeln.ts');
   const app = liste(fs.readFileSync(path.join(__dirname, '..', '..', 'Android-App', 'core-data', 'src', 'main', 'java', 'ch', 'brickinventoryapp', 'data', 'PreferencesManager.kt'), 'utf8'),
     /ERLAUBTE_DESIGNS = setOf\(([^)]*)\)/, 'PreferencesManager.kt');
 
@@ -180,9 +180,12 @@ test('der Server setzt data-theme selbst — kein Sprung beim ersten Aufruf', ()
   // Übersetzungen die userId mit, um die passende Sprachdatei einzuhängen
   // (siehe src/konto/indexHtml.ts). Geprüft wird weiterhin, DASS der Catch-all das
   // gerenderte HTML ausliefert — nicht, mit welchen Argumenten.
-  assert.match(catchAll, /renderIndexHtml\([^)]*\)/,
+  // Der Catch-all ruft sendeStartseite() (src/konto/indexHtml.ts): rendern, im Fehlerfall die Datei.
+  assert.match(catchAll, /sendeStartseite\(/, 'Der SPA-Catch-all muss das gerenderte HTML ausliefern');
+  const start = render.slice(render.indexOf('function sendeStartseite('));
+  assert.match(start.slice(0, 600), /renderIndexHtml\([^)]*\)/,
     'Der SPA-Catch-all muss das gerenderte HTML ausliefern');
-  assert.match(catchAll, /sendFile/,
+  assert.match(start.slice(0, 600), /sendFile/,
     'Bei einem Renderfehler muss die Datei unverändert ausgeliefert werden');
 
   const settings = fs.readFileSync(path.join(ROOT, 'routes/api_v1/settings.ts'), 'utf8');

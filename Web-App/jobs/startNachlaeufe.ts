@@ -6,6 +6,7 @@ import { verschluesseleGutscheinAltbestand } from '../src/gutscheine/gutscheinDa
 import * as catalogSync from '../src/katalog/katalogAbgleich';
 import * as purchasePriceBackfill from './purchasePriceBackfill';
 import type { Nutzlast } from '../src/auftraege/nutzlasten';
+import { pruefeAbbruch, type AuftragsLauf } from '../src/auftraege/auftraege';
 
 /** Geheimnisse aus der Zeit vor der Verschlüsselung (src/infra/geheimnis.ts). */
 async function geheimnisseVerschluesseln(): Promise<void> {
@@ -24,7 +25,8 @@ const NACHLAEUFE = {
 } as const satisfies Record<Nachlauf, { nachSekunden: number; lauf: () => Promise<unknown> }>;
 type Nachlauf = Nutzlast<'nachlauf'>['schritt'];
 
-async function nachlauf(n: Nutzlast<'nachlauf'>): Promise<void> {
+async function nachlauf(n: Nutzlast<'nachlauf'>, lauf?: AuftragsLauf): Promise<void> {
+  pruefeAbbruch(lauf);
   await NACHLAEUFE[n.schritt].lauf();
 }
 

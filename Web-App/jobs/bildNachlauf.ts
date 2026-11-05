@@ -5,28 +5,23 @@ import { generateThumb } from '../src/katalog/bilder/thumbs';
 import { setzeTeilBildLokal, setzeFigurBildLokal } from '../src/katalog/katalogPflege';
 import { KEINE_FARBE } from '../src/infra/validate';
 import * as enrich from '../src/katalog/teileAnreicherung';
-import * as monitor from '../src/auftraege/jobMonitor';
 import { AuftragUnterbrochen, type AuftragsKontext } from './auftragsWorker';
 
 async function bildNachlauf(k: AuftragsKontext): Promise<void> {
   const { sets, teile: manualParts, figuren: figsToFetch } = await bilderFuerNachlauf();
   if (!sets.length && !manualParts.length && !figsToFetch.length) {
-    await monitor.update('imgDl', { status: 'idle', sub: 'Alle Bilder gecacht', label: '📥 Bild-Download (CDN)' }).catch(logAndContinue('bild-nachlauf:Download'));
+    await k.fortschritt({ erledigt: 0, gesamt: 0, text: 'Alle Bilder gecacht' });
     return;
   }
   console.log(`[img-dl-bg] fehlende Bilder: ${sets.length} Set(s), ${manualParts.length} Teil(e), ${figsToFetch.length} Minifig(s)`);
-  await monitor.update('imgDl', { status: 'running', progress: 0,
-    total: sets.length + manualParts.length + figsToFetch.length,
-    sub: `${sets.length} Set(s), ${manualParts.length} Teil(e), ${figsToFetch.length} Minifig(s)`,
-    label: '📥 Bild-Download (CDN)' }).catch(logAndContinue('bild-nachlauf:Download'));
   let done = 0;
   const total = sets.length + manualParts.length + figsToFetch.length;
+  await k.fortschritt({ erledigt: 0, gesamt: total,
+    text: `${sets.length} Set(s), ${manualParts.length} Teil(e), ${figsToFetch.length} Minifig(s)` });
   const tick = async () => {
     done++;
     if (done % 10 === 0 || done === total) {
-      await monitor.update('imgDl', { status: 'running', progress: done, total,
-        sub: `${done} / ${total} geladen`, label: '📥 Bild-Download (CDN)' }).catch(logAndContinue('bild-nachlauf:Download'));
-      await k.fortschritt({ erledigt: done, gesamt: total });
+      await k.fortschritt({ erledigt: done, gesamt: total, text: `${done} / ${total} geladen` });
     }
     if (k.beendet) throw new AuftragUnterbrochen();
   };
@@ -57,7 +52,7 @@ async function bildNachlauf(k: AuftragsKontext): Promise<void> {
     }
     await tick();
   }
-  await monitor.update('imgDl', { status: 'idle', sub: 'Alle Bilder gecacht', label: '📥 Bild-Download (CDN)' }).catch(logAndContinue('bild-nachlauf:Download'));
+  await k.fortschritt({ erledigt: total, gesamt: total, text: 'Alle Bilder gecacht' });
 }
 
 export { bildNachlauf };

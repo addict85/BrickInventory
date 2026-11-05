@@ -1,4 +1,3 @@
-'use strict';
 /** Füllt set_parts_catalog aus der Rebrickable-API, damit die Teileliste eines
  * Sets Namen und Bilder hat. Bilder werden im Hintergrund geladen; bis dahin
  * gilt die CDN-Adresse. */
@@ -8,7 +7,7 @@ import { neuestesInventar } from './rbInventar';
 import { mitVersion } from '../infra/setNummer';
 import { merkeBlNummer } from './blZuordnung';
 import { merkeTeil, merkeTeilFarbe, merkeSetTeil, setzeTeilBildLokal, merkeFiguren, merkeSetFiguren, setzeFigurBildLokal } from './katalogPflege';
-import { getRbKey, downloadFile, parseThrottleWait as ptw } from './quellen';
+import { getRbKey, downloadFile, parseThrottleWait as ptw, rebrickableRoh, BILD_KOPFZEILEN } from './quellen';
 
 /** Ohne Typparameter leitet TypeScript bei `new Promise` `unknown` ab. */
 type JobHttpResult = { status: number; body: string };
@@ -16,23 +15,17 @@ type JobHttpResult = { status: number; body: string };
 // Teile- und Figurenbilder liegen in getrennten Ordnern; downloadImage()
 // bekommt deshalb die Art mit.
 import { bildEndung, dateiTeil, zielImOrdner, ladeBild } from './bilder/bildDatei';
-import { ERLAUBTE_BILD_HOSTS, ERLAUBTE_API_HOSTS, pfadSegment, nummernListe } from '../infra/fremdeAdressen';
+import { ERLAUBTE_BILD_HOSTS, pfadSegment, nummernListe } from '../infra/fremdeAdressen';
 import { setzeZustand } from '../auftraege/laufzustand';
 import * as repo from './repository/teileAnreicherung';
-import { holeHttps } from '../infra/abruf';
 import fs from 'fs';
 import path from 'path';
+import { pruefeAbbruch, type AuftragsLauf } from '../auftraege/auftraege';
 import * as monitor from '../auftraege/jobMonitor';
 import { PART_IMAGES_DIR, MINIFIG_IMAGES_DIR, SET_IMAGES_DIR } from '../infra/appPaths';
 import { generateThumb } from './bilder/thumbs';
 import { KEINE_FARBE } from '../infra/validate';
 
-/** Ohne Browser-Kennung und Referer weist das Rebrickable-CDN Bildabrufe ab. */
-const BILD_KOPFZEILEN = {
-  'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-  'Referer':    'https://rebrickable.com/',
-  'Accept':     'image/avif,image/webp,image/apng,image/*,*/*;q=0.8',
-};
 
 
 async function apiGet(url: string, rbKey: string) {
@@ -40,9 +33,7 @@ async function apiGet(url: string, rbKey: string) {
   while (true) {
     if (!await consumeRebrickableDaily()) return null;
     await rebrickableLimiter.waitForSlot();
-    const result: JobHttpResult = await holeHttps(url, { hosts: ERLAUBTE_API_HOSTS, maxBytes: 32 * 1024 * 1024, zeitlimitMs: 30_000,
-      kopfzeilen: { Authorization: `key ${rbKey}`, 'User-Agent': 'BrickInventory/1.0' } })
-      .then(r => ({ status: r.status, body: r.koerper.toString('utf8') }), () => ({ status: 0, body: '' }));
+    const result: JobHttpResult = await rebrickableRoh(url, rbKey);
     if (result.status === 429) {
       const wait = ptw(result.body);
       rebrickableLimiter.throttle(wait);
@@ -111,19 +102,23 @@ async function enrichSetParts(setNumber: string) {
     if (!lookedUpSet.has(p.part_num)) return true; // never looked up via API
     return false;                             // has BL ID and was looked up → skip
   });
-  
-  if (!missing.length) {
-    
-    return; // All parts have correct BL IDs — skip API call
-  }
+
+  if (!missing.length) return;
 
   const rbKey = await getRbKey();
   if (!rbKey) { console.log('[parts-enrich] No API key'); return; }
 
-  if (missing.length > 0) {
+  const apiParts = await holeApiTeile(n, rbKey);
+  await ergaenzeBlNummern(apiParts, [...new Set(csvParts.map(p => p.part_num))], rbKey);
+  await merkeTeileDesSets(n, csvParts, apiParts);
+  await ergaenzeSetFiguren(n, rbKey);
+}
 
-    type ApiTeil = { part_name: string; bl_part_num: string | null; image_url: string | null; color_name: string; color_hex: string; quantity: number };
-    const apiParts: Record<string, ApiTeil> = {}; // key: "part_num|color_id"
+type ApiTeil = { part_name: string; bl_part_num: string | null; image_url: string | null; color_name: string; color_hex: string; quantity: number };
+
+/** Die Teile des Sets laut Rebrickable, je "part_num|color_id". */
+async function holeApiTeile(n: string, rbKey: string): Promise<Record<string, ApiTeil>> {
+    const apiParts: Record<string, ApiTeil> = {};
     let url = `https://rebrickable.com/api/v3/lego/sets/${pfadSegment(n)}/parts/?page_size=500&inc_part_details=1`;
     while (url) {
       const data = await apiGet(url, rbKey);
@@ -142,12 +137,12 @@ async function enrichSetParts(setNumber: string) {
       }
       url = data.next || null;
     }
+    return apiParts;
+}
 
-    // Alle Nummern aus der CSV, nicht nur aus der API-Antwort: Die kann
-    // unvollständig sein.
-    const missingBl = [...new Set(csvParts.map((p: { part_num: string }) => p.part_num))];
-    if (missingBl.length > 0) {
-      
+/** Alle Nummern aus der CSV, nicht nur aus der API-Antwort: Die kann
+ * unvollständig sein. */
+async function ergaenzeBlNummern(apiParts: Record<string, ApiTeil>, missingBl: string[], rbKey: string): Promise<void> {
       const BATCH = 500;
       for (let i = 0; i < missingBl.length; i += BATCH) {
         const batch = missingBl.slice(i, i + BATCH);
@@ -156,7 +151,7 @@ async function enrichSetParts(setNumber: string) {
         if (!blData) continue;
         for (const part of (blData.results || [])) {
           const blId = part.external_ids?.BrickLink?.[0] || null;
-          
+
           if (blId) {
             for (const colorId of Object.keys(apiParts)
               .filter(k => k.startsWith(part.part_num + '|'))
@@ -168,8 +163,10 @@ async function enrichSetParts(setNumber: string) {
           }
         }
       }
-    }
+}
 
+async function merkeTeileDesSets(n: string, csvParts: Awaited<ReturnType<typeof repo.teileDesInventars>>,
+                                 apiParts: Record<string, ApiTeil>): Promise<void> {
     const blMapRows = await repo.blZuordnungen(csvParts.map(p => p.part_num))
       .catch(meldeUndLiefere('teile-enrich:blMapRows', []));
     const blMap: Record<string, string | null> = {};
@@ -186,10 +183,10 @@ async function enrichSetParts(setNumber: string) {
       await merkeTeil(p.part_num, info.part_name).catch(melde);
       await merkeTeilFarbe(p.part_num, p.color_id ?? KEINE_FARBE, info.color_name, info.color_hex, info.image_url).catch(melde);
       await merkeSetTeil(n, p.part_num, p.color_id ?? KEINE_FARBE, p.quantity||1, false).catch(melde);
-      catalogMap[key] = { image_url: info.image_url||null, image_local: null };
     }
-  }
+}
 
+async function ergaenzeSetFiguren(n: string, rbKey: string): Promise<void> {
   const existingFigs = await repo.figurenImSetkatalog(n).catch(meldeUndLiefere('teile-enrich:existingFigs', 0));
 
   if (!existingFigs) {
@@ -205,8 +202,75 @@ async function enrichSetParts(setNumber: string) {
       await merkeSetFiguren(n, figs.map(f => ({ figNumber: f.set_num, quantity: f.quantity })))
         .catch(logAndContinue('teile-enrich:setfiguren merken'));
     }
-  } else {
   }
+}
+
+/** Ein Bild vom CDN in den Teile-Ordner, dann in den Katalog. */
+async function ladeTeilbild(p: repo.Bildwunsch): Promise<void> {
+    const rawUrl = p.image_url || '';
+    let cdnUrl = rawUrl;
+    // Beide Schreibweisen: Altzeilen tragen noch /api/img-proxy.
+    const m = rawUrl.match(/\/api\/(?:v1\/)?img-proxy\?url=(.+)/);
+    if (m) cdnUrl = decodeURIComponent((m[1] ?? ''));
+    if (!cdnUrl.startsWith('http')) {
+      console.warn(`[img-dl] skipping invalid URL for ${p.id}: ${rawUrl.substring(0, 80)}`);
+      return;
+    }
+
+    const nummer = dateiTeil(p.id), farbe = dateiTeil(p.color_id);
+    if (!nummer || (p.kind !== 'fig' && !farbe)) {
+      console.warn(`[img-dl] skipping unsafe number ${String(p.id).substring(0, 40)}`);
+      return;
+    }
+    const file = p.kind === 'fig'
+      ? `${nummer}.${bildEndung(cdnUrl)}`
+      : `${nummer}_${farbe}.${bildEndung(cdnUrl)}`;
+    const dest = zielImOrdner(PART_IMAGES_DIR, file);
+    if (!dest) return;
+    const rel  = `/images/parts/${file}`;
+
+    if (!fs.existsSync(dest)) {
+      await cdnImageLimiter.acquire();
+      fs.mkdirSync(PART_IMAGES_DIR, { recursive: true });
+      const ok = await ladeBild(cdnUrl, dest, ERLAUBTE_BILD_HOSTS, BILD_KOPFZEILEN,
+        (text) => console.warn(`[img-dl] ${p.id}: ${text}`))
+        .finally(() => cdnImageLimiter.release());
+      if (!ok) return;
+    }
+
+    if (p.kind === 'fig') {
+      await setzeFigurBildLokal(p.id, rel).catch(logAndContinue('teile-enrich:figurbild'));
+    } else {
+      await setzeTeilBildLokal(p.id, p.color_id, rel).catch(logAndContinue('katalog:teilbild'));
+    }
+  }
+
+/** Prozessübergreifend auf einer EIGENEN Verbindung: Ein Advisory-Lock hängt an
+ * der Session, über den Pool würde er unzuverlässig freigegeben. waitIfBusy (PDF)
+ * wartet auf den anderen Prozess, sonst fehlten Bilder im PDF. */
+async function holeBildSperre(n: string, waitIfBusy: boolean):
+    Promise<'belegt' | { lockClient: import('pg').PoolClient | null; haveXlock: boolean }> {
+  let lockClient: import('pg').PoolClient | null = null, haveXlock = false;
+  try { lockClient = await repo.sperrVerbindung(); } catch (_) { lockClient = null; }
+  if (!lockClient) return { lockClient, haveXlock };
+  const deadline = Date.now() + 180000; // max. 3 Min auf anderen Worker warten
+  while (true) {
+    try {
+      haveXlock = await repo.versucheBildSperre(lockClient, n);
+    } catch (_) { haveXlock = false; }
+    if (haveXlock) break;
+    if (!waitIfBusy) {
+      console.log(`[img-dl] ${n}: wird bereits von einem anderen Worker geladen — übersprungen`);
+      lockClient.release();
+      return 'belegt';
+    }
+    if (Date.now() > deadline) {
+      console.warn(`[img-dl] ${n}: Wartezeit auf anderen Worker überschritten — fahre ohne Lock fort`);
+      break; // best effort ohne Lock weitermachen
+    }
+    await new Promise(r => setTimeout(r, 1500));
+  }
+  return { lockClient, haveXlock };
 }
 
 // Je Set eine Sperre: Gleichzeitige Aufrufe für dasselbe Set warten auf den ersten.
@@ -225,35 +289,11 @@ async function downloadSetImages(setNumber: string, waitIfBusy = false) {
   const lock = new Promise<void>(r => { resolveLock = r; });
   _downloadLocks.set(n, lock);
 
-  // Prozessübergreifend auf einer EIGENEN Verbindung: Ein Advisory-Lock hängt an
-  // der Session, über den Pool würde er unzuverlässig freigegeben.
-  let lockClient: import('pg').PoolClient | null = null, haveXlock = false;
-  try { lockClient = await repo.sperrVerbindung(); } catch (_) { lockClient = null; }
-  if (lockClient) {
-    // waitIfBusy (PDF): auf den anderen Prozess warten, sonst fehlten Bilder im
-    // PDF; im Hintergrund überspringen.
-    const deadline = Date.now() + 180000; // max. 3 Min auf anderen Worker warten
-    while (true) {
-      try {
-        haveXlock = await repo.versucheBildSperre(lockClient, n);
-      } catch (_) { haveXlock = false; }
-      if (haveXlock) break;
-      if (!waitIfBusy) {
-        console.log(`[img-dl] ${n}: wird bereits von einem anderen Worker geladen — übersprungen`);
-        lockClient.release();
-        resolveLock();
-        _downloadLocks.delete(n);
-        return;
-      }
-      if (Date.now() > deadline) {
-        console.warn(`[img-dl] ${n}: Wartezeit auf anderen Worker überschritten — fahre ohne Lock fort`);
-        break; // best effort ohne Lock weitermachen
-      }
-      await new Promise(r => setTimeout(r, 1500));
-    }
-  }
+  const sperre = await holeBildSperre(n, waitIfBusy);
+  if (sperre === 'belegt') { resolveLock(); _downloadLocks.delete(n); return; }
+  const { lockClient, haveXlock } = sperre;
 
-    let _pendingAdded = 0;  // Anteil dieses Batches am globalen imgDl-Zähler
+  let _pendingAdded = 0;  // Anteil dieses Batches am globalen imgDl-Zähler
   let _flushed      = 0;  // davon bereits an den Zähler gemeldet (Rest im finally)
   let _lastFlush    = Date.now();
   try {
@@ -265,45 +305,6 @@ async function downloadSetImages(setNumber: string, waitIfBusy = false) {
     // Überwachung nur den zuletzt gestarteten Stapel.
     _pendingAdded = needsImg.length;
     await monitor.imgDlAdd(_pendingAdded).catch(logAndContinue('teile-enrich:imgDlAdd'));
-
-    async function processOne(p: repo.Bildwunsch) {
-      const rawUrl = p.image_url || '';
-      let cdnUrl = rawUrl;
-      // Beide Schreibweisen: Altzeilen tragen noch /api/img-proxy.
-      const m = rawUrl.match(/\/api\/(?:v1\/)?img-proxy\?url=(.+)/);
-      if (m) cdnUrl = decodeURIComponent((m[1] ?? ''));
-      if (!cdnUrl.startsWith('http')) {
-        console.warn(`[img-dl] skipping invalid URL for ${p.id}: ${rawUrl.substring(0, 80)}`);
-        return;
-      }
-
-      const nummer = dateiTeil(p.id), farbe = dateiTeil(p.color_id);
-      if (!nummer || (p.kind !== 'fig' && !farbe)) {
-        console.warn(`[img-dl] skipping unsafe number ${String(p.id).substring(0, 40)}`);
-        return;
-      }
-      const file = p.kind === 'fig'
-        ? `${nummer}.${bildEndung(cdnUrl)}`
-        : `${nummer}_${farbe}.${bildEndung(cdnUrl)}`;
-      const dest = zielImOrdner(PART_IMAGES_DIR, file);
-      if (!dest) return;
-      const rel  = `/images/parts/${file}`;
-
-      if (!fs.existsSync(dest)) {
-        await cdnImageLimiter.acquire();
-        fs.mkdirSync(PART_IMAGES_DIR, { recursive: true });
-        const ok = await ladeBild(cdnUrl, dest, ERLAUBTE_BILD_HOSTS, BILD_KOPFZEILEN,
-          (text) => console.warn(`[img-dl] ${p.id}: ${text}`))
-          .finally(() => cdnImageLimiter.release());
-        if (!ok) return;
-      }
-
-      if (p.kind === 'fig') {
-        await setzeFigurBildLokal(p.id, rel).catch(logAndContinue('teile-enrich:figurbild'));
-      } else {
-        await setzeTeilBildLokal(p.id, p.color_id, rel).catch(logAndContinue('katalog:teilbild'));
-      }
-    }
 
     let done = 0;
     // Höchstens ein Schreibvorgang je Sekunde statt einer je Bild, das entlastet
@@ -317,7 +318,7 @@ async function downloadSetImages(setNumber: string, waitIfBusy = false) {
       await monitor.imgDlAdd(-delta).catch(logAndContinue('teile-enrich:imgDlAdd'));
     };
     await Promise.all(needsImg.map(async p => {
-      await processOne(p);
+      await ladeTeilbild(p);
       done++;
       await flushProgress(false);
     }));
@@ -380,7 +381,7 @@ async function enrichSetMinifigs(setNumber: string) {
 
   let apiBlMap: Record<string, string> = {};
   if (needsBl.length > 0) {
-    
+
     const BATCH = 500;
     for (let i = 0; i < needsBl.length; i += BATCH) {
       const batch = needsBl.slice(i, i + BATCH);
@@ -391,7 +392,7 @@ async function enrichSetMinifigs(setNumber: string) {
         const blId = p.external_ids?.BrickLink?.[0] || null;
         const finalId = blId || p.part_num;
         apiBlMap[p.part_num] = finalId;
-        
+
         await merkeBlNummer('part', p.part_num, finalId).catch(logAndContinue('teile-enrich:merkeBlNummer'));
       }
     }
@@ -409,7 +410,7 @@ async function enrichSetMinifigs(setNumber: string) {
       await merkeSetTeil(figNum, p.part_num, p.color_id ?? KEINE_FARBE, p.quantity||1, false).catch(logAndContinue('katalog:figurteil'));
     }
   }
-  
+
 }
 
 // „Fehlend" = image_local gesetzt, Datei fehlt. Nicht wiederherstellbare
@@ -442,7 +443,7 @@ async function _redlSetStatus(obj: Record<string, unknown>) {
     .catch(logAndContinue('teile-enrich:setzeZustand'));
 }
 
-async function redownloadMissingImages() {
+async function redownloadMissingImages(lauf?: AuftragsLauf) {
   if (_redlRunning) return { alreadyRunning: true };
   // Sperre auf EIGENER Verbindung: Advisory-Locks hängen an der Session.
   let lockClient;
@@ -453,7 +454,7 @@ async function redownloadMissingImages() {
   } catch (e) { lockClient.release(); return { error: fehlertext(e) || 'Sperre fehlgeschlagen' }; }
   _redlRunning = true;
   try {
-    return await _redownloadMissingImages();
+    return await _redownloadMissingImages(lauf);
   } finally {
     _redlRunning = false;
     await repo.gibNachlaufSperreFrei(lockClient).catch(logAndContinue('teile-enrich:pg_advisory_unlock'));
@@ -461,7 +462,7 @@ async function redownloadMissingImages() {
   }
 }
 
-async function _redownloadMissingImages() {
+async function _redownloadMissingImages(lauf?: AuftragsLauf) {
   try {
     fs.mkdirSync(PART_IMAGES_DIR, { recursive: true });
     await _redlSetStatus({ running: true, phase: 'scanning', total: 0, done: 0, redownloaded: 0, cleared: 0 });
@@ -506,7 +507,7 @@ async function _redownloadMissingImages() {
 
     let idx = 0;
     const worker = async () => {
-      while (idx < missing.length) {
+      while (idx < missing.length && !lauf?.signal?.aborted) {
         const m = missing[idx++];
         if (!m) break;
         let ok = false;
@@ -536,12 +537,14 @@ async function _redownloadMissingImages() {
     };
     const CONC = 2; // wie beim normalen Download; der CDN-Limiter drosselt ohnehin
     await Promise.all(Array.from({ length: CONC }, () => worker()));
+    pruefeAbbruch(lauf);
 
     await _redlSetStatus({ running: false, phase: 'done', total, done, redownloaded, cleared, thumbs: thumbsErzeugt });
     console.log(`[img-redl] fertig: ${redownloaded} neu geladen, ${cleared} geleert (von ${total} fehlenden), ${thumbsErzeugt} Vorschauen erzeugt`);
     return { total, redownloaded, cleared, thumbs: thumbsErzeugt };
   } catch (e) {
     await _redlSetStatus({ running: false, phase: 'error', error: fehlertext(e) });
+    if (lauf?.signal?.aborted) throw e;
     console.error('[img-redl] Fehler:', fehlertext(e));
     return { error: fehlertext(e) };
   }

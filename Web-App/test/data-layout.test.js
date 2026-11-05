@@ -88,8 +88,10 @@ test('die Bildroute behält Anmeldepflicht und CDN-Heilung', () => {
   // schob die geprüfte Zeile sonst aus den 2000 Zeichen — die Regel galt
   // weiter, nur der Ausschnitt war zu kurz. strip() gibt es in dieser Datei
   // bereits.
-  const src = strip(read('server.ts'));
-  const start = src.indexOf("app.get('/images/*pfad'");
+  // Die Route steht in routes/seiten.ts, ihr Rumpf (liefereBild) daneben.
+  assert.match(strip(read('routes/seiten.ts')), /router\.get\('\/images\/\*pfad', liefereBild\)/, 'Bildroute nicht gefunden');
+  const src = strip(read('src/katalog/http/bildAuslieferung.ts'));
+  const start = src.indexOf('function liefereBild(');
   assert.ok(start > 0, 'Bildroute nicht gefunden');
   const route = src.slice(start, start + 2000);
   assert.match(route, /resolveUserId\(req\)/,

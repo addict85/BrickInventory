@@ -112,7 +112,7 @@ export async function katalogSeite(userId: number, f: KatalogFilter, sortRoh: un
     repo.katalogAnzahl(wahl), repo.katalogZeilen(await scopeIds(userId), wahl, sortRoh, limit, (page - 1) * limit)]);
   const tree = await getThemeTree();
   // Die Liste stösst keine Bildarbeit an; fehlende Bilder holt der Bild-Proxy.
-  return { total, page, pages: Math.max(1, Math.ceil(total / limit)),
+  return { total, page, page_size: limit, pages: Math.max(1, Math.ceil(total / limit)),
     sets: await Promise.all(sets.map(async s => ({ ...s, image_local: await lokalesBild(userId, s.set_number),
       theme_name: tree.pathName.get(s.theme_id) || null }))) };
 }

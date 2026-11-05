@@ -12,7 +12,8 @@ const ROOT = path.join(__dirname, '..', '..');
  *  Wer den Start meint, nimmt startQuelle(). */
 const serverOnly = () => fs.readFileSync(path.join(ROOT, 'server.ts'), 'utf8');
 
-const imgProxy = () => fs.readFileSync(path.join(ROOT, 'routes/imgProxy.ts'), 'utf8');
+const imgProxy = () => fs.readFileSync(path.join(ROOT, 'src/katalog/http/bildProxy.ts'), 'utf8')
+  + '\n' + fs.readFileSync(path.join(ROOT, 'routes/imgProxy.ts'), 'utf8');
 
 /** Server, Bild-Proxy und Vorschau-Weg: für „kommt X irgendwo vor". Die
  *  Reihenfolge über Dateigrenzen ist bedeutungslos — für indexOf-Vergleiche
@@ -142,7 +143,7 @@ module.exports.ohneKommentare = ohneKommentare;
 function proxyThumbQuelle() {
   const path = require('path'), fs = require('fs');
   const ROOT = path.join(__dirname, '..', '..');
-  return ['routes/imgProxy.ts', 'src/katalog/bilder/proxyThumbs.ts', 'src/katalog/bilder/imgCacheServe.ts']
+  return ['src/katalog/http/bildProxy.ts', 'routes/imgProxy.ts', 'src/katalog/bilder/proxyThumbs.ts', 'src/katalog/bilder/imgCacheServe.ts']
     .map(dienstQuelle).join('\n');
 }
 module.exports.proxyThumbQuelle = proxyThumbQuelle;
@@ -243,7 +244,8 @@ module.exports.coreQuelle = coreQuelle;
  * @returns {string} z.B. "function f(a, b: string | null = null)"
  */
 function funktionsKopf(src, name) {
-  const i = src.indexOf(`function ${name}(`);
+  // Auch mit Typparametern (`function f<T>(`).
+  const i = Math.max(src.indexOf(`function ${name}(`), src.indexOf(`function ${name}<`));
   if (i < 0) throw new Error(`Funktion ${name} gibt es nicht (mehr)`);
   let depth = 0;
   for (let j = src.indexOf('(', i); j < src.length; j++) {
@@ -434,9 +436,9 @@ function v1Routen() {
   };
   for (const f of fs.readdirSync(path.join(ROOT, 'routes/api_v1')).filter(f => f.endsWith('.ts')))
     lies(`routes/api_v1/${f}`, '/api/v1');
-  lies('routes/auth.ts', '/api/v1/auth');
-  for (const f of fs.readdirSync(path.join(ROOT, 'routes/auth')).filter(f => f.endsWith('.ts')))
-    lies(`routes/auth/${f}`, '/api/v1/auth');
+  // Die in server.ts eingehängten Router (auth samt Teilen, gesundheit).
+  for (const r of routerEinhaengungen().filter(r => r.mount.startsWith('/api/v1')))
+    lies(path.relative(ROOT, r.datei), r.mount);
   lies('server.ts', '');
   return gefunden.filter(([, p]) => p.startsWith('/api/v1'));
 }

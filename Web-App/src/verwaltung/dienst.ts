@@ -1,9 +1,11 @@
 /** Fremde Dienste und Jobs erreicht die Überwachungsseite nur von hier aus,
  * damit die Routen keine Schichten überspringen. */
-import { proxyCacheSchluessel } from '../katalog/bilder/images';
+import { proxyCacheSchluessel, proxyCachePathFor } from '../katalog/bilder/images';
+import { ERLAUBTE_BILD_HOSTS, hostErlaubt } from '../infra/fremdeAdressen';
+import { urlOderNull } from '../infra/validate';
+import type { KontoBildzeile } from './repository/verwaltung';
 import fs from 'fs';
-import { oeffneHttps, AbrufFehler, type AbrufStrom } from '../infra/abruf';
-import { ERLAUBTE_BILD_HOSTS } from '../infra/fremdeAdressen';
+import { AbrufFehler, type AbrufStrom } from '../infra/abruf';
 import path from 'path';
 import * as verwaltung from './repository/verwaltung';
 import { naechsteUhrzeit, taeglicheUhrzeit, DAILY_JOBS, ziehePlanVor, zeitplanGeaendert } from '../auftraege/zeitplan';
@@ -24,7 +26,7 @@ import { anleitungEinreihen } from '../auftraege/anleitungsAuftrag';
 import { bricksetJetzt, bricksetZahlen } from '../auftraege/bricksetAuftrag';
 import { anfragenJeMinute, bildbedarfAnstossen } from '../katalog/bilder/bildbedarf';
 import { fehlerWerfen, type FehlerCode } from '../infra/fehlerTexte';
-import { alsAbrufFehler, pruefeBricklinkZugang, ausRetryWarteschlange, pruefeBricksetZugang, pruefeRebrickableZugang } from '../katalog/quellen';
+import { alsAbrufFehler, pruefeBricklinkZugang, ausRetryWarteschlange, pruefeBricksetZugang, pruefeRebrickableZugang, oeffneBild } from '../katalog/quellen';
 
 // Ausführlich: docs/begruendungen/src/verwaltung/dienst.ts.md#job-frisch-ms
 const JOB_FRISCH_MS = 3 * 60_000;
@@ -110,7 +112,7 @@ export async function preisJobStand() {
 /** false, wenn er schon läuft. */
 export const preisJobJetzt = () => ziehePlanVor('preise');
 export const fehlendeBilderNachladen = () => {
-  stelleAuftragEin('bilder_neu_laden', {}, { schluessel: 'bilder_neu_laden', maxVersuche: 2 })
+  void stelleAuftragEin('bilder_neu_laden', {}, { schluessel: 'bilder_neu_laden', maxVersuche: 2 })
     .catch(logAndContinue('verwaltung:bilder nachladen'));
 };
 
@@ -281,7 +283,13 @@ export async function jobUebersicht() {
 
 /** Meldet, was der Proxy davon ausliefern würde — mit und ohne Referer. */
 export async function bildProbe(url: string) {
-    const UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36';
+  if (!/^https:\/\//.test(url)) fehlerWerfen('url_fehlt_https', 400);
+  const adresse = urlOderNull(url);
+  if (!adresse) fehlerWerfen('url_ungueltig', 400);
+  // Dieselben Hosts wie der Bild-Proxy: Der Abruf läuft aus dem internen Netz;
+  // jede Adresse zuzulassen wäre Server-Side Request Forgery.
+  if (!hostErlaubt(url, ERLAUBTE_BILD_HOSTS)) fehlerWerfen('host_nicht_erlaubt', 403, { host: adresse.hostname });
+  const UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36';
   const variants = [
     { name: 'mit Referer',  headers: { 'User-Agent': UA, 'Referer': 'https://rebrickable.com/', 'Accept': 'image/*,*/*;q=0.8' } },
     { name: 'ohne Referer', headers: { 'User-Agent': UA, 'Accept': 'image/*,*/*;q=0.8' } },
@@ -289,8 +297,8 @@ export async function bildProbe(url: string) {
   ];
 
   // Ohne Umleitungen: Die Probe soll den rohen Status des CDN zeigen.
-  const offen = (kopfzeilen: Record<string, string>) => oeffneHttps(url,
-    { hosts: ERLAUBTE_BILD_HOSTS, maxBytes: 65536, zeitlimitMs: 10_000, umleitungen: 0, kopfzeilen });
+  const offen = (kopfzeilen: Record<string, string>) => oeffneBild(url,
+    { maxBytes: 65536, zeitlimitMs: 10_000, umleitungen: 0, kopfzeilen });
   const lies = (a: AbrufStrom, genug = Infinity) => new Promise<{ teile: Buffer[]; bytes: number; truncated: boolean }>(fertig => {
     const teile: Buffer[] = []; let bytes = 0;
     const s = a.strom();
@@ -315,14 +323,14 @@ export async function bildProbe(url: string) {
     }
   };
 
-  const results: any[] = [];
+  const results: Awaited<ReturnType<typeof probe>>[] = [];
   for (const v of variants) results.push(await probe(v));
 
   const fsp = fs.promises, pathm = path;
   const key = proxyCacheSchluessel(url);
   const dir = pathm.join(DATA_DIR, 'img_proxy_cache');
-  const cached = await fsp.stat(pathm.join(dir, key)).then((st: any) => ({ bytes: st.size })).catch(ohneFehlendeDatei('verwaltung:stat', null));
-  const thumb  = await fsp.stat(pathm.join(dir, key + '_thumb.jpg')).then((st: any) => ({ bytes: st.size })).catch(ohneFehlendeDatei('verwaltung:stat', null));
+  const cached = await fsp.stat(pathm.join(dir, key)).then(st => ({ bytes: st.size })).catch(ohneFehlendeDatei('verwaltung:stat', null));
+  const thumb  = await fsp.stat(pathm.join(dir, key + '_thumb.jpg')).then(st => ({ bytes: st.size })).catch(ohneFehlendeDatei('verwaltung:stat', null));
 
   // Zeigt auf einen Blick, woran Abrufe scheitern, ohne im Log zu suchen.
   const failures = imgProxyFailures;
@@ -459,3 +467,56 @@ export async function katalogBilderEinreihen(alleErneut: boolean) {
 }
 export { KontoBildzeile, bildZeilenDerKonten, fehlanzeigeDerVorschau, fehlanzeigeDesSets, katalogBild, protokollSeit, setFehlanzeigen, vorschauFehlanzeigen } from './repository/verwaltung';
 export { letzteEintraege, protokolliere, raeumeProtokollAuf } from './repository/protokoll';
+
+/** Die wiederkehrenden Fragen zu einer leeren Kachel in einer Antwort: Datenbank, Platte, Proxy, Fehlanzeige. */
+export async function bildDiagnose(sn: string) {
+  const konten: KontoBildzeile = await verwaltung.bildZeilenDerKonten(sn)
+    .catch(meldeUndLiefere('verwaltung:bildZeilenDerKonten', { anzahl_konten: 0, image_local: null, image_url: null }));
+  const katalog = await verwaltung.katalogBild(sn).catch(meldeUndLiefere('verwaltung:katalogBild', null));
+
+  const safe = sn.replace(/[^a-z0-9-]/gi, '_');
+  const datei = async (p: string) => {
+    const st = await fs.promises.stat(p).catch(ohneFehlendeDatei('verwaltung:bilddatei', null));
+    return st ? { vorhanden: true, bytes: st.size, geaendert: st.mtime } : { vorhanden: false, bytes: 0, geaendert: null };
+  };
+  const original = await datei(path.join(SET_IMAGES_DIR, `${safe}.jpg`));
+  const vorschau = await datei(path.join(SET_IMAGES_DIR, `${safe}_thumb.jpg`));
+
+  const cdnUrl = konten.image_url || katalog?.image_url || null;
+  let proxy: { gecacht: boolean; [k: string]: unknown } = { adresse: cdnUrl, gecacht: false };
+  if (cdnUrl) {
+    const cf = proxyCachePathFor ? proxyCachePathFor(cdnUrl) : null;
+    if (cf) {
+      const cache = await datei(cf);
+      proxy = { adresse: cdnUrl, gecacht: cache.vorhanden, cache, vorschau: await datei(cf + '_thumb.jpg') };
+    }
+  }
+
+  const merker = await verwaltung.fehlanzeigeDesSets(sn).catch(meldeUndLiefere('verwaltung:fehlanzeigeDesSets', null));
+  const vorschauMerker = await verwaltung.fehlanzeigeDerVorschau(safe).catch(meldeUndLiefere('verwaltung:fehlanzeigeDerVorschau', null));
+
+  const hinweise: string[] = [];
+  if (!konten.anzahl_konten) hinweise.push('Kein Konto führt dieses Set.');
+  if (konten.anzahl_konten && !konten.image_local && !cdnUrl)
+    hinweise.push('Weder lokale Datei noch CDN-Adresse bekannt — die Clients können nichts anzeigen.');
+  if (konten.image_local && !original.vorhanden)
+    hinweise.push('image_local ist gesetzt, die Datei fehlt aber — die Bildroute weicht auf den Proxy aus.');
+  if (original.vorhanden && !vorschau.vorhanden)
+    hinweise.push('Original da, Vorschau fehlt — sie entsteht beim nächsten Abruf oder über den Bilder-Nachlauf.');
+  if (vorschau.vorhanden && vorschau.bytes < 200)
+    hinweise.push('Die Vorschau ist unbrauchbar klein und wird beim Ausliefern verworfen.');
+  if (merker) hinweise.push(
+    `Gilt seit ${new Date(merker.checked_at).toLocaleString()} als fehlend` +
+    (merker.reason ? ` (${merker.reason})` : ' (Grund nicht vermerkt — Altbestand)') +
+    '. Solange der Eintrag steht, wird das Bild NICHT geholt. ' +
+    'Zurücknehmen: POST /api/v1/admin/forget-image-misses');
+  if (vorschauMerker) hinweise.push(
+    'Für die Vorschau ist ein Fehlschlag vermerkt — sie wird nicht erneut versucht.');
+  if (!hinweise.length) hinweise.push('Alles vorhanden: Original und Vorschau liegen bereit.');
+
+  return { success: true as const, set_number: sn,
+    datenbank: { ...konten, katalog_bild: katalog?.image_url || null },
+    lokal: { original, vorschau },
+    merker: merker ? { seit: merker.checked_at, grund: merker.reason || null } : null,
+    proxy, hinweise };
+}

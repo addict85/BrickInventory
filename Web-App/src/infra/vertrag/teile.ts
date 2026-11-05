@@ -1,4 +1,4 @@
-import { OHNE_RUMPF, ZAHL, ZUSTAND, KENNUNG, TEXT, abfrage, Q } from './grund';
+import { OHNE_RUMPF, ZUSTAND, KENNUNG, TEXT, abfrage, Q, SEITE, SEITEN_ANGABE } from './grund';
 import { z } from 'zod';
 import { eingabe } from '../validate';
 import type { Route } from './grund';
@@ -38,6 +38,7 @@ export const BrickColorsResponse = z.looseObject({
 
 export const ManualPartsResponse = z.looseObject({
   success: z.boolean(),
+  ...SEITEN_ANGABE,
   /** Die Liste führt keine Erfassungen; die Detailansicht lädt sie über /acquisitions. */
   parts: z.array(PartValuationItem.extend({ acquisitions: PartValuationItem.shape.acquisitions.optional() })),
   error: z.string().nullable().optional(),
@@ -94,12 +95,12 @@ export const routen = {
   'GET /api/v1/parts': { antwort: PartsResponse, abfrage: abfrage({ accounts: Q.konten, search: Q.text(), color: Q.text(64),
     category: Q.text(), page: Q.zahl(), page_size: Q.zahl(), set_number: Q.text(64), exclude_manual: Q.schalter,
     spare: z.enum(['0', '1', '']), with_sets: Q.schalter, storage: Q.text(), ordnung: z.enum(['farbe', 'name', 'menge']) }) },
-  'GET /api/v1/parts/:partNumber/:colorId/sets': { antwort: VerwendendeSetsResponse, abfrage: abfrage({ accounts: Q.konten }) },
+  'GET /api/v1/parts/:partNumber/:colorId/sets': { klein: true, antwort: VerwendendeSetsResponse, abfrage: abfrage({ accounts: Q.konten }) },
   'GET /api/v1/parts/stats': { antwort: PartsStatsResponse, abfrage: abfrage({ accounts: Q.konten }) },
-  'GET /api/v1/parts/brick-colors': { antwort: BrickColorsResponse },
-  'GET /api/v1/parts/colors': { antwort: PartsFilterColorsResponse, abfrage: abfrage({ accounts: Q.konten }) },
-  'GET /api/v1/parts/categories': { antwort: PartsCategoriesResponse, abfrage: abfrage({ accounts: Q.konten }) },
-  'GET /api/v1/parts/manual': { antwort: ManualPartsResponse, abfrage: abfrage({ accounts: Q.konten, search: Q.text(), storage: Q.text() }) },
+  'GET /api/v1/parts/brick-colors': { klein: true, antwort: BrickColorsResponse },
+  'GET /api/v1/parts/colors': { klein: true, antwort: PartsFilterColorsResponse, abfrage: abfrage({ accounts: Q.konten }) },
+  'GET /api/v1/parts/categories': { klein: true, antwort: PartsCategoriesResponse, abfrage: abfrage({ accounts: Q.konten }) },
+  'GET /api/v1/parts/manual': { antwort: ManualPartsResponse, abfrage: abfrage({ accounts: Q.konten, search: Q.text(), storage: Q.text(), ...SEITE }) },
   'PUT /api/v1/parts/:partNumber/:colorId/color': { antwort: TeilFarbeResponse, abfrage: abfrage({ owner: Q.konto }),
     eingabe: z.strictObject({ color_id: KENNUNG.nullable().optional(), color_name: eingabe.text(100), color_hex: eingabe.farbcode() }) },
   'POST /api/v1/parts/owned': { antwort: BestandResponse, abfrage: abfrage({ accounts: Q.konten }), eingabe: z.strictObject({
@@ -107,9 +108,9 @@ export const routen = {
   'POST /api/v1/parts': { antwort: AddPartResponse, eingabe: z.strictObject({
     part_number: eingabe.artikelnummer('part_number'), color_id: eingabe.farbe(), color_name: eingabe.text(100),
     color_hex: eingabe.farbcode(), quantity: eingabe.stueckzahl(), condition: eingabe.zustand(),
-    unit_price: eingabe.preis('Stückpreis'), part_name: eingabe.text(200), image_url: eingabe.bildUrl(),
+    unit_price: eingabe.geld('Stückpreis'), part_name: eingabe.text(200), image_url: eingabe.bildUrl(),
     category_name: eingabe.text(100), owner_user_id: KENNUNG.nullable().optional(), storage: TEXT().nullable().optional(), acquired_at: TEXT(40).nullable().optional() }) },
-  'PUT /api/v1/parts/:partNumber/:colorId': { abfrage: abfrage({ owner: Q.konto }), eingabe: z.strictObject({ quantity: ZAHL.optional(), quantity_delta: ZAHL.nullable().optional(), unit_price: ZAHL.nullable().optional(), condition: ZUSTAND.nullable().optional() }), antwort: GenericResponse },
+  'PUT /api/v1/parts/:partNumber/:colorId': { abfrage: abfrage({ owner: Q.konto }), eingabe: z.strictObject({ quantity: eingabe.mengeOderNichts(0, 100_000).optional(), quantity_delta: eingabe.mengenDelta(), unit_price: eingabe.geld('Stückpreis'), condition: ZUSTAND.nullable().optional() }), antwort: GenericResponse },
   'DELETE /api/v1/parts/:partNumber/:colorId': { eingabe: OHNE_RUMPF, antwort: InDenPapierkorb, abfrage: abfrage({ owner: Q.konto }) },
   'POST /api/v1/parts/import/csv': { formular: true, antwort: CsvImportErgebnis },
   'GET /api/v1/parts/bl-color-map': { antwort: BlFarbTabelle },

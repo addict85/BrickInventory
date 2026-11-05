@@ -37,7 +37,7 @@ async function syncSetCatalog(setNumber: string) {
 
   let downloaded = 0;
   for (const p of parts) {
-    let imageLocal: any = null;
+    let imageLocal: string | null = null;
     if (p.image_url) {
       const imgFile = `${p.part_number}_${p.color_id ?? KEINE_FARBE}.jpg`;
       const dest    = path.join(IMG_DIR, imgFile);

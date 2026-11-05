@@ -20,8 +20,8 @@ export async function pflegeTabelle(
   try {
     await fuehreAus(`VACUUM (ANALYZE) ${tabelle}`);
     return true;
-  } catch (e: any) {
-    console.warn(`[pflege] VACUUM (ANALYZE) ${tabelle} nicht moeglich (${e?.message || e}) — ` +
+  } catch (e) {
+    console.warn(`[pflege] VACUUM (ANALYZE) ${tabelle} nicht moeglich (${(e as Error)?.message || e}) — ` +
       `die Suche auf dieser Tabelle ist bis zum naechsten automatischen Aufraeumen langsamer.`);
     return false;
   }

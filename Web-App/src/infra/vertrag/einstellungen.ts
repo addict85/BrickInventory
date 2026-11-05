@@ -1,6 +1,8 @@
 import { z } from 'zod';
 import { VerwaltungZustand, VerwaltungDesign } from './verwaltung';
 import { type Route, Erfolg, ganz, zeit, bestaetigt, OHNE_RUMPF, TEXT, ZUSTAND, EINSTELLUNGEN, EINFACH } from './grund';
+import { GLOBALE_REGELN } from './globaleRegeln';
+
 
 /** Was POST /settings annimmt: global nur vom Verwalter, je Konto von jedem. */
 export const GLOBALE_EINSTELLUNGEN = ['bricklink_consumer_key', 'bricklink_consumer_secret', 'bricklink_token',
@@ -66,6 +68,13 @@ export const Sicherung = z.looseObject({
   version: z.string(), exported_at: zeit, exported_by: z.string().nullable(),
   global: z.record(z.string(), z.string()), user_settings: z.record(z.string(), z.string()),
 });
+/** Die Importdatei: was der Export schreibt, ältere Fassungen eingeschlossen. Werte prüft GLOBALE_REGELN. */
+export const KonfigExport = z.looseObject({
+  version: z.string().max(20).optional(), exported_at: z.string().max(40).optional(),
+  exported_by: z.string().max(200).nullable().optional(),
+  global: z.record(z.string().max(64), EINFACH).optional(),
+  user_settings: z.record(z.string().max(64), EINFACH).optional(),
+});
 export const SicherungEingespielt = z.looseObject({
   success: z.literal(true), imported: ganz, note: z.string(), smtp_uebergangen: z.array(z.string()).optional(),
 });
@@ -90,7 +99,7 @@ export const routen = {
   'POST /api/v1/settings/user/theme': { eingabe: z.strictObject({ theme: TEXT(40).nullable().optional() }), antwort: AppThemeResponse },
   'PUT /api/v1/settings': { eingabe: EINSTELLUNGEN, antwort: EinstellungenGespeichert },
   'POST /api/v1/settings/user/default-condition': { eingabe: z.strictObject({ condition: ZUSTAND.nullable().optional() }), antwort: VerwaltungZustand },
-  'POST /api/v1/settings/admin/theme': { eingabe: z.strictObject({ theme: TEXT(40).optional() }), antwort: VerwaltungDesign },
+  'POST /api/v1/settings/admin/theme': { eingabe: z.strictObject({ theme: GLOBALE_REGELN.app_theme }), antwort: VerwaltungDesign },
   'GET /api/v1/settings/einrichtung': { antwort: Einrichtung },
   'POST /api/v1/settings/einrichtung/fertig': { eingabe: OHNE_RUMPF, antwort: Erfolg },
   'GET /api/v1/settings/raw': { antwort: RoheEinstellungen },

@@ -27,6 +27,9 @@
  * eingefügtes `acqs.reduce(...)` in 07-admin.js → der Regel-Teilschritt.
  * Am 30.10.2026 gemessen: `totals` aus der Teile-Antwort in
  * routes/api_v1/acquisitions.ts entfernt → rot: „parts“ im Routen-Teilschritt.
+ * Seit 05.11.2026 fehlt `amount` ohne bekannten Preis (Geld hat einen Typ);
+ * gemessen: die Route ohne das Weglassen → rot: „minifigs“ (amount: null
+ * verletzt den Vertrag, die Antwort hat keine Erfassungen).
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -118,7 +121,7 @@ test('alle drei Erfassungs-Routen liefern die Summe mit', { concurrency: 1 }, as
   for (const [art, pfad, erwartet] of [
     ['sets', `sets/${SN}/acquisitions`, { quantity: 3, amount: 24.3, priced_rows: 2 }],
     ['parts', `parts/${PN}/4/acquisitions`, { quantity: 3, amount: 1.8, priced_rows: 1 }],
-    ['minifigs', `minifigs/${FN}/acquisitions`, { quantity: 2, amount: null, priced_rows: 0 }],
+    ['minifigs', `minifigs/${FN}/acquisitions`, { quantity: 2, priced_rows: 0 }],
   ]) {
     const r = await (await fetch(`${base}/api/v1/${pfad}`)).json();
     assert.equal(r.acquisitions?.length > 0, true, `${art}: keine Erfassungen in der Antwort`);

@@ -1,3 +1,4 @@
+import type { ServerResponse } from 'http';
 import fs from 'fs';
 import { queueThumb } from './proxyThumbs';
 import { vorDem, ohneFehlendeDatei, logAndContinue } from '../../infra/fehler';
@@ -15,15 +16,19 @@ export function bildTyp(roh: string): string {
 }
 
 // Ausführlich: docs/begruendungen/src/katalog/bilder/imgCacheServe.ts.md#liefereauscache
+/** Was die Auslieferung von Express braucht; die Typen von Express gehören in http/. */
+type BildAntwort = ServerResponse & { status(c: number): { end(): unknown } };
+interface BildAnfrage { fresh: boolean; headers?: Record<string, unknown> }
+
 export async function liefereAusCache(opts: {
-  res: any;
-  req: any;
+  res: BildAntwort;
+  req: BildAnfrage;
   cacheFile: string;
   thumbFile: string;
   wantThumb: boolean;
   darfErzeugen: boolean;
   notiere: () => void;
-  streamFileToResponse: (res: any, datei: string, onEnd?: () => void, req?: any) => any;
+  streamFileToResponse(res: BildAntwort, datei: string, onEnd?: () => void, req?: BildAnfrage): unknown;
 }): Promise<boolean> {
   const { res, req, cacheFile, thumbFile, wantThumb, darfErzeugen, notiere, streamFileToResponse } = opts;
 

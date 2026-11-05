@@ -5,7 +5,8 @@ import { teilSichtJoin, figurSichtJoin, TEIL, FIGUR } from '../../../db/katalogS
 
 /** Kaufpreis mengengewichtet in Kontowährung. */
 export function erfassungsKennzahlen(art: 'part' | 'fig', uids: number[]) {
-  return db.all(art === 'part'
+  return db.all<{ part_number?: string; color_id?: number | null; fig_number?: string;
+                  acq_count: string; used_count: string; avg_purchase_price: number | null }>(art === 'part'
     ? `SELECT part_number, color_id,
                 COUNT(*) AS acq_count,
                 COUNT(*) FILTER (WHERE condition = 'U') AS used_count,
@@ -56,6 +57,14 @@ const SCHLUESSELSPALTE = { parts: 'x.part_number', minifigs: 'x.fig_number' } as
 
 const ART = { parts: 'part', minifigs: 'fig' } as const;
 
+/** Ein Set, das den Bestandteil enthält, mit den Kopffeldern des Bestandteils. */
+export interface VerwendungsZeile {
+  set_number: string; owner_user_id: number; quantity: number; set_name: string | null;
+  set_image_local: string | null; set_image_url: string | null; nummer: string; name: string | null;
+  color_id: number | null; color_name: string | null; color_hex: string | null; category_name: string | null;
+  teil_image_local: string | null; teil_image_url: string | null; is_spare: unknown; storage: string | null;
+}
+
 export async function setsMitBestandteil(uids: number[], tabelle: 'parts' | 'minifigs', schluessel: Record<string, string | number>) {
   const spalten = Object.keys(schluessel);
   // Die Namen kommen aus Literalen, die Schranke steht trotzdem: Ein Spaltenname
@@ -63,9 +72,9 @@ export async function setsMitBestandteil(uids: number[], tabelle: 'parts' | 'min
   for (const sp of spalten) {
     if (!SUCHSPALTEN.has(sp)) throw new Error(`verwendendeSets: unerlaubte Spalte ${sp}`);
   }
-  const params: any[] = [uids];
+  const params: (number[] | string | number | undefined)[] = [uids];
   const bedingungen = spalten.map(sp => `x.${sp} = $${params.push(schluessel[sp])}`);
-  return db.all(
+  return db.all<VerwendungsZeile>(
     `SELECT x.set_number,
             x.user_id            AS owner_user_id,
             -- Die Stückzahl der Bestandszeile (Migration 0038): Fuer ein

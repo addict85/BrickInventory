@@ -1,12 +1,21 @@
 import * as db from '../../../db/database';
 import { randomUUID } from 'node:crypto';
 import type { AuftragsArt, Einstellen, AuftragsZeile, Belegung, Fortschritt, Pause, AuftragsStatus } from '../auftraege';
-import type { z } from 'zod';
-import type { Auftrag, AuftragZaehler, AuftragPause, BricksetQueueEntry } from '../../infra/vertrag/verwaltung';
 
 /** Hier nur das SQL; Wecken, Wartezeiten und das Arbeiten im Namen eines Kontos
  * stehen im Dienst. */
 type Stand = { s: string } | undefined;
+
+export interface AuftragsListenZeile {
+  id: string; art: string; status: string; versuche: number; max_versuche: number;
+  faellig_ab: Date | null; frist_bis: Date | null; gestartet: Date | null; erstellt: Date | null;
+  aktualisiert: Date | null; fortschritt: Fortschritt | null; fehler: string | null;
+  user_id: number | null; geplant: boolean; set_number: string | null;
+}
+export interface WiedervorlageZeile {
+  set_number: string; name: string | null; attempts: number; retry_after: string | null;
+  last_error: string | null; created_at: Date | null;
+}
 
 /** @returns die Kennung, oder null, wenn derselbe Auftrag schon offen steht */
 export async function fuegeAuftragEin(art: AuftragsArt, nutzlast: object,
@@ -21,26 +30,33 @@ export async function fuegeAuftragEin(art: AuftragsArt, nutzlast: object,
   return z ? String(z.id) : null;
 }
 /** Ein 'laeuft' mit abgelaufener Frist gehört einem verschwundenen Prozess und
- * wird neu vergeben. SKIP LOCKED: Zwei Worker greifen nie dieselbe Zeile. */
+ * wird neu vergeben. SKIP LOCKED: Zwei Worker greifen nie dieselbe Zeile; zwei
+ * exklusive derselben Art verhindert der Trigger aus Migration 0099.
+ * @param ausser Kennungen, die dieser Prozess noch ausführt: nie an sich selbst neu vergeben */
 export async function belegeAuftrag(arten: readonly string[], fristSek: number,
   belegtVon: string = randomUUID(),
-  exklusiv: readonly string[] = []): Promise<AuftragsZeile | null> {
+  exklusiv: readonly string[] = [], ausser: readonly string[] = []): Promise<AuftragsZeile | null> {
   const z = await db.get(
     `UPDATE auftraege SET status = 'laeuft', versuche = versuche + 1, belegt_von = $1,
             frist_bis = NOW() + make_interval(secs => $2), gestartet = NOW(), aktualisiert = NOW()
       WHERE id = (SELECT a.id FROM auftraege a
                    WHERE a.art = ANY($3)
+                     AND a.id::text <> ALL($5::text[])
                      AND ((a.status = 'offen' AND a.faellig_ab <= NOW())
                        OR (a.status = 'laeuft' AND a.frist_bis < NOW()))
                      AND NOT EXISTS (SELECT 1 FROM auftrag_pausen p WHERE p.art = a.art AND p.bis > NOW())
-                     AND NOT (a.art = ANY($4) AND EXISTS (
-                           SELECT 1 FROM auftraege l WHERE l.art = a.art AND l.status = 'laeuft'
-                              AND l.frist_bis >= NOW() AND l.id <> a.id))
+                     AND NOT ((a.art = ANY($4) OR EXISTS (SELECT 1 FROM auftrag_exklusiv e WHERE e.art = a.art))
+                          AND EXISTS (SELECT 1 FROM auftraege l WHERE l.art = a.art AND l.status = 'laeuft'
+                                         AND l.frist_bis >= NOW() AND l.id <> a.id))
                    ORDER BY a.faellig_ab, a.id LIMIT 1
                    FOR UPDATE SKIP LOCKED)
       RETURNING ${SPALTEN}`,
-    [belegtVon, fristSek, [...arten], [...exklusiv]]);
+    [belegtVon, fristSek, [...arten], [...exklusiv], [...ausser]]);
   return z ? alsZeile(z) : null;
+}
+/** Herausnehmen ist eine Migration: Ein Worker ohne die Art ist sonst ein Test oder ein alter Stand. */
+export async function merkeExklusive(exklusiv: readonly string[]): Promise<void> {
+  if (exklusiv.length) await db.run('INSERT INTO auftrag_exklusiv (art) SELECT unnest($1::text[]) ON CONFLICT DO NOTHING', [[...exklusiv]]);
 }
 /** @returns false, wenn der Auftrag nicht mehr diesem Lauf gehört (auch: abgebrochen) */
 export async function lebenszeichen(a: Belegung, fristSek: number): Promise<boolean> {
@@ -48,6 +64,10 @@ export async function lebenszeichen(a: Belegung, fristSek: number): Promise<bool
     `UPDATE auftraege SET frist_bis = NOW() + make_interval(secs => $3), aktualisiert = NOW()
       WHERE id = $1 AND belegt_von = $2 AND status = 'laeuft'`, [a.id, a.belegt_von, fristSek]);
   return (r?.changes ?? 0) > 0;
+}
+/** Nur lesen: Ein Statuswechsel weckt jeden Lauf, schreiben soll dabei keiner. */
+export async function gehoertNoch(a: Belegung): Promise<boolean> {
+  return !!(await db.get<{ ja: number }>(`SELECT 1 AS ja FROM auftraege WHERE id = $1 AND belegt_von = $2 AND status = 'laeuft'`, [a.id, a.belegt_von]));
 }
 export function schreibeFortschritt(a: Belegung, f: Fortschritt, fristSek: number): Promise<Stand> {
   return db.get(
@@ -187,7 +207,7 @@ export async function loescheOffenen(schluessel: string): Promise<void> {
 
 /** Im Format der früheren Tabelle, damit die Oberfläche gleich bleibt. */
 export function bricksetWiedervorlage() {
-  return db.all<z.infer<typeof BricksetQueueEntry>>(
+  return db.all<WiedervorlageZeile>(
     `SELECT a.nutzlast->>'set_number' AS set_number, to_char(a.faellig_ab, 'YYYY-MM-DD') AS retry_after,
             COALESCE((a.nutzlast->>'versuch')::int, 1) AS attempts, a.fehler AS last_error,
             a.erstellt AS created_at, c.name
@@ -204,7 +224,7 @@ export function bricksetWartende() {
 
 /** Ohne Nutzlast (ganze Listen) und ohne Konto, denn die Liste sieht der Verwalter. */
 export function auftragsListe(status: string[], art: string | null) {
-  return db.all<z.infer<typeof Auftrag>>(
+  return db.all<AuftragsListenZeile>(
     `SELECT id::text AS id, art, status, versuche, max_versuche, faellig_ab, frist_bis, gestartet, erstellt,
             aktualisiert, fortschritt, fehler, COALESCE(schluessel LIKE 'plan:%', false) AS geplant,
             nutzlast->>'set_number' AS set_number
@@ -215,12 +235,23 @@ export function auftragsListe(status: string[], art: string | null) {
       LIMIT 200`, [status, art]);
 }
 
+export interface LetzterStand {
+  art: AuftragsArt; status: AuftragsStatus; fortschritt: Fortschritt | null; fehler: string | null; aktualisiert: Date | null;
+}
+/** Je Art der laufende, sonst der zuletzt beendete, sonst der nächste geplante Auftrag. */
+export function letzteJeArt(arten: readonly AuftragsArt[]) {
+  return db.all<LetzterStand>(
+    `SELECT DISTINCT ON (art) art, status, fortschritt, fehler, aktualisiert FROM auftraege
+      WHERE art = ANY($1)
+      ORDER BY art, CASE status WHEN 'laeuft' THEN 0 WHEN 'offen' THEN 2 ELSE 1 END, aktualisiert DESC`, [[...arten]]);
+}
+
 export function zahlenJeArtUndStatus() {
-  return db.all<z.infer<typeof AuftragZaehler>>(`SELECT art, status, COUNT(*)::int AS anzahl FROM auftraege GROUP BY art, status ORDER BY art, status`);
+  return db.all<{ art: string; status: string; anzahl: number }>(`SELECT art, status, COUNT(*)::int AS anzahl FROM auftraege GROUP BY art, status ORDER BY art, status`);
 }
 
 export function laufendePausen() {
-  return db.all<z.infer<typeof AuftragPause>>(`SELECT art, bis, grund FROM auftrag_pausen WHERE bis > NOW() ORDER BY bis`);
+  return db.all<{ art: string; bis: Date; grund: string | null }>(`SELECT art, bis, grund FROM auftrag_pausen WHERE bis > NOW() ORDER BY bis`);
 }
 
 export function auftragsStand(id: string) {

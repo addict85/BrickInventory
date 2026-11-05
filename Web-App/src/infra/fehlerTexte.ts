@@ -190,6 +190,7 @@ export const FEHLER = {
   erfassung_felder:            { de: 'quantity, purchase_price oder condition erforderlich',
                                  en: 'quantity, purchase_price or condition is required' },
   kein_bricklink_preis:        { de: 'kein BrickLink-Preis gefunden', en: 'no BrickLink price found' },
+  kein_bricklink_zugang:       { de: 'Kein BrickLink-Zugang eingerichtet', en: 'No BrickLink access configured' },
 
   // ── Dateien, Import, Export ──────────────────────────────────────────────
   keine_datei:                 { de: 'Keine Datei', en: 'No file' },
@@ -360,6 +361,9 @@ export const FEHLER = {
   zu_viele_verbindungen:       { de: 'Zu viele offene Verbindungen', en: 'Too many open connections' },
   zeitlimit:                   { de: 'Zeitlimit überschritten', en: 'Timed out' },
   wert_ungueltig:              { de: 'Ungültiger Wert', en: 'Invalid value' },
+  schon_vorhanden:             { de: 'Dieser Eintrag ist schon vorhanden.', en: 'This entry already exists.' },
+  bezug_fehlt:                 { de: 'Der Eintrag, auf den sich das bezieht, fehlt oder wird noch gebraucht.',
+                                 en: 'The entry this refers to is missing or still in use.' },
   uhrzeit_ungueltig:           { de: 'Ungültige Uhrzeit (HH:MM)', en: 'Invalid time (HH:MM)' },
   design_ungueltig:            { de: 'Ungültiges Design', en: 'Invalid theme' },
   tageslimit_bereich:          { de: 'Tageslimit muss zwischen 1 und 100000 liegen',
@@ -386,7 +390,7 @@ export const FEHLER = {
 export type FehlerCode = keyof typeof FEHLER;
 
 // Ausführlich: docs/begruendungen/src/infra/fehlerTexte.ts.md#antwortsprache
-export function antwortSprache(req: { headers?: Record<string, any> } | undefined): Sprache {
+export function antwortSprache(req: { headers?: Record<string, unknown> } | undefined): Sprache {
   const roh = String(req?.headers?.['accept-language'] || '').toLowerCase();
   return roh.startsWith('en') || roh.includes(',en') ? 'en' : 'de';
 }
@@ -449,7 +453,8 @@ export function fehlerText(
 /** `code` steht neben dem Satz, damit ein Client reagieren kann, ohne Text zu
  * vergleichen. */
 export function sendeFehler(
-  req: any, res: any, status: number, code: FehlerCode, vars?: Record<string, string | number>,
+  req: { headers?: Record<string, unknown> } | undefined, res: { status(c: number): { json(b: unknown): unknown } },
+  status: number, code: FehlerCode, vars?: Record<string, string | number>,
 ): void {
   res.status(status).json({
     success: false,

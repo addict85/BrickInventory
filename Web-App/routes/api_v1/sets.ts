@@ -1,11 +1,8 @@
 /** /api/v1/sets — ein Router für den ganzen Pfad, damit die Reihenfolge fester
  * Pfade vor :setNumber an einer Stelle steht. Die Arbeit liegt in src/sets/. */
 import express from 'express';
-import multer from 'multer';
 import path from 'path';
-import fs from 'fs';
-import crypto from 'crypto';
-import { fehlertext, meldeUndLiefere, logAndContinue, oeffentlicherFehler } from '../../src/infra/fehler';
+import { fehlertext, meldeUndLiefere, oeffentlicherFehler } from '../../src/infra/fehler';
 import { fehlerAntwort, pfadParam } from '../../src/infra/httpAntwort';
 import { requireToken, kontoSchranke, sichtVon } from './middleware';
 import { getSetting } from '../../src/einstellungen/settings';
@@ -16,18 +13,18 @@ import { normalisiereLagerort, setzeLagerort, lagerorte,
          orteFuer, legeOrtAn, benenneOrtUm, loescheOrt, lagerSchreibkonto,
          vorgabeVon, setzeVorgabe } from '../../src/bestand/lagerort';
 import { alarmeFuer, alleAlarme, ausgeloesteSeit, loescheAlarm, setzeAlarm } from '../../src/finanzen/preisalarm';
-import { csvEmpfang, inhaltPasstZuTyp, uploadKontingentBytes, belegterPlatz, FORMULAR_GRENZEN, privaterOrdner } from '../../src/infra/dateiEmpfang';
+import { csvEmpfang, uploadKontingentBytes, privaterOrdner, privaterEmpfang, kontingentReichtFuer, pruefeEmpfangeneDatei } from '../../src/infra/dateiEmpfang';
 import { sendCsv, uebersprungenHinweis } from '../../src/infra/csvExport';
 import { addSet, updateSet } from '../../src/sets/setService';
 import { loescheSetFuer, getSet, getSets } from '../../src/sets/abfragen';
 import { getSetPriceHistory } from '../../src/finanzen/priceHistory';
-import * as V from '../../src/infra/validate';
 import { mitVersion, normalisiereSetNummer, moeglicheSetNummer } from '../../src/infra/setNummer';
-import { sendeFehler, dateiFehler, antwortSprache } from '../../src/infra/fehlerTexte';
+import { sendeFehler, antwortSprache } from '../../src/infra/fehlerTexte';
 import { setTeileAnreichern } from '../../src/auftraege/nacharbeit';
 import { setInfo, setZumBarcode, teilelisteDesSets, figurenlisteDesSets, setPreis, rebrickableListe,
          setGehoertKonto, anleitungMerken, anleitungLoeschen, setCsvImportStarten, setCsvImportAbbrechen } from '../../src/sets/dienst';
-import { downloadSetInstructions, anleitungenZuSet, loescheAnleitungen, anleitungNeuLadenErlaubt, anzahlAnleitungen } from '../../src/katalog/instructions';
+import { anleitungenZuSet, anleitungenZusammenlegen, loescheAnleitungen, anleitungNeuLadenErlaubt, anzahlAnleitungen } from '../../src/katalog/instructions';
+import { anleitungEinreihen } from '../../src/auftraege/anleitungsAuftrag';
 import { importPartsForSet } from '../../src/katalog/partsImport';
 import { registerSse } from '../../src/infra/sseRegistry';
 import { loginOrTokenGuard, angemeldeteNutzerId, istVerwalter } from '../../src/konto/http/anmeldung';
@@ -45,7 +42,7 @@ const router = vertragsRouter();
 // Sonst liest Express „info" oder „exists" als Setnummer.
 
 router.get('/sets/info/:setNumber', requireToken, async (req: Anfrage<'GET /api/v1/sets/info/:setNumber'>, res: Antwort<'GET /api/v1/sets/info/:setNumber'>) => {
-  const n = mitVersion(pfadParam(req, 'setNumber'));
+  const n = mitVersion(req.pfad.setNumber);
   const stamm = await setInfo(n);
   const imBlickfeld = !!(stamm?.image_local || stamm?.platzhalter) && await setBildSichtbar(req.apiUser.user_id, n);
   // Ein fremder Platzhalter antwortet wie eine nie erfasste Nummer; die Oberfläche zeigt dann die Nummer als Namen.
@@ -59,13 +56,13 @@ router.get('/sets/info/:setNumber', requireToken, async (req: Anfrage<'GET /api/
 /** Nur das Blickfeld des fragenden Kontos (eigenes Konto oder Haushalt).
  * Ausführlich: docs/begruendungen/routes/api_v1/sets.ts.md#get-sets-exists-setnumber */
 router.get('/sets/exists/:setNumber', requireToken, async (req: Anfrage<'GET /api/v1/sets/exists/:setNumber'>, res: Antwort<'GET /api/v1/sets/exists/:setNumber'>) => {
-  const sn = String(req.params.setNumber);
+  const sn = req.pfad.setNumber;
   const treffer = await findSetInScope(req.apiUser.user_id, sn);
   res.json({ success: true, exists: !!treffer, ...(treffer || { set_number: normalizeSetNumber(sn) }) });
 });
 
 router.get('/sets/barcode/:barcode', requireToken, async (req: Anfrage<'GET /api/v1/sets/barcode/:barcode'>, res: Antwort<'GET /api/v1/sets/barcode/:barcode'>) => {
-  const barcode = String(req.params.barcode).trim();
+  const barcode = req.pfad.barcode.trim();
   const treffer = await setZumBarcode(barcode);
   // Ein fremdes Set-Bild liefert die Bildroute nicht aus (bildBlickfeld.ts).
   if (treffer?.image_local && !await setBildSichtbar(req.apiUser.user_id, treffer.set_number)) treffer.image_local = null;
@@ -80,7 +77,7 @@ router.get('/sets/barcode/:barcode', requireToken, async (req: Anfrage<'GET /api
 router.put('/sets/:setNumber/storage', requireToken, async (req: Anfrage<'PUT /api/v1/sets/:setNumber/storage'>, res: Antwort<'PUT /api/v1/sets/:setNumber/storage'>) => {
   const ort = normalisiereLagerort(req.eingabe.storage);
   const n = await setzeLagerort('set', { schreiber: req.apiUser.user_id },
-    [normalizeSetNumber(String(req.params.setNumber))], ort);
+    [normalizeSetNumber(req.pfad.setNumber)], ort);
   res.json({ success: true, storage: ort, changed: n });
 });
 
@@ -89,7 +86,7 @@ router.put('/sets/:setNumber/storage', requireToken, async (req: Anfrage<'PUT /a
  * Ausführlich: docs/begruendungen/routes/api_v1/sets.ts.md#get-sets-setnumber-alert */
 router.get('/sets/:setNumber/alert', requireToken, async (req: Anfrage<'GET /api/v1/sets/:setNumber/alert'>, res: Antwort<'GET /api/v1/sets/:setNumber/alert'>) => {
   res.json({ success: true,
-    alerts: await alarmeFuer(req.apiUser.user_id, normalizeSetNumber(String(req.params.setNumber))) });
+    alerts: await alarmeFuer(req.apiUser.user_id, normalizeSetNumber(req.pfad.setNumber)) });
 });
 
 router.put('/sets/:setNumber/alert', requireToken, async (req: Anfrage<'PUT /api/v1/sets/:setNumber/alert'>, res: Antwort<'PUT /api/v1/sets/:setNumber/alert'>) => {
@@ -97,13 +94,13 @@ router.put('/sets/:setNumber/alert', requireToken, async (req: Anfrage<'PUT /api
   // liefen beim nächsten Wechsel auseinander.
   const waehrung = String(await getSetting(req.apiUser.user_id, 'currency', 'EUR'));
   const alarm = await setzeAlarm(req.apiUser.user_id,
-    normalizeSetNumber(String(req.params.setNumber)), waehrung, req.eingabe || {});
+    normalizeSetNumber(req.pfad.setNumber), waehrung, req.eingabe || {});
   res.json({ success: true, alert: alarm });
 });
 
 router.delete('/sets/:setNumber/alert', requireToken, async (req: Anfrage<'DELETE /api/v1/sets/:setNumber/alert'>, res: Antwort<'DELETE /api/v1/sets/:setNumber/alert'>) => {
   const n = await loescheAlarm(req.apiUser.user_id,
-    normalizeSetNumber(String(req.params.setNumber)), String(req.abfrage.condition || 'N'));
+    normalizeSetNumber(req.pfad.setNumber), String(req.abfrage.condition || 'N'));
   res.json({ success: true, removed: n });
 });
 
@@ -155,12 +152,12 @@ router.post('/storage/locations', requireToken, async (req: Anfrage<'POST /api/v
 router.put('/storage/locations/:id', requireToken, async (req: Anfrage<'PUT /api/v1/storage/locations/:id'>, res: Antwort<'PUT /api/v1/storage/locations/:id'>) => {
   const konto = await lagerSchreibkonto(req.apiUser.user_id, req.abfrage.owner ?? req.eingabe.owner);
   res.json({ success: true,
-    ort: await benenneOrtUm(konto, parseInt(pfadParam(req, 'id'), 10), req.eingabe.name) });
+    ort: await benenneOrtUm(konto, req.pfad.id, req.eingabe.name) });
 });
 
 router.delete('/storage/locations/:id', requireToken, async (req: Anfrage<'DELETE /api/v1/storage/locations/:id'>, res: Antwort<'DELETE /api/v1/storage/locations/:id'>) => {
   const konto = await lagerSchreibkonto(req.apiUser.user_id, req.abfrage.owner);
-  await loescheOrt(konto, parseInt(pfadParam(req, 'id'), 10));
+  await loescheOrt(konto, req.pfad.id);
   res.json({ success: true });
 });
 
@@ -171,11 +168,11 @@ router.get('/storage', requireToken, async (req: Anfrage<'GET /api/v1/storage'>,
 });
 
 router.get('/sets/:setNumber/parts-list', requireToken, async (req: Anfrage<'GET /api/v1/sets/:setNumber/parts-list'>, res: Antwort<'GET /api/v1/sets/:setNumber/parts-list'>) => {
-  res.json({ success: true, ...await teilelisteDesSets(String(req.params.setNumber), setTeileAnreichern) });
+  res.json({ success: true, ...await teilelisteDesSets(req.pfad.setNumber, setTeileAnreichern) });
 });
 
 router.get('/sets/:setNumber/minifigs-list', requireToken, async (req: Anfrage<'GET /api/v1/sets/:setNumber/minifigs-list'>, res: Antwort<'GET /api/v1/sets/:setNumber/minifigs-list'>) => {
-  res.json({ success: true, ...await figurenlisteDesSets(String(req.params.setNumber)) });
+  res.json({ success: true, ...await figurenlisteDesSets(req.pfad.setNumber) });
 });
 
 router.get('/sets', requireToken, async (req: Anfrage<'GET /api/v1/sets'>, res: Antwort<'GET /api/v1/sets'>) => {
@@ -189,7 +186,7 @@ router.get('/sets', requireToken, async (req: Anfrage<'GET /api/v1/sets'>, res: 
 
 router.get('/sets/:setNumber/price', requireToken, async (req: Anfrage<'GET /api/v1/sets/:setNumber/price'>, res: Antwort<'GET /api/v1/sets/:setNumber/price'>) => {
   const uid = req.apiUser.user_id;
-  const sn  = V.einzelwert(req.params.setNumber);
+  const sn  = req.pfad.setNumber;
   // Blickfeld statt eigener ID: Im Haushalt gehört das Set oft einem Unterkonto.
   const preis = await setPreis(uid, sichtVon(req), sn);
   if (!preis) return sendeFehler(req, res, 404, 'set_nicht_gefunden');
@@ -199,7 +196,7 @@ router.get('/sets/:setNumber/price', requireToken, async (req: Anfrage<'GET /api
 router.get('/sets/:setNumber/price-history', requireToken, async (req: Anfrage<'GET /api/v1/sets/:setNumber/price-history'>, res: Antwort<'GET /api/v1/sets/:setNumber/price-history'>) => {
   // Dieselbe Umsetzung wie /api/finance/price-history (src/finanzen/priceHistory.ts).
   const uid = req.apiUser.user_id;
-  const sn  = String(req.params.setNumber);
+  const sn  = req.pfad.setNumber;
   const currency = await getSetting(uid, 'currency', 'EUR');
   const data = await getSetPriceHistory(sichtVon(req), sn, currency);
   res.json({ success: true, set_number: sn, ...data });
@@ -212,7 +209,7 @@ router.get('/sets/household-members', requireToken, async (req: Anfrage<'GET /ap
 });
 
 router.get('/sets/:setNumber', requireToken, async (req: Anfrage<'GET /api/v1/sets/:setNumber'>, res: Antwort<'GET /api/v1/sets/:setNumber'>) => {
-  const set = await getSet(sichtVon(req), pfadParam(req, 'setNumber'));
+  const set = await getSet(sichtVon(req), req.pfad.setNumber);
   if (!set) return sendeFehler(req, res, 404, 'set_nicht_gefunden');
   res.json({ success:true, set });
 });
@@ -242,14 +239,14 @@ router.put('/sets/:setNumber', requireToken, async (req: Anfrage<'PUT /api/v1/se
   }
   // Die Antwort trägt die Gesamtmenge NACH der Änderung: Eine bei 0 gedeckelte
   // Verringerung ergibt eine andere Zahl als die gesendete.
-  const r = await updateSet(req.apiUser.user_id, pfadParam(req, 'setNumber'), req.eingabe);
+  const r = await updateSet(req.apiUser.user_id, req.pfad.setNumber, req.eingabe);
   res.json({ success: true, ...(r || {}) });
 });
 
 /** Standardmässig im ganzen SCHREIB-Blickfeld.
  * Ausführlich: docs/begruendungen/routes/api_v1/sets.ts.md#delete-sets-setnumber */
 router.delete('/sets/:setNumber', requireToken, async (req: Anfrage<'DELETE /api/v1/sets/:setNumber'>, res: Antwort<'DELETE /api/v1/sets/:setNumber'>) => {
-  const papierkorb = await loescheSetFuer(sichtVon(req), pfadParam(req, 'setNumber'));
+  const papierkorb = await loescheSetFuer(sichtVon(req), req.pfad.setNumber);
   if (!papierkorb) return sendeFehler(req, res, 404, 'set_nicht_gefunden');
   res.json({ success: true, papierkorb });
 });
@@ -258,7 +255,7 @@ router.delete('/sets/:setNumber', requireToken, async (req: Anfrage<'DELETE /api
 /** Dieselbe Umsetzung wie der Webapp-Weg (src/sets/setMove.ts), damit die App
  * nicht ihre eigenen Regeln bekommt. */
 router.post('/sets/:sn/move', requireToken, async (req: Anfrage<'POST /api/v1/sets/:sn/move'>, res: Antwort<'POST /api/v1/sets/:sn/move'>) => {
-  const raw = String(req.params.sn);
+  const raw = req.pfad.sn;
   const sn  = mitVersion(raw);
   const uid = req.apiUser.user_id;
   const fromId = await schreibziel(uid, req.eingabe.from_user_id ?? uid);
@@ -367,13 +364,12 @@ router.post('/sets/add-stream', requireToken, kontoSchranke('strom'), async (req
   let cancelled = false; req.on('close', () => { cancelled = true; });
   const send = (d: unknown) => { if (!cancelled && !res.destroyed) res.write(`data: ${JSON.stringify(d)}\n\n`); };
   // Der Strom ist offen: Ein Fehler wird zum letzten Ereignis, kein Statuscode mehr.
-  try {
-    const result = await addSet(set_number, quantity, owner,
-      d => { if (cancelled) throw new Error('CANCELLED'); send(d); },
-      purchase_price, setCondition?.toUpperCase() ?? null, storage);
+  await addSet(set_number, quantity, owner,
+    d => { if (cancelled) throw new Error('CANCELLED'); send(d); },
+    purchase_price, setCondition?.toUpperCase() ?? null, storage).then(
     // success gehört dazu: Die Clients lesen das letzte Ereignis wie eine Antwort.
-    send({ step: 'done', success: true, ...result });
-  } catch (e) { if (fehlertext(e) !== 'CANCELLED') send({ step: 'error', ...oeffentlicherFehler(e, 'sets:add-stream', req) }); }
+    result => send({ step: 'done', success: true, ...result }),
+    (e: unknown) => { if (fehlertext(e) !== 'CANCELLED') send({ step: 'error', ...oeffentlicherFehler(e, 'sets:add-stream', req) }); });
   unregisterAddSse();
   res.end();
 });
@@ -381,7 +377,7 @@ router.post('/sets/add-stream', requireToken, kontoSchranke('strom'), async (req
 /** Nur zu Sets im Blickfeld und gedrosselt: Jeder Import kann Rebrickable-Kontingent kosten. */
 router.post('/sets/:setNumber/parts', requireToken, async (req: Anfrage<'POST /api/v1/sets/:setNumber/parts'>, res: Antwort<'POST /api/v1/sets/:setNumber/parts'>) => {
   const uid = angemeldeteNutzerId(req);
-  const set = await findSetInScope(uid, pfadParam(req, 'setNumber'));
+  const set = await findSetInScope(uid, req.pfad.setNumber);
   if (!set) return sendeFehler(req, res, 404, 'set_nicht_gefunden');
   const takt = await zaehleAnfrage('teile-import', `konto:${uid}`, 60 * 60 * 1000);
   if (takt.count > 30) return sendeFehler(req, res, 429, 'zu_viele_anfragen', { minuten: takt.waitMin });
@@ -392,7 +388,7 @@ router.post('/sets/:setNumber/parts', requireToken, async (req: Anfrage<'POST /a
 // Die Anleitungen sind geteilt: Ersetzen darf nur der Verwalter (ein leerer
 // Abruf löschte sie sonst für alle). Andere holen, was fehlt, einmal je Set und Tag.
 router.post('/sets/:setNumber/instructions', requireToken, async (req: OffeneAnfrage<'POST /api/v1/sets/:setNumber/instructions'>, res: Antwort<'POST /api/v1/sets/:setNumber/instructions'>) => {
-  const sn = normalisiereSetNummer(pfadParam(req, 'setNumber'));
+  const sn = normalisiereSetNummer(req.pfad.setNumber);
   if (!moeglicheSetNummer(sn)) return sendeFehler(req, res, 400, 'setnummer_ungueltig');
   if (istVerwalter(req)) await loescheAnleitungen(sn);
   else {
@@ -400,55 +396,34 @@ router.post('/sets/:setNumber/instructions', requireToken, async (req: OffeneAnf
     if (await anzahlAnleitungen(sn) > 0) return sendeFehler(req, res, 403, 'nur_admins');
     if (!(await anleitungNeuLadenErlaubt(sn))) return sendeFehler(req, res, 429, 'zu_viele_anfragen', { minuten: 24 * 60 });
   }
-  await downloadSetInstructions(sn).catch(logAndContinue('sets:downloadSetInstructions'));
-  const instrs = await anleitungenZuSet(sn);
-  res.json({ success: true, instructions: instrs, count: instrs.length });
+  const auftrag = await anleitungEinreihen(sn, { jetzt: true });
+  const instrs = anleitungenZusammenlegen(await anleitungenZuSet(sn), []);
+  res.status(202).json({ success: true, instructions: instrs, count: instrs.length, auftrag_id: auftrag });
 });
 
-// Die Endung kommt aus dem MIME-Typ, nie aus dem Dateinamen des Clients.
-const INSTR_EXT_BY_MIME = { 'application/pdf': '.pdf', 'image/jpeg': '.jpg', 'image/png': '.png' };
-
-const uploadInstr = multer({
-  storage: multer.diskStorage({
-    destination: (req, _file, cb) => { cb(null, privaterOrdner(path.join(DATA_DIR, 'uploads'), String(angemeldeteNutzerId(req)))); },
-    filename: (req, file, cb) => {
-      const safe = String(req.params.setNumber).replace(/[^a-z0-9-]/gi, '_');
-      // ausTabelle: Ein geerbter Schlüssel wie 'constructor' ist keine Endung.
-      const ext = V.ausTabelle(INSTR_EXT_BY_MIME, file.mimetype);
-      if (!ext) return cb(dateiFehler('datei_typ_falsch', 415), '');
-      // Zufällig statt Zeitstempel: Der Name soll sich nicht erraten lassen.
-      cb(null, `${safe}_${crypto.randomBytes(12).toString('hex')}${ext}`);
-    },
-  }),
-  limits: { ...FORMULAR_GRENZEN, fileSize: 50 * 1024 * 1024 },
-  fileFilter: (_req, file, cb) => { if (V.ausTabelle(INSTR_EXT_BY_MIME, file.mimetype)) cb(null, true); else cb(dateiFehler('datei_typ_falsch', 415)); },
+const uploadInstr = privaterEmpfang({
+  ordner: req => privaterOrdner(path.join(DATA_DIR, 'uploads'), String(angemeldeteNutzerId(req))),
+  praefix: req => pfadParam(req, 'setNumber'),
+  typen: { 'application/pdf': '.pdf', 'image/jpeg': '.jpg', 'image/png': '.png' },
+  maxBytes: 50 * 1024 * 1024,
 });
 
-/** Besitz und Kontingent VOR dem Schreiben, sonst lägen bis zu 50 MB auf der
- * Platte. Content-Length schliesst die Formularhülle ein, ist nie kleiner. */
+/** Besitz und Kontingent VOR dem Schreiben, sonst lägen bis zu 50 MB auf der Platte. */
 async function vorDemUpload(req: express.Request, res: express.Response, next: express.NextFunction) {
   const uid = angemeldeteNutzerId(req);
   if (!await setGehoertKonto(uid, pfadParam(req, 'setNumber'))) return sendeFehler(req, res, 404, 'nicht_gefunden');
-  const ordner = path.join(DATA_DIR, 'uploads', String(uid));
-  const belegt = fs.existsSync(ordner) ? belegterPlatz(ordner) : 0;
-  const kontingent = uploadKontingentBytes();
-  if (belegt + (Number(req.headers['content-length']) || 0) > kontingent)
-    return sendeFehler(req, res, 413, 'upload_kontingent_voll', { mb: Math.round(kontingent / 1024 / 1024) });
+  if (!await kontingentReichtFuer(path.join(DATA_DIR, 'uploads', String(uid)), Number(req.headers['content-length']) || 0))
+    return sendeFehler(req, res, 413, 'upload_kontingent_voll', { mb: Math.round(uploadKontingentBytes() / 1024 / 1024) });
   next();
 }
 
 router.post('/sets/:setNumber/instructions/upload', requireToken, kontoSchranke('upload'), vorDemUpload, uploadInstr.single('file'), async (req: OffeneAnfrage<'POST /api/v1/sets/:setNumber/instructions/upload'>, res: Antwort<'POST /api/v1/sets/:setNumber/instructions/upload'>) => {
   if (!req.file) return sendeFehler(req, res, 400, 'keine_datei');
-  fs.chmodSync(req.file.path, 0o600);
-  const verwerfen = () => fs.rmSync(req.file!.path, { force: true });
-  if (!inhaltPasstZuTyp(req.file.path, req.file.mimetype)) { verwerfen(); return sendeFehler(req, res, 400, 'datei_inhalt_falsch'); }
-  // Noch einmal nach dem Schreiben: Ohne Content-Length (chunked) greift die Vorabprüfung nicht.
-  const kontingent = uploadKontingentBytes();
-  if (belegterPlatz(path.dirname(req.file.path)) > kontingent) {
-    verwerfen();
-    return sendeFehler(req, res, 413, 'upload_kontingent_voll', { mb: Math.round(kontingent / 1024 / 1024) });
-  }
-  const uid = angemeldeteNutzerId(req), sn = pfadParam(req, 'setNumber');
+  const grund = await pruefeEmpfangeneDatei(req.file.path, req.file.mimetype);
+  if (grund === 'upload_kontingent_voll')
+    return sendeFehler(req, res, 413, grund, { mb: Math.round(uploadKontingentBytes() / 1024 / 1024) });
+  if (grund) return sendeFehler(req, res, 400, grund);
+  const uid = angemeldeteNutzerId(req), sn = req.pfad.setNumber;
   const desc = (req.eingabe.description || req.file.originalname).substring(0, 200);
   const relPath = `/data/uploads/${uid}/${req.file.filename}`;
   await anleitungMerken(uid, sn, relPath, desc);
@@ -456,7 +431,7 @@ router.post('/sets/:setNumber/instructions/upload', requireToken, kontoSchranke(
 });
 
 router.delete('/sets/:setNumber/instructions/:instrId', requireToken, async (req: OffeneAnfrage<'DELETE /api/v1/sets/:setNumber/instructions/:instrId'>, res: Antwort<'DELETE /api/v1/sets/:setNumber/instructions/:instrId'>) => {
-  if (!await anleitungLoeschen(angemeldeteNutzerId(req), pfadParam(req, 'instrId')))
+  if (!await anleitungLoeschen(angemeldeteNutzerId(req), String(req.pfad.instrId)))
     return sendeFehler(req, res, 404, 'nicht_gefunden');
   res.json({ success: true });
 });

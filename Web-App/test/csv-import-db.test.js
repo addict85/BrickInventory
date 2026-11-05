@@ -152,17 +152,15 @@ test('Katalog-Import tauscht, statt zu leeren', async (t) => {
   await db.pool.end().catch(() => {});
 });
 
-test('der CSV-Download hat ein Zeitlimit', () => {
-  const src = ohneKommentare(fs.readFileSync(path.join(ROOT, 'jobs/rebrickableCsvSync.ts'), 'utf8'));
-  const dl = src.slice(src.indexOf('async function downloadToTmp'), src.indexOf('async function runWorker'));
-  // Diese eine Prüfung liest Quelltext statt Verhalten: Ein echter Nachweis
-  // bräuchte einen TLS-Server, der die Verbindung annimmt und dann schweigt.
-  // Deshalb wenigstens die Form festhalten — der Aufruf muss eine eigene
-  // Anweisung sein. Ein `if (false) req.setTimeout(…)` fällt damit auf, was
-  // eine blosse Namenssuche nicht könnte (siehe Nachtrag 11).
-  assert.match(dl, /^\s*req\.setTimeout\(/m,
-    'ohne Frist bleibt eine hängende Verbindung für immer stehen — beim Erststart hängt dann die Startanzeige');
-  assert.match(dl, /destroy\(/, 'die Frist bricht die Anfrage nicht ab');
+test('der CSV-Download geht über abruf.ts, mit Frist, Deckel und Host-Liste', () => {
+  // Quelltext statt Verhalten: Frist und Deckel selbst prüft test/abruf-helfer.test.js
+  // an abruf.ts; hier nur, dass der Download diesen Weg nimmt.
+  const src = ohneKommentare(fs.readFileSync(path.join(ROOT, 'clients/rebrickableCsv.ts'), 'utf8'));
+  const aufruf = src.slice(src.indexOf('await oeffneHttps('), src.indexOf('});', src.indexOf('await oeffneHttps(')));
+  for (const feld of ['hosts:', 'maxBytes:', 'zeitlimitMs:', 'signal'])
+    assert.ok(aufruf.includes(feld), `der Download ruft oeffneHttps ohne ${feld}`);
+  assert.doesNotMatch(ohneKommentare(fs.readFileSync(path.join(ROOT, 'jobs/rebrickableCsvSync.ts'), 'utf8')),
+    /from 'https'/, 'der Job lädt nicht mehr selbst');
 });
 
 test('die entpackten Zwischendateien werden aufgeräumt', () => {

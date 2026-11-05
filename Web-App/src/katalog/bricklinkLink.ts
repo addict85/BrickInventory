@@ -89,7 +89,7 @@ export async function resolveViaApi(setNumber: string): Promise<BlLink> {
   // Ohne Zugang bei der Annahme bleiben, nichts cachen.
   if (!await getGlobalSetting('bricklink_consumer_key')) return toLink(n, null);
 
-  const notFound = (e: any) => e?.detail?.meta?.code === 404 || e?.detail?.meta?.code === 400;
+  const notFound = (e: unknown) => [404, 400].includes((e as { detail?: { meta?: { code?: number } } } | null)?.detail?.meta?.code ?? 0);
 
   const probe = async (type: Exclude<BlType, 'NONE'>, no: string) => {
     try { await bricklinkRequest('GET', `/items/${type.toLowerCase()}/${no}`); return true; }

@@ -26,6 +26,9 @@
  *   c) In deleteGlobalSetting nur den ERSTEN Schlüssel gelöscht
  *      (`WHERE key = $1`, `[keys[0]]`) → Teilschritt 3 rot.
  *
+ *   d) (05.11.2026) setGlobalSetting ohne Prüfung gegen GLOBALE_REGELN → rot:
+ *      „ein Schlüssel ohne Regel wird nicht geschrieben“
+ *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL.
  */
 const test = require('node:test');
@@ -43,9 +46,10 @@ test('globale Einstellungen: schreiben, auslösen, löschen', { concurrency: 1 }
   if (!await dbOderSkip(t, _req, { migrieren: false })) return;
   { const c = await db.pool.connect(); try { await _req('db/migrate.js').runMigrations(c); } finally { c.release(); } }
 
-  // Eigene Schlüssel je Prozess: Der Test läuft neben anderen auf derselben DB.
-  const A = `probe_a_${process.pid}`, B = `probe_b_${process.pid}`, T = `probe_t_${process.pid}`;
+  // Echte Schlüssel: Ein Schlüssel ohne Regel in GLOBALE_REGELN wird nicht geschrieben.
+  const A = 'smtp_host', B = 'smtp_user', T = 'smtp_from';
   const alle = [A, B, T];
+  const vorher = await db.all('SELECT key, value FROM global_settings WHERE key = ANY($1)', [alle]);
   const bestand = async () =>
     (await db.get(`SELECT COUNT(*)::int AS c FROM global_settings`)).c;
 
@@ -57,6 +61,8 @@ test('globale Einstellungen: schreiben, auslösen, löschen', { concurrency: 1 }
     await setGlobalSetting(A, 'zwei');
     assert.equal(await getGlobalSetting(A), 'zwei', 'der zweite Aufruf muss überschreiben');
     assert.equal(await getGlobalSetting(`gibt_es_nicht_${process.pid}`, 'ersatz'), 'ersatz');
+    await assert.rejects(setGlobalSetting(`gibt_es_nicht_${process.pid}`, 'x'), { code: 'wert_ungueltig' },
+      'ein Schlüssel ohne Regel wird nicht geschrieben');
 
     // 2. Laufzustand: gelöscht heisst, die Zeile ist weg.
     await setzeZustand(T, 'x');
@@ -75,16 +81,17 @@ test('globale Einstellungen: schreiben, auslösen, löschen', { concurrency: 1 }
     // 4. Der gefährliche Fall: kein Schlüssel genannt. Die Tabelle trägt die
     //    Registrierungssperre, die API-Grenzen und die BrickLink-Zugangsdaten —
     //    ein versehentliches Leeren wäre nicht rückholbar.
-    const vorher = await bestand();
-    assert.ok(vorher > 0, 'für diese Probe muss die Tabelle etwas enthalten');
+    const zahl = await bestand();
+    assert.ok(zahl > 0, 'für diese Probe muss die Tabelle etwas enthalten');
     await deleteGlobalSetting();
-    assert.equal(await bestand(), vorher,
+    assert.equal(await bestand(), zahl,
       'ein Aufruf ohne Schlüssel darf NICHTS löschen');
     await deleteGlobalSetting(...[]);
-    assert.equal(await bestand(), vorher,
+    assert.equal(await bestand(), zahl,
       'auch ein leeres Array darf NICHTS löschen');
   } finally {
     await db.run(`DELETE FROM global_settings WHERE key = ANY($1)`, [alle]).catch(() => {});
+    for (const z of vorher) await db.run('INSERT INTO global_settings (key, value) VALUES ($1, $2)', [z.key, z.value]).catch(() => {});
     await loescheZustand(T).catch(() => {});
     await db.pool.end().catch(() => {});
   }

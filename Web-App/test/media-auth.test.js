@@ -21,7 +21,8 @@ const path   = require('node:path');
 
 const ROOT   = path.join(__dirname, '..');
 const read   = f => fs.readFileSync(path.join(ROOT, f), 'utf8');
-const SERVER = read('server.ts');
+// Die Bildroute steht in routes/seiten.ts, ihr Rumpf in src/katalog/http/bildAuslieferung.ts.
+const SERVER = ['server.ts', 'routes/seiten.ts', 'src/katalog/http/bildAuslieferung.ts'].map(read).join('\n');
 /**
  * Kommentare weg — der Erklärtext oben nennt express.static selbst.
  *
@@ -81,7 +82,9 @@ test('jede Datei-Route prüft die Anmeldung', () => {
   // Alle Routen, die Dateien aus data/ ausliefern. serveDataFile() prüft
   // intern (resolveUserId + Besitzerabgleich), deshalb zählt es als Prüfung.
   const quellen = CODE + '\n' + ohneKommentare(read('routes/datenDateien.ts'));
-  const routes = [...quellen.matchAll(/(?:app|router)\.get\(\s*(\[[^\]]*\]|'[^']*')\s*,\s*([\s\S]*?)\n\s*\}\);/g)];
+  const routes = [...quellen.matchAll(/(?:app|router)\.get\(\s*(\[[^\]]*\]|'[^']*')\s*,\s*([\s\S]*?)\n\s*\}\);/g)]
+    // Ein benannter Handler (`, liefereBild);`) zählt unten mit seinem Rumpf.
+    .filter(m => !/^\w+\);/.test(m[2]));
   // Eine Route mit benanntem Handler (server.ts: liefereBild) zählt mit dessen Rumpf.
   for (const m of quellen.matchAll(/(?:app|router)\.get\(\s*('[^']*')\s*,\s*(\w+)\);/g)) {
     const rumpf = new RegExp(`function ${m[2]}\\([\\s\\S]*?\\n\\}\\n`).exec(quellen);
@@ -119,7 +122,9 @@ test('Bilder werden privat gecacht, nicht öffentlich', () => {
   // `public` erlaubt einem Reverse-Proxy oder CDN, die Antwort zu behalten und
   // an andere auszuliefern. Bei anmeldepflichtigen Inhalten wäre das genau der
   // Weg, die Prüfung wieder auszuhebeln.
-  const route = CODE.slice(CODE.indexOf("app.get('/images/*pfad'"));
+  const i = CODE.indexOf('function liefereBild(');
+  assert.ok(i > 0, 'liefereBild nicht gefunden');
+  const route = CODE.slice(i);
   assert.match(route.slice(0, 1500), /Cache-Control', 'private/,
     'Bilder hinter Anmeldung dürfen nicht public gecacht werden');
 });

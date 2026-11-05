@@ -1,7 +1,6 @@
 import * as db from '../../../db/database';
 import { blJoin, blNummerSql } from '../../../db/blZuordnungSql';
-import type { z } from 'zod';
-import type { Acquisition } from '../../infra/vertrag/bestand';
+import type { ErfassungsZeile } from '../../../db/bestandsmenge';
 
 /** Die BrickLink-Nummer hängt an der Figur (bl_zuordnung), nicht am Exemplar. */
 
@@ -40,7 +39,7 @@ export async function setzeFigurzustandNeueste(uid: number, figNumber: string, z
 }
 
 export function figurErfassungen(uids: number[], figNumber: string) {
-  return db.all<z.infer<typeof Acquisition>>(
+  return db.all<ErfassungsZeile>(
     `SELECT a.id, a.quantity, a.unit_price,
             COALESCE(a.condition, 'N') AS condition, a.price_estimated, a.currency,
             a.created_at, a.user_id AS owner_user_id

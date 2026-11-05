@@ -4,6 +4,7 @@ import { getPortfolioHistory } from '../../src/finanzen/portfolioHistory';
 import { computeMinifigsValuation, computePartsValuation, computePnl, computeSetsValuation } from '../../src/finanzen/financeCalc';
 import { einzelwert } from '../../src/infra/validate';
 import { vertragsRouter } from '../../src/infra/vertrag/pruefen';
+import { seiteAus } from '../../src/infra/seite';
 import type { Anfrage, Antwort } from '../../src/infra/vertrag';
 const router = vertragsRouter();
 
@@ -12,22 +13,26 @@ router.get('/finance/valuation', requireToken, async (req: Anfrage<'GET /api/v1/
   // Kein `rate_limit` in der Antwort: Er kostete drei Abfragen je Aufruf und
   // steht in der Überwachung.
   // Ausführlich: docs/begruendungen/routes/api_v1/finance.ts.md#get-finance-valuation
-  res.json({ success:true, total_value: data.totals.qty_avg, ...data });
+  const { eintraege: sets, ...seite } = seiteAus(data.sets, req.abfrage);
+  res.json({ success: true, total_value: data.totals.qty_avg, wert_gesamt: Number(data.totals.qty_avg), ...data, sets, ...seite });
 });
 
 router.get('/finance/parts-valuation', requireToken, async (req: Anfrage<'GET /api/v1/finance/parts-valuation'>, res: Antwort<'GET /api/v1/finance/parts-valuation'>) => {
   const data = await computePartsValuation(req.apiUser.user_id, sichtVon(req));
-  res.json({ success: true, ...data });
+  const { eintraege: parts, ...seite } = seiteAus(data.parts, req.abfrage);
+  res.json({ success: true, ...data, parts, ...seite });
 });
 
 router.get('/finance/minifigs-valuation', requireToken, async (req: Anfrage<'GET /api/v1/finance/minifigs-valuation'>, res: Antwort<'GET /api/v1/finance/minifigs-valuation'>) => {
   const data = await computeMinifigsValuation(req.apiUser.user_id, sichtVon(req));
-  res.json({ success: true, ...data });
+  const { eintraege: figs, ...seite } = seiteAus(data.figs, req.abfrage);
+  res.json({ success: true, ...data, figs, ...seite });
 });
 
 router.get('/finance/pnl', requireToken, async (req: Anfrage<'GET /api/v1/finance/pnl'>, res: Antwort<'GET /api/v1/finance/pnl'>) => {
   const data = await computePnl(req.apiUser.user_id, sichtVon(req));
-  res.json({ success: true, ...data });
+  const { eintraege: sets, ...seite } = seiteAus(data.sets, req.abfrage);
+  res.json({ success: true, ...data, sets, ...seite });
 });
 
 router.get('/finance/portfolio-history', requireToken, async (req: Anfrage<'GET /api/v1/finance/portfolio-history'>, res: Antwort<'GET /api/v1/finance/portfolio-history'>) => {

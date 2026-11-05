@@ -10,7 +10,7 @@ import path from 'path';
 const _thumbCache = new Map();
 
 /** Map hält die Einfügereihenfolge: Der erste Schlüssel ist der älteste. */
-function _evictOldest(map: Map<any, any>, n: number) {
+function _evictOldest(map: Map<unknown, unknown>, n: number) {
   let removed = 0;
   for (const k of map.keys()) {
     map.delete(k);

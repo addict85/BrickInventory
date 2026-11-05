@@ -291,7 +291,7 @@ test('Sicherheitsschritte am Konto scheitern nicht mehr stillschweigend', () => 
   // Und fuer die App ist ein Login ohne Token gar kein Erfolg: Sie hat keinen
   // zweiten Ausweg; seit eine Token-Anmeldung keine Sitzung mehr anlegt, gilt
   // das für jeden Token, nicht nur den dauerhaften.
-  assert.match(login, /fehlertext\(e\)\);\s*return sendeFehler\(req, res, 500, 'token_nicht_ausgestellt'\)/,
+  assert.match(login, /fehlertext\(e\)\);\s*return null;\s*\}\);\s*if \(!token\) return sendeFehler\(req, res, 500, 'token_nicht_ausgestellt'\)/,
     'Scheitert der Token, muss die App einen Fehler bekommen statt eines halben Erfolgs');
 
   // Die Löschungen selbst stehen inzwischen nur noch in src/konto/auth.ts

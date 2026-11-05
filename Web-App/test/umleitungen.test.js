@@ -197,7 +197,7 @@ test('Abrufe nach draussen gehen nur über src/infra/abruf.ts', () => {
     'downloadFile prueft die Umleitungsziele nicht mehr — die Datei wird ausgeliefert');
 
   // ── Und die Liste steht nur noch an EINER Stelle ──────────────────────────
-  const proxy = ohneKommentare(read('routes/imgProxy.ts'));
+  const proxy = ohneKommentare(read('src/katalog/http/bildProxy.ts'));
   assert.doesNotMatch(proxy, /const ALLOWED_IMAGE_HOSTS = \[/,
     'Die Bild-Allowlist ist zurueck in der Route — sie gehoert nach src/infra/fremdeAdressen.ts, ' +
     'weil clients/ sie braucht und ein Client nicht von einer Route abhaengen soll');
@@ -206,7 +206,8 @@ test('Abrufe nach draussen gehen nur über src/infra/abruf.ts', () => {
   // beides zusammen, nicht eines statt des anderen.
   assert.match(proxy, /hostErlaubt\(url, ERLAUBTE_BILD_HOSTS\)/,
     'Der Bild-Proxy prueft nicht mehr ueber die gemeinsame Regel');
-  assert.match(ohneKommentare(read('routes/api_v1/admin.ts')), /hostErlaubt\(url, ERLAUBTE_BILD_HOSTS\)/,
+  // Die Bild-Diagnose steht seit 05.11.2026 im Verwaltungsdienst.
+  assert.match(ohneKommentare(read('src/verwaltung/dienst.ts')), /hostErlaubt\(url, ERLAUBTE_BILD_HOSTS\)/,
     'Die Bild-Diagnose prueft nicht mehr ueber die gemeinsame Regel');
 });
 

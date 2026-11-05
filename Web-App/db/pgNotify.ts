@@ -45,8 +45,8 @@ async function connect() {
     for (const hs of _handlers.values()) {
       for (const h of hs) Promise.resolve(h()).catch(logAndContinue('notify:h'));
     }
-  } catch (e: any) {
-    console.error('[notify] Verbindung fehlgeschlagen:', e.message);
+  } catch (e) {
+    console.error('[notify] Verbindung fehlgeschlagen:', (e as Error).message);
     _client = null;
     scheduleReconnect();
   } finally {
@@ -115,8 +115,8 @@ export function listen(channel: string, handler: Handler) {
 export async function notify(channel: string, payload = '') {
   try {
         await db.run(`SELECT pg_notify($1, $2)`, [channel, payload]);
-  } catch (e: any) {
-    console.error(`[notify:${channel}]`, e.message);
+  } catch (e) {
+    console.error(`[notify:${channel}]`, (e as Error).message);
   }
 }
 

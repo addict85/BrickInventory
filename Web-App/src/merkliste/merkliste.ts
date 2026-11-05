@@ -10,6 +10,7 @@ import { findSetInScope } from '../sets/setAdd';
 import { loescheAlarm } from '../finanzen/preisalarm';
 import * as V from '../infra/validate';
 import { fehlerWerfen } from '../infra/fehlerTexte';
+import { geldEingabe } from '../infra/geld';
 import { nutzerStandardZustand, getSetting } from '../einstellungen/settings';
 import { meldeUndWeiter, meldeUndLiefere, oeffentlicherFehler } from '../infra/fehler';
 import { fuerSet } from '../katalog/preisvergleich';
@@ -225,7 +226,7 @@ export async function uebernimm(
   const ergebnis = vorhanden
     ? { action: 'exists', set_number: sn }
     : await addSet(sn, V.acquisitionQuantity(eingabe.quantity ?? 1), besitzerId, null,
-                   V.optionalPrice(eingabe.purchase_price, 'Kaufpreis'), zustand,
+                   geldEingabe(eingabe.purchase_price, 'Kaufpreis'), zustand,
                    eingabe.storage == null ? null : String(eingabe.storage));
 
   // Nach dem MERKPOSTEN-Zustand: Es geht um die Zeile, die man erfüllt hat.

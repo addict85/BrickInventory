@@ -14,12 +14,14 @@ import { raeumeOffeneRegistrierungenAuf } from '../src/konto/konten';
 import { raeumeProtokollAuf } from '../src/verwaltung/dienst';
 import { raeumeAlteSicherungenAuf } from '../db/migrate';
 import * as db from '../db/database';
+import { pruefeAbbruch, type AuftragsLauf } from '../src/auftraege/auftraege';
 
 type Schritt = [name: string, lauf: () => Promise<unknown>];
 
-async function fuehreAus(schritte: Schritt[]): Promise<void> {
+async function fuehreAus(schritte: Schritt[], auftrag?: AuftragsLauf): Promise<void> {
   const fehler: string[] = [];
   for (const [name, lauf] of schritte) {
+    pruefeAbbruch(auftrag);
     try {
       const n = await lauf();
       if (typeof n === 'number' && n > 0) console.log(`[aufräumen] ${name}: ${n} entfernt`);
@@ -28,7 +30,7 @@ async function fuehreAus(schritte: Schritt[]): Promise<void> {
   if (fehler.length) throw new Error(fehler.join('; '));
 }
 
-function aufraeumen(): Promise<void> {
+function aufraeumen(lauf?: AuftragsLauf): Promise<void> {
   return fuehreAus([
     ['abgelaufene Tokens', purgeExpiredTokens],
     ['Anmeldezähler', raeumeAnmeldezaehlerAuf],
@@ -37,17 +39,17 @@ function aufraeumen(): Promise<void> {
     ['alte Aufträge', raeumeErledigteAuf],
     ['verfallene Bildwünsche', loescheVerfallene],
     ['Idempotenzschlüssel', raeumeIdempotenzAuf],
-  ]);
+  ], lauf);
 }
 
-function aufraeumenTaeglich(): Promise<void> {
+function aufraeumenTaeglich(lauf?: AuftragsLauf): Promise<void> {
   return fuehreAus([
     ['Preisverlauf', purgeAltePreise],
     ['unbestätigte Registrierungen', raeumeOffeneRegistrierungenAuf],
     ['Bild-Cache', raeumeBildCacheAuf],
     ['Verwaltungsprotokoll', () => raeumeProtokollAuf()],
     ['Kopien vor Migrationen', () => raeumeAlteSicherungenAuf(db)],
-  ]);
+  ], lauf);
 }
 
 export { aufraeumen, aufraeumenTaeglich };

@@ -3,15 +3,42 @@ import type { Sicht } from '../haushalt/haushalt';
 import * as dbStandard from '../../db/database';
 import { getSetting as getSettingStandard } from '../einstellungen/settings';
 import { baueDiagrammdaten } from './portfolio/diagrammdaten';
-import { rekonstruiereKurve } from './portfolio/kurve';
+import { rekonstruiereKurve, type KurvenPunkt } from './portfolio/kurve';
 import { DEFAULT_PRICE_CONDITION } from './financeCalc';
 import * as repo from './repository/portfolioKurve';
+/** Je Monat der letzte Punkt; der erste bleibt exakt, damit alle Zeiträume beim selben Start beginnen. */
+function aufMonate(rawPoints: KurvenPunkt[]): KurvenPunkt[] {
+  const byMonth = new Map<string, KurvenPunkt>();
+  for (const p of rawPoints) byMonth.set(p.month || p.day.slice(0,7), p);
+  const monthly = [...byMonth.values()].map(p => ({ ...p, day: p.month || p.day.slice(0,7) }));
+  const first = rawPoints[0];
+  if (first && monthly[0] && monthly[0].fullDay !== first.fullDay) {
+    monthly[0] = { ...first, day: first.month || first.day.slice(0,7) };
+  }
+  return monthly;
+}
+
+/** Ein künstlicher Startwert, damit die App eine Linie hat; `messpunkte` sagt der Weboberfläche, dass das kein Verlauf ist. */
+function mitStartpunkt(rawPoints: KurvenPunkt[], period: string, purchaseTotal: number): KurvenPunkt[] {
+  const now = new Date();
+  const pad = (n: number) => String(n).padStart(2,'0');
+  const startDate = new Date(now);
+  if      (period==='week')  startDate.setDate(now.getDate()-7);
+  else if (period==='month') startDate.setDate(now.getDate()-30);
+  else if (period==='year')  startDate.setFullYear(now.getFullYear()-1);
+  else                       startDate.setFullYear(now.getFullYear()-5);
+  const baseVal = rawPoints[0] ? rawPoints[0].total : purchaseTotal > 0 ? purchaseTotal : 0;
+  if (!(baseVal > 0)) return rawPoints;
+  const startFullDay = `${startDate.getFullYear()}-${pad(startDate.getMonth()+1)}-${pad(startDate.getDate())}`;
+  return [{ day:startFullDay, fullDay:startFullDay, total:baseVal }, ...rawPoints];
+}
+
 /** `db` und `getSetting` lassen sich hereingeben, damit die Rechnung ohne
  * Datenbank prüfbar bleibt. */
 export async function getPortfolioHistory(
   viewerId: number, idsWahl: Sicht | number[], period: string,
-  db: { all(sql: string, params?: any[]): Promise<any[]>; get(sql: string, params?: any[]): Promise<any> } = dbStandard,
-  getSetting: (userId: number, key: string, fallback?: any) => Promise<any> = getSettingStandard,
+  db: unknown = dbStandard,
+  getSetting: (userId: number, key: string, fallback: string) => Promise<string> = getSettingStandard,
 ) {
   const ids = await blickfeldAus(idsWahl);
   // Mit dem Filter „Unterkonten" enthält ids das fragende Konto nicht; die
@@ -27,9 +54,9 @@ export async function getPortfolioHistory(
   }
 
   const setNumbers    = sets.map((s: { set_number: string }) => s.set_number);
-  const setQty        = Object.fromEntries(sets.map((s: any) => [s.set_number, s.quantity||1]));
+  const setQty        = Object.fromEntries(sets.map(s => [s.set_number, s.quantity||1]));
   const placeholders  = setNumbers.map((_: unknown, i: number) => `$${i+3}`).join(',');
-  const purchaseTotal = sets.reduce((s: number, r: any) => s + parseFloat(r.purchase_price||0)*(r.quantity||1), 0);
+  const purchaseTotal = sets.reduce((s: number, r) => s + (Number(r.purchase_price) || 0)*(r.quantity||1), 0);
 
   let dateFilter = '';
   if      (period==='week')  dateFilter = "AND recorded_at >= NOW() - INTERVAL '7 days'";
@@ -55,43 +82,11 @@ export async function getPortfolioHistory(
 
   // Die Beschriftung muss die Verdichtung kennen, sonst bekäme der erste Punkt
   // ein Monatskürzel und der letzte nicht mehr „heute".
-  let downsampled = monatsAufloesung;
-  if (rawPoints.length > 120) {
-    const byMonth = new Map();
-    for (const p of rawPoints) {
-      byMonth.set(p.month || p.day.slice(0,7), p); // letzter Punkt pro Monat gewinnt
-    }
-    const monthly = [...byMonth.values()].map(p => ({
-      ...p, day: p.month || p.day.slice(0,7)
-    }));
-    // Den ersten Punkt exakt behalten, damit alle Zeiträume beim selben Start beginnen.
-    const first = rawPoints[0];
-    if (monthly.length && monthly[0].fullDay !== first.fullDay) {
-      monthly[0] = { ...first, day: first.month || first.day.slice(0,7) };
-    }
-    rawPoints = monthly;
-    downsampled = true;
-  }
+  const verdichtet = rawPoints.length > 120;
+  if (verdichtet) rawPoints = aufMonate(rawPoints);
+  const downsampled = monatsAufloesung || verdichtet;
 
-  // Ein einzelner Messpunkt bekommt einen künstlichen Startwert, damit die App
-  // eine Linie hat; `messpunkte` sagt der Weboberfläche, dass das kein Verlauf ist.
-  if (rawPoints.length <= 1) {
-    const now = new Date();
-    const pad = (n: number) => String(n).padStart(2,'0');
-    let startDate = new Date(now);
-    if      (period==='week')  startDate.setDate(now.getDate()-7);
-    else if (period==='month') startDate.setDate(now.getDate()-30);
-    else if (period==='year')  startDate.setFullYear(now.getFullYear()-1);
-    else                       startDate.setFullYear(now.getFullYear()-5);
-
-    const baseVal = rawPoints.length===1 ? rawPoints[0].total
-                  : purchaseTotal > 0   ? purchaseTotal : 0;
-
-    if (baseVal > 0) {
-      const startFullDay = `${startDate.getFullYear()}-${pad(startDate.getMonth()+1)}-${pad(startDate.getDate())}`;
-      rawPoints = [{ day:startFullDay, fullDay:startFullDay, total:baseVal }, ...rawPoints];
-    }
-  }
+  if (rawPoints.length <= 1) rawPoints = mitStartpunkt(rawPoints, period, purchaseTotal);
 
   if (!rawPoints.length) {
     return { success:true, currency, period, points:[], y_axis:[], period_change_pct:null, messpunkte:0 };

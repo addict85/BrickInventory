@@ -57,9 +57,9 @@ const FIGS_CSV_SQL = `
    ORDER BY ${FIGUR.name} ASC, f.fig_number ASC, a.created_at ASC, a.id ASC`;
 
 export function teileFuerCsv(uid: number) {
-  return db.all(PARTS_CSV_SQL, [uid]);
+  return db.all<Record<string, unknown> & { unit_price: number | null }>(PARTS_CSV_SQL, [uid]);
 }
 
 export function figurenFuerCsv(uid: number) {
-  return db.all(FIGS_CSV_SQL, [uid]);
+  return db.all<Record<string, unknown> & { unit_price: number | null }>(FIGS_CSV_SQL, [uid]);
 }

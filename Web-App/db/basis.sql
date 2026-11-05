@@ -23,6 +23,24 @@ SET row_security = off;
 CREATE EXTENSION IF NOT EXISTS pg_trgm WITH SCHEMA public;
 
 --
+-- Name: auftrag_exklusiv_belegen(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.auftrag_exklusiv_belegen() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM auftrag_exklusiv e WHERE e.art = NEW.art) THEN RETURN NEW; END IF;
+  -- Belegt gerade ein anderer: diese Zeile nicht, ohne zu warten.
+  IF NOT pg_try_advisory_xact_lock(59, hashtext(NEW.art)) THEN RETURN NULL; END IF;
+  IF EXISTS (SELECT 1 FROM auftraege l
+              WHERE l.art = NEW.art AND l.status = 'laeuft' AND l.frist_bis >= NOW() AND l.id <> NEW.id) THEN
+    RETURN NULL;
+  END IF;
+  RETURN NEW;
+END $$;
+
+--
 -- Name: bild_stamm(text); Type: FUNCTION; Schema: public; Owner: -
 --
 
@@ -419,6 +437,14 @@ CREATE SEQUENCE public.auftraege_id_seq
 --
 
 ALTER SEQUENCE public.auftraege_id_seq OWNED BY public.auftraege.id;
+
+--
+-- Name: auftrag_exklusiv; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.auftrag_exklusiv (
+    art text NOT NULL
+);
 
 --
 -- Name: auftrag_pausen; Type: TABLE; Schema: public; Owner: -
@@ -1736,7 +1762,7 @@ CREATE TABLE public.vouchers (
     user_id integer NOT NULL,
     number text NOT NULL,
     pin text,
-    amount numeric(12,2) NOT NULL,
+    amount numeric(12,4) NOT NULL,
     currency text NOT NULL,
     pdf_path text,
     created_at timestamp with time zone DEFAULT now() NOT NULL,
@@ -2078,6 +2104,13 @@ ALTER TABLE ONLY public.app_logs
 
 ALTER TABLE ONLY public.auftraege
     ADD CONSTRAINT auftraege_pkey PRIMARY KEY (id);
+
+--
+-- Name: auftrag_exklusiv auftrag_exklusiv_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.auftrag_exklusiv
+    ADD CONSTRAINT auftrag_exklusiv_pkey PRIMARY KEY (art);
 
 --
 -- Name: auftrag_pausen auftrag_pausen_pkey; Type: CONSTRAINT; Schema: public; Owner: -
@@ -3117,6 +3150,12 @@ CREATE UNIQUE INDEX users_email_lower ON public.users USING btree (lower(email))
 CREATE UNIQUE INDEX users_username_lower ON public.users USING btree (lower(username));
 
 --
+-- Name: auftraege auftrag_exklusiv; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER auftrag_exklusiv BEFORE UPDATE OF status, belegt_von ON public.auftraege FOR EACH ROW WHEN (((new.status = 'laeuft'::text) AND (new.belegt_von IS DISTINCT FROM old.belegt_von))) EXECUTE FUNCTION public.auftrag_exklusiv_belegen();
+
+--
 -- Name: catalog_cache catalog_cache_setnummer; Type: TRIGGER; Schema: public; Owner: -
 --
 
@@ -3750,6 +3789,21 @@ SET client_min_messages = warning;
 SET row_security = off;
 
 --
+-- Data for Name: auftrag_exklusiv; Type: TABLE DATA; Schema: public; Owner: -
+--
+
+INSERT INTO public.auftrag_exklusiv (art) VALUES ('anleitung');
+INSERT INTO public.auftrag_exklusiv (art) VALUES ('brickset');
+INSERT INTO public.auftrag_exklusiv (art) VALUES ('bildbedarf');
+INSERT INTO public.auftrag_exklusiv (art) VALUES ('bilder_neu_laden');
+INSERT INTO public.auftrag_exklusiv (art) VALUES ('csv_sync');
+INSERT INTO public.auftrag_exklusiv (art) VALUES ('preise');
+INSERT INTO public.auftrag_exklusiv (art) VALUES ('bild_nachlauf');
+INSERT INTO public.auftrag_exklusiv (art) VALUES ('aufraeumen');
+INSERT INTO public.auftrag_exklusiv (art) VALUES ('aufraeumen_taeglich');
+INSERT INTO public.auftrag_exklusiv (art) VALUES ('preise_nachladen');
+
+--
 -- Data for Name: global_settings; Type: TABLE DATA; Schema: public; Owner: -
 --
 
@@ -3880,6 +3934,8 @@ INSERT INTO public.schema_migrations (name, applied_at, pruefsumme) VALUES ('009
 INSERT INTO public.schema_migrations (name, applied_at, pruefsumme) VALUES ('0096-email-neu.sql', '2026-11-04 16:14:17.013655+00', '01bf63d8a31f98e576e7c46c7023743fae6cba6d8e8cacee8c846d2c710d2c7a');
 INSERT INTO public.schema_migrations (name, applied_at, pruefsumme) VALUES ('0097-registrierung-ausstehend.sql', '2026-11-05 06:06:22.870077+00', 'e33185a316d352398c5dd3c392f462d1494233c261d33e368f98bef3eec8cff8');
 INSERT INTO public.schema_migrations (name, applied_at, pruefsumme) VALUES ('0098-auftrag-ergebnis.sql', '2026-11-05 06:06:22.87462+00', 'dba73f3660407e202cbad6ca49ad5f3406dd45b758bc6a14cb9c54d0b97bdeea');
+INSERT INTO public.schema_migrations (name, applied_at, pruefsumme) VALUES ('0099-auftrag-exklusiv.sql', '2026-11-05 19:45:56.053488+00', 'a44f1f7e2c0f28df52c9695cd677fc73b8129cde61adabfefda2f36ce3ab21ac');
+INSERT INTO public.schema_migrations (name, applied_at, pruefsumme) VALUES ('0100-preise-nachladen-schema.sql', '2026-11-05 20:38:44.34808+00', '9a7da05eae906cb0c73cab8fd8cc3d0942d660d65df1228f1d59a3b08cb574eb');
 
 --
 -- PostgreSQL database dump complete

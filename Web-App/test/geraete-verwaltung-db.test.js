@@ -188,7 +188,8 @@ test('Zugänge auflisten und aussperren — über Sitzung UND über Token',
     // des Kontos auf einmal.
     const alles = await ruf(SETTINGS + '/tokens/' + encodeURIComponent('%'),
       { method: 'DELETE', headers: { authorization: `Bearer ${telefon.body.token}` } });
-    assert.equal(alles.body.deleted, 0,
+    // Seit 05.11.2026 weist schon der Vertrag (PFAD) die Kennung ab.
+    assert.equal(alles.status, 400,
       'Ein "%" als Token-Kennung darf nicht alle Zugänge auf einmal löschen');
   } finally {
     await new Promise(r => srv.close(r));

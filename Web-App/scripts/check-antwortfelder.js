@@ -44,8 +44,7 @@ const ERLAUBT = new Map([
   ['merker', 'Selbstprüfung'], ['hinweis', 'Selbstprüfung'],
   ['rate_limit', 'nur noch im Admin-Bericht, nicht mehr in der Bewertung'],
   // Export-Datei: gelesen wird sie vom Import DIESES Servers, nicht von einem Client.
-  ['exported_at', 'Einstellungs-Export'], ['exported_by', 'Einstellungs-Export'],
-  ['tokens', 'Einstellungs-Export'], ['user_settings', 'Einstellungs-Export'],
+  ['tokens', 'Einstellungs-Export'],
   // Antworten, die der Browser als Ganzes weiterverarbeitet oder ignoriert.
   ['email_sent', 'Registrierung: Ablauf hängt nicht daran'],
   ['userId', 'Anmeldeantwort; die Oberfläche liest die Sitzung, nicht das Feld'],

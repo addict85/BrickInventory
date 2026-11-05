@@ -1,9 +1,10 @@
 import { buildChart } from '../chartData';
+import type { KurvenPunkt } from './kurve';
 
 /** Alle Beschriftungen entstehen auf dem Server, damit Webapp und App gleich aussehen.
  * Ausführlich: docs/begruendungen/src/finanzen/portfolio/diagrammdaten.ts.md#bauediagrammdaten */
-export function baueDiagrammdaten(rawPoints: any[], currency: string, downsampled: boolean) {
-function fmtX(point: any) {
+export function baueDiagrammdaten(rawPoints: KurvenPunkt[], currency: string, downsampled: boolean) {
+function fmtX(point: { day?: string }) {
   const d = (point.day||'').toString();
   if (d.length===10 && d[4]==='-' && d[7]==='-') {
     return d.slice(8)+'.'+d.slice(5,7);   // DD.MM  (daily resolution)
@@ -31,7 +32,7 @@ function fmtY(v: number) {
   return `${sym} ${s}`;
 }
 
-const y_axis: any[] = [];
+const y_axis: { label: string; value: number; frac: number }[] = [];
 for (let t = 0; t <= 4; t++) {
   const frac  = t / 4;
   const value = vMin + frac * (vMax - vMin);
@@ -74,8 +75,8 @@ const points = rawPoints.map((p, i) => {
   };
 });
 
-const firstVal   = rawPoints[0].total;
-const currentVal = rawPoints[rawPoints.length-1].total;
+const firstVal   = rawPoints[0]?.total ?? 0;
+const currentVal = rawPoints.at(-1)?.total ?? 0;
 const period_change_pct = rawPoints.length >= 2 && firstVal > 0
   ? parseFloat(((currentVal - firstVal) / firstVal * 100).toFixed(2))
   : null;
@@ -84,7 +85,7 @@ const period_change_pct = rawPoints.length >= 2 && firstVal > 0
 // in die Tabelle darunter.
 const chart = buildChart([{
   name: 'total',
-  rows: rawPoints.map((p: any) => ({
+  rows: rawPoints.map(p => ({
     recorded_at: String(p.fullDay || p.day || ''),
     avg_price: p.total,
   })),

@@ -27,6 +27,30 @@ function pdfBildPfad(p: PdfTeil): string | null {
 /** Fehlt ein Bild, steht die Zeile ohne Bild da — das PDF entsteht trotzdem. */
 const ohneBild = (): null => null;
 
+/** Je BrickLink-Nummer und Farbe eine Zeile, nach Farbe gruppiert und nach Nummer sortiert. */
+function nachFarbe(parts: PdfTeil[]) {
+  const deduped = new Map<string, PdfTeil & { quantity: number }>();
+  for (const p of parts) {
+    const blNum = p.bl_part_number || p.part_number;
+    const key = `${blNum}|${p.color_id || p.color_name || 0}`;
+    const alt = deduped.get(key);
+    if (alt) alt.quantity += Number(p.quantity) || 0;
+    else deduped.set(key, { ...p, part_number: blNum, quantity: Number(p.quantity) || 0 });
+  }
+
+  const colorOrder: string[] = [], byColor = new Map<string, (PdfTeil & { quantity: number })[]>();
+  for (const p of deduped.values()) {
+    const name = p.color_name ?? '';
+    if (!byColor.has(name)) { byColor.set(name, []); colorOrder.push(name); }
+    byColor.get(name)!.push(p);
+  }
+  colorOrder.sort((a, b) => a.localeCompare(b, 'de'));
+  for (const liste of byColor.values()) {
+    liste.sort((a, b) => (a.bl_part_number || a.part_number || '').localeCompare(b.bl_part_number || b.part_number || '', undefined, { numeric: true }));
+  }
+  return { colorOrder, byColor };
+}
+
 /** Als Strom, nicht als Puffer: Eine grosse Sammlung ergibt viele Megabyte.
  * Erst die fertige Datei bekommt ihren Namen. */
 async function buildPdf(sets: PdfSet[], parts: PdfTeil[], ziel: string): Promise<void> {
@@ -56,25 +80,7 @@ async function buildPdf(sets: PdfSet[], parts: PdfTeil[], ziel: string): Promise
   doc.fontSize(9).fillColor('#64748b').text(`${parts.length} Teiletypen · ${totalQty.toLocaleString()} Teile total`);
   doc.moveDown(1);
 
-  const deduped = new Map<string, PdfTeil & { quantity: number }>();
-  for (const p of parts) {
-    const blNum = p.bl_part_number || p.part_number;
-    const key = `${blNum}|${p.color_id || p.color_name || 0}`;
-    const alt = deduped.get(key);
-    if (alt) alt.quantity += Number(p.quantity) || 0;
-    else deduped.set(key, { ...p, part_number: blNum, quantity: Number(p.quantity) || 0 });
-  }
-
-  const colorOrder: string[] = [], byColor = new Map<string, (PdfTeil & { quantity: number })[]>();
-  for (const p of deduped.values()) {
-    const name = p.color_name ?? '';
-    if (!byColor.has(name)) { byColor.set(name, []); colorOrder.push(name); }
-    byColor.get(name)!.push(p);
-  }
-  colorOrder.sort((a, b) => a.localeCompare(b, 'de'));
-  for (const liste of byColor.values()) {
-    liste.sort((a, b) => (a.bl_part_number || a.part_number || '').localeCompare(b.bl_part_number || b.part_number || '', undefined, { numeric: true }));
-  }
+  const { colorOrder, byColor } = nachFarbe(parts);
 
   // Je Farbgruppe vorladen und freigeben: Im Speicher liegt nur eine Gruppe.
   const bilder = new Map<string, Buffer | null>();

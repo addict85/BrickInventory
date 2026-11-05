@@ -1,5 +1,5 @@
 /** Eigene Datei, damit ein Test die echten Handler einhängen kann. */
-import { fehlerAntwort } from '../src/infra/httpAntwort';
+import { fehlerAntwort, pfadSegmente } from '../src/infra/httpAntwort';
 import express, { Request, Response } from 'express';
 import path from 'path';
 import { liefereDatei } from '../src/infra/dateiAusliefern';
@@ -26,7 +26,7 @@ router.get('/data/uploads/*pfad', requireLoginOrToken, async (req: WildcardReque
   const userId = angemeldeteNutzerId(req);
   // Rechnungen und Gutscheine: nie in einen Zwischenspeicher, auch keine Absage.
   res.setHeader('Cache-Control', 'private, no-store');
-  const segments = req.params.pfad.filter(Boolean);
+  const segments = pfadSegmente(req, 'pfad');
   const filePath = safeDataPath('uploads', segments);
   if (!filePath || !/^\d+$/.test(segments[0] ?? '')) return res.status(404).send('Datei nicht gefunden');
   const besitzer = Number(segments[0]);
@@ -40,7 +40,7 @@ router.get('/data/uploads/*pfad', requireLoginOrToken, async (req: WildcardReque
 // Geteilt abgelegt, aber unter der Setnummer: nur zu Sets im eigenen Blickfeld,
 // sonst dieselbe 404 wie für eine fehlende Datei.
 router.get('/data/instructions/*pfad', requireLoginOrToken, async (req: WildcardRequest, res: Response) => {
-  const segmente = req.params.pfad.filter(Boolean);
+  const segmente = pfadSegmente(req, 'pfad');
   const filePath = safeDataPath('instructions', segmente);
   if (!filePath || !await anleitungFreigegeben(angemeldeteNutzerId(req), segmente)) return res.status(404).send('Datei nicht gefunden');
   alsAnhang(res, filePath);

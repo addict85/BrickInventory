@@ -110,9 +110,10 @@ test('server.ts nimmt den Original-Rückfall vor dem CDN-Umweg', () => {
   // Genau diese Falle steht in der JSDoc von ohneKommentare() bereits
   // beschrieben, samt demselben Beispiel. Der Helfer war da; er wurde hier nur
   // nicht benutzt.
+  // Der Rumpf der Bildroute: liefereBild() in src/katalog/http/bildAuslieferung.ts.
   const src = require('./helpers/sources')
-    .ohneKommentare(fs.readFileSync(path.join(__dirname, '..', 'server.ts'), 'utf8'));
-  const start = src.indexOf("app.get('/images/*pfad'");
+    .ohneKommentare(fs.readFileSync(path.join(__dirname, '..', 'src/katalog/http/bildAuslieferung.ts'), 'utf8'));
+  const start = src.indexOf('function liefereBild(');
   // Erst Kommentare weg, DANN schneiden (Nachtrag 48): Vorher wurde das
   // 4000-Zeichen-Fenster aus dem rohen Quelltext genommen — ein gewachsener
   // Erklärtext schob die geprüfte Zeile hinaus, und der Test wurde rot, obwohl
@@ -120,7 +121,9 @@ test('server.ts nimmt den Original-Rückfall vor dem CDN-Umweg', () => {
   // Kotlin-Tests; sie tritt zuverlässig auf, sobald jemand einen Kommentar
   // ergänzt.
   const ohneKommentare = src.slice(start).slice(0, 4000);
-  const rueckfall = ohneKommentare.indexOf('_thumb');
+  // Der Rückfall steht in originalStattVorschau() (sucht `_thumb`), gerufen VOR dem CDN.
+  assert.match(src, /function originalStattVorschau\([\s\S]{0,200}_thumb/, 'der Rückfall erkennt die Vorschau nicht');
+  const rueckfall = ohneKommentare.indexOf('originalStattVorschau(');
   const cdn = ohneKommentare.indexOf('cdnFuerFehlendesBild');
   assert.ok(rueckfall > 0, 'der Rückfall auf das Original fehlt');
   assert.ok(cdn > 0, 'die CDN-Heilung fehlt');

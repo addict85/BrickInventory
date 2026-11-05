@@ -45,8 +45,8 @@ export const HouseholdStatusResponse = z.looseObject({
 });
 
 export const routen = {
-  'GET /api/v1/settings/household': { antwort: HouseholdStatusResponse },
-  'GET /api/v1/sets/household-members': { antwort: HouseholdMembersResponse },
+  'GET /api/v1/settings/household': { klein: true, antwort: HouseholdStatusResponse },
+  'GET /api/v1/sets/household-members': { klein: true, antwort: HouseholdMembersResponse },
   'POST /api/v1/settings/household/invite': { eingabe: OHNE_RUMPF, antwort: HouseholdInviteResponse, geheim: true },
   'POST /api/v1/settings/household/redeem/pruefen': { antwort: HouseholdInviteCheckResponse, eingabe: z.strictObject({ code: z.string().max(64).nullable().optional() }) },
   'POST /api/v1/settings/household/redeem': { antwort: GenericResponse, ...bestaetigt({ code: z.string().max(64).nullable().optional() }, 'password', 'faktor_code') },

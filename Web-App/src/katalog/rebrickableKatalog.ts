@@ -59,7 +59,7 @@ export async function getAllSetParts(setNumber: string) {
   const csvParts = await setTeileAusCsv(setNumber);
   if (csvParts) return csvParts;
   const n = mitVersion(setNumber);
-  const gemerkt = ausCache<any[]>(await repo.teilelisteAusCache(n));
+  const gemerkt = ausCache<Awaited<ReturnType<typeof holeSetTeile>>['teile']>(await repo.teilelisteAusCache(n));
   if (gemerkt) return gemerkt;
   if (Date.now() - (_leer.get(n) ?? 0) < LEER_MS) return [];
   const { teile, verweigert } = await holeSetTeile(n);
@@ -71,7 +71,7 @@ export async function getAllSetParts(setNumber: string) {
 
 /** Geteilter Zwischenspeicher: Die Daten ändern sich selten, das Kontingent ist knapp. */
 export async function getMinifigParts(figNumber: string) {
-  const gemerkt = ausCache<any[]>(await repo.figurenteileAusCache(figNumber).catch(meldeUndLiefere('rebrickable:figurenteile', undefined)));
+  const gemerkt = ausCache<NonNullable<Awaited<ReturnType<typeof holeFigurTeile>>>>(await repo.figurenteileAusCache(figNumber).catch(meldeUndLiefere('rebrickable:figurenteile', undefined)));
   if (gemerkt) return gemerkt;
   const parts = await holeFigurTeile(figNumber);
   if (!parts) return [];

@@ -24,6 +24,7 @@ import { gutscheineDesKontos, gutschein, gutscheinAnlegen, gutscheinErsetzen, gu
          gutscheinPdfMerken, gutscheinLoeschen, guthabenMerken } from '../../src/gutscheine/dienst';
 import type { GutscheinZeile } from '../../src/gutscheine/dienst';
 import { vertragsRouter } from '../../src/infra/vertrag/pruefen';
+import { seiteAus } from '../../src/infra/seite';
 import type { Anfrage, Antwort } from '../../src/infra/vertrag';
 
 const router = vertragsRouter();
@@ -63,6 +64,9 @@ function fuerAussen(z: GutscheinZeile) {
   };
 }
 
+const alsGelesen = (g: GutscheinWerte) => ({ number: g.nummer, pin: g.pin, currency: g.waehrung,
+  ...(g.betrag == null ? {} : { amount: g.betrag }) });
+
 /** Eine Funktion für Anlegen, Anlegen aus dem PDF und Ändern. */
 function pruefeWerte(roh: { number?: unknown; pin?: unknown; amount?: unknown; currency?: unknown },
                      opt: { nullBetragErlaubt?: boolean } = {}):
@@ -87,7 +91,8 @@ function pruefeWerte(roh: { number?: unknown; pin?: unknown; amount?: unknown; c
 }
 
 router.get('/vouchers', requireToken, async (req: Anfrage<'GET /api/v1/vouchers'>, res: Antwort<'GET /api/v1/vouchers'>) => {
-  res.json({ success: true, vouchers: (await gutscheineDesKontos(req.apiUser.user_id)).map(fuerAussen) });
+  const { eintraege, ...seite } = seiteAus(await gutscheineDesKontos(req.apiUser.user_id), req.abfrage);
+  res.json({ success: true, vouchers: eintraege.map(fuerAussen), ...seite });
 });
 
 router.post('/vouchers', requireToken, async (req: Anfrage<'POST /api/v1/vouchers'>, res: Antwort<'POST /api/v1/vouchers'>) => {
@@ -172,7 +177,7 @@ router.post('/vouchers/pdf', requireToken, kontoSchranke('gutscheinPdf'), upload
     // belegt die Felder vor, die da waren.
     return res.status(422).json({
       success: false, code, error: fehlerText(code, antwortSprache(req)),
-      gelesen: { number: gelesen.nummer, pin: gelesen.pin, amount: gelesen.betrag, currency: gelesen.waehrung },
+      gelesen: alsGelesen(gelesen),
     });
   }
 
@@ -191,7 +196,7 @@ router.post('/vouchers/pdf', requireToken, kontoSchranke('gutscheinPdf'), upload
     success: true,
     voucher: fuerAussen({ ...z, pdf_path: relPfad }),
     // Damit die Oberfläche sagen kann, welche Werte gelesen wurden.
-    gelesen: { number: gelesen.nummer, pin: gelesen.pin, amount: gelesen.betrag, currency: gelesen.waehrung },
+    gelesen: alsGelesen(gelesen),
   });
 });
 
@@ -241,7 +246,7 @@ router.get('/vouchers/export/pdf', requireToken, async (req: Anfrage<'GET /api/v
 });
 
 router.put('/vouchers/:id', requireToken, async (req: Anfrage<'PUT /api/v1/vouchers/:id'>, res: Antwort<'PUT /api/v1/vouchers/:id'>) => {
-    const id = Number(req.params.id);
+    const id = req.pfad.id;
     if (!Number.isInteger(id)) return sendeFehler(req, res, 400, 'id_ungueltig');
     const alt = await gutschein(req.apiUser.user_id, id);
     if (!alt) return sendeFehler(req, res, 404, 'nicht_gefunden');
@@ -266,7 +271,7 @@ router.put('/vouchers/:id', requireToken, async (req: Anfrage<'PUT /api/v1/vouch
 
 // Endgültig und Bargeld: mit Bestätigung wie das Leeren des Papierkorbs.
 router.delete('/vouchers/:id', requireToken, async (req: Anfrage<'DELETE /api/v1/vouchers/:id'>, res: Antwort<'DELETE /api/v1/vouchers/:id'>) => {
-  const id = Number(req.params.id);
+  const id = req.pfad.id;
   if (!Number.isInteger(id)) return sendeFehler(req, res, 400, 'id_ungueltig');
   if (!await bestaetigeMitFaktor(req, res, req.apiUser.user_id, req.eingabe.password)) return;
   const pdfPfad = await gutscheinLoeschen(req.apiUser.user_id, id);
@@ -281,7 +286,7 @@ router.delete('/vouchers/:id', requireToken, async (req: Anfrage<'DELETE /api/v1
 });
 
 router.post('/vouchers/:id/klartext', requireToken, async (req: Anfrage<'POST /api/v1/vouchers/:id/klartext'>, res: Antwort<'POST /api/v1/vouchers/:id/klartext'>) => {
-  const id = Number(req.params.id);
+  const id = req.pfad.id;
   if (!Number.isInteger(id)) return sendeFehler(req, res, 400, 'id_ungueltig');
   if (!await bestaetigeMitFaktor(req, res, req.apiUser.user_id, req.eingabe.password)) return;
   const z = await gutschein(req.apiUser.user_id, id);
@@ -291,7 +296,7 @@ router.post('/vouchers/:id/klartext', requireToken, async (req: Anfrage<'POST /a
 });
 
 router.post('/vouchers/:id/pdf-freigabe', requireToken, async (req: Anfrage<'POST /api/v1/vouchers/:id/pdf-freigabe'>, res: Antwort<'POST /api/v1/vouchers/:id/pdf-freigabe'>) => {
-  const id = Number(req.params.id);
+  const id = req.pfad.id;
   if (!Number.isInteger(id)) return sendeFehler(req, res, 400, 'id_ungueltig');
   if (!await bestaetigeMitFaktor(req, res, req.apiUser.user_id, req.eingabe.password)) return;
   const z = await gutschein(req.apiUser.user_id, id);
@@ -300,7 +305,7 @@ router.post('/vouchers/:id/pdf-freigabe', requireToken, async (req: Anfrage<'POS
 });
 
 router.get('/vouchers/:id/pdf', requireToken, async (req: Anfrage<'GET /api/v1/vouchers/:id/pdf'>, res: express.Response) => {
-  const id = Number(req.params.id);
+  const id = req.pfad.id;
   if (!Number.isInteger(id)) return sendeFehler(req, res, 400, 'id_ungueltig');
   if (!loeseTicketEin(req.abfrage.ticket, req.apiUser.user_id, String(id))) return sendeFehler(req, res, 403, 'pdf_freigabe_noetig');
   const zeile = await gutschein(req.apiUser.user_id, id);
@@ -323,7 +328,7 @@ router.get('/vouchers/:id/pdf', requireToken, async (req: Anfrage<'GET /api/v1/v
 // eine Sammelroute müsste diese Wartezeit verstecken.
 // Ausführlich: docs/begruendungen/routes/api_v1/vouchers.ts.md#post-vouchers-id-guthaben
 router.post('/vouchers/:id/guthaben', requireToken, async (req: Anfrage<'POST /api/v1/vouchers/:id/guthaben'>, res: Antwort<'POST /api/v1/vouchers/:id/guthaben'>) => {
-  const id = Number(req.params.id);
+  const id = req.pfad.id;
   if (!Number.isInteger(id)) return sendeFehler(req, res, 400, 'id_ungueltig');
   const alt = await gutschein(req.apiUser.user_id, id);
   if (!alt) return sendeFehler(req, res, 404, 'nicht_gefunden');
