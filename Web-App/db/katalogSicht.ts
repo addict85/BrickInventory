@@ -1,9 +1,6 @@
-/**
- * Katalogangaben, wie ein Konto sie sieht (Migration 0093): der geprüfte Wert
- * aus dem gemeinsamen Katalog, sonst die eigene Angabe des Kontos, dem die
- * Bestandszeile gehört. Eingaben fremder Konten stehen nirgends im
- * gemeinsamen Katalog und können so in keiner Abfrage auftauchen.
- */
+/** Katalogangaben, wie ein Konto sie sieht (0093): der geprüfte gemeinsame
+ * Wert, sonst die eigene Angabe des Kontos. Eingaben fremder Konten stehen
+ * nie im gemeinsamen Katalog und tauchen so in keiner Abfrage auf. */
 
 /** LEFT JOINs pc/pcc (gemeinsam) und te/tfe (eigene Angaben von `konto`). */
 export function teilSichtJoin(konto: string, nummer: string, farbe: string): string {

@@ -92,8 +92,8 @@ test('stille Faenge werden weniger, nie mehr', () => {
 });
 
 test('any wird weniger, nie mehr', () => {
-  // Gemessen 153 am 05.11.2026 (vorher 183); wie die Zahl sinkt, steht im git log.
-  const SCHRANKE = 153;
+  // Gemessen 152 am 05.11.2026 (vorher 183); wie die Zahl sinkt, steht im git log.
+  const SCHRANKE = 152;
   const ist = zaehle([/\bas any\b/g, /:\s*any\b/g]);
   assert.ok(ist <= SCHRANKE,
     `${ist}-mal \`any\`, erlaubt sind ${SCHRANKE}. Jedes davon schaltet den ` +
@@ -106,9 +106,9 @@ test('any wird weniger, nie mehr', () => {
 
 test('any in allen Formen wird weniger, nie mehr', () => {
   // Auch Promise<any>, any[] und Record<string, any>: Die enge Zählung oben sah
-  // nur `as any` und `: any`. Gemessen 206 am 05.11.2026.
+  // nur `as any` und `: any`. Gemessen 205 am 05.11.2026.
   // Gegenprobe (05.11.2026): getSetting wieder `fallback?: any` ohne Überladungen → rot.
-  const SCHRANKE = 206;
+  const SCHRANKE = 205;
   const ist = zaehle([/\bany\b/g]);
   assert.ok(ist <= SCHRANKE, `${ist}-mal any, erlaubt sind ${SCHRANKE}`);
   if (ist < SCHRANKE) console.log(`  ℹ any (alle Formen): ${ist} (Schranke ${SCHRANKE}) — Schranke nachziehen`);
@@ -427,7 +427,7 @@ test('Funktionen im Server über 80 und über 150 Zeilen werden weniger, nie meh
 test('der Kommentaranteil in db/, clients/ und scripts/ sinkt, nie steigt', () => {
   // Je Ordner eine Schranke, gemessen am 05.11.2026 nach dem Kürzen.
   // Gegenprobe: 40 Kommentarzeilen an clients/ezb.ts gehängt → rot (clients).
-  const SCHRANKE = { db: 33.0, clients: 20.6, scripts: 35.2 };
+  const SCHRANKE = { db: 28.0, clients: 20.6, scripts: 34.5 };
   const zuViel = [];
   for (const [ordner, schranke] of Object.entries(SCHRANKE)) {
     let zeilen = 0, kommentar = 0;
@@ -505,9 +505,9 @@ test('jeder Verweis auf docs/begruendungen trifft Datei und Anker', () => {
 test('Anker ohne Verweis werden weniger, nie mehr', () => {
   // Ein Abschnitt, auf den kein Code mehr zeigt, gehört zu einer gekürzten
   // oder entfernten Stelle — Geschichte, die nach git gehört.
-  // Gemessen 288 von 905 am 05.11.2026. Gegenprobe: einen Verweis in
+  // Gemessen 285 von 901 am 05.11.2026. Gegenprobe: einen Verweis in
   // routes/auth/benutzer.ts gestrichen → rot (289).
-  const SCHRANKE = 288;
+  const SCHRANKE = 285;
   const verwiesen = new Set();
   for (const f of serverUndOberflaeche())
     for (const m of fs.readFileSync(f, 'utf8').matchAll(/docs\/begruendungen\/([^\s#`'"]+\.md)#([\w-]+)/g)) verwiesen.add(`${m[1]}#${m[2]}`);

@@ -4,8 +4,8 @@ Die ausführlichen Kommentare aus `db/pgNotify.ts`, wörtlich. Im Code steht je
 Stelle der erste Absatz und ein Verweis hierher. Neue Geschichte gehört in die
 Commit-Nachricht (siehe CLAUDE.md).
 
-<a id="abschnitt"></a>
-## Abschnitt
+<a id="ueberblick"></a>
+## Überblick
 
 ```text
 PostgreSQL LISTEN/NOTIFY statt Datenbank-Polling.

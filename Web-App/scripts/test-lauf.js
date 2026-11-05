@@ -30,7 +30,7 @@ const id = (s) => `"${s.replace(/"/g, '""')}"`;
 /** Fremde Last auf dem Rechner verlängert jede Datei, ohne dass sie langsamer
  * geworden wäre: Die Frist wächst mit der Last je Kern, höchstens auf das Vierfache. */
 function fristBeiLast(/** @type {number} */ grund) {
-  const last = os.loadavg()[0] / os.availableParallelism();
+  const last = (os.loadavg()[0] ?? 0) / os.availableParallelism();
   return Math.round(grund * Math.min(4, Math.max(1, last)));
 }
 
@@ -130,7 +130,7 @@ async function main() {
   let code = 0;
   try {
     const frist = Number(process.env.TEST_FRIST_MS) || fristBeiLast(60_000);
-    if (frist > 60_000) console.log(`[test-lauf] Last ${os.loadavg()[0].toFixed(1)}: Frist je Datei ${frist / 1000} s`);
+    if (frist > 60_000) console.log(`[test-lauf] Last ${(os.loadavg()[0] ?? 0).toFixed(1)}: Frist je Datei ${frist / 1000} s`);
     code = await mitNachlauf(await lauf(uebrige, n, env, frist), env, frist);
     // Browser-Tests erlauben sich selbst 300 s; die Frist des Runners gilt je
     // Datei und darf sie nicht vorher abschneiden.
