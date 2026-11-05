@@ -27,10 +27,10 @@ for (const config of LAEUFE) {
 }
 
 test('Oberfläche: strictNullChecks meldet weniger, nie mehr', () => {
-  // Nächste Stufe der Typprüfung, gestaffelt wie beim Server: gemessen am
-  // 05.11.2026 mit 140 Meldungen. Erst wenn die Zahl 0 ist, wird der
-  // Schalter in tsconfig.frontend.json eingeschaltet und diese Ratsche entfällt.
-  const SCHRANKE = 140;
+  // Nächste Stufe der Typprüfung, gestaffelt wie beim Server. Bei 0 wird der
+  // Schalter in tsconfig.frontend.json eingeschaltet und die Ratsche entfällt.
+  // 05.11.2026: 140; 87 nach Typangaben an den mit null vorbelegten Variablen.
+  const SCHRANKE = 87;
   const meldungen = pruefe('tsconfig.frontend.json', ['--strictNullChecks']);
   assert.ok(meldungen.length > 0 || SCHRANKE === 0, 'keine Meldung — Schalter einschalten und Ratsche streichen');
   assert.ok(meldungen.length <= SCHRANKE,

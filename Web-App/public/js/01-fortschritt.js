@@ -27,7 +27,9 @@ import { t, tRaw } from '../i18n.js';
 import { ME } from './00-zustand.js';
 
 // ── Global CSV Import Progress Bar ───────────────────────────────────────────
+/** @type {ReturnType<typeof setInterval> | null} */
 export let _gibTimer       = null;   // Polling-Fallback-Timer (nur wenn SSE scheitert)
+/** @type {EventSource | null} */
 export let _gibSse         = null;   // aktive EventSource (SSE), falls verfügbar
 let _gibLastCount   = 0;
 
@@ -274,6 +276,7 @@ export async function gibCheckOnLoad() {
   doCheck(); // fire immediately on login
   _gibCheckTimer = setInterval(doCheck, 3000); // then every 3s
 }
+/** @type {number | null} */
 let _gibCheckTimer = null;
 /**
  * Setzt den Balken auf „nichts läuft" zurück: Anzeige aus, beide Abfragen
@@ -391,6 +394,7 @@ export let _csvPollActive = false;
 export function setzeCsvPollAktiv(v) { _csvPollActive = v; }
 
 /** Der laufende Ereignisstrom (Set erfassen) — damit „Abbrechen" ihn beenden kann. */
+/** @type {AbortController | null} */
 let _activeAbort = null;
 
 export function streamFertig(){ _activeAbort = null; G('btn-cancel-import').style.display='none'; }

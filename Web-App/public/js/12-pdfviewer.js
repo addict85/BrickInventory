@@ -20,7 +20,12 @@ import { G } from './01-core.js';
 import { t } from '../i18n.js';
 import { esc } from './00-escapen.js';
 
-let _pdfDoc = null, _pdfObserver = null, _pdfCurrentUrl = null;
+/** @type {PdfDokument | null} */
+let _pdfDoc = null;
+/** @type {IntersectionObserver | null} */
+let _pdfObserver = null;
+/** @type {string | null} */
+let _pdfCurrentUrl = null;
 const _pdfRenderTasks = new Map();
 
 // ── Zoom ─────────────────────────────────────────────────────────────────────

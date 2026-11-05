@@ -789,6 +789,7 @@ function rbHinweisWeg() {
 // ── Verbindung ──────────────────────────────────────────────────────────────
 // Ohne Netz zeigt die Seite weiter den letzten Stand. Das Band sagt, dass es
 // einer ist und von wann — sonst hält man alte Zahlen für aktuell.
+/** @type {Date | null} */
 let _letzteAntwort = null;
 let _offline = false;
 /** @param {boolean} erreichbar */

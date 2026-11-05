@@ -62,6 +62,7 @@ abonniere('sitzungBeendet', (path) => {
 });
 
 // ── AUTH & PANELS ─────────────────────────────────────
+/** @type {string | null} */
 let _resetToken = null;
 
 function showPanel(name){

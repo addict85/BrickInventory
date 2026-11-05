@@ -16,7 +16,7 @@ interface Window {
   _imgObserver: IntersectionObserver | null;
   _partsScrollBound: boolean;
   _plServerUrl: string;
-  pdfjsLib: any;
+  pdfjsLib: PdfJs | undefined;
 }
 
 // Merker, die die Oberfläche an Elemente hängt: Entprell-Zeitgeber und
@@ -35,11 +35,27 @@ type Feld = HTMLInputElement
   & Pick<HTMLSelectElement, 'options' | 'selectedIndex' | 'selectedOptions'>
   & Pick<HTMLAnchorElement, 'href' | 'download'>;
 
-// PDF.js kommt als eigenes ES-Modul aus public/vendor (pdfjs-boot.js).
+// Der Teil von PDF.js, den der Betrachter (12-pdfviewer.js) benutzt. PDF.js
+// kommt als eigenes ES-Modul aus public/vendor (pdfjs-boot.js).
+interface PdfAnsicht { width: number; height: number }
+interface PdfSeite {
+  getViewport(o: { scale: number }): PdfAnsicht;
+  render(o: { canvasContext: CanvasRenderingContext2D | null; viewport: PdfAnsicht }): { promise: Promise<void>; cancel(): void };
+  cleanup(): void;
+}
+interface PdfDokument { numPages: number; getPage(n: number): Promise<PdfSeite>; destroy(): void }
+interface PdfJs {
+  GlobalWorkerOptions: { workerSrc: string };
+  getDocument(quelle: object): { promise: Promise<PdfDokument>; destroy(): void };
+}
 declare module '/vendor/pdfjs/*' {
-  export const GlobalWorkerOptions: { workerSrc: string };
-  export function getDocument(quelle: unknown): any;
+  export const GlobalWorkerOptions: PdfJs['GlobalWorkerOptions'];
+  export const getDocument: PdfJs['getDocument'];
 }
 
-declare const QRCode: any;
+// qrcode.js aus public/vendor, als klassisches Skript geladen.
+declare const QRCode: {
+  new (ziel: HTMLElement, optionen: Record<string, unknown>): unknown;
+  CorrectLevel: Record<'L' | 'M' | 'Q' | 'H', number>;
+};
 declare const __ERLAUBTE_STILE__: string[];

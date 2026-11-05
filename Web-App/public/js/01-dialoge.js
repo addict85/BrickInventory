@@ -22,7 +22,9 @@ function dialoge() {
 
 /** Der oberste offene Dialog: höchster z-index, bei Gleichstand der spätere im Markup. */
 export function obersterDialog() {
-  let bester = null, bestZ = -Infinity;
+  /** @type {HTMLElement | null} */
+  let bester = null;
+  let bestZ = -Infinity;
   for (const el of dialoge()) {
     if (!istOffen(el)) continue;
     const z = parseInt(el.style.zIndex || getComputedStyle(el).zIndex, 10) || 0;
@@ -113,7 +115,7 @@ function tasteGedrueckt(ev) {
       fokussiereFlaeche(dialog);
       return;
     }
-    const zu = dialog.querySelector('[data-dialog-zu]');
+    const zu = /** @type {HTMLElement | null} */ (dialog.querySelector('[data-dialog-zu]'));
     if (!zu) return;
     ev.preventDefault();
     ev.stopPropagation();

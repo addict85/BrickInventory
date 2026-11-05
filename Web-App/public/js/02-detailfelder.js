@@ -309,6 +309,7 @@ export function wechsleAlarmZustand(sn) {
  */
 const ALARM_RUHE = 800;
 
+/** @type {number | null} */
 let _alarmRuhe = null;
 
 /**
@@ -411,6 +412,7 @@ async function sendeAlarm(sn, richtung, roh) {
 export async function zeigeOffeneAlarme() {
   if (!ME?.id) return;
   const schluessel = 'bim_alarm_marke_' + ME.id;
+  /** @type {string | null} */
   let marke = null;
   try { marke = localStorage.getItem(schluessel); } catch (_) {}
   const d = await api('GET', '/v1/alerts/pending' + (marke ? '?since=' + encodeURIComponent(marke) : ''))

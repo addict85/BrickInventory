@@ -299,7 +299,9 @@ export async function loadManualFigsTable() {
   renderManualFigsTable();
 }
 
+/** @type {boolean | null} */
 let _setFigurenLeer = null;   // null: noch nicht geladen
+/** @type {boolean | null} */
 let _manuelleFigurenLeer = null;
 
 /**

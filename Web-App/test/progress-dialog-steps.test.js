@@ -138,7 +138,7 @@ function erreichbareSchritte() {
   return erreichbar;
 }
 
-const galerie = fs.readFileSync(path.join(ROOT, 'public', 'js', '02-gallery.js'), 'utf8');
+const galerie = fs.readFileSync(path.join(ROOT, 'public', 'js', '01-fortschritt.js'), 'utf8');
 const html = fs.readFileSync(path.join(ROOT, 'public', 'index.html'), 'utf8');
 
 test('jeder Schritt im Fortschrittsdialog kann den Browser auch erreichen', () => {

@@ -229,6 +229,7 @@ export function closeImageLightbox(){ G('img-lightbox').classList.remove('open')
 // Escape schliesst den Zoom über js/01-dialoge.js, wie jeden Dialog.
 G('set-modal').addEventListener('click',e=>e.target===e.currentTarget&&closeModal());
 
+/** @type {number | null} */
 let _autosaveTimer=null;
 
 export function autosaveSet(){

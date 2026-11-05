@@ -98,7 +98,9 @@ test('eine eingetippte Zahl fragt gar nicht erst nach dem Markt', () => {
 });
 
 test('beide Oberflaechen zeigen den Hinweis, aus je EINER Stelle', () => {
-  const web = ohneKommentare(fs.readFileSync(path.join(WURZEL, 'public', 'js', '06-minifigs.js'), 'utf8'));
+  // Der Baustein steht in 06-minifigs.js, die Teile-Erfassung in 03-parts.js.
+  const web = ohneKommentare(['06-minifigs.js', '03-parts.js']
+    .map(f => fs.readFileSync(path.join(WURZEL, 'public', 'js', f), 'utf8')).join('\n'));
   assert.strictEqual((web.match(/function preisHerkunftHinweis\(/g) || []).length, 1,
     'Der Hinweis der Webapp ist nicht (mehr) an genau einer Stelle gebaut');
   assert.strictEqual((web.match(/preisHerkunftHinweis\(d\.price_from_condition\)/g) || []).length, 2,

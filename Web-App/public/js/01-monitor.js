@@ -24,6 +24,7 @@ import { esc } from './00-escapen.js';
  * js/02-gallery.js hält ihn beim Reiterwechsel an, dafür gibt es den Setter
  * unten.
  */
+/** @type {ReturnType<typeof setInterval> | null} */
 export let _monitorTimer = null;
 
 function openLogViewer() {

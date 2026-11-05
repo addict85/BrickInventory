@@ -54,7 +54,7 @@ const ROOT = path.join(__dirname, '..');
  */
 const HTML = fs.readFileSync(path.join(ROOT, 'public', 'index.html'), 'utf8')
   .replace(/<!--[\s\S]*?-->/g, '');
-const NAV  = fs.readFileSync(path.join(ROOT, 'public', 'js', '02-gallery.js'), 'utf8');
+const NAV  = fs.readFileSync(path.join(ROOT, 'public', 'js', '25-navigation.js'), 'utf8');
 
 /** Die Namen aus dem Menü — `data-click="oeffneSicht" data-arg="…"`. */
 function menueEintraege() {
@@ -96,7 +96,7 @@ test('jede Sicht ist über das Menü erreichbar', () => {
 });
 
 test('jede Sicht lädt, was sie zeigt', () => {
-  // `const SICHTEN = { … };` in js/02-gallery.js — die Zuordnung Name → Lader.
+  // `const SICHTEN = { … };` in js/25-navigation.js — die Zuordnung Name → Lader.
   const block = NAV.slice(NAV.indexOf('const SICHTEN = {'));
   const ende  = block.indexOf('\n};');
   assert.ok(ende > 0, 'SICHTEN nicht gefunden — umbenannt?');
@@ -110,11 +110,11 @@ test('jede Sicht lädt, was sie zeigt', () => {
 test('der Reiter „Einstellungen" ist Verwaltersache', () => {
   // Marcos Vorgabe: nur noch, was ein Administrator setzen kann. Deshalb ist
   // der Reiter wie das Monitoring vorgeblendet und wird erst für Admins
-  // sichtbar (js/01-core.js).
+  // sichtbar (js/26-sitzung.js).
   assert.match(HTML, /id="ntab-settings"[^>]*data-stil="display:none"/,
     'Der Einstellungs-Reiter steht wieder für alle da — für Nicht-Admins wäre ' +
     'er leer.');
-  const core = fs.readFileSync(path.join(ROOT, 'public', 'js', '01-core.js'), 'utf8');
+  const core = fs.readFileSync(path.join(ROOT, 'public', 'js', '26-sitzung.js'), 'utf8');
   assert.match(core, /ntab-settings'\);\s*if\s*\(ns\)\s*ns\.style\.display\s*=\s*''/,
     'Niemand blendet den Reiter für Admins wieder ein — dann fehlt er auch dort.');
 });
@@ -286,8 +286,8 @@ test('Abmelden steht in der Klappe und nicht mehr in der Kopfleiste', () => {
     'Der Trenner vor „Abmelden" fehlt — dann steht die Handlung als achter Punkt '
     + 'in einer Reihe mit sieben Sichtwechseln.');
 
-  // Und 01-core.js haengt seinen Handler weiterhin an diese ID.
-  const core = fs.readFileSync(path.join(ROOT, 'public', 'js', '01-core.js'), 'utf8');
+  // Und 26-sitzung.js haengt seinen Handler weiterhin an diese ID.
+  const core = fs.readFileSync(path.join(ROOT, 'public', 'js', '26-sitzung.js'), 'utf8');
   assert.match(core, /G\('btn-logout'\)\.onclick/,
     'Niemand verdrahtet btn-logout mehr — der Eintrag taete dann nichts.');
 });

@@ -361,6 +361,7 @@ export function renderAcquisitionSummary(acqs, sn) {
 }
 
 // ── MANUAL ITEM DETAIL MODAL (Teile + Minifiguren) ─────────────────────────
+/** @type {{ type: string, id: string, colorId: number, owner?: number } | null} */
 let _manItem = null; // { type:'part'|'fig', id, colorId:int, owner:int|undefined }
 
 // Compact acquisition summary for parts/minifigs (uses unit_price, not purchase_price)

@@ -271,6 +271,7 @@ function _messeBloecke(){
  * 150 ms Ruhe genügen: Beim gewöhnlichen Scrollen merkt man sie nicht, ein Zug
  * über die ganze Leiste löst dagegen genau EINEN Abruf aus — am Ziel.
  */
+/** @type {number | null} */
 let _catLadeTimer = null;
 function _ladeSichtbareSeiten(sofort){
   clearTimeout(_catLadeTimer);

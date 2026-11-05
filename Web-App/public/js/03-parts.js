@@ -16,7 +16,11 @@ import { leereLagerortFeld, selectedOwner, selectedStorage } from './02-konten-o
 import { loadFinance } from './04-finance.js';
 
 // ── PARTS ─────────────────────────────────────────────
-let partsColors=[], partsCats=[], activeColor=null, activeCat=null;
+let partsColors=[], partsCats=[];
+/** @type {string | null} */
+let activeColor = null;
+/** @type {string | null} */
+let activeCat=null;
 // Kategorie-ID (part_cat_id) -> Klartextname via geladenem partsCats-Mapping.
 function catLabel(cn){ if(cn==null||cn==='') return '—'; const c=partsCats.find(x=>String(x.category_name)===String(cn)); return (c&&c.label)?c.label:String(cn); }
 
@@ -82,6 +86,7 @@ export function teilPasstZumFilter(p){
   return true;
 }
 
+/** @type {boolean | null} */
 let _setTeileLeer = null;   // null: noch nicht geladen
 let _manuelleLeer = null;
 
@@ -390,6 +395,7 @@ function updatePartsSentinel(){
   }
 }
 
+/** @type {IntersectionObserver | null} */
 let _partsIO = null;
 function bindPartsSentinel(){
   const s = G('parts-sentinel');

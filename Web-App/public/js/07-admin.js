@@ -7,6 +7,7 @@ import { _settingsCache, _pnlCache } from './00-zustand.js';
 import { esc } from './00-escapen.js';
 
 // ── JOB STATUS ───────────────────────────────────────────
+/** @type {ReturnType<typeof setInterval> | null} */
 export let jobPollTimer = null;
 
 function formatDur(ms) {

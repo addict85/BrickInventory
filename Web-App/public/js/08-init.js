@@ -88,6 +88,7 @@ export function bindGlobalErrorHandlers() {
 
 // ── TEILELISTE (temporary parts list, resets on page leave) ──────────────────
 export let _plSets = []; // { set_number, name }
+/** @type {any[] | null} */
 export let _plParts = null; // generated parts list
 let _rbToBlColor = {}; // Rebrickable → BrickLink color ID mapping
 
@@ -401,7 +402,9 @@ async function plExportPdf() {
     await /** @type {Promise<void>} */ (new Promise((resolve, reject) => {
       let settled = false;
       // Countdown der geschätzten Restzeit (aus etaSeconds vom Server).
-      let etaTimer = null, etaRemaining = null;
+      /** @type {number | null} */
+      let etaTimer = null;
+      let etaRemaining = null;
       const stopEta = () => { if (etaTimer) { clearInterval(etaTimer); etaTimer = null; } };
       const startEta = (sec) => {
         if (etaTimer || !sec || sec <= 0) return;

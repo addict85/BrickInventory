@@ -554,6 +554,7 @@ function wantedKorrekturWert() {
     if (w === (p.zustand ?? null)) delete k.zustand; else k.zustand = w;
   } else if (name === 'kaufpreis') {
     const alt = p.maxPreis ?? null;
+    /** @type {number | null} */
     let w = null;
     if (roh !== '') {
       const z = Number(roh);

@@ -121,6 +121,7 @@ async function zugMessen(entprellt) {
   };
   w.eval(`
     window.G = id => document.getElementById(id);
+    window.alle = (s, w = document) => [...w.querySelectorAll(s)]; window.eins = (s, w = document) => w.querySelector(s);
     window.t = k => k; window.esc = s => String(s ?? '');
     window.locale = () => 'de-CH'; window.toast = () => {};
     window.PARTS_ICON_SVG = ''; window.setScrollLabel = () => {};
