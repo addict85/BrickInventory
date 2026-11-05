@@ -1,8 +1,7 @@
-import { logAndContinue } from '../../infra/httpError';
+import { logAndContinue } from '../../infra/fehler';
 import fs from 'fs';
-import { merkeFehlend } from './imageMisses';
+import { merkeFehlend, istBekanntFehlend } from './imageMisses';
 import { imgProxyFailures } from './imgProxyStats';
-import { istBekanntFehlend } from './imageMisses';
 import { isDecodable } from './imageGuard';
 import * as db from '../../../db/database';
 import { LOCKS } from '../../infra/lockNamespaces';

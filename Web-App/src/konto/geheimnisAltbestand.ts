@@ -1,5 +1,5 @@
 import { umschluesseln } from '../infra/geheimnis';
-import { verschluesseleGlobaleAltwerte } from './settings';
+import { verschluesseleGlobaleAltwerte } from '../einstellungen/settings';
 import { faktorKontext } from './zweiterFaktor';
 import * as repo from './repository/altgeheimnisse';
 

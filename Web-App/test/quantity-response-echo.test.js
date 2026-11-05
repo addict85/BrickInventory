@@ -34,6 +34,7 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 const ROOT = path.join(__dirname, '..');
 const { ohneKommentare } = require('./helpers/sources');
 const _req = require('./helpers/sources').buildAndRequire();
+const { dbOderSkip } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
 const { haeltSet } = require('./helpers/bestand');
 
@@ -55,14 +56,7 @@ test('die Route liefert die Menge überhaupt mit', { concurrency: 1 }, async (t)
   // der Rückfall ist absichtlich lautlos. Die Menge kommt aus updateSet(),
   // summiert über das Blickfeld.
   const db = _req('db/database.js');
-  try { await db.initSchema(); }
-  catch (e) {
-    if (process.env.REQUIRE_DB === '1')
-      throw new Error(`REQUIRE_DB=1, aber die Test-DB ist nicht erreichbar: ${e.message}`);
-    t.skip('Test-DB nicht erreichbar'); return;
-  }
-  const mc = await db.pool.connect();
-  try { await _req('db/migrate.js').runMigrations(mc); } finally { mc.release(); }
+  if (!await dbOderSkip(t, _req)) return;
   const NAME = `mengenecho-${process.pid}`, SN = `${process.pid}5-1`;
   await db.run('DELETE FROM users WHERE username=$1', [NAME]);
   const uid = (await db.get(`INSERT INTO users (username,password_hash) VALUES ($1,'x') RETURNING id`, [NAME])).id;

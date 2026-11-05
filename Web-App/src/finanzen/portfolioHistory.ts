@@ -1,5 +1,5 @@
 import * as dbStandard from '../../db/database';
-import { getSetting as getSettingStandard } from '../konto/settings';
+import { getSetting as getSettingStandard } from '../einstellungen/settings';
 import { baueDiagrammdaten } from './portfolio/diagrammdaten';
 import { rekonstruiereKurve } from './portfolio/kurve';
 import { DEFAULT_PRICE_CONDITION } from './financeCalc';

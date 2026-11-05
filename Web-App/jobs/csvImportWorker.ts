@@ -1,7 +1,7 @@
 /** Eigener Prozess für den Katalog-Import, damit der grosse Heap des Imports
  * den Job-Prozess nicht trifft. Die Arbeit macht src/katalog/csvImport.ts. */
 import { Pool } from 'pg';
-import { fehlertext, logAndContinue } from '../src/infra/httpError';
+import { fehlertext, logAndContinue } from '../src/infra/fehler';
 import { datenbankVerbindung } from '../src/infra/konfig';
 import { katalogImporte, parseCsvLine } from '../src/katalog/csvImport';
 

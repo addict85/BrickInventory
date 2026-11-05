@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { eingabe, GROESSTE_ID } from '../validate';
-import { KontoName, type Route, zeit, ganz } from './grund';
+import { KontoName, type Route, zeit, ganz, OHNE_RUMPF, ZAHL, KENNUNG, ZUSTAND } from './grund';
 import { BrickLinkRef, CsvImportErgebnis, GenericResponse, MinifigsResponse, PartsResponse, InDenPapierkorb } from './gemeinsam';
 
 export const AddSetResponse = z.looseObject({
@@ -45,6 +45,8 @@ export const MoveSetResponse = z.looseObject({
   minifigs: z.number().int().optional(),
   instructions: z.number().int().optional(),
   source_emptied: z.boolean().optional(),
+  from_user_id: z.number().int().optional(),
+  to_user_id: z.number().int().optional(),
   error: z.string().nullable().optional(),
 });
 
@@ -184,16 +186,16 @@ export const routen = {
   'GET /api/v1/sets/exists/:setNumber': { antwort: SetExistsResponse },
   'GET /api/v1/sets/barcode/:barcode': { antwort: BarcodeResponse },
   'POST /api/v1/sets/:setNumber/instructions/upload': { antwort: AnleitungHochgeladen, formular: true },
-  'DELETE /api/v1/sets/:setNumber/instructions/:instrId': { antwort: GenericResponse },
+  'DELETE /api/v1/sets/:setNumber/instructions/:instrId': { eingabe: OHNE_RUMPF, antwort: GenericResponse },
   'POST /api/v1/sets': { antwort: AddSetResponse, eingabe: z.looseObject({ set_number: z.union([z.string(), z.number()]), quantity: eingabe.stueckzahl(), purchase_price: eingabe.preis('Kaufpreis') }) },
-  'PUT /api/v1/sets/:setNumber': { antwort: GenericResponse },
-  'DELETE /api/v1/sets/:setNumber': { antwort: InDenPapierkorb },
-  'PUT /api/v1/sets/:setNumber/alert': { antwort: PreisalarmResponse },
-  'DELETE /api/v1/sets/:setNumber/alert': { antwort: PreisalarmResponse },
-  'POST /api/v1/sets/:sn/move': { antwort: MoveSetResponse },
-  'POST /api/v1/sets/import/csv': { antwort: CsvImportErgebnis },
-  'POST /api/v1/alerts/import/csv': { antwort: CsvImportErgebnis },
-  'POST /api/v1/sets/:setNumber/instructions': { antwort: AnleitungenGeladen },
+  'PUT /api/v1/sets/:setNumber': { eingabe: z.looseObject({ quantity: ZAHL.optional(), quantity_delta: ZAHL.nullable().optional(), purchase_price: ZAHL.nullable().optional(), condition: ZUSTAND.nullable().optional(), owner_user_id: KENNUNG.nullable().optional() }), antwort: GenericResponse },
+  'DELETE /api/v1/sets/:setNumber': { eingabe: OHNE_RUMPF, antwort: InDenPapierkorb },
+  'PUT /api/v1/sets/:setNumber/alert': { eingabe: z.looseObject({ richtung: z.enum(['unter', 'ueber']), schwelle: ZAHL, condition: ZUSTAND.optional() }), antwort: PreisalarmResponse },
+  'DELETE /api/v1/sets/:setNumber/alert': { eingabe: OHNE_RUMPF, antwort: PreisalarmResponse },
+  'POST /api/v1/sets/:sn/move': { eingabe: z.looseObject({ from_user_id: KENNUNG.nullable().optional(), to_user_id: KENNUNG, acquisition_ids: z.array(KENNUNG).max(10_000).nullable().optional() }), antwort: MoveSetResponse },
+  'POST /api/v1/sets/import/csv': { formular: true, antwort: CsvImportErgebnis },
+  'POST /api/v1/alerts/import/csv': { formular: true, antwort: CsvImportErgebnis },
+  'POST /api/v1/sets/:setNumber/instructions': { eingabe: OHNE_RUMPF, antwort: AnleitungenGeladen },
   'POST /api/v1/sets/partslist-pdf': { antwort: PdfAuftrag, eingabe: PdfEingabe },
   'GET /api/v1/sets/partslist-pdf/status/:jobId': { antwort: PdfStand },
   'GET /api/v1/sets/partslist-pdf/download/:jobId': { art: 'pdf' },
@@ -201,5 +203,5 @@ export const routen = {
   'POST /api/v1/sets/add-stream': { art: 'strom' },
   'GET /api/v1/sets/import/csv/stream': { art: 'strom' },
   'GET /api/v1/sets/export/rebrickable': { art: 'csv' },
-  'POST /api/v1/sets/:setNumber/parts': { antwort: TeileGeladen },
+  'POST /api/v1/sets/:setNumber/parts': { eingabe: OHNE_RUMPF, antwort: TeileGeladen },
 } satisfies Record<string, Route>;

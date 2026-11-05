@@ -3,12 +3,12 @@ import * as db from '../../../db/database';
 /** Datenzugriff auf die PDF-Aufträge (Art 'pdf' der Auftragstabelle). */
 
 export function pdfAuftragZeile(schluessel: string) {
-  return db.get(`SELECT status, fehler, user_id, fortschritt FROM auftraege
+  return db.get<{ status: string; fehler: string | null; user_id: number | null; fortschritt: { fehlendeBilder?: number; etaSekunden?: number } | null }>(`SELECT status, fehler, user_id, fortschritt FROM auftraege
       WHERE art = 'pdf' AND schluessel = $1 ORDER BY id DESC LIMIT 1`, [schluessel]);
 }
 
 export function zaehleLaufendePdf(uid: number, fristSek: number) {
-  return db.get(`SELECT COUNT(*)::int AS n FROM auftraege
+  return db.get<{ n: number }>(`SELECT COUNT(*)::int AS n FROM auftraege
       WHERE art = 'pdf' AND user_id = $1 AND status IN ('offen', 'laeuft')
         AND erstellt > NOW() - make_interval(secs => $2)`, [uid, fristSek]);
 }
@@ -19,7 +19,7 @@ export function loeschePdfAuftrag(schluessel: string) {
 
 /** Fertige nach Ablauf der Frist; liefert die Schlüssel für das Löschen der Dateien. */
 export function loescheAltePdfAuftraege(fristSek: number) {
-  return db.all(`DELETE FROM auftraege WHERE art = 'pdf' AND status IN ('erledigt', 'fehler', 'abgebrochen')
+  return db.all<{ id: string }>(`DELETE FROM auftraege WHERE art = 'pdf' AND status IN ('erledigt', 'fehler', 'abgebrochen')
         AND aktualisiert < NOW() - make_interval(secs => $1)
      RETURNING substr(schluessel, 5) AS id`, [fristSek]);
 }

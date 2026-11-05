@@ -1,14 +1,4 @@
-// Ausführlich: docs/begruendungen/src/finanzen/preisRegel.ts.md#preisdatensatz
-
-import { zustandFuerPreis } from '../konto/settings';
-
-export type PreisDatensatz = { avg_price?: unknown; qty_avg_price?: unknown } | null | undefined;
-
-/** parseFloat(String(...)): Dieselbe Funktion bekommt auch rohe
- * BrickLink-Antworten, und die tragen Text. */
-export function hatPreis(row: PreisDatensatz): boolean {
-  return parseFloat(String(row?.avg_price ?? '')) > 0;
-}
+import { zustandFuerPreis } from '../einstellungen/settings';
 
 /** Für Teile UND Figuren an einer Stelle: Die Regel musste schon zweimal
  * nachgezogen werden. Leer heisst „nimm den Marktpreis", nicht „Preis null".

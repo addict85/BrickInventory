@@ -3,7 +3,7 @@
  * Ausführlich: docs/begruendungen/src/bestand/acquisitions.ts.md#abschnitt */
 import * as db from '../../db/database';
 import type { DbSchnittstelle } from '../../db/database';
-import { erfassungsTagSql } from '../../db/bestandsmenge';
+import { erfassungsTagSql, preisSpalte, schluesselSpalten } from '../../db/bestandsmenge';
 import * as repo from './repository/kaufErfassungen';
 export { erfassungsTagSql };
 
@@ -99,8 +99,8 @@ export function acquisitionTotals(rows: any[]): {
 export async function setzeGeschaetztenPreis(kind: AcquisitionKind, id: number, preis: number): Promise<boolean> {
   return db.transaction(async (tx) => {
     const z = await repo.erfassungSperren(tx, kind, id);
-    if (!z || z[repo.preisSpalte(kind)] != null) return false;
-    const keys = repo.schluesselSpalten(kind).map(k => z[k]);
+    if (!z || z[preisSpalte(kind)] != null) return false;
+    const keys = schluesselSpalten(kind).map(k => z[k]);
     const ziel = await findSameDayAcquisition(kind, z.user_id, keys, z.tag, id, z.condition, tx,
       { preis, geschaetzt: true, waehrung: z.currency });
     if (ziel) await repo.legeErfassungZusammen(tx, kind, id, ziel, z.quantity);

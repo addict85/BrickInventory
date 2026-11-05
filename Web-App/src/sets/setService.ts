@@ -1,22 +1,20 @@
 import * as db from '../../db/database';
 import type { DbSchnittstelle } from '../../db/database';
-import { meldeUndWeiter, fehlertext, logAndContinue, meldeUndLiefere } from '../infra/httpError';
+import { meldeUndWeiter, fehlertext, logAndContinue, meldeUndLiefere } from '../infra/fehler';
 import { scopeIds, writableIds } from '../haushalt/haushalt';
 import { recordAcquisitionForDay } from '../bestand/acquisitions';
 import { withInventoryLock } from '../../db/txLock';
 import { downloadSetImage } from '../katalog/bilder/setImages';
 import { getCurrentMarketPrice } from '../finanzen/marketPrice';
-import { zustandFuerPreis } from '../konto/settings';
-import { getSetting } from '../konto/settings';
+import { zustandFuerPreis, getSetting } from '../einstellungen/settings';
 import { deleteSetRows } from './abfragen';
 import { legeInPapierkorb } from '../bestand/papierkorb';
 import { toCsv } from '../infra/csvExport';
 import { getSetInfo } from '../katalog/rebrickableKatalog';
-import * as brickset from '../../clients/brickset';
-import { getItemImageUrl } from '../../clients/bricklink';
+import { brickset, getItemImageUrl } from '../katalog/quellen';
 import { generateThumb } from '../katalog/bilder/thumbs';
 import { stelleAuftragEin } from '../auftraege/dienst';
-import { normalisiereSetNummer, moeglicheSetNummer } from './setNummer';
+import { normalisiereSetNummer, moeglicheSetNummer } from '../infra/setNummer';
 import { fehlerWerfen, Meldung } from '../infra/fehlerTexte';
 import { setzeLagerort, ortFuerNeuerfassung } from '../bestand/lagerort';
 import { bestandsMenge } from '../infra/validate';
@@ -43,13 +41,13 @@ async function priceForNewAcquisition(userId: number, setNumber: string, dbh: Db
   // Die Währung DES KONTOS: Der Preis wird in ihr gesucht und gespeichert.
   const currency = String(await getSetting(userId, 'currency', 'EUR'));
   const cached = await repo.marktpreisAusCache(dbh, setNumber, currency, cond).catch(meldeUndLiefere('set-service:cached', null));
-  let pp = parseFloat(cached?.avg_price || 0) || null;
+  let pp = Number(cached?.avg_price ?? 0) || null;
   if (!pp) pp = await getCurrentMarketPrice(setNumber, userId, cond).catch(meldeUndLiefere('set-service:getCurrentMarketPrice', null));
   if (!pp) {
     // Der Verlauf füllt die Lücke, wenn Cache und BrickLink-Kontingent beim
     // CSV-Import leer ausgehen; sonst entstünde die Erfassung ohne Kaufpreis.
     const hist = await repo.marktpreisAusVerlauf(dbh, setNumber, currency, cond).catch(meldeUndLiefere('set-service:hist', null));
-    pp = parseFloat(hist?.avg_price || 0) || null;
+    pp = Number(hist?.avg_price ?? 0) || null;
   }
   return { price: pp, condition: cond, geschaetzt: pp != null, currency };
 }
@@ -222,10 +220,6 @@ async function addSetIntern(setNumber: string, quantity: number, userId: number,
   return { action:'added', set_number:normalized, name: name ?? `Set ${normalized}`, katalog_offen: !name };
 }
 
-/** `uid` ist eine einzelne ID; das Blickfeld entsteht im Rumpf.
- * @returns die Gesamtmenge des Blickfelds NACH der Änderung: Eine bei 0
- *   gedeckelte Verringerung ergibt eine andere Zahl als die gesendete. */
-
 /** Die LETZTE Erfassung, weil der Detail-Dialog genau sie bearbeitet.
  * @param feld  fester Spaltenname, KEINE Eingabe von aussen */
 async function schreibeInLetzteErfassung(
@@ -267,7 +261,7 @@ export async function updateSet(uid: number, sn: string, body: any) {
     // Rechnung in der Sperre.
     const vorab = await eigenesZiel(db);
     const plan = vorab.eigenZiel > vorab.eigenVorher
-      ? await priceForNewAcquisition(uid, sn).catch(() => ({ price: null, condition: 'N' }))
+      ? await priceForNewAcquisition(uid, sn).catch(meldeUndLiefere('sets:kaufpreis', { price: null, condition: 'N' }))
       : { price: null, condition: 'N' };
     await withInventoryLock(uid, sn, async (tx) => {
       const { eigenVorher, eigenZiel } = await eigenesZiel(tx);

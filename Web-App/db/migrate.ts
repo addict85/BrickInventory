@@ -5,14 +5,10 @@
 import fs from 'fs';
 import path from 'path';
 import crypto from 'crypto';
-import { meldeUndWeiter, fehlertext, logAndContinue } from '../src/infra/httpError';
+import { meldeUndWeiter, fehlertext, logAndContinue } from '../src/infra/fehler';
 
-/**
- * Alle noch nicht angewandten Migrationen ausführen.
- * Ausführlich: docs/begruendungen/db/migrate.ts.md#runmigrations
- * @param {any} client Eine DEDIZIERTE pg-Verbindung (nicht der Pool), damit
- * @returns {Promise<string[]>} Namen der neu angewandten Migrationen
- */
+/** Alle noch nicht angewandten Migrationen; `client` ist eine eigene Verbindung, nicht der Pool.
+ * Ausführlich: docs/begruendungen/db/migrate.ts.md#runmigrations */
 async function runMigrations(client: any, { sichern = false, bis }: { sichern?: boolean; bis?: string } = {}): Promise<string[]> {
   await client.query(`
     CREATE TABLE IF NOT EXISTS schema_migrations (
@@ -25,6 +21,7 @@ async function runMigrations(client: any, { sichern = false, bis }: { sichern?: 
   if (!fs.existsSync(dir)) return [];
 
   // Lexikografisch sortieren — deshalb die vierstellige Nummer im Dateinamen.
+  // Lücken (0002, 0028) sind gewollt: Eine entfallene Migration gibt ihre Nummer nicht weiter.
   const files = fs.readdirSync(dir).filter(f => f.endsWith('.sql')).sort();
   if (!files.length) return [];
 

@@ -135,8 +135,8 @@ test('fuenf Listen nennen dieselben Designs', () => {
 
   const boot = liste(fs.readFileSync(path.join(PUB, 'js', '00-theme-boot.js'), 'utf8'),
     /var ALLOWED = \[([^\]]*)\]/, 'js/00-theme-boot.js');
-  const server = liste(fs.readFileSync(path.join(__dirname, '..', 'src/konto/settings.ts'), 'utf8'),
-    /const DESIGNS: readonly string\[\] = \[([^\]]*)\]/, 'src/konto/settings.ts');
+  const server = liste(fs.readFileSync(path.join(__dirname, '..', 'src/einstellungen/settings.ts'), 'utf8'),
+    /const DESIGNS: readonly string\[\] = \[([^\]]*)\]/, 'src/einstellungen/settings.ts');
   const app = liste(fs.readFileSync(path.join(__dirname, '..', '..', 'Android-App', 'core-data', 'src', 'main', 'java', 'ch', 'brickinventoryapp', 'data', 'PreferencesManager.kt'), 'utf8'),
     /ERLAUBTE_DESIGNS = setOf\(([^)]*)\)/, 'PreferencesManager.kt');
 
@@ -173,7 +173,7 @@ test('der Server setzt data-theme selbst — kein Sprung beim ersten Aufruf', ()
   // Seit Express 5 (05.10.) heisst das Muster '/{*splat}' und nicht mehr '*'.
   // Die geschweiften Klammern sind nicht Geschmack: Ohne sie trifft die Regel
   // die nackte Wurzel '/' nicht mehr — gemessen gegen express 5.2.1.
-  const at = server.search(/^app\.get\('\/\{\*splat\}'/m);
+  const at = server.search(/^\s*app\.get\('\/\{\*splat\}'/m);
   assert.ok(at > 0, "SPA-Catch-all nicht gefunden");
   const catchAll = server.slice(at, at + 700);
   // Argument zugelassen: renderIndexHtml() bekommt seit der Aufteilung der

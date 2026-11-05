@@ -175,7 +175,7 @@ const NUR_WEB = new Map([
    'Telefon, das sich selbst einen Code zum Abscannen anzeigt, hat niemand.'],
   ['/api/v1/auth/reset-password',
    'Setzt das Passwort mit dem Token aus der E-Mail. Der Link darin zeigt auf ' +
-   'die WEBSEITE (src/infra/mailer.ts: `${baseUrl}/reset-password?token=`), also ' +
+   'die WEBSEITE (src/mail/mailer.ts: `${baseUrl}/reset-password?token=`), also ' +
    'landet auch ein App-Nutzer dort. Was die App braucht, hat sie: ' +
    '/auth/forgot-password löst die Mail aus.'],
   ['/api/v1/auth/email-bestaetigen',

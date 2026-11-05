@@ -1,32 +1,23 @@
-/**
- * PostgreSQL database layer
- * Provides a synchronous-style interface compatible with the existing
- * better-sqlite3 usage throughout the codebase.
- * Ausführlich: docs/begruendungen/db/database.ts.md#abschnitt
- */
+/** Der Zugang zu PostgreSQL: Pool, Abfragen, Transaktionen, Erststart.
+ * Ausführlich: docs/begruendungen/db/database.ts.md#abschnitt */
 
-import { Pool, types as pgTypes } from 'pg';
+import { Pool, types as pgTypes, Client } from 'pg';
+import type { PoolClient } from 'pg';
+import { AsyncLocalStorage } from 'node:async_hooks';
 import { runMigrations, sichereNutzerdaten, abgeloestesEntfernen } from './migrate';
 import fs from 'fs';
 import path from 'path';
 import bcrypt from 'bcryptjs';
 import crypto from 'crypto';
-import { Client } from 'pg';
 import { LOCKS } from '../src/infra/lockNamespaces';
-import { fehlerCode, meldeUndWeiter, logAndContinue } from '../src/infra/httpError';
+import { fehlerCode, meldeUndWeiter, logAndContinue } from '../src/infra/fehler';
 import { konfig, datenbankVerbindung } from '../src/infra/konfig';
 import { passwortMangel } from '../src/infra/passwortRegel';
 
-// Warum diese acht jetzt oben stehen
-// Sie standen als require() in den Funktionsruempfen. Node haelt Module im
-// Cache, die Laufzeitkosten waren also gering — der Preis war ein anderer: Die
-// Abhaengigkeiten dieser Datei standen nicht an ihrem Kopf, und ein require() …
 // Ausführlich: docs/begruendungen/db/database.ts.md#abschnitt-2
 
-// NUMERIC kommt als Zahl zurück, nicht als Zeichenkette: Geldspalten sind
-// NUMERIC(12,4), also höchstens 10^12 Zehntausendstel — weit unter 2^53, ein
-// double trifft jeden Wert so genau, dass Math.round(n * 10^4) ihn zurückgibt.
-// Gerechnet wird in src/infra/geld.ts in Zehntausendsteln, nie mit dem double selbst.
+// NUMERIC als Zahl: NUMERIC(12,4) bleibt weit unter 2^53, gerechnet wird in
+// src/infra/geld.ts in Zehntausendsteln.
 // Ausführlich: docs/begruendungen/db/database.ts.md#abschnitt-3
 pgTypes.setTypeParser(pgTypes.builtins.NUMERIC, (v: any) => (v === null ? null : parseFloat(v)));
 
@@ -58,7 +49,6 @@ pool.on('error', (err, _client) => {
 });
 
 pool.on('connect', (_client) => {
-  // statement_timeout is set via pool options below — no extra query needed
 });
 
 // Optional: log pool exhaustion warnings (fires when all connections are in use)
@@ -93,14 +83,8 @@ export function istLesend(sql: string): boolean {
   return /^(SELECT|WITH)\b/i.test(s) && !/\b(INSERT|UPDATE|DELETE|MERGE)\b|\bFOR\s+(UPDATE|SHARE)\b/i.test(s);
 }
 
-/**
- * Eine Abfrage mit Wiederholung bei transienten Fehlern ausführen.
- * Ausführlich: docs/begruendungen/db/database.ts.md#querywithretry
- * @template T
- * @param {() => Promise<T>} queryFn
- * @param {number} maxRetries
- * @returns {Promise<T>}
- */
+/** Mit Wiederholung bei transienten Fehlern.
+ * Ausführlich: docs/begruendungen/db/database.ts.md#querywithretry */
 export async function queryWithRetry<T>(queryFn: () => Promise<T>, lesend: boolean, maxRetries = 2): Promise<T> {
   let lastErr: any;
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
@@ -108,9 +92,7 @@ export async function queryWithRetry<T>(queryFn: () => Promise<T>, lesend: boole
       return await queryFn();
     } catch (err) {
       lastErr = err;
-      // `?? ''` statt eines Nicht-Null-Ausrufezeichens: Ein Fehler ohne Code
-      // ist eben nicht wiederholbar, und der leere String faellt sauber
-      // durch die Menge — genau das Verhalten von vorher, nur ohne `any`.
+      // Ein Fehler ohne Code ist nicht wiederholbar.
       const code = fehlerCode(err) ?? '';
       const wiederholbar = RETRYABLE_CODES.has(code) || (lesend && NUR_LESEND_WIEDERHOLBAR.has(code));
       if (!wiederholbar || attempt === maxRetries) throw err;
@@ -141,79 +123,88 @@ async function datenbankAntwortet(): Promise<boolean> {
 }
 
 
-// ── Sync-compatible wrapper ───────────────────────────────────────────────────
-// All methods are async but named to mirror better-sqlite3's API.
-// Callers that use db.prepare().get()/.all()/.run() must now await them,
-// but since we rewrote all callers to be async anyway, this works.
+// Ausführlich: docs/begruendungen/db/database.ts.md#dbschnittstelle
+/** Eine Zeile mit den Spalten, die der Aufrufer liest; weitere reisen als `unknown` mit. */
+export type Zeile<T extends object = object> = T & Record<string, unknown>;
 
-/**
- * Execute a query and return all rows.
- * Replaces: db.prepare(sql).all(...params)
- */
-/**
- * Alle Zeilen einer Abfrage.
- * Ausführlich: docs/begruendungen/db/database.ts.md#abschnitt-4
- */
-/**
- * Die Abfrage-Schnittstelle, die dieses Modul anbietet — einmal als Typ.
- * Ausführlich: docs/begruendungen/db/database.ts.md#dbschnittstelle
- */
 export interface DbSchnittstelle {
-  /** T beschreibt die Zeile; ohne Angabe bleibt sie untypisiert (Altbestand). */
-  all<T = any>(sql: string, params?: unknown[]): Promise<T[]>;
-  get<T = any>(sql: string, params?: unknown[]): Promise<T | undefined>;
-  run(sql: string, params?: any[]): Promise<{ changes: number | null; lastID: any }>;
-  exec(sql: string): Promise<any>;
+  /** T beschreibt die Zeile. Ohne Angabe ist sie `unknown`: Wer Felder liest,
+   * muss sagen, welche — numeric und bigint kommen als Zeichenkette. */
+  all<T = unknown>(sql: string, params?: unknown[]): Promise<T[]>;
+  get<T = unknown>(sql: string, params?: unknown[]): Promise<T | undefined>;
+  run(sql: string, params?: unknown[]): Promise<{ changes: number }>;
+  exec(sql: string): Promise<void>;
 }
 
-async function all<T = any>(sql: string, params: unknown[] = []): Promise<T[]> {
+/** Die laufende Transaktion dieses Aufrufpfads: all/get/run/exec gehen dann
+ * über ihre Verbindung, auch aus Repositories ohne tx-Parameter. Sonst läse
+ * ein Dienst mitten in der Transaktion über eine zweite Verbindung ausserhalb
+ * ihres Stands. `offen` schützt vor Nachzüglern nach COMMIT. */
+const laufendeTx = new AsyncLocalStorage<{ client: PoolClient; offen: boolean }>();
+const txClient = (): PoolClient | null => { const t = laufendeTx.getStore(); return t?.offen ? t.client : null; };
+
+/** Ob dieser Aufrufpfad in einer Transaktion läuft (für Tests und Wächter). */
+export function inTransaktion(): boolean { return txClient() !== null; }
+
+/** Alle Zeilen einer Abfrage.
+ * Ausführlich: docs/begruendungen/db/database.ts.md#abschnitt-4 */
+async function all<T = unknown>(sql: string, params: unknown[] = []): Promise<T[]> {
+  const c = txClient();
+  if (c) return (await c.query(sql, params)).rows as T[];
   return queryWithRetry(async () => {
     const { rows } = await pool.query(sql, params);
     return rows;
   }, istLesend(sql));
 }
 
-/**
- * Execute a query and return the first row (or undefined).
- * Replaces: db.prepare(sql).get(...params)
- */
 /** Erste Zeile einer Abfrage, oder undefined. Zum Typ siehe all(). */
-async function get<T = any>(sql: string, params: unknown[] = []): Promise<T | undefined> {
-  return queryWithRetry(async () => {
-    const { rows } = await pool.query(sql, params);
-    return rows[0];
-  }, istLesend(sql));
+async function get<T = unknown>(sql: string, params: unknown[] = []): Promise<T | undefined> {
+  return (await all<T>(sql, params))[0];
 }
 
-/**
- * Execute a query and return { changes, lastID }.
- * Replaces: db.prepare(sql).run(...params)
- */
-/** Schreibende Abfrage: Anzahl betroffener Zeilen und ggf. die neue id. */
-async function run(sql: string, params: any[] = []): Promise<{ changes: number; lastID: any }> {
-  return queryWithRetry(async () => {
-    const result = await pool.query(sql, params);
-    return {
-      changes: result.rowCount || 0,
-      lastID:  (result.rows?.[0] as any)?.id ?? null,
-    };
-  }, false);
+/** Schreibende Abfrage: Anzahl betroffener Zeilen. Wer die neue id braucht,
+ * schreibt RETURNING und liest mit get(). */
+async function run(sql: string, params: unknown[] = []): Promise<{ changes: number }> {
+  const c = txClient();
+  if (c) return { changes: (await c.query(sql, params)).rowCount || 0 };
+  return queryWithRetry(async () => ({ changes: (await pool.query(sql, params)).rowCount || 0 }), false);
 }
 
-/**
- * Execute raw SQL (for schema/migrations).
- * Replaces: db.exec(sql)
- */
-async function exec(sql: string): Promise<any> {
-  await pool.query(sql);
+/** Rohes SQL ohne Parameter, für Schema und Migrationen. */
+async function exec(sql: string): Promise<void> {
+  await (txClient() ?? pool).query(sql);
 }
 
-/**
- * Run multiple statements in a transaction.
- * Replaces: db.transaction(fn)()
- */
+/** Innerhalb einer Transaktion ein Sicherungspunkt: Scheitert der innere Teil
+ * und fängt der Aufrufer das, bleibt die äussere Transaktion benutzbar. */
+let _sicherungspunkt = 0;
+async function innereTransaktion<T>(client: PoolClient, fn: (tx: DbSchnittstelle) => Promise<T>): Promise<T> {
+  const name = `sp_${++_sicherungspunkt}`;
+  await client.query(`SAVEPOINT ${name}`);
+  try {
+    const r = await fn(txSchnittstelle(client));
+    await client.query(`RELEASE SAVEPOINT ${name}`);
+    return r;
+  } catch (e) {
+    await client.query(`ROLLBACK TO SAVEPOINT ${name}`);
+    throw e;
+  }
+}
+
+function txSchnittstelle(client: PoolClient): DbSchnittstelle {
+  return {
+    all:  <T = unknown>(sql: string, p?: unknown[]) => client.query(sql, p).then(r => r.rows as T[]),
+    get:  <T = unknown>(sql: string, p?: unknown[]) => client.query(sql, p).then(r => r.rows[0] as T | undefined),
+    run:  (sql: string, p?: unknown[]) => client.query(sql, p).then(r => ({ changes: r.rowCount ?? 0 })),
+    exec: (sql: string)            => client.query(sql).then(() => undefined),
+  };
+}
+
 async function transaction<T>(fn: (tx: DbSchnittstelle) => Promise<T>): Promise<T> {
+  const aussen = txClient();
+  if (aussen) return innereTransaktion(aussen, fn);
   const client = await pool.connect();
+  const stand = { client, offen: true };
   let kaputt: Error | undefined;
   // Reisst die Verbindung mitten in der Transaktion ab, meldet der Client das
   // als 'error'-Ereignis; ohne Zuhörer beendete es den ganzen Prozess.
@@ -221,17 +212,12 @@ async function transaction<T>(fn: (tx: DbSchnittstelle) => Promise<T>): Promise<
   client.on('error', abriss);
   try {
     await client.query('BEGIN');
-    // Provide a client-bound db interface for the transaction
-    const txDb: DbSchnittstelle = {
-      all:  <T = any>(sql: string, p?: unknown[]) => client.query(sql, p).then(r => r.rows as T[]),
-      get:  <T = any>(sql: string, p?: unknown[]) => client.query(sql, p).then(r => r.rows[0] as T | undefined),
-      run:  (sql: string, p?: any[]) => client.query(sql, p).then(r => ({ changes: r.rowCount, lastID: (r.rows?.[0] as any)?.id })),
-      exec: (sql: string)            => client.query(sql),
-    };
-    const result = await fn(txDb);
+    const result = await laufendeTx.run(stand, () => fn(txSchnittstelle(client)));
+    stand.offen = false;
     await client.query('COMMIT');
     return result;
   } catch (e) {
+    stand.offen = false;
     // Scheitert auch das ROLLBACK, ist die Verbindung kaputt: Sie darf nicht
     // in den Pool zurück, und gemeldet wird der Fehler, der es ausgelöst hat.
     try { await client.query('ROLLBACK'); }
@@ -243,10 +229,7 @@ async function transaction<T>(fn: (tx: DbSchnittstelle) => Promise<T>): Promise<
   }
 }
 
-//  SQL dialect translation (entfernt)
-// Hier stand eine SQLite→PostgreSQL-Übersetzung aus der Migrationszeit. Sie ist
-// ersatzlos entfallen, weil sie zwei Klassen stiller Fehler produziert hat:
-// Ausführlich: docs/begruendungen/db/database.ts.md#abschnitt-5
+// SQL wird nicht übersetzt. Ausführlich: docs/begruendungen/db/database.ts.md#abschnitt-5
 
 
 // Die letzte Migration, die es zusammen mit den alten Startstufen gab
@@ -289,14 +272,7 @@ async function initSchema(): Promise<boolean> {
 async function legeAdminAn() {
   const { rows } = await pool.query('SELECT COUNT(*) as c FROM users');
   if (parseInt(rows[0].c) === 0) {
-    // Erst in eine lokale Konstante lesen, dann daraus die Entscheidung
-    // ableiten. Vorher stand die Bedingung als eigene Boolesche
-    // (`!!process.env.ADMIN_PASSWORD`) daneben — fachlich richtig, aber
-    // TypeScript kann ueber eine separate Variable nicht verengen und sah
-    // weiterhin `string | undefined`. Sichtbar wurde das erst, als bcryptjs
-    // oben importiert statt per require() geholt wurde: Solange hashSync `any`
-    // war, prueft niemand sein Argument. Ein Fehler war es nicht — der Zweig
-    // ist durch dieselbe Bedingung geschuetzt —, beweisbar war es aber auch nicht.
+    // Aus einer Konstante entschieden, damit der Übersetzer verengen kann.
     const envPasswort = konfig().adminPasswort;
     // Dieselbe Regel wie jeder andere Weg; ein schwaches ADMIN_PASSWORD wird
     // durch ein zufälliges ersetzt, das beim ersten Login zu ändern ist.
@@ -319,10 +295,7 @@ async function legeAdminAn() {
     if (useEnvPassword) {
       console.log('✅ Standard-Admin erstellt (Passwort aus ADMIN_PASSWORD).');
     } else {
-      // NICHT über console.log
-      // Direkt auf stdout geschrieben, geht die Zeile am Abfänger vorbei und
-      // steht nur dort, wo sie hingehört: im Container-Log des ersten Starts.
-      // Ein Filter im Abfänger wäre die Alternative gewesen — der hinge dann …
+      // Auf stdout statt console.log: am Protokoll-Abfänger vorbei, nur im Container-Log.
       // Ausführlich: docs/begruendungen/db/database.ts.md#frueherzurlaufzeitangelegt-banner
       const banner = [
         '╔══════════════════════════════════════════════════════════╗',

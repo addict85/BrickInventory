@@ -5,7 +5,7 @@
  * „Wenn ich den Kaufpreis im Kaufpreis-Dialog anpasse (Android oder Webapp),
  * wird er nicht gespeichert. In der Webapp kommt die Meldung Not found."
  * Sein Server-Log zeigte zwei 404 aus derselben Wurzel:
- *   routes/sets.js:1225            → „Not found" (heute src/bestand/erfassungen.ts)
+ *   routes/sets.js:1225            → „Not found" (heute src/sammlung/erfassungen.ts)
  *   routes/api_v1/acquisitions.js  → „Erfassung nicht gefunden"
  *
  * Ursache: Beide Wege suchten die Zeile mit `WHERE id=$1 AND user_id=$2` und
@@ -38,6 +38,7 @@ const ROOT = path.join(__dirname, '..');
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
 const _req = require('./helpers/sources').buildAndRequire();
+const { dbOderSkip } = require('./helpers/db');
 const { haeltSet } = require('./helpers/bestand');
 const db = _req('db/database.js');
 const express = require(path.join(ROOT, 'node_modules', 'express'));
@@ -45,14 +46,7 @@ const express = require(path.join(ROOT, 'node_modules', 'express'));
 test('das Hauptkonto kann den Kaufpreis einer Unterkonto-Erfassung ändern',
   { concurrency: 1 }, async (t) => {
 
-  try { await db.initSchema(); }
-  catch (e) {
-    if (process.env.REQUIRE_DB === '1')
-      throw new Error(`REQUIRE_DB=1, aber die Test-DB ist nicht erreichbar: ${e.message}`);
-    t.skip('Test-DB nicht erreichbar'); return;
-  }
-  const mc = await db.pool.connect();
-  try { await _req('db/migrate.js').runMigrations(mc); } finally { mc.release(); }
+  if (!await dbOderSkip(t, _req)) return;
 
   const HAUPT = 'acqscope-haupt', SUB = 'acqscope-sub', SET = '60445-1';
   await db.run(`DELETE FROM users WHERE username IN ($1,$2)`, [HAUPT, SUB]);

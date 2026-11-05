@@ -1,14 +1,14 @@
-// Ausführlich: docs/begruendungen/src/infra/mailer.ts.md#abschnitt
+// Ausführlich: docs/begruendungen/src/mail/mailer.ts.md#abschnitt
 
 import nodemailer from 'nodemailer';
 import tls from 'node:tls';
 import type { PeerCertificate } from 'node:tls';
-import { konfig } from './konfig';
-import { getGlobalSetting } from '../konto/settings';
+import { konfig } from '../infra/konfig';
+import { getGlobalSetting } from '../einstellungen/settings';
 import addressparser from 'nodemailer/lib/addressparser';
-import { ausTabelle, emailGueltig } from './validate';
-import { fehlertext } from './httpError';
-import { basisUrl, hinweisOhneBasisUrl } from './basisUrl';
+import { ausTabelle, emailGueltig } from '../infra/validate';
+import { fehlertext } from '../infra/fehler';
+import { basisUrl, hinweisOhneBasisUrl } from '../infra/basisUrl';
 const getSetting = (key: string) => getGlobalSetting(key, '');
 
 function normiereFingerabdruck(wert: unknown): string {
@@ -316,7 +316,7 @@ function emailBtn(url: string, text: string, theme: MailTheme = MAIL_THEMES.clas
   </p>`;
 }
 
-// Ausführlich: docs/begruendungen/src/infra/mailer.ts.md#infobox
+// Ausführlich: docs/begruendungen/src/mail/mailer.ts.md#infobox
 function infoBox(text: string, theme: MailTheme = MAIL_THEMES.classic) {
   return `<table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="margin-bottom:20px">
     <tr>
@@ -558,7 +558,7 @@ export async function sendKontoHinweisMail(to: string, username: string, art: Ko
 }
 
 // In der Sprache des Kontos, wie die übrigen Mails.
-// Ausführlich: docs/begruendungen/src/infra/mailer.ts.md#sendpasswordresetmail
+// Ausführlich: docs/begruendungen/src/mail/mailer.ts.md#sendpasswordresetmail
 export async function sendPasswordResetMail(to: string, token: string, baseUrl: string, lang = 'de') {
   const theme = await getMailTheme();
   const url = `${baseUrl}/reset-password?token=${token}`;
@@ -605,7 +605,7 @@ export async function sendPasswordResetMail(to: string, token: string, baseUrl: 
 }
 
 // Durch emailTemplate() wie die übrigen Mails, damit sie das Design trägt.
-// Ausführlich: docs/begruendungen/src/infra/mailer.ts.md#alarmmaildaten
+// Ausführlich: docs/begruendungen/src/mail/mailer.ts.md#alarmmaildaten
 export interface AlarmMailDaten {
   username: string;
   /** Die Sprache des EMPFÄNGERS, nicht die des Servers. */
@@ -620,7 +620,7 @@ export interface AlarmMailDaten {
   waehrung: string;
 }
 
-// Ausführlich: docs/begruendungen/src/infra/mailer.ts.md#bauealarmmail
+// Ausführlich: docs/begruendungen/src/mail/mailer.ts.md#bauealarmmail
 export async function baueAlarmMail(d: AlarmMailDaten): Promise<{ subject: string; text: string; html: string; link?: string }> {
   const theme = await getMailTheme();
   const de = d.lang !== 'en';

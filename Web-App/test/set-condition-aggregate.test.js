@@ -62,14 +62,14 @@ test('BEIDE Routenfamilien liefern das Aggregat mit', () => {
   // Genau hier lag der zweite Anlauf: Der Wrapper existierte zuerst nur in der
   // v1-Datei, die Webapp benutzt aber ihren eigenen Handler in routes/sets.ts
   // — und bekam deshalb kein `set` in der Antwort.
-  // Die Erfassungsrouten rufen den Dienst src/bestand/erfassungen.ts; dort
+  // Die Erfassungsrouten rufen den Dienst src/sammlung/erfassungen.ts; dort
   // hängt jede Antwort das Aggregat an.
-  const v1  = fs.readFileSync(path.join(ROOT, 'src/bestand/erfassungen.ts'), 'utf8');
+  const v1  = fs.readFileSync(path.join(ROOT, 'src/sammlung/erfassungen.ts'), 'utf8');
   const web = require('./helpers/sources').setKernQuelle();
   const h   = require('./helpers/sources').handlerQuelle();
 
   assert.match(h, /async function withSetAggregate/,
-    'Der Wrapper gehört in utils/handlers.ts, damit ihn beide Routenfamilien teilen');
+    'Der Wrapper gehört in den Dienst der Sets, damit ihn beide Routenfamilien teilen');
 
   assert.equal([...v1.matchAll(/return antwort\(art, uid, keys,/g)].length, 2,
     'Ändern und Löschen müssen beide das Aggregat zurückgeben');
@@ -187,7 +187,7 @@ test('der Marktpreis als Kaufpreis richtet sich nach dem gewählten Zustand', ()
   //
   // Diese Prüfung suchte bis zuletzt die Zeichenfolge
   // `const effectiveCondition = condition ||` — also die FORMULIERUNG einer
-  // bestimmten Fassung. Sie brach, als die Staffelung nach src/konto/settings.ts
+  // bestimmten Fassung. Sie brach, als die Staffelung nach src/einstellungen/settings.ts
   // wanderte und `addSet()` den Zustand einmal oben für beide Zweige bestimmt.
   // Die Regel war dabei nicht verletzt, im Gegenteil: Sie wird jetzt früher
   // erfüllt als vorher.
@@ -207,7 +207,7 @@ test('der Marktpreis als Kaufpreis richtet sich nach dem gewählten Zustand', ()
   // Huelle, die den Lagerort setzt (Marcos Befund vom selben Tag), und reicht
   // durch. Der Rumpf mit Zustand und Preisabruf steht in addSetIntern. Das ist
   // dieselbe Bewegung, die diese Regel schon einmal erwischt hat, als die
-  // Staffelung nach src/konto/settings.ts wanderte — und wieder gilt: Die Regel
+  // Staffelung nach src/einstellungen/settings.ts wanderte — und wieder gilt: Die Regel
   // ist nicht verletzt, nur ihr Ausschnitt war veraltet.
   const fnStart = src.indexOf('async function addSetIntern(');
   assert.ok(fnStart > 0, 'addSetIntern() ist nicht mehr zu finden');
@@ -872,7 +872,7 @@ test('Registrieren und Profil bleiben beim Benutzernamen-Muster', () => {
   assert.equal(USERNAME_RE.test('marco@example.com'), false);
   assert.ok(EMAIL_RE.test('marco@example.com'));
 
-  const src = fs.readFileSync(path.join(ROOT, 'routes/auth.ts'), 'utf8');
+  const src = require('./helpers/sources').anmeldeQuelle();
   const register = src.slice(src.indexOf("router.post('/register'"));
   assert.match(register, /USERNAME_RE\.test\(username\)/,
     'Registrieren muss beim Benutzernamen-Muster bleiben');

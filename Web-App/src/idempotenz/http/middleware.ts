@@ -4,7 +4,7 @@
 import type { Request, Response, NextFunction } from 'express';
 import { nutzerId } from '../../konto/http/anmeldung';
 import { sendeFehler } from '../../infra/fehlerTexte';
-import { meldeUndWeiter } from '../../infra/httpError';
+import { meldeUndWeiter } from '../../infra/fehler';
 import * as dienst from '../dienst';
 import { routeFuerAnfrage } from '../../infra/vertrag';
 import { nichtWiederholbar } from '../../infra/vertrag/grund';

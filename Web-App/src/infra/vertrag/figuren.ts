@@ -1,3 +1,4 @@
+import { OHNE_RUMPF, ZAHL, TEXT, ZUSTAND } from './grund';
 import { z } from 'zod';
 import { eingabe } from '../validate';
 import type { Route } from './grund';
@@ -41,8 +42,8 @@ export const routen = {
   'POST /api/v1/minifigs': { antwort: AddMinifigResponse, eingabe: z.looseObject({
     fig_number: eingabe.artikelnummer('fig_number'), quantity: eingabe.stueckzahl(), condition: eingabe.zustand(),
     unit_price: eingabe.preis('Stückpreis'), fig_name: eingabe.text(200), image_url: eingabe.bildUrl() }) },
-  'PUT /api/v1/minifigs/:figNumber': { antwort: GenericResponse },
-  'DELETE /api/v1/minifigs/:figNumber': { antwort: InDenPapierkorb },
-  'POST /api/v1/minifigs/import/csv': { antwort: CsvImportErgebnis },
+  'PUT /api/v1/minifigs/:figNumber': { eingabe: z.looseObject({ quantity: ZAHL.optional(), quantity_delta: ZAHL.nullable().optional(), unit_price: ZAHL.nullable().optional(), condition: ZUSTAND.nullable().optional(), bl_fig_number: TEXT(40).nullable().optional() }), antwort: GenericResponse },
+  'DELETE /api/v1/minifigs/:figNumber': { eingabe: OHNE_RUMPF, antwort: InDenPapierkorb },
+  'POST /api/v1/minifigs/import/csv': { formular: true, antwort: CsvImportErgebnis },
   'GET /api/v1/minifigs/:figNumber/parts': { antwort: FigurTeile },
 } satisfies Record<string, Route>;

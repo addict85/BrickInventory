@@ -2,7 +2,7 @@
  * es, bevor es dem Server vertraut. Abgleich über den Fingerabdruck. */
 import express from 'express';
 import { tlsStand } from '../src/infra/tlsWurzel';
-import { fehlerAntwort } from '../src/infra/httpError';
+import { fehlerAntwort } from '../src/infra/httpAntwort';
 
 const router = express.Router();
 

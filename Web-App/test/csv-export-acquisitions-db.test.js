@@ -41,6 +41,7 @@ const ROOT = path.join(__dirname, '..');
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
 const _req = require('./helpers/sources').buildAndRequire();
+const { dbOderSkip } = require('./helpers/db');
 const { haeltFigur, haeltSet, haeltTeil } = require('./helpers/bestand');
 const db = _req('db/database.js');
 
@@ -62,14 +63,7 @@ function zeilen(csv) {
 test('Sets-Export: eine Zeile je Erfassung, ohne Erfassung die Set-Zeile',
   { concurrency: 1 }, async (t) => {
 
-  try { await db.initSchema(); }
-  catch (e) {
-    if (process.env.REQUIRE_DB === '1')
-      throw new Error(`REQUIRE_DB=1, aber die Test-DB ist nicht erreichbar: ${e.message}`);
-    t.skip('Test-DB nicht erreichbar'); return;
-  }
-  const mc = await db.pool.connect();
-  try { await _req('db/migrate.js').runMigrations(mc); } finally { mc.release(); }
+  if (!await dbOderSkip(t, _req)) return;
 
   const nutzer = `csvexp-${process.pid}`;
   await db.run('DELETE FROM users WHERE username = $1', [nutzer]).catch(() => {});
@@ -142,12 +136,7 @@ test('Sets-Export: eine Zeile je Erfassung, ohne Erfassung die Set-Zeile',
 test('Sets-Export braucht EINE Abfrage, unabhaengig von der Anzahl Sets',
   { concurrency: 1 }, async (t) => {
 
-  try { await db.initSchema(); }
-  catch (e) {
-    if (process.env.REQUIRE_DB === '1')
-      throw new Error(`REQUIRE_DB=1, aber die Test-DB ist nicht erreichbar: ${e.message}`);
-    t.skip('Test-DB nicht erreichbar'); return;
-  }
+  if (!await dbOderSkip(t, _req, { migrieren: false })) return;
 
   // ── Warum gezaehlt und nicht gestoppt wird ────────────────────────────────
   // Eine Zeitmessung waere hier die schlechtere Pruefung: Sie schwankt mit der
@@ -206,12 +195,7 @@ test('Sets-Export braucht EINE Abfrage, unabhaengig von der Anzahl Sets',
 test('Minifiguren-Export: dieselbe Regel, dieselbe eine Abfrage',
   { concurrency: 1 }, async (t) => {
 
-  try { await db.initSchema(); }
-  catch (e) {
-    if (process.env.REQUIRE_DB === '1')
-      throw new Error(`REQUIRE_DB=1, aber die Test-DB ist nicht erreichbar: ${e.message}`);
-    t.skip('Test-DB nicht erreichbar'); return;
-  }
+  if (!await dbOderSkip(t, _req, { migrieren: false })) return;
 
   const nutzer = `figexp-${process.pid}`;
   await db.run('DELETE FROM users WHERE username = $1', [nutzer]).catch(() => {});
@@ -296,12 +280,7 @@ test('Teile-Export: dieselbe Regel, dieselbe eine Abfrage',
   // die FARBE. Derselbe Teiletyp in Rot und in Blau sind zwei Zeilen, und der
   // JOIN muss beide Spalten vergleichen — sonst erbt die rote Zeile die
   // Erfassungen der blauen. Dafuer steht der Fall `3001` unten.
-  try { await db.initSchema(); }
-  catch (e) {
-    if (process.env.REQUIRE_DB === '1')
-      throw new Error(`REQUIRE_DB=1, aber die Test-DB ist nicht erreichbar: ${e.message}`);
-    t.skip('Test-DB nicht erreichbar'); return;
-  }
+  if (!await dbOderSkip(t, _req, { migrieren: false })) return;
 
   const nutzer = `teilexp-${process.pid}`;
   await db.run('DELETE FROM users WHERE username = $1', [nutzer]).catch(() => {});

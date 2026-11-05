@@ -1,7 +1,7 @@
 import * as db from '../../../db/database';
 
 export function tageswerteAusVerlauf(currency: string, condition: string, setNumbers: string[], mengen: number[], datumsFilter: string, bExpr: string) {
-  return db.all(`WITH mengen AS MATERIALIZED (
+  return db.all<{ day: string; full_day?: string; first_day?: string; month: string; total: number | string }>(`WITH mengen AS MATERIALIZED (
        SELECT * FROM unnest($3::text[], $4::int[]) AS m(set_number, qty)
      ),
      roh AS (
@@ -60,7 +60,7 @@ export function tageswerteAusVerlauf(currency: string, condition: string, setNum
 }
 
 export function cachePreiseDerSets(currency: string, condition: string, setNumbers: string[], placeholders: string) {
-  return db.all(`SELECT set_number, qty_avg_price, avg_price,
+  return db.all<{ set_number: string; qty_avg_price: number | null; avg_price: number | null; day: string; month: string }>(`SELECT set_number, qty_avg_price, avg_price,
               to_char(fetched_at,'YYYY-MM-DD') AS day,
               to_char(fetched_at,'YYYY-MM')    AS month
        FROM price_cache
@@ -70,7 +70,7 @@ export function cachePreiseDerSets(currency: string, condition: string, setNumbe
 }
 
 export function letzteWerteVorBeginn(currency: string, condition: string, setNumbers: string[], mengen: number[], ersterTag: string, datumsFilter: string) {
-  return db.all(`WITH mengen AS MATERIALIZED (
+  return db.all<{ total: number }>(`WITH mengen AS MATERIALIZED (
          SELECT * FROM unnest($3::text[], $4::int[]) AS m(set_number, qty)
        ),
        letzte AS (
@@ -100,7 +100,7 @@ export function letzteWerteVorBeginn(currency: string, condition: string, setNum
 }
 
 export function setsMitKaufsumme(uids: number[]) {
-  return db.all(`SELECT s.set_number, COALESCE(SUM(a.total_qty), 0)::int AS quantity,
+  return db.all<{ set_number: string; quantity: number; purchase_price: number | null }>(`SELECT s.set_number, COALESCE(SUM(a.total_qty), 0)::int AS quantity,
             SUM(COALESCE(a.total_price, 0))
               / NULLIF(SUM(a.total_qty), 0) AS purchase_price
      FROM sets s

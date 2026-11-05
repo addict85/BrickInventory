@@ -1,5 +1,5 @@
 import * as stand from './repository/importStand';
-import { meldeUndWeiter, logAndContinue } from '../infra/httpError';
+import { meldeUndWeiter, logAndContinue } from '../infra/fehler';
 import { fehlerText, antwortSprache } from '../infra/fehlerTexte';
 
 /** EINE Zeile je Konto, damit alle Oberflächen denselben Balken zeigen.
@@ -162,3 +162,8 @@ export async function istAbgebrochen(userId: number): Promise<boolean> {
   return !stand || stand.status !== 'running';
 }
 
+/** Weckt, wenn ein anderer Prozess den Stand eines Kontos schrieb; gibt das Abmelden zurück. */
+export function beiImportStand(f: (konto?: string) => void): () => void {
+  pgNotify.listen('csv_import_progress', f);
+  return () => pgNotify.unlisten('csv_import_progress', f);
+}

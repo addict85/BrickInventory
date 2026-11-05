@@ -1,27 +1,25 @@
 /** SQL, Rebrickable und Aufträge stehen nur hier und darunter, damit die Routen
  * nur Anfrage und Antwort kennen. */
-import { logAndContinue, meldeUndLiefere, meldeUndWeiter, vorDem, fehlertext, ohneFehlendeDatei, oeffentlicherFehler } from '../infra/httpError';
+import { logAndContinue, meldeUndLiefere, meldeUndWeiter, vorDem, fehlertext, ohneFehlendeDatei, oeffentlicherFehler } from '../infra/fehler';
 import fs from 'fs';
 import path from 'path';
 import { APP_ROOT } from '../infra/appPaths';
 import { stelleAuftragEin } from '../auftraege/dienst';
 import { resolveImageLocal, proxyImageUrl } from '../katalog/bilder/images';
-import { getSetting } from '../konto/settings';
+import { getSetting } from '../einstellungen/settings';
 import { normalizeSetNumber } from './setAdd';
 import { istErsatzteil } from '../infra/validate';
 import { istVermutung } from '../katalog/barcodeQuelle';
 import { setnummerKandidaten } from '../katalog/produkttitel';
 import { fetchPrice, resolveSetCondition } from '../finanzen/financeCalc';
 import { neuestesInventar } from '../katalog/rbInventar';
-import { mitVersion, ohneVersion } from './setNummer';
+import { mitVersion, ohneVersion } from '../infra/setNummer';
 import { figurenAusKatalog } from '../katalog/minifigsImport';
 import { csvEinlesen, entschaerfungRueckgaengig, parseCsvDate, uebersprungenHinweis } from '../infra/csvExport';
 import { jobGet, jobSet, jobUpdate, emitJobStatus } from '../auftraege/importAuftrag';
-import { getSetByBarcode, getSetByEan } from '../../clients/brickset';
-import { getMinifigInfo, getSetMinifigs, rebrickableJson } from '../../clients/rebrickable';
+import { getSetByBarcode, getSetByEan, getMinifigInfo, getSetMinifigs, rebrickableJson, produktTitel } from '../katalog/quellen';
 import { getAllSetParts } from '../katalog/rebrickableKatalog';
 import type { RbSetTeil } from '../../clients/rebrickable';
-import { produktTitel } from '../../clients/upcitemdb';
 import { fehlerWerfen, Meldung } from '../infra/fehlerTexte';
 import { merkeFigur, merkeSetFiguren } from '../katalog/katalogPflege';
 import { randomUUID } from 'crypto';

@@ -4,7 +4,7 @@
 import { isIPv4, isIPv6 } from 'node:net';
 import * as db from '../../db/database';
 import { einzelwert } from '../infra/validate';
-import { meldeUndLiefere } from '../infra/httpError';
+import { meldeUndLiefere } from '../infra/fehler';
 import type { FehlerCode } from '../infra/fehlerTexte';
 import * as repo from './repository/anmeldezaehler';
 

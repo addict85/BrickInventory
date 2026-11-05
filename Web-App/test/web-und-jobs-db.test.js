@@ -5,7 +5,7 @@
  * Gegenproben (am 30.10.2026 gemessen):
  *   A  in server.ts `const jobs = k.rolle !== 'web'` durch `true` ersetzt →
  *      rot: „der Web-Prozess arbeitet keine Aufträge ab“
- *   B  in aktuellerStartZustand (src/infra/startZustand.ts) das Nachlesen aus
+ *   B  in aktuellerStartZustand (src/auftraege/startZustand.ts) das Nachlesen aus
  *      laufzustand entfernt → rot: „der Web-Prozess sieht den Startzustand des
  *      Job-Prozesses“
  *   C  in server.ts app.use(nurEigeneHerkunft) entfernt → rot: „weist
@@ -29,6 +29,7 @@ process.env.DATABASE_URL = URL_DB;
 
 const ROOT = path.join(__dirname, '..');
 const _req = require('./helpers/sources').buildAndRequire();
+const { dbOderSkip } = require('./helpers/db');
 const db = _req('db/database.js');
 const bcrypt = require(path.join(ROOT, 'node_modules', 'bcryptjs'));
 
@@ -82,14 +83,7 @@ async function beende(p) {
 }
 
 test('Web- und Job-Prozess', { concurrency: 1, timeout: 180_000 }, async (t) => {
-  try { await db.initSchema(); }
-  catch (e) {
-    if (process.env.REQUIRE_DB === '1')
-      throw new Error(`REQUIRE_DB=1, aber die Test-DB ist nicht erreichbar: ${e.message}`);
-    t.skip('Test-DB nicht erreichbar'); return;
-  }
-  const client = await db.pool.connect();
-  try { await _req('db/migrate.js').runMigrations(client); } finally { client.release(); }
+  if (!await dbOderSkip(t, _req)) return;
 
   // Ohne heutige Stempel lädt der Job-Prozess den Rebrickable-Katalog herunter.
   for (const k of ['rb_csv_last_sync', 'rb_part_categories_last_sync', 'rb_catalog_extras_last_sync'])

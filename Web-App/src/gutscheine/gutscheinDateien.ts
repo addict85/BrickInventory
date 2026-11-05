@@ -2,7 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { DATA_DIR } from '../infra/appPaths';
 import { verschluesselePuffer, entschluesselePuffer, istVerschluesselterPuffer, altenPufferLesen, kontext } from '../infra/geheimnis';
-import { ohneFehlendeDatei } from '../infra/httpError';
+import { ohneFehlendeDatei } from '../infra/fehler';
 
 /** Die PDFs tragen Kartennummer und PIN im Klartext; verschlüsselt gibt eine
  * Kopie von data/ ohne Schlüssel sie nicht preis. */

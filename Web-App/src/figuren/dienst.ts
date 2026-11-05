@@ -1,4 +1,4 @@
-import { logAndContinue, meldeUndLiefere } from '../infra/httpError';
+import { logAndContinue, meldeUndLiefere } from '../infra/fehler';
 import { inventarNachKandidaten } from '../katalog/rbInventar';
 import { nacharbeit } from '../auftraege/nacharbeit';
 import * as repo from './repository/figurTeile';

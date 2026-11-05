@@ -1,9 +1,9 @@
 /** Die Regel „schon im Blickfeld? dann nicht aufstocken" steht im Server, damit
  * Webapp und App dieselbe Eingabe gleich behandeln.
  * Ausführlich: docs/begruendungen/src/sets/setAdd.ts.md#abschnitt */
-import { meldeUndLiefere } from '../infra/httpError';
+import { meldeUndLiefere } from '../infra/fehler';
 import { scopeIds } from '../haushalt/haushalt';
-import { normalisiereSetNummer } from './setNummer';
+import { normalisiereSetNummer } from '../infra/setNummer';
 import * as repo from './repository/sets';
 
 // Ausführlich: docs/begruendungen/src/sets/setAdd.ts.md#normalizesetnumber

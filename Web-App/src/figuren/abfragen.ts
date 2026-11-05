@@ -1,7 +1,7 @@
 import { resolveImageLocal } from '../katalog/bilder/images';
-import { asIds } from '../haushalt/haushalt';
-import { clampPageSize, applyManualCondition, withOwners, conditionFromAcquisitions, conditionsFromAcquisitions } from '../bestand/gemeinsam';
-import { mitVersion } from '../sets/setNummer';
+import { asIds, withOwners } from '../haushalt/haushalt';
+import { clampPageSize, applyManualCondition, conditionFromAcquisitions, conditionsFromAcquisitions } from '../bestand/gemeinsam';
+import { mitVersion } from '../infra/setNummer';
 import { marktpreiseAusCacheFuerFiguren } from '../finanzen/marketPrice';
 import * as repo from './repository/figurenListe';
 
@@ -35,7 +35,7 @@ export async function getMinifigs(userId: number | number[], { search, source, s
   // Mit Gesamtzahl für den Endlos-Scroll, wie bei getSets.
   return {
     figs: await withOwners(uids, mappedFigs),
-    total: figCount ? parseInt(figCount.c) : mappedFigs.length,
+    total: figCount ? figCount.c : mappedFigs.length,
   };
 }
 

@@ -1,4 +1,4 @@
-import { getGlobalSetting } from '../konto/settings';
+import { getGlobalSetting } from '../einstellungen/settings';
 import { notify } from '../../db/pgNotify';
 import { type AuftragsArt } from './auftraege';
 import { AUFTRAG_KANAL, stelleAuftragEin, setzeFaelligkeit, zieheTerminVor, laeuftArt } from './dienst';

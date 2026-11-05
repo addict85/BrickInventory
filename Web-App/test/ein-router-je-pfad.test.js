@@ -38,7 +38,8 @@ function routen(router, praefix = '') {
 /** Router-Einhängungen in server.ts: Pfad → Router-Modul. */
 function einhaengungen() {
   const v1 = { mount: '/api/v1', datei: path.join(ROOT, 'routes/api_v1/index.ts'), name: 'api_v1/index' };
-  return [v1, ...routerEinhaengungen()];
+  // Die Teile von routes/auth.ts stecken schon in dessen Stapel.
+  return [v1, ...routerEinhaengungen({ ohneTeile: true })];
 }
 
 test('ein Router je Einhängepunkt', () => {

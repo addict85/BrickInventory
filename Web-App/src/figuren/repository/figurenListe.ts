@@ -1,6 +1,7 @@
 import { blJoin, blNummerSql } from '../../../db/blZuordnungSql';
 import { mengeAus, mengeJoin, teilmengeAus, teilmengeJoin } from '../../../db/bestandsmenge';
 import * as db from '../../../db/database';
+import type { Zeile } from '../../../db/database';
 import { figurSichtJoin, FIGUR } from '../../../db/katalogSicht';
 import { LIKE_ESCAPE as E, enthaeltMuster } from '../../../db/likeSuche';
 
@@ -35,13 +36,13 @@ export async function figurenGruppiert(uids: number[], f: { search?: string | nu
   }
   // Die Zählung braucht keinen Join auf sets.
   const figCount = f.seite
-    ? await db.get(`SELECT COUNT(*)::int AS c FROM (
+    ? await db.get<{ c: number }>(`SELECT COUNT(*)::int AS c FROM (
          SELECT 1 FROM minifigs m
          ${figurSichtJoin('m.user_id', 'm.fig_number')}
          WHERE ${where} GROUP BY LOWER(TRIM(m.fig_number)), m.source) g`, params)
     : null;
 
-  const figs = await db.all(`
+  const figs = await db.all<Zeile<{ fig_number: string; image_local: string | null; owner_ids: number[] | null }>>(`
     SELECT MIN(m.id) AS id,
            -- Besitzer der GRUPPE. Die Zeile fasst dieselbe Figur ueber alle
            -- Konten des Haushalts zusammen, hat also keine einzelne user_id
@@ -135,7 +136,7 @@ export async function manuelleFigurenListe(uids: number[], search: string | null
     params.push(seite.groesse, seite.versatz);
     limit = ` LIMIT $${params.length - 1} OFFSET $${params.length}`;
   }
-  const figs = await db.all(
+  const figs = await db.all<Zeile<{ fig_number: string; image_local: string | null }>>(
     // Name und Bild: geprüft aus dem Katalog, sonst die eigene Angabe des Kontos.
     // Ausführlich: docs/begruendungen/src/figuren/abfragen.ts.md#getmanualminifigs
     `SELECT m.id, m.user_id, m.set_number, m.fig_number,
@@ -176,7 +177,7 @@ export async function manuelleFigurenListe(uids: number[], search: string | null
 }
 
 export function zustandszahlenManuellerFiguren(uids: number[]) {
-  return db.all(`SELECT LOWER(TRIM(a.fig_number)) AS fkey,
+  return db.all<{ fkey: string; acq_count: number; used_count: number }>(`SELECT LOWER(TRIM(a.fig_number)) AS fkey,
             COUNT(*)::int AS acq_count,
             COUNT(*) FILTER (WHERE a.condition = 'U')::int AS used_count
      FROM minifig_acquisitions a
@@ -185,7 +186,7 @@ export function zustandszahlenManuellerFiguren(uids: number[]) {
 }
 
 export function figurenKennzahlen(uids: number[]) {
-  return db.get(`
+  return db.get<{ types: number; total_quantity: number; manual: number }>(`
     SELECT COUNT(*)::int AS types,
            COALESCE(SUM(g.menge), 0)::int AS total_quantity,
            COUNT(*) FILTER (WHERE g.source = 'manual')::int AS manual

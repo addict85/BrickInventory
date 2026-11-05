@@ -41,6 +41,7 @@ const ROOT = path.join(__dirname, '..');
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
 const _req = require('./helpers/sources').buildAndRequire();
+const { dbOderSkip } = require('./helpers/db');
 const db = _req('db/database.js');
 const express = require(path.join(ROOT, 'node_modules', 'express'));
 
@@ -123,12 +124,7 @@ function alleWerte(x, out = []) {
 }
 
 test('Einstellungen geben Geheimnisse nie im Klartext heraus', { concurrency: 1 }, async (t) => {
-  try { await db.initSchema(); }
-  catch (e) {
-    if (process.env.REQUIRE_DB === '1')
-      throw new Error(`REQUIRE_DB=1, aber die Test-DB ist nicht erreichbar: ${e.message}`);
-    t.skip('Test-DB nicht erreichbar'); return;
-  }
+  if (!await dbOderSkip(t, _req, { migrieren: false })) return;
 
   const NUTZER = `sec-user-${process.pid}`;
   await db.run(`DELETE FROM users WHERE username=$1`, [NUTZER]);
@@ -142,7 +138,7 @@ test('Einstellungen geben Geheimnisse nie im Klartext heraus', { concurrency: 1 
                   ON CONFLICT (key) DO UPDATE SET value=$2`, [k, v]);
   }
   // Wie der Start: Klartext in der Tabelle wird vor der ersten Anfrage verschlüsselt.
-  await _req('src/konto/settings.js').verschluesseleGlobaleAltwerte();
+  await _req('src/einstellungen/settings.js').verschluesseleGlobaleAltwerte();
 
   const appFuer = (isAdmin) => {
     const app = express();

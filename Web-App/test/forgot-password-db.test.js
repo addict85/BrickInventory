@@ -43,6 +43,7 @@ process.env.APP_BASE_URL = 'http://localhost';
 process.env.SESSION_SECRET = 'test-secret-lang-genug-fuer-die-pruefung';
 
 const _req = require('./helpers/sources').buildAndRequire();
+const { dbOderSkip } = require('./helpers/db');
 // Adresse aus server.ts lesen — siehe einhaengung() in helpers/sources.js.
 const AUTH = require('./helpers/sources').einhaengung('auth');
 const db = _req('db/database.js');
@@ -56,12 +57,7 @@ test.after(() => db.pool.end().catch(() => {}));
 test('forgot-password findet die E-Mail unabhängig von der Schreibweise',
   { concurrency: 1 }, async (t) => {
 
-  try { await db.initSchema(); }
-  catch (e) {
-    if (process.env.REQUIRE_DB === '1')
-      throw new Error(`REQUIRE_DB=1, aber die Test-DB ist nicht erreichbar: ${e.message}`);
-    t.skip('Test-DB nicht erreichbar'); return;
-  }
+  if (!await dbOderSkip(t, _req, { migrieren: false })) return;
 
   const USERNAME = 'forgotcasetest';
   await db.run(`DELETE FROM users WHERE username = $1`, [USERNAME]);
@@ -118,12 +114,7 @@ test('forgot-password findet die E-Mail unabhängig von der Schreibweise',
 
 test('Reset-Link nur mit APP_BASE_URL, nie aus dem Host-Header — auch ausserhalb des Betriebs',
   { concurrency: 1 }, async (t) => {
-  try { await db.initSchema(); }
-  catch (e) {
-    if (process.env.REQUIRE_DB === '1')
-      throw new Error(`REQUIRE_DB=1, aber die Test-DB ist nicht erreichbar: ${e.message}`);
-    t.skip('Test-DB nicht erreichbar'); return;
-  }
+  if (!await dbOderSkip(t, _req, { migrieren: false })) return;
   const USERNAME = 'forgothosttest';
   await db.run(`DELETE FROM users WHERE username = $1`, [USERNAME]);
   await db.run(`DELETE FROM rate_limit_attempts WHERE key LIKE 'forgot-%'`).catch(() => {});

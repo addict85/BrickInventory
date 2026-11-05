@@ -1,4 +1,4 @@
-import { meldeUndLiefere } from '../../infra/httpError';
+import { meldeUndLiefere } from '../../infra/fehler';
 import * as repo from '../repository/portfolioKurve';
 // Ausführlich: docs/begruendungen/src/finanzen/portfolio/kurve.ts.md#rekonstruierekurve
 export async function rekonstruiereKurve(opts: {
@@ -42,7 +42,7 @@ export async function rekonstruiereKurve(opts: {
     for (const r of roh) {
       const k = r.day;
       if (!buckets[k]) buckets[k] = { day: r.day, month: r.month, sets: {} };
-      const p = parseFloat(r.avg_price||0) || parseFloat(r.qty_avg_price||0);
+      const p = Number(r.avg_price ?? 0) || Number(r.qty_avg_price ?? 0);
       if (p > 0) buckets[k].sets[r.set_number] = p;
     }
     // Jedes Set mit seinem ERSTEN bekannten Preis von Anfang an im Korb, sonst
@@ -67,7 +67,7 @@ export async function rekonstruiereKurve(opts: {
     const ersterTag = rows[0]?.first_day || rawPoints[0].fullDay;
     rawPoints[0].fullDay = ersterTag;
     const start = await repo.letzteWerteVorBeginn(currency, condition, setNumbers, mengen, ersterTag, dateFilter.replace(/recorded_at/g, 'ph.recorded_at')).catch(meldeUndLiefere('portfolio:kurve rechnen', []));
-    const wert = parseFloat(start?.[0]?.total);
+    const wert = Number(start?.[0]?.total);
     if (Number.isFinite(wert) && wert > 0) rawPoints[0].total = wert;
   }
 }

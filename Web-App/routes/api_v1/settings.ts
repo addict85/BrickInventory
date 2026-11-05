@@ -2,21 +2,11 @@
  * und nach router.use(requireLogin) hier an einer Stelle entschieden wird. */
 import multer from 'multer';
 import { FORMULAR_GRENZEN } from '../../src/infra/dateiEmpfang';
-import { fehlerAntwort, logAndContinue } from '../../src/infra/httpError';
+import { logAndContinue, meldeUndLiefere } from '../../src/infra/fehler';
+import { fehlerAntwort } from '../../src/infra/httpAntwort';
 import { requireApiAdmin as requireAdmin, requireToken, bearerToken, kontoSchranke } from './middleware';
-import {
-  SECRET_KEYS, isMaskedValue,
-  readSettings, globaleWerteOhneGeheimnisse, 
-  DESIGNS, designFuer, setzeEigenesDesign,
-} from '../../src/konto/settings';
-import { nutzerEinstellungen } from '../../src/konto/settings';
-import { deleteUserSetting } from '../../src/konto/settings';
-import { setGlobalSetting, globalerWertGueltig, deleteGlobalSetting } from '../../src/konto/settings';
-import { globalDefaultCondition } from '../../src/konto/settings';
-import { nutzerStandardZustand } from '../../src/konto/settings';
-import { setUserSetting } from '../../src/konto/settings';
-import { getGlobalSetting } from '../../src/konto/settings';
-import { getSetting } from '../../src/konto/settings';
+import { SECRET_KEYS, isMaskedValue, readSettings, globaleWerteOhneGeheimnisse, DESIGNS, designFuer, nutzerEinstellungen, deleteUserSetting, setGlobalSetting, globalerWertGueltig, deleteGlobalSetting, globalDefaultCondition, nutzerStandardZustand, getGlobalSetting, getSetting } from '../../src/einstellungen/settings';
+import { setzeEigenesDesign, setUserSetting } from '../../src/konto/nutzerEinstellung';
 import { buildSetsCsv } from '../../src/sets/setService';
 import { buildPartsCsv, buildFigsCsv } from '../../src/bestand/bestandExport';
 import { buildMerklisteCsv } from '../../src/merkliste/merkliste';
@@ -29,7 +19,7 @@ import { kontoGedrosselt } from '../../src/konto/zielDrossel';
 import { resolveUserId, requireLoginOrToken, nutzerId, angemeldeteNutzerId, istVerwalter, nutzerName, bestaetigeMitFaktor } from '../../src/konto/http/anmeldung';
 import { verwalterHinweisNebenher } from '../../src/konto/kontoHinweis';
 import { householdStatus, createInvite, redeemInvite, pruefeEinladung, unlink, verwerfeGetrennt } from '../../src/haushalt/haushalt';
-import { sendMail, testSmtp, sendHaushaltVerknuepftMail, mailBereit } from '../../src/infra/mailer';
+import { sendMail, testSmtp, sendHaushaltVerknuepftMail, mailBereit } from '../../src/mail/mailer';
 import { sendeFehler, fehlerText, antwortSprache } from '../../src/infra/fehlerTexte';
 import { tlsStand } from '../../src/infra/tlsWurzel';
 import { konfig } from '../../src/infra/konfig';
@@ -113,7 +103,7 @@ router.get('/settings', requireToken, async (req: AuthedRequest, res: Antwort<'G
   const gespeichert = Object.fromEntries(APP_FELDER.map(feld => [feld, alle[feld] ?? APP_VORGABEN[feld] ?? '']));
   res.json({ success:true, settings: {
     ...gespeichert as Record<(typeof APP_FELDER)[number], string>,
-    // Die Regel steht in src/konto/settings.ts, damit sie nicht neben dem
+    // Die Regel steht in src/einstellungen/settings.ts, damit sie nicht neben dem
     // Webapp-Weg ein zweites Mal existiert.
     effective_condition: await nutzerStandardZustand(uid),
     // Das wirksame Design des Kontos, nicht die Vorgabe des Verwalters.
@@ -189,7 +179,7 @@ router.post('/settings/household/redeem', requireToken, async (req: AuthedReques
   if ((r as any).fehler) return sendeFehler(req, res, 409, (r as any).fehler, (r as any).vars);
   const ich = await profil(uid);
   if (ich?.email) {
-    const sprache = await getSetting(uid, 'language', 'de').catch(() => 'de');
+    const sprache = await getSetting(uid, 'language', 'de').catch(meldeUndLiefere('einstellungen:sprache', 'de'));
     const hauptkonto = 'linked_to' in r ? r.linked_to.username : '';
     sendHaushaltVerknuepftMail(ich.email, ich.username, hauptkonto, String(sprache ?? 'de'))
       .catch(logAndContinue('haushalt:hinweismail'));

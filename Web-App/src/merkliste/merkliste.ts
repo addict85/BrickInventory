@@ -7,13 +7,12 @@ import { addSet, sanitizeSetNumber } from '../sets/setService';
 import { findSetInScope } from '../sets/setAdd';
 import { loescheAlarm } from '../finanzen/preisalarm';
 import * as V from '../infra/validate';
-import { nutzerStandardZustand } from '../konto/settings';
-import { meldeUndWeiter, meldeUndLiefere } from '../infra/httpError';
-import { fuerSet } from '../finanzen/preisvergleich';
+import { nutzerStandardZustand, getSetting } from '../einstellungen/settings';
+import { meldeUndWeiter, meldeUndLiefere, oeffentlicherFehler } from '../infra/fehler';
+import { fuerSet } from '../katalog/preisvergleich';
 import { resolveIfExists } from '../katalog/bilder/images';
-import { toCsv } from '../infra/csvExport';
+import { toCsv, csvZeilenAusAnfrage, parseCsvDate } from '../infra/csvExport';
 import * as repo from './repository/merkliste';
-import { getSetting } from '../konto/settings';
 import { fetchPrice } from '../finanzen/financeCalc';
 
 /** Jeder Zustand für sich: Kennt BrickLink einen nicht, kommt der andere
@@ -234,4 +233,34 @@ export async function buildMerklisteCsv(uid: number): Promise<string> {
   const rows = await repo.merklisteFuerExport(uid);
 
   return toCsv(['set_number', 'condition', 'created_at'], rows);
+}
+
+/** Das Gegenstück zu buildMerklisteCsv(); läuft als Auftrag (jobs/importAuftraege.ts). */
+export async function importiereMerklisteCsv(owner: number, text: string) {
+  const { records, bereinigt, uebersprungen } =
+    csvZeilenAusAnfrage(text);
+
+  let added = 0, updated = 0, errors = 0;
+  const results: any[] = [];
+
+  for (const row of bereinigt) {
+    // Letzter Rückfall: eine Datei ohne Kopfzeile, erste Spalte = Setnummer —
+    // dieselbe Nachsicht wie beim Minifiguren-Import.
+    const setNumber = String(row.set_number || row['Setnummer'] || row['set_num']
+                             || Object.values(row)[0] || '').trim();
+    if (!setNumber) continue;
+
+    const condition = String(row.condition || row['zustand'] || row['Zustand'] || '').trim();
+    const am = parseCsvDate(row.created_at || row['aufgenommen_am'] || row['Auf der Liste seit']);
+
+    try {
+      const { war_neu } = await legeMerkpostenAn(owner, setNumber, condition, am);
+      if (war_neu) { added++; results.push({ set_number: setNumber, action: 'added' }); }
+      else         { updated++; results.push({ set_number: setNumber, action: 'exists' }); }
+    } catch (e) {
+      errors++;
+      results.push({ set_number: setNumber, action: 'error', error: oeffentlicherFehler(e, 'wanted-csv:zeile').error });
+    }
+  }
+  return { added, updated, errors, records, results, uebersprungen };
 }

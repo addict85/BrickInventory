@@ -27,6 +27,7 @@ process.env.APP_BASE_URL = 'http://localhost';
 delete process.env.ADMIN_PASSWORD;
 
 const _req = require('./helpers/sources').buildAndRequire();
+const { dbOderSkip } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
 const { mailAttrappe, mailserverEintragen } = require('./helpers/mail-attrappe');
 mailAttrappe();
@@ -48,14 +49,7 @@ test('die Regel selbst', () => {
 });
 
 test('Passwortregel auf allen Wegen', { concurrency: 1, timeout: 120_000 }, async (t) => {
-  try { await db.initSchema(); }
-  catch (e) {
-    if (process.env.REQUIRE_DB === '1')
-      throw new Error(`REQUIRE_DB=1, aber die Test-DB ist nicht erreichbar: ${e.message}`);
-    t.skip('Test-DB nicht erreichbar'); return;
-  }
-  const c = await db.pool.connect();
-  try { await _req('db/migrate.js').runMigrations(c); } finally { c.release(); }
+  if (!await dbOderSkip(t, _req)) return;
   const CHEF = `regel_chef_${process.pid}`, ZIEL = `regel_ziel_${process.pid}`, PASS = 'Regel-Pruefung-7';
   await db.run('DELETE FROM users WHERE username = ANY($1)', [[CHEF, ZIEL]]);
   const hash = bcrypt.hashSync(PASS, 4);

@@ -2,6 +2,7 @@ import { erzeugeWorker, type Bearbeitertabelle, type WorkerOptionen } from './au
 import { zieheNach, ladeSetBilder, type NacharbeitArt } from './nachErfassung';
 import { erzeugePdf, pdfAufgegeben, type PdfNutzlast } from './pdfErzeugung';
 import { fuehreCsvImportAus, csvImportAufgegeben, type CsvNutzlast } from './setCsvImport';
+import { fuehreImportAus, type ImportNutzlast } from './importAuftraege';
 import { anleitungLaden } from './instructionQueue';
 import { bricksetNachlauf } from './bricksetRetry';
 import { bildbedarfAbarbeiten } from './imageQueue';
@@ -26,9 +27,11 @@ const BEARBEITER: Bearbeitertabelle = {
     ausfuehren: (n) => erzeugePdf(n as unknown as PdfNutzlast),
     aufgegeben: (n, fehler) => pdfAufgegeben(n as unknown as PdfNutzlast, fehler),
   },
+  // Mit `quelle` ein Import, auf den eine Anfrage wartet; ohne das Set-CSV.
   csv_import: {
-    ausfuehren: (n, k) => fuehreCsvImportAus(n as unknown as CsvNutzlast, k),
-    aufgegeben: (n, fehler) => csvImportAufgegeben(n as unknown as CsvNutzlast, fehler),
+    ausfuehren: (n, k, a) => n.quelle ? fuehreImportAus(n as unknown as ImportNutzlast, k, a)
+      : fuehreCsvImportAus(n as unknown as CsvNutzlast, k),
+    aufgegeben: async (n, fehler) => { if (!n.quelle) await csvImportAufgegeben(n as unknown as CsvNutzlast, fehler); },
   },
   wechselkurse:        { ausfuehren: () => kursauftrag() },
   anleitung:           { ausfuehren: (n) => anleitungLaden(n), exklusiv: true },

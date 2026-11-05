@@ -1,5 +1,5 @@
 import * as repo from '../repository/bildStammCdn';
-import { meldeUndLiefere } from '../../infra/httpError';
+import { meldeUndLiefere } from '../../infra/fehler';
 
 /** Umleiten auf die CDN-Adresse heilt Web und App, ohne verwaiste
  * image_local-Einträge bereinigen zu müssen. Gesucht über den indizierten

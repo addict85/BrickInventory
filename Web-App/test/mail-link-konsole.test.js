@@ -15,7 +15,7 @@ const test   = require('node:test');
 const assert = require('node:assert/strict');
 
 const _req = require('./helpers/sources').buildAndRequire();
-const { linkFuerKonsole } = _req('src/infra/mailer.js');
+const { linkFuerKonsole } = _req('src/mail/mailer.js');
 
 // Der Absender reicht den Link selbst; aus dem Text gesucht wird nicht mehr.
 const TEXT = 'https://lego.example.org/reset?token=abcdef0123456789';

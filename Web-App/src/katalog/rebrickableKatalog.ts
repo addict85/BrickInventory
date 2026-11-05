@@ -1,10 +1,10 @@
 /** Erst der eigene Bestand (CSV-Tabellen, Zwischenspeicher), dann der Client:
  * Das Kontingent ist knapp. Der Client fragt nur ab, ablegen tut dieser Dienst. */
-import { getRbKey, holeSet, getThemeName, holeSetTeile, holeFigurTeile } from '../../clients/rebrickable';
+import { getRbKey, holeSet, getThemeName, holeSetTeile, holeFigurTeile } from './quellen';
 import { istErsatzteil } from '../infra/validate';
-import { mitVersion } from '../sets/setNummer';
+import { mitVersion } from '../infra/setNummer';
 import { neuestesInventar } from './rbInventar';
-import { meldeUndLiefere } from '../infra/httpError';
+import { meldeUndLiefere } from '../infra/fehler';
 import * as repo from './repository/rebrickableCache';
 
 /** Ein kaputter Eintrag zählt als keiner. */

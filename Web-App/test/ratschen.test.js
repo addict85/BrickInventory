@@ -6,37 +6,13 @@ const path = require('node:path');
 const WEB = path.join(__dirname, '..');
 
 /**
- * Zwei Ratschen: der Bestand darf sinken, nie steigen.
+ * Ratschen: Ein gemessener Bestand darf sinken, nie steigen.
  *
- * ── Warum eine Ratsche und keine harte Regel ────────────────────────────────
- *
- * Marcos Frage war, ob es in Sicherheit, Architektur und Codequalitaet noch
- * etwas anzugehen gibt. Zwei Zahlen stechen heraus, und beide sind zu gross
- * fuer einen Durchgang:
- *
- *   • STILLE FAENGE — `catch {}` und `.catch(() => null)`. Jeder einzelne kann
- *     richtig sein (ein fehlendes Vorschaubild ist kein Fehler). Zusammen sind
- *     sie die Stellen, an denen die Anwendung etwas verschluckt und weiterlaeuft
- *     — genau das hat in dieser Sitzung dreimal Stunden gekostet.
- *
- *   • `any` — jedes davon schaltet den Typpruefer fuer diesen Ausdruck ab.
- *     Der Baum steht sonst auf `noImplicitAny` mit leerer Ausnahmeliste; diese
- *     Stellen sind die verbliebenen Loecher darin.
- *
- * Sie alle auf einmal anzufassen waere ein Umbau von hunderten Stellen, jede
- * mit eigener Begruendung, und niemand koennte das Ergebnis pruefen. Eine harte
- * Regel waere sofort rot und muesste hunderte Ausnahmen auffuehren — eine
- * Ausnahmeliste dieser Laenge liest niemand mehr.
- *
- * Die Ratsche loest beides, genau wie AbstandsskalaTest in der App: Sie haelt
- * den GEMESSENEN Stand fest, laesst ihn sinken und schlaegt an, sobald er
- * steigt. Neuer Code bekommt damit den hoeheren Anspruch, ohne dass der
- * Bestand angefasst werden muss.
- *
- * ── Wer die Schranke senkt ──────────────────────────────────────────────────
- *
- * Wer eine Stelle aufraeumt, setzt die Zahl hier herunter. Das ist Absicht:
- * Die Schranke soll den Fortschritt festhalten, sonst schleicht er zurueck.
+ * Für Dinge, die zu zahlreich sind, um sie auf einmal aufzuräumen (stille
+ * Fänge, `any`, reine Quelltext-Tests, Kommentaranteil …). Eine harte Regel
+ * wäre sofort rot und bräuchte eine Ausnahmeliste, die niemand mehr liest;
+ * die Ratsche gibt neuem Code den höheren Anspruch, ohne den Bestand
+ * anzufassen. Wer eine Stelle aufräumt, senkt die Schranke hier.
  */
 
 /** Alle TypeScript-Quellen ohne Tests und ohne Erzeugnisse. */
@@ -58,7 +34,8 @@ const STILLE_FAENGE = [
   /catch\s*\{\s*\}/g,
   /catch\s*\(\s*\w*\s*\)\s*\{\s*\}/g,
   /\.catch\(\(\)\s*=>\s*\{\s*\}\)/g,
-  /\.catch\(\(\)\s*=>\s*(null|undefined|0|false)\)/g,
+  // Auch ein Text, eine Zahl oder ein Objekt als Ersatz verschluckt den Fehler.
+  /\.catch\(\(\)\s*=>\s*(null|undefined|true|false|-?\d+|'[^']*'|"[^"]*"|\(\{[^()]*\}\))\)/g,
   // Eine leere Liste ist für den Leser keine Fehlermeldung, sondern „nichts da".
   /\.catch\(\(\)\s*=>\s*\[\]\)/g,
 ];
@@ -100,22 +77,8 @@ test('die Suche findet die Quellen ueberhaupt', () => {
 });
 
 test('stille Faenge werden weniger, nie mehr', () => {
-  // GEMESSEN am 18.09.2026: 340 Stellen in 97 Dateien.
-  // GEMESSEN am 19.09.2026: 325. Die Schranke stand auf
-  // 340, solange der Zaehler auch Kommentare las.
-  // GEMESSEN am 20.10.2026: 323. Die Ratsche hatte beim Auftragsdatensatz des
-  // Wanted-Imports angeschlagen (327 gegen 325); statt die Schranke zu heben
-  // sind die vier neuen Faenge sprechend gemacht worden — zwei brauchte es gar
-  // nicht (die Meldekette traegt ihr logAndContinue schon), zwei melden jetzt
-  // ueber meldeUndWeiter. Die Schranke zieht nach, wie die Regel es vorsieht.
-  // 29.10.2026: 41 — die übrigen Fänge melden über logAndContinue/meldeUndWeiter.
-  // 30.10.2026: 39 (Schichtumbau: die Routenfänge stehen gemeldet in den Diensten).
-  // 30.10.2026: 36 (Protokoll: Schreibfehler nach app_logs werden gezählt und gemeldet).
-  // 30.10.2026: 32 (Cluster, Planer und eigene Warteschlangen entfallen).
-  // 31.10.2026: 21 (Schichtumbau: Routen ohne try/catch, Repositories melden).
-  // 31.10.2026: 12 (Wanted-Liste und CSV-Tausch melden über meldeUndLiefere/logAndContinue).
-  // 31.10.2026: 2 (Abmeldung, Schema-Aufbau, Bildcache und Brickset melden; die
-  // beiden übrigen sind Rebrickable-Vermutungen, deren 404 die Antwort ist).
+  // Die beiden übrigen sind Rebrickable-Vermutungen, deren 404 die Antwort
+  // ist; wie die Zahl gesunken ist, steht im git log.
   const SCHRANKE = 2;
   const ist = zaehle(STILLE_FAENGE);
   assert.ok(ist <= SCHRANKE,
@@ -129,18 +92,8 @@ test('stille Faenge werden weniger, nie mehr', () => {
 });
 
 test('any wird weniger, nie mehr', () => {
-  // GEMESSEN am 19.09.2026 nach Nachtrag 175: 398 Stellen. Es waren 402,
-  // solange der Zaehler auch Kommentare las. 386 am 28.10.2026.
-  // 29.10.2026: 333. 30.10.2026: 288 (db.get<T>/db.all<T> statt any-Zeilen).
-  // 30.10.2026: 281 (Planer und Preis-Job-Zustand entfallen).
-  // 31.10.2026: 270 (typisierte Repositories, Fehlerweg ohne any).
-  // 31.10.2026: 256 (HTTP-Seite der Anmeldung, typisierte Repositories).
-  // 31.10.2026: 233 (SQL aus allen Diensten und Aufträgen in typisierte Repositories).
-  // 31.10.2026: 232 (Parameter der Repositories typisiert).
-  // 31.10.2026: 221 (Anreicherung und Bewertung ohne any-Karten und any-Fänge).
-  // 01.11.2026: 220 (SMTP-Test liefert seinen Fehlercode typisiert).
-  // 01.11.2026: 206 (Merklisten-CSV-Import fängt ohne any).
-  const SCHRANKE = 206;
+  // Gemessen 192 am 05.11.2026; wie die Zahl gesunken ist, steht im git log.
+  const SCHRANKE = 192;
   const ist = zaehle([/\bas any\b/g, /:\s*any\b/g]);
   assert.ok(ist <= SCHRANKE,
     `${ist}-mal \`any\`, erlaubt sind ${SCHRANKE}. Jedes davon schaltet den ` +
@@ -149,6 +102,38 @@ test('any wird weniger, nie mehr', () => {
   if (ist < SCHRANKE) {
     console.log(`  ℹ any: ${ist} (Schranke ${SCHRANKE}) — Schranke nachziehen`);
   }
+});
+
+test('eigene REQUIRE_DB-Blöcke in Tests werden weniger, nie mehr', () => {
+  // Die Form steht in test/helpers/db.js (dbOderSkip); was davon abweicht,
+  // prüft die Erreichbarkeit anders (Rollen, zweite Datenbank, Server).
+  // Gemessen 117 Dateien am 05.11.2026 (vorher 296).
+  // Gegenprobe (05.11.2026): den Block zurück in acquisition-all-paths-db → rot.
+  const SCHRANKE = 117;
+  const ist = fs.readdirSync(__dirname).filter(n => n.endsWith('.js') && n !== path.basename(__filename))
+    .filter(n => fs.readFileSync(path.join(__dirname, n), 'utf8').includes('REQUIRE_DB=1, aber')).length;
+  assert.ok(ist <= SCHRANKE, `${ist} Testdateien mit eigener REQUIRE_DB-Prüfung, erlaubt sind ${SCHRANKE}`);
+  if (ist < SCHRANKE) console.log(`  ℹ eigene REQUIRE_DB-Prüfungen: ${ist} (Schranke ${SCHRANKE}) — Schranke nachziehen`);
+});
+
+test('Datenbankzeilen sind ohne Typargument unknown', () => {
+  // Ohne Angabe war eine Zeile `any`, und die Typprüfung endete an der
+  // Datenbank — dort, wo numeric und bigint als Zeichenkette ankommen.
+  // Gegenprobe (05.11.2026): `get<T = any>` in DbSchnittstelle → rot.
+  const quelle = fs.readFileSync(path.join(WEB, 'db', 'database.ts'), 'utf8');
+  assert.equal((quelle.match(/\b(?:all|get)\s*(?::\s*)?<T = unknown>/g) || []).length, 6,
+    'all/get in Schnittstelle, Pool und Transaktion');
+  assert.doesNotMatch(quelle, /<T = any>|lastID/);
+});
+
+test('ungetypte Datenbankabfragen werden weniger, nie mehr', () => {
+  // Erlaubt, solange niemand Felder der Zeile liest — dann verlangt der
+  // Übersetzer ohnehin ein Typargument. Gemessen 92 am 05.11.2026 (vorher 190).
+  // Gegenprobe (05.11.2026): Schranke auf 91 → rot.
+  const SCHRANKE = 92;
+  const ist = zaehle([/\b(?:db|tx|dbh|d)\.(?:get|all)\(/g]);
+  assert.ok(ist <= SCHRANKE, `${ist} ungetypte db.get/all, erlaubt sind ${SCHRANKE}`);
+  if (ist < SCHRANKE) console.log(`  ℹ ungetypte Abfragen: ${ist} (Schranke ${SCHRANKE}) — Schranke nachziehen`);
 });
 
 /**
@@ -168,12 +153,7 @@ function reineQuelltextTests() {
 }
 
 test('reine Quelltext-Tests werden weniger, nie mehr', () => {
-  // GEMESSEN am 25.10.2026: 103 von 312 Testdateien; am 28.10.2026: 100
-  // (routen-bewacht ging in api-eingang-db auf, das den echten Server fragt).
-  // 30.10.2026: 92 — acht Dateien prüfen jetzt Verhalten (Erfassungen, Summen,
-  // Mengen-Echo, Preisverlauf, Figurenschätzung, LISTEN/NOTIFY, CSV, Katalogbilder).
-  // 30.10.2026: 90 — der Start des Job-Prozesses wird ausgeführt statt gelesen.
-  // 02.11.2026: 87 — workflow-ort führt das Skript des Sicherheitslaufs aus. 03.11.2026: 86.
+  // Gemessen 86 am 03.11.2026; wie die Zahl gesunken ist, steht im git log.
   const SCHRANKE = 86;
   const alle = fs.readdirSync(__dirname).filter(n => n.endsWith('.test.js')).length;
   assert.ok(alle >= 300, `Nur ${alle} Testdateien gefunden — greift die Suche noch?`);
@@ -203,9 +183,7 @@ function emojiInDerOberflaeche() {
 }
 
 test('Emoji in der Oberfläche werden weniger, nie mehr', () => {
-  // GEMESSEN am 25.10.2026: 275, nachdem Leiste und Benutzermenü auf die
-  // Symbolfamilie umgestellt waren; 274 nach den Erfassen-Dialogen; 0 am 27.10.
-  // Am 27.10. auf 0: Alle Stellen nutzen die Symbolfamilie oder kommen ohne aus.
+  // Seit dem 27.10.2026 0: Alle Stellen nutzen die Symbolfamilie oder kommen ohne aus.
   const SCHRANKE = 0;
   const ist = emojiInDerOberflaeche();
   // Selbstbeweis an einer Probe statt an der Zahl — die ist jetzt 0.
@@ -250,19 +228,35 @@ function serverUndOberflaeche() {
 test('kein Verweis auf „Nachtrag N" im Code', () => {
   // Die Geschichte einer Stelle steht im Commit (CLAUDE.md); eine Nummer im
   // Kommentar verweist auf eine Liste, die es im Baum nicht gibt.
-  // GEMESSEN am 28.10.2026: 0 (vorher 138). Gegenprobe: ein „(Nachtrag 1)" in
-  // src/konto/auth.ts → rot.
+  // Gegenprobe: ein „(Nachtrag 1)" in src/konto/auth.ts → rot.
   const treffer = serverUndOberflaeche().flatMap(f =>
     (fs.readFileSync(f, 'utf8').match(/Nachtr(?:ag|äge|aege) \d+/g) || []).map(m => `${path.relative(WEB, f)}: ${m}`));
   assert.deepEqual(treffer, []);
 });
 
+test('kein Modul wird in einer Datei zweimal importiert', () => {
+  // Je Modul ein Wert-Import und höchstens ein `import type`; neun Zeilen für
+  // neun Namen aus derselben Datei verdecken, was wirklich gebraucht wird.
+  // Gegenprobe (05.11.2026): `import { fehlertext } from '../infra/fehler';`
+  // zusätzlich in src/finanzen/preisalarm.ts → rot.
+  const treffer = [];
+  for (const f of quellen()) {
+    const gesehen = new Set();
+    for (const m of fs.readFileSync(f, 'utf8').matchAll(/^import\s+(type\s+)?[^;]*?from\s*'([^']+)';/gm)) {
+      const k = `${m[1] ? 'type ' : ''}${m[2]}`;
+      if (gesehen.has(k)) treffer.push(`${path.relative(WEB, f)}: ${k}`);
+      gesehen.add(k);
+    }
+  }
+  assert.deepEqual(treffer, []);
+});
+
 test('der Kommentaranteil im Server sinkt, nie steigt', () => {
-  // Gemessen 13,8 % in server.ts, routes/, src/, utils/ und jobs/; 13,2 % mit dem
+  // Gemessen 13,8 % in server.ts, routes/, src/ und jobs/; 13,2 % mit dem
   // API-Vertrag (src/infra/vertrag/). Schranke 13,2.
   const SCHRANKE = 13.2;
   let zeilen = 0, kommentar = 0;
-  for (const f of quellen().filter(f => /[\\/](routes|src|utils|jobs)[\\/]|[\\/]server\.ts$/.test(f))) {
+  for (const f of quellen().filter(f => /[\\/](routes|src|jobs)[\\/]|[\\/]server\.ts$/.test(f))) {
     for (const z of fs.readFileSync(f, 'utf8').split('\n')) {
       const t = z.trim();
       if (!t) continue;
@@ -364,12 +358,40 @@ test('keine Funktion der Oberfläche über 100 Zeilen, über 80 werden weniger',
   if (ueber80.length < SCHRANKE_80) console.log(`  ℹ Funktionen über 80 Zeilen: ${ueber80.length} (Schranke ${SCHRANKE_80}) — Schranke nachziehen`);
 });
 
+test('der Kommentaranteil in db/, clients/ und scripts/ sinkt, nie steigt', () => {
+  // Je Ordner eine Schranke, gemessen am 05.11.2026 nach dem Kürzen.
+  // Gegenprobe: 40 Kommentarzeilen an clients/ezb.ts gehängt → rot (clients).
+  const SCHRANKE = { db: 33.0, clients: 20.6, scripts: 35.2 };
+  const zuViel = [];
+  for (const [ordner, schranke] of Object.entries(SCHRANKE)) {
+    let zeilen = 0, kommentar = 0;
+    (function lauf(d) {
+      for (const n of fs.readdirSync(d)) {
+        const p = path.join(d, n);
+        if (fs.statSync(p).isDirectory()) { if (n !== 'node_modules') lauf(p); continue; }
+        if (!/\.(ts|js|sh)$/.test(n) || (n.endsWith('.js') && fs.existsSync(p.slice(0, -3) + '.ts'))) continue;
+        for (const z of fs.readFileSync(p, 'utf8').split('\n')) {
+          const t = z.trim();
+          if (!t) continue;
+          zeilen++;
+          if (t.startsWith('//') || t.startsWith('*') || t.startsWith('/*') || (n.endsWith('.sh') && t.startsWith('#'))) kommentar++;
+        }
+      }
+    })(path.join(WEB, ordner));
+    assert.ok(zeilen > 500, `${ordner}: nur ${zeilen} Zeilen gefunden — greift die Suche noch?`);
+    const anteil = Math.round(1000 * kommentar / zeilen) / 10;
+    if (anteil > schranke) zuViel.push(`${ordner}: ${anteil} % (erlaubt ${schranke} %)`);
+    else if (anteil < schranke - 0.5) console.log(`  ℹ Kommentaranteil ${ordner}: ${anteil} % (Schranke ${schranke}) — Schranke nachziehen`);
+  }
+  assert.deepEqual(zuViel, []);
+});
+
 test('der Kommentaranteil der Tests sinkt, nie steigt', () => {
   // Eigene Schranke: Testköpfe zählen ihre Gegenproben auf (CLAUDE.md), der
   // Anteil liegt deshalb höher als im Server. Geschichte gehört auch hier in
-  // den Commit. Gemessen 34,4 % in test/*.js und test/helpers/; Schranke 34,4.
+  // den Commit. Gemessen 33,3 % in test/*.js und test/helpers/ (05.11.2026); Schranke 33,4.
   // Gegenprobe: 300 Kommentarzeilen an eine Testdatei gehängt → rot.
-  const SCHRANKE = 34.4;
+  const SCHRANKE = 33.4;
   const dateien = [
     ...fs.readdirSync(__dirname).filter(n => n.endsWith('.js')).map(n => path.join(__dirname, n)),
     ...fs.readdirSync(path.join(__dirname, 'helpers')).filter(n => n.endsWith('.js')).map(n => path.join(__dirname, 'helpers', n)),

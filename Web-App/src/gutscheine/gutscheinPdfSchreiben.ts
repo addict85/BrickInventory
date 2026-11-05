@@ -7,7 +7,7 @@ import {
 } from '@cantoo/pdf-lib';
 import { werteAusPdf, pdfText, textOperatoren } from './gutscheinPdf';
 import type { GutscheinWerte } from './gutscheinPdf';
-import { meldeUndLiefere } from '../infra/httpError';
+import { meldeUndLiefere } from '../infra/fehler';
 
 /** Nur hier druckt eine literale ASCII-Kette, was sie sagt. Ohne /Encoding ist
  * es eine Standardschrift mit StandardEncoding — dort gilt dasselbe. */

@@ -26,6 +26,7 @@ const URL_DB = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhos
 process.env.DATABASE_URL = URL_DB;
 const ROOT = path.join(__dirname, '..');
 const _req = require('./helpers/sources').buildAndRequire();
+const { dbOderSkip } = require('./helpers/db');
 const db = _req('db/database.js');
 const bcrypt = require(path.join(ROOT, 'node_modules', 'bcryptjs'));
 const warte = (ms) => new Promise(r => setTimeout(r, ms));
@@ -75,14 +76,7 @@ async function durchlauf(server, kopf) {
 }
 
 test('Sitzungscookie mit und ohne TLS', { concurrency: 1, timeout: 240_000 }, async (t) => {
-  try { await db.initSchema(); }
-  catch (e) {
-    if (process.env.REQUIRE_DB === '1')
-      throw new Error(`REQUIRE_DB=1, aber die Test-DB ist nicht erreichbar: ${e.message}`);
-    t.skip('Test-DB nicht erreichbar'); return;
-  }
-  const c = await db.pool.connect();
-  try { await _req('db/migrate.js').runMigrations(c); } finally { c.release(); }
+  if (!await dbOderSkip(t, _req)) return;
   await db.run('DELETE FROM users WHERE username = $1', [NAME]);
   await db.run(`INSERT INTO users (username, password_hash, is_active, email_verified) VALUES ($1, $2, true, true)`,
     [NAME, bcrypt.hashSync(PASS, 4)]);

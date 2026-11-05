@@ -1,7 +1,7 @@
 /** Jimp dekodiert ohne Grenze; ein kleines Bild mit riesigen Abmessungen wäre
  * eine Dekompressionsbombe.
  * Ausführlich: docs/begruendungen/src/katalog/bilder/imageGuard.ts.md#abschnitt */
-import { logAndContinue } from '../../infra/httpError';
+import { logAndContinue } from '../../infra/fehler';
 import fs from 'fs';
 
 /** Obergrenze in Pixeln (Breite × Höhe). 40 MP ≈ 160 MB Bitmap. */

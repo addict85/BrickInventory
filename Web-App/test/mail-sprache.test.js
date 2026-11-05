@@ -38,7 +38,7 @@ const path = require('node:path');
 const { ROOT, ohneKommentare } = require('./helpers/sources');
 
 const lies = (rel) => ohneKommentare(fs.readFileSync(path.join(ROOT, rel), 'utf8'));
-const MAILER = lies('src/infra/mailer.ts');
+const MAILER = lies('src/mail/mailer.ts');
 
 /** Der Rumpf einer Funktion — ab ihrem Kopf bis zur nächsten auf Spaltenanfang. */
 function rumpf(quelle, kopf) {
@@ -111,7 +111,7 @@ test('3. und jeder Aufrufer gibt sie mit', () => {
   // Der eigentliche Befund vom 25.09.: Die Funktion KONNTE es, der Aufrufer
   // gab es nur nicht mit. Deshalb werden hier die Aufrufe gezählt, nicht die
   // Signaturen.
-  const auth = lies('routes/auth.ts');
+  const auth = require('./helpers/sources').anmeldeQuelle();
   const stellen = [...auth.matchAll(/(sendVerificationMail|sendPasswordResetMail)\s*\(/g)]
     .map(m => m[1]);
   assert.ok(stellen.length >= 3,
@@ -147,6 +147,6 @@ test('4. die Alarmmail trägt dieselbe Hülle wie die anderen', () => {
   // Alarmlogik. Dort steht das WANN.
   const alarm = lies('src/finanzen/preisalarm.ts');
   assert.ok(!/<table|<p style/.test(alarm),
-    'In src/finanzen/preisalarm.ts steht wieder HTML — die Gestaltung gehört in src/infra/mailer.ts.');
+    'In src/finanzen/preisalarm.ts steht wieder HTML — die Gestaltung gehört in src/mail/mailer.ts.');
   assert.match(alarm, /baueAlarmMail\(/, 'preisalarm.ts benutzt die Vorlage nicht.');
 });

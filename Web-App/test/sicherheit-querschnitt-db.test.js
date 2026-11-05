@@ -14,6 +14,11 @@
  *   D  /register antwortet bei vergebenem Benutzernamen wieder 409
  *      benutzername_vergeben → rot: „ein vergebener Name antwortet wie ein
  *      neuer" (gemessen 01.11.2026)
+ *   E  in server.ts wieder `res.status(404).json({ success: false, error:
+ *      'Endpoint nicht gefunden' })` statt unbekannterApiPfad → rot: „ein
+ *      unbekannter API-Pfad antwortet in der Form jeder Fehlerantwort"
+ *   F  handleRouteError() ohne `code` bei 5xx → rot: „ein Serverfehler in
+ *      Produktion nennt keine Interna" (E und F gemessen 05.11.2026)
  *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL.
  */
@@ -29,6 +34,7 @@ process.env.DATABASE_URL = URL_DB;
 process.env.APP_BASE_URL = 'http://localhost';
 const ROOT = path.join(__dirname, '..');
 const _req = require('./helpers/sources').buildAndRequire();
+const { dbOderSkip } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
 const { mailAttrappe, mailserverEintragen } = require('./helpers/mail-attrappe');
 const gesendet = mailAttrappe();
@@ -38,14 +44,7 @@ const warte = (ms) => new Promise(r => setTimeout(r, ms));
 const freierPort = () => new Promise(r => { const s = net.createServer().listen(0, () => { const p = s.address().port; s.close(() => r(p)); }); });
 
 test('Sicherheit im Querschnitt', { concurrency: 1, timeout: 180_000 }, async (t) => {
-  try { await db.initSchema(); }
-  catch (e) {
-    if (process.env.REQUIRE_DB === '1')
-      throw new Error(`REQUIRE_DB=1, aber die Test-DB ist nicht erreichbar: ${e.message}`);
-    t.skip('Test-DB nicht erreichbar'); return;
-  }
-  const c = await db.pool.connect();
-  try { await _req('db/migrate.js').runMigrations(c); } finally { c.release(); }
+  if (!await dbOderSkip(t, _req)) return;
   const NAME = `quer_${process.pid}`, PASS = 'Quer-Passwort-1', MAIL = `quer_${process.pid}@example.org`;
   const NEU = `quer_neu_${process.pid}`;
   await db.run('DELETE FROM users WHERE username = ANY($1)', [[NAME, NEU]]);
@@ -94,6 +93,11 @@ test('Sicherheit im Querschnitt', { concurrency: 1, timeout: 180_000 }, async (t
     }
   });
 
+  await t.test('ein unbekannter API-Pfad antwortet in der Form jeder Fehlerantwort', async () => {
+    const r = await fetch(`${basis}/api/gibt-es-nicht`, { headers: { 'accept-language': 'en' } });
+    assert.deepEqual([r.status, await r.json()], [404, { success: false, code: 'nicht_gefunden', error: 'Not found' }]);
+  });
+
   await t.test('das Sitzungscookie ist httpOnly und SameSite=Lax', async () => {
     const r = await fetch(`${basis}/api/v1/auth/login`, { method: 'POST', headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ username: NAME, password: PASS, ohne_token: true }) });
@@ -135,10 +139,11 @@ test('Sicherheit im Querschnitt', { concurrency: 1, timeout: 180_000 }, async (t
 });
 
 test('ein Serverfehler in Produktion nennt keine Interna', () => {
-  const skript = `const { handleRouteError } = require(${JSON.stringify(path.join(ROOT, 'dist/src/infra/httpError.js'))});
+  const skript = `const { handleRouteError } = require(${JSON.stringify(path.join(ROOT, 'dist/src/infra/httpAntwort.js'))});
     console.error = () => {};
     const res = { headersSent: false, status(s) { this.s = s; return this; }, json(b) { process.stdout.write(JSON.stringify([this.s, b])); } };
     handleRouteError(res, new Error('relation "geheim" at /app/dist/x.js:1'), undefined, { method: 'GET', originalUrl: '/x' });`;
   const aus = execFileSync(process.execPath, ['-e', skript], { env: { ...process.env, NODE_ENV: 'production' } }).toString();
-  assert.deepEqual(JSON.parse(aus), [500, { success: false, error: 'Interner Serverfehler' }]);
+  assert.deepEqual(JSON.parse(aus), [500, { success: false, code: 'interner_fehler',
+    error: 'Interner Fehler — Einzelheiten stehen im Protokoll.' }]);
 });

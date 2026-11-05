@@ -1,17 +1,14 @@
 import fs from 'fs';
 import path from 'path';
-import { logAndContinue, meldeUndLiefere } from '../src/infra/httpError';
+import { logAndContinue, meldeUndLiefere } from '../src/infra/fehler';
 import { downloadSetImage } from '../src/katalog/bilder/setImages';
 import { grundFuer, istBekanntFehlend, merkeFehlend } from '../src/katalog/bilder/imageMisses';
 import { generateThumb } from '../src/katalog/bilder/thumbs';
 import { SET_IMAGES_DIR } from '../src/infra/appPaths';
 import { setzeZustand } from '../src/auftraege/laufzustand';
-import { pausiereArt } from '../src/auftraege/dienst';
-import { liesPause } from '../src/auftraege/dienst';
-import { STAPEL, TAKT_MS, NOTIZ_GILT_MS, merkeGebraucht, schreibePuffer, notiereBildbedarf, loescheVerfallene, initImageQueue,
-         anfragenJeMinute } from '../src/katalog/bilder/bildbedarf';
+import { pausiereArt, liesPause } from '../src/auftraege/dienst';
+import { STAPEL, TAKT_MS, NOTIZ_GILT_MS, merkeGebraucht, schreibePuffer, notiereBildbedarf, loescheVerfallene, initImageQueue, anfragenJeMinute, nimmBildwuensche } from '../src/katalog/bilder/bildbedarf';
 import { AuftragUnterbrochen, AuftragVerschieben, type AuftragsKontext } from './auftragsWorker';
-import { nimmBildwuensche } from '../src/katalog/bilder/bildbedarf';
 
 /** Über den Proxy angefragte Bilder im HINTERGRUND lokal ablegen, samt
  * Vorschau — damit die Anfrage selbst nie auf das CDN wartet. */

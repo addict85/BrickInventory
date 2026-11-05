@@ -26,20 +26,14 @@ const URL_DB = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhos
 process.env.DATABASE_URL = URL_DB;
 const ROOT = path.join(__dirname, '..');
 const _req = require('./helpers/sources').buildAndRequire();
+const { dbOderSkip } = require('./helpers/db');
 const db = _req('db/database.js');
 const { Client } = require(path.join(ROOT, 'node_modules', 'pg'));
 const warte = (ms) => new Promise(r => setTimeout(r, ms));
 const freierPort = () => new Promise(r => { const s = net.createServer().listen(0, () => { const p = s.address().port; s.close(() => r(p)); }); });
 
 test('Gesundheitsprüfung und Startzustand', { concurrency: 1, timeout: 180_000 }, async (t) => {
-  try { await db.initSchema(); }
-  catch (e) {
-    if (process.env.REQUIRE_DB === '1')
-      throw new Error(`REQUIRE_DB=1, aber die Test-DB ist nicht erreichbar: ${e.message}`);
-    t.skip('Test-DB nicht erreichbar'); return;
-  }
-  const c = await db.pool.connect();
-  try { await _req('db/migrate.js').runMigrations(c); } finally { c.release(); }
+  if (!await dbOderSkip(t, _req)) return;
   const NAME = `gesund_${process.pid}`;
   await db.run('DELETE FROM users WHERE username = $1', [NAME]);
   const uid = (await db.get(`INSERT INTO users (username, password_hash, is_admin, is_active, email_verified)
@@ -102,7 +96,8 @@ test('Gesundheitsprüfung und Startzustand', { concurrency: 1, timeout: 180_000 
     try {
       await admin.query(`ALTER DATABASE "${name}" ALLOW_CONNECTIONS false`);
       await admin.query('SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = $1 AND pid <> pg_backend_pid()', [name]);
-      assert.deepEqual(await hole('/api/v1/health/ready'), { status: 503, body: { status: 'unavailable' } });
+      assert.deepEqual(await hole('/api/v1/health/ready'), { status: 503, body: { success: false, code: 'datenbank_nicht_erreichbar',
+        status: 'unavailable', error: 'Datenbank nicht erreichbar' } });
       assert.deepEqual(await hole('/api/v1/health/live'), { status: 200, body: { status: 'ok' } });
     } finally {
       await admin.query(`ALTER DATABASE "${name}" ALLOW_CONNECTIONS true`);

@@ -36,6 +36,7 @@ const ROOT = path.join(__dirname, '..');
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
 const _req = require('./helpers/sources').buildAndRequire();
+const { dbOderSkip } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
 const { haeltSet, haeltTeil } = require('./helpers/bestand');
 const db = _req('db/database.js');
@@ -45,14 +46,7 @@ test.after(async () => { await db.pool.end().catch(() => {}); });
 test('Farb- und Kategorienliste sehen im Haushalt denselben Bestand',
   { concurrency: 1 }, async (t) => {
 
-  try { await db.initSchema(); }
-  catch (e) {
-    if (process.env.REQUIRE_DB === '1')
-      throw new Error(`REQUIRE_DB=1, aber die Test-DB ist nicht erreichbar: ${e.message}`);
-    t.skip('Test-DB nicht erreichbar'); return;
-  }
-  const mc = await db.pool.connect();
-  try { await _req('db/migrate.js').runMigrations(mc); } finally { mc.release(); }
+  if (!await dbOderSkip(t, _req)) return;
 
   const hauptName = `tfhaupt-${process.pid}`, kindName = `tfkind-${process.pid}`;
   for (const n of [hauptName, kindName])

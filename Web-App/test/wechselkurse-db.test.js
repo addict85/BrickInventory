@@ -24,6 +24,7 @@ const path = require('node:path');
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
 const _req = require('./helpers/sources').buildAndRequire();
+const { dbOderSkip } = require('./helpers/db');
 const db = _req('db/database.js');
 const { haeltSet, erfasse, haeltTeil } = require('./helpers/bestand');
 const { ZipArchive } = require(path.join(__dirname, '..', 'node_modules', 'archiver'));
@@ -52,14 +53,7 @@ const TAG = `<?xml version="1.0" encoding="UTF-8"?>
 </Cube></Cube></gesmes:Envelope>`;
 
 test('Wechselkurse: Abruf, Umrechnung, Rückfall', { concurrency: 1 }, async (t) => {
-  try { await db.initSchema(); }
-  catch (e) {
-    if (process.env.REQUIRE_DB === '1')
-      throw new Error(`REQUIRE_DB=1, aber die Test-DB ist nicht erreichbar: ${e.message}`);
-    t.skip('Test-DB nicht erreichbar'); return;
-  }
-  const c = await db.pool.connect();
-  try { await _req('db/migrate.js').runMigrations(c); } finally { c.release(); }
+  if (!await dbOderSkip(t, _req)) return;
 
   const abgerufen = [];
   const srv = http.createServer((q, a) => {

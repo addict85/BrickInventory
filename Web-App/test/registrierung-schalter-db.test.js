@@ -30,6 +30,7 @@ const path = require('node:path');
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
 const _req = require('./helpers/sources').buildAndRequire();
+const { dbOderSkip } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
 const { mailAttrappe } = require('./helpers/mail-attrappe');
 mailAttrappe();
@@ -37,14 +38,7 @@ const db = _req('db/database.js');
 const bcrypt = require(path.join(__dirname, '..', 'node_modules', 'bcryptjs'));
 
 test('Registrierung und Ja/Nein-Einstellungen', { concurrency: 1 }, async (t) => {
-  try { await db.initSchema(); }
-  catch (e) {
-    if (process.env.REQUIRE_DB === '1')
-      throw new Error(`REQUIRE_DB=1, aber die Test-DB ist nicht erreichbar: ${e.message}`);
-    t.skip('Test-DB nicht erreichbar'); return;
-  }
-  const c = await db.pool.connect();
-  try { await _req('db/migrate.js').runMigrations(c); } finally { c.release(); }
+  if (!await dbOderSkip(t, _req)) return;
 
   const CHEF = `reg_chef_${process.pid}`, PASS = 'Chef-Passwort-1', NEU = `reg_neu_${process.pid}`;
   const vorher = await db.all("SELECT key, value FROM global_settings WHERE key IN ('registration_enabled', 'smtp_secure', 'smtp_host', 'smtp_user')");

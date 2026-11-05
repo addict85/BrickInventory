@@ -1,6 +1,6 @@
 /** Stündlich, der erste 30 s nach dem Start (src/auftraege/zeitplan.ts). */
 import { bilderFuerNachlauf } from '../src/katalog/bildlage';
-import { logAndContinue, meldeUndLiefere } from '../src/infra/httpError';
+import { logAndContinue, meldeUndLiefere } from '../src/infra/fehler';
 import { generateThumb } from '../src/katalog/bilder/thumbs';
 import { setzeTeilBildLokal, setzeFigurBildLokal } from '../src/katalog/katalogPflege';
 import { KEINE_FARBE } from '../src/infra/validate';

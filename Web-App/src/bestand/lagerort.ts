@@ -1,16 +1,15 @@
 /** Der Lagerort hängt an Sets, Teilen und Figuren; setzen, auflisten und
  * räumen stehen deshalb einmal hier statt je Route.
  * Ausführlich: docs/begruendungen/src/bestand/lagerort.ts.md#abschnitt */
-import { meldeUndLiefere } from '../infra/httpError';
+import { meldeUndLiefere } from '../infra/fehler';
 import * as db from '../../db/database';
 import * as orte from './repository/lagerort';
 import type { LagerTabelle } from './repository/lagerort';
 import { asIds } from '../haushalt/haushalt';
 import type { BlickfeldEingabe } from '../haushalt/haushalt';
 import { fehlerWerfen } from '../infra/fehlerTexte';
-// Statisch: Es gibt keinen Kreis, und `await import('./settings')` verlangte
-// unter node16 die Dateiendung.
-import { setUserSetting, deleteUserSetting } from '../konto/settings';
+import { deleteUserSetting } from '../einstellungen/settings';
+import { setUserSetting } from '../konto/nutzerEinstellung';
 
 /** Fachlich, nicht technisch (die Spalte ist TEXT): Der Name muss auf eine
  * Kachel passen, und eine Absage ist besser als ein abgeschnittener Name. */

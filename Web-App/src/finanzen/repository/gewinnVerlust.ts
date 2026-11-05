@@ -3,7 +3,7 @@ import * as db from '../../../db/database';
 /** Eine Zeile je Set über alle Konten: Die Rechnung fasst die Käufe je
  * Setnummer zusammen; zwei Konten mit demselben Set zählten sonst doppelt. */
 export function setsMitErfassungen(uids: number[]) {
-  return db.all(`SELECT s.set_number, c.name, c.year,
+  return db.all<{ set_number: string; name: string | null; year: number | null; quantity: number; image_local: string | null; image_url: string | null; added_at: Date; acq_count: number; used_count: number }>(`SELECT s.set_number, c.name, c.year,
             -- Menge aus den Erfassungen (Gruppierung a unten), kein zweiter JOIN.
             COALESCE(SUM(a.total_qty), 0)::int AS quantity,
             c.image_local, c.image_url, MIN(s.added_at) AS added_at,
@@ -25,13 +25,13 @@ export function setsMitErfassungen(uids: number[]) {
 }
 
 export function frischeMarktpreise(setNumbers: string[], currency: string, ttl: number) {
-  return db.all(`SELECT set_number, condition, avg_price, qty_avg_price FROM price_cache
+  return db.all<{ set_number: string; condition: string; avg_price: number | null; qty_avg_price: number | null }>(`SELECT set_number, condition, avg_price, qty_avg_price FROM price_cache
          WHERE set_number = ANY($1) AND condition IN ('U','N') AND currency_code=$2
            AND fetched_at > NOW() - make_interval(hours => $3)`, [setNumbers, currency, ttl]);
 }
 
 export function letzteMarktpreiseAusVerlauf(setNumbers: string[], currency: string) {
-  return db.all(`SELECT DISTINCT ON (set_number, condition) set_number, condition, avg_price, qty_avg_price
+  return db.all<{ set_number: string; condition: string; avg_price: number | null; qty_avg_price: number | null }>(`SELECT DISTINCT ON (set_number, condition) set_number, condition, avg_price, qty_avg_price
          FROM price_history
          WHERE set_number = ANY($1) AND currency_code=$2 AND condition IN ('U','N')
          ORDER BY set_number, condition, recorded_at ASC`, [setNumbers, currency]);

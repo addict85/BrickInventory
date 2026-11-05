@@ -199,7 +199,7 @@ test('Abrufe nach draussen gehen nur über src/infra/abruf.ts', () => {
   // ── Und die Liste steht nur noch an EINER Stelle ──────────────────────────
   const proxy = ohneKommentare(read('routes/imgProxy.ts'));
   assert.doesNotMatch(proxy, /const ALLOWED_IMAGE_HOSTS = \[/,
-    'Die Bild-Allowlist ist zurueck in der Route — sie gehoert nach utils/, ' +
+    'Die Bild-Allowlist ist zurueck in der Route — sie gehoert nach src/infra/fremdeAdressen.ts, ' +
     'weil clients/ sie braucht und ein Client nicht von einer Route abhaengen soll');
   // Dies ist eine MUSTERregel: Sie faengt eine geloeschte Zeile. Dass der
   // Weg wirklich lebt, laeuft in test/verdrahtung-laeuft-db.test.js —

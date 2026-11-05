@@ -8,7 +8,7 @@ import { raeumeErledigteAuf } from '../src/auftraege/dienst';
 import { purgeAltePreise } from '../src/finanzen/priceHistory';
 import { raeumeBildCacheAuf } from '../src/katalog/bilder/imgCacheServe';
 import { loescheVerfallene } from '../src/katalog/bilder/bildbedarf';
-import { fehlertext } from '../src/infra/httpError';
+import { fehlertext } from '../src/infra/fehler';
 import { raeumeIdempotenzAuf } from '../src/idempotenz/dienst';
 import { raeumeOffeneRegistrierungenAuf } from '../src/konto/konten';
 

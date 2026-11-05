@@ -30,17 +30,13 @@ const assert = require('node:assert/strict');
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
 const _req = require('./helpers/sources').buildAndRequire();
+const { dbOderSkip } = require('./helpers/db');
 const db = _req('db/database.js');
 const { getMinifigPriceHistory } = _req('src/finanzen/priceHistory.js');
 const { haeltFigur } = require('./helpers/bestand');
 
 test('der Figuren-Preisverlauf findet die Preise unter der BrickLink-Nummer', { concurrency: 1 }, async (t) => {
-  try { await db.initSchema(); }
-  catch (e) {
-    if (process.env.REQUIRE_DB === '1')
-      throw new Error(`REQUIRE_DB=1, aber die Test-DB ist nicht erreichbar: ${e.message}`);
-    t.skip('Test-DB nicht erreichbar'); return;
-  }
+  if (!await dbOderSkip(t, _req, { migrieren: false })) return;
   // minifig_price_history steht bewusst NUR in db/migrations/0003 (siehe die
   // Abgrenzung oben in db/schema.sql). initSchema() legt sie nicht an; ohne
   // diesen Schritt liefe der Test gegen ein Schema, das es im Betrieb nicht

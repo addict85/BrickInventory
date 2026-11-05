@@ -26,6 +26,7 @@ const path   = require('node:path');
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
 const _req = require('./helpers/sources').buildAndRequire();
+const { dbOderSkip } = require('./helpers/db');
 const { DIST } = require('./helpers/sources');
 const db = _req('db/database.js');
 const { runMigrations, sichereNutzerdaten } = _req('db/migrate.js');
@@ -36,12 +37,7 @@ const sicherungen = async () => (await db.all(
   `SELECT nspname FROM pg_namespace WHERE nspname ~ '^vor_migration_[0-9]+$' ORDER BY nspname`)).map(r => r.nspname);
 
 test('Migrationen: Sicherung und Zeitgrenze', { concurrency: 1 }, async (t) => {
-  try { await db.initSchema(); }
-  catch (e) {
-    if (process.env.REQUIRE_DB === '1')
-      throw new Error(`REQUIRE_DB=1, aber die Test-DB ist nicht erreichbar: ${e.message}`);
-    t.skip('Test-DB nicht erreichbar'); return;
-  }
+  if (!await dbOderSkip(t, _req, { migrieren: false })) return;
   const client = await db.pool.connect();
   await runMigrations(client);
   const vorher = new Set(await sicherungen());

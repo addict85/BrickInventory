@@ -187,25 +187,6 @@ führt immer auf genau eine Zeile. Sie zusammenzufalten hiesse, für jede
 sichtbar, warum dasselbe Teil zweimal erscheint.
 ```
 
-<a id="withowners"></a>
-## `withOwners`
-
-```text
-Besitzer-Plaketten anhaengen — fuer EINZELNE Zeilen (`user_id`) und fuer
-GRUPPIERTE (`owner_ids`).
-
-── Warum beide Formen hier ─────────────────────────────────────────────────
-Die Namensauflösung stand zweimal: hier fuer die ungruppierten Listen und in
-getSets() noch einmal, weil die Galerie im Haushalt nach set_number
-gruppiert und die Zeile deshalb MEHRERE Besitzer hat. Eine dritte Kopie
-waere faellig geworden, als die Set-Figuren dieselbe Plakette bekamen —
-`array_agg(DISTINCT user_id)`, dieselbe Auflösung, dieselbe Form.
-
-Deshalb kennt der Helfer jetzt beide Eingaben. Zeilen, die weder das eine
-noch das andere Feld tragen (die gruppierte Teileliste), bleiben unberuehrt
-— sonst stuende dort ploetzlich ein leeres `owners`.
-```
-
 <a id="verwendendesset"></a>
 ## `VerwendendesSet`
 

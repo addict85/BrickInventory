@@ -1,12 +1,12 @@
 import * as repo from './repository/katalogSuche';
-import { meldeUndLiefere } from '../infra/httpError';
+import { meldeUndLiefere } from '../infra/fehler';
 import { resolveIfExists } from './bilder/images';
 import { setBildSichtbar, dateiStamm } from './bilder/bildBlickfeld';
 import { resolveOne, resolveViaApi } from './bricklinkLink';
-import { fuerSet } from '../finanzen/preisvergleich';
+import { fuerSet } from './preisvergleich';
 import { downloadSetImage } from './bilder/setImages';
 import { neuestesInventar } from './rbInventar';
-import { mitVersion } from '../sets/setNummer';
+import { mitVersion } from '../infra/setNummer';
 import { nacharbeit } from '../auftraege/nacharbeit';
 
 // rb_themes ändert sich höchstens täglich; der Baum wird je Prozess eine

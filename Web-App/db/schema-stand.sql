@@ -106,6 +106,7 @@ CREATE TABLE auftraege (
   frist_bis timestamp with time zone,
   gestartet timestamp with time zone,
   fortschritt jsonb,
+  ergebnis jsonb,
   CONSTRAINT auftraege_max_versuche_check CHECK ((max_versuche > 0)),
   CONSTRAINT auftraege_pkey PRIMARY KEY (id),
   CONSTRAINT auftraege_status_check CHECK ((status = ANY (ARRAY['offen'::text, 'laeuft'::text, 'erledigt'::text, 'fehler'::text, 'abgebrochen'::text]))),

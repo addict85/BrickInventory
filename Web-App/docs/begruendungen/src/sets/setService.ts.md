@@ -207,7 +207,7 @@ der Finanzansicht zaehlt sie danach in der falschen Gruppe.
 
 Es ist dieselbe Verwechslung wie in Nachtrag 68, nur andersherum: Damals
 war der Preis falsch, hier der Vermerk. Die Staffelung steht seit dem
-Zusammenlegen in src/konto/settings.ts.
+Zusammenlegen in src/einstellungen/settings.ts.
 ```
 
 <a id="addsetintern-readdprice"></a>

@@ -1,15 +1,15 @@
 /** Hier und nicht in einer Route, weil Sitzungsroute und v1-Fabrik beide darauf
  * zugreifen — eine Route soll keine andere importieren. */
-import { meldeUndLiefere, oeffentlicherFehler } from '../infra/httpError';
+import { meldeUndLiefere, oeffentlicherFehler } from '../infra/fehler';
 import { csvGemeinsameFelder, csvZeilenAusAnfrage } from '../infra/csvExport';
 import * as db from '../../db/database';
 import { recordAcquisitionForDay } from '../bestand/acquisitions';
 import { mengenwunsch, passeManuelleMengeAn } from '../bestand/manuelleMenge';
 import * as repo from './repository/manuelleTeile';
 import { kaufpreisAusEingabe, manuellerKaufpreis } from '../finanzen/preisRegel';
-import { zustandFuerPreis } from '../konto/settings';
+import { zustandFuerPreis } from '../einstellungen/settings';
 import { resolvePartCondition, marktpreisMitHerkunft, getCurrentPartMarketPrice } from '../finanzen/marketPrice';
-import { lookupPart } from '../../clients/rebrickable';
+import { lookupPart } from '../katalog/quellen';
 import { farbliste, KEINE_FARBE } from '../katalog/farben';
 import { setzeLagerort, ortFuerNeuerfassung } from '../bestand/lagerort';
 import { merkeTeil, merkeTeilFarbe, katalogTeil } from '../katalog/katalogPflege';
@@ -107,7 +107,7 @@ async function addManualPartIntern(uid: number, rawBody: any) {
 
   if (existing) {
     const reCond = condition && ['N','U'].includes(condition) ? condition
-      : await resolvePartCondition(uid, part_number, color_id).catch(() => 'N');
+      : await resolvePartCondition(uid, part_number, color_id).catch(meldeUndLiefere('teile:zustand', 'N'));
     const reEntered = (unit_price !== undefined && unit_price !== null && String(unit_price) !== '')
       ? parseFloat(String(unit_price)) : null;
     const rePrice = (reEntered !== null && !isNaN(reEntered))

@@ -1,7 +1,7 @@
 /** Jeder Wechsel, auf den jemand wartet, weckt ihn per NOTIFY: neue Aufträge
  * den Job-Prozess, Statuswechsel den Statusstrom. Geht ein NOTIFY verloren,
  * findet der Worker den Auftrag in seinem Takt. */
-import { notify } from '../../db/pgNotify';
+import { notify, listen, unlisten } from '../../db/pgNotify';
 import { imNamenVon } from '../infra/anfrageKonto';
 import * as repo from './repository/auftraege';
 import type { AuftragsArt, AuftragsStatus, AuftragsZeile, Belegung, Einstellen, Fortschritt } from './auftraege';
@@ -91,4 +91,10 @@ export async function imNamenDesAuftrags<T>(a: Pick<AuftragsZeile, 'user_id'>, f
   if (a.user_id == null) return f();
   const u = await repo.kontoRolle(a.user_id);
   return imNamenVon({ apiUser: { user_id: a.user_id, is_admin: u?.is_admin ? 1 : 0 } }, f);
+}
+
+/** Weckt bei jedem Statuswechsel eines Auftrags, auch aus dem Job-Prozess; gibt das Abmelden zurück. */
+export function beiAuftragsStand(f: (schluessel?: string) => void): () => void {
+  listen(repo.AUFTRAG_STAND_KANAL, f);
+  return () => unlisten(repo.AUFTRAG_STAND_KANAL, f);
 }

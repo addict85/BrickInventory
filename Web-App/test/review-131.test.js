@@ -109,7 +109,7 @@ test('Schreib-Endpunkte ohne Anmeldung tragen eine Drossel', () => {
   // zusammengezogen ist: Die Drossel (checkLoginAllowed) sitzt jetzt IN dieser
   // Funktion, POST /login ruft sie über anmelden() auf. Ohne den Eintrag würde
   // ausgerechnet das Zusammenlegen als ungeschützter Endpunkt gemeldet.
-  const src = quelle('routes/auth.ts');
+  const src = ohneKommentare(require('./helpers/sources').anmeldeQuelle());
   const stellen = [...src.matchAll(/router\.(post|put|delete)\('([^']+)'/g)];
   assert.ok(stellen.length >= 6, `nur ${stellen.length} Endpunkte gefunden — die Prüfung liefe ins Leere`);
 
@@ -152,7 +152,7 @@ test('die Barcode-Suche zählt ihre Rebrickable-Aufrufe', () => {
   assert.doesNotMatch(dienst, /https\.get\(/, 'eigener Abrufweg am Tageskontingent vorbei');
   const client = quelle('clients/rebrickable.ts');
   const rbJson = client.slice(client.indexOf('async function rebrickableJson'), client.indexOf('function httpsGetRobust'));
-  assert.match(rbJson, /consumeRebrickableDaily/, 'rebrickableJson zählt nicht mit');
+  assert.match(rbJson, /tagesKontingentFrei/, 'rebrickableJson zählt nicht mit');
   assert.match(rbJson, /waitForSlot/,            'rebrickableJson umgeht die Drossel');
 });
 

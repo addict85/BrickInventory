@@ -1,13 +1,13 @@
 /** Hier und nicht in einer Route, weil Sitzungsroute und v1-Fabrik beide darauf
  * zugreifen — eine Route soll keine andere importieren. */
 import * as db from '../../db/database';
-import { logAndContinue, oeffentlicherFehler } from '../infra/httpError';
+import { logAndContinue, oeffentlicherFehler } from '../infra/fehler';
 import { csvGemeinsameFelder, csvZeilenAusAnfrage } from '../infra/csvExport';
 import { recordAcquisitionForDay } from '../bestand/acquisitions';
 import { mengenwunsch, passeManuelleMengeAn } from '../bestand/manuelleMenge';
 import * as repo from './repository/manuelleFiguren';
-import {  getMinifigInfo } from '../../clients/rebrickable';
-import { zustandFuerPreis } from '../konto/settings';
+import { getMinifigInfo } from '../katalog/quellen';
+import { zustandFuerPreis } from '../einstellungen/settings';
 import { figMarktpreisMitHerkunft, getCurrentFigMarketPrice } from '../finanzen/marketPrice';
 import { kaufpreisAusEingabe, manuellerKaufpreis } from '../finanzen/preisRegel';
 import { setzeLagerort, ortFuerNeuerfassung } from '../bestand/lagerort';

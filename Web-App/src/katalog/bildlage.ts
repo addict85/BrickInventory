@@ -1,12 +1,12 @@
 import fs from 'fs';
 import path from 'path';
 import * as repo from './repository/bildlage';
-import { getSetInfo } from '../../clients/brickset';
+import { getSetInfo } from './quellen';
 import { downloadSetImage } from './bilder/setImages';
 import { generateThumb } from './bilder/thumbs';
 import { anleitungEinreihen } from '../auftraege/anleitungsAuftrag';
 import { APP_ROOT, IMAGES_DIR } from '../infra/appPaths';
-import { fehlertext, logAndContinue, meldeUndLiefere } from '../infra/httpError';
+import { fehlertext, logAndContinue, meldeUndLiefere } from '../infra/fehler';
 import { KEINE_FARBE } from '../infra/validate';
 
 export async function bilderFuerNachlauf() {

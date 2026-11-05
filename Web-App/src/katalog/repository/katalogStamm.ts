@@ -157,7 +157,7 @@ export function schreibeFigurBildLokal(dbh: Schreiber, figNumber: string, imageL
 
 /** Der geprüfte Wert, sonst die eigene Angabe von `fuer`; fremde Eingaben stehen nicht im Katalog. */
 export function teilAusKatalog(partNumber: string, colorId: number | null, fuer: number | null) {
-  return db.get(`
+  return db.get<{ name: string | null; kategorie: string | null; bild_allgemein: string | null; farb_url: string | null; farb_datei: string | null }>(`
     SELECT COALESCE(pc.part_name, rp.name, te.part_name)   AS name,
            COALESCE(pc.category_name, te.category_name)     AS kategorie,
            rp.part_img_url                                  AS bild_allgemein,
@@ -172,7 +172,7 @@ export function teilAusKatalog(partNumber: string, colorId: number | null, fuer:
 }
 
 export function figurAusKatalog(figNumber: string, fuer: number | null) {
-  return db.get(`
+  return db.get<{ fig_name: string | null; image_url: string | null; image_local: string | null }>(`
     SELECT COALESCE(mc.fig_name, fe.fig_name)   AS fig_name,
            COALESCE(mc.image_url, fe.image_url) AS image_url,
            mc.image_local

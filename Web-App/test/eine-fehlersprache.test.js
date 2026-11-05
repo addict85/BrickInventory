@@ -13,7 +13,7 @@
  *
  * ── Was hier geprüft wird ───────────────────────────────────────────────────
  *
- * GESUCHT, nicht aufgezählt: Jede `.ts` unter routes/ und utils/ wird gelesen.
+ * GESUCHT, nicht aufgezählt: Jede `.ts` unter routes/ und src/ wird gelesen.
  * Wer eine feste Zeichenkette als `error:` verschickt, steht in ERLAUBT — mit
  * dem Grund. Eine neue Route erbt die Regel damit von selbst.
  *

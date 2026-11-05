@@ -1,4 +1,4 @@
-import { mitVersion } from '../sets/setNummer';
+import { mitVersion } from '../infra/setNummer';
 import { zaehleArt, stelleAuftragEin } from './dienst';
 
 /** Ein Set steht höchstens einmal offen. */

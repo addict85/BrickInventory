@@ -81,7 +81,12 @@ test('jede Datei-Route prüft die Anmeldung', () => {
   // Alle Routen, die Dateien aus data/ ausliefern. serveDataFile() prüft
   // intern (resolveUserId + Besitzerabgleich), deshalb zählt es als Prüfung.
   const quellen = CODE + '\n' + ohneKommentare(read('routes/datenDateien.ts'));
-  const routes = [...quellen.matchAll(/(?:app|router)\.get\(\s*(\[[^\]]*\]|'[^']*')\s*,\s*([\s\S]*?)\n\}\);/g)];
+  const routes = [...quellen.matchAll(/(?:app|router)\.get\(\s*(\[[^\]]*\]|'[^']*')\s*,\s*([\s\S]*?)\n\s*\}\);/g)];
+  // Eine Route mit benanntem Handler (server.ts: liefereBild) zählt mit dessen Rumpf.
+  for (const m of quellen.matchAll(/(?:app|router)\.get\(\s*('[^']*')\s*,\s*(\w+)\);/g)) {
+    const rumpf = new RegExp(`function ${m[2]}\\([\\s\\S]*?\\n\\}\\n`).exec(quellen);
+    routes.push([m[0], m[1], rumpf ? rumpf[0] : '']);
+  }
   const fileRoutes = routes.filter(m => /\/data\/|\/images\//.test(m[1]));
   assert.ok(fileRoutes.length >= 3, `Nur ${fileRoutes.length} Datei-Routen gefunden — Prüfung liefe ins Leere`);
   for (const m of fileRoutes) {

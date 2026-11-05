@@ -1,5 +1,6 @@
 /** Die EINE Umsetzung für Webapp und Android-API, damit beide dasselbe Diagramm zeigen.
  * Ausführlich: docs/begruendungen/src/finanzen/priceHistory.ts.md#abschnitt */
+import { meldeUndLiefere } from '../infra/fehler';
 import { resolveSetCondition, resolveBlColorId, resolveBlPartNumber } from './financeCalc';
 import { asIds } from '../haushalt/haushalt';
 import { buildChart } from './chartData';
@@ -52,7 +53,7 @@ export async function getSetPriceHistory(uid: number | number[], setNumber: stri
   const set = await repo.ersterKaufDesSets(uids, setNumber, currency);
 
   const hasCost = set?.purchase_price != null;   // 0 zählt als erfasst
-  const purchasePrice = parseFloat(set?.purchase_price || 0);
+  const purchasePrice = Number(set?.purchase_price ?? 0);
 
   // An der Reihe SEINES Zustands, sonst vergliche das Diagramm einen
   // Gebrauchtkauf mit dem Neupreis.
@@ -203,7 +204,7 @@ async function preisNummernFuerFigur(uid: number | number[], figNumber: string):
 export async function purgeAltePreise(): Promise<number> {
   const tage = konfig().preisverlaufTage;
   if (tage <= 0) return 0;
-  const r = await repo.loescheAltenVerlauf(String(tage)).catch(() => ({ changes: 0 }));
+  const r = await repo.loescheAltenVerlauf(String(tage)).catch(meldeUndLiefere('preisverlauf:aufraeumen', { changes: 0 }));
   return r?.changes || 0;
 }
 

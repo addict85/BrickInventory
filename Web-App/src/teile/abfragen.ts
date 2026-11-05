@@ -1,27 +1,25 @@
 import * as repo from './repository/teileListe';
 import { resolveImageLocal } from '../katalog/bilder/images';
-import { asIds } from '../haushalt/haushalt';
-import type { BlickfeldEingabe } from '../haushalt/haushalt';
+import { asIds, withOwners } from '../haushalt/haushalt';
+import type { BlickfeldEingabe, BlickfeldEingabe as Blickfeld } from '../haushalt/haushalt';
 import { istErsatzteil, colorId } from '../infra/validate';
 import { ensureFresh } from './partsSummary';
 import { fetchMissingBlIds } from '../katalog/partsImport';
 import type { RbSetTeil } from '../../clients/rebrickable';
-import { getRbKey, httpsGetRobust } from '../../clients/rebrickable';
+import { getRbKey, httpsGetRobust } from '../katalog/quellen';
 import { getAllSetParts } from '../katalog/rebrickableKatalog';
-import { clampPageSize, applyManualCondition, withOwners, MAX_PAGE_SIZE, UNPAGED_LIMIT, SET_PARTS_MAX_PAGE_SIZE } from '../bestand/gemeinsam';
-import { meldeUndWeiter, logAndContinue, meldeUndLiefere } from '../infra/httpError';
+import { clampPageSize, applyManualCondition, MAX_PAGE_SIZE, UNPAGED_LIMIT, SET_PARTS_MAX_PAGE_SIZE } from '../bestand/gemeinsam';
+import { meldeUndWeiter, logAndContinue, meldeUndLiefere } from '../infra/fehler';
 import { farbkarte as blFarbkarte } from '../finanzen/financeCalc';
-import { getGlobalSetting } from '../konto/settings';
+import { getGlobalSetting } from '../einstellungen/settings';
 import { neuestesInventar } from '../katalog/rbInventar';
-import { mitVersion, ohneVersion } from '../sets/setNummer';
+import { mitVersion, ohneVersion } from '../infra/setNummer';
 import { merkeBlFarbnummer, blFarbnummerAus } from '../katalog/blZuordnung';
 
 /** Mit Ausweichebenen (CSV-Zwischenspeicher, Rebrickable), damit ein Set auch
  * ohne eigene Zeilen eine Teileliste zeigt.
  * Ausführlich: docs/begruendungen/src/teile/abfragen.ts.md#abschnitt */
 
-import type { BlickfeldEingabe as Blickfeld } from '../haushalt/haushalt';
-import * as httpError from '../infra/httpError';
 import { marktpreiseAusCacheFuerTeile } from '../finanzen/marketPrice';
 
 /** Ohne manuelle Positionen — die haben eine eigene Ansicht. Hex-Rückfall aus
@@ -116,7 +114,7 @@ export async function tryPartsSummary(userId: Blickfeld, o: Record<string, unkno
     return { parts: zeilen.map(teilAlsAntwort), total, source: 'summary', page_size: size };
   } catch (e) {
     // Ein Rückfall, kein Fehler: Wie bei fehlender Frische übernimmt die Live-Abfrage.
-    httpError.meldeUndWeiter('teile:zusammenfassung', e);
+    meldeUndWeiter('teile:zusammenfassung', e);
     return null;
   }
 }
@@ -192,7 +190,7 @@ export async function getBlColorMap() {
     const { status, body } = await httpsGetRobust(
       `https://rebrickable.com/api/v3/lego/colors/?page_size=200&page=${page}`,
       { Authorization: `key ${key}` }, 15000
-    ).catch(() => ({ status: 0, body: '' }));
+    ).catch(meldeUndLiefere('teile:abruf', { status: 0, body: '' }));
     if (status !== 200) break;
     const data = JSON.parse(body);
     for (const c of (data.results || [])) {

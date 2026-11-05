@@ -80,7 +80,7 @@ test('ohne page_size bleibt alles wie bisher', () => {
   // Die Seite rechnet getSets aus page_size; ohne sie ist f.seite null.
   const fn = require('./helpers/sources').funktionsRumpf(H_SRC, 'setListe');
   assert.match(fn, /if \(f\.seite\) \{/, 'LIMIT darf nur bei gesetztem page_size greifen');
-  assert.match(fn, /f\.seite \? db\.get\(/, 'der Zähler kostet sonst unnötig Zeit');
+  assert.match(fn, /f\.seite \? db\.get(?:<[^>]*>)?\(/, 'der Zähler kostet sonst unnötig Zeit');
   assert.match(require('./helpers/sources').funktionsRumpf(H_SRC, 'getSets'), /const size = page_size \?/);
   // Der Test pinnte hier den Wortlaut eines Kommentars („Android-App sendet
   // kein page_size"). Der stimmt nicht mehr: Seit Marcos Vorgabe blättert auch

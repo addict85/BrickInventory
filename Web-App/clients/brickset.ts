@@ -1,17 +1,15 @@
-// Ein API-Client, kein Router: Deshalb liegt er nicht unter routes/.
+// Ein API-Client, kein Router: Schlüssel, Kontingent und Wiedervorlage kommen über ./zugang.
 
 import { holeHttps, auszug } from '../src/infra/abruf';
-import { getGlobalSetting } from '../src/konto/settings';
-import { checkAndIncrementRateLimit } from '../src/katalog/apiKontingent';
-import { fehlertext, meldeUndLiefere } from '../src/infra/httpError';
+import { zugang } from './zugang';
+import { fehlertext, meldeUndLiefere } from '../src/infra/fehler';
 import { alsAbrufFehler } from './abrufFehler';
-import { mitVersion } from '../src/sets/setNummer';
-import { bricksetVormerken, bricksetAusWiedervorlage, BRICKSET_HOECHSTENS } from '../src/auftraege/bricksetAuftrag';
+import { mitVersion } from '../src/infra/setNummer';
 
 const BASE = 'https://brickset.com/api/v3.asmx';
 
 async function getApiKey() {
-  return (await getGlobalSetting('brickset_api_key')) || '';
+  return (await zugang().schluessel('brickset_api_key')) || '';
 }
 
 /** Netz- und Zeitfehler des Helfers tragen isTransient; der Aufrufer reiht dann neu ein. */
@@ -81,7 +79,7 @@ function checkStatus(status: number, body: string, label: string) {
 
 
 /**
- * Zur Wiedervorlage vormerken (src/auftraege/bricksetAuftrag.ts); false, wenn das Set
+ * Zur Wiedervorlage vormerken; false, wenn das Set
  * schon zu oft vorgemerkt war — dann gilt die Ausweichquelle.
  * @param {string} setNumber
  * @param {string|null} errorMsg
@@ -90,19 +88,19 @@ function checkStatus(status: number, body: string, label: string) {
  *        zu tun, und einen Tag zu warten ist dafür sinnlos lang.
  */
 async function enqueueRetry(setNumber: string, errorMsg: string | null = null, soon = false) {
-  const { versuch, vorgemerkt } = await bricksetVormerken(setNumber, errorMsg || 'Quota exceeded', soon)
-    .catch(meldeUndLiefere('brickset:vormerken', { versuch: 0, vorgemerkt: true }));
+  const { versuch, vorgemerkt, hoechstens } = await zugang().bricksetVormerken(setNumber, errorMsg || 'Quota exceeded', soon)
+    .catch(meldeUndLiefere('brickset:vormerken', { versuch: 0, vorgemerkt: true, hoechstens: 0 }));
   if (!vorgemerkt) {
-    console.log(`[brickset] ${setNumber}: ${BRICKSET_HOECHSTENS} quota retries exceeded — removed from queue, using fallback`);
+    console.log(`[brickset] ${setNumber}: ${hoechstens} quota retries exceeded — removed from queue, using fallback`);
     return false;
   }
-  console.log(`[brickset] ${setNumber} eingereiht (Versuch ${versuch}/${BRICKSET_HOECHSTENS}): ${errorMsg || 'Quota exceeded'}`);
+  console.log(`[brickset] ${setNumber} eingereiht (Versuch ${versuch}/${hoechstens}): ${errorMsg || 'Quota exceeded'}`);
   return true;
 }
 
 async function checkRateLimit(setNumber: string) {
   try {
-    const rl = await checkAndIncrementRateLimit('brickset', 100);
+    const rl = await zugang().zaehle('brickset');
     if (!rl.allowed) {
       await enqueueRetry(setNumber, `Tageslimit erreicht (${rl.count}/${rl.limit} Aufrufe)`);
       return false;
@@ -115,7 +113,7 @@ async function checkRateLimit(setNumber: string) {
 
 /** Dieses Set aus der Brickset-Wiederholungsliste nehmen. */
 export async function ausRetryWarteschlange(setNumber: string) {
-  return bricksetAusWiedervorlage(setNumber);
+  return zugang().bricksetVergessen(setNumber);
 }
 
 // Remove from queue when a non-quota error occurs — no point retrying

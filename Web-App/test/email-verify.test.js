@@ -31,7 +31,7 @@ const lies = (rel) => ohneKommentare(fs.readFileSync(path.join(ROOT, rel), 'utf8
 // ihn seit Runde 13 beide in email_neu_token (verification_token ist leer).
 const ABFRAGE = /email_neu_token\s*=\s*\$1\s+AND\s+email_neu_bis\s*>\s*NOW\(\)/;
 const EINLOESEN = /email_verified\s*=\s*true/i;
-const KANDIDATEN = ['src/konto/auth.ts', 'src/konto/repository/zugaenge.ts', 'src/konto/repository/konten.ts', 'server.ts', 'routes/auth.ts'];
+const KANDIDATEN = ['src/konto/auth.ts', 'src/konto/repository/zugaenge.ts', 'src/konto/repository/konten.ts', 'server.ts', 'routes/auth.ts', 'routes/auth/registrierung.ts'];
 
 test('E-Mail-Verifikation steht nur an einer Stelle', async (t) => {
 
@@ -63,8 +63,8 @@ test('E-Mail-Verifikation steht nur an einer Stelle', async (t) => {
     // Seite hinter dem Mail-Link). GET /verify in server.ts liefert nur die
     // Seite; löste er wieder selbst ein, bestätigte schon ein Link-Scanner.
     // Das Verhalten prüft sicherheit-runde11-db am echten Server.
-    assert.match(lies('routes/auth.ts'), /verifiziereEmailToken\s*\(/,
-      'routes/auth.ts löst den Token nicht über die gemeinsame Funktion ein');
+    assert.match(lies('routes/auth/registrierung.ts'), /verifiziereEmailToken\s*\(/,
+      'routes/auth/registrierung.ts löst den Token nicht über die gemeinsame Funktion ein');
     assert.doesNotMatch(lies('server.ts'), /verifiziereEmailToken\s*\(/,
       'server.ts löst wieder selbst Token ein — der Link allein bestätigte dann');
   });

@@ -2,10 +2,10 @@
 /** Rebrickable-CSVs täglich laden: Der lokale Katalog spart je Anzeige einen
  * API-Abruf und das Tageskontingent.
  * Ausführlich: docs/begruendungen/jobs/rebrickableCsvSync.ts.md#abschnitt */
-import { meldeStartZustand } from '../src/infra/startZustand';
+import { meldeStartZustand } from '../src/auftraege/startZustand';
 import { fetchMissingBlIds } from '../src/katalog/partsImport';
-import { getRbKey, httpsGetRobust } from '../clients/rebrickable';
-import { fehlertext, logAndContinue, meldeUndLiefere, ohneFehlendeDatei } from '../src/infra/httpError';
+import { getRbKey, httpsGetRobust } from '../src/katalog/quellen';
+import { fehlertext, logAndContinue, meldeUndLiefere, ohneFehlendeDatei } from '../src/infra/fehler';
 import { merkeBlFarbnummer, blFarbnummerAus } from '../src/katalog/blZuordnung';
 import { liesZustand, setzeZustand, loescheZustand } from '../src/auftraege/laufzustand';
 import fs from 'fs';
@@ -201,7 +201,7 @@ async function run() {
         const { status, body } = await httpsGetRobust(
           `https://rebrickable.com/api/v3/lego/colors/?page_size=200&page=${page}`,
           { Authorization: `key ${key}` }, 30000
-        ).catch(() => ({ status: 0, body: '' }));
+        ).catch(meldeUndLiefere('csv-abgleich:abruf', { status: 0, body: '' }));
         if (status !== 200) break;
         const data = JSON.parse(body);
         for (const c of (data.results || [])) {

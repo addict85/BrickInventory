@@ -1,4 +1,4 @@
-# 🧱 BrickInventory Manager v3.0
+# 🧱 BrickInventory Manager
 
 Vollständige Node.js Webapp zur Verwaltung deiner Klemmbaustein-Sammlung.
 

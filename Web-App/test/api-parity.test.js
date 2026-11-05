@@ -1,43 +1,14 @@
 /**
- * API-Paritätstest: EINE Adresse, BEIDE Ausweise — Session und Bearer-Token
- * müssen für dieselben Daten dieselben Informationen liefern.
+ * EINE Adresse, BEIDE Ausweise: Sitzung (Weboberfläche) und Bearer-Token
+ * (Android-App) müssen für dieselbe Route dasselbe liefern. Doppelte Routen
+ * gibt es nicht mehr; geprüft wird, dass keine Route nur an einer Ausweisart
+ * hängt.
  *
- * ── Was hier stand, und was es angerichtet hat ──────────────────────────────
+ * Der echte Stack läuft (routes/ und routes/api_v1/ unter /api/v1, das echte
+ * db-Modul gegen die Test-DB), nichts ist gestubbt. Verglichen wird ohne die
+ * Envelope-Felder (success, count, page, page_size) per deep-equal.
  *
- * Hier stand „Die Session-Routen der Webapp (/api/...) und die Token-Routen der
- * Android-App (/api/v1/...)". Das beschrieb eine Teilung, die es seit
- * Nachtrag 70 nicht mehr gibt: Die doppelten Routen sind zusammengelegt,
- * routes/auth.ts ist von /api/auth nach /api/v1/auth umgezogen, alle fünf
- * Dateien in routes/ hängen unter /api/v1 — und `const PAIRS = []` unten ist
- * leer, es gibt also kein einziges Paar mehr zu vergleichen.
- *
- * Dieser Kommentar hat mich dazu gebracht, dem Benutzer „zwei API-Oberflächen"
- * als Architekturproblem zu melden und das Entfernen der „alten" vorzuschlagen.
- * Entfernt worden wären lebende Routen, an denen Weboberfläche UND App hängen.
- * Aufgefallen ist es erst beim Nachsehen, welche Datei denn nun welche Adresse
- * bedient.
- *
- * Ein Kommentar, der eine überholte Struktur beschreibt, ist deshalb nicht
- * bloss unaufgeräumt: Er ist die Quelle, aus der jemand — Mensch oder
- * Maschine — eine falsche Entscheidung ableitet, und zwar mit der Zuversicht,
- * es nachgelesen zu haben.
- *
- * Aufbau: Der ECHTE Stack läuft — beide Router-Verzeichnisse (routes/ und
- * routes/api_v1/, die gemeinsam EINE Oberfläche unter /api/v1 bilden), die
- * gemeinsamen Handler (utils/handlers) und das echte db-Modul gegen die Test-DB. Es wird
- * NICHTS gestubbt; die Authentifizierung erfolgt über eine injizierte
- * Session (die echten requireLogin/requireToken-Middlewares akzeptieren sie
- * beide). Zusätzlich wird der Bearer-Token-Pfad (so authentifiziert Android
- * wirklich) einmal end-to-end gegen den Session-Pfad verglichen.
- *
- * Vergleich: Von beiden Antworten werden nur die bekannten Envelope-Felder
- * (success, count, page, page_size) entfernt — der Rest muss deep-equal sein.
- * So fällt JEDE inhaltliche Abweichung zwischen Webapp- und Android-API auf,
- * auch bei künftigen Feldern.
- *
- * Voraussetzung wie test/catalog-api.test.js: Test-DB (Inhalt wird geleert!)
- * via TEST_DATABASE_URL, Default postgres://tester:test@localhost/cattest.
- * Ohne erreichbare DB: skip. Ausführen: npm test  /  npm run test:api
+ * Voraussetzung: Test-DB (Inhalt wird geleert!) via TEST_DATABASE_URL.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -197,34 +168,11 @@ function core(body) {
   return out;
 }
 
-// ── Paar-Definitionen: Webapp-Pfad ↔ Android-Pfad ────────────────────────────
-// Verbliebene ECHTE Paare: zwei Adressen für dieselben Daten. Die Finanz-Paare
-// standen bis Etappe 5 hier — sie sind zusammengelegt und werden weiter unten
-// unter „eine Route, beide Ausweise" geprüft.
-// Nach Etappe 6 gibt es KEIN Lese-Paar mehr: Was doppelt existierte, ist
-// zusammengelegt und wird weiter unten unter „eine Route, beide Ausweise"
-// geprüft. Die Liste bleibt stehen, weil ein künftiges Paar hier wieder
-// auftauchen soll, statt still ungeprüft zu bleiben.
-const PAIRS = [];
-
 test('API-Parität Webapp ↔ Android', async (t) => {
   if (!(await dbReachable())) {
     await db.pool.end().catch(() => {});
-    // REQUIRE_DB=1 (CI): Ein Überspringen ist hier KEIN akzeptabler Ausgang.
-    // Vorher war die Suite in jeder Umgebung ohne Datenbank grün — also
-    // ausgerechnet dort, wo niemand hinschaut. Wer die Datenbank erwartet,
-    // bekommt jetzt einen Fehlschlag statt eines stillen Skips.
     if (process.env.REQUIRE_DB === '1') {
       throw new Error(`REQUIRE_DB=1, aber die Test-Datenbank ist nicht erreichbar: ${DB_URL}`);
-    }
-    // REQUIRE_DB=1 (in CI gesetzt) verbietet das Überspringen.
-    //
-    // Ohne diese Sperre war die Suite in jeder Umgebung ohne Postgres GRÜN —
-    // inklusive CI, falls der Service-Container mal nicht hochkommt. Genau
-    // die Tests, die am meisten absichern, hätten dann stillschweigend nichts
-    // geprüft. Lieber ein lauter Fehlschlag.
-    if (process.env.REQUIRE_DB === '1') {
-      throw new Error(`REQUIRE_DB=1, aber die Test-Datenbank ist nicht erreichbar.`);
     }
     t.skip(`Test-DB nicht erreichbar (${DB_URL}) — Suite übersprungen`);
     return;
@@ -267,16 +215,6 @@ test('API-Parität Webapp ↔ Android', async (t) => {
     const r = await fetch(base + p, { headers });
     return { status: r.status, body: await r.json().catch(() => null) };
   };
-
-  for (const [name, webPath, v1Path] of PAIRS) {
-    await t.test(`Parität: ${name}`, async () => {
-      const [web, v1] = await Promise.all([get(webPath), get(v1Path)]);
-      assert.equal(web.status, 200, `${webPath} -> ${web.status}: ${JSON.stringify(web.body)}`);
-      assert.equal(v1.status, 200, `${v1Path} -> ${v1.status}: ${JSON.stringify(v1.body)}`);
-      assert.deepEqual(core(v1.body), core(web.body),
-        `Inhalt weicht ab zwischen ${webPath} und ${v1Path}`);
-    });
-  }
 
   // ── Zusammengelegte Routen: EINE Adresse, BEIDE Ausweise (Nachtrag 70) ────
   //

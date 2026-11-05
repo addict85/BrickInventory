@@ -31,7 +31,7 @@ nodemailer.createTransport = () => ({ sendMail: async (m) => { gesendet.push(m);
 const _req = require('./helpers/sources').buildAndRequire();
 const { testServer } = require('./helpers/server');
 const db = _req('db/database.js');
-const mailer = _req('src/infra/mailer.js');
+const mailer = _req('src/mail/mailer.js');
 const bcrypt = require(path.join(__dirname, '..', 'node_modules', 'bcryptjs'));
 
 const P = process.pid, PASS = 'Reine-Adresse-Pass-1';

@@ -1,7 +1,7 @@
 import { konfig } from '../src/infra/konfig';
 import { addSetWithDate, nacharbeitEinstellen } from '../src/sets/setService';
 import { emitJobStatus, jobUpdate, setzeImportFort, type ImportErgebnis } from '../src/auftraege/importAuftrag';
-import { fehlertext } from '../src/infra/httpError';
+import { fehlertext } from '../src/infra/fehler';
 import { fehlerText } from '../src/infra/fehlerTexte';
 import { AuftragUnterbrochen, type AuftragsKontext } from './auftragsWorker';
 

@@ -1,11 +1,13 @@
 import * as db from '../../../db/database';
+import type { z } from 'zod';
+import type { Instruction } from '../../infra/vertrag/sets';
 
 export function zaehleAnleitungen(setNumber: string) {
-  return db.get('SELECT COUNT(*) as c FROM shared_instructions WHERE set_number = $1', [setNumber]);
+  return db.get<{ c: string }>('SELECT COUNT(*) as c FROM shared_instructions WHERE set_number = $1', [setNumber]);
 }
 
 export function anleitungenDesSets(setNumber: string) {
-  return db.all('SELECT * FROM shared_instructions WHERE set_number = $1', [setNumber]);
+  return db.all<z.infer<typeof Instruction>>('SELECT * FROM shared_instructions WHERE set_number = $1', [setNumber]);
 }
 
 /** Zählen und Stand liefern in einem Schritt, wie die Anmeldebremse. */

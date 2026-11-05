@@ -4,11 +4,12 @@
  *     server.ts, startup/    hängt alles ein
  *     routes/                HTTP: Eingabe prüfen, Dienst rufen, antworten
  *     jobs/                  Hintergrundarbeit, ruft Dienste
- *     src/<bereich>/         Dienste (Fachlogik) und repository (SQL)
- *     src/infra/             fachfreie Helfer
- *     clients/, db/          Aussenwelt (nur HTTP) und Datenbank
+ *     src/<bereich>/         Dienste (Fachlogik) und repository (SQL), in STUFEN geordnet
+ *     clients/, db/          Aussenwelt (nur HTTP) und Datenbank, kennen nur src/infra/
+ *     src/infra/             fachfreie Helfer, kennen nichts darüber
  *
  * Ausnahmen stehen namentlich in den Listen und dürfen nur kürzer werden.
+ * Überblick für Menschen: docs/architektur.md (der letzte Test hält ihn aktuell).
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -111,7 +112,7 @@ test('keine Fachschicht importiert aus routes/ — ausser den benannten Faellen'
 });
 
 test('eine v1-Route importiert keine andere Routendatei', () => {
-  // Gemeinsames gehört nach utils/ (manuelleTeile, manuelleFiguren). Eine
+  // Gemeinsames gehört nach src/<bereich>/ (manuelleTeile, manuelleFiguren). Eine
   // Route, die eine Route importiert, zieht deren Router samt Middleware mit.
   // Gegenprobe (28.10.2026): require('../parts') in wanted.ts → rot.
   const ordner = path.join(ROOT, 'routes/api_v1');
@@ -126,7 +127,7 @@ test('eine v1-Route importiert keine andere Routendatei', () => {
 
 test('keine Route importiert eine andere Routendatei', () => {
   // Erlaubt sind nur der Wächter (api_v1/middleware) und der Zusammenbau in
-  // api_v1/index.ts. Gegenprobe (29.10.2026): `import { requireLogin } from
+  // api_v1/index.ts und auth.ts (aus routes/auth/). Gegenprobe (29.10.2026): `import { requireLogin } from
   // './auth'` zurück in routes/minifigs.ts → rot.
   const dateien = [];
   const lauf = (rel) => {
@@ -142,13 +143,14 @@ test('keine Route importiert eine andere Routendatei', () => {
   for (const d of dateien.filter(d => d !== 'routes/api_v1/index.ts'))
     for (const ziel of importe(d).filter(z => z.startsWith('.'))) {
       const voll = path.posix.normalize(path.posix.join(path.posix.dirname(d), ziel)).replace(/\.js$/, '');
-      if (voll.startsWith('routes/') && voll !== 'routes/api_v1/middleware') treffer.push(`${d} -> ${ziel}`);
+      if (voll.startsWith('routes/') && voll !== 'routes/api_v1/middleware'
+          && !(d === 'routes/auth.ts' && voll.startsWith('routes/auth/'))) treffer.push(`${d} -> ${ziel}`);
     }
   assert.deepEqual(treffer, []);
 });
 
 test('kein Zustand auf global', () => {
-  // Was Prozesse teilen, steht in einem Modul (src/infra/startZustand.ts) und
+  // Was Prozesse teilen, steht in einem Modul (src/auftraege/startZustand.ts) und
   // ist über den Import zu finden. Gegenprobe (29.10.2026): eine Zeile
   // `global.startupStatus = …` in server.ts → rot.
   const treffer = [];
@@ -160,13 +162,24 @@ test('kein Zustand auf global', () => {
 });
 
 test('src/ und clients/ importieren nichts aus jobs/', () => {
-  // Was utils/ an Hintergrundarbeit anstösst, läuft über src/auftraege/nacharbeit.ts;
+  // Was src/ an Hintergrundarbeit anstösst, läuft über src/auftraege/nacharbeit.ts;
   // die Ausführung setzt jobs/verdrahtung.ts ein.
   // Gegenprobe (28.10.2026): require('../jobs/imageQueue') in merkliste.ts → rot.
   const treffer = [];
   for (const d of innereDateien().filter(f => /^(src|clients)\//.test(f)))
     for (const ziel of importe(d).filter(z => /jobs\//.test(z)))
       treffer.push(`${d} -> ${ziel}`);
+  assert.deepEqual(treffer, []);
+});
+
+test('db/, clients/ und jobs/ kennen keine HTTP-Antwort', () => {
+  // Fehler melden sie über src/infra/fehler.ts; den Weg zur Antwort kennt nur
+  // die HTTP-Seite (src/infra/httpAntwort.ts, Routen).
+  // Gegenprobe (05.11.2026): `import { fehlertext } from '../src/infra/httpAntwort'`
+  // in db/migrate.ts → rot.
+  const treffer = [];
+  for (const d of innereDateien().filter(f => /^(db|clients|jobs)\//.test(f)))
+    for (const ziel of importe(d).filter(z => /httpAntwort|^express$/.test(z))) treffer.push(`${d} -> ${ziel}`);
   assert.deepEqual(treffer, []);
 });
 
@@ -194,24 +207,25 @@ function routenDateien() {
   return dateien;
 }
 
-test('keine Route führt SQL aus oder importiert die Datenbank', () => {
+test('keine Route führt SQL aus oder importiert aus db/', () => {
   // Routen lesen die Anfrage, rufen einen Dienst und schreiben die Antwort;
-  // der Datenzugriff steht in utils/ (utils/dienste/ je Gebiet).
-  // Gegenprobe (29.10.2026): `import * as db from '../../db/database'` und
-  // eine db.get-Zeile zurück in routes/api_v1/catalog.ts → rot, beide Treffer.
+  // Datenzugriff, Sperren und Benachrichtigungen stehen hinter src/<bereich>/.
+  // Gegenproben: `import * as db from '../../db/database'` und eine db.get-Zeile
+  // in routes/api_v1/catalog.ts → rot, beide Treffer (29.10.2026);
+  // `import { withInventoryLock } from '../../db/txLock'` in api_v1/sets.ts → rot (05.11.2026).
   const dateien = routenDateien();
   assert.ok(dateien.length > 15, `nur ${dateien.length} Routendateien gefunden`);
   const treffer = [];
   for (const d of dateien) {
     for (const m of quelltext(d).matchAll(/\b(?:db|tx)\.(?:get|all|run|exec|transaction|pool)\b/g)) treffer.push(`${d}: ${m[0]}`);
-    for (const ziel of importe(d).filter(z => /db\/database/.test(z))) treffer.push(`${d} -> ${ziel}`);
+    for (const ziel of importe(d).filter(z => /(?:^|\/)db\//.test(z))) treffer.push(`${d} -> ${ziel}`);
   }
   assert.deepEqual(treffer, []);
 });
 
 test('keine Route importiert aus jobs/ oder clients/', () => {
   // Jobs steuert eine Route über src/auftraege/nacharbeit.ts und die Auftragstabelle,
-  // fremde Dienste erreicht sie über einen Dienst in utils/.
+  // fremde Dienste erreicht sie über einen Dienst in src/<bereich>/.
   // Gegenprobe (29.10.2026): `import { triggerNow } from '../../jobs/priceJob'`
   // in admin.ts und `import { getSetByEan } from '../../clients/brickset'` in
   // api_v1/sets.ts → rot, beide Treffer.
@@ -234,7 +248,7 @@ test('nur der Bild-Proxy ruft aus einer Route selbst ins Netz', () => {
 });
 
 test('startup/ importiert nichts aus routes/', () => {
-  // Was der Start anstösst (Aufräumläufe), steht in utils/; eine Route
+  // Was der Start anstösst (Aufräumläufe), steht in src/; eine Route
   // gehört nur in server.ts.
   // Gegenprobe (29.10.2026): startPdfJobCleanup wieder aus
   // '../routes/api_v1/pdf' in startup/backgroundJobs.ts → rot.
@@ -294,14 +308,17 @@ test('in routes/ liegt nichts, was keine Route ist', () => {
   // etwas Falsches ueber den Inhalt — und weil die Datei dort lag, mussten
   // sechs Fachdateien aus der aeussersten Schicht importieren.
   //
-  // Drei Dateien in routes/ definieren ebenfalls kein `router.<methode>`,
+  // Zwei Dateien in routes/ definieren ebenfalls kein `router.<methode>`,
   // gehoeren aber dorthin, jede aus einem eigenen Grund. Sie stehen deshalb
   // hier mit Begruendung statt als stille Ausnahme.
   const erlaubtOhneRouter = {
     'imgProxy.ts':          'registriert seine Routen ueber app.get() statt router.get()',
-    'mailer.ts':            'Mailversand, ausschliesslich von Routen benutzt — keine Schicht wird verletzt',
     'api_v1/middleware.ts': 'Waechter FUER Routen; ohne Routen sinnlos',
   };
+  // Wie bei AUSNAHMEN: Ein Eintrag ohne Datei ist tot.
+  // Gegenprobe: 'mailer.ts' wieder eingetragen → rot.
+  assert.deepEqual(Object.keys(erlaubtOhneRouter).filter(d => !fs.existsSync(path.join(ROOT, 'routes', d))), [],
+    'erlaubtOhneRouter nennt Dateien, die es nicht mehr gibt');
   const dateien = [];
   const lauf = (rel) => {
     for (const e of fs.readdirSync(path.join(ROOT, rel), { withFileTypes: true })) {
@@ -320,7 +337,7 @@ test('in routes/ liegt nichts, was keine Route ist', () => {
   });
   assert.deepEqual(ohneRoute, [],
     'Diese Datei liegt in routes/, definiert aber keine Route. Entweder sie gehoert ' +
-    'in utils/, oder ihr Grund gehoert nach erlaubtOhneRouter — die stille Variante ' +
+    'nach src/<bereich>/, oder ihr Grund gehoert nach erlaubtOhneRouter — die stille Variante ' +
     'hat schon einmal neun Importe in die falsche Richtung erzeugt.');
 });
 
@@ -355,12 +372,15 @@ function tsUnter(...ordner) {
 /** SQL im Code: eine Anweisung als Zeichenkette oder ein Aufruf auf einer Verbindung. */
 const SQL_TEXT = /[`'"]\s*(?:SELECT|INSERT\s+INTO|UPDATE\s+\w+\s+(?:\w+\s+)?SET|DELETE\s+FROM|WITH\s+(?:RECURSIVE\s+)?\w+|CREATE\s+(?:TABLE|INDEX|UNIQUE)|ALTER\s+TABLE|DROP\s|TRUNCATE|LISTEN|NOTIFY|UNLISTEN|SET\s+LOCAL|LOCK\s+TABLE|ANALYZE|VACUUM)\b/;
 const SQL_AUFRUF = /\b(?:db|tx|client|pool)\.(?:run|get|all|query|exec)\s*(?:<[^>]*>)?\(/;
-const hatSql = (rel) => { const s = quelltext(rel); return SQL_TEXT.test(s) || SQL_AUFRUF.test(s); };
+/** Auch ein Fragment mitten in einer Zeichenkette, etwa `EXISTS (SELECT 1 FROM …)`. */
+const SQL_FRAGMENT = /\bSELECT\b[^;`'"]*\bFROM\b/;
+const hatSql = (rel) => { const s = quelltext(rel); return SQL_TEXT.test(s) || SQL_AUFRUF.test(s) || SQL_FRAGMENT.test(s); };
 
 test('SQL steht nur in Repositories und in db/', () => {
   // Ein Verbot, keine Ratsche mehr: Die Liste der Ausnahmen ist seit dem
   // 31.10.2026 leer. Gegenproben (31.10.2026): `await db.get('SELECT 1')` in
-  // src/haushalt/haushalt.ts → rot; `'SELECT 1'` in jobs/aufraeumen.ts → rot.
+  // src/haushalt/haushalt.ts → rot; `'SELECT 1'` in jobs/aufraeumen.ts → rot;
+  // (05.11.2026) das EXISTS-Fragment zurück nach src/finanzen/preisalarm.ts → rot.
   const dateien = tsUnter('src', 'jobs', 'clients', 'routes', 'startup').concat('server.ts');
   assert.ok(dateien.length > 150, `nur ${dateien.length} Dateien gefunden`);
   assert.deepEqual(dateien.filter(d => !istRepository(d) && hatSql(d)), [],
@@ -392,7 +412,7 @@ test('ein Fachbereich greift auf einen anderen nur über dessen Dienste zu', () 
 
 test('ein Repository kennt keine Dienste', () => {
   // Gegenprobe (31.10.2026): `import { getSetting } from '../settings'` in
-  // src/konto/repository/einstellungen.ts → rot.
+  // src/einstellungen/repository.ts → rot.
   const treffer = [];
   for (const d of tsUnter('src').filter(istRepository))
     for (const z of aufgeloesteImporte(d))
@@ -428,7 +448,7 @@ test('nur Routen, Server und HTTP-Seiten importieren eine HTTP-Seite', () => {
 /** Routen, die etwas anderes tun als antworten (Strom, Teilergebnis, Aufräumen) — je Datei die Zahl. */
 const TRY_IN_ROUTEN = new Map([
   ['routes/auth.ts', 2], ['routes/imgProxy.ts', 3],
-  ['routes/api_v1/sets.ts', 1], ['routes/api_v1/wanted.ts', 2],
+  ['routes/api_v1/sets.ts', 1], ['routes/api_v1/wanted.ts', 1],
 ]);
 
 test('Routen fangen keine Fehler — der Fehlerweg des Routers antwortet', () => {
@@ -442,4 +462,82 @@ test('Routen fangen keine Fehler — der Fehlerweg des Routers antwortet', () =>
   assert.deepEqual(Object.fromEntries(ist), Object.fromEntries(TRY_IN_ROUTEN));
   for (const d of tsUnter('routes').filter(d => /router\.(get|post|put|delete|patch)\(/.test(quelltext(d))))
     assert.match(quelltext(d), /router\.use\(fehlerAntwort\)/, `${d} endet nicht mit dem Fehlerweg`);
+});
+
+// ── Rangfolge der Bereiche ──────────────────────────────────────────────────
+
+/** Von unten nach oben. Ein Bereich importiert nur Bereiche tieferer Stufen;
+ * Bereiche derselben Stufe kennen einander nicht. Ein neuer Ordner braucht
+ * eine Stufe, sonst ist der Test rot. */
+const STUFEN = [
+  ['src/infra'],
+  ['db', 'clients'],
+  ['src/einstellungen'],
+  ['src/mail'],
+  ['src/auftraege'],
+  ['src/haushalt'],
+  ['src/konto'],
+  ['src/idempotenz', 'src/katalog'],
+  ['src/finanzen'],
+  ['src/bestand'],
+  ['src/sets'],
+  ['src/teile', 'src/figuren', 'src/merkliste', 'src/gutscheine'],
+  ['src/sammlung', 'src/verwaltung'],
+  ['jobs', 'routes'],
+  ['startup'],
+  ['server.ts'],
+];
+const stufeVon = new Map(STUFEN.flatMap((s, i) => s.map(b => [b, i])));
+const bereichsName = (rel) => rel.startsWith('src/') ? rel.split('/').slice(0, 2).join('/') : rel.split('/')[0];
+
+/** Laufzeit-Kanten zwischen Bereichen: `import type` zählt nicht, import() und `export … from` schon. */
+function bereichsKanten() {
+  const kanten = [];
+  const alle = tsUnter('src', 'db', 'clients', 'jobs', 'routes', 'startup').concat('server.ts');
+  const bekannt = new Set(alle);
+  for (const d of alle) {
+    const von = bereichsName(d);
+    for (const z of aufgeloesteImporte(d)) {
+      const ziel = [z + '.ts', z + '/index.ts', z].find(k => bekannt.has(k));
+      if (!ziel) continue;
+      const nach = bereichsName(ziel);
+      if (nach !== von) kanten.push({ d, ziel, von, nach });
+    }
+  }
+  return kanten;
+}
+
+test('jeder Bereich importiert nur Bereiche tieferer Stufen', () => {
+  // Gegenproben (05.11.2026): `import { getSetting } from '../src/einstellungen/settings'`
+  // in clients/brickset.ts → rot (clients → src/einstellungen); dasselbe mit
+  // `import { mitVersion } from '../sets/setNummer'` in src/katalog/dienst.ts,
+  // nachdem setNummer wieder unter src/sets lag → rot (katalog → sets).
+  const kanten = bereichsKanten();
+  assert.ok(kanten.length > 500, `nur ${kanten.length} Kanten gefunden — greift die Suche noch?`);
+  const ohneStufe = [...new Set(kanten.flatMap(k => [k.von, k.nach]))].filter(b => !stufeVon.has(b));
+  assert.deepEqual(ohneStufe, [], 'Bereich ohne Stufe: in STUFEN eintragen');
+  const falsch = kanten.filter(k => stufeVon.get(k.nach) >= stufeVon.get(k.von))
+    .map(k => `${k.d} -> ${k.ziel} (${k.von} → ${k.nach})`);
+  assert.deepEqual(falsch, []);
+});
+
+test('Klienten erreicht man nur über src/katalog/quellen.ts', () => {
+  // Dort bekommen sie Schlüssel, Kontingent und Drossel; ein Weg daran vorbei
+  // fände keinen Schlüssel. `import type` ist erlaubt.
+  // Gegenprobe (05.11.2026): `import { lookupPart } from '../../clients/rebrickable'`
+  // in src/teile/manuelleTeile.ts → rot.
+  const kanten = bereichsKanten();
+  const treffer = kanten.filter(k => k.nach === 'clients' && k.von !== 'clients' && k.d !== 'src/katalog/quellen.ts')
+    .map(k => `${k.d} -> ${k.ziel}`);
+  assert.deepEqual(treffer, []);
+  assert.ok(kanten.some(k => k.d === 'src/katalog/quellen.ts' && k.nach === 'clients'), 'quellen.ts holt keinen Klienten mehr?');
+});
+
+test('docs/architektur.md nennt die Rangfolge der Bereiche wie STUFEN', () => {
+  // Gegenprobe: in der Tabelle `src/mail` und `src/einstellungen` vertauscht → rot.
+  const doc = fs.readFileSync(path.join(ROOT, 'docs', 'architektur.md'), 'utf8');
+  const tabelle = doc.slice(doc.indexOf('## Rangfolge der Bereiche'), doc.indexOf('## API-Vertrag'));
+  const stufen = [...tabelle.matchAll(/^\| (\d+) \| (.+) \|$/gm)].map(m => [...m[2].matchAll(/`([^`]+)`/g)].map(b => b[1]));
+  assert.ok(stufen.length > 5, 'Die Tabelle der Rangfolge ist nicht zu finden');
+  assert.deepEqual(stufen, STUFEN);
 });

@@ -1,7 +1,7 @@
 /** Vorberechnet, weil die Live-Abfrage über alle Set-Teile eines Haushalts
  * Sekunden braucht.
  * Ausführlich: docs/begruendungen/src/teile/partsSummary.ts.md#abschnitt */
-import { meldeUndLiefere } from '../infra/httpError';
+import { meldeUndLiefere } from '../infra/fehler';
 import * as db from '../../db/database';
 import * as repo from './repository/teileZusammenfassung';
 

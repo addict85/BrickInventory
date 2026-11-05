@@ -2,7 +2,7 @@
  * PostgreSQL LISTEN/NOTIFY statt Datenbank-Polling.
  * Ausführlich: docs/begruendungen/db/pgNotify.ts.md#abschnitt
  */
-import { logAndContinue } from '../src/infra/httpError';
+import { logAndContinue } from '../src/infra/fehler';
 import { Client } from 'pg';
 import * as db from './database';
 import * as konfig from '../src/infra/konfig';

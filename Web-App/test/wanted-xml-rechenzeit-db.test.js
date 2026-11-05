@@ -22,6 +22,7 @@ const assert = require('node:assert/strict');
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
 const _req = require('./helpers/sources').buildAndRequire();
+const { importWorker } = require('./helpers/auftraege');
 const db = _req('db/database.js');
 const { leseWantedListe } = _req('src/merkliste/wantedListe.js');
 const { XML_MAX_BYTES } = _req('src/infra/dateiEmpfang.js');
@@ -77,6 +78,7 @@ test('3. die Route weist eine Liste über der XML-Grenze ab', async (t) => {
   try { await _req('db/migrate.js').runMigrations(c); } finally { c.release(); }
   await db.run(`INSERT INTO users (username,password_hash) VALUES ('xmlgrenze','x')`);
   const uid = (await db.get(`SELECT id FROM users WHERE username='xmlgrenze'`)).id;
+  importWorker(t, _req);
   const srv = testServer(_req, {
     sitzung: { userId: uid }, apiNutzer: { user_id: uid, is_admin: 0 },
     routen: { '/api/v1': 'routes/api_v1/index.js' }, t,

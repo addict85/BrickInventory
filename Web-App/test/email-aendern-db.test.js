@@ -34,13 +34,14 @@ process.env.SESSION_SECRET = 'test-secret-lang-genug-fuer-die-pruefung';
 
 const ROOT = path.join(__dirname, '..');
 const _req = require('./helpers/sources').buildAndRequire();
+const { dbOderSkip } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
 
 // Versandte Hinweise mitschreiben, bevor routes/auth die Mail-Funktionen bindet.
 const gesendet = [];
 const bestaetigt = [];
-const mailerPfad = require.resolve(path.join(require('./helpers/sources').DIST, 'src/infra/mailer.js'));
-const echt = _req('src/infra/mailer.js');
+const mailerPfad = require.resolve(path.join(require('./helpers/sources').DIST, 'src/mail/mailer.js'));
+const echt = _req('src/mail/mailer.js');
 require.cache[mailerPfad].exports = Object.assign({}, echt, {
   sendEmailGeaendertMail: async (an, name, neu) => { gesendet.push({ an, name, neu }); return { success: true }; },
   sendVerificationMail: async (an, token, basis) => { bestaetigt.push(basis); return { success: true }; },
@@ -51,14 +52,7 @@ const bcrypt = require(path.join(ROOT, 'node_modules', 'bcryptjs'));
 const NAME = `mailneu_${process.pid}`, PASS = 'Passwort12345';
 
 test('E-Mail ändern', { concurrency: 1 }, async (t) => {
-  try { await db.initSchema(); }
-  catch (e) {
-    if (process.env.REQUIRE_DB === '1')
-      throw new Error(`REQUIRE_DB=1, aber die Test-DB ist nicht erreichbar: ${e.message}`);
-    t.skip('Test-DB nicht erreichbar'); return;
-  }
-  const client = await db.pool.connect();
-  try { await _req('db/migrate.js').runMigrations(client); } finally { client.release(); }
+  if (!await dbOderSkip(t, _req)) return;
 
   await db.run('DELETE FROM users WHERE username = ANY($1)', [[NAME, `${NAME}_b`]]);
   const anderes = (await db.get(`INSERT INTO users (username, email, password_hash) VALUES ($1, $2, 'x') RETURNING id`,

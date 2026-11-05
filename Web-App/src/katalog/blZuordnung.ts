@@ -1,5 +1,5 @@
 // Ausführlich: docs/begruendungen/src/katalog/blZuordnung.ts.md#abschnitt
-import { meldeUndLiefere } from '../infra/httpError';
+import { meldeUndLiefere } from '../infra/fehler';
 import * as repo from './repository/blZuordnung';
 import type { BlArt } from '../../db/blZuordnungSql';
 

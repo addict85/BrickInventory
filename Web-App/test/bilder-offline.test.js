@@ -53,7 +53,9 @@ const SERVER = ohneKommentare(fs.readFileSync(path.join(__dirname, '..', 'server
 
 /** Die Cache-Control-Zeile der /images-Route — aus der Datei gelesen. */
 function bilderKopfzeile() {
-  const ab = SERVER.indexOf("app.get('/images/*pfad'");
+  // Die Route verweist auf liefereBild; dessen Rumpf setzt den Kopf.
+  const ab = SERVER.indexOf("async function liefereBild(");
+  assert.ok(SERVER.includes("app.get('/images/*pfad', liefereBild)"), 'Die /images-Route liefert nicht mehr über liefereBild');
   assert.ok(ab > 0, 'Die /images-Route ist nicht mehr zu finden');
   const abschnitt = SERVER.slice(ab, ab + 4000);
   const m = abschnitt.match(/setHeader\('Cache-Control',\s*'([^']+)'\)/);

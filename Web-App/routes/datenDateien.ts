@@ -1,5 +1,5 @@
 /** Eigene Datei, damit ein Test die echten Handler einhängen kann. */
-import { fehlerAntwort } from '../src/infra/httpError';
+import { fehlerAntwort } from '../src/infra/httpAntwort';
 import express, { Request, Response } from 'express';
 import { liefereDatei } from '../src/infra/dateiAusliefern';
 import { safeDataPath } from '../src/infra/datenPfad';

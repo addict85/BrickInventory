@@ -28,6 +28,7 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 process.env.APP_BASE_URL = 'http://brick.example';
 
 const _req = require('./helpers/sources').buildAndRequire();
+const { dbOderSkip } = require('./helpers/db');
 const db = _req('db/database.js');
 const express = require(path.join(ROOT, 'node_modules', 'express'));
 const session = require(path.join(ROOT, 'node_modules', 'express-session'));
@@ -35,14 +36,7 @@ const pgSession = require(path.join(ROOT, 'node_modules', 'connect-pg-simple'))(
 const bcrypt = require(path.join(ROOT, 'node_modules', 'bcryptjs'));
 
 test('Konto deaktivieren und reaktivieren', { concurrency: 1 }, async (t) => {
-  try { await db.initSchema(); }
-  catch (e) {
-    if (process.env.REQUIRE_DB === '1')
-      throw new Error(`REQUIRE_DB=1, aber die Test-DB ist nicht erreichbar: ${e.message}`);
-    t.skip('Test-DB nicht erreichbar'); return;
-  }
-  const c = await db.pool.connect();
-  try { await _req('db/migrate.js').runMigrations(c); } finally { c.release(); }
+  if (!await dbOderSkip(t, _req)) return;
 
   const CHEF = `deakt_chef_${process.pid}`, NUTZER = `deakt_nutzer_${process.pid}`, PASS = 'Deakt-Passwort-1';
   await db.run('DELETE FROM users WHERE username = ANY($1)', [[CHEF, NUTZER]]);

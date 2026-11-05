@@ -29,6 +29,7 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 const ROOT = path.join(__dirname, '..');
 const { buildAndRequire, ohneKommentare } = require('./helpers/sources');
 const _req = buildAndRequire();
+const { importWorker } = require('./helpers/auftraege');
 const db = _req('db/database.js');
 const { testServer } = require('./helpers/server');
 
@@ -100,6 +101,7 @@ const DYNAMISCH = {
   'src/gutscheine/repository/gutscheine.ts':   'vouchers (user_id)',
   'src/katalog/repository/csvTausch.ts':       'rb_* aus den Rebrickable-CSV-Dateien',
   'src/katalog/repository/teileAnreicherung.ts': 'part_catalog/part_color_catalog aus Rebrickable',
+  'src/sammlung/repository/erfassungen.ts':    'set_/part_/minifig_acquisitions (user_id)',
   'src/sets/repository/verschieben.ts':        'Bestand und Erfassungen (user_id)',
 };
 
@@ -138,6 +140,7 @@ test('gemeinsame Tabellen', { concurrency: 1, timeout: 120_000 }, async (t) => {
   await db.run('DROP SCHEMA public CASCADE');
   await db.run('CREATE SCHEMA public');
   await db.initSchema();
+  importWorker(t, _req);
   { const c = await db.pool.connect(); try { await _req('db/migrate.js').runMigrations(c); } finally { c.release(); } }
   t.after(() => db.pool.end().catch(() => {}));
 

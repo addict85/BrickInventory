@@ -34,6 +34,7 @@ const CA = path.join(ordner, 'root.crt');
 process.env.CA_ZERTIFIKAT = CA;
 
 const _req = require('./helpers/sources').buildAndRequire();
+const { dbOderSkip } = require('./helpers/db');
 const db = _req('db/database.js');
 const { tlsStandAus } = _req('src/infra/tlsWurzel.js');
 const { ladeKonfig, cookieSicher } = _req('src/infra/konfig.js');
@@ -64,14 +65,7 @@ test('Cookie nur über TLS: in Produktion und hinter https, abschaltbar', () => 
 });
 
 test('/ca.crt, Einstellungen und QR-Code tragen denselben Fingerabdruck', { concurrency: 1 }, async (t) => {
-  try { await db.initSchema(); }
-  catch (e) {
-    if (process.env.REQUIRE_DB === '1')
-      throw new Error(`REQUIRE_DB=1, aber die Test-DB ist nicht erreichbar: ${e.message}`);
-    t.skip('Test-DB nicht erreichbar'); return;
-  }
-  const client = await db.pool.connect();
-  try { await _req('db/migrate.js').runMigrations(client); } finally { client.release(); }
+  if (!await dbOderSkip(t, _req)) return;
   await db.run("DELETE FROM users WHERE username = 'tls_nutzer'");
   await db.run("INSERT INTO users (username,password_hash,is_admin,is_active,email_verified) VALUES ('tls_nutzer',$1,false,true,true)",
     [await bcrypt.hash('richtigesPasswort1', 4)]);

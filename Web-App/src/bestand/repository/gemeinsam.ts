@@ -24,10 +24,6 @@ export function erfassungsKennzahlen(art: 'part' | 'fig', uids: number[]) {
           GROUP BY fig_number`, [uids]);
 }
 
-export function benutzerNamen(uids: number[]) {
-  return db.all('SELECT id, username FROM users WHERE id = ANY($1)', [uids]);
-}
-
 /** Spalten, über die gesucht werden darf. Siehe verwendendeSets(). */
 const SUCHSPALTEN = new Set(['part_number', 'color_id', 'fig_number']);
 

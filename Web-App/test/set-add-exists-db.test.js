@@ -52,6 +52,7 @@ Module.prototype.require = function (name) {
 };
 
 const _req = require('./helpers/sources').buildAndRequire();
+const { dbOderSkip } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
 const { haeltSet } = require('./helpers/bestand');
 const db = _req('db/database.js');
@@ -60,14 +61,7 @@ const express = require(path.join(ROOT, 'node_modules', 'express'));
 test('vorhandenes Set: Erfassen meldet exists und schreibt nichts',
   { concurrency: 1 }, async (t) => {
 
-  try { await db.initSchema(); }
-  catch (e) {
-    if (process.env.REQUIRE_DB === '1')
-      throw new Error(`REQUIRE_DB=1, aber die Test-DB ist nicht erreichbar: ${e.message}`);
-    t.skip('Test-DB nicht erreichbar'); return;
-  }
-  const mc = await db.pool.connect();
-  try { await _req('db/migrate.js').runMigrations(mc); } finally { mc.release(); }
+  if (!await dbOderSkip(t, _req)) return;
 
   const HAUPT = `ex-haupt-${process.pid}`, SUB = `ex-sub-${process.pid}`;
   // Endung bewusst „-1": sanitizeSetNumber() hängt an eine Nummer OHNE Suffix
@@ -204,7 +198,7 @@ test('normalizeSetNumber stimmt mit sanitizeSetNumber überein', () => {
   //
   // Beide sind ausdruecklich EXPORTIERT. Sie werden jetzt einfach beide
   // geholt und verglichen — und weil beide an
-  // src/sets/setNummer.ts -> normalisiereSetNummer() durchreichen, koennen sie
+  // src/infra/setNummer.ts -> normalisiereSetNummer() durchreichen, koennen sie
   // gar nicht mehr auseinanderlaufen. Die Aussage bleibt dieselbe: Weichen
   // sie ab, prueft die Regel eine ANDERE Nummer als die, die danach
   // geschrieben wird — und das Set landet trotz Pruefung doppelt.
@@ -217,7 +211,7 @@ test('normalizeSetNumber stimmt mit sanitizeSetNumber überein', () => {
       `Abweichung bei "${eingabe}"`);
   }
   // Und beide sagen dasselbe wie die Stelle, an der die Regel steht.
-  const { normalisiereSetNummer } = _req('src/sets/setNummer.js');
+  const { normalisiereSetNummer } = _req('src/infra/setNummer.js');
   for (const eingabe of ['75192', '75192-1', ' 75192 ', '75192; irgendwas', 'ab-12', '4002!!']) {
     assert.equal(normalizeSetNumber(eingabe), normalisiereSetNummer(eingabe),
       `Abweichung zur zentralen Fassung bei "${eingabe}"`);

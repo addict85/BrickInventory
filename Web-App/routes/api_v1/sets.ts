@@ -5,25 +5,24 @@ import multer from 'multer';
 import path from 'path';
 import fs from 'fs';
 import crypto from 'crypto';
-import { fehlerAntwort, fehlertext, pfadParam, meldeUndLiefere, logAndContinue, oeffentlicherFehler } from '../../src/infra/httpError';
+import { fehlertext, meldeUndLiefere, logAndContinue, oeffentlicherFehler } from '../../src/infra/fehler';
+import { fehlerAntwort, pfadParam } from '../../src/infra/httpAntwort';
 import { requireToken, kontoSchranke } from './middleware';
-import { getSetting } from '../../src/konto/settings';
+import { getSetting } from '../../src/einstellungen/settings';
 import { findSetInScope, normalizeSetNumber } from '../../src/sets/setAdd';
 import { scopeIds, parseScopeMode, writableIds, householdMembers, resolveWriteTarget } from '../../src/haushalt/haushalt';
-import { moveSetBetweenAccounts } from '../../src/sets/setMove';
+import { verschiebeSet } from '../../src/sets/setMove';
 import { normalisiereLagerort, setzeLagerort, lagerorte,
          orteVon, legeOrtAn, benenneOrtUm, loescheOrt,
          vorgabeVon, setzeVorgabe } from '../../src/bestand/lagerort';
-import { alarmeFuer, alleAlarme, ausgeloesteSeit, loescheAlarm, setzeAlarm, alarmeAusCsv } from '../../src/finanzen/preisalarm';
+import { alarmeFuer, alleAlarme, ausgeloesteSeit, loescheAlarm, setzeAlarm } from '../../src/finanzen/preisalarm';
 import { csvEmpfang, inhaltPasstZuTyp, uploadKontingentBytes, belegterPlatz, FORMULAR_GRENZEN, privaterOrdner } from '../../src/infra/dateiEmpfang';
 import { sendCsv, uebersprungenHinweis } from '../../src/infra/csvExport';
-import { withInventoryLock } from '../../db/txLock';
 import { addSet, updateSet } from '../../src/sets/setService';
 import { deleteSet, getSet, getSets } from '../../src/sets/abfragen';
 import { getSetPriceHistory } from '../../src/finanzen/priceHistory';
-import { einzelwert, ausTabelle } from '../../src/infra/validate';
 import * as V from '../../src/infra/validate';
-import { mitVersion, normalisiereSetNummer, moeglicheSetNummer } from '../../src/sets/setNummer';
+import { mitVersion, normalisiereSetNummer, moeglicheSetNummer } from '../../src/infra/setNummer';
 import { sendeFehler, dateiFehler } from '../../src/infra/fehlerTexte';
 import { setTeileAnreichern } from '../../src/auftraege/nacharbeit';
 import { setInfo, setZumBarcode, teilelisteDesSets, figurenlisteDesSets, setPreis, rebrickableListe,
@@ -32,13 +31,14 @@ import { downloadSetInstructions, anleitungenZuSet, loescheAnleitungen, anleitun
 import { importPartsForSet } from '../../src/katalog/partsImport';
 import { registerSse } from '../../src/infra/sseRegistry';
 import { loginOrTokenGuard, angemeldeteNutzerId, istVerwalter } from '../../src/konto/http/anmeldung';
-import { csvImportBus, buildJobStatus, jobGet } from '../../src/auftraege/importAuftrag';
-import * as pgNotify from '../../db/pgNotify';
+import { csvImportBus, buildJobStatus, jobGet, beiImportStand } from '../../src/auftraege/importAuftrag';
 import { DATA_DIR } from '../../src/infra/appPaths';
 import { setBildSichtbar } from '../../src/katalog/bilder/bildBlickfeld';
 import { zaehleAnfrage } from '../../src/konto/loginLimiter';
 import { vertragsRouter } from '../../src/infra/vertrag/pruefen';
 import type { Antwort } from '../../src/infra/vertrag';
+import { importAlsAuftrag } from '../../src/auftraege/importAlsAuftrag';
+import type { CsvImportBericht } from '../../src/infra/csvExport';
 const router = vertragsRouter();
 
 // ── Feste Pfade VOR den Pfaden mit :setNumber ────────────────────────────────
@@ -123,7 +123,7 @@ router.post('/alerts/import/csv', requireToken, kontoSchranke('upload'), csvEmpf
     if (!req.file) return sendeFehler(req, res, 400, 'keine_datei');
     const uid = req.apiUser.user_id;
     const waehrung = String(await getSetting(uid, 'currency', 'EUR'));
-    res.json(await alarmeAusCsv(uid, waehrung, req.file.buffer.toString('utf-8')));
+    res.json(await importAlsAuftrag<CsvImportBericht>(uid, 'alarme_csv', { waehrung, text: req.file.buffer.toString('utf-8') }));
   });
 
 /** Der Vorrat an Lagerorten ist je Konto; wer ihn sehen darf, entscheidet das Recht.
@@ -211,7 +211,7 @@ router.get('/sets', requireToken, async (req: AuthedRequest, res: Antwort<'GET /
 
 router.get('/sets/:setNumber/price', requireToken, async (req: AuthedRequest, res: Antwort<'GET /api/v1/sets/:setNumber/price'>) => {
   const uid = req.apiUser.user_id;
-  const sn  = einzelwert(req.params.setNumber);
+  const sn  = V.einzelwert(req.params.setNumber);
   // Blickfeld statt eigener ID: Im Haushalt gehört das Set oft einem Unterkonto.
   const preis = await setPreis(uid, await scopeIds(uid, parseScopeMode(req.query.accounts)), sn);
   if (!preis) return sendeFehler(req, res, 404, 'set_nicht_gefunden');
@@ -299,8 +299,7 @@ router.post('/sets/:sn/move', requireToken, async (req: AuthedRequest, res: Antw
     : [];
   if (!acqIds.length)
     return sendeFehler(req, res, 400, 'kaufpreise_angeben');
-  const moved = await withInventoryLock(fromId, sn, (tx) =>
-    moveSetBetweenAccounts(tx, sn, fromId, toId, acqIds));
+  const moved = await verschiebeSet(sn, fromId, toId, acqIds);
   res.json({ success: true, set_number: sn, from_user_id: fromId, to_user_id: toId, ...moved });
 });
 
@@ -343,7 +342,7 @@ router.get('/sets/import/csv/stream', zustandsWaechter, kontoSchranke('strom'), 
   csvImportBus.on(`progress:${uid}`, onProgress);
   // Andere Worker melden über LISTEN/NOTIFY; der Takt fängt Verpasstes auf.
   const onNotify = async (payload: unknown) => { if (String(payload) === String(uid)) send(await stand()); };
-  pgNotify.listen('csv_import_progress', onNotify);
+  const abmelden = beiImportStand(onNotify);
   const fallbackTimer = setInterval(async () => { send(await stand()); }, 120000);
   const heartbeat = setInterval(() => { if (!closed) res.write(': keep-alive\n\n'); }, 20000);
   send(await stand());
@@ -352,7 +351,7 @@ router.get('/sets/import/csv/stream', zustandsWaechter, kontoSchranke('strom'), 
     if (closed) return;
     closed = true;
     csvImportBus.off(`progress:${uid}`, onProgress);
-    pgNotify.unlisten('csv_import_progress', onNotify);
+    abmelden();
     clearInterval(fallbackTimer);
     clearInterval(heartbeat);
     unregisterSse();
@@ -441,14 +440,14 @@ const uploadInstr = multer({
     filename: (req, file, cb) => {
       const safe = String(req.params.setNumber).replace(/[^a-z0-9-]/gi, '_');
       // ausTabelle: Ein geerbter Schlüssel wie 'constructor' ist keine Endung.
-      const ext = ausTabelle(INSTR_EXT_BY_MIME, file.mimetype);
+      const ext = V.ausTabelle(INSTR_EXT_BY_MIME, file.mimetype);
       if (!ext) return cb(dateiFehler('datei_typ_falsch', 415), '');
       // Zufällig statt Zeitstempel: Der Name soll sich nicht erraten lassen.
       cb(null, `${safe}_${crypto.randomBytes(12).toString('hex')}${ext}`);
     },
   }),
   limits: { ...FORMULAR_GRENZEN, fileSize: 50 * 1024 * 1024 },
-  fileFilter: (_req, file, cb) => { if (ausTabelle(INSTR_EXT_BY_MIME, file.mimetype)) cb(null, true); else cb(dateiFehler('datei_typ_falsch', 415)); },
+  fileFilter: (_req, file, cb) => { if (V.ausTabelle(INSTR_EXT_BY_MIME, file.mimetype)) cb(null, true); else cb(dateiFehler('datei_typ_falsch', 415)); },
 });
 
 /** Besitz und Kontingent VOR dem Schreiben, sonst lägen bis zu 50 MB auf der

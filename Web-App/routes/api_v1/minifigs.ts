@@ -1,18 +1,19 @@
-import { fehlerAntwort, pfadParam } from '../../src/infra/httpError';
+import { fehlerAntwort, pfadParam } from '../../src/infra/httpAntwort';
 import { requireToken, kontoSchranke } from './middleware';
 import { scopeIds, parseScopeMode, resolveWriteTarget, writableIds } from '../../src/haushalt/haushalt';
 import { getManualMinifigs, getMinifigStats, getMinifigs } from '../../src/figuren/abfragen';
-import { addManualFig, updateManualFig, importiereFigurenCsv } from '../../src/figuren/manuelleFiguren';
-import { getSetting } from '../../src/konto/settings';
+import { addManualFig, updateManualFig } from '../../src/figuren/manuelleFiguren';
+import { getSetting } from '../../src/einstellungen/settings';
 import { getMinifigPriceHistory } from '../../src/finanzen/priceHistory';
 import { einzelwert } from '../../src/infra/validate';
 import { verwendendeSets } from '../../src/bestand/gemeinsam';
 import { sendeFehler } from '../../src/infra/fehlerTexte';
 import { normalisiereLagerort, setzeLagerort } from '../../src/bestand/lagerort';
-import { loescheFigur } from '../../src/bestand/loeschen';
+import { loescheFigur } from '../../src/sammlung/loeschen';
 import { teileDerFigur } from '../../src/figuren/dienst';
 import { csvEmpfang } from '../../src/infra/dateiEmpfang';
-import { csvImportAntwort } from '../../src/infra/csvExport';
+import { importAlsAuftrag } from '../../src/auftraege/importAlsAuftrag';
+import type { CsvImportBericht } from '../../src/infra/csvExport';
 import { vertragsRouter } from '../../src/infra/vertrag/pruefen';
 import type { Antwort } from '../../src/infra/vertrag';
 const router = vertragsRouter();
@@ -86,7 +87,7 @@ router.get('/minifigs/:figNumber/parts', requireToken, async (req: AuthedRequest
 
 router.post('/minifigs/import/csv', requireToken, kontoSchranke('upload'), csvEmpfang.single('file'), async (req: AuthedRequest & { file?: { buffer: Buffer } }, res: Antwort<'POST /api/v1/minifigs/import/csv'>) => {
   if (!req.file) return sendeFehler(req, res, 400, 'keine_datei');
-  csvImportAntwort(res, await importiereFigurenCsv(req.apiUser.user_id, req.file.buffer.toString('utf-8')));
+  res.json(await importAlsAuftrag<CsvImportBericht>(req.apiUser.user_id, 'figuren_csv', { text: req.file.buffer.toString('utf-8') }));
 });
 
 // Ausführlich: docs/begruendungen/routes/api_v1/minifigs.ts.md#get-minifigs-fignumber-sets

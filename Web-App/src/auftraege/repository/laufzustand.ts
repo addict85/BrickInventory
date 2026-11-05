@@ -3,7 +3,7 @@ import * as db from '../../../db/database';
 /** Getrennt von den Einstellungen, damit Export, Sicherung und Einstellungen
  * keine Zwischenstände von Jobs zeigen. */
 export async function liesZustand(schluessel: string): Promise<string | null> {
-  const z = await db.get('SELECT wert FROM laufzustand WHERE schluessel = $1', [schluessel]);
+  const z = await db.get<{ wert: unknown }>('SELECT wert FROM laufzustand WHERE schluessel = $1', [schluessel]);
   return z ? String(z.wert) : null;
 }
 

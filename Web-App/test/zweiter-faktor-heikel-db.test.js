@@ -33,8 +33,8 @@ const _req = S.buildAndRequire();
 const { testServer } = require('./helpers/server');
 
 // Keine echten Mails: vor dem Laden von routes/auth ersetzen.
-const echterMailer = _req('src/infra/mailer.js');
-const mailerPfad = require.resolve(path.join(S.DIST, 'src/infra/mailer.js'));
+const echterMailer = _req('src/mail/mailer.js');
+const mailerPfad = require.resolve(path.join(S.DIST, 'src/mail/mailer.js'));
 require.cache[mailerPfad].exports = Object.assign({}, echterMailer, {
   sendEmailGeaendertMail: async () => ({ success: true }),
   sendVerificationMail: async () => ({ success: true }),

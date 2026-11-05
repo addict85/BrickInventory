@@ -42,6 +42,7 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 
 const ROOT = path.join(__dirname, '..');
 const _req = require('./helpers/sources').buildAndRequire();
+const { dbOderSkip } = require('./helpers/db');
 const db = _req('db/database.js');
 
 // BrickLink vorgeben, BEVOR die Preiswege getPriceGuide herausziehen. Der
@@ -58,7 +59,7 @@ require.cache[blPfad].exports = Object.assign({}, echt, {
 });
 
 test('die Schreibweise einer Set-Nummer ist eine Regel', () => {
-  const { mitVersion, ohneVersion } = _req('src/sets/setNummer.js');
+  const { mitVersion, ohneVersion } = _req('src/infra/setNummer.js');
   assert.equal(mitVersion('10179'), '10179-1');
   assert.equal(mitVersion('10179-1'), '10179-1');
   assert.equal(mitVersion('75192-2'), '75192-2');
@@ -67,12 +68,7 @@ test('die Schreibweise einer Set-Nummer ist eine Regel', () => {
 });
 
 test('der Katalog antwortet gleich, egal wie die Nummer geschrieben ist', { concurrency: 1 }, async (t) => {
-  try { await db.initSchema(); }
-  catch (e) {
-    if (process.env.REQUIRE_DB === '1')
-      throw new Error(`REQUIRE_DB=1, aber die Test-DB ist nicht erreichbar: ${e.message}`);
-    t.skip('Test-DB nicht erreichbar'); return;
-  }
+  if (!await dbOderSkip(t, _req, { migrieren: false })) return;
 
   const BLANK = `g${process.pid}`;        // so fragt der Aufrufer
   const MITV  = `${BLANK}-1`;             // so legt clients/bricklink.ts es ab
@@ -89,7 +85,7 @@ test('der Katalog antwortet gleich, egal wie die Nummer geschrieben ist', { conc
     const { fetchAndCachePrice } = _req('jobs/priceJob.js');
     const { fetchPrice } = _req('src/finanzen/financeCalc.js');
 
-    // Gegenprobe: in src/sets/setNummer.ts das mitVersion() aus katalogEintrag()
+    // Gegenprobe: in src/infra/setNummer.ts das mitVersion() aus katalogEintrag()
     // entfernt -> die Zeile mit „ohne Versionsanhang" wird rot.
     for (const nummer of [BLANK, MITV]) {
       abrufe = [];
@@ -149,12 +145,12 @@ test('die Schreibweise wird nirgends noch einmal ausgerechnet', () => {
   // Normalisierer zuletzt noch absichtlich doppelt, mit zwei Begruendungen:
   // ein Import baue einen Kreis, und set-add-exists-db.test.js fuehre beide
   // Ruempfe ISOLIERT aus. Beides galt nicht mehr — der Kreis war zwischen
-  // JENEN BEIDEN Modulen, und src/sets/setNummer.ts ist ein Blatt; die Isolation
+  // JENEN BEIDEN Modulen, und src/infra/setNummer.ts ist ein Blatt; die Isolation
   // war eine Eigenart des Tests, der den Rumpf per `new Function`
   // heraussschnitt, obwohl beide Funktionen exportiert sind. Er vergleicht
   // sie jetzt als Funktionen, und beide reichen an normalisiereSetNummer()
   // durch.
-  assert.deepEqual(eigene, ['src/sets/setNummer.ts'],
+  assert.deepEqual(eigene, ['src/infra/setNummer.ts'],
     'Die Schreibweise wird woanders noch einmal ausgerechnet — genau so laufen ' +
     'zwei Stellen auseinander, die dasselbe meinen');
   assert.deepEqual(vorpruefer, ['src/katalog/repository/katalogCache.ts'],

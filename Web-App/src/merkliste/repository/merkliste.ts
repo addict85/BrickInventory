@@ -1,7 +1,7 @@
 import * as db from '../../../db/database';
 
 export function merkeSetVor(userId: number, sn: string, c: string, seit: Date | string | null) {
-  return db.get(`INSERT INTO wanted (user_id, set_number, condition, created_at)
+  return db.get<{ war_neu: boolean }>(`INSERT INTO wanted (user_id, set_number, condition, created_at)
      VALUES ($1,$2,$3, COALESCE($4::timestamptz, NOW()))
      ON CONFLICT (user_id, set_number, condition) DO UPDATE
         SET condition = wanted.condition
@@ -54,7 +54,7 @@ export function merklisteImBlickfeld(werte: unknown[], pWaehrung: string, wo: st
 }
 
 export function merklisteFuerExport(uid: number) {
-  return db.all(`SELECT w.set_number,
+  return db.all<Record<string, unknown>>(`SELECT w.set_number,
             w.condition,
             TO_CHAR(w.created_at AT TIME ZONE 'UTC','YYYY-MM-DD') AS created_at
        FROM wanted w

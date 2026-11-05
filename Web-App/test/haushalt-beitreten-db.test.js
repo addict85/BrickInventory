@@ -25,6 +25,7 @@ const ROOT = path.join(__dirname, '..');
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
 const _req = require('./helpers/sources').buildAndRequire();
+const { dbOderSkip } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
 const db = _req('db/database.js');
 const bcrypt = require(path.join(ROOT, 'node_modules', 'bcryptjs'));
@@ -33,14 +34,7 @@ const PASS = 'eigenes-Passwort-1';
 const HAUPT = `beitritt_haupt_${process.pid}`, KIND = `beitritt_kind_${process.pid}`, HAUPT2 = `beitritt_haupt2_${process.pid}`;
 
 test('Haushalt beitreten', { concurrency: 1 }, async (t) => {
-  try { await db.initSchema(); }
-  catch (e) {
-    if (process.env.REQUIRE_DB === '1')
-      throw new Error(`REQUIRE_DB=1, aber die Test-DB ist nicht erreichbar: ${e.message}`);
-    t.skip('Test-DB nicht erreichbar'); return;
-  }
-  const c = await db.pool.connect();
-  try { await _req('db/migrate.js').runMigrations(c); } finally { c.release(); }
+  if (!await dbOderSkip(t, _req)) return;
   await db.run('DELETE FROM users WHERE username = ANY($1)', [[HAUPT, KIND, HAUPT2]]);
   const hash = await bcrypt.hash(PASS, 4);
   const anlegen = async (n) => (await db.get(`INSERT INTO users (username, email, password_hash, is_active, email_verified)

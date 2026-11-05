@@ -1,4 +1,4 @@
-import type { Request, Response } from 'express';
+import type { Request, Response, NextFunction } from 'express';
 // Zuerst: Ein ungültiger Wert beendet den Start mit Meldung, bevor ein Modul ihn liest.
 import { konfig } from './startup/konfigPruefen';
 // Protokoll zuerst: Ab hier ist jede console-Zeile eine JSON-Zeile und geht
@@ -13,7 +13,9 @@ import session from 'express-session';
 import compression from 'compression';
 import connectPgSimple from 'connect-pg-simple';
 import * as db from './db/database';
-import { fehlertext, logAndContinue, meldeUndWeiter, fehlerAntwort, meldeUndLiefere } from './src/infra/httpError';
+import { fehlertext, logAndContinue, meldeUndWeiter, meldeUndLiefere } from './src/infra/fehler';
+import { fehlerAntwort, unbekannterApiPfad } from './src/infra/httpAntwort';
+import { fehlerText, antwortSprache } from './src/infra/fehlerTexte';
 import { startVerbote } from './src/infra/konfig';
 import { hinweisOhneBasisUrl } from './src/infra/basisUrl';
 import { sitzungsKeksName, sitzungsKeksOptionen } from './src/infra/sitzungsKeks';
@@ -26,7 +28,7 @@ import { sitzungsVersionPruefen } from './src/konto/http/sitzungsPruefung';
 import { antwortAufDateiFehler, liefereDatei, sendeDatei } from './src/infra/dateiAusliefern';
 import { cdnFuerFehlendesBild } from './src/katalog/bilder/bildNachschlagen';
 import { bildFreigegeben } from './src/katalog/bilder/bildBlickfeld';
-import { aktuellerStartZustand, oeffentlicherStartZustand } from './src/infra/startZustand';
+import { aktuellerStartZustand, oeffentlicherStartZustand } from './src/auftraege/startZustand';
 import { merkeAnfrage } from './src/infra/anfrageKonto';
 import { proxyVertrauen, proxyHinweis } from './src/infra/proxyVertrauen';
 import { nurEigeneHerkunft, nurEigenerHost } from './src/infra/herkunft';
@@ -38,7 +40,7 @@ import { safeDataPath } from './src/infra/datenPfad';
 import { generateThumb } from './src/katalog/bilder/thumbs';
 import { closeAllSse } from './src/infra/sseRegistry';
 import { renderIndexHtml, startStilHash } from './src/konto/indexHtml';
-import { meldeSmtpAltlast } from './src/infra/mailer';
+import { meldeSmtpAltlast } from './src/mail/mailer';
 import { meldeUngueltigeAdressen, meldeAusstehendeAdressen } from './src/konto/konten';
 import { horcheAufTokenWiderruf } from './src/konto/auth';
 import * as pgNotify from './db/pgNotify';
@@ -59,8 +61,7 @@ process.on('unhandledRejection', (reason: unknown) => {
   console.error('[unhandledRejection] Unhandled promise rejection:', fehlertext(reason));
 });
 process.on('uncaughtException', (err) => {
-  // Danach ist der Prozesszustand ungewiss (halb offene Transaktionen):
-  // beenden; den Neustart übernimmt Docker (restart: unless-stopped).
+  // Der Zustand ist danach ungewiss (halb offene Transaktionen); den Neustart übernimmt Docker.
   console.error('[uncaughtException] Uncaught exception:', err.stack || err.message);
   void leereProtokoll();
   setTimeout(() => process.exit(1), 500).unref();
@@ -88,30 +89,82 @@ function sitzungsGeheimnis(): string {
   return konfig().sessionSecret!;
 }
 
+/** Die Abschnitte stehen in der Reihenfolge der Middleware. */
 function baueApp(): express.Express {
-const app  = express();
-// Verrät nur, womit der Server gebaut ist — wer sucht, soll es nicht geschenkt bekommen.
-app.disable('x-powered-by');
-// Vor dem ersten app.use: Ein /API/… träfe sonst dieselbe Route, aber keinen Vertragseintrag.
-app.set('case sensitive routing', true);
+  const app = express();
+  // Verrät nur, womit der Server gebaut ist — wer sucht, soll es nicht geschenkt bekommen.
+  app.disable('x-powered-by');
+  // Vor dem ersten app.use: Ein /API/… träfe sonst dieselbe Route, aber keinen Vertragseintrag.
+  app.set('case sensitive routing', true);
+  grundschutz(app);
+  sitzung(app);
+  dateienUndBilder(app);
+  apiRouten(app);
+  rueckfaelle(app);
+  return app;
+}
 
-// Gzip/Brotli für alles ab 1 KB; index.html schrumpft um rund 80 %.
-app.use(compression({
-  level: 6,
-  threshold: 1024,
-  filter: (req, res) => {
-    // SSE-Ströme NICHT komprimieren — sie müssen sofort hinaus. includes() statt
-    // Gleichheit, weil OkHttp `text/event-stream, */*` schickt.
-    if (String(req.headers.accept || '').includes('text/event-stream')) return false;
-    if (String(res.getHeader('Content-Type') || '').includes('text/event-stream')) return false;
-    return compression.filter(req, res);
+function grundschutz(app: express.Express): void {
+  // Gzip/Brotli für alles ab 1 KB; index.html schrumpft um rund 80 %.
+  app.use(compression({
+    level: 6,
+    threshold: 1024,
+    filter: (req, res) => {
+      // SSE-Ströme NICHT komprimieren — sie müssen sofort hinaus. includes() statt
+      // Gleichheit, weil OkHttp `text/event-stream, */*` schickt.
+      if (String(req.headers.accept || '').includes('text/event-stream')) return false;
+      if (String(res.getHeader('Content-Type') || '').includes('text/event-stream')) return false;
+      return compression.filter(req, res);
+    }
+  }));
+
+  // Handgerollt statt helmet: keine zusätzliche Abhängigkeit, und die CSP muss
+  // ohnehin auf die App zugeschnitten sein.
+  app.use(sicherheitsKoepfe);
+
+  // Das Konto der Anfrage für Zähler tief unten (src/katalog/apiKontingent.ts).
+  app.use(merkeAnfrage);
+
+  // Sonst glaubt Express X-Forwarded-Proto nie und setzt kein secure-Cookie (src/infra/proxyVertrauen.ts).
+  if (konfig().produktion) {
+    app.set('trust proxy', proxyVertrauen(konfig().trustProxy));
   }
-}));
+  // Auch ausserhalb der Produktion: Er meldet ein verworfenes X-Forwarded-For.
+  app.use(proxyHinweis(konfig().trustProxy));
 
-// ── Security-Header ───────────────────────────────────────────────────────────
-// Handgerollt statt helmet: keine zusätzliche Abhängigkeit, und die CSP muss
-// ohnehin auf die App zugeschnitten sein.
-app.use((req, res, next) => {
+  // `//api/…` fiele sonst bis zum SPA-Catch-all durch und bekäme index.html mit 200.
+  // Ausführlich: docs/begruendungen/server.ts.md#abschnitt-3
+  app.use((req, _res, next) => {
+    if (req.url.startsWith('//') || req.url.includes('//', 1)) {
+      const [pathTeil, ...rest] = req.url.split('?');
+      const pathPart = pathTeil ?? '';
+      const cleaned = pathPart.replace(/\/{2,}/g, '/');
+      if (cleaned !== pathPart) req.url = cleaned + (rest.length ? '?' + rest.join('?') : '');
+    }
+    next();
+  });
+
+  app.use(nurEigenerHost);
+  app.use(nurEigeneHerkunft);
+  // no-store als Vorgabe: Antworten tragen Konten, Gutscheine und Tokens. Was bewusst
+  // gecacht wird (img-proxy, Design), setzt seinen Kopf selbst und überschreibt ihn.
+  app.use('/api', (_req, res, next) => {
+    res.setHeader('Cache-Control', 'no-store');
+    res.setHeader('X-Api-Version', String(API_VERSION));
+    res.setHeader('X-Api-Min-App', String(API_MIN_APP));
+    next();
+  }, appFassungPruefen);
+
+  // Eine Kennung je Anfrage für ihre Logzeilen; die des Proxys nur, wenn sie src/infra/protokoll.ts besteht.
+  app.use((req, res, next) => {
+    const rid = anfrageKennung(req.headers['x-request-id']);
+    res.setHeader('X-Request-Id', rid);
+    anfrageKontext.run({ rid }, () => next());
+  });
+
+}
+
+function sicherheitsKoepfe(req: Request, res: Response, next: NextFunction): void {
   res.setHeader('X-Frame-Options', 'SAMEORIGIN');
   res.setHeader('X-Content-Type-Options', 'nosniff');
   res.setHeader('Referrer-Policy', 'same-origin');
@@ -120,9 +173,8 @@ app.use((req, res, next) => {
   res.setHeader('Cross-Origin-Opener-Policy', 'same-origin');
   res.setHeader('Cross-Origin-Resource-Policy', 'same-origin');
 
-  // HSTS nur über eine verschlüsselte Verbindung. req.secure, weil Express
-  // X-Forwarded-Proto nur von einem vertrauten Proxy übernimmt; den rohen Kopf
-  // kann jeder Client schicken.
+  // HSTS nur über TLS. req.secure, weil Express X-Forwarded-Proto nur von einem
+  // vertrauten Proxy übernimmt; den rohen Kopf kann jeder Client schicken.
   // Ausführlich: docs/begruendungen/server.ts.md#port-uebertls
   const ueberTls = req.secure;
   const hstsAlter = konfig().hstsMaxAge;   // Vorgabe ein Jahr, 0 schaltet ab
@@ -132,8 +184,7 @@ app.use((req, res, next) => {
 
   res.setHeader('Content-Security-Policy', [
     "default-src 'self'",
-    // Ohne 'unsafe-inline': Alle Handler laufen über den Dispatcher in
-    // js/11-actions.js, die CSP ist damit eine echte zweite Verteidigungslinie.
+    // Ohne 'unsafe-inline': Alle Handler laufen über js/11-actions.js.
     "script-src 'self'",
     // Stile setzt js/00-stile.js per CSSOM; inline nur das Startgerüst, per Hash.
     `style-src 'self'${startStilHash() ? ' ' + startStilHash() : ''}`,
@@ -151,90 +202,66 @@ app.use((req, res, next) => {
     "object-src 'none'",
   ].join('; '));
   next();
-});
-
-// Das Konto der Anfrage für Zähler tief unten (src/katalog/apiKontingent.ts).
-app.use(merkeAnfrage);
-
-// Sonst glaubt Express X-Forwarded-Proto nie und setzt kein secure-Cookie (src/infra/proxyVertrauen.ts).
-if (konfig().produktion) {
-  app.set('trust proxy', proxyVertrauen(konfig().trustProxy));
 }
-// Auch ausserhalb der Produktion: Er meldet ein verworfenes X-Forwarded-For.
-app.use(proxyHinweis(konfig().trustProxy));
 
-// Doppelte Schrägstriche zusammenfassen: `//api/…` fiele sonst bis zum
-// SPA-Catch-all durch und bekäme index.html mit Status 200.
-// Ausführlich: docs/begruendungen/server.ts.md#abschnitt-3
-app.use((req, _res, next) => {
-  if (req.url.startsWith('//') || req.url.includes('//', 1)) {
-    const [pathTeil, ...rest] = req.url.split('?');
-    const pathPart = pathTeil ?? '';
-    const cleaned = pathPart.replace(/\/{2,}/g, '/');
-    if (cleaned !== pathPart) req.url = cleaned + (rest.length ? '?' + rest.join('?') : '');
-  }
-  next();
-});
+function sitzung(app: express.Express): void {
+  // In PostgreSQL, damit Sitzungen einen Neustart überleben; die Tabelle legt das Schema an.
+  const PgSession = connectPgSimple(session);
+  const sitzungsSpeicher = new PgSession({
+    pool: db.pool,
+    tableName: 'user_sessions',
+    createTableIfMissing: false,
+    pruneSessionInterval: 60 * 15,
+    // Nach ein paar Stunden Leerlauf endet eine Webapp-Sitzung.
+    // Ausführlich: docs/begruendungen/server.ts.md#sitzungsspeicher
+    ttl: SITZUNG_LEERLAUF_SEK,
+    errorLog: (err) => {
+      if (!err.message?.includes('timeout') && !err.message?.includes('terminated')) {
+        console.error('[session-store]', err.message);
+      }
+    },
+  });
 
-app.use(nurEigenerHost);
-app.use(nurEigeneHerkunft);
-// no-store als Vorgabe: Antworten tragen Konten, Gutscheine und Tokens. Was bewusst
-// gecacht wird (img-proxy, Design), setzt seinen Kopf selbst und überschreibt ihn.
-app.use('/api', (_req, res, next) => {
-  res.setHeader('Cache-Control', 'no-store');
-  res.setHeader('X-Api-Version', String(API_VERSION));
-  res.setHeader('X-Api-Min-App', String(API_MIN_APP));
-  next();
-}, appFassungPruefen);
+  // Gedrosselt geschrieben (src/konto/sitzungsBeruehrung.ts).
+  drossleBeruehren(sitzungsSpeicher);
 
-// Eine Kennung je Anfrage für ihre Logzeilen; die des Proxys nur, wenn sie src/infra/protokoll.ts besteht.
-app.use((req, res, next) => {
-  const rid = anfrageKennung(req.headers['x-request-id']);
-  res.setHeader('X-Request-Id', rid);
-  anfrageKontext.run({ rid }, () => next());
-});
+  app.use(session({
+    store: sitzungsSpeicher,
+    secret: sitzungsGeheimnis(),
+    resave: false,
+    saveUninitialized: false,
+    name: sitzungsKeksName(),
+    cookie: sitzungsKeksOptionen(),
+  }));
+  app.use(sitzungsVersionPruefen());
+  app.use(sitzungsHoechstdauer());
+}
 
-// In PostgreSQL, damit Sitzungen einen Neustart überleben; die Tabelle legt das Schema an.
-const PgSession = connectPgSimple(session);
-const sitzungsSpeicher = new PgSession({
-  pool: db.pool,
-  tableName: 'user_sessions',
-  createTableIfMissing: false,
-  pruneSessionInterval: 60 * 15,
-  // Webapp-Sitzungen sollen nach ein paar Stunden Leerlauf enden; die Vorgabe
-  // der Bibliothek (ein Tag) war nie eine Entscheidung.
-  // Ausführlich: docs/begruendungen/server.ts.md#sitzungsspeicher
-  ttl: SITZUNG_LEERLAUF_SEK,
-  errorLog: (err) => {
-    if (!err.message?.includes('timeout') && !err.message?.includes('terminated')) {
-      console.error('[session-store]', err.message);
-    }
-  },
-});
+function dateienUndBilder(app: express.Express): void {
+  app.use(datenDateien);
+  app.use(zertifikatRouter);
+  app.use(wellKnownRouter);
+  registerImgProxy(app);
 
-// Gedrosselt geschrieben (src/konto/sitzungsBeruehrung.ts).
-drossleBeruehren(sitzungsSpeicher);
+  // EINE authentifizierte Route für alle Bilder: Eigene Uploads dürfen nicht
+  // ohne Anmeldung hinaus.
+  // Ausführlich: docs/begruendungen/server.ts.md#abschnitt-4
+  app.get('/images/*pfad', liefereBild);
+  app.use(express.static(PUBLIC_DIR, {
+    // `/` geht über den Renderer (src/konto/indexHtml.ts), nicht als Datei.
+    index: false,
+    // Gestempelte Assets (?v=) lange cachen; index.html no-cache, damit Deploys sofort gelten.
+    maxAge: '7d',
+    setHeaders: (res, filePath) => {
+      if (filePath.endsWith('index.html')) {
+        res.setHeader('Cache-Control', 'no-cache');
+      }
+    },
+  }));
 
-app.use(session({
-  store: sitzungsSpeicher,
-  secret: sitzungsGeheimnis(),
-  resave: false,
-  saveUninitialized: false,
-  name: sitzungsKeksName(),
-  cookie: sitzungsKeksOptionen(),
-}));
-app.use(sitzungsVersionPruefen());
-app.use(sitzungsHoechstdauer());
+}
 
-app.use(datenDateien);
-app.use(zertifikatRouter);
-app.use(wellKnownRouter);
-registerImgProxy(app);
-
-// EINE authentifizierte Route für alle Bilder: Eigene Uploads dürfen nicht
-// ohne Anmeldung hinaus.
-// Ausführlich: docs/begruendungen/server.ts.md#abschnitt-4
-app.get('/images/*pfad', async (req: WildcardRequest, res: Response) => {
+async function liefereBild(req: WildcardRequest, res: Response) {
   const imgUserId = await resolveUserId(req);
   if (!imgUserId) return res.status(401).send('Nicht angemeldet');
 
@@ -258,16 +285,14 @@ app.get('/images/*pfad', async (req: WildcardRequest, res: Response) => {
       return antwortAufDateiFehler(res, err);
     }
 
-    // Fehlt eine Vorschau, geht das danebenliegende Original sofort hinaus,
-    // statt auf die Erzeugung zu warten.
+    // Fehlt die Vorschau, geht sofort das Original hinaus, statt auf sie zu warten.
     const rohPfad = segments.join('/');
     const thumbTreffer = /_thumb(\.[^.]+)$/.exec(rohPfad);
     if (thumbTreffer) {
       const originalSegs = rohPfad.replace(/_thumb(\.[^.]+)$/, '$1').split('/').filter(Boolean);
       const originalPfad = safeDataPath('images', originalSegs);
       if (originalPfad && fs.existsSync(originalPfad)) {
-        // Die Vorschau im Hintergrund nachziehen: Scheiterte sie beim Erfassen, gäbe
-        // es sonst keinen zweiten Anlauf.
+        // Nachziehen: Scheiterte sie beim Erfassen, gäbe es sonst keinen zweiten Anlauf.
         // Ausführlich: docs/begruendungen/server.ts.md#lookupcdnformissingimage-webpfadoriginal
         const webPfadOriginal = '/images/' + originalSegs.join('/');
         setImmediate(() => {
@@ -278,8 +303,7 @@ app.get('/images/*pfad', async (req: WildcardRequest, res: Response) => {
       }
     }
 
-    // Lokale Datei fehlt → über den Bild-Proxy zur CDN-Adresse aus dem Katalog.
-    // Heilt Web und Android ohne Aufräumen in der Datenbank.
+    // Fehlt die Datei, über den Bild-Proxy zur CDN-Adresse: heilt ohne Aufräumen in der DB.
     const webPath = '/images/' + segments.join('/');
     const cdn = await cdnFuerFehlendesBild(webPath);
     if (cdn && !res.headersSent) {
@@ -287,95 +311,80 @@ app.get('/images/*pfad', async (req: WildcardRequest, res: Response) => {
     }
     antwortAufDateiFehler(res, err);
   });
-});
+}
 
-app.use(express.static(PUBLIC_DIR, {
-  // `index: false`: Sonst lieferte express.static die index.html für `/`
-  // selbst aus, am Renderer (src/konto/indexHtml.ts) vorbei.
-  index: false,
-  // Assets mit ?v=-Stempel dürfen lange gecacht werden; index.html bekommt
-  // no-cache, damit Deploys sofort sichtbar sind.
-  maxAge: '7d',
-  setHeaders: (res, filePath) => {
-    if (filePath.endsWith('index.html')) {
-      res.setHeader('Cache-Control', 'no-cache');
-    }
-  },
-}));
-
-// Direkt hier statt in einem Router: Beide werden gefragt, während Schema und
-// Migrationen noch laufen und der /api/v1-Router noch nicht steht.
-
-app.use('/api/v1', vertragPruefen);
-app.get('/api/v1/startup-status', async (req, res) => {
-  res.set('Cache-Control', 'no-store, no-cache, must-revalidate');
-  res.set('Pragma', 'no-cache');
-  res.set('Expires', '0');
-  const angemeldet = !!(await resolveUserId(req).catch(logAndContinue('startup-status:anmeldung')));
-  res.json(oeffentlicherStartZustand(await aktuellerStartZustand(), angemeldet));
-});
-
-// Ohne Anmeldung (compose.yaml): anonym nur der Status; live = Prozess, ready = Datenbank.
-app.get('/api/v1/health/live', (_req, res) => { res.json({ status: 'ok' }); });
-app.get('/api/v1/health/ready', async (_req, res) => {
-  const bereit = await db.datenbankAntwortet();
-  res.status(bereit ? 200 : 503).json({ status: bereit ? 'ok' : 'unavailable' });
-});
-app.get('/api/v1/health', async (req, res) => {
-  // Klemmt die Datenbank, bleibt der Bericht erreichbar — nur ohne Details.
-  const verwalter = !!(await resolveUserId(req).catch(logAndContinue('health:anmeldung'))) && istVerwalter(req);
-  const start = await aktuellerStartZustand();
-  res.json({
-    status: start.ready ? 'ok' : 'starting',
-    ...(verwalter ? { startup: start, db_pool: db.getPoolStats(), uptime_seconds: Math.floor(process.uptime()) } : {}),
+function apiRouten(app: express.Express): void {
+  app.use('/api/v1', vertragPruefen);
+  // Direkt hier: Gefragt wird, bevor Schema, Migrationen und /api/v1-Router stehen.
+  app.get('/api/v1/startup-status', async (req, res) => {
+    res.set('Cache-Control', 'no-store, no-cache, must-revalidate');
+    res.set('Pragma', 'no-cache');
+    res.set('Expires', '0');
+    const angemeldet = !!(await resolveUserId(req).catch(logAndContinue('startup-status:anmeldung')));
+    res.json(oeffentlicherStartZustand(await aktuellerStartZustand(), angemeldet));
   });
-});
 
-// EIN Eingang: anmeldungAmEingang verlangt Sitzung oder Token für alles unter
-// /api/v1 ausser den ausdrücklich öffentlichen Pfaden. Der Schutz je Route
-// bleibt als zweite Linie.
-// Ausführlich: docs/begruendungen/server.ts.md#abschnitt-7
-app.use('/api/v1',          anmeldungAmEingang);
-// Rümpfe erst nach der Anmeldung lesen: Unangemeldet gibt es nur 16 KB (rumpfLesen).
-app.use('/api/v1',          rumpfLesen);
-app.use('/api/v1',          idempotenz);
-app.use('/api/v1',          apiV1Router);
-app.use('/api/v1/auth',     authRouter);
+  // Ohne Anmeldung (compose.yaml): anonym nur der Status; live = Prozess, ready = Datenbank.
+  app.get('/api/v1/health/live', (_req, res) => { res.json({ status: 'ok' }); });
+  app.get('/api/v1/health/ready', async (req, res) => {
+    if (await db.datenbankAntwortet()) return void res.json({ status: 'ok' });
+    res.status(503).json({ success: false, code: 'datenbank_nicht_erreichbar', status: 'unavailable',
+      error: fehlerText('datenbank_nicht_erreichbar', antwortSprache(req)) });
+  });
+  app.get('/api/v1/health', async (req, res) => {
+    // Klemmt die Datenbank, bleibt der Bericht erreichbar — nur ohne Details.
+    const verwalter = !!(await resolveUserId(req).catch(logAndContinue('health:anmeldung'))) && istVerwalter(req);
+    const start = await aktuellerStartZustand();
+    res.json({
+      status: start.ready ? 'ok' : 'starting',
+      ...(verwalter ? { startup: start, db_pool: db.getPoolStats(), uptime_seconds: Math.floor(process.uptime()) } : {}),
+    });
+  });
 
-// Links aus einer E-Mail: Erst ein Knopf auf der Seite wirkt (POST), sonst
-// bestätigte schon der Link-Scanner des Mailanbieters eine fremde Adresse.
-app.get(['/verify', '/reset-password'], async (_req, res) => {
-  // Renderer statt sendFile, sonst gingen die Assets ohne Stempel hinaus.
-  res.set('Cache-Control', 'no-store');
-  try {
-    res.type('html').send(await renderIndexHtml());
-  } catch {
-    res.sendFile('index.html', { root: PUBLIC_DIR });
-  }
-});
+  // EIN Eingang: anmeldungAmEingang verlangt Sitzung oder Token für alles unter
+  // /api/v1 ausser den ausdrücklich öffentlichen Pfaden. Der Schutz je Route
+  // bleibt als zweite Linie.
+  // Ausführlich: docs/begruendungen/server.ts.md#abschnitt-7
+  app.use('/api/v1',          anmeldungAmEingang);
+  // Rümpfe erst nach der Anmeldung lesen: Unangemeldet gibt es nur 16 KB (rumpfLesen).
+  app.use('/api/v1',          rumpfLesen);
+  app.use('/api/v1',          idempotenz);
+  app.use('/api/v1',          apiV1Router);
+  app.use('/api/v1/auth',     authRouter);
+}
 
-// VOR dem SPA-Catch-all: Sonst bekäme ein Tippfehler im API-Pfad die
-// index.html mit 200. Ohne Rücksicht auf die Schreibung, die Routen davor achten darauf.
-app.use((req, res, next) => /^\/api(\/|$)/i.test(req.path)
-  ? res.status(404).json({ success: false, error: 'Endpoint nicht gefunden' }) : next());
+function rueckfaelle(app: express.Express): void {
+  // Links aus einer E-Mail: Erst ein Knopf auf der Seite wirkt (POST), sonst
+  // bestätigte schon der Link-Scanner des Mailanbieters eine fremde Adresse.
+  app.get(['/verify', '/reset-password'], async (_req, res) => {
+    // Renderer statt sendFile, sonst gingen die Assets ohne Stempel hinaus.
+    res.set('Cache-Control', 'no-store');
+    try {
+      res.type('html').send(await renderIndexHtml());
+    } catch {
+      res.sendFile('index.html', { root: PUBLIC_DIR });
+    }
+  });
 
-// '{*splat}' statt '/*splat': Express 5 verlangt einen Namen, und die
-// naheliegende Form träfe die Startseite `/` nicht.
-// Ausführlich: docs/begruendungen/server.ts.md#abschnitt-8
-app.get('/{*splat}', async (req, res) => {
-  res.set('Cache-Control', 'no-cache');
-  try {
-    res.type('html').send(await renderIndexHtml(req.session?.userId));
-  } catch {
-    // Fällt das Rendern aus, geht die Datei unverändert hinaus —
-    // js/00-theme-boot.js übernimmt dann.
-    res.sendFile('index.html', { root: PUBLIC_DIR });
-  }
-});
+  // VOR dem SPA-Catch-all: Sonst bekäme ein Tippfehler im API-Pfad die
+  // index.html mit 200. Ohne Rücksicht auf die Schreibung, die Routen davor achten darauf.
+  app.use((req, res, next) => /^\/api(\/|$)/i.test(req.path) ? unbekannterApiPfad(req, res) : next());
 
-// Für Fehler, die an den Route-Catches vorbeikommen: loggt voll, antwortet generisch.
-app.use(fehlerAntwort);
-return app;
+  // '{*splat}' statt '/*splat': Express 5 verlangt einen Namen, und die
+  // naheliegende Form träfe die Startseite `/` nicht.
+  // Ausführlich: docs/begruendungen/server.ts.md#abschnitt-8
+  app.get('/{*splat}', async (req, res) => {
+    res.set('Cache-Control', 'no-cache');
+    try {
+      res.type('html').send(await renderIndexHtml(req.session?.userId));
+    } catch {
+      // Fällt das Rendern aus, geht die Datei unverändert hinaus; js/00-theme-boot.js übernimmt.
+      res.sendFile('index.html', { root: PUBLIC_DIR });
+    }
+  });
+
+  // Für Fehler, die an den Route-Catches vorbeikommen: loggt voll, antwortet generisch.
+  app.use(fehlerAntwort);
 }
 
 /** SSE-Ströme zuerst beenden: Sie enden nie von selbst und hielten close() auf.
@@ -401,8 +410,7 @@ async function herunterfahren(signal: string, httpServer: Server | null, jobs: b
       await new Promise<void>(resolve => httpServer.close(() => resolve()));
       console.log('[shutdown] keine offenen HTTP-Verbindungen mehr');
     }
-    // Laufende Aufträge halten an einer sicheren Stelle an und gehen zurück
-    // in die Tabelle; der nächste Start setzt sie fort.
+    // Laufende Aufträge halten sicher an und gehen zurück in die Tabelle.
     if (jobs) await stoppeJobs();
     await pgNotify.close().catch(logAndContinue('server:close'));
     await db.pool.end().catch(logAndContinue('server:end'));
@@ -415,8 +423,7 @@ async function herunterfahren(signal: string, httpServer: Server | null, jobs: b
   }
 }
 
-/** Ein Prozess je Rolle (ROLLE=web|jobs|beides). Beide migrieren; die Sperre
- * in initSchemaOnce lässt genau einen arbeiten. */
+/** Ein Prozess je Rolle (ROLLE=web|jobs|beides); initSchemaOnce lässt nur einen migrieren. */
 async function starte(): Promise<void> {
   const k = konfig();
   if (k.produktion) {

@@ -16,7 +16,7 @@ erreichen ist.
 Die Variable wurde an drei Stellen gelesen, jede mit eigener Schreibweise:
 
   routes/auth.ts    getBaseUrl()   — Links in Verifizierungs- und Reset-Mails
-  src/infra/mailer.ts   baueAlarmMail  — der Knopf „Set ansehen" in der Alarmmail
+  src/mail/mailer.ts   baueAlarmMail  — der Knopf „Set ansehen" in der Alarmmail
   routes/auth.ts    /qr-token      — die Adresse im QR-Code (neu)
 
 Alle drei mussten dasselbe wissen: Ein abschliessender Schraegstrich gehoert

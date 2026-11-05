@@ -2,13 +2,12 @@
  * Standarddesign aufblitzt.
  * Ausführlich: docs/begruendungen/src/konto/indexHtml.ts.md#abschnitt */
 import { konfig } from '../infra/konfig';
-import { meldeUndLiefere } from '../infra/httpError';
+import { meldeUndLiefere } from '../infra/fehler';
 import fs from 'fs';
 import { createHash } from 'crypto';
 import {  PUBLIC_DIR } from '../infra/appPaths';
 import path from 'path';
-import { DESIGNS, designFuer, nutzerEinstellungen } from './settings';
-import { getGlobalSetting } from './settings';
+import { DESIGNS, designFuer, nutzerEinstellungen, getGlobalSetting } from '../einstellungen/settings';
 import { stempleAssetsGecacht } from '../infra/assetStempel';
 
 const INDEX_PATH = path.join(PUBLIC_DIR, 'index.html');

@@ -24,6 +24,7 @@ process.env.SESSION_SECRET = 'test-secret-lang-genug-fuer-die-pruefung';
 
 const ROOT = path.join(__dirname, '..');
 const _req = require('./helpers/sources').buildAndRequire();
+const { dbOderSkip } = require('./helpers/db');
 const { routerEinhaengungen } = require('./helpers/sources');
 const { haeltSet, haeltTeil, haeltFigur } = require('./helpers/bestand');
 const { apiRouten } = require(path.join(ROOT, 'scripts', 'kotlin-vertrag.js'));
@@ -55,14 +56,7 @@ const ZUSATZ = new Map([
 const MIN_GEPRUEFT = 58;
 
 test('die Antworten der App-Routen halten ihren Vertrag', { concurrency: 1, timeout: 120_000 }, async (t) => {
-  try { await db.initSchema(); }
-  catch (e) {
-    if (process.env.REQUIRE_DB === '1')
-      throw new Error(`REQUIRE_DB=1, aber die Test-DB ist nicht erreichbar: ${e.message}`);
-    t.skip('Test-DB nicht erreichbar'); return;
-  }
-  const client = await db.pool.connect();
-  try { await _req('db/migrate.js').runMigrations(client); } finally { client.release(); }
+  if (!await dbOderSkip(t, _req)) return;
 
   await db.run('DELETE FROM users WHERE username = $1', [NAME]);
   const uid = (await db.get(`INSERT INTO users (username, email, password_hash, is_admin, is_active, email_verified)

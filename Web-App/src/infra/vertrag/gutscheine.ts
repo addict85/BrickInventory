@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { type Route, zeit, bestaetigt } from './grund';
+import { type Route, zeit, bestaetigt, OHNE_RUMPF, ZAHL, TEXT } from './grund';
 import { GenericResponse } from './gemeinsam';
 
 export const GelesenerGutschein = z.looseObject({
@@ -68,11 +68,11 @@ export const PdfFreigabe = z.looseObject({
 
 export const routen = {
   'GET /api/v1/vouchers': { antwort: GutscheinListe },
-  'POST /api/v1/vouchers': { antwort: GutscheinAntwort },
-  'PUT /api/v1/vouchers/:id': { antwort: GutscheinAntwort },
+  'POST /api/v1/vouchers': { eingabe: z.looseObject({ number: ZAHL, pin: ZAHL.nullable().optional(), amount: ZAHL.nullable().optional(), currency: TEXT(40).nullable().optional() }), antwort: GutscheinAntwort },
+  'PUT /api/v1/vouchers/:id': { eingabe: z.looseObject({ number: ZAHL.optional(), pin: ZAHL.nullable().optional(), amount: ZAHL.optional(), currency: TEXT(40).nullable().optional() }), antwort: GutscheinAntwort },
   'DELETE /api/v1/vouchers/:id': { antwort: GenericResponse, ...bestaetigt() },
-  'POST /api/v1/vouchers/pdf': { antwort: GutscheinAntwort },
-  'POST /api/v1/vouchers/:id/guthaben': { antwort: GuthabenAntwort },
+  'POST /api/v1/vouchers/pdf': { formular: true, antwort: GutscheinAntwort },
+  'POST /api/v1/vouchers/:id/guthaben': { eingabe: OHNE_RUMPF, antwort: GuthabenAntwort },
   'POST /api/v1/vouchers/:id/klartext': { antwort: GutscheinKlartext, ...bestaetigt(), geheim: true },
   'POST /api/v1/vouchers/:id/pdf-freigabe': { antwort: PdfFreigabe, ...bestaetigt(), geheim: true },
   'POST /api/v1/vouchers/export/pdf-freigabe': { antwort: PdfFreigabe, ...bestaetigt(), geheim: true },

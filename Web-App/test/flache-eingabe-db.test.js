@@ -7,6 +7,13 @@
  *   A  in eingabePruefen() ohne Rückfall auf FLACHE_EINGABE (Routen ohne
  *      Schema laufen durch) → rot: beide Tests
  *   B  FLACHE_EINGABE als z.record(z.string(), z.unknown()) → rot: beide Tests
+ *   C  (05.11.2026) Eingabeschema von PUT /api/v1/sets/:setNumber entfernt
+ *      → rot: „jede schreibende Route hat ein Eingabeschema"
+ *   E  (05.11.2026) in alsSchema (validate.ts) die Objektprüfung gestrichen
+ *      → rot: „jede schreibende Route weist ein Objekt …" (wanted …/uebernehmen:
+ *      quantity {"$ne":1} galt als „fehlt" und wurde 1)
+ *   D  (05.11.2026) OHNE_RUMPF als z.looseObject({}) → rot: „jede schreibende
+ *      Route weist ein Objekt …" für alle Routen ohne Rumpf
  *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL.
  */
@@ -45,14 +52,23 @@ test('verschachtelte Werte an schreibenden Routen', { concurrency: 1 }, async (t
     assert.equal((await sende('POST', '/api/v1/storage/locations', { name: 'Kiste 1' })).status, 200, 'Testdaten: ein Text geht');
   });
 
-  await t.test('jede schreibende Route ohne eigenes Schema weist ein Objekt ab', async () => {
-    const ohneSchema = Object.entries(VERTRAG).filter(([k, r]) => !k.startsWith('GET ') && !r.eingabe && !r.formular);
-    assert.ok(ohneSchema.length >= 50, `nur ${ohneSchema.length} Routen ohne Schema`);
+  await t.test('jede schreibende Route hat ein Eingabeschema', () => {
+    // Einzige Ausnahme: der Strom, dessen Rumpf die Route selbst zerlegt.
+    const ohneSchema = Object.entries(VERTRAG).filter(([k, r]) => !k.startsWith('GET ') && !r.eingabe && !r.formular).map(([k]) => k);
+    assert.deepEqual(ohneSchema, ['POST /api/v1/sets/add-stream']);
+  });
+
+  await t.test('jede schreibende Route weist ein Objekt in einem ihrer Felder ab', async () => {
+    const routen = Object.entries(VERTRAG).filter(([k, r]) => !k.startsWith('GET ') && !r.formular);
+    assert.ok(routen.length >= 100, `nur ${routen.length} schreibende Routen`);
     const durch = [];
-    for (const [k] of ohneSchema) {
+    for (const [k, r] of routen) {
       const [methode, pfad] = k.split(' ');
-      const r = await sende(methode, pfad.replace(/:\w+/g, '1'), { feld: { $ne: 1 } });
-      if (r.status !== 400 || r.code !== 'eingabe_ungueltig') durch.push(`${k} → ${r.status} ${r.code}`);
+      // Das erste Feld, das laut Vertrag kein Objekt nimmt (passkey: `antwort` ist eins).
+      const form = r.eingabe?.shape ?? {};
+      const feld = Object.keys(form).find((f) => !form[f].safeParse({ $ne: 1 }).success) ?? 'feld';
+      const a = await sende(methode, pfad.replace(/:\w+/g, '1'), { [feld]: { $ne: 1 } });
+      if (a.status !== 400) durch.push(`${k} (${feld}) → ${a.status} ${a.code}`);
     }
     assert.deepEqual(durch, []);
   });

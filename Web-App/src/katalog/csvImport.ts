@@ -5,7 +5,7 @@ import path from 'path';
 import readline from 'readline';
 import type { Pool } from 'pg';
 import { istJa } from '../infra/validate';
-import { logAndContinue } from '../infra/httpError';
+import { logAndContinue } from '../infra/fehler';
 import { DATA_DIR } from '../infra/appPaths';
 import * as repo from './repository/csvTausch';
 

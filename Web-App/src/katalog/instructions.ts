@@ -2,10 +2,9 @@ import path from 'path';
 import fs from 'fs';
 import PDFDocument from 'pdfkit';
 import { INSTRUCTIONS_DIR } from '../infra/appPaths';
-import { downloadFile, scrapeInstructions, sleep, httpsGetRobust } from '../../clients/rebrickable';
-import * as brickset from '../../clients/brickset';
-import { meldeUndWeiter, fehlertext, logAndContinue, meldeUndLiefere } from '../infra/httpError';
-import { mitVersion, ohneVersion } from '../sets/setNummer';
+import { downloadFile, scrapeInstructions, sleep, httpsGetRobust, brickset } from './quellen';
+import { meldeUndWeiter, fehlertext, logAndContinue, meldeUndLiefere } from '../infra/fehler';
+import { mitVersion, ohneVersion } from '../infra/setNummer';
 import { pfadSegment } from '../infra/fremdeAdressen';
 import * as repo from './repository/anleitungen';
 
@@ -23,7 +22,7 @@ export function letzterAbrufWarExtern(): boolean { return _letzterAbrufWarExtern
 
 export async function anzahlAnleitungen(setNumber: string): Promise<number> {
   const r = await repo.zaehleAnleitungen(mitVersion(setNumber)).catch(meldeUndLiefere('anleitung:mitVersion', null));
-  return parseInt(r?.c) || 0;
+  return Number(r?.c) || 0;
 }
 
 export async function anleitungenZuSet(setNumber: string) {
@@ -106,7 +105,7 @@ export async function downloadSetInstructions(setNumber: string,
   _letzterAbrufWarExtern = true;   // ab hier wird wirklich gefragt
   try { instrList = await scrapeInstructions(n); } catch (e) { meldeUndWeiter('anleitungen:auslesen', e); }
   if (!instrList.length) {
-    const bsResult = await brickset.getInstructions(n).catch(() => ({ instructions: [], usesFallback: true }));
+    const bsResult = await brickset.getInstructions(n).catch(meldeUndLiefere('anleitungen:brickset', { instructions: [], usesFallback: true }));
     instrList = bsResult.instructions || [];
     // usesFallback: Brickset hat geantwortet, ohne Anleitung; false heisst
     // Kontingent erschöpft — dann in der Warteschlange bleiben.

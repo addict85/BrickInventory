@@ -1,5 +1,5 @@
 /**
- * Die Schreib-/Löschwege in src/konto/settings.ts und der Auslöser in
+ * Die Schreib-/Löschwege in src/einstellungen/settings.ts und der Auslöser in
  * src/auftraege/repository/laufzustand.ts (seit Migration 0063 dort) gegen eine echte Datenbank.
  *
  * ── Warum dieser Test sein muss ─────────────────────────────────────────────
@@ -34,17 +34,13 @@ const assert = require('node:assert/strict');
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
 const _req = require('./helpers/sources').buildAndRequire();
+const { dbOderSkip } = require('./helpers/db');
 const db = _req('db/database.js');
-const { getGlobalSetting, setGlobalSetting, deleteGlobalSetting } = _req('src/konto/settings.js');
+const { getGlobalSetting, setGlobalSetting, deleteGlobalSetting } = _req('src/einstellungen/settings.js');
 const { setzeZustand, liesZustand, loescheZustand } = _req('src/auftraege/repository/laufzustand.js');
 
 test('globale Einstellungen: schreiben, auslösen, löschen', { concurrency: 1 }, async (t) => {
-  try { await db.initSchema(); }
-  catch (e) {
-    if (process.env.REQUIRE_DB === '1')
-      throw new Error(`REQUIRE_DB=1, aber die Test-DB ist nicht erreichbar: ${e.message}`);
-    t.skip('Test-DB nicht erreichbar'); return;
-  }
+  if (!await dbOderSkip(t, _req, { migrieren: false })) return;
   { const c = await db.pool.connect(); try { await _req('db/migrate.js').runMigrations(c); } finally { c.release(); } }
 
   // Eigene Schlüssel je Prozess: Der Test läuft neben anderen auf derselben DB.

@@ -54,18 +54,14 @@ Module.prototype.require = function (name) {
 };
 
 const _req = require('./helpers/sources').buildAndRequire();
+const { dbOderSkip } = require('./helpers/db');
 const { haeltSet } = require('./helpers/bestand');
 const db = _req('db/database.js');
-const { setUserSetting } = _req('src/konto/settings.js');
+const { setUserSetting } = _req('src/konto/nutzerEinstellung.js');
 const { addSet } = _req('src/sets/setService.js');
 
 test('aufstocken ohne Zustandsangabe folgt dem Standard des Nutzers', { concurrency: 1 }, async (t) => {
-  try { await db.initSchema(); }
-  catch (e) {
-    if (process.env.REQUIRE_DB === '1')
-      throw new Error(`REQUIRE_DB=1, aber die Test-DB ist nicht erreichbar: ${e.message}`);
-    t.skip('Test-DB nicht erreichbar'); return;
-  }
+  if (!await dbOderSkip(t, _req, { migrieren: false })) return;
 
   const name = `zst_${process.pid}`;
   const SET = `90${String(process.pid).slice(-4)}-1`;

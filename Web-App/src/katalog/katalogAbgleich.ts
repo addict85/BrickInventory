@@ -1,12 +1,11 @@
 /** Alles hier gilt für alle Konten. */
-import { downloadFile } from '../../clients/rebrickable';
+import { downloadFile, lookupPart, sleep } from './quellen';
 import { generateThumb } from './bilder/thumbs';
 import { neuestesInventar } from './rbInventar';
-import { mitVersion } from '../sets/setNummer';
+import { mitVersion } from '../infra/setNummer';
 import { merkeTeil, merkeTeilFarbe, merkeSetTeil, setzeTeilBildLokal, merkeFiguren, merkeSetFiguren } from './katalogPflege';
-import { logAndContinue, meldeUndLiefere, meldeUndWeiter } from '../infra/httpError';
+import { logAndContinue, meldeUndLiefere, meldeUndWeiter } from '../infra/fehler';
 import { katalogBildstand, inventarTeileOhneErsatz, inventarFiguren, setsOhneTeilekatalog, manuelleFarbteile, ersetzeTeilfarbenbild } from './repository/csvKatalog';
-import { lookupPart, sleep } from '../../clients/rebrickable';
 import path from 'path';
 import fs from 'fs';
 import { PART_IMAGES_DIR as IMG_DIR } from '../infra/appPaths';

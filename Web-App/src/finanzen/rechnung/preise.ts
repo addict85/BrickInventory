@@ -4,22 +4,17 @@
 
 import type { DbSchnittstelle } from '../../../db/database';
 import * as repo from '../repository/preisCache';
-import { hatPreis } from '../preisRegel';
 import { asIds } from '../../haushalt/haushalt';
 import { checkAndIncrementRateLimit, kontingentFrei, getLimitForApi, getRateLimitStatus } from '../../katalog/apiKontingent';
-import { bricklinkRequest } from '../../../clients/bricklink';
-import { fehlertext, logAndContinue, meldeUndLiefere } from '../../infra/httpError';
-import { mitVersion, ohneBricklinkPreis } from '../../sets/setNummer';
-import { katalogEintrag, getPriceGuide } from '../../katalog/bricklinkPreise';
+import { bricklinkRequest } from '../../katalog/quellen';
+import { fehlertext, logAndContinue, meldeUndLiefere } from '../../infra/fehler';
+import { mitVersion, ohneBricklinkPreis } from '../../infra/setNummer';
+import { katalogEintrag, getPriceGuide, hatPreis } from '../../katalog/bricklinkPreise';
 import { effectiveCondition } from './zustand';
 import { blAbrufNummer, blAbrufNummern } from '../../katalog/blZuordnung';
 import { KEINE_FARBE } from '../../infra/validate';
 
-/**
- * Blickfeld: wessen DATEN gerechnet werden. Getrennt von `viewerId`, wessen
- * EINSTELLUNGEN gelten — die beiden fallen auseinander, sobald der Kontofilter
- * auf „Unterkonten" steht (siehe computeSetsValuation).
- */
+/** Wessen DATEN gerechnet werden; wessen EINSTELLUNGEN gelten, sagt `viewerId`. */
 export type { Blickfeld } from '../../haushalt/haushalt';
 
 type PreisZeile = { avg_price?: number | string | null; fetched_at?: string | Date | null } | null | undefined;

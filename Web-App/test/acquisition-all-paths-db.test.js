@@ -22,7 +22,7 @@
  * Die Lehre aus Nachtrag 53 lautete, nach zwei Funden derselben Klasse sofort
  * die ganze Familie durchzugehen. Genau das ist hier der Fall.
  *
- * Gegenprobe (durchgeführt): writableIds in src/bestand/erfassungen.ts durch die eigene ID
+ * Gegenprobe (durchgeführt): writableIds in src/sammlung/erfassungen.ts durch die eigene ID
  * ersetzt → „Set-Erfassung löschen" endet wieder in 404.
  *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL (Migrationen für account_links).
@@ -35,6 +35,7 @@ const ROOT = path.join(__dirname, '..');
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
 const _req = require('./helpers/sources').buildAndRequire();
+const { dbOderSkip } = require('./helpers/db');
 const { haeltFigur, haeltSet, haeltTeil } = require('./helpers/bestand');
 const db = _req('db/database.js');
 const express = require(path.join(ROOT, 'node_modules', 'express'));
@@ -42,14 +43,7 @@ const express = require(path.join(ROOT, 'node_modules', 'express'));
 test('Erfassungen des Unterkontos: ändern und löschen auf allen drei Elementarten',
   { concurrency: 1 }, async (t) => {
 
-  try { await db.initSchema(); }
-  catch (e) {
-    if (process.env.REQUIRE_DB === '1')
-      throw new Error(`REQUIRE_DB=1, aber die Test-DB ist nicht erreichbar: ${e.message}`);
-    t.skip('Test-DB nicht erreichbar'); return;
-  }
-  const mc = await db.pool.connect();
-  try { await _req('db/migrate.js').runMigrations(mc); } finally { mc.release(); }
+  if (!await dbOderSkip(t, _req)) return;
 
   const HAUPT = `acq6-h-${process.pid}`, SUB = `acq6-s-${process.pid}`;
   const SN = `77001-${process.pid}`, PN = `3001x${process.pid}`, FN = `sw${process.pid}`;

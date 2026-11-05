@@ -1,6 +1,6 @@
 /**
  * Die Hintergrundarbeiten in der Verwaltung (routes/api_v1/admin.ts,
- * src/auftraege/hintergrund.ts) über die echte Route: Auftragsliste, Abbrechen,
+ * src/verwaltung/hintergrund.ts) über die echte Route: Auftragsliste, Abbrechen,
  * Wiederholen, Leeren, Jetzt — und die alten Adressen (brickset-queue,
  * job-status, job-schedule, trigger-price-job) liefern ihre Felder weiter.
  *

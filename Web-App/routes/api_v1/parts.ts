@@ -1,20 +1,19 @@
-import { fehlerAntwort } from '../../src/infra/httpError';
+import { fehlerAntwort } from '../../src/infra/httpAntwort';
 import { requireToken, kontoSchranke } from './middleware';
-import { scopeIds, parseScopeMode, resolveWriteTarget } from '../../src/haushalt/haushalt';
+import { scopeIds, parseScopeMode, resolveWriteTarget, writableIds } from '../../src/haushalt/haushalt';
 import { getBlColorMap, getManualParts, getOwnedQuantities, getParts, getPartsColors, getPartsStats, getPartsCategories } from '../../src/teile/abfragen';
 import { csvEmpfang } from '../../src/infra/dateiEmpfang';
-import { csvImportAntwort } from '../../src/infra/csvExport';
-import { addManualPart, getPartColorList, updateManualPart, importiereTeileCsv } from '../../src/teile/manuelleTeile';
-import { getSetting } from '../../src/konto/settings';
+import { importAlsAuftrag } from '../../src/auftraege/importAlsAuftrag';
+import type { CsvImportBericht } from '../../src/infra/csvExport';
+import { addManualPart, getPartColorList, updateManualPart } from '../../src/teile/manuelleTeile';
+import { getSetting } from '../../src/einstellungen/settings';
 import { getPartPriceHistory } from '../../src/finanzen/priceHistory';
-import { einzelwert } from '../../src/infra/validate';
 import * as V from '../../src/infra/validate';
 import { aendereTeilFarbe } from '../../src/teile/teilFarbeAendern';
 import { verwendendeSets } from '../../src/bestand/gemeinsam';
 import { sendeFehler } from '../../src/infra/fehlerTexte';
 import { normalisiereLagerort, setzeLagerort } from '../../src/bestand/lagerort';
-import { writableIds } from '../../src/haushalt/haushalt';
-import { loescheTeil } from '../../src/bestand/loeschen';
+import { loescheTeil } from '../../src/sammlung/loeschen';
 import { vertragsRouter } from '../../src/infra/vertrag/pruefen';
 import type { Antwort } from '../../src/infra/vertrag';
 const router = vertragsRouter();
@@ -34,7 +33,7 @@ router.get('/parts/categories', requireToken, async (req: AuthedRequest, res: An
 
 router.post('/parts/import/csv', requireToken, kontoSchranke('upload'), csvEmpfang.single('file'), async (req: AuthedRequest & { file?: { buffer: Buffer } }, res: Antwort<'POST /api/v1/parts/import/csv'>) => {
   if (!req.file) return sendeFehler(req, res, 400, 'keine_datei');
-  csvImportAntwort(res, await importiereTeileCsv(req.apiUser.user_id, req.file.buffer.toString('utf-8')));
+  res.json(await importAlsAuftrag<CsvImportBericht>(req.apiUser.user_id, 'teile_csv', { text: req.file.buffer.toString('utf-8') }));
 });
 
 router.get('/parts/brick-colors', requireToken, async (_req: AuthedRequest, res: Antwort<'GET /api/v1/parts/brick-colors'>) => {
@@ -121,7 +120,7 @@ router.get('/parts/manual', requireToken, async (req: AuthedRequest, res: Antwor
   res.json({ success: true, parts: await getManualParts(
     await scopeIds(req.apiUser.user_id, parseScopeMode(req.query.accounts)),
     req.apiUser.user_id,
-    { search: einzelwert(req.query.search), storage: einzelwert(req.query.storage) }) });
+    { search: V.einzelwert(req.query.search), storage: V.einzelwert(req.query.storage) }) });
 });
 
 router.get('/parts/colors', requireToken, async (req: AuthedRequest, res: Antwort<'GET /api/v1/parts/colors'>) => {
@@ -139,7 +138,7 @@ router.get('/parts/:partNumber/:colorId/price-history', requireToken, async (req
   const uid = req.apiUser.user_id;
   const currency = await getSetting(uid, 'currency', 'EUR');
   const data = await getPartPriceHistory(
-    await scopeIds(uid, parseScopeMode(req.query.accounts)), einzelwert(req.params.partNumber), V.colorId(req.params.colorId), currency);
+    await scopeIds(uid, parseScopeMode(req.query.accounts)), V.einzelwert(req.params.partNumber), V.colorId(req.params.colorId), currency);
   res.json({ success: true, ...data });
 });
 
@@ -147,7 +146,7 @@ router.get('/parts/:partNumber/:colorId/price-history', requireToken, async (req
 router.get('/parts/:partNumber/:colorId/sets', requireToken, async (req: AuthedRequest, res: Antwort<'GET /api/v1/parts/:partNumber/:colorId/sets'>) => {
   const uids = await scopeIds(req.apiUser.user_id, parseScopeMode(req.query.accounts));
   const { item, sets } = await verwendendeSets(uids, 'parts', {
-    part_number: einzelwert(req.params.partNumber),
+    part_number: V.einzelwert(req.params.partNumber),
     color_id: V.colorId(req.params.colorId),
   });
   res.json({ success: true, item, sets });

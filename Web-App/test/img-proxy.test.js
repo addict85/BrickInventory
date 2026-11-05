@@ -54,13 +54,15 @@ test('der Cache-Stream hängt vor dem Client-Stream', () => {
   // r.pipe(ws) stand einmal hinter einem `await mkdir`. r.pipe(res) läuft
   // synchron davor — die ersten Chunks flossen also zum Client, bevor der
   // Cache-Stream überhaupt hing.
-  const blk = CODE.slice(CODE.indexOf("const rohTyp = String(r.kopf['content-type']"),
-                         CODE.indexOf('body.pipe(res);') + 20);
-  // Seit der Entpackung heisst die Quelle `body` (bei unkomprimierten
-  // Antworten identisch mit r, sonst der entpackte Strom).
-  const iCache = blk.indexOf('body.pipe(ws)'), iClient = blk.indexOf('body.pipe(res)');
-  assert.ok(iCache > 0 && iClient > iCache, 'body.pipe(ws) muss vor body.pipe(res) stehen');
-  assert.doesNotMatch(blk.slice(0, iCache), /await /,
+  // Der Cache-Zweig steht in inDenCache(); dort bis body.pipe(ws), dann im
+  // Aufrufer vom Aufruf bis body.pipe(res).
+  const start = CODE.indexOf("const rohTyp = String(r.kopf['content-type']");
+  const blk = CODE.slice(start, CODE.indexOf('body.pipe(res);', start) + 20);
+  const iCache = blk.indexOf('inDenCache(body'), iClient = blk.indexOf('body.pipe(res)');
+  assert.ok(iCache > 0 && iClient > iCache, 'inDenCache(body …) muss vor body.pipe(res) stehen');
+  const cache = CODE.slice(CODE.indexOf('function inDenCache('), CODE.indexOf('body.pipe(ws)'));
+  assert.ok(cache.length > 0 && CODE.indexOf('function inDenCache(') > 0, 'body.pipe(ws) steht nicht in inDenCache()');
+  assert.doesNotMatch(blk.slice(0, iCache) + cache, /await /,
     'Zwischen Antwortbeginn und Cache-Stream darf kein await liegen');
 });
 

@@ -2,22 +2,21 @@
  * Prüfung vergessen kann. */
 import fs from 'fs';
 import path from 'path';
-import * as verwaltung from '../../src/verwaltung/dienst';
-import { fehlerAntwort, meldeUndLiefere, pfadParam } from '../../src/infra/httpError';
+import { meldeUndLiefere } from '../../src/infra/fehler';
+import { fehlerAntwort, pfadParam } from '../../src/infra/httpAntwort';
 import { requireApiAdmin } from './middleware';
 import { getLimitForApi } from '../../src/katalog/apiKontingent';
 import { proxyCachePathFor } from '../../src/katalog/bilder/images';
 import { ERLAUBTE_BILD_HOSTS, hostErlaubt } from '../../src/infra/fremdeAdressen';
 import { vergissFehlend } from '../../src/katalog/bilder/imageMisses';
 import { SET_IMAGES_DIR } from '../../src/infra/appPaths';
-import { setGlobalSetting } from '../../src/konto/settings';
-import { getGlobalSetting } from '../../src/konto/settings';
+import { setGlobalSetting, getGlobalSetting } from '../../src/einstellungen/settings';
 import { sendeFehler } from '../../src/infra/fehlerTexte';
-import { letzteEintraege } from '../../src/verwaltung/dienst';
 import { cacheStatistik, cachesLeeren, bricksetLimitGesetzt, anleitungenNeuEinreihen, preisJobStand, preisJobJetzt,
          fehlendeBilderNachladen, bricksetWiederholen, bricksetEntfernen, jobZeitplanSetzen, jobUebersicht,
-         bildProbe, preisProbe, katalogBilderEinreihen, katalogAbgleichJetzt, bricksetListe } from '../../src/verwaltung/dienst';
-import { auftragsUebersicht, auftragAbbrechen, auftragWiederholen, auftragsArtJetzt, auftragsArtLeeren } from '../../src/auftraege/hintergrund';
+         bildProbe, preisProbe, katalogBilderEinreihen, katalogAbgleichJetzt, bricksetListe,
+         letzteEintraege, KontoBildzeile, bildZeilenDerKonten, fehlanzeigeDerVorschau, fehlanzeigeDesSets, katalogBild, protokollSeit, setFehlanzeigen, vorschauFehlanzeigen } from '../../src/verwaltung/dienst';
+import { auftragsUebersicht, auftragAbbrechen, auftragWiederholen, auftragsArtJetzt, auftragsArtLeeren } from '../../src/verwaltung/hintergrund';
 import { urlOderNull } from '../../src/infra/validate';
 import { vertragsRouter } from '../../src/infra/vertrag/pruefen';
 import type { Antwort } from '../../src/infra/vertrag';
@@ -65,8 +64,8 @@ router.get('/admin/cache-stats', requireApiAdmin, async (_req: AuthedRequest, re
 router.get('/admin/image-diag/:setNumber', requireApiAdmin, async (req: AuthedRequest, res: Antwort<'GET /api/v1/admin/image-diag/:setNumber'>) => {
   const sn = String(req.params.setNumber);
 
-  const zeilen: verwaltung.KontoBildzeile[] = await verwaltung.bildZeilenDerKonten(sn).catch(meldeUndLiefere('verwaltung:bildZeilenDerKonten', []));
-  const katalog = await verwaltung.katalogBild(sn).catch(meldeUndLiefere('verwaltung:katalogBild', null));
+  const zeilen: KontoBildzeile[] = await bildZeilenDerKonten(sn).catch(meldeUndLiefere('verwaltung:bildZeilenDerKonten', []));
+  const katalog = await katalogBild(sn).catch(meldeUndLiefere('verwaltung:katalogBild', null));
 
   const safe = sn.replace(/[^a-z0-9-]/gi, '_');
   const datei = (p: string) => {
@@ -88,8 +87,8 @@ router.get('/admin/image-diag/:setNumber', requireApiAdmin, async (req: AuthedRe
 
   // Eine Fehlanzeige verhindert jeden Abruf und macht die übrigen Auskünfte
   // gegenstandslos.
-  const merker = await verwaltung.fehlanzeigeDesSets(sn).catch(meldeUndLiefere('verwaltung:fehlanzeigeDesSets', null));
-  const vorschauMerker = await verwaltung.fehlanzeigeDerVorschau(safe).catch(meldeUndLiefere('verwaltung:fehlanzeigeDerVorschau', null));
+  const merker = await fehlanzeigeDesSets(sn).catch(meldeUndLiefere('verwaltung:fehlanzeigeDesSets', null));
+  const vorschauMerker = await fehlanzeigeDerVorschau(safe).catch(meldeUndLiefere('verwaltung:fehlanzeigeDerVorschau', null));
 
   const hinweise: string[] = [];
   if (!zeilen.length) hinweise.push('Kein Konto führt dieses Set.');
@@ -126,11 +125,11 @@ router.post('/admin/forget-image-misses', requireApiAdmin, async (req: AuthedReq
   } else {
     // Nicht die ganze Tabelle: Die Vorschau-Vermerke haben einen anderen Zweck
     // und sollen nicht nebenbei mitverschwinden.
-    const rows = await verwaltung.setFehlanzeigen().catch(meldeUndLiefere('verwaltung:setFehlanzeigen', []));
+    const rows = await setFehlanzeigen().catch(meldeUndLiefere('verwaltung:setFehlanzeigen', []));
     if (rows.length) entfernt = await vergissFehlend(rows.map(r => r.cache_key));
   }
   if (req.body?.thumbs === true) {
-    const rows = await verwaltung.vorschauFehlanzeigen().catch(meldeUndLiefere('verwaltung:vorschauFehlanzeigen', []));
+    const rows = await vorschauFehlanzeigen().catch(meldeUndLiefere('verwaltung:vorschauFehlanzeigen', []));
     if (rows.length) entfernt += await vergissFehlend(rows.map(r => r.cache_key));
   }
   // Die anderen Prozesse frischen den Merker im Fünf-Minuten-Takt aus der Tabelle auf.
@@ -219,7 +218,7 @@ router.post('/admin/redownload-missing-images', requireApiAdmin, async (_req: Au
 
 router.get('/admin/logs', requireApiAdmin, async (req: AuthedRequest, res: Antwort<'GET /api/v1/admin/logs'>) => {
   const minutes = Math.min(2880, Math.max(1, parseInt(String(req.query.minutes || '15'))));
-  const rows = await verwaltung.protokollSeit(minutes);
+  const rows = await protokollSeit(minutes);
   res.json({ success: true, minutes, count: rows.length, logs: rows });
 });
 

@@ -35,11 +35,12 @@ export type Draht<T> = T extends Zeit ? string | Date
   : T extends readonly (infer E)[] ? Draht<E>[]
   : T extends object ? { [K in keyof T as string extends K ? never : K]: Draht<T[K]> } : T;
 
-/** Jede Fehlerantwort (src/infra/fehlerTexte.ts). */
+/** Jede Fehlerantwort (src/infra/fehlerTexte.ts): Die Apps entscheiden am
+ * Code, der Satz ist nur für Menschen. */
 export const Fehler = z.looseObject({
   success: z.literal(false),
-  error: z.string(),
-  code: z.string().optional(),
+  error: z.string().min(1),
+  code: z.string().regex(/^[a-z][a-z0-9_]*$/),
 });
 
 export const Erfolg = z.looseObject({ success: z.literal(true) });
@@ -58,6 +59,17 @@ const EINFACH = z.union([z.string(), z.number(), z.boolean(), z.null()]);
  * davon. Ein Objekt statt eines Textes ({"$ne":1}) landete sonst als
  * "[object Object]" in der Tabelle oder an einer Prüfung vorbei. */
 export const FLACHE_EINGABE = z.record(z.string(), z.union([EINFACH, z.array(EINFACH)]));
+
+/** Eine Route ohne Rumpf: Ein mitgeschicktes Feld wäre ein Missverständnis. */
+export const OHNE_RUMPF = z.strictObject({});
+/** Formulare und Apps schicken Zahlen auch als Text; geprüft wird im Dienst. */
+export const ZAHL = z.union([z.number(), z.string().max(40)]);
+export const KENNUNG = z.union([ganz, z.string().regex(/^-?\d{1,12}$/)]);
+export const TEXT = (max = 200) => z.string().max(max);
+export const ZUSTAND = z.union([z.enum(['N', 'U', 'n', 'u']), z.literal('')]);
+export const JA_NEIN = z.union([z.boolean(), z.literal(0), z.literal(1), z.enum(['0', '1', 'true', 'false'])]);
+/** Einstellungen als Schlüssel und einfacher Wert; welche gelten, prüft die Route. */
+export const EINSTELLUNGEN = z.record(z.string().max(64), EINFACH);
 
 /** Ein Konto in Besitzerlisten. */
 export const KontoName = z.looseObject({ id: ganz, username: z.string() });
