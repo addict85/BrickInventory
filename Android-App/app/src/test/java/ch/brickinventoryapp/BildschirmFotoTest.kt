@@ -18,7 +18,7 @@ import ch.brickinventoryapp.ui.GutscheinUiState
 import ch.brickinventoryapp.ui.KontoUiState
 import ch.brickinventoryapp.ui.ZweiterFaktorUiState
 import ch.brickinventoryapp.ui.screens.FinanceScreen
-import ch.brickinventoryapp.ui.screens.GalleryScreen
+import ch.brickinventoryapp.ui.screens.GalleryRoute
 import ch.brickinventoryapp.ui.screens.GutscheineCard
 import ch.brickinventoryapp.ui.screens.LoginScreen
 import ch.brickinventoryapp.ui.screens.MerklisteScreen
@@ -140,7 +140,7 @@ class BildschirmFotoTest(private val design: String, private val dunkel: Boolean
     fun galerie() {
         val vm = welt.galerie().also { it.loadSets(); it.loadStats() }
         foto("galerie", { vm.galleryState.value.let { it.sets.isNotEmpty() && it.stats != null && !it.galleryLoading } }, { vm.galleryState.value }) {
-            GalleryScreen(vm = vm, erfassung = erfassung(), imageLoader = bilder, onScanBarcode = {}, onSetClick = {})
+            GalleryRoute(vm = vm, erfassung = erfassung(), imageLoader = bilder, onScanBarcode = {}, onSetClick = {})
         }
     }
 

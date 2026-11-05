@@ -75,9 +75,32 @@ import ch.brickinventoryapp.ui.components.SkelettRaster
 import ch.brickinventoryapp.ui.components.SortierMenue
 import ch.brickinventoryapp.ui.components.ansagen
 
-@OptIn(ExperimentalMaterial3Api::class, FlowPreview::class)
+/** Was die Galerie zeigt; die Route sammelt es aus den Flüssen der ViewModels. */
+data class GalerieZustand(
+    val app: AppUiState,
+    val blick: BlickfeldUiState,
+    val galerie: GalleryUiState,
+    val preise: Map<String, KachelPreis>,
+    val barcode: BarcodeUiState,
+    val lager: LagerUiState,
+)
+
+/** Was die Galerie auslöst; die Route verdrahtet es mit GalerieViewModel und ErfassungViewModel. */
+class GalerieEreignisse(
+    val suche: (String) -> Unit,
+    val thema: (String) -> Unit,
+    val sortierung: (String) -> Unit,
+    val mehrLaden: () -> Unit,
+    val konto: (String) -> Unit,
+    val lagerort: (String) -> Unit,
+    val aktualisieren: () -> Unit,
+    val setErfassen: (String, Int, Double?, String?, Int?, String?) -> Unit,
+    val manuelleErfassungQuittiert: () -> Unit,
+)
+
+/** Die Galerie am Navigationsziel: sammelt die Flüsse und reicht Zustand und Ereignisse weiter. */
 @Composable
-fun GalleryScreen(
+fun GalleryRoute(
     vm: GalerieViewModel,
     /** Erfassen und Scannen gehören der ganzen App, nicht der Galerie. */
     erfassung: ch.brickinventoryapp.ui.viewmodel.ErfassungViewModel,
@@ -89,21 +112,57 @@ fun GalleryScreen(
     /** Scroll-Zustand von aussen, damit er den Weg in die Detailansicht übersteht. */
     gridState: LazyGridState = rememberLazyGridState(),
 ) {
-    // Das Set, dessen Detail daneben offen ist (breites Fenster); seine Kachel ist markiert.
-    val gewaehlt = ch.brickinventoryapp.ui.components.LocalOffenesDetail.current
-    // Zustand und Aktionen vom ViewModel statt über Parameter (wie PartsScreen); die
-    // Namen bleiben dieselben, damit der Rumpf darunter unverändert ist.
     val state by vm.state.collectAsStateWithLifecycle()
     val blick by vm.blickfeld.collectAsStateWithLifecycle()
     // Eigener Fluss fuer die Galerie: Blaettern, Suchen und Nachladen aendern
-    // nur noch DIESEN Zustand — die uebrigen Bildschirme, die `vm.state`
-    // sammeln, werden dadurch nicht mehr mit rekomponiert (siehe GalleryUiState).
+    // nur DIESEN Zustand (siehe GalleryUiState).
     val galerie by vm.galleryState.collectAsStateWithLifecycle()
     val preise by vm.preise.collectAsStateWithLifecycle()
     val barcodeState by erfassung.barcodeState.collectAsStateWithLifecycle()
-    // Eigener Fluss: Der Lagerortfilter gehoert nicht in AppUiState, das
-    // sechzehn Dateien sammeln (siehe LagerUiState).
     val lagerState by vm.lagerState.collectAsStateWithLifecycle()
+    val ereignisse = remember(vm, erfassung) {
+        GalerieEreignisse(
+            suche = vm::setGalleryQuery,
+            thema = vm::setGalleryTheme,
+            sortierung = vm::setGallerySort,
+            mehrLaden = vm::loadMoreSets,
+            konto = { vm.setScope(ch.brickinventoryapp.data.ScopeFilter.View.GALLERY, it) },
+            lagerort = { vm.setLagerFilter(ch.brickinventoryapp.data.ScopeFilter.View.GALLERY, it) },
+            // Auch die Filterlisten: Sie werden sonst nur beim Start geladen.
+            aktualisieren = vm::aktualisieren,
+            setErfassen = { sn, qty, price, cond, owner, ort -> erfassung.addSet(sn, qty, price, cond, owner, ort) },
+            manuelleErfassungQuittiert = { erfassung.manuelleErfassungQuittieren() },
+        )
+    }
+    GalleryScreen(
+        zustand = GalerieZustand(state, blick, galerie, preise, barcodeState, lagerState),
+        ereignisse = ereignisse,
+        imageLoader = imageLoader,
+        onScanBarcode = onScanBarcode,
+        onSetClick = onSetClick,
+        gridState = gridState,
+    )
+}
+
+@OptIn(ExperimentalMaterial3Api::class, FlowPreview::class)
+@Composable
+fun GalleryScreen(
+    zustand: GalerieZustand,
+    ereignisse: GalerieEreignisse,
+    imageLoader: ImageLoader,
+    onScanBarcode: () -> Unit,
+    onSetClick: (String) -> Unit,
+    gridState: LazyGridState = rememberLazyGridState(),
+) {
+    // Das Set, dessen Detail daneben offen ist (breites Fenster); seine Kachel ist markiert.
+    val gewaehlt = ch.brickinventoryapp.ui.components.LocalOffenesDetail.current
+    // Die Namen bleiben dieselben wie vor der Teilung, damit der Rumpf darunter unverändert ist.
+    val state = zustand.app
+    val blick = zustand.blick
+    val galerie = zustand.galerie
+    val preise = zustand.preise
+    val barcodeState = zustand.barcode
+    val lagerState = zustand.lager
 
     val sets = galerie.sets
     val query = galerie.galleryQuery
@@ -121,20 +180,16 @@ fun GalleryScreen(
     val scopeMode = blick.scopeModes[ch.brickinventoryapp.data.ScopeFilter.View.GALLERY.key]
         ?: ch.brickinventoryapp.data.ScopeFilter.ALL
 
-    val onQueryChange: (String) -> Unit = vm::setGalleryQuery
-    val onThemeChange: (String) -> Unit = vm::setGalleryTheme
-    val onSortChange: (String) -> Unit = vm::setGallerySort
-    val onLoadMore: () -> Unit = vm::loadMoreSets
-    val onScopeChange: (String) -> Unit = { vm.setScope(ch.brickinventoryapp.data.ScopeFilter.View.GALLERY, it) }
+    val onQueryChange: (String) -> Unit = ereignisse.suche
+    val onThemeChange: (String) -> Unit = ereignisse.thema
+    val onSortChange: (String) -> Unit = ereignisse.sortierung
+    val onLoadMore: () -> Unit = ereignisse.mehrLaden
+    val onScopeChange: (String) -> Unit = ereignisse.konto
     val lagerorte = lagerState.orte
     val lagerModus = lagerState.modi[ch.brickinventoryapp.data.ScopeFilter.View.GALLERY.key] ?: ""
-    val onLagerChange: (String) -> Unit = { vm.setLagerFilter(ch.brickinventoryapp.data.ScopeFilter.View.GALLERY, it) }
-    // Auch die Filterlisten: Sie werden sonst nur beim Start geladen, und eine
-    // dort gescheiterte Anfrage liesse Konto- und Lagerortfilter bis zum
-    // naechsten Start verschwinden.
-    val onRefresh: () -> Unit = vm::aktualisieren
-    val onAddSet: (String, Int, Double?, String?, Int?, String?) -> Unit =
-        { sn, qty, price, cond, owner, ort -> erfassung.addSet(sn, qty, price, cond, owner, ort) }
+    val onLagerChange: (String) -> Unit = ereignisse.lagerort
+    val onRefresh: () -> Unit = ereignisse.aktualisieren
+    val onAddSet: (String, Int, Double?, String?, Int?, String?) -> Unit = ereignisse.setErfassen
     // Der VORRAT, nicht die belegten Orte: `lagerorte` eine Zeile weiter oben
     // speist den FILTER und enthaelt nur, worin schon etwas liegt. Beim
     // Erfassen soll auch ein leeres Regal zur Wahl stehen.
@@ -150,7 +205,7 @@ fun GalleryScreen(
     LaunchedEffect(barcodeState.manuelleErfassungAnfordern) {
         if (barcodeState.manuelleErfassungAnfordern) {
             showAddDialog = true
-            erfassung.manuelleErfassungQuittieren()
+            ereignisse.manuelleErfassungQuittiert()
         }
     }
     // Das Eingabefeld hält seinen Text selbst (Tippen bleibt flüssig); die

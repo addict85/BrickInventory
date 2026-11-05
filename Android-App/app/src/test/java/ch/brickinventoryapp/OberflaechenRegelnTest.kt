@@ -352,7 +352,7 @@ class OberflaechenRegelnTest {
                     kotlinx.coroutines.flow.emptyFlow<ch.brickinventoryapp.data.SetAnlegenSchritt>()
             }))
         zeige(schrift) {
-            ch.brickinventoryapp.ui.screens.GalleryScreen(vm = vm, erfassung = erfassung,
+            ch.brickinventoryapp.ui.screens.GalleryRoute(vm = vm, erfassung = erfassung,
                 imageLoader = bilder, onScanBarcode = {}, onSetClick = {})
         }
         warte("Galerie") { vm.galleryState.value.sets.isNotEmpty() && !vm.galleryState.value.galleryLoading }
@@ -522,7 +522,7 @@ class OberflaechenRegelnTest {
                         kotlinx.coroutines.flow.emptyFlow<ch.brickinventoryapp.data.SetAnlegenSchritt>()
                 }))
             zeige {
-                ch.brickinventoryapp.ui.screens.GalleryScreen(vm = vm, erfassung = erfassung,
+                ch.brickinventoryapp.ui.screens.GalleryRoute(vm = vm, erfassung = erfassung,
                     imageLoader = coil3.ImageLoader.Builder(ctx).build(), onScanBarcode = {}, onSetClick = {})
             }
             warte("Galerie") { vm.galleryState.value.sets.isNotEmpty() && !vm.galleryState.value.galleryLoading }

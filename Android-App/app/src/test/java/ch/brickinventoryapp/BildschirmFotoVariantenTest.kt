@@ -38,7 +38,7 @@ import ch.brickinventoryapp.ui.AnmeldeFormular
 import ch.brickinventoryapp.ui.CsvImportUiState
 import ch.brickinventoryapp.ui.Screen
 import ch.brickinventoryapp.ui.screens.FinanceScreen
-import ch.brickinventoryapp.ui.screens.GalleryScreen
+import ch.brickinventoryapp.ui.screens.GalleryRoute
 import ch.brickinventoryapp.ui.screens.LoginScreen
 import ch.brickinventoryapp.ui.screens.MerklisteScreen
 import ch.brickinventoryapp.ui.screens.MinifigsScreen
@@ -185,7 +185,7 @@ class BildschirmFotoVariantenTest {
 
     @Composable
     private fun Galerie(vm: ch.brickinventoryapp.ui.viewmodel.GalerieViewModel) =
-        GalleryScreen(vm = vm, erfassung = erfassung(), imageLoader = bilder, onScanBarcode = {}, onSetClick = {})
+        GalleryRoute(vm = vm, erfassung = erfassung(), imageLoader = bilder, onScanBarcode = {}, onSetClick = {})
 
     @Composable
     private fun Detail(vm: ch.brickinventoryapp.ui.viewmodel.SetDetailViewModel) =
