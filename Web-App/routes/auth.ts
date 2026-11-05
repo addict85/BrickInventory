@@ -15,7 +15,7 @@ import { tlsStand } from '../src/infra/tlsWurzel';
 import { hinweisNebenher } from '../src/konto/kontoHinweis';
 import crypto from 'crypto';
 import { passwortMangel } from '../src/infra/passwortRegel';
-import { sendEmailGeaendertMail, sendVerificationMail } from '../src/mail/mailer';
+import { sendEmailGeaendertMail, sendRegistrierungsVersuchMail, sendVerificationMail } from '../src/mail/mailer';
 import type { Request, Response } from 'express';
 import { getSetting } from '../src/einstellungen/settings';
 import { requireApiAdmin } from './api_v1/middleware';
@@ -241,7 +241,6 @@ router.put('/profile', requireLogin, async (req: OffeneAnfrage<'PUT /api/v1/auth
     if (zuOft) return sendeFehler(req, res, 429, 'zu_viele_anfragen', { minuten: zuOft.waitMin });
     // Case-insensitiv und auch gegen die E-Mail-Spalte, weil der Login mit LOWER() beide vergleicht.
     if (nameNeu && await K.nameVergeben(username, user.id)) return sendeFehler(req, res, 400, 'benutzername_vergeben');
-    if (emailChanged && await K.emailVergeben(email, user.id)) return sendeFehler(req, res, 400, 'email_vergeben');
   }
 
   const felder: Record<string, unknown> = {};
@@ -259,7 +258,15 @@ router.put('/profile', requireLogin, async (req: OffeneAnfrage<'PUT /api/v1/auth
     let emailSent = false;
     const lang = String(await getSetting(user.id, 'language', 'de').catch(meldeUndLiefere('anmeldung:sprache', 'de')));
     const basis = mailBasisUrl();
-    if (basis) emailSent = await sendVerificationMail(email, token, basis, lang, 'adresse')
+    // Eine belegte Adresse antwortet wie eine freie, sonst liessen sich Adressen
+    // abfragen; ihr Inhaber bekommt statt des Links einen Hinweis, und
+    // uebernimmEmailNeu() wiese den Link ohnehin ab.
+    const inhaber = await K.kontoMitEmail(email);
+    if (inhaber && inhaber.id !== user.id) {
+      const sprache = String(await getSetting(inhaber.id, 'language', 'de').catch(meldeUndLiefere('anmeldung:sprache', 'de')));
+      if (basis) emailSent = await sendRegistrierungsVersuchMail(inhaber.email, sprache, 'adresse')
+        .then(r => r.success, meldeUndLiefere('anmeldung:versuchsmail', false));
+    } else if (basis) emailSent = await sendVerificationMail(email, token, basis, lang, 'adresse')
       .then(r => r.success, meldeUndLiefere('anmeldung:bestaetigungsmail', false));
     // Die alte Adresse erfährt davon — war es nicht der Inhaber, merkt er es so.
     if (user.email) await sendEmailGeaendertMail(user.email, user.username, email, lang)
