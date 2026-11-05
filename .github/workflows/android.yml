@@ -656,8 +656,18 @@ jobs:
             jq -r .beschreibungssignatur "$A/version-signiert.json" | base64 -d > "$T/beschreibung.sig"
             openssl dgst -sha256 -verify "$A/beschreibungsschluessel.pem" -signature "$T/beschreibung.sig" "$T/daten.json"
           fi
-          if [ "$ECHT" = "true" ] && ! python3 tools/release-pruefen.py schluessel "$A/beschreibungsschluessel.pem" \
-              core-ressourcen/src/main/res/raw/beschreibungs_schluessel.pem; then
+          # Rückgabe 3: Die App nennt keinen Beschreibungsschlüssel (Übergangsweg über den
+          # APK-Schlüssel, sec17 A-N8). Sichtbar in jedem Lauf; ein Etikett veröffentlicht so nicht.
+          SCHLUESSEL=0
+          python3 tools/release-pruefen.py schluessel "$A/beschreibungsschluessel.pem" \
+            core-ressourcen/src/main/res/raw/beschreibungs_schluessel.pem || SCHLUESSEL=$?
+          if [ "$SCHLUESSEL" = 3 ]; then
+            if [ "$ECHT" = "true" ]; then
+              echo "::error title=Beschreibungsschlüssel fehlt::beschreibungs_schluessel.pem ist leer; die Beschreibung gälte mit dem APK-Schlüssel. Erst einrichten (README, „Beschreibungsschlüssel“). Nichts wird veröffentlicht."
+              exit 1
+            fi
+            echo "::warning title=Beschreibungsschlüssel fehlt::Die App nennt keinen Beschreibungsschlüssel (README, „Beschreibungsschlüssel“); ein Etikett veröffentlicht so nicht."
+          elif [ "$ECHT" = "true" ] && [ "$SCHLUESSEL" != 0 ]; then
             echo "::error::Die App verlangt einen Beschreibungsschlüssel, die Beschreibung trägt keinen davon (Secret BESCHREIBUNG_SCHLUESSEL). Nichts wird veröffentlicht."
             exit 1
           fi

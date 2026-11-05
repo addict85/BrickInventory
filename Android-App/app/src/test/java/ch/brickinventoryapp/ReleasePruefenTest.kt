@@ -25,6 +25,8 @@ import java.util.concurrent.TimeUnit
  *   G  (04.11.2026, sec11 H1) in schluessel() die Zeile `if geliefert[0] not in app`
  *      samt Rückgabe gestrichen → rot „ein Beschreibungsschluessel, den die App nicht
  *      kennt, wird abgelehnt“; gegenproben/beschreibungsschluessel-ungeprueft.patch
+ *   H  (05.11.2026, sec17 A-N8, python3 lokal) der Übergangsweg wieder mit Rückgabe 0 →
+ *      rot „ein Beschreibungsschluessel, den die App nicht kennt …“ (Übergang unsichtbar)
  */
 class ReleasePruefenTest {
 
@@ -83,7 +85,8 @@ class ReleasePruefenTest {
         assertEquals("Einer der beiden Schlüssel der App", 0, pruefe("schluessel", datei(neu).path, app))
         assertEquals("Ein fremder Schlüssel", 1, pruefe("schluessel", datei(pem()).path, app))
         assertEquals("Keine Beschreibungssignatur, obwohl die App eine verlangt", 1, pruefe("schluessel", "/gibt/es/nicht.pem", app))
-        assertEquals("Die App kennt noch keinen: Übergangsweg", 0, pruefe("schluessel", datei(neu).path, datei("# leer\n").path))
+        assertEquals("Die App kennt noch keinen: Übergangsweg, eigens gemeldet", 3,
+            pruefe("schluessel", datei(neu).path, datei("# leer\n").path))
         assertEquals("Ein kaputter Block", 2, pruefe("schluessel", datei(neu).path, datei("-----BEGIN PUBLIC KEY-----\n%%%\n-----END PUBLIC KEY-----").path))
     }
 

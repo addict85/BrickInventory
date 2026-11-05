@@ -625,6 +625,11 @@ App einen solchen Schlüssel (`core-ressourcen/src/main/res/raw/beschreibungs_sc
 nimmt sie nur noch dessen Signatur an; solange die Datei leer ist, gilt der
 Übergangsweg über die Signierer der App.
 
+**Stand:** Die Datei ist noch leer (Betreiberaufgabe). Jeder CI-Lauf warnt
+„Beschreibungsschlüssel fehlt“, und ein Etikett `android-v…` bricht im Job
+`apk-pruefen` ab, bis die Schritte unten erledigt sind; danach meldet derselbe
+Schritt „Beschreibungsschlüssel steht in der App.“
+
 Einrichten (einmalig, in dieser Reihenfolge):
 
 1. Schlüssel erzeugen, ausserhalb des Repositorys:
