@@ -1,11 +1,7 @@
-// ═══ Tastaturbedienung aller Dialoge ════════════════════════════════════════
-//
 // Für jedes `.ovl[role=dialog]` an EINER Stelle: Escape schliesst den
 // obersten offenen Dialog, beim Öffnen springt der Fokus hinein, Tab bleibt
 // darin, und beim Schliessen kehrt der Fokus dorthin zurück, wo er vorher war.
-//
-// Geschlossen wird über den Knopf mit `data-dialog-zu` — so läuft dieselbe
-// Aufräumarbeit wie beim Klick auf ✕, statt sie hier nachzubauen.
+// Ausführlich: docs/begruendungen/public/js/01-dialoge.js.md#fuer-jedes-ovl-role-dialog-an-einer-stel
 
 // `summary` gehört dazu: Fehlt es, springt die Falle vor „Weitere Aktionen“
 // zurück an den Anfang, und alles dahinter ist per Tastatur unerreichbar.

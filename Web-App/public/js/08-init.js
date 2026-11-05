@@ -9,23 +9,7 @@ import { esc } from './00-escapen.js';
 
 /**
  * Auffangnetz für Fehler, die niemand behandelt.
- *
- * ── Wozu ────────────────────────────────────────────────────────────────────
- * api() liefert inzwischen bei jedem Fehlschlag ein Objekt statt zu werfen
- * (siehe 01-core.js), damit die bestehenden success/error-Pfade greifen. Das
- * deckt den Regelfall ab — aber nicht einen Programmierfehler in einem
- * Rückruf, einen fehlgeschlagenen Aufruf ausserhalb von api() oder ein
- * Promise, das niemand einsammelt. Ohne dieses Netz endet so etwas
- * ausschliesslich in der Browser-Konsole: Der Benutzer klickt, nichts
- * passiert, und niemand erfährt, dass etwas kaputt war.
- *
- * Eine sichtbare Meldung ist hier nicht Selbstzweck: Sie unterscheidet für den
- * Benutzer „hat nicht funktioniert" von „hat nichts getan" — und im
- * Fehlerbericht steht dann eine Beobachtung statt „irgendwie ging es nicht".
- *
- * Bewusst knapp gehalten: eine kurze Meldung, die Einzelheiten bleiben in der
- * Konsole. Und höchstens eine alle fünf Sekunden — ein Fehler in einer
- * Schleife soll den Bildschirm nicht zupflastern.
+ * Ausführlich: docs/begruendungen/public/js/08-init.js.md#letztefehlermeldung
  */
 let _letzteFehlermeldung = 0;
 function meldeUnerwartet(quelle, fehler) {
@@ -41,31 +25,7 @@ function meldeUnerwartet(quelle, fehler) {
 
 /**
  * Stammt der Fehler aus UNSEREM Code?
- *
- * ── Der Befund aus dem Betrieb ──────────────────────────────────────────────
- *
- * Marcos Konsole zeigte (rot, aus app.bundle.js):
- *
- *     [promise] i: Failed to connect to MetaMask
- *     Caused by: Error: MetaMask extension not found
- *       at inpage.js:4:42708
- *
- * Das Auffangnetz unten hoert am FENSTER, und dort landet jede unbehandelte
- * Ablehnung der Seite — auch die einer Browser-Erweiterung, die mit
- * BrickInventory nichts zu tun hat. Wir haben sie als unsere protokolliert
- * und Marco dazu eine Meldung „Unerwarteter Fehler" angezeigt. Er sollte also
- * einen Fehler unserer Anwendung sehen, weil seine MetaMask-Erweiterung ihre
- * eigene Wallet nicht fand.
- *
- * ── Woran man es unterscheidet ──────────────────────────────────────────────
- *
- * Am Aufrufstapel. Unsere Bilder liegen alle unter unserem Ursprung; eine
- * Erweiterung bringt `chrome-extension://…` oder `moz-extension://…` mit.
- * Traegt der Stapel KEINE einzige Adresse von uns, ist es nicht unserer.
- *
- * Im Zweifel unserer: Ohne Stapel (etwa `Promise.reject('kaputt')`) und ohne
- * erkennbare Adresse wird weiter gemeldet. Ein verschwiegener eigener Fehler
- * waere der teurere der beiden Irrtuemer — genau darum gibt es dieses Netz.
+ * Ausführlich: docs/begruendungen/public/js/08-init.js.md#vonuns
  */
 function vonUns(fehler) {
   const stapel = typeof fehler?.stack === 'string' ? fehler.stack : '';
@@ -181,26 +141,10 @@ async function plGenerate() {
       if (d.success && d.parts?.length) {
         for (const p of d.parts) {
           const blNum = p.bl_part_number || p.part_number;
-          // ── Zusammengefasst wird nach der REBRICKABLE-Nummer ─────────────
-          //
           // Marcos Frage: „Kann der Abgleich im Hintergrund nicht über die
           // Rebrickable ID erfolgen, die Anzeige aber weiterhin über die
           // BrickLink ID?" — Ja, und genau hier lag der Fehler.
-          //
-          // Hier stand `${blNum}|…`. Zusammengefasst wurde also nach der
-          // BrickLink-Nummer, nachgefragt wird der Bestand aber mit der
-          // REBRICKABLE-Nummer (plRenderTable: data-key). Mehrere
-          // Rebrickable-Teile teilen sich regelmässig EINE BrickLink-Nummer —
-          // Formvarianten sind genau das. Für die fielen zwei Zeilen zu einer
-          // zusammen: Der BEDARF beider addiert, gesucht wurde aber nur nach
-          // der Nummer, die zufällig zuerst kam. Das Teil galt als fehlend,
-          // obwohl es im Bestand lag.
-          //
-          // Angezeigt wird weiterhin die BrickLink-Nummer (der Titel nennt
-          // die Rebrickable-Nummer daneben), und der BrickLink-Export fasst
-          // ohnehin selbst noch einmal zusammen — `blMap` in
-          // plExportBricklink schlüsselt nach `type|partNum|colorId`. Die
-          // feinere Aufteilung hier kostet dort also nichts.
+          // Ausführlich: docs/begruendungen/public/js/08-init.js.md#key
           const key = `${p.part_number}|${p.color_id||0}`;
           if (combined[key]) {
             combined[key].quantity += parseInt(p.total_quantity || p.quantity || 1);
@@ -264,21 +208,7 @@ async function plGenerate() {
 
 /**
  * „Kann ich das bauen?" — die Spalte „Vorhanden" aus dem eigenen Bestand füllen.
- *
- * ── Warum das hier und nicht als eigene Ansicht steht ────────
- *
- * Die Teileliste hatte die Spalte schon, nur als leeres Feld: Man trug von
- * Hand ein, was man besitzt, und die BrickLink-Wunschliste zog es vom Bedarf
- * ab. Es fehlte also nicht die Ansicht, sondern nur die Antwort auf „was davon
- * habe ich schon?". Eine zweite Ansicht daneben hätte dieselbe Tabelle noch
- * einmal gebaut — und zwei Orte geschaffen, an denen sich die Rechnung
- * unterscheiden kann.
- *
- * ── Die Zahl überschreibt, was von Hand dasteht ─────────────────────────────
- *
- * Absicht: Der Knopf heisst „eintragen", nicht „ergänzen". Wer ihn drückt,
- * will den gemessenen Stand, nicht eine Summe aus Schätzung und Messung. Die
- * Eingabefelder bleiben danach von Hand änderbar.
+ * Ausführlich: docs/begruendungen/public/js/08-init.js.md#plfuellebestand
  */
 async function plFuelleBestand() {
   const felder = /** @type {HTMLInputElement[]} */ (alle('.pl-have-input'));
@@ -350,16 +280,11 @@ function plRenderTable() {
         ? bildTag({ src: imgUrl(thumbUrl(imgSrc)||imgSrc, true), alt: '', klasse: 'bild-44', ph: 'teil' })
         : `<span class="bild-ph bild-44" aria-hidden="true">${platzhalterInhalt('teil')}</span>`;
       const pkey = `${esc(p.part_number)}__${p.color_id||0}`;
-      // ── Kein Rückfall auf die REBRICKABLE-Nummer ─────────────────────────
-      //
       // Hier stand `… ?? p.color_id ?? 0`. Fehlte die Zuordnung, ging damit
       // die Rebrickable-Farbnummer als BrickLink-Farbnummer hinaus — eine
       // gültige Datei mit der FALSCHEN Farbe. Das ist der Fehler vom 19.10.
-      // spiegelverkehrt: Dort wurde beim Import eine Farbe erfunden, hier
-      // würde eine falsche bestellt.
-      //
-      // Leer heisst jetzt „unbekannt". plExportBricklink lässt solche Posten
-      // weg und NENNT sie, statt zu raten.
+      // spiegelverkehrt: Dort wurde beim Import eine Farbe erfunden, hier …
+      // Ausführlich: docs/begruendungen/public/js/08-init.js.md#blcolorid
       const blColorId = p.bl_color_id ?? _rbToBlColor[p.color_id] ?? '';
       html += `<div data-stil="display:flex;align-items:center;gap:10px;padding:5px 4px;border-bottom:1px solid var(--bdr)">${img}<span data-stil="font-family:monospace;font-size:var(--fs-2);color:var(--b600);min-width:65px;flex-shrink:0" title="Rebrickable: ${esc(p.part_number)}">${esc(p.bl_part_number||p.part_number)}</span><span data-stil="flex:1;font-size:var(--fs-3)">${esc(p.part_name)}</span><span data-stil="font-weight:700;font-size:var(--fs-3);width:70px;text-align:right;flex-shrink:0">×${p.quantity.toLocaleString(locale())}</span><span data-stil="width:70px;flex-shrink:0;padding-left:6px"><input inputmode="numeric" type="number" min="0" value="0" data-key="${pkey}" data-need="${p.quantity}" data-part="${esc(p.bl_part_number||p.part_number)}" data-color="${blColorId}" data-rb-color="${p.color_id||0}" data-color-name="${esc(p.color_name||'')}" data-type="${(p.bl_part_number||p.part_number||'P').startsWith('fig-')?'M':'P'}" class="pl-have-input" data-stil="width:58px;height:28px;border:1px solid var(--feldrand);border-radius:5px;padding:0 6px;font-size:var(--fs-2);text-align:center" /></span></div>`;
     }
@@ -543,27 +468,22 @@ async function plExportBricklink() {
   }
   const expanded = Object.values(blMap);
 
-  // ── Posten OHNE bekannte BrickLink-Farbe gehen NICHT mit ────────────────
-  //
   // Sie werden genannt. Eine geratene Farbnummer ergibt eine gültige Datei,
   // die das falsche Teil bestellt — und das fällt erst auf, wenn das Paket da
   // ist. Dieselbe Regel wie beim Import (src/merkliste/wantedListe.ts): Was sich
   // nicht abbilden lässt, bleibt offen und wird gesagt.
-  //
-  // Minifiguren (Typ M) haben keine Farbe und sind deshalb nie betroffen.
+  // Ausführlich: docs/begruendungen/public/js/08-init.js.md#ohnefarbe
   const ohneFarbe = expanded.filter(m => m.type !== 'M' && (m.color === null || m.color === undefined));
   const exportierbar = expanded.filter(m => !ohneFarbe.includes(m));
 
   const stuecke = baueWantedXmlStuecke(
     exportierbar.map(m => ({ ...m, condition })));
 
-  // ── Eine Datei oder mehrere ─────────────────────────────────────────────
-  //
   // BrickLink nimmt höchstens BL_UPLOAD_MAX_BYTES je Upload und weist eine
   // grössere Datei GANZ ab. Passt alles in ein Stück, bleibt es beim alten
   // Verhalten: in einem neuen Tab öffnen, damit man den Text kopieren kann.
-  // Sonst werden die Stücke heruntergeladen — ein Tab je Stück wäre ein
-  // Popup-Gewitter.
+  // Sonst werden die Stücke heruntergeladen — ein Tab je Stück wäre ein …
+  // Ausführlich: docs/begruendungen/public/js/08-init.js.md#if
   if (stuecke.length === 1) {
     const blob = new Blob([stuecke[0]], { type: 'text/plain; charset=utf-8' });
     const url = URL.createObjectURL(blob);

@@ -61,8 +61,8 @@
     wrap.innerHTML = treffer.map(l => {
       const zeit = new Date(l.logged_at).toLocaleTimeString('de-CH', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
       const stufe = esc(l.level);
-      return '<div class="ll ' + stufe + '"><span class="ts">' + zeit + '</span>' +
-        '<span class="lv ' + stufe + '">' + stufe + '</span><span class="msg">' + highlight(l.message, suche) + '</span></div>';
+      return `<div class="ll ${stufe}"><span class="ts">${zeit}</span>` +
+        `<span class="lv ${stufe}">${stufe}</span><span class="msg">${highlight(l.message, suche)}</span></div>`;
     }).join('');
     wrap.scrollTop = wrap.scrollHeight;
   }

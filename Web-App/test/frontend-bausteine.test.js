@@ -72,8 +72,9 @@ test('der Baustein erzeugt das Markup, das die Stylesheets erwarten', () => {
   // müssen so herauskommen, wie styles.css sie anspricht — sonst sieht die
   // Zeile nach dem Umzug anders aus, und das fällt an keinem anderen Test auf.
   const src = fs.readFileSync(path.join(JS, BAUSTEIN), 'utf8');
-  for (const klasse of ['class="dr"', 'class="dl"', 'class="dv"', 'class="loading"', 'class="spin"']) {
-    assert.ok(src.includes(klasse), `${BAUSTEIN} erzeugt ${klasse} nicht mehr`);
+  // `class="dr${zKlasse}"`: die Zeile kann eine Zusatzklasse tragen.
+  for (const klasse of [/class="dr[$"]/, /class="dl"/, /class="dv"/, /class="loading"/, /class="spin"/]) {
+    assert.match(src, klasse, `${BAUSTEIN} erzeugt ${klasse} nicht mehr`);
   }
   const css = fs.readFileSync(path.join(__dirname, '..', 'public', 'styles.css'), 'utf8');
   for (const regel of ['.dr', '.dl', '.dv', '.loading', '.spin']) {

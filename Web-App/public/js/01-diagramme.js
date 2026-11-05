@@ -9,13 +9,7 @@ import { esc } from './00-escapen.js';
 
 /**
  * Marktpreis und Entwicklung je Zustand in den Detail-Dialog schreiben.
- *
- * Eine Zeile erscheint nur für Zustände, zu denen eine Erfassung existiert —
- * der Server entscheidet das (by_condition, siehe src/finanzen/priceHistory.ts) und
- * liefert gar keinen Eintrag für die anderen. Damit taucht eine neue Zeile
- * automatisch auf, sobald ein Kaufpreis in diesem Zustand erfasst wird: Nach
- * jedem Speichern wird diese Abfrage erneut geladen.
- *
+ * Ausführlich: docs/begruendungen/public/js/01-diagramme.js.md#rendermarketrows
  * @param {{by_condition?: Record<string, {market_price: number|null, pnl_pct: number|null, purchase_price?: number|null}>}} ph
  */
 export function renderMarketRows(ph, targetId = 'm-market-rows') {

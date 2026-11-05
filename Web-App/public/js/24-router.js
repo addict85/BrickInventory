@@ -4,13 +4,11 @@ import { beiDialogWechsel, istOffen, obersterDialog } from './01-dialoge.js';
 import { springe } from './00-ziele.js';
 import { ME } from './00-zustand.js';
 
-// ═══ Adresse und Verlauf ════════════════════════════════════════════════════
-//
 // Jede Ansicht steht als `#/pfad` in der Adresse, Filter als Query dahinter.
 // Ein Hash-Router, damit der Server für Unterseiten nichts ausliefern muss
 // und die Anmeldelinks (?token=, ?set=) unverändert bleiben. Jeder offene
-// Dialog ist ein Verlaufseintrag: Die Zurück-Geste schliesst ihn, statt die
-// App zu verlassen.
+// Dialog ist ein Verlaufseintrag: Die Zurück-Geste schliesst ihn, statt die …
+// Ausführlich: docs/begruendungen/public/js/24-router.js.md#jede-ansicht-steht-als-pfad-in-der-adres
 
 /** Ansicht (data-tab bzw. Sicht) → Pfad in der Adresse. */
 export const PFADE = {

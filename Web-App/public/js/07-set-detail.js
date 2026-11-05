@@ -49,10 +49,7 @@ export async function openModal(sn){
   // kommen aus derselben Abfrage wie der Preisverlauf (by_condition). Hier nur
   // der Platzhalter; gefüllt wird er in renderMarketRows() weiter unten,
   // sobald die Antwort da ist.
-  //
-  // Vorher standen hier zwei feste Zeilen aus _pnlCache — ein Wert für das
-  // ganze Set. Wer ein Exemplar neu und eines gebraucht besitzt, sah damit eine
-  // vermischte Entwicklung.
+  // Ausführlich: docs/begruendungen/public/js/07-set-detail.js.md#pricerow
   const priceRow = '<div id="m-market-rows"></div>';
   const pnlRow  = '';
   const qtyRow = detailZeile(t('detail.qty'), `
@@ -103,19 +100,7 @@ export async function openModal(sn){
   ladeOrtAuswahl(curSet.owners).catch(() => {});
 
   // Load actual minifig count from minifigs table (more reliable than sets.minifigs)
-  //
-  // ── Wettlauf mit dem Schliessen des Dialogs ──────────────────────────────
-  // Marcos Konsole: `TypeError: Cannot read properties of null (reading
-  // 'minifigs')`, als [promise] gemeldet — also aus einer Fortsetzung wie
-  // dieser.
-  //
-  // Die Abfrage über ALLE Minifiguren dauert; wer den Dialog vorher schliesst
-  // (closeModal setzt curSet auf null) oder ein anderes Set öffnet, lief hier
-  // in den Fehler. Das Element gab es dann teils noch — die Prüfung auf `el`
-  // allein genügt also nicht.
-  //
-  // Deshalb wird die Setnummer von damals mit der von jetzt verglichen: Nur
-  // wenn noch DASSELBE Set offen ist, gehört das Ergebnis dorthin.
+  // Ausführlich: docs/begruendungen/public/js/07-set-detail.js.md#api
   api('GET', `/v1/minifigs?source=set`).then(md => {
     const el = G('m-minifigs-val');
     if (!el || !curSet || curSet.set_number !== sn) return;
@@ -241,13 +226,7 @@ export function autosaveSet(){
     const d = await api('PUT',`/v1/sets/${esc(curSet.set_number)}`,{quantity:qty});
     if(d.success){
       // Die WIRKLICHE Gesamtmenge kommt vom Server.
-      //
-      // Angezeigt wird die Menge aller Konten, geschrieben wird die Differenz
-      // auf das eigene. Beim VERRINGERN deckelt der Server bei den eigenen
-      // Exemplaren — fremde lassen sich nicht wegnehmen —, und dann steht in
-      // der Antwort eine andere Zahl als die gesendete. Ohne diese Übernahme
-      // bliebe im Feld die eigene Annahme stehen, bis der Dialog neu geöffnet
-      // wird.
+      // Ausführlich: docs/begruendungen/public/js/07-set-detail.js.md#echt
       const echt = Number.isInteger(d.quantity) ? d.quantity : qty;
       curSet.quantity = echt;
       if (echt !== qty) G('m-qty').value = echt;

@@ -1,27 +1,12 @@
-// ═══ Kontofilter (Haushalt) — je Ansicht ═══════════════════════════════════
-//
-// ── Warum eigene Datei ───────────────────────────────────────
-//
 // Dieser Abschnitt lag in js/01-core.js. Deren Kopfzeile nennt als Inhalt
 // „Utils, i18n-Glue, Auth & Panels, Login/Logout, CSV-Import-Fortschrittsbalken"
 // — der Kontofilter ist nichts davon.
-//
-// Er ist ausserdem der am klarsten abgegrenzte Teil der Datei: Er hängt an
-// KEINEM anderen Modul, sondern nur am localStorage. Das macht ihn zum
-// natürlichen ersten Schnitt.
+// Ausführlich: docs/begruendungen/public/js/14-scope.js.md#dieser-abschnitt-lag-in-js-01-core-js-de
 /**
  * Ein Hauptkonto kann je Ansicht zwischen Alle / Eigene / Unterkonten
  * umschalten. Die Wahl gilt PRO ANSICHT: Wer in der Galerie den ganzen
  * Haushalt sieht, will in den Finanzen womöglich nur die eigenen Zahlen.
- *
- * Gefiltert wird am Server (`accounts=`) — clientseitig liesse sich zwar eine
- * Kachelwand aussieben, aber weder die Gesamtzahl darunter noch die Bewertung
- * im Finanzreiter.
- *
- * Die Wahl überlebt einen Neuladen (localStorage). Bewusst nicht auf dem
- * Server gespeichert: Es ist eine Ansichtseinstellung wie „Kachel oder
- * Tabelle", keine Eigenschaft des Kontos — und am Telefon will man sie
- * womöglich anders als am Rechner.
+ * Ausführlich: docs/begruendungen/public/js/14-scope.js.md#ein-hauptkonto-kann-je-ansicht-zwischen
  */
 // 'merkliste' steht seit dem 24.09. mit darin (Marcos Vorgabe: „In der
 // Merkliste noch einen Filter analog den Sets einbauen inkl. Inhaber"). Der
@@ -40,19 +25,7 @@ export function setScopeMode(view, mode) {
 
 /**
  * Kontofilter aller Ansichten zurücksetzen — bei jeder ANMELDUNG.
- *
- * ── Warum (Marcos Wunsch) ──────────────────────────────────────
- * Der Filter liegt bewusst im localStorage: Er ist eine Ansichtseinstellung
- * wie „Kachel oder Tabelle", und am Telefon will man sie womöglich anders als
- * am Rechner. Genau das machte ihn aber auch zu einer Falle — er überlebte
- * Abmelden und Anmelden, und wer zuletzt auf ein einzelnes Konto gefiltert
- * hatte, sah nach dem nächsten Login wieder nur dessen Sets, ohne dass etwas
- * darauf hinwies. Das war schwer als Filter zu erkennen; es sah aus, als sei
- * die halbe Sammlung weg.
- *
- * Deshalb: Beim Anmelden gilt IMMER „Alle Konten". Innerhalb einer Sitzung
- * bleibt eine getroffene Wahl erhalten — auch über einen Seitenneuaufbau (F5)
- * hinweg, denn dabei wird nicht neu angemeldet.
+ * Ausführlich: docs/begruendungen/public/js/14-scope.js.md#resetscopemodes
  */
 export function resetScopeModes() {
   for (const view of SCOPE_VIEWS) localStorage.removeItem('bim_scope_' + view);
@@ -75,19 +48,11 @@ export function scopeQuery(view) {
   const m = scopeMode(view);
   return (m && m !== 'all') ? `?accounts=${m}` : '';
 }
-// ═══ Lagerortfilter — je Ansicht, genau wie der Kontofilter ═══════════════════
-//
-// ── Warum in DIESER Datei ───────────────────────────────────────────────────
-//
 // Der Lagerortfilter ist derselbe Gegenstand wie der Kontofilter: eine Wahl je
 // Ansicht, die als Anfrageparameter mitreist und am Server in die Abfrage
 // eingeht. Er teilt sogar die Begründungen — gefiltert wird am Server, weil
-// sich die Gesamtzahl darunter clientseitig nicht aussieben lässt, und die
-// Wahl wird beim Anmelden zurückgesetzt, weil sie sonst wie eine verschwundene
-// Sammlung aussieht.
-//
-// Zwei Dateien für dieselbe Sache hätten zwei Fassungen dieser Regeln
-// bedeutet, und eine davon wäre irgendwann die ältere.
+// sich die Gesamtzahl darunter clientseitig nicht aussieben lässt, und die …
+// Ausführlich: docs/begruendungen/public/js/14-scope.js.md#der-lagerortfilter-ist-derselbe-gegensta
 
 /** Ansichten mit einem Lagerortfilter. Sets und Teile — nur die haben einen. */
 export const LAGER_VIEWS = ['gallery', 'parts'];

@@ -1,24 +1,9 @@
 import { melde } from './js/00-ereignisse.js';
 
-// ── i18n ─────────────────────────────────────────────────────────────────────
 // Minimales Übersetzungs-System. Sprache wird beim App-Start aus den User-
 // Settings geladen und im localStorage gecacht, damit beim nächsten Seitenlade
 // keine sichtbare Verzögerung entsteht.
-//
-// Nutzung: t('key') → übersetzter String
-// Mit Platzhaltern: t('key', {name: 'Foo'}) → 'Hello Foo'
-//
-// ── Sprachen liegen in eigenen Dateien ──────────────────────────────────────
-// Beide Wörterbücher standen früher hier — zusammen rund 60 KB, die vollständig
-// ins Frontend-Bündel wanderten. Jeder Nutzer lud damit dauerhaft die Sprache
-// mit, die er nie sieht.
-//
-// Jetzt: index.html bindet nur die aktive Sprache ein (locales/de.js bzw.
-// locales/en.js, ausgewählt serverseitig anhand des gespeicherten Werts), und
-// ein Sprachwechsel holt die andere Datei einmalig nach. Dass beide Dateien
-// window.I18N_DE / window.I18N_EN setzen, hält den Ablauf ohne Modulsystem
-// einfach — der Rest des Frontends ist ebenfalls klassisches JavaScript.
-// ─────────────────────────────────────────────────────────────────────────────
+// Ausführlich: docs/begruendungen/public/i18n.js.md#minimales-uebersetzungs-system-sprache-w
 
 /**
  * Wörterbuch der geladenen Sprachen. Mindestens eine ist beim Start da; die
@@ -31,15 +16,7 @@ if (window.I18N_EN) I18N.en = window.I18N_EN;
 
 /**
  * Eine Sprachdatei nachladen, falls sie noch nicht da ist.
- *
- * Wird von applyLang() aufgerufen, BEVOR neu übersetzt wird. Ohne das Warten
- * würde der erste Wechsel eine halbe Sekunde lang Schlüsselnamen statt Text
- * zeigen (t() fällt auf den Schlüssel zurück, wenn nichts gefunden wird).
- *
- * Schlägt das Laden fehl (offline, Datei fehlt), bleibt die bisherige Sprache
- * aktiv — das ist der harmlose Ausgang. Die Zusage lautet deshalb "versucht zu
- * laden", nicht "hat geladen"; der Aufrufer prüft I18N[lang].
- *
+ * Ausführlich: docs/begruendungen/public/i18n.js.md#loadlang
  * @param {string} lang 'de' oder 'en'
  * @returns {Promise<void>}
  */
@@ -117,18 +94,7 @@ function mehrzahlSchluessel(dict, key, vars) {
 
 /**
  * Übersetzten Text holen und {platzhalter} ersetzen.
- *
- * Die eingesetzten Werte werden MASKIERT. Fast jede Aufrufstelle schiebt das
- * Ergebnis in innerHTML (`el.innerHTML = t('gallery.no_results', {query: q})`),
- * und q ist eine Nutzereingabe — vorher landete sie ungefiltert im DOM. Heute
- * ist das dank der CSP ohne 'unsafe-inline' schwer ausnutzbar, aber es ist die
- * Sorte Lücke, die beim nächsten Wert aus der Datenbank statt aus dem Suchfeld
- * scharf wird.
- *
- * Die Übersetzungstexte selbst enthalten kein Markup (geprüft: null Treffer),
- * die Maskierung kann hier also nichts zerstören. Braucht eine Stelle je
- * bewusst HTML in einer Variablen, gibt es tRaw() darunter.
- *
+ * Ausführlich: docs/begruendungen/public/i18n.js.md#t
  * @param {string} key
  * @param {Record<string, unknown>} [vars]
  * @returns {string}
@@ -189,15 +155,7 @@ let _langApplied = null;
 
 /**
  * Farbnamen übersetzen.
- *
- * Die Namen kommen von Rebrickable und sind immer englisch — sie stehen so in
- * der Datenbank und werden für BrickLink-Abfragen gebraucht. Übersetzt wird
- * deshalb nur die ANZEIGE, die Daten bleiben unverändert.
- *
- * LEGO-Farbnamen sind zusammengesetzt („Dark Bluish Gray", „Trans-Neon Green"),
- * deshalb ein Wortschatz statt einer Liste aller ~200 Farben: Jedes Wort wird
- * einzeln übersetzt, unbekannte bleiben stehen. Neue Farben von Rebrickable
- * ergeben damit automatisch etwas Lesbares.
+ * Ausführlich: docs/begruendungen/public/i18n.js.md#color-words-de
  */
 const COLOR_WORDS_DE = {
   // Modifikatoren
@@ -242,11 +200,8 @@ export function colorName(en) {
   // Modifikatoren an das folgende Wort anschliessen und dieses kleinschreiben:
   // „Dunkel Bläulich Grau" → „Dunkelbläulichgrau", wie es im Deutschen üblich
   // ist. Nur bei bekannten Modifikatoren — unbekannte Wörter bleiben getrennt,
-  // sonst entstünde aus einer neuen Rebrickable-Farbe ein Wortungetüm.
-  // Am vorigen TOKEN entscheiden, nicht am bereits Zusammengesetzten: Nach
-  // „Dunkel"+"bläulich" hiesse der Wortanfang sonst „Dunkelbläulich" und wäre
-  // kein bekannter Modifikator mehr — „Dunkelbläulich Grau" statt
-  // „Dunkelbläulichgrau".
+  // sonst entstünde aus einer neuen Rebrickable-Farbe ein Wortungetüm. …
+  // Ausführlich: docs/begruendungen/public/i18n.js.md#res
   let res = '';
   let joinNext = false;
   for (const cur of out) {
@@ -260,13 +215,7 @@ export function colorName(en) {
 
 export function applyLang(lang, persist) {
   // Sprache noch nicht geladen? Nachholen und danach erneut anlaufen.
-  //
-  // VORHER stand hier ein blosses `return` — solange beide Wörterbücher
-  // eingebaut waren, konnte der Fall nicht eintreten. Seit nur die aktive
-  // Sprache ausgeliefert wird, ist der erste Wechsel genau dieser Fall, und
-  // ein stilles return hiesse: Der Nutzer klickt auf Englisch und nichts
-  // passiert. Die Funktion bleibt synchron, damit die rund zwanzig
-  // Aufrufstellen unverändert bleiben; nachgeladen wird im Hintergrund.
+  // Ausführlich: docs/begruendungen/public/i18n.js.md#if
   if (!I18N[lang]) {
     loadLang(lang).then(() => { if (I18N[lang]) applyLang(lang, persist); });
     return;

@@ -282,10 +282,11 @@ test('auch das TEIL kennt seine Besitzer — es war die letzte Lücke', () => {
 
 test('beide bieten auswählen UND neu eintippen in EINEM Feld', () => {
   // Ein reines Auswahlfeld kann nur das erste, ein reines Textfeld nur das
-  // zweite. Die Webapp nimmt eine datalist, die App einen
-  // ExposedDropdownMenuBox — dasselbe Verhalten, die jeweils übliche Form.
-  assert.match((web('public/js/02-detailfelder.js') + web('public/js/07-set-detail.js')), /list="lagerorte"/,
-    'Das Feld der Webapp klappt nicht auf');
+  // zweite. Die Webapp nimmt eine Auswahl mit dem Eintrag „neuer Ort“, der das
+  // Textfeld öffnet, die App einen ExposedDropdownMenuBox.
+  const feld = require('./helpers/sources').ohneKommentare(web('public/js/02-detailfelder.js'));
+  assert.match(feld, /<select [^>]*data-ortauswahl="1"/, 'Das Feld der Webapp klappt nicht auf');
+  assert.match(feld, /<option value="" \$\{ORT_NEU_MARKE\}>/, 'Die Auswahl der Webapp nimmt keinen neuen Ort an');
   assert.match(KT_FELD, /ExposedDropdownMenuBox/,
     'Das Feld der App klappt nicht auf');
   // Und getippte Werte landen im Vorrat — sonst stünde der Ort am Set und
