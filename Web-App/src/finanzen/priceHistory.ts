@@ -1,5 +1,6 @@
 /** Die EINE Umsetzung für Webapp und Android-API, damit beide dasselbe Diagramm zeigen.
  * Ausführlich: docs/begruendungen/src/finanzen/priceHistory.ts.md#abschnitt */
+import { meldeUndLiefere } from '../infra/fehler';
 import { resolveSetCondition, resolveBlColorId, resolveBlPartNumber } from './financeCalc';
 import { asIds } from '../haushalt/haushalt';
 import { buildChart } from './chartData';
@@ -203,7 +204,7 @@ async function preisNummernFuerFigur(uid: number | number[], figNumber: string):
 export async function purgeAltePreise(): Promise<number> {
   const tage = konfig().preisverlaufTage;
   if (tage <= 0) return 0;
-  const r = await repo.loescheAltenVerlauf(String(tage)).catch(() => ({ changes: 0 }));
+  const r = await repo.loescheAltenVerlauf(String(tage)).catch(meldeUndLiefere('preisverlauf:aufraeumen', { changes: 0 }));
   return r?.changes || 0;
 }
 

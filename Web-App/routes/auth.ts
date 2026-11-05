@@ -251,7 +251,7 @@ router.put('/profile', requireLogin, async (req, res: Antwort<'PUT /api/v1/auth/
     // In der Sprache des Kontos, nicht in der Vorgabe.
     // Ausführlich: docs/begruendungen/routes/auth.ts.md#put-profile-emailsent
     let emailSent = false;
-    const lang = String(await getSetting(user.id, 'language', 'de').catch(() => 'de'));
+    const lang = String(await getSetting(user.id, 'language', 'de').catch(meldeUndLiefere('anmeldung:sprache', 'de')));
     const basis = mailBasisUrl();
     if (basis) emailSent = await sendVerificationMail(email, token, basis, lang, 'adresse')
       .then(r => r.success, meldeUndLiefere('anmeldung:bestaetigungsmail', false));

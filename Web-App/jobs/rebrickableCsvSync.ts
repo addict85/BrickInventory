@@ -201,7 +201,7 @@ async function run() {
         const { status, body } = await httpsGetRobust(
           `https://rebrickable.com/api/v3/lego/colors/?page_size=200&page=${page}`,
           { Authorization: `key ${key}` }, 30000
-        ).catch(() => ({ status: 0, body: '' }));
+        ).catch(meldeUndLiefere('csv-abgleich:abruf', { status: 0, body: '' }));
         if (status !== 200) break;
         const data = JSON.parse(body);
         for (const c of (data.results || [])) {

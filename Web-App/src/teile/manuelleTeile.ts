@@ -107,7 +107,7 @@ async function addManualPartIntern(uid: number, rawBody: any) {
 
   if (existing) {
     const reCond = condition && ['N','U'].includes(condition) ? condition
-      : await resolvePartCondition(uid, part_number, color_id).catch(() => 'N');
+      : await resolvePartCondition(uid, part_number, color_id).catch(meldeUndLiefere('teile:zustand', 'N'));
     const reEntered = (unit_price !== undefined && unit_price !== null && String(unit_price) !== '')
       ? parseFloat(String(unit_price)) : null;
     const rePrice = (reEntered !== null && !isNaN(reEntered))

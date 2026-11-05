@@ -100,7 +100,7 @@ export async function consumeRebrickableDaily(): Promise<boolean> {
 
 export async function rebrickableDailyStatus(): Promise<{ count: number; limit: number; remaining: number }> {
   return getRateLimitStatus('rebrickable')
-    .catch(() => ({ count: 0, limit: REBRICKABLE_DEFAULT_DAILY, remaining: 0 }));
+    .catch(meldeUndLiefere('kontingent:stand', { count: 0, limit: REBRICKABLE_DEFAULT_DAILY, remaining: 0 }));
 }
 
 /** Zwei gleichzeitige Downloads, aber höchstens einer neu je Sekunde: Das CDN

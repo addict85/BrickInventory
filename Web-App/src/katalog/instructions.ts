@@ -105,7 +105,7 @@ export async function downloadSetInstructions(setNumber: string,
   _letzterAbrufWarExtern = true;   // ab hier wird wirklich gefragt
   try { instrList = await scrapeInstructions(n); } catch (e) { meldeUndWeiter('anleitungen:auslesen', e); }
   if (!instrList.length) {
-    const bsResult = await brickset.getInstructions(n).catch(() => ({ instructions: [], usesFallback: true }));
+    const bsResult = await brickset.getInstructions(n).catch(meldeUndLiefere('anleitungen:brickset', { instructions: [], usesFallback: true }));
     instrList = bsResult.instructions || [];
     // usesFallback: Brickset hat geantwortet, ohne Anleitung; false heisst
     // Kontingent erschöpft — dann in der Warteschlange bleiben.

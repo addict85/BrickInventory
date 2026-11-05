@@ -261,7 +261,7 @@ export async function updateSet(uid: number, sn: string, body: any) {
     // Rechnung in der Sperre.
     const vorab = await eigenesZiel(db);
     const plan = vorab.eigenZiel > vorab.eigenVorher
-      ? await priceForNewAcquisition(uid, sn).catch(() => ({ price: null, condition: 'N' }))
+      ? await priceForNewAcquisition(uid, sn).catch(meldeUndLiefere('sets:kaufpreis', { price: null, condition: 'N' }))
       : { price: null, condition: 'N' };
     await withInventoryLock(uid, sn, async (tx) => {
       const { eigenVorher, eigenZiel } = await eigenesZiel(tx);

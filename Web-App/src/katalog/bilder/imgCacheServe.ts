@@ -65,7 +65,7 @@ export async function liefereAusCache(opts: {
 
     // Auch aus dem Cache nur Bilder; im Zweifel JPEG — mit nosniff die harmlose
     // Auslegung.
-    const ctRaw = await fs.promises.readFile(cacheFile + '.ct', 'utf8').catch(() => 'image/jpeg');
+    const ctRaw = await fs.promises.readFile(cacheFile + '.ct', 'utf8').catch(ohneFehlendeDatei('bild-cache:typ', 'image/jpeg'));
     res.setHeader('Content-Type', bildTyp(ctRaw));
     // Länge mitgeben: Eine chunked-Antwort kann ein Reverse-Proxy puffern.
     const cst = await fs.promises.stat(cacheFile).catch(ohneFehlendeDatei('bild-cache:stat', null));

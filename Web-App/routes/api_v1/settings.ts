@@ -2,7 +2,7 @@
  * und nach router.use(requireLogin) hier an einer Stelle entschieden wird. */
 import multer from 'multer';
 import { FORMULAR_GRENZEN } from '../../src/infra/dateiEmpfang';
-import { logAndContinue } from '../../src/infra/fehler';
+import { logAndContinue, meldeUndLiefere } from '../../src/infra/fehler';
 import { fehlerAntwort } from '../../src/infra/httpAntwort';
 import { requireApiAdmin as requireAdmin, requireToken, bearerToken, kontoSchranke } from './middleware';
 import { SECRET_KEYS, isMaskedValue, readSettings, globaleWerteOhneGeheimnisse, DESIGNS, designFuer, nutzerEinstellungen, deleteUserSetting, setGlobalSetting, globalerWertGueltig, deleteGlobalSetting, globalDefaultCondition, nutzerStandardZustand, getGlobalSetting, getSetting } from '../../src/einstellungen/settings';
@@ -179,7 +179,7 @@ router.post('/settings/household/redeem', requireToken, async (req: AuthedReques
   if ((r as any).fehler) return sendeFehler(req, res, 409, (r as any).fehler, (r as any).vars);
   const ich = await profil(uid);
   if (ich?.email) {
-    const sprache = await getSetting(uid, 'language', 'de').catch(() => 'de');
+    const sprache = await getSetting(uid, 'language', 'de').catch(meldeUndLiefere('einstellungen:sprache', 'de'));
     const hauptkonto = 'linked_to' in r ? r.linked_to.username : '';
     sendHaushaltVerknuepftMail(ich.email, ich.username, hauptkonto, String(sprache ?? 'de'))
       .catch(logAndContinue('haushalt:hinweismail'));

@@ -1,4 +1,5 @@
 // Ausführlich: docs/begruendungen/src/gutscheine/gutscheinGuthaben.ts.md#abschnitt
+import { meldeUndLiefere } from '../infra/fehler';
 import { hostErlaubt } from '../infra/fremdeAdressen';
 import { holeHttps } from '../infra/abruf';
 
@@ -249,7 +250,7 @@ async function frageAb(
 
   if (res.status === 401) throw new NichtAngemeldet('Nicht angemeldet');
   if (!res.ok) {
-    const text = await res.text().catch(() => '');
+    const text = await res.text().catch(meldeUndLiefere('guthaben:antworttext', ''));
     // verdecke() auch auf den FREMDEN Text: Eine Fehlermeldung, die die Eingabe
     // zurückwirft, brächte die PIN sonst ins Protokoll.
     const sicher = verdecke(text.slice(0, 300), nummer, pin);

@@ -1,7 +1,7 @@
 /** Ohne Anmeldung: Registrierung, E-Mail-Bestätigung und Passwort vergessen.
  * Jede Antwort verrät gleich wenig darüber, ob es ein Konto gibt. */
 import * as K from '../../src/konto/konten';
-import { logAndContinue } from '../../src/infra/fehler';
+import { logAndContinue, meldeUndLiefere } from '../../src/infra/fehler';
 import { fehlerAntwort } from '../../src/infra/httpAntwort';
 import { hashToken, USERNAME_RE, emailGueltig, nameGueltig, verifiziereEmailToken } from '../../src/konto/auth';
 import { zielGedrosselt } from '../../src/konto/zielDrossel';
@@ -54,7 +54,7 @@ router.post('/register', ipThrottle('register', 5, 60 * 60 * 1000), async (req, 
   let result: { success: boolean; mode: string };
   if (inhaber) {
     await K.rechneWieRegistrierung(password);
-    const sprache = String(await getSetting(inhaber.id, 'language', 'de').catch(() => 'de'));
+    const sprache = String(await getSetting(inhaber.id, 'language', 'de').catch(meldeUndLiefere('registrierung:sprache', 'de')));
     result = basis ? await sendRegistrierungsVersuchMail(inhaber.email, sprache)
       : { success: false, mode: 'ohne_basis' };
   } else if (nameVergeben) {
@@ -99,7 +99,7 @@ router.post('/bestaetigung-erneut', ipThrottle('bestaetigung-erneut', 5, 60 * 60
   const konto = gedrosselt ? null : await K.erneuereEmailTokenWennFrei(String(email), hashToken(token), 24, RUECKSETZ_PAUSE_MIN);
   if (konto) {
     getSetting(konto.id, 'language', 'de')
-      .catch(() => 'de')
+      .catch(meldeUndLiefere('registrierung:sprache', 'de'))
       .then((lang: unknown) => sendVerificationMail(konto.email, token, mailBasisUrl()!, String(lang ?? 'de')))
       .catch(logAndContinue('bestaetigung-erneut:mailversand'));
   }
@@ -140,7 +140,7 @@ router.post('/forgot-password', ipThrottle('forgot-password', 5, 60 * 60 * 1000)
     // Nicht awaiten, sonst verriete die Dauer des SMTP-Versands die Adresse.
     // Ausführlich: docs/begruendungen/routes/auth.ts.md#post-forgot-password-2
     getSetting(user.id, 'language', 'de')
-      .catch(() => 'de')
+      .catch(meldeUndLiefere('registrierung:sprache', 'de'))
       // An die GESPEICHERTE Adresse: Die eingegebene passt per LOWER() auch als Unicode-Variante.
       .then((lang: unknown) => sendPasswordResetMail(
         user.email ?? '', token, mailBasisUrl()!, String(lang ?? 'de')))

@@ -69,7 +69,7 @@ export async function zustandFuerPreis(
 ): Promise<string> {
   if (eingabe === 'N' || eingabe === 'U') return eingabe;
   if (bisher) return bisher;
-  return await nutzerStandardZustand(userId).catch(() => 'N');
+  return await nutzerStandardZustand(userId).catch(meldeUndLiefere('einstellungen:standardzustand', 'N'));
 }
 
 export async function globalDefaultCondition(): Promise<'N' | 'U'> {

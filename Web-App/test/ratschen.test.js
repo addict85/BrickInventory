@@ -58,7 +58,8 @@ const STILLE_FAENGE = [
   /catch\s*\{\s*\}/g,
   /catch\s*\(\s*\w*\s*\)\s*\{\s*\}/g,
   /\.catch\(\(\)\s*=>\s*\{\s*\}\)/g,
-  /\.catch\(\(\)\s*=>\s*(null|undefined|0|false)\)/g,
+  // Auch ein Text, eine Zahl oder ein Objekt als Ersatz verschluckt den Fehler.
+  /\.catch\(\(\)\s*=>\s*(null|undefined|true|false|-?\d+|'[^']*'|"[^"]*"|\(\{[^()]*\}\))\)/g,
   // Eine leere Liste ist für den Leser keine Fehlermeldung, sondern „nichts da".
   /\.catch\(\(\)\s*=>\s*\[\]\)/g,
 ];
