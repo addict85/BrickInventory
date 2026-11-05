@@ -214,7 +214,7 @@ class PdfExportManager @Inject constructor(
                     // 404 = Endpoint nicht vorhanden → Fallback; andere Fehler = echter Fehler
                     if (response != null && response.code != 404 && response.code != 0) {
                         // 429 `zu_viele_verbindungen`: Der Rat steht im Code, nicht im Status.
-                        val code = runCatching { Fehlerrumpf.lies(response.peekBody(4096).string()).code }.getOrNull()
+                        val code = runCatching { Fehlerrumpf.lies(response.peekBody(4096).string()).fehlercode }.getOrNull()
                         _state.value = PdfExportState.Error(fehlerTextZuCode(code)?.let { s(it) }
                             ?: s(R.string.pdfexp_http_error, response.code))
                         settle(false)

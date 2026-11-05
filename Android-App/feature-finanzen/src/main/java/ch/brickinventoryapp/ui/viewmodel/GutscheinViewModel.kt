@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.ui.viewmodel
 
+import ch.brickinventoryapp.data.model.Fehlercode
 import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -424,7 +425,7 @@ class GutscheinViewModel @Inject constructor(
 private val KLARTEXT_SCHRITTE = setOf(GutscheinSchritt.PIN_ZEIGEN, GutscheinSchritt.NUMMER_KOPIEREN, GutscheinSchritt.PIN_KOPIEREN)
 
 /** Mit diesen Codes verlangt der Server den zweiten Faktor oder weist ihn ab. */
-private val FAKTOR_CODES = setOf("zweiter_faktor_noetig", "zweiter_faktor_falsch")
+private val FAKTOR_CODES = setOf(Fehlercode.ZWEITER_FAKTOR_NOETIG, Fehlercode.ZWEITER_FAKTOR_FALSCH)
 
 /** Höchstens so oft dieselbe Karte erneut versuchen, wenn die Schranke bremst. */
 private const val ABSTAND_VERSUCHE = 4

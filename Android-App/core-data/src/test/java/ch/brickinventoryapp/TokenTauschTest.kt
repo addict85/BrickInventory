@@ -1,5 +1,6 @@
 package ch.brickinventoryapp
 
+import ch.brickinventoryapp.data.model.Fehlercode
 import ch.brickinventoryapp.data.GetauschterToken
 import ch.brickinventoryapp.data.TokenSchranke
 import ch.brickinventoryapp.data.TokenStand
@@ -126,7 +127,7 @@ class TokenTauschTest {
 
     @Test
     fun `gilt der alte nicht mehr, muss neu gekoppelt werden`() = runTest {
-        val w = Welt().apply { antworten = mutableListOf(verloren, Result.Error("", httpCode = 401, code = "token_ungueltig")) }
+        val w = Welt().apply { antworten = mutableListOf(verloren, Result.Error("", httpCode = 401, code = Fehlercode.TOKEN_UNGUELTIG)) }
         assertEquals(Tauschergebnis.NEU_KOPPELN, w.tausch.tausche("alt"))
         assertEquals("alt", w.gespeichert)
     }

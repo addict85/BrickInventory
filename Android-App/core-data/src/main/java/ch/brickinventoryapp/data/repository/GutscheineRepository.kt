@@ -62,7 +62,7 @@ class GutscheineRepository @Inject constructor(
         val antwort = api.frageGuthabenAb(id)
         if (antwort.isSuccessful) return@safeCall antwort
         val roh = antwort.errorBody()?.string()
-        if (Fehlerrumpf.lies(roh).code !in GUTHABEN_GESPERRT && !istKontogrenze(roh)) {
+        if (Fehlerrumpf.lies(roh).fehlercode !in GUTHABEN_GESPERRT && !istKontogrenze(roh)) {
             // Der Rumpf ist gelesen; safeCall bekommt ihn neu, sonst fehlte ihm der Satz.
             return@safeCall retrofit2.Response.error(antwort.code(),
                 (roh ?: "").toResponseBody("application/json".toMediaType()))
@@ -104,7 +104,7 @@ class GutscheineRepository @Inject constructor(
                 val roh = antwort.errorBody()?.string()
                 // Zu viele Seiten: Gelesen wurde nichts, das Formular hat nichts vorzubelegen.
                 // Ein Fehler mit Satz und Code, sonst hiesse es „unvollständig gelesen“.
-                val zuLang = Fehlerrumpf.lies(roh).code == PDF_ZU_VIELE_SEITEN
+                val zuLang = Fehlerrumpf.lies(roh).fehlercode == Fehlercode.PDF_ZU_VIELE_SEITEN
                 val geparst = roh?.takeIf { !zuLang }?.let {
                     runCatching { nachsichtigesJson.decodeFromString<GutscheinAntwort>(it) }.getOrNull()
                 }
@@ -135,16 +135,13 @@ class GutscheineRepository @Inject constructor(
         fun ohneGeheimnis(g: Gutschein): Gutschein =
             g.copy(number = if (g.number.length > 4) "…" + g.number.takeLast(4) else g.number, pin = null)
 
-        /** 422 auf ein PDF über der Seitengrenze des Servers. */
-        private const val PDF_ZU_VIELE_SEITEN = "pdf_zu_viele_seiten"
-
         /** Die Codes, unter denen der Server eine Guthabenabfrage zurückstellt. */
-        private val GUTHABEN_GESPERRT = setOf("guthaben_abstand", "guthaben_botschutz")
+        private val GUTHABEN_GESPERRT = setOf(Fehlercode.GUTHABEN_ABSTAND, Fehlercode.GUTHABEN_BOTSCHUTZ)
 
         /** Die Grenze je Konto teilt den Code mit der allgemeinen Drossel; nur `grund` unterscheidet. */
         private fun istKontogrenze(roh: String?): Boolean = runCatching {
             val o = org.json.JSONObject(roh ?: return false)
-            o.optString("code") == "zu_viele_anfragen" && o.optString("grund") == "konto"
+            Fehlercode.aus(o.optString("code")) == Fehlercode.ZU_VIELE_ANFRAGEN && o.optString("grund") == "konto"
         }.getOrDefault(false)
     }
 

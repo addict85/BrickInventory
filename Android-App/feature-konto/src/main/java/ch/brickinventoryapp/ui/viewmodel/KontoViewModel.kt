@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.ui.viewmodel
 
+import ch.brickinventoryapp.data.model.Fehlercode
 import ch.brickinventoryapp.ui.model.alsAnsicht
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -118,7 +119,7 @@ class KontoViewModel @Inject constructor(
      */
     private fun abgelehnt(r: Result.Error) = _kontoState.update {
         it.copy(speichert = false, fehler = texte.meldung(r),
-            codeNoetig = it.codeNoetig || r.code == "zweiter_faktor_noetig" || r.code == "zweiter_faktor_falsch")
+            codeNoetig = it.codeNoetig || r.code == Fehlercode.ZWEITER_FAKTOR_NOETIG || r.code == Fehlercode.ZWEITER_FAKTOR_FALSCH)
     }
 
     /**

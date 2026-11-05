@@ -6,6 +6,7 @@ import ch.brickinventoryapp.ressourcen.R
 import ch.brickinventoryapp.data.repository.HaushaltRepository
 import ch.brickinventoryapp.data.repository.KontoRepository
 import ch.brickinventoryapp.data.repository.Result
+import ch.brickinventoryapp.data.model.Fehlercode
 import ch.brickinventoryapp.ui.Aenderung
 import ch.brickinventoryapp.ui.HouseholdUiState
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -73,8 +74,8 @@ class HaushaltViewModel @Inject constructor(
                 }
                 // Kennt die App den zweiten Faktor noch nicht, zeigt erst diese Antwort das Codefeld.
                 is Result.Error -> _householdState.update { it.copy(isLoading = false,
-                    passwortFalsch = r.code == PASSWORT_FALSCH, faktorFalsch = r.code == FAKTOR_FALSCH,
-                    faktorNoetig = it.faktorNoetig || r.code == FAKTOR_FALSCH, message = einloeseFehler(r)) }
+                    passwortFalsch = r.code == Fehlercode.AKTUELLES_PASSWORT_FALSCH, faktorFalsch = r.code == Fehlercode.ZWEITER_FAKTOR_FALSCH,
+                    faktorNoetig = it.faktorNoetig || r.code == Fehlercode.ZWEITER_FAKTOR_FALSCH, message = einloeseFehler(r)) }
             }
         }
     }
@@ -92,9 +93,9 @@ class HaushaltViewModel @Inject constructor(
      * zugesagt, nur den Status 429; sein Satz nennt die Wartezeit und geht vor.
      */
     private fun einloeseFehler(r: Result.Error): String = when {
-        r.code == PASSWORT_FALSCH -> text(R.string.household_redeem_password_wrong)
-        r.code == FAKTOR_FALSCH -> text(R.string.household_redeem_code_wrong)
-        r.code == "zu_viele_fehlversuche" || r.httpCode == 429 ->
+        r.code == Fehlercode.AKTUELLES_PASSWORT_FALSCH -> text(R.string.household_redeem_password_wrong)
+        r.code == Fehlercode.ZWEITER_FAKTOR_FALSCH -> text(R.string.household_redeem_code_wrong)
+        r.code == Fehlercode.ZU_VIELE_FEHLVERSUCHE || r.httpCode == 429 ->
             r.message.ifBlank { text(R.string.household_redeem_locked) }
         else -> meldung(r)
     }
@@ -129,10 +130,5 @@ class HaushaltViewModel @Inject constructor(
 
     override fun zuruecksetzen() {
         _householdState.value = HouseholdUiState()
-    }
-
-    private companion object {
-        const val PASSWORT_FALSCH = "aktuelles_passwort_falsch"
-        const val FAKTOR_FALSCH = "zweiter_faktor_falsch"
     }
 }

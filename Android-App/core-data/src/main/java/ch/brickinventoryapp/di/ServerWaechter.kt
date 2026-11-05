@@ -1,6 +1,7 @@
 package ch.brickinventoryapp.di
 
 import ch.brickinventoryapp.data.api.Fehlerrumpf
+import ch.brickinventoryapp.data.model.Fehlercode
 import ch.brickinventoryapp.util.APP_API_VERSION
 import ch.brickinventoryapp.util.KlartextAbgelehnt
 import ch.brickinventoryapp.util.NetworkPolicy
@@ -53,17 +54,9 @@ private const val ROTATIONS_PFAD = "/api/v1/auth/token-rotieren"
  * 401 mit diesen Codes heisst „Bestätigung falsch oder fehlt“, nicht „Token
  * ungültig“: Der Dialog fragt erneut nach dem Passwort, statt abzumelden.
  */
-private val BESTAETIGUNG_NOETIG = setOf("aktuelles_passwort_falsch", "aktuelles_passwort_erforderlich",
-    "zweiter_faktor_falsch", "zweiter_faktor_noetig", "passkey_ungueltig")
+private val BESTAETIGUNG_NOETIG = setOf(Fehlercode.AKTUELLES_PASSWORT_FALSCH, Fehlercode.AKTUELLES_PASSWORT_ERFORDERLICH,
+    Fehlercode.ZWEITER_FAKTOR_FALSCH, Fehlercode.ZWEITER_FAKTOR_NOETIG, Fehlercode.PASSKEY_UNGUELTIG)
 
-/** 403 mit diesem Code: Das Konto oder der Token hat keine Verwalterrechte (mehr). */
-const val NUR_ADMINS = "nur_admins"
-
-/** 403 mit diesem Code: Erst das Startpasswort ersetzen (data/PasswortPflicht). */
-const val PASSWORT_WECHSEL_NOETIG = "passwort_wechsel_noetig"
-
-/** 403 mit diesem Code: Verwalterrechte ohne zweiten Faktor (data/ZweiterFaktorPflicht). */
-const val ZWEITER_FAKTOR_PFLICHT = "zweiter_faktor_pflicht"
 
 /**
  * Token, Sprache und das Klartext-Verbot für alle Anfragen der Server-Clients.
@@ -158,10 +151,10 @@ class ServerWaechter(
         val rotierbar = rotation != null && tokenMitgeschickt && unserServer &&
             !ausgehend.url.encodedPath.endsWith(ROTATIONS_PFAD)
         if (rotierbar && antwort.code == 401) {
-            val code = runCatching { Fehlerrumpf.lies(antwort.peekBody(16_384).string()).code }.getOrNull()
+            val code = runCatching { Fehlerrumpf.lies(antwort.peekBody(16_384).string()).fehlercode }.getOrNull()
             val alt = gesendet.header("Authorization")?.removePrefix("Bearer ")?.trim().orEmpty()
             val herkunftDerAnfrage = NetworkPolicy.herkunft(gesendet.url.toString())
-            if (code == "token_rotation_noetig") rotation.noetig(alt, herkunftDerAnfrage, sitzung)
+            if (code == Fehlercode.TOKEN_ROTATION_NOETIG) rotation.noetig(alt, herkunftDerAnfrage, sitzung)
                 ?.takeIf { dieselbeSitzung() }?.let { neu ->
                     // Der neue Token ist gespeichert; diese Anfrage geht einmal mit ihm.
                     antwort.close()
@@ -173,11 +166,11 @@ class ServerWaechter(
 
         // Ein 401 oder 403 des vorigen Servers betrifft die neue Sitzung nicht.
         if ((antwort.code == 401 || antwort.code == 403) && tokenMitgeschickt && unserServer && dieselbeSitzung()) {
-            val code = runCatching { Fehlerrumpf.lies(antwort.peekBody(16_384).string()).code }.getOrNull()
+            val code = runCatching { Fehlerrumpf.lies(antwort.peekBody(16_384).string()).fehlercode }.getOrNull()
             if (antwort.code == 401 && code !in BESTAETIGUNG_NOETIG) sitzungAbgelaufen()
-            if (antwort.code == 403 && code == NUR_ADMINS) rechteEntzogen()
-            if (antwort.code == 403 && code == PASSWORT_WECHSEL_NOETIG) passwortWechselNoetig()
-            if (antwort.code == 403 && code == ZWEITER_FAKTOR_PFLICHT) zweiterFaktorPflicht()
+            if (antwort.code == 403 && code == Fehlercode.NUR_ADMINS) rechteEntzogen()
+            if (antwort.code == 403 && code == Fehlercode.PASSWORT_WECHSEL_NOETIG) passwortWechselNoetig()
+            if (antwort.code == 403 && code == Fehlercode.ZWEITER_FAKTOR_PFLICHT) zweiterFaktorPflicht()
         }
 
         val melden = versionsMeldung

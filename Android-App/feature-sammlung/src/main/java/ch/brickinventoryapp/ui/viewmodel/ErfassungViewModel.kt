@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.ui.viewmodel
 
+import ch.brickinventoryapp.data.model.Fehlercode
 import androidx.lifecycle.viewModelScope
 import ch.brickinventoryapp.ressourcen.R
 import ch.brickinventoryapp.data.SetAnleger
@@ -90,7 +91,7 @@ class ErfassungViewModel @Inject constructor(
                     is Result.Error -> {
                         // „Nicht gefunden“ nur, wenn der Server das sagt; ein Netzfehler
                         // ist keine Auskunft über den Barcode.
-                        zeigeMeldung(if (r.code == "barcode_kein_set") text(R.string.vm_barcode_not_found, value)
+                        zeigeMeldung(if (r.code == Fehlercode.BARCODE_KEIN_SET) text(R.string.vm_barcode_not_found, value)
                                           else meldungFuerSnackbar(r))
                         _barcodeState.update { it.copy(result = null, manuelleErfassungAnfordern = true) }
                     }

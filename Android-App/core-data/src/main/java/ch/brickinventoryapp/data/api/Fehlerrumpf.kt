@@ -9,6 +9,9 @@ package ch.brickinventoryapp.data.api
  * Wortlaut, der Code nicht.
  */
 data class Fehlerrumpf(val text: String?, val code: String?) {
+    /** Der Code als Aufzählung; einer, den die App nicht kennt, ist null. */
+    val fehlercode: ch.brickinventoryapp.data.model.Fehlercode? get() = ch.brickinventoryapp.data.model.Fehlercode.aus(code)
+
     companion object {
         /** Kein JSON, leerer Rumpf oder fehlende Felder ergeben jeweils null. */
         fun lies(roh: String?): Fehlerrumpf {

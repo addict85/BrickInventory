@@ -134,7 +134,7 @@ suspend fun <T> sicherAufrufen(call: suspend () -> Response<T>): Result<T> {
                     response.code() == 401 -> Fehlerart.SITZUNG_ABGELAUFEN
                     else -> Fehlerart.SERVER
                 },
-                code = rumpf.code,
+                code = Fehlercode.aus(rumpf.code),
                 httpCode = response.code()
             )
         }

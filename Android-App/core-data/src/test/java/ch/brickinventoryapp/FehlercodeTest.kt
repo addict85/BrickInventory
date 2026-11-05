@@ -1,5 +1,6 @@
 package ch.brickinventoryapp
 
+import ch.brickinventoryapp.data.model.Fehlercode
 import ch.brickinventoryapp.data.api.Fehlerrumpf
 import ch.brickinventoryapp.data.api.fehlerTextZuCode
 import ch.brickinventoryapp.data.cache.ResponseCache
@@ -68,7 +69,7 @@ class FehlercodeTest {
         server.enqueue(TestApi.antwort(
             """{"success":false,"error":"Aktuelles Passwort falsch","code":"aktuelles_passwort_falsch"}""", 400))
         val e = fehler(admin().getMe())
-        assertEquals("aktuelles_passwort_falsch", e.code)
+        assertEquals(Fehlercode.AKTUELLES_PASSWORT_FALSCH, e.code)
         assertEquals("Aktuelles Passwort falsch", e.message)
         assertEquals(400, e.httpCode)
     }
@@ -103,16 +104,16 @@ class FehlercodeTest {
         server.enqueue(TestApi.antwort(
             """{"success":false,"code":"zu_viele_anfragen","error":"Zu viele Anfragen"}""", 429))
         val e = fehler(gutscheine().guthaben(1))
-        assertEquals("zu_viele_anfragen", e.code)
+        assertEquals(Fehlercode.ZU_VIELE_ANFRAGEN, e.code)
         assertEquals("Zu viele Anfragen", e.message)
     }
 
     @Test
     fun `Upload-Sperre, Verbindungsgrenze und Seitengrenze haben je einen eigenen Satz`() {
-        val texte = listOf("upload_laeuft", "zu_viele_verbindungen", "pdf_zu_viele_seiten").map { fehlerTextZuCode(it) }
+        val texte = listOf(Fehlercode.UPLOAD_LAEUFT, Fehlercode.ZU_VIELE_VERBINDUNGEN, Fehlercode.PDF_ZU_VIELE_SEITEN).map { fehlerTextZuCode(it) }
         assertTrue("jeder dieser Codes hat einen Satz der App: $texte", texte.all { it != null })
         assertEquals("keine zwei teilen sich einen Satz", 3, texte.toSet().size)
-        assertNull("sonst gilt der Satz des Servers", fehlerTextZuCode("zu_viele_anfragen"))
+        assertNull("sonst gilt der Satz des Servers", fehlerTextZuCode(Fehlercode.ZU_VIELE_ANFRAGEN))
         assertNull(fehlerTextZuCode(null))
     }
 
@@ -121,7 +122,7 @@ class FehlercodeTest {
         server.enqueue(TestApi.antwort(
             """{"success":false,"code":"pdf_zu_viele_seiten","error":"Das PDF hat 40 Seiten, höchstens 20 sind möglich."}""", 422))
         val e = fehler(gutscheine().ausPdf("karten.pdf", "application/pdf", byteArrayOf(37, 80, 68, 70)))
-        assertEquals("pdf_zu_viele_seiten", e.code)
+        assertEquals(Fehlercode.PDF_ZU_VIELE_SEITEN, e.code)
         assertEquals("Das PDF hat 40 Seiten, höchstens 20 sind möglich.", e.message)
         assertEquals(422, e.httpCode)
     }

@@ -19,7 +19,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
-import ch.brickinventoryapp.di.NUR_ADMINS
+import ch.brickinventoryapp.data.model.Fehlercode
 import ch.brickinventoryapp.ui.model.HintergrundAnsicht
 
 /**
@@ -47,7 +47,7 @@ data class MonitoringUiState(
     val zugriffEntzogen: Boolean = false,
 )
 
-private fun entzogen(r: Result<*>) = r is Result.Error && r.code == NUR_ADMINS
+private fun entzogen(r: Result<*>) = r is Result.Error && r.code == Fehlercode.NUR_ADMINS
 
 /** Die Hintergrundarbeiten (Auftragstabelle); [fehler] ist der Satz des Servers, etwa bei 403 oder 409. */
 data class HintergrundUiState(

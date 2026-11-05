@@ -43,7 +43,7 @@ sealed class Result<out T> {
          * Nach ihm wird verzweigt, nicht nach [message] oder [httpCode]: Der
          * Satz wechselt mit der Sprache, der Status ist für viele Fälle derselbe.
          */
-        val code: String? = null,
+        val code: Fehlercode? = null,
         /**
          * Technischer Text der Ursache, nur fürs Log: Bibliothekstexte wie „unexpected end
          * of stream“ sind englisch, wechseln mit der Version und gehören nicht in eine
