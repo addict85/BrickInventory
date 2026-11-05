@@ -5,7 +5,7 @@ import { meldeUndLiefere } from '../infra/fehler';
 import * as db from '../../db/database';
 import * as orte from './repository/lagerort';
 import type { LagerTabelle } from './repository/lagerort';
-import { asIds } from '../haushalt/haushalt';
+import { asIds, scopeIds, writableIds } from '../haushalt/haushalt';
 import type { BlickfeldEingabe } from '../haushalt/haushalt';
 import { fehlerWerfen } from '../infra/fehlerTexte';
 import { deleteUserSetting } from '../einstellungen/settings';
@@ -51,6 +51,22 @@ function nameOderFehler(v: unknown): string {
   if (!s) fehlerWerfen('lagerort_leer', 400);
   if (s.length > LAGERORT_MAX_ZEICHEN) fehlerWerfen('lagerort_zu_lang', 400);
   return s;
+}
+
+/** Schnittmenge statt Absage; ohne Ansichtsfilter, denn die Frage ist „darf ich?“.
+ * Ausführlich: docs/begruendungen/src/bestand/lagerort.ts.md#lagerkonten */
+export async function lagerKonten(nutzer: number, wunsch: string | number | undefined, schreiben: boolean): Promise<number[]> {
+  const gewuenscht = String(wunsch ?? '').split(',').map(x => parseInt(x.trim(), 10)).filter(Number.isFinite);
+  if (!gewuenscht.length) return [nutzer];
+  const erlaubt = schreiben ? await writableIds(nutzer) : await scopeIds(nutzer);
+  return gewuenscht.filter(id => erlaubt.includes(id));
+}
+
+/** EIN Konto je Schreibaufruf, damit jeder Ort für sich scheitern kann; 403 ohne Recht. */
+export async function lagerSchreibkonto(nutzer: number, wunsch: string | number | undefined): Promise<number> {
+  const konto = (await lagerKonten(nutzer, wunsch, true))[0];
+  if (konto === undefined) fehlerWerfen('kein_schreibrecht', 403);
+  return konto;
 }
 
 /** Wer wessen Liste sehen darf, entscheidet der Haushalt; die IDs kommen mit.

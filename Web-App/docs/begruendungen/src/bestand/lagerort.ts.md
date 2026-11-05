@@ -299,3 +299,29 @@ und rufen weiterhin normalisiereLagerort() direkt. Dort heisst leer
 „loeschen" — eine Vorgabe, die sich in ein Loeschen hineindraengt, waere ein
 Ort, den niemand wegbekommt.
 ```
+
+<a id="lagerkonten"></a>
+## `lagerKonten`
+
+```text
+/api/v1/storage/locations — der VORRAT an Lagerorten, je Konto.
+
+── Wessen Liste man sieht ──────────────────────────────────────────────────
+
+Marcos Festlegung: „Der Grossvater soll die Werte der Enkel fuer die
+entsprechenden Sets sehen und waehlen koennen."
+
+Ein Lagerort ist ein Regal in einer Wohnung. Beim Set des Enkels gehoeren
+die Regale des ENKELS zur Wahl, nicht die eigenen — ein Set des Enkels in
+„Grossvaters Keller" waere eine Aussage ueber die falsche Wohnung.
+
+Deshalb sagt der Aufrufer mit `owner`, wessen Liste er will. Beide
+Oberflaechen wissen das: Eine Set-Kachel traegt ihre `owners` schon.
+
+── Lesen weit, Schreiben eng ───────────────────────────────────────────────
+
+Lesen gegen scopeIds() (alles, was im Blickfeld liegt), Schreiben gegen
+writableIds() (alles, wofuer man verantwortlich ist). Dieselbe Trennung wie
+ueberall im Baum — und sie ist hier nicht theoretisch: Ein Enkel sieht
+seinen Grossvater nicht, der Grossvater aber den Enkel.
+```

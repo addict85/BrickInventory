@@ -1,6 +1,8 @@
 import { z } from 'zod';
 import { eingabe } from '../validate';
-import { type Route, zeit, Erfolg, ganz, bestaetigt, OHNE_RUMPF, KENNUNG, TEXT } from './grund';
+import { type Route, zeit, Erfolg, ganz, bestaetigt, OHNE_RUMPF, KENNUNG, TEXT, ZAHL, ZUSTAND, abfrage, Q } from './grund';
+/** Ein Konto oder mehrere, durch Komma getrennt (Lagerorte über den Haushalt). */
+const LAGER_KONTEN = z.string().regex(/^[0-9,]{0,200}$/);
 import { GenericResponse } from './gemeinsam';
 
 export const Acquisition = z.looseObject({
@@ -93,27 +95,34 @@ export const BestandGeleert = z.looseObject({
 });
 
 /** Nur die Menge prüft validate.ts; Preis, Datum und Zustand prüft die Erfassung selbst. */
-const Erfassungsaenderung = z.looseObject({ quantity: eingabe.menge(1, 100_000, false) });
+/** Der Preis heisst bei Sets purchase_price, sonst unit_price; die App schickt beide. */
+const Erfassungsaenderung = z.strictObject({ quantity: eingabe.mengeOderNichts(1, 100_000),
+  purchase_price: ZAHL.nullable().optional(), unit_price: ZAHL.nullable().optional(), condition: ZUSTAND.nullable().optional(),
+  date: TEXT(40).nullable().optional(), owner_user_id: KENNUNG.nullable().optional(),
+  from_user_id: KENNUNG.nullable().optional().meta({ deprecated: true, description: 'wird nicht ausgewertet: Der Besitzer kommt aus der Zeile' }) });
 
 export const routen = {
-  'GET /api/v1/sets/:setNumber/acquisitions': { antwort: AcquisitionsResponse },
-  'GET /api/v1/parts/:partNumber/:colorId/acquisitions': { antwort: AcquisitionsResponse },
-  'GET /api/v1/minifigs/:figNumber/acquisitions': { antwort: AcquisitionsResponse },
-  'GET /api/v1/storage/locations': { antwort: LagerortVorratResponse },
-  'GET /api/v1/storage': { antwort: LagerorteResponse },
-  'PUT /api/v1/minifigs/:figNumber/storage': { eingabe: z.looseObject({ storage: TEXT().nullable().optional() }), antwort: LagerortResponse },
+  'GET /api/v1/sets/:setNumber/acquisitions': { antwort: AcquisitionsResponse, abfrage: abfrage({ accounts: Q.konten }) },
+  'GET /api/v1/parts/:partNumber/:colorId/acquisitions': { antwort: AcquisitionsResponse, abfrage: abfrage({ accounts: Q.konten }) },
+  'GET /api/v1/minifigs/:figNumber/acquisitions': { antwort: AcquisitionsResponse, abfrage: abfrage({ accounts: Q.konten }) },
+  'GET /api/v1/storage/locations': { antwort: LagerortVorratResponse, abfrage: abfrage({ owner: LAGER_KONTEN,
+    accounts: Q.konten.meta({ deprecated: true, description: 'wird nicht ausgewertet: Die Liste folgt dem Recht' }) }) },
+  'GET /api/v1/storage': { antwort: LagerorteResponse, abfrage: abfrage({ accounts: Q.konten }) },
+  'PUT /api/v1/minifigs/:figNumber/storage': { eingabe: z.strictObject({ storage: TEXT().nullable().optional() }), antwort: LagerortResponse },
   'PUT /api/v1/sets/:setNumber/acquisitions/:acqId': { antwort: GenericResponse, eingabe: Erfassungsaenderung },
   'DELETE /api/v1/sets/:setNumber/acquisitions/:acqId': { eingabe: OHNE_RUMPF, antwort: GenericResponse },
   'PUT /api/v1/parts/:partNumber/:colorId/acquisitions/:acqId': { antwort: GenericResponse, eingabe: Erfassungsaenderung },
   'DELETE /api/v1/parts/:partNumber/:colorId/acquisitions/:acqId': { eingabe: OHNE_RUMPF, antwort: DeleteWithQuantityResponse },
   'PUT /api/v1/minifigs/:figNumber/acquisitions/:acqId': { antwort: GenericResponse, eingabe: Erfassungsaenderung },
   'DELETE /api/v1/minifigs/:figNumber/acquisitions/:acqId': { eingabe: OHNE_RUMPF, antwort: DeleteWithQuantityResponse },
-  'PUT /api/v1/sets/:setNumber/storage': { eingabe: z.looseObject({ storage: TEXT().nullable().optional() }), antwort: LagerortResponse },
-  'PUT /api/v1/parts/:partNumber/:colorId/storage': { eingabe: z.looseObject({ storage: TEXT().nullable().optional() }), antwort: LagerortResponse },
-  'POST /api/v1/storage/locations': { eingabe: z.looseObject({ name: TEXT().optional(), owner: KENNUNG.optional() }), antwort: LagerortEintragResponse },
-  'PUT /api/v1/storage/locations/:id': { eingabe: z.looseObject({ name: TEXT().optional(), owner: KENNUNG.optional() }), antwort: LagerortEintragResponse },
-  'DELETE /api/v1/storage/locations/:id': { eingabe: OHNE_RUMPF, antwort: LagerortResponse },
-  'PUT /api/v1/storage/default': { eingabe: z.looseObject({ id: KENNUNG.nullable().optional() }), antwort: LagerortVorgabeResponse },
+  'PUT /api/v1/sets/:setNumber/storage': { eingabe: z.strictObject({ storage: TEXT().nullable().optional() }), antwort: LagerortResponse },
+  'PUT /api/v1/parts/:partNumber/:colorId/storage': { eingabe: z.strictObject({ storage: TEXT().nullable().optional() }), antwort: LagerortResponse },
+  'POST /api/v1/storage/locations': { eingabe: z.strictObject({ name: TEXT().optional(), owner: KENNUNG.optional() }), antwort: LagerortEintragResponse,
+    abfrage: abfrage({ owner: LAGER_KONTEN }) },
+  'PUT /api/v1/storage/locations/:id': { eingabe: z.strictObject({ name: TEXT().optional(), owner: KENNUNG.optional() }), antwort: LagerortEintragResponse,
+    abfrage: abfrage({ owner: LAGER_KONTEN }) },
+  'DELETE /api/v1/storage/locations/:id': { eingabe: OHNE_RUMPF, antwort: LagerortResponse, abfrage: abfrage({ owner: LAGER_KONTEN }) },
+  'PUT /api/v1/storage/default': { eingabe: z.strictObject({ id: KENNUNG.nullable().optional() }), antwort: LagerortVorgabeResponse },
   'GET /api/v1/papierkorb': { antwort: Papierkorb },
   'POST /api/v1/papierkorb/:id/wiederherstellen': { eingabe: OHNE_RUMPF, antwort: Wiederhergestellt },
   'DELETE /api/v1/papierkorb/:id': { antwort: Erfolg, ...bestaetigt() },

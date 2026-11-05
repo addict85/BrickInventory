@@ -136,6 +136,19 @@ test('ungetypte Datenbankabfragen werden weniger, nie mehr', () => {
   if (ist < SCHRANKE) console.log(`  ℹ ungetypte Abfragen: ${ist} (Schranke ${SCHRANKE}) — Schranke nachziehen`);
 });
 
+test('rohe req.body und req.query in Routen werden weniger, nie mehr', () => {
+  // Eine Route liest req.eingabe und req.abfrage: geprüft und getypt aus dem
+  // Vertrag. Übrig sind die Middleware vor der Prüfung, der Bild-Proxy (ohne
+  // Vertrag) und routes/auth/registrierung.ts. Gemessen 13 am 05.11.2026 (vorher 229).
+  // Gegenprobe (05.11.2026): in routes/api_v1/sets.ts ein `req.body.storage` zurück → rot.
+  const SCHRANKE = 13;
+  let ist = 0;
+  for (const f of quellen().filter(f => /[\\/]routes[\\/]/.test(f)))
+    ist += (require('./helpers/sources').ohneKommentare(fs.readFileSync(f, 'utf8')).match(/\breq\.(?:body|query)\b/g) || []).length;
+  assert.ok(ist <= SCHRANKE, `${ist}-mal req.body/req.query in routes/, erlaubt sind ${SCHRANKE}`);
+  if (ist < SCHRANKE) console.log(`  ℹ req.body/req.query in Routen: ${ist} (Schranke ${SCHRANKE}) — Schranke nachziehen`);
+});
+
 /**
  * Testdateien, die nur Quelltext lesen und nichts ausführen. Eine Regex auf
  * den Quelltext bestätigt, dass eine Zeile dasteht — nicht, dass sie wirkt

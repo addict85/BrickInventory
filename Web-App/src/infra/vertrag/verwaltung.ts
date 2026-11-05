@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { type Route, zeit, ganz, OHNE_RUMPF, ZAHL, TEXT, ZUSTAND, JA_NEIN } from './grund';
+import { type Route, zeit, ganz, OHNE_RUMPF, ZAHL, TEXT, ZUSTAND, JA_NEIN, abfrage, Q } from './grund';
 import { GenericAdminResponse } from './gemeinsam';
 
 export const ApiLimits = z.looseObject({
@@ -201,21 +201,21 @@ export const VerwaltungDesign = GenericAdminResponse.extend({ theme: z.string() 
 
 export const routen = {
   'GET /api/v1/sets/import/csv/status': { antwort: CsvImportStatus },
-  'GET /api/v1/admin/logs': { antwort: ProtokollResponse },
+  'GET /api/v1/admin/logs': { antwort: ProtokollResponse, abfrage: abfrage({ minutes: Q.zahl() }) },
   'GET /api/v1/admin/jobs': { antwort: JobsResponse },
   'GET /api/v1/admin/brickset-queue': { antwort: BricksetQueueResponse },
   'GET /api/v1/admin/cache-stats': { antwort: CacheStatsResponse },
   'GET /api/v1/admin/cache-ttl': { antwort: CacheTtlResponse },
   'GET /api/v1/admin/api-limits': { antwort: ApiLimitsResponse },
-  'GET /api/v1/admin/auftraege': { antwort: AuftraegeResponse },
+  'GET /api/v1/admin/auftraege': { antwort: AuftraegeResponse, abfrage: abfrage({ status: Q.text(20), art: Q.text(40) }) },
   'POST /api/v1/sets/import/csv/cancel': { eingabe: OHNE_RUMPF, antwort: GenericAdminResponse },
-  'POST /api/v1/admin/job-schedule': { eingabe: z.looseObject({ name: TEXT(40), time: TEXT(5).nullable().optional(), minutes: ZAHL.nullable().optional() }), antwort: GenericAdminResponse },
-  'POST /api/v1/admin/catalog-images': { eingabe: z.looseObject({ alle_erneut: JA_NEIN.optional() }), antwort: GenericAdminResponse },
+  'POST /api/v1/admin/job-schedule': { eingabe: z.strictObject({ name: TEXT(40), time: TEXT(5).nullable().optional(), minutes: ZAHL.nullable().optional() }), antwort: GenericAdminResponse },
+  'POST /api/v1/admin/catalog-images': { eingabe: z.strictObject({ alle_erneut: JA_NEIN.optional() }), antwort: GenericAdminResponse },
   'POST /api/v1/admin/brickset-queue/:setNumber/retry': { eingabe: OHNE_RUMPF, antwort: VerwaltungSet },
   'DELETE /api/v1/admin/brickset-queue/:setNumber': { eingabe: OHNE_RUMPF, antwort: VerwaltungSet },
-  'POST /api/v1/admin/cache-ttl': { eingabe: z.looseObject({ ttl: ZAHL }), antwort: VerwaltungTtl },
-  'POST /api/v1/admin/cache-clear': { eingabe: z.looseObject({ all: JA_NEIN.optional() }), antwort: VerwaltungMeldung },
-  'PUT /api/v1/admin/api-limits': { eingabe: z.looseObject({ rebrickable: ZAHL.nullable().optional(), bricklink: ZAHL.nullable().optional(), brickset: ZAHL.nullable().optional() }), antwort: GenericAdminResponse },
+  'POST /api/v1/admin/cache-ttl': { eingabe: z.strictObject({ ttl: ZAHL }), antwort: VerwaltungTtl },
+  'POST /api/v1/admin/cache-clear': { eingabe: z.strictObject({ all: JA_NEIN.optional() }), antwort: VerwaltungMeldung },
+  'PUT /api/v1/admin/api-limits': { eingabe: z.strictObject({ rebrickable: ZAHL.nullable().optional(), bricklink: ZAHL.nullable().optional(), brickset: ZAHL.nullable().optional() }), antwort: GenericAdminResponse },
   'POST /api/v1/admin/redownload-missing-images': { eingabe: OHNE_RUMPF, antwort: VerwaltungGestartet },
   'POST /api/v1/admin/auftraege/:id/abbrechen': { eingabe: OHNE_RUMPF, antwort: AuftragAenderung },
   'POST /api/v1/admin/auftraege/:id/wiederholen': { eingabe: OHNE_RUMPF, antwort: AuftragAenderung },
@@ -224,12 +224,12 @@ export const routen = {
   'POST /api/v1/admin/trigger-csv-sync': { eingabe: OHNE_RUMPF, antwort: VerwaltungMeldung },
   'POST /api/v1/admin/reimport-instructions': { eingabe: OHNE_RUMPF, antwort: VerwaltungMeldung },
   'POST /api/v1/admin/trigger-price-job': { eingabe: OHNE_RUMPF, antwort: VerwaltungGestartet },
-  'POST /api/v1/admin/default-condition': { eingabe: z.looseObject({ condition: ZUSTAND }), antwort: VerwaltungZustand },
+  'POST /api/v1/admin/default-condition': { eingabe: z.strictObject({ condition: ZUSTAND }), antwort: VerwaltungZustand },
   'GET /api/v1/admin/job-status': { antwort: PreisJobStand },
   'GET /api/v1/admin/protokoll': { antwort: ProtokollEintraege },
   'GET /api/v1/admin/image-diag/:setNumber': { antwort: BildDiagnose },
-  'POST /api/v1/admin/forget-image-misses': { eingabe: z.looseObject({ set_numbers: z.array(TEXT(40)).max(10_000).optional(), thumbs: JA_NEIN.optional() }), antwort: BildMerkerVergessen },
-  'GET /api/v1/admin/img-probe': { antwort: Diagnose },
-  'GET /api/v1/admin/price-probe': { antwort: Diagnose },
+  'POST /api/v1/admin/forget-image-misses': { eingabe: z.strictObject({ set_numbers: z.array(TEXT(40)).max(10_000).optional(), thumbs: JA_NEIN.optional() }), antwort: BildMerkerVergessen },
+  'GET /api/v1/admin/img-probe': { antwort: Diagnose, abfrage: abfrage({ url: Q.text(2048) }) },
+  'GET /api/v1/admin/price-probe': { antwort: Diagnose, abfrage: abfrage({ set: Q.text(64), live: Q.schalter }) },
   'GET /api/v1/': { antwort: Endpunkte },
 } satisfies Record<string, Route>;

@@ -137,7 +137,8 @@ test('Grenzen beim Hochladen', { concurrency: 1, timeout: 180_000 }, async (t) =
   });
 
   await t.test('… und auf den Anmelderouten höchstens 16 KB', async () => {
-    const mit = (n) => JSON.stringify({ username: 'niemand', password: 'x'.repeat(20), ballast: 'y'.repeat(n) });
+    // Der Ballast im Feld `label`: Ein unbekanntes Feld wäre vor der Anmeldung schon 400.
+    const mit = (n) => JSON.stringify({ username: 'niemand', password: 'x'.repeat(20), label: 'y'.repeat(n) });
     assert.equal((await anonym('/auth/login', mit(10 * 1024))).status, 401, 'eine gewöhnliche Anmeldung passt');
     assert.deepEqual(await anonym('/auth/login', mit(20 * 1024)), { status: 413, code: 'anfrage_zu_gross' });
   });

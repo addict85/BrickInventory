@@ -160,20 +160,27 @@ function apiRouten(serviceDatei) {
 }
 
 /**
- * Die schreibenden Routen der App: Methode, Pfad und Antworttyp.
+ * Die schreibenden Routen der App: Methode, Pfad, Antworttyp, Abfrage und der
+ * Typ des Rumpfs (@Body), wenn er eine Klasse ist.
  * @param {string} serviceDatei
- * @returns {{ methode: string, pfad: string, typ: string | null }[]}
+ * @returns {{ methode: string, pfad: string, typ: string | null, anfrage: { name: string }[], rumpf: string | null }[]}
  */
 function schreibRouten(serviceDatei) {
   const roh = apiQuelltext(serviceDatei);
   const src = entschaerfe(roh);
-  /** @type {{ methode: string, pfad: string, typ: string | null }[]} */
+  /** @type {{ methode: string, pfad: string, typ: string | null, anfrage: { name: string }[], rumpf: string | null }[]} */
   const aus = [];
-  for (const m of roh.matchAll(/@(POST|PUT|DELETE|PATCH)\("([^"]+)"\)/g)) {
+  for (const m of roh.matchAll(/@(POST|PUT|DELETE|PATCH|HTTP)\((?:method\s*=\s*)?"([^"]+)"(?:,\s*path\s*=\s*"([^"]+)")?[^)]*\)/g)) {
     const fn = src.indexOf('suspend fun', m.index);
-    const zu = bisZu(src, src.indexOf('(', fn));
+    const auf = src.indexOf('(', fn);
+    const zu = bisZu(src, auf);
     const r = /^\s*:\s*(?:retrofit2\.)?Response<\s*([\w.]+)\s*>/.exec(roh.slice(zu + 1, zu + 200));
-    aus.push({ methode: m[1] ?? '', pfad: '/' + m[2], typ: r ? (r[1] ?? '').split('.').pop() ?? null : null });
+    const params = roh.slice(auf + 1, zu);
+    const b = /@Body\s+\w+\s*:\s*([\w.]+)\s*[,)=\s]/.exec(params + ')');
+    const methode = m[1] === 'HTTP' ? m[2] ?? '' : m[1] ?? '';
+    aus.push({ methode, pfad: '/' + (m[1] === 'HTTP' ? m[3] : m[2]), typ: r ? (r[1] ?? '').split('.').pop() ?? null : null,
+      anfrage: [...params.matchAll(/@Query\("([^"]+)"\)/g)].map(q => ({ name: q[1] ?? '' })),
+      rumpf: b ? (b[1] ?? '').split('.').pop() ?? null : null });
   }
   return aus;
 }

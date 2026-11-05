@@ -1,4 +1,5 @@
 import express from 'express';
+import type { z } from 'zod';
 import type { Request, Response, NextFunction } from 'express';
 import { konfig } from '../konfig';
 import { routeZu } from './index';
@@ -12,20 +13,34 @@ import { handleRouteError } from '../httpAntwort';
 const ABFRAGE_HOECHSTENS = 4000;
 
 /** Im Betrieb, unmittelbar vor der Route: Abfrage und Rumpf gegen den Vertrag.
- * Ohne das kam z. B. username:["abc"] an USERNAME_RE vorbei (test() macht
- * daraus "abc") bis ins SQL. Die Prüfer aus validate.ts melden ihren eigenen
- * Fehler, damit die Antwort dieselbe bleibt wie aus der Route. */
+ * Die Route bekommt das Ergebnis (req.abfrage, req.eingabe), nicht den rohen
+ * Rumpf: Was das Schema umwandelt oder abweist, sieht sie nie anders. */
 export function eingabePruefen(req: Request, res: Response, next: NextFunction): void {
   for (const [name, wert] of Object.entries(req.query ?? {}))
     if (typeof wert !== 'string' || wert.length > ABFRAGE_HOECHSTENS)
       return sendeFehler(req, res, 400, 'eingabe_ungueltig', { feld: name.slice(0, 40) });
   const route = req.route ? routeZu(`${req.method} ${req.baseUrl}${req.route.path}`) : undefined;
-  if (route?.formular || (!route?.eingabe && req.method === 'GET')) return next();
+  const geprueft = req as unknown as { eingabe: unknown; abfrage: unknown };
+  if (route?.abfrage) {
+    const q = route.abfrage.safeParse(req.query ?? {});
+    if (!q.success) return meldeAbweichung(req, res, q.error);
+    geprueft.abfrage = q.data;
+  } else geprueft.abfrage = {};
+  geprueft.eingabe = {};
+  if (!route?.eingabe && (route?.formular || req.method === 'GET')) return next();
   const r = (route?.eingabe ?? FLACHE_EINGABE).safeParse(req.body ?? {});
-  if (r.success) return next();
-  const erste = r.error.issues[0];
+  if (!r.success) return meldeAbweichung(req, res, r.error);
+  geprueft.eingabe = r.data;
+  next();
+}
+
+/** Die Prüfer aus validate.ts melden ihren eigenen Fehler, ein unbekanntes Feld seinen Code. */
+function meldeAbweichung(req: Request, res: Response, fehler: z.ZodError): void {
+  const erste = fehler.issues[0];
   const eigener = (erste as { params?: { fehler?: unknown } } | undefined)?.params?.fehler;
   if (eigener) return handleRouteError(res, eigener, 400, req);
+  if (erste?.code === 'unrecognized_keys')
+    return sendeFehler(req, res, 400, 'feld_unbekannt', { feld: [...(erste.path ?? []), erste.keys[0] ?? ''].join('.').slice(0, 40) });
   sendeFehler(req, res, 400, 'eingabe_ungueltig', { feld: (erste?.path ?? []).join('.').slice(0, 40) || '$' });
 }
 
@@ -69,10 +84,14 @@ export type Waechter<R extends Request> = ((req: Request, res: Response, next: N
 export function waechter<R extends Request>(f: (req: Request, res: Response, next: NextFunction) => void): Waechter<R> {
   return Object.assign(f, { sichert: (r: R) => r });
 }
-type Schritt<R extends Request, S extends Response> = (req: R, res: S, next: NextFunction) => unknown;
+type Schritt<R extends Request, S extends Response> = (req: R & Geprueft, res: S, next: NextFunction) => unknown;
+/** Was eingabePruefen setzt, passt zu jedem Anfrage<K>: Den Typ nennt der Vertrag der Route. */
+type Geprueft = { eingabe: never; abfrage: never };
 type Bewacht = <R extends Request, S extends Response>(pfad: string, w: Waechter<R>, ...schritte: Schritt<R, S>[]) => VertragsRouter;
+type Offen = <S extends Response>(pfad: string, ...schritte: Schritt<Request, S>[]) => VertragsRouter;
 /** Wie express.Router; steht ein Wächter vorn, bekommen die Schritte dahinter seinen Request-Typ. */
-export type VertragsRouter = express.Router & { get: Bewacht; post: Bewacht; put: Bewacht; patch: Bewacht; delete: Bewacht };
+export type VertragsRouter = express.Router
+  & { get: Bewacht & Offen; post: Bewacht & Offen; put: Bewacht & Offen; patch: Bewacht & Offen; delete: Bewacht & Offen };
 
 /** Ein Router, der Eingaben im Betrieb und seine Antworten in Tests gegen den
  * Vertrag prüft — auch dort, wo ein Test ihn ohne routes/api_v1/index.ts einhängt. */

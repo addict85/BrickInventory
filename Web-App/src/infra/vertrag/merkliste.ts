@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { eingabe } from '../validate';
-import { type Route, zeit, ganz, OHNE_RUMPF, KENNUNG, TEXT, ZUSTAND } from './grund';
+import { type Route, zeit, ganz, OHNE_RUMPF, KENNUNG, TEXT, ZUSTAND, abfrage, Q } from './grund';
 import { CsvImportErgebnis, GenericResponse } from './gemeinsam';
 
 export const CurrentPrice = z.looseObject({
@@ -85,12 +85,19 @@ export const WantedXmlErgebnis = z.looseObject({
 export const MerkpostenGeloescht = GenericResponse.extend({ geloescht: ganz });
 
 export const routen = {
-  'GET /api/v1/wanted': { antwort: MerklisteResponse },
+  'GET /api/v1/wanted': { antwort: MerklisteResponse, abfrage: abfrage({ accounts: Q.konten, search: Q.text(),
+    condition: z.enum(['N', 'U', 'n', 'u', '']), sort: Q.text(40) }) },
   'GET /api/v1/wanted/:setNumber/preise': { antwort: MerkpostenPreiseResponse },
-  'POST /api/v1/wanted': { eingabe: z.looseObject({ set_number: TEXT(40), condition: ZUSTAND.nullable().optional(), owner_user_id: KENNUNG.nullable().optional() }), antwort: MerkpostenAntwort },
-  'PUT /api/v1/wanted/:setNumber/:condition/inhaber': { eingabe: z.looseObject({ owner_user_id: KENNUNG.nullable().optional(), neuer_inhaber: KENNUNG }), antwort: MerkpostenInhaberAntwort },
-  'DELETE /api/v1/wanted/:setNumber/:condition': { eingabe: OHNE_RUMPF, antwort: MerkpostenGeloescht },
-  'POST /api/v1/wanted/:setNumber/:condition/uebernehmen': { antwort: MerkpostenUebernahmeResponse, eingabe: z.looseObject({ quantity: eingabe.stueckzahl(), purchase_price: eingabe.preis('Kaufpreis') }) },
-  'POST /api/v1/wanted/import/csv': { formular: true, antwort: CsvImportErgebnis },
-  'POST /api/v1/wanted-list/import/xml': { antwort: WantedXmlErgebnis, formular: true },
+  'POST /api/v1/wanted': { eingabe: z.strictObject({ set_number: TEXT(40), condition: ZUSTAND.nullable().optional(), owner_user_id: KENNUNG.nullable().optional() }), antwort: MerkpostenAntwort },
+  'PUT /api/v1/wanted/:setNumber/:condition/inhaber': { eingabe: z.strictObject({ owner_user_id: KENNUNG.nullable().optional(), neuer_inhaber: KENNUNG }), antwort: MerkpostenInhaberAntwort },
+  'DELETE /api/v1/wanted/:setNumber/:condition': { eingabe: OHNE_RUMPF, antwort: MerkpostenGeloescht,
+    abfrage: abfrage({ owner_user_id: Q.konto }) },
+  'POST /api/v1/wanted/:setNumber/:condition/uebernehmen': { antwort: MerkpostenUebernahmeResponse, eingabe: z.strictObject({
+    quantity: eingabe.stueckzahl(), purchase_price: eingabe.preis('Kaufpreis'), condition: ZUSTAND.nullable().optional(),
+    owner_user_id: KENNUNG.nullable().optional(), storage: TEXT().nullable().optional() }) },
+  'POST /api/v1/wanted/import/csv': { formular: true, antwort: CsvImportErgebnis,
+    eingabe: z.strictObject({ owner_user_id: Q.konto.optional() }) },
+  'POST /api/v1/wanted-list/import/xml': { antwort: WantedXmlErgebnis, formular: true,
+    eingabe: z.strictObject({ korrekturen: z.string().max(5_000_000).optional() }),
+    abfrage: abfrage({ schreiben: Q.schalter, rebrickable: Q.schalter, strom: Q.schalter }) },
 } satisfies Record<string, Route>;

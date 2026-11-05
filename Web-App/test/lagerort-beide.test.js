@@ -243,11 +243,11 @@ test('beim Set gilt die Liste des BESITZERS, nicht die des Betrachters', () => {
   // Marcos Festlegung. Ein Lagerort ist ein Regal in einer Wohnung: Beim Set
   // des Enkels gehören die Regale des Enkels zur Wahl — ein Set des Enkels in
   // „Grossvaters Keller" wäre eine Aussage über die falsche Wohnung.
-  assert.match(web('routes/api_v1/sets.ts'), /req\.query\.owner \?\? req\.body\?\.owner/,
+  assert.match(web('routes/api_v1/sets.ts'), /lagerSchreibkonto\(req\.apiUser\.user_id, req\.abfrage\.owner \?\? req\.eingabe\.owner\)/,
     'Der Server nimmt gar keinen Besitzer entgegen');
   // Lesen weit, Schreiben eng — dieselbe Trennung wie überall im Baum.
-  assert.match(web('routes/api_v1/sets.ts'),
-    /schreiben\s*\n?\s*\? await writableIds\(req\.apiUser\.user_id\)\s*\n?\s*: await scopeIds\(req\.apiUser\.user_id\)/,
+  assert.match(web('src/bestand/lagerort.ts'),
+    /schreiben \? await writableIds\(nutzer\) : await scopeIds\(nutzer\)/,
     'Lesen und Schreiben verwenden dieselbe Menge');
 
   assert.match((web('public/js/02-detailfelder.js') + web('public/js/07-set-detail.js')), /ladeOrtAuswahl\((curSet|set)\.owners\)/,

@@ -26,15 +26,16 @@ import { konfig } from '../../src/infra/konfig';
 import { invalidateTheme } from '../../src/konto/indexHtml';
 import { jsonOderNull, emailGueltig } from '../../src/infra/validate';
 import { vertragsRouter } from '../../src/infra/vertrag/pruefen';
+import { GLOBALE_EINSTELLUNGEN, KONTO_EINSTELLUNGEN } from '../../src/infra/vertrag/einstellungen';
 import type { Request } from 'express';
-import type { Antwort } from '../../src/infra/vertrag';
+import type { Anfrage, Antwort, OffeneAnfrage } from '../../src/infra/vertrag';
 const router = vertragsRouter();
 
 const requireLogin = requireLoginOrToken;
 
 // Vor router.use(requireLogin): Anmelde- und Startbildschirm brauchen das
 // Design, und es verrät nichts über Konten.
-router.get('/settings/theme', async (req, res: Antwort<'GET /api/v1/settings/theme'>) => {
+router.get('/settings/theme', async (req: OffeneAnfrage<'GET /api/v1/settings/theme'>, res: Antwort<'GET /api/v1/settings/theme'>) => {
   const uid = await resolveUserId(req);
   res.set('Cache-Control', 'no-cache');
   res.set('Vary', 'Cookie, Authorization');
@@ -44,7 +45,7 @@ router.get('/settings/theme', async (req, res: Antwort<'GET /api/v1/settings/the
 // Vor router.use(requireLogin), weil requireLogin nur die Sitzung kennt und
 // die App ihre Zugänge mit Token verwaltet.
 // Ausführlich: docs/begruendungen/routes/api_v1/settings.ts.md#abschnitt
-router.get('/settings/tokens', requireLoginOrToken, async (req: Request, res: Antwort<'GET /api/v1/settings/tokens'>) => {
+router.get('/settings/tokens', requireLoginOrToken, async (req: OffeneAnfrage<'GET /api/v1/settings/tokens'>, res: Antwort<'GET /api/v1/settings/tokens'>) => {
   const eigener = bearerToken(req);
   const eigenerHash = eigener ? hashToken(eigener) : null;
   // LEAST über beide Fristen: Den Nutzer interessiert der Tag, an dem dieses
@@ -68,7 +69,7 @@ router.get('/settings/tokens', requireLoginOrToken, async (req: Request, res: An
 
 /** Die Zeile ist sofort weg, der Token-Cache gilt aber noch kurz nach.
  * Ausführlich: docs/begruendungen/routes/api_v1/settings.ts.md#delete-tokens-tokenid */
-router.delete('/settings/tokens/:tokenId', requireLoginOrToken, async (req: Request, res: Antwort<'DELETE /api/v1/settings/tokens/:tokenId'>) => {
+router.delete('/settings/tokens/:tokenId', requireLoginOrToken, async (req: OffeneAnfrage<'DELETE /api/v1/settings/tokens/:tokenId'>, res: Antwort<'DELETE /api/v1/settings/tokens/:tokenId'>) => {
   // escapeLike: ohne das löscht ein "%" als tokenId ALLE Tokens des Nutzers.
   const prefix = escapeLike(String(req.params.tokenId || '')).slice(0, 64);
   if (!prefix) return sendeFehler(req, res, 400, 'token_id_fehlt');
@@ -78,8 +79,8 @@ router.delete('/settings/tokens/:tokenId', requireLoginOrToken, async (req: Requ
 });
 
 // Mit Passwort: Eine erbeutete Sitzung soll den Inhaber nicht aussperren können.
-router.post('/settings/sessions/andere-beenden', requireLogin, async (req: Request, res: Antwort<'POST /api/v1/settings/sessions/andere-beenden'>) => {
-  if (!await bestaetigeMitFaktor(req, res, angemeldeteNutzerId(req), req.body?.password)) return;
+router.post('/settings/sessions/andere-beenden', requireLogin, async (req: OffeneAnfrage<'POST /api/v1/settings/sessions/andere-beenden'>, res: Antwort<'POST /api/v1/settings/sessions/andere-beenden'>) => {
+  if (!await bestaetigeMitFaktor(req, res, angemeldeteNutzerId(req), req.eingabe.password)) return;
   const { beendet, version } = await andereSitzungenBeenden(angemeldeteNutzerId(req), req.sessionID);
   req.session.sitzungsVersion = version;
   res.json({ success: true, deleted: beendet });
@@ -96,7 +97,7 @@ const APP_VORGABEN: Record<string, string> = {
   default_price_condition: 'N', user_default_condition: '',
 };
 
-router.get('/settings', requireToken, async (req: AuthedRequest, res: Antwort<'GET /api/v1/settings'>) => {
+router.get('/settings', requireToken, async (req: Anfrage<'GET /api/v1/settings'>, res: Antwort<'GET /api/v1/settings'>) => {
   const uid = req.apiUser.user_id;
   // readSettings(), weil price_cache_ttl und default_price_condition global
   // sind; eine eigene Abfrage las sie nicht.
@@ -112,14 +113,14 @@ router.get('/settings', requireToken, async (req: AuthedRequest, res: Antwort<'G
   } });
 });
 
-router.put('/settings', requireToken, async (req: AuthedRequest, res: Antwort<'PUT /api/v1/settings'>) => {
+router.put('/settings', requireToken, async (req: Anfrage<'PUT /api/v1/settings'>, res: Antwort<'PUT /api/v1/settings'>) => {
   const uid = req.apiUser.user_id;
   const allowed = ['currency','price_cache_ttl'];
   let updated = 0;
   for (const key of allowed) {
-    if (req.body[key]!==undefined) {
+    if (req.eingabe[key]!==undefined) {
       // Zentrale Stelle: Eine ECHTE Währungsänderung stösst den Preis-Job an.
-      await setUserSetting(uid, key, String(req.body[key]));
+      await setUserSetting(uid, key, String(req.eingabe[key]));
       updated++;
     }
   }
@@ -132,12 +133,12 @@ router.get('/settings/default-condition', requireToken, async (_req: AuthedReque
 });
 
 // Ausführlich: docs/begruendungen/routes/api_v1/settings.ts.md#get-settings-user-default-condition
-router.get('/settings/user/default-condition', requireToken, async (req: AuthedRequest, res: Antwort<'GET /api/v1/settings/user/default-condition'>) => {
+router.get('/settings/user/default-condition', requireToken, async (req: Anfrage<'GET /api/v1/settings/user/default-condition'>, res: Antwort<'GET /api/v1/settings/user/default-condition'>) => {
   res.json({ success: true, condition: await nutzerStandardZustand(req.apiUser.user_id) });
 });
 
-router.post('/settings/user/default-condition', requireToken, async (req: AuthedRequest, res: Antwort<'POST /api/v1/settings/user/default-condition'>) => {
-  const condition = String(req.body?.condition ?? '');
+router.post('/settings/user/default-condition', requireToken, async (req: Anfrage<'POST /api/v1/settings/user/default-condition'>, res: Antwort<'POST /api/v1/settings/user/default-condition'>) => {
+  const condition = String(req.eingabe.condition ?? '');
   if (!['N','U',''].includes(condition)) return sendeFehler(req, res, 400, 'zustand_n_oder_u');
   if (condition === '') {
     await deleteUserSetting(req.apiUser.user_id, 'user_default_condition');
@@ -151,20 +152,20 @@ router.post('/settings/user/default-condition', requireToken, async (req: Authed
 // ── Haushalt: Konten verknüpfen ──────────────────────────────────────────────
 // Dieselbe Umsetzung wie die Webapp (src/haushalt/haushalt.ts), damit die App
 // nicht ihre eigenen Regeln bekommt.
-router.get('/settings/household', requireToken, async (req: AuthedRequest, res: Antwort<'GET /api/v1/settings/household'>) => {
+router.get('/settings/household', requireToken, async (req: Anfrage<'GET /api/v1/settings/household'>, res: Antwort<'GET /api/v1/settings/household'>) => {
   res.json({ success: true, ...(await householdStatus(req.apiUser.user_id)) });
 });
 
-router.post('/settings/household/invite', requireToken, async (req: AuthedRequest, res: Antwort<'POST /api/v1/settings/household/invite'>) => {
+router.post('/settings/household/invite', requireToken, async (req: Anfrage<'POST /api/v1/settings/household/invite'>, res: Antwort<'POST /api/v1/settings/household/invite'>) => {
   const r = await createInvite(req.apiUser.user_id);
   if ((r as any).fehler) return sendeFehler(req, res, 409, (r as any).fehler, (r as any).vars);
   res.json({ success: true, ...r });
 });
 
-router.post('/settings/household/redeem/pruefen', requireToken, async (req: AuthedRequest, res: Antwort<'POST /api/v1/settings/household/redeem/pruefen'>) => {
+router.post('/settings/household/redeem/pruefen', requireToken, async (req: Anfrage<'POST /api/v1/settings/household/redeem/pruefen'>, res: Antwort<'POST /api/v1/settings/household/redeem/pruefen'>) => {
   const zuOft = await kontoGedrosselt('haushalt-pruefen', req.apiUser.user_id, 30, 60 * 60 * 1000);
   if (zuOft) return sendeFehler(req, res, 429, 'zu_viele_anfragen', { minuten: zuOft.waitMin });
-  const r = await pruefeEinladung(req.apiUser.user_id, String(req.body?.code || ''));
+  const r = await pruefeEinladung(req.apiUser.user_id, String(req.eingabe.code || ''));
   if ('fehler' in r) return sendeFehler(req, res, 409, r.fehler);
   res.json({ success: true, ...r });
 });
@@ -172,11 +173,11 @@ router.post('/settings/household/redeem/pruefen', requireToken, async (req: Auth
 // Mit Passwort: Das Hauptkonto liest und schreibt danach den Bestand dieses
 // Kontos, auch über einen Passwortwechsel hinweg. Ein erbeutetes Token allein
 // soll das nicht einrichten können.
-router.post('/settings/household/redeem', requireToken, async (req: AuthedRequest, res: Antwort<'POST /api/v1/settings/household/redeem'>) => {
+router.post('/settings/household/redeem', requireToken, async (req: Anfrage<'POST /api/v1/settings/household/redeem'>, res: Antwort<'POST /api/v1/settings/household/redeem'>) => {
   const uid = req.apiUser.user_id;
   // Die Verknüpfung ist ein Zugang zur Sammlung wie ein Passkey: bei aktivem zweitem Faktor nur mit Code.
-  if (!await bestaetigeMitFaktor(req, res, uid, req.body?.password, 'faktor_code')) return;
-  const r = await redeemInvite(uid, String(req.body?.code || ''));
+  if (!await bestaetigeMitFaktor(req, res, uid, req.eingabe.password, 'faktor_code')) return;
+  const r = await redeemInvite(uid, String(req.eingabe.code || ''));
   if ((r as any).fehler) return sendeFehler(req, res, 409, (r as any).fehler, (r as any).vars);
   const ich = await profil(uid);
   if (ich?.email) {
@@ -188,13 +189,15 @@ router.post('/settings/household/redeem', requireToken, async (req: AuthedReques
   res.json({ success: true, ...r });
 });
 
-router.post('/settings/household/unlink', requireToken, async (req: AuthedRequest, res: Antwort<'POST /api/v1/settings/household/unlink'>) => {
+const kennung = (v: string | number | null | undefined) => v == null ? null : Number(v);
+
+router.post('/settings/household/unlink', requireToken, async (req: Anfrage<'POST /api/v1/settings/household/unlink'>, res: Antwort<'POST /api/v1/settings/household/unlink'>) => {
   res.json({ success: true,
-    ...(await unlink(req.apiUser.user_id, req.body?.sub_user_id, req.body?.main_user_id)) });
+    ...(await unlink(req.apiUser.user_id, kennung(req.eingabe.sub_user_id), kennung(req.eingabe.main_user_id))) });
 });
 
-router.post('/settings/household/former/dismiss', requireToken, async (req: AuthedRequest, res: Antwort<'POST /api/v1/settings/household/former/dismiss'>) => {
-  const sub = parseInt(String(req.body?.sub_user_id));
+router.post('/settings/household/former/dismiss', requireToken, async (req: Anfrage<'POST /api/v1/settings/household/former/dismiss'>, res: Antwort<'POST /api/v1/settings/household/former/dismiss'>) => {
+  const sub = parseInt(String(req.eingabe.sub_user_id));
   if (!Number.isFinite(sub)) return sendeFehler(req, res, 400, 'konto_id_ungueltig');
   res.json({ success: true, ...(await verwerfeGetrennt(req.apiUser.user_id, sub)) });
 });
@@ -211,22 +214,14 @@ router.get('/settings/tls', async (_req, res: Antwort<'GET /api/v1/settings/tls'
 
 const istHeikel = (k: string) => k.startsWith('smtp_') || k === 'registration_enabled' || /api_key$|^bricklink_(consumer|token)/.test(k);
 
-router.post('/settings', async (req: Request, res: Antwort<'POST /api/v1/settings'>) => {
+router.post('/settings', async (req: OffeneAnfrage<'POST /api/v1/settings'>, res: Antwort<'POST /api/v1/settings'>) => {
   const uid = angemeldeteNutzerId(req);
-  const globalKeys = ['bricklink_consumer_key','bricklink_consumer_secret','bricklink_token',
-    'bricklink_token_secret','brickset_api_key','rebrickable_api_key','price_job_interval_minutes',
-    'price_cache_ttl','api_limit_rebrickable','api_limit_bricklink','api_limit_brickset',
-    'registration_enabled','smtp_host','smtp_port','smtp_user','smtp_pass','smtp_from','smtp_secure',
-    'smtp_tls_fingerprint','smtp_tls_ca',
-    'default_price_condition',
-    // Global, also nur vom Verwalter gesetzt; kein Geheimnis, lesen dürfen es alle.
-    'gutschein_land'];
-  const userKeys = ['currency', 'language', 'user_default_condition'];
+  const globalKeys = GLOBALE_EINSTELLUNGEN, userKeys = KONTO_EINSTELLUNGEN;
 
   if (istVerwalter(req)) {
-    if (globalKeys.some(k => req.body[k] !== undefined && !globalerWertGueltig(k, req.body[k])))
+    if (globalKeys.some(k => req.eingabe[k] !== undefined && !globalerWertGueltig(k, req.eingabe[k])))
       return sendeFehler(req, res, 400, 'wert_ungueltig');
-    if (String(req.body.registration_enabled) === '1' && await getGlobalSetting('registration_enabled') !== '1' && !await mailBereit(req.body))
+    if (String(req.eingabe.registration_enabled) === '1' && await getGlobalSetting('registration_enabled') !== '1' && !await mailBereit(req.eingabe))
       return sendeFehler(req, res, 400, 'registrierung_braucht_mail');
     // Mailserver, Registrierung und API-Schlüssel nur mit Passwort: Eine erbeutete
     // Verwaltersitzung läse sonst Rücksetz-Mails mit oder öffnete still die Registrierung.
@@ -234,52 +229,52 @@ router.post('/settings', async (req: Request, res: Antwort<'POST /api/v1/setting
     const heikel: string[] = [];
     const einrichtung = !await getGlobalSetting('einrichtung_erledigt');
     for (const key of globalKeys.filter(istHeikel)) {
-      const neu = req.body[key];
+      const neu = req.eingabe[key];
       if (neu === undefined || (SECRET_KEYS.has(key) && isMaskedValue(neu))) continue;
       const alt = String(await getGlobalSetting(key) ?? '');
       if (String(neu) === alt || (einrichtung && alt === '' && !key.startsWith('smtp_') && key !== 'registration_enabled')) continue;
       heikel.push(key);
     }
-    if (heikel.length && !req.body.admin_password) return sendeFehler(req, res, 400, 'aktuelles_passwort_erforderlich');
-    if (heikel.length && !await bestaetigeMitFaktor(req, res, uid, req.body.admin_password)) return;
+    if (heikel.length && !req.eingabe.admin_password) return sendeFehler(req, res, 400, 'aktuelles_passwort_erforderlich');
+    if (heikel.length && !await bestaetigeMitFaktor(req, res, uid, req.eingabe.admin_password)) return;
     if (heikel.some(k => !k.startsWith('smtp_')))
       verwalterHinweisNebenher('einstellungen_geaendert', { konto: heikel.join(', '), durch: nutzerName(req) ?? '' });
 
-    const oldBricksetLimit = req.body.api_limit_brickset !== undefined
+    const oldBricksetLimit = req.eingabe.api_limit_brickset !== undefined
       ? parseInt(await getGlobalSetting('api_limit_brickset') || '100')
       : null;
 
     const geaendert: string[] = [];
     for (const key of globalKeys) {
-      if (req.body[key] !== undefined) {
+      if (req.eingabe[key] !== undefined) {
         // Eine unverändert zurückgeschickte Maske ist kein neuer Wert, sonst
         // überschriebe jedes Speichern die echten Schlüssel mit Punkten.
-        if (SECRET_KEYS.has(key) && isMaskedValue(req.body[key])) continue;
-        if (String(req.body[key]) !== String(await getGlobalSetting(key) ?? '')) geaendert.push(key);
-        await setGlobalSetting(key, req.body[key]);
+        if (SECRET_KEYS.has(key) && isMaskedValue(req.eingabe[key])) continue;
+        if (String(req.eingabe[key]) !== String(await getGlobalSetting(key) ?? '')) geaendert.push(key);
+        await setGlobalSetting(key, req.eingabe[key]);
       }
     }
     if (geaendert.length) await protokolliere(uid, uid, 'einstellungen_geaendert', geaendert.join(', '));
     // Wer das Mailformular gespeichert hat, hat den Hinweis auf die alte Ausnahme gesehen.
-    if (globalKeys.some(k => k.startsWith('smtp_') && req.body[k] !== undefined)) await deleteGlobalSetting('smtp_insecure_tls');
+    if (globalKeys.some(k => k.startsWith('smtp_') && req.eingabe[k] !== undefined)) await deleteGlobalSetting('smtp_insecure_tls');
 
-    if (oldBricksetLimit !== null) await bricksetLimitGesetzt(oldBricksetLimit, parseInt(req.body.api_limit_brickset));
+    if (oldBricksetLimit !== null) await bricksetLimitGesetzt(oldBricksetLimit, parseInt(String(req.eingabe.api_limit_brickset)));
   }
   for (const key of userKeys) {
-    if (req.body[key] !== undefined) {
+    if (req.eingabe[key] !== undefined) {
       // Zentrale Stelle: Eine ECHTE Währungsänderung stösst den Preis-Job an.
-      await setUserSetting(uid, key, req.body[key]);
+      await setUserSetting(uid, key, req.eingabe[key]);
     }
   }
   res.json({ success: true });
 });
 
 // Über readSettings(), damit die Maskierung nicht an der Verpackung vorbeigeht.
-router.get('/settings/raw', async (req: Request, res: Antwort<'GET /api/v1/settings/raw'>) => {
+router.get('/settings/raw', async (req: OffeneAnfrage<'GET /api/v1/settings/raw'>, res: Antwort<'GET /api/v1/settings/raw'>) => {
   res.json({ success: true, settings: await readSettings(angemeldeteNutzerId(req), istVerwalter(req)) });
 });
 
-router.get('/settings/export', async (req, res: Antwort<'GET /api/v1/settings/export'>) => {
+router.get('/settings/export', async (req: OffeneAnfrage<'GET /api/v1/settings/export'>, res: Antwort<'GET /api/v1/settings/export'>) => {
   // Nur Verwalter: Der Import nimmt globale Werte nur von ihnen an, und
   // SMTP-Daten gehen ein Unterkonto nichts an.
   const global = istVerwalter(req) ? await globaleWerteOhneGeheimnisse() : {};
@@ -317,7 +312,7 @@ router.get('/settings/export/data', async (req: Request, res) => {
 });
 
 const importUpload = multer({ storage: multer.memoryStorage(), limits: { ...FORMULAR_GRENZEN, fileSize: 1024 * 1024 } });
-router.post('/settings/import', kontoSchranke('upload'), importUpload.single('file'), async (req: Request, res: Antwort<'POST /api/v1/settings/import'>) => {
+router.post('/settings/import', kontoSchranke('upload'), importUpload.single('file'), async (req: OffeneAnfrage<'POST /api/v1/settings/import'>, res: Antwort<'POST /api/v1/settings/import'>) => {
   if (!req.file) return sendeFehler(req, res, 400, 'keine_datei');
   const gelesen = jsonOderNull(req.file.buffer.toString('utf-8'));
   if (!gelesen) return sendeFehler(req, res, 400, 'json_ungueltig');
@@ -368,12 +363,12 @@ router.post('/settings/import', kontoSchranke('upload'), importUpload.single('fi
   res.json({ success: true, imported, note, smtp_uebergangen: istVerwalter(req) ? smtpUebergangen : [] });
 });
 
-router.post('/settings/smtp-test', async (req, res: Antwort<'POST /api/v1/settings/smtp-test'>) => {
+router.post('/settings/smtp-test', async (req: OffeneAnfrage<'POST /api/v1/settings/smtp-test'>, res: Antwort<'POST /api/v1/settings/smtp-test'>) => {
   if (!istVerwalter(req)) return sendeFehler(req, res, 403, 'nur_admins');
   const verify = await testSmtp();
   if (!verify.success) return sendeFehler(req, res, 400, verify.code, 'vars' in verify ? verify.vars : undefined);
 
-  let to = (req.body.to || '').trim();
+  let to = (req.eingabe.to || '').trim();
   if (!to) {
     to = (await profil(angemeldeteNutzerId(req)))?.email || '';
   }
@@ -392,7 +387,7 @@ router.post('/settings/smtp-test', async (req, res: Antwort<'POST /api/v1/settin
 
 // Offen, solange der Verwalter sie nicht abgeschlossen hat UND noch etwas
 // fehlt — eine eingerichtete Installation sieht den Assistenten nie.
-router.get('/settings/einrichtung', async (req, res: Antwort<'GET /api/v1/settings/einrichtung'>) => {
+router.get('/settings/einrichtung', async (req: OffeneAnfrage<'GET /api/v1/settings/einrichtung'>, res: Antwort<'GET /api/v1/settings/einrichtung'>) => {
   if (!istVerwalter(req)) return sendeFehler(req, res, 403, 'nur_admins');
   const wert = async (k: string) => !!(await getGlobalSetting(k));
   const passwort = await mussPasswortAendern(angemeldeteNutzerId(req));
@@ -407,30 +402,30 @@ router.get('/settings/einrichtung', async (req, res: Antwort<'GET /api/v1/settin
              passwort_aendern: passwort, quellen });
 });
 
-router.post('/settings/einrichtung/fertig', async (req, res: Antwort<'POST /api/v1/settings/einrichtung/fertig'>) => {
+router.post('/settings/einrichtung/fertig', async (req: OffeneAnfrage<'POST /api/v1/settings/einrichtung/fertig'>, res: Antwort<'POST /api/v1/settings/einrichtung/fertig'>) => {
   if (!istVerwalter(req)) return sendeFehler(req, res, 403, 'nur_admins');
   await setGlobalSetting('einrichtung_erledigt', '1');
   res.json({ success: true });
 });
 
 // Prüft den GESPEICHERTEN Zugang mit einem kleinen Abruf.
-router.post('/settings/quelle-testen', async (req, res: Antwort<'POST /api/v1/settings/quelle-testen'>) => {
+router.post('/settings/quelle-testen', async (req: OffeneAnfrage<'POST /api/v1/settings/quelle-testen'>, res: Antwort<'POST /api/v1/settings/quelle-testen'>) => {
   if (!istVerwalter(req)) return sendeFehler(req, res, 403, 'nur_admins');
-  const absage = await quellePruefen(String(req.body?.quelle ?? ''));
+  const absage = await quellePruefen(String(req.eingabe.quelle ?? ''));
   if (!absage) return res.json({ success: true });
   res.status(400).json({ success: false, code: absage.code, details: absage.grund,
     error: fehlerText(absage.code, antwortSprache(req), { quelle: absage.quelle, grund: absage.grund }) });
 });
 
 // Leer heisst „Vorgabe des Verwalters".
-router.post('/settings/user/theme', async (req: Request, res: Antwort<'POST /api/v1/settings/user/theme'>) => {
+router.post('/settings/user/theme', async (req: OffeneAnfrage<'POST /api/v1/settings/user/theme'>, res: Antwort<'POST /api/v1/settings/user/theme'>) => {
   const uid = angemeldeteNutzerId(req);
-  await setzeEigenesDesign(uid, req.body?.theme);
+  await setzeEigenesDesign(uid, req.eingabe.theme);
   res.json({ success: true, ...await designFuer(uid) });
 });
 
-router.post('/settings/admin/theme', requireAdmin, async (req, res: Antwort<'POST /api/v1/settings/admin/theme'>) => {
-  const theme = String(req.body?.theme || 'classic');
+router.post('/settings/admin/theme', requireAdmin, async (req: OffeneAnfrage<'POST /api/v1/settings/admin/theme'>, res: Antwort<'POST /api/v1/settings/admin/theme'>) => {
+  const theme = String(req.eingabe.theme || 'classic');
   if (!DESIGNS.includes(theme)) {
     return sendeFehler(req, res, 400, 'design_ungueltig');
   }

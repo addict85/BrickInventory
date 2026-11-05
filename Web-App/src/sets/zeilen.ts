@@ -1,5 +1,4 @@
-/** Zeilen der Set-Repositories; die Dienste reichen sie weiter. Hier, nicht
- * im Dienst: Sonst hinge das Repository über seine Typen am Dienst. */
+/** Zeilen der Set-Repositories; im Dienst hinge das Repository über seine Typen am Dienst. */
 export interface SetStamm {
   name: string | null; year: number | null; theme: string | null; pieces: number | null;
   minifigs?: number | null; image_url: string | null; image_local: string | null;

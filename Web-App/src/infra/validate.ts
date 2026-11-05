@@ -178,15 +178,19 @@ export function ausTabelle<T>(
   return Object.prototype.hasOwnProperty.call(tabelle, k) ? tabelle[k] : vorgabe;
 }
 
-/** Dieselben Prüfungen als Eingabeschema für den API-Vertrag (src/infra/vertrag/):
- * Es prüft die Funktion oben, das JSON-Schema daneben beschreibt sie nur. So
- * gibt es die Regel einmal, und der Vertrag kann ihr nicht davonlaufen. */
-function alsSchema(pruefe: (v: unknown) => unknown, json: Record<string, unknown>, pflicht = false) {
-  const geprueft = z.unknown().superRefine((v, ctx) => {
+/** Dieselben Prüfungen als Eingabeschema für den API-Vertrag: Die Regel gibt es
+ * einmal, das JSON-Schema beschreibt sie nur, und die Route bekommt ihr Ergebnis. */
+function alsSchema<T>(pruefe: (v: unknown) => T, json: Record<string, unknown>, pflicht: true): z.ZodType<T, unknown>;
+function alsSchema<T>(pruefe: (v: unknown) => T, json: Record<string, unknown>, pflicht?: false): z.ZodType<T | undefined, unknown>;
+function alsSchema<T>(pruefe: (v: unknown) => T, json: Record<string, unknown>, pflicht = false) {
+  const geprueft = z.unknown().meta(json).transform((v, ctx): T => {
     // Ein Objekt hiesse für die Prüfer oft „fehlt" und damit Vorgabewert.
-    if (v !== null && typeof v === 'object') return void ctx.addIssue({ code: 'custom', message: 'kein einfacher Wert' });
-    try { pruefe(v); } catch (e) { ctx.addIssue({ code: 'custom', message: e instanceof Error ? e.message : String(e), params: { fehler: e } }); }
-  }).meta(json);
+    if (v !== null && typeof v === 'object') { ctx.addIssue({ code: 'custom', message: 'kein einfacher Wert' }); return z.NEVER; }
+    try { return pruefe(v); } catch (e) {
+      ctx.addIssue({ code: 'custom', message: e instanceof Error ? e.message : String(e), params: { fehler: e } });
+      return z.NEVER;
+    }
+  });
   return pflicht ? geprueft : geprueft.optional();
 }
 
@@ -196,15 +200,20 @@ export const eingabe = {
   text: (max = 200) => alsSchema(v => optionalText(v, max), { type: ['string', 'null'], maxLength: max }),
   bildUrl: () => alsSchema(optionalImageUrl, { type: ['string', 'null'], format: 'uri', pattern: '^https:' }),
   /** Ohne `pflicht` darf die Menge fehlen oder null sein; dann bleibt sie, wie sie ist. */
-  menge: (min = 0, max = 100_000, pflicht = true) => alsSchema(v => (!pflicht && v == null) || bestandsMenge(v, min, max),
-    { type: ['integer', 'string'], minimum: min, maximum: max }, pflicht),
+  menge: (min = 0, max = 100_000) => alsSchema(v => bestandsMenge(v, min, max),
+    { type: ['integer', 'string'], minimum: min, maximum: max }, true),
+  /** Fehlt sie oder ist sie null, bleibt die Menge, wie sie ist. */
+  mengeOderNichts: (min = 0, max = 100_000) => alsSchema(v => v == null ? null : bestandsMenge(v, min, max),
+    { type: ['integer', 'string', 'null'], minimum: min, maximum: max }),
   stueckzahl: () => alsSchema(v => acquisitionQuantity(v), { type: ['integer', 'string'], minimum: 1, maximum: 10_000 }),
   farbe: () => alsSchema(colorId, { type: ['integer', 'string'], description: `fehlt sie, gilt ${KEINE_FARBE} (keine Farbe)` }),
   farbcode: () => alsSchema(optionalHex, { type: ['string', 'null'], pattern: '^#?[0-9A-Fa-f]{6}$' }),
   preis: (feld: string) =>
     alsSchema(v => optionalPrice(v, feld), { type: ['number', 'string', 'null'], minimum: 0, maximum: 1_000_000 }),
   zustand: () => alsSchema(optionalCondition, { enum: ['N', 'U', null] }),
-  /** Ohne `pflicht` gilt ein fehlender Schalter als nein. */
-  schalter: (feld: string, pflicht = true) => alsSchema(v => (!pflicht && v === undefined) || strictBool(v, feld),
-    { type: ['boolean', 'integer', 'string'], enum: [true, false, 1, 0, 'true', 'false', '1', '0'] }, pflicht),
+  schalter: (feld: string) => alsSchema(v => strictBool(v, feld),
+    { type: ['boolean', 'integer', 'string'], enum: [true, false, 1, 0, 'true', 'false', '1', '0'] }, true),
+  /** Darf fehlen; dann ist er nein. */
+  schalterOderNein: (feld: string) => alsSchema(v => strictBool(v, feld),
+    { type: ['boolean', 'integer', 'string'], enum: [true, false, 1, 0, 'true', 'false', '1', '0'] }),
 };

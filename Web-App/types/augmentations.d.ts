@@ -35,6 +35,10 @@ declare global {
       tokenUserId?: number;
       /** Warum ein vorgelegter Token nicht galt, wenn es mehr zu sagen gibt als „ungültig“. */
       tokenAbsage?: 'token_rotation_noetig';
+      /** Rumpf und Abfrage nach der Prüfung gegen den Vertrag (src/infra/vertrag/pruefen.ts);
+       * ihren Typ setzt Anfrage<K> aus dem Vertrag. */
+      eingabe: unknown;
+      abfrage: unknown;
     }
   }
 }

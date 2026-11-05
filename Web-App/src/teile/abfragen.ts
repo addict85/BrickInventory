@@ -229,7 +229,7 @@ export const BESTAND_MAX_TEILE = 5000;
 
 export async function getOwnedQuantities(
   blickfeld: BlickfeldEingabe,
-  teile: Array<{ part_number?: string; color_id?: number | string }>,
+  teile: Array<{ part_number?: string | number | undefined; color_id?: number | string | null | undefined }>,
 ): Promise<Record<string, { gesamt: number; lose: number }>> {
   const uids = asIds(blickfeld);
   // Doppelte Schlüssel fallen weg: Eine Liste über mehrere Sets fragt dasselbe

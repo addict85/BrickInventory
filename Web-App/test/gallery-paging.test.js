@@ -88,10 +88,8 @@ test('ohne page_size bleibt alles wie bisher', () => {
   // alle vier Parameter durch, und ohne page_size bleibt die Liste unbegrenzt.
   const v1 = fs.readFileSync(path.join(ROOT, 'routes/api_v1/sets.ts'), 'utf8');
   const route = v1.slice(v1.indexOf("router.get('/sets', requireToken"), v1.indexOf("router.get('/sets/:setNumber'"));
-  // req.query als GANZES: Eine Auswahl daneben liess einst `storage` fallen.
-  // (Bis hierher prüfte diese Zeile die alte Auswahl — sie stand nur noch als
-  // Beispiel in einem Kommentar.)
-  assert.match(route, /await getSets\([^;]*\breq\.query\)/,
+  // Die geprüfte Abfrage als GANZES: Eine Auswahl daneben liess einst `storage` fallen.
+  assert.match(route, /await getSets\([^;]*\breq\.abfrage\)/,
     'Die Route muss alle Filterparameter durchreichen — sonst filtert der Client wieder selbst');
 });
 

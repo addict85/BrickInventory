@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { eingabe, GROESSTE_ID } from '../validate';
-import { KontoName, type Route, zeit, ganz, OHNE_RUMPF, ZAHL, KENNUNG, ZUSTAND } from './grund';
+import { KontoName, type Route, zeit, ganz, OHNE_RUMPF, ZAHL, KENNUNG, ZUSTAND, TEXT, abfrage, Q } from './grund';
 import { BrickLinkRef, CsvImportErgebnis, GenericResponse, MinifigsResponse, PartsResponse, InDenPapierkorb } from './gemeinsam';
 
 export const AddSetResponse = z.looseObject({
@@ -147,7 +147,7 @@ export const PdfAuftrag = z.looseObject({ success: z.literal(true), jobId: z.str
 
 const textOderNull = (max: number) => z.string().max(max).nullish();
 /** Der Job zeichnet jede Zeile und lädt Bilder nach: Zahl und Grösse begrenzt. */
-export const PdfEingabe = z.object({
+export const PdfEingabe = z.strictObject({
   sets: z.array(z.object({ set_number: z.string().trim().min(1).max(32), name: textOderNull(500) })).max(1000).optional(),
   parts: z.array(z.object({
     part_number: z.string().trim().min(1).max(64),
@@ -174,25 +174,33 @@ export const AnleitungHochgeladen = GenericResponse.extend({
   instruction: z.looseObject({ url: z.string(), description: z.string().nullable(), local_path: z.string() }),
 });
 
+/** Ein neues Set; dieselben Felder für den Strom (add-stream). */
+const NeuesSet = z.strictObject({ set_number: z.union([z.string().max(64), z.number()]).optional(), quantity: eingabe.stueckzahl(),
+  purchase_price: eingabe.preis('Kaufpreis'), condition: ZUSTAND.nullable().optional(),
+  owner_user_id: KENNUNG.nullable().optional(), storage: TEXT().nullable().optional() });
+
 export const routen = {
   'GET /api/v1/sets/info/:setNumber': { antwort: SetInfoResponse },
-  'GET /api/v1/sets': { antwort: SetsResponse },
-  'GET /api/v1/sets/:setNumber': { antwort: SetResponse },
-  'GET /api/v1/alerts/pending': { antwort: PendingAlertsResponse },
+  'GET /api/v1/sets': { antwort: SetsResponse, abfrage: abfrage({ accounts: Q.konten, search: Q.text(), theme: Q.text(),
+    sort: Q.text(40), page: Q.zahl(), page_size: Q.zahl(), storage: Q.text() }) },
+  'GET /api/v1/sets/:setNumber': { antwort: SetResponse, abfrage: abfrage({ accounts: Q.konten }) },
+  'GET /api/v1/alerts/pending': { antwort: PendingAlertsResponse, abfrage: abfrage({ since: Q.text(40) }) },
   'GET /api/v1/alerts': { antwort: PreisalarmeResponse },
   'GET /api/v1/sets/:setNumber/alert': { antwort: PreisalarmeResponse },
   'GET /api/v1/sets/:setNumber/parts-list': { antwort: PartsResponse },
   'GET /api/v1/sets/:setNumber/minifigs-list': { antwort: MinifigsResponse },
   'GET /api/v1/sets/exists/:setNumber': { antwort: SetExistsResponse },
   'GET /api/v1/sets/barcode/:barcode': { antwort: BarcodeResponse },
-  'POST /api/v1/sets/:setNumber/instructions/upload': { antwort: AnleitungHochgeladen, formular: true },
+  'POST /api/v1/sets/:setNumber/instructions/upload': { antwort: AnleitungHochgeladen, formular: true,
+    eingabe: z.strictObject({ description: TEXT(500).optional() }) },
   'DELETE /api/v1/sets/:setNumber/instructions/:instrId': { eingabe: OHNE_RUMPF, antwort: GenericResponse },
-  'POST /api/v1/sets': { antwort: AddSetResponse, eingabe: z.looseObject({ set_number: z.union([z.string(), z.number()]), quantity: eingabe.stueckzahl(), purchase_price: eingabe.preis('Kaufpreis') }) },
-  'PUT /api/v1/sets/:setNumber': { eingabe: z.looseObject({ quantity: ZAHL.optional(), quantity_delta: ZAHL.nullable().optional(), purchase_price: ZAHL.nullable().optional(), condition: ZUSTAND.nullable().optional(), owner_user_id: KENNUNG.nullable().optional() }), antwort: GenericResponse },
-  'DELETE /api/v1/sets/:setNumber': { eingabe: OHNE_RUMPF, antwort: InDenPapierkorb },
-  'PUT /api/v1/sets/:setNumber/alert': { eingabe: z.looseObject({ richtung: z.enum(['unter', 'ueber']), schwelle: ZAHL, condition: ZUSTAND.optional() }), antwort: PreisalarmResponse },
-  'DELETE /api/v1/sets/:setNumber/alert': { eingabe: OHNE_RUMPF, antwort: PreisalarmResponse },
-  'POST /api/v1/sets/:sn/move': { eingabe: z.looseObject({ from_user_id: KENNUNG.nullable().optional(), to_user_id: KENNUNG, acquisition_ids: z.array(KENNUNG).max(10_000).nullable().optional() }), antwort: MoveSetResponse },
+  'POST /api/v1/sets': { antwort: AddSetResponse, eingabe: NeuesSet },
+  'PUT /api/v1/sets/:setNumber': { eingabe: z.strictObject({ quantity: ZAHL.optional(), quantity_delta: ZAHL.nullable().optional(), purchase_price: ZAHL.nullable().optional(), condition: ZUSTAND.nullable().optional(), owner_user_id: KENNUNG.nullable().optional() }), antwort: GenericResponse },
+  'DELETE /api/v1/sets/:setNumber': { eingabe: OHNE_RUMPF, antwort: InDenPapierkorb, abfrage: abfrage({ accounts: Q.konten }) },
+  'PUT /api/v1/sets/:setNumber/alert': { eingabe: z.strictObject({ richtung: z.enum(['unter', 'ueber']), schwelle: ZAHL, condition: ZUSTAND.optional() }), antwort: PreisalarmResponse },
+  'DELETE /api/v1/sets/:setNumber/alert': { eingabe: OHNE_RUMPF, antwort: PreisalarmResponse,
+    abfrage: abfrage({ condition: z.enum(['N', 'U', 'n', 'u']) }) },
+  'POST /api/v1/sets/:sn/move': { eingabe: z.strictObject({ from_user_id: KENNUNG.nullable().optional(), to_user_id: KENNUNG, acquisition_ids: z.array(KENNUNG).max(10_000).nullable().optional() }), antwort: MoveSetResponse },
   'POST /api/v1/sets/import/csv': { formular: true, antwort: CsvImportErgebnis },
   'POST /api/v1/alerts/import/csv': { formular: true, antwort: CsvImportErgebnis },
   'POST /api/v1/sets/:setNumber/instructions': { eingabe: OHNE_RUMPF, antwort: AnleitungenGeladen },
@@ -200,7 +208,7 @@ export const routen = {
   'GET /api/v1/sets/partslist-pdf/status/:jobId': { antwort: PdfStand },
   'GET /api/v1/sets/partslist-pdf/download/:jobId': { art: 'pdf' },
   'GET /api/v1/sets/partslist-pdf/stream/:jobId': { art: 'strom' },
-  'POST /api/v1/sets/add-stream': { art: 'strom' },
+  'POST /api/v1/sets/add-stream': { art: 'strom', eingabe: NeuesSet },
   'GET /api/v1/sets/import/csv/stream': { art: 'strom' },
   'GET /api/v1/sets/export/rebrickable': { art: 'csv' },
   'POST /api/v1/sets/:setNumber/parts': { eingabe: OHNE_RUMPF, antwort: TeileGeladen },

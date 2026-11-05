@@ -150,7 +150,7 @@
                     ]
                   }
                 },
-                "additionalProperties": {}
+                "additionalProperties": false
               }
             }
           }
@@ -161,6 +161,26 @@
       "get": {
         "tags": [
           "verwaltung"
+        ],
+        "parameters": [
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "maxLength": 20
+            }
+          },
+          {
+            "name": "art",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "maxLength": 40
+            }
+          }
         ],
         "responses": {
           "200": {
@@ -573,7 +593,7 @@
                     ]
                   }
                 },
-                "additionalProperties": {}
+                "additionalProperties": false
               }
             }
           }
@@ -684,7 +704,7 @@
                 "required": [
                   "ttl"
                 ],
-                "additionalProperties": {}
+                "additionalProperties": false
               }
             }
           }
@@ -749,7 +769,7 @@
                     ]
                   }
                 },
-                "additionalProperties": {}
+                "additionalProperties": false
               }
             }
           }
@@ -810,7 +830,7 @@
                 "required": [
                   "condition"
                 ],
-                "additionalProperties": {}
+                "additionalProperties": false
               }
             }
           }
@@ -883,7 +903,7 @@
                     ]
                   }
                 },
-                "additionalProperties": {}
+                "additionalProperties": false
               }
             }
           }
@@ -933,6 +953,17 @@
       "get": {
         "tags": [
           "verwaltung"
+        ],
+        "parameters": [
+          {
+            "name": "url",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "maxLength": 2048
+            }
+          }
         ],
         "responses": {
           "200": {
@@ -1028,7 +1059,7 @@
                 "required": [
                   "name"
                 ],
-                "additionalProperties": {}
+                "additionalProperties": false
               }
             }
           }
@@ -1098,6 +1129,17 @@
         "tags": [
           "verwaltung"
         ],
+        "parameters": [
+          {
+            "name": "minutes",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "pattern": "^\\d{1,10}$"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "description": "Erfolg",
@@ -1126,6 +1168,31 @@
       "get": {
         "tags": [
           "verwaltung"
+        ],
+        "parameters": [
+          {
+            "name": "set",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "maxLength": 64
+            }
+          },
+          {
+            "name": "live",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "0",
+                "1",
+                "true",
+                "false"
+              ]
+            }
+          }
         ],
         "responses": {
           "200": {
@@ -1418,6 +1485,17 @@
         "tags": [
           "sets"
         ],
+        "parameters": [
+          {
+            "name": "since",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "maxLength": 40
+            }
+          }
+        ],
         "responses": {
           "200": {
             "description": "Erfolg",
@@ -1480,7 +1558,7 @@
                     "maxLength": 254
                   }
                 },
-                "additionalProperties": {}
+                "additionalProperties": false
               }
             }
           }
@@ -1524,9 +1602,19 @@
                     "type": "string",
                     "maxLength": 1024
                   },
+                  "passkeys_widerrufen": {
+                    "type": "boolean"
+                  },
                   "current": {
-                    "type": "string",
-                    "maxLength": 1024
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "maxLength": 1024
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
                   },
                   "code": {
                     "anyOf": [
@@ -1561,7 +1649,7 @@
                     ]
                   }
                 },
-                "additionalProperties": {}
+                "additionalProperties": false
               }
             }
           }
@@ -1610,7 +1698,7 @@
                     "maxLength": 200
                   }
                 },
-                "additionalProperties": {}
+                "additionalProperties": false
               }
             }
           }
@@ -1655,7 +1743,7 @@
                     "maxLength": 200
                   }
                 },
-                "additionalProperties": {}
+                "additionalProperties": false
               }
             }
           }
@@ -1700,7 +1788,7 @@
                     "maxLength": 254
                   }
                 },
-                "additionalProperties": {}
+                "additionalProperties": false
               }
             }
           }
@@ -1741,8 +1829,15 @@
                 "type": "object",
                 "properties": {
                   "password": {
-                    "type": "string",
-                    "maxLength": 1024
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "maxLength": 1024
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
                   },
                   "code": {
                     "anyOf": [
@@ -1777,7 +1872,7 @@
                     ]
                   }
                 },
-                "additionalProperties": {}
+                "additionalProperties": false
               }
             }
           }
@@ -1850,6 +1945,7 @@
                   "ohne_token": {
                     "type": "boolean"
                   },
+                  "label": {},
                   "never_expires": {
                     "type": "boolean"
                   },
@@ -1872,7 +1968,7 @@
                     ]
                   }
                 },
-                "additionalProperties": {}
+                "additionalProperties": false
               }
             }
           }
@@ -1998,9 +2094,17 @@
                   },
                   "mit_token": {
                     "type": "boolean"
+                  },
+                  "label": {},
+                  "never_expires": {
+                    "type": "boolean"
+                  },
+                  "scope": {
+                    "type": "string",
+                    "maxLength": 20
                   }
                 },
-                "additionalProperties": {}
+                "additionalProperties": false
               }
             }
           }
@@ -2046,7 +2150,7 @@
                     "maxLength": 40
                   }
                 },
-                "additionalProperties": {}
+                "additionalProperties": false
               }
             }
           }
@@ -2096,9 +2200,23 @@
                         "type": "null"
                       }
                     ]
+                  },
+                  "antwort": {
+                    "anyOf": [
+                      {
+                        "type": "object",
+                        "propertyNames": {
+                          "type": "string"
+                        },
+                        "additionalProperties": {}
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
                   }
                 },
-                "additionalProperties": {}
+                "additionalProperties": false
               }
             }
           }
@@ -2139,8 +2257,15 @@
                 "type": "object",
                 "properties": {
                   "password": {
-                    "type": "string",
-                    "maxLength": 1024
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "maxLength": 1024
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
                   },
                   "code": {
                     "anyOf": [
@@ -2175,7 +2300,7 @@
                     ]
                   }
                 },
-                "additionalProperties": {}
+                "additionalProperties": false
               }
             }
           }
@@ -2259,8 +2384,15 @@
                 "type": "object",
                 "properties": {
                   "password": {
-                    "type": "string",
-                    "maxLength": 1024
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "maxLength": 1024
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
                   },
                   "code": {
                     "anyOf": [
@@ -2295,7 +2427,7 @@
                     ]
                   }
                 },
-                "additionalProperties": {}
+                "additionalProperties": false
               }
             }
           }
@@ -2403,9 +2535,20 @@
                       }
                     ]
                   },
-                  "password_current": {
+                  "password": {
                     "type": "string",
                     "maxLength": 1024
+                  },
+                  "password_current": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "maxLength": 1024
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
                   },
                   "code": {
                     "anyOf": [
@@ -2440,7 +2583,7 @@
                     ]
                   }
                 },
-                "additionalProperties": {}
+                "additionalProperties": false
               }
             }
           }
@@ -2489,7 +2632,7 @@
                     "maxLength": 200
                   }
                 },
-                "additionalProperties": {}
+                "additionalProperties": false
               }
             }
           }
@@ -2530,9 +2673,36 @@
               "schema": {
                 "type": "object",
                 "properties": {
+                  "gueltigkeit": {
+                    "anyOf": [
+                      {
+                        "anyOf": [
+                          {
+                            "type": "string",
+                            "maxLength": 20
+                          },
+                          {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991
+                          }
+                        ]
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
                   "password": {
-                    "type": "string",
-                    "maxLength": 1024
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "maxLength": 1024
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
                   },
                   "code": {
                     "anyOf": [
@@ -2567,7 +2737,7 @@
                     ]
                   }
                 },
-                "additionalProperties": {}
+                "additionalProperties": false
               }
             }
           }
@@ -2651,7 +2821,7 @@
                     "maxLength": 10
                   }
                 },
-                "additionalProperties": {}
+                "additionalProperties": false
               }
             }
           }
@@ -2729,7 +2899,7 @@
                     "maxLength": 1024
                   }
                 },
-                "additionalProperties": {}
+                "additionalProperties": false
               }
             }
           }
@@ -2769,13 +2939,24 @@
               "schema": {
                 "type": "object",
                 "properties": {
+                  "label": {},
+                  "never_expires": {
+                    "type": "boolean"
+                  },
                   "scope": {
                     "type": "string",
                     "maxLength": 20
                   },
                   "password": {
-                    "type": "string",
-                    "maxLength": 1024
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "maxLength": 1024
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
                   },
                   "code": {
                     "anyOf": [
@@ -2810,7 +2991,7 @@
                     ]
                   }
                 },
-                "additionalProperties": {}
+                "additionalProperties": false
               }
             }
           }
@@ -2940,6 +3121,25 @@
                       "0"
                     ]
                   },
+                  "isAdmin": {
+                    "deprecated": true,
+                    "description": "früherer Name von is_admin",
+                    "type": [
+                      "boolean",
+                      "integer",
+                      "string"
+                    ],
+                    "enum": [
+                      true,
+                      false,
+                      1,
+                      0,
+                      "true",
+                      "false",
+                      "1",
+                      "0"
+                    ]
+                  },
                   "username": {
                     "type": "string",
                     "maxLength": 64
@@ -2949,8 +3149,15 @@
                     "maxLength": 1024
                   },
                   "admin_password": {
-                    "type": "string",
-                    "maxLength": 1024
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "maxLength": 1024
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
                   },
                   "code": {
                     "anyOf": [
@@ -2985,7 +3192,7 @@
                     ]
                   }
                 },
-                "additionalProperties": {}
+                "additionalProperties": false
               }
             }
           }
@@ -3040,8 +3247,15 @@
                 "type": "object",
                 "properties": {
                   "admin_password": {
-                    "type": "string",
-                    "maxLength": 1024
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "maxLength": 1024
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
                   },
                   "code": {
                     "anyOf": [
@@ -3076,7 +3290,7 @@
                     ]
                   }
                 },
-                "additionalProperties": {}
+                "additionalProperties": false
               }
             }
           }
@@ -3148,8 +3362,15 @@
                     ]
                   },
                   "admin_password": {
-                    "type": "string",
-                    "maxLength": 1024
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "maxLength": 1024
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
                   },
                   "code": {
                     "anyOf": [
@@ -3187,7 +3408,7 @@
                 "required": [
                   "is_admin"
                 ],
-                "additionalProperties": {}
+                "additionalProperties": false
               }
             }
           }
@@ -3259,8 +3480,15 @@
                     ]
                   },
                   "admin_password": {
-                    "type": "string",
-                    "maxLength": 1024
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "maxLength": 1024
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
                   },
                   "code": {
                     "anyOf": [
@@ -3298,7 +3526,7 @@
                 "required": [
                   "is_active"
                 ],
-                "additionalProperties": {}
+                "additionalProperties": false
               }
             }
           }
@@ -3353,8 +3581,15 @@
                 "type": "object",
                 "properties": {
                   "admin_password": {
-                    "type": "string",
-                    "maxLength": 1024
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "maxLength": 1024
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
                   },
                   "code": {
                     "anyOf": [
@@ -3389,7 +3624,7 @@
                     ]
                   }
                 },
-                "additionalProperties": {}
+                "additionalProperties": false
               }
             }
           }
@@ -3448,8 +3683,15 @@
                     "maxLength": 1024
                   },
                   "admin_password": {
-                    "type": "string",
-                    "maxLength": 1024
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "maxLength": 1024
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
                   },
                   "code": {
                     "anyOf": [
@@ -3484,7 +3726,7 @@
                     ]
                   }
                 },
-                "additionalProperties": {}
+                "additionalProperties": false
               }
             }
           }
@@ -3539,8 +3781,15 @@
                 "type": "object",
                 "properties": {
                   "admin_password": {
-                    "type": "string",
-                    "maxLength": 1024
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "maxLength": 1024
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
                   },
                   "code": {
                     "anyOf": [
@@ -3575,7 +3824,7 @@
                     ]
                   }
                 },
-                "additionalProperties": {}
+                "additionalProperties": false
               }
             }
           }
@@ -3649,8 +3898,15 @@
                 "type": "object",
                 "properties": {
                   "password": {
-                    "type": "string",
-                    "maxLength": 1024
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "maxLength": 1024
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
                   },
                   "code": {
                     "anyOf": [
@@ -3685,7 +3941,7 @@
                     ]
                   }
                 },
-                "additionalProperties": {}
+                "additionalProperties": false
               }
             }
           }
@@ -3746,9 +4002,12 @@
                         "type": "null"
                       }
                     ]
+                  },
+                  "password": {
+                    "type": "null"
                   }
                 },
-                "additionalProperties": {}
+                "additionalProperties": false
               }
             }
           }
@@ -3806,9 +4065,12 @@
                         "type": "null"
                       }
                     ]
+                  },
+                  "password": {
+                    "type": "null"
                   }
                 },
-                "additionalProperties": {}
+                "additionalProperties": false
               }
             }
           }
@@ -3850,8 +4112,15 @@
                 "type": "object",
                 "properties": {
                   "password": {
-                    "type": "string",
-                    "maxLength": 1024
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "maxLength": 1024
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
                   },
                   "code": {
                     "anyOf": [
@@ -3886,7 +4155,7 @@
                     ]
                   }
                 },
-                "additionalProperties": {}
+                "additionalProperties": false
               }
             }
           }
@@ -3932,8 +4201,15 @@
                 "type": "object",
                 "properties": {
                   "password": {
-                    "type": "string",
-                    "maxLength": 1024
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "maxLength": 1024
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
                   },
                   "code": {
                     "anyOf": [
@@ -3968,7 +4244,7 @@
                     ]
                   }
                 },
-                "additionalProperties": {}
+                "additionalProperties": false
               }
             }
           }
@@ -3983,6 +4259,17 @@
       "get": {
         "tags": [
           "katalog"
+        ],
+        "parameters": [
+          {
+            "name": "sets",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "maxLength": 4000
+            }
+          }
         ],
         "responses": {
           "200": {
@@ -4041,6 +4328,71 @@
       "get": {
         "tags": [
           "katalog"
+        ],
+        "parameters": [
+          {
+            "name": "q",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "maxLength": 200
+            }
+          },
+          {
+            "name": "theme_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "pattern": "^\\d{0,10}$"
+            }
+          },
+          {
+            "name": "year_from",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "pattern": "^\\d{0,10}$"
+            }
+          },
+          {
+            "name": "year_to",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "pattern": "^\\d{0,10}$"
+            }
+          },
+          {
+            "name": "sort",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "maxLength": 40
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "pattern": "^\\d{1,10}$"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "pattern": "^\\d{1,10}$"
+            }
+          }
         ],
         "responses": {
           "200": {
@@ -4110,6 +4462,35 @@
         "tags": [
           "katalog"
         ],
+        "parameters": [
+          {
+            "name": "q",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "maxLength": 200
+            }
+          },
+          {
+            "name": "theme_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "pattern": "^\\d{0,10}$"
+            }
+          },
+          {
+            "name": "sort",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "maxLength": 40
+            }
+          }
+        ],
         "responses": {
           "200": {
             "description": "Erfolg",
@@ -4138,6 +4519,30 @@
       "get": {
         "tags": [
           "finanzen"
+        ],
+        "parameters": [
+          {
+            "name": "accounts",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "enum": [
+                    "all",
+                    "own",
+                    "subs",
+                    ""
+                  ]
+                },
+                {
+                  "type": "string",
+                  "pattern": "^\\d{1,10}$"
+                }
+              ]
+            }
+          }
         ],
         "responses": {
           "200": {
@@ -4168,6 +4573,30 @@
         "tags": [
           "finanzen"
         ],
+        "parameters": [
+          {
+            "name": "accounts",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "enum": [
+                    "all",
+                    "own",
+                    "subs",
+                    ""
+                  ]
+                },
+                {
+                  "type": "string",
+                  "pattern": "^\\d{1,10}$"
+                }
+              ]
+            }
+          }
+        ],
         "responses": {
           "200": {
             "description": "Erfolg",
@@ -4196,6 +4625,30 @@
       "get": {
         "tags": [
           "finanzen"
+        ],
+        "parameters": [
+          {
+            "name": "accounts",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "enum": [
+                    "all",
+                    "own",
+                    "subs",
+                    ""
+                  ]
+                },
+                {
+                  "type": "string",
+                  "pattern": "^\\d{1,10}$"
+                }
+              ]
+            }
+          }
         ],
         "responses": {
           "200": {
@@ -4226,6 +4679,39 @@
         "tags": [
           "finanzen"
         ],
+        "parameters": [
+          {
+            "name": "accounts",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "enum": [
+                    "all",
+                    "own",
+                    "subs",
+                    ""
+                  ]
+                },
+                {
+                  "type": "string",
+                  "pattern": "^\\d{1,10}$"
+                }
+              ]
+            }
+          },
+          {
+            "name": "period",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "maxLength": 20
+            }
+          }
+        ],
         "responses": {
           "200": {
             "description": "Erfolg",
@@ -4254,6 +4740,30 @@
       "get": {
         "tags": [
           "finanzen"
+        ],
+        "parameters": [
+          {
+            "name": "accounts",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "enum": [
+                    "all",
+                    "own",
+                    "subs",
+                    ""
+                  ]
+                },
+                {
+                  "type": "string",
+                  "pattern": "^\\d{1,10}$"
+                }
+              ]
+            }
+          }
         ],
         "responses": {
           "200": {
@@ -4371,6 +4881,75 @@
         "tags": [
           "figuren"
         ],
+        "parameters": [
+          {
+            "name": "accounts",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "enum": [
+                    "all",
+                    "own",
+                    "subs",
+                    ""
+                  ]
+                },
+                {
+                  "type": "string",
+                  "pattern": "^\\d{1,10}$"
+                }
+              ]
+            }
+          },
+          {
+            "name": "search",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "maxLength": 200
+            }
+          },
+          {
+            "name": "source",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "maxLength": 20
+            }
+          },
+          {
+            "name": "set_number",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "maxLength": 64
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "pattern": "^\\d{1,10}$"
+            }
+          },
+          {
+            "name": "page_size",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "pattern": "^\\d{1,10}$"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "description": "Erfolg",
@@ -4468,12 +5047,65 @@
                     ],
                     "format": "uri",
                     "pattern": "^https:"
+                  },
+                  "bl_fig_number": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "maxLength": 64
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "owner_user_id": {
+                    "anyOf": [
+                      {
+                        "anyOf": [
+                          {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991
+                          },
+                          {
+                            "type": "string",
+                            "pattern": "^-?\\d{1,12}$"
+                          }
+                        ]
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "storage": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "maxLength": 200
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "acquired_at": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "maxLength": 40
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
                   }
                 },
                 "required": [
                   "fig_number"
                 ],
-                "additionalProperties": {}
+                "additionalProperties": false
               }
             }
           }
@@ -4492,6 +5124,15 @@
             "required": true,
             "schema": {
               "type": "string"
+            }
+          },
+          {
+            "name": "owner",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "pattern": "^\\d{0,10}$"
             }
           }
         ],
@@ -4606,7 +5247,7 @@
                     ]
                   }
                 },
-                "additionalProperties": {}
+                "additionalProperties": false
               }
             }
           }
@@ -4623,6 +5264,15 @@
             "required": true,
             "schema": {
               "type": "string"
+            }
+          },
+          {
+            "name": "owner",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "pattern": "^\\d{0,10}$"
             }
           }
         ],
@@ -4673,6 +5323,28 @@
             "required": true,
             "schema": {
               "type": "string"
+            }
+          },
+          {
+            "name": "accounts",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "enum": [
+                    "all",
+                    "own",
+                    "subs",
+                    ""
+                  ]
+                },
+                {
+                  "type": "string",
+                  "pattern": "^\\d{1,10}$"
+                }
+              ]
             }
           }
         ],
@@ -4754,13 +5426,127 @@
                   "quantity": {
                     "type": [
                       "integer",
-                      "string"
+                      "string",
+                      "null"
                     ],
                     "minimum": 1,
                     "maximum": 100000
+                  },
+                  "purchase_price": {
+                    "anyOf": [
+                      {
+                        "anyOf": [
+                          {
+                            "type": "number"
+                          },
+                          {
+                            "type": "string",
+                            "maxLength": 40
+                          }
+                        ]
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "unit_price": {
+                    "anyOf": [
+                      {
+                        "anyOf": [
+                          {
+                            "type": "number"
+                          },
+                          {
+                            "type": "string",
+                            "maxLength": 40
+                          }
+                        ]
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "condition": {
+                    "anyOf": [
+                      {
+                        "anyOf": [
+                          {
+                            "type": "string",
+                            "enum": [
+                              "N",
+                              "U",
+                              "n",
+                              "u"
+                            ]
+                          },
+                          {
+                            "type": "string",
+                            "const": ""
+                          }
+                        ]
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "date": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "maxLength": 40
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "owner_user_id": {
+                    "anyOf": [
+                      {
+                        "anyOf": [
+                          {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991
+                          },
+                          {
+                            "type": "string",
+                            "pattern": "^-?\\d{1,12}$"
+                          }
+                        ]
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "from_user_id": {
+                    "deprecated": true,
+                    "description": "wird nicht ausgewertet: Der Besitzer kommt aus der Zeile",
+                    "anyOf": [
+                      {
+                        "anyOf": [
+                          {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991
+                          },
+                          {
+                            "type": "string",
+                            "pattern": "^-?\\d{1,12}$"
+                          }
+                        ]
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
                   }
                 },
-                "additionalProperties": {}
+                "additionalProperties": false
               }
             }
           }
@@ -4875,6 +5661,28 @@
             "schema": {
               "type": "string"
             }
+          },
+          {
+            "name": "accounts",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "enum": [
+                    "all",
+                    "own",
+                    "subs",
+                    ""
+                  ]
+                },
+                {
+                  "type": "string",
+                  "pattern": "^\\d{1,10}$"
+                }
+              ]
+            }
           }
         ],
         "responses": {
@@ -4913,6 +5721,28 @@
             "required": true,
             "schema": {
               "type": "string"
+            }
+          },
+          {
+            "name": "accounts",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "enum": [
+                    "all",
+                    "own",
+                    "subs",
+                    ""
+                  ]
+                },
+                {
+                  "type": "string",
+                  "pattern": "^\\d{1,10}$"
+                }
+              ]
             }
           }
         ],
@@ -4995,7 +5825,7 @@
                     ]
                   }
                 },
-                "additionalProperties": {}
+                "additionalProperties": false
               }
             }
           }
@@ -5051,6 +5881,39 @@
         "tags": [
           "figuren"
         ],
+        "parameters": [
+          {
+            "name": "accounts",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "enum": [
+                    "all",
+                    "own",
+                    "subs",
+                    ""
+                  ]
+                },
+                {
+                  "type": "string",
+                  "pattern": "^\\d{1,10}$"
+                }
+              ]
+            }
+          },
+          {
+            "name": "search",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "maxLength": 200
+            }
+          }
+        ],
         "responses": {
           "200": {
             "description": "Erfolg",
@@ -5079,6 +5942,30 @@
       "get": {
         "tags": [
           "figuren"
+        ],
+        "parameters": [
+          {
+            "name": "accounts",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "enum": [
+                    "all",
+                    "own",
+                    "subs",
+                    ""
+                  ]
+                },
+                {
+                  "type": "string",
+                  "pattern": "^\\d{1,10}$"
+                }
+              ]
+            }
+          }
         ],
         "responses": {
           "200": {
@@ -5165,8 +6052,15 @@
                 "type": "object",
                 "properties": {
                   "password": {
-                    "type": "string",
-                    "maxLength": 1024
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "maxLength": 1024
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
                   },
                   "code": {
                     "anyOf": [
@@ -5201,7 +6095,7 @@
                     ]
                   }
                 },
-                "additionalProperties": {}
+                "additionalProperties": false
               }
             }
           }
@@ -5256,8 +6150,15 @@
                 "type": "object",
                 "properties": {
                   "password": {
-                    "type": "string",
-                    "maxLength": 1024
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "maxLength": 1024
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
                   },
                   "code": {
                     "anyOf": [
@@ -5292,7 +6193,7 @@
                     ]
                   }
                 },
-                "additionalProperties": {}
+                "additionalProperties": false
               }
             }
           }
@@ -5357,6 +6258,147 @@
       "get": {
         "tags": [
           "teile"
+        ],
+        "parameters": [
+          {
+            "name": "accounts",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "enum": [
+                    "all",
+                    "own",
+                    "subs",
+                    ""
+                  ]
+                },
+                {
+                  "type": "string",
+                  "pattern": "^\\d{1,10}$"
+                }
+              ]
+            }
+          },
+          {
+            "name": "search",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "maxLength": 200
+            }
+          },
+          {
+            "name": "color",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "maxLength": 64
+            }
+          },
+          {
+            "name": "category",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "maxLength": 200
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "pattern": "^\\d{1,10}$"
+            }
+          },
+          {
+            "name": "page_size",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "pattern": "^\\d{1,10}$"
+            }
+          },
+          {
+            "name": "set_number",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "maxLength": 64
+            }
+          },
+          {
+            "name": "exclude_manual",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "0",
+                "1",
+                "true",
+                "false"
+              ]
+            }
+          },
+          {
+            "name": "spare",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "0",
+                "1",
+                ""
+              ]
+            }
+          },
+          {
+            "name": "with_sets",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "0",
+                "1",
+                "true",
+                "false"
+              ]
+            }
+          },
+          {
+            "name": "storage",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "maxLength": 200
+            }
+          },
+          {
+            "name": "ordnung",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "farbe",
+                "name",
+                "menge"
+              ]
+            }
+          }
         ],
         "responses": {
           "200": {
@@ -5483,12 +6525,54 @@
                       "null"
                     ],
                     "maxLength": 100
+                  },
+                  "owner_user_id": {
+                    "anyOf": [
+                      {
+                        "anyOf": [
+                          {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991
+                          },
+                          {
+                            "type": "string",
+                            "pattern": "^-?\\d{1,12}$"
+                          }
+                        ]
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "storage": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "maxLength": 200
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "acquired_at": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "maxLength": 40
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
                   }
                 },
                 "required": [
                   "part_number"
                 ],
-                "additionalProperties": {}
+                "additionalProperties": false
               }
             }
           }
@@ -5515,6 +6599,15 @@
             "required": true,
             "schema": {
               "type": "string"
+            }
+          },
+          {
+            "name": "owner",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "pattern": "^\\d{0,10}$"
             }
           }
         ],
@@ -5618,7 +6711,7 @@
                     ]
                   }
                 },
-                "additionalProperties": {}
+                "additionalProperties": false
               }
             }
           }
@@ -5643,6 +6736,15 @@
             "required": true,
             "schema": {
               "type": "string"
+            }
+          },
+          {
+            "name": "owner",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "pattern": "^\\d{0,10}$"
             }
           }
         ],
@@ -5701,6 +6803,28 @@
             "required": true,
             "schema": {
               "type": "string"
+            }
+          },
+          {
+            "name": "accounts",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "enum": [
+                    "all",
+                    "own",
+                    "subs",
+                    ""
+                  ]
+                },
+                {
+                  "type": "string",
+                  "pattern": "^\\d{1,10}$"
+                }
+              ]
             }
           }
         ],
@@ -5790,13 +6914,127 @@
                   "quantity": {
                     "type": [
                       "integer",
-                      "string"
+                      "string",
+                      "null"
                     ],
                     "minimum": 1,
                     "maximum": 100000
+                  },
+                  "purchase_price": {
+                    "anyOf": [
+                      {
+                        "anyOf": [
+                          {
+                            "type": "number"
+                          },
+                          {
+                            "type": "string",
+                            "maxLength": 40
+                          }
+                        ]
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "unit_price": {
+                    "anyOf": [
+                      {
+                        "anyOf": [
+                          {
+                            "type": "number"
+                          },
+                          {
+                            "type": "string",
+                            "maxLength": 40
+                          }
+                        ]
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "condition": {
+                    "anyOf": [
+                      {
+                        "anyOf": [
+                          {
+                            "type": "string",
+                            "enum": [
+                              "N",
+                              "U",
+                              "n",
+                              "u"
+                            ]
+                          },
+                          {
+                            "type": "string",
+                            "const": ""
+                          }
+                        ]
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "date": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "maxLength": 40
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "owner_user_id": {
+                    "anyOf": [
+                      {
+                        "anyOf": [
+                          {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991
+                          },
+                          {
+                            "type": "string",
+                            "pattern": "^-?\\d{1,12}$"
+                          }
+                        ]
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "from_user_id": {
+                    "deprecated": true,
+                    "description": "wird nicht ausgewertet: Der Besitzer kommt aus der Zeile",
+                    "anyOf": [
+                      {
+                        "anyOf": [
+                          {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991
+                          },
+                          {
+                            "type": "string",
+                            "pattern": "^-?\\d{1,12}$"
+                          }
+                        ]
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
                   }
                 },
-                "additionalProperties": {}
+                "additionalProperties": false
               }
             }
           }
@@ -5888,6 +7126,15 @@
             "schema": {
               "type": "string"
             }
+          },
+          {
+            "name": "owner",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "pattern": "^\\d{0,10}$"
+            }
           }
         ],
         "responses": {
@@ -5918,6 +7165,26 @@
               "schema": {
                 "type": "object",
                 "properties": {
+                  "color_id": {
+                    "anyOf": [
+                      {
+                        "anyOf": [
+                          {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991
+                          },
+                          {
+                            "type": "string",
+                            "pattern": "^-?\\d{1,12}$"
+                          }
+                        ]
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
                   "color_name": {
                     "type": [
                       "string",
@@ -5933,7 +7200,7 @@
                     "pattern": "^#?[0-9A-Fa-f]{6}$"
                   }
                 },
-                "additionalProperties": {}
+                "additionalProperties": false
               }
             }
           }
@@ -5960,6 +7227,28 @@
             "required": true,
             "schema": {
               "type": "string"
+            }
+          },
+          {
+            "name": "accounts",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "enum": [
+                    "all",
+                    "own",
+                    "subs",
+                    ""
+                  ]
+                },
+                {
+                  "type": "string",
+                  "pattern": "^\\d{1,10}$"
+                }
+              ]
             }
           }
         ],
@@ -6007,6 +7296,28 @@
             "required": true,
             "schema": {
               "type": "string"
+            }
+          },
+          {
+            "name": "accounts",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "enum": [
+                    "all",
+                    "own",
+                    "subs",
+                    ""
+                  ]
+                },
+                {
+                  "type": "string",
+                  "pattern": "^\\d{1,10}$"
+                }
+              ]
             }
           }
         ],
@@ -6097,7 +7408,7 @@
                     ]
                   }
                 },
-                "additionalProperties": {}
+                "additionalProperties": false
               }
             }
           }
@@ -6167,6 +7478,30 @@
         "tags": [
           "teile"
         ],
+        "parameters": [
+          {
+            "name": "accounts",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "enum": [
+                    "all",
+                    "own",
+                    "subs",
+                    ""
+                  ]
+                },
+                {
+                  "type": "string",
+                  "pattern": "^\\d{1,10}$"
+                }
+              ]
+            }
+          }
+        ],
         "responses": {
           "200": {
             "description": "Erfolg",
@@ -6195,6 +7530,30 @@
       "get": {
         "tags": [
           "teile"
+        ],
+        "parameters": [
+          {
+            "name": "accounts",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "enum": [
+                    "all",
+                    "own",
+                    "subs",
+                    ""
+                  ]
+                },
+                {
+                  "type": "string",
+                  "pattern": "^\\d{1,10}$"
+                }
+              ]
+            }
+          }
         ],
         "responses": {
           "200": {
@@ -6269,6 +7628,48 @@
         "tags": [
           "teile"
         ],
+        "parameters": [
+          {
+            "name": "accounts",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "enum": [
+                    "all",
+                    "own",
+                    "subs",
+                    ""
+                  ]
+                },
+                {
+                  "type": "string",
+                  "pattern": "^\\d{1,10}$"
+                }
+              ]
+            }
+          },
+          {
+            "name": "search",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "maxLength": 200
+            }
+          },
+          {
+            "name": "storage",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "maxLength": 200
+            }
+          }
+        ],
         "responses": {
           "200": {
             "description": "Erfolg",
@@ -6297,6 +7698,30 @@
       "post": {
         "tags": [
           "teile"
+        ],
+        "parameters": [
+          {
+            "name": "accounts",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "enum": [
+                    "all",
+                    "own",
+                    "subs",
+                    ""
+                  ]
+                },
+                {
+                  "type": "string",
+                  "pattern": "^\\d{1,10}$"
+                }
+              ]
+            }
+          }
         ],
         "responses": {
           "200": {
@@ -6349,7 +7774,7 @@
                     }
                   }
                 },
-                "additionalProperties": {}
+                "additionalProperties": false
               }
             }
           }
@@ -6360,6 +7785,30 @@
       "get": {
         "tags": [
           "teile"
+        ],
+        "parameters": [
+          {
+            "name": "accounts",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "enum": [
+                    "all",
+                    "own",
+                    "subs",
+                    ""
+                  ]
+                },
+                {
+                  "type": "string",
+                  "pattern": "^\\d{1,10}$"
+                }
+              ]
+            }
+          }
         ],
         "responses": {
           "200": {
@@ -6389,6 +7838,84 @@
       "get": {
         "tags": [
           "sets"
+        ],
+        "parameters": [
+          {
+            "name": "accounts",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "enum": [
+                    "all",
+                    "own",
+                    "subs",
+                    ""
+                  ]
+                },
+                {
+                  "type": "string",
+                  "pattern": "^\\d{1,10}$"
+                }
+              ]
+            }
+          },
+          {
+            "name": "search",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "maxLength": 200
+            }
+          },
+          {
+            "name": "theme",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "maxLength": 200
+            }
+          },
+          {
+            "name": "sort",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "maxLength": 40
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "pattern": "^\\d{1,10}$"
+            }
+          },
+          {
+            "name": "page_size",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "pattern": "^\\d{1,10}$"
+            }
+          },
+          {
+            "name": "storage",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "maxLength": 200
+            }
+          }
         ],
         "responses": {
           "200": {
@@ -6446,9 +7973,14 @@
                 "type": "object",
                 "properties": {
                   "set_number": {
-                    "type": [
-                      "string",
-                      "number"
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "maxLength": 64
+                      },
+                      {
+                        "type": "number"
+                      }
                     ]
                   },
                   "quantity": {
@@ -6467,12 +7999,64 @@
                     ],
                     "minimum": 0,
                     "maximum": 1000000
+                  },
+                  "condition": {
+                    "anyOf": [
+                      {
+                        "anyOf": [
+                          {
+                            "type": "string",
+                            "enum": [
+                              "N",
+                              "U",
+                              "n",
+                              "u"
+                            ]
+                          },
+                          {
+                            "type": "string",
+                            "const": ""
+                          }
+                        ]
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "owner_user_id": {
+                    "anyOf": [
+                      {
+                        "anyOf": [
+                          {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991
+                          },
+                          {
+                            "type": "string",
+                            "pattern": "^-?\\d{1,12}$"
+                          }
+                        ]
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "storage": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "maxLength": 200
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
                   }
                 },
-                "required": [
-                  "set_number"
-                ],
-                "additionalProperties": {}
+                "additionalProperties": false
               }
             }
           }
@@ -6491,6 +8075,28 @@
             "required": true,
             "schema": {
               "type": "string"
+            }
+          },
+          {
+            "name": "accounts",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "enum": [
+                    "all",
+                    "own",
+                    "subs",
+                    ""
+                  ]
+                },
+                {
+                  "type": "string",
+                  "pattern": "^\\d{1,10}$"
+                }
+              ]
             }
           }
         ],
@@ -6651,7 +8257,7 @@
                     ]
                   }
                 },
-                "additionalProperties": {}
+                "additionalProperties": false
               }
             }
           }
@@ -6668,6 +8274,28 @@
             "required": true,
             "schema": {
               "type": "string"
+            }
+          },
+          {
+            "name": "accounts",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "enum": [
+                    "all",
+                    "own",
+                    "subs",
+                    ""
+                  ]
+                },
+                {
+                  "type": "string",
+                  "pattern": "^\\d{1,10}$"
+                }
+              ]
             }
           }
         ],
@@ -6718,6 +8346,28 @@
             "required": true,
             "schema": {
               "type": "string"
+            }
+          },
+          {
+            "name": "accounts",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "enum": [
+                    "all",
+                    "own",
+                    "subs",
+                    ""
+                  ]
+                },
+                {
+                  "type": "string",
+                  "pattern": "^\\d{1,10}$"
+                }
+              ]
             }
           }
         ],
@@ -6799,13 +8449,127 @@
                   "quantity": {
                     "type": [
                       "integer",
-                      "string"
+                      "string",
+                      "null"
                     ],
                     "minimum": 1,
                     "maximum": 100000
+                  },
+                  "purchase_price": {
+                    "anyOf": [
+                      {
+                        "anyOf": [
+                          {
+                            "type": "number"
+                          },
+                          {
+                            "type": "string",
+                            "maxLength": 40
+                          }
+                        ]
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "unit_price": {
+                    "anyOf": [
+                      {
+                        "anyOf": [
+                          {
+                            "type": "number"
+                          },
+                          {
+                            "type": "string",
+                            "maxLength": 40
+                          }
+                        ]
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "condition": {
+                    "anyOf": [
+                      {
+                        "anyOf": [
+                          {
+                            "type": "string",
+                            "enum": [
+                              "N",
+                              "U",
+                              "n",
+                              "u"
+                            ]
+                          },
+                          {
+                            "type": "string",
+                            "const": ""
+                          }
+                        ]
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "date": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "maxLength": 40
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "owner_user_id": {
+                    "anyOf": [
+                      {
+                        "anyOf": [
+                          {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991
+                          },
+                          {
+                            "type": "string",
+                            "pattern": "^-?\\d{1,12}$"
+                          }
+                        ]
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "from_user_id": {
+                    "deprecated": true,
+                    "description": "wird nicht ausgewertet: Der Besitzer kommt aus der Zeile",
+                    "anyOf": [
+                      {
+                        "anyOf": [
+                          {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991
+                          },
+                          {
+                            "type": "string",
+                            "pattern": "^-?\\d{1,12}$"
+                          }
+                        ]
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
                   }
                 },
-                "additionalProperties": {}
+                "additionalProperties": false
               }
             }
           }
@@ -6988,7 +8752,7 @@
                   "richtung",
                   "schwelle"
                 ],
-                "additionalProperties": {}
+                "additionalProperties": false
               }
             }
           }
@@ -7005,6 +8769,20 @@
             "required": true,
             "schema": {
               "type": "string"
+            }
+          },
+          {
+            "name": "condition",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "N",
+                "U",
+                "n",
+                "u"
+              ]
             }
           }
         ],
@@ -7197,8 +8975,13 @@
                   "file": {
                     "type": "string",
                     "format": "binary"
+                  },
+                  "description": {
+                    "type": "string",
+                    "maxLength": 500
                   }
-                }
+                },
+                "additionalProperties": false
               }
             }
           }
@@ -7346,6 +9129,39 @@
             "schema": {
               "type": "string"
             }
+          },
+          {
+            "name": "accounts",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "enum": [
+                    "all",
+                    "own",
+                    "subs",
+                    ""
+                  ]
+                },
+                {
+                  "type": "string",
+                  "pattern": "^\\d{1,10}$"
+                }
+              ]
+            }
+          },
+          {
+            "name": "currency",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "maxLength": 8,
+              "deprecated": true,
+              "description": "wird nicht ausgewertet: Es gilt die Währung des Kontos"
+            }
           }
         ],
         "responses": {
@@ -7384,6 +9200,28 @@
             "required": true,
             "schema": {
               "type": "string"
+            }
+          },
+          {
+            "name": "accounts",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "enum": [
+                    "all",
+                    "own",
+                    "subs",
+                    ""
+                  ]
+                },
+                {
+                  "type": "string",
+                  "pattern": "^\\d{1,10}$"
+                }
+              ]
             }
           }
         ],
@@ -7466,7 +9304,7 @@
                     ]
                   }
                 },
-                "additionalProperties": {}
+                "additionalProperties": false
               }
             }
           }
@@ -7577,7 +9415,7 @@
                 "required": [
                   "to_user_id"
                 ],
-                "additionalProperties": {}
+                "additionalProperties": false
               }
             }
           }
@@ -7603,6 +9441,101 @@
                 "schema": {
                   "$ref": "#/components/schemas/Fehler"
                 }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "set_number": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "maxLength": 64
+                      },
+                      {
+                        "type": "number"
+                      }
+                    ]
+                  },
+                  "quantity": {
+                    "type": [
+                      "integer",
+                      "string"
+                    ],
+                    "minimum": 1,
+                    "maximum": 10000
+                  },
+                  "purchase_price": {
+                    "type": [
+                      "number",
+                      "string",
+                      "null"
+                    ],
+                    "minimum": 0,
+                    "maximum": 1000000
+                  },
+                  "condition": {
+                    "anyOf": [
+                      {
+                        "anyOf": [
+                          {
+                            "type": "string",
+                            "enum": [
+                              "N",
+                              "U",
+                              "n",
+                              "u"
+                            ]
+                          },
+                          {
+                            "type": "string",
+                            "const": ""
+                          }
+                        ]
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "owner_user_id": {
+                    "anyOf": [
+                      {
+                        "anyOf": [
+                          {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991
+                          },
+                          {
+                            "type": "string",
+                            "pattern": "^-?\\d{1,12}$"
+                          }
+                        ]
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "storage": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "maxLength": 200
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  }
+                },
+                "additionalProperties": false
               }
             }
           }
@@ -8095,7 +10028,8 @@
                       ]
                     }
                   }
-                }
+                },
+                "additionalProperties": false
               }
             }
           }
@@ -8319,9 +10253,216 @@
               "schema": {
                 "type": "object",
                 "properties": {
+                  "bricklink_consumer_key": {
+                    "type": [
+                      "string",
+                      "number",
+                      "boolean",
+                      "null"
+                    ]
+                  },
+                  "bricklink_consumer_secret": {
+                    "type": [
+                      "string",
+                      "number",
+                      "boolean",
+                      "null"
+                    ]
+                  },
+                  "bricklink_token": {
+                    "type": [
+                      "string",
+                      "number",
+                      "boolean",
+                      "null"
+                    ]
+                  },
+                  "bricklink_token_secret": {
+                    "type": [
+                      "string",
+                      "number",
+                      "boolean",
+                      "null"
+                    ]
+                  },
+                  "brickset_api_key": {
+                    "type": [
+                      "string",
+                      "number",
+                      "boolean",
+                      "null"
+                    ]
+                  },
+                  "rebrickable_api_key": {
+                    "type": [
+                      "string",
+                      "number",
+                      "boolean",
+                      "null"
+                    ]
+                  },
+                  "price_job_interval_minutes": {
+                    "type": [
+                      "string",
+                      "number",
+                      "boolean",
+                      "null"
+                    ]
+                  },
+                  "price_cache_ttl": {
+                    "type": [
+                      "string",
+                      "number",
+                      "boolean",
+                      "null"
+                    ]
+                  },
+                  "api_limit_rebrickable": {
+                    "type": [
+                      "string",
+                      "number",
+                      "boolean",
+                      "null"
+                    ]
+                  },
+                  "api_limit_bricklink": {
+                    "type": [
+                      "string",
+                      "number",
+                      "boolean",
+                      "null"
+                    ]
+                  },
+                  "api_limit_brickset": {
+                    "type": [
+                      "string",
+                      "number",
+                      "boolean",
+                      "null"
+                    ]
+                  },
+                  "registration_enabled": {
+                    "type": [
+                      "string",
+                      "number",
+                      "boolean",
+                      "null"
+                    ]
+                  },
+                  "smtp_host": {
+                    "type": [
+                      "string",
+                      "number",
+                      "boolean",
+                      "null"
+                    ]
+                  },
+                  "smtp_port": {
+                    "type": [
+                      "string",
+                      "number",
+                      "boolean",
+                      "null"
+                    ]
+                  },
+                  "smtp_user": {
+                    "type": [
+                      "string",
+                      "number",
+                      "boolean",
+                      "null"
+                    ]
+                  },
+                  "smtp_pass": {
+                    "type": [
+                      "string",
+                      "number",
+                      "boolean",
+                      "null"
+                    ]
+                  },
+                  "smtp_from": {
+                    "type": [
+                      "string",
+                      "number",
+                      "boolean",
+                      "null"
+                    ]
+                  },
+                  "smtp_secure": {
+                    "type": [
+                      "string",
+                      "number",
+                      "boolean",
+                      "null"
+                    ]
+                  },
+                  "smtp_tls_fingerprint": {
+                    "type": [
+                      "string",
+                      "number",
+                      "boolean",
+                      "null"
+                    ]
+                  },
+                  "smtp_tls_ca": {
+                    "type": [
+                      "string",
+                      "number",
+                      "boolean",
+                      "null"
+                    ]
+                  },
+                  "default_price_condition": {
+                    "type": [
+                      "string",
+                      "number",
+                      "boolean",
+                      "null"
+                    ]
+                  },
+                  "gutschein_land": {
+                    "type": [
+                      "string",
+                      "number",
+                      "boolean",
+                      "null"
+                    ]
+                  },
+                  "currency": {
+                    "type": [
+                      "string",
+                      "number",
+                      "boolean",
+                      "null"
+                    ]
+                  },
+                  "language": {
+                    "type": [
+                      "string",
+                      "number",
+                      "boolean",
+                      "null"
+                    ]
+                  },
+                  "user_default_condition": {
+                    "type": [
+                      "string",
+                      "number",
+                      "boolean",
+                      "null"
+                    ]
+                  },
                   "admin_password": {
-                    "type": "string",
-                    "maxLength": 1024
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "maxLength": 1024
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
                   },
                   "code": {
                     "anyOf": [
@@ -8356,7 +10497,7 @@
                     ]
                   }
                 },
-                "additionalProperties": {}
+                "additionalProperties": false
               }
             }
           }
@@ -8405,7 +10546,7 @@
                     "maxLength": 40
                   }
                 },
-                "additionalProperties": {}
+                "additionalProperties": false
               }
             }
           }
@@ -8643,7 +10784,7 @@
                 "required": [
                   "sub_user_id"
                 ],
-                "additionalProperties": {}
+                "additionalProperties": false
               }
             }
           }
@@ -8736,8 +10877,15 @@
                     ]
                   },
                   "password": {
-                    "type": "string",
-                    "maxLength": 1024
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "maxLength": 1024
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
                   },
                   "faktor_code": {
                     "anyOf": [
@@ -8772,7 +10920,7 @@
                     ]
                   }
                 },
-                "additionalProperties": {}
+                "additionalProperties": false
               }
             }
           }
@@ -8828,7 +10976,7 @@
                     ]
                   }
                 },
-                "additionalProperties": {}
+                "additionalProperties": false
               }
             }
           }
@@ -8909,7 +11057,7 @@
                     ]
                   }
                 },
-                "additionalProperties": {}
+                "additionalProperties": false
               }
             }
           }
@@ -9001,7 +11149,7 @@
                 "required": [
                   "quelle"
                 ],
-                "additionalProperties": {}
+                "additionalProperties": false
               }
             }
           }
@@ -9071,8 +11219,15 @@
                 "type": "object",
                 "properties": {
                   "password": {
-                    "type": "string",
-                    "maxLength": 1024
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "maxLength": 1024
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
                   },
                   "code": {
                     "anyOf": [
@@ -9107,7 +11262,7 @@
                     ]
                   }
                 },
-                "additionalProperties": {}
+                "additionalProperties": false
               }
             }
           }
@@ -9156,7 +11311,7 @@
                     "maxLength": 320
                   }
                 },
-                "additionalProperties": {}
+                "additionalProperties": false
               }
             }
           }
@@ -9358,7 +11513,7 @@
                     ]
                   }
                 },
-                "additionalProperties": {}
+                "additionalProperties": false
               }
             }
           }
@@ -9437,7 +11592,7 @@
                     ]
                   }
                 },
-                "additionalProperties": {}
+                "additionalProperties": false
               }
             }
           }
@@ -9478,6 +11633,30 @@
         "tags": [
           "finanzen"
         ],
+        "parameters": [
+          {
+            "name": "accounts",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "enum": [
+                    "all",
+                    "own",
+                    "subs",
+                    ""
+                  ]
+                },
+                {
+                  "type": "string",
+                  "pattern": "^\\d{1,10}$"
+                }
+              ]
+            }
+          }
+        ],
         "responses": {
           "200": {
             "description": "Erfolg",
@@ -9506,6 +11685,30 @@
       "get": {
         "tags": [
           "bestand"
+        ],
+        "parameters": [
+          {
+            "name": "accounts",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "enum": [
+                    "all",
+                    "own",
+                    "subs",
+                    ""
+                  ]
+                },
+                {
+                  "type": "string",
+                  "pattern": "^\\d{1,10}$"
+                }
+              ]
+            }
+          }
         ],
         "responses": {
           "200": {
@@ -9585,7 +11788,7 @@
                     ]
                   }
                 },
-                "additionalProperties": {}
+                "additionalProperties": false
               }
             }
           }
@@ -9596,6 +11799,41 @@
       "get": {
         "tags": [
           "bestand"
+        ],
+        "parameters": [
+          {
+            "name": "owner",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9,]{0,200}$"
+            }
+          },
+          {
+            "name": "accounts",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "enum": [
+                    "all",
+                    "own",
+                    "subs",
+                    ""
+                  ]
+                },
+                {
+                  "type": "string",
+                  "pattern": "^\\d{1,10}$"
+                }
+              ],
+              "deprecated": true,
+              "description": "wird nicht ausgewertet: Die Liste folgt dem Recht"
+            }
+          }
         ],
         "responses": {
           "200": {
@@ -9624,6 +11862,17 @@
         "tags": [
           "bestand"
         ],
+        "parameters": [
+          {
+            "name": "owner",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9,]{0,200}$"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "description": "Erfolg",
@@ -9670,7 +11919,7 @@
                     ]
                   }
                 },
-                "additionalProperties": {}
+                "additionalProperties": false
               }
             }
           }
@@ -9690,6 +11939,15 @@
             "schema": {
               "type": "string"
             }
+          },
+          {
+            "name": "owner",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9,]{0,200}$"
+            }
           }
         ],
         "responses": {
@@ -9738,7 +11996,7 @@
                     ]
                   }
                 },
-                "additionalProperties": {}
+                "additionalProperties": false
               }
             }
           }
@@ -9755,6 +12013,15 @@
             "required": true,
             "schema": {
               "type": "string"
+            }
+          },
+          {
+            "name": "owner",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9,]{0,200}$"
             }
           }
         ],
@@ -9915,7 +12182,7 @@
                 "required": [
                   "number"
                 ],
-                "additionalProperties": {}
+                "additionalProperties": false
               }
             }
           }
@@ -10017,7 +12284,7 @@
                     ]
                   }
                 },
-                "additionalProperties": {}
+                "additionalProperties": false
               }
             }
           }
@@ -10066,8 +12333,15 @@
                 "type": "object",
                 "properties": {
                   "password": {
-                    "type": "string",
-                    "maxLength": 1024
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "maxLength": 1024
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
                   },
                   "code": {
                     "anyOf": [
@@ -10102,7 +12376,7 @@
                     ]
                   }
                 },
-                "additionalProperties": {}
+                "additionalProperties": false
               }
             }
           }
@@ -10207,8 +12481,15 @@
                 "type": "object",
                 "properties": {
                   "password": {
-                    "type": "string",
-                    "maxLength": 1024
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "maxLength": 1024
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
                   },
                   "code": {
                     "anyOf": [
@@ -10243,7 +12524,7 @@
                     ]
                   }
                 },
-                "additionalProperties": {}
+                "additionalProperties": false
               }
             }
           }
@@ -10267,6 +12548,29 @@
             "required": true,
             "schema": {
               "type": "string"
+            }
+          },
+          {
+            "name": "ticket",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "maxLength": 200
+            }
+          },
+          {
+            "name": "download",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "0",
+                "1",
+                "true",
+                "false"
+              ]
             }
           }
         ],
@@ -10334,8 +12638,15 @@
                 "type": "object",
                 "properties": {
                   "password": {
-                    "type": "string",
-                    "maxLength": 1024
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "maxLength": 1024
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
                   },
                   "code": {
                     "anyOf": [
@@ -10370,7 +12681,7 @@
                     ]
                   }
                 },
-                "additionalProperties": {}
+                "additionalProperties": false
               }
             }
           }
@@ -10386,6 +12697,17 @@
       "get": {
         "tags": [
           "gutscheine"
+        ],
+        "parameters": [
+          {
+            "name": "ticket",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "maxLength": 200
+            }
+          }
         ],
         "responses": {
           "200": {
@@ -10441,8 +12763,15 @@
                 "type": "object",
                 "properties": {
                   "password": {
-                    "type": "string",
-                    "maxLength": 1024
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "maxLength": 1024
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
                   },
                   "code": {
                     "anyOf": [
@@ -10477,7 +12806,7 @@
                     ]
                   }
                 },
-                "additionalProperties": {}
+                "additionalProperties": false
               }
             }
           }
@@ -10525,8 +12854,25 @@
                   "file": {
                     "type": "string",
                     "format": "binary"
+                  },
+                  "number": {
+                    "type": "string",
+                    "maxLength": 40
+                  },
+                  "pin": {
+                    "type": "string",
+                    "maxLength": 40
+                  },
+                  "amount": {
+                    "type": "string",
+                    "maxLength": 40
+                  },
+                  "currency": {
+                    "type": "string",
+                    "maxLength": 40
                   }
-                }
+                },
+                "additionalProperties": false
               }
             }
           }
@@ -10537,6 +12883,63 @@
       "get": {
         "tags": [
           "merkliste"
+        ],
+        "parameters": [
+          {
+            "name": "accounts",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "enum": [
+                    "all",
+                    "own",
+                    "subs",
+                    ""
+                  ]
+                },
+                {
+                  "type": "string",
+                  "pattern": "^\\d{1,10}$"
+                }
+              ]
+            }
+          },
+          {
+            "name": "search",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "maxLength": 200
+            }
+          },
+          {
+            "name": "condition",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "N",
+                "U",
+                "n",
+                "u",
+                ""
+              ]
+            }
+          },
+          {
+            "name": "sort",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "maxLength": 40
+            }
+          }
         ],
         "responses": {
           "200": {
@@ -10645,7 +13048,7 @@
                 "required": [
                   "set_number"
                 ],
-                "additionalProperties": {}
+                "additionalProperties": false
               }
             }
           }
@@ -10656,6 +13059,50 @@
       "post": {
         "tags": [
           "merkliste"
+        ],
+        "parameters": [
+          {
+            "name": "schreiben",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "0",
+                "1",
+                "true",
+                "false"
+              ]
+            }
+          },
+          {
+            "name": "rebrickable",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "0",
+                "1",
+                "true",
+                "false"
+              ]
+            }
+          },
+          {
+            "name": "strom",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "0",
+                "1",
+                "true",
+                "false"
+              ]
+            }
+          }
         ],
         "responses": {
           "200": {
@@ -10688,8 +13135,13 @@
                   "file": {
                     "type": "string",
                     "format": "binary"
+                  },
+                  "korrekturen": {
+                    "type": "string",
+                    "maxLength": 5000000
                   }
-                }
+                },
+                "additionalProperties": false
               }
             }
           }
@@ -10716,6 +13168,15 @@
             "required": true,
             "schema": {
               "type": "string"
+            }
+          },
+          {
+            "name": "owner_user_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "pattern": "^\\d{0,10}$"
             }
           }
         ],
@@ -10842,7 +13303,7 @@
                 "required": [
                   "neuer_inhaber"
                 ],
-                "additionalProperties": {}
+                "additionalProperties": false
               }
             }
           }
@@ -10916,9 +13377,64 @@
                     ],
                     "minimum": 0,
                     "maximum": 1000000
+                  },
+                  "condition": {
+                    "anyOf": [
+                      {
+                        "anyOf": [
+                          {
+                            "type": "string",
+                            "enum": [
+                              "N",
+                              "U",
+                              "n",
+                              "u"
+                            ]
+                          },
+                          {
+                            "type": "string",
+                            "const": ""
+                          }
+                        ]
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "owner_user_id": {
+                    "anyOf": [
+                      {
+                        "anyOf": [
+                          {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991
+                          },
+                          {
+                            "type": "string",
+                            "pattern": "^-?\\d{1,12}$"
+                          }
+                        ]
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "storage": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "maxLength": 200
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
                   }
                 },
-                "additionalProperties": {}
+                "additionalProperties": false
               }
             }
           }
@@ -11000,8 +13516,13 @@
                   "file": {
                     "type": "string",
                     "format": "binary"
+                  },
+                  "owner_user_id": {
+                    "type": "string",
+                    "pattern": "^\\d{0,10}$"
                   }
-                }
+                },
+                "additionalProperties": false
               }
             }
           }

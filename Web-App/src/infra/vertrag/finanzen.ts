@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { type Route, KontoName, zeit } from './grund';
+import { type Route, KontoName, zeit, abfrage, Q } from './grund';
 import { FigValuationItem, PartValuationItem, ValuationAcquisition } from './gemeinsam';
 
 export const ChartPoint = z.looseObject({
@@ -210,14 +210,16 @@ export const ValuationResponse = z.looseObject({
 });
 
 export const routen = {
-  'GET /api/v1/sets/:setNumber/price': { antwort: SetPriceResponse },
-  'GET /api/v1/sets/:setNumber/price-history': { antwort: PriceHistoryResponse },
-  'GET /api/v1/parts/:partNumber/:colorId/price-history': { antwort: PriceHistoryResponse },
-  'GET /api/v1/minifigs/:figNumber/price-history': { antwort: PriceHistoryResponse },
-  'GET /api/v1/finance/parts-valuation': { antwort: PartsValuationResponse },
-  'GET /api/v1/finance/minifigs-valuation': { antwort: FigsValuationResponse },
-  'GET /api/v1/finance/pnl': { antwort: PnlResponse },
-  'GET /api/v1/finance/valuation': { antwort: ValuationResponse },
-  'GET /api/v1/finance/portfolio-history': { antwort: PortfolioHistoryResponse },
-  'GET /api/v1/stats': { antwort: StatsResponse },
+  'GET /api/v1/sets/:setNumber/price': { antwort: SetPriceResponse, abfrage: abfrage({ accounts: Q.konten,
+    currency: Q.text(8).meta({ deprecated: true, description: 'wird nicht ausgewertet: Es gilt die Währung des Kontos' }) }) },
+  'GET /api/v1/sets/:setNumber/price-history': { antwort: PriceHistoryResponse, abfrage: abfrage({ accounts: Q.konten }) },
+  'GET /api/v1/parts/:partNumber/:colorId/price-history': { antwort: PriceHistoryResponse, abfrage: abfrage({ accounts: Q.konten }) },
+  'GET /api/v1/minifigs/:figNumber/price-history': { antwort: PriceHistoryResponse, abfrage: abfrage({ accounts: Q.konten }) },
+  'GET /api/v1/finance/parts-valuation': { antwort: PartsValuationResponse, abfrage: abfrage({ accounts: Q.konten }) },
+  'GET /api/v1/finance/minifigs-valuation': { antwort: FigsValuationResponse, abfrage: abfrage({ accounts: Q.konten }) },
+  'GET /api/v1/finance/pnl': { antwort: PnlResponse, abfrage: abfrage({ accounts: Q.konten }) },
+  'GET /api/v1/finance/valuation': { antwort: ValuationResponse, abfrage: abfrage({ accounts: Q.konten }) },
+  'GET /api/v1/finance/portfolio-history': { antwort: PortfolioHistoryResponse,
+    abfrage: abfrage({ accounts: Q.konten, period: Q.text(20) }) },
+  'GET /api/v1/stats': { antwort: StatsResponse, abfrage: abfrage({ accounts: Q.konten }) },
 } satisfies Record<string, Route>;

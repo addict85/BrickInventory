@@ -11,14 +11,16 @@ import { erfassungAendern, erfassungLoeschen, setErfassungen } from '../../src/s
 import type { ErfassungsArt } from '../../src/sammlung/erfassungen';
 import * as V from '../../src/infra/validate';
 import { vertragsRouter } from '../../src/infra/vertrag/pruefen';
-import type { Antwort } from '../../src/infra/vertrag';
+import type { Anfrage, Antwort } from '../../src/infra/vertrag';
 const router = vertragsRouter();
 
 type Schluessel = (req: AuthedRequest) => Array<string | number>;
+type Aenderung = Anfrage<'PUT /api/v1/sets/:setNumber/acquisitions/:acqId'>;
 
+/** Drei Routen, ein Vertragsschema (Erfassungsaenderung): Der Typ der Set-Route gilt für alle. */
 const aendern = (art: ErfassungsArt, idParam: string, schluessel: Schluessel) =>
-  async (req: AuthedRequest, res: express.Response) => {
-    res.json(await erfassungAendern(art, req.apiUser.user_id, parseInt(pfadParam(req, idParam)), schluessel(req), req.body || {}));
+  async (req: Aenderung, res: express.Response) => {
+    res.json(await erfassungAendern(art, req.apiUser.user_id, parseInt(pfadParam(req, idParam)), schluessel(req), req.eingabe));
   };
 
 const loeschen = (art: ErfassungsArt, idParam: string, schluessel: Schluessel) =>
@@ -26,11 +28,11 @@ const loeschen = (art: ErfassungsArt, idParam: string, schluessel: Schluessel) =
     res.json(await erfassungLoeschen(art, req.apiUser.user_id, parseInt(pfadParam(req, idParam)), schluessel(req)));
   };
 
-router.get('/sets/:setNumber/acquisitions', requireToken, async (req: AuthedRequest, res: Antwort<'GET /api/v1/sets/:setNumber/acquisitions'>) => {
+router.get('/sets/:setNumber/acquisitions', requireToken, async (req: Anfrage<'GET /api/v1/sets/:setNumber/acquisitions'>, res: Antwort<'GET /api/v1/sets/:setNumber/acquisitions'>) => {
   const uid = req.apiUser.user_id;
   // Blickfeld: Im Haushalt gehören die Kaufpreise eines Sets oft mehreren Konten.
   // Scheitert das Lesen, zeigt die App eine leere Liste statt einer Fehlerseite.
-  const rows = await scopeIds(uid, parseScopeMode(req.query.accounts))
+  const rows = await scopeIds(uid, parseScopeMode(req.abfrage.accounts))
     .then(ids => setErfassungen(ids, pfadParam(req, 'setNumber')))
     .catch(meldeUndLiefere('v1 acquisitions GET', null));
   if (!rows) return res.json({ success: true, acquisitions: [], totals: acquisitionTotals([]) });
@@ -40,9 +42,9 @@ const setSchluessel: Schluessel = req => [pfadParam(req, 'setNumber')];
 router.put('/sets/:setNumber/acquisitions/:acqId', requireToken, aendern('set', 'acqId', setSchluessel));
 router.delete('/sets/:setNumber/acquisitions/:acqId', requireToken, loeschen('set', 'acqId', setSchluessel));
 
-router.get('/parts/:partNumber/:colorId/acquisitions', requireToken, async (req: AuthedRequest, res: Antwort<'GET /api/v1/parts/:partNumber/:colorId/acquisitions'>) => {
+router.get('/parts/:partNumber/:colorId/acquisitions', requireToken, async (req: Anfrage<'GET /api/v1/parts/:partNumber/:colorId/acquisitions'>, res: Antwort<'GET /api/v1/parts/:partNumber/:colorId/acquisitions'>) => {
   const rows = await getPartAcquisitions(
-    await scopeIds(req.apiUser.user_id, parseScopeMode(req.query.accounts)),
+    await scopeIds(req.apiUser.user_id, parseScopeMode(req.abfrage.accounts)),
     pfadParam(req, 'partNumber'), pfadParam(req, 'colorId'));
   res.json({ success: true, acquisitions: rows, totals: acquisitionTotals(rows), owner_user_id: req.apiUser.user_id });
 });
@@ -50,9 +52,9 @@ const teilSchluessel: Schluessel = req => [pfadParam(req, 'partNumber'), V.color
 router.put('/parts/:partNumber/:colorId/acquisitions/:acqId', requireToken, aendern('part', 'acqId', teilSchluessel));
 router.delete('/parts/:partNumber/:colorId/acquisitions/:acqId', requireToken, loeschen('part', 'acqId', teilSchluessel));
 
-router.get('/minifigs/:figNumber/acquisitions', requireToken, async (req: AuthedRequest, res: Antwort<'GET /api/v1/minifigs/:figNumber/acquisitions'>) => {
+router.get('/minifigs/:figNumber/acquisitions', requireToken, async (req: Anfrage<'GET /api/v1/minifigs/:figNumber/acquisitions'>, res: Antwort<'GET /api/v1/minifigs/:figNumber/acquisitions'>) => {
   const rows = await getFigAcquisitions(
-    await scopeIds(req.apiUser.user_id, parseScopeMode(req.query.accounts)), pfadParam(req, 'figNumber'));
+    await scopeIds(req.apiUser.user_id, parseScopeMode(req.abfrage.accounts)), pfadParam(req, 'figNumber'));
   res.json({ success: true, acquisitions: rows, totals: acquisitionTotals(rows), owner_user_id: req.apiUser.user_id });
 });
 const figurSchluessel: Schluessel = req => [pfadParam(req, 'figNumber')];

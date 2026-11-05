@@ -528,7 +528,7 @@ test('Bewertung und Anzeige benutzen dieselbe Zustandsregel', () => {
 test('es gibt einen Diagnose-Endpunkt für Preise', () => {
   const admin = fs.readFileSync(path.join(ROOT, 'routes/api_v1/admin.ts'), 'utf8');
   assert.match(admin, /router\.get\('\/admin\/price-probe', requireApiAdmin/, 'Endpunkt fehlt');
-  assert.match(admin, /req\.query\.live === '1'/, 'Ein Live-Abruf gegen BrickLink muss möglich sein');
+  assert.match(admin, /preisProbe\(uid, setNumber, req\.abfrage\.live/, 'Ein Live-Abruf gegen BrickLink muss möglich sein');
   // Die Antwort baut der Dienst der Verwaltung.
   const dienst = fs.readFileSync(path.join(ROOT, 'src/verwaltung/dienst.ts'), 'utf8');
   assert.match(dienst, /chosen_for_price/, 'Der gewählte Zustand gehört in die Antwort');

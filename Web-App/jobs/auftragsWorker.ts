@@ -56,8 +56,7 @@ function erzeugeWorker(bearbeiter: Bearbeitertabelle, o: WorkerOptionen = {}) {
   const laufend = new Map<string, { a: AuftragsZeile; fertig: Promise<void> }>();
   let beendet = false, gestartet = false, pumpt = false;
   let takt: NodeJS.Timeout | null = null;
-  // Das Lebenszeichen des Prozesses hängt hieran: Eine hängende Belegung hält
-  // die Runde an, und der Healthcheck soll das sehen.
+  // Am Ende jeder Runde: Daran hängt das Lebenszeichen (startup/jobsProzess.ts).
   let letzteRunde = 0;
 
   /** Auch nach einem endgültigen Fehler, sonst endete der Zeitplan. */

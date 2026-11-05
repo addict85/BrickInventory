@@ -167,7 +167,7 @@ test('der Kontofilter wird am Server in IDs übersetzt, nicht in der Oberfläche
   // Die eine Ausnahme fragt „darf ich?“, nicht „was zeige ich?“: lagerKonten()
   // prüft eine Berechtigung. Ihr Verhalten belegt household-db.test.js („die
   // Lagerorte eines Unterkontos folgen dem Recht …“).
-  const OHNE_ANSICHTSFILTER = { 'routes/api_v1/sets.ts': ['lagerKonten'] };
+  const OHNE_ANSICHTSFILTER = {};
   const genutzt = new Set();
   for (const f of ['routes/api_v1/sets.ts', 'routes/api_v1/parts.ts',
                    'routes/api_v1/minifigs.ts', 'routes/api_v1/finance.ts',
@@ -179,7 +179,7 @@ test('der Kontofilter wird am Server in IDs übersetzt, nicht in der Oberfläche
       if (!l.includes('await scopeIds(')) continue;
       gefunden++;
       if ((OHNE_ANSICHTSFILTER[f] || []).includes(block)) { genutzt.add(`${f}#${block}`); continue; }
-      assert.ok(l.includes('parseScopeMode(req.query.accounts)'),
+      assert.ok(l.includes('parseScopeMode(req.abfrage.accounts)'),
         `${f} (${block}): scopeIds ohne Kontofilter — ${l.trim()}`);
     }
     assert.ok(gefunden > 0, `${f}: kein scopeIds-Aufruf`);

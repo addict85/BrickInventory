@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import type { Route } from './grund';
+import { type Route, abfrage, Q } from './grund';
 import { BrickLinkRef } from './gemeinsam';
 
 export const CatalogTheme = z.looseObject({
@@ -81,8 +81,10 @@ export const BricklinkVerweise = z.looseObject({ success: z.literal(true), links
 
 export const routen = {
   'GET /api/v1/catalog/meta': { antwort: CatalogMetaResponse },
-  'GET /api/v1/catalog/sets': { antwort: CatalogSetsResponse },
+  'GET /api/v1/catalog/sets': { antwort: CatalogSetsResponse, abfrage: abfrage({ q: Q.text(), theme_id: Q.zahlOderLeer,
+    year_from: Q.zahlOderLeer, year_to: Q.zahlOderLeer, sort: Q.text(40), page: Q.zahl(), limit: Q.zahl() }) },
   'GET /api/v1/catalog/sets/:setNumber': { antwort: CatalogSetDetailResponse },
-  'GET /api/v1/catalog/year-verteilung': { antwort: CatalogYearVerteilungResponse },
-  'GET /api/v1/catalog/bricklink': { antwort: BricklinkVerweise },
+  'GET /api/v1/catalog/year-verteilung': { antwort: CatalogYearVerteilungResponse,
+    abfrage: abfrage({ q: Q.text(), theme_id: Q.zahlOderLeer, sort: Q.text(40) }) },
+  'GET /api/v1/catalog/bricklink': { antwort: BricklinkVerweise, abfrage: abfrage({ sets: Q.text(4000) }) },
 } satisfies Record<string, Route>;

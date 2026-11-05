@@ -16,6 +16,8 @@
  *      „ohne Marke keine Bestätigung"
  *   E  in routes/api_v1/papierkorb.ts ein eigenes bcrypt.compare( → rot:
  *      „kein zweiter Weg zum Passwortvergleich"
+ *   F  (05.11.2026) in NurCode (konto.ts) `password: txtLeer(…)` statt
+ *      `z.null()` → rot: „jede Passwort-Eingabe trägt die Marke"
  *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL.
  */
@@ -108,7 +110,7 @@ test('ein einziger Bestätigungsweg', { concurrency: 1 }, async (t) => {
 
   await t.test('jede Passwort-Eingabe trägt die Marke', () => {
     const ohneMarke = Object.entries(VERTRAG).filter(([k, r]) => !OEFFENTLICH.includes(k) && !r.bestaetigung
-      && r.eingabe?.shape && PASSWORTFELDER.some(f => f in r.eingabe.shape)).map(([k]) => k);
+      && r.eingabe?.shape && PASSWORTFELDER.some(f => r.eingabe.shape[f]?.safeParse('x').success)).map(([k]) => k);
     assert.deepEqual(ohneMarke, []);
   });
 

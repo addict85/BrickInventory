@@ -123,12 +123,16 @@ test('alle Erfassen-Wege nutzen dieselbe Prüfung', () => {
   const path = require('node:path');
   const { ROOT, ohneKommentare } = require('./helpers/sources');
 
-  // Sets (Webapp und App teilen sich die Routen) wie manuelle Einträge — eine Regel.
-  for (const rel of ['routes/api_v1/sets.ts', 'src/teile/manuelleTeile.ts', 'src/figuren/manuelleFiguren.ts']) {
+  // Manuelle Einträge prüfen im Dienst, Sets im Vertrag (eingabe.stueckzahl und
+  // eingabe.preis rufen dieselben Prüfer) — eine Regel.
+  for (const rel of ['src/teile/manuelleTeile.ts', 'src/figuren/manuelleFiguren.ts']) {
     const src = ohneKommentare(fs.readFileSync(path.join(ROOT, rel), 'utf8'));
     assert.match(src, /acquisitionQuantity\(/, `${rel}: Menge ungeprüft`);
     assert.match(src, /optionalPrice\(/,       `${rel}: Preis ungeprüft`);
   }
+  const vertrag = ohneKommentare(fs.readFileSync(path.join(ROOT, 'src/infra/vertrag/sets.ts'), 'utf8'));
+  assert.match(vertrag, /const NeuesSet = [^;]*quantity: eingabe\.stueckzahl\(\)[^;]*purchase_price: eingabe\.preis\(/,
+    'Sets: Menge oder Preis ungeprüft');
 
   // Und der Erfassen-Pfad schreibt gesperrt.
   const sets = ohneKommentare(require('./helpers/sources').setKernQuelle());

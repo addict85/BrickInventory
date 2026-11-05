@@ -153,7 +153,7 @@ export function maskSecret(value: string | null | undefined) {
   return String(value ?? '') ? MASK_CHAR.repeat(12) : '';
 }
 
-export function isMaskedValue(value: string | null | undefined) {
+export function isMaskedValue(value: unknown) {
   return typeof value === 'string' && value.includes(MASK_CHAR);
 }
 

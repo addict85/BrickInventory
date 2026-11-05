@@ -1,7 +1,5 @@
-/** Die Nutzlast jeder Auftragsart als zod-Schema. Sie liegt als JSON in
- * `auftraege` und überlebt Deploys: Wer einstellt, prüft gegen dasselbe Schema
- * wie der Worker, der sie liest. Schemas sind nicht strikt, damit ein Feld,
- * das ein älterer Stand noch mitschrieb, keinen offenen Auftrag scheitern lässt. */
+/** Die Nutzlast überlebt Deploys: Einsteller und Worker prüfen gegen dasselbe Schema.
+ * Nicht strikt, damit ein Altfeld keinen offenen Auftrag scheitern lässt. */
 import { z } from 'zod';
 import type { AuftragsArt } from './auftraege';
 
@@ -39,7 +37,6 @@ export const WantedKorrektur = z.object({
   kaufpreis: z.number().nullish(),
 });
 
-/** Wie sie die Vorschau als Formularfeld schickt. */
 export const WantedKorrekturen = z.array(WantedKorrektur).max(100_000);
 
 const text = z.string();
@@ -53,7 +50,6 @@ export const ImportNutzlast = z.discriminatedUnion('quelle', [
     xml: text, dateiName: z.string().max(200), schreiben: z.boolean(), ueberRebrickable: z.boolean(),
     korrekturen: WantedKorrekturen.optional() }) }),
 ]);
-/** Der zeilenweise fortsetzbare Set-CSV-Import (jobs/setCsvImport.ts). */
 export const SetCsvNutzlast = z.object({ user_id: KONTO, lauf: z.string().min(1), rows: z.array(CsvZeile) });
 
 /** Die Schritte des Nachlaufs nach dem Start; jobs/startNachlaeufe.ts hält genau diese. */
@@ -78,13 +74,10 @@ export const NUTZLASTEN = {
   aufraeumen_taeglich: LEER,
 } satisfies Record<AuftragsArt, z.ZodType>;
 
-/** Was der Worker der Art übergibt. */
 export type Nutzlast<A extends AuftragsArt> = z.output<(typeof NUTZLASTEN)[A]>;
-/** Was beim Einstellen angenommen wird. */
 export type NutzlastEingabe<A extends AuftragsArt> = z.input<(typeof NUTZLASTEN)[A]>;
 
-/** Wirft mit Feld und Grund, damit ein falscher Aufrufer beim Einstellen
- * scheitert und nicht erst Stunden später im Worker. */
+/** Wirft schon beim Einstellen, nicht erst Stunden später im Worker. */
 export function pruefeNutzlast<A extends AuftragsArt>(art: A, roh: unknown): Nutzlast<A> {
   const schema: z.ZodType | undefined = Object.hasOwn(NUTZLASTEN, art) ? NUTZLASTEN[art] : undefined;
   if (!schema) throw new NutzlastUngueltig(`unbekannte Auftragsart ${art}`);

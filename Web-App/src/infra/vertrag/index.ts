@@ -1,7 +1,7 @@
 /** Der API-Vertrag: je Bereich eine Datei, hier zusammengeführt. Aus ihm
  * entstehen docs/openapi.json (npm run vertrag:openapi), die Typen der
  * Routen (Antwort<…>) und die Prüfung der Antworten in den Tests. */
-import type { Response } from 'express';
+import type { Request, Response } from 'express';
 import type { z } from 'zod';
 import type { Draht, Route } from './grund';
 import { Fehler } from './grund';
@@ -33,6 +33,17 @@ type Rumpf<K extends Schluessel> = (typeof VERTRAG)[K] extends { antwort: infer 
 export type Antwort<K extends Schluessel> = Response<Rumpf<K> | z.input<typeof Fehler>>;
 /** Der Rumpf einer Route, für Dienste, die ihn ganz zusammensetzen. */
 export type AntwortRumpf<K extends Schluessel> = Rumpf<K>;
+
+type Teil<K extends Schluessel, F extends 'eingabe' | 'abfrage'> =
+  (typeof VERTRAG)[K] extends { [P in F]: infer S extends z.ZodType } ? z.output<S> : Record<never, never>;
+/** Der geprüfte Rumpf (eingabePruefen); ohne Schema leer. */
+export type Eingabe<K extends Schluessel> = Teil<K, 'eingabe'>;
+/** Die geprüfte Abfrage; ohne Schema leer, ein Lesen dort ist ein Übersetzungsfehler. */
+export type Abfrage<K extends Schluessel> = Teil<K, 'abfrage'>;
+/** Der Typ von `req` in einer Route: `eingabe` und `abfrage` so, wie der Vertrag sie geprüft hat. */
+export type Anfrage<K extends Schluessel, R extends Request = AuthedRequest> = R & { eingabe: Eingabe<K>; abfrage: Abfrage<K> };
+/** Dasselbe ohne requireToken. */
+export type OffeneAnfrage<K extends Schluessel> = Anfrage<K, Request>;
 
 export function routeZu(schluessel: string): Route | undefined {
   return Object.prototype.hasOwnProperty.call(VERTRAG, schluessel)
