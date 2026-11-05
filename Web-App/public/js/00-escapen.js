@@ -44,10 +44,13 @@ export function escJs(s){
  * @param {unknown} u
  */
 export function escUrl(u){
+  return esc(sichereUrl(u));
+}
+
+/** Wie escUrl(), aber unmaskiert: für html``, das selbst maskiert. @param {unknown} u */
+export function sichereUrl(u){
   const v = String(u ?? '').trim();
-  if (!v) return '';
-  if (!/^(https?:\/\/|\/(?!\/)|data:image\/)/i.test(v)) return '';
-  return esc(v);
+  return /^(https?:\/\/|\/(?!\/)|data:image\/)/i.test(v) ? v : '';
 }
 
 /**
@@ -79,3 +82,44 @@ export function escHtmlAttr(v) {
     .replace(/&/g, '&amp;').replace(/"/g, '&quot;')
     .replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }
+
+/** Fertiges Markup: aus html`` oder roh(). Nur so nimmt setzeHtml() (01-dom.js) Text als Markup an. */
+export class SicheresHtml {
+  /** Macht die Klasse für tsc nominal: ein Objekt mit `text` ist noch kein SicheresHtml. */
+  #marke = true;
+  /** @param {string} text */
+  constructor(text) { this.text = text; void this.#marke; }
+  toString() { return this.text; }
+}
+
+/** @typedef {SicheresHtml | string | number | boolean | null | undefined | Einsetzbar[]} Einsetzbar */
+/** Was setzeHtml() annimmt: fertiges Markup, Listen davon oder nichts — keine Zeichenkette mit Daten.
+ * @typedef {SicheresHtml | Markup[] | '' | false | null | undefined} Markup */
+
+/** Der Text eines Werts für Markup: SicheresHtml unverändert, alles andere maskiert. @param {Einsetzbar} wert @returns {string} */
+export function einsetzen(wert) {
+  if (wert instanceof SicheresHtml) return wert.text;
+  if (Array.isArray(wert)) return wert.map(einsetzen).join('');
+  if (wert === null || wert === undefined || wert === false) return '';
+  return esc(wert);
+}
+
+/**
+ * Vorlage für Markup, die jeden eingesetzten Wert maskiert. Durch kommen nur Stücke, die selbst aus
+ * html`` stammen (oder roh()); Listen werden aneinandergehängt, null/undefined/false fallen weg. Ein
+ * vergessenes esc() ist damit kein XSS mehr, sondern sichtbarer Text.
+ * @param {TemplateStringsArray} teile
+ * @param {...Einsetzbar} werte
+ */
+export function html(teile, ...werte) {
+  let s = teile[0] ?? '';
+  for (let i = 0; i < werte.length; i++) s += einsetzen(werte[i]) + (teile[i + 1] ?? '');
+  return new SicheresHtml(s);
+}
+
+/**
+ * Markup ohne Prüfung — nur für Zeichenketten, die schon maskiert gebaut wurden. Jede Stelle zählt
+ * test/ratschen.test.js; neue Vorlagen nehmen html``.
+ * @param {unknown} text
+ */
+export function roh(text) { return new SicheresHtml(String(text ?? '')); }

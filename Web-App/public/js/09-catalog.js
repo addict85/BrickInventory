@@ -201,17 +201,17 @@ async function loadCatalogSets(){
   }
 
   // Ein Block je Seite. Der erste ist gefüllt, die übrigen halten nur Platz.
-  let html = '';
+  let markup = '';
   for (let seite = 1; seite <= _catPageCount; seite++) {
     const anzahl = (seite === _catPageCount) ? (_catTotal - (seite - 1) * CAT_LIMIT) : CAT_LIMIT;
-    html += seite === 1
+    markup += seite === 1
       ? `<div class="sgrid cat-page" data-page="1">${_catItems.map(catCard).join('')}</div>`
       // Ungeladene Seiten sind EIN leerer Block statt 60 Platzhalterkacheln: Bei 25 000 Sets wären das 25
       // 000 Elemente. Die Höhe kommt aus der gemessenen ersten Seite, weil die Spaltenzahl am Fenster hängt.
       // Ausführlich: docs/begruendungen/public/js/09-catalog.js.md#ungeladene-seiten-sind-ein-leerer-block
       : `<div class="cat-page cat-page-ph" data-page="${seite}" data-anzahl="${anzahl}"></div>`;
   }
-  grid.innerHTML = html;
+  grid.innerHTML = markup;
   _catLoadedPages.add(1);
   _ladeJahrVerteilung();
   _setzePlatzhalterHoehe();

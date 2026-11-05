@@ -100,7 +100,7 @@ export async function loadHouseholdMembers() {
  * @param {HouseholdMember[]} members
  */
 function zeichneKontoauswahl(members) {
-  const html = members.map(m =>
+  const markup = members.map(m =>
     `<option value="${m.id}"${m.is_self ? ' selected' : ''}>${esc(m.username)}${m.is_self ? ' ' + esc(tRaw('household.ich')) : ''}</option>`
   ).join('');
   for (const id of ['add-owner', 'ap-owner', 'af-owner', 'cat-m-owner', 'mk-owner']) {
@@ -108,7 +108,7 @@ function zeichneKontoauswahl(members) {
     if (!box || !sel) continue;
     if (members.length < 2) { box.style.display = 'none'; continue; }
     const vorher = sel.value;
-    sel.innerHTML = html;
+    sel.innerHTML = markup;
     if (vorher && [...sel.querySelectorAll('option')].some(o => o.value === vorher)) sel.value = vorher;
     box.style.display = '';
   }

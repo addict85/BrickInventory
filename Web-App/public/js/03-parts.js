@@ -312,7 +312,7 @@ function appendParts(parts){
     else groups.push({ color: key, hex: p.color_hex, parts: [p] });
   }
 
-  let html = '';
+  let markup = '';
   for (const g of groups){
     // Setzt die Gruppe die letzte der vorigen Seite fort? Dann in deren Raster
     // einhängen statt eine zweite Überschrift derselben Farbe zu erzeugen.
@@ -325,7 +325,7 @@ function appendParts(parts){
         continue;
       }
     }
-    html += `<div class="parts-group" data-count="${g.parts.length}">
+    markup += `<div class="parts-group" data-count="${g.parts.length}">
       <div class="group-hd">
         <div class="color-dot gross" data-farbe="${escHex(g.hex, 'var(--s300)')}"></div>
         <span class="group-title">${esc(g.color ? colorName(g.color) : tRaw('parts.farbe_unbekannt'))}</span>
@@ -335,8 +335,8 @@ function appendParts(parts){
     </div>`;
     _partsLastColor = g.color;
   }
-  if (html){
-    list.insertAdjacentHTML('beforeend', html);
+  if (markup){
+    list.insertAdjacentHTML('beforeend', markup);
     if (typeof observeLazyImages === 'function') observeLazyImages(list);
   }
   if (groups.length) _partsLastColor = groups[groups.length - 1].color;

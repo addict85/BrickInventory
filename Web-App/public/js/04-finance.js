@@ -193,12 +193,12 @@ const manArgs = it => it.fig_number
   ? `data-click="openManDetail" data-arg="fig" data-arg2="${escJs(it.fig_number)}" data-arg3="0"`
   : `data-click="openManDetail" data-arg="part" data-arg2="${escJs(it.part_number)}" data-arg3="${it.color_id||0}"`;
 /** Ein aus Teilepreisen geschätzter Figurenpreis bekommt „≈" und die Abdeckung.
- * @param {{ estimated_from_parts?: boolean | null, abdeckung?: number | null }} it @param {string} html */
-function geschaetztMarke(it, html){
-  if (!it.estimated_from_parts) return html;
+ * @param {{ estimated_from_parts?: boolean | null, abdeckung?: number | null }} it @param {string} markup */
+function geschaetztMarke(it, markup){
+  if (!it.estimated_from_parts) return markup;
   const p = it.abdeckung != null ? Math.round(it.abdeckung * 100) : '?';
   const hinweis = esc(tRaw('finance.aus_teilen_geschaetzt', { p }));
-  return `<span title="${hinweis}"><span role="img" aria-label="${hinweis}">≈</span> ${html}</span>`;
+  return `<span title="${hinweis}"><span role="img" aria-label="${hinweis}">≈</span> ${markup}</span>`;
 }
 
 /** @param {ManPosten} it @param {string} label @param {ManKauf | null} acq @param {Zeilenlage} lage */

@@ -27,9 +27,9 @@ function pflichtHinweis(schluessel) {
 }
 
 /**
- * @param {string} html
+ * @param {string} markup
  */
-function zeichne(html) { const f = flaeche(); if (f) f.innerHTML = html; }
+function zeichne(markup) { const f = flaeche(); if (f) f.innerHTML = markup; }
 // Im Anmeldebildschirm stehen die Knöpfe breit untereinander wie „Abmelden“ darunter.
 const knopfArt = () => pflicht ? 'knopf-breit' : 'btn-sm';
 

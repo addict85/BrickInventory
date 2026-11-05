@@ -1,5 +1,5 @@
 import { tRaw } from '../i18n.js';
-import { esc } from './00-escapen.js';
+import { esc, einsetzen } from './00-escapen.js';
 
 // Kleine DOM-Helfer, die jede Ansicht braucht: Elemente holen, Symbole, Leerzustand, besetzte Knöpfe.
 // Ohne Abhängigkeit über Escaping und Sprache hinaus, damit jedes Modul sie laden kann.
@@ -139,3 +139,25 @@ export const TRASH_ICON_SVG = '<svg viewBox="0 0 24 24" xmlns="http://www.w3.org
   + '<path d="M3 6h18"/><path d="M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2"/>'
   + '<path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>'
   + '<path d="M10 11v6"/><path d="M14 11v6"/></svg>';
+
+/**
+ * Die eine Stelle, die Markup in die Seite schreibt. Sie nimmt nur fertiges Markup (html``, roh() oder
+ * Listen davon), damit die Typprüfung eine Zeichenkette mit Daten zurückweist, statt sie einzusetzen.
+ * @param {Element | null | undefined} el
+ * @param {import('./00-escapen.js').Markup} inhalt
+ */
+export function setzeHtml(el, inhalt) {
+  if (typeof inhalt === 'string' && inhalt !== '') throw new TypeError('setzeHtml: nur html`` oder roh()');
+  if (el) el.innerHTML = einsetzen(inhalt);
+}
+
+/**
+ * insertAdjacentHTML mit derselben Regel wie setzeHtml().
+ * @param {Element | null | undefined} el
+ * @param {InsertPosition} wo
+ * @param {import('./00-escapen.js').Markup} inhalt
+ */
+export function fuegeHtmlEin(el, wo, inhalt) {
+  if (typeof inhalt === 'string' && inhalt !== '') throw new TypeError('fuegeHtmlEin: nur html`` oder roh()');
+  el?.insertAdjacentHTML(wo, einsetzen(inhalt));
+}

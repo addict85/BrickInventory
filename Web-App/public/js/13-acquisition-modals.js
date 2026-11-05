@@ -100,12 +100,12 @@ async function loadAcqModal(sn) {
  * eines Feldes zeichnet die Tabelle neu, wenn Tab schon im nächsten Feld
  * steht — der Fokus fiel dann auf <body>, und die Tastatur war draussen.
  * @param {HTMLElement} ziel
- * @param {string} html
+ * @param {string} markup
  */
-function setzeMitFokus(ziel, html) {
+function setzeMitFokus(ziel, markup) {
   const felder = () => /** @type {HTMLElement[]} */ ([...ziel.querySelectorAll('input, select, button')]);
   const stelle = felder().indexOf(/** @type {HTMLElement} */ (document.activeElement));
-  ziel.innerHTML = html;
+  ziel.innerHTML = markup;
   if (stelle >= 0) felder()[stelle]?.focus({ preventScroll: true });
 }
 
@@ -154,7 +154,7 @@ export function renderAcqModalBody(sn, acqs, totals) {
     G('acq-modal-body').innerHTML = `<div data-stil="color:var(--mut);font-size:var(--fs-3);padding:.5rem 0">—</div>`;
     return;
   }
-  let html = `<div class="tw"><table class="dt acq-tabelle">
+  let markup = `<div class="tw"><table class="dt acq-tabelle">
     <thead>
       <tr>
         <th>${t('detail.qty')}</th>
@@ -169,7 +169,7 @@ export function renderAcqModalBody(sn, acqs, totals) {
 
   acqs.forEach(a => {
     const dateIso = isoTag(a.created_at);
-    html += `<tr id="acq-row-${a.id}">
+    markup += `<tr id="acq-row-${a.id}">
       <td>
         <input class="acq-feld acq-menge" inputmode="numeric" type="number" min="1" value="${a.quantity}" aria-label="${esc(tRaw('detail.qty'))}"
           data-blur="acqSave" data-arg="${esc(sn)}" data-arg2="${a.id}" data-arg3="qty" data-val="1"
@@ -200,15 +200,15 @@ export function renderAcqModalBody(sn, acqs, totals) {
     </tr>`;
   });
 
-  html += `</tbody></table></div>`;
+  markup += `</tbody></table></div>`;
 
   // Summenzeile: Der Server rechnet sie (acquisitionTotals in
   // src/bestand/acquisitions.ts) und liefert sie als `totals` mit. Vorher stand die
   // Rechnung hier und noch dreimal woanders — zweimal in dieser Datei, zweimal
   // in der App, und mit verschiedenen Preisfeldern.
-  html += acqSummary(totals);
+  markup += acqSummary(totals);
 
-  setzeMitFokus(G('acq-modal-body'), html);
+  setzeMitFokus(G('acq-modal-body'), markup);
 }
 
 /**
@@ -778,7 +778,7 @@ function renderManAcqBody(type, id, colorId, acqs, totals) {
     G('acq-modal-body').innerHTML = `<div data-stil="color:var(--mut);font-size:var(--fs-3);padding:.5rem 0">—</div>`;
     return;
   }
-  let html = `<div class="tw"><table class="dt acq-tabelle">
+  let markup = `<div class="tw"><table class="dt acq-tabelle">
     <thead><tr>
       <th>${t('detail.qty')}</th><th>${t('detail.added')}</th>
       <th>${t('common.condition')}</th>
@@ -791,7 +791,7 @@ function renderManAcqBody(type, id, colorId, acqs, totals) {
     const dateIso = isoTag(a.created_at);
     const t_ = type, i_ = id, c_ = colorId, ai_ = a.id;
     const args = `data-arg="${esc(t_)}" data-arg2="${esc(i_)}" data-arg3="${esc(c_)}" data-arg4="${ai_}"`;
-    html += `<tr id="acq-row-${ai_}">
+    markup += `<tr id="acq-row-${ai_}">
       <td>
         <input class="acq-feld acq-menge" inputmode="numeric" type="number" min="1" value="${a.quantity}" aria-label="${esc(tRaw('detail.qty'))}"
           data-blur="manAcqSave" ${args} data-arg5="qty" data-val="1"
@@ -822,9 +822,9 @@ function renderManAcqBody(type, id, colorId, acqs, totals) {
     </tr>`;
   });
 
-  html += `</tbody></table></div>`;
-  html += acqSummary(totals);
-  setzeMitFokus(G('acq-modal-body'), html);
+  markup += `</tbody></table></div>`;
+  markup += acqSummary(totals);
+  setzeMitFokus(G('acq-modal-body'), markup);
 }
 
 /**

@@ -37,7 +37,7 @@ function openLogViewer() {
     return '<option value="' + min + '">' + text + '</option>';
   }).join('');
 
-  const html = '<!DOCTYPE html><html lang="' + escHtmlAttr(LANG) + '"><head>' +
+  const markup = '<!DOCTYPE html><html lang="' + escHtmlAttr(LANG) + '"><head>' +
     '<meta charset="UTF-8"><title>' + esc(t('log.title')) + '</title>' +
     '<link rel="stylesheet" href="/tokens.css?v=' + (window.__APP_VERSION || Date.now()) + '">' +
     '<link rel="stylesheet" href="/logviewer.css?v=' + (window.__APP_VERSION || Date.now()) + '">' +
@@ -74,7 +74,7 @@ function openLogViewer() {
     '<script src="/js/logviewer.js?v=' + (window.__APP_VERSION || Date.now()) + '"><\/script>' +
     '</body></html>';
 
-  win.document.write(html);
+  win.document.write(markup);
   win.document.close();
 }
 
