@@ -274,11 +274,10 @@ androidComponents {
                 }
             }
         }
-        // Nach dem Packen der Release-APK automatisch ausführen.
-        afterEvaluate {
-            tasks.findByName("package${variant.name.replaceFirstChar { it.uppercase() }}")
-                ?.finalizedBy(renameTask)
-        }
+        // Nach dem Packen der Release-APK ausführen; matching statt afterEvaluate,
+        // damit die Aufgabe erst angelegt wird, wenn sie gebraucht wird.
+        val packen = "package${variant.name.replaceFirstChar { it.uppercase() }}"
+        tasks.matching { it.name == packen }.configureEach { finalizedBy(renameTask) }
     }
 }
 
