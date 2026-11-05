@@ -47,7 +47,7 @@ import ch.brickinventoryapp.ui.screens.CatalogDetailScreen
 import ch.brickinventoryapp.ui.screens.CatalogScreen
 import ch.brickinventoryapp.ui.screens.HaushaltRoute
 import ch.brickinventoryapp.ui.screens.MerklisteRoute
-import ch.brickinventoryapp.ui.screens.MerkpostenRueckgaengig
+import ch.brickinventoryapp.ui.screens.MerkpostenRueckgaengigRoute
 import ch.brickinventoryapp.ui.screens.PartsRoute
 import ch.brickinventoryapp.ui.theme.BrickInventoryManagerTheme
 import ch.brickinventoryapp.ui.viewmodel.ErfassungAktionen
@@ -110,11 +110,10 @@ class AblaufBefundeTest {
 
     /** Den Hauptlooper treiben, bis [bereit] gilt — der Server antwortet in einem eigenen Faden. */
     private fun warte(was: String, bereit: () -> Boolean) {
-        val ende = System.nanoTime() + 10_000_000_000L
-        while (!bereit()) {
-            if (System.nanoTime() > ende) throw AssertionError("$was: nach 10 s nicht da")
-            shadowOf(Looper.getMainLooper()).idle()
-            Thread.sleep(10)
+        try {
+            compose.waitUntil(10_000) { shadowOf(Looper.getMainLooper()).idle(); bereit() }
+        } catch (e: androidx.compose.ui.test.ComposeTimeoutException) {
+            throw AssertionError("$was: nach 10 s nicht da", e)
         }
         compose.waitForIdle()
     }
@@ -126,7 +125,7 @@ class AblaufBefundeTest {
         zeige {
             val meldung = remember { SnackbarHostState() }
             Scaffold(snackbarHost = { SnackbarHost(meldung) }) { innen ->
-                MerkpostenRueckgaengig(vm, meldung)
+                MerkpostenRueckgaengigRoute(vm, meldung)
                 androidx.compose.foundation.layout.Box(Modifier.padding(innen)) {
                     MerklisteRoute(vm = vm, imageLoader = bilder, nebeneinander = true, onScan = {}, onOeffnenEinzeln = { _, _ -> })
                 }

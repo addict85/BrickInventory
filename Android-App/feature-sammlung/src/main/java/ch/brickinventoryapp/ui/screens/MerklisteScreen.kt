@@ -103,7 +103,7 @@ fun MerklisteRoute(
  * ohne Rückgängig endet — auch wenn sie verschwindet, weil man die Merkliste verlässt.
  */
 @Composable
-fun MerkpostenRueckgaengig(vm: MerklisteViewModel, snackbarHostState: androidx.compose.material3.SnackbarHostState) {
+fun MerkpostenRueckgaengigRoute(vm: MerklisteViewModel, snackbarHostState: androidx.compose.material3.SnackbarHostState) {
     val vorgemerkt by vm.vorgemerkt.collectAsStateWithLifecycle()
     val text = vorgemerkt?.let { stringResource(R.string.wanted_deleted, it.name) }
     val rueckgaengig = stringResource(R.string.common_undo)

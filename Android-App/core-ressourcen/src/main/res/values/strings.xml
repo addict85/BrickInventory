@@ -130,7 +130,6 @@
     <string name="gallery_no_sets">No sets yet</string>
     <string name="gallery_empty_hint">Add your first set by its number or scan the barcode on the box.</string>
     <string name="gallery_add_first">Add your first set</string>
-    <string name="gallery_refresh">Refresh</string>
     <string name="gallery_no_results">No results for “%1$s”</string>
     <string name="gallery_quantity_badge">×%1$d</string>
     <string name="gallery_price_each">each</string>
@@ -162,7 +161,6 @@
     <string name="minifigs_manual_section">Manually added minifigures</string>
     <string name="minifigs_sets_section">From sets</string>
     <string name="minifigs_none">No minifigures</string>
-    <string name="minifigs_loaded_on_import">Minifigures are loaded when sets are imported</string>
     <string name="minifigs_no_results">No results</string>
     <string name="minifigs_add">Add minifigure</string>
     <string name="minifigs_add_title">Add minifigure</string>

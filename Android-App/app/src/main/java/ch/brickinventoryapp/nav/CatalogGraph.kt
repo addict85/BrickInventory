@@ -1,7 +1,7 @@
 package ch.brickinventoryapp.nav
 
 import androidx.compose.runtime.remember
-import ch.brickinventoryapp.ui.screens.MerkpostenRueckgaengig
+import ch.brickinventoryapp.ui.screens.MerkpostenRueckgaengigRoute
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
@@ -57,7 +57,7 @@ private fun NavGraphBuilder.merklisteZiele(u: ZielUmgebung) {
             ReiterGeruest(stringResource(R.string.nav_wanted), u) {
                 val erfassung = aktivitaetsViewModel<ErfassungViewModel>()
                 val merkliste = hiltViewModel<MerklisteViewModel>()
-                MerkpostenRueckgaengig(merkliste, u.snackbarHostState)
+                MerkpostenRueckgaengigRoute(merkliste, u.snackbarHostState)
                 MerklisteRoute(
                     vm = merkliste,
                     imageLoader = imageLoader,

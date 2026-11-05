@@ -58,13 +58,13 @@ fun CsvImportBanner(
     // Angesagt wird in Zehnerschritten, nicht bei jedem Set.
     val stufe = if (total > 0) done * ANSAGE_STUFEN / total else 0
     val angesagt = remember(stufe, running) { fortschritt }
+    val ziel = stringResource(if (expanded) R.string.csv_details_verbergen else R.string.csv_details_zeigen)
 
     Column {
         Surface(
             color = bg,
             modifier = Modifier.fillMaxWidth()
-                .clickable(role = Role.Button,
-                    onClickLabel = stringResource(if (expanded) R.string.csv_details_verbergen else R.string.csv_details_zeigen)) {
+                .clickable(role = Role.Button, onClickLabel = ziel) {
                     expanded = !expanded
                 }
                 .semantics {
