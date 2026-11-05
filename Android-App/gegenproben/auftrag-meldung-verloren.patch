@@ -1,17 +1,17 @@
-Gegenprobe: Eine Auftragsaktion läuft, ihr Satz kommt aber nicht in den Meldungszustand des MonitoringViewModels
+Gegenprobe: Eine Auftragsaktion läuft, ihr Satz kommt aber nicht in den Meldungskanal
 Modul: feature-verwaltung
 Test: ch.brickinventoryapp.HintergrundarbeitenTest
 Rot: eine Aktion laeuft im ViewModel
 
 diff --git a/Android-App/feature-verwaltung/src/main/java/ch/brickinventoryapp/ui/viewmodel/MonitoringViewModel.kt b/Android-App/feature-verwaltung/src/main/java/ch/brickinventoryapp/ui/viewmodel/MonitoringViewModel.kt
-index f1048bd..1276d17 100644
+index 3ba6199..067aa55 100644
 --- a/Android-App/feature-verwaltung/src/main/java/ch/brickinventoryapp/ui/viewmodel/MonitoringViewModel.kt
 +++ b/Android-App/feature-verwaltung/src/main/java/ch/brickinventoryapp/ui/viewmodel/MonitoringViewModel.kt
-@@ -176,7 +176,7 @@ class MonitoringViewModel @Inject constructor(
+@@ -172,7 +172,7 @@ class MonitoringViewModel @Inject constructor(
      }
  
      private fun melde(aktion: suspend () -> String) {
--        viewModelScope.launch { _meldung.value = aktion() }
+-        viewModelScope.launch { _snackbar.value = aktion() }
 +        viewModelScope.launch { aktion() }
      }
  
