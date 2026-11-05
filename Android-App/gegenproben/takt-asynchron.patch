@@ -1,0 +1,18 @@
+Gegenprobe: PfadServer.imTakt stellt Abrufe wieder auf OkHttp-Fäden statt im aufrufenden Faden
+Modul: feature-teile
+Test: ch.brickinventoryapp.TeileViewModelTest
+Rot: der Kontofilter der Teile reist mit, der einer anderen Ansicht nicht
+
+diff --git a/Android-App/core-testing/src/main/java/ch/brickinventoryapp/TestApi.kt b/Android-App/core-testing/src/main/java/ch/brickinventoryapp/TestApi.kt
+index da7c8b5..b49125c 100644
+--- a/Android-App/core-testing/src/main/java/ch/brickinventoryapp/TestApi.kt
++++ b/Android-App/core-testing/src/main/java/ch/brickinventoryapp/TestApi.kt
+@@ -135,7 +135,7 @@ class PfadServer(vararg regeln: Pair<String, String>) {
+                 .body(text.toResponseBody("application/json".toMediaType())).build()
+         }.build()
+         return TestApi.fuer("http://im-takt.test/", object : Call.Factory {
+-            override fun newCall(request: Request): Call = SofortRuf(client.newCall(request))
++            override fun newCall(request: Request): Call = client.newCall(request)
+         })
+     }
+ 

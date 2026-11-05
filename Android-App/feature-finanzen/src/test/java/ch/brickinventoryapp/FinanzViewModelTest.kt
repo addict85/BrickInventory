@@ -18,7 +18,7 @@ import org.junit.Before
 import org.junit.Test
 
 /**
- * Das Finanz-ViewModel, ausgeführt gegen einen Testserver.
+ * Das Finanz-ViewModel, ausgeführt gegen einen PfadServer ohne Netz.
  *
  * Gegenproben (am 28.10.2026 gemessen, kotlinc gegen FinanzViewModel.kt):
  *   A  in finanzKategorieUmschalten() das Schreiben in den SavedStateHandle
@@ -49,7 +49,7 @@ class FinanzViewModelTest {
             "/api/v1/finance/parts-valuation" to """{"success":true,"parts":[]}""",
             "/api/v1/finance/minifigs-valuation" to """{"success":true,"figs":[]}""",
         )
-        t = TestDienste(pfade.server)
+        t = TestDienste(pfade.imTakt(), io = Dispatchers.Main)
     }
 
     @After
@@ -65,7 +65,7 @@ class FinanzViewModelTest {
         val erstes = vm(gemerkt)
         erstes.finanzKategorieUmschalten("parts")
         erstes.loadPortfolioHistory("month")
-        TestApi.warteBis("Verlauf geladen") { !erstes.financeState.value.historyLoading }
+        assertTrue("Verlauf geladen", !erstes.financeState.value.historyLoading)
 
         val neu = vm(gemerkt).financeState.value
         assertEquals(setOf("parts"), neu.kategorien)
@@ -76,7 +76,7 @@ class FinanzViewModelTest {
     fun `eine Aenderung am Bestand laedt die Bewertung nach`() {
         val vm = vm()
         t.bestand.melde(Aenderung.Sets)
-        TestApi.warteBis("Bewertung geladen") { vm.financeState.value.valuation != null }
+        assertTrue("Bewertung geladen", vm.financeState.value.valuation != null)
         assertEquals("75192-1", vm.financeState.value.valuation?.sets?.single()?.setNumber)
         assertEquals("Die Währung des Kontos gilt für die ganze App", "CHF", t.sitzung.state.value.currency)
     }
@@ -85,18 +85,14 @@ class FinanzViewModelTest {
     fun `der Kontofilter des Reiters reist mit und laedt Bewertung und Verlauf neu`() {
         val vm = vm()
         vm.setScope(ScopeFilter.View.FINANCE, "own")
-        TestApi.warteBis("beide Abrufe") {
-            pfade.anfragenAn("/finance/valuation").isNotEmpty() && pfade.anfragenAn("/portfolio-history").isNotEmpty()
-        }
+        assertTrue("beide Abrufe", pfade.anfragenAn("/finance/valuation").isNotEmpty() && pfade.anfragenAn("/portfolio-history").isNotEmpty())
         assertTrue(pfade.anfragenAn("/finance/valuation").single().contains("accounts=own"))
         assertTrue(pfade.anfragenAn("/portfolio-history").single().contains("accounts=own"))
 
         // Der Filter einer ANDEREN Ansicht lädt hier nichts.
-        TestApi.warteBis("Bewertung vollständig") { pfade.anfragenAn("/finance/pnl").isNotEmpty() }
-        Thread.sleep(200)
+        assertTrue("Bewertung vollständig", pfade.anfragenAn("/finance/pnl").isNotEmpty())
         val vorher = pfade.anfragen.size
         vm.setScope(ScopeFilter.View.GALLERY, "own")
-        Thread.sleep(200)
         assertEquals(vorher, pfade.anfragen.size)
     }
 
@@ -105,7 +101,7 @@ class FinanzViewModelTest {
         val vm = vm()
         vm.loadValuation()
         vm.finanzKategorieUmschalten("sets")
-        TestApi.warteBis("Bewertung geladen") { vm.financeState.value.valuation != null }
+        assertTrue("Bewertung geladen", vm.financeState.value.valuation != null)
         t.sitzung.abgemeldet()
         assertNull(vm.financeState.value.valuation)
         assertTrue(vm.financeState.value.kategorien.isEmpty())

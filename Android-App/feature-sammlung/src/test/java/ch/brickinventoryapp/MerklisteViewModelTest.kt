@@ -25,7 +25,7 @@ import org.junit.Before
 import org.junit.Test
 
 /**
- * Das Merklisten-ViewModel, ausgeführt gegen einen Testserver. Die Wartezeiten
+ * Das Merklisten-ViewModel, ausgeführt gegen einen PfadServer ohne Netz. Die Wartezeiten
  * (Suchpause, Ruhezeit des Preisalarms) laufen auf der Testuhr.
  *
  * Gegenproben (am 28.10.2026 gemessen, kotlinc gegen MerklisteViewModel.kt):
@@ -60,7 +60,7 @@ class MerklisteViewModelTest {
             "/api/v1/wanted/10294-1/N/uebernehmen" to """{"success":true,"action":"added","set_number":"10294-1"}""",
             "/api/v1/sets/10294-1/alert" to """{"success":true,"alerts":[{"set_number":"10294-1","condition":"N","richtung":"unter","schwelle":500.0}]}""",
         )
-        t = TestDienste(pfade.server)
+        t = TestDienste(pfade.imTakt(), io = Dispatchers.Main)
     }
 
     @After
@@ -78,12 +78,12 @@ class MerklisteViewModelTest {
         erstes.setzeMerklisteZustand("U")
         erstes.setzeMerklisteSortierung("price_desc")
 
-        pfade.neuerProzess { pfade, t ->
+        pfade.neuerProzess(io = Dispatchers.Main) { pfade, t ->
             val neu = vm(gemerkt, t)
             val f = neu.merklisteState.value
             assertEquals(Triple("Titanic", "U", "price_desc"), Triple(f.query, f.zustandFilter, f.sortierung))
             neu.ladeMerkliste()
-            TestApi.warteBis("Liste geladen") { neu.merklisteState.value.merkposten.isNotEmpty() }
+            assertTrue("Liste geladen", neu.merklisteState.value.merkposten.isNotEmpty())
             val anfrage = pfade.anfragenAn("GET /api/v1/wanted").single()
             assertTrue(anfrage, "search=Titanic" in anfrage && "condition=U" in anfrage && "sort=price_desc" in anfrage)
         }
@@ -97,7 +97,7 @@ class MerklisteViewModelTest {
         uhr.advanceTimeBy(300)
         assertEquals("Vor der Pause darf nichts hinausgehen", 0, pfade.anfragenAn("GET /api/v1/wanted").size)
         uhr.advanceTimeBy(100)
-        TestApi.warteBis("Liste geladen") { vm.merklisteState.value.merkposten.isNotEmpty() }
+        assertTrue("Liste geladen", vm.merklisteState.value.merkposten.isNotEmpty())
         val abrufe = pfade.anfragenAn("GET /api/v1/wanted")
         assertEquals(1, abrufe.size)
         assertTrue(abrufe.single(), "search=Tita" in abrufe.single() && "search=Ti&" !in abrufe.single())
@@ -109,7 +109,7 @@ class MerklisteViewModelTest {
         val gemeldet = mutableListOf<Aenderung>()
         val sammler = kotlinx.coroutines.CoroutineScope(Dispatchers.Main).launch { t.bestand.aenderungen.toList(gemeldet) }
         vm.uebernimmMerkposten("10294-1", "N", besitzer = null, kaufpreisRoh = "499,90")
-        TestApi.warteBis("Liste nachgeladen") { vm.merklisteState.value.merkposten.isNotEmpty() }
+        assertTrue("Liste nachgeladen", vm.merklisteState.value.merkposten.isNotEmpty())
         sammler.cancel()
         assertEquals(listOf(Aenderung.Merkliste, Aenderung.Sets), gemeldet)
         val uebernahme = pfade.anfragenAn("/uebernehmen").single()
@@ -120,15 +120,13 @@ class MerklisteViewModelTest {
     fun `ein Preisalarm im Merkposten wird entprellt gespeichert und neu geladen`() {
         val vm = vm()
         vm.ladeMerkpostenDetail("10294-1")
-        TestApi.warteBis("Detail geladen") { !vm.merkpostenDetailState.value.laedt }
+        assertTrue("Detail geladen", !vm.merkpostenDetailState.value.laedt)
         val vorher = pfade.anfragenAn("GET /api/v1/sets/10294-1/alert").size
 
         vm.setzePreisalarm("10294-1", "unter", "4", "N")
         vm.setzePreisalarm("10294-1", "unter", "450", "N")
         uhr.advanceTimeBy(900)
-        TestApi.warteBis("gespeichert und nachgeladen") {
-            pfade.anfragenAn("GET /api/v1/sets/10294-1/alert").size > vorher
-        }
+        assertTrue("gespeichert und nachgeladen", pfade.anfragenAn("GET /api/v1/sets/10294-1/alert").size > vorher)
         assertEquals("Nur die letzte Eingabe wird gespeichert", 1, pfade.anfragenAn("PUT /api/v1/sets/10294-1/alert").size)
         assertEquals(500.0, vm.merkpostenDetailState.value.preisalarme.single().schwelle, 0.0)
     }
@@ -139,16 +137,16 @@ class MerklisteViewModelTest {
         val vm = t.merke(MerklisteViewModel(t.dienste, SetsRepository(t.api, t.cache, ablage),
             KatalogRepository(t.api, t.cache), FinanzenRepository(t.api, t.cache), SavedStateHandle()))
         vm.ladeMerkliste()
-        TestApi.warteBis("Liste geladen") { vm.merklisteState.value.merkposten.isNotEmpty() }
+        assertTrue("Liste geladen", vm.merklisteState.value.merkposten.isNotEmpty())
         val abrufe = pfade.anfragenAn("GET /api/v1/wanted").size
 
         runBlocking { ablage.wendeAn(Bearbeitung.MerkpostenLoeschen("10294-1", "N", 1)) }
-        TestApi.warteBis("offline gelöscht") { vm.merklisteState.value.merkposten.isEmpty() }
+        assertTrue("offline gelöscht", vm.merklisteState.value.merkposten.isEmpty())
         assertEquals("ohne neuen Abruf", abrufe, pfade.anfragenAn("GET /api/v1/wanted").size)
 
         vm.setzeMerklisteSuche("10294")
         uhr.advanceTimeBy(400)
-        TestApi.warteBis("Suche geladen") { vm.merklisteState.value.merkposten.isNotEmpty() }
+        assertTrue("Suche geladen", vm.merklisteState.value.merkposten.isNotEmpty())
         runBlocking { ablage.wendeAn(Bearbeitung.MerkpostenAnlegen(MerkpostenRequest("99999-1", "N", 1))) }
         uhr.advanceTimeBy(100)
         assertEquals("mit Suchtext bleibt die Serverantwort stehen", listOf("10294-1"),

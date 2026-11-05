@@ -116,7 +116,7 @@ class QrAdresseTest {
     fun auf() {
         Dispatchers.setMain(UnconfinedTestDispatcher())
         pfade = PfadServer()
-        t = TestDienste(pfade.server)
+        t = TestDienste(pfade.imTakt(), io = Dispatchers.Main)
     }
 
     @After
@@ -138,7 +138,6 @@ class QrAdresseTest {
         var abgemeldet = false
         vm.loginWithQrToken("https://brick.meinserver.ch@evil.example", "bim:x", abmelden = { abgemeldet = true })
         assertFalse(vm.saveServerUrl("https://brick.meinserver.ch@evil.example"))
-        Thread.sleep(100)
         assertEquals(emptyList<String>(), ablage.protokoll.toList())
         assertFalse("Nichts abgemeldet", abgemeldet)
         assertTrue("kein qr-login", pfade.anfragenAn("qr-login").isEmpty())

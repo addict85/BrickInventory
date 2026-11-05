@@ -6,6 +6,14 @@ import ch.brickinventoryapp.ui.viewmodel.Texte
 import com.jakewharton.retrofit2.converter.kotlinx.serialization.asConverterFactory
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
+import okhttp3.Protocol
+import okhttp3.Response
+import okhttp3.ResponseBody.Companion.toResponseBody
+import okio.Buffer
+import okhttp3.Call
+import okhttp3.Callback
+import okhttp3.Request
+import java.io.IOException
 import ch.brickinventoryapp.data.MeldungsKanal
 import ch.brickinventoryapp.data.ScopeFilter
 import ch.brickinventoryapp.data.cache.ResponseCache
@@ -37,13 +45,14 @@ import ch.brickinventoryapp.ui.Aenderung
 object TestApi {
 
     /** Dieselbe Json-Konfiguration wie in di/AppModule. */
-    fun fuer(server: MockWebServer): BrickApiService {
-        val client = OkHttpClient.Builder()
-            .readTimeout(2, TimeUnit.SECONDS).connectTimeout(2, TimeUnit.SECONDS).build()
+    fun fuer(server: MockWebServer): BrickApiService = fuer(server.url("/").toString(),
+        OkHttpClient.Builder().readTimeout(2, TimeUnit.SECONDS).connectTimeout(2, TimeUnit.SECONDS).build())
+
+    fun fuer(basis: String, rufe: Call.Factory): BrickApiService {
         val json = ApiJson
         return Retrofit.Builder()
-            .baseUrl(server.url("/"))
-            .client(client)
+            .baseUrl(basis)
+            .callFactory(rufe)
             .addConverterFactory(json.asConverterFactory("application/json".toMediaType()))
             .build()
             .create(BrickApiService::class.java)
@@ -87,21 +96,47 @@ class PfadServer(vararg regeln: Pair<String, String>) {
     /** Antwort erst nach so vielen Millisekunden — für „was geschieht, solange der Server rechnet“. */
     val verzoegert: MutableMap<String, Long> = Collections.synchronizedMap(mutableMapOf())
 
+    /** Schreibt die Anfrage mit und liefert Statuscode und Rumpf nach den Regeln. */
+    private fun beantworte(methode: String, pfad: String, rumpf: String): Pair<Int, String> {
+        anfragen += "$methode $pfad"
+        koerper += rumpf
+        val ohneAbfrage = pfad.substringBefore('?')
+        val antwort = antworten[ohneAbfrage]
+        return if (antwort == null) (codes[ohneAbfrage] ?: 404) to """{"success":false}"""
+               else (codes[ohneAbfrage] ?: 200) to antwort
+    }
+
     init {
         server.dispatcher = object : Dispatcher() {
             override fun dispatch(request: RecordedRequest): MockResponse {
                 val pfad = request.path.orEmpty()
-                anfragen += "${request.method} $pfad"
-                koerper += request.body.readUtf8()
-                val ohneAbfrage = pfad.substringBefore('?')
-                val rumpf = antworten[ohneAbfrage]
-                val antwort = if (rumpf == null) TestApi.antwort("""{"success":false}""", codes[ohneAbfrage] ?: 404)
-                              else TestApi.antwort(rumpf, codes[ohneAbfrage] ?: 200)
-                verzoegert[ohneAbfrage]?.let { antwort.setHeadersDelay(it, TimeUnit.MILLISECONDS) }
+                val (code, rumpf) = beantworte(request.method.orEmpty(), pfad, request.body.readUtf8())
+                val antwort = TestApi.antwort(rumpf, code)
+                verzoegert[pfad.substringBefore('?')]?.let { antwort.setHeadersDelay(it, TimeUnit.MILLISECONDS) }
                 return antwort
             }
         }
         server.start()
+    }
+
+    /**
+     * Dieselben Regeln ohne Netz: Ein Interceptor antwortet, und OkHttp führt den Abruf
+     * im aufrufenden Faden aus. Mit Test-Dispatchern läuft ein ViewModel samt Abruf so in
+     * der Testuhr, und kein Test wartet in Echtzeit. Verzögerte Antworten gibt es hier nicht.
+     */
+    fun imTakt(): BrickApiService {
+        val client = OkHttpClient.Builder().addInterceptor { kette ->
+            val anfrage = kette.request()
+            val pfad = anfrage.url.encodedPath + (anfrage.url.encodedQuery?.let { "?$it" } ?: "")
+            check(verzoegert.isEmpty()) { "Im Takt gibt es keine verzögerte Antwort ($pfad)" }
+            val rumpf = anfrage.body?.let { b -> Buffer().also { b.writeTo(it) }.readUtf8() }.orEmpty()
+            val (code, text) = beantworte(anfrage.method, pfad, rumpf)
+            Response.Builder().request(anfrage).protocol(Protocol.HTTP_1_1).code(code).message("OK")
+                .body(text.toResponseBody("application/json".toMediaType())).build()
+        }.build()
+        return TestApi.fuer("http://im-takt.test/", object : Call.Factory {
+            override fun newCall(request: Request): Call = SofortRuf(client.newCall(request))
+        })
     }
 
     fun anfragenAn(pfad: String): List<String> = synchronized(anfragen) { anfragen.filter { pfad in it } }
@@ -111,9 +146,9 @@ class PfadServer(vararg regeln: Pair<String, String>) {
      * eigene Dienste. Abrufe, die das alte ViewModel noch unterwegs hat, landen
      * so nicht in [anfragen] des neuen — sonst entscheidet die Ankunftsreihenfolge.
      */
-    fun <T> neuerProzess(block: (PfadServer, TestDienste) -> T): T {
+    fun <T> neuerProzess(io: CoroutineDispatcher? = null, block: (PfadServer, TestDienste) -> T): T {
         val pfade = PfadServer(*antworten.toList().toTypedArray())
-        val t = TestDienste(pfade.server)
+        val t = if (io == null) TestDienste(pfade.server) else TestDienste(pfade.imTakt(), io = io)
         try { return block(pfade, t) } finally { t.aufraeumen(); pfade.server.shutdown() }
     }
 }
@@ -134,6 +169,9 @@ class SpeicherAblage : FilterAblage {
  * eine [FakeApi]. Mit [io] = Test-Dispatcher läuft auch die Ablage in virtueller Zeit.
  */
 class TestDienste(val api: BrickApiService, texte: Texte = NummernTexte, io: CoroutineDispatcher = Dispatchers.IO) {
+    /** Mit einem Test-Dispatcher ist alles schon gelaufen, wenn ein Aufruf zurückkehrt. */
+    private val imTakt = io != Dispatchers.IO
+
     constructor(server: MockWebServer, texte: Texte = NummernTexte) : this(TestApi.fuer(server), texte)
 
     val cacheDir: File = File(System.getProperty("java.io.tmpdir"), "bim-vm-${System.nanoTime()}").apply { mkdirs() }
@@ -157,8 +195,9 @@ class TestDienste(val api: BrickApiService, texte: Texte = NummernTexte, io: Cor
             bestand.aenderungen.collect { liste += it }
         }
         block()
-        if (erwartet > 0) TestApi.warteBis("$erwartet Meldungen") { liste.size >= erwartet }
-        else Thread.sleep(200)
+        if (!imTakt) {
+            if (erwartet > 0) TestApi.warteBis("$erwartet Meldungen") { liste.size >= erwartet } else Thread.sleep(200)
+        }
         sammler.cancel()
         return liste.toList()
     }
@@ -192,4 +231,14 @@ fun <R, T> mitRepo(bau: (BrickApiService, ResponseCache) -> R, block: (PfadServe
     try {
         return block(pfade, bau(TestApi.fuer(pfade.server), ResponseCache { ordner }))
     } finally { pfade.server.shutdown(); ordner.deleteRecursively() }
+}
+
+/** Ein Abruf, der auch asynchron gestellt im aufrufenden Faden läuft (PfadServer.imTakt). */
+private class SofortRuf(private val echt: Call) : Call by echt {
+    override fun enqueue(responseCallback: Callback) {
+        val antwort = try { echt.execute() } catch (e: IOException) { responseCallback.onFailure(this, e); return }
+        responseCallback.onResponse(this, antwort)
+    }
+
+    override fun clone(): Call = SofortRuf(echt.clone())
 }

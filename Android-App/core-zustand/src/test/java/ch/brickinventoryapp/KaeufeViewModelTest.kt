@@ -21,7 +21,7 @@ import org.junit.Test
 
 /**
  * Das Käufe-ViewModel (Sets, manuelle Teile und Figuren), ausgeführt gegen
- * einen Testserver.
+ * einen PfadServer ohne Netz.
  *
  * Gegenproben (am 28.10.2026 gemessen, kotlinc gegen KaeufeViewModel.kt):
  *   A  in setGeaendert() immer Aenderung.Sets melden statt der Zusammenfassung
@@ -62,7 +62,7 @@ class KaeufeViewModelTest {
             "/api/v1/parts/3001/5/price-history" to """{"success":true,"set_number":"3001"}""",
             "/api/v1/parts/3002/5/acquisitions" to """{"success":true,"acquisitions":[]}""",
         )
-        t = TestDienste(pfade.server)
+        t = TestDienste(pfade.imTakt(), io = Dispatchers.Main)
     }
 
     @After
@@ -76,13 +76,11 @@ class KaeufeViewModelTest {
     fun `ein geaenderter Kauf eines Sets meldet seine Zusammenfassung und laedt die Liste neu`() {
         val vm = vm()
         vm.loadAcquisitions("75192-1")
-        TestApi.warteBis("Liste geladen") { vm.manDetailState.value.acquisitions.isNotEmpty() }
+        assertTrue("Liste geladen", vm.manDetailState.value.acquisitions.isNotEmpty())
         val vorher = pfade.anfragenAn("GET /api/v1/sets/75192-1/acquisitions").size
         val liste = t.gemeldet(1) {
             vm.updateAcquisition("75192-1", 7, purchasePrice = 499.0)
-            TestApi.warteBis("neu geladen") {
-                pfade.anfragenAn("GET /api/v1/sets/75192-1/acquisitions").size > vorher
-            }
+            assertTrue("neu geladen", pfade.anfragenAn("GET /api/v1/sets/75192-1/acquisitions").size > vorher)
         }
         val z = liste.single() as Aenderung.SetZusammenfassung
         assertEquals("75192-1", z.agg.setNumber)
@@ -94,12 +92,10 @@ class KaeufeViewModelTest {
         pfade.codes["/api/v1/parts/3001/5/acquisitions/9"] = 409
         val vm = vm()
         vm.loadManualAcquisitions("part", "3001", 5)
-        TestApi.warteBis("Liste geladen") { vm.manDetailState.value.acquisitions.isNotEmpty() }
+        assertTrue("Liste geladen", vm.manDetailState.value.acquisitions.isNotEmpty())
         val vorher = pfade.anfragenAn("GET /api/v1/parts/3001/5/acquisitions").size
         vm.updateManualAcquisition("part", "3001", 5, 9, date = "2020-01-01")
-        TestApi.warteBis("neu geladen") {
-            pfade.anfragenAn("GET /api/v1/parts/3001/5/acquisitions").size > vorher
-        }
+        assertTrue("neu geladen", pfade.anfragenAn("GET /api/v1/parts/3001/5/acquisitions").size > vorher)
         assertEquals("fehler", t.meldungen.meldung.value)
     }
 
@@ -111,7 +107,7 @@ class KaeufeViewModelTest {
             vm.changeAcquisitionOwner("set", "75192-1", 0, 7, toUserId = 4) { f, teile, figuren ->
                 ergebnis = Triple(f, teile, figuren)
             }
-            TestApi.warteBis("Antwort") { ergebnis != null }
+            assertTrue("Antwort", ergebnis != null)
         }
         assertEquals(Triple(null, 12, 2), ergebnis)
         assertEquals(listOf(Aenderung.Sets, Aenderung.Teile, Aenderung.Figuren), liste)
@@ -120,13 +116,9 @@ class KaeufeViewModelTest {
 
     /** Der Rumpf der ersten Anfrage, deren Zeile [anfrage] enthält. */
     private fun rumpf(anfrage: String): String {
-        TestApi.warteBis(anfrage) {
-            synchronized(pfade.anfragen) {
-                val i = pfade.anfragen.indexOfFirst { anfrage in it }
-                i >= 0 && pfade.koerper.size > i
-            }
-        }
-        return synchronized(pfade.anfragen) { pfade.koerper[pfade.anfragen.indexOfFirst { anfrage in it }] }
+        val i = pfade.anfragen.indexOfFirst { anfrage in it }
+        assertTrue(anfrage, i >= 0)
+        return pfade.koerper[i]
     }
 
     /** ApiJson schreibt null mit; „gesetzt“ heisst: das Feld trägt eine Zahl. */
@@ -154,14 +146,11 @@ class KaeufeViewModelTest {
     fun `der Preisverlauf eines anderen Eintrags bleibt nicht stehen`() {
         val vm = vm()
         vm.loadManualAcquisitions("part", "3001", 5)
-        TestApi.warteBis("Verlauf geladen") { vm.manDetailState.value.priceHistory != null }
+        assertTrue("Verlauf geladen", vm.manDetailState.value.priceHistory != null)
         // 3002 hat keinen Verlauf auf dem Testserver: Er bleibt leer, statt den
         // von 3001 weiter zu zeigen.
         vm.loadManualAcquisitions("part", "3002", 5)
-        TestApi.warteBis("Liste von 3002") {
-            vm.manDetailState.value.itemId == "3002" && !vm.manDetailState.value.isLoading &&
-                !vm.manDetailState.value.priceHistoryLoading
-        }
+        assertTrue("Liste von 3002", vm.manDetailState.value.itemId == "3002" && !vm.manDetailState.value.isLoading && !vm.manDetailState.value.priceHistoryLoading)
         assertNull(vm.manDetailState.value.priceHistory)
     }
 }

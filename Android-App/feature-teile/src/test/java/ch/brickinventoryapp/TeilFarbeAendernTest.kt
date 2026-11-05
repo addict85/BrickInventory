@@ -47,7 +47,7 @@ import org.junit.Test
  *
  * ── Gegenproben ─────────────────────────────────────────────────────────────
  *
- * Fall 1 und 4 laufen gegen einen Testserver (TeileViewModel, TeileRepository),
+ * Fall 1 und 4 laufen gegen einen PfadServer ohne Netz (TeileViewModel, TeileRepository),
  * Fall 2 und 3 lesen Bildschirm und Graph. Gemessen am 29.10.2026:
  *   A  in TeileApi die Adresse auf "…/colour" → rot „die App ruft denselben
  *      Dienst wie die Webapp“
@@ -60,7 +60,7 @@ import org.junit.Test
 class TeilFarbeAendernTest {
 
     private val pfade = PfadServer("/api/v1/parts/3001/5/color" to """{"success":true}""")
-    private val t = TestDienste(pfade.server)
+    private val t = TestDienste(pfade.imTakt(), io = Dispatchers.Main)
 
     @Before
     fun auf() = Dispatchers.setMain(UnconfinedTestDispatcher())
@@ -93,7 +93,7 @@ class TeilFarbeAendernTest {
     fun `die App ruft denselben Dienst wie die Webapp`() {
         var geoeffnet: Int? = null
         vm().setzeTeilFarbe("3001", 5, 11, owner = 7) { geoeffnet = it }
-        TestApi.warteBis("neu geöffnet") { geoeffnet != null }
+        assertTrue("neu geöffnet", geoeffnet != null)
         // Danach lädt der Bereich die Teile neu (Bestandssignal) — gezählt wird nur die Farbe.
         assertEquals(listOf("PUT /api/v1/parts/3001/5/color?owner=7"), pfade.anfragenAn("/color"))
         val koerper = pfade.koerper[pfade.anfragen.indexOfFirst { "/color" in it }]
@@ -183,7 +183,6 @@ class TeilFarbeAendernTest {
         // „der Server faengt es schon" ist kein Grund, eine Anfrage zu
         // schicken, deren Antwort ein Neuaufbau des Bildschirms ist.
         vm().setzeTeilFarbe("3001", 5, 5)
-        Thread.sleep(200)
         assertTrue("setzeTeilFarbe bricht bei gleicher Farbe nicht ab: ${pfade.anfragen}", pfade.anfragenAn("/color").isEmpty())
         assertTrue(
             "FarbWahlFeld ruft onWahl auch fuer die bereits gewaehlte Farbe.",

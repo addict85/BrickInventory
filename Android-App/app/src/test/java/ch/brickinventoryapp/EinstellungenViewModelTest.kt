@@ -25,7 +25,7 @@ import org.junit.Before
 import org.junit.Test
 
 /**
- * Einstellungen und Haushalt, ausgeführt gegen einen Testserver.
+ * Einstellungen und Haushalt, ausgeführt gegen einen PfadServer ohne Netz.
  *
  * Gegenproben (am 28.10.2026 gemessen, kotlinc gegen EinstellungenViewModel.kt
  * und HaushaltViewModel.kt):
@@ -77,7 +77,7 @@ class EinstellungenViewModelTest {
             "/api/v1/settings/household" to """{"success":true,"is_sub":true}""",
             "/api/v1/sets/household-members" to """{"success":true,"members":[{"id":1,"username":"marco","is_self":true},{"id":2,"username":"kind"}]}""",
         )
-        t = TestDienste(pfade.server)
+        t = TestDienste(pfade.imTakt(), io = Dispatchers.Main)
     }
 
     @After
@@ -91,7 +91,6 @@ class EinstellungenViewModelTest {
     fun `eine Schwelle von null geht nicht hinaus`() {
         val vm = vm()
         vm.aendereAlarmSchwelle("75192-1", "N", "unter", 0.0)
-        Thread.sleep(200)
         assertEquals("t${R.string.alerts_bad_value}", t.meldungen.meldung.value)
         assertTrue(pfade.anfragenAn("/alert").isEmpty())
     }
@@ -100,10 +99,10 @@ class EinstellungenViewModelTest {
     fun `ein geaenderter Alarm wird gemeldet und die Uebersicht laedt nach`() {
         val vm = vm()
         vm.ladeAlarmUebersicht()
-        TestApi.warteBis("Übersicht") { vm.alarmUebersicht.value.geladen }
+        assertTrue("Übersicht", vm.alarmUebersicht.value.geladen)
         val liste = t.gemeldet(1) {
             vm.aendereAlarmSchwelle("75192-1", "N", "unter", 450.0)
-            TestApi.warteBis("neu geladen") { pfade.anfragenAn("GET /api/v1/alerts").size == 2 }
+            assertTrue("neu geladen", pfade.anfragenAn("GET /api/v1/alerts").size == 2)
         }
         assertEquals(listOf(Aenderung.Alarme), liste)
         assertTrue(pfade.anfragenAn("PUT /api/v1/sets/75192-1/alert").isNotEmpty())
@@ -114,7 +113,7 @@ class EinstellungenViewModelTest {
         val vm = vm()
         val liste = t.gemeldet(1) {
             vm.benenneLagerortUm(3, "Keller")
-            TestApi.warteBis("Orte neu") { vm.lagerState.value.eigene.isNotEmpty() }
+            assertTrue("Orte neu", vm.lagerState.value.eigene.isNotEmpty())
         }
         assertEquals(listOf(Aenderung.Sets), liste)
         assertEquals("Keller", vm.lagerState.value.eigene.single().name)
@@ -125,8 +124,7 @@ class EinstellungenViewModelTest {
         pfade.codes["/api/v1/storage/locations/3"] = 401
         val vm = vm()
         vm.loescheLagerort(3)
-        TestApi.warteBis("Antwort") { pfade.anfragenAn("DELETE /api/v1/storage/locations/3").isNotEmpty() }
-        Thread.sleep(200)
+        assertTrue("Antwort", pfade.anfragenAn("DELETE /api/v1/storage/locations/3").isNotEmpty())
         assertNull(t.meldungen.meldung.value)
     }
 
@@ -144,7 +142,7 @@ class EinstellungenViewModelTest {
         pfade.antworten["/api/v1/settings/user/default-condition"] = """{"success":true}"""
         val vm = vm()
         vm.saveUserDefaultCondition("U")
-        TestApi.warteBis("Meldung") { t.meldungen.meldung.value != null }
+        assertTrue("Meldung", t.meldungen.meldung.value != null)
         assertEquals("t${R.string.vm_settings_saved}", t.meldungen.meldung.value)
         assertTrue(pfade.koerper.any { "\"U\"" in it })
     }
@@ -153,8 +151,8 @@ class EinstellungenViewModelTest {
     fun `eine eingeloeste Einladung laedt Status und Haushaltskonten`() {
         val vm = t.merke(HaushaltViewModel(t.dienste, HaushaltRepository(t.api, t.cache), KontoRepository(t.api, t.cache)))
         vm.redeemHouseholdInvite(" ABC123 ", "geheim1234")
-        TestApi.warteBis("Konten da") { t.blickfeld.konten.value.householdMembers.size == 2 }
-        TestApi.warteBis("Status da") { vm.householdState.value.status?.isSub == true }
+        assertTrue("Konten da", t.blickfeld.konten.value.householdMembers.size == 2)
+        assertTrue("Status da", vm.householdState.value.status?.isSub == true)
         assertTrue(pfade.anfragenAn("POST /api/v1/settings/household/redeem").single().isNotEmpty())
         val rumpf = pfade.koerper[pfade.anfragen.indexOfFirst { "household/redeem" in it }]
         assertEquals("""{"code":"ABC123","password":"geheim1234"}""", rumpf)
@@ -168,7 +166,7 @@ class EinstellungenViewModelTest {
         pfade.codes["/api/v1/settings/household/redeem"] = 400
         val vm = t.merke(HaushaltViewModel(t.dienste, HaushaltRepository(t.api, t.cache), KontoRepository(t.api, t.cache)))
         vm.redeemHouseholdInvite("ABC123", "falsch")
-        TestApi.warteBis("Antwort") { !vm.householdState.value.isLoading && vm.householdState.value.message != null }
+        assertTrue("Antwort", !vm.householdState.value.isLoading && vm.householdState.value.message != null)
         assertTrue(vm.householdState.value.passwortFalsch)
         assertEquals("t${R.string.household_redeem_password_wrong}", vm.householdState.value.message)
         assertEquals(0, vm.householdState.value.eingeloest)
@@ -179,9 +177,9 @@ class EinstellungenViewModelTest {
         pfade.antworten["/api/v1/auth/zweiter-faktor"] = """{"success":true,"aktiv":true,"codes_uebrig":8}"""
         val vm = t.merke(HaushaltViewModel(t.dienste, HaushaltRepository(t.api, t.cache), KontoRepository(t.api, t.cache)))
         vm.loadHouseholdStatus()
-        TestApi.warteBis("Codefeld") { vm.householdState.value.faktorNoetig }
+        assertTrue("Codefeld", vm.householdState.value.faktorNoetig)
         vm.redeemHouseholdInvite("ABC123", "geheim1234", " 123456 ")
-        TestApi.warteBis("eingeloest") { pfade.anfragen.any { "household/redeem" in it } }
+        assertTrue("eingeloest", pfade.anfragen.any { "household/redeem" in it })
         val rumpf = pfade.koerper[pfade.anfragen.indexOfFirst { "household/redeem" in it }]
         assertEquals("""{"code":"ABC123","password":"geheim1234","faktor_code":"123456"}""", rumpf)
     }
@@ -194,7 +192,7 @@ class EinstellungenViewModelTest {
         val vm = t.merke(HaushaltViewModel(t.dienste, HaushaltRepository(t.api, t.cache), KontoRepository(t.api, t.cache)))
         assertFalse(vm.householdState.value.faktorNoetig)
         vm.redeemHouseholdInvite("ABC123", "geheim1234")
-        TestApi.warteBis("Antwort") { vm.householdState.value.message != null }
+        assertTrue("Antwort", vm.householdState.value.message != null)
         assertTrue(vm.householdState.value.faktorNoetig)
         assertTrue(vm.householdState.value.faktorFalsch)
         assertFalse(vm.householdState.value.passwortFalsch)
@@ -208,12 +206,12 @@ class EinstellungenViewModelTest {
         pfade.codes["/api/v1/settings/household/redeem"] = 429
         val vm = t.merke(HaushaltViewModel(t.dienste, HaushaltRepository(t.api, t.cache), KontoRepository(t.api, t.cache)))
         vm.redeemHouseholdInvite("ABC123", "falsch")
-        TestApi.warteBis("Antwort") { vm.householdState.value.message != null }
+        assertTrue("Antwort", vm.householdState.value.message != null)
         assertEquals("Bitte in 5 Min. erneut", vm.householdState.value.message)
         assertFalse(vm.householdState.value.passwortFalsch)
 
         pfade.antworten["/api/v1/settings/household/redeem"] = """{"success":false}"""
         vm.redeemHouseholdInvite("ABC123", "falsch")
-        TestApi.warteBis("zweite Antwort") { vm.householdState.value.message == "t${R.string.household_redeem_locked}" }
+        assertTrue("zweite Antwort", vm.householdState.value.message == "t${R.string.household_redeem_locked}")
     }
 }

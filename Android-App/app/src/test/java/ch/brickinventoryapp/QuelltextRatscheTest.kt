@@ -43,6 +43,8 @@ import org.junit.Test
  * Abbruch (05.11.2026): cache-schluckt-abbruch macht auch „kein breiter Fang …“ rot.
  * Namen (05.11.2026, gemessen mit kotlinc lokal): voll-qualifiziert schreibt in
  *   Vorwaermen.kt `ch.brickinventoryapp.util.fangeAusserAbbruch` aus → rot „kein voll …“
+ * Warten (05.11.2026, gemessen mit kotlinc lokal): warten-in-echtzeit schläft in
+ *   TeileViewModelTest wieder 200 ms → rot „Echtzeit-Warten in Tests …“
  */
 class QuelltextRatscheTest {
 
@@ -268,6 +270,25 @@ class QuelltextRatscheTest {
                 "oder verzweigte Funktion zerlegen, statt sie einzutragen."
         }
         if (ids.size < grenze) println("  detekt-Baseline: ${ids.size} (Obergrenze $grenze) — tools/detekt-obergrenze.txt nachziehen")
+    }
+
+    @Test
+    fun `Echtzeit-Warten in Tests wird weniger, nie mehr`() {
+        // Ein Test, der schläft, ist langsam und auf einem vollen Runner brüchig. ViewModel-Tests
+        // laufen im Takt (PfadServer.imTakt, Test-Dispatcher); gezählt wird, was noch wartet.
+        val SCHLAFEN = 17
+        val WARTEN = 83
+        val dateien = (Quellen.tests.walkTopDown() + java.io.File(Quellen.projekt, "core-testing/src/main").walkTopDown())
+            .filter { it.isFile && it.extension == "kt" }.toList()
+        val texte = dateien.map { code(it.readText()) }
+        val schlafen = texte.sumOf { Regex("""\bThread\.sleep\(""").findAll(it).count() }
+        val warten = texte.sumOf { Regex("""\bwarteBis\(""").findAll(it).count() }
+        assert(dateien.size > 200) { "Nur ${dateien.size} Testdateien gefunden — greift die Suche noch?" }
+        assert(schlafen <= SCHLAFEN && warten <= WARTEN) {
+            "Thread.sleep $schlafen (erlaubt $SCHLAFEN), warteBis $warten (erlaubt $WARTEN). Neue Tests laufen " +
+                "im Takt: PfadServer.imTakt() oder FakeApi mit Test-Dispatcher, Compose mit waitUntil."
+        }
+        if (schlafen < SCHLAFEN || warten < WARTEN) println("  Echtzeit-Warten: $schlafen / $warten — Schranken nachziehen")
     }
 
     @Test

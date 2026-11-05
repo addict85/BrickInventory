@@ -23,7 +23,7 @@ import org.junit.Before
 import org.junit.Test
 
 /**
- * Das Galerie-ViewModel, ausgeführt gegen einen Testserver.
+ * Das Galerie-ViewModel, ausgeführt gegen einen PfadServer ohne Netz.
  *
  * Gegenproben (am 28.10.2026 gemessen, kotlinc gegen GalerieViewModel.kt):
  *   A  im init die gemerkte Suche nicht übernommen → rot „Suche, Thema und
@@ -72,7 +72,7 @@ class GalerieViewModelTest {
                  "kachel_preis":812.5,"kachel_pnl_pct":16.1}]}""",
             "/api/v1/sets/10294-1" to """{"success":true}""",
         )
-        t = TestDienste(pfade.server)
+        t = TestDienste(pfade.imTakt(), io = Dispatchers.Main)
     }
 
     @After
@@ -86,7 +86,7 @@ class GalerieViewModelTest {
     fun `die Kennzahlen bringen Preis und G&V fuer die Kacheln mit`() {
         val vm = vm()
         vm.loadStats()
-        TestApi.warteBis("Preise da") { vm.preise.value.containsKey("75192-1") }
+        assertTrue("Preise da", vm.preise.value.containsKey("75192-1"))
         assertEquals(812.5, vm.preise.value["75192-1"]?.betrag ?: -1.0, 1e-9)
         assertEquals(16.1, vm.preise.value["75192-1"]?.pnlPct ?: -1.0, 1e-9)
     }
@@ -99,12 +99,12 @@ class GalerieViewModelTest {
         erstes.setGallerySort("year_desc")
         erstes.setGalleryQuery("Falke")
 
-        pfade.neuerProzess { pfade, t ->
+        pfade.neuerProzess(io = Dispatchers.Main) { pfade, t ->
             val neu = vm(gemerkt, t)
             val g = neu.galleryState.value
             assertEquals(Triple("Falke", "Technic", "year_desc"), Triple(g.galleryQuery, g.galleryTheme, g.gallerySort))
             neu.loadSets()
-            TestApi.warteBis("Liste geladen") { neu.galleryState.value.sets.isNotEmpty() }
+            assertTrue("Liste geladen", neu.galleryState.value.sets.isNotEmpty())
             val abruf = abrufe(pfade).single()
             assertTrue(abruf, "search=Falke" in abruf && "theme=Technic" in abruf && "sort=year_desc" in abruf)
         }
@@ -114,14 +114,12 @@ class GalerieViewModelTest {
     fun `Konto- und Lagerfilter der Galerie reisen mit und laden Liste und Kennzahlen`() {
         val vm = vm()
         vm.setScope(ScopeFilter.View.GALLERY, "own")
-        TestApi.warteBis("Liste und Kennzahlen") {
-            vm.galleryState.value.sets.isNotEmpty() && vm.galleryState.value.stats != null
-        }
+        assertTrue("Liste und Kennzahlen", vm.galleryState.value.sets.isNotEmpty() && vm.galleryState.value.stats != null)
         assertTrue("accounts=own" in abrufe().last())
         assertTrue("accounts=own" in pfade.anfragenAn("GET /api/v1/stats").last())
 
         vm.setLagerFilter(ScopeFilter.View.GALLERY, "Regal")
-        TestApi.warteBis("neu geladen") { abrufe().size >= 2 }
+        assertTrue("neu geladen", abrufe().size >= 2)
         assertTrue(abrufe().last(), "storage=Regal" in abrufe().last())
     }
 
@@ -129,32 +127,31 @@ class GalerieViewModelTest {
     fun `ein geloeschtes Set verschwindet und alle Bestandsansichten erfahren davon`() {
         val vm = vm()
         vm.loadSets()
-        TestApi.warteBis("Liste geladen") { vm.galleryState.value.sets.size == 2 }
+        assertTrue("Liste geladen", vm.galleryState.value.sets.size == 2)
         val gemeldet = mutableListOf<Aenderung>()
         val sammler = CoroutineScope(Dispatchers.Main).launch { t.bestand.aenderungen.toList(gemeldet) }
         // Der Testserver liefert die Liste danach unverändert — die Kachel muss
         // trotzdem sofort weg sein, nicht erst nach dem Nachladen.
         pfade.antworten["/api/v1/sets"] = """{"success":true,"total":1,"sets":[{"set_number":"75192-1"}]}"""
         vm.deleteSet("10294-1")
-        TestApi.warteBis("gemeldet") { gemeldet.size == 3 }
+        assertTrue("gemeldet", gemeldet.size == 3)
         sammler.cancel()
         assertEquals(listOf(Aenderung.Sets, Aenderung.Teile, Aenderung.Figuren), gemeldet)
         assertTrue(pfade.anfragenAn("DELETE /api/v1/sets/10294-1").isNotEmpty())
-        TestApi.warteBis("Liste ohne das Set") { vm.galleryState.value.sets.none { it.setNumber == "10294-1" } }
+        assertTrue("Liste ohne das Set", vm.galleryState.value.sets.none { it.setNumber == "10294-1" })
     }
 
     @Test
     fun `vorgemerktes Loeschen nimmt die Kachel sofort weg und fragt den Server erst danach`() {
         val vm = vm()
         vm.loadSets()
-        TestApi.warteBis("Liste geladen") { vm.galleryState.value.sets.size == 2 }
+        assertTrue("Liste geladen", vm.galleryState.value.sets.size == 2)
         vm.loeschenVormerken("10294-1", "Titanic")
         assertTrue(vm.galleryState.value.sets.none { it.setNumber == "10294-1" })
         assertEquals("Titanic", vm.vorgemerkt.value?.name)
-        Thread.sleep(200)
         assertTrue("Noch kein DELETE", pfade.anfragenAn("DELETE /api/v1/sets/10294-1").isEmpty())
         vm.loeschenAusfuehren()
-        TestApi.warteBis("DELETE gesendet") { pfade.anfragenAn("DELETE /api/v1/sets/10294-1").isNotEmpty() }
+        assertTrue("DELETE gesendet", pfade.anfragenAn("DELETE /api/v1/sets/10294-1").isNotEmpty())
         assertEquals(null, vm.vorgemerkt.value)
     }
 
@@ -162,14 +159,12 @@ class GalerieViewModelTest {
     fun `Rueckgaengig holt das Set zurueck, ohne es je zu loeschen`() {
         val vm = vm()
         vm.loadSets()
-        TestApi.warteBis("Liste geladen") { vm.galleryState.value.sets.size == 2 }
+        assertTrue("Liste geladen", vm.galleryState.value.sets.size == 2)
         vm.loeschenVormerken("10294-1", "Titanic")
         vm.rueckgaengig()
-        TestApi.warteBis("Set wieder da") { vm.galleryState.value.sets.any { it.setNumber == "10294-1" } }
-        Thread.sleep(200)
+        assertTrue("Set wieder da", vm.galleryState.value.sets.any { it.setNumber == "10294-1" })
         assertTrue("Kein DELETE", pfade.anfragenAn("DELETE /api/v1/sets/10294-1").isEmpty())
         vm.loeschenAusfuehren()
-        Thread.sleep(200)
         assertTrue("Nach Rückgängig gibt es nichts mehr auszuführen", pfade.anfragenAn("DELETE /api/v1/sets/10294-1").isEmpty())
     }
 
@@ -177,14 +172,14 @@ class GalerieViewModelTest {
     fun `ein geaenderter Kauf aendert die Kachel, ohne die Liste neu zu holen`() {
         val vm = vm()
         vm.loadSets()
-        TestApi.warteBis("Liste geladen") { vm.galleryState.value.sets.size == 2 }
+        assertTrue("Liste geladen", vm.galleryState.value.sets.size == 2)
         val vorher = abrufe().size
         // Gezählt ab hier: Die erste Ladung holt die Kennzahlen schon selbst.
         val zahlenVorher = pfade.anfragenAn("GET /api/v1/stats").size
 
         t.bestand.melde(Aenderung.SetZusammenfassung(SetAggregate(setNumber = "75192-1", usedCount = 1)))
-        TestApi.warteBis("Kennzahlen neu") { pfade.anfragenAn("GET /api/v1/stats").size > zahlenVorher }
-        TestApi.warteBis("Kachel geändert") { vm.galleryState.value.sets.first { it.setNumber == "75192-1" }.usedCount == 1 }
+        assertTrue("Kennzahlen neu", pfade.anfragenAn("GET /api/v1/stats").size > zahlenVorher)
+        assertTrue("Kachel geändert", vm.galleryState.value.sets.first { it.setNumber == "75192-1" }.usedCount == 1)
         assertEquals("Die Liste darf nicht neu geholt werden", vorher, abrufe().size)
     }
 
@@ -194,17 +189,17 @@ class GalerieViewModelTest {
         // Nachladen bliebe sie nach dem Erfassen eines Teils stehen.
         val vm = vm()
         vm.loadSets()
-        TestApi.warteBis("Liste geladen") { vm.galleryState.value.sets.size == 2 }
+        assertTrue("Liste geladen", vm.galleryState.value.sets.size == 2)
         val listeVorher = abrufe().size
         val zahlenVorher = pfade.anfragenAn("GET /api/v1/stats").size
 
         t.bestand.melde(Aenderung.Teile)
-        TestApi.warteBis("Kennzahlen nach Teilen") { pfade.anfragenAn("GET /api/v1/stats").size == zahlenVorher + 1 }
+        assertTrue("Kennzahlen nach Teilen", pfade.anfragenAn("GET /api/v1/stats").size == zahlenVorher + 1)
         assertEquals("Ein Teil ändert die Set-Liste nicht", listeVorher, abrufe().size)
 
         t.bestand.melde(Aenderung.Sets)
-        TestApi.warteBis("Liste nach Sets") { abrufe().size == listeVorher + 1 }
-        TestApi.warteBis("Kennzahlen nach Sets") { pfade.anfragenAn("GET /api/v1/stats").size == zahlenVorher + 2 }
+        assertTrue("Liste nach Sets", abrufe().size == listeVorher + 1)
+        assertTrue("Kennzahlen nach Sets", pfade.anfragenAn("GET /api/v1/stats").size == zahlenVorher + 2)
     }
 
     @Test
@@ -224,7 +219,7 @@ class GalerieViewModelTest {
         val gemerkt = SavedStateHandle()
         val vm = vm(gemerkt)
         vm.setGalleryTheme("Technic")
-        TestApi.warteBis("Liste geladen") { vm.galleryState.value.sets.isNotEmpty() }
+        assertTrue("Liste geladen", vm.galleryState.value.sets.isNotEmpty())
         t.sitzung.abgemeldet()
         assertTrue(vm.galleryState.value.sets.isEmpty())
         assertEquals("", vm.galleryState.value.galleryTheme)
