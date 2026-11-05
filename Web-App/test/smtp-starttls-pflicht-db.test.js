@@ -25,6 +25,7 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 process.env.DATA_KEY = Buffer.alloc(32, 11).toString('base64');
 
 const _req = require('./helpers/sources').buildAndRequire();
+const { dbOderSkip } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
 const db = _req('db/database.js');
 const mailer = _req('src/mail/mailer.js');
@@ -71,14 +72,7 @@ function smtpServer(tlsOpt) {
 }
 
 test('SMTP ohne Port 465 nur mit STARTTLS', { concurrency: 1, timeout: 120_000 }, async (t) => {
-  try { await db.initSchema(); }
-  catch (e) {
-    if (process.env.REQUIRE_DB === '1')
-      throw new Error(`REQUIRE_DB=1, aber die Test-DB ist nicht erreichbar: ${e.message}`);
-    t.skip('Test-DB nicht erreichbar'); return;
-  }
-  const c = await db.pool.connect();
-  try { await _req('db/migrate.js').runMigrations(c); } finally { c.release(); }
+  if (!await dbOderSkip(t, _req)) return;
 
   const SCHLUESSEL = ['smtp_host', 'smtp_port', 'smtp_user', 'smtp_pass', 'smtp_secure', 'smtp_from', 'smtp_tls_ca', 'smtp_tls_fingerprint'];
   const vorher = await db.all('SELECT key, value FROM global_settings WHERE key = ANY($1)', [SCHLUESSEL]);

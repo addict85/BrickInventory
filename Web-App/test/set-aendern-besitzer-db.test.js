@@ -59,18 +59,12 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 
 const ROOT = path.join(__dirname, '..');
 const _req = require('./helpers/sources').buildAndRequire();
+const { dbOderSkip } = require('./helpers/db');
 const { haeltSet } = require('./helpers/bestand');
 const db = _req('db/database.js');
 
 test('Kaufpreis und Zustand landen im Konto des Besitzers', { concurrency: 1 }, async (t) => {
-  try { await db.initSchema(); }
-  catch (e) {
-    if (process.env.REQUIRE_DB === '1')
-      throw new Error(`REQUIRE_DB=1, aber die Test-DB ist nicht erreichbar: ${e.message}`);
-    t.skip('Test-DB nicht erreichbar'); return;
-  }
-  const mc = await db.pool.connect();
-  try { await _req('db/migrate.js').runMigrations(mc); } finally { mc.release(); }
+  if (!await dbOderSkip(t, _req)) return;
 
   const HAUPT = `besitz-haupt-${process.pid}`, SUB = `besitz-sub-${process.pid}`;
   const SET = `60445-1`;

@@ -76,6 +76,7 @@ Module.prototype.require = function (name) {
 };
 
 const _req = require('./helpers/sources').buildAndRequire();
+const { dbOderSkip } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
 const { ohneKommentare } = require('./helpers/sources');
 const { haeltSet } = require('./helpers/bestand');
@@ -84,14 +85,7 @@ const db = _req('db/database.js');
 test('ein neu angelegtes Set wird in beiden Routen gleich beantwortet',
   { concurrency: 1 }, async (t) => {
 
-  try { await db.initSchema(); }
-  catch (e) {
-    if (process.env.REQUIRE_DB === '1')
-      throw new Error(`REQUIRE_DB=1, aber die Test-DB ist nicht erreichbar: ${e.message}`);
-    t.skip('Test-DB nicht erreichbar'); return;
-  }
-  const mc = await db.pool.connect();
-  try { await _req('db/migrate.js').runMigrations(mc); } finally { mc.release(); }
+  if (!await dbOderSkip(t, _req)) return;
 
   const NUTZER = `neu-form-${process.pid}`;
   const basis = 96000 + (process.pid % 900);

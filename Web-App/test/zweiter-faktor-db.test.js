@@ -31,6 +31,7 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 process.env.SESSION_SECRET = 'test-secret-lang-genug-fuer-die-pruefung';
 
 const _req = require('./helpers/sources').buildAndRequire();
+const { dbOderSkip } = require('./helpers/db');
 const AUTH = require('./helpers/sources').einhaengung('auth');
 const db = _req('db/database.js');
 const zf = _req('src/konto/zweiterFaktor.js');
@@ -63,14 +64,7 @@ test('passenderSchritt: ein Schritt Spielraum, nicht mehr', () => {
 });
 
 test('Anmeldung mit zweitem Faktor — durchgespielt', { concurrency: 1 }, async (t) => {
-  try { await db.initSchema(); }
-  catch (e) {
-    if (process.env.REQUIRE_DB === '1')
-      throw new Error(`REQUIRE_DB=1, aber die Test-DB ist nicht erreichbar: ${e.message}`);
-    t.skip('Test-DB nicht erreichbar'); return;
-  }
-  const client = await db.pool.connect();
-  try { await _req('db/migrate.js').runMigrations(client); } finally { client.release(); }
+  if (!await dbOderSkip(t, _req)) return;
 
   const NAME = `zf_${process.pid}`, PASS = 'richtigesPasswort1';
   const SPERRE = `zf_sperre_${process.pid}`, BREMSE = `zf_bremse_${process.pid}`, VERWALTER = `zf_verw_${process.pid}`;

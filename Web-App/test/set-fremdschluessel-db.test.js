@@ -19,6 +19,7 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 
 const ROOT = path.join(__dirname, '..');
 const _req = require('./helpers/sources').buildAndRequire();
+const { dbOderSkip } = require('./helpers/db');
 const db = _req('db/database.js');
 const { haeltSet, haeltTeil, haeltFigur } = require('./helpers/bestand');
 
@@ -29,14 +30,7 @@ const SCHLUESSEL = [['parts', 'parts_set_fk'], ['minifigs', 'minifigs_set_fk'],
   ['csv_import_jobs', 'csv_import_jobs_status_check']];
 
 test('Set-Inhalte und Wertemengen', { concurrency: 1 }, async (t) => {
-  try { await db.initSchema(); }
-  catch (e) {
-    if (process.env.REQUIRE_DB === '1')
-      throw new Error(`REQUIRE_DB=1, aber die Test-DB ist nicht erreichbar: ${e.message}`);
-    t.skip('Test-DB nicht erreichbar'); return;
-  }
-  const mc = await db.pool.connect();
-  try { await _req('db/migrate.js').runMigrations(mc); } finally { mc.release(); }
+  if (!await dbOderSkip(t, _req)) return;
 
   const NAME = `fk-${process.pid}`, ANDERER = `fk-b-${process.pid}`;
   const SN = `77${process.pid % 1000}-1`;

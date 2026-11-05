@@ -59,18 +59,14 @@ Module.prototype.require = function (name) {
 };
 
 const _req = require('./helpers/sources').buildAndRequire();
+const { dbOderSkip } = require('./helpers/db');
 const { leereWarteschlange } = require('./helpers/bildwarteschlange');
 const { testServer } = require('./helpers/server');
 const db = _req('db/database.js');
 const express = require(path.join(ROOT, 'node_modules', 'express'));
 
 test('die Anfrage notiert, der Job legt ab', { concurrency: 1 }, async (t) => {
-  try { await db.initSchema(); }
-  catch (e) {
-    if (process.env.REQUIRE_DB === '1')
-      throw new Error(`REQUIRE_DB=1, aber die Test-DB ist nicht erreichbar: ${e.message}`);
-    t.skip('Test-DB nicht erreichbar'); return;
-  }
+  if (!await dbOderSkip(t, _req, { migrieren: false })) return;
   // Die Warteschlange gehoert VOR dem Benutzen geleert, nicht nur das eigene
   // Praefix — sonst nimmt der Stapel die Zeilen eines Vorgaengers. Begruendung
   // und Nachstellung in helpers/bildwarteschlange.js.

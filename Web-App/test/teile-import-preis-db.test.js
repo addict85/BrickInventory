@@ -33,15 +33,11 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 
 const express = require('express');
 const _req = require('./helpers/sources').buildAndRequire();
+const { dbOderSkip } = require('./helpers/db');
 const db = _req('db/database.js');
 
 test('Import ohne Preis hinterlässt dasselbe wie Erfassen ohne Preis', { concurrency: 1 }, async (t) => {
-  try { await db.initSchema(); }
-  catch (e) {
-    if (process.env.REQUIRE_DB === '1')
-      throw new Error(`REQUIRE_DB=1, aber die Test-DB ist nicht erreichbar: ${e.message}`);
-    t.skip('Test-DB nicht erreichbar'); return;
-  }
+  if (!await dbOderSkip(t, _req, { migrieren: false })) return;
 
   const name = `imp_${process.pid}`;
   const IMPORTIERT = `imp${String(process.pid).slice(-5)}`;

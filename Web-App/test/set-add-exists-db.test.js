@@ -52,6 +52,7 @@ Module.prototype.require = function (name) {
 };
 
 const _req = require('./helpers/sources').buildAndRequire();
+const { dbOderSkip } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
 const { haeltSet } = require('./helpers/bestand');
 const db = _req('db/database.js');
@@ -60,14 +61,7 @@ const express = require(path.join(ROOT, 'node_modules', 'express'));
 test('vorhandenes Set: Erfassen meldet exists und schreibt nichts',
   { concurrency: 1 }, async (t) => {
 
-  try { await db.initSchema(); }
-  catch (e) {
-    if (process.env.REQUIRE_DB === '1')
-      throw new Error(`REQUIRE_DB=1, aber die Test-DB ist nicht erreichbar: ${e.message}`);
-    t.skip('Test-DB nicht erreichbar'); return;
-  }
-  const mc = await db.pool.connect();
-  try { await _req('db/migrate.js').runMigrations(mc); } finally { mc.release(); }
+  if (!await dbOderSkip(t, _req)) return;
 
   const HAUPT = `ex-haupt-${process.pid}`, SUB = `ex-sub-${process.pid}`;
   // Endung bewusst „-1": sanitizeSetNumber() hängt an eine Nummer OHNE Suffix

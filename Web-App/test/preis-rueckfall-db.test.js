@@ -30,6 +30,7 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 
 const ROOT = path.join(__dirname, '..');
 const _req = require('./helpers/sources').buildAndRequire();
+const { dbOderSkip } = require('./helpers/db');
 const db = _req('db/database.js');
 const { haeltSet } = require('./helpers/bestand');
 
@@ -61,14 +62,7 @@ async function konto(name, set) {
 }
 
 test('gebrauchtes Set ohne Gebraucht-Preis: Neu-Preis wird geholt', { concurrency: 1 }, async (t) => {
-  try { await db.initSchema(); }
-  catch (e) {
-    if (process.env.REQUIRE_DB === '1')
-      throw new Error(`REQUIRE_DB=1, aber die Test-DB ist nicht erreichbar: ${e.message}`);
-    t.skip('Test-DB nicht erreichbar'); return;
-  }
-  const client = await db.pool.connect();
-  try { await _req('db/migrate.js').runMigrations(client); } finally { client.release(); }
+  if (!await dbOderSkip(t, _req)) return;
 
   const NAME = `rueckfall_${process.pid}`, SET = `9${process.pid % 10000}-1`;
   const aufraeumen = async () => {

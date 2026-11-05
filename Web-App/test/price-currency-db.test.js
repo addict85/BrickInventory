@@ -36,6 +36,7 @@ const ROOT = path.join(__dirname, '..');
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
 const _req = require('./helpers/sources').buildAndRequire();
+const { dbOderSkip } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
 const { haeltSet } = require('./helpers/bestand');
 const db = _req('db/database.js');
@@ -44,12 +45,7 @@ const express = require(path.join(ROOT, 'node_modules', 'express'));
 test('der currency-Parameter der App übersteuert die Nutzereinstellung NICHT',
   { concurrency: 1 }, async (t) => {
 
-  try { await db.initSchema(); }
-  catch (e) {
-    if (process.env.REQUIRE_DB === '1')
-      throw new Error(`REQUIRE_DB=1, aber die Test-DB ist nicht erreichbar: ${e.message}`);
-    t.skip('Test-DB nicht erreichbar'); return;
-  }
+  if (!await dbOderSkip(t, _req, { migrieren: false })) return;
 
   const USERNAME = 'currency-param-test';
   const SET = '10307-1';

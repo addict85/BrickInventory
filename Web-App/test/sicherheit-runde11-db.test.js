@@ -34,6 +34,7 @@ const URL_DB = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhos
 process.env.DATABASE_URL = URL_DB;
 const ROOT = path.join(__dirname, '..');
 const _req = require('./helpers/sources').buildAndRequire();
+const { dbOderSkip } = require('./helpers/db');
 const db = _req('db/database.js');
 const bcrypt = require(path.join(ROOT, 'node_modules', 'bcryptjs'));
 const warte = (ms) => new Promise(r => setTimeout(r, ms));
@@ -61,14 +62,7 @@ function roh(port, text) {
 }
 
 test('zehnte Sicherheitsprüfung am echten Server', { concurrency: 1, timeout: 240_000 }, async (t) => {
-  try { await db.initSchema(); }
-  catch (e) {
-    if (process.env.REQUIRE_DB === '1')
-      throw new Error(`REQUIRE_DB=1, aber die Test-DB ist nicht erreichbar: ${e.message}`);
-    t.skip('Test-DB nicht erreichbar'); return;
-  }
-  const c = await db.pool.connect();
-  try { await _req('db/migrate.js').runMigrations(c); } finally { c.release(); }
+  if (!await dbOderSkip(t, _req)) return;
   const PASS = 'Runde-Elf-Passwort-7x', NAME = `r11_${process.pid}`;
   const namen = [`${NAME}_a`, `${NAME}_b`, `${NAME}_v`];
   await db.run('DELETE FROM users WHERE username = ANY($1)', [namen]);

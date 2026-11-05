@@ -32,6 +32,7 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 process.env.SESSION_SECRET = 'test-secret-lang-genug-fuer-die-pruefung';
 
 const _req = require('./helpers/sources').buildAndRequire();
+const { dbOderSkip } = require('./helpers/db');
 const AUTH = require('./helpers/sources').einhaengung('auth');
 const db = _req('db/database.js');
 const express   = require(path.join(ROOT, 'node_modules', 'express'));
@@ -42,14 +43,7 @@ const bcrypt    = require(path.join(ROOT, 'node_modules', 'bcryptjs'));
 const NAME = 'eine_anmeldung', PASS = 'richtigesPasswort1';
 
 test('eine Adresse, zwei Ausweise — durchgespielt', { concurrency: 1 }, async (t) => {
-  try { await db.initSchema(); }
-  catch (e) {
-    if (process.env.REQUIRE_DB === '1')
-      throw new Error(`REQUIRE_DB=1, aber die Test-DB ist nicht erreichbar: ${e.message}`);
-    t.skip('Test-DB nicht erreichbar'); return;
-  }
-  const client = await db.pool.connect();
-  try { await _req('db/migrate.js').runMigrations(client); } finally { client.release(); }
+  if (!await dbOderSkip(t, _req)) return;
 
   await db.run('DELETE FROM users WHERE username = $1', [NAME]);
   // Wenige Runden: Hier wird die VERDRAHTUNG geprüft, nicht die Laufzeit —

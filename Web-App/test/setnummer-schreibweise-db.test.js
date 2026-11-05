@@ -42,6 +42,7 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 
 const ROOT = path.join(__dirname, '..');
 const _req = require('./helpers/sources').buildAndRequire();
+const { dbOderSkip } = require('./helpers/db');
 const db = _req('db/database.js');
 
 // BrickLink vorgeben, BEVOR die Preiswege getPriceGuide herausziehen. Der
@@ -67,12 +68,7 @@ test('die Schreibweise einer Set-Nummer ist eine Regel', () => {
 });
 
 test('der Katalog antwortet gleich, egal wie die Nummer geschrieben ist', { concurrency: 1 }, async (t) => {
-  try { await db.initSchema(); }
-  catch (e) {
-    if (process.env.REQUIRE_DB === '1')
-      throw new Error(`REQUIRE_DB=1, aber die Test-DB ist nicht erreichbar: ${e.message}`);
-    t.skip('Test-DB nicht erreichbar'); return;
-  }
+  if (!await dbOderSkip(t, _req, { migrieren: false })) return;
 
   const BLANK = `g${process.pid}`;        // so fragt der Aufrufer
   const MITV  = `${BLANK}-1`;             // so legt clients/bricklink.ts es ab

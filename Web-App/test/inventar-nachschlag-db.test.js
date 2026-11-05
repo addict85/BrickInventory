@@ -40,16 +40,12 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 
 const ROOT = path.join(__dirname, '..');
 const _req = require('./helpers/sources').buildAndRequire();
+const { dbOderSkip } = require('./helpers/db');
 const db = _req('db/database.js');
 const { neuestesInventar } = _req('src/katalog/rbInventar.js');
 
 test('ein Inventar wird unter beiden Schreibweisen gefunden', { concurrency: 1 }, async (t) => {
-  try { await db.initSchema(); }
-  catch (e) {
-    if (process.env.REQUIRE_DB === '1')
-      throw new Error(`REQUIRE_DB=1, aber die Test-DB ist nicht erreichbar: ${e.message}`);
-    t.skip('Test-DB nicht erreichbar'); return;
-  }
+  if (!await dbOderSkip(t, _req, { migrieren: false })) return;
 
   // rb_inventories.id ist kein SERIAL — die Nummern kommen aus der CSV.
   const idBlank = 900000 + (process.pid % 10000) * 2;

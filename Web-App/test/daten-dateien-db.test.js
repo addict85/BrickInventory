@@ -31,20 +31,14 @@ process.env.APP_ROOT = WURZEL;
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
 const _req = require('./helpers/sources').buildAndRequire();
+const { dbOderSkip } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
 const db = _req('db/database.js');
 
 const NAMEN = ['dd_haupt', 'dd_unter', 'dd_fremd'].map(n => `${n}_${process.pid}`);
 
 test('Uploads: Haushalt ja, Fremde nein, %2F nie', { concurrency: 1 }, async (t) => {
-  try { await db.initSchema(); }
-  catch (e) {
-    if (process.env.REQUIRE_DB === '1')
-      throw new Error(`REQUIRE_DB=1, aber die Test-DB ist nicht erreichbar: ${e.message}`);
-    t.skip('Test-DB nicht erreichbar'); return;
-  }
-  const client = await db.pool.connect();
-  try { await _req('db/migrate.js').runMigrations(client); } finally { client.release(); }
+  if (!await dbOderSkip(t, _req)) return;
 
   await db.run('DELETE FROM users WHERE username = ANY($1)', [NAMEN]);
   const ids = [];

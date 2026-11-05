@@ -29,6 +29,7 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 process.env.SESSION_SECRET = 'test-secret-lang-genug-fuer-die-pruefung';
 
 const _req = require('./helpers/sources').buildAndRequire();
+const { dbOderSkip } = require('./helpers/db');
 // Die Adresse aus server.ts LESEN, nicht abschreiben: Ein eigener Pruefstand
 // mit fester Adresse bleibt gruen, waehrend der Router laengst woanders haengt.
 const AUTH = require('./helpers/sources').einhaengung('auth');
@@ -41,14 +42,7 @@ const bcrypt      = require(path.join(ROOT, 'node_modules', 'bcryptjs'));
 test('ein Passwortwechsel beendet Sitzungen UND Token — gegen echten Store',
   { concurrency: 1 }, async (t) => {
 
-  try { await db.initSchema(); }
-  catch (e) {
-    if (process.env.REQUIRE_DB === '1')
-      throw new Error(`REQUIRE_DB=1, aber die Test-DB ist nicht erreichbar: ${e.message}`);
-    t.skip('Test-DB nicht erreichbar'); return;
-  }
-  const client = await db.pool.connect();
-  try { await _req('db/migrate.js').runMigrations(client); } finally { client.release(); }
+  if (!await dbOderSkip(t, _req)) return;
 
   // ── Aufbau: ein Administrator, ein Opfer ────────────────────────────────
   for (const name of ['pw_chef', 'pw_opfer']) {

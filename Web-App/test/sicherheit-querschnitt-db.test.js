@@ -34,6 +34,7 @@ process.env.DATABASE_URL = URL_DB;
 process.env.APP_BASE_URL = 'http://localhost';
 const ROOT = path.join(__dirname, '..');
 const _req = require('./helpers/sources').buildAndRequire();
+const { dbOderSkip } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
 const { mailAttrappe, mailserverEintragen } = require('./helpers/mail-attrappe');
 const gesendet = mailAttrappe();
@@ -43,14 +44,7 @@ const warte = (ms) => new Promise(r => setTimeout(r, ms));
 const freierPort = () => new Promise(r => { const s = net.createServer().listen(0, () => { const p = s.address().port; s.close(() => r(p)); }); });
 
 test('Sicherheit im Querschnitt', { concurrency: 1, timeout: 180_000 }, async (t) => {
-  try { await db.initSchema(); }
-  catch (e) {
-    if (process.env.REQUIRE_DB === '1')
-      throw new Error(`REQUIRE_DB=1, aber die Test-DB ist nicht erreichbar: ${e.message}`);
-    t.skip('Test-DB nicht erreichbar'); return;
-  }
-  const c = await db.pool.connect();
-  try { await _req('db/migrate.js').runMigrations(c); } finally { c.release(); }
+  if (!await dbOderSkip(t, _req)) return;
   const NAME = `quer_${process.pid}`, PASS = 'Quer-Passwort-1', MAIL = `quer_${process.pid}@example.org`;
   const NEU = `quer_neu_${process.pid}`;
   await db.run('DELETE FROM users WHERE username = ANY($1)', [[NAME, NEU]]);

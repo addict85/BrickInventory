@@ -32,6 +32,7 @@ const gesendet = [];
 nodemailer.createTransport = () => ({ sendMail: async (m) => { gesendet.push(m); return { messageId: 'x' }; } });
 
 const _req = require('./helpers/sources').buildAndRequire();
+const { dbOderSkip } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
 const db = _req('db/database.js');
 const mailer = _req('src/mail/mailer.js');
@@ -40,14 +41,7 @@ const P = process.pid;
 const BOESE = 'Gewinn-abholen.example';
 
 test('Mails ohne fremden Text', { concurrency: 1 }, async (t) => {
-  try { await db.initSchema(); }
-  catch (e) {
-    if (process.env.REQUIRE_DB === '1')
-      throw new Error(`REQUIRE_DB=1, aber die Test-DB ist nicht erreichbar: ${e.message}`);
-    t.skip('Test-DB nicht erreichbar'); return;
-  }
-  const c = await db.pool.connect();
-  try { await _req('db/migrate.js').runMigrations(c); } finally { c.release(); }
+  if (!await dbOderSkip(t, _req)) return;
 
   const SCHLUESSEL = ['registration_enabled', 'smtp_host', 'smtp_user'];
   const vorher = await db.all('SELECT key, value FROM global_settings WHERE key = ANY($1)', [SCHLUESSEL]);

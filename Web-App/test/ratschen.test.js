@@ -141,6 +141,18 @@ test('any wird weniger, nie mehr', () => {
   }
 });
 
+test('eigene REQUIRE_DB-Blöcke in Tests werden weniger, nie mehr', () => {
+  // Die Form steht in test/helpers/db.js (dbOderSkip); was davon abweicht,
+  // prüft die Erreichbarkeit anders (Rollen, zweite Datenbank, Server).
+  // Gemessen 117 Dateien am 05.11.2026 (vorher 296).
+  // Gegenprobe (05.11.2026): den Block zurück in acquisition-all-paths-db → rot.
+  const SCHRANKE = 117;
+  const ist = fs.readdirSync(__dirname).filter(n => n.endsWith('.js') && n !== path.basename(__filename))
+    .filter(n => fs.readFileSync(path.join(__dirname, n), 'utf8').includes('REQUIRE_DB=1, aber')).length;
+  assert.ok(ist <= SCHRANKE, `${ist} Testdateien mit eigener REQUIRE_DB-Prüfung, erlaubt sind ${SCHRANKE}`);
+  if (ist < SCHRANKE) console.log(`  ℹ eigene REQUIRE_DB-Prüfungen: ${ist} (Schranke ${SCHRANKE}) — Schranke nachziehen`);
+});
+
 test('Datenbankzeilen sind ohne Typargument unknown', () => {
   // Ohne Angabe war eine Zeile `any`, und die Typprüfung endete an der
   // Datenbank — dort, wo numeric und bigint als Zeichenkette ankommen.

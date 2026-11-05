@@ -29,6 +29,7 @@ const URL_DB = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhos
 process.env.DATABASE_URL = URL_DB;
 const ROOT = path.join(__dirname, '..');
 const _req = require('./helpers/sources').buildAndRequire();
+const { dbOderSkip } = require('./helpers/db');
 const db = _req('db/database.js');
 const warte = (ms) => new Promise(r => setTimeout(r, ms));
 const freierPort = () => new Promise(r => { const s = net.createServer().listen(0, () => { const p = s.address().port; s.close(() => r(p)); }); });
@@ -44,14 +45,7 @@ const DATEIEN = [
 ].map(([o, n]) => path.join(DATEN, o, n));
 
 test('Bilder und Anleitungen im Blickfeld', { concurrency: 1, timeout: 180_000 }, async (t) => {
-  try { await db.initSchema(); }
-  catch (e) {
-    if (process.env.REQUIRE_DB === '1')
-      throw new Error(`REQUIRE_DB=1, aber die Test-DB ist nicht erreichbar: ${e.message}`);
-    t.skip('Test-DB nicht erreichbar'); return;
-  }
-  const c = await db.pool.connect();
-  try { await _req('db/migrate.js').runMigrations(c); } finally { c.release(); }
+  if (!await dbOderSkip(t, _req)) return;
 
   const namen = ['bb_haupt', 'bb_unter', 'bb_fremd'].map(n => `${n}_${P}`);
   await db.run('DELETE FROM users WHERE username = ANY($1)', [namen]);
