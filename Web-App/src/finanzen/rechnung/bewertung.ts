@@ -21,6 +21,7 @@ import { ladeSetErfassungen } from '../repository/erfassungen';
 import { KEINE_FARBE } from '../../infra/validate';
 import { aufRappen, inZehntel4 } from '../../infra/geld';
 import { stelleAuftragEin } from '../../auftraege/dienst';
+import { fehlerText } from '../../infra/fehlerTexte';
 import type { Nutzlast } from '../../auftraege/nutzlasten';
 
 type Zustand = 'N' | 'U';
@@ -61,7 +62,7 @@ async function merkePreiseVor(viewerId: number, waehrung: string, posten: Posten
 type BewertungsSet = Awaited<ReturnType<typeof repo.setsZurBewertung>>[number];
 type SetErfassung = Awaited<ReturnType<typeof ladeSetErfassungen>>[number];
 /** Was jede Zeile braucht: Einstellungen des Betrachters und die vorgeladenen Tabellen. */
-type Bewertungslage = { ttl: number; pre: Parameters<typeof setPreisAusVorrat>[3]; fehlt: Posten[]; ohneZugang: boolean };
+type Bewertungslage = { ttl: number; pre: Parameters<typeof setPreisAusVorrat>[3]; fehlt: Posten[]; ohneZugang: string | null };
 
 /** Eine Zeile der Bewertung: Je Kaufpreis der Preis SEINES Zustands, verdichtet
  * in valueSet(), damit die Bewertungsregel an EINER Stelle bleibt. */
@@ -109,7 +110,7 @@ function bewerteSet(set: BewertungsSet, acqs: SetErfassung[], l: Bewertungslage)
     no_price: (!!einPreis || ausstehend) && valued.unit_price == null,
     bl_unbekannt: needed.some(c => preise.get(c)?.bl_unbekannt === true),
     preis_ausstehend: ausstehend,
-    ...(ausstehend && l.ohneZugang && valued.unit_price == null ? { error: 'Kein BrickLink-Zugang eingerichtet' } : {}),
+    ...(ausstehend && l.ohneZugang && valued.unit_price == null ? { error: l.ohneZugang } : {}),
   };
 }
 
@@ -151,7 +152,8 @@ export async function computeSetsValuation(viewerId: number, idsWahl: Sicht | Bl
     ladeSetErfassungen(uids, currency),
   ]);
   // Ohne BrickLink-Zugang kann der Auftrag nichts holen: Das steht dann an der Zeile.
-  const ohneZugang = !(await getGlobalSetting('bricklink_consumer_key'));
+  const ohneZugang = await getGlobalSetting('bricklink_consumer_key') ? null
+    : fehlerText('kein_bricklink_zugang', await getSetting(viewerId, 'language', 'de') === 'en' ? 'en' : 'de');
   const lage: Bewertungslage = { ttl, fehlt: [], ohneZugang, pre: {
     catalog: new Map(catRows.map(r => [r.set_number, r])),
     cache:   new Map(cacheRows.map(r => [`${r.set_number}|${r.condition}`, r])),

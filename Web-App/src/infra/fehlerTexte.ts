@@ -186,6 +186,7 @@ export const FEHLER = {
   erfassung_felder:            { de: 'quantity, purchase_price oder condition erforderlich',
                                  en: 'quantity, purchase_price or condition is required' },
   kein_bricklink_preis:        { de: 'kein BrickLink-Preis gefunden', en: 'no BrickLink price found' },
+  kein_bricklink_zugang:       { de: 'Kein BrickLink-Zugang eingerichtet', en: 'No BrickLink access configured' },
 
   // ── Dateien, Import, Export ──────────────────────────────────────────────
   keine_datei:                 { de: 'Keine Datei', en: 'No file' },
