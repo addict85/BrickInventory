@@ -16,8 +16,9 @@ android {
 
 dependencies {
     api(project(":core-model"))
-    api(project(":core-data"))
-    api(project(":core-ui"))
+    // Innen: Die Bereiche nennen core-data und core-ui selbst.
+    implementation(project(":core-data"))
+    implementation(project(":core-ui"))
     implementation(project(":core-ressourcen"))
     implementation(libs.androidx.core.ktx)
     api(libs.androidx.lifecycle.runtime.ktx)

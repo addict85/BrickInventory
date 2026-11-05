@@ -30,17 +30,18 @@ dependencies {
     implementation(project(":core-ressourcen"))
     implementation(libs.androidx.core.ktx)
     api(libs.kotlinx.coroutines.android)
-    // In der öffentlichen Schnittstelle: Repositories und Dienste reichen
-    // OkHttpClient, ImageLoader und Retrofit-Antworten nach oben.
-    api(libs.retrofit)
+    // Nach aussen gehen nur OkHttpClient (benannte Clients, Vertrauen) und
+    // ImageLoader; okhttp selbst kommt über okhttp-sse, einen eigenen
+    // Katalogeintrag gibt es nicht. Retrofit, DataStore und WorkManager bleiben
+    // innen: Wer sie selbst braucht (app, core-testing), nennt sie selbst.
+    implementation(libs.retrofit)
     implementation(libs.retrofit.kotlinx.serialization)
-    api(libs.okhttp.logging)
+    implementation(libs.okhttp.logging)
     api(libs.okhttp.sse)
     api(libs.coil.core)
     implementation(libs.coil.network.okhttp)
-    // PreferencesManager nennt seine Schlüssel als Preferences.Key nach aussen.
-    api(libs.androidx.datastore)
-    api(libs.androidx.work)
+    implementation(libs.androidx.datastore)
+    implementation(libs.androidx.work)
     implementation(libs.androidx.appcompat)
     implementation(libs.androidx.room.runtime)
     implementation(libs.androidx.room.ktx)

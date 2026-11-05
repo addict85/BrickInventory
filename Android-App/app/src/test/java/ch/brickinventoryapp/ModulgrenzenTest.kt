@@ -73,7 +73,7 @@ class ModulgrenzenTest {
             "core-data" to setOf("core-model", "core-ressourcen"),
             "core-ui" to setOf("core-model", "core-ressourcen"),
             "core-zustand" to setOf("core-model", "core-ressourcen", "core-data", "core-ui"),
-            "core-testing" to setOf("core-zustand"),
+            "core-testing" to setOf("core-zustand", "core-data", "core-ui"),
         )
         val kerne = module().filterKeys { it.startsWith("core-") }
         assertEquals("jedes Kernmodul hat eine Regel", erlaubt.keys, kerne.keys)
