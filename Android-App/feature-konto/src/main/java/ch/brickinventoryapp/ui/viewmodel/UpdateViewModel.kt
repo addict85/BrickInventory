@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.ui.viewmodel
 
+import ch.brickinventoryapp.util.fangeAusserAbbruch
 import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -91,7 +92,7 @@ class UpdateViewModel @Inject constructor(
     override fun pruefeAufUpdate(still: Boolean) {
         viewModelScope.launch {
             _state.update { it.copy(laedtPruefung = !still, fehler = null) }
-            try {
+            fangeAusserAbbruch {
                 val roh = withContext(io) {
                     updateHttpClient.newCall(Request.Builder().url(UPDATE_VERSION_URL).build())
                         .execute().use { antwort ->
@@ -125,7 +126,7 @@ class UpdateViewModel @Inject constructor(
                     it.copy(laedtPruefung = false, geprueft = true,
                         neuereFassung = anzubietendeFassung(beschreibung, frische, fassung.code), fehler = null, frische = frische)
                 }
-            } catch (e: Exception) {
+            }.onFailure { _ ->
                 _state.update {
                     it.copy(laedtPruefung = false, geprueft = true,
                         fehler = if (still) null else texte.text(R.string.update_pruefung_fehlgeschlagen))
@@ -161,7 +162,7 @@ class UpdateViewModel @Inject constructor(
             }
             _state.update { it.copy(fortschritt = 0, fehler = null, bereitZurInstallation = false) }
             val ziel = updateDatei(ctx)
-            try {
+            fangeAusserAbbruch {
                 withContext(io) {
                     updateHttpClient.newCall(Request.Builder().url(fassung.apkUrl).build())
                         .execute().use { antwort ->
@@ -254,7 +255,7 @@ class UpdateViewModel @Inject constructor(
                     it.copy(fortschritt = null, bereitZurInstallation = true, erlaubnisFehlt = false)
                 }
                 starteInstallation()
-            } catch (e: Exception) {
+            }.onFailure { _ ->
                 ziel.delete()
                 _state.update {
                     it.copy(fortschritt = null, fehler = texte.text(R.string.update_laden_fehlgeschlagen))

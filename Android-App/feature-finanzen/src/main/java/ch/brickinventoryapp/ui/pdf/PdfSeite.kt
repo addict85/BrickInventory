@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.ui.pdf
 
+import ch.brickinventoryapp.util.fangeAusserAbbruch
 import android.graphics.Bitmap
 import android.graphics.Color as AndroidColor
 import android.graphics.pdf.PdfRenderer
@@ -49,10 +50,11 @@ internal suspend fun renderPdfPage(quelle: PdfQuelle, index: Int, targetWidthPx:
         var pfd: ParcelFileDescriptor? = null
         var renderer: PdfRenderer? = null
         try {
-            pfd = quelle.oeffne()
-            renderer = PdfRenderer(pfd)
-            if (index >= renderer.pageCount) return@withLock null
-            val page = renderer.openPage(index)
+            fangeAusserAbbruch {
+            val geoeffnet = quelle.oeffne().also { pfd = it }
+            val leser = PdfRenderer(geoeffnet).also { renderer = it }
+            if (index >= leser.pageCount) return@withLock null
+            val page = leser.openPage(index)
             val ratio = page.height.toFloat() / page.width.toFloat().coerceAtLeast(1f)
             val (w, h) = bitmapMasse(targetWidthPx, ratio)
             // KTX-Form; ARGB_8888 ist dort die Vorbelegung (gelesen in
@@ -62,8 +64,7 @@ internal suspend fun renderPdfPage(quelle: PdfQuelle, index: Int, targetWidthPx:
             page.render(bmp, null, null, PdfRenderer.Page.RENDER_MODE_FOR_DISPLAY)
             page.close()
             bmp
-        } catch (e: Exception) {
-            null
+            }.getOrNull()
         } finally {
             renderer?.close()
             pfd?.close()

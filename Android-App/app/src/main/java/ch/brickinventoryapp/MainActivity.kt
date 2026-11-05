@@ -1,5 +1,6 @@
 package ch.brickinventoryapp
 
+import ch.brickinventoryapp.util.fangeAusserAbbruch
 import android.os.Bundle
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
@@ -81,7 +82,7 @@ class MainActivity : NurLauncherStart() {
     override fun onStart() {
         super.onStart()
         lifecycleScope.launch {
-            runCatching { ch.brickinventoryapp.alarm.PreisalarmWorker.durchgang(applicationContext) }
+            fangeAusserAbbruch { ch.brickinventoryapp.alarm.PreisalarmWorker.durchgang(applicationContext) }
                 .onFailure { ch.brickinventoryapp.util.Protokoll.warnung("Preisalarm", "Abruf beim Oeffnen fehlgeschlagen", it) }
         }
     }

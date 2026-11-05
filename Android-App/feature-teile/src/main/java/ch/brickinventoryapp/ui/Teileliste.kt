@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.ui
 
+import ch.brickinventoryapp.util.fangeAusserAbbruch
 import ch.brickinventoryapp.data.model.BestandTeil
 import ch.brickinventoryapp.data.repository.Result
 import ch.brickinventoryapp.data.repository.SetsRepository
@@ -31,7 +32,7 @@ internal class Teileliste @Inject constructor(
 ) : TeilelistenQuelle {
     /** Name und Zeilen eines Sets; gleiche Teile (Rebrickable-Nummer + Farbe) zusammengefasst. */
     override suspend fun loeseSetAuf(setNumber: String, serverUrl: String): Pair<String, List<PlPart>> {
-        return try {
+        return fangeAusserAbbruch {
             // Die CSV-Endpunkte hängen nicht am Konto und gehen für jedes Set.
             val partsResult = sets.getSetPartsList(setNumber)
             val figsResult  = sets.getSetMinifigsList(setNumber)
@@ -108,7 +109,7 @@ internal class Teileliste @Inject constructor(
                 }
             }
             Pair(setName, deduped.values.toList())
-        } catch (e: Exception) { Pair(setNumber, listOf()) }
+        }.getOrElse { Pair(setNumber, listOf()) }
     }
 
     /**

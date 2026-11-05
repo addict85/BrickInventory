@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.widget
 
+import ch.brickinventoryapp.util.fangeAusserAbbruch
 import android.content.Context
 import android.util.Base64
 import androidx.core.content.edit
@@ -104,7 +105,7 @@ class WidgetArbeiter(context: Context, params: WorkerParameters) : CoroutineWork
     }
 
     override suspend fun doWork(): androidx.work.ListenableWorker.Result =
-        runCatching { aktualisiere(applicationContext) }.fold(
+        fangeAusserAbbruch { aktualisiere(applicationContext) }.fold(
             { androidx.work.ListenableWorker.Result.success() },
             { androidx.work.ListenableWorker.Result.retry() },
         )

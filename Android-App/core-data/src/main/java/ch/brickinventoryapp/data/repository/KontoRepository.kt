@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.data.repository
 
+import ch.brickinventoryapp.util.fangeAusserAbbruch
 import ch.brickinventoryapp.data.api.KontoApi
 import ch.brickinventoryapp.data.cache.ResponseCache
 import ch.brickinventoryapp.data.model.*
@@ -138,14 +139,12 @@ class KontoRepository @Inject constructor(
         entwertenAmServer(grenzeMs) == ch.brickinventoryapp.data.Entwertungsergebnis.ENTWERTET
 
     /** Wie [abmeldenAmServer], aber mit dem Grund: Nur SPAETER lohnt eine Wiederholung. */
-    suspend fun entwertenAmServer(grenzeMs: Long = 3_000): ch.brickinventoryapp.data.Entwertungsergebnis = try {
+    suspend fun entwertenAmServer(grenzeMs: Long = 3_000): ch.brickinventoryapp.data.Entwertungsergebnis = fangeAusserAbbruch {
         kotlinx.coroutines.withTimeoutOrNull(grenzeMs) { ch.brickinventoryapp.data.einordnenEntwertung(api.logout().code()) }
             ?: ch.brickinventoryapp.data.Entwertungsergebnis.SPAETER.also {
                 ch.brickinventoryapp.util.Protokoll.warnung("Abmelden", "Server antwortete nicht in $grenzeMs ms")
             }
-    } catch (e: kotlinx.coroutines.CancellationException) {
-        throw e
-    } catch (e: Exception) {
+    }.getOrElse { e ->
         ch.brickinventoryapp.util.Protokoll.warnung("Abmelden", "Token am Server nicht entwertet", e)
         ch.brickinventoryapp.data.Entwertungsergebnis.SPAETER
     }

@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.service
 
+import ch.brickinventoryapp.util.fangeAusserAbbruch
 import android.content.Context
 import ch.brickinventoryapp.data.PreferencesManager
 import ch.brickinventoryapp.data.repository.BrickRepository
@@ -85,7 +86,7 @@ class PdfExportManager @Inject constructor(
         pendingBody = null
         _state.value = PdfExportState.Running(s(ch.brickinventoryapp.ressourcen.R.string.pdfexp_starting))
 
-        try {
+        fangeAusserAbbruch {
             // Step 1: Job starten
             val jobId = when (val r = repo.sets.startPdfJob(body)) {
                 is Result.Success -> r.data
@@ -159,7 +160,7 @@ class PdfExportManager @Inject constructor(
                 null -> _state.value =
                     PdfExportState.Error(s(ch.brickinventoryapp.ressourcen.R.string.pdfexp_unknown_error))
             }
-        } catch (e: Exception) {
+        }.onFailure { e ->
             _state.value = PdfExportState.Error(e.message ?: s(ch.brickinventoryapp.ressourcen.R.string.pdfexp_unknown_error))
         }
     }

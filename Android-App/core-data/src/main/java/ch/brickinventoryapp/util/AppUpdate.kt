@@ -201,6 +201,7 @@ fun installiere(ctx: Context, apk: File) {
     val parameter = PackageInstaller.SessionParams(PackageInstaller.SessionParams.MODE_FULL_INSTALL)
         .apply { setAppPackageName(ctx.packageName) }
     val id = installer.createSession(parameter)
+    var uebergeben = false
     try {
         installer.openSession(id).use { sitzung ->
             apk.inputStream().use { ein ->
@@ -216,9 +217,9 @@ fun installiere(ctx: Context, apk: File) {
                     (if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) PendingIntent.FLAG_MUTABLE else 0))
             sitzung.commit(antwort.intentSender)
         }
-    } catch (e: Exception) {
-        runCatching { installer.abandonSession(id) }
-        throw e
+        uebergeben = true
+    } finally {
+        if (!uebergeben) fangeAusserAbbruch { installer.abandonSession(id) }
     }
 }
 

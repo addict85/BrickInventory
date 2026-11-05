@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.service
 
+import ch.brickinventoryapp.util.fangeAusserAbbruch
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.Service
@@ -75,15 +76,14 @@ class CsvImportService : Service() {
     override fun onCreate() {
         super.onCreate()
         createNotificationChannel()
-        try {
+        fangeAusserAbbruch {
             ServiceCompat.startForeground(
                 this, NOTIFICATION_ID,
                 buildNotification(loc.getString(R.string.notif_csv_running), 0, 0),
                 ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC
             )
-        } catch (e: Exception) {
-            // If foreground service cannot be started (e.g. background restriction),
-            // stop self gracefully instead of crashing
+        }.onFailure {
+            // Ohne Vordergrund (etwa wegen einer Hintergrundsperre) still beenden statt abstürzen.
             stopSelf()
         }
     }

@@ -31,7 +31,6 @@ import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.semantics.getOrNull
 import androidx.compose.ui.state.ToggleableState
 import androidx.compose.ui.test.onRoot
-import androidx.navigation.compose.rememberNavController
 import androidx.test.core.app.ApplicationProvider
 import ch.brickinventoryapp.ressourcen.R
 import ch.brickinventoryapp.ui.theme.BrickInventoryManagerTheme

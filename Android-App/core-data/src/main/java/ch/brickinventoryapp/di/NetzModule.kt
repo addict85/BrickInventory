@@ -185,7 +185,7 @@ object NetzModule {
                 val req = chain.request()
                 try {
                     chain.proceed(req)
-                } catch (e: java.io.IOException) {
+                } catch (_: java.io.IOException) {
                     chain.proceed(
                         req.newBuilder()
                             .cacheControl(okhttp3.CacheControl.FORCE_CACHE)

@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.ui.viewmodel
 
+import ch.brickinventoryapp.util.fangeAusserAbbruch
 import android.graphics.Bitmap
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -14,7 +15,6 @@ import ch.brickinventoryapp.di.BrickDispatchers
 import ch.brickinventoryapp.di.Dispatcher
 import ch.brickinventoryapp.util.pdfImBetrachter
 import dagger.hilt.android.lifecycle.HiltViewModel
-import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -53,16 +53,12 @@ class PdfBetrachterViewModel @Inject constructor(
         }
         _state.value = PdfLoadState.Downloading(0, 0, 0)
         viewModelScope.launch {
-            _state.value = try {
-                val (quelle, seiten) = lader.lade(pdfUrl, offen) { _state.value = it }
-                PdfLoadState.Ready(quelle, seiten)
-            } catch (e: CancellationException) {
-                throw e
-            } catch (_: DownloadGescheitert) {
-                PdfLoadState.Error(null, PdfFehler.DOWNLOAD)
-            } catch (e: Exception) {
-                PdfLoadState.Error(e.message)
-            }
+            _state.value = fangeAusserAbbruch { lader.lade(pdfUrl, offen) { _state.value = it } }.fold(
+                onSuccess = { (quelle, seiten) -> PdfLoadState.Ready(quelle, seiten) },
+                onFailure = { e ->
+                    if (e is DownloadGescheitert) PdfLoadState.Error(null, PdfFehler.DOWNLOAD) else PdfLoadState.Error(e.message)
+                },
+            )
         }
     }
 

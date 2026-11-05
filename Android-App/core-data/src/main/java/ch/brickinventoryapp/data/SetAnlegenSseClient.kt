@@ -87,6 +87,10 @@ class SetAnlegenSseClient @Inject constructor(
             .build()
 
         val aufruf = client.newCall(anfrage)
+        fun scheitert(e: Exception) {
+            trySend(SetAnlegenSchritt.Fehler(e.message ?: ""))
+            close()
+        }
         try {
             aufruf.execute().use { antwort ->
                 // `antwort.body` ist seit OkHttp 5 nicht nullbar.
@@ -114,15 +118,21 @@ class SetAnlegenSseClient @Inject constructor(
                 }
                 close()
             }
-        } catch (e: java.net.UnknownHostException) {
+        } catch (_: java.net.UnknownHostException) {
             trySend(SetAnlegenSchritt.KeineVerbindung); close()
-        } catch (e: java.net.ConnectException) {
+        } catch (_: java.net.ConnectException) {
             // Nur diese beiden: Die Anfrage kam nie an, ein zweiter Versuch über den
             // Ausgang kann nichts doppelt anlegen. Ein Abbruch mitten im Strom schon.
             trySend(SetAnlegenSchritt.KeineVerbindung); close()
-        } catch (e: Exception) {
-            trySend(SetAnlegenSchritt.Fehler(e.message ?: ""))
-            close()
+        } catch (e: kotlinx.coroutines.CancellationException) {
+            throw e
+        } catch (e: java.io.IOException) {
+            scheitert(e)
+        } catch (e: IllegalArgumentException) {
+            // Auch eine unlesbare Antwort (SerializationException).
+            scheitert(e)
+        } catch (e: IllegalStateException) {
+            scheitert(e)
         }
         awaitClose { aufruf.cancel() }
     }.flowOn(io)

@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.data.cache
 
+import ch.brickinventoryapp.util.fangeAusserAbbruch
 import android.content.Context
 import dagger.hilt.android.qualifiers.ApplicationContext
 import ch.brickinventoryapp.di.BrickDispatchers
@@ -110,7 +111,7 @@ class ResponseCache(
     }
 
     /** Der Bereich, der gerade gilt; null, wenn nichts abgelegt werden darf. */
-    suspend fun bereich(): String? = runCatching { bereichQuelle() }.getOrNull()?.takeIf { it.isNotBlank() }
+    suspend fun bereich(): String? = fangeAusserAbbruch { bereichQuelle() }.getOrNull()?.takeIf { it.isNotBlank() }
 
     private fun fach(bereich: String) = File(basis, bereichsName(bereich))
 

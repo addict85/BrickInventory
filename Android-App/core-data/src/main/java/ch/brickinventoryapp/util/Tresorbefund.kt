@@ -44,11 +44,9 @@ fun tresorFehlerDauerhaft(e: Throwable): Boolean = when (e) {
 /** Ein Versuch und bei einem vorübergehenden Fehler genau ein zweiter. */
 fun oeffneMitNeuversuch(versuch: () -> String?): Tresorbefund {
     repeat(2) {
-        try {
-            return versuch()?.let { Tresorbefund.Lesbar(it) } ?: Tresorbefund.Weg
-        } catch (e: Exception) {
-            if (tresorFehlerDauerhaft(e)) return Tresorbefund.Weg
-        }
+        fangeAusserAbbruch { versuch() }
+            .onSuccess { return it?.let { Tresorbefund.Lesbar(it) } ?: Tresorbefund.Weg }
+            .onFailure { if (tresorFehlerDauerhaft(it)) return Tresorbefund.Weg }
     }
     return Tresorbefund.Gesperrt
 }
