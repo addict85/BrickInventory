@@ -3,7 +3,12 @@ package ch.brickinventoryapp.data
 import ch.brickinventoryapp.data.model.TokenRotation
 import ch.brickinventoryapp.data.repository.Result
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.transformLatest
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.sync.Mutex
@@ -46,6 +51,29 @@ class TokenSchranke {
         if (anfrageHerkunft == null || anfrageHerkunft != vorher.herkunft || jetzt() != vorher) return@withLock false
         speichere()
         true
+    }
+
+    /**
+     * Spiegelt einen Wert der Platte in den Speicher. Die Schreibungen setzen den
+     * Speicher vor der Platte; ein Wert, der unterwegs schon überholt wurde, darf ihn
+     * nicht zurückdrehen. Darum gilt er nur, wenn die Platte ihn unter der Sperre noch hat.
+     */
+    @OptIn(ExperimentalCoroutinesApi::class)
+    suspend fun <P, R, T> spiegle(
+        strom: Flow<P>,
+        jetzt: suspend () -> P,
+        roh: (P) -> R,
+        lies: suspend (R, suspend (T) -> Unit) -> Unit,
+        setze: (T) -> Unit,
+        gelesen: () -> Unit,
+    ) {
+        var erster = true
+        strom.map(roh).distinctUntilChanged()
+            .transformLatest { r -> lies(r) { emit(r to it) } }
+            .collect { (r, wert) ->
+                sperre.withLock { if (roh(jetzt()) == r) setze(wert) }
+                if (erster) { erster = false; gelesen() }
+            }
     }
 }
 

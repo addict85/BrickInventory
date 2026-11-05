@@ -127,10 +127,12 @@ class PreferencesManager @Inject constructor(
         val UPDATE_AUSGESTELLT = longPreferencesKey("update_ausgestellt")
     }
 
-    override val serverUrl: Flow<String> = context.dataStore.data.map { prefs ->
+    override val serverUrl: Flow<String> = context.dataStore.data.map { adresseAus(it) }
+
+    /** Das Schema klein (HTTPs → https), wie es saveServerUrl ablegt. */
+    private fun adresseAus(prefs: Preferences): String {
         val raw = prefs[SERVER_URL] ?: ""
-        // Normalize scheme to lowercase (e.g. HTTPs → https)
-        if (raw.contains("://")) {
+        return if (raw.contains("://")) {
             val idx = raw.indexOf("://")
             raw.substring(0, idx).lowercase() + raw.substring(idx)
         } else raw
@@ -187,6 +189,9 @@ class PreferencesManager @Inject constructor(
     // Verbindungsaufbau darf los.
     private val startGelesen = java.util.concurrent.CountDownLatch(4)
 
+    /** Sperre und Generation für alle Schreibungen des Tokens (data/TokenTausch). Vor init: Die Spiegel brauchen sie. */
+    private val tokenSchranke = TokenSchranke()
+
     /**
      * Für den Interceptor auf OkHttp-Threads: wartet beim Kaltstart auf den ersten
      * Stand der Platte, ohne Koroutine und höchstens fünf Sekunden.
@@ -195,13 +200,11 @@ class PreferencesManager @Inject constructor(
         startGelesen.await(5, java.util.concurrent.TimeUnit.SECONDS)
     }
 
-    private fun <T> spiegle(fluss: Flow<T>, ziel: MutableStateFlow<T?>) = prefsScope.launch {
-        var erster = true
-        fluss.collect {
-            ziel.value = it
-            if (erster) { erster = false; startGelesen.countDown() }
+    private fun <R, T> spiegle(roh: (Preferences) -> R, ziel: MutableStateFlow<T?>, lies: suspend (R, suspend (T) -> Unit) -> Unit) =
+        prefsScope.launch {
+            tokenSchranke.spiegle(context.dataStore.data, { context.dataStore.data.first() }, roh, lies,
+                setze = { ziel.value = it }, gelesen = startGelesen::countDown)
         }
-    }
 
     /**
      * Der Token, wie er jetzt gilt — nicht, wie er zuletzt auf der Platte stand.
@@ -245,9 +248,11 @@ class PreferencesManager @Inject constructor(
     init {
         // Der Nachlauf aus dem DataStore: für den Kaltstart und für Änderungen,
         // die nicht über die save-Funktionen kamen (Übernahme eines alten Tokens).
-        spiegle(serverUrl, _serverUrlState)
-        spiegle(authToken, _authTokenState)
-        spiegle(context.dataStore.data.map { it[TOKEN_HERKUNFT] }, _tokenHerkunftState)
+        spiegle<String, String>(::adresseAus, _serverUrlState) { r, melde -> melde(r) }
+        spiegle<Pair<String?, String?>, String>({ it[AUTH_TOKEN_ENC] to it[AUTH_TOKEN] }, _authTokenState) { (geheim, alt), melde ->
+            liesToken(tresor, geheim, alt, melde)
+        }
+        spiegle<String?, String?>({ it[TOKEN_HERKUNFT] }, _tokenHerkunftState) { r, melde -> melde(r) }
         prefsScope.launch {
             try {
                 uebernimmAltenCaStand()
@@ -318,9 +323,6 @@ class PreferencesManager @Inject constructor(
             if (angemeldetAm != null) it[ANGEMELDET_AM] = angemeldetAm
         }
     }
-
-    /** Sperre und Generation für alle Schreibungen des Tokens (data/TokenTausch). */
-    private val tokenSchranke = TokenSchranke()
 
     /** Für den Wächter (di/ServerWaechter): die Generation, vor dem Token gelesen. */
     fun tokenGeneration(): Long = tokenSchranke.generation
