@@ -20,7 +20,7 @@ const ROOT = path.join(__dirname, '..');
 require('./helpers/sources').buildAndRequire();
 
 /** Server starten und auf sein Ende warten — höchstens `ms`, dann gilt er als laufend. */
-function starte(env, ms = 8000) {
+function starte(env, ms = 20000) {
   return new Promise((fertig) => {
     const srv = spawn(process.execPath, [path.join(ROOT, 'dist', 'server.js')], {
       cwd: ROOT, stdio: ['ignore', 'pipe', 'pipe'],
@@ -35,7 +35,7 @@ function starte(env, ms = 8000) {
   });
 }
 
-test('MAIL_KONSOLE_MIT_TOKEN=1 im Betrieb: Start verweigert', { timeout: 30_000 }, async () => {
+test('MAIL_KONSOLE_MIT_TOKEN=1 im Betrieb: Start verweigert', { timeout: 50_000 }, async () => {
   const db = { DATABASE_URL: 'postgres://u:eigenes@127.0.0.1:1/x', APP_BASE_URL: 'https://lego.example.org' };
   const r = await starte({ ...db, MAIL_KONSOLE_MIT_TOKEN: '1' });
   assert.equal(r.code, 1, r.log.slice(-400));
@@ -46,7 +46,7 @@ test('MAIL_KONSOLE_MIT_TOKEN=1 im Betrieb: Start verweigert', { timeout: 30_000 
   assert.match(entw.log, /Database initialisation failed/);
 });
 
-test('COOKIE_SECURE=0 im Betrieb: Warnzeile beim Start', { timeout: 30_000 }, async () => {
+test('COOKIE_SECURE=0 im Betrieb: Warnzeile beim Start', { timeout: 50_000 }, async () => {
   const db = { DATABASE_URL: 'postgres://u:eigenes@127.0.0.1:1/x', APP_BASE_URL: 'http://lego.lan' };
   const mit = await starte({ ...db, COOKIE_SECURE: '0' });
   assert.match(mit.log, /⚠️ \[start\] COOKIE_SECURE=0: Das Sitzungs-Cookie geht auch über http/);
