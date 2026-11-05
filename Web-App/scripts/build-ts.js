@@ -2,13 +2,9 @@
 'use strict';
 
 /**
- * Transpiliert alle .ts-Dateien (server.ts, db/, utils/, routes/, jobs/) nach .js —
- * pro Datei einzeln, KEIN Bundle. Das erhält die CommonJS-Modulgrenzen 1:1,
- * sodass die require()-Aufrufe aus jobs/*.js (bleiben JS) und die
- * `export = Object.assign(router, {...})`-Router unverändert funktionieren.
- *
- * Genutzt von `npm run build` (lokal) und im Docker-Build (gleiche Logik).
- * public/ bleibt reines JavaScript und wird hier NICHT angefasst.
+ * Transpiliert alle .ts-Dateien nach .js — je Datei, KEIN Bundle, damit die
+ * CommonJS-Modulgrenzen bleiben. Für `npm run build` und den Docker-Build;
+ * public/ bleibt reines JavaScript.
  *
  * Aufruf:
  *   node scripts/build-ts.js            → schreibt .js neben die .ts (in-place)
@@ -20,13 +16,7 @@ const fs   = require('fs');
 const path = require('path');
 
 const ROOT    = path.resolve(__dirname, '..');
-// 'jobs' seit der Migration nach TypeScript (Punkt 10): Ohne den Eintrag
-// entstünden keine .js-Dateien und jedes require('./jobs/...') liefe ins Leere.
-// 'clients' seit Nachtrag 126: rebrickable.ts und brickset.ts sind API-Clients
-// ohne eine einzige Route und lagen nur aus Gewohnheit in routes/. Fehlt der
-// Eintrag hier, entsteht kein dist/clients/ — und JEDER Import darauf läuft
-// beim Start ins Leere. Genau daran wäre der Umzug fast gescheitert.
-// 'startup' seit Nachtrag 134 (die Staffel der Hintergrundläufe).
+// Ein fehlender Ordner hier fehlt in dist/, und jeder Import darauf läuft beim Start ins Leere.
 const SRC_DIRS = ['db', 'src', 'routes', 'jobs', 'clients', 'startup'];
 /**
  * Fassung für den npx-Rückfall.
@@ -72,22 +62,8 @@ function collectTsFiles() {
 }
 
 
-/**
- * Pfad zum esbuild-Programm.
- *
- * ── Warum nicht mehr npx ────────────────────────────────────────────────────
- * Hier stand `npx --yes esbuild@<Version>`. Das war aus der Zeit, als esbuild
- * keine devDependency war — npx lud es dann bei Bedarf. Inzwischen steht es in
- * package.json und liegt nach `npm ci` lokal unter node_modules/.bin/.
- *
- * npx kostet pro Aufruf mehrere hundert Millisekunden Startzeit und prüft je
- * nach Lage die Registry. Bei 58 Dateien und mehreren Testdateien, die den
- * Build jeweils erneut anstossen, summiert sich das auf Minuten — auf einem
- * Raspberry Pi genug für die 60-Sekunden-Grenze des Test-Runners.
- *
- * Der Rückfall auf npx bleibt für den Fall, dass jemand das Skript ohne
- * vorherige Installation aufruft.
- */
+/** Pfad zum esbuild-Programm: lokal aus node_modules/.bin, weil npx je Aufruf
+ * Startzeit kostet; npx nur ohne Installation. */
 function esbuildCmd() {
   const local = path.join(ROOT, 'node_modules', '.bin',
     process.platform === 'win32' ? 'esbuild.cmd' : 'esbuild');
@@ -102,18 +78,9 @@ const { cmd, prefix } = esbuildCmd();
 const via = cmd === 'npx' ? `npx esbuild@${ESBUILD_VERSION}` : 'lokalem esbuild';
 console.log(`[build-ts] Transpiliere ${files.length} Datei(en) mit ${via}${OUTDIR ? ` → ${OUTDIR}` : ' (in-place)'}`);
 
-// EIN esbuild-Aufruf für alle Dateien statt einer je Datei.
-//
-// esbuild nimmt beliebig viele Eingabedateien entgegen und schreibt sie mit
-// --outdir in den Zielbaum; --outbase erhält dabei die Verzeichnisstruktur
-// (db/, routes/api_v1/, …). Vorher lief das Programm 58-mal — jeder Start
-// kostet Prozesserzeugung, und über npx zusätzlich dessen Auflösung. Gemessen
-// auf einem Raspberry Pi war das der Grund, warum neun Testdateien in die
-// 60-Sekunden-Grenze liefen, obwohl inhaltlich nichts falsch war.
-//
-// Kein Bundle: --format=cjs ohne --bundle transpiliert jede Datei einzeln und
-// lässt die require()-Aufrufe stehen. Die Modulgrenzen bleiben damit exakt wie
-// bisher — nur eben in einem Durchlauf.
+// EIN esbuild-Aufruf für alle Dateien: Jeder Prozessstart kostet, auf schwacher
+// Hardware genug für die Zeitgrenze der Tests. --outbase erhält die Ordner,
+// ohne --bundle bleibt jede Datei ein eigenes Modul.
 const outDir = OUTDIR || ROOT;
 fs.mkdirSync(outDir, { recursive: true });
 execFileSync(cmd, [
@@ -122,17 +89,8 @@ execFileSync(cmd, [
   `--outbase=${ROOT}`, `--outdir=${outDir}`,
 ], { stdio: ['ignore', 'ignore', 'inherit'] });
 
-// ── Nicht-TypeScript-Dateien mitkopieren ────────────────────────────────────
-//
-// esbuild verarbeitet nur .ts. Die Migrationen in db/migrations/ sind aber
-// .sql-Dateien — sie landeten dadurch NIE im Build, und weil das
-// Laufzeit-Image ausschliesslich dist/ übernimmt, fand runMigrations() dort
-// gar kein Verzeichnis vor und meldete "nichts zu tun".
-//
-// Die Folge war still und schwer zu finden: Die Datenbank behielt die alten
-// Pfade, und der davon abhängige (inzwischen entfernte) Dateiumzug ordnete jede
-// Datei als "verwaist" ein — die Bilder blieben liegen, ohne dass irgendetwas
-// fehlschlug.
+// Nicht-TypeScript-Dateien mitkopieren: Das Laufzeit-Image übernimmt nur dist/,
+// ohne die .sql-Migrationen meldete runMigrations() still „nichts zu tun".
 const ASSET_EXT = ['.sql', '.txt'];
 /** @param {string} dir @param {string} out */
 function copyAssets(dir, out) {
@@ -150,21 +108,9 @@ function copyAssets(dir, out) {
   }
   return n;
 }
-// ── Und wieder wegräumen, was es in der Quelle nicht mehr gibt ──────────────
-//
-// copyAssets() kopiert, löscht aber nie. Eine Migration, die auf einem Zweig
-// entstand und beim Wechsel auf einen anderen aus db/migrations/ verschwindet,
-// bleibt in dist/db/migrations/ liegen — und db/migrate.ts liest dist/. Der
-// Läufer führt sie dann aus, als wäre sie Teil des Schemas.
-//
-// GEMESSEN, nicht ausgedacht: Genau das hat in dieser Sitzung zwölf Tests rot
-// gemacht (ein zurückgebliebenes 0027-…sql aus einem anderen Zweig), und die
-// Suche ging zuerst in die eigene Änderung statt in das Bauwerkzeug. Das ist
-// die teure Sorte Fehler: Der Befund zeigt nicht dorthin, wo die Ursache liegt.
-//
-// Gelöscht wird nur, was die Umkehrung der Abbildung aus copyAssets() als
-// quellenlos ausweist — dieselbe Rechnung, nur rückwärts. Alles andere in
-// OUTDIR bleibt unberührt, insbesondere die .js-Dateien von esbuild.
+// Wegräumen, was es in der Quelle nicht mehr gibt: Eine Migration von einem
+// anderen Zweig bliebe sonst in dist/ und liefe mit. Gelöscht wird nur, was
+// die Umkehrung von copyAssets() als quellenlos ausweist.
 /**
  * Verwaiste Abbilder entfernen.
  * @param {string} out Wurzel des Bauziels
@@ -195,16 +141,11 @@ function entferneVerwaiste(out) {
 if (OUTDIR) {
   let assets = 0;
   for (const dir of SRC_DIRS) assets += copyAssets(path.join(ROOT, dir), OUTDIR);
-  // Die Annotation steht hier, weil tsconfig auch die Skripte prueft
-  // (allowJs + noImplicitAny): Ohne sie ist `weg` ein `any[]`, und
-  // `npm run typecheck` wird rot. Gemeldet hat es das eigene Tor des Projekts,
-  // nicht ich.
+  // tsconfig prüft auch die Skripte (noImplicitAny).
   /** @type {string[]} */
   const weg = entferneVerwaiste(OUTDIR);
   console.log(`[build-ts] ${assets} Nicht-TS-Datei(en) mitkopiert (${ASSET_EXT.join(', ')})`);
-  // Laut und namentlich, nicht als Zahl: Wird hier etwas entfernt, das jemand
-  // noch braucht, soll es im Bauprotokoll stehen und nicht stillschweigend
-  // verschwinden.
+  // Namentlich ins Bauprotokoll, damit nichts still verschwindet.
   if (weg.length) console.log(`[build-ts] ${weg.length} verwaiste Datei(en) entfernt: ${weg.join(', ')}`);
   // Die Version gehört zum Bau, nicht in den Arbeitsbaum (scripts/version.js).
   const { bauVersion, schreibe } = require('./version');

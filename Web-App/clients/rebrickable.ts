@@ -109,10 +109,8 @@ async function rbGet(apiPath: string, params: Record<string, string | number> = 
   const key = await getRbKey();
   if (!key) throw new Error('Rebrickable API Key nicht konfiguriert.');
   await rebrickableLimiter.waitForSlot();
-  // Daily cap: 100/day
   if (!await tagesKontingentFrei()) {
-    // Zahl aus dem gemeinsamen Zähler statt hartkodiert — der Text sagte
-    // "100/Tag", während das tatsächliche Limit längst bei 4000 lag.
+    // Die Zahl aus dem gemeinsamen Zähler, damit der Text dem Limit folgt.
     const { limit } = await rebrickableDailyStatus();
     throw new Error(`Rebrickable Tageslimit erreicht (${limit}/Tag). Versuche es morgen wieder.`);
   }
@@ -176,14 +174,9 @@ async function scrapeInstructions(setNumber: string) {
     if (status !== 200) return [];
     const found: any[] = [];
     for (const re of [/href="(https?:\/\/[^"]*lego\.com[^"]*\.pdf[^"]*)"/gi, /href="(https?:\/\/cdn\.rebrickable\.com\/media\/instructions[^"]+\.pdf[^"]*)"/gi, /href="(https?:\/\/assets\.lego\.com[^"]*\.pdf[^"]*)"/gi]) {
-      // Der Typ muss hier stehen: Ohne ihn ist `let m` implizit any und der
-      // Zugriff m[1] unten ungeprueft (TS7034/TS7005).
       let m: RegExpExecArray | null;
       while ((m = re.exec(body)) !== null) {
-        // Der Treffer wird in eine Konstante gezogen: Innerhalb des
-        // find()-Rueckrufs kann der Uebersetzer `m` nicht mehr als
-        // nicht-null fuehren — ein Rueckruf koennte grundsaetzlich spaeter
-        // laufen, wenn m schon weitergerueckt ist.
+        // Als Konstante, weil der Rückruf `m` nicht als nicht-null kennt.
         const treffer = m[1];
         if (!found.find(f => f.url === treffer)) found.push({ url: treffer, description: `Anleitung ${n}` });
       }
@@ -233,7 +226,6 @@ async function getSetMinifigs(setNumber: string) {
   try {
     const key = await getRbKey();
     if (!key) return [];
-    // Use background limiter — this is called from background jobs
     await rebrickableBackgroundLimiter.waitForSlot();
     const { status, body } = await httpsGetRobust(
       `${BASE}/lego/sets/${pfadSegment(n)}/minifigs/?page_size=100`,
@@ -320,19 +312,11 @@ async function holeFigurTeile(figNumber: string): Promise<any[] | null> {
 }
 
 
-/**
- * ── Warum lookupPart hier steht und nicht mehr in routes/parts.ts ───────────
- * Es ist eine reine Rebrickable-Abfrage: getRbKey(), httpsGetRobust() und die
- * Hintergrunddrossel — alles aus dieser Datei bzw. src/katalog/rateLimiter, nichts
- * aus der Route. Es lag dort, weil die HTTP-Route dort steht, die es ausloest;
- * gebraucht wurde es aber auch von jobs/purchasePriceBackfill.ts, und der
- * musste dafuer aus einer ROUTE importieren.
- */
+/** Ein Teil samt Bild in der gewählten Farbe; null, wenn Rebrickable nichts liefert. */
 async function lookupPart(partNumber: string, colorId?: number | null) {
   const key = await getRbKey();
   if (!key) return null;
   try {
-    // Use batch endpoint ?part_nums= instead of single /parts/{num}/
     await rebrickableBackgroundLimiter.waitForSlot();
     const { status, body } = await httpsGetRobust(
       `https://rebrickable.com/api/v3/lego/parts/?part_nums=${encodeURIComponent(partNumber)}&page_size=1`,
@@ -344,10 +328,7 @@ async function lookupPart(partNumber: string, colorId?: number | null) {
     if (!part) return null;
     let image_url = part.part_img_url || null;
 
-    // Bild soll den Stein immer in der gewählten Farbe zeigen: Rebrickable
-    // liefert dafür ein eigenes Farb-Bild über den Parts/Colors-Endpoint.
-    // (Der lokale set_parts_catalog-Cache ist meist leer, da er nur Farben
-    // enthält, die bereits über ein importiertes Set gesehen wurden.) …
+    // Das Bild in der gewählten Farbe kommt nur über den Parts/Colors-Endpunkt.
     // Ausführlich: docs/begruendungen/clients/rebrickable.ts.md#lookuppart
     if (colorId !== null && colorId !== undefined && colorId !== KEINE_FARBE) {
       try {

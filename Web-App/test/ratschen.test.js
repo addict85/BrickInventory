@@ -314,6 +314,34 @@ test('der Kommentaranteil im Server sinkt, nie steigt', () => {
   if (anteil < SCHRANKE - 0.5) console.log(`  ℹ Kommentaranteil: ${anteil} % (Schranke ${SCHRANKE}) — Schranke nachziehen`);
 });
 
+test('der Kommentaranteil in db/, clients/ und scripts/ sinkt, nie steigt', () => {
+  // Je Ordner eine Schranke, gemessen am 05.11.2026 nach dem Kürzen.
+  // Gegenprobe: 40 Kommentarzeilen an clients/ezb.ts gehängt → rot (clients).
+  const SCHRANKE = { db: 33.0, clients: 20.6, scripts: 35.2 };
+  const zuViel = [];
+  for (const [ordner, schranke] of Object.entries(SCHRANKE)) {
+    let zeilen = 0, kommentar = 0;
+    (function lauf(d) {
+      for (const n of fs.readdirSync(d)) {
+        const p = path.join(d, n);
+        if (fs.statSync(p).isDirectory()) { if (n !== 'node_modules') lauf(p); continue; }
+        if (!/\.(ts|js|sh)$/.test(n) || (n.endsWith('.js') && fs.existsSync(p.slice(0, -3) + '.ts'))) continue;
+        for (const z of fs.readFileSync(p, 'utf8').split('\n')) {
+          const t = z.trim();
+          if (!t) continue;
+          zeilen++;
+          if (t.startsWith('//') || t.startsWith('*') || t.startsWith('/*') || (n.endsWith('.sh') && t.startsWith('#'))) kommentar++;
+        }
+      }
+    })(path.join(WEB, ordner));
+    assert.ok(zeilen > 500, `${ordner}: nur ${zeilen} Zeilen gefunden — greift die Suche noch?`);
+    const anteil = Math.round(1000 * kommentar / zeilen) / 10;
+    if (anteil > schranke) zuViel.push(`${ordner}: ${anteil} % (erlaubt ${schranke} %)`);
+    else if (anteil < schranke - 0.5) console.log(`  ℹ Kommentaranteil ${ordner}: ${anteil} % (Schranke ${schranke}) — Schranke nachziehen`);
+  }
+  assert.deepEqual(zuViel, []);
+});
+
 test('der Kommentaranteil der Tests sinkt, nie steigt', () => {
   // Eigene Schranke: Testköpfe zählen ihre Gegenproben auf (CLAUDE.md), der
   // Anteil liegt deshalb höher als im Server. Geschichte gehört auch hier in
