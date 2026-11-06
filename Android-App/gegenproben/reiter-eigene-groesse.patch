@@ -1,7 +1,7 @@
 Gegenprobe: Jede Reiterbeschriftung in eigener Grösse, alle Ziele beschriftet
 Modul: app
 Test: ch.brickinventoryapp.FeinschliffRegelnTest
-Rot: Reiterleiste bricht bei 200 Prozent kein Wort um (verschiedene Grössen)
+Rot: Reiterleiste bricht bei 200 Prozent kein Wort um
 
 diff --git a/Android-App/app/src/main/java/ch/brickinventoryapp/MainScaffold.kt b/Android-App/app/src/main/java/ch/brickinventoryapp/MainScaffold.kt
 index b2ab7a3..d758db6 100644

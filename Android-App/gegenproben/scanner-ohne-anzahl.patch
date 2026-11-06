@@ -1,7 +1,7 @@
 Gegenprobe: Die Anzahl aus dem Barcode-Dialog wird nicht weitergereicht
 Modul: app
 Test: ch.brickinventoryapp.AblaufBefundeTest
-Rot: M4 die Erfassung nach dem Scan hat eine Anzahl (expected 2 but was 1)
+Rot: M4 die Erfassung nach dem Scan hat eine Anzahl und behaelt Eingaben ueber eine Drehung
 
 diff --git a/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/ui/dialogs/BarcodeResultDialog.kt b/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/ui/dialogs/BarcodeResultDialog.kt
 index 424584f..58419ba 100644

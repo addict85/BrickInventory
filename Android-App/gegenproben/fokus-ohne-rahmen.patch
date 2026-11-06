@@ -1,7 +1,7 @@
 Gegenprobe: fokusRahmen zeichnet keinen Rahmen
 Modul: app
 Test: ch.brickinventoryapp.BarrierefreiheitBefundeTest
-Rot: M9 Tastaturfokus zeigt einen Rahmen (Fokusrahmen fehlt)
+Rot: M9 Tastaturfokus zeigt einen Rahmen in der Hauptfarbe
 
 diff --git a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/Fokus.kt b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/Fokus.kt
 index 70a2224..f687901 100644
