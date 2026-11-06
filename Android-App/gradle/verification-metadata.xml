@@ -86,6 +86,8 @@
             <trusting group="androidx.compose.ui"/>
             <trusting group="androidx.test"/>
             <trusting group="androidx.test.espresso"/>
+            <trusting group="androidx.test.ext"/>
+            <trusting group="androidx.test.services"/>
          </trusted-key>
          <trusted-key id="10F3C7A02ECA55E502BADCF3991EFB94DB91127D" group="org.ow2" name="ow2" version="1.5.1"/>
          <trusted-key id="120D6F34E627ED3A772EBBFE55C7E5E701832382" group="org.snakeyaml" name="snakeyaml-engine" version="2.7"/>
