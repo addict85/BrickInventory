@@ -252,9 +252,14 @@ export function nameGueltig(v: unknown): boolean {
 /** Geräte- und Passkey-Namen stehen wörtlich in den Hinweismails: Ohne Adressen und
  * Anführungszeichen fügt ein Eindringling dort keinen entwarnenden Satz mit Link an. */
 export function geraeteNameGueltig(v: unknown): boolean {
-  if (!nameGueltig(v)) return false;
-  const s = String(v ?? '');
-  return !/["'`«»„“”‚‘’<>]/u.test(s) && !/[\p{L}\d-]\.\p{L}{2,}(?![\p{L}\d])/u.test(s);
+  return nameGueltig(v) && geraeteNameInhaltGueltig(v);
+}
+
+/** Dieselbe Regel ohne Länge: Token-Labels der Anmeldung werden gekürzt statt abgewiesen. */
+export function geraeteNameInhaltGueltig(v: unknown): boolean {
+  if (typeof v !== 'string') return true;
+  return !/[\p{Cc}\u2028\u2029]/u.test(v) && !/:\/\/|www\.|https?:/i.test(v)
+    && !/["'`«»„“”‚‘’<>]/u.test(v) && !/[\p{L}\d-]\.\p{L}{2,}(?![\p{L}\d])/u.test(v);
 }
 
 export const EMAIL_RE = V.EMAIL_RE, emailGueltig: typeof V.emailGueltig = V.emailGueltig;

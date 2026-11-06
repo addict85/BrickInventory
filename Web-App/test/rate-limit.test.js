@@ -123,7 +123,8 @@ test('bei DB-Ausfall greift die Rückfallebene', () => {
   const src = fs.readFileSync(path.join(ROOT, 'src/konto/loginLimiter.ts'), 'utf8');
   for (const fn of ['_read', '_bump', '_clear']) {
     const body = src.slice(src.indexOf(`async function ${fn}(`), src.indexOf(`async function ${fn}(`) + 900);
-    assert.match(body, /catch \(_\)/,
+    // Der Rückfall meldet sich (imSpeicher); der Name der Fehlervariable zählt nicht.
+    assert.match(body, /catch \(\w+\) \{\s*imSpeicher\(/,
       `${fn}: ohne Rückfall wäre der Login bei DB-Problemen komplett blockiert`);
   }
   assert.match(src, /const _attempts = new Map/, 'In-Memory-Rückfall fehlt');

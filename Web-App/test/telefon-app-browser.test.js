@@ -288,7 +288,7 @@ test('Telefon', { concurrency: 1, timeout: 240_000 }, async (t) => {
     // Ein Probe-Dialog ohne role="dialog", damit die Fokusführung der echten
     // Dialoge (js/01-dialoge.js) nicht anspringt.
     const dauer = () => b.auswerten(`(() => { const o = document.createElement('div');
-      o.className = 'ovl open'; o.innerHTML = '<div class="modal"></div>'; document.body.append(o);
+      o.className = 'ovl open'; const m = document.createElement('div'); m.className = 'modal'; o.append(m); document.body.append(o);
       const d = getComputedStyle(o.firstElementChild).animationDuration; o.remove();
       return { dialog: parseFloat(d), reiter: parseFloat(getComputedStyle(document.querySelector('.tab.active')).animationDuration) }; })()`);
     const ruhig = await dauer();
