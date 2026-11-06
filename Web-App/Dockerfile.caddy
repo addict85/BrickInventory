@@ -1,10 +1,11 @@
-# Caddy, der einzige Dienst mit offenen Ports, mit nachgezogenem go-jose: Die
-# offizielle Fassung bringt eines mit bekannten Lücken mit. Gebaut wie in der
+# Caddy, der einzige Dienst mit offenen Ports, mit nachgezogenem go-jose und
+# x/net: Die offizielle Fassung bringt Stände mit bekannten Lücken mit. Gebaut wie in der
 # Caddy-Doku („Adding modules“); die Laufzeit bleibt das offizielle Alpine-Image,
 # dessen sh, sed und cmp der Startbefehl in compose.yaml braucht.
 FROM caddy:2.11.8-builder-alpine@sha256:e42a64b3bc70aa3a1387bde85b930e507a378fecae5852d5bfde9dcd37d0b999 AS bau
 RUN xcaddy build v2.11.8 \
       --with github.com/go-jose/go-jose/v4@v4.1.9 \
+      --with golang.org/x/net@v0.62.0 \
       --output /usr/bin/caddy
 
 FROM caddy:2.11.8-alpine@sha256:f6228111e5fafa1a5238258d0858e103f10599b8d1659a146e7726681a002bb9
