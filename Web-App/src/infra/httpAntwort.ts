@@ -13,8 +13,6 @@ export interface FehlerQuelle { method?: string; originalUrl?: string; url?: str
 
 interface Geworfen { status?: unknown; code?: unknown; vars?: Record<string, string | number>; stack?: unknown; message?: unknown }
 
-const einzeilig = (t: string) => t.replace(/[\r\n]+/g, ' ');
-
 // Ausführlich: docs/begruendungen/src/infra/httpAntwort.ts.md#handlerouteerror
 export function handleRouteError(res: FehlerZiel, fehler: unknown, status?: number, req?: FehlerQuelle): void {
   const e = alsUploadFehler(fehler) as Geworfen | null | undefined;
@@ -22,12 +20,12 @@ export function handleRouteError(res: FehlerZiel, fehler: unknown, status?: numb
   // Erst der Pfad sagt, welche Route es war: Eine Stelle bedient oft mehrere.
   const wo = req?.originalUrl || req?.url;
   // Ohne Zeilenumbrüche: Ein Pfad oder Text mit Umbruch täuschte sonst eine zweite Protokollzeile vor.
-  const anfrage = wo ? einzeilig(`${req?.method || '?'} ${String(wo).split('?')[0]} `) : '';
+  const anfrage = wo ? `${req?.method || '?'} ${String(wo).split('?')[0]} `.replace(/\n|\r/g, '') : '';
   const isServerError = code >= 500;
   // Ein 4xx ist eine Antwort, kein Serverfehler: Mit Stack füllte jede falsche
   // Eingabe das Protokoll und verdeckte die echten Fehler.
   if (isServerError) console.error('[route-error] %s%d:', anfrage, code, e?.stack || e?.message || e);
-  else console.warn('[route-warnung] %s%d: %s', anfrage, code, einzeilig(fehlertext(fehler)));
+  else console.warn('[route-warnung] %s%d: %s', anfrage, code, fehlertext(fehler).replace(/\n|\r/g, ''));
   if (res.headersSent) return;
   // Helfer werfen den GRUND (Code), erst hier wird daraus ein Satz in der
   // Sprache des Anfragenden.
