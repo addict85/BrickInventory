@@ -61,6 +61,7 @@ import androidx.test.core.app.ApplicationProvider
 import ch.brickinventoryapp.data.repository.VerwaltungRepository
 import ch.brickinventoryapp.ressourcen.R
 import ch.brickinventoryapp.ui.AppUiState
+import ch.brickinventoryapp.ui.PlPart
 import ch.brickinventoryapp.ui.TeilelisteUiState
 import ch.brickinventoryapp.ui.UpdateUiState
 import ch.brickinventoryapp.ui.ZweiterFaktorUiState
@@ -79,7 +80,6 @@ import ch.brickinventoryapp.ui.screens.FilterAbschnitt
 import ch.brickinventoryapp.ui.screens.FilterWahl
 import ch.brickinventoryapp.ui.screens.KameraUeberlagerung
 import ch.brickinventoryapp.ui.screens.PartsListScreen
-import ch.brickinventoryapp.ui.screens.PlPart
 import ch.brickinventoryapp.ui.screens.PreisalarmCard
 import ch.brickinventoryapp.ui.screens.SetCard
 import ch.brickinventoryapp.ui.screens.SettingsScreen

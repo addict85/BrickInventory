@@ -12,15 +12,15 @@ import ch.brickinventoryapp.data.api.SetsApi
 import ch.brickinventoryapp.data.api.TeileAbfrageApi
 import ch.brickinventoryapp.data.api.TeileApi
 import ch.brickinventoryapp.data.api.VerwaltungApi
-import ch.brickinventoryapp.data.repository.FigurenRepository
-import ch.brickinventoryapp.data.repository.FinanzenRepository
-import ch.brickinventoryapp.data.repository.KatalogRepository
-import ch.brickinventoryapp.data.repository.KontoRepository
-import ch.brickinventoryapp.data.repository.VerwaltungRepository
-import ch.brickinventoryapp.data.repository.GutscheineRepository
-import ch.brickinventoryapp.data.repository.HaushaltRepository
-import ch.brickinventoryapp.data.repository.SetsRepository
-import ch.brickinventoryapp.data.repository.TeileRepository
+import ch.brickinventoryapp.data.repository.FigurenRepositoryImpl
+import ch.brickinventoryapp.data.repository.FinanzenRepositoryImpl
+import ch.brickinventoryapp.data.repository.KatalogRepositoryImpl
+import ch.brickinventoryapp.data.repository.KontoRepositoryImpl
+import ch.brickinventoryapp.data.repository.VerwaltungRepositoryImpl
+import ch.brickinventoryapp.data.repository.GutscheineRepositoryImpl
+import ch.brickinventoryapp.data.repository.HaushaltRepositoryImpl
+import ch.brickinventoryapp.data.repository.SetsRepositoryImpl
+import ch.brickinventoryapp.data.repository.TeileRepositoryImpl
 import com.jakewharton.retrofit2.converter.kotlinx.serialization.asConverterFactory
 import kotlinx.coroutines.runBlocking
 import okhttp3.MediaType.Companion.toMediaType
@@ -60,11 +60,11 @@ class ApiBereicheTest {
     @Test
     fun `jedes Repository sieht nur seinen Bereich`() {
         val erwartet = mapOf(
-            KontoRepository::class to KontoApi::class.java, VerwaltungRepository::class to VerwaltungApi::class.java,
-            KatalogRepository::class to KatalogApi::class.java, FigurenRepository::class to FigurenApi::class.java,
-            SetsRepository::class to SetsApi::class.java,
-            TeileRepository::class to TeileApi::class.java, HaushaltRepository::class to HaushaltApi::class.java,
-            FinanzenRepository::class to FinanzenApi::class.java, GutscheineRepository::class to GutscheineApi::class.java,
+            KontoRepositoryImpl::class to KontoApi::class.java, VerwaltungRepositoryImpl::class to VerwaltungApi::class.java,
+            KatalogRepositoryImpl::class to KatalogApi::class.java, FigurenRepositoryImpl::class to FigurenApi::class.java,
+            SetsRepositoryImpl::class to SetsApi::class.java,
+            TeileRepositoryImpl::class to TeileApi::class.java, HaushaltRepositoryImpl::class to HaushaltApi::class.java,
+            FinanzenRepositoryImpl::class to FinanzenApi::class.java, GutscheineRepositoryImpl::class to GutscheineApi::class.java,
         )
         for ((repo, api) in erwartet) {
             // Mit Vorgabewert (Offlineablage) erzeugt Kotlin einen zweiten Konstruktor;

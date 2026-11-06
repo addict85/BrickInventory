@@ -11,7 +11,7 @@ index 79f1f8e..04d3518 100644
          bereich.launch {
              sessionExpired.abgelaufen.filter { it }.collect {
                  sessionExpired.quittiere()
--                if (prefs.authToken.first().isNotBlank()) {
+-                if (prefs.tokenJetzt().isNotBlank()) {
 +                if (true) {
                      meldungen.zeige(texte.text(R.string.vm_session_expired))
                      abmelden()

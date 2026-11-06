@@ -14,5 +14,5 @@ index 79f1f8e..857391a 100644
 -            sessionExpired.abgelaufen.filter { it }.collect {
 +            sessionExpired.abgelaufen.drop(1).filter { it }.collect {
                  sessionExpired.quittiere()
-                 if (prefs.authToken.first().isNotBlank()) {
+                 if (prefs.tokenJetzt().isNotBlank()) {
                      meldungen.zeige(texte.text(R.string.vm_session_expired))

@@ -60,7 +60,7 @@ class GutscheineContractTest {
         if (z.trim().startsWith("//") || z.trim().startsWith("*")) "" else z
     }
 
-    private val repo by lazy { code(lies("data/repository/GutscheineRepository.kt")) }
+    private val repo by lazy { code(lies("data/repository/GutscheineRepositoryImpl.kt")) }
     private val feature by lazy { code(lies("ui/viewmodel/GutscheinViewModel.kt")) }
     private val karte by lazy { code(lies("ui/screens/GutscheineCard.kt")) }
 

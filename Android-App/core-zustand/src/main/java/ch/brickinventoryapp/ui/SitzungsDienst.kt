@@ -106,7 +106,7 @@ class SitzungsDienst @Inject constructor(
         bereich.launch {
             sessionExpired.abgelaufen.filter { it }.collect {
                 sessionExpired.quittiere()
-                if (prefs.authToken.first().isNotBlank()) {
+                if (prefs.tokenJetzt().isNotBlank()) {
                     meldungen.zeige(texte.text(R.string.vm_session_expired))
                     abmelden()
                 }
