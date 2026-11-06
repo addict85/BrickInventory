@@ -1062,6 +1062,7 @@ class BildschirmFotoVariantenTest {
         override fun setzeStartpruefung(an: Boolean) = Unit
         override fun updateHinweisSchliessen() = Unit
         override fun ladeUpdate() = Unit
+        override fun ladeAbbrechen() = Unit
         override fun starteInstallation() = Unit
     }
 

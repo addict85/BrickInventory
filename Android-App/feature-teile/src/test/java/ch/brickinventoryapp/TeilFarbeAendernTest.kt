@@ -5,6 +5,7 @@ import ch.brickinventoryapp.data.repository.TeileRepository
 import ch.brickinventoryapp.data.repository.FigurenRepository
 import ch.brickinventoryapp.ui.viewmodel.TeileViewModel
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.setMain
@@ -44,6 +45,7 @@ import org.junit.Test
  *   A  in TeileApi die Adresse auf "…/colour" → rot „die App ruft denselben
  *      Dienst wie die Webapp“
  */
+@OptIn(ExperimentalCoroutinesApi::class)
 class TeilFarbeAendernTest {
 
     private val pfade = PfadServer("/api/v1/parts/3001/5/color" to """{"success":true}""")

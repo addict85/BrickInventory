@@ -16,6 +16,7 @@ import ch.brickinventoryapp.ui.farbName
 import ch.brickinventoryapp.ui.ohneKeineFarbe
 import ch.brickinventoryapp.ui.viewmodel.TeileViewModel
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.setMain
@@ -42,6 +43,7 @@ import org.junit.Test
  *   E  Part.colorId wieder mit Vorgabe 0 → rot „ein fehlendes color_id ist
  *      keine Farbe, nicht Schwarz“
  */
+@OptIn(ExperimentalCoroutinesApi::class)
 class KeineFarbeTest {
 
     private val pfade = PfadServer(

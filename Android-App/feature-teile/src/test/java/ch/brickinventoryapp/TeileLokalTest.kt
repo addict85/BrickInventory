@@ -19,6 +19,7 @@ import ch.brickinventoryapp.ui.Teile
 import ch.brickinventoryapp.ui.TeileAbfrage
 import ch.brickinventoryapp.ui.TeileLokal
 import ch.brickinventoryapp.ui.TeileQuelle
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.runCurrent
@@ -40,6 +41,7 @@ import org.junit.Test
  *      „mit Kontofilter folgen die Figuren nicht“
  *   D  in Teile.init die Bedingung `st.partsPage != 1` entfernt → rot „Seite 2 …“
  */
+@OptIn(ExperimentalCoroutinesApi::class)
 class TeileLokalTest {
 
     private class Quelle : TeileQuelle {

@@ -1,5 +1,6 @@
 package ch.brickinventoryapp
 
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import org.junit.Assert.assertTrue
 import kotlinx.coroutines.test.setMain
 import kotlinx.coroutines.test.resetMain
@@ -45,6 +46,7 @@ import org.junit.Test
  * Filter ebenfalls im Zustand. Waere die Regel auf MainViewModel begrenzt,
  * duerfte ausgerechnet der zweite blaetternde Bildschirm sie brechen.
  */
+@OptIn(ExperimentalCoroutinesApi::class)
 class ListenfilterImZustandTest {
 
     @Test
