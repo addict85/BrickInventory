@@ -67,13 +67,13 @@ class ResultAndStateSplitTest {
     fun `Result hat genau zwei Varianten`() {
         val src = code(datenschicht())
         assert(!src.contains("Loading")) {
-            "Result.Loading ist zurück. Die Variante wurde nie erzeugt — safeCall() " +
+            "Ergebnis.Loading ist zurück. Die Variante wurde nie erzeugt — safeCall() " +
                 "liefert nur Success oder Error — erzwang aber in jedem `when` einen " +
                 "else-Zweig. Und `else -> {}` verschluckt stillschweigend jeden Fall, " +
                 "der später dazukommt."
         }
         assert(src.contains("data class Success") && src.contains("data class Error")) {
-            "Success/Error fehlen in Result"
+            "Success/Error fehlen in Ergebnis"
         }
     }
 
@@ -96,11 +96,11 @@ class ResultAndStateSplitTest {
                     if (started && before <= 1) top.add(lines[j])
                 }
                 val body = top.joinToString("\n")
-                if (!body.contains("is Result.Success")) continue
+                if (!body.contains("is Ergebnis.Success")) continue
                 if (Regex("""^\s*else\s*->""", RegexOption.MULTILINE).containsMatchIn(body)) {
                     offenders += "${f.name}:${range.first + 1} (else-Zweig)"
                 }
-                if (!body.contains("is Result.Error")) {
+                if (!body.contains("is Ergebnis.Error")) {
                     offenders += "${f.name}:${range.first + 1} (kein Error-Zweig)"
                 }
             }
@@ -164,7 +164,9 @@ class ResultAndStateSplitTest {
         assert(!src.contains("vm.state.collectAsStateWithLifecycle()")) {
             "MainActivity sammelt weiterhin den ganzen Zustand"
         }
-        assert(code(read("ui/viewmodel/DarstellungViewModel.kt")).contains("distinctUntilChanged()")) {
+        // Abgeleitet (AbgeleiteterZustand.kt) heisst: nur echte Änderungen kommen durch.
+        assert(code(read("ui/viewmodel/DarstellungViewModel.kt")).contains("sitzung.state.abgeleitet { it.appTheme }") &&
+            code(read("ui/AbgeleiteterZustand.kt")).contains("distinctUntilChanged()")) {
             "appTheme filtert unveränderte Werte nicht heraus"
         }
     }
@@ -174,20 +176,20 @@ class ResultAndStateSplitTest {
         // Seit dem Schnitt in Bereichs-ViewModels leert jedes seinen Zustand
         // selbst, auf Sitzung.abgemeldet() hin. Ausgeführt prüfen das die
         // ViewModel-Tests („nach dem Abmelden …“); hier steht die Regel für
-        // jedes künftige: Wer Zustand hält, überschreibt zuruecksetzen().
-        // Gegenprobe: HaushaltViewModel ohne override → rot.
+        // jedes künftige: Wer Zustand hält, folgt der Abmeldung mit zuruecksetzen().
+        // Gegenprobe: HaushaltViewModel ohne zuruecksetzen → rot.
         val abmelden = code(read("ui/Abmelden.kt"))
         for (reset in listOf("sitzung.abgemeldet()", "blickfeld.zuruecksetzen()")) {
             assert(abmelden.contains(reset)) { "Abmelden ruft $reset nicht mehr" }
         }
         val bereiche = Quellen.unter("ui/viewmodel").filter {
-            code(it.readText()).contains(": BereichsViewModel(dienste)")
+            code(it.readText()).contains("meldungen: Meldungen,")
         }
         assert(bereiche.size >= 10) { "Nur ${bereiche.size} Bereichs-ViewModels gefunden — Muster veraltet?" }
         val vergesslich = bereiche.filter {
             val c = code(it.readText())
             (c.contains("MutableStateFlow(") || c.contains("SavedStateHandle")) &&
-                !c.contains("override fun zuruecksetzen()")
+                !c.contains("folgeAbmeldung(sitzung)")
         }.map { it.name }
         assert(vergesslich.isEmpty()) {
             "Diese ViewModels halten Zustand, leeren ihn beim Abmelden aber nicht — der " +

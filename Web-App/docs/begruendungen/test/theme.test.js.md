@@ -34,7 +34,7 @@ Der Test prüft alle drei, ohne DB und ohne Browser. Ausführen: npm test
 
 Ein Design steht an FUENF Stellen: als Datei unter public/themes/, als
 <link> in index.html, in der Whitelist des Servers, in ALLOWED des
-Boot-Skripts und in der App (PreferencesManager.ERLAUBTE_DESIGNS). Fehlt
+Boot-Skripts und in der App (GeraeteAblage.ERLAUBTE_DESIGNS). Fehlt
 es an einer davon, faellt das nicht auf, sondern wirkt teilweise: Der
 Admin kann es waehlen, der Server nimmt es an, und das Boot-Skript
 verwirft es beim naechsten Start stillschweigend — genau die Sorte

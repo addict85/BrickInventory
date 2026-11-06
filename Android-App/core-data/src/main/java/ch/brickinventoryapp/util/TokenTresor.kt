@@ -24,7 +24,7 @@ import javax.crypto.spec.GCMParameterSpec
  * (setRandomizedEncryptionRequired ist Vorgabe und bleibt an).
  */
 // [alias]: Die lokalen Ablagen umhüllen ihren Schlüssel unter einem eigenen (Ablageschluessel).
-class KeystoreTokenTresor(private val alias: String = ALIAS) : TokenVerschluesselung {
+internal class KeystoreTokenTresor(private val alias: String = ALIAS) : TokenVerschluesselung {
 
     private fun schluessel(): SecretKey {
         val ks = KeyStore.getInstance(KEYSTORE).apply { load(null) }

@@ -21,6 +21,8 @@ import java.io.File
  *   detekt-baseline-waechst    Obergrenze eins unter den Einträgen → rot „die detekt-Baseline …“
  *   detekt-baseline-fremde-regel  ein MagicNumber-Eintrag → rot, derselbe Test
  *   cache-schluckt-abbruch     macht „kein breiter Fang …“ rot
+ *   runcatching-um-suspend     BrickInventoryApp übernimmt das alte Token wieder in runCatching
+ *                              → rot „kein runCatching verschluckt …“
  *   voll-qualifiziert          `ch.brickinventoryapp.util.fangeAusserAbbruch` ausgeschrieben → rot
  *                              „kein voll qualifizierter Projektname …“ und „voll qualifizierte Namen …“
  *   warten-in-echtzeit         TeileViewModelTest schläft wieder 200 ms → rot „Echtzeit-Warten …“
@@ -307,16 +309,68 @@ class QuelltextRatscheTest {
         return !abbruch && aufruf.containsMatchIn(c.substring(auf + 1, zu))
     }
 
+    /** Die Quelltexte der App und ein Muster für den Aufruf einer ihrer suspend-Funktionen. */
+    private val suspendAufrufe: Pair<Map<File, String>, Pair<Set<String>, Regex>> by lazy {
+        val texte = produktivDateien().associateWith { code(it.readText()) }
+        val namen = texte.values.flatMap { c ->
+            Regex("""\bsuspend\s+fun\s+(?:<[^>]*>\s*)?(?:\w+\.)?(\w+)""").findAll(c).map { it.groupValues[1] }.toList()
+        }.toSet() + setOf("collect", "withContext", "withLock", "delay", "await", "join", "emit", "first")
+        texte to (namen to Regex("""\b(?:${namen.joinToString("|")})\s*[({]"""))
+    }
+
+    private val koroutinenBlock = Regex("""\b(?:launch|async|runBlocking|withContext\([^()]*\)|coroutineScope|supervisorScope|flow|runTest)\s*(?:\([^()]*\))?\s*$""")
+
+    /** Läuft die Stelle [ab] in einer suspend-Funktion oder einem Koroutinen-Block? Nur dort gibt es einen Abbruch zu verschlucken. */
+    private fun inKoroutine(c: String, ab: Int): Boolean {
+        val davor = c.substring(maxOf(0, ab - 300), ab)
+        val anweisung = davor.substring(maxOf(davor.lastIndexOf('{'), davor.lastIndexOf('}')) + 1)
+        if (Regex("""\bsuspend\s+fun\b[^=]*=\s*$""").containsMatchIn(anweisung)) return true
+        var tiefe = 0
+        for (j in ab - 1 downTo 0) {
+            when (c[j]) {
+                '}' -> tiefe++
+                '{' -> if (tiefe > 0) tiefe-- else {
+                    val kopf = c.substring(maxOf(0, j - 300), j)
+                    if (koroutinenBlock.containsMatchIn(kopf)) return true
+                    val fn = kopf.lastIndexOf("fun ")
+                    if (fn >= 0 && !kopf.substring(fn).contains('{') && !kopf.substring(fn).contains('}'))
+                        return Regex("""\bsuspend\s+(?:\w+\s+)*$""").containsMatchIn(kopf.substring(0, fn))
+                }
+            }
+        }
+        return false
+    }
+
+    @Test
+    fun `kein runCatching verschluckt das Abbrechen eines suspendierenden Aufrufs`() {
+        // runCatching fängt auch die CancellationException wie ein breiter catch; der
+        // abgebrochene Aufrufer liefe weiter. Dafür gibt es fangeAusserAbbruch.
+        val (texte, suche) = suspendAufrufe
+        val aufruf = suche.second
+        var geprueft = 0
+        val funde = texte.flatMap { (f, c) ->
+            Regex("""\brunCatching\s*\{""").findAll(c).mapNotNull { m ->
+                geprueft++
+                var tiefe = 1
+                var i = m.range.last + 1
+                while (i < c.length && tiefe > 0) { if (c[i] == '{') tiefe++ else if (c[i] == '}') tiefe--; i++ }
+                if (inKoroutine(c, m.range.first) && aufruf.containsMatchIn(c.substring(m.range.last + 1, i - 1)))
+                    "${f.name}:${c.substring(0, m.range.first).count { it == '\n' } + 1}" else null
+            }.toList()
+        }
+        assert(geprueft >= 10) { "Nur $geprueft runCatching gefunden — greift die Suche noch?" }
+        assert(funde.isEmpty()) {
+            "runCatching um einen suspendierenden Aufruf; fangeAusserAbbruch verwenden:\n  " + funde.joinToString("\n  ")
+        }
+    }
+
     @Test
     fun `kein breiter Fang verschluckt das Abbrechen eines suspendierenden Aufrufs`() {
         // Ein `catch (_: Exception)` um einen suspendierenden Aufruf fängt auch die
         // CancellationException; der abgebrochene Aufrufer liefe weiter. Dafür gibt
         // es fangeAusserAbbruch oder einen vorangestellten Abbruch-Zweig.
-        val texte = produktivDateien().associateWith { code(it.readText()) }
-        val namen = texte.values.flatMap { c ->
-            Regex("""\bsuspend\s+fun\s+(?:<[^>]*>\s*)?(?:\w+\.)?(\w+)""").findAll(c).map { it.groupValues[1] }.toList()
-        }.toSet() + setOf("collect", "withContext", "withLock", "delay", "await", "join", "emit")
-        val aufruf = Regex("""\b(?:${namen.joinToString("|")})\s*[({]""")
+        val (texte, suche) = suspendAufrufe
+        val (namen, aufruf) = suche
         var geprueft = 0
         val funde = texte.flatMap { (f, c) ->
             breiterFang.findAll(c).mapNotNull { m ->
@@ -366,7 +420,7 @@ class QuelltextRatscheTest {
     fun `die oeffentliche Flaeche von core-data waechst nicht`() {
         // Was nur core-data selbst braucht, ist internal: Jede öffentliche Deklaration ist
         // Schnittstelle für alle Bereiche. Gezählt wird auf oberster Ebene.
-        val GRENZE = 236
+        val GRENZE = 233
         val dekl = Regex("""^(?:@[\w.:]+(?:\([^)\n]*\))?\s+)*((?:(?:public|internal|private|protected|data|sealed|abstract|open|enum|inline|value|annotation|const|suspend|operator|infix|tailrec|lateinit|fun interface)\s+)*)(?:fun\s+interface|class|interface|object|typealias|fun|val|var)\s""", RegexOption.MULTILINE)
         val dateien = File(Quellen.projekt, "core-data/src/main").walkTopDown().filter { it.isFile && it.extension == "kt" }.toList()
         assert(dateien.size > 100) { "Nur ${dateien.size} Dateien in core-data — greift die Suche noch?" }
@@ -394,7 +448,7 @@ class QuelltextRatscheTest {
     @Test
     fun `voll qualifizierte Namen fremder Pakete werden weniger`() {
         // Ausgeschrieben nur bei echter Namensgleichheit, und dann besser mit `import … as`.
-        val HAUPT = 235
+        val HAUPT = 234
         val TESTS = 0
         val voll = Regex("""(?<![\w.@])(?:androidx|android|kotlinx|kotlin|java|javax|okhttp3|okio|retrofit2|com|org|coil3|dagger)(?:\.[a-z]\w*)+\.[A-Z]\w*""")
         fun zaehle(dateien: Sequence<File>) = dateien.sumOf { f ->

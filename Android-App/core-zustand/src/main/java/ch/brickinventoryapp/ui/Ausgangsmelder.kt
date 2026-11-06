@@ -19,14 +19,26 @@ import javax.inject.Inject
  * und ein Nachladen der betroffenen Listen, wenn gesendet wurde — die lokale
  * Annahme wird so durch den Serverstand ersetzt.
  */
-class Ausgangsmelder @Inject constructor(
+interface Ausgangsmelder {
+    fun starte(scope: CoroutineScope): StateFlow<Int>
+}
+
+/** Für Tests ohne Hilt. */
+fun Ausgangsmelder(
+    ablage: Offlineablage,
+    bestand: Bestandssignal,
+    meldungen: MeldungsKanal,
+    texte: Texte,
+): Ausgangsmelder = AusgangsBeobachter(ablage, bestand, meldungen, texte)
+
+class AusgangsBeobachter @Inject constructor(
     private val ablage: Offlineablage,
     private val bestand: Bestandssignal,
     private val meldungen: MeldungsKanal,
     private val texte: Texte,
-) {
+) : Ausgangsmelder {
     /** Einmal je Prozess starten (AppViewModel); liefert die Zahl offener Änderungen. */
-    fun starte(scope: CoroutineScope): StateFlow<Int> {
+    override fun starte(scope: CoroutineScope): StateFlow<Int> {
         val offene = ablage.offene().stateIn(scope, SharingStarted.Eagerly, 0)
         scope.launch {
             var vorher = 0

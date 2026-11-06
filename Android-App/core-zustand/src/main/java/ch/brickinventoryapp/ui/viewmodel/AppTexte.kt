@@ -4,7 +4,7 @@ import android.content.Context
 import android.net.Uri
 import ch.brickinventoryapp.data.Anmeldestand
 import ch.brickinventoryapp.data.api.fehlerTextZuCode
-import ch.brickinventoryapp.data.repository.Result
+import ch.brickinventoryapp.data.repository.Ergebnis
 import ch.brickinventoryapp.ui.fehlerTextBrauchtCode
 import ch.brickinventoryapp.ui.fehlerTextId
 import ch.brickinventoryapp.ui.mitTechnischerUrsache
@@ -31,7 +31,7 @@ class AppTexte @Inject constructor(
 
     override fun angemeldet() = prefs.authTokenState.value?.isNotBlank() == true
 
-    override fun meldung(fehler: Result.Error): String {
+    override fun meldung(fehler: Ergebnis.Error): String {
         if (fehler.message.isNotBlank()) return fehler.message
         fehlerTextZuCode(fehler.code)?.let { return text(it) }
         val id = fehlerTextId(fehler.art)
@@ -44,14 +44,16 @@ class AppDateiLeser @Inject constructor(
     @param:ApplicationContext private val ctx: Context,
     @param:Dispatcher(BrickDispatchers.IO) private val io: CoroutineDispatcher,
 ) : DateiLeser {
-    override suspend fun lies(uri: Uri): Pair<String?, ByteArray>? = withContext(io) {
+    override suspend fun lies(datei: DateiRef): Pair<String?, ByteArray>? = withContext(io) {
+        val uri = Uri.parse(datei.wert)
         runCatching {
             val bytes = ctx.contentResolver.openInputStream(uri)?.use { it.readBytes() }
             bytes?.let { ctx.contentResolver.getType(uri) to it }
         }.getOrNull()
     }
 
-    override suspend fun name(uri: Uri): String? = withContext(io) {
+    override suspend fun name(datei: DateiRef): String? = withContext(io) {
+        val uri = Uri.parse(datei.wert)
         runCatching {
             ctx.contentResolver.query(uri, null, null, null, null)?.use { c ->
                 val i = c.getColumnIndex(android.provider.OpenableColumns.DISPLAY_NAME)

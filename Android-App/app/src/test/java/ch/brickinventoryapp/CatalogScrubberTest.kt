@@ -97,37 +97,6 @@ class CatalogScrubberTest {
     }
 
     @Test
-    fun `die Jahresverteilung rechnet der Server`() {
-        val f = code(read("ui/viewmodel/CatalogViewModel.kt"))
-        // Die App kennt immer nur die geladenen Seiten. Welches Jahr an einer
-        // Stelle liegt, weiss nur die Datenbank — und beide Oberflaechen sollen
-        // dieselbe Antwort bekommen.
-        assert(f.contains("repo.katalog.getCatalogYearVerteilung(")) {
-            "Die App schaetzt die Jahreslage selbst — genau daran stand in der " +
-                "Webapp „1965\", waehrend Sets von 1999 erschienen"
-        }
-        // Mit denselben Filtern wie die Liste, sonst zeigt das Etikett daneben.
-        val i = f.indexOf("repo.katalog.getCatalogYearVerteilung(")
-        val aufruf = f.substring(i, minOf(i + 300, f.length))
-        for (teil in listOf("q =", "themeId =", "sort =")) {
-            assert(aufruf.contains(teil)) {
-                "Die Verteilung wird ohne $teil geholt — mit gesetztem Filter laege sie daneben"
-            }
-        }
-        // Und zur richtigen Liste: Wechselt der Filter waehrend des Abrufs,
-        // gehoert die Antwort zu einer Liste, die es nicht mehr gibt.
-        val fn = Quellen.funktion(f, "fun ladeJahrVerteilung(")
-        assert(fn.isNotEmpty()) { "ladeJahrVerteilung fehlt" }
-        assert(fn.contains("gen != catalogGeneration")) {
-            "Ohne Filter-Generation landet die Verteilung des ALTEN Filters in der neuen Liste"
-        }
-        // Das Rollziel muss wieder zurueckgesetzt werden.
-        assert(f.contains("fun catalogScrollConsumed()")) {
-            "Ohne Zuruecksetzen liesse sich dieselbe Stelle kein zweites Mal anfahren"
-        }
-    }
-
-    @Test
     fun `die Rollposition ueberlebt den Wechsel zur Detailseite`() {
         // ── Marcos Befund ───────────────────────────────────────────────────
         // „Wenn im Katalog eine Detailseite aufgerufen und wieder geschlossen

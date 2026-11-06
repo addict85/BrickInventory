@@ -1,5 +1,6 @@
 package ch.brickinventoryapp
 
+import ch.brickinventoryapp.data.CsvImportBeobachter
 import androidx.lifecycle.viewModelScope
 import ch.brickinventoryapp.data.CsvImportSseClient
 import ch.brickinventoryapp.data.CsvImportStrom
@@ -89,7 +90,8 @@ class CsvImportViewModelTest {
 
     private fun mitVm(strom: Strom, dienst: Dienst, block: suspend TestScope.(CsvImportViewModel) -> Unit) = runTest(takt) {
         strom.uhr = { testScheduler.currentTime }
-        val vm = CsvImportViewModel(strom, dienst, fake.repo(t.cache), zugang, NummernTexte, t.bestand, t.meldungen, t.sitzung)
+        val vm = CsvImportViewModel(CsvImportBeobachter(strom, SetsRepository(fake.api, t.cache), zugang), dienst, NummernTexte,
+            t.bestand, t.meldungen, t.sitzung)
         try {
             block(vm)
         } finally {

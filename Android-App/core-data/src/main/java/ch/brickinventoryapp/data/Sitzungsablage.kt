@@ -4,7 +4,7 @@ import kotlinx.coroutines.flow.Flow
 
 /**
  * Was das AppViewModel von der Ablage braucht: Adresse, Token und die Werte des
- * Kontos, die es spiegelt. Im Gerät der PreferencesManager; die Schnittstelle
+ * Kontos, die es spiegelt. Im Gerät die KontoAblage; die Schnittstelle
  * lässt das AppViewModel ohne DataStore und Context laufen.
  */
 interface Sitzungsablage {

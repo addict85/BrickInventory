@@ -5,7 +5,7 @@ import ch.brickinventoryapp.data.api.BrickApiService
 import ch.brickinventoryapp.data.cache.ResponseCache
 import ch.brickinventoryapp.data.repository.KontoRepository
 import ch.brickinventoryapp.data.repository.Fehlerart
-import ch.brickinventoryapp.data.repository.Result
+import ch.brickinventoryapp.data.repository.Ergebnis
 import kotlinx.coroutines.test.runTest
 import com.jakewharton.retrofit2.converter.kotlinx.serialization.asConverterFactory
 import okhttp3.MediaType.Companion.toMediaType
@@ -88,9 +88,9 @@ class BrickRepositoryErrorMappingTest {
         cacheDir.deleteRecursively()
     }
 
-    private fun fehler(r: Result<*>): Result.Error {
-        assert(r is Result.Error) { "Erwartet wurde ein Fehler, kam aber: $r" }
-        return r as Result.Error
+    private fun fehler(r: Ergebnis<*>): Ergebnis.Error {
+        assert(r is Ergebnis.Error) { "Erwartet wurde ein Fehler, kam aber: $r" }
+        return r as Ergebnis.Error
     }
 
     @Test
@@ -178,11 +178,11 @@ class BrickRepositoryErrorMappingTest {
             MockResponse().setResponseCode(200)
                 .setBody("""{"success":true,"user":{"id":1,"username":"marco"}}""")
         )
-        // `when` statt Cast: Result hat genau zwei Varianten, also ist es
+        // `when` statt Cast: Ergebnis hat genau zwei Varianten, also ist es
         // erschöpfend — und der Smart Cast im Zweig liefert den Typ mit.
         when (val r = repo.getMe()) {
-            is Result.Success -> assert(r.data.success) { "success war false" }
-            is Result.Error   -> assert(false) { "Erwartet wurde Erfolg, kam: $r" }
+            is Ergebnis.Success -> assert(r.data.success) { "success war false" }
+            is Ergebnis.Error   -> assert(false) { "Erwartet wurde Erfolg, kam: $r" }
         }
     }
 }

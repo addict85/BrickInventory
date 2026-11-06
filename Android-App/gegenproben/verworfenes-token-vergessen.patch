@@ -3,11 +3,11 @@ Modul: core-data
 Test: ch.brickinventoryapp.TokenBindungGesperrtTest
 Rot: ein gesperrter Keystore beim Serverwechsel
 
-diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/PreferencesManager.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/PreferencesManager.kt
-index 23815f2..a435c1d 100644
---- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/PreferencesManager.kt
-+++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/PreferencesManager.kt
-@@ -302,7 +302,6 @@ class PreferencesManager @Inject constructor(
+diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/TokenAblage.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/TokenAblage.kt
+index f79cce3..140045c 100644
+--- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/TokenAblage.kt
++++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/TokenAblage.kt
+@@ -200,7 +200,6 @@ class TokenAblage @Inject constructor(
                  (!NetworkPolicy.gleicheHerkunft(herkunft, normalized) ||
                      !NetworkPolicy.gleicherServer(alteAdresse, normalized))
              if (anderer) {

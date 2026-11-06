@@ -51,6 +51,7 @@ import ch.brickinventoryapp.ui.screens.SetDetailRoute
 import ch.brickinventoryapp.ui.theme.BrickInventoryManagerTheme
 import ch.brickinventoryapp.ui.viewmodel.ErfassungViewModel
 import com.github.takahirom.roborazzi.captureRoboImage
+import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.emptyFlow
@@ -89,6 +90,7 @@ import ch.brickinventoryapp.ui.screens.SetupScreen
 import ch.brickinventoryapp.ui.screens.StartpasswortMaske
 import ch.brickinventoryapp.ui.screens.ZweiterFaktorPflichtMaske
 import ch.brickinventoryapp.ui.viewmodel.DateiLeser
+import ch.brickinventoryapp.ui.viewmodel.DateiRef
 import ch.brickinventoryapp.ui.viewmodel.EinstellungenViewModel
 import ch.brickinventoryapp.ui.viewmodel.GalerieViewModel
 import ch.brickinventoryapp.ui.viewmodel.HaushaltViewModel
@@ -98,7 +100,6 @@ import ch.brickinventoryapp.ui.viewmodel.SetDetailViewModel
 import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.Canvas
-import android.net.Uri
 import android.view.View
 import android.view.ViewGroup
 import androidx.compose.foundation.layout.Column
@@ -115,7 +116,6 @@ import org.robolectric.shadows.ShadowDialog
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.ui.test.performScrollTo
-import ch.brickinventoryapp.data.repository.BrickRepository
 import ch.brickinventoryapp.data.repository.FigurenRepository
 import ch.brickinventoryapp.data.repository.FinanzenRepository
 import ch.brickinventoryapp.ui.AppUiState
@@ -245,7 +245,7 @@ class BildschirmFotoVariantenTest {
     private fun foto(name: String, design: String = "classic", dunkel: Boolean = false, geraet: String = "telefon") =
         compose.onRoot().captureRoboImage(pfad(name, design, dunkel, geraet))
 
-    private fun erfassung() = welt.t.merke(ErfassungViewModel(welt.t.dienste, SetsRepository(welt.t.api, welt.t.cache),
+    private fun erfassung() = welt.t.merke(ErfassungViewModel(welt.t.sitzung, welt.t.filter(), welt.t.hinweise, welt.t.bestand, SetsRepository(welt.t.api, welt.t.cache),
         KatalogRepository(welt.t.api, welt.t.cache), object : SetAnleger {
             override fun anlegen(setNumber: String, quantity: Int, purchasePrice: Double?, condition: String?,
                                  ownerUserId: Int?, storage: String?): Flow<SetAnlegenSchritt> = emptyFlow()
@@ -594,13 +594,13 @@ class BildschirmFotoVariantenTest {
 
     // ── Unterseiten und Erfassen, die sonst kein Foto hatten (I2) ──
 
-    private fun einstellungen() = welt.t.merke(EinstellungenViewModel(welt.t.dienste,
+    private fun einstellungen() = welt.t.merke(EinstellungenViewModel(welt.t.sitzung, welt.t.filter(), welt.t.hinweise, welt.t.bestand,
         KontoRepository(welt.t.api, welt.t.cache, welt.t.io),
         VerwaltungRepository(welt.t.api, welt.t.cache),
         SetsRepository(welt.t.api, welt.t.cache),
         TeileRepository(welt.t.api, welt.t.cache),
         object : DateiLeser {
-            override suspend fun lies(uri: Uri): Pair<String?, ByteArray>? = null
+            override suspend fun lies(datei: DateiRef): Pair<String?, ByteArray>? = null
         }))
 
     @Test
@@ -631,7 +631,7 @@ class BildschirmFotoVariantenTest {
     fun haushalt() {
         welt.pfade.antworten["/api/v1/settings/household"] = """{"success":true,"is_main":true,"currency":"CHF",
             "sub_accounts":[{"id":2,"username":"lena"},{"id":3,"username":"tim"}],"open_invites":1}"""
-        val vm = welt.t.merke(HaushaltViewModel(welt.t.dienste,
+        val vm = welt.t.merke(HaushaltViewModel(welt.t.sitzung, welt.t.filter(), welt.t.hinweise, welt.t.bestand,
             HaushaltRepository(welt.t.api, welt.t.cache),
             KontoRepository(welt.t.api, welt.t.cache, welt.t.io))).also { it.loadHouseholdStatus() }
         zeige("haushalt", bereit = { vm.householdState.value.status != null }, zustand = { vm.householdState.value }) {
@@ -763,7 +763,7 @@ class BildschirmFotoVariantenTest {
             {"token_id":"b2","label":"Galaxy Tab","created_at":"2026-06-12T10:00:00Z","last_used":"2026-10-20T08:00:00Z","scope":"app"}]}"""
         val konto = welt.t.merke(KontoViewModel(
             KontoRepository(welt.t.api, welt.t.cache, welt.t.io), KontextTexte(),
-            welt.t.meldungen, welt.t.sitzung))
+            welt.t.meldungen, welt.t.sitzung, SitzungsAttrappe()))
         zeige(name, dunkel = dunkel, geraet = geraet) {
             KontoRoute(onAbmelden = {}, snackbarHostState = remember { SnackbarHostState() },
                 konto = konto, onZurueck = {})
@@ -1134,7 +1134,7 @@ class BildschirmFotoVariantenTest {
     @Test fun dialogBarcodeErgebnis() = barcodeFoto(false)
     @Test fun dialogBarcodeErgebnisDunkel() = barcodeFoto(true)
 
-    private fun kaeufe() = welt.t.merke(KaeufeViewModel(welt.t.dienste, HaushaltRepository(welt.t.api, welt.t.cache),
+    private fun kaeufe() = welt.t.merke(KaeufeViewModel(welt.t.sitzung, welt.t.filter(), welt.t.hinweise, welt.t.bestand, HaushaltRepository(welt.t.api, welt.t.cache),
         FinanzenRepository(welt.t.api, welt.t.cache), TeileRepository(welt.t.api, welt.t.cache),
         FigurenRepository(welt.t.api, welt.t.cache)))
 
@@ -1188,14 +1188,8 @@ class BildschirmFotoVariantenTest {
             "job_prozess":{"lebenszeichen":null,"alter_sekunden":null,"laeuft":true}}"""
         val api = welt.t.api
         val cache = welt.t.cache
-        val vm = MonitoringViewModel(BrickRepository(
-            sets = SetsRepository(api, cache), teile = TeileRepository(api, cache),
-            finanzen = FinanzenRepository(api, cache), haushalt = HaushaltRepository(api, cache),
-            figuren = FigurenRepository(api, cache), konto = KontoRepository(api, cache),
-            verwaltung = VerwaltungRepository(api, cache), katalog = KatalogRepository(api, cache),
-            gutscheine = GutscheineRepository(api, cache), cache = cache,
-        ), KontextTexte(), welt.t.meldungen)
-        kotlinx.coroutines.runBlocking { vm.ladeHintergrund() }
+        val vm = MonitoringViewModel(VerwaltungRepository(api, cache), KontoRepository(api, cache), KontextTexte(), welt.t.meldungen)
+        runBlocking { vm.ladeHintergrund() }
         val ereignisse = CacheEreignisse({}, {}, { _, _ -> }, {}, {}, {}, { _, _, _ -> })
         zeige("hintergrundarbeiten", dunkel = dunkel, geraet = geraet, warten = false) {
             MonitoringScreen(MonitoringZustand(MonitoringUiState(), vm.hintergrund.value, VerwaltungUiState(),
@@ -1213,7 +1207,7 @@ class BildschirmFotoVariantenTest {
         welt.pfade.antworten["/api/v1/vouchers"] = """{"success":true,"vouchers":[]}"""
         val vm = welt.t.merke(GutscheinViewModel(GutscheineRepository(welt.t.api, welt.t.cache), KontextTexte(),
             object : DateiLeser {
-                override suspend fun lies(uri: Uri): Pair<String?, ByteArray>? = null
+                override suspend fun lies(datei: DateiRef): Pair<String?, ByteArray>? = null
             }, welt.t.meldungen))
         zeige("gutschein-formular") {
             GutscheineRoute(vm, remember { SnackbarHostState() }, onZurueck = {})
@@ -1232,7 +1226,7 @@ class BildschirmFotoVariantenTest {
         welt.pfade.antworten["/api/v1/settings/household"] = """{"success":true,"is_main":true,"currency":"CHF",
             "sub_accounts":[{"id":2,"username":"lena"}],"open_invites":0}"""
         welt.pfade.antworten["/api/v1/settings/household/invite"] = """{"success":true,"code":"K7QF-2M9X","expires_in":86400}"""
-        val vm = welt.t.merke(HaushaltViewModel(welt.t.dienste,
+        val vm = welt.t.merke(HaushaltViewModel(welt.t.sitzung, welt.t.filter(), welt.t.hinweise, welt.t.bestand,
             HaushaltRepository(welt.t.api, welt.t.cache),
             KontoRepository(welt.t.api, welt.t.cache))).also { it.loadHouseholdStatus() }
         zeige("haushalt-code", bereit = { vm.householdState.value.status != null }, zustand = { vm.householdState.value }) {

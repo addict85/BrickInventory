@@ -4,15 +4,15 @@ Test: ch.brickinventoryapp.KontoViewModelTest
 Rot: eine neue E-Mail ohne gesendete Mail
 
 diff --git a/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/ui/viewmodel/KontoViewModel.kt b/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/ui/viewmodel/KontoViewModel.kt
-index c7b975a..21b1461 100644
+index 429b794..7caa6d6 100644
 --- a/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/ui/viewmodel/KontoViewModel.kt
 +++ b/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/ui/viewmodel/KontoViewModel.kt
-@@ -60,7 +60,7 @@ class KontoViewModel @Inject constructor(
+@@ -62,7 +62,7 @@ class KontoViewModel @Inject constructor(
          when (val r = konto.getProfil()) {
-             is Result.Success -> _kontoState.update {
+             is Ergebnis.Success -> _kontoState.update {
                  it.copy(laedt = false, profil = r.data.user?.alsAnsicht(),
 -                        fehler = if (r.data.user == null) r.data.error ?: texte.text(R.string.err_generic) else it.fehler)
 +                        fehler = if (r.data.user == null) r.data.error ?: texte.text(R.string.err_generic) else null)
              }
-             is Result.Error -> _kontoState.update { it.copy(laedt = false, fehler = texte.meldung(r)) }
+             is Ergebnis.Error -> _kontoState.update { it.copy(laedt = false, fehler = texte.meldung(r)) }
          }

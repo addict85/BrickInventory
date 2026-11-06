@@ -19,7 +19,6 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
-import okhttp3.HttpUrl.Companion.toHttpUrl
 import ch.brickinventoryapp.ressourcen.R
 import ch.brickinventoryapp.ui.theme.Abstaende
 import ch.brickinventoryapp.ui.components.HinweisText
@@ -52,7 +51,7 @@ fun ComparisonScreen() {
     // Snackbar statt Toast wie in den Detailseiten: bleibt lesbar, bis TalkBack fertig ist.
     val meldungen = remember { SnackbarHostState() }
     suspend fun openInBrowser(query: String) {
-        val url = "https://www.toppreise.ch/produktsuche".toHttpUrl().newBuilder().addQueryParameter("q", query).build()
+        val url = android.net.Uri.parse("https://www.toppreise.ch/produktsuche").buildUpon().appendQueryParameter("q", query).build()
         if (!oeffneExtern(context, url.toString())) meldungen.showSnackbar(keineAppText)
     }
 

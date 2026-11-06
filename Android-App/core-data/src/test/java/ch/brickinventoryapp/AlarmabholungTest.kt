@@ -3,7 +3,7 @@ package ch.brickinventoryapp
 import ch.brickinventoryapp.alarm.Alarmabholung
 import ch.brickinventoryapp.data.model.PendingAlertsResponse
 import ch.brickinventoryapp.data.model.Preisalarm
-import ch.brickinventoryapp.data.repository.Result
+import ch.brickinventoryapp.data.repository.Ergebnis
 import kotlinx.coroutines.test.runTest
 import org.junit.Test
 
@@ -37,7 +37,7 @@ class AlarmabholungTest {
                    zuletztPreis = preis)
 
     private fun antwort(vararg a: Preisalarm, now: String? = "2026-09-19T18:00:00.000Z") =
-        Result.Success(PendingAlertsResponse(success = true, alerts = a.toList(), now = now))
+        Ergebnis.Success(PendingAlertsResponse(success = true, alerts = a.toList(), now = now))
 
     @Test
     fun `der erste Durchgang markiert nur und meldet nichts`() = runTest {
@@ -90,13 +90,13 @@ class AlarmabholungTest {
 
     @Test
     fun `ohne brauchbare Antwort bleibt die Marke, wie sie war`() = runTest {
-        val kaputt = listOf<Pair<String, Result<PendingAlertsResponse>>>(
-            "Netz weg" to Result.Error("offline", transient = true),
-            "Server sagt nein" to Result.Success(PendingAlertsResponse(success = false)),
+        val kaputt = listOf<Pair<String, Ergebnis<PendingAlertsResponse>>>(
+            "Netz weg" to Ergebnis.Error("offline", transient = true),
+            "Server sagt nein" to Ergebnis.Success(PendingAlertsResponse(success = false)),
             // Eine aeltere Serverfassung kennt das Feld nicht. Dann lieber gar
             // keine Marke als eine falsche — es bleibt beim Mailversand.
-            "kein Zeitpunkt" to Result.Success(PendingAlertsResponse(success = true, now = null)),
-            "leerer Zeitpunkt" to Result.Success(PendingAlertsResponse(success = true, now = "")),
+            "kein Zeitpunkt" to Ergebnis.Success(PendingAlertsResponse(success = true, now = null)),
+            "leerer Zeitpunkt" to Ergebnis.Success(PendingAlertsResponse(success = true, now = "")),
         )
         for ((warum, r) in kaputt) {
             val e = Alarmabholung.hole("2026-09-19T17:30:00.000Z") { r }

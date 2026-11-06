@@ -4,9 +4,9 @@ import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.viewModelScope
 import ch.brickinventoryapp.ressourcen.R
 import ch.brickinventoryapp.ui.TeilelistenQuelle
-import ch.brickinventoryapp.ui.screens.PlPart
-import ch.brickinventoryapp.ui.viewmodel.ExportErgebnis
-import ch.brickinventoryapp.ui.viewmodel.TeilelistenExport
+import ch.brickinventoryapp.ui.PlPart
+import ch.brickinventoryapp.service.ExportErgebnis
+import ch.brickinventoryapp.service.TeilelistenExport
 import ch.brickinventoryapp.ui.viewmodel.TeilelisteViewModel
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
@@ -90,7 +90,7 @@ class TeilelisteViewModelTest {
         quelle: Quelle = Quelle(),
         export: Export = Export(ExportErgebnis.Fehler(null)),
         gemerkt: SavedStateHandle = SavedStateHandle(),
-    ) = TeilelisteViewModel(t.dienste, quelle, export, gemerkt).also { erzeugt += it }
+    ) = TeilelisteViewModel(t.sitzung, t.hinweise, quelle, export, gemerkt).also { erzeugt += it }
 
     private fun teil(nr: String, menge: Int, farbe: String = "Rot") =
         PlPart(partNumber = nr, partName = nr, colorName = farbe, colorHex = null, quantity = menge, imageUrl = null)

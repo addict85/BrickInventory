@@ -4,12 +4,12 @@ Test: ch.brickinventoryapp.QuelltextRatscheTest
 Rot: kein Kommentar hat mehr als fuenf Zeilen Prosa
 
 diff --git a/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/ui/AppViewModel.kt b/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/ui/AppViewModel.kt
-index 1f9da0e..d121865 100644
+index 80c50e4..6849f43 100644
 --- a/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/ui/AppViewModel.kt
 +++ b/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/ui/AppViewModel.kt
-@@ -35,6 +35,12 @@ import javax.inject.Inject
-  * Vertrauen und CSV-Import haben eigene ViewModels; die Bereiche teilen über
-  * Sitzung, Blickfeld, Bestandssignal und Meldungskanal.
+@@ -17,6 +17,12 @@ import javax.inject.Inject
+  * angetippten Meldung. Die Arbeit der Sitzung macht der [SitzungsRepository]; er
+  * lebt im Bereich der App, damit kein Bildschirm dieses ViewModel dafür braucht.
   */
 +// Eins.
 +// Zwei.
@@ -19,4 +19,4 @@ index 1f9da0e..d121865 100644
 +// Sechs.
  @HiltViewModel
  class AppViewModel @Inject constructor(
-     private val repo: BrickRepository,
+     private val sitzungsDienst: SitzungsRepository,

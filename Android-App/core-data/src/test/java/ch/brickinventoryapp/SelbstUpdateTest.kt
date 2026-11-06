@@ -208,7 +208,7 @@ class SelbstUpdateTest {
                hilfe.contains("const val UPDATE_JSON_MAX_BYTES")) {
             "Die Obergrenzen sind nicht mehr benannt"
         }
-        val feature = quelle("ui/viewmodel/UpdateViewModel.kt")
+        val feature = quelle("data/UpdateRepository.kt")
         // version.json: peekBody liest HOECHSTENS so viele Bytes.
         assert(feature.contains("peekBody(UPDATE_JSON_MAX_BYTES)")) {
             "version.json wird wieder unbegrenzt gelesen — dann bringt eine manipulierte " +

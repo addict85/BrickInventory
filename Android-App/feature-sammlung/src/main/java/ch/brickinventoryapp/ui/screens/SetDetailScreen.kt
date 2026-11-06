@@ -33,6 +33,7 @@ import ch.brickinventoryapp.ui.theme.LocalAkzentflaechen
 import ch.brickinventoryapp.ui.viewmodel.ANLEITUNG_TYPEN
 import ch.brickinventoryapp.util.fmtMoney
 import ch.brickinventoryapp.util.fmtTag
+import ch.brickinventoryapp.ui.viewmodel.DateiRef
 
 /** Das Set-Detail am Navigationsziel: sammelt die Flüsse und reicht sie an [SetDetailScreen]. */
 @Composable
@@ -186,7 +187,7 @@ fun SetDetailScreen(
         // SetDetailFeature — dieselbe, die der Server annimmt.
         val anleitungAuswahl = androidx.activity.compose.rememberLauncherForActivityResult(
             androidx.activity.result.contract.ActivityResultContracts.OpenDocument()
-        ) { uri -> if (uri != null) aktionen.ladeAnleitungHoch(setNumber, uri) }
+        ) { uri -> if (uri != null) aktionen.ladeAnleitungHoch(setNumber, DateiRef(uri.toString())) }
 
         val kopf: androidx.compose.foundation.lazy.LazyListScope.() -> Unit = {
             setDetailHeroImage(set, imageUrl, imageLoader, detailRetryState, detailScope) { showImageZoom = true }

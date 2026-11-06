@@ -1,74 +1,93 @@
 package ch.brickinventoryapp
 
+import ch.brickinventoryapp.ui.AppUiState
+import ch.brickinventoryapp.ui.Sitzung
+import ch.brickinventoryapp.ui.model.StartzustandAnsicht
+import org.junit.Assert.assertEquals
 import org.junit.Test
 
 /**
  * Wer darf welches Feld von `AppUiState` beschreiben?
  *
- * Der gemeinsame Zustand liegt in der Sitzung (ui/Sitzung.kt) und wird nur
- * über `aendere { it.copy(…) }` geschrieben. Jeder Bereich hält seinen
- * eigenen Zustand privat — daran kommt ohnehin niemand. Hier steht, wer in
- * den GEMEINSAMEN schreiben darf und welche Felder; ein neuer Schreiber oder
- * ein neues Feld fällt auf, statt still einen zweiten Weg zu öffnen.
+ * Der gemeinsame Zustand liegt in der Sitzung (ui/Sitzung.kt); geschrieben wird
+ * er nur über deren benannte Schritte, ein allgemeines `aendere {}` gibt es
+ * nicht mehr. Hier steht, welcher Schritt welche Felder setzt; ein neuer
+ * Schreiber oder ein neues Feld fällt auf, statt still einen zweiten Weg zu öffnen.
  *
- * Ausserhalb von core-zustand verhindert schon der Übersetzer jedes aendere{}
- * (internal); dieser Test hält fest, welche Felder die Schritte setzen.
+ * Der erste Test liest den Quelltext (wer hält den Zustand), der zweite führt
+ * jeden Schritt aus und vergleicht die Felder davor und danach.
  *
  * Gegenproben:
- *   A  in GalerieViewModel.loadSets() `dienste.sitzung.aendere { it }`
- *      ergänzt → rot „nur die bekannten Stellen schreiben …“
- *   B  in FinanzViewModel `priceCondition` mitgeschrieben → rot, derselbe Fall
+ *   A  in GalerieViewModel `MutableStateFlow(AppUiState())` ergänzt → rot
+ *      „nur die Sitzung hält den gemeinsamen Zustand“
+ *   B  in waehrungUebernommen() `priceCondition` mitgeschrieben → rot
+ *      „jeder Schritt der Sitzung setzt nur seine Felder“
  */
 class StateDomainBoundaryTest {
 
-    /** Datei → Felder, die sie im gemeinsamen Zustand setzen darf. */
+    /** Schritt der Sitzung → Felder, die er setzen darf. */
     private val erlaubt = mapOf(
-        // Sitzung beginnen und beenden, Design, Sprache, Serverstart.
-        "AppViewModel.kt" to setOf("appTheme", "serverUrl", "isLoggedIn", "isAdmin",
-                                   "currency", "language", "startupStatus"),
-        // Die benannten Schritte (angemeldet, einstellungenGespeichert, …), die die
-        // Bereiche aufrufen; aendere selbst ist internal in core-zustand.
-        "Sitzung.kt" to setOf("currency", "priceCondition", "defaultPriceCondition",
-                              "userDefaultCondition", "appTheme", "isAdmin", "isLoggedIn"),
+        "angemeldet" to setOf("isLoggedIn", "isAdmin"),
+        "anmeldungGeaendert" to setOf("serverUrl", "isLoggedIn"),
+        "verwalterGeaendert" to setOf("isAdmin"),
+        "einstellungenGespeichert" to setOf("currency", "priceCondition"),
+        "einstellungenGeladen" to setOf("currency", "priceCondition", "defaultPriceCondition", "userDefaultCondition"),
+        "waehrungUebernommen" to setOf("currency"),
+        "spracheGeaendert" to setOf("language"),
+        "setzeDesign" to setOf("appTheme"),
+        "serverstartGeaendert" to setOf("startupStatus"),
     )
 
     @Test
-    fun `nur die bekannten Stellen schreiben den gemeinsamen Zustand, und nur ihre Felder`() {
-        val aufruf = Regex("""\baendere\s*\{\s*it\.copy\(""")
-        val fehler = mutableListOf<String>()
-        var gefunden = 0
-        for (datei in Quellen.alle()) {
-            val src = Quellen.ohneKommentare(datei.readText())
-            for (m in aufruf.findAll(src)) {
-                gefunden++
-                val felder = erlaubt[datei.name]
-                if (felder == null) {
-                    fehler += "${datei.name}: schreibt den gemeinsamen Zustand"
-                    continue
-                }
-                // Die Argumente bis zur schliessenden Klammer von copy(.
-                var i = m.range.last + 1
-                var tiefe = 1
-                while (i < src.length && tiefe > 0) {
-                    if (src[i] == '(') tiefe++ else if (src[i] == ')') tiefe--
-                    i++
-                }
-                val args = src.substring(m.range.last + 1, i - 1)
-                for (f in Regex("""(\w+)\s*=""").findAll(args).map { it.groupValues[1] }) {
-                    if (f !in felder) fehler += "${datei.name}: setzt $f"
-                }
-            }
-            // Auch ohne `it.copy(`: Ein anderes aendere{} auf der Sitzung schriebe am Muster vorbei.
-            if (datei.name !in erlaubt && Regex("""sitzung\.aendere\b""").containsMatchIn(src)) {
-                fehler += "${datei.name}: ruft sitzung.aendere"
-            }
+    fun `nur die Sitzung haelt den gemeinsamen Zustand`() {
+        val halter = Quellen.alle().filter {
+            Regex("""MutableStateFlow\(\s*AppUiState\(|MutableStateFlow<AppUiState>""")
+                .containsMatchIn(Quellen.ohneKommentare(it.readText()))
+        }.map { it.name }
+        assert(halter == listOf("Sitzung.kt")) { "Den gemeinsamen Zustand halten: $halter" }
+        val sitzung = Quellen.alle().single { it.name == "Sitzung.kt" }.readText()
+        assert(!Regex("""\bfun (Sitzung\.)?aendere\b""").containsMatchIn(sitzung)) {
+            "Ein allgemeines aendere{} an der Sitzung öffnet jeden Weg"
         }
-        assert(gefunden >= 10) { "Nur $gefunden Schreibstellen gefunden — Muster veraltet?" }
-        assert(fehler.distinct().isEmpty()) {
-            "Der gemeinsame Zustand wird an unerwarteter Stelle beschrieben:\n  " +
-                fehler.distinct().joinToString("\n  ") +
-                "\nGehört das Feld einem Bereich, zieht es in dessen eigenen Zustand; " +
-                "sonst die Liste oben bewusst erweitern."
+    }
+
+    /** Die Felder von AppUiState, zum Vergleich vor und nach einem Schritt. */
+    private val felder: Map<String, (AppUiState) -> Any?> = mapOf(
+        "serverUrl" to { it.serverUrl }, "isLoggedIn" to { it.isLoggedIn }, "isAdmin" to { it.isAdmin },
+        "currency" to { it.currency }, "priceCondition" to { it.priceCondition },
+        "defaultPriceCondition" to { it.defaultPriceCondition }, "userDefaultCondition" to { it.userDefaultCondition },
+        "appTheme" to { it.appTheme }, "startupStatus" to { it.startupStatus }, "language" to { it.language },
+    )
+
+    /** Jeder Schritt mit Werten, die sich von der Vorgabe unterscheiden. */
+    private val schritte: Map<String, (Sitzung) -> Unit> = mapOf(
+        "angemeldet" to { it.angemeldet(admin = true) },
+        "anmeldungGeaendert" to { it.anmeldungGeaendert("https://brick.example", true) },
+        "verwalterGeaendert" to { it.verwalterGeaendert(true) },
+        "einstellungenGespeichert" to { it.einstellungenGespeichert("CHF", "U") },
+        "einstellungenGeladen" to { it.einstellungenGeladen("CHF", "U", "U", "U") },
+        "waehrungUebernommen" to { it.waehrungUebernommen("CHF") },
+        "spracheGeaendert" to { it.spracheGeaendert("fr") },
+        "setzeDesign" to { it.setzeDesign("noppe") },
+        "serverstartGeaendert" to { it.serverstartGeaendert(StartzustandAnsicht(false, "Katalog", null, 2.0, 8)) },
+    )
+
+    @Test
+    fun `jeder Schritt der Sitzung setzt nur seine Felder`() {
+        assertEquals(erlaubt.keys, schritte.keys)
+        val fehler = mutableListOf<String>()
+        for ((name, schritt) in schritte) {
+            val sitzung = Sitzung()
+            val vorher = sitzung.state.value
+            schritt(sitzung)
+            val nachher = sitzung.state.value
+            val geaendert = felder.filter { (_, f) -> f(vorher) != f(nachher) }.keys
+            if (geaendert.isEmpty()) fehler += "$name ändert nichts"
+            (geaendert - erlaubt.getValue(name)).forEach { fehler += "$name setzt $it" }
+        }
+        assert(fehler.isEmpty()) {
+            "Die Sitzung schreibt an unerwarteter Stelle:\n  " + fehler.joinToString("\n  ") +
+                "\nGehört das Feld einem Bereich, zieht es in dessen eigenen Zustand; sonst die Liste oben bewusst erweitern."
         }
     }
 }

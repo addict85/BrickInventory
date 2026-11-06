@@ -1,21 +1,19 @@
 package ch.brickinventoryapp
 
-import androidx.lifecycle.viewModelScope
-import ch.brickinventoryapp.data.PasswortPflicht
 import ch.brickinventoryapp.data.RechteSignal
 import ch.brickinventoryapp.data.SessionExpiredSignal
 import ch.brickinventoryapp.data.ZweiterFaktorPflicht
-import ch.brickinventoryapp.data.lokal.Offlineablage
 import ch.brickinventoryapp.data.model.AppThemeResponse
 import ch.brickinventoryapp.data.model.MeResponse
 import ch.brickinventoryapp.data.model.StartupStatus
 import ch.brickinventoryapp.data.model.User
 import ch.brickinventoryapp.ressourcen.R
-import ch.brickinventoryapp.ui.AppViewModel
 import ch.brickinventoryapp.ui.Abmeldevorgang
-import ch.brickinventoryapp.ui.Ausgangsmelder
+import ch.brickinventoryapp.ui.SitzungsDienst
 import ch.brickinventoryapp.ui.Vorwaermung
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.test.StandardTestDispatcher
@@ -36,7 +34,7 @@ import org.junit.Before
 import org.junit.Test
 
 /**
- * Das AppViewModel ausgeführt: Abmelden bei 401 und zu alter Anmeldung,
+ * Der SitzungsDienst ausgeführt: Abmelden bei 401 und zu alter Anmeldung,
  * Rechteentzug, Design und Serverstart. Ohne Netz (FakeApi) und in virtueller
  * Zeit (StandardTestDispatcher), damit „nichts geschieht“ prüfbar ist, ohne zu warten.
  *
@@ -45,9 +43,10 @@ import org.junit.Test
  *   rechte-ohne-meldung             die Meldung beim Rechteentzug gestrichen → rot „entzogene …“
  *   design-nicht-gemerkt            der Spiegel nach saveAppTheme gestrichen → rot „das Design …“
  *   serverstart-ohne-ende           `r.data.ready` aus der Abbruchbedingung → rot „der Serverstart …“
+ *   abgelaufen-vor-dem-start        der 401-Sammler mit drop(1) → rot „ein 401 vor dem Start …“
  */
 @OptIn(ExperimentalCoroutinesApi::class)
-class AppViewModelTest {
+class SitzungsDienstTest {
 
     private val takt = StandardTestDispatcher()
     private val fake = FakeApi()
@@ -68,26 +67,27 @@ class AppViewModelTest {
         t.cacheDir.deleteRecursively()
     }
 
-    /** Erzeugt das ViewModel, führt [block] aus und beendet seine Koroutinen. */
-    private fun mitVm(block: suspend TestScope.(AppViewModel) -> Unit) = runTest(takt) {
-        val vm = AppViewModel(
-            repo = fake.repo(t.cache), prefs = ablage, sessionExpired = abgelaufenSignal, rechte = rechte,
-            meldungen = t.meldungen, texte = NummernTexte, sitzung = t.sitzung, blickfeldDienst = t.blickfeld,
-            bestand = t.bestand, scrollMemory = t.scrollMemory,
-            ausgangsmelder = Ausgangsmelder(Offlineablage.fluechtig(), t.bestand, t.meldungen, NummernTexte),
-            passwortPflicht = PasswortPflicht(), zweiterFaktorPflicht = ZweiterFaktorPflicht(),
-            abmelden = Abmeldevorgang {
+    /** Erzeugt und startet den Dienst, führt [block] aus und beendet seine Koroutinen. */
+    private fun mitVm(block: suspend TestScope.(SitzungsDienst) -> Unit) = runTest(takt) {
+        val bereich = CoroutineScope(SupervisorJob() + takt)
+        val dienst = SitzungsDienst(
+            konto = KontoRepository(fake.api, t.cache), verwaltung = VerwaltungRepository(fake.api, t.cache), prefs = ablage, sessionExpired = abgelaufenSignal, rechte = rechte,
+            meldungen = t.meldungen, texte = NummernTexte, sitzung = t.sitzung, blickfeld = t.blickfeld,
+            bestand = t.bestand, zweiterFaktorPflicht = ZweiterFaktorPflicht(),
+            abmeldevorgang = Abmeldevorgang {
                 abmeldungen++
                 ablage.token.value = ""
                 t.sitzung.abgemeldet()
                 null
             },
             vorwaermen = Vorwaermung { vorgewaermt++ },
+            bereich = bereich,
         )
         try {
-            block(vm)
+            dienst.starte()
+            block(dienst)
         } finally {
-            vm.viewModelScope.cancel()
+            bereich.cancel()
         }
     }
 
@@ -199,6 +199,17 @@ class AppViewModelTest {
         mitVm {
             assertEquals("t${R.string.abmeldung_gescheitert_text}", t.meldungen.meldung.value)
             assertTrue(ablage.gescheitert.isEmpty())
+        }
+    }
+
+    @Test
+    fun `ein 401 vor dem Start geht nicht verloren`() {
+        angemeldet()
+        abgelaufenSignal.notifyExpired()
+        mitVm {
+            advanceUntilIdle()
+            assertEquals(1, abmeldungen)
+            assertFalse("quittiert", abgelaufenSignal.abgelaufen.value)
         }
     }
 }

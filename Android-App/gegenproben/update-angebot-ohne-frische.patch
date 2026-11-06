@@ -4,15 +4,15 @@ Test: ch.brickinventoryapp.UpdateViewModelTest
 Rot: eine zurueckgesetzte Beschreibung bietet nichts an
 
 diff --git a/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/ui/viewmodel/UpdateViewModel.kt b/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/ui/viewmodel/UpdateViewModel.kt
-index 6451a93..927e5da 100644
+index 0f539b8..dea1869 100644
 --- a/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/ui/viewmodel/UpdateViewModel.kt
 +++ b/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/ui/viewmodel/UpdateViewModel.kt
-@@ -115,7 +115,7 @@ class UpdateViewModel @Inject constructor(
-                 val frische = pruefeFrische(updateStand, beschreibung, fassung.code, System.currentTimeMillis() / 1000)
+@@ -104,7 +104,7 @@ class UpdateViewModel @Inject constructor(
+                 val frische = pruefeFrische(updateStand, beschreibung, repo.laufendeFassung.code, System.currentTimeMillis() / 1000)
                  _state.update {
                      it.copy(laedtPruefung = false, geprueft = true,
--                        neuereFassung = anzubietendeFassung(beschreibung, frische, fassung.code), fehler = null, frische = frische)
-+                        neuereFassung = if (beschreibung.versionCode > fassung.code) beschreibung else null, fehler = null, frische = frische)
+-                        neuereFassung = anzubietendeFassung(beschreibung, frische, repo.laufendeFassung.code), fehler = null, frische = frische)
++                        neuereFassung = if (beschreibung.versionCode > repo.laufendeFassung.code) beschreibung else null, fehler = null, frische = frische)
                  }
              }.onFailure { _ ->
                  _state.update {

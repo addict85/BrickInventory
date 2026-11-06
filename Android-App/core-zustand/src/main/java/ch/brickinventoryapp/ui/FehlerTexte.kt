@@ -2,7 +2,7 @@ package ch.brickinventoryapp.ui
 
 import ch.brickinventoryapp.ressourcen.R
 import ch.brickinventoryapp.data.repository.Fehlerart
-import ch.brickinventoryapp.data.repository.Result
+import ch.brickinventoryapp.data.repository.Ergebnis
 
 /**
  * Welche Textressource gehört zu welcher [Fehlerart]? Eine eigene, reine Funktion
@@ -29,7 +29,7 @@ fun fehlerTextId(art: Fehlerart?): Int = when (art) {
  * zählt als Anmeldung, auch wenn die Datenschicht keine Art kennt; ein HTTP-Code ab
  * 500 als Server, auch wenn der Server einen eigenen Satz mitschickt.
  */
-fun fehlerklasse(f: Result.Error): Fehlerklasse = when {
+fun fehlerklasse(f: Ergebnis.Error): Fehlerklasse = when {
     f.unauthorized || f.art == Fehlerart.NICHT_ANGEMELDET || f.art == Fehlerart.SITZUNG_ABGELAUFEN -> Fehlerklasse.ANMELDUNG
     f.art == Fehlerart.NETZ || f.art == Fehlerart.ZEIT || f.art == Fehlerart.VERBINDUNG_BEENDET -> Fehlerklasse.OFFLINE
     f.art == Fehlerart.SERVER || f.art == Fehlerart.LEERE_ANTWORT || (f.httpCode ?: 0) >= 500 -> Fehlerklasse.SERVER

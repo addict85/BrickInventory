@@ -29,7 +29,7 @@ import androidx.lifecycle.lifecycleScope
 import kotlinx.coroutines.launch
 import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
-import ch.brickinventoryapp.alarm.PreisalarmWorker
+import ch.brickinventoryapp.alarm.PreisalarmRepository
 import ch.brickinventoryapp.ui.Meldungseingang
 import ch.brickinventoryapp.ui.components.GeraeteSchrittschutz
 import ch.brickinventoryapp.ui.components.LocalSchrittschutz
@@ -43,6 +43,12 @@ import ch.brickinventoryapp.ui.screens.ZweiterFaktorPflichtMaske
 import ch.brickinventoryapp.ui.viewmodel.DarstellungViewModel
 import ch.brickinventoryapp.ui.viewmodel.KontoViewModel
 import ch.brickinventoryapp.ui.viewmodel.VertrauenViewModel
+import ch.brickinventoryapp.ui.viewmodel.AnmeldungViewModel
+import ch.brickinventoryapp.ui.viewmodel.CsvImportViewModel
+import ch.brickinventoryapp.ui.viewmodel.ErfassungViewModel
+import ch.brickinventoryapp.ui.viewmodel.GutscheinViewModel
+import ch.brickinventoryapp.ui.viewmodel.UpdateViewModel
+import ch.brickinventoryapp.nav.AktivitaetsZustand
 import ch.brickinventoryapp.util.GeheimeZwischenablage
 import ch.brickinventoryapp.util.LanguageManager
 import ch.brickinventoryapp.util.Protokoll
@@ -52,6 +58,17 @@ class MainActivity : NurLauncherStart() {
     private val vm: AppViewModel by viewModels()
     private val darstellung: DarstellungViewModel by viewModels()
     private val vertrauen: VertrauenViewModel by viewModels()
+    private val erfassung: ErfassungViewModel by viewModels()
+    private val selbstUpdate: UpdateViewModel by viewModels()
+    private val csvImport: CsvImportViewModel by viewModels()
+    private val anmeldung: AnmeldungViewModel by viewModels()
+    private val gutschein: GutscheinViewModel by viewModels()
+
+    /** Einmal hier geholt, damit kein Ziel selbst im ViewModelStore der Activity sucht. */
+    private fun aktivitaetsZustand() = AktivitaetsZustand(
+        app = vm, erfassung = erfassung, update = selbstUpdate, csvImport = csvImport,
+        anmeldung = anmeldung, gutschein = gutschein, darstellung = darstellung, vertrauen = vertrauen,
+    )
 
     // Nur für die Pflichtmasken (Startpasswort, zweiter Faktor), die über allem liegen.
     private val startKontoVm: KontoViewModel by viewModels()
@@ -74,6 +91,8 @@ class MainActivity : NurLauncherStart() {
 
     /** Das Ziel einer angetippten Meldung; abgelegt nur vom nicht exportierten MeldungsEinstieg. */
     @Inject lateinit var meldungseingang: Meldungseingang
+
+    @Inject lateinit var preisalarme: PreisalarmRepository
 
     /**
      * Eine angetippte Meldung, waehrend die App schon laeuft (singleTop). Das
@@ -99,7 +118,7 @@ class MainActivity : NurLauncherStart() {
     override fun onStart() {
         super.onStart()
         lifecycleScope.launch {
-            fangeAusserAbbruch { PreisalarmWorker.durchgang(applicationContext) }
+            fangeAusserAbbruch { preisalarme.durchgang() }
                 .onFailure { Protokoll.warnung("Preisalarm", "Abruf beim Oeffnen fehlgeschlagen", it) }
         }
     }
@@ -145,7 +164,7 @@ class MainActivity : NurLauncherStart() {
                 ) { TastaturOhneLernen {
                     // App-weit: Gutschein-Nummer und PIN, Passwörter, Codes und
                     // Einladungen; Setnamen lernt die Tastatur dafür auch nicht mit.
-                    BrickInventoryRoute(vm, imageLoader)
+                    BrickInventoryRoute(aktivitaetsZustand(), imageLoader)
                     // Ohne Displaysperre fragt der Schrittschutz hier nach, statt still durchzulassen.
                     OhneSperreWarnung(schrittschutz.ohneSperre)
                     // Mit Startpasswort weist der Server alles ab: nur die Maske, bis es ersetzt ist.
@@ -160,7 +179,7 @@ class MainActivity : NurLauncherStart() {
                         val kontoZustand by startKontoVm.kontoState.collectAsStateWithLifecycle()
                         StartpasswortMaske(
                             kontoZustand = kontoZustand,
-                            onErsetzen = { alt, neu, code -> startKontoVm.aenderePasswort(alt, neu, code) { vm.logout() } },
+                            onErsetzen = { alt, neu, code -> startKontoVm.aenderePasswort(alt, neu, code) },
                             onAbmelden = { vm.logout() },
                         )
                     } else if (faktorPflicht && angemeldet) {

@@ -48,13 +48,13 @@ private val FASSUNGS_ETIKETT = Regex("android-v[0-9A-Za-z._-]{1,40}")
  * Signaturprüfung dran ist. 300 MB bei rund 46 MB APK fangen ein Fass ohne Boden,
  * nicht ein gewachsenes APK.
  */
-const val UPDATE_MAX_BYTES: Long = 300L * 1024 * 1024
+internal const val UPDATE_MAX_BYTES: Long = 300L * 1024 * 1024
 
 /**
  * Obergrenze für version.json (fünf Felder): Sie wird als Zeichenkette gelesen,
  * und eine manipulierte Antwort soll die App nicht umbringen können.
  */
-const val UPDATE_JSON_MAX_BYTES: Long = 64L * 1024
+internal const val UPDATE_JSON_MAX_BYTES: Long = 64L * 1024
 
 /** Wohin das geladene APK kommt; installiert wird per PackageInstaller-Sitzung, ohne FileProvider. */
 internal const val UPDATE_ORDNER = "update"
@@ -274,7 +274,7 @@ fun updateDatei(ctx: Context): File =
     File(File(ctx.filesDir, UPDATE_ORDNER).apply { mkdirs() }, "BrickInventory.apk")
 
 /** Die Gerätefunktionen dieser Datei hinter [UpdateGeraet]. */
-class AndroidUpdateGeraet @Inject constructor(@param:ApplicationContext private val ctx: Context) : UpdateGeraet {
+internal class AndroidUpdateGeraet @Inject constructor(@param:ApplicationContext private val ctx: Context) : UpdateGeraet {
     override fun beschreibungsSchluessel(): List<ByteArray> = beschreibungsSchluessel(
         ctx.resources.openRawResource(R.raw.beschreibungs_schluessel).bufferedReader().use { it.readText() })
     override fun eigeneZertifikate(): List<ByteArray> = eigeneZertifikate(ctx)

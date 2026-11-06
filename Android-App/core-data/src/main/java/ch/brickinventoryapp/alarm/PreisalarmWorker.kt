@@ -1,14 +1,8 @@
 package ch.brickinventoryapp.alarm
 
-import android.app.NotificationChannel
-import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.Context
-import android.content.Intent
-import android.content.pm.PackageManager
 import androidx.core.app.NotificationCompat
-import androidx.core.app.NotificationManagerCompat
-import androidx.core.content.ContextCompat
 import androidx.work.Constraints
 import androidx.work.CoroutineWorker
 import androidx.work.ExistingPeriodicWorkPolicy
@@ -17,36 +11,23 @@ import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
 import androidx.work.WorkerParameters
 import ch.brickinventoryapp.ressourcen.R
-import ch.brickinventoryapp.data.PreferencesManager
-import ch.brickinventoryapp.data.repository.BrickRepository
-import dagger.hilt.EntryPoint
-import dagger.hilt.InstallIn
-import dagger.hilt.android.EntryPointAccessors
-import dagger.hilt.components.SingletonComponent
-import kotlinx.coroutines.flow.first
+import androidx.hilt.work.HiltWorker
+import dagger.assisted.Assisted
+import dagger.assisted.AssistedInject
 import java.util.concurrent.TimeUnit
-import ch.brickinventoryapp.data.Startziel
-import ch.brickinventoryapp.data.model.Preisalarm
 
 /**
  * Holt stündlich ab, ob ein Preisalarm ausgelöst hat, und meldet es. Abholen statt
  * Push: Push hiesse Firebase und fremde Server für jede Meldung, und schneller als
  * der stündliche Preislauf des Servers entsteht keine Meldung. Den Akku schonen
- * NetworkType.CONNECTED, Doze und die Bündelung des JobSchedulers. EntryPoint
- * statt @HiltWorker, weil das für einen Worker weniger Apparat ist.
+ * NetworkType.CONNECTED, Doze und die Bündelung des JobSchedulers.
  */
-class PreisalarmWorker(
-    context: Context,
-    params: WorkerParameters,
+@HiltWorker
+class PreisalarmWorker @AssistedInject constructor(
+    @Assisted context: Context,
+    @Assisted params: WorkerParameters,
+    private val abholung: PreisalarmRepository,
 ) : CoroutineWorker(context, params) {
-
-    @EntryPoint
-    @InstallIn(SingletonComponent::class)
-    interface Zugang {
-        fun repo(): BrickRepository
-        fun prefs(): PreferencesManager
-        fun startziel(): Startziel
-    }
 
     // erfolg=false heisst NUR „der Server war nicht erreichbar". Alles andere
     // — abgeschaltet, nicht angemeldet, nichts Neues — ist ein erfolgreicher
@@ -54,7 +35,7 @@ class PreisalarmWorker(
     override suspend fun doWork(): androidx.work.ListenableWorker.Result =
         // retry(): Der Server ist gerade nicht da. WorkManager versucht es mit
         // wachsendem Abstand erneut, statt eine Stunde zu warten.
-        if (durchgang(applicationContext)) androidx.work.ListenableWorker.Result.success()
+        if (abholung.durchgang()) androidx.work.ListenableWorker.Result.success()
         else androidx.work.ListenableWorker.Result.retry()
 
     companion object {
@@ -66,44 +47,7 @@ class PreisalarmWorker(
         const val EXTRA_SET = "preisalarm_set"
 
         private const val NAME = "preisalarm-abruf"
-        private const val KANAL = "preisalarm"
-
-        /**
-         * Ein Durchgang: nachfragen, anzeigen, Marke setzen. Hier statt in doWork(), weil
-         * auch das Öffnen der App abholt (wie die Webapp beim Anmelden) — sonst käme eine
-         * Meldung bis zu eine Stunde zu spät. Doppelte Meldungen verhindert die Marke:
-         * Jeder Durchgang fragt „seit wann?“ und schreibt die Zeit des Servers zurück.
-         *
-         * @return false nur, wenn der Server nicht erreichbar war. Abgeschaltet oder
-         *         abgemeldet ist ein erfolgreicher Durchgang ohne Arbeit — ein retry()
-         *         versuchte vergeblich weiter.
-         */
-        suspend fun durchgang(context: Context): Boolean {
-            val zugang = EntryPointAccessors.fromApplication(context, Zugang::class.java)
-            val prefs = zugang.prefs()
-            if (!prefs.alarmMeldungenAn.first()) return true
-            if (prefs.tokenJetzt().isBlank()) return true
-
-            val marke = prefs.alarmMarke.first()
-            val repo = zugang.repo()
-            return when (val e = Alarmabholung.hole(marke) { seit -> repo.sets.getPendingAlerts(seit) }) {
-                is Alarmabholung.Ergebnis.Fehlgeschlagen -> false
-
-                is Alarmabholung.Ergebnis.Markiert -> {
-                    prefs.setzeAlarmMarke(e.neueMarke)
-                    true
-                }
-
-                is Alarmabholung.Ergebnis.Geholt -> {
-                    zeige(context, e.meldungen)
-                    // IMMER speichern, auch ohne Meldung — sonst fragt der
-                    // naechste Durchgang wieder ab dem alten Zeitpunkt und
-                    // bringt dieselbe Meldung ein zweites Mal.
-                    prefs.setzeAlarmMarke(e.neueMarke)
-                    true
-                }
-            }
-        }
+        internal const val KANAL = "preisalarm"
 
         /**
          * Einplanen oder abbestellen. KEEP statt UPDATE, damit ein häufiges Öffnen der App
@@ -148,65 +92,6 @@ class PreisalarmWorker(
                 .setAutoCancel(true)
                 .setContentIntent(tippen)
                 .build()
-        }
-
-        /**
-         * Die Meldungen anzeigen — eine je gerissener Schwelle, gruppiert unter einer
-         * Zusammenfassung: Man will ohne die App zu öffnen wissen, welcher Alarm gefallen
-         * ist.
-         */
-        fun zeige(context: Context, meldungen: List<Preisalarm>) {
-            if (meldungen.isEmpty()) return
-            // Ab Android 13 ist POST_NOTIFICATIONS eine Laufzeitberechtigung.
-            // Ohne sie wirft notify() nicht, es passiert schlicht nichts —
-            // deshalb hier pruefen, statt sich auf das Ausbleiben zu verlassen.
-            if (android.os.Build.VERSION.SDK_INT >= 33 &&
-                ContextCompat.checkSelfPermission(
-                    context, android.Manifest.permission.POST_NOTIFICATIONS
-                ) != PackageManager.PERMISSION_GRANTED
-            ) return
-
-            val mgr = context.getSystemService(NotificationManager::class.java) ?: return
-            mgr.createNotificationChannel(
-                NotificationChannel(
-                    KANAL,
-                    context.getString(R.string.alert_channel_name),
-                    // DEFAULT, nicht HIGH: Ein Preisalarm ist wichtig, aber
-                    // nicht dringend — er soll nicht ueber den Bildschirm
-                    // fahren, waehrend jemand etwas anderes tut.
-                    NotificationManager.IMPORTANCE_DEFAULT,
-                ).apply { description = context.getString(R.string.alert_channel_desc) }
-            )
-
-            val startziel = EntryPointAccessors.fromApplication(context, Zugang::class.java).startziel()
-            val unter = context.getString(R.string.detail_alert_below)
-            val ueber = context.getString(R.string.detail_alert_above)
-            val nm = NotificationManagerCompat.from(context)
-            for ((i, a) in meldungen.withIndex()) {
-                // ── Antippen öffnet das Set ──
-                //
-                // Ziel ist der nicht exportierte Einstieg der App (Startziel); er reicht an die
-                // laufende App weiter. Ein requestCode je Set, sonst lieferte das System denselben
-                // PendingIntent und die ältere Meldung öffnete das falsche Set. Die Klasse kommt
-                // als Klasse, nicht als Name über Class.forName(), damit R8 sie ohne Keep-Regel behält.
-                val ziel = Intent(context, startziel.aktivitaet).apply {
-                    flags = Intent.FLAG_ACTIVITY_NEW_TASK
-                    putExtra(EXTRA_SET, a.setNumber)
-                }
-                val tippen = PendingIntent.getActivity(
-                    context,
-                    (a.setNumber + a.condition).hashCode(),
-                    ziel,
-                    // IMMUTABLE ist ab Android 12 Pflicht, wenn nicht
-                    // ausdruecklich MUTABLE verlangt wird. Wir fuellen den
-                    // Intent vollstaendig, also gibt es nichts zu ergaenzen.
-                    PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
-                )
-                val n = meldung(context, Alarmabholung.text(a, unter, ueber), tippen)
-                // Die Setnummer als ID: Zwei Meldungen zum selben Set
-                // ueberschreiben sich, statt sich zu stapeln.
-                nm.notify(KANAL + a.setNumber + a.condition, i + 1, n)
-            }
         }
     }
 }

@@ -16,7 +16,7 @@ import java.util.concurrent.TimeUnit
  * das Inventar nur so lange auf dem Gerät liegen, wie jemand es öffnen will.
  * Die Meldung „fertig, antippen“ verschwindet mit, sie zeigte sonst ins Leere.
  */
-class TeilelistenAufraeumer(context: Context, params: WorkerParameters) : Worker(context, params) {
+internal class TeilelistenAufraeumer(context: Context, params: WorkerParameters) : Worker(context, params) {
 
     override fun doWork(): Result {
         if (raeumeAlteTeilelisteAuf(applicationContext.filesDir, System.currentTimeMillis())) {

@@ -1,15 +1,14 @@
 package ch.brickinventoryapp.ui.viewmodel
 
 import ch.brickinventoryapp.util.fangeAusserAbbruch
-import android.graphics.Bitmap
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import ch.brickinventoryapp.ui.pdf.DownloadGescheitert
+import ch.brickinventoryapp.data.DownloadGescheitert
 import ch.brickinventoryapp.ui.pdf.PdfFehler
 import ch.brickinventoryapp.ui.pdf.PdfHalter
 import ch.brickinventoryapp.ui.pdf.PdfLader
 import ch.brickinventoryapp.ui.pdf.PdfLoadState
-import ch.brickinventoryapp.ui.pdf.PdfQuelle
+import ch.brickinventoryapp.ui.pdf.PdfSeitenQuelle
 import ch.brickinventoryapp.ui.pdf.PdfSchreiber
 import ch.brickinventoryapp.ui.pdf.kopiereAbbrechbar
 import ch.brickinventoryapp.di.BrickDispatchers
@@ -32,6 +31,8 @@ import javax.inject.Inject
 @HiltViewModel
 class PdfBetrachterViewModel @Inject constructor(
     private val lader: PdfLader,
+    /** Rendert die Seiten für den Bildschirm; hier nur durchgereicht. */
+    val seiten: PdfSeitenQuelle,
     @param:Dispatcher(BrickDispatchers.IO) private val io: CoroutineDispatcher,
 ) : ViewModel() {
 
@@ -62,10 +63,6 @@ class PdfBetrachterViewModel @Inject constructor(
             )
         }
     }
-
-    /** Eine Seite als Bitmap; der Aufruf in den Render-Prozess blockiert, also nicht auf Main. */
-    suspend fun seite(quelle: PdfQuelle, index: Int, breitePx: Int): Bitmap? =
-        withContext(io) { lader.seite(quelle, index, breitePx) }
 
     /** Kopiert die geladene Datei für den Druck auf dem IO-Dispatcher; abbrechbar zwischen zwei Stücken. */
     val schreiber = PdfSchreiber { quelle, ziel -> withContext(io) { quelle.eingang().use { kopiereAbbrechbar(it, ziel) } } }

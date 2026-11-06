@@ -13,8 +13,9 @@ import coil3.ImageLoader
 typealias Reiter = Triple<Screen, @Composable () -> Unit, String>
 
 /**
- * Was alle Ziele teilen und oberhalb des NavHost lebt. Die Graphen holen ihre
- * ViewModels selbst; so lässt sich der ganze Graph ohne Hilt aufbauen und prüfen.
+ * Was alle Ziele teilen und oberhalb des NavHost lebt. Die ViewModels der Ziele
+ * holen die Graphen selbst; die der Activity kommen über [aktivitaet], erst beim
+ * Zeigen gelesen — so lässt sich der ganze Graph ohne Hilt aufbauen und prüfen.
  */
 class ZielUmgebung(
     val navController: NavHostController,
@@ -22,7 +23,10 @@ class ZielUmgebung(
     val reiter: List<Reiter>,
     val snackbarHostState: SnackbarHostState,
     val rollen: Rollzustaende,
-)
+    private val zustaende: () -> AktivitaetsZustand,
+) {
+    val aktivitaet: AktivitaetsZustand get() = zustaende()
+}
 
 /**
  * Rollpositionen der Listen. Sie liegen oberhalb der Ziele, weil ein Ziel beim

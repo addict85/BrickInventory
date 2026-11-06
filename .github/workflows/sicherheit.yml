@@ -379,4 +379,5 @@ jobs:
         working-directory: .
         run: |
           [ -f trivy-android.txt ] || exit 0
+          cat trivy-android.txt
           { echo '## Android-Abhängigkeiten (Trivy)'; echo '```'; cat trivy-android.txt; echo '```'; } >> "$GITHUB_STEP_SUMMARY"

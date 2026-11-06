@@ -20,6 +20,8 @@
  *      „jedes Feld, das die App schickt, kennt der Vertrag“ (LoginRequest.label)
  *   G  (05.11.2026) im Vertrag die Abfrage von GET /api/v1/sets ohne `page_size`
  *      → rot: „jeder Abfrageparameter der App steht im Vertrag“
+ *   H  in Fehlercode.kt BARCODE_KEIN_SET("barcode_kein_satz") →
+ *      rot: „jeder Fehlercode der App steht im Vertrag“ nennt barcode_kein_satz
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -118,4 +120,12 @@ test('der Vergleich schlägt an, wo die App nicht lesen kann', () => {
   assert.match(vergleiche(k, { ...passt, required: ['b'] }, m, () => ({})).join(), /\$\.n: im Schema optional/);
   assert.deepEqual(vergleiche(k, { ...passt, required: ['n'] }, m, () => ({}), '$', { standardwerte: false }), [],
     'Schreibantworten: ein Feld mit Standardwert darf fehlen');
+});
+
+test('jeder Fehlercode der App steht im Vertrag', () => {
+  const datei = path.join(ANDROID, 'core-model', 'src', 'main', 'java', 'ch', 'brickinventoryapp', 'data', 'model', 'Fehlercode.kt');
+  const kennungen = [...require('node:fs').readFileSync(datei, 'utf8').matchAll(/^\s+[A-Z_]+\("([a-z][a-z0-9_]*)"\)/gm)].map((m) => m[1]);
+  assert.ok(kennungen.length >= 10, `nur ${kennungen.length} Fehlercodes in Fehlercode.kt gelesen`);
+  const imVertrag = new Set(dok.components.schemas.Fehlercode?.enum ?? []);
+  assert.deepEqual(kennungen.filter((k) => !imVertrag.has(k)), []);
 });

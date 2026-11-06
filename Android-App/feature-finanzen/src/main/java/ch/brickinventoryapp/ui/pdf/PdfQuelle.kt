@@ -10,7 +10,6 @@ import java.io.ByteArrayInputStream
 import java.io.Closeable
 import java.io.File
 import java.io.FileDescriptor
-import java.io.IOException
 import java.io.InputStream
 
 /**
@@ -32,9 +31,6 @@ sealed class PdfLoadState {
 
 /** Fehler ohne eigenen Text; den Satz wählt die Oberfläche in der Sprache der App. */
 enum class PdfFehler { FREMDER_HOST, DOWNLOAD, UNBEKANNT }
-
-/** Alle Versuche scheiterten, ohne dass eine Ursache übrig blieb. */
-class DownloadGescheitert : IOException()
 
 /**
  * Hält die Quelle, solange der Betrachter steht. Kommt sie erst nach dem Verlassen an

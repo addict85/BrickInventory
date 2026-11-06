@@ -1,0 +1,17 @@
+Gegenprobe: Ein Bildschirm importiert Retrofit
+Modul: app
+Test: ch.brickinventoryapp.SchichtregelnTest
+Rot: Praesentation holt nichts selbst am Netz
+
+diff --git a/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/ui/screens/GalleryScreen.kt b/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/ui/screens/GalleryScreen.kt
+index d46c92b..5e0c76d 100644
+--- a/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/ui/screens/GalleryScreen.kt
++++ b/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/ui/screens/GalleryScreen.kt
+@@ -2,6 +2,7 @@ package ch.brickinventoryapp.ui.screens
+ 
+ import androidx.compose.ui.semantics.clearAndSetSemantics
+ import ch.brickinventoryapp.ui.components.nebenKnopfFarben
++import retrofit2.Response
+ import ch.brickinventoryapp.ui.components.nebenKnopfRand
+ import ch.brickinventoryapp.ui.model.KennzahlenAnsicht
+ import ch.brickinventoryapp.ui.model.LagerortAnsicht

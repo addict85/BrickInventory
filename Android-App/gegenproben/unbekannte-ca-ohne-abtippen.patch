@@ -4,12 +4,12 @@ Test: ch.brickinventoryapp.DarstellungUndVertrauenTest
 Rot: ohne bekannte CA zaehlt nur der abgetippte Fingerabdruck
 
 diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/util/ServerVertrauen.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/util/ServerVertrauen.kt
-index bd03082..e1e5c86 100644
+index 53b10a2..bb63747 100644
 --- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/util/ServerVertrauen.kt
 +++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/util/ServerVertrauen.kt
-@@ -156,7 +156,6 @@ class ZertifikatsFrage @Inject constructor() {
+@@ -168,7 +168,6 @@ internal class ZertifikatsRueckfrage @Inject constructor() : ZertifikatsFrage {
       */
-     fun bestaetige(pins: PinAblage, eingabe: String? = null): Boolean {
+     override fun bestaetige(pins: PinAblage, eingabe: String?): Boolean {
          val f = _offen.value ?: return false
 -        if (f.art != ZertifikatUngeklaert.Art.ERSTKONTAKT && !bestaetigtFingerabdruck(eingabe, f.fingerabdruck)) return false
          pins.merkePin(f.schluessel, f.fingerabdruck)

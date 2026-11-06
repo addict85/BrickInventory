@@ -3,7 +3,7 @@ package ch.brickinventoryapp
 import ch.brickinventoryapp.data.TokenSchranke
 import ch.brickinventoryapp.data.TokenStand
 import ch.brickinventoryapp.data.TokenTausch
-import ch.brickinventoryapp.data.repository.Result
+import ch.brickinventoryapp.data.repository.Ergebnis
 import ch.brickinventoryapp.di.ServerWaechter
 import ch.brickinventoryapp.di.Zugangslage
 import ch.brickinventoryapp.util.NetworkPolicy
@@ -139,7 +139,7 @@ class ServerwechselTest {
         val tausch = TokenTausch(
             stand = { TokenStand(token, herkunft, schranke.generation) },
             ersetze = { _, _, _ -> false },
-            rotiere = { Result.Error("", httpCode = 500) },
+            rotiere = { Ergebnis.Error("", httpCode = 500) },
             pausen = emptyList(),
             // Der Test wartet auf noetig(); faellig() bräuchte einen eigenen Bereich nicht.
             hintergrund = CoroutineScope(Job()),

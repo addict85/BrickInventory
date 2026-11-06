@@ -4,14 +4,15 @@ Test: ch.brickinventoryapp.MerklisteViewModelTest
 Rot: eine Uebernahme meldet Merkliste und Sets
 
 diff --git a/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/ui/viewmodel/MerklisteViewModel.kt b/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/ui/viewmodel/MerklisteViewModel.kt
+index a39f667..854ab55 100644
 --- a/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/ui/viewmodel/MerklisteViewModel.kt
 +++ b/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/ui/viewmodel/MerklisteViewModel.kt
-@@ -177,7 +177,7 @@
-                     zeigeMeldung(text(
+@@ -205,7 +205,7 @@ class MerklisteViewModel @Inject constructor(
+                     meldungen.zeige(meldungen.text(
                          if (r.data.action == "exists") R.string.wanted_taken_existing
                          else R.string.wanted_taken))
--                    dienste.bestand.melde(Aenderung.Merkliste, Aenderung.Sets)
-+                    dienste.bestand.melde(Aenderung.Merkliste)
+-                    bestand.melde(Aenderung.Merkliste, Aenderung.Sets)
++                    bestand.melde(Aenderung.Merkliste)
                  }
-                 is Result.Error -> zeigeMeldung(meldungFuerSnackbar(r)?.let { text(R.string.vm_error, it) })
+                 is Ergebnis.Error -> meldungen.zeige(meldungen.meldungFuerSnackbar(r)?.let { meldungen.text(R.string.vm_error, it) })
              }

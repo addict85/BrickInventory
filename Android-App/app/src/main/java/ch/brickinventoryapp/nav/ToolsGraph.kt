@@ -12,20 +12,15 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.ui.res.stringResource
 import androidx.navigation.NavGraphBuilder
 import ch.brickinventoryapp.*
-import ch.brickinventoryapp.ui.AppViewModel
 import ch.brickinventoryapp.ui.viewmodel.FinanzViewModel
 import ch.brickinventoryapp.ui.viewmodel.EinstellungenViewModel
 import ch.brickinventoryapp.ui.viewmodel.HaushaltViewModel
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.navigation.toRoute
-import ch.brickinventoryapp.ui.viewmodel.GutscheinViewModel
-import ch.brickinventoryapp.ui.viewmodel.aktivitaetsViewModel
 import ch.brickinventoryapp.ui.ScrollPositionKeeper
 import ch.brickinventoryapp.ui.components.Schrittsperre
 import ch.brickinventoryapp.ui.screens.GutscheinPdfSchutz
 import ch.brickinventoryapp.ui.components.Ueberdeckungsschutz
-import ch.brickinventoryapp.ui.viewmodel.ErfassungViewModel
-import ch.brickinventoryapp.ui.viewmodel.UpdateViewModel
 import ch.brickinventoryapp.ui.viewmodel.gutscheinPdfAdresse
 
 /** Navigationsziele der Werkzeuge, von „Mehr“ und der Einstellungen. */
@@ -42,7 +37,7 @@ private fun NavGraphBuilder.finanzZiele(u: ZielUmgebung) {
     val imageLoader = u.imageLoader
     val financeListState = u.rollen.finanzen
     composable<Screen.Finance> {
-        val vm: AppViewModel = aktivitaetsViewModel()
+        val vm = u.aktivitaet.app
         val finanzen: FinanzViewModel = hiltViewModel()
         val state by finanzen.state.collectAsStateWithLifecycle()
         val financeState by finanzen.financeState.collectAsStateWithLifecycle()
@@ -71,7 +66,7 @@ private fun NavGraphBuilder.finanzZiele(u: ZielUmgebung) {
         }
     }
     composable<Screen.BarcodeScanner> {
-        val erfassung = aktivitaetsViewModel<ErfassungViewModel>()
+        val erfassung = u.aktivitaet.erfassung
         BarcodeScannerScreen(
             // Texterkennung nur hier: Dieser Scanner bedient „Set hinzufügen“ (Galerie) und
             // „Teileliste hinzufügen“. Der Preisvergleich hat einen eigenen Aufruf und lässt
@@ -94,7 +89,7 @@ private fun NavGraphBuilder.finanzZiele(u: ZielUmgebung) {
     composable<Screen.PdfViewer> { backStackEntry ->
         val ziel = backStackEntry.toRoute<Screen.PdfViewer>()
         GutscheinPdfSchutz(ziel.url)
-        val vm: AppViewModel = aktivitaetsViewModel()
+        val vm = u.aktivitaet.app
         val state by vm.state.collectAsStateWithLifecycle()
         PdfViewerRoute(
             pdfUrl = ziel.url,
@@ -111,10 +106,10 @@ private fun NavGraphBuilder.mehrZiele(u: ZielUmgebung) {
     val imageLoader = u.imageLoader
     val partsListState = u.rollen.teileliste
     composable<Screen.PartsList> {
-        val vm: AppViewModel = aktivitaetsViewModel()
+        val vm = u.aktivitaet.app
         val state by vm.state.collectAsStateWithLifecycle()
         val blick by vm.blickfeld.collectAsStateWithLifecycle()
-        val erfassung = aktivitaetsViewModel<ErfassungViewModel>()
+        val erfassung = u.aktivitaet.erfassung
         val barcodeState by erfassung.barcodeState.collectAsStateWithLifecycle()
         ReiterGeruest(stringResource(R.string.nav_partslist), u) {
             PartsListRoute(
@@ -134,9 +129,9 @@ private fun NavGraphBuilder.mehrZiele(u: ZielUmgebung) {
         }
     }
     composable<Screen.Mehr> {
-        val vm: AppViewModel = aktivitaetsViewModel()
+        val vm = u.aktivitaet.app
         val state by vm.state.collectAsStateWithLifecycle()
-        val selbstUpdate: UpdateViewModel = aktivitaetsViewModel()
+        val selbstUpdate = u.aktivitaet.update
         val update by selbstUpdate.updateState.collectAsStateWithLifecycle()
         ReiterGeruest(stringResource(R.string.nav_more), u) {
             MehrBildschirm(
@@ -157,7 +152,7 @@ private fun NavGraphBuilder.verwaltungsZiele(u: ZielUmgebung) {
     val navController = u.navController
     val settingsScrollState = u.rollen.einstellungen
     composable<Screen.Settings> {
-        val vm: AppViewModel = aktivitaetsViewModel()
+        val vm = u.aktivitaet.app
         val state by vm.state.collectAsStateWithLifecycle()
         // Beim Öffnen der Einstellungen laden: Der Zustand ändert sich ausserhalb kaum,
         // ein Dauerabo wäre Aufwand ohne Nutzen. Haushalt, Gutscheine, Profil und Geräte
@@ -174,13 +169,16 @@ private fun NavGraphBuilder.verwaltungsZiele(u: ZielUmgebung) {
                 // Die Rubriken führen nicht von hier weiter, sondern stehen auf „Mehr“
                 // (MehrBildschirm.kt).
                 scrollState = settingsScrollState,
+                selbstUpdate = u.aktivitaet.update,
+                darstellung = u.aktivitaet.darstellung,
+                vertrauen = u.aktivitaet.vertrauen,
             )
         }
     }
 
     composable<Screen.Monitoring> {
         // Fällt das Verwalterrecht weg, verlässt die Seite sich selbst, statt weiter 403 zu sammeln.
-        val vm: AppViewModel = aktivitaetsViewModel()
+        val vm = u.aktivitaet.app
         val stand by vm.state.collectAsStateWithLifecycle()
         LaunchedEffect(stand.isAdmin) { if (!stand.isAdmin) navController.popBackStack() }
         ReiterGeruest(stringResource(R.string.nav_monitoring), u) {
@@ -201,10 +199,10 @@ private fun NavGraphBuilder.einstellungsZiele(u: ZielUmgebung) {
     val navController = u.navController
     val snackbarHostState = u.snackbarHostState
     composable<Screen.Gutscheine> {
-        val vm: AppViewModel = aktivitaetsViewModel()
+        val vm = u.aktivitaet.app
         // An der Activity: Eine Guthabenabfrage über alle Karten läuft weiter, wenn
         // man die Seite verlässt.
-        val gutscheinVm: GutscheinViewModel = aktivitaetsViewModel()
+        val gutscheinVm = u.aktivitaet.gutschein
         val state by vm.state.collectAsStateWithLifecycle()
         val gutscheine by gutscheinVm.state.collectAsStateWithLifecycle()
         // Ein freigegebenes Gutschein-PDF (eines oder alle): Das Ziel mit Ticket
@@ -224,7 +222,7 @@ private fun NavGraphBuilder.einstellungsZiele(u: ZielUmgebung) {
     }
 
     composable<Screen.Preisalarme> {
-        val vm: AppViewModel = aktivitaetsViewModel()
+        val vm = u.aktivitaet.app
         val state by vm.state.collectAsStateWithLifecycle()
         PreisalarmeRoute(
             vm = hiltViewModel<EinstellungenViewModel>(),
@@ -252,7 +250,7 @@ private fun NavGraphBuilder.einstellungsZiele(u: ZielUmgebung) {
     }
 
     composable<Screen.Konto> {
-        val vm: AppViewModel = aktivitaetsViewModel()
+        val vm = u.aktivitaet.app
         KontoRoute({ vm.logout() }, snackbarHostState) { navController.popBackStack() }
     }
 }

@@ -23,7 +23,8 @@ const KT_API    = require('../scripts/kotlin-vertrag.js').apiQuelltext(path.join
 const KT_FEAT   = lies(path.join(__dirname, '..', '..', 'Android-App', 'feature-sammlung', 'src', 'main', 'java', 'ch', 'brickinventoryapp', 'ui', 'Preisalarmeingabe.kt'));
 const KT_SECT   = lies(path.join(__dirname, '..', '..', 'Android-App', 'feature-sammlung', 'src', 'main', 'java', 'ch', 'brickinventoryapp', 'ui', 'screens', 'SetDetailSections.kt'));
 const KT_ABHOL  = lies(path.join(__dirname, '..', '..', 'Android-App', 'core-data', 'src', 'main', 'java', 'ch', 'brickinventoryapp', 'alarm', 'Alarmabholung.kt'));
-const KT_WORKER = lies(path.join(__dirname, '..', '..', 'Android-App', 'core-data', 'src', 'main', 'java', 'ch', 'brickinventoryapp', 'alarm', 'PreisalarmWorker.kt'));
+const KT_WORKER = lies(path.join(__dirname, '..', '..', 'Android-App', 'core-data', 'src', 'main', 'java', 'ch', 'brickinventoryapp', 'alarm', 'PreisalarmWorker.kt'))
+                + lies(path.join(__dirname, '..', '..', 'Android-App', 'core-data', 'src', 'main', 'java', 'ch', 'brickinventoryapp', 'alarm', 'PreisalarmDurchgang.kt'));
 const KT_START  = lies(path.join(APP, 'java', 'ch', 'brickinventoryapp', 'BrickInventoryApp.kt'));
 const KT_ALARMEINGABE = lies(path.join(__dirname, '..', '..', 'Android-App', 'core-data', 'src', 'main', 'java', 'ch', 'brickinventoryapp', 'alarm', 'Alarmeingabe.kt'));
 const KT_VM     = lies(path.join(__dirname, '..', '..', 'Android-App', 'feature-sammlung', 'src', 'main', 'java', 'ch', 'brickinventoryapp', 'ui', 'viewmodel', 'SetDetailViewModel.kt'));
@@ -228,21 +229,21 @@ test('beide fragen auch beim Nach-vorn-Kommen, nicht nur im Hintergrund', () => 
   assert.match(act, /override fun onStart\(\)/,
     'Die App fragt nur noch im Hintergrund nach — wer sie öffnet, wartet bis zu einer Stunde.');
   const i = act.indexOf('override fun onStart()');
-  assert.match(act.slice(i, i + 400), /PreisalarmWorker\.durchgang\(/,
+  assert.match(act.slice(i, i + 400), /(?:PreisalarmWorker|preisalarme)\.durchgang\(/,
     'onStart() holt die ausgelösten Alarme nicht ab.');
 
   // onStart und nicht onCreate: onCreate läuft einmal je Activity. Wer die App
   // eine Woche liegen lässt und zurückkommt, durchläuft es NICHT — und genau
   // dann ist die Frage am interessantesten.
-  assert.ok(!/override fun onCreate[\s\S]{0,600}?PreisalarmWorker\.durchgang\(/.test(act),
+  assert.ok(!/override fun onCreate[\s\S]{0,600}?(?:PreisalarmWorker|preisalarme)\.durchgang\(/.test(act),
     'Der Abruf hängt an onCreate — dann trifft er das Zurückkommen aus dem Hintergrund nicht.');
 
   // Und der Rumpf steht EINMAL: Der stündliche Auftrag und der Abruf beim
   // Öffnen müssen dasselbe tun, sonst laufen sie auseinander.
-  assert.match(KT_WORKER, /suspend fun durchgang\(context: Context\)/,
+  assert.match(KT_WORKER, /suspend fun durchgang\((?:context: Context)?\)/,
     'Der gemeinsame Rumpf fehlt — dann steht das Abholen zweimal da.');
   const dw = KT_WORKER.slice(KT_WORKER.indexOf('override suspend fun doWork'));
-  assert.match(dw.slice(0, 300), /durchgang\(applicationContext\)/,
+  assert.match(dw.slice(0, 300), /durchgang\((?:applicationContext)?\)/,
     'doWork() benutzt den gemeinsamen Rumpf nicht.');
 });
 

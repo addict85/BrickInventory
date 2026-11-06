@@ -2,7 +2,7 @@
  * eine Komponente; so steht ein Set einmal in der Datei, nicht in jeder Route. */
 import { z } from 'zod';
 import type { Route } from './grund';
-import { Fehler, PFAD } from './grund';
+import { Fehler, Fehlercode, PFAD } from './grund';
 import { BEREICHE } from './index';
 import { API_VERSION } from '../apiVersion';
 
@@ -14,7 +14,7 @@ const URI = (id: string) => `#/components/schemas/${id}`;
 
 /** Alle benannten Schemas: Name des Exports → Schema. Ein Name doppelt ist ein Fehler. */
 export function benannteSchemas(): Map<string, z.ZodType> {
-  const aus = new Map<string, z.ZodType>([['Fehler', Fehler]]);
+  const aus = new Map<string, z.ZodType>([['Fehler', Fehler], ['Fehlercode', Fehlercode]]);
   for (const [bereich, modul] of Object.entries(BEREICHE)) {
     for (const [name, wert] of Object.entries(modul)) {
       if (!(wert instanceof z.ZodType) || aus.get(name) === wert) continue;

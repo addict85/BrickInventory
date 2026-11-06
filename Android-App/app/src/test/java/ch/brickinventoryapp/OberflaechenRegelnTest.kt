@@ -367,7 +367,7 @@ class OberflaechenRegelnTest {
     /** Eine Galerie mit [bilder]; wartet, bis die Sets da sind. */
     private fun galerieMit(welt: Beispiele.Welt, bilder: coil3.ImageLoader, schrift: Float = 1f) {
         val vm = welt.galerie().also { it.loadSets() }
-        val erfassung = welt.t.merke(ErfassungViewModel(welt.t.dienste,
+        val erfassung = welt.t.merke(ErfassungViewModel(welt.t.sitzung, welt.t.filter(), welt.t.hinweise, welt.t.bestand,
             SetsRepository(welt.t.api, welt.t.cache),
             KatalogRepository(welt.t.api, welt.t.cache),
             object : SetAnleger {
@@ -537,7 +537,7 @@ class OberflaechenRegelnTest {
         val welt = Beispiele.Welt(KontextTexte())
         try {
             val vm = welt.galerie().also { it.loadSets() }
-            val erfassung = welt.t.merke(ErfassungViewModel(welt.t.dienste,
+            val erfassung = welt.t.merke(ErfassungViewModel(welt.t.sitzung, welt.t.filter(), welt.t.hinweise, welt.t.bestand,
                 SetsRepository(welt.t.api, welt.t.cache),
                 KatalogRepository(welt.t.api, welt.t.cache),
                 object : SetAnleger {

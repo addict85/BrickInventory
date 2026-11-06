@@ -1,7 +1,7 @@
 package ch.brickinventoryapp
 
 import android.content.Context
-import android.net.Uri
+import ch.brickinventoryapp.ui.viewmodel.DateiRef
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.text.AnnotatedString
@@ -219,13 +219,13 @@ class BarrierefreiheitBefundeTest {
         }
         val welt = Beispiele.Welt(KontextTexte())
         try {
-            val vm = welt.t.merke(EinstellungenViewModel(welt.t.dienste,
+            val vm = welt.t.merke(EinstellungenViewModel(welt.t.sitzung, welt.t.filter(), welt.t.hinweise, welt.t.bestand,
                 KontoRepository(welt.t.api, welt.t.cache),
                 VerwaltungRepository(welt.t.api, welt.t.cache),
                 SetsRepository(welt.t.api, welt.t.cache),
                 TeileRepository(welt.t.api, welt.t.cache),
                 object : DateiLeser {
-                    override suspend fun lies(uri: Uri): Pair<String?, ByteArray>? = null
+                    override suspend fun lies(datei: DateiRef): Pair<String?, ByteArray>? = null
                 }))
             zeige {
                 Column {

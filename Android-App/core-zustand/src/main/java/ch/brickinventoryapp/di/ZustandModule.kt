@@ -14,6 +14,22 @@ import ch.brickinventoryapp.ui.viewmodel.DateiLeser
 import ch.brickinventoryapp.ui.viewmodel.Texte
 import ch.brickinventoryapp.ui.Abmeldevorgang
 import ch.brickinventoryapp.ui.Vorwaermung
+import ch.brickinventoryapp.ui.AusgangsBeobachter
+import ch.brickinventoryapp.ui.Ausgangsmelder
+import ch.brickinventoryapp.ui.BestandsVerteiler
+import ch.brickinventoryapp.ui.Bestandssignal
+import ch.brickinventoryapp.ui.Blickfeld
+import ch.brickinventoryapp.ui.BlickfeldDienst
+import ch.brickinventoryapp.ui.ScrollMemory
+import ch.brickinventoryapp.ui.ScrollSpeicher
+import ch.brickinventoryapp.ui.Sitzung
+import ch.brickinventoryapp.ui.SitzungsDienst
+import ch.brickinventoryapp.ui.SitzungsRepository
+import ch.brickinventoryapp.ui.SitzungsZustand
+import ch.brickinventoryapp.ui.viewmodel.AppMeldungen
+import ch.brickinventoryapp.ui.viewmodel.BereichsFilter
+import ch.brickinventoryapp.ui.viewmodel.Filterwahl
+import ch.brickinventoryapp.ui.viewmodel.Meldungen
 
 /** Texte, Dateizugriff und Filterablage der geteilten Präsentationsschicht. */
 @Module
@@ -36,4 +52,14 @@ object ZustandModule {
 
     @Provides
     fun provideFilterAblage(a: ScopeFilterAblage): FilterAblage = a
+
+    // Die ViewModels sehen nur Schnittstellen (M4); die Umsetzungen sind Singletons.
+    @Provides fun provideSitzung(s: SitzungsZustand): Sitzung = s
+    @Provides fun provideSitzungsRepository(d: SitzungsDienst): SitzungsRepository = d
+    @Provides fun provideBlickfeld(b: BlickfeldDienst): Blickfeld = b
+    @Provides fun provideBestandssignal(b: BestandsVerteiler): Bestandssignal = b
+    @Provides fun provideAusgangsmelder(a: AusgangsBeobachter): Ausgangsmelder = a
+    @Provides fun provideScrollMemory(s: ScrollSpeicher): ScrollMemory = s
+    @Provides fun provideMeldungen(m: AppMeldungen): Meldungen = m
+    @Provides fun provideFilterwahl(f: BereichsFilter): Filterwahl = f
 }

@@ -2,12 +2,9 @@ package ch.brickinventoryapp.ui.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import ch.brickinventoryapp.data.CsvImportSseClient
-import ch.brickinventoryapp.data.CsvImportStrom
+import ch.brickinventoryapp.data.CsvImportRepository
 import ch.brickinventoryapp.data.MeldungsKanal
-import ch.brickinventoryapp.data.Zugangsdaten
-import ch.brickinventoryapp.data.repository.BrickRepository
-import ch.brickinventoryapp.data.repository.Result
+import ch.brickinventoryapp.data.repository.Ergebnis
 import ch.brickinventoryapp.ressourcen.R
 import ch.brickinventoryapp.service.CsvImportDienst
 import ch.brickinventoryapp.ui.Aenderung
@@ -19,28 +16,24 @@ import ch.brickinventoryapp.ui.csvFolge
 import ch.brickinventoryapp.ui.importLaeuft
 import ch.brickinventoryapp.ui.model.CsvImportStandAnsicht
 import ch.brickinventoryapp.ui.model.alsAnsicht
-import ch.brickinventoryapp.util.fangeAusserAbbruch
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 /**
- * Der Balken eines laufenden CSV-Imports, auch eines aus der Webapp. Eine
- * dauerhafte SSE-Verbindung meldet jeden Schritt; nach dem Abmelden ist sie zu
- * und der Balken leer.
+ * Der Balken eines laufenden CSV-Imports, auch eines aus der Webapp. Den Strom samt
+ * Wiederverbindung liefert die Datenschicht ([CsvImportRepository]); hier wird aus
+ * jedem Stand der Balken. Nach dem Abmelden ist die Verbindung zu und der Balken leer.
  */
 @HiltViewModel
 class CsvImportViewModel @Inject constructor(
-    private val sseClient: CsvImportStrom,
+    private val csvImport: CsvImportRepository,
     private val dienst: CsvImportDienst,
-    private val repo: BrickRepository,
-    private val prefs: Zugangsdaten,
     private val texte: Texte,
     private val bestand: Bestandssignal,
     private val meldungen: MeldungsKanal,
@@ -54,53 +47,27 @@ class CsvImportViewModel @Inject constructor(
     @Volatile private var csvFinishing = false
 
     init {
-        viewModelScope.launch {
-            sitzung.abmeldungen.collect {
-                csvWatchJob?.cancel(); csvWatchJob = null
-                _csvImportState.value = CsvImportUiState()
-            }
+        folgeAbmeldung(sitzung) {
+            csvWatchJob?.cancel(); csvWatchJob = null
+            _csvImportState.value = CsvImportUiState()
         }
     }
 
-    /**
-     * Bei Fehlern einmal per Abfrage nachsehen, damit der Balken nicht hängt, und
-     * mit wachsendem Abstand neu verbinden. Mehrfach gerufen: ohne Wirkung.
-     */
+    /** Mehrfach gerufen: ohne Wirkung. */
     fun startCsvImportWatcher() {
         if (csvWatchJob?.isActive == true) return
         _csvImportState.value = CsvImportUiState()
         csvWatchJob = viewModelScope.launch {
-            var backoffMs = BACKOFF_START_MS
-            while (isActive) {
-                var sseFailed = false
-                fangeAusserAbbruch {
-                    sseClient.stream().collect { event ->
-                        when (event) {
-                            is CsvImportSseClient.Event.Status -> {
-                                backoffMs = BACKOFF_START_MS
-                                handleCsvStatus(event.status.alsAnsicht())
-                            }
-                            is CsvImportSseClient.Event.Failed -> { sseFailed = true }
-                        }
-                    }
-                }.onFailure { sseFailed = true }
-                if (!isActive) break
-                if (sseFailed) {
-                    abfrageStattStrom()
-                    delay(backoffMs)
-                    backoffMs = minOf(backoffMs * 2, BACKOFF_MAX_MS)
-                }
-                // Sauber geschlossen (Neustart des Servers): sofort neu verbinden.
-            }
+            csvImport.beobachte().collect { handleCsvStatus(it.alsAnsicht()) }
         }
     }
 
     /** Abbrechen heisst „ab hier nicht weiter“; angelegte Sets bleiben. */
     fun cancelCsvImport() {
         viewModelScope.launch {
-            when (val r = repo.sets.cancelCsvImport()) {
-                is Result.Success -> meldungen.zeige(texte.text(R.string.csv_cancel_requested))
-                is Result.Error -> meldungen.zeige(texte.meldungFuerSnackbar(r))
+            when (val r = csvImport.abbrechen()) {
+                is Ergebnis.Success -> meldungen.zeige(texte.text(R.string.csv_cancel_requested))
+                is Ergebnis.Error -> meldungen.zeige(texte.meldungFuerSnackbar(r))
             }
         }
     }
@@ -143,19 +110,7 @@ class CsvImportViewModel @Inject constructor(
         }
     }
 
-    private suspend fun abfrageStattStrom() {
-        fangeAusserAbbruch {
-            val url = prefs.serverUrlJetzt()
-            val token = prefs.tokenJetzt()
-            if (token.isBlank() || url.isBlank()) return
-            val resp = repo.sets.getCsvImportStatus(url, token)
-            if (resp is Result.Success) handleCsvStatus(resp.data.alsAnsicht())
-        }
-    }
-
     private companion object {
-        const val BACKOFF_START_MS = 5_000L
-        const val BACKOFF_MAX_MS = 60_000L
         const val BALKEN_STEHT_MS = 5_000L
     }
 }

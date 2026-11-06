@@ -54,7 +54,7 @@ internal fun oeffneMitNeuversuch(versuch: () -> String?): Tresorbefund {
     return Tresorbefund.Gesperrt
 }
 
-/** Pausen beim Start: zusammen unter der Wartezeit des Wächters (PreferencesManager.warteAufStart). */
+/** Pausen beim Start: zusammen unter der Wartezeit des Wächters (TokenAblage.warteAufStart). */
 internal val TRESOR_ANLAUF_MS = listOf(250L, 750L, 2_000L)
 
 /** Danach im Hintergrund weiter, höchstens zehn Minuten; der nächste Start versucht es neu. */

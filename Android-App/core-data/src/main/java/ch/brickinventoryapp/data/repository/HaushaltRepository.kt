@@ -1,86 +1,42 @@
 package ch.brickinventoryapp.data.repository
 
-import ch.brickinventoryapp.data.api.HaushaltApi
-import ch.brickinventoryapp.data.cache.ResponseCache
 import ch.brickinventoryapp.data.model.*
-import javax.inject.Inject
-import javax.inject.Singleton
 
 /**
- * Haushalt und Erfassungen — eines der Sachgebiete der Datenschicht, erreichbar
- * über `repo.haushalt.…`; die Begründung der Aufteilung steht in RepoBasis.kt.
+ * Der Haushalt: Mitglieder, Einladungen, Konten.
+ * Eine Schnittstelle, damit ViewModels und Tests nicht an der Umsetzung mit
+ * Retrofit und Ablage hängen (HaushaltRepositoryImpl).
  */
-@Singleton
-class HaushaltRepository @Inject constructor(
-    api: HaushaltApi,
-    cache: ResponseCache,
-) : RepoBasis<HaushaltApi>(api, cache) {
+interface HaushaltRepository {
+    suspend fun getHousehold(): Ergebnis<HouseholdStatusResponse>
 
-    // Parts acquisitions
-    // ── Haushalt ──────────────────────────────────────────────────────────────
-    suspend fun getHousehold(): Result<HouseholdStatusResponse> =
-        safeCall { api.getHousehold() }
+    suspend fun getHouseholdMembers(): Ergebnis<HouseholdMembersResponse>
 
-    suspend fun getHouseholdMembers(): Result<HouseholdMembersResponse> =
-        safeCall { api.getHouseholdMembers() }
+    suspend fun createHouseholdInvite(): Ergebnis<HouseholdInviteResponse>
 
-    suspend fun createHouseholdInvite(): Result<HouseholdInviteResponse> =
-        safeCall { api.createHouseholdInvite() }
+    suspend fun redeemHouseholdInvite(code: String, passwort: String, faktorCode: String? = null): Ergebnis<GenericResponse>
 
-    /**
-     * [passwort]: das aktuelle Passwort des einlösenden Kontos — der Server prüft es.
-     * [faktorCode]: bei aktivem zweitem Faktor dessen Code; nur mitgeschickt, wenn da.
-     */
-    suspend fun redeemHouseholdInvite(code: String, passwort: String, faktorCode: String? = null): Result<GenericResponse> =
-        safeCall {
-            api.redeemHouseholdInvite(mapOf("code" to code, "password" to passwort) +
-                listOfNotNull(faktorCode?.trim()?.takeIf { it.isNotEmpty() }?.let { "faktor_code" to it }))
-        }
+    suspend fun unlinkHousehold(subUserId: Int? = null, mainUserId: Int? = null): Ergebnis<GenericResponse>
 
-    /**
-     * [subUserId]: ein Unterkonto lösen. [mainUserId]: sich von diesem einen
-     * Elternkonto lösen. Ohne beides löst der Server alle eigenen Elternkonten.
-     */
-    suspend fun unlinkHousehold(subUserId: Int? = null, mainUserId: Int? = null): Result<GenericResponse> =
-        safeCall {
-            api.unlinkHousehold(buildMap {
-                subUserId?.let { put("sub_user_id", it) }
-                mainUserId?.let { put("main_user_id", it) }
-            })
-        }
+    suspend fun verwerfeGetrenntesKonto(subUserId: Int): Ergebnis<GenericResponse>
 
-    suspend fun verwerfeGetrenntesKonto(subUserId: Int): Result<GenericResponse> =
-        safeCall { api.verwerfeGetrenntesKonto(mapOf("sub_user_id" to subUserId)) }
-
-    suspend fun getAcquisitions(setNumber: String): Result<AcquisitionsResponse> =
-        safeCall { api.getAcquisitions(setNumber) }
+    suspend fun getAcquisitions(setNumber: String): Ergebnis<AcquisitionsResponse>
 
     suspend fun updateAcquisition(setNumber: String, acqId: Int, purchasePrice: Double? = null,
                                   condition: String? = null, quantity: Int? = null, date: String? = null,
-                                  ownerUserId: Int? = null): Result<GenericResponse> =
-        safeCall { api.updateAcquisition(setNumber, acqId,
-            // fuerSet(): Sets tragen den Preis als `purchase_price` — Erklärung am Modell.
-            UpdateAcquisitionRequest.fuerSet(purchasePrice, condition, quantity, date, ownerUserId)) }
+                                  ownerUserId: Int? = null): Ergebnis<GenericResponse>
 
-    suspend fun deleteAcquisition(setNumber: String, acqId: Int): Result<GenericResponse> =
-        safeCall { api.deleteAcquisition(setNumber, acqId) }
+    suspend fun deleteAcquisition(setNumber: String, acqId: Int): Ergebnis<GenericResponse>
 
-    suspend fun getPartAcquisitions(partNumber: String, colorId: Int): Result<AcquisitionsResponse> =
-        safeCall { api.getPartAcquisitions(partNumber, colorId) }
+    suspend fun getPartAcquisitions(partNumber: String, colorId: Int): Ergebnis<AcquisitionsResponse>
 
-    suspend fun updatePartAcquisition(partNumber: String, colorId: Int, id: Int, req: UpdateAcquisitionRequest): Result<GenericResponse> =
-        safeCall { api.updatePartAcquisition(partNumber, colorId, id, req) }
+    suspend fun updatePartAcquisition(partNumber: String, colorId: Int, id: Int, req: UpdateAcquisitionRequest): Ergebnis<GenericResponse>
 
-    suspend fun deletePartAcquisition(partNumber: String, colorId: Int, id: Int): Result<DeleteWithQuantityResponse> =
-        safeCall { api.deletePartAcquisition(partNumber, colorId, id) }
+    suspend fun deletePartAcquisition(partNumber: String, colorId: Int, id: Int): Ergebnis<DeleteWithQuantityResponse>
 
-    // Minifig acquisitions
-    suspend fun getFigAcquisitions(figNumber: String): Result<AcquisitionsResponse> =
-        safeCall { api.getFigAcquisitions(figNumber) }
+    suspend fun getFigAcquisitions(figNumber: String): Ergebnis<AcquisitionsResponse>
 
-    suspend fun updateFigAcquisition(figNumber: String, id: Int, req: UpdateAcquisitionRequest): Result<GenericResponse> =
-        safeCall { api.updateFigAcquisition(figNumber, id, req) }
+    suspend fun updateFigAcquisition(figNumber: String, id: Int, req: UpdateAcquisitionRequest): Ergebnis<GenericResponse>
 
-    suspend fun deleteFigAcquisition(figNumber: String, id: Int): Result<DeleteWithQuantityResponse> =
-        safeCall { api.deleteFigAcquisition(figNumber, id) }
+    suspend fun deleteFigAcquisition(figNumber: String, id: Int): Ergebnis<DeleteWithQuantityResponse>
 }

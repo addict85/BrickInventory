@@ -1,5 +1,7 @@
 package ch.brickinventoryapp.ui.screens
 
+import ch.brickinventoryapp.ui.normalisiert
+import ch.brickinventoryapp.ui.PlPart
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import ch.brickinventoryapp.ui.components.GedrosselteAnsage

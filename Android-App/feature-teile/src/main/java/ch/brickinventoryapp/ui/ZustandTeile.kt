@@ -1,8 +1,6 @@
 package ch.brickinventoryapp.ui
 
 import ch.brickinventoryapp.ui.model.*
-import ch.brickinventoryapp.ui.screens.PlPart
-import ch.brickinventoryapp.ui.screens.PlSet
 
 /**
  * Teile und Minifiguren — eigener Fluss: Nur zwei Bildschirme brauchen die Felder,

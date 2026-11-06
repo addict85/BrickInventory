@@ -1,13 +1,13 @@
 package ch.brickinventoryapp
 
-import android.graphics.Bitmap
 import android.os.ParcelFileDescriptor
-import ch.brickinventoryapp.ui.pdf.DownloadGescheitert
+import ch.brickinventoryapp.data.DownloadGescheitert
 import ch.brickinventoryapp.ui.pdf.PdfFehler
 import ch.brickinventoryapp.ui.pdf.PdfHalter
 import ch.brickinventoryapp.ui.pdf.PdfLader
 import ch.brickinventoryapp.ui.pdf.PdfLoadState
 import ch.brickinventoryapp.ui.pdf.PdfQuelle
+import ch.brickinventoryapp.ui.pdf.PdfSeitenQuelle
 import ch.brickinventoryapp.ui.viewmodel.PdfBetrachterViewModel
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
@@ -76,25 +76,22 @@ class PdfBetrachterViewModelTest {
             offen.halte(quelle)
             return quelle to 12
         }
-
-        /** Der Renderer als Attrappe: Gerendert wird im isolierten Prozess, hier nur gezählt. */
-        val seiten = mutableListOf<Int>()
-        override suspend fun seite(quelle: PdfQuelle, index: Int, breitePx: Int): Bitmap? {
-            seiten += index
-            return null
-        }
     }
 
-    private fun vm(lader: Lader) = PdfBetrachterViewModel(lader, takt)
+    /** Der Renderer als Attrappe: Gerendert wird im isolierten Prozess, hier nur gezählt. */
+    private val gerendert = mutableListOf<Int>()
+    private val seitenquelle = PdfSeitenQuelle { _, index, _ -> gerendert += index; null }
+
+    private fun vm(lader: Lader) = PdfBetrachterViewModel(lader, seitenquelle, takt)
 
     @Test
-    fun `eine Seite rendert der Lader im eigenen Prozess, nicht das ViewModel`() = runTest(takt) {
+    fun `eine Seite rendert die Seitenquelle im eigenen Prozess, nicht das ViewModel`() = runTest(takt) {
         val lader = Lader()
         val vm = vm(lader)
         vm.oeffne(ANLEITUNG, SERVER)
         advanceUntilIdle()
-        vm.seite(lader.quelle, 3, 1080)
-        assertEquals(listOf(3), lader.seiten)
+        vm.seiten.seite(lader.quelle, 3, 1080)
+        assertEquals(listOf(3), gerendert)
     }
 
     @Test

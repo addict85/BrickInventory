@@ -4,13 +4,14 @@ Test: ch.brickinventoryapp.GalerieViewModelTest
 Rot: ein geloeschtes Set verschwindet
 
 diff --git a/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/ui/viewmodel/GalerieViewModel.kt b/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/ui/viewmodel/GalerieViewModel.kt
+index 8b91af7..dd9d396 100644
 --- a/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/ui/viewmodel/GalerieViewModel.kt
 +++ b/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/ui/viewmodel/GalerieViewModel.kt
-@@ -163,7 +163,6 @@
-             val (geloescht, satz) = setLoeschen(sets, dienste.texte, setNumber)
+@@ -190,7 +190,6 @@ class GalerieViewModel @Inject constructor(
+             val (geloescht, satz) = setLoeschen(sets, meldungen, setNumber)
              if (geloescht) galerie.entferne(setNumber)
-             if (!geloescht || erfolgMelden) zeigeMeldung(satz)
--            if (geloescht) dienste.bestand.melde(Aenderung.Sets, Aenderung.Teile, Aenderung.Figuren)
+             if (!geloescht || erfolgMelden) meldungen.zeige(satz)
+-            if (geloescht) bestand.melde(Aenderung.Sets, Aenderung.Teile, Aenderung.Figuren)
          }
      }
  

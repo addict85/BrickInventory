@@ -4,7 +4,7 @@ package ch.brickinventoryapp.util
 internal const val GEHEIM_ABLAUF_MS = 60_000L
 
 /** Was mit einem abgelaufenen Geheimnis in der Zwischenablage geschieht. */
-enum class GeheimSchritt { WARTEN, LEEREN, VERGESSEN }
+internal enum class GeheimSchritt { WARTEN, LEEREN, VERGESSEN }
 
 /**
  * Geleert wird nur unser eigener Clip, erkannt an seiner Kennung: Hat jemand

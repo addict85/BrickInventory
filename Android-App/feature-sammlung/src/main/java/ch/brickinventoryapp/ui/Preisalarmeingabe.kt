@@ -1,7 +1,7 @@
 package ch.brickinventoryapp.ui
 
 import ch.brickinventoryapp.alarm.Alarmeingabe
-import ch.brickinventoryapp.data.repository.Result
+import ch.brickinventoryapp.data.repository.Ergebnis
 import ch.brickinventoryapp.data.repository.SetsRepository
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
@@ -22,7 +22,7 @@ internal class Preisalarmeingabe(
     private val sets: SetsRepository,
     /** Meldung für den Meldungskanal; null heisst: nichts zu sagen. */
     private val melde: (String?) -> Unit,
-    private val beschreibe: (Result.Error) -> String?,
+    private val beschreibe: (Ergebnis.Error) -> String?,
     /** Nach dem Speichern: Alarme des Sets neu laden, Übersicht benachrichtigen. */
     private val gespeichert: (setNumber: String) -> Unit,
     private val ruhe: Long = Alarmeingabe.RUHE_MS,
@@ -38,9 +38,9 @@ internal class Preisalarmeingabe(
             val r = if (schwelle == null) sets.deletePreisalarm(setNumber, zustand)
                     else sets.setPreisalarm(setNumber, richtung, schwelle, zustand)
             when (r) {
-                is Result.Success ->
+                is Ergebnis.Success ->
                     if (r.data.success) gespeichert(setNumber) else melde(r.data.error ?: "")
-                is Result.Error -> melde(beschreibe(r))
+                is Ergebnis.Error -> melde(beschreibe(r))
             }
         }
     }

@@ -3,6 +3,7 @@
  * ignoreUnknownKeys). Eingaben und Abfragen sind geschlossen (strictObject):
  * Ein vertippter Feldname ist 400 statt still ignoriert. */
 import { z } from 'zod';
+import { FEHLER, type FehlerCode } from '../fehlerTexte';
 
 export interface Route {
   /** Der Rumpf einer 2xx-Antwort. Fehlt er, ist die Antwort kein JSON (`art`). */
@@ -73,6 +74,12 @@ export const Fehler = z.looseObject({
   error: z.string().min(1),
   code: z.string().regex(/^[a-z][a-z0-9_]*$/),
 });
+
+/** Die Codes aus fehlerTexte.ts als eigene Komponente: Die App verzweigt nach ihnen
+ * (Fehlercode.kt), und vertrag-kotlin.test.js hält beide Listen zusammen. Die
+ * Laufzeitprüfung oben bleibt beim Muster, weil auch Codes ausserhalb der Tabelle
+ * gesendet werden (vertrag_verletzt). */
+export const Fehlercode = z.enum(Object.keys(FEHLER) as [FehlerCode, ...FehlerCode[]]);
 
 export const Erfolg = z.looseObject({ success: z.literal(true) });
 

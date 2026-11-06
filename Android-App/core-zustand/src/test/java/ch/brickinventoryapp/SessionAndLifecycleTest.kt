@@ -2,7 +2,7 @@ package ch.brickinventoryapp
 
 import ch.brickinventoryapp.data.cache.ResponseCache
 import ch.brickinventoryapp.data.repository.FinanzenRepository
-import ch.brickinventoryapp.data.repository.Result
+import ch.brickinventoryapp.data.repository.Ergebnis
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -50,8 +50,8 @@ class SessionAndLifecycleTest {
         pfade.codes["/api/v1/finance/pnl"] = 500
         try {
             val finanzen = FinanzenRepository(TestApi.fuer(pfade.server), ResponseCache { File(System.getProperty("java.io.tmpdir"), "bim-401") })
-            val abgelaufen = runBlocking { finanzen.getStats() } as Result.Error
-            val kaputt = runBlocking { finanzen.getPnl() } as Result.Error
+            val abgelaufen = runBlocking { finanzen.getStats() } as Ergebnis.Error
+            val kaputt = runBlocking { finanzen.getPnl() } as Ergebnis.Error
             assertTrue("Ein 401 trägt das Kennzeichen nicht", abgelaufen.unauthorized)
             assertFalse("Ein 500 gilt als abgelaufene Sitzung", kaputt.unauthorized)
         } finally {

@@ -1,9 +1,11 @@
 package ch.brickinventoryapp.ui
 
 import ch.brickinventoryapp.data.ScopeFilter
-import ch.brickinventoryapp.data.repository.BrickRepository
+import ch.brickinventoryapp.data.repository.FigurenRepository
+import ch.brickinventoryapp.data.repository.SetsRepository
+import ch.brickinventoryapp.data.repository.TeileRepository
 import ch.brickinventoryapp.data.repository.GALLERY_PAGE_SIZE
-import ch.brickinventoryapp.data.repository.Result
+import ch.brickinventoryapp.data.repository.Ergebnis
 import ch.brickinventoryapp.data.Zugangsdaten
 import ch.brickinventoryapp.data.cache.VorschauVorwaermer
 import ch.brickinventoryapp.di.ApplicationScope
@@ -20,7 +22,9 @@ import kotlinx.coroutines.launch
  * Die Adressen aller Kacheln der eigenen Sammlung, zum Vorwärmen.
  * Ausführlich: docs/begruendungen/core-zustand/ui/Vorwaermen.kt.md#bildadressendersammlung
  */
-internal suspend fun bildAdressenDerSammlung(repo: BrickRepository, blickfeld: Blickfeld, basis: String): List<String> {
+internal suspend fun bildAdressenDerSammlung(
+    sets: SetsRepository, teile: TeileRepository, figuren: FigurenRepository, blickfeld: Blickfeld, basis: String,
+): List<String> {
     val roh = mutableListOf<String?>()
 
     // Galerie: Kontofilter ja, Suche/Thema/Sortierung ausdrücklich nicht. Die
@@ -28,9 +32,9 @@ internal suspend fun bildAdressenDerSammlung(repo: BrickRepository, blickfeld: B
     // zwischenspeichert — eine andere Grösse überschriebe den Eintrag der Galerie.
     var seite = 1
     while (seite <= MAX_SEITEN) {
-        val a = repo.sets.getSets(blickfeld.kontoFuer(ScopeFilter.View.GALLERY),
+        val a = sets.getSets(blickfeld.kontoFuer(ScopeFilter.View.GALLERY),
             search = null, theme = null, sort = null, page = seite, pageSize = GALLERY_PAGE_SIZE)
-        val liste = if (a is Result.Success) a.data.sets else emptyList()
+        val liste = if (a is Ergebnis.Success) a.data.sets else emptyList()
         liste.mapTo(roh) { resolveThumbUrl(basis, it.imageLocal, it.imageUrl) }
         if (liste.size < GALLERY_PAGE_SIZE) break
         seite++
@@ -38,24 +42,24 @@ internal suspend fun bildAdressenDerSammlung(repo: BrickRepository, blickfeld: B
 
     seite = 1
     while (seite <= MAX_SEITEN) {
-        val a = repo.teile.getParts(search = null, page = seite,
+        val a = teile.getParts(search = null, page = seite,
             accounts = blickfeld.kontoFuer(ScopeFilter.View.PARTS))
-        val liste = if (a is Result.Success) a.data.parts else emptyList()
+        val liste = if (a is Ergebnis.Success) a.data.parts else emptyList()
         liste.mapTo(roh) { resolveThumbUrl(basis, it.imageLocal, it.imageUrl) }
         if (liste.size < TEILE_SEITE) break
         seite++
     }
 
-    val figuren = repo.figuren.getMinifigs(blickfeld.kontoFuer(ScopeFilter.View.MINIFIGS))
-    if (figuren is Result.Success) {
+    val figuren = figuren.getMinifigs(blickfeld.kontoFuer(ScopeFilter.View.MINIFIGS))
+    if (figuren is Ergebnis.Success) {
         figuren.data.figs.mapTo(roh) { resolveThumbUrl(basis, it.imageLocal, it.imageUrl) }
     }
-    val mTeile = repo.teile.getManualParts(blickfeld.kontoFuer(ScopeFilter.View.PARTS))
-    if (mTeile is Result.Success) {
+    val mTeile = teile.getManualParts(blickfeld.kontoFuer(ScopeFilter.View.PARTS))
+    if (mTeile is Ergebnis.Success) {
         mTeile.data.parts.mapTo(roh) { resolveThumbUrl(basis, it.imageLocal, it.imageUrl) }
     }
-    val mFiguren = repo.figuren.getManualMinifigs(blickfeld.kontoFuer(ScopeFilter.View.MINIFIGS))
-    if (mFiguren is Result.Success) {
+    val mFiguren = figuren.getManualMinifigs(blickfeld.kontoFuer(ScopeFilter.View.MINIFIGS))
+    if (mFiguren is Ergebnis.Success) {
         mFiguren.data.figs.mapTo(roh) { resolveThumbUrl(basis, it.imageLocal, it.imageUrl) }
     }
     return roh.filterNotNull()
@@ -75,7 +79,9 @@ private const val MAX_SEITEN = 50
 @Singleton
 class SammlungVorwaermen @Inject constructor(
     private val vorwaermer: VorschauVorwaermer,
-    private val repo: BrickRepository,
+    private val sets: SetsRepository,
+    private val teile: TeileRepository,
+    private val figuren: FigurenRepository,
     private val blickfeld: Blickfeld,
     private val prefs: Zugangsdaten,
     @param:ApplicationScope private val bereich: CoroutineScope,
@@ -90,7 +96,7 @@ class SammlungVorwaermen @Inject constructor(
             if (!vorwaermer.darfStarten()) return@launch
             val basis = fangeAusserAbbruch { prefs.serverUrlJetzt() }.getOrNull().orEmpty()
             if (basis.isBlank()) return@launch
-            vorwaermer.vorwaermen(bildAdressenDerSammlung(repo, blickfeld, basis))
+            vorwaermer.vorwaermen(bildAdressenDerSammlung(sets, teile, figuren, blickfeld, basis))
         }
     }
 }

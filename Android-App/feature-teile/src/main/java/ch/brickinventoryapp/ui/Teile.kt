@@ -14,7 +14,7 @@ import ch.brickinventoryapp.data.model.PartsCategoriesResponse
 import ch.brickinventoryapp.data.model.PartsFilterColorsResponse
 import ch.brickinventoryapp.data.model.PartsResponse
 import ch.brickinventoryapp.data.model.PartsStatsResponse
-import ch.brickinventoryapp.data.repository.Result
+import ch.brickinventoryapp.data.repository.Ergebnis
 import ch.brickinventoryapp.ui.model.alsAnsicht
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
@@ -37,15 +37,15 @@ internal data class TeileAbfrage(
 
 /** Die Abrufe der Teile- und Figurenliste; Blickfeld und Lagerort setzt der Aufrufer. */
 internal interface TeileQuelle {
-    suspend fun seite(abfrage: TeileAbfrage): Result<PartsResponse>
-    suspend fun manuelleTeile(suche: String?): Result<ManualPartsResponse>
-    suspend fun teileKennzahlen(): Result<PartsStatsResponse>
-    suspend fun filterFarben(): Result<PartsFilterColorsResponse>
-    suspend fun kategorien(): Result<PartsCategoriesResponse>
-    suspend fun alleFarben(): Result<BrickColorsResponse>
-    suspend fun figurKennzahlen(): Result<MinifigStatsResponse>
-    suspend fun figuren(suche: String?): Result<MinifigsResponse>
-    suspend fun manuelleFiguren(suche: String?): Result<ManualFigsResponse>
+    suspend fun seite(abfrage: TeileAbfrage): Ergebnis<PartsResponse>
+    suspend fun manuelleTeile(suche: String?): Ergebnis<ManualPartsResponse>
+    suspend fun teileKennzahlen(): Ergebnis<PartsStatsResponse>
+    suspend fun filterFarben(): Ergebnis<PartsFilterColorsResponse>
+    suspend fun kategorien(): Ergebnis<PartsCategoriesResponse>
+    suspend fun alleFarben(): Ergebnis<BrickColorsResponse>
+    suspend fun figurKennzahlen(): Ergebnis<MinifigStatsResponse>
+    suspend fun figuren(suche: String?): Ergebnis<MinifigsResponse>
+    suspend fun manuelleFiguren(suche: String?): Ergebnis<ManualFigsResponse>
 }
 
 /**
@@ -69,12 +69,12 @@ internal class TeileLokal(
 internal class Teile(
     private val scope: CoroutineScope,
     private val quelle: TeileQuelle,
-    private val meldeFehler: (Result.Error) -> Unit,
+    private val meldeFehler: (Ergebnis.Error) -> Unit,
     /** Filterwechsel: Die gemerkte Scrollstelle zeigt auf eine andere Liste. */
     private val vergissScroll: () -> Unit,
     private val suchPause: Long = 350,
     /** Der Satz zum Fehler, der in der leeren Liste stehen bleibt (wie in der Galerie). */
-    private val beschreibeFehler: (Result.Error) -> String = { it.message },
+    private val beschreibeFehler: (Ergebnis.Error) -> String = { it.message },
     private val lokal: TeileLokal? = null,
     /** Schränken Konto oder Lagerort die Teile bzw. Figuren ein? Dann gilt nur der Server. */
     private val teileEingeschraenkt: () -> Boolean = { true },
@@ -141,7 +141,7 @@ internal class Teile(
                 seite = seite,
             )
             when (val r = quelle.seite(abfrage)) {
-                is Result.Success -> {
+                is Ergebnis.Success -> {
                     _state.update {
                         it.copy(partsLoading = false,
                             parts = r.data.parts.map { p -> p.alsAnsicht() }.let { neu -> if (seite == 1) neu else it.parts + neu },
@@ -151,14 +151,14 @@ internal class Teile(
                     if (seite == 1) {
                         // Die manuellen Teile stehen als ein Abschnitt über der
                         // Liste, nicht seitenweise — und unter DEMSELBEN Suchfeld.
-                        (quelle.manuelleTeile(abfrage.suche) as? Result.Success)
+                        (quelle.manuelleTeile(abfrage.suche) as? Ergebnis.Success)
                             ?.let { m -> _state.update { it.copy(manualParts = m.data.parts.map { p -> p.alsAnsicht() }) } }
                         // Kennzahlen sind Beiwerk: Ein Fehlschlag lässt die Liste stehen.
-                        (quelle.teileKennzahlen() as? Result.Success)
+                        (quelle.teileKennzahlen() as? Ergebnis.Success)
                             ?.let { s -> _state.update { it.copy(partsStats = s.data.stats?.alsAnsicht()) } }
                     }
                 }
-                is Result.Error -> {
+                is Ergebnis.Error -> {
                     _state.update { it.copy(partsLoading = false, partsFehler = beschreibeFehler(r),
                         partsFehlerKlasse = fehlerklasse(r)) }
                     meldeFehler(r)
@@ -207,9 +207,9 @@ internal class Teile(
      */
     fun ladeFilter() {
         scope.launch {
-            (quelle.filterFarben() as? Result.Success)?.data?.takeIf { it.success }
+            (quelle.filterFarben() as? Ergebnis.Success)?.data?.takeIf { it.success }
                 ?.let { d -> _state.update { it.copy(partsFilterColors = d.colors.map { c -> c.alsAnsicht() }) } }
-            (quelle.kategorien() as? Result.Success)?.data?.takeIf { it.success }
+            (quelle.kategorien() as? Ergebnis.Success)?.data?.takeIf { it.success }
                 ?.let { d -> _state.update { it.copy(partsCategories = d.categories.map { c -> c.alsAnsicht() }) } }
         }
     }
@@ -217,7 +217,7 @@ internal class Teile(
     /** Farbauswahl im Erfassungsdialog; fehlt sie, tippt man die Farb-ID. */
     fun ladeFarben() {
         scope.launch {
-            (quelle.alleFarben() as? Result.Success)?.data?.takeIf { it.success }
+            (quelle.alleFarben() as? Ergebnis.Success)?.data?.takeIf { it.success }
                 ?.let { d -> _state.update { it.copy(partsColors = d.colors.map { c -> c.alsAnsicht() }) } }
         }
     }
@@ -232,7 +232,7 @@ internal class Teile(
      */
     fun ladeFiguren(entprellt: Boolean = false) {
         if (!entprellt) scope.launch {
-            (quelle.figurKennzahlen() as? Result.Success)
+            (quelle.figurKennzahlen() as? Ergebnis.Success)
                 ?.let { r -> _state.update { it.copy(minifigStats = r.data.stats.alsAnsicht()) } }
         }
         figurenJob?.cancel()
@@ -241,13 +241,13 @@ internal class Teile(
             _state.update { it.copy(minifigsLoading = true, minifigsFehler = null) }
             val suche = _state.value.minifigsQuery.ifBlank { null }
             when (val r = quelle.figuren(suche)) {
-                is Result.Success -> {
+                is Ergebnis.Success -> {
                     _state.update { it.copy(minifigs = r.data.figs.map { f -> f.alsAnsicht() }, minifigsLoading = false,
                         figurenOfflineStand = r.stand) }
-                    (quelle.manuelleFiguren(suche) as? Result.Success)
+                    (quelle.manuelleFiguren(suche) as? Ergebnis.Success)
                         ?.let { m -> _state.update { it.copy(manualFigs = m.data.figs.map { f -> f.alsAnsicht() }) } }
                 }
-                is Result.Error -> {
+                is Ergebnis.Error -> {
                     meldeFehler(r)
                     _state.update { it.copy(minifigsLoading = false, minifigsFehler = beschreibeFehler(r),
                         minifigsFehlerKlasse = fehlerklasse(r)) }

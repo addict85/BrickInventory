@@ -75,7 +75,7 @@ test('Der erste WorkManager-Zugriff liegt in einem runCatching', () => {
   for (let i = 0; i < stelle; i++) {
     if (app[i] === '{') {
       const davor = app.slice(Math.max(0, i - 40), i);
-      stapel.push(/runCatching\s*$/.test(davor));
+      stapel.push(/(?:runCatching|fangeAusserAbbruch)\s*$/.test(davor));
     } else if (app[i] === '}') {
       stapel.pop();
     }

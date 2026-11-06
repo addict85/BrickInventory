@@ -89,7 +89,7 @@ test('beide Oberflaechen zeigen den Hinweis, aus je EINER Stelle', () => {
     'Der Hinweis der App ist nicht an genau einer Stelle gebaut');
   // `zeigeMeldung(erfassungsMeldung(` misst die AUFRUFE; ein blosses
   // `erfassungsMeldung\(` zaehlte die Definition mit und meldete 3 statt 2.
-  assert.strictEqual((app.match(/zeigeMeldung\(erfassungsMeldung\(/g) || []).length, 2,
+  assert.strictEqual((app.match(/(?:zeigeMeldung|meldungen\.zeige)\(erfassungsMeldung\(/g) || []).length, 2,
     'Der Hinweis fehlt bei einer der beiden Erfassungen der App');
   assert.match(app, /r\.data\.priceFromCondition/,
     'Die App liest die Herkunft nicht aus der Antwort');

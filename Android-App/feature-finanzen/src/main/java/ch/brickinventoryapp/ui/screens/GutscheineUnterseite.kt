@@ -12,6 +12,7 @@ import ch.brickinventoryapp.ui.components.Sichtschutz
 import ch.brickinventoryapp.ui.components.Ueberdeckungsschutz
 import ch.brickinventoryapp.ui.viewmodel.GutscheinViewModel
 import ch.brickinventoryapp.util.GeheimeZwischenablage
+import ch.brickinventoryapp.ui.viewmodel.DateiRef
 
 /**
  * Gutscheine — der erste Eintrag der Liste, weil sie im Laden gebraucht werden:
@@ -53,7 +54,7 @@ fun GutscheineRoute(
             onPinSchalten = { gvm.schalteGutscheinPin(it) },
             onBearbeiten = { gvm.bearbeiteGutschein(it) },
             onAbbrechen = { gvm.leereGutscheinFormular() },
-            onSpeichern = { gvm.speichereGutschein(it) },
+            onSpeichern = { gvm.speichereGutschein(it?.let { u -> DateiRef(u.toString()) }) },
             onLoeschen = { gvm.loescheGutschein(it) },
             onPdfOeffnen = { gvm.oeffneGutscheinPdf(it) },
             onKopieren = { id, istNummer -> gvm.kopiereGutschein(id, istNummer) },

@@ -50,7 +50,7 @@ class TeileViewModelTest {
     private lateinit var t: TestDienste
 
     private fun vm(gemerkt: SavedStateHandle = SavedStateHandle(), t: TestDienste = this.t) =
-        t.merke(TeileViewModel(t.dienste, TeileRepository(t.api, t.cache), FigurenRepository(t.api, t.cache), gemerkt))
+        t.merke(TeileViewModel(t.sitzung, t.filter(), t.hinweise, t.bestand, t.scrollMemory, TeileRepository(t.api, t.cache), FigurenRepository(t.api, t.cache), gemerkt))
 
     @Before
     fun auf() {

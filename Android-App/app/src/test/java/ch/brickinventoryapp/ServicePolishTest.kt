@@ -136,7 +136,7 @@ class ServicePolishTest {
 
     @Test
     fun `der PdfViewer leitet seinen Client vom api-Client ab`() {
-        val pv = code(read("java/ch/brickinventoryapp/ui/pdf/AnleitungsLader.kt"))
+        val pv = code(read("java/ch/brickinventoryapp/data/AnleitungsRepository.kt"))
         assert(!pv.contains("OkHttpClient.Builder()")) {
             "Der AnleitungsLader baut wieder einen eigenständigen OkHttpClient. Der läuft am " +
                 "DI-Interceptor vorbei: kein Bearer-Token, kein Klartext-Verbot, keine " +
@@ -145,7 +145,7 @@ class ServicePolishTest {
         assert(pv.contains(".newBuilder()")) {
             "Der AnleitungsLader leitet den Download-Client nicht per newBuilder() ab"
         }
-        assert(pv.contains("""@param:Named("api")""")) {
+        assert(pv.contains("""@param:ApiClient""")) {
             "Der AnleitungsLader bekommt nicht den api-Client"
         }
     }

@@ -4,15 +4,15 @@ Test: ch.brickinventoryapp.GalerieViewModelTest
 Rot: die Kennzahlen zaehlen das vorgemerkte Set nicht (Sets expected:<1> but was:<2>; 05.11.2026 kotlinc lokal)
 
 diff --git a/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/ui/viewmodel/GalerieViewModel.kt b/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/ui/viewmodel/GalerieViewModel.kt
-index 8b33fb5..96df202 100644
+index 02dc913..f7aa49e 100644
 --- a/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/ui/viewmodel/GalerieViewModel.kt
 +++ b/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/ui/viewmodel/GalerieViewModel.kt
-@@ -75,7 +75,7 @@ class GalerieViewModel @Inject constructor(
-         .combine(_vorgemerkt) { st, v ->
+@@ -103,7 +103,7 @@ class GalerieViewModel @Inject constructor(
+         .abgeleitet(_vorgemerkt) { st, v ->
              // Die Kennzahlen ebenso: Neben zwei Kacheln stand sonst noch „3 Sets“.
              if (v == null) st else st.copy(sets = st.sets.filterNot { it.setNumber == v.setNumber },
 -                stats = st.stats?.let { k -> v.set?.let { ohneSet(k, it) } ?: k })
 +                stats = st.stats)
          }
-         .stateIn(viewModelScope, SharingStarted.Eagerly, galerie.state.value)
  
+     private val _preise = MutableStateFlow<Map<String, KachelPreis>>(emptyMap())

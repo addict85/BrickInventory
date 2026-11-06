@@ -24,7 +24,7 @@ import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
-import ch.brickinventoryapp.data.repository.Result
+import ch.brickinventoryapp.data.repository.Ergebnis
 
 /**
  * Das Erfassungs-ViewModel: Scan, Erfassen über die Setnummer, Prüfanzeige.
@@ -79,7 +79,7 @@ class ErfassungViewModelTest {
     private object TexteMitArgumenten : Texte {
         override fun text(id: Int, vararg args: Any?) = "t$id" + args.joinToString("") { "|$it" }
         override fun menge(id: Int, anzahl: Int, vararg args: Any?) = "m$id:$anzahl"
-        override fun meldung(fehler: Result.Error) = "fehler"
+        override fun meldung(fehler: Ergebnis.Error) = "fehler"
         override fun angemeldet() = true
     }
 
@@ -97,7 +97,7 @@ class ErfassungViewModelTest {
     }
 
     private fun vm(anleger: Anleger = Anleger(emptyList())) = t.merke(
-        ErfassungViewModel(t.dienste, SetsRepository(t.api, t.cache), KatalogRepository(t.api, t.cache), anleger)
+        ErfassungViewModel(t.sitzung, t.filter(), t.hinweise, t.bestand, SetsRepository(t.api, t.cache), KatalogRepository(t.api, t.cache), anleger)
     ).also { anleger.vm = it }
 
     @Before

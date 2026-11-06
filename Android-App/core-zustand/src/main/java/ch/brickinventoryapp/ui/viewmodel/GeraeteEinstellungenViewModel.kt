@@ -2,7 +2,7 @@ package ch.brickinventoryapp.ui.viewmodel
 
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.MutableStateFlow
-import ch.brickinventoryapp.data.cache.VorschauSpeicher
+import ch.brickinventoryapp.data.cache.Vorschauablage
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import ch.brickinventoryapp.data.AlarmPlaner
@@ -29,17 +29,17 @@ class GeraeteEinstellungenViewModel @Inject constructor(
     private val planer: AlarmPlaner,
     private val texte: Texte,
     private val meldungen: MeldungsKanal,
-    private val vorschau: VorschauSpeicher,
+    private val vorschau: Vorschauablage,
 ) : ViewModel() {
 
     val alarmMeldungenAn: StateFlow<Boolean> =
-        einstellungen.alarmMeldungenAn.stateIn(viewModelScope, SharingStarted.Eagerly, false)
+        einstellungen.alarmMeldungenAn.stateIn(viewModelScope, SharingStarted.WhileSubscribed(ABO_NACHLAUF_MS), false)
 
     /** Vorgabe bis zum ersten Lesen: nur WLAN. */
     val vorwaermen: StateFlow<Map<VorwaermNetz, Boolean>> = combine(
         VorwaermNetz.entries.map { netz -> einstellungen.vorwaermenErlaubt(netz) },
     ) { werte -> VorwaermNetz.entries.zip(werte.toList()).toMap() }
-        .stateIn(viewModelScope, SharingStarted.Eagerly, VORWAERMEN_VORGABE)
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(ABO_NACHLAUF_MS), VORWAERMEN_VORGABE)
 
     /**
      * Der Wunsch gilt sofort, auch wenn das Einplanen scheitert; der Fehlschlag
@@ -73,5 +73,8 @@ class GeraeteEinstellungenViewModel @Inject constructor(
     companion object {
         val VORWAERMEN_VORGABE: Map<VorwaermNetz, Boolean> =
             mapOf(VorwaermNetz.WLAN to true, VorwaermNetz.MOBIL to false, VorwaermNetz.ROAMING to false)
+
+        /** Eine Drehung beendet das Abo nicht; erst wer die Seite verlässt, lässt die Ablage ruhen. */
+        private const val ABO_NACHLAUF_MS = 5_000L
     }
 }
