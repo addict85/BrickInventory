@@ -109,15 +109,14 @@ jobs:
             exit 1
           }
 
-      # Caddy aus demselben Image wie im Betrieb (Digest in compose.yaml); die
-      # statische Programmdatei läuft auch auf dem Läufer.
+      # Caddy aus demselben Bau wie im Betrieb (Dockerfile.caddy); die statische
+      # Programmdatei läuft auch auf dem Läufer.
       - name: Caddy bereitstellen
         working-directory: ${{ github.workspace }}
         run: |
           set -euo pipefail
-          bild=$(awk '/image: caddy:/ { print $2; exit }' Web-App/compose.yaml)
-          [ -n "$bild" ] || { echo "::error::Caddy-Image in compose.yaml nicht gefunden"; exit 1; }
-          id=$(docker create "$bild")
+          docker build -q -f Web-App/Dockerfile.caddy -t brickinventory-caddy:ci Web-App >/dev/null
+          id=$(docker create brickinventory-caddy:ci)
           docker cp "$id:/usr/bin/caddy" "$RUNNER_TEMP/caddy"
           docker rm "$id" >/dev/null
           "$RUNNER_TEMP/caddy" version
