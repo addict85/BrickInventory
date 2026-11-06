@@ -37,14 +37,22 @@ let _letzteKurve = null;
 let _kurveBreite = 0;
 /** Einstand und Währung der Kennzahlen — die Bezugslinie im Wertdiagramm. */
 let _einstand = 0, _waehrung = '', _einstandText = '';
-window.addEventListener('resize', () => {
+/** Neu in der Breite des Behälters. Verborgen (Breite 0) bleibt die Kurve, wie sie ist:
+ * Sonst zeichnete eine Drehung auf einem anderen Reiter sie in der Ersatzbreite, und
+ * zurück auf Finanzen war die Schrift halb so gross. Sichtbar werden löst das erneut aus. */
+function kurveNachzeichnen() {
   const el = G('portfolio-chart');
-  if (!_letzteKurve || !el?.querySelector('svg')) return;
+  if (!_letzteKurve || !el?.querySelector('svg') || !el.clientWidth) return;
   const b = diagrammBreite(el);
   if (Math.abs(b - _kurveBreite) < 24) return;
   _kurveBreite = b;
   setzeHtml(el, portfolioChartSVG(_letzteKurve, _chartPeriod, b, _einstand, _waehrung || CURRENCY, _einstandText || undefined));
-});
+}
+window.addEventListener('resize', kurveNachzeichnen);
+{
+  const el = G('portfolio-chart');
+  if (el && typeof ResizeObserver === 'function') new ResizeObserver(kurveNachzeichnen).observe(el);
+}
 
 /** Hinweis statt Kurve, wenn der Verlauf nicht zu holen war — im selben
  * Muster wie der Fehlerzustand einer Liste, nur kleiner.
