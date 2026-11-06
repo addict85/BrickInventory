@@ -9,6 +9,7 @@ import ch.brickinventoryapp.data.repository.FigurenRepository
 import ch.brickinventoryapp.ui.viewmodel.GalerieViewModel
 import ch.brickinventoryapp.ui.viewmodel.TeileViewModel
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.setMain
@@ -56,6 +57,7 @@ import javax.inject.Singleton
  *      Teilschritt 4 rot und „zwei Bereiche melden in denselben Kanal“.
  * Die Warteschlange selbst prüft MeldungsWarteschlangeTest (core-data).
  */
+@OptIn(ExperimentalCoroutinesApi::class)
 class MeldungsKanalTest {
 
     /** Alle Kotlin-Dateien der App ohne Kommentare. */

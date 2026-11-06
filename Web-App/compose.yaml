@@ -27,7 +27,7 @@ services:
     # PGDATA eine Ebene tiefer: Ein Tausch des Tags allein schlägt fehl. Der
     # Weg (pg_dumpall, neues Verzeichnis, einspielen) steht in UPGRADE.md unter
     # „PostgreSQL 18“; ./pgdata (16) bleibt als Rückfallebene liegen.
-    image: postgres:18-alpine@sha256:10a5c69a83035ab5239f5620d708520e8b28f5aa1f2b20143e6024532edadfb5
+    image: postgres:18-alpine@sha256:123b17998ccaf47e53b502e8c6a1e79afd8f579c6f3eec83c563da026f957395
     container_name: brickinventory-db
     logging: *protokoll
     restart: unless-stopped
@@ -76,7 +76,7 @@ services:
   # und Tabellen gehören. Dieser Dienst legt die Rolle bei jedem `up` an bzw.
   # richtet sie nach und endet dann (UPGRADE.md, Abschnitt 29).
   db-rolle:
-    image: postgres:18-alpine@sha256:10a5c69a83035ab5239f5620d708520e8b28f5aa1f2b20143e6024532edadfb5
+    image: postgres:18-alpine@sha256:123b17998ccaf47e53b502e8c6a1e79afd8f579c6f3eec83c563da026f957395
     container_name: brickinventory-db-rolle
     logging: *protokoll
     restart: "no"
