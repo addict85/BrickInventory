@@ -155,13 +155,17 @@ def main():
             patches = auswahl
     # Die CI teilt die Patches auf parallele Jobs (GEGENPROBE_TEIL=„2/4“); jeder
     # nimmt jeden n-ten, so bleibt jeder Teil unter seiner Zeitgrenze.
+    if not patches:
+        print(f'Keine Gegenproben unter {ordner}/ — ohne sie prüft dieser Schritt nichts.')
+        return 1
     teil = os.environ.get('GEGENPROBE_TEIL')
     if teil:
         nr, anzahl = (int(x) for x in teil.split('/'))
         patches = patches[nr - 1::anzahl]
-    if not patches:
-        print(f'Keine Gegenproben unter {ordner}/ — ohne sie prüft dieser Schritt nichts.')
-        return 1
+        # Weniger betroffene Patches als Teile: Dieser Teil hat nichts zu messen.
+        if not patches:
+            print(f'Teil {teil}: keine der betroffenen Gegenproben fällt auf diesen Teil.')
+            return 0
     ergebnisse = [miss(projekt, wurzel, p, gradle) for p in patches]
     zeilen = [('rot ' if ok else 'FEHLT ') + text for ok, text in ergebnisse]
     print('\n'.join(zeilen))

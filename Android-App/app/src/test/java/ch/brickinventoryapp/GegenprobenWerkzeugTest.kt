@@ -22,6 +22,8 @@ import java.util.concurrent.TimeUnit
  *   D  in betroffen() immer alle Patches zurückgegeben → rot „auf einem Push misst
  *      es nur …“ (harmlos-anderswo blieb grün) und „ohne betroffenen Patch …“ (Rückgabe 1)
  *   E  `return 0` bei leerer Auswahl gestrichen → rot „ohne betroffenen Patch …“
+ *   F  die Leer-Prüfung wieder hinter die Aufteilung auf Teile → rot „auf einem Push
+ *      misst es nur …“ (Teil 2/2 gibt 1 zurück, „Keine Gegenproben unter …“)
  */
 class GegenprobenWerkzeugTest {
 
@@ -67,12 +69,13 @@ class GegenprobenWerkzeugTest {
                 (rot?.let { "Rot: $it\n" } ?: "") + "\n" + diff)
     }
 
-    private fun lauf(basis: String? = null): Pair<Int, String> {
+    private fun lauf(basis: String? = null, teil: String? = null): Pair<Int, String> {
         val pb = ProcessBuilder("python3", File("../tools/gegenproben.py").absolutePath, ordner.path)
             .directory(projekt).redirectErrorStream(true)
         pb.environment()["GEGENPROBE_GRADLE"] = "sh ${gradle.path}"
         if (basis != null) pb.environment()["GEGENPROBE_BASIS"] = basis else pb.environment().remove("GEGENPROBE_BASIS")
         pb.environment().remove("GITHUB_STEP_SUMMARY")
+        if (teil != null) pb.environment()["GEGENPROBE_TEIL"] = teil else pb.environment().remove("GEGENPROBE_TEIL")
         val p = pb.start()
         val text = p.inputStream.bufferedReader().readText()
         check(p.waitFor(60, TimeUnit.SECONDS)) { text }
@@ -128,6 +131,10 @@ class GegenprobenWerkzeugTest {
         assertEquals(text, 0, code)
         assertTrue(text, text.contains("1 von 2 Gegenproben betroffen") && text.contains("rot macht-kaputt.patch"))
         assertTrue(text, !text.contains("harmlos-anderswo"))
+        // Weniger betroffene Patches als Teile: Der leere Teil ist grün, nicht „keine Gegenproben“.
+        val (leer, ohne) = lauf(basis, teil = "2/2")
+        assertEquals(ohne, 0, leer)
+        assertTrue(ohne, ohne.contains("Teil 2/2"))
     }
 
     @Test
