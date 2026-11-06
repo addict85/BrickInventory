@@ -99,7 +99,7 @@ export async function ladePasskeys() {
   const [d, zf] = await Promise.all([api('GET', '/v1/auth/passkeys'), api('GET', '/v1/auth/zweiter-faktor')]);
   if (!d?.success || !Array.isArray(d.passkeys)) { setzeHtml(f, html`<div class="voucher-leer">${tRaw('settings.error')}</div>`); return; }
   const liste = d.passkeys.length
-    ? html`<div class="tw"><table class="dt"><thead><tr><th>${tRaw('pk.col.name')}</th><th>${tRaw('tokens.col.created')}</th>
+    ? html`<div class="tw"><table class="dt" aria-label="${tRaw('pk.title')}"><thead><tr><th>${tRaw('pk.col.name')}</th><th>${tRaw('tokens.col.created')}</th>
         <th>${tRaw('tokens.col.last_used')}</th><th>${tRaw('users.col.actions')}</th></tr></thead><tbody>${d.passkeys.map(p => html`<tr><td><strong>${p.name || '—'}</strong></td>
           <td>${fmtDatum(p.created_at, 'tagzeit')}</td>
           <td>${p.last_used ? fmtDatum(p.last_used, 'tagzeit') : '—'}</td>

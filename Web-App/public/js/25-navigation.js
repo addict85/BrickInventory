@@ -2,7 +2,7 @@
 // darf jede laden; der Router erreicht die Sichten über 00-ziele.js, nicht über einen Import.
 import { stelleZielBereit } from './00-ziele.js';
 import { registerActions } from './00-registry.js';
-import { G, leerZustand, alle, eins, setzeHtml } from './01-dom.js';
+import { G, leerZustand, alle, eins, setzeHtml, rollArt } from './01-dom.js';
 import { ME, _lastImportAt } from './00-zustand.js';
 import { loadMonitor, stoppeMonitor } from './01-monitor.js';
 import { figurenFilterZuruecksetzen, loadManualFigsTable, loadMinifigs } from './06-minifigs.js';
@@ -141,7 +141,7 @@ export function bindTabs(){
       if(tab==='wanted')     { ladeMerkliste(); }
       if(tab==='parts')        {
         loadParts(); loadManualParts(); loadBrickColors();
-        // If import was recent, reload again after background job completes
+        // War der Import eben erst, nach dem Hintergrundauftrag noch einmal laden
         if(Date.now()-_lastImportAt<30000) setTimeout(()=>{ loadParts(); loadManualParts(); },5000);
       }
       if(tab==='minifigs')     {
@@ -205,7 +205,7 @@ export function oeffneSicht(name){
   G('btn-umenu')?.setAttribute('aria-current', 'page');
   // Nach oben: Die Sicht öffnet sich sonst an der Stelle, an der die vorige gerollt war, und man sieht die
   // Mitte einer fremden Seite.
-  window.scrollTo({ top: 0, behavior: 'smooth' });
+  window.scrollTo({ top: 0, behavior: rollArt() });
   if (ausMenue) fokusAufTitel(flaeche);
   SICHTEN[name]();
 }
@@ -217,7 +217,8 @@ export function oeffneSicht(name){
  * @param {boolean} imKopf
  */
 function zeigeSeitenname(flaeche, imKopf){
-  const titel = flaeche?.querySelector('.ptitle')?.textContent.trim() || '';
+  // Ohne weiche Trennstriche: Im Seitentitel und in der Tab-Leiste werden sie sichtbar oder stören die Suche.
+  const titel = (flaeche?.querySelector('.ptitle')?.textContent || '').replace(/\u00AD/g, '').trim();
   const kopf = G('kopf-sicht');
   if (kopf) { kopf.textContent = imKopf ? titel : ''; kopf.hidden = !(imKopf && titel); }
   document.title = titel ? `${titel} – BrickInventory` : 'BrickInventory Manager';
@@ -307,6 +308,16 @@ document.addEventListener('click', (ev) => {
 
 document.addEventListener('keydown', (ev) => {
   if(ev.key === 'Escape') { menueSchliessen(true); importMenuesSchliessen(null, true); }
+});
+
+// Abgemeldet ist #inhalt verborgen; der Sprunglink führt dann ins Anmeldeformular statt ins Leere.
+document.querySelector('.sprunglink')?.addEventListener('click', (ev) => {
+  if (G('inhalt')?.checkVisibility?.() !== false) return;
+  const felder = /** @type {HTMLElement[]} */ ([...document.querySelectorAll('#login-screen input:not([type=hidden])')]);
+  const feld = felder.find(f => f.checkVisibility?.() !== false);
+  if (!feld) return;
+  ev.preventDefault();
+  feld.focus();
 });
 
 /**

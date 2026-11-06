@@ -40,7 +40,7 @@ const { mailAttrappe, mailserverEintragen } = require('./helpers/mail-attrappe')
 const gesendet = mailAttrappe();
 const db = _req('db/database.js');
 const bcrypt = require(path.join(ROOT, 'node_modules', 'bcryptjs'));
-const warte = (ms) => new Promise(r => setTimeout(r, ms));
+const { warte } = require('./helpers/zeit');
 const freierPort = () => new Promise(r => { const s = net.createServer().listen(0, () => { const p = s.address().port; s.close(() => r(p)); }); });
 
 test('Sicherheit im Querschnitt', { concurrency: 1, timeout: 180_000 }, async (t) => {

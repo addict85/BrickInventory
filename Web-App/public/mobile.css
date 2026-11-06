@@ -86,7 +86,8 @@
   .filter-knopf { display: inline-flex; align-items: center; gap: 6px; }
   .filterleiste > input.si, .filterleiste > input.suchfeld { flex: 1 1 140px; width: auto !important; min-width: 0; }
   .filterleiste > select { display: none; }
-  .filterleiste.offen > select { display: block; flex: 1 1 100%; max-width: none; }
+  /* max-width und min-width 0: Sonst nimmt das Feld die Breite seiner längsten Option an (60 Zeichen). */
+  .filterleiste.offen > select { display: block; flex: 1 1 100%; width: 100%; max-width: 100%; min-width: 0; }
   /* Filterknopf und Ansicht teilen sich die erste Zeile, die Suche hat die zweite ganz. */
   .filterleiste > .filter-knopf { order: -2; }
   .filterleiste > .vtgl { order: -1; margin-left: auto; }
@@ -130,7 +131,8 @@
     border-top: 2px solid transparent;
     margin: -1px 0 0;
   }
-  .ntab .tab-label { max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
+  /* Umbrechen statt kürzen: Mit erhöhtem Buchstabenabstand (WCAG 1.4.12) passte „Sammlung“ nicht mehr in 64 px. */
+  .ntab .tab-label { max-width: 100%; white-space: normal; overflow-wrap: break-word; hyphens: auto; text-align: center; line-height: 1.15; }
   .ntab .ico { width: 1.375rem; height: 1.375rem; }
   .ntab.active, .ntab.gruppe-aktiv { border-top-color: var(--b600); color: var(--b600); }
 
@@ -604,9 +606,9 @@
   /* Die letzte Karte rollt unter dem schwebenden Knopf hervor. */
   main:has(:is(#tab-gallery, #tab-parts, #tab-minifigs).active) { padding-bottom: 9rem; }
 
-  /* Kennzahlen als eine Zeile; die vierte (Anleitungen) steht im Set selbst. */
-  .brick-stats { flex-wrap: nowrap; gap: .35rem; margin-bottom: var(--sp-3); }
-  .brick-stats .bstat { padding: 3px 10px; }
+  /* Kennzahlen umbrechend: Mit fünfstelligen Zahlen passte die Zeile nicht mehr und schob die Seite auf. */
+  .brick-stats { flex-wrap: wrap; gap: .35rem; margin-bottom: var(--sp-3); }
+  .brick-stats .bstat { padding: 3px 10px; max-width: 100%; min-width: 0; }
   .brick-stats .bstat:nth-child(4) { display: none; }
   .bstat .bstat-v, [data-theme="brick"] .bstat .bstat-v { font-size: var(--fs-3); }
   .bstat .bstat-l, [data-theme="brick"] .bstat .bstat-l { font-size: var(--fs-1); }
@@ -628,8 +630,24 @@
   .knopf-schwebend > span { display: none; }
 }
 @media (max-width: 640px) {
+  /* Importstand im Kopf: Mit 180 px Mindestbreite schob er bei grosser Schrift die Seite 50 px über den Rand.
+     Am Telefon nur der Text, gekürzt; der Balken steht im Fortschrittsdialog. */
+  .import-leiste { min-width: 0; max-width: 45vw; flex: 0 1 auto; }
+  .import-leiste-balken { display: none; }
+  #gib-text { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+  .hright { min-width: 0; }
+  /* Wanted-Liste: Felder fingerbreit; die Tabelle scrollt mit dem Dialog statt in einem eigenen engen Kasten. */
+  #wanted-xml-modal :is(input, select) { min-height: 44px; }
+  #wanted-xml-tabelle { max-height: none !important; }
+  /* PDF: Drucken und Herunterladen nur als Symbol; der Name bleibt für Screenreader. */
+  .pdf-werkzeuge .btn > span { display: none; }
+  .prog-minimieren { min-width: 44px; min-height: 44px; }
+  .pdf-werkzeuge { gap: 4px; }
   .kopf-weg .knopf-schwebend { width: 56px; min-width: 56px; padding: 0; justify-content: center; }
   .kopf-weg .knopf-schwebend > span { display: none; }
+  /* Tippziel am Telefon: Der Zeilenknopf einer Tabelle wird so hoch wie ein Finger. */
+  .zeile-oeffnen { min-height: 44px; min-width: 44px; }
+  .toast-zu { min-width: 44px; min-height: 44px; }
 }
 @container haupt (min-width: 15em) and (max-width: 22em) {
   #tab-gallery .filterleiste > input.suchfeld { flex: 1 1 8rem; width: auto !important; }
@@ -642,9 +660,9 @@
     min-height: 44px; padding: 0; box-shadow: none; }
 }
 
-/* Set-Dialog am Telefon: kleines Bild links, Wert und Gewinn daneben; die
-   übrigen Angaben darunter. Das Bild nahm vorher 270 px vor allem Wichtigen. */
-@media (max-width: 640px) {
+/* Set-Dialog am Telefon und bei geringer Höhe (200 % Zoom auf 1440 × 900): kleines Bild links, Wert und
+   Gewinn daneben, die übrigen Angaben darunter. Sonst füllte das Bild den ersten Bildschirm. */
+@media (max-width: 640px), (max-height: 600px) and (max-width: 899px) {
   #set-modal .m-kopfteil { display: grid; grid-template-columns: 7.5rem minmax(0, 1fr); gap: .5rem .75rem; align-items: start; }
   #set-modal .m-kopfteil > #m-det { display: contents; }
   #set-modal .m-kopfteil > #m-det > * { grid-column: 1 / -1; }

@@ -1,28 +1,6 @@
 /**
  * Alle Preisalarme an EINEM Ort — und dort änderbar und löschbar.
- *
- * ── Marcos Frage vom 25.09. ─────────────────────────────────────────────────
- *
- *   „Wie finde ich alle Preisalarme?"
- *
- * Gar nicht, war die Antwort: Es gab nur die Route zu EINEM Set. Man sah einen
- * Alarm also nur, wenn man das Set schon gefunden hatte. Wer fünfzig setzt, hat
- * keinen Ort, an dem sie zusammen stehen, und keinen, an dem er sieht, welche
- * noch scharf sind. Ein Alarm, den man nicht wiederfindet, lässt sich weder
- * prüfen noch abstellen.
- *
- * Marcos Auftrag: „Baue die Übersicht in beiden Apps in den Einstellungen als
- * Rubrik. Ich möchte dort den Alarm direkt löschen können oder den Wert
- * anpassen können."
- *
- * ── Warum dieser Test die Datenbank anfasst ─────────────────────────────────
- *
- * Die Aussage, auf die es ankommt, ist nicht „es gibt eine Route", sondern
- * „sie liefert MEINE Alarme, alle, mit Namen — und keine fremden". Das ist
- * eine Frage an die Abfrage, nicht an den Quelltext: Ein vergessenes
- * `user_id = $1` sieht im Text harmlos aus und ist der ganze Fehler.
- *
- * Voraussetzung: Test-DB. Ohne DB: skip (mit REQUIRE_DB=1: Fehler).
+ * Ausführlich: docs/begruendungen/test/alarm-uebersicht-db.test.js.md#kopf
  *
  * ── Gegenproben (durchgeführt, Ergebnis im Commit) ──────────────────────────
  *   a) `WHERE a.user_id = $1` entfernt     → Schritt 2 rot (fremder Alarm dabei)
@@ -91,12 +69,7 @@ test('Preisalarm-Übersicht: eigene Alarme, mit Namen, änderbar, löschbar',
                    SET name = EXCLUDED.name, set_img_url = EXCLUDED.set_img_url`);
   // Dasselbe Set liegt ZUSÄTZLICH in meiner Sammlung — nur dann gibt es einen
   // Detaildialog, und nur dann gibt es das heruntergeladene Bild.
-  //
-  // Das BILD steht seit Migration 0033 im Katalog, nicht an der
-  // Bestandszeile. Der Unterschied, auf den dieser Test zielt, bleibt
-  // derselbe: `besitzt` kommt aus `sets` (habe ich das Set?), das Bild aus
-  // dem Katalog (gibt es eine heruntergeladene Datei?). Vorher standen beide
-  // in derselben Zeile und waren damit nicht zu trennen.
+  // Ausführlich: docs/begruendungen/test/alarm-uebersicht-db.test.js.md#stelle
   await db.run(`INSERT INTO sets (user_id, set_number)
                 VALUES ($1,'70002-1')
                 ON CONFLICT (user_id, set_number) DO NOTHING`, [ich.id]);
@@ -214,20 +187,8 @@ test('Preisalarm-Übersicht: eigene Alarme, mit Namen, änderbar, löschbar',
   });
 
   await t.test('7. jedes gelieferte Feld kommt in der App auch an', async () => {
-    // ── Warum das nicht der Kotlin-Übersetzer erledigt (Nachtrag 137) ──────
-    //
-    // Er fängt den lauten Fall: Ein Feld, das die Oberfläche liest und das es
-    // im Modell nicht gibt, übersetzt nicht. Genau das ist beim Einbau dieser
-    // Zeile passiert — die vier neuen Felder landeten versehentlich in der
-    // Nachbarklasse, und der Lauf war nach 88 Sekunden rot.
-    //
-    // Der STILLE Fall bleibt: Heisst das Feld hier `set_img_url` und im Modell
-    // `@SerialName("set_image")`, übersetzt alles sauber, und die App bekommt
-    // für immer `null`. Kein Fehler, kein Absturz — nur ein Bild, das nie
-    // erscheint, und niemand weiss, warum.
-    //
-    // Deshalb werden die Namen VERGLICHEN, und zwar die tatsächlich
-    // gelieferten aus der Antwort, nicht eine abgeschriebene Liste.
+    // Warum das nicht der Kotlin-Übersetzer erledigt
+    // Ausführlich: docs/begruendungen/test/alarm-uebersicht-db.test.js.md#a-stelle
     const a = await alleAlarme(ich.id);
     const felder = Object.keys(a[0]);
     assert.ok(felder.length >= 10, `Nur ${felder.length} Felder — Abfrage kaputt?`);
@@ -248,18 +209,8 @@ test('Preisalarm-Übersicht: eigene Alarme, mit Namen, änderbar, löschbar',
   });
 
   await t.test('8. scharf/unscharf ist ohne Farbe zu erkennen', () => {
-    // ── Marcos Befund vom 26.09. ──────────────────────────────────────────
-    //
-    //   „Ok entschuldige ich habe eine rot grün schwäche. Deshalb sind labels
-    //    mit scharf / unscharf für mich einfacher."
-    //
-    // Bis dahin trug die Farbe die ganze Aussage: grün heisst scharf, grau
-    // heisst nicht mehr scharf. Rot-Grün-Schwäche trifft rund acht Prozent der
-    // Männer — für sie stand die Information nirgends. Die Entschuldigung ist
-    // an der falschen Stelle: Nicht das Auge ist der Fehler, sondern eine
-    // Oberfläche, die eine Aussage NUR in die Farbe legt.
-    //
-    // Geprüft werden drei Unterschiede, von denen jeder EINZELN reicht.
+    // Marcos Befund vom 26.09.
+    // Ausführlich: docs/begruendungen/test/alarm-uebersicht-db.test.js.md#js-stelle
     const js = ohneKommentare(require('./helpers/sources').ansichtQuelle('05'));
     const css = fs.readFileSync(path.join(ROOT, 'public/styles.css'), 'utf8');
 
@@ -303,15 +254,7 @@ test('Preisalarm-Übersicht: eigene Alarme, mit Namen, änderbar, löschbar',
   await t.test('9. ein Set des HAUSHALTS zählt auch — Marcos Befund vom 26.09.', async () => {
     // „Das Bild in der Android-App ist sichtbar aber die Einträge in den
     // Preisalarme sind nicht klickbar."
-    //
-    // Zwei Ursachen, beide meine. Diese hier ist die im Server: Die erste
-    // Fassung verband auf `s.user_id = a.user_id` — streng das eigene Konto.
-    // `GET /v1/sets/:nummer` fragt aber über `scopeIds()`, also über das ganze
-    // Blickfeld. Ein Set, das einem Unterkonto gehört, HAT eine Detailansicht;
-    // die Zeile war trotzdem tot.
-    //
-    // Die zweite Ursache lag in der App und steht dort (Vorgabewert von
-    // `besitzt`); sie ist von hier aus nicht messbar.
+    // Ausführlich: docs/begruendungen/test/alarm-uebersicht-db.test.js.md#a-stelle-2
     const a = await alleAlarme(ich.id);
     const vomKind = a.find(x => x.set_number === '60000-1');
     assert.ok(vomKind, 'Der Alarm auf das Set des Kindes fehlt ganz.');

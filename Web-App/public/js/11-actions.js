@@ -1,5 +1,5 @@
 import { istVertraut, registerActions, resolveAction } from './00-registry.js';
-import { bildPlatzhalter, bildVorlaeufig, bildGeladen, fullUrl } from './01-bilder.js';
+import { bildPlatzhalter, bildVorlaeufig, bildGeladen, fullUrl, zoomStand, PLATZHALTER_SET } from './01-bilder.js';
 import { G } from './01-dom.js';
 import { setLang } from './01-konto.js';
 import { toast } from './01-meldungen.js';
@@ -42,7 +42,7 @@ import { deleteManualPart } from './03-parts.js';
       'speichereTeilLagerort', 'startSetCsvImport', 'updateColorDot', 'uploadInstr', 'waehrungPruefen',
       'wantedKorrekturFarbe', 'wantedKorrekturNummer', 'wantedKorrekturWert',
       'wantedXmlGewaehlt', 'wechsleAlarmZustand']),
-    input: new Set(['alarmGetippt', 'filterFigs']),
+    input: new Set(['alarmGetippt', 'filterFigs', 'finSuchen']),
     blur: new Set(['acqSave', 'lagerortGetippt', 'manAcqSave', 'saveManualFigBl']),
     keydown: new Set(['blurOnEnter', 'lagerortTaste']),
   };
@@ -160,7 +160,7 @@ import { deleteManualPart } from './03-parts.js';
 
     // Einmal wiederholen, bevor aufgegeben wird: Ein einzelner Verbindungsfehler (ETIMEDOUT beim CDN) liess
     // die Kachel sonst dauerhaft leer, obwohl das Bild in Ordnung war.
-    // Ausführlich: docs/begruendungen/public/js/11-actions.js.md#if
+    // Ausführlich: docs/begruendungen/public/js/11-actions.js.md#einmal-wiederholen-bevor-aufgegeben-wird
     if (!el.dataset.retried && el.src) {
       el.dataset.retried = '1';
       if (/** @type {HTMLImageElement} */ (el).dataset.ph) bildVorlaeufig(el);
@@ -181,13 +181,15 @@ import { deleteManualPart } from './03-parts.js';
     if (orig && !el.dataset.origVersucht && el.getAttribute('src') !== orig) {
       el.dataset.origVersucht = '1';
       el.src = orig;
+      zoomStand(el);
       return;
     }
     if (el.dataset.fallbackDone) return;
     el.dataset.fallbackDone = '1';
-    // Bilder aus Vorlagen (bildTag) bekommen den Platzhalter ihrer Art; die festen Dialogbilder in index.html
-    // werden nur geleert.
+    // Bilder aus Vorlagen (bildTag) bekommen den Platzhalter ihrer Art; die festen Dialogbilder den des Sets,
+    // sonst stünde ein kaputtes Bildsymbol da.
     if (el.dataset.ph) bildPlatzhalter(el);
+    else if (el.classList.contains('zoombar')) { el.src = PLATZHALTER_SET; zoomStand(el); }
     else { el.removeAttribute('src'); el.classList.add('loaded'); }
   }, true);
 
@@ -250,7 +252,11 @@ function lightboxBackdrop(ev) {
 function openImageLightboxFromEl() {
   const src = this.dataset.orig && this.dataset.orig !== '/assets/set-placeholder.svg'
     ? this.dataset.orig : this.src;
-  openImageLightbox(typeof fullUrl === 'function' ? fullUrl(src) : src);
+  // Der Titel des Dialogs nennt, was das Bild zeigt (Set, Teil, Figur), samt Untertitel mit der Nummer.
+  const dialog = this.closest('.ovl');
+  const name = [dialog?.querySelector('.mtit')?.textContent, dialog?.querySelector('.muntertit, [id$="-sub"]')?.textContent]
+    .map(s => (s || '').trim()).filter(Boolean).join(' – ');
+  openImageLightbox(typeof fullUrl === 'function' ? fullUrl(src) : src, name);
 }
 
 /** @this {HTMLSelectElement} */

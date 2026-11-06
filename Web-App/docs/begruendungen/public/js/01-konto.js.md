@@ -18,7 +18,7 @@ Hier wird nur noch durchgereicht, damit der localStorage-Cache mitgeführt
 wird und ein Design-Wechsel des Admins beim nächsten Laden sofort greift.
 ```
 
-<a id="if"></a>
+<a id="keine-eigene-liste-gueltiger-designs"></a>
 ## `if`
 
 ```text

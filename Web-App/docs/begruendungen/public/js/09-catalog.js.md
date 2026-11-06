@@ -70,7 +70,7 @@ Meldung.
 über die ganze Leiste löst dagegen genau EINEN Abruf aus — am Ziel.
 ```
 
-<a id="src"></a>
+<a id="vorschau-ueber-den-server-wie"></a>
 ## `src`
 
 ```text
@@ -97,7 +97,7 @@ den Server — genau der Unterschied, den ein direkt geöffneter CDN-Link
 (unter einer Sekunde) gegenüber dem Server-Proxy zeigt.
 ```
 
-<a id="bl"></a>
+<a id="der-kauf-link-kommt-fertig"></a>
 ## `bl`
 
 ```text
@@ -142,7 +142,7 @@ geschätzt; dort weiss der Browser es schlicht nicht. Eine rein lineare
 Rechnung wäre falsch, sobald ein Jahr mehr Sets hat als ein anderes.
 ```
 
-<a id="if"></a>
+<a id="zweite-wahl-ueber-die-tatsaechliche"></a>
 ## `if`
 
 ```text

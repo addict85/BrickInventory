@@ -1,30 +1,8 @@
-# ── Warum es diese Datei gibt (Nachtrag 154) ─────────────────────────────────
-#
-# Web-App/ hatte KEINE .gitignore. Beim Import als Unterordner dieses
-# Repositories ist sie offenbar verlorengegangen — .dockerignore daneben ist
-# erhalten geblieben, was den Verdacht stützt.
-#
-# Folge: `git add -A` erfasste 9110 unverfolgte Dateien mit zusammen 216 MB
-# (node_modules, dist, data). Genau das ist beim Erarbeiten von Nachtrag 154
-# einmal passiert und musste zurückgenommen werden; gemerkt hat man es nur,
-# weil die Dateizahl im Commit auffiel. Beim nächsten Mal fällt sie vielleicht
-# nicht auf, und dann liegen 200 MB Abhängigkeiten dauerhaft in der Historie —
-# rückgängig macht man das nur noch durch Umschreiben der Historie.
-#
-# NICHT ignoriert wird public/js/app.bundle.js: Die Datei steht zwar in
-# .dockerignore (im Container wird sie gebaut), ist hier aber VERFOLGT und
-# gehört ins Repository — sie wird ausgeliefert.
+# Ohne diese Datei erfasste `git add -A` node_modules, dist und data (216 MB).
+# public/js/app.bundle.js bleibt verfolgt: Es wird ausgeliefert.
 
-# Abhängigkeiten und Bauergebnisse
-#
-# OHNE Schrägstrich, und das ist ein Nachtrag mit Grund: `node_modules/`
-# trifft nur ein VERZEICHNIS. Ein SYMLINK dieses Namens ist keines — er wurde
-# nicht ignoriert und landete im Merge-Commit f911f3e als Selbstverweis
-# (`Web-App/node_modules -> /home/user/.../Web-App/node_modules`), weil beim
-# Arbeiten in einem zweiten Arbeitsbaum die Abhängigkeiten per Symlink geteilt
-# wurden. Jeder, der danach zog, hatte eine Schleife im Baum, und `npm` meldete
-# „Too many levels of symbolic links". Ohne Schrägstrich trifft das Muster
-# beides.
+# Abhängigkeiten und Bauergebnisse. Ohne Schrägstrich, damit auch ein
+# Symlink namens node_modules (geteilter Arbeitsbaum) ignoriert wird.
 node_modules
 dist
 
@@ -45,12 +23,13 @@ caddy/
 *.log
 .env
 .env.*
-# ... aber eine Beispieldatei gehoert ins Repository. Ohne diese Ausnahme
-# verschluckt `.env.*` ein spaeter angelegtes .env.example lautlos — dieselbe
-# Bauart von Verlust, gegen die diese Datei ueberhaupt angelegt wurde.
+# ... aber eine Beispieldatei gehört ins Repository.
 !.env.example
 
 # Betriebssystem und Editor
 .DS_Store
 Thumbs.db
 *.swp
+
+# Abdeckungsbericht (npm run abdeckung)
+coverage

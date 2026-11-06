@@ -191,6 +191,9 @@ export const FEHLER = {
                                  en: 'quantity, purchase_price or condition is required' },
   kein_bricklink_preis:        { de: 'kein BrickLink-Preis gefunden', en: 'no BrickLink price found' },
   kein_bricklink_zugang:       { de: 'Kein BrickLink-Zugang eingerichtet', en: 'No BrickLink access configured' },
+  bricklink_tageslimit:        { de: 'BrickLink-Tageslimit erreicht', en: 'BrickLink daily limit reached' },
+  bricklink_zugang_fehlt:      { de: 'BrickLink-API-Zugangsdaten nicht vollständig.', en: 'BrickLink API credentials are incomplete.' },
+
 
   // ── Dateien, Import, Export ──────────────────────────────────────────────
   keine_datei:                 { de: 'Keine Datei', en: 'No file' },
@@ -214,6 +217,8 @@ export const FEHLER = {
                                  en: 'No usable row found — skipped: row {zeilen}' },
   csv_uebersprungen:           { de: '{anzahl} Zeile(n) übersprungen (Zeile {zeilen})',
                                  en: '{anzahl} row(s) skipped (row {zeilen})' },
+  csv_menge_ungueltig:         { de: 'Menge „{wert}“ ungültig', en: 'Quantity "{wert}" is invalid' },
+  csv_keine_setnummer:         { de: 'keine Set-Nummer', en: 'no set number' },
   import_zeitueberschreitung:  { de: 'Zeitüberschreitung', en: 'Timed out' },
   import_kontingent:           { de: 'Abruflimit erreicht', en: 'Rate limit reached' },
   feld_erforderlich:           { de: '{feld} erforderlich', en: '{feld} is required' },

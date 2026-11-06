@@ -215,7 +215,7 @@ router.get('/sets/:setNumber', requireToken, async (req: Anfrage<'GET /api/v1/se
 });
 
 router.post('/sets', requireToken, async (req: Anfrage<'POST /api/v1/sets'>, res: Antwort<'POST /api/v1/sets'>) => {
-  const { quantity = 1, purchase_price = null, condition = null, owner_user_id, storage = null } = req.eingabe;
+  const { quantity = 1, purchase_price = null, condition = null, owner_user_id, storage = null, currency = null, date = null } = req.eingabe;
   const set_number = String(req.eingabe.set_number ?? '').trim();
   if (!set_number) return sendeFehler(req, res, 400, 'set_number_erforderlich');
   // Getippt wird eine Nummer, kein Satz: Die nachsichtige Normalisierung (für CSV) machte aus Text ein Set.
@@ -228,7 +228,7 @@ router.post('/sets', requireToken, async (req: Anfrage<'POST /api/v1/sets'>, res
   const vorhanden = await findSetInScope(req.apiUser.user_id, set_number);
   if (vorhanden) return res.json({ success:true, action:'exists', ...vorhanden });
   // Dieselbe Prüfung wie im Webapp-Weg, damit die Regel nicht am Weg hängt.
-  const result = await addSet(set_number, quantity, owner, null, purchase_price, condition?.toUpperCase() ?? null, storage);
+  const result = await addSet(set_number, quantity, owner, null, purchase_price, condition?.toUpperCase() ?? null, storage, date, { waehrung: currency });
   res.json({ success:true, ...result });
 });
 
@@ -331,11 +331,11 @@ router.get('/sets/import/csv/stream', zustandsWaechter, kontoSchranke('strom'), 
   req.on('close', cleanup);
 });
 
-router.post('/sets/import/csv', requireToken, kontoSchranke('upload'), csvEmpfang.single('file'), async (req: OffeneAnfrage<'POST /api/v1/sets/import/csv'>, res: Antwort<'POST /api/v1/sets/import/csv'>) => {
+router.post('/sets/import/csv', requireToken, kontoSchranke('upload'), csvEmpfang.single('file'), async (req: Anfrage<'POST /api/v1/sets/import/csv'>, res: Antwort<'POST /api/v1/sets/import/csv'>) => {
   if (!req.file) return sendeFehler(req, res, 400, 'keine_datei');
-  const { total, uebersprungen } = await setCsvImportStarten(angemeldeteNutzerId(req), req.file.buffer.toString('utf-8'));
+  const { total, uebersprungen, vorhanden, gestartet } = await setCsvImportStarten(angemeldeteNutzerId(req), req.file.buffer.toString('utf-8'), req.abfrage.pruefen === true);
   // Übersprungene Zeilen gehören in die sofortige Antwort; der Import läuft weiter.
-  res.json({ success: true, total,
+  res.json({ success: true, total, gestartet, vorhanden: vorhanden.length, vorhanden_nummern: vorhanden.slice(0, 20),
     skipped: uebersprungen.length || undefined,
     skipped_hint: uebersprungenHinweis(uebersprungen, antwortSprache(req)) || undefined });
 });
@@ -351,7 +351,7 @@ router.get('/sets/export/rebrickable', requireToken, async (req, res) => {
 });
 
 router.post('/sets/add-stream', requireToken, kontoSchranke('strom'), async (req: Anfrage<'POST /api/v1/sets/add-stream'>, res: express.Response) => {
-  const { quantity = 1, purchase_price = null, condition: setCondition = null, owner_user_id, storage = null } = req.eingabe;
+  const { quantity = 1, purchase_price = null, condition: setCondition = null, owner_user_id, storage = null, currency = null, date = null } = req.eingabe;
   const set_number = String(req.eingabe.set_number ?? '');
   if (!set_number) { sendeFehler(req, res, 400, 'set_number_erforderlich'); return; }
   const owner = await schreibziel(angemeldeteNutzerId(req), owner_user_id);
@@ -366,7 +366,7 @@ router.post('/sets/add-stream', requireToken, kontoSchranke('strom'), async (req
   // Der Strom ist offen: Ein Fehler wird zum letzten Ereignis, kein Statuscode mehr.
   await addSet(set_number, quantity, owner,
     d => { if (cancelled) throw new Error('CANCELLED'); send(d); },
-    purchase_price, setCondition?.toUpperCase() ?? null, storage).then(
+    purchase_price, setCondition?.toUpperCase() ?? null, storage, date, { waehrung: currency }).then(
     // success gehört dazu: Die Clients lesen das letzte Ereignis wie eine Antwort.
     result => send({ step: 'done', success: true, ...result }),
     (e: unknown) => { if (fehlertext(e) !== 'CANCELLED') send({ step: 'error', ...oeffentlicherFehler(e, 'sets:add-stream', req) }); });

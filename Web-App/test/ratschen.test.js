@@ -7,12 +7,7 @@ const WEB = path.join(__dirname, '..');
 
 /**
  * Ratschen: Ein gemessener Bestand darf sinken, nie steigen.
- *
- * Für Dinge, die zu zahlreich sind, um sie auf einmal aufzuräumen (stille
- * Fänge, `any`, reine Quelltext-Tests, Kommentaranteil …). Eine harte Regel
- * wäre sofort rot und bräuchte eine Ausnahmeliste, die niemand mehr liest;
- * die Ratsche gibt neuem Code den höheren Anspruch, ohne den Bestand
- * anzufassen. Wer eine Stelle aufräumt, senkt die Schranke hier.
+ * Ausführlich: docs/begruendungen/test/ratschen.test.js.md#stelle
  */
 
 /** Alle TypeScript-Quellen ohne Tests und ohne Erzeugnisse. */
@@ -42,19 +37,7 @@ const STILLE_FAENGE = [
 
 /**
  * Treffer zaehlen — im CODE, nicht in den Erklaerungen darueber.
- *
- * ── Warum ohneKommentare() ──────────────────────────────────────────────────
- *
- * Diese Ratsche schlug an, als jemand in einem Kommentar BEGRUENDETE, warum er
- * an einer Stelle KEIN `as any` schreibt. Der Zaehler stieg um zwei, obwohl im
- * Code eines weniger stand.
- *
- * Das ist kein Randfall, sondern die Regel, die sich selbst im Weg steht: Eine
- * Ratsche, die Erklaerungen mitzaehlt, bestraft genau das Verhalten, das sie
- * erreichen will — sie macht das Aufschreiben der Begruendung teurer als das
- * stille Hinnehmen. Derselbe Fehler steckte in diesem Baum schon in
- * design-haftung, noppe-design und csv-prototyp; er faellt jedes Mal erst auf,
- * wenn jemand die Regel dokumentiert.
+ * Ausführlich: docs/begruendungen/test/ratschen.test.js.md#zaehle
  */
 function zaehle(muster) {
   const { ohneKommentare } = require('./helpers/sources');
@@ -138,9 +121,9 @@ test('Datenbankzeilen sind ohne Typargument unknown', () => {
 
 test('ungetypte Datenbankabfragen werden weniger, nie mehr', () => {
   // Erlaubt, solange niemand Felder der Zeile liest — dann verlangt der
-  // Übersetzer ohnehin ein Typargument. Gemessen 69 am 05.11.2026.
+  // Übersetzer ohnehin ein Typargument. Gemessen 68 am 06.11.2026.
   // Gegenprobe (05.11.2026): Schranke auf 68 → rot.
-  const SCHRANKE = 69;
+  const SCHRANKE = 68;
   const ist = zaehle([/\b(?:db|tx|dbh|d)\.(?:get|all)\(/g]);
   assert.ok(ist <= SCHRANKE, `${ist} ungetypte db.get/all, erlaubt sind ${SCHRANKE}`);
   if (ist < SCHRANKE) console.log(`  ℹ ungetypte Abfragen: ${ist} (Schranke ${SCHRANKE}) — Schranke nachziehen`);
@@ -179,7 +162,8 @@ test('Schreibziele in Routen werden weniger, nie mehr', () => {
  * gehören in einen Test, der den Code laufen lässt.
  */
 const LIEST_QUELLE = /readFileSync|Quelle\(|serverOnly|serverAll|i18nAll|localeSource|ohneKommentare/;
-const FUEHRT_AUS = /buildAndRequire|testServer|spawn\(|spawnSync\(|execFileSync\(|fetch\(|jsdom|new Function|vm\.|= import\(/;
+// Die Hilfen für jsdom und Chrome führen die Oberfläche aus (wie im Prüfbericht arch17-web-b, H1).
+const FUEHRT_AUS = /buildAndRequire|testServer|spawn\(|spawnSync\(|execFileSync\(|fetch\(|jsdom|new Function|vm\.|= import\(|helpers\/(oberflaeche|app-browser)'/;
 function reineQuelltextTests() {
   return fs.readdirSync(__dirname).filter(n => n.endsWith('.test.js')).filter(n => {
     const src = fs.readFileSync(path.join(__dirname, n), 'utf8');
@@ -188,8 +172,8 @@ function reineQuelltextTests() {
 }
 
 test('reine Quelltext-Tests werden weniger, nie mehr', () => {
-  // Gemessen 86 am 03.11.2026; wie die Zahl gesunken ist, steht im git log.
-  const SCHRANKE = 86;
+  // Gemessen 84 am 06.11.2026; wie die Zahl gesunken ist, steht im git log.
+  const SCHRANKE = 84;
   const alle = fs.readdirSync(__dirname).filter(n => n.endsWith('.test.js')).length;
   assert.ok(alle >= 300, `Nur ${alle} Testdateien gefunden — greift die Suche noch?`);
   const ist = reineQuelltextTests();
@@ -200,6 +184,63 @@ test('reine Quelltext-Tests werden weniger, nie mehr', () => {
   if (ist.length < SCHRANKE) {
     console.log(`  ℹ reine Quelltext-Tests: ${ist.length} (Schranke ${SCHRANKE}) — Schranke nachziehen`);
   }
+});
+
+/**
+ * Je Testfall statt je Datei: Auch eine Datei, die irgendwo Code ausführt,
+ * kann zwanzig Fälle haben, die nur eine Zeile im Quelltext suchen. Ein Fall
+ * zählt, wenn er Quelltext liest (direkt oder über eine Quelltext-Variable der
+ * Datei) und nichts ausführt. Zählweise wie im Prüfbericht arch17-web-b.
+ */
+const FALL_FUEHRT_AUS = /buildAndRequire|testServer|spawn\(|spawnSync\(|execFileSync\(|fetch\(|jsdom|JSDOM|new Function|vm\.|import\(|require\(.*dist|\.request\(|agent\.|[oO]berflaeche\(|browser|seite\.|page\.|await |starte|lade\w*\(/;
+const FALL_LIEST = /readFileSync|Quelle\(|serverOnly|serverAll|i18nAll|localeSource|ohneKommentare/;
+function quelltextFaelle() {
+  let n = 0, alle = 0;
+  for (const name of fs.readdirSync(__dirname).filter(x => x.endsWith('.test.js'))) {
+    const s = fs.readFileSync(path.join(__dirname, name), 'utf8');
+    const vars = new Set();
+    for (const m of s.matchAll(/(?:const|let|var)\s+(\w+)\s*=\s*[^;\n]*(readFileSync|Quelle\(|serverOnly|serverAll|i18nAll|localeSource|ohneKommentare|Quelle\b)/g)) vars.add(m[1]);
+    for (const m of s.matchAll(/(?:const|let|var)\s+\{([^}]+)\}\s*=\s*require\(['"]\.\/helpers\/sources['"]\)/g))
+      for (const x of m[1].split(',')) vars.add(x.trim().split(':').pop()?.trim() ?? '');
+    for (const fall of s.split(/\n(?=\s{0,4}(?:test|it)\(\s*['"`])/).slice(1)) {
+      alle++;
+      const liest = FALL_LIEST.test(fall) || [...vars].some(v => v && new RegExp(`\\b${v}\\b`).test(fall));
+      if (liest && !FALL_FUEHRT_AUS.test(fall)) n++;
+    }
+  }
+  return { n, alle };
+}
+
+test('Testfälle, die nur Quelltext lesen, werden weniger, nie mehr', () => {
+  // Gemessen 610 am 06.11.2026 (Prüfbericht: 632; die Ratschen selbst zählen mit).
+  // Gegenprobe (05.11.2026): parts-paging.test.js auf den Stand vor den jsdom-Tests → rot.
+  const SCHRANKE = 610;
+  const { n, alle } = quelltextFaelle();
+  assert.ok(alle > 2000, `nur ${alle} Testfälle gefunden — greift die Suche noch?`);
+  assert.ok(n <= SCHRANKE, `${n} Testfälle lesen nur Quelltext, erlaubt sind ${SCHRANKE}. ` +
+    'Verhalten gehört in einen Test, der den Code ausführt (jsdom, buildAndRequire, testServer).');
+  if (n < SCHRANKE) console.log(`  ℹ Quelltext-Testfälle: ${n} (Schranke ${SCHRANKE}) — Schranke nachziehen`);
+});
+
+test('feste Wartezeiten in Tests werden weniger, nie mehr', () => {
+  // Eine feste Pause ist unter Last zu kurz und sonst zu lang; gewartet wird auf
+  // eine Bedingung (helpers/zeit.js bis(), ruhig() der Oberflächenhilfen).
+  // Gemessen 111 laut Prüfbericht, 37 am 05.11.2026. Eigene Warte-Helfer: 0.
+  // Gegenprobe (05.11.2026): `await warte(500);` in verlauf-browser.test.js → rot (38).
+  const SCHRANKE = 37;
+  const FEST = /^\s*await (warte|takt|new Promise\(r(esolve)? => setTimeout\(r(esolve)?,)\s*\(?\s*[0-9]{3,}/;
+  const EIGEN = /^\s*const (warte|takt|sleep|schlafe)\s*=/;
+  let ist = 0;
+  const eigene = [];
+  for (const n of fs.readdirSync(__dirname).filter(x => x.endsWith('.js'))) {
+    for (const z of fs.readFileSync(path.join(__dirname, n), 'utf8').split('\n')) {
+      if (FEST.test(z)) ist++;
+      if (EIGEN.test(z)) eigene.push(n);
+    }
+  }
+  assert.deepEqual(eigene, [], 'eigene Warte-Helfer: test/helpers/zeit.js benutzen');
+  assert.ok(ist <= SCHRANKE, `${ist} feste Wartezeiten ab 100 ms, erlaubt sind ${SCHRANKE}`);
+  if (ist < SCHRANKE) console.log(`  ℹ feste Wartezeiten: ${ist} (Schranke ${SCHRANKE}) — Schranke nachziehen`);
 });
 
 /**
@@ -241,8 +282,8 @@ test('Inline-Stile in index.html werden weniger, nie mehr', () => {
   // davon 56 reines display:none. 112 am 29.10. (Merkliste-Kasten als Klasse),
   // 52 am selben Tag (Diagramm, Banner, Dialogfüsse, PDF-Ansicht als Klassen).
   // 51 am 30.10. (Kennzahlen der Minifiguren ohne eigenes Raster). 47 am 03.11.
-  // 38 am 04.11. (Bauliste und Zwischenspeicher als Klassen); 36 am selben Tag (Bauliste-Chips und Status).
-  const SCHRANKE = 36;
+  // 38 am 04.11. (Bauliste und Zwischenspeicher als Klassen); 36 am selben Tag (Bauliste-Chips und Status), 35 am 06.11.
+  const SCHRANKE = 35;
   const html = fs.readFileSync(path.join(WEB, 'public', 'index.html'), 'utf8').replace(/<!--[\s\S]*?-->/g, '');
   const stile = [...html.matchAll(/<[a-zA-Z][^>]*?\sdata-stil="([^"]*)"/g)].map(m => m[1].trim().replace(/;$/, ''));
   assert.ok(stile.length > 50, 'Keine Inline-Stile gefunden — greift die Suche noch?');
@@ -260,12 +301,33 @@ function serverUndOberflaeche() {
           path.join(WEB, 'public', 'i18n.js')];
 }
 
-test('kein Verweis auf „Nachtrag N" im Code', () => {
+/** Alles, was auf docs/begruendungen verweisen darf: Server, Oberfläche, index.html, Tests, Skripte. */
+function mitBegruendungen() {
+  const js = (/** @type {string} */ d) => fs.readdirSync(d).filter(f => f.endsWith('.js')).map(f => path.join(d, f));
+  return [...serverUndOberflaeche(), path.join(WEB, 'public', 'index.html'),
+    ...js(__dirname), ...js(path.join(__dirname, 'helpers')), ...js(path.join(WEB, 'scripts'))];
+}
+
+test('kein Verweis auf „Nachtrag N" unter Web-App/', () => {
   // Die Geschichte einer Stelle steht im Commit (CLAUDE.md); eine Nummer im
-  // Kommentar verweist auf eine Liste, die es im Baum nicht gibt.
-  // Gegenprobe: ein „(Nachtrag 1)" in src/konto/auth.ts → rot.
-  const treffer = serverUndOberflaeche().flatMap(f =>
-    (fs.readFileSync(f, 'utf8').match(/Nachtr(?:ag|äge|aege) \d+/g) || []).map(m => `${path.relative(WEB, f)}: ${m}`));
+  // Kommentar verweist auf eine Liste, die es im Baum nicht gibt. Ausgenommen:
+  // docs/, CHANGELOG* und db/ (angewandte Migrationen dürfen sich nicht ändern).
+  // Gegenproben: eine Nachtragsnummer in src/konto/auth.ts → rot; dasselbe in
+  // test/tab-layout.test.js und in public/index.html → rot (05.11.2026).
+  const RAUS = new Set(['node_modules', 'dist', 'coverage', 'data', 'docs', 'CHANGELOG', 'db', '.git']);
+  const treffer = [];
+  let dateien = 0;
+  (function lauf(d) {
+    for (const n of fs.readdirSync(d, { withFileTypes: true })) {
+      const p = path.join(d, n.name);
+      if (n.isDirectory()) { if (!RAUS.has(n.name)) lauf(p); continue; }
+      if (n.name.startsWith('CHANGELOG') || !/\.(ts|js|html|css|sh|md|ya?ml|json|sql)$|^\.gitignore$|^Dockerfile$|^Caddyfile$/.test(n.name)) continue;
+      if (n.name === 'app.bundle.js') continue;
+      dateien++;
+      for (const m of fs.readFileSync(p, 'utf8').match(/Nachtr(?:ag|äge|aege) \d+/g) || []) treffer.push(`${path.relative(WEB, p)}: ${m}`);
+    }
+  })(WEB);
+  assert.ok(dateien > 800, `nur ${dateien} Dateien durchsucht — greift die Suche noch?`);
   assert.deepEqual(treffer, []);
 });
 
@@ -435,7 +497,7 @@ test('ungeprueft() wird weniger, nie mehr', () => {
   // html`` maskiert jeden eingesetzten Wert; ungeprueft() setzt eine Zeichenkette als Markup ein, die
   // vor dem Umbau schon maskiert gebaut wurde. Wer eine Stelle auf html`` umstellt, senkt die Schranke.
   // Gegenprobe: `${ungeprueft(x)}` in 01-dom.js ergänzt → rot mit 159.
-  const SCHRANKE = 158;
+  const SCHRANKE = 142;
   const ist = oberflaechenCode().reduce((n, x) => n + (x.z.match(/(?<![\w.])ungeprueft\(/g) || []).length
     - (/export function ungeprueft\(/.test(x.z) ? 1 : 0), 0);
   assert.ok(ist > 0, 'kein ungeprueft() gefunden — greift die Suche noch?');
@@ -445,9 +507,9 @@ test('ungeprueft() wird weniger, nie mehr', () => {
 
 test('keine Datei der Oberfläche über 1000 Zeilen, die grossen werden kleiner', () => {
   // Eine Sammeldatei zieht Neues an, weil es dort schon liegt. Gemessen nach dem Teilen von
-  // 01-core.js, 05-settings.js und 13-acquisition-modals.js: grösste 917 (nach html`` und dem Umbruch der Kommentare), über 600 Zeilen 8.
+  // 01-core.js, 05-settings.js und 13-acquisition-modals.js: grösste 859 am 06.11.2026, über 600 Zeilen 8.
   // Gegenprobe: an 13-acquisition-modals.js 60 Kommentarzeilen gehängt → rot: „grösste Datei 977 Zeilen“.
-  const SCHRANKE_GROESSTE = 917, SCHRANKE_UEBER_600 = 8;
+  const SCHRANKE_GROESSTE = 859, SCHRANKE_UEBER_600 = 8;
   const laengen = oberflaeche().map(f => ({ f: path.relative(WEB, f), n: fs.readFileSync(f, 'utf8').split('\n').length }));
   assert.ok(laengen.length > 40, `nur ${laengen.length} Dateien gefunden — greift die Suche noch?`);
   const ueber1000 = laengen.filter(x => x.n > 1000).map(x => `${x.f} (${x.n})`);
@@ -473,9 +535,9 @@ test('Funktionen im Server über 80 und über 150 Zeilen werden weniger, nie meh
 });
 
 test('der Kommentaranteil in db/, clients/ und scripts/ sinkt, nie steigt', () => {
-  // Je Ordner eine Schranke, gemessen am 05.11.2026 nach dem Kürzen.
+  // Je Ordner eine Schranke, gemessen am 06.11.2026.
   // Gegenprobe: 40 Kommentarzeilen an clients/ezb.ts gehängt → rot (clients).
-  const SCHRANKE = { db: 28.0, clients: 20.6, scripts: 34.5 };
+  const SCHRANKE = { db: 27.2, clients: 19.7, scripts: 25.5 };
   const zuViel = [];
   for (const [ordner, schranke] of Object.entries(SCHRANKE)) {
     let zeilen = 0, kommentar = 0;
@@ -503,9 +565,10 @@ test('der Kommentaranteil in db/, clients/ und scripts/ sinkt, nie steigt', () =
 test('Geschichte in Testkommentaren wird weniger, nie mehr', () => {
   // Ein Testkopf nennt, was geprüft wird, und seine Gegenproben (CLAUDE.md);
   // woher ein Test kam, steht im Commit. Gezählt werden Kommentarzeilen mit
-  // den typischen Erzählmarken. Gemessen 423 am 05.11.2026.
+  // den typischen Erzählmarken. Gemessen 64 am 05.11.2026 (vorher 424).
   // Gegenprobe (05.11.2026): den alten Kopf von scope-reset.test.js zurück → rot.
-  const SCHRANKE = 423;
+  const SCHRANKE = 64;
+
   const MARKE = /(Nachtr(ag|äge) [0-9]|Hier stand|Vorher stand|NACHGEMESSEN|kam(en)? am [0-9]|Marcos (Frage|Wunsch|Bericht|Rückfrage|Konsole))/;
   const dateien = [
     ...fs.readdirSync(__dirname).filter(n => n.endsWith('.js')).map(n => path.join(__dirname, n)),
@@ -525,9 +588,9 @@ test('Geschichte in Testkommentaren wird weniger, nie mehr', () => {
 test('der Kommentaranteil der Tests sinkt, nie steigt', () => {
   // Eigene Schranke: Testköpfe zählen ihre Gegenproben auf (CLAUDE.md), der
   // Anteil liegt deshalb höher als im Server. Geschichte gehört auch hier in
-  // den Commit. Gemessen 33,3 % in test/*.js und test/helpers/ (05.11.2026); Schranke 33,4.
+  // den Commit. Gemessen 23,2 % in test/*.js und test/helpers/ (05.11.2026, vorher 33,3).
   // Gegenprobe: 300 Kommentarzeilen an eine Testdatei gehängt → rot.
-  const SCHRANKE = 33.4;
+  const SCHRANKE = 23.2;
   const dateien = [
     ...fs.readdirSync(__dirname).filter(n => n.endsWith('.js')).map(n => path.join(__dirname, n)),
     ...fs.readdirSync(path.join(__dirname, 'helpers')).filter(n => n.endsWith('.js')).map(n => path.join(__dirname, 'helpers', n)),
@@ -558,7 +621,7 @@ test('jeder Verweis auf docs/begruendungen trifft Datei und Anker', () => {
   // routes/auth.ts.md#delete-users-id verwiesen → rot (05.11.2026).
   const kaputt = [];
   let n = 0;
-  for (const f of serverUndOberflaeche()) {
+  for (const f of mitBegruendungen()) {
     const eigen = path.relative(WEB, f).split(path.sep).join('/') + '.md';
     for (const m of fs.readFileSync(f, 'utf8').matchAll(/docs\/begruendungen\/([^\s#`'"]+\.md)#([\w-]+)/g)) {
       n++;
@@ -579,7 +642,7 @@ test('Anker ohne Verweis werden weniger, nie mehr', () => {
   // routes/auth/benutzer.ts gestrichen → rot (289).
   const SCHRANKE = 285;
   const verwiesen = new Set();
-  for (const f of serverUndOberflaeche())
+  for (const f of mitBegruendungen())
     for (const m of fs.readFileSync(f, 'utf8').matchAll(/docs\/begruendungen\/([^\s#`'"]+\.md)#([\w-]+)/g)) verwiesen.add(`${m[1]}#${m[2]}`);
   const wurzel = path.join(WEB, 'docs', 'begruendungen');
   let alle = 0, ohne = 0;
@@ -605,7 +668,7 @@ test('jedes Dokument unter docs/begruendungen wird vom Code erreicht', () => {
   // Gegenprobe: docs/begruendungen/src/verwaist.ts.md angelegt → rot
   // („src/verwaist.ts.md" in der Liste der unerreichten Dokumente).
   const verwiesen = new Set();
-  for (const f of serverUndOberflaeche()) {
+  for (const f of mitBegruendungen()) {
     for (const m of fs.readFileSync(f, 'utf8').matchAll(/docs\/begruendungen\/([^\s#`'"]+\.md)#/g)) verwiesen.add(m[1]);
   }
   const wurzel = path.join(WEB, 'docs', 'begruendungen');
@@ -624,10 +687,10 @@ test('jedes Dokument unter docs/begruendungen wird vom Code erreicht', () => {
 test('der Kommentaranteil der Betriebsdateien sinkt, nie steigt', () => {
   // Workflows, Dockerfile, compose.yaml, tsconfig.json: Auch dort steht das
   // Warum in wenigen Zeilen, die Geschichte im Commit (CLAUDE.md). Gemessen
-  // am 04.11.2026: 24,5 % (vorher 44,0 %). Das Caddyfile zählt nicht mit:
+  // am 06.11.2026: 23,5 % (vorher 44,0 %). Das Caddyfile zählt nicht mit:
   // Kein Block darin ist länger als fünf Zeilen.
   // Gegenprobe (04.11.2026): 60 Kommentarzeilen an das Dockerfile → rot.
-  const SCHRANKE = 24.5;
+  const SCHRANKE = 23.5;
   const wf = path.join(WEB, '..', '.github', 'workflows');
   const dateien = [
     ...fs.readdirSync(wf).filter(f => /\.ya?ml$/.test(f)).map(f => path.join(wf, f)),
@@ -646,4 +709,70 @@ test('der Kommentaranteil der Betriebsdateien sinkt, nie steigt', () => {
   const anteil = Math.round(1000 * kommentar / zeilen) / 10;
   assert.ok(anteil <= SCHRANKE, `${anteil} % Kommentarzeilen in den Betriebsdateien, erlaubt sind ${SCHRANKE} %`);
   if (anteil < SCHRANKE - 0.5) console.log(`  ℹ Kommentaranteil Betrieb: ${anteil} % (Schranke ${SCHRANKE}) — Schranke nachziehen`);
+});
+
+/** Kommentarblöcke mit mehr als fünf Zeilen Prosa (vor dem ersten @-Tag), wie im Prüfbericht gezählt.
+ * Eine Liste der Gegenproben zählt nicht mit: Sie gehört nach CLAUDE.md in den Kopf eines Tests. */
+function langeBloecke(/** @type {string} */ text) {
+  const z = text.split('\n');
+  const GEGENPROBEN = /^\s*(\*|\/\/)\s*Gegenprobe/;
+  let n = 0;
+  for (let i = 0; i < z.length; i++) {
+    const t = z[i].trim();
+    let j = i;
+    /** @type {string[] | null} */
+    let prosa = null;
+    if (t.startsWith('//')) {
+      while (j + 1 < z.length && z[j + 1].trim().startsWith('//')) j++;
+      prosa = z.slice(i, j + 1);
+    } else if (t.startsWith('/*') && !t.includes('*/')) {
+      while (j + 1 < z.length && !z[j].includes('*/')) j++;
+      let innen = z.slice(i, j + 1);
+      const tag = innen.findIndex(l => /^\s*\*\s*@/.test(l));
+      if (tag > 0) innen = innen.slice(0, tag);
+      prosa = innen.filter(l => !/^\s*(\/\*\*?|\*\/)\s*$/.test(l));
+    }
+    const liste = prosa ? prosa.findIndex(l => GEGENPROBEN.test(l)) : -1;
+    if (prosa && liste >= 0) prosa = prosa.slice(0, liste);
+    if (prosa) {
+      if (prosa.filter(l => l.replace(/^\s*(\/\/|\*|\/\*\*?)\s?/, '').trim()).length > 5) n++;
+      i = j;
+    }
+  }
+  return n;
+}
+
+test('lange Kommentare in Tests, Skripten und index.html werden weniger, nie mehr', () => {
+  // Im Code steht das Warum in wenigen Zeilen; die Geschichte liegt in
+  // docs/begruendungen/ oder im Commit (CLAUDE.md); Gegenprobenlisten zählen nicht.
+  // Gemessen am 06.11.2026: Tests 74 Blöcke (mit Listen 459), scripts 0, index.html 216 Zeilen.
+  // Gegenprobe (06.11.2026): sechs Zeilen Prosa vor die Gegenprobe im Kopf von hsts.test.js → rot (Tests 75).
+  const SCHRANKE = { tests: 74, scripts: 0, indexHtml: 216 };
+  const js = (/** @type {string} */ d) => fs.readdirSync(d).filter(f => f.endsWith('.js')).map(f => path.join(d, f));
+  const zaehle = (/** @type {string[]} */ l) => l.reduce((n, f) => n + langeBloecke(fs.readFileSync(f, 'utf8')), 0);
+  let html = 0;
+  let offen = false;
+  for (const z of fs.readFileSync(path.join(WEB, 'public', 'index.html'), 'utf8').split('\n')) {
+    if (z.includes('<!--')) offen = true;
+    if (offen) html++;
+    if (z.includes('-->')) offen = false;
+  }
+  const ist = { tests: zaehle([...js(__dirname), ...js(path.join(__dirname, 'helpers'))]),
+    scripts: zaehle(js(path.join(WEB, 'scripts'))), indexHtml: html };
+  assert.ok(ist.tests > 0 && ist.indexHtml > 0, 'nichts gefunden — greift die Suche noch?');
+  for (const [k, s] of Object.entries(SCHRANKE)) {
+    assert.ok(ist[k] <= s, `${k}: ${ist[k]}, erlaubt sind ${s}`);
+    if (ist[k] < s) console.log(`  ℹ lange Kommentare ${k}: ${ist[k]} (Schranke ${s}) — Schranke nachziehen`);
+  }
+});
+
+test('Testdateien ohne Gegenprobe werden weniger, nie mehr', () => {
+  // Jeder Test nennt im Kopf seine Gegenprobe (CLAUDE.md); die älteren ohne
+  // werden beim Anfassen nachgetragen. Gemessen 108 am 06.11.2026.
+  // Gegenprobe (05.11.2026): in lint-ratsche.test.js „Gegenproben“ umbenannt → rot (112).
+  const SCHRANKE = 108;
+  const ohne = fs.readdirSync(__dirname).filter(n => n.endsWith('.test.js'))
+    .filter(n => !fs.readFileSync(path.join(__dirname, n), 'utf8').includes('Gegenprobe'));
+  assert.ok(ohne.length <= SCHRANKE, `${ohne.length} Testdateien ohne Gegenprobe, erlaubt sind ${SCHRANKE}`);
+  if (ohne.length < SCHRANKE) console.log(`  ℹ Testdateien ohne Gegenprobe: ${ohne.length} (Schranke ${SCHRANKE}) — Schranke nachziehen`);
 });

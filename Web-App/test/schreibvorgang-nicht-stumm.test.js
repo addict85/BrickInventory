@@ -1,34 +1,6 @@
 /**
  * Ein verschluckter SCHREIBVORGANG auf Nutzerdaten.
- *
- * ── Warum nur Schreibvorgänge, und nur auf Nutzerdaten ──────────────────────
- * Im Baum stehen knapp vierhundert `.catch(() => {})`. Die meisten sind
- * richtig: Auf einem SELECT heisst ein stiller catch „kein Wert", und ein
- * fehlgeschlagener Cache-Eintrag wird beim nächsten Mal neu geholt.
- *
- * Ein Schreibvorgang ist etwas anderes. Scheitert er still, fehlt die Zeile —
- * und niemand erfährt es, weder der Nutzer noch der Betreiber im Protokoll.
- *
- * Und nicht jeder Schreibvorgang wiegt gleich: Ein Vorschaubild, das nicht
- * entsteht, holt der Startlauf nach. Eine Zeile in `sets`, `parts`,
- * `minifigs`, den Erfassungstabellen, `users` oder `user_settings` holt
- * niemand nach — das sind die Daten, die der Nutzer selbst eingegeben hat.
- *
- * ── Der Fund, der die Grenze gezogen hat ────────────────────────────────────
- * `src/sets/setService.ts` legt beim Aufstocken eine eigene Set-Zeile an, falls
- * das Set bisher nur einem anderen Haushaltskonto gehörte. Der Kommentar dort
- * sagt: „sonst liefe die Mengenanpassung ins Leere." Genau das passierte,
- * wenn das INSERT scheiterte: Das UPDATE zwei Zeilen weiter traf null Zeilen,
- * die Mengenänderung war weg — und `adjustAcquisitionsToQuantity()` schrieb
- * die Erfassungen trotzdem. Erfassungen ohne Bestand, lautlos.
- *
- * ── Was geprüft wird ────────────────────────────────────────────────────────
- * Kein `.catch(() => {})`, `.catch(() => null)` oder `.catch(() => undefined)`
- * unmittelbar hinter einem INSERT/UPDATE/DELETE auf einer dieser Tabellen.
- * `logAndContinue(kontext)` ist der Weg; gar kein catch (Fehler weiterreichen)
- * ebenfalls.
- *
- * Die Stellen werden gefunden, nicht aufgezählt.
+ * Ausführlich: docs/begruendungen/test/schreibvorgang-nicht-stumm.test.js.md#kopf
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -58,15 +30,8 @@ test('kein stiller catch auf einem Schreibvorgang mit Nutzerdaten', () => {
   sammle(ROOT);
   assert.ok(dateien.length >= 60, `nur ${dateien.length} Dateien gefunden — der Pfad stimmt nicht`);
 
-  // ── Warum hier geklammert und nicht nur ein Fenster gelesen wird ──────────
-  // Der erste Entwurf nahm die sechs Zeilen vor dem catch und suchte darin ein
-  // INSERT/UPDATE/DELETE. Das meldete vier Stellen, die keine sind: drei
-  // KOMMENTARE, die erklären, warum der catch dort entfernt wurde, und ein
-  // generateThumb(...).catch(), dem zufällig ein UPDATE vorausging.
-  //
-  // Jetzt wird vom Aufruf aus geklammert: db.run(/tx.run(/pool.query( mit einem
-  // schreibenden SQL, dann bis zur schliessenden Klammer, und erst was DANN
-  // folgt, zählt als dessen catch.
+  // Warum hier geklammert und nicht nur ein Fenster gelesen wird
+  // Ausführlich: docs/begruendungen/test/schreibvorgang-nicht-stumm.test.js.md#aufruf
   const aufruf = /\b(?:db|tx|dbh|client)\.(?:run|query)\(|\bpool\.query\(/g;
   const stillDanach = /^\s*\)?\s*\.catch\(\s*\(?\s*_?\w*\s*\)?\s*=>\s*(\{\s*\}|null|undefined)\s*\)/;
   const schreib = new RegExp(

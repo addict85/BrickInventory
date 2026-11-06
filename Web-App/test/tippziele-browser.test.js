@@ -1,15 +1,7 @@
 /**
  * Am Telefon ist jedes Bedienelement mindestens 44 × 44 px gross — gemessen
  * im Browser, nicht im Quelltext gelesen.
- *
- * Eine Testseite lädt dieselben Stylesheets wie index.html und je ein
- * Beispiel der Bedienelemente, die vorher zu klein waren. Chrome rendert sie
- * bei 390 px Breite; ein Skript in der Seite tippt um jedes Element herum
- * (elementFromPoint 22 px links, rechts, oben und unten der Mitte) und
- * schreibt das Ergebnis ins DOM, das `--dump-dom` ausgibt. So zählt auch eine
- * Tippfläche, die per ::after über den sichtbaren Knopf hinausreicht.
- *
- * Ohne Chrome (CHROME_BIN, google-chrome, chromium) wird übersprungen.
+ * Ausführlich: docs/begruendungen/test/tippziele-browser.test.js.md#kopf
  *
  * Gegenproben (am 27.10. gemessen):
  *   A  in mobile.css `.delbtn` wieder 36 px (29.10.; seitdem 44 px ohne ::after)

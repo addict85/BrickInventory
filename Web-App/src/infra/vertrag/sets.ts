@@ -104,6 +104,7 @@ export const SetItem = z.looseObject({
   owners: z.array(KontoName).optional(),
   max_purchase_price: z.number().nullable().optional(),
   avg_purchase_price: z.number().nullable().optional(),
+  kaufpreis_geschaetzt: z.boolean().nullable().optional(),
   used_count: z.number().int().nullable().optional(),
   instructions: z.array(Instruction),
   bricklink: BrickLinkRef.nullable().optional(),
@@ -179,7 +180,9 @@ export const AnleitungHochgeladen = GenericResponse.extend({
 /** Ein neues Set; dieselben Felder für den Strom (add-stream). */
 const NeuesSet = z.strictObject({ set_number: z.union([z.string().max(64), z.number()]).optional(), quantity: eingabe.stueckzahl(),
   purchase_price: eingabe.geld('Kaufpreis'), condition: ZUSTAND.nullable().optional(),
-  owner_user_id: KENNUNG.nullable().optional(), storage: TEXT().nullable().optional() });
+  owner_user_id: KENNUNG.nullable().optional(), storage: TEXT().nullable().optional(),
+  currency: z.string().regex(/^[A-Z]{3}$/).nullable().optional(),
+  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable().optional() });
 
 export const routen = {
   'GET /api/v1/sets/info/:setNumber': { antwort: SetInfoResponse },
@@ -203,7 +206,7 @@ export const routen = {
   'DELETE /api/v1/sets/:setNumber/alert': { eingabe: OHNE_RUMPF, antwort: PreisalarmResponse,
     abfrage: abfrage({ condition: z.enum(['N', 'U', 'n', 'u']) }) },
   'POST /api/v1/sets/:sn/move': { eingabe: z.strictObject({ from_user_id: KENNUNG.nullable().optional(), to_user_id: KENNUNG, acquisition_ids: z.array(KENNUNG).max(10_000).nullable().optional() }), antwort: MoveSetResponse },
-  'POST /api/v1/sets/import/csv': { formular: true, antwort: CsvImportErgebnis },
+  'POST /api/v1/sets/import/csv': { formular: true, antwort: CsvImportErgebnis, abfrage: abfrage({ pruefen: Q.schalter }) },
   'POST /api/v1/alerts/import/csv': { formular: true, antwort: CsvImportErgebnis },
   'POST /api/v1/sets/:setNumber/instructions': { eingabe: OHNE_RUMPF, antwort: AnleitungenGeladen },
   'POST /api/v1/sets/partslist-pdf': { antwort: PdfAuftrag, eingabe: PdfEingabe },

@@ -78,27 +78,32 @@ function distIsFresh() {
   return distAt >= srcAt;
 }
 
+/** dist/ auf den Stand der Quellen bringen, ohne etwas daraus zu laden. */
+function baueDist() {
+  if (_built) return;
+  if (!distIsFresh()) {
+    const { execFileSync } = require('node:child_process');
+    execFileSync(process.execPath,
+      [path.join(ROOT, 'scripts', 'build-ts.js'), '--outdir', path.join(ROOT, 'dist')],
+      { stdio: 'ignore' });
+  }
+  _built = true;
+}
+
 function buildAndRequire() {
   // Jede Antwort einer Route mit Vertrag läuft in Tests durch ihr Schema (src/infra/vertrag/pruefen.ts).
   process.env.VERTRAG_PRUEFEN ??= '1';
   // Ohne NODE_ENV gelten die Regeln des Betriebs (Superuser-Verbot, APP_BASE_URL);
   // die Test-DB läuft als Superuser, und gestartete Server erben diese Umgebung.
   process.env.NODE_ENV ??= 'test';
-  if (!_built) {
-    if (!distIsFresh()) {
-      const { execFileSync } = require('node:child_process');
-      execFileSync(process.execPath,
-        [path.join(ROOT, 'scripts', 'build-ts.js'), '--outdir', path.join(ROOT, 'dist')],
-        { stdio: 'ignore' });
-    }
-    _built = true;
-  }
+  baueDist();
   // Wie server.ts: Ohne Verdrahtung prüften Tests eine stumme Fassung der Nacharbeit.
   require(path.join(ROOT, 'dist', 'jobs/verdrahtung.js')).verdrahte();
   return rel => require(path.join(ROOT, 'dist', rel));
 }
 
 module.exports.buildAndRequire = buildAndRequire;
+module.exports.baueDist = baueDist;
 module.exports.DIST = path.join(ROOT, 'dist');
 
 /** Beide Sprachdateien zusammen: i18n.js allein liefert ein leeres I18N.
@@ -154,7 +159,7 @@ function adminQuelle() {
   const path = require('path'), fs = require('fs');
   const ROOT = path.join(__dirname, '..', '..');
   return ['07-admin.js', '07-set-detail.js', '02-detailfelder.js', '01-diagramme.js', '01-rueckfrage.js',
-          '13-acquisition-modals.js']
+          '13-acquisition-modals.js', '13-kaufpreis-anzeige.js']
     .map(f => fs.readFileSync(path.join(ROOT, 'public', 'js', f), 'utf8'))
     .join('\n');
 }

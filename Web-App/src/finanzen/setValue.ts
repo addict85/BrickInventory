@@ -133,6 +133,7 @@ export interface AcquisitionValueRow {
   /** Ein Kaufpreis in fremder Währung ohne Kurs: Er zählt nicht mit, steht aber da. */
   kaufpreis_original?: number;
   kaufpreis_waehrung?: string;
+  price_estimated?: true;
 }
 
 /** Was eine Erfassung für ihren Wert mitbringt; purchase_price bei Sets, unit_price sonst. */
@@ -141,6 +142,7 @@ export interface ErfassungFuerWert {
   purchase_price?: number | string | null; unit_price?: number | string | null;
   created_at?: Date | string | null; currency?: string | null;
   kaufpreis_fremd?: boolean | null; kaufpreis_original?: number | string | null;
+  price_estimated?: boolean | null;
 }
 
 /** @param prices Map "setNumber|condition" → avg_price (loadConditionPrices) */
@@ -171,6 +173,7 @@ export function valueAcquisitionRows(
       created_at: a.created_at ?? null,
       ...(a.kaufpreis_fremd && a.kaufpreis_original != null
         ? { kaufpreis_original: parseFloat(String(a.kaufpreis_original)), kaufpreis_waehrung: String(a.currency) } : {}),
+      ...(a.price_estimated && purchase != null ? { price_estimated: true as const } : {}),
     };
   });
 }

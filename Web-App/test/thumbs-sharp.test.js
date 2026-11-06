@@ -1,31 +1,6 @@
 /**
  * Vorschaubilder entstehen mit sharp, nicht mehr mit Jimp.
- *
- * ── Warum der Umbau (Nachtrag 118) ──────────────────────────────────────────
- * Jimp ist reines JavaScript. Jede Verkleinerung läuft damit im selben Thread
- * wie alles andere — auf Marcos Raspberry Pi war das die teuerste Einzelarbeit
- * im ganzen Server. Fünf Nachträge lang habe ich sie gedrosselt (95, 99, 100,
- * 113, 116), und am Ende blieb: dreissig Läufe je Minute sind immer noch zu
- * viel, weil jeder einzelne teuer ist.
- *
- * sharp setzt auf libvips auf, rechnet in nativem Code und ausserhalb des
- * Event-Loops. Der eigentliche Gewinn ist nicht nur das Tempo, sondern dass der
- * Server währenddessen ansprechbar bleibt.
- *
- * ── Gemessen (PNG 1200×900 mit Transparenz) ─────────────────────────────────
- *     sharp     16 ms
- *     Jimp     566 ms          → Faktor 35
- *
- *     webp:  sharp 12 ms
- *            Jimp  „Mime type image/webp does not support decoding"
- *
- * Der webp-Fehler ist genau der, der in Marcos Log immer wieder auftauchte.
- *
- * ── Was dieser Test sichert ─────────────────────────────────────────────────
- * Dass sharp WIRKLICH benutzt wird (und nicht still auf Jimp zurückfällt),
- * dass der Rückfall trotzdem existiert, und dass die drei Eigenschaften
- * erhalten bleiben, die über die Jahre erkämpft wurden: mittiger Zuschnitt,
- * weisser Grund statt schwarz bei Transparenz, unteilbares Schreiben.
+ * Ausführlich: docs/begruendungen/test/thumbs-sharp.test.js.md#kopf
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -90,7 +65,7 @@ test('der Code nutzt sharp und behält Jimp als Rückfall', () => {
   assert.match(fn, /catch \(e(?:: \w+)?\) \{[\s\S]{0,200}nutze Jimp/,
     'Der Rückfall hängt nicht am LADEN von sharp');
 
-  // Das unteilbare Schreiben bleibt (Nachtrag 41/48).
+  // Das unteilbare Schreiben bleibt.
   const ganz = src;
   assert.match(ganz, /\.tmp\.jpg/, 'Der temporäre Name ist weg');
   assert.match(ganz, /fs\.promises\.rename\(tmpThumb, thumbFs\)/,

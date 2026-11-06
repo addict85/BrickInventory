@@ -154,6 +154,9 @@ export async function zeitplanNeuPlanen() {
 }
 
 type Kachel = Record<string, unknown>;
+/** Der Untertitel als Codes: Die Kachel entsteht ohne Anfrage, die Oberfläche übersetzt. `sub` bleibt für die App. */
+type SubTeil = { code: string; werte?: Record<string, number | string>; vor?: 'bestand' };
+const teil = (code: string, werte?: Record<string, number | string>): SubTeil => (werte ? { code, werte } : { code });
 type Kacheln = Record<string, Kachel>;
 const zahl = (p: Promise<number>, ort: string) => p.catch(meldeUndLiefere(`verwaltung:${ort}`, 0));
 
@@ -166,7 +169,8 @@ async function liesStand<T>(schluessel: string): Promise<T | null> {
 function blIdsKachel(alt: Kachel, gemappt: number, gesamt: number): Kachel | null {
   if (gesamt <= 0) return null;
   return { ...alt, status: gemappt < gesamt ? (alt.status === 'running' ? 'running' : 'idle') : 'done',
-    progress: gemappt, total: gesamt, sub: gemappt < gesamt ? `${gemappt} / ${gesamt} gemappt` : `Alle ${gesamt} gemappt` };
+    progress: gemappt, total: gesamt, sub: gemappt < gesamt ? `${gemappt} / ${gesamt} gemappt` : `Alle ${gesamt} gemappt`,
+    sub_teile: [gemappt < gesamt ? teil('teil_gemappt', { n: gemappt, gesamt }) : teil('all_mapped', { n: gesamt })] };
 }
 
 /** Einmal gezählt: offen, erledigt und gescheitert aus derselben Abfrage. */
@@ -179,14 +183,17 @@ function anleitungsKachel(alt: Kachel, a: { offen: number; erledigt: number; feh
   const gesamt = a.offen + a.erledigt + a.fehler;
   if (gesamt <= 0) return null;
   return { ...alt, status: a.offen > 0 ? 'running' : 'done', progress: a.erledigt, total: gesamt,
-    sub: a.offen > 0 ? `${a.offen} ausstehend` : 'Alle erledigt' };
+    sub: a.offen > 0 ? `${a.offen} ausstehend` : 'Alle erledigt',
+    sub_teile: [a.offen > 0 ? teil('ausstehend', { n: a.offen }) : teil('all_done')] };
 }
 
 async function bricksetKachel(): Promise<Kachel> {
   const { wartend, faellig } = await bricksetZahlen().catch(meldeUndLiefere('verwaltung:bricksetZahlen', { wartend: 0, faellig: 0 }));
   return { label: 'Brickset Retry Queue', status: wartend === 0 ? 'done' : 'idle', progress: 0, total: wartend, lastRun: null,
     sub: wartend === 0 ? 'Keine ausstehenden Einträge'
-      : faellig > 0 ? `${faellig} Sets bereit zum Retry, ${wartend - faellig} warten` : `${wartend} Sets warten auf morgen` };
+      : faellig > 0 ? `${faellig} Sets bereit zum Retry, ${wartend - faellig} warten` : `${wartend} Sets warten auf morgen`,
+    sub_teile: [wartend === 0 ? teil('keine_ausstehenden') : faellig > 0 ? teil('retry_ready', { n: faellig, w: wartend - faellig })
+      : teil('warten_morgen', { n: wartend })] };
 }
 
 /** „läuft" heisst: hat KÜRZLICH etwas getan (Zeitstempel des Standes). */
@@ -224,10 +231,17 @@ async function bildKachel(): Promise<Kachel> {
   const bestandSub = aktiv > 0 ? `${aktiv} Bilder werden geladen`
     : offen > 0 ? `${offen} Bilder noch nicht gecacht` : `Alle ${fertig} Bilder gecacht`;
   const basisSub = katalogSub ? `Bestand: ${bestandSub} · ${katalogSub}` : bestandSub;
+  const teile: SubTeil[] = [{ ...(aktiv > 0 ? teil('bilder_laden', { n: aktiv }) : offen > 0 ? teil('bilder_offen', { n: offen })
+    : teil('imgs_cached', { n: fertig })), ...(katalogOffen > 0 ? { vor: 'bestand' as const } : {}) }];
+  if (katalogOffen > 0) {
+    teile.push(teil('katalog_warteschlange', { n: katalogOffen }));
+    if (!jobLaeuft) teile.push(seitLauf === null ? teil('job_nie') : teil('kein_durchgang', { min: Math.round(seitLauf / 60_000) }));
+  }
+  if (reDlLaeuft) teile.push(reDl?.phase === 'scanning' ? teil('neu_suche') : teil('neu_geladen', { n: reDl?.done || 0, gesamt: reDl?.total || 0 }));
   return {
     label: '📥 Bild-Download (CDN)',
     status: (aktiv > 0 || reDlLaeuft || (katalogOffen > 0 && jobLaeuft)) ? 'running' : (offen > 0 || katalogOffen > 0) ? 'idle' : 'done',
-    sub: reDlSub ? `${basisSub} · ${reDlSub}` : basisSub,
+    sub: reDlSub ? `${basisSub} · ${reDlSub}` : basisSub, sub_teile: teile,
     // Mit Warteschlange, sonst stünde der Balken auf 100 %, während Bilder ausstehen.
     progress: fertig, total: fertig + offen + katalogOffen, queue: katalogOffen,
     queueLastRun: letzterLauf?.zeit || null, lastRun: job?.lastRun || null, canRedownload: true,
@@ -245,7 +259,8 @@ function pdfKachel(): Kachel {
     }
   } catch (e) { meldeUndWeiter('admin:auftragsordner-lesen', e); }
   return { label: '📄 PDF-Jobs', status: laufend > 0 ? 'running' : fertig > 0 ? 'idle' : 'done', progress: 0, total: 0, lastRun: null,
-    sub: laufend > 0 ? `${laufend} PDF(s) werden erstellt` : fertig > 0 ? `${fertig} PDF(s) bereit zum Download` : 'Keine aktiven Jobs' };
+    sub: laufend > 0 ? `${laufend} PDF(s) werden erstellt` : fertig > 0 ? `${fertig} PDF(s) bereit zum Download` : 'Keine aktiven Jobs',
+    sub_teile: [laufend > 0 ? teil('pdf_laufend', { n: laufend }) : fertig > 0 ? teil('pdf_bereit', { n: fertig }) : teil('no_active')] };
 }
 
 async function zeitplaene(): Promise<Record<string, { type: string; time?: string; minutes?: number }>> {

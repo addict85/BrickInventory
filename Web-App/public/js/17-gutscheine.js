@@ -158,14 +158,14 @@ export async function ladeGutscheine() {
   // Summe, „alle abfragen“ und Export haben ohne Gutscheine nichts zu tun.
   document.querySelectorAll('[data-nur-mit-gutscheinen]').forEach(e => { /** @type {HTMLElement} */ (e).hidden = !_gutscheine.length; });
 
-  // Die Summe. Nur wenn alle dieselbe Währung haben — sonst stünde dort eine Zahl, die nichts bedeutet.
-  // Gemischte Währungen zusammenzuzählen wäre schlimmer als gar keine Summe, weil es richtig aussieht.
+  // Die Summe je Währung: Gemischte zusammenzuzählen sähe richtig aus und wäre falsch; ganz ohne Wert stand
+  // nur die Beschriftung „Summe“ da.
   const summeEl = el('vouchers-total');
   if (summeEl) {
-    const waehrungen = new Set(_gutscheine.map(g => g.currency));
-    summeEl.textContent = (_gutscheine.length && waehrungen.size === 1)
-      ? fmtN(_gutscheine.reduce((s, g) => s + g.amount, 0), [...waehrungen][0])
-      : '';
+    /** @type {Map<string, number>} */
+    const je = new Map();
+    for (const g of _gutscheine) je.set(g.currency, (je.get(g.currency) || 0) + g.amount);
+    summeEl.textContent = [...je].map(([w, betrag]) => fmtN(betrag, w)).join(' · ');
   }
 }
 
@@ -268,7 +268,7 @@ export async function gutscheinSpeichern() {
 
     // Ob ein PDF einen oder mehrere Gutscheine ergab, entscheidet der Server; `mehrere` sagt es. Dann
     // dieselbe Meldung wie bei CSV-Importen, damit niemand bei drei Gutscheinen „gespeichert“ liest und rät.
-    // Ausführlich: docs/begruendungen/public/js/17-gutscheine.js.md#if
+    // Ausführlich: docs/begruendungen/public/js/17-gutscheine.js.md#ob-ein-pdf-einen-oder
     if (d.mehrere) {
       toast(tRaw('import.summary', { added: d.mehrere.added, updated: d.mehrere.updated,
                                      errors: d.mehrere.errors }),

@@ -2,9 +2,8 @@
  * Jede Route aus dem API-Vertrag, anders geschrieben: ganz in Grossbuchstaben,
  * mit grossem Anfangsbuchstaben nach /api/v1 und mit angehängtem „/“. Am
  * echten Server mit Idempotency-Key. Eine andere Schreibung ist eine andere
- * Route (404) und hinterlässt nichts in `idempotenz`; der Schrägstrich am Ende
- * findet denselben Vertragseintrag, und die Antwort einer geheimen oder
- * bestätigten Route wird auch dann weder gespeichert noch wiederholt.
+ * Route (404) und hinterlässt nichts in `idempotenz`; der Schrägstrich am Ende …
+ * Ausführlich: docs/begruendungen/test/vertrag-schreibung-db.test.js.md#kopf
  *
  * Gegenproben (am 04.11.2026 gemessen, je eine Änderung, danach zurück):
  *   A  server.ts ohne `case sensitive routing` und vertragsRouter() ohne
@@ -32,7 +31,7 @@ const _req = require('./helpers/sources').buildAndRequire();
 const db = _req('db/database.js');
 const { VERTRAG, routeFuerAnfrage } = _req('src/infra/vertrag/index.js');
 const { antwortIstGeheim } = _req('src/idempotenz/http/middleware.js');
-const warte = (ms) => new Promise(r => setTimeout(r, ms));
+const { warte } = require('./helpers/zeit');
 const freierPort = () => new Promise(r => { const s = net.createServer().listen(0, () => { const p = s.address().port; s.close(() => r(p)); }); });
 
 const SCHREIBEND = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);

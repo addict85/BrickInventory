@@ -57,12 +57,12 @@ function renderHousehold(d){
       a => `<button class="btn bs btn-sm" data-click="unlinkHousehold"${echt()} data-arg="${a.id}" data-arg2="${esc(a.username || '')}">${t('household.unlink_sub')}</button>`)}</div>`);
   }
   if(!teile.length){
-    teile.push(html`<div data-stil="color:var(--mut)">${tRaw('household.state_none', { cur: esc(d.currency||'') })}</div>`);
+    teile.push(html`<div data-stil="color:var(--mut)">${t('household.state_none', { cur: d.currency||'' })}</div>`);
   }
   if(d.former_links?.length){
     teile.push(html`<div role="note" data-stil="margin-top:.8rem;padding:.6rem .8rem;border-radius:8px;background:var(--b100);color:var(--b600)">
       ${tRaw('household.former_intro')}${liste(d.former_links,
-        a => `<span data-stil="color:var(--mut)">${a.via ? t('household.former_via', { via: esc(a.via) }) : ''}</span>
+        a => `<span data-stil="color:var(--mut)">${a.via ? t('household.former_via', { via: a.via }) : ''}</span>
               <button class="btn bs btn-sm" data-click="dismissFormerLink" data-arg="${a.id}">${t('household.former_dismiss')}</button>`)}
     </div>`);
   }

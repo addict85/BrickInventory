@@ -27,7 +27,6 @@ import { einmalDekodiert, urlOderNull } from '../../infra/validate';
  * Ausführlich: docs/begruendungen/src/katalog/http/bildProxy.ts.md#proxy-cache-max-bytes */
 const PROXY_CACHE_MAX_BYTES = 20 * 1024 * 1024;
 
-
 /** URLs, die das CDN mit 404 beantwortet hat → cacheKey → Zeitpunkt. */
 const _imgNegCache = new Map();
 let _tmpSeq = 0;
@@ -41,8 +40,9 @@ let _platzhalter: Buffer | null = null;
 function sendePlatzhalter(res: Response) {
   // Einmal von Platte: wenige hundert Byte, beim Blättern dutzendfach gebraucht.
   if (_platzhalter === null) {
-    try { _platzhalter = fs.readFileSync(path.join(PUBLIC_DIR, 'assets', 'set-placeholder.svg')); }
-    catch (e) {
+    try {
+      _platzhalter = fs.readFileSync(path.join(PUBLIC_DIR, 'assets', 'set-placeholder.svg'));
+    } catch (e) {
       console.error(`[img-proxy] Platzhalter nicht lesbar: ${fehlertext(e)}`);
       _platzhalter = Buffer.alloc(0);
     }
@@ -56,24 +56,29 @@ function sendePlatzhalter(res: Response) {
   return res.status(200).end(_platzhalter);
 }
 
-
 /** Erst mit Referer, dann ohne; ein 404 wird gemerkt. @returns null, wenn schon geantwortet ist */
 async function vomCdn(url: string, cacheKey: string, res: Response): Promise<AbrufStrom | null> {
   // Unkomprimiert: Ein komprimierter Körper ergäbe still eine weisse Fläche.
-  const HEADER_SETS = [{ ...BILD_KOPFZEILEN, 'Accept-Language': 'en-US,en;q=0.9', 'Accept-Encoding': 'identity' },
-    { ...BILD_KOPFZEILEN_OHNE_REFERER, 'Accept-Encoding': 'identity' }] as const;
+  const HEADER_SETS = [
+    { ...BILD_KOPFZEILEN, 'Accept-Language': 'en-US,en;q=0.9', 'Accept-Encoding': 'identity' },
+    { ...BILD_KOPFZEILEN_OHNE_REFERER, 'Accept-Encoding': 'identity' },
+  ] as const;
 
-  const holen = (kopfzeilen: Record<string, string>) => oeffneBild(url,
-    { maxBytes: PROXY_CACHE_MAX_BYTES, zeitlimitMs: 25_000, kopfzeilen, pool: true });
+  const holen = (kopfzeilen: Record<string, string>) =>
+    oeffneBild(url, { maxBytes: PROXY_CACHE_MAX_BYTES, zeitlimitMs: 25_000, kopfzeilen, pool: true });
   let r: AbrufStrom;
   try {
     r = await holen(HEADER_SETS[0]);
     // Einmal ohne Referer nachfassen, BEVOR die Adresse als tot gilt: Der
     // Hotlink-Schutz antwortet auf einen unpassenden Referer gern mit 404.
-    if (r.status === 404 || r.status === 403) { r.verwerfen(); r = await holen(HEADER_SETS[1]); }
+    if (r.status === 404 || r.status === 403) {
+      r.verwerfen();
+      r = await holen(HEADER_SETS[1]);
+    }
   } catch (e) {
     const zeit = e instanceof AbrufFehler && e.grund === 'zeitlimit';
-    if (zeit) imgProxyFailures.timeout++; else imgProxyFailures.error++;
+    if (zeit) imgProxyFailures.timeout++;
+    else imgProxyFailures.error++;
     imgProxyFailures.lastError = fehlertext(e);
     console.error(`[img-proxy] ${zeit ? 'Zeitüberschreitung nach 25 s' : 'Verbindungsfehler'}: ${fehlertext(e)}`);
     if (!res.headersSent) res.status(zeit ? 504 : 502).end();
@@ -90,11 +95,13 @@ async function vomCdn(url: string, cacheKey: string, res: Response): Promise<Abr
         for (const [k, t] of _imgNegCache) if (t < cutoff) _imgNegCache.delete(k);
       }
     }
-    if (r.status === 404) imgProxyFailures.notFound++; else imgProxyFailures.other++;
+    if (r.status === 404) imgProxyFailures.notFound++;
+    else imgProxyFailures.other++;
     imgProxyFailures.lastError = `HTTP ${r.status} — ${url}`;
     // 404 ist eine Auskunft, kein Fehler: als `error` verstopfte es das Protokoll.
     const meldung = `[img-proxy] CDN antwortete ${r.status} (auch ohne Referer): ${url}`;
-    if (r.status === 404) console.info(meldung); else console.error(meldung);
+    if (r.status === 404) console.info(meldung);
+    else console.error(meldung);
     void (r.status === 404 ? sendePlatzhalter(res) : res.status(r.status || 502).end());
     return null;
   }
@@ -102,14 +109,29 @@ async function vomCdn(url: string, cacheKey: string, res: Response): Promise<Abr
 }
 
 /** Der entpackte Strom geht nebenher in den Cache — erst in .tmp, dann atomar. */
-function inDenCache(body: Readable, res: Response, o: { url: string; cacheDir: string; cacheFile: string; thumbFile: string;
-  contentType: string; enc: string; expected: number; wantThumb: boolean; darfErzeugen: boolean; notiere: () => void }): void {
+function inDenCache(
+  body: Readable,
+  res: Response,
+  o: {
+    url: string;
+    cacheDir: string;
+    cacheFile: string;
+    thumbFile: string;
+    contentType: string;
+    enc: string;
+    expected: number;
+    wantThumb: boolean;
+    darfErzeugen: boolean;
+    notiere: () => void;
+  },
+): void {
   const { url, cacheDir, cacheFile, thumbFile, contentType, enc, expected, wantThumb, darfErzeugen, notiere } = o;
   fs.mkdirSync(cacheDir, { recursive: true });
   // Je ANFRAGE eindeutig: Sonst schrieben gleichzeitige in dieselbe Datei.
   const tmpFile = `${cacheFile}.tmp-${process.pid}-${_tmpSeq++}`;
   const ws = fs.createWriteStream(tmpFile);
-  let bytes = 0, aborted = false;
+  let bytes = 0,
+    aborted = false;
   const verwirf = (grund: string) => {
     if (aborted) return;
     aborted = true;
@@ -122,9 +144,16 @@ function inDenCache(body: Readable, res: Response, o: { url: string; cacheDir: s
   // Der entpackte Strom zählt: Auch Komprimiertes darf nicht beliebig wachsen.
   body.on('data', (chunk: Buffer) => {
     bytes += chunk.length;
-    if (bytes > PROXY_CACHE_MAX_BYTES) { verwirf(`grösser als ${Math.round(PROXY_CACHE_MAX_BYTES / 1024 / 1024)} MB`); body.destroy(); res.destroy(); }
+    if (bytes > PROXY_CACHE_MAX_BYTES) {
+      verwirf(`grösser als ${Math.round(PROXY_CACHE_MAX_BYTES / 1024 / 1024)} MB`);
+      body.destroy();
+      res.destroy();
+    }
   });
-  body.on('error', (e: Error) => { verwirf(`Abruf abgebrochen (${e.message})`); res.destroy(); });
+  body.on('error', (e: Error) => {
+    verwirf(`Abruf abgebrochen (${e.message})`);
+    res.destroy();
+  });
   // Der ENTPACKTE Strom geht in den Cache — die Datei ist immer ein echtes Bild.
   body.pipe(ws);
   ws.on('finish', async () => {
@@ -141,11 +170,15 @@ function inDenCache(body: Readable, res: Response, o: { url: string; cacheDir: s
       await fs.promises.rename(tmpFile, cacheFile);
       merkeCacheZuwachs(st.size);
       // Gleich miterzeugen, sonst später für eine ganze Kachelwand auf einmal.
-      if (wantThumb) { if (darfErzeugen) queueThumb(cacheFile, thumbFile); else notiere(); }
-    } catch (_) { fs.promises.unlink(tmpFile).catch(ohneFehlendeDatei('bild-proxy:unlink')); }
+      if (wantThumb) {
+        if (darfErzeugen) queueThumb(cacheFile, thumbFile);
+        else notiere();
+      }
+    } catch (_) {
+      fs.promises.unlink(tmpFile).catch(ohneFehlendeDatei('bild-proxy:unlink'));
+    }
   });
   ws.on('error', () => fs.promises.unlink(tmpFile).catch(ohneFehlendeDatei('bild-proxy:unlink')));
-
 }
 
 /** Entpacken, auch wenn identity verlangt war: Nicht jedes CDN hält sich daran.
@@ -153,17 +186,21 @@ function inDenCache(body: Readable, res: Response, o: { url: string; cacheDir: s
 function entpackt(roh: Readable, enc: string, res: Response, url: string, expected: number): Readable {
   let body: Readable = roh;
   if (enc === 'gzip' || enc === 'deflate' || enc === 'br') {
-    const dec = enc === 'br' ? zlib.createBrotliDecompress()
-              : enc === 'gzip' ? zlib.createGunzip()
-              : zlib.createInflate();
-    dec.on('error', () => { if (!res.headersSent) res.status(502).end(); else res.destroy(); });
+    const dec =
+      enc === 'br' ? zlib.createBrotliDecompress() : enc === 'gzip' ? zlib.createGunzip() : zlib.createInflate();
+    dec.on('error', () => {
+      if (!res.headersSent) res.status(502).end();
+      else res.destroy();
+    });
     body = roh.pipe(dec);
     // Die angekündigte Länge gilt für den komprimierten Körper.
     res.removeHeader('Content-Length');
     console.log(`[img-proxy] entpacke ${enc}: ${url}`);
   }
   let sentToClient = 0;
-  body.on('data', (c: Buffer) => { sentToClient += c.length; });
+  body.on('data', (c: Buffer) => {
+    sentToClient += c.length;
+  });
   res.on('finish', () => {
     if (!enc && expected > 0 && sentToClient !== expected) {
       imgProxyFailures.other++;
@@ -187,8 +224,8 @@ export async function bildDurchreichen(req: Request, res: Response) {
   if (!hostErlaubt(url, ERLAUBTE_BILD_HOSTS)) return res.status(403).end();
   url = proxyAdresse(url) ?? url;
   // Jedes Bild nur einmal holen; Content-Type liegt daneben (.ct).
-  const cacheDir  = path.join(APP_ROOT, 'data', 'img_proxy_cache');
-  const cacheKey  = proxyCacheSchluessel(url);
+  const cacheDir = path.join(APP_ROOT, 'data', 'img_proxy_cache');
+  const cacheKey = proxyCacheSchluessel(url);
   const cacheFile = path.join(cacheDir, cacheKey);
   // ?thumb=1: Teilebilder gibt es auf dem CDN nicht verkleinert.
   const wantThumb = req.query.thumb === '1';
@@ -203,9 +240,19 @@ export async function bildDurchreichen(req: Request, res: Response) {
   };
   const thumbFile = cacheFile + '_thumb.jpg';
 
-  if (await liefereAusCache({
-    res, req, cacheFile, thumbFile, wantThumb, darfErzeugen, notiere, streamFileToResponse,
-  })) return;
+  if (
+    await liefereAusCache({
+      res,
+      req,
+      cacheFile,
+      thumbFile,
+      wantThumb,
+      darfErzeugen,
+      notiere,
+      streamFileToResponse,
+    })
+  )
+    return;
 
   // Der Merker (eine Stunde) erspart dem CDN die Frage bei jedem Seitenaufruf.
   if (istBekanntFehlend(cacheKey)) return sendePlatzhalter(res);
@@ -247,7 +294,18 @@ export async function bildDurchreichen(req: Request, res: Response) {
   // Kurz: Ungeprüft gestreamt nagelte ein langes max-age Fehler im Browser fest.
   res.setHeader('Cache-Control', 'private, max-age=3600, must-revalidate');
 
-  inDenCache(body, res, { url, cacheDir, cacheFile, thumbFile, contentType, enc, expected, wantThumb, darfErzeugen, notiere });
+  inDenCache(body, res, {
+    url,
+    cacheDir,
+    cacheFile,
+    thumbFile,
+    contentType,
+    enc,
+    expected,
+    wantThumb,
+    darfErzeugen,
+    notiere,
+  });
 
   // Abbruch beim Scrollen: Die CDN-Verbindung muss sofort zurück in den Pool.
   res.on('close', () => {
@@ -258,8 +316,6 @@ export async function bildDurchreichen(req: Request, res: Response) {
 
   body.pipe(res);
 }
-
-
 
 /** Das Bild wird unter dieser Nummer für alle Konten abgelegt; deshalb zählt
  * nur der ganze Pfad ohne Anfrageteil, sonst legte `…/parts/x.png?/media/sets/10294-1.jpg`

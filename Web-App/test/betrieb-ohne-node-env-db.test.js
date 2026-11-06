@@ -10,9 +10,9 @@
  *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL (als Superuser verbunden).
  */
-const test   = require('node:test');
+const test = require('node:test');
 const assert = require('node:assert/strict');
-const path   = require('node:path');
+const path = require('node:path');
 const { spawn } = require('node:child_process');
 
 const URL_DB = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
@@ -24,17 +24,32 @@ const { startVerbote, ladeKonfig, cookieSicher } = _req('src/infra/konfig.js');
 
 /** Ohne NODE_ENV starten; `PATH` allein, damit nichts aus der Testumgebung hineinfällt. */
 function starte(env, ms = 25_000) {
-  return new Promise((fertig) => {
+  return new Promise(fertig => {
     const srv = spawn(process.execPath, [path.join(ROOT, 'dist', 'server.js')], {
-      cwd: ROOT, stdio: ['ignore', 'pipe', 'pipe'],
-      env: { PATH: process.env.PATH, PORT: '39651', SESSION_SECRET: 'ohne-node-env-geheimnis-lang-genug-12345',
-             APP_BASE_URL: 'https://lego.example.org', ...env },
+      cwd: ROOT,
+      stdio: ['ignore', 'pipe', 'pipe'],
+      env: {
+        PATH: process.env.PATH,
+        PORT: '39651',
+        SESSION_SECRET: 'ohne-node-env-geheimnis-lang-genug-12345',
+        APP_BASE_URL: 'https://lego.example.org',
+        ...env,
+      },
     });
     let log = '';
-    srv.stdout.on('data', d => { log += d; });
-    srv.stderr.on('data', d => { log += d; });
-    const uhr = setTimeout(() => { srv.kill('SIGKILL'); }, ms);
-    srv.on('exit', (code) => { clearTimeout(uhr); fertig({ code, log }); });
+    srv.stdout.on('data', d => {
+      log += d;
+    });
+    srv.stderr.on('data', d => {
+      log += d;
+    });
+    const uhr = setTimeout(() => {
+      srv.kill('SIGKILL');
+    }, ms);
+    srv.on('exit', code => {
+      clearTimeout(uhr);
+      fertig({ code, log });
+    });
   });
 }
 
@@ -53,7 +68,7 @@ test('MAIL_KONSOLE_MIT_TOKEN=1 ohne NODE_ENV: Start verweigert', { timeout: 40_0
   assert.doesNotMatch(r.log, /Database initialisation failed/, 'das Verbot kommt vor der Datenbank');
 });
 
-test('als Superuser ohne NODE_ENV: Start verweigert', { timeout: 60_000 }, async (t) => {
+test('als Superuser ohne NODE_ENV: Start verweigert', { timeout: 60_000 }, async t => {
   const db = await dbOderSkip(t, _req);
   if (!db) return;
   t.after(() => db.pool.end().catch(() => {}));
@@ -70,11 +85,24 @@ test('ein 5xx nennt ohne NODE_ENV keine Interna', () => {
   try {
     const { handleRouteError } = _req('src/infra/httpAntwort.js');
     let antwort;
-    const res = { headersSent: false, status: () => ({ json: (b) => { antwort = b; } }) };
-    const warn = console.error; console.error = () => {};
-    try { handleRouteError(res, new Error('relation "geheim_intern" does not exist'), 500); }
-    finally { console.error = warn; }
+    const res = {
+      headersSent: false,
+      status: () => ({
+        json: b => {
+          antwort = b;
+        },
+      }),
+    };
+    const warn = console.error;
+    console.error = () => {};
+    try {
+      handleRouteError(res, new Error('relation "geheim_intern" does not exist'), 500);
+    } finally {
+      console.error = warn;
+    }
     assert.equal(antwort.code, 'interner_fehler');
     assert.doesNotMatch(antwort.error, /geheim_intern/);
-  } finally { process.env.NODE_ENV = alt; }
+  } finally {
+    process.env.NODE_ENV = alt;
+  }
 });

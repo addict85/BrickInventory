@@ -42,7 +42,7 @@ const _req = require('./helpers/sources').buildAndRequire();
 const { dbOderSkip } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
 const db = _req('db/database.js');
-const warte = (ms) => new Promise(r => setTimeout(r, ms));
+const { warte } = require('./helpers/zeit');
 
 test('CSV-Import: keine Doppelbuchung', { concurrency: 1 }, async (t) => {
   if (!await dbOderSkip(t, _req)) return;

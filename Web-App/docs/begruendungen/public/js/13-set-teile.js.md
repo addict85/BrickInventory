@@ -64,7 +64,7 @@ Die Menge bleibt als vierte Spalte stehen — sie beantwortet „wie oft steckt
 das Teil in DIESEM Set?", und diese Zahl gibt es sonst nirgends.
 ```
 
-<a id="url"></a>
+<a id="blickfeld-mitgeben-wie-ueberall-im"></a>
 ## `url`
 
 ```text
@@ -92,7 +92,7 @@ dieser Baum als `(n||0).toLocaleString(locale())`; genau so steht es auf
 der Teilekachel (03-parts.js), und der Dialog zeigt jetzt dasselbe.
 ```
 
-<a id="if"></a>
+<a id="lagerort-nur-fuer-teile-eine"></a>
 ## `if`
 
 ```text

@@ -2,15 +2,8 @@
  * Befunde der UX-Prüfung vom 30.10.2026, am echten Bündel in jsdom:
  *   - Kaufpreis 0: „Geschenk“ statt Prozent in Kachel, Finanztabelle und
  *     Set-Detail; der Kaufpreis steht als „0,00 €“ da.
- *   - Seiten hinter dem Menü: kein Reiter bleibt markiert, der Seitenname
- *     steht im Kopf und im Fenstertitel.
- *   - Importwege als ein Menü neben der Hauptaktion.
- *   - Das Thema der Kachel ist ganz da (Ellipsis per CSS, voller Name im title).
- *   - Wertdiagramm: Währung an der Achse, Einstand-Linie, Achsenbruch,
- *     Fadenkreuz per Tastatur; Zeitraum-Knöpfe ohne Verlauf gesperrt, und
- *     sie lassen die Filterchips in Ruhe.
- *   - Der Preis-Platzhalter folgt der Sprache.
- *   - Ein Set ohne Bild zeigt im Detail denselben Würfel wie in der Kachel.
+ *   - Seiten hinter dem Menü: kein Reiter bleibt markiert, der Seitenname …
+ * Ausführlich: docs/begruendungen/test/ux-befunde-oberflaeche.test.js.md#kopf
  *
  * Gegenproben (am 30.10.2026 gemessen; B bis F zusammen angewendet, jede
  * machte genau ihren eigenen Fall rot):
@@ -102,7 +95,8 @@ test('Import als ein Menü', async () => {
       const leiste = d.querySelector(`#tab-${tab} .erfassen-leiste`);
       assert.deepEqual([...leiste.children].map(e => e.tagName + '.' + e.className.replace(' knopf-schwebend', '')), ['BUTTON.btn bp', 'DETAILS.import-menue'], tab);
       const menue = leiste.querySelector('details');
-      assert.equal(menue.querySelectorAll('.import-klappe > *').length, 3, `${tab}: drei Importwege`);
+      // Dazu kommt beim Set-Menü "Letzter Import" (UI-Prüfung 17 M4), verborgen, solange es keinen gibt.
+      assert.equal(menue.querySelectorAll('.import-klappe > :not([hidden])').length, 3, `${tab}: drei Importwege`);
       menue.open = true;
       d.dispatchEvent(new w.KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
       assert.equal(menue.open, false, `${tab}: Escape schliesst das Menü`);

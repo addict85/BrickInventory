@@ -1,11 +1,6 @@
 /**
  * Beide Oberflächen rechnen keine Geldbeträge nach.
- *
- * Die Regel, was zu einer Summe zählt, steht nur im Server; summierte eine
- * Oberfläche selbst, zeigten Webapp und Android-App bei der nächsten Änderung
- * verschiedene Zahlen. Gesucht wird nach der FORM einer Geldsumme
- * (`reduce`/`sumOf` über ein Feld, dessen Name auf Geld deutet), nicht nach
- * einzelnen Feldnamen; jede Fundstelle braucht einen ausdrücklichen Freibrief.
+ * Ausführlich: docs/begruendungen/test/clients-render-only.test.js.md#kopf
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');

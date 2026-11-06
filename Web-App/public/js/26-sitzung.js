@@ -300,12 +300,22 @@ async function waitForStartup() {
   const STALL_TIMEOUT = 180000; // 3 Min ohne jede Statusänderung → aufgeben
   let lastChangeAt = Date.now();
   let lastSig = '';
+  // Antwortet der Server gar nicht, stand vorher nur das graue Gerüst da, beliebig lange. Nach sechs Sekunden
+  // sagt es die Seite und bietet einen sofortigen Versuch an; der Abruf läuft ohnehin weiter.
+  let fehlerSeit = 0;
+  /** @type {() => void} */
+  let sofort = () => {};
+  const knopf = G('start-erneut');
+  if (knopf) knopf.onclick = () => sofort();
   while (true) {
     try {
       const r = await apiRoh('GET', '/v1/startup-status?_=' + Date.now(), {
         cache: 'no-store', headers: { 'Cache-Control': 'no-cache' }
       });
+      if (!r.ok) throw new Error('HTTP ' + r.status);
       const s = await r.json();
+      fehlerSeit = 0;
+      zeigeOffline(false);
       if (!s) { await new Promise(r=>setTimeout(r,600)); continue; }
       const pct = s.total > 0 ? Math.round(s.progress / s.total * 100) : 0;
       const stepEl = G('startup-step');
@@ -345,10 +355,20 @@ async function waitForStartup() {
       // Den Fortschritt erst zeigen, wenn der Server wirklich noch startet.
       if (ss && ss.style.display !== 'flex') { startgeruestWeg(); ss.style.display = 'flex'; }
       if (Date.now() - lastChangeAt > STALL_TIMEOUT) { console.warn('[startup] stalled — no progress'); break; }
-    } catch(e) { console.warn('[startup] poll error:', e instanceof Error ? e.message : e); }
-    await new Promise(r => setTimeout(r, 600));
+    } catch(e) {
+      console.warn('[startup] poll error:', e instanceof Error ? e.message : e);
+      fehlerSeit ||= Date.now();
+      if (Date.now() - fehlerSeit >= 6000) zeigeOffline(true);
+    }
+    await new Promise(r => { sofort = () => r(undefined); setTimeout(r, fehlerSeit ? 2000 : 600); });
   }
+  zeigeOffline(false);
   if (ss) ss.style.display = 'none';
+}
+/** @param {boolean} an */
+function zeigeOffline(an) {
+  const el = G('start-offline');
+  if (el && el.hidden === an) el.hidden = !an;
 }
 /**
  * @param {{ abgelaufen?: boolean }} [o] abgelaufen: Der Name bleibt stehen, damit
@@ -440,7 +460,7 @@ function showApp(){ bindTabs(); plInit(); setTimeout(()=>{ gibCheckOnLoad(); }, 
       set_settingsCache(d.settings);
       set_CURRENCY(d.settings.currency||'EUR');
       applyTheme(d.settings.app_theme);
-      // Server language wins (explicit user choice), update localStorage too
+      // Die Sprache des Servers gewinnt (ausdrückliche Wahl); localStorage mitziehen
       const srvLang = d.settings.language;
       // Auch eine noch nicht geladene Sprache: applyLang lädt sie nach.
       if (srvLang === 'de' || srvLang === 'en') {

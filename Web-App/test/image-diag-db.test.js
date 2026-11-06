@@ -1,14 +1,6 @@
 /**
  * Bild-Diagnose: „Warum fehlt das Bild für Set X?" in EINER Antwort.
- *
- * Die Fragen bei einer leeren Kachel (Adresse in der Datenbank? Datei,
- * Vorschau, Grösse, Proxy-Cache?) liegen an drei Orten; der Endpunkt
- * beantwortet sie in einer Antwort.
- *
- * Geprüft wird VERHALTEN gegen echte Dateien und echte Datenbank, in den drei
- * Lagen, die im Betrieb tatsächlich vorkommen. Besonders wichtig ist der
- * Klartext-Hinweis: Er ist der eigentliche Nutzen — Zahlen allein hätte man
- * auch vorher zusammensuchen können.
+ * Ausführlich: docs/begruendungen/test/image-diag-db.test.js.md#kopf
  *
  * Gegenprobe (durchgeführt): den Hinweis-Block für „Vorschau fehlt" entfernt →
  * Teilschritt A wird rot.
@@ -111,7 +103,7 @@ test('die Bild-Diagnose beschreibt jede Lage im Klartext',
 });
 
 test('der Set-Bild-Download meldet jeden Fehlschlag', () => {
-  // Bis Nachtrag 50 gab es genau EINE Logzeile (die Grössengrenze aus 47);
+  // Bis eine frühere Runde gab es genau EINE Logzeile (die Grössengrenze aus 47);
   // Statuscode, Netzwerkfehler, Zwergantwort und der umschliessende catch
   // endeten alle in einem stummen `return null`. Genau diese Stille hat die
   // Bild-Fehlersuche über fünf Nachträge gestreckt.

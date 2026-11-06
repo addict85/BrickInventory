@@ -3,8 +3,8 @@ import { detailZeile, ladeAnzeige, listeLadefehler } from './01-bausteine.js';
 import { registerActions } from './00-registry.js';
 import { locale, t, tRaw} from '../i18n.js';
 import { fehlerMeldung, api } from './01-api.js';
-import { bildTag, platzhalterInhalt, fullUrl, imgUrl, thumbUrl } from './01-bilder.js';
-import { leerZustand, ico, G, zuruecksetzenKnopf, alle, eins, setzeHtml, fuegeHtmlEin } from './01-dom.js';
+import { bildTag, platzhalterInhalt, fullUrl, imgUrl, thumbUrl, setzeDialogbild, PLATZHALTER_SET } from './01-bilder.js';
+import { leerZustand, meldeTreffer, ico, G, zuruecksetzenKnopf, alle, eins, setzeHtml, fuegeHtmlEin } from './01-dom.js';
 import { betragAusFeld } from './01-formular.js';
 import { toast } from './01-meldungen.js';
 import { setScrollLabel } from './15-scrollbar.js';
@@ -169,7 +169,7 @@ async function loadCatalogSets(){
   _catLoadedPages = new Set();
   _catLoadingPages = new Set();
   const grid = G('catalog-grid');
-  setzeHtml(grid, ladeAnzeige(t('catalog.loading')));
+  setzeHtml(grid, ladeAnzeige(tRaw('catalog.loading')));
   _catState.page = 1;
   const d = await api('GET', `/v1/catalog/sets?${_catQuery(1)}`);
   if (gen !== _catGen) return;   // inzwischen neuer Filter — Antwort verwerfen
@@ -179,6 +179,7 @@ async function loadCatalogSets(){
   _catPageCount = Math.max(1, Math.ceil(_catTotal / CAT_LIMIT));
   _catItems = d.sets || [];
   G('cat-count').textContent = tRaw(_catTotal === 1 ? 'catalog.result_count_one' : 'catalog.result_count', { count: _catTotal.toLocaleString(locale()) });
+  meldeTreffer(_catTotal ? G('cat-count').textContent : tRaw('common.no_hits', { query: G('cat-search')?.value.trim() || '' }));
 
   if (!_catItems.length) {
     // Ohne Filter heisst „leer": der Katalog ist noch nicht abgeglichen.
@@ -342,7 +343,7 @@ export async function ladeSeite(seite){
 function catCard(s){
   // Vorschau über den Server wie bei Sets, Teilen und Figuren: kleiner als die volle CDN-Auflösung, und schon
   // heruntergeladene Bilder (image_local) sparen den Weg zum CDN ganz.
-  // Ausführlich: docs/begruendungen/public/js/09-catalog.js.md#src
+  // Ausführlich: docs/begruendungen/public/js/09-catalog.js.md#vorschau-ueber-den-server-wie
   const src = s.image_local || s.image_url;
   const img = src
     ? bildTag({ src: imgUrl(thumbUrl(src), 'nur'), alt: '', fade: true, ph: 'set' })
@@ -389,30 +390,30 @@ async function openCatModal(setNumber){
   // das schneller und entlastet den Server; der Proxy lohnt sich nur für die vielen kleinen Vorschauen.
   // Ausführlich: docs/begruendungen/public/js/09-catalog.js.md#detailsrc
   const detailSrc = s.image_local || s.image_url;
-  G('cat-m-img').src = detailSrc ? fullUrl(detailSrc) : '/assets/set-placeholder.svg';
+  setzeDialogbild(G('cat-m-img'), detailSrc ? fullUrl(detailSrc) : PLATZHALTER_SET, PLATZHALTER_SET);
   /** @type {[string, string | number][]} */
   const rows = [
-    [t('detail.year'),     s.year || '—'],
-    [t('detail.theme'),    s.theme_name || '—'],
-    [t('detail.pieces'),   s.num_parts ? s.num_parts.toLocaleString(locale()) : '—'],
-    [t('detail.minifigs'), s.minifigs || '—'],
+    [tRaw('detail.year'),     s.year || '—'],
+    [tRaw('detail.theme'),    s.theme_name || '—'],
+    [tRaw('detail.pieces'),   s.num_parts ? s.num_parts.toLocaleString(locale()) : '—'],
+    [tRaw('detail.minifigs'), s.minifigs || '—'],
   ];
-  if (s.owned) rows.push([t('catalog.owned'), '×' + s.owned_quantity]);
+  if (s.owned) rows.push([tRaw('catalog.owned'), '×' + s.owned_quantity]);
   setzeHtml(G('cat-m-det'), rows.map(([k, v]) => detailZeile(k, esc(String(v)))));
   // Der Kauf-Link kommt fertig vom Server (bricklinkLink.ts): Aus der Rebrickable-Nummer gebaut, war er für
   // Gear, Bücher und Sammelfiguren falsch. Ist der Artikel nicht eindeutig, zeigt er auf die Suche — nie
   // ausblenden.
-  // Ausführlich: docs/begruendungen/public/js/09-catalog.js.md#bl
+  // Ausführlich: docs/begruendungen/public/js/09-catalog.js.md#der-kauf-link-kommt-fertig
   const bl = s.bricklink;
   const blBtn = G('cat-m-bricklink');
   blBtn.style.display = '';
   blBtn.href = bl?.url || `https://www.bricklink.com/v2/search.page?q=${encodeURIComponent(s.set_number)}`;
-  blBtn.textContent = (bl && bl.exact === false) ? t('catalog.search_bricklink') : t('catalog.buy_bricklink');
+  blBtn.textContent = (bl && bl.exact === false) ? tRaw('catalog.search_bricklink') : tRaw('catalog.buy_bricklink');
   blBtn.title = (bl && bl.exact === false)
-    ? t('catalog.search_bricklink_hint')
+    ? tRaw('catalog.search_bricklink_hint')
     : (bl && bl.type !== 'SET' ? `BrickLink: ${bl.type} ${bl.number}` : '');
   // Button-Zustand: bereits im Besitz → Beschriftung "erneut aufnehmen"
-  G('cat-m-add').textContent = s.owned ? t('catalog.add_again') : t('catalog.add_to_gallery');
+  G('cat-m-add').textContent = s.owned ? tRaw('catalog.add_again') : tRaw('catalog.add_to_gallery');
   G('cat-m-qty').value = '1';
   G('cat-m-price').value = '';
   // Die Setnummer hängt am Modal: Der Merklisten-Knopf liegt in einem anderen Modul, und das Modal weiss
@@ -443,7 +444,7 @@ async function addCatalogSetToGallery(){
   // behoben.
   const storage = selectedStorage('cat-m-storage');
   closeCatModal();
-  showProgress(t('gallery.adding_set', { num }), false);
+  showProgress(tRaw('gallery.adding_set', { num }), false);
   try {
     await streamRequest('/v1/sets/add-stream', { set_number: num, quantity: qty, purchase_price, condition, owner_user_id, storage }, (ev)=>{
       handleSseEvent(ev, num);
@@ -506,7 +507,7 @@ function _jahrAnPosition(){
   }
   // Zweite Wahl: über die tatsächliche Verteilung der Jahre rechnen. Linear auf 1949–2027 umgerechnet stand
   // bei neun Zehnteln „1965“, weil der Katalog fast ganz aus den letzten Jahrzehnten stammt.
-  // Ausführlich: docs/begruendungen/public/js/09-catalog.js.md#if
+  // Ausführlich: docs/begruendungen/public/js/09-catalog.js.md#zweite-wahl-ueber-die-tatsaechliche
   if (!_catJahrVerteilung.length || !_catTotal) return null;
   const doc = document.documentElement;
   const rollbar = Math.max(1, doc.scrollHeight - window.innerHeight);

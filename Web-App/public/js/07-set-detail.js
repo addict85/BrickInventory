@@ -5,7 +5,7 @@ import { registerActions, echt } from './00-registry.js';
 import { CURRENCY, ME, curSet, set_curSet } from './00-zustand.js';
 import { escJs, esc, html, sichereUrl, ungeprueft } from './00-escapen.js';
 import { api } from './01-api.js';
-import { fullUrl } from './01-bilder.js';
+import { fullUrl, setzeDialogbild, PLATZHALTER_SET } from './01-bilder.js';
 import { G, ico, aktiverReiter, setzeHtml } from './01-dom.js';
 import { fmtDatum, fmtGeld } from './01-format.js';
 import { toast, verwirfToasts } from './01-meldungen.js';
@@ -16,7 +16,8 @@ import { detailZeile, oderStrich, skelettZeilen, oeffneErfassen } from './01-bau
 import { diagrammBreite, priceChartSVG, renderMarketRows } from './01-diagramme.js';
 import { loadFinance } from './04-finance.js';
 import { locale, t, tRaw } from '../i18n.js';
-import { openAcqModal, renderAcqModalBody, renderAcquisitionSummary } from './13-acquisition-modals.js';
+import { openAcqModal, renderAcqModalBody } from './13-acquisition-modals.js';
+import { kurzfassung, renderAcquisitionSummary } from './13-kaufpreis-anzeige.js';
 
 // Verschoben wird nur über den Kaufpreis (Kaufpreis-Dialog, Zeile für Zeile), nicht das ganze Set: Mehrere
 // Käufe eines Sets können im Haushalt verschiedenen Konten gehören. Der Server verlangt dafür
@@ -55,7 +56,7 @@ function setDetailHtml(sn, acqs) {
     ${qtyRow}
     ${detailZeile(t('detail.pieces'), set.pieces ? set.pieces.toLocaleString(locale()) : '—')}
     ${detailZeile(t('detail.minifigs'), oderStrich(set.minifigs), { wertId: 'm-minifigs-val' })}
-    ${detailZeile(t('detail.alert'), alarmBlock(sn), { klasse: 'alarm-zeile',
+    ${detailZeile(t('detail.alert'), alarmBlock(sn, 'm', (curSet?.conditions || []).includes('N') || !(curSet?.conditions || []).length ? 'N' : 'U'), { klasse: 'alarm-zeile',
          zeilenStil: 'align-items:flex-start',
          wertStil: 'display:flex;align-items:center;gap:6px;flex-wrap:wrap;justify-content:flex-end' })}
     ${detailZeile(t('detail.storage'),
@@ -64,7 +65,7 @@ function setDetailHtml(sn, acqs) {
         { wertStil: 'display:flex;align-items:center;gap:6px;flex-wrap:wrap;justify-content:flex-end' })}
     ${detailZeile(t('detail.created'), `${ico('kalender')} ${addedFmt}`, { klasse: 'dr-leise' })}
     <div id="m-price-chart" data-stil="margin-top:.75rem">
-      <div data-stil="font-size:var(--fs-1);font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--mut);margin-bottom:4px">${tRaw('detail.price_history')}</div>
+      <h3 class="bereich-titel" data-stil="margin-bottom:4px">${tRaw('detail.price_history')}</h3>
       <div class="sparkline-wrap" id="m-sparkline-content"><span data-stil="color:var(--mut);font-size:var(--fs-1)">${tRaw('common.loading')}</span></div>
     </div>`;
 }
@@ -73,7 +74,7 @@ function setDetailHtml(sn, acqs) {
 function ladeSetNachtraege(sn) {
   // Die Figurenzahl aus der Figurentabelle (verlässlicher als sets.minifigs). Die Antwort kann nach dem
   // Schliessen oder einem Setwechsel kommen; nur wenn noch dasselbe Set offen ist, wird geschrieben.
-  // Ausführlich: docs/begruendungen/public/js/07-set-detail.js.md#api
+  // Ausführlich: docs/begruendungen/public/js/07-set-detail.js.md#die-figurenzahl-aus-der-figurentabelle
   api('GET', `/v1/minifigs?source=set`).then(md => {
     const el = G('m-minifigs-val');
     if (!el || !curSet || curSet.set_number !== sn) return;
@@ -103,8 +104,8 @@ export async function openModal(sn){
   // Der Dialog steht sofort da, mit Platzhalter: Bei langsamem Netz geschah sonst bis zur Antwort nichts, und
   // ein zweiter Tipp öffnete ihn doppelt.
   G('m-tit').textContent = sn; G('m-untertit').textContent = '';
-  const bild = G('m-img'); bild.src = '/assets/set-placeholder.svg';
-  setzeHtml(G('m-det'), skelettZeilen(4, t('common.loading')));
+  setzeDialogbild(G('m-img'), PLATZHALTER_SET, PLATZHALTER_SET);
+  setzeHtml(G('m-det'), skelettZeilen(4, tRaw('common.loading')));
   G('m-instr').replaceChildren();
   G('set-modal').dataset.nummer = sn;
   G('set-modal').classList.add('open');
@@ -134,7 +135,7 @@ export async function openModal(sn){
   G('m-untertit').textContent = [set.name ? set.set_number : '', fremd.length ? tRaw('detail.konto_von', { namen: fremd.join(', ') }) : '']
     .filter(Boolean).join(' · ');
   // fullUrl(): volle Auflösung, auch wenn image_local auf die _thumb-Datei zeigt
-  const img=G('m-img'); img.src=fullUrl(set.image_local||set.image_url)||'/assets/set-placeholder.svg'; img.style.display='block';
+  const img=G('m-img'); setzeDialogbild(img, fullUrl(set.image_local||set.image_url)||PLATZHALTER_SET, PLATZHALTER_SET); img.style.display='block';
 
   setzeHtml(G('m-det'), setDetailHtml(sn, ad?.acquisitions || []));
 
@@ -194,8 +195,8 @@ export function renderInstructions(instr, sn) {
     </div>`;
 
   setzeHtml(G('m-instr'), html`
-    <div data-stil="font-size:var(--fs-1);font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--mut);margin:12px 0 7px">
-      ${tRaw('instr.section_title')} ${instr.length ? html`(${instr.length})` : ''}
+    <div class="zeile umbruch mittig" data-stil="margin:12px 0 7px;gap:8px">
+      <h3 class="bereich-titel" data-stil="margin:0">${tRaw('instr.section_title')} ${instr.length ? html`(${instr.length})` : ''}</h3>
       ${ME?.isAdmin || !instr.some(i => !i.is_manual) ? html`<button data-click="redownloadInstr" data-arg="${sn}" class="btn bs btn-sm" data-stil="margin-left:8px;font-size:var(--fs-0);padding:3px 8px">${tRaw('instr.reload')}</button>` : ''}
     </div>
     ${(items) ? ungeprueft(items) : html`<div data-stil="color:var(--mut);font-size:var(--fs-2)">${tRaw('instr.none_auto')}</div>`}
@@ -204,7 +205,7 @@ export function renderInstructions(instr, sn) {
 
 /** @param {string} sn @param {string} instrId */
 async function delInstr(sn, instrId) {
-  if (!await confirmDelete(tRaw('instr.delete_title'),t('instr.delete_text'),'datei')) return;
+  if (!await confirmDelete(tRaw('instr.delete_title'),tRaw('instr.delete_text'),'datei')) return;
   const d = await api('DELETE', `/v1/sets/${sn}/instructions/${instrId}`);
   if (d.success) { toast(tRaw('instr.deleted'), 'success'); openModal(sn); }
   else toast(d.error || t('settings.error'), 'error');
@@ -233,9 +234,11 @@ async function uploadInstr(sn) {
 /**
  * @param {string} src
  */
-export function openImageLightbox(src){
+/** @param {string} src @param {string} [name] wofür das Bild steht; ohne ihn hörte ein Vorleser nur „Schliessen“ */
+export function openImageLightbox(src, name = ''){
   if(!src || src.endsWith('/assets/set-placeholder.svg')) return;
   G('lightbox-img').src = src;
+  G('lightbox-img').setAttribute('alt', name || tRaw('common.bild'));
   G('img-lightbox').classList.add('open');
 }
 
@@ -277,7 +280,7 @@ export function autosaveSet(){
           if (!ad?.success) return;
           if (echt > prevQty) meldeNeueExemplare(sn, ad.acquisitions, echt - prevQty);
           const sumEl = G('m-acq-summary');
-          if (sumEl) setzeHtml(sumEl, html`${ungeprueft(renderAcquisitionSummary(ad.acquisitions, set.set_number))}${html`<button class="btn bs btn-sm" data-click="openAcqModal" data-arg="${set.set_number}" data-stil="margin-top:4px;font-size:var(--fs-1);padding:2px 10px">${ico('bearbeiten')} ${tRaw('detail.edit_prices')}</button>`}`);
+          if (sumEl) setzeHtml(sumEl, kurzfassung(ad.acquisitions, set.set_number));
           if (G('acq-modal').classList.contains('open') && typeof renderAcqModalBody === 'function') {
             renderAcqModalBody(set.set_number, ad.acquisitions, undefined);
           }

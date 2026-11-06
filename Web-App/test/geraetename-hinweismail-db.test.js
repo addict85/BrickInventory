@@ -31,8 +31,14 @@ const AUTH = require('./helpers/sources').einhaengung('auth');
 const { geraeteNameGueltig } = _req('src/konto/auth.js');
 const bcrypt = require(path.join(__dirname, '..', 'node_modules', 'bcryptjs'));
 
-const BOESE = ['x https://evil.example', 'Pixel") erzeugt. Alles in Ordnung', 'brick-hilfe.example',
-  'Zeile\nzwei', 'www.evil.example', 'Telefon   Rückfragen'];
+const BOESE = [
+  'x https://evil.example',
+  'Pixel") erzeugt. Alles in Ordnung',
+  'brick-hilfe.example',
+  'Zeile\nzwei',
+  'www.evil.example',
+  'Telefon   Rückfragen',
+];
 const GUT = ['Pixel 8 Pro', 'Android App', 'Galaxy S10.1', 'iPad (Küche)', 'Firefox auf Linux'];
 
 test('Gerätenamen: die Regel', () => {
@@ -41,28 +47,45 @@ test('Gerätenamen: die Regel', () => {
   assert.equal(geraeteNameGueltig(undefined), true, 'ohne Namen gilt die Vorgabe');
 });
 
-test('Gerätenamen an allen drei Wegen', { concurrency: 1 }, async (t) => {
+test('Gerätenamen an allen drei Wegen', { concurrency: 1 }, async t => {
   const db = await dbOderSkip(t, _req);
   if (!db) return;
-  const NAME = `geraet_${process.pid}`, PASS = 'Geraete-Passwort-17';
+  const NAME = `geraet_${process.pid}`,
+    PASS = 'Geraete-Passwort-17';
   await db.run('DELETE FROM users WHERE username = $1', [NAME]);
-  const uid = (await db.get(`INSERT INTO users (username, password_hash, is_active, email_verified)
-    VALUES ($1, $2, true, true) RETURNING id`, [NAME, await bcrypt.hash(PASS, 4)])).id;
+  const uid = (
+    await db.get(
+      `INSERT INTO users (username, password_hash, is_active, email_verified)
+    VALUES ($1, $2, true, true) RETURNING id`,
+      [NAME, await bcrypt.hash(PASS, 4)],
+    )
+  ).id;
   t.after(async () => {
     await db.run('DELETE FROM users WHERE id = $1', [uid]).catch(() => {});
     await db.pool.end().catch(() => {});
   });
-  const { base } = testServer(_req, { sitzung: { userId: uid, username: NAME }, t, routen: { [AUTH]: 'routes/auth.js' } });
+  const { base } = testServer(_req, {
+    sitzung: { userId: uid, username: NAME },
+    t,
+    routen: { [AUTH]: 'routes/auth.js' },
+  });
   const post = async (weg, body) => {
-    const r = await fetch(`${base}${AUTH}${weg}`, { method: 'POST', headers: { 'content-type': 'application/json' },
-      body: JSON.stringify(body) });
+    const r = await fetch(`${base}${AUTH}${weg}`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify(body),
+    });
     return { status: r.status, code: (await r.json()).code };
   };
   const abgewiesen = { status: 400, code: 'geraetename_ungueltig' };
 
   await t.test('POST /login', async () => {
     for (const label of BOESE)
-      assert.deepEqual(await post('/login', { username: NAME, password: PASS, label }), abgewiesen, JSON.stringify(label));
+      assert.deepEqual(
+        await post('/login', { username: NAME, password: PASS, label }),
+        abgewiesen,
+        JSON.stringify(label),
+      );
     const gut = await post('/login', { username: NAME, password: PASS, label: 'Pixel 8 Pro' });
     assert.equal(gut.status, 200, JSON.stringify(gut));
   });
@@ -79,6 +102,9 @@ test('Gerätenamen an allen drei Wegen', { concurrency: 1 }, async (t) => {
   });
 
   await t.test('ein Satz in Anführungszeichen bleibt draussen', async () => {
-    assert.deepEqual(await post('/login', { username: NAME, password: PASS, label: 'Handy" — alles in Ordnung' }), abgewiesen);
+    assert.deepEqual(
+      await post('/login', { username: NAME, password: PASS, label: 'Handy" — alles in Ordnung' }),
+      abgewiesen,
+    );
   });
 });

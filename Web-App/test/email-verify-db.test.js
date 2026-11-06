@@ -1,20 +1,6 @@
 /**
  * E-Mail-Verifikation gegen eine ECHTE Datenbank.
- *
- * test/email-verify.test.js hält am Quelltext fest, dass die Logik nur noch
- * an einer Stelle steht. Das sagt nichts darüber, ob sie das Richtige TUT.
- * Genau dort lagen die Fehler, die man sonst erst im Betrieb sieht: ein Token,
- * der nach Ablauf noch gilt; einer, der sich zweimal einlösen lässt; ein
- * Feld, das beim Einlösen stehen bleibt.
- *
- * ── Warum die Browser-Route nicht mitgestartet wird ─────────────────────────
- * server.ts exportiert seine App nicht und beginnt beim Einbinden zu lauschen
- * — samt Session-Speicher, Mailversand und Cluster-Logik. Sie hier zu booten
- * hiesse, den halben Betrieb im Test hochzufahren. Stattdessen wird die
- * gemeinsame Funktion direkt geprüft (sie IST die Logik beider Routen), die
- * API-Route echt über Express angesprochen, und test/email-verify.test.js
- * hält fest, dass server.ts genau diese Funktion ruft und ihre beiden
- * Ausgänge auf ?verified=1 bzw. ?verified=invalid abbildet.
+ * Ausführlich: docs/begruendungen/test/email-verify-db.test.js.md#kopf
  *
  * ── Gegenproben (04.11.2026 gemessen, je einzeln) ───────────────────────────
  * Seit Runde 13 trägt eine Registrierung Adresse und Link in email_neu*.
@@ -49,17 +35,8 @@ async function seed() {
   await db.run('DROP SCHEMA public CASCADE');
   await db.run('CREATE SCHEMA public');
   await db.initSchema();
-  // ── Und die MIGRATIONEN, nicht nur das Schema ───────────────────────────
-  //
-  // Diese Datei loescht das Schema und baut es neu auf. Ohne die Migrationen
-  // bleibt die Datenbank auf dem Stand von db/schema.sql stehen — also VOR
-  // allen Migrationen —, und das ist nicht nur fuer sie selbst falsch,
-  // sondern fuer jede Datei danach: Sie erbt eine halbe Datenbank.
-  //
-  // GEMESSEN beim Umzug der Teilemengen (Migration 0038): db/schema.sql legt
-  // `parts.quantity DEFAULT 1` an, die Katalogzeilen tragen die echte Zahl.
-  // Die naechste Datei, die die Migrationen laufen liess, brach ab — „Bei 8
-  // Set-Teilen weicht parts.quantity vom Katalog ab". Der Riegel hatte recht.
+  // Und die MIGRATIONEN, nicht nur das Schema
+  // Ausführlich: docs/begruendungen/test/email-verify-db.test.js.md#stelle
   {
     const mc = await db.pool.connect();
     try { await _req('db/migrate.js').runMigrations(mc); } finally { mc.release(); }
@@ -140,22 +117,8 @@ test('E-Mail-Verifikation gegen echte Datenbank', async (t) => {
     assert.deepEqual([z.email, z.registrierung_offen, z.email_neu_token], [null, true, null]);
   });
 
-  // ── Die fuenf Faelle ueber die API-Route sind ENTFERNT ───────────────────
-  //
-  // GET /api/auth/verify gibt es nicht mehr: Sie hatte keinen Aufrufer — der
-  // Link aus der Verifikationsmail zeigt auf die Frontend-Seite /verify, die
-  // server.ts bedient. Dass sie keinen Aufrufer hat, stand seit Nachtrag 154
-  // als Kommentar in der Route selbst.
-  //
-  // Verloren geht dadurch nichts: Die fuenf Faelle pruefen dieselben Regeln
-  // wie die sechs darueber (gueltig, abgelaufen, unbekannt, fehlend, zweimal),
-  // nur durch eine HTTP-Huelle hindurch. Was die Huelle zusaetzlich sagte —
-  // 400 gegen 410 statt einer Weiterleitung — betraf einen Aufrufer, den es
-  // nie gab.
-  //
-  // Der Weg, den es WIRKLICH gibt, bleibt geprueft: test/email-verify.test.js
-  // haelt fest, dass server.ts dieselbe Funktion ruft und ihre beiden
-  // Ausgaenge auf ?verified=1 bzw. ?verified=invalid abbildet.
+  // Die fuenf Faelle ueber die API-Route sind ENTFERNT
+  // Ausführlich: docs/begruendungen/test/email-verify-db.test.js.md#stelle-2
 
   await db.pool.end().catch(() => {});
 });

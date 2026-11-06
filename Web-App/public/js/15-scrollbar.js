@@ -113,7 +113,7 @@ export function initScrollbalken() {
     bar.classList.remove('dragging');
     // Die inline gesetzte Sichtbarkeit wieder wegnehmen: Sie schlägt die CSS-Regel für .dragging, und das
     // Jahresetikett blieb nach dem Loslassen in jedem Reiter stehen.
-    // Ausführlich: docs/begruendungen/public/js/15-scrollbar.js.md#if
+    // Ausführlich: docs/begruendungen/public/js/15-scrollbar.js.md#die-inline-gesetzte-sichtbarkeit-wieder
     if (label) label.style.display = '';
   };
 

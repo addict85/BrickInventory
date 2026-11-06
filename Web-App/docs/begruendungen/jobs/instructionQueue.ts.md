@@ -4,7 +4,7 @@ Die ausführlichen Kommentare aus `jobs/instructionQueue.ts`, wörtlich. Im Code
 Stelle der erste Absatz und ein Verweis hierher. Neue Geschichte gehört in die
 Commit-Nachricht (siehe CLAUDE.md).
 
-<a id="db"></a>
+<a id="brickset-und-brickinstructions-com-wolle"></a>
 ## `db`
 
 ```text

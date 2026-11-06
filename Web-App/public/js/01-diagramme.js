@@ -426,7 +426,7 @@ document.addEventListener('keydown', (e) => {
  */
 function preisReihen(data) {
   /** @type {Record<string, string>} */
-  const NAMES  = { N: t('common.condition_new'), U: t('common.condition_used') };
+  const NAMES  = { N: tRaw('common.condition_new'), U: tRaw('common.condition_used') };
   // Farben aus dem Design; var() greift in inline-SVG auch in stroke und stop-color.
   /** @type {Record<string, string>} */
   const COLORS = { N: 'var(--chart-new)', U: 'var(--chart-used)' };

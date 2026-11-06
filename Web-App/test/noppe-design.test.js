@@ -15,22 +15,7 @@ const quelle = JSON.parse(fs.readFileSync(path.join(BAUM, 'shared', 'design-toke
 
 /**
  * Das Design "noppe" — der Klemmbaustein als Bauteil der Oberflaeche.
- *
- * ── Warum diese Pruefung eigen ist ─────────────────────────────────────────
- *
- * Marcos Vorgabe zu diesem Projekt steht ueber allem: zwei Apps, dieselben
- * Funktionen, EINHEITLICHE Ansichten. Bei den bisherigen Designs traegt
- * shared/design-tokens.json die Farben, und design-abschrift.test.js haelt die
- * beiden erzeugten Dateien daran fest.
- *
- * "noppe" bringt zwei Dinge mit, die es vorher nicht gab und die genau
- * deshalb auseinanderlaufen koennen:
- *
- *   • sechs DECKELFARBEN, die die Kachelwand durchzaehlt, und
- *   • eine TINTE, auf der Rahmen, Schatten und Text gemeinsam stehen.
- *
- * Beides sind Listen bzw. ein Ton, die man in jeder Oberflaeche „mal eben"
- * hinschreiben koennte. Genau das soll hier auffallen.
+ * Ausführlich: docs/begruendungen/test/noppe-design.test.js.md#die-deckelfarben-stehen-in-beiden-oberfl
  */
 
 test('die Deckelfarben stehen in beiden Oberflaechen aus DERSELBEN Quelle', () => {
@@ -56,12 +41,8 @@ test('die Steinfarbe laeuft in beiden Oberflaechen im selben Takt', () => {
   // Modulo sechs, und zwar an derselben Zahl: Laeuft das Web durch sechs und
   // die App durch vier, zeigt dasselbe Set auf Telefon und Rechner einen
   // anderen Deckel — und niemand kaeme auf die Idee, das fuer einen Fehler zu
-  // halten, weil die Farbe ja nichts bedeutet.
-  // Die UNTERSCHIEDLICHEN Positionen zaehlen, nicht die Treffer: Seit
-  // "hochglanz" nennt jede Regel in noppe.css zwei Designs, und damit steht
-  // jedes nth-child zweimal da. Ein Zaehlen der Treffer haette das gemeldet,
-  // obwohl sich am Takt nichts geaendert hat — genau der Fehlalarm, gegen den
-  // CatalogUsesLocalImagesTest eine Runde vorher geschaerft wurde.
+  // halten, weil die Farbe ja nichts bedeutet. …
+  // Ausführlich: docs/begruendungen/test/noppe-design.test.js.md#webtakt
   const webTakt = new Set([...css.matchAll(/nth-child\(6n\+?(\d*)\)/g)].map(m => m[1])).size;
   assert.equal(webTakt, 5,
     `themes/noppe.css zaehlt an ${webTakt} verschiedenen Positionen durch, erwartet fuenf ` +
@@ -141,18 +122,8 @@ test('beide Oberflaechen fuehren dieselbe Schrift', () => {
   assert.match(theme, /NunitoFamilie/, 'Theme.kt benutzt die Schrift nicht');
 });
 
-// ────────────────────────────────────────────────────────────────────────────
-// "hochglanz" — dasselbe Design in einem anderen Material (Nachtrag 162)
 //
-// Marcos Wunsch: „so wie eine hochglanzproschuerr". Es ist NICHT ein sechstes
-// Design neben "noppe", sondern "noppe" mit Lack: dieselbe Anatomie, dieselbe
-// Palette, dazu Schichten, die kein Farbwert sind.
-//
-// Genau daran kann es scheitern: Ein zweites Stylesheet mit denselben achtzig
-// Zeilen, eine zweite Farbtabelle, ein zweiter Deckel-Baustein — und beim
-// naechsten Nachbessern zieht eine Haelfte nicht mit. Dagegen sind diese
-// Pruefungen gebaut.
-// ────────────────────────────────────────────────────────────────────────────
+// Ausführlich: docs/begruendungen/test/noppe-design.test.js.md#hochglanz-erbt-die-palette-statt-sie-abz
 
 test('hochglanz erbt die Palette, statt sie abzuschreiben', () => {
   assert.equal(quelle.designs.hochglanz.erbt, 'noppe',
@@ -241,18 +212,8 @@ test('der Deckel ist EIN Baustein, nicht zwei', () => {
     'Es gibt einen zweiten Deckel-Baustein fuer den Glanz. Einer reicht, mit Parameter.');
 });
 
-// ────────────────────────────────────────────────────────────────────────────
-// Die Form der Noppe (Nachtrag 163)
 //
-// Marco: „Die Noppen sehen noch komisch aus." Sie waren ein
-// repeating-linear-gradient — ein Verlauf kennt keine runden Ecken, und das
-// `border-radius` daneben rundete den BALKEN statt der einzelnen Noppe. In der
-// laufenden App standen deshalb scharfkantige Striche, obwohl im Entwurf
-// Noppen mit runder Oberkante stehen.
-//
-// Der Ersatz ist eine Maske: Sie traegt die FORM, der Hintergrund die FARBE.
-// Damit bleibt die Farbe in den Token — und die Form an genau einer Stelle.
-// ────────────────────────────────────────────────────────────────────────────
+// Ausführlich: docs/begruendungen/test/noppe-design.test.js.md#stelle
 
 /** Die beiden Regeln, die eine Noppenreihe zeichnen. */
 const noppenReihen = () => css.split('}')
@@ -291,13 +252,8 @@ test('Leiste und Deckel teilen sich EINE Noppenform', () => {
 });
 
 test('der Glanz liegt im Takt der Maske', () => {
-  // ── Die Stelle, an der es still falsch wird ──────────────────────────────
-  //
-  // hochglanz.css legt je Noppe einen radialen Verlauf darueber. Der
-  // wiederholt sich ueber `background-size`, die Form ueber `mask-size` in
-  // noppe.css. Das sind ZWEI Zahlen fuer denselben Takt: Laufen sie
-  // auseinander, wandert der Lichtpunkt von Noppe zu Noppe aus der Mitte —
-  // und im Quelltext sieht jede der beiden Zahlen fuer sich richtig aus.
+  // Die Stelle, an der es still falsch wird
+  // Ausführlich: docs/begruendungen/test/noppe-design.test.js.md#maskentakte
   const maskenTakte = [...css.matchAll(/\bmask-size:(\d+)px \d+px/g)].map(m => m[1]);
   const glanzTakte = [...glanz.matchAll(/\bbackground-size:(\d+)px \d+px/g)].map(m => m[1]);
   // Selbstbeweis: GEMESSEN sind es vier Masken-Takte (je Reihe einmal mit und
@@ -323,27 +279,8 @@ test('die Noppe hat in beiden Oberflaechen dieselbe Form', () => {
 });
 
 test('die Deckelfarbe loescht den Lack nicht', () => {
-  // ── Der Fehler, den diese Zusicherung verhindert (Nachtrag 165) ───────────
-  //
-  // Marco: „In der Android App ist der Glanz zu stark. In der Webapp ist
-  // dieser gar nicht sichtbar." Der zweite Teil war woertlich wahr, und der
-  // Grund stand zwei Zeilen weiter oben in dieser Datei:
-  //
-  //   `background:var(--stein-1)`   — die KURZFORM
-  //
-  // Die Kurzform setzt alle Hintergrund-Eigenschaften zurueck,
-  // `background-image` eingeschlossen. Und `:nth-child()` zaehlt wie eine
-  // Klasse: Die Farbregeln sind damit eine Stufe spezifischer als die
-  // Glanzschicht in hochglanz.css. GEMESSEN im Browser stand bei fuenf von
-  // sechs Kacheln `background-image: none` am Deckel.
-  //
-  // Die Pruefung „beide Oberflaechen bauen den Glanz aus denselben
-  // Haltepunkten" war dabei die ganze Zeit gruen: Sie vergleicht die ZAHLEN im
-  // Quelltext und nicht, ob der Verlauf am Ende ankommt. Genau diese Luecke
-  // schliesst die Regel hier.
-  // Kommentare zuerst weg: Der Kopf dieser Datei ERKLAERT die Deckelfarben und
-  // nennt --stein-0 dabei im Fliesstext. Ohne diesen Schritt zaehlte die
-  // Selbstpruefung sieben statt sechs — gemerkt, weil sie angeschlagen hat.
+  // Der Fehler, den diese Zusicherung verhindert
+  // Ausführlich: docs/begruendungen/test/noppe-design.test.js.md#farbregeln
   const farbregeln = css.replace(/\/\*[\s\S]*?\*\//g, '').split('}')
     .filter(r => /--stein-\d/.test(r));
   // Selbstbeweis: GEMESSEN sind es sechs — die Grundregel und fuenf Positionen.
@@ -360,19 +297,8 @@ test('die Deckelfarbe loescht den Lack nicht', () => {
     'setzt nur die Farbe und laesst den Lack stehen.');
 });
 
-// ────────────────────────────────────────────────────────────────────────────
-// Die Steinkante — EIN Satz Masse fuer beide Oberflaechen (Nachtrag 166)
 //
-// Marco: „Kannst du beim Design Stein (Blau) die Kante noch so anpassen, dass
-// es mehr nach Lego aussieht? Aktuell sieht man einfach oberhalb einen blauen
-// Balken mit Punkten. […] In der Android-App sieht es ebenfalls nicht gleich
-// aus. Es soll in beiden Apps gleich aussehen."
-//
-// Beides stimmte: Das Web zeichnete flache KREISE aus einem radialen Verlauf
-// ueber die ganze Breite, die App vier abgerundete Noppen links. Zwei
-// Oberflaechen, zwei Formen, zwei Zahlenreihen — und nichts, was sie
-// aneinander gebunden haette.
-// ────────────────────────────────────────────────────────────────────────────
+// Ausführlich: docs/begruendungen/test/noppe-design.test.js.md#stein
 
 const stein = fs.readFileSync(path.join(BAUM, 'Web-App', 'public', 'themes', 'brick.css'), 'utf8');
 const grundCss = fs.readFileSync(path.join(BAUM, 'Web-App', 'public', 'styles.css'), 'utf8');

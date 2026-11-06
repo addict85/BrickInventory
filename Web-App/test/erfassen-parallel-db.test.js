@@ -1,19 +1,9 @@
 /**
  * Erfassen: gleichzeitig, und mit unsinnigen Eingaben.
- *
- * ── Warum echte Nebenläufigkeit ─────────────────────────────────────────────
- * Der Fehler war am laufenden Server sichtbar: Zehn parallele Erfassungen
- * desselben Sets ergaben sets.quantity = 10, aber drei Erfassungszeilen mit
- * Summe 7 — drei verlorene Exemplare und drei Tageszeilen, wo genau eine
- * erlaubt ist. Eine Quelltextprüfung („steht withInventoryLock im
- * Erfassen-Pfad?") würde das erste Symptom bemerken, aber nicht das zweite,
- * und sie sagt nichts darüber, ob die Sperre auch GREIFT.
+ * Ausführlich: docs/begruendungen/test/erfassen-parallel-db.test.js.md#kopf
  *
  * Deshalb hier: echte parallele Aufrufe gegen echte Postgres-Verbindungen.
  * Ohne Sperre schlagen die Prüfungen sofort an — nachgewiesen per Gegenprobe.
- *
- * Voraussetzung: Test-DB (Inhalt wird geleert!) via TEST_DATABASE_URL.
- * Ohne DB: skip.
  */
 const test   = require('node:test');
 const assert = require('node:assert/strict');
@@ -141,13 +131,7 @@ test('alle Erfassen-Wege nutzen dieselbe Prüfung', () => {
   // Nur der Rumpf von addSet(): bis zur NÄCHSTEN Funktion auf oberster Ebene.
   // Ein Schnitt bis addSetWithDate() umfasste 1200 Zeilen samt fremder Routen
   // und zählte deren Sperren mit.
-  //
-  // Gelesen wird addSetIntern(): Seit dem 24.09. traegt addSet() nur noch die
-  // Huelle, die den Lagerort setzt (Marcos Befund „beim Hinzufuegen kann ich
-  // den Lagerort nicht waehlen"), und reicht alles Weitere an addSetIntern
-  // durch. Der Rumpf mit den Erfassungen und der Sperre steht dort. Wuerde
-  // hier weiter die Huelle gelesen, faende die Regel null Schreibstellen und
-  // waere still zufrieden — genau das hat sie beim Umbau gemeldet.
+  // Ausführlich: docs/begruendungen/test/erfassen-parallel-db.test.js.md#addsetintern
   const beginn = sets.indexOf('async function addSetIntern(');
   const naechste = sets.slice(beginn + 10).search(/\n(?:async )?function [a-zA-Z_$]/);
   const addSet = sets.slice(beginn, beginn + 10 + naechste);
@@ -191,7 +175,7 @@ test('alle drei Importwege melden übersprungene Zeilen', () => {
   const fs = require('node:fs');
   const path = require('node:path');
   const { ROOT, ohneKommentare } = require('./helpers/sources');
-  // ── Zwei Wege zum selben Ziel (Nachtrag 144) ────────────────────────────
+  // ── Zwei Wege zum selben Ziel ────────────────────────────
   //
   // Der Set-Import liest selbst und antwortet selbst; Teile und Minifiguren
   // gehen über csvZeilenAusAnfrage() und csvImportBericht() in
@@ -227,13 +211,8 @@ test('die Teileliste liefert, was sie meldet', () => {
   const { ROOT, ohneKommentare } = require('./helpers/sources');
   const H = require('./helpers/sources').handlerModul(_req);
 
-  // ── Die Teileliste EINES Sets darf mehr als eine normale Seite liefern ────
-  //
-  // Die Set-Detailansicht der App fragt page_size=2000 und holt nur Seite 1.
-  // clampPageSize deckelte auf 500: Ein Set mit 915 Teilezeilen kam als 500
-  // Zeilen an — und die Antwort meldete „page_size: 2000", spiegelte also die
-  // Anfrage zurück. Damit konnte kein Client merken, dass Teile fehlen. Auch
-  // die PDF-Teileliste baut auf dieser Antwort auf.
+  // Die Teileliste EINES Sets darf mehr als eine normale Seite liefern
+  // Ausführlich: docs/begruendungen/test/erfassen-parallel-db.test.js.md#stelle
   assert.ok(H.SET_PARTS_MAX_PAGE_SIZE > H.MAX_PAGE_SIZE,
     'Ein einzelnes Set braucht eine höhere Grenze als die allgemeine Liste');
   assert.ok(H.SET_PARTS_MAX_PAGE_SIZE >= 5000,
@@ -262,13 +241,8 @@ test('die Teileliste liefert, was sie meldet', () => {
   assert.doesNotMatch(antwort, /page_size:\s*(parseInt\()?(String\()?req\.query/,
     'Die Antwort spiegelt wieder die Anfrage zurück statt zu sagen, was geliefert wurde');
 
-  // ── Und die SET-Liste bleibt unbegrenzt ──────────────────────────────────
-  //
-  // Nicht mehr, weil die App nicht blättern könnte — sie kann es längst
-  // (SetsRepository.getSets nimmt page und pageSize). Sondern weil der Weg
-  // ohne page_size absichtlich offen bleibt: Skripte und ältere App-Stände
-  // holen darüber alles, und eine stille Grenze unterschlüge ihnen ab dem
-  // Grenzwert Sets. Die Begründung steht einmal, in routes/api_v1/sets.ts.
+  // Und die SET-Liste bleibt unbegrenzt
+  // Ausführlich: docs/begruendungen/test/erfassen-parallel-db.test.js.md#setliste
   const getSets = src.slice(src.indexOf('async function setListe'));
   assert.match(getSets, /if \(f\.seite\) \{/,
     'Die Set-Liste darf ohne page_size NICHT gedeckelt werden — Aufrufer ohne ' +

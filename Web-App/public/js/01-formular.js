@@ -71,14 +71,12 @@ export function feldFehler(id, text) {
   }
   el.textContent = text || '';
   el.hidden = !text;
-  if (text) {
-    feld.setAttribute('aria-invalid', 'true');
-    feld.setAttribute('aria-describedby', el.id);
-    feld.focus();
-  } else {
-    feld.removeAttribute('aria-invalid');
-    feld.removeAttribute('aria-describedby');
-  }
+  // Die eigene Kennung ergänzen und wieder nehmen: Ein vorhandener Hinweis (Passwortregel) bleibt verknüpft.
+  const ids = new Set((feld.getAttribute('aria-describedby') || '').split(/\s+/).filter(Boolean));
+  if (text) { ids.add(el.id); feld.setAttribute('aria-invalid', 'true'); }
+  else { ids.delete(el.id); feld.removeAttribute('aria-invalid'); }
+  if (ids.size) feld.setAttribute('aria-describedby', [...ids].join(' ')); else feld.removeAttribute('aria-describedby');
+  if (text) feld.focus();
 }
 
 /**
@@ -159,4 +157,17 @@ function feldGueltig(f, boxId) {
 if (typeof document !== 'undefined') document.addEventListener('input', (ev) => {
   const f = ev.target instanceof Element ? ev.target : null;
   if (f?.getAttribute('aria-invalid') === 'true') f.removeAttribute('aria-invalid');
+});
+
+// Ein Feld mit maxlength schnitt beim Tippen still ab („…Weihnachtss“). Mit data-zaehler steht ab zehn Zeichen
+// vor der Grenze darunter, wie viele es sind, und an der Grenze, dass nicht mehr geht.
+if (typeof document !== 'undefined') document.addEventListener('input', (ev) => {
+  const f = ev.target instanceof HTMLInputElement && ev.target.hasAttribute('data-zaehler') ? ev.target : null;
+  const max = f ? Number(f.getAttribute('maxlength')) : 0;
+  if (!f || !max) return;
+  let hinweis = f.nextElementSibling instanceof HTMLElement && f.nextElementSibling.classList.contains('zeichen-zaehler') ? f.nextElementSibling : null;
+  if (!hinweis) { hinweis = document.createElement('span'); hinweis.className = 'zeichen-zaehler'; hinweis.setAttribute('aria-live', 'polite'); f.insertAdjacentElement('afterend', hinweis); }
+  const n = f.value.length;
+  hinweis.hidden = n < max - 10;
+  hinweis.textContent = n >= max ? tRaw('form.zeichen_grenze', { n, max }) : tRaw('form.zeichen', { n, max });
 });

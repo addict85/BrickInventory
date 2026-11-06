@@ -3,9 +3,7 @@
  * nach, die die geänderte Nummer enthalten, und nur in den Konten, die sie
  * führen (Migration 0079, zieheKatalogNach). Das Ergebnis gleicht einem
  * vollen Neuaufbau.
- *
- * Nachweis „nicht neu gebaut“: Eine Marke in der Spalte storage, die nur ein
- * Neuaufbau überschreibt, bleibt in fremden Konten und fremden Gruppen stehen.
+ * Ausführlich: docs/begruendungen/test/teile-katalog-inkrementell-db.test.js.md#kopf
  *
  * Gegenproben (am 30.10.2026 gemessen):
  *   A  in zieheKatalogNach() statt der Gruppen das ganze Konto gelöscht und

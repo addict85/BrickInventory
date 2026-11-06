@@ -1,31 +1,6 @@
 /**
  * Eine Drosselung des CDN ist KEINE Fehlanzeige.
- *
- * ── Marcos Frage ────────────────────────────────────────────────────────────
- * „Wie schätzt du den CDN ein, können so viele Requests abgefragt werden oder
- * wird da Cloudflare die IP sperren?"
- *
- * Beim Nachsehen fiel ein Fehler auf, der ohne diese Frage unbemerkt geblieben
- * wäre: `downloadSetImage()` antwortet auf JEDEN Fehlschlag mit `null` — bei
- * 404 („dieses Bild gibt es nicht") ebenso wie bei 403 („du fragst zu
- * schnell"). Der Hintergrund-Job leitete daraus eine Fehlanzeige ab und
- * sperrte das Bild für sieben Tage.
- *
- * Bei einer Drosselung ist das genau falsch herum: Dann sind die Bilder
- * VORHANDEN, und ausgerechnet der Ansturm, der die Drosselung auslöst, hätte
- * hunderte davon dauerhaft ausgesperrt. Der Bild-Proxy unterscheidet die
- * beiden Fälle längst (nur 404 wird gemerkt) — dem Job fehlte die Auskunft.
- *
- * ── Was jetzt gilt ──────────────────────────────────────────────────────────
- *   404      → Fehlanzeige, nicht wieder versuchen
- *   403/429  → Pause, alle unbearbeiteten Notizen zurück in die Warteschlange
- *
- * Gemessen, zehn Notizen:
- *
- *     403:  0 abgearbeitet, 1 Versuch, 10 Notizen erhalten, 0 Fehlanzeigen
- *     404: 10 Versuche, 10 Fehlanzeigen
- *
- * Voraussetzung: Test-DB via TEST_DATABASE_URL.
+ * Ausführlich: docs/begruendungen/test/image-throttle-db.test.js.md#kopf
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -42,7 +17,7 @@ let versuche = 0;
 const echtesRequire = Module.prototype.require;
 Module.prototype.require = function (name) {
   const m = echtesRequire.apply(this, arguments);
-  // Seit Nachtrag 125 liegt downloadSetImage in src/katalog/bilder/setImages.ts statt im
+  // Seit einer früheren Runde liegt downloadSetImage in src/katalog/bilder/setImages.ts statt im
   // Router — der Abfang muss dorthin zeigen, sonst greift er ins Leere und
   // der Test misst still den echten Download.
   if (typeof name === 'string' && /setImages(\.js)?$/.test(name) && m && m.downloadSetImage) {
@@ -62,19 +37,8 @@ const { leereWarteschlange } = require('./helpers/bildwarteschlange');
 const db = _req('db/database.js');
 
 test('eine hoffnungslose Vorschau wird nur EINMAL versucht', { concurrency: 1 }, async (t) => {
-  // ── Marcos Log (Nachtrag 117) ─────────────────────────────────────────────
-  //     [thumb] Vorschau fehlgeschlagen für /images/sets/5007579-1.jpg:
-  //             Mime type image/webp does not support decoding
-  // — und dieselbe Zeile für 5007576-1, 5007623-1, immer wieder.
-  //
-  // Jimp kann webp nicht entpacken. In Nachtrag 104 habe ich das gemerkt, aber
-  // nur im Bild-Proxy. Der JOB rief generateThumb() direkt auf und verschluckte
-  // den Fehler. Also entstand keine Datei, beim nächsten Durchgang galt „Bild
-  // da, Vorschau fehlt", und es wurde erneut versucht — nach jedem Klick auf
-  // „Katalogbilder holen" wieder.
-  //
-  // Auf einem Raspberry Pi ist ein vergeblicher Jimp-Lauf, der die Datei erst
-  // einliest und dann aufgibt, genau die Arbeit, die niemand haben will.
+  // Marcos Log
+  // Ausführlich: docs/begruendungen/test/image-throttle-db.test.js.md#stelle
   try { await db.initSchemaOnce(); }
   catch (e) {
     if (process.env.REQUIRE_DB === '1') throw e;
@@ -151,13 +115,8 @@ test('Drosselung und fehlendes Bild werden unterschieden', { concurrency: 1 }, a
       assert.equal(versuche, 1,
         `${versuche} Versuche — nach der ersten Drosselung muss der Stapel abbrechen`);
 
-      // ── Zurückgelegt ist NICHT bearbeitet (Nachtrag 122) ─────────────────
-      //
-      // `erg.gesamt` stand auf `rows.length` — also auch dann auf zehn, wenn
-      // der Stapel schon an der ERSTEN Zeile abbrach und alle zehn zurück in
-      // die Warteschlange gingen. Im Log stand dann „10 bearbeitet: 0 geladen,
-      // 0 Vorschau erzeugt, 0 bereits vorhanden": eine Zeile, die behauptet,
-      // etwas getan zu haben, und keinen Hinweis gibt, was.
+      // Zurückgelegt ist NICHT bearbeitet
+      // Ausführlich: docs/begruendungen/test/image-throttle-db.test.js.md#stelle-2
       assert.equal(e.gesamt, 0,
         `${e.gesamt} als bearbeitet gemeldet, obwohl der Stapel vor der ersten ` +
         'Zeile abbrach und alles zurückgelegt wurde');

@@ -1,26 +1,6 @@
 /**
  * Die zwei Kaufadressen am Set-Detail: BrickLink und Preisvergleich.
- *
- * ── Marcos Vorgabe ──────────────────────────────────────────────────────────
- *
- * „Bitte auf dem Detail-Dialog sowohl den BrickLink-Link analog dem Katalog
- * als auch die URL des Preisvergleichs als Buttons einbauen."
- *
- * ── Warum der SERVER sie liefert ────────────────────────────────────────────
- *
- * „Analog dem Katalog" ist woertlich: Der Katalog laesst die
- * BrickLink-Adresse seit jeher vom Server aufloesen, weil sie sich NICHT aus
- * der Setnummer herleiten laesst — Gear und Buecher liegen unter einem
- * anderen Parameter, Sammelminifiguren unter einer ganz anderen Nummer.
- *
- * Der Preisvergleich kommt aus demselben Grund von dort: Seine Adresse stand
- * bisher an genau EINER Stelle im Baum (dem Vergleichsbildschirm der App).
- * Ohne src/katalog/preisvergleich.ts waeren daraus vier geworden — Webapp und App,
- * je Set-Detail und Vergleich.
- *
- * Der dritte Test unten ist der Waechter dafuer: Baut irgendwann doch wieder
- * eine Oberflaeche die Adresse selbst, faellt es hier auf und nicht erst,
- * wenn zwei davon auseinanderlaufen.
+ * Ausführlich: docs/begruendungen/test/kaufadressen.test.js.md#kopf
  */
 const test   = require('node:test');
 const assert = require('node:assert/strict');

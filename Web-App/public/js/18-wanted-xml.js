@@ -300,8 +300,10 @@ function zeile(p, i) {
   // Die Werte aus der Datei, vorbefüllt und bearbeitbar. Hier ist jede Abweichung vom Ausgangswert eine
   // Korrektur — anders als bei den leeren Korrekturfeldern rechts, wo leer „nicht angefasst“ heisst.
   // Ausführlich: docs/begruendungen/public/js/18-wanted-xml.js.md#feld
-  const feld = (/** @type {string} */ name, /** @type {unknown} */ wert, extra = '', breit = 72) =>
-    html`<input data-change="wantedKorrekturWert" data-feld="${name}" data-i="${i}"
+  // Jedes Feld nennt Spalte und Posten: Ein Vorleser hörte sonst „Drehfeld 1“ ohne Bezug zur Zeile.
+  const id = p.blId;
+  const feld = (/** @type {string} */ name, /** @type {unknown} */ wert, extra = '', breit = 72, schluessel = 'wanted.feld_menge') =>
+    html`<input data-change="wantedKorrekturWert" data-feld="${name}" data-i="${i}" aria-label="${tRaw(schluessel, { id })}"
        value="${wert}" ${ungeprueft(extra)}
        data-breite-px="${breit}"
        data-stil="font-size:var(--fs-1);padding:2px 4px;border:1px solid var(--feldrand);border-radius:5px;text-align:right" />`;
@@ -310,13 +312,13 @@ function zeile(p, i) {
   // der Datei.
   const preisWert = korr.kaufpreis !== undefined ? (korr.kaufpreis ?? '') : (p.maxPreis ?? '');
   const preisZelle = feld('kaufpreis', preisWert,
-    `type="number" min="0" step="0.0001" placeholder="${esc(tRaw('wanted.price_ph'))}"`, 96);
+    `type="number" min="0" step="0.0001" placeholder="${esc(tRaw('wanted.price_ph'))}"`, 96, 'wanted.feld_preis');
   // Der Zustand als Auswahl mit DREI Möglichkeiten: Der leere Wert ist keine Lücke, sondern „Standard des
   // Kontos" — dieselbe Aussage wie CONDITION=X.
   const zustandJetzt = korr.zustand !== undefined ? (korr.zustand ?? '') : (p.zustand ?? '');
   const wahl = (/** @type {string} */ w, /** @type {string} */ text) =>
     html`<option value="${w}"${zustandJetzt === w ? ' selected' : ''}>${text}</option>`;
-  const zustandWahl = html`<select data-change="wantedKorrekturWert" data-feld="zustand" data-i="${i}"
+  const zustandWahl = html`<select data-change="wantedKorrekturWert" data-feld="zustand" data-i="${i}" aria-label="${tRaw('wanted.feld_zustand', { id })}"
       data-stil="font-size:var(--fs-1);padding:2px;border:1px solid var(--feldrand);border-radius:5px">
       ${wahl('', tRaw('wanted.cond_default_opt'))}
       ${wahl('N', tRaw('common.condition_new'))}
@@ -332,10 +334,10 @@ function zeile(p, i) {
     <td data-stil="font-size:var(--fs-1);white-space:nowrap">${zustandWahl}${zustandJetzt === '' && zustandZelle ? html`<div data-stil="margin-top:2px">${zustandZelle}</div>` : ''}</td>
     <td data-stil="text-align:right">${preisZelle}</td>
     <td data-stil="font-size:var(--fs-1)">${ungeprueft(ausgang)}${grund ? html`<div data-stil="color:var(--mut);font-size:var(--fs-1)">${ungeprueft(grund)}</div>` : ''}</td>
-    <td><input type="text" value="${korr.rbId ?? ''}" placeholder="${tRaw('wanted.rb_id_ph')}" data-stil="width:8em;max-width:100%;font-size:var(--fs-1);padding:2px 4px;
+    <td><input type="text" value="${korr.rbId ?? ''}" placeholder="${tRaw('wanted.rb_id_ph')}" aria-label="${tRaw('wanted.feld_rb', { id })}" data-stil="width:8em;max-width:100%;font-size:var(--fs-1);padding:2px 4px;
       border:1px solid var(--feldrand);border-radius:5px"
       data-change="wantedKorrekturNummer" data-i="${i}" /></td>
-    <td><select data-change="wantedKorrekturFarbe" data-i="${i}"
+    <td><select data-change="wantedKorrekturFarbe" data-i="${i}" aria-label="${tRaw('wanted.feld_farbe', { id })}"
       data-stil="max-width:140px;font-size:var(--fs-1);padding:2px;border:1px solid var(--feldrand);border-radius:5px">
       <option value="">${tRaw('wanted.keep')}</option></select></td>
   </tr>`;
@@ -347,7 +349,7 @@ function zeichneTabelle(d) {
   if (!el) return;
   const posten = d.posten || [];
   if (!posten.length) { el.replaceChildren(); return; }
-  setzeHtml(el, html`<table class="dt" data-stil="font-size:var(--fs-2)"><thead><tr>
+  setzeHtml(el, html`<table class="dt" aria-label="${tRaw('wanted.preview_title')}" data-stil="font-size:var(--fs-2)"><thead><tr>
       <th>${tRaw('col.image_th')}</th>
       <th>BrickLink</th>
       <th>${tRaw('col.name')}</th>
@@ -468,7 +470,7 @@ G('wanted-xml-modal')?.addEventListener('click',
 
 // Das Symbol einmal hier an die drei Knöpfe hängen statt dreimal ins HTML. In ein eigenes <span> ohne
 // data-i18n: Die Übersetzung setzt textContent und würfe es beim Sprachwechsel hinaus.
-// Ausführlich: docs/begruendungen/public/js/18-wanted-xml.js.md#for
+// Ausführlich: docs/begruendungen/public/js/18-wanted-xml.js.md#das-symbol-einmal-hier-an
 for (const el of document.querySelectorAll('[data-wanted-icon]')) setzeHtml(el, XML_ICON_SVG);
 
 registerActions({

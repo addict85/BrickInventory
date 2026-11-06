@@ -18,11 +18,7 @@ const ROOT = path.join(__dirname, '..');
 // war mit über 1200 Zeilen wieder ein kleiner Monolith aus Proxy, Thumb-Queue,
 // Cluster-Setup und Startup-Orchestrierung). Die hier geprüften Sachverhalte
 // gelten unverändert — sie verteilen sich jetzt nur auf zwei Dateien:
-//
-//   SERVER_ONLY — was in server.ts geblieben ist (Pfad-Normalisierung,
-//                 Reihenfolge der Middleware, Hintergrundläufe)
-//   PROXY       — der Proxy selbst
-//   SERVER      — beides zusammen, für Prüfungen der Art "kommt X irgendwo vor"
+// Ausführlich: docs/begruendungen/test/img-proxy.test.js.md#server-only
 const SERVER_ONLY = require('./helpers/sources').startQuelle();
 const PROXY       = require('./helpers/sources').proxyThumbQuelle();
 const SERVER      = SERVER_ONLY + '\n' + PROXY;
@@ -103,25 +99,32 @@ test('abgebrochene Client-Anfragen geben die CDN-Verbindung frei', () => {
     'res.destroyed ist der belastbare Hinweis auf einen echten Abbruch');
   assert.match(SERVER, /Client hat abgebrochen, Verbindung freigegeben/,
     'Ein Abbruch muss sichtbar sein — stilles Abschiessen war die Ursache');
-  assert.match(SERVER, /r\.verwerfen\(\); r = await holen\(HEADER_SETS\[1\]\)/,
+  assert.match(SERVER, /r\.verwerfen\(\);\s*r = await holen\(HEADER_SETS\[1\]\)/,
     'Beim Rückfall ohne Referer muss die erste Antwort freigegeben werden');
 });
 
-test('der Verbindungs-Pool ist weit genug', () => {
+test('der Verbindungs-Pool ist weit genug', async () => {
   // Mit 8 wartete ein einzeln geöffnetes Bild hinter 60 Kachel-Anfragen
   // 1195 ms; mit 32 sind es 282 ms, ohne Grenze 153 ms.
   // Der Pool steht im Klienten (clients/bildCdn.ts), der Proxy nimmt ihn mit `pool: true`.
-  const cdn = fs.readFileSync(path.join(ROOT, 'clients/bildCdn.ts'), 'utf8');
-  const agent = cdn.slice(cdn.indexOf('const POOL = new'), cdn.indexOf('const POOL = new') + 220);
+  // Gegenprobe (05.11.2026): maxSockets 8 in clients/bildCdn.ts → rot.
+  const { oeffneBild } = require('./helpers/sources').buildAndRequire()('clients/bildCdn.js');
+  const { mitschnitt } = require('./helpers/https-mitschnitt');
+  const url = 'https://cdn.rebrickable.com/media/sets/1-1.jpg';
+  const [mitPool, ohnePool] = await mitschnitt(async () => {
+    await oeffneBild(url, { maxBytes: 1000, pool: true }).catch(() => {});
+    await oeffneBild(url, { maxBytes: 1000 }).catch(() => {});
+  });
+  const agent = mitPool?.optionen.agent;
+  assert.ok(agent, 'der Proxy-Abruf nimmt den Pool nicht');
+  assert.ok(agent.maxSockets >= 32, `maxSockets ${agent.maxSockets} ist zu eng — Einzelabrufe warten spürbar`);
+  assert.equal(agent.keepAlive, true, 'Wiederverwendung spart den TLS-Handshake');
+  assert.equal(ohnePool?.optionen.agent, undefined, 'ein Einzelabruf hält keine Verbindung offen');
   assert.match(SERVER, /pool: true/, 'der Proxy nimmt den Pool nicht');
-  const m = /maxSockets: (\d+)/.exec(agent);
-  assert.ok(m, 'Pool-Konfiguration nicht gefunden');
-  assert.ok(parseInt(m[1]) >= 32, `maxSockets ${m[1]} ist zu eng — Einzelabrufe warten spürbar`);
-  assert.match(agent, /keepAlive: true/, 'Wiederverwendung spart den TLS-Handshake');
 });
 
 test('Fehler werden gezählt und protokolliert', () => {
-  // Der Zähler ist seit Nachtrag 129 ein eigenes Modul (src/katalog/bilder/imgProxyStats.ts)
+  // Der Zähler ist seit einer früheren Runde ein eigenes Modul (src/katalog/bilder/imgProxyStats.ts)
   // statt einer Closure, die über `global.__imgProxyFailures` hinausgereicht
   // wurde. Geprüft wird, dass es ihn gibt und dass er alle vier Fälle führt —
   // nicht mehr, wie er geschrieben ist.
@@ -179,12 +182,8 @@ test('mehrfache Schrägstriche im Pfad brechen die Route nicht', () => {
   // `//api/img-proxy?…` trifft die Route NICHT und landet im SPA-Catch-all:
   // 200 mit text/html, also die leere Anwendungshülle. Für ein <img> ergibt
   // das eine weisse Fläche bei Status 200 — ohne Log-Eintrag und ohne
-  // Cache-Schreiben. Vier Symptome, die wie ein Proxy-Fehler aussehen.
-  // Auf VERHALTEN geprüft, nicht auf die Schreibweise einer bestimmten Zeile:
-  // Diese Prüfung hing am Wortlaut der ersten von zwei gleichwertigen
-  // Middlewares. Als die überflüssige entfiel, wurde sie rot, obwohl die
-  // Normalisierung unverändert stattfindet — genau die Sorte Test, die
-  // Aufräumen teuer macht.
+  // Cache-Schreiben. Vier Symptome, die wie ein Proxy-Fehler aussehen. …
+  // Ausführlich: docs/begruendungen/test/img-proxy.test.js.md#normalisierung
   const normalisierung = SERVER_ONLY.slice(
     SERVER_ONLY.indexOf("req.url.startsWith('//')"),
     SERVER_ONLY.indexOf("req.url.startsWith('//')") + 400);
@@ -226,11 +225,8 @@ test('Minifiguren-Bilder werden lokal abgelegt wie Set-Bilder', () => {
   // Vorher lud der Hintergrundlauf nur `source='manual'`. Minifiguren aus Sets
   // liefen dadurch dauerhaft über /api/img-proxy: Anmeldeprüfung, Cache-Suche
   // und Stream bei jeder Kachel, beim ersten Anzeigen ein CDN-Roundtrip je
-  // Bild. Set-Bilder liegen längst lokal und gehen über express.static.
-  // Gelesen wird seit Migration 0034 aus minifigs_catalog — dort steht jede
-  // Figur EINMAL. Das DISTINCT ON stand hier, weil die Abfrage auf minifigs
-  // lief und dieselbe Figur je Konto eine Zeile hatte; jetzt erledigt das der
-  // Primaerschluessel.
+  // Bild. Set-Bilder liegen längst lokal und gehen über express.static. …
+  // Ausführlich: docs/begruendungen/test/img-proxy.test.js.md#stelle
   assert.match(SERVER, /SELECT mc\.fig_number, mc\.image_url FROM minifigs_catalog mc/,
     'Der Hintergrundlauf muss alle Minifiguren ohne lokales Bild finden');
   assert.doesNotMatch(SERVER, /FROM minifigs\s+WHERE source='manual' AND image_url IS NOT NULL AND image_local IS NULL/,
@@ -267,19 +263,8 @@ test('Minifiguren-Bilder werden lokal abgelegt wie Set-Bilder', () => {
 });
 
 test('nur Bilder verlassen den Bild-Proxy', () => {
-  // ── Woher dieser Test kommt ─────────────────────────────────────────────
-  // Der Content-Type kam ungeprüft vom CDN und wurde so gesetzt UND als
-  // Sidecar im Cache abgelegt. Die Host-Liste ist eng und https2.get folgt
-  // keinen Weiterleitungen (kein SSRF), aber auf den erlaubten CDNs liegen
-  // teils von Nutzern hochgeladene Dateien. Käme dort ein SVG oder HTML
-  // zurück, läge es anschliessend unter der EIGENEN Herkunft — und ein SVG
-  // ist ein Dokument, das Skript enthalten kann. nosniff und die CSP fangen
-  // den Ernstfall ab; eine Route namens img-proxy sollte trotzdem nichts
-  // anderes als ein Bild ausliefern.
-  //
-  // SVG ist bewusst ausgeschlossen: das einzige Bildformat, das als Dokument
-  // geöffnet aktiv wird — und keines der angebundenen CDNs liefert Teile-
-  // oder Setbilder als SVG.
+  // Woher dieser Test kommt
+  // Ausführlich: docs/begruendungen/test/img-proxy.test.js.md#stelle-2
   assert.match(SERVER, /mime\.startsWith\('image\/'\)/,
     'Der Typ aus der CDN-Antwort muss geprüft werden');
   assert.match(SERVER, /mime === 'image\/svg\+xml'/, 'SVG gehört ausgeschlossen');
@@ -291,33 +276,8 @@ test('nur Bilder verlassen den Bild-Proxy', () => {
 });
 
 test('ein bekannter Bildstand wird mit 304 beantwortet', () => {
-  // ── Woher dieser Test kommt ─────────────────────────────────────────────
-  // Beide Auslieferpfade setzten einen ETag und `max-age=86400,
-  // must-revalidate` — werteten If-None-Match aber nie aus. Nach Ablauf der
-  // 24 Stunden fragt der Browser nach und bekam jedes Mal das VOLLSTÄNDIGE
-  // Bild zurück: bei einer Kachelwand mit hundert Teilen täglich einmal die
-  // ganze Wand statt hundert leerer Antworten. Der ETag sah aus, als täte er
-  // etwas, war aber wirkungslos.
-  //
-  // Die Route /images/* hatte das Problem nie, weil res.sendFile die Prüfung
-  // selbst übernimmt — die beiden Bildwege verhielten sich unterschiedlich.
-  //
-  // Gegen den echten Proxy nachgestellt (rohe Anfrage, nicht fetch — Node
-  // hängt bei manuellem If-None-Match automatisch „Cache-Control: no-cache"
-  // an, worauf req.fresh korrekt false liefert):
-  //   bekannter ETag → 304, 0 Bytes
-  //   alter ETag     → 200, volles Bild
-  //   no-cache       → 200, volles Bild
-  // UMFORMULIERT in Nachtrag 135: Geprüft wurde der WORTLAUT
-  //     if (req.fresh) return res.status(304).end();
-  // Beim Auslagern der Cache-Auslieferung nach src/katalog/bilder/imgCacheServe.ts wurde
-  // daraus `if (req.fresh) { res.status(304).end(); return true; }` — dort ist
-  // `true` die Meldung „beantwortet" an den Aufrufer. Die Aussage ist
-  // unverändert: BEIDE Auslieferpfade prüfen req.fresh und antworten mit 304.
-  // CODE statt SERVER: ohne Kommentare. Sonst zählt die Prüfung Erklärtext
-  // mit — beim Umzug nach imgCacheServe.ts hat mein eigener Kommentar
-  // („aus `return res.status(304).end();` darf kein blosses … werden") die
-  // Zahl auf vier getrieben.
+  // Woher dieser Test kommt
+  // Ausführlich: docs/begruendungen/test/img-proxy.test.js.md#stelle-3
   assert.equal((CODE.match(/if \(req\.fresh\)/g) || []).length, 2,
     'Beide Auslieferpfade (Original und Vorschaubild) brauchen die Prüfung');
   assert.equal((CODE.match(/res\.status\(304\)\.end\(\)/g) || []).length, 2,
@@ -348,24 +308,7 @@ test('der Cache-Aufräumlauf ist ein geplanter Auftrag', () => {
 
 /**
  * Ein fehlendes CDN-Bild kommt als PLATZHALTER zurück, nicht als 404.
- *
- * ── Marcos Befund ───────────────────────────────────────────────────────────
- *
- * Beim Blättern durch alte Jahrgänge stand die Browser-Konsole voller roter
- * 404. Fachlich waren sie richtig — Rebrickable hat zu vielen alten Sets kein
- * Bild —, aber sie sind nichts, woran jemand etwas ändern könnte, und sie
- * verdecken echte Fehler.
- *
- * Der Platzhalter ist ohnehin das, was danach zu sehen ist: Beide Oberflächen
- * zeigen ihn, wenn kein Bild kommt. Ihn gleich auszuliefern spart den Umweg
- * über die Fehlerbehandlung.
- *
- * ── Was NICHT verlorengehen darf ────────────────────────────────────────────
- *
- * Der Server muss sich die Fehlanzeige weiterhin merken. Sonst fragt er bei
- * jedem Aufruf erneut beim CDN nach — genau der Zustand, gegen den
- * src/katalog/bilder/imageMisses gebaut wurde. Deshalb prüft dieser Test BEIDES: dass der
- * Platzhalter geht UND dass merkeFehlend() weiter gerufen wird.
+ * Ausführlich: docs/begruendungen/test/img-proxy.test.js.md#ein-fehlendes-bild-kommt-als-platzhalter
  */
 test('ein fehlendes Bild kommt als Platzhalter, und der Server merkt es sich', () => {
   const proxy = fs.readFileSync(

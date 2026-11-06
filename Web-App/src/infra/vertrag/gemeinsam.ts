@@ -34,6 +34,10 @@ export const CsvImportErgebnis = z.looseObject({
   updated: z.number().int().optional(),
   errors: z.number().int().optional(),
   error: z.string().nullable().optional(),
+  /** Nur beim Set-CSV: ob der Import lief (ohne `pruefen`) und wie viele Sets das Konto schon hat. */
+  gestartet: z.boolean().optional(),
+  vorhanden: z.number().int().optional(),
+  vorhanden_nummern: z.array(z.string()).optional(),
 });
 
 export const ValuationAcquisition = z.looseObject({
@@ -50,6 +54,7 @@ export const ValuationAcquisition = z.looseObject({
   owner_user_id: z.number().int().nullable().optional(),
   kaufpreis_original: z.number().optional(),
   kaufpreis_waehrung: z.string().optional(),
+  price_estimated: z.boolean().optional(),
 });
 
 export const FigValuationItem = z.looseObject({

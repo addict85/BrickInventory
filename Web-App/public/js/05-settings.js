@@ -3,6 +3,7 @@ import { loadUsers } from './05-nutzerverwaltung.js';
 import { stelleZielBereit } from './00-ziele.js';
 import { echt, registerActions } from './00-registry.js';
 import { I18N, LANG, applyLang, locale, t, tRaw } from '../i18n.js';
+import { fmtDatum } from './01-format.js';
 import { fehlerMeldung, api } from './01-api.js';
 import { ico, G, knopfBesetzt, setzeHtml } from './01-dom.js';
 import { antwortFehler, feldFehler, passwortRegelText } from './01-formular.js';
@@ -99,11 +100,11 @@ G('btn-test-smtp')?.addEventListener('click', async()=>{
   if(d.success) {
     res.style.background = 'var(--g50)'; res.style.color = 'var(--g700)'; res.style.border = '1px solid var(--g300)';
     // Die Kennung des Mailservers hilft, die Nachricht in dessen Protokoll zu finden.
-    res.textContent = d.mode === 'console' ? t('smtp.console')
+    res.textContent = d.mode === 'console' ? tRaw('smtp.console')
       : [d.message || t('smtp.ok'), d.messageId].filter(Boolean).join(' · ');
   } else {
     res.style.background = 'var(--r100)'; res.style.color = 'var(--r500)'; res.style.border = '1px solid var(--r300)';
-    res.textContent = d.error || t('settings.error');
+    res.textContent = d.error || tRaw('settings.error');
   }
 });
 
@@ -185,7 +186,7 @@ export async function loadApiLimits() {
   G('lim-bs').value = String(d.limits.brickset);
 }
 
-// QR Code generation using qrcode.js CDN
+// QR-Code über QRCode.js aus public/vendor/qrcode (npm qrcodejs, scripts/qrcode-kopieren.js)
 async function generateQrCode() {
   const btn = G('btn-gen-qr');
   const hint = G('qr-hint');
@@ -277,7 +278,7 @@ G('btn-gen-qr').onclick = generateQrCode;
  */
 function tokenDatum(wert) {
   if (!wert) return '—';
-  return new Date(wert).toLocaleString(locale());
+  return fmtDatum(wert, 'tagzeit');
 }
 
 export async function loadTokens() {
@@ -286,7 +287,7 @@ export async function loadTokens() {
   const d = await api('GET', '/v1/settings/tokens');
   if (!d.success) { setzeHtml(ziel, html`<p data-stil="color:var(--mut)">${d.error || t('settings.error')}</p>`); return; }
   if (!d.tokens.length) { setzeHtml(ziel, html`<p data-stil="color:var(--mut)">${tRaw('tokens.none')}</p>`); return; }
-  setzeHtml(ziel, html`<div class="tw"><table class="dt"><thead><tr>
+  setzeHtml(ziel, html`<div class="tw"><table class="dt" aria-label="${tRaw('tokens.title')}"><thead><tr>
       <th>${tRaw('tokens.col.label')}</th><th>${tRaw('tokens.col.created')}</th>
       <th>${tRaw('tokens.col.last_used')}</th><th>${tRaw('tokens.col.scope')}</th><th>${tRaw('tokens.col.ip')}</th>
       <th>${tRaw('tokens.col.expires')}</th><th>${tRaw('users.col.actions')}</th></tr></thead><tbody>${d.tokens.map(tk => html`<tr>
@@ -422,13 +423,20 @@ async function setzeEigenesDesign() {
 // Darstellung wirkt sofort: Währung und Standard-Zustand speichern beim Wählen.
 async function speichereWaehrung() {
   const wert = G('s-cur').value;
+  // Marktpreise gibt es je Währung; nach dem Wechsel fehlen sie, bis der Preisauftrag sie geholt hat. Ohne
+  // Rückfrage sah das aus, als seien alle Werte verloren.
+  if (wert !== CURRENCY && !await confirmDelete(tRaw('konto.waehrung_wechsel_titel'),
+    tRaw('konto.waehrung_wechsel_text', { alt: CURRENCY, neu: wert }), 'finanzen', { knopf: 'konto.waehrung_wechsel_knopf', art: 'bp' })) {
+    G('s-cur').value = CURRENCY;
+    return;
+  }
   const d = await api('POST', '/v1/settings', { currency: wert });
   if (!d.success) { toast(d.error || t('settings.error'), 'error'); return; }
   set_CURRENCY(wert);
   if (_settingsCache) _settingsCache.currency = wert;
   await loadHousehold().catch(() => {});
   loadStats(); if (document.getElementById('tab-gallery')?.classList.contains('active')) loadGallery();
-  toast(tRaw('konto.waehrung_gespeichert', { w: wert }), 'success');
+  toast(tRaw('konto.waehrung_gespeichert_markt', { w: wert }), 'success');
 }
 
 async function speichereZustand() {
@@ -493,7 +501,7 @@ G('btn-sav-pw').onclick = async () => {
 
 /** @param {Record<string, string>} s */
 function applySettings(s){
-  // Only apply if the settings tab fields are present in the DOM
+  // Nur anwenden, wenn die Felder des Einstellungsreiters im DOM stehen
   if(!G('s-cur') && !G('bl-ck')) return;
   set_CURRENCY(s.currency||'EUR');
   // Apply language preference from server only if explicitly set
@@ -522,7 +530,7 @@ function applySettings(s){
   if(ME?.isAdmin) loadRateLimitStats();
 }
 export async function loadSettings(){
-  // Show cached data instantly so the tab never appears empty
+  // Zwischengespeicherte Daten sofort zeigen, damit der Reiter nie leer erscheint
   if(_settingsCache) applySettings(_settingsCache);
   loadHousehold();
   const d=await api('GET','/v1/settings/raw'); if(!d.success) return;
@@ -530,9 +538,24 @@ export async function loadSettings(){
   applySettings(d.settings);
 }
 
-G('btn-sav-bl').onclick=async()=>{ const d=await speichereEinstellungen(tRaw('settings.api_key_title'),{bricklink_consumer_key:G('bl-ck').value,bricklink_consumer_secret:G('bl-cs').value,bricklink_token:G('bl-tok').value,bricklink_token_secret:G('bl-ts').value}); if(!d) return; if(d.success) await api('PUT','/v1/admin/api-limits',{bricklink:parseInt(G('lim-bl').value)}); toast(d.success?t('settings.bl_saved'):t('settings.error'),d.success?'success':'error'); if(d.success){loadRateLimitStats();} };
-G('btn-sav-rb').onclick=async()=>{ const d=await speichereEinstellungen(tRaw('settings.api_key_title'),{rebrickable_api_key:G('rb-key').value}); if(!d) return; if(d.success) await api('PUT','/v1/admin/api-limits',{rebrickable:parseInt(G('lim-rb').value)}); toast(d.success?t('settings.rb_saved'):t('settings.error'),d.success?'success':'error'); if(d.success){loadRateLimitStats();} };
-G('btn-sav-bs').onclick=async()=>{ const d=await speichereEinstellungen(tRaw('settings.api_key_title'),{brickset_api_key:G('bs-key').value}); if(!d) return; if(d.success) await api('PUT','/v1/admin/api-limits',{brickset:parseInt(G('lim-bs').value)}); toast(d.success?t('settings.bs_saved'):t('settings.error'),d.success?'success':'error'); if(d.success){loadRateLimitStats();} };
+/**
+ * Einen Zugang speichern. Alle Felder leer heisst „Zugang entfernt“, nicht „gespeichert“: Das klang, als sei
+ * ein Schlüssel hinterlegt.
+ * @param {Record<string, string>} werte @param {'bricklink'|'rebrickable'|'brickset'} dienst @param {string} grenze @param {string} okText
+ */
+async function speichereZugang(werte, dienst, grenze, okText) {
+  const d = await speichereEinstellungen(tRaw('settings.api_key_title'), werte);
+  if (!d) return;
+  if (!d.success) { toast(tRaw('settings.error'), 'error'); return; }
+  await api('PUT', '/v1/admin/api-limits', { [dienst]: parseInt(G(grenze).value) });
+  const leer = Object.values(werte).every(w => !String(w).trim());
+  toast(leer ? tRaw('settings.zugang_entfernt') : okText, leer ? 'info' : 'success');
+  loadRateLimitStats();
+}
+G('btn-sav-bl').onclick = () => speichereZugang({ bricklink_consumer_key: G('bl-ck').value, bricklink_consumer_secret: G('bl-cs').value,
+  bricklink_token: G('bl-tok').value, bricklink_token_secret: G('bl-ts').value }, 'bricklink', 'lim-bl', tRaw('settings.bl_saved'));
+G('btn-sav-rb').onclick = () => speichereZugang({ rebrickable_api_key: G('rb-key').value }, 'rebrickable', 'lim-rb', tRaw('settings.rb_saved'));
+G('btn-sav-bs').onclick = () => speichereZugang({ brickset_api_key: G('bs-key').value }, 'brickset', 'lim-bs', tRaw('settings.bs_saved'));
 G('btn-save-theme').onclick=async()=>{
   const theme=G('mon-app-theme')?.value||'classic';
   const d=await api('POST','/v1/settings/admin/theme',{theme});
@@ -608,7 +631,7 @@ async function importConfig() {
       set_settingsCache(null); // invalidate cache so next loadSettings fetches fresh
       if (ME?.isAdmin) { loadCacheTtl(); loadApiLimits(); }
     } else {
-      st.textContent = d.error || t('settings.error');
+      st.textContent = d.error || tRaw('settings.error');
       st.style.color = 'var(--r500)';
     }
   } catch(e) { st.textContent = tRaw('common.network_error'); }

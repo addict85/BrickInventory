@@ -2,11 +2,7 @@
  * Das Port-Feld der SMTP-Einstellungen bleibt in seiner Karte — gemessen in
  * Chrome mit den echten Stylesheets und dem echten Markup der Karte aus
  * index.html, bei 1440 und 390 px Breite.
- *
- * Vorher: grid-template-columns:1fr 120px, aber .fg hat min-width:145px; die
- * Port-Spalte wurde 145 px breit und ragte rechts über die Karte hinaus.
- *
- * Ohne Chrome (CHROME_BIN, google-chrome, chromium) wird übersprungen.
+ * Ausführlich: docs/begruendungen/test/einstellungen-browser.test.js.md#kopf
  *
  * Gegenprobe (am 28.10. gemessen): .host-port .fg{min-width:0} entfernt →
  * rot: „1440: Port ragt … hinaus“.

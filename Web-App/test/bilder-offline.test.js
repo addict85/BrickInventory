@@ -1,41 +1,6 @@
 /**
  * Die Bilder der Tabellen stehen auch ohne Netz.
- *
- * ── Marcos Anforderung ──────────────────────────────────────────────────────
- * „Die Android-App soll auch ohne Internet funktionieren. Ist es möglich, dass
- * die Bilder in den Tabellen gecached werden?"
- *
- * Die DATEN lagen schon offline bereit (ResponseCache in der App: sets, parts,
- * minifigs, stats, catalog-meta). Die Bilder nicht — und der Grund war EINE
- * Kopfzeile.
- *
- * ── Warum `no-cache` das verhinderte ────────────────────────────────────────
- *
- * `/images/*` lieferte `private, no-cache`. Das heisst nicht „nicht
- * zwischenspeichern", sondern „vor JEDER Verwendung rückfragen". Die App
- * behielt ihre Kopie also, durfte sie aber nicht benutzen, solange sie nicht
- * nachfragen konnte — und ohne Netz kann sie das nie.
- *
- * Ihr Offline-Rückfall (AppModule.kt: bei IOException dieselbe Anfrage noch
- * einmal mit FORCE_CACHE) konnte deshalb nichts ausrichten: Eine erzwungene
- * Cache-Anfrage darf eine `no-cache`-Antwort nicht ausliefern. In den Tabellen
- * stand der Platzhalter.
- *
- * ── Warum `max-age=0` beide Anforderungen erfüllt ───────────────────────────
- *
- * Die Kopfzeile stammt aus Nachtrag 37 und aus einer anderen Anforderung
- * desselben Nutzers: „wenn ein falsches Bild heruntergeladen wurde, soll
- * geprüft werden, ob ein neues auf dem Server vorhanden ist." Sie darf also
- * nicht einfach durch ein langes max-age ersetzt werden — davor stand eine
- * Woche ohne Rückfrage, und ein falsches Bild blieb sieben Tage stehen.
- *
- * `max-age=0` ist die Zeile, die beides kann: Die Antwort ist sofort veraltet,
- * also fragt der Client bei jeder Verwendung nach (online unverändert), aber
- * eine veraltete Kopie DARF ausgeliefert werden, wenn die Rückfrage nicht
- * möglich ist (offline genau das Gewünschte).
- *
- * Deshalb prüft diese Datei nicht „irgendein Cache-Control", sondern die drei
- * Eigenschaften, auf die es ankommt.
+ * Ausführlich: docs/begruendungen/test/bilder-offline.test.js.md#kopf
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -89,7 +54,7 @@ test('die Bilder der Tabellen duerfen offline aus dem Zwischenspeicher kommen', 
   assert.match(kopf, /max-age=0/,
     `Die /images-Route sendet "${kopf}" — ohne max-age=0 gilt wieder eine ` +
     `Frist ohne Rückfrage. Ein falsches oder ersetztes Bild bliebe dann stehen, ` +
-    `obwohl der Server längst ein neues hat (Nachtrag 37).`);
+    `obwohl der Server längst ein neues hat.`);
 
   // 4. Privat bleibt privat: Die Antwort haengt an einer Anmeldung.
   assert.match(kopf, /private/,

@@ -2,12 +2,8 @@
  * Kleinere Befunde der UI-Prüfung vom 02.11.2026, am echten Bündel in jsdom
  * (mit styles.css, wo es um Sichtbarkeit geht):
  *   - Gutschein-Zeile: „kein PDF“ steht sichtbar da, Löschen ist ein Knopf
- *     wie seine Nachbarn mit Namen; ohne Gutscheine keine Summe, kein
- *     „alle abfragen“, kein Export.
- *   - Das Rebrickable-Band steht nur in Sammlung und Katalog.
- *   - Die QR-Fläche ist leer verborgen.
- *   - Ein normales Konto sieht im Reiter Einstellungen „Kein Zugriff“.
- *   - Das Design hat einen Satz zur Wahl; Noppe und Hochglanz unterscheiden sich.
+ *     wie seine Nachbarn mit Namen; ohne Gutscheine keine Summe, kein …
+ * Ausführlich: docs/begruendungen/test/ui-runde6-oberflaeche.test.js.md#kopf
  *
  * Gegenproben (02.11.2026 gemessen, je einzeln):
  *   A  voucher-nopdf wieder nur „—“ mit .vh-Text → rot: „Gutscheine …“
@@ -104,7 +100,7 @@ test('Design: ein Satz zur Wahl, Noppe und Hochglanz verschieden', async () => {
   const texte = {};
   for (const design of ['noppe', 'hochglanz', 'werkbank']) {
     const o = await oeffneOberflaeche({ '/v1/settings/theme': { success: true, vorgabe: 'classic', eigenes: design, theme: design },
-      '/v1/auth/profile': { success: true, user: { username: 'anna', email: 'anna@example.org', email_verified: 1 } } });
+      '/v1/auth/profile': { success: true, user: { username: 'anna', email: 'anna@example.org', email_verified: true } } });
     try {
       await sicht(o.w, 'profil');
       await warte(() => o.d.getElementById('design-hinweis').textContent);

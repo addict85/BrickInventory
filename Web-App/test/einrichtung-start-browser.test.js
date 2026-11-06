@@ -41,7 +41,7 @@ test('Einrichtungsassistent nur über leerer Sammlung', { concurrency: 1, timeou
       error: 'Rebrickable ist nicht erreichbar. Bitte die Internetverbindung des Servers prüfen.', details: 'getaddrinfo ENOTFOUND rebrickable.com' } }],
   });
   if (app.grund) { t.skip(app.grund); return; }
-  const { b, bis, db, uid } = app;
+  const { b, bis, db, uid, ruhig } = app;
   const offen = `document.getElementById('einrichtung-modal').classList.contains('open')`;
 
   await t.test('leere Sammlung: Assistent, Text und Überschriften', async () => {
@@ -91,7 +91,7 @@ test('Einrichtungsassistent nur über leerer Sammlung', { concurrency: 1, timeou
     await haeltSet(db, uid, '10294-1', 1, { preis: 100 });
     await b.tab('Page.reload');
     await bis(`(() => { const g = document.getElementById('gallery'); return !!g && g.querySelectorAll('[data-click="openModal"], .card, .scard').length > 0; })()`, 'Sammlung mit Set', 300);
-    await warte(2500);
+    await ruhig();
     assert.equal(await b.auswerten(offen), false, 'Assistent über der gefüllten Sammlung');
     assert.equal(await b.auswerten(`document.getElementById('rb-hinweis').hidden`), false, 'Hinweisband fehlt');
   });

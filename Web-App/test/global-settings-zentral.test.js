@@ -1,14 +1,6 @@
 /**
  * `global_settings` wird über src/einstellungen/settings.ts angefasst.
- *
- * Der Wächter selbst steht in scripts/check-global-settings.js — dort mit der
- * Bestandsliste und der ausführlichen Begründung. Dieser Test ruft ihn im
- * normalen Lauf mit auf: Eine Prüfung, die man eigens starten muss, wird
- * vergessen.
- *
- * Dasselbe Verhältnis wie bei check-noimplicitany.js und `npm run
- * typecheck:strict` — nur dass diese Prüfung keinen Übersetzerlauf braucht und
- * deshalb im Testlauf nichts kostet.
+ * Ausführlich: docs/begruendungen/test/global-settings-zentral.test.js.md#kopf
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');

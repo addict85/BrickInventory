@@ -6,7 +6,7 @@ import { aktuellerStartZustand } from '../auftraege/startZustand';
 export async function gesundheitsBericht(verwalter: boolean) {
   const start = await aktuellerStartZustand();
   return {
-    status: start.ready ? 'ok' as const : 'starting' as const,
+    status: start.ready ? ('ok' as const) : ('starting' as const),
     ...(verwalter ? { startup: start, db_pool: db.getPoolStats(), uptime_seconds: Math.floor(process.uptime()) } : {}),
   };
 }

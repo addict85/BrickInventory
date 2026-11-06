@@ -3,10 +3,7 @@
  * auf den aktuellen Stand: Die früheren Startstufen laufen einmal nach, samt
  * ihrer Datenschritte, dann alle Migrationen. Das Ergebnis gleicht im Schema
  * einer frischen Installation, und die Daten des Kontos sind noch da.
- *
- * Ausgangslage ist test/fixtures/altbestand-0046.sql (aus den echten alten
- * Ständen erzeugt): 0046, ohne parts_version_user — dieselbe Lage, an der ein
- * Server mit „Migration 0047 … parts_version_user does not exist“ stand.
+ * Ausführlich: docs/begruendungen/test/altbestand-aufruesten-db.test.js.md#kopf
  *
  * Gegenproben (am 29.10.2026 gemessen):
  *   A  in initSchemaOnce() ruesteAltbestandAuf() nicht aufgerufen → rot:

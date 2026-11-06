@@ -1,24 +1,6 @@
 /**
  * Die Zustands-Staffelung Eingabe → Bestand → Standard, ausgeführt.
- *
- * ── Woher die Regel kommt ───────────────────────────────────────────────────
- * Nachträge 146 und 147. Der Kern steht als Kommentar in routes/parts.ts:
- * „Zustand der neuen Erfassung folgt dem Teil selbst (bzw. dem User-Default),
- * nicht hartkodiert 'N' — sonst bekäme ein als \"Gebraucht\" geführtes Teil bei
- * jeder Mengen-Erhöhung eine \"Neu\"-Erfassung."
- *
- * Die Staffelung stand VIERMAL im Baum, in zwei Fassungen: beim Bearbeiten mit
- * Eingabe, beim Erfassen ohne. Das ist nicht zweierlei Regel, sondern derselbe
- * Fall mit und ohne ersten Schritt. Dass es zwei getrennte Wege sind, hat schon
- * einmal Arbeit gekostet: 146 hat das Bearbeiten behoben, 147 musste das
- * Erfassen nachziehen.
- *
- * ── Warum gegen eine echte Datenbank ────────────────────────────────────────
- * Der letzte Schritt liest aus zwei Tabellen (user_settings, global_settings)
- * mit einer eigenen Vorrangregel. Ein Test mit erfundenen Werten prüfte davon
- * nichts. Und der interessanteste Fall ist gerade ein DB-Zustand: Die leere
- * Zeichenkette, die das Formular schreibt, darf den globalen Standard NICHT
- * verdrängen.
+ * Ausführlich: docs/begruendungen/test/zustand-fuer-preis-db.test.js.md#kopf
  *
  * ── Gegenproben (durchgeführt, siehe Kommentar im Commit) ───────────────────
  *   a) `if (bisher) return bisher;` → `if (bisher != null) return bisher;`
@@ -68,7 +50,7 @@ test('Zustand für den Marktpreis: Eingabe → Bestand → Standard', { concurre
     // ── Der Bestand schlägt den Standard ────────────────────────────────────
     assert.equal(await zustandFuerPreis(undefined, 'N', uid), 'N',
       'ein als "Neu" geführter Bestand darf nicht auf den Standard zurückfallen — ' +
-      'genau das war der Fehler aus Nachtrag 147, nur andersherum');
+      'genau das war der Fehler aus einer früheren Runde, nur andersherum');
 
     // ── Die Eingabe schlägt beides ──────────────────────────────────────────
     assert.equal(await zustandFuerPreis('N', 'U', uid), 'N', 'die Eingabe gewinnt');

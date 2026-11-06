@@ -1,48 +1,13 @@
 /**
  * Das Protokoll des Import-Balkens: EINE Fassung, und keine Zeile ohne Namen.
- *
- * ── Marcos zwei Befunde vom 21.10. ──────────────────────────────────────────
- *
- *   „Wenn ich in einem anderen Browsersession oben rechts auf den Fortschritt
- *    klicke wenn ein XML-Wanted-Listen Import läuft, steht unten x/y Sets
- *    anstelle 'Elementen'"
- *
- *   „Nach dem Import erscheint dann ganz viele Zeilen mit
- *    Undefined - aktualisiert"
- *
- * Beide haben dieselbe Wurzel: Der Balken war für den CSV-Import von SETS
- * gebaut, und seit dem 20.10. läuft der Wanted-Listen-Import darüber mit — der
- * legt Teile und Minifiguren an. Was für Sets stimmte, stimmte danach nicht
- * mehr.
- *
- *   Der TEXT sagte „Sets". Jetzt „Elemente" / „items", und der Schlüssel
- *   heisst `csv.items_progress` statt `csv.sets_progress`: Ein Name, der
- *   weiter „sets" sagt, ist die nächste falsche Fährte.
- *
- *   Die ZEILEN kamen aus `results`, und dort standen beim Wanted-Import nur
- *   Zähl-Platzhalter (`{ success: true }`), aus denen buildJobStatus
- *   ok/warn/err rechnet. Ich hatte sie dafür gebaut und übersehen, dass
- *   dieselbe Liste auch das Protokoll füllt. Daraus wurden bei Marco 322
- *   Zeilen „undefined – aktualisiert".
- *
- * ── Was hier geprüft wird, und was woanders ─────────────────────────────────
- *
- * Hier: der QUELLTEXT der beiden Oberflächen-Dateien — dass es den gemeinsamen
- * Zeilenbauer gibt, dass er auf einen Namen prüft, und dass niemand daneben
- * eine zweite Fassung aufmacht. Die Prüfung am Quelltext ist in diesem Baum
- * das übliche Mittel für public/js (siehe test/preisalarm-beide.test.js).
- *
- * Dass der SERVER echte Zeilen liefert, prüft Fall 9 in
- * test/wanted-liste-route-db.test.js — am laufenden Server, nicht am Text.
- * Beides zusammen deckt den Weg ab; jede Hälfte allein war schon einmal grün,
- * während die Anzeige unbrauchbar war.
+ * Ausführlich: docs/begruendungen/test/import-protokoll.test.js.md#kopf
  *
  * ── Gegenproben (am 21.10. GEMESSEN, Zahlen abgeschrieben) ──────────────────
  *
  * Ausgangslage `# pass 4 / # fail 0`.
  *
- *   A  `if (!r?.set_number) return null;` aus protokollZeile entfernt
- *      → `pass 3 / fail 1`. Rot: „keine Zeile ohne Namen".
+ *   A  (seit 05.11.2026 in csv-import-ergebnis-oberflaeche.test.js: Eine
+ *      Zeile ohne Setnummer und ohne Zeilennummer erscheint nicht.)
  *   B  in 02-gallery.js die drei alten Zeilen wieder eingesetzt
  *      → `pass 3 / fail 1`. Rot: „keine Protokollzeile wird an
  *        protokollZeile vorbei geschrieben".
@@ -79,16 +44,6 @@ test('nur EINE Fassung baut die Zeile fürs Import-Protokoll', () => {
     'protokollZeile() gehört genau einmal in den Baum. Zwei Fassungen heissen ' +
     'zwei Stellen, an denen die nächste Schranke fehlt — und genau das war ' +
     'der Fall, als dieselben drei Zeilen hier und in 02-gallery.js standen.');
-});
-
-test('keine Zeile ohne Namen', () => {
-  const js = ohneKommentare(lies(FORTSCHRITT));
-  const rumpf = js.slice(js.indexOf('function protokollZeile'));
-  assert.match(rumpf.slice(0, 400), /if\s*\(!r\?\.set_number\)\s*return null;/,
-    'protokollZeile() muss einen Eintrag ohne set_number verwerfen. Ohne das ' +
-    'schreibt das Protokoll „undefined – aktualisiert" — Marcos Befund vom ' +
-    '21.10., 322-mal. Die ZÄHLUNG darüber kommt aus s.ok/s.warn/s.err und ' +
-    'bleibt davon unberührt.');
 });
 
 test('keine Protokollzeile wird an protokollZeile vorbei geschrieben', () => {

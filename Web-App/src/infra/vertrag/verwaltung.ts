@@ -133,6 +133,7 @@ export const CsvImportStatus = z.looseObject({
   warn: z.number().int().nullable().optional(),
   err: z.number().int().nullable().optional(),
   error: z.string().nullable().optional(),
+  beendet_am: zeit.optional(),
 });
 
 export const JobSchedule = z.looseObject({
@@ -147,6 +148,8 @@ export const JobStatus = z.looseObject({
   progress: z.number().int(),
   total: z.number().int(),
   sub: z.string().nullable().optional(),
+  sub_teile: z.array(z.object({ code: z.string(), werte: z.record(z.string(), z.union([z.string(), z.number()])).optional(),
+    vor: z.literal('bestand').optional() })).optional(),
 });
 
 export const JobsResponse = z.looseObject({

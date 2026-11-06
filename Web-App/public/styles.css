@@ -220,7 +220,7 @@
                   max-width:min(14rem,28vw)}
     @media (hover:hover){.ubadge-knopf:hover{filter:brightness(.96)}}
     .ubadge-knopf.aktiv{box-shadow:inset 0 -3px 0 var(--b600)}
-    .ubadge-knopf:focus-visible{outline:3px solid var(--fokus,var(--b700));outline-offset:2px}
+    .ubadge-knopf:focus-visible{outline:3px solid var(--fokus-kopf,var(--fokus,var(--b700)));outline-offset:2px}
     /* Ein langer Benutzername kürzt sich, die Striche bleiben: Sie stehen in
        einem eigenen Feld, das nicht schrumpft. Lag das Überlaufen am Knopf,
        verschwanden sie als Erstes — der Knopf sähe dann aus wie die alte
@@ -263,6 +263,8 @@
     .import-eintrag{display:flex;align-items:center;gap:10px;min-height:44px;padding:8px 12px;border-radius:8px;color:var(--txt);text-decoration:none;font-size:var(--fs-3);font-weight:500}
     @media (hover:hover){.import-eintrag:hover{background:var(--bg)}}
     .import-eintrag .ico,.import-eintrag svg{width:1.125rem;height:1.125rem;flex:0 0 auto}
+    button.import-eintrag{background:none;border:0;width:100%;text-align:start;font-family:inherit;cursor:pointer}
+    .import-eintrag[hidden]{display:none}
 
     /* Umschalter der Sammlung: Sets | Teile | Minifiguren */
     .sammlung-wahl{display:inline-flex;flex-wrap:wrap;gap:2px;padding:3px;background:var(--s100);border:1px solid var(--bedienrand);border-radius:10px}
@@ -315,6 +317,11 @@
        als die Primärfläche, so bleibt der Ring auch neben einem blauen Knopf
        sichtbar; ein Design kann --fokus setzen. */
     :focus-visible{outline:3px solid var(--fokus,var(--b700));outline-offset:2px}
+    /* Kopf- und Reiterleiste sind in manchen Designs selbst in Markenfarbe gestrichen; der Ring braucht dort
+       eine eigene Farbe, sonst liegt er bei 1,2:1 auf der Leiste. */
+    header :focus-visible{outline-color:var(--fokus-kopf,var(--fokus,var(--b700)))}
+    nav .ntab:focus-visible{outline-color:var(--fokus-nav,var(--fokus,var(--b700)))}
+    nav .ntab.active:focus-visible{outline-color:var(--fokus-nav-aktiv,var(--fokus-nav,var(--fokus,var(--b700))))}
     input:focus-visible,select:focus-visible,textarea:focus-visible{outline:2px solid var(--fokus,var(--b700));outline-offset:0}
     /* Datei-Felder in einem Knopf-Label: unsichtbar, aber per Tab erreichbar;
        den Ring trägt das Label. */
@@ -390,7 +397,9 @@
     /* PROGRESS OVERLAY */
     #progress-overlay{position:fixed;inset:0;background:rgba(15,23,42,.6);z-index:500;display:none;align-items:center;justify-content:center;backdrop-filter:blur(3px)}
     #progress-overlay.open{display:flex}
-    .prog-box{background:var(--sur);border-radius:16px;padding:2rem;width:100%;max-width:500px;box-shadow:var(--sh2)}
+    /* min-width 0 und Umbruch im Protokoll: Bei grosser Schrift schob eine lange Zeile den Kasten über den Rand. */
+    .prog-box{box-sizing:border-box;background:var(--sur);border-radius:16px;padding:2rem;width:100%;max-width:min(500px,calc(100vw - 1rem));min-width:0;box-shadow:var(--sh2);max-height:calc(100dvh - 1rem);overflow-y:auto}
+    .prog-title{min-width:0;overflow-wrap:break-word;padding-right:2.75rem}
     .prog-title{font-size:var(--fs-4);font-weight:700;margin-bottom:1.25rem;display:flex;align-items:center;gap:8px}
     .prog-set-name{font-size:var(--fs-2);color:var(--mut);margin-bottom:.5rem;min-height:1.2em;font-weight:500}
     .prog-steps{display:flex;flex-direction:column;gap:8px;margin-bottom:1.25rem}
@@ -408,8 +417,8 @@
     /* Detail panel */
 
     .csv-log{max-height:260px;overflow-y:auto;background:var(--s50);border:1px solid var(--bdr);border-radius:8px;padding:8px;font-size:var(--fs-1);font-family:var(--mono);margin-top:.75rem}
-    .csv-log-line{padding:2px 0;border-bottom:1px solid var(--bdr)}
-    .csv-log-line.ok{color:var(--g700)}.csv-log-line.er{color:var(--r700)}
+    .csv-log-line{padding:2px 0;border-bottom:1px solid var(--bdr);overflow-wrap:anywhere}
+    .csv-log-line.ok{color:var(--g700)}.csv-log-line.er{color:var(--r700)}.csv-log-line.warn{color:var(--txt);border-left:3px solid var(--a500);padding-left:6px}
 
     /* GALLERY */
     .add2{display:grid;grid-template-columns:1fr 1fr;gap:1.25rem;margin-bottom:1.5rem}
@@ -496,7 +505,34 @@
     .acq-datum-text{font-size:var(--fs-1);color:var(--txt)}
     .acq-aktion{text-align:right;white-space:nowrap}
     .acq-ok{display:inline-flex;align-items:center;gap:4px;font-size:var(--fs-1);font-weight:600;color:var(--gewinn,var(--g700));margin-right:6px}
-    .acq-ok[hidden]{display:none}
+    .acq-ok[hidden]{display:inline-flex;visibility:hidden}
+    /* Knopf einer anklickbaren Tabellenzeile: sieht aus wie der Zellentext, bedient sich wie ein Knopf. */
+    .zeile-oeffnen{background:none;border:0;padding:0;margin:0;font:inherit;color:inherit;text-align:inherit;cursor:pointer;min-height:24px;display:inline-flex;align-items:center;max-width:100%;overflow-wrap:anywhere;hyphens:auto}
+    .toast-zu{background:none;border:0;color:inherit;cursor:pointer;min-width:24px;min-height:24px;display:inline-flex;align-items:center;justify-content:center;margin-left:4px;border-radius:6px;flex:0 0 auto}
+    .toast-zu .ico{width:1rem;height:1rem}
+    .alarm-waehrung{font-size:var(--fs-1);color:var(--mut);margin-left:4px;font-weight:600}
+    /* Platz für „aktiv“/„gemeldet“ reserviert: Sonst rückte die Zeile beim Speichern. */
+    .alarm-stand{font-size:var(--fs-1);color:var(--mut);display:inline-block;min-width:6.5em}
+    .zeichen-zaehler{display:block;font-size:var(--fs-1);color:var(--mut);margin-top:2px}
+    .zeichen-zaehler[hidden]{display:none}
+    .sort-knopf{background:none;border:0;padding:0;font:inherit;color:inherit;text-align:inherit;cursor:pointer;min-height:24px;min-width:24px;text-transform:inherit;letter-spacing:inherit}
+    th[aria-sort="ascending"] .sort-knopf::after{content:" ▲";font-size:.8em}
+    th[aria-sort="descending"] .sort-knopf::after{content:" ▼";font-size:.8em}
+    .fin-suche-zeile{display:flex;margin:0 0 .75rem}
+    .fin-suche-zeile .suchfeld{flex:1 1 16rem;max-width:28rem}
+    .fin-mehr{display:flex;justify-content:center;margin:1rem 0}
+    /* Eigene Regel statt Inline-Stil: 23 px hoch lag der Knopf unter der Mindestgrösse für Tippziele. */
+    .prog-minimieren{position:absolute;top:.75rem;right:.75rem;background:none;border:1px solid var(--bdr);cursor:pointer;color:var(--mut);padding:1px 9px 4px;border-radius:4px;line-height:1;font-size:var(--fs-4);font-weight:400;min-width:32px;min-height:28px}
+    .zf-qr{background:#fff;padding:8px;align-self:center;border-radius:8px;line-height:0}
+    .preis-mit-waehrung{display:flex;gap:6px;align-items:stretch;min-width:0;max-width:100%}
+    .preis-mit-waehrung input{flex:1 1 0;min-width:0;width:auto}
+    .preis-mit-waehrung select{flex:0 0 auto;width:5.75em;min-width:0}
+    .acq-preisfeld{display:inline-flex;align-items:center;gap:4px;white-space:nowrap}
+    .acq-waehrung{font-size:var(--fs-1);color:var(--mut);font-weight:600}
+    .acq-umgerechnet{display:block;font-size:var(--fs-1);color:var(--mut)}
+    .acq-umgerechnet:empty{display:none}
+    .kauf-geschaetzt{white-space:nowrap}
+    .acq-umgerechnet-inline{font-size:var(--fs-1);color:var(--mut)}
     .acq-loeschen{background:none;border:none;cursor:pointer;color:var(--r700);min-width:32px;min-height:32px;border-radius:6px;display:inline-flex;align-items:center;justify-content:center}
     @media (hover:hover){.acq-loeschen:hover{background:var(--r100)}}
 
@@ -1085,7 +1121,10 @@ input.suchfeld{width:220px}
 .bestaetigung-passwort{margin:0 0 1.25rem;text-align:left}
 .bestaetigung-passwort label{font-size:var(--fs-2)}
 .bestaetigung-passwort input{width:100%;margin-top:.35rem}
+#wanted-xml-modal :is(input,select){min-height:24px}
+#wanted-xml-modal .btn{hyphens:auto}
 .zoombar{cursor:zoom-in}
+.zoombar[aria-hidden="true"]{cursor:default}
 .ohne-unterstrich{text-decoration:none}
 .ladepunkt{height:1px}
 .hinweis-absatz{font-size:var(--fs-2);color:var(--mut);margin:0 0 .5rem 0}
@@ -1212,6 +1251,8 @@ body:not(:has(:is(#tab-gallery,#tab-parts,#tab-minifigs,#tab-catalog).active)) #
 .erfassen-raster .fg{min-width:0}
 .erfassen-raster .fg select,.erfassen-raster .fg input{width:100%}
 .erfassen-raster .zeile > select{flex:1 1 auto;min-width:0}
+.erfassen-raster .preis-mit-waehrung input{width:auto;flex:1 1 0}
+.erfassen-raster .preis-mit-waehrung select{width:5.75em;flex:0 0 auto}
 .erfassen-fuss{grid-column:1 / -1;display:flex;justify-content:flex-end}
 .feld-titel{font-size:var(--fs-1);font-weight:600;color:var(--s600)}
 
@@ -1259,10 +1300,10 @@ body:not(:has(:is(#tab-gallery,#tab-parts,#tab-minifigs,#tab-catalog).active)) #
 .max-74{max-width:74px}
 .max-130-rechts{max-width:130px;justify-content:flex-end}
 .relativ{position:relative}
-.pdf-rahmen{background:var(--sur);width:96vw;height:96vh;max-width:1200px;border-radius:12px;display:flex;flex-direction:column;overflow:hidden;box-shadow:var(--sh1)}
-.pdf-kopf{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:.55rem .9rem;border-bottom:1px solid var(--bdr)}
+.pdf-rahmen{box-sizing:border-box;min-width:0;background:var(--sur);width:96vw;height:96vh;max-width:min(1200px,100vw);border-radius:12px;display:flex;flex-direction:column;overflow:hidden;box-shadow:var(--sh1)}
+.pdf-kopf{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px;padding:.55rem .9rem;border-bottom:1px solid var(--bdr)}
 .pdf-titel{font-weight:600;font-size:var(--fs-3);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.pdf-werkzeuge{display:flex;gap:8px;align-items:center;flex-shrink:0}
+.pdf-werkzeuge{display:flex;flex-wrap:wrap;gap:8px;align-items:center;min-width:0;margin-left:auto}
 .pdf-zoom{display:flex;align-items:center;gap:4px;flex-shrink:0}
 .min-34rem{min-width:3.4rem}
 .pdf-flaeche{flex:1;position:relative;background:#525659;min-height:0}
@@ -1451,7 +1492,7 @@ input.alarm-feld[inputmode=decimal]{width:7.5em}
 .pl-bestand-zeile{display:flex;margin-top:.75rem;align-items:center;gap:.5rem;flex-wrap:wrap}
 .pl-wahl{display:inline-flex;align-items:center;gap:5px;font-size:var(--fs-2);color:var(--mut);flex-shrink:0}
 /* Leere Sammlung und leere Finanzen: keine Nullkarten, Filter und Zeiträume ohne Wirkung. */
-#tab-gallery.sammlung-leer :is(.filterleiste,.brick-stats){display:none}
+.tab.sammlung-leer :is(.filterleiste,.brick-stats){display:none}
 /* Leer: Der Hauptknopf steht im Leerzustand; oben bliebe er doppelt. */
 .tab.sammlung-leer .erfassen-leiste > .btn.bp{display:none}
 .import-mehr,.nur-telefon{display:none}

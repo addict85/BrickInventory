@@ -7,7 +7,8 @@ import { api } from './01-api.js';
 import { G, setzeHtml } from './01-dom.js';
 import { betragFuerFeld, leseBetrag } from './01-format.js';
 import { toast } from './01-meldungen.js';
-import { ME, allSets, curSet, set_curSet } from './00-zustand.js';
+import { feldFehler } from './01-formular.js';
+import { CURRENCY, ME, allSets, curSet, set_curSet } from './00-zustand.js';
 import { scopeQuery, LAGER_VIEWS, lagerModus, setLagerModus } from './14-scope.js';
 import { tRaw } from '../i18n.js';
 
@@ -54,25 +55,26 @@ const alarmId = (/** @type {string} */ teil) => `${_alarmFeld}-alert-${teil}`;
  * Eine zweite Maske dafür wäre die nächste Stelle, an der eine Regel nur an einem der beiden Wege nachgezogen
  * wird — das ist in diesem Baum schon mehrfach passiert.
  * @param {string} sn
+ * @param {string} [zustand] Zustand des Bestands: Ein gebrauchtes Set sucht meist gebraucht.
  */
-export function alarmBlock(sn, praefix = 'm') {
+export function alarmBlock(sn, praefix = 'm', zustand = 'N') {
   const p = praefix === 'mk-m' ? 'mk-m' : 'm';
   // Das Aussehen steht in styles.css unter .alarm-feld, nicht hier: Die feste Hoehe im style-Attribut hat den
   // gewaehlten Eintrag auf sechs Pixel zusammengeschnitten (im Browser gemessen, Begruendung dort).
   return html`
       <select id="${p}-alert-cond" class="alarm-feld" aria-label="${tRaw('detail.alert')}: ${tRaw('common.condition')}" data-change="wechsleAlarmZustand" data-arg="${sn}">
-        <option value="N">${tRaw('common.condition_new')}</option>
-        <option value="U">${tRaw('common.condition_used')}</option>
+        <option value="N"${zustand !== 'U' ? ' selected' : ''}>${tRaw('common.condition_new')}</option>
+        <option value="U"${zustand === 'U' ? ' selected' : ''}>${tRaw('common.condition_used')}</option>
       </select>
       <select id="${p}-alert-dir" class="alarm-feld" aria-label="${tRaw('detail.alert')}" data-change="speichereAlarm" data-arg="${sn}">
         <option value="unter">${tRaw('detail.alert_below')}</option>
         <option value="ueber">${tRaw('detail.alert_above')}</option>
       </select>
       <label class="alarm-preis" for="${p}-alert-val"><span class="alarm-preis-titel">${tRaw('detail.alert_preis_ph')}</span>
-      <input inputmode="decimal" type="text" autocomplete="off" id="${p}-alert-val" class="alarm-feld" aria-label="${tRaw('detail.alert_price')}"
+      <input inputmode="decimal" type="text" autocomplete="off" id="${p}-alert-val" class="alarm-feld" aria-label="${tRaw('detail.alert_price')} (${CURRENCY})"
              data-input="alarmGetippt" data-arg="${sn}"
-             data-change="speichereAlarm" /></label>
-      <span id="${p}-alert-state" data-stil="font-size:var(--fs-1);color:var(--mut)"></span>
+             data-change="speichereAlarm" /></label><span class="alarm-waehrung" aria-hidden="true">${CURRENCY}</span>
+      <span id="${p}-alert-state" class="alarm-stand"></span>
     `;
 }
 
@@ -202,7 +204,11 @@ export async function ladeAlarm(sn) {
   const d = await api('GET', `/v1/sets/${encodeURIComponent(sn)}/alert`).catch(() => null);
   const dir = G(alarmId('dir')), val = G(alarmId('val'));
   if (!dir || !val) return;
-  const a = (d?.alerts || []).find(x => x.condition === alarmZustand());
+  // Gibt es nur einen Alarm für den anderen Zustand, steht die Auswahl auf ihm: Sonst sähe es aus, als fehle er.
+  const alle = d?.alerts || [];
+  const wahl = G(alarmId('cond'));
+  if (wahl && alle.length && !alle.some(x => x.condition === alarmZustand())) wahl.value = alle[0]?.condition === 'U' ? 'U' : 'N';
+  const a = alle.find(x => x.condition === alarmZustand());
   dir.value = a?.richtung || 'unter';
   val.value = a ? betragFuerFeld(a.schwelle) : '';
   zeigeAlarmMerker(a);
@@ -286,7 +292,9 @@ export function speichereAlarm(sn) {
  */
 async function sendeAlarm(sn, richtung, roh) {
   const zahl = leseBetrag(roh);
-  const loeschen = !(zahl != null && zahl > 0);
+  // „abc“ oder „0“ ist kein Wunsch zu löschen, sondern ein Tippfehler: dieselbe Meldung wie auf #/alarme.
+  if (roh !== '' && !(zahl != null && zahl > 0)) { feldFehler(alarmId('val'), tRaw('alerts.new_preis_fehlt')); return; }
+  const loeschen = zahl == null;
   const cond = alarmZustand();
   const d = loeschen
     ? await api('DELETE', `/v1/sets/${encodeURIComponent(sn)}/alert?condition=${cond}`)
@@ -393,8 +401,10 @@ registerActions({
  * @param {import('../../frontend-typen/vertrag').Lagerort[]} orte
  */
 export function initStorageSelects(orte) {
+  // Lange Namen gekürzt: Ein Auswahlfeld ist so breit wie seine längste Option; der volle Name steht im title.
+  const kurz = (/** @type {string} */ s) => s.length > 32 ? s.slice(0, 30) + '…' : s;
   const opts = [html`<option value="">${tRaw('filter.storage_all')}</option>`,
-    ...orte.map(o => html`<option value="${o.ort}">${o.ort}</option>`)].join('');
+    ...orte.map(o => html`<option value="${o.ort}"${o.ort.length > 32 ? html` title="${o.ort}"` : ''}>${kurz(o.ort)}</option>`)].join('');
   for (const view of LAGER_VIEWS) {
     const el = G('storage-' + view);
     if (!el) continue;

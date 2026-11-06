@@ -4,7 +4,7 @@ Die ausführlichen Kommentare aus `public/js/02-gallery.js`, wörtlich. Im Code 
 Stelle der erste Absatz und ein Verweis hierher. Neue Geschichte gehört in die
 Commit-Nachricht (siehe CLAUDE.md).
 
-<a id="d"></a>
+<a id="kennzahlen-mit-demselben-kontofilter-wie"></a>
 ## `d`
 
 ```text
@@ -62,7 +62,7 @@ Hier wird ausschliesslich der Preis-Container angefasst; Bilder, Scrollposition
 und Fokus bleiben unberührt.
 ```
 
-<a id="z"></a>
+<a id="derselbe-zeilenbauer-wie-in-01"></a>
 ## `z`
 
 ```text

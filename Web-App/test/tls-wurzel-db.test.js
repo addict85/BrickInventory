@@ -2,10 +2,7 @@
  * Die Wurzel der internen CA: Fingerabdruck (Base64 SHA-256 SPKI), /ca.crt,
  * die Anzeige in den Einstellungen, `fp` im QR-Code nur zu einer https-Adresse
  * und das Sitzungscookie nur über TLS.
- *
- * Feste Testvektoren: test/fixtures/ca-wurzel-{1,2}.crt, Fingerabdrücke mit
- * openssl gerechnet (x509 -pubkey | pkey -pubin -outform der | dgst -sha256
- * -binary | base64), nicht mit dem Code unter Prüfung.
+ * Ausführlich: docs/begruendungen/test/tls-wurzel-db.test.js.md#kopf
  *
  * Gegenproben (am 30.10.2026 gemessen):
  *   A  in tlsStandAus() über das ganze Zertifikat (zert.raw) statt über SPKI
@@ -57,9 +54,12 @@ test('Fingerabdruck = Base64 SHA-256 des SPKI, 32 Byte', () => {
 });
 
 test('Cookie nur über TLS: in Produktion und hinter https, abschaltbar', () => {
-  assert.equal(cookieSicher(ladeKonfig({})), false);
-  assert.equal(cookieSicher(ladeKonfig({ APP_BASE_URL: 'https://lego.test' })), true);
-  assert.equal(cookieSicher(ladeKonfig({ APP_BASE_URL: 'http://192.168.1.5:3000' })), false);
+  // Ohne NODE_ENV gelten die Regeln des Betriebs; locker ist nur die Entwicklung.
+  const ent = { NODE_ENV: 'development' };
+  assert.equal(cookieSicher(ladeKonfig({})), true);
+  assert.equal(cookieSicher(ladeKonfig(ent)), false);
+  assert.equal(cookieSicher(ladeKonfig({ ...ent, APP_BASE_URL: 'https://lego.test' })), true);
+  assert.equal(cookieSicher(ladeKonfig({ ...ent, APP_BASE_URL: 'http://192.168.1.5:3000' })), false);
   assert.equal(cookieSicher(ladeKonfig({ NODE_ENV: 'production' })), true);
   assert.equal(cookieSicher(ladeKonfig({ APP_BASE_URL: 'https://lego.test', COOKIE_SECURE: '0' })), false);
 });

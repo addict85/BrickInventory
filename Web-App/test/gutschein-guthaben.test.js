@@ -1,13 +1,6 @@
 /**
  * Die Guthaben-Abfrage — ohne eine einzige Verbindung nach draussen.
- *
- * ── Warum das wichtig ist ───────────────────────────────────────────────────
- *
- * Diese Datei prueft einen Weg, auf dem eine KARTENNUMMER UND EINE PIN zu
- * lego.com gehen. Ein Test, der dabei wirklich hinausruft, wuerde Marcos
- * echte Karte abfragen oder eine erfundene — beides nicht. Deshalb bekommt
- * `holeGuthaben` seinen Abruf INJIZIERT (`opt.abruf`), und jeder Test hier
- * zaehlt mit, welche Adressen angefragt wurden. Nichts geht hinaus.
+ * Ausführlich: docs/begruendungen/test/gutschein-guthaben.test.js.md#kopf
  *
  * ── Gegenproben (durchgefuehrt, Befunde GEMESSEN) ───────────────────────────
  *
@@ -166,16 +159,8 @@ test('Guthaben-Abfrage', async (t) => {
   });
 
   await t.test('5b. nach Bot-Schutz beginnt der nächste Versuch mit frischer Sitzung', async () => {
-    // ── Woher dieser Fall kommt ───────────────────────────────────────────
-    //
-    // Marcos Frage: „schlägt cloudflare an, wenn ich 1nen Request pro 30sek
-    // für die Guthaben sende oder wird dies noch nicht als Bot eingestuft?"
-    // Beim Beantworten fiel diese Lücke auf: Der Sitzungsvorrat hält eine
-    // Sitzung, solange ihr Token lebt (~24 h). Die Cookies darin altern
-    // schneller — Cloudflares `__cf_bm` lebt etwa 30 Minuten. Ohne das
-    // Verwerfen nähme der Versuch NACH der Pause wieder dieselben alten
-    // Cookies, bekäme wieder 403 und pausierte wieder: eine Schleife, die nie
-    // eine frische Seite lädt.
+    // Woher dieser Fall kommt
+    // Ausführlich: docs/begruendungen/test/gutschein-guthaben.test.js.md#stelle
     G.vergesseSitzungen();
 
     // 1. Eine Sitzung aufbauen und benutzen.
@@ -245,18 +230,8 @@ test('Guthaben-Abfrage', async (t) => {
   });
 
   await t.test('8. das Land kann die Adresse nicht umlenken', async () => {
-    // ── Was ich hier erwartet hatte, und was gemessen herauskam ────────────
-    //
-    // Erwartet: Ein praeparierter Wert wie `../../boese.example.com/x` als
-    // Land laesst `holeGuthaben` an der Hostpruefung scheitern.
-    // GEMESSEN: Er scheitert NICHT — und das ist die bessere Nachricht. Das
-    // Land wird in den PFAD eingesetzt (`https://www.lego.com/<land>/…`), und
-    // `new URL()` normalisiert `..` innerhalb des Pfades. Der Host bleibt
-    // www.lego.com, egal was im Land steht; eine Umlenkung auf einen fremden
-    // Host ist ueber diesen Weg gar nicht moeglich.
-    //
-    // Die Zusicherung sagt deshalb jetzt das, was wirklich gilt — und nicht
-    // mehr das, was ich angenommen hatte.
+    // Was ich hier erwartet hatte, und was gemessen herauskam
+    // Ausführlich: docs/begruendungen/test/gutschein-guthaben.test.js.md#stelle-2
     G.vergesseSitzungen();
     const { abruf, protokoll } = doppel();
     await G.holeGuthaben(NUMMER, PIN, { locale: '../../boese.example.com/x', abruf })

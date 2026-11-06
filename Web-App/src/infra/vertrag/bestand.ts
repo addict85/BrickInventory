@@ -15,12 +15,17 @@ export const Acquisition = z.looseObject({
   owner_user_id: z.number().int().nullable().optional(),
   price_estimated: z.boolean(),
   currency: z.string().nullable().optional(),
+  /** Der Preis in der Währung des Kontos (Kurs des Kauftags); null ohne Preis oder ohne Kurs. */
+  preis_konto: z.number().nullable().optional(),
 });
 
 export const AcquisitionTotals = z.looseObject({
   quantity: z.number().int(),
+  /** Summe in `currency`; fremde Währungen umgerechnet, ohne Kurs nicht eingerechnet. Ohne Preis fehlt sie. */
   amount: z.number().optional(),
   priced_rows: z.number().int(),
+  currency: z.string().optional(),
+  ohne_kurs: z.number().int().optional(),
 });
 
 export const AcquisitionsResponse = z.looseObject({

@@ -63,7 +63,7 @@ test('weggeklickt bleibt es weg — auch in einer neuen Sitzung', async () => {
   } finally { erst.w.close(); }
   const zweit = await oeffneOberflaeche(OHNE_SCHLUESSEL, { vorher: (w) => w.localStorage.setItem('bim_rb_hinweis_weg', gemerkt) });
   try {
-    await takt(800);
+    assert.ok(await zweit.ruhig());
     assert.equal(zweit.d.getElementById('rb-hinweis').hidden, true);
   } finally { zweit.w.close(); }
 });
@@ -78,11 +78,11 @@ test('nach 30 Tagen kommt es wieder', async () => {
 });
 
 test('nach „Später“ im Assistenten erscheint das Band', async () => {
-  const { w, d } = await oeffneOberflaeche({ ...OHNE_SCHLUESSEL,
+  const { w, d, ruhig } = await oeffneOberflaeche({ ...OHNE_SCHLUESSEL,
     '/v1/settings/einrichtung': { success: true, offen: true, passwort_aendern: false, quellen: { rebrickable: false } } });
   try {
     await warte(() => d.getElementById('einrichtung-modal').classList.contains('open'));
-    await takt(700);
+    assert.ok(await ruhig());
     assert.equal(d.getElementById('rb-hinweis').hidden, true, 'Band über dem Assistenten');
     d.querySelector('#einrichtung-modal [data-click="einrichtungSpaeter"]').click();
     await takt(20);
@@ -91,9 +91,9 @@ test('nach „Später“ im Assistenten erscheint das Band', async () => {
 });
 
 test('mit Schlüssel kein Band', async () => {
-  const { w, d } = await oeffneOberflaeche();
+  const { w, d, ruhig } = await oeffneOberflaeche();
   try {
-    await takt(800);
+    assert.ok(await ruhig());
     assert.equal(d.getElementById('rb-hinweis').hidden, true);
   } finally { w.close(); }
 });

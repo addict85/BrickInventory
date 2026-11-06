@@ -36,9 +36,8 @@ const { haeltSet } = require('./helpers/bestand');
 const bcrypt = require(path.join(ROOT, 'node_modules', 'bcryptjs'));
 
 const NAME = `stile_${process.pid}`, PASS = 'stile-Passwort-1';
-const warte = (ms) => new Promise(r => setTimeout(r, ms));
 
-const { chrome } = require('./helpers/app-browser');
+const { chrome, warte } = require('./helpers/app-browser');
 
 const freierPort = () => new Promise(r => { const s = net.createServer().listen(0, () => { const p = s.address().port; s.close(() => r(p)); }); });
 
@@ -181,7 +180,8 @@ test('Stile unter style-src ohne unsafe-inline', { concurrency: 1, timeout: 180_
       document.addEventListener('securitypolicyviolation', e => gesehen.add(e.effectiveDirective));
       const basis = document.createElement('base'); basis.href = 'https://fremd.invalid/';
       document.head.appendChild(basis);
-      const obj = document.createElement('object'); obj.data = '/favicon.svg';
+      // Trusted Types lassen als Skript-Adresse nur eigene Pfade zu; object-src 'none' sperrt auch sie.
+      const obj = document.createElement('object'); obj.data = '/locales/de.js';
       document.body.appendChild(obj);
       const f = document.createElement('form'); f.action = 'https://fremd.invalid/'; f.method = 'post';
       document.body.appendChild(f); f.submit();

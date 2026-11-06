@@ -1,7 +1,7 @@
 // Der Reiter Teile: Teile aus Sets (seitenweise) und die manuell erfassten Teile samt Erfassen, Farbwahl und
 // CSV-Import — beide Listen teilen Filter und Leerzustand.
 import { abonniere } from './00-ereignisse.js';
-import { ladeAnzeige, skelettKacheln, listeLadefehler, teileAufschluesselung, condBadges, ownerBadges, schliesseErfassen, csvHochladen } from './01-bausteine.js';
+import { ladeAnzeige, skelettKacheln, listeLadefehler, teileAufschluesselung, condBadges, ownerBadges, schliesseErfassen, csvHochladen, zeilenKnopf } from './01-bausteine.js';
 import { registerActions, echt } from './00-registry.js';
 import { colorName, locale, t, tRaw } from '../i18n.js';
 import { escHex, esc, hexZiffern, html, ungeprueft } from './00-escapen.js';
@@ -83,8 +83,8 @@ export function zeichneTeileFilter(){
     if (p.category_name != null && p.category_name !== '' && !kategorien.has(String(p.category_name)))
       kategorien.set(String(p.category_name), catLabel(p.category_name));
   }
-  fuelleFilter('parts-color', t('parts.filter.all_colors'), farben, activeColor);
-  fuelleFilter('parts-cat', t('parts.filter.all_categories'), kategorien, activeCat);
+  fuelleFilter('parts-color', tRaw('parts.filter.all_colors'), farben, activeColor);
+  fuelleFilter('parts-cat', tRaw('parts.filter.all_categories'), kategorien, activeCat);
 }
 
 /**
@@ -205,7 +205,7 @@ async function loadPartsData(){
   _setTeileLeer = null;
 
   const main = G('parts-main');
-  setzeHtml(main, skelettKacheln(12, t('parts.loading'), 'teil'));
+  setzeHtml(main, skelettKacheln(12, tRaw('parts.loading'), 'teil'));
   await loadPartsPage(true);
 }
 
@@ -240,6 +240,9 @@ async function loadPartsPage(isFirst){
   }
 
   if (isFirst) { _setTeileLeer = false; teileLeerAbgleichen(); preparePartsShell(); }
+  // Wie in der Sammlung: Eine Suche sagt Vorlesern, wie viele Einträge sie fand.
+  if (isFirst && (activeColor || activeCat || G('parts-search')?.value.trim() || G('parts-spare')?.value))
+    meldeTreffer(tRaw('treffer.eintraege', { n: _partsTotal || parts.length }));
   appendParts(parts);
 
   _partsShown += parts.length;
@@ -257,7 +260,7 @@ async function loadPartsPage(isFirst){
 function preparePartsShell(){
   const main = G('parts-main');
   if (G('parts-view').value === 'table'){
-    setzeHtml(main, html`${html`<div class="tw"><table class="dt"><thead><tr>`}${html`<th>${tRaw('col.image_th')}</th><th>${tRaw('col.part_nr')}</th><th>${tRaw('col.name')}</th>`}${html`<th>${tRaw('col.color')}</th><th>${tRaw('col.category')}</th><th>${tRaw('detail.qty')}</th>`}${html`<th>${tRaw('col.sets')}</th>`}${html`</tr></thead><tbody class="parts-body"></tbody></table></div>`}`);
+    setzeHtml(main, html`${html`<div class="tw"><table class="dt" aria-label="${tRaw('nav.parts')}"><thead><tr>`}${html`<th>${tRaw('col.image_th')}</th><th>${tRaw('col.part_nr')}</th><th>${tRaw('col.name')}</th>`}${html`<th>${tRaw('col.color')}</th><th>${tRaw('col.category')}</th><th>${tRaw('detail.qty')}</th>`}${html`<th>${tRaw('col.sets')}</th>`}${html`</tr></thead><tbody class="parts-body"></tbody></table></div>`}`);
   } else {
     setzeHtml(main, html`<div class="parts-list"></div>`);
   }
@@ -382,9 +385,11 @@ function partsCard(p){
 function partsTableRow(p){
   // Dieselbe Handlung wie auf der Kachel — eine Ansicht darf nicht koennen, was die andere nicht kann. Genau
   // daran ist in diesem Projekt schon mehrfach etwas auseinandergelaufen.
-  return html`<tr data-stil="cursor:pointer" tabindex="0" data-click="openSetItemDetail" data-arg="part" data-arg2="${p.part_number}" data-arg3="${p.color_id || 0}">
+  return html`<tr data-stil="cursor:pointer" data-click="openSetItemDetail" data-arg="part" data-arg2="${p.part_number}" data-arg3="${p.color_id || 0}">
     <td>${(p.image_local||p.image_url) ? bildTag({ src: imgUrl(thumbUrl(p.image_local||p.image_url)||p.image_local||p.image_url, true), alt: '', klasse: 'bild-klein', ph: 'teil' }) : html`<span class="bild-ph bild-klein" aria-hidden="true">${platzhalterInhalt('teil')}</span>`}</td>
-    <td><span data-stil="font-family:var(--mono);font-size:var(--fs-1);color:var(--b600)" title="${p.part_number}">${p.bl_part_number||p.part_number}</span></td>
+    <td>${zeilenKnopf({ click: 'openSetItemDetail', arg: 'part', arg2: p.part_number, arg3: p.color_id || 0 },
+      html`<span data-stil="font-family:var(--mono);font-size:var(--fs-1);color:var(--b600)" title="${p.part_number}">${p.bl_part_number||p.part_number}</span>`,
+      tRaw('zeile.oeffnen', { name: p.part_name || p.part_number, nr: p.bl_part_number || p.part_number }))}</td>
     <td data-stil="max-width:200px">${p.part_name || '—'} ${ersatzteilPlakette(p)}</td>
     <td><div data-stil="display:flex;align-items:center;gap:5px"><div class="color-dot" data-farbe="${escHex(p.color_hex, 'var(--s300)')}"></div>${colorName(p.color_name)}</div></td>
     <td>${catLabel(p.category_name)}</td>
@@ -554,7 +559,7 @@ export async function updateManualPart(partNumber, colorId, body, owner) {
  *   „success". Begründung und Messung in src/haushalt/haushalt.ts.
  */
 export async function deleteManualPart(partNumber, colorId, owner) {
-  if (!await confirmDelete(tRaw('parts.delete.title'), t('gallery.delete.text',{name:partNumber}), 'teil')) return false;
+  if (!await confirmDelete(tRaw('parts.delete.title'), tRaw('gallery.delete.text',{name:partNumber}), 'teil')) return false;
   const d = await api('DELETE', `/v1/parts/${encodeURIComponent(partNumber)}/${colorId}${owner ? `?owner=${encodeURIComponent(owner)}` : ''}`);
   if (d.success) { geloeschtMitRueckgaengig(tRaw('parts.deleted'), d); loadManualParts(); return true; }
   else { toast(d.error || t('settings.error'), 'error'); return false; }
@@ -610,6 +615,7 @@ G('btn-add-part')?.addEventListener('click', async () => {
     quantity: parseInt(G('ap-qty-inline')?.value)||1,
     unit_price: preis.wert,
     condition: G('ap-condition')?.value || 'N',
+    acquired_at: G('ap-date')?.value || null,
     owner_user_id: selectedOwner('ap-owner'),
     storage: selectedStorage('ap-storage'),
   });
@@ -620,19 +626,19 @@ G('btn-add-part')?.addEventListener('click', async () => {
     res.textContent=`${d.part_number} ${d.action==='added'?t('common.added'):t('common.updated')}`
       + (hinweisT ? ` — ${hinweisT}` : '');
     schliesseErfassen('part'); toast(res.textContent.replace(/^\u2705\s*/, ''), 'success');
-    G('ap-num-inline').value=''; G('ap-qty-inline').value='1'; G('ap-price-inline').value='';
+    G('ap-num-inline').value=''; G('ap-qty-inline').value='1'; G('ap-price-inline').value=''; G('ap-date').value='';
     leereLagerortFeld('ap-storage');
     if(colorSel) colorSel.selectedIndex=0;
     loadManualParts();
     // Siehe die Figuren-Erfassung darueber: ein Satz braucht laenger als ein Haekchen.
     setTimeout(()=>{ res.textContent=''; }, hinweisT ? 9000 : 3000);
-  } else { res.style.color='var(--r500)'; res.textContent=d.error||t('settings.error'); }
+  } else { res.style.color='var(--r500)'; res.textContent=d.error||tRaw('settings.error'); }
 });
 
 // CSV import
 async function importPartsCsv() {
   const d = await csvHochladen({ feld: 'part-csv-file', pfad: '/v1/parts/import/csv',
-    zeige: (l) => csvImportStatus('part-csv-status', l ? 'running' : 'hide', t('import.running')) });
+    zeige: (l) => csvImportStatus('part-csv-status', l ? 'running' : 'hide', tRaw('import.running')) });
   if (d) loadManualParts();
 }
 

@@ -1,24 +1,6 @@
 /**
  * Was „fehlend" heisst — und wie man es zurücknimmt.
- *
- * ── Marcos Log (Nachtrag 123) ───────────────────────────────────────────────
- *     [image-queue] 2 bearbeitet: 0 geladen, 0 Vorschau erzeugt,
- *                   0 bereits vorhanden, 2 als fehlend bekannt
- *
- * Der Zähler aus Nachtrag 122 nannte endlich den Ausgang. Offen blieb, wie die
- * beiden Bilder in `image_misses` gekommen waren — und das ist die Frage, die
- * zählt.
- *
- * Der Job merkte sich JEDEN Fehlschlag ausser 403/429 als „dieses Bild gibt es
- * nicht": Zeitüberschreitung, DNS-Aussetzer, abgebrochene Verbindung, „Antwort
- * zu klein", zu viele Weiterleitungen, zu grosses Bild — und über den
- * umgebenden catch sogar einen Schreibfehler auf der eigenen Platte. Alles
- * davon sperrte das Bild sieben Tage aus.
- *
- * Der Bild-Proxy macht es seit jeher richtig und begründet es im Code: dort
- * wird NUR bei 404 gemerkt. Zwei Bauteile, dieselbe Tabelle, zwei Auslegungen.
- *
- * Voraussetzung: Test-DB via TEST_DATABASE_URL.
+ * Ausführlich: docs/begruendungen/test/image-misses-reason-db.test.js.md#kopf
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -34,7 +16,7 @@ let versuche = 0;
 const echtesRequire = Module.prototype.require;
 Module.prototype.require = function (name) {
   const m = echtesRequire.apply(this, arguments);
-  // Seit Nachtrag 125 liegt downloadSetImage in src/katalog/bilder/setImages.ts statt im
+  // Seit einer früheren Runde liegt downloadSetImage in src/katalog/bilder/setImages.ts statt im
   // Router — der Abfang muss dorthin zeigen, sonst greift er ins Leere und
   // der Test misst still den echten Download.
   if (typeof name === 'string' && /setImages(\.js)?$/.test(name) && m && m.downloadSetImage) {
@@ -93,19 +75,8 @@ test('nur ein 404 heisst „das Bild gibt es nicht"', { concurrency: 1 }, async 
   });
 
   await t.test('ein Stapel aus lauter 404ern meldet sich als warn, nicht als error', async () => {
-    // ── Marcos Protokoll ───────────────────────────────────────────────────
-    //
-    //     [image-queue] 265-2: Vorschau fehlgeschlagen · 5010729-1: Download
-    //                   fehlgeschlagen (HTTP 404)
-    //
-    // Ein 404 heisst „dieses Set hat beim CDN kein Bild" — bei alten Sets der
-    // Normalfall. Er wird vermerkt und NICHT wiederholt; es gibt nichts zu
-    // tun. Als `error` gemeldet macht er das Protokoll unlesbar und damit die
-    // echten Fehler daneben unsichtbar.
-    //
-    // Geprueft wird die STUFE, nicht der Wortlaut: Was dort steht, ist
-    // anderswo schon zugesichert (die Setnummer muss drinstehen) — hier geht
-    // es darum, auf welchem Kanal es landet.
+    // Marcos Protokoll
+    // Ausführlich: docs/begruendungen/test/image-misses-reason-db.test.js.md#sn-stelle
     const sn = `${P}_leise`;
     await db.run(`DELETE FROM image_misses WHERE cache_key = $1`, ['set:' + sn]);
     IM._leereVordergrund();

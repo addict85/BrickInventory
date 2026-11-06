@@ -43,7 +43,7 @@ test('Upload trägt die Sprache und geht als FormData ohne JSON-Kopf', async () 
 
 test('401 beim Upload beendet die Sitzung wie bei jedem anderen Aufruf', async () => {
   const { w, d } = await oeffneOberflaeche({
-    '/v1/alerts/import/csv': { $status: 401, success: false, error: 'Nicht angemeldet' },
+    '/v1/alerts/import/csv': { $status: 401, success: false, error: 'Nicht angemeldet', code: 'nicht_angemeldet' },
   });
   try {
     assert.equal(d.getElementById('login-screen').style.display, 'none', 'Vorbedingung: angemeldet');

@@ -2,9 +2,8 @@
  * Dialoge bei 200 % Browser-Schrift (Page.setFontSizes 32 px) auf 320 und
  * 390 px: Das Benutzermenü bleibt im Bildschirm, die Knöpfe des Bestätigens
  * überlappen nicht, Felder im Erfassen- und Kaufpreis-Dialog sind hoch genug
- * für ihre Schrift und ragen nicht hinaus. Dazu der Weg einer Geldeingabe bis
- * in die Datenbank: „149,95“ im Kaufpreis-Dialog wird 149.95 gespeichert.
- * Zuletzt die Anmeldemaske: Was der Server nicht kann, steht nicht da.
+ * für ihre Schrift und ragen nicht hinaus. Dazu der Weg einer Geldeingabe bis …
+ * Ausführlich: docs/begruendungen/test/dialoge-grosse-schrift-browser.test.js.md#kopf
  *
  * Gegenproben (02.11.2026 gemessen, je einzeln):
  *   A  .umenu-pop wieder min-width:14rem ohne max-width → rot: „Benutzermenü“
@@ -67,9 +66,9 @@ const MESSEN = (wurzelSel) => `(() => {
 test('Dialoge bei 200 % Schrift auf 320 und 390 px', { timeout: 240_000 }, async (t) => {
   const app = await starteApp(t, { name: `dlg_${process.pid}`, bestand: musterSammlung, telefon: true });
   if (app.grund) { t.skip(app.grund); return; }
-  const { b, bis } = app;
-  await warte(800);
-  await b.auswerten(`document.querySelector('#einrichtung-modal.open [data-click="einrichtungSpaeter"]')?.click(); true`);
+  const { b, bis, ruhig } = app;
+  // Der Start lädt Einstellungen und Preise nach; erst danach ist der Zustand fest.
+  await ruhig();
   const zu = () => b.auswerten(`document.querySelectorAll('.ovl.open').forEach(o => o.classList.remove('open'));
     document.getElementById('confirm-modal').style.display = 'none';
     if (document.getElementById('btn-umenu').getAttribute('aria-expanded') === 'true') document.getElementById('btn-umenu').click(); true`);
@@ -77,7 +76,7 @@ test('Dialoge bei 200 % Schrift auf 320 und 390 px', { timeout: 240_000 }, async
   for (const breite of [320, 390]) {
     await b.tab('Emulation.setDeviceMetricsOverride', { width: breite, height: 700, deviceScaleFactor: 1, mobile: true });
     await b.tab('Page.setFontSizes', { fontSizes: { standard: 32, fixed: 26 } });
-    await warte(300);
+    await ruhig();
     await b.auswerten(`document.querySelector('.ntab[data-tab="gallery"]').click(); true`);
     await bis(`document.querySelectorAll('#gallery .sc').length >= 4`, 'Kacheln');
 
@@ -86,7 +85,7 @@ test('Dialoge bei 200 % Schrift auf 320 und 390 px', { timeout: 240_000 }, async
       // ein Stück; hyphens: manual (CSSOM, die CSP sperrt <style>) stellt diesen schlechtesten Fall überall her.
       await b.auswerten(`document.querySelectorAll('.umenu-item').forEach(e => e.style.setProperty('hyphens', 'manual', 'important')); true`);
       await b.auswerten(`document.getElementById('btn-umenu').click(); true`);
-      await warte(200);
+      await ruhig();
       assert.deepEqual(await b.auswerten(MESSEN('#umenu-pop')), []);
       await zu();
     });
@@ -94,16 +93,16 @@ test('Dialoge bei 200 % Schrift auf 320 und 390 px', { timeout: 240_000 }, async
     await t.test(`${breite} px: Bestätigen`, async () => {
       await b.auswerten(`document.querySelector('#gallery .delbtn').click(); true`);
       await bis(`getComputedStyle(document.getElementById('confirm-modal')).display !== 'none'`, 'Bestätigungsdialog');
-      await warte(200);
+      await ruhig();
       assert.deepEqual(await b.auswerten(MESSEN('#confirm-modal .modal')), []);
       await b.auswerten(`document.getElementById('cd-cancel').click(); true`);
-      await warte(200);
+      await ruhig();
       await zu();
     });
 
     await t.test(`${breite} px: Set erfassen`, async () => {
       await b.auswerten(`document.querySelector('[data-click="oeffneErfassen"][data-arg="set"]').click(); true`);
-      await warte(300);
+      await ruhig();
       assert.deepEqual(await b.auswerten(MESSEN('#add-set-modal .modal')), []);
       await zu();
     });

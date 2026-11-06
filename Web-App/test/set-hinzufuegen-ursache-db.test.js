@@ -60,20 +60,21 @@ async function versuche(antworten, nr) {
 test('Oberfläche: Set schon in der Sammlung', async () => {
   const set = { set_number: '10294-1', name: 'Titanic', quantity: 2, conditions: ['N'], instructions: [] };
   const { w, d, aufrufe, hinweis, knopf } = await versuche({ '/v1/sets/10294-1': { success: true, set },
-    '/v1/catalog/sets/10294-1': { $status: 404, success: false, code: 'katalog_nicht_geladen' } }, '10294');
+    '/v1/catalog/sets/10294-1': { $status: 404, success: false, code: 'katalog_nicht_geladen', error: 'Katalog nicht geladen' } }, '10294');
   try {
     assert.match(hinweis, /Titanic \(10294-1\) ist schon in deiner Sammlung \(×2\)/);
     assert.equal(knopf, 'Set öffnen');
     assert.equal(aufrufe.some(a => a.url.includes('add-stream')), false, 'trotzdem angelegt');
-    d.querySelector('#add-unbekannt [data-click="erfassenZumSet"]').click();
+    // Ein Knopf „Set öffnen“ (UI-Prüfung 17, N2): der Hauptknopf.
+    d.getElementById('btn-add').click();
     assert.ok(await warte(() => d.getElementById('set-modal').classList.contains('open')), 'das Set öffnet sich');
     assert.equal(d.getElementById('add-set-modal').classList.contains('open'), false, 'der Erfassen-Dialog bleibt offen');
   } finally { w.close(); }
 });
 
 test('Oberfläche: Katalog nicht geladen', async () => {
-  const { w, hinweis, knopf } = await versuche({ '/v1/sets/99999-1': { $status: 404, success: false, code: 'set_nicht_gefunden' },
-    '/v1/catalog/sets/99999-1': { $status: 404, success: false, code: 'katalog_nicht_geladen' } }, '99999');
+  const { w, hinweis, knopf } = await versuche({ '/v1/sets/99999-1': { $status: 404, success: false, code: 'set_nicht_gefunden', error: 'Set nicht gefunden' },
+    '/v1/catalog/sets/99999-1': { $status: 404, success: false, code: 'katalog_nicht_geladen', error: 'Katalog nicht geladen' } }, '99999');
   try {
     assert.match(hinweis, /Set-Katalog ist noch nicht geladen/);
     assert.doesNotMatch(hinweis, /Nummer prüfen/);

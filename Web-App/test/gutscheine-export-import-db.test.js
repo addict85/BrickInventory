@@ -1,13 +1,6 @@
 /**
  * Gutschein-Export und -Import über ihre echten Adressen.
- *
- * ── Warum es diese Datei NEBEN gutschein-pdf-schreiben.test.js gibt ─────────
- *
- * Die dort prüft das Modul: ersetzen, verbinden, zurücklesen. Hier läuft der
- * WEG — GET /api/v1/vouchers/export/pdf und POST /api/v1/vouchers/pdf,
- * mit echter Datenbank und echten Dateien auf der Platte. Genau diese
- * Trennung ist in dieser Sitzung zweimal teuer geworden: Ein Modul kann
- * stimmen, während die Route es falsch oder gar nicht ruft.
+ * Ausführlich: docs/begruendungen/test/gutscheine-export-import-db.test.js.md#kopf
  *
  * ── Gegenproben (durchgeführt, Befunde GEMESSEN — siehe Commit) ─────────────
  *
@@ -22,17 +15,8 @@ const path   = require('node:path');
 const PDFKit = require('pdfkit');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
-// ── APP_ROOT, nicht DATA_DIR ──────────────────────────────────────────────
-//
-// src/infra/appPaths kennt KEINE Umgebungsvariable DATA_DIR; es leitet
-// DATA_DIR = <APP_ROOT>/data ab und liest nur APP_ROOT. Mein erster Versuch
-// setzte DATA_DIR — wirkungslos, und der Lauf meldete drei „erzeugt" statt
-// „ersetzt/unveraendert/erzeugt", weil die Route die Dateien nicht fand.
-// Festgehalten, weil die falsche Variable eine Lage erzeugt, die nach einem
-// Fehler im Code aussieht und einer im Testaufbau ist.
-//
-// Gesetzt werden MUSS es vor dem Laden: appPaths rechnet die Pfade beim
-// Einlesen aus. Ohne das schriebe der Test in das echte Datenverzeichnis.
+// APP_ROOT, nicht DATA_DIR
+// Ausführlich: docs/begruendungen/test/gutscheine-export-import-db.test.js.md#sandkasten
 const SANDKASTEN = fs.mkdtempSync(path.join(os.tmpdir(), 'gutschein-wurzel-'));
 fs.mkdirSync(path.join(SANDKASTEN, 'data'), { recursive: true });
 // package.json, damit findRoot() hier stehenbleibt und nicht weiter nach oben

@@ -24,12 +24,11 @@ const ZUSTAND = `({ url: location.hash, ansicht: document.querySelector('.tab.ac
 test('Adresse und Verlauf', { timeout: 180_000 }, async (t) => {
   const app = await starteApp(t, { name: `verlauf_${process.pid}`, bestand: musterSammlung });
   if (app.grund) { t.skip(app.grund); return; }
-  const { b, bis } = app;
+  const { b, bis, ruhig } = app;
+  // Der Start lädt Einstellungen und Preise nach; erst danach ist der Zustand fest.
+  await ruhig();
   const zustand = () => b.auswerten(ZUSTAND);
   const zurueck = async () => { await b.auswerten('history.back(); true'); await warte(400); };
-  await warte(800);
-  await b.auswerten(`document.querySelector('#einrichtung-modal.open [data-dialog-zu]')?.click(); true`);
-  await warte(400);
 
   await t.test('Reiter schreiben die Adresse', async () => {
     await b.auswerten(`document.querySelector('.ntab[data-tab="finance"]').click(); true`);
@@ -43,7 +42,7 @@ test('Adresse und Verlauf', { timeout: 180_000 }, async (t) => {
     await b.auswerten(`document.querySelector('.ntab[data-tab="gallery"]').click(); true`);
     await bis(`!!document.querySelector('#gallery [data-click="openModal"]')`, 'Kacheln');
     await b.auswerten(`document.querySelector('#gallery [data-click="openModal"]').click(); true`);
-    await warte(400);
+    await ruhig();
     const offen = await zustand();
     assert.deepEqual(offen.dialoge, ['set-modal']);
     assert.match(offen.url, /^#\/sammlung\/set\/\d+-\d+$/);
@@ -65,11 +64,11 @@ test('Adresse und Verlauf', { timeout: 180_000 }, async (t) => {
 
   await t.test('Neuladen öffnet die Ansicht der Adresse', async () => {
     await b.auswerten(`location.hash = '#/finanzen'; location.reload(); true`);
-    await warte(500);
+    await ruhig();
     await bis(`getComputedStyle(document.getElementById('app')).display !== 'none' && !!document.querySelector('.tab.active')`, 'App nach Neuladen', 300);
     await bis(`document.querySelector('.tab.active')?.id === 'tab-finance'`, 'Finanzen nach Neuladen');
     await b.auswerten(`location.hash = '#/sammlung?suche=Tree'; location.reload(); true`);
-    await warte(500);
+    await ruhig();
     await bis(`document.querySelector('.tab.active')?.id === 'tab-gallery' && document.getElementById('gs').value === 'Tree'`, 'Suche nach Neuladen');
   });
 });

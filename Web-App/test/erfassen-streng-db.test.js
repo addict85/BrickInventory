@@ -20,25 +20,38 @@ const _req = require('./helpers/sources').buildAndRequire();
 const { dbOderSkip } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
 
-test('Erfassen nur, was gemeint ist', { concurrency: 1 }, async (t) => {
+test('Erfassen nur, was gemeint ist', { concurrency: 1 }, async t => {
   const db = await dbOderSkip(t, _req);
   if (!db) return;
   const NAME = `streng_${process.pid}`;
   await db.run('DELETE FROM users WHERE username = $1', [NAME]);
-  const uid = (await db.get(`INSERT INTO users (username, password_hash, is_active, email_verified)
-    VALUES ($1, 'x', true, true) RETURNING id`, [NAME])).id;
+  const uid = (
+    await db.get(
+      `INSERT INTO users (username, password_hash, is_active, email_verified)
+    VALUES ($1, 'x', true, true) RETURNING id`,
+      [NAME],
+    )
+  ).id;
   t.after(async () => {
     await db.run('DELETE FROM users WHERE id = $1', [uid]).catch(() => {});
     await db.pool.end().catch(() => {});
   });
-  const { base } = testServer(_req, { sitzung: { userId: uid, username: NAME }, apiNutzer: { user_id: uid, is_admin: 0 },
-    routen: { '/api/v1': 'routes/api_v1/index.js' }, t });
+  const { base } = testServer(_req, {
+    sitzung: { userId: uid, username: NAME },
+    apiNutzer: { user_id: uid, is_admin: 0 },
+    routen: { '/api/v1': 'routes/api_v1/index.js' },
+    t,
+  });
   const post = async (weg, body) => {
-    const r = await fetch(`${base}/api/v1${weg}`, { method: 'POST', headers: { 'content-type': 'application/json' },
-      body: JSON.stringify(body) });
+    const r = await fetch(`${base}/api/v1${weg}`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify(body),
+    });
     return { status: r.status, code: (await r.json()).code };
   };
-  const sets = async () => (await db.all('SELECT set_number FROM sets WHERE user_id = $1', [uid])).map(z => z.set_number);
+  const sets = async () =>
+    (await db.all('SELECT set_number FROM sets WHERE user_id = $1', [uid])).map(z => z.set_number);
 
   await t.test('ein Satz ist keine Setnummer', async () => {
     for (const roh of ["1'; DROP TABLE sets;--", '75192 Millennium Falcon', '75192;2'])

@@ -29,7 +29,7 @@ const _req = require('./helpers/sources').buildAndRequire();
 const { dbOderSkip } = require('./helpers/db');
 const db = _req('db/database.js');
 const { Client } = require(path.join(ROOT, 'node_modules', 'pg'));
-const warte = (ms) => new Promise(r => setTimeout(r, ms));
+const { warte } = require('./helpers/zeit');
 const freierPort = () => new Promise(r => { const s = net.createServer().listen(0, () => { const p = s.address().port; s.close(() => r(p)); }); });
 
 test('Gesundheitsprüfung und Startzustand', { concurrency: 1, timeout: 180_000 }, async (t) => {

@@ -1,127 +1,120 @@
 'use strict';
+/**
+ * HSTS am echten Server (dist/server.js), und nur über eine verschlüsselte
+ * Verbindung: Im LAN läuft derselbe Server über http, und ein Browser, der
+ * die Regel einmal gesehen hat, sperrte ihn danach ein Jahr lang aus.
+ * Ausführlich: docs/begruendungen/test/hsts.test.js.md#wurzel
+ *
+ * Gegenproben (05.11.2026 gemessen, je einzeln, dist neu gebaut):
+ *   A  in sicherheitsKoepfe() `if (ueberTls && …)` → `if (hstsAlter !== 0)` →
+ *      rot: „ohne TLS keine Kopfzeile“, „ein roher Kopf …“
+ *   B  `const ueberTls = req.secure || req.headers['x-forwarded-proto'] ===
+ *      'https'` → rot: „ein roher Kopf ohne vertrauten Proxy setzt nichts“
+ *   C  `&& hstsAlter !== 0` gestrichen → rot: „HSTS_MAX_AGE=0 schaltet ab“
+ *   D  die Zeile mit Strict-Transport-Security gestrichen → rot: „über TLS
+ *      ein Jahr mit Subdomains“
+ *
+ * Voraussetzung: Test-DB via TEST_DATABASE_URL.
+ */
 const test = require('node:test');
-const assert = require('node:assert');
-const fs = require('node:fs');
+const assert = require('node:assert/strict');
+const net = require('node:net');
 const path = require('node:path');
+const { spawn } = require('node:child_process');
 
-/**
- * HSTS — aber nur ueber eine verschluesselte Verbindung.
- *
- * ── Warum die Kopfzeile fehlte, und warum sie hingehoert ────────────────────
- * Die uebrigen Sicherheitskopfzeilen standen alle da (X-Frame-Options,
- * X-Content-Type-Options, Referrer-Policy, Permissions-Policy, CSP), nur
- * Strict-Transport-Security nicht. Ohne sie geht die allererste Anfrage nach
- * einem getippten Hostnamen im Klartext hinaus — samt Cookie, wenn
- * COOKIE_SECURE nicht gesetzt ist. Die Umleitung auf https ist die ANTWORT
- * darauf; da war die Anfrage schon unterwegs.
- *
- * ── Warum dieser Test vor allem die BEDINGUNG prueft ────────────────────────
- * Derselbe Server laeuft bei vielen im LAN unter http://192.168.x.x:3000.
- * Ein Browser ignoriert HSTS ueber Klartext zwar — aber sobald derselbe Host
- * je einmal ueber https erreichbar war, merkt er sich die Regel und verweigert
- * danach JEDEN http-Zugriff, ein Jahr lang.
- *
- * Ein Test, der nur „die Kopfzeile ist da" prueft, wuerde die Fassung ohne
- * Bedingung durchwinken — also genau die, die den LAN-Zugang aussperrt. Er
- * saehe aus wie eine Absicherung und waere das Gegenteil.
- */
+const URL_DB = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
+process.env.DATABASE_URL = URL_DB;
+const ROOT = path.join(__dirname, '..');
+const _req = require('./helpers/sources').buildAndRequire();
+const { dbOderSkip } = require('./helpers/db');
+const { bis } = require('./helpers/zeit');
+const freierPort = () =>
+  new Promise(r => {
+    const s = net.createServer().listen(0, () => {
+      const p = /** @type {import('node:net').AddressInfo} */ (s.address()).port;
+      s.close(() => r(p));
+    });
+  });
 
-const WURZEL = path.join(__dirname, '..');
-/**
- * Kommentare raus — zeilenweise, NICHT ueber einen Regex auf /* … *\/.
- *
- * Der erste Anlauf tat genau das und loeschte 15 000 Zeichen mitten aus
- * server.ts: Die Datei enthaelt Routen wie `'/data/instructions/*'`, und das
- * `/*` darin gilt dem Regex als Kommentaranfang. Alles bis zum naechsten
- * `*\/` war weg — samt des Kopfzeilen-Blocks, um den es hier geht.
- *
- * Aufgefallen ist es nur, weil der letzte Test unten prueft, dass die
- * UEBRIGEN Kopfzeilen noch da sind. Ohne diesen Selbstbeweis waeren alle
- * Zusicherungen an einer leeren Stelle gelaufen und haetten geschwiegen.
- *
- * Zeilenweise geht, weil dieser Baum Blockkommentare immer am Zeilenanfang
- * beginnt. Ein Zaehler haelt fest, dass ueberhaupt etwas uebrig bleibt.
- */
-const ohneKommentare = (s) => {
-  const zeilen = [];
-  let imBlock = false;
-  for (const z of s.split('\n')) {
-    const t = z.trim();
-    if (imBlock) { zeilen.push(''); if (t.endsWith('*/')) imBlock = false; continue; }
-    if (t.startsWith('/*')) { zeilen.push(''); if (!t.includes('*/')) imBlock = true; continue; }
-    zeilen.push(t.startsWith('//') || t.startsWith('*') ? '' : z);
-  }
-  return zeilen.join('\n');
-};
+/** Ein Webprozess im Betriebsmodus mit eigener Umgebung; er endet im Nachlauf des Tests. */
+async function starteServer(t, env) {
+  const port = await freierPort();
+  const srv = spawn(process.execPath, [path.join(ROOT, 'dist', 'server.js')], {
+    cwd: ROOT,
+    stdio: ['ignore', 'pipe', 'pipe'],
+    env: {
+      ...process.env,
+      DATABASE_URL: URL_DB,
+      SESSION_SECRET: 'hsts-test-geheimnis-lang-genug-12345678',
+      PORT: String(port),
+      ROLLE: 'web',
+      APP_BASE_URL: `http://127.0.0.1:${port}`,
+      // Wie im Betrieb: Nur dort vertraut Express dem Proxy; die Test-DB läuft als Superuser.
+      NODE_ENV: 'production',
+      DB_SUPERUSER_ERLAUBT: '1',
+      ...env,
+    },
+  });
+  let log = '';
+  srv.stdout.on('data', d => {
+    log += d;
+  });
+  srv.stderr.on('data', d => {
+    log += d;
+  });
+  t.after(async () => {
+    srv.kill('SIGTERM');
+    await bis(() => srv.exitCode !== null || srv.signalCode !== null, 4000);
+    if (srv.exitCode === null && srv.signalCode === null) srv.kill('SIGKILL');
+  });
+  const basis = `http://127.0.0.1:${port}`;
+  const bereit = await bis(async () => (await fetch(`${basis}/api/v1/health/live`).catch(() => null)) !== null, 60_000);
+  assert.ok(bereit, `der Server startet nicht:\n${log.slice(-2000)}`);
+  /** @param {Record<string, string>} [kopf] */
+  return async (kopf = {}) => {
+    const r = await fetch(`${basis}/api/v1/health/live`, { headers: kopf });
+    await r.arrayBuffer();
+    return r.headers;
+  };
+}
 
-const serverRoh = fs.readFileSync(path.join(WURZEL, 'server.ts'), 'utf8');
-const server = ohneKommentare(serverRoh);
-// Selbstbeweis, aus dem Fehler oben geboren: Bleibt nach dem Streichen zu
-// wenig uebrig, laufen alle Zusicherungen ins Leere und schweigen.
-// Die Schwelle ist GEMESSEN, nicht geraten: server.ts besteht zu rund 55%
-// aus Erklaerung — Hausstil, kein Zufall. Der erste Entwurf stand auf 50%
-// und war damit selbst rot, obwohl der Filter richtig arbeitete. 25% faengt
-// „der Filter frisst Code" und laesst einen kommentierten Baum in Ruhe.
-assert.ok(server.length > serverRoh.length * 0.25,
-  `Nach dem Streichen der Kommentare sind nur noch ${server.length} von ` +
-  `${serverRoh.length} Zeichen uebrig — der Filter frisst Code.`);
-// Und die Gegenprobe dazu: Eine Groessenangabe allein sagt nichts darueber,
-// WAS uebrig ist.
-//
-// Als Marke steht hier NUR X-Frame-Options — bewusst etwas, das dieser Test
-// nicht prueft. Der erste Entwurf nannte auch Strict-Transport-Security, und
-// dann meldete das Entfernen der Kopfzeile „hat das Streichen der Kommentare
-// nicht ueberlebt": die falsche Ursache, die den naechsten Leser in die
-// falsche Datei schickt. Ein Selbstbeweis prueft das WERKZEUG, nicht den
-// Gegenstand der Pruefung — sonst nimmt er ihm die Stimme.
-assert.ok(server.includes("setHeader('X-Frame-Options'"),
-  'Der Kommentarfilter hat den Kopfzeilen-Block zerstoert');
+const TLS = { 'x-forwarded-proto': 'https' };
 
-test('die Kopfzeile wird gesetzt', () => {
-  assert.match(server, /setHeader\('Strict-Transport-Security'/,
-    'Strict-Transport-Security fehlt — die erste Anfrage nach einem getippten ' +
-    'Hostnamen geht dann im Klartext hinaus, samt Cookie.');
-  assert.match(server, /max-age=\$\{[^}]+\}; includeSubDomains/,
-    'Die Kopfzeile nennt keine Gueltigkeitsdauer mit includeSubDomains mehr');
-});
+test('HSTS nur über TLS', { concurrency: 1, timeout: 180_000 }, async t => {
+  const db = await dbOderSkip(t, _req);
+  if (!db) return;
+  t.after(() => db.pool.end().catch(() => {}));
+  // Drei Prozesse nebeneinander: Der Start dauert, die Umgebung ist je Prozess fest.
+  const [hinterProxy, ohneProxy, abgestellt] = await Promise.all([
+    starteServer(t, { TRUST_PROXY: '' }),
+    starteServer(t, { TRUST_PROXY: 'false' }),
+    starteServer(t, { TRUST_PROXY: '', HSTS_MAX_AGE: '0' }),
+  ]);
 
-test('sie wird NUR ueber eine verschluesselte Verbindung gesetzt', () => {
-  // Der eigentliche Punkt. Ohne diese Bedingung sperrt die Haertung den
-  // LAN-Zugang aus, sobald derselbe Host je einmal ueber https lief.
-  const i = server.indexOf("setHeader('Strict-Transport-Security'");
-  assert.ok(i > 0, 'Die Kopfzeile ist nicht mehr zu finden');
-  const davor = server.slice(Math.max(0, i - 500), i);
-  assert.match(davor, /if \(ueberTls/,
-    'Die Kopfzeile wird ohne Bedingung gesetzt — dann gilt HSTS auch fuer den ' +
-    'LAN-Betrieb ueber http, und der Browser sperrt ihn dauerhaft aus.');
-});
+  await t.test('über TLS ein Jahr mit Subdomains', async () => {
+    assert.equal((await hinterProxy(TLS)).get('strict-transport-security'), 'max-age=31536000; includeSubDomains');
+  });
 
-test('verschluesselt heisst req.secure, nicht ein roher Kopf', () => {
-  // X-Forwarded-Proto kann jeder Client selbst schicken; nur hinter einem
-  // vertrauten Proxy (trust proxy, src/infra/proxyVertrauen.ts) macht Express
-  // daraus req.secure. Sonst setzte ein gefälschter Kopf HSTS im LAN-Betrieb.
-  // Gegenprobe (01.11.2026): `|| req.headers['x-forwarded-proto'] === 'https'`
-  // wieder angehängt → rot.
-  const m = /const ueberTls = ([^;]+);/.exec(server);
-  assert.ok(m, 'Die Erkennung der verschluesselten Verbindung ist weg');
-  assert.equal(m[1].trim(), 'req.secure');
-});
+  await t.test('ohne TLS keine Kopfzeile', async () => {
+    assert.equal((await hinterProxy()).get('strict-transport-security'), null);
+  });
 
-test('die Kopfzeile laesst sich abstellen', () => {
-  // HSTS klebt im Browser. Wer eine Fehlkonfiguration bemerkt, muss sie
-  // abstellen koennen, ohne auf den Ablauf zu warten.
-  assert.match(fs.readFileSync(path.join(__dirname, '..', 'src/infra/konfig.ts'), 'utf8'), /'HSTS_MAX_AGE'/,
-    'Es gibt keinen Weg mehr, HSTS abzustellen');
-  assert.match(server, /konfig\(\)\.hstsMaxAge/, 'server.ts liest HSTS_MAX_AGE nicht aus der Konfiguration');
-  assert.match(server, /hstsAlter !== 0/,
-    'HSTS_MAX_AGE=0 schaltet die Kopfzeile nicht mehr ab');
-});
+  await t.test('ein roher Kopf ohne vertrauten Proxy setzt nichts', async () => {
+    assert.equal((await ohneProxy(TLS)).get('strict-transport-security'), null);
+  });
 
-test('die uebrigen Sicherheitskopfzeilen stehen weiter da', () => {
-  // Selbstbeweis: Findet dieser Block nichts, prueft der Test oben an einer
-  // Stelle, die es nicht mehr gibt.
-  for (const kopf of ['X-Frame-Options', 'X-Content-Type-Options',
-                      'Referrer-Policy', 'Permissions-Policy',
-                      'Content-Security-Policy'])
-    assert.ok(server.includes(`setHeader('${kopf}'`), `${kopf} ist verschwunden`);
+  await t.test('HSTS_MAX_AGE=0 schaltet ab', async () => {
+    assert.equal((await abgestellt(TLS)).get('strict-transport-security'), null);
+  });
+
+  await t.test('die übrigen Sicherheitskopfzeilen bleiben, auch ohne HSTS', async () => {
+    for (const kopf of [await hinterProxy(TLS), await abgestellt(TLS)]) {
+      assert.deepEqual(
+        ['x-frame-options', 'x-content-type-options', 'referrer-policy'].map(n => kopf.get(n)),
+        ['SAMEORIGIN', 'nosniff', 'same-origin'],
+      );
+      assert.match(kopf.get('content-security-policy') ?? '', /default-src 'self'/);
+      assert.match(kopf.get('permissions-policy') ?? '', /camera=\(\)/);
+    }
+  });
 });

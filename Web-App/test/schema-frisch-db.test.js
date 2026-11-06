@@ -2,10 +2,7 @@
  * Eine frische Datenbank, aufgebaut wie beim ersten Start: Jede Kontospalte
  * hat einen Fremdschlüssel auf users, ein Konto lässt sich samt allem löschen,
  * und ein zweiter Start ändert am Schema nichts.
- *
- * Das Schema entsteht aus schema.sql, den Schritten in db/database.ts und den
- * Migrationen. Sieben Tabellen hatten so keinen Fremdschlüssel; beim Löschen
- * eines Kontos blieben ihre Zeilen stehen, bei den Erfassungen samt Kaufpreisen.
+ * Ausführlich: docs/begruendungen/test/schema-frisch-db.test.js.md#kopf
  *
  * Gegenproben (am 27.10. gemessen):
  *   A  Migration 0043 umbenannt in .sql.aus → rot: „jede Kontospalte hat einen
