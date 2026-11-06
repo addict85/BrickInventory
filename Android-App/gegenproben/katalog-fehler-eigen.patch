@@ -1,7 +1,7 @@
 Gegenprobe: Katalogfehler ohne Fehlerklasse: allgemeiner Text statt des Zustands der Galerie
 Modul: app
 Test: ch.brickinventoryapp.AblaufBefundeTest
-Rot: M2 der Katalog zeigt im Fehler denselben Zustand (Fehler ohne Klasse)
+Rot: M2 der Katalog zeigt im Fehler denselben Zustand wie die Galerie, ohne Trefferzahl
 
 diff --git a/Android-App/feature-katalog/src/main/java/ch/brickinventoryapp/ui/screens/CatalogScreen.kt b/Android-App/feature-katalog/src/main/java/ch/brickinventoryapp/ui/screens/CatalogScreen.kt
 index db4ec14..9ceeed2 100644
