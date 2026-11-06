@@ -12,7 +12,7 @@ import org.junit.Test
  * Nach dem Update räumt die App die Freigaben der alten Klartext-Erlaubnis weg
  * und lässt alles andere stehen.
  *
- * Gegenprobe (01.11.2026, gemessen): „klartext_netze“ aus der Liste genommen →
+ * Gegenprobe: „klartext_netze“ aus der Liste genommen →
  * rot (der Schlüssel blieb stehen).
  */
 class KlartextResteTest {

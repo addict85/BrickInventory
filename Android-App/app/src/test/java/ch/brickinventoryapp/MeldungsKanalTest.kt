@@ -9,12 +9,14 @@ import ch.brickinventoryapp.data.repository.FigurenRepository
 import ch.brickinventoryapp.ui.viewmodel.GalerieViewModel
 import ch.brickinventoryapp.ui.viewmodel.TeileViewModel
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.setMain
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import javax.inject.Singleton
 
 /**
  * Es gibt genau EINEN Weg zur Snackbar.
@@ -32,16 +34,12 @@ import org.junit.Test
  *
  * Genau das stand ZWEIMAL in CatalogGraph.kt. Und das ist der gefährliche Teil:
  * Wer ein drittes Ziel hinzufügt und den Block vergisst, bekommt keinen Fehler.
- * Nichts schlägt fehl, es passiert nur nichts — die Fehlermeldungen dieses
- * Bildschirms verschwinden lautlos. Ein Test, der das erst bemerkt, wenn er
- * nach dem Block sucht, kommt zu spät; deshalb prüft er hier die URSACHE: dass
- * es überhaupt nur einen Fluss gibt.
  *
  * Das ist zugleich die Rechnung des ViewModel-Schnitts, sichtbar gemacht: Jedes
  * herausgelöste ViewModel bringt sonst einen weiteren Kanal mit.
  *
  * Teilschritt 3 und 4 laufen ausgeführt (Kanal, Reflexion, zwei ViewModels
- * gegen einen Testserver); 1 und 2 sind Struktur über alle Dateien.
+ * gegen einen PfadServer ohne Netz); 1 und 2 sind Struktur über alle Dateien.
  *
  * Gegenproben (29.10.2026 gemessen: c, d, e; die übrigen früher, über das
  * Ersatz-Skript im Werkzeugordner):
@@ -49,19 +47,18 @@ import org.junit.Test
  *      eingesetzt → Teilschritt 1 rot.
  *   b) Den Weiterleitungsblock in CatalogGraph.kt wieder eingesetzt
  *      → Teilschritt 2 rot.
- *   c) In MeldungsKanal.meldung `fluss.asStateFlow()` durch einen eigenen
- *      MutableStateFlow ersetzt → Teilschritt 3 rot, dazu „zwei Bereiche …“.
+ *   c) In MeldungsKanal.zeige() einen zweiten, eigenen MutableStateFlow
+ *      beschrieben → Teilschritt 3 rot, dazu „zwei Bereiche …“.
  *   d) `@Singleton` aus MeldungsKanal.kt entfernt → Teilschritt 3 rot. Das ist
  *      der stillste der vier Fälle: Ohne die Annotation bekäme jedes ViewModel
  *      seine eigene Instanz, und dann gäbe es wieder so viele Kanäle wie
  *      ViewModels — nur sähe man es nirgends im Quelltext.
- *   e) In BereichsViewModel `_snackbar` auf einen eigenen MutableStateFlow →
+ *   e) In AppMeldungen zeige() in einen eigenen MutableStateFlow →
  *      Teilschritt 4 rot und „zwei Bereiche melden in denselben Kanal“.
+ * Die Warteschlange selbst prüft MeldungsWarteschlangeTest (core-data).
  */
+@OptIn(ExperimentalCoroutinesApi::class)
 class MeldungsKanalTest {
-
-    private fun quelle(rel: String) =
-        java.io.File(Quellen.wurzel, "$rel").readText()
 
     /** Alle Kotlin-Dateien der App ohne Kommentare. */
     private fun alleOhneKommentare(): List<Pair<String, String>> =
@@ -107,11 +104,13 @@ class MeldungsKanalTest {
         // Ohne das kann kein ViewModel ihn benutzen — und der erste, der es
         // versucht, baut sich wieder einen eigenen.
         val kanal = MeldungsKanal()
-        kanal.fluss.value = "gespeichert"
+        kanal.zeige("gespeichert")
         assertEquals("AppNavigation.kt sammelt die Nur-Lese-Sicht ein", "gespeichert", kanal.meldung.value)
+        kanal.quittiere()
+        assertEquals(null, kanal.meldung.value)
         assertTrue("Ohne @Singleton bekäme jedes ViewModel eine eigene Instanz — dann gibt es " +
             "wieder so viele Kanäle wie ViewModels, nur unsichtbar",
-            MeldungsKanal::class.java.isAnnotationPresent(javax.inject.Singleton::class.java))
+            kanal::class.java.isAnnotationPresent(Singleton::class.java))
     }
 
     @Test
@@ -120,16 +119,16 @@ class MeldungsKanalTest {
         // hat entweder einen eigenen (Teilschritt 1 faengt das) oder gar keinen
         // Weg nach draussen. Beides ist ein Fehler.
         val schreiber = alleOhneKommentare().filter { (name, s) ->
-            name.endsWith("ViewModel.kt") && Regex("""_snackbar\s*\.value\s*=""").containsMatchIn(s)
+            name.endsWith("ViewModel.kt") && Regex("""\bzeigeMeldung\(|\bmeldungen\.zeige\(""").containsMatchIn(s)
         }
         assert(schreiber.isNotEmpty()) { "Kein ViewModel schreibt Meldungen — Muster veraltet?" }
-        // Die Bereichs-ViewModels bekommen ihn über AppDienste von ihrer Grundlage.
-        val grundlage = alleOhneKommentare().single { it.first == "BereichsViewModel.kt" }.second
-        assert(grundlage.contains("_snackbar: MutableStateFlow<String?> = dienste.meldungen.fluss")) {
-            "BereichsViewModel reicht den Kanal nicht mehr an die Bereiche weiter"
+        // Die Bereichs-ViewModels bekommen ihn als Meldungen (Bereichshelfer.kt).
+        val helfer = alleOhneKommentare().single { it.first == "Bereichshelfer.kt" }.second
+        assert(helfer.contains("override fun zeige(text: String?) = kanal.zeige(text)")) {
+            "Meldungen reicht nicht mehr in den Kanal der App weiter"
         }
         val ohneKanal = schreiber.filter { (_, s) ->
-            !s.contains("MeldungsKanal") && !s.contains(": BereichsViewModel(dienste)")
+            !s.contains("MeldungsKanal") && !s.contains("meldungen: Meldungen")
         }.map { it.first }
         assert(ohneKanal.isEmpty()) {
             "Diese ViewModels melden, holen sich den Kanal aber nicht: " +
@@ -144,16 +143,16 @@ class MeldungsKanalTest {
         val pfade = PfadServer()
         pfade.codes["/api/v1/sets/75192-1"] = 500
         pfade.codes["/api/v1/parts/3001/5/color"] = 500
-        val t = TestDienste(pfade.server)
+        val t = TestDienste(pfade.imTakt(), io = Dispatchers.Main)
         try {
-            val galerie = t.merke(GalerieViewModel(t.dienste, SetsRepository(t.api, t.cache),
+            val galerie = t.merke(GalerieViewModel(t.sitzung, t.filter(), t.hinweise, t.bestand, t.scrollMemory, SetsRepository(t.api, t.cache),
                 FinanzenRepository(t.api, t.cache), SavedStateHandle()))
             galerie.deleteSet("75192-1")
-            TestApi.warteBis("Meldung der Galerie") { t.meldungen.meldung.value != null }
-            t.meldungen.fluss.value = null
-            val teile = t.merke(TeileViewModel(t.dienste, TeileRepository(t.api, t.cache), FigurenRepository(t.api, t.cache), SavedStateHandle()))
+            assertTrue("Meldung der Galerie", t.meldungen.meldung.value != null)
+            t.meldungen.quittiere()
+            val teile = t.merke(TeileViewModel(t.sitzung, t.filter(), t.hinweise, t.bestand, t.scrollMemory, TeileRepository(t.api, t.cache), FigurenRepository(t.api, t.cache), SavedStateHandle()))
             teile.setzeTeilFarbe("3001", 5, 11)
-            TestApi.warteBis("Meldung der Teile") { t.meldungen.meldung.value != null }
+            assertTrue("Meldung der Teile", t.meldungen.meldung.value != null)
         } finally {
             t.aufraeumen()
             Dispatchers.resetMain()

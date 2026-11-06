@@ -67,6 +67,19 @@ if ! gunzip -c "$DUMP" | tail -n 5 | grep -q 'PostgreSQL database dump complete'
 fi
 echo "[restore] Dump-Endmarke vorhanden: $DUMP"
 
+# age verschlüsselt, prüft aber nicht, wer schrieb: Ein untergeschobener Dump
+# könnte psql-Befehle wie \! (Shell im Postgres-Container) tragen. Zeilen mit
+# Backslash ausserhalb der COPY-Daten weist dieser Vorlauf ab, den Rest psql
+# selbst (\restrict mit eigenem Schlüssel, siehe unten).
+if gunzip -c "$DUMP" | awk '
+  daten { if ($0 == "\\.") daten = 0; next }
+  /^COPY .* FROM stdin;$/ { daten = 1; next }
+  /^\\(un)?restrict [A-Za-z0-9]+$/ { next }
+  /^[ \t]*\\/ { print NR; exit }' | grep -q .; then
+  echo "[restore] FEHLER: $DUMP enthält psql-Befehle (Zeilen mit \\) — kein Dump von backup.sh, nichts verändert." >&2
+  exit 1
+fi
+
 # Das Archiv vor jeder Änderung prüfen; entpackt wird später nur data/.
 if [ -n "$DATA_TAR" ]; then
   sh "$(dirname "$0")/archiv-pruefen.sh" "$DATA_TAR"
@@ -82,17 +95,22 @@ read -r antwort
 #    gehören ihr und liefen als Superuser mit dessen Rechten. Besitzerangaben
 #    und DROP/COMMENT der Erweiterung (gehört evtl. dem Superuser) fallen weg,
 #    ausserhalb der COPY-Daten. -1 mit ON_ERROR_STOP: ganz oder gar nicht.
+#    \restrict mit einem Schlüssel, den der Dump nicht kennt: psql führt dann
+#    keinen Backslash-Befehl aus, auch nicht mitten in einer Zeile.
 echo "[restore] Rolle der App wird vorbereitet …"
 docker compose run --rm "${ROLLEN_SERVICE:-db-rolle}"
 echo "[restore] Datenbank wird eingespielt …"
-gunzip -c "$DUMP" | awk '
+RESTRICT=$(od -An -N16 -tx1 /dev/urandom | tr -d ' \n')
+gunzip -c "$DUMP" | awk -v schluessel="$RESTRICT" '
+  BEGIN { print "\\restrict " schluessel }
   daten { if ($0 == "\\.") daten = 0; print; next }
   /^COPY .* FROM stdin;$/ { daten = 1; print; next }
+  /^\\(un)?restrict [A-Za-z0-9]+$/ { next }
   /^ALTER [A-Z ]+ [^\047;]+ OWNER TO [^\047;]+;$/ { next }
   /^DROP EXTENSION IF EXISTS [a-z_"]+;$/ { next }
   /^COMMENT ON EXTENSION [a-z_"]+ IS \047[^\047]*\047;$/ { next }
   { print }' | docker compose exec -T "$DB_SERVICE" \
-  psql -v ON_ERROR_STOP=1 -q -1 -U "$DB_APP_USER" "$DB_NAME"
+  psql -X -v ON_ERROR_STOP=1 -q -1 -U "$DB_APP_USER" "$DB_NAME"
 echo "[restore] Datenbank eingespielt."
 
 # 4. Laufzeitdaten (Bilder, Anleitungen) — optional, aber ohne sie zeigen
@@ -118,7 +136,7 @@ if [ ! -f schluessel/datenschluessel ] && [ ! -f data/.datenschluessel ]; then
 fi
 
 # 5. db-rolle noch einmal: Die eingespielten Tabellen bekommen die Rechte der
-#    Leserolle (pgweb).
+#    Leserolle (brickinventory_lesen).
 echo "[restore] Rolle der App wird nachgerichtet …"
 docker compose run --rm "${ROLLEN_SERVICE:-db-rolle}"
 

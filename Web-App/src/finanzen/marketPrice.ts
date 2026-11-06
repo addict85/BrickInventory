@@ -1,12 +1,10 @@
 import * as repo from './repository/marktpreise';
 import { nacharbeit } from '../auftraege/nacharbeit';
 import { getSetValue } from './setValue';
-import { nutzerStandardZustand as userDefaultCondition } from '../konto/settings';
-import { getGlobalSetting } from '../konto/settings';
+import { nutzerStandardZustand as userDefaultCondition, getGlobalSetting, getSetting } from '../einstellungen/settings';
 import { DEFAULT_PRICE_CONDITION, fetchPartPrice, fetchMinifigPrice, ladeBlNummernVor,
          resolveBlPartNumber, resolveBlColorId } from './rechnung/preise';
-import { getSetting } from '../konto/settings';
-import { meldeUndWeiter, fehlertext, logAndContinue, meldeUndLiefere } from '../infra/httpError';
+import { meldeUndWeiter, fehlertext, logAndContinue, meldeUndLiefere } from '../infra/fehler';
 import { getMinifigParts } from '../katalog/rebrickableKatalog';
 import { KEINE_FARBE } from '../infra/validate';
 
@@ -32,7 +30,7 @@ export async function getCurrentMarketPrice(setNumber: string, userId: number, c
     const cached = await repo.setPreisAusCache(setNumber, effectiveCond, currency);
     const price = parseFloat(cached?.avg_price ?? '0');
     return price > 0 ? price : null;
-  } catch (_) { return null; }
+  } catch (e) { return meldeUndLiefere('marktpreis:set-cache', null)(e); }
 }
 
 // Marktpreise für Sets, Teile und Figuren an einer Stelle, damit die Zustandsregel
@@ -45,7 +43,7 @@ export async function resolvePartCondition(userId: number, partNumber: string, c
     if (row && parseInt(row.cnt) > 0) return Number(row.any_used) > 0 ? 'U' : 'N';
   } catch (e) { meldeUndWeiter('teile:zustand-ermitteln', e); }
   try { return await userDefaultCondition(userId); }
-  catch (_) { return DEFAULT_PRICE_CONDITION; }
+  catch (e) { return meldeUndLiefere('marktpreis:standardzustand', DEFAULT_PRICE_CONDITION)(e); }
 }
 
 /** Nur aus dem Cache, ohne Abruf: Die Liste soll nicht auf BrickLink warten.
@@ -154,11 +152,11 @@ export async function marktpreiseAusCacheFuerTeile(
 export async function marktpreisMitHerkunft(partNumber: string, colorId: number, userId: number, condition: string | null = null) {
   try {
     const currency  = await getSetting(userId, 'currency', 'EUR');
-    const ttlHours  = 24;
+    const ttlHours  = (await getGlobalSetting('price_cache_ttl', '24')) || '24';
     const effCond   = condition || await resolvePartCondition(userId, partNumber, colorId);
-    const priceData = await fetchPartPrice(partNumber, colorId, effCond, currency, ttlHours);
+    const priceData = await fetchPartPrice(partNumber, colorId, effCond, currency, ttlHours, null, userId);
     // avg_price wie bei den Sets: BrickLinks angezeigter Preis, und "0.00" ist truthy.
-    const price = parseFloat(priceData?.avg_price || 0);
+    const price = (Number(priceData?.avg_price) || 0);
     if (!(price > 0)) return { preis: null, ausZustand: null };
     // Der Rückfall auf den anderen Zustand wird übernommen, aber benannt: Gar
     // kein Preis war schlechter als ein gekennzeichneter.
@@ -167,7 +165,7 @@ export async function marktpreisMitHerkunft(partNumber: string, colorId: number,
       preis: price,
       ausZustand: priceData?.is_fallback ? (priceData.condition_used || null) : null,
     };
-  } catch (_) { return { preis: null, ausZustand: null }; }
+  } catch (e) { return meldeUndLiefere('marktpreis:teil', { preis: null, ausZustand: null })(e); }
 }
 
 export async function getCurrentPartMarketPrice(partNumber: string, colorId: number, userId: number, condition: string | null = null) {
@@ -212,9 +210,9 @@ export async function schaetzeFigurenpreis(figNumber: string, userId: number, co
       const blPartNum = p.bl_part_num || p.part_num;
       try {
         const priceData = await fetchPartPrice(blPartNum, p.color_id ?? KEINE_FARBE, cond, currency, 24);
-        const unitPrice = parseFloat(priceData?.avg_price || 0);
+        const unitPrice = (Number(priceData?.avg_price) || 0);
         if (unitPrice > 0) { total += unitPrice * (p.quantity || 1); priced++; }
-      } catch (_) { /* Teil ohne Preis — überspringen */ }
+      } catch (e) { meldeUndWeiter('marktpreis:teil-in-figur', e); }
     }
     console.log(`[minifig-price-estimate] ${figNumber} (${cond}): ${priced}/${parts.length} Teile bepreist, geschätzt=${priced>0?total.toFixed(2):'—'}`);
     if (priced === 0) return null;
@@ -245,7 +243,7 @@ export async function figMarktpreisMitHerkunft(figNumber: string, userId: number
         const row = await repo.figurErfassungsZustand(userId, figNumber);
         if (row && parseInt(row.cnt) > 0) effCond = Number(row.any_used) > 0 ? 'U' : 'N';
       } catch (e) { meldeUndWeiter('minifiguren:zustand-ermitteln', e); }
-      if (!effCond) { try { effCond = await userDefaultCondition(userId); } catch (_) { effCond = DEFAULT_PRICE_CONDITION; } }
+      if (!effCond) effCond = await userDefaultCondition(userId).catch(meldeUndLiefere('marktpreis:standardzustand', DEFAULT_PRICE_CONDITION));
     }
     // BrickLink zuerst, auch ohne eigene bl_fig_number: Meist stimmt die eigene
     // Nummer mit der BrickLink-Nummer überein.
@@ -253,7 +251,7 @@ export async function figMarktpreisMitHerkunft(figNumber: string, userId: number
       if (!num) continue;
       const priceData = await fetchMinifigPrice(num, effCond, currency, 24).catch(meldeUndLiefere('marktpreis:fetchMinifigPrice', null));
       // Der Rückfall wird übernommen, aber benannt — wie bei den Teilen.
-      const price = parseFloat(priceData?.avg_price || 0);
+      const price = (Number(priceData?.avg_price) || 0);
       if (price > 0) return {
         preis: price,
         ausZustand: priceData?.is_fallback ? (priceData.condition_used || null) : null,
@@ -265,7 +263,7 @@ export async function figMarktpreisMitHerkunft(figNumber: string, userId: number
     const schaetzung = await schaetzeFigurenpreis(figNumber, userId, effCond);
     return { preis: schaetzung?.preis ?? null, ausZustand: null, geschaetzt: schaetzung != null,
              abdeckung: schaetzung?.abdeckung ?? null };
-  } catch (_) { return { preis: null, ausZustand: null, geschaetzt: false }; }
+  } catch (e) { return meldeUndLiefere('marktpreis:figur', { preis: null, ausZustand: null, geschaetzt: false })(e); }
 }
 
 export async function getCurrentFigMarketPrice(figNumber: string, userId: number, blFigNumber?: string | null, condition: string | null = null) {

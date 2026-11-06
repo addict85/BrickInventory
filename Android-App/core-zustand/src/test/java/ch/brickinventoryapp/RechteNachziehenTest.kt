@@ -16,7 +16,7 @@ import org.junit.Test
  * ServerWaechterTest; die Abfrageschleife der Verwaltung
  * MonitoringViewModelVerhaltenTest.
  *
- * Gegenproben (31.10.2026, gemessen mit kotlinc):
+ * Gegenproben:
  *   A  die Abfrage `if (!state.value.isAdmin) return false` entfernt → rot
  *      „ein entzogenes Recht wird einmal nachgezogen …“ (zweiter /me-Abruf)
  *   B  ohne Antwort das Recht behalten (`me !is Success -> return false`) → rot
@@ -34,7 +34,7 @@ class RechteNachziehenTest {
     @Test
     fun `ein entzogenes Recht wird einmal nachgezogen, dann nicht mehr gefragt`() = runBlocking {
         pfade.antworten["/api/v1/auth/me"] = """{"success":true,"user":{"id":1,"username":"marco","is_admin":false}}"""
-        t.sitzung.aendere { it.copy(isLoggedIn = true, isAdmin = true) }
+        t.sitzung.angemeldet(admin = true)
         assertTrue("Beim Übergang gibt es eine Meldung", t.sitzung.rechteNachziehen(konto))
         assertFalse(t.sitzung.state.value.isAdmin)
         assertTrue("Angemeldet bleibt man", t.sitzung.state.value.isLoggedIn)
@@ -45,7 +45,7 @@ class RechteNachziehenTest {
     @Test
     fun `ohne Antwort von auth me gilt das 403`() = runBlocking {
         pfade.codes["/api/v1/auth/me"] = 500
-        t.sitzung.aendere { it.copy(isLoggedIn = true, isAdmin = true) }
+        t.sitzung.angemeldet(admin = true)
         assertTrue(t.sitzung.rechteNachziehen(konto))
         assertFalse(t.sitzung.state.value.isAdmin)
     }
@@ -53,7 +53,7 @@ class RechteNachziehenTest {
     @Test
     fun `meldet auth me das Recht noch, bleibt es`() = runBlocking {
         pfade.antworten["/api/v1/auth/me"] = """{"success":true,"user":{"id":1,"username":"marco","is_admin":true}}"""
-        t.sitzung.aendere { it.copy(isLoggedIn = true, isAdmin = true) }
+        t.sitzung.angemeldet(admin = true)
         assertFalse(t.sitzung.rechteNachziehen(konto))
         assertTrue(t.sitzung.state.value.isAdmin)
     }

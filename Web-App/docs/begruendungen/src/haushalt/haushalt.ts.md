@@ -333,24 +333,21 @@ bei der irgendwann eine davon grosszügiger ist als die anderen.
 @returns die Ziel-ID, oder null wenn nicht erlaubt (Aufrufer antwortet 403)
 ```
 
-<a id="acquisitionmovesource"></a>
-## `acquisitionMoveSource`
+<a id="withowners"></a>
+## `withOwners`
 
 ```text
-Absender eines Eigentümerwechsels aus der ERFASSUNGSZEILE ermitteln.
+Besitzer-Plaketten anhaengen — fuer EINZELNE Zeilen (`user_id`) und fuer
+GRUPPIERTE (`owner_ids`).
 
-Beim Umhängen eines Kaufpreises ist die Zeilen-ID eindeutig — wem sie
-gehört, weiss die Datenbank besser als jeder Dialog. Die Webapp schickte
-hier den BETRACHTER als from_user_id mit (die Zeilen-Eigentümer standen nur
-im Select der Anzeige): Zog das Hauptkonto die Zeile eines Unterkontos zu
-sich, suchte der Server sie unter dem falschen Konto und antwortete 404.
-Deshalb ermittelt der Server den Absender jetzt selbst; ein mitgeschickter
-from_user_id wird ignoriert.
+── Warum beide Formen hier ─────────────────────────────────────────────────
+Die Namensauflösung stand zweimal: hier fuer die ungruppierten Listen und in
+getSets() noch einmal, weil die Galerie im Haushalt nach set_number
+gruppiert und die Zeile deshalb MEHRERE Besitzer hat. Eine dritte Kopie
+waere faellig geworden, als die Set-Figuren dieselbe Plakette bekamen —
+`array_agg(DISTINCT user_id)`, dieselbe Auflösung, dieselbe Form.
 
-Geprüft wird ausschliesslich die Schreib-Richtung (`canWriteFor`): eigene
-Zeile immer, fremde nur als Hauptkonto für ein eigenes Unterkonto. Eine
-Zeile ausserhalb dieser Menge antwortet 403 — nicht 404, denn ob es sie
-gibt, geht den Anfragenden dann nichts an.
-
-@throws mit e.status 404 (Zeile existiert nicht) oder 403 (keine Richtung)
+Deshalb kennt der Helfer jetzt beide Eingaben. Zeilen, die weder das eine
+noch das andere Feld tragen (die gruppierte Teileliste), bleiben unberuehrt
+— sonst stuende dort ploetzlich ein leeres `owners`.
 ```

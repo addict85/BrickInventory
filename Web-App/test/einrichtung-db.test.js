@@ -6,6 +6,8 @@
  *   A  `!erledigt &&` aus der Bedingung entfernt   → rot: „erscheint nach Fertig weiter"
  *   B  Object.hasOwn in /quelle-testen entfernt   → rot: „__proto__ gilt als Quelle"
  *   C  istVerwalter-Prüfung in /einrichtung weg   → rot: „Nicht-Verwalter sieht den Stand"
+ *   D  (04.11.) in quellenAbsage die Zeile für fehlende Schlüssel entfernt
+ *      → rot: „fehlender Schlüssel in Klartext" (quelle_test_fehlgeschlagen)
  *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL.
  */
@@ -15,6 +17,7 @@ const assert = require('node:assert/strict');
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
 const _req = require('./helpers/sources').buildAndRequire();
+const { dbOderSkip } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
 const db = _req('db/database.js');
 
@@ -22,12 +25,7 @@ const SCHLUESSEL = ['rebrickable_api_key', 'brickset_api_key', 'bricklink_consum
   'bricklink_consumer_secret', 'bricklink_token', 'bricklink_token_secret', 'einrichtung_erledigt'];
 
 test('Einrichtungs-Assistent', { concurrency: 1 }, async (t) => {
-  try { await db.initSchema(); }
-  catch (e) {
-    if (process.env.REQUIRE_DB === '1')
-      throw new Error(`REQUIRE_DB=1, aber die Test-DB ist nicht erreichbar: ${e.message}`);
-    t.skip('Test-DB nicht erreichbar'); return;
-  }
+  if (!await dbOderSkip(t, _req, { migrieren: false })) return;
   const vorher = await db.all('SELECT key, value FROM global_settings WHERE key = ANY($1)', [SCHLUESSEL]);
   await db.run('DELETE FROM global_settings WHERE key = ANY($1)', [SCHLUESSEL]);
 
@@ -58,7 +56,7 @@ test('Einrichtungs-Assistent', { concurrency: 1 }, async (t) => {
 
     await t.test('eingerichtet: Schlüssel da, Passwort gesetzt → nicht mehr offen', async () => {
       await setze('rebrickable_api_key', 'abc');
-      await _req('src/konto/settings.js').verschluesseleGlobaleAltwerte();
+      await _req('src/einstellungen/settings.js').verschluesseleGlobaleAltwerte();
       await db.run('UPDATE users SET must_change_password = false WHERE id = $1', [uid]);
       const r = await ruf(V, '/einrichtung');
       assert.equal(r.body.offen, false);
@@ -81,10 +79,12 @@ test('Einrichtungs-Assistent', { concurrency: 1 }, async (t) => {
       }
       const bs = await ruf(V, '/quelle-testen', { quelle: 'brickset' });
       assert.equal(bs.status, 400);
-      assert.equal(bs.body.code, 'quelle_test_fehlgeschlagen');
-      assert.match(bs.body.error, /nicht konfiguriert/);
+      assert.equal(bs.body.code, 'quelle_ohne_schluessel', 'fehlender Schlüssel in Klartext');
+      assert.match(bs.body.error, /Für Brickset ist noch kein Zugang gespeichert/);
+      assert.match(bs.body.details, /nicht konfiguriert/, 'der rohe Grund steht unter „Details“');
       const bl = await ruf(V, '/quelle-testen', { quelle: 'bricklink' });
-      assert.match(bl.body.error, /nicht vollständig/);
+      assert.equal(bl.body.code, 'quelle_ohne_schluessel');
+      assert.match(bl.body.details, /nicht vollständig/);
       assert.equal((await ruf(N, '/quelle-testen', { quelle: 'brickset' })).status, 403);
     });
   } finally {

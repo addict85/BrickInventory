@@ -1,19 +1,6 @@
 /**
  * Bild-Diagnose: „Warum fehlt das Bild für Set X?" in EINER Antwort.
- *
- * ── Woher das kommt (Nachtrag 50) ───────────────────────────────────────────
- * Dieser Endpunkt ist die Lehre aus einer Fehlersuche, die fünf Anläufe
- * gebraucht hat (Nachträge 36, 37, 40, 41, 43, 47, 48). Dasselbe Symptom —
- * „die Kachel bleibt leer" — hatte nacheinander verschiedene Ursachen, und
- * jede Runde begann damit, dieselben Fragen einzeln von Hand zu beantworten:
- * Kennt die Datenbank eine Adresse? Liegt die Datei da? Die Vorschau? Ist sie
- * plausibel gross? Was sagt der Proxy-Cache? Die Antworten lagen an drei
- * verschiedenen Orten.
- *
- * Geprüft wird VERHALTEN gegen echte Dateien und echte Datenbank, in den drei
- * Lagen, die im Betrieb tatsächlich vorkommen. Besonders wichtig ist der
- * Klartext-Hinweis: Er ist der eigentliche Nutzen — Zahlen allein hätte man
- * auch vorher zusammensuchen können.
+ * Ausführlich: docs/begruendungen/test/image-diag-db.test.js.md#kopf
  *
  * Gegenprobe (durchgeführt): den Hinweis-Block für „Vorschau fehlt" entfernt →
  * Teilschritt A wird rot.
@@ -29,6 +16,7 @@ const ROOT = path.join(__dirname, '..');
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
 const _req = require('./helpers/sources').buildAndRequire();
+const { dbOderSkip } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
 const { haeltSet } = require('./helpers/bestand');
 const db = _req('db/database.js');
@@ -37,12 +25,7 @@ const express = require(path.join(ROOT, 'node_modules', 'express'));
 test('die Bild-Diagnose beschreibt jede Lage im Klartext',
   { concurrency: 1 }, async (t) => {
 
-  try { await db.initSchema(); }
-  catch (e) {
-    if (process.env.REQUIRE_DB === '1')
-      throw new Error(`REQUIRE_DB=1, aber die Test-DB ist nicht erreichbar: ${e.message}`);
-    t.skip('Test-DB nicht erreichbar'); return;
-  }
+  if (!await dbOderSkip(t, _req, { migrieren: false })) return;
 
   const { Jimp } = require(path.join(ROOT, 'node_modules', 'jimp'));
   const { DATA_DIR } = _req('src/infra/appPaths.js');
@@ -120,7 +103,7 @@ test('die Bild-Diagnose beschreibt jede Lage im Klartext',
 });
 
 test('der Set-Bild-Download meldet jeden Fehlschlag', () => {
-  // Bis Nachtrag 50 gab es genau EINE Logzeile (die Grössengrenze aus 47);
+  // Bis eine frühere Runde gab es genau EINE Logzeile (die Grössengrenze aus 47);
   // Statuscode, Netzwerkfehler, Zwergantwort und der umschliessende catch
   // endeten alle in einem stummen `return null`. Genau diese Stille hat die
   // Bild-Fehlersuche über fünf Nachträge gestreckt.

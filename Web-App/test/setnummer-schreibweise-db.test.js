@@ -1,33 +1,6 @@
 /**
  * Eine Set-Nummer wird ueberall gleich geschrieben.
- *
- * ── Der Fehler, den das verhindert ──────────────────────────────────────────
- * Die Zeile
- *
- *     setNumber.includes('-') ? setNumber : `${setNumber}-1`
- *
- * stand VIERUNDZWANZIGMAL im Baum, in zwoelf Dateien. Solange alle
- * Fundstellen sie gleich schreiben, faellt das nicht auf. Es reicht aber
- * eine, die es nicht tut — und dann suchen zwei Stellen unter verschiedenen
- * Namen nach derselben Sache.
- *
- * Genau das war der Fall bei der Frage „kennt BrickLink dafuer gar keinen
- * Preis?". Die Markierung schreibt clients/bricklink.ts unter der Nummer MIT
- * Anhang; die Vorpruefungen im Preis-Job und im Anfrageweg suchten unter der
- * ROHEN. NACHGEMESSEN, gleiche Markierung, gleiches Set:
- *
- *     Eingabe                Job                    Anfrageweg
- *     ohne Versionsanhang    error, 1 Abruf         wirft, 2 Abrufe
- *     mit  Versionsanhang    skipped_gear, 0        still,  0
- *
- * Drei BrickLink-Abrufe fuer ein Set, von dem im Katalog steht, dass es
- * keinen Preis hat — je Lauf, auf Kosten des Tageskontingents. Und der Job
- * zaehlte es als Fehler statt als uebersprungen.
- *
- * ── Warum das ein Verhaltenstest ist ────────────────────────────────────────
- * Die Aussage ist „beide Wege antworten gleich, egal wie der Aufrufer die
- * Nummer schreibt". Am Quelltext waere nur zu sehen, dass beide dieselbe
- * Funktion rufen — nicht, dass dabei dasselbe herauskommt.
+ * Ausführlich: docs/begruendungen/test/setnummer-schreibweise-db.test.js.md#kopf
  *
  * Gegenproben: siehe am jeweiligen Teilschritt.
  *
@@ -42,6 +15,7 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 
 const ROOT = path.join(__dirname, '..');
 const _req = require('./helpers/sources').buildAndRequire();
+const { dbOderSkip } = require('./helpers/db');
 const db = _req('db/database.js');
 
 // BrickLink vorgeben, BEVOR die Preiswege getPriceGuide herausziehen. Der
@@ -58,7 +32,7 @@ require.cache[blPfad].exports = Object.assign({}, echt, {
 });
 
 test('die Schreibweise einer Set-Nummer ist eine Regel', () => {
-  const { mitVersion, ohneVersion } = _req('src/sets/setNummer.js');
+  const { mitVersion, ohneVersion } = _req('src/infra/setNummer.js');
   assert.equal(mitVersion('10179'), '10179-1');
   assert.equal(mitVersion('10179-1'), '10179-1');
   assert.equal(mitVersion('75192-2'), '75192-2');
@@ -67,12 +41,7 @@ test('die Schreibweise einer Set-Nummer ist eine Regel', () => {
 });
 
 test('der Katalog antwortet gleich, egal wie die Nummer geschrieben ist', { concurrency: 1 }, async (t) => {
-  try { await db.initSchema(); }
-  catch (e) {
-    if (process.env.REQUIRE_DB === '1')
-      throw new Error(`REQUIRE_DB=1, aber die Test-DB ist nicht erreichbar: ${e.message}`);
-    t.skip('Test-DB nicht erreichbar'); return;
-  }
+  if (!await dbOderSkip(t, _req, { migrieren: false })) return;
 
   const BLANK = `g${process.pid}`;        // so fragt der Aufrufer
   const MITV  = `${BLANK}-1`;             // so legt clients/bricklink.ts es ab
@@ -89,7 +58,7 @@ test('der Katalog antwortet gleich, egal wie die Nummer geschrieben ist', { conc
     const { fetchAndCachePrice } = _req('jobs/priceJob.js');
     const { fetchPrice } = _req('src/finanzen/financeCalc.js');
 
-    // Gegenprobe: in src/sets/setNummer.ts das mitVersion() aus katalogEintrag()
+    // Gegenprobe: in src/infra/setNummer.ts das mitVersion() aus katalogEintrag()
     // entfernt -> die Zeile mit „ohne Versionsanhang" wird rot.
     for (const nummer of [BLANK, MITV]) {
       abrufe = [];
@@ -131,13 +100,8 @@ test('die Schreibweise wird nirgends noch einmal ausgerechnet', () => {
     const code = fs.readFileSync(f, 'utf8')
       .replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/[^\n]*$/gm, '');
     const rel = path.relative(ROOT, f);
-    // ── Warum drei Muster ──────────────────────────────────────────────
-    // Der erste Entwurf suchte NUR nach `.includes('-') ?`. Damit ging
-    // src/katalog/bricklinkLink.ts durch: Dort stand dieselbe Regel als
-    // `/-\d+$/.test(n) ? n : `${n}-1``, also eine dritte Fassung — und die
-    // Prueflung blieb gruen, obwohl die Regel weiter zweimal dastand.
-    // Eine Suche, die nur EINE Schreibweise kennt, findet nur, was schon
-    // gleich geschrieben ist.
+    // Warum drei Muster
+    // Ausführlich: docs/begruendungen/test/setnummer-schreibweise-db.test.js.md#for-stelle
     for (const m of [/\.includes\('-'\)\s*\?/,             // die haeufigste Fassung
                      /\/-\\d\+\$\/\.test\(/,                // bricklinkLink, setAdd, setService
                      /\?\s*[\w.]+\s*:\s*`\$\{[^}]+\}-1`/,     // die Ergaenzung selbst
@@ -148,13 +112,9 @@ test('die Schreibweise wird nirgends noch einmal ausgerechnet', () => {
   // KEINE Ausnahmen mehr. src/sets/setAdd.ts und src/sets/setService.ts trugen den
   // Normalisierer zuletzt noch absichtlich doppelt, mit zwei Begruendungen:
   // ein Import baue einen Kreis, und set-add-exists-db.test.js fuehre beide
-  // Ruempfe ISOLIERT aus. Beides galt nicht mehr — der Kreis war zwischen
-  // JENEN BEIDEN Modulen, und src/sets/setNummer.ts ist ein Blatt; die Isolation
-  // war eine Eigenart des Tests, der den Rumpf per `new Function`
-  // heraussschnitt, obwohl beide Funktionen exportiert sind. Er vergleicht
-  // sie jetzt als Funktionen, und beide reichen an normalisiereSetNummer()
-  // durch.
-  assert.deepEqual(eigene, ['src/sets/setNummer.ts'],
+  // Ruempfe ISOLIERT aus. Beides galt nicht mehr — der Kreis war zwischen …
+  // Ausführlich: docs/begruendungen/test/setnummer-schreibweise-db.test.js.md#stelle
+  assert.deepEqual(eigene, ['src/infra/setNummer.ts'],
     'Die Schreibweise wird woanders noch einmal ausgerechnet — genau so laufen ' +
     'zwei Stellen auseinander, die dasselbe meinen');
   assert.deepEqual(vorpruefer, ['src/katalog/repository/katalogCache.ts'],

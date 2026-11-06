@@ -22,6 +22,7 @@ const assert = require('node:assert/strict');
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
 const _req = require('./helpers/sources').buildAndRequire();
+const { dbOderSkip } = require('./helpers/db');
 const db = _req('db/database.js');
 const { haeltSet, erfasse, haeltTeil, haeltFigur } = require('./helpers/bestand');
 
@@ -29,14 +30,7 @@ const NAME = `geschenk_${process.pid}`;
 const SET = `8${process.pid}1-1`, TEIL = `gt${process.pid}`, FARBE = 11, FIGUR = `gf${process.pid}`;
 
 test('Kaufpreis 0 ist ein Geschenk: Betrag ja, Prozent nein', { concurrency: 1 }, async (t) => {
-  try { await db.initSchema(); }
-  catch (e) {
-    if (process.env.REQUIRE_DB === '1')
-      throw new Error(`REQUIRE_DB=1, aber die Test-DB ist nicht erreichbar: ${e.message}`);
-    t.skip('Test-DB nicht erreichbar'); return;
-  }
-  const c = await db.pool.connect();
-  try { await _req('db/migrate.js').runMigrations(c); } finally { c.release(); }
+  if (!await dbOderSkip(t, _req)) return;
   await db.run('DELETE FROM users WHERE username = $1', [NAME]);
   const uid = (await db.get(`INSERT INTO users (username, password_hash) VALUES ($1,'x') RETURNING id`, [NAME])).id;
   await db.run(`INSERT INTO user_settings (user_id, key, value) VALUES ($1, 'currency', 'CHF')`, [uid]);
@@ -97,9 +91,9 @@ test('Kaufpreis 0 ist ein Geschenk: Betrag ja, Prozent nein', { concurrency: 1 }
   await t.test('Teil und Figur', async () => {
     const { getPartPriceHistory, getMinifigPriceHistory } = _req('src/finanzen/priceHistory.js');
     const teil = await getPartPriceHistory([uid], TEIL, FARBE, 'CHF');
-    assert.deepEqual(teil.by_condition.N, { market_price: 0.4, purchase_price: 0, pnl_pct: null });
+    assert.deepEqual(teil.by_condition.N, { market_price: 0.4, purchase_price: 0, pnl_pct: null, pnl_prozent: null });
     const figur = await getMinifigPriceHistory([uid], FIGUR, 'CHF');
-    assert.deepEqual(figur.by_condition.N, { market_price: 6, purchase_price: 0, pnl_pct: null });
+    assert.deepEqual(figur.by_condition.N, { market_price: 6, purchase_price: 0, pnl_pct: null, pnl_prozent: null });
     const { valueAcquisitionRows } = _req('src/finanzen/setValue.js');
     const [zeile] = valueAcquisitionRows(TEIL, [{ id: 1, condition: 'N', quantity: 10, unit_price: 0 }],
       new Map([[`${TEIL}|N`, 0.4]]));

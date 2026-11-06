@@ -1,6 +1,5 @@
 package ch.brickinventoryapp
 
-import ch.brickinventoryapp.ressourcen.R
 import ch.brickinventoryapp.data.api.BrickApiService
 import ch.brickinventoryapp.data.cache.ResponseCache
 import ch.brickinventoryapp.data.repository.SetsRepository
@@ -8,6 +7,9 @@ import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import java.io.File
+import retrofit2.http.DELETE
+import retrofit2.http.PUT
 
 /**
  * Die Preisalarm-Uebersicht gibt es in der App genauso wie in der Webapp.
@@ -40,10 +42,8 @@ import org.junit.Test
  *   a) LaunchedEffect(Unit) { vm.ladeAlarmUebersicht() } aus SettingsScreen.kt
  *      entfernt
  *        → „die Rubrik steht in den Einstellungen und laedt sich selbst" rot
- *   b) (die Schwelle prueft seit dem 28.10.2026 EinstellungenViewModelTest
+ *   b) (die Schwelle prueft EinstellungenViewModelTest
  *      ausgefuehrt, „eine Schwelle von null geht nicht hinaus")
- *   c) getAlleAlarme in SetsRepository.kt und an der Aufrufstelle umbenannt
- *        → „die App holt alle Alarme ueber die gemeinsame Route" rot
  *
  * Ergebnis des Laufs: 495 Tests, genau 3 rot — einer je Eingriff, keiner
  * zusaetzlich. Damit haengt jede Regel an ihrer eigenen Aussage und nicht an
@@ -62,13 +62,6 @@ import org.junit.Test
  *   a) FinanzBild-Aufruf aus SettingsScreen entfernt
  *        → „die Zeile zeigt ein Bild und fuehrt in die Detailansicht" rot
  *   b) Schluessel des Rollmerkers von "settings" auf "einstellungen"
- *        → „die Einstellungen merken sich ihre Rollposition" rot
- *   c) Loeschknopf schreibt ueber eine Zwischenvariable
- *        → „vor dem Loeschen wird gefragt" rot
- *   d) `border` der Plakette auf null — nur noch Farbe traegt den Unterschied
- *        → „der Alarmzustand steht als Plakette da" rot
- *   e) 'alerts_fired' zurueck auf „○ hat gemeldet" — kein Wortpaar mehr
- *        → „die beiden Alarmzustaende sind als Wortpaar erkennbar" rot
  *
  * Ergebnis: 501 Tests, GENAU 5 rot — einer je Eingriff, keiner zusaetzlich.
  * Jeder Anker war vorher auf Eindeutigkeit geprueft (je genau 1 Fundstelle);
@@ -84,7 +77,7 @@ class AlarmUebersichtTest {
     private fun quelle(rel: String) = Quellen.ohneKommentare(Quellen.lies(rel))
 
     /**
-     * Ausgeführt gegen einen Testserver. Gegenprobe (29.10.2026, gemessen): in
+     * Ausgeführt gegen einen Testserver. Gegenprobe: in
      * SetsApi `@GET("api/v1/alerts")` auf "api/v1/alarme" → rot.
      */
     @Test
@@ -93,7 +86,7 @@ class AlarmUebersichtTest {
         try {
             runBlocking {
                 SetsRepository(TestApi.fuer(pfade.server),
-                    ResponseCache { java.io.File(System.getProperty("java.io.tmpdir"), "bim-alarme") }).getAlleAlarme()
+                    ResponseCache { File(System.getProperty("java.io.tmpdir"), "bim-alarme") }).getAlleAlarme()
             }
             assertEquals(listOf("GET /api/v1/alerts"), pfade.anfragen.toList())
         } finally {
@@ -101,11 +94,11 @@ class AlarmUebersichtTest {
         }
     }
 
-    @Test
     // Seit dem 16.10. liegt die Rubrik auf ihrer eigenen Seite
     // (EinstellungenUnterseiten.kt) — die Einstellungen fuehren mit einer
     // Zeile dorthin. Die Zusicherung ist dieselbe geblieben: Die Rubrik haengt
     // irgendwo, und sie holt ihre Daten selbst.
+    @Test
     fun `die Rubrik steht in den Einstellungen und laedt sich selbst`() {
         val s = quelle("ui/screens/EinstellungenUnterseiten.kt") + quelle("ui/screens/EinstellungenAlarme.kt")
         // Nur der Anfang des Aufrufs, nicht die ganze Zeile: Die Rubrik hat
@@ -113,7 +106,7 @@ class AlarmUebersichtTest {
         // Regel, die an der Anzahl haengt, prueft nicht mehr das, was sie
         // sagt — sie geht beim naechsten Parameter kaputt, ohne dass etwas
         // kaputt waere. Genau das ist hier passiert (Lauf 286).
-        assert(s.contains("PreisalarmeCard(vm,") || s.contains("PreisalarmeCard(vm)")) {
+        assert(s.contains("PreisalarmeCard(uebersicht, aktionen,")) {
             "Die Rubrik ist nicht in den Einstellungen eingehaengt — sie existiert, " +
                 "aber niemand sieht sie."
         }
@@ -121,8 +114,8 @@ class AlarmUebersichtTest {
             "Die Rubrik holt ihre Daten nicht — sie bliebe leer."
         }
         // Loeschen und Aendern, beides: Genau das hat Marco verlangt.
-        assert(s.contains("vm.loescheAlarm(")) { "Der Alarm laesst sich nicht loeschen." }
-        assert(s.contains("vm.aendereAlarmSchwelle(")) { "Der Wert laesst sich nicht anpassen." }
+        assert(s.contains("aktionen.loescheAlarm(")) { "Der Alarm laesst sich nicht loeschen." }
+        assert(s.contains("aktionen.aendereAlarmSchwelle(")) { "Der Wert laesst sich nicht anpassen." }
     }
 
     @Test
@@ -133,8 +126,8 @@ class AlarmUebersichtTest {
         // Anfragen. Hier die Annotationen der Schnittstelle, per Reflexion.
         // Der CSV-Import (POST …/alerts/import/csv) legt an, er ändert keinen Alarm.
         val aendernd = BrickApiService::class.java.methods.mapNotNull { m ->
-            m.getAnnotation(retrofit2.http.PUT::class.java)?.value
-                ?: m.getAnnotation(retrofit2.http.DELETE::class.java)?.value
+            m.getAnnotation(PUT::class.java)?.value
+                ?: m.getAnnotation(DELETE::class.java)?.value
         }
         assertTrue("Keine ändernden Adressen gefunden — Reflexion greift nicht?", aendernd.size > 10)
         val zweiterWeg = aendernd.filter { it.startsWith("api/v1/alerts") }
@@ -227,12 +220,12 @@ class AlarmUebersichtTest {
             "Die Einstellungen halten ihren Rollzustand noch selbst — nach der " +
                 "Rueckkehr aus der Detailansicht stuende man wieder ganz oben."
         }
-        assert(Regex(""""settings",\s*settingsScrollState""").containsMatchIn(graph)) {
+        assert(Regex("""Screen\.Settings\.rollSchluessel,\s*settingsScrollState""").containsMatchIn(graph)) {
             "Der Rollzustand wird nicht gemerkt — er ueberlebt zwar, aber niemand " +
                 "springt zurueck."
         }
         val nav = quelle("AppNavigation.kt")
-        assert(nav.contains("val settingsScrollState")) {
+        assert(nav.contains("einstellungen = androidx.compose.foundation.rememberScrollState()")) {
             "Der Zustand entsteht nicht oberhalb des NavHost — dort, wo er ueberlebt."
         }
         val screen = quelle("ui/screens/SettingsScreen.kt")
@@ -326,43 +319,32 @@ class AlarmUebersichtTest {
     }
 
     /**
-     * Das Wort ist ein Paar — „scharf" gegen „unscharf".
-     *
-     * Vorher stand „scharf" gegen „hat gemeldet": zwei Aussagen ueber
-     * verschiedene Dinge. Wer die Farbe nicht lesen kann, musste daraus
-     * schliessen, dass das eine das Gegenteil des anderen sei.
-     *
-     * Geprueft wird in BEIDEN Sprachdateien — genau hier wurde schon einmal
-     * eine Seite nachgezogen und die andere vergessen.
+     * Ohne Farbe muss der Text allein sagen, was gilt: „Aktiv“ gegen „Ausgelöst“, und
+     * die Zeile unter dem Feld, worauf ein ausgelöster Alarm wartet. Kreiszeichen las
+     * TalkBack als „schwarzer Kreis“ vor (UI-Prüfung 10, N4). Die Erklärung steht nicht
+     * mehr in der Plakette: Dort brach sie auf dem Telefon die Zeile (UI-Prüfung 12, H1).
+     * Geprüft in BEIDEN Sprachdateien.
      */
     @Test
-    fun `die beiden Alarmzustaende sind als Wortpaar erkennbar`() {
+    fun `die beiden Alarmzustaende sagen ohne Farbe und Zeichen, was gilt`() {
         for (datei in listOf("values/strings.xml", "values-de/strings.xml")) {
-            val xml = java.io.File(Quellen.res, "$datei").readText()
-            // Kein dreifaches Anfuehrungszeichen und keine Konstante dafuer:
-            // Ein einfaches Muster mit maskierten Anfuehrungszeichen reicht,
-            // und der erste Entwurf hatte hier tatsaechlich die drei Zeichen
-            // IN das Muster geschrieben statt um es herum.
+            val xml = File(Quellen.res, datei).readText()
             fun text(name: String) =
                 Regex("<string name=\"" + name + "\">(.*?)</string>")
                     .find(xml)?.groupValues?.get(1) ?: ""
-            val scharf = text("alerts_armed")
-            val unscharf = text("alerts_fired")
-            assert(scharf.isNotBlank() && unscharf.isNotBlank()) {
-                "Die Zustandstexte fehlen in $datei."
+            val aktiv = text("alerts_armed")
+            val ausgeloest = text("alerts_fired")
+            assert(aktiv.isNotBlank() && ausgeloest.isNotBlank()) { "Die Zustandstexte fehlen in $datei." }
+            assert(aktiv.lowercase() != ausgeloest.lowercase()) { "Beide Zustaende heissen in $datei gleich." }
+            // Geometrische Formen (U+25A0–U+25FF) sind Bild, nicht Wort.
+            for (t in listOf(aktiv, ausgeloest)) {
+                assert(t.none { it in '\u25A0'..'\u25FF' }) { "„$t“ in $datei traegt ein Sinnbildzeichen." }
+                assert(t.count { it.isLetter() } >= 4) { "„$t“ in $datei ist kein Wort." }
             }
-            // Gefuelltes gegen hohles Zeichen — der dritte Unterschied neben
-            // Wort und Flaeche.
-            assert(scharf.contains("\u25CF")) { "In $datei fehlt das gefuellte Zeichen." }
-            assert(unscharf.contains("\u25CB")) { "In $datei fehlt das hohle Zeichen." }
-            // Das eine Wort muss im anderen stecken (scharf/unscharf,
-            // armed/not armed): Ohne Farbe ist das der einzige Hinweis darauf,
-            // dass der eine Zustand das Gegenteil des anderen ist.
-            val a = scharf.filter { it.isLetter() }.lowercase()
-            val b = unscharf.filter { it.isLetter() }.lowercase()
-            assert(a.isNotEmpty() && b.contains(a)) {
-                "Die beiden Zustaende in $datei sind kein erkennbares Gegensatzpaar."
-            }
+            // Der ausgeloeste Zustand sagt, worauf er wartet — sonst bliebe offen,
+            // ob der Alarm noch etwas tut. Das steht unter jedem ausgelösten Feld.
+            val erklaerung = text("detail_alert_fired")
+            assert(erklaerung.trim().contains(' ')) { "„$erklaerung“ in $datei erklaert nicht, was als Naechstes geschieht." }
         }
     }
 

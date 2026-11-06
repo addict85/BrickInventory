@@ -1,21 +1,17 @@
 package ch.brickinventoryapp.ui.screens
 
-import androidx.compose.ui.semantics.heading
-import androidx.compose.ui.semantics.semantics
+import ch.brickinventoryapp.ui.components.DetailTopAppBar
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.res.stringResource
-import ch.brickinventoryapp.ressourcen.R
 import ch.brickinventoryapp.ui.*
 import ch.brickinventoryapp.ui.theme.Abstaende
 import ch.brickinventoryapp.ui.theme.mittigBis
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import ch.brickinventoryapp.ui.theme.Lesebreite
 
 /**
  * Der Rahmen jeder Unterseite: Titel, Zurück-Pfeil, darunter der Inhalt mit einem
@@ -27,6 +23,8 @@ fun Unterseite(
     titel: String,
     snackbarHostState: SnackbarHostState,
     onZurueck: () -> Unit,
+    /** Formulare schmaler als Listen: Ein Eingabefeld über 800 dp liest sich nicht mehr als eines. */
+    breite: androidx.compose.ui.unit.Dp = Lesebreite.liste,
     inhalt: @Composable ColumnScope.() -> Unit,
 ) {
     Scaffold(
@@ -37,18 +35,8 @@ fun Unterseite(
         // in der Komposition ist. Ohne diese Zeile gingen „Gutschein gespeichert“, „250
         // CHF“ und jede Absage der Guthaben-Abfrage still verloren.
         snackbarHost = { SnackbarHost(snackbarHostState) },
-        topBar = {
-            TopAppBar(
-                // Überschrift der Unterseite: Vorleseprogramme springen dorthin.
-                title = { Text(titel, maxLines = 1, modifier = Modifier.semantics { heading() }) },
-                navigationIcon = {
-                    IconButton(onClick = onZurueck) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack,
-                             stringResource(R.string.common_back))
-                    }
-                },
-            )
-        },
+        // Der Kopf der Detailseiten: Überschrift, bei grosser Schrift zweizeilig statt abgeschnitten.
+        topBar = { DetailTopAppBar(titel, onZurueck, schliessen = false) },
     ) { innen ->
         Column(
             Modifier
@@ -57,7 +45,7 @@ fun Unterseite(
                 .verticalScroll(rememberScrollState())
                 // Auf dem Tablet mittig auf Lesebreite: Eine Zeile über 1200 dp liest sich
                 // nicht mehr in einem Zug.
-                .mittigBis(ch.brickinventoryapp.ui.theme.Lesebreite.liste)
+                .mittigBis(breite)
                 .padding(horizontal = Abstaende.gross, vertical = Abstaende.gross),
             verticalArrangement = Arrangement.spacedBy(Abstaende.gross),
         ) { inhalt() }

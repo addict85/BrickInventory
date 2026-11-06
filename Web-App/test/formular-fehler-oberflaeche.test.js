@@ -5,7 +5,7 @@
  *
  * Gegenproben (02.11.2026 gemessen, je einzeln, Bündel neu gebaut):
  *   A  doLogin ruft formularFehler ohne Felder auf → rot: „falsches Passwort“
- *   B  input-Hörer in 01-core.js entfernt → rot: „Tippen nimmt die Markierung“
+ *   B  input-Hörer in 01-formular.js entfernt → rot: „Tippen nimmt die Markierung“
  *   C  Registrierung: Feldliste bei fehlenden Pflichtfeldern leer → rot:
  *      „Registrierung: leere Pflichtfelder“
  */
@@ -15,7 +15,7 @@ const { oeffneOberflaeche, warte, takt } = require('./helpers/oberflaeche');
 
 test('Anmeldung: Fehler am Feld', async (t) => {
   const { w, d } = await oeffneOberflaeche({
-    '/v1/auth/login': { $status: 401, success: false, error: 'Benutzername oder Passwort falsch' },
+    '/v1/auth/login': { $status: 401, success: false, error: 'Benutzername oder Passwort falsch', code: 'anmeldedaten_ungueltig' },
   }, { angemeldet: false });
   try {
     d.getElementById('lu').value = 'anna'; d.getElementById('lp').value = 'falsch';

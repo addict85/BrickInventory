@@ -1,5 +1,6 @@
 package ch.brickinventoryapp
 
+import ch.brickinventoryapp.util.NetworkPolicy
 import ch.brickinventoryapp.data.Abmeldeweg
 import ch.brickinventoryapp.data.Abmeldung
 import ch.brickinventoryapp.data.ENTWERTUNG_HOECHSTVERSUCHE
@@ -28,6 +29,7 @@ import org.junit.Test
 import retrofit2.Retrofit
 import java.io.File
 import java.util.concurrent.TimeUnit
+import ch.brickinventoryapp.data.api.ApiJson
 
 /**
  * Abmelden ohne Netz lässt das Token am Server nicht gültig (sec7, N3): Scheitert
@@ -35,7 +37,7 @@ import java.util.concurrent.TimeUnit
  * Server bestätigt. Der Arbeiter selbst (WorkManager) läuft nur auf dem Gerät;
  * geprüft werden Abmeldung, Entwerter und die Entscheidung je Lauf.
  *
- * Gegenproben (03.11.2026, kotlinc lokal gemessen):
+ * Gegenproben:
  *   A  Abmeldung.amServer() ohne planer.plane() → rot „scheitert der Versuch, geht
  *      ein Auftrag in die Warteschlange“
  *   B  einordnenEntwertung(): 401 als SPAETER → rot „ein Token, das schon nicht
@@ -44,6 +46,8 @@ import java.util.concurrent.TimeUnit
  *      schickt genau dieses Token …“ (kein Authorization-Kopf)
  *   D  entwertungsSchritt(): Gesperrt → AUFGEGEBEN → rot „ein gesperrter Keystore
  *      wartet …“
+ *   E in entwerte() die Prüfung der Herkunft entfernt → rot
+ *      „ein Auftrag für einen anderen Server schickt nichts“ (gegenproben/entwerter-ohne-herkunft.patch)
  */
 class EntwertungTest {
 
@@ -60,14 +64,14 @@ class EntwertungTest {
         val lage = object : Zugangslage {
             override fun serverUrl() = server.url("/").toString().trimEnd('/')
             override fun token() = "geheim"
-            override fun tokenHerkunft(): String? = null
+            override fun tokenHerkunft(): String? = NetworkPolicy.herkunft(serverUrl())
             override fun generation() = 0L
         }
         val client = OkHttpClient.Builder()
             .addInterceptor(ServerWaechter(lage, true, entwicklung = true, sitzungAbgelaufen = {}))
             .readTimeout(2, TimeUnit.SECONDS).build()
         return KontoRepository(Retrofit.Builder().baseUrl(server.url("/")).client(client)
-            .addConverterFactory(ch.brickinventoryapp.data.api.ApiJson.asConverterFactory("application/json".toMediaType()))
+            .addConverterFactory(ApiJson.asConverterFactory("application/json".toMediaType()))
             .build().create(KontoApi::class.java), ResponseCache { dir })
     }
 
@@ -126,6 +130,18 @@ class EntwertungTest {
         assertEquals("Kein Token im Klartext, auch nicht später", Entwertungsergebnis.AUFGEBEN, klartext.entwerte(basis, "t"))
         server.shutdown()
         assertEquals(Entwertungsergebnis.SPAETER, entwerter.entwerte(basis, "altes-token"))
+    }
+
+    @Test
+    fun `ein Auftrag fuer einen anderen Server schickt nichts`() {
+        val entwerter = Entwerter(OkHttpClient.Builder().readTimeout(2, TimeUnit.SECONDS).build(), entwicklung = true)
+        val b = server.url("/").toString().trimEnd('/')
+        server.enqueue(MockResponse().setResponseCode(503))
+        assertEquals(Entwertungsergebnis.AUFGEBEN, entwerter.entwerte(b, "token-von-a", herkunft = "https://a.example"))
+        assertEquals(Entwertungsergebnis.AUFGEBEN, entwerter.entwerte(b, "token-von-a", herkunft = null))
+        assertEquals("Das Token von A ging an B", 0, server.requestCount)
+        assertEquals("Ohne Angabe gehört das Token dem Server des Auftrags",
+            NetworkPolicy.herkunft(b), Entwertungsauftrag(b, "x").herkunft)
     }
 
     @Test

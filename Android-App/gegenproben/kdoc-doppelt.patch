@@ -1,0 +1,17 @@
+Gegenprobe: Ein KDoc-Block steht direkt vor einem zweiten und hängt an nichts
+Modul: app
+Test: ch.brickinventoryapp.QuelltextRatscheTest
+Rot: eine Kurzfassung endet mit einem ganzen Satz
+
+diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/alarm/Alarmabholung.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/alarm/Alarmabholung.kt
+index 14bc778..24f6c8f 100644
+--- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/alarm/Alarmabholung.kt
++++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/alarm/Alarmabholung.kt
+@@ -10,6 +10,7 @@ import ch.brickinventoryapp.data.repository.Ergebnis as Abrufergebnis
+  */
+ typealias Frage = suspend (String?) -> Abrufergebnis<PendingAlertsResponse>
+ 
++/** Ein verwaister Block. */
+ /**
+  * Was beim Abholen der ausgelösten Preisalarme entschieden wird — ausserhalb des
+  * Workers, weil sich ein ListenableWorker nur mit laufendem Android prüfen lässt.

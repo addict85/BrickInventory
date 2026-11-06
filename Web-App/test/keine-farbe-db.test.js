@@ -23,18 +23,12 @@ const path = require('node:path');
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
 const _req = require('./helpers/sources').buildAndRequire();
+const { dbOderSkip } = require('./helpers/db');
 const db = _req('db/database.js');
 const MIGRATION = path.join(__dirname, '..', 'db/migrations/0071-keine-farbe.sql');
 
 test('keine Farbe ist 9999, 0 bleibt Schwarz', { concurrency: 1 }, async (t) => {
-  try { await db.initSchema(); }
-  catch (e) {
-    if (process.env.REQUIRE_DB === '1')
-      throw new Error(`REQUIRE_DB=1, aber die Test-DB ist nicht erreichbar: ${e.message}`);
-    t.skip('Test-DB nicht erreichbar'); return;
-  }
-  const mc = await db.pool.connect();
-  try { await _req('db/migrate.js').runMigrations(mc); } finally { mc.release(); }
+  if (!await dbOderSkip(t, _req)) return;
   t.after(() => db.pool.end().catch(() => {}));
 
   await t.test('die Migration stellt nur um, wo die Zeile es beweist', async () => {
@@ -45,6 +39,8 @@ test('keine Farbe ist 9999, 0 bleibt Schwarz', { concurrency: 1 }, async (t) => 
       await c.query(`ALTER TABLE parts ALTER COLUMN color_id DROP NOT NULL;
                      DROP INDEX idx_parts_eindeutig;
                      CREATE UNIQUE INDEX idx_parts_eindeutig ON parts (user_id, COALESCE(set_number, ''), part_number, COALESCE(color_id, 0))`);
+      // Die Herkunftsspalten bis Migration 0093.
+      await c.query('ALTER TABLE part_color_catalog ADD COLUMN farbname_von integer, ADD COLUMN farbcode_von integer');
       const konto = async (n) => (await c.query(`INSERT INTO users (username,password_hash) VALUES ($1,'x') RETURNING id`, [`farbe-${n}-${process.pid}`])).rows[0].id;
       const A = await konto('a'), B = await konto('b');
       await c.query(`INSERT INTO rb_colors (id,name,rgb) VALUES (0,'Black','05131D'),(13,'Pink','FC97AC')

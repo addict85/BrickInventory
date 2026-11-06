@@ -20,6 +20,7 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 process.env.SESSION_SECRET = 'test-secret-lang-genug-fuer-die-pruefung';
 
 const _req = require('./helpers/sources').buildAndRequire();
+const { dbOderSkip } = require('./helpers/db');
 const db = _req('db/database.js');
 const express = require(path.join(ROOT, 'node_modules', 'express'));
 const session = require(path.join(ROOT, 'node_modules', 'express-session'));
@@ -29,14 +30,7 @@ const bcrypt = require(path.join(ROOT, 'node_modules', 'bcryptjs'));
 const NAME = `pflicht_${process.pid}`, PASS = 'start-Passwort-1', NEU = 'eigenes-Passwort-2';
 
 test('Startpasswort: erst wechseln, dann alles andere', { concurrency: 1 }, async (t) => {
-  try { await db.initSchema(); }
-  catch (e) {
-    if (process.env.REQUIRE_DB === '1')
-      throw new Error(`REQUIRE_DB=1, aber die Test-DB ist nicht erreichbar: ${e.message}`);
-    t.skip('Test-DB nicht erreichbar'); return;
-  }
-  const c = await db.pool.connect();
-  try { await _req('db/migrate.js').runMigrations(c); } finally { c.release(); }
+  if (!await dbOderSkip(t, _req)) return;
   await db.run('DELETE FROM users WHERE username = $1', [NAME]);
   const uid = (await db.get(`INSERT INTO users (username, password_hash, is_admin, is_active, email_verified, must_change_password)
     VALUES ($1, $2, true, true, true, true) RETURNING id`, [NAME, await bcrypt.hash(PASS, 4)])).id;
@@ -87,10 +81,13 @@ test('Startpasswort: erst wechseln, dann alles andere', { concurrency: 1 }, asyn
     assert.equal((await ruf('/settings/tokens', { cookie })).status, 403);
   });
 
-  await t.test('der Wechsel selbst geht, danach alles', async () => {
+  await t.test('der Wechsel selbst geht, danach (als Verwalter mit zweitem Faktor) alles', async () => {
     const w = await ruf('/auth/change-password', { cookie, body: { current: PASS, newPassword: NEU } });
     assert.equal(w.status, 200, JSON.stringify(w.body));
     const neu = w.cookie ?? cookie;
+    // Seit dem 04.11.2026 verlangen Verwalterrechte danach einen Code-Generator.
+    assert.equal((await ruf('/settings/tokens', { cookie: neu })).body.code, 'zweiter_faktor_pflicht');
+    await require('./helpers/verwalter').verwalterMitFaktor(_req, uid);
     assert.equal((await ruf('/settings/tokens', { cookie: neu })).status, 200);
     assert.equal((await ruf('/auth/me', { cookie: neu })).body.user.mustChangePassword, false);
   });

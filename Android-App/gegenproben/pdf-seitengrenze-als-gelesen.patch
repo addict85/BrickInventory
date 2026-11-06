@@ -1,0 +1,18 @@
+Gegenprobe: Das Gutschein-PDF über der Seitengrenze gilt wieder als halb gelesen
+Modul: core-data
+Test: ch.brickinventoryapp.FehlercodeTest
+Rot: Seitengrenze ist ein Fehler
+
+diff --git a/Android-App/core-model/src/main/java/ch/brickinventoryapp/data/model/Fehlercode.kt b/Android-App/core-model/src/main/java/ch/brickinventoryapp/data/model/Fehlercode.kt
+index f7f8191..807e2d0 100644
+--- a/Android-App/core-model/src/main/java/ch/brickinventoryapp/data/model/Fehlercode.kt
++++ b/Android-App/core-model/src/main/java/ch/brickinventoryapp/data/model/Fehlercode.kt
+@@ -14,7 +14,7 @@ enum class Fehlercode(val kennung: String) {
+     NUR_ADMINS("nur_admins"),
+     PASSKEY_UNGUELTIG("passkey_ungueltig"),
+     PASSWORT_WECHSEL_NOETIG("passwort_wechsel_noetig"),
+-    PDF_ZU_VIELE_SEITEN("pdf_zu_viele_seiten"),
++    PDF_ZU_VIELE_SEITEN("pdf_seiten"),
+     TOKEN_ROTATION_NOETIG("token_rotation_noetig"),
+     TOKEN_UNGUELTIG("token_ungueltig"),
+     UPLOAD_LAEUFT("upload_laeuft"),

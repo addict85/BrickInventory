@@ -2,17 +2,19 @@ import fsp from 'fs/promises';
 import path from 'path';
 import { bilderAusKatalog as katalogbilder } from '../src/katalog/bildlage';
 import { MINIFIG_IMAGES_DIR } from '../src/infra/appPaths';
-import { getMinifigInfo } from '../clients/rebrickable';
-import { logAndContinue, meldeUndWeiter } from '../src/infra/httpError';
+import { getMinifigInfo } from '../src/katalog/quellen';
+import { logAndContinue, meldeUndWeiter } from '../src/infra/fehler';
 import { pdfDateiPfad } from '../src/auftraege/pdfAuftraege';
 import { downloadImage, downloadSetImages } from '../src/katalog/teileAnreicherung';
-import { zeichnePdfImFaden, type PdfSet, type PdfTeil } from './pdfZeichnen';
+import { zeichnePdfImFaden, type PdfTeil } from './pdfZeichnen';
+import type { Nutzlast } from '../src/auftraege/nutzlasten';
 import { KEINE_FARBE } from '../src/infra/validate';
 import { merkeFigurBildAdresse, setzeFigurBildLokal, setzeTeilBildLokal } from '../src/katalog/katalogPflege';
-import { normalisiereSetNummer, moeglicheSetNummer } from '../src/sets/setNummer';
+import { normalisiereSetNummer, moeglicheSetNummer } from '../src/infra/setNummer';
+import { pruefeAbbruch, type AuftragsLauf } from '../src/auftraege/auftraege';
 
 /** Erst fehlende Bilder holen, dann im eigenen Faden zeichnen. */
-export interface PdfNutzlast { job_id: string; user_id: number; sets: PdfSet[]; parts: PdfTeil[] }
+export type PdfNutzlast = Nutzlast<'pdf'>;
 
 const istFigur = (p: PdfTeil) => !!p.is_fig || String(p.part_number).startsWith('fig-');
 const cdnAdresse = (url: string) => {
@@ -51,18 +53,19 @@ async function figurenAufDerPlatte(parts: PdfTeil[]) {
   }
 }
 
-async function erzeugePdf(n: PdfNutzlast): Promise<void> {
+async function erzeugePdf(n: PdfNutzlast, lauf?: AuftragsLauf): Promise<void> {
   const { job_id: jobId, user_id: uid, sets = [], parts = [] } = n;
   const ziel = pdfDateiPfad(jobId);
   if (!ziel) throw new Error(`ungültige Auftragskennung ${jobId}`);
   const setNumbers = [...new Set(sets.map(s => normalisiereSetNummer(s?.set_number ?? '')).filter(moeglicheSetNummer))];
   // Warten, falls ein anderer Prozess dieselben Bilder lädt — sonst fehlten sie im PDF.
-  for (const sn of setNumbers) await downloadSetImages(sn, true).catch(logAndContinue(`pdf:bilder ${sn}`));
+  for (const sn of setNumbers) { pruefeAbbruch(lauf); await downloadSetImages(sn, true).catch(logAndContinue(`pdf:bilder ${sn}`)); }
   await bilderAusKatalog(parts);
   await figurenOhneAdresse(parts);
   await figurenAufDerPlatte(parts);
   // Was dann noch fehlt (Teil nicht im Set-Katalog, abweichende Farbe), einzeln.
   for (const p of parts.filter(p => !p.image_local && p.image_url)) {
+    pruefeAbbruch(lauf);
     const figur = istFigur(p);
     const lokal = await downloadImage(cdnAdresse(p.image_url!), p.part_number, figur ? 0 : (p.color_id ?? KEINE_FARBE),
       figur ? 'minifig' : 'part').catch(logAndContinue(`pdf:bild ${p.part_number}`));
@@ -74,6 +77,7 @@ async function erzeugePdf(n: PdfNutzlast): Promise<void> {
   const mitBild = parts.filter(p => p.image_local).length;
   if (mitBild < parts.length) console.log(`[PDF job] ${jobId}: ${mitBild}/${parts.length} Bilder vorhanden`);
 
+  pruefeAbbruch(lauf);
   await fsp.mkdir(path.dirname(ziel), { recursive: true });
   await zeichnePdfImFaden(sets, parts, ziel);
   console.log(`[PDF job] ${jobId} fertig für Konto ${uid}`);

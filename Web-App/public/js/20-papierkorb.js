@@ -1,27 +1,30 @@
 import { echt, registerActions } from './00-registry.js';
-import { locale, t, tRaw } from '../i18n.js';
-import { fmtDatum, ico, G, api, esc, toast } from './01-core.js';
-import { bestaetigeMitPasswort, mitZweitemFaktor } from './07-admin.js';
-import { loadGallery, loadStats } from './02-gallery.js';
-import { loadParts } from './03-parts.js';
-import { loadManualFigsTable, loadManualParts, loadMinifigs } from './06-minifigs.js';
+import { tRaw } from '../i18n.js';
+import { api } from './01-api.js';
+import { ico, G, setzeHtml } from './01-dom.js';
+import { fmtDatum } from './01-format.js';
+import { toast } from './01-meldungen.js';
+import { html, ungeprueft } from './00-escapen.js';
+import { bestaetigeMitPasswort, mitZweitemFaktor } from './01-rueckfrage.js';
+import { melde } from './00-ereignisse.js';
 
 // ═══ Papierkorb (Einstellungen → Daten) ═════════════════════════════════════
-// Der Server legt beim Löschen einen Schnappschuss ab (src/bestand/papierkorb.ts);
-// hier wird er angezeigt, zurückgeholt oder endgültig entfernt.
+// Der Server legt beim Löschen einen Schnappschuss ab (src/bestand/papierkorb.ts); hier wird er angezeigt,
+// zurückgeholt oder endgültig entfernt.
 
 const ICON = { set: 'set', teil: 'teil', figur: 'figur' };
 
+/** @param {import('../../frontend-typen/vertrag').PapierkorbEintrag} e */
 function zeile(e) {
   const frist = fmtDatum(e.endgueltig_am);
-  return `<div class="pk-zeile">
+  return html`<div class="pk-zeile">
     <span aria-hidden="true">${ico(ICON[e.art] || 'loeschen')}</span>
-    <span class="pk-name"><span class="pk-nr">${esc(e.nummer)}</span>
-      ${e.bezeichnung ? ' · ' + esc(e.bezeichnung) : ''}
-      ${e.anzahl > 1 ? ` · ×${e.anzahl}` : ''}</span>
-    <span class="pk-frist">${esc(tRaw('trash.until', { datum: frist }))}</span>
-    <button class="btn bs btn-sm" data-click="papierkorbWiederherstellen" data-arg="${e.id}">${t('trash.restore')}</button>
-    <button class="btn bd btn-sm" data-click="papierkorbEndgueltig"${echt()} data-arg="${e.id}">${t('trash.delete_final')}</button>
+    <span class="pk-name"><span class="pk-nr">${e.nummer}</span>
+      ${e.bezeichnung ? html`${' · '}${e.bezeichnung}` : ''}
+      ${e.anzahl > 1 ? html` · ×${e.anzahl}` : ''}</span>
+    <span class="pk-frist">${tRaw('trash.until', { datum: frist })}</span>
+    <button class="btn bs btn-sm" data-click="papierkorbWiederherstellen" data-arg="${e.id}">${tRaw('trash.restore')}</button>
+    <button class="btn bd btn-sm" data-click="papierkorbEndgueltig"${echt()} data-arg="${e.id}">${tRaw('trash.delete_final')}</button>
   </div>`;
 }
 
@@ -30,19 +33,16 @@ export async function ladePapierkorb() {
   if (!liste) return;
   const d = await api('GET', '/v1/papierkorb');
   const leeren = G('papierkorb-leeren');
-  if (!d?.success) { liste.innerHTML = `<div class="voucher-leer">${t('trash.load_error')}</div>`; return; }
+  if (!d?.success) { setzeHtml(liste, html`<div class="voucher-leer">${tRaw('trash.load_error')}</div>`); return; }
   const eintraege = d.eintraege || [];
-  liste.innerHTML = eintraege.length
-    ? eintraege.map(zeile).join('')
-    : `<div class="voucher-leer">${t('trash.empty')}</div>`;
+  setzeHtml(liste, eintraege.length ? ungeprueft(eintraege.map(zeile).join('')) : html`<div class="voucher-leer">${tRaw('trash.empty')}</div>`);
   if (leeren) leeren.style.display = eintraege.length ? '' : 'none';
 }
 
 /** Alles nachladen, was ein Wiederherstellen verändert haben kann. */
-function bestandNeuLaden() {
-  loadGallery(); loadParts(); loadStats(); loadMinifigs(); loadManualParts(); loadManualFigsTable();
-}
+function bestandNeuLaden() { melde('bestandGeaendert'); }
 
+/** @param {(number | string)[]} ids */
 async function wiederherstellen(ids) {
   for (const id of ids) {
     const d = await api('POST', `/v1/papierkorb/${id}/wiederherstellen`);
@@ -51,6 +51,7 @@ async function wiederherstellen(ids) {
   return true;
 }
 
+/** @param {string} id */
 export async function papierkorbWiederherstellen(id) {
   if (!await wiederherstellen([id])) return;
   toast(tRaw('trash.restored'), 'success');
@@ -59,8 +60,9 @@ export async function papierkorbWiederherstellen(id) {
 }
 
 // Endgültig heisst unumkehrbar: Der Server verlangt dafür das Passwort (und den zweiten Faktor).
+/** @param {string} id */
 export async function papierkorbEndgueltig(id) {
-  const password = await bestaetigeMitPasswort(tRaw('trash.delete_final'), t('common.delete_text'), 'loeschen');
+  const password = await bestaetigeMitPasswort(tRaw('trash.delete_final'), tRaw('common.delete_text'), 'loeschen', { knopf: 'confirm.btn.endgueltig_loeschen', art: 'bd' });
   if (password === null) return;
   const d = await mitZweitemFaktor(z => api('DELETE', `/v1/papierkorb/${id}`, { password, ...z }));
   if (d === null) return;
@@ -69,7 +71,7 @@ export async function papierkorbEndgueltig(id) {
 }
 
 export async function papierkorbLeeren() {
-  const password = await bestaetigeMitPasswort(tRaw('trash.clear'), t('trash.clear_confirm'), 'loeschen');
+  const password = await bestaetigeMitPasswort(tRaw('trash.clear'), tRaw('trash.clear_confirm'), 'loeschen', { knopf: 'confirm.btn.papierkorb_leeren', art: 'bd' });
   if (password === null) return;
   const d = await mitZweitemFaktor(z => api('DELETE', '/v1/papierkorb', { password, ...z }));
   if (d === null) return;
@@ -85,7 +87,7 @@ export async function papierkorbLeeren() {
 export function geloeschtMitRueckgaengig(meldung, antwort) {
   const ids = antwort?.papierkorb || [];
   toast(meldung, 'success', ids.length ? {
-    text: tRaw('trash.undo'),
+    text: tRaw('trash.undo'), bleibt: true,
     fn: async () => {
       if (!await wiederherstellen(ids)) return;
       toast(tRaw('trash.restored'), 'success');

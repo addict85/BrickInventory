@@ -1,4 +1,4 @@
-import { logAndContinue, meldeUndLiefere } from '../../infra/httpError';
+import { logAndContinue, meldeUndLiefere } from '../../infra/fehler';
 import { stelleAuftragEin } from '../../auftraege/dienst';
 import * as repo from '../repository/bildbedarf';
 
@@ -31,7 +31,7 @@ export function merkeGebraucht(url: string, setNumber: string | null): void {
   if (_puffer.size < 500) _puffer.set(url, setNumber);
 }
 
-export async function notiereBildbedarf(urls: string[], sets: string[]): Promise<void> {
+export async function notiereBildbedarf(urls: string[], sets: (string | null)[]): Promise<void> {
   await repo.merkeBildwuensche(urls, sets);
 }
 
@@ -48,7 +48,7 @@ export async function initImageQueue(): Promise<void> {
   setInterval(() => { schreibePuffer().catch(logAndContinue('bild-job:schreibePuffer')); }, 10_000).unref();
 }
 
-// Ausführlich: docs/begruendungen/jobs/imageQueue.ts.md#loescheverfallene
+// Ausführlich: docs/begruendungen/src/katalog/bilder/bildbedarf.ts.md#loescheverfallene
 export async function loescheVerfallene(): Promise<number> {
   const r = await repo.loescheAlteBildwuensche(String(NOTIZ_GILT_MS)).catch(meldeUndLiefere('bild-job:r', null));
   return r?.changes || 0;

@@ -1,27 +1,7 @@
 /**
  * Marktpreis der Detailansicht: Die Währung bestimmt der SERVER, nicht der
  * Client — gegen echte Route und Tabelle.
- *
- * ── Warum es diese Datei gibt (Marcos Fehlerbericht, Nachtrag 31) ───────────
- * Symptom: Die Android-App zeigte in der Detailansicht teilweise keinen
- * Marktpreis, während Finanzübersicht und Galerie-Kachel ihn zeigten.
- *
- * Ursache-Kette, am laufenden Server nachgestellt:
- *   1. Die App speichert die Währung lokal (DataStore), Startwert "EUR" —
- *      übernommen vom Server erst beim ERSTEN Laden der Finanzübersicht.
- *   2. Die Detailansicht schickte diesen Wert als ?currency= mit.
- *   3. GET /api/v1/sets/:sn/price liess den Parameter GEWINNEN
- *      (`req.query.currency || getSetting(...)`).
- *   4. price_cache ist über set_number+condition+currency_code verschlüsselt:
- *      EUR-Anfrage traf den CHF-Cache nie → Live-Versuch (bis zu zwei
- *      BrickLink-Abrufe je Ansicht) → häufig no_price → leere Kachel.
- *   Finanzübersicht und Galerie fragen OHNE Parameter → Nutzereinstellung →
- *   Preis da. Identischer Nutzer, identisches Set: nur der Parameter
- *   unterschied no_price=true von avg_price=629.90.
- *
- * Seit Nachtrag 31 ignoriert die Route den Parameter — wie es die
- * Schwester-Route /price-history aus demselben Grund immer tat. Damit sind
- * auch ALTE App-Fassungen geheilt, ohne Update.
+ * Ausführlich: docs/begruendungen/test/price-currency-db.test.js.md#kopf
  *
  * Gegenprobe (durchgeführt): `req.query.currency ||` wieder vorangestellt →
  * der erste Teilschritt hier wird rot (no_price statt 629.90).
@@ -36,6 +16,7 @@ const ROOT = path.join(__dirname, '..');
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
 const _req = require('./helpers/sources').buildAndRequire();
+const { dbOderSkip } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
 const { haeltSet } = require('./helpers/bestand');
 const db = _req('db/database.js');
@@ -44,12 +25,7 @@ const express = require(path.join(ROOT, 'node_modules', 'express'));
 test('der currency-Parameter der App übersteuert die Nutzereinstellung NICHT',
   { concurrency: 1 }, async (t) => {
 
-  try { await db.initSchema(); }
-  catch (e) {
-    if (process.env.REQUIRE_DB === '1')
-      throw new Error(`REQUIRE_DB=1, aber die Test-DB ist nicht erreichbar: ${e.message}`);
-    t.skip('Test-DB nicht erreichbar'); return;
-  }
+  if (!await dbOderSkip(t, _req, { migrieren: false })) return;
 
   const USERNAME = 'currency-param-test';
   const SET = '10307-1';

@@ -1,19 +1,6 @@
 /**
  * Auth-Paritätstest (ohne DB).
- *
- * api-parity.test.js vergleicht, ob /api und /api/v1 dieselben DATEN liefern.
- * Die Vorbedingungen des Logins waren davon nicht abgedeckt — und genau dort
- * lag eine echte Lücke: /api/v1/auth/login hat weder is_active noch
- * email_verified geprüft. Ein deaktiviertes Konto konnte sich über die
- * Android-API anmelden und bekam dort einen Token OHNE Ablaufdatum.
- *
- * Der Test hat zwei Teile:
- *   1. assertLoginAllowed() selbst (Verhalten, inkl. der 0/1-vs-boolean-Fälle,
- *      die Postgres je nach Spaltentyp liefert).
- *   2. Ein statischer Check, dass BEIDE Login-Handler die Funktion aufrufen —
- *      damit die Regel nicht wieder auseinanderläuft.
- *
- * Ausführen: npm test
+ * Ausführlich: docs/begruendungen/test/auth-parity.test.js.md#kopf
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -42,26 +29,18 @@ test('deaktiviertes Konto wird abgelehnt — egal ob 0 oder false', () => {
   }
 });
 
-test('unbestätigte E-Mail wird abgelehnt, Admins ausgenommen', () => {
-  const r = assertLoginAllowed({ is_active: 1, email_verified: 0, email: 'a@b.c', is_admin: 0 });
+test('eine offene Registrierung wird abgelehnt, Admins ausgenommen', () => {
+  const r = assertLoginAllowed({ is_active: 1, email_verified: 0, email: null, is_admin: 0, registrierung_offen: true });
   assert.equal(r?.status, 403);
   assert.equal(r?.unverified, true);
-  assert.equal(assertLoginAllowed({ is_active: 1, email_verified: 0, email: 'a@b.c', is_admin: 1 }), null);
+  assert.equal(assertLoginAllowed({ is_active: 1, email_verified: 0, email: null, is_admin: 1, registrierung_offen: true }), null);
+  assert.equal(assertLoginAllowed({ is_active: 1, email_verified: 0, email: null, is_admin: 0, registrierung_offen: false }), null,
+    'ein vom Verwalter angelegtes Konto ohne Adresse');
 });
 
 /**
  * Jeden Anmelde-Handler SUCHEN statt zwei aufzuzählen.
- *
- * Die vorige Fassung dieses Tests nannte die beiden Dateien beim Namen und
- * prüfte, ob dort `assertLoginAllowed(user)` steht. Das hat genau das
- * abgesichert, was schon dastand — und nichts über den Rest gesagt. Genau in
- * dieser Lücke lag der zweite Unterschied zwischen den beiden Logins: der
- * fehlende Vergleich gegen den Dummy-Hash. Eine dritte Anmeldung wäre
- * ebenfalls unbemerkt geblieben.
- *
- * Gefunden wird über den Pfad (`…login…`); geprüft wird nur, was ein PASSWORT
- * entgegennimmt. `/qr-login` löst eine Nonce ein und hat keins — es fällt
- * dadurch von selbst heraus, ohne Ausnahmeliste.
+ * Ausführlich: docs/begruendungen/test/auth-parity.test.js.md#anmeldehandler
  */
 function anmeldeHandler() {
   const dateien = (dir) => fs.readdirSync(dir, { withFileTypes: true }).flatMap(e => {
@@ -87,13 +66,7 @@ test('jede Anmeldung mit Passwort läuft über dieselbe Prüfung', () => {
   const gefunden = anmeldeHandler();
   // Selbstbeweis: Findet das Muster nichts, wäre die Fehlerliste leer und der
   // Test grün, ohne etwas geprüft zu haben.
-  //
-  // Die Zahlen sind bewusst klein: Seit dem Zusammenlegen gibt es genau ZWEI
-  // Anmelde-Routen (/login und /qr-login) und davon EINE mit Passwort. Genau
-  // das ist das Ziel — eine Untergrenze von zwei passwortbasierten
-  // Anmeldungen hätte den erreichten Zustand als Fehler gemeldet. Das Gewicht
-  // liegt deshalb auf der Prüfung darunter und auf der Zähler-Regel danach;
-  // hier wird nur belegt, dass das Muster ueberhaupt noch greift.
+  // Ausführlich: docs/begruendungen/test/auth-parity.test.js.md#stelle
   assert.ok(gefunden.length >= 2,
     `Nur ${gefunden.length} Anmelde-Routen gefunden — Muster veraltet?`);
   const mitPasswort = gefunden.filter(h => /password/.test(h.koerper));
@@ -148,7 +121,7 @@ test('Benutzernamen-Regel gilt für Login, Register UND Profil-Update', () => {
   assert.ok(!USERNAME_RE.test('a b'));
   assert.ok(!USERNAME_RE.test('a@b.c'), 'E-Mail-Adresse darf kein Benutzername sein');
 
-  const auth = fs.readFileSync(path.join(ROOT, 'routes/auth.ts'), 'utf8');
+  const auth = require('./helpers/sources').anmeldeQuelle();
   const profile = auth.slice(auth.indexOf("router.put('/profile'"), auth.indexOf("router.get('/users'"));
   assert.match(profile, /USERNAME_RE\.test/, 'PUT /profile validiert den Benutzernamen nicht');
   // Die Abfrage steht seit dem 28.10.2026 in src/konto/repository/konten.ts.
@@ -160,8 +133,8 @@ test('Benutzernamen-Regel gilt für Login, Register UND Profil-Update', () => {
 
 test('bcrypt-Kostenfaktor ist überall derselbe', () => {
   assert.ok(BCRYPT_ROUNDS >= 12);
-  const auth = ['routes/auth.ts', 'src/konto/konten.ts'].map(f => fs.readFileSync(path.join(ROOT, f), 'utf8')).join('\n');
-  const literals = [...auth.matchAll(/bcrypt\.hash\([^,]+,\s*([^)]+)\)/g)].map(m => m[1].trim());
+  const auth = [require('./helpers/sources').anmeldeQuelle(), fs.readFileSync(path.join(ROOT, 'src/konto/konten.ts'), 'utf8')].join('\n');
+  const literals = [...auth.matchAll(/(?:bcrypt\.hash|hashePasswort)\([^,]+,\s*([^)]+)\)/g)].map(m => m[1].trim());
   assert.deepEqual([...new Set(literals)], ['BCRYPT_ROUNDS'],
     `bcrypt.hash wird mit unterschiedlichen Kosten aufgerufen: ${literals.join(', ')}`);
 });
@@ -173,10 +146,10 @@ test('escapeLike entschärft Platzhalter beim Token-Löschen', () => {
 });
 
 test('QR-Login transportiert kein Passwort-Material mehr', () => {
-  const auth = fs.readFileSync(path.join(ROOT, 'routes/auth.ts'), 'utf8');
+  const auth = require('./helpers/sources').anmeldeQuelle();
   // Nur den QR-Abschnitt betrachten: dahinter kommen /register und
   // /reset-password, die legitim mit password_hash arbeiten.
-  // Nachtrag 154: Die Route ist jetzt POST (sie legt eine Nonce an).
+  // Die Route ist jetzt POST (sie legt eine Nonce an).
   const from = auth.indexOf("router.post('/qr-token'");
   const to   = auth.indexOf("router.get('/registration-status'");
   assert.ok(from > 0 && to > from, 'QR-Abschnitt nicht gefunden');
@@ -197,14 +170,14 @@ test('die angezeigte QR-Gültigkeit stimmt mit dem Server überein', () => {
   // herunter — der Token läuft seit der Sicherheitshärtung aber nach 5 Minuten
   // ab. Der Zähler lief also 25 Minuten weiter, obwohl der Code längst
   // ungültig war.
-  const auth = fs.readFileSync(path.join(ROOT, 'routes/auth.ts'), 'utf8');
+  const auth = require('./helpers/sources').anmeldeQuelle();
   const m = /const QR_TTL_MS = (\d+) \* 60 \* 1000;/.exec(auth);
   assert.ok(m, 'QR_TTL_MS nicht gefunden');
   const minutes = parseInt(m[1]);
 
   // Der Client darf die Dauer nicht fest verdrahten
-  const settings = fs.readFileSync(path.join(ROOT, 'public', 'js', '05-settings.js'), 'utf8');
-  assert.match(settings, /let secs = parseInt\(d\.expires_in\)/,
+  const settings = require('./helpers/sources').ansichtQuelle('05');
+  assert.match(settings, /let secs = Number\(d\.expires_in\)/,
     'Die Dauer muss vom Server kommen');
   assert.doesNotMatch(settings, /let secs = 1800/, 'Fest verdrahtete 30 Minuten');
   assert.match(auth, /expires_in: QR_TTL_MS \/ 1000/, 'Der Server muss die Dauer mitliefern');
@@ -226,7 +199,7 @@ test('Admins können das Passwort anderer Nutzer setzen', () => {
   // Der Dialog in den Einstellungen rief PUT /auth/users/:id/password schon
   // immer auf — die Route gab es nicht, das Speichern endete in
   // „API-Endpunkt nicht gefunden".
-  const auth = fs.readFileSync(path.join(ROOT, 'routes/auth.ts'), 'utf8');
+  const auth = require('./helpers/sources').anmeldeQuelle();
   assert.match(auth, /router\.put\('\/users\/:id\/password', requireAdmin/,
     'Route fehlt oder ist nicht auf Administratoren beschränkt');
 
@@ -235,14 +208,7 @@ test('Admins können das Passwort anderer Nutzer setzen', () => {
 
   // Das eigene Konto ist ausgenommen: Hier wird KEIN altes Passwort verlangt,
   // also könnte eine übernommene Sitzung den Besitzer sonst aussperren.
-  //
-  // Geprüft wird der VERGLEICH, nicht mehr die Schreibweise seiner rechten
-  // Seite. Hier stand `Number(req.session.userId)` — genau die Schreibweise,
-  // die es seit Nachtrag 127 nicht mehr gibt: „Wer fragt hier?" stand in vier
-  // Fassungen und heisst jetzt überall nutzerId(req), damit die App mit ihrem
-  // Bearer-Token dieselben Routen erreicht wie die Webapp. Der Test war rot,
-  // obwohl die Regel unverändert galt — ein Test, der die Formulierung
-  // festhält statt die Aussage, verbietet jede Vereinheitlichung.
+  // Ausführlich: docs/begruendungen/test/auth-parity.test.js.md#stelle-2
   assert.match(fn, /targetId === nutzerId\(req\)/,
     'Für das eigene Konto muss /change-password gelten');
   // Die AUSSAGE bleibt, der Beleg wechselt: Die Mindestlaenge stand hier als
@@ -257,29 +223,14 @@ test('Admins können das Passwort anderer Nutzer setzen', () => {
 });
 
 test('Sicherheitsschritte am Konto scheitern nicht mehr stillschweigend', () => {
-  // ── Woher dieser Test kommt ─────────────────────────────────────────────
-  // Drei Stellen im Anmeldeweg trugen .catch(() => {}):
-  //
-  //   • Der Web-Token beim Login. Scheiterte das INSERT, galt die Anmeldung
-  //     trotzdem als erfolgreich, und der Client legte einen Token in den
-  //     sessionStorage, den die Datenbank nie gesehen hatte — der SSE-Kanal
-  //     (?token=…, EventSource kann keine Header setzen) lief dann in ein 401.
-  //     Jetzt wird der Token bei einem Fehler WEGGELASSEN; ohne ihn fällt der
-  //     Client auf die Cookie-Session zurück, die ohnehin funktioniert.
-  //   • Das Verwerfen von Sessions und Tokens nach einem Passwortwechsel.
-  //     Verschluckt hiess: neues Passwort gesetzt, alte Zugänge gelten weiter.
-  //   • revokeAllTokens() — dieselbe Regel an der zentralen Stelle.
-  const auth  = fs.readFileSync(path.join(ROOT, 'routes/auth.ts'), 'utf8');
+  // Woher dieser Test kommt
+  // Ausführlich: docs/begruendungen/test/auth-parity.test.js.md#auth
+  const auth  = require('./helpers/sources').anmeldeQuelle();
   const utils = require('./helpers/sources').dienstQuelle('src/konto/auth.ts');
 
   // Das Feld heisst `token`; ausgestellt wird es in angemeldetAntworten(),
   // dem gemeinsamen Weg von Passwort- und Passkey-Anmeldung.
-  //
-  // Kommentare raus, BEVOR gesucht wird: Der Erklaertext IN der Route nennt
-  // `.catch(() => {})` als das, was dort frueher stand — die Prüfung schlug
-  // darauf an, sobald der Ausschnitt frueher begann. Dieselbe Falle wie
-  // mehrfach zuvor in dieser Suite; sie ist der haeufigste Fehler beim
-  // Schreiben quelltextlesender Tests.
+  // Ausführlich: docs/begruendungen/test/auth-parity.test.js.md#authohne
   const authOhne = ohneKommentare(auth);
   const login = authOhne.slice(authOhne.indexOf('async function angemeldetAntworten'), authOhne.indexOf('mustChangePassword'));
   assert.doesNotMatch(login, /\.catch\(\(\)\s*=>\s*\{\}\)/,
@@ -289,7 +240,7 @@ test('Sicherheitsschritte am Konto scheitern nicht mehr stillschweigend', () => 
   // Und fuer die App ist ein Login ohne Token gar kein Erfolg: Sie hat keinen
   // zweiten Ausweg; seit eine Token-Anmeldung keine Sitzung mehr anlegt, gilt
   // das für jeden Token, nicht nur den dauerhaften.
-  assert.match(login, /fehlertext\(e\)\);\s*return sendeFehler\(req, res, 500, 'token_nicht_ausgestellt'\)/,
+  assert.match(login, /fehlertext\(e\)\);\s*return null;\s*\}\);\s*if \(!token\) return sendeFehler\(req, res, 500, 'token_nicht_ausgestellt'\)/,
     'Scheitert der Token, muss die App einen Fehler bekommen statt eines halben Erfolgs');
 
   // Die Löschungen selbst stehen inzwischen nur noch in src/konto/auth.ts
@@ -307,18 +258,9 @@ test('Sicherheitsschritte am Konto scheitern nicht mehr stillschweigend', () => 
 });
 
 test('ein Passwortwechsel beendet auch die offenen Sitzungen', () => {
-  // ── Woher dieser Test kommt ─────────────────────────────────────────────
-  // Der Admin-Reset suchte die Sitzungen in einer Tabelle `session` und
-  // übersprang den Schritt, wenn es sie nicht gibt. Es gibt sie NIE: Der
-  // Store läuft auf `user_sessions` (server.ts, tableName). to_regclass
-  // lieferte immer NULL, das DELETE lief nie — ein Administrator konnte das
-  // Passwort eines übernommenen Kontos zurücksetzen, und die Sitzung des
-  // Angreifers blieb angemeldet. Gegen echten Store nachgestellt: vorher
-  // blieb die Sitzung gültig, jetzt ist sie weg.
-  //
-  // Drei Wege ändern ein Passwort — Admin-Reset, Reset per E-Mail-Token und
-  // die eigene Änderung. Alle drei müssen Tokens UND Sitzungen schliessen.
-  const auth  = fs.readFileSync(path.join(ROOT, 'routes/auth.ts'), 'utf8');
+  // Woher dieser Test kommt
+  // Ausführlich: docs/begruendungen/test/auth-parity.test.js.md#auth-2
+  const auth  = require('./helpers/sources').anmeldeQuelle();
   const utils = require('./helpers/sources').dienstQuelle('src/konto/auth.ts');
 
   assert.doesNotMatch(auth, /to_regclass\('public\.session'\)/,
@@ -354,16 +296,8 @@ test('ein Passwortwechsel beendet auch die offenen Sitzungen', () => {
 });
 
 test('ungenutzte App-Tokens verfallen, aktive nicht', () => {
-  // ── Woher diese Regel kommt ─────────────────────────────────────────────
-  // Tokens der Android-App und des QR-Logins werden bewusst ohne Ablaufdatum
-  // angelegt (expires_at NULL) — wer die App öffnet, soll nicht ständig sein
-  // Passwort eintippen. Der Preis war: Ein Token auf einem verlorenen oder
-  // verkauften Telefon gilt unbegrenzt, und ausser einem Passwortwechsel gibt
-  // es keinen Weg, ihn loszuwerden.
-  //
-  // Das Mass ist „ungenutzt", nicht „alt": Ein Telefon, das täglich
-  // synchronisiert, wird nie ausgesperrt, egal wie lange es das Konto schon
-  // hat. Nur was ohnehin niemand mehr benutzt, verfällt.
+  // Woher diese Regel kommt
+  // Ausführlich: docs/begruendungen/test/auth-parity.test.js.md#utils
   const utils = require('./helpers/sources').dienstQuelle('src/konto/auth.ts');
 
   assert.match(utils, /const TOKEN_IDLE_DAYS/, 'Die Frist gehört an eine benannte Stelle');

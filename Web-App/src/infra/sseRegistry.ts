@@ -1,9 +1,12 @@
 // Ausführlich: docs/begruendungen/src/infra/sseRegistry.ts.md#offen
 
-const _offen = new Set<any>();
+/** Was hier von einer offenen Antwort gebraucht wird. */
+interface Strom { writableEnded?: boolean; write(s: string): unknown; end(): unknown; on?(e: 'close', f: () => void): unknown }
+
+const _offen = new Set<Strom>();
 
 /** @returns Funktion zum Abmelden — im Aufräumpfad der Route aufrufen. */
-export function registerSse(res: any): () => void {
+export function registerSse(res: Strom): () => void {
   _offen.add(res);
   // Trennt der Client, ohne dass die Route aufräumt, bliebe ein toter Eintrag.
   res.on?.('close', () => _offen.delete(res));

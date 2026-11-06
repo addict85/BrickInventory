@@ -55,7 +55,7 @@ export class RateLimiter {
   }
 }
 
-import { meldeUndWeiter, meldeUndLiefere } from '../infra/httpError';
+import { meldeUndWeiter, meldeUndLiefere } from '../infra/fehler';
 import { checkAndIncrementRateLimit, getRateLimitStatus, REBRICKABLE_DEFAULT_DAILY } from './apiKontingent';
 import * as repo from './repository/apiTakt';
 
@@ -100,7 +100,7 @@ export async function consumeRebrickableDaily(): Promise<boolean> {
 
 export async function rebrickableDailyStatus(): Promise<{ count: number; limit: number; remaining: number }> {
   return getRateLimitStatus('rebrickable')
-    .catch(() => ({ count: 0, limit: REBRICKABLE_DEFAULT_DAILY, remaining: 0 }));
+    .catch(meldeUndLiefere('kontingent:stand', { count: 0, limit: REBRICKABLE_DEFAULT_DAILY, remaining: 0 }));
 }
 
 /** Zwei gleichzeitige Downloads, aber höchstens einer neu je Sekunde: Das CDN
@@ -160,15 +160,5 @@ export class ConcurrentRateLimiter {
 }
 
 export const cdnImageLimiter = new ConcurrentRateLimiter(2, 1000);
-
-/** Antwort: {"detail": "… Expected available in 2 seconds."} */
-export function parseThrottleWait(body: string) {
-  try {
-    const data = typeof body === 'string' ? JSON.parse(body) : body;
-    const match = data?.detail?.match(/(\d+)\s*second/);
-    if (match) return parseInt(match[1]) * 1000 + 500; // add 500ms buffer
-  } catch (e) { meldeUndWeiter('kontingent:retry-after-lesen', e); }
-  return 5000; // default 5s
-}
 
 export { REBRICKABLE_DEFAULT_DAILY };

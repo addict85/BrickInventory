@@ -1,0 +1,15 @@
+# Exportierte Komponenten des Release-APK, je Zeile: Klasse [Berechtigung, die der Aufrufer braucht].
+# Geprueft von tools/manifest-pruefen.py im Job apk-pruefen. Eine neue Zeile nur mit Grund;
+# ohne Berechtigung darf nur der Einstieg der App stehen.
+
+# Der Launcher-Einstieg; NurLauncherStart entfernt alles, was von aussen mitkommt.
+ch.brickinventoryapp.MainActivity
+# Nur das System bindet Widgets.
+ch.brickinventoryapp.widget.SammlungsWidgetEmpfaenger android.permission.BIND_APPWIDGET
+# WorkManager: Der JobScheduler des Systems startet den Dienst, adb liest die Diagnose.
+androidx.work.impl.background.systemjob.SystemJobService android.permission.BIND_JOB_SERVICE
+androidx.work.impl.diagnostics.DiagnosticsReceiver android.permission.DUMP
+# Profileinstaller (ProfileInstallReceiver) und RevocationBoundService von Google-Sign-in
+# nimmt das Manifest heraus (tools:node="remove"); sie stehen bewusst nicht hier.
+# Glance: Der Launcher holt die Listen des Widgets.
+androidx.glance.appwidget.GlanceRemoteViewsService android.permission.BIND_REMOTEVIEWS

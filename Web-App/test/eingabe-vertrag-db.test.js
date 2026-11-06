@@ -22,21 +22,17 @@ const assert = require('node:assert/strict');
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
 const _req = require('./helpers/sources').buildAndRequire();
+const { dbOderSkip } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
 const db = _req('db/database.js');
 
 test('Eingaben gegen den Vertrag', { concurrency: 1 }, async (t) => {
-  try { await db.initSchema(); }
-  catch (e) {
-    if (process.env.REQUIRE_DB === '1')
-      throw new Error(`REQUIRE_DB=1, aber die Test-DB ist nicht erreichbar: ${e.message}`);
-    t.skip('Test-DB nicht erreichbar'); return;
-  }
-  const c = await db.pool.connect();
-  try { await _req('db/migrate.js').runMigrations(c); } finally { c.release(); }
+  if (!await dbOderSkip(t, _req)) return;
   const NAME = `eingabe_${process.pid}`;
   await db.run('DELETE FROM users WHERE username = $1', [NAME]);
-  const uid = (await db.get(`INSERT INTO users (username, password_hash, is_admin) VALUES ($1, 'x', true) RETURNING id`, [NAME])).id;
+  const PASS = 'Eingabe-Passwort-1';
+  const hash = await require(require('node:path').join(__dirname, '..', 'node_modules', 'bcryptjs')).hash(PASS, 4);
+  const uid = (await db.get(`INSERT INTO users (username, password_hash, is_admin) VALUES ($1, $2, true) RETURNING id`, [NAME, hash])).id;
   t.after(async () => { await db.run('DELETE FROM users WHERE id = $1', [uid]); await db.pool.end().catch(() => {}); });
   const { base } = testServer(_req, { sitzung: { userId: uid, isAdmin: true }, apiNutzer: { user_id: uid, is_admin: 1 },
     routen: { '/api/v1/auth': 'routes/auth.js' }, t });
@@ -59,7 +55,7 @@ test('Eingaben gegen den Vertrag', { concurrency: 1 }, async (t) => {
   await t.test('Freitext ist begrenzt', async () => {
     const r = await sende('PUT', '/api/v1/auth/profile', { first_name: 'x'.repeat(101) });
     assert.deepEqual([r.status, r.code], [400, 'eingabe_ungueltig']);
-    const ok = await sende('PUT', '/api/v1/auth/profile', { first_name: 'Marco', last_name: null });
+    const ok = await sende('PUT', '/api/v1/auth/profile', { first_name: 'Marco', last_name: null, password_current: PASS });
     assert.equal(ok.status, 200, `gültige Eingabe abgewiesen: ${ok.code}`);
     assert.equal((await db.get('SELECT first_name FROM users WHERE id = $1', [uid])).first_name, 'Marco');
   });

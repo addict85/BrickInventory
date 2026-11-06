@@ -52,6 +52,6 @@ test('ein geschätzter Preis trägt ≈', async () => {
   try {
     const zeichen = [...d.querySelectorAll('#man-detail-body [role="img"]')].filter(e => e.textContent === '≈');
     assert.equal(zeichen.length, 1, 'genau die geschätzte Erfassung trägt ≈');
-    assert.match(zeichen[0].getAttribute('aria-label'), /Geschätzt/);
+    assert.match(zeichen[0].getAttribute('aria-label'), /geschätzt/i);
   } finally { w.close(); }
 });

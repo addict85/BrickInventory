@@ -1,0 +1,18 @@
+Gegenprobe: Ein debuggable APK geht durch die Manifestprüfung
+Modul: app
+Test: ch.brickinventoryapp.ManifestPruefenTest
+Rot: ein debuggable APK
+
+diff --git a/Android-App/tools/manifest-pruefen.py b/Android-App/tools/manifest-pruefen.py
+index 691eb15..a0362db 100644
+--- a/Android-App/tools/manifest-pruefen.py
++++ b/Android-App/tools/manifest-pruefen.py
+@@ -72,8 +72,6 @@ def pruefe(xmltree, erlaubt, rechte=frozenset()):
+         return ['kein <application> im Manifest gefunden — Format von aapt2 geaendert?']
+     app = apps[0][1]
+     fehler = []
+-    if app.get('debuggable') in WAHR:
+-        fehler.append('android:debuggable ist gesetzt')
+     if app.get('testOnly') in WAHR:
+         fehler.append('android:testOnly ist gesetzt')
+     for art in ('uses-permission', 'uses-permission-sdk-23'):

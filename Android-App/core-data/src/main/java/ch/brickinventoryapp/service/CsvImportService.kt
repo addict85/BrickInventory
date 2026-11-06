@@ -1,24 +1,40 @@
 package ch.brickinventoryapp.service
 
+import ch.brickinventoryapp.util.fangeAusserAbbruch
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.Service
 import android.content.Context
 import android.content.Intent
 import android.content.pm.ServiceInfo
-import android.os.Build
 import android.os.IBinder
 import androidx.core.app.NotificationCompat
 import androidx.core.app.ServiceCompat
 import ch.brickinventoryapp.ressourcen.R
-import ch.brickinventoryapp.data.PreferencesManager
-import ch.brickinventoryapp.data.repository.Result
-import ch.brickinventoryapp.data.repository.BrickRepository
+import ch.brickinventoryapp.data.Zugangsdaten
+import ch.brickinventoryapp.data.repository.Ergebnis
+import ch.brickinventoryapp.data.repository.SetsRepository
 import dagger.hilt.android.AndroidEntryPoint
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.*
 import ch.brickinventoryapp.data.CsvImportSseClient
-import kotlinx.coroutines.flow.takeWhile
+import ch.brickinventoryapp.data.model.CsvImportStatus
 import javax.inject.Inject
+import ch.brickinventoryapp.di.Anwendungsbereiche
+import ch.brickinventoryapp.util.LanguageManager
+
+/** Der Vordergrund-Dienst eines laufenden CSV-Imports; im Test ein Zähler. */
+interface CsvImportDienst {
+    fun start()
+    fun stop()
+}
+
+internal class AndroidCsvImportDienst @Inject constructor(
+    @param:ApplicationContext private val ctx: Context,
+) : CsvImportDienst {
+    override fun start() = CsvImportService.start(ctx)
+    override fun stop() = CsvImportService.stop(ctx)
+}
 
 @AndroidEntryPoint
 class CsvImportService : Service() {
@@ -50,19 +66,23 @@ class CsvImportService : Service() {
         }
     }
 
-    @Inject lateinit var prefs: PreferencesManager
-    @Inject lateinit var repo:  BrickRepository
-    @Inject lateinit var sseClient: ch.brickinventoryapp.data.CsvImportSseClient
+    @Inject lateinit var prefs: Zugangsdaten
+    @Inject lateinit var sets: SetsRepository
+    @Inject lateinit var sseClient: CsvImportSseClient
 
     // Service-Context in der gewählten App-Sprache: setApplicationLocales()
     // lokalisiert nur Activities — ohne diesen Wrapper kämen die
     // Benachrichtigungen unterhalb von Android 13 in der Systemsprache
     // (bzw. vorher: hartkodiert auf Deutsch).
     private val loc: Context by lazy {
-        ch.brickinventoryapp.util.LanguageManager.localizedContext(this)
+        LanguageManager.localizedContext(this)
     }
 
-    private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    @Inject lateinit var bereiche: Anwendungsbereiche
+
+    // Lebt mit dem Dienst (onDestroy bricht ab). lazy, weil Hilt die Felder erst
+    // in super.onCreate() setzt.
+    private val serviceScope by lazy { CoroutineScope(SupervisorJob() + bereiche.io) }
     private var pollJob: Job? = null
 
     // Anlaufschutz, siehe applyStatus()
@@ -72,19 +92,14 @@ class CsvImportService : Service() {
     override fun onCreate() {
         super.onCreate()
         createNotificationChannel()
-        try {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                ServiceCompat.startForeground(
-                    this, NOTIFICATION_ID,
-                    buildNotification(loc.getString(R.string.notif_csv_running), 0, 0),
-                    ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC
-                )
-            } else {
-                startForeground(NOTIFICATION_ID, buildNotification(loc.getString(R.string.notif_csv_running), 0, 0))
-            }
-        } catch (e: Exception) {
-            // If foreground service cannot be started (e.g. background restriction),
-            // stop self gracefully instead of crashing
+        fangeAusserAbbruch {
+            ServiceCompat.startForeground(
+                this, NOTIFICATION_ID,
+                buildNotification(loc.getString(R.string.notif_csv_running), 0, 0),
+                ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC
+            )
+        }.onFailure {
+            // Ohne Vordergrund (etwa wegen einer Hintergrundsperre) still beenden statt abstürzen.
             stopSelf()
         }
     }
@@ -96,43 +111,20 @@ class CsvImportService : Service() {
 
     /**
      * Status-Beobachtung: SSE zuerst, Polling nur als Rückfallebene.
-     *
-     * Vorher pollte dieser Service unabhängig vom ViewModel alle 1,5s
-     * denselben Endpoint — zwei getrennte Implementierungen desselben
-     * Sachverhalts, die beide gepflegt werden mussten. Jetzt teilt er sich
-     * den [CsvImportSseClient] mit dem ViewModel (@Singleton, aber cold Flow:
-     * jeder Collector bekommt seine eigene Verbindung). Der Fortschritt kommt
-     * damit ohne Verzögerung statt im 1,5-Sekunden-Raster, und die
-     * Statuslogik steht nur noch an einer Stelle: [applyStatus].
+     * Ausführlich: docs/begruendungen/core-data/service/CsvImportService.kt.md#startwatching
      */
     private fun startWatching() {
         pollJob = serviceScope.launch {
             var errors = 0
             while (isActive) {
-                var sseFailed = false
-                try {
-                    // takeWhile statt collect: applyStatus() liefert false, sobald
-                    // der Import fertig ist — dann endet der Flow und wir verlassen
-                    // die Schleife, statt die Verbindung offen zu halten.
-                    sseClient.stream().takeWhile { ev ->
-                        when (ev) {
-                            is CsvImportSseClient.Event.Status -> {
-                                errors = 0
-                                applyStatus(ev.status)
-                            }
-                            is CsvImportSseClient.Event.Failed -> {
-                                sseFailed = true
-                                false
-                            }
-                        }
-                    }.collect { /* Werte selbst werden nicht gebraucht */ }
-                } catch (_: Exception) {
-                    sseFailed = true
+                val sseFailed = !folgeStrom(sseClient.stream()) { status ->
+                    errors = 0
+                    applyStatus(status)
                 }
 
                 if (!isActive) return@launch
                 if (!sseFailed) {
-                    // Flow reguläre beendet → Import ist durch
+                    // Flow regulär beendet → Import ist durch
                     finishAndStop()
                     return@launch
                 }
@@ -158,21 +150,19 @@ class CsvImportService : Service() {
     private enum class PollResult { RUNNING, FINISHED, ERROR }
 
     /** Eine Status-Abfrage der Rückfallebene. */
-    private suspend fun pollOnce(): PollResult = try {
+    private suspend fun pollOnce(): PollResult = fangeAusserAbbruch {
         val url   = prefs.serverUrlJetzt()
         val token = prefs.tokenJetzt()
         if (token.isBlank()) {
             PollResult.ERROR
         } else {
-            when (val resp = repo.sets.getCsvImportStatus(url, token)) {
-                is Result.Success ->
+            when (val resp = sets.getCsvImportStatus(url, token)) {
+                is Ergebnis.Success ->
                     if (applyStatus(resp.data)) PollResult.RUNNING else PollResult.FINISHED
-                is Result.Error -> PollResult.ERROR
+                is Ergebnis.Error -> PollResult.ERROR
             }
         }
-    } catch (_: Exception) {
-        PollResult.ERROR
-    }
+    }.getOrElse { PollResult.ERROR }
 
     /**
      * Einzige Stelle, die aus einem Status eine Benachrichtigung macht —
@@ -180,18 +170,15 @@ class CsvImportService : Service() {
      *
      * @return true solange der Import läuft, false wenn er fertig ist.
      */
-    private fun applyStatus(s: ch.brickinventoryapp.data.model.CsvImportStatus): Boolean {
+    private fun applyStatus(s: CsvImportStatus): Boolean {
         val running = s.status == "running" || s.status == "pending"
         val done    = s.done  ?: 0
         val total   = s.total ?: 0
         val current = s.current ?: ""
         if (!running) {
-            // Anlaufschutz: Der Server meldet "idle", bis der Import-Job
-            // tatsächlich angelegt ist. Der Service wird aber im selben Moment
-            // gestartet wie der Upload — ohne dieses Fenster würde die erste
-            // idle-Antwort den Service sofort wieder beenden, und der Nutzer
-            // sähe nie einen Fortschritt. Erst nach GRACE_MS (oder sobald
-            // einmal ein laufender Import gesehen wurde) gilt idle als "fertig".
+            // Anlaufschutz: Der Server meldet "idle", bis der Import-Job tatsächlich angelegt
+            // ist.
+            // Ausführlich: docs/begruendungen/core-data/service/CsvImportService.kt.md#if
             if (!sawRunning && System.currentTimeMillis() - startedAtMs < GRACE_MS) return true
             return false
         }

@@ -1,30 +1,6 @@
 /**
  * CSV-Import und Erfassen von Hand müssen dasselbe hinterlassen.
- *
- * ── Der Befund ──────────────────────────────────────────────────────────────
- * Bei den Minifiguren steht die Rechnung „Preis/Stk, Kaufpreis, Zustand"
- * EINMAL (resolveManualFigPurchase) und hat drei Aufrufer. Bei den Teilen
- * stand sie an jeder Stelle neu — und die Fassungen im Anlegen und im
- * CSV-Import sagten zweierlei:
- *
- *  1. `unit_price` bekam beim Import den MARKTPREIS. Das Feld heisst
- *     „Preis/Stk" und bedeutet „was der Mensch bezahlt hat"; ohne Angabe in
- *     der Datei gehört dort NULL hin. jobs/purchasePriceBackfill.ts liest
- *     unit_price ausdrücklich als „wurde beim Erfassen eingegeben" — ein
- *     importiertes Teil behauptete eine Eingabe, die es nie gab.
- *
- *  2. Ohne Marktpreis schrieb der Import NULL in den Kaufpreis. Beim Anlegen
- *     von Hand wird dort bewusst 0 gespeichert, sonst zeigt das Feld im
- *     Frontend dauerhaft den „Marktpreis"-Platzhalter.
- *
- * ── Warum gegen die echte Route ─────────────────────────────────────────────
- * Am Quelltext wäre es die Frage, ob zweimal dieselbe Variable im INSERT
- * steht. Interessant ist aber, was am Ende IN DER TABELLE liegt — und zwar
- * verglichen mit dem anderen Weg zum selben Ziel. Deshalb läuft hier der
- * echte Import über eine echte Datei gegen eine echte Datenbank, und daneben
- * derselbe Fall von Hand.
- *
- * Voraussetzung: Test-DB via TEST_DATABASE_URL.
+ * Ausführlich: docs/begruendungen/test/teile-import-preis-db.test.js.md#kopf
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -33,15 +9,13 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 
 const express = require('express');
 const _req = require('./helpers/sources').buildAndRequire();
+const { importWorker } = require('./helpers/auftraege');
+const { dbOderSkip } = require('./helpers/db');
 const db = _req('db/database.js');
 
 test('Import ohne Preis hinterlässt dasselbe wie Erfassen ohne Preis', { concurrency: 1 }, async (t) => {
-  try { await db.initSchema(); }
-  catch (e) {
-    if (process.env.REQUIRE_DB === '1')
-      throw new Error(`REQUIRE_DB=1, aber die Test-DB ist nicht erreichbar: ${e.message}`);
-    t.skip('Test-DB nicht erreichbar'); return;
-  }
+  if (!await dbOderSkip(t, _req, { migrieren: false })) return;
+  importWorker(t, _req);
 
   const name = `imp_${process.pid}`;
   const IMPORTIERT = `imp${String(process.pid).slice(-5)}`;
@@ -73,13 +47,8 @@ test('Import ohne Preis hinterlässt dasselbe wie Erfassen ohne Preis', { concur
     const { addManualPart } = _req('src/teile/manuelleTeile.js');
     await addManualPart(uid, { part_number: VON_HAND, part_name: 'Testteil', color_id: 0, quantity: 3 });
 
-    // ── Gelesen aus der ERFASSUNG ─────────────────────────────────────────
-    //
-    // Preis und Zustand standen hier auf der Teile-Zeile. Migration 0035 hat
-    // sie geloescht: Sie gehoeren je Kauf in part_acquisitions. Die Frage
-    // dieses Tests bleibt dieselbe — hinterlassen CSV-Import und Erfassen von
-    // Hand denselben Zustand? — nur dass sie jetzt dort gestellt wird, wo die
-    // Antwort liegt.
+    // Gelesen aus der ERFASSUNG
+    // Ausführlich: docs/begruendungen/test/teile-import-preis-db.test.js.md#spalten
     const spalten = 'unit_price, condition, quantity';
     const imp = await db.get(
       `SELECT ${spalten} FROM part_acquisitions WHERE user_id=$1 AND part_number=$2`,

@@ -3,8 +3,8 @@ package ch.brickinventoryapp.ui.screens
 import kotlin.math.roundToInt
 
 // Die Rechnung, mit der ein Zoomschritt den Punkt zwischen den Fingern
-// festhaelt. Ohne Compose, damit sie ohne Geraet geprueft werden kann
-// (PdfZoomTest); PdfPages fuettert sie mit dem Layout der letzten Messung.
+// festhaelt. Ohne Compose, damit sie ohne Geraet geprueft werden kann;
+// PdfPages fuettert sie mit dem Layout der letzten Messung.
 
 /** Eine sichtbare Seite: oberer Rand im Sichtfeld und Hoehe, in Pixeln. */
 internal data class SeitenLage(val index: Int, val oben: Int, val hoehe: Int)

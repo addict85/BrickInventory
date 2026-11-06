@@ -5,6 +5,7 @@ import ch.brickinventoryapp.data.repository.TeileRepository
 import ch.brickinventoryapp.data.repository.FigurenRepository
 import ch.brickinventoryapp.ui.viewmodel.TeileViewModel
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.setMain
@@ -36,31 +37,19 @@ import org.junit.Test
  *   1. Die App ruft denselben Dienst wie die Webapp (Marcos Vorgabe: „Bitte
  *      die Login jeweils nur 1x im Backend bauen. Beide Apps sollen die
  *      gleichen Services des Backends verwenden.")
- *   2. Nach der Aenderung wird der Bildschirm mit der NEUEN Farbe neu
- *      geoeffnet. Die Farbe steckt in der Route UND in der Suche nach der
- *      Zeile (`it.colorId == colorId`) — ohne das stuende er leer da, obwohl
- *      die Aenderung geklappt hat.
- *   3. Die Farbzeile haengt NICHT daran, dass ein Farbname da ist. Das war
- *      der Zustand vorher: Der Chip oben stand unter `part?.colorName?.let`,
- *      und ausgerechnet das Teil ohne Farbnamen — genau der Fall, der
- *      korrigiert werden muss — zeigte nichts an.
  *
  * ── Gegenproben ─────────────────────────────────────────────────────────────
  *
- * Fall 1 und 4 laufen gegen einen Testserver (TeileViewModel, TeileRepository),
- * Fall 2 und 3 lesen Bildschirm und Graph. Gemessen am 29.10.2026:
+ * Fall 1 und 4 laufen gegen einen PfadServer ohne Netz (TeileViewModel, TeileRepository),
+ * Fall 2 und 3 lesen Bildschirm und Graph. Gemessen:
  *   A  in TeileApi die Adresse auf "…/colour" → rot „die App ruft denselben
  *      Dienst wie die Webapp“
- *   B  owner in TeileRepository.setPartColor nicht weitergereicht → rot ebenda
- *   D  `if (neueFarbe == colorId) return` aus TeileViewModel entfernt → rot
- *      „dieselbe Farbe nochmal löst keine Anfrage aus“ (PUT …/3001/5/color)
- * Am 19.10. gemessen: B′ `onFarbeGeaendert` aus CollectionGraph.kt entfernt →
- * Fall 2 rot; C die Farbzeile hinter `part?.colorName != null` → Fall 3 rot.
  */
+@OptIn(ExperimentalCoroutinesApi::class)
 class TeilFarbeAendernTest {
 
     private val pfade = PfadServer("/api/v1/parts/3001/5/color" to """{"success":true}""")
-    private val t = TestDienste(pfade.server)
+    private val t = TestDienste(pfade.imTakt(), io = Dispatchers.Main)
 
     @Before
     fun auf() = Dispatchers.setMain(UnconfinedTestDispatcher())
@@ -72,7 +61,7 @@ class TeilFarbeAendernTest {
         pfade.server.shutdown()
     }
 
-    private fun vm() = t.merke(TeileViewModel(t.dienste, TeileRepository(t.api, t.cache), FigurenRepository(t.api, t.cache), SavedStateHandle()))
+    private fun vm() = t.merke(TeileViewModel(t.sitzung, t.filter(), t.hinweise, t.bestand, t.scrollMemory, TeileRepository(t.api, t.cache), FigurenRepository(t.api, t.cache), SavedStateHandle()))
     private val screen by lazy {
         Quellen.ohneKommentare(Quellen.lies("ui/screens/ManualItemDetailScreen.kt"))
     }
@@ -93,7 +82,7 @@ class TeilFarbeAendernTest {
     fun `die App ruft denselben Dienst wie die Webapp`() {
         var geoeffnet: Int? = null
         vm().setzeTeilFarbe("3001", 5, 11, owner = 7) { geoeffnet = it }
-        TestApi.warteBis("neu geöffnet") { geoeffnet != null }
+        assertTrue("neu geöffnet", geoeffnet != null)
         // Danach lädt der Bereich die Teile neu (Bestandssignal) — gezählt wird nur die Farbe.
         assertEquals(listOf("PUT /api/v1/parts/3001/5/color?owner=7"), pfade.anfragenAn("/color"))
         val koerper = pfade.koerper[pfade.anfragen.indexOfFirst { "/color" in it }]
@@ -115,7 +104,7 @@ class TeilFarbeAendernTest {
         assertTrue(
             "onFarbeGeaendert navigiert nicht auf ManualItemDetail mit der neuen Farbe.",
             Regex(
-                """onFarbeGeaendert\s*=\s*\{[^}]*ManualItemDetail\.createRoute""",
+                """onFarbeGeaendert\s*=\s*\{[^}]*navigate\(ziel\.copy\(colorId\s*=\s*neueFarbe\)\)""",
                 RegexOption.DOT_MATCHES_ALL
             ).containsMatchIn(graph)
         )
@@ -183,7 +172,6 @@ class TeilFarbeAendernTest {
         // „der Server faengt es schon" ist kein Grund, eine Anfrage zu
         // schicken, deren Antwort ein Neuaufbau des Bildschirms ist.
         vm().setzeTeilFarbe("3001", 5, 5)
-        Thread.sleep(200)
         assertTrue("setzeTeilFarbe bricht bei gleicher Farbe nicht ab: ${pfade.anfragen}", pfade.anfragenAn("/color").isEmpty())
         assertTrue(
             "FarbWahlFeld ruft onWahl auch fuer die bereits gewaehlte Farbe.",

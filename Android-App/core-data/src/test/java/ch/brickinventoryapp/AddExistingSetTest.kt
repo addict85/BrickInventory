@@ -5,6 +5,7 @@ import ch.brickinventoryapp.data.repository.SetsRepository
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Test
+import java.io.File
 
 /**
  * Ein bereits erfasstes Set wird geöffnet, nicht stillschweigend erhöht.
@@ -13,8 +14,6 @@ import org.junit.Test
  * „Besitzt der Account oder einer der Unteraccounts das Set bereits, soll sich
  * nur der Detail-Dialog des Sets öffnen. Egal ob die Erfassung via
  * Barcodescanner, OCR oder per Nummer-Erfassung erfolgt. Einziger Unterschied:
- * beim Barcodescanner oder OCR erscheint auch dann, wenn das Set NICHT
- * vorhanden ist, ein Zwischendialog zum Prüfen der erkannten Nummer."
  *
  * ── Was sich gegenüber den Nachträgen 57–59 geändert hat ────────────────────
  * Damals prüfte diese App selbst, VOR dem Anlegen, mit `repo.getSetDetail()`
@@ -28,10 +27,6 @@ import org.junit.Test
  *     `action = "exists"` und schreibt nichts; die App öffnet daraufhin die
  *     Detailansicht. Ein Aufruf weniger, und die Regel kann nicht mehr
  *     zwischen den Clients auseinanderlaufen.
- *   • SCANNER und TEXTERKENNUNG: fragen weiterhin vorher — aber
- *     `GET /sets/exists/:nummer`, das ausdrücklich `exists: true|false` sagt.
- *     Sie MÜSSEN vorher fragen, weil die Antwort darüber entscheidet, ob
- *     überhaupt der Zwischendialog erscheint.
  *
  * Der frühere `transient`-Zweig ist damit entfallen: Ein Fehler ist jetzt
  * eindeutig ein Fehler, weil „nicht vorhanden" nicht mehr als Fehler kommt.
@@ -40,14 +35,11 @@ import org.junit.Test
  * Scanner, Texterkennung, Fehler der Vorabfrage). Hier: die Vorabfrage gegen
  * einen Testserver und die Struktur, dass die Galerie den Auslöser auswertet.
  *
- * Gegenprobe (29.10.2026, gemessen): an getSetExists ein
+ * Gegenprobe: an getSetExists ein
  * `@Query("accounts") accounts: String? = "own"` → rot „die Existenzprüfung
  * schickt keinen Kontofilter mit“.
  */
 class AddExistingSetTest {
-
-    private fun read(rel: String) =
-        java.io.File(Quellen.wurzel, "$rel").readText()
 
     /** Kommentare ausblenden — die Erklärtexte nennen die geprüften Muster selbst. */
     private fun code(s: String) = s.lines()
@@ -63,7 +55,7 @@ class AddExistingSetTest {
         val pfade = PfadServer("/api/v1/sets/exists/75192-1" to """{"success":true,"exists":false}""")
         try {
             val sets = SetsRepository(TestApi.fuer(pfade.server),
-                ResponseCache { java.io.File(System.getProperty("java.io.tmpdir"), "bim-exists") })
+                ResponseCache { File(System.getProperty("java.io.tmpdir"), "bim-exists") })
             runBlocking { sets.getSetExists("75192-1") }
             assertEquals(listOf("GET /api/v1/sets/exists/75192-1"), pfade.anfragen.toList())
         } finally {
@@ -75,7 +67,7 @@ class AddExistingSetTest {
     fun `der Auslöser wird auch ausgewertet und wieder zurückgesetzt`() {
         // Ein gesetzter Auslöser ohne Empfänger wäre wirkungslos — und ohne
         // Zurücksetzen liesse sich dasselbe Set kein zweites Mal öffnen.
-        val nav = code(java.io.File(Quellen.wurzel, "nav/CollectionGraph.kt").readText())
+        val nav = code(File(Quellen.wurzel, "nav/CollectionGraph.kt").readText())
         // Geprueft wird das FELD, nicht der Name des Zustands davor.
         assert(Regex("""\w+\.gefundenesSet""").containsMatchIn(nav)) {
             "die Galerie beobachtet den Auslöser nicht — es passiert dann gar nichts"
@@ -83,7 +75,7 @@ class AddExistingSetTest {
         assert(nav.contains("gallerySearchFoundConsumed()")) {
             "der Auslöser wird nicht zurückgesetzt"
         }
-        assert(nav.contains("Screen.SetDetail.createRoute")) {
+        assert(nav.contains("Screen.SetDetail(")) {
             "es wird nicht zur Detailansicht navigiert"
         }
     }

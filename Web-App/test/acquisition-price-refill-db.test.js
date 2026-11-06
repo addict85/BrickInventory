@@ -1,27 +1,6 @@
 /**
  * Kaufpreis LÖSCHEN → Marktpreis nachfüllen, auf beiden Wegen.
- *
- * ── Woher dieser Test kommt (Marcos Bericht, Nachtrag 68) ───────────────────
- * „Wenn ich bei einem bestehenden Set die Anzahl erhöhe und dann den Kaufpreis
- * lösche (bei einem anderen Besitzer), wird der aktuelle Preis nicht von
- * BrickLink abgefüllt." Auf seinem Screenshot stand in der Kaufpreis-Kachel
- * nur ein Strich, obwohl der Marktpreis (12.55 CHF) bekannt war.
- *
- * Ursache: In der Konfiguration der v1-Erfassungsrouten stand für SETS
- * `resolvePrice: null` — als einzige der drei Elementarten. Teile und
- * Minifiguren holen den Marktpreis seit jeher, und die Webapp-Route tut es für
- * Sets ebenfalls. Nur der Android-Weg liess das Feld leer. Weil die Kachel aus
- * `sets.purchase_price` las und die Spiegelung den leeren Wert übernahm, stand
- * danach in der ganzen App ein Strich. (Die Spalte ist seit Migration 0032
- * weg; die Kachel rechnet jetzt aus den Erfassungen — eine leere Erfassung
- * ergibt dort genauso einen Strich, der Fall bleibt also derselbe.)
- *
- * Wieder das Muster „dieselbe Regel fehlt am zweiten Weg" — dieselbe Zeile in
- * derselben Konfiguration wie schon bei `parentPriceSql` (Nachtrag 51).
- *
- * ZUSTAND ZÄHLT: Ein „Neu"-Eintrag muss den Neu-Preis bekommen, nicht den der
- * Gebraucht-Erfassung daneben. Genau diese Verwechslung prüft der Test mit —
- * im Cache stehen bewusst zwei verschiedene Preise.
+ * Ausführlich: docs/begruendungen/test/acquisition-price-refill-db.test.js.md#kopf
  *
  * Gegenprobe (durchgeführt): resolvePrice zurück auf null → der
  * Android-Teilschritt bleibt leer, die Webapp füllt weiterhin.
@@ -36,6 +15,7 @@ const ROOT = path.join(__dirname, '..');
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
 const _req = require('./helpers/sources').buildAndRequire();
+const { dbOderSkip } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
 const { haeltSet } = require('./helpers/bestand');
 const db = _req('db/database.js');
@@ -44,14 +24,7 @@ const express = require(path.join(ROOT, 'node_modules', 'express'));
 test('ein geleerter Kaufpreis wird aus dem Marktpreis gefüllt — Webapp UND App',
   { concurrency: 1 }, async (t) => {
 
-  try { await db.initSchema(); }
-  catch (e) {
-    if (process.env.REQUIRE_DB === '1')
-      throw new Error(`REQUIRE_DB=1, aber die Test-DB ist nicht erreichbar: ${e.message}`);
-    t.skip('Test-DB nicht erreichbar'); return;
-  }
-  const mc = await db.pool.connect();
-  try { await _req('db/migrate.js').runMigrations(mc); } finally { mc.release(); }
+  if (!await dbOderSkip(t, _req)) return;
 
   const HAUPT = `cp-h-${process.pid}`, SUB = `cp-s-${process.pid}`;
   const SN = `31146-${process.pid}`;
@@ -91,12 +64,11 @@ test('ein geleerter Kaufpreis wird aus dem Marktpreis gefüllt — Webapp UND Ap
       [subId, SN])).id;
   };
 
-  // Marcos Befund (Nachtrag 69): Android füllte 12.55, die Webapp 18.90 — für
+  // Marcos Befund: Android füllte 12.55, die Webapp 18.90 — für
   // DENSELBEN Vorgang. Ursache war eine zweite, eigene Preisregel im
   // Webapp-Weg, die die GLOBALE Währung las statt der des Kontos. Deshalb
-  // steht hier bewusst eine abweichende globale Währung mit anderen Preisen:
-  // Läuft irgendwann wieder eine zweite Fassung mit, fallen die beiden Wege
-  // sofort auseinander und dieser Test wird rot.
+  // steht hier bewusst eine abweichende globale Währung mit anderen Preisen: …
+  // Ausführlich: docs/begruendungen/test/acquisition-price-refill-db.test.js.md#stelle
   await db.run(`INSERT INTO global_settings (key,value) VALUES ('currency','EUR')
                 ON CONFLICT (key) DO UPDATE SET value='EUR'`);
   await db.run(`INSERT INTO price_cache (set_number,currency_code,condition,avg_price,fetched_at)

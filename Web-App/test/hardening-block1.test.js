@@ -1,12 +1,6 @@
 /**
  * Block 1 der Optimierungsliste: Punkte 1, 3, 5 und 6.
- *
- * 1 — Session-Rotation beim Login (Session Fixation)
- * 3 — Rate-Limits worker-übergreifend statt pro Prozess
- * 5 — Vorschaubilder in allen Listenansichten
- * 6 — avg_price statt qty_avg_price in den Teile- und Minifiguren-Pfaden
- *
- * Ausführen: npm test
+ * Ausführlich: docs/begruendungen/test/hardening-block1.test.js.md#kopf
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -24,7 +18,7 @@ test('die Session-ID wird beim Anmelden erneuert', () => {
   assert.match(auth, /req\.session\.save\(/,
     'Ohne save() wäre die neue ID bei einer unmittelbar folgenden Anfrage noch nicht gültig');
 
-  const routes = read('routes/auth.ts');
+  const routes = require('./helpers/sources').anmeldeQuelle();
   // Zwei Aufrufe: angemeldetAntworten() (Login und Passkey-Anmeldung) und
   // /change-password, das nach dem Verwerfen aller Sitzungen die eigene neu
   // aufbaut. Ob die Passkey-Anmeldung wirklich eine Sitzung bekommt, prüft
@@ -47,12 +41,7 @@ test('die Session-ID wird beim Anmelden erneuert', () => {
 // ── Punkt 3 ────────────────────────────────────────────────────────────────
 test('Rate-Limits zählen worker-übergreifend', () => {
   // Die Tabelle heisst rate_limit_attempts, nicht rate_counters.
-  //
-  // Der Test prüfte bis hierher gegen einen Entwurf, den es im Code nie gab —
-  // rate_counters wurde zwar angelegt, aber von keiner Abfrage benutzt (die
-  // CREATE-Anweisung ist inzwischen entfernt). Geprüft wird jetzt, was die
-  // Implementierung tatsächlich zusichert: Zähler in der Datenbank, atomares
-  // Hochzählen in einem Statement, Rückfall auf den Prozessspeicher.
+  // Ausführlich: docs/begruendungen/test/hardening-block1.test.js.md#lim-stelle
   const lim = require('./helpers/sources').dienstQuelle('src/konto/loginLimiter.ts');
   assert.match(lim, /rate_limit_attempts/, 'Der Zähler muss in der Datenbank liegen');
   assert.match(lim, /ON CONFLICT \(key\) DO UPDATE/,
@@ -103,42 +92,19 @@ test('Preis-Vorhandensein hängt an avg_price', () => {
   const fc = require('./helpers/sources').finanzQuelle();
   // Die Aussage ist unverändert: Ein Datensatz mit avg_price = 0 darf nicht
   // als „hat einen Preis" durchgehen, sonst steht überall 0.
-  //
-  // Gezählt wurden dafür früher fünf Vorkommen von `pd.avg_price > 0` — Sets,
-  // Teile und Minifiguren, je Haupt- und Rückfall-Zustand. Die gibt es nicht
-  // mehr: Dieselbe Frage stand in dieser Datei an 22 Stellen, in drei
-  // Fassungen, und widersprach dabei der Fassung in clients/bricklink.ts.
-  // Sie liegt jetzt einmal in src/finanzen/preisRegel.ts (siehe
-  // test/preisregel-db.test.js). Gezählt werden deshalb die Stellen, die sie
-  // BENUTZEN — die Zahl bleibt die Zusicherung, dass keine davon verschwindet.
+  // Ausführlich: docs/begruendungen/test/hardening-block1.test.js.md#stelle
   assert.doesNotMatch(fc, /avg_price > 0 \|\| \w+\.qty_avg_price > 0/,
     'Ein Datensatz mit avg_price = 0 ginge sonst als "hat einen Preis" durch und ergäbe überall 0');
   assert.ok((fc.match(/\bhatPreis\(/g) || []).length >= 5,
     'Alle Preis-Vorhandensein-Prüfungen müssen über dieselbe Regel laufen');
-  // `\.\.?/` statt `\./`: Seit die Finanzschicht unter utils/finance/ liegt,
-  // heisst derselbe Import '../preisRegel'. Die Regel meint die HERKUNFT, nicht
-  // die Verzeichnistiefe — auf die Tiefe zu prüfen hiesse, beim naechsten
-  // Verschieben eine richtige Sache als falsch zu melden.
-  assert.match(fc, /from '\.\.?\/preisRegel'/,
+  // Die Regel meint die HERKUNFT, nicht die Verzeichnistiefe.
+  assert.match(fc, /hatPreis \} from '(?:\.\.\/)+katalog\/bricklinkPreise'/,
     'und zwar über die eine, die auch clients/bricklink.ts anwendet');
 });
 
 test('kein Token reitet mehr in der Adresszeile', () => {
-  // ── Woher dieser Test kommt ─────────────────────────────────────────────
-  // src/konto/auth.ts fuehrte eine Liste TOKEN_QUERY_ALLOWED: drei Pfade, auf
-  // denen `?token=` als Ausweis zaehlte. Begruendung war, dass <img src>,
-  // EventSource und window.open() keine Kopfzeilen setzen koennen. Das stimmt
-  // — nur hatte im ganzen Baum KEINER der drei Eintraege noch einen Nutzer:
-  // der Browser oeffnet den SSE-Kanal mit Cookie, der Polling-Rueckfall setzt
-  // eine echte Kopfzeile, und die Anleitung holt die App ueber ihren OkHttp-
-  // Client, dessen Interceptor den Authorization-Kopf ohnehin anhaengt.
-  // Uebrig blieb eine Erlaubnis, ueber die der SITZUNGSTOKEN in
-  // Proxy-Protokolle und Browserverlauf wandern konnte.
-  //
-  // Dieser Test haelt beide Haelften fest: den Server, der `?token=` nicht
-  // mehr ansieht, und die Aufrufer, die keinen mehr anhaengen. Nur eine der
-  // beiden zu pruefen reichte nicht — die Ausnahmeliste hier war jahrelang
-  // gruen, WEIL nur ihr Vorhandensein geprueft wurde und nie ihr Nutzen.
+  // Woher dieser Test kommt
+  // Ausführlich: docs/begruendungen/test/hardening-block1.test.js.md#stelle-2
   const { ohneKommentare, setKernQuelle, coreQuelle } = require('./helpers/sources');
   const auth = ohneKommentare(read('src/konto/auth.ts') + read('src/konto/http/anmeldung.ts'));
 
@@ -148,13 +114,8 @@ test('kein Token reitet mehr in der Adresszeile', () => {
     'resolveUserId liest wieder aus der Query. Auf jeder Route zaehlt der ' +
     'Authorization-Kopf oder die Sitzung, sonst nichts.');
 
-  // ── Und die Aufrufer ──────────────────────────────────────────────────────
-  //
-  // Nicht nach der blossen Zeichenkette `?token=` gesucht: src/infra/mailer.ts
-  // baut damit die Links `/verify?token=` und `/reset-password?token=` fuer
-  // die E-Mail. Das sind EIGENE, kurzlebige Token mit eigenen Handlern in
-  // server.ts — kein Sitzungsausweis. Gesucht wird deshalb das Anhaengen
-  // eines gespeicherten Zugangs an eine Adresse.
+  // Und die Aufrufer
+  // Ausführlich: docs/begruendungen/test/hardening-block1.test.js.md#anhaengen
   const anhaengen = [
     // Javascript:  '?token=' + irgendwas
     { re: /'\?token='\s*\+/, wo: 'Javascript' },
@@ -162,7 +123,7 @@ test('kein Token reitet mehr in der Adresszeile', () => {
     { re: /\?token=\$/,      wo: 'Kotlin' },
   ];
   const quellen = [
-    ...['public/js/01-core.js', 'public/js/01-fortschritt.js', 'public/js/01-monitor.js',
+    ...['public/js/01-api.js', 'public/js/01-bilder.js', 'public/js/01-fortschritt.js', 'public/js/01-monitor.js',
         'public/js/02-gallery.js', 'public/js/05-settings.js']
       .map(f => [f, read(f)]),
     // Jeder Dateiname AUSGESCHRIEBEN, nicht ueber eine Schleifenvariable
@@ -172,7 +133,9 @@ test('kein Token reitet mehr in der Adresszeile', () => {
     // Pruefung prompt als „nicht aufloesbar" gemeldet.
     ...[path.join(__dirname, '..', '..', 'Android-App', 'feature-sammlung', 'src', 'main', 'java', 'ch', 'brickinventoryapp', 'ui', 'screens', 'SetDetailSections.kt'),
         path.join(__dirname, '..', '..', 'Android-App', 'feature-sammlung', 'src', 'main', 'java', 'ch', 'brickinventoryapp', 'ui', 'screens', 'SetDetailScreen.kt'),
-        path.join(__dirname, '..', '..', 'Android-App', 'feature-finanzen', 'src', 'main', 'java', 'ch', 'brickinventoryapp', 'ui', 'screens', 'PdfViewerScreen.kt')]
+        path.join(__dirname, '..', '..', 'Android-App', 'feature-finanzen', 'src', 'main', 'java', 'ch', 'brickinventoryapp', 'ui', 'screens', 'PdfViewerScreen.kt'),
+        // Geladen wird seit dem Umbau auf ein ViewModel hier, nicht mehr im Bildschirm.
+        path.join(__dirname, '..', '..', 'Android-App', 'feature-finanzen', 'src', 'main', 'java', 'ch', 'brickinventoryapp', 'ui', 'pdf', 'AnleitungsLader.kt')]
       .map(voll => {
         assert.ok(fs.existsSync(voll),
           `${path.basename(voll)} steht nicht mehr dort — Pfad im Test veraltet`);
@@ -200,7 +163,7 @@ test('kein Token reitet mehr in der Adresszeile', () => {
 
   // Der Kanal selbst muss es weiterhin geben — sonst prueft der Absatz oben
   // die Abwesenheit eines Tokens an einer Adresse, die es nicht mehr gibt.
-  // coreQuelle() statt eines Dateinamens: Der Balken zog in Nachtrag 141 nach
+  // coreQuelle() statt eines Dateinamens: Der Balken zog in einer früheren Runde nach
   // js/01-fortschritt.js um, und dieser Satz prüfte danach eine Datei, in der
   // der Kanal gar nicht mehr stand. Gesucht ist der KANAL, nicht sein Ablageort.
   assert.ok(coreQuelle().includes('/api/v1/sets/import/csv/stream'),
@@ -208,20 +171,8 @@ test('kein Token reitet mehr in der Adresszeile', () => {
 });
 
 test('offene Ereignis-Ströme halten das Herunterfahren nicht auf', () => {
-  // ── Woher dieser Test kommt ─────────────────────────────────────────────
-  // shutdown() wartete auf httpServer.close(). Dessen Rückruf kommt erst,
-  // wenn die LETZTE Verbindung weg ist — und ein SSE-Strom geht von sich aus
-  // nie weg. Jeder Neustart lief deshalb in die Frist von acht Sekunden und
-  // endete über die Reissleine mit process.exit(1): Für Docker sah jedes
-  // Deploy aus wie ein Absturz.
-  //
-  // Der Kommentar dort nannte das einen Ausnahmefall („bleibt eine Verbindung
-  // hängen"). Es war der Regelfall — der Fortschrittskanal der Webapp bleibt
-  // ausdrücklich dauerhaft offen, auch wenn gar kein Import läuft.
-  //
-  // Nachgemessen: ohne Registry kam close() nie zurück, mit ihr nach 2 ms.
-  // Reine Keep-Alive-Verbindungen brauchen das NICHT — die beendet Node beim
-  // Schliessen des Servers von selbst.
+  // Woher dieser Test kommt
+  // Ausführlich: docs/begruendungen/test/hardening-block1.test.js.md#server
   const server = read('server.ts');
   assert.match(server, /closeAllSse\(\)/, 'Die Ströme müssen vor close() beendet werden');
   const idxClose = server.indexOf('closeAllSse()');
@@ -245,20 +196,8 @@ test('offene Ereignis-Ströme halten das Herunterfahren nicht auf', () => {
 });
 
 test('den Preis-Cache leert nur, wer Administrator ist', () => {
-  // ── Woher dieser Test kommt ─────────────────────────────────────────────
-  // POST /api/settings/import führte am Ende ein unbedingtes
-  // `DELETE FROM price_cache` aus — der Router trägt aber nur requireLogin.
-  // Jedes Konto, auch ein Unterkonto im Haushalt, konnte damit eine
-  // Ein-Zeilen-Datei ({"user_settings":{"currency":"CHF"}}) hochladen und den
-  // Preis-Cache der GANZEN Installation leeren. Beliebig oft. Der nächste
-  // Bewertungslauf holt dann alle Preise neu bei BrickLink, und deren
-  // Tageskontingent ist endlich.
-  //
-  // Dieselbe Lücke war in routes/finance.ts schon einmal geschlossen worden
-  // (POST /refresh trägt seitdem requireAdmin, mit einer Notiz über das
-  // verbrannte Kontingent). Der Import-Weg wurde übersehen — er sieht ja auch
-  // nicht nach „Cache leeren" aus. Genau deshalb prüft dieser Test die REGEL
-  // und nicht eine einzelne Route: Wer den Cache leert, braucht requireAdmin.
+  // Woher dieser Test kommt
+  // Ausführlich: docs/begruendungen/test/hardening-block1.test.js.md#dateien
   const dateien = ['routes/api_v1/settings.ts', 'routes/api_v1/sets.ts',
                    'routes/api_v1/parts.ts', 'routes/api_v1/minifigs.ts', 'clients/bricklink.ts'];
   const treffer = [];
@@ -281,12 +220,8 @@ test('ein Währungswechsel braucht keine Cache-Leerung', () => {
   // Die Begründung, warum die Zeile im Import ERSATZLOS entfallen ist und
   // nicht bloss hinter isAdmin gewandert ist: price_cache ist über
   // set_number, condition UND currency_code verschlüsselt. Einträge in der
-  // alten Währung passen nach einem Wechsel schlicht nicht mehr auf die
-  // Abfrage, und für die neue wird ohnehin frisch geholt.
-  //
-  // Bricht jemand diese Eigenschaft (eine Abfrage ohne currency_code), wäre
-  // die Zeile plötzlich wieder nötig — dann soll hier etwas rot werden.
-  // Alle Quellen statt einer Liste: Eine Liste veraltet beim nächsten Umzug.
+  // alten Währung passen nach einem Wechsel schlicht nicht mehr auf die …
+  // Ausführlich: docs/begruendungen/test/hardening-block1.test.js.md#leser
   const leser = require('./helpers/sources').alleQuellen()
     .filter(d => read(d).includes('FROM price_cache'));
   assert.ok(leser.length >= 4, `nur ${leser.length} Leser von price_cache gefunden — Suche veraltet?`);

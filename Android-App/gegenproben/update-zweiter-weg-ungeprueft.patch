@@ -1,0 +1,18 @@
+Gegenprobe: der zweite Installationsweg prüft die Signatur nicht erneut
+Modul: feature-konto
+Test: ch.brickinventoryapp.UpdateViewModelTest
+Rot: ohne Erlaubnis wartet das APK, und der zweite Weg prueft erneut
+
+diff --git a/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/ui/viewmodel/UpdateViewModel.kt b/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/ui/viewmodel/UpdateViewModel.kt
+index 0f539b8..9b66978 100644
+--- a/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/ui/viewmodel/UpdateViewModel.kt
++++ b/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/ui/viewmodel/UpdateViewModel.kt
+@@ -194,7 +194,7 @@ class UpdateViewModel @Inject constructor(
+             // Die Reihenfolge bleibt; `&&` bricht beim ersten Fehlschlag ab.
+             val geprueft = withContext(io) {
+                 val datei = geraet.updateDatei()
+-                val echt = datei.isFile && pruefsummePasst(datei, pruefsumme) && geraet.signaturPasst(datei) &&
++                val echt = datei.isFile && pruefsummePasst(datei, pruefsumme) &&
+                     fassungPasst(geraet.apkFassung(datei), gemeldet, repo.laufendeFassung.code)
+                 if (!echt) datei.delete()
+                 datei.takeIf { echt }

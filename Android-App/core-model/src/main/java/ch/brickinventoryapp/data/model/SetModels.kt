@@ -211,10 +211,6 @@ data class UpdateQuantityRequest(
 )
 
 /**
- * Kennzahlen des Minifiguren-Reiters, vom Server gezählt: Die geladene Liste ist
- * gefiltert (ohne manuelle Figuren) und zählte „manuell erfasst“ immer als 0.
- */
-/**
  * „Gibt es dieses Set schon?“ (GET /api/v1/sets/exists/:nummer) — der Server sagt
  * es ausdrücklich, mit derselben Regel wie beim Erfassen, statt dass die App es
  * aus einem Fehler errät und „nicht vorhanden“ mit „nicht erreichbar“ verwechselt.
@@ -425,7 +421,6 @@ data class Merkposten(
      * den Bild-Proxy.
      */
     @SerialName("image_local") val imageLocal: String? = null,
-    /** Liegt das Set schon in der Galerie eines Kontos im Blickfeld? */
     /**
      * Marktpreis im Zustand dieses Merkpostens, null solange keiner bekannt ist. Aus
      * dem Preis-Cache des Servers (jobs/priceJob.ts), kein Abruf je Zeile.

@@ -3,16 +3,13 @@
  * Setnummer liegt, sehen alle. Deshalb holt der Server Bilder nur von
  * Adressen aus dem Katalog, die aus geprüfter Quelle stammen — nie von einer,
  * die ein Client mitschickt oder eingetippt hat.
- *
- * Geprüft am PDF-Auftrag (jobs/pdfErzeugung.ts) mit abgefangenem https.get:
- * Welche Adressen werden wirklich abgerufen? Und am Bild-Proxy: Welche
- * Adresse ergibt eine Setnummer?
+ * Ausführlich: docs/begruendungen/test/bildcache-quelle-db.test.js.md#kopf
  *
  * Gegenproben (am 30.10.2026 gemessen):
  *   A  bilderAusKatalog() setzt image_url/image_local des Clients nicht mehr
  *      zurück → rot: „der lokale Pfad des Clients bleibt stehen“ und
  *      „die Bildadresse des Clients wird abgerufen“
- *   B  in bilderAusKatalog() `CASE WHEN bild_von IS NULL` entfernt → rot:
+ *   B  (03.11.2026) teilbilder() liest zusätzlich teil_farbe_eigen → rot:
  *      „eine eingetippte Adresse wird für alle abgelegt“
  *   C  setNummerAusBildAdresse() wieder mit dem alten, nicht verankerten
  *      Muster auf der ganzen Adresse → rot: „…?/media/sets/10294-1.jpg ergibt
@@ -61,16 +58,18 @@ test('Bildquellen kommen aus dem Katalog, nicht vom Client', { concurrency: 1 },
   const jobId = neueJobId();
   const aufraeumen = async () => {
     await db.run('DELETE FROM part_color_catalog WHERE part_number LIKE $1', [`${T}%`]);
+    await db.run('DELETE FROM users WHERE username = $1', [T]);
     await db.run('DELETE FROM auftraege WHERE schluessel = $1', [`pdf:${jobId}`]);
     require('node:fs').rmSync(pdfDateiPfad(jobId), { force: true });
   };
   await aufraeumen();
   t.after(async () => { await aufraeumen(); await db.pool.end().catch(() => {}); });
 
-  // Geprüfte Adresse (bild_von NULL), eingetippte eines Kontos (bild_von 4711).
+  // Geprüfte Adresse im Katalog, eingetippte in den eigenen Angaben eines Kontos.
   await db.run(`INSERT INTO part_color_catalog (part_number, color_id, image_url) VALUES ($1, 5, $2)`, [`${T}a`, GUT]);
-  await db.run(`INSERT INTO part_color_catalog (part_number, color_id, image_url, bild_von) VALUES ($1, 5, $2, 4711)`,
-    [`${T}b`, GETIPPT]);
+  const konto = (await db.get(`INSERT INTO users (username, password_hash) VALUES ($1, 'x') RETURNING id`, [T])).id;
+  await db.run(`INSERT INTO teil_farbe_eigen (user_id, part_number, color_id, image_url) VALUES ($1, $2, 5, $3)`,
+    [konto, `${T}b`, GETIPPT]);
 
   const { bilderAusKatalog, erzeugePdf } = _req('jobs/pdfErzeugung.js');
   const vomClient = () => [

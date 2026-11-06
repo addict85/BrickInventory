@@ -1,5 +1,6 @@
 import * as db from '../../../db/database';
 import type { DbSchnittstelle } from '../../../db/database';
+import { teilSichtJoin, figurSichtJoin, TEIL, FIGUR } from '../../../db/katalogSicht';
 
 /** Ein Eintrag hält die gelöschten Zeilen aller Tabellen eines Bestands als
  * JSON; Wiederherstellen schreibt sie Spalte für Spalte zurück. */
@@ -28,24 +29,25 @@ export const tabellenDerArt = (art: PapierArt): string[] => TABELLEN[art].map(t 
 export async function bestandsZeilen(tx: DbSchnittstelle, art: PapierArt, werte: unknown[]): Promise<Record<string, unknown[]>> {
   const zeilen: Record<string, unknown[]> = {};
   for (const { tabelle, wo } of TABELLEN[art]) {
-    const r = await tx.get(`SELECT COALESCE(jsonb_agg(to_jsonb(t)), '[]'::jsonb) AS z FROM ${tabelle} t WHERE ${wo}`, werte);
+    const r = await tx.get<{ z: unknown[] }>(`SELECT COALESCE(jsonb_agg(to_jsonb(t)), '[]'::jsonb) AS z FROM ${tabelle} t WHERE ${wo}`, werte);
     zeilen[tabelle] = r?.z ?? [];
   }
   return zeilen;
 }
 
 const BEZEICHNUNG: Record<PapierArt, string> = {
-  set:   'SELECT name AS b FROM set_catalog WHERE set_number = $1',
-  teil:  `SELECT concat_ws(' · ', pc.part_name, pcc.color_name) AS b
-            FROM part_catalog pc
-            LEFT JOIN part_color_catalog pcc ON pcc.part_number = pc.part_number AND pcc.color_id = $2
-           WHERE pc.part_number = $1`,
-  figur: 'SELECT fig_name AS b FROM minifigs_catalog WHERE fig_number = $1',
+  set:   'SELECT name AS b FROM set_catalog WHERE set_number = $1 AND $2::int IS NOT NULL',
+  teil:  `SELECT concat_ws(' · ', ${TEIL.name}, ${TEIL.farbname}) AS b
+            FROM (SELECT $1::text AS nr, $2::int AS konto, $3::int AS farbe) x
+            ${teilSichtJoin('x.konto', 'x.nr', 'x.farbe')}`,
+  figur: `SELECT ${FIGUR.name} AS b
+            FROM (SELECT $1::text AS nr, $2::int AS konto) x
+            ${figurSichtJoin('x.konto', 'x.nr')}`,
 };
 
 /** Damit die Liste auch ohne Katalogzeile lesbar bleibt. */
-export async function bezeichnung(tx: DbSchnittstelle, art: PapierArt, nummer: string, farbeId: number | null): Promise<string | null> {
-  const r = await tx.get<{ b: string | null }>(BEZEICHNUNG[art], art === 'teil' ? [nummer, farbeId] : [nummer]);
+export async function bezeichnung(tx: DbSchnittstelle, art: PapierArt, userId: number, nummer: string, farbeId: number | null): Promise<string | null> {
+  const r = await tx.get<{ b: string | null }>(BEZEICHNUNG[art], art === 'teil' ? [nummer, userId, farbeId] : [nummer, userId]);
   return r?.b || null;
 }
 
@@ -58,8 +60,15 @@ export async function legeEintragAn(tx: DbSchnittstelle, userId: number, art: Pa
   return r?.id ?? null;
 }
 
+/** Wie die Tabelle sie liefert; `art` prüft die Tabelle per CHECK. */
+export interface PapierkorbZeile {
+  id: number; user_id: number; art: PapierArt; nummer: string; farbe_id: number | null;
+  bezeichnung: string | null; zeilen: Record<string, { quantity?: unknown }[]> | null;
+  geloescht_am: string; endgueltig_am: string;
+}
+
 export function eintraege(uids: number[], aufbewahrungTage: number) {
-  return db.all(
+  return db.all<PapierkorbZeile>(
     `SELECT id, user_id, art, nummer, farbe_id, bezeichnung, zeilen, geloescht_am,
             geloescht_am + make_interval(days => $2) AS endgueltig_am
        FROM papierkorb WHERE user_id = ANY($1)
@@ -67,7 +76,7 @@ export function eintraege(uids: number[], aufbewahrungTage: number) {
 }
 
 export function eintragSperren(tx: DbSchnittstelle, id: number, uids: number[]) {
-  return tx.get('SELECT * FROM papierkorb WHERE id = $1 AND user_id = ANY($2) FOR UPDATE', [id, uids]);
+  return tx.get<{ art: string; zeilen: Record<string, Record<string, unknown>[]> | null; nummer: string; user_id: number }>('SELECT * FROM papierkorb WHERE id = $1 AND user_id = ANY($2) FOR UPDATE', [id, uids]);
 }
 
 /** Nur Spalten, die es noch gibt und die nicht berechnet sind; eine seither

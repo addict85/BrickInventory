@@ -3,37 +3,7 @@
  * sein. Der Test parst die Routen-Dateien; taucht ein neuer Endpunkt auf, der
  * hier fehlt, wird die Suite rot — so kann keine API mehr ungeprüft/undoku-
  * mentiert dazukommen. Umgekehrt melden verwaiste Einträge entfernte Routen.
- *
- * Kategorien:
- *   paritaet         — Lese-Paar Webapp↔Android, deep-verglichen in api-parity
- *   paritaet-schreib — Schreib-Paar, Effekt-Vergleich in api-parity
- *   paar-extern      — Paar existiert, ruft aber externe APIs (Rebrickable/
- *                      Brickset/BrickLink) — nicht automatisiert vergleichbar
- *   nur-v1           — nur unter /api/v1 implementiert; wird von BEIDEN
- *                      Clients genutzt (requireToken akzeptiert Sessions) oder
- *                      ist Android-spezifisch (z.B. Barcode)
- *   nur-web          — Webapp-spezifisch (Session-Auth-Flows, Datei-Exporte,
- *                      Uploads, SSE-Streams, Admin-UI der Webapp)
- *
- * ── Was dieser Test NICHT prueft ────────────────────────────────────────────
- * Ob die Kategorie in JEDE Richtung stimmt. Geprueft wird, dass jeder Endpunkt
- * eine hat, dass kein Eintrag verwaist ist — und seit Nachtrag 137, dass kein
- * `nur-web` in Wahrheit von der Android-App gerufen wird.
- *
- * Diese eine Richtung ist die, die messbar falsch WAR: NACHGEMESSEN trugen
- * NEUNZEHN Eintraege die Beschriftung `nur-web`, obwohl BrickApiService.kt sie
- * aufruft — Registrieren, Profil, Passwort aendern, alle drei CSV-Importe, die
- * Anleitungen, die Farb- und Kategoriefilter, das Design. Jeder einzelne war
- * einmal richtig und ist es geworden, als die App die Funktion bekam; niemand
- * ist danach hierher zurueckgegangen. Genau das ist die Bauart, gegen die
- * dieser Baum seine Pruefungen baut: eine Wahrheit, die an zwei Stellen steht,
- * und nur eine wird gepflegt.
- *
- * Die andere Richtung — ein `nur-v1`, das gar niemand ruft — bleibt
- * ungeprueft; dafuer gibt es test/api-aufrufer.test.js.
- *
- * Wer wen wirklich ruft, prueft test/api-aufrufer.test.js; dass keine Adresse
- * unbegruendet auf beiden Oberflaechen steht, test/api-oberflaechen.test.js.
+ * Ausführlich: docs/begruendungen/test/api-inventory.test.js.md#kopf
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -104,7 +74,7 @@ const C = {
 
   // Nur /api/v1 — von beiden Clients (oder nur Android) genutzt
   // Etappe 6: zusammengelegt — nur noch die v1-Adresse, beide Clients rufen
-  // sie auf. Die Zustands-Auflösung selbst steht in src/konto/settings.ts.
+  // sie auf. Die Zustands-Auflösung selbst steht in src/einstellungen/settings.ts.
   'GET /api/v1/stats': 'nur-v1',
   'GET /api/v1/settings/default-condition': 'nur-v1',
   'GET /api/v1/settings/user/default-condition': 'nur-v1',
@@ -195,7 +165,7 @@ const C = {
   'PUT /api/v1/settings': 'nur-v1',
   'GET /api/v1/admin/api-limits': 'nur-v1',
   'PUT /api/v1/admin/api-limits': 'nur-v1',
-  // Diagnose-Endpunkt (Nachtrag 50): beantwortet „warum fehlt das Bild für
+  // Diagnose-Endpunkt: beantwortet „warum fehlt das Bild für
   // Set X?" in einer Antwort. Bewusst nur in v1 — es ist ein Werkzeug für die
   // Fehlersuche, kein Teil der Oberfläche.
   'GET /api/v1/admin/image-diag/:setNumber': 'nur-v1',
@@ -214,10 +184,8 @@ const C = {
   // Preisverlauf manueller Teile und Minifiguren. Webapp-seitig; die
   // Android-App zeichnet dort (noch) kein Diagramm — deshalb kein v1-Gegenstück.
   // Seit hardened-96 gibt es beide auch für die Android-App — der
-  // Detail-Dialog dort zeigte vorher weder Marktpreis je Zustand noch Verlauf.
-  // Set in ein anderes Konto des Haushalts verschieben und die Kontoliste für
-  // die Auswahl beim Erfassen. Beides bisher nur in der Webapp — die
-  // Android-App bekommt sie, wenn die Haushaltssicht dort ankommt.
+  // Detail-Dialog dort zeigte vorher weder Marktpreis je Zustand noch Verlauf. …
+  // Ausführlich: docs/begruendungen/test/api-inventory.test.js.md#stelle
   
   'GET /api/v1/sets/household-members': 'paritaet',
   
@@ -225,10 +193,11 @@ const C = {
   // Haushalt: Konten verknüpfen. Beide Wege, damit die App dieselben Regeln
   // bekommt — die Grenzen (kein Kreis, gleiche Währung im ganzen
   // einziehenden Teilbaum) stehen in src/haushalt/haushalt.ts, nicht in den
-  // Routen. „Nur eine Stufe“ stand hier bis Nachtrag 173.
+  // Routen. „Nur eine Stufe“ stand hier bis eine frühere Runde.
   'GET /api/v1/settings/household': 'nur-v1',
   'POST /api/v1/settings/household/invite': 'nur-v1',
   'POST /api/v1/settings/household/redeem': 'nur-v1',
+  'POST /api/v1/settings/household/redeem/pruefen': 'nur-web',
   'POST /api/v1/settings/household/unlink': 'nur-v1',
   'POST /api/v1/settings/household/former/dismiss': 'nur-v1',
   'POST /api/v1/admin/redownload-missing-images': 'nur-v1',
@@ -236,15 +205,8 @@ const C = {
   'POST /api/v1/admin/trigger-csv-sync': 'nur-v1',
   'POST /api/v1/admin/trigger-price-job': 'nur-v1',
 
-  // ── Beide Clients, frueher nur die Webapp (Nachtrag 137) ──────────────────
-  //
-  // Diese neunzehn standen als `nur-web` unten und waren es einmal auch. Sie
-  // sind es nicht mehr, seit die Android-App Registrieren, Profil, Passwort,
-  // die drei CSV-Importe, die Anleitungen, die Farb- und Kategoriefilter und
-  // das Design bekommen hat — jeder Umzug hat die Beschriftung hier
-  // zurueckgelassen. Aufgefallen ist es erst, als die Beschriftung selbst
-  // geprueft wurde (Test „kein nur-web wird in Wahrheit von der Android-App
-  // gerufen"); vorher war sie eine Behauptung, die niemand nachmisst.
+  // Beide Clients, frueher nur die Webapp
+  // Ausführlich: docs/begruendungen/test/api-inventory.test.js.md#stelle-2
   'DELETE /api/v1/sets/:setNumber/instructions/:instrId': 'nur-v1',
   'GET /api/v1/auth/profile': 'nur-v1',
   'GET /api/v1/auth/registration-status': 'nur-v1',
@@ -255,17 +217,18 @@ const C = {
   'POST /api/v1/auth/change-password': 'nur-v1',
   'POST /api/v1/auth/forgot-password': 'nur-v1',
   'POST /api/v1/auth/bestaetigung-erneut': 'nur-v1',
+  'POST /api/v1/auth/email-bestaetigen': 'nur-v1',
+  'POST /api/v1/auth/email-bestaetigen/vorschau': 'nur-v1',
   'POST /api/v1/auth/register': 'nur-v1',
   'POST /api/v1/minifigs/import/csv': 'nur-v1',
-  // „Kann ich das bauen?“ (Nachtrag 174) — beide Oberflaechen rufen ihn,
+  // „Kann ich das bauen?“ — beide Oberflaechen rufen ihn,
   // eine Zweitfassung unter /api gab es nie.
   'POST /api/v1/parts/owned': 'nur-v1',
-  // Lagerort (Nachtrag 175) — beide Oberflaechen, nie eine Zweitfassung
+  // Lagerort — beide Oberflaechen, nie eine Zweitfassung
   // unter /api. GET /storage spannt Sets UND Teile und gehoert deshalb zu
   // keiner der beiden Familien allein.
-  // Preisalarm (Nachtrag 176) — beide Oberflaechen. Ohne Kontofilter: Ein
-  // Alarm gehoert genau EINEM Konto (siehe src/finanzen/preisalarm.ts).
-  // Abholung der ausgeloesten Alarme (Nachtrag 177) — beide Oberflaechen.
+  // Preisalarm — beide Oberflaechen. Ohne Kontofilter: Ein …
+  // Ausführlich: docs/begruendungen/test/api-inventory.test.js.md#stelle-3
   'GET /api/v1/alerts/pending': 'nur-v1',
   // Die UEBERSICHT ueber alle Alarme — beide Oberflaechen. Bewusst getrennt
   // von /alerts/pending: Das sind zwei Fragen. `pending` ist fluechtig („was
@@ -277,7 +240,7 @@ const C = {
   'PUT /api/v1/sets/:setNumber/alert': 'nur-v1',
   'DELETE /api/v1/sets/:setNumber/alert': 'nur-v1',
   'GET /api/v1/storage': 'nur-v1',
-  // Der VORRAT an Lagerorten (Nachtrag 178) — Marcos Auswahlfeld. Getrennt
+  // Der VORRAT an Lagerorten — Marcos Auswahlfeld. Getrennt
   // von GET /storage darueber: Das eine sagt, was BELEGT ist (Filter), das
   // andere, was zur WAHL steht (Auswahlfeld und Einstellungen).
   'GET /api/v1/storage/locations': 'nur-v1',
@@ -289,7 +252,7 @@ const C = {
   // beide lesen ihn aus der Antwort von GET /storage/locations mit — deshalb
   // nur-v1 und kein eigener Leseweg.
   'PUT /api/v1/storage/default': 'nur-v1',
-  // Die Merkliste (Nachtrag 179) — Marcos „was man haben moechte", getrennt
+  // Die Merkliste — Marcos „was man haben moechte", getrennt
   // vom Besitz. nur-v1 und nicht paritaet: Beide Oberflaechen rufen dieselben
   // Adressen, es gibt also gar kein zweites Gegenstueck zu vergleichen.
   // Die Regeln dahinter pruefet test/merkliste-db.test.js gegen die DB.
@@ -303,13 +266,8 @@ const C = {
   // Eigenes Design des Kontos: Profil der Webapp und Konto-Bildschirm der App.
   'POST /api/v1/settings/user/theme': 'nur-v1',
 
-  // ── Gutscheine ───────────────────────────────────────────────────────────
-  //
-  // Durchweg `nur-v1`, und zwar auf Marcos ausdrueckliche Vorgabe: „Bitte die
-  // Login jeweils nur 1x im Backend bauen. Beide Apps sollen die gleichen
-  // Services des Backends verwenden." Es gibt deshalb KEINEN Zwilling unter
-  // routes/ — die Webapp ruft dieselben Adressen wie die Android-App, und
-  // requireToken nimmt Sitzungscookie wie Bearer-Token.
+  // Gutscheine
+  // Ausführlich: docs/begruendungen/test/api-inventory.test.js.md#stelle-4
   'GET /api/v1/vouchers': 'nur-v1',
   'POST /api/v1/vouchers': 'nur-v1',
   'POST /api/v1/vouchers/pdf': 'nur-v1',
@@ -358,9 +316,8 @@ const C = {
   // Die Farbe eines manuell erfassten Teils nachtraeglich aendern (Marcos
   // Bitte vom 19.10., nach dem Import mehrerer Wanted-Listen). nur-v1 wie der
   // Lagerort darueber: Beide Oberflaechen rufen dieselbe Adresse, eine
-  // Sitzungs-Entsprechung gibt es nicht. Was sie TUT — Umziehen oder
-  // Zusammenlegen, Erfassungen vom gleichen Tag addieren, ein Set-Teil
-  // abweisen — prueft test/teil-farbe-aendern-db.test.js gegen die Datenbank.
+  // Sitzungs-Entsprechung gibt es nicht. Was sie TUT — Umziehen oder …
+  // Ausführlich: docs/begruendungen/test/api-inventory.test.js.md#stelle-5
   'PUT /api/v1/parts/:partNumber/:colorId/color': 'nur-v1',
   'PUT /api/v1/sets/:setNumber/storage': 'nur-v1',
   // Seit Migration 0024 traegt auch eine Minifigur einen Lagerort. Dieselbe
@@ -374,35 +331,30 @@ const C = {
   'POST /api/v1/sets/import/csv/cancel': 'nur-v1',
   'POST /api/v1/settings/admin/theme': 'nur-v1',
   'PUT /api/v1/auth/profile': 'nur-v1',
-  // Und seit Nachtrag 137 auch diese: Die Teileliste der App holt den Setnamen
+  // Und seit einer früheren Runde auch diese: Die Teileliste der App holt den Setnamen
   // jetzt hier statt ueber /sets/{nr}. Der Unterschied ist nicht formal — das
   // Detail sucht im eigenen Blickfeld und antwortet 404 fuer ein fremdes Set,
   // und in der Teileliste sind fremde Sets der Regelfall.
   'GET /api/v1/sets/info/:setNumber': 'nur-v1',
 
   // Nur Webapp
-  //
-  // Alle Anmelde-Adressen sind von /api/auth nach /api/v1/auth umgezogen; es
-  // gibt nur noch eine API-Oberflaeche. Die Kategorien haben sich dabei
-  // verschoben, und zwar nicht nur formal:
-  //  * login, logout, me und token-create sind jetzt EINE Umsetzung fuer
-  //    beide Clients — also nur-v1 statt zweimal.
-  //  * qr-login stand hier als nur-web und war es nie: Die App ruft es
-  //    (BrickApiService.qrLogin). Beim Umzug aufgefallen, weil beide
-  //    Eintraege danebenlagen.
+  // Ausführlich: docs/begruendungen/test/api-inventory.test.js.md#stelle-6
   'POST /api/v1/auth/reset-password': 'nur-web',
-  // Nachtrag 154: von GET auf POST umgestellt — die Route LEGT eine
+  // von GET auf POST umgestellt — die Route LEGT eine
   // Anmelde-Nonce AN und war als GET die einzige zustandsaendernde Route,
   // die SameSite=lax durchliess.
   'POST /api/v1/auth/qr-token': 'nur-web',
   'GET /api/v1/auth/users': 'nur-web',
   'POST /api/v1/auth/users': 'nur-web',
   'DELETE /api/v1/auth/users/:id': 'nur-web',
+  // Das eigene Konto löschen: endgültig, mit Passwort und zweitem Faktor; bewusst nur in der Webapp.
+  'DELETE /api/v1/auth/konto': 'nur-web',
   'PUT /api/v1/auth/users/:id/admin': 'nur-web',
   'PUT /api/v1/auth/users/:id/aktiv': 'nur-web',
+  'PUT /api/v1/auth/users/:id/freischalten': 'nur-web',
   'GET /api/v1/admin/protokoll': 'nur-web',
   'GET /api/v1/sets/export/rebrickable': 'nur-web',
-  // Nachtrag 159: Beide waren „nur-web", weil die App sie nicht kannte — und
+  // Beide waren „nur-web", weil die App sie nicht kannte — und
   // das war eine Luecke, keine Entscheidung. Die Webapp bot „Anleitungen neu
   // suchen" und „Teile neu einlesen" seit jeher im Set-Detail an; ein Set,
   // das vor seinem Katalogeintrag erfasst wurde, blieb in der App dauerhaft
@@ -415,6 +367,11 @@ const C = {
   'GET /api/v1/settings/export/data': 'nur-web',
   'POST /api/v1/settings/import': 'nur-web',
   'POST /api/v1/settings/smtp-test': 'nur-web',
+  // Vor der Anmeldung und für Überwachung/compose.yaml (routes/gesundheit.ts).
+  'GET /api/v1/startup-status': 'nur-v1',
+  'GET /api/v1/health': 'nur-v1',
+  'GET /api/v1/health/live': 'nur-v1',
+  'GET /api/v1/health/ready': 'nur-v1',
 };
 
 const VALID = new Set(['paritaet', 'paritaet-schreib', 'paar-extern', 'nur-v1', 'nur-web']);
@@ -436,12 +393,7 @@ test('keine verwaisten Klassifikations-Einträge', () => {
 
 /**
  * Jede Adresse, die die Android-App ruft.
- *
- * Zwei Schreibweisen, weil es zwei gibt: die Retrofit-Anmerkungen im
- * Dienst-Interface und die von Hand gebauten Adressen fuer SSE, Bilder und
- * PDF (`"${baseUrl}/api/v1/…"`). Nur die erste zu lesen hiesse, den halben
- * Client zu kennen — und ein `nur-web` fuer eine Adresse, die die App per SSE
- * ruft, waere weiterhin unbemerkt falsch.
+ * Ausführlich: docs/begruendungen/test/api-inventory.test.js.md#androidadressen
  */
 function androidAdressen() {
   const gefunden = new Set();

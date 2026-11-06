@@ -1,0 +1,18 @@
+Gegenprobe: Zustand-Beschriftung bei jeder Schrift in der festen Spalte
+Modul: app
+Test: ch.brickinventoryapp.FeinschliffRegelnTest
+Rot: Zustandszeile
+
+diff --git a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/screens/TabellenZeile.kt b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/screens/TabellenZeile.kt
+index 50d8bfd..c5eeb6b 100644
+--- a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/screens/TabellenZeile.kt
++++ b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/screens/TabellenZeile.kt
+@@ -205,7 +205,7 @@ fun Zustandszeile(
+ ) {
+     // Ab 130 % Schrift steht die Beschriftung über der Wahl: In der festen Spalte
+     // daneben brach „Zustan|d“ mitten im Wort.
+-    if (LocalDensity.current.fontScale > 1.3f) {
++    if (false) {
+         Column(modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(Abstaende.klein)) {
+             Text(stringResource(R.string.common_condition), style = MaterialTheme.typography.bodyMedium)
+             ConditionToggle(selected = zustand, onSelect = onZustand, optionen = optionen)

@@ -12,13 +12,20 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import android.security.keystore.KeyPermanentlyInvalidatedException
+import java.security.InvalidKeyException
+import java.security.KeyStoreException
+import java.security.ProviderException
+import java.security.UnrecoverableKeyException
+import javax.crypto.AEADBadTagException
+import javax.crypto.BadPaddingException
 
 /**
  * Ein vorübergehender Keystore-Fehler meldet nicht ab (sec7, N7). Bisher ergab
  * jede Ausnahme beim Entschlüsseln „kein Token“, auch ein KeyStoreException beim
  * Hochfahren oder ein hängender StrongBox-Chip.
  *
- * Gegenproben (03.11.2026, kotlinc lokal gemessen):
+ * Gegenproben:
  *   A  tresorFehlerDauerhaft() immer true (der alte Stand: jeder Fehler = weg) →
  *      rot „nur ein dauerhafter Fehler heisst Token weg“ und „ein vorübergehender
  *      Fehler wird einmal wiederholt“
@@ -32,13 +39,13 @@ class TresorSperreTest {
 
     @Test
     fun `nur ein dauerhafter Fehler heisst Token weg`() {
-        for (e in listOf(javax.crypto.AEADBadTagException("tag"), javax.crypto.BadPaddingException("x"),
-                         android.security.keystore.KeyPermanentlyInvalidatedException("neu eingerichtet"),
-                         java.security.UnrecoverableKeyException("x"), IllegalArgumentException("base64"))) {
+        for (e in listOf(AEADBadTagException("tag"), BadPaddingException("x"),
+                         KeyPermanentlyInvalidatedException("neu eingerichtet"),
+                         UnrecoverableKeyException("x"), IllegalArgumentException("base64"))) {
             assertTrue("$e", tresorFehlerDauerhaft(e))
         }
-        for (e in listOf(java.security.KeyStoreException("beim Hochfahren"), java.security.ProviderException("StrongBox"),
-                         java.security.InvalidKeyException("Keystore nicht bereit"), IllegalStateException("x"),
+        for (e in listOf(KeyStoreException("beim Hochfahren"), ProviderException("StrongBox"),
+                         InvalidKeyException("Keystore nicht bereit"), IllegalStateException("x"),
                          RuntimeException("x"))) {
             assertFalse("$e", tresorFehlerDauerhaft(e))
         }
@@ -48,13 +55,13 @@ class TresorSperreTest {
     fun `ein voruebergehender Fehler wird einmal wiederholt, ein dauerhafter nicht`() {
         var n = 0
         assertEquals(Tresorbefund.Lesbar("t"), oeffneMitNeuversuch {
-            if (n++ == 0) throw java.security.KeyStoreException("kurz") else "t"
+            if (n++ == 0) throw KeyStoreException("kurz") else "t"
         })
         n = 0
-        assertEquals(Tresorbefund.Gesperrt, oeffneMitNeuversuch { n++; throw java.security.ProviderException("haengt") })
+        assertEquals(Tresorbefund.Gesperrt, oeffneMitNeuversuch { n++; throw ProviderException("haengt") })
         assertEquals(2, n)
         n = 0
-        assertEquals(Tresorbefund.Weg, oeffneMitNeuversuch { n++; throw javax.crypto.AEADBadTagException() })
+        assertEquals(Tresorbefund.Weg, oeffneMitNeuversuch { n++; throw AEADBadTagException() })
         assertEquals("Kein zweiter Versuch bei einem falschen Schlüssel", 1, n)
         assertEquals(Tresorbefund.Weg, oeffneMitNeuversuch { null })
     }

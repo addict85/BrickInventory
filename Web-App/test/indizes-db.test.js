@@ -2,11 +2,7 @@
  * Kein Index ist der Anfang eines anderen derselben Tabelle, und jeder
  * Fremdschlüssel hat einen Index, der mit seinen Spalten beginnt — geprüft am
  * Katalog der migrierten Datenbank (Migration 0068).
- *
- * Ein Präfix-Doppel bedient keine Suche, die der längere Index nicht auch
- * bedient, kostet aber bei jedem Schreiben. Ein Fremdschlüssel ohne Index
- * lässt jedes Löschen in der Elterntabelle die Kindtabelle durchsuchen
- * (minifigs_set_fk fehlte).
+ * Ausführlich: docs/begruendungen/test/indizes-db.test.js.md#kopf
  *
  * Gegenproben (am 29.10.2026 gemessen, je auf frischer Datenbank):
  *   A  `DROP INDEX IF EXISTS idx_sets_user` aus 0068 entfernt → rot: „kein
@@ -22,6 +18,7 @@ const assert = require('node:assert/strict');
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
 const _req = require('./helpers/sources').buildAndRequire();
+const { dbOderSkip } = require('./helpers/db');
 const db = _req('db/database.js');
 
 /** Spalten und Operatorklassen als normale Arrays (int2vector beginnt bei 0). */
@@ -38,14 +35,7 @@ const INDIZES = `
     JOIN pg_am am ON am.oid = c.relam`;
 
 test('Indizes', { concurrency: 1 }, async (t) => {
-  try { await db.initSchema(); }
-  catch (e) {
-    if (process.env.REQUIRE_DB === '1')
-      throw new Error(`REQUIRE_DB=1, aber die Test-DB ist nicht erreichbar: ${e.message}`);
-    t.skip('Test-DB nicht erreichbar'); return;
-  }
-  const mc = await db.pool.connect();
-  try { await _req('db/migrate.js').runMigrations(mc); } finally { mc.release(); }
+  if (!await dbOderSkip(t, _req)) return;
 
   try {
     await t.test('kein Index ist der Anfang eines anderen', async () => {

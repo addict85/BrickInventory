@@ -1,20 +1,34 @@
+import type { ServerResponse } from 'http';
 import fs from 'fs';
 import { queueThumb } from './proxyThumbs';
-import { vorDem, ohneFehlendeDatei, logAndContinue } from '../../infra/httpError';
+import { vorDem, ohneFehlendeDatei, logAndContinue } from '../../infra/fehler';
 import { konfig } from '../../infra/konfig';
 import path from 'path';
 import { APP_ROOT } from '../../infra/appPaths';
 
+const BILDTYPEN = new Set(['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/avif']);
+
+/** Nur ein Typ aus der Liste, nie der rohe Kopf des CDN: „image/png, text/html“
+ * läse ein Browser als HTML. Alles andere wird JPEG, mit nosniff harmlos. */
+export function bildTyp(roh: string): string {
+  const typ = vorDem(roh, ';').trim().toLowerCase();
+  return BILDTYPEN.has(typ) ? typ : 'image/jpeg';
+}
+
 // Ausführlich: docs/begruendungen/src/katalog/bilder/imgCacheServe.ts.md#liefereauscache
+/** Was die Auslieferung von Express braucht; die Typen von Express gehören in http/. */
+type BildAntwort = ServerResponse & { status(c: number): { end(): unknown } };
+interface BildAnfrage { fresh: boolean; headers?: Record<string, unknown> }
+
 export async function liefereAusCache(opts: {
-  res: any;
-  req: any;
+  res: BildAntwort;
+  req: BildAnfrage;
   cacheFile: string;
   thumbFile: string;
   wantThumb: boolean;
   darfErzeugen: boolean;
   notiere: () => void;
-  streamFileToResponse: (res: any, datei: string, onEnd?: () => void, req?: any) => any;
+  streamFileToResponse(res: BildAntwort, datei: string, onEnd?: () => void, req?: BildAnfrage): unknown;
 }): Promise<boolean> {
   const { res, req, cacheFile, thumbFile, wantThumb, darfErzeugen, notiere, streamFileToResponse } = opts;
 
@@ -56,10 +70,8 @@ export async function liefereAusCache(opts: {
 
     // Auch aus dem Cache nur Bilder; im Zweifel JPEG — mit nosniff die harmlose
     // Auslegung.
-    const ctRaw = await fs.promises.readFile(cacheFile + '.ct', 'utf8').catch(() => 'image/jpeg');
-    const ctMime = vorDem(ctRaw, ';').trim().toLowerCase();
-    const ct = (ctMime.startsWith('image/') && ctMime !== 'image/svg+xml') ? ctRaw : 'image/jpeg';
-    res.setHeader('Content-Type', ct);
+    const ctRaw = await fs.promises.readFile(cacheFile + '.ct', 'utf8').catch(ohneFehlendeDatei('bild-cache:typ', 'image/jpeg'));
+    res.setHeader('Content-Type', bildTyp(ctRaw));
     // Länge mitgeben: Eine chunked-Antwort kann ein Reverse-Proxy puffern.
     const cst = await fs.promises.stat(cacheFile).catch(ohneFehlendeDatei('bild-cache:stat', null));
     if (cst) {
@@ -81,7 +93,7 @@ const CACHE_DIR = () => path.join(APP_ROOT, 'data', 'img_proxy_cache');
 
 /** 30 Tage nicht angefasst → weg; danach, falls der Cache noch über der
  * Grenze liegt, die am längsten unbenutzten Bilder samt .ct und Vorschau.
- * Ausführlich: docs/begruendungen/routes/imgProxy.ts.md#startimgcachecleanup */
+ * Ausführlich: docs/begruendungen/src/katalog/bilder/imgCacheServe.ts.md#startimgcachecleanup */
 export async function raeumeBildCacheAuf(maxBytes = konfig().bildCacheMaxMb * 1024 * 1024): Promise<number> {
   const cacheDir = CACHE_DIR();
   const files = await fs.promises.readdir(cacheDir).catch(() => [] as string[]);

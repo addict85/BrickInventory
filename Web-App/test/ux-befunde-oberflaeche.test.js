@@ -2,15 +2,8 @@
  * Befunde der UX-Prüfung vom 30.10.2026, am echten Bündel in jsdom:
  *   - Kaufpreis 0: „Geschenk“ statt Prozent in Kachel, Finanztabelle und
  *     Set-Detail; der Kaufpreis steht als „0,00 €“ da.
- *   - Seiten hinter dem Menü: kein Reiter bleibt markiert, der Seitenname
- *     steht im Kopf und im Fenstertitel.
- *   - Importwege als ein Menü neben der Hauptaktion.
- *   - Das Thema der Kachel ist ganz da (Ellipsis per CSS, voller Name im title).
- *   - Wertdiagramm: Währung an der Achse, Einstand-Linie, Achsenbruch,
- *     Fadenkreuz per Tastatur; Zeitraum-Knöpfe ohne Verlauf gesperrt, und
- *     sie lassen die Filterchips in Ruhe.
- *   - Der Preis-Platzhalter folgt der Sprache.
- *   - Ein Set ohne Bild zeigt im Detail denselben Würfel wie in der Kachel.
+ *   - Seiten hinter dem Menü: kein Reiter bleibt markiert, der Seitenname …
+ * Ausführlich: docs/begruendungen/test/ux-befunde-oberflaeche.test.js.md#kopf
  *
  * Gegenproben (am 30.10.2026 gemessen; B bis F zusammen angewendet, jede
  * machte genau ihren eigenen Fall rot):
@@ -52,10 +45,11 @@ const SETS = {
 test('Geschenk in Kachel, Tabelle und Detail', async () => {
   const { w, d } = await oeffneOberflaeche(SETS);
   try {
-    await warte(() => /Geschenk|%/.test(text(d.querySelector('[data-price-for="10300-1"]'))));
+    await warte(() => /\d/.test(text(d.querySelector('[data-price-for="10300-1"]'))));
     const kachel = text(d.querySelector('[data-price-for="10300-1"]'));
-    assert.match(kachel, /Geschenk/);
-    assert.doesNotMatch(kachel, /%/, `Kachel: ${kachel}`);
+    // Seit der UI-Prüfung 13 als Plakette beim Zustand, nicht im Preiskasten.
+    assert.match(text(d.querySelector('[data-price-for="10300-1"]').closest('.sc').querySelector('.splaketten')), /Geschenk/);
+    assert.doesNotMatch(kachel, /%|Geschenk/, `Kachel: ${kachel}`);
     assert.match(text(d.querySelector('[data-price-for="21318-1"]')), /[−-]6[.,]9/, 'das andere Set behält sein Prozent');
 
     await reiter(w, 'finance');
@@ -90,7 +84,7 @@ test('Menüseite: kein Reiter markiert, Name im Kopf', async () => {
     await reiter(w, 'finance');
     assert.equal(d.getElementById('kopf-sicht').hidden, true, 'Name bleibt nach dem Reiterwechsel stehen');
     assert.equal(d.querySelector('.ntab[aria-current="page"]')?.dataset.tab, 'finance');
-    assert.match(d.title, /^Portfolio-Wert – /);
+    assert.match(d.title, /^Finanzen – /);
   } finally { w.close(); }
 });
 
@@ -99,9 +93,10 @@ test('Import als ein Menü', async () => {
   try {
     for (const tab of ['gallery', 'parts', 'minifigs']) {
       const leiste = d.querySelector(`#tab-${tab} .erfassen-leiste`);
-      assert.deepEqual([...leiste.children].map(e => e.tagName + '.' + e.className), ['BUTTON.btn bp', 'DETAILS.import-menue'], tab);
+      assert.deepEqual([...leiste.children].map(e => e.tagName + '.' + e.className.replace(' knopf-schwebend', '')), ['BUTTON.btn bp', 'DETAILS.import-menue'], tab);
       const menue = leiste.querySelector('details');
-      assert.equal(menue.querySelectorAll('.import-klappe > *').length, 3, `${tab}: drei Importwege`);
+      // Dazu kommt beim Set-Menü "Letzter Import" (UI-Prüfung 17 M4), verborgen, solange es keinen gibt.
+      assert.equal(menue.querySelectorAll('.import-klappe > :not([hidden])').length, 3, `${tab}: drei Importwege`);
       menue.open = true;
       d.dispatchEvent(new w.KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
       assert.equal(menue.open, false, `${tab}: Escape schliesst das Menü`);
@@ -133,7 +128,7 @@ test('Wertdiagramm: Währung, Einstand, Achsenbruch, Fadenkreuz per Tastatur', a
     const svg = d.querySelector('#portfolio-chart svg');
     const achse = [...svg.querySelectorAll('text[text-anchor="end"]')].filter(t => +t.getAttribute('x') < 90).map(text);
     assert.ok(achse.length >= 3 && achse.every(t => /€|EUR/.test(t)), `Achse: ${achse.join(' | ')}`);
-    assert.match(zahl(text(svg.querySelector('.einstand-linie'))), /^Einstand(EUR)?1568\.98(€)?$/);
+    assert.match(zahl(text(svg.querySelector('.einstand-linie'))), /^Kaufpreisgesamt(EUR)?1568\.98(€)?$/);
     assert.equal(svg.querySelector('.einstand-linie line').getAttribute('stroke-dasharray'), '6 4');
     assert.ok(svg.querySelector('.achsenbruch'), 'die Achse beginnt nicht bei 0 und zeigt das nicht');
     assert.match(svg.getAttribute('aria-label'), /beginnt bei \D*1\D?500[.,]00/);

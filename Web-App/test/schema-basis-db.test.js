@@ -23,7 +23,8 @@ const path = require('node:path');
 
 const ROOT = path.join(__dirname, '..');
 const BASIS = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
-const NAME = `schema_basis_${process.pid}`;
+const { testName, raeumeReste, id } = require('./helpers/testnamen');
+const NAME = testName('schema_basis');
 const ziel = new URL(BASIS); ziel.pathname = '/' + NAME;
 process.env.DATABASE_URL = ziel.toString();
 process.env.ADMIN_PASSWORD = 'Basis-Pruefung-2026';
@@ -39,12 +40,13 @@ test('Erststart über db/basis.sql', { concurrency: 1, timeout: 180_000 }, async
       throw new Error(`REQUIRE_DB=1, aber die Test-DB ist nicht erreichbar: ${e.message}`);
     t.skip('Test-DB nicht erreichbar'); return;
   }
-  await admin.query(`DROP DATABASE IF EXISTS ${NAME}`);
-  await admin.query(`CREATE DATABASE ${NAME}`);
+  await raeumeReste(admin, 'schema_basis');
+  await admin.query(`DROP DATABASE IF EXISTS ${id(NAME)}`);
+  await admin.query(`CREATE DATABASE ${id(NAME)}`);
   const db = _req('db/database.js');
   t.after(async () => {
     await db.pool.end().catch(() => {});
-    await admin.query(`DROP DATABASE IF EXISTS ${NAME}`).catch(() => {});
+    await admin.query(`DROP DATABASE IF EXISTS ${id(NAME)} WITH (FORCE)`).catch(() => {});
     await admin.end().catch(() => {});
   });
 

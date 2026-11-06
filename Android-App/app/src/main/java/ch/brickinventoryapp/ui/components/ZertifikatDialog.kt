@@ -29,14 +29,12 @@ import ch.brickinventoryapp.ui.theme.Abstaende
 import ch.brickinventoryapp.util.ZertifikatUngeklaert
 import ch.brickinventoryapp.util.fingerabdruckAnfang
 import ch.brickinventoryapp.util.fingerabdruckLesbar
+import ch.brickinventoryapp.ui.theme.Formen
 
 /**
- * Die Frage nach einem Zertifikat, das die App nicht von selbst annimmt. Der
- * Fingerabdruck steht in derselben Schreibweise da wie in der Webapp, damit man
- * ihn vergleichen kann. Ohne öffentliche CA oder bei geändertem Schlüssel gilt er erst,
- * wenn man ihn aus einer zweiten Quelle abschreibt, und steht hier nur angefangen da —
- * dort prüft sonst niemand die Kette, und ein Tipp wird zur Gewohnheit eines Angreifers.
- * [onVertrauen] bekommt die Eingabe und sagt, ob sie passte.
+ * Die Frage nach einem Zertifikat, das die App nicht von selbst annimmt. Der Fingerabdruck
+ * steht in derselben Schreibweise da wie in der Webapp, damit man ihn vergleichen kann.
+ * Ausführlich: docs/begruendungen/app/ui/components/ZertifikatDialog.kt.md#zertifikatdialog
  */
 @Composable
 fun ZertifikatDialog(
@@ -49,12 +47,7 @@ fun ZertifikatDialog(
     var eingabe by rememberSaveable(frage.fingerabdruck) { mutableStateOf("") }
     var falsch by remember(frage.fingerabdruck) { mutableStateOf(false) }
     val host = frage.schluessel.substringBeforeLast(':')
-    val (titel, text) = when (frage.art) {
-        ZertifikatUngeklaert.Art.ERSTKONTAKT -> R.string.zert_titel_erstkontakt to R.string.zert_text_erstkontakt
-        ZertifikatUngeklaert.Art.UNBEKANNTE_CA -> R.string.zert_titel_unbekannt to R.string.zert_text_unbekannt
-        ZertifikatUngeklaert.Art.NUTZER_CA -> R.string.zert_titel_nutzer_ca to R.string.zert_text_nutzer_ca
-        ZertifikatUngeklaert.Art.GEAENDERT -> R.string.zert_titel_geaendert to R.string.zert_text_geaendert
-    }
+    val (titel, text) = titelUndText(frage.art)
     val geaendert = frage.art == ZertifikatUngeklaert.Art.GEAENDERT
     val abschreiben = frage.art != ZertifikatUngeklaert.Art.ERSTKONTAKT
     AlertDialog(
@@ -80,6 +73,7 @@ fun ZertifikatDialog(
                     color = if (geaendert) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface)
                 if (abschreiben) {
                     OutlinedTextField(
+                        shape = Formen.feld,
                         value = eingabe,
                         onValueChange = { eingabe = it; falsch = false },
                         label = { Text(stringResource(if (geaendert) R.string.zert_geaendert_eingabe else R.string.zert_unbekannt_eingabe)) },
@@ -108,4 +102,12 @@ fun ZertifikatDialog(
         },
         dismissButton = { TextButton(onClick = onAbbrechen) { Text(stringResource(R.string.common_cancel)) } },
     )
+}
+
+/** Überschrift und Erklärung je Art der Frage. */
+private fun titelUndText(art: ZertifikatUngeklaert.Art): Pair<Int, Int> = when (art) {
+    ZertifikatUngeklaert.Art.ERSTKONTAKT -> R.string.zert_titel_erstkontakt to R.string.zert_text_erstkontakt
+    ZertifikatUngeklaert.Art.UNBEKANNTE_CA -> R.string.zert_titel_unbekannt to R.string.zert_text_unbekannt
+    ZertifikatUngeklaert.Art.NUTZER_CA -> R.string.zert_titel_nutzer_ca to R.string.zert_text_nutzer_ca
+    ZertifikatUngeklaert.Art.GEAENDERT -> R.string.zert_titel_geaendert to R.string.zert_text_geaendert
 }

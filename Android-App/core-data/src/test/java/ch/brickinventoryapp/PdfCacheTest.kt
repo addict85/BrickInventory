@@ -19,9 +19,6 @@ import org.junit.Test
  *     `Range: bytes=<vorhanden>-`.
  *  2. Nach einem VOLLSTAENDIGEN Download ist `vorhanden` genau die
  *     Dateigroesse. Der Bereich beginnt hinter dem letzten Byte.
- *  3. Der Server antwortet 416 („diesen Bereich gibt es nicht") — und die
- *     Anleitungs-Route machte daraus eine 404.
- *  4. Acht Versuche, achtmal dasselbe. Anzeige: „HTTP 404".
  *
  * NACHGEMESSEN auf der Serverseite (express 4.22.3 / send 0.19.2, Datei mit
  * 5000 Bytes): `bytes=2500-` → 206, `bytes=5000-` → 416. Beide Haelften sind
@@ -86,16 +83,21 @@ class PdfCacheTest {
      */
     @Test
     fun `der Download schreibt in die Teildatei und benennt erst am Ende um`() {
-        val src = Quellen.ohneKommentare(Quellen.lies("ui/screens/PdfViewerScreen.kt"))
+        val src = Quellen.ohneKommentare(Quellen.lies("data/AnleitungsRepository.kt"))
         assert(src.contains("""val teil = File(dest.path + ".part")""")) {
             "Die Teildatei wird nicht mehr angelegt — schreibt der Download wieder direkt ins Ziel?"
         }
-        assert(src.contains("RandomAccessFile(teil,")) {
+        // Verschlüsselt über die AnleitungsAblage; dass sie fortsetzen kann,
+        // prüft AnleitungsAblageTest ausgeführt.
+        assert(src.contains("anleitungen.schreibe(teil,")) {
             "Der Download schreibt nicht in die Teildatei. Dann ist ein Abbruch " +
                 "wieder nicht von einem fertigen Download zu unterscheiden."
         }
-        assert(!src.contains("RandomAccessFile(dest,")) {
-            "Es wird (auch) direkt in die fertige Datei geschrieben."
+        assert(!src.contains("anleitungen.schreibe(dest,") && !src.contains("RandomAccessFile(")) {
+            "Es wird (auch) direkt oder im Klartext in die Ablage geschrieben."
+        }
+        assert(src.contains("teilGroesse    = anleitungen.klartextLaenge(teil)")) {
+            "Der Fortsetzpunkt ist nicht die Zahl der Klartextbytes — der Server bekäme einen falschen Range."
         }
         assert(src.contains("teil.renameTo(dest)")) {
             "Das Umbenennen am Ende fehlt — dann entsteht die fertige Datei nie."

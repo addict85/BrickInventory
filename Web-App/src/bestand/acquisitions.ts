@@ -3,7 +3,7 @@
  * Ausführlich: docs/begruendungen/src/bestand/acquisitions.ts.md#abschnitt */
 import * as db from '../../db/database';
 import type { DbSchnittstelle } from '../../db/database';
-import { erfassungsTagSql } from '../../db/bestandsmenge';
+import { erfassungsTagSql, preisSpalte, schluesselSpalten } from '../../db/bestandsmenge';
 import * as repo from './repository/kaufErfassungen';
 export { erfassungsTagSql };
 
@@ -56,11 +56,11 @@ export async function recordAcquisitionForDay(
 export async function findSameDayAcquisition(
   kind: AcquisitionKind,
   userId: number,
-  keyValues: any[],
+  keyValues: unknown[],
   day: string,
   excludeId: number | null,
   condition: string | null = null,
-  dbh: any = db,
+  dbh: DbSchnittstelle = db,
   merkmale: { preis?: unknown; geschaetzt?: boolean; waehrung?: string | null } = {}
 ): Promise<number | null> {
   const cond = ['N', 'U'].includes(String(condition)) ? String(condition) : 'N';
@@ -69,7 +69,7 @@ export async function findSameDayAcquisition(
 }
 
 /** @returns {{quantity:number, amount:number|null, priced_rows:number}} */
-export function acquisitionTotals(rows: any[]): {
+export function acquisitionTotals(rows: { quantity?: unknown; purchase_price?: unknown; unit_price?: unknown }[]): {
   quantity: number; amount: number | null; priced_rows: number;
 } {
   let quantity = 0, amount = 0, priced = 0;
@@ -93,14 +93,27 @@ export function acquisitionTotals(rows: any[]): {
   };
 }
 
+type MitPreis = { quantity?: unknown; purchase_price?: unknown; unit_price?: unknown; currency?: string | null | undefined; created_at?: unknown };
+
+/** Summe in der Währung des Betrachters, zum Kurs des Kauftags wie in den Finanzen: Sonst stünden
+ * 3 × 260,66 USD als Euro darin. Ohne Kurs zählt die Zeile in `ohne_kurs`, nicht in der Summe. */
+export async function erfassungenInKontowaehrung<T extends MitPreis>(rows: T[], betrachter: number) {
+  const preise = rows.map(r => { const roh = r.purchase_price ?? r.unit_price; return roh === null || roh === undefined ? null : Number(roh); });
+  const tage = rows.map(r => { const d = r.created_at ? new Date(String(r.created_at)) : null; return d && !isNaN(d.getTime()) ? d.toISOString().slice(0, 10) : null; });
+  const umgerechnet = await repo.inWaehrungDesKontos(betrachter, preise, rows.map(r => r.currency ?? null), tage);
+  const acquisitions = rows.map((r, i) => ({ ...r, preis_konto: umgerechnet.betraege[i] ?? null }));
+  return { acquisitions, totals: { ...acquisitionTotals(acquisitions.map(a => ({ quantity: a.quantity, purchase_price: a.preis_konto }))),
+    currency: umgerechnet.waehrung, ohne_kurs: acquisitions.filter((a, i) => preise[i] != null && a.preis_konto == null).length } };
+}
+
 /** Gibt es am selben Tag schon eine gleiche Zeile, wandert die Menge dorthin,
  * statt am eindeutigen Index zu scheitern.
  * @returns true, wenn etwas geändert wurde */
 export async function setzeGeschaetztenPreis(kind: AcquisitionKind, id: number, preis: number): Promise<boolean> {
   return db.transaction(async (tx) => {
     const z = await repo.erfassungSperren(tx, kind, id);
-    if (!z || z[repo.preisSpalte(kind)] != null) return false;
-    const keys = repo.schluesselSpalten(kind).map(k => z[k]);
+    if (!z || z[preisSpalte(kind)] != null) return false;
+    const keys = schluesselSpalten(kind).map(k => z[k]);
     const ziel = await findSameDayAcquisition(kind, z.user_id, keys, z.tag, id, z.condition, tx,
       { preis, geschaetzt: true, waehrung: z.currency });
     if (ziel) await repo.legeErfassungZusammen(tx, kind, id, ziel, z.quantity);

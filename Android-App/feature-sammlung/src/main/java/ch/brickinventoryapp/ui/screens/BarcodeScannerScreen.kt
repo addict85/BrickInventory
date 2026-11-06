@@ -2,24 +2,13 @@ package ch.brickinventoryapp.ui.screens
 
 /*
  * ═══ NICHT ÄNDERN OHNE ZU LESEN: Autofokus ═══
- *
- * 1. CONTROL_AF_MODE_CONTINUOUS_PICTURE an beiden Use Cases, Preview und
- * ImageAnalysis: CameraX führt sie zu einem Repeating-Request zusammen, und steht
- * der Modus nur an einem, bleibt das Bild je nach Gerät unscharf.
- *
- * 2. Kein periodisches startFocusAndMetering: Ein Takt zwingt die Kamera dauernd
- * in eine neue Messung. Tippen zum Scharfstellen ist in Ordnung.
- *
- * Beides prüft CameraFocusConfigTest — schlägt er fehl, ist der Code falsch, nicht
- * der Test.
+ * Ausführlich: docs/begruendungen/feature-sammlung/ui/screens/BarcodeScannerScreen.kt.md#z3
  */
 
 import ch.brickinventoryapp.ui.theme.Formen
 import ch.brickinventoryapp.ui.theme.LocalStatusFarben
-import android.view.ViewGroup
 import androidx.camera.camera2.interop.ExperimentalCamera2Interop
 import androidx.camera.core.*
-import androidx.camera.view.PreviewView
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.border
@@ -32,17 +21,14 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.lifecycle.compose.LocalLifecycleOwner
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.compose.ui.res.stringResource
 import ch.brickinventoryapp.ressourcen.R
-import android.view.MotionEvent
 import androidx.compose.foundation.background
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import ch.brickinventoryapp.ui.theme.Abstaende
+import ch.brickinventoryapp.ui.components.MitTooltip
 
 @Composable
 fun BarcodeScannerScreen(
@@ -55,7 +41,9 @@ fun BarcodeScannerScreen(
     ocrEnabled: Boolean = false,
     /** Per Texterkennung gelesene SETNUMMER — nur relevant, wenn ocrEnabled. */
     onSetNumberResult: (String) -> Unit = onResult,
-    onDismiss: () -> Unit
+    onDismiss: () -> Unit,
+    /** Nur die Überlagerung ohne Kamerabild — für Bildschirmfotos, wo es keine Kamera gibt. */
+    ohneKamera: Boolean = false,
 ) {
     val cameraPermission = rememberKameraErlaubnis()
     val defaultHint = stringResource(R.string.scanner_hint_default)
@@ -69,7 +57,7 @@ fun BarcodeScannerScreen(
     var cameraCtrl by remember { mutableStateOf<CameraControl?>(null) }
 
     LaunchedEffect(Unit) {
-        if (!cameraPermission.erteilt) cameraPermission.anfragen()
+        if (!ohneKamera && !cameraPermission.erteilt) cameraPermission.anfragen()
     }
 
     // Toggle torch when state changes
@@ -79,6 +67,10 @@ fun BarcodeScannerScreen(
     // (autofokusDauerhaft() in KameraAufbau.kt); ein Takt liesse die Kamera dauernd
     // nachpumpen. Manuell fokussiert wird nur beim Antippen.
 
+    // Der Treffer ist auch zu spüren: Wer auf die Schachtel zielt, sieht nicht aufs Telefon.
+    val haptik = androidx.compose.ui.platform.LocalHapticFeedback.current
+    val treffer = { haptik.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.Confirm) }
+
     val borderColor by animateColorAsState(
         if (frozen) LocalStatusFarben.current.erfolg else MaterialTheme.colorScheme.primary,
         label = "border"
@@ -86,13 +78,14 @@ fun BarcodeScannerScreen(
 
     Box(Modifier.fillMaxSize().background(Color.Black)) {
         when {
-            cameraPermission.erteilt -> {
-                CameraPreviewBarcode(
+            ohneKamera || cameraPermission.erteilt -> {
+                if (!ohneKamera) CameraPreviewBarcode(
                     frozen = frozen,
                     ocrEnabled = ocrEnabled,
                     onBarcodeFound = { value ->
                         if (!frozen) {
                             frozen = true
+                            treffer()
                             statusText = detectedHintFmt.replace("%1\$s", value)
                             onResult(value)
                         }
@@ -103,6 +96,7 @@ fun BarcodeScannerScreen(
                     onSetNumberFound = { value ->
                         if (!frozen) {
                             frozen = true
+                            treffer()
                             statusText = detectedHintFmt.replace("%1\$s", value)
                             onSetNumberResult(value)
                         }
@@ -123,8 +117,10 @@ fun BarcodeScannerScreen(
                         Spacer(Modifier.height(Abstaende.gross))
                         FilledTonalButton(
                             onClick = { torchOn = !torchOn },
+                            // Deckende Flächen wie das Schild darüber: Auf hellem Motiv war Weiss
+                            // auf durchscheinendem Weiss nicht zu lesen.
                             colors = ButtonDefaults.filledTonalButtonColors(
-                                containerColor = if (torchOn) LocalStatusFarben.current.warnung else Color.White.copy(alpha = 0.15f),
+                                containerColor = if (torchOn) Color.White else Color.Black.copy(alpha = 0.72f),
                                 contentColor   = if (torchOn) Color.Black else Color.White
                             )
                         ) {
@@ -137,7 +133,7 @@ fun BarcodeScannerScreen(
                         Modifier
                             .fillMaxWidth(0.88f)
                             .aspectRatio(1.8f)
-                            .border(2.dp, borderColor, Formen.knopf)
+                            .border(2.dp, borderColor, Formen.feld)
                     ) {
                         // Corner accents
                         val accent = borderColor
@@ -156,15 +152,16 @@ fun BarcodeScannerScreen(
                         Box(Modifier.size(cs, ct).align(Alignment.BottomEnd).background(accent))
                         Box(Modifier.size(ct, cs).align(Alignment.BottomEnd).background(accent))
                     }
-
                 }
             }
             else -> {
                 KameraErlaubnisHinweis { cameraPermission.anfragen() }
             }
         }
-        IconButton(onClick = onDismiss, modifier = Modifier.align(Alignment.TopEnd).padding(Abstaende.gross)) {
-            Icon(Icons.Default.Close, stringResource(R.string.scanner_close), tint = Color.White)
+        MitTooltip(stringResource(R.string.scanner_close), Modifier.align(Alignment.TopEnd)) {
+            IconButton(onClick = onDismiss, modifier = Modifier.padding(Abstaende.gross)) {
+                Icon(Icons.Default.Close, stringResource(R.string.scanner_close), tint = Color.White)
+            }
         }
     }
 }
@@ -173,17 +170,7 @@ fun BarcodeScannerScreen(
  * Kandidaten für eine Setnummer aus erkanntem Text, in absteigender Güte. Auf
  * einer Anleitung stehen viele Zahlen (Alter, Teilezahl, Seite, Jahr, Heft- und
  * Elementnummern); die längste ist selten die Setnummer.
- *
- * 1. Eine Zahl vor einem Mengenwort fällt weg („1215 Teile“). 2. Mit
- * Variantensuffix (`60445-1`) zuerst — die einzige eindeutige Form. 3. Direkt
- * hinter `#` bevorzugt. 4. Vierstellig zwischen 1949 und nächstem Jahr wird
- * zurückgestuft (wahrscheinlich ein Jahr), nicht verworfen. 5. Dann nach
- * Stellenzahl 5, 4, 6, 7, 3 — der Häufigkeit echter Setnummern; dreistellige alte
- * Sets ganz hinten. 6. Bei Gleichstand die Reihenfolge im Text.
- *
- * BarcodeAnalyzer nimmt firstOrNull() ohne Katalogabgleich, deshalb gilt jeder
- * Treffer als unsicher. Dieselbe Frage beantwortet Web-App/utils/produkttitel.ts;
- * beide prüfen shared/setnummer-korpus.json (SetnummerKorpusTest).
+ * Ausführlich: docs/begruendungen/feature-sammlung/ui/screens/BarcodeScannerScreen.kt.md#z176
  */
 
 /**
@@ -274,30 +261,8 @@ fun CameraPreviewBarcode(
 
     AndroidView(
         factory = { ctx ->
-            val previewView = PreviewView(ctx).apply {
-                layoutParams = ViewGroup.LayoutParams(
-                    ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
-                scaleType = PreviewView.ScaleType.FILL_CENTER
-                implementationMode = PreviewView.ImplementationMode.PERFORMANCE
-            }
-
-            // Tippen zum Scharfstellen: Bei einer Anleitung dicht vor der Linse liegt der
-            // kontinuierliche Autofokus gern daneben; ein Tipp gibt einen ausdrücklichen
-            // Messpunkt. disableAutoCancel(), sonst fiele die Kamera nach fünf Sekunden auf
-            // ihre eigene Wahl zurück.
-            previewView.setOnTouchListener { v, ev ->
-                if (ev.action == android.view.MotionEvent.ACTION_UP) {
-                    val punkt = previewView.meteringPointFactory.createPoint(ev.x, ev.y)
-                    try {
-                        val aktion = androidx.camera.core.FocusMeteringAction.Builder(
-                            punkt, androidx.camera.core.FocusMeteringAction.FLAG_AF
-                        ).disableAutoCancel().build()
-                        _kameraCtrl.get()?.startFocusAndMetering(aktion)
-                    } catch (_: Exception) { /* Kamera noch nicht bereit */ }
-                    v.performClick()
-                }
-                true
-            }
+            val previewView = kameraVorschau(ctx)
+            tippZumFokus(previewView) { _kameraCtrl.get() }
 
             // Anbieter holen, Vorschau bauen, binden: KameraAufbau.kt. Hier
             // bleibt nur, was den Scanner betrifft.

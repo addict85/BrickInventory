@@ -1,23 +1,10 @@
 /**
  * Die QR-Nonce wird per POST angelegt, nicht per GET.
  *
- * ── Der Befund (Nachtrag 154) ───────────────────────────────────────────────
- * /api/v1/auth/qr-token legt eine Nonce an, die fünf Minuten lang ein Konto
- * öffnet. Sie war als GET registriert und hing an der Session — die EINZIGE
- * zustandsändernde Route im Baum mit dieser Kombination.
- *
- * Genau dort lässt SameSite=lax eine Lücke: Bei einer Navigation von einer
- * fremden Seite (window.open, ein Link, location=) schickt der Browser das
- * Sitzungs-Cookie mit. Lesen konnte ein Angreifer die Antwort nicht — quer
- * über Ursprünge hinweg gibt ihm eine Navigation keinen Zugriff auf den
- * Rumpf —, auslösen aber schon. Und dasselbe tun Link-Vorschauen,
- * Virenscanner und die Vorab-Ladelogik der Browser: alles, was GET für
- * gefahrlos hält, weil GET gefahrlos sein SOLL.
- *
- * Diese Prüfung hält beide Richtungen fest: dass POST funktioniert UND dass
- * GET verschwunden ist. Nur das zweite zu prüfen liesse offen, ob die Route
- * überhaupt noch geht; nur das erste liesse zu, dass GET nebenher bestehen
- * bleibt.
+ * Die Nonce öffnet fünf Minuten lang ein Konto. Per GET mit Sitzungs-Cookie
+ * könnte eine fremde Seite sie trotz SameSite=lax auslösen (Navigation), und
+ * Link-Vorschauen täten es nebenbei. Geprüft sind beide Richtungen: POST geht,
+ * GET gibt es nicht mehr.
  *
  * ── Gegenprobe (durchgeführt) ───────────────────────────────────────────────
  * Die Route versuchsweise auf `router.get` zurückgestellt: „per GET gibt es
@@ -62,17 +49,8 @@ test('QR-Nonce nur per POST', async (t) => {
   await db.run('DROP SCHEMA public CASCADE');
   await db.run('CREATE SCHEMA public');
   await db.initSchema();
-  // ── Und die MIGRATIONEN, nicht nur das Schema ───────────────────────────
-  //
-  // Diese Datei loescht das Schema und baut es neu auf. Ohne die Migrationen
-  // bleibt die Datenbank auf dem Stand von db/schema.sql stehen — also VOR
-  // allen Migrationen —, und das ist nicht nur fuer sie selbst falsch,
-  // sondern fuer jede Datei danach: Sie erbt eine halbe Datenbank.
-  //
-  // GEMESSEN beim Umzug der Teilemengen (Migration 0038): db/schema.sql legt
-  // `parts.quantity DEFAULT 1` an, die Katalogzeilen tragen die echte Zahl.
-  // Die naechste Datei, die die Migrationen laufen liess, brach ab — „Bei 8
-  // Set-Teilen weicht parts.quantity vom Katalog ab". Der Riegel hatte recht.
+  // Und die MIGRATIONEN, nicht nur das Schema
+  // Ausführlich: docs/begruendungen/test/qr-token-method-db.test.js.md#stelle
   {
     const mc = await db.pool.connect();
     try { await _req('db/migrate.js').runMigrations(mc); } finally { mc.release(); }
@@ -113,7 +91,7 @@ test('QR-Nonce nur per POST', async (t) => {
     const r = await ruf('GET');
     assert.notEqual(r.status, 200,
       'GET ' + AUTH + '/qr-token antwortet wieder mit 200 — damit ist die ' +
-      'SameSite=lax-Lücke aus Nachtrag 154 zurück: eine Navigation von einer ' +
+      'SameSite=lax-Lücke aus einer früheren Runde zurück: eine Navigation von einer ' +
       'fremden Seite legt dann wieder eine Anmelde-Nonce an.');
     assert.equal(await nonces(), vorher, 'Ein GET hat trotzdem etwas angelegt');
   });

@@ -1,6 +1,7 @@
 package ch.brickinventoryapp
 
 import org.junit.Test
+import java.io.File
 
 /**
  * Der Scanner darf die Kamera nicht ausbremsen.
@@ -28,8 +29,8 @@ class ScannerPerformanceTest {
     // Analyse-Datei, ihre Reihenfolge zueinander aendert das Voranstellen nicht.
     private val src: String by lazy {
         val w = "ui/screens/"
-        java.io.File(Quellen.wurzel, w + "BarcodeScannerScreen.kt").readText() + "\n" +
-            java.io.File(Quellen.wurzel, w + "BarcodeAnalyzer.kt").readText()
+        File(Quellen.wurzel, w + "BarcodeScannerScreen.kt").readText() + "\n" +
+            File(Quellen.wurzel, w + "BarcodeAnalyzer.kt").readText()
     }
     private fun code(s: String) = s.lines()
         .joinToString("\n") { if (it.trim().startsWith("//") || it.trim().startsWith("*")) "" else it }
@@ -57,7 +58,7 @@ class ScannerPerformanceTest {
     @Test
     fun `Tippen stellt scharf`() {
         val c = code(src)
-        assert(c.contains("startFocusAndMetering(")) {
+        assert(c.contains("tippZumFokus(")) {
             "Ohne Tippen zum Scharfstellen bleibt nur der kontinuierliche Autofokus, " +
                 "der bei nahen Vorlagen lange braucht"
         }

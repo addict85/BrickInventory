@@ -1,20 +1,6 @@
 /**
  * Welchen Zustand holt der Preislauf für einen Merkposten?
- *
- * ── Woher die Frage kommt ───────────────────────────────────────────────────
- * Marco: „Die Preise für die Merkliste sollen auch hier benutzerabhängig
- * sein." Die Währung war es schon (runPriceRefresh liest sie je Nutzer), der
- * ZUSTAND nicht: Die Schleife bestimmte ihn aus set_acquisitions und der
- * sets-Zeile — beides hat ein Merkposten nicht. Er fiel damit auf
- * DEFAULT_PRICE_CONDITION durch, und das ist 'U' (src/finanzen/rechnung/preise.ts).
- * Gemessen hiess das: Jeder Merkposten wurde als GEBRAUCHT geholt, auch der auf
- * ein neues Set — und der Verlauf im Merkposten-Detail füllte sich für den
- * falschen Zustand.
- *
- * ── Warum gegen eine echte Datenbank ────────────────────────────────────────
- * Die Regel liest aus DREI Tabellen mit einer Vorrangregel zwischen ihnen
- * (set_acquisitions → sets → wanted). Genau das Zusammenspiel ist die
- * Aussage; mit erfundenen Zeilen wäre davon nichts geprüft.
+ * Ausführlich: docs/begruendungen/test/merkposten-zustand-preislauf-db.test.js.md#kopf
  *
  * ── Gegenproben (durchgeführt, Ergebnis im Commit) ──────────────────────────
  *   a) Die wanted-Abfrage in zustaendeJeSet() entfernt → rot in Zeile 68,
@@ -36,6 +22,7 @@ const assert = require('node:assert/strict');
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
 const _req = require('./helpers/sources').buildAndRequire();
+const { dbOderSkip } = require('./helpers/db');
 const { haeltSet } = require('./helpers/bestand');
 const db = _req('db/database.js');
 const { zustaendeJeSet, conditionsNeededFor } = _req('jobs/priceJob.js');
@@ -44,12 +31,7 @@ const { zustaendeJeSet, conditionsNeededFor } = _req('jobs/priceJob.js');
 const sortiert = (a) => [...a].sort();
 
 test('Preislauf: der Zustand eines Merkpostens ist der des Nutzers', { concurrency: 1 }, async (t) => {
-  try { await db.initSchema(); }
-  catch (e) {
-    if (process.env.REQUIRE_DB === '1')
-      throw new Error(`REQUIRE_DB=1, aber die Test-DB ist nicht erreichbar: ${e.message}`);
-    t.skip('Test-DB nicht erreichbar'); return;
-  }
+  if (!await dbOderSkip(t, _req, { migrieren: false })) return;
 
   // Eigene Nutzer je Prozess — der Test läuft neben anderen auf derselben DB.
   const anlegen = async (suffix) => (await db.get(
@@ -77,13 +59,8 @@ test('Preislauf: der Zustand eines Merkpostens ist der des Nutzers', { concurren
     assert.deepEqual(sortiert((await zustaendeJeSet(a, ['21318-1'])).get('21318-1')), ['N','U'],
       'neu und gebraucht sind zwei Merkposten — für beide braucht das Detail einen Preis');
 
-    // ── Bestand ohne Merkposten: der Zustand kommt aus der Erfassung ────────
-    //
-    // Hier stand `INSERT INTO sets (… condition) VALUES (…,'U')` und die
-    // Zusage „der gespeicherte Zustand eines eigenen Sets entscheidet
-    // weiterhin". Die Spalte ist mit Migration 0032 weg; entschieden wird
-    // ueber die Erfassung, und die Aussage bleibt dieselbe: Ein gebraucht
-    // gehaltenes Set braucht den Gebraucht-Preis.
+    // Bestand ohne Merkposten: der Zustand kommt aus der Erfassung
+    // Ausführlich: docs/begruendungen/test/merkposten-zustand-preislauf-db.test.js.md#stelle
     await haeltSet(db, a, '75192-1', 0);  // Menge 0: die Erfassung dahinter traegt sie
     await db.run(`INSERT INTO set_acquisitions (user_id, set_number, quantity, condition) VALUES ($1,'75192-1',1,'U')`, [a]);
     assert.deepEqual((await zustaendeJeSet(a, ['75192-1'])).get('75192-1'), ['U'],

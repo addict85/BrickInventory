@@ -3,10 +3,12 @@ package ch.brickinventoryapp
 import ch.brickinventoryapp.data.TokenSchranke
 import ch.brickinventoryapp.data.TokenStand
 import ch.brickinventoryapp.data.TokenTausch
-import ch.brickinventoryapp.data.repository.Result
+import ch.brickinventoryapp.data.repository.Ergebnis
 import ch.brickinventoryapp.di.ServerWaechter
 import ch.brickinventoryapp.di.Zugangslage
 import ch.brickinventoryapp.util.NetworkPolicy
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.runBlocking
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -25,17 +27,12 @@ import java.util.concurrent.CountDownLatch
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicInteger
+import ch.brickinventoryapp.di.Rotationsanlass
 
 /**
  * Ein Serverwechsel, während eine Anfrage beim alten Server hängt: Der alte (A)
- * hält seine Antwort zurück, bis die App auf den neuen (B) gewechselt und sich
- * dort angemeldet hat. Nichts aus der späten Antwort darf den Token von B zu A
- * tragen oder die Sitzung bei B beenden. Nachgestellt nach dem Nachweis der
- * Sicherheitsprüfung (pruef6, M1): zwei echte Testserver, echter Wächter, im
- * zweiten Fall der echte TokenTausch. Der Wechsel geht über eine TokenSchranke,
- * wie PreferencesManager.saveServerUrl() und saveAuthToken().
  *
- * Gegenproben (03.11.2026, gemessen mit kotlinc lokal):
+ * Gegenproben:
  *   A  in ServerWaechter.tokenFuer() die Bindung weggelassen (`passt` nur
  *      `token.isNotBlank()`) → rot „eine Anfrage ohne Token fasst nach dem
  *      Wechsel nicht mit dem Token des neuen Servers nach“ (A erhielt Bearer B)
@@ -106,7 +103,7 @@ class ServerwechselTest {
         schranke.schreibe { herkunft = NetworkPolicy.herkunft(adresse(ziel)); token = neuerToken }
     }
 
-    private fun client(rotation: ch.brickinventoryapp.di.Rotationsanlass? = null) = OkHttpClient.Builder()
+    private fun client(rotation: Rotationsanlass? = null) = OkHttpClient.Builder()
         .addInterceptor(ServerWaechter(lage, true, entwicklung = true, sitzungAbgelaufen = { abgelaufen.incrementAndGet() },
             rotation = rotation, rechteEntzogen = { entzogen.incrementAndGet() }))
         .readTimeout(10, TimeUnit.SECONDS).build()
@@ -142,8 +139,10 @@ class ServerwechselTest {
         val tausch = TokenTausch(
             stand = { TokenStand(token, herkunft, schranke.generation) },
             ersetze = { _, _, _ -> false },
-            rotiere = { Result.Error("", httpCode = 500) },
+            rotiere = { Ergebnis.Error("", httpCode = 500) },
             pausen = emptyList(),
+            // Der Test wartet auf noetig(); faellig() bräuchte einen eigenen Bereich nicht.
+            hintergrund = CoroutineScope(Job()),
         )
         val status = waehrendDesWechsels(client(tausch), Request.Builder().url(a.url("/api/v1/sets"))
             .post("geheim".toRequestBody()).build()) {

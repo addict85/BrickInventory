@@ -1,19 +1,58 @@
 import * as db from '../db/database';
-import { logAndContinue } from '../src/infra/httpError';
+import { logAndContinue } from '../src/infra/fehler';
 import { initImageMisses } from '../src/katalog/bilder/imageMisses';
 import { initImageQueue } from '../jobs/imageQueue';
-import { kopienVerschluesseln, nummernNachverschluesseln } from '../src/gutscheine/dienst';
+import { gutscheineNeuVerschluesseln, kopienVerschluesseln, nummernNachverschluesseln } from '../src/gutscheine/dienst';
 import { verschluesseleGutscheinAltbestand } from '../src/gutscheine/gutscheinDateien';
 import { verschluesseleAltbestand } from '../src/konto/geheimnisAltbestand';
-import { antwortenUmschluesseln, alteAbdrueckeLoeschen } from '../src/idempotenz/dienst';
-import { datenSchluessel } from '../src/infra/geheimnis';
+import { antwortenUmschluesseln, alteAbdrueckeLoeschen, alleVergessen } from '../src/idempotenz/dienst';
+import { altSchluessel, datenSchluessel } from '../src/infra/geheimnis';
 import { konfig } from '../src/infra/konfig';
+import { liesZustand, setzeZustand } from '../src/auftraege/laufzustand';
 
-/** Ein Superuser erreicht COPY … PROGRAM und jede Datenbank des Servers. */
+/** Ein Superuser erreicht COPY … PROGRAM und jede Datenbank des Servers: In
+ * Betrieb (auch ohne NODE_ENV) ein Startverbot, ausser DB_SUPERUSER_ERLAUBT=1 (UPGRADE.md). */
 export async function warneBeiSuperuser(): Promise<boolean> {
-  if (!konfig().produktion || !await db.alsSuperuserVerbunden()) return false;
-  console.warn('⚠️  [datenbank] Die App verbindet sich als Superuser. Eigene Rolle: UPGRADE.md, Abschnitt 29.');
+  if (!konfig().betrieb || !await db.alsSuperuserVerbunden()) return false;
+  if (!konfig().dbSuperuserErlaubt) {
+    console.error('❌ [datenbank] Die App verbindet sich als Superuser — Start verweigert. Eigene Rolle: UPGRADE.md, '
+      + 'Abschnitt 29; wer es bewusst so betreibt, setzt DB_SUPERUSER_ERLAUBT=1 (Abschnitt 34).');
+    process.exit(1);
+  }
+  console.warn('⚠️  [datenbank] Die App verbindet sich als Superuser (DB_SUPERUSER_ERLAUBT=1). Eigene Rolle: UPGRADE.md, Abschnitt 29.');
   return true;
+}
+
+/** Die Marke im Laufzustand. Eine zurückgespielte ältere Sicherung bringt sie
+ * nicht mit; dann läuft die Umstellung beim nächsten Start erneut. */
+export const ALTBESTAND_MARKE = 'altbestand_v2';
+
+/** Einmal je Datenbank, vor der ersten Anfrage und ohne Ausweg: entschluessele()
+ * liest nur v2, und eine Gutscheinzeile ohne nummer_suche entginge der
+ * Doppelprüfung. @returns null, wenn die Marke schon steht */
+export async function altbestandAufruesten(): Promise<{ umgeschluesselt: number; abdruecke: number } | null> {
+  if (await liesZustand(ALTBESTAND_MARKE)) return null;
+  const n = await nummernNachverschluesseln() + await kopienVerschluesseln() + await verschluesseleAltbestand()
+    + await antwortenUmschluesseln() + await verschluesseleGutscheinAltbestand();
+  if (n) console.log(`[geheimnis] ${n} Geheimnisse auf v2 (mit Kontext) umgeschlüsselt`);
+  const alt = await alteAbdrueckeLoeschen();
+  if (alt) console.log(`[idempotenz] ${alt} Einträge mit altem Fingerabdruck (SHA-256 des Rumpfs) gelöscht`);
+  await setzeZustand(ALTBESTAND_MARKE, new Date().toISOString());
+  return { umgeschluesselt: n, abdruecke: alt };
+}
+
+/** Steht der vorige Schlüssel bereit (DATA_KEY_ALT_FILE), schreibt jeder Start
+ * alles, was nur er öffnet, mit dem neuen neu. Gleichzeitig laufende Prozesse
+ * stören sich nicht: Jede Zeile wird nur ersetzt, wenn sie unverändert ist. */
+export async function schluesselWechsel(): Promise<number | null> {
+  if (!altSchluessel()) return null;
+  const n = await verschluesseleAltbestand({ alle: true }) + await gutscheineNeuVerschluesseln()
+    + await kopienVerschluesseln(true) + await verschluesseleGutscheinAltbestand({ alle: true });
+  // Antworten und Abdrücke gelten 24 Stunden und hängen am Schlüssel; neu rechnen lohnt nicht.
+  await alleVergessen();
+  console.log(`[geheimnis] Schlüsselwechsel: ${n} Werte mit dem neuen Schlüssel geschrieben. Der vorige `
+    + '(DATA_KEY_ALT_FILE) kann weg, sobald jedes Konto mit zweitem Faktor neue Wiederherstellungscodes hat (UPGRADE.md).');
+  return n;
 }
 
 /**
@@ -27,13 +66,8 @@ export async function bereiteDatenbankVor(): Promise<void> {
   datenSchluessel();
   await warneBeiSuperuser();
   await db.initSchemaOnce();
-  // Vor der ersten Anfrage und ohne Ausweg: entschluessele() liest nur v2, und
-  // eine Gutscheinzeile ohne nummer_suche entginge der Doppelprüfung.
-  const n = await nummernNachverschluesseln() + await kopienVerschluesseln() + await verschluesseleAltbestand()
-    + await antwortenUmschluesseln() + await verschluesseleGutscheinAltbestand();
-  if (n) console.log(`[geheimnis] ${n} Geheimnisse auf v2 (mit Kontext) umgeschlüsselt`);
-  const alt = await alteAbdrueckeLoeschen();
-  if (alt) console.log(`[idempotenz] ${alt} Einträge mit altem Fingerabdruck (SHA-256 des Rumpfs) gelöscht`);
+  await altbestandAufruesten();
+  await schluesselWechsel();
   await initImageMisses().catch(logAndContinue('db:image_misses'));
   await initImageQueue().catch(logAndContinue('db:image_wanted'));
 }

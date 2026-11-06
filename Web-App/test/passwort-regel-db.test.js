@@ -7,7 +7,7 @@
  *
  * Gegenproben (01.11.2026 gemessen):
  *   A  Listenprüfung in passwortMangel() gestrichen → rot: alle Fälle,
- *      zuerst „häufige Passwörter …" (alle fünf Routen nehmen 1234567890 an)
+ *      zuerst „häufige Passwörter …" (alle fünf Routen nehmen das häufige an)
  *   B  Byte-Grenze gestrichen → rot: „die Regel selbst" und „mehr als 72
  *      Byte …" (danach „ein gutes Passwort …": das Konto gibt es schon)
  *   C  /reset-password prüft wieder nur die Länge → rot: „häufige
@@ -23,10 +23,14 @@ const assert = require('node:assert/strict');
 const path = require('node:path');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
+process.env.APP_BASE_URL = 'http://localhost';
 delete process.env.ADMIN_PASSWORD;
 
 const _req = require('./helpers/sources').buildAndRequire();
+const { dbOderSkip } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
+const { mailAttrappe, mailserverEintragen } = require('./helpers/mail-attrappe');
+mailAttrappe();
 const db = _req('db/database.js');
 const { passwortMangel } = _req('src/infra/passwortRegel.js');
 const bcrypt = require(path.join(__dirname, '..', 'node_modules', 'bcryptjs'));
@@ -34,7 +38,9 @@ const bcrypt = require(path.join(__dirname, '..', 'node_modules', 'bcryptjs'));
 test('die Regel selbst', () => {
   assert.equal(passwortMangel('Brick-Sammlung-2026'), null);
   assert.equal(passwortMangel('1234567'), 'passwort_zu_kurz');
-  for (const p of ['12345678', 'password1', 'PassWord1', 'qwertzuiop', 'passwort123'])
+  // Seit dem 04.11.2026 mindestens 12 Zeichen: Die häufigen darunter fallen schon an der Länge.
+  assert.equal(passwortMangel('password1'), 'passwort_zu_kurz');
+  for (const p of ['ichliebedich', 'Sonnenschein', 'SONNENSCHEIN'])
     assert.equal(passwortMangel(p), 'passwort_zu_haeufig', p);
   assert.equal(passwortMangel('Mein-Name-Ist-Lego', 'mein-name-ist-lego'), 'passwort_zu_haeufig', 'der Benutzername als Passwort');
   assert.equal(passwortMangel('a'.repeat(72)), null, '72 Byte gehen noch');
@@ -43,14 +49,7 @@ test('die Regel selbst', () => {
 });
 
 test('Passwortregel auf allen Wegen', { concurrency: 1, timeout: 120_000 }, async (t) => {
-  try { await db.initSchema(); }
-  catch (e) {
-    if (process.env.REQUIRE_DB === '1')
-      throw new Error(`REQUIRE_DB=1, aber die Test-DB ist nicht erreichbar: ${e.message}`);
-    t.skip('Test-DB nicht erreichbar'); return;
-  }
-  const c = await db.pool.connect();
-  try { await _req('db/migrate.js').runMigrations(c); } finally { c.release(); }
+  if (!await dbOderSkip(t, _req)) return;
   const CHEF = `regel_chef_${process.pid}`, ZIEL = `regel_ziel_${process.pid}`, PASS = 'Regel-Pruefung-7';
   await db.run('DELETE FROM users WHERE username = ANY($1)', [[CHEF, ZIEL]]);
   const hash = bcrypt.hashSync(PASS, 4);
@@ -60,9 +59,11 @@ test('Passwortregel auf allen Wegen', { concurrency: 1, timeout: 120_000 }, asyn
     VALUES ($1, $2, true, true) RETURNING id`, [ZIEL, hash])).id;
   const regVorher = await db.get("SELECT value FROM global_settings WHERE key = 'registration_enabled'");
   await db.run("INSERT INTO global_settings (key, value) VALUES ('registration_enabled', '1') ON CONFLICT (key) DO UPDATE SET value = '1'");
+  const mailZurueck = await mailserverEintragen(db);
   t.after(async () => {
     await db.run("DELETE FROM global_settings WHERE key = 'registration_enabled'");
     if (regVorher) await db.run("INSERT INTO global_settings (key, value) VALUES ('registration_enabled', $1)", [regVorher.value]);
+    await mailZurueck();
     await db.run('DELETE FROM users WHERE id = ANY($1)', [[chef, ziel]]);
   });
   const { base } = testServer(_req, { sitzung: { userId: chef, username: CHEF, isAdmin: true },
@@ -83,10 +84,10 @@ test('Passwortregel auf allen Wegen', { concurrency: 1, timeout: 120_000 }, asyn
 
   await t.test('häufige Passwörter werden auf allen fünf Wegen abgewiesen', async () => {
     const ist = [];
-    for (const w of wege('1234567890')) ist.push(await ruf(w));
+    for (const w of wege('sonnenschein')) ist.push(await ruf(w));
     assert.deepEqual(ist, wege('').map(([, p]) => `${p} 400 passwort_zu_haeufig`));
     const text = (await (await fetch(`${base}/api/v1/auth/reset-password`, { method: 'POST', headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ token: 'x', password: 'PASSWORD1' }) })).json()).error;
+      body: JSON.stringify({ token: 'x', password: 'ICHLIEBEDICH' }) })).json()).error;
     assert.match(text, /zu häufig oder aus Datenlecks bekannt/);
   });
 
@@ -112,6 +113,20 @@ test('Passwortregel auf allen Wegen', { concurrency: 1, timeout: 120_000 }, asyn
     assert.equal(await setze('POST', '/change-password', { current: PASS, newPassword: CHEF.toUpperCase() }), '400 passwort_zu_haeufig');
     assert.equal(await setze('PUT', `/users/${ziel}/password`, { password: ZIEL, admin_password: PASS }), '400 passwort_zu_haeufig');
     assert.ok(bcrypt.compareSync(PASS, (await db.get('SELECT password_hash FROM users WHERE id = $1', [ziel])).password_hash));
+  });
+
+  // Gegenprobe (05.11.2026 gemessen): in /reset-password die zweite Prüfung
+  // mit user.username gestrichen → rot (200, das Passwort ist der Name).
+  await t.test('Zurücksetzen: der Benutzername ist kein Passwort', async () => {
+    const roh = 'b'.repeat(64);
+    await db.run(`UPDATE users SET reset_token = $2, reset_token_expires = NOW() + interval '1 hour' WHERE id = $1`,
+      [ziel, require('node:crypto').createHash('sha256').update(roh).digest('hex')]);
+    assert.equal(await ruf(['POST', '/reset-password', { token: roh, password: ZIEL.toUpperCase() + '-x' }]).then(r => r.split(' ')[1]), '200',
+      'ein anderes Passwort geht (Prüfung des Tokens)');
+    await db.run(`UPDATE users SET reset_token = $2, reset_token_expires = NOW() + interval '1 hour' WHERE id = $1`,
+      [ziel, require('node:crypto').createHash('sha256').update(roh).digest('hex')]);
+    assert.equal(await ruf(['POST', '/reset-password', { token: roh, password: ZIEL.toUpperCase() }]), '/reset-password 400 passwort_zu_haeufig');
+    assert.ok(!bcrypt.compareSync(ZIEL.toUpperCase(), (await db.get('SELECT password_hash FROM users WHERE id = $1', [ziel])).password_hash));
   });
 
   await t.test('ein schwaches ADMIN_PASSWORD wird nicht übernommen', async () => {

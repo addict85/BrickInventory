@@ -1,16 +1,17 @@
 package ch.brickinventoryapp.ui.screens
 
+import ch.brickinventoryapp.ui.LagerUiState
+import ch.brickinventoryapp.ui.ManualItemDetailUiState
+import ch.brickinventoryapp.ui.PartsUiState
+import ch.brickinventoryapp.ui.AppUiState
+import ch.brickinventoryapp.ui.viewmodel.TeileAktionen
+import ch.brickinventoryapp.ui.viewmodel.KaeufeAktionen
 import ch.brickinventoryapp.ui.theme.Formen
-import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.ui.semantics.Role
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Remove
@@ -20,49 +21,77 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import ch.brickinventoryapp.ressourcen.R
 import ch.brickinventoryapp.ui.viewmodel.KaeufeViewModel
 import ch.brickinventoryapp.ui.viewmodel.TeileViewModel
 import ch.brickinventoryapp.ui.components.ZoomableImageDialog
-import ch.brickinventoryapp.ui.theme.LocalIsBrickTheme
-import ch.brickinventoryapp.ui.theme.Petrol
 import ch.brickinventoryapp.util.resolveFullUrlViaProxy
 import coil3.ImageLoader
 import ch.brickinventoryapp.ui.theme.Abstaende
-import ch.brickinventoryapp.ui.components.LeerSymbol
-import androidx.compose.material.icons.filled.Person
-import androidx.compose.material.icons.filled.ViewInAr
+import ch.brickinventoryapp.ui.components.DetailTopAppBar
+import ch.brickinventoryapp.ui.components.MitTooltip
+import ch.brickinventoryapp.ui.components.ProduktBild
+import ch.brickinventoryapp.ui.components.farbUebersetzer
+import ch.brickinventoryapp.ui.components.mitSchrift
+import ch.brickinventoryapp.ui.model.OHNE_FARBE
+import ch.brickinventoryapp.ui.theme.LocalAkzentflaechen
+import ch.brickinventoryapp.util.fmtMoney
 
 /**
- * Detailansicht eines manuell erfassten Teils / einer Minifigur — als ganzer
- * Screen wie bei den Sets, weil der Inhalt (Bild, Mengenwahl, Kaufpreise und
- * Marktpreise je Zustand, Preisverlauf, Löschen) für einen AlertDialog zu lang
- * ist. Derselbe Aufbau wie SetDetailScreen, damit man beim Wechsel vom Set zum
- * Teil dieselben Dinge an denselben Stellen findet.
- *
- * Erfassungen und Preisverlauf lädt `loadManualAcquisitions()`. Der Screen liest
- * seine Zustände direkt vom ViewModel wie AcquisitionManagementScreen — bei sechs
- * Zuständen und ebenso vielen Rückrufen wäre die Parameterliste länger als der
- * Screen.
+ * Detailansicht eines manuell erfassten Teils / einer Minifigur — als ganzer Screen wie bei
+ * den Sets, weil der Inhalt (Bild, Mengenwahl, Kaufpreise und Marktpreise je Zustand,
+ * Preisverlauf, Löschen) für einen AlertDialog zu lang ist.
+ * Ausführlich: docs/begruendungen/feature-teile/ui/screens/ManualItemDetailScreen.kt.md#manualitemdetailroute
  */
+@Composable
+fun ManualItemDetailRoute(
+    vm: KaeufeViewModel,
+    teile: TeileViewModel,
+    type: String,
+    id: String,
+    colorId: Int = OHNE_FARBE,
+    fallbackTitle: String,
+    imageLoader: ImageLoader,
+    onBack: () -> Unit,
+    onNavigateToAcqMgmt: (type: String, id: String, colorId: Int, title: String) -> Unit,
+    onFarbeGeaendert: (neueFarbe: Int) -> Unit = {},
+) {
+    val state by vm.state.collectAsStateWithLifecycle()
+    val partsState by teile.partsState.collectAsStateWithLifecycle()
+    val manDetailState by vm.manDetailState.collectAsStateWithLifecycle()
+    val lagerZustand by vm.lagerState.collectAsStateWithLifecycle()
+    ManualItemDetailScreen(
+        zustand = EinzelstueckZustand(state, partsState, manDetailState, lagerZustand),
+        kaeufe = vm, teile = teile, type = type, id = id, colorId = colorId,
+        fallbackTitle = fallbackTitle, imageLoader = imageLoader, onBack = onBack,
+        onNavigateToAcqMgmt = onNavigateToAcqMgmt, onFarbeGeaendert = onFarbeGeaendert,
+    )
+}
+
+/** Was die Detailansicht eines manuellen Eintrags zeigt. */
+data class EinzelstueckZustand(
+    val state: AppUiState,
+    val partsState: PartsUiState,
+    val manDetailState: ManualItemDetailUiState,
+    val lagerZustand: LagerUiState,
+)
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ManualItemDetailScreen(
-    vm: KaeufeViewModel,
+    zustand: EinzelstueckZustand,
+    kaeufe: KaeufeAktionen,
     /** Die Zeile des Eintrags und das Ändern, Löschen, Umfärben. */
-    teile: TeileViewModel,
+    teile: TeileAktionen,
     type: String,          // "part" | "fig"
     id: String,            // partNumber / figNumber
-    colorId: Int = ch.brickinventoryapp.ui.model.OHNE_FARBE,
+    colorId: Int = OHNE_FARBE,
     /** Aus der Navigation — bis die Bewertung geladen ist, steht er in der Leiste. */
     fallbackTitle: String,
     imageLoader: ImageLoader,
@@ -77,17 +106,16 @@ fun ManualItemDetailScreen(
      */
     onFarbeGeaendert: (neueFarbe: Int) -> Unit = {},
 ) {
-    val state by vm.state.collectAsStateWithLifecycle()
-    val partsState by teile.partsState.collectAsStateWithLifecycle()
-    val manDetailState by vm.manDetailState.collectAsStateWithLifecycle()
-    // Der Vorrat an Lagerorten fuer das Feld weiter unten.
-    val lagerZustand by vm.lagerState.collectAsStateWithLifecycle()
+    val state = zustand.state
+    val partsState = zustand.partsState
+    val manDetailState = zustand.manDetailState
+    val lagerZustand = zustand.lagerZustand
 
     val isFig = type == "fig"
     val currency = state.currency
 
     LaunchedEffect(type, id, colorId) {
-        vm.loadManualAcquisitions(type, id, colorId)
+        kaeufe.loadManualAcquisitions(type, id, colorId)
         // Die Liste kann fehlen, wenn der Screen aus einem Tiefenlink oder nach einem
         // Prozessneustart kommt — ohne sie gäbe es weder Name noch Bild. Aus derselben
         // Quelle wie die Liste (/parts/manual bzw. /minifigs/manual), damit es für
@@ -115,31 +143,26 @@ fun ManualItemDetailScreen(
     var showImageZoom by rememberSaveable { mutableStateOf(false) }
     var showDeleteConfirm by rememberSaveable { mutableStateOf(false) }
 
-    val akzent = ch.brickinventoryapp.ui.theme.LocalAkzentflaechen.current
+    val akzent = LocalAkzentflaechen.current
     Scaffold(
         topBar = {
-            TopAppBar(
-                title = {
-                    Text(title, fontWeight = FontWeight.SemiBold,
-                        maxLines = 1, overflow = TextOverflow.Ellipsis)
-                },
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(R.string.common_back))
-                    }
-                },
-                actions = {
-                    IconButton(onClick = { showDeleteConfirm = true }) {
-                        Icon(Icons.Default.Delete, stringResource(
-                            if (isFig) R.string.common_delete else R.string.common_delete))
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
+            // Derselbe Kopf wie jedes Detail (DetailTopAppBar).
+            DetailTopAppBar(
+                titel = title,
+                onZurueck = onBack,
+                farben = TopAppBarDefaults.topAppBarColors(
                     containerColor = akzent.detailLeiste,
                     titleContentColor = akzent.aufDetailLeiste,
                     navigationIconContentColor = akzent.aufDetailLeiste,
                     actionIconContentColor = akzent.aufDetailLeiste,
-                )
+                ),
+                actions = {
+                    MitTooltip(stringResource(R.string.common_delete)) {
+                        IconButton(onClick = { showDeleteConfirm = true }) {
+                            Icon(Icons.Default.Delete, stringResource(R.string.common_delete))
+                        }
+                    }
+                },
             )
         },
         containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
@@ -150,29 +173,9 @@ fun ManualItemDetailScreen(
             contentPadding = PaddingValues(bottom = Abstaende.sehrGross),
             verticalArrangement = Arrangement.spacedBy(0.dp)
         ) {
-
             // ── Bildkarte ──────────────────────────────────────────────────────
             item {
-                Card(
-                    modifier = Modifier.fillMaxWidth().padding(horizontal = Abstaende.gross, vertical = Abstaende.mittel),
-                    shape = Formen.chip,
-                    elevation = CardDefaults.cardElevation(defaultElevation = Formen.karteErhebungHoch),
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
-                ) {
-                    ch.brickinventoryapp.ui.components.ProduktBild(
-                        model = imageUrl,
-                        imageLoader = imageLoader,
-                        contentDescription = title,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(200.dp)
-                            .clip(Formen.chip)
-                            .clickable(enabled = imageUrl != null, role = Role.Button) { showImageZoom = true }
-                            .padding(Abstaende.mittel),
-                        contentScale = ContentScale.Fit,
-                        ersatzGroesse = 64.dp,
-                    )
-                }
+                BildKarte(imageUrl, imageLoader, title, onZoom = { showImageZoom = true })
             }
 
             // ── Kennzahlen-Chips ───────────────────────────────────────────────
@@ -180,7 +183,7 @@ fun ManualItemDetailScreen(
                 val labelNumber = stringResource(
                     if (isFig) R.string.detail_fig_number else R.string.detail_part_number)
                 val labelColor  = stringResource(R.string.detail_color)
-                val farbe = ch.brickinventoryapp.ui.components.farbUebersetzer()
+                val farbe = farbUebersetzer()
                 val chips = buildList {
                     add(labelNumber to id)
                     part?.colorName?.let { add(labelColor to farbe(it)) }
@@ -194,7 +197,7 @@ fun ManualItemDetailScreen(
             // ── Wert-Kacheln wie im Set-Detail, in jedem Design ───────────────
             item {
                 fun fmt(v: Double?) = if (v == null) "—"
-                    else ch.brickinventoryapp.util.fmtMoney(v, currency)
+                    else fmtMoney(v, currency)
                 WertKacheln(
                     markt = fmt(fig?.avgPrice ?: part?.avgPrice),
                     kauf = fmt(fig?.purchasePrice ?: part?.purchasePrice),
@@ -213,42 +216,25 @@ fun ManualItemDetailScreen(
                         manDetailState.acquisitions.sumOf { it.quantity } else quantity
                     var qty by remember(acqTotal) { mutableIntStateOf(acqTotal) }
 
-                    Row(
-                        Modifier.fillMaxWidth().padding(vertical = Abstaende.winzig),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text(stringResource(R.string.common_quantity),
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        Row(verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(Abstaende.mittel)) {
-                            FilledTonalIconButton(
-                                onClick = {
-                                    if (qty > 1) {
-                                        qty--
-                                        // owner: Besitzer der KARTE. Im Haushalt zeigt
-                                        // der manuelle Bereich die Eintraege aller
-                                        // Konten; ohne die Angabe schreibt der Server
-                                        // in die Zeile des Aufrufers.
-                                        if (isFig) teile.updateMinifig(id, qty, fig?.unitPrice, fig?.blFigNumber, owner = fig?.userId)
-                                        else teile.updatePart(id, colorId, qty, part?.unitPrice, part?.condition, owner = part?.userId)
-                                    }
-                                },
-                                shape = Formen.etikett
-                            ) { Icon(Icons.Default.Remove, stringResource(R.string.cd_qty_decrease), Modifier.size(14.dp)) }
-                            Text("$qty", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.bodyLarge,
-                                modifier = Modifier.widthIn(min = 24.dp), textAlign = TextAlign.Center)
-                            FilledTonalIconButton(
-                                onClick = {
-                                    qty++
-                                    if (isFig) teile.updateMinifig(id, qty, fig?.unitPrice, fig?.blFigNumber, owner = fig?.userId)
-                                    else teile.updatePart(id, colorId, qty, part?.unitPrice, part?.condition, owner = part?.userId)
-                                },
-                                shape = Formen.etikett
-                            ) { Icon(Icons.Default.Add, stringResource(R.string.cd_qty_increase), Modifier.size(14.dp)) }
-                        }
-                    }
+                    MengenZeile(
+                        menge = qty,
+                        onWeniger = {
+                            if (qty > 1) {
+                                qty--
+                                // owner: Besitzer der KARTE. Im Haushalt zeigt
+                                // der manuelle Bereich die Eintraege aller
+                                // Konten; ohne die Angabe schreibt der Server
+                                // in die Zeile des Aufrufers.
+                                if (isFig) teile.updateMinifig(id, qty, fig?.unitPrice, fig?.blFigNumber, owner = fig?.userId)
+                                else teile.updatePart(id, colorId, qty, part?.unitPrice, part?.condition, owner = part?.userId)
+                            }
+                        },
+                        onMehr = {
+                            qty++
+                            if (isFig) teile.updateMinifig(id, qty, fig?.unitPrice, fig?.blFigNumber, owner = fig?.userId)
+                            else teile.updatePart(id, colorId, qty, part?.unitPrice, part?.condition, owner = part?.userId)
+                        },
+                    )
 
                     // ── Farbe (nur Teile) — änderbar ──
                     //
@@ -297,9 +283,9 @@ fun ManualItemDetailScreen(
                             // Der VORRAT, nicht die belegten Orte: Auch ein
                             // leeres Regal soll zur Wahl stehen.
                             vorrat = lagerZustand.eigene.map { it.name },
-                            onWert = { vm.setzeManuellenLagerort(type, id, colorId, it) },
+                            onWert = { kaeufe.setzeManuellenLagerort(type, id, colorId, it) },
                             modifier = Modifier.padding(start = Abstaende.gross)
-                                .widthIn(max = 180.dp),
+                                .weight(1f).widthIn(max = 320.dp),
                         )
                     }
 
@@ -344,33 +330,20 @@ fun ManualItemDetailScreen(
         }
 
         if (showDeleteConfirm) {
-            AlertDialog(
-                onDismissRequest = { showDeleteConfirm = false },
-                icon = { Icon(Icons.Default.Delete, null, tint = MaterialTheme.colorScheme.error) },
-                title = { Text(stringResource(
-                    if (isFig) R.string.minifigs_delete_title else R.string.parts_delete_title)) },
-                text = { Text(stringResource(
-                    if (isFig) R.string.minifigs_delete_text else R.string.parts_delete_text, title)) },
-                confirmButton = {
-                    TextButton(onClick = {
-                        showDeleteConfirm = false
-                        // Auch hier der Besitzer der Karte — sonst loescht der
-                        // Server die Zeile des Aufrufers statt der angezeigten.
-                        if (isFig) teile.deleteMinifig(id, fig?.userId)
-                        else teile.deletePart(id, colorId, part?.userId)
-                        // Der Eintrag ist weg — dieser Screen zeigte sonst eine
-                        // Karteileiche mit Mengenwahl und Kaufpreisen.
-                        onBack()
-                    }) {
-                        Text(stringResource(if (isFig) R.string.common_delete else R.string.common_delete),
-                            color = MaterialTheme.colorScheme.error)
-                    }
+            LoeschenFrage(
+                isFig = isFig,
+                title = title,
+                onSchliessen = { showDeleteConfirm = false },
+                onLoeschen = {
+                    showDeleteConfirm = false
+                    // Auch hier der Besitzer der Karte — sonst loescht der
+                    // Server die Zeile des Aufrufers statt der angezeigten.
+                    if (isFig) teile.deleteMinifig(id, fig?.userId)
+                    else teile.deletePart(id, colorId, part?.userId)
+                    // Der Eintrag ist weg — dieser Screen zeigte sonst eine
+                    // Karteileiche mit Mengenwahl und Kaufpreisen.
+                    onBack()
                 },
-                dismissButton = {
-                    TextButton(onClick = { showDeleteConfirm = false }) {
-                        Text(stringResource(if (isFig) R.string.common_cancel else R.string.common_cancel))
-                    }
-                }
             )
         }
 
@@ -383,4 +356,84 @@ fun ManualItemDetailScreen(
             )
         }
     }
+}
+
+/** Das Bild des Teils oder der Figur; ein Tipp öffnet es gross. */
+@Composable
+private fun BildKarte(imageUrl: String?, imageLoader: ImageLoader, title: String, onZoom: () -> Unit) {
+    Card(
+        modifier = Modifier.fillMaxWidth().padding(horizontal = Abstaende.gross, vertical = Abstaende.mittel),
+        shape = Formen.chip,
+        elevation = CardDefaults.cardElevation(defaultElevation = Formen.karteErhebungHoch),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+    ) {
+        ProduktBild(
+            model = imageUrl,
+            imageLoader = imageLoader,
+            contentDescription = title,
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(200.dp)
+                .clip(Formen.chip)
+                .clickable(enabled = imageUrl != null, onClickLabel = stringResource(R.string.cd_bild_vergroessern), role = Role.Button, onClick = onZoom)
+                .padding(Abstaende.mittel),
+            contentScale = ContentScale.Fit,
+            ersatzGroesse = 64.dp,
+        )
+    }
+}
+
+/** Menge mit Minus und Plus; was eine Änderung schreibt, entscheidet der Aufrufer. */
+@Composable
+private fun MengenZeile(menge: Int, onWeniger: () -> Unit, onMehr: () -> Unit) {
+    Row(
+        Modifier.fillMaxWidth().padding(vertical = Abstaende.winzig),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(stringResource(R.string.common_quantity),
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Row(verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(Abstaende.mittel)) {
+            MitTooltip(stringResource(R.string.cd_qty_decrease)) {
+                FilledTonalIconButton(
+                    onClick = onWeniger,
+                    shape = Formen.etikett
+                ) { Icon(Icons.Default.Remove, stringResource(R.string.cd_qty_decrease), Modifier.size(mitSchrift(14.dp))) }
+            }
+            Text("$menge", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.bodyLarge,
+                modifier = Modifier.widthIn(min = 24.dp), textAlign = TextAlign.Center)
+            MitTooltip(stringResource(R.string.cd_qty_increase)) {
+                FilledTonalIconButton(
+                    onClick = onMehr,
+                    shape = Formen.etikett
+                ) { Icon(Icons.Default.Add, stringResource(R.string.cd_qty_increase), Modifier.size(mitSchrift(14.dp))) }
+            }
+        }
+    }
+}
+
+/** Rückfrage vor dem Löschen des Teils bzw. der Figur. */
+@Composable
+private fun LoeschenFrage(isFig: Boolean, title: String, onSchliessen: () -> Unit, onLoeschen: () -> Unit) {
+    AlertDialog(
+        onDismissRequest = onSchliessen,
+        icon = { Icon(Icons.Default.Delete, null, tint = MaterialTheme.colorScheme.error) },
+        title = { Text(stringResource(
+            if (isFig) R.string.minifigs_delete_title else R.string.parts_delete_title)) },
+        text = { Text(stringResource(
+            if (isFig) R.string.minifigs_delete_text else R.string.parts_delete_text, title)) },
+        confirmButton = {
+            TextButton(onClick = onLoeschen) {
+                Text(stringResource(R.string.common_delete),
+                    color = MaterialTheme.colorScheme.error)
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onSchliessen) {
+                Text(stringResource(R.string.common_cancel))
+            }
+        }
+    )
 }

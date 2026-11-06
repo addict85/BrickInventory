@@ -1,18 +1,6 @@
 /**
  * Erfassungsliste im Detail-Dialog manueller Teile und Minifiguren.
- *
- * ── Zwei gemeldete Fehlerbilder, eine Ursache ───────────────────────────────
- *   1. Teil, Menge ERHÖHEN, noch keine Erfassung für heute → es erschien keine
- *      neue Zeile in der Detail-Ansicht.
- *   2. Minifigur, Menge REDUZIEREN → der heutige Kaufpreis-Eintrag verschwand
- *      nicht aus der Detail-Ansicht.
- *
- * Beide kamen aus `if (qty > prevQty)` in manQtySave(): Die Erfassungsliste
- * wurde nur beim Erhöhen nachgeladen — und `prevQty` war unzuverlässig, weil es
- * bei Teilen nur über part_number gesucht wurde (ohne color_id) und im
- * Fehlerfall auf den bereits gesetzten NEUEN Wert zurückfiel.
- *
- * Der Server war in beiden Fällen korrekt; falsch war nur die Anzeige.
+ * Ausführlich: docs/begruendungen/test/manual-acq-refresh.test.js.md#kopf
  */
 const test   = require('node:test');
 const assert = require('node:assert/strict');
@@ -74,24 +62,8 @@ test('die LIFO-Reduktion entfernt die neueste Erfassung zuerst', () => {
 // ═══════════════════════════════════════════════════════════════════════════
 test('die Tagesregel steht an genau einer Stelle', () => {
   const acq = read('src/bestand/acquisitions.ts');
-  // ── Schlüssel: Benutzer + Eintrag + Tag + ZUSTAND (seit dem 21.10.) ───────
-  //
-  // Hier stand das Gegenteil, und zwar als ausdrückliche Zusicherung: „Der
-  // Zustand darf NICHT im Schlüssel stehen", begründet damit, dass die
-  // Datums-Endpunkte einen zweiten Eintrag am selben Tag ohnehin ohne Blick
-  // auf den Zustand abweisen.
-  //
-  // Marcos Befund vom 21.10.: „wenn das Teil und Farbe bereits existiert und
-  // nur der Zustand anders ist, einen neuen Preis erzeugen mit einem anderen
-  // Zustand." GEMESSEN vorher, eine Wanted-Liste mit 3 Stück NEU zu 1.50 und
-  // 2 Stück GEBRAUCHT zu 0.50 desselben Teils: EINE Zeile, quantity 5,
-  // unit_price 1.10, condition 'U'. Der Mischpreis, und die neuen Teile als
-  // gebraucht verbucht.
-  //
-  // Die alte Begründung war gut und gilt weiter — deshalb ist BEIDES
-  // geändert: Der Datums-Endpunkt sieht den Zustand jetzt ebenfalls an (der
-  // Fall darunter prüft das). Die Zusicherung dreht sich damit um, statt zu
-  // verschwinden: Die neue Regel verdient dieselbe Wachsamkeit wie die alte.
+  // Schlüssel: Benutzer + Eintrag + Tag + ZUSTAND (seit dem 21.10.)
+  // Ausführlich: docs/begruendungen/test/manual-acq-refresh.test.js.md#stelle
   assert.match(strip(acq), /WHERE[\s\S]{0,400}AND condition = \$/,
     'Der Zustand MUSS im Schlüssel stehen — sonst nimmt ein neuer Kauf einen ' +
     'gebrauchten vom selben Tag mit, samt Mischpreis aus zwei Käufen');
@@ -107,10 +79,7 @@ test('die Tagesregel steht an genau einer Stelle', () => {
   // gibt es beim Aufstocken nichts mehr zu verschmelzen. Hier stand
   // `existing.condition === 'U' || cond === 'U'` — „gebraucht gewinnt" —, und
   // das war die Stelle, an der ein neuer Kauf einen gebrauchten mitnahm.
-  //
-  // Für die ANSICHT eines Eintrags gilt die Regel weiter
-  // (conditionFromAcquisitions in utils/handlers.ts); sie gehört dorthin und
-  // nicht in die Erfassung, die festhält, was wirklich gekauft wurde.
+  // Ausführlich: docs/begruendungen/test/manual-acq-refresh.test.js.md#stelle-2
   assert.doesNotMatch(strip(acq), /existing\.condition === 'U' \|\| cond === 'U'/,
     'Der Zustand der Tageszeile darf sich beim Aufstocken nicht mehr ändern');
 
@@ -131,27 +100,20 @@ test('der Anlege-Pfad erzeugt keinen Zustand, den der Bearbeiten-Pfad ablehnt', 
   // Alle drei Datums-Endpunkte benutzen denselben Prüfer — die Abfrage stand
   // vorher dreimal wortgleich in den Routen. Anlegen und Bearbeiten müssen
   // dieselbe Regel haben, sonst erzeugt der eine Pfad, was der andere ablehnt.
-  // Seit Nachtrag 70 steht die Kollisionsprüfung des BEARBEITEN-Pfads in der
-  // gemeinsamen Fabrik (sie bedient Webapp und App); das ANLEGEN liegt weiter
-  // in den Session-Routen. Geprüft wird deshalb: Beide Orte rufen denselben
-  // Helfer, und keiner hält eine eigene Kopie der Tagesregel.
-  // Die Fabrik bedient alle drei Elementarten mit EINEM Aufruf und gibt die Art
-  // aus der Konfiguration mit (cfg.kind) — deshalb steht hier kein wörtliches
-  // findSameDayAcquisition('set', … mehr. Geprüft wird die Regel, nicht die
-  // Schreibweise: Der gemeinsame Helfer wird gerufen, und jede Elementart ist
-  // in der Konfiguration hinterlegt.
-  const fab = read('src/bestand/erfassungen.ts');
+  // Seit steht die Kollisionsprüfung des BEARBEITEN-Pfads in der …
+  // Ausführlich: docs/begruendungen/test/manual-acq-refresh.test.js.md#fab-stelle
+  const fab = read('src/sammlung/erfassungen.ts');
   // Dies ist eine MUSTERregel: Sie faengt eine geloeschte Zeile. Dass der
   // Weg wirklich lebt, laeuft in test/verdrahtung-laeuft-db.test.js —
   // beides zusammen, nicht eines statt des anderen.
   assert.match(fab, /findSameDayAcquisition\(\s*art\s*,/,
-    'src/bestand/erfassungen.ts: die Kollisionsprüfung muss über den gemeinsamen Helfer laufen');
+    'src/sammlung/erfassungen.ts: die Kollisionsprüfung muss über den gemeinsamen Helfer laufen');
   for (const kind of ['set', 'part', 'fig']) {
     assert.match(fab, new RegExp(`\\b${kind}: \\{`),
       `Elementart '${kind}' fehlt in der Konfiguration — dann liefe ihre Tagesprüfung ins Leere`);
   }
   for (const f of ['routes/api_v1/sets.ts', 'src/teile/manuelleTeile.ts', 'src/figuren/manuelleFiguren.ts',
-                   'routes/api_v1/acquisitions.ts', 'src/bestand/erfassungen.ts']) {
+                   'routes/api_v1/acquisitions.ts', 'src/sammlung/erfassungen.ts']) {
     assert.doesNotMatch(strip(read(f)), /SELECT id FROM \w+_acquisitions WHERE[\s\S]{0,160}created_at[^\n]*::date/,
       `${f}: keine eigene Kopie der Tagesprüfung`);
   }
@@ -184,8 +146,9 @@ test('Teile und Minifiguren stehen in den Finanzen je Kaufpreis in einer Zeile',
   const fc = require('./helpers/sources').finanzQuelle();
   // Drei: Sets, manuelle Teile, manuelle Minifiguren — alle drei Tabellen im
   // Finanzen-Reiter zeigen dieselbe Form.
+  // Teile und Figuren teilen sich bewerteManuell(); zusammen mit bewerteSet() drei Wege.
   const acqLines = [...fc.matchAll(/acquisitions: rows,/g)];
-  assert.equal(acqLines.length, 3,
+  assert.equal(acqLines.length + (fc.match(/= bewerteManuell\(|\.\.\.bewerteManuell\(/g) || []).length - 1, 3,
     'Alle drei Bewertungen müssen die Einzelzeilen mitliefern');
 
   const fin = read('public/js/04-finance.js');
@@ -199,7 +162,7 @@ test('die Regel gilt für alle drei Elementarten gleich', () => {
   // „Pro Tag, Element und Benutzer genau EIN Kaufpreis." Ein Element ist ein
   // Set, ein manuell erfasstes Teil oder eine manuell erfasste Minifigur —
   // dieselbe Regel, nur ein anderer Schlüssel.
-  const acq = read('src/bestand/acquisitions.ts');
+  const acq = read('db/bestandsmenge.ts').split('ERFASSUNGS_TABELLEN = {')[1] ?? '';
 
   // Die Schlüssel je Art stehen an EINER Stelle — sonst hiesse „Element" je
   // nach Aufrufer etwas anderes.
@@ -228,7 +191,7 @@ test('die Mengenerhöhung mittelt den Kaufpreis, statt ihn stehen zu lassen', ()
   // in offener Transaktion hielte Sperre und Verbindung).
   assert.match(fn, /pricePlan \?\? await priceForNewAcquisition\(userId, setNumber, dbh\)/,
     'Ein vorab ermittelter Preis muss durchgereicht werden können');
-  // Ziel der Mengenänderung ist seit Nachtrag 85 das EIGENE Konto (`uid`) und
+  // Ziel der Mengenänderung ist seit einer früheren Runde das EIGENE Konto (`uid`) und
   // nicht mehr der Besitzer irgendeiner Haushaltszeile: Angezeigt wird die
   // Gesamtmenge, geschrieben wird die Differenz auf das eigene Konto. Die
   // geprüfte REGEL ist unverändert: Preis ermitteln (Netzaufruf), DANN sperren.
@@ -239,22 +202,15 @@ test('die Mengenerhöhung mittelt den Kaufpreis, statt ihn stehen zu lassen', ()
 });
 
 test('eine Mengenänderung läuft unter der Bestandssperre', () => {
-  // ── Woher dieser Test kommt ─────────────────────────────────────────────
-  // updateSet() setzte sets.quantity und rief danach
-  // adjustAcquisitionsToQuantity(…).catch(() => {}) — zwei lose Statements,
-  // ohne Transaktion, ohne Sperre, mit verschlucktem Fehler. Scheiterte der
-  // zweite Schritt, blieb die Menge erhöht, während die Erfassungen auf dem
-  // alten Stand standen: genau der Drift, gegen den es db/txLock.ts gibt,
-  // nur ohne jede Logzeile. Alle anderen Schreibwege am Bestand
-  // (Kaufpreis-Routen in sets/parts/minifigs, die v1-Fabrik) laufen längst
-  // unter dem Advisory-Lock.
+  // Woher dieser Test kommt
+  // Ausführlich: docs/begruendungen/test/manual-acq-refresh.test.js.md#src-stelle
   const src = require('./helpers/sources').setKernQuelle();
   const fn = src.slice(src.indexOf('async function updateSet'),
                        src.indexOf("router.put('/:setNumber'"))
     // Kommentare weg: Der Erklärtext oben zitiert den alten Aufruf samt
     // .catch(() => {}) und würde die Prüfung sonst selbst auslösen.
     .replace(/\/\/[^\n]*/g, '');
-  // Ziel ist seit Nachtrag 85 das eigene Konto (`uid`) — die Regel bleibt:
+  // Ziel ist seit einer früheren Runde das eigene Konto (`uid`) — die Regel bleibt:
   // EINE gesperrte Transaktion für Menge und Erfassungen.
   assert.match(fn, /withInventoryLock\(uid, sn/,
     'Menge und Erfassungen gehören in EINE gesperrte Transaktion');
@@ -265,26 +221,19 @@ test('eine Mengenänderung läuft unter der Bestandssperre', () => {
   // Und die Differenz muss aus der GESAMTMENGE des Blickfelds kommen, nicht
   // aus der Zeile eines einzelnen Kontos — sonst zeigte das Detail eine
   // Haushaltszahl an, während das „+" gegen eine andere rechnete.
-  // Die Abfrage steht seit Migration 0036 in db/bestandsmenge.ts; hier
-  // stand sie ausgeschrieben. Was sie daraus macht, prueft
-  // test/quantity-response-echo.test.js — diese Stelle prueft, dass der
-  // Aufruf das BLICKFELD nennt und nicht ein einzelnes Konto.
+  // Die Abfrage steht seit Migration 0036 in db/bestandsmenge.ts; hier …
+  // Ausführlich: docs/begruendungen/test/manual-acq-refresh.test.js.md#stelle-3
   assert.match(fn, /repo\.setMenge\(dbh, 'blickfeld', leseFeld/,
     'Die Ausgangsmenge muss über das Blickfeld summiert werden');
 });
 
 test('das Löschen eines manuellen Eintrags räumt die Kaufpreise mit ab', () => {
-  // ── Woher dieser Test kommt ─────────────────────────────────────────────
-  // Alle vier Löschrouten (Session und /api/v1, Teile und Minifiguren)
-  // löschten die Erfassungshistorie mit `.catch(() => {})`. Verschluckt hiess:
-  // Die Stammzeile ist weg, die Erfassungen bleiben — und Finanzsummen und
-  // Portfoliokurve lesen die ERFASSUNGEN. Ein gelöschtes Teil hätte dort
-  // dauerhaft weitergezählt, und zwar unsichtbar: Keine Ansicht zeigt
-  // verwaiste Erfassungen, es fällt nur als „die Summe stimmt nicht" auf.
+  // Woher dieser Test kommt
+  // Ausführlich: docs/begruendungen/test/manual-acq-refresh.test.js.md#stellen
   const stellen = [
-    // Die beiden v1-Routen und „alles löschen" gehen über src/bestand/loeschen.ts.
-    ['src/bestand/loeschen.ts',         'DELETE FROM part_acquisitions'],
-    ['src/bestand/loeschen.ts',         'DELETE FROM minifig_acquisitions'],
+    // Die beiden v1-Routen und „alles löschen" gehen über src/sammlung/loeschen.ts.
+    ['src/sammlung/loeschen.ts',         'DELETE FROM part_acquisitions'],
+    ['src/sammlung/loeschen.ts',         'DELETE FROM minifig_acquisitions'],
   ];
   for (const [datei, stmt] of stellen) {
     const src = strip(read(datei));
@@ -298,27 +247,17 @@ test('das Löschen eines manuellen Eintrags räumt die Kaufpreise mit ab', () =>
 });
 
 test('kein stiller Fehler mehr auf Bestandstabellen', () => {
-  // ── Woher dieser Test kommt ─────────────────────────────────────────────
-  // Ein leerer Catch sagt zwei Dinge gleichzeitig: „darf scheitern" und
-  // „niemand erfährt davon". Das erste ist oft richtig, das zweite fast nie —
-  // eine Spiegelung, die seit Wochen jedes Mal scheitert, sieht von aussen
-  // identisch aus wie eine, die funktioniert.
-  //
-  // Für Schreibvorgänge auf den BESTANDSTABELLEN gilt deshalb: entweder den
-  // Fehler durchreichen (Pflichtschritt) oder logAndContinue() aus
-  // src/infra/httpError.ts (bewusst optionaler Schritt). Ein leerer Catch ist
-  // keine der beiden Möglichkeiten. Anderswo — Bild-Caches, Aufräumen,
-  // Fremd-APIs — bleibt er erlaubt; dieser Test greift nur die Tabellen ab,
-  // aus denen Bestand und Finanzsummen gelesen werden.
+  // Woher dieser Test kommt
+  // Ausführlich: docs/begruendungen/test/manual-acq-refresh.test.js.md#tabellen
   const TABELLEN = ['sets', 'parts', 'minifigs', 'set_acquisitions',
                     'part_acquisitions', 'minifig_acquisitions', 'instructions'];
   const schreibt = new RegExp(`\\b(UPDATE|INSERT INTO|DELETE FROM)\\s+(${TABELLEN.join('|')})\\b`);
-  const dateien = ['routes/api_v1/sets.ts', 'src/sets/dienst.ts', 'src/bestand/erfassungen.ts',
+  const dateien = ['routes/api_v1/sets.ts', 'src/sets/dienst.ts', 'src/sammlung/erfassungen.ts',
                    'src/teile/manuelleTeile.ts', 'src/figuren/manuelleFiguren.ts',
                    'routes/api_v1/sets.ts', 'routes/api_v1/parts.ts',
                    'routes/api_v1/minifigs.ts', 'routes/api_v1/acquisitions.ts',
                    'src/sets/setMove.ts', 'src/bestand/acquisitions.ts',
-                   // Seit Nachtrag 133 nach Domänen aufgeteilt.
+                   // Seit einer früheren Runde nach Domänen aufgeteilt.
                    'src/sets/abfragen.ts', 'src/teile/abfragen.ts', 'src/figuren/abfragen.ts'];
   const fundstellen = [];
   for (const datei of dateien) {
@@ -333,5 +272,5 @@ test('kein stiller Fehler mehr auf Bestandstabellen', () => {
   }
   assert.deepEqual(fundstellen, [],
     `Stiller Fehler auf einer Bestandstabelle: ${fundstellen.join(', ')} — ` +
-    'entweder durchreichen oder logAndContinue() aus src/infra/httpError.ts');
+    'entweder durchreichen oder logAndContinue() aus src/infra/fehler.ts');
 });

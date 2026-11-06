@@ -39,17 +39,17 @@ test('Finanztabelle nachrechenbar und ohne Umbruch im Kopf', { concurrency: 1, t
     },
   });
   if (app.grund) { t.skip(app.grund); return; }
-  const { b, bis } = app;
+  const { b, bis, ruhig } = app;
+  // Der Start lädt Einstellungen und Preise nach; erst danach ist der Zustand fest.
+  await ruhig();
   const groesse = async (w) => { await b.tab('Emulation.setDeviceMetricsOverride', { width: w, height: 900, deviceScaleFactor: 1, mobile: false }); await warte(300); };
-  await warte(1200);
-  await b.auswerten(`document.querySelector('#einrichtung-modal.open [data-click="einrichtungSpaeter"]')?.click(); true`);
   await b.auswerten(`location.hash = '#/finanzen'; true`);
   await bis(`document.querySelectorAll('[data-fin-art="sets"] tbody tr').length === 2`, 'Sets in der Finanztabelle');
 
   await t.test('Einstand: Spalte ergibt die Summe', async () => {
     const m = await b.auswerten(`(() => {
       const tab = document.querySelector('[data-fin-art="sets"] table');
-      const spalte = [...tab.querySelectorAll('thead th')].findIndex(th => th.textContent.trim() === 'Einstand');
+      const spalte = [...tab.querySelectorAll('thead th')].findIndex(th => th.textContent.trim() === 'Kaufpreis');
       const zahl = s => Number(s.replace(/\\D/g, '')) / 100;
       const zellen = [...tab.querySelectorAll('tbody tr')].map(tr => tr.children[spalte]);
       return { spalte, zeilen: zellen.map(z => zahl(z.firstChild.textContent)), je: zellen.map(z => z.querySelector('.fin-je')?.textContent || ''),
@@ -68,7 +68,7 @@ test('Finanztabelle nachrechenbar und ohne Umbruch im Kopf', { concurrency: 1, t
         await bis(`document.documentElement.lang === 'en'`, 'Englisch');
         await b.auswerten(`location.hash = '#/sammlung'; true`); await warte(300);
         await b.auswerten(`location.hash = '#/finanzen'; true`);
-        await bis(`document.querySelectorAll('[data-fin-art="sets"] tbody tr').length === 2 && /Cost basis/.test(document.querySelector('.dt-fin thead').textContent)`, 'englische Finanztabelle');
+        await bis(`document.querySelectorAll('[data-fin-art="sets"] tbody tr').length === 2 && /Purchase price/.test(document.querySelector('.dt-fin thead').textContent)`, 'englische Finanztabelle');
       }
       for (const w of [1280, 1440]) {
         await groesse(w);

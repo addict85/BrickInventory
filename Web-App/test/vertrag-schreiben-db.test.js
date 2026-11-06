@@ -1,17 +1,7 @@
 /**
  * Jede SCHREIBENDE Route der App gegen ihren Vertrag (src/infra/vertrag/):
  * Antwort und, wo der Vertrag eine nennt, die Eingabe.
- *
- * Gegenstück zu vertrag-lesen-db (dort die GET-Routen). Die App liest
- * ohne coerceInputValues: Ein null in einem nicht-nullbaren Feld ist dort ein
- * Fehler — und bei einer Schreibantwort hiesse das „gescheitert", obwohl
- * gespeichert wurde. Deshalb läuft hier jede Route der App einmal echt durch,
- * oder sie steht mit Grund in AUSGELASSEN. Eine neue Route ohne beides macht
- * den Test rot. Ob die Kotlin-Modelle zum Vertrag passen, prüft vertrag-kotlin.
- *
- * Die Schritte laufen in einer festen Reihenfolge, weil sie aufeinander
- * aufbauen (anlegen → ändern → löschen) und die Sitzung zwischen drei Konten
- * wechselt (Haushalt einladen und beitreten).
+ * Ausführlich: docs/begruendungen/test/vertrag-schreiben-db.test.js.md#kopf
  *
  * Gegenproben (am 27.10. gemessen):
  *   A  in routes/api_v1/sets.ts PUT /storage/default mit `success: null` →
@@ -38,6 +28,8 @@ process.env.SESSION_SECRET = 'test-secret-lang-genug-fuer-die-pruefung';
 
 const ROOT = path.join(__dirname, '..');
 const _req = require('./helpers/sources').buildAndRequire();
+const { importWorker } = require('./helpers/auftraege');
+const { dbOderSkip } = require('./helpers/db');
 const { routerEinhaengungen } = require('./helpers/sources');
 const db = _req('db/database.js');
 const express = require(path.join(ROOT, 'node_modules', 'express'));
@@ -45,6 +37,8 @@ const bcrypt  = require(path.join(ROOT, 'node_modules', 'bcryptjs'));
 const PDFDocument = require('pdfkit');
 const { schreibRouten } = require(path.join(ROOT, 'scripts', 'kotlin-vertrag.js'));
 const { vertragZu } = require('./helpers/vertrag');
+const { mailAttrappe, mailserverEintragen } = require('./helpers/mail-attrappe');
+mailAttrappe();
 
 const NAME = `kschreib_${process.pid}`, PASS = 'VertragsPasswort1!';
 const SET = '99075-1', SET2 = '99076-1', TEIL = '3001ks', FARBE = 5, FARBE2 = 1, FIGUR = 'ks0001';
@@ -86,14 +80,8 @@ function formular(inhalt, typ, name, felder = {}) {
 }
 
 test('die Schreibantworten der App halten ihren Vertrag', { concurrency: 1, timeout: 180_000 }, async (t) => {
-  try { await db.initSchema(); }
-  catch (e) {
-    if (process.env.REQUIRE_DB === '1')
-      throw new Error(`REQUIRE_DB=1, aber die Test-DB ist nicht erreichbar: ${e.message}`);
-    t.skip('Test-DB nicht erreichbar'); return;
-  }
-  const client = await db.pool.connect();
-  try { await _req('db/migrate.js').runMigrations(client); } finally { client.release(); }
+  if (!await dbOderSkip(t, _req)) return;
+  importWorker(t, _req);
 
   // ── Drei Konten: Haupt, Unterkonto, ein drittes für die Einladung ──────
   const namen = [NAME, `${NAME}_sub`, `${NAME}_neu`, `${NAME}_reg`];
@@ -110,7 +98,9 @@ test('die Schreibantworten der App halten ihren Vertrag', { concurrency: 1, time
     `SELECT key, value FROM global_settings WHERE key = ANY($1)`,
     [['cache_ttl_hours', 'default_price_condition', 'app_theme', 'rate_limit_rebrickable',
       'rate_limit_bricklink', 'rate_limit_brickset', 'registration_enabled', 'price_job_interval_minutes']]).catch(() => []);
+  const mailZurueck = await mailserverEintragen(db);
   t.after(async () => {
+    await mailZurueck();
     await db.run('DELETE FROM users WHERE username = ANY($1)', [namen]).catch(() => {});
     for (const tab of ['set_catalog', 'set_parts_catalog', 'set_minifigs_catalog', 'brickset_queue'])
       await db.run(`DELETE FROM ${tab} WHERE set_number = ANY($1)`, [[SET, SET2]]).catch(() => {});
@@ -181,10 +171,10 @@ test('die Schreibantworten der App halten ihren Vertrag', { concurrency: 1, time
         w.qr = 'bim:' + nonce;
       }, body: () => ({ token: w.qr }) },
     { m: 'POST', p: '/api/v1/auth/register', davor: async () => {
-        await db.run(`UPDATE global_settings SET value = '1' WHERE key = 'registration_enabled'`).catch(() => {});
+        await db.run(`INSERT INTO global_settings (key, value) VALUES ('registration_enabled', '1') ON CONFLICT (key) DO UPDATE SET value = '1'`);
       }, body: { username: `${NAME}_reg`, email: `${NAME}_reg@example.org`, password: PASS, language: 'de' } },
     { m: 'POST', p: '/api/v1/auth/forgot-password', body: { email: `${NAME}@example.org` } },
-    { m: 'PUT',  p: '/api/v1/auth/profile', body: { username: NAME, email: `${NAME}@example.org`, first_name: 'Vera', last_name: 'Trag' } },
+    { m: 'PUT',  p: '/api/v1/auth/profile', body: { username: NAME, email: `${NAME}@example.org`, first_name: 'Vera', last_name: 'Trag', password_current: PASS } },
     { m: 'POST', p: '/api/v1/auth/zweiter-faktor/einrichten', body: { password: PASS },
       danach: (j) => { w.geheimnis = j.geheimnis; } },
     { m: 'POST', p: '/api/v1/auth/zweiter-faktor/bestaetigen', body: () => {

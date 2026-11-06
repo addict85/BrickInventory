@@ -2,6 +2,7 @@
  * beim Lesen, hier wird keine Menge geschrieben.
  * Ausführlich: docs/begruendungen/src/sets/setMove.ts.md#abschnitt */
 import type { DbSchnittstelle } from '../../db/database';
+import { withInventoryLock } from '../../db/txLock';
 import { recordAcquisitionForDay } from '../bestand/acquisitions';
 import { fehlerWerfen } from '../infra/fehlerTexte';
 import * as repo from './repository/verschieben';
@@ -96,4 +97,9 @@ export async function moveManualAcquisition(
   if (remaining > 0) return { quantity: movingQty, merged: !!dst, source_emptied: false };
   await repo.entferneManuell(tx, kind, fromId, keyValues, src.id);
   return { quantity: movingQty, merged: !!dst, source_emptied: true };
+}
+
+/** Unter der Sperre des Quellbestands, damit kein zweiter Weg dazwischen bucht. */
+export function verschiebeSet(sn: string, fromId: number, toId: number, erfassungen: number[]): Promise<MoveResult> {
+  return withInventoryLock(fromId, sn, (tx) => moveSetBetweenAccounts(tx, sn, fromId, toId, erfassungen));
 }

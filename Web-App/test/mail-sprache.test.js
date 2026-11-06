@@ -1,29 +1,7 @@
 /**
  * Jede Mail geht in der Sprache ihres EMPFÄNGERS hinaus — und sieht aus wie
  * die anderen.
- *
- * ── Marcos Fragen vom 25.09. ────────────────────────────────────────────────
- *
- *   „Kannst du die Mail noch etwas schöner gestalten analog der E-Mail
- *    Bestätigen Mail?"
- *   „Werden alle E-Mails in der eingestellten Sprache des Benutzers
- *    versendet?"
- *
- * Auf die zweite Frage war die Antwort NEIN, an drei Stellen:
- *
- *   1. sendPasswordResetMail() kannte gar keine Sprache — sie ging immer
- *      deutsch hinaus.
- *   2. Der E-Mail-Wechsel rief sendVerificationMail() OHNE `lang` und fiel
- *      damit auf die Vorgabe zurück, während derselbe Versand bei der
- *      Registrierung sie längst mitgab.
- *   3. Die Alarmmail konnte beide Sprachen, war aber die einzige ohne Hülle.
- *
- * ── Warum eine Regel und nicht nur der Fix ──────────────────────────────────
- *
- * Alle drei sind derselbe Fehler in drei Ausprägungen: Eine Mail entsteht,
- * und niemand fragt, wer sie liest. Das fällt nicht auf — in einem Baum, der
- * auf Deutsch geschrieben ist, sieht eine deutsche Mail immer richtig aus.
- * Gemeldet hat es der einzige, der Englisch eingestellt haben könnte.
+ * Ausführlich: docs/begruendungen/test/mail-sprache.test.js.md#kopf
  *
  * ── Gegenproben (durchgeführt, Ergebnis im Commit) ──────────────────────────
  *   a) `lang` aus sendPasswordResetMail() entfernt        → Schritt 1 rot.
@@ -38,7 +16,7 @@ const path = require('node:path');
 const { ROOT, ohneKommentare } = require('./helpers/sources');
 
 const lies = (rel) => ohneKommentare(fs.readFileSync(path.join(ROOT, rel), 'utf8'));
-const MAILER = lies('src/infra/mailer.ts');
+const MAILER = lies('src/mail/mailer.ts');
 
 /** Der Rumpf einer Funktion — ab ihrem Kopf bis zur nächsten auf Spaltenanfang. */
 function rumpf(quelle, kopf) {
@@ -111,7 +89,7 @@ test('3. und jeder Aufrufer gibt sie mit', () => {
   // Der eigentliche Befund vom 25.09.: Die Funktion KONNTE es, der Aufrufer
   // gab es nur nicht mit. Deshalb werden hier die Aufrufe gezählt, nicht die
   // Signaturen.
-  const auth = lies('routes/auth.ts');
+  const auth = require('./helpers/sources').anmeldeQuelle();
   const stellen = [...auth.matchAll(/(sendVerificationMail|sendPasswordResetMail)\s*\(/g)]
     .map(m => m[1]);
   assert.ok(stellen.length >= 3,
@@ -147,6 +125,6 @@ test('4. die Alarmmail trägt dieselbe Hülle wie die anderen', () => {
   // Alarmlogik. Dort steht das WANN.
   const alarm = lies('src/finanzen/preisalarm.ts');
   assert.ok(!/<table|<p style/.test(alarm),
-    'In src/finanzen/preisalarm.ts steht wieder HTML — die Gestaltung gehört in src/infra/mailer.ts.');
+    'In src/finanzen/preisalarm.ts steht wieder HTML — die Gestaltung gehört in src/mail/mailer.ts.');
   assert.match(alarm, /baueAlarmMail\(/, 'preisalarm.ts benutzt die Vorlage nicht.');
 });

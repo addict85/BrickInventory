@@ -4,6 +4,7 @@ import ch.brickinventoryapp.util.UPDATE_RELEASE_BASIS
 import ch.brickinventoryapp.util.istErlaubteApkAdresse
 import ch.brickinventoryapp.util.istNeuer
 import org.junit.Test
+import java.io.File
 
 /**
  * Die App aktualisiert sich selbst — und tut es vorsichtig.
@@ -19,8 +20,9 @@ import org.junit.Test
  * wie das schiefgehen kann; faellt eine weg, faellt sie lautlos weg.
  *
  * Zwei der Pruefungen fuehren echten Code aus (istNeuer, istErlaubteApkAdresse
- * sind reine Funktionen). Die uebrigen lesen Quelltext — die Alternative waere
- * ein Geraet, und das hat dieser Lauf nicht.
+ * sind reine Funktionen). Die uebrigen lesen Quelltext: Verdrahtung, Netzkonfig
+ * und Obergrenzen. Signatur, Prüfsumme, Fassung, Angebot und stille Prüfung des
+ * UpdateViewModels prüft UpdateViewModelTest ausgeführt.
  */
 class SelbstUpdateTest {
 
@@ -110,31 +112,6 @@ class SelbstUpdateTest {
     private fun quelle(rel: String) = Quellen.ohneKommentare(Quellen.lies(rel))
 
     @Test
-    fun `die Signatur wird geprueft, bevor der Nutzer gefragt wird`() {
-        val feature = quelle("ui/viewmodel/UpdateViewModel.kt")
-        assert(feature.contains("signaturPasst(ctx, ziel)")) {
-            "Das geladene APK wird nicht gegen die Signatur der installierten App geprueft. " +
-                "Android lehnt es zwar ohnehin ab — aber dann steht der Nutzer vor einer " +
-                "Fehlermeldung, NACHDEM er zugestimmt hat."
-        }
-        assert(feature.contains("ziel.delete()")) {
-            "Ein APK mit falscher Signatur bleibt liegen, statt geloescht zu werden"
-        }
-        // Auch der zweite Weg (Erlaubnis nachtraeglich erteilt) prueft erneut:
-        // Zwischen Download und zweitem Anlauf liegt ein Ausflug in die
-        // Systemeinstellungen, und die Datei liegt so lange auf der Platte.
-        val starte = feature.substringAfter("fun starteInstallation()")
-        assert(starte.contains("signaturPasst(ctx, datei)")) {
-            "Der zweite Installationsweg prueft die Signatur nicht"
-        }
-        // Und die Fassung im APK gegen version.json (fassungPasst, UpdateFassungTest).
-        assert(feature.substringBefore("fun starteInstallation()").contains("fassungPasst(") &&
-            starte.contains("fassungPasst(apkFassung(ctx, datei)")) {
-            "Ein Weg installiert, ohne den versionCode im APK zu pruefen"
-        }
-    }
-
-    @Test
     fun `bei Unklarheit wird nicht installiert`() {
         val hilfe = quelle("util/AppUpdate.kt")
         // Jedes `return null` in der Signaturermittlung fuehrt ueber die
@@ -152,13 +129,10 @@ class SelbstUpdateTest {
     fun `die Pruefung beim Start ist still`() {
         // Marcos Vorgabe: beim Start pruefen, nie von allein laden.
         val nav = quelle("AppNavigation.kt")
-        assert(nav.contains("pruefeAufUpdate(still = true)")) {
+        // Der Start fragt über pruefeBeimStart(), das nur bei gesetztem Schalter still prüft.
+        val vm = Quellen.funktion(Quellen.ohneKommentare(Quellen.lies("ui/viewmodel/UpdateViewModel.kt")), "fun pruefeBeimStart(")
+        assert(nav.contains("selbstUpdate.pruefeBeimStart()") && vm.contains("pruefeAufUpdate(still = true)")) {
             "Beim Start wird nicht (mehr) still nach einem Update gesehen"
-        }
-        val feature = quelle("ui/viewmodel/UpdateViewModel.kt")
-        assert(feature.contains("if (still) null")) {
-            "Die stille Pruefung hinterlaesst eine Fehlermeldung — wer ohne Netz " +
-                "startet, saehe bei jedem Start eine rote Zeile"
         }
         // Und sie laedt nichts: ladeUpdate() hat genau einen Ausloeser, den Knopf.
         assert(!nav.contains("ladeUpdate()")) {
@@ -187,7 +161,7 @@ class SelbstUpdateTest {
     @Test
     fun `die Aktualisierung vertraut nur System-Zertifikaten`() {
         // Von GitHub kommt ein APK: nur System-CAs, kein Klartext.
-        val cfg = java.io.File(Quellen.res, "xml/network_security_config.xml").readText()
+        val cfg = File(Quellen.res, "xml/network_security_config.xml").readText()
         val ab = cfg.indexOf("<domain-config")
         assert(ab > 0) {
             "Es gibt keinen eigenen domain-config-Block mehr — dann gilt fuer GitHub " +
@@ -234,7 +208,7 @@ class SelbstUpdateTest {
                hilfe.contains("const val UPDATE_JSON_MAX_BYTES")) {
             "Die Obergrenzen sind nicht mehr benannt"
         }
-        val feature = quelle("ui/viewmodel/UpdateViewModel.kt")
+        val feature = quelle("data/UpdateRepository.kt")
         // version.json: peekBody liest HOECHSTENS so viele Bytes.
         assert(feature.contains("peekBody(UPDATE_JSON_MAX_BYTES)")) {
             "version.json wird wieder unbegrenzt gelesen — dann bringt eine manipulierte " +
@@ -265,9 +239,8 @@ class SelbstUpdateTest {
             "Ohne die Berechtigung kann die App den Installer nicht oeffnen"
         }
         // Das APK geht per PackageInstaller-Sitzung ans System; eine Freigabe über
-        // den FileProvider gäbe es jeder App, die eine URI zugespielt bekommt.
-        val pfade = java.io.File(Quellen.res, "xml/file_paths.xml").readText()
-        assert(!pfade.contains("path=\"update")) { "Das Update-Verzeichnis ist über den FileProvider freigegeben" }
+        // einen FileProvider gäbe es jeder App, die eine URI zugespielt bekommt.
+        assert(!manifest.contains("FileProvider")) { "Ein FileProvider könnte das Update-Verzeichnis freigeben" }
     }
 
     @Test
@@ -339,7 +312,7 @@ class SelbstUpdateTest {
     @Test
     fun `der Dialog haengt ueber der ganzen App, nicht an einem Bildschirm`() {
         val nav = Quellen.ohneKommentare(Quellen.lies("AppNavigation.kt"))
-        assert(nav.contains("dialogs.UpdateDialog(selbstUpdate)")) {
+        assert(nav.contains("UpdateRoute(selbstUpdate)")) {
             "Der Update-Hinweis wird nirgends gezeigt. In einem einzelnen Bildschirm " +
                 "aufgerufen bekaeme ihn nur, wer ohnehin dort sitzt — genau der Fehler, " +
                 "den der Punkt in den Einstellungen schon einmal hatte."
@@ -367,7 +340,7 @@ class SelbstUpdateTest {
         }
         // Und der Start stoesst weiterhin nur die PRUEFUNG an.
         val nav = Quellen.ohneKommentare(Quellen.lies("AppNavigation.kt"))
-        assert(nav.contains("selbstUpdate.pruefeAufUpdate(still = true)")) {
+        assert(nav.contains("selbstUpdate.pruefeBeimStart()")) {
             "Die stille Pruefung beim Start ist weg"
         }
         assert(!nav.contains("ladeUpdate")) {
@@ -392,13 +365,6 @@ class SelbstUpdateTest {
         val dialog = Quellen.ohneKommentare(Quellen.lies("ui/dialogs/UpdateDialog.kt"))
         assert(dialog.contains("if (zustand.dialogAbgelehnt) return")) {
             "Der Dialog fragt trotz „Spaeter\" weiter"
-        }
-        // Nicht auf die Platte: Der Merker gehoert in den Zustand, nicht in die
-        // Einstellungen. Ein dauerhaftes „nein" waere nicht mehr rueckgaengig
-        // zu machen, ohne die App neu einzurichten.
-        val feature = Quellen.ohneKommentare(Quellen.lies("ui/viewmodel/UpdateViewModel.kt"))
-        assert(!feature.contains("prefs.save")) {
-            "Das Wegklicken wird dauerhaft gespeichert — dann fragt die App nie wieder"
         }
     }
 }

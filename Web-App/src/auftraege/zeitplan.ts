@@ -1,7 +1,8 @@
-import { getGlobalSetting } from '../konto/settings';
+import { getGlobalSetting } from '../einstellungen/settings';
 import { notify } from '../../db/pgNotify';
 import { type AuftragsArt } from './auftraege';
 import { AUFTRAG_KANAL, stelleAuftragEin, setzeFaelligkeit, zieheTerminVor, laeuftArt } from './dienst';
+import { pruefeNutzlast, type NutzlastEingabe } from './nutzlasten';
 
 /** Je geplanter Art genau ein offener Auftrag `plan:<art>`; eine geänderte
  * Uhrzeit verschiebt nur faellig_ab — kein Zeitgeber muss neu gestellt werden. */
@@ -9,7 +10,10 @@ type Zeitplan =
   | { taeglich: { einstellung: string; vorgabe: string } }
   | { minuten: { einstellung?: string; vorgabe: number; mindestens?: number } };
 
-export const ZEITPLAENE: Partial<Record<AuftragsArt, Zeitplan>> = {
+export type GeplanteArt = 'csv_sync' | 'preise' | 'bild_nachlauf' | 'aufraeumen' | 'aufraeumen_taeglich';
+type PlanNutzlast = NutzlastEingabe<GeplanteArt>;
+
+export const ZEITPLAENE: Record<GeplanteArt, Zeitplan> = {
   csv_sync:            { taeglich: { einstellung: 'job_time_csv_sync', vorgabe: '03:00' } },
   preise:              { minuten: { einstellung: 'price_job_interval_minutes', vorgabe: 60, mindestens: 5 } },
   bild_nachlauf:       { minuten: { vorgabe: 60 } },
@@ -25,7 +29,7 @@ export const DAILY_JOBS = [
 ] as const;
 
 export const planSchluessel = (art: AuftragsArt) => `plan:${art}`;
-export const hatZeitplan = (art: AuftragsArt) => Object.hasOwn(ZEITPLAENE, art);
+export const hatZeitplan = (art: AuftragsArt): art is GeplanteArt => Object.hasOwn(ZEITPLAENE, art);
 
 export function leseUhrzeit(s: string | null | undefined, vorgabe: string): { h: number; min: number } {
   const m = /^(\d{1,2}):(\d{2})$/.exec(String(s ?? '').trim()) ?? /^(\d{1,2}):(\d{2})$/.exec(vorgabe);
@@ -46,9 +50,8 @@ export async function taeglicheUhrzeit(name: typeof DAILY_JOBS[number]['name']):
   return leseUhrzeit(await getGlobalSetting(`job_time_${name}`), meta.default);
 }
 
-export async function naechsterLauf(art: AuftragsArt, jetzt = new Date()): Promise<Date> {
+export async function naechsterLauf(art: GeplanteArt, jetzt = new Date()): Promise<Date> {
   const plan = ZEITPLAENE[art];
-  if (!plan) throw new Error(`kein Zeitplan für ${art}`);
   if ('taeglich' in plan) {
     return naechsteUhrzeit(leseUhrzeit(await getGlobalSetting(plan.taeglich.einstellung), plan.taeglich.vorgabe), jetzt);
   }
@@ -57,22 +60,22 @@ export async function naechsterLauf(art: AuftragsArt, jetzt = new Date()): Promi
   return new Date(jetzt.getTime() + min * 60_000);
 }
 
-export async function planeNaechsten(art: AuftragsArt, nutzlast: Record<string, unknown> = {}): Promise<string | null> {
+export async function planeNaechsten(art: GeplanteArt, nutzlast: PlanNutzlast = {}): Promise<string | null> {
   return stelleAuftragEin(art, nutzlast, { schluessel: planSchluessel(art), faelligAb: await naechsterLauf(art), maxVersuche: 3 });
 }
 
 export async function planeAlle(): Promise<void> {
-  for (const art of Object.keys(ZEITPLAENE) as AuftragsArt[]) await planeNaechsten(art);
+  for (const art of Object.keys(ZEITPLAENE) as GeplanteArt[]) await planeNaechsten(art);
 }
 
-export async function zeitplanGeaendert(art: AuftragsArt): Promise<void> {
+export async function zeitplanGeaendert(art: GeplanteArt): Promise<void> {
   await setzeFaelligkeit(planSchluessel(art), await naechsterLauf(art));
   await notify(AUFTRAG_KANAL, art);
 }
 
 /** @returns false, wenn er gerade läuft */
-export async function ziehePlanVor(art: AuftragsArt, sekunden = 0, nutzlast: Record<string, unknown> = {}): Promise<boolean> {
-  if (await zieheTerminVor(planSchluessel(art), sekunden, nutzlast)) { await notify(AUFTRAG_KANAL, art); return true; }
+export async function ziehePlanVor(art: GeplanteArt, sekunden = 0, nutzlast: PlanNutzlast = {}): Promise<boolean> {
+  if (await zieheTerminVor(planSchluessel(art), sekunden, pruefeNutzlast(art, nutzlast))) { await notify(AUFTRAG_KANAL, art); return true; }
   if (await laeuftArt(art)) return false;
   await stelleAuftragEin(art, nutzlast, { schluessel: planSchluessel(art), nachSekunden: sekunden, maxVersuche: 3 });
   return true;

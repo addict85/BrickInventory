@@ -12,7 +12,7 @@ import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.hasClickAction
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.accessibility.enableAccessibilityChecks
-import androidx.compose.ui.test.junit4.createAndroidComposeRule
+import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
@@ -29,7 +29,7 @@ import ch.brickinventoryapp.ui.GutscheinUiState
 import ch.brickinventoryapp.ui.screens.AddSetDialog
 import ch.brickinventoryapp.ui.screens.GutscheineCard
 import ch.brickinventoryapp.ui.screens.LoginScreen
-import ch.brickinventoryapp.ui.screens.SetDetailScreen
+import ch.brickinventoryapp.ui.screens.SetDetailRoute
 import ch.brickinventoryapp.ui.components.LocalSchrittschutz
 import ch.brickinventoryapp.ui.components.Schrittschutz
 import ch.brickinventoryapp.ui.theme.BrickInventoryManagerTheme
@@ -41,8 +41,9 @@ import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
-import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
+import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.test.SemanticsMatcher
 
 /**
  * Die Kernabläufe als Oberflächentest auf der JVM (Robolectric): anmelden, Set
@@ -64,12 +65,15 @@ import org.robolectric.annotation.GraphicsMode
  *       Nummer nicht kopiert“ (gegenproben/gutschein-nummer-ohne-geraetesperre.patch)
  *   (g) in PasswortRueckfrage das Codefeld nie gezeigt → rot „die Rueckfrage zeigt das
  *       Codefeld erst auf Verlangen“ (gegenproben/gutschein-rueckfrage-ohne-code.patch)
+ *   (h) im Set-Detail der Papierkorb immer mit Rückfrage → rot „ein Set loescht mit
+ *       Rueckgaengig sofort …“ (gegenproben/set-loeschen-doppelt-gesichert.patch)
+ *   (i) Hinzufügen ohne Nummer markiert das Feld nicht → rot „ein Set ohne Nummer sagt …“
+ *       (gegenproben/erfassen-ohne-grund.patch)
  */
 @RunWith(RobolectricTestRunner::class)
 // NATIVE wie bei den Bildschirmfotos: Die Kontrastprüfung des ATF liest ein
 // Bildschirmfoto, und im LEGACY-Grafikmodus von Robolectric gibt es keins.
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
-@Config(sdk = [35])
 class AblaufTest {
 
     @get:Rule
@@ -118,6 +122,17 @@ class AblaufTest {
         assertEquals("75192" to 3, erfasst)
     }
 
+    /** Hinzufügen ohne Nummer erfasst nichts, sagt aber am Feld, was fehlt (statt grau ohne Grund). */
+    @Test
+    fun `ein Set ohne Nummer sagt beim Tippen auf Hinzufuegen, was fehlt`() {
+        var erfasst = 0
+        zeige { AddSetDialog(onDismiss = {}, onAdd = { _, _, _, _, _, _ -> erfasst++ }, sofortFokus = false) }
+        compose.onNode(hasText(ctx.getString(R.string.gallery_add)) and hasClickAction()).performClick()
+        compose.waitForIdle()
+        assertEquals("Ohne Nummer wird nichts erfasst", 0, erfasst)
+        compose.onNodeWithText(ctx.getString(R.string.erfassen_nummer_fehlt), useUnmergedTree = true).assertIsDisplayed()
+    }
+
     @Test
     fun `die Menge aendern schickt einen Schritt an den Server`() {
         val w = Beispiele.Welt().also { welt = it }
@@ -125,7 +140,7 @@ class AblaufTest {
         w.pfade.antworten["/api/v1/sets/75192-1"] =
             """{"success":true,"quantity":3,"set":{"set_number":"75192-1","name":"Millennium Falcon","quantity":2}}"""
         zeige {
-            SetDetailScreen(setNumber = Beispiele.SET, vm = vm, serverUrl = "",
+            SetDetailRoute(setNumber = Beispiele.SET, vm = vm, serverUrl = "",
                 imageLoader = coil3.ImageLoader.Builder(ctx).build(), onBack = {}, onDelete = {})
         }
         compose.waitUntil(10_000) { vm.setDetailState.value.setDetail != null }
@@ -133,11 +148,39 @@ class AblaufTest {
         // Robolectric-Bildschirm (320 × 470 dp) ist sie erst nach dem Rollen da.
         val plus = androidx.compose.ui.test.hasContentDescription(ctx.getString(R.string.cd_qty_increase))
         compose.onNode(androidx.compose.ui.test.hasScrollToNodeAction() and
-            androidx.compose.ui.test.SemanticsMatcher.keyIsDefined(androidx.compose.ui.semantics.SemanticsProperties.VerticalScrollAxisRange))
+            SemanticsMatcher.keyIsDefined(SemanticsProperties.VerticalScrollAxisRange))
             .performScrollToNode(plus)
         compose.onNode(plus).performClick()
         compose.waitUntil(10_000) { w.pfade.anfragenAn("PUT /api/v1/sets/75192-1").isNotEmpty() }
         assertTrue(w.pfade.koerper.any { it.contains("\"quantity_delta\":1") })
+    }
+
+    /** Eine Sicherung genügt: mit „Rückgängig“ darunter keine Rückfrage, ohne sie schon. */
+    @Test
+    fun `ein Set loescht mit Rueckgaengig sofort, ohne Rueckgaengig erst nach Rueckfrage`() {
+        val w = Beispiele.Welt().also { welt = it }
+        val vm = w.setDetail()
+        var rueckgaengig by mutableStateOf(true)
+        val geloescht = mutableListOf<String>()
+        zeige {
+            SetDetailRoute(setNumber = Beispiele.SET, vm = vm, serverUrl = "",
+                imageLoader = coil3.ImageLoader.Builder(ctx).build(), onBack = {}, onDelete = { geloescht += it },
+                rueckgaengigMoeglich = rueckgaengig)
+        }
+        compose.waitUntil(10_000) { vm.setDetailState.value.setDetail != null }
+        val name = vm.setDetailState.value.setDetail?.name ?: Beispiele.SET
+        val papierkorb = compose.onNodeWithContentDescription(ctx.getString(R.string.cd_set_delete, name))
+        papierkorb.performClick()
+        compose.waitForIdle()
+        assertEquals("Mit Rückgängig sofort vorgemerkt", listOf(Beispiele.SET), geloescht)
+        compose.onNode(androidx.compose.ui.test.isDialog()).assertDoesNotExist()
+
+        rueckgaengig = false
+        compose.waitForIdle()
+        papierkorb.performClick()
+        compose.waitForIdle()
+        assertEquals("Ohne Rückgängig erst nach der Rückfrage", 1, geloescht.size)
+        compose.onNode(androidx.compose.ui.test.isDialog()).assertExists()
     }
 
     /** Der Zustand der Gutscheinkarte; die Tests der Rückfrage setzen ihn um. */

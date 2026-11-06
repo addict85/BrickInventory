@@ -1,18 +1,6 @@
 /**
  * Zahlen, Achsen und Zwischenzustände — am echten Bündel in jsdom.
- *
- *   - Die Kopfleiste zeigt 1300 Teile als „1’300“ (de-CH), nicht „1.3k“.
- *   - Das Wertdiagramm teilt die Werte nach 1-2-5, legt die Punkte auf eine
- *     Zeitachse (ein Monat ist breiter als ein Tag) und beschriftet sie
- *     einheitlich mit Monatsnamen — ohne „29.10“ neben „12/25“.
- *   - Solange Finanzen laden, stehen in den Kacheln Platzhalter (aria-busy)
- *     statt „—“.
- *   - Solange die Teile laden, steht die leere Box „Manuell erfasste Teile“
- *     nicht da.
- *   - Ohne E-Mail-Adresse steht im Konto nicht „verifiziert“.
- *   - Der Hinweis „Rebrickable-API-Schlüssel“ erscheint nicht über dem
- *     Einrichtungsassistenten, der genau ihn abfragt.
- *   - Das Konto wählt ein eigenes Design oder die Vorgabe des Verwalters.
+ * Ausführlich: docs/begruendungen/test/anzeige-zustaende-oberflaeche.test.js.md#kopf
  *
  * Gegenproben (am 29.10.2026 gemessen):
  *   A  fmtBig wieder mit „k“ → rot: „Kennzahlen ohne k“ („1.3k“)
@@ -28,6 +16,8 @@
  *      → rot: „kein Hinweis über dem Assistenten“ (02.11.2026 erneut gemessen)
  *   G  in setzeEigenesDesign applyTheme() entfernt → rot: „eigenes Design“
  *      (data-theme blieb classic)
+ *   H  (04.11.2026) in loadProfile den Hinweis auf email_neu entfernt → rot:
+ *      „ausstehende Adresse“ (der Hinweis blieb leer)
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -71,7 +61,8 @@ test('Wertdiagramm: Teilung nach 1-2-5, echte Zeitachse, Monatsnamen', async () 
     assert.ok(y.every(v => v % schritt === 0), `krumme Werte: ${y}`);
     const x = texte.filter(t => +t.getAttribute('y') > 160).map(t => t.textContent);
     assert.ok(x.length >= 3, `nur ${x.length} Beschriftungen an der Zeitachse`);
-    assert.ok(x.every(t => /^[A-Za-zäÄ]{3,4}\.? \d{2}$/.test(t)), `uneinheitlich: ${x.join(' | ')}`);
+    // Ganzes Jahr: „Juli 26“ las sich auch als 26. Juli.
+    assert.ok(x.every(t => /^[A-Za-zäÄ]{3,5}\.? \d{4}$/.test(t)), `uneinheitlich: ${x.join(' | ')}`);
     // Zwischen den letzten beiden Punkten liegt ein Tag, davor ein Monat.
     const cx = JSON.parse(svg.dataset.punkte).map(p => p.x);
     const tag = cx[13] - cx[12], monat = cx[12] - cx[11];
@@ -114,7 +105,7 @@ test('Teile: Solange sie laden, keine leere Box „Manuell erfasste Teile“', a
 
 test('Konto: ohne E-Mail steht nicht „verifiziert“', async () => {
   const { w, d } = await oeffneOberflaeche({ '/v1/auth/profile': { success: true,
-    user: { username: 'anna', email: '', email_verified: 1, first_name: '', last_name: '' } } });
+    user: { username: 'anna', email: '', email_verified: true, first_name: '', last_name: '' } } });
   try {
     await sicht(w, 'profil');
     await warte(() => d.getElementById('prof-user').value === 'anna');
@@ -122,14 +113,25 @@ test('Konto: ohne E-Mail steht nicht „verifiziert“', async () => {
   } finally { w.close(); }
 });
 
+test('Konto: eine ausstehende Adresse steht unter dem Feld, im Feld die geltende', async () => {
+  const { w, d } = await oeffneOberflaeche({ '/v1/auth/profile': { success: true, user: { username: 'anna',
+    email: 'alt@example.org', email_verified: true, email_neu: 'neu@example.org', first_name: '', last_name: '' } } });
+  try {
+    await sicht(w, 'profil');
+    await warte(() => d.getElementById('prof-user').value === 'anna');
+    assert.equal(d.getElementById('prof-email').value, 'alt@example.org');
+    assert.match(d.getElementById('prof-email-hint').textContent, /^Ausstehend: neu@example\.org\. Sie gilt erst/);
+  } finally { w.close(); }
+});
+
 test('kein Hinweis zum Rebrickable-Schlüssel über dem Einrichtungsassistenten', async () => {
-  const { w, d } = await oeffneOberflaeche({
+  const { w, d, ruhig } = await oeffneOberflaeche({
     '/v1/settings/raw': { success: true, settings: { currency: 'EUR', language: 'de', rebrickable_api_key: '' } },
     '/v1/settings/einrichtung': { success: true, offen: true, passwort_aendern: false, quellen: { rebrickable: false } },
   });
   try {
     await warte(() => d.getElementById('einrichtung-modal').classList.contains('open'));
-    await takt(700);
+    await ruhig();
     assert.ok(d.getElementById('einrichtung-modal').classList.contains('open'), 'der Assistent ist zu');
     const hinweise = [...d.querySelectorAll('#toasts .toast')].map(t => t.textContent).filter(t => /Rebrickable/.test(t));
     assert.deepEqual(hinweise, []);
@@ -141,7 +143,7 @@ test('Konto: eigenes Design oder Vorgabe des Verwalters', async () => {
   const aufrufe = [];
   let eigenes = null;
   const { w, d } = await oeffneOberflaeche({
-    '/v1/auth/profile': { success: true, user: { username: 'anna', email: 'anna@example.org', email_verified: 1 } },
+    '/v1/auth/profile': { success: true, user: { username: 'anna', email: 'anna@example.org', email_verified: true } },
     '/v1/settings/theme': () => ({ success: true, theme: eigenes || 'noppe', vorgabe: 'noppe', eigenes }),
     '/v1/settings/user/theme': (_url, o) => { aufrufe.push(JSON.parse(o.body)); eigenes = JSON.parse(o.body).theme || null;
       return { success: true, theme: eigenes || 'noppe', vorgabe: 'noppe', eigenes }; },

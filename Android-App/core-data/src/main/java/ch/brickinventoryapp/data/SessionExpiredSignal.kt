@@ -1,36 +1,29 @@
 package ch.brickinventoryapp.data
 
-import kotlinx.coroutines.flow.MutableSharedFlow
-import kotlinx.coroutines.flow.SharedFlow
-import kotlinx.coroutines.flow.asSharedFlow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import javax.inject.Inject
 import javax.inject.Singleton
 
 /**
  * Verbindet den OkHttp-Interceptor (sieht als Erstes, dass der Server einen
- * 401 zurückgibt) mit dem AppViewModel (der Einzige, der abmelden darf).
- *
- * Der Interceptor läuft auf einem OkHttp-Dispatcher-Thread und kennt weder
- * ViewModel noch Compose — er kann also nicht selbst ausloggen. Er meldet den
- * abgelaufenen Token stattdessen hier; das AppViewModel sammelt [events] und
- * ruft dann logout() auf.
- *
- * extraBufferCapacity = 1 + DROP_OLDEST: Ein einzelner "Sitzung abgelaufen"-
- * Puffer reicht — meldet der Interceptor mehrere 401 kurz hintereinander
- * (mehrere parallele Requests scheitern gleichzeitig), zählt nur, dass es
- * mindestens einmal passiert ist. Es soll nicht mehrfach hintereinander
- * ausgeloggt/gesnackbart werden.
+ * 401 zurückgibt) mit dem SitzungsDienst (der Einzige, der abmelden darf).
+ * Ein Zustand bis zur Quittung statt eines Ereignisses: Ein 401 vor dem ersten
+ * Sammler (Kaltstart, Worker) ginge sonst verloren.
+ * Ausführlich: docs/begruendungen/core-data/data/SessionExpiredSignal.kt.md#constructor
  */
 @Singleton
 class SessionExpiredSignal @Inject constructor() {
-    private val _events = MutableSharedFlow<Unit>(
-        replay = 0,
-        extraBufferCapacity = 1,
-        onBufferOverflow = kotlinx.coroutines.channels.BufferOverflow.DROP_OLDEST
-    )
-    val events: SharedFlow<Unit> = _events.asSharedFlow()
+    private val _abgelaufen = MutableStateFlow(false)
+    val abgelaufen: StateFlow<Boolean> = _abgelaufen.asStateFlow()
 
     fun notifyExpired() {
-        _events.tryEmit(Unit)
+        _abgelaufen.value = true
+    }
+
+    /** Der Verbraucher hat reagiert; ein weiterer 401 meldet erneut. */
+    fun quittiere() {
+        _abgelaufen.value = false
     }
 }

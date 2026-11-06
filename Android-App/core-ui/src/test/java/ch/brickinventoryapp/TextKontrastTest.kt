@@ -9,6 +9,7 @@ import ch.brickinventoryapp.ui.theme.akzentflaechen
 import ch.brickinventoryapp.ui.theme.diagrammFarben
 import ch.brickinventoryapp.ui.theme.farbschema
 import ch.brickinventoryapp.ui.theme.hatDunkleFassung
+import ch.brickinventoryapp.ui.theme.reiterFarben
 import ch.brickinventoryapp.ui.theme.statusFarbenFuer
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -18,7 +19,7 @@ import org.junit.Test
  * 4,5:1 (WCAG 1.4.3) — in allen sechs Designs, hell und in der dunklen Fassung.
  * Dazu sind Fehler- und Hauptfarbe unterscheidbar, damit Rot nicht doppelt spricht.
  *
- * Gegenproben (01.11.2026, kotlinc gegen Compose Desktop, Theme.kt ohne Composable):
+ * Gegenproben:
  *   A  alte Farben: beide ersten Tests rot, 33 Paare unter 4,5:1, darunter
  *      brick.onSurfaceVariant/background 3,91, classic …/surfaceContainerHighest 3,85,
  *      noppe.primary/background 4,44, onError/error in allen dunklen Fassungen 4,48;
@@ -26,14 +27,22 @@ import org.junit.Test
  *   B  brick.onSurfaceVariant zurück auf #6B7785 → rot (3,91 auf background)
  *   C  noppe.primary zurück auf NoppeRot → rot: „Hauptfarbe zu nah …“ (0,13)
  *
- * Diagrammfarben (02.11.2026, thema.py gegen Compose Desktop):
+ * Diagrammfarben :
  *   D  in diagrammFarben() gedaempft wieder fest #94A3B8 → rot „Diagrammschrift …“
  *      mit classic 2,56 auf surface und 2,07 auf surfaceContainerHighest
  *
- * Akzentflächen (03.11.2026, thema.py gegen Compose Desktop):
+ * Akzentflächen :
  *   E  in akzentflaechen() die Stein-Flächen auch im Dunkeln (wie vor M5: Leisten in
  *      primary/secondary, Marktwert Petrol) → rot „im Dunkeln leuchtet …“ mit
  *      brick/dunkel.leiste 0,45, .detailLeiste 0,63, .markt 0,17
+ *
+ * Gegenproben der Farbrollen (thema.py gegen Compose Desktop; Patches unter gegenproben/):
+ *   container-ohne-stauchung   → rot classic.primary/surfaceContainerHighest 4,18
+ *   primarycontainer-blau50    → rot classic.primary/primaryContainer 4,24
+ *   inverseprimary-ungeprueft  → rot farbfaecher.inversePrimary/inverseSurface 3,73
+ *   gebraucht-linie-blass      → rot noppe.gebraucht/surface 2,61
+ *   reiteranzeige-blass        → rot classic.anzeige/leiste 1,02
+ *   warnfarbe-hell             → rot classic.warnung/surface 1,95
  */
 class TextKontrastTest {
 
@@ -50,9 +59,8 @@ class TextKontrastTest {
 
     /**
      * Achsen und Hinweise im Diagramm sind Schrift: 4,5:1 auf jeder Fläche, auf der
-     * eine Karte liegen kann. Die Linien sind Grafik und brauchen 3:1 (WCAG 1.4.11);
-     * die Gebraucht-Linie fehlt hier, weil ihr Ton aus tokens.css der Webapp kommt
-     * (noppe #FF7A00: 2,6:1) und nur dort geändert werden kann.
+     * eine Karte liegen kann. Die Linien sind Grafik und brauchen 3:1 (WCAG 1.4.11),
+     * auch die Gebraucht-Linie.
      */
     @Test
     fun `Diagrammschrift und Linien sind lesbar`() {
@@ -61,7 +69,7 @@ class TextKontrastTest {
             val flaechen = listOf("surface" to s.surface, "background" to s.background,
                 "surfaceContainerHighest" to s.surfaceContainerHighest)
             flaechen.mapNotNull { (n, fl) -> k(d.gedaempft, fl).takeIf { it < 4.5 }?.let { "${f.name}.gedaempft/$n %.2f".format(it) } } +
-                listOf("linie" to d.linie, "neu" to d.new).mapNotNull { (n, c) ->
+                listOf("linie" to d.linie, "neu" to d.new, "gebraucht" to d.used).mapNotNull { (n, c) ->
                     k(c, s.surface).takeIf { it < Kontrast.RAHMEN }?.let { "${f.name}.$n/surface %.2f".format(it) } }
         }
         assertTrue("Diagrammschrift oder -linie zu schwach: $fehler", fehler.isEmpty())
@@ -79,12 +87,17 @@ class TextKontrastTest {
             paare["onSurface/$n"] = s.onSurface to fl
             paare["onSurfaceVariant/$n"] = s.onSurfaceVariant to fl
         }
+        // Dialoge, Menüs und Blätter liegen auf den Containerstufen; ihre Textknöpfe sind primary.
+        for ((n, fl) in flaechen) {
+            paare["primary/$n"] = s.primary to fl
+            paare["error/$n"] = s.error to fl
+        }
         for (n in listOf("surface", "background", "surfaceContainer")) {
-            paare["primary/$n"] = s.primary to flaechen.getValue(n)
-            paare["error/$n"] = s.error to flaechen.getValue(n)
             paare["erfolg/$n"] = f.status.erfolg to flaechen.getValue(n)
             paare["fehler/$n"] = f.status.fehler to flaechen.getValue(n)
         }
+        paare["primary/primaryContainer"] = s.primary to s.primaryContainer
+        paare["inversePrimary/inverseSurface"] = s.inversePrimary to s.inverseSurface
         paare["onPrimary/primary"] = s.onPrimary to s.primary
         paare["onPrimaryContainer/primaryContainer"] = s.onPrimaryContainer to s.primaryContainer
         paare["onSecondary/secondary"] = s.onSecondary to s.secondary
@@ -145,6 +158,31 @@ class TextKontrastTest {
             textPaare(f).mapNotNull { (n, p) -> k(p.first, p.second).takeIf { it < 4.5 }?.let { "${f.name}.$n %.2f".format(it) } }
         }
         assertTrue("Unter 4,5:1: $fehler", fehler.isEmpty())
+    }
+
+    /** Das gewählte Ziel der Navigation ist an der Fläche seiner Anzeige erkennbar, nicht nur am Farbton. */
+    @Test
+    fun `die Anzeige des gewaehlten Reiters hebt sich von Leiste und Seitenleiste ab`() {
+        val fehler = fassungen.flatMap { f ->
+            val r = reiterFarben(f.s)
+            listOf("leiste" to r.leiste, "seitenleiste" to f.s.surface).mapNotNull { (n, fl) ->
+                k(r.anzeige, fl).takeIf { it < Kontrast.RAHMEN }?.let { "${f.name}.anzeige/$n %.2f".format(it) }
+            } + listOf("aufAnzeige" to (r.aufAnzeige to r.anzeige), "gewaehlt" to (r.gewaehlt to r.leiste),
+                "ungewaehlt" to (r.ungewaehlt to r.leiste)).mapNotNull { (n, p) ->
+                k(p.first, p.second).takeIf { it < 4.5 }?.let { "${f.name}.$n %.2f".format(it) }
+            }
+        }
+        assertTrue("Gewählter Reiter kaum erkennbar: $fehler", fehler.isEmpty())
+    }
+
+    /** Warnfarbe zeichnet Balken und Symbole (Monitoring, CSV-Bericht): Grafik braucht 3:1. */
+    @Test
+    fun `Warnfarbe ist als Grafik auf jeder Flaeche sichtbar`() {
+        val fehler = fassungen.flatMap { f ->
+            listOf("surface" to f.s.surface, "background" to f.s.background, "surfaceContainer" to f.s.surfaceContainer)
+                .mapNotNull { (n, fl) -> k(f.status.warnung, fl).takeIf { it < Kontrast.RAHMEN }?.let { "${f.name}.warnung/$n %.2f".format(it) } }
+        }
+        assertTrue("Unter 3:1: $fehler", fehler.isEmpty())
     }
 
     @Test

@@ -1,32 +1,24 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-  Cloud-Backup ist über allowBackup="false" aus; der Geräte-zu-Geräte-Transfer
-  (Android 12+) läuft trotzdem. Was zum angemeldeten Konto gehört, bleibt auf
-  diesem Gerät: Token (Datastore, verschlüsselt — doppelt hält besser), lokale
-  Ablage, Zahlen des Widgets, Vorschaubilder, PDFs (Gutscheine) und das geladene
-  Update. Dazu design_spiegel.xml: Pins und der Schalter für Nutzer-CAs sind
-  Vertrauensentscheidungen für dieses Gerät, nicht für ein anderes.
-  Neue Ablagen mit Kontodaten gehören in beide Listen.
+  Nichts verlässt das Gerät, weder per Cloud-Sicherung noch per Geräteumzug: ganze
+  Domänen statt einer Liste (sec17 B-N13), damit eine neue Ablage nicht erst
+  eingetragen werden muss. root deckt files, databases und shared_prefs ab, device_root
+  den gerätegeschützten Speicher. Wer auf einem neuen Gerät weitermacht, meldet sich an;
+  alles Übrige liegt auf dem Server.
 -->
 <data-extraction-rules>
     <cloud-backup>
-        <exclude domain="file" path="datastore" />
-        <exclude domain="database" path="bestand.db" />
-        <exclude domain="sharedpref" path="widget.xml" />
-        <exclude domain="sharedpref" path="design_spiegel.xml" />
-        <exclude domain="file" path="vorschau" />
-        <exclude domain="file" path="pdf" />
-        <exclude domain="file" path="update" />
-        <exclude domain="external" path="pdf" />
+        <exclude domain="root" path="." />
+        <exclude domain="file" path="." />
+        <exclude domain="database" path="." />
+        <exclude domain="external" path="." />
+        <exclude domain="device_root" path="." />
     </cloud-backup>
     <device-transfer>
-        <exclude domain="file" path="datastore" />
-        <exclude domain="database" path="bestand.db" />
-        <exclude domain="sharedpref" path="widget.xml" />
-        <exclude domain="sharedpref" path="design_spiegel.xml" />
-        <exclude domain="file" path="vorschau" />
-        <exclude domain="file" path="pdf" />
-        <exclude domain="file" path="update" />
-        <exclude domain="external" path="pdf" />
+        <exclude domain="root" path="." />
+        <exclude domain="file" path="." />
+        <exclude domain="database" path="." />
+        <exclude domain="external" path="." />
+        <exclude domain="device_root" path="." />
     </device-transfer>
 </data-extraction-rules>

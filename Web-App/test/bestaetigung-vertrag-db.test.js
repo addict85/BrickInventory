@@ -16,6 +16,8 @@
  *      „ohne Marke keine Bestätigung"
  *   E  in routes/api_v1/papierkorb.ts ein eigenes bcrypt.compare( → rot:
  *      „kein zweiter Weg zum Passwortvergleich"
+ *   F  (05.11.2026) in NurCode (konto.ts) `password: txtLeer(…)` statt
+ *      `z.null()` → rot: „jede Passwort-Eingabe trägt die Marke"
  *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL.
  */
@@ -86,7 +88,7 @@ test('ein einziger Bestätigungsweg', { concurrency: 1 }, async (t) => {
   t.after(async () => {
     await db.run('DELETE FROM users WHERE id = ANY($1) OR username = $2', [[chef, ziel, ohne], ZUSATZ['POST /api/v1/auth/users'].username]).catch(() => {});
     await db.run("DELETE FROM global_settings WHERE key = 'smtp_host' AND value = 'mail.bv.example'").catch(() => {});
-    await db.run('DELETE FROM rate_limit_attempts WHERE key LIKE $1 OR key LIKE $2', [`%-bestaetigen|${chef}|%`, `%-bestaetigen|${ohne}|%`]).catch(() => {});
+    await db.run('DELETE FROM rate_limit_attempts WHERE key LIKE $1 OR key LIKE $2 OR key LIKE $3', [`%-bestaetigen|${chef}|%`, `%-bestaetigen|${ohne}|%`, `%-bestaetigen-konto|${chef}`]).catch(() => {});
     await db.pool.end().catch(() => {});
   });
   const codes = await mitFaktor(chef);
@@ -108,13 +110,14 @@ test('ein einziger Bestätigungsweg', { concurrency: 1 }, async (t) => {
 
   await t.test('jede Passwort-Eingabe trägt die Marke', () => {
     const ohneMarke = Object.entries(VERTRAG).filter(([k, r]) => !OEFFENTLICH.includes(k) && !r.bestaetigung
-      && r.eingabe?.shape && PASSWORTFELDER.some(f => f in r.eingabe.shape)).map(([k]) => k);
+      && r.eingabe?.shape && PASSWORTFELDER.some(f => r.eingabe.shape[f]?.safeParse('x').success)).map(([k]) => k);
     assert.deepEqual(ohneMarke, []);
   });
 
   for (const [schluessel, route] of markiert) {
     await t.test(`${schluessel}: Passwort allein genügt nicht`, async () => {
-      await db.run('DELETE FROM rate_limit_attempts WHERE key LIKE $1', [`%-bestaetigen|${chef}|%`]);
+      // Auch die Kontobremse (20 am Tag): Hier rät eine Sitzung absichtlich bei jeder Route falsch.
+      await db.run('DELETE FROM rate_limit_attempts WHERE key LIKE $1 OR key LIKE $2', [`%-bestaetigen|${chef}|%`, `%-bestaetigen-konto|${chef}`]);
       const { passwort, code } = route.bestaetigung;
       const rumpf = { ...ZUSATZ[schluessel], [passwort]: PASS };
       const ohneCode = await ruf(basis, schluessel, rumpf);
@@ -142,7 +145,7 @@ test('ein einziger Bestätigungsweg', { concurrency: 1 }, async (t) => {
       .filter(f => f.endsWith('.ts')).concat(path.join(ROOT, 'server.ts'));
     const treffer = dateien.filter(f => /\bbcrypt\.compare\(/.test(ohneKommentare(fs.readFileSync(f, 'utf8'))))
       .map(f => path.relative(ROOT, f).replace(/\\/g, '/')).sort();
-    assert.deepEqual(treffer, ['src/konto/auth.ts', 'src/konto/passwortBestaetigung.ts']);
+    assert.deepEqual(treffer, ['src/konto/bcryptPool.ts'], 'nur der Rückfall des Pools; alle anderen über passwortPasst()');
   });
 
   await t.test('ohne Marke keine Bestätigung', async () => {

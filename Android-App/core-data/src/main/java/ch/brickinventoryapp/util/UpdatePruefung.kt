@@ -7,7 +7,7 @@ import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
  * Ein Textvergleich liesse `…/apk-neuste.angreifer.tld/x.apk`, `…/../x.apk` oder
  * Varianten mit Benutzerangabe, Port oder Fragment durch.
  */
-fun liegtUnter(url: String, basis: String): Boolean {
+internal fun liegtUnter(url: String, basis: String): Boolean {
     val ziel = url.toHttpUrlOrNull() ?: return false
     val b = basis.toHttpUrlOrNull() ?: return false
     val ordner = b.pathSegments.filter { it.isNotEmpty() }
@@ -26,7 +26,7 @@ data class Signatur(val aktuell: Set<String>, val ahnen: List<String>)
  * sein (Schlüsselrotation) — dann steht der laufende in der Ahnenreihe des neuen.
  * Mengengleichheit lehnte jede Rotation ab. Leer heisst unbekannt, also nein.
  */
-fun signaturFolgt(alt: Signatur, neu: Signatur): Boolean = when {
+internal fun signaturFolgt(alt: Signatur, neu: Signatur): Boolean = when {
     alt.aktuell.isEmpty() || neu.aktuell.isEmpty() -> false
     alt.aktuell.size > 1 || neu.aktuell.size > 1 -> alt.aktuell == neu.aktuell
     else -> alt.aktuell == neu.aktuell || alt.aktuell.single() in neu.ahnen

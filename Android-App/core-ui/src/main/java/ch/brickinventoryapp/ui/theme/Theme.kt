@@ -52,13 +52,14 @@ val BrandYellow     = Color(0xFFF5A800)
 private val LightColors = lightColorScheme(
     primary             = BrandBlue,
     onPrimary           = Color.White,
-    primaryContainer    = BrandBlue50,
+    // BrandBlue50 trug primary nur mit 4,24:1; der hellere Ton hält 4,5:1.
+    primaryContainer    = BrandBlueLight,
     onPrimaryContainer  = BrandBlueDark,
     secondary           = BrandBlueDark,
     onSecondary         = Color.White,
     secondaryContainer  = BrandBlueLight,
     onSecondaryContainer = BrandBlueDark,
-    // BrandRed selbst trägt weisse Schrift nur mit 4,3:1 (TextKontrastTest).
+    // BrandRed selbst trägt weisse Schrift nur mit 4,3:1.
     tertiary            = BrandRedDark,
     onTertiary          = Color.White,
     tertiaryContainer   = Color(0xFFFFDAD6),
@@ -70,10 +71,10 @@ private val LightColors = lightColorScheme(
     surface             = Color.White,
     surfaceVariant      = Color(0xFFF8FAFC),
     onSurface           = Color(0xFF1E293B),
-    // --s600 statt --s500: Sekundärtext liegt auch auf den Containerstufen (TextKontrastTest).
+    // --s600 statt --s500: Sekundärtext liegt auch auf den Containerstufen.
     onSurfaceVariant    = Color(0xFF475569),
     // outline umrandet Bedienelemente (Textfelder) und braucht 3:1 gegen jede
-    // Fläche; der helle Ton taugt nur für Trennlinien (FarbrollenTest).
+    // Fläche; der helle Ton taugt nur für Trennlinien.
     outline             = Color(0xFF748399),
     outlineVariant      = Color(0xFFE2E8F0),
     error               = Color(0xFFB91C1C),
@@ -189,24 +190,27 @@ private val FarbfaecherColors = lightColorScheme(
     error                = Color(0xFFB91C1C),
 )
 
-// Noppe: weisse Flächen, Tintenkante, roter Kopf; Werte aus DesignTokens.kt.
+// Noppe: weisse Flächen, Tintenkante; Werte aus DesignTokens.kt.
 // `outline` ist die TINTE, weil in diesem Design der Rahmen trägt, nicht der Schatten.
-// Rot färbt nur Flächen und Akzente (Container, tertiary): Als primary sah es aus
-// wie die Fehlerfarbe, jeder Knopf wirkte wie „Löschen“.
+// Rot steht in keiner Rolle, nur auf den Steindeckeln: In Wertkarte, „Neu“-Plakette
+// und Knöpfen las es sich als Verlust oder Fehler. Blau führt, Gelb ist der Akzent.
 private val NoppeBlau = Color(0xFF1A5FB8)
+private val NoppeBlauHell = Color(0xFFE3EDFA)
+private val NoppeGelbHell = Color(0xFFFFF3C4)
+private val NoppeOcker = Color(0xFF7A5200)
 
 private val NoppeColors = lightColorScheme(
     primary              = NoppeBlau,
     onPrimary            = Color.White,
-    primaryContainer     = NoppeRotHell,
+    primaryContainer     = NoppeBlauHell,
     onPrimaryContainer   = NoppeTinte,
     secondary            = NoppeTinte,
     onSecondary          = Color.White,
     secondaryContainer   = Color(0xFFEEF1F6),
     onSecondaryContainer = NoppeTinte,
-    tertiary             = NoppeRot,
+    tertiary             = NoppeOcker,
     onTertiary           = Color.White,
-    tertiaryContainer    = NoppeRotHell,
+    tertiaryContainer    = NoppeGelbHell,
     onTertiaryContainer  = NoppeTinte,
     background           = Color(0xFFEEF1F6),
     surface              = Color.White,
@@ -327,9 +331,12 @@ private fun dunklesSchema(theme: String): ColorScheme = dunkleRollen(theme).let 
  */
 internal fun farbschema(theme: String, dunkel: Boolean = false): ColorScheme =
     if (dunkel && hatDunkleFassung(theme)) ergaenzeRollen(dunklesSchema(theme).let {
-        // Wie hell: Im Dunkeln ist das Noppe-Rot (#ff7479) kaum von der Fehlerfarbe zu
-        // unterscheiden; Hauptfarbe wird das Blau der Diagrammlinie, Rot bleibt Akzent.
-        if (theme == "noppe" || theme == "hochglanz") it.copy(primary = Color(0xFF6AA8FF), tertiary = it.primary)
+        // Wie hell: Das Noppe-Rot ist im Dunkeln kaum von der Fehlerfarbe zu unterscheiden.
+        // Hauptfarbe wird das Blau der Diagrammlinie, die Container nehmen die blauen Stufen
+        // von classic, und der Akzent bleibt das Bernstein der Basis.
+        if (theme == "noppe" || theme == "hochglanz") it.copy(primary = Color(0xFF6AA8FF),
+            primaryContainer = Color(argb(dunkelToken("classic", "b50") ?: "#13233d")),
+            onPrimaryContainer = Color(argb(dunkelToken("classic", "b700") ?: "#a9caff")))
         else it
     }, dunkel = true)
     else when (theme) {
@@ -374,7 +381,9 @@ internal fun akzentflaechen(theme: String, dunkel: Boolean, s: ColorScheme): Akz
         leiste = if (stein) s.primary else s.surface, aufLeiste = if (stein) s.onPrimary else s.onSurface,
         detailLeiste = if (stein) s.secondary else s.surface, aufDetailLeiste = if (stein) s.onSecondary else s.onSurface,
         markt = markt, aufMarkt = if (stein) Color.White else if (nacht) s.onSurface else s.onPrimary,
-        kauf = s.surfaceContainerHigh, aufKauf = s.onSurface,
+        // Kaufpreis wie G&V auf surface mit Rand: zwei Stufen (Marktwert hervorgehoben,
+        // der Rest ruhig) statt dreier Kartenstile nebeneinander.
+        kauf = s.surface, aufKauf = s.onSurface,
     )
 }
 
@@ -382,16 +391,33 @@ val LocalAkzentflaechen = staticCompositionLocalOf { akzentflaechen("classic", f
 
 /**
  * Statusfarben je Design. `erfolg` färbt auch Gewinnzahlen und braucht als
- * Text 4,5:1 auf der Fläche (FarbrollenTest).
+ * Text 4,5:1 auf der Fläche.
  * Im Stein-Design gedeckter, damit es neben Salbeigrün und Sand nicht heraussticht.
  */
 internal fun statusFarbenFuer(theme: String, dunkel: Boolean = false): StatusFarben = if (dunkel && hatDunkleFassung(theme)) {
     dunkleRollen(theme).let { StatusFarben(erfolg = Color(it.erfolg), warnung = Color(it.warnung), fehler = Color(it.error)) }
 } else when (theme) {
-    "brick" -> StatusFarben(erfolg = Color(0xFF4E7058), warnung = Color(0xFFB08A3E), fehler = Color(0xFFA34B3C))
+    // Warnung zeichnet Balken und Symbole: 3:1 auf jeder hellen Fläche (WCAG 1.4.11).
+    "brick" -> StatusFarben(erfolg = Color(0xFF4E7058), warnung = Color(0xFF8C6A28), fehler = Color(0xFFA34B3C))
     "werkbank" -> StatusFarben(erfolg = Color(0xFF6FBF7F), warnung = Color(0xFFD9A84E), fehler = Color(0xFFE07A72))
-    else -> StatusFarben(erfolg = Color(0xFF166534), warnung = Color(0xFFE3B341), fehler = Color(0xFFB91C1C))
+    else -> StatusFarben(erfolg = Color(0xFF166534), warnung = Color(0xFF9A6B00), fehler = Color(0xFFB91C1C))
 }
+
+/** Farben der Navigationsleiste und der Seitenleiste (MainScaffold). */
+data class ReiterFarben(
+    val leiste: Color, val anzeige: Color, val aufAnzeige: Color,
+    val gewaehlt: Color, val ungewaehlt: Color,
+)
+
+/**
+ * Die Anzeige des gewählten Ziels in voller Hauptfarbe: Material färbt sie mit
+ * secondaryContainer, das sich von der Leiste kaum abhob (1,03:1). So trägt die
+ * Fläche den Unterschied, nicht der Farbton des Symbols allein (WCAG 1.4.11).
+ */
+fun reiterFarben(s: ColorScheme) = ReiterFarben(
+    leiste = s.surfaceContainer, anzeige = s.primary, aufAnzeige = s.onPrimary,
+    gewaehlt = s.primary, ungewaehlt = s.onSurfaceVariant,
+)
 
 /**
  * Grundton der Ladekacheln (Skelett.kt), gemessen am Hintergrund statt an surface:
@@ -410,24 +436,50 @@ fun skelettTon(s: ColorScheme, anteil: Float = 0.12f): Color = lerp(s.background
  */
 internal fun ergaenzeRollen(s: ColorScheme, dunkel: Boolean): ColorScheme {
     fun stufe(anteil: Float) = lerp(s.surface, s.onSurface, anteil)
+    // Dialoge und Menüs liegen auf den Containerstufen und tragen Text in primary,
+    // error und onSurfaceVariant; die Stufen werden gestaucht, bis alle 4,5:1 halten.
+    val schrift = listOf(s.primary, s.error, s.onSurfaceVariant)
+    var mass = 1f
+    while (mass > 0.3f && schrift.any { kontrast(it, stufe(STUFE_HOECHSTE * mass)) < TEXT_KONTRAST }) mass -= 0.05f
+    fun container(anteil: Float) = stufe(anteil * mass)
     return s.copy(
         onBackground = s.onSurface,
         surfaceTint = s.primary,
         surfaceContainerLowest = if (dunkel) s.background else s.surface,
-        surfaceContainerLow = stufe(0.025f),
-        surfaceContainer = stufe(0.05f),
-        surfaceContainerHigh = stufe(0.075f),
-        surfaceContainerHighest = stufe(0.10f),
+        surfaceContainerLow = container(0.025f),
+        surfaceContainer = container(0.05f),
+        surfaceContainerHigh = container(0.075f),
+        surfaceContainerHighest = container(STUFE_HOECHSTE),
         surfaceDim = if (dunkel) s.background else stufe(0.08f),
         surfaceBright = if (dunkel) stufe(0.12f) else s.surface,
         inverseSurface = s.onSurface,
         inverseOnSurface = s.surface,
-        inversePrimary = lerp(s.primary, if (dunkel) Color.Black else Color.White, 0.45f),
+        // Die Snackbar-Aktion: so weit aufgehellt bzw. abgedunkelt, bis sie 4,5:1 erreicht.
+        inversePrimary = mitKontrast(lerp(s.primary, if (dunkel) Color.Black else Color.White, 0.45f), s.onSurface),
         // Material setzt im Dunkeln #690005, auf den hellen Fehlertönen nur 4,48:1.
         onError = if (dunkel) s.background else Color.White,
         errorContainer = lerp(s.error, s.surface, 0.85f),
         onErrorContainer = lerp(s.error, s.onSurface, 0.5f),
     )
+}
+
+private const val STUFE_HOECHSTE = 0.10f
+private const val TEXT_KONTRAST = 4.5f
+private const val GRAFIK_KONTRAST = 3f
+
+/** Kontrastverhältnis nach WCAG 2 (1 bis 21). */
+fun kontrast(a: Color, b: Color): Float {
+    val la = a.luminance(); val lb = b.luminance()
+    return (maxOf(la, lb) + 0.05f) / (minOf(la, lb) + 0.05f)
+}
+
+/** [farbe], schrittweise von [gegen] weg gemischt, bis sie [ziel]:1 erreicht. */
+fun mitKontrast(farbe: Color, gegen: Color, ziel: Float = TEXT_KONTRAST): Color {
+    val weg = if (gegen.luminance() > 0.5f) Color.Black else Color.White
+    var anteil = 0f
+    var c = farbe
+    while (kontrast(c, gegen) < ziel && anteil < 1f) { anteil += 0.05f; c = lerp(farbe, weg, anteil) }
+    return c
 }
 
 /**
@@ -450,7 +502,8 @@ internal fun diagrammFarben(theme: String, dunkel: Boolean, s: ColorScheme): Cha
         // Fächer und Noppe färben Themen bzw. Kacheln, NICHT Zustände: Neu bleibt
         // blau, Gebraucht bernstein/orange, damit sich die Farbsysteme nicht verwechseln.
         "farbfaecher" -> ChartColors(ChartNewFarbfaecher, ChartUsedFarbfaecher, gedaempft = gedaempft)
-        "noppe", "hochglanz" -> ChartColors(ChartNewNoppe, ChartUsedNoppe,
+        // Das Orange des Webs (ChartUsedNoppe) erreicht auf Weiss nur 2,6:1; als Linie braucht es 3:1.
+        "noppe", "hochglanz" -> ChartColors(ChartNewNoppe, ChartUsedNoppe.let { mitKontrast(it, s.surface, GRAFIK_KONTRAST) },
             raster = Color(0xFFE4E8EF), gedaempft = gedaempft)
         else -> ChartColors(ChartNewClassic, ChartUsedClassic, gedaempft = gedaempft)
     }

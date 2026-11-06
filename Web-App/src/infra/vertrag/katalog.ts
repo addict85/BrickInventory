@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import type { Route } from './grund';
+import { type Route, abfrage, Q, SEITE, veraltet } from './grund';
 import { BrickLinkRef } from './gemeinsam';
 
 export const CatalogTheme = z.looseObject({
@@ -61,6 +61,7 @@ export const CatalogSetsResponse = z.looseObject({
   success: z.boolean(),
   total: z.number().int(),
   page: z.number().int(),
+  page_size: z.number().int(),
   pages: z.number().int(),
   sets: z.array(CatalogSetItem),
   error: z.string().nullable().optional(),
@@ -80,9 +81,11 @@ export const CatalogYearVerteilungResponse = z.looseObject({
 export const BricklinkVerweise = z.looseObject({ success: z.literal(true), links: z.record(z.string(), z.unknown()) });
 
 export const routen = {
-  'GET /api/v1/catalog/meta': { antwort: CatalogMetaResponse },
-  'GET /api/v1/catalog/sets': { antwort: CatalogSetsResponse },
+  'GET /api/v1/catalog/meta': { klein: true, antwort: CatalogMetaResponse },
+  'GET /api/v1/catalog/sets': { antwort: CatalogSetsResponse, abfrage: abfrage({ q: Q.text(), theme_id: Q.zahlOderLeer,
+    year_from: Q.zahlOderLeer, year_to: Q.zahlOderLeer, sort: Q.text(40), ...SEITE, limit: veraltet(Q.zahl(), 'page_size') }) },
   'GET /api/v1/catalog/sets/:setNumber': { antwort: CatalogSetDetailResponse },
-  'GET /api/v1/catalog/year-verteilung': { antwort: CatalogYearVerteilungResponse },
-  'GET /api/v1/catalog/bricklink': { antwort: BricklinkVerweise },
+  'GET /api/v1/catalog/year-verteilung': { klein: true, antwort: CatalogYearVerteilungResponse,
+    abfrage: abfrage({ q: Q.text(), theme_id: Q.zahlOderLeer, sort: Q.text(40) }) },
+  'GET /api/v1/catalog/bricklink': { antwort: BricklinkVerweise, abfrage: abfrage({ sets: Q.text(4000) }) },
 } satisfies Record<string, Route>;

@@ -1,31 +1,6 @@
 /**
  * Beide Oberflächen rechnen keine Geldbeträge nach.
- *
- * ── Marcos Frage (Nachtrag 145) ─────────────────────────────────────────────
- * „Ist nach wie vor sichergestellt, dass die ganze Logik im Server zentral ist
- * und die Webapp sowie die Android-App die Daten gleich beziehen und nur das
- * Rendering übernehmen?"
- *
- * Weitgehend ja — mit zwei Ausnahmen, die diese Prüfung künftig fängt:
- *
- *  1. Die Webapp summierte `display_value` über alle Zeilen, obwohl der Server
- *     `total_value` liefert. Die Android-App las es seit jeher von dort. Heute
- *     kam dasselbe heraus; sobald der Server Zeilen ohne Preis anders behandelt,
- *     zeigen die beiden Clients verschiedene Zahlen.
- *
- *  2. Den Gesamtwert (Sets + Teile + Minifiguren) addierten BEIDE selbst. Die
- *     Regel „was zählt zum Gesamtwert" stand damit an drei Stellen. Sie kommt
- *     jetzt als `totals.grand_total` aus /finance/pnl.
- *
- * ── Warum die alte Prüfung das nicht fand ───────────────────────────────────
- * `keine Oberfläche rechnet die Summe noch einmal` sucht nach zwei konkreten
- * Feldnamen (`purchase_price`, `unit_price`, `quantity`). `display_value`
- * stand nicht auf der Liste. Die Regel war richtig, der Suchraum zu eng —
- * dasselbe Muster wie bei den Prüflücken der Nachträge 100 bis 105.
- *
- * Diese Prüfung geht deshalb umgekehrt vor: Sie sucht nach der FORM einer
- * Geldsumme (`reduce`/`sumOf` über ein Feld, dessen Name auf Geld deutet) und
- * verlangt für jede Fundstelle einen ausdrücklichen Freibrief.
+ * Ausführlich: docs/begruendungen/test/clients-render-only.test.js.md#kopf
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');

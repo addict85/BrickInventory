@@ -15,11 +15,10 @@ import java.util.concurrent.Executors
 
 /**
  * Der Bildanalyse-Teil des Barcode-Scanners: Barcode-Leser, Texterkennung,
- * Bestätigungszählung und Drosselung. Getrennt von der Einbettung der
- * Kamera-Vorschau, weil wer an der Erkennung arbeitet, mit PreviewView,
- * Lebenszyklus und Fokus-Gesten nichts zu tun hat. Zählerstände, Drosselung, die
- * ML-Kit-Clients und ihr Aufräumen liegen hier, weil nur diese Schleife sie
- * benutzt.
+ * Bestätigungszählung und Drosselung. Getrennt von der Einbettung der Kamera-Vorschau, weil
+ * wer an der Erkennung arbeitet, mit PreviewView, Lebenszyklus und Fokus-Gesten nichts zu tun
+ * hat.
+ * Ausführlich: docs/begruendungen/feature-sammlung/ui/screens/BarcodeAnalyzer.kt.md#z16
  */
 // Einverständnis für imageProxy.image: `@androidx.annotation.OptIn` ist die Form
 // für einen in Java definierten Marker — `@ExperimentalGetImage` an der lokalen
@@ -67,7 +66,6 @@ fun rememberBarcodeAnalyzer(
     val textRecognizer = remember { TextRecognition.getClient(TextRecognizerOptions.DEFAULT_OPTIONS) }
     DisposableEffect(Unit) { onDispose { textRecognizer.close() } }
 
-
     // remember() hat keinen Aufräum-Hook: Ohne dieses DisposableEffect blieben
     // Analyse-Thread und ML-Kit-Client (native Ressourcen) bei jedem Besuch des
     // Scanners liegen. Die Kamera selbst hängt am lifecycleOwner und wird von CameraX
@@ -104,11 +102,7 @@ fun rememberBarcodeAnalyzer(
                                 // Absicht: Der Barcode ist eindeutig, die gelesene Zahl nur
                                 // wahrscheinlich — auf der Verpackung gewinnt der Barcode, die
                                 // Texterkennung greift auf der Anleitung.
-                                //
-                                // Gedrosselt, weil sie bei 1920×1080 je Bild ein Vielfaches der
-                                // Barcode-Suche kostet und die Kamera sich die Rechenzeit teilt —
-                                // Vorschau und Scharfstellen würden zäh. Eine gedruckte Setnummer
-                                // läuft nicht weg.
+                                // Ausführlich: docs/begruendungen/feature-sammlung/ui/screens/BarcodeAnalyzer.kt.md#jetzt
                                 val jetzt = System.currentTimeMillis()
                                 if (jetzt - letzteOcr.get() < OCR_INTERVALL_MS) {
                                     onStatus(aimHint)

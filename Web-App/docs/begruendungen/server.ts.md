@@ -248,102 +248,6 @@ Cookie, dann fasst express-session den Speicher gar nicht erst an
 Anfragen ohne Cookie). Ihre eigene Frist ist TOKEN_IDLE_DAYS.
 ```
 
-<a id="servedatafile"></a>
-## `serveDataFile`
-
-```text
-Ausliefern einer Datei unter data/<subDir>/<benutzer-id>/…
-
-── Wer darf das lesen? ─────────────────────────────────────────────────────
-Hier stand `parseInt(segments[0]) !== userId` — also „nur deine eigene ID".
-Das war richtig, solange ein Konto für sich allein stand, und passte nach dem
-Haushalt an zwei Stellen nicht mehr:
-
-  • Das Hauptkonto SIEHT die Anleitung eines Unterkontos (getSet listet sie
-    mit user_id = ANY(uids), also haushaltsweit) — und lief beim Klick in
-    ein 403. Sichtbar, aber nicht zu öffnen.
-  • Nach dem Verschieben eines Sets gehört die Anleitungs-Zeile dem neuen
-    Konto, ihr local_path zeigt aber weiter in den Ordner des alten
-    (moveSetBetweenAccounts kopiert den Pfad wörtlich). Das Hauptkonto
-    bekam also für seine EIGENE Zeile 403.
-
-Deshalb entscheidet jetzt scopeIds() — dieselbe Stelle, die überall sonst
-beantwortet, wessen Daten jemand sehen darf. Die Benutzer-ID im Pfad ist
-damit das, was sie ohnehin schon war: eine Ablagestruktur, keine
-Zugriffsregel. Die Regel steht in src/haushalt/haushalt.ts.
-
-Die Asymmetrie bleibt gewahrt: Ein Unterkonto hat nur sich selbst im
-Blickfeld (resolveHousehold: memberIds = [self, …eigene Subs]), kommt also
-NICHT an die Uploads des Hauptkontos. Geprüft wird weiterhin gegen eine
-Liste erlaubter IDs, nicht gegen „irgendwer im System".
-```
-
-<a id="abschnitt-4"></a>
-## Abschnitt
-
-```text
-── Alle Bilder: Sets, Teile, Minifiguren ───────────────────────────────────
-
-EINE authentifizierte Route für den gesamten Baum unter data/images/.
-
-VORHER war das zweigeteilt: Teile- und Figurenbilder liefen über eine eigene
-Route mit Anmeldepflicht, Set-Bilder dagegen über express.static — also ohne.
-Die Begründung dafür lautete, es seien öffentliche Katalogfotos. Das stimmt
-für das einzelne Bild, nicht für die Sammlung: Wer die Adressen durchprobiert,
-liest ab, WELCHE Sets jemand besitzt. Der Bestand ist das Schützenswerte,
-nicht das Foto.
-
-Zwei Dinge kann diese Route, die express.static nicht konnte:
-  1. Anmeldung verlangen.
-  2. Heilen. Fehlt die lokale Datei, wird die CDN-Adresse aus dem Katalog
-     gesucht und über den Bild-Proxy ausgeliefert — sonst wären verwaiste
-     image_local-Einträge tote Bilder.
-
-Der Platzhalter (set-placeholder.svg) liegt bewusst NICHT hier, sondern unter
-/assets/: Er ist ein Build-Asset wie CSS und JavaScript und hat mit dem
-Bestand nichts zu tun.
-```
-
-<a id="lookupcdnformissingimage"></a>
-## Abschnitt
-
-```text
-Privat, nicht public: Die Antwort hängt an einer Anmeldung und darf nicht
-in einem geteilten Zwischenspeicher (Reverse-Proxy, CDN) landen.
-
-── max-age=0 statt no-cache: ZWEI Anforderungen, die sich nicht widersprechen
-
-Marcos Anforderung von damals (Nachtrag 37): „wenn ein falsches Bild
-heruntergeladen wurde, soll geprüft werden, ob ein neues auf dem Server
-vorhanden ist." Vorher galt max-age=604800 — eine Woche ohne jede
-Rückfrage, und ein einmal geladenes falsches Bild blieb sieben Tage
-stehen. Das war beobachtet worden.
-
-Marcos Anforderung von jetzt: „Die Android-App soll auch ohne Internet
-funktionieren."
-
-`no-cache` erfüllte die erste und verhinderte die zweite. Es heisst nicht
-„nicht zwischenspeichern", sondern „vor JEDER Verwendung rückfragen" — und
-genau das geht ohne Netz nicht. Die App behielt ihre Kopie, durfte sie aber
-nicht benutzen; ihr Offline-Rückfall (AppModule.kt, IOException →
-FORCE_CACHE) konnte die Anfrage deshalb nicht erfüllen, und in den Tabellen
-stand der Platzhalter statt des Bildes.
-
-`max-age=0` erfüllt beide. Die Antwort ist sofort veraltet, also stellt der
-Client bei JEDER Verwendung dieselbe bedingte Anfrage wie vorher — online
-ändert sich nichts. Der Unterschied zeigt sich nur dort, wo es darauf
-ankommt: Eine veraltete Kopie DARF ausgeliefert werden, wenn die Rückfrage
-nicht möglich ist. Genau darauf baut der Offline-Rückfall.
-
-Bewusst OHNE `must-revalidate`: Das verbietet die Auslieferung einer
-veralteten Kopie ausdrücklich und nähme die Zeile wieder zurück.
-
-Teuer wird das nicht: express beantwortet die bedingte Anfrage über den
-ETag mit 304 und ohne Rumpf, solange sich die Datei nicht geändert hat.
-Der ETag von sendFile leitet sich aus Grösse und Änderungszeit ab und
-wechselt damit genau dann, wenn die Datei neu geschrieben wurde.
-```
-
 <a id="lookupcdnformissingimage-rohpfad"></a>
 ## `rohPfad`
 
@@ -370,29 +274,6 @@ Original das bessere Bild als gar keines.
 wird daraus wieder zusammengesetzt, weil die beiden regulaeren Ausdruecke
 unten auf der ganzen Zeichenkette arbeiten. Unter Express 4 stand genau
 das in `req.params[0]`; `join('/')` stellt es wieder her.
-```
-
-<a id="lookupcdnformissingimage-webpfadoriginal"></a>
-## `webPfadOriginal`
-
-```text
-Fehlende Vorschau im HINTERGRUND nachziehen (Nachtrag 48).
-
-Bis hierher war die Vorschau ein reines Erfassungs-Ereignis: erzeugt
-wird sie nur in routes/sets.ts direkt nach dem Download. Ging dabei
-etwas schief — bei Marcos Set scheiterte der Download bis Nachtrag 47
-an der Grössengrenze —, entstand sie NIE mehr. Der Bilder-Nachlauf
-half nicht: Er deckt set_parts_catalog, set_minifigs_catalog und
-parts ab, aber NICHT `sets`, und er repariert ohnehin nur physisch
-fehlende Dateien, keine fehlenden Vorschauen. Ergebnis: Die Galerie
-lieferte für dieses Set dauerhaft das grosse Bild, während ältere
-Sets ihre Vorschau nutzten — genau die gemeldete Beobachtung.
-
-Diese Stelle ist der beste Ort dafür: Hier ist gerade bewiesen, dass
-die Vorschau fehlt und das Original vorliegt. Bewusst NICHT im
-Anfragepfad erzeugen (das kostete rund 150 ms Jimp je Kachel, siehe
-Nachtrag 40) — angestossen wird nebenher, ausgeliefert wird sofort
-das Original. Beim nächsten Laden steht die Vorschau bereit.
 ```
 
 <a id="abschnitt-5"></a>
@@ -577,44 +458,4 @@ Der Handler laeuft auch beim (Wieder-)Verbinden ohne Signal — dann mit
 undefined als Payload (siehe db/pgNotify.ts). Genau richtig: Was
 waehrend einer Trennung passiert ist, weiss dieser Worker nicht, also
 faengt er ohne gemerkten Stand neu an.
-```
-
-<a id="electprimaryworker-manualparts"></a>
-## `manualParts`
-
-```text
-Manuell erfasste Teile mit fehlendem lokalen Bild — im selben Job
-dauerhaft in den lokalen Cache laden (statt nur über den Proxy).
-
-Ohne user_id, und das ist der Punkt: Das Bild haengt am Teil-Farb-Paar
-und liegt seit Migration 0034 EINMAL im Katalog. Vorher stand diese
-Abfrage auf parts und lieferte dasselbe Paar je Konto erneut — der
-Job lud dieselbe Datei mehrfach herunter.
-
-Der JOIN auf parts bleibt: Geladen werden nur Bilder von Teilen, die
-jemand tatsaechlich manuell erfasst hat. Set-Teile deckt
-downloadSetImages() oben ueber set_parts_catalog ab.
-```
-
-<a id="electprimaryworker-figstofetch"></a>
-## `figsToFetch`
-
-```text
-Minifiguren — ALLE, nicht nur manuell erfasste.
-
-Bisher stand hier `source='manual'`. Minifiguren aus Sets liefen
-dadurch dauerhaft über /api/img-proxy: Anmeldeprüfung, Cache-Suche
-und Stream bei jeder einzelnen Kachel, beim ersten Anzeigen dazu ein
-CDN-Roundtrip je Bild. Set-Bilder liegen längst lokal und gehen über
-express.static — deshalb war die Minifiguren-Ansicht spürbar träger.
-
-Das DISTINCT ON ueber die Nummer stand hier, weil die Abfrage auf
-minifigs lief und dieselbe Figur je Konto eine Zeile hatte. Seit
-Migration 0034 steht Name und Bild EINMAL im Katalog, und
-fig_number ist dort der Primaerschluessel — die Verdichtung erledigt
-die Tabelle.
-
-Das EXISTS haelt die Menge bei dem, was die Abfrage vorher lieferte:
-Figuren, die jemand besitzt. Der Katalog kennt auch Figuren aus
-Set-Teilelisten, die niemand hat.
 ```

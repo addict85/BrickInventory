@@ -1,27 +1,19 @@
 package ch.brickinventoryapp.ui.viewmodel
 
-import android.content.Context
+import ch.brickinventoryapp.util.fangeAusserAbbruch
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import ch.brickinventoryapp.ressourcen.R
-import ch.brickinventoryapp.data.PreferencesManager
 import ch.brickinventoryapp.ui.UpdateUiState
-import ch.brickinventoryapp.util.UPDATE_JSON_MAX_BYTES
-import ch.brickinventoryapp.util.UPDATE_MAX_BYTES
-import ch.brickinventoryapp.util.UPDATE_VERSION_URL
-import ch.brickinventoryapp.util.UpdateBeschreibung
-import ch.brickinventoryapp.util.apkFassung
-import ch.brickinventoryapp.util.darfInstallieren
+import ch.brickinventoryapp.util.gepruefteBeschreibung
+import ch.brickinventoryapp.util.pruefsummePasst
 import ch.brickinventoryapp.util.fassungPasst
 import ch.brickinventoryapp.util.Installationsmeldung
-import ch.brickinventoryapp.util.installiere
 import ch.brickinventoryapp.util.istErlaubteApkAdresse
-import ch.brickinventoryapp.util.istNeuer
-import ch.brickinventoryapp.util.signaturPasst
-import ch.brickinventoryapp.util.updateDatei
+import ch.brickinventoryapp.util.anzubietendeFassung
+import ch.brickinventoryapp.util.pruefeFrische
 import dagger.hilt.android.lifecycle.HiltViewModel
-import dagger.hilt.android.qualifiers.ApplicationContext
-import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -31,41 +23,47 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import kotlinx.serialization.json.Json
-import okhttp3.OkHttpClient
-import okhttp3.Request
 import javax.inject.Inject
-import javax.inject.Named
+import ch.brickinventoryapp.util.UpdateBeschreibung
+import java.io.File
+import ch.brickinventoryapp.di.BrickDispatchers
+import ch.brickinventoryapp.di.Dispatcher
+import ch.brickinventoryapp.data.Anmeldestand
+import ch.brickinventoryapp.data.UpdateRepository
+import kotlinx.coroutines.Job
+import ch.brickinventoryapp.util.UpdateGeraet
+import ch.brickinventoryapp.util.UpdateStandAblage
 
 /**
  * Selbstaktualisierung: nachsehen, laden, installieren lassen. Beim Start still
  * prüfen, nie von allein laden, dazu ein Knopf in den Einstellungen. Die stille
  * Prüfung meldet keinen Fehler: Wer ohne Netz startet, hat nichts gefragt; wer den
  * Knopf drückt, schon.
- *
- * An die Activity gebunden (aktivitaetsViewModel), damit Startprüfung, Dialog,
- * Punkt am Kontosymbol und Einstellungen dieselbe Instanz sehen. Der eigene
- * HTTP-Client kennt weder Server noch Token — nichts davon geht GitHub etwas an.
+ * Ausführlich: docs/begruendungen/feature-konto/ui/viewmodel/UpdateViewModel.kt.md#constructor
  */
 @HiltViewModel
 class UpdateViewModel @Inject constructor(
-    @param:ApplicationContext private val ctx: Context,
-    @param:Named("update") private val updateHttpClient: OkHttpClient,
+    private val repo: UpdateRepository,
     private val texte: Texte,
-    prefs: PreferencesManager,
-    private val fassung: ch.brickinventoryapp.util.AppFassung,
-) : ViewModel() {
+    private val anmeldestand: Anmeldestand,
+    private val updateStand: UpdateStandAblage,
+    private val geraet: UpdateGeraet,
+    @param:Dispatcher(BrickDispatchers.IO) private val io: CoroutineDispatcher,
+) : ViewModel(), UpdateAktionen {
 
-    private val _state = MutableStateFlow(UpdateUiState())
+    private val _state = MutableStateFlow(UpdateUiState(startpruefung = updateStand.startpruefungAn()))
     val updateState = _state.asStateFlow()
+
+    /** Der laufende Download; [ladeAbbrechen] beendet ihn samt Teildatei. */
+    private var ladeJob: Job? = null
 
     init {
         // Beim Abmelden zuruecksetzen: Ein Fortschritt oder „bereit zur
         // Installation" erschiene dem naechsten Nutzer sonst als sein Vorgang.
         viewModelScope.launch {
-            prefs.authTokenState.map { it.isNullOrBlank() }.distinctUntilChanged().drop(1)
+            anmeldestand.authTokenState.map { it.isNullOrBlank() }.distinctUntilChanged().drop(1)
                 .filter { abgemeldet -> abgemeldet }
-                .collect { _state.value = UpdateUiState() }
+                .collect { _state.value = UpdateUiState(startpruefung = updateStand.startpruefungAn()) }
         }
         // Die Installer-Sitzung antwortet an einen Empfänger, nicht hierher (util/AppUpdate.kt).
         viewModelScope.launch {
@@ -82,37 +80,42 @@ class UpdateViewModel @Inject constructor(
      * @param still Beim Start `true`: kein Ladebalken, keine Fehlermeldung. Auf
      *        Knopfdruck `false` — dann sieht der Nutzer beides.
      */
-    fun pruefeAufUpdate(still: Boolean = false) {
+    override fun pruefeBeimStart() {
+        if (updateStand.startpruefungAn()) pruefeAufUpdate(still = true)
+    }
+
+    override fun setzeStartpruefung(an: Boolean) {
+        updateStand.setzeStartpruefung(an)
+        _state.update { it.copy(startpruefung = an) }
+    }
+
+    override fun pruefeAufUpdate(still: Boolean) {
         viewModelScope.launch {
             _state.update { it.copy(laedtPruefung = !still, fehler = null) }
-            try {
-                val roh = withContext(Dispatchers.IO) {
-                    updateHttpClient.newCall(Request.Builder().url(UPDATE_VERSION_URL).build())
-                        .execute().use { antwort ->
-                            if (!antwort.isSuccessful) throw java.io.IOException("HTTP ${antwort.code}")
-                            // peekBody statt body.string(): liest HOECHSTENS so viele
-                            // Bytes. Ohne die Grenze koennte eine manipulierte
-                            // Antwort die App umbringen, ohne je ein APK anfassen zu
-                            // muessen — version.json traegt fuenf Felder.
-                            antwort.peekBody(UPDATE_JSON_MAX_BYTES).string()
-                        }
+            fangeAusserAbbruch {
+                val roh = repo.holeBeschreibung()
+                // Nur eine signierte Beschreibung zählt: Schreibrecht am Repository allein
+                // reicht dann nicht, um ein Update zu unterdrücken oder umzuleiten. Danach
+                // wird die Adresse trotzdem geprüft, nicht geglaubt.
+                val beschreibung = withContext(io) {
+                    gepruefteBeschreibung(roh, geraet.eigeneZertifikate(), geraet.beschreibungsSchluessel())
                 }
-                val beschreibung = updateJson.decodeFromString<UpdateBeschreibung>(roh)
-                // Die Adresse aus einer heruntergeladenen Datei wird geprueft, nicht
-                // geglaubt — siehe istErlaubteApkAdresse.
-                if (!istErlaubteApkAdresse(beschreibung.apkUrl)) {
+                if (beschreibung == null || !istErlaubteApkAdresse(beschreibung.apkUrl)) {
                     _state.update {
                         it.copy(laedtPruefung = false, geprueft = true, neuereFassung = null,
-                            fehler = if (still) null else texte.text(R.string.update_fremde_adresse))
+                            fehler = if (still) null else texte.text(
+                                if (beschreibung == null) R.string.update_beschreibung_unsigniert else R.string.update_fremde_adresse))
                     }
                     return@launch
                 }
-                val neuer = istNeuer(fassung.code, beschreibung.versionCode)
+                // Aus einer zurückgesetzten oder abgelaufenen Beschreibung kein Angebot;
+                // die Einstellungen sagen dann, warum (anzubietendeFassung).
+                val frische = pruefeFrische(updateStand, beschreibung, repo.laufendeFassung.code, System.currentTimeMillis() / 1000)
                 _state.update {
                     it.copy(laedtPruefung = false, geprueft = true,
-                        neuereFassung = if (neuer) beschreibung else null, fehler = null)
+                        neuereFassung = anzubietendeFassung(beschreibung, frische, repo.laufendeFassung.code), fehler = null, frische = frische)
                 }
-            } catch (e: Exception) {
+            }.onFailure { _ ->
                 _state.update {
                     it.copy(laedtPruefung = false, geprueft = true,
                         fehler = if (still) null else texte.text(R.string.update_pruefung_fehlgeschlagen))
@@ -126,113 +129,39 @@ class UpdateViewModel @Inject constructor(
      * bleibt — es gibt weiterhin eine neuere Fassung, und der Punkt am Konto-Symbol
      * sagt das weiter. Weggeklickt ist nur die Frage, nicht der Befund.
      */
-    fun updateHinweisSchliessen() {
+    override fun updateHinweisSchliessen() {
         _state.update { it.copy(dialogAbgelehnt = true) }
     }
 
     /**
      * Lädt das APK und bietet es zur Installation an. Drei Bedingungen, bevor etwas
-     * installiert wird: 1. Die Adresse zeigt in unsere Release-Ablage (schon in der
-     * Prüfung, hier nochmal — zwischen Prüfung und Klick kann ein neuer Zustand
-     * stehen). 2. Die Signatur stimmt mit der installierten App überein. 3. Der Nutzer
-     * hat die Systemerlaubnis erteilt.
-     *
-     * Erst danach öffnet sich der System-Installer, und auch der fragt nochmal.
+     * installiert wird: 1. Die Adresse zeigt in unsere Release-Ablage (schon in der Prüfung,
+     * hier nochmal — zwischen Prüfung und Klick kann ein neuer Zustand stehen). 2. Die
+     * Signatur stimmt mit der installierten App überein.
+     * Ausführlich: docs/begruendungen/feature-konto/ui/viewmodel/UpdateViewModel.kt.md#ladeupdate
      */
-    fun ladeUpdate() {
+    override fun ladeUpdate() {
         val fassung = _state.value.neuereFassung ?: return
-        viewModelScope.launch {
+        if (ladeJob?.isActive == true) return
+        ladeJob = viewModelScope.launch {
             if (!istErlaubteApkAdresse(fassung.apkUrl)) {
                 _state.update { it.copy(fehler = texte.text(R.string.update_fremde_adresse)) }
                 return@launch
             }
             _state.update { it.copy(fortschritt = 0, fehler = null, bereitZurInstallation = false) }
-            val ziel = updateDatei(ctx)
-            try {
-                withContext(Dispatchers.IO) {
-                    updateHttpClient.newCall(Request.Builder().url(fassung.apkUrl).build())
-                        .execute().use { antwort ->
-                            if (!antwort.isSuccessful) throw java.io.IOException("HTTP ${antwort.code}")
-                            // Kein `?:` mehr: `antwort.body` ist seit OkHttp 5
-                            // nicht nullbar, der Elvis-Operator gab darum immer
-                            // den linken Teil zurueck und die Ausnahme rechts war
-                            // unerreichbar.
-                            val koerper = antwort.body
-                            // Die Gesamtgrösse kommt bevorzugt aus version.json: Ein Release-Anhang
-                            // kommt über eine Umleitung, und contentLength ist dabei gelegentlich
-                            // -1 — ohne Bezugsgrösse gäbe es keinen Fortschritt, nur einen
-                            // wachsenden Zähler.
-                            val gesamt = if (fassung.apkSize > 0) fassung.apkSize
-                            else koerper.contentLength()
-                            // ── Wieviel darf höchstens kommen? ──
-                            //
-                            // Die angekündigte Grösse (plus ein Megabyte Luft) oder die feste
-                            // Obergrenze — was kleiner ist. Die Ankündigung stammt aus
-                            // version.json, der hier nicht blind vertraut wird; die feste Grenze
-                            // allein liesse eine Antwort durch, die 46 MB verspricht und 300
-                            // liefert.
-                            val obergrenze =
-                                if (gesamt in 1..UPDATE_MAX_BYTES) minOf(gesamt + 1024 * 1024, UPDATE_MAX_BYTES)
-                                else UPDATE_MAX_BYTES
-                            koerper.byteStream().use { ein ->
-                                ziel.outputStream().use { aus ->
-                                    val puffer = ByteArray(64 * 1024)
-                                    var geladen = 0L
-                                    var zuletzt = -1
-                                    while (true) {
-                                        val n = ein.read(puffer)
-                                        if (n < 0) break
-                                        geladen += n
-                                        // Abbrechen, BEVOR geschrieben wird: Sonst
-                                        // liegt das Zuviel schon auf der Platte.
-                                        if (geladen > obergrenze)
-                                            throw java.io.IOException(
-                                                "Update groesser als erlaubt ($geladen > $obergrenze)")
-                                        aus.write(puffer, 0, n)
-                                        if (gesamt > 0) {
-                                            val p = ((geladen * 100) / gesamt).toInt().coerceIn(0, 100)
-                                            // Nur bei Aenderung melden: sonst
-                                            // schriebe jede 64-KB-Portion in den
-                                            // Zustand und loeste eine
-                                            // Rekomposition aus.
-                                            if (p != zuletzt) {
-                                                zuletzt = p
-                                                _state.update { it.copy(fortschritt = p) }
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                }
-                // Die Signatur wird geprueft, BEVOR der Nutzer gefragt wird —
-                // siehe util/AppUpdate.kt. Passt sie nicht, wird die Datei
-                // geloescht: Ein APK unbekannter Herkunft soll nicht liegenbleiben.
-                if (!withContext(Dispatchers.IO) { signaturPasst(ctx, ziel) }) {
+            val ziel = geraet.updateDatei()
+            fangeAusserAbbruch {
+                repo.ladeApk(fassung, ziel).collect { p -> _state.update { it.copy(fortschritt = p) } }
+                val falsch = withContext(io) { ungueltigesApk(fassung, ziel) }
+                if (falsch != null) {
                     ziel.delete()
-                    _state.update {
-                        it.copy(fortschritt = null, fehler = texte.text(R.string.update_signatur_falsch))
-                    }
+                    _state.update { it.copy(fortschritt = null, fehler = texte.text(falsch)) }
                     return@launch
                 }
-                if (!fassungPasst(withContext(Dispatchers.IO) { apkFassung(ctx, ziel) }, fassung.versionCode, this@UpdateViewModel.fassung.code)) {
-                    ziel.delete()
-                    _state.update {
-                        it.copy(fortschritt = null, fehler = texte.text(R.string.update_fassung_falsch))
-                    }
-                    return@launch
-                }
-                if (!darfInstallieren(ctx)) {
-                    _state.update {
-                        it.copy(fortschritt = null, bereitZurInstallation = true, erlaubnisFehlt = true)
-                    }
-                    return@launch
-                }
-                _state.update {
-                    it.copy(fortschritt = null, bereitZurInstallation = true, erlaubnisFehlt = false)
-                }
-                starteInstallation()
-            } catch (e: Exception) {
+                val erlaubt = geraet.darfInstallieren()
+                _state.update { it.copy(fortschritt = null, bereitZurInstallation = true, erlaubnisFehlt = !erlaubt) }
+                if (erlaubt) starteInstallation()
+            }.onFailure { _ ->
                 ziel.delete()
                 _state.update {
                     it.copy(fortschritt = null, fehler = texte.text(R.string.update_laden_fehlgeschlagen))
@@ -241,33 +170,58 @@ class UpdateViewModel @Inject constructor(
         }
     }
 
+    /** Der Download bricht ab, die Teildatei löscht die Datenschicht; ein neuer Versuch beginnt von vorn. */
+    override fun ladeAbbrechen() {
+        ladeJob?.cancel()
+        ladeJob = null
+        _state.update { it.copy(fortschritt = null) }
+    }
+
+    /**
+     * Der Text zur ersten Prüfung, die das geladene APK nicht besteht, sonst null. Erst
+     * die signierte Prüfsumme (genau dieses APK), dann die Signatur, dann die Fassung —
+     * alles, bevor der Nutzer gefragt wird (util/AppUpdate.kt).
+     */
+    private fun ungueltigesApk(beschreibung: UpdateBeschreibung, ziel: File): Int? = when {
+        !pruefsummePasst(ziel, beschreibung.apkSha256) -> R.string.update_pruefsumme_falsch
+        !geraet.signaturPasst(ziel) -> R.string.update_signatur_falsch
+        !fassungPasst(geraet.apkFassung(ziel), beschreibung.versionCode, repo.laufendeFassung.code) -> R.string.update_fassung_falsch
+        else -> null
+    }
+
     /**
      * Öffnet den System-Installer für das geladene APK. Zwei Aufrufer: das Ende von
      * [ladeUpdate] und der Knopf „Installieren“ nach nachträglich erteilter Erlaubnis.
      * Die Signatur wird erneut geprüft, weil die Datei während des Ausflugs in die
      * Systemeinstellungen auf der Platte liegt.
      */
-    fun starteInstallation() {
-        val datei = updateDatei(ctx)
+    override fun starteInstallation() {
         val gemeldet = _state.value.neuereFassung?.versionCode ?: 0
-        if (!datei.isFile || !signaturPasst(ctx, datei) || !fassungPasst(apkFassung(ctx, datei), gemeldet, fassung.code)) {
-            datei.delete()
-            _state.update {
-                it.copy(bereitZurInstallation = false, fehler = texte.text(R.string.update_signatur_falsch))
-            }
-            return
-        }
-        if (!darfInstallieren(ctx)) {
-            _state.update { it.copy(erlaubnisFehlt = true) }
-            return
-        }
+        val pruefsumme = _state.value.neuereFassung?.apkSha256.orEmpty()
         viewModelScope.launch {
-            withContext(Dispatchers.IO) { runCatching { installiere(ctx, datei) } }
+            // Rund 46 MB hashen und zwei APK-Analysen: auf dem Hauptfaden droht ein ANR.
+            // Die Reihenfolge bleibt; `&&` bricht beim ersten Fehlschlag ab.
+            val geprueft = withContext(io) {
+                val datei = geraet.updateDatei()
+                val echt = datei.isFile && pruefsummePasst(datei, pruefsumme) && geraet.signaturPasst(datei) &&
+                    fassungPasst(geraet.apkFassung(datei), gemeldet, repo.laufendeFassung.code)
+                if (!echt) datei.delete()
+                datei.takeIf { echt }
+            }
+            if (geprueft == null) {
+                _state.update {
+                    it.copy(bereitZurInstallation = false, fehler = texte.text(R.string.update_signatur_falsch))
+                }
+                return@launch
+            }
+            if (!geraet.darfInstallieren()) {
+                _state.update { it.copy(erlaubnisFehlt = true) }
+                return@launch
+            }
+            withContext(io) { runCatching { geraet.installiere(geprueft) } }
                 .onFailure {
                     _state.update { s -> s.copy(fehler = texte.text(R.string.update_installer_fehlt)) }
                 }
         }
     }
 }
-
-private val updateJson = Json { ignoreUnknownKeys = true }

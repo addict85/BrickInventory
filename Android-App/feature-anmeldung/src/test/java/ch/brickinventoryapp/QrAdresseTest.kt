@@ -18,13 +18,16 @@ import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
+import ch.brickinventoryapp.data.repository.HaushaltRepository
+import ch.brickinventoryapp.ui.Blickfeld
+import java.util.Collections
 
 /**
  * Der QR-Dialog ist die einzige Hürde gegen einen untergeschobenen Code. Geprüft
  * mit den Eingaben aus dem Nachweis der Sicherheitsprüfung (sec7, M1): Jede sah
  * im Dialog nach `brick.meinserver.ch` aus und führte woandershin.
  *
- * Gegenproben (03.11.2026, kotlinc lokal gemessen):
+ * Gegenproben:
  *   A  NetworkPolicy.adressfehler() auf den Stand ad4a297 (nur UNLESBAR/KLARTEXT)
  *      → rot „Benutzerangabe, Zeilenumbruch und Rueckstrich …“ und „das ViewModel
  *      nimmt eine Adresse mit Benutzerangabe nicht an“
@@ -95,7 +98,7 @@ class QrAdresseTest {
     // ── Das ViewModel als zweite Linie ─────────────────────────────────────────
 
     private class Ablage : Anmeldeablage {
-        val protokoll = java.util.Collections.synchronizedList(mutableListOf<String>())
+        val protokoll = Collections.synchronizedList(mutableListOf<String>())
         override suspend fun serverUrlJetzt() = "https://brick.meinserver.ch"
         override suspend fun saveServerUrl(url: String) { protokoll += "url:$url" }
         override suspend fun saveAuthToken(token: String) { protokoll += "token:$token" }
@@ -103,7 +106,7 @@ class QrAdresseTest {
         override fun merkePin(schluessel: String, fingerabdruck: String) { protokoll += "pin" }
         override fun gemerkterPin(schluessel: String): String? = null
         override fun halteVor(schluessel: String, fingerabdruck: String) { protokoll += "vor" }
-        override fun vergissVorgehaltenen(schluessel: String) {}
+        override fun vergissVorgehaltenen(schluessel: String) = Unit
     }
 
     private lateinit var pfade: PfadServer
@@ -113,7 +116,7 @@ class QrAdresseTest {
     fun auf() {
         Dispatchers.setMain(UnconfinedTestDispatcher())
         pfade = PfadServer()
-        t = TestDienste(pfade.server)
+        t = TestDienste(pfade.imTakt(), io = Dispatchers.Main)
     }
 
     @After
@@ -126,18 +129,16 @@ class QrAdresseTest {
     @Test
     fun `das ViewModel nimmt eine Adresse mit Benutzerangabe nicht an`() {
         val ablage = Ablage()
-        val dienste = ch.brickinventoryapp.ui.viewmodel.AppDienste(t.sitzung,
-            ch.brickinventoryapp.ui.Blickfeld(SpeicherAblage(),
-                ch.brickinventoryapp.data.repository.HaushaltRepository(t.api, t.cache),
-                ch.brickinventoryapp.data.repository.TeileRepository(t.api, t.cache)),
-            t.meldungen, NummernTexte, t.bestand, t.scrollMemory)
-        val vm = t.merke(AnmeldungViewModel(dienste, KontoRepository(t.api, t.cache), ablage))
-        var abgemeldet = false
-        vm.loginWithQrToken("https://brick.meinserver.ch@evil.example", "bim:x", abmelden = { abgemeldet = true })
+        val abmelden = SitzungsAttrappe()
+        val blickfeld = Blickfeld(SpeicherAblage(),
+            HaushaltRepository(t.api, t.cache),
+            TeileRepository(t.api, t.cache))
+        val vm = t.merke(AnmeldungViewModel(t.sitzung, blickfeld, t.hinweise, abmelden,
+            KontoRepository(t.api, t.cache), ablage, { false }))
+        vm.loginWithQrToken("https://brick.meinserver.ch@evil.example", "bim:x")
         assertFalse(vm.saveServerUrl("https://brick.meinserver.ch@evil.example"))
-        Thread.sleep(100)
         assertEquals(emptyList<String>(), ablage.protokoll.toList())
-        assertFalse("Nichts abgemeldet", abgemeldet)
+        assertEquals("Nichts abgemeldet", 0, abmelden.abmeldungen)
         assertTrue("kein qr-login", pfade.anfragenAn("qr-login").isEmpty())
         assertTrue(vm.anmeldeState.value.loginError != null)
     }

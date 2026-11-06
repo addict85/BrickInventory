@@ -1,14 +1,6 @@
 /**
  * Lagerort — dieselbe Antwort in beiden Oberflächen.
- *
- * Wie test/bauabgleich-beide.test.js und aus demselben Grund: Marcos stehende
- * Vorgabe ist „zwei saubere Apps, in den Oberflächen einheitliche Ansichten,
- * ansonsten identische Funktion". Eine Erweiterung, die nur in der Webapp
- * landet, verletzt sie — und das fällt erst auf, wenn jemand am Telefon danach
- * sucht.
- *
- * Geprüft wird die NAHT. Ob die Zahlen stimmen, beantwortet
- * test/lagerort-db.test.js gegen echte Daten.
+ * Ausführlich: docs/begruendungen/test/lagerort-beide.test.js.md#kopf
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -28,7 +20,8 @@ const KT_SCOPE  = lies(path.join(__dirname, '..', '..', 'Android-App', 'core-mod
 // Seit dem Schnitt des MainViewModels (28.10.2026) liegt der Lagerortfilter
 // in der Grundlage der Bereichs-ViewModels, die Verwaltung im
 // EinstellungenViewModel und das Laden der eigenen Orte im Blickfeld.
-const KT_HAUS   = lies(path.join(__dirname, '..', '..', 'Android-App', 'core-zustand', 'src', 'main', 'java', 'ch', 'brickinventoryapp', 'ui', 'viewmodel', 'BereichsViewModel.kt'))
+const KT_HAUS   = lies(path.join(__dirname, '..', '..', 'Android-App', 'core-zustand', 'src', 'main', 'java', 'ch', 'brickinventoryapp', 'ui', 'viewmodel', 'Bereichshelfer.kt'))
+               + lies(path.join(__dirname, '..', '..', 'Android-App', 'core-zustand', 'src', 'main', 'java', 'ch', 'brickinventoryapp', 'ui', 'Blickfeld.kt'))
                 + lies(path.join(__dirname, '..', '..', 'Android-App', 'feature-konto', 'src', 'main', 'java', 'ch', 'brickinventoryapp', 'ui', 'viewmodel', 'EinstellungenViewModel.kt'))
                 + lies(path.join(__dirname, '..', '..', 'Android-App', 'core-zustand', 'src', 'main', 'java', 'ch', 'brickinventoryapp', 'ui', 'Blickfeld.kt'));
 const KT_DIALOG = lies(path.join(__dirname, '..', '..', 'Android-App', 'feature-teile', 'src', 'main', 'java', 'ch', 'brickinventoryapp', 'ui', 'dialogs', 'SetItemDetailDialog.kt'));
@@ -38,9 +31,8 @@ const KT_FELD   = lies(path.join(__dirname, '..', '..', 'Android-App', 'core-ui'
 // Die Einstellungen der App liegen in mehreren Dateien: Der Bildschirm
 // selbst traegt nur die Liste, jede Rubrik hat ihre eigene Seite
 // (EinstellungenUnterseiten.kt) mit der Karte in Einstellungen*.kt. Gelesen
-// werden deshalb alle, die es betrifft — die
-// Zusicherung lautet „die App tut das in ihren Einstellungen" und nicht
-// „in dieser Datei".
+// werden deshalb alle, die es betrifft — die …
+// Ausführlich: docs/begruendungen/test/lagerort-beide.test.js.md#kt-einst
 const KT_EINST  = lies(path.join(__dirname, '..', '..', 'Android-App', 'feature-konto', 'src', 'main', 'java', 'ch', 'brickinventoryapp', 'ui', 'screens', 'SettingsScreen.kt'))
                 + lies(path.join(__dirname, '..', '..', 'Android-App', 'feature-konto', 'src', 'main', 'java', 'ch', 'brickinventoryapp', 'ui', 'screens', 'EinstellungenUnterseiten.kt'))
                 + lies(path.join(__dirname, '..', '..', 'Android-App', 'feature-konto', 'src', 'main', 'java', 'ch', 'brickinventoryapp', 'ui', 'screens', 'EinstellungenAlarme.kt'))
@@ -58,13 +50,13 @@ test('beide Oberflächen setzen den Lagerort über dieselben Endpunkte', () => {
   // Handler bedient jetzt Teile UND Figuren, und eine Figur hat keine Farbe —
   // sie braucht deshalb eine eigene Route. Geprüft wird weiter, dass genau
   // dieser eine Weg speichert, nur eben ohne die Adresse im selben Ausdruck.
-  assert.match(web('public/js/13-acquisition-modals.js'),
+  assert.match(require('./helpers/sources').ansichtQuelle('13'),
     /api\('PUT', adresse, \{ storage: el\.value \}\)/,
     'Die Webapp speichert den Lagerort eines Teils nicht');
-  assert.match(web('public/js/13-acquisition-modals.js'),
+  assert.match(require('./helpers/sources').ansichtQuelle('13'),
     /\/v1\/minifigs\/\$\{encodeURIComponent\(nummer\)\}\/storage/,
     'Die Webapp kennt die Lagerort-Adresse der Minifiguren nicht (Migration 0024)');
-  assert.match(web('public/js/07-admin.js'), /\/storage`, \{ storage: el\.value \}/,
+  assert.match((web('public/js/02-detailfelder.js') + web('public/js/07-set-detail.js')), /\/storage`, \{ storage: el\.value \}/,
     'Die Webapp speichert den Lagerort eines Sets nicht');
 
   assert.match(KT_API, /@PUT\("api\/v1\/parts\/\{partNumber\}\/\{colorId\}\/storage"\)/);
@@ -76,18 +68,17 @@ test('beide zeigen den Lagerort dort, wo er hingehört', () => {
   // Set-Detail und Teil-Detail, in beiden Oberflächen. NICHT bei Figuren:
   // Eine Minifigur steckt in ihrem Set, und dessen Ort steht im Set-Detail —
   // ein zweiter Ort für dieselbe Sache wäre eine Stelle, an der zwei
-  // Antworten auseinanderlaufen können.
-  // Beide Oberflaechen bauen das Feld aus EINEM Baustein (07-admin.js,
-  // lagerortBlock) — vorher stand die Auszeichnung an jeder Stelle einzeln.
-  assert.match(web('public/js/07-admin.js'), /lagerortBlock\('m-storage'/, 'Webapp: Set-Detail');
-  assert.match(web('public/js/13-acquisition-modals.js'), /lagerortBlock\('setitem-storage'/,
+  // Antworten auseinanderlaufen können. …
+  // Ausführlich: docs/begruendungen/test/lagerort-beide.test.js.md#stelle
+  assert.match((web('public/js/02-detailfelder.js') + web('public/js/07-set-detail.js')), /lagerortBlock\('m-storage'/, 'Webapp: Set-Detail');
+  assert.match(require('./helpers/sources').ansichtQuelle('13'), /lagerortBlock\('setitem-storage'/,
     'Webapp: Teil-Detail');
 
   // Marcos Vorgabe: „Das Feld Lagerort soll ein Auswahlfeld sein (analog den
   // Feldern beim Preisalarm), zusaetzlich sollen dort aber auch neue Werte
   // erfasst werden koennen." Ein blosses Textfeld mit datalist war genau das
   // nicht — es sieht aus wie ein Textfeld und klappt in Chrome nicht auf.
-  const baustein = web('public/js/07-admin.js');
+  const baustein = (web('public/js/02-detailfelder.js') + web('public/js/07-set-detail.js'));
   const block = baustein.slice(baustein.indexOf('export function lagerortBlock'),
                                baustein.indexOf('export function lagerortGewaehlt'));
   assert.match(block, /<select/, 'Der Lagerort ist kein Auswahlfeld mehr');
@@ -103,7 +94,7 @@ test('beide zeigen den Lagerort dort, wo er hingehört', () => {
   assert.match(KT_DIALOG, /LagerortFeld\(/, 'App: Teil-Detail');
 
   // Und in BEIDEN nur für Teile, nicht für Figuren.
-  assert.match(web('public/js/13-acquisition-modals.js'), /if \(type === 'part'\) \{/,
+  assert.match(require('./helpers/sources').ansichtQuelle('13'), /if \(type === 'part'\) \{/,
     'Webapp: das Feld steht auch bei Figuren');
   // Die Farbe als lokale Variable: Das Modell liegt in einem anderen Modul.
   assert.match(KT_DIALOG, /val kopfFarbe = kopf\?\.colorId[\s\S]{0,80}kopfFarbe != null/,
@@ -155,8 +146,8 @@ test('eine gefilterte Antwort landet nicht im Speicher der vollen Liste', () => 
   // der ganzen Sammlung — und der Reiter zeigte je nach Cache-Zustand mal
   // alles, mal eine Kiste. Genau dafür steht `accounts` dort schon.
   for (const [name, s] of [
-    ['SetsRepository.kt', lies(path.join(__dirname, '..', '..', 'Android-App', 'core-data', 'src', 'main', 'java', 'ch', 'brickinventoryapp', 'data', 'repository', 'SetsRepository.kt'))],
-    ['TeileRepository.kt', lies(path.join(__dirname, '..', '..', 'Android-App', 'core-data', 'src', 'main', 'java', 'ch', 'brickinventoryapp', 'data', 'repository', 'TeileRepository.kt'))],
+    ['SetsRepository.kt', lies(path.join(__dirname, '..', '..', 'Android-App', 'core-data', 'src', 'main', 'java', 'ch', 'brickinventoryapp', 'data', 'repository', 'SetsRepositoryImpl.kt'))],
+    ['TeileRepository.kt', lies(path.join(__dirname, '..', '..', 'Android-App', 'core-data', 'src', 'main', 'java', 'ch', 'brickinventoryapp', 'data', 'repository', 'TeileRepositoryImpl.kt'))],
   ]) {
     assert.match(s, /storage\.isNullOrBlank\(\)/,
       `${name}: der Lagerort fehlt in der Bedingung für „ungefiltert"`);
@@ -187,7 +178,7 @@ test('die Längengrenze steht in beiden Fassungen gleich', () => {
   assert.ok(web('src/infra/fehlerTexte.ts').includes(`höchstens ${max} Zeichen`),
     `Der Fehlertext nennt eine andere Zahl als ${max}`);
   assert.ok(web('public/index.html').includes(`maxlength="${max}"`) ||
-            web('public/js/07-admin.js').includes(`maxlength="${max}"`),
+            (web('public/js/02-detailfelder.js') + web('public/js/07-set-detail.js')).includes(`maxlength="${max}"`),
     `Das Eingabefeld der Webapp begrenzt nicht auf ${max}`);
   assert.ok(KT_FELD.includes(`it.length <= ${max}`),
     `Das Eingabefeld der App begrenzt nicht auf ${max}`);
@@ -211,12 +202,7 @@ test('der Filter steht neben dem Kontofilter, nicht darunter', () => {
 });
 
 // ═══ Der VORRAT: auswählen ODER neu eintippen ═══════════════════════════════
-//
-// Marcos Vorgabe: „Der Lagerort soll ein Auswahlfeld mit einem Dropdown sein,
-// bei dem man auch gleich neue Auswahlwerte erfassen kann. Die Werte sollen
-// pro User verwaltet werden können und sollen in den Einstellungen bearbeitbar
-// sein. Der Grossvater soll die Werte der Enkel für die entsprechenden Sets
-// sehen und wählen können."
+// Ausführlich: docs/begruendungen/test/lagerort-beide.test.js.md#beide-sprechen-dieselben-vier-endpunkte
 
 test('beide sprechen dieselben vier Endpunkte des Vorrats an', () => {
   const route = web('routes/api_v1/sets.ts');
@@ -225,7 +211,7 @@ test('beide sprechen dieselben vier Endpunkte des Vorrats an', () => {
   assert.match(route, /router\.put\('\/storage\/locations\/:id'/);
   assert.match(route, /router\.delete\('\/storage\/locations\/:id'/);
 
-  const js = web('public/js/07-admin.js') + web('public/js/05-settings.js');
+  const js = (web('public/js/02-detailfelder.js') + web('public/js/07-set-detail.js')) + require('./helpers/sources').ansichtQuelle('05');
   assert.match(js, /'\/v1\/storage\/locations'/, 'Die Webapp liest den Vorrat nicht');
   assert.match(js, /'POST', '\/v1\/storage\/locations'/, 'Die Webapp legt nichts an');
   assert.match(js, /'PUT', `\/v1\/storage\/locations\/\$\{encodeURIComponent\(id\)\}`/,
@@ -243,58 +229,49 @@ test('beim Set gilt die Liste des BESITZERS, nicht die des Betrachters', () => {
   // Marcos Festlegung. Ein Lagerort ist ein Regal in einer Wohnung: Beim Set
   // des Enkels gehören die Regale des Enkels zur Wahl — ein Set des Enkels in
   // „Grossvaters Keller" wäre eine Aussage über die falsche Wohnung.
-  assert.match(web('routes/api_v1/sets.ts'), /req\.query\.owner \?\? req\.body\?\.owner/,
+  assert.match(web('routes/api_v1/sets.ts'), /lagerSchreibkonto\(req\.apiUser\.user_id, req\.abfrage\.owner \?\? req\.eingabe\.owner\)/,
     'Der Server nimmt gar keinen Besitzer entgegen');
   // Lesen weit, Schreiben eng — dieselbe Trennung wie überall im Baum.
-  assert.match(web('routes/api_v1/sets.ts'),
-    /schreiben\s*\n?\s*\? await writableIds\(req\.apiUser\.user_id\)\s*\n?\s*: await scopeIds\(req\.apiUser\.user_id\)/,
+  assert.match(web('src/bestand/lagerort.ts'),
+    /schreiben \? await writableIds\(nutzer\) : await scopeIds\(nutzer\)/,
     'Lesen und Schreiben verwenden dieselbe Menge');
 
-  assert.match(web('public/js/07-admin.js'), /ladeOrtAuswahl\(curSet\.owners\)/,
+  assert.match((web('public/js/02-detailfelder.js') + web('public/js/07-set-detail.js')), /ladeOrtAuswahl\((curSet|set)\.owners\)/,
     'Die Webapp fragt nicht nach der Liste des Besitzers');
-  assert.match(KT_SETDET, /vm\.loadLagerortVorrat\(set\.owners\.map \{ it\.id \}\)/,
+  assert.match(KT_SETDET, /aktionen\.loadLagerortVorrat\(set\.owners\.map \{ it\.id \}\)/,
     'Die App fragt nicht nach der Liste des Besitzers');
 });
 
 test('auch das TEIL kennt seine Besitzer — es war die letzte Lücke', () => {
-  // ── Was hier fehlte ──────────────────────────────────────────────────────
-  //
-  // Der Teil-Dialog zeigte als EINZIGE Stelle im Baum die eigene Liste statt
-  // der des Besitzers. Nicht aus Absicht: Der Kopf des Dialogs kannte die
-  // Besitzer nicht. Eine gruppierte Teilezeile trägt keine Besitzerplakette
-  // (withOwners lässt sie bewusst in Ruhe), und niemandem war aufgefallen,
-  // dass der Dialog sie trotzdem braucht.
-  //
-  // Sie kostet nichts: Die Set-Zeilen darunter tragen `owner_user_id` längst;
-  // der Kopf verdichtet sie. Eine zweite Abfrage wäre eine zweite Wahrheit.
+  // Was hier fehlte
+  // Ausführlich: docs/begruendungen/test/lagerort-beide.test.js.md#geteilt
   const geteilt = web('src/bestand/gemeinsam.ts');
   assert.match(geteilt, /owner_ids: number\[\];/,
     'Der Teil-Kopf führt keine Besitzer');
   assert.match(geteilt, /owner_ids:\s+\[\.\.\.new Set\(sets\.map\(s => s\.owner_user_id\)\)\]/,
     'Die Besitzer kommen nicht aus denselben Zeilen wie die Set-Liste');
 
-  assert.match(web('public/js/13-acquisition-modals.js'), /ladeOrtAuswahl\(item\?\.owner_ids\)/,
+  assert.match(require('./helpers/sources').ansichtQuelle('13'), /ladeOrtAuswahl\(item\?\.owner_ids\)/,
     'Die Webapp fragt beim Teil nicht nach der Liste des Besitzers');
   assert.match(lies(path.join(__dirname, '..', '..', 'Android-App', 'feature-teile', 'src', 'main', 'java', 'ch', 'brickinventoryapp', 'ui', 'dialogs', 'SetItemDetailDialog.kt')),
-    /vm\.loadLagerortVorrat\(zustand\.kopf\?\.ownerIds \?: emptyList\(\)\)/,
+    /aktionen\.loadLagerortVorrat\(zustand\.kopf\?\.ownerIds \?: emptyList\(\)\)/,
     'Die App fragt beim Teil nicht nach der Liste des Besitzers');
 });
 
 test('beide bieten auswählen UND neu eintippen in EINEM Feld', () => {
   // Ein reines Auswahlfeld kann nur das erste, ein reines Textfeld nur das
-  // zweite. Die Webapp nimmt eine datalist, die App einen
-  // ExposedDropdownMenuBox — dasselbe Verhalten, die jeweils übliche Form.
-  assert.match(web('public/js/07-admin.js'), /list="lagerorte"/,
-    'Das Feld der Webapp klappt nicht auf');
+  // zweite. Die Webapp nimmt eine Auswahl mit dem Eintrag „neuer Ort“, der das
+  // Textfeld öffnet, die App einen ExposedDropdownMenuBox.
+  const feld = require('./helpers/sources').ohneKommentare(web('public/js/02-detailfelder.js'));
+  assert.match(feld, /<select [^>]*data-ortauswahl="1"/, 'Das Feld der Webapp klappt nicht auf');
+  assert.match(feld, /<option value="" \$\{ORT_NEU_MARKE\}>/, 'Die Auswahl der Webapp nimmt keinen neuen Ort an');
   assert.match(KT_FELD, /ExposedDropdownMenuBox/,
     'Das Feld der App klappt nicht auf');
   // Und getippte Werte landen im Vorrat — sonst stünde der Ort am Set und
   // fehlte in der Liste, aus der er gewählt werden soll.
   // Hier stand `stelleOrteSicher(besitzerIds, ort)`. Die Funktion gibt es nicht
-  // mehr: Mit der ID muss der Ort VOR dem Zuordnen im Vorrat stehen (ohne
-  // Zeile keine ID), und beides laeuft deshalb in einer Transaktion in
-  // setzeLagerort(). Gesucht wird jetzt die Anweisung selbst — die Aussage
-  // bleibt, dass ein getippter Ort in den Vorrat kommt.
+  // mehr: Mit der ID muss der Ort VOR dem Zuordnen im Vorrat stehen (ohne …
+  // Ausführlich: docs/begruendungen/test/lagerort-beide.test.js.md#stelle-2
   assert.match(web('src/bestand/repository/lagerort.ts'),
     /INSERT INTO storage_locations \(user_id, name\)\s*\n\s*SELECT id, \$2 FROM users/,
     'Ein frisch getippter Ort landet nicht im Vorrat');
@@ -304,12 +281,12 @@ test('beide verwalten die Orte in den Einstellungen', () => {
   const html = web('public/index.html');
   assert.match(html, /id="storage-list"/, 'Der Webapp fehlt die Liste');
   assert.match(html, /data-click="legeLagerortAn"/, 'Der Webapp fehlt das Anlegen');
-  assert.match(web('public/js/05-settings.js'), /function benenneLagerortUm/,
+  assert.match(require('./helpers/sources').ansichtQuelle('05'), /function benenneLagerortUm/,
     'Der Webapp fehlt das Umbenennen');
-  assert.match(web('public/js/05-settings.js'), /function loescheLagerort/,
+  assert.match(require('./helpers/sources').ansichtQuelle('05'), /function loescheLagerort/,
     'Der Webapp fehlt das Löschen');
 
-  assert.match(KT_EINST, /LagerorteCard\(vm\)/, 'Der App fehlt die Karte');
+  assert.match(KT_EINST, /LagerorteCard\(lager, vm\)/, 'Der App fehlt die Karte');
   for (const fn of ['legeLagerortAn', 'benenneLagerortUm', 'loescheLagerort']) {
     assert.match(KT_HAUS, new RegExp(`fun ${fn}\\(`),
       `Der App fehlt ${fn}`);
@@ -318,7 +295,7 @@ test('beide verwalten die Orte in den Einstellungen', () => {
   // sondern ein Versehen.
   assert.match(KT_HAUS, /getLagerortVorrat\(null\)/,
     'Die App holt für die Einstellungen nicht die eigene Liste');
-  assert.match(web('public/js/05-settings.js'), /'\/v1\/storage\/locations'\)/,
+  assert.match(require('./helpers/sources').ansichtQuelle('05'), /'\/v1\/storage\/locations'\)/,
     'Die Webapp holt für die Einstellungen nicht die eigene Liste');
 });
 

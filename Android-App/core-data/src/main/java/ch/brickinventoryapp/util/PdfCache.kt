@@ -4,20 +4,9 @@ import java.io.File
 
 /**
  * Was mit einer zwischengespeicherten Anleitung als Nächstes zu tun ist.
- *
- * Der Zustand hängt am Dateinamen, nicht an einer Grösse: Eine Zahl allein sagt
- * nicht, ob sie eine fertige Datei oder einen abgebrochenen Download beschreibt.
- * Nach einem vollständigen Download fragte `Range: bytes=<vorhanden>-` hinter dem
- * letzten Byte, und der Server antwortet zu Recht mit 416 (über die
- * Anleitungs-Route als 404, siehe Web-App/utils/dateiAusliefern.ts). Der laufende
- * Download schreibt deshalb in `<name>.part` und wird erst beim Abschluss
- * umbenannt; `<name>` existiert = vollständig. `rename` ist der eine Schritt, der
- * nicht halb passieren kann.
- *
- * So öffnet eine schon angesehene Anleitung ohne Netzanfrage, wie prunePdfCache es
- * verspricht.
+ * Ausführlich: docs/begruendungen/core-data/util/PdfCache.kt.md#pdfschritt
  */
-sealed class PdfSchritt {
+internal sealed class PdfSchritt {
     /** Die Datei liegt vollstaendig vor. Nichts holen. */
     object Fertig : PdfSchritt()
 
@@ -34,7 +23,7 @@ sealed class PdfSchritt {
  * @param fertigeGroesse Groesse der fertigen Datei, 0 wenn es sie nicht gibt.
  * @param teilGroesse    Groesse der Teildatei, 0 wenn es sie nicht gibt.
  */
-fun pdfSchritt(fertigeGroesse: Long, teilGroesse: Long): PdfSchritt = when {
+internal fun pdfSchritt(fertigeGroesse: Long, teilGroesse: Long): PdfSchritt = when {
     // Die fertige Datei schlaegt alles. Liegt daneben noch eine Teildatei,
     // ist sie ein Ueberbleibsel und wird beim naechsten Aufraeumen entsorgt.
     fertigeGroesse > 0L -> PdfSchritt.Fertig
@@ -42,42 +31,50 @@ fun pdfSchritt(fertigeGroesse: Long, teilGroesse: Long): PdfSchritt = when {
     else                -> PdfSchritt.Holen(0L)
 }
 
-/** Eigener Ordner im cacheDir für PDFs mit Nummer und PIN der Gutscheine. */
+/** Ordner, in dem ältere Fassungen Gutschein-PDFs ablegten; nur noch zum Aufräumen. */
 const val PDF_VERTRAULICH_ORDNER = "pdf_vertraulich"
 
 /**
- * Wo der Betrachter ein PDF ablegt. Anleitungen bleiben im Zwischenspeicher
- * (wieder öffnen, fortsetzen); ein vertrauliches PDF kommt in einen eigenen
- * Ordner, den das Aufräumen des Zwischenspeichers nicht sieht und der beim
- * Verlassen, Abmelden und Start geleert wird. Der Name ist SHA-256 der Adresse:
- * Bei 32 Bit (hashCode) teilen sich zwei Adressen leicht eine Datei, und der
- * Betrachter zeigte das PDF der anderen — bei Gutscheinen fremde Nummer und PIN.
+ * Wo der Betrachter ein PDF ablegt: Anleitungen verschlüsselt im Zwischenspeicher
+ * ([AnleitungsAblage]). Ein vertrauliches PDF bekommt keine Datei (null) und bleibt im
+ * Speicher ([ladePdfInDenSpeicher]). Der Name ist SHA-256 der Adresse: Bei 32 Bit
+ * (hashCode) teilten sich zwei Adressen leicht eine Datei.
  */
-fun pdfAblage(cacheDir: File, pdfUrl: String, vertraulich: Boolean): File {
+fun pdfAblage(cacheDir: File, pdfUrl: String, vertraulich: Boolean): File? {
+    if (vertraulich) return null
     val hash = java.security.MessageDigest.getInstance("SHA-256").digest(pdfUrl.toByteArray())
-    val name = "pdfview_${hash.joinToString("") { "%02x".format(it) }}.pdf"
-    return if (vertraulich) File(File(cacheDir, PDF_VERTRAULICH_ORDNER), name) else File(cacheDir, name)
+    return File(cacheDir, ANLEITUNG_PRAEFIX + hash.joinToString("") { "%02x".format(it) } + ANLEITUNG_ENDUNG)
 }
 
-/** Ein abgelegtes PDF samt Teildatei löschen — ein abgebrochener Download enthält dieselbe PIN. */
-fun vergissPdf(datei: File) {
-    datei.delete()
-    File(datei.path + ".part").delete()
-}
-
-/** Alle vertraulichen PDFs löschen: beim Start (nach einem Absturz) und beim Abmelden. */
+/** Gutschein-PDFs älterer Fassungen löschen: beim Start und beim Abmelden. */
 fun raeumeVertraulichePdfsAuf(cacheDir: File) {
     File(cacheDir, PDF_VERTRAULICH_ORDNER).deleteRecursively()
 }
 
 /**
- * Wohin die Teileliste kommt: Sie trägt das Inventar, also nach filesDir. Den
- * externen App-Bereich liest unter Android 8/9 jede App mit Speicherrecht; eine
- * Kopie älterer Fassungen dort wird entfernt. pdf/ gibt file_paths.xml frei.
+ * Wohin die Teileliste kommt: Sie trägt das Inventar, also nach filesDir. Kopien
+ * älterer Fassungen (extern lesbar unter Android 8/9, intern im Klartext) werden
+ * dabei entfernt.
  */
 internal fun teilelistenAblage(intern: File, extern: File?): File {
     extern?.let { File(it, "pdf/teileliste.pdf").delete() }
-    return File(File(intern, "pdf").apply { mkdirs() }, "teileliste.pdf")
+    val ordner = File(intern, "pdf").apply { mkdirs() }
+    File(ordner, "teileliste.pdf").delete()
+    return File(ordner, TEILELISTE_DATEI)
+}
+
+/**
+ * Wie lange die Teileliste liegen bleibt: Die Meldung „fertig, antippen“ öffnet sie
+ * später noch. Verschlüsselt ist sie auch dann, aber das Inventar soll nicht länger
+ * auf dem Gerät liegen, als jemand es braucht.
+ */
+internal const val TEILELISTE_FRIST_MS: Long = 30L * 60 * 1000
+
+/** Löscht die Teileliste, wenn sie älter als [frist] ist; beim Start und im Auftrag nach dem Export. */
+fun raeumeAlteTeilelisteAuf(intern: File, jetzt: Long, frist: Long = TEILELISTE_FRIST_MS): Boolean {
+    File(File(intern, "pdf"), "teileliste.pdf").delete()
+    val datei = File(File(intern, "pdf"), TEILELISTE_DATEI)
+    return datei.isFile && jetzt - datei.lastModified() >= frist && datei.delete()
 }
 
 /**

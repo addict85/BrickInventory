@@ -12,13 +12,15 @@ import okhttp3.mockwebserver.RecordedRequest
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
-import org.junit.Assert.assertTrue
 import org.junit.Assert.fail
 import org.junit.Before
 import org.junit.Test
 import java.util.Collections
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicInteger
+import ch.brickinventoryapp.util.APP_API_VERSION
+import ch.brickinventoryapp.util.NetworkPolicy
+import ch.brickinventoryapp.util.VersionsHinweis
 
 /**
  * Der Wächter aller Anfragen an den eigenen Server, ausgeführt gegen einen
@@ -38,24 +40,28 @@ import java.util.concurrent.atomic.AtomicInteger
  *      wird auf den Server samt Pfad umgeschrieben“
  *   G  eigeneKoepfe() nicht aufgerufen → rot „der eigene Server bekommt Sprache
  *      und Fassung“
- *   I  (01.11.2026) die Prüfung verbindungErlaubt() im Wächter entfernt → rot
+ *   I  die Prüfung verbindungErlaubt() im Wächter entfernt → rot
  *      „im Release-Build erreicht keine http-Anfrage den Server …“ und „auch der
  *      Debug-Build schickt http nur …“
- *   K  (01.11.2026) im Wächter `entwicklung` fest auf true → rot „im
+ *   K  im Wächter `entwicklung` fest auf true → rot „im
  *      Release-Build erreicht keine http-Anfrage den Server …“
- *   H  (30.10.2026) /settings/theme vom Token ausgenommen (`mitToken` falsch für
+ *   H  /settings/theme vom Token ausgenommen (`mitToken` falsch für
  *      Pfade auf "/settings/theme") → rot „das Design des Kontos wird mit Token geholt“
- *   J  (31.10.2026) im Wächter die Meldung über versionsHinweis() entfernt → rot „ein
+ *   J  im Wächter die Meldung über versionsHinweis() entfernt → rot „ein
  *      Server mit hoeherer Mindestfassung meldet App zu alt …“ (leere Liste statt APP_ZU_ALT)
- *   L  (31.10.2026) rechteEntzogen() bei jedem 403 → rot „ein 403 nur_admins …“
- *   M  (31.10.2026) BESTAETIGUNG_NOETIG nicht beachtet (jeder 401 meldet ab) →
+ *   L  rechteEntzogen() bei jedem 403 → rot „ein 403 nur_admins …“
+ *   M  BESTAETIGUNG_NOETIG nicht beachtet (jeder 401 meldet ab) →
  *      rot „eine falsche Passwortbestaetigung meldet nicht ab“
- *   N  (01.11.2026) im Wächter die Zeile für PASSWORT_WECHSEL_NOETIG entfernt →
+ *   N  im Wächter die Zeile für PASSWORT_WECHSEL_NOETIG entfernt →
  *      rot „ein 403 passwort_wechsel_noetig verlangt das neue Passwort …“
- *   O  (02.11.2026) wieder die alte Regel (selbst gesetzter Kopf nur weg, wenn er
+ *   O  wieder die alte Regel (selbst gesetzter Kopf nur weg, wenn er
  *      der jetzige Token ist) → rot „ein selbst gesetzter Kopf mit einem aelteren
  *      Token …“ und „nach dem Abmelden geht kein selbst gesetzter Kopf hinaus …“
  *   P  nur `!tokenGehoertHierher` statt `!mitToken` → rot „nach dem Abmelden …“
+ *   R  wieder `herkunft == null ||` in tokenGehoertHierher →
+ *      rot „ein Token ohne Bindung geht an keinen Server“ (gegenproben/token-ohne-bindung-gesendet.patch)
+ *   Q  gegenproben/waechter-ohne-faktorpflicht.patch nimmt
+ *      die Zeile für ZWEITER_FAKTOR_PFLICHT heraus → rot „ein 403 zweiter_faktor_pflicht …“
  */
 class ServerWaechterTest {
 
@@ -65,6 +71,7 @@ class ServerWaechterTest {
     private val abgelaufen = AtomicInteger()
     private val entzogen = AtomicInteger()
     private val wechsel = AtomicInteger()
+    private val faktor = AtomicInteger()
     /** Rumpf je Pfad für Antworten mit Fehlercode. */
     private val ruempfe = Collections.synchronizedMap(mutableMapOf<String, String>())
 
@@ -72,10 +79,12 @@ class ServerWaechterTest {
         var url: String,
         var tokens: ArrayDeque<String> = ArrayDeque(listOf(TOKEN)),
         var herkunft: String? = null,
+        /** false: ein Token älterer Fassungen ohne Bindung. */
+        val gebunden: Boolean = true,
     ) : Zugangslage {
         override fun serverUrl() = url
         override fun token(): String = if (tokens.size > 1) tokens.removeFirst() else tokens.first()
-        override fun tokenHerkunft() = herkunft
+        override fun tokenHerkunft() = if (gebunden) herkunft ?: NetworkPolicy.herkunft(url) else null
         override fun generation() = 0L
     }
 
@@ -100,13 +109,25 @@ class ServerWaechterTest {
     private fun client(lage: Zugangslage, api: Boolean = true, entwicklung: Boolean = true) = OkHttpClient.Builder()
         .addInterceptor(ServerWaechter(lage, api, entwicklung, sitzungAbgelaufen = { abgelaufen.incrementAndGet() },
             eigeneKoepfe = { _, ziel -> ziel.header("Accept-Language", "de") }, rechteEntzogen = { entzogen.incrementAndGet() },
-            passwortWechselNoetig = { wechsel.incrementAndGet() }))
+            passwortWechselNoetig = { wechsel.incrementAndGet() }, zweiterFaktorPflicht = { faktor.incrementAndGet() }))
         .readTimeout(2, TimeUnit.SECONDS).build()
 
     private fun hole(c: OkHttpClient, url: String): Int =
         c.newCall(Request.Builder().url(url).build()).execute().use { it.code }
 
     private fun anfragenAn(teil: String) = synchronized(anfragen) { anfragen.filter { teil in it.first } }
+
+    @Test
+    fun `ein Token ohne Bindung geht an keinen Server`() {
+        codes["/api/v1/sets"] = 401
+        val c = client(Lage(basis(), gebunden = false))
+        assertEquals(401, hole(c, "http://localhost:3000/api/v1/sets"))
+        c.newCall(Request.Builder().url(basis() + "/api/v1/pdf").header("Authorization", "Bearer $TOKEN").build())
+            .execute().close()
+        assertEquals("Ein ungebundener Token ging hinaus", listOf<String?>(null, null),
+            synchronized(anfragen) { anfragen.map { it.second } })
+        assertEquals("Ohne Token meldet ein 401 nicht ab", 0, abgelaufen.get())
+    }
 
     @Test
     fun `ein 401 auf den Token meldet die abgelaufene Sitzung`() {
@@ -170,7 +191,7 @@ class ServerWaechterTest {
             .header("Authorization", "Bearer alt").build()).execute().close()
         assertNull("Abgemeldet: kein Token", anfragenAn("/api/v1/csv").single().second)
 
-        val eigene = ch.brickinventoryapp.util.NetworkPolicy.herkunft(basis())
+        val eigene = NetworkPolicy.herkunft(basis())
         client(Lage(basis(), herkunft = eigene)).newCall(Request.Builder().url(basis() + "/api/v1/pdf")
             .header("Authorization", "Bearer alt").build()).execute().close()
         assertEquals("Bearer alt", anfragenAn("/api/v1/pdf").single().second)
@@ -181,26 +202,26 @@ class ServerWaechterTest {
         hole(client(Lage(basis(), tokens = ArrayDeque(listOf(""))), api = false), basis() + "/api/v1/stats")
         val r = server.takeRequest()
         assertEquals("de", r.getHeader("Accept-Language"))
-        assertEquals(ch.brickinventoryapp.util.APP_API_VERSION.toString(), r.getHeader("X-App-Api"))
+        assertEquals(APP_API_VERSION.toString(), r.getHeader("X-App-Api"))
     }
 
     @Test
     fun `ein Server mit hoeherer Mindestfassung meldet App zu alt statt eines Lesefehlers`() {
         // So antwortet der Server einer alten App: 426 samt beiden Fassungen im Kopf.
-        val neuer = (ch.brickinventoryapp.util.APP_API_VERSION + 1).toString()
+        val neuer = (APP_API_VERSION + 1).toString()
         server.dispatcher = object : Dispatcher() {
             override fun dispatch(request: RecordedRequest) = MockResponse().setResponseCode(426)
                 .setHeader("X-Api-Version", neuer).setHeader("X-Api-Min-App", neuer)
                 .setBody("""{"success":false,"error":"App zu alt","code":"app_zu_alt"}""")
         }
-        val hinweise = Collections.synchronizedList(mutableListOf<ch.brickinventoryapp.util.VersionsHinweis>())
+        val hinweise = Collections.synchronizedList(mutableListOf<VersionsHinweis>())
         val c = OkHttpClient.Builder()
             .addInterceptor(ServerWaechter(Lage(basis(), tokens = ArrayDeque(listOf(""))), true, true,
                 sitzungAbgelaufen = { abgelaufen.incrementAndGet() }, versionsMeldung = { hinweise += it }))
             .readTimeout(2, TimeUnit.SECONDS).build()
         assertEquals(426, hole(c, basis() + "/api/v1/auth/profile"))
         assertEquals(426, hole(c, basis() + "/api/v1/sets"))
-        assertEquals("einmal gemeldet, nicht je Anfrage", listOf(ch.brickinventoryapp.util.VersionsHinweis.APP_ZU_ALT), hinweise.toList())
+        assertEquals("einmal gemeldet, nicht je Anfrage", listOf(VersionsHinweis.APP_ZU_ALT), hinweise.toList())
         assertEquals(0, abgelaufen.get())
     }
 
@@ -290,6 +311,24 @@ class ServerWaechterTest {
         hole(c, "http://localhost:3000/api/v1/admin/jobs")
         assertEquals("Ein anderes 403 verlangt keinen Wechsel", 1, wechsel.get())
         assertEquals("Kein Abmelden", 0, abgelaufen.get())
+    }
+
+    @Test
+    fun `ein 403 zweiter_faktor_pflicht verlangt die Einrichtung, ohne abzumelden`() {
+        codes["/api/v1/sets"] = 403
+        ruempfe["/api/v1/sets"] = """{"success":false,"code":"zweiter_faktor_pflicht","error":"Bitte zuerst einen Code-Generator einrichten."}"""
+        codes["/api/v1/admin/jobs"] = 403
+        ruempfe["/api/v1/admin/jobs"] = """{"success":false,"code":"passwort_wechsel_noetig"}"""
+        val c = client(Lage(basis()))
+        assertEquals(403, hole(c, "http://localhost:3000/api/v1/sets"))
+        assertEquals(1, faktor.get())
+        hole(c, "http://localhost:3000/api/v1/admin/jobs")
+        assertEquals("Ein anderes 403 verlangt keinen zweiten Faktor", 1, faktor.get())
+        assertEquals("Kein Abmelden", 0, abgelaufen.get())
+        assertEquals("Kein entzogenes Recht", 0, entzogen.get())
+
+        hole(client(Lage(basis(), tokens = ArrayDeque(listOf("")))), "http://localhost:3000/api/v1/sets")
+        assertEquals("Ohne Token sagt ein 403 nichts über dieses Konto", 1, faktor.get())
     }
 
     @Test

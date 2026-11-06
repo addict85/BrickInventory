@@ -1,23 +1,6 @@
 /**
  * Sperr-Namensräume gegen eine ECHTE Datenbank.
- *
- * ── Was hier anders ist als vorher (Nachtrag 149) ───────────────────────────
- * Die Regel „zwei Vorgänge dürfen sich nicht denselben Namensraum teilen" war
- * bisher nur als Quelltextprüfung da, in test/rate-limit.test.js:
- *
- *     const belegt = ['42', '77', '11223344', '99999999'];
- *     const gewaehlt = job.match(/const PRICE_JOB_LOCK = (\d+)/)[1];
- *     assert.ok(!belegt.includes(gewaehlt));
- *
- * Das prüfte EINE Konstante gegen eine von Hand gepflegte Liste — die 55, 56,
- * 57 und 58 nicht enthielt, obwohl es alle vier längst gab. Eine Kollision mit
- * dreien davon wäre durchgegangen, und der Test wäre dabei grün geblieben.
- *
- * Hier wird stattdessen gemessen, worum es geht: Zwei Verbindungen greifen
- * gleichzeitig nach Sperren. Verschiedene Namensräume dürfen sich nicht
- * behindern, derselbe muss es. Das ist eine Aussage über PostgreSQL-Verhalten,
- * und sie lässt sich nicht durch eine Umbenennung, ein neues Zahlenformat
- * (918_273_645) oder eine vergessene Listenpflege aushebeln.
+ * Ausführlich: docs/begruendungen/test/lock-namespaces-db.test.js.md#kopf
  *
  * Gegenprobe (am 27.10. gemessen): txLock wieder mit der user_id als erstem
  * Wert → rot: „die Bestandssperre eines Kontos trifft keinen Job".
@@ -139,9 +122,8 @@ test('Sperr-Namensräume gegen echte Datenbank', async (t) => {
     const frei = {};
     await withInventoryLock(LOCKS.BILD_DOWNLOAD, SET, async () => {
       frei.bild = await nochFrei(LOCKS.BILD_DOWNLOAD, zweiter);
-      frei.selbst = (await db.get(`SELECT pg_try_advisory_lock($1, hashtext($2)) AS ok`,
-        [LOCKS.INVENTAR, `${LOCKS.BILD_DOWNLOAD}|${SET}`])).ok;
-      if (frei.selbst) await db.get(`SELECT pg_advisory_unlock($1, hashtext($2))`, [LOCKS.INVENTAR, `${LOCKS.BILD_DOWNLOAD}|${SET}`]);
+      // Auf eigener Verbindung: db.get liefe hier über die Transaktion, die die Sperre schon hält.
+      frei.selbst = await nochFrei(LOCKS.INVENTAR, (await db.pool.query('SELECT hashtext($1) AS h', [`${LOCKS.BILD_DOWNLOAD}|${SET}`])).rows[0].h);
     });
     assert.equal(frei.bild, true, 'Die Bestandssperre von Konto 42 hält den Bild-Download des Sets auf');
     assert.equal(frei.selbst, false, 'Die Bestandssperre liegt nicht unter LOCKS.INVENTAR — dann prüft der Fall oben nichts');

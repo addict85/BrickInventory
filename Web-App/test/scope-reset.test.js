@@ -1,16 +1,10 @@
 /**
  * Der Kontofilter wird bei jeder Anmeldung auf „Alle Konten" zurückgesetzt.
  *
- * ── Woher dieser Test kommt (Marcos Wunsch, Nachtrag 46) ────────────────────
- * Der Filter liegt bewusst im localStorage — er ist eine Ansichtseinstellung
- * wie „Kachel oder Tabelle", und am Telefon will man sie womöglich anders als
- * am Rechner. Genau das machte ihn aber zur Falle: Er überlebte Abmelden und
- * Anmelden. Wer zuletzt auf ein einzelnes Konto gefiltert hatte, sah nach dem
- * nächsten Login wieder nur dessen Sets, ohne dass etwas darauf hinwies — es
- * sah aus, als sei die halbe Sammlung verschwunden.
- *
- * Bewusst NUR beim Anmelden, nicht bei jedem Seitenaufbau: Innerhalb einer
- * Sitzung soll eine getroffene Wahl auch ein F5 überleben.
+ * Der Filter liegt im localStorage (eine Ansichtseinstellung je Gerät) und
+ * überlebte deshalb Abmelden und Anmelden: Nach dem Login sah die halbe
+ * Sammlung verschwunden aus. Nur beim Anmelden, nicht bei jedem Seitenaufbau —
+ * innerhalb einer Sitzung soll die Wahl ein F5 überleben.
  *
  * Gegenprobe (durchgeführt): den resetScopeModes()-Aufruf aus doLogin
  * entfernt → der zweite Teilschritt wird rot.

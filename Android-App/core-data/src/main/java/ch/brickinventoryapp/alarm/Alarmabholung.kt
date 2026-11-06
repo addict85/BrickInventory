@@ -2,24 +2,20 @@ package ch.brickinventoryapp.alarm
 
 import ch.brickinventoryapp.data.model.PendingAlertsResponse
 import ch.brickinventoryapp.data.model.Preisalarm
-import ch.brickinventoryapp.data.repository.Result
+import ch.brickinventoryapp.data.repository.Ergebnis as Abrufergebnis
+
+/**
+ * Die Abfrage selbst — ein Typalias, damit die Signatur von [Alarmabholung.hole]
+ * lesbar bleibt. Top-Level, weil Kotlin Typalias nur dort erlaubt.
+ */
+typealias Frage = suspend (String?) -> Abrufergebnis<PendingAlertsResponse>
 
 /**
  * Was beim Abholen der ausgelösten Preisalarme entschieden wird — ausserhalb des
  * Workers, weil sich ein ListenableWorker nur mit laufendem Android prüfen lässt.
  * Der Worker beschafft den Kontext, ruft hier an und zeigt an, was zurückkommt.
- *
- * Die Marke kommt vom Server, nicht von der Uhr des Telefons: Sonst entschiede die
- * Gangabweichung, ob eine Meldung doppelt kommt (Telefonuhr geht nach) oder
- * verloren geht (sie geht vor). Deshalb wird der Zeitpunkt, den der Server in
- * jeder Antwort mitreicht, zur nächsten Marke.
+ * Ausführlich: docs/begruendungen/core-data/alarm/Alarmabholung.kt.md#z7
  */
-/**
- * Die Abfrage selbst — ein Typalias, damit die Signatur von [Alarmabholung.hole]
- * lesbar bleibt. Top-Level, weil Kotlin Typalias nur dort erlaubt.
- */
-typealias Frage = suspend (String?) -> Result<PendingAlertsResponse>
-
 object Alarmabholung {
 
     /** Was ein Durchgang ergeben hat. */
@@ -45,9 +41,8 @@ object Alarmabholung {
     }
 
     /**
-     * Einen Durchgang machen. Die Abfrage ist ein Parameter, weil das BrickRepository
-     * über Retrofit und den Plattencache in einem Unit-Test nicht herstellbar ist —
-     * sonst wäre gerade das Entschiedene nur im Betrieb beobachtbar. Wie beim
+     * Einen Durchgang machen. Die Abfrage ist ein Parameter, damit ein Unit-Test sie
+     * ohne Retrofit und Plattencache reichen kann — sonst wäre gerade das Entschiedene nur im Betrieb beobachtbar. Wie beim
      * Mailversand des Servers (utils/preisalarm.ts): Wer entscheidet, bekommt das Wie
      * gereicht.
      *
@@ -56,7 +51,7 @@ object Alarmabholung {
      */
     suspend fun hole(marke: String?, frage: Frage): Ergebnis {
         val r = frage(marke?.takeIf { it.isNotBlank() })
-        val antwort = (r as? Result.Success)?.data?.takeIf { it.success }
+        val antwort = (r as? Abrufergebnis.Success)?.data?.takeIf { it.success }
             ?: return Ergebnis.Fehlgeschlagen
         // Ohne `now` keine neue Marke — und ohne neue Marke lieber gar nichts
         // speichern, als eine falsche. Ein Server, der das Feld nicht kennt,

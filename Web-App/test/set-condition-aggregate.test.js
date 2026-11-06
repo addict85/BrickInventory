@@ -1,20 +1,6 @@
 /**
  * Zustands-Aggregat eines Sets.
- *
- * Fehlerbild: Ändert man im Kaufpreis-Dialog den Zustand von "neu" auf
- * "gebraucht" und verlässt den Dialog, zeigt die Galerie-Kachel weiter "neu" —
- * erst ein Neuladen der Liste korrigiert es. Ursache waren zwei Dinge:
- *
- *   1. Die Android-App aktualisierte nach dem Schreiben nur _setDetailState,
- *      nie die Liste in _state.sets.
- *   2. Die Webapp hatte zwar eine lokale Aktualisierung, benutzte aber die
- *      falsche Regel: sie nahm die Bedingung der ZULETZT erfassten Position.
- *      Der Server sagt dagegen "sobald EINE Erfassung U ist, gilt das Set als
- *      gebraucht". Bei der Reihenfolge [U, N] widersprachen sich beide.
- *
- * Die Regel liegt jetzt einmal in utils/handlers.ts und wird von den
- * Schreib-Endpunkten mitgeliefert. Dieser Test hält sie fest und stellt sicher,
- * dass die Clients sie nicht wieder nachbauen.
+ * Ausführlich: docs/begruendungen/test/set-condition-aggregate.test.js.md#kopf
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -41,9 +27,8 @@ test('die Aggregat-Regel steht nur noch an einer Stelle', () => {
   // Der Anker nennt bewusst KEINEN Variablennamen: Er hiess frueher
   // `usedCount`, und als das Typisieren daraus ein normalisiertes `used`
   // machte, fand das alte Muster nichts mehr — der Test meldete 0 statt 1.
-  // Gemeint ist die REGEL, nicht ihre Schreibweise. So gefasst faengt er
-  // ausserdem eine Ausformulierung unter anderem Namen, die er vorher
-  // durchgelassen haette.
+  // Gemeint ist die REGEL, nicht ihre Schreibweise. So gefasst faengt er …
+  // Ausführlich: docs/begruendungen/test/set-condition-aggregate.test.js.md#inlinerules
   const inlineRules = [...code.matchAll(/\b\w+ > 0 \? 'U'/g)];
   assert.equal(inlineRules.length, 1,
     `Die Regel steht ${inlineRules.length}× im Code — sie gehört genau einmal in conditionFromAcquisitions()`);
@@ -62,18 +47,18 @@ test('BEIDE Routenfamilien liefern das Aggregat mit', () => {
   // Genau hier lag der zweite Anlauf: Der Wrapper existierte zuerst nur in der
   // v1-Datei, die Webapp benutzt aber ihren eigenen Handler in routes/sets.ts
   // — und bekam deshalb kein `set` in der Antwort.
-  // Die Erfassungsrouten rufen den Dienst src/bestand/erfassungen.ts; dort
+  // Die Erfassungsrouten rufen den Dienst src/sammlung/erfassungen.ts; dort
   // hängt jede Antwort das Aggregat an.
-  const v1  = fs.readFileSync(path.join(ROOT, 'src/bestand/erfassungen.ts'), 'utf8');
+  const v1  = fs.readFileSync(path.join(ROOT, 'src/sammlung/erfassungen.ts'), 'utf8');
   const web = require('./helpers/sources').setKernQuelle();
   const h   = require('./helpers/sources').handlerQuelle();
 
   assert.match(h, /async function withSetAggregate/,
-    'Der Wrapper gehört in utils/handlers.ts, damit ihn beide Routenfamilien teilen');
+    'Der Wrapper gehört in den Dienst der Sets, damit ihn beide Routenfamilien teilen');
 
   assert.equal([...v1.matchAll(/return antwort\(art, uid, keys,/g)].length, 2,
     'Ändern und Löschen müssen beide das Aggregat zurückgeben');
-  // Die Webapp-Erfassungsrouten sind mit Nachtrag 70 entfallen — sie leben in
+  // Die Webapp-Erfassungsrouten sind mit einer früheren Runde entfallen — sie leben in
   // der v1-Fabrik, die jetzt beide Clients bedient. Geprüft wird deshalb die
   // Gegenrichtung: In routes/sets.ts darf KEINE Zweitfassung zurückkehren.
   // Die Aussage („jede Antwort trägt das Aggregat") gilt unverändert, sie hat
@@ -98,8 +83,13 @@ test('ein unbekannter Theme-Wert setzt nichts zurück', () => {
   assert.match(boot, /if \(!val\) return null;/,
     'Ein ungültiger Wert darf den localStorage-Cache nicht überschreiben');
 
-  const fn = core.slice(core.indexOf('function applyTheme'), core.indexOf('function applyTheme') + 500);
-  assert.match(fn, /theme !== 'brick' && theme !== 'classic'/,
+  // applyTheme() führt keine eigene Liste mehr, sondern reicht an 00-theme-boot.js
+  // weiter (dessen Rückfall oben geprüft ist). Geprüft wird der Code ohne Kommentare.
+  const roh = core.slice(core.indexOf('function applyTheme'), core.indexOf('function applyTheme') + 500);
+  const fn = roh.slice(0, roh.indexOf('\n}') + 2).replace(/\/\/.*$/gm, '');
+  assert.match(fn, /return window\.__bimApplyTheme\(theme\);/,
+    'applyTheme() muss an 00-theme-boot.js weiterreichen');
+  assert.doesNotMatch(fn, /'classic'/,
     "applyTheme() muss unbekannte Werte ignorieren statt auf 'classic' zu setzen");
 });
 
@@ -121,12 +111,8 @@ test('der im Formular gewählte Zustand kommt beim Anlegen an', () => {
   // addSet() nimmt den Zustand als sechsten Parameter. Beide Webapp-Routen
   // haben ihn nicht weitergereicht: /api/sets las ihn gar nicht aus dem Body,
   // /api/sets/add-stream las ihn und benutzte ihn nie. Ein als „Gebraucht"
-  // erfasstes Set landete dadurch als „Neu" in der Datenbank — die
-  // Android-API übergab ihn korrekt, die Webapp nicht.
-  // Seit Nachtrag 74 liegt der Anlege-Weg der Clients in der v1-Fabrik, während
-  // add-stream und der CSV-Import weiter in routes/sets.ts stehen. Die Regel
-  // („jeder addSet-Aufruf reicht den Zustand durch") gilt für ALLE Aufrufer —
-  // deshalb werden beide Dateien zusammen betrachtet.
+  // erfasstes Set landete dadurch als „Neu" in der Datenbank — die …
+  // Ausführlich: docs/begruendungen/test/set-condition-aggregate.test.js.md#raw-stelle
   const raw = require('./helpers/sources').setKernQuelle();
   // Kommentare entfernen: Der Erklärtext nennt addSet() selbst.
   const src = raw.replace(/\/\/[^\n]*/g, '').replace(/\/\*[\s\S]*?\*\//g, '');
@@ -165,7 +151,7 @@ test('der im Formular gewählte Zustand kommt beim Anlegen an', () => {
   // Und der Body muss ihn überhaupt hergeben. Seit der Haushaltssicht steht
   // dahinter noch owner_user_id (Kontoauswahl beim Erfassen) — geprüft wird
   // deshalb der Anfang der Zerlegung, nicht die vollständige Zeile.
-  assert.match(src, /const \{ set_number, quantity=1, purchase_price, condition[,}]/,
+  assert.match(src, /const \{ quantity = 1, purchase_price = null, condition = null[,}]/,
     'POST /api/sets liest den Zustand nicht aus dem Body');
 });
 
@@ -184,31 +170,7 @@ test('der Marktpreis als Kaufpreis richtet sich nach dem gewählten Zustand', ()
   }
 
   // Der Zustand muss VOR JEDER Preisermittlung feststehen.
-  //
-  // Diese Prüfung suchte bis zuletzt die Zeichenfolge
-  // `const effectiveCondition = condition ||` — also die FORMULIERUNG einer
-  // bestimmten Fassung. Sie brach, als die Staffelung nach src/konto/settings.ts
-  // wanderte und `addSet()` den Zustand einmal oben für beide Zweige bestimmt.
-  // Die Regel war dabei nicht verletzt, im Gegenteil: Sie wird jetzt früher
-  // erfüllt als vorher.
-  //
-  // Geprüft wird deshalb die Reihenfolge selbst: Wo auch immer der Zustand
-  // bestimmt wird, es muss vor dem ERSTEN Preisabruf geschehen.
-  // GEMESSEN WIRD IN addSet(), nicht über den ganzen Quelltext.
-  //
-  // setKernQuelle() verkettet vier Dateien, und setService.ts enthält weitere
-  // Preisabrufe in anderen Funktionen — der erste steht in
-  // priceForNewAcquisition() und hat mit dieser Regel nichts zu tun. Ein
-  // indexOf über alles vergleicht Positionen quer durch fremde Funktionen und
-  // misst damit nichts. (Genau so ist der erste Entwurf dieser Fassung
-  // fehlgeschlagen.)
-  //
-  // GELESEN WIRD addSetIntern(): Seit dem 24.09. traegt addSet() nur die
-  // Huelle, die den Lagerort setzt (Marcos Befund vom selben Tag), und reicht
-  // durch. Der Rumpf mit Zustand und Preisabruf steht in addSetIntern. Das ist
-  // dieselbe Bewegung, die diese Regel schon einmal erwischt hat, als die
-  // Staffelung nach src/konto/settings.ts wanderte — und wieder gilt: Die Regel
-  // ist nicht verletzt, nur ihr Ausschnitt war veraltet.
+  // Ausführlich: docs/begruendungen/test/set-condition-aggregate.test.js.md#addsetintern
   const fnStart = src.indexOf('async function addSetIntern(');
   assert.ok(fnStart > 0, 'addSetIntern() ist nicht mehr zu finden');
   const fnEnde = src.indexOf('\nasync function ', fnStart + 10);
@@ -234,14 +196,8 @@ test('ein ausdrücklich angefragter Zustand schlägt die Erfassungs-Bewertung', 
   // Der eigentliche Grund, warum das Durchreichen des Zustands zunächst
   // wirkungslos blieb: getCurrentMarketPrice() rief getSetValue() OHNE ihn auf.
   // Diese Funktion entscheidet anhand der Erfassungen — beim Anlegen eines
-  // neuen Sets gibt es aber noch keine, und sets.condition ist ebenfalls noch
-  // nicht geschrieben (die Spalte gab es damals noch; seit Migration 0032
-  // nicht mehr). Sie fiel damit auf 'N' zurück und lieferte den
-  // Neupreis, obwohl „Gebraucht" angefragt war. Der berechnete effectiveCond
-  // wurde nur im unerreichbaren Rückfall darunter benutzt.
-  // Fundort seit Nachtrag 125: src/finanzen/marketPrice.ts. Die Funktion hatte sieben
-  // Aufrufer, von denen keiner sie importieren konnte, solange sie im Router
-  // lag. Die AUSSAGE dieser Prüfung ist unverändert.
+  // neuen Sets gibt es aber noch keine, und sets.condition ist ebenfalls noch …
+  // Ausführlich: docs/begruendungen/test/set-condition-aggregate.test.js.md#raw-stelle-2
   const raw = fs.readFileSync(path.join(ROOT, 'src/finanzen/marketPrice.ts'), 'utf8');
   const fn = raw.slice(raw.indexOf('async function getCurrentMarketPrice'));
   assert.match(fn, /if \(!condition\) \{/,
@@ -268,9 +224,8 @@ test('manuelle Teile und Minifiguren nutzen dieselbe Zustandsregel wie Sets', ()
   // Dieselbe Regel wie getSetConditionAggregate: eine gebrauchte Erfassung
   // genügt. Ohne den dritten Parameter — siehe die Begruendung oben.
   // Der Ausschnitt endet jetzt an der Funktion selbst, nicht an der nächsten:
-  // applyManualCondition steht seit Nachtrag 133 in src/bestand/gemeinsam.ts,
-  // getManualParts in src/teile/abfragen.ts — die Reihenfolge im
-  // zusammengefügten Quelltext ist damit eine andere.
+  // applyManualCondition steht seit in src/bestand/gemeinsam.ts, …
+  // Ausführlich: docs/begruendungen/test/set-condition-aggregate.test.js.md#applymanualcondition
   const anfang = src.indexOf('async function applyManualCondition');
   const fn = src.slice(anfang, src.indexOf('\n}', anfang));
   // Nicht neu ausformulieren, sondern denselben Helfer benutzen wie Sets.
@@ -294,13 +249,8 @@ test('ein manuell erfasstes Teil bekommt Marktpreis und Erfassung', () => {
   // Zwei Lücken: Der Marktpreis wurde ohne Zustand geholt (also der Neupreis,
   // auch bei „Gebraucht"), und es entstand gar keine Zeile in
   // part_acquisitions — der Kaufpreis stand nur in der Stammtabelle, während
-  // Detailansicht und Zustandsregel mit den Erfassungen arbeiten.
-  // ── Zwei Dateien, ein Korpus ─────────────────────────────────────────────
-  // Seit dem Schichtumbau steht die DEFINITION von getCurrentPartMarketPrice in
-  // src/finanzen/marketPrice.ts, waehrend die AUFRUFER in routes/parts.ts geblieben
-  // sind. Die Regel „jeder Aufruf traegt den Zustand" gilt fuer die Aufrufer —
-  // sie muss also ueber beide Dateien gehen. Nur eine zu lesen hiesse, die
-  // Haelfte der Aufrufstellen nicht anzusehen.
+  // Detailansicht und Zustandsregel mit den Erfassungen arbeiten. …
+  // Ausführlich: docs/begruendungen/test/set-condition-aggregate.test.js.md#src-stelle
   const src = fs.readFileSync(path.join(ROOT, 'src/finanzen/marketPrice.ts'), 'utf8')
             + '\n' + fs.readFileSync(path.join(ROOT, 'src/teile/manuelleTeile.ts'), 'utf8');
   const fn = src.slice(src.indexOf('async function addManualPart'),
@@ -308,14 +258,7 @@ test('ein manuell erfasstes Teil bekommt Marktpreis und Erfassung', () => {
 
   // Der Zustand muss in die Preisermittlung — sonst kommt der Neupreis, auch
   // bei „Gebraucht".
-  //
-  // Geprüft wird das an JEDEM Aufruf, nicht an einer Fundstelle in
-  // addManualPart. Die Zusicherung stand hier wörtlich als
-  // `getCurrentPartMarketPrice(part_number, color_id, uid, condition)` und
-  // wurde rot, als die Rechnung in resolveManualPartPurchase zusammenzog —
-  // obwohl der Zustand dort sehr wohl mitgeht. Eine Regel, die an einem Ort
-  // festgeschrieben ist, meldet den Umzug als Fehler und verpasst dafür die
-  // vier anderen Aufrufer.
+  // Ausführlich: docs/begruendungen/test/set-condition-aggregate.test.js.md#ohnezustand
   const ohneZustand = [...src.matchAll(/getCurrentPartMarketPrice\(([^)]*)\)/g)]
     .filter(m => !m[1].includes('function'))          // die Definition selbst nicht
     .filter(m => m[1].split(',').length < 4);
@@ -339,18 +282,8 @@ test('ein manuell erfasstes Teil bekommt Marktpreis und Erfassung', () => {
     `${writes.length} statt 2 Erfassungs-Schreibvorgänge — Neuanlage und Zweiterfassung brauchen je einen`);
   assert.match(fn, /createdAt: acquiredAt/,
     'Das Erfassungsdatum muss übernommen werden');
-  // ── Die Regel, nicht ihre Schreibweise (Nachtrag 139) ──────────────────
-  //
-  // Hier stand die Umrechnung wörtlich: `effectivePurchasePrice > 0 ? … : null`.
-  // Sie ist inzwischen dorthin gewandert, wo der Preis entsteht
-  // (src/finanzen/preisRegel.ts liefert `erfassungsPreis` fertig), und der Test wurde
-  // rot, obwohl die Regel weiter gilt — genau der Fehler, den der Absatz über
-  // getCurrentPartMarketPrice zwanzig Zeilen weiter oben schon einmal
-  // beschreibt. Zweimal dieselbe Lehre in einer Datei.
-  //
-  // Geprüft wird deshalb beides: dass die Erfassung den Wert nimmt, der bei
-  // unbekanntem Preis NULL ist, und dass dieser Wert die Regel wirklich
-  // enthält. Ohne das zweite genügte ein Feld dieses Namens.
+  // Die Regel, nicht ihre Schreibweise
+  // Ausführlich: docs/begruendungen/test/set-condition-aggregate.test.js.md#stelle
   assert.match(fn, /price: erfassungsPreis/,
     'Die Erfassung nimmt nicht den Preis, der ohne Marktpreis NULL ist ' +
     '(src/finanzen/preisRegel.ts, erfassungsPreis) — in der Erfassung hiesse eine 0 ' +
@@ -368,7 +301,7 @@ test('der Minifiguren-Marktpreis fragt BrickLink auch ohne separate BL-Nummer', 
   // übersprungen, die Teile-Schätzung übernahm, und die liefert ohne
   // Teile-Zusammensetzung von Rebrickable nichts: gar kein Preis.
   const src = fs.readFileSync(path.join(ROOT, 'src/finanzen/marketPrice.ts'), 'utf8');
-  // Der Abruf heisst seit Nachtrag 167 figMarktpreisMitHerkunft: Er liefert
+  // Der Abruf heisst seit einer früheren Runde figMarktpreisMitHerkunft: Er liefert
   // neben dem Preis den Zustand, aus dem dieser stammt. getCurrentFigMarketPrice
   // steht als duenne Huelle daneben und gibt nur die Zahl weiter — geprueft
   // wird hier der Abruf selbst, nicht die Huelle.
@@ -409,7 +342,8 @@ test('der Minifiguren-Marktpreis fragt BrickLink auch ohne separate BL-Nummer', 
   // viewerId statt uid: Seit der Haushaltssicht sind „wessen Einstellungen"
   // und „wessen Daten" zwei Grössen. Die Schätzung braucht die EINSTELLUNGEN
   // (Währung) des fragenden Kontos — und weiterhin den Zustand.
-  assert.match(fc, /schaetzeFigurenpreis\(fig\.fig_number, viewerId, cond\)/,
+  // Geschätzt wird im Auftrag preise_nachladen; die Bewertung merkt den Zustand vor.
+  assert.match(fc, /art: 'schaetzung', nummer: key, zustand: cond/,
     'Die Minifiguren-Bewertung muss den Zustand mitgeben');
 });
 
@@ -417,14 +351,7 @@ test('die Teile-Schätzung landet in Cache und Verlauf', () => {
   // Gemeldet: Im Detail-Dialog einer Minifigur OHNE BrickLink-Nummer standen
   // bei Marktpreis (Neu) und (Gebraucht) nur Striche, der Verlauf blieb leer —
   // obwohl Kaufpreise in beiden Zuständen erfasst waren.
-  //
-  // Marktpreis-Zeile und Diagramm lesen minifig_price_cache bzw.
-  // minifig_price_history (src/finanzen/priceHistory.ts). Ein echter BrickLink-Abruf
-  // schreibt beide (fetchMinifigPrice); der Schätzpfad rechnete nur und legte
-  // nichts ab — für genau diese Figuren blieb dort für immer alles leer.
-  // Zwei Dateien, ein Korpus — dieselbe Begruendung wie weiter oben: Die
-  // Schaetzung steht seit dem Schichtumbau in src/finanzen/marketPrice.ts, der
-  // Erfassungsweg (recordAcquisitionForDay) ist in der Route geblieben.
+  // Ausführlich: docs/begruendungen/test/set-condition-aggregate.test.js.md#src-stelle-2
   const src = fs.readFileSync(path.join(ROOT, 'src/finanzen/marketPrice.ts'), 'utf8')
             + '\n' + fs.readFileSync(path.join(ROOT, 'src/figuren/manuelleFiguren.ts'), 'utf8');
   const est = src.slice(src.indexOf('async function estimateFigPriceFromParts'),
@@ -478,17 +405,8 @@ test('Erfassungen ohne Kaufpreis werden nachgetragen', () => {
   // Der Zustand der ERFASSUNG bestimmt den Preis, nicht der des Sets
   assert.match(job, /getCurrentMarketPrice\(row\.set_number, row\.user_id, row\.condition \|\| null\)/,
     'Ein gebraucht erfasstes Exemplar braucht den Gebrauchtpreis');
-  // ── Hier stand eine Regel auf die Spiegelung ────────────────────────────
-  //
-  // „Ein gepflegter Set-Preis darf nicht überschrieben werden":
-  // `UPDATE sets SET purchase_price=$1 … AND purchase_price IS NULL`. Die
-  // Vorsicht war nötig, weil der Preis an ZWEI Orten stand und der Nachtrag
-  // den gepflegten hätte überschreiben können. Mit Migration 0032 gibt es nur
-  // noch einen — die Frage stellt sich nicht mehr.
-  //
-  // Die Nachfolgeregel ist die strengere: Der Job darf die sets-Zeile gar
-  // nicht mehr anfassen. Eine Spiegelung dorthin wäre ab jetzt ein Schreiben
-  // auf eine Spalte, die es nicht gibt.
+  // Hier stand eine Regel auf die Spiegelung
+  // Ausführlich: docs/begruendungen/test/set-condition-aggregate.test.js.md#stelle-2
   assert.doesNotMatch(job.replace(/\/\/[^\n]*/g, '').replace(/\/\*[\s\S]*?\*\//g, ''),
     /UPDATE sets SET/,
     'Der Nachtrag schreibt wieder in die sets-Zeile — dort gibt es seit ' +
@@ -505,10 +423,8 @@ test('neue Sets holen den richtigen Zustand, nicht den Standard', () => {
   // Beim Anlegen eines neuen Sets existiert weder die sets- noch die
   // set_acquisitions-Zeile schon. conditionsNeededFor() fand daher nichts und
   // fiel auf 'N' zurück — ein als „Gebraucht" importiertes Set bekam den
-  // Neupreis als Kaufpreis, weil die anschliessende Preisabfrage für 'U' noch
-  // nichts im Cache fand und auf den gerade gecachten Neupreis auswich.
-  // Gemeldeter Fall: CSV-Zeile "10214-1,1,,U,01.08.2026" (kein Preis, Zustand
-  // U) bekam CHF 216.24 (den Neupreis) statt CHF 135.11 (Gebraucht).
+  // Neupreis als Kaufpreis, weil die anschliessende Preisabfrage für 'U' noch …
+  // Ausführlich: docs/begruendungen/test/set-condition-aggregate.test.js.md#job-stelle
   const job = fs.readFileSync(path.join(ROOT, 'jobs/priceJob.ts'), 'utf8');
   const { hatParameter } = require('./helpers/sources');
   assert.ok(hatParameter(job, 'conditionsNeededFor', 'hintCondition', true),
@@ -559,26 +475,14 @@ test('computePnl liest acq_count/used_count — sonst ist jedes Set neu', () => 
   // Die SELECT-Abfrage in computePnl (finance/pnl → Galerie-Kachel und
   // Detail-Dialog) selektierte kein acq_count/used_count. effectiveCondition()
   // liest genau diese Felder; ohne sie war set.acq_count immer undefined,
-  // parseInt(undefined) ergab NaN, und die Funktion fiel IMMER auf die
-  // damalige Zustands-Spalte der sets-Zeile zurück — unabhängig davon, was die
-  // Erfassungen tatsächlich sagten. Bei einem veralteten Spaltenwert oder
-  // gemischten Erfassungen (1× Neu, 1× Gebraucht) zeigte der P&L-Pfad einen
-  // anderen Marktpreis als computeSetsValuation() (Finanzen-Reiter), die das
-  // schon korrekt machte.
-  //
-  // Seit Migration 0032 gibt es die Spalte nicht mehr. Fehlten die Zähler
-  // jetzt, wäre jedes Set unbemerkt „neu" — derselbe falsche Marktpreis, nur
-  // ohne zweite Wahrheit als Erklärung. Die Prüfung bleibt deshalb stehen.
+  // parseInt(undefined) ergab NaN, und die Funktion fiel IMMER auf die …
+  // Ausführlich: docs/begruendungen/test/set-condition-aggregate.test.js.md#src-stelle-3
   const src = require('./helpers/sources').finanzQuelle();
   // Fenster grosszügiger: Der Blickfeld-Kommentar (Haushalt) steht am
   // Funktionsanfang und hat die geprüften Zeilen nach hinten geschoben. Ein
   // knapp bemessener Ausschnitt macht die Prüfung von jeder eingefügten Zeile
-  // abhängig und meldet dann einen Fehler, den es nicht gibt.
-  // 4600 statt 3200 Zeichen: Die Begruendungen an der Abfrage sind mit
-  // Migration 0032 laenger geworden und haben `acq_count` aus dem Fenster
-  // geschoben. Genau die Falle, die der Kommentar darueber beschreibt — ein
-  // knapp bemessener Ausschnitt meldet einen Fehler, den es nicht gibt.
-  // Die Abfrage steht im Repository (setsMitErfassungen); computePnl ruft sie.
+  // abhängig und meldet dann einen Fehler, den es nicht gibt. …
+  // Ausführlich: docs/begruendungen/test/set-condition-aggregate.test.js.md#stelle-3
   assert.match(require('./helpers/sources').funktionsRumpf(src, 'computePnl'), /repo\.setsMitErfassungen\(/);
   const fn = src.slice(src.indexOf('function setsMitErfassungen'),
                        src.indexOf('function setsMitErfassungen') + 4600);
@@ -586,9 +490,9 @@ test('computePnl liest acq_count/used_count — sonst ist jedes Set neu', () => 
   assert.match(fn, /COUNT\(\*\)\s+AS acq_count,/, 'acq_count fehlt in der Unterabfrage');
   assert.match(fn, /COUNT\(\*\) FILTER \(WHERE condition = 'U'\)\s+AS used_count/,
     'used_count fehlt in der Unterabfrage');
-  assert.match(fn, /COALESCE\(a\.acq_count, 0\)\s+AS acq_count,/,
+  assert.match(fn, /COALESCE\(SUM\(a\.acq_count\), 0\)::int\s+AS acq_count,/,
     'acq_count muss auch im äusseren SELECT stehen');
-  assert.match(fn, /COALESCE\(a\.used_count, 0\)\s+AS used_count/,
+  assert.match(fn, /COALESCE\(SUM\(a\.used_count\), 0\)::int\s+AS used_count/,
     'used_count muss auch im äusseren SELECT stehen');
 });
 
@@ -596,15 +500,8 @@ test('der Preisverlauf-Graph benutzt den Zustand DES SETS, nicht den globalen St
   // Gemeldet: Kaufpreis und Marktpreis stimmen überein (0.0% Entwicklung),
   // der Graph zeigt trotzdem einen Abfall am selben Tag. Ursache:
   // `const condition = DEFAULT_PRICE_CONDITION` — fest 'U', unabhängig vom
-  // tatsächlichen Zustand des Sets. Für ein als „Neu" geführtes Set bevorzugte
-  // die Graph-Abfrage trotzdem den Gebraucht-Preis, sobald beide Zustände am
-  // selben Tag im Verlauf standen — der injizierte Kaufpreis-Punkt (Neu,
-  // korrekt) und der Verlaufspunkt (fälschlich Gebraucht) erzeugten einen
-  // Abfall, der real nicht stattfand.
-  // Seit Etappe 5 gibt es die Route nur noch einmal (routes/api_v1/sets.ts);
-  // die Webapp ruft dieselbe auf. Die Aussage bleibt: Die Route löst den
-  // Zustand NICHT selbst auf, sondern überlässt das dem gemeinsamen Helfer —
-  // genau das war das Ziel, vorher hatte jede Route ihre eigene Auflösung.
+  // tatsächlichen Zustand des Sets. Für ein als „Neu" geführtes Set bevorzugte …
+  // Ausführlich: docs/begruendungen/test/set-condition-aggregate.test.js.md#src-stelle-4
   const src = fs.readFileSync(path.join(ROOT, 'routes/api_v1/sets.ts'), 'utf8');
   const i = src.indexOf("router.get('/sets/:setNumber/price-history'");
   assert.ok(i > 0, 'Die Preisverlauf-Route ist nicht mehr auffindbar');
@@ -612,7 +509,7 @@ test('der Preisverlauf-Graph benutzt den Zustand DES SETS, nicht den globalen St
 
   assert.doesNotMatch(fn, /const condition = DEFAULT_PRICE_CONDITION;/,
     'Der globale Standard darf nicht mehr direkt als Zustand des Sets gelten');
-  assert.match(fn, /getSetPriceHistory\(await scopeIds\(uid, parseScopeMode\(req\.query\.accounts\)\), sn, currency\)/,
+  assert.match(fn, /getSetPriceHistory\(sichtVon\(req\), sn, currency\)/,
     'Die Route muss den gemeinsamen Helfer benutzen — mit Blickfeld');
   assert.doesNotMatch(fn, /FROM price_history/,
     'Die Abfrage gehört in src/finanzen/priceHistory.ts, nicht in die Route');
@@ -635,7 +532,7 @@ test('Android-API: Marktpreis benutzt den Zustand des Sets, nicht den globalen S
   assert.ok(priceRoute.length > 0, 'setPreis() nicht gefunden');
   assert.doesNotMatch(priceRoute, /fetchPrice\(sn, DEFAULT_PRICE_CONDITION/,
     'Der globale Standard darf nicht mehr direkt an fetchPrice gehen');
-  // seit Nachtrag 33 mit Blickfeld (uids aus scopeIds) — sonst 404 im Haushalt
+  // seit einer früheren Runde mit Blickfeld (uids aus scopeIds) — sonst 404 im Haushalt
   assert.match(priceRoute, /const cond = await resolveSetCondition\(blickfeld, sn\);/,
     'Der Zustand muss über den gemeinsamen Helfer aufgelöst werden');
   assert.match(priceRoute, /fetchPrice\(sn, cond, /, 'fetchPrice muss den aufgelösten Zustand bekommen');
@@ -646,7 +543,7 @@ test('Android-API: Marktpreis benutzt den Zustand des Sets, nicht den globalen S
     'Auch der Verlauf darf nicht mehr den globalen Standard nehmen');
   // Seit der Zusammenführung teilt sich diese Route src/finanzen/priceHistory.ts mit
   // der Webapp — die rund fünfzig Zeilen, die dort standen, waren eine Kopie.
-  assert.match(historyRoute, /getSetPriceHistory\(await scopeIds\(uid, parseScopeMode\(req\.query\.accounts\)\), sn, currency\)/,
+  assert.match(historyRoute, /getSetPriceHistory\(sichtVon\(req\), sn, currency\)/,
     'Der Verlauf muss den gemeinsamen Helfer benutzen');
   assert.doesNotMatch(historyRoute, /FROM price_history/,
     'Die Abfrage gehört in src/finanzen/priceHistory.ts, nicht in die Route');
@@ -669,12 +566,11 @@ test('genau EINE Zustandsauflösung für Einzelsets — resolveSetCondition', ()
   // Die Verlaufsrouten rufen ihn nur noch mittelbar auf — über
   // src/finanzen/priceHistory.ts, das sich Webapp und Android teilen.
   const helper = fs.readFileSync(path.join(ROOT, 'src/finanzen/priceHistory.ts'), 'utf8');
-  // UMFORMULIERT in Nachtrag 143: Geprüft wurde die Importzeile WÖRTLICH.
+  // UMFORMULIERT in: Geprüft wurde die Importzeile WÖRTLICH.
   // Seit dem Fix für die BrickLink-Schlüssel holt priceHistory.ts aus derselben
   // Datei zwei weitere Namen — die Zeile lautet jetzt
-  //     import { resolveSetCondition, resolveBlColorId, resolveBlPartNumber } …
-  // und die Prüfung wurde rot, ohne dass sich ihre Aussage geändert hätte.
-  // Es zählt, DASS der gemeinsame Helfer von dort kommt.
+  //     import { resolveSetCondition, resolveBlColorId, resolveBlPartNumber } … …
+  // Ausführlich: docs/begruendungen/test/set-condition-aggregate.test.js.md#stelle-4
   assert.match(helper, /import \{[^}]*\bresolveSetCondition\b[^}]*\} from '\.\/financeCalc';/,
     'src/finanzen/priceHistory.ts muss den gemeinsamen Helfer benutzen');
 
@@ -685,88 +581,53 @@ test('genau EINE Zustandsauflösung für Einzelsets — resolveSetCondition', ()
   assert.equal(uses, 1, 'Die /price-Route muss ihn benutzen; der Verlauf geht über priceHistory.ts');
 });
 
-test('die Sparkline zeichnet avg_price, nicht qty_avg_price', () => {
-  // Der Server wählte längst den richtigen Zustand (resolveSetCondition),
-  // aber die Sparkline zeichnete `qty_avg_price` — eine andere Preisspalte
-  // desselben, korrekt aufgelösten Zustands. qty_avg_price kann fehlen oder
-  // 0 sein, während avg_price vorhanden ist; das erzeugte einen Graphen-Abfall,
-  // der mit dem tatsächlichen Marktpreis nichts zu tun hatte. Android hatte
-  // dieselbe Stelle (SetDetailComponents.kt) längst richtig — der Webapp fehlte
-  // der Fix.
-  const src = require('./helpers/sources').adminQuelle();
-  const fn = src.slice(src.indexOf('function sparklineSVG'),
-                       src.indexOf('function sparklineSVG') + 1000);
-  assert.match(fn, /const vals = data\.map\(d=>d\.avg_price\|\|d\.qty_avg_price\|\|d\.total\|\|0\);/,
-    'avg_price muss vor qty_avg_price stehen');
-  assert.doesNotMatch(fn, /const vals = data\.map\(d=>d\.qty_avg_price\|\|d\.total\|\|0\);/,
-    'Die alte, fehlerhafte Reihenfolge darf nicht mehr vorkommen');
-});
-
 // Die Datenbank-Sperre des Neuaufbaus prüft test/teile-zusammenfassung-sperre-db.test.js.
 
 test('CDN-Anfragen erzwingen IPv4', () => {
-  // Gemeldet: mehrere völlig unterschiedliche Set-Nummern liefen ALLE exakt
-  // bis zur eingestellten Zeitgrenze, ohne je eine Antwort zu bekommen — kein
-  // Fehler, kein TCP-Reset, einfach nichts. Das ist das typische Bild einer
-  // kaputten oder nicht gerouteten IPv6-Verbindung des Hosters: Node versucht
-  // zuerst eine IPv6-Adresse von Cloudflares Edge, der Verbindungsaufbau
-  // dorthin hängt lautlos, und ohne Happy-Eyeballs-Rückfall wird nie auf IPv4
-  // gewechselt, bevor der eigene Timeout zuschlägt.
-  const server = require('./helpers/sources').serverAll();
-  const agentBlock = server.slice(server.indexOf('const _cdnAgent ='), server.indexOf('const _cdnAgent =') + 1000);
-  assert.match(agentBlock, /family: 4,/,
-    'Der Bild-Proxy muss IPv4 für CDN-Anfragen erzwingen');
-
-  // Der lokale Set-Bild-Download liegt seit Nachtrag 125 in src/katalog/bilder/setImages.ts.
-  // Er läuft über den gemeinsamen Abrufhelfer; der erzwingt IPv4 (Test darunter).
+  // Ohne IPv6-Route liefen Bildabrufe stumm bis zur Frist. Der Set-Bild-Download
+  // beim Import geht über den gemeinsamen Abrufhelfer; dass der und der Pool
+  // der Bild-CDNs IPv4 erzwingen, prüft der Test darunter am laufenden Code.
+  // Ausführlich: docs/begruendungen/test/set-condition-aggregate.test.js.md#server
   const setsFile = fs.readFileSync(path.join(ROOT, 'src/katalog/bilder/setImages.ts'), 'utf8');
-  assert.match(setsFile, /await holeHttps\(url, \{/,
+  assert.match(setsFile, /await hole(?:Https|Bild)\(url, \{/,
     'Der Hintergrund-Download beim Import muss ebenfalls IPv4 erzwingen — dieselbe Ursache, derselbe Ort');
 });
 
-test('IPv4 wird an ALLEN ausgehenden HTTPS-Aufrufen erzwungen, nicht nur beim Bild-Proxy', () => {
-  // Bestätigt per curl auf dem Server selbst: "Immediate connect fail ...
-  // Network is unreachable" für IPv6 — der Server hat GAR KEINE IPv6-Route.
-  // Das betrifft jede ausgehende Verbindung dieses Prozesses, nicht nur
-  // Bilder. Jede Stelle, die roh gegen Rebrickable, BrickLink, Brickset oder
-  // UPCitemdb spricht, braucht denselben `family: 4`.
-  //
-  // Diese Prüfung zählte früher je Datei eine feste Anzahl Fundstellen. Das
-  // hat zweimal Aufräumarbeiten rot gemacht, obwohl sich am Verhalten nichts
-  // änderte: Wer eine tote Zweitfassung entfernt, senkt die Zahl. Geprüft wird
-  // deshalb jetzt die REGEL — jeder ausgehende Aufruf trägt family: 4 —
-  // unabhängig davon, wie viele es gerade sind.
-  // Seit src/infra/abruf.ts ruft nur er https.get und (für POST) https.request
-  // (test/umleitungen.test.js); die Regel gilt damit an genau diesen Stellen.
-  const ohne = [];
-  let gefunden = 0;
-  const src = ohneKommentare(fs.readFileSync(path.join(ROOT, 'src/infra/abruf.ts'), 'utf8'));
-  for (const m of src.matchAll(/\bhttps\.(?:get|request)\(\s*[^,()]*,\s*\{([^}]*)\}/g)) {
-    gefunden++;
-    if (!/family:\s*4/.test(m[1])) ohne.push(m[0].slice(0, 70));
-  }
-  assert.equal(gefunden, 2, `${gefunden} Aufrufe in abruf.ts erkannt — das Muster greift nicht mehr`);
-  assert.deepEqual(ohne, [], `ausgehende Aufrufe ohne family: 4:\n  ${ohne.join('\n  ')}`);
+test('IPv4 wird an ALLEN ausgehenden HTTPS-Aufrufen erzwungen, nicht nur beim Bild-Proxy', async () => {
+  // Der Server hat keine IPv6-Route; ohne family: 4 hängt jede ausgehende
+  // Verbindung stumm bis zur Frist. abruf.ts ist der eine Weg nach draussen.
+  // Ausführlich: docs/begruendungen/test/set-condition-aggregate.test.js.md#ohne
+  // Gegenprobe (05.11.2026): family: 4 aus https.get in abruf.ts oder aus dem Pool gestrichen → rot.
+  const _req = require('./helpers/sources').buildAndRequire();
+  const { holeHttps } = _req('src/infra/abruf.js');
+  const { oeffneBild } = _req('clients/bildCdn.js');
+  const { mitschnitt } = require('./helpers/https-mitschnitt');
+  const hosts = ['cdn.rebrickable.com'];
+  const url = 'https://cdn.rebrickable.com/media/sets/1-1.jpg';
+  const aufrufe = await mitschnitt(async () => {
+    await holeHttps(url, { hosts, maxBytes: 1000, zeitlimitMs: 5000 }).catch(() => {});
+    await holeHttps(url, { hosts, maxBytes: 1000, zeitlimitMs: 5000, methode: 'POST', rumpf: '{}' }).catch(() => {});
+    await oeffneBild(url, { maxBytes: 1000, pool: true }).catch(() => {});
+  });
+  assert.deepEqual(aufrufe.map(a => [a.art, a.optionen.family]), [['get', 4], ['request', 4], ['get', 4]]);
+  assert.equal(aufrufe[2].optionen.agent?.options?.family, 4, 'der Pool der Bild-CDNs erzwingt IPv4 nicht');
 });
 
 test('der Hintergrund-Job für Teile und Minifiguren erzeugt jetzt Vorschaubilder', () => {
   // Gemeldet: manuell erfasste Teile (und dasselbe Muster traf auch auf
   // Minifiguren zu) bekamen nie eine Vorschau. Ursache: Der stündliche
   // Hintergrund-Job lud das Bild herunter und aktualisierte image_local,
-  // rief aber nie generateThumb() auf — anders als bei Sets (dieselbe
-  // Datei, "set-img-bg"-Job weiter oben), wo das schon immer korrekt
-  // geschah. Der einmalige Startup-Job ("Generate missing thumbnails")
-  // hätte es irgendwann nachgeholt, aber erst beim NÄCHSTEN Neustart.
+  // rief aber nie generateThumb() auf — anders als bei Sets (dieselbe …
+  // Ausführlich: docs/begruendungen/test/set-condition-aggregate.test.js.md#src-stelle-5
   const src = require('./helpers/sources').serverAll();
 
   const partsLoop = src.slice(src.indexOf('for (const p of manualParts) {'),
                               src.indexOf('for (const f of figsToFetch) {'));
-  // UMFORMULIERT in Nachtrag 132: Geprüft wurde der WORTLAUT der Zeile
+  // UMFORMULIERT in: Geprüft wurde der WORTLAUT der Zeile
   //     const { generateThumb } = require('./src/katalog/bilder/thumbs');
   // Beim Umbau der späten require() auf echte import-Anweisungen wurde daraus
-  // ein Import am Dateikopf — die Prüfung wurde rot, ohne dass sich ihre
-  // Aussage geändert hätte. Es zählt, DASS die Schleife verkleinert, und dass
-  // generateThumb in der Datei überhaupt zu haben ist.
+  // ein Import am Dateikopf — die Prüfung wurde rot, ohne dass sich ihre …
+  // Ausführlich: docs/begruendungen/test/set-condition-aggregate.test.js.md#stelle-5
   assert.match(src, /generateThumb/,
     'generateThumb ist in server.ts nicht mehr verfügbar');
   assert.match(partsLoop, /generateThumb\(local\)\.catch\(logAndContinue\('[^']+'\)\);/,
@@ -781,12 +642,8 @@ test('der Hintergrund-Job für Teile und Minifiguren erzeugt jetzt Vorschaubilde
 // ═══════════════════════════════════════════════════════════════════════════
 // Welche Plaketten die Kachel zeigt (hardened-91)
 // ═══════════════════════════════════════════════════════════════════════════
-// utils/handlers.ts gibt es seit Nachtrag 133 nicht mehr (aufgeteilt nach
-// utils/handlers/{shared,parts,sets,minifigs,stats}.ts). Der Aufruf blieb hier
-// stehen und liess die DATEI beim Laden sterben — die zehn Prüfungen unterhalb
-// dieser Zeile liefen dadurch nie, ohne dass jemand ein rotes Ergebnis sah,
-// solange in dist/ noch eine alte handlers.js lag. handlerModul() ist genau
-// dafür da: den GEGENSTAND nennen, nicht den Ablageort.
+// utils/handlers.ts gibt es seit nicht mehr (aufgeteilt nach …
+// Ausführlich: docs/begruendungen/test/set-condition-aggregate.test.js.md#stelle-6
 const { buildAndRequire, handlerModul } = require('./helpers/sources');
 const { conditionsFromAcquisitions, conditionFromAcquisitions } =
   handlerModul(buildAndRequire());
@@ -811,13 +668,8 @@ test('ohne Erfassungen gilt „Neu"', () => {
   // Hier stand „ohne Erfassungen zählt der gespeicherte Wert" mit einem
   // dritten Parameter. Den gibt es seit Migration 0035 nicht mehr: Fuer
   // manuelle Positionen traegt sie eine Erfassung nach und prueft danach
-  // nach, dass keine ohne geblieben ist; fuer Teile und Figuren aus einem Set
-  // stand die Spalte seit jeher auf dem Vorgabewert.
-  //
-  // Ein dritter Parameter wuerde jetzt stillschweigend ignoriert. Deshalb
-  // prueft die Regel oben („die Aggregat-Regel steht nur noch an einer
-  // Stelle") die Parameterliste mit — sonst koennte ein Aufrufer ihn weiter
-  // mitgeben und sich auf eine Wirkung verlassen, die es nicht gibt.
+  // nach, dass keine ohne geblieben ist; fuer Teile und Figuren aus einem Set …
+  // Ausführlich: docs/begruendungen/test/set-condition-aggregate.test.js.md#stelle-7
   assert.deepEqual(conditionsFromAcquisitions(0, 0), ['N']);
   assert.equal(conditionFromAcquisitions(0, 0), 'N');
 });
@@ -831,13 +683,13 @@ test('die Reihenfolge ist fest: Neu vor Gebraucht', () => {
 });
 
 test('die Kacheln rechnen die Plaketten nicht selbst aus', () => {
-  const gal = fs.readFileSync(path.join(ROOT, 'public', 'js', '02-gallery.js'), 'utf8');
+  const gal = fs.readFileSync(path.join(ROOT, 'public', 'js', '01-bausteine.js'), 'utf8');
   assert.match(gal, /export function condBadges/,
     'Eine gemeinsame Fassung für Set-, Teile- und Minifiguren-Kacheln');
   // Vorher stand dieselbe Plakette viermal im Code, dreimal mit fest
   // eingetragenen Farben statt der CSS-Klassen. Geprüft wird genau das:
   // keine Zeile darf eine Zustands-Beschriftung UND eine eigene Farbe tragen.
-  for (const f of ['public/js/06-minifigs.js', 'public/js/04-finance.js']) {
+  for (const f of ['public/js/03-parts.js', 'public/js/06-minifigs.js', 'public/js/04-finance.js']) {
     const lines = fs.readFileSync(path.join(ROOT, f), 'utf8').split('\n');
     const inline = lines.filter(l =>
       /common\.condition_(used|new)/.test(l) && /background:\s*var\(/.test(l));
@@ -889,7 +741,7 @@ test('Registrieren und Profil bleiben beim Benutzernamen-Muster', () => {
   assert.equal(USERNAME_RE.test('marco@example.com'), false);
   assert.ok(EMAIL_RE.test('marco@example.com'));
 
-  const src = fs.readFileSync(path.join(ROOT, 'routes/auth.ts'), 'utf8');
+  const src = require('./helpers/sources').anmeldeQuelle();
   const register = src.slice(src.indexOf("router.post('/register'"));
   assert.match(register, /USERNAME_RE\.test\(username\)/,
     'Registrieren muss beim Benutzernamen-Muster bleiben');
@@ -900,13 +752,7 @@ test('Registrieren und Profil bleiben beim Benutzernamen-Muster', () => {
 test('beide Login-Wege prüfen gleich', () => {
   // Webapp und Android-API müssen dieselbe Regel haben — sonst funktioniert
   // die Anmeldung per E-Mail nur auf einem der beiden Wege.
-  //
-  // Hier standen die beiden Login-Dateien beim Namen. Inzwischen liegt die
-  // Prüfung in pruefeAnmeldedaten() (src/konto/auth.ts), die BEIDE aufrufen — der
-  // Test verlangte sie danach an Stellen, an denen sie zu Recht nicht mehr
-  // steht. Geprüft wird jetzt die Regel selbst: Der gemeinsame Prüfer nimmt
-  // beide Formen an, und im Baum steht keine zweite Kopie des Musters, die
-  // gegen einen Anmeldenamen läuft.
+  // Ausführlich: docs/begruendungen/test/set-condition-aggregate.test.js.md#zentral
   const zentral = fs.readFileSync(path.join(ROOT, 'src/konto/auth.ts'), 'utf8');
   const rumpf = zentral.slice(zentral.indexOf('async function pruefeAnmeldedaten'));
   assert.match(rumpf.slice(0, rumpf.indexOf('\n}\n')), /isValidLoginIdentifier\(username\)/,

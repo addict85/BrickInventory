@@ -6,7 +6,7 @@
   System-Sprachauswahl-Dialog aufzunehmen. Zusätzlich nutzen wir
   AppCompatDelegate.setApplicationLocales(), damit die manuelle Auswahl
   auch direkt in der App (SettingsScreen) funktioniert und bis
-  Android 8 (minSdk 26) zurück unterstützt wird.
+  Android 11 (minSdk 30) zurück unterstützt wird.
 -->
 <locale-config xmlns:android="http://schemas.android.com/apk/res/android">
     <locale android:name="en" />

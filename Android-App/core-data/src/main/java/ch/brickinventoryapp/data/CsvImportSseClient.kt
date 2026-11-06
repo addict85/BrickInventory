@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.data
 
+import ch.brickinventoryapp.di.SseClient
 import ch.brickinventoryapp.data.model.CsvImportStatus
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
@@ -12,40 +13,33 @@ import okhttp3.sse.EventSource
 import okhttp3.sse.EventSourceListener
 import okhttp3.sse.EventSources
 import javax.inject.Inject
-import javax.inject.Named
 import javax.inject.Singleton
+
+/** Die Schritte eines CSV-Imports, solange jemand sammelt; im Test eine Folge aus dem Speicher. */
+interface CsvImportStrom {
+    fun stream(): Flow<CsvImportSseClient.Event>
+}
 
 /**
  * Persistenter SSE-Client für den CSV-Import-Kanal.
- *
- * Die Verbindung bleibt dauerhaft offen (auch wenn kein Import läuft).
- * Startet jemand einen Import — egal ob über die Webapp, die App oder ein
- * anderes Gerät — kommt das erste Event sofort, ohne vorher pollen zu müssen.
- *
- * Events:
- *  - [Event.Status] : Statusänderung (Fortschritt, Start, Ende, idle)
- *  - [Event.Failed] : Verbindungsfehler → Aufrufer soll auf Polling zurückfallen
- *
- * Der Flow schließt sich NUR bei Verbindungsfehler, nicht mehr bei Import-Ende.
- * Das ViewModel reconnectet automatisch bei Fehler (mit Backoff).
+ * Ausführlich: docs/begruendungen/core-data/data/CsvImportSseClient.kt.md#constructor
  */
 @Singleton
 class CsvImportSseClient @Inject constructor(
     // @param: explizit — Kotlin 2.2+ ändert das Default-Ziel von Annotationen auf
     // val-Konstruktorparametern (künftig Parameter UND Property). Für Dagger/Hilt
     // zählt der Parameter; der Use-Site-Target macht das eindeutig.
-    @param:Named("sse") private val client: OkHttpClient,
-    private val prefs: PreferencesManager,
+    @param:SseClient private val client: OkHttpClient,
+    private val prefs: Zugangsdaten,
     private val json: Json
-) {
+) : CsvImportStrom {
     sealed class Event {
         /** Statusänderung vom Server (inkl. idle-Zustand wenn kein Import läuft). */
         data class Status(val status: CsvImportStatus) : Event()
-        /** Verbindungsfehler — Aufrufer soll auf Polling zurückfallen. */
         /**
          * Verbindungsfehler. [technisch] ist ausschliesslich fürs Log: Der Aufrufer
-         * (AppViewModel.startCsvImportWatcher) setzt nur `sseFailed = true` und fällt auf
-         * Polling zurück, dem Nutzer wird nichts gezeigt — deshalb kein übersetzbarer
+         * (CsvImportService über folgeStrom) fällt auf Polling zurück, dem Nutzer wird
+         * nichts gezeigt — deshalb kein übersetzbarer
          * Text, sondern die Ursache in technischer Form.
          */
         data class Failed(val technisch: String?) : Event()
@@ -56,7 +50,7 @@ class CsvImportSseClient @Inject constructor(
      * den der Server schickt. Schließt sich nur bei Verbindungsfehler.
      * cold Flow — Verbindung wird beim Collect aufgebaut, beim Cancel geschlossen.
      */
-    fun stream(): Flow<Event> = callbackFlow {
+    override fun stream(): Flow<Event> = callbackFlow {
         val baseUrl = prefs.serverUrlJetzt().trim().trimEnd('/')
         val token   = prefs.tokenJetzt()
 

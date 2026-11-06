@@ -51,3 +51,25 @@ entstanden — aus `return res.status(304).end();` darf kein blosses
 `res.status(304).end();` werden, sonst liefe der Ablauf weiter und
 schriebe in eine bereits beendete Antwort.
 ```
+
+<a id="startimgcachecleanup"></a>
+## `startImgCacheCleanup`
+
+```text
+Img-Proxy-Cache aufräumen: Dateien, die 30 Tage nicht angefasst wurden,
+löschen — sonst wächst data/img_proxy_cache unbegrenzt.
+
+── Warum das nicht mehr in registerImgProxy steht ──────────────────────────
+Dort lief es in JEDEM Cluster-Worker: registerImgProxy(app) wird von jedem
+Prozess aufgerufen, und jeder legte sein eigenes tägliches Intervall an. Bei
+acht Workern hiess das acht vollständige Durchläufe über das
+Cache-Verzeichnis (readdir plus stat je Datei) und acht Prozesse, die sich
+beim unlink gegenseitig ins Gehege kamen — unbemerkt, weil die Fehler
+ohnehin verworfen werden.
+
+Alle übrigen wiederkehrenden Arbeiten (Preis-Job, Token-Aufräumen,
+Log-Bereinigung) hängen längst hinter isPrimaryWorker. Diese gehört dazu.
+
+Bewusst KEIN Aufräumen beim Start: Ein Neustart soll schnell antworten
+können, und einen Tag länger im Cache schadet nichts.
+```

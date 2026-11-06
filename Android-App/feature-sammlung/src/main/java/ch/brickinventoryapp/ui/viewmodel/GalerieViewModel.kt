@@ -1,12 +1,15 @@
 package ch.brickinventoryapp.ui.viewmodel
 
+import ch.brickinventoryapp.ui.abgeleitet
+import ch.brickinventoryapp.ui.model.SetAnsicht
+import ch.brickinventoryapp.ui.model.KennzahlenAnsicht
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.viewModelScope
 import ch.brickinventoryapp.ressourcen.R
 import ch.brickinventoryapp.data.ScopeFilter
 import ch.brickinventoryapp.data.repository.FinanzenRepository
 import ch.brickinventoryapp.data.repository.GALLERY_DEFAULT_SORT
-import ch.brickinventoryapp.data.repository.Result
+import ch.brickinventoryapp.data.repository.Ergebnis
 import ch.brickinventoryapp.data.repository.SetsRepository
 import ch.brickinventoryapp.ui.Aenderung
 import ch.brickinventoryapp.ui.Galerie
@@ -18,11 +21,13 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.SharingStarted
-import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
+import androidx.lifecycle.ViewModel
+import ch.brickinventoryapp.ui.AppUiState
+import ch.brickinventoryapp.ui.Sitzung
+import ch.brickinventoryapp.ui.Bestandssignal
+import ch.brickinventoryapp.ui.ScrollMemory
 
 /**
  * Die Sammlung der Sets: Liste, Filter, Kennzahlen.
@@ -33,36 +38,61 @@ import javax.inject.Inject
  */
 @HiltViewModel
 class GalerieViewModel @Inject constructor(
-    dienste: AppDienste,
+    private val sitzung: Sitzung,
+    private val filter: Filterwahl,
+    private val meldungen: Meldungen,
+    private val bestand: Bestandssignal,
+    private val scrollMemory: ScrollMemory,
     private val sets: SetsRepository,
     private val finanzen: FinanzenRepository,
     private val gemerkt: SavedStateHandle,
-) : BereichsViewModel(dienste) {
+) : ViewModel(), Filterwahl by filter {
+
+    val state: StateFlow<AppUiState> = sitzung.state
+
+    init {
+        folgeAbmeldung(sitzung) { zuruecksetzen() }
+        folgeBestand(bestand) { beiAenderung(it) }
+    }
+
+    override fun setScope(view: ScopeFilter.View, value: String) {
+        viewModelScope.launch {
+            filter.setzeKonto(view, value)
+            nachFilter(view)
+        }
+    }
+
+    override fun setLagerFilter(view: ScopeFilter.View, value: String) {
+        viewModelScope.launch {
+            filter.setzeLager(view, value)
+            nachFilter(view)
+        }
+    }
 
     private val galerie = Galerie(
         scope = viewModelScope,
         holeSeite = { g, seite ->
             retryOnNetwork {
-                sets.getSets(scopeFor(ScopeFilter.View.GALLERY),
+                sets.getSets(filter.kontoFuer(ScopeFilter.View.GALLERY),
                     search = g.galleryQuery, theme = g.galleryTheme, sort = g.gallerySort, page = seite,
-                    storage = lagerFor(ScopeFilter.View.GALLERY))
+                    storage = filter.lagerFuer(ScopeFilter.View.GALLERY))
             }
         },
-        holeKennzahlen = { finanzen.getStats(scopeFor(ScopeFilter.View.GALLERY)) },
-        meldeFehler = { _snackbar.value = meldungFuerSnackbar(it) },
-        beschreibeFehler = { meldung(it) },
-        vergissScroll = { dienste.scrollMemory.vergiss("gallery") },
+        holeKennzahlen = { finanzen.getStats(filter.kontoFuer(ScopeFilter.View.GALLERY)) },
+        meldeFehler = { meldungen.zeige(meldungen.meldungFuerSnackbar(it)) },
+        beschreibeFehler = { meldungen.meldung(it) },
+        vergissScroll = { scrollMemory.vergiss("gallery") },
         lokal = sets.beobachteSets(),
         ungefiltert = { g ->
             g.galleryQuery.isBlank() && g.galleryTheme.isBlank() && g.gallerySort == GALLERY_DEFAULT_SORT &&
-                scopeFor(ScopeFilter.View.GALLERY) == null && lagerFor(ScopeFilter.View.GALLERY).isNullOrBlank()
+                filter.kontoFuer(ScopeFilter.View.GALLERY) == null && filter.lagerFuer(ScopeFilter.View.GALLERY).isNullOrBlank()
         },
     )
     /** Ein gelöschtes Set, das sich noch zurückholen lässt — die Snackbar „Rückgängig“. */
-    data class VorgemerktesLoeschen(val setNumber: String, val name: String)
+    data class VorgemerktesLoeschen(val setNumber: String, val name: String, val set: SetAnsicht? = null)
 
     private val _vorgemerkt = MutableStateFlow<VorgemerktesLoeschen?>(null)
-    val vorgemerkt: StateFlow<VorgemerktesLoeschen?> = _vorgemerkt
+    val vorgemerkt: StateFlow<VorgemerktesLoeschen?> = _vorgemerkt.asStateFlow()
 
     /**
      * Die Galerie ohne das vorgemerkte Set: Kommt die Liste während der Snackbar neu
@@ -70,8 +100,11 @@ class GalerieViewModel @Inject constructor(
      * gelöscht wird.
      */
     val galleryState: StateFlow<GalleryUiState> = galerie.state
-        .combine(_vorgemerkt) { st, v -> if (v == null) st else st.copy(sets = st.sets.filterNot { it.setNumber == v.setNumber }) }
-        .stateIn(viewModelScope, SharingStarted.Eagerly, galerie.state.value)
+        .abgeleitet(_vorgemerkt) { st, v ->
+            // Die Kennzahlen ebenso: Neben zwei Kacheln stand sonst noch „3 Sets“.
+            if (v == null) st else st.copy(sets = st.sets.filterNot { it.setNumber == v.setNumber },
+                stats = st.stats?.let { k -> v.set?.let { ohneSet(k, it) } ?: k })
+        }
 
     private val _preise = MutableStateFlow<Map<String, KachelPreis>>(emptyMap())
     /** Marktpreis und G&V je Set; eigener Fluss, weil er nach der Liste kommt. */
@@ -99,8 +132,8 @@ class GalerieViewModel @Inject constructor(
      */
     private fun ladePreise() {
         viewModelScope.launch {
-            val r = finanzen.getPnl(scopeFor(ScopeFilter.View.GALLERY))
-            if (r is Result.Success) _preise.value = kachelPreise(r.data.sets)
+            val r = finanzen.getPnl(filter.kontoFuer(ScopeFilter.View.GALLERY))
+            if (r is Ergebnis.Success) _preise.value = kachelPreise(r.data.sets)
         }
     }
 
@@ -128,8 +161,8 @@ class GalerieViewModel @Inject constructor(
         loadSets()
         loadStats()
         viewModelScope.launch {
-            dienste.blickfeld.ladeMitglieder()
-            dienste.blickfeld.ladeLagerorte()
+            filter.ladeMitglieder()
+            filter.ladeLagerorte()
         }
     }
 
@@ -140,8 +173,9 @@ class GalerieViewModel @Inject constructor(
      */
     fun loeschenVormerken(setNumber: String, name: String) {
         loeschenAusfuehren()
+        val set = galerie.state.value.sets.firstOrNull { it.setNumber == setNumber }
         galerie.entferne(setNumber)
-        _vorgemerkt.value = VorgemerktesLoeschen(setNumber, name)
+        _vorgemerkt.value = VorgemerktesLoeschen(setNumber, name, set)
     }
 
     /** Das vorgemerkte Set bleibt; die Liste kommt neu vom Server, auf dem es nie fehlte. */
@@ -160,20 +194,20 @@ class GalerieViewModel @Inject constructor(
     /** [erfolgMelden] aus, wenn „gelöscht“ schon in der Snackbar mit „Rückgängig“ stand. */
     fun deleteSet(setNumber: String, erfolgMelden: Boolean = true) {
         viewModelScope.launch {
-            val (geloescht, satz) = setLoeschen(sets, dienste.texte, setNumber)
+            val (geloescht, satz) = setLoeschen(sets, meldungen, setNumber)
             if (geloescht) galerie.entferne(setNumber)
-            if (!geloescht || erfolgMelden) _snackbar.value = satz
-            if (geloescht) dienste.bestand.melde(Aenderung.Sets, Aenderung.Teile, Aenderung.Figuren)
+            if (!geloescht || erfolgMelden) meldungen.zeige(satz)
+            if (geloescht) bestand.melde(Aenderung.Sets, Aenderung.Teile, Aenderung.Figuren)
         }
     }
 
-    override fun nachFilter(view: ScopeFilter.View) {
+    private fun nachFilter(view: ScopeFilter.View) {
         if (view != ScopeFilter.View.GALLERY) return
         loadSets()
         loadStats()
     }
 
-    override fun beiAenderung(aenderung: Aenderung) {
+    private fun beiAenderung(aenderung: Aenderung) {
         when (aenderung) {
             Aenderung.Sets -> { loadSets(); loadStats() }
             Aenderung.Teile, Aenderung.Figuren -> loadStats()
@@ -196,7 +230,7 @@ class GalerieViewModel @Inject constructor(
         }
     }
 
-    override fun zuruecksetzen() {
+    private fun zuruecksetzen() {
         galerie.zuruecksetzen()
         _preise.value = emptyMap()
         gemerkt[SUCHE] = ""
@@ -211,12 +245,25 @@ class GalerieViewModel @Inject constructor(
     }
 }
 
+/** Die Kennzahlen ohne [set] — solange sein Löschen vorgemerkt ist. */
+internal fun ohneSet(k: KennzahlenAnsicht, set: SetAnsicht): KennzahlenAnsicht {
+    val teile = (set.pieces ?: 0) * set.quantity
+    return k.copy(
+        totalSets = (k.totalSets - 1).coerceAtLeast(0),
+        totalQuantity = (k.totalQuantity - set.quantity).coerceAtLeast(0),
+        totalParts = (k.totalParts - teile).coerceAtLeast(0),
+        teileAusSets = k.teileAusSets?.let { (it - teile).coerceAtLeast(0) },
+        totalMinifigs = (k.totalMinifigs - (set.minifigs ?: 0) * set.quantity).coerceAtLeast(0),
+        totalInstructions = (k.totalInstructions - set.instructions.size).coerceAtLeast(0),
+    )
+}
+
 /**
  * Ein Set löschen: gelungen, und der Satz für den Meldungskanal. Geteilt mit
  * dem Set-Detail, das denselben Weg anbietet.
  */
-internal suspend fun setLoeschen(sets: SetsRepository, texte: Texte, setNumber: String): Pair<Boolean, String?> =
+internal suspend fun setLoeschen(sets: SetsRepository, texte: Texte, setNumber: String, name: String = setNumber): Pair<Boolean, String?> =
     when (val r = sets.deleteSet(setNumber)) {
-        is Result.Success -> true to texte.text(R.string.vm_set_deleted, setNumber)
-        is Result.Error -> false to texte.meldungFuerSnackbar(r)
+        is Ergebnis.Success -> true to texte.text(R.string.vm_set_deleted, name)
+        is Ergebnis.Error -> false to texte.meldungFuerSnackbar(r)
     }

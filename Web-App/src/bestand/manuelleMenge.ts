@@ -4,7 +4,7 @@
 import { withInventoryLock, bestandsSchluessel } from '../../db/txLock';
 import { bestandsMenge } from '../infra/validate';
 import { fehlerWerfen } from '../infra/fehlerTexte';
-import { meldeUndLiefere } from '../infra/httpError';
+import { meldeUndLiefere } from '../infra/fehler';
 import { recordAcquisitionForDay } from './acquisitions';
 import * as repo from './repository/manuelleMengen';
 import type { ManuelleArt } from './repository/manuelleMengen';

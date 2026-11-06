@@ -9,12 +9,13 @@ package ch.brickinventoryapp.ui.screens
 
 import ch.brickinventoryapp.ui.theme.Formen
 import ch.brickinventoryapp.ui.theme.LocalStatusFarben
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Cloud
-import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.QrCodeScanner
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -26,12 +27,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
-import android.view.ViewGroup
 import androidx.camera.core.*
-import android.view.MotionEvent
 import androidx.camera.camera2.interop.ExperimentalCamera2Interop
-import androidx.camera.view.PreviewView
 import androidx.compose.foundation.background
 import androidx.compose.ui.graphics.Color
 import androidx.compose.foundation.border
@@ -54,6 +51,13 @@ import ch.brickinventoryapp.ui.QrLoginPayload
 import ch.brickinventoryapp.ui.parseQrPayload
 import ch.brickinventoryapp.ui.qrWechseltServer
 import ch.brickinventoryapp.ui.theme.Abstaende
+import ch.brickinventoryapp.ui.components.ausserhalbDerSystemleisten
+import ch.brickinventoryapp.ui.components.LocalAppFassung
+import ch.brickinventoryapp.ui.components.MarkenKopf
+import ch.brickinventoryapp.ui.components.MitTooltip
+import ch.brickinventoryapp.ui.components.Ueberdeckungsschutz
+import ch.brickinventoryapp.ui.components.mitSchrift
+import ch.brickinventoryapp.ui.theme.Lesebreite
 
 /**
  * Server einrichten: per QR-Code oder von Hand, nur mit https. Steht noch eine
@@ -63,11 +67,13 @@ import ch.brickinventoryapp.ui.theme.Abstaende
 fun SetupScreen(
     currentUrl: String,
     onSave: (url: String) -> Unit,
-    /** Zweiter Wert: bei abweichendem Pin der abgeschriebene neue Fingerabdruck, sonst null. */
+    /** Zweiter Wert: der abgeschriebene Fingerabdruck, wenn [mussAbtippen] ihn verlangt, sonst null. */
     onQrScanned: ((QrLoginPayload, String?) -> Unit)? = null,
     entwicklung: Boolean = NetworkPolicy.entwicklung,
     /** Der gemerkte Pin für Adresse und Fingerabdruck des Codes, wenn er abweicht. */
     bisherigerPin: (url: String, fingerabdruck: String?) -> String? = { _, _ -> null },
+    /** Ob der Fingerabdruck des Codes abzutippen ist (AnmeldungViewModel.mussAbtippen); im Zweifel ja. */
+    mussAbtippen: (url: String, fingerabdruck: String?) -> Boolean = { _, fp -> fp != null },
 ) {
     var url          by rememberSaveable { mutableStateOf(currentUrl) }
     var showScanner  by rememberSaveable { mutableStateOf(false) }
@@ -78,6 +84,7 @@ fun SetupScreen(
     val keyboard     = LocalSoftwareKeyboardController.current
     val altbestand   = NetworkPolicy.klartextAltbestand(currentUrl, entwicklung)
     val fehler       = if (url.isBlank()) null else NetworkPolicy.adressfehler(url, entwicklung)
+    val adresseBereit = url.isNotBlank() && fehler == null
 
     fun save() {
         if (url.isBlank() || fehler != null) return
@@ -102,147 +109,73 @@ fun SetupScreen(
     }
 
     qrVorschlag?.let { vorschlag ->
-        val qrGesperrt = NetworkPolicy.adressfehler(vorschlag.url, entwicklung) != null
-        // Ein Code mit anderem Schlüssel als dem bestätigten: wie „Zertifikat geändert“, mit beiden Werten.
-        val bisher = remember(vorschlag) { bisherigerPin(vorschlag.url, vorschlag.fingerabdruck) }
-        // Wie ZertifikatDialog: Ein Code kann von jedem stammen, also den neuen Wert abschreiben lassen.
-        var eingabe by remember(vorschlag) { mutableStateOf("") }
-        var falsch by remember(vorschlag) { mutableStateOf(false) }
-        AlertDialog(
-            onDismissRequest = { qrVorschlag = null },
-            title = { Text(stringResource(if (bisher != null) R.string.zert_titel_geaendert else R.string.setup_qr_titel)) },
-            text = {
-                // Die Bestätigung schickt die Anmeldung an diesen Server: kein Tippen durch eine Überlagerung.
-                ch.brickinventoryapp.ui.components.Ueberdeckungsschutz()
-                Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(Abstaende.klein)) {
-                    // Geparst statt roh: Ein Code wie `https://mein.server@fremd.example` oder mit
-                    // Zeilenumbruch zeigte sonst einen Namen, der nicht das Ziel ist.
-                    val ansicht = remember(vorschlag) { NetworkPolicy.ansicht(vorschlag.url) }
-                    val bisherHost = remember(vorschlag, currentUrl) { qrWechseltServer(currentUrl, vorschlag.url) }
-                    Text(stringResource(R.string.setup_qr_ziel))
-                    if (ansicht != null) {
-                        Text(ansicht.host, fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Bold,
-                            style = MaterialTheme.typography.titleMedium)
-                        Text(ansicht.adresse, fontFamily = FontFamily.Monospace,
-                            style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        if (ansicht.international) Text(stringResource(R.string.setup_qr_international),
-                            color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
-                    }
-                    Text(stringResource(R.string.setup_qr_hinweis))
-                    if (bisherHost != null) Text(stringResource(R.string.setup_qr_anderer_server, bisherHost),
-                        color = MaterialTheme.colorScheme.error)
-                    val fp = vorschlag.fingerabdruck
-                    if (bisher != null && fp != null) {
-                        Text(stringResource(R.string.setup_qr_pin_geaendert), color = MaterialTheme.colorScheme.error)
-                        Text(stringResource(R.string.zert_bisher), style = MaterialTheme.typography.labelMedium)
-                        Text(fingerabdruckLesbar(bisher), fontFamily = FontFamily.Monospace,
-                            style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        // Wie ZertifikatDialog: Den neuen Wert nennt der Code selbst, abgetippt
-                        // wird er aus der Webapp; hier steht nur sein Anfang.
-                        Text(stringResource(R.string.zert_beginnt_mit), style = MaterialTheme.typography.labelMedium)
-                        Text(fingerabdruckAnfang(fp), fontFamily = FontFamily.Monospace,
-                            style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
-                        OutlinedTextField(
-                            value = eingabe,
-                            onValueChange = { eingabe = it; falsch = false },
-                            label = { Text(stringResource(R.string.zert_geaendert_eingabe)) },
-                            isError = falsch,
-                            supportingText = if (falsch) { { Text(stringResource(R.string.zert_eingabe_falsch)) } } else null,
-                            textStyle = MaterialTheme.typography.bodySmall.copy(fontFamily = FontFamily.Monospace),
-                            keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Characters, autoCorrectEnabled = false),
-                            modifier = Modifier.fillMaxWidth(),
-                        )
-                    } else if (fp != null) {
-                        // Erstes Einrichten: Der Code bestimmt allein, welchem Schlüssel die App
-                        // künftig für diese Adresse traut. Abtippen hiesse, den QR-Code zu
-                        // entwerten; darum die Warnung und der Anfang zum Vergleich mit der Webapp.
-                        Text(stringResource(R.string.setup_qr_pin), color = MaterialTheme.colorScheme.error,
-                            style = MaterialTheme.typography.bodySmall)
-                        Text(stringResource(R.string.zert_beginnt_mit), style = MaterialTheme.typography.labelMedium)
-                        Text(fingerabdruckAnfang(fp), fontFamily = FontFamily.Monospace,
-                            style = MaterialTheme.typography.bodySmall)
-                    }
-                    if (qrGesperrt) Text(stringResource(R.string.setup_qr_klartext_abgelehnt), color = MaterialTheme.colorScheme.error)
-                }
-            },
-            confirmButton = {
-                TextButton(enabled = !qrGesperrt && (bisher == null || eingabe.isNotBlank()), onClick = {
-                    val fp = vorschlag.fingerabdruck
-                    if (bisher != null && (fp == null || !bestaetigtFingerabdruck(eingabe, fp))) {
-                        falsch = true
-                    } else {
-                        qrVorschlag = null
-                        url = vorschlag.url
-                        onQrScanned?.invoke(vorschlag, eingabe.takeIf { bisher != null })
-                    }
-                }) {
-                    Text(stringResource(if (bisher != null) R.string.setup_qr_pin_uebernehmen else R.string.setup_qr_uebernehmen),
-                        color = if (bisher != null) MaterialTheme.colorScheme.error else androidx.compose.ui.graphics.Color.Unspecified)
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { qrVorschlag = null }) { Text(stringResource(R.string.common_cancel)) }
+        QrVorschlagDialog(
+            vorschlag = vorschlag,
+            currentUrl = currentUrl,
+            entwicklung = entwicklung,
+            bisherigerPin = bisherigerPin,
+            mussAbtippen = mussAbtippen,
+            onAbbrechen = { qrVorschlag = null },
+            onUebernehmen = { abgetippt ->
+                qrVorschlag = null
+                url = vorschlag.url
+                onQrScanned?.invoke(vorschlag, abgetippt)
             },
         )
     }
 
-    // Rollbar wie die Anmeldung (bei 200 % Schrift reichte die Höhe nicht), mittig
-    // solange es passt, und auf dem Tablet nicht breiter als ein Formular.
-    BoxWithConstraints(Modifier.fillMaxSize()) {
-    Column(
-        modifier = Modifier.verticalScroll(rememberScrollState()).heightIn(min = maxHeight)
-            .mittigBis(ch.brickinventoryapp.ui.theme.Lesebreite.formular).padding(Abstaende.riesig),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center
-    ) {
-        Box(Modifier.size(80.dp), contentAlignment = Alignment.Center) {
-            // Auf surface statt primary: Der rote Stein des Logos verschwand auf manchem
-            // primary (noppe dunkel 1,2:1); auf surface steht er in jedem Design.
-            Surface(shape = MaterialTheme.shapes.large, color = MaterialTheme.colorScheme.surface,
-                border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
-                modifier = Modifier.size(80.dp)) {
-                Box(contentAlignment = Alignment.Center) {
-                    androidx.compose.foundation.Image(
-                        painter = androidx.compose.ui.res.painterResource(ch.brickinventoryapp.ressourcen.R.drawable.ic_logo),
-                        contentDescription = null, modifier = Modifier.size(64.dp)
-                    )
-                }
-            }
-        }
-        Spacer(Modifier.height(20.dp))
-        Text(stringResource(R.string.app_name), fontWeight = FontWeight.ExtraBold, style = MaterialTheme.typography.headlineSmall)
-        Text(stringResource(R.string.setup_subtitle), style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant)
+    // Kopf (Marke, Hinweis zum Altbestand) und Handlung (QR, Adresse, Weiter) als zwei
+    // Teile: Im Querformat stehen sie nebeneinander, sonst lag „Weiter“ unter dem Falz.
+    val kopfTeil: @Composable ColumnScope.() -> Unit = {
+        MarkenKopf(untertitel = stringResource(R.string.setup_subtitle))
 
         if (altbestand) {
             Spacer(Modifier.height(Abstaende.gross))
-            // Ein Hinweis mit Anleitung, kein Fehler: in der Infofarbe (primaryContainer)
-            // mit Symbol. Im Fehlerrot las sich der lange Text wie eine Störung.
+            // Ein Hinweis mit Anleitung, kein Fehler: neutrale Fläche mit Rahmen und Schloss,
+            // denn es geht um Verschlüsselung. primaryContainer war in Noppe rosa und sah
+            // mit dem Infosymbol nach Störung aus. Die Schritte als Liste statt Fliesstext.
             Card(
                 modifier = Modifier.fillMaxWidth(),
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer,
-                    contentColor = MaterialTheme.colorScheme.onPrimaryContainer),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface,
+                    contentColor = MaterialTheme.colorScheme.onSurface),
+                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
             ) {
                 Row(Modifier.padding(Abstaende.gross), horizontalArrangement = Arrangement.spacedBy(Abstaende.mittel)) {
-                    Icon(Icons.Default.Info, null)
+                    Icon(Icons.Default.Lock, null, Modifier.size(mitSchrift(24.dp)),
+                        tint = MaterialTheme.colorScheme.primary)
                     Column(verticalArrangement = Arrangement.spacedBy(Abstaende.klein)) {
                         Text(stringResource(R.string.setup_altbestand_titel), fontWeight = FontWeight.Bold)
                         Text(stringResource(R.string.setup_altbestand_text, currentUrl),
                             style = MaterialTheme.typography.bodyMedium)
+                        listOf(R.string.setup_altbestand_schritt_qr, R.string.setup_altbestand_schritt_adresse)
+                            .forEachIndexed { i, schritt ->
+                                Row(horizontalArrangement = Arrangement.spacedBy(Abstaende.klein)) {
+                                    // Feste Ziffernspalte mit Tabellenziffern: „1.“ ist schmaler als
+                                    // „2.“, und die Schritte begannen verschieden weit rechts.
+                                    Text("${i + 1}.", Modifier.width(mitSchrift(20.dp)),
+                                        style = MaterialTheme.typography.bodyMedium.copy(fontFeatureSettings = "tnum"),
+                                        fontWeight = FontWeight.SemiBold)
+                                    Text(stringResource(schritt), style = MaterialTheme.typography.bodyMedium)
+                                }
+                            }
+                        Text(stringResource(R.string.setup_altbestand_danach), style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                 }
             }
         }
-
+    }
+    val handlungsTeil: @Composable ColumnScope.() -> Unit = {
         Spacer(Modifier.height(Abstaende.riesig))
 
         // Der QR-Code ist der empfohlene Weg (Adresse und Zertifikat in einem Schritt) und
-        // deshalb die gefüllte Hauptaktion; die Eingabe von Hand darunter ist der Ausweg.
-        Button(
+        // deshalb gefüllt, bis eine Adresse von Hand dasteht: Dann ist „Weiter“ der Weg.
+        Hauptknopf(
+            haupt = !adresseBereit,
             onClick = { scanError = null; showScanner = true },
             modifier = Modifier.fillMaxWidth().heightIn(min = 56.dp)
         ) {
-            Icon(Icons.Default.QrCodeScanner, null, Modifier.size(20.dp))
+            Icon(Icons.Default.QrCodeScanner, null, Modifier.size(mitSchrift(20.dp)))
             Spacer(Modifier.width(Abstaende.klein))
             Text(stringResource(R.string.setup_scan_qr), fontWeight = FontWeight.SemiBold)
         }
@@ -257,8 +190,10 @@ fun SetupScreen(
 
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             HorizontalDivider(Modifier.weight(1f))
+            // Luft um den Text: Die Linien stiessen sonst an „oder manuell“.
             Text(stringResource(R.string.setup_or_manual), style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant)
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(horizontal = Abstaende.mittel))
             HorizontalDivider(Modifier.weight(1f))
         }
 
@@ -279,6 +214,7 @@ fun SetupScreen(
                 }
                 Spacer(Modifier.height(Abstaende.mittel))
                 OutlinedTextField(
+                    shape = Formen.feld,
                     value = url,
                     onValueChange = { url = it },
                     label = { Text(stringResource(R.string.setup_url_label)) },
@@ -303,16 +239,17 @@ fun SetupScreen(
                     isError = fehler != null,
                 )
                 Spacer(Modifier.height(Abstaende.gross))
-                // Tonal: Neben dem gefüllten QR-Knopf oben gibt es nur EINE Hauptaktion.
-                FilledTonalButton(
-                    onClick = ::save, modifier = Modifier.fillMaxWidth(),
-                    enabled = url.isNotBlank() && fehler == null,
+                // Gefüllt: Tonal lag er auf der Karte fast unsichtbar (1,02:1) und sah aktiv
+                // aus wie gesperrt. Gesperrt bleibt er blass, bis die Adresse taugt.
+                Button(
+                    onClick = ::save, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
+                    enabled = adresseBereit,
                 ) { Text(stringResource(R.string.setup_continue), fontWeight = FontWeight.Bold) }
             }
         }
         // Aus der App-Fassung statt als Literal: versionName entsteht bei jedem Build
         // (app/build.gradle.kts). Ohne Namen (Vorschau, Test) bliebe nur „Build “ stehen.
-        val fassung = ch.brickinventoryapp.ui.components.LocalAppFassung.current.name
+        val fassung = LocalAppFassung.current.name
         if (fassung.isNotBlank()) {
             Spacer(Modifier.height(Abstaende.gross))
             Text(
@@ -323,8 +260,149 @@ fun SetupScreen(
             )
         }
     }
+
+    // Rollbar wie die Anmeldung (bei 200 % Schrift reichte die Höhe nicht), mittig
+    // solange es passt, und auf dem Tablet nicht breiter als ein Formular.
+    BoxWithConstraints(Modifier.fillMaxSize().ausserhalbDerSystemleisten()) {
+        // In Row- und Column-Lambdas ist der Empfänger von BoxWithConstraints gesperrt (DslMarker).
+        val hoehe = maxHeight
+        if (maxWidth > hoehe && maxWidth >= QUER_ZWEISPALTIG) {
+            Row(
+                Modifier.fillMaxSize().mittigBis(Lesebreite.formular * 2)
+                    .padding(horizontal = Abstaende.riesig),
+                horizontalArrangement = Arrangement.spacedBy(Abstaende.riesig),
+            ) {
+                listOf(kopfTeil, handlungsTeil).forEach { teil ->
+                    Column(
+                        Modifier.weight(1f).verticalScroll(rememberScrollState()).heightIn(min = hoehe)
+                            .padding(vertical = Abstaende.riesig),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.Center,
+                        content = teil,
+                    )
+                }
+            }
+        } else Column(
+            modifier = Modifier.verticalScroll(rememberScrollState()).heightIn(min = hoehe)
+                .mittigBis(Lesebreite.formular).padding(Abstaende.riesig),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
+        ) {
+            kopfTeil()
+            handlungsTeil()
+        }
     }
 }
+
+/** Gefüllt als Hauptaktion, sonst tonal: Es gibt immer nur EINE gefüllte Aktion. */
+@Composable
+private fun Hauptknopf(haupt: Boolean, onClick: () -> Unit, modifier: Modifier, inhalt: @Composable RowScope.() -> Unit) {
+    if (haupt) Button(onClick = onClick, modifier = modifier, content = inhalt)
+    else FilledTonalButton(onClick = onClick, modifier = modifier, content = inhalt)
+}
+
+/**
+ * Rückfrage nach einem gescannten Code: Er kann von jedem stammen, darum nennt sie das
+ * Ziel und lässt bei Bedarf den Fingerabdruck abtippen. [onUebernehmen] bekommt den
+ * abgetippten Wert oder null, wenn nichts abzutippen war.
+ */
+@Composable
+private fun QrVorschlagDialog(
+    vorschlag: QrLoginPayload,
+    currentUrl: String,
+    entwicklung: Boolean,
+    bisherigerPin: (url: String, fingerabdruck: String?) -> String?,
+    mussAbtippen: (url: String, fingerabdruck: String?) -> Boolean,
+    onAbbrechen: () -> Unit,
+    onUebernehmen: (abgetippt: String?) -> Unit,
+) {
+    val qrGesperrt = NetworkPolicy.adressfehler(vorschlag.url, entwicklung) != null
+    // Ein Code mit anderem Schlüssel als dem bestätigten: wie „Zertifikat geändert“, mit beiden Werten.
+    val bisher = remember(vorschlag) { bisherigerPin(vorschlag.url, vorschlag.fingerabdruck) }
+    val abtippen = remember(vorschlag) { mussAbtippen(vorschlag.url, vorschlag.fingerabdruck) }
+    // Wie ZertifikatDialog: Ein Code kann von jedem stammen, also den neuen Wert abschreiben lassen.
+    var eingabe by remember(vorschlag) { mutableStateOf("") }
+    var falsch by remember(vorschlag) { mutableStateOf(false) }
+    AlertDialog(
+        onDismissRequest = onAbbrechen,
+        title = { Text(stringResource(if (bisher != null) R.string.zert_titel_geaendert else R.string.setup_qr_titel)) },
+        text = {
+            // Die Bestätigung schickt die Anmeldung an diesen Server: kein Tippen durch eine Überlagerung.
+            Ueberdeckungsschutz()
+            Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(Abstaende.klein)) {
+                // Geparst statt roh: Ein Code wie `https://mein.server@fremd.example` oder mit
+                // Zeilenumbruch zeigte sonst einen Namen, der nicht das Ziel ist.
+                val ansicht = remember(vorschlag) { NetworkPolicy.ansicht(vorschlag.url) }
+                val bisherHost = remember(vorschlag, currentUrl) { qrWechseltServer(currentUrl, vorschlag.url) }
+                Text(stringResource(R.string.setup_qr_ziel))
+                if (ansicht != null) {
+                    Text(ansicht.host, fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Bold,
+                        style = MaterialTheme.typography.titleMedium)
+                    Text(ansicht.adresse, fontFamily = FontFamily.Monospace,
+                        style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    if (ansicht.international) Text(stringResource(R.string.setup_qr_international),
+                        color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+                }
+                Text(stringResource(R.string.setup_qr_hinweis))
+                if (bisherHost != null) Text(stringResource(R.string.setup_qr_anderer_server, bisherHost),
+                    color = MaterialTheme.colorScheme.error)
+                val fp = vorschlag.fingerabdruck
+                if (bisher != null && fp != null) {
+                    Text(stringResource(R.string.setup_qr_pin_geaendert), color = MaterialTheme.colorScheme.error)
+                    Text(stringResource(R.string.zert_bisher), style = MaterialTheme.typography.labelMedium)
+                    Text(fingerabdruckLesbar(bisher), fontFamily = FontFamily.Monospace,
+                        style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    // Wie ZertifikatDialog: Den neuen Wert nennt der Code selbst, abgetippt
+                    // wird er aus der Webapp; hier steht nur sein Anfang.
+                    Text(stringResource(R.string.zert_beginnt_mit), style = MaterialTheme.typography.labelMedium)
+                    Text(fingerabdruckAnfang(fp), fontFamily = FontFamily.Monospace,
+                        style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
+                } else if (fp != null) {
+                    // Erstes Einrichten: Ohne Tippen gilt nur eine System-Wurzel; einen eigenen
+                    // Schlüssel könnte der Code eines Fremden genauso nennen.
+                    Text(stringResource(if (abtippen) R.string.setup_qr_pin_abtippen else R.string.setup_qr_pin),
+                        color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+                    Text(stringResource(R.string.zert_beginnt_mit), style = MaterialTheme.typography.labelMedium)
+                    Text(fingerabdruckAnfang(fp), fontFamily = FontFamily.Monospace,
+                        style = MaterialTheme.typography.bodySmall)
+                }
+                if (abtippen && fp != null) {
+                    OutlinedTextField(
+                        shape = Formen.feld,
+                        value = eingabe,
+                        onValueChange = { eingabe = it; falsch = false },
+                        label = { Text(stringResource(if (bisher != null) R.string.zert_geaendert_eingabe else R.string.zert_unbekannt_eingabe)) },
+                        isError = falsch,
+                        supportingText = if (falsch) { { Text(stringResource(R.string.zert_eingabe_falsch)) } } else null,
+                        textStyle = MaterialTheme.typography.bodySmall.copy(fontFamily = FontFamily.Monospace),
+                        keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Characters, autoCorrectEnabled = false),
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                }
+                if (qrGesperrt) Text(stringResource(R.string.setup_qr_klartext_abgelehnt), color = MaterialTheme.colorScheme.error)
+            }
+        },
+        confirmButton = {
+            TextButton(enabled = !qrGesperrt && (!abtippen || eingabe.isNotBlank()), onClick = {
+                val fp = vorschlag.fingerabdruck
+                if (abtippen && (fp == null || !bestaetigtFingerabdruck(eingabe, fp))) {
+                    falsch = true
+                } else {
+                    onUebernehmen(eingabe.takeIf { abtippen })
+                }
+            }) {
+                Text(stringResource(if (bisher != null) R.string.setup_qr_pin_uebernehmen else R.string.setup_qr_uebernehmen),
+                    color = if (bisher != null) MaterialTheme.colorScheme.error else androidx.compose.ui.graphics.Color.Unspecified)
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onAbbrechen) { Text(stringResource(R.string.common_cancel)) }
+        },
+    )
+}
+
+/** Ab dieser Breite stehen Kopf und Handlung im Querformat nebeneinander. */
+private val QUER_ZWEISPALTIG = 840.dp
 
 /** QR scanner for setup — reuses the proven CameraPreviewBarcode with QR_CODE format */
 @Composable
@@ -358,7 +436,7 @@ fun QrSetupScannerScreen(onResult: (String) -> Unit, onDismiss: () -> Unit) {
                             .aspectRatio(1f)
                             .border(2.dp,
                                 if (frozen) LocalStatusFarben.current.erfolg else MaterialTheme.colorScheme.primary,
-                                Formen.knopf)
+                                Formen.feld)
                     )
                 }
             }
@@ -366,8 +444,10 @@ fun QrSetupScannerScreen(onResult: (String) -> Unit, onDismiss: () -> Unit) {
                 KameraErlaubnisHinweis { cameraPermission.anfragen() }
             }
         }
-        IconButton(onClick = onDismiss, Modifier.align(Alignment.TopEnd).padding(Abstaende.gross)) {
-            Icon(Icons.Default.Close, stringResource(R.string.scanner_close), tint = Color.White)
+        MitTooltip(stringResource(R.string.scanner_close), Modifier.align(Alignment.TopEnd)) {
+            IconButton(onClick = onDismiss, Modifier.padding(Abstaende.gross)) {
+                Icon(Icons.Default.Close, stringResource(R.string.scanner_close), tint = Color.White)
+            }
         }
     }
 }
@@ -423,12 +503,7 @@ fun QrCameraPreview(frozen: Boolean, onQrFound: (String) -> Unit) {
 
     AndroidView(
         factory = { ctx ->
-            val previewView = PreviewView(ctx).apply {
-                layoutParams = ViewGroup.LayoutParams(
-                    ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
-                scaleType = PreviewView.ScaleType.FILL_CENTER
-                implementationMode = PreviewView.ImplementationMode.PERFORMANCE
-            }
+            val previewView = kameraVorschau(ctx)
             // Anbieter holen, Vorschau bauen, binden: KameraAufbau.kt. Kein
             // beiFehler: Ist die Kamera nicht verfügbar, bleibt die Vorschau
             // bewusst leer — anders als im Scanner, der einen Hinweis zeigt.
@@ -437,28 +512,7 @@ fun QrCameraPreview(frozen: Boolean, onQrFound: (String) -> Unit) {
                 previewView = previewView,
                 lifecycleOwner = lifecycleOwner,
                 analyse = imageAnalyzer,
-            ) { camera ->
-                // Tap-to-Focus — bewusst mit disableAutoCancel(): Der Nutzer tippt, weil der
-                // kontinuierliche Autofokus gerade danebenliegt. Fiele die Kamera nach ein paar
-                // Sekunden auf ihre eigene Wahl zurück, wäre genau das wieder da, wogegen der
-                // Tipper gerichtet war — man tippt, es wird scharf, und kurz danach ist es wieder
-                // weg.
-                previewView.setOnTouchListener { v, event ->
-                    if (event.action == MotionEvent.ACTION_UP) {
-                        try {
-                            val point = previewView.meteringPointFactory
-                                .createPoint(event.x, event.y)
-                            val action = FocusMeteringAction.Builder(point, FocusMeteringAction.FLAG_AF)
-                                .addPoint(point, FocusMeteringAction.FLAG_AE)
-                                .disableAutoCancel()
-                                .build()
-                            camera.cameraControl.startFocusAndMetering(action)
-                        } catch (_: Exception) {}
-                        v.performClick()
-                    }
-                    true
-                }
-            }
+            ) { camera -> tippZumFokus(previewView) { camera.cameraControl } }
             previewView
         },
         modifier = Modifier.fillMaxSize()

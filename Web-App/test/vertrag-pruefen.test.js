@@ -11,7 +11,9 @@
  *   B  die Abfrage von konfig().vertragPruefen entfernt → rot: „im Betrieb
  *      geht die Antwort ungeprüft hinaus“ (500 statt 200)
  *   C  in vertragPruefen() `res.statusCode < 300` weggelassen → rot: „eine
- *      Fehlerantwort wird nicht geprüft“
+ *      Fehlerantwort wird nicht gegen das Erfolgsschema geprüft“
+ *   D  die Zeile `pruefe('Fehlerantwort', …)` gestrichen → rot: „eine
+ *      Fehlerantwort ohne Code wird zur 500“ (404 statt 500; gemessen 05.11.2026)
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -58,9 +60,16 @@ test('eine vertragswidrige Eingabe erreicht die Route nicht', async (t) => {
   assert.match((await r.json()).error, /is_admin/);
 });
 
-test('eine Fehlerantwort wird nicht geprüft', async (t) => {
+test('eine Fehlerantwort wird nicht gegen das Erfolgsschema geprüft', async (t) => {
   const basis = server(t, { status: 404, rumpf: { success: false, error: 'weg', code: 'x' } });
   assert.equal((await fetch(`${basis}/registration-status`)).status, 404);
+});
+
+test('eine Fehlerantwort ohne Code wird zur 500', async (t) => {
+  const basis = server(t, { status: 404, rumpf: { success: false, error: 'Endpoint nicht gefunden' } });
+  const r = await fetch(`${basis}/registration-status`);
+  assert.equal(r.status, 500);
+  assert.match((await r.json()).abweichungen.join(), /Fehlerantwort code/);
 });
 
 test('im Betrieb geht die Antwort ungeprüft hinaus', async (t) => {

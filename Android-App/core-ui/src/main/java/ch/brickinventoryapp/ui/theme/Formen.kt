@@ -1,5 +1,10 @@
 package ch.brickinventoryapp.ui.theme
 
+import ch.brickinventoryapp.ui.components.fokusRahmen
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.onClick
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.Role
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -30,8 +35,12 @@ object Formen {
     val karte = RoundedCornerShape(16.dp)
     /** Chips (Filter, Auswahl) — die häufigste Form im Baum. */
     val chip = RoundedCornerShape(20.dp)
-    /** Knöpfe und Eingabefelder. */
-    val knopf = RoundedCornerShape(12.dp)
+    /**
+     * Eingabefelder. Knöpfe haben keine eigene Form: Sie tragen alle die Pille der
+     * Material-Vorgabe, damit Einrichten, Anmelden und Dialoge gleich aussehen
+     * (DesignTokensTest verbietet `shape =` an Knöpfen).
+     */
+    val feld = RoundedCornerShape(12.dp)
     /** Kachelbilder und kleinere Flächen. */
     val kachel = RoundedCornerShape(10.dp)
     /** Hinweisleisten und eingebettete Flächen. */
@@ -55,20 +64,9 @@ object Formen {
      */
     val kachelBreite = 112.dp
     /**
-     * Höhe der Bestandskachel, nachgerechnet für den schlimmsten Fall bei labelSmall
+     * Höhe der Bestandskachel, nachgerechnet für den schlimmsten Fall bei bodySmall
      * (16 dp Zeilenhöhe):
-     *
-     *     Name             2 Zeilen   32
-     *     Farbe (Teile)    1 Zeile    16
-     *     Preis            1 Zeile    16
-     *     Notiz            1 Zeile    16
-     *     Zustand          3 + 18     21
-     *     Besitzer         2 + 16     18
-     *     Innenabstand     4 + 4       8
-     *                                ---
-     *                                127  + 76 Bild = 203
-     *
-     * 208 lässt fünf Punkte Luft; höher passten weniger Reihen auf den Bildschirm.
+     * Ausführlich: docs/begruendungen/core-ui/ui/theme/Formen.kt.md#kachelhoehe
      */
     val kachelHoehe  = 208.dp
 
@@ -90,6 +88,8 @@ fun AppKarte(
      * Wellenanzeige; ein `clickable` an der unantippbaren Fassung sähe anders aus.
      */
     onClick: (() -> Unit)? = null,
+    /** Was das Antippen tut, für TalkBack („Doppeltippen, um Details zu öffnen“). */
+    onClickLabel: String? = null,
     inhalt: @Composable ColumnScope.() -> Unit
 ) {
     val form = Formen.karte
@@ -99,7 +99,12 @@ fun AppKarte(
         Card(modifier = modifier.fillMaxWidth(), shape = form,
              elevation = erhebung, colors = farben, content = inhalt)
     } else {
-        Card(onClick = onClick, modifier = modifier.fillMaxWidth(), shape = form,
+        // Card(onClick) setzt keine Rolle; TalkBack nannte die Kachel nicht als Knopf.
+        val bedienung = Modifier.fokusRahmen(form).semantics {
+            role = Role.Button
+            onClick(label = onClickLabel) { onClick(); true }
+        }
+        Card(onClick = onClick, modifier = modifier.fillMaxWidth().then(bedienung), shape = form,
              elevation = erhebung, colors = farben, content = inhalt)
     }
 }

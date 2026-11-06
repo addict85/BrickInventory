@@ -15,10 +15,6 @@ import org.junit.Test
  *
  * ── Vier erfolglose Wege, ein Feld ──────────────────────────────────────────
  * Alle vier liegen im ViewModel:
- *   1. EAN gar nicht auflösbar
- *   2. EAN aufgelöst, aber ohne Setnummer
- *   3. Texterkennung ohne verwertbare Nummer
- *   4. Katalogabfrage zur erkannten Nummer scheitert
  *
  * Statt in jeden Bildschirm einen Aufruf zu setzen, melden sie sich über
  * `manuelleErfassungAnfordern` im Zustand. Wer den Scanner einbindet, liest das
@@ -37,7 +33,7 @@ class ManualEntryAfterScanTest {
         // Die Galerie öffnet ihren Dialog, die Teileliste setzt den Cursor.
         // Beide quittieren.
         val g = code(lies("ui/screens/GalleryScreen.kt"))
-        assert(g.contains("barcodeState.manuelleErfassungAnfordern") && g.contains("showAddDialog = true")) {
+        assert(g.contains("barcode.manuelleErfassungAnfordern") && g.contains("showAddDialog = true")) {
             "Die Galerie öffnet die manuelle Erfassung nach einem erfolglosen Scan nicht"
         }
         assert(g.contains("erfassung.manuelleErfassungQuittieren()")) { "Die Galerie quittiert nicht" }
@@ -71,7 +67,9 @@ class ManualEntryAfterScanTest {
         // Der Anker muss am SET-Feld hängen, nicht an Menge oder Preis.
         val setFeld = fn.indexOf("value = setNumber")
         val ankerAmSetFeld = fn.indexOf("focusRequester(setFeldFokus)")
-        assert(setFeld >= 0 && ankerAmSetFeld > setFeld && ankerAmSetFeld - setFeld < 400) {
+        // Im selben Feld heisst: vor dem nächsten Eingabefeld (Menge, Preis).
+        val naechstesFeld = fn.indexOf("OutlinedTextField(", setFeld).let { if (it < 0) fn.length else it }
+        assert(setFeld >= 0 && ankerAmSetFeld in (setFeld + 1) until naechstesFeld) {
             "Der Fokus-Anker hängt nicht am Set-Feld"
         }
     }

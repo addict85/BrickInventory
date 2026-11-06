@@ -1,28 +1,6 @@
 /**
  * Nach dem Verschieben eines Sets hat JEDER Bestandteil im Zielkonto sein Bild.
- *
- * ── Der Befund, der zu diesem Test führte ───────────────────────────────────
- * copyContents() in src/sets/setMove.ts kopiert Teile, Minifiguren und
- * Anleitungen ins Zielkonto. Die Teile wurden mit 14 Spalten kopiert, die
- * Minifiguren mit 7 — und die einzige, die dabei WIRKLICH fehlte, war
- * `image_local`.
- *
- * Wer ein Set ins Konto seines Kindes verschob, sah dort danach die Teilebilder
- * aus dem Zwischenspeicher und die Figurenbilder wieder über den Proxy vom CDN
- * — bis zum nächsten Serverstart, denn nur dann läuft der Bild-Job.
- *
- * ── Warum der Test jetzt etwas STÄRKERES prüft ──────────────────────────────
- * Mit Migration 0034 steht das Bild nicht mehr an der Bestandszeile, sondern
- * im Katalog: part_color_catalog je (Teil, Farbe), minifigs_catalog je Figur.
- * Beim Verschieben ist damit nichts mitzunehmen — und folglich auch nichts zu
- * vergessen. Die FEHLERQUELLE ist weg, nicht nur der Fehler.
- *
- * Geprüft wird deshalb die Wirkung und nicht der Weg: Nach dem Verschieben
- * liefert die Teile- bzw. Figurenliste des ZIELKONTOS für beide Bestandteile
- * denselben Bildpfad wie vorher. Das ist die Frage, die den Nutzer angeht, und
- * sie bleibt dieselbe, ob der Pfad nun kopiert oder nachgeschlagen wird.
- *
- * Voraussetzung: Test-DB via TEST_DATABASE_URL.
+ * Ausführlich: docs/begruendungen/test/verschieben-bildpfad-db.test.js.md#kopf
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -30,17 +8,13 @@ const assert = require('node:assert/strict');
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
 const _req = require('./helpers/sources').buildAndRequire();
+const { dbOderSkip } = require('./helpers/db');
 const { haeltFigur, haeltSet, haeltTeil } = require('./helpers/bestand');
 const db = _req('db/database.js');
 const { moveSetBetweenAccounts } = _req('src/sets/setMove.js');
 
 test('ein verschobenes Set nimmt die Bildpfade aller Bestandteile mit', { concurrency: 1 }, async (t) => {
-  try { await db.initSchema(); }
-  catch (e) {
-    if (process.env.REQUIRE_DB === '1')
-      throw new Error(`REQUIRE_DB=1, aber die Test-DB ist nicht erreichbar: ${e.message}`);
-    t.skip('Test-DB nicht erreichbar'); return;
-  }
+  if (!await dbOderSkip(t, _req, { migrieren: false })) return;
 
   const p = String(process.pid).slice(-5);
   const VON = `mv_von_${p}`, NACH = `mv_nach_${p}`;

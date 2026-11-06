@@ -1,21 +1,30 @@
+import { loadHousehold } from './05-haushalt.js';
+import { loadUsers } from './05-nutzerverwaltung.js';
+import { stelleZielBereit } from './00-ziele.js';
 import { echt, registerActions } from './00-registry.js';
-import { I18N, LANG, applyLang, locale, t, tRaw} from '../i18n.js';
-import { antwortFehler, feldFehler, fehlerMeldung, fmtN, fmtDatum, bildTag, platzhalterInhalt, ico, CURRENCY, G, ME, _settingsCache, _updateLangSelect, api, applyTheme, esc, escUrl, imgUrl, initDefaultCondition, knopfBesetzt, thumbUrl, toast, zeigeBenutzernamen , set_CURRENCY, set_settingsCache, passwortRegelText, leseBetrag, betragFuerFeld } from './01-core.js';
-import { allSets, loadGallery, loadStats } from './02-gallery.js';
+import { I18N, LANG, applyLang, locale, t, tRaw } from '../i18n.js';
+import { fmtDatum } from './01-format.js';
+import { fehlerMeldung, api } from './01-api.js';
+import { ico, G, knopfBesetzt, setzeHtml } from './01-dom.js';
+import { antwortFehler, feldFehler, passwortRegelText } from './01-formular.js';
+import { _updateLangSelect, applyTheme, initDefaultCondition, zeigeBenutzernamen } from './01-konto.js';
+import { toast } from './01-meldungen.js';
+import { loadGallery, loadStats } from './02-gallery.js';
 import { loadParts } from './03-parts.js';
 import { loadMinifigs } from './06-minifigs.js';
-import { confirmDelete, bestaetigeMitPasswort, mitZweitemFaktor } from './07-admin.js';
 import { meldeAbschnitt } from './24-router.js';
-
-// ═══ Einstellungen, SMTP, Profil, API-Keys, Benutzerverwaltung ═══
-// Teil von app.js — die Dateien in public/js/ werden in nummerierter
-// Reihenfolge geladen und teilen sich den globalen Scope (kein Modul-
-// System noetig, Inline-onclick-Handler in index.html funktionieren
-// unveraendert). Der Split ist rein sequenziell und verhaelt sich
-// identisch zur frueheren Einzeldatei.
+import { verstaendlicherGrund } from './01-bausteine.js';
+import { CURRENCY, ME, _settingsCache, set_CURRENCY, set_settingsCache } from './00-zustand.js';
+import { html, sichereUrl, ungeprueft } from './00-escapen.js';
+import { confirmDelete, bestaetigeMitPasswort, mitZweitemFaktor, mitPasswortBestaetigen, speichereEinstellungen } from './01-rueckfrage.js';
+import { loadFinance } from './04-finance.js';
+import { LAND_ZUR_WAEHRUNG } from './17-gutscheine.js';
+// Einstellungen: Profil, Design, Zugangsdaten der Quellen, Mail, Zwischenspeicher, QR-Anmeldung und
+// Konfigurations-Import/-Export. Haushalt, Verwaltung, Alarme und Lagerorte haben eigene Dateien.
 
 // ── SETTINGS ──────────────────────────────────────────
 // SMTP + Registration settings load/save
+/** @param {Record<string, string> | null | undefined} settings */
 async function loadSmtpSettings(settings){
   if(!settings) return;
   const s=settings;
@@ -30,10 +39,22 @@ async function loadSmtpSettings(settings){
   if(G('smtp-tls-altlast')) G('smtp-tls-altlast').style.display = s.smtp_insecure_tls==='1' ? '' : 'none';
   if(G('reg-enabled')) G('reg-enabled').checked = s.registration_enabled==='1';
   geladeneSmtp = JSON.stringify(smtpFormular());
+  regMailHinweis();
 }
 
-// Der Server verlangt das Verwalterpasswort, sobald sich ein SMTP-Wert ändert;
-// gefragt wird deshalb nur dann, nicht bei jedem Speichern oder Testen.
+/** Ohne Mailversand bliebe jede Registrierung unbestätigt; der Schalter sagt das, statt still zu ruhen. */
+async function regMailHinweis(){
+  const box = G('reg-enabled'), hinweis = G('reg-mail-hinweis');
+  if (!box || !hinweis) return;
+  const d = await api('GET', '/v1/auth/registration-status');
+  const ohne = d?.mail_versand === false;
+  box.disabled = ohne && !box.checked;
+  hinweis.hidden = !ohne;
+  hinweis.textContent = ohne ? tRaw(box.checked ? 'settings.reg_ruht' : 'settings.reg_braucht_mail') : '';
+}
+
+// Der Server verlangt das Verwalterpasswort, sobald sich ein SMTP-Wert ändert; gefragt wird deshalb nur dann,
+// nicht bei jedem Speichern oder Testen.
 let geladeneSmtp = '';
 function smtpFormular() {
   return {
@@ -48,16 +69,17 @@ function smtpFormular() {
   };
 }
 /** SMTP speichern; null, wenn die Passwortabfrage abgebrochen wurde. */
+/** @returns {Promise<{ success: boolean, error?: string | null } | null>} */
 async function speichereSmtp() {
   const werte = smtpFormular();
   // Mit dem Hinweis auf die alte Ausnahme auch unverändert speichern: Erst das räumt sie ab.
   const altlast = G('smtp-tls-altlast');
   if (JSON.stringify(werte) === geladeneSmtp && (!altlast || altlast.style.display === 'none')) return { success: true };
-  const admin_password = await bestaetigeMitPasswort(tRaw('smtp.confirm_title'), tRaw('smtp.confirm_text'), 'schloss');
+  const admin_password = await bestaetigeMitPasswort(tRaw('smtp.confirm_title'), tRaw('smtp.confirm_text'), 'schloss', { knopf: 'confirm.btn.speichern', art: 'bp' });
   if (admin_password === null) return null;
   const d = await mitZweitemFaktor(z => api('POST','/v1/settings', { ...werte, admin_password, ...z }));
   if (d === null) return null;
-  if (d.success) { geladeneSmtp = JSON.stringify(werte); if (altlast) altlast.style.display = 'none'; }
+  if (d.success) { geladeneSmtp = JSON.stringify(werte); if (altlast) altlast.style.display = 'none'; regMailHinweis(); }
   return d;
 }
 
@@ -78,11 +100,11 @@ G('btn-test-smtp')?.addEventListener('click', async()=>{
   if(d.success) {
     res.style.background = 'var(--g50)'; res.style.color = 'var(--g700)'; res.style.border = '1px solid var(--g300)';
     // Die Kennung des Mailservers hilft, die Nachricht in dessen Protokoll zu finden.
-    res.textContent = d.mode === 'console' ? t('smtp.console')
+    res.textContent = d.mode === 'console' ? tRaw('smtp.console')
       : [d.message || t('smtp.ok'), d.messageId].filter(Boolean).join(' · ');
   } else {
     res.style.background = 'var(--r100)'; res.style.color = 'var(--r500)'; res.style.border = '1px solid var(--r300)';
-    res.textContent = d.error || t('settings.error');
+    res.textContent = d.error || tRaw('settings.error');
   }
 });
 
@@ -93,8 +115,14 @@ G('btn-sav-smtp')?.addEventListener('click', async()=>{
 });
 
 async function saveRegEnabled(){
-  const d=await api('POST','/v1/settings',{ registration_enabled: G('reg-enabled').checked?'1':'0' });
-  toast(d.success?t('settings.reg_saved'):t('settings.error'),d.success?'success':'error');
+  // Der Haken folgt dem Server: Während der Passwortfrage gilt noch der alte Stand.
+  const box = G('reg-enabled'), soll = box.checked;
+  box.checked = !soll;
+  const d=await speichereEinstellungen(tRaw('settings.reg_title'), { registration_enabled: soll?'1':'0' });
+  if(!d) return;
+  if(d.success) box.checked = soll;
+  toast(d.success?t('settings.reg_saved'):(d.error||t('settings.error')),d.success?'success':'error');
+  regMailHinweis();
 }
 
 export async function loadCacheTtl() {
@@ -135,8 +163,8 @@ function initCacheTtlBtn() {
 export async function loadRateLimitStats(){
   const d = await api('GET','/v1/admin/cache-stats');
   if(!d.success || !d.rate_limits) return;
-  const fmt = (rl) => rl ? `${rl.count.toLocaleString(locale())} / ${rl.limit.toLocaleString(locale())}` : '—';
-  for (const dienst of ['bricklink', 'rebrickable', 'brickset']) {
+  const fmt = (/** @type {import('../../frontend-typen/vertrag').RateLimit | null | undefined} */ rl) => rl ? `${rl.count.toLocaleString(locale())} / ${rl.limit.toLocaleString(locale())}` : '—';
+  for (const dienst of /** @type {const} */ (['bricklink', 'rebrickable', 'brickset'])) {
     const rl = d.rate_limits[dienst];
     if (G('rl-' + dienst)) G('rl-' + dienst).textContent = fmt(rl);
     const balken = G('rl-' + dienst + '-balken');
@@ -146,33 +174,29 @@ export async function loadRateLimitStats(){
 export async function loadCacheStats(){
   const d = await api('GET','/v1/admin/cache-stats');
   if(!d.success) return;
-  if(G('cs-prices'))  G('cs-prices').textContent  = d.prices  || 0;
-  if(G('cs-subsets')) G('cs-subsets').textContent = d.subsets || 0;
-  if(G('cs-catalog')) G('cs-catalog').textContent = d.catalog || 0;
+  if(G('cs-prices'))  G('cs-prices').textContent  = String(d.prices  || 0);
+  if(G('cs-subsets')) G('cs-subsets').textContent = String(d.subsets || 0);
+  if(G('cs-catalog')) G('cs-catalog').textContent = String(d.catalog || 0);
 }
 export async function loadApiLimits() {
   const d = await api('GET', '/v1/admin/api-limits');
   if (!d.success) return;
-  G('lim-rb').value = d.limits.rebrickable;
-  G('lim-bl').value = d.limits.bricklink;
-  G('lim-bs').value = d.limits.brickset;
+  G('lim-rb').value = String(d.limits.rebrickable);
+  G('lim-bl').value = String(d.limits.bricklink);
+  G('lim-bs').value = String(d.limits.brickset);
 }
 
-// QR Code generation using qrcode.js CDN
+// QR-Code über QRCode.js aus public/vendor/qrcode (npm qrcodejs, scripts/qrcode-kopieren.js)
 async function generateQrCode() {
   const btn = G('btn-gen-qr');
   const hint = G('qr-hint');
   const container = G('qr-code');
   const frei = knopfBesetzt(btn);
   try {
-    // POST, nicht GET: Der Aufruf LEGT eine Nonce AN. Als GET war
-    // er über eine Navigation von einer fremden Seite auslösbar, weil
-    // SameSite=lax das Cookie dort mitschickt.
-    // Die gewaehlte Laufzeit des SPAETEREN Geraete-Tokens reist mit der
-    // Erzeugung, nicht mit dem Einloesen: POST /v1/auth/qr-login ist
-    // unangemeldet erreichbar, und wer einen Code abfotografiert, duerfte sich
-    // sonst selbst die laengste Frist aussuchen (Begruendung ausfuehrlich in
-    // db/migrations/0016-token-laufzeit.sql).
+    // POST, weil der Aufruf eine Nonce anlegt: Als GET löste ihn eine fremde Seite per Navigation aus
+    // (SameSite=lax). Die Laufzeit des späteren Tokens reist mit der Erzeugung, sonst wählte sich der Finder
+    // eines Codes die längste.
+    // Ausführlich: docs/begruendungen/public/js/05-settings.js.md#gueltigkeit
     const gueltigkeit = G('qr-validity')?.value || '';
     const pw = G('qr-password');
     const password = pw?.value || '';
@@ -181,37 +205,23 @@ async function generateQrCode() {
     if (d === null) { frei(); return; }
     if (!d.success) {
       hint.textContent = tRaw('toast.error')+': ' + (d.error||t('common.unknown'));
-      // Den alten Code wegraeumen: Er ist vielleicht noch gueltig, und ein
-      // sichtbarer Code neben einer Fehlermeldung sieht aus wie ein Code, der
-      // trotzdem geht. Beim Ablaufzaehler weiter unten wird aus demselben
-      // Grund geleert.
-      container.innerHTML = '';
+      // Den alten Code wegraeumen: Er ist vielleicht noch gueltig, und ein sichtbarer Code neben einer
+      // Fehlermeldung sieht aus wie ein Code, der trotzdem geht. Beim Ablaufzaehler weiter unten wird aus
+      // demselben Grund geleert.
+      container.replaceChildren();
       frei(); return;
     }
-    // ── Welche Adresse in den Code kommt ───────────────────────
-    //
-    // Genau eine: die, die der Server nennt (`url`, aus APP_BASE_URL). Der
-    // Klient hat hier NICHTS zu entscheiden.
-    //
-    // Hier stand erst `window.location.origin`, dann `d.url || origin`. Beides
-    // war falsch, und das zweite war das gefaehrlichere: Es sah nach einem
-    // vernuenftigen Rueckfall aus. Aber die Adresse in der Browserzeile ist
-    // die des BETRACHTERS, nicht die des Servers — wer die Webapp ueber
-    // http://192.168.x.x:3000 oeffnet, haette dem Telefon eine Adresse
-    // gereicht, die ausser Haus nicht existiert. Gescannt wird der Code
-    // trotzdem; die App findet den Server dann nie wieder.
-    //
-    // Ohne APP_BASE_URL kommt hier gar kein Erfolg mehr an: Die Route
-    // antwortet mit 503 und einem Satz, der sagt, was zu tun ist — der wird
-    // im Zweig darueber angezeigt. Nichts zu zeigen ist besser als etwas
-    // Falsches zu zeigen, das sich anstandslos scannen laesst.
+    // Nur die Adresse, die der Server nennt (APP_BASE_URL): Die in der Browserzeile ist die des Betrachters,
+    // etwa eine LAN-Adresse, die ausser Haus nicht existiert. Lieber kein Code als einer, der sich falsch
+    // scannen lässt.
+    // Ausführlich: docs/begruendungen/public/js/05-settings.js.md#serverurl
     const serverUrl = d.url;
 
-    // Mit `fp` (Fingerabdruck der CA-Wurzel) pinnt die App das Zertifikat;
-    // der Server schickt ihn nur zu einer https-Adresse.
+    // Mit `fp` (Fingerabdruck der CA-Wurzel) pinnt die App das Zertifikat; der Server schickt ihn nur zu
+    // einer https-Adresse.
     const qrData = JSON.stringify({ url: serverUrl, token: d.token, ...(d.fp ? { fp: d.fp } : {}) });
     // Clear and render QR code
-    container.innerHTML = '';
+    container.replaceChildren();
     if (typeof QRCode !== 'undefined') {
       new QRCode(container, {
         text: qrData,
@@ -225,28 +235,21 @@ async function generateQrCode() {
     }
     // Countdown timer
     //
-    // Dauer vom Server nehmen, nicht fest verdrahten: /qr-token liefert
-    // expires_in mit. Hier stand 1800 (30 Minuten), während der Token seit der
-    // Sicherheitshärtung nach 5 Minuten abläuft — der Zähler lief also 25
-    // Minuten weiter, obwohl der Code längst ungültig war.
-    let secs = parseInt(d.expires_in) || 300;
-    const fmt = (v) => `${Math.floor(v/60)}:${(v%60).toString().padStart(2,'0')}`;
+    // Dauer vom Server nehmen, nicht fest verdrahten: /qr-token liefert expires_in mit. Hier stand 1800 (30
+    // Minuten), während der Token seit der Sicherheitshärtung nach 5 Minuten abläuft — der Zähler lief also
+    // 25 Minuten weiter, obwohl der Code längst ungültig war.
+    let secs = Number(d.expires_in) || 300;
+    const fmt = (/** @type {number} */ v) => `${Math.floor(v/60)}:${(v%60).toString().padStart(2,'0')}`;
     const timer = setInterval(() => {
       secs--;
       hint.textContent = tRaw('qr.valid_for',{t:fmt(secs)});
-      if (secs <= 0) { clearInterval(timer); hint.textContent = tRaw('qr.expired'); container.innerHTML=''; }
+      if (secs <= 0) { clearInterval(timer); hint.textContent = tRaw('qr.expired'); container.replaceChildren(); }
     }, 1000);
     hint.textContent = tRaw('qr.valid_for',{t:fmt(secs)});
-    // Wie lange der ZUGANG danach gilt — die Antwort des Servers, nicht die
-    // Auswahl daneben: Kennt er den Wert nicht, hat er nichts vermerkt, und
-    // dann gilt die Gleitfrist. Eigene Zeile, weil die darueber im
-    // Sekundentakt neu geschrieben wird (der Zaehler des Codes).
-    //
-    // Drei Faelle, nicht zwei: `0` heisst „unbegrenzt" und ist nicht dasselbe
-    // wie „nichts gewaehlt" (null). Ein `d.token_days ? … : …` wuerde beide
-    // in denselben Zweig werfen und bei „unbegrenzt" die Gleitfrist ansagen —
-    // also genau das Gegenteil.
-    // Ohne TLS verbindet sich die Android-App nicht (sie nimmt nur HTTPS an).
+    // Die Laufzeit aus der Serverantwort, nicht aus der Auswahl: Kennt er den Wert nicht, gilt die
+    // Gleitfrist. Drei Fälle — 0 heisst unbegrenzt, null nichts gewählt; ein einfacher Wahrheitstest würfe
+    // beide zusammen.
+    // Ausführlich: docs/begruendungen/public/js/05-settings.js.md#klartext
     const klartext = G('qr-tls-hint');
     if (klartext) {
       klartext.hidden = !/^http:\/\//i.test(serverUrl || '');
@@ -255,109 +258,93 @@ async function generateQrCode() {
     const zugang = G('qr-access-hint');
     if (zugang) zugang.textContent =
       d.token_days === 0    ? tRaw('qr.access_unlimited')
-      : d.token_days > 0    ? tRaw('qr.access_days', { n: d.token_days })
+      : (d.token_days ?? 0) > 0 ? tRaw('qr.access_days', { n: d.token_days })
                             : tRaw('qr.access_default');
-    // Nach dem ersten Erzeugen heisst der Knopf „Neu generieren" — die eine
-    // Stelle, an der die Beschriftung sich absichtlich ändert.
+    // Nach dem ersten Erzeugen heisst der Knopf „Neu generieren" — die eine Stelle, an der die Beschriftung
+    // sich absichtlich ändert.
     frei(tRaw('qr.regenerate'));
   } catch(e) { hint.textContent = tRaw('toast.error')+': ' + fehlerMeldung(e); frei(); }
 }
 
 G('btn-gen-qr').onclick = generateQrCode;
 
-// ── ANGEMELDETE GERÄTE ────────────────────────────────────────────────────
-//
-// Die Endpunkte /v1/settings/tokens gab es schon, einen Weg dorthin nicht:
-// Ein verlorenes Telefon war nur loszuwerden, indem man das Passwort ändert
-// (das verwirft ALLE Zugänge). Wer nur eines aussperren wollte, sperrte alle
-// aus.
-//
-// Der Browser selbst ist kein Token, sondern die Sitzung; die Liste zeigt die
-// Geräte mit Token (App, ältere Browser-Anmeldungen).
-async function tokenRuf(pfad, method = 'GET') {
-  const r = await fetch('/api/v1/settings' + pfad, { method, credentials: 'include' });
-  return r.json().catch(() => ({ success: false, error: 'HTTP ' + r.status }));
-}
+// Angemeldete Geräte einzeln aussperren: Sonst blieb für ein verlorenes Telefon nur das Passwort zu ändern,
+// und das wirft alle Zugänge hinaus. Der Browser selbst hängt an der Sitzung, nicht an einem Token.
+// Ausführlich: docs/begruendungen/public/js/05-settings.js.md#die-endpunkte-v1-settings-tokens-gab-es
 
-/** „—", wenn nie benutzt: `new Date(null)` wäre der 1.1.1970. */
+/**
+ * „—", wenn nie benutzt: `new Date(null)` wäre der 1.1.1970.
+ * @param {string | null | undefined} wert
+ */
 function tokenDatum(wert) {
   if (!wert) return '—';
-  return new Date(wert).toLocaleString(locale());
+  return fmtDatum(wert, 'tagzeit');
 }
 
 export async function loadTokens() {
   const ziel = G('tokens-tbl');
   if (!ziel) return;
-  const d = await tokenRuf('/tokens');
-  if (!d.success) { ziel.innerHTML = `<p data-stil="color:var(--mut)">${esc(d.error || t('settings.error'))}</p>`; return; }
-  if (!d.tokens.length) { ziel.innerHTML = `<p data-stil="color:var(--mut)">${t('tokens.none')}</p>`; return; }
-  ziel.innerHTML = `<div class="tw"><table class="dt"><thead><tr>
-      <th>${t('tokens.col.label')}</th><th>${t('tokens.col.created')}</th>
-      <th>${t('tokens.col.last_used')}</th><th>${t('tokens.col.scope')}</th><th>${t('tokens.col.ip')}</th>
-      <th>${t('tokens.col.expires')}</th><th>${t('users.col.actions')}</th></tr></thead><tbody>${
-    d.tokens.map(tk => `<tr>
-      <td><strong>${esc(tk.label || '—')}</strong>${tk.aktuell ? ` <span class="rb ra">${t('tokens.current')}</span>` : ''}</td>
-      <td>${tokenDatum(tk.created_at)}</td>
-      <td>${tokenDatum(tk.last_used)}</td>
-      <td>${tk.scope === 'voll' ? t('tokens.scope.voll') : t('tokens.scope.app')}</td>
-      <td>${esc(tk.ip_bereich || '—')}</td>
-      <td>${tk.never_expires ? t('tokens.never') : tokenDatum(tk.expires_at)}${
-        // Plakette „fest": Ohne sie stuenden beide Fristen als dasselbe Datum
-        // da, und sie bedeuten Verschiedenes. Die gleitende rueckt bei jeder
-        // Benutzung nach; die feste, die beim QR-Code gewaehlt wurde, nicht.
-        tk.hard_expires_at ? ` <span class="rb ra" title="${esc(tokenDatum(tk.hard_expires_at))}">${t('tokens.fixed')}</span>` : ''}</td>
-      <td>${tk.aktuell ? '' :
-        `<button class="btn bd btn-sm" data-click="revokeToken"${echt()} data-arg="${esc(tk.token_id)}" data-arg2="${esc(tk.label || '')}" aria-label="${esc(tRaw('common.delete'))}">${ico('loeschen')}</button>`}</td>
-    </tr>`).join('')
-  }</tbody></table></div>`;
+  const d = await api('GET', '/v1/settings/tokens');
+  if (!d.success) { setzeHtml(ziel, html`<p data-stil="color:var(--mut)">${d.error || t('settings.error')}</p>`); return; }
+  if (!d.tokens.length) { setzeHtml(ziel, html`<p data-stil="color:var(--mut)">${tRaw('tokens.none')}</p>`); return; }
+  setzeHtml(ziel, html`<div class="tw"><table class="dt" aria-label="${tRaw('tokens.title')}"><thead><tr>
+      <th>${tRaw('tokens.col.label')}</th><th>${tRaw('tokens.col.created')}</th>
+      <th>${tRaw('tokens.col.last_used')}</th><th>${tRaw('tokens.col.scope')}</th><th>${tRaw('tokens.col.ip')}</th>
+      <th>${tRaw('tokens.col.expires')}</th><th>${tRaw('users.col.actions')}</th></tr></thead><tbody>${d.tokens.map(tk => html`<tr>
+      <td><strong>${tk.label || '—'}</strong>${tk.aktuell ? html` <span class="rb ra">${tRaw('tokens.current')}</span>` : ''}</td>
+      <td>${ungeprueft(tokenDatum(tk.created_at))}</td>
+      <td>${ungeprueft(tokenDatum(tk.last_used))}</td>
+      <td>${tk.scope === 'voll' ? tRaw('tokens.scope.voll') : tRaw('tokens.scope.app')}</td>
+      <td>${tk.ip_bereich || '—'}</td>
+      <td>${tk.never_expires ? tRaw('tokens.never') : ungeprueft(tokenDatum(tk.expires_at))}${tk.hard_expires_at ? html` <span class="rb ra" title="${tokenDatum(tk.hard_expires_at)}">${tRaw('tokens.fixed')}</span>` : ''}</td>
+      <td>${tk.aktuell ? '' : html`<button class="btn bd btn-sm" data-click="revokeToken"${echt()} data-arg="${tk.token_id}" data-arg2="${tk.label || ''}" aria-label="${tRaw('common.delete')}">${ico('loeschen')}</button>`}</td>
+    </tr>`)}</tbody></table></div>`);
 }
 
 /**
- * Der Fingerabdruck der CA-Wurzel zum Abgleich von Hand — derselbe Wert steht
- * als `fp` im QR-Code. Ohne interne CA (fremder Proxy) steht nur, ob HTTPS gilt.
+ * Der Fingerabdruck der CA-Wurzel zum Abgleich von Hand — derselbe Wert steht als `fp` im QR-Code. Ohne
+ * interne CA (fremder Proxy) steht nur, ob HTTPS gilt.
  */
 export async function ladeTls() {
   const ziel = G('tls-flaeche');
   if (!ziel) return;
   const d = await api('GET', '/v1/settings/tls');
-  if (!d?.success) { ziel.innerHTML = `<p class="hinweis-absatz">${esc(d?.error || t('settings.error'))}</p>`; return; }
+  if (!d?.success) { setzeHtml(ziel, html`<p class="hinweis-absatz">${d?.error || t('settings.error')}</p>`); return; }
   if (!d.fp) {
-    ziel.innerHTML = `<p class="hinweis-absatz">${d.https ? t('tls.ohne_ca') : t('tls.ohne_https')}</p>`;
+    setzeHtml(ziel, html`<p class="hinweis-absatz">${d.https ? tRaw('tls.ohne_ca') : tRaw('tls.ohne_https')}</p>`);
     return;
   }
-  ziel.innerHTML = `<p class="hinweis-absatz">${t('tls.hint')}</p>
-    <div class="text-klein">${t('tls.subject')}: ${esc(d.subject)}<br>${t('tls.valid_until')}: ${esc(tokenDatum(d.gueltig_bis))}</div>
-    <div class="text-klein abstand-o-075">${t('tls.fp_sha256')}</div>
-    <code id="tls-fp-hex" data-stil="user-select:all;word-break:break-all;font-size:var(--fs-2)">${esc(d.fp_hex)}</code>
-    <div class="text-klein abstand-o-075">${t('tls.fp_base64')}</div>
-    <code id="tls-fp" data-stil="user-select:all;word-break:break-all;font-size:var(--fs-2)">${esc(d.fp)}</code>
-    <div class="abstand-o-075"><a class="btn bs btn-sm" href="${esc(d.download)}" download>${t('tls.download')}</a></div>`;
+  setzeHtml(ziel, html`<p class="hinweis-absatz">${tRaw('tls.hint')}</p>
+    <div class="text-klein">${tRaw('tls.subject')}: ${d.subject}<br>${tRaw('tls.valid_until')}: ${tokenDatum(d.gueltig_bis)}</div>
+    <div class="text-klein abstand-o-075">${tRaw('tls.fp_sha256')}</div>
+    <code id="tls-fp-hex" data-stil="user-select:all;word-break:break-all;font-size:var(--fs-2)">${d.fp_hex}</code>
+    <div class="text-klein abstand-o-075">${tRaw('tls.fp_base64')}</div>
+    <code id="tls-fp" data-stil="user-select:all;word-break:break-all;font-size:var(--fs-2)">${d.fp}</code>
+    <div class="abstand-o-075"><a class="btn bs btn-sm" href="${sichereUrl(d.download)}" download>${tRaw('tls.download')}</a></div>`);
 }
 
+/**
+ * @param {string} tokenId
+ * @param {string} label
+ */
 async function revokeToken(tokenId, label) {
-  if (!await confirmDelete(tRaw('tokens.revoke.title'), tRaw('tokens.revoke.text', { name: label || '—' }), 'schluessel')) return;
-  const d = await tokenRuf('/tokens/' + encodeURIComponent(tokenId), 'DELETE');
+  if (!await confirmDelete(tRaw('tokens.revoke.title'), tRaw('tokens.revoke.text', { name: label || '—' }), 'schluessel', { knopf: 'confirm.btn.geraet_abmelden', art: 'bp' })) return;
+  const d = await api('DELETE', `/v1/settings/tokens/${encodeURIComponent(tokenId)}`);
   if (d.success) { toast(tRaw('tokens.revoked'), 'success'); loadTokens(); }
   else toast(d.error || t('settings.error'), 'error');
 }
 
 /**
- * Alle Zugänge ausser dem eigenen entwerten.
- *
- * Nacheinander über den bestehenden Endpunkt, statt dafür einen neuen zu
- * bauen: Es sind eine Handvoll Zeilen, und eine zweite Adresse für „dasselbe,
- * nur mehrfach" wäre genau die Art Doppelung, die dieses Projekt sonst
- * abbaut. Gezählt wird, was WIRKLICH weg ist — nicht, wie oft geklickt wurde.
- *
- * Dieser Browser hängt an der Sitzung, nicht an einem Token — „alle anderen"
- * sind darum alle Token und alle übrigen Sitzungen.
+ * Alle Zugänge ausser dem eigenen entwerten, nacheinander über den bestehenden Endpunkt: Eine zweite Adresse
+ * für „dasselbe, mehrfach“ wäre Doppelung. Gezählt wird, was wirklich weg ist.
+ * Ausführlich: docs/begruendungen/public/js/05-settings.js.md#revokeothertokens
  */
 async function revokeOtherTokens() {
-  const d = await tokenRuf('/tokens');
+  const d = await api('GET', '/v1/settings/tokens');
   if (!d.success) { toast(d.error || t('settings.error'), 'error'); return; }
   const andere = d.tokens.filter(tk => !tk.aktuell);
   const password = await bestaetigeMitPasswort(tRaw('tokens.revoke_others.title'),
-                                               tRaw('tokens.revoke_others.text', { n: andere.length }), 'abmelden');
+                                               tRaw('tokens.revoke_others.text', { n: andere.length }), 'abmelden', { knopf: 'confirm.btn.abmelden', art: 'bp' });
   if (password === null) return;
   // Zuerst die übrigen Browser: Dort prüft der Server das Passwort.
   const s = await mitZweitemFaktor(z => api('POST', '/v1/settings/sessions/andere-beenden', { password, ...z }));
@@ -365,7 +352,7 @@ async function revokeOtherTokens() {
   if (!s.success) { toast(s.error || t('settings.error'), 'error'); return; }
   let weg = 0;
   for (const tk of andere) {
-    const r = await tokenRuf('/tokens/' + encodeURIComponent(tk.token_id), 'DELETE');
+    const r = await api('DELETE', `/v1/settings/tokens/${encodeURIComponent(tk.token_id)}`);
     weg += r.deleted || 0;
   }
   toast(tRaw('tokens.revoked_n', { n: weg + (s.deleted || 0) }), weg === andere.length ? 'success' : 'error');
@@ -377,19 +364,19 @@ export async function loadProfile() {
   if (dw && window.__bimDunkelWert) dw.value = window.__bimDunkelWert();
   ladeEigenesDesign();
   const d = await api('GET', '/v1/auth/profile');
-  if (!d.success) return;
-  const u = d.user;
+  const u = d.success ? d.user : null;
+  if (!u) return;
   G('prof-first').value = u.first_name || '';
   G('prof-last').value  = u.last_name  || '';
   G('prof-user').value  = u.username   || '';
   G('prof-email').value = u.email      || '';
   G('prof-email').dataset.bisher = u.email || '';
-  // Ohne Adresse gibt es nichts zu bestätigen — „verifiziert“ neben einem
-  // leeren Feld widerspräche sich.
+  // Ohne Adresse gibt es nichts zu bestätigen — „verifiziert“ neben einem leeren Feld widerspräche sich.
   const vEl = G('prof-email-verified');
-  if (vEl) vEl.innerHTML = !u.email ? ''
-    : u.email_verified ? `<span class="email-ok">${t('profile.verified')}</span>`
-    : `<span class="email-offen">${t('profile.not_verified')}</span>`;
+  if (vEl) setzeHtml(vEl, !u.email ? '' : u.email_verified ? html`<span class="email-ok">${tRaw('profile.verified')}</span>` : html`<span class="email-offen">${tRaw('profile.not_verified')}</span>`);
+  // Die neue Adresse gilt erst nach dem Link; bis dahin steht sie nur hier.
+  const hint = G('prof-email-hint');
+  if (hint) hint.textContent = u.email_neu ? tRaw('profile.email_pending', { email: u.email_neu }) : '';
 }
 
 /** Design-Wahl des Kontos: eigenes Design oder die Vorgabe des Verwalters. */
@@ -401,21 +388,26 @@ async function ladeEigenesDesign() {
   zeigeDesignWahl(d);
 }
 
+/** @param {import('../../frontend-typen/vertrag').AppThemeResponse} d */
 function zeigeDesignWahl(d) {
   const sel = /** @type {HTMLSelectElement} */ (/** @type {unknown} */ (G('design-wahl')));
   const NAMEN = { classic: 'settings.theme_classic', brick: 'settings.theme_brick', werkbank: 'settings.theme_werkbank',
     farbfaecher: 'settings.theme_farbfaecher', noppe: 'settings.theme_noppe', hochglanz: 'settings.theme_hochglanz' };
-  const vorgabeName = tRaw(NAMEN[d.vorgabe] || NAMEN.classic);
+  const vorgabeName = tRaw(/** @type {Record<string, string>} */ (NAMEN)[d.vorgabe ?? ''] || NAMEN.classic);
   sel.options[0].textContent = tRaw('settings.own_theme_default', { name: vorgabeName });
   sel.value = d.eigenes || '';
-  // Ein Satz zum gewählten Design: Namen wie „Noppe“ und „Hochglanz“ sagen allein
-  // nicht, wie es aussieht. Werkbank hat keine helle Fassung; das steht dabei.
+  // Ein Satz zum gewählten Design: Namen wie „Noppe“ und „Hochglanz“ sagen allein nicht, wie es aussieht.
+  // Werkbank hat keine helle Fassung; das steht dabei.
   const hinweis = G('design-hinweis');
   const aktiv = d.eigenes || d.vorgabe || 'classic';
   const BESCHREIBUNG = { classic: 'settings.theme_desc.classic', brick: 'settings.theme_desc.brick', werkbank: 'settings.theme_desc.werkbank',
     farbfaecher: 'settings.theme_desc.farbfaecher', noppe: 'settings.theme_desc.noppe', hochglanz: 'settings.theme_desc.hochglanz' };
-  if (hinweis) hinweis.textContent = [BESCHREIBUNG[aktiv] ? tRaw(BESCHREIBUNG[aktiv]) : '',
-    window.__bimNurDunkel?.(aktiv) ? tRaw('settings.werkbank_hint') : ''].filter(Boolean).join(' ');
+  const beschreibung = /** @type {Record<string, string>} */ (BESCHREIBUNG)[aktiv];
+  if (hinweis) hinweis.textContent = beschreibung ? tRaw(beschreibung) : '';
+  // Bei einem Design ohne helle Fassung wirkt die Wahl darunter nicht; das steht dort, wo man sie trifft.
+  const nurDunkel = !!window.__bimNurDunkel?.(aktiv), dw = G('dunkel-wahl'), dh = G('dunkel-hinweis');
+  if (dw) dw.disabled = nurDunkel;
+  if (dh) dh.hidden = !nurDunkel;
 }
 
 async function setzeEigenesDesign() {
@@ -431,13 +423,20 @@ async function setzeEigenesDesign() {
 // Darstellung wirkt sofort: Währung und Standard-Zustand speichern beim Wählen.
 async function speichereWaehrung() {
   const wert = G('s-cur').value;
+  // Marktpreise gibt es je Währung; nach dem Wechsel fehlen sie, bis der Preisauftrag sie geholt hat. Ohne
+  // Rückfrage sah das aus, als seien alle Werte verloren.
+  if (wert !== CURRENCY && !await confirmDelete(tRaw('konto.waehrung_wechsel_titel'),
+    tRaw('konto.waehrung_wechsel_text', { alt: CURRENCY, neu: wert }), 'finanzen', { knopf: 'konto.waehrung_wechsel_knopf', art: 'bp' })) {
+    G('s-cur').value = CURRENCY;
+    return;
+  }
   const d = await api('POST', '/v1/settings', { currency: wert });
   if (!d.success) { toast(d.error || t('settings.error'), 'error'); return; }
   set_CURRENCY(wert);
   if (_settingsCache) _settingsCache.currency = wert;
   await loadHousehold().catch(() => {});
   loadStats(); if (document.getElementById('tab-gallery')?.classList.contains('active')) loadGallery();
-  toast(tRaw('konto.waehrung_gespeichert', { w: wert }), 'success');
+  toast(tRaw('konto.waehrung_gespeichert_markt', { w: wert }), 'success');
 }
 
 async function speichereZustand() {
@@ -449,57 +448,50 @@ async function speichereZustand() {
 }
 
 /** Eine neue E-Mail-Adresse verlangt das aktuelle Passwort; das Feld steht erst dann da. */
-function emailGetippt() {
-  const neu = G('prof-email').value.trim().toLowerCase() !== (G('prof-email').dataset.bisher || '').toLowerCase();
-  const zeile = G('prof-pw-zeile'); if (zeile) zeile.hidden = !neu;
-}
 
 G('btn-sav-prof').onclick = async () => {
   const first_name = G('prof-first').value.trim();
   const last_name  = G('prof-last').value.trim();
   const username   = G('prof-user').value.trim();
   const email      = G('prof-email').value.trim();
-  const pwC = G('prof-pw')?.value || '';
-  const emailChanged = email.toLowerCase() !== (G('prof-email').dataset.bisher || '').toLowerCase();
   if (!username) { toast(tRaw('profile.username_empty'), 'error'); return; }
-  if (emailChanged && !pwC) { emailGetippt(); toast(tRaw('profile.email_needs_password'), 'error'); G('prof-pw')?.focus(); return; }
   const btn = G('btn-sav-prof'); btn.disabled = true;
   try {
-    const d = await mitZweitemFaktor(z => api('PUT', '/v1/auth/profile', { username, email, first_name, last_name,
-                                                      ...(emailChanged ? { password_current: pwC, ...z } : {}) }));
+    // Jede Profiländerung bestätigt der Server mit dem Passwort; sonst verriete sie, ob ein Name vergeben
+    // ist. Eine neue Adresse nennt der Dialog, damit man sieht, was man bestätigt.
+    const neueAdresse = email && email !== (G('prof-email').dataset.bisher || '');
+    const d = await mitPasswortBestaetigen(tRaw(neueAdresse ? 'profile.email_aendern_titel' : 'profile.speichern_titel'), (pwC, z) => api('PUT', '/v1/auth/profile',
+      { username, email, first_name, last_name, password_current: pwC, ...z }),
+      neueAdresse ? tRaw('profile.email_aendern_text', { email }) : undefined);
     if (!d) return;
     if (!d.success) { toast(d.error || t('profile.save_error'), 'error'); return; }
-    if (d.emailChanged) {
-      const hint = G('prof-email-hint');
-      if (hint) hint.textContent = tRaw('profile.mail_sent_hint');
-    }
-    if (G('prof-pw')) G('prof-pw').value = '';
     await loadProfile();
-    emailGetippt();
     // Der Namenszug in der Kopfzeile wird sonst nur beim Start gesetzt.
     if (ME) { ME.username = username; zeigeBenutzernamen(); }
-    toast(d.emailChanged ? t('profile.saved_mail') : t('settings.saved'), 'success');
+    if (d.emailChanged && !d.emailSent) toast(tRaw('profile.mail_not_sent'), 'error');
+    else toast(d.emailChanged ? t('profile.saved_mail') : t('settings.saved'), 'success');
   } finally {
     btn.disabled = false;
   }
 };
 
 G('btn-sav-pw').onclick = async () => {
-  const pwC = G('pw-c').value, pwN = G('pw-n').value, pwR = G('pw-r').value;
-  if (!pwC || !pwN) { feldFehler(pwC ? 'pw-n' : 'pw-c', tRaw('settings.password.fill_all')); return; }
+  const pwN = G('pw-n').value, pwR = G('pw-r').value;
+  if (!pwN) { feldFehler('pw-n', tRaw('settings.password.fill_all')); return; }
   if (pwN !== pwR)  { feldFehler('pw-r', tRaw('settings.password.mismatch')); return; }
-  if (passwortRegelText(pwN)) { feldFehler('pw-n', passwortRegelText(pwN)); return; }
+  const regel = passwortRegelText(pwN);
+  if (regel) { feldFehler('pw-n', regel); return; }
   const btn = G('btn-sav-pw'); btn.disabled = true;
   try {
-    const dPw = await mitZweitemFaktor(z => api('POST', '/v1/auth/change-password',
+    const dPw = await mitPasswortBestaetigen(tRaw('settings.password.change'), (pwC, z) => api('POST', '/v1/auth/change-password',
       { current: pwC, newPassword: pwN, passkeys_widerrufen: !!G('pw-pk')?.checked, ...z }));
     if (!dPw) return;
     if (!dPw.success) {
-      antwortFehler(dPw, { aktuelles_passwort_falsch: 'pw-c', alle_felder_erforderlich: 'pw-c',
+      antwortFehler(dPw, { alle_felder_erforderlich: 'pw-n',
         passwort_zu_kurz: 'pw-n', passwort_zu_lang: 'pw-n', passwort_zu_haeufig: 'pw-n' }, tRaw('settings.error'));
       return;
     }
-    G('pw-c').value = G('pw-n').value = G('pw-r').value = '';
+    G('pw-n').value = G('pw-r').value = '';
     if (G('pw-pk')) G('pw-pk').checked = false;
     toast(tRaw('konto.passwort_geaendert'), 'success');
   } finally {
@@ -507,22 +499,22 @@ G('btn-sav-pw').onclick = async () => {
   }
 };
 
+/** @param {Record<string, string>} s */
 function applySettings(s){
-  // Only apply if the settings tab fields are present in the DOM
+  // Nur anwenden, wenn die Felder des Einstellungsreiters im DOM stehen
   if(!G('s-cur') && !G('bl-ck')) return;
   set_CURRENCY(s.currency||'EUR');
   // Apply language preference from server only if explicitly set
   if(s.language && I18N[s.language] && s.language !== LANG) applyLang(s.language, false);
   _updateLangSelect();
-  const _set = (id, v) => { const el=G(id); if(el) el.value=v; };
+  const _set = (/** @type {string} */ id, /** @type {string} */ v) => { const el=G(id); if(el) el.value=v; };
   _set('s-cur',          CURRENCY);
   _set('s-default-condition', s.user_default_condition || s.default_price_condition || 'N');
-  // Das Ausgabeland der Gutscheine. AUSSERHALB des isAdmin-Blocks: Der Wert
-  // ist kein Geheimnis und wird allen ausgeliefert (sanitizeGlobal laesst
-  // ihn durch) — gesetzt werden darf er nur von einem Verwalter, und
-  // deshalb ist das Feld selbst `admin-only` (index.html). Ohne diese Zeile
-  // stuende im Auswahlfeld immer der erste Eintrag, egal was gespeichert ist.
-  _set('gutschein-land', s.gutschein_land || 'de-CH');
+  // Das Ausgabeland der Gutscheine. AUSSERHALB des isAdmin-Blocks: Der Wert ist kein Geheimnis und wird allen
+  // ausgeliefert (sanitizeGlobal laesst ihn durch) — gesetzt werden darf er nur von einem Verwalter, und
+  // deshalb ist das Feld selbst `admin-only` (index.html). Ohne diese Zeile stuende im Auswahlfeld immer der
+  // erste Eintrag, egal was gespeichert ist.
+  _set('gutschein-land', s.gutschein_land || /** @type {Record<string, string>} */ (LAND_ZUR_WAEHRUNG)[CURRENCY] || 'de-CH');
   if(ME?.isAdmin){
     _set('bl-ck',  s.bricklink_consumer_key||'');
     _set('bl-cs',  s.bricklink_consumer_secret||'');
@@ -532,157 +524,38 @@ function applySettings(s){
     _set('bs-key', s.brickset_api_key||'');
     _set('mon-app-theme', s.app_theme||'classic');
     // s.app_theme ist das wirksame Design DIESES Kontos; der Verwalter stellt hier die Vorgabe.
-    api('GET', '/v1/settings/theme').then(d => { if (d.success) _set('mon-app-theme', d.vorgabe); });
+    api('GET', '/v1/settings/theme').then(d => { if (d.success) _set('mon-app-theme', d.vorgabe ?? 'classic'); });
     loadUsers(); loadSmtpSettings(s);
   }
   if(ME?.isAdmin) loadRateLimitStats();
 }
 export async function loadSettings(){
-  // Show cached data instantly so the tab never appears empty
+  // Zwischengespeicherte Daten sofort zeigen, damit der Reiter nie leer erscheint
   if(_settingsCache) applySettings(_settingsCache);
   loadHousehold();
   const d=await api('GET','/v1/settings/raw'); if(!d.success) return;
   set_settingsCache(d.settings);
-  applySettings(_settingsCache);
-}
-
-// ═══════════════════════════════════════════════════════════════════════════
-// HAUSHALT — Konten verknüpfen
-// ═══════════════════════════════════════════════════════════════════════════
-/**
- * Ablauf: Das Hauptkonto erzeugt einen Einladungscode, das andere Konto gibt
- * ihn hier ein. Zustimmen muss zwingend BEIDE Seiten — der eine durch
- * Erzeugen, der andere durch Einlösen.
- *
- * Die Karte zeigt je nach Rolle nur EINEN der beiden Kästen. Wer schon
- * Unterkonto ist, sieht keinen Einladungsknopf (Konten lassen sich nur über
- * eine Stufe verknüpfen), und wer Unterkonten hat, sieht kein Eingabefeld.
- * Beides würde der Server ohnehin ablehnen — aber ein Knopf, der immer eine
- * Fehlermeldung erzeugt, ist schlimmer als keiner.
- */
-export async function loadHousehold(){
-  const [d, zf] = await Promise.all([api('GET','/v1/settings/household').catch(()=>null),
-                                     api('GET','/v1/auth/zweiter-faktor').catch(()=>null)]);
-  if(!d?.success) return;
-  renderHousehold(d);
-  // Mit zweitem Faktor verlangt der Server beim Einlösen auch den Code.
-  const faktor = G('household-redeem-faktor');
-  if(faktor) faktor.style.display = zf?.aktiv ? '' : 'none';
+  applySettings(d.settings);
 }
 
 /**
- * Die Haushaltskarte: Elternkonten und Unterkonten sind zwei unabhängige
- * Abschnitte, weil ein Konto beides zugleich sein kann. Darunter der Hinweis
- * auf Konten, die nur über eine Kette sichtbar waren und es nicht mehr sind.
+ * Einen Zugang speichern. Alle Felder leer heisst „Zugang entfernt“, nicht „gespeichert“: Das klang, als sei
+ * ein Schlüssel hinterlegt.
+ * @param {Record<string, string>} werte @param {'bricklink'|'rebrickable'|'brickset'} dienst @param {string} grenze @param {string} okText
  */
-function renderHousehold(d){
-  const stateEl  = G('household-state');
-  const inviteEl = G('household-invite-box');
-  const redeemEl = G('household-redeem-box');
-  if(!stateEl) return;
-
-  // Ein Raster auf der Liste, die Zeilen als display:contents: So stehen alle
-  // Namen und alle Knöpfe in denselben zwei Spalten.
-  const liste = (eintraege, aktion) => `<ul data-stil="list-style:none;padding:0;margin:.4rem 0 0;display:grid;grid-template-columns:max-content max-content;align-items:center;column-gap:.6rem">${
-    eintraege.map(a => `<li data-stil="display:contents">
-      <span data-stil="font-weight:600;padding:.3rem 0">${esc(a.username)}</span>
-      <span data-stil="padding:.3rem 0">${aktion(a)}</span>
-    </li>`).join('')}</ul>`;
-
-  const teile = [];
-  const eltern = d.parents || (d.linked_to ? [d.linked_to] : []);
-  if(eltern.length){
-    teile.push(`<div>${t('household.state_parents', { n: eltern.length })}${liste(eltern,
-      a => `<button class="btn" data-click="unlinkFromParent"${echt()} data-arg="${a.id}">${t('household.unlink_self')}</button>`)}</div>`);
-  }
-  if(d.sub_accounts?.length){
-    teile.push(`${eltern.length ? '<div data-stil="margin-top:.6rem">' : '<div>'}${t('household.state_main', { n: d.sub_accounts.length })}${liste(d.sub_accounts,
-      a => `<button class="btn" data-click="unlinkHousehold"${echt()} data-arg="${a.id}">${t('household.unlink_sub')}</button>`)}</div>`);
-  }
-  if(!teile.length){
-    teile.push(`<div data-stil="color:var(--mut)">${t('household.state_none', { cur: esc(d.currency||'') })}</div>`);
-  }
-  if(d.former_links?.length){
-    teile.push(`<div role="note" data-stil="margin-top:.8rem;padding:.6rem .8rem;border-radius:8px;background:var(--b100);color:var(--b600)">
-      ${t('household.former_intro')}${liste(d.former_links,
-        a => `<span data-stil="color:var(--mut)">${a.via ? t('household.former_via', { via: esc(a.via) }) : ''}</span>
-              <button class="btn" data-stil="margin-left:.4rem" data-click="dismissFormerLink" data-arg="${a.id}">${t('household.former_dismiss')}</button>`)}
-    </div>`);
-  }
-  stateEl.innerHTML = teile.join('');
-
-  // Einladen und Einlösen darf jedes Konto: Ein Konto kann mehrere
-  // Elternkonten haben, und jedes braucht seine eigene Einladung.
-  if(inviteEl) inviteEl.style.display = '';
-  if(redeemEl) redeemEl.style.display = '';
+async function speichereZugang(werte, dienst, grenze, okText) {
+  const d = await speichereEinstellungen(tRaw('settings.api_key_title'), werte);
+  if (!d) return;
+  if (!d.success) { toast(tRaw('settings.error'), 'error'); return; }
+  await api('PUT', '/v1/admin/api-limits', { [dienst]: parseInt(G(grenze).value) });
+  const leer = Object.values(werte).every(w => !String(w).trim());
+  toast(leer ? tRaw('settings.zugang_entfernt') : okText, leer ? 'info' : 'success');
+  loadRateLimitStats();
 }
-
-export async function createHouseholdInvite(){
-  const d = await api('POST','/v1/settings/household/invite',{});
-  if(!d.success){ toast(d.error || t('settings.error'),'error'); return; }
-  const out = G('household-invite-out');
-  G('household-invite-code').value = d.code;
-  if(out) out.style.display = '';
-  toast(tRaw('household.invite_created'),'success');
-}
-
-export async function copyHouseholdInvite(){
-  const el = G('household-invite-code');
-  if(!el?.value) return;
-  // Zwischenablage kann fehlschlagen (kein HTTPS, Berechtigung verweigert) —
-  // dann markieren statt die Aktion still verpuffen zu lassen.
-  try {
-    await navigator.clipboard.writeText(el.value);
-    toast(tRaw('household.invite_copied'),'success');
-  } catch(_) {
-    el.select();
-    toast(tRaw('household.invite_copy_manual'),'info');
-  }
-}
-
-export async function redeemHouseholdInvite(){
-  const code = (G('household-redeem-code')?.value || '').trim();
-  if(!code){ toast(tRaw('household.redeem_empty'),'error'); return; }
-  // Das Hauptkonto sieht und ändert danach die eigene Sammlung — deshalb mit Passwort.
-  const password = await bestaetigeMitPasswort(tRaw('household.redeem_title'), tRaw('household.redeem_confirm_text'), 'link');
-  if(password === null) return;
-  const faktor_code = (G('household-redeem-faktor-code')?.value || '').trim();
-  const d = await mitZweitemFaktor(z => api('POST','/v1/settings/household/redeem',
-    { code, password, ...(z.code || faktor_code ? { faktor_code: z.code || faktor_code } : {}), ...(z.passkey ? { passkey: z.passkey } : {}) }));
-  if(d === null) return;
-  if(!d.success){ toast(d.error || t('settings.error'),'error'); return; }
-  G('household-redeem-code').value = '';
-  if(G('household-redeem-faktor-code')) G('household-redeem-faktor-code').value = '';
-  // tRaw + roher Name: Der Toast setzt Text, keine HTML — mit esc() stünde
-  // dort "Marco &amp; Co" statt "Marco & Co".
-  toast(tRaw('household.redeem_ok', { name: d.linked_to?.username || '' }),'success');
-  loadHousehold();
-}
-
-export async function unlinkFromParent(mainUserId){
-  if(!await confirmDelete(tRaw('household.unlink_confirm_title'), t('household.unlink_confirm_text'), 'link')) return;
-  const d = await api('POST','/v1/settings/household/unlink', { main_user_id: parseInt(mainUserId) });
-  if(!d.success){ toast(d.error || t('settings.error'),'error'); return; }
-  toast(tRaw('household.unlink_ok'),'success');
-  loadHousehold();
-}
-
-export async function dismissFormerLink(subUserId){
-  const d = await api('POST','/v1/settings/household/former/dismiss', { sub_user_id: parseInt(subUserId) });
-  if(!d.success){ toast(d.error || t('settings.error'),'error'); return; }
-  loadHousehold();
-}
-
-export async function unlinkHousehold(subUserId){
-  if(!await confirmDelete(tRaw('household.unlink_confirm_title'), t('household.unlink_confirm_text'), 'link')) return;
-  const d = await api('POST','/v1/settings/household/unlink', subUserId ? { sub_user_id: parseInt(subUserId) } : {});
-  if(!d.success){ toast(d.error || t('settings.error'),'error'); return; }
-  toast(tRaw('household.unlink_ok'),'success');
-  loadHousehold();
-}
-G('btn-sav-bl').onclick=async()=>{ const d=await api('POST','/v1/settings',{bricklink_consumer_key:G('bl-ck').value,bricklink_consumer_secret:G('bl-cs').value,bricklink_token:G('bl-tok').value,bricklink_token_secret:G('bl-ts').value}); if(d.success) await api('PUT','/v1/admin/api-limits',{bricklink:parseInt(G('lim-bl').value)}); toast(d.success?t('settings.bl_saved'):t('settings.error'),d.success?'success':'error'); if(d.success){loadRateLimitStats();} };
-G('btn-sav-rb').onclick=async()=>{ const d=await api('POST','/v1/settings',{rebrickable_api_key:G('rb-key').value}); if(d.success) await api('PUT','/v1/admin/api-limits',{rebrickable:parseInt(G('lim-rb').value)}); toast(d.success?t('settings.rb_saved'):t('settings.error'),d.success?'success':'error'); if(d.success){loadRateLimitStats();} };
-G('btn-sav-bs').onclick=async()=>{ const d=await api('POST','/v1/settings',{brickset_api_key:G('bs-key').value}); if(d.success) await api('PUT','/v1/admin/api-limits',{brickset:parseInt(G('lim-bs').value)}); toast(d.success?t('settings.bs_saved'):t('settings.error'),d.success?'success':'error'); if(d.success){loadRateLimitStats();} };
+G('btn-sav-bl').onclick = () => speichereZugang({ bricklink_consumer_key: G('bl-ck').value, bricklink_consumer_secret: G('bl-cs').value,
+  bricklink_token: G('bl-tok').value, bricklink_token_secret: G('bl-ts').value }, 'bricklink', 'lim-bl', tRaw('settings.bl_saved'));
+G('btn-sav-rb').onclick = () => speichereZugang({ rebrickable_api_key: G('rb-key').value }, 'rebrickable', 'lim-rb', tRaw('settings.rb_saved'));
+G('btn-sav-bs').onclick = () => speichereZugang({ brickset_api_key: G('bs-key').value }, 'brickset', 'lim-bs', tRaw('settings.bs_saved'));
 G('btn-save-theme').onclick=async()=>{
   const theme=G('mon-app-theme')?.value||'classic';
   const d=await api('POST','/v1/settings/admin/theme',{theme});
@@ -690,16 +563,27 @@ G('btn-save-theme').onclick=async()=>{
   if(d.success){ const w=await api('GET','/v1/settings/theme'); if(w.success){ applyTheme(w.theme); if(_settingsCache) _settingsCache.app_theme=w.theme; } }
   toast(d.success?t('settings.theme_saved'):t('settings.error'),d.success?'success':'error');
 };
-G('btn-clr-prices').onclick=async()=>{ await api('POST','/v1/admin/cache-clear'); toast(tRaw('settings.cache_cleared'),'success'); loadCacheStats(); };
-G('btn-clr-all-cache').onclick=async()=>{
-  if(!await confirmDelete(tRaw('settings.all_cache.clear'),t('settings.all_cache.clear'),'daten')) return;
-  await api('POST','/v1/admin/cache-clear',{all:true});
-  toast(tRaw('settings.all_cache.cleared'),'success'); loadCacheStats();
-};
+G('btn-clr').onclick=async()=>{ await api('POST','/v1/admin/cache-clear'); toast(tRaw('settings.cache_cleared'),'info'); loadCacheStats(); loadFinance(); };
+/**
+ * Vor dem Leeren steht da, was verloren geht und was der Neuabruf kostet — mit den Zahlen von jetzt.
+ * @param {boolean} alle
+ */
+async function zwischenspeicherLeeren(alle) {
+  const z = await api('GET', '/v1/admin/cache-stats');
+  const n = { p: z?.prices || 0, s: z?.subsets || 0, c: z?.catalog || 0 };
+  const titel = tRaw(alle ? 'settings.all_cache.confirm_title' : 'settings.cache_prices.confirm_title');
+  if (!await confirmDelete(titel, tRaw(alle ? 'settings.all_cache.confirm_text' : 'settings.cache_prices.confirm_text', n),
+    'loeschen', { knopf: 'confirm.btn.leeren', art: 'bd' })) return;
+  const d = await api('POST', '/v1/admin/cache-clear', alle ? { all: true } : {});
+  if (!d?.success) { toast(d?.error || tRaw('settings.error'), 'error'); return; }
+  toast(tRaw(alle ? 'settings.all_cache.cleared' : 'settings.cache_cleared'), 'success'); loadCacheStats();
+}
+G('btn-clr-prices').onclick = () => zwischenspeicherLeeren(false);
+G('btn-clr-all-cache').onclick = () => zwischenspeicherLeeren(true);
 G('btn-dall').onclick=async()=>{
-  // Alles in den Papierkorb: 30 Tage wiederherstellbar, deshalb eine Rückfrage
-  // statt des früheren Eintippens von „LÖSCHEN". Nur das EIGENE Konto (Server).
-  const password=await bestaetigeMitPasswort(tRaw('settings.delete_all.title'),tRaw('settings.delete_all.text'),'loeschen');
+  // Alles in den Papierkorb: 30 Tage wiederherstellbar, deshalb eine Rückfrage statt des früheren Eintippens
+  // von „LÖSCHEN". Nur das EIGENE Konto (Server).
+  const password=await bestaetigeMitPasswort(tRaw('settings.delete_all.title'),tRaw('settings.delete_all.text'),'loeschen', { knopf: 'confirm.btn.alles_loeschen', art: 'bd' });
   if(password===null) return;
   const d=await mitZweitemFaktor(z => api('DELETE','/v1/bestand',{password, ...z}));
   if(d===null) return;
@@ -707,452 +591,61 @@ G('btn-dall').onclick=async()=>{
   toast(tRaw('settings.delete_all.done',{n:d.sets+d.teile+d.figuren}),'success');
   loadGallery(); loadParts(); loadMinifigs(); loadStats();
 };
-
-// ── USER MGMT ─────────────────────────────────────────
-export async function loadUsers(){
-  const d=await api('GET','/v1/auth/users'); if(!d.success) return;
-  G('users-tbl').innerHTML=`<div class="tw"><table class="dt user-tbl"><thead><tr><th>ID</th><th>${t('users.col.username')}</th><th>${t('users.col.role')}</th><th>${t('users.col.created')}</th><th>${t('users.col.actions')}</th></tr></thead><tbody>${
-    d.users.map(u=>`<tr><td>${u.id}</td><td><strong>${esc(u.username)}</strong></td>
-      <td><span class="rb ${u.is_admin?'ra':'ru'}">${u.is_admin?t('users.role.admin'):t('users.role.user')}</span>
-        ${u.is_active === false ? `<span class="rb ru">${t('users.status.inaktiv')}</span>` : ''}</td>
-      <td>${fmtDatum(u.created_at)}</td>
-      <td><div class="nutzer-aktionen">
-        ${nutzerKnopf(u, 'bs', 'openRpw', 'schluessel', 'users.action.password', 'users.pw_reset_title')}
-        ${nutzerKnopf(u, 'bs', 'toggleAdmin', u.is_admin ? 'runter' : 'hoch',
-            u.is_admin ? 'users.action.make_user' : 'users.action.make_admin',
-            u.is_admin ? 'users.action.make_user_title' : 'users.action.make_admin_title', u.is_admin ? 1 : 0)}
-        ${nutzerKnopf(u, 'bs', 'toggleAktiv', u.is_active === false ? 'ok' : 'pause',
-            u.is_active === false ? 'users.action.activate' : 'users.action.deactivate',
-            u.is_active === false ? 'users.action.activate_title' : 'users.action.deactivate_title', u.is_active === false ? 0 : 1)}
-        ${u.zweiter_faktor && u.id !== ME?.id ? nutzerKnopf(u, 'bs', 'zfZuruecksetzen', 'schloss', 'users.action.2fa', 'zf.reset_title', u.username) : ''}
-        ${nutzerKnopf(u, 'bd', 'delUser', 'loeschen', 'common.delete', 'users.action.delete_title', u.username)}
-      </div></td></tr>`).join('')
-  }</tbody></table></div>`;
-  ladeProtokoll();
-}
-// Ausgeschrieben statt zusammengesetzt, damit jeder Schlüssel als Aufruf im
-// Quelltext steht und die Wörterbuchprüfung ihn findet.
-const AKTIONEN = {
-  konto_angelegt:          () => t('users.aktion.konto_angelegt'),
-  einstellungen_geaendert: () => t('users.aktion.einstellungen_geaendert'),
-  passwort_gesetzt:        () => t('users.aktion.passwort_gesetzt'),
-  zweiter_faktor_entfernt: () => t('users.aktion.zweiter_faktor_entfernt'),
-  verwalter_ernannt:       () => t('users.aktion.verwalter_ernannt'),
-  verwalter_entzogen:      () => t('users.aktion.verwalter_entzogen'),
-  konto_geloescht:         () => t('users.aktion.konto_geloescht'),
-  konto_deaktiviert:       () => t('users.aktion.konto_deaktiviert'),
-  konto_reaktiviert:       () => t('users.aktion.konto_reaktiviert'),
-  gutschein_klartext:      () => t('users.aktion.gutschein_klartext'),
-  gutschein_pdf:           () => t('users.aktion.gutschein_pdf'),
-  gutschein_export:        () => t('users.aktion.gutschein_export'),
-};
-/** Wer hat an welchem fremden Konto was geändert — die letzten Einträge. */
-async function ladeProtokoll(){
-  const d=await api('GET','/v1/admin/protokoll'); if(!d.success) return;
-  const eintraege = d.eintraege || [];
-  G('vw-protokoll').innerHTML = eintraege.length ? `<div class="tw"><table class="dt"><thead><tr><th>${t('users.protokoll.zeit')}</th><th>${t('users.protokoll.verwalter')}</th><th>${t('users.protokoll.aktion')}</th><th>${t('users.protokoll.konto')}</th></tr></thead><tbody>${
-    eintraege.map(e=>`<tr><td>${new Date(e.zeit).toLocaleString(locale())}</td><td>${esc(e.verwalter_name||'—')}</td>
-      <td>${(AKTIONEN[e.aktion] || (() => esc(e.aktion)))()}${e.einzelheiten ? `: ${esc(e.einzelheiten)}` : ''}</td><td>${esc(e.ziel_name||'#'+e.ziel_id)}</td></tr>`).join('')
-  }</tbody></table></div>` : `<p data-stil="color:var(--mut);font-size:var(--fs-2)">${t('users.protokoll.leer')}</p>`;
-}
-/**
- * Ein Knopf der Benutzertabelle: Symbol und Wort sichtbar, die längere
- * Beschreibung als Tooltip, der Name des Kontos für Vorleser im Namen.
- */
-function nutzerKnopf(u, art, klick, symbol, wortKey, titelKey, arg2) {
-  const wort = tRaw(wortKey), titel = tRaw(titelKey);
-  return `<button type="button" class="btn ${art} btn-sm" data-click="${klick}"${echt()} data-arg="${u.id}"` +
-    `${arg2 !== undefined ? ` data-arg2="${esc(String(arg2))}"` : ''} title="${esc(titel)}"` +
-    ` aria-label="${esc(`${wort}: ${u.username}`)}">${ico(symbol)}<span>${esc(wort)}</span></button>`;
-}
-G('btn-cu').onclick=async()=>{
-  const n=G('nu-n').value.trim(),p=G('nu-p').value,a=G('nu-a').checked;
-  if(!n||!p){toast(tRaw('users.name_pw_req'),'error');return;}
-  if(passwortRegelText(p)){toast(passwortRegelText(p),'error');return;}
-  const admin_password = await bestaetigeMitPasswort(tRaw('users.create_title'), tRaw('users.admin_confirm_text'), 'schloss');
-  if (admin_password === null) return;
-  const d=await mitZweitemFaktor(z => api('POST','/v1/auth/users',{username:n,password:p,is_admin:a,admin_password,...z}));
+G('btn-konto-loeschen').onclick=async()=>{
+  // Endgültig und ohne Papierkorb: Passwort und, falls eingerichtet, der zweite Faktor.
+  const password=await bestaetigeMitPasswort(tRaw('settings.delete_account.title'),tRaw('settings.delete_account.text'),'loeschen', { knopf: 'confirm.btn.konto_loeschen', art: 'bd' });
+  if(password===null) return;
+  const d=await mitZweitemFaktor(z => api('DELETE','/v1/auth/konto',{password, ...z}));
   if(d===null) return;
-  if(d.success){toast(tRaw('users.created',{name:n}),'success');G('nu-n').value=G('nu-p').value='';G('nu-a').checked=false;loadUsers();} else toast(d.error||t('settings.error'),'error');
+  if(!d?.success){ toast(d?.error||tRaw('settings.error'),'error'); return; }
+  location.href='/';
 };
-function openRpw(uid){ G('rpw-uid').value=uid; G('rpw-v').value=''; G('pw-modal').classList.add('open'); }
-G('btn-rpw').onclick=async()=>{
-  const neuesPw = G('rpw-v').value;
-  if(passwortRegelText(neuesPw)){toast(passwortRegelText(neuesPw),'error');return;}
-  const admin_password = await bestaetigeMitPasswort(tRaw('users.reset_pw_title'), tRaw('users.admin_confirm_text'), 'schloss');
-  if (admin_password === null) return;
-  const d=await mitZweitemFaktor(z => api('PUT',`/v1/auth/users/${G('rpw-uid').value}/password`,{password:neuesPw, admin_password, ...z}));
-  if(d===null) return;
-  if(d.success){toast(tRaw('users.pw_reset'),'success');G('pw-modal').classList.remove('open');} else toast(d.error||t('settings.error'),'error');
+
+
+// ── CONFIG EXPORT / IMPORT ───────────────────────────────────
+G('btn-cfg-export').onclick = async () => {
+  const a = document.createElement('a');
+  a.href = '/api/v1/settings/export';
+  a.download = `brickinventory-manager-config-${new Date().toISOString().substring(0,10)}.json`;
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
 };
-async function toggleAdmin(uid,isAdmin){
-  // isAdmin kommt seit der data-arg-Umstellung als Zeichenkette. `!"0"` ist
-  // false — das Umschalten hätte damit IMMER auf "kein Admin" gesetzt.
-  const cur = isAdmin === true || isAdmin === 1 || isAdmin === '1';
-  const admin_password = await bestaetigeMitPasswort(tRaw('users.role_title'), tRaw('users.admin_confirm_text'), 'schloss');
-  if (admin_password === null) return;
-  const d=await mitZweitemFaktor(z => api('PUT',`/v1/auth/users/${uid}/admin`,{is_admin:!cur, admin_password, ...z})); if(d===null) return; if(d.success){toast(tRaw('users.role_changed'),'success');loadUsers();} else toast(d.error||t('settings.error'),'error'); }
-/** Deaktivieren meldet das Konto auf allen Geräten ab; die Daten bleiben. */
-async function toggleAktiv(uid, aktiv){
-  const istAktiv = String(aktiv) === '1';
-  const admin_password = await bestaetigeMitPasswort(
-    tRaw(istAktiv ? 'users.deactivate_title' : 'users.activate_title'), tRaw('users.admin_confirm_text'), 'schloss');
-  if (admin_password === null) return;
-  const d = await mitZweitemFaktor(z => api('PUT', `/v1/auth/users/${uid}/aktiv`, { is_active: !istAktiv, admin_password, ...z }));
-  if (d === null) return;
-  if (d.success) { toast(tRaw(istAktiv ? 'users.deactivated' : 'users.activated'), 'success'); loadUsers(); }
-  else toast(d.error || t('settings.error'), 'error');
-}
-async function delUser(uid,name){ const admin_password = await bestaetigeMitPasswort(tRaw('users.delete.title'),tRaw('users.delete.text'),'profil'); if(admin_password === null) return; const d=await mitZweitemFaktor(z => api('DELETE',`/v1/auth/users/${uid}`,{admin_password, ...z})); if(d===null) return; if(d.success){toast(name+' '+t('common.updated'),'success');loadUsers();} else toast(d.error||t('settings.error'),'error'); }
 
-
-
-// ── Handler beim Dispatcher anmelden (siehe js/00-registry.js) ──────────────
-// ═══ LAGERORTE VERWALTEN ════════════════════════════════════════════════════
-//
-// ── Marcos Vorgabe ──────────────────────────────────────────────────────────
-//
-// „Der Lagerort soll ein Auswahlfeld mit einem Dropdown sein, bei dem man auch
-// gleich neue Auswahlwerte erfassen kann. Die Werte sollen pro User verwaltet
-// werden können und sollen in den Einstellungen bearbeitbar sein."
-//
-// Hier ist die Verwaltung; die Auswahl selbst steckt im Detailfenster
-// (ladeOrtAuswahl in js/07-admin.js). Diese Seite zeigt NUR die eigenen Orte:
-// Ein Lagerort ist ein Regal in der eigenen Wohnung, und fremde Regale
-// umzubenennen ist keine Einstellung, sondern ein Versehen.
-
-/** Die eigenen Orte samt Belegung. */
-/**
- * Alle Preisalarme des Kontos — die Uebersicht in den Einstellungen.
- *
- * ── Marcos Frage vom 25.09. ─────────────────────────────────────────────────
- *
- *   „Wie finde ich alle Preisalarme?"
- *
- * Bis hierher: gar nicht. Ein Alarm war nur im Detaildialog SEINES Sets zu
- * sehen — man musste das Set also schon gefunden haben. Wer fuenfzig setzt,
- * hatte keinen Ort, an dem sie zusammen stehen, und keinen, an dem er sieht,
- * welche noch scharf sind.
- *
- * ── Warum die Zeile so aussieht, wie sie aussieht ───────────────────────────
- *
- * Setnummer UND Name: `40820-1` sagt niemandem etwas. Der Zustand daneben,
- * weil derselbe Set zwei Alarme haben kann (neu und gebraucht) und die Zeilen
- * sich sonst nur an einem Buchstaben im Schluessel unterscheiden wuerden.
- *
- * Die Schwelle ist ein Eingabefeld und kein Text: Marcos Wunsch war, den Wert
- * HIER anpassen zu koennen. Gespeichert wird beim Verlassen des Feldes —
- * dieselbe Geste wie im Wunsch-Detail, damit man nicht nach
- * einem Knopf suchen muss, den es anderswo nicht gibt.
- *
- * Der letzte Preis steht dabei, weil eine Schwelle ohne ihn nicht zu beurteilen
- * ist: „unter 30" heisst etwas anderes, wenn das Set bei 28 steht, als wenn es
- * bei 300 steht.
- */
-/** Ein Preisalarm direkt in der Übersicht, ohne Umweg über das Set. */
-async function legeAlarmAn() {
-  const roh = String(G('alarm-neu-set')?.value || '').trim();
-  const sn = /^\d+$/.test(roh) ? roh + '-1' : roh;
-  const schwelle = leseBetrag(G('alarm-neu-preis')?.value);
-  if (!sn) { feldFehler('alarm-neu-set', tRaw('alerts.new_set_fehlt')); return; }
-  if (!(Number(schwelle) > 0)) { feldFehler('alarm-neu-preis', tRaw('alerts.new_preis_fehlt')); return; }
-  const d = await api('PUT', `/v1/sets/${encodeURIComponent(sn)}/alert`,
-    { richtung: G('alarm-neu-richtung').value, schwelle, condition: G('alarm-neu-zustand').value });
-  if (!d?.success) { toast(d?.error || tRaw('settings.error'), 'error'); return; }
-  G('alarm-neu-set').value = ''; G('alarm-neu-preis').value = '';
-  toast(tRaw('alerts.new_ok', { set: sn }), 'success');
-  await ladeAlarmUebersicht();
-}
-
-export async function ladeAlarmUebersicht() {
-  const el = G('alerts-list');
-  if (!el) return;
-  const vorschlag = G('alarm-neu-sets');
-  if (vorschlag) vorschlag.innerHTML = allSets.map(x => `<option value="${esc(x.set_number)}">${esc(x.name || '')}</option>`).join('');
-  const d = await api('GET', '/v1/alerts');
-  if (!d?.success) return;
-  const alarme = d.alerts || [];
-  if (!alarme.length) {
-    el.innerHTML = `<div data-stil="color:var(--mut)">${esc(tRaw('alerts.empty'))}</div>`;
-    return;
-  }
-  el.innerHTML = alarme.map(a => {
-    const zustand = a.condition === 'U' ? tRaw('common.condition_used') : tRaw('common.condition_new');
-    const richtung = a.richtung === 'unter' ? tRaw('alerts.below') : tRaw('alerts.above');
-    // Der Schluessel ist (Set, Zustand) — beides muss mit, sonst trifft das
-    // Aendern den falschen der beiden moeglichen Alarme eines Sets.
-    const schluessel = `${a.set_number}|${a.condition}`;
-    const stand = a.zuletzt_preis == null
-      ? ''
-      : t('alerts.last', { preis: fmtN(a.zuletzt_preis, a.currency_code) });
-    // „scharf" gegen „unscharf" — und der Unterschied darf NICHT in der Farbe
-    // liegen. Marco ist rot-gruen-schwach; gruen gegen grau ist fuer ihn
-    // zweimal dasselbe, und damit stand die Aussage bisher nirgends. Sie
-    // haengt jetzt an drei Dingen, von denen jedes einzeln reicht: am Wort
-    // (ein echtes Gegensatzpaar), an der Flaeche (gefuellt gegen umrandet)
-    // und am Zeichen davor (● gegen ○). Dieselben drei wie in der App.
-    const marke = a.ausgeloest
-      ? `<span class="alarm-marke alarm-marke-aus">${esc(tRaw('alerts.fired'))}</span>`
-      : `<span class="alarm-marke alarm-marke-an">${esc(tRaw('alerts.armed'))}</span>`;
-    // Bild wie in den Finanzen: erst die heruntergeladene Kopie, dann die
-    // Adresse aus der eigenen Sammlung, zuletzt die des Katalogs. Ein Alarm
-    // auf ein Set, das man NICHT besitzt, hat nur die letzte — deshalb steht
-    // sie ueberhaupt in der Antwort.
-    const bildQuelle = a.image_local || a.image_url || a.set_img_url || '';
-    const bild = bildQuelle
-      ? bildTag({ src: imgUrl(thumbUrl(bildQuelle) || bildQuelle, true), alt: '', klasse: 'bild-38', ph: 'set' })
-      : `<span class="bild-ph bild-38" aria-hidden="true">${platzhalterInhalt('set')}</span>`;
-    // Die ganze Zeile oeffnet den Detaildialog — derselbe `openModal` wie in
-    // den Finanzen und in der Galerie. Weil der Dialog ueber der Seite liegt
-    // und diese nicht verlaesst, steht man nach dem Schliessen wieder an
-    // derselben Stelle; dafuer ist nichts zu merken.
-    //
-    // Feld und Loeschknopf tragen deshalb ihr eigenes data-click: Der
-    // Verteiler nimmt das NAECHSTGELEGENE Element mit data-click, und ohne
-    // `stopEvent` oeffnete jeder Klick ins Zahlenfeld den Dialog ueber dem
-    // Feld, in das man gerade tippen wollte.
-    // Anklickbar nur, wenn es das Set in der Sammlung gibt — `openModal` holt
-    // `/v1/sets/:nummer`, und fuer ein Set, das man nicht (mehr) besitzt,
-    // waere der Klick eine Fehlermeldung statt eines Dialogs.
-    const oeffnet = a.besitzt
-      ? ` class="zeiger" data-click="openModal" data-arg="${esc(a.set_number)}"`
-      : '';
-    return `<div data-stil="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--bdr);flex-wrap:wrap"${oeffnet}>
-      ${bild}
-      <div data-stil="flex:1;min-width:180px">
-        <div><strong>${esc(a.set_number)}</strong> <span data-stil="color:var(--mut)">${esc(zustand)}</span></div>
-        <div data-stil="font-size:var(--fs-1);color:var(--mut)">${esc(a.name || '')}</div>
-      </div>
-      <span data-stil="font-size:var(--fs-1);white-space:nowrap">${esc(richtung)}</span>
-      <input inputmode="decimal" type="text" autocomplete="off" value="${esc(betragFuerFeld(a.schwelle))}" aria-label="${esc(tRaw('detail.alert_price'))} ${esc(a.set_number)}"
-             data-change="aendereAlarmSchwelle" data-arg="${esc(schluessel)}" data-val="1"
-             data-click="stopEvent"
-             data-stil="width:7em;border:1px solid var(--feldrand);border-radius:6px;padding:3px 7px;font-size:var(--fs-3);background:var(--sur);color:var(--txt)" />
-      <span data-stil="font-size:var(--fs-1);color:var(--mut);white-space:nowrap">${esc(a.currency_code)}</span>
-      <div data-stil="display:flex;flex-direction:column;align-items:flex-end;min-width:110px">
-        ${marke}
-        <span data-stil="font-size:var(--fs-0);color:var(--mut);white-space:nowrap">${esc(stand)}</span>
-      </div>
-      <button class="btn bs btn-sm" data-click="loescheAlarm"${echt()} data-arg="${esc(schluessel)}"
-              aria-label="${esc(tRaw('common.delete'))}: ${esc(a.set_number)}" title="${esc(tRaw('common.delete'))}"
-              data-arg2="${esc(a.set_number)}" data-stil="padding:2px 8px">${ico('loeschen')}</button>
-    </div>`;
-  }).join('');
-}
-
-/** (Set, Zustand) aus dem Schluessel der Zeile — eine Stelle, zwei Leser. */
-function alarmSchluessel(s) {
-  const i = String(s).lastIndexOf('|');
-  return { setNumber: String(s).slice(0, i), condition: String(s).slice(i + 1) };
-}
-
-async function aendereAlarmSchwelle(schluessel, wert) {
-  const schwelle = leseBetrag(wert);
-  // Kein stilles Zurueckschreiben bei Unsinn: Wer 0 oder Text eingibt, soll
-  // sehen, dass nichts passiert ist, statt spaeter einen Alarm zu suchen, den
-  // es nicht gibt.
-  if (!(schwelle > 0)) { toast(tRaw('alerts.bad_value'), 'error'); await ladeAlarmUebersicht(); return; }
-  const { setNumber, condition } = alarmSchluessel(schluessel);
-  // Geschrieben wird ueber die BESTEHENDE Route zum Set — die Uebersicht
-  // bekommt keinen eigenen Schreibweg (siehe routes/api_v1/sets.ts).
-  const d = await api('PUT', `/v1/sets/${encodeURIComponent(setNumber)}/alert`,
-    { condition, schwelle });
-  if (!d?.success) toast(d?.error || tRaw('settings.error'), 'error');
-  await ladeAlarmUebersicht();
-}
-
-async function loescheAlarm(schluessel, setNumber) {
-  if (!confirm(tRaw('alerts.confirm_delete', { set: setNumber }))) return;
-  const { setNumber: sn, condition } = alarmSchluessel(schluessel);
-  const d = await api('DELETE', `/v1/sets/${encodeURIComponent(sn)}/alert?condition=${encodeURIComponent(condition)}`);
-  if (!d?.success) toast(d?.error || tRaw('settings.error'), 'error');
-  await ladeAlarmUebersicht();
-}
-
-export async function ladeLagerortVerwaltung() {
-  const el = G('storage-list');
-  if (!el) return;
-  // Beide Listen zusammen: `locations` sagt, was zur WAHL steht, `storage`,
-  // was wirklich DRIN liegt. Ohne die zweite stünde neben jedem Ort nichts,
-  // und die Absage beim Löschen („da liegt noch was") käme aus dem Nichts.
-  const [v, b] = await Promise.all([
-    api('GET', '/v1/storage/locations'),
-    api('GET', '/v1/storage?accounts=own'),
-  ]);
-  if (!v?.success) return;
-  const belegung = new Map((b?.orte || []).map(o => [o.ort, o]));
-  const orte = v.orte || [];
-  if (!orte.length) {
-    el.innerHTML = `<div data-stil="color:var(--mut)">${esc(tRaw('storage.empty'))}</div>`;
-    return;
-  }
-  // Marcos Stern: „Weiter möchte ich ein Lagerort in den Einstellungen als
-  // Default setzen können. […] Ich stelle mir das mit einem Sternicon vor."
-  const vorgabeId = v.vorgabe?.id ?? null;
-  // ── Vier Spalten wie in einer Tabelle ───────────────────────────────────
-  //
-  // Marcos Befund: „dass die Felder alle schön gleich ausgerichtet sind wie in
-  // einer Tabelle? aktuell sind sie alle unterschiedlich lang".
-  //
-  // Vorher war jede Zeile ein eigenes Flexfeld mit `flex:1` auf dem
-  // Eingabefeld. Der Platz, der dem Feld blieb, haengt damit an der LAENGE DES
-  // BELEGUNGSTEXTES daneben — „406 Sets, 0 Teilesorten, 0 Figuren" ist
-  // breiter als „leer", und das Feld daneben entsprechend schmaler.
-  //
-  // Jetzt traegt die LISTE das Raster und die Zeilen sind display:contents.
-  // Damit teilen sich alle Zeilen dieselben vier Spaltenbreiten: Das Feld
-  // nimmt den Rest (minmax(0,1fr) — nicht 1fr, sonst sprengt ein langer Name
-  // die Spalte), die drei anderen genau so viel, wie ihr laengster Inhalt
-  // braucht.
-  //
-  // Der Trennstrich sass an der Zeile. Ein display:contents-Element erzeugt
-  // keinen Kasten und kann keinen Rahmen tragen — er liegt deshalb an jeder
-  // Zelle und ergibt zusammen dieselbe durchgehende Linie.
-  el.innerHTML = `<div data-stil="font-size:var(--fs-1);color:var(--mut);margin-bottom:6px">` +
-                 `${esc(tRaw('storage.default_hint'))}</div>` +
-                 `<div class="lager-raster" data-stil="display:grid;grid-template-columns:minmax(0,1fr) max-content max-content max-content;align-items:center;column-gap:8px">` +
-                 orte.map(o => {
-    const n = belegung.get(o.name);
-    // Figuren stehen EIGEN da, nicht bei den Teilesorten (src/bestand/lagerort.ts):
-    // „18 Teilesorten" hiesse sonst mal 18 Teilesorten und mal 12 plus 6
-    // Figuren, und niemand koennte der Zahl ansehen, was gemeint ist.
-    const wie = n ? t('storage.belegt', { sets: n.sets, teile: n.teile, figuren: n.figuren ?? 0 })
-                  : esc(tRaw('storage.leer'));
-    return `<div data-stil="display:contents">
-      <span class="lager-feld" data-stil="padding:6px 0;border-bottom:1px solid var(--bdr);display:flex;align-items:center"><input type="text" maxlength="60" value="${esc(o.name)}" aria-label="${esc(tRaw('detail.storage'))}"
-             data-change="benenneLagerortUm" data-arg="${o.id}" data-val="1" class="lager-eingabe" /></span>
-      <span class="lager-belegt" data-stil="padding:6px 0;border-bottom:1px solid var(--bdr);display:flex;align-items:center;font-size:var(--fs-1);color:var(--mut);white-space:nowrap;justify-content:flex-end"><span class="lager-marke${n ? '' : ' lager-frei'}">${wie}</span></span>
-      <span data-stil="padding:6px 0;border-bottom:1px solid var(--bdr);display:flex;align-items:center"><button class="btn bs lager-sinnbild" data-click="schalteLagerortVorgabe" data-arg="${o.id}"
-              data-arg2="${o.id === vorgabeId ? 1 : 0}"
-              title="${esc(tRaw(o.id === vorgabeId ? 'storage.default_is' : 'storage.default_set'))}"
-              aria-label="${esc(tRaw(o.id === vorgabeId ? 'storage.default_is' : 'storage.default_set'))}"
-              aria-pressed="${o.id === vorgabeId ? 'true' : 'false'}">${ico(o.id === vorgabeId ? 'stern-voll' : 'merkliste')}</button></span>
-      <span data-stil="padding:6px 0;border-bottom:1px solid var(--bdr);display:flex;align-items:center"><button class="btn bs lager-sinnbild" data-click="loescheLagerort"${echt()} data-arg="${o.id}"
-              aria-label="${esc(tRaw('common.delete'))}: ${esc(o.name)}" title="${esc(tRaw('common.delete'))}"
-              data-arg2="${esc(o.name)}">${ico('loeschen')}</button></span>
-    </div>`;
-  }).join('') + `</div>`;
-}
-
-async function legeLagerortAn() {
-  const feld = G('storage-new');
-  const name = String(feld?.value || '').trim();
-  if (!name) { feldFehler('storage-new', tRaw('storage.name_fehlt')); return; }
-  const d = await api('POST', '/v1/storage/locations', { name });
-  if (!d?.success) {
-    antwortFehler(d, { lagerort_leer: 'storage-new', lagerort_zu_lang: 'storage-new', lagerort_doppelt: 'storage-new' }, tRaw('settings.error'));
-    return;
-  }
-  feld.value = '';
-  await ladeLagerortVerwaltung();
-}
-
-/** Enter im Eingabefeld legt an — dieselbe Geste wie überall sonst im Baum. */
-function lagerortTaste(id, ev) {
-  if (ev?.key === 'Enter') { ev.preventDefault(); legeLagerortAn(); }
-}
-
-async function benenneLagerortUm(id, wert) {
-  const name = String(wert || '').trim();
-  // Leer heisst hier NICHT löschen: Beim Umbenennen ist ein leergeräumtes Feld
-  // fast immer ein Versehen, und das Löschen hat seinen eigenen Knopf daneben.
-  // (Beim Lagerort AM SET ist es umgekehrt — dort ist Leeren die natürliche
-  // Geste, um die Zuordnung loszuwerden.)
-  if (!name) { await ladeLagerortVerwaltung(); return; }
-  const d = await api('PUT', `/v1/storage/locations/${encodeURIComponent(id)}`, { name });
-  if (!d?.success) { toast(d?.error || tRaw('settings.error'), 'error'); }
-  await ladeLagerortVerwaltung();
-  // Die Zuordnungen sind mitgewandert (benenneOrtUm im Server) — die Galerie
-  // zeigt sonst weiter den alten Namen.
-  loadGallery();
-}
-
-/**
- * Den Stern umschalten.
- *
- * ── Warum der Stern und nicht eine Farbe ────────────────────────────────────
- *
- * ★ und ☆ unterscheiden sich in der FORM. Marco ist rot-gruen-schwach; ein
- * farbig hervorgehobener Eintrag waere fuer ihn kein Unterschied. Dazu tragen
- * beide Zustaende einen eigenen Titel (und aria-pressed), damit die Aussage
- * auch dort ankommt, wo niemand hinsieht.
- *
- * `war` kommt aus dem Knopf: Der zweite Druck auf denselben Stern schaltet die
- * Vorgabe ab. Ein eigener Knopf dafuer waere ein zweites Bedienelement fuer
- * eine Frage mit zwei Antworten.
- */
-async function schalteLagerortVorgabe(id, war) {
-  const d = await api('PUT', '/v1/storage/default',
-                      { id: String(war) === '1' ? null : parseInt(id) });
-  if (!d?.success) { toast(d?.error || tRaw('settings.error'), 'error'); return; }
-  await ladeLagerortVerwaltung();
-  // Die Erfassungsformulare stehen schon — ohne das Nachziehen zeigten sie
-  // den alten Stand, bis jemand die Seite neu laedt. Dieselbe Geste wie beim
-  // Erfassungs-Zustand, der nach dem Speichern initDefaultCondition() ruft.
-  import('./02-gallery.js').then(m => m.ladeLagerortVorgabe?.()).catch(() => {});
-}
-
-async function loescheLagerort(id, name) {
-  if (!await confirmDelete(tRaw('storage.delete_title'),
-                           `${name} — ${tRaw('storage.delete_text')}`, 'lagerort')) return;
-  const d = await api('DELETE', `/v1/storage/locations/${encodeURIComponent(id)}`);
-  if (!d?.success) { toast(d?.error || tRaw('settings.error'), 'error'); return; }
-  await ladeLagerortVerwaltung();
-}
-
-/**
- * Preisalarme aus einer CSV einlesen.
- *
- * ── Warum der Währungshinweis gesondert gemeldet wird ───────────────────────
- *
- * Die Route übernimmt die Schwellen UNVERÄNDERT und setzt sie in die Währung
- * des Kontos — sie rechnet nicht um (ein falscher Kurs wäre schlimmer als
- * eine genannte Abweichung). Damit bedeutet dieselbe Zahl unter Umständen
- * etwas anderes als in der Datei, und genau das darf nicht im Erfolgston
- * untergehen. Steht `waehrung_hinweis` in der Antwort, wird daraus eine
- * Meldung der Stufe „info" statt „success" — Form und Wort tragen die
- * Aussage, nicht die Farbe.
- */
-async function importAlarmeCsv() {
-  const fi = G('alerts-csv-file');
-  if (!fi?.files[0]) return;
-  const fd = new FormData();
-  fd.append('file', fi.files[0]);
-
-  const status = G('alerts-csv-status');
-  if (status) status.textContent = tRaw('import.running');
+async function importConfig() {
+  const fi = G('cfg-import-file');
+  const datei = fi.files?.[0];
+  if (!datei) return;
+  const st = G('cfg-import-status');
+  st.textContent = tRaw('settings.importing');
+  const fd = new FormData(); fd.append('file', datei);
   try {
-    const r = await fetch('/api/v1/alerts/import/csv', { method: 'POST', body: fd });
-    const d = await r.json();
-    fi.value = '';
-    if (status) status.textContent = '';
+    const d = await api('POST', '/v1/settings/import', fd);
     if (d.success) {
-      const summary = t('import.summary', { added: d.added, updated: d.updated, errors: d.errors });
-      const zusatz = [d.skipped_hint, d.waehrung_hinweis].filter(Boolean).join(' — ');
-      toast(summary + (zusatz ? ` — ${zusatz}` : ''),
-        (d.errors || d.skipped || d.waehrung_hinweis) ? 'info' : 'success');
-      await ladeAlarmUebersicht();
+      // Welche SMTP-Werte die Datei mitbrachte, steht dabei: Sie werden nur im Formular gesetzt.
+      const smtp = (d.smtp_uebergangen || []).join(', ');
+      st.textContent = tRaw('settings.imported_note',{n:d.imported,note:[d.note, smtp].filter(Boolean).join(': ')});
+      st.style.color = 'var(--g500)';
+      toast(tRaw('admin.config_imported'), 'success');
+      // SMTP-Werte übernimmt der Import nie (Passwortbestätigung); welche, steht hier.
+      if (d.smtp_uebergangen?.length) toast(tRaw('settings.smtp_skipped', { keys: d.smtp_uebergangen.join(', ') }), 'info');
+      loadSettings();
+      set_settingsCache(null); // invalidate cache so next loadSettings fetches fresh
+      if (ME?.isAdmin) { loadCacheTtl(); loadApiLimits(); }
     } else {
-      toast(d.error || tRaw('settings.error'), 'error');
+      st.textContent = d.error || tRaw('settings.error');
+      st.style.color = 'var(--r500)';
     }
-  } catch (e) {
-    fi.value = '';
-    if (status) status.textContent = '';
-    toast(tRaw('settings.error'), 'error');
-  }
+  } catch(e) { st.textContent = tRaw('common.network_error'); }
+  fi.value = '';
 }
 
-// ── Die Wanted-Liste ist UMGEZOGEN (19.10.) ────────────────────────────────
-//
-// Marcos Vorgabe: „Bitte auch den Import der xml Files für wanted listen in den
-// Sets, teilen und Minifiguren ergänzen und aus den Einstellungen entfernen."
-//
-// Hier standen `_wantedDatei`, `zeichneWantedBericht`, `wantedListeVorschau`,
-// `wantedListeSchreiben` und `wantedListeSenden` — rund 110 Zeilen. Sie liegen
-// jetzt in js/18-wanted-xml.js, zusammen mit der Vorschautabelle und dem
-// Export, den es damals noch nicht gab.
+// Der Import von Wanted-Listen steht bei Sets, Teilen und Figuren (js/18-wanted-xml.js), nicht mehr hier: Man
+// importiert dort, wo man die Posten danach sieht.
+// Ausführlich: docs/begruendungen/public/js/05-settings.js.md#marcos-vorgabe-bitte-auch-den-import-der
 
-/** Ein verdecktes Feld zeigen oder wieder verdecken (Knopf mit dem Auge). */
+/**
+ * Ein verdecktes Feld zeigen oder wieder verdecken (Knopf mit dem Auge).
+ * @param {string} id
+ */
 function geheimUmschalten(id) {
   const feld = G(id);
   const knopf = document.querySelector(`[data-click="geheimUmschalten"][data-arg="${id}"]`);
@@ -1165,9 +658,8 @@ function geheimUmschalten(id) {
 
 const EINST_KEY = 'bim_einst_abschnitt';
 /**
- * Die globalen Einstellungen als Unterseiten: Es steht immer genau ein
- * Abschnitt da, und die Leiste zeigt welcher. Gemerkt je Browser, damit ein
- * Neuladen nicht auf den ersten Abschnitt zurückspringt.
+ * Die globalen Einstellungen als Unterseiten: Es steht immer genau ein Abschnitt da, und die Leiste zeigt
+ * welcher. Gemerkt je Browser, damit ein Neuladen nicht auf den ersten Abschnitt zurückspringt.
  * @param {string|null} id  Abschnitt; unbekannt oder leer heisst der erste
  * @param {Event} [ev]      der Klick auf den Link — er springt dann nicht
  */
@@ -1187,34 +679,31 @@ export function einstAbschnitt(id, ev){
 }
 einstAbschnitt((() => { try { return localStorage.getItem(EINST_KEY); } catch (_) { return null; } })());
 
+/** Prüft den gespeicherten Zugang, wie der Einrichtungsassistent — auch später, ohne ihn erneut zu öffnen.
+ * @this {HTMLButtonElement} @param {string} quelle */
+async function einstellungenQuellePruefen(quelle) {
+  const stand = G('pruef-' + quelle); if (!stand) return;
+  const frei = knopfBesetzt(this);
+  stand.className = 'quelle-stand'; stand.textContent = tRaw('settings.zugang_laeuft');
+  const d = await api('POST', '/v1/settings/quelle-testen', { quelle });
+  frei();
+  const { grund } = d?.success ? { grund: '' } : d?.code ? { grund: d.error } : verstaendlicherGrund(d);
+  stand.classList.add(d?.success ? 'quelle-ok' : 'quelle-fehler');
+  setzeHtml(stand, html`${ico(d?.success ? 'ok' : 'fehler')}<span>${d?.success ? tRaw('setup.test_ok') : grund || tRaw('setup.test_failed')}</span>`);
+}
+
+stelleZielBereit({ einstAbschnitt });
+
 registerActions({
-  legeAlarmAn,
+  einstellungenQuellePruefen,
   speichereWaehrung,
   speichereZustand,
-  emailGetippt,
   setzeEigenesDesign,
   einstAbschnitt,
   geheimUmschalten,
-  aendereAlarmSchwelle,
-  importAlarmeCsv,
-  loescheAlarm,
-  legeLagerortAn,
-  lagerortTaste,
-  benenneLagerortUm,
-  loescheLagerort,
-  schalteLagerortVorgabe,
-  copyHouseholdInvite,
-  createHouseholdInvite,
-  delUser,
   loadTokens,
-  openRpw,
-  redeemHouseholdInvite,
   revokeOtherTokens,
   revokeToken,
   saveRegEnabled,
-  toggleAdmin,
-  toggleAktiv,
-  unlinkHousehold,
-  unlinkFromParent,
-  dismissFormerLink,
+  importConfig,
 });

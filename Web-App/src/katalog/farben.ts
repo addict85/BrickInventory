@@ -1,8 +1,8 @@
 /** Bei Rebrickable ist 0 Schwarz; eine fehlende Farbe ist deshalb KEINE_FARBE
  * (9999), nie 0, sonst wird aus „keine Angabe" ein schwarzes Teil. */
 import { geladeneFarben } from './repository/katalogStamm';
-import { getBrickColors } from '../../clients/rebrickable';
-import { meldeUndLiefere } from '../infra/httpError';
+import { getBrickColors } from './quellen';
+import { meldeUndLiefere } from '../infra/fehler';
 import { KEINE_FARBE } from '../infra/validate';
 
 export { KEINE_FARBE };

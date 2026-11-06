@@ -65,6 +65,10 @@ test('Tokens mit Scope, Ablauf und Rotation', { concurrency: 1 }, async (t) => {
   await db.run('INSERT INTO users (username,password_hash,is_admin,is_active,email_verified) VALUES ($1,$2,true,true,true)',
     [NAME, await bcrypt.hash(PASS, 4)]);
   const uid = (await db.get('SELECT id FROM users WHERE username=$1', [NAME])).id;
+  // Verwalter brauchen einen Code-Generator: Anmeldung und Bestätigung nehmen je einen
+  // Wiederherstellungscode, reichen die zehn nicht, kommen neue.
+  const vorrat = await require('./helpers/verwalter').verwalterMitFaktor(_req, uid);
+  const code = async () => { if (!vorrat.length) vorrat.push(...await _req('src/konto/zweiterFaktor.js').erneuereCodes(uid)); return vorrat.shift(); };
 
   const app = express();
   app.use(express.json());
@@ -97,13 +101,13 @@ test('Tokens mit Scope, Ablauf und Rotation', { concurrency: 1 }, async (t) => {
   const zeile = (klartext) => db.get(
     'SELECT * FROM api_tokens WHERE token = $1', [auth.hashToken(klartext)]);
   const anmelden = async (body = {}) => {
-    const a = await ruf('/auth/login', { method: 'POST', body: { username: NAME, password: PASS, ...body } });
+    const a = await ruf('/auth/login', { method: 'POST', body: { username: NAME, password: PASS, code: await code(), ...body } });
     assert.equal(a.status, 200, JSON.stringify(a.body));
     return a;
   };
   const sitzung = (await anmelden({ ohne_token: true })).kopf.get('set-cookie').split(';')[0];
   const qrToken = async (gueltigkeit) => {
-    const q = await ruf('/auth/qr-token', { method: 'POST', cookie: sitzung, body: { password: PASS, gueltigkeit } });
+    const q = await ruf('/auth/qr-token', { method: 'POST', cookie: sitzung, body: { password: PASS, gueltigkeit, code: await code() } });
     return q;
   };
   const qrLogin = async (gueltigkeit) => {
@@ -175,8 +179,10 @@ test('Tokens mit Scope, Ablauf und Rotation', { concurrency: 1 }, async (t) => {
     assert.ok(rest > 250 && rest <= 300, `alter Token gilt noch ${rest} s`);
     assert.equal((await zeile(b)).label, 'Telefon');
 
-    // Antwort verloren: Der alte tauscht noch einmal, der unbenutzte B fällt weg.
+    // Antwort verloren: Der alte tauscht noch einmal, der unbenutzte B fällt weg —
+    // nach dem Sperrfenster gegen gleichzeitige Tausche (token-tausch-parallel-db).
     assert.equal((await ruf('/auth/me', { token: a })).status, 200, 'Der alte gilt in der Überlappung');
+    await db.run(`UPDATE api_tokens SET rotiert_am = NOW() - INTERVAL '1 minute' WHERE token = $1`, [auth.hashToken(b)]);
     const r2 = await ruf('/auth/token-rotieren', { method: 'POST', token: a });
     assert.equal(r2.status, 200);
     const c = r2.body.token;

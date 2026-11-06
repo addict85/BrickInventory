@@ -1,26 +1,7 @@
 /**
  * Der Bilder-Nachlauf deckt ALLE Bildarten ab — und zieht fehlende Vorschauen
  * nach, nicht nur fehlende Dateien.
- *
- * ── Woher dieser Test kommt (Nachtrag 49) ───────────────────────────────────
- * Beim Aufräumen nach dem .tmp-Fehler (Nachtrag 48) fielen zwei Lücken auf,
- * die zusammen erklären, warum ein einmal verpasstes Vorschaubild NIE mehr
- * entstand:
- *
- * 1. `_fsPathFromLocal()` liess alles ausser `/images/parts/` fallen und gab
- *    null zurück. Der Lauf war damit faktisch auf Teilebilder beschränkt —
- *    Set- und Minifiguren-Bilder wurden schon beim Auflösen des Pfades
- *    verworfen, noch bevor irgendetwas geprüft werden konnte. Er meldete
- *    trotzdem „fertig".
- * 2. Repariert wurden ausschliesslich fehlende DATEIEN. Lag die Datei vor und
- *    fehlte nur die Verkleinerung, tat der Lauf nichts.
- *
- * Beides zusammen hiess: Wer im Monitoring „fehlende Bilder neu laden" drückt,
- * bekam für Set-Bilder gar nichts — obwohl genau die in der Galerie am
- * sichtbarsten sind.
- *
- * Geprüft wird VERHALTEN gegen echte Dateien und echte Datenbank: Bild liegt
- * da, Vorschau fehlt, Lauf anstossen, Vorschau muss existieren.
+ * Ausführlich: docs/begruendungen/test/image-catchup-db.test.js.md#kopf
  *
  * Gegenprobe (durchgeführt): `/images/sets/` aus _fsPathFromLocal entfernt →
  * thumbs bleibt 0 und die Datei entsteht nicht.
@@ -36,18 +17,14 @@ const ROOT = path.join(__dirname, '..');
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
 const _req = require('./helpers/sources').buildAndRequire();
+const { dbOderSkip } = require('./helpers/db');
 const { haeltSet } = require('./helpers/bestand');
 const db = _req('db/database.js');
 
 test('der Nachlauf erzeugt fehlende Vorschauen — auch für Set-Bilder',
   { concurrency: 1 }, async (t) => {
 
-  try { await db.initSchema(); }
-  catch (e) {
-    if (process.env.REQUIRE_DB === '1')
-      throw new Error(`REQUIRE_DB=1, aber die Test-DB ist nicht erreichbar: ${e.message}`);
-    t.skip('Test-DB nicht erreichbar'); return;
-  }
+  if (!await dbOderSkip(t, _req, { migrieren: false })) return;
 
   const { Jimp } = require(path.join(ROOT, 'node_modules', 'jimp'));
   const { DATA_DIR } = _req('src/infra/appPaths.js');
@@ -109,6 +86,6 @@ test('beide Vorschau-Erzeuger melden Fehlschläge', () => {
     const src = fs.readFileSync(path.join(ROOT, datei), 'utf8');
     assert.ok(muster.test(src),
       `${datei}: ein Fehlschlag der Vorschau-Erzeugung bleibt still. Genau das hat den ` +
-      '.tmp-Fehler aus Nachtrag 41 sieben Nachträge lang verdeckt');
+      '.tmp-Fehler aus einer früheren Runde sieben Nachträge lang verdeckt');
   }
 });

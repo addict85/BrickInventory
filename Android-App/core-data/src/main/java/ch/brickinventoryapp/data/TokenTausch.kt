@@ -1,15 +1,21 @@
 package ch.brickinventoryapp.data
 
 import ch.brickinventoryapp.data.model.TokenRotation
-import ch.brickinventoryapp.data.repository.Result
+import ch.brickinventoryapp.data.repository.Ergebnis
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.transformLatest
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.async
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import ch.brickinventoryapp.di.Rotationsanlass
 
 /**
  * Wie ein Tausch ausging. VERWORFEN: Während des Tauschs wurde abgemeldet, neu
@@ -49,16 +55,40 @@ class TokenSchranke {
         speichere()
         true
     }
+
+    /**
+     * Spiegelt einen Wert der Platte in den Speicher. Die Schreibungen setzen den
+     * Speicher vor der Platte; ein Wert, der unterwegs schon überholt wurde, darf ihn
+     * nicht zurückdrehen. Darum gilt er nur, wenn die Platte ihn unter der Sperre noch hat.
+     */
+    @OptIn(ExperimentalCoroutinesApi::class)
+    suspend fun <P, R, T> spiegle(
+        strom: Flow<P>,
+        jetzt: suspend () -> P,
+        roh: (P) -> R,
+        lies: suspend (R, suspend (T) -> Unit) -> Unit,
+        setze: (T) -> Unit,
+        gelesen: () -> Unit,
+    ) {
+        var erster = true
+        strom.map(roh).distinctUntilChanged()
+            .transformLatest { r -> lies(r) { emit(r to it) } }
+            .collect { (r, wert) ->
+                sperre.withLock { if (roh(jetzt()) == r) setze(wert) }
+                if (erster) { erster = false; gelesen() }
+            }
+    }
 }
 
 /**
- * Höchstdauer einer Anmeldung: Der Server kennt für App-Token nur die Gleitfrist
- * (TOKEN_IDLE_DAYS), und Tausch und Nutzung verlängern sie ohne Ende. Danach meldet
- * die App ab und entwertet den Token am Server; die Kette eines kopierten Tokens endet mit.
+ * Höchstdauer einer Anmeldung, dieselbe wie die harte Frist des Servers
+ * (APP_HOECHSTDAUER_TAGE in Web-App/routes/auth.ts; der Tausch erbt sie). Die
+ * Prüfung hier ist die zweite Linie: Die App meldet sich selbst ab und entwertet den
+ * Token, statt erst am 401 zu merken, dass die Kette zu Ende ist.
  */
-const val TOKEN_HOECHSTDAUER_TAGE = 180L
+internal const val TOKEN_HOECHSTDAUER_TAGE = 180L
 
-fun anmeldungUeberfaellig(angemeldetAm: Long, jetzt: Long): Boolean =
+internal fun anmeldungUeberfaellig(angemeldetAm: Long, jetzt: Long): Boolean =
     jetzt - angemeldetAm > TOKEN_HOECHSTDAUER_TAGE * 24 * 60 * 60 * 1000
 
 /**
@@ -66,20 +96,19 @@ fun anmeldungUeberfaellig(angemeldetAm: Long, jetzt: Long): Boolean =
  * faellig` oder 401 `token_rotation_noetig`). Der neue Token wird gespeichert,
  * BEVOR ihn jemand benutzt: Ginge die App zwischen Antwort und Speichern zu,
  * stünde sonst nur noch der alte da — und der gilt nach dem Tausch nur 5 min.
- *
- * Nur ein Tausch zugleich (Sperre): Sehen mehrere Anfragen die Kopfzeile, tauscht
- * die erste; die übrigen finden danach einen anderen Token vor und tun nichts.
- * Geht die Antwort verloren, wird mit dem alten Token wiederholt — aber nur,
- * solange die Sitzung dieselbe ist ([TokenSchranke]).
+ * Ausführlich: docs/begruendungen/core-data/data/TokenTausch.kt.md#tokentausch
  */
 class TokenTausch(
     private val stand: suspend () -> TokenStand,
     private val ersetze: suspend (vorher: TokenStand, neu: String, anfrageHerkunft: String?) -> Boolean,
-    private val rotiere: suspend (alterToken: String) -> Result<GetauschterToken>,
+    private val rotiere: suspend (alterToken: String) -> Ergebnis<GetauschterToken>,
     private val uhr: () -> Long = System::currentTimeMillis,
     private val pausen: List<Long> = listOf(2_000, 10_000, 30_000),
-    private val hintergrund: CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.IO),
-) : ch.brickinventoryapp.di.Rotationsanlass {
+    /** Für [faellig]: der Anwendungsbereich, damit der Tausch das Verlassen eines Bildschirms überlebt. */
+    private val hintergrund: CoroutineScope,
+    /** So lange hält noetig() einen Thread des OkHttp-Dispatchers fest. */
+    private val warten: Long = NOETIG_WARTEN_MS,
+) : Rotationsanlass {
     private val sperre = Mutex()
 
     /** Für die Kopfzeile: nicht warten, die Anfrage selbst ist gelungen. */
@@ -95,7 +124,17 @@ class TokenTausch(
      * Herkunft und Generation wie die abgewiesene Anfrage.
      */
     override fun noetig(alterToken: String, herkunft: String?, generation: Long): String? = runBlocking {
-        when (tausche(alterToken)) {
+        noetigWartend(alterToken, herkunft, generation)
+    }
+
+    /**
+     * Der Netz-Thread wartet höchstens [warten]; der Tausch selbst läuft im
+     * Anwendungsbereich weiter, damit ein schon erhaltener Token noch gespeichert wird.
+     */
+    suspend fun noetigWartend(alterToken: String, herkunft: String?, generation: Long): String? {
+        val tausch = hintergrund.async { tausche(alterToken) }
+        return when (withTimeoutOrNull(warten) { tausch.await() }) {
+            null -> null
             Tauschergebnis.GETAUSCHT, Tauschergebnis.SCHON_GETAUSCHT -> stand()
                 .takeIf { herkunft != null && it.herkunft == herkunft && it.generation == generation }
                 ?.token?.takeIf { it != alterToken && it.isNotBlank() }
@@ -113,11 +152,8 @@ class TokenTausch(
             // Abgemeldet oder anderer Server: Der alte Token geht nicht noch einmal hinaus.
             if (versuch > 0 && stand() != vorher) return Tauschergebnis.VERWORFEN
             when (val r = rotiere(alterToken)) {
-                is Result.Success -> {
-                    val neu = r.data.rotation.token?.takeIf { it.isNotBlank() } ?: return Tauschergebnis.SPAETER
-                    return if (ersetze(vorher, neu, r.data.herkunft)) Tauschergebnis.GETAUSCHT else Tauschergebnis.VERWORFEN
-                }
-                is Result.Error -> {
+                is Ergebnis.Success -> return gelungen(vorher, r.data)
+                is Ergebnis.Error -> {
                     // 401: Der alte Token gilt nicht mehr (Überlappung vorbei, widerrufen).
                     if (r.httpCode == 401) return Tauschergebnis.NEU_KOPPELN
                     if (!r.transient) return Tauschergebnis.SPAETER
@@ -130,8 +166,17 @@ class TokenTausch(
         return Tauschergebnis.SPAETER
     }
 
+    /** Eine Antwort ohne neuen Token ist kein Tausch; passt der Stand nicht mehr, wird verworfen. */
+    private suspend fun gelungen(vorher: TokenStand, antwort: GetauschterToken): Tauschergebnis {
+        val neu = antwort.rotation.token?.takeIf { it.isNotBlank() } ?: return Tauschergebnis.SPAETER
+        return if (ersetze(vorher, neu, antwort.herkunft)) Tauschergebnis.GETAUSCHT else Tauschergebnis.VERWORFEN
+    }
+
     companion object {
         /** So lange gilt der alte Token nach einem Tausch weiter (ueberlappung_sek: 300). */
         const val UEBERLAPPUNG_MS = 300_000L
+
+        /** Kürzer als das Lesezeitlimit des api-Clients (60 s), länger als ein gelungener Tausch. */
+        const val NOETIG_WARTEN_MS = 20_000L
     }
 }

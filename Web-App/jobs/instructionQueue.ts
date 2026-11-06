@@ -1,18 +1,16 @@
 /** Brickset und brickinstructions.com wollen Abstand: Nach einem echten Abruf
  * pausiert die ganze Art 15 Sekunden, nach einer Cloudflare-Sperre 5–20
  * Minuten und dann bis zum nächsten Tag.
- * Ausführlich: docs/begruendungen/jobs/instructionQueue.ts.md#db */
+ * Ausführlich: docs/begruendungen/jobs/instructionQueue.ts.md#brickset-und-brickinstructions-com-wolle */
 import { mitSitzungsSperre } from '../db/txLock';
 import { downloadSetInstructions, letzterAbrufWarExtern, anzahlAnleitungen, scrapeInstructionsFromFallback } from '../src/katalog/instructions';
-import { fehlertext } from '../src/infra/httpError';
-import { alsAbrufFehler } from '../clients/abrufFehler';
-import { zaehleArt } from '../src/auftraege/dienst';
-import { beendePause } from '../src/auftraege/dienst';
-import { pausiereArt } from '../src/auftraege/dienst';
-import { liesPause } from '../src/auftraege/dienst';
-import * as monitor from '../src/auftraege/jobMonitor';
+import { fehlertext } from '../src/infra/fehler';
+import { alsAbrufFehler } from '../src/katalog/quellen';
+import { zaehleArt, beendePause, pausiereArt, liesPause } from '../src/auftraege/dienst';
 import { LOCKS } from '../src/infra/lockNamespaces';
 import { AuftragVerschieben } from './auftragsWorker';
+import type { Nutzlast } from '../src/auftraege/nutzlasten';
+import type { AuftragsLauf } from '../src/auftraege/auftraege';
 
 const TAKT_NACH_ABRUF_MS = 15_000;
 /** Pausen nach der ersten bis vierten Cloudflare-Sperre; danach bis morgen. */
@@ -34,16 +32,16 @@ function mitSperre<T>(lauf: () => Promise<T>): Promise<T> {
   });
 }
 
-async function meldeMonitor(setNumber: string): Promise<void> {
+async function meldeAnleitungen(setNumber: string, lauf?: AuftragsLauf): Promise<void> {
   const z = await zaehleArt('anleitung');
   const offen = z.offen + z.laeuft, gesamt = offen + z.erledigt + z.fehler;
-  await monitor.update('instrQueue', { status: offen > 1 ? 'running' : 'done', progress: gesamt - offen + 1, total: gesamt,
-    sub: offen > 1 ? `${setNumber} · ${offen - 1} ausstehend` : 'Alle erledigt' });
+  await lauf?.fortschritt?.({ erledigt: gesamt - offen + 1, gesamt,
+    text: offen > 1 ? `${setNumber} · ${offen - 1} ausstehend` : 'Alle erledigt' });
 }
 
 /** Eine Drosselung verschiebt den Auftrag, ohne ihn als Versuch zu zählen. */
-async function anleitungLaden(n: Record<string, unknown>): Promise<void> {
-  const sn = String(n.set_number);
+async function anleitungLaden(n: Nutzlast<'anleitung'>, lauf?: AuftragsLauf): Promise<void> {
+  const sn = n.set_number;
   if (await anzahlAnleitungen(sn) > 0) return;
   if (n.nur_ausweichquelle) { await scrapeInstructionsFromFallback(sn); return; }
   await mitSperre(async () => {
@@ -53,7 +51,7 @@ async function anleitungLaden(n: Record<string, unknown>): Promise<void> {
       console.log(`[instr-queue] ${sn}: ${anzahl} instructions`);
       if (await liesPause('anleitung')) await beendePause('anleitung');
       if (letzterAbrufWarExtern()) await pausiereArt('anleitung', new Date(Date.now() + TAKT_NACH_ABRUF_MS), 'Abstand zwischen zwei Abrufen');
-      await meldeMonitor(sn);
+      await meldeAnleitungen(sn, lauf);
     } catch (e) {
       const f = alsAbrufFehler(e);
       const msg = fehlertext(e) || '';
@@ -64,7 +62,7 @@ async function anleitungLaden(n: Record<string, unknown>): Promise<void> {
           ? `Cloudflare-Sperre: ${Math.round(CF_PAUSEN_MS[stufe]! / 60000)} min warten (Versuch ${stufe + 1})`
           : 'Cloudflare-Sperre: bis morgen pausiert';
         await pausiereArt('anleitung', bis, grund, stufe < CF_PAUSEN_MS.length ? stufe + 1 : 0);
-        await monitor.update('instrQueue', { status: 'idle', sub: grund });
+        await lauf?.fortschritt?.({ text: grund });
         console.log(`[instr-queue] ${grund}`);
         throw new AuftragVerschieben(bis, grund);
       }

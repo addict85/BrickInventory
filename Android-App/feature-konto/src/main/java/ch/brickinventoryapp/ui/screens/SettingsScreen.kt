@@ -1,14 +1,19 @@
 package ch.brickinventoryapp.ui.screens
 
+import ch.brickinventoryapp.ui.components.SchalterZeile
+import ch.brickinventoryapp.ui.viewmodel.VertrauenViewModel
+import ch.brickinventoryapp.ui.viewmodel.DarstellungViewModel
+import ch.brickinventoryapp.ui.viewmodel.DarstellungAktionen
+import ch.brickinventoryapp.ui.viewmodel.UpdateAktionen
+import ch.brickinventoryapp.ui.viewmodel.EinstellungenAktionen
+import ch.brickinventoryapp.ui.components.nebenKnopfFarben
+import ch.brickinventoryapp.ui.components.nebenKnopfRand
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.Role
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.ui.semantics.semantics
-import ch.brickinventoryapp.ui.theme.Formen
-import ch.brickinventoryapp.ui.theme.AppKarte
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.ScrollState
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -22,20 +27,65 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import ch.brickinventoryapp.ressourcen.R
-import ch.brickinventoryapp.ui.AppViewModel
 import ch.brickinventoryapp.ui.viewmodel.EinstellungenViewModel
 import ch.brickinventoryapp.ui.*
 import ch.brickinventoryapp.ui.theme.Abstaende
 import ch.brickinventoryapp.ui.theme.Helligkeit
 import ch.brickinventoryapp.ui.theme.mittigBis
 import ch.brickinventoryapp.ui.components.WahlChips
-import androidx.compose.ui.draw.clip
-import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
-import ch.brickinventoryapp.ui.viewmodel.aktivitaetsViewModel
 import ch.brickinventoryapp.ui.viewmodel.UpdateViewModel
+import ch.brickinventoryapp.util.quelleVeraltet
+import ch.brickinventoryapp.ui.components.LocalAppFassung
+import ch.brickinventoryapp.ui.components.Rueckfrage
+import ch.brickinventoryapp.ui.components.mitSchrift
+import ch.brickinventoryapp.ui.theme.Lesebreite
+import ch.brickinventoryapp.ui.theme.SYSTEMFARBEN_AB_SDK
+import ch.brickinventoryapp.ui.theme.helligkeitWaehlbar
+import ch.brickinventoryapp.util.UpdateFrische
+import ch.brickinventoryapp.util.erlaubnisAbsicht
+
+/** Was die Einstellungen zeigen; die Route sammelt es aus vier Flüssen dreier ViewModels. */
+data class EinstellungenZustand(
+    val appState: AppUiState,
+    val updateZustand: UpdateUiState,
+    val helligkeit: String,
+    val design: String,
+    val systemfarben: Boolean,
+    val vorschauVerbergen: Boolean,
+    val widgetWerte: Boolean,
+    val nutzerCa: Boolean,
+)
+
+/** Die Einstellungen am Navigationsziel; Darstellung, Vertrauen und Update leben an der Activity. */
+@Composable
+fun SettingsRoute(
+    vm: EinstellungenViewModel,
+    onLogout: () -> Unit,
+    onServerWechseln: () -> Unit,
+    scrollState: ScrollState,
+    selbstUpdate: UpdateViewModel,
+    darstellung: DarstellungViewModel,
+    vertrauen: VertrauenViewModel,
+) {
+    val appState by vm.state.collectAsStateWithLifecycle()
+    val updateZustand by selbstUpdate.updateState.collectAsStateWithLifecycle()
+    val helligkeit by darstellung.helligkeit.collectAsStateWithLifecycle()
+    val design by darstellung.appTheme.collectAsStateWithLifecycle()
+    val systemfarben by darstellung.systemfarben.collectAsStateWithLifecycle()
+    val vorschauVerbergen by darstellung.vorschauVerbergen.collectAsStateWithLifecycle()
+    val widgetWerte by darstellung.widgetWerte.collectAsStateWithLifecycle()
+    val nutzerCa by vertrauen.nutzerCa.an.collectAsStateWithLifecycle()
+    SettingsScreen(
+        zustand = EinstellungenZustand(appState, updateZustand, helligkeit, design, systemfarben,
+            vorschauVerbergen, widgetWerte, nutzerCa),
+        aktionen = vm, update = selbstUpdate, darstellung = darstellung,
+        // Einschalten fragt erst nach (NutzerCaDialog in MainActivity).
+        onNutzerCa = { if (it) vertrauen.nutzerCa.anfragen() else vertrauen.nutzerCa.ausschalten() },
+        onLogout = onLogout, onServerWechseln = onServerWechseln, scrollState = scrollState,
+    )
+}
 
 /**
  * Die Einstellungen — wenige Karten statt eines Stapels: Anzeige & Preise (jede
@@ -44,7 +94,11 @@ import ch.brickinventoryapp.ui.viewmodel.UpdateViewModel
  */
 @Composable
 fun SettingsScreen(
-    vm: EinstellungenViewModel,
+    zustand: EinstellungenZustand,
+    aktionen: EinstellungenAktionen,
+    update: UpdateAktionen,
+    darstellung: DarstellungAktionen,
+    onNutzerCa: (Boolean) -> Unit,
     /** Abmelden — nur der Graph kennt den NavController. */
     onLogout: () -> Unit,
     /**
@@ -60,14 +114,8 @@ fun SettingsScreen(
      */
     scrollState: ScrollState,
 ) {
-    // Zustand und Aktionen vom ViewModel statt über Parameter. `appState`, nicht
-    // `state`: UiStateFieldsTest bestimmt den Typ je Name und Datei.
-    val appState by vm.state.collectAsStateWithLifecycle()
-    // `updateZustand`, nicht `update`: dieselbe Namensfalle.
-    val selbstUpdate: UpdateViewModel = aktivitaetsViewModel()
-    // Sprache und Design bei Dunkelheit gehören dem Gerät, nicht dem Konto.
-    val app: AppViewModel = aktivitaetsViewModel()
-    val updateZustand by selbstUpdate.updateState.collectAsStateWithLifecycle()
+    val appState = zustand.appState
+    val updateZustand = zustand.updateZustand
 
     val currency = appState.currency
     val priceCondition = appState.priceCondition
@@ -85,7 +133,7 @@ fun SettingsScreen(
         Modifier
             .fillMaxSize()
             .verticalScroll(scrollState)
-            .mittigBis(ch.brickinventoryapp.ui.theme.Lesebreite.formular)
+            .mittigBis(Lesebreite.formular)
             .padding(horizontal = Abstaende.gross, vertical = Abstaende.gross),
         // gross statt der blanken 10 dp von vorher: Die Karten sind jetzt
         // wenige und gross, und zwischen ihnen soll Luft sein.
@@ -106,20 +154,20 @@ fun SettingsScreen(
                 listOf("system" to stringResource(R.string.settings_language_system),
                        "en" to stringResource(R.string.settings_language_en),
                        "de" to stringResource(R.string.settings_language_de)),
-                gewaehlt = language, onWahl = { app.setLanguage(it) },
+                gewaehlt = language, onWahl = { darstellung.setLanguage(it) },
             )
 
             // Darstellung je Gerät: System folgt dem Telefon, Hell und Dunkel gelten immer.
             Unterschrift(stringResource(R.string.settings_dark_label))
-            val helligkeit by app.helligkeit.collectAsStateWithLifecycle()
-            val design by app.appTheme.collectAsStateWithLifecycle()
-            val farbenDesSystems by app.systemfarben.collectAsStateWithLifecycle()
-            val waehlbar = ch.brickinventoryapp.ui.theme.helligkeitWaehlbar(design, farbenDesSystems, android.os.Build.VERSION.SDK_INT)
+            val helligkeit = zustand.helligkeit
+            val design = zustand.design
+            val farbenDesSystems = zustand.systemfarben
+            val waehlbar = helligkeitWaehlbar(design, farbenDesSystems, android.os.Build.VERSION.SDK_INT)
             WahlChips(
                 listOf(Helligkeit.SYSTEM to stringResource(R.string.settings_hell_system),
                        Helligkeit.HELL to stringResource(R.string.settings_hell_hell),
                        Helligkeit.DUNKEL to stringResource(R.string.settings_hell_dunkel)),
-                gewaehlt = helligkeit, onWahl = { app.setHelligkeit(it) },
+                gewaehlt = helligkeit, onWahl = { darstellung.setHelligkeit(it) },
                 enabled = waehlbar,
             )
             // Werkbank ist schon dunkel: Die Wahl ist aus, und der Satz sagt, warum.
@@ -128,11 +176,11 @@ fun SettingsScreen(
 
             // Material You: zusätzlich zu den sechs Designs, je Gerät. Erst ab
             // Android 12 gibt es Systemfarben; darunter fehlt der Schalter ganz.
-            if (android.os.Build.VERSION.SDK_INT >= ch.brickinventoryapp.ui.theme.SYSTEMFARBEN_AB_SDK) {
-                val systemfarben by app.systemfarben.collectAsStateWithLifecycle()
+            if (android.os.Build.VERSION.SDK_INT >= SYSTEMFARBEN_AB_SDK) {
+                val systemfarben = zustand.systemfarben
                 Row(
                     Modifier.fillMaxWidth().heightIn(min = 48.dp)
-                        .toggleable(value = systemfarben, role = Role.Switch, onValueChange = { app.setSystemfarben(it) }),
+                        .toggleable(value = systemfarben, role = Role.Switch, onValueChange = { darstellung.setSystemfarben(it) }),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Column(Modifier.weight(1f)) {
@@ -145,10 +193,10 @@ fun SettingsScreen(
             }
 
             // Je Gerät, Vorgabe aus: Wer die Übersicht anderen zeigt, will keine Vorschau.
-            val vorschauVerbergen by app.vorschauVerbergen.collectAsStateWithLifecycle()
+            val vorschauVerbergen = zustand.vorschauVerbergen
             Row(
                 Modifier.fillMaxWidth().heightIn(min = 48.dp)
-                    .toggleable(value = vorschauVerbergen, role = Role.Switch, onValueChange = { app.setVorschauVerbergen(it) }),
+                    .toggleable(value = vorschauVerbergen, role = Role.Switch, onValueChange = { darstellung.setVorschauVerbergen(it) }),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Column(Modifier.weight(1f)) {
@@ -159,13 +207,28 @@ fun SettingsScreen(
                 Switch(checked = vorschauVerbergen, onCheckedChange = null)
             }
 
+            // Je Gerät, Vorgabe aus: Das Widget liegt ohne Entsperren auf dem Startbildschirm.
+            val widgetWerte = zustand.widgetWerte
+            Row(
+                Modifier.fillMaxWidth().heightIn(min = 48.dp)
+                    .toggleable(value = widgetWerte, role = Role.Switch, onValueChange = { darstellung.setWidgetWerte(it) }),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Column(Modifier.weight(1f)) {
+                    Text(stringResource(R.string.settings_widget_werte), style = MaterialTheme.typography.bodyMedium)
+                    Text(stringResource(R.string.settings_widget_werte_hint), style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+                Switch(checked = widgetWerte, onCheckedChange = null)
+            }
+
             HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
 
             // Währung und Preisgrundlage gehen zusammen an den Server (ein Endpunkt).
             Unterschrift(stringResource(R.string.settings_currency))
             WahlChips(
                 listOf("CHF", "EUR", "USD", "GBP").map { it to it },
-                gewaehlt = currency, onWahl = { vm.saveSettings(it, priceCondition) },
+                gewaehlt = currency, onWahl = { aktionen.saveSettings(it, priceCondition) },
             )
 
             Unterschrift(stringResource(R.string.settings_price_condition))
@@ -175,7 +238,7 @@ fun SettingsScreen(
             WahlChips(
                 listOf("N" to stringResource(R.string.settings_condition_new),
                        "U" to stringResource(R.string.settings_condition_used)),
-                gewaehlt = priceCondition, onWahl = { vm.saveSettings(currency, it) },
+                gewaehlt = priceCondition, onWahl = { aktionen.saveSettings(currency, it) },
             )
 
             // ── Standard-Zustand beim Erfassen ──
@@ -193,7 +256,7 @@ fun SettingsScreen(
                 listOf("" to stringResource(R.string.settings_default_condition_global),
                        "N" to stringResource(R.string.condition_new),
                        "U" to stringResource(R.string.condition_used)),
-                gewaehlt = eigeneVorgabe ?: "", onWahl = { vm.saveUserDefaultCondition(it) },
+                gewaehlt = eigeneVorgabe ?: "", onWahl = { aktionen.saveUserDefaultCondition(it) },
             )
         }
 
@@ -201,27 +264,28 @@ fun SettingsScreen(
         //
         // Die Serveradresse ist eine Einstellung wie Währung und Sprache, keine Handlung
         // an der laufenden Sitzung.
-        val nutzerCa by app.nutzerCa.an.collectAsStateWithLifecycle()
+        val nutzerCa = zustand.nutzerCa
         ServerCard(
             serverUrl = appState.serverUrl,
             onWechseln = onServerWechseln,
             nutzerCa = nutzerCa,
-            // Einschalten fragt erst nach (NutzerCaDialog in MainActivity).
-            onNutzerCa = { if (it) app.nutzerCa.anfragen() else app.nutzerCa.ausschalten() },
+            onNutzerCa = onNutzerCa,
         )
 
         UpdateCard(
             updateZustand = updateZustand,
-            onPruefen = { selbstUpdate.pruefeAufUpdate() },
-            onLaden = { selbstUpdate.ladeUpdate() },
-            onInstallieren = { selbstUpdate.starteInstallation() },
+            onPruefen = { update.pruefeAufUpdate() },
+            onLaden = { update.ladeUpdate() },
+            onInstallieren = { update.starteInstallation() },
         )
+
+        DatenschutzKarte(updateZustand.startpruefung) { update.setzeStartpruefung(it) }
 
         Spacer(Modifier.height(Abstaende.klein))
 
         // Dieselbe Rückfrage wie unter „Mehr“: Abmelden ist von beiden Stellen gleich schwer.
         var fragtAbmelden by rememberSaveable { mutableStateOf(false) }
-        if (fragtAbmelden) ch.brickinventoryapp.ui.components.Rueckfrage(
+        if (fragtAbmelden) Rueckfrage(
             titel = stringResource(R.string.logout_confirm_title),
             text = stringResource(R.string.logout_confirm_text),
             bestaetigen = stringResource(R.string.settings_logout),
@@ -232,11 +296,10 @@ fun SettingsScreen(
         OutlinedButton(
             onClick = { fragtAbmelden = true },
             modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
-            shape = Formen.knopf,
             colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error),
             border = BorderStroke(1.dp, MaterialTheme.colorScheme.error.copy(alpha = 0.5f))
         ) {
-            Icon(Icons.AutoMirrored.Filled.Logout, null, Modifier.size(18.dp))
+            Icon(Icons.AutoMirrored.Filled.Logout, null, Modifier.size(mitSchrift(18.dp)))
             Spacer(Modifier.width(Abstaende.klein))
             Text(stringResource(R.string.settings_logout), fontWeight = FontWeight.SemiBold)
         }
@@ -253,13 +316,6 @@ private fun Unterschrift(text: String) {
 }
 
 /**
- * Selbstaktualisierung aus dem GitHub-Release: beim Start still prüfen, nie von
- * allein laden, und hier ein Knopf zum Nachsehen. Die laufende Fassung steht immer
- * da, sonst wäre „Aktuell“ ohne Beleg. Herunterladen und Installieren sind zwei
- * Knöpfe, weil dazwischen ein Ausflug zur Erlaubnis „Pakete installieren“ liegen
- * kann.
- */
-/**
  * Mit welchem Server die App spricht — und der Weg, ihn zu wechseln. Die Adresse
  * steht dabei, weil man genau deshalb hinsieht; bei zwei Installationen (Test und
  * Betrieb) ist das der Unterschied zu falschen Daten.
@@ -275,35 +331,31 @@ private fun ServerCard(
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
         Spacer(Modifier.height(Abstaende.klein))
-        OutlinedButton(onClick = onWechseln) {
-            Icon(Icons.Default.Cloud, null, modifier = Modifier.size(18.dp))
+        OutlinedButton(onClick = onWechseln, colors = nebenKnopfFarben(), border = nebenKnopfRand()) {
+            Icon(Icons.Default.Cloud, null, modifier = Modifier.size(mitSchrift(18.dp)))
             Spacer(Modifier.width(Abstaende.klein))
             Text(stringResource(R.string.main_menu_change_server))
         }
         // Je Gerät und sofort wirksam (util/ServerVertrauen.kt); ausgeschaltet nur System-CAs.
         // Nur für den eigenen Server; Updates und fremde Hosts prüfen immer gegen das System.
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(Abstaende.mittel),
-            modifier = Modifier.fillMaxWidth(),
-        ) {
-            Column(Modifier.weight(1f)) {
-                Text(stringResource(R.string.settings_nutzer_ca), style = MaterialTheme.typography.bodyMedium)
-                // In der Fehlerfarbe: Es ist ein Risiko, keine Komforteinstellung.
-                Text(stringResource(R.string.settings_nutzer_ca_hint),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.error)
-            }
-            Switch(checked = nutzerCa, onCheckedChange = onNutzerCa)
-        }
+        // Hinweis in der Fehlerfarbe: Es ist ein Risiko, keine Komforteinstellung.
+        SchalterZeile(stringResource(R.string.settings_nutzer_ca), nutzerCa, onNutzerCa,
+            hinweis = stringResource(R.string.settings_nutzer_ca_hint), hinweisFarbe = MaterialTheme.colorScheme.error)
     }
 }
 
+/**
+ * Selbstaktualisierung aus dem GitHub-Release: beim Start still prüfen, nie von
+ * allein laden, und hier ein Knopf zum Nachsehen. Die laufende Fassung steht immer
+ * da, sonst wäre „Aktuell“ ohne Beleg. Herunterladen und Installieren sind zwei
+ * Knöpfe, weil dazwischen ein Ausflug zur Erlaubnis „Pakete installieren“ liegen
+ * kann.
+ */
 @Composable
 private fun UpdateCard(
     // `updateZustand`, nicht `zustand`: Die Prüfung „welcher Name trägt in dieser
     // Datei welchen Zustandstyp“ unterscheidet keine Gültigkeitsbereiche.
-    updateZustand: ch.brickinventoryapp.ui.UpdateUiState,
+    updateZustand: UpdateUiState,
     onPruefen: () -> Unit,
     onLaden: () -> Unit,
     onInstallieren: () -> Unit,
@@ -311,7 +363,7 @@ private fun UpdateCard(
     val ctx = androidx.compose.ui.platform.LocalContext.current
     SettingsCard(title = stringResource(R.string.update_title), icon = Icons.Default.SystemUpdate) {
         Text(
-            stringResource(R.string.update_installed, ch.brickinventoryapp.ui.components.LocalAppFassung.current.name),
+            stringResource(R.string.update_installed, LocalAppFassung.current.name),
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
@@ -326,11 +378,21 @@ private fun UpdateCard(
                 color = MaterialTheme.colorScheme.primary,
             )
             // Nur nach einer Pruefung: Vorher waere „aktuell" eine Aussage
-            // ueber etwas, das niemand nachgesehen hat.
-            updateZustand.geprueft -> Text(
-                stringResource(R.string.update_current, ch.brickinventoryapp.ui.components.LocalAppFassung.current.name),
+            // ueber etwas, das niemand nachgesehen hat. Eine veraltete Quelle
+            // ist nie „aktuell“ (Hinweis darunter).
+            updateZustand.geprueft && !quelleVeraltet(updateZustand.frische) -> Text(
+                stringResource(R.string.update_current, LocalAppFassung.current.name),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+        if (quelleVeraltet(updateZustand.frische)) {
+            Spacer(Modifier.height(Abstaende.klein))
+            Text(
+                stringResource(if (updateZustand.frische == UpdateFrische.ABGELAUFEN)
+                    R.string.update_quelle_abgelaufen else R.string.update_quelle_zurueckgesetzt),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.error,
             )
         }
 
@@ -354,7 +416,7 @@ private fun UpdateCard(
             )
             Spacer(Modifier.height(Abstaende.winzig))
             TextButton(onClick = {
-                ctx.startActivity(ch.brickinventoryapp.util.erlaubnisAbsicht(ctx))
+                ctx.startActivity(erlaubnisAbsicht(ctx))
             }) { Text(stringResource(R.string.update_permission_grant)) }
         }
 
@@ -367,7 +429,7 @@ private fun UpdateCard(
         Spacer(Modifier.height(Abstaende.mittel))
         Row(horizontalArrangement = Arrangement.spacedBy(Abstaende.klein),
             verticalAlignment = Alignment.CenterVertically) {
-            OutlinedButton(onClick = onPruefen, enabled = !updateZustand.laedtPruefung && updateZustand.fortschritt == null) {
+            OutlinedButton(onClick = onPruefen, enabled = !updateZustand.laedtPruefung && updateZustand.fortschritt == null, colors = nebenKnopfFarben(), border = nebenKnopfRand(!updateZustand.laedtPruefung && updateZustand.fortschritt == null)) {
                 if (updateZustand.laedtPruefung) {
                     CircularProgressIndicator(Modifier.size(16.dp), strokeWidth = 2.dp)
                     Spacer(Modifier.width(Abstaende.klein))
@@ -387,5 +449,31 @@ private fun UpdateCard(
                 }
             }
         }
+    }
+}
+
+/** Je Gerät: Die Prüfung beim Start ist eine Anfrage an GitHub (Datenschutz). */
+@Composable
+private fun StartpruefungZeile(an: Boolean, onWechsel: (Boolean) -> Unit) {
+    Row(
+        Modifier.fillMaxWidth().heightIn(min = 48.dp)
+            .toggleable(value = an, role = Role.Switch, onValueChange = onWechsel),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Column(Modifier.weight(1f)) {
+            Text(stringResource(R.string.update_beim_start), style = MaterialTheme.typography.bodyMedium)
+            Text(stringResource(R.string.update_beim_start_hint), style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+        Switch(checked = an, onCheckedChange = null)
+    }
+}
+
+/** Mit wem die App spricht (MASVS-PRIVACY): dieselbe Liste wie in PLAYSTORE.md. */
+@Composable
+private fun DatenschutzKarte(startpruefung: Boolean, onStartpruefung: (Boolean) -> Unit) {
+    SettingsCard(title = stringResource(R.string.datenschutz_titel), icon = Icons.Default.PrivacyTip) {
+        Text(stringResource(R.string.datenschutz_text), style = MaterialTheme.typography.bodyMedium)
+        StartpruefungZeile(startpruefung, onStartpruefung)
     }
 }

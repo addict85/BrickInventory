@@ -30,18 +30,14 @@ const URL_DB = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhos
 process.env.DATABASE_URL = URL_DB;
 const ROOT = path.join(__dirname, '..');
 const _req = require('./helpers/sources').buildAndRequire();
+const { dbOderSkip } = require('./helpers/db');
 const db = _req('db/database.js');
 const { haeltSet } = require('./helpers/bestand');
 const bcrypt = require(path.join(ROOT, 'node_modules', 'bcryptjs'));
 
 const NAME = `stile_${process.pid}`, PASS = 'stile-Passwort-1';
-const warte = (ms) => new Promise(r => setTimeout(r, ms));
 
-function chrome() {
-  const kandidaten = [process.env.CHROME_BIN, '/usr/bin/google-chrome', '/usr/bin/google-chrome-stable',
-    '/usr/bin/chromium', '/usr/bin/chromium-browser', '/opt/pw-browsers/chromium-1194/chrome-linux/chrome'];
-  return kandidaten.find(k => k && fs.existsSync(k)) ?? null;
-}
+const { chrome, warte } = require('./helpers/app-browser');
 
 const freierPort = () => new Promise(r => { const s = net.createServer().listen(0, () => { const p = s.address().port; s.close(() => r(p)); }); });
 
@@ -86,18 +82,12 @@ async function cdp(wsUrl) {
 test('Stile unter style-src ohne unsafe-inline', { concurrency: 1, timeout: 180_000 }, async (t) => {
   const bin = chrome();
   if (!bin) { t.skip('kein Chrome gefunden'); return; }
-  try { await db.initSchema(); }
-  catch (e) {
-    if (process.env.REQUIRE_DB === '1')
-      throw new Error(`REQUIRE_DB=1, aber die Test-DB ist nicht erreichbar: ${e.message}`);
-    t.skip('Test-DB nicht erreichbar'); return;
-  }
-  const c = await db.pool.connect();
-  try { await _req('db/migrate.js').runMigrations(c); } finally { c.release(); }
+  if (!await dbOderSkip(t, _req)) return;
   await db.run('DELETE FROM users WHERE username = $1', [NAME]);
   const uid = (await db.get(`INSERT INTO users (username, email, password_hash, is_active, email_verified, is_admin)
     VALUES ($1, $2, $3, true, true, true) RETURNING id`, [NAME, `${NAME}@example.org`, await bcrypt.hash(PASS, 4)])).id;
   await haeltSet(db, uid, '10300-1', 1, { preis: 199 });
+  const [wiederherstellung] = await require('./helpers/verwalter').verwalterMitFaktor(_req, uid);
   // Mit heutigen Stempeln lädt der Start den Rebrickable-Katalog nicht herunter.
   for (const k of ['rb_csv_last_sync', 'rb_part_categories_last_sync', 'rb_catalog_extras_last_sync'])
     await db.run(`INSERT INTO laufzustand (schluessel, wert) VALUES ($1, to_char(NOW(), 'YYYY-MM-DD'))
@@ -116,7 +106,8 @@ test('Stile unter style-src ohne unsafe-inline', { concurrency: 1, timeout: 180_
   for (let i = 0; i < 240 && !/localhost:\d+|Startup complete/.test(server.log()); i++) await warte(250);
   for (let i = 0; i < 40 && (await fetch(`http://127.0.0.1:${port}/api/v1/`).catch(() => null)) === null; i++) await warte(250);
   const csp = (await fetch(`http://127.0.0.1:${port}/`)).headers.get('content-security-policy') || '';
-  assert.match(csp, /style-src 'self'(;|$)/, `Die CSP erlaubt Inline-Stile: ${csp}`);
+  // Inline nur der eine Block des Startgerüsts, über seinen Hash — kein 'unsafe-inline'.
+  assert.match(csp, /style-src 'self'( 'sha256-[A-Za-z0-9+/]+=*')?(;|$)/, `Die CSP erlaubt Inline-Stile: ${csp}`);
 
   const profil = fs.mkdtempSync(path.join(os.tmpdir(), 'stile-'));
   t.after(() => fs.rmSync(profil, { recursive: true, force: true }));
@@ -146,8 +137,9 @@ test('Stile unter style-src ohne unsafe-inline', { concurrency: 1, timeout: 180_
   await bis(`typeof document.getElementById('btn-login')?.onclick === 'function'`, 'Anmeldemaske');
   await b.auswerten(`document.getElementById('lu').value = ${JSON.stringify(NAME)};
     document.getElementById('lp').value = ${JSON.stringify(PASS)};
+    document.getElementById('lc').value = ${JSON.stringify(wiederherstellung)};
     document.getElementById('btn-login').click(); true`);
-  await bis(`document.body.innerText.includes(${JSON.stringify(NAME + ' (Admin)')})`, 'angemeldet als Verwalter');
+  await bis(`/${NAME} \\((Verwalter|Admin)\\)/.test(document.body.innerText)`, 'angemeldet als Verwalter');
   const reiter = await b.auswerten(`[...document.querySelectorAll('.ntab[data-tab]')].map(x => x.dataset.tab)`);
   assert.ok(reiter.length >= 8, `nur ${reiter.length} Reiter`);
   for (const r of reiter) {
@@ -188,7 +180,8 @@ test('Stile unter style-src ohne unsafe-inline', { concurrency: 1, timeout: 180_
       document.addEventListener('securitypolicyviolation', e => gesehen.add(e.effectiveDirective));
       const basis = document.createElement('base'); basis.href = 'https://fremd.invalid/';
       document.head.appendChild(basis);
-      const obj = document.createElement('object'); obj.data = '/favicon.svg';
+      // Trusted Types lassen als Skript-Adresse nur eigene Pfade zu; object-src 'none' sperrt auch sie.
+      const obj = document.createElement('object'); obj.data = '/locales/de.js';
       document.body.appendChild(obj);
       const f = document.createElement('form'); f.action = 'https://fremd.invalid/'; f.method = 'post';
       document.body.appendChild(f); f.submit();

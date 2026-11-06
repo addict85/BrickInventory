@@ -4,8 +4,8 @@ Die ausführlichen Kommentare aus `db/bestandsmenge.ts`, wörtlich. Im Code steh
 Stelle der erste Absatz und ein Verweis hierher. Neue Geschichte gehört in die
 Commit-Nachricht (siehe CLAUDE.md).
 
-<a id="abschnitt"></a>
-## Abschnitt
+<a id="ueberblick"></a>
+## Überblick
 
 ```text
 Die Stückzahl eines Sets — abgeleitet, nicht gespeichert.

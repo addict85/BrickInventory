@@ -1,16 +1,7 @@
 'use strict';
 /**
  * Das vollständige Schema an einer Stelle: db/schema-stand.sql.
- *
- * Das Schema entsteht aus db/basis.sql und den Migrationen; keine der
- * beiden Quellen zeigt das Ergebnis lesbar. Dieses Skript baut
- * eine frische Datenbank wie beim ersten Start und schreibt aus dem Katalog,
- * was dabei herauskommt: Tabellen mit Spalten, Schranken, Indizes, Trigger,
- * Funktionen. Die Datei ist zum Lesen da, nicht zum Einspielen.
- *
- * Aufruf (nach `npm run build`): npm run schema:stand
- * test/schema-frisch-db.test.js vergleicht die Datei mit einer frischen
- * Datenbank; weicht sie ab, ist sie neu zu erzeugen.
+ * Ausführlich: docs/begruendungen/scripts/schema-stand.js.md#fs-stelle
  */
 const fs = require('fs');
 const path = require('path');
@@ -77,7 +68,7 @@ async function schemaText(db) {
 
 const BASIS = path.join(__dirname, '..', 'db/basis.sql');
 /** Startdaten, die eine neue Installation braucht; alles andere bleibt leer. */
-const BASIS_DATEN = ['global_settings', 'gutschein_guthaben_schranke', 'schema_migrations'];
+const BASIS_DATEN = ['auftrag_exklusiv', 'global_settings', 'gutschein_guthaben_schranke', 'schema_migrations'];
 
 /**
  * db/basis.sql aus einer fertig migrierten Datenbank schreiben: Schema und

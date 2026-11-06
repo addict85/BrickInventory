@@ -1,29 +1,6 @@
 /**
  * Der Download-Knopf zeigt dorthin, wo der Workflow das APK wirklich ablegt.
- *
- * ── Marcos Auftrag vom 26.09. ───────────────────────────────────────────────
- *
- *   „Kannst du in der Webapp unter Einstellungen wo man den QR-Code erstellen
- *    kann einen Download-Android-App-Button einfügen […] der die aktuellste
- *    Android App Version von GitHub herunterlädt?"
- *
- * ── Warum das eine Regel braucht ────────────────────────────────────────────
- *
- * Dieselbe Adresse steht jetzt an DREI Stellen, in drei Sprachen:
- *
- *   1. android.yml         — legt das APK dort ab (Etikett und Dateiname)
- *   2. AppUpdate.kt        — die App holt sich von dort ihre Aktualisierung
- *   3. index.html          — der Knopf, um den es hier geht
- *
- * Eine Adresse in drei Sprachen lässt sich nicht zusammenlegen; ein Konstante
- * in Kotlin ist im Markup nicht lesbar. Was geht, ist sie zu VERGLEICHEN.
- *
- * Und das ist kein Formalismus: Ein Download-Knopf ist die eine Art von
- * Fehler, die niemand bemerkt. Wer die Webapp benutzt, hat die App schon; wer
- * sie noch nicht hat, klickt einmal, bekommt die 404-Seite von GitHub und
- * fragt nicht nach. Änderte jemand das Etikett `apk-neuste` im Workflow, liefe
- * die App weiter (sie trägt die Adresse in sich) und nur der Knopf zeigte ins
- * Leere — genau die Kombination, die lange unentdeckt bleibt.
+ * Ausführlich: docs/begruendungen/test/apk-download.test.js.md#kopf
  *
  * ── Gegenproben (durchgeführt, Ergebnis im Commit) ──────────────────────────
  *   a) Etikett im Knopf auf `apk-alt` geändert  → Schritt 2 rot
@@ -73,7 +50,10 @@ test('2. dieselbe Adresse wie im Workflow und in der App', () => {
 
   // ── Aus der App: dieselbe Ablage, aus der sie sich selbst aktualisiert ────
   const kt = fs.readFileSync(path.join(__dirname, '..', '..', 'Android-App', 'core-data', 'src', 'main', 'java', 'ch', 'brickinventoryapp', 'util', 'AppUpdate.kt'), 'utf8');
-  const basis = kt.match(/UPDATE_RELEASE_BASIS\s*=\s*\n?\s*"([^"]+)"/)?.[1];
+  // Die Basis darf auf die Wurzel verweisen; Kotlin setzt $NAME beim Übersetzen ein.
+  const wurzel = kt.match(/UPDATE_RELEASE_WURZEL\s*=\s*\n?\s*"([^"]+)"/)?.[1];
+  const basis = kt.match(/UPDATE_RELEASE_BASIS\s*=\s*\n?\s*"([^"]+)"/)?.[1]
+    ?.replace('$UPDATE_RELEASE_WURZEL', wurzel ?? '$UPDATE_RELEASE_WURZEL');
   assert.ok(basis, 'UPDATE_RELEASE_BASIS ist in AppUpdate.kt nicht mehr zu finden.');
   assert.equal(adresse, `${basis}/${apkName}`,
     'Knopf und Selbst-Aktualisierung der App zeigen auf verschiedene Ablagen. ' +
@@ -148,7 +128,9 @@ test('signiert und veröffentlicht wird nur aus einem Etikett auf main, und Grad
 // entfernt → rot „… erst nach Freigabe“; die Fehlermeldung wieder mit „oder
 // als Repository-Secret“ → rot „… nur aus der Environment“.
 // Gegenprobe (03.11.2026): den Schritt „Herkunft des APK bescheinigen“ entfernt
-// → rot „… die Herkunft des APK wird bescheinigt“.
+// → rot „… die Herkunft des APK wird bescheinigt“. Seit sec17 B-N7 bescheinigt der Job
+// `bescheinigen` über android-bescheinigung.yml; Gegenprobe (05.11.2026): `uses:` dort
+// entfernt → rot, derselbe Satz.
 test('signiert wird in einem eigenen Job ohne Projektcode, geprüft und veröffentlicht danach', () => {
   const yml = fs.readFileSync(path.join(ROOT, '..', '.github', 'workflows', 'android.yml'), 'utf8')
     .split('\n').filter(z => !z.trimStart().startsWith('#')).join('\n');
@@ -175,12 +157,16 @@ test('signiert wird in einem eigenen Job ohne Projektcode, geprüft und veröffe
   assert.doesNotMatch(pruefen, /secrets\./);
 
   const release = job('release');
-  assert.match(release, /\n    needs: \[signieren, apk-pruefen\]\n/, 'veröffentlicht nur das geprüfte, signierte APK');
+  assert.match(release, /\n    needs: \[signieren, apk-pruefen, bescheinigen\]\n/, 'veröffentlicht nur das geprüfte, signierte APK');
   assert.match(release, /name: apk-signiert/);
   assert.match(release, /\n    environment: release\n/, 'das Release mit Schreibrecht läuft erst nach Freigabe in der Environment release');
-  assert.match(release, /\n    permissions:\n      contents: write\n      id-token: write\n      attestations: write\n/);
-  assert.match(release, /uses: actions\/attest-build-provenance@[0-9a-f]{40}/, 'die Herkunft des APK wird bescheinigt');
-  assert.match(release, /subject-path: Android-App\/app\/build\/outputs\/apk\/release\/BrickInventory\.apk/);
+  assert.match(release, /\n    permissions:\n      contents: write\n    defaults:/, 'der Release-Job schreibt nur, er bescheinigt nicht');
+  const bescheinigen = job('bescheinigen');
+  assert.match(bescheinigen, /\n    needs: \[signieren, apk-pruefen\]\n/);
+  assert.match(bescheinigen, /uses: \.\/\.github\/workflows\/android-bescheinigung\.yml/, 'die Herkunft des APK wird bescheinigt');
+  const aussteller = fs.readFileSync(path.join(ROOT, '..', '.github', 'workflows', 'android-bescheinigung.yml'), 'utf8');
+  assert.match(aussteller, /uses: actions\/attest-build-provenance@[0-9a-f]{40}/, 'die Herkunft des APK wird bescheinigt');
+  assert.match(aussteller, /subject-path: \|\n\s+\$\{\{ runner\.temp \}\}\/signiert\/apk\/release\/BrickInventory\.apk/);
   assert.doesNotMatch(signieren, /oder als Repository-Secret/, 'die Signier-Secrets kommen nur aus der Environment');
 });
 
@@ -206,8 +192,10 @@ test('Prüfsummen kommen als Pull-Request, Bildschirmfotos nur als PNG', () => {
   assert.match(vorschlag, /gh pr create --base "\$GITHUB_REF_NAME" --head "\$ZWEIG"/);
   assert.doesNotMatch(vorschlag, /HEAD:\$GITHUB_REF_NAME/, 'nie auf den Zweig des Laufs');
   assert.doesNotMatch(vorschlag, /python|gradlew/, 'mit Schreibrecht läuft kein Werkzeug aus dem Repository');
-  assert.match(job('pruefsummen'), /tools\/pruefsummen-vergleich\.py/, 'die Zusammenfassung entsteht ohne Schreibrecht');
-  for (const name of ['build', 'signieren', 'apk-pruefen', 'release', 'gegenproben', 'pruefsummen',
+  // Seit sec17 B-N2 ohne Schreibrecht UND ohne Gradle, in einem eigenen Job.
+  assert.match(job('pruefsummen-zusammenfassen'), /tools\/pruefsummen-vergleich\.py/, 'die Zusammenfassung entsteht ohne Schreibrecht');
+  assert.match(job('pruefsummen-zusammenfassen'), /\n    permissions:\n      contents: read\n/);
+  for (const name of ['build', 'signieren', 'apk-pruefen', 'release', 'gegenproben', 'pruefsummen', 'pruefsummen-zusammenfassen',
     'bildschirmfotos', 'bildschirmfotos-einchecken'])
     assert.doesNotMatch(job(name), /pull-requests: write/, `${name}: nur der vorschlagende Job legt Pull-Requests an`);
   const bilder = job('bildschirmfotos-einchecken');

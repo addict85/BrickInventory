@@ -1,33 +1,6 @@
 /**
  * Fehlende Bilder werden EINMAL geholt — nicht je Prozess und Besuch neu.
- *
- * ── Marcos Befund ───────────────────────────────────────────────────────────
- * „Beim ersten Scrollen im Katalog funktioniert es einwandfrei, wenn ich dann
- * weiter scrolle zu 1958, ist es wieder das gleiche Problem." Dazu der Log:
- * seitenweise `[set-img] HTTP 404 vom Bildserver` für Sets aus den Fünfzigern
- * und Sechzigern — und `docker stats` mit 142 % CPU im Container.
- *
- * Für alte Sets hat Rebrickable meist gar kein Bild. Jede Kachel dort löste
- * einen Roundtrip zum CDN aus, der ins Leere ging.
- *
- * ── Warum die vorhandenen Merker nicht reichten ─────────────────────────────
- * Es GAB zwei: Der Bild-Proxy hielt 404er fünfzehn Minuten fest, der Katalog
- * merkte sich versuchte Sets. Beide lagen im Arbeitsspeicher EINES Prozesses —
- * und der Server läuft im Cluster mit mehreren Arbeitsprozessen (im Log:
- * 16, 22, 23, 24). Dasselbe fehlende Bild wurde deshalb einmal je Prozess
- * geholt, nach einem Neustart erneut, und nach fünfzehn Minuten wieder.
- *
- * Das ist die Klasse Fehler, die in dieser Reihe schon mehrfach vorkam: Ein
- * Schutz existiert, aber sein Geltungsbereich ist enger als das Problem.
- *
- * ── Gemessen ────────────────────────────────────────────────────────────────
- * Ein Jahrgang mit 60 bildlosen Sets:
- *
- *     1. Besuch                    60 Versuche
- *     2. Besuch                     0 weitere
- *     frischer Prozess              weiss Bescheid
- *
- * Voraussetzung: Test-DB via TEST_DATABASE_URL.
+ * Ausführlich: docs/begruendungen/test/image-misses-db.test.js.md#kopf
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -43,7 +16,7 @@ let versuche = 0;
 const echtesRequire = Module.prototype.require;
 Module.prototype.require = function (name) {
   const m = echtesRequire.apply(this, arguments);
-  // Seit Nachtrag 125 liegt downloadSetImage in src/katalog/bilder/setImages.ts statt im
+  // Seit einer früheren Runde liegt downloadSetImage in src/katalog/bilder/setImages.ts statt im
   // Router — der Abfang muss dorthin zeigen, sonst greift er ins Leere und
   // der Test misst still den echten Download.
   if (typeof name === 'string' && /setImages(\.js)?$/.test(name) && m && m.downloadSetImage) {
@@ -55,6 +28,7 @@ Module.prototype.require = function (name) {
 };
 
 const _req = require('./helpers/sources').buildAndRequire();
+const { dbOderSkip } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
 const db = _req('db/database.js');
 const express = require(path.join(ROOT, 'node_modules', 'express'));
@@ -62,14 +36,7 @@ const express = require(path.join(ROOT, 'node_modules', 'express'));
 test('bildlose Sets werden nicht immer wieder beim CDN gesucht',
   { concurrency: 1 }, async (t) => {
 
-  try { await db.initSchema(); }
-  catch (e) {
-    if (process.env.REQUIRE_DB === '1')
-      throw new Error(`REQUIRE_DB=1, aber die Test-DB ist nicht erreichbar: ${e.message}`);
-    t.skip('Test-DB nicht erreichbar'); return;
-  }
-  const mc = await db.pool.connect();
-  try { await _req('db/migrate.js').runMigrations(mc); } finally { mc.release(); }
+  if (!await dbOderSkip(t, _req)) return;
 
   const NUTZER = `im-${process.pid}`;
   const PRAEFIX = `IM${process.pid}_`;
@@ -99,7 +66,7 @@ test('bildlose Sets werden nicht immer wieder beim CDN gesucht',
   };
 
   try {
-    // Die Liste löst seit Nachtrag 105 gar keine Bildarbeit mehr aus (sie lief
+    // Die Liste löst seit einer früheren Runde gar keine Bildarbeit mehr aus (sie lief
     // an allen Drosselungen vorbei). Der Weg führt jetzt über den Proxy und
     // jobs/imageQueue.ts — geprüft wird deshalb der MERKER selbst, nicht mehr
     // die Liste.
@@ -111,11 +78,7 @@ test('bildlose Sets werden nicht immer wieder beim CDN gesucht',
       // Der Kern der Sache: Der Server läuft im Cluster. Ein Merker im
       // Arbeitsspeicher hilft nur DEM Prozess, der ihn angelegt hat — bei vier
       // Arbeitsprozessen wird dasselbe Bild viermal geholt.
-      //
-      // Seit Nachtrag 103 ist das Lesen rein im Arbeitsspeicher (eine Abfrage
-      // je Bild leerte den Verbindungspool). Das Wissen wandert im Takt in die
-      // Tabelle und von dort in die anderen Prozesse; hier wird beides von Hand
-      // angestossen, um den frischen Prozess nachzustellen.
+      // Ausführlich: docs/begruendungen/test/image-misses-db.test.js.md#im-stelle
       const IM = _req('src/katalog/bilder/imageMisses.js');
       IM.merkeFehlend('set:' + PRAEFIX + '_probe');
       await IM._schreibePuffer();

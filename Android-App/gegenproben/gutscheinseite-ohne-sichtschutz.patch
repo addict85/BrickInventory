@@ -1,0 +1,17 @@
+Gegenprobe: Die Gutscheinseite setzt keinen Sichtschutz
+Modul: app
+Test: ch.brickinventoryapp.GutscheinSichtschutzAnzeigeTest
+Rot: die Gutscheinseite ist geschuetzt
+
+diff --git a/Android-App/feature-finanzen/src/main/java/ch/brickinventoryapp/ui/screens/GutscheineUnterseite.kt b/Android-App/feature-finanzen/src/main/java/ch/brickinventoryapp/ui/screens/GutscheineUnterseite.kt
+index 9028115..60eb40f 100644
+--- a/Android-App/feature-finanzen/src/main/java/ch/brickinventoryapp/ui/screens/GutscheineUnterseite.kt
++++ b/Android-App/feature-finanzen/src/main/java/ch/brickinventoryapp/ui/screens/GutscheineUnterseite.kt
+@@ -25,7 +25,6 @@ fun GutscheineRoute(
+     onZurueck: () -> Unit,
+ ) {
+     val gutscheinZustand by gvm.state.collectAsStateWithLifecycle()
+-    Sichtschutz()
+     // PIN kopieren und Gutscheine löschen: kein Tipp durch eine Überlagerung.
+     Ueberdeckungsschutz()
+     // Kopiert wird über GeheimeZwischenablage (nach einer Minute wieder leer); die

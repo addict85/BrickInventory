@@ -1,21 +1,6 @@
 /**
  * Bestand anlegen und lesen — für Testaufbauten.
- *
- * ── Warum es diese Datei gibt ───────────────────────────────────────────────
- *
- * Bis Migration 0036 stand die Stückzahl eines Sets in `sets.quantity`, und
- * jeder Testaufbau schrieb sie dort hin:
- *
- *     INSERT INTO sets (user_id, set_number, quantity) VALUES ($1,$2,1)
- *
- * GEMESSEN: 65-mal, in 48 Dateien. Die Spalte ist weg (sie lief mit den
- * Erfassungen auseinander — sets.quantity = 10 bei drei Erfassungen mit Summe
- * 7), die Stückzahl steht in `set_acquisitions`. Ein Bestand ist seitdem ZWEI
- * Zeilen: eine in `sets` („dieses Konto hält dieses Set") und eine je Kauf.
- *
- * Diese zwei Zeilen 65-mal hinzuschreiben hiesse: 65 Stellen, die beim
- * nächsten Schnitt wieder einzeln angefasst werden müssen. Hier steht es
- * einmal.
+ * Ausführlich: docs/begruendungen/test/helpers/bestand.js.md#kopf
  */
 const path = require('node:path');
 
@@ -92,19 +77,7 @@ async function haltZeile(db, userId, setNumber) {
 // ═══════════════════════════════════════════════════════════════════════════
 // Teile und Minifiguren
 // ═══════════════════════════════════════════════════════════════════════════
-//
-// Dieselbe Geschichte wie bei den Sets, eine Migration spaeter: Bis 0038 stand
-// die Stückzahl in `parts.quantity` bzw. `minifigs.quantity`, und 79
-// Testaufbauten schrieben sie dorthin (gemessen). Die Spalte trug ZWEI
-// Bedeutungen, und beide waren Abschriften:
-//
-//   source='manual'  Summe der Erfassungen       → part_acquisitions
-//   source='set'     Stückzahl im Set            → set_teile.quantity
-//
-// Ein Bestand ist seitdem ZWEI Zeilen, und welche zweite es ist, haengt an der
-// Herkunft. Genau das nehmen die beiden Funktionen hier auseinander — damit
-// ein Testaufbau sagt, WAS er herstellt, und nicht, in welche Spalten er
-// schreibt.
+// Ausführlich: docs/begruendungen/test/helpers/bestand.js.md#stelle
 
 /**
  * „Dieses Konto hält dieses Teil."
@@ -149,24 +122,8 @@ async function haeltTeil(db, userId, partNumber, opt = {}) {
     // ON CONFLICT auf die Tagesregel: Ein zweiter Aufruf fuer dieselbe
     // Position SETZT die Menge, statt abzubrechen oder sie zu addieren.
     // Das ist die Zusage dieser Funktion — „dieses Konto haelt N davon",
-    // nicht „kauf N dazu". Wer zwei Kaeufe braucht, gibt zwei Daten mit
-    // (opt.am) oder ruft erfasseTeil() zweimal.
-    //
-    // ── `COALESCE(condition,'N')` seit Migration 0040 ────────────────────
-    //
-    // Die Spaltenliste muss den Index WOERTLICH treffen; der Name genuegt
-    // nicht. Ohne diese Ergaenzung sagt Postgres „there is no unique or
-    // exclusion constraint matching the ON CONFLICT specification" — und
-    // zwar in 25 Tests auf einmal, weil fast jeder DB-Test ueber diesen
-    // Helfer Bestand anlegt. Genau so ist es passiert.
-    //
-    // Die Zusage aendert sich dadurch leicht: „N davon" gilt jetzt je
-    // ZUSTAND. Zweimal mit verschiedenem `opt.zustand` am selben Tag ergibt
-    // zwei Zeilen — was der Sache entspricht, seit zwei Zustaende zwei
-    // Kaeufe sind.
-    // Erst die Zeile desselben Tages und Zustands entfernen, dann neu: Der
-    // eindeutige Index enthält seit Migration 0047 auch Preis und Währung, ein
-    // ON CONFLICT auf Tag und Zustand allein träfe ihn nicht mehr.
+    // nicht „kauf N dazu". Wer zwei Kaeufe braucht, gibt zwei Daten mit …
+    // Ausführlich: docs/begruendungen/test/helpers/bestand.js.md#stelle-2
     await db.run(
       `DELETE FROM part_acquisitions
         WHERE user_id = $1 AND part_number = $2 AND color_id = $3 AND condition = $4
@@ -301,5 +258,23 @@ async function musterSammlung(db, uid) {
   await db.run(`INSERT INTO storage_locations (user_id, name) VALUES ($1, 'Regal Keller')`, [uid]);
 }
 
-module.exports = { musterSammlung, haeltSet, erfasse, mengeVon, haltZeile,
+/**
+ * musterSammlung plus ein verknüpftes Unterkonto „<Konto>_kind“, das ein Set
+ * der Sammlung zu einem anderen Preis hält: Haushaltszeilen, Besitzer und
+ * „Verknüpfung lösen“ kommen so in die gemessenen Ansichten. starteApp löscht
+ * Konten mit dem Präfix „<Konto>_“ mit.
+ */
+async function musterHaushalt(db, uid) {
+  await musterSammlung(db, uid);
+  const { username } = await db.get('SELECT username FROM users WHERE id = $1', [uid]);
+  const kind = `${username}_kind`;
+  await db.run('DELETE FROM users WHERE username = $1', [kind]);
+  const kid = (await db.get(`INSERT INTO users (username, email, password_hash, is_active, email_verified)
+    VALUES ($1, $2, 'x', true, true) RETURNING id`, [kind, `${kind}@example.org`])).id;
+  await db.run('INSERT INTO account_links (main_user_id, sub_user_id) VALUES ($1, $2)', [uid, kid]);
+  await haeltSet(db, kid, '21318-1', 1, { preis: 210, am: '2026-06-02T10:00:00Z' });
+  return kid;
+}
+
+module.exports = { musterSammlung, musterHaushalt, haeltSet, erfasse, mengeVon, haltZeile,
                    haeltTeil, haeltFigur, teilmengeVon, figurmengeVon };

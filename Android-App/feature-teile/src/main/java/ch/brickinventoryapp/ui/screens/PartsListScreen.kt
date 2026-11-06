@@ -1,5 +1,13 @@
 package ch.brickinventoryapp.ui.screens
 
+import ch.brickinventoryapp.ui.normalisiert
+import ch.brickinventoryapp.ui.PlPart
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import ch.brickinventoryapp.ui.components.GedrosselteAnsage
+import ch.brickinventoryapp.ui.components.ansagen
+import ch.brickinventoryapp.ui.components.KaestchenZeile
+import ch.brickinventoryapp.ui.theme.farbeAusHex
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.lazy.LazyColumn
@@ -8,13 +16,12 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.background
+import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
-import androidx.compose.runtime.saveable.listSaver
 import androidx.compose.runtime.saveable.rememberSaveable
-import kotlinx.coroutines.launch
 import androidx.compose.material.icons.filled.PictureAsPdf
 import androidx.compose.material.icons.filled.Inventory2
 import androidx.compose.ui.Alignment
@@ -29,35 +36,102 @@ import androidx.compose.ui.unit.dp
 import coil3.ImageLoader
 import coil3.request.ImageRequest
 import coil3.request.crossfade
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.MutableStateFlow
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import ch.brickinventoryapp.ressourcen.R
-import androidx.compose.ui.res.vectorResource
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.input.ImeAction
-import androidx.core.graphics.toColorInt
 import ch.brickinventoryapp.util.NumericInput
+import ch.brickinventoryapp.ui.TeilelisteUiState
+import ch.brickinventoryapp.ui.viewmodel.TeilelisteViewModel
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import ch.brickinventoryapp.ui.theme.Abstaende
 import androidx.compose.material.icons.automirrored.filled.ListAlt
+import ch.brickinventoryapp.ui.components.vorgelesenAls
+import ch.brickinventoryapp.service.teilelistenAuswahl
+import ch.brickinventoryapp.ui.components.HinweisText
+import ch.brickinventoryapp.ui.components.MitTooltip
+import ch.brickinventoryapp.ui.components.ProduktBild
+import ch.brickinventoryapp.ui.components.ScanKnopf
+import ch.brickinventoryapp.ui.components.ZustandsHinweis
+import ch.brickinventoryapp.ui.components.bewegungReduziert
+import ch.brickinventoryapp.ui.components.farbUebersetzer
+import ch.brickinventoryapp.ui.components.katalogName
+import ch.brickinventoryapp.ui.components.mitSchrift
+import ch.brickinventoryapp.ui.components.stueckzahl
+import ch.brickinventoryapp.ui.mengeAusSet
 
 // ── Sortierung wie Webapp und PDF ──
 //
 // Beide sortieren mit localeCompare: Farben nach ICU-Collation (de), Teilenummern
 // ICU mit numerischen Segmenten. Der ICU-RuleBasedCollator ist die Entsprechung
 // auf Android; eine eigene Sortierung wich sichtbar ab.
-private val plColorCollator: android.icu.text.Collator =
+internal val plColorCollator: android.icu.text.Collator =
     android.icu.text.Collator.getInstance(java.util.Locale.GERMAN)
 
 private val plPartCollator: android.icu.text.Collator =
     (android.icu.text.Collator.getInstance(java.util.Locale.GERMAN) as android.icu.text.RuleBasedCollator)
         .apply { numericCollation = true }
 
-private fun comparePartNumbers(a: String, b: String): Int = plPartCollator.compare(a, b)
+internal fun comparePartNumbers(a: String, b: String): Int = plPartCollator.compare(a, b)
 
+/**
+ * Die Bauliste am Navigationsziel: holt das ViewModel, nimmt einen Scan an und
+ * öffnet ein fertiges PDF. Der Bildschirm darunter bekommt nur Zustand und Ereignisse.
+ */
+@Composable
+fun PartsListRoute(
+    serverUrl: String,
+    imageLoader: ImageLoader,
+    onScanBarcode: () -> Unit,
+    hatUnterkonten: Boolean,
+    barcodeSetNumber: String?,
+    onBarcodeConsumed: () -> Unit,
+    listState: LazyListState,
+    manuelleErfassungAnfordern: Boolean,
+    onManuelleErfassungQuittiert: () -> Unit,
+    vm: TeilelisteViewModel = hiltViewModel(),
+) {
+    val zustand by vm.zustand.collectAsStateWithLifecycle()
+    val pdfStatus by vm.pdfExportStatus.collectAsStateWithLifecycle()
+    val ctx = LocalContext.current
+    val oeffnenMit = stringResource(R.string.pdfexp_oeffnen_mit)
+    LaunchedEffect(barcodeSetNumber) {
+        if (barcodeSetNumber != null) {
+            vm.fuegeHinzu(barcodeSetNumber)
+            onBarcodeConsumed()
+        }
+    }
+    // Das fertige PDF einmal zur Auswahl anbieten; ein Activity-Start gehört nicht ins ViewModel.
+    LaunchedEffect(zustand.pdfDatei) {
+        if (zustand.pdfDatei != null) {
+            ctx.startActivity(teilelistenAuswahl(ctx, oeffnenMit))
+            vm.pdfGeoeffnet()
+        }
+    }
+    PartsListScreen(
+        zustand = zustand,
+        serverUrl = serverUrl,
+        imageLoader = imageLoader,
+        onScanBarcode = onScanBarcode,
+        onFuegeHinzu = vm::fuegeHinzu,
+        onEntferne = vm::entferne,
+        onLeere = vm::leere,
+        onErstelle = vm::erstelle,
+        onLadeBestand = vm::ladeBestand,
+        onNurLose = vm::setzeNurLose,
+        onMitUnterkonten = vm::setzeMitUnterkonten,
+        onExportPdf = vm::exportiere,
+        onPdfFehlerGesehen = vm::pdfFehlerGesehen,
+        pdfStatus = pdfStatus,
+        hatUnterkonten = hatUnterkonten,
+        listState = listState,
+        manuelleErfassungAnfordern = manuelleErfassungAnfordern,
+        onManuelleErfassungQuittiert = onManuelleErfassungQuittiert,
+    )
+}
 
 // ExperimentalLayoutApi für die FlowRow der Set-Chips — über der Funktion und mit
 // kurzem Namen, so wie SplitFileImportsTest sie sucht; ein @OptIn im Rumpf
@@ -65,105 +139,57 @@ private fun comparePartNumbers(a: String, b: String): Int = plPartCollator.compa
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 fun PartsListScreen(
+    zustand: TeilelisteUiState,
     serverUrl: String,
-    authToken: String = "",
-    onExportPdf: suspend (List<PlSet>, List<PlPart>) -> String? = { _, _ -> "Not implemented" },
-    pdfStatus: StateFlow<String?> = MutableStateFlow(null),
     imageLoader: ImageLoader,
     onScanBarcode: () -> Unit,
-    onResolveSet: suspend (String) -> Pair<String, List<PlPart>>,
-    /**
-     * „Kann ich das bauen?“ — den eigenen Bestand zu dieser Liste holen. Gibt die
-     * Liste mit gesetztem `vorhanden` zurück, oder null bei einem Fehler. Die Vorgabe
-     * reicht sie unverändert durch, damit der Bildschirm in einer Vorschau ohne
-     * ViewModel baut.
-     */
-    onLadeBestand: suspend (List<PlPart>, Boolean, Boolean) -> List<PlPart>? = { p, _, _ -> p },
+    onFuegeHinzu: (String) -> Unit = {},
+    onEntferne: (Int) -> Unit = {},
+    onLeere: () -> Unit = {},
+    /** Nimmt die getippte Nummer mit: ein Schritt statt zwei. */
+    onErstelle: (String) -> Unit = {},
+    /** „Kann ich das bauen?“ — den eigenen Bestand zu dieser Liste holen. */
+    onLadeBestand: () -> Unit = {},
+    onNurLose: (Boolean) -> Unit = {},
+    onMitUnterkonten: (Boolean) -> Unit = {},
+    onExportPdf: () -> Unit = {},
+    onPdfFehlerGesehen: () -> Unit = {},
+    /** Fortschritt des laufenden PDF-Exports („…noch ~Xs“), null ohne Export. */
+    pdfStatus: String? = null,
     /**
      * Hat dieses Konto Unterkonten? Nur dann steht die Wahl „Unterkonten mit
      * einbeziehen“ da — ein Schalter ohne Wirkung ist schlechter als keiner.
      */
     hatUnterkonten: Boolean = false,
-    barcodeSetNumber: String? = null,
-    onBarcodeConsumed: () -> Unit = {},
     /**
      * Scroll-Zustand von aussen: Der Bildschirm wird beim Weg zum Barcode-Scanner
      * verlassen; ein eigener State wäre bei der Rückkehr zurückgesetzt.
      */
     listState: LazyListState = rememberLazyListState(),
-    /**
-     * Der Scan blieb ohne Setnummer → Cursor ins Set-Feld, Tastatur offen. Die
-     * Teileliste erfasst über das Feld auf der Seite, nicht über einen Dialog. Als
-     * Parameter, weil dieser Bildschirm kein ViewModel bekommt.
-     */
+    /** Der Scan blieb ohne Setnummer → Cursor ins Set-Feld, Tastatur offen. */
     manuelleErfassungAnfordern: Boolean = false,
     onManuelleErfassungQuittiert: () -> Unit = {},
 ) {
+    // Nur das Eingabefeld ist Zustand des Bildschirms; alles andere hält das ViewModel.
     var setInput  by rememberSaveable { mutableStateOf("") }
     val setFeldFokus = remember { FocusRequester() }
-    // rememberSaveable: Der Weg zum Barcode-Scanner führt aus dem Bildschirm heraus,
-    // und mit remember wären die gesammelten Sets nach jedem Scan weg. Gespeichert
-    // werden nur die Setnummern (eigener Saver); Namen holt das Erstellen vom Server.
-    var sets      by rememberSaveable(
-        stateSaver = listSaver(
-            save    = { liste -> liste.map { it.setNumber } },
-            restore = { nummern -> nummern.map { PlSet(it, it) } }
-        )
-    ) { mutableStateOf(listOf<PlSet>()) }
-    var parts     by remember { mutableStateOf(listOf<PlPart>()) }
-    var isLoading by remember { mutableStateOf(false) }
-    var status    by rememberSaveable { mutableStateOf("") }
-    var generated by rememberSaveable { mutableStateOf(false) }
-    // rememberSaveable: Die Wahl gehoert zur Frage, nicht zur Koroutine — sie
-    // soll eine Drehung ueberleben, anders als die Ladeanzeige daneben.
-    var nurLose   by rememberSaveable { mutableStateOf(false) }
-    // Vorgabe aus: Gemeint sind zuerst die eigenen Sets.
-    var mitUnterkonten by rememberSaveable { mutableStateOf(false) }
-    val pdfStatusText by pdfStatus.collectAsStateWithLifecycle()
-
-    val scope = rememberCoroutineScope()
-
-    // String-Templates einmal composabel aufloesen, dann in Lambdas (scope.launch etc.)
-    // per String.format() weiterverwenden (dort ist stringResource() nicht erlaubt).
-    val setAlreadyAddedMsg = stringResource(R.string.partslist_set_already_added)
-    // Mengenformen brauchen die ZAHL zum Formatierzeitpunkt, und der liegt in
-    // den Rueckrufen unten. `pluralStringResource` ist @Composable und dort
-    // nicht erlaubt — `LocalResources` liefert eine Resources, die auch dort
-    // gilt und bei einem Wechsel der Konfiguration mitgeht.
+    val sets = zustand.sets
+    val parts = zustand.parts
+    val isLoading = zustand.isLoading
+    val status = zustand.status
+    val generated = zustand.generated
+    val nurLose = zustand.nurLose
+    val mitUnterkonten = zustand.mitUnterkonten
     val mengen = androidx.compose.ui.platform.LocalResources.current
-    val loadingSetFmt      = stringResource(R.string.partslist_loading_set)
-    val errorForSetFmt     = stringResource(R.string.partslist_error_for_set)
-    val noColorLabel       = stringResource(R.string.partslist_no_color)
-    val farbe = ch.brickinventoryapp.ui.components.farbUebersetzer()
-    val rbPrefixFmt        = stringResource(R.string.partslist_rb_prefix)
-    val bestandVollstaendigText = stringResource(R.string.partslist_owned_complete)
-    val bestandFehlerText       = stringResource(R.string.partslist_owned_error)
 
-    // Handle barcode scanner result from Gallery flow
     fun addSet(nr: String) {
-        val normalized = if (nr.contains("-")) nr.trim() else "${nr.trim()}-1"
-        if (sets.any { it.setNumber == normalized }) { status = setAlreadyAddedMsg; return }
-        sets = sets + PlSet(normalized, normalized)
+        onFuegeHinzu(nr)
         setInput = ""
-        status = mengen.getQuantityString(
-            R.plurals.partslist_sets_in_list, sets.size, sets.size)
     }
 
-    LaunchedEffect(barcodeSetNumber) {
-        if (barcodeSetNumber != null) {
-            addSet(barcodeSetNumber)
-            onBarcodeConsumed()
-        }
-    }
-
-
-    // Nach einer Drehung passt `generated` nicht mehr zu `parts`: Die Teileliste ist
-    // nur `remember` (tausend Einträge sprengten das Bundle), `generated` ist
-    // gespeichert. Die Sets bleiben, „Erzeugen“ stellt alles wieder her.
-    LaunchedEffect(Unit) { if (parts.isEmpty()) generated = false }
-
-    fun reset() {
-        sets = listOf(); parts = listOf(); status = ""; generated = false
+    fun erstellen() {
+        onErstelle(setInput)
+        setInput = ""
     }
 
     Column(Modifier.fillMaxSize()) {
@@ -185,9 +211,11 @@ fun PartsListScreen(
                     OutlinedTextField(
                         value = setInput,
                         // Filter und Tastaturwahl wie jedes Setnummernfeld (util/NumericInput.kt).
-                        // Done statt Next, weil rechts der Knopf „+“ kommt, kein Feld.
+                        // „Fertig“ und das „+“ im Feld nehmen das Set in die Liste: ein Weg hinein,
+                        // ein Knopf zum Erstellen.
                         onValueChange = { setInput = NumericInput.setNumber(it) },
                         keyboardOptions = NumericInput.ganzzahlTastatur(ImeAction.Done),
+                        keyboardActions = KeyboardActions(onDone = { if (setInput.isNotBlank()) addSet(setInput) }),
                         // Beschriftung statt Platzhalter: Der lange Platzhalter brach im Feld
                         // zweizeilig um und verschwand beim Tippen.
                         label = { Text(stringResource(R.string.gallery_set_number)) },
@@ -195,136 +223,69 @@ fun PartsListScreen(
                         singleLine = true,
                         shape = MaterialTheme.shapes.large,
                         trailingIcon = {
-                            if (setInput.isNotBlank()) IconButton(onClick = { setInput = "" }) {
-                                Icon(Icons.Default.Clear, stringResource(R.string.cd_search_clear), Modifier.size(18.dp))
+                            if (setInput.isNotBlank()) MitTooltip(stringResource(R.string.partslist_add_set)) {
+                                IconButton(onClick = { addSet(setInput) }) {
+                                    Icon(Icons.Default.Add, stringResource(R.string.partslist_add_set))
+                                }
                             }
                         }
                     )
                     // Derselbe Scan-Knopf wie neben jeder Suche; ein schwebender Knopf mitten
                     // in einer Zeile sah aus wie der eine Hauptknopf des Bildschirms.
-                    ch.brickinventoryapp.ui.components.ScanKnopf(onScanBarcode,
-                        beschreibung = stringResource(R.string.partslist_scan))
-                    Button(
-                        onClick = { if (setInput.isNotBlank()) addSet(setInput) },
-                        enabled = setInput.isNotBlank(),
-                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
-                    ) { Text("+") }
+                    ScanKnopf(onScanBarcode)
                 }
 
-                // Set chips
-                if (sets.isNotEmpty()) {
+                // Die gesammelten Sets mit ihrem Zurücksetzen: Es leert diese Liste und steht
+                // deshalb bei ihr, nicht frei unter den Knöpfen. Ohne Inhalt fehlt es ganz.
+                if (sets.isNotEmpty() || generated) {
+                    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                        Text(mengen.getQuantityString(R.plurals.partslist_sets_in_list, sets.size, sets.size),
+                            style = MaterialTheme.typography.labelLarge,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.weight(1f))
+                        TextButton(
+                            onClick = onLeere,
+                            colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error),
+                        ) { Text(stringResource(R.string.partslist_reset)) }
+                    }
                     FlowRow(
                         horizontalArrangement = Arrangement.spacedBy(6.dp),
                         verticalArrangement = Arrangement.spacedBy(Abstaende.winzig)
                     ) {
                         sets.forEachIndexed { i, s ->
                             AssistChip(
-                                onClick = { sets = sets.toMutableList().also { it.removeAt(i) }; generated = false },
+                                onClick = { onEntferne(i) },
                                 label = { Text(if (s.name != s.setNumber) "${s.setNumber} — ${s.name}" else s.setNumber,
-                                    style = MaterialTheme.typography.labelSmall) },
-                                trailingIcon = { Icon(Icons.Default.Close, null, Modifier.size(14.dp)) }
+                                    style = MaterialTheme.typography.bodySmall) },
+                                trailingIcon = { Icon(Icons.Default.Close, null, Modifier.size(mitSchrift(14.dp))) }
                             )
                         }
                     }
                 }
 
-                // Action buttons
-                Row(horizontalArrangement = Arrangement.spacedBy(Abstaende.klein)) {
-                    Button(
-                        onClick = {
-                            isLoading = true; generated = false; parts = listOf()
-                            scope.launch {
-                                val combined = mutableMapOf<String, PlPart>()
-                                sets.toList().forEachIndexed { i, s ->
-                                    status = String.format(loadingSetFmt, s.setNumber, i+1, sets.size)
-                                    try {
-                                        val (name, newParts) = onResolveSet(s.setNumber)
-                                        sets = sets.toMutableList().also { it[i] = s.copy(name = name) }
-                                        newParts.forEach { p ->
-                                            val key = "${p.blPartNumber ?: p.partNumber}|${p.colorName}"
-                                            combined[key] = combined[key]?.copy(quantity = combined[key]!!.quantity + p.quantity) ?: p
-                                        }
-                                    } catch (_: Exception) { status = String.format(errorForSetFmt, s.setNumber) }
-                                }
-                                parts = combined.values.sortedWith(
-                                    Comparator { a, b ->
-                                        val cmp = plColorCollator.compare(a.colorName, b.colorName)
-                                        if (cmp != 0) cmp
-                                        else comparePartNumbers(
-                                            a.blPartNumber ?: a.partNumber,
-                                            b.blPartNumber ?: b.partNumber
-                                        )
-                                    }
-                                )
-                                // Zwei Zahlen, zwei Uebereinstimmungen: ein
-                                // <plurals> stimmt nur mit EINER ueberein,
-                                // darum zwei Bruchstuecke und ein Rahmen.
-                                val typen = parts.size
-                                val stueck = parts.sumOf { it.quantity }
-                                status = mengen.getString(R.string.partslist_summary,
-                                    mengen.getQuantityString(R.plurals.partslist_summary_types, typen, typen),
-                                    mengen.getQuantityString(R.plurals.partslist_summary_parts, stueck, stueck))
-                                isLoading = false; generated = true
-                            }
-                        },
-                        enabled = sets.isNotEmpty() && !isLoading,
-                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
-                    ) {
-                        // Nur das Symbol wird zum Kreisel, die Beschriftung bleibt: Sonst
-                        // schrumpfte der Knopf, und die Zeile spränge. Kreisel und Symbol sind
-                        // beide 16 dp breit.
-                        if (isLoading) CircularProgressIndicator(Modifier.size(16.dp),
-                            color = MaterialTheme.colorScheme.onPrimary, strokeWidth = 2.dp)
-                        else Icon(Icons.Default.Build, null, Modifier.size(16.dp))
+                // Eine Hauptsache in voller Breite: Erstellen, mit der Zahl der Sets, die es
+                // nimmt — das getippte eingeschlossen.
+                val anzahl = sets.size + (if (setInput.isNotBlank() && sets.none { it.setNumber == normalisiert(setInput) }) 1 else 0)
+                Button(
+                    onClick = { erstellen() },
+                    enabled = anzahl > 0 && !isLoading,
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    // Nur das Symbol wird zum Kreisel, die Beschriftung bleibt: Sonst
+                    // schrumpfte der Knopf, und die Zeile spränge. Kreisel und Symbol sind
+                    // beide 16 dp breit.
+                    if (isLoading) CircularProgressIndicator(Modifier.size(16.dp),
+                        color = MaterialTheme.colorScheme.onPrimary, strokeWidth = 2.dp)
+                    else Icon(Icons.AutoMirrored.Filled.ListAlt, null, Modifier.size(mitSchrift(16.dp)))
+                    Spacer(Modifier.width(Abstaende.winzig))
+                    Text(stringResource(R.string.partslist_generate))
+                    if (anzahl > 0) {
                         Spacer(Modifier.width(Abstaende.winzig))
-                        Text(stringResource(R.string.partslist_generate))
+                        Text(pluralStringResource(R.plurals.partslist_generate_anzahl, anzahl, anzahl))
                     }
-                    val ctx = LocalContext.current
-                    if (generated && parts.isNotEmpty()) {
-                        // remember, NICHT rememberSaveable: Der Wert gehoert
-                        // zu einer laufenden Koroutine. Ueberlebte er die
-                        // Drehung, kaeme "laeuft" zurueck, ohne dass noch etwas
-                        // laeuft — Knopf gesperrt, Kreisel fuer immer.
-                        var isExporting by remember { mutableStateOf(false) }
-                        var pdfError by remember { mutableStateOf<String?>(null) }
-                        if (pdfError != null) {
-                            androidx.compose.material3.AlertDialog(
-                                onDismissRequest = { pdfError = null },
-                                confirmButton = { TextButton(onClick = { pdfError = null }) { Text(stringResource(R.string.partslist_ok)) } },
-                                title = { Text(stringResource(R.string.partslist_pdf_error_title)) },
-                                text = { Text(pdfError ?: "") }
-                            )
-                        }
-                        Button(
-                            onClick = {
-                                isExporting = true
-                                scope.launch {
-                                    val err = onExportPdf(sets.toList(), parts.toList())
-                                    isExporting = false
-                                    if (err != null) pdfError = err
-                                }
-                            },
-                            enabled = !isExporting,
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = MaterialTheme.colorScheme.tertiary)
-                        ) {
-                            // Nur das Symbol wird zum Kreisel, die Beschriftung bleibt: Sonst
-                            // schrumpfte der Knopf, und die Zeile spränge. Kreisel und Symbol sind
-                            // beide 16 dp breit.
-                            if (isExporting) CircularProgressIndicator(Modifier.size(16.dp),
-                                color = MaterialTheme.colorScheme.onTertiary, strokeWidth = 2.dp)
-                            else Icon(Icons.Default.PictureAsPdf, null, Modifier.size(16.dp))
-                            Spacer(Modifier.width(Abstaende.winzig))
-                            Text("PDF")
-                        }
-                    }
-                    // Nur mit Inhalt: Ein roter Knopf auf der leeren Seite lud zum Tippen ein,
-                    // ohne etwas zu tun.
-                    OutlinedButton(
-                        onClick = { reset() },
-                        enabled = sets.isNotEmpty() || generated || status.isNotBlank(),
-                        colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error)
-                    ) { Text(stringResource(R.string.partslist_reset)) }
+                }
+                if (generated && parts.isNotEmpty()) {
+                    PdfKnopf(zustand.isExporting, zustand.pdfError, onExportPdf, onPdfFehlerGesehen)
                 }
 
                 // ── Eigener Bestand: eine Zeile für sich ──
@@ -333,36 +294,13 @@ fun PartsListScreen(
                 // trägt Zahlen in die fertige Liste ein. „nur lose Teile“ steht neben dem Knopf,
                 // weil die Wahl von Frage zu Frage wechselt.
                 if (generated && parts.isNotEmpty()) {
-                    // remember, nicht rememberSaveable, wie beim PDF-Export. Der Name auf `…Laeuft`
-                    // sagt BildschirmZustandTest: laufender Vorgang, darf eine Drehung nicht
-                    // überleben.
-                    var bestandLaeuft by remember { mutableStateOf(false) }
+                    // Läuft im ViewModel: Eine Drehung bricht den Abgleich nicht ab.
+                    val bestandLaeuft = zustand.bestandLaeuft
                     // Untereinander: Die Beschriftung der Wahl ist lang und passt auf einem
                     // 360-dp-Telefon nicht neben den Knopf.
                     Column(verticalArrangement = Arrangement.spacedBy(Abstaende.winzig)) {
                         Button(
-                            onClick = {
-                                bestandLaeuft = true
-                                scope.launch {
-                                    val neu = onLadeBestand(parts.toList(), nurLose, mitUnterkonten)
-                                    bestandLaeuft = false
-                                    if (neu == null) { status = bestandFehlerText; return@launch }
-                                    parts = neu
-                                    val fehlen = neu.filter { (it.vorhanden ?: 0) < it.quantity }
-                                    val fehlendeStueck =
-                                        fehlen.sumOf { it.quantity - (it.vorhanden ?: 0) }
-                                    status = if (fehlen.isEmpty()) bestandVollstaendigText
-                                    // Die Einzahlform laesst die Klammer weg: Fehlt
-                                    // genau EIN Teil, ist die Zahl der
-                                    // verschiedenen zwangslaeufig auch eins — die
-                                    // Angabe waere dort nur Wiederholung.
-                                    else mengen.getQuantityString(
-                                        R.plurals.partslist_owned_missing, fehlendeStueck, fehlendeStueck,
-                                        mengen.getQuantityString(
-                                            R.plurals.partslist_owned_missing_distinct,
-                                            fehlen.size, fehlen.size))
-                                }
-                            },
+                            onClick = onLadeBestand,
                             enabled = !bestandLaeuft,
                             colors = ButtonDefaults.buttonColors(
                                 containerColor = MaterialTheme.colorScheme.secondary)
@@ -372,43 +310,32 @@ fun PartsListScreen(
                             // beide 16 dp breit.
                             if (bestandLaeuft) CircularProgressIndicator(Modifier.size(16.dp),
                                 color = MaterialTheme.colorScheme.onSecondary, strokeWidth = 2.dp)
-                            else Icon(Icons.Default.Inventory2, null, Modifier.size(16.dp))
+                            else Icon(Icons.Default.Inventory2, null, Modifier.size(mitSchrift(16.dp)))
                             Spacer(Modifier.width(Abstaende.winzig))
                             Text(stringResource(R.string.partslist_fill_owned))
                         }
-                        Row(verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(Abstaende.winzig)) {
-                            Checkbox(checked = nurLose, onCheckedChange = { nurLose = it })
-                            Text(stringResource(R.string.partslist_only_loose),
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        }
+                        KaestchenZeile(stringResource(R.string.partslist_only_loose), nurLose, onNurLose)
                         // Zweite Wahl, andere Frage: Die erste sagt, WELCHE ART
                         // Teile zaehlt, diese sagt, WESSEN. Beide wirken
                         // zusammen — „nur manuell erfasste" plus „mit
                         // Unterkonten" zaehlt die manuell erfassten Teile des
                         // ganzen Haushalts.
                         if (hatUnterkonten) {
-                            Row(verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(Abstaende.winzig)) {
-                                Checkbox(checked = mitUnterkonten,
-                                    onCheckedChange = { mitUnterkonten = it })
-                                Text(stringResource(R.string.partslist_include_subs),
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant)
-                            }
+                            KaestchenZeile(stringResource(R.string.partslist_include_subs), mitUnterkonten, onMitUnterkonten)
                         }
                     }
                 }
 
                 if (status.isNotBlank()) {
-                    Text(status, style = MaterialTheme.typography.bodySmall,
+                    Text(status, Modifier.ansagen(), style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
 
                 // Live-Countdown während der PDF-Erstellung (nur wenn ein Export läuft).
-                pdfStatusText?.let { txt ->
-                    Text(txt, style = MaterialTheme.typography.bodyMedium,
+                pdfStatus?.let { txt ->
+                    // Sichtbar jede Sekunde, angesagt alle zehn.
+                    GedrosselteAnsage(txt)
+                    Text(txt, Modifier.clearAndSetSemantics { contentDescription = txt }, style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.primary)
                 }
             }
@@ -416,8 +343,8 @@ fun PartsListScreen(
 
         if (!generated || parts.isEmpty()) {
             // Derselbe Leerzustand wie jede Liste (ZustandsHinweis): mittig, mit Rand.
-            if (!isLoading) ch.brickinventoryapp.ui.components.ZustandsHinweis {
-                ch.brickinventoryapp.ui.components.HinweisText(Icons.AutoMirrored.Filled.ListAlt,
+            if (!isLoading) ZustandsHinweis {
+                HinweisText(Icons.AutoMirrored.Filled.ListAlt,
                     stringResource(R.string.partslist_empty_title), stringResource(R.string.partslist_empty_hint))
             }
             return@Column
@@ -438,27 +365,7 @@ fun PartsListScreen(
         LazyColumn(state = listState, contentPadding = PaddingValues(Abstaende.mittel), verticalArrangement = Arrangement.spacedBy(Abstaende.gross)) {
             colorGroups.forEachIndexed { groupIdx, (colorName, colorParts) ->
                 item(key = "header_${groupIdx}_$colorName") {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        val hex = colorParts.first().colorHex
-                        if (hex != null && !colorParts.first().isFig) {
-                            Box(Modifier.size(14.dp).clip(CircleShape)
-                                .background(try { Color("#$hex".toColorInt()) }
-                                catch (_: Exception) { Color.Gray }))
-                            Spacer(Modifier.width(6.dp))
-                        }
-                        val displayName = if (colorName.isEmpty()) noColorLabel else farbe(colorName)
-                        Text(displayName, fontWeight = FontWeight.Bold,
-                            style = MaterialTheme.typography.titleSmall,
-                            color = MaterialTheme.colorScheme.primary)
-                        Spacer(Modifier.width(Abstaende.klein))
-                        // Uebereinstimmung mit %2$d (den Typen) — %1$d traegt
-                        // nur ein „×" und kein Wort.
-                        Text(mengen.getQuantityString(R.plurals.partslist_group_summary,
-                                colorParts.size, colorParts.sumOf { it.quantity }, colorParts.size),
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    }
-                    HorizontalDivider(Modifier.padding(top = Abstaende.winzig), color = MaterialTheme.colorScheme.primaryContainer)
+                    FarbGruppenKopf(colorName, colorParts)
                 }
                 items(
                     colorParts,
@@ -469,6 +376,57 @@ fun PartsListScreen(
             }
         }
     }
+}
+
+/** PDF der fertigen Liste; ein Fehler kommt als Dialog. Der Export läuft im ViewModel. */
+@Composable
+private fun PdfKnopf(isExporting: Boolean, pdfError: String?, onExport: () -> Unit, onFehlerGesehen: () -> Unit) {
+    if (pdfError != null) {
+        androidx.compose.material3.AlertDialog(
+            onDismissRequest = onFehlerGesehen,
+            confirmButton = { TextButton(onClick = onFehlerGesehen) { Text(stringResource(R.string.partslist_ok)) } },
+            title = { Text(stringResource(R.string.partslist_pdf_error_title)) },
+            text = { Text(pdfError) }
+        )
+    }
+    FilledTonalButton(
+        onClick = onExport,
+        enabled = !isExporting,
+    ) {
+        // Nur das Symbol wird zum Kreisel, die Beschriftung bleibt (wie oben).
+        if (isExporting) CircularProgressIndicator(Modifier.size(16.dp),
+            strokeWidth = 2.dp)
+        else Icon(Icons.Default.PictureAsPdf, null, Modifier.size(mitSchrift(16.dp)))
+        Spacer(Modifier.width(Abstaende.winzig))
+        Text("PDF")
+    }
+}
+
+/** Kopf einer Farbgruppe: Farbpunkt, Name und wie viele Teile und Typen sie hat. */
+@Composable
+private fun FarbGruppenKopf(colorName: String, colorParts: List<PlPart>) {
+    val mengen = androidx.compose.ui.platform.LocalResources.current
+    val farbe = farbUebersetzer()
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        val hex = colorParts.first().colorHex
+        if (hex != null && !colorParts.first().isFig) {
+            Box(Modifier.size(14.dp).clip(CircleShape)
+                .background(farbeAusHex(hex) ?: Color.Gray))
+            Spacer(Modifier.width(6.dp))
+        }
+        val displayName = if (colorName.isEmpty()) stringResource(R.string.partslist_no_color) else farbe(colorName)
+        Text(displayName, fontWeight = FontWeight.Bold,
+            style = MaterialTheme.typography.titleSmall,
+            color = MaterialTheme.colorScheme.primary)
+        Spacer(Modifier.width(Abstaende.klein))
+        // Uebereinstimmung mit %2$d (den Typen) — %1$d traegt
+        // nur ein „×" und kein Wort.
+        Text(mengen.getQuantityString(R.plurals.partslist_group_summary,
+                colorParts.size, colorParts.sumOf { it.quantity }, colorParts.size),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant)
+    }
+    HorizontalDivider(Modifier.padding(top = Abstaende.winzig), color = MaterialTheme.colorScheme.primaryContainer)
 }
 
 @Composable
@@ -493,8 +451,8 @@ fun PartListRow(
         horizontalArrangement = Arrangement.spacedBy(10.dp)
     ) {
         // Image
-        ch.brickinventoryapp.ui.components.ProduktBild(
-            model = imgUrl?.let { ImageRequest.Builder(ctx).data(it).crossfade(true).build() },
+        ProduktBild(
+            model = imgUrl?.let { ImageRequest.Builder(ctx).data(it).crossfade(!bewegungReduziert()).build() },
             imageLoader = imageLoader,
             contentDescription = part.partName,
             modifier = Modifier.size(48.dp).clip(MaterialTheme.shapes.small),
@@ -505,20 +463,21 @@ fun PartListRow(
         Column(Modifier.weight(1f)) {
             // BL-ID (primary) and RB-ID (secondary)
             val displayId = part.blPartNumber ?: part.partNumber
-            Text(displayId, style = MaterialTheme.typography.labelSmall,
+            Text(displayId, style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.SemiBold)
             if (part.blPartNumber != null && part.blPartNumber != part.partNumber) {
-                Text(String.format(rbPrefixFmt, part.partNumber), style = MaterialTheme.typography.labelSmall,
+                Text(String.format(rbPrefixFmt, part.partNumber), style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
-            Text(ch.brickinventoryapp.ui.components.katalogName(part.partName), style = MaterialTheme.typography.bodySmall,
+            Text(katalogName(part.partName), style = MaterialTheme.typography.bodySmall,
                 maxLines = 2, overflow = TextOverflow.Ellipsis)
         }
         // Quantity badge
         Surface(color = if (part.isFig) MaterialTheme.colorScheme.tertiaryContainer
                         else MaterialTheme.colorScheme.primaryContainer,
                 shape = MaterialTheme.shapes.small) {
-            Text(ch.brickinventoryapp.ui.mengeAusSet(part.quantity), Modifier.padding(horizontal = Abstaende.klein, vertical = Abstaende.winzig),
+            Text(mengeAusSet(part.quantity), Modifier.padding(horizontal = Abstaende.klein, vertical = Abstaende.winzig)
+                .vorgelesenAls(stueckzahl(part.quantity)),
                 fontWeight = FontWeight.Bold,
                 color = if (part.isFig) MaterialTheme.colorScheme.onTertiaryContainer
                         else MaterialTheme.colorScheme.onPrimaryContainer)

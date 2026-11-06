@@ -1,13 +1,6 @@
 /**
  * E-Mails im Design der Webapp.
- *
- * E-Mails kennen keine CSS-Variablen und kein externes Stylesheet — jeder Wert
- * muss direkt im Markup stehen. Die Paletten in src/infra/mailer.ts spiegeln
- * deshalb styles.css bzw. themes/brick.css. Ändert sich dort eine Farbe, muss
- * sie hier nachgezogen werden; dieser Test hält wenigstens fest, dass es
- * überhaupt zwei unterscheidbare Paletten gibt und sie angewendet werden.
- *
- * Ausführen: npm test
+ * Ausführlich: docs/begruendungen/test/mail-theme.test.js.md#kopf
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -15,7 +8,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 
 const ROOT = path.join(__dirname, '..');
-const SRC = fs.readFileSync(path.join(ROOT, 'src/infra/mailer.ts'), 'utf8');
+const SRC = fs.readFileSync(path.join(ROOT, 'src/mail/mailer.ts'), 'utf8');
 const { pruefeParameter, funktionsKopf } = require('./helpers/sources');
 
 test('es gibt eine Palette je Design', () => {
@@ -32,18 +25,18 @@ test('es gibt eine Palette je Design', () => {
 test('das Design wird beim Versand geladen, nicht fest verdrahtet', () => {
   assert.match(SRC, /async function getMailTheme\(\)/, 'Loader fehlt');
   // Früher stand hier die SQL-Anweisung selbst. Seit alle Zugriffe auf
-  // global_settings über src/konto/settings.ts laufen, prüft der Test den Weg
+  // global_settings über src/einstellungen/settings.ts laufen, prüft der Test den Weg
   // dorthin — die Aussage ist dieselbe: Das Design ist eine GLOBALE
   // Einstellung und darf nicht aus dem Prozess oder aus einer Konstanten
   // kommen.
   assert.match(SRC, /await getGlobalSetting\('app_theme'\)/,
     'Das Design ist eine globale Einstellung und muss von dort kommen');
-  // `'./settings'` ODER `'../src/konto/settings'`: Der Mailer ist mit Nachtrag 176
+  // `'./settings'` ODER `'../src/einstellungen/settings'`: Der Mailer ist mit einer früheren Runde
   // von routes/ nach utils/ gezogen (er hatte nie eine Route), und damit
   // aenderte sich der RELATIVE Pfad auf dieselbe Datei. Geprueft ist die
   // Aussage — zentrale Fassung statt eigener Abfrage —, nicht die Anzahl der
   // Punkte davor.
-  assert.match(SRC, /import \{[^}]*getGlobalSetting[^}]*\} from '(?:\.\.\/)*(?:utils\/|konto\/)?settings'/,
+  assert.match(SRC, /import \{[^}]*getGlobalSetting[^}]*\} from '(?:\.\.\/)*(?:einstellungen\/)?settings'/,
     'und zwar über die zentrale Fassung, nicht über eine eigene Abfrage');
   // Bei jedem Zweifel classic — eine E-Mail darf nie am Design scheitern
   assert.match(SRC, /catch \(_\) \{ return MAIL_THEMES\.classic; \}/,
@@ -69,9 +62,8 @@ test('Vorlage, Knopf und Infobox nehmen das Design entgegen', () => {
     // Die Vorgabe ist der Punkt: Ohne sie müsste jeder Aufrufer das Design
     // mitgeben, und ein vergessener Aufruf fiele auf undefined statt auf classic.
     // Die Typannotation steht ZWISCHEN Name und Vorgabe
-    // (`theme: MailTheme = MAIL_THEMES.classic`) — der Kommentar oben hatte
-    // das bereits als Bruchstelle benannt, dieses Muster liess sie aber noch
-    // offen. Der Teil dazwischen ist jetzt ausdruecklich erlaubt.
+    // (`theme: MailTheme = MAIL_THEMES.classic`) — der Kommentar oben hatte …
+    // Ausführlich: docs/begruendungen/test/mail-theme.test.js.md#stelle
     assert.match(funktionsKopf(SRC, name), /theme\s*(?::[^=]+)?=\s*MAIL_THEMES\.classic/,
       `${name}: theme muss auf MAIL_THEMES.classic vorbelegt sein`);
   }

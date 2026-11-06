@@ -1,11 +1,12 @@
 package ch.brickinventoryapp
 
-import ch.brickinventoryapp.data.repository.Result
+import ch.brickinventoryapp.data.repository.Ergebnis
 import ch.brickinventoryapp.data.repository.VerwaltungRepository
 import ch.brickinventoryapp.ui.model.alsAnsicht
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Test
+import java.io.File
 
 /**
  * Waehrend der Server startet, zeigt die App den Fortschritt — keinen Fehler.
@@ -22,18 +23,18 @@ import org.junit.Test
  * Server frisch aufsetzt und die App oeffnet, sieht „keine Verbindung" — und
  * haelt das eine oder das andere fuer kaputt, obwohl alles richtig laeuft.
  *
- * Die Abfrage läuft gegen einen Testserver; die Auswertung im AppViewModel
- * und die Anzeige lesen Quelltext (Gerät und Compose fehlen hier).
+ * Die Abfrage läuft gegen einen Testserver; die Auswertung im AppViewModel führt
+ * AppViewModelTest aus, die Anzeige liest Quelltext (Gerät und Compose fehlen hier).
  *
- * Gegenprobe (29.10.2026, gemessen): in VerwaltungApi `@GET("api/v1/startup-status")`
+ * Gegenprobe: in VerwaltungApi `@GET("api/v1/startup-status")`
  * auf "…/startstatus" → rot „die App fragt den Startzustand ab“.
- * Gegenprobe (01.11.2026, misst die CI): gegenproben/startstatus-ganzzahl.patch
+ * Gegenprobe: gegenproben/startstatus-ganzzahl.patch
  * macht progress wieder zu Int → rot „ein Fortschritt mit Anteil wird gelesen“.
  */
 class ServerStartTest {
 
     private fun read(rel: String) =
-        java.io.File(Quellen.wurzel, "$rel").readText()
+        File(Quellen.wurzel, "$rel").readText()
     private fun code(s: String) = s.lines()
         .joinToString("\n") { if (it.trim().startsWith("//") || it.trim().startsWith("*")) "" else it }
 
@@ -48,39 +49,8 @@ class ServerStartTest {
         // Der Server meldet Schritte samt Anteil des laufenden (2.37 von 8).
         pfade.antworten["/api/v1/startup-status"] = """{"ready":false,"step":"Teile","progress":2.37,"total":8}"""
         val r = runBlocking { admin.getStartupStatus() }
-        assert(r is Result.Success) { "Startzustand nicht gelesen: $r" }
-        assertEquals(2.37f / 8, (r as Result.Success).data.alsAnsicht().anteil!!, 0.0001f)
-    }
-
-    @Test
-    fun `keine Antwort heisst NICHT dass der Server startet`() {
-        // Der wichtigste Unterschied: Antwortet der Server gar nicht, ist er
-        // nicht erreichbar — dann ist die gewoehnliche Netzmeldung die
-        // richtige. Nur wenn er ANTWORTET und `ready` verneint, laeuft ein
-        // Start. Ohne diese Trennung zeigte die App „Der Server startet" auch
-        // bei einer falsch eingetippten Adresse.
-        val s = code(read("ui/AppViewModel.kt"))
-        val ab = s.indexOf("fun verfolgeServerstart(")
-        assert(ab > 0) { "verfolgeServerstart fehlt" }
-        val rumpf = s.substring(ab, minOf(ab + 1400, s.length))
-        val fehlerzweig = rumpf.indexOf("r !is Result.Success")
-        assert(fehlerzweig > 0) { "Der Fehlerfall wird nicht behandelt" }
-        val danach = rumpf.substring(fehlerzweig, minOf(fehlerzweig + 200, rumpf.length))
-        assert(danach.contains("startupStatus = null")) {
-            "Bei einer ausbleibenden Antwort bleibt der Startzustand stehen — " +
-                "die App behauptet dann einen Serverstart, den es nicht gibt"
-        }
-    }
-
-    @Test
-    fun `ist der Server fertig, hoert die Abfrage auf`() {
-        val s = code(read("ui/AppViewModel.kt"))
-        val ab = s.indexOf("fun verfolgeServerstart(")
-        assert(ab > 0) { "verfolgeServerstart fehlt" }
-        val rumpf = s.substring(ab, minOf(ab + 1400, s.length))
-        assert(rumpf.contains("r.data.ready)")) {
-            "Die Schleife prueft nicht, ob der Server fertig ist — sie liefe ewig"
-        }
+        assert(r is Ergebnis.Success) { "Startzustand nicht gelesen: $r" }
+        assertEquals(2.37f / 8, (r as Ergebnis.Success).data.alsAnsicht().anteil!!, 0.0001f)
     }
 
     @Test

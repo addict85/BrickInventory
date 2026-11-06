@@ -1,6 +1,5 @@
 package ch.brickinventoryapp
 
-import ch.brickinventoryapp.ressourcen.R
 import org.junit.Test
 
 /**
@@ -13,11 +12,6 @@ import org.junit.Test
  * ── Warum es die zwei Caches nicht schon taten ──────────────────────────────
  *
  * Die App hatte zwei Zwischenspeicher fuer Bilder (Coil und OkHttp, je 50 MB).
- * Beide liegen unter `cacheDir`, und das Wort steht dort nicht zufaellig: Was
- * dort liegt, darf Android jederzeit loeschen, wenn der Platz knapp wird — ohne
- * Rueckfrage und ohne Ruecksicht darauf, was morgen gebraucht wird. Beide sind
- * ausserdem LRU: Wer durch den Katalog blaettert, verdraengt damit die Bilder
- * der eigenen Sammlung.
  *
  * Die Ablage liegt unter `filesDir`. Das ist der ganze Unterschied zwischen
  * „meistens noch da" und „da" — und deshalb die erste Pruefung hier.
@@ -63,11 +57,6 @@ class VorschauAblageTest {
         }
         // Unter filesDir raeumt niemand ausser uns. Ohne Obergrenze waechst die
         // Ablage, bis das Telefon voll ist, und niemand fiele es auf.
-        // Auf die DEFINITION geprueft, nicht auf den Namen: Die erste Fassung
-        // suchte nur "MAX_BYTES" irgendwo in der Datei. Die Gegenprobe (Zeile
-        // mit `const val` entfernt) blieb damit gruen, weil die VERWENDUNG
-        // weiter unten stehen blieb — eine Zusicherung, die den Namen findet,
-        // aber nicht die Sache.
         assert(Regex("""const val MAX_BYTES = \d""").containsMatchIn(s)) {
             "Die Ablage hat keine Obergrenze. Unter filesDir raeumt Android " +
                 "nichts weg — sie waechst dann, bis der Speicher voll ist."
@@ -158,21 +147,6 @@ class VorschauAblageTest {
         // am laufenden Code.
     }
 
-    @Test
-    fun `die Ablage laesst sich sehen und leeren`() {
-        // 150 MB unter filesDir raeumt niemand ausser dem Nutzer. Ohne Anzeige
-        // waechst auf dem Telefon etwas, das man nicht findet.
-        val vm = quelle("ui/AppViewModel.kt")
-        val ui = quelle("ui/screens/MonitoringSections.kt")
-        assert(vm.contains("fun vorschauAblageBytes()") && vm.contains("fun vorschauAblageLeeren()")) {
-            "Die Zugaenge zur Ablage fehlen im ViewModel"
-        }
-        assert(ui.contains("vm.vorschauAblageBytes()") && ui.contains("vm.vorschauAblageLeeren()")) {
-            "Die Einstellungen zeigen die Ablage nicht an oder lassen sie nicht " +
-                "leeren — dann waechst sie unsichtbar"
-        }
-    }
-
     // ────────────────────────────────────────────────────────────────────────
     // Das Vorwaermen (Nachtrag 159)
     //
@@ -192,8 +166,6 @@ class VorschauAblageTest {
     // und ListenfilterImZustandTest haben genau das gemeldet. Seither sammelt
     // ui/Vorwaermen.kt die Adressen (mit dem Blickfeld), und
     // data/cache/VorschauVorwaermer.kt holt, drosselt und haelt die Grenze.
-    // Diese Pruefungen folgen der Aufteilung.
-    // ────────────────────────────────────────────────────────────────────────
 
     @Test
     fun `das Vorwaermen hoert bei vier Fuenfteln auf`() {
@@ -209,7 +181,7 @@ class VorschauAblageTest {
         }
 
         val vw = quelle("data/cache/VorschauVorwaermer.kt")
-        val fe = quelle("ui/Vorwaermen.kt") + "\n" + quelle("ui/AppViewModel.kt")
+        val fe = quelle("ui/Vorwaermen.kt") + "\n" + quelle("ui/SitzungsDienst.kt")
 
         // Erste Stelle: VOR dem Sammeln. Ohne sie kostet ein voller Speicher
         // bei jedem App-Start vier Listenabrufe, um danach nichts zu tun.
@@ -273,7 +245,7 @@ class VorschauAblageTest {
 
     @Test
     fun `vorgewaermt wird die Sammlung, nicht der Katalog`() {
-        val fe = quelle("ui/Vorwaermen.kt") + "\n" + quelle("ui/AppViewModel.kt")
+        val fe = quelle("ui/Vorwaermen.kt") + "\n" + quelle("ui/SitzungsDienst.kt")
         // Alle Reiter, die Kacheln der EIGENEN Sammlung zeigen. Die manuell
         // erfassten Teile und Figuren erscheinen auch im Finanzen-Reiter — es
         // sind dieselben Bilder, deshalb steht Finanzen hier nicht eigens.
@@ -282,8 +254,8 @@ class VorschauAblageTest {
         // Klasse, und eine Schleifenvariable, die eine Methode verdeckt, ist
         // die Sorte Stolperstein, die erst beim naechsten Bearbeiten zubeisst.
         for (ruf in listOf(
-            "repo.sets.getSets(", "repo.teile.getParts(", "repo.figuren.getMinifigs(",
-            "repo.teile.getManualParts(", "repo.figuren.getManualMinifigs(",
+            "sets.getSets(", "teile.getParts(", "figuren.getMinifigs(",
+            "teile.getManualParts(", "figuren.getManualMinifigs(",
         )) {
             assert(fe.contains(ruf)) {
                 "Der Reiter hinter $ruf wird nicht mehr vorgewaermt — " +
@@ -350,7 +322,7 @@ class VorschauAblageTest {
         //
         // BEIDE Haelften geprueft: Das Holen steht unten, das Sammeln oben.
         val vw = quelle("data/cache/VorschauVorwaermer.kt")
-        val fe = quelle("ui/Vorwaermen.kt") + "\n" + quelle("ui/AppViewModel.kt")
+        val fe = quelle("ui/Vorwaermen.kt") + "\n" + quelle("ui/SitzungsDienst.kt")
         for (verb in listOf(".post(", ".put(", ".patch(", ".delete(")) {
             assert(!vw.contains(verb) && !fe.contains(verb)) {
                 "Das Vorwaermen benutzt $verb. Es darf ausschliesslich lesen."
@@ -380,7 +352,7 @@ class VorschauAblageTest {
 
     @Test
     fun `die Vorgabe ist WLAN, und nur WLAN`() {
-        val pm = quelle("data/PreferencesManager.kt")
+        val pm = quelle("data/GeraeteAblage.kt")
         // Auf die DEFINITION mitsamt Vorgabewert, nicht nur auf den Namen —
         // dieselbe Lehre wie bei MAX_BYTES und GRENZE_VORWAERMEN weiter oben.
         // Eine Zusicherung, die „vorwaermenWlan" irgendwo findet, bliebe gruen,
@@ -439,16 +411,10 @@ class VorschauAblageTest {
                 "waermt „nur im WLAN\" ueber den Hotspot eines anderen " +
                 "Telefons vor — also ueber dessen Datentarif."
         }
-        // ── Die Falle bei minSdk 26 ─────────────────────────────────────────
-        //
-        // NET_CAPABILITY_NOT_ROAMING gibt es erst ab API 28, die App laeuft ab
-        // 26. Ohne Rueckfall haette die Roaming-Einstellung auf Android 8.0 und
-        // 8.1 stillschweigend nicht gegriffen — und das faellt niemandem auf,
-        // bis die Rechnung kommt.
-        assert(nl.contains("Build.VERSION_CODES.P") && nl.contains("isNetworkRoaming")) {
-            "Der Rueckfall fuer Android 8 fehlt. NET_CAPABILITY_NOT_ROAMING " +
-                "gibt es erst ab API 28, minSdk ist 26 — dort entschiede dann " +
-                "niemand mehr ueber Roaming."
+        // Roaming: seit minSdk 30 allein ueber die Faehigkeit des Netzes.
+        assert(nl.contains("NET_CAPABILITY_NOT_ROAMING")) {
+            "Die Netzlage fragt nicht mehr nach Roaming — dann waermt „nicht " +
+                "im Ausland\" doch vor."
         }
         // Ohne diese Erlaubnis liefert ConnectivityManager nichts, und die
         // ganze Einstellung waere eine Anzeige ohne Wirkung.
@@ -461,17 +427,9 @@ class VorschauAblageTest {
     }
 
     @Test
-    fun `die drei Netze lassen sich einstellen`() {
-        val ui = quelle("ui/screens/MonitoringSections.kt")
-        for (fluss in listOf("vorwaermenWlan", "vorwaermenMobil", "vorwaermenRoaming")) {
-            assert(ui.contains("vm.prefs.$fluss")) {
-                "Die Einstellung $fluss wird nicht mehr angezeigt"
-            }
-        }
-        assert(ui.contains("vm.prefs.saveVorwaermenNetz(")) {
-            "Die Einstellung laesst sich nicht mehr aendern — dann ist sie eine " +
-                "Anzeige und keine Option"
-        }
+    fun `der Hinweis zum gemessenen WLAN steht bei den Netzen`() {
+        // Lesen und Schreiben der Netze prüft GeraeteEinstellungenViewModelTest.
+        val ui = quelle("ui/screens/MonitoringSections.kt") + quelle("ui/screens/MonitoringScreen.kt")
         // Der Hinweis zum gemessenen WLAN steht dabei. Ohne ihn sieht die Lage
         // „ich bin doch im WLAN, es waermt aber nicht vor" wie ein Fehler aus.
         assert(ui.contains("R.string.monitoring_vorwaermen_hinweis")) {

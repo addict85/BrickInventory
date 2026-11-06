@@ -1,17 +1,14 @@
 import fs from 'fs';
 import path from 'path';
-import { logAndContinue, meldeUndLiefere } from '../src/infra/httpError';
+import { logAndContinue, meldeUndLiefere } from '../src/infra/fehler';
 import { downloadSetImage } from '../src/katalog/bilder/setImages';
 import { grundFuer, istBekanntFehlend, merkeFehlend } from '../src/katalog/bilder/imageMisses';
 import { generateThumb } from '../src/katalog/bilder/thumbs';
 import { SET_IMAGES_DIR } from '../src/infra/appPaths';
 import { setzeZustand } from '../src/auftraege/laufzustand';
-import { pausiereArt } from '../src/auftraege/dienst';
-import { liesPause } from '../src/auftraege/dienst';
-import { STAPEL, TAKT_MS, NOTIZ_GILT_MS, merkeGebraucht, schreibePuffer, notiereBildbedarf, loescheVerfallene, initImageQueue,
-         anfragenJeMinute } from '../src/katalog/bilder/bildbedarf';
+import { pausiereArt, liesPause } from '../src/auftraege/dienst';
+import { STAPEL, TAKT_MS, NOTIZ_GILT_MS, merkeGebraucht, schreibePuffer, notiereBildbedarf, loescheVerfallene, initImageQueue, anfragenJeMinute, nimmBildwuensche } from '../src/katalog/bilder/bildbedarf';
 import { AuftragUnterbrochen, AuftragVerschieben, type AuftragsKontext } from './auftragsWorker';
-import { nimmBildwuensche } from '../src/katalog/bilder/bildbedarf';
 
 /** Über den Proxy angefragte Bilder im HINTERGRUND lokal ablegen, samt
  * Vorschau — damit die Anfrage selbst nie auf das CDN wartet. */
@@ -121,6 +118,47 @@ async function speichereLauf(erg: StapelErgebnis): Promise<void> {
     .catch(logAndContinue('bild-job:setzeZustand'));
 }
 
+/** Ein 404 vom CDN braucht keine Aufmerksamkeit, alles andere schon (etwasZuTun). */
+type StapelStand = { erg: StapelErgebnis; gruende: string[]; etwasZuTun: boolean; arbeit: number };
+
+/** Die Datei ist da, höchstens die Vorschau fehlt. Bekannt gescheiterte nicht
+ * anfassen: Jedes webp-Bild kostete sonst bei JEDEM Durchgang einen Lauf. */
+async function nurVorschau(setNummer: string, vorschau: string, st: StapelStand): Promise<void> {
+  if (fs.existsSync(vorschau)) { st.erg.uebersprungen++; return; }
+  if (istBekanntFehlend('thumb:' + vorschau)) { st.erg.bekanntFehlend++; return; }
+  // Auch hier warten: Eine Verkleinerung kostet mehr als ein Download.
+  await pauseVorArbeit();
+  st.arbeit++;
+  if (await vorschauErzeugen(`/images/sets/${setNummer}.jpg`, vorschau)) { st.erg.vorschau++; return; }
+  st.erg.keineVorschau++; st.etwasZuTun = true;
+  st.gruende.push(`${setNummer}: Vorschau fehlgeschlagen`);
+}
+
+/** @returns true, wenn das CDN drosselt und der Stapel abbricht */
+async function nachFehlschlag(setNummer: string, info: { status?: number }, st: StapelStand): Promise<boolean> {
+  const status = info.status;
+  // Eine Drosselung ist KEINE Fehlanzeige: Die Bilder gibt es, und stures
+  // Weiterfragen verlängert die Sperre.
+  // Ausführlich: docs/begruendungen/jobs/imageQueue.ts.md#arbeitestapel-2
+  if (status === 403 || status === 429) {
+    const bis = new Date(Date.now() + DROSSEL_PAUSE_MS);
+    await pausiereArt('bildbedarf', bis, `CDN drosselt (HTTP ${status})`);
+    console.error(`[image-queue] CDN drosselt (HTTP ${status}) — Pause bis ${bis.toLocaleTimeString()}`);
+    return true;
+  }
+  // NUR ein 404/410 heisst „das Bild gibt es nicht"; Zeitüberschreitungen und
+  // Netzaussetzer dürfen ein Bild nicht dauerhaft sperren.
+  // Ausführlich: docs/begruendungen/jobs/imageQueue.ts.md#arbeitestapel-hartfehlend
+  const hartFehlend = info.status === 404 || info.status === 410;
+  if (hartFehlend) merkeFehlend('set:' + setNummer, `HTTP ${status} vom CDN`);
+  else st.etwasZuTun = true;
+  st.erg.nichtGeladen++;
+  st.gruende.push(`${setNummer}: Download fehlgeschlagen` +
+               (status ? ` (HTTP ${status})` : ' (kein Statuscode — vorübergehend?)') +
+               (hartFehlend ? '' : ', wird erneut versucht'));
+  return false;
+}
+
 async function arbeiteStapel(): Promise<StapelErgebnis> {
   const erg = leeresErgebnis();
   const pause = await liesPause('bildbedarf');
@@ -129,14 +167,7 @@ async function arbeiteStapel(): Promise<StapelErgebnis> {
   if (!rows.length) { merkeLauf(erg); return erg; }
 
 
-  const gruende: string[] = [];
-  // Ein 404 vom CDN braucht keine Aufmerksamkeit (Sammelzeile am Ende), alles andere schon.
-  let etwasZuTun = false;
-
-
-  let fertig = 0;
-  // Zählt ARBEIT, nicht nur Downloads.
-  let arbeit = 0;
+  const st: StapelStand = { erg, gruende: [], etwasZuTun: false, arbeit: 0 };
   for (let idx = 0; idx < rows.length; idx++) {
     const r = rows[idx]!;
     if (!r.set_number) { erg.ohneNummer++; continue; }   // ohne Setnummer kein Ablageort
@@ -145,34 +176,14 @@ async function arbeiteStapel(): Promise<StapelErgebnis> {
     // in einer Anfrage blockierten schwache Hardware.
     const datei  = path.join(SET_IMAGES_DIR, `${r.set_number}.jpg`);
     const vorschau = path.join(SET_IMAGES_DIR, `${r.set_number}_thumb.jpg`);
-    if (fs.existsSync(datei)) {
-      // Bekannt gescheiterte Vorschauen nicht anfassen — sonst kostet jedes
-      // webp-Bild bei JEDEM Durchgang einen vergeblichen Lauf.
-      if (fs.existsSync(vorschau)) erg.uebersprungen++;
-      else if (istBekanntFehlend('thumb:' + vorschau)) {
-        // VOR Pause und Kontingent: Was nie gelingen kann, soll weder warten noch
-        // einen CDN-Platz kosten.
-        erg.bekanntFehlend++;
-      }
-      else {
-        // Auch hier warten: Eine Verkleinerung kostet mehr als ein Download.
-        await pauseVorArbeit();
-        arbeit++;
-        if (await vorschauErzeugen(`/images/sets/${r.set_number}.jpg`, vorschau)) { fertig++; erg.vorschau++; }
-        // Eine gescheiterte Vorschau braucht Aufmerksamkeit: Die Datei ist da, aber
-        // kaputt oder unbekannt, und das wiederholt sich bei jedem Takt.
-        else { erg.keineVorschau++; etwasZuTun = true;
-               gruende.push(`${r.set_number}: Vorschau fehlgeschlagen`); }
-      }
-      continue;   // kein zweiter Download
-    }
+    if (fs.existsSync(datei)) { await nurVorschau(r.set_number, vorschau, st); continue; }   // kein zweiter Download
 
     // Bekannt fehlende Bilder nicht erst holen, wie der Knopf
     // „Katalogbilder holen" auch.
     if (istBekanntFehlend('set:' + r.set_number)) {
       erg.bekanntFehlend++;
       // Den Namen nennen: Ohne Setnummer führt kein Weg zu image-diag.
-      gruende.push(`${r.set_number}: als fehlend bekannt` +
+      st.gruende.push(`${r.set_number}: als fehlend bekannt` +
                    (grundFuer('set:' + r.set_number) ? ` (${grundFuer('set:' + r.set_number)})` : ''));
       continue;
     }
@@ -180,46 +191,31 @@ async function arbeiteStapel(): Promise<StapelErgebnis> {
     // Die Pause steht ZWISCHEN zwei Anfragen ans CDN — nicht vor der ersten
     // und nicht für Sets, deren Datei schon da ist.
     await pauseVorArbeit();
-    arbeit++;
+    st.arbeit++;
 
     const info: { status?: number } = {};
     const lokal = await downloadSetImage(r.url, r.set_number, info).catch(meldeUndLiefere('bild-job:downloadSetImage', null));
     if (!lokal) {
-      // Eine Drosselung ist KEINE Fehlanzeige: Die Bilder gibt es, und stures
-      // Weiterfragen verlängert die Sperre.
-      // Ausführlich: docs/begruendungen/jobs/imageQueue.ts.md#arbeitestapel-2
-      if (info.status === 403 || info.status === 429) {
-        const bis = new Date(Date.now() + DROSSEL_PAUSE_MS);
-        await pausiereArt('bildbedarf', bis, `CDN drosselt (HTTP ${info.status})`);
-        console.error(`[image-queue] CDN drosselt (HTTP ${info.status}) — Pause bis ${bis.toLocaleTimeString()}`);
+      if (await nachFehlschlag(r.set_number, info, st)) {
         // ALLE unbearbeiteten Notizen zurücklegen: Der Stapel kam per
         // DELETE … RETURNING, der Rest wäre sonst still verloren.
         const rest = rows.slice(idx);
-        await notiereBildbedarf(rest.map((x: any) => x.url), rest.map((x: any) => x.set_number))
+        await notiereBildbedarf(rest.map(x => x.url), rest.map(x => x.set_number))
           .catch(logAndContinue('bild-job:map'));
         erg.zurueckgelegt = rest.length;
         break;
       }
-      // NUR ein 404/410 heisst „das Bild gibt es nicht"; Zeitüberschreitungen und
-      // Netzaussetzer dürfen ein Bild nicht dauerhaft sperren.
-      // Ausführlich: docs/begruendungen/jobs/imageQueue.ts.md#arbeitestapel-hartfehlend
-      const hartFehlend = info.status === 404 || info.status === 410;
-      if (hartFehlend) merkeFehlend('set:' + r.set_number, `HTTP ${info.status} vom CDN`);
-      if (!hartFehlend) etwasZuTun = true;
-      erg.nichtGeladen++;
-      gruende.push(`${r.set_number}: Download fehlgeschlagen` +
-                   (info.status ? ` (HTTP ${info.status})` : ' (kein Statuscode — vorübergehend?)') +
-                   (hartFehlend ? '' : ', wird erneut versucht'));
       continue;
     }
     // Die Vorschau entsteht NICHT in downloadSetImage(); ohne diesen Aufruf bliebe
     // es bei der grossen Originaldatei.
     await vorschauErzeugen(lokal, vorschau);
-    fertig++; erg.geholt++;
+    erg.geholt++;
   }
   // Zurückgelegte Zeilen sind NICHT bearbeitet.
   erg.gesamt = rows.length - erg.zurueckgelegt;
-  erg.arbeit = arbeit;
+  erg.arbeit = st.arbeit;
+  const { gruende, etwasZuTun } = st;
   // Bei wenigen Fällen beim Namen: Mit der Setnummer beantwortet
   // GET /api/v1/admin/image-diag/:setNumber die Frage in einer Antwort.
   if (gruende.length && gruende.length <= 5) {

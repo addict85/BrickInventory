@@ -1,13 +1,6 @@
 /**
  * Prüfungen aus dem Review-Durchgang hardened-131.
- *
- * Zwei Sorten, bewusst getrennt gehalten:
- *   - Verhalten gegen echte Datenbank: die Teile-Rückfallebene für Sets, zu
- *     denen der Nutzer selbst nichts erfasst hat.
- *   - Regeln am Quelltext dort, wo sich Verhalten nur mit Netzzugriff oder
- *     einem Prozessabbruch prüfen liesse (Weiterleitungsgrenze, Fail-fast,
- *     Drossel). Kommentare werden vorher ausgeblendet — sonst hält der
- *     Erklärtext über einer Regel die Prüfung selbst grün.
+ * Ausführlich: docs/begruendungen/test/review-131.test.js.md#kopf
  */
 const test   = require('node:test');
 const assert = require('node:assert/strict');
@@ -92,7 +85,8 @@ test('Bilddownloads sind nach oben begrenzt', () => {
 
   assert.doesNotMatch(körper, /fs\.writeFileSync|fs\.existsSync/,
     'blockierende Dateizugriffe im Anfragepfad — dieselbe Sache wie in routes/parts.ts');
-  assert.match(körper, /holeHttps\(url, \{/,
+  // holeBild (clients/bildCdn.ts) geht über denselben Helfer mit Umleitungsgrenze.
+  assert.match(körper, /hole(?:Https|Bild)\(url, \{/,
     'eigener Abruf statt des Helfers mit Umleitungsgrenze');
   assert.match(körper, /MAX_BYTES/,
     'kein Grössendeckel — eine beliebig grosse Antwort landet komplett im Speicher');
@@ -102,14 +96,9 @@ test('Schreib-Endpunkte ohne Anmeldung tragen eine Drossel', () => {
   // routes/auth.ts ist der einzige Router ohne durchgehendes requireLogin —
   // hier stehen die Endpunkte, die naturgemäss vor der Anmeldung erreichbar
   // sind. Jeder schreibende darf entweder eine Anmeldung verlangen (per
-  // Middleware oder im Rumpf), oder er zählt Versuche je IP. qr-login hatte
-  // als einziger keins von beidem.
-  //
-  // pruefeAnmeldedaten steht in der Liste, seit die Anmeldung dorthin
-  // zusammengezogen ist: Die Drossel (checkLoginAllowed) sitzt jetzt IN dieser
-  // Funktion, POST /login ruft sie über anmelden() auf. Ohne den Eintrag würde
-  // ausgerechnet das Zusammenlegen als ungeschützter Endpunkt gemeldet.
-  const src = quelle('routes/auth.ts');
+  // Middleware oder im Rumpf), oder er zählt Versuche je IP. qr-login hatte …
+  // Ausführlich: docs/begruendungen/test/review-131.test.js.md#src-stelle
+  const src = ohneKommentare(require('./helpers/sources').anmeldeQuelle());
   const stellen = [...src.matchAll(/router\.(post|put|delete)\('([^']+)'/g)];
   assert.ok(stellen.length >= 6, `nur ${stellen.length} Endpunkte gefunden — die Prüfung liefe ins Leere`);
 
@@ -127,9 +116,10 @@ test('Schreib-Endpunkte ohne Anmeldung tragen eine Drossel', () => {
 test('der Sitzungsschlüssel darf in Produktion kein Beispielwert sein', () => {
   const src = quelle('server.ts');
   const compose = fs.readFileSync(path.join(ROOT, 'compose.yaml'), 'utf8');
-  // compose.yaml trägt keinen Wert mehr, sie verlangt ihn aus .env; der
-  // frühere Beispielwert steht in alten Kopien und bleibt gesperrt.
-  assert.match(compose, /SESSION_SECRET:\s*\$\{SESSION_SECRET:\?/, 'compose.yaml verlangt SESSION_SECRET aus .env');
+  // compose.yaml trägt keinen Wert mehr, sie reicht ihn als Docker-Secret
+  // herein; der frühere Beispielwert steht in alten Kopien und bleibt gesperrt.
+  assert.match(compose, /SESSION_SECRET_FILE:\s*\/run\/secrets\/session_secret/, 'compose.yaml reicht SESSION_SECRET als Datei herein');
+  assert.doesNotMatch(compose, /^\s*SESSION_SECRET:/m, 'SESSION_SECRET steht als Umgebungsvariable in compose.yaml');
   assert.ok(src.includes("'change-me-to-a-long-random-string'"),
     'server.ts weist den früheren Beispielwert aus compose.yaml nicht zurück');
   assert.match(src, /SESSION_SECRET[\s\S]{0,1200}?length\s*<\s*\d+/,
@@ -151,7 +141,7 @@ test('die Barcode-Suche zählt ihre Rebrickable-Aufrufe', () => {
   assert.doesNotMatch(dienst, /https\.get\(/, 'eigener Abrufweg am Tageskontingent vorbei');
   const client = quelle('clients/rebrickable.ts');
   const rbJson = client.slice(client.indexOf('async function rebrickableJson'), client.indexOf('function httpsGetRobust'));
-  assert.match(rbJson, /consumeRebrickableDaily/, 'rebrickableJson zählt nicht mit');
+  assert.match(rbJson, /tagesKontingentFrei/, 'rebrickableJson zählt nicht mit');
   assert.match(rbJson, /waitForSlot/,            'rebrickableJson umgeht die Drossel');
 });
 
@@ -186,6 +176,28 @@ test('CSV-Export entschärft Formeln, der eigene Import macht es rückgängig', 
   assert.equal(csvField('=A1,B1'), `"'=A1,B1"`);
 });
 
+/**
+ * Semikolon, Tabulator und Wagenrücklauf trennen in Excel Felder bzw. Zeilen:
+ * Ungequotet begänne die nächste Zelle mit einer Formel. Gegenproben
+ * (03.11.2026 gemessen): A  csvField quotet wieder nur bei `",\n` → rot:
+ * „Rot;=1+1 bleibt eine Zelle“; B  FORMEL_START ohne Leerraum und volle
+ * Breite → rot: „ =1+1 …“.
+ */
+test('CSV-Export: Trennzeichen im Feld werden gequotet, Formeln auch nach Leerraum entschärft', () => {
+  const { csvField, toCsv, entschaerfe, entschaerfungRueckgaengig, csvZeilenAusAnfrage } = _reqCsv('src/infra/csvExport.js');
+  assert.equal(csvField('Rot;=1+1'), '"Rot;=1+1"', 'Rot;=1+1 bleibt eine Zelle');
+  for (const t of ['a\rb', 'a\tb', 'a\nb', 'a,b', 'a"b']) assert.equal(csvField(t)[0], '"', JSON.stringify(t));
+  for (const boese of [' =1+1', '\u3000=1+1', '＝1+1', '＋1', '\n=1']) {
+    assert.equal(entschaerfe(boese)[0], "'", `${JSON.stringify(boese)} nicht entschärft`);
+    assert.equal(entschaerfungRueckgaengig(entschaerfe(boese)), boese);
+  }
+  assert.equal(entschaerfe(' -5 '), ' -5 ', 'Zahlen mit Leerraum bleiben Zahlen');
+  const csv = toCsv(['a', 'b'], [{ a: 'Rot;=1+1\r=2', b: ' @SUMME(1)' }]);
+  assert.deepEqual(csvZeilenAusAnfrage(csv).bereinigt, [{ a: 'Rot;=1+1\r=2', b: ' @SUMME(1)' }], 'Rundlauf');
+  const zeile = csv.split('\r\n')[1];
+  assert.ok(zeile.startsWith('"Rot;=1+1\r=2",') && zeile.includes("' @SUMME(1)"), JSON.stringify(zeile));
+});
+
 test('alle drei CSV-Importwege entschärfen zurück', () => {
   // Die Zeilenleser der Importe laufen hier selbst: der der Sets und der
   // gemeinsame für Teile und Figuren (csvZeilenAusAnfrage). Dass beide
@@ -204,9 +216,8 @@ test('der CSV-Fortschrittsstrom überlebt Gegendruck beim ersten Schreiben', () 
   // Gemeldet als 500er im Serverprotokoll, direkt nach dem Gegendruck-Hinweis:
   //   ReferenceError: Cannot access 'onProgress' before initialization
   // send() ruft bei vollem Puffer sofort cleanup() auf. Stand der erste
-  // send()-Aufruf VOR den Anmeldungen, griff cleanup() auf ein const zu, das
-  // es noch nicht gab. Geprüft wird deshalb die Reihenfolge: Der erste
-  // Statusversand muss NACH allen Dingen stehen, die cleanup() anfasst.
+  // send()-Aufruf VOR den Anmeldungen, griff cleanup() auf ein const zu, das …
+  // Ausführlich: docs/begruendungen/test/review-131.test.js.md#src-stelle-2
   const src = require('./helpers/sources').setKernQuelle();
   const strom = src.slice(src.indexOf("res.setHeader('Content-Type', 'text/event-stream')"),
                           src.indexOf('function cleanup()'));

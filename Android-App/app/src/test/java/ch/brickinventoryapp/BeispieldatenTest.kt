@@ -8,11 +8,18 @@ import ch.brickinventoryapp.data.repository.SetsRepository
 import ch.brickinventoryapp.data.repository.TeileRepository
 import ch.brickinventoryapp.data.repository.FigurenRepository
 import ch.brickinventoryapp.ui.viewmodel.DateiLeser
+import ch.brickinventoryapp.ui.viewmodel.DateiRef
 import ch.brickinventoryapp.ui.viewmodel.FinanzViewModel
 import ch.brickinventoryapp.ui.viewmodel.GalerieViewModel
 import ch.brickinventoryapp.ui.viewmodel.MerklisteViewModel
 import ch.brickinventoryapp.ui.viewmodel.SetDetailViewModel
 import ch.brickinventoryapp.ui.viewmodel.TeileViewModel
+import ch.brickinventoryapp.ui.TeilelistenQuelle
+import ch.brickinventoryapp.ui.PlPart
+import ch.brickinventoryapp.service.ExportErgebnis
+import ch.brickinventoryapp.service.TeilelistenExport
+import ch.brickinventoryapp.ui.viewmodel.TeilelisteViewModel
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
@@ -23,29 +30,38 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
+import ch.brickinventoryapp.ui.finanzSummen
+import ch.brickinventoryapp.ui.lokaleAchse
+import ch.brickinventoryapp.ui.lokaleWerte
+import ch.brickinventoryapp.ui.setZeilen
+import ch.brickinventoryapp.ui.viewmodel.Texte
+import java.math.BigDecimal
+import java.util.Locale
 
 /**
- * Beispieldaten für Bildschirmfotos und Oberflächentests: ein Testserver mit
+ * Beispieldaten für Bildschirmfotos und Oberflächentests: ein PfadServer im Takt mit
  * echten Antworten und die ViewModels der Hauptbildschirme dagegen. Dieser Test
  * prüft auf der JVM, dass jede Liste wirklich ankommt — ein Bildschirmfoto einer
  * leeren Liste zeigte nichts.
  *
- * Gegenprobe (30.10.2026, gemessen): in [Beispiele.ANTWORTEN] den Pfad
+ * Gegenprobe: in [Beispiele.ANTWORTEN] den Pfad
  * "/api/v1/wanted" vertippt → rot „jeder Hauptbildschirm bekommt Inhalt“.
- * Gegenproben (01.11.2026, kotlinc): im Detailpreis avg_price 799 statt 812.5 →
+ * Gegenproben: im Detailpreis avg_price 799 statt 812.5 →
  * rot „die Beispiele sind stimmig“; „chart“ aus der Wertentwicklung entfernt →
  * ebenso rot (es blieben die Schweizer Achsentexte des Servers stehen).
- * Gegenproben (02.11.2026, kotlinc): bei den Figuren wieder "name" statt
+ * Gegenproben: bei den Figuren wieder "name" statt
  * "fig_name" → rot „Teile und Figuren tragen echte Namen“; den Pfad
  * /api/v1/minifigs/stats entfernt → ebenso rot (keine Kennzahlen).
- * Gegenproben (02.11.2026, kotlinc): beim Falcon jedes "wert_gesamt" entfernt → rot
+ * Gegenproben: beim Falcon jedes "wert_gesamt" entfernt → rot
  * „jede Finanzzeile trägt …“ (wert=null); im FinanzViewModel die Punkte wieder beim
  * Laden mit Locale.getDefault() übersetzt → rot „die Finanzachse wird erst beim
  * Zeichnen formatiert“ ([10/27, , 10/29]) und „die Beispiele sind stimmig“.
- * Gegenprobe (02.11.2026, kotlinc): bei den Teilen wieder "quantity" statt
+ * Gegenprobe: bei den Teilen wieder "quantity" statt
  * "total_quantity" → rot „die Teilekacheln ergeben die Gesamtzahl“ (82 gegen 0).
- * Gegenprobe (02.11.2026, kotlinc): beim Teil 3039 "image_local" entfernt → rot
+ * Gegenprobe: beim Teil 3039 "image_local" entfernt → rot
  * „jede Kachel hat ein Beispielbild“ ([(3039, null)]).
+ * Gegenprobe: das Baumhaus aus
+ * /finance/valuation entfernt → rot „jede Finanzzeile trägt …“ (2 statt 3 Zeilen).
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 class BeispieldatenTest {
@@ -64,6 +80,9 @@ class BeispieldatenTest {
         Dispatchers.resetMain()
     }
 
+    /** Im Takt ist alles schon geladen, wenn der Aufruf zurückkehrt. */
+    private fun da(was: String, bedingung: () -> Boolean) = assertTrue(was, bedingung())
+
     @Test
     fun `jeder Hauptbildschirm bekommt Inhalt`() {
         val galerie = welt.galerie().also { it.loadSets() }
@@ -71,12 +90,12 @@ class BeispieldatenTest {
         val finanzen = welt.finanzen().also { it.loadValuation() }
         val merkliste = welt.merkliste().also { it.ladeMerkliste() }
         val detail = welt.setDetail().also { it.loadSetDetail(Beispiele.SET) }
-        TestApi.warteBis("Galerie") { galerie.galleryState.value.sets.size == 3 }
-        TestApi.warteBis("Teile") { teile.partsState.value.parts.isNotEmpty() }
-        TestApi.warteBis("Figuren") { teile.partsState.value.minifigs.isNotEmpty() }
-        TestApi.warteBis("Finanzen") { finanzen.financeState.value.valuation != null }
-        TestApi.warteBis("Merkliste") { merkliste.merklisteState.value.merkposten.isNotEmpty() }
-        TestApi.warteBis("Detail") { detail.setDetailState.value.setDetail != null }
+        da("Galerie") { galerie.galleryState.value.sets.size == 3 }
+        da("Teile") { teile.partsState.value.parts.isNotEmpty() }
+        da("Figuren") { teile.partsState.value.minifigs.isNotEmpty() }
+        da("Finanzen") { finanzen.financeState.value.valuation != null }
+        da("Merkliste") { merkliste.merklisteState.value.merkposten.isNotEmpty() }
+        da("Detail") { detail.setDetailState.value.setDetail != null }
         assertEquals("Millennium Falcon", detail.setDetailState.value.setDetail?.name)
         assertTrue(finanzen.financeState.value.valuation!!.sets.isNotEmpty())
     }
@@ -85,7 +104,7 @@ class BeispieldatenTest {
     @Test
     fun `Teile und Figuren tragen echte Namen`() {
         val teile = welt.teile().also { it.loadParts(); it.loadMinifigs() }
-        TestApi.warteBis("Teile und Figuren") { teile.partsState.value.let {
+        da("Teile und Figuren") { teile.partsState.value.let {
             it.parts.isNotEmpty() && it.minifigs.isNotEmpty() && it.minifigStats.types > 0 } }
         val z = teile.partsState.value
         assertTrue(z.parts.toString(), z.parts.all { !it.partName.isNullOrBlank() })
@@ -101,8 +120,8 @@ class BeispieldatenTest {
     fun `die Beispiele sind stimmig`() {
         val finanzen = welt.finanzen().also { it.loadValuation(); it.loadPortfolioHistory("week") }
         val detail = welt.setDetail().also { it.ladeAlles() }
-        TestApi.warteBis("Finanzen") { finanzen.financeState.value.let { it.valuation != null && it.historyPoints.isNotEmpty() } }
-        TestApi.warteBis("Detail") { detail.setDetailState.value.let { it.setPrice != null && it.acquisitions.isNotEmpty() } }
+        da("Finanzen") { finanzen.financeState.value.let { it.valuation != null && it.historyPoints.isNotEmpty() } }
+        da("Detail") { detail.setDetailState.value.let { it.setPrice != null && it.acquisitions.isNotEmpty() } }
         val falcon = finanzen.financeState.value.valuation!!.sets.first { it.setNumber == Beispiele.SET }
         assertEquals(falcon.avgPrice, detail.setDetailState.value.setPrice?.avgPrice)
         assertEquals(listOf("CHF"), listOf(welt.t.sitzung.state.value.currency))
@@ -110,10 +129,10 @@ class BeispieldatenTest {
         // Die Achse trägt Daten, keine Wochentage — chart.x passt Punkt für Punkt, und
         // übersetzt wird erst in der Sprache der Anzeige.
         val f = finanzen.financeState.value
-        val de = ch.brickinventoryapp.ui.lokaleAchse(f.historyPoints, f.historyTage, java.util.Locale.forLanguageTag("de-CH"))
-        val en = ch.brickinventoryapp.ui.lokaleAchse(f.historyPoints, f.historyTage, java.util.Locale.forLanguageTag("en-GB"))
+        val de = lokaleAchse(f.historyPoints, f.historyTage, Locale.forLanguageTag("de-CH"))
+        val en = lokaleAchse(f.historyPoints, f.historyTage, Locale.forLanguageTag("en-GB"))
         assertEquals(listOf("27.10.", "29.10."), de.map { it.xLabel }.filter { it.isNotBlank() })
-        assertEquals(listOf("27/10", "29/10"), en.map { it.xLabel }.filter { it.isNotBlank() })
+        assertEquals(listOf("27 Oct", "29 Oct"), en.map { it.xLabel }.filter { it.isNotBlank() })
     }
 
     /**
@@ -122,19 +141,19 @@ class BeispieldatenTest {
      */
     @Test
     fun `die Finanzachse wird erst beim Zeichnen formatiert`() {
-        val vorher = java.util.Locale.getDefault()
-        java.util.Locale.setDefault(java.util.Locale.US)
+        val vorher = Locale.getDefault()
+        Locale.setDefault(Locale.US)
         try {
             val finanzen = welt.finanzen().also { it.loadValuation(); it.loadPortfolioHistory("week") }
-            TestApi.warteBis("Verlauf") { finanzen.financeState.value.historyPoints.isNotEmpty() }
+            da("Verlauf") { finanzen.financeState.value.historyPoints.isNotEmpty() }
             val f = finanzen.financeState.value
             assertEquals(listOf("27.10", "", "29.10"), f.historyPoints.map { it.xLabel })
             assertEquals("CHF", f.historyWaehrung)
-            val y = ch.brickinventoryapp.ui.lokaleWerte(f.historyYAxis, f.historyWaehrung!!, java.util.Locale.forLanguageTag("de-CH"))
+            val y = lokaleWerte(f.historyYAxis, f.historyWaehrung!!, Locale.forLanguageTag("de-CH"))
             val label = y.last().label.replace(' ', ' ')
             assertTrue(label, label == "CHF 1’720" || label == "CHF 1'720")
         } finally {
-            java.util.Locale.setDefault(vorher)
+            Locale.setDefault(vorher)
         }
     }
 
@@ -148,7 +167,7 @@ class BeispieldatenTest {
         val teile = welt.teile().also { it.loadParts(); it.loadMinifigs() }
         val merkliste = welt.merkliste().also { it.ladeMerkliste() }
         val finanzen = welt.finanzen().also { it.loadValuation() }
-        TestApi.warteBis("alles") {
+        da("alles") {
             galerie.galleryState.value.sets.isNotEmpty() && teile.partsState.value.parts.isNotEmpty() &&
                 teile.partsState.value.minifigs.isNotEmpty() && merkliste.merklisteState.value.merkposten.isNotEmpty() &&
                 finanzen.financeState.value.valuation != null
@@ -169,7 +188,7 @@ class BeispieldatenTest {
     @Test
     fun `die Teilekacheln ergeben die Gesamtzahl`() {
         val teile = welt.teile().also { it.loadParts() }
-        TestApi.warteBis("Teile") { teile.partsState.value.let { it.parts.isNotEmpty() && it.partsStats != null } }
+        da("Teile") { teile.partsState.value.let { it.parts.isNotEmpty() && it.partsStats != null } }
         val z = teile.partsState.value
         assertEquals(z.partsStats!!.teileGesamt, z.parts.sumOf { it.totalQuantity })
     }
@@ -181,13 +200,17 @@ class BeispieldatenTest {
     @Test
     fun `jede Finanzzeile trägt Preis, Kaufpreis, Zustand und G&V`() {
         val finanzen = welt.finanzen().also { it.loadValuation() }
-        TestApi.warteBis("Finanzen") { finanzen.financeState.value.let { it.valuation != null && it.pnl != null } }
+        da("Finanzen") { finanzen.financeState.value.let { it.valuation != null && it.pnl != null } }
         val z = finanzen.financeState.value
-        val zeilen = ch.brickinventoryapp.ui.setZeilen(z.valuation!!.sets).map { it.second }
-        assertEquals(2, zeilen.size)
-        assertTrue(zeilen.toString(), zeilen.all { it.wert != null && it.kaufpreis != null && it.zustand != null && it.pnlProzent != null })
-        val kopf = ch.brickinventoryapp.ui.finanzSummen(z.valuation!!, z.partsValuation, z.figsValuation, z.pnl).gesamt
-        assertEquals(0, kopf.compareTo(zeilen.sumOf { java.math.BigDecimal.valueOf(it.wert!!) }))
+        val zeilen = setZeilen(z.valuation!!.sets).map { it.second }
+        // Zwei bewertete Zeilen und das Baumhaus ohne Marktpreis — der Fall der Basiszeile.
+        assertEquals(3, zeilen.size)
+        val bewertet = zeilen.filter { it.wert != null }
+        assertEquals(2, bewertet.size)
+        assertTrue(bewertet.toString(), bewertet.all { it.kaufpreis != null && it.zustand != null && it.pnlProzent != null })
+        assertTrue("ohne Marktpreis, mit Kaufpreis", zeilen.single { it.wert == null }.kaufpreis != null)
+        val kopf = finanzSummen(z.valuation!!, z.partsValuation, z.figsValuation, z.pnl).gesamt
+        assertEquals(0, kopf.compareTo(bewertet.sumOf { BigDecimal.valueOf(it.wert!!) }))
     }
 }
 
@@ -202,10 +225,17 @@ object Beispiele {
             {"set_number":"75192-1","image_local":"/beispiel/set1.png","name":"Millennium Falcon","year":2017,"theme":"Star Wars","quantity":1,"num_parts":7541},
             {"set_number":"10294-1","image_local":"/beispiel/set2.png","name":"Titanic","year":2021,"theme":"Icons","quantity":2,"num_parts":9090},
             {"set_number":"21318-1","image_local":"/beispiel/set3.png","name":"Baumhaus","year":2019,"theme":"Ideas","quantity":1,"num_parts":3036}]}""",
-        "/api/v1/stats" to """{"success":true,"stats":{"total_sets":3,"total_quantity":4,"total_pieces":28757,"total_instructions":2,"total_parts":82,"total_minifigs":2,"set_parts":42,"manual_parts":40}}""",
-        "/api/v1/finance/pnl" to """{"success":true,"currency":"CHF","totals":{"purchase":"1500.00","current":"1712.40","pnl_prozent":14.2},"sets":[
-            {"set_number":"75192-1","quantity":1,"current_price":812.5,"baseline_price":700,"pnl_pct":"16.1","kachel_preis":812.5,"kachel_pnl_pct":16.1},
-            {"set_number":"10294-1","quantity":2,"current_price":449.95,"baseline_price":400,"pnl_pct":"12.5","kachel_preis":449.95,"kachel_pnl_pct":12.5}]}""",
+        "/api/v1/stats" to """{"success":true,"stats":{"total_sets":3,"total_quantity":4,"total_pieces":28757,"total_instructions":2,"total_parts":82,"total_minifigs":3,"set_parts":42,"manual_parts":40}}""",
+        // Das Baumhaus hat noch keinen Marktpreis: Die Kopfkarte rechnet über die zwei
+        // übrigen Positionen (1500 + 212.40 = 1712.40) und nennt es in der Basiszeile, die
+        // Galeriekachel zeigt seinen Kaufpreis als solchen (kachel_quelle "kauf").
+        "/api/v1/finance/pnl" to """{"success":true,"currency":"CHF","totals":{"purchase":"1680.00","current":"1712.40","pnl_prozent":14.2,
+            "grand_total":"1712.40","sets_purchase":"1680.00","positionen":3,"positionen_bewertet":2,"positionen_ohne_marktpreis":1,
+            "positionen_ohne_kaufpreis":0,"basis_einstand":"1500.00","basis_marktwert":"1712.40","basis_guv_betrag":"212.40",
+            "ohne_marktpreis_einstand":"180.00","ohne_kaufpreis_marktwert":"0.00"},"sets":[
+            {"set_number":"75192-1","quantity":1,"current_price":812.5,"baseline_price":700,"pnl_pct":"16.1","kachel_preis":812.5,"kachel_pnl_pct":16.1,"kachel_quelle":"markt"},
+            {"set_number":"10294-1","quantity":2,"current_price":449.95,"baseline_price":400,"pnl_pct":"12.5","kachel_preis":449.95,"kachel_pnl_pct":12.5,"kachel_quelle":"markt"},
+            {"set_number":"21318-1","quantity":1,"current_price":null,"baseline_price":180,"kachel_preis":180.0,"kachel_pnl_pct":null,"kachel_quelle":"kauf"}]}""",
         // Wie der Server (finanzen/rechnung/bewertung.ts): wert_gesamt, Kaufpreis, G&V und
         // je Erfassung eine Zeile mit Zustand. Ohne wert_gesamt zeigt jede Zeile „noch
         // kein Preis“ unter einer gefüllten Kopfkachel.
@@ -217,7 +247,9 @@ object Beispiele {
             {"set_number":"10294-1","image_local":"/beispiel/set2.png","name":"Titanic","quantity":2,"avg_price":449.95,"qty_avg_price":449.95,
              "min_price":420.0,"max_price":480.0,"total_avg":"899.90","wert_gesamt":899.9,"purchase_price":400.0,"pnl_prozent":12.5,
              "acquisitions":[{"id":2,"condition":"N","quantity":2,"purchase_price":400.0,"avg_price":449.95,
-                              "total_avg":"899.90","wert_gesamt":899.9,"pnl_prozent":12.5}]}],
+                              "total_avg":"899.90","wert_gesamt":899.9,"pnl_prozent":12.5}]},
+            {"set_number":"21318-1","image_local":"/beispiel/set3.png","name":"Baumhaus","quantity":1,"purchase_price":180.0,"no_price":true,
+             "acquisitions":[{"id":3,"condition":"N","quantity":1,"purchase_price":180.0}]}],
             "totals":{"min":"1600.00","avg":"1712.40","max":"1840.00","qty_avg":"1712.40"}}""",
         // Wie der Server: x_label in Schweizer Form, chart.x mit den ISO-Tagen derselben Punkte.
         "/api/v1/finance/portfolio-history" to """{"success":true,"currency":"CHF","period":"week","points":[
@@ -243,15 +275,15 @@ object Beispiele {
         "/api/v1/minifigs/stats" to """{"success":true,"stats":{"types":2,"total_quantity":3,"manual":0}}""",
         // Drei Fälle der Merkliste: mit Preis und Alarm, ohne Preis („Preis folgt“), schon vorhanden.
         "/api/v1/wanted" to """{"success":true,"merkposten":[
-            {"set_number":"10305-1","image_local":"/beispiel/set1.png","name":"Lion Knights' Castle","year":2022,"condition":"N","user_id":1,
+            {"set_number":"10305-1","image_local":"/beispiel/set1.png","name":"Lion Knights' Castle","year":2022,"condition":"N","user_id":1,"created_at":"2026-08-21T09:00:00Z",
              "marktpreis":399.9,"waehrung":"CHF","alarm":{"richtung":"unter","schwelle":349.0,"ausgeloest":false}},
-            {"set_number":"42115-1","image_local":"/beispiel/set3.png","name":"Lamborghini Sián FKP 37","year":2020,"condition":"U","user_id":1,"waehrung":"CHF"},
-            {"set_number":"10294-1","image_local":"/beispiel/set2.png","name":"Titanic","year":2021,"condition":"N","user_id":1,"marktpreis":449.95,"waehrung":"CHF","owned":true}]}""",
+            {"set_number":"42115-1","image_local":"/beispiel/set3.png","name":"Lamborghini Sián FKP 37","year":2020,"condition":"U","user_id":1,"created_at":"2026-09-05T18:30:00Z","waehrung":"CHF"},
+            {"set_number":"10294-1","image_local":"/beispiel/set2.png","name":"Titanic","year":2021,"condition":"N","user_id":1,"created_at":"2026-10-12T07:15:00Z","marktpreis":449.95,"waehrung":"CHF","owned":true}]}""",
         "/api/v1/sets/75192-1" to """{"success":true,"quantity":1,"set":{"set_number":"75192-1","image_local":"/beispiel/set1.png","name":"Millennium Falcon","year":2017,
             "theme":"Star Wars","quantity":1,"num_parts":7541,"minifigs":7,"added_at":"2026-03-14T10:00:00Z","avg_purchase_price":700.0}}""",
         "/api/v1/sets/75192-1/price" to """{"success":true,"set_number":"75192-1","currency":"CHF","avg_price":812.5,"min_price":760.0,"max_price":880.0,"qty_avg_price":812.5}""",
         "/api/v1/sets/75192-1/price-history" to """{"success":true,"set_number":"75192-1","currency":"CHF",
-            "by_condition":{"N":{"market_price":812.5,"purchase_price":700.0,"pnl_pct":16.1}},
+            "by_condition":{"N":{"market_price":812.5,"purchase_price":700.0,"pnl_pct":"16.1","pnl_prozent":16.1}},
             "chart":{"values":[{"name":"N","values":[{"x":"2026-08-01","y":790.0},{"x":"2026-09-01","y":801.0},{"x":"2026-10-01","y":812.5}],"firstRealIndex":0}],
                      "x":["2026-08-01","2026-09-01","2026-10-01"]},
             "pnl_prozent":16.1,"purchase_price":700.0}""",
@@ -261,20 +293,31 @@ object Beispiele {
     )
 
     /** Ein eigener Server je Test; [close] räumt ihn wieder ab. */
-    class Welt(texte: ch.brickinventoryapp.ui.viewmodel.Texte = NummernTexte) : AutoCloseable {
+    class Welt(texte: Texte = NummernTexte) : AutoCloseable {
         val pfade = PfadServer(*ANTWORTEN)
-        val t = TestDienste(pfade.server, texte).also { d -> d.sitzung.aendere { it.copy(currency = "CHF") } }
+        val t = TestDienste(pfade.imTakt(), texte, io = Dispatchers.Main).also { d -> d.sitzung.waehrungUebernommen("CHF") }
 
-        fun galerie() = t.merke(GalerieViewModel(t.dienste, SetsRepository(t.api, t.cache),
+        fun galerie() = t.merke(GalerieViewModel(t.sitzung, t.filter(), t.hinweise, t.bestand, t.scrollMemory, SetsRepository(t.api, t.cache),
             FinanzenRepository(t.api, t.cache), SavedStateHandle()))
-        fun teile() = t.merke(TeileViewModel(t.dienste, TeileRepository(t.api, t.cache), FigurenRepository(t.api, t.cache), SavedStateHandle()))
-        fun finanzen() = t.merke(FinanzViewModel(t.dienste, FinanzenRepository(t.api, t.cache), SavedStateHandle()))
-        fun merkliste() = t.merke(MerklisteViewModel(t.dienste, SetsRepository(t.api, t.cache),
+        fun teile() = t.merke(TeileViewModel(t.sitzung, t.filter(), t.hinweise, t.bestand, t.scrollMemory, TeileRepository(t.api, t.cache), FigurenRepository(t.api, t.cache), SavedStateHandle()))
+        fun finanzen() = t.merke(FinanzViewModel(t.sitzung, t.filter(), t.hinweise, t.bestand, FinanzenRepository(t.api, t.cache), SavedStateHandle()))
+        fun merkliste() = t.merke(MerklisteViewModel(t.sitzung, t.filter(), t.hinweise, t.bestand, SetsRepository(t.api, t.cache),
             KatalogRepository(t.api, t.cache), FinanzenRepository(t.api, t.cache), SavedStateHandle()))
-        fun setDetail() = t.merke(SetDetailViewModel(t.dienste, SetsRepository(t.api, t.cache),
+        fun setDetail() = t.merke(SetDetailViewModel(t.sitzung, t.filter(), t.hinweise, t.bestand, SetsRepository(t.api, t.cache),
             FinanzenRepository(t.api, t.cache), HaushaltRepository(t.api, t.cache),
-            object : DateiLeser { override suspend fun lies(uri: android.net.Uri): Pair<String?, ByteArray>? = null },
+            object : DateiLeser { override suspend fun lies(datei: DateiRef): Pair<String?, ByteArray>? = null },
             SavedStateHandle(mapOf("setNumber" to SET))))
+
+        /** Die Bauliste ohne Netz: [aufloesen] liefert Name und Teile je Setnummer. */
+        fun bauliste(aufloesen: (String) -> Pair<String, List<PlPart>> = { error("nichts aufzulösen") }) =
+            t.merke(TeilelisteViewModel(t.sitzung, t.hinweise, object : TeilelistenQuelle {
+                override suspend fun loeseSetAuf(setNumber: String, serverUrl: String) = aufloesen(setNumber)
+                override suspend fun mitBestand(teile: List<PlPart>, nurLose: Boolean, mitUnterkonten: Boolean) = teile
+                override fun sortiert(teile: Collection<PlPart>) = teile.toList()
+            }, object : TeilelistenExport {
+                override val status = flowOf<String?>(null)
+                override suspend fun erzeuge(rumpf: String): ExportErgebnis = ExportErgebnis.Fehler(null)
+            }, SavedStateHandle()))
 
         override fun close() {
             t.aufraeumen()

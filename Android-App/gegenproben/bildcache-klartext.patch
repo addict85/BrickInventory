@@ -1,0 +1,27 @@
+Gegenprobe: der Bild-Zwischenspeicher schreibt wieder im Klartext (VerschluesseltesDateisystem reicht durch, Stand vor sec11 N1)
+Modul: core-data
+Test: ch.brickinventoryapp.BildZwischenspeicherTest
+Rot: der Zwischenspeicher liegt verschluesselt
+
+diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/util/VerschluesseltesDateisystem.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/util/VerschluesseltesDateisystem.kt
+index 21e6354..2c418ba 100644
+--- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/util/VerschluesseltesDateisystem.kt
++++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/util/VerschluesseltesDateisystem.kt
+@@ -25,14 +25,11 @@ class VerschluesseltesDateisystem(
+     private val zweck: String,
+ ) : ForwardingFileSystem(delegate) {
+ 
+-    override fun source(file: Path): Source = Eingang(delegate.source(file).buffer(), bindung(file))
++    override fun source(file: Path): Source = delegate.source(file)
+ 
+-    override fun sink(file: Path, mustCreate: Boolean): Sink = Ausgang(delegate.sink(file, mustCreate), bindung(file), 0L)
++    override fun sink(file: Path, mustCreate: Boolean): Sink = delegate.sink(file, mustCreate)
+ 
+-    override fun appendingSink(file: Path, mustExist: Boolean): Sink {
+-        val ab = delegate.metadataOrNull(file)?.size ?: 0L
+-        return Ausgang(delegate.appendingSink(file, mustExist), bindung(file), ab)
+-    }
++    override fun appendingSink(file: Path, mustExist: Boolean): Sink = delegate.appendingSink(file, mustExist)
+ 
+     // Wahlfreier Zugriff läse Geheimtext als Inhalt; OkHttp braucht ihn nicht.
+     override fun openReadOnly(file: Path): FileHandle = throw IOException("kein wahlfreier Zugriff: $file")

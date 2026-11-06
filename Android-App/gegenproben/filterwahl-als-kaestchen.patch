@@ -1,0 +1,18 @@
+Gegenprobe: FilterWahl wieder als FilterChip (Rolle Kästchen statt Optionsfeld)
+Modul: app
+Test: ch.brickinventoryapp.BarrierefreiheitBefundeTest
+Rot: M6 Filterwahl ist eine Einfachwahl
+
+diff --git a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/screens/Filterblatt.kt b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/screens/Filterblatt.kt
+index f15ef57..a1c0d47 100644
+--- a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/screens/Filterblatt.kt
++++ b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/screens/Filterblatt.kt
+@@ -188,7 +188,7 @@ fun FilterAbschnitt(titel: String, chips: @Composable () -> Unit) {
+  */
+ @Composable
+ fun FilterWahl(text: String, gewaehlt: Boolean, onClick: () -> Unit) {
+-    WahlChip(text, gewaehlt, onClick, if (grosseSchrift()) Modifier else Modifier.widthIn(max = 220.dp))
++    androidx.compose.material3.FilterChip(gewaehlt, onClick, { Text(text) })
+ }
+ 
+ /** Kontofilter als Abschnitt — nur, wenn es im Haushalt etwas zu wählen gibt. */

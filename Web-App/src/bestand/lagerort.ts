@@ -1,16 +1,15 @@
 /** Der Lagerort hängt an Sets, Teilen und Figuren; setzen, auflisten und
  * räumen stehen deshalb einmal hier statt je Route.
  * Ausführlich: docs/begruendungen/src/bestand/lagerort.ts.md#abschnitt */
-import { meldeUndLiefere } from '../infra/httpError';
+import { meldeUndLiefere } from '../infra/fehler';
 import * as db from '../../db/database';
 import * as orte from './repository/lagerort';
 import type { LagerTabelle } from './repository/lagerort';
-import { asIds } from '../haushalt/haushalt';
+import { asIds, scopeIds, writableIds, blickfeldAus, type Sicht, schreibbereichAus, type Schreiber } from '../haushalt/haushalt';
 import type { BlickfeldEingabe } from '../haushalt/haushalt';
 import { fehlerWerfen } from '../infra/fehlerTexte';
-// Statisch: Es gibt keinen Kreis, und `await import('./settings')` verlangte
-// unter node16 die Dateiendung.
-import { setUserSetting, deleteUserSetting } from '../konto/settings';
+import { deleteUserSetting } from '../einstellungen/settings';
+import { setUserSetting } from '../konto/nutzerEinstellung';
 
 /** Fachlich, nicht technisch (die Spalte ist TEXT): Der Name muss auf eine
  * Kachel passen, und eine Absage ist besser als ein abgeschnittener Name. */
@@ -31,8 +30,9 @@ export function normalisiereLagerort(v: unknown): string | null {
  * bekommt die fertige Menge und fragt nicht nach.
  * @returns wie viele Zeilen betroffen waren (0 = es gibt nichts zu setzen) */
 export async function setzeLagerort(
-  art: LagerArt, besitzerIds: number[], schluessel: string[], ort: string | null,
+  art: LagerArt, besitzerIdsWahl: Schreiber | number[], schluessel: string[], ort: string | null,
 ): Promise<number> {
+  const besitzerIds = await schreibbereichAus(besitzerIdsWahl);
   if (ort === null) return orte.ordneOrtZu(db, art, besitzerIds, null, schluessel);
   // Ein neuer Name kommt in den Vorrat — vor der Zuordnung, die ihn über die ID findet.
   return await db.transaction(async (tx) => {
@@ -52,6 +52,27 @@ function nameOderFehler(v: unknown): string {
   if (!s) fehlerWerfen('lagerort_leer', 400);
   if (s.length > LAGERORT_MAX_ZEICHEN) fehlerWerfen('lagerort_zu_lang', 400);
   return s;
+}
+
+/** Schnittmenge statt Absage; ohne Ansichtsfilter, denn die Frage ist „darf ich?“.
+ * Ausführlich: docs/begruendungen/src/bestand/lagerort.ts.md#lagerkonten */
+export async function lagerKonten(nutzer: number, wunsch: string | number | undefined, schreiben: boolean): Promise<number[]> {
+  const gewuenscht = String(wunsch ?? '').split(',').map(x => parseInt(x.trim(), 10)).filter(Number.isFinite);
+  if (!gewuenscht.length) return [nutzer];
+  const erlaubt = schreiben ? await writableIds(nutzer) : await scopeIds(nutzer);
+  return gewuenscht.filter(id => erlaubt.includes(id));
+}
+
+/** EIN Konto je Schreibaufruf, damit jeder Ort für sich scheitern kann; 403 ohne Recht. */
+export async function lagerSchreibkonto(nutzer: number, wunsch: string | number | undefined): Promise<number> {
+  const konto = (await lagerKonten(nutzer, wunsch, true))[0];
+  if (konto === undefined) fehlerWerfen('kein_schreibrecht', 403);
+  return konto;
+}
+
+/** Der Vorrat der gewünschten Konten, soweit das Konto sie sehen darf. */
+export async function orteFuer(nutzer: number, wunsch: string | undefined): Promise<Lagerort[]> {
+  return orteVon(await lagerKonten(nutzer, wunsch, false));
 }
 
 /** Wer wessen Liste sehen darf, entscheidet der Haushalt; die IDs kommen mit.
@@ -106,7 +127,8 @@ export async function loescheOrt(userId: number, id: number): Promise<void> {
 
 /** EINE Abfrage über alle Tabellen, damit nicht jede Oberfläche selbst zusammenführt.
  * Ausführlich: docs/begruendungen/src/bestand/lagerort.ts.md#lagerorte */
-export async function lagerorte(blickfeld: BlickfeldEingabe) {
+export async function lagerorte(blickfeldWahl: Sicht | BlickfeldEingabe) {
+  const blickfeld = await blickfeldAus(blickfeldWahl);
   const uids = asIds(blickfeld);
   // Über den NAMEN gruppiert, absichtlich: „Keller" von Grossvater und Enkel
   // sind zwei Vorratszeilen, gehören in der Übersicht aber zusammen.

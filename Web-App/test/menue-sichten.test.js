@@ -1,23 +1,6 @@
 /**
  * Jede Sicht hinter dem Menü ist erreichbar — und jeder Eintrag führt irgendwohin.
- *
- * ── Woher diese Prüfung kommt ───────────────────────────────────────────────
- *
- * Marcos Vorgabe vom 16.10.: „Gerne den Reiter Einstellungen mit den Punkten
- * belassen die nur der Administrator setzen kann, und die restlichen Seiten
- * oben Rechts hinter dem Benutzernamen als Aufklappbares Menu mit 3 -
- * anzeigen."
- *
- * Damit gibt es in der Webapp zum ersten Mal Flächen, die KEIN Reiter
- * erreicht. Genau diese Sorte ist in der Android-App schon einmal unsichtbar
- * geworden: `Screen.Settings` stand dort im Navigationsgraphen und kam im
- * ganzen Baum genau einmal vor — in seiner eigenen Registrierung. Marco fand
- * die Einstellungen nicht, weil es keinen Weg dorthin gab; seither hält
- * ErreichbareRoutenTest das fest.
- *
- * Hier ist die Lage dieselbe, nur in HTML: Eine `.tab`-Fläche ohne Eintrag im
- * Menü ist unsichtbar, ein Eintrag ohne Fläche tut beim Klick nichts, und ein
- * Eintrag ohne Lader zeigt eine leere Seite. Keines davon meldet der Browser.
+ * Ausführlich: docs/begruendungen/test/menue-sichten.test.js.md#kopf
  *
  * ── Gegenproben (durchgeführt, Befunde gemessen) ────────────────────────────
  *
@@ -38,23 +21,11 @@ const path   = require('node:path');
 const ROOT = path.join(__dirname, '..');
 /**
  * index.html OHNE Kommentare.
- *
- * GEMESSEN am 17.10.: Ein Erklaerkommentar INNERHALB der Menueklappe enthielt
- * die Zeichenfolge eines schliessenden div-Tags — und `eintragsTexte()`
- * schneidet die Klappe genau am ersten solchen Tag aus. Der Ausschnitt endete
- * damit im Kommentar, die Pruefung sah sieben Eintraege statt acht und blieb
- * GRUEN. Sie hat nicht falsch gemessen, sondern still weniger, und das ist
- * schlimmer: Ein roter Fall meldet sich, ein verkuerzter nicht.
- *
- * Ironischerweise war es der Kommentar, der vor genau diesem Schnitt warnte.
- *
- * Dieselbe Entscheidung wie in test/bedienelement-name.test.js und
- * test/dom-ids.test.js: Gesucht wird im MARKUP. Was ein Kommentar beschreibt,
- * ist keine Oberflaeche.
+ * Ausführlich: docs/begruendungen/test/menue-sichten.test.js.md#html
  */
 const HTML = fs.readFileSync(path.join(ROOT, 'public', 'index.html'), 'utf8')
   .replace(/<!--[\s\S]*?-->/g, '');
-const NAV  = fs.readFileSync(path.join(ROOT, 'public', 'js', '02-gallery.js'), 'utf8');
+const NAV  = fs.readFileSync(path.join(ROOT, 'public', 'js', '25-navigation.js'), 'utf8');
 
 /** Die Namen aus dem Menü — `data-click="oeffneSicht" data-arg="…"`. */
 function menueEintraege() {
@@ -96,7 +67,7 @@ test('jede Sicht ist über das Menü erreichbar', () => {
 });
 
 test('jede Sicht lädt, was sie zeigt', () => {
-  // `const SICHTEN = { … };` in js/02-gallery.js — die Zuordnung Name → Lader.
+  // `const SICHTEN = { … };` in js/25-navigation.js — die Zuordnung Name → Lader.
   const block = NAV.slice(NAV.indexOf('const SICHTEN = {'));
   const ende  = block.indexOf('\n};');
   assert.ok(ende > 0, 'SICHTEN nicht gefunden — umbenannt?');
@@ -110,37 +81,18 @@ test('jede Sicht lädt, was sie zeigt', () => {
 test('der Reiter „Einstellungen" ist Verwaltersache', () => {
   // Marcos Vorgabe: nur noch, was ein Administrator setzen kann. Deshalb ist
   // der Reiter wie das Monitoring vorgeblendet und wird erst für Admins
-  // sichtbar (js/01-core.js).
+  // sichtbar (js/26-sitzung.js).
   assert.match(HTML, /id="ntab-settings"[^>]*data-stil="display:none"/,
     'Der Einstellungs-Reiter steht wieder für alle da — für Nicht-Admins wäre ' +
     'er leer.');
-  const core = fs.readFileSync(path.join(ROOT, 'public', 'js', '01-core.js'), 'utf8');
+  const core = fs.readFileSync(path.join(ROOT, 'public', 'js', '26-sitzung.js'), 'utf8');
   assert.match(core, /ntab-settings'\);\s*if\s*\(ns\)\s*ns\.style\.display\s*=\s*''/,
     'Niemand blendet den Reiter für Admins wieder ein — dann fehlt er auch dort.');
 });
 
 /**
- * ── Nachtrag vom 17.10.: das Symbol, das zur Laufzeit verschwand ────────────
- *
- * Marcos Meldung, mit Bildschirmfoto: „Bitte bei Profil-Einstellungen auch
- * noch ein Icon verwenden."
- *
- * Im Markup stand es längst:
- *
- *     <button … data-i18n="settings.group.profile">👤 Profil-Einstellungen</button>
- *
- * Nur zählt der Text im Markup nichts: `data-i18n` ERSETZT den Inhalt beim
- * Übersetzen durch den Sprachtext, und `settings.group.profile` lautete
- * schlicht „Profil-Einstellungen". Alle sechs Nachbareinträge tragen ihr
- * Symbol IM Sprachtext ('🎟️ Gutscheine', '🔔 Preisalarme', …) — dieser eine
- * nicht. Sichtbar war also nie, was dasteht.
- *
- * Dieselbe Falle wie bei `G('ubadge').textContent` (siehe
- * test/benutzername-menueknopf.test.js): Ein Markup, das beim Laden richtig
- * aussieht und beim ersten Zugriff überschrieben wird.
- *
- * i18n.test.js fängt das NICHT — es vergleicht Deutsch gegen Englisch, nicht
- * Markup gegen Sprachtext. Beide Sprachen waren hier einträchtig symbollos.
+ * Nachtrag vom 17.10.: das Symbol, das zur Laufzeit verschwand
+ * Ausführlich: docs/begruendungen/test/menue-sichten.test.js.md#stelle
  *
  * Gegenproben (durchgeführt, Ergebnisse abgeschrieben) — siehe unten an den
  * Fällen selbst.
@@ -148,20 +100,7 @@ test('der Reiter „Einstellungen" ist Verwaltersache', () => {
 
 /**
  * Die Pfade AUSGESCHRIEBEN und nicht über `sprache + '.js'` zusammengesetzt.
- *
- * test/eigenbruecken.test.js zählt Pfade mit variablem Segment gegen eine
- * Ratsche und sagt dazu: „Wo es geht, gehört der Pfad ausgeschrieben — ein
- * variables Segment nimmt dieser Prüfung die Sicht." Die Ratsche von 74 auf
- * 75 zu drehen wäre hier das Falsche: Sie rückt nach, wenn das Ausschreiben
- * eine ZWEITE WAHRHEIT schüfe — bei Schleifen über die Migrationsdateien
- * etwa, wo eine ausgeschriebene Liste beim nächsten Zuwachs veraltet.
- *
- * Hier gibt es genau zwei Sprachdateien, und `['de', 'en']` steht ohnehin
- * schon im Fall darunter. Ausgeschrieben kostet nichts und bringt etwas:
- * eigenbruecken prüft die beiden Pfade jetzt WIRKLICH, statt sie nur als
- * uneinsehbar zu zählen.
- *
- * (Gemerkt hat das die Ratsche, nicht ich — sie schlug bei 75 an.)
+ * Ausführlich: docs/begruendungen/test/menue-sichten.test.js.md#sprachdatei
  */
 const SPRACHDATEI = {
   de: path.join(ROOT, 'public', 'locales', 'de.js'),
@@ -233,25 +172,8 @@ test('das Markup eines Menüeintrags zeigt, was der Sprachtext sagt', () => {
 });
 
 test('die Kopfleiste behaelt ihre bewusste Hoehe', () => {
-  // ── Was dieser Fall einmal war, und was aus ihm geworden ist ────────────
-  //
-  // Marcos Vorgabe vom 17.10., frueh: „Der Abmeldebutton sollte gleich gross
-  // wie die restlichen Buttons sein oben rechts (gleich hoch)." Nachgerechnet
-  // waren es drei Hoehen — ≈31,5 px (Abmelden), 24 px (Namensknopf),
-  // ≈20 px (Admin-Plakette). Sie bekamen eine gemeinsame.
-  //
-  // Am selben Tag, spaeter: „Abmelden" zog in die Klappe und die
-  // Admin-Plakette in den Namen. In der Reihe steht nur noch EIN Element.
-  //
-  // „Gleich hoch" ist damit keine Beziehung mehr, die man pruefen koennte —
-  // ein Element ist immer gleich hoch wie es selbst. Der Fall heisst deshalb
-  // jetzt anders und sichert, was uebrig bleibt und weiterhin eine
-  // Entscheidung ist: Die 28 px stehen als Wert da, der Namensknopf nimmt
-  // sie, und sie stehen NICHT an `.btn-sm`.
-  //
-  // Den Fall einfach zu loeschen waere die andere Moeglichkeit gewesen. Dann
-  // haette niemand mehr gemerkt, wenn die Hoehe an `.btn-sm` wandert — und
-  // genau das ist die Falle, gegen die er gebaut wurde.
+  // Was dieser Fall einmal war, und was aus ihm geworden ist
+  // Ausführlich: docs/begruendungen/test/menue-sichten.test.js.md#css-stelle
   const css = fs.readFileSync(path.join(ROOT, 'public', 'styles.css'), 'utf8');
   assert.match(css, /\.umenu\{[^}]*--kopf-hoehe:\s*(max\()?\d+px/,
     'In `.umenu` steht keine Hoehe mehr.');
@@ -259,7 +181,8 @@ test('die Kopfleiste behaelt ihre bewusste Hoehe', () => {
     'Der Namensknopf nimmt die Hoehe nicht mehr.');
   // Nicht an `.btn-sm`: die Klasse haengt an 28 Stellen in index.html und in
   // fuenf JS-Dateien. Eine Hoehe dort verschoebe die halbe Oberflaeche.
-  assert.doesNotMatch(css, /\.btn-sm\{[^}]*height:/,
+  // min-height 32 px ist die kompakte Knopfgrösse (zwei Grössen); feste Höhe bleibt verboten.
+  assert.doesNotMatch(css, /\.btn-sm\{[^}]*(?<!min-)height:/,
     '`.btn-sm` hat eine feste Hoehe bekommen — diese Klasse traegt die halbe ' +
     'Oberflaeche, die Hoehe gehoert in die Kopfleiste.');
 });
@@ -286,8 +209,8 @@ test('Abmelden steht in der Klappe und nicht mehr in der Kopfleiste', () => {
     'Der Trenner vor „Abmelden" fehlt — dann steht die Handlung als achter Punkt '
     + 'in einer Reihe mit sieben Sichtwechseln.');
 
-  // Und 01-core.js haengt seinen Handler weiterhin an diese ID.
-  const core = fs.readFileSync(path.join(ROOT, 'public', 'js', '01-core.js'), 'utf8');
+  // Und 26-sitzung.js haengt seinen Handler weiterhin an diese ID.
+  const core = fs.readFileSync(path.join(ROOT, 'public', 'js', '26-sitzung.js'), 'utf8');
   assert.match(core, /G\('btn-logout'\)\.onclick/,
     'Niemand verdrahtet btn-logout mehr — der Eintrag taete dann nichts.');
 });

@@ -15,6 +15,9 @@
  *   F  legeAlarmAn ohne -1-Ergänzung → rot: „Preisalarm in seiner Ansicht“
  *   G  Hinweisspalte der Auftragszeile ohne Fehlerkasten → rot: „Hintergrundarbeiten“
  *   H  fmtDatum in Englisch wieder 2-stellig numerisch → rot: „Datum auf Englisch“
+ *   I  (05.11.2026, UI-Prüfung 17 M5) Rückfrage vor dem Währungswechsel aus
+ *      speichereWaehrung entfernt → rot: „Konto: Währung wirkt sofort“ (kein
+ *      Dialog mit „Marktpreise“)
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -26,7 +29,7 @@ const SET = { set_number: '21318-1', name: 'Tree House', theme: 'Ideas', year: 2
 
 test('unbekannte Setnummer: erst Rückfrage, dann anlegen', async () => {
   const { w, d, aufrufe } = await oeffneOberflaeche({
-    '/v1/catalog/sets/99999-1': { $status: 404, success: false, code: 'set_nicht_im_katalog' } });
+    '/v1/catalog/sets/99999-1': { $status: 404, success: false, code: 'set_nicht_im_katalog', error: 'Set nicht im Katalog' } });
   try {
     d.querySelector('button[data-click="oeffneErfassen"][data-arg="set"]').click();
     d.getElementById('add-num').value = '99999';
@@ -62,17 +65,24 @@ test('Preisverlauf: Kaufpreis als Punkt, nicht als Anfang der Kurve', async () =
 
 test('Konto: Währung wirkt sofort, Passwort hat seinen eigenen Knopf', async () => {
   const { w, d, aufrufe } = await oeffneOberflaeche({
-    '/v1/auth/profile': { success: true, user: { username: 'anna', email: 'anna@example.org', email_verified: 1 } } });
+    '/v1/auth/profile': { success: true, user: { username: 'anna', email: 'anna@example.org', email_verified: true } } });
   try {
     await sicht(w, 'profil');
     const feld = d.getElementById('s-cur');
     feld.value = 'CHF';
     feld.dispatchEvent(new w.Event('change', { bubbles: true }));
+    // Vor dem Wechsel sagt eine Rückfrage, dass die Marktpreise neu geladen werden.
+    assert.ok(await warte(() => d.getElementById('confirm-modal').style.display === 'flex'), 'Rückfrage vor dem Währungswechsel');
+    assert.match(d.getElementById('cd-msg').textContent, /Marktpreise/);
+    d.getElementById('cd-confirm').click();
     await warte(() => aufrufe.some(a => a.method === 'POST' && a.url.endsWith('/v1/settings') && /CHF/.test(a.body)));
+    await warte(() => d.getElementById('confirm-modal').style.display !== 'flex');
     assert.ok(aufrufe.some(a => a.method === 'POST' && a.url.endsWith('/v1/settings') && JSON.parse(a.body).currency === 'CHF'));
-    d.getElementById('pw-c').value = 'alt-Passwort-1';
     d.getElementById('pw-n').value = d.getElementById('pw-r').value = 'neu-Passwort-1';
     d.getElementById('btn-sav-pw').click();
+    await warte(() => d.getElementById('confirm-modal').style.display === 'flex');
+    d.getElementById('cd-pw').value = 'alt-Passwort-1';
+    d.getElementById('cd-confirm').click();
     await warte(() => aufrufe.some(a => a.url.endsWith('/v1/auth/change-password')));
     assert.equal(aufrufe.some(a => a.url.endsWith('/v1/auth/profile') && a.method === 'PUT'), false, 'Passwort speichert das Profil mit');
   } finally { w.close(); }
@@ -80,7 +90,9 @@ test('Konto: Währung wirkt sofort, Passwort hat seinen eigenen Knopf', async ()
 
 test('Merkposten löschen: Rückgängig legt ihn wieder an', async () => {
   const { w, d, aufrufe } = await oeffneOberflaeche({
-    '/v1/wanted': { success: true, merkposten: [{ set_number: '10276-1', condition: 'N', user_id: 1, name: 'Colosseum' }] } });
+    '/v1/wanted': (_u, o) => o.method === 'POST'
+      ? { success: true, merkposten: { set_number: '10276-1', condition: 'N', user_id: 1, name: 'Colosseum' } }
+      : { success: true, merkposten: [{ set_number: '10276-1', condition: 'N', user_id: 1, name: 'Colosseum' }] } });
   try {
     await reiter(w, 'wanted');
     await warte(() => d.querySelector('.mk-zeile .delbtn'));
@@ -127,7 +139,7 @@ test('Hintergrundarbeiten: beschriftete Spalten, Fehler in der Zeile, Uhrzeit in
       schedules: { csvImport: { type: 'daily', time: '03:00' } }, db: { csvCache: { parts: 5 }, blMapping: {} } },
     '/v1/admin/auftraege': { success: true, zusammenfassung: [{ art: 'wechselkurse', status: 'fehler', anzahl: 1 }],
       job_prozess: { laeuft: true }, pausen: [], bildbedarf: 0,
-      auftraege: [{ id: 9, art: 'wechselkurse', status: 'fehler', fehler: 'ENOTFOUND ecb', versuche: 6, max_versuche: 6 }] } });
+      auftraege: [{ id: '9', art: 'wechselkurse', status: 'fehler', fehler: 'ENOTFOUND ecb', versuche: 6, max_versuche: 6 }] } });
   try {
     await reiter(w, 'monitor');
     await warte(() => d.querySelector('#auftraege-karte table') && d.querySelector('#monitor-content table'));

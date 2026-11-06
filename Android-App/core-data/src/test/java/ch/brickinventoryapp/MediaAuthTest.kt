@@ -1,6 +1,7 @@
 package ch.brickinventoryapp
 
 import org.junit.Test
+import java.io.File
 
 /**
  * Bilder und PDFs brauchen serverseitig eine Anmeldung — die App muss sie
@@ -32,7 +33,7 @@ class MediaAuthTest {
     }
 
     private fun read(rel: String): String {
-        val f = java.io.File(Quellen.wurzel, "$rel")
+        val f = File(Quellen.wurzel, "$rel")
         assert(f.exists()) { "Datei nicht gefunden: $rel" }
         return f.readText()
     }
@@ -71,14 +72,7 @@ class MediaAuthTest {
         }
     }
 
-    @Test
-    fun `der Bild-Cache wird beim Abmelden geleert`() {
-        val session = code(read("ui/AppViewModel.kt"))
-        assert(session.contains("imageLoader.memoryCache?.clear()")) { "Memory-Cache bleibt stehen" }
-        assert(session.contains("imageLoader.diskCache?.clear()")) {
-            "Sonst sieht der nächste Nutzer auf demselben Gerät die Bilder des vorherigen"
-        }
-    }
+    // Dass Abmelden den Bild-Cache leert, prüft AbmeldenRaeumtAllesTest (app) ausgeführt.
 
     // ── PDFs ─────────────────────────────────────────────────────────────────
 
@@ -99,10 +93,15 @@ class MediaAuthTest {
     fun `der Herunterladen-Knopf erscheint erst, wenn die Datei geladen ist`() {
         val viewer = code(read("ui/screens/PdfViewerScreen.kt"))
         val actions = viewer.substringAfter("actions = {").substringBefore("            )")
-        // Beide Knöpfe arbeiten auf s.file und dürfen nur im Zustand Ready sichtbar sein.
+        // Beide Knöpfe arbeiten auf der geladenen Quelle des Ready-Zustands und dürfen
+        // nur dort sichtbar sein. Das Feld wird aus Ready gelesen, nicht fest benannt.
+        // Gegenprobe: gegenproben/pdf-download-ausserhalb-ready.patch → rot hier.
+        val zustand = code(read("ui/pdf/PdfQuelle.kt"))
+        val feld = Regex("""class Ready\(val (\w+): \w+,""").find(zustand)?.groupValues?.get(1)
+        assert(feld != null) { "PdfLoadState.Ready trägt keine geladene Quelle mehr" }
         assert(actions.contains("if (s is PdfLoadState.Ready)")) { "Ready-Prüfung fehlt" }
         val ready = actions.substringAfter("if (s is PdfLoadState.Ready)")
-        assert(ready.contains("savePdfToDownloads(ctx, s.file, title)")) {
+        assert(ready.contains("savePdfToDownloads(ctx, s.$feld, title)")) {
             "Der Herunterladen-Knopf muss innerhalb des Ready-Zweigs stehen — " +
             "vorher stand er ausserhalb und lud eigenständig neu"
         }
@@ -110,7 +109,8 @@ class MediaAuthTest {
 
     @Test
     fun `die Anzeige selbst laeuft ueber den authentifizierten Client`() {
-        val viewer = code(read("ui/screens/PdfViewerScreen.kt"))
+        // Geladen wird in der Datenschicht (AnleitungsRepository), nicht im Bildschirm.
+        val viewer = code(read("data/AnleitungsRepository.kt"))
         // Geprüft wird die AUSSAGE, nicht der Wortlaut des Aufrufs: Der
         // Download läuft über den injizierten Client. Die frühere Fassung
         // suchte die Argumentliste zeichengenau und wurde in Nachtrag 115 rot,
@@ -124,6 +124,9 @@ class MediaAuthTest {
         }
         assert(!viewer.contains("OkHttpClient()")) {
             "Ein frei gebauter Client kennt den Bearer-Token nicht"
+        }
+        assert(viewer.contains("""@param:ApiClient private val httpClient: OkHttpClient""")) {
+            "Der Lader bekommt nicht den api-Client mit Token und Klartext-Verbot"
         }
     }
 
@@ -160,7 +163,7 @@ class MediaAuthTest {
         for (f in Quellen.wurzel.walkTopDown()
                 .filter { it.extension == "kt" }) {
             val src = f.readText()
-            var idx = src.indexOf("is Result.Success")
+            var idx = src.indexOf("is Ergebnis.Success")
             while (idx >= 0) {
                 val block = src.substring(idx, minOf(idx + 2000, src.length))
                 val end = block.indexOf("\n            }")
@@ -179,7 +182,7 @@ class MediaAuthTest {
                     "${f.name}: else-Zweig in einem when über Result — " +
                     "stattdessen einen expliziten null-Zweig ergänzen"
                 }
-                idx = src.indexOf("is Result.Success", idx + 1)
+                idx = src.indexOf("is Ergebnis.Success", idx + 1)
             }
         }
     }

@@ -4,7 +4,11 @@ import android.hardware.camera2.CaptureRequest
 import androidx.camera.camera2.interop.Camera2Interop
 import androidx.camera.camera2.interop.ExperimentalCamera2Interop
 import android.content.Context
+import android.view.MotionEvent
+import android.view.ViewGroup
 import androidx.camera.core.Camera
+import androidx.camera.core.CameraControl
+import androidx.camera.core.FocusMeteringAction
 import androidx.camera.core.CameraSelector
 import androidx.camera.core.ImageAnalysis
 import androidx.camera.core.Preview
@@ -23,20 +27,7 @@ import androidx.camera.core.resolutionselector.ResolutionStrategy
 
 /**
  * Eine Bildanalyse mit den Einstellungen, die für beide Scanner gelten.
- *
- * Der AF-Modus steht auch hier, nicht nur am Preview: CameraX führt alle
- * gebundenen Use Cases zu einem Repeating-Request zusammen, und je nach Gerät
- * entscheidet die Analyse-Konfiguration mit — deren Vorgabe ist nicht zwingend
- * CONTINUOUS_PICTURE. Derselbe Modus an beiden macht das Ergebnis unabhängig
- * davon, welcher führt.
- *
- * Die Auflösung ist der einzige gewollte Unterschied: Der Setup liest einen
- * QR-Code mit grossen Modulen, der Barcodescanner kleine EAN-Striche und
- * Setnummern. Mehr Auflösung kostet je Bild Rechenzeit, die sich Kamera und
- * Vorschau teilen.
- *
- * @param breite Bildbreite in Pixeln, z. B. 1920
- * @param hoehe  Bildhöhe in Pixeln, z. B. 1080
+ * Ausführlich: docs/begruendungen/core-ui/ui/screens/KameraAufbau.kt.md#bildanalyse
  */
 fun bildAnalyse(breite: Int, hoehe: Int): ImageAnalysis =
     ImageAnalysis.Builder()
@@ -83,20 +74,7 @@ fun autofokusDauerhaft(bauer: Preview.Builder) {
 /**
  * Vorschau und Bildanalyse an den Lebenszyklus binden — für beide Scanner. Zwei
  * Regeln stecken darin:
- *
- * 1. Das `try` umschliesst den gesamten Rückruf. `future.get()` kann werfen, seit
- * CameraX 1.4.0 prüft, ob die Kamera verfügbar ist (etwa weil eine andere App sie
- * belegt). Ohne die Absicherung stürzt die App ab, statt nur kein Bild zu zeigen.
- *
- * 2. `unbindAll()` vor dem Binden. Sonst bleibt eine frühere Bindung an derselben
- * Kamera hängen.
- *
- * @param analyse die Bildanalyse aus [bildAnalyse]
- * @param beiFehler wird gerufen, wenn die Kamera nicht verfügbar ist. Der Scanner
- *         meldet das; der SetupScreen lässt die Vorschau bewusst leer — deshalb
- *         ein Rückruf und keine feste Behandlung hier.
- * @param beiKamera bekommt die gebundene Kamera. Hier hängen die Aufrufer an, was
- *         nur sie betrifft.
+ * Ausführlich: docs/begruendungen/core-ui/ui/screens/KameraAufbau.kt.md#kamerabinden
  */
 fun kameraBinden(
     ctx: Context,
@@ -139,4 +117,33 @@ fun kameraBinden(
             beiFehler()
         }
     }, ContextCompat.getMainExecutor(ctx))
+}
+
+/** Die Vorschau beider Scanner: füllt die Fläche und rechnet schnell statt kompatibel. */
+fun kameraVorschau(ctx: Context): PreviewView = PreviewView(ctx).apply {
+    layoutParams = ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
+    scaleType = PreviewView.ScaleType.FILL_CENTER
+    implementationMode = PreviewView.ImplementationMode.PERFORMANCE
+}
+
+/**
+ * Tippen stellt an dieser Stelle scharf und misst dort die Belichtung: Bei einer
+ * Anleitung dicht vor der Linse liegt der Dauer-Autofokus gern daneben. disableAutoCancel(),
+ * sonst fiele die Kamera nach Sekunden auf ihre eigene Wahl zurück. [steuerung] ist null,
+ * solange die Kamera nicht gebunden ist.
+ */
+fun tippZumFokus(previewView: PreviewView, steuerung: () -> CameraControl?) {
+    previewView.setOnTouchListener { v, ev ->
+        if (ev.action == MotionEvent.ACTION_UP) {
+            val punkt = previewView.meteringPointFactory.createPoint(ev.x, ev.y)
+            val aktion = FocusMeteringAction.Builder(punkt, FocusMeteringAction.FLAG_AF)
+                .addPoint(punkt, FocusMeteringAction.FLAG_AE)
+                .disableAutoCancel()
+                .build()
+            // Kamera noch nicht bereit oder schon weg: Der Tipp bleibt ohne Wirkung.
+            runCatching { steuerung()?.startFocusAndMetering(aktion) }
+            v.performClick()
+        }
+        true
+    }
 }

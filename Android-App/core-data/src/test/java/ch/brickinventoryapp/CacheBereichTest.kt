@@ -1,9 +1,8 @@
 package ch.brickinventoryapp
 
 import ch.brickinventoryapp.data.cache.ResponseCache
-import ch.brickinventoryapp.data.model.CatalogMetaResponse
 import ch.brickinventoryapp.data.repository.KatalogRepository
-import ch.brickinventoryapp.data.repository.Result
+import ch.brickinventoryapp.data.repository.Ergebnis
 import kotlinx.coroutines.test.runTest
 import okhttp3.mockwebserver.MockWebServer
 import org.junit.After
@@ -13,6 +12,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 import java.io.File
+import ch.brickinventoryapp.data.lokal.Bestandsart
 
 /**
  * Der Antwort-Cache gehört Server und Sitzung: Nach einem Kontowechsel oder auf
@@ -20,7 +20,7 @@ import java.io.File
  * Fahrzeug ist KatalogRepository.getCatalogMeta() mit echtem Testserver und
  * echter Platte; der Bereich kommt aus einer Variablen statt aus den Prefs.
  *
- * Gegenproben (28.10.2026, gemessen mit kotlinc gegen die Datenschicht):
+ * Gegenproben:
  *   A  fach() ohne Bereich (alle Konten in einem Ordner) → rot „ein anderes
  *      Konto sieht offline nichts …“ und „ein anderer Server …“
  *   B  in put() die anderen Bereiche nicht geräumt → rot „wer schreibt, räumt
@@ -30,7 +30,7 @@ import java.io.File
  *   D  in cached() bei bereich == null trotzdem abgelegt (fester Bereich) →
  *      rot „ohne Anmeldung wird nichts abgelegt“
  *   E  den alten Ablageort nicht geräumt → rot „der alte Ablageort …“
- *   F  (03.11.2026, kotlinc lokal) ein weiteres Fach `PROBE` in Bestandsart → rot
+ *   F  ein weiteres Fach `PROBE` in Bestandsart → rot
  *      „die Offline-Ablage kennt genau die eingeordneten Faecher“
  */
 class CacheBereichTest {
@@ -43,7 +43,7 @@ class CacheBereichTest {
     @Test
     fun `die Offline-Ablage kennt genau die eingeordneten Faecher`() {
         assertEquals(setOf("SETS", "MERKLISTE", "TEILE", "FIGUREN", "MANUELLE_TEILE", "MANUELLE_FIGUREN", "GUTSCHEINE"),
-            ch.brickinventoryapp.data.lokal.Bestandsart.entries.map { it.name }.toSet())
+            Bestandsart.entries.map { it.name }.toSet())
     }
 
     private lateinit var server: MockWebServer
@@ -79,14 +79,14 @@ class CacheBereichTest {
 
     private suspend fun fuellen(r: KatalogRepository, jahr: Int) {
         server.enqueue(TestApi.antwort(antwort(jahr)))
-        assertTrue(r.getCatalogMeta() is Result.Success)
+        assertTrue(r.getCatalogMeta() is Ergebnis.Success)
     }
 
     private suspend fun offlineJahr(r: KatalogRepository): Int? {
         runCatching { server.shutdown() }
         return when (val x = r.getCatalogMeta()) {
-            is Result.Success -> (x.data as CatalogMetaResponse).yearMin
-            is Result.Error -> null
+            is Ergebnis.Success -> x.data.yearMin
+            is Ergebnis.Error -> null
         }
     }
 
@@ -121,7 +121,7 @@ class CacheBereichTest {
         fuellen(r, 1999)
         bereich = "http://heim:3000\ntoken-b"
         fuellen(r, 2024)
-        val ordnerMitDaten = dateien().map { it.parentFile.name }.toSet()
+        val ordnerMitDaten = dateien().map { it.parentFile!!.name }.toSet()
         assertEquals("Nur das Fach des aktuellen Kontos bleibt: ${dateien()}", 1, ordnerMitDaten.size)
         bereich = "http://heim:3000\ntoken-a"
         assertEquals(null, offlineJahr(r))

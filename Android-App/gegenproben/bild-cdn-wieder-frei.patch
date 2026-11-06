@@ -1,0 +1,18 @@
+Gegenprobe: Der Bild-Client lässt wieder direkte Anfragen an Bild-CDNs durch
+Modul: core-data
+Test: ch.brickinventoryapp.BildHostWaechterTest
+Rot: auch ein Bild-CDN wird nicht direkt angefragt
+
+diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/util/BildHosts.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/util/BildHosts.kt
+index 62c380b..ed84594 100644
+--- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/util/BildHosts.kt
++++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/util/BildHosts.kt
+@@ -44,7 +44,7 @@ class BildHostWaechter(
+         return gesperrt(anfrage)
+     }
+ 
+-    private fun vorbereitet(r: Request): Request? = r.takeIf { eigenerServer(it.url) }
++    private fun vorbereitet(r: Request): Request? = r.takeIf { eigenerServer(it.url) || it.url.host.endsWith("rebrickable.com") || it.url.host.endsWith("brickset.com") || it.url.host.endsWith("bricklink.com") }
+ 
+     private fun gesperrt(r: Request): Response = Response.Builder()
+         .request(r).protocol(Protocol.HTTP_1_1).code(403).message("Bild-Host nicht erlaubt")

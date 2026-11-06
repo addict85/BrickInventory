@@ -9,8 +9,15 @@ export async function markiereVerwaist(userId: number, fehler: string, minuten: 
         AND updated_at < NOW() - make_interval(mins => $3)`, [userId, fehler, minuten]);
 }
 
+/** Eine Zeile von import_stand; results ist jsonb. */
+export interface ImportStandZeile {
+  user_id: number; status: string | null; total: number | null; done: number | null; current: string | null;
+  error: string | null; results: { success?: boolean; isWarning?: boolean; [k: string]: unknown }[] | null;
+  run_id: string | null; started_at: Date | null; updated_at: Date | null;
+}
+
 export function importStand(userId: number) {
-  return db.get('SELECT * FROM import_stand WHERE user_id = $1', [userId]);
+  return db.get<ImportStandZeile>('SELECT * FROM import_stand WHERE user_id = $1', [userId]);
 }
 
 /** Die Schlüssel landen als SPALTENNAMEN im Abfragetext, wo keine Bindung
@@ -44,7 +51,7 @@ export async function aendereImportStand(userId: number, fields: Record<string, 
 }
 
 export function setzeLaufFort(userId: number, lauf: string) {
-  return db.get(
+  return db.get<Pick<ImportStandZeile, 'results' | 'current'>>(
     `UPDATE import_stand SET status = 'running', error = NULL, updated_at = NOW()
       WHERE user_id = $1 AND run_id = $2 AND status IN ('running', 'error')
       RETURNING results, current`, [userId, lauf]);

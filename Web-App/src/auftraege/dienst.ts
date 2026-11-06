@@ -1,12 +1,13 @@
 /** Jeder Wechsel, auf den jemand wartet, weckt ihn per NOTIFY: neue Aufträge
  * den Job-Prozess, Statuswechsel den Statusstrom. Geht ein NOTIFY verloren,
  * findet der Worker den Auftrag in seinem Takt. */
-import { notify } from '../../db/pgNotify';
+import { notify, listen, unlisten } from '../../db/pgNotify';
 import { imNamenVon } from '../infra/anfrageKonto';
 import * as repo from './repository/auftraege';
 import type { AuftragsArt, AuftragsStatus, AuftragsZeile, Belegung, Einstellen, Fortschritt } from './auftraege';
+import { pruefeNutzlast, type NutzlastEingabe } from './nutzlasten';
 
-export { belegeAuftrag, gibZurueck, lebenszeichen, leereArt, liesPause, pausiereArt, raeumeErledigteAuf,
+export { belegeAuftrag, gibZurueck, lebenszeichen, gehoertNoch, merkeExklusive, leereArt, liesPause, pausiereArt, raeumeErledigteAuf,
   setzeFaelligkeit, zieheTerminVor, laeuftArt, AUFTRAG_KANAL, AUFTRAG_STAND_KANAL } from './repository/auftraege';
 
 async function meldeStand(z: { s: string } | undefined): Promise<void> {
@@ -18,8 +19,8 @@ export function wartezeitSek(versuch: number): number {
   return Math.min(3600, 30 * 2 ** Math.max(0, versuch - 1));
 }
 
-export async function stelleAuftragEin(art: AuftragsArt, nutzlast: Record<string, unknown>, o: Einstellen = {}): Promise<string | null> {
-  const id = await repo.fuegeAuftragEin(art, nutzlast, o);
+export async function stelleAuftragEin<A extends AuftragsArt>(art: A, nutzlast: NutzlastEingabe<A>, o: Einstellen = {}): Promise<string | null> {
+  const id = await repo.fuegeAuftragEin(art, pruefeNutzlast(art, nutzlast), o);
   await notify(repo.AUFTRAG_KANAL, art);
   return id;
 }
@@ -38,8 +39,8 @@ export async function erledigt(a: Belegung): Promise<boolean> {
 }
 
 /** @returns true, wenn es der letzte Versuch war und der Auftrag jetzt 'fehler' ist */
-export async function fehlgeschlagen(a: AuftragsZeile, fehler: string): Promise<boolean> {
-  const endgueltig = a.versuche >= a.max_versuche;
+export async function fehlgeschlagen(a: AuftragsZeile, fehler: string, sofortEndgueltig = false): Promise<boolean> {
+  const endgueltig = sofortEndgueltig || a.versuche >= a.max_versuche;
   const z = await repo.setzeFehlgeschlagen(a, endgueltig, fehler, wartezeitSek(a.versuche));
   await meldeStand(z);
   return endgueltig && !!z;
@@ -91,4 +92,10 @@ export async function imNamenDesAuftrags<T>(a: Pick<AuftragsZeile, 'user_id'>, f
   if (a.user_id == null) return f();
   const u = await repo.kontoRolle(a.user_id);
   return imNamenVon({ apiUser: { user_id: a.user_id, is_admin: u?.is_admin ? 1 : 0 } }, f);
+}
+
+/** Weckt bei jedem Statuswechsel eines Auftrags, auch aus dem Job-Prozess; gibt das Abmelden zurück. */
+export function beiAuftragsStand(f: (schluessel?: string) => void): () => void {
+  listen(repo.AUFTRAG_STAND_KANAL, f);
+  return () => unlisten(repo.AUFTRAG_STAND_KANAL, f);
 }

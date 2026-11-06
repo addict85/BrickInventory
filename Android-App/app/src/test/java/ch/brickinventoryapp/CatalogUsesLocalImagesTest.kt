@@ -6,6 +6,7 @@ import ch.brickinventoryapp.data.model.CatalogSetItem
 import ch.brickinventoryapp.data.model.CatalogSetDetail
 import ch.brickinventoryapp.data.api.ApiJson
 import org.junit.Test
+import java.io.File
 
 /**
  * Katalog-Bilder nutzen die vom Server ermittelte, nutzerunabhängige lokale
@@ -19,13 +20,13 @@ import org.junit.Test
  * benannt und nutzerunabhängig ist. Der Server prüft das jetzt und liefert
  * `image_local`, wenn die Datei existiert.
  *
- * Gegenprobe (31.10.2026, gemessen): in CatalogSetItem.alsAnsicht `imageLocal =
+ * Gegenprobe: in CatalogSetItem.alsAnsicht `imageLocal =
  * null` → rot „Katalog-Modelle kennen image_local“.
  */
 class CatalogUsesLocalImagesTest {
 
     private fun read(rel: String): String {
-        val f = java.io.File(Quellen.wurzel, "$rel")
+        val f = File(Quellen.wurzel, "$rel")
         assert(f.exists()) { "Datei nicht gefunden: $rel" }
         return f.readText()
     }
@@ -49,12 +50,6 @@ class CatalogUsesLocalImagesTest {
     fun `Katalog-Bildschirme reichen das Feld durch, statt null zu erzwingen`() {
         val list = code(read("ui/screens/CatalogScreen.kt"))
         // rememberTileImageWithFallback(...) zählt ebenfalls (Nachtrag 42):
-        // Der Helfer in util/BildRueckfall.kt ruft intern resolveThumbUrl() auf und
-        // ergänzt den Rückfall auf die volle Auflösung. Entscheidend ist, dass
-        // set.imageLocal WEITERGEREICHT wird — nicht, über welchen der beiden
-        // Wege. Der wörtliche Aufruf allein beanstandete sonst Bildschirme, die
-        // gerade den besseren Weg gehen (dieselbe Korrektur wie in
-        // NoDirectCdnAccessTest).
         assert(list.contains("resolveThumbUrl(serverUrl, set.imageLocal, set.imageUrl)") ||
                list.contains("rememberTileImageWithFallback(serverUrl, set.imageLocal, set.imageUrl)")) {
             "Die Katalog-Liste muss set.imageLocal durchreichen, nicht null"
@@ -138,11 +133,6 @@ class CatalogUsesLocalImagesTest {
         for (rel in screensToCheck) {
             val raw = read(rel)
             // Nur Funktionsdefinitionen auf oberster Ebene (Spalte 0) zählen.
-            // Lokale, eingerückte "fun"-Deklarationen innerhalb eines
-            // Composable-Körpers (z. B. fmtDate/fmtPrice in SetDetailScreen.kt
-            // bzw. FinanceScreen.kt) sind keine eigenen Scopes für diese
-            // Prüfung — eine erste Fassung ohne diese Einschränkung hielt sie
-            // fälschlich für den umschliessenden Aufrufer und schlug fehl.
             val funcStarts = Regex("""^fun (\w+)\(""", RegexOption.MULTILINE)
                 .findAll(raw).map { it.range.first to it.groupValues[1] }.toList()
             val useIdxs = Regex("""(resolve(Thumb|Full)Url|rememberTileImageWithFallback)\(serverUrl""")

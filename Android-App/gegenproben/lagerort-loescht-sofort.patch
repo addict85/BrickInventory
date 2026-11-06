@@ -4,15 +4,15 @@ Test: ch.brickinventoryapp.UnterseitenTest
 Rot: Lagerorte stehen als Zeilen
 
 diff --git a/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/ui/screens/EinstellungenLagerorte.kt b/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/ui/screens/EinstellungenLagerorte.kt
-index becbeaa..e0cac3c 100644
+index e7de128..7aa84fc 100644
 --- a/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/ui/screens/EinstellungenLagerorte.kt
 +++ b/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/ui/screens/EinstellungenLagerorte.kt
-@@ -57,7 +57,7 @@ internal fun LagerorteCard(vm: EinstellungenViewModel) {
+@@ -54,7 +54,7 @@ internal fun LagerorteCard(lager: LagerUiState, aktionen: EinstellungenAktionen)
                  istVorgabe = lager.vorgabe?.id == ort.id,
-                 onVorgabe = { vm.schalteLagerortVorgabe(ort.id, it) },
+                 onVorgabe = { aktionen.schalteLagerortVorgabe(ort.id, it) },
                  onUmbenennen = { umbenennen = ort.id },
 -                onLoeschen = { loeschen = ort.id },
-+                onLoeschen = { vm.loescheLagerort(ort.id) },
++                onLoeschen = { aktionen.loescheLagerort(ort.id) },
              )
          }
      }

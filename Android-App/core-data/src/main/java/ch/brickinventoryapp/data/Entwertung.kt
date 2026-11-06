@@ -6,26 +6,36 @@ import ch.brickinventoryapp.di.Zugangslage
 import ch.brickinventoryapp.util.KlartextAbgelehnt
 import ch.brickinventoryapp.util.NetworkPolicy
 import ch.brickinventoryapp.util.Tresorbefund
+import ch.brickinventoryapp.util.ZertifikatUngeklaert
 import ch.brickinventoryapp.util.eigeneAdresse
+import ch.brickinventoryapp.util.pinSchluessel
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
 import javax.inject.Inject
+import javax.net.ssl.SSLContext
+import javax.net.ssl.X509ExtendedTrustManager
 
 /**
- * Was eine spätere Entwertung braucht: der Server, dem das Token gehört, und das
- * Token selbst — nur verschlüsselt (Keystore), denn der Auftrag liegt bis dahin
- * in der Datenbank von WorkManager.
+ * Was eine spätere Entwertung braucht: der Server, dem das Token gehört, das Token
+ * nur verschlüsselt (der Auftrag liegt in der Datenbank von WorkManager), der Pin
+ * dieses Servers und die Herkunft, an die das Token gebunden ist. Passt [herkunft]
+ * nicht zu [serverUrl], geht das Token nirgends hin (Entwerter).
  */
-data class Entwertungsauftrag(val serverUrl: String, val tokenGeheim: String)
+data class Entwertungsauftrag(
+    val serverUrl: String,
+    val tokenGeheim: String,
+    val pin: String? = null,
+    val herkunft: String? = NetworkPolicy.herkunft(serverUrl),
+)
 
 /** Legt einen Auftrag in die dauerhafte Warteschlange (data/lokal/EntwertungsWorker). */
 fun interface EntwertungsPlaner {
     fun plane(auftrag: Entwertungsauftrag)
 }
 
-/** Der Auftrag für das jetzige Token, oder null ohne Token (PreferencesManager). */
+/** Der Auftrag für das jetzige Token, oder null ohne Token (TokenAblage). */
 fun interface Entwertungsquelle {
     suspend fun entwertungsauftrag(): Entwertungsauftrag?
 }
@@ -61,7 +71,7 @@ enum class Entwertungsergebnis { ENTWERTET, SPAETER, AUFGEBEN }
  * Umleitung (nur innerhalb des Servers verfolgt) oder ein anderer 4xx-Satz wird
  * auch beim zehnten Mal nicht anders; Zeitüberschreitung, 429 und 5xx schon.
  */
-fun einordnenEntwertung(code: Int): Entwertungsergebnis = when {
+internal fun einordnenEntwertung(code: Int): Entwertungsergebnis = when {
     code in 200..299 || code == 401 -> Entwertungsergebnis.ENTWERTET
     code == 408 || code == 429 || code >= 500 -> Entwertungsergebnis.SPAETER
     else -> Entwertungsergebnis.AUFGEBEN
@@ -72,28 +82,52 @@ fun einordnenEntwertung(code: Int): Entwertungsergebnis = when {
  * eigenen Wächter: Der der App kennt nach dem Abmelden kein Token mehr und strich
  * den Kopf; dieser hält dieselben Regeln (https, Pfad, Umleitungen) für den Auftrag.
  */
-class Entwerter(private val basis: OkHttpClient, private val entwicklung: Boolean) {
+class Entwerter(
+    private val basis: OkHttpClient,
+    private val entwicklung: Boolean,
+    /**
+     * TLS-Vertrauen für genau den Server des Auftrags ([pinSchluessel]) mit seinem
+     * Pin. Das gemeinsame der App kennt nur den jetzt eingerichteten Server.
+     */
+    private val vertrauenFuer: ((schluessel: String, pin: String?) -> X509ExtendedTrustManager)? = null,
+) {
 
-    fun entwerte(serverUrl: String, token: String): Entwertungsergebnis {
+    /** [herkunft]: wohin das Token gehört; ein Auftrag an einen anderen Server sendet nichts. */
+    fun entwerte(serverUrl: String, token: String, pin: String? = null,
+                 herkunft: String? = NetworkPolicy.herkunft(serverUrl)): Entwertungsergebnis {
         val ziel = eigeneAdresse(serverUrl, "api/v1/auth/logout")
         if (token.isBlank() || ziel == null) return Entwertungsergebnis.AUFGEBEN
+        if (herkunft == null || herkunft != NetworkPolicy.herkunft(serverUrl)) return Entwertungsergebnis.AUFGEBEN
         val lage = object : Zugangslage {
             override fun serverUrl() = serverUrl
             override fun token() = token
-            override fun tokenHerkunft() = NetworkPolicy.herkunft(serverUrl)
+            override fun tokenHerkunft() = herkunft
             override fun generation() = 0L
         }
+        val abgelehnt = java.util.concurrent.atomic.AtomicBoolean(false)
         val client = basis.newBuilder()
             .followRedirects(false).followSslRedirects(false)
             .addInterceptor(ServerWaechter(lage, istApiClient = false, entwicklung = entwicklung, sitzungAbgelaufen = {}))
+            .apply {
+                val schluessel = pinSchluessel(serverUrl)
+                if (vertrauenFuer != null && schluessel != null) {
+                    val tm = MerktAblehnung(vertrauenFuer(schluessel, pin), abgelehnt)
+                    sslSocketFactory(SSLContext.getInstance("TLS").apply { init(null, arrayOf(tm), null) }.socketFactory, tm)
+                }
+            }
             .build()
         val anfrage = Request.Builder().url(ziel).post("{}".toRequestBody("application/json".toMediaType())).build()
         return try {
             client.newCall(anfrage).execute().use { einordnenEntwertung(it.code) }
         } catch (_: KlartextAbgelehnt) {
             Entwertungsergebnis.AUFGEBEN
-        } catch (_: java.io.IOException) {
-            Entwertungsergebnis.SPAETER
+        } catch (e: java.io.IOException) {
+            // Ein Zertifikat, das nicht zum Pin passt, wird durch Warten nicht passender;
+            // nachfragen kann im Hintergrund niemand.
+            // Gemerkt statt in der Ursachenkette gesucht: Conscrypt reicht die Ausnahme des
+            // Vertrauens nicht immer als Ursache weiter.
+            if (abgelehnt.get() || generateSequence<Throwable>(e) { it.cause }.take(8).any { it is ZertifikatUngeklaert }) Entwertungsergebnis.AUFGEBEN
+            else Entwertungsergebnis.SPAETER
         }
     }
 }
@@ -101,14 +135,14 @@ class Entwerter(private val basis: OkHttpClient, private val entwicklung: Boolea
 enum class Entwertungsschritt { FERTIG, NOCHMAL, AUFGEGEBEN }
 
 /** Etwa eine Woche bei WorkManagers Rückzug (30 s, verdoppelt, höchstens 5 h). */
-const val ENTWERTUNG_HOECHSTVERSUCHE = 40
+internal const val ENTWERTUNG_HOECHSTVERSUCHE = 40
 
 /**
  * Ein Lauf des Arbeiters. Ein gesperrter Keystore ist wie ein fehlendes Netz ein
  * Grund zu warten (util/Tresorbefund); ein verlorener Schlüssel macht das Token
  * auch für einen Dieb unbrauchbar, also gibt es nichts mehr zu tun.
  */
-fun entwertungsSchritt(befund: Tresorbefund, versuch: Int, entwerte: (String) -> Entwertungsergebnis): Entwertungsschritt =
+internal fun entwertungsSchritt(befund: Tresorbefund, versuch: Int, entwerte: (String) -> Entwertungsergebnis): Entwertungsschritt =
     when (befund) {
         Tresorbefund.Weg -> Entwertungsschritt.AUFGEGEBEN
         Tresorbefund.Gesperrt -> if (versuch + 1 >= ENTWERTUNG_HOECHSTVERSUCHE) Entwertungsschritt.AUFGEGEBEN else Entwertungsschritt.NOCHMAL
@@ -119,3 +153,28 @@ fun entwertungsSchritt(befund: Tresorbefund, versuch: Int, entwerte: (String) ->
                 if (versuch + 1 >= ENTWERTUNG_HOECHSTVERSUCHE) Entwertungsschritt.AUFGEGEBEN else Entwertungsschritt.NOCHMAL
         }
     }
+
+/** Reicht alles an [innen] weiter und merkt sich, ob ein Zertifikat ungeklärt abgelehnt wurde. */
+// Prüft nichts selbst: jede Entscheidung trifft [innen] (PinVertrauen).
+@Suppress("CustomX509TrustManager")
+private class MerktAblehnung(
+    private val innen: X509ExtendedTrustManager,
+    private val abgelehnt: java.util.concurrent.atomic.AtomicBoolean,
+) : X509ExtendedTrustManager() {
+    private inline fun <T> merke(block: () -> T): T =
+        try { block() } catch (e: ZertifikatUngeklaert) { abgelehnt.set(true); throw e }
+
+    override fun checkServerTrusted(chain: Array<java.security.cert.X509Certificate>, authType: String) =
+        merke { innen.checkServerTrusted(chain, authType) }
+    override fun checkServerTrusted(chain: Array<java.security.cert.X509Certificate>, authType: String, socket: java.net.Socket?) =
+        merke { innen.checkServerTrusted(chain, authType, socket) }
+    override fun checkServerTrusted(chain: Array<java.security.cert.X509Certificate>, authType: String, engine: javax.net.ssl.SSLEngine?) =
+        merke { innen.checkServerTrusted(chain, authType, engine) }
+    override fun checkClientTrusted(chain: Array<java.security.cert.X509Certificate>, authType: String) =
+        innen.checkClientTrusted(chain, authType)
+    override fun checkClientTrusted(chain: Array<java.security.cert.X509Certificate>, authType: String, socket: java.net.Socket?) =
+        innen.checkClientTrusted(chain, authType, socket)
+    override fun checkClientTrusted(chain: Array<java.security.cert.X509Certificate>, authType: String, engine: javax.net.ssl.SSLEngine?) =
+        innen.checkClientTrusted(chain, authType, engine)
+    override fun getAcceptedIssuers(): Array<java.security.cert.X509Certificate> = innen.acceptedIssuers
+}

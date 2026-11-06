@@ -1,32 +1,16 @@
 /**
- * Seitenweises Laden der Teileliste (public/js/03-parts.js).
- *
- * Vorher holte die Ansicht in einem Zug jede Teil/Farb-Kombination. An 380 Sets
- * gemessen (171'000 parts-Zeilen): 20,65 MB Nutzlast, zehntausende DOM-Knoten
- * pro Tabwechsel. Mit Seiten zu 100 sind es 0,03 MB.
- *
- * Die knifflige Stelle ist die Farbgruppierung: Der Server sortiert nach
- * MIN(color_name), MIN(part_name), eine Farbe kann also über eine Seitengrenze
- * laufen. Die Folgeseite muss ihre ersten Karten in die BESTEHENDE letzte Gruppe
- * einhängen, statt eine zweite Überschrift derselben Farbe zu erzeugen.
- *
- * Ausführen: npm test
+ * Teileliste und Bilder: was der Server liefern muss (Seiten, Grenzen,
+ * Kategorien, Vorschaubilder). Das Verhalten der Oberfläche beim Blättern
+ * prüft test/listen-paging-oberflaeche.test.js in jsdom.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
-const { pruefeParameter } = require('./helpers/sources');
 
 /**
  * import-/export-Syntax aus einer Moduldatei entfernen.
- *
- * Diese Tests werten den Quelltext in einer vm-Sandbox bzw. in jsdom als
- * KLASSISCHES Skript aus. Seit der Umstellung auf ES-Module enthalten die
- * Dateien import- und export-Anweisungen, die dort einen SyntaxError erzeugen
- * ("Cannot use import statement outside a module"). Die geprüfte Logik ändert
- * sich dadurch nicht — nur die Modulverpackung muss weg.
- *
+ * Ausführlich: docs/begruendungen/test/parts-paging.test.js.md#stripmodulesyntax
  * @param {string} src
  * @returns {string}
  */
@@ -37,10 +21,8 @@ function stripModuleSyntax(src) {
   // registerActions() kommt sonst aus js/00-registry.js und ist nach dem
   // Entfernen der Importe nicht definiert. In der Sandbox interessiert die
   // Anmeldung nicht — dass sie aufgerufen WIRD, prüfen test/csp-actions.test.js
-  // und test/bundle-smoke.test.js gegen den echten Quelltext.
-  // tRaw() lebt in i18n.js und wird hier nicht mitgeladen. In der Sandbox
-  // genügt die Weiterleitung an t(): Der Unterschied liegt allein in der
-  // Maskierung der eingesetzten Werte, die diese Tests nicht prüfen.
+  // und test/bundle-smoke.test.js gegen den echten Quelltext. …
+  // Ausführlich: docs/begruendungen/test/parts-paging.test.js.md#registeractions
   return 'function registerActions() {}\n'
        + 'function tRaw(k, v) { return typeof t === "function" ? t(k, v) : k; }\n'
        + body;
@@ -48,93 +30,6 @@ function stripModuleSyntax(src) {
 
 const ROOT = path.join(__dirname, '..');
 const SRC  = stripModuleSyntax(fs.readFileSync(path.join(ROOT, 'public', 'js', '03-parts.js'), 'utf8'));
-const HTML = fs.readFileSync(path.join(ROOT, 'public', 'index.html'), 'utf8');
-
-test('die Liste wird seitenweise angefordert', () => {
-  assert.match(SRC, /p\.set\('page_size'/, 'ohne page_size liefert der Server alles');
-  assert.match(SRC, /p\.set\('page',\s*page\)/, 'die Seitennummer muss mitgehen');
-  assert.match(SRC, /const PARTS_PAGE_SIZE\s*=\s*\d+/, 'Seitengrösse gehört an eine Stelle');
-});
-
-test('eine Farbgruppe wird über die Seitengrenze fortgesetzt', () => {
-  const fn = SRC.slice(SRC.indexOf('function appendParts'), SRC.indexOf('function bumpGroupCount'));
-  assert.match(fn, /_partsLastColor/,
-    'Ohne Merker der letzten Farbe entsteht bei jeder Seite eine neue Überschrift');
-  assert.match(fn, /\.parts-group:last-child \.parts-grid/,
-    'Die Folgeseite muss in das bestehende Raster einhängen');
-  assert.match(fn, /bumpGroupCount/,
-    'Sonst zeigt die Überschrift dauerhaft die Anzahl der ersten Seite');
-});
-
-test('späte Antworten verworfener Filter landen nicht in der Liste', () => {
-  assert.match(SRC, /const gen\s*=\s*_partsGen/, 'Generationszähler fehlt');
-  assert.match(SRC, /if \(gen !== _partsGen\)/, 'die Antwort wird nicht gegen die Generation geprüft');
-  assert.match(SRC, /_partsGen\+\+/, 'ein Neuaufbau muss die Generation hochzählen');
-});
-
-/**
- * Was ein Bedienelement tatsaechlich auslöst: seine Registrierungszeile plus
- * die Rümpfe der darin genannten Funktionen.
- *
- * ── Warum nicht mehr mit einem Abstandsmuster (NACHGEMESSEN) ────────────────
- *
- * Hier stand `G('<id>')[\s\S]{0,160}?loadPartsData` über die GANZE Datei. Das
- * traf den NACHBARN: Unter der Zeile für parts-search steht die für
- * parts-spare, und die nennt loadPartsData. Als der Auslöser von parts-search
- * auf einen benannten Handler umgestellt wurde (er lädt jetzt beide Listen des
- * Reiters), blieb die Prüfung grün — gemessen an einer Zeile, die ihn nicht
- * betrifft. Ein Muster, das über Zeilengrenzen greift, prüft irgendwann das
- * Nachbarelement.
- */
-function wirkungVon(id) {
-  const { funktionsRumpf } = require('./helpers/sources');
-  const i = SRC.indexOf(`G('${id}').addEventListener`);
-  assert.ok(i > 0, `${id}: keine Registrierung mit addEventListener gefunden`);
-  const zeile = SRC.slice(i, SRC.indexOf('\n', i) + 1);
-  let raus = zeile;
-  // Nennt die Zeile einen Handler, gehoert sein Rumpf dazu. Geschnitten wird
-  // mit funktionsRumpf() (test/helpers/sources.js) statt mit einem eigenen
-  // indexOf: Dieselbe Regel an einer Stelle — und der Helfer WIRFT, wenn es
-  // die Funktion nicht gibt, deshalb die Abfrage davor.
-  for (const name of zeile.match(/[A-Za-z_]\w*/g) || []) {
-    if (!SRC.includes(`function ${name}(`)) continue;
-    raus += funktionsRumpf(SRC, name);
-  }
-  return raus;
-}
-
-test('jeder Filter- und Moduswechsel baut neu auf', () => {
-  // parts-search trifft BEIDE Listen des Reiters: die Wand der Set-Teile und
-  // die manuell erfassten Kacheln darueber (Marcos Befund vom 20.10.).
-  // parts-spare und parts-view gelten nur fuer die Set-Teile — ein
-  // Ersatzteilkennzeichen hat ein manuell erfasstes Teil nicht, und die
-  // Tabellenansicht gibt es nur dort.
-  const faelle = [
-    ['parts-search', ['loadPartsData', 'loadManualParts']],
-    ['parts-spare',  ['loadPartsData']],
-    ['parts-view',   ['loadPartsData']],
-  ];
-  for (const [trigger, erwartet] of faelle) {
-    const wirkung = wirkungVon(trigger);
-    for (const fn of erwartet) {
-      assert.ok(wirkung.includes(fn), `${trigger} löst ${fn}() nicht aus`);
-    }
-  }
-  assert.match(SRC, /function setColorFilter[\s\S]{0,120}loadPartsData/, 'Farbfilter baut nicht neu auf');
-  assert.match(SRC, /function setCatFilter[\s\S]{0,120}loadPartsData/, 'Kategoriefilter baut nicht neu auf');
-});
-
-test('der Sentinel überlebt den Neuaufbau von #parts-main', () => {
-  // #parts-main wird bei jedem Filterwechsel per innerHTML ersetzt. Läge der
-  // Sentinel darin, verlöre der Observer sein Ziel.
-  const mainAt = HTML.indexOf('id="parts-main"');
-  const sentAt = HTML.indexOf('id="parts-sentinel"');
-  assert.ok(mainAt > 0 && sentAt > mainAt, 'parts-sentinel fehlt');
-  const between = HTML.slice(mainAt, sentAt);
-  assert.match(between, /<\/div>/, 'der Sentinel muss NEBEN #parts-main stehen, nicht darin');
-  assert.match(SRC, /IntersectionObserver/, 'Endlos-Scroll ohne Observer');
-  assert.match(SRC, /rootMargin:\s*'600px'/, 'ohne Vorlauf ruckelt das Nachladen');
-});
 
 test('nachgeladen wird nur im sichtbaren Teile-Tab', () => {
   const fn = SRC.slice(SRC.indexOf('function maybeLoadMoreParts'));
@@ -142,40 +37,10 @@ test('nachgeladen wird nur im sichtbaren Teile-Tab', () => {
     'sonst lädt der Sentinel im Hintergrund weiter, während der Nutzer woanders ist');
 });
 
-test('eine zu kurze erste Seite löst sofort Nachschub aus', () => {
-  assert.match(SRC, /requestAnimationFrame\(maybeLoadMoreParts\)/,
-    'füllt die erste Seite den Bildschirm nicht, gäbe es nie ein Scroll-Ereignis');
-});
-
-test('in_sets wird nur angefordert, wo es angezeigt wird', () => {
-  assert.match(SRC, /parts-view'\)\.value === 'table'\) p\.set\('with_sets','1'\)/,
-    'die Kachelansicht hat keine Sets-Spalte — die Liste kostet dort nur Zeit und Nutzlast');
-});
-
-test('die redundante Deduplizierung im Client ist weg', () => {
-  // Der Server gruppiert bereits nach COALESCE(bl_part_number, part_number)
-  // und color_id — die Schleife im Client fand nie ein Duplikat.
-  assert.doesNotMatch(SRC, /deduped0|partsDeduped/,
-    'doppelte Arbeit über alle Zeilen');
-});
-
 test('getParts liefert die Seiteninformationen mit', () => {
   const h = require('./helpers/sources').handlerQuelle();
   const ret = h.slice(h.indexOf("return { parts, total, source: 'db'"), h.indexOf("return { parts, total, source: 'db'") + 200);
   assert.match(ret, /total/, 'ohne total weiss der Client nicht, wann Schluss ist');
-});
-
-test('Teilebilder werden als Vorschau angefordert', () => {
-  // Teilebilder liegen ausschliesslich auf dem Rebrickable-CDN und laufen über
-  // /api/img-proxy. thumbUrl() kann für sie nichts tun ("_thumb" gibt es dort
-  // nicht), also kam bisher jedes Bild in voller Auflösung — bei 36 bis 100 px
-  // Anzeigegrösse und 100 Bildern je Seite.
-  const imgs = [...SRC.matchAll(/bildTag\(\{ src: ([^\n]*?), alt:/g)].map(m => m[1]);
-  assert.ok(imgs.length >= 2, 'Kachel und Tabellenzeile erwartet');
-  for (const expr of imgs) {
-    assert.match(expr, /imgUrl\(/, `Bild läuft nicht über imgUrl(): ${expr.slice(0, 70)}`);
-    assert.match(expr, /,\s*true\)/, `Vorschau nicht angefordert: ${expr.slice(0, 70)}`);
-  }
 });
 
 test('der Proxy kann verkleinern und tut es nur einmal je Bild', () => {
@@ -220,7 +85,7 @@ test('Detailansicht und Zoom zeigen die volle Auflösung', () => {
   assert.match(core, /function fullUrl/, 'Gegenstück zu thumbUrl() fehlt');
 
   const admin = stripModuleSyntax(require('./helpers/sources').adminQuelle());
-  assert.match(admin, /img\.src=fullUrl\(curSet\.image_local\|\|curSet\.image_url\)/,
+  assert.match(admin, /(img\.src=|setzeDialogbild\(img, )fullUrl\((curSet|set)\.image_local\|\|(curSet|set)\.image_url\)/,
     'Detailansicht der Galerie muss die volle Auflösung nehmen');
 
   const act = stripModuleSyntax(fs.readFileSync(path.join(ROOT, 'public', 'js', '11-actions.js'), 'utf8'));
@@ -250,7 +115,7 @@ test('Argumente aus data-arg werden als Zeichenkette behandelt', () => {
   const admin = stripModuleSyntax(require('./helpers/sources').adminQuelle());
   assert.match(admin, /\(parseInt\(delta\) \|\| 0\)/,
     'manQtyChange muss delta umwandeln');
-  const settings = stripModuleSyntax(fs.readFileSync(path.join(ROOT, 'public', 'js', '05-settings.js'), 'utf8'));
+  const settings = stripModuleSyntax(require('./helpers/sources').ansichtQuelle('05'));
   assert.match(settings, /isAdmin === true \|\| isAdmin === 1 \|\| isAdmin === '1'/,
     'toggleAdmin: !"0" ist false — das Umschalten wäre wirkungslos');
 });
@@ -264,7 +129,7 @@ test('die Verkleinerung lässt keine Anfrage warten', () => {
     'Ohne Obergrenze laufen beliebig viele Verkleinerungen gleichzeitig');
   assert.match(server, /function queueThumb/, 'Warteschlange fehlt');
   // Im Ausliefer-Pfad darf nicht auf die Verkleinerung gewartet werden.
-  // Dieser Pfad IST seit Nachtrag 135 src/katalog/bilder/imgCacheServe.ts — vorher ein
+  // Dieser Pfad IST seit einer früheren Runde src/katalog/bilder/imgCacheServe.ts — vorher ein
   // grosszügig geschnittenes Stück des Route-Rumpfs, was nach dem Umzug ins
   // Leere zeigte.
   const proxy = fs.readFileSync(
@@ -273,26 +138,6 @@ test('die Verkleinerung lässt keine Anfrage warten', () => {
     'Eine wartende Anfrage reiht 150 ms je Bild aneinander');
   assert.match(proxy, /queueThumb\(cacheFile, thumbFile\)/,
     'Die Verkleinerung gehört in den Hintergrund');
-});
-
-test('Minifiguren hängen Folgeseiten an, statt neu zu bauen', () => {
-  // Vorher rief jede Folgeseite renderFigs(allFigsCache) auf — die komplette
-  // Liste wurde per innerHTML ersetzt. Damit verschwinden ALLE <img> aus dem
-  // DOM, und der Browser bricht ihre laufenden Anfragen ab. Im Server-Log
-  // schlug das als Dutzende „Client hat abgebrochen" auf, und Kacheln, deren
-  // Bild es nie über eine Nachladerunde hinaus schaffte, blieben leer.
-  const figs = stripModuleSyntax(fs.readFileSync(path.join(ROOT, 'public', 'js', '06-minifigs.js'), 'utf8'));
-  const more = figs.slice(figs.indexOf('async function loadMinifigsMore'),
-                          figs.indexOf('function maybeLoadMoreFigs'));
-  assert.match(more, /appendFigs\(batch\)/, 'Die Folgeseite muss angehängt werden');
-  assert.doesNotMatch(more, /renderFigs\(allFigsCache\)/,
-    'Ein voller Neuaufbau bricht alle laufenden Bildanfragen ab');
-
-  assert.match(figs, /function appendFigs\(batch\)/, 'appendFigs fehlt');
-  pruefeParameter(figs, 'renderFigs', ['list', 'target'],
-    'renderFigs braucht ein Ziel, um losgelöst rendern zu können');
-  assert.match(figs, /tbody\.append\(\.\.\.newRows\)/, 'Tabellenzeilen werden nicht angehängt');
-  assert.match(figs, /lastGrid\.append\(\.\.\.newTiles\)/, 'Kacheln werden nicht angehängt');
 });
 
 test('der Farbfilter vergleicht Namen — in beiden Abfragepfaden', () => {
@@ -315,9 +160,8 @@ test('Kategorien werden über den Teilekatalog aufgelöst', () => {
   // parts.category_name enthält die Rebrickable-Kategorie-ID als Text — oder
   // 'Unknown', wenn die Set-Teile-Antwort kein part_cat_id mitliefert. Das ist
   // bei /sets/{id}/parts/ die Regel: Das eingebettete part-Objekt führt das
-  // Feld meist nicht. Die Filterliste zeigte deshalb nur einen Eintrag.
-  // Die Liste steht seit dem 29.10. in src/teile/abfragen.ts
-  // (getPartsCategories), einmal für Zusammenfassung und Live-Abfrage.
+  // Feld meist nicht. Die Filterliste zeigte deshalb nur einen Eintrag. …
+  // Ausführlich: docs/begruendungen/test/parts-paging.test.js.md#parts
   const parts = require('./helpers/sources').handlerQuelle();
   assert.match(parts, /LEFT JOIN rb_parts rp ON rp\.part_num = \$\{nummer\}/,
     'Die Kategorieliste muss über rb_parts auflösen');
@@ -339,16 +183,8 @@ test('Kategorien werden über den Teilekatalog aufgelöst', () => {
 });
 
 test('beide Abfragewege deckeln page_size gleich', () => {
-  // ── Woher dieser Test kommt ─────────────────────────────────────────────
-  // getParts hat zwei Wege: die Live-Abfrage und die vorberechnete
-  // Zusammenfassung. Nur der erste deckelte page_size (bei 500), der zweite
-  // reichte den Wert ungeprüft ins LIMIT durch. DIESELBE Anfrage lieferte
-  // damit unterschiedlich viele Zeilen, je nachdem ob die Zusammenfassung
-  // gerade frisch war — an 5000 Teilen mit page_size=100000 gemessen:
-  // 500 Zeilen über die Live-Abfrage, 5000 über die Zusammenfassung. Ein
-  // Unterschied, der am Cache-Zustand hängt, ist beim Suchen eines Fehlers
-  // das Letzte, was man vermutet — und nebenbei ein Weg, sich beliebig grosse
-  // Antworten bauen zu lassen.
+  // Woher dieser Test kommt
+  // Ausführlich: docs/begruendungen/test/parts-paging.test.js.md#h-stelle
   const h = require('./helpers/sources').handlerQuelle();
   assert.match(h, /export const MAX_PAGE_SIZE = 500;/,
     'Die Obergrenze gehört an EINE Stelle');
@@ -357,12 +193,7 @@ test('beide Abfragewege deckeln page_size gleich', () => {
   assert.doesNotMatch(h, /Math\.min\(500,/,
     'Die 500 darf nicht wieder als Literal an einzelnen Stellen stehen');
   // Und der Weg, der sie NICHT hatte, deckelt jetzt ebenfalls.
-  //
-  // Geprüft wird die AUSSAGE, nicht der Aufruf von clampPageSize: Seit die
-  // Teileliste eines einzelnen Sets eine höhere Grenze hat
-  // (SET_PARTS_MAX_PAGE_SIZE, weil die App sie in einem Stück holt), rechnet
-  // der Pfad die Grenze selbst aus. Entscheidend bleibt, dass BEIDE Wege
-  // dieselben zwei Grenzen kennen und keiner den Wert ungeprüft durchreicht.
+  // Ausführlich: docs/begruendungen/test/parts-paging.test.js.md#stelle
   const { funktionsRumpf } = require('./helpers/sources');
   const grenze = funktionsRumpf(h, 'seitengroesse');
   assert.match(grenze, /SET_PARTS_MAX_PAGE_SIZE : MAX_PAGE_SIZE/, 'Die Seitengrösse kennt die Grenzen nicht');

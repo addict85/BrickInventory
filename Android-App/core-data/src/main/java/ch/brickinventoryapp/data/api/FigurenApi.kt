@@ -3,6 +3,8 @@ package ch.brickinventoryapp.data.api
 import ch.brickinventoryapp.data.model.*
 import retrofit2.Response
 import retrofit2.http.*
+import ch.brickinventoryapp.data.model.ManualFigsResponse
+import ch.brickinventoryapp.data.model.MinifigStatsResponse
 
 /**
  * Die Figurenliste abfragen — für den Figuren-Reiter und den Inhalt eines Sets.
@@ -69,10 +71,10 @@ interface FigurenApi : FigurenAbfrageApi {
     suspend fun getManualMinifigs(
         @Query("accounts") accounts: String? = null,
         @Query("search") search: String? = null
-    ): Response<ch.brickinventoryapp.data.model.ManualFigsResponse>
+    ): Response<ManualFigsResponse>
 
     @GET("api/v1/minifigs/stats")
     suspend fun getMinifigStats(
         @Query("accounts") accounts: String? = null
-    ): Response<ch.brickinventoryapp.data.model.MinifigStatsResponse>
+    ): Response<MinifigStatsResponse>
 }

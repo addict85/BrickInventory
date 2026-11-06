@@ -14,11 +14,12 @@ import ch.brickinventoryapp.data.model.PartsCategoriesResponse
 import ch.brickinventoryapp.data.model.PartsFilterColorsResponse
 import ch.brickinventoryapp.data.model.PartsResponse
 import ch.brickinventoryapp.data.model.PartsStatsResponse
-import ch.brickinventoryapp.data.repository.Result
+import ch.brickinventoryapp.data.repository.Ergebnis
 import ch.brickinventoryapp.ui.PartsUiState
 import ch.brickinventoryapp.ui.Teile
 import ch.brickinventoryapp.ui.TeileAbfrage
 import ch.brickinventoryapp.ui.TeileQuelle
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.advanceTimeBy
@@ -48,6 +49,7 @@ import org.junit.Test
  *   E  teileJob?.cancel() in laden() entfernt → rot: „eine langsame alte
  *      Antwort überschreibt die neuere nicht"
  */
+@OptIn(ExperimentalCoroutinesApi::class)
 class TeileTest {
 
     private class Quelle : TeileQuelle {
@@ -60,32 +62,32 @@ class TeileTest {
         var dauer: (TeileAbfrage) -> Long = { 0 }
         var kennzahlDauer = 0L
 
-        override suspend fun seite(abfrage: TeileAbfrage): Result<PartsResponse> {
+        override suspend fun seite(abfrage: TeileAbfrage): Ergebnis<PartsResponse> {
             abfragen += abfrage
             delay(dauer(abfrage))
             val nummer = "${abfrage.suche ?: "alle"}-${abfrage.farbe ?: "-"}-${abfrage.seite}"
-            return Result.Success(PartsResponse(success = true, total = 2, parts = listOf(Part(partNumber = nummer))))
+            return Ergebnis.Success(PartsResponse(success = true, total = 2, parts = listOf(Part(partNumber = nummer))))
         }
-        override suspend fun manuelleTeile(suche: String?): Result<ManualPartsResponse> {
+        override suspend fun manuelleTeile(suche: String?): Ergebnis<ManualPartsResponse> {
             manuelleSuchen += suche
-            return Result.Success(ManualPartsResponse(success = true, parts = listOf(PartValuationItem(partNumber = "m"))))
+            return Ergebnis.Success(ManualPartsResponse(success = true, parts = listOf(PartValuationItem(partNumber = "m"))))
         }
-        override suspend fun teileKennzahlen(): Result<PartsStatsResponse> = Result.Error("aus")
-        override suspend fun filterFarben() = Result.Success(PartsFilterColorsResponse(success = true))
-        override suspend fun kategorien() = Result.Success(PartsCategoriesResponse(success = true))
-        override suspend fun alleFarben() = Result.Success(BrickColorsResponse(success = true))
-        override suspend fun figurKennzahlen(): Result<MinifigStatsResponse> {
+        override suspend fun teileKennzahlen(): Ergebnis<PartsStatsResponse> = Ergebnis.Error("aus")
+        override suspend fun filterFarben() = Ergebnis.Success(PartsFilterColorsResponse(success = true))
+        override suspend fun kategorien() = Ergebnis.Success(PartsCategoriesResponse(success = true))
+        override suspend fun alleFarben() = Ergebnis.Success(BrickColorsResponse(success = true))
+        override suspend fun figurKennzahlen(): Ergebnis<MinifigStatsResponse> {
             kennzahlAbrufe++
             delay(kennzahlDauer)
-            return Result.Error("Zählung gescheitert")
+            return Ergebnis.Error("Zählung gescheitert")
         }
-        override suspend fun figuren(suche: String?): Result<MinifigsResponse> {
+        override suspend fun figuren(suche: String?): Ergebnis<MinifigsResponse> {
             figurSuchen += suche
-            return Result.Success(MinifigsResponse(success = true, figs = listOf(Minifig(figNumber = "sw0001"))))
+            return Ergebnis.Success(MinifigsResponse(success = true, figs = listOf(Minifig(figNumber = "sw0001"))))
         }
-        override suspend fun manuelleFiguren(suche: String?): Result<ManualFigsResponse> {
+        override suspend fun manuelleFiguren(suche: String?): Ergebnis<ManualFigsResponse> {
             manuelleFigurSuchen += suche
-            return Result.Success(ManualFigsResponse(success = true, figs = listOf(FigValuationItem(figNumber = "m"))))
+            return Ergebnis.Success(ManualFigsResponse(success = true, figs = listOf(FigValuationItem(figNumber = "m"))))
         }
     }
 

@@ -6,17 +6,7 @@ const path = require('node:path');
 
 /**
  * Der Kaufpreis wird uebernommen — und seine Herkunft benannt.
- *
- * ── Zwei Befunde, eine Tatsache (Nachtrag 167) ──────────────────────────────
- * BrickLink fuehrt zu vielen Teilen und Figuren nur EINEN Zustand. Daraus
- * folgten Marcos zwei Meldungen, die sich zu widersprechen schienen:
- *
- *   „Der Zustand hat keinen Einfluss auf den Preis"  — der Rueckfall war unsichtbar
- *   „Teilweise wird der Kaufpreis nicht geladen"     — ohne Rueckfall blieb es leer
- *
- * Seine Entscheidung: uebernehmen UND kennzeichnen. Dieser Test haelt beide
- * Haelften fest — denn genau eine davon wegzulassen ist der Rueckfall in je
- * einen der beiden Fehler.
+ * Ausführlich: docs/begruendungen/test/preis-herkunft.test.js.md#wurzel
  */
 
 const WURZEL = path.join(__dirname, '..');
@@ -28,7 +18,7 @@ function ohneKommentare(text) {
 const lies = (...p) => ohneKommentare(fs.readFileSync(path.join(WURZEL, ...p), 'utf8'));
 
 test('der Rueckfall wird nicht mehr verworfen', () => {
-  // Das war der zu scharfe Fix aus Nachtrag 166. Steht er wieder da, bleibt
+  // Das war der zu scharfe Fix aus einer früheren Runde. Steht er wieder da, bleibt
   // der Kaufpreis fuer alles leer, was BrickLink nur in einem Zustand fuehrt.
   // In allen Quellen: Die Preisabrufe sind schon einmal umgezogen.
   const quellen = require('./helpers/sources').alleQuellen();
@@ -40,13 +30,8 @@ test('der Rueckfall wird nicht mehr verworfen', () => {
 });
 
 test('beide Preisabrufe geben die Herkunft mit', () => {
-  // ── Ein Fundort statt zwei ───────────────────────────────────────────────
-  // Die beiden Preisabrufe standen in routes/parts.ts und routes/minifigs.ts —
-  // dieselbe Frage, zweimal beantwortet, und dieser Test las folgerichtig
-  // zweimal. Seit dem Schichtumbau stehen BEIDE in src/finanzen/marketPrice.ts, beim
-  // Marktpreis der Sets. Zwei Vorkommen in EINER Datei sind jetzt der richtige
-  // Nachweis; ihre Zahl steht ausdruecklich da, damit das Verschwinden eines
-  // der beiden auffaellt.
+  // Ein Fundort statt zwei
+  // Ausführlich: docs/begruendungen/test/preis-herkunft.test.js.md#src-stelle
   const src = lies('src/finanzen/marketPrice.ts');
   const treffer = [...src.matchAll(
     /ausZustand: priceData\?\.is_fallback \? \(priceData\.condition_used \|\| null\) : null/g)];
@@ -57,16 +42,8 @@ test('beide Preisabrufe geben die Herkunft mit', () => {
 });
 
 test('der Rueckfall wird in beiden Preisabrufen markiert', () => {
-  // ── Uebernommen aus test/zustand-kein-rueckfall.test.js ───────────────────
-  //
-  // Jene Datei sicherte die Regel aus Nachtrag 166 („einen Rueckfall gar nicht
-  // erst annehmen"). Die hat Marco mit seiner Entscheidung ersetzt, und ein
-  // Test, der das Gegenteil des Gewollten festhaelt, ist schlimmer als keiner.
-  //
-  // DIESE Zusicherung ueberlebt den Wechsel — sie wird sogar wichtiger: Ohne
-  // `is_fallback` wuesste niemand, dass der Preis aus dem anderen Zustand
-  // stammt, und die Kennzeichnung fiele lautlos weg. Aus einer Bedingung des
-  // Verwerfens ist die Grundlage des Benennens geworden.
+  // Uebernommen aus test/zustand-kein-rueckfall.test.js
+  // Ausführlich: docs/begruendungen/test/preis-herkunft.test.js.md#fc-stelle
   const fc = require('./helpers/sources').finanzQuelle();
   for (const name of ['async function fetchMinifigPrice', 'async function fetchPartPrice']) {
     const i = fc.indexOf(name);
@@ -98,7 +75,9 @@ test('eine eingetippte Zahl fragt gar nicht erst nach dem Markt', () => {
 });
 
 test('beide Oberflaechen zeigen den Hinweis, aus je EINER Stelle', () => {
-  const web = ohneKommentare(fs.readFileSync(path.join(WURZEL, 'public', 'js', '06-minifigs.js'), 'utf8'));
+  // Der Baustein steht in 06-minifigs.js, die Teile-Erfassung in 03-parts.js.
+  const web = ohneKommentare(['06-minifigs.js', '03-parts.js']
+    .map(f => fs.readFileSync(path.join(WURZEL, 'public', 'js', f), 'utf8')).join('\n'));
   assert.strictEqual((web.match(/function preisHerkunftHinweis\(/g) || []).length, 1,
     'Der Hinweis der Webapp ist nicht (mehr) an genau einer Stelle gebaut');
   assert.strictEqual((web.match(/preisHerkunftHinweis\(d\.price_from_condition\)/g) || []).length, 2,
@@ -108,11 +87,9 @@ test('beide Oberflaechen zeigen den Hinweis, aus je EINER Stelle', () => {
     path.join(__dirname, '..', '..', 'Android-App', 'feature-teile', 'src', 'main', 'java', 'ch', 'brickinventoryapp', 'ui', 'viewmodel', 'TeileViewModel.kt'), 'utf8'));
   assert.strictEqual((app.match(/fun erfassungsMeldung\(/g) || []).length, 1,
     'Der Hinweis der App ist nicht an genau einer Stelle gebaut');
-  // `= erfassungsMeldung(` misst die AUFRUFE. Ein blosses
-  // `erfassungsMeldung\(` zaehlte die Definition mit und meldete 3 statt 2 —
-  // eine Zahl, die etwas anderes zaehlt als sie behauptet, taugt auch als
-  // Selbstbeweis nichts.
-  assert.strictEqual((app.match(/= erfassungsMeldung\(/g) || []).length, 2,
+  // `zeigeMeldung(erfassungsMeldung(` misst die AUFRUFE; ein blosses
+  // `erfassungsMeldung\(` zaehlte die Definition mit und meldete 3 statt 2.
+  assert.strictEqual((app.match(/(?:zeigeMeldung|meldungen\.zeige)\(erfassungsMeldung\(/g) || []).length, 2,
     'Der Hinweis fehlt bei einer der beiden Erfassungen der App');
   assert.match(app, /r\.data\.priceFromCondition/,
     'Die App liest die Herkunft nicht aus der Antwort');

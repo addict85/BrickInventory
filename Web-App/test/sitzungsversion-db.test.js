@@ -48,6 +48,9 @@ test('beendete Sitzungen bleiben beendet, auch zurückgeschrieben', { concurrenc
   for (const [n, admin] of [['sv_chef', true], ['sv_zweiter', true], ['sv_nutzer', false]])
     id[n] = (await db.get('INSERT INTO users (username,password_hash,is_admin,email_verified) VALUES ($1,$2,$3,true) RETURNING id',
       [n, hash, admin])).id;
+  // Verwalter brauchen einen Code-Generator; Anmeldung und Bestätigung nehmen je einen Wiederherstellungscode.
+  const { verwalterMitFaktor } = require('./helpers/verwalter');
+  const codes = { sv_chef: await verwalterMitFaktor(_req, id.sv_chef), sv_zweiter: await verwalterMitFaktor(_req, id.sv_zweiter) };
 
   const app = express();
   app.use(express.json());
@@ -63,7 +66,7 @@ test('beendete Sitzungen bleiben beendet, auch zurückgeschrieben', { concurrenc
   const ruf = (pfad, cookie, o = {}) => fetch(basis + pfad, { ...o,
     headers: { 'content-type': 'application/json', ...(cookie ? { cookie } : {}) } });
   const anmelden = async (name) => {
-    const r = await ruf('/api/v1/auth/login', null, { method: 'POST', body: JSON.stringify({ username: name, password: PW, ohne_token: true }) });
+    const r = await ruf('/api/v1/auth/login', null, { method: 'POST', body: JSON.stringify({ username: name, password: PW, ohne_token: true, code: codes[name]?.shift() }) });
     assert.equal(r.status, 200, await r.text());
     return (r.headers.get('set-cookie') || '').split(';')[0];
   };
@@ -84,7 +87,7 @@ test('beendete Sitzungen bleiben beendet, auch zurückgeschrieben', { concurrenc
       assert.ok(alt, 'Vorbedingung: Sitzungszeile liegt');
 
       const r = await ruf(`/api/v1/auth/users/${id.sv_zweiter}/admin`, chef,
-        { method: 'PUT', body: JSON.stringify({ is_admin: false, admin_password: PW }) });
+        { method: 'PUT', body: JSON.stringify({ is_admin: false, admin_password: PW, code: codes.sv_chef.shift() }) });
       assert.equal(r.status, 200, await r.text());
       assert.equal(await zeile(zweiter), undefined, 'Vorbedingung: Zeile gelöscht');
       await zurueckschreiben(alt);

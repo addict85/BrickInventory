@@ -1,0 +1,18 @@
+Gegenprobe: beim Abmelden bleibt der Update-Zustand des vorigen Nutzers stehen
+Modul: feature-konto
+Test: ch.brickinventoryapp.UpdateViewModelTest
+Rot: beim Abmelden verfaellt der Zustand, Spaeter nur fuer diesen Lauf
+
+diff --git a/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/ui/viewmodel/UpdateViewModel.kt b/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/ui/viewmodel/UpdateViewModel.kt
+index adffda1..546f965 100644
+--- a/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/ui/viewmodel/UpdateViewModel.kt
++++ b/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/ui/viewmodel/UpdateViewModel.kt
+@@ -67,7 +67,7 @@ class UpdateViewModel @Inject constructor(
+         viewModelScope.launch {
+             anmeldestand.authTokenState.map { it.isNullOrBlank() }.distinctUntilChanged().drop(1)
+                 .filter { abgemeldet -> abgemeldet }
+-                .collect { _state.value = UpdateUiState(startpruefung = updateStand.startpruefungAn()) }
++                .collect { }
+         }
+         // Die Installer-Sitzung antwortet an einen Empfänger, nicht hierher (util/AppUpdate.kt).
+         viewModelScope.launch {

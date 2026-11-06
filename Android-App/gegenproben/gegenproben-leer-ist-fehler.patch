@@ -1,0 +1,18 @@
+Gegenprobe: Keine betroffene Gegenprobe zählt wieder als Fehler
+Modul: app
+Test: ch.brickinventoryapp.GegenprobenWerkzeugTest
+Rot: ohne betroffenen Patch ist der Lauf gruen
+
+diff --git a/Android-App/tools/gegenproben.py b/Android-App/tools/gegenproben.py
+index 77876c0..5040785 100644
+--- a/Android-App/tools/gegenproben.py
++++ b/Android-App/tools/gegenproben.py
+@@ -149,7 +149,7 @@ def main():
+             print(f'Basis {basis} unbekannt — alle {len(patches)} Gegenproben.')
+         elif not auswahl:
+             print(f'Keine der {len(patches)} Gegenproben berührt eine seit {basis[:12]} geänderte Datei.')
+-            return 0
++            return 1
+         else:
+             print(f'{len(auswahl)} von {len(patches)} Gegenproben betroffen.')
+             patches = auswahl

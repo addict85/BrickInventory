@@ -1,18 +1,14 @@
 /**
  * Schema-Migrationen mit nummerierten Dateien.
- * Ausführlich: docs/begruendungen/db/migrate.ts.md#abschnitt
+ * Ausführlich: docs/begruendungen/db/migrate.ts.md#ueberblick
  */
 import fs from 'fs';
 import path from 'path';
 import crypto from 'crypto';
-import { meldeUndWeiter, fehlertext, logAndContinue } from '../src/infra/httpError';
+import { meldeUndWeiter, fehlertext, logAndContinue } from '../src/infra/fehler';
 
-/**
- * Alle noch nicht angewandten Migrationen ausführen.
- * Ausführlich: docs/begruendungen/db/migrate.ts.md#runmigrations
- * @param {any} client Eine DEDIZIERTE pg-Verbindung (nicht der Pool), damit
- * @returns {Promise<string[]>} Namen der neu angewandten Migrationen
- */
+/** Alle noch nicht angewandten Migrationen; `client` ist eine eigene Verbindung, nicht der Pool.
+ * Ausführlich: docs/begruendungen/db/migrate.ts.md#runmigrations */
 async function runMigrations(client: any, { sichern = false, bis }: { sichern?: boolean; bis?: string } = {}): Promise<string[]> {
   await client.query(`
     CREATE TABLE IF NOT EXISTS schema_migrations (
@@ -25,6 +21,7 @@ async function runMigrations(client: any, { sichern = false, bis }: { sichern?: 
   if (!fs.existsSync(dir)) return [];
 
   // Lexikografisch sortieren — deshalb die vierstellige Nummer im Dateinamen.
+  // Lücken (0002, 0028) sind gewollt: Eine entfallene Migration gibt ihre Nummer nicht weiter.
   const files = fs.readdirSync(dir).filter(f => f.endsWith('.sql')).sort();
   if (!files.length) return [];
 
@@ -44,17 +41,18 @@ async function runMigrations(client: any, { sichern = false, bis }: { sichern?: 
       // Die 30 s des Pools gelten für Anfragen, nicht für den Umbau einer
       // grossen Tabelle; ein Abbruch mittendrin hiesse Neustart in Schleife.
       await client.query('SET LOCAL statement_timeout = 0');
+      await client.query('SET LOCAL lock_timeout = 0');
       await client.query(sql);
       await client.query('INSERT INTO schema_migrations (name, pruefsumme) VALUES ($1, $2)', [file, pruefsumme(sql)]);
       await client.query('COMMIT');
       applied.push(file);
       console.log(`  ✅ Migration angewandt: ${file}`);
-    } catch (e: any) {
+    } catch (e) {
       await client.query('ROLLBACK').catch(logAndContinue('migration:query'));
       // Bewusst weiterwerfen: Der Start bricht ab. Ein Server, der auf einem
       // halb migrierten Schema weiterläuft, produziert Folgefehler, die
       // niemand mehr auf diese Stelle zurückführt.
-      throw new Error(`Migration ${file} fehlgeschlagen: ${e.message}`);
+      throw new Error(`Migration ${file} fehlgeschlagen: ${(e as Error).message}`);
     }
   }
   return applied;
@@ -67,12 +65,9 @@ function pruefsumme(sql: string): string {
   return crypto.createHash('sha256').update(sql.replace(/\r\n/g, '\n')).digest('hex');
 }
 
-/**
- * Eine angewandte Migration darf sich nicht mehr ändern: Die Datenbank hat den
- * alten Inhalt ausgeführt, eine neue Installation bekäme den neuen — zwei
- * Schemas unter demselben Namen. Ohne gespeicherte Summe (vor dieser Prüfung
- * angewandt) wird sie einmal nachgetragen.
- */
+/** Eine angewandte Migration darf sich nicht ändern, sonst gäbe es zwei
+ * Schemas unter einem Namen. Fehlt die Summe (ältere Zeile), wird sie
+ * einmal nachgetragen. */
 async function pruefeAngewandte(client: import('pg').ClientBase, dir: string, rows: Angewandt[]): Promise<void> {
   const geaendert: string[] = [];
   for (const r of rows) {
@@ -88,15 +83,56 @@ async function pruefeAngewandte(client: import('pg').ClientBase, dir: string, ro
 }
 
 const SICHERUNGEN_BEHALTEN = 3;
+/** Länger braucht niemand eine Kopie, um ein misslungenes Update zurückzunehmen;
+ * danach wäre sie nur ein Ort, an dem gelöschte Konten weiterleben. */
+export const SICHERUNG_FRIST_TAGE = 30;
+const SICHERUNG_SCHEMA = '^vor_migration_[0-9]{17}$';
 
-/**
- * Vor offenen Migrationen die Tabellen mit Nutzerdaten (users, alles mit
- * user_id und alles mit Fremdschlüssel auf users) in ein eigenes Schema
- * kopieren. Der Fremdschlüssel fängt Tabellen wie account_links, deren
- * Spalten anders heissen. Der Container hat kein pg_dump, und
- * eine Migration, die Daten umformt, lässt sich ohne Kopie nicht zurücknehmen.
- * Die drei jüngsten Sicherungen bleiben; Wiederherstellen steht im README.
- */
+type Abfrager = Pick<import('./database').DbSchnittstelle, 'all' | 'run'>;
+const ueberClient = (c: import('pg').ClientBase): Abfrager => ({
+  all: async <T>(q: string, p?: unknown[]) => (await c.query(q, p)).rows as T[],
+  run: async (q: string, p?: unknown[]) => ({ changes: (await c.query(q, p)).rowCount ?? 0 }),
+});
+
+/** Kopien älter als `tage` (Datum steht im Schemanamen, UTC). @returns gelöschte Schemas */
+export async function raeumeAlteSicherungenAuf(c: Abfrager, tage = SICHERUNG_FRIST_TAGE): Promise<number> {
+  const rows = await c.all<{ nspname: string }>(`
+    SELECT nspname FROM pg_namespace WHERE nspname ~ '${SICHERUNG_SCHEMA}'
+       AND to_timestamp(substr(nspname, 15, 14), 'YYYYMMDDHH24MISS') AT TIME ZONE 'UTC'
+           < NOW() - make_interval(days => $1)`, [tage]);
+  for (const { nspname } of rows) await c.run(`DROP SCHEMA "${nspname}" CASCADE`);
+  return rows.length;
+}
+
+/** Ein gelöschtes Konto auch aus den Kopien: Spalten `user_id`, `*_user_id`, jede
+ * Spalte, die in public auf users zeigt, und `users.id`. In der Transaktion des
+ * Löschens, damit keine Kopie das Konto überlebt. */
+export async function entferneKontoAusSicherungen(c: Abfrager, uid: number): Promise<number> {
+  const rows = await c.all<{ schema: string; tabelle: string; spalte: string }>(`
+    WITH fk AS (
+      SELECT r.relname, a.attname FROM pg_constraint k
+        JOIN pg_class r ON r.oid = k.conrelid
+        JOIN pg_namespace n ON n.oid = r.relnamespace AND n.nspname = 'public'
+        JOIN pg_attribute a ON a.attrelid = r.oid AND a.attnum = ANY (k.conkey)
+       WHERE k.contype = 'f' AND k.confrelid = 'public.users'::regclass)
+    SELECT n.nspname AS schema, c.relname AS tabelle, a.attname AS spalte
+      FROM pg_namespace n
+      JOIN pg_class c ON c.relnamespace = n.oid AND c.relkind = 'r'
+      JOIN pg_attribute a ON a.attrelid = c.oid AND a.attnum > 0 AND NOT a.attisdropped
+     WHERE n.nspname ~ '^vor_migration_[0-9]+$'
+       AND (a.attname ~ '(^|_)user_id$' OR (c.relname = 'users' AND a.attname = 'id')
+            OR (c.relname, a.attname) IN (SELECT relname, attname FROM fk))
+       AND format_type(a.atttypid, a.atttypmod) IN ('integer', 'bigint')`);
+  let n = 0;
+  const id = (x: string) => `"${x.replace(/"/g, '""')}"`;
+  for (const z of rows) n += (await c.run(`DELETE FROM ${id(z.schema)}.${id(z.tabelle)} WHERE ${id(z.spalte)} = $1`, [uid])).changes;
+  return n;
+}
+
+/** Vor offenen Migrationen die Nutzerdaten (users, Tabellen mit user_id oder
+ * Fremdschlüssel auf users) in ein eigenes Schema kopieren: Der Container hat
+ * kein pg_dump, und eine umformende Migration ist ohne Kopie nicht
+ * umkehrbar. Drei Sicherungen bleiben; Wiederherstellen steht im README. */
 async function sichereNutzerdaten(client: import('pg').ClientBase, offen: string[]): Promise<string> {
   const schema = `vor_migration_${new Date().toISOString().replace(/\D/g, '').slice(0, 17)}`;
   const { rows } = await client.query<{ name: string }>(`
@@ -114,6 +150,7 @@ async function sichereNutzerdaten(client: import('pg').ClientBase, offen: string
   await client.query('BEGIN');
   try {
     await client.query('SET LOCAL statement_timeout = 0');
+    await client.query('SET LOCAL lock_timeout = 0');
     await client.query(`CREATE SCHEMA ${schema}`);
     for (const { name } of rows) {
       const t = client.escapeIdentifier(name);
@@ -129,18 +166,14 @@ async function sichereNutzerdaten(client: import('pg').ClientBase, offen: string
     SELECT nspname FROM pg_namespace WHERE nspname ~ '^vor_migration_[0-9]+$'
      ORDER BY nspname DESC OFFSET ${SICHERUNGEN_BEHALTEN}`);
   for (const { nspname } of alt.rows) await client.query(`DROP SCHEMA ${client.escapeIdentifier(nspname)} CASCADE`);
+  await raeumeAlteSicherungenAuf(ueberClient(client));
   console.log(`  💾 ${rows.length} Tabellen mit Nutzerdaten nach ${schema} gesichert`);
   return schema;
 }
 
-/**
- * Abgelöstes wieder entfernen, wie es der Start mit FORCE_SCHEMA_INIT=1 bis
- * 307ee28 tat: Die alten Startstufen legen Spalten und Tabellen an, die
- * Migrationen bis `bis` schon gelöscht hatten. Deren DROP … IF EXISTS-Zeilen
- * laufen deshalb noch einmal — nur bis `bis`, spätere Migrationen ersetzen
- * manche Tabelle durch eine gleichnamige View.
- * @returns Zahl der ausgeführten Zeilen
- */
+/** Die alten Startstufen legen an, was Migrationen bis `bis` schon gelöscht
+ * hatten; deren DROP … IF EXISTS laufen darum noch einmal. Nur bis `bis`:
+ * Spätere ersetzen manche Tabelle durch eine gleichnamige View. */
 async function abgeloestesEntfernen(client: import('pg').ClientBase, bis: string): Promise<number> {
   const dir = path.join(__dirname, 'migrations');
   const { rows } = await client.query<{ name: string }>(

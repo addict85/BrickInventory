@@ -5,6 +5,7 @@ import ch.brickinventoryapp.ui.model.MitgliedAnsicht
 import ch.brickinventoryapp.ui.erfassungsWerte
 import ch.brickinventoryapp.ui.ErfassungsWerte
 import org.junit.Test
+import java.io.File
 
 /**
  * Jeder Erfassungsweg lässt den Eigentümer wählen — auch der Barcode-Scanner.
@@ -32,7 +33,7 @@ import org.junit.Test
 class AddPathOwnerTest {
 
     private fun read(rel: String): String {
-        val f = java.io.File(Quellen.wurzel, "$rel")
+        val f = File(Quellen.wurzel, "$rel")
         assert(f.exists()) { "Datei nicht gefunden: $rel" }
         return f.readText()
     }
@@ -80,7 +81,7 @@ class AddPathOwnerTest {
     /**
      * Die Umrechnung der Eingaben steht an einer Stelle (erfassungsWerte, Nachtrag
      * 140): Die Dialoge benutzen sie (Struktur), und sie wird hier ausgeführt.
-     * Gegenprobe (31.10.2026, gemessen): in erfassungsWerte `haushalt.size > 1` →
+     * Gegenprobe: in erfassungsWerte `haushalt.size > 1` →
      * `haushalt.size > 0` → rot „ohne Haushalt geht kein Eigentuemer mit“.
      */
     @Test
@@ -98,5 +99,4 @@ class AddPathOwnerTest {
         assertEquals(ErfassungsWerte(anzahl = 3, preis = null, zustand = "N", besitzer = 7),
             erfassungsWerte(anzahl = "3", preis = "", zustand = "N", besitzer = 7, haushalt = haushalt))
     }
-
 }

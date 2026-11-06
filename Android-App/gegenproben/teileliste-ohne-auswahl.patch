@@ -3,12 +3,12 @@ Modul: app
 Test: ch.brickinventoryapp.FremderEinstiegTest
 Rot: die Teileliste geht nur
 
-diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/service/PdfExportService.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/service/PdfExportService.kt
-index 04225c8..c74a45c 100644
---- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/service/PdfExportService.kt
-+++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/service/PdfExportService.kt
-@@ -27,7 +27,7 @@ fun teilelistenAuswahl(ctx: Context, datei: java.io.File, titel: String): Intent
-         setDataAndType(FileProvider.getUriForFile(ctx, "${ctx.packageName}.provider", datei), "application/pdf")
+diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/service/TeilelistenProvider.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/service/TeilelistenProvider.kt
+index 3ca1ab6..e08361d 100644
+--- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/service/TeilelistenProvider.kt
++++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/service/TeilelistenProvider.kt
+@@ -38,7 +38,7 @@ fun teilelistenAuswahl(ctx: Context, titel: String): Intent {
+         setDataAndType(teilelistenUri(ctx), "application/pdf")
          addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
      }
 -    return Intent.createChooser(ansicht, titel).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)

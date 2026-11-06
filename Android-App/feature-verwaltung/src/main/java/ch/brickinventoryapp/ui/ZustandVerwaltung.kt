@@ -1,6 +1,7 @@
 package ch.brickinventoryapp.ui
 
 import ch.brickinventoryapp.data.model.*
+import ch.brickinventoryapp.ui.model.ProtokollZeileAnsicht
 
 /**
  * Das Server-Protokoll — eigener Zustand für Verwalter: Es liest genau ein
@@ -9,7 +10,7 @@ import ch.brickinventoryapp.data.model.*
  */
 data class VerwaltungUiState(
     val protokollLaden: Boolean = false,
-    val protokoll: List<ch.brickinventoryapp.ui.model.ProtokollZeileAnsicht> = emptyList(),
+    val protokoll: List<ProtokollZeileAnsicht> = emptyList(),
     /** Zeitspanne des Protokolls in Minuten — der Server begrenzt auf 2880. */
     val protokollMinuten: Int = 15,
     val fehler: String? = null,

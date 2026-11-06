@@ -2,9 +2,8 @@
  * Bei aktivem zweitem Faktor verlangen Passwortwechsel, Passkey löschen und
  * E-Mail ändern zusätzlich einen Code (bestaetigeMitFaktor in
  * src/konto/http/anmeldung.ts). Ein fehlender Code wird abgewiesen, bevor
- * etwas geprüft wird; ein falscher zählt in der Bremse. Ohne zweiten Faktor
- * bleibt alles wie bisher. Die E-Mail eines Verwalters gilt nach dem Ändern
- * erst nach dem Link als bestätigt.
+ * etwas geprüft wird; ein falscher zählt in der Bremse. Ohne zweiten Faktor …
+ * Ausführlich: docs/begruendungen/test/zweiter-faktor-heikel-db.test.js.md#kopf
  *
  * Gegenproben (01.11.2026 gemessen, je einzeln):
  *   A  change-password wieder mit bestaetigePasswort ohne Code → rot:
@@ -15,7 +14,8 @@
  *      Code geht leer in die Prüfung) → rot: die drei „ohne Code" und
  *      „fehlender Code zählt nicht in der Bremse" (429 statt 200)
  *   E  `felder.email_verified = user.is_admin` zurück → rot: „Verwalter-
- *      Adresse gilt erst nach dem Link"
+ *      Adresse gilt erst nach dem Link" (seit 04.11.2026 über email_neu,
+ *      Gegenproben dazu in email-neu-db)
  *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL.
  */
@@ -32,8 +32,8 @@ const _req = S.buildAndRequire();
 const { testServer } = require('./helpers/server');
 
 // Keine echten Mails: vor dem Laden von routes/auth ersetzen.
-const echterMailer = _req('src/infra/mailer.js');
-const mailerPfad = require.resolve(path.join(S.DIST, 'src/infra/mailer.js'));
+const echterMailer = _req('src/mail/mailer.js');
+const mailerPfad = require.resolve(path.join(S.DIST, 'src/mail/mailer.js'));
 require.cache[mailerPfad].exports = Object.assign({}, echterMailer, {
   sendEmailGeaendertMail: async () => ({ success: true }),
   sendVerificationMail: async () => ({ success: true }),
@@ -116,7 +116,7 @@ test('heikle Kontoänderungen mit zweitem Faktor', { concurrency: 1 }, async (t)
     assert.equal((await db.get('SELECT email FROM users WHERE id = $1', [uid])).email, `${NAME}@alt.example`);
     const gut = await ruf(basis, 'PUT', '/profile', { username: NAME, email: `${NAME}@neu.example`, password_current: PASS, code: codes[2] });
     assert.equal(gut.status, 200, JSON.stringify(gut.body));
-    assert.equal((await db.get('SELECT email FROM users WHERE id = $1', [uid])).email, `${NAME}@neu.example`);
+    assert.equal((await db.get('SELECT email_neu FROM users WHERE id = $1', [uid])).email_neu, `${NAME}@neu.example`);
   });
 
   await t.test('fehlender Code zählt nicht in der Bremse', async () => {
@@ -134,8 +134,7 @@ test('heikle Kontoänderungen mit zweitem Faktor', { concurrency: 1 }, async (t)
   await t.test('Verwalter-Adresse gilt erst nach dem Link', async () => {
     const r = await ruf(server(chef, CHEF, true), 'PUT', '/profile', { username: CHEF, email: `${CHEF}@neu.example`, password_current: PASS });
     assert.equal(r.status, 200, JSON.stringify(r.body));
-    const z = await db.get('SELECT email, email_verified FROM users WHERE id = $1', [chef]);
-    assert.equal(z.email, `${CHEF}@neu.example`);
-    assert.equal(z.email_verified, false, 'Verwalter-Adresse gilt erst nach dem Link');
+    const z = await db.get('SELECT email, email_neu FROM users WHERE id = $1', [chef]);
+    assert.deepEqual([z.email, z.email_neu], [`${CHEF}@alt.example`, `${CHEF}@neu.example`], 'Verwalter-Adresse gilt erst nach dem Link');
   });
 });

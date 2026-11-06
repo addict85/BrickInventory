@@ -4,6 +4,9 @@
 
 export interface ChartPoint { x: string; y: number }
 
+/** Eine Messung: Tag und Preis (Durchschnitt, sonst mengengewichtet). */
+export interface Messung { recorded_at: unknown; avg_price?: number | string | null; qty_avg_price?: number | string | null }
+
 export interface ChartSeries {
   name: string;
   values: ChartPoint[];
@@ -12,8 +15,8 @@ export interface ChartSeries {
 }
 
 /** @param inputs Je Reihe ein Name und die rohen Zeilen (recorded_at, avg_price). */
-export function buildChart(inputs: Array<{ name: string; rows: any[] }>) {
-  const valueOf = (r: any) => {
+export function buildChart(inputs: Array<{ name: string; rows: Messung[] }>) {
+  const valueOf = (r: Messung) => {
     const v = r?.avg_price ?? r?.qty_avg_price;
     const n = parseFloat(String(v ?? 0));
     return Number.isFinite(n) ? n : 0;

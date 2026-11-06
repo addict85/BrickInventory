@@ -10,11 +10,15 @@
  *   B  im merge-Job wieder `${{ inputs.tag }}` statt der Ausgabe → rot:
  *      „inputs.tag steht nur in env"
  * Der Handstart baut nur auf main und nur mit grünem CI-Lauf auf dem Commit
- * (`gh` ist hier ein Ersatz, der die Zahl grüner Läufe nennt).
+ * (`gh` ist hier ein Ersatz, der die Zahl grüner Läufe nennt; `git` ebenso,
+ * damit der Test keinen Git-Arbeitsbaum braucht).
  * Gegenproben (03.11.2026 gemessen, je einzeln):
  *   C  die Abfrage der grünen CI gestrichen → rot: „ohne grüne CI kein Image"
  *   D  die Prüfung auf refs/heads/main gestrichen → rot: „Handstart auf einem
  *      Nebenzweig"
+ *   E  (04.11.2026) im git-Ersatz eine andere Kurzform → rot: „der Commit
+ *      kommt aus git rev-parse“. In einer Kopie ohne .git grün; die Fassung
+ *      vor dem Ersatz war dort rot („gültige Tags gehen als Ausgabe weiter“).
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -44,6 +48,15 @@ function lauf(tag, { ref = 'refs/heads/main', gruen = '1' } = {}) {
   fs.writeFileSync(aus, '');
   const gh = path.join(path.dirname(aus), 'gh');
   fs.writeFileSync(gh, gruen === null ? '#!/bin/sh\nexit 1\n' : `#!/bin/sh\necho ${gruen}\n`, { mode: 0o755 });
+  // git ebenso als Ersatz: Der Schritt fragt nur nach dem Commit, und der Test
+  // soll auch in einer Kopie ohne .git laufen.
+  fs.writeFileSync(path.join(path.dirname(aus), 'git'), `#!/bin/sh
+case "$*" in
+  "rev-parse HEAD") echo ${'a1'.repeat(20)} ;;
+  "rev-parse --short=7 HEAD") echo a1a1a1a ;;
+  *) echo "git-Ersatz kennt: $*" >&2; exit 2 ;;
+esac
+`, { mode: 0o755 });
   const r = spawnSync('bash', ['-e', '-c', pruefSkript()], { encoding: 'utf8', cwd: __dirname,
     env: { ...process.env, PATH: `${path.dirname(aus)}:${process.env.PATH}`, GITHUB_OUTPUT: aus,
       EREIGNIS: 'workflow_dispatch', ERGEBNIS: '', TAG_EINGABE: tag, REF: ref, REPO: 'probe/probe' } });
@@ -58,6 +71,7 @@ test('gültige Tags gehen als Ausgabe weiter', () => {
     assert.equal(r.status, 0, `„${tag}" abgewiesen`);
     assert.match(r.ausgabe, new RegExp(`^tag=${tag.replace(/\./g, '\\.')}$`, 'm'));
     assert.match(r.ausgabe, /^bauen=true$/m);
+    assert.match(r.ausgabe, /^kurz=a1a1a1a$/m, 'der Commit kommt aus git rev-parse');
   }
 });
 

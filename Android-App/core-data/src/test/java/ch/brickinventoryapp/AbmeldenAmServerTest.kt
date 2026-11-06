@@ -1,5 +1,6 @@
 package ch.brickinventoryapp
 
+import ch.brickinventoryapp.util.NetworkPolicy
 import ch.brickinventoryapp.data.api.KontoApi
 import ch.brickinventoryapp.data.cache.ResponseCache
 import ch.brickinventoryapp.data.repository.KontoRepository
@@ -20,12 +21,13 @@ import org.junit.Test
 import retrofit2.Retrofit
 import java.io.File
 import java.util.concurrent.TimeUnit
+import ch.brickinventoryapp.data.api.ApiJson
 
 /**
  * Abmelden entwertet den Token am Server (POST /auth/logout mit dem Token), und
  * zwar begrenzt: Ein schweigender oder fehlender Server hält das Abmelden nicht auf.
  *
- * Gegenproben (01.11.2026, gemessen gegen KontoRepository.abmeldenAmServer):
+ * Gegenproben:
  *   A  withTimeoutOrNull entfernt → rot „ein schweigender Server haelt das
  *      Abmelden nicht auf“ (erst die Lesegrenze des Clients nach 2 s)
  *   B  der catch-Zweig für Exception entfernt → rot „ein fehlender Server …“
@@ -38,14 +40,14 @@ class AbmeldenAmServerTest {
     private val lage = object : Zugangslage {
         override fun serverUrl() = server.url("/").toString().trimEnd('/')
         override fun token() = "geheim"
-        override fun tokenHerkunft(): String? = null
+        override fun tokenHerkunft(): String? = NetworkPolicy.herkunft(serverUrl())
         override fun generation() = 0L
     }
     private val client = OkHttpClient.Builder()
         .addInterceptor(ServerWaechter(lage, true, entwicklung = true, sitzungAbgelaufen = {}))
         .readTimeout(2, TimeUnit.SECONDS).build()
     private val konto = KontoRepository(Retrofit.Builder().baseUrl(server.url("/")).client(client)
-        .addConverterFactory(ch.brickinventoryapp.data.api.ApiJson.asConverterFactory("application/json".toMediaType()))
+        .addConverterFactory(ApiJson.asConverterFactory("application/json".toMediaType()))
         .build().create(KontoApi::class.java), ResponseCache { dir })
 
     @After

@@ -6,6 +6,7 @@ import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.intl.LocaleList
 import ch.brickinventoryapp.ui.FarbeDeutsch
+import ch.brickinventoryapp.ui.KategorieDeutsch
 
 /** Ist die Oberfläche deutsch? Die Katalogdaten von Rebrickable sind es nie. */
 @Composable
@@ -19,6 +20,11 @@ private fun deutsch(): Boolean = LocalConfiguration.current.locales[0].language 
 @Composable
 fun farbUebersetzer(): (String) -> String =
     if (deutsch()) FarbeDeutsch::uebersetze else { name -> name }
+
+/** Teilekategorien in der Sprache der App, wie die Farben daneben („Steine“ statt „Bricks“). */
+@Composable
+fun kategorieUebersetzer(): (String) -> String =
+    if (deutsch()) KategorieDeutsch::uebersetze else { name -> name }
 
 /**
  * Teile- und Figurennamen bleiben englisch: Der Server liefert keine deutschen,

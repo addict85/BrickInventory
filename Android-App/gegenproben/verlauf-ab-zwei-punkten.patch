@@ -1,0 +1,18 @@
+Gegenprobe: Preisverlauf zeichnet schon zwei Punkte als Linie
+Modul: app
+Test: ch.brickinventoryapp.FeinschliffRegelnTest
+Rot: Preisverlauf
+
+diff --git a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/screens/SetDetailComponents.kt b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/screens/SetDetailComponents.kt
+index abe0d9e..be0530b 100644
+--- a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/screens/SetDetailComponents.kt
++++ b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/screens/SetDetailComponents.kt
+@@ -245,7 +245,7 @@ fun PriceChart(chart: PreisDiagrammAnsicht, waehrung: String) {
+ }
+ 
+ /** Ab so vielen Messpunkten einer Reihe zeigt PriceChart eine Linie. */
+-const val MIN_PUNKTE_VERLAUF = 3
++const val MIN_PUNKTE_VERLAUF = 2
+ 
+ /** Breite der Preislinien: 3 px waren auf einem dichten Telefon kaum ein Strich. */
+ val PREISLINIE_BREITE = 2.dp

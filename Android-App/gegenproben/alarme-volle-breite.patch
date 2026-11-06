@@ -1,0 +1,19 @@
+Gegenprobe: Preisalarme wieder in Listenbreite
+Modul: app
+Test: ch.brickinventoryapp.GeruestUndFormularTest
+Rot: Konto und Preisalarme stehen auf dem Tablet in Formularbreite
+
+diff --git a/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/ui/screens/EinstellungenUnterseiten.kt b/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/ui/screens/EinstellungenUnterseiten.kt
+index a226e1a..2ac6a0d 100644
+--- a/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/ui/screens/EinstellungenUnterseiten.kt
++++ b/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/ui/screens/EinstellungenUnterseiten.kt
+@@ -63,8 +63,7 @@ fun PreisalarmeUnterseite(
+     onZurueck: () -> Unit,
+     meldeSchalter: @Composable () -> Unit,
+ ) {
+-    Unterseite(stringResource(R.string.alerts_group), snackbarHostState, onZurueck,
+-        breite = Lesebreite.formular) {
++    Unterseite(stringResource(R.string.alerts_group), snackbarHostState, onZurueck) {
+         meldeSchalter()
+         PreisalarmeCard(uebersicht, aktionen, imageLoader, serverUrl, onSetClick)
+     }

@@ -1,16 +1,19 @@
 package ch.brickinventoryapp.ui.screens
 
+import ch.brickinventoryapp.data.VorwaermNetz
+import ch.brickinventoryapp.ui.viewmodel.HintergrundUiState
+import ch.brickinventoryapp.ui.viewmodel.MonitoringUiState
+import ch.brickinventoryapp.ui.viewmodel.GeraeteEinstellungenViewModel
+import ch.brickinventoryapp.ui.viewmodel.MonitoringAktionen
 import ch.brickinventoryapp.ui.model.BricksetEintragAnsicht
 import ch.brickinventoryapp.ui.model.JobZustandAnsicht
 import ch.brickinventoryapp.ui.model.ZeitplanAnsicht
-import ch.brickinventoryapp.ui.theme.Formen
 import ch.brickinventoryapp.ui.theme.AppKarte
 import ch.brickinventoryapp.ui.theme.LocalStatusFarben
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
@@ -18,14 +21,11 @@ import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import ch.brickinventoryapp.ui.model.*
 import androidx.compose.ui.res.stringResource
 import ch.brickinventoryapp.ressourcen.R
-import ch.brickinventoryapp.ui.AppViewModel
 import ch.brickinventoryapp.ui.viewmodel.MonitoringViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
@@ -34,18 +34,72 @@ import androidx.lifecycle.repeatOnLifecycle
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import ch.brickinventoryapp.ui.theme.Abstaende
+import ch.brickinventoryapp.ui.components.MitTooltip
+import ch.brickinventoryapp.ui.components.mitSchrift
+/** Was die Verwaltungsseite zeigt; die Route sammelt es aus den Flüssen. */
+data class MonitoringZustand(
+    val monState: MonitoringUiState,
+    val hintergrund: HintergrundUiState,
+    val verwaltung: VerwaltungUiState,
+    val netze: Map<VorwaermNetz, Boolean>,
+    val appTheme: String,
+    val ablageBytes: Long,
+)
+
+/**
+ * Die Verwaltungsseite am Navigationsziel. Hier laufen die Abfrage alle fünf
+ * Sekunden (nur sichtbar, repeatOnLifecycle) und das Nachladen der Einstellungen.
+ */
+@Composable
+fun MonitoringRoute(
+    appTheme: String,
+    /** Design oder Vorgabe-Zustand geändert: Die App lädt ihre Einstellungen nach. */
+    onEinstellungenNeu: () -> Unit,
+    mon: MonitoringViewModel = hiltViewModel(),
+    geraet: GeraeteEinstellungenViewModel = hiltViewModel(),
+) {
+    val monState by mon.state.collectAsStateWithLifecycle()
+    val hintergrund by mon.hintergrund.collectAsStateWithLifecycle()
+    val verwaltung by mon.verwaltungState.collectAsStateWithLifecycle()
+    val netze by geraet.vorwaermen.collectAsStateWithLifecycle()
+    val ablageBytes by geraet.ablageBytes.collectAsStateWithLifecycle()
+    val einstellungenNeu by mon.einstellungenNeu.collectAsStateWithLifecycle()
+    val lebenszyklus = androidx.lifecycle.compose.LocalLifecycleOwner.current
+    LaunchedEffect(Unit) {
+        lebenszyklus.lifecycle.repeatOnLifecycle(androidx.lifecycle.Lifecycle.State.STARTED) {
+            while (!mon.state.value.zugriffEntzogen) { mon.ladeJobs(); mon.ladeHintergrund(); delay(5000) }
+        }
+    }
+    LaunchedEffect(Unit) { mon.ladeCacheAbschnitt() }
+    LaunchedEffect(einstellungenNeu) {
+        if (einstellungenNeu) { onEinstellungenNeu(); mon.einstellungenGeladen() }
+    }
+    val cacheEreignisse = remember(mon, geraet) {
+        CacheEreignisse(
+            vorgabeZustand = mon::vorgabeZustandWaehlen,
+            ablageLeeren = geraet::ablageLeeren,
+            netz = geraet::vorwaermen,
+            design = mon::designWaehlen,
+            cacheDauer = mon::cacheDauerSpeichern,
+            cacheLeeren = mon::cacheLeeren,
+            grenzwerte = mon::grenzwerteSpeichern,
+        )
+    }
+    MonitoringScreen(
+        MonitoringZustand(monState, hintergrund, verwaltung, netze, appTheme, ablageBytes),
+        mon, cacheEreignisse,
+    )
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun MonitoringScreen(vm: AppViewModel) {
+fun MonitoringScreen(zustand: MonitoringZustand, aktionen: MonitoringAktionen, cacheEreignisse: CacheEreignisse) {
     val scope  = rememberCoroutineScope()
     val retryErrorMsg  = stringResource(R.string.monitoring_retry_error)
     val deleteErrorMsg = stringResource(R.string.monitoring_delete_error)
     val retryQueuedFmt = stringResource(R.string.monitoring_retry_queued)
     val entryRemovedFmt = stringResource(R.string.monitoring_entry_removed)
-    // Serverdaten liegen im ViewModel (siehe MonitoringViewModel: die Grenze
-    // laeuft zwischen "kommt vom Server" und "hat der Mensch angefasst").
-    val mon: MonitoringViewModel = hiltViewModel()
-    val monState by mon.state.collectAsStateWithLifecycle()
+    val monState = zustand.monState
     val jobs = monState.jobs
     val queue = monState.queue
     val queueLoading = monState.queueLoading
@@ -59,32 +113,20 @@ fun MonitoringScreen(vm: AppViewModel) {
     var reimportMsg    by remember { mutableStateOf<String?>(null) }
     var snack          by remember { mutableStateOf<String?>(null) }
 
-    val monCtx = androidx.compose.ui.platform.LocalContext.current
-    // Siehe AcquisitionManagementScreen: LocalResources statt Context, weil
-    // Lint LocalContextGetResourceValueCall als ERROR meldet und die Zahl fuer
-    // den Platzhalter erst im Rueckruf bekannt ist.
+    // LocalResources statt Context: Die Zahl fuer den Platzhalter ist erst im
+    // Rueckruf bekannt, und ein gegriffener Context veraltet bei Konfigurationswechsel.
     val monRes = androidx.compose.ui.platform.LocalResources.current
     val reimportLoadingMsg = stringResource(R.string.monitoring_loading)
     val reimportErrorMsg   = stringResource(R.string.monitoring_reimport_error)
 
-    // Auto-refresh jobs every 5s — nur solange der Screen sichtbar ist.
-    // repeatOnLifecycle(STARTED) pausiert die Schleife, wenn die App in den
-    // Hintergrund geht (statt weiterzupollen, bis der Screen verlassen wird),
-    // und startet sie beim Zurückkehren neu.
-    val monitoringLifecycleOwner = androidx.lifecycle.compose.LocalLifecycleOwner.current
-    LaunchedEffect(Unit) {
-        monitoringLifecycleOwner.lifecycle.repeatOnLifecycle(androidx.lifecycle.Lifecycle.State.STARTED) {
-            while (!mon.state.value.zugriffEntzogen) { mon.ladeJobs(); mon.ladeHintergrund(); delay(5000) }
-        }
-    }
-
     LaunchedEffect(queueToggleKey) {
-        if (queueOpen) mon.ladeWarteschlange()
+        if (queueOpen) aktionen.ladeWarteschlange()
     }
 
     LaunchedEffect(snack) {
-        snack?.let { vm.showSnackbar(it); snack = null }
+        snack?.let { aktionen.melde(it); snack = null }
     }
+    val hintergrund = zustand.hintergrund
 
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
@@ -96,18 +138,24 @@ fun MonitoringScreen(vm: AppViewModel) {
                 Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween, Alignment.CenterVertically) {
                     Text(stringResource(R.string.monitoring_title), fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleLarge)
                     if (isRefreshing) CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp)
-                    else IconButton(onClick = { scope.launch { mon.ladeJobs() } }) {
-                        Icon(Icons.Default.Refresh, stringResource(R.string.monitoring_refresh))
+                    else MitTooltip(stringResource(R.string.monitoring_refresh)) {
+                        IconButton(onClick = { scope.launch { aktionen.ladeJobs() } }) {
+                            Icon(Icons.Default.Refresh, stringResource(R.string.monitoring_refresh))
+                        }
                     }
                 }
             }
 
             // Die Auftragstabelle: was im Hintergrund wartet, läuft oder scheiterte.
-            item { HintergrundSection(mon, onSnack = { snack = it }) }
+            item {
+                HintergrundSection(hintergrund, aktionen::auftragsArtStarten, aktionen::auftragsArtLeeren,
+                    aktionen::auftragAbbrechen, aktionen::auftragWiederholen)
+            }
 
             // Cache stats + API limits
             item {
-                CacheAndLimitsSection(vm, onSnack = { snack = it })
+                CacheAndLimitsSection(monState, zustand.netze, zustand.appTheme,
+                    zustand.ablageBytes, cacheEreignisse)
             }
 
             // Das Server-Protokoll — dieselbe Ansicht wie in der Webapp. Keine eigene
@@ -115,7 +163,7 @@ fun MonitoringScreen(vm: AppViewModel) {
             // der nur bei `isAdmin` steht, und massgeblich ist der Server (requireApiAdmin,
             // sonst 403). Eine dritte Stelle, die „ist das ein Verwalter“ entscheidet, wäre
             // eine zweite Wahrheit.
-            item { ProtokollSection(mon) }
+            item { ProtokollSection(zustand.verwaltung, aktionen) }
 
             // Job cards
             items(jobs.entries.toList(), key = { it.key }) { (key, job) ->
@@ -127,7 +175,7 @@ fun MonitoringScreen(vm: AppViewModel) {
                     queueLoading = queueLoading,
                     queue    = queue,
                     reimportMsg = reimportMsg,
-                    mon      = mon,
+                    aktionen = aktionen,
                     onSnack  = { snack = it },
                     onToggleQueue = {
                         queueOpen = !queueOpen
@@ -135,7 +183,7 @@ fun MonitoringScreen(vm: AppViewModel) {
                     },
                     onRetry = { sn ->
                         scope.launch {
-                            snack = if (mon.wiederholeEintrag(sn)) String.format(retryQueuedFmt, sn)
+                            snack = if (aktionen.wiederholeEintrag(sn)) String.format(retryQueuedFmt, sn)
                                     else retryErrorMsg
                         }
                     },
@@ -143,14 +191,14 @@ fun MonitoringScreen(vm: AppViewModel) {
                         scope.launch {
                             // Das Vorwegnehmen und das Wiederherstellen bei Fehlschlag
                             // stehen jetzt im ViewModel — hier bleibt die Meldung.
-                            snack = if (mon.entferneEintrag(sn)) String.format(entryRemovedFmt, sn)
+                            snack = if (aktionen.entferneEintrag(sn)) String.format(entryRemovedFmt, sn)
                                     else deleteErrorMsg
                         }
                     },
                     onReimport = {
                         scope.launch {
                             reimportMsg = reimportLoadingMsg
-                            val eingereiht = mon.leseAnleitungenNeuEin()
+                            val eingereiht = aktionen.leseAnleitungenNeuEin()
                             if (eingereiht != null) {
                                 reimportMsg = monRes.getQuantityString(
                                     R.plurals.monitoring_reimport_enqueued,
@@ -176,7 +224,7 @@ private fun JobCard(
     queueLoading: Boolean,
     queue: List<BricksetEintragAnsicht>,
     reimportMsg: String?,
-    mon: MonitoringViewModel,
+    aktionen: MonitoringAktionen,
     onSnack: (String) -> Unit,
     onToggleQueue: () -> Unit,
     onRetry: (String) -> Unit,
@@ -188,8 +236,6 @@ private fun JobCard(
     val startingMsg      = stringResource(R.string.monitoring_starting)
     val startedMsg       = stringResource(R.string.monitoring_started)
     val syncStartedMsg   = stringResource(R.string.monitoring_sync_started_short)
-    val cacheSavedMsg  = stringResource(R.string.monitoring_cache_saved)
-    val limitsSavedMsg = stringResource(R.string.monitoring_limits_saved)
     val queueShowFmt   = stringResource(R.string.monitoring_queue_show)
     val statusColor = when (job.status) {
         "running" -> MaterialTheme.colorScheme.primary
@@ -213,7 +259,7 @@ private fun JobCard(
                     modifier = Modifier.weight(1f))
                 Row(verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(Abstaende.winzig)) {
-                    Icon(statusIcon, null, Modifier.size(14.dp), tint = statusColor)
+                    Icon(statusIcon, null, Modifier.size(mitSchrift(14.dp)), tint = statusColor)
                     Text(job.status, color = statusColor,
                         style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold)
                 }
@@ -227,7 +273,7 @@ private fun JobCard(
                     color = statusColor,
                     trackColor = MaterialTheme.colorScheme.surfaceVariant
                 )
-                Text("${job.progress} / ${job.total}", style = MaterialTheme.typography.labelSmall,
+                Text("${job.progress} / ${job.total}", style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
 
@@ -241,7 +287,7 @@ private fun JobCard(
             //
             // Kommt mit `/admin/jobs` und zeigt, wann ein Job das nächste Mal läuft — nicht
             // nur, dass er läuft.
-            schedule?.let { ZeitplanZeile(jobKey, it, mon, onSnack) }
+            schedule?.let { ZeitplanZeile(jobKey, it, aktionen, onSnack) }
 
             // Action buttons
             if (jobKey == "csvImport") {
@@ -250,18 +296,17 @@ private fun JobCard(
                     onClick = {
                         scope.launch {
                             csvMsg = startingMsg
-                            if (mon.starteCsvAbgleich()) {
+                            if (aktionen.starteCsvAbgleich()) {
                                 csvMsg = syncStartedMsg
                                 kotlinx.coroutines.delay(4000)
                                 csvMsg = null
                             } else { csvMsg = null; onSnack(startErrorMsg) }
                         }
                     },
-                    shape = Formen.kachel,
                     contentPadding = PaddingValues(horizontal = Abstaende.mittel, vertical = 6.dp),
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    Icon(Icons.Default.Sync, null, Modifier.size(16.dp))
+                    Icon(Icons.Default.Sync, null, Modifier.size(mitSchrift(16.dp)))
                     Spacer(Modifier.width(6.dp))
                     Text(csvMsg ?: stringResource(R.string.monitoring_sync_now), style = MaterialTheme.typography.labelMedium)
                 }
@@ -273,18 +318,17 @@ private fun JobCard(
                     onClick = {
                         scope.launch {
                             priceMsg = startingMsg
-                            if (mon.startePreislauf()) {
+                            if (aktionen.startePreislauf()) {
                                 priceMsg = startedMsg
                                 kotlinx.coroutines.delay(4000)
                                 priceMsg = null
                             } else { priceMsg = null; onSnack(startErrorMsg) }
                         }
                     },
-                    shape = Formen.kachel,
                     contentPadding = PaddingValues(horizontal = Abstaende.mittel, vertical = 6.dp),
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    Icon(Icons.Default.Refresh, null, Modifier.size(16.dp))
+                    Icon(Icons.Default.Refresh, null, Modifier.size(mitSchrift(16.dp)))
                     Spacer(Modifier.width(6.dp))
                     Text(priceMsg ?: stringResource(R.string.monitoring_price_update), style = MaterialTheme.typography.labelMedium)
                 }
@@ -296,18 +340,17 @@ private fun JobCard(
                     onClick = {
                         scope.launch {
                             redlMsg = startingMsg
-                            if (mon.ladeFehlendeBilderNach()) {
+                            if (aktionen.ladeFehlendeBilderNach()) {
                                 redlMsg = startedMsg
                                 kotlinx.coroutines.delay(4000)
                                 redlMsg = null
                             } else { redlMsg = null; onSnack(startErrorMsg) }
                         }
                     },
-                    shape = Formen.kachel,
                     contentPadding = PaddingValues(horizontal = Abstaende.mittel, vertical = 6.dp),
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    Icon(Icons.Default.Download, null, Modifier.size(16.dp))
+                    Icon(Icons.Default.Download, null, Modifier.size(mitSchrift(16.dp)))
                     Spacer(Modifier.width(6.dp))
                     Text(redlMsg ?: stringResource(R.string.monitoring_redownload_missing), style = MaterialTheme.typography.labelMedium)
                 }
@@ -319,18 +362,17 @@ private fun JobCard(
                     onClick = {
                         scope.launch {
                             katMsg = startingMsg
-                            if (mon.reiheKatalogbilderEin()) {
+                            if (aktionen.reiheKatalogbilderEin()) {
                                 katMsg = startedMsg
                                 kotlinx.coroutines.delay(4000)
                                 katMsg = null
                             } else { katMsg = null; onSnack(startErrorMsg) }
                         }
                     },
-                    shape = Formen.kachel,
                     contentPadding = PaddingValues(horizontal = Abstaende.mittel, vertical = 6.dp),
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    Icon(Icons.Default.Download, null, Modifier.size(16.dp))
+                    Icon(Icons.Default.Download, null, Modifier.size(mitSchrift(16.dp)))
                     Spacer(Modifier.width(6.dp))
                     Text(katMsg ?: stringResource(R.string.monitoring_catalog_images), style = MaterialTheme.typography.labelMedium)
                 }
@@ -339,11 +381,10 @@ private fun JobCard(
             if (jobKey == "instrQueue") {
                 FilledTonalButton(
                     onClick = onReimport,
-                    shape = Formen.kachel,
                     contentPadding = PaddingValues(horizontal = Abstaende.mittel, vertical = 6.dp),
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    Icon(Icons.Default.Download, null, Modifier.size(16.dp))
+                    Icon(Icons.Default.Download, null, Modifier.size(mitSchrift(16.dp)))
                     Spacer(Modifier.width(6.dp))
                     Text(reimportMsg ?: stringResource(R.string.monitoring_import_missing_instr), style = MaterialTheme.typography.labelMedium)
                 }
@@ -352,7 +393,6 @@ private fun JobCard(
             if (jobKey == "bricksetRetry" && job.total > 0) {
                 FilledTonalButton(
                     onClick = onToggleQueue,
-                    shape = Formen.kachel,
                     contentPadding = PaddingValues(horizontal = Abstaende.mittel, vertical = 6.dp),
                     modifier = Modifier.fillMaxWidth()
                 ) {
@@ -381,8 +421,4 @@ private fun JobCard(
     }
 }
 
-
 // ── Cache & API Limits section ────────────────────────────────────────────────
-
-
-

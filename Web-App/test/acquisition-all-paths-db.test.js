@@ -1,28 +1,9 @@
 /**
  * ALLE Erfassungs-Wege im Haushalt — Sets, Teile, Minifiguren, je Ändern und
  * Löschen.
+ * Ausführlich: docs/begruendungen/test/acquisition-all-paths-db.test.js.md#kopf
  *
- * ── Woher dieser Test kommt (Marcos Bericht, Nachtrag 55) ───────────────────
- * „Wenn ich in den Kaufpreisen einen Kaufpreis löschen will (für ein
- * Unterkonto), erscheint 404 Nicht gefunden — die Zeile wird nicht gelöscht."
- *
- * Beim Nachsehen war der gemeldete Fall nur einer von SECHS. Nachtrag 45 hatte
- * dieselbe Lücke geschlossen, aber nur an zwei Stellen: der v1-Fabrik und der
- * Webapp-Route zum ÄNDERN einer Set-Erfassung. Offen blieben:
- *   • Set-Erfassung löschen (Marcos Fall)
- *   • Teil-Erfassung ändern und löschen
- *   • Minifiguren-Erfassung ändern und löschen
- *
- * Alle suchten mit `WHERE id=$1 AND user_id=$2` und der eigenen Betrachter-ID.
- * Zwei der Löschwege waren dabei besonders unangenehm: Sie prüften gar nicht,
- * ob eine Zeile getroffen wurde — das DELETE lief ins Leere und die Antwort
- * meldete trotzdem Erfolg. Der Nutzer sah „gelöscht", die Zeile blieb stehen.
- *
- * Deshalb prüft dieser Test bewusst ALLE sechs Wege statt nur den gemeldeten:
- * Die Lehre aus Nachtrag 53 lautete, nach zwei Funden derselben Klasse sofort
- * die ganze Familie durchzugehen. Genau das ist hier der Fall.
- *
- * Gegenprobe (durchgeführt): writableIds in src/bestand/erfassungen.ts durch die eigene ID
+ * Gegenprobe (durchgeführt): writableIds in src/sammlung/erfassungen.ts durch die eigene ID
  * ersetzt → „Set-Erfassung löschen" endet wieder in 404.
  *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL (Migrationen für account_links).
@@ -35,6 +16,7 @@ const ROOT = path.join(__dirname, '..');
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
 const _req = require('./helpers/sources').buildAndRequire();
+const { dbOderSkip } = require('./helpers/db');
 const { haeltFigur, haeltSet, haeltTeil } = require('./helpers/bestand');
 const db = _req('db/database.js');
 const express = require(path.join(ROOT, 'node_modules', 'express'));
@@ -42,14 +24,7 @@ const express = require(path.join(ROOT, 'node_modules', 'express'));
 test('Erfassungen des Unterkontos: ändern und löschen auf allen drei Elementarten',
   { concurrency: 1 }, async (t) => {
 
-  try { await db.initSchema(); }
-  catch (e) {
-    if (process.env.REQUIRE_DB === '1')
-      throw new Error(`REQUIRE_DB=1, aber die Test-DB ist nicht erreichbar: ${e.message}`);
-    t.skip('Test-DB nicht erreichbar'); return;
-  }
-  const mc = await db.pool.connect();
-  try { await _req('db/migrate.js').runMigrations(mc); } finally { mc.release(); }
+  if (!await dbOderSkip(t, _req)) return;
 
   const HAUPT = `acq6-h-${process.pid}`, SUB = `acq6-s-${process.pid}`;
   const SN = `77001-${process.pid}`, PN = `3001x${process.pid}`, FN = `sw${process.pid}`;
@@ -68,7 +43,7 @@ test('Erfassungen des Unterkontos: ändern und löschen auf allen drei Elementar
     req.apiUser = { user_id: hauptId, is_admin: 0 };
     next();
   });
-  // Die Erfassungs-Routen liegen seit Nachtrag 70 nur noch hier — eine
+  // Die Erfassungs-Routen liegen seit einer früheren Runde nur noch hier — eine
   // Adresse für Webapp UND App.
   app.use('/api/v1', _req('routes/api_v1/index.js'));
   const srv = app.listen(0);

@@ -12,13 +12,18 @@ import java.util.concurrent.TimeUnit
  * einem Wegwerf-Repository mit einem Gradle-Ersatz: Der schreibt einen
  * JUnit-Bericht, rot genau dann, wenn in der Datei „kaputt“ steht.
  *
- * Gegenproben (31.10.2026, gemessen):
+ * Gegenproben:
  *   A  in miss() `if not rot` gestrichen → rot „eine Gegenprobe, die grün
  *      bleibt, macht den Job rot“
  *   B  einen fehlenden Bericht als rot gezählt (`return True, …`) → rot „ohne
  *      Testbericht zählt nichts als rot“
  *   C  `git apply -R` weggelassen → rot „eine rote Gegenprobe besteht …“
  *      (die Datei bleibt kaputt)
+ *   D  in betroffen() immer alle Patches zurückgegeben → rot „auf einem Push misst
+ *      es nur …“ (harmlos-anderswo blieb grün) und „ohne betroffenen Patch …“ (Rückgabe 1)
+ *   E  `return 0` bei leerer Auswahl gestrichen → rot „ohne betroffenen Patch …“
+ *   F  die Leer-Prüfung wieder hinter die Aufteilung auf Teile → rot „auf einem Push
+ *      misst es nur …“ (Teil 2/2 gibt 1 zurück, „Keine Gegenproben unter …“)
  */
 class GegenprobenWerkzeugTest {
 
@@ -54,9 +59,9 @@ class GegenprobenWerkzeugTest {
         return text
     }
 
-    /** Eine Gegenprobe, die quelle.txt auf [inhalt] setzt, mit Kopf. */
-    private fun probe(name: String, inhalt: String, rot: String? = null) {
-        datei.writeText("$inhalt\n")
+    /** Eine Gegenprobe, die [ziel] auf [inhalt] setzt, mit Kopf. */
+    private fun probe(name: String, inhalt: String, rot: String? = null, ziel: File = datei) {
+        ziel.writeText("$inhalt\n")
         val diff = git("diff")
         git("checkout", "--", ".")
         File(ordner, "$name.patch").writeText(
@@ -64,11 +69,13 @@ class GegenprobenWerkzeugTest {
                 (rot?.let { "Rot: $it\n" } ?: "") + "\n" + diff)
     }
 
-    private fun lauf(): Pair<Int, String> {
+    private fun lauf(basis: String? = null, teil: String? = null): Pair<Int, String> {
         val pb = ProcessBuilder("python3", File("../tools/gegenproben.py").absolutePath, ordner.path)
             .directory(projekt).redirectErrorStream(true)
         pb.environment()["GEGENPROBE_GRADLE"] = "sh ${gradle.path}"
+        if (basis != null) pb.environment()["GEGENPROBE_BASIS"] = basis else pb.environment().remove("GEGENPROBE_BASIS")
         pb.environment().remove("GITHUB_STEP_SUMMARY")
+        if (teil != null) pb.environment()["GEGENPROBE_TEIL"] = teil else pb.environment().remove("GEGENPROBE_TEIL")
         val p = pb.start()
         val text = p.inputStream.bufferedReader().readText()
         check(p.waitFor(60, TimeUnit.SECONDS)) { text }
@@ -108,6 +115,38 @@ class GegenprobenWerkzeugTest {
         val (code, text) = lauf()
         assertEquals(text, 1, code)
         assertTrue(text, text.contains("„anderes“ blieb grün"))
+    }
+
+    @Test
+    fun `auf einem Push misst es nur die Patches, deren Ziel sich geaendert hat`() {
+        val andere = File(projekt, "andere.txt").apply { writeText("still\n") }
+        git("add", ".")
+        git("-c", "user.email=t@t", "-c", "user.name=t", "commit", "-qm", "andere")
+        val basis = git("rev-parse", "HEAD").trim()
+        datei.writeText("heil\nnoch heil\n")
+        git("-c", "user.email=t@t", "-c", "user.name=t", "commit", "-qam", "quelle")
+        probe("macht-kaputt", "kaputt", rot = "ist heil")
+        probe("harmlos-anderswo", "laut", ziel = andere)
+        val (code, text) = lauf(basis)
+        assertEquals(text, 0, code)
+        assertTrue(text, text.contains("1 von 2 Gegenproben betroffen") && text.contains("rot macht-kaputt.patch"))
+        assertTrue(text, !text.contains("harmlos-anderswo"))
+        // Weniger betroffene Patches als Teile: Der leere Teil ist grün, nicht „keine Gegenproben“.
+        val (leer, ohne) = lauf(basis, teil = "2/2")
+        assertEquals(ohne, 0, leer)
+        assertTrue(ohne, ohne.contains("Teil 2/2"))
+    }
+
+    @Test
+    fun `ohne betroffenen Patch ist der Lauf gruen, ohne Basis misst er alle`() {
+        probe("harmlos", "harmlos")
+        val kopf = git("rev-parse", "HEAD").trim()
+        val (code, text) = lauf(kopf)
+        assertEquals(text, 0, code)
+        assertTrue(text, text.contains("Keine der 1 Gegenproben"))
+        val (unbekannt, alle) = lauf("0000000000000000000000000000000000000000")
+        assertEquals(alle, 1, unbekannt)
+        assertTrue(alle, alle.contains("blieb grün"))
     }
 
     @Test

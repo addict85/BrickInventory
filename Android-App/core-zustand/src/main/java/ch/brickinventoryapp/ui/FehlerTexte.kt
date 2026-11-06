@@ -2,16 +2,14 @@ package ch.brickinventoryapp.ui
 
 import ch.brickinventoryapp.ressourcen.R
 import ch.brickinventoryapp.data.repository.Fehlerart
+import ch.brickinventoryapp.data.repository.Ergebnis
 
 /**
  * Welche Textressource gehört zu welcher [Fehlerart]? Eine eigene, reine Funktion
  * statt einer Zeile in `meldung()`, damit die Zuordnung ohne `Context` und ohne
  * Android-Laufzeit prüfbar ist. `meldung()` holt den Satz und bevorzugt die
  * Servermeldung — das braucht einen Context, die Zuordnung nicht.
- *
- * Kein `else`-Zweig: Eine neue Fehlerart soll den Build hier brechen, nicht still
- * in einem Sammelfall landen — wie bei
- * [ch.brickinventoryapp.data.repository.Result].
+ * Ausführlich: docs/begruendungen/core-zustand/ui/FehlerTexte.kt.md#fehlertextid
  */
 fun fehlerTextId(art: Fehlerart?): Int = when (art) {
     Fehlerart.NETZ               -> R.string.err_network
@@ -31,7 +29,7 @@ fun fehlerTextId(art: Fehlerart?): Int = when (art) {
  * zählt als Anmeldung, auch wenn die Datenschicht keine Art kennt; ein HTTP-Code ab
  * 500 als Server, auch wenn der Server einen eigenen Satz mitschickt.
  */
-fun fehlerklasse(f: ch.brickinventoryapp.data.repository.Result.Error): Fehlerklasse = when {
+fun fehlerklasse(f: Ergebnis.Error): Fehlerklasse = when {
     f.unauthorized || f.art == Fehlerart.NICHT_ANGEMELDET || f.art == Fehlerart.SITZUNG_ABGELAUFEN -> Fehlerklasse.ANMELDUNG
     f.art == Fehlerart.NETZ || f.art == Fehlerart.ZEIT || f.art == Fehlerart.VERBINDUNG_BEENDET -> Fehlerklasse.OFFLINE
     f.art == Fehlerart.SERVER || f.art == Fehlerart.LEERE_ANTWORT || (f.httpCode ?: 0) >= 500 -> Fehlerklasse.SERVER
@@ -48,14 +46,7 @@ fun fehlerTextBrauchtCode(art: Fehlerart?): Boolean = art == Fehlerart.SERVER
 
 /**
  * Die technische Ursache anhängen — aber nur, wo der Satz allein nichts sagt.
- *
- * Nur bei [Fehlerart.UNBEKANNT], dem Auffangzweig in RepoBasis für jede geworfene
- * Ausnahme. Ursachen mit eigenem, verständlichem Satz (kein Netz,
- * Zeitüberschreitung, Sitzung abgelaufen, Serverfehler mit Code) bekommen keinen
- * englischen Bibliothekstext — „Socket closed“ ist kein Satz an einen Menschen.
- * „Etwas ist schiefgelaufen“ benennt dagegen nichts; dort ist der Bibliothekstext
- * das Einzige, was etwas aussagt, und ohne ihn bliebe Nutzer wie Entwickler nur
- * Raten.
+ * Ausführlich: docs/begruendungen/core-zustand/ui/FehlerTexte.kt.md#mittechnischerursache
  */
 internal fun mitTechnischerUrsache(satz: String, art: Fehlerart?, technisch: String?): String =
     if ((art == Fehlerart.UNBEKANNT || art == null) && !technisch.isNullOrBlank()) "$satz ($technisch)"

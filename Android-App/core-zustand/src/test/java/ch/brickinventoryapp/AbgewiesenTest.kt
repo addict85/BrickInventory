@@ -1,6 +1,6 @@
 package ch.brickinventoryapp
 
-import ch.brickinventoryapp.data.repository.Result
+import ch.brickinventoryapp.data.repository.Ergebnis
 import ch.brickinventoryapp.ui.viewmodel.Texte
 import ch.brickinventoryapp.util.darfNachfassen
 import ch.brickinventoryapp.util.meldetDieSitzungsschicht
@@ -35,7 +35,7 @@ import org.junit.Test
  *   d) `angemeldet` in meldetDieSitzungsschicht ignoriert → „ein falsches
  *      Passwort bleibt ein falsches Passwort" rot
  *   e) in Texte.meldungFuerSnackbar() immer meldung(fehler) → „die Snackbar
- *      schweigt …" rot (28.10.2026)
+ *      schweigt …" rot
  * Dass der Interceptor die Regel anwendet, prüft ServerWaechterTest ausgeführt.
  */
 class AbgewiesenTest {
@@ -137,17 +137,17 @@ class AbgewiesenTest {
         fun texte(mitToken: Boolean) = object : Texte {
             override fun text(id: Int, vararg args: Any?) = "t$id"
             override fun menge(id: Int, anzahl: Int, vararg args: Any?) = "m$id"
-            override fun meldung(fehler: Result.Error) = "Satz"
+            override fun meldung(fehler: Ergebnis.Error) = "Satz"
             override fun angemeldet() = mitToken
         }
-        val abgewiesen = Result.Error("", unauthorized = true)
+        val abgewiesen = Ergebnis.Error("", unauthorized = true)
         assert(texte(mitToken = true).meldungFuerSnackbar(abgewiesen) == null) {
             "Ein 401 bei angemeldeter App erscheint wieder als Satz in der Snackbar."
         }
         assert(texte(mitToken = false).meldungFuerSnackbar(abgewiesen) == "Satz") {
             "Ohne Token ist ein 401 ein falsches Passwort und muss gezeigt werden."
         }
-        assert(texte(mitToken = true).meldungFuerSnackbar(Result.Error("", transient = true)) == "Satz") {
+        assert(texte(mitToken = true).meldungFuerSnackbar(Ergebnis.Error("", transient = true)) == "Satz") {
             "Ein Netzfehler bei angemeldeter App verschwindet aus der Snackbar."
         }
     }
@@ -158,16 +158,20 @@ class AbgewiesenTest {
         // schreibt, geht ueber meldungFuerSnackbar(). Sechsunddreissig Stellen
         // taten es vorher ueber meldung() — eine neue faellt jetzt auf.
         val treffer = mutableListOf<String>()
+        val schreibt = Regex("""\bzeigeMeldung\(|\b(?:meldungen|kanal)\.zeige\(""")
+        var schreiber = 0
         for (datei in Quellen.alle()) {
             val name = datei.invariantSeparatorsPath.substringAfter("ch/brickinventoryapp/")
             val code = Quellen.ohneKommentare(datei.readText())
             for (zeile in code.lines()) {
-                if (!zeile.contains("_snackbar")) continue
+                if (!schreibt.containsMatchIn(zeile)) continue
+                schreiber++
                 if (!Regex("""[^a-zA-Z]meldung\(""").containsMatchIn(zeile)) continue
                 if (zeile.contains("meldungFuerSnackbar(")) continue
                 treffer += "$name: ${zeile.trim()}"
             }
         }
+        assert(schreiber >= 50) { "Nur $schreiber Schreibstellen der Snackbar gefunden — Muster veraltet?" }
         assert(treffer.isEmpty()) {
             "Diese Stellen schreiben meldung() direkt in die Snackbar und umgehen " +
                 "damit die Regel: $treffer"
@@ -190,7 +194,7 @@ class AbgewiesenTest {
             // wird dieses Projekt gebaut — liefert `path` Backslashes, und der
             // Schnitt ginge ins Leere (siehe Quellen.unter()).
             val name = datei.invariantSeparatorsPath.substringAfter("ch/brickinventoryapp/")
-            if (name.endsWith("PreferencesManager.kt")) continue
+            if (name.endsWith("TokenAblage.kt")) continue
             val code = Quellen.ohneKommentare(datei.readText())
             // Ohne `prefs.` davor: Der Manager heisst nicht ueberall gleich,
             // und die Regel gilt dem Fluss, nicht dem Variablennamen.

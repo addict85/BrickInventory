@@ -1,37 +1,24 @@
 /**
  * Die Stückzahl eines Sets — abgeleitet, nicht gespeichert.
- * Ausführlich: docs/begruendungen/db/bestandsmenge.ts.md#abschnitt
+ * Ausführlich: docs/begruendungen/db/bestandsmenge.ts.md#ueberblick
  */
 
-/**
- * Die Rechnung, einmal. `::int`, weil SUM(INTEGER) in Postgres BIGINT ergibt
- * und der Treiber BIGINT als ZEICHENKETTE liefert — ohne den Cast haengt der
- * JSON-Typ von `quantity` daran, welcher Zweig geantwortet hat. Genau dieser
- * Fehler ist in src/teile/abfragen.ts schon einmal aufgeflogen.
- */
+/** `::int`: SUM(INTEGER) ergibt BIGINT, und das liefert der Treiber als
+ * Zeichenkette — sonst hinge der JSON-Typ von `quantity` am Zweig. */
 const SUMME = 'SUM(a.quantity)::int';
 
-/**
- * Stückzahl als Unterabfrage in der Spaltenliste.
- *
- * @param bezug Alias der Zeile, zu der die Menge gehoert — muss `user_id` und
- *              `set_number` fuehren (also `sets` oder eine Zeile daraus).
- */
+/** Stückzahl als Unterabfrage in der Spaltenliste. `bezug` ist der Alias
+ * einer Zeile mit `user_id` und `set_number` (also `sets`). */
 export function mengeSkalar(bezug: string): string {
   return `COALESCE((SELECT ${SUMME} FROM set_acquisitions a
                      WHERE a.user_id = ${bezug}.user_id
                        AND a.set_number = ${bezug}.set_number), 0)`;
 }
 
-/**
- * Stückzahl als gruppierte JOIN-Quelle, fuer Abfragen ueber viele Zeilen.
- * Ausführlich: docs/begruendungen/db/bestandsmenge.ts.md#mengejoin
- * @param bezug Alias der Zeile, zu der die Menge gehoert.
- * @param alias Name der JOIN-Quelle; der Aufrufer liest daraus `<alias>.menge`.
- * @param konten Bedingung auf das Konto, z. B. `= ANY($1)`. Ohne sie summiert
- *              die Unterabfrage die Erfassungen ALLER Konten, bevor der JOIN
- *              filtert — der Planer kann die Kontobedingung nicht hineinziehen.
- */
+/** Stückzahl als gruppierte JOIN-Quelle (`<alias>.menge`). `konten`, z. B.
+ * `= ANY($1)`, filtert schon in der Unterabfrage: Der Planer zieht die
+ * Kontobedingung des JOIN nicht hinein und summierte sonst alle Konten.
+ * Ausführlich: docs/begruendungen/db/bestandsmenge.ts.md#mengejoin */
 export function mengeJoin(bezug: string, alias = 'sm', konten?: string): string {
   const filter = konten ? `
                       WHERE a.user_id ${konten}` : '';
@@ -42,11 +29,9 @@ export function mengeJoin(bezug: string, alias = 'sm', konten?: string): string 
               AND ${alias}.set_number = ${bezug}.set_number`;
 }
 
-/**
- * Die Mengenspalte zur JOIN-Quelle aus [mengeJoin].
- * Ausführlich: docs/begruendungen/db/bestandsmenge.ts.md#mengeaus
- * @param fehlt Was gilt, wenn es keine Erfassung gibt. 0 fuer eine Stueckzahl,
- */
+/** Die Mengenspalte zu [mengeJoin], nie NULL (NULL machte jedes Produkt
+ * NULL). `fehlt`: 0 für eine Stückzahl, 1 für einen Faktor.
+ * Ausführlich: docs/begruendungen/db/bestandsmenge.ts.md#mengeaus */
 export function mengeAus(alias = 'sm', fehlt: 0 | 1 = 0): string {
   return `COALESCE(${alias}.menge, ${fehlt})`;
 }
@@ -64,16 +49,12 @@ export function mengeSummeSql(konten: 'eines' | 'blickfeld'): string {
              AND a.set_number = $2`;
 }
 
+import type { DbSchnittstelle } from './database';
 import * as db from './database';
 import { colorId } from '../src/infra/validate';
 
-/**
- * Was ein Leser bzw. Schreiber hier können muss, und nicht mehr. `any` wäre
- * kürzer; der Typ schreibt hin, was gebraucht wird, statt den Typprüfer für
- * den ganzen Ausdruck abzuschalten. Dieselbe Entscheidung wie in
- * src/katalog/katalogPflege.ts.
- */
-type Schreiber = { get: (sql: string, params?: unknown[]) => Promise<any> };
+/** Was ein Leser hier können muss, und nicht mehr: `db` oder eine Transaktion. */
+type Schreiber = Pick<DbSchnittstelle, 'get'>;
 
 /**
  * Die Stückzahl EINER Set-Zeile — als Zahl, nicht als SQL-Schnipsel.
@@ -84,18 +65,23 @@ export async function mengeDesSets(
   setNumber: string,
   dbh: Schreiber = db,
 ): Promise<number | null> {
-  const zeile = await dbh.get(
+  const zeile = await dbh.get<{ menge: unknown }>(
     `SELECT ${mengeSkalar('s')} AS menge
        FROM sets s WHERE s.user_id = $1 AND s.set_number = $2`,
     [userId, setNumber]);
   return zeile ? (parseInt(String(zeile.menge)) || 0) : null;
 }
 
-// Richtig, und es war ein ZWISCHENSTAND mit Ansage: Die Spalte trug ZWEI
-// Bedeutungen, und deshalb ging sie nicht mit sets.quantity zusammen weg.
-// Ausführlich: docs/begruendungen/db/bestandsmenge.ts.md#bestandsart
+// Teile und Figuren haben noch eine Mengenspalte, weil sie zwei Bedeutungen
+// trägt. Ausführlich: docs/begruendungen/db/bestandsmenge.ts.md#bestandsart
 
 /** Welcher Bestand. Sets stehen hier nicht: ihre Spalte ist seit 0036 weg. */
+export interface ErfassungsZeile {
+  id: number; quantity: number; purchase_price?: number | null; unit_price?: number | null;
+  condition: string; price_estimated: boolean; currency: string | null;
+  created_at: Date | null; owner_user_id: number;
+}
+
 export type Bestandsart = 'part' | 'fig';
 
 /** Je Art: Tabellen, Schluessel und Spaltennamen. Einmal, als Tabelle. */
@@ -105,11 +91,8 @@ const ART = {
     erfassung: 'part_acquisitions',
     katalog:   'set_teile',
     nummer:    'part_number',
-    // Die Farbe gehoert in BEIDE Schluessel — und COALESCE(...,0) auf beiden
-    // Seiten: Die Erfassung fuehrt „ohne Angabe" als 0, die Bestandszeile
-    // kann dort NULL haben. Ohne das trifft der Vergleich nicht, und die
-    // Menge faellt auf den Rueckfallwert. Genau dieser Fehler stand schon
-    // einmal in mengeNeuRechnen().
+    // Die Farbe gehört in beide Schlüssel; „ohne Angabe“ ist in der
+    // Erfassung 0, in der Bestandszeile womöglich NULL.
     farbe:     true,
   },
   fig: {
@@ -121,13 +104,9 @@ const ART = {
   },
 } as const;
 
-/**
- * Die beiden JOIN-Quellen fuer die Stückzahl einer Bestandszeile.
- * Ausführlich: docs/begruendungen/db/bestandsmenge.ts.md#teilmengejoin
- * @param bezug Alias der Bestandszeile, z. B. `p` oder `m`
- * @param alias Grundname; angelegt werden `<alias>_e` (Erfassungen) und
- * @param konten wie bei mengeJoin: schränkt die Erfassungen auf das Blickfeld ein
- */
+/** Die JOIN-Quellen `<alias>_e` (Erfassungen) und `<alias>_k` (Katalog) für
+ * die Stückzahl der Bestandszeile `bezug`; `konten` wie bei [mengeJoin].
+ * Ausführlich: docs/begruendungen/db/bestandsmenge.ts.md#teilmengejoin */
 export function teilmengeJoin(bezug: string, art: Bestandsart, alias = 'tm', konten?: string): string {
   const a = ART[art];
   const farbErf = a.farbe
@@ -166,13 +145,13 @@ export async function mengeDerPosition(
   art: Bestandsart,
   userId: number,
   keys: (string | number | null)[],
-  dbh: { get: (sql: string, params?: unknown[]) => Promise<any> } = db,
+  dbh: Pick<DbSchnittstelle, 'get'> = db,
 ): Promise<number | null> {
   const a = ART[art];
   const farbe = a.farbe ? ' AND b.color_id = $3' : '';
   const farbErf = a.farbe ? ' AND x.color_id = $3' : '';
   const params = a.farbe ? [userId, keys[0], colorId(keys[1])] : [userId, keys[0]];
-  const zeile = await dbh.get(
+  const zeile = await dbh.get<{ menge: unknown }>(
     `SELECT COALESCE((SELECT SUM(x.quantity) FROM ${a.erfassung} x
                        WHERE x.user_id = $1 AND x.${a.nummer} = $2${farbErf}), 0)::int AS menge
        FROM ${a.bestand} b
@@ -182,23 +161,16 @@ export async function mengeDerPosition(
   return zeile ? (parseInt(String(zeile.menge)) || 0) : null;
 }
 
-/**
- * Der Tag einer Erfassung, wie ihn der eindeutige Index führt (Migration
- * 0070): `tag` in der Zeitzone der Installation, für ältere Zeilen der
- * bisherige UTC-Tag. Jede Abfrage über „denselben Tag“ nimmt diesen Ausdruck,
- * sonst trifft sie den Index nicht.
- */
+/** Der Tag einer Erfassung genau wie im eindeutigen Index (0070): `tag`, für
+ * ältere Zeilen der UTC-Tag. Ein anderer Ausdruck träfe den Index nicht. */
 export function erfassungsTagSql(alias = ''): string {
   const a = alias ? `${alias}.` : '';
   return `COALESCE(${a}tag, (${a}created_at AT TIME ZONE 'UTC')::date)`;
 }
 
-/**
- * SQL-Bedingung: Der Kaufpreis der Zeile ist in der heutigen Währung ihres
- * Kontos erfasst. Für Durchschnitte in der Anzeigewährung; ein älterer Preis
- * aus einer anderen Währung wäre dort ein falscher Betrag. Die Währung kommt
- * aus [kontowaehrungJoin] — einmal je Abfrage statt einer Unterabfrage je Zeile.
- */
+/** Bedingung: Der Kaufpreis ist in der heutigen Kontowährung erfasst — ein
+ * Preis in anderer Währung verfälschte Durchschnitte. Die Währung kommt
+ * einmal je Abfrage aus [kontowaehrungJoin]. */
 export function inKontowaehrung(tabelle: string, alias = 'kw'): string {
   return `${tabelle}.currency = COALESCE(${alias}.value, 'EUR')`;
 }
@@ -208,3 +180,14 @@ export function kontowaehrungJoin(tabelle: string, alias = 'kw'): string {
   return `LEFT JOIN user_settings ${alias}
             ON ${alias}.user_id = ${tabelle}.user_id AND ${alias}.key = 'currency'`;
 }
+
+/** Die drei Erfassungstabellen; der eindeutige Index (Migration 0070) läuft
+ * über Konto, Element, Tag, Zustand, Preis, Schätzung und Währung. */
+export type ErfassungsArt = 'set' | 'part' | 'fig';
+export const ERFASSUNGS_TABELLEN = {
+  set:  { table: 'set_acquisitions',     price: 'purchase_price', keys: ['set_number'] },
+  part: { table: 'part_acquisitions',    price: 'unit_price',     keys: ['part_number', 'color_id'] },
+  fig:  { table: 'minifig_acquisitions', price: 'unit_price',     keys: ['fig_number'] },
+} as const;
+export const preisSpalte = (art: ErfassungsArt): string => ERFASSUNGS_TABELLEN[art].price;
+export const schluesselSpalten = (art: ErfassungsArt): readonly string[] => ERFASSUNGS_TABELLEN[art].keys;

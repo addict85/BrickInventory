@@ -1,0 +1,22 @@
+Gegenprobe: Jede Reiterbeschriftung in eigener Grösse, alle Ziele beschriftet
+Modul: app
+Test: ch.brickinventoryapp.FeinschliffRegelnTest
+Rot: Reiterleiste bricht bei 200 Prozent kein Wort um
+
+diff --git a/Android-App/app/src/main/java/ch/brickinventoryapp/MainScaffold.kt b/Android-App/app/src/main/java/ch/brickinventoryapp/MainScaffold.kt
+index b2ab7a3..d758db6 100644
+--- a/Android-App/app/src/main/java/ch/brickinventoryapp/MainScaffold.kt
++++ b/Android-App/app/src/main/java/ch/brickinventoryapp/MainScaffold.kt
+@@ -311,10 +311,10 @@ private fun ReiterLeiste(
+             }
+             Row(Modifier.fillMaxWidth().heightIn(min = LEISTE_HOEHE).selectableGroup(), verticalAlignment = Alignment.CenterVertically) {
+                 ziele.forEachIndexed { i, (screen, icon, name) ->
+-                    val beschriftet = satz.alle || i == satz.gewaehlt
++                    val beschriftet = true
+                     val platz = Modifier.weight(if (i == satz.gewaehlt) satz.gewicht else 1f)
+                     val ziel: @Composable (Modifier) -> Unit = { m ->
+-                        ReiterZiel(gewaehlt(screen), name, if (beschriftet) stil.fontSize * satz.faktor else null, farben,
++                        ReiterZiel(gewaehlt(screen), name, if (beschriftet) stil.fontSize * satz.faktor * (1f - 0.05f * i) else null, farben,
+                             { onWahl(screen) }, m) { symbol(screen, icon) }
+                     }
+                     if (beschriftet) ziel(platz) else MitTooltip(name, platz) { ziel(Modifier.fillMaxWidth()) }

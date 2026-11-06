@@ -13,39 +13,39 @@ import androidx.compose.runtime.snapshotFlow
 
 /**
  * Gemerkte Rollpositionen je Reiter. Mitschreiben und beim Betreten ausdrücklich
- * scrollToItem(index, offset) — der Weg, der im Katalog zuverlässig an dieselbe
- * Zeile führt; ein über den NavHost geretteter LazyGridState stand danach
- * verschoben. Eine schlichte Karte statt eines StateFlow, weil sich die Position
- * bei jeder Bewegung ändert und nur beim Betreten gelesen wird. Ein Singleton,
- * damit ViewModels und Navigation dieselbe Karte sehen.
+ * scrollToItem(index, offset) — der Weg, der im Katalog zuverlässig an dieselbe Zeile führt;
+ * ein über den NavHost geretteter LazyGridState stand danach verschoben.
+ * Ausführlich: docs/begruendungen/core-ui/ui/ScrollMemory.kt.md#constructor
  */
+interface ScrollMemory {
+    fun lies(schluessel: String): Pair<Int, Int>
+    fun merke(schluessel: String, index: Int, offset: Int)
+
+    /** Nach einem Filterwechsel: Die alte Stelle zeigt auf Einträge, die es nicht mehr gibt. */
+    fun vergiss(schluessel: String)
+}
+
+/** Für Tests ohne Hilt. */
+fun ScrollMemory(): ScrollMemory = ScrollSpeicher()
+
 @javax.inject.Singleton
-class ScrollMemory @javax.inject.Inject constructor() {
+class ScrollSpeicher @javax.inject.Inject constructor() : ScrollMemory {
     private val positionen = mutableMapOf<String, Pair<Int, Int>>()
 
-    fun lies(schluessel: String): Pair<Int, Int> = positionen[schluessel] ?: (0 to 0)
+    override fun lies(schluessel: String): Pair<Int, Int> = positionen[schluessel] ?: (0 to 0)
 
-    fun merke(schluessel: String, index: Int, offset: Int) {
+    override fun merke(schluessel: String, index: Int, offset: Int) {
         positionen[schluessel] = index to offset
     }
 
-    /** Nach einem Filterwechsel: Die alte Stelle zeigt auf Einträge, die es nicht mehr gibt. */
-    fun vergiss(schluessel: String) {
+    override fun vergiss(schluessel: String) {
         positionen.remove(schluessel)
     }
 }
 
 /**
  * Die Reihenfolge ist die ganze Regel: erst zurückspringen, dann melden.
- *
- * - Der Merker darf den Ausflug nicht überleben (`remember`, nicht
- *   `rememberSaveable`), sonst ist die Wiederherstellung nach dem ersten Betreten
- *   für immer aus.
- * - Der Melder darf nicht vorher loslaufen: Ein frisches Raster steht auf null und
- *   überschriebe die gemerkte Stelle.
- *
- * `bereit` sagt, ob die Liste Inhalt hat — vorher gibt es keine Stelle zum
- * Springen.
+ * Ausführlich: docs/begruendungen/core-ui/ui/ScrollMemory.kt.md#scrollpositionkeeper
  */
 @Composable
 fun ScrollPositionKeeper(

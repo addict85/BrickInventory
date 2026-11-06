@@ -2,9 +2,8 @@
  * Die Kotlin-Modelle der App gegen den Vertrag des Servers (src/infra/vertrag/,
  * als JSON-Schema wie in docs/openapi.json): Jede Route, die die App aufruft,
  * hat einen Vertrag, und ihr Antworttyp liest jede Antwort, die der Vertrag
- * erlaubt — Feldnamen (@SerialName), Typ, Nullbarkeit, Pflicht oder optional.
- * Dass der Server seinen Vertrag hält, prüfen die DB-Tests (vertrag-lesen-db,
- * vertrag-schreiben-db und jede Antwort über src/infra/vertrag/pruefen.ts).
+ * erlaubt — Feldnamen (@SerialName), Typ, Nullbarkeit, Pflicht oder optional. …
+ * Ausführlich: docs/begruendungen/test/vertrag-kotlin.test.js.md#kopf
  *
  * Gegenproben (31.10.2026 gemessen):
  *   A  im Vertrag SetItem.quantity als z.string() → rot: „die Kotlin-Modelle
@@ -17,20 +16,26 @@
  *      Route der App hat einen Vertrag“ und „… sagt kein JSON“
  *   E  in FEHLEN_ERLAUBT einen erfundenen Schlüssel ergänzt → rot: „jede
  *      erlaubte Lücke gibt es noch“
+ *   F  (05.11.2026) im Vertrag `label` aus den Anmeldedaten gestrichen → rot:
+ *      „jedes Feld, das die App schickt, kennt der Vertrag“ (LoginRequest.label)
+ *   G  (05.11.2026) im Vertrag die Abfrage von GET /api/v1/sets ohne `page_size`
+ *      → rot: „jeder Abfrageparameter der App steht im Vertrag“
+ *   H  in Fehlercode.kt BARCODE_KEIN_SET("barcode_kein_satz") →
+ *      rot: „jeder Fehlercode der App steht im Vertrag“ nennt barcode_kein_satz
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const path = require('node:path');
 
 const _req = require('./helpers/sources').buildAndRequire();
-const { kotlinModelle, apiRouten, schreibRouten, vergleiche, FEHLEN_ERLAUBT } = require('../scripts/kotlin-vertrag.js');
+const { kotlinModelle, kotlinFehlercodes, apiRouten, schreibRouten, vergleiche, FEHLEN_ERLAUBT } = require('../scripts/kotlin-vertrag.js');
 const { quellwurzeln, ANDROID } = require('./helpers/android');
 
 const API = path.join(ANDROID, 'core-data', 'src', 'main', 'java', 'ch', 'brickinventoryapp', 'data', 'api');
 const dok = _req('src/infra/vertrag/openapi.js').openapi();
 const modelle = kotlinModelle(quellwurzeln());
 const routen = [
-  ...apiRouten(API).map((r) => ({ methode: 'GET', pfad: r.pfad, typ: r.typ })),
+  ...apiRouten(API).map((r) => ({ methode: 'GET', pfad: r.pfad, typ: r.typ, anfrage: r.anfrage })),
   ...schreibRouten(API),
 ];
 /** @param {string} p */
@@ -73,6 +78,33 @@ test('jede erlaubte Lücke gibt es noch', () => {
   assert.deepEqual(tot, [], 'Eine Ausnahme ohne Route oder Feld verdeckt nichts mehr');
 });
 
+// Eingaben sind geschlossen (strictObject): Ein Feld, das die App schickt und
+// der Vertrag nicht kennt, wäre im Betrieb eine 400.
+test('jedes Feld, das die App schickt, kennt der Vertrag', () => {
+  const fehlt = [];
+  let geprueft = 0;
+  for (const r of routen.filter((x) => x.rumpf && modelle.has(x.rumpf))) {
+    const op = operation(r.methode, r.pfad);
+    const schema = op?.requestBody?.content?.['application/json']?.schema;
+    const felder = new Set(Object.keys(schema?.properties ?? {}));
+    geprueft++;
+    for (const f of modelle.get(r.rumpf).felder) if (!felder.has(f.json)) fehlt.push(`${r.methode} ${r.pfad} ${r.rumpf}.${f.json}`);
+  }
+  assert.deepEqual(fehlt, []);
+  assert.ok(geprueft >= 35, `nur ${geprueft} Rümpfe verglichen`);
+});
+
+test('jeder Abfrageparameter der App steht im Vertrag', () => {
+  const fehlt = [];
+  let geprueft = 0;
+  for (const r of routen) {
+    const namen = new Set((operation(r.methode, r.pfad)?.parameters ?? []).filter((p) => p.in === 'query').map((p) => p.name));
+    for (const a of r.anfrage ?? []) { geprueft++; if (!namen.has(a.name)) fehlt.push(`${r.methode} ${r.pfad} ?${a.name}`); }
+  }
+  assert.deepEqual(fehlt, []);
+  assert.ok(geprueft >= 50, `nur ${geprueft} Abfrageparameter verglichen`);
+});
+
 test('der Vergleich schlägt an, wo die App nicht lesen kann', () => {
   const m = new Map([['K', { datei: 'K.kt', felder: [
     { json: 'n', typ: { art: 'int', nullbar: false }, hatDefault: false },
@@ -88,4 +120,12 @@ test('der Vergleich schlägt an, wo die App nicht lesen kann', () => {
   assert.match(vergleiche(k, { ...passt, required: ['b'] }, m, () => ({})).join(), /\$\.n: im Schema optional/);
   assert.deepEqual(vergleiche(k, { ...passt, required: ['n'] }, m, () => ({}), '$', { standardwerte: false }), [],
     'Schreibantworten: ein Feld mit Standardwert darf fehlen');
+});
+
+test('jeder Fehlercode der App steht im Vertrag', () => {
+  const datei = path.join(ANDROID, 'core-model', 'src', 'main', 'java', 'ch', 'brickinventoryapp', 'data', 'model', 'Fehlercode.kt');
+  const kennungen = kotlinFehlercodes(datei);
+  assert.ok(kennungen.length >= 10, `nur ${kennungen.length} Fehlercodes in Fehlercode.kt gelesen`);
+  const imVertrag = new Set(dok.components.schemas.Fehlercode?.enum ?? []);
+  assert.deepEqual(kennungen.filter((k) => !imVertrag.has(k)), []);
 });

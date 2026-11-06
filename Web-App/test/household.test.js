@@ -49,12 +49,8 @@ test('der Code wird atomar entwertet und bei Ablehnung wieder freigegeben', () =
   // Jede Absage, die NACH dem geglückten Entwerten kommt, braucht eine
   // Freigabe — sonst ist der Code für den zweiten, richtigen Versuch
   // verbraucht. Gezählt wird deshalb ab der Zeile, an der feststeht, dass
-  // entwertet wurde: Die Absage `einladungscode_abgelaufen` steht DAVOR und
-  // braucht keine (dort wurde nichts entwertet).
-  //
-  // GEMESSEN vier: mit sich selbst, bereits verknüpft, Kreis, Währung. Es
-  // waren fünf, bis Nachtrag 173 drei Eine-Stufe-Absagen durch eine ersetzt
-  // hat.
+  // entwertet wurde: Die Absage `einladungscode_abgelaufen` steht DAVOR und …
+  // Ausführlich: docs/begruendungen/test/household.test.js.md#releases
   const releases = (h.match(/await release\(\);/g) || []).length;
   const abEntwertet = h.slice(h.indexOf('const release = async ()'));
   const absagenDanach = (abEntwertet.match(/return \{ fehler:/g) || []).length;
@@ -65,22 +61,8 @@ test('der Code wird atomar entwertet und bei Ablehnung wieder freigegeben', () =
 });
 
 test('Schreibrechte kommen nie aus dem Gedächtnis', () => {
-  // ── Warum das eine eigene Regel ist (Nachtrag 173) ───────────────────────
-  //
-  // resolveHousehold() merkt sich seine Antwort fünf Minuten (HAUSHALT_TTL_MS)
-  // und liefert genau die Menge, die auch der Schreibbereich ist. Es ist
-  // deshalb sehr naheliegend, canWriteFor() und writableIds() darauf
-  // aufzusetzen — eine Abfrage gespart, ein Weg weniger.
-  //
-  // Das wäre falsch: Nach einem unlink() dürfte das frühere Elternkonto noch
-  // bis zu fünf Minuten in fremden Daten schreiben. Ein veraltetes BLICKFELD
-  // zeigt zu viel und fällt auf; ein veraltetes SCHREIBRECHT ändert Daten, die
-  // dem Betreffenden nicht mehr gehören, und fällt niemandem auf.
-  //
-  // Lesen darf veralten, Schreiben nicht.
-  // ohneKommentare() zuerst: Die BEGRÜNDUNG dieser Regel steht als Kommentar
-  // in genau den beiden Funktionen und nennt dabei resolveHousehold() — ein
-  // Test, der den rohen Text liest, schlägt an seiner eigenen Erklärung an.
+  // Warum das eine eigene Regel ist
+  // Ausführlich: docs/begruendungen/test/household.test.js.md#h-stelle
   const h = require('./helpers/sources').ohneKommentare((read('src/haushalt/haushalt.ts') + read('src/haushalt/repository.ts')));
   for (const fn of ['canWriteFor', 'writableIds']) {
     const i = h.indexOf(`export async function ${fn}`);
@@ -123,7 +105,7 @@ test('Webapp und App bekommen dieselben Endpunkte', () => {
 test('die Oberfläche bietet Einladen und Einlösen jedem Konto an', () => {
   // Ein Konto kann mehreren Hauptkonten angehören; jedes braucht seine eigene
   // Einladung. Ein ausgeblendetes Eingabefeld verhinderte genau das.
-  const js = read('public/js/05-settings.js');
+  const js = require('./helpers/sources').ansichtQuelle('05');
   assert.match(js, /inviteEl\.style\.display = ''/);
   assert.match(js, /redeemEl\.style\.display = ''/);
   const kt = read('../Android-App/feature-konto/src/main/java/ch/brickinventoryapp/ui/screens/SettingsScreen.kt')
@@ -161,31 +143,16 @@ test('der Kontofilter wird am Server in IDs übersetzt, nicht in der Oberfläche
   assert.match(h, /if \(v === 'own' \|\| v === 'subs'\) return v;/);
   assert.match(h, /return Number\.isFinite\(n\) && n > 0 \? n : 'all';/);
 
-  // Und jeder Lesepfad reicht den Filter durch — einer, der es vergisst, zeigt
-  // stumm den ganzen Haushalt, während die Ansicht daneben gefiltert ist.
-  // Die Leserouten liegen alle in der v1-Familie; geprüft wird dort.
-  // Die eine Ausnahme fragt „darf ich?“, nicht „was zeige ich?“: lagerKonten()
-  // prüft eine Berechtigung. Ihr Verhalten belegt household-db.test.js („die
-  // Lagerorte eines Unterkontos folgen dem Recht …“).
-  const OHNE_ANSICHTSFILTER = { 'routes/api_v1/sets.ts': ['lagerKonten'] };
-  const genutzt = new Set();
+  // Und jeder Lesepfad reicht den Filter durch: Die Routen geben die Sicht
+  // (sichtVon) weiter, den Bereich löst der Dienst auf (blickfeldAus). Dass
+  // keine Route ihn selbst auflöst, prüft test/schichten.test.js.
   for (const f of ['routes/api_v1/sets.ts', 'routes/api_v1/parts.ts',
                    'routes/api_v1/minifigs.ts', 'routes/api_v1/finance.ts',
                    'routes/api_v1/misc.ts']) {
-    const zeilen = read(f).split('\n');
-    let block = null, gefunden = 0;
-    for (const l of zeilen) {
-      block = (l.match(/^(?:export )?(?:async )?function (\w+)/) || l.match(/^router\.\w+\('([^']+)'/) || [])[1] ?? block;
-      if (!l.includes('await scopeIds(')) continue;
-      gefunden++;
-      if ((OHNE_ANSICHTSFILTER[f] || []).includes(block)) { genutzt.add(`${f}#${block}`); continue; }
-      assert.ok(l.includes('parseScopeMode(req.query.accounts)'),
-        `${f} (${block}): scopeIds ohne Kontofilter — ${l.trim()}`);
-    }
-    assert.ok(gefunden > 0, `${f}: kein scopeIds-Aufruf`);
+    assert.match(read(f), /sichtVon\(req\)/, `${f}: keine Route gibt die Sicht weiter`);
   }
-  const erwartet = Object.entries(OHNE_ANSICHTSFILTER).flatMap(([f, n]) => n.map(x => `${f}#${x}`));
-  assert.deepEqual([...genutzt].sort(), erwartet.sort(), 'Eine Ausnahme ohne scopeIds-Aufruf ist veraltet');
+  assert.match(h, /export async function blickfeldAus\([\s\S]{0,200}scopeIds\(v\.nutzer, parseScopeMode\(v\.konten\)\)/,
+    'Die Sicht wird nicht über den Kontofilter aufgelöst');
 });
 
 test('ein Set erscheint nur EINMAL, mit der Summe der Mengen', () => {
@@ -197,7 +164,7 @@ test('ein Set erscheint nur EINMAL, mit der Summe der Mengen', () => {
   // AUSSAGE ist dieselbe — eine Summe, keine einzelne Kontozeile.
   assert.match(h, /SUM\(\$\{mengeAus\('sm', 0\)\}\)::int AS quantity/,
     'Mengen müssen addiert werden');
-  // FILTER seit Nachtrag 83: Ein Konto, dessen Kaufpreis gelöscht wurde, steht
+  // FILTER seit einer früheren Runde: Ein Konto, dessen Kaufpreis gelöscht wurde, steht
   // mit Menge 0 in der Tabelle und soll nicht mehr als Besitzer erscheinen.
   // Die Bedingung liest jetzt ebenfalls die Erfassungen.
   assert.match(h, /array_agg\(DISTINCT s\.user_id\) FILTER \(WHERE \$\{mengeAus\('sm', 0\)\} > 0\) AS owner_ids/,
@@ -210,15 +177,11 @@ test('ein Set erscheint nur EINMAL, mit der Summe der Mengen', () => {
 });
 
 test('die Portfoliokurve des Haushalts ist rückwirkend', () => {
-  // Die Aussage bleibt, der Weg dahin hat sich geändert (Nachtrag 82): Die
+  // Die Aussage bleibt, der Weg dahin hat sich geändert: Die
   // Portfolio-Schnappschüsse ('__portfolio__<id>') gibt es nicht mehr. Sie
   // lagen je Konto zu unterschiedlichen Zeitpunkten — addiert ergäben sie
-  // Einbrüche, die nie stattgefunden haben — und sie hielten fest, was AN
-  // JENEM TAG erfasst war, konnten also nicht rückwirkend rechnen.
-  //
-  // Jetzt wird für JEDE Kontoauswahl aus dem Verlauf JE SET rekonstruiert. Der
-  // ist nicht kontogebunden, also gilt die Kurve auch für die Zeit vor einer
-  // Verknüpfung.
+  // Einbrüche, die nie stattgefunden haben — und sie hielten fest, was AN …
+  // Ausführlich: docs/begruendungen/test/household.test.js.md#p-stelle
   const p = require('./helpers/sources').portfolioQuelle();
   assert.doesNotMatch(p, /__portfolio__/,
     'Der Schnappschuss-Weg ist zurück — er kann weder rückwirkend rechnen ' +
@@ -233,10 +196,8 @@ test('Verschieben läuft über die Tagesregel, nicht über UPDATE user_id', () =
   // Ein direktes UPDATE hinterliesse im Zielkonto zwei Erfassungen desselben
   // Tages — genau den Zustand, den der Bearbeiten-Pfad ablehnt.
   // ohneKommentare(): Die BEGRÜNDUNGEN dieser Regeln stehen in setMove.ts als
-  // Kommentar, und sie ZITIEREN die Anweisungen, die es nicht mehr geben darf
-  // („hier stand dafuer UPDATE sets SET quantity=$1"). Auf dem Rohtext meldete
-  // die Regel genau diesen Erklärtext — gemessen. Dieselbe Falle wie bei der
-  // Haushaltsregel weiter oben.
+  // Kommentar, und sie ZITIEREN die Anweisungen, die es nicht mehr geben darf …
+  // Ausführlich: docs/begruendungen/test/household.test.js.md#mv-stelle
   const mv = require('./helpers/sources').ohneKommentare(require('./helpers/sources').dienstQuelle('src/sets/setMove.ts'));
   assert.ok(mv.includes("recordAcquisitionForDay('set', toId, [sn]"),
     'Erfassungen müssen einzeln über den gemeinsamen Helfer wandern');
@@ -251,24 +212,20 @@ test('Verschieben läuft über die Tagesregel, nicht über UPDATE user_id', () =
     'Die Stückzahl eines Sets wird nicht mehr geschrieben — sie steht in ' +
     'set_acquisitions und wird beim Lesen gerechnet (db/bestandsmenge.ts)');
 
-  // Der Wechsel des ganzen Sets liegt seit Nachtrag 74 in der v1-Fabrik.
+  // Der Wechsel des ganzen Sets liegt seit einer früheren Runde in der v1-Fabrik.
   const src = read('routes/api_v1/sets.ts');
   // Dies ist eine MUSTERregel: Sie faengt eine geloeschte Zeile. Dass die
   // Sperre wirklich greift — und zwar auf (Quellkonto, Set) und nicht auf dem
   // Zielkonto oder einem festen Schluessel — laeuft in
   // test/sperre-beim-verschieben-db.test.js ueber die echte Adresse; beides
   // zusammen, nicht eines statt des anderen.
-  assert.ok(src.includes('withInventoryLock(fromId, sn'), 'Serialisiert über das Quellkonto');
+  assert.ok(src.includes('verschiebeSet(sn, fromId'), 'Das Verschieben läuft über verschiebeSet');
+  assert.ok(mv.includes('withInventoryLock(fromId, sn'), 'Serialisiert über das Quellkonto');
   // Ganzes Set und einzelne Kaufpreise laufen durch DIESELBE Umsetzung — der
   // Teilfall ist kein Sonderweg, sondern der allgemeine Fall mit Auswahl.
-  //
-  // Seit Nachtrag 70 zählen wir über BEIDE Dateien: Die Erfassungs-Routen
-  // wurden aus routes/sets.ts entfernt und leben nur noch in der v1-Fabrik,
-  // die jetzt Webapp UND App bedient. Vorher standen beide Aufrufe in einer
-  // Datei; die Regel („beide Wege nutzen denselben Helfer") ist unverändert,
-  // nur ihr Ort hat sich geändert.
+  // Ausführlich: docs/begruendungen/test/household.test.js.md#acq-stelle
   const acq = read('routes/api_v1/acquisitions.ts');
-  const calls = (src.match(/moveSetBetweenAccounts\(tx, sn/g) || []).length
+  const calls = (mv.match(/moveSetBetweenAccounts\(tx, sn/g) || []).length
               + (acq.match(/moveSetBetweenAccounts\(tx, sn/g) || []).length;
   assert.ok(calls >= 1,
     'Der Eigentümerwechsel muss über moveSetBetweenAccounts laufen — in routes/sets.ts ' +
@@ -289,15 +246,14 @@ test('Schreiben in ein fremdes Konto verlangt die richtige Richtung', () => {
   assert.match(h, /if \(requested === undefined \|\| requested === null \|\| requested === ''\) return actorId;/);
 
   // Alle drei Anlege-Pfade benutzen sie — Sets, manuelle Teile, Minifiguren.
-  // Für Minifiguren liegt der Schreibpfad seit Nachtrag 72 in der gemeinsamen
+  // Für Minifiguren liegt der Schreibpfad seit in der gemeinsamen
   // Fabrik — deshalb steht dort routes/api_v1/minifigs.ts statt der entfernten
-  // Session-Route. Geprüft wird dieselbe Regel am neuen Ort.
-  for (const f of ['routes/api_v1/sets.ts', 'routes/api_v1/parts.ts', 'routes/api_v1/minifigs.ts']) {
-    const src = read(f);
-    assert.match(src, /resolveWriteTarget\(/, `${f}: Kontoauswahl fehlt`);
-    assert.match(src, /=== null\)[\s\S]{0,120}sendeFehler\(req, res, 403/,
-      `${f}: Ohne Recht muss die Antwort 403 sein, nicht stillschweigend das eigene Konto`);
-  }
+  // Session-Route. Geprüft wird dieselbe Regel am neuen Ort. …
+  // Ausführlich: docs/begruendungen/test/household.test.js.md#for-stelle
+  for (const f of ['routes/api_v1/sets.ts', 'routes/api_v1/parts.ts', 'routes/api_v1/minifigs.ts'])
+    assert.match(read(f), /schreibziel\(/, `${f}: Kontoauswahl fehlt`);
+  assert.match(h, /if \(ziel === null\) fehlerWerfen\(absage, 403\);/,
+    'Ohne Recht muss die Antwort 403 sein, nicht stillschweigend das eigene Konto');
 });
 
 test('manuelle Teile und Minifiguren tragen den Besitzer', () => {
@@ -320,9 +276,9 @@ test('manuelle Teile und Minifiguren tragen den Besitzer', () => {
     'Ohne user_id in der Abfrage gibt es keinen Besitzer');
 
   const fc = require('./helpers/sources').finanzQuelle();
-  pruefeParameter(fc, 'withOwnerNames', ['uids', 'rows']);
-  const uses = (fc.match(/await withOwnerNames\(uids, await parallelLimit\(tasks, 5\)\)/g) || []).length;
-  assert.equal(uses, 2, 'Teile- und Minifiguren-Bewertung brauchen beide den Besitzer');
+  const uses = (fc.match(/await withOwners\(uids,/g) || []).length;
+  // Seit der UI-Prüfung 12 auch die Sets: Jede Zeile ist der Bestand eines Kontos.
+  assert.equal(uses, 3, 'Set-, Teile- und Minifiguren-Bewertung brauchen den Besitzer');
 });
 
 test('die Teile-Zusammenfassung trägt auch über mehrere Konten', () => {
@@ -337,7 +293,7 @@ test('die Teile-Zusammenfassung trägt auch über mehrere Konten', () => {
     'Auch die Gesamtzahl muss Teile zählen, nicht Konten');
   assert.match(h, /COUNT\(DISTINCT ps\.part_key\)::int AS unique_parts/,
     'COUNT(*) zählte im Haushalt Konten statt Teile — und ::int muss bleiben, ' +
-    'sonst hängt der JSON-Typ am Zweig (Nachtrag 31: SUM(BIGINT) käme als Zahl, ' +
+    'sonst hängt der JSON-Typ am Zweig (früher: SUM(BIGINT) käme als Zahl, ' +
     'SUM(INTEGER) als Text)');
 
   // Frisch ist die Sicht nur, wenn sie es für JEDES Konto ist — „zwei von drei
@@ -349,18 +305,16 @@ test('die Teile-Zusammenfassung trägt auch über mehrere Konten', () => {
 
 test('die Oberfläche zeigt Besitzer und Kontoauswahl nur im Haushalt', () => {
   // Im Einzelkonto stünde an jeder Kachel „gehört mir" — reines Rauschen.
-  const gal = read('public/js/02-gallery.js');
+  const gal = require('./helpers/sources').frontendQuelle();
   assert.match(gal, /export function ownerBadges/);
   assert.match(gal, /if \(!item\?\.owners\?\.length\) return '';/);
   // Eine Auswahl mit einer einzigen Möglichkeit ist keine Auswahl.
   assert.match(gal, /if \(members\.length < 2\) \{ box\.style\.display = 'none'; continue; \}/);
   // Alle drei Erfassen-Formulare bekommen dieselbe Liste — Set, manuelles
   // Teil, manuelle Minifigur. Vorher war die Kontoauswahl nur bei Sets da.
-  // Seit Nachtrag 66 sind es VIER Formulare — der Katalog-Dialog („In Galerie
-  // aufnehmen") war als einziger nicht angeschlossen und erfasste immer aufs
-  // eigene Konto. Der Test pinnt deshalb nicht mehr die Liste als Ganzes,
-  // sondern jeden Erfassungsweg einzeln: So wird er rot, wenn einer FEHLT,
-  // aber nicht, wenn ein weiterer dazukommt.
+  // Seit sind es VIER Formulare — der Katalog-Dialog („In Galerie
+  // aufnehmen") war als einziger nicht angeschlossen und erfasste immer aufs …
+  // Ausführlich: docs/begruendungen/test/household.test.js.md#for-stelle-2
   for (const feld of ['add-owner', 'ap-owner', 'af-owner', 'cat-m-owner']) {
     assert.ok(gal.includes(`'${feld}'`),
       `Die Kontoauswahl fehlt im Erfassungsweg ${feld} — dort landet dann alles ` +
@@ -368,7 +322,7 @@ test('die Oberfläche zeigt Besitzer und Kontoauswahl nur im Haushalt', () => {
   }
   assert.match(gal, /\['add-owner', 'ap-owner', 'af-owner'/,
     'Die Kontoauswahl gehört in alle drei Erfassen-Formulare');
-  const fig = read('public/js/06-minifigs.js');
+  const fig = require('./helpers/sources').frontendQuelle();
   assert.match(fig, /owner_user_id: selectedOwner\('ap-owner'\)/);
   assert.match(fig, /owner_user_id: selectedOwner\('af-owner'\)/);
   // Und die Besitzer-Plakette auf den manuellen Kacheln.
@@ -381,7 +335,7 @@ test('die Oberfläche zeigt Besitzer und Kontoauswahl nur im Haushalt', () => {
   const adm = require('./helpers/sources').adminQuelle();
   assert.doesNotMatch(adm, /renderMoveBox|moveSetToAccount/,
     'Das ganze Set darf nicht mehr auf einmal verschoben werden');
-  const ownerCols = (adm.match(/_householdMembers\.length > 1 \? `<th>\$\{t\('household\.owner'\)\}<\/th>` : ''/g) || []).length;
+  const ownerCols = (adm.match(/_householdMembers\.length > 1 \? (?:html)?`<th>\$\{t(?:Raw)?\('household\.owner'\)\}<\/th>` : ''/g) || []).length;
   assert.equal(ownerCols, 2,
     'Eigentümer-Spalte fehlt in einem der beiden Kaufpreis-Dialoge');
 });
@@ -413,7 +367,8 @@ test('der Kontofilter gilt je Ansicht und wird überall mitgeschickt', () => {
   // Abfragen des Reiters tragen denselben Filter.
   for (const ep of ['/v1/finance/valuation', '/v1/finance/parts-valuation',
                     '/v1/finance/minifigs-valuation', '/v1/finance/pnl']) {
-    assert.ok(fin.includes(`'${ep}'+scopeQuery('finance')`), `${ep} ohne Kontofilter`);
+    assert.ok(fin.includes(`'${ep}'+scopeQuery('finance')`) || fin.includes(`\`${ep}\${scopeQuery('finance')}\``),
+      `${ep} ohne Kontofilter`);
   }
   assert.match(fin, /portfolio-history\?period=\$\{_chartPeriod\}\$\{scopeMode\('finance'\)/,
     'Auch die Kurve muss dem Filter folgen');
@@ -422,7 +377,7 @@ test('der Kontofilter gilt je Ansicht und wird überall mitgeschickt', () => {
 test('der Umschalter lädt nur die betroffene Ansicht neu', () => {
   // Alle vier gleichzeitig neu zu laden würde drei Ansichten anfassen, die
   // niemand ansieht — und dabei Preisabrufe auslösen.
-  const gal = read('public/js/02-gallery.js');
+  const gal = require('./helpers/sources').frontendQuelle();
   assert.match(gal, /export function onScopeChange\(view\)/);
   assert.match(gal, /if \(view === 'finance'\)  loadFinance\(\);/);
   // Die Reiter Teile und Minifiguren haben ZWEI Listen — die aus Sets und die
@@ -433,7 +388,7 @@ test('der Umschalter lädt nur die betroffene Ansicht neu', () => {
   assert.match(gal, /if \(!isMain\) \{ el\.style\.display = 'none'; continue; \}/);
   assert.match(gal, /initScopeSelects\(members\);/);
   // Ein Eintrag je Unterkonto, namentlich.
-  assert.match(gal, /subs\.map\(m => `<option value="\$\{m\.id\}">/,
+  assert.match(gal, /subs\.map\(m => (?:html)?`<option value="\$\{m\.id\}">/,
     'Die Auswahl muss jedes Unterkonto einzeln führen');
 });
 
@@ -441,9 +396,8 @@ test('Verschieben geht NUR über den Kaufpreis', () => {
   // Ein Set als Ganzes zu verschieben klingt bequem, verdeckt aber, was
   // tatsächlich wandert: Drei Erfassungen sind drei Käufe, die im Haushalt
   // verschiedenen Kindern gehören können. Wer alles verschieben will, ändert
-  // jede Zeile — und sieht dabei, wie viele es sind.
-  // Nur noch die Fabrik: Die /move-Route der Webapp ist mit Nachtrag 74
-  // entfallen, beide Clients nutzen dieselbe. Regel unverändert.
+  // jede Zeile — und sieht dabei, wie viele es sind. …
+  // Ausführlich: docs/begruendungen/test/household.test.js.md#for-stelle-3
   for (const f of ['routes/api_v1/sets.ts']) {
     const src = read(f);
     assert.match(src, /if \(!acqIds\.length\)\s*\n\s*return sendeFehler\(req, res, 400/,
@@ -456,22 +410,8 @@ test('Verschieben geht NUR über den Kaufpreis', () => {
 });
 
 /**
- * ── Was diese Regel prüft, und was NICHT ────────────────────────────────────
- *
- * Sie prüft den QUELLTEXT. Das reicht für die Aussage „alle drei Arten gehen
- * durch DIESELBE Umsetzung" — eine Einzige-Stelle-Regel, die kein Lauf
- * beweisen kann, weil zwei Kopien sich ja gleich verhalten würden.
- *
- * Sie reicht NICHT für die Aussage „der Weg lebt". Genau daran ist sie einmal
- * vorbeigegangen: `moveManualAcquisition` wurde gerufen, wie hier zugesichert
- * — und löschte beim Absender den gesamten Bestand, weil sie eine Spalte las,
- * die Migration 0038 entfernt hatte. Das Muster bestand, der Weg war kaputt.
- *
- * Der Lauf über die Route steht deshalb in
- * test/kontowechsel-ueber-die-route-db.test.js (alle drei Arten, beide
- * Abweisungen), die Mengenerhaltung in
- * test/erfassung-verschieben-rest-bleibt-db.test.js. Diese Regel hier bleibt
- * als Ergänzung — sie fängt, was ein Lauf nicht sieht.
+ * Was diese Regel prüft, und was NICHT
+ * Ausführlich: docs/begruendungen/test/household.test.js.md#auch-manuelle-teile-und-minifiguren-wand
  */
 test('auch manuelle Teile und Minifiguren wandern über den Kaufpreis', () => {
   // Dieselbe Regel für alle drei Arten. Ein manuell erfasstes Teil hat keinen
@@ -481,12 +421,12 @@ test('auch manuelle Teile und Minifiguren wandern über den Kaufpreis', () => {
   assert.match(mv, /recordAcquisitionForDay\(kind, toId, keyValues/,
     'Auch hier gilt: eine Tageszeile je Konto');
 
-  // Nachtrag 70: Die Erfassungs-Routen stehen nur noch in der v1-Fabrik, die
+  // Die Erfassungs-Routen stehen nur noch in der v1-Fabrik, die
   // jetzt Webapp UND App bedient. Die Regel gilt unverändert — sie wird nur an
   // EINER Stelle geprüft statt an dreien, weil es nur noch eine gibt.
   // Teile und Figuren gehen über denselben Aufruf; die Art kommt aus der Tabelle.
   // Die Regel steht seit dem Schichtumbau im Dienst; die Route ruft ihn nur.
-  const f = 'src/bestand/erfassungen.ts';
+  const f = 'src/sammlung/erfassungen.ts';
   const src = read(f);
   assert.ok(src.includes('moveManualAcquisition(tx, art, keys, id, from, to)'), `${f}: Wechsel fehlt`);
   assert.match(src, /if \(to === null\) fehlerWerfen\('kein_schreibrecht', 403\)/,
@@ -494,14 +434,8 @@ test('auch manuelle Teile und Minifiguren wandern über den Kaufpreis', () => {
 });
 
 test('der Absender eines Eigentümerwechsels kommt aus der ZEILE, nicht aus dem Request', () => {
-  // ── Woher dieser Test kommt ─────────────────────────────────────────────
-  // Die Webapp schickte als from_user_id den BETRACHTER mit (_acqOwnerId ist
-  // die Dialog-Ebene, der Zeilen-Eigentümer stand nur im Select der Anzeige).
-  // Zog das Hauptkonto die Zeile eines Unterkontos zu sich, suchte der Server
-  // sie unter dem falschen Konto und antwortete 404 „Kaufpreis nicht
-  // gefunden" — die Android-App machte es richtig (acq.ownerUserId), die
-  // Webapp nicht. Die Erfassungs-ID ist eindeutig; wem sie gehört, weiss die
-  // Datenbank besser als jeder Dialog.
+  // Woher dieser Test kommt
+  // Ausführlich: docs/begruendungen/test/household.test.js.md#h-stelle-2
   const h = (read('src/haushalt/haushalt.ts') + read('src/haushalt/repository.ts'));
   assert.match(h, /export async function acquisitionMoveSource/,
     'Die Auflösung gehört an die eine Stelle, die „wessen Daten?" beantwortet');
@@ -509,18 +443,13 @@ test('der Absender eines Eigentümerwechsels kommt aus der ZEILE, nicht aus dem 
     'Auch der abgeleitete Absender braucht die Richtungsprüfung');
 
   // Der Eigentümer-Zweig leitet den Absender aus der ZEILE ab.
-  //
-  // Bis Nachtrag 70 gab es ihn VIERMAL (drei Session-Routen plus v1-Fabrik) —
-  // und genau diese Vervierfachung war das Problem: Jede Kopie konnte
-  // auseinanderlaufen, und mehrfach ist sie es auch. Seit dem Zusammenlegen
-  // bedient die Fabrik beide Clients, also gibt es nur noch eine Stelle. Der
-  // Test prüft dieselbe Regel, nur nicht mehr an vier Orten.
-  assert.ok(read('src/bestand/erfassungen.ts').includes('acquisitionMoveSource(uid,'),
+  // Ausführlich: docs/begruendungen/test/household.test.js.md#stelle
+  assert.ok(read('src/sammlung/erfassungen.ts').includes('acquisitionMoveSource(uid,'),
     'Eigentümer-Zweig leitet den Absender nicht aus der Zeile ab');
   // … und keiner vertraut mehr einem mitgeschickten from_user_id. Das Muster
   // `from_user_id ?? uid` bleibt NUR in der /move-Route erlaubt
   // (mehrere IDs, ausdrücklich benannter Absender).
-  for (const f of ['src/bestand/erfassungen.ts', 'routes/api_v1/acquisitions.ts']) {
+  for (const f of ['src/sammlung/erfassungen.ts', 'routes/api_v1/acquisitions.ts']) {
     assert.ok(!read(f).includes('from_user_id ?? uid'),
       `${f}: der Eigentümer-Zweig darf den Request-Absender nicht übernehmen`);
   }
@@ -537,7 +466,7 @@ test('die App-Routen kennen den Eigentümerwechsel', () => {
   // las aber nur Menge, Preis und Zustand. Die Anfrage lief als LEERES Update
   // durch und antwortete success:true: Der Wechsel in der App war ein
   // stiller No-op, ohne Fehlermeldung und ohne Bewegung.
-  const v1 = read('src/bestand/erfassungen.ts');
+  const v1 = read('src/sammlung/erfassungen.ts');
   assert.match(v1, /body\.owner_user_id/,
     'Der Erfassungsdienst muss owner_user_id auswerten');
   assert.match(v1, /moveSetBetweenAccounts\(tx, String\(keys\[0\]\), from, to, \[id\]\)/,

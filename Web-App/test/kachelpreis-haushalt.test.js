@@ -1,18 +1,13 @@
 /**
  * Eine Kachel, mehrere Besitzer — welchen Preis und welche G&V zeigt sie?
- *
- * /finance/pnl liefert eine Zeile je Besitzer; die Galerie fasst dieselbe
- * Setnummer zu einer Kachel zusammen. Bei mehreren Zeilen wird nach Menge
- * gewichtet (über baseline_price), bei einer bleibt der Wert des Servers.
- * Seit kachel_preis und kachel_pnl_pct rechnet das der Server
- * (src/finanzen/setValue.ts kachelWerte); Web und App zeigen nur an.
+ * Ausführlich: docs/begruendungen/test/kachelpreis-haushalt.test.js.md#kopf
  *
  * Gegenproben (am 29.10.2026 gemessen):
  *   A  in kachelWerte() bei mehreren Zeilen die letzte statt der gewichteten
  *      nehmen → rot: „nach Menge gewichtet“ (750 statt 142,9)
  *   B  bei einer Zeile pnl_pct vor baseline_pnl_pct → rot: „der Wert des
  *      Servers bleibt“ (1,1 statt 77,7)
- *   C  in 07-admin.js wieder `price: s.current_price` → rot: „das Web
+ *   C  in 02-gallery.js wieder `price: s.current_price` → rot: „das Web
  *      übernimmt die Werte des Servers“
  */
 const test = require('node:test');
@@ -63,21 +58,21 @@ test('ohne Kaufpreis und ohne Marktpreis steht kein Prozentwert und kein Betrag'
     { set_number: '10290-1', quantity: 1, baseline_price: null, current_price: 0, baseline_pnl_pct: null },
     { set_number: '10290-1', quantity: 1, baseline_price: null, current_price: 0, baseline_pnl_pct: null },
   ], '10290-1');
-  assert.deepEqual(k, { kachel_preis: null, kachel_pnl_pct: null });
+  assert.deepEqual(k, { kachel_preis: null, kachel_pnl_pct: null, kachel_quelle: null });
 });
 
 test('das Web übernimmt die Werte des Servers', () => {
   // enrichGalleryWithPrices() mit einer Antwort ausführen und nachsehen, was
   // an der Kachel ankommt — ohne Browser, über die Modulfunktion selbst.
-  const src = fs.readFileSync(path.join(__dirname, '..', 'public', 'js', '07-admin.js'), 'utf8');
+  const src = fs.readFileSync(path.join(__dirname, '..', 'public', 'js', '02-gallery.js'), 'utf8');
   const von = src.indexOf('  set_pnlCache({});');
   const bis = src.indexOf('  // Inject price data into cached sets');
   assert.ok(von > 0 && bis > von, 'enrichGalleryWithPrices() nicht gefunden — umgebaut?');
   const _pnlCache = {};
   // eslint-disable-next-line no-new-func
   new Function('pnl', '_pnlCache', 'set_pnlCache', src.slice(von, bis))(
-    { sets: [{ set_number: 'A-1', current_price: 99, kachel_preis: 10.5, kachel_pnl_pct: 12.3 },
-             { set_number: 'A-1', current_price: 99, kachel_preis: 10.5, kachel_pnl_pct: 12.3 }] },
+    { sets: [{ set_number: 'A-1', current_price: 99, kachel_preis: 10.5, kachel_pnl_pct: 12.3, kachel_quelle: 'kauf' },
+             { set_number: 'A-1', current_price: 99, kachel_preis: 10.5, kachel_pnl_pct: 12.3, kachel_quelle: 'kauf' }] },
     _pnlCache, () => {});
-  assert.deepEqual(_pnlCache, { 'A-1': { price: 10.5, pnl_pct: 12.3 } });
+  assert.deepEqual(_pnlCache, { 'A-1': { price: 10.5, pnl_pct: 12.3, quelle: 'kauf' } });
 });

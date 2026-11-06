@@ -15,21 +15,18 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import ch.brickinventoryapp.ressourcen.R
 import ch.brickinventoryapp.ui.model.AuftragAnsicht
 import ch.brickinventoryapp.ui.theme.Abstaende
 import ch.brickinventoryapp.ui.theme.AppKarte
-import ch.brickinventoryapp.ui.viewmodel.MonitoringViewModel
-import kotlinx.coroutines.launch
+import ch.brickinventoryapp.ui.viewmodel.HintergrundUiState
+import ch.brickinventoryapp.util.fmtTag
 
 /**
  * Die Hintergrundarbeiten aus der Auftragstabelle, wie in der Webapp. Die
@@ -37,9 +34,13 @@ import kotlinx.coroutines.launch
  * Aufträge darunter, und das soll man nicht aus stehenden Zahlen erraten müssen.
  */
 @Composable
-internal fun HintergrundSection(mon: MonitoringViewModel, onSnack: (String) -> Unit) {
-    val zustand by mon.hintergrund.collectAsStateWithLifecycle()
-    val scope = rememberCoroutineScope()
+internal fun HintergrundSection(
+    zustand: HintergrundUiState,
+    onStarten: (art: String, name: String) -> Unit,
+    onLeeren: (art: String) -> Unit,
+    onAbbrechen: (id: String) -> Unit,
+    onWiederholen: (id: String) -> Unit,
+) {
     val ansicht = zustand.ansicht
     AppKarte {
         Column(Modifier.padding(Abstaende.gross), verticalArrangement = Arrangement.spacedBy(Abstaende.klein)) {
@@ -59,7 +60,7 @@ internal fun HintergrundSection(mon: MonitoringViewModel, onSnack: (String) -> U
             if (ansicht == null) return@Column
             for (p in ansicht.pausen) {
                 Text(stringResource(R.string.hintergrund_pause, auftragsArtText(p.art)?.let { stringResource(it) } ?: p.art,
-                    ch.brickinventoryapp.util.fmtTag(p.bis) ?: "—", p.grund), style = MaterialTheme.typography.bodySmall)
+                    fmtTag(p.bis) ?: "—", p.grund), style = MaterialTheme.typography.bodySmall)
             }
             if (ansicht.bildbedarf > 0) Text(pluralStringResource(R.plurals.hintergrund_bildbedarf,
                 ansicht.bildbedarf, ansicht.bildbedarf), style = MaterialTheme.typography.bodySmall)
@@ -71,16 +72,16 @@ internal fun HintergrundSection(mon: MonitoringViewModel, onSnack: (String) -> U
                 val name = auftragsArtText(art)?.let { stringResource(it) } ?: art
                 Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween, Alignment.CenterVertically) {
                     Text(name, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
-                    TextButton(onClick = { scope.launch { onSnack(mon.starteAuftragsArt(art, name)) } }) {
+                    TextButton(onClick = { onStarten(art, name) }) {
                         Text(stringResource(R.string.hintergrund_jetzt))
                     }
-                    TextButton(onClick = { scope.launch { onSnack(mon.leereAuftragsArt(art)) } }) {
+                    TextButton(onClick = { onLeeren(art) }) {
                         Text(stringResource(R.string.hintergrund_leeren))
                     }
                 }
                 for (a in gruppe) AuftragZeile(a,
-                    onAbbrechen = { scope.launch { onSnack(mon.brichAuftragAb(a.id)) } },
-                    onWiederholen = { scope.launch { onSnack(mon.wiederholeAuftrag(a.id)) } })
+                    onAbbrechen = { onAbbrechen(a.id) },
+                    onWiederholen = { onWiederholen(a.id) })
             }
         }
     }
@@ -99,10 +100,10 @@ private fun AuftragZeile(a: AuftragAnsicht, onAbbrechen: () -> Unit, onWiederhol
             Text(kopf, style = MaterialTheme.typography.bodyMedium)
             a.faelligAb?.let { zeit ->
                 Text(stringResource(if (a.geplant) R.string.hintergrund_geplant else R.string.hintergrund_faellig,
-                    ch.brickinventoryapp.util.fmtTag(zeit) ?: zeit), style = MaterialTheme.typography.labelSmall,
+                    fmtTag(zeit) ?: zeit), style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
-            a.fehler?.let { Text(it, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.error) }
+            a.fehler?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error) }
         }
         if (a.abbrechbar) TextButton(onClick = onAbbrechen) { Text(stringResource(R.string.common_cancel)) }
         if (a.wiederholbar) TextButton(onClick = onWiederholen) { Text(stringResource(R.string.hintergrund_wiederholen)) }

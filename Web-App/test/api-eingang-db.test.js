@@ -26,7 +26,7 @@ const ROOT = path.join(__dirname, '..');
 const { buildAndRequire, v1Routen } = require('./helpers/sources');
 const _req = buildAndRequire();
 const db = _req('db/database.js');
-const warte = (ms) => new Promise(r => setTimeout(r, ms));
+const { warte } = require('./helpers/zeit');
 
 /** Absichtlich ohne Anmeldung erreichbar — mit Grund. Wächst die Liste, muss jemand sie begründen. */
 const ERWARTET_OFFEN = new Map([
@@ -38,6 +38,8 @@ const ERWARTET_OFFEN = new Map([
   ['POST /api/v1/auth/forgot-password',  'Wer sein Passwort vergisst, kann sich nicht anmelden'],
   ['POST /api/v1/auth/bestaetigung-erneut', 'Ein unbestätigtes Konto kann sich nicht anmelden'],
   ['POST /api/v1/auth/reset-password',   'Dasselbe, zweiter Schritt'],
+  ['POST /api/v1/auth/email-bestaetigen', 'Wer seine Adresse bestätigt, ist noch nicht angemeldet'],
+  ['POST /api/v1/auth/email-bestaetigen/vorschau', 'Dasselbe, vor dem Bestätigen'],
   ['POST /api/v1/auth/passkey/anmelden/optionen', 'Die Anmeldung mit Passkey beginnt vor jedem Konto'],
   ['GET /api/v1/settings/theme',         'Das Design des Login-Bildschirms, vor jeder Anmeldung'],
   ['GET /api/v1/startup-status',         'Der Ladebildschirm vor der Anmeldung'],

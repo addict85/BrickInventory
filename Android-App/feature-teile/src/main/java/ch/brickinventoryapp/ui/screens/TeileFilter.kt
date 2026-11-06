@@ -27,7 +27,6 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -38,9 +37,10 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import ch.brickinventoryapp.ressourcen.R
 import ch.brickinventoryapp.ui.theme.Abstaende
+import ch.brickinventoryapp.ui.components.mitSchrift
+import ch.brickinventoryapp.util.fmtInt
 
 /**
  * Ein Filtereintrag der Teileliste: Wert, Beschriftung, Anzahl, Farbpunkt. Eine
@@ -64,11 +64,7 @@ data class TeileFilterEintrag(
  * der Webapp (03-parts.js, `loadPartsFilters` → `#color-filter` und
  * `#cat-filter`), jede mit der Anzahl daneben. `getParts` reicht `color` und
  * `category` an den Server.
- *
- * Ein Blatt statt einer langen Liste: Die Webapp hat eine Seitenspalte; auf dem
- * Telefon schöben zwei Blöcke den Bestand nach unten. Ein Chip mit der aktuellen
- * Wahl und ein Blatt zum Ändern ist derselbe Weg wie beim Thema im Katalog
- * (CatalogThemeSheet).
+ * Ausführlich: docs/begruendungen/feature-teile/ui/screens/TeileFilter.kt.md#teilefilterzeile
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -99,7 +95,7 @@ fun TeileFilterZeile(
                         ?: stringResource(R.string.parts_filter_color),
                         style = MaterialTheme.typography.bodyMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 },
-                trailingIcon = { Icon(Icons.Default.ArrowDropDown, null, Modifier.size(18.dp)) },
+                trailingIcon = { Icon(Icons.Default.ArrowDropDown, null, Modifier.size(mitSchrift(18.dp))) },
             )
         }
         if (kategorien.isNotEmpty()) {
@@ -111,7 +107,7 @@ fun TeileFilterZeile(
                         ?: stringResource(R.string.parts_filter_category),
                         style = MaterialTheme.typography.bodyMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 },
-                trailingIcon = { Icon(Icons.Default.ArrowDropDown, null, Modifier.size(18.dp)) },
+                trailingIcon = { Icon(Icons.Default.ArrowDropDown, null, Modifier.size(mitSchrift(18.dp))) },
             )
         }
     }
@@ -192,7 +188,7 @@ private fun FilterZeile(
             Text(text, Modifier.weight(1f), maxLines = 1, overflow = TextOverflow.Ellipsis,
                 fontWeight = if (gewaehlt) FontWeight.Bold else FontWeight.Normal)
             if (anzahl != null) {
-                Text(ch.brickinventoryapp.util.fmtInt(anzahl),
+                Text(fmtInt(anzahl),
                     style = MaterialTheme.typography.labelMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant)
             }

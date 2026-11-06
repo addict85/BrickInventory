@@ -1,24 +1,6 @@
 /**
  * Der Marktpreis eines manuell erfassten Teils erreicht das Detailfenster.
- *
- * ── Marcos Befund (Nachtrag 143) ────────────────────────────────────────────
- * Auf der Finanzseite steht für „Primo Brick 1 x 1 (Blau)" CHF 0.13 als
- * Marktpreis. Im Detailfenster desselben Teils: „—".
- *
- * ── Zwei Schlüsselräume, die man nicht mischen darf ─────────────────────────
- * `part_price_cache` und `part_price_history` schreibt fetchPartPrice() — unter
- * der BRICKLINK-Teilenummer und der BRICKLINK-Farbnummer. BrickLink antwortet
- * auf Rebrickable-Nummern mit 404, deshalb wird vor dem Abruf übersetzt
- * (resolveBlPartNumber / resolveBlColorId), und der Cache erbt diesen Schlüssel.
- *
- * `part_acquisitions` trägt dagegen die REBRICKABLE-Nummer — so hat der
- * Benutzer sie eingegeben.
- *
- * getPartPriceHistory() nahm die Rebrickable-Werte für BEIDES. Für Teile ohne
- * Zuordnung stimmen die Schlüssel zufällig überein; für alle anderen fand die
- * Preisabfrage nichts, und die Zeile blieb leer.
- *
- * Die Finanzseite war nie betroffen: computePartsValuation() übersetzt selbst.
+ * Ausführlich: docs/begruendungen/test/part-price-keys-db.test.js.md#kopf
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -69,7 +51,8 @@ test('Preise stehen unter der BrickLink-Nummer, Erfassungen unter der Rebrickabl
   assert.equal(r.by_condition.U.purchase_price, 0.11,
     'Der Kaufpreis kommt nicht an — die Erfassung steht unter der ' +
     'Rebrickable-Nummer und darf NICHT mit übersetzt werden.');
-  assert.equal(r.by_condition.U.pnl_pct, 18.2);
+  assert.equal(r.by_condition.U.pnl_prozent, 18.2);
+  assert.equal(r.by_condition.U.pnl_pct, '18.2', 'der Text wie in allen anderen Antworten (veraltet)');
 
   await db.run('DELETE FROM part_acquisitions WHERE user_id = $1', [u.id]);
   await db.pool.end().catch(() => {});

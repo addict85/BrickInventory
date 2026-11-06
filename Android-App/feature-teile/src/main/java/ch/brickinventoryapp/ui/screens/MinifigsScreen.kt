@@ -1,5 +1,11 @@
 package ch.brickinventoryapp.ui.screens
 
+import androidx.compose.material3.Button
+import androidx.compose.material3.OutlinedButton
+import ch.brickinventoryapp.ui.components.KeinTrefferHinweis
+import ch.brickinventoryapp.ui.components.HinweisText
+import ch.brickinventoryapp.ui.components.fokusRahmen
+import ch.brickinventoryapp.ui.viewmodel.TeileAktionen
 import ch.brickinventoryapp.ui.erfassungsWerte
 import ch.brickinventoryapp.ui.model.FigurAnsicht
 import ch.brickinventoryapp.ui.model.FigurenKennzahlenAnsicht
@@ -7,12 +13,12 @@ import ch.brickinventoryapp.ui.model.ManuelleFigurAnsicht
 import ch.brickinventoryapp.ui.model.MitgliedAnsicht
 import ch.brickinventoryapp.ui.theme.Formen
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.border
+import androidx.compose.ui.semantics.selected
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.Role
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.*
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
@@ -25,42 +31,64 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import ch.brickinventoryapp.util.fmtInt
 import ch.brickinventoryapp.util.rememberTileImageWithFallback
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import coil3.ImageLoader
-import coil3.request.ImageRequest
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import ch.brickinventoryapp.ressourcen.R
 import ch.brickinventoryapp.ui.viewmodel.TeileViewModel
 import ch.brickinventoryapp.ui.*
-import ch.brickinventoryapp.util.NumericInput
 import ch.brickinventoryapp.ui.theme.Abstaende
-import ch.brickinventoryapp.ui.components.LeerSymbol
 import ch.brickinventoryapp.ui.components.Bewegt
 import ch.brickinventoryapp.ui.components.SkelettRaster
 import ch.brickinventoryapp.ui.components.FehlerHinweis
 import ch.brickinventoryapp.ui.components.ZustandsHinweis
+import ch.brickinventoryapp.ui.components.stueckzahl
+import ch.brickinventoryapp.ui.components.vorgelesenAls
+import ch.brickinventoryapp.data.ScopeFilter
+import ch.brickinventoryapp.ui.components.ErfassenFab
+import ch.brickinventoryapp.ui.components.FabPlatz
+import ch.brickinventoryapp.ui.components.LesbareSpalten
+import ch.brickinventoryapp.ui.components.LocalOffenesDetail
+import ch.brickinventoryapp.ui.components.OfflineHinweis
+import ch.brickinventoryapp.ui.components.ProduktBild
+import ch.brickinventoryapp.ui.components.detailSchluessel
+import ch.brickinventoryapp.ui.components.grosseSchrift
+import ch.brickinventoryapp.ui.components.katalogName
+import ch.brickinventoryapp.util.DatumJahr
+import ch.brickinventoryapp.util.fmtTag
+
+/** Der Figuren-Reiter am Navigationsziel: reicht Zustand und Aktionen an [MinifigsScreen]. */
+@Composable
+fun MinifigsRoute(
+    vm: TeileViewModel,
+    imageLoader: ImageLoader,
+    onOpenDetail: (figNumber: String) -> Unit = { _ -> },
+    gridState: LazyGridState = rememberLazyGridState(),
+) {
+    val state by vm.state.collectAsStateWithLifecycle()
+    val blick by vm.blickfeld.collectAsStateWithLifecycle()
+    val partsState by vm.partsState.collectAsStateWithLifecycle()
+    val lagerState by vm.lagerState.collectAsStateWithLifecycle()
+    MinifigsScreen(TeileZustand(state, blick, partsState, lagerState), vm, imageLoader, onOpenDetail, gridState)
+}
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 fun MinifigsScreen(
-    vm: TeileViewModel,
+    zustand: TeileZustand,
+    aktionen: TeileAktionen,
     imageLoader: ImageLoader,
     /** Öffnet die Detailansicht — nur der Graph kennt den NavController. */
     onOpenDetail: (figNumber: String) -> Unit = { _ -> },
     /** Scroll-Zustand von aussen: Das Ziel wird beim Öffnen eines Details verworfen. */
     gridState: LazyGridState = rememberLazyGridState(),
 ) {
-    // Zustand und Aktionen vom ViewModel statt über fünfzehn Parameter — Begründung
-    // bei PartsScreen. Die Namen bleiben dieselben, damit der Rumpf darunter
-    // unverändert bleibt.
-    val state by vm.state.collectAsStateWithLifecycle()
-    val blick by vm.blickfeld.collectAsStateWithLifecycle()
-    val partsState by vm.partsState.collectAsStateWithLifecycle()
+    val state = zustand.state
+    val blick = zustand.blick
+    val partsState = zustand.partsState
 
     val figs = partsState.minifigs
     val minifigStats = partsState.minifigStats
@@ -69,16 +97,18 @@ fun MinifigsScreen(
     val waehrung = state.currency
     val defaultCondition = state.userDefaultCondition ?: "N"
     val householdMembers = blick.householdMembers
-    val scopeMode = blick.scopeModes[ch.brickinventoryapp.data.ScopeFilter.View.MINIFIGS.key]
-        ?: ch.brickinventoryapp.data.ScopeFilter.ALL
+    val scopeMode = blick.scopeModes[ScopeFilter.View.MINIFIGS.key]
+        ?: ScopeFilter.ALL
     val manualFigs = partsState.manualFigs ?: emptyList()
-    val lagerState by vm.lagerState.collectAsStateWithLifecycle()
+    val lagerState = zustand.lagerState
+    // Die Figur, deren Detail daneben offen ist (breites Fenster); ihre Kachel ist markiert.
+    val gewaehlt = LocalOffenesDetail.current
 
-    val onRefresh: () -> Unit = { vm.loadMinifigs() }
-    val onScopeChange: (String) -> Unit = { vm.setScope(ch.brickinventoryapp.data.ScopeFilter.View.MINIFIGS, it) }
+    val onRefresh: () -> Unit = { aktionen.loadMinifigs() }
+    val onScopeChange: (String) -> Unit = { aktionen.setScope(ScopeFilter.View.MINIFIGS, it) }
     val onAddMinifig: (String, String?, Int, Double?, String?, Int?, String?) -> Unit =
         { num, blNum, qty, unitPrice, cond, owner, ort ->
-            vm.addMinifig(num, blNum, qty, unitPrice, cond, owner, ort)
+            aktionen.addMinifig(num, blNum, qty, unitPrice, cond, owner, ort)
         }
     // Der VORRAT an Lagerorten (nicht die belegten Orte): Beim Erfassen soll
     // auch ein leeres Regal zur Wahl stehen.
@@ -95,52 +125,51 @@ fun MinifigsScreen(
 
     var zeigeFilter by rememberSaveable { mutableStateOf(false) }
 
+    // Ab grosser Schrift steht Erfassen in der Knopfzeile unter der Suche (SucheMitFilter).
+    val gross = grosseSchrift()
+    val erfassenText = stringResource(R.string.minifigs_add)
+    // Vorher stand der Fall „keine Treffer“ hinter derselben Bedingung wie „leer“
+    // und war unerreichbar; ein Ladefehler sah aus wie eine leere Sammlung.
+    val figurenGefiltert = search.isNotBlank() || Filterzahl.konto(householdMembers, scopeMode) > 0
+    val anzeige = ladeanzeige(figs.isNotEmpty() || manualFigs.isNotEmpty(), isLoading, partsState.minifigsFehler, figurenGefiltert)
     Box(Modifier.fillMaxSize()) {
     Column(Modifier.fillMaxSize()) {
-        // Vorher stand der Fall „keine Treffer“ hinter derselben Bedingung wie „leer“
-        // und war unerreichbar; ein Ladefehler sah aus wie eine leere Sammlung.
-        val figurenGefiltert = search.isNotBlank() || Filterzahl.konto(householdMembers, scopeMode) > 0
-        val anzeige = ladeanzeige(figs.isNotEmpty() || manualFigs.isNotEmpty(), isLoading, partsState.minifigsFehler, figurenGefiltert)
         // Suche und „Filter“: Konto und Ansicht stehen im Blatt, die Kennzahlen rollen mit
         // dem Raster. Im Fehlerzustand nicht — ohne Liste gibt es nichts zu suchen.
         if (anzeige != Ladeanzeige.FEHLER) SucheMitFilter(
             wert = search,
-            onWert = { search = it; vm.setMinifigsQuery(it) },
+            onWert = { search = it; aktionen.setMinifigsQuery(it) },
             platzhalter = stringResource(R.string.minifigs_search_placeholder),
             aktiveFilter = Filterzahl.konto(householdMembers, scopeMode),
             onFilter = { zeigeFilter = true },
+            erfassen = erfassenText to { showAddDialog = true },
         )
 
-        ch.brickinventoryapp.ui.components.OfflineHinweis(partsState.figurenOfflineStand)
+        OfflineHinweis(partsState.figurenOfflineStand)
         when (anzeige) {
             Ladeanzeige.LAEDT ->
-                SkelettRaster(ch.brickinventoryapp.ui.components.LesbareSpalten(140.dp), kachelHoehe = 196.dp)
+                SkelettRaster(LesbareSpalten(140.dp), kachelHoehe = 196.dp)
             Ladeanzeige.FEHLER -> ZustandsHinweis { FehlerHinweis(partsState.minifigsFehler, onRefresh, partsState.minifigsFehlerKlasse) }
-            Ladeanzeige.LEER -> Box(Modifier.fillMaxSize(), Alignment.Center) {
-                if (minifigStats.types > 0 || minifigStats.totalQuantity > 0) {
-                    Box(Modifier.align(Alignment.TopStart).padding(Abstaende.mittel)) { FigurenKennzahlen(minifigStats) }
-                }
-                Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(Abstaende.klein)) {
-                    LeerSymbol(Icons.Default.Person)
-                    Text(stringResource(R.string.minifigs_none), fontWeight = FontWeight.SemiBold)
-                    Text(stringResource(R.string.minifigs_loaded_on_import),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant)
-                }
+            // Wie der leere Teile-Reiter: Satz und Handlung, keine Kennzahlen neben „leer“.
+            Ladeanzeige.LEER -> ZustandsHinweis {
+                HinweisText(Icons.Default.Person, stringResource(R.string.minifigs_none),
+                    stringResource(R.string.minifigs_leer_text))
+                Button(onClick = { showAddDialog = true }) { Text(erfassenText) }
             }
-            Ladeanzeige.KEINE_TREFFER -> Box(Modifier.fillMaxSize(), Alignment.Center) {
-                Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(Abstaende.klein)) {
-                    LeerSymbol(Icons.Default.SearchOff)
-                    Text(stringResource(R.string.minifigs_no_results), fontWeight = FontWeight.SemiBold)
-                }
+            Ladeanzeige.KEINE_TREFFER -> ZustandsHinweis {
+                KeinTrefferHinweis(stringResource(R.string.minifigs_no_results))
+                OutlinedButton(onClick = {
+                    search = ""; aktionen.setMinifigsQuery("")
+                    if (Filterzahl.konto(householdMembers, scopeMode) > 0) onScopeChange(ScopeFilter.ALL)
+                }) { Text(stringResource(R.string.search_clear_all)) }
             }
             Ladeanzeige.LISTE -> PullToRefreshBox(isRefreshing = isLoading, onRefresh = onRefresh) {
                 LazyVerticalGrid(
-                    columns = ch.brickinventoryapp.ui.components.LesbareSpalten(140.dp),
+                    columns = LesbareSpalten(140.dp),
                     state = gridState,
                     // Unten Platz für den Erfassen-Knopf, sonst verdeckt er die letzte Reihe.
                     contentPadding = PaddingValues(start = Abstaende.mittel, top = Abstaende.mittel,
-                        end = Abstaende.mittel, bottom = ch.brickinventoryapp.ui.components.FabPlatz),
+                        end = Abstaende.mittel, bottom = FabPlatz),
                     horizontalArrangement = Arrangement.spacedBy(10.dp),
                     verticalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
@@ -182,10 +211,11 @@ fun MinifigsScreen(
                         span = { _, _ -> if (ansicht == "table") GridItemSpan(maxLineSpan) else GridItemSpan(1) },
                     ) { _, fig ->
                         // BEIDE Ansichten oeffnen denselben Dialog.
-                        val oeffne = { vm.oeffneSetItem("fig", fig.figNumber) }
+                        val oeffne = { aktionen.oeffneSetItem("fig", fig.figNumber) }
                         Bewegt {
                             if (ansicht == "table") MinifigTableRow(fig, serverUrl, imageLoader, oeffne)
-                            else MinifigCard(fig, serverUrl, imageLoader, oeffne)
+                            else MinifigCard(fig, serverUrl, imageLoader, oeffne,
+                                ausgewaehlt = gewaehlt == detailSchluessel("fig", fig.figNumber))
                         }
                     }
                 }
@@ -193,20 +223,21 @@ fun MinifigsScreen(
         }
     }
 
-        ch.brickinventoryapp.ui.components.ErfassenFab(
-            stringResource(R.string.minifigs_add), { showAddDialog = true },
+        // Wie Galerie, Teile und Merkliste: kein „+“ im Fehlerzustand, leer steht es im Bild.
+        if (!gross && anzeige != Ladeanzeige.FEHLER && anzeige != Ladeanzeige.LEER) ErfassenFab(
+            erfassenText, { showAddDialog = true },
             Modifier.align(Alignment.BottomEnd).padding(Abstaende.gross),
         )
     }
 
     if (zeigeFilter) {
-        val zuruecksetzen: () -> Unit = { onScopeChange(ch.brickinventoryapp.data.ScopeFilter.ALL) }
+        val zuruecksetzen: () -> Unit = { onScopeChange(ScopeFilter.ALL) }
         FilterBlattRahmen(
             onSchliessen = { zeigeFilter = false },
             onZuruecksetzen = zuruecksetzen.takeIf { Filterzahl.konto(householdMembers, scopeMode) > 0 },
         ) {
             KontoFilterAbschnitt(householdMembers, scopeMode, onScopeChange)
-            AnsichtAbschnitt(ansicht) { vm.setMinifigsView(it) }
+            AnsichtAbschnitt(ansicht) { aktionen.setMinifigsView(it) }
         }
     }
 
@@ -234,9 +265,9 @@ private fun FigurenKennzahlen(minifigStats: FigurenKennzahlenAnsicht) {
     KennzahlenReihe {
         // Zahlen vom Server (getMinifigStats): Aus der Liste gerechnet fehlten
         // die manuell erfassten Figuren, die hier ausgefiltert sind.
-        GalleryStatChip(fmtInt(minifigStats.types), stringResource(R.string.minifigs_stat_types))
-        GalleryStatChip(fmtInt(minifigStats.totalQuantity), stringResource(R.string.minifigs_stat_total))
-        GalleryStatChip(fmtInt(minifigStats.manual), stringResource(R.string.minifigs_stat_manual))
+        GalleryStatChip(minifigStats.types, R.plurals.minifigs_stat_types)
+        GalleryStatChip(minifigStats.totalQuantity, R.plurals.minifigs_stat_total)
+        GalleryStatChip(minifigStats.manual, R.plurals.minifigs_stat_manual)
     }
 }
 
@@ -291,7 +322,6 @@ fun AddMinifigDialog(
         mutableStateOf(householdMembers.firstOrNull { it.isSelf }?.id)
     }
 
-
     fun submit() {
         if (figNumber.isNotBlank()) {
             // Siehe erfassungsWerte() — dieselbe Umrechnung wie im Teile-Dialog.
@@ -316,17 +346,17 @@ fun AddMinifigDialog(
                     value = figNumber, onValueChange = { figNumber = it },
                     label = { Text(stringResource(R.string.minifigs_fig_number)) }, placeholder = { Text(stringResource(R.string.minifigs_fig_number_placeholder)) },
                     modifier = Modifier.fillMaxWidth(), singleLine = true,
-                    shape = Formen.knopf
+                    shape = Formen.feld
                 )
                 OutlinedTextField(
                     value = blFigNumber, onValueChange = { blFigNumber = it },
                     label = { Text(stringResource(R.string.minifigs_bl_number)) }, placeholder = { Text(stringResource(R.string.minifigs_bl_number_placeholder)) },
                     modifier = Modifier.fillMaxWidth(), singleLine = true,
-                    shape = Formen.knopf
+                    shape = Formen.feld
                 )
                 Text(
                     stringResource(R.string.minifigs_bl_hint),
-                    style = MaterialTheme.typography.labelSmall,
+                    style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 ErfassungsFelder(
@@ -345,13 +375,15 @@ fun AddMinifigDialog(
 
 @Composable
 fun MinifigCard(fig: FigurAnsicht, serverUrl: String, imageLoader: ImageLoader,
-                onClick: (() -> Unit)? = null) {
+                onClick: (() -> Unit)? = null, ausgewaehlt: Boolean = false) {
     val qty = fig.totalQuantity ?: fig.quantity
 
     Card(
         // Antippen oeffnet den Detail-Dialog — wie bei den Teilen daneben.
         modifier = Modifier.fillMaxWidth().heightIn(min = 196.dp)
-            .let { if (onClick != null) it.clickable(role = Role.Button, onClick = onClick) else it },
+            .semantics { selected = ausgewaehlt }
+            .then(if (ausgewaehlt) Modifier.border(2.dp, MaterialTheme.colorScheme.primary, Formen.leiste) else Modifier)
+            .let { if (onClick != null) it.fokusRahmen(Formen.leiste).clickable(role = Role.Button, onClick = onClick) else it },
         shape = Formen.leiste,
         elevation = CardDefaults.cardElevation(defaultElevation = Formen.karteErhebung),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
@@ -361,16 +393,21 @@ fun MinifigCard(fig: FigurAnsicht, serverUrl: String, imageLoader: ImageLoader,
                 // Vorschaubild mit Rückfall auf volle Auflösung — siehe
                 // util/BildRueckfall.kt, rememberTileImageWithFallback().
                 val (figImg, onFigImgError) = rememberTileImageWithFallback(serverUrl, fig.imageLocal, fig.imageUrl, fullViaProxy = true)
-                ch.brickinventoryapp.ui.components.ProduktBild(
+                ProduktBild(
                     model = figImg,
                     imageLoader = imageLoader,
-                    contentDescription = fig.figName,
+                    // Ohne Beschreibung: Der Name steht darunter, TalkBack las ihn sonst zweimal.
+                    contentDescription = null,
                     onState = { st ->
                         if (st is coil3.compose.AsyncImagePainter.State.Error) onFigImgError()
                     },
                     modifier = Modifier.fillMaxSize()
                         .clip(Formen.kachelBildEcken),
                     contentScale = ContentScale.Fit,
+                    // Bildgrund über die ganze Kachelbreite wie bei Sets und Teilen: Das hohe
+                    // Figurenbild stand sonst schmal in der Mitte mit weissen Rändern.
+                    bildgrund = true,
+                    innenAbstand = Abstaende.winzig,
                 )
                 if (qty > 1) {
                     Surface(
@@ -381,7 +418,8 @@ fun MinifigCard(fig: FigurAnsicht, serverUrl: String, imageLoader: ImageLoader,
                         // Die Menge-Plakette: „×N“ auf einer manuell erfassten Kachel, „N×“ auf
                         // einer Kachel aus einem Set — die Regel der Webapp (`man-tile` mit
                         // `qbadge` ×N, `part-card` mit `part-qty` N×).
-                        Text(mengeAusSet(qty), Modifier.padding(horizontal = 5.dp, vertical = Abstaende.haar),
+                        Text(mengeAusSet(qty), Modifier.padding(horizontal = 5.dp, vertical = Abstaende.haar)
+                            .vorgelesenAls(stueckzahl(qty)),
                             color = MaterialTheme.colorScheme.onPrimary,
                             style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold)
                     }
@@ -409,15 +447,16 @@ fun MinifigCard(fig: FigurAnsicht, serverUrl: String, imageLoader: ImageLoader,
                 }
             }
             Column(Modifier.padding(Abstaende.klein), verticalArrangement = Arrangement.spacedBy(1.dp)) {
-                Text(fig.figNumber, style = MaterialTheme.typography.labelSmall,
+                Text(fig.figNumber, Modifier.vorgelesenAls(stringResource(R.string.cd_figur_nummer, fig.figNumber)),
+                    style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.SemiBold)
                 // Die Nummer steht schon darüber; ohne Namen dieselbe Nummer noch einmal sah wie ein Name aus.
                 val figName = fig.figName
                 if (figName != null) {
-                    Text(ch.brickinventoryapp.ui.components.katalogName(figName),
+                    Text(katalogName(figName),
                         style = MaterialTheme.typography.bodySmall,
                         fontWeight = FontWeight.Medium,
-                        maxLines = if (ch.brickinventoryapp.ui.components.grosseSchrift()) 3 else 2, overflow = TextOverflow.Ellipsis)
+                        maxLines = if (grosseSchrift()) 3 else 2, overflow = TextOverflow.Ellipsis)
                 } else {
                     Text(stringResource(R.string.name_unknown), style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -425,10 +464,10 @@ fun MinifigCard(fig: FigurAnsicht, serverUrl: String, imageLoader: ImageLoader,
                 // Gemeinsamer Helfer (util/DatumFormat.kt): Er kommt auch mit Zeitstempeln ohne
                 // Millisekunden zurecht.
                 val dateLabel = remember(fig.setAddedAt) {
-                    ch.brickinventoryapp.util.fmtTag(fig.setAddedAt, ch.brickinventoryapp.util.DatumJahr.KURZ)
+                    fmtTag(fig.setAddedAt, DatumJahr.KURZ)
                 }
                 if (dateLabel != null)
-                    Text(dateLabel, style = MaterialTheme.typography.labelSmall,
+                    Text(dateLabel, style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         }
@@ -452,7 +491,7 @@ fun MinifigTableRow(fig: FigurAnsicht, serverUrl: String, imageLoader: ImageLoad
         name = fig.figName,
         menge = fig.totalQuantity ?: fig.quantity,
         imageLoader = imageLoader,
-        zweiteZeile = ch.brickinventoryapp.util.fmtTag(fig.setAddedAt),
+        zweiteZeile = fmtTag(fig.setAddedAt),
         onBildFehler = onFehler,
         onClick = onClick,
     )

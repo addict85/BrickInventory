@@ -1,9 +1,9 @@
 /** Der API-Vertrag: je Bereich eine Datei, hier zusammengeführt. Aus ihm
  * entstehen docs/openapi.json (npm run vertrag:openapi), die Typen der
  * Routen (Antwort<…>) und die Prüfung der Antworten in den Tests. */
-import type { Response } from 'express';
+import type { Request, Response } from 'express';
 import type { z } from 'zod';
-import type { Draht, Route } from './grund';
+import type { Draht, Route, PfadVon } from './grund';
 import { Fehler } from './grund';
 import * as bestand from './bestand';
 import * as einstellungen from './einstellungen';
@@ -34,7 +34,32 @@ export type Antwort<K extends Schluessel> = Response<Rumpf<K> | z.input<typeof F
 /** Der Rumpf einer Route, für Dienste, die ihn ganz zusammensetzen. */
 export type AntwortRumpf<K extends Schluessel> = Rumpf<K>;
 
+type Teil<K extends Schluessel, F extends 'eingabe' | 'abfrage'> =
+  (typeof VERTRAG)[K] extends { [P in F]: infer S extends z.ZodType } ? z.output<S> : Record<never, never>;
+/** Der geprüfte Rumpf (eingabePruefen); ohne Schema leer. */
+export type Eingabe<K extends Schluessel> = Teil<K, 'eingabe'>;
+/** Die geprüfte Abfrage; ohne Schema leer, ein Lesen dort ist ein Übersetzungsfehler. */
+export type Abfrage<K extends Schluessel> = Teil<K, 'abfrage'>;
+/** Der Typ von `req` in einer Route: `eingabe`, `abfrage` und `pfad` so, wie der Vertrag sie geprüft hat. */
+export type Anfrage<K extends Schluessel, R extends Request = AuthedRequest> = R & { eingabe: Eingabe<K>; abfrage: Abfrage<K>; pfad: PfadVon<K> };
+/** Dasselbe ohne requireToken. */
+export type OffeneAnfrage<K extends Schluessel> = Anfrage<K, Request>;
+
 export function routeZu(schluessel: string): Route | undefined {
   return Object.prototype.hasOwnProperty.call(VERTRAG, schluessel)
     ? (VERTRAG as Record<string, Route>)[schluessel] : undefined;
+}
+
+/** Wörtliche Abschnitte vor Platzhaltern, wie Express es für diese Pfade hält. */
+const MUSTER = Object.entries(VERTRAG as Record<string, Route>).map(([k, route]) => {
+  const [methode, pfad] = k.split(' ') as [string, string];
+  const teile = pfad.split('/');
+  return { methode, teile, route, offen: teile.filter(t => t.startsWith(':')).length };
+}).sort((a, b) => a.offen - b.offen);
+
+/** Die Vertragsroute zu einer Anfrage, bevor Express sie zugeordnet hat. */
+export function routeFuerAnfrage(methode: string, pfad: string): Route | undefined {
+  const teile = pfad.replace(/\/+$/, '').split('/');
+  return MUSTER.find(m => m.methode === methode && m.teile.length === teile.length
+    && m.teile.every((t, i) => t === teile[i] || (t.startsWith(':') && teile[i] !== '')))?.route;
 }

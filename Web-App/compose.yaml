@@ -1,51 +1,45 @@
 # ════════════════════════════════════════════════════════════════════════════════
 # BrickInventory Manager — Docker Compose
 #
-# Alle Standardwerte sind im Dockerfile gesetzt und müssen hier nicht wiederholt
-# werden. Nur was du anpassen möchtest, muss hier stehen.
+# Einrichten und Starten: README.md, Abschnitt „Docker“. Kurz:
+#   docker compose pull && docker compose up -d     signiertes Image von Docker Hub
+#   docker compose up -d --build                    selbst aus diesem Ordner bauen
 #
-# Start:
-#   docker compose up -d --build
-#
-# Ressourcengrenzen (mem_limit, pids_limit, cpus) je Dienst: Ein Fehler in
-# einer nativen Bibliothek (sharp, pdf-lib) oder eine Flut von Anfragen soll
-# einen Container füllen, nicht den ganzen Rechner. NODE_OPTIONS begrenzt nur
-# den JavaScript-Heap, nicht den Speicher von sharp. Die Vorgaben passen auf
-# einen Raspberry Pi 4 mit 4 GB; auf einem kleineren Gerät oder bei grossen
-# Sammlungen in .env anpassen (APP_MEM_LIMIT, JOBS_MEM_LIMIT, DB_MEM_LIMIT …,
-# UPGRADE.md, Runde 7). Wer an eine Grenze stösst, sieht im Protokoll
-# „OOMKilled" (docker inspect) bzw. „Resource temporarily unavailable".
+# Ressourcengrenzen je Dienst, damit ein Fehler in sharp/pdf-lib oder eine
+# Anfrageflut einen Container füllt und nicht den Rechner. Die Vorgaben passen
+# auf einen Raspberry Pi 4 mit 4 GB; anpassen in .env (APP_MEM_LIMIT, …).
 # ════════════════════════════════════════════════════════════════════════════════
+
+# Docker-Protokolle mit Grösse und Zahl begrenzt: Ohne Grenze wüchse json-file
+# bis die Platte voll ist, und Fehlanmeldungen samt Adressen und das
+# Startpasswort blieben für die Lebensdauer des Containers liegen.
+x-protokoll: &protokoll
+  driver: local
+  options:
+    max-size: "10m"
+    max-file: "5"
 
 services:
 
   # ── PostgreSQL Datenbank ─────────────────────────────────────────────────────
   postgres:
-    # PostgreSQL 18.
-    #
-    # ⚠️  ACHTUNG BEIM UPDATE VON 16: Ein blosser Tausch des Tags reicht NICHT
-    # und schlägt mit einer Fehlermeldung fehl. Ab Version 18 legt das offizielle
-    # Image seine Daten in einem versionsspezifischen Unterverzeichnis ab
-    # (/var/lib/postgresql/18/docker), und der Mount-Punkt ist deshalb das
-    # ELTERNVERZEICHNIS /var/lib/postgresql statt wie bisher .../data.
-    # Das Datenformat einer Hauptversion ist ausserdem nie direkt lesbar.
-    #
-    # Der Weg von 16 auf 18 steht Schritt für Schritt in UPGRADE.md unter
-    # "PostgreSQL 18". Kurz: pg_dumpall mit dem ALTEN Container, neues
-    # Verzeichnis, einspielen. Das alte ./pgdata bleibt dabei unangetastet und
-    # ist die Rückfallebene.
-    image: postgres:18-alpine@sha256:10a5c69a83035ab5239f5620d708520e8b28f5aa1f2b20143e6024532edadfb5
+    # Eine neue Hauptversion liest die Daten der alten nicht, und ab 18 liegt
+    # PGDATA eine Ebene tiefer: Ein Tausch des Tags allein schlägt fehl. Der
+    # Weg (pg_dumpall, neues Verzeichnis, einspielen) steht in UPGRADE.md unter
+    # „PostgreSQL 18“; ./pgdata (16) bleibt als Rückfallebene liegen.
+    image: postgres:18-alpine@sha256:123b17998ccaf47e53b502e8c6a1e79afd8f579c6f3eec83c563da026f957395
     container_name: brickinventory-db
+    logging: *protokoll
     restart: unless-stopped
     environment:
       POSTGRES_DB:       brickinventory
       POSTGRES_USER:     brickinventory
-      # Pflicht: DB_PASSWORD in .env (z. B. `openssl rand -base64 24`). Eine
-      # bestehende Datenbank behält ihr Passwort; das alte Beispielpasswort
-      # weist der Server beim Start ab (UPGRADE.md, Abschnitt 13).
-      POSTGRES_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD in .env setzen - siehe UPGRADE.md}
+      # Passwörter nur als Dateien (secrets unten, scripts/geheimnisse-einrichten.sh):
+      # Umgebungsvariablen zeigt `docker inspect` jedem mit Zugang zu Docker.
+      POSTGRES_PASSWORD_FILE: /run/secrets/db_password
       # Für postgres/app-rolle.sh beim Anlegen einer neuen Datenbank.
-      DB_APP_PASSWORD: ${DB_APP_PASSWORD:?DB_APP_PASSWORD in .env setzen - siehe UPGRADE.md}
+      DB_APP_PASSWORD_FILE: /run/secrets/db_app_password
+    secrets: [db_password, db_app_password]
     command: postgres -c max_connections=200 -c shared_buffers=128MB
     # Ein Prozess je Verbindung: 200 Verbindungen plus Hintergrundprozesse.
     mem_limit: ${DB_MEM_LIMIT:-1g}
@@ -58,9 +52,12 @@ services:
       - no-new-privileges:true
     cap_drop: [ALL]
     cap_add: [CHOWN, DAC_OVERRIDE, FOWNER, SETUID, SETGID]
+    # Schreiben nur in die Daten und den Socket-Ordner.
+    read_only: true
+    tmpfs:
+      - /var/run/postgresql:rw,nosuid,nodev,size=16m
+      - /tmp:rw,noexec,nosuid,nodev,size=64m
     volumes:
-      # Neuer Pfad UND neues Verzeichnis: ./pgdata (Version 16) bleibt liegen,
-      # damit ein Rückfall auf die alte compose.yaml jederzeit möglich ist.
       - ./pgdata18:/var/lib/postgresql
       - ./postgres/app-rolle.sh:/docker-entrypoint-initdb.d/10-app-rolle.sh:ro
     healthcheck:
@@ -69,17 +66,19 @@ services:
       timeout: 5s
       retries: 5
       start_period: 15s
+    # Nur das interne Netz: Die Datenbank braucht keinen Weg nach draussen.
     networks:
-      - brickinventory-net
+      - db-net
 
   # ── Datenbankrolle der App ───────────────────────────────────────────────────
-  # `brickinventory` ist der Superuser der Datenbank. App, Jobs und pgweb
+  # `brickinventory` ist der Superuser der Datenbank. App und Jobs
   # verbinden sich als `brickinventory_app` ohne Superuser-Rechte, der Datenbank
   # und Tabellen gehören. Dieser Dienst legt die Rolle bei jedem `up` an bzw.
   # richtet sie nach und endet dann (UPGRADE.md, Abschnitt 29).
   db-rolle:
-    image: postgres:18-alpine@sha256:10a5c69a83035ab5239f5620d708520e8b28f5aa1f2b20143e6024532edadfb5
+    image: postgres:18-alpine@sha256:123b17998ccaf47e53b502e8c6a1e79afd8f579c6f3eec83c563da026f957395
     container_name: brickinventory-db-rolle
+    logging: *protokoll
     restart: "no"
     user: postgres
     security_opt:
@@ -97,14 +96,15 @@ services:
       PGHOST: postgres
       PGUSER: brickinventory
       PGDATABASE: brickinventory
-      PGPASSWORD: ${DB_PASSWORD:?DB_PASSWORD in .env setzen - siehe UPGRADE.md}
-      DB_APP_PASSWORD: ${DB_APP_PASSWORD:?DB_APP_PASSWORD in .env setzen - siehe UPGRADE.md}
-      # Leserolle brickinventory_lesen für pgweb; leer = Rolle ohne Anmeldung.
-      PGWEB_DB_PASSWORD: ${PGWEB_DB_PASSWORD:-}
+      PGPASSWORD_FILE: /run/secrets/db_password
+      DB_APP_PASSWORD_FILE: /run/secrets/db_app_password
+      # Leserolle brickinventory_lesen (psql, README „Datenbank ansehen“); leere Datei = Rolle ohne Anmeldung.
+      PGWEB_DB_PASSWORD_FILE: /run/secrets/pgweb_db_password
+    secrets: [db_password, db_app_password, pgweb_db_password]
     volumes:
       - ./postgres/app-rolle.sh:/rolle/app-rolle.sh:ro
     networks:
-      - brickinventory-net
+      - db-net
 
   # ── Datenschlüssel anlegen ───────────────────────────────────────────────────
   # Legt ./schluessel/datenschluessel beim ersten Start an (32 Zufallsbyte,
@@ -112,10 +112,11 @@ services:
   # danach nur lesend. Liegt noch ein alter Schlüssel in data/.datenschluessel,
   # legt er keinen neuen an: Der Server meldet dann den Umzug (UPGRADE.md).
   schluessel:
-    build:
-      context: .
-      dockerfile: Dockerfile
+    # Dasselbe Image wie app (siehe dort).
+    image: ${BRICK_IMAGE:?BRICK_IMAGE fehlt in .env - einmal sh scripts/image-pruefen.sh ausfuehren (UPGRADE.md, Abschnitt 42)}
+    pull_policy: missing
     container_name: brickinventory-schluessel
+    logging: *protokoll
     restart: "no"
     user: root
     network_mode: none
@@ -134,10 +135,17 @@ services:
 
   # ── BrickInventory Manager App ───────────────────────────────────────────────
   app:
+    # Ein Image für schluessel, app und jobs, als Digest: Ein Tag lässt sich
+    # umhängen. scripts/image-pruefen.sh prüft die Signatur und trägt
+    # BRICK_IMAGE in .env ein. Wer selbst baut, setzt BRICK_IMAGE auf einen
+    # eigenen Namen; nur `app` hat `build:`, damit `--build` einmal baut.
+    image: ${BRICK_IMAGE:?BRICK_IMAGE fehlt in .env - einmal sh scripts/image-pruefen.sh ausfuehren (UPGRADE.md, Abschnitt 42)}
+    pull_policy: missing
     build:
       context: .
       dockerfile: Dockerfile
     container_name: brickinventory-app
+    logging: *protokoll
     restart: unless-stopped
     # Kleiner init-Prozess als PID 1: reicht Signale weiter und räumt
     # verwaiste Kindprozesse (Bildwerkzeuge, PDF) ab.
@@ -156,37 +164,22 @@ services:
     cap_add: [CHOWN, DAC_OVERRIDE, SETUID, SETGID]
     read_only: true
     tmpfs:
-      - /tmp
+      - /tmp:rw,noexec,nosuid,nodev,size=256m
     depends_on:
       db-rolle:
         condition: service_completed_successfully
       schluessel:
         condition: service_completed_successfully
     # Kein veröffentlichter Port: Von aussen geht es nur über Caddy (HTTPS).
-    #
-    # BEWUSSTE AUSNAHME Klartext (z. B. ohne Namen/IP für Caddy, zum Testen):
-    # die drei Zeilen einkommentieren und in .env COOKIE_SECURE=0 und
-    # APP_BASE_URL=http://… setzen. Passwort, Sitzung und App-Token gehen dann
-    # lesbar durchs LAN; „unbegrenzt“ beim QR-Code und Passkeys gibt es dann
-    # nicht (README.md, „Ohne HTTPS“).
+    # Bewusste Klartext-Ausnahme zum Ausprobieren: die zwei Zeilen
+    # einkommentieren, in .env COOKIE_SECURE=0 und APP_BASE_URL=http://…
+    # setzen (README.md, „Ohne HTTPS“). Passwörter gehen dann lesbar durchs LAN.
     # ports:
     #   - "${APP_BIND:-127.0.0.1}:3000:3000"
     volumes:
-      # EIN Volume genügt. Set-, Teile- und Minifiguren-Bilder liegen unter
-      # data/images/ (siehe src/infra/appPaths.ts) und sind damit von ./data
-      # miterfasst — inklusive der Vorschaubilder, die als <name>_thumb.jpg
-      # NEBEN dem Original liegen, nicht in einem eigenen Unterordner.
-      #
-      # VORHER stand hier zusätzlich `- ./images:/app/public/images/sets`.
-      # Das war der alte Ablageort. Der Code schreibt dort längst nicht mehr
-      # hin, die Zeile blieb aber stehen — Ergebnis: ein Ordner ./images neben
-      # ./data, der nach der einmaligen Migration leer zurückbleibt und nur
-      # noch verwirrt. Ausserdem mountete er in public/, das seit dem
-      # dist/-Umbau wieder reiner, unveränderlicher Build-Inhalt sein soll.
-      #
-      # Wer ./images noch aus einer älteren Installation hat: siehe UPGRADE.md,
-      # Abschnitt 10 — die Dateien einmal von Hand nach ./data/images/sets/
-      # verschieben, danach kann der Ordner weg.
+      # Alle Bilder samt Vorschaubildern liegen unter data/ (src/infra/appPaths.ts);
+      # eine Sicherung von ./data erfasst sie mit. Ein altes ./images: UPGRADE.md,
+      # Abschnitt 10.
       - ./data:/app/data
       # Der Datenschlüssel für gespeicherte Geheimnisse, getrennt von ./data:
       # Eine Sicherung von data/ (scripts/backup.sh) enthält ihn so nie. Nur
@@ -198,11 +191,10 @@ services:
       - ca-wurzel:/caddy-ca:ro
     environment:
 
-      # ── PFLICHT: in .env setzen (Vorlage: .env.example) ──────────────────────
-      # Eigenen Zufallswert, z. B.:  openssl rand -base64 48
-      # Ohne Wert startet Compose nicht; der Server verweigert einen Wert unter
-      # 32 Zeichen.
-      SESSION_SECRET: ${SESSION_SECRET:?SESSION_SECRET in .env setzen, siehe .env.example}
+      # ── Geheimnisse als Dateien (secrets unten) ──────────────────────────────
+      # scripts/geheimnisse-einrichten.sh legt sie an. Der Server liest X_FILE
+      # und verweigert ein Sitzungsgeheimnis unter 32 Zeichen.
+      SESSION_SECRET_FILE: /run/secrets/session_secret
 
       # ── App ──────────────────────────────────────────────────────────────────
       # Adresse, unter der der Server von aussen erreichbar ist: Mails, QR-Code,
@@ -217,6 +209,8 @@ services:
       # Legt der erste Start an. Ältere Installationen mit data/.datenschluessel
       # laufen weiter und bekommen beim Start den Umzug erklärt (UPGRADE.md).
       DATA_KEY_FILE: /app/schluessel/datenschluessel
+      # Nur während eines Wechsels vorhanden (scripts/datenschluessel-wechseln.sh).
+      DATA_KEY_ALT_FILE: /app/schluessel/datenschluessel.alt
       # Passkeys der Android-App und /.well-known/assetlinks.json (.env.example).
       PASSKEY_ANDROID_ZERTIFIKATE: ${PASSKEY_ANDROID_ZERTIFIKATE:-}
       PASSKEY_ANDROID_PAKET: ${PASSKEY_ANDROID_PAKET:-}
@@ -235,7 +229,7 @@ services:
       # PGHOST:     postgres
       # PGPORT:     5432
       PGUSER:     brickinventory_app
-      PGPASSWORD: ${DB_APP_PASSWORD:?DB_APP_PASSWORD in .env setzen - siehe UPGRADE.md}
+      PGPASSWORD_FILE: /run/secrets/db_app_password
       # PGDATABASE: brickinventory
 
       # ── DB-Verbindungspool ───────────────────────────────────────────────────
@@ -247,6 +241,7 @@ services:
       # PG_IDLE_MS:   30000  # Idle-Timeout in ms (Standard: 30 s)
       # PG_CONN_MS:   5000   # Verbindungs-Timeout in ms (Standard: 5 s)
       # PG_STMT_MS:   30000  # Max. Query-Laufzeit in ms (Standard: 30 s)
+    secrets: [session_secret, db_app_password]
 
     healthcheck:
       test: ["CMD", "node", "-e",
@@ -257,6 +252,7 @@ services:
       start_period: 20s
     networks:
       - brickinventory-net
+      - db-net
 
   # ── Hintergrundarbeit ────────────────────────────────────────────────────────
   # Derselbe Bau wie `app`, aber ROLLE=jobs: arbeitet die Auftragstabelle ab
@@ -264,10 +260,11 @@ services:
   # an. Beim Beenden gibt er laufende Aufträge zurück; der nächste Start setzt
   # sie fort. Die Migrationen macht, wer zuerst startet — der andere wartet.
   jobs:
-    build:
-      context: .
-      dockerfile: Dockerfile
+    # Dasselbe Image wie app (siehe dort).
+    image: ${BRICK_IMAGE:?BRICK_IMAGE fehlt in .env - einmal sh scripts/image-pruefen.sh ausfuehren (UPGRADE.md, Abschnitt 42)}
+    pull_policy: missing
     container_name: brickinventory-jobs
+    logging: *protokoll
     restart: unless-stopped
     init: true
     mem_limit: ${JOBS_MEM_LIMIT:-1g}
@@ -280,7 +277,7 @@ services:
     cap_add: [CHOWN, DAC_OVERRIDE, SETUID, SETGID]
     read_only: true
     tmpfs:
-      - /tmp
+      - /tmp:rw,noexec,nosuid,nodev,size=256m
     depends_on:
       db-rolle:
         condition: service_completed_successfully
@@ -294,13 +291,15 @@ services:
     environment:
       ROLLE: jobs
       DATA_KEY_FILE: /app/schluessel/datenschluessel
+      DATA_KEY_ALT_FILE: /app/schluessel/datenschluessel.alt
       PGUSER: brickinventory_app
-      PGPASSWORD: ${DB_APP_PASSWORD:?DB_APP_PASSWORD in .env setzen - siehe UPGRADE.md}
+      PGPASSWORD_FILE: /run/secrets/db_app_password
       # Für Links in Mails (Preisalarm), die der Job-Prozess verschickt.
       APP_BASE_URL: ${APP_BASE_URL:-https://${BRICK_HOST}}
       # Wer bei `app` DATA_KEY, TZ, ERFASSUNG_ZEITZONE oder PG_* setzt, setzt
       # sie hier gleich. TRUST_PROXY und CA_ZERTIFIKAT braucht er nicht: Er
       # nimmt keine Anfragen an und liefert kein Zertifikat aus.
+    secrets: [db_app_password]
     # Lebenszeichen statt HTTP: Der Prozess schreibt alle 30 s eine Datei in /tmp.
     healthcheck:
       test: ["CMD", "node", "-e",
@@ -311,18 +310,27 @@ services:
       start_period: 60s
     networks:
       - brickinventory-net
+      - db-net
 
   # ── Caddy — HTTPS vor der App ────────────────────────────────────────────────
   #
-  # TLS mit eigener CA (`tls internal`) für BRICK_HOST aus .env, einen Namen
-  # (nas.local) oder eine IP-Adresse. Port 443 für HTTPS, Port 80 leitet um und
-  # liefert nur /ca.crt im Klartext. Das Wurzelzertifikat liegt danach unter
-  # ./caddy/data/caddy/pki/authorities/local/root.crt und kommt auf die Geräte
-  # (UPGRADE.md, Abschnitt 14).
+  # Drei Wege zum Zertifikat für BRICK_HOST, gewählt beim Start:
+  #   • eigene, auf BRICK_HOST beschränkte CA in ./caddy/ca (scripts/ca-einrichten.sh)
+  #   • BRICK_TLS=acme: öffentlicher Name mit Let's Encrypt, ohne eigene CA
+  #   • CA_OHNE_NAMENSBESCHRAENKUNG=ja: Caddys eigene CA, gilt auf jedem Gerät
+  #     für jede Adresse — nur ausdrücklich, nie als stiller Rückfall.
+  # Ohne einen davon startet Caddy nicht. Port 80 leitet um und liefert nur
+  # /ca.crt im Klartext; den Fingerabdruck nennt das Protokoll zum Abgleich.
   caddy:
-    # Fest per Digest wie pgweb; Renovate (docker-compose) schlägt neue Fassungen vor.
-    image: caddy:2.11.7-alpine@sha256:e70b164da81ef698b3ad19af799ea6086ce6d9e48ed4079eb9fe26f6fbf14ee5
+    # Hier gebaut (Dockerfile.caddy: offizielle Basis per Digest, go-jose
+    # nachgezogen); der erste `up` nach einem Update baut einige Minuten.
+    image: brickinventory-caddy:2.11.8
+    pull_policy: build
+    build:
+      context: .
+      dockerfile: Dockerfile.caddy
     container_name: brickinventory-caddy
+    logging: *protokoll
     restart: unless-stopped
     mem_limit: ${CADDY_MEM_LIMIT:-256m}
     pids_limit: 128
@@ -334,35 +342,65 @@ services:
     cap_add: [NET_BIND_SERVICE]
     read_only: true
     tmpfs:
-      - /tmp
+      - /tmp:rw,noexec,nosuid,nodev,size=64m
     depends_on:
       - app
     # Nur root.crt verlässt Caddy: Die Schleife kopiert es in das Volume
     # ca-wurzel, das die App nur lesend sieht. Ein Datei-Mount von root.crt
     # taugt nicht — fehlt die Datei beim ersten Start, legt Docker an ihrer
     # Stelle ein Verzeichnis an, und Caddy kann seine CA nicht schreiben.
-    # Liegt in ./caddy/ca eine eigene CA (scripts/ca-einrichten.sh), signiert
-    # deren Zwischenstelle; den Schlüssel der Wurzel hat Caddy dann nicht.
+    # Der Aussteller wird hier gewählt: Ohne BRICK_TLS_AUSSTELLER ist das
+    # Caddyfile ungültig, ein Start an diesem Skript vorbei fällt also nicht
+    # still auf Caddys unbeschränkte CA zurück.
     command:
       - sh
       - -c
       - |
-        q=/data/caddy/pki/authorities/local/root.crt
+        q=
         if [ -s /ca-eigen/zwischen.key ]; then
           q=/ca-eigen/root.crt
-          export BRICK_CA_SIGNIEREN='ca local'
+          export BRICK_TLS_AUSSTELLER=internal BRICK_TLS_OPTIONEN='ca local'
           export BRICK_CA_EIGEN="$$(printf 'root {\ncert /ca-eigen/root.crt\n}\nintermediate {\ncert /ca-eigen/zwischen-kette.crt\nkey /ca-eigen/zwischen.key\n}')"
+        elif [ "$${BRICK_TLS:-}" = acme ]; then
+          case "$${ACME_EMAIL:-}" in
+            *[!A-Za-z0-9@._+-]*) echo "[caddy] FEHLER: ACME_EMAIL enthält unerlaubte Zeichen." >&2; exit 1 ;;
+          esac
+          export BRICK_TLS_AUSSTELLER=acme BRICK_TLS_OPTIONEN="$${ACME_EMAIL:+email $$ACME_EMAIL}"
+          # Eine Wurzel aus der Zeit davor gäbe die App sonst weiter als /ca.crt aus.
+          rm -f /ca-wurzel/root.crt
+        elif [ "$${CA_OHNE_NAMENSBESCHRAENKUNG:-}" = ja ]; then
+          q=/data/caddy/pki/authorities/local/root.crt
+          export BRICK_TLS_AUSSTELLER=internal BRICK_TLS_OPTIONEN=sign_with_root
+          echo "[caddy] WARNUNG: Caddys eigene CA ohne Namensbeschränkung (CA_OHNE_NAMENSBESCHRAENKUNG=ja)." >&2
+          echo "[caddy]   Jedes Gerät mit dieser Wurzel traut ihr für JEDE Adresse. Besser: sudo sh scripts/ca-einrichten.sh" >&2
+        else
+          echo "[caddy] FEHLER: keine eigene, auf BRICK_HOST beschränkte CA in ./caddy/ca." >&2
+          echo "[caddy]   Einrichten: sudo sh scripts/ca-einrichten.sh (UPGRADE.md, Abschnitt 33)." >&2
+          echo "[caddy]   Öffentlicher Name mit Let's Encrypt: BRICK_TLS=acme in .env." >&2
+          echo "[caddy]   Caddys unbeschränkte CA nur ausdrücklich: CA_OHNE_NAMENSBESCHRAENKUNG=ja in .env." >&2
+          exit 1
         fi
-        while :; do
-          if [ -f "$$q" ] && ! cmp -s "$$q" /ca-wurzel/root.crt; then
-            cp "$$q" /ca-wurzel/root.crt.neu && chmod 644 /ca-wurzel/root.crt.neu && mv /ca-wurzel/root.crt.neu /ca-wurzel/root.crt
-          fi
-          sleep 5
-        done &
+        if [ -n "$$q" ]; then
+          gemeldet=
+          while :; do
+            if [ -f "$$q" ] && ! cmp -s "$$q" /ca-wurzel/root.crt; then
+              cp "$$q" /ca-wurzel/root.crt.neu && chmod 644 /ca-wurzel/root.crt.neu && mv /ca-wurzel/root.crt.neu /ca-wurzel/root.crt
+            fi
+            if [ -f "$$q" ] && [ "$$gemeldet" != "$$(cksum < "$$q")" ]; then
+              gemeldet=$$(cksum < "$$q")
+              fp=$$(sed -n '/-BEGIN/,/-END/p' "$$q" | sed '1d;$$d' | base64 -d | sha256sum | cut -c1-64 | tr a-f A-F | sed 's/../&:/g;s/:$$//')
+              echo "[caddy] Wurzel für /ca.crt, SHA-256-Fingerabdruck zum Abgleich auf dem Gerät: $$fp"
+            fi
+            sleep 5
+          done &
+        fi
         exec caddy run --config /etc/caddy/Caddyfile --adapter caddyfile
     environment:
       BRICK_HOST: ${BRICK_HOST:?BRICK_HOST in .env setzen (Name oder IP des Servers) - siehe UPGRADE.md}
       BRICK_BASE_URL: ${APP_BASE_URL:-https://${BRICK_HOST}}
+      BRICK_TLS: ${BRICK_TLS:-intern}
+      ACME_EMAIL: ${ACME_EMAIL:-}
+      CA_OHNE_NAMENSBESCHRAENKUNG: ${CA_OHNE_NAMENSBESCHRAENKUNG:-nein}
     ports:
       - "${HTTPS_BIND:-0.0.0.0}:443:443"
       - "${HTTPS_BIND:-0.0.0.0}:80:80"
@@ -380,83 +418,23 @@ services:
         # Genau diese Adresse steht in TRUST_PROXY der App.
         ipv4_address: 172.28.73.10
 
-  # ── pgweb — Datenbank im Browser ansehen (OPTIONAL) ──────────────────────────
-  #
-  # Start NUR auf Anforderung:
-  #     docker compose --profile tools up -d pgweb
-  # Danach im Browser:  http://localhost:8081
-  # Wieder abschalten:  docker compose --profile tools down pgweb
-  #
-  # Warum ein Profil? Ohne `--profile tools` startet dieser Dienst NICHT mit —
-  # `docker compose up -d` bringt weiterhin nur Datenbank und App hoch. Ein
-  # Werkzeug, das man dreimal im Jahr braucht, soll nicht dauerhaft mitlaufen.
-  #
-  # ⚠️  SICHERHEIT — der wichtigste Punkt an diesem Dienst:
-  # Wer pgweb erreicht und anmeldet, liest fast die ganze Datenbank: alle
-  # Konten und Daten, nur Passwort-Hashes, Tokens, Sitzungen und Schlüssel
-  # nicht (Rolle brickinventory_lesen, postgres/app-rolle.sh). Deshalb eine
-  # Anmeldung (PGWEB_USER, Vorgabe „pgweb", PGWEB_PASSWORD und
-  # PGWEB_DB_PASSWORD in .env — ohne beide startet der Dienst nicht) und:
-  #   • Die Portangabe beginnt mit 127.0.0.1 — damit ist der Dienst NUR auf dem
-  #     Server selbst erreichbar, nicht aus dem Netz. Ein blosses "8081:8081"
-  #     würde ihn an alle Schnittstellen binden und wäre je nach Router von
-  #     aussen offen. Diese Bindung bitte nicht ändern.
-  #   • Von einem anderen Rechner aus per SSH-Tunnel arbeiten:
-  #         ssh -L 8081:127.0.0.1:8081 <benutzer>@<server>
-  #     Dann im lokalen Browser http://localhost:8081 öffnen.
-  #   • Nach getaner Arbeit wieder herunterfahren (Befehl oben).
-  pgweb:
-    # Fest per Digest: Ein Werkzeug mit Zugang zur ganzen Datenbank soll nicht
-    # unbemerkt durch ein umgehängtes Tag ersetzt werden.
-    image: sosedoff/pgweb:0.17.0@sha256:a5256d416e2e8b92d69a4459058e3eca33a9f075d8325491644411d0bc3bd70b
-    container_name: brickinventory-pgweb
-    # Ein Webserver auf Port 8081 braucht keine Capability.
-    security_opt:
-      - no-new-privileges:true
-    cap_drop: [ALL]
-    profiles: ["tools"]
-    restart: "no"          # bewusst nicht "unless-stopped": Werkzeug auf Zeit
-    mem_limit: 256m
-    pids_limit: 64
-    cpus: 0.5
-    depends_on:
-      db-rolle:
-        condition: service_completed_successfully
-    environment:
-      # Eine Leserolle, weder Superuser noch App: --readonly lässt sich per SET
-      # TRANSACTION umgehen; die Rolle hat trotzdem nur SELECT ohne Geheimnisse.
-      # Neue Tabellen sieht sie nach dem nächsten Lauf von db-rolle.
-      PGWEB_DB_PASSWORD: ${PGWEB_DB_PASSWORD:-}
-      PGWEB_DATABASE_URL: postgres://brickinventory_lesen:${PGWEB_DB_PASSWORD:-}@postgres:5432/brickinventory?sslmode=disable
-      # HTTP-Basic-Anmeldung von pgweb. Ohne PGWEB_PASSWORD startet der Dienst
-      # nicht (Prüfung unten); als :? stünde es hier, verlangte Compose es aber
-      # auch für jedes `docker compose up` ohne Profil.
-      PGWEB_AUTH_USER: ${PGWEB_USER:-pgweb}
-      PGWEB_AUTH_PASS: ${PGWEB_PASSWORD:-}
-    # --readonly zusätzlich zur Leserolle; Reparaturen mit psql als App-Rolle.
-    # --lock-session: Die Oberfläche verbindet nur zu PGWEB_DATABASE_URL, nicht
-    # zu beliebigen Hosts und Ports im Docker-Netz.
-    entrypoint:
-      - /bin/sh
-      - -c
-      - |
-        if [ -z "$$PGWEB_AUTH_PASS" ]; then
-          echo "pgweb: PGWEB_PASSWORD in .env setzen (Anmeldung im Browser) - siehe README." >&2
-          exit 1
-        fi
-        if [ -z "$$PGWEB_DB_PASSWORD" ]; then
-          echo "pgweb: PGWEB_DB_PASSWORD in .env setzen (Leserolle der Datenbank) - siehe UPGRADE.md." >&2
-          exit 1
-        fi
-        exec /usr/bin/pgweb --bind=0.0.0.0 --listen=8081 --readonly --lock-session
-    ports:
-      - "127.0.0.1:8081:8081"
-    networks:
-      - brickinventory-net
-
 volumes:
   # Allein das Wurzelzertifikat der CA, von Caddy geschrieben, von der App gelesen.
   ca-wurzel:
+
+# Geheimnisse als Dateien unter /run/secrets/ statt als Umgebungsvariablen.
+# Anlegen (und aus einer alten .env übernehmen): sh scripts/geheimnisse-einrichten.sh.
+# Der Ordner ist nur für seinen Besitzer offen (700); die Dateien selbst sind
+# lesbar (444) wie Docker-Secrets im Swarm, damit die Dienste sie ohne root lesen.
+secrets:
+  session_secret:
+    file: ./geheimnisse/session_secret
+  db_password:
+    file: ./geheimnisse/db_password
+  db_app_password:
+    file: ./geheimnisse/db_app_password
+  pgweb_db_password:
+    file: ./geheimnisse/pgweb_db_password
 
 networks:
   # Festes Netz: Ein Reverse-Proxy davor bekommt darin eine feste Adresse
@@ -467,3 +445,8 @@ networks:
     ipam:
       config:
         - subnet: 172.28.73.0/24
+  # Nur postgres, db-rolle, app und jobs, ohne Weg nach draussen: Die Datenbank
+  # braucht keinen, und ein Fehler in ihr erreicht so kein fremdes Ziel.
+  db-net:
+    driver: bridge
+    internal: true

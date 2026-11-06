@@ -1,0 +1,17 @@
+Gegenprobe: die Datenbanken (auch die von WorkManager) gehen beim Geräteumzug wieder mit (Stand vor sec12 H8)
+Modul: core-data
+Test: ch.brickinventoryapp.NetzsicherheitTest
+Rot: Kontodaten verlassen das Geraet nicht
+
+diff --git a/Android-App/app/src/main/res/xml/data_extraction_rules.xml b/Android-App/app/src/main/res/xml/data_extraction_rules.xml
+index 303dfb0..4dc0f4e 100644
+--- a/Android-App/app/src/main/res/xml/data_extraction_rules.xml
++++ b/Android-App/app/src/main/res/xml/data_extraction_rules.xml
+@@ -17,7 +17,6 @@
+     <device-transfer>
+         <exclude domain="root" path="." />
+         <exclude domain="file" path="." />
+-        <exclude domain="database" path="." />
+         <exclude domain="external" path="." />
+         <exclude domain="device_root" path="." />
+     </device-transfer>

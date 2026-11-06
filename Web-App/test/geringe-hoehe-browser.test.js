@@ -30,10 +30,10 @@ test('Geringe Höhe: Kopf, Leiste und Band', { concurrency: 1, timeout: 300_000 
     },
   });
   if (app.grund) { t.skip(app.grund); return; }
-  const { b, bis } = app;
+  const { b, bis, ruhig } = app;
   await b.tab('Emulation.setDeviceMetricsOverride', { width: 640, height: 450, deviceScaleFactor: 1, mobile: false });
   await bis(`document.querySelectorAll('#gallery .scard, #gallery [data-click="openModal"]').length >= 12`, 'zwölf Sets');
-  await warte(500);
+  await ruhig();
   const kopf = `(() => { const r = document.querySelector('header').getBoundingClientRect(); return [Math.round(r.top), Math.round(r.bottom)]; })()`;
   const rolle = async (y) => { await b.auswerten(`window.scrollTo(0, ${y}); true`); await warte(350); };
 
@@ -62,7 +62,7 @@ test('Geringe Höhe: Kopf, Leiste und Band', { concurrency: 1, timeout: 300_000 
     await b.auswerten(`document.querySelector('#rb-hinweis [data-click="rbHinweisWeg"]').click(); sessionStorage.clear(); true`);
     await b.tab('Page.reload');
     await bis(`(document.getElementById('ubadge')?.textContent || '').length > 0 && document.querySelectorAll('#gallery .scard, #gallery [data-click="openModal"]').length >= 12`, 'neu geladen', 300);
-    await warte(1500);
+    await ruhig();
     assert.equal(await b.auswerten(`document.getElementById('rb-hinweis').hidden`), true);
   });
 });

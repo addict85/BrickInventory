@@ -3,7 +3,7 @@ package ch.brickinventoryapp.ui
 import ch.brickinventoryapp.data.model.SetItem
 import ch.brickinventoryapp.data.model.SetsResponse
 import ch.brickinventoryapp.data.model.StatsResponse
-import ch.brickinventoryapp.data.repository.Result
+import ch.brickinventoryapp.data.repository.Ergebnis
 import ch.brickinventoryapp.data.lokal.Lokal
 import ch.brickinventoryapp.ui.model.SetAnsicht
 import ch.brickinventoryapp.ui.model.alsAnsicht
@@ -19,21 +19,16 @@ import kotlinx.coroutines.launch
 
 /**
  * Der Zustand der Galerie und wie er sich ändert — an EINER Stelle.
- *
- * Vorher war `_galleryState` ein internes Feld des MainViewModel, in das jede
- * Datei des Moduls schreiben konnte (Barcode, Sitzung, Set-Detail …). Jetzt ist
- * der Fluss privat, und wer etwas ändern will, ruft eine benannte Methode.
- * Abrufe kommen als Funktionen herein: So lässt sich das Verhalten ohne
- * ViewModel und Netz prüfen (GalerieTest).
+ * Ausführlich: docs/begruendungen/feature-sammlung/ui/Galerie.kt.md#galerie
  */
 internal class Galerie(
     private val scope: CoroutineScope,
     /** Eine Seite mit den Filtern aus [stand] holen. */
-    private val holeSeite: suspend (stand: GalleryUiState, seite: Int) -> Result<SetsResponse>,
-    private val holeKennzahlen: suspend () -> Result<StatsResponse>,
-    private val meldeFehler: (Result.Error) -> Unit,
+    private val holeSeite: suspend (stand: GalleryUiState, seite: Int) -> Ergebnis<SetsResponse>,
+    private val holeKennzahlen: suspend () -> Ergebnis<StatsResponse>,
+    private val meldeFehler: (Ergebnis.Error) -> Unit,
     /** Der Satz zum Fehler, der in der leeren Galerie stehen bleibt. */
-    private val beschreibeFehler: (Result.Error) -> String = { it.message },
+    private val beschreibeFehler: (Ergebnis.Error) -> String = { it.message },
     /** Filterwechsel: Die gemerkte Scrollstelle zeigt auf eine andere Liste. */
     private val vergissScroll: () -> Unit,
     private val suchPause: Long = 350,
@@ -75,14 +70,14 @@ internal class Galerie(
             val r = holeSeite(_state.value, 1)
             if (gen != galleryGeneration) return@launch
             when (r) {
-                is Result.Success -> _state.update {
+                is Ergebnis.Success -> _state.update {
                     it.copy(sets = r.data.sets.map { s -> s.alsAnsicht() }, galleryTotal = r.data.total, galleryPage = 1,
                         // Der Server schickt die Themen nur mit Seite 1; eine
                         // leere Liste räumte die Auswahl sonst leer.
                         galleryThemes = if (r.data.themes.isNotEmpty()) r.data.themes else it.galleryThemes,
                         galleryLoading = false, offlineStand = r.stand)
                 }
-                is Result.Error -> {
+                is Ergebnis.Error -> {
                     _state.update { it.copy(galleryLoading = false, galleryFehler = beschreibeFehler(r),
                         galleryFehlerKlasse = fehlerklasse(r)) }
                     meldeFehler(r)
@@ -112,14 +107,14 @@ internal class Galerie(
                 return@launch
             }
             when (r) {
-                is Result.Success -> _state.update {
+                is Ergebnis.Success -> _state.update {
                     // Auch der Server kann bei gleichen Sortierwerten Überschneidungen liefern.
                     val vorhanden = it.sets.mapTo(HashSet()) { s -> s.setNumber }
                     val neue = r.data.sets.filterNot { s -> s.setNumber in vorhanden }.map { s -> s.alsAnsicht() }
                     it.copy(galleryLoadingMore = false, sets = it.sets + neue,
                         galleryTotal = r.data.total, galleryPage = next)
                 }
-                is Result.Error -> _state.update { it.copy(galleryLoadingMore = false) }
+                is Ergebnis.Error -> _state.update { it.copy(galleryLoadingMore = false) }
             }
         }
     }
@@ -148,7 +143,7 @@ internal class Galerie(
     fun ladeKennzahlen() {
         scope.launch {
             val r = holeKennzahlen()
-            if (r is Result.Success) _state.update { it.copy(stats = r.data.stats?.alsAnsicht()) }
+            if (r is Ergebnis.Success) _state.update { it.copy(stats = r.data.stats?.alsAnsicht()) }
         }
     }
 

@@ -1,8 +1,7 @@
-import { logAndContinue } from '../../infra/httpError';
+import { logAndContinue, fehlertext } from '../../infra/fehler';
 import fs from 'fs';
-import { merkeFehlend } from './imageMisses';
+import { merkeFehlend, istBekanntFehlend } from './imageMisses';
 import { imgProxyFailures } from './imgProxyStats';
-import { istBekanntFehlend } from './imageMisses';
 import { isDecodable } from './imageGuard';
 import * as db from '../../../db/database';
 import { LOCKS } from '../../infra/lockNamespaces';
@@ -20,7 +19,7 @@ const THUMB_MAX_PARALLEL = 1;
  * der Server den halben Katalog stur ab. */
 const THUMB_MAX_QUEUE = 40;
 let _thumbRunning = 0;
-const _thumbQueue: any[] = [];
+const _thumbQueue: [string, string][] = [];
 
 export function queueThumb(srcFile: string, thumbFile: string) {
   if (_thumbInFlight.has(thumbFile)) return;
@@ -36,22 +35,22 @@ export function queueThumb(srcFile: string, thumbFile: string) {
 
 export function drainThumbQueue() {
   while (_thumbRunning < THUMB_MAX_PARALLEL && _thumbQueue.length) {
-    const [src, dst] = _thumbQueue.shift();
+    const [src, dst] = _thumbQueue.shift()!;
     _thumbRunning++;
     makeProxyThumb(src, dst)
       .catch(logAndContinue('proxy-vorschau:erzeugen'))
       .finally(() => { _thumbRunning--; _thumbInFlight.delete(dst); drainThumbQueue(); });
   }
 }
-let _thumbInFlight = new Map();
+let _thumbInFlight = new Map<string, boolean>();
 /** EIN Vorschau-Lauf für den ganzen Server, nicht je Arbeitsprozess.
  * Ausführlich: docs/begruendungen/src/katalog/bilder/proxyThumbs.ts.md#abschnitt */
 const THUMB_LOCK_KEY = LOCKS.PROXY_THUMBS;
 
 /** EINMAL aufgebaut, dann wiederverwendet. */
-let _sperrClient: any = null;
+let _sperrClient: Awaited<ReturnType<typeof db.eigeneVerbindung>> | null = null;
 
-export async function mitVorschauSperre(arbeit: () => Promise<any>) {
+export async function mitVorschauSperre<T>(arbeit: () => Promise<T>): Promise<T | false> {
     // NICHT aus dem Pool: Eine dort gehaltene Sperre nahm gewöhnlichen Anfragen
     // die Verbindung.
   if (!_sperrClient) {
@@ -91,12 +90,12 @@ export async function makeProxyThumb(srcFile: string, thumbFile: string) {
       await bg.write(tmpThumb as `${string}.${string}`, { quality: 80 });
       await fs.promises.rename(tmpThumb, thumbFile);
       return true;
-    } catch (e: any) {
+    } catch (e) {
       // Kein stilles false: Ein dauerhaft scheiternder Erzeuger bliebe unsichtbar.
-      console.error(`[img-proxy] Vorschau fehlgeschlagen für ${srcFile}: ${e?.message || e}`);
+      console.error(`[img-proxy] Vorschau fehlgeschlagen für ${srcFile}: ${fehlertext(e)}`);
       merkeFehlend('thumb:' + thumbFile);
       imgProxyFailures.other++;
-      imgProxyFailures.lastError = `Vorschau fehlgeschlagen: ${e?.message || e}`;
+      imgProxyFailures.lastError = `Vorschau fehlgeschlagen: ${fehlertext(e)}`;
       return false;
     }
 

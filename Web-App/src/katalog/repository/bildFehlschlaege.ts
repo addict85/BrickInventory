@@ -1,7 +1,7 @@
 import * as db from '../../../db/database';
 
 export function frischeFehlschlaege(alterMs: string) {
-  return db.all(`SELECT cache_key, checked_at, reason FROM image_misses
+  return db.all<{ cache_key: string; checked_at: Date; reason: string | null }>(`SELECT cache_key, checked_at, reason FROM image_misses
       WHERE checked_at > NOW() - ($1 || ' milliseconds')::interval`, [alterMs]);
 }
 

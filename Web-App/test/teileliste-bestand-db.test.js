@@ -1,32 +1,6 @@
 /**
  * „Kann ich das bauen?" — was der Bestandsabgleich zählt.
- *
- * ── Marcos Befund ───────────────────────────────────────────────────────────
- *
- * „Ich besitze das Set 2x wie kann es dann sein, dass Teile fehlen?"
- *
- * Weil die Stückzahl nirgends vorkam. Der Teile-Import legt je
- * (user_id, set_number) GENAU EINEN Satz Zeilen ab (src/katalog/partsImport.ts:
- * erst DELETE, dann INSERT mit `part.quantity`) — wie oft jemand das Set
- * besitzt, steht ausschliesslich in `sets.quantity`. Der Abgleich summierte
- * aber blank über `parts.quantity`. Wer ein Set zweimal hatte, sah den Inhalt
- * von einem.
- *
- * ── Warum mit DB ────────────────────────────────────────────────────────────
- *
- * Die Aussage ist eine Aussage über eine ABFRAGE mit zwei Tabellen und einem
- * LEFT JOIN. Am Quelltext lässt sich prüfen, dass der JOIN dasteht — nicht,
- * dass er das Richtige rechnet. Vier Fälle, die alle in einer einzigen Antwort
- * zusammenkommen müssen:
- *
- *   1. Ein Set, zweimal besessen  → Teile zählen doppelt.
- *   2. Ein Set, einmal besessen   → unverändert.
- *   3. Manuell erfasste Teile     → NIE multipliziert (sie hängen an keinem
- *                                    Set; `lose` ist genau diese Menge).
- *   4. Eine Teilezeile ohne Set   → zählt einfach, statt aus der Antwort zu
- *                                    fallen (deshalb LEFT und nicht INNER).
- *
- * Voraussetzung: Test-DB (Inhalt wird geleert!) via TEST_DATABASE_URL.
+ * Ausführlich: docs/begruendungen/test/teileliste-bestand-db.test.js.md#kopf
  *
  * Gegenprobe (durchgeführt): den LEFT JOIN samt Multiplikation zurück auf
  * `SUM(p.quantity)` gesetzt → Schritt 1 wird rot, die anderen bleiben grün.
@@ -150,24 +124,7 @@ test('Bestandsabgleich der Teileliste', { concurrency: 1 }, async (t) => {
 
 /**
  * Beide Seiten des Abgleichs benutzen DIESELBE Nummer.
- *
- * ── Marcos Frage ────────────────────────────────────────────────────────────
- *
- * „Kann der Abgleich im Hintergrund nicht über die Rebrickable ID erfolgen,
- * die Anzeige aber weiterhin über die BrickLink ID?" — Ja. Und dass es das
- * vorher NICHT tat, war der zweite Grund für fehlende Teile.
- *
- * Zusammengefasst wurde der Bedarf nach der BrickLink-Nummer, nachgefragt
- * wurde der Bestand mit der Rebrickable-Nummer. Mehrere Rebrickable-Teile
- * teilen sich regelmässig eine BrickLink-Nummer (Formvarianten). Für die
- * fielen zwei Zeilen zu einer zusammen: Bedarf addiert, gesucht aber nur nach
- * der Nummer, die zufällig zuerst kam.
- *
- * `ohneKommentare()` ist hier keine Zierde: Der Erklärkommentar an der
- * geänderten Stelle zitiert die alte Fassung wörtlich. Ohne das Abstreifen
- * fände dieser Test sie und bliebe für immer grün — dieselbe Falle, die der
- * Helfer im Kopf beschreibt und die in dieser Sitzung schon einmal zugeschnappt
- * ist.
+ * Ausführlich: docs/begruendungen/test/teileliste-bestand-db.test.js.md#bedarf-und-bestand-werden-ueber-dieselbe
  *
  * Gegenprobe (durchgeführt): Schlüssel zurück auf `${blNum}|…` gesetzt →
  * dieser Schritt wird rot.
@@ -187,22 +144,17 @@ test('Bedarf und Bestand werden über dieselbe Nummer zusammengeführt', () => {
     'Der alte BrickLink-Schlüssel steht wieder da');
 
   // Die Nachfrage-Seite: derselbe Bestandteil, damit beide zusammenpassen.
-  assert.match(src, /const pkey = `\$\{esc\(p\.part_number\)\}__\$\{p\.color_id\|\|0\}`/,
+  assert.match(src, /const pkey = `\$\{(?:esc\()?p\.part_number\)?\}__\$\{p\.color_id\|\|0\}`/,
     'Die Bestandsabfrage fragt nicht mehr mit der Rebrickable-Nummer');
 
   // Und die Anzeige bleibt BrickLink — genau Marcos Vorgabe.
-  assert.ok(src.includes('data-part="${esc(p.bl_part_number||p.part_number)}"'),
+  assert.ok(src.includes('data-part="${p.bl_part_number||p.part_number}"'),
     'Die Anzeige zeigt nicht mehr die BrickLink-Nummer');
 });
 
 /**
  * Das Blickfeld des Abgleichs kommt aus DIESER Ansicht.
- *
- * Bis hierher übernahm `plFuelleBestand()` stillschweigend den Kontofilter des
- * TEILE-Reiters (`scopeQuery('parts')`) — eine Einstellung, die woanders sitzt
- * und hier wirkt. Nach jeder Anmeldung steht sie ausserdem auf „Alle Konten",
- * womit der Abgleich entgegen Marcos Vorgabe („aber nur die eigenen Sets")
- * immer den ganzen Haushalt zählte.
+ * Ausführlich: docs/begruendungen/test/teileliste-bestand-db.test.js.md#der-bestandsabgleich-liest-sein-blickfel
  *
  * Gegenprobe (durchgeführt): `scopeQuery('parts')` wieder eingesetzt → rot.
  */

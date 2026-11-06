@@ -26,9 +26,6 @@ import org.junit.Test
  */
 class NumericInputTest {
 
-    private fun read(rel: String) =
-        java.io.File(Quellen.wurzel, "$rel").readText()
-
     private fun code(s: String) = s.lines()
         .joinToString("\n") { if (it.trim().startsWith("//") || it.trim().startsWith("*")) "" else it }
 
@@ -116,15 +113,9 @@ class NumericInputTest {
     // ZahlentastaturTest, „wer Zahlen filtert, zeigt auch die
     // Zahlentastatur". Beide sagten dasselbe — ein Feld mit NumericInput-
     // Filter braucht die passende Tastatur —, und die Gegenprobe am 28.09.
-    // hat es sichtbar gemacht: EIN Eingriff (keyboardOptions im
-    // Katalog-Detail entfernt) machte ZWEI Tests rot.
     //
     // Geblieben ist die schaerfere der beiden:
     //   · Sie sieht auch `TextField(`, nicht nur `OutlinedTextField(`.
-    //   · Sie verlangt eine echte `KeyboardType.…`. Die Fassung hier fragte
-    //     nur, ob das Wort `keyboardOptions` im Aufruf vorkommt — ein
-    //     `keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next)`
-    //     ohne jede Tastaturangabe stellte sie zufrieden.
     //
     // Zwei Fassungen derselben Regel sind nicht doppelt sicher, sondern
     // gefaehrlich: Wer die eine entschaerft, sieht die andere nicht, und wer

@@ -1,9 +1,9 @@
 package ch.brickinventoryapp
 
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import ch.brickinventoryapp.data.repository.KontoRepository
 import ch.brickinventoryapp.ui.DesignWahl
 import ch.brickinventoryapp.ui.ladeEinstellungen
-import ch.brickinventoryapp.ui.setzeDesign
 import ch.brickinventoryapp.ui.viewmodel.KontoViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.runBlocking
@@ -14,6 +14,7 @@ import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Before
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
@@ -22,7 +23,7 @@ import org.junit.Test
  * Vorgabe). Die Wahl gilt sofort in der Sitzung, und das Abmelden lässt das
  * Design stehen, bis die Vorgabe des Servers da ist.
  *
- * Gegenproben (30.10.2026, gemessen mit kt-b2/bau.sh):
+ * Gegenproben:
  *   A  in KontoViewModel.waehleDesign() `sitzung.setzeDesign(…)` entfernt → rot
  *      „die Wahl gilt sofort in der ganzen App“ (classic statt noppe)
  *   B  in KontoRepository.setzeEigenesDesign den Schlüssel "design" statt
@@ -34,13 +35,14 @@ import org.junit.Test
  *   E  in Sitzung.ladeEinstellungen() wieder `appTheme = e.appTheme` → rot „die
  *      Einstellungen überschreiben das Design des Kontos nicht“ (classic statt noppe)
  */
+@OptIn(ExperimentalCoroutinesApi::class)
 class DesignJeKontoTest {
 
     private val pfade = PfadServer(
         "/api/v1/settings/theme" to """{"success":true,"theme":"brick","vorgabe":"classic","eigenes":"brick"}""",
         "/api/v1/settings/user/theme" to """{"success":true,"theme":"noppe","vorgabe":"classic","eigenes":"noppe"}""",
     )
-    private val t = TestDienste(pfade.server)
+    private val t = TestDienste(pfade.imTakt(), io = Dispatchers.Main)
 
     @Before
     fun auf() = Dispatchers.setMain(UnconfinedTestDispatcher())
@@ -52,13 +54,13 @@ class DesignJeKontoTest {
         pfade.server.shutdown()
     }
 
-    private fun vm() = t.merke(KontoViewModel(KontoRepository(t.api, t.cache), NummernTexte, t.meldungen, t.sitzung))
+    private fun vm() = t.merke(KontoViewModel(KontoRepository(t.api, t.cache), NummernTexte, t.meldungen, t.sitzung, SitzungsAttrappe()))
 
     @Test
     fun `das Konto zeigt Vorgabe und eigenes Design`() {
         val vm = vm()
         vm.ladeDesign()
-        TestApi.warteBis("Design") { vm.kontoState.value.design != null }
+        assertTrue("Design", vm.kontoState.value.design != null)
         assertEquals(DesignWahl("brick", "classic", "brick"), vm.kontoState.value.design)
         assertEquals(listOf("GET /api/v1/settings/theme"), pfade.anfragen.toList())
     }
@@ -67,7 +69,7 @@ class DesignJeKontoTest {
     fun `die Wahl geht an den Server und gilt sofort in der ganzen App`() {
         val vm = vm()
         vm.waehleDesign("noppe")
-        TestApi.warteBis("gewählt") { vm.kontoState.value.design != null }
+        assertTrue("gewählt", vm.kontoState.value.design != null)
         assertEquals(listOf("POST /api/v1/settings/user/theme"), pfade.anfragen.toList())
         assertEquals("""{"theme":"noppe"}""", pfade.koerper.single())
         assertEquals(DesignWahl("noppe", "classic", "noppe"), vm.kontoState.value.design)
@@ -76,7 +78,7 @@ class DesignJeKontoTest {
         // Zurück zur Vorgabe: leerer Wert, die Antwort nennt das wirksame Design.
         pfade.antworten["/api/v1/settings/user/theme"] = """{"success":true,"theme":"classic","vorgabe":"classic","eigenes":null}"""
         vm.waehleDesign("")
-        TestApi.warteBis("Vorgabe") { vm.kontoState.value.design?.eigenes == null }
+        assertTrue("Vorgabe", vm.kontoState.value.design?.eigenes == null)
         assertEquals("""{"theme":""}""", pfade.koerper.last())
         assertEquals("classic", t.sitzung.state.value.appTheme)
     }
@@ -86,8 +88,7 @@ class DesignJeKontoTest {
         pfade.antworten["/api/v1/settings/theme"] = """{"success":true,"theme":"brick"}"""
         val vm = vm()
         vm.ladeDesign()
-        TestApi.warteBis("Antwort") { pfade.anfragen.isNotEmpty() }
-        Thread.sleep(100)
+        assertTrue("Antwort", pfade.anfragen.isNotEmpty())
         assertNull(vm.kontoState.value.design)
     }
 
@@ -103,7 +104,8 @@ class DesignJeKontoTest {
 
     @Test
     fun `Abmelden laesst das Design stehen, bis die Vorgabe da ist`() {
-        t.sitzung.aendere { it.copy(appTheme = "noppe", isLoggedIn = true) }
+        t.sitzung.setzeDesign("noppe")
+        t.sitzung.angemeldet(admin = false)
         t.sitzung.abgemeldet()
         assertEquals("noppe", t.sitzung.state.value.appTheme)
         assertEquals(false, t.sitzung.state.value.isLoggedIn)

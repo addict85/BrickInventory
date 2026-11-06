@@ -1,43 +1,9 @@
 /**
- * API-Paritätstest: EINE Adresse, BEIDE Ausweise — Session und Bearer-Token
- * müssen für dieselben Daten dieselben Informationen liefern.
- *
- * ── Was hier stand, und was es angerichtet hat ──────────────────────────────
- *
- * Hier stand „Die Session-Routen der Webapp (/api/...) und die Token-Routen der
- * Android-App (/api/v1/...)". Das beschrieb eine Teilung, die es seit
- * Nachtrag 70 nicht mehr gibt: Die doppelten Routen sind zusammengelegt,
- * routes/auth.ts ist von /api/auth nach /api/v1/auth umgezogen, alle fünf
- * Dateien in routes/ hängen unter /api/v1 — und `const PAIRS = []` unten ist
- * leer, es gibt also kein einziges Paar mehr zu vergleichen.
- *
- * Dieser Kommentar hat mich dazu gebracht, dem Benutzer „zwei API-Oberflächen"
- * als Architekturproblem zu melden und das Entfernen der „alten" vorzuschlagen.
- * Entfernt worden wären lebende Routen, an denen Weboberfläche UND App hängen.
- * Aufgefallen ist es erst beim Nachsehen, welche Datei denn nun welche Adresse
- * bedient.
- *
- * Ein Kommentar, der eine überholte Struktur beschreibt, ist deshalb nicht
- * bloss unaufgeräumt: Er ist die Quelle, aus der jemand — Mensch oder
- * Maschine — eine falsche Entscheidung ableitet, und zwar mit der Zuversicht,
- * es nachgelesen zu haben.
- *
- * Aufbau: Der ECHTE Stack läuft — beide Router-Verzeichnisse (routes/ und
- * routes/api_v1/, die gemeinsam EINE Oberfläche unter /api/v1 bilden), die
- * gemeinsamen Handler (utils/handlers) und das echte db-Modul gegen die Test-DB. Es wird
- * NICHTS gestubbt; die Authentifizierung erfolgt über eine injizierte
- * Session (die echten requireLogin/requireToken-Middlewares akzeptieren sie
- * beide). Zusätzlich wird der Bearer-Token-Pfad (so authentifiziert Android
- * wirklich) einmal end-to-end gegen den Session-Pfad verglichen.
- *
- * Vergleich: Von beiden Antworten werden nur die bekannten Envelope-Felder
- * (success, count, page, page_size) entfernt — der Rest muss deep-equal sein.
- * So fällt JEDE inhaltliche Abweichung zwischen Webapp- und Android-API auf,
- * auch bei künftigen Feldern.
- *
- * Voraussetzung wie test/catalog-api.test.js: Test-DB (Inhalt wird geleert!)
- * via TEST_DATABASE_URL, Default postgres://tester:test@localhost/cattest.
- * Ohne erreichbare DB: skip. Ausführen: npm test  /  npm run test:api
+ * EINE Adresse, BEIDE Ausweise: Sitzung (Weboberfläche) und Bearer-Token
+ * (Android-App) müssen für dieselbe Route dasselbe liefern. Doppelte Routen
+ * gibt es nicht mehr; geprüft wird, dass keine Route nur an einer Ausweisart
+ * hängt.
+ * Ausführlich: docs/begruendungen/test/api-parity.test.js.md#kopf
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -70,23 +36,8 @@ async function seed() {
   await db.run('DROP SCHEMA public CASCADE');
   await db.run('CREATE SCHEMA public');
   await db.initSchema();
-  // ── Und die Migrationen, nicht nur initSchema() ──────────────────────────
-  //
-  // Hier endete der Aufbau nach initSchema(). Das ergab ein Schema, das KEINE
-  // echte Installation hat: initSchema() laeuft nur bei einer
-  // Versionsaenderung, die nummerierten Migrationen laufen IMMER. Neun
-  // Tabellen gibt es ueberhaupt nur in ihrer Migration (account_links,
-  // wishlist, vouchers, price_alerts, …), und Spalten, die eine Migration
-  // LOESCHT, standen hier noch.
-  //
-  // Das ist nicht theoretisch: Genau daran ist GET /api/v1/sets zerbrochen.
-  // schema.sql legt sets.name an, damit Migration 0014 sie anfassen kann, und
-  // Migration 0033 loescht sie am Ende der Kette. Auf DIESEM halben Schema gab
-  // es sie noch — und `SELECT s.*, c.name` hatte damit zwei Spalten namens
-  // name. GEMESSEN: „column reference \"name\" is ambiguous", die ganze
-  // Set-Liste antwortete mit 500, und der Fehler war nur hier zu sehen.
-  //
-  // Eine Paritaetspruefung muss gegen das Schema laufen, das die Nutzer haben.
+  // Und die Migrationen, nicht nur initSchema()
+  // Ausführlich: docs/begruendungen/test/api-parity.test.js.md#client
   const client = await db.pool.connect();
   try { await _req('db/migrate.js').runMigrations(client); } finally { client.release(); }
 
@@ -96,13 +47,7 @@ async function seed() {
   USER.id = (await db.get(`SELECT id FROM users WHERE username = $1`, [USER.username])).id;
 
   // Bearer-Token wie ihn die Android-App nutzt — als HASH abgelegt.
-  //
-  // Der Kommentar hier versprach früher, validateToken() migriere einen
-  // Klartext-Token beim ersten Treffer selbst. Diesen Rückfallpfad gibt es
-  // nicht mehr (er hätte einen erratenen Token dauerhaft gültig gemacht), und
-  // seither seedete dieser Test einen Token, mit dem man sich nicht anmelden
-  // kann. Aufgefallen ist es nie, weil der ganze Test ohne Postgres
-  // übersprungen wird.
+  // Ausführlich: docs/begruendungen/test/api-parity.test.js.md#stelle
   await db.run(`INSERT INTO api_tokens (token, user_id, label) VALUES ($1, $2, 'parity') ON CONFLICT DO NOTHING`,
     [_req('src/konto/auth.js').hashToken(TOKEN), USER.id]);
 
@@ -146,25 +91,8 @@ async function seed() {
     `INSERT INTO set_acquisitions (user_id, set_number, quantity, purchase_price, condition)
      VALUES ($1,'40567-1',1,35.00,'N'), ($1,'40568-1',1,35.00,'N') ON CONFLICT DO NOTHING`, [USER.id]);
 
-  // ── Einstellungen: die Vorlage muss BEIDE Wege abdecken ────────────────────
-  //
-  // Vorher stand price_cache_ttl hier als BENUTZER-Einstellung. Damit lasen
-  // beide APIs dieselbe Tabelle, und der globale Weg wurde nie berührt — die
-  // v1-Route las ausschliesslich user_settings und lieferte sonst ihre fest
-  // verdrahtete 24. Gemessen: global 48 → Webapp 48, App 24. Der Test war
-  // grün, weil seine Vorlage die einzige Zeile schrieb, die den Fehler
-  // verdeckt.
-  //
-  // Jetzt trägt die Vorlage beide Fälle:
-  //   price_cache_ttl  NUR global   → ein globaler Wert muss die App erreichen
-  //   currency         beides       → der Wert des Nutzers muss gewinnen
-  //
-  // DO UPDATE statt DO NOTHING ist hier Bedingung: initSchema() legt
-  // price_cache_ttl bereits global mit '24' an — ausgerechnet dem Wert, den
-  // die v1-Route fest verdrahtet hatte. Mit DO NOTHING bliebe die 24 stehen,
-  // beide APIs lieferten 24, und der Vergleich wäre wieder grün, ohne den
-  // globalen Weg berührt zu haben. Kein Wert der Vorlage darf mit einer
-  // Vorgabe übereinstimmen, sonst prüft die Zusicherung nur die Vorgabe.
+  // Einstellungen: die Vorlage muss BEIDE Wege abdecken
+  // Ausführlich: docs/begruendungen/test/api-parity.test.js.md#stelle-2
   await db.run(
     `INSERT INTO user_settings (user_id, key, value)
      VALUES ($1,'currency','CHF'), ($1,'user_default_condition','U') ON CONFLICT DO NOTHING`,
@@ -197,34 +125,11 @@ function core(body) {
   return out;
 }
 
-// ── Paar-Definitionen: Webapp-Pfad ↔ Android-Pfad ────────────────────────────
-// Verbliebene ECHTE Paare: zwei Adressen für dieselben Daten. Die Finanz-Paare
-// standen bis Etappe 5 hier — sie sind zusammengelegt und werden weiter unten
-// unter „eine Route, beide Ausweise" geprüft.
-// Nach Etappe 6 gibt es KEIN Lese-Paar mehr: Was doppelt existierte, ist
-// zusammengelegt und wird weiter unten unter „eine Route, beide Ausweise"
-// geprüft. Die Liste bleibt stehen, weil ein künftiges Paar hier wieder
-// auftauchen soll, statt still ungeprüft zu bleiben.
-const PAIRS = [];
-
 test('API-Parität Webapp ↔ Android', async (t) => {
   if (!(await dbReachable())) {
     await db.pool.end().catch(() => {});
-    // REQUIRE_DB=1 (CI): Ein Überspringen ist hier KEIN akzeptabler Ausgang.
-    // Vorher war die Suite in jeder Umgebung ohne Datenbank grün — also
-    // ausgerechnet dort, wo niemand hinschaut. Wer die Datenbank erwartet,
-    // bekommt jetzt einen Fehlschlag statt eines stillen Skips.
     if (process.env.REQUIRE_DB === '1') {
       throw new Error(`REQUIRE_DB=1, aber die Test-Datenbank ist nicht erreichbar: ${DB_URL}`);
-    }
-    // REQUIRE_DB=1 (in CI gesetzt) verbietet das Überspringen.
-    //
-    // Ohne diese Sperre war die Suite in jeder Umgebung ohne Postgres GRÜN —
-    // inklusive CI, falls der Service-Container mal nicht hochkommt. Genau
-    // die Tests, die am meisten absichern, hätten dann stillschweigend nichts
-    // geprüft. Lieber ein lauter Fehlschlag.
-    if (process.env.REQUIRE_DB === '1') {
-      throw new Error(`REQUIRE_DB=1, aber die Test-Datenbank ist nicht erreichbar.`);
     }
     t.skip(`Test-DB nicht erreichbar (${DB_URL}) — Suite übersprungen`);
     return;
@@ -239,24 +144,8 @@ test('API-Parität Webapp ↔ Android', async (t) => {
       req.session = { userId: USER.id, username: USER.username, isAdmin: false };
     next();
   });
-  // ── Die Einhaengepunkte kommen aus server.ts ─────────────────────────────
-  //
-  // Sie standen hier als vier feste Zeilen. Beim Zusammenlegen der
-  // API-Oberflaechen sind sie still falsch geworden: Der Pruefstand sprach
-  // weiter /api/settings an, waehrend der Server das laengst unter
-  // /api/v1/settings ausliefert. Ein Pruefstand, der die Verdrahtung
-  // ABSCHREIBT, prueft eine Verdrahtung, die es nicht gibt.
-  // ── Die REIHENFOLGE ist Teil der Verdrahtung ─────────────────────────────
-  //
-  // /api/v1 (der Index) muss ZUERST stehen, genau wie in server.ts. Sonst
-  // faengt der sitzungsgebundene Router unter /api/v1/sets die Anfragen ab,
-  // die eigentlich die Token-Fassung beantworten soll — gemessen: 401
-  // „Nicht angemeldet" auf /api/v1/sets/…/acquisitions mit gueltigem Token.
-  //
-  // _req() statt require(ROOT/...): Die kompilierten Dateien liegen seit
-  // hardened-59 unter dist/, nicht mehr neben den .ts-Quellen. Diese eine
-  // Zeile lud noch aus dem Quellordner und warf MODULE_NOT_FOUND — bemerkt
-  // hat es niemand, weil der ganze Test ohne Postgres übersprungen wird.
+  // Die Einhaengepunkte kommen aus server.ts
+  // Ausführlich: docs/begruendungen/test/api-parity.test.js.md#stelle-3
   app.use('/api/v1',       _req('routes/api_v1/index.js'));
   for (const r of routerEinhaengungen())
     app.use(r.mount, _req('routes/' + r.name + '.js'));
@@ -268,41 +157,21 @@ test('API-Parität Webapp ↔ Android', async (t) => {
     return { status: r.status, body: await r.json().catch(() => null) };
   };
 
-  for (const [name, webPath, v1Path] of PAIRS) {
-    await t.test(`Parität: ${name}`, async () => {
-      const [web, v1] = await Promise.all([get(webPath), get(v1Path)]);
-      assert.equal(web.status, 200, `${webPath} -> ${web.status}: ${JSON.stringify(web.body)}`);
-      assert.equal(v1.status, 200, `${v1Path} -> ${v1.status}: ${JSON.stringify(v1.body)}`);
-      assert.deepEqual(core(v1.body), core(web.body),
-        `Inhalt weicht ab zwischen ${webPath} und ${v1Path}`);
-    });
-  }
-
-  // ── Zusammengelegte Routen: EINE Adresse, BEIDE Ausweise (Nachtrag 70) ────
-  //
-  // Die Erfassungs-Routen standen bis hierher doppelt — je einmal für Sitzung
-  // und Token — und wurden oben paarweise gegeneinander geprüft. Genau diese
-  // Doppelung war die Fehlerquelle: Sechs der letzten Meldungen kamen daher,
-  // zuletzt zwei verschiedene Marktpreise für denselben Vorgang.
-  //
-  // Jetzt gibt es nur noch eine Adresse. Die Frage „verhalten sich beide
-  // Clients gleich?" wird dadurch nicht hinfällig, sondern schärfer: Dieselbe
-  // Route muss mit BEIDEN Ausweisen erreichbar sein und dasselbe liefern.
-  // Genau das prüft dieser Block — und er würde rot, wenn jemand die Route
-  // versehentlich an eine der beiden Auth-Arten bindet.
+  // Zusammengelegte Routen: EINE Adresse, BEIDE Ausweise
+  // Ausführlich: docs/begruendungen/test/api-parity.test.js.md#for-stelle
   for (const [name, pfad] of [
     ['Set-Erfassungen',     '/api/v1/sets/75192-1/acquisitions'],
     ['Teil-Erfassungen',    '/api/v1/parts/3020/0/acquisitions'],
     ['Minifig-Erfassungen', '/api/v1/minifigs/sw0001/acquisitions'],
-    // Nachtrag 72: Minifiguren-Liste und manuelle Minifiguren sind ebenfalls
+    // Minifiguren-Liste und manuelle Minifiguren sind ebenfalls
     // zusammengelegt — vorher standen sie oben als PAAR, jetzt gehören sie
     // hierher, wo „eine Route, beide Ausweise" geprüft wird.
     ['Minifiguren-Liste',   '/api/v1/minifigs'],
     ['Manuelle Minifiguren', '/api/v1/minifigs/manual'],
-    // Nachtrag 74: dieselbe Umstellung für die Sets.
+    // dieselbe Umstellung für die Sets.
     ['Sets-Liste', '/api/v1/sets'],
     ['Set-Detail', '/api/v1/sets/75192-1'],
-    // Nachtrag 73: dieselbe Umstellung für die Teile.
+    // dieselbe Umstellung für die Teile.
     ['Teile-Liste', '/api/v1/parts'],
     ['Teile-Liste (Suche)', '/api/v1/parts?search=Brick&page=1'],
     ['Teile-Farben', '/api/v1/parts/colors'],
@@ -376,12 +245,8 @@ test('API-Parität Webapp ↔ Android', async (t) => {
     // Die Webapp-Sicht und die kuratierte Sicht der App sind NICHT
     // zusammengelegt, und das mit Absicht: Die eine trägt die globalen
     // Schlüssel und die Admin-Felder, die die App weder braucht noch bekommen
-    // soll. Zwei verschiedene Antworten, nicht zwei Fassungen derselben —
-    // geprüft wird deshalb, dass die GEMEINSAMEN Werte übereinstimmen.
-    //
-    // Gelesen wird über /settings/raw: Die frühere Adresse GET /api/settings/
-    // lieferte dasselbe in einer anderen Hülle und hatte keinen Aufrufer; sie
-    // ist beim Zusammenlegen der API-Oberflächen entfallen.
+    // soll. Zwei verschiedene Antworten, nicht zwei Fassungen derselben — …
+    // Ausführlich: docs/begruendungen/test/api-parity.test.js.md#web-stelle
     const web = (await get('/api/v1/settings/raw')).body.settings;
     const v1 = (await get('/api/v1/settings')).body.settings;
     assert.equal(v1.currency, web.currency);
@@ -408,23 +273,8 @@ test('API-Parität Webapp ↔ Android', async (t) => {
   });
 
   await t.test('Bewertung: gleiche Antwortform mit beiden Ausweisen', async () => {
-    // ── Was hier vorher stand, und warum es weg ist ─────────────────────────
-    //
-    // Diese Prüfung hiess „Bewertung liefert rate_limit" und begründete sich
-    // mit: „Die Webapp zeigt daraus den API-Verbrauch an." Das stimmte nicht.
-    // Nachgemessen über beide Clients in dieser Ablage: Den API-Verbrauch
-    // zeigen Einstellungsseite und Android aus `rate_limits` (PLURAL) von
-    // /v1/admin/cache-stats — den Singular aus der Bewertung las niemand.
-    // Auch die zweite Behauptung im Quelltext („wie in /api/finance/valuation,
-    // Parität") war falsch: Dort gab es das Feld gar nicht.
-    //
-    // Gekostet hat es drei Datenbankabfragen JE AUFRUF (gemessen), bei jedem
-    // Öffnen des Finanzreiters und nach jedem Erfassen. Das Feld ist raus;
-    // scripts/check-antwortfelder.js hält es künftig draussen.
-    //
-    // Die eigentliche Aussage dieser Prüfung — Sitzung und Token bekommen
-    // DASSELBE — bleibt, jetzt an der ganzen Antwortform statt an einem Feld.
-    // Sie ist damit sogar breiter als vorher.
+    // Was hier vorher stand, und warum es weg ist
+    // Ausführlich: docs/begruendungen/test/api-parity.test.js.md#mitsitzung
     const mitSitzung = (await get('/api/v1/finance/valuation')).body;
     const mitToken = (await get('/api/v1/finance/valuation',
       { authorization: `Bearer ${TOKEN}`, 'x-no-session': '1' })).body;
@@ -446,9 +296,8 @@ test('API-Parität Webapp ↔ Android', async (t) => {
     // Vorher verglich diese Prüfung die Webapp-Route gegen die v1-Route. Nach
     // dem Zusammenlegen gibt es nur eine; die Gleichwertigkeit der Ausweise
     // steht oben. Was hier bleibt, ist die INHALTLICHE Aussage: Der Verlauf
-    // liefert überhaupt Punkte, und zwar je Zustand getrennt (seit
-    // hardened-89 gibt es kein Feld `history` mehr — die frühere Fassung las
-    // genau das und lief ins Leere).
+    // liefert überhaupt Punkte, und zwar je Zustand getrennt (seit …
+    // Ausführlich: docs/begruendungen/test/api-parity.test.js.md#b-stelle
     const b = (await get('/api/v1/sets/75192-1/price-history')).body;
     const pts = h => (h || []).filter(x => !x.is_purchase_price);
     assert.equal(b.success, true);
@@ -476,7 +325,7 @@ test('API-Parität Webapp ↔ Android', async (t) => {
   await t.test('PUT Set: Webapp- und Android-Route bewirken dasselbe', async () => {
     const body = JSON.stringify({ quantity: 4, purchase_price: 42.5, condition: 'U' });
     const hdr = { 'content-type': 'application/json' };
-    // Nachtrag 74: Es gibt nur noch EINE Schreibroute. Geprüft wird deshalb,
+    // Es gibt nur noch EINE Schreibroute. Geprüft wird deshalb,
     // dass sie über BEIDE Ausweise dieselbe Wirkung hat — mit Sitzung am einen
     // Set, mit Token am anderen.
     const put = (p, extra = {}) =>
@@ -496,12 +345,11 @@ test('API-Parität Webapp ↔ Android', async (t) => {
       (await get(`/api/v1/sets/${sn}/acquisitions`)).body.acquisitions[0].id;
     const hdr = { 'content-type': 'application/json' };
     const body = JSON.stringify({ quantity: 2, purchase_price: 30, condition: 'U' });
-    // Zusammengelegt (Nachtrag 70): Es gibt nur noch EINE Schreibroute. Geprüft
+    // Zusammengelegt: Es gibt nur noch EINE Schreibroute. Geprüft
     // wird deshalb, dass sie über BEIDE Ausweise dieselbe Wirkung hat — mit
     // Sitzung am einen Set, mit Token am anderen, danach müssen beide Sets
-    // denselben Stand zeigen. Das ist die Aussage, die nach dem Umbau zählt:
-    // nicht „zwei Routen sind sich einig", sondern „eine Route behandelt beide
-    // Clients gleich".
+    // denselben Stand zeigen. Das ist die Aussage, die nach dem Umbau zählt: …
+    // Ausführlich: docs/begruendungen/test/api-parity.test.js.md#ra-stelle
     const rA = await fetch(base + `/api/v1/sets/40567-1/acquisitions/${await idOf('40567-1')}`,
       { method: 'PUT', headers: hdr, body });
     const rB = await fetch(base + `/api/v1/sets/40568-1/acquisitions/${await idOf('40568-1')}`,
@@ -518,7 +366,7 @@ test('API-Parität Webapp ↔ Android', async (t) => {
   });
 
   await t.test('DELETE Set: Webapp- und Android-Route bewirken dasselbe', async () => {
-    // Ebenfalls eine Route, beide Ausweise (Nachtrag 74).
+    // Ebenfalls eine Route, beide Ausweise.
     assert.equal((await fetch(base + '/api/v1/sets/40567-1',
       { method: 'DELETE' })).status, 200, 'Löschen mit Sitzung');
     assert.equal((await fetch(base + '/api/v1/sets/40568-1',
@@ -549,11 +397,7 @@ test('API-Parität Webapp ↔ Android', async (t) => {
     // dem Zusammenlegen der API-Oberflaechen gibt es nur noch EINEN
     // Adressraum; die alte Adresse antwortet gar nicht mehr, und der Test
     // haette einen 404 fuer eine bestandene Abweisung gehalten.
-    //
-    // Was WEITER gilt und hier geprueft wird: Es gibt zwei Absicherungen im
-    // Baum — requireToken (nimmt Sitzung ODER Bearer) und requireLogin (nur
-    // Sitzung). Ohne Ausweis muss JEDE davon mit 401 abweisen, nicht mit 200
-    // und nicht mit einer Weiterleitung auf eine HTML-Seite.
+    // Ausführlich: docs/begruendungen/test/api-parity.test.js.md#mittoken
     const mitToken = await get('/api/v1/sets', { 'x-no-session': '1' });
     const nurSitzung = await get('/api/v1/settings/raw', { 'x-no-session': '1' });
     assert.equal(mitToken.status, 401, 'requireToken laesst ohne Ausweis durch');

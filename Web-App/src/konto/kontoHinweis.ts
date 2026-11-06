@@ -1,10 +1,10 @@
 /** Der Inhaber erfährt per Mail, wenn sich an seinen Zugängen etwas ändert:
  * Ein Eindringling, der Passwort oder Passkey setzt, bliebe sonst unbemerkt. */
-import { mailEingerichtet, sendKontoHinweisMail } from '../infra/mailer';
-import type { KontoHinweis } from '../infra/mailer';
-import { logAndContinue } from '../infra/httpError';
+import { mailEingerichtet, sendKontoHinweisMail } from '../mail/mailer';
+import type { KontoHinweis } from '../mail/mailer';
+import { logAndContinue } from '../infra/fehler';
 import { householdStatus } from '../haushalt/haushalt';
-import { getSetting } from './settings';
+import { getSetting } from '../einstellungen/settings';
 import { aktiveVerwalter, profilZeile as profil } from './repository/konten';
 
 type Angaben = { name?: string | undefined; konto?: string | undefined; durch?: string | undefined };
@@ -22,6 +22,8 @@ export async function meldeKontoaenderung(uid: number, art: KontoHinweis, angabe
 
 /** Nebenher: Die Antwort wartet nicht auf den Mailserver, und ein Fehler macht die Änderung nicht rückgängig. */
 export function hinweisNebenher(uid: number, art: KontoHinweis, name?: string, angaben: Angaben = {}): void {
+  // Auch ohne Mailadresse eine Spur im Protokoll; ohne Namen und Label, die frei getippt sind.
+  console.info(`[konto] ${art}`, { ereignis: art, konto: uid });
   meldeKontoaenderung(uid, art, { ...angaben, name }).catch(logAndContinue(`konto:hinweismail ${art}`));
 }
 

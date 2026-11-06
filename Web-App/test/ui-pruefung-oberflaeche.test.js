@@ -34,7 +34,7 @@ test('Gutscheinnummer: erst Trenner weg, dann Vierergruppen; ohne PDF steht es i
 });
 
 test('Anmeldefehler wird vorgelesen (role=alert) und steht da', async () => {
-  const { w, d } = await oeffneOberflaeche({ '/v1/auth/login': { $status: 401, success: false, error: 'Benutzername oder Passwort falsch' } },
+  const { w, d } = await oeffneOberflaeche({ '/v1/auth/login': { $status: 401, success: false, error: 'Benutzername oder Passwort falsch', code: 'anmeldedaten_ungueltig' } },
     { angemeldet: false });
   try {
     await warte(() => typeof d.getElementById('btn-login')?.onclick === 'function');
@@ -84,7 +84,7 @@ test('Teile-Zahl: Sammlung und Teile-Reiter zeigen dieselbe Summe mit Aufschlüs
 });
 
 test('Preis auf der Kachel ist beschriftet, Zustand und Datum benannt (de und en)', async () => {
-  for (const [sprache, art, zustand, gekauft, unbekannt] of [['de', 'Kauf', 'Neuware', 'Gekauft', 'Unbekannt'], ['en', 'Paid', 'New', 'Bought', 'Unknown']]) {
+  for (const [sprache, art, zustand, gekauft, unbekannt] of [['de', 'Kaufpreis', 'Neuware', 'Gekauft', 'Unbekannt'], ['en', 'Purchase price', 'New', 'Bought', 'Unknown']]) {
     const { w, d } = await oeffneOberflaeche({ '/v1/sets': { success: true, sets: [SET], total: 1, themes: ['Ideas'] } }, { sprache });
     try {
       await warte(() => d.querySelector('#gallery .sc'));
@@ -97,13 +97,16 @@ test('Preis auf der Kachel ist beschriftet, Zustand und Datum benannt (de und en
   }
 });
 
-test('offline: Das Diagramm sagt „Nicht verfügbar – offline“ statt weiter „Laden…“', async () => {
+test('offline: Das Diagramm sagt „nicht verfügbar“ mit Grund und Knopf statt weiter „Laden…“', async () => {
   const netzweg = () => { throw new TypeError('Failed to fetch'); };
   const { w, d } = await oeffneOberflaeche({ '/v1/finance/valuation': netzweg, '/v1/finance/portfolio-history': netzweg });
   try {
     await reiter(w, 'finance');
-    await warte(() => /offline/.test(text(d.getElementById('portfolio-chart'))));
-    assert.equal(text(d.getElementById('portfolio-chart')), 'Nicht verfügbar – offline');
+    // Grund und Knopf stehen einmal, bei der Liste; das Diagramm sagt nur, dass es fehlt (UI-Prüfung 16).
+    await warte(() => /nicht erreichbar/.test(text(d.getElementById('fin-tbl'))));
+    assert.match(text(d.getElementById('fin-tbl')), /Keine Verbindung zum Server.*Erneut versuchen/);
+    assert.equal(text(d.getElementById('portfolio-chart')), 'Diagramm nicht verfügbar');
+    assert.equal(d.querySelectorAll('#tab-finance [data-click="loadFinance"], #tab-finance [data-click="loadPortfolioChart"]').length, 1);
   } finally { w.close(); }
 });
 
@@ -128,7 +131,7 @@ test('Hintergrundarbeiten: technischer Fehler als Satz, Einzelheiten aufklappbar
     '/v1/admin/jobs': { success: true, jobs: {}, schedules: {},
     db: { csvCache: {}, blMapping: {} } }, '/v1/admin/auftraege': { success: true, zusammenfassung: [{ art: 'anleitung', status: 'fehler', anzahl: 1 }],
     job_prozess: { laeuft: true }, pausen: [], bildbedarf: 0,
-    auftraege: [{ id: 7, art: 'anleitung', status: 'fehler', set_number: '10294-1', fehler: roh, versuche: 3, max_versuche: 3 }] } });
+    auftraege: [{ id: '7', art: 'anleitung', status: 'fehler', set_number: '10294-1', fehler: roh, versuche: 3, max_versuche: 3 }] } });
   try {
     await reiter(w, 'monitor');
     await warte(() => d.querySelector('#auftraege-karte .fehler-kasten'), 3000);

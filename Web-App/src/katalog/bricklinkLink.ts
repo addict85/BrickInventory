@@ -1,8 +1,8 @@
 // Ausführlich: docs/begruendungen/src/katalog/bricklinkLink.ts.md#abschnitt
-import { logAndContinue, meldeUndLiefere } from '../infra/httpError';
-import { bricklinkRequest } from '../../clients/bricklink';
-import { getGlobalSetting } from '../konto/settings';
-import { mitVersion, ohneVersion } from '../sets/setNummer';
+import { logAndContinue, meldeUndLiefere } from '../infra/fehler';
+import { bricklinkRequest } from './quellen';
+import { getGlobalSetting } from '../einstellungen/settings';
+import { mitVersion, ohneVersion } from '../infra/setNummer';
 import * as cache from './repository/katalogCache';
 
 export type BlType = 'SET' | 'GEAR' | 'BOOK' | 'MINIFIG' | 'NONE';
@@ -89,7 +89,7 @@ export async function resolveViaApi(setNumber: string): Promise<BlLink> {
   // Ohne Zugang bei der Annahme bleiben, nichts cachen.
   if (!await getGlobalSetting('bricklink_consumer_key')) return toLink(n, null);
 
-  const notFound = (e: any) => e?.detail?.meta?.code === 404 || e?.detail?.meta?.code === 400;
+  const notFound = (e: unknown) => [404, 400].includes((e as { detail?: { meta?: { code?: number } } } | null)?.detail?.meta?.code ?? 0);
 
   const probe = async (type: Exclude<BlType, 'NONE'>, no: string) => {
     try { await bricklinkRequest('GET', `/items/${type.toLowerCase()}/${no}`); return true; }

@@ -113,7 +113,7 @@ Nummer allein zu bilden gewesen waere.
 
 Sie reist deshalb mit der Liste mit. Der Name kommt aus rb_sets, wenn es
 ihn gibt; fehlt er, sucht die Adresse eben nur nach der Nummer
-(src/finanzen/preisvergleich.ts). Immer gesetzt, nie leer — ausser die Nummer
+(src/katalog/preisvergleich.ts). Immer gesetzt, nie leer — ausser die Nummer
 waere leer, und dann gaebe es den Merkposten nicht.
 ```
 

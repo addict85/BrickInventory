@@ -1,0 +1,18 @@
+Gegenprobe: Eine Auftragsaktion läuft, ihr Satz kommt aber nicht in den Meldungskanal
+Modul: feature-verwaltung
+Test: ch.brickinventoryapp.HintergrundarbeitenTest
+Rot: eine Aktion laeuft im ViewModel
+
+diff --git a/Android-App/feature-verwaltung/src/main/java/ch/brickinventoryapp/ui/viewmodel/MonitoringViewModel.kt b/Android-App/feature-verwaltung/src/main/java/ch/brickinventoryapp/ui/viewmodel/MonitoringViewModel.kt
+index 59fa303..4de582b 100644
+--- a/Android-App/feature-verwaltung/src/main/java/ch/brickinventoryapp/ui/viewmodel/MonitoringViewModel.kt
++++ b/Android-App/feature-verwaltung/src/main/java/ch/brickinventoryapp/ui/viewmodel/MonitoringViewModel.kt
+@@ -166,7 +166,7 @@ class MonitoringViewModel @Inject constructor(
+     }
+ 
+     private fun melde(aktion: suspend () -> String) {
+-        viewModelScope.launch { meldungen.zeige(aktion()) }
++        viewModelScope.launch { aktion() }
+     }
+ 
+     private suspend fun <T> nachAuftrag(r: Ergebnis<T>, erfolg: (T) -> String): String {

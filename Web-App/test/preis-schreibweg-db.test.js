@@ -1,36 +1,6 @@
 /**
  * Ein BrickLink-Preis wird auf EINEM Weg weggeschrieben.
- *
- * ── Der Fehler, den das verhindert ──────────────────────────────────────────
- * Die Schreibregel „erst in price_cache, dann — wenn ein Preis drinsteht —
- * als Punkt in price_history" stand dreimal da: einmal im Anfrageweg
- * (src/finanzen/financeCalc.ts → fetchPrice → tryFetch) und zweimal im Nachtjob
- * (jobs/priceJob.ts, Hauptweg und Zustands-Rueckfall). Die dritte Fassung war
- * eine gekuerzte.
- *
- * Nachgemessen, bevor etwas geaendert wurde — ein Set, dessen angefragter
- * Zustand 'N' keinen Preis hat, der andere ('U') schon, zwei Laeufe:
- *
- *                        Job          Anfrageweg
- *   BrickLink-Abrufe       4               2
- *   price_cache        nur 'U'      'N'(0) und 'U'
- *   price_history       leer             'U'
- *
- * Zwei Folgen, beide echt:
- *   • Der Rueckfall sprang mit `return` heraus, sobald der andere Zustand
- *     einen Preis hatte. Die Null-Zeile fuer 'N' wurde nie geschrieben, also
- *     fand der naechste Lauf nichts Frisches und fragte wieder — zwei Abrufe
- *     je Set und Lauf, dauerhaft, auf Kosten des BrickLink-Tageskontingents.
- *   • Im Rueckfall wurde price_history gar nicht bedient. Beim Nachtlauf
- *     deckt der Tages-Schnappschuss am Ende das noch zu; beim sofortigen
- *     Abruf nach dem Anlegen eines Sets (refreshPriceForSet) gibt es keinen
- *     Schnappschuss — dort fehlte der Punkt einfach.
- *
- * ── Warum das ein Verhaltenstest ist ────────────────────────────────────────
- * Die Aussage ist „beide Wege hinterlassen denselben Zustand in zwei
- * Tabellen und kosten gleich viele Abrufe". Am Quelltext liesse sich nur
- * ablesen, dass beide dieselbe Funktion aufrufen — nicht, dass dabei
- * dasselbe herauskommt.
+ * Ausführlich: docs/begruendungen/test/preis-schreibweg-db.test.js.md#kopf
  *
  * Gegenproben (durchgefuehrt):
  *   a) In speicherePreis() den price_history-Schreibvorgang entfernt
@@ -57,6 +27,7 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 
 const ROOT = path.join(__dirname, '..');
 const _req = require('./helpers/sources').buildAndRequire();
+const { dbOderSkip } = require('./helpers/db');
 const db = _req('db/database.js');
 
 // BrickLink vorgeben, BEVOR financeCalc/priceJob getPriceGuide herausziehen.
@@ -85,12 +56,7 @@ async function spuren(sn) {
 }
 
 test('ein BrickLink-Preis wird auf einem Weg weggeschrieben', { concurrency: 1 }, async (t) => {
-  try { await db.initSchema(); }
-  catch (e) {
-    if (process.env.REQUIRE_DB === '1')
-      throw new Error(`REQUIRE_DB=1, aber die Test-DB ist nicht erreichbar: ${e.message}`);
-    t.skip('Test-DB nicht erreichbar'); return;
-  }
+  if (!await dbOderSkip(t, _req, { migrieren: false })) return;
 
   const JOB = `schreibweg-${process.pid}-job`;
   const WEG = `schreibweg-${process.pid}-weg`;

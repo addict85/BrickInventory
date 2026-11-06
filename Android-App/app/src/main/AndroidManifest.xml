@@ -50,7 +50,7 @@
 
     <!--
       Die App aktualisiert sich selbst aus dem GitHub-Release (util/AppUpdate.kt).
-      Ab Android 8 — und minSdk ist 26, also auf JEDEM Geraet — genuegt diese
+      Ab Android 8 — und minSdk ist 30, also auf JEDEM Geraet — genuegt diese
       Berechtigung allein nicht: Der Nutzer muss der App zusaetzlich einmal
       erlauben, Apps aus unbekannten Quellen zu installieren. Genau dorthin
       fuehrt der Knopf in den Einstellungen, wenn die Erlaubnis fehlt.
@@ -64,12 +64,17 @@
             <action android:name="android.intent.action.VIEW" />
             <data android:scheme="otpauth" />
         </intent>
+        <!-- Den System-Installer sehen, um seinen Bestätigungsdialog zu prüfen
+             (installerZiel, util/AppUpdate.kt). -->
+        <intent>
+            <action android:name="android.content.pm.action.CONFIRM_INSTALL" />
+        </intent>
     </queries>
 
     <!--
       tools:targetApi="33" fuer localeConfig und enableOnBackInvokedCallback:
       Lint meldet beide als UnusedAttribute, weil sie erst ab API 33 wirken und
-      minSdk 26 ist. Das ist KEIN Fehler, sondern die Absicht — auf aelteren
+      minSdk 30 ist. Das ist KEIN Fehler, sondern die Absicht — auf aelteren
       Geraeten werden sie ignoriert, und die App funktioniert dort ohne sie.
       `tools:targetApi` ist die vorgesehene Form, das zu sagen; es legt keine
       Warnung still, sondern beantwortet sie.
@@ -187,20 +192,42 @@
                 android:name="androidx.work.WorkManagerInitializer"
                 android:value="androidx.startup"
                 tools:node="remove" />
+            <!-- Kein Baseline-Profil (app/build.gradle.kts): Der Profileinstaller hätte nichts zu tun. -->
+            <meta-data
+                android:name="androidx.profileinstaller.ProfileInstallerInitializer"
+                android:value="androidx.startup"
+                tools:node="remove" />
         </provider>
+
+        <!--
+          Exportierte Komponenten aus Bibliotheken, die die App nicht braucht: Der
+          Profileinstaller (kommt über Compose, ohne Baseline-Profil nutzlos) und der
+          Widerrufsdienst von Google-Sign-in (die App meldet nur mit Passkeys an).
+          Jede exportierte Komponente ist Angriffsfläche (tools/manifest-pruefen.py).
+        -->
+        <receiver
+            android:name="androidx.profileinstaller.ProfileInstallReceiver"
+            tools:node="remove"
+            tools:ignore="MissingClass" />
+        <service
+            android:name="com.google.android.gms.auth.api.signin.RevocationBoundService"
+            tools:node="remove"
+            tools:ignore="MissingClass" />
 
         <!--
           taskAffinity="": Ohne Affinität kann keine fremde Activity, die sich die
           Affinität dieses Pakets gibt, in die Task der App rutschen oder beim
           Antippen des Symbols statt ihr erscheinen (Task-Hijacking). Gefunden wird
           die laufende App dann über ihre Klasse. Exportiert nur für den Launcher;
-          sie liest keine Extras (MeldungsEinstieg).
+          sie liest keine Extras (MeldungsEinstieg). adjustResize: Erst damit meldet
+          das System die Tastatur auch unter Android 10 als Inset (imePadding).
         -->
         <activity
             android:name=".MainActivity"
             android:exported="true"
             android:launchMode="singleTop"
             android:taskAffinity=""
+            android:windowSoftInputMode="adjustResize"
             android:theme="@style/Theme.BrickInventoryManager.Start">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
@@ -238,21 +265,26 @@
                 android:resource="@xml/sammlungs_widget" />
         </receiver>
 
+        <!-- PDFs von Dritten rendert pdfium ohne Rechte, Dateien und Konto (ui/pdf/PdfRenderDienst). -->
+        <service
+            android:name="ch.brickinventoryapp.ui.pdf.PdfRenderDienst"
+            android:isolatedProcess="true"
+            android:process=":pdf"
+            android:exported="false" />
+
         <!-- Antwort der Installer-Sitzung des Selbst-Updates (util/AppUpdate.kt):
              nur über unsere PendingIntent erreichbar, darum nicht exportiert. -->
         <receiver
             android:name="ch.brickinventoryapp.util.InstallationsEmpfaenger"
             android:exported="false" />
 
+        <!-- Die Teileliste liegt verschlüsselt; der Provider gibt sie nur aus dem Speicher
+             weiter, und nur an die App, der die Auswahl das Leserecht gibt. -->
         <provider
-            android:name="androidx.core.content.FileProvider"
-            android:authorities="${applicationId}.provider"
+            android:name="ch.brickinventoryapp.service.TeilelistenProvider"
+            android:authorities="${applicationId}.teileliste"
             android:exported="false"
-            android:grantUriPermissions="true">
-            <meta-data
-                android:name="android.support.FILE_PROVIDER_PATHS"
-                android:resource="@xml/file_paths" />
-        </provider>
+            android:grantUriPermissions="true" />
     </application>
 
 </manifest>

@@ -37,23 +37,6 @@ Wertangabe daraus ist Unsinn, und die Kachel zeigt sie an.
 Sets besitzt, hat kein Erfassungsproblem, sondern ein Lager.
 ```
 
-<a id="optionalprice"></a>
-## `optionalPrice`
-
-```text
-Kaufpreis oder Stückpreis: nicht negativ, in plausiblem Rahmen.
-
-Negative Beträge gingen an ALLEN drei Erfassen-Wegen durch (Set, manuelles
-Teil, manuelle Minifigur) und wanderten unverändert in die Summen des
-Finanzreiters — ein Tippfehler mit Minuszeichen senkte damit stillschweigend
-den Gesamtwert der Sammlung.
-
-Die Weboberfläche verhindert das mit `min="0"`. Die Regel gehört aber auf den
-Server: Die App und jeder API-Aufruf gehen an der Oberfläche vorbei.
-
-@returns null bei leerer Angabe (= „kein Preis"), sonst der geprüfte Betrag
-```
-
 <a id="strictbool"></a>
 ## `strictBool`
 

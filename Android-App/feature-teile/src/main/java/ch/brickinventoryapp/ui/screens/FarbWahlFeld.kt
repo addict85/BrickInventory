@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.ui.screens
 
+import ch.brickinventoryapp.ui.theme.farbeAusHex
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -21,10 +22,8 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
-import androidx.core.graphics.toColorInt
 import ch.brickinventoryapp.ressourcen.R
 import ch.brickinventoryapp.ui.model.FarbeAnsicht
 import ch.brickinventoryapp.ui.model.OHNE_FARBE
@@ -36,21 +35,7 @@ import ch.brickinventoryapp.ui.theme.Formen
 /**
  * Die Farbe eines manuell erfassten Teils auswählen — zum Korrigieren, wenn sie
  * beim Import nicht richtig übernommen wurde.
- *
- * Nicht die Auswahl aus AddPartDialog: Die hält selbst ein `FarbeAnsicht?` („noch
- * nichts gewählt“ = null). Hier hat das Teil eine Farbe, sie ist nur falsch; die
- * aktuelle kommt deshalb von aussen und muss auch anzeigbar sein, wenn die Liste
- * sie nicht kennt. Dafür [aktuellerName] und [aktuellerHex]: Die Farbliste kommt
- * über das Netz und kann leer sein (kein Rebrickable-Schlüssel, kein Netz) — dann
- * steht die heutige Farbe da und die Liste bleibt zu.
- *
- * Eine Wahl speichert sofort, ohne Ruhezeit — wie die Ortswahl in [LagerortFeld].
- *
- * @param farben        Auswahl aus /parts/brick-colors; leer heisst „nur die
- *         heutige Farbe“.
- * @param aktuell       die Rebrickable-Farbnummer, die das Teil heute trägt.
- * @param aktuellerName ihr Name, soweit bekannt — sonst steht die Nummer da.
- * @param onWahl        wird nur gerufen, wenn eine andere Farbe gewählt wird.
+ * Ausführlich: docs/begruendungen/feature-teile/ui/screens/FarbWahlFeld.kt.md#farbwahlfeld
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -88,7 +73,7 @@ fun FarbWahlFeld(
                 .menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable, enabled = true),
             singleLine = true,
             textStyle = MaterialTheme.typography.bodySmall,
-            shape = Formen.knopf,
+            shape = Formen.feld,
         )
         ExposedDropdownMenu(expanded = offen && farben.isNotEmpty(), onDismissRequest = { offen = false }) {
             wahl.forEach { c ->
@@ -111,8 +96,6 @@ fun FarbWahlFeld(
 /** Der Farbpunkt. Ein unlesbarer Hex-Wert ergibt KEINEN Punkt, keinen falschen. */
 @Composable
 private fun FarbPunkt(hex: String?, modifier: Modifier = Modifier) {
-    val farbe = hex?.let {
-        try { Color("#$it".toColorInt()) } catch (_: Exception) { null }
-    } ?: return
+    val farbe = farbeAusHex(hex) ?: return
     Box(modifier.size(14.dp).clip(CircleShape).background(farbe))
 }

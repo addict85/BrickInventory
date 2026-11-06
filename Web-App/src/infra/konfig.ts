@@ -28,6 +28,12 @@ export function geheimnisseAusDateien(env: Umgebung): string[] {
 export interface Konfig {
   produktion: boolean;
   nodeEnv: string;
+  /** Nur ausdrücklich development oder test: ohne NODE_ENV gelten die Regeln des Betriebs. */
+  entwicklung: boolean;
+  /** Alles ausser development/test: Auch ohne NODE_ENV gelten die Verbote des Betriebs. */
+  betrieb: boolean;
+  /** Ausweg für den Start als Datenbank-Superuser in Produktion (UPGRADE.md). */
+  dbSuperuserErlaubt: boolean;
   port: number;
   hstsMaxAge: number;
   trustProxy: string | undefined;
@@ -45,6 +51,9 @@ export interface Konfig {
   pgIdleMs: number;
   pgConnMs: number;
   pgStmtMs: number;
+  /** Eine hängende Transaktion hält sonst Advisory- und Zeilensperren unbegrenzt. */
+  pgLeerlaufTxMs: number;
+  pgSperreMs: number;
   adminPasswort: string;
   appBaseUrl: string | null;
   appRoot: string | null;
@@ -52,6 +61,9 @@ export interface Konfig {
   datenSchluessel: string;
   /** Pfad der Schlüsseldatei; null: <APP_ROOT>/schluessel/datenschluessel. */
   datenSchluesselDatei: string | null;
+  /** Der vorige Schlüssel während eines Wechsels (DATA_KEY_ALT oder die Datei). */
+  datenSchluesselAlt: string;
+  datenSchluesselAltDatei: string | null;
   erfassungZeitzone: string;
   preisverlaufTage: number;
   uploadKontingentMb: number;
@@ -61,6 +73,8 @@ export interface Konfig {
   bildAbrufeJeMinute: number;
   csvZeileFristMs: number;
   auftragParallel: number;
+  /** null: nach Kernen und cgroup-Kontingent (src/konto/bcryptSchranke.ts). */
+  bcryptArbeiter: number | null;
   auftragFristSek: number;
   /** PEM; null: keine eigene CA. */
   caZertifikat: string | null;
@@ -90,13 +104,13 @@ export class KonfigFehler extends Error {
 export const VARIABLEN = [
   'NODE_ENV', 'PORT', 'HSTS_MAX_AGE', 'TRUST_PROXY', 'SESSION_SECRET', 'COOKIE_SECURE',
   'SESSION_IDLE_MINUTES', 'SESSION_MAX_HOURS', 'TOKEN_IDLE_DAYS', 'ROLLE',
-  'DATABASE_URL', 'PGHOST', 'PGPORT', 'PGUSER', 'PGPASSWORD', 'PGDATABASE',
+  'DATABASE_URL', 'PGHOST', 'PGPORT', 'PGUSER', 'PGPASSWORD', 'PGDATABASE', 'PGSSLMODE',
   'PG_POOL_MAX', 'PG_POOL_MIN', 'PG_IDLE_MS', 'PG_CONN_MS', 'PG_STMT_MS', 'ADMIN_PASSWORD',
-  'APP_BASE_URL', 'APP_ROOT', 'APP_VERSION', 'DATA_KEY', 'DATA_KEY_FILE', 'ERFASSUNG_ZEITZONE', 'TZ',
+  'APP_BASE_URL', 'APP_BASE_URL_FEHLT_OK', 'APP_ROOT', 'APP_VERSION', 'DATA_KEY', 'DATA_KEY_FILE', 'DATA_KEY_ALT', 'DATA_KEY_ALT_FILE', 'ERFASSUNG_ZEITZONE', 'TZ',
   'PRICE_HISTORY_KEEP_DAYS', 'UPLOAD_KONTINGENT_MB', 'MAIL_KONSOLE_MIT_TOKEN', 'IMG_USER_AGENT',
   'BILD_CACHE_MAX_MB', 'BILD_ABRUFE_JE_MINUTE',
-  'CSV_ZEILE_FRIST_MS', 'AUFTRAG_PARALLEL', 'AUFTRAG_FRIST_SEK', 'CA_ZERTIFIKAT', 'VERTRAG_PRUEFEN',
-  'PASSKEY_ANDROID_ZERTIFIKATE', 'PASSKEY_ANDROID_PAKET', ...DATEI_VARIABLEN.map(n => `${n}_FILE` as const),
+  'CSV_ZEILE_FRIST_MS', 'AUFTRAG_PARALLEL', 'BCRYPT_ARBEITER', 'AUFTRAG_FRIST_SEK', 'CA_ZERTIFIKAT', 'VERTRAG_PRUEFEN',
+  'PASSKEY_ANDROID_ZERTIFIKATE', 'PASSKEY_ANDROID_PAKET', 'DB_SUPERUSER_ERLAUBT', ...DATEI_VARIABLEN.map(n => `${n}_FILE` as const),
 ] as const;
 
 /** Steht sie noch in einer alten compose.yaml, sagt der Start es. */
@@ -172,6 +186,10 @@ function zoneAus(env: Umgebung, fehler: string[]): string {
   return zeitzoneGueltig(zone) ? zone : 'UTC';
 }
 
+function entwicklungsUmgebung(env: Umgebung): boolean {
+  return ['development', 'test'].includes(env.NODE_ENV?.trim() ?? '');
+}
+
 /** Wirft KonfigFehler mit allen Fehlern auf einmal. */
 export function ladeKonfig(env: Umgebung = process.env): Konfig {
   const f: string[] = geheimnisseAusDateien(env);
@@ -183,6 +201,9 @@ export function ladeKonfig(env: Umgebung = process.env): Konfig {
   const datenSchluessel = env.DATA_KEY?.trim() || '';
   if (datenSchluessel && Buffer.from(datenSchluessel, 'base64').length !== 32)
     f.push('DATA_KEY muss 32 Byte als base64 sein (openssl rand -base64 32)');
+  const datenSchluesselAlt = env.DATA_KEY_ALT?.trim() || '';
+  if (datenSchluesselAlt && Buffer.from(datenSchluesselAlt, 'base64').length !== 32)
+    f.push('DATA_KEY_ALT muss 32 Byte als base64 sein (der vorige DATA_KEY)');
 
   const zone = zoneAus(env, f);
 
@@ -190,6 +211,9 @@ export function ladeKonfig(env: Umgebung = process.env): Konfig {
   const k: Konfig = {
     produktion: nodeEnv === 'production',
     nodeEnv,
+    entwicklung: entwicklungsUmgebung(env),
+    betrieb: !entwicklungsUmgebung(env),
+    dbSuperuserErlaubt: schalter(env, 'DB_SUPERUSER_ERLAUBT', f) === true,
     port: ganzzahl(env, 'PORT', 3000, 1, 65535, f),
     hstsMaxAge: ganzzahl(env, 'HSTS_MAX_AGE', 31_536_000, 0, 2 ** 31 - 1, f),
     trustProxy: env.TRUST_PROXY,
@@ -205,12 +229,16 @@ export function ladeKonfig(env: Umgebung = process.env): Konfig {
     pgIdleMs: ganzzahl(env, 'PG_IDLE_MS', 30_000, 0, 86_400_000, f),
     pgConnMs: ganzzahl(env, 'PG_CONN_MS', 30_000, 0, 600_000, f),
     pgStmtMs: ganzzahl(env, 'PG_STMT_MS', 30_000, 0, 86_400_000, f),
+    pgLeerlaufTxMs: ganzzahl(env, 'PG_IDLE_TX_MS', 60_000, 0, 86_400_000, f),
+    pgSperreMs: ganzzahl(env, 'PG_LOCK_MS', 10_000, 0, 86_400_000, f),
     adminPasswort: env.ADMIN_PASSWORD || '',
     appBaseUrl: basis,
     appRoot: env.APP_ROOT?.trim() || null,
     appVersion: env.APP_VERSION?.trim() || null,
     datenSchluessel,
     datenSchluesselDatei: env.DATA_KEY_FILE?.trim() || null,
+    datenSchluesselAlt,
+    datenSchluesselAltDatei: env.DATA_KEY_ALT_FILE?.trim() || null,
     erfassungZeitzone: zone,
     // 0 oder weniger schaltet das Beschneiden des Preisverlaufs ab.
     preisverlaufTage: ganzzahl(env, 'PRICE_HISTORY_KEEP_DAYS', 1095, -1, 36_500, f),
@@ -221,6 +249,7 @@ export function ladeKonfig(env: Umgebung = process.env): Konfig {
     bildAbrufeJeMinute: ganzzahl(env, 'BILD_ABRUFE_JE_MINUTE', 240, 1, 100_000, f),
     csvZeileFristMs: ganzzahl(env, 'CSV_ZEILE_FRIST_MS', 120_000, 1, 86_400_000, f),
     auftragParallel: ganzzahl(env, 'AUFTRAG_PARALLEL', 4, 1, 64, f),
+    bcryptArbeiter: env.BCRYPT_ARBEITER?.trim() ? ganzzahl(env, 'BCRYPT_ARBEITER', 4, 1, 64, f) : null,
     auftragFristSek: ganzzahl(env, 'AUFTRAG_FRIST_SEK', 300, 1, 86_400, f),
     caZertifikat: env.CA_ZERTIFIKAT?.trim() || null,
     hinterTls: !!basis && /^https:\/\//i.test(basis),
@@ -232,10 +261,10 @@ export function ladeKonfig(env: Umgebung = process.env): Konfig {
   return k;
 }
 
-/** Auch hinter Caddy (APP_BASE_URL https://). COOKIE_SECURE=0 ist die bewusste
+/** Im Betrieb und hinter Caddy (APP_BASE_URL https://). COOKIE_SECURE=0 ist die bewusste
  * Ausnahme für einen Betrieb ohne TLS. */
 export function cookieSicher(k: Konfig): boolean {
-  return k.cookieSecure ?? (k.produktion || k.hinterTls);
+  return k.cookieSecure ?? (k.betrieb || k.hinterTls);
 }
 
 let _signatur: string | null = null;
@@ -288,7 +317,7 @@ export function standardPasswortInBenutzung(env: NodeJS.ProcessEnv = process.env
 /** Ein öffentlich bekanntes Datenbankpasswort oder ein TRUST_PROXY, der Clients
  * ihre Adresse selbst angeben lässt, soll beim Deploy auffallen. */
 export function startVerbote(env: NodeJS.ProcessEnv = process.env): string[] {
-  if (env.NODE_ENV !== 'production') return [];
+  if (entwicklungsUmgebung(env)) return [];
   const gruende: string[] = [];
   if (standardPasswortInBenutzung(env))
     gruende.push('[datenbank] Die Datenbank benutzt das Beispielpasswort „brickinventory_secret" aus compose.yaml — '
@@ -296,5 +325,43 @@ export function startVerbote(env: NodeJS.ProcessEnv = process.env): string[] {
       + 'Wert als DB_PASSWORD in .env (siehe UPGRADE.md).');
   try { proxyVertrauen(env.TRUST_PROXY); }
   catch (e) { gruende.push(`[proxy] ${(e as Error).message} Start verweigert.`); }
+  // Ohne die Adresse gibt es keinen Host-Filter gegen DNS-Rebinding; wer das will, sagt es ausdrücklich.
+  if (!env.APP_BASE_URL?.trim() && env.ROLLE?.trim().toLowerCase() !== 'jobs' && env.APP_BASE_URL_FEHLT_OK?.trim() !== '1')
+    gruende.push('[start] APP_BASE_URL fehlt im Betrieb: Der Host-Filter gegen DNS-Rebinding wäre aus — Start verweigert. '
+      + 'In .env setzen (README.md); nur bewusst ohne: APP_BASE_URL_FEHLT_OK=1 (UPGRADE.md).');
+  if (env.MAIL_KONSOLE_MIT_TOKEN?.trim() === '1')
+    gruende.push('[mail] MAIL_KONSOLE_MIT_TOKEN=1 schreibt Rücksetz- und Bestätigungslinks samt Token ins Protokoll — '
+      + 'im Betrieb Start verweigert. Nur auf einem Entwicklungsrechner setzen (NODE_ENV=development).');
   return gruende;
+}
+
+/** Erlaubt, aber laut: Schalter, die im Betrieb eine Schutzschicht abschalten. */
+export function startWarnungen(env: NodeJS.ProcessEnv = process.env): string[] {
+  if (entwicklungsUmgebung(env)) return [];
+  const w: string[] = [];
+  if (schalter(env, 'COOKIE_SECURE', []) === false)
+    w.push('[start] COOKIE_SECURE=0: Das Sitzungs-Cookie geht auch über http, Passwort und Sitzung lesbar durchs Netz. '
+      + 'Nur ohne TLS gedacht (README.md, „Ohne HTTPS“).');
+  if (env.HSTS_MAX_AGE?.trim() === '0')
+    w.push('[start] HSTS_MAX_AGE=0: Browser vergessen, dass der Server nur HTTPS spricht; ein Angreifer im Netz '
+      + 'kann die erste Anfrage auf http umlenken. Nur zum Rückbau von HTTPS gedacht (README.md).');
+  if (dbOhneTls(env))
+    w.push('[datenbank] Die Datenbank liegt auf einem anderen Rechner, die Verbindung prüft aber kein Zertifikat: '
+      + 'Passwort und Daten gehen ungeschützt durchs Netz. PGSSLMODE=verify-full setzen (bzw. sslmode=verify-full '
+      + 'in DATABASE_URL), README.md „Externe Datenbank“.');
+  return w;
+}
+
+/** Klartext nur auf demselben Rechner (Dienst `postgres`, Loopback, Socket). */
+function dbOhneTls(env: NodeJS.ProcessEnv): boolean {
+  let host = env.PGHOST?.trim() || 'postgres', modus = env.PGSSLMODE?.trim() || '';
+  if (env.DATABASE_URL) {
+    try {
+      const u = new URL(env.DATABASE_URL);
+      host = u.hostname.replace(/^\[|\]$/g, '') || 'localhost';
+      modus = u.searchParams.get('sslmode') || modus;
+    } catch { return false; }
+  }
+  const nah = ['postgres', 'localhost', '127.0.0.1', '::1'].includes(host.toLowerCase()) || host.startsWith('/');
+  return !nah && !/^verify-(ca|full)$/.test(modus);
 }

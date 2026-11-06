@@ -1,0 +1,20 @@
+Gegenprobe: Offline-Banner wieder in tertiaryContainer (Classic: rot)
+Modul: app
+Test: ch.brickinventoryapp.GeruestUndFormularTest
+Rot: Offline-Hinweis meldet keinen Fehler
+
+diff --git a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/OfflineHinweis.kt b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/OfflineHinweis.kt
+index b075a97..81bb3e4 100644
+--- a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/OfflineHinweis.kt
++++ b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/OfflineHinweis.kt
+@@ -89,8 +89,8 @@ private fun Hinweisbanner(symbol: ImageVector, titel: String, text: String?, mod
+     Surface(
+         modifier.fillMaxWidth().padding(horizontal = Abstaende.mittel, vertical = Abstaende.winzig).ansagen(),
+         shape = Formen.leiste,
+-        color = MaterialTheme.colorScheme.surface,
+-        contentColor = MaterialTheme.colorScheme.onSurface,
++        color = MaterialTheme.colorScheme.tertiaryContainer,
++        contentColor = MaterialTheme.colorScheme.onTertiaryContainer,
+         border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+     ) {
+         Row(

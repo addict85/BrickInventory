@@ -1,0 +1,18 @@
+Gegenprobe: Nach einem Filterwechsel bleibt die alte Rollposition des Katalogs stehen
+Modul: feature-katalog
+Test: ch.brickinventoryapp.CatalogViewModelTest
+Rot: ein Filterwechsel beginnt oben
+
+diff --git a/Android-App/feature-katalog/src/main/java/ch/brickinventoryapp/ui/viewmodel/CatalogViewModel.kt b/Android-App/feature-katalog/src/main/java/ch/brickinventoryapp/ui/viewmodel/CatalogViewModel.kt
+index 92382c2..22adf64 100644
+--- a/Android-App/feature-katalog/src/main/java/ch/brickinventoryapp/ui/viewmodel/CatalogViewModel.kt
++++ b/Android-App/feature-katalog/src/main/java/ch/brickinventoryapp/ui/viewmodel/CatalogViewModel.kt
+@@ -93,7 +93,7 @@ class CatalogViewModel @Inject constructor(
+                 // zeigte sie auf Sets, die es in der neuen Liste nicht mehr gibt.
+                 it.copy(isLoading = true, error = null, fehlerKlasse = null,
+                         loadedPages = emptyMap(), loadingPages = emptySet(), scrollTo = null,
+-                        scrollIndex = 0, scrollOffset = 0, jahrVerteilung = emptyList())
++                        jahrVerteilung = emptyList())
+             }
+             ladeJahrVerteilung(gen)
+             val s = _catalogState.value

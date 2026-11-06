@@ -1,21 +1,7 @@
 /**
  * Passwort-vergessen gegen echte Datenbank: E-Mail-Vergleich ohne Beachtung
  * der Gross-/Kleinschreibung.
- *
- * ── Warum es diese Datei gibt ───────────────────────────────────────────────
- * Login, Registrierung und Profil vergleichen E-Mails seit jeher mit
- * LOWER(...) auf beiden Seiten. forgot-password war der EINZIGE Weg mit einem
- * case-sensitiven Vergleich (`WHERE email = $1`). Wer sich als
- * "Marco@Example.CH" registriert hatte und im Formular "marco@example.ch"
- * tippte, bekam die (bewusst neutrale) Erfolgsmeldung — aber nie eine Mail:
- * kein Treffer, kein Token, kein Versand. Von aussen war das nicht von Erfolg
- * zu unterscheiden; der Nutzer ist ohne erkennbaren Grund ausgesperrt.
- *
- * Das ist das wiederkehrende Muster "eine Regel fehlt an einem ZWEITEN Weg" —
- * und wie immer braucht sie einen VERHALTENStest: Eine Quelltext-Prüfung auf
- * LOWER( im richtigen Statement wäre dieselbe Sorte Test, die Lücken auch
- * festschreiben kann. Hier läuft die echte Route gegen die echte Tabelle, und
- * geprüft wird, ob der reset_token GESETZT wurde.
+ * Ausführlich: docs/begruendungen/test/forgot-password-db.test.js.md#kopf
  *
  * Gegenprobe (durchgeführt): LOWER($1) in routes/auth.ts wieder auf $1
  * zurückgedreht → genau der erste Teilschritt hier wird rot.
@@ -43,6 +29,7 @@ process.env.APP_BASE_URL = 'http://localhost';
 process.env.SESSION_SECRET = 'test-secret-lang-genug-fuer-die-pruefung';
 
 const _req = require('./helpers/sources').buildAndRequire();
+const { dbOderSkip } = require('./helpers/db');
 // Adresse aus server.ts lesen — siehe einhaengung() in helpers/sources.js.
 const AUTH = require('./helpers/sources').einhaengung('auth');
 const db = _req('db/database.js');
@@ -56,12 +43,7 @@ test.after(() => db.pool.end().catch(() => {}));
 test('forgot-password findet die E-Mail unabhängig von der Schreibweise',
   { concurrency: 1 }, async (t) => {
 
-  try { await db.initSchema(); }
-  catch (e) {
-    if (process.env.REQUIRE_DB === '1')
-      throw new Error(`REQUIRE_DB=1, aber die Test-DB ist nicht erreichbar: ${e.message}`);
-    t.skip('Test-DB nicht erreichbar'); return;
-  }
+  if (!await dbOderSkip(t, _req, { migrieren: false })) return;
 
   const USERNAME = 'forgotcasetest';
   await db.run(`DELETE FROM users WHERE username = $1`, [USERNAME]);
@@ -118,12 +100,7 @@ test('forgot-password findet die E-Mail unabhängig von der Schreibweise',
 
 test('Reset-Link nur mit APP_BASE_URL, nie aus dem Host-Header — auch ausserhalb des Betriebs',
   { concurrency: 1 }, async (t) => {
-  try { await db.initSchema(); }
-  catch (e) {
-    if (process.env.REQUIRE_DB === '1')
-      throw new Error(`REQUIRE_DB=1, aber die Test-DB ist nicht erreichbar: ${e.message}`);
-    t.skip('Test-DB nicht erreichbar'); return;
-  }
+  if (!await dbOderSkip(t, _req, { migrieren: false })) return;
   const USERNAME = 'forgothosttest';
   await db.run(`DELETE FROM users WHERE username = $1`, [USERNAME]);
   await db.run(`DELETE FROM rate_limit_attempts WHERE key LIKE 'forgot-%'`).catch(() => {});

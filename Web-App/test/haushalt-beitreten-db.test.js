@@ -12,6 +12,8 @@
  *   „mit zweitem Faktor braucht es auch den Code“
  * Gegenprobe (01.11.2026 gemessen): maskiereAdresse() im Konsolenweg des Mailers
  *   umgangen → rot: „mit Passwort verknüpft, und der Inhaber erfährt es“
+ * Gegenprobe (04.11.2026 gemessen): kontoGedrosselt() aus redeem/pruefen
+ *   entfernt → rot: „die Prüfung eines Codes ist je Konto gebremst“ (200 statt 429)
  *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL.
  */
@@ -23,6 +25,7 @@ const ROOT = path.join(__dirname, '..');
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
 const _req = require('./helpers/sources').buildAndRequire();
+const { dbOderSkip } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
 const db = _req('db/database.js');
 const bcrypt = require(path.join(ROOT, 'node_modules', 'bcryptjs'));
@@ -31,21 +34,17 @@ const PASS = 'eigenes-Passwort-1';
 const HAUPT = `beitritt_haupt_${process.pid}`, KIND = `beitritt_kind_${process.pid}`, HAUPT2 = `beitritt_haupt2_${process.pid}`;
 
 test('Haushalt beitreten', { concurrency: 1 }, async (t) => {
-  try { await db.initSchema(); }
-  catch (e) {
-    if (process.env.REQUIRE_DB === '1')
-      throw new Error(`REQUIRE_DB=1, aber die Test-DB ist nicht erreichbar: ${e.message}`);
-    t.skip('Test-DB nicht erreichbar'); return;
-  }
-  const c = await db.pool.connect();
-  try { await _req('db/migrate.js').runMigrations(c); } finally { c.release(); }
+  if (!await dbOderSkip(t, _req)) return;
   await db.run('DELETE FROM users WHERE username = ANY($1)', [[HAUPT, KIND, HAUPT2]]);
   const hash = await bcrypt.hash(PASS, 4);
   const anlegen = async (n) => (await db.get(`INSERT INTO users (username, email, password_hash, is_active, email_verified)
     VALUES ($1, $2, $3, true, true) RETURNING id`, [n, `${n}@example.org`, hash])).id;
   const haupt = await anlegen(HAUPT), kind = await anlegen(KIND), haupt2 = await anlegen(HAUPT2);
   await db.run("DELETE FROM global_settings WHERE key LIKE 'smtp_%'");
+  const pruefZaehler = () => db.run('DELETE FROM rate_limit_attempts WHERE key = $1', [`haushalt-pruefen|konto:${kind}`]);
+  await pruefZaehler();
   t.after(async () => {
+    await pruefZaehler();
     await db.run('DELETE FROM rate_limit_attempts WHERE key LIKE $1', [`%-bestaetigen|${kind}|%`]);
     await db.run('DELETE FROM users WHERE id = ANY($1)', [[haupt, kind, haupt2]]);
     await db.pool.end().catch(() => {});
@@ -58,6 +57,20 @@ test('Haushalt beitreten', { concurrency: 1 }, async (t) => {
     .then(async r => ({ status: r.status, body: await r.json() }));
   const verknuepft = async () => !!await db.get(
     'SELECT 1 FROM account_links WHERE main_user_id = $1 AND sub_user_id = $2', [haupt, kind]);
+
+  await t.test('die Prüfung eines Codes ist je Konto gebremst', async () => {
+    const { code } = await createInvite(haupt);
+    const pruefe = () => fetch(`${base}/api/v1/settings/household/redeem/pruefen`, {
+      method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ code }) })
+      .then(async r => ({ status: r.status, body: await r.json() }));
+    const erste = await pruefe();
+    assert.deepEqual([erste.status, erste.body.inviter?.username], [200, HAUPT], JSON.stringify(erste.body));
+    for (let i = 1; i < 30; i++) assert.equal((await pruefe()).status, 200, `Prüfung ${i + 1}`);
+    const r = await pruefe();
+    assert.deepEqual([r.status, r.body.code], [429, 'zu_viele_anfragen'], JSON.stringify(r.body));
+    assert.equal(r.body.inviter, undefined, 'gebremst nennt die Antwort niemanden');
+    await pruefZaehler();
+  });
 
   await t.test('ohne Passwort keine Verknüpfung', async () => {
     const { code } = await createInvite(haupt);

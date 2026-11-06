@@ -4,8 +4,8 @@ Die ausführlichen Kommentare aus `db/database.ts`, wörtlich. Im Code steht je
 Stelle der erste Absatz und ein Verweis hierher. Neue Geschichte gehört in die
 Commit-Nachricht (siehe CLAUDE.md).
 
-<a id="abschnitt"></a>
-## Abschnitt
+<a id="ueberblick"></a>
+## Überblick
 
 ```text
 PostgreSQL database layer
@@ -26,8 +26,8 @@ Environment variables:
   DATABASE_URL (overrides all above if set)
 ```
 
-<a id="abschnitt-2"></a>
-## Abschnitt
+<a id="importe-am-kopf"></a>
+## Abhängigkeiten am Dateikopf
 
 ```text
 ── Warum diese acht jetzt oben stehen (Nachtrag 155) ────────────────────────
@@ -43,8 +43,8 @@ selbst) und ../package.json — das ist keine Abhaengigkeit des Moduls,
 sondern ein Lesevorgang mit Rueckfall.
 ```
 
-<a id="abschnitt-3"></a>
-## Abschnitt
+<a id="numeric-als-zahl"></a>
+## NUMERIC als Zahl
 
 ```text
 ── NUMERIC kommt als Zahl zurück, nicht als Zeichenkette ───────────────────
@@ -85,20 +85,6 @@ Aufrufstelle aussehen, aber alle hierher zurückführten.
 @returns {Promise<T>}
 ```
 
-<a id="abschnitt-4"></a>
-## Abschnitt
-
-```text
-Alle Zeilen einer Abfrage.
-
-Rückgabetyp bewusst `any[]` und nicht generisch: Die Aufrufstellen greifen
-auf Spalten zu, deren Namen erst im SQL stehen. Ein generischer Parameter
-würde an jeder der rund 400 Aufrufstellen eine Typangabe verlangen, ohne dass
-jemand sie pflegt — und eine gepflegte Lüge ist schlechter als ein ehrliches
-any. Wichtig ist, dass es NICHT `never` oder `unknown` ist (siehe
-queryWithRetry).
-```
-
 <a id="dbschnittstelle"></a>
 ## `DbSchnittstelle`
 
@@ -114,8 +100,8 @@ Als Typ steht die Zusage einmal geschrieben, und die transaktionsgebundene
 Fassung muss sie einhalten.
 ```
 
-<a id="abschnitt-5"></a>
-## Abschnitt
+<a id="sql-unuebersetzt"></a>
+## SQL geht unübersetzt an PostgreSQL
 
 ```text
 ── SQL dialect translation (entfernt) ────────────────────────────────────────
@@ -164,24 +150,6 @@ Dass die Datei überhaupt in dist/ landet, besorgt scripts/build-ts.js: Es
 kopiert .sql-Dateien ausdrücklich mit (ASSET_EXT) — eine Vorkehrung, die
 dieses Projekt schon einmal teuer gelernt hat. db/migrate.ts macht es aus
 demselben Grund genauso.
-```
-
-<a id="abschnitt-6"></a>
-## Abschnitt
-
-```text
-Das Schema anlegen und auf den aktuellen Stand bringen.
-
-── Warum in Etappen (Nachtrag 148) ─────────────────────────────────────────
-Die Funktion war 408 Zeilen lang und tat fünf verschiedene Dinge
-hintereinander. Wer eine davon suchte, las die anderen vier mit; und die
-REIHENFOLGE — die hier eine echte Bedingung ist und nicht nur Gewohnheit —
-stand nur als Kommentar mitten im Rumpf.
-
-Jetzt steht sie als Liste. Die Regel dahinter: Erst alle Tabellen und
-Spalten, dann die Indizes. Ein Index auf eine Spalte, die eine spätere
-ALTER-Migration erst anlegt, scheitert bei einer Neuinstallation mit
-"column does not exist".
 ```
 
 <a id="geschluckt"></a>
@@ -290,33 +258,6 @@ Notausgang, hinter dem keine Tretmine liegen soll. Die ursprueglich
 gemeinte Wirkung bleibt vollstaendig erhalten.
 ```
 
-<a id="abschnitt-7"></a>
-## Abschnitt
-
-```text
-── api_tokens.sliding und die beiden Indizes stehen in einer MIGRATION ───
-
-Hier stand ein `ALTER TABLE api_tokens ADD COLUMN IF NOT EXISTS sliding`
-mit einem `.catch(warn)` daneben. Im Betrieb hat das die ANMELDUNG
-zerlegt: createToken() schreibt die Spalte beim Login und beim QR-Login,
-und auf Marcos Server gab es sie nicht.
-
-Zwei Gruende, beide stehen als Warnung schon in dieser Datei:
-  1. initSchema() laeuft NUR bei einer Versionsaenderung — steht in
-     schema_meta bereits die Fassung dieses Deployments, wird der ganze
-     Block uebersprungen.
-  2. Der `.catch(warn)` machte einen einmaligen Fehlschlag dauerhaft: Die
-     Version wird anschliessend trotzdem als angewandt vermerkt.
-
-Genau davor warnt der Absatz am Ende dieser Funktion ueber die
-Bild-Tabellen, und initSchemaOnce() sagt es ausdruecklich: nummerierte
-Migrationen „laufen IMMER … und sind die Stelle, an der ab jetzt jede
-Schemaaenderung landet". Sie stehen deshalb in
-db/migrations/0015-api-tokens-sliding.sql — dort laufen sie in einer
-Transaktion, mit eigener Buchfuehrung, und ein Fehlschlag bricht den Start
-ab, statt still zu bleiben.
-```
-
 <a id="frueherzurlaufzeitangelegt"></a>
 ## Abschnitt
 
@@ -401,21 +342,6 @@ Wo er gebraucht wird, steht er jetzt richtig: Migration 0035 traegt die
 fehlenden Erfassungen nach, einmalig, und prueft danach nach, dass keine
 manuelle Position ohne Erfassung und kein Kaufpreis uebrig bleibt — bevor
 sie die sechs Spalten loescht.
-```
-
-<a id="abschnitt-8"></a>
-## Abschnitt
-
-```text
-Hier stand der Nachtrag „bestehende Sets ohne Kaufpreis-Historie bekommen
-genau eine Acquisition-Zeile (Menge/Preis/Datum vom Set)". Er ist weg, und
-zwar weil er nie etwas getan hat: initSchema() laeuft NUR beim allerersten
-Start einer Datenbank (siehe initSchemaOnce), und dort ist `sets` leer. Der
-Nachtrag war fuer Altbestaende gedacht und hat sie niemals erreicht.
-
-Wo er gebraucht wird, steht er jetzt richtig: Migration 0032 traegt die
-fehlenden Erfassungen nach, einmalig, und prueft danach nach, dass keine
-Set-Zeile ohne Erfassung uebrig ist — bevor sie die beiden Spalten loescht.
 ```
 
 <a id="indizesundzusammenfassung"></a>

@@ -1,12 +1,14 @@
 package ch.brickinventoryapp.ui.screens
 
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.ui.focus.FocusManager
+import ch.brickinventoryapp.ui.components.nebenKnopfFarben
+import ch.brickinventoryapp.ui.components.nebenKnopfRand
 import androidx.compose.foundation.verticalScroll
 import ch.brickinventoryapp.ui.theme.mittigBis
 import androidx.compose.foundation.rememberScrollState
 import ch.brickinventoryapp.ui.theme.Formen
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
@@ -18,19 +20,39 @@ import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.autofill.ContentType
+import androidx.compose.ui.semantics.contentType
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.role
 import androidx.compose.ui.focus.FocusDirection
 import androidx.compose.ui.platform.LocalFocusManager
-import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.*
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import ch.brickinventoryapp.ressourcen.R
 import ch.brickinventoryapp.ui.AnmeldeFormular
 import ch.brickinventoryapp.util.passwortZuKurz
+import ch.brickinventoryapp.util.PASSWORT_MIN_ZEICHEN
+import ch.brickinventoryapp.ui.components.PasswortArt
+import ch.brickinventoryapp.ui.components.PasswortFeld
+import ch.brickinventoryapp.ui.components.ansagen
+import ch.brickinventoryapp.ui.components.ausserhalbDerSystemleisten
+import androidx.compose.ui.semantics.collapse
+import androidx.compose.ui.semantics.expand
+import androidx.compose.ui.semantics.stateDescription
 import ch.brickinventoryapp.ui.theme.Abstaende
+import ch.brickinventoryapp.ui.components.AnmeldeKarte
+import ch.brickinventoryapp.ui.components.AnmeldeTitel
+import ch.brickinventoryapp.ui.components.LocalSchrittschutz
+import ch.brickinventoryapp.ui.components.MarkenKopf
+import ch.brickinventoryapp.ui.components.TastaturOhneLernen
+import ch.brickinventoryapp.ui.components.Ueberdeckungsschutz
+import ch.brickinventoryapp.ui.components.mitSchrift
+import ch.brickinventoryapp.ui.theme.Lesebreite
 
 /**
  * Anmelden, Konto anlegen, Link zum Zurücksetzen anfordern — wie die Webapp. Drei
@@ -65,99 +87,111 @@ fun LoginScreen(
     // remember, nicht rememberSaveable: Gesicherter Zustand landet im Bundle und bei
     // Prozesstod auf der Platte (ActivityManager) — kein Ort für Passwörter und Codes.
     var password by remember { mutableStateOf("") }
-    var showPw   by rememberSaveable { mutableStateOf(false) }
     var code     by remember { mutableStateOf("") }
     val focusMgr = LocalFocusManager.current
-    // Ein untergeschobener Tipp meldet hier an oder bestätigt einen Passkey; ein
-    // sichtbares Passwort gehört in kein Bildschirmfoto und keine Aufnahme.
-    ch.brickinventoryapp.ui.components.Ueberdeckungsschutz()
-    if (showPw && formular == AnmeldeFormular.ANMELDEN) ch.brickinventoryapp.ui.components.Sichtschutz()
+    // Ein untergeschobener Tipp meldet hier an oder bestätigt einen Passkey. Den
+    // Sichtschutz für ein aufgedecktes Passwort bringt das PasswortFeld selbst mit.
+    Ueberdeckungsschutz()
 
-    // Rollbar: Auf einem kleinen Telefon, mit offener Tastatur oder grosser Schrift
-    // läge der Anmeldeknopf sonst unerreichbar unter dem Rand.
-    Box(
-        modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()),
-        contentAlignment = Alignment.Center
-    ) {
-        Column(
-            modifier = Modifier
-                .mittigBis(ch.brickinventoryapp.ui.theme.Lesebreite.formular)
-                .padding(horizontal = 28.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(0.dp)
-        ) {
-            // Logo
-            Image(
-                painter = painterResource(R.drawable.ic_logo),
-                contentDescription = "BrickInventory Manager",
-                modifier = Modifier.size(80.dp)
-            )
-            Spacer(Modifier.height(14.dp))
-            Text(
-                "BrickInventory",
-                fontWeight = FontWeight.ExtraBold,
-                style = MaterialTheme.typography.headlineSmall,
-                letterSpacing = (-0.5).sp
-            )
-            Text(
-                "Manager",
-                fontWeight = FontWeight.Light,
-                style = MaterialTheme.typography.titleLarge,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-            Spacer(Modifier.height(Abstaende.klein))
+    // Passwort, Code und Adresse lernt die Tastatur nicht mit.
+    TastaturOhneLernen {
+    val kopf: @Composable ColumnScope.() -> Unit = {
+            // Derselbe Kopf wie beim Einrichten, das direkt davor kommt.
+            MarkenKopf()
+            Spacer(Modifier.height(Abstaende.mittel))
 
-            // Server chip
-            AssistChip(
+            // Der Chip wechselt den Server: TalkBack nennt das samt Adresse (die Fläche fasst
+            // die Beschreibung mit ihrer Rolle „Schaltfläche“ zusammen). Die Adresse bricht
+            // um statt gekürzt zu werden: Genau sie prüft man vor dem Anmelden.
+            val serverAendern = stringResource(R.string.login_server_aendern, serverUrl)
+            Surface(
                 onClick = onChangeServer,
-                // Eine Zeile mit Auslassung: Bei 200 % Schrift lief die Adresse sonst aus dem Chip.
-                label = { Text(serverUrl, maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
-                    style = MaterialTheme.typography.labelMedium) },
-                leadingIcon = { Icon(Icons.Default.Cloud, null, Modifier.size(14.dp)) },
-                trailingIcon = { Icon(Icons.Default.Edit, null, Modifier.size(12.dp)) },
-                shape = Formen.chip
-            )
-
-            Spacer(Modifier.height(28.dp))
-
-            Card(
-                modifier = Modifier.fillMaxWidth(),
+                // Surface(onClick) setzt keine Rolle: TalkBack hörte sonst nur die Adresse.
+                modifier = Modifier.semantics {
+                    role = Role.Button
+                    contentDescription = serverAendern
+                },
                 shape = Formen.chip,
-                elevation = CardDefaults.cardElevation(defaultElevation = Formen.karteErhebungHoch),
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+                color = MaterialTheme.colorScheme.surface,
+                // outline: Der Rand ist die einzige Grenze des Chips und braucht 3:1.
+                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
             ) {
-                Column(
-                    Modifier.padding(horizontal = 20.dp, vertical = 22.dp),
-                    verticalArrangement = Arrangement.spacedBy(Abstaende.mittel)
-                ) {
-                    when (formular) {
-                        AnmeldeFormular.ANMELDEN -> AnmeldeFelder(
-                            username = username, onUsername = { username = it },
-                            password = password, onPassword = { password = it },
-                            showPw = showPw, onShowPw = { showPw = it },
-                            codeNoetig = codeNoetig, code = code, onCode = { code = it },
-                            isLoading = isLoading, error = error,
-                            registrierungOffen = registrierungOffen,
-                            focusMgr = focusMgr,
-                            onLogin = onLogin, onFormular = onFormular,
-                            vollerZugriff = vollerZugriff, onVollerZugriff = onVollerZugriff,
-                            onPasskey = onPasskey,
-                            onPasskeyStattCode = onPasskeyStattCode.takeIf { passkeyStattCode && onPasskey != null })
-
-                        AnmeldeFormular.REGISTRIEREN -> RegistrierFelder(
-                            laeuft = kontoLaeuft, meldung = kontoMeldung, fehler = kontoFehler,
-                            focusMgr = focusMgr,
-                            onRegistrieren = onRegistrieren, onFormular = onFormular)
-
-                        AnmeldeFormular.PASSWORT_VERGESSEN -> VergessenFelder(
-                            laeuft = kontoLaeuft, meldung = kontoMeldung, fehler = kontoFehler,
-                            onSenden = onPasswortVergessen, onFormular = onFormular)
-                    }
+                Row(Modifier.heightIn(min = 32.dp).padding(horizontal = Abstaende.klein, vertical = Abstaende.winzig),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(Abstaende.klein)) {
+                    Icon(Icons.Default.Cloud, null, Modifier.size(mitSchrift(16.dp)),
+                        tint = MaterialTheme.colorScheme.primary)
+                    Text(serverUrl, Modifier.weight(1f, fill = false),
+                        style = MaterialTheme.typography.labelMedium)
+                    Icon(Icons.Default.Edit, null, Modifier.size(mitSchrift(16.dp)),
+                        tint = MaterialTheme.colorScheme.primary)
                 }
             }
+    }
+    val karte: @Composable (breit: Boolean) -> Unit = { breit ->
+            AnmeldeKarte {
+                when (formular) {
+                    AnmeldeFormular.ANMELDEN -> AnmeldeFelder(
+                        username = username, onUsername = { username = it },
+                        password = password, onPassword = { password = it },
+                        codeNoetig = codeNoetig, code = code, onCode = { code = it },
+                        isLoading = isLoading, error = error,
+                        registrierungOffen = registrierungOffen,
+                        focusMgr = focusMgr,
+                        onLogin = onLogin, onFormular = onFormular,
+                        vollerZugriff = vollerZugriff, onVollerZugriff = onVollerZugriff,
+                        onPasskey = onPasskey,
+                        onPasskeyStattCode = onPasskeyStattCode.takeIf { passkeyStattCode && onPasskey != null })
+
+                    AnmeldeFormular.REGISTRIEREN -> RegistrierFelder(
+                        laeuft = kontoLaeuft, meldung = kontoMeldung, fehler = kontoFehler,
+                        focusMgr = focusMgr, namenNebeneinander = breit,
+                        onRegistrieren = onRegistrieren, onFormular = onFormular)
+
+                    AnmeldeFormular.PASSWORT_VERGESSEN -> VergessenFelder(
+                        laeuft = kontoLaeuft, meldung = kontoMeldung, fehler = kontoFehler,
+                        onSenden = onPasswortVergessen, onFormular = onFormular)
+                }
+            }
+    }
+    // Rollbar und mittig, solange es passt: Mit Tastatur oder grosser Schrift läge der
+    // Hauptknopf sonst unerreichbar unter dem Rand. Im Querformat Marke und Formular
+    // nebeneinander wie beim Einrichten, sonst lag „Registrieren“ unter dem Falz.
+    BoxWithConstraints(Modifier.fillMaxSize().ausserhalbDerSystemleisten()) {
+        val hoehe = maxHeight
+        if (maxWidth > hoehe && maxWidth >= QUER_ZWEISPALTIG) {
+            Row(
+                Modifier.fillMaxSize().mittigBis(Lesebreite.formular * 2)
+                    .padding(horizontal = Abstaende.riesig),
+                horizontalArrangement = Arrangement.spacedBy(Abstaende.riesig),
+            ) {
+                Column(Modifier.weight(1f).verticalScroll(rememberScrollState()).heightIn(min = hoehe)
+                    .padding(vertical = Abstaende.gross),
+                    horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center,
+                    content = kopf)
+                Column(Modifier.weight(1f).verticalScroll(rememberScrollState()).heightIn(min = hoehe)
+                    .padding(vertical = Abstaende.gross),
+                    horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
+                    karte(true)
+                }
+            }
+        } else Column(
+            modifier = Modifier.verticalScroll(rememberScrollState()).heightIn(min = hoehe)
+                .mittigBis(Lesebreite.formular)
+                .padding(horizontal = 28.dp, vertical = Abstaende.gross),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center,
+        ) {
+            kopf()
+            Spacer(Modifier.height(28.dp))
+            karte(false)
         }
     }
 }
+}
+
+/** Ab dieser Breite im Querformat stehen Marke und Formular nebeneinander (wie SetupScreen). */
+private val QUER_ZWEISPALTIG = 840.dp
 
 /**
  * Eine stehende Meldung im Formular — Fehler rot, Bestätigung ruhig. Eine Fassung
@@ -184,6 +218,8 @@ private fun FormularMeldung(text: String, fehler: Boolean) {
             )
             Text(
                 text,
+                // Angesagt: Nach „Anmelden“ hörte eine blinde Person sonst nichts.
+                modifier = Modifier.ansagen(),
                 color = if (fehler) MaterialTheme.colorScheme.onErrorContainer
                         else MaterialTheme.colorScheme.onSecondaryContainer,
                 style = MaterialTheme.typography.bodySmall
@@ -194,12 +230,14 @@ private fun FormularMeldung(text: String, fehler: Boolean) {
 
 /** Ein Knopf, der laedt: Kringel statt Beschriftung, solange etwas laeuft. */
 @Composable
-private fun LadeKnopf(text: String, laeuft: Boolean, aktiv: Boolean, onClick: () -> Unit) {
+private fun LadeKnopf(text: String, laeuft: Boolean, aktiv: Boolean, fehlt: String? = null, onClick: () -> Unit) {
+    // Ein gesperrter Hauptknopf sagt, was fehlt: Blass allein liess raten, warum.
+    if (!aktiv && !laeuft && fehlt != null) Text(fehlt, style = MaterialTheme.typography.bodySmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant)
     Button(
         onClick = onClick,
         modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
-        enabled = !laeuft && aktiv,
-        shape = Formen.knopf
+        enabled = !laeuft && aktiv
     ) {
         if (laeuft) {
             CircularProgressIndicator(Modifier.size(18.dp),
@@ -215,11 +253,10 @@ private fun LadeKnopf(text: String, laeuft: Boolean, aktiv: Boolean, onClick: ()
 private fun AnmeldeFelder(
     username: String, onUsername: (String) -> Unit,
     password: String, onPassword: (String) -> Unit,
-    showPw: Boolean, onShowPw: (Boolean) -> Unit,
     codeNoetig: Boolean, code: String, onCode: (String) -> Unit,
     isLoading: Boolean, error: String?,
     registrierungOffen: Boolean?,
-    focusMgr: androidx.compose.ui.focus.FocusManager,
+    focusMgr: FocusManager,
     onLogin: (String, String, String?) -> Unit,
     onFormular: (AnmeldeFormular) -> Unit,
     vollerZugriff: Boolean,
@@ -227,48 +264,30 @@ private fun AnmeldeFelder(
     onPasskey: (() -> Unit)?,
     onPasskeyStattCode: ((String, String) -> Unit)?,
 ) {
-    Text(
-        stringResource(R.string.login_title),
-        fontWeight = FontWeight.Bold,
-        style = MaterialTheme.typography.titleMedium
-    )
+    AnmeldeTitel(stringResource(R.string.login_title))
 
     OutlinedTextField(
         value = username, onValueChange = onUsername,
         label = { Text(stringResource(R.string.login_username)) },
         leadingIcon = { Icon(Icons.Default.Person, null) },
-        modifier = Modifier.fillMaxWidth(), singleLine = true,
-        shape = Formen.knopf,
+        // Für den Passwortmanager: Er füllt nur, was er als Anmeldefeld erkennt.
+        modifier = Modifier.fillMaxWidth().semantics { contentType = ContentType.Username }, singleLine = true,
+        shape = Formen.feld,
         keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
         keyboardActions = KeyboardActions(onNext = { focusMgr.moveFocus(FocusDirection.Down) })
     )
 
-    OutlinedTextField(
-        value = password, onValueChange = onPassword,
-        label = { Text(stringResource(R.string.login_password)) },
-        leadingIcon = { Icon(Icons.Default.Lock, null) },
-        trailingIcon = {
-            IconButton(onClick = { onShowPw(!showPw) }) {
-                Icon(
-                    if (showPw) Icons.Default.VisibilityOff else Icons.Default.Visibility,
-                    // Beschreibt die WIRKUNG des Tippens, nicht das
-                    // gezeigte Symbol — genau das braucht TalkBack.
-                    stringResource(if (showPw) R.string.cd_password_hide else R.string.cd_password_show)
-                )
-            }
-        },
-        visualTransformation = if (showPw) VisualTransformation.None else PasswordVisualTransformation(),
-        modifier = Modifier.fillMaxWidth(), singleLine = true,
-        shape = Formen.knopf,
-        keyboardOptions = KeyboardOptions(
-            imeAction = if (codeNoetig) ImeAction.Next else ImeAction.Done,
-            keyboardType = KeyboardType.Password),
+    PasswortFeld(
+        wert = password, onWert = onPassword,
+        beschriftung = stringResource(R.string.login_password),
+        modifier = Modifier.fillMaxWidth(),
+        imeAction = if (codeNoetig) ImeAction.Next else ImeAction.Done,
         keyboardActions = KeyboardActions(
             onNext = { focusMgr.moveFocus(FocusDirection.Down) },
             onDone = {
                 focusMgr.clearFocus()
                 if (username.isNotBlank() && password.isNotBlank()) onLogin(username, password, null)
-            })
+            }),
     )
 
     // Erst sichtbar, wenn der Server den zweiten Faktor verlangt.
@@ -280,8 +299,9 @@ private fun AnmeldeFelder(
             label = { Text(stringResource(R.string.login_code)) },
             supportingText = { Text(stringResource(R.string.login_code_hint)) },
             leadingIcon = { Icon(Icons.Default.Key, null) },
-            modifier = Modifier.fillMaxWidth(), singleLine = true,
-            shape = Formen.knopf,
+            // Das System bietet einen eben empfangenen Code zum Einsetzen an.
+            modifier = Modifier.fillMaxWidth().semantics { contentType = ContentType.SmsOtpCode }, singleLine = true,
+            shape = Formen.feld,
             keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done, keyboardType = KeyboardType.Ascii),
             keyboardActions = KeyboardActions(onDone = { focusMgr.clearFocus(); absenden() })
         )
@@ -291,17 +311,29 @@ private fun AnmeldeFelder(
 
     // Ohne Häkchen ein Token ohne Verwalterrechte, auch für ein Verwalterkonto. Das
     // Häkchen setzen fragt die Gerätesperre: Ein Token mit Scope voll darf alles.
-    val schutz = ch.brickinventoryapp.ui.components.LocalSchrittschutz.current
+    // Eingeklappt unter „Erweitert“: Zum Sammeln braucht es niemand, und offen schob
+    // es bei 200 % den Anmeldeknopf aus dem ersten Bild.
+    val schutz = LocalSchrittschutz.current
     val vollGrund = stringResource(R.string.schritt_voller_zugriff)
+    var erweitert by rememberSaveable { mutableStateOf(vollerZugriff) }
+    // Der Zustand für TalkBack: Ob der Bereich offen ist, sah man sonst nur.
+    val zustand = stringResource(if (erweitert) R.string.zustand_ausgeklappt else R.string.zustand_eingeklappt)
+    TextButton(onClick = { erweitert = !erweitert }, modifier = Modifier.semantics {
+        stateDescription = zustand
+        if (erweitert) collapse { erweitert = false; true } else expand { erweitert = true; true }
+    }) {
+        Text(stringResource(R.string.login_erweitert))
+        Icon(if (erweitert) Icons.Default.ExpandLess else Icons.Default.ExpandMore, null)
+    }
     // Oben bündig: Das Häkchen gehört zur ersten Zeile, nicht zur Mitte des Blocks
     // (bei grosser Schrift drei Zeilen).
-    Row(verticalAlignment = Alignment.Top,
+    if (erweitert) Row(verticalAlignment = Alignment.Top,
         modifier = Modifier.fillMaxWidth().toggleable(value = vollerZugriff, role = Role.Checkbox,
             onValueChange = { an -> if (an) schutz.bestaetige(vollGrund) { onVollerZugriff(true) } else onVollerZugriff(false) })) {
         Checkbox(checked = vollerZugriff, onCheckedChange = null)
         Column(Modifier.padding(start = 8.dp, top = Abstaende.haar)) {
             Text(stringResource(R.string.login_full_access), style = MaterialTheme.typography.bodyMedium)
-            Text(stringResource(R.string.login_full_access_hint), style = MaterialTheme.typography.labelSmall,
+            Text(stringResource(R.string.login_full_access_hint), style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
     }
@@ -309,22 +341,30 @@ private fun AnmeldeFelder(
     LadeKnopf(
         stringResource(R.string.login_button),
         laeuft = isLoading,
-        aktiv = username.isNotBlank() && password.isNotBlank() && (!codeNoetig || code.isNotBlank())
+        aktiv = username.isNotBlank() && password.isNotBlank() && (!codeNoetig || code.isNotBlank()),
+        fehlt = stringResource(when {
+            username.isBlank() || password.isBlank() -> R.string.login_missing_credentials
+            else -> R.string.login_missing_code
+        }),
     ) { onLogin(username, password, code.takeIf { codeNoetig }) }
 
     // Statt des Codes: Name und Passwort von oben gehen mit, der Passkey ersetzt nur den Code.
     if (codeNoetig && onPasskeyStattCode != null) {
         OutlinedButton(onClick = { onPasskeyStattCode(username, password) },
             enabled = !isLoading && username.isNotBlank() && password.isNotBlank(),
-            modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp), shape = Formen.knopf) {
-            Icon(Icons.Default.Fingerprint, null, Modifier.size(18.dp))
+            modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
+            colors = nebenKnopfFarben(),
+            border = nebenKnopfRand(!isLoading && username.isNotBlank() && password.isNotBlank())) {
+            Icon(Icons.Default.Fingerprint, null, Modifier.size(mitSchrift(18.dp)))
             Spacer(Modifier.width(Abstaende.klein))
             Text(stringResource(R.string.login_passkey_statt_code))
         }
     } else if (!codeNoetig && onPasskey != null) {
         OutlinedButton(onClick = onPasskey, enabled = !isLoading,
-            modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp), shape = Formen.knopf) {
-            Icon(Icons.Default.Fingerprint, null, Modifier.size(18.dp))
+            modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
+            colors = nebenKnopfFarben(),
+            border = nebenKnopfRand(!isLoading)) {
+            Icon(Icons.Default.Fingerprint, null, Modifier.size(mitSchrift(18.dp)))
             Spacer(Modifier.width(Abstaende.klein))
             Text(stringResource(R.string.login_passkey))
         }
@@ -333,16 +373,15 @@ private fun AnmeldeFelder(
     // Der Registrier-Link erscheint NUR bei einem ausdruecklichen `true`.
     // `null` heisst „noch nicht gefragt" oder „der Server hat nicht
     // geantwortet" — in beiden Faellen fuehrte der Knopf ins Leere.
-    // Beide Verweise in einer umbrechenden Reihe: untereinander lag zwischen ihnen der
-    // doppelte Abstand des Formulars.
+    // Ausführlich: docs/begruendungen/feature-anmeldung/ui/screens/LoginScreen.kt.md#flowrow
     FlowRow(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center) {
         if (registrierungOffen == true) {
             TextButton(onClick = { onFormular(AnmeldeFormular.REGISTRIEREN) }) {
-                Text(stringResource(R.string.login_no_account))
+                Text(stringResource(R.string.login_no_account), textAlign = TextAlign.Center)
             }
         }
         TextButton(onClick = { onFormular(AnmeldeFormular.PASSWORT_VERGESSEN) }) {
-            Text(stringResource(R.string.login_forgot))
+            Text(stringResource(R.string.login_forgot), textAlign = TextAlign.Center)
         }
     }
 }
@@ -350,7 +389,8 @@ private fun AnmeldeFelder(
 @Composable
 private fun RegistrierFelder(
     laeuft: Boolean, meldung: String?, fehler: String?,
-    focusMgr: androidx.compose.ui.focus.FocusManager,
+    focusMgr: FocusManager,
+    namenNebeneinander: Boolean,
     onRegistrieren: (String, String, String, String, String) -> Unit,
     onFormular: (AnmeldeFormular) -> Unit,
 ) {
@@ -369,8 +409,7 @@ private fun RegistrierFelder(
     val zuKurz     = stringResource(R.string.register_password_short)
     val ungleich   = stringResource(R.string.register_password_mismatch)
 
-    Text(stringResource(R.string.register_title),
-        fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium)
+    AnmeldeTitel(stringResource(R.string.register_title))
 
     // Nach einer erfolgreichen Registrierung stehen nur noch die Meldung und
     // der Weg zurueck — die Felder waeren jetzt nur eine Einladung, dasselbe
@@ -385,53 +424,34 @@ private fun RegistrierFelder(
             value = nutzer, onValueChange = { nutzer = it },
             label = { Text(stringResource(R.string.login_username)) },
             leadingIcon = { Icon(Icons.Default.Person, null) },
-            modifier = Modifier.fillMaxWidth(), singleLine = true, shape = Formen.knopf,
+            modifier = Modifier.fillMaxWidth().semantics { contentType = ContentType.NewUsername }, singleLine = true, shape = Formen.feld,
             keyboardOptions = weiter, keyboardActions = naechstes)
         OutlinedTextField(
             value = email, onValueChange = { email = it },
             label = { Text(stringResource(R.string.register_email)) },
             leadingIcon = { Icon(Icons.Default.Email, null) },
-            modifier = Modifier.fillMaxWidth(), singleLine = true, shape = Formen.knopf,
+            modifier = Modifier.fillMaxWidth(), singleLine = true, shape = Formen.feld,
             keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next,
                 keyboardType = KeyboardType.Email),
             keyboardActions = naechstes)
-        OutlinedTextField(
-            value = vorname, onValueChange = { vorname = it },
-            label = { Text(stringResource(R.string.register_first_name)) },
-            modifier = Modifier.fillMaxWidth(), singleLine = true, shape = Formen.knopf,
-            keyboardOptions = weiter, keyboardActions = naechstes)
-        OutlinedTextField(
-            value = nachname, onValueChange = { nachname = it },
-            label = { Text(stringResource(R.string.register_last_name)) },
-            modifier = Modifier.fillMaxWidth(), singleLine = true, shape = Formen.knopf,
-            keyboardOptions = weiter, keyboardActions = naechstes)
-        OutlinedTextField(
-            value = pw1, onValueChange = { pw1 = it },
-            label = { Text(stringResource(R.string.login_password)) },
-            leadingIcon = { Icon(Icons.Default.Lock, null) },
-            visualTransformation = PasswordVisualTransformation(),
-            modifier = Modifier.fillMaxWidth(), singleLine = true, shape = Formen.knopf,
-            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next,
-                keyboardType = KeyboardType.Password),
-            keyboardActions = naechstes)
-        OutlinedTextField(
-            value = pw2, onValueChange = { pw2 = it },
-            label = { Text(stringResource(R.string.register_password_repeat)) },
-            leadingIcon = { Icon(Icons.Default.Lock, null) },
-            visualTransformation = PasswordVisualTransformation(),
-            modifier = Modifier.fillMaxWidth(), singleLine = true, shape = Formen.knopf,
-            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done,
-                keyboardType = KeyboardType.Password))
+        NamensFelder(vorname, { vorname = it }, nachname, { nachname = it }, namenNebeneinander, naechstes)
+        // Die Mindestlänge steht von Anfang an da, nicht erst als Fehler nach dem Senden.
+        PasswortFeld(pw1, { pw1 = it }, stringResource(R.string.login_password), Modifier.fillMaxWidth(),
+            art = PasswortArt.NEU, hinweis = pluralStringResource(R.plurals.passwort_mindestens, PASSWORT_MIN_ZEICHEN, PASSWORT_MIN_ZEICHEN),
+            imeAction = ImeAction.Next, keyboardActions = naechstes)
+        PasswortFeld(pw2, { pw2 = it }, stringResource(R.string.register_password_repeat), Modifier.fillMaxWidth(),
+            art = PasswortArt.WIEDERHOLUNG)
 
         val zuZeigen = eigenerFehler ?: fehler
         if (zuZeigen != null) FormularMeldung(zuZeigen, fehler = true)
 
-        LadeKnopf(stringResource(R.string.register_button), laeuft = laeuft, aktiv = true) {
-            // Dieselben drei Prüfungen wie im Web-Formular, in derselben Reihenfolge; die
-            // Längengrenze von 8 Zeichen ist die des Servers (routes/auth.ts). Hier
+        // Dieselbe Regel wie beim Anmelden: leer gesperrt, darüber steht, was fehlt.
+        val vollstaendig = nutzer.isNotBlank() && email.isNotBlank() && pw1.isNotBlank()
+        LadeKnopf(stringResource(R.string.register_button), laeuft = laeuft, aktiv = vollstaendig, fehlt = reqFields) {
+            // Dieselben Prüfungen wie im Web-Formular, in derselben Reihenfolge; die
+            // Längengrenze (PASSWORT_MIN_ZEICHEN) ist die des Servers (routes/auth.ts). Hier
             // vorweggenommen, damit man dafür keine Runde über das Netz braucht.
             eigenerFehler = when {
-                nutzer.isBlank() || email.isBlank() || pw1.isBlank() -> reqFields
                 passwortZuKurz(pw1) -> zuKurz
                 pw1 != pw2     -> ungleich
                 else           -> null
@@ -446,6 +466,32 @@ private fun RegistrierFelder(
     }
 }
 
+/**
+ * Vor- und Nachname; auf dem Tablet in einer Zeile: Sechs Felder untereinander
+ * schoben „Registrieren“ unter den Falz.
+ */
+@Composable
+private fun NamensFelder(
+    vorname: String, onVorname: (String) -> Unit, nachname: String, onNachname: (String) -> Unit,
+    nebeneinander: Boolean, naechstes: KeyboardActions,
+) {
+    val feld: @Composable (String, (String) -> Unit, Int, Modifier) -> Unit = { wert, onWert, label, breite ->
+        OutlinedTextField(
+            value = wert, onValueChange = onWert,
+            label = { Text(stringResource(label)) },
+            leadingIcon = { Icon(Icons.Default.Badge, null) },
+            modifier = breite, singleLine = true, shape = Formen.feld,
+            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next), keyboardActions = naechstes)
+    }
+    if (nebeneinander) Row(horizontalArrangement = Arrangement.spacedBy(Abstaende.mittel)) {
+        feld(vorname, onVorname, R.string.register_first_name, Modifier.weight(1f))
+        feld(nachname, onNachname, R.string.register_last_name, Modifier.weight(1f))
+    } else {
+        feld(vorname, onVorname, R.string.register_first_name, Modifier.fillMaxWidth())
+        feld(nachname, onNachname, R.string.register_last_name, Modifier.fillMaxWidth())
+    }
+}
+
 @Composable
 private fun VergessenFelder(
     laeuft: Boolean, meldung: String?, fehler: String?,
@@ -456,8 +502,7 @@ private fun VergessenFelder(
     var eigenerFehler by rememberSaveable { mutableStateOf<String?>(null) }
     val brauchtEmail = stringResource(R.string.forgot_email_required)
 
-    Text(stringResource(R.string.forgot_title),
-        fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium)
+    AnmeldeTitel(stringResource(R.string.forgot_title))
 
     if (meldung != null) {
         FormularMeldung(meldung, fehler = false)
@@ -474,7 +519,7 @@ private fun VergessenFelder(
             value = email, onValueChange = { email = it },
             label = { Text(stringResource(R.string.register_email)) },
             leadingIcon = { Icon(Icons.Default.Email, null) },
-            modifier = Modifier.fillMaxWidth(), singleLine = true, shape = Formen.knopf,
+            modifier = Modifier.fillMaxWidth(), singleLine = true, shape = Formen.feld,
             keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done,
                 keyboardType = KeyboardType.Email))
 

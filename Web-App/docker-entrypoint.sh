@@ -60,6 +60,11 @@ case "${BRICKINV_CHOWN:-auto}" in
     ;;
 esac
 
+# Was der Dienst anlegt, liest auf dem Host nur sein Konto (Uploads können
+# Rechnungen sein). Ältere Uploads zieht jeder Start nach, als brickinv.
+umask 077
+su-exec brickinv chmod -R go-rwx /app/data/uploads 2>/dev/null || true
+
 # Als brickinv, nicht als root: Ein Symlink des Dienstes (etwa images → /etc)
 # führte ein mkdir von root ausserhalb des Datenordners.
 su-exec brickinv mkdir -p \

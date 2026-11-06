@@ -1,62 +1,61 @@
-// ── Einstiegspunkt des Frontend-Bündels ──────────────────────────────────────
-//
-// Seit der Umstellung auf ES-Module lädt index.html nur noch diese Datei (über
-// das gebaute js/app.bundle.js). Module werden ausgeführt, wenn sie importiert
-// werden — dieser Einstieg importiert deshalb alle Teile in genau der
-// Reihenfolge, in der index.html sie früher als einzelne <script>-Tags
-// eingebunden hat.
-//
-// ── Zur Reihenfolge ─────────────────────────────────────────────────────────
-// Bei gegenseitigen Importen (01-core und 02-gallery brauchen einander)
-// bestimmt nicht diese Liste die Auswertungsreihenfolge, sondern der
-// Importgraph: Ein Modul wird ausgewertet, bevor das importierende Modul
-// weiterläuft. Für Funktionsdeklarationen ist das unkritisch — sie sind
-// gehoisted und über die Modulgrenze als "live binding" auch dann schon
-// erreichbar, wenn das Zielmodul noch nicht fertig ausgewertet ist.
-//
-// Kritisch wäre nur, ein const aus einem anderen Modul WÄHREND der eigenen
-// Top-Level-Auswertung zu lesen. Solche Stellen gibt es hier nicht; die
-// Top-Level-Arbeit der Module beschränkt sich auf das Anhängen von
-// Ereignisbehandlern und die Registrierung beim Dispatcher.
+// Einstiegspunkt des Bündels. Jede Datei unter js/ steht hier, weil scripts/build-frontend.js die
+// Vollständigkeit am Einstieg prüft. Die Reihenfolge der Auswertung bestimmt der Importgraph; er ist
+// kreisfrei (test/frontend-architektur.test.js), Rückwege laufen über Ereignisse.
 import './00-stile.js';
 import './00-escapen.js';
+import './00-ereignisse.js';
+import './00-ziele.js';
+import './00-zustand.js';
 import '../i18n.js';
-import './01-core.js';
+import './01-dom.js';
+import './01-format.js';
+import './01-meldungen.js';
+import './01-verbindung.js';
+import './01-api.js';
+import './01-bilder.js';
+import './01-formular.js';
+import './01-konto.js';
 import './01-dialoge.js';
 import './01-fortschritt.js';
 import './01-monitor.js';
 import './01-bausteine.js';
+import './01-rueckfrage.js';
+import './01-diagramme.js';
+import './02-detailfelder.js';
+import './02-konten-orte.js';
 import './02-gallery.js';
 import './03-parts.js';
 import './04-finance.js';
 import './05-settings.js';
+import './05-haushalt.js';
+import './05-nutzerverwaltung.js';
+import './05-alarme.js';
+import './05-lagerorte.js';
 import './06-minifigs.js';
 import './07-admin.js';
+import './07-set-detail.js';
 import './08-init.js';
 import './09-catalog.js';
 import './10-mobile.js';
 import './11-actions.js';
 import './12-pdfviewer.js';
+import './13-kaufpreis-anzeige.js';
 import './13-acquisition-modals.js';
+import './13-set-teile.js';
 import './14-scope.js';
 import './15-scrollbar.js';
 import './16-merkliste.js';
 import './17-gutscheine.js';
 import './18-wanted-xml.js';
-// Reines Bauteil ohne Zugriff auf das Dokument; eingehängt wird es von
-// js/08-init.js. Hier steht es, weil die Vollständigkeitsprüfung in
-// scripts/build-frontend.js den EINSTIEG liest und nicht den Graphen —
-// jede Datei unter js/ muss also hier genannt sein.
 import './19-bricklink-xml.js';
 import './20-papierkorb.js';
 import './21-zweiter-faktor.js';
 import './22-einrichtung.js';
 import './23-passkeys.js';
 import './24-router.js';
+import './25-navigation.js';
+import './26-sitzung.js';
 
-// ── Start ────────────────────────────────────────────────────────────────────
-// Erst NACH der Auswertung aller Module. Vorher lag der Aufruf im Rumpf von
-// 08-init.js und lief dadurch, während i18n.js noch nicht ausgewertet war —
-// siehe die Begründung dort.
-import { startApp } from './08-init.js';
+// Gestartet wird erst nach der Auswertung aller Module.
+import { startApp } from './26-sitzung.js';
 startApp();

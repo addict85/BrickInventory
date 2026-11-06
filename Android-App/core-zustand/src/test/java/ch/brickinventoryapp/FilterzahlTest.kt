@@ -11,13 +11,13 @@ import org.junit.Test
  * Die Zahl am Knopf „Filter“ zählt, was die Liste wirklich einschränkt — nicht,
  * was nur gemerkt ist, und nicht die Sortierung (eigenes Menü, SortierMenue).
  *
- * Gegenproben (28.10.2026, gemessen mit kotlinc gegen ui/Filterzahl.kt):
+ * Gegenproben:
  *   A  in konto() die Prüfung `wert in moeglich` entfernt → rot „ein Konto,
  *      das nicht mehr zum Haushalt gehört, zählt nicht“
  *   B  in lager() nur auf `isNotBlank` geprüft → rot „ein leerer Lagerort
  *      zählt nicht“
  *   C  in galerie() das Thema nicht gezählt → rot „jede Abweichung zählt
- *      einmal“ (2 statt 3; 03.11.2026, modbau)
+ *      einmal“ (2 statt 3)
  *   D  in teile() die Kategorie vergessen → rot „bei den Teilen zählen …“
  */
 class FilterzahlTest {

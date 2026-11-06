@@ -1,7 +1,6 @@
 package ch.brickinventoryapp
 
 import ch.brickinventoryapp.util.BildHostWaechter
-import ch.brickinventoryapp.util.istErlaubterBildHost
 import ch.brickinventoryapp.util.istEigenerBildServer
 import okhttp3.HttpUrl.Companion.toHttpUrl
 import okhttp3.Interceptor
@@ -20,21 +19,22 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
- * Der Bild-Client lädt nur vom eigenen Server und von den Bild-CDNs; Browser-Kennung
- * und Referer bekommen nur die CDNs, ein Token nur der eigene Server. Ein fremder
- * Host wird nicht angefragt, auch nicht über eine Umleitung.
+ * Der Bild-Client lädt nur vom eigenen Server; ein fremder Host — auch ein Bild-CDN —
+ * wird nicht angefragt, auch nicht über eine Umleitung (sec17 A-N7: Die Bilder kommen
+ * über den Proxy des Servers, ein direkter Weg gäbe Dritten die IP des Geräts).
  *
- * Gegenproben (02.11.2026, gemessen mit kotlinc lokal):
- *   A  in vorbereitet() `else -> null` → `else -> r` → rot „ein fremder Host wird
+ * Gegenproben:
+ *   A  in vorbereitet() jede Anfrage durchgelassen → rot „ein fremder Host wird
  *      nicht angefragt“ und „eine Umleitung zu einem fremden Host …“
- *   B  in intercept() bei fremdem Ziel `anfrage.newBuilder().url(ziel).build()`
- *      statt neuer Anfrage → rot „eine Umleitung zum CDN … ohne Token“
- *   C  istErlaubterBildHost() mit `(url.port == 443 || url.port == 80)` statt
- *      `url.isHttps && url.port == 443` → rot „nur genau diese Hosts …“
+ *   C die CDN-Freigabe wieder eingebaut
+ *      (gegenproben/bild-cdn-wieder-frei.patch) → rot „auch ein Bild-CDN …“
  *   D  den Zweig `eigenerServer(r.url) -> r` entfernt → rot „der eigene Server
  *      bekommt die Anfrage unveraendert“ und beide Umleitungstests
  *   E  istEigenerBildServer() ohne `entwicklung &&` → rot „localhost gilt nur
  *      im Debug-Build als eigener Server“ (200 statt 403)
+ *   F  in intercept() naechsteUmleitung ohne basisPfad() aufgerufen (Stand vor
+ *      früher genügte der gleiche Host) → rot „eine Umleitung aus dem Basispfad
+ *      heraus geht ohne Token“; gegenproben/bild-umleitung-verlaesst-basispfad.patch
  */
 class BildHostWaechterTest {
 
@@ -82,12 +82,12 @@ class BildHostWaechterTest {
     }
 
     @Test
-    fun `das CDN bekommt Browser-Kennung und Referer`() {
-        assertEquals(200, hole("https://cdn.rebrickable.com/sets/1.jpg"))
-        val r = gesehen.single()
-        assertTrue(r.header("User-Agent").orEmpty().contains("Chrome/120"))
-        assertEquals("https://rebrickable.com/", r.header("Referer"))
-        assertFalse(r.header("Accept").orEmpty().contains("avif"))
+    fun `auch ein Bild-CDN wird nicht direkt angefragt`() {
+        for (cdn in listOf("https://cdn.rebrickable.com/sets/1.jpg", "https://images.brickset.com/a.png",
+                           "https://img.bricklink.com/a.png")) {
+            assertEquals(cdn, 403, hole(cdn))
+        }
+        assertTrue("Ein CDN wurde direkt angefragt: $gesehen", gesehen.isEmpty())
     }
 
     @Test
@@ -99,22 +99,54 @@ class BildHostWaechterTest {
     }
 
     @Test
-    fun `eine Umleitung zum CDN wird verfolgt, ohne Token`() {
+    fun `eine Umleitung zum CDN wird nicht verfolgt`() {
         server.enqueue(MockResponse().setResponseCode(302).setHeader("Location", "https://cdn.rebrickable.com/p.png"))
-        assertEquals(200, hole(server.url("/images/a.jpg").toString(), token = "t1"))
-        val r = gesehen.single()
-        assertNull("Der Token des eigenen Servers ging ans CDN", r.header("Authorization"))
-        assertTrue(r.header("User-Agent").orEmpty().contains("Chrome/120"))
+        assertEquals(403, hole(server.url("/images/a.jpg").toString(), token = "t1"))
+        assertTrue(gesehen.isEmpty())
+    }
+
+    /** Der Server liegt hinter einem Proxy unter [basis]; derselbe Host trägt andere Anwendungen. */
+    private fun mitBasis(basis: String) = OkHttpClient.Builder()
+        .addInterceptor(BildHostWaechter(
+            eigenerServer = { it.host == server.hostName && it.port == server.port },
+            basisPfad = { basis },
+        ))
+        .addInterceptor(cdnAttrappe)
+        .followRedirects(false)
+        .build()
+
+    private fun holeMitBasis(basis: String, pfad: String) = mitBasis(basis).newCall(
+        Request.Builder().url(server.url(pfad)).header("Authorization", "Bearer GEHEIM").build()
+    ).execute().use { it.code }
+
+    @Test
+    fun `eine Umleitung aus dem Basispfad heraus geht ohne Token`() {
+        server.enqueue(MockResponse().setResponseCode(302).setHeader("Location", "/fremd/bild.png"))
+        server.enqueue(MockResponse().setBody("bild"))
+        server.enqueue(MockResponse().setResponseCode(302).setHeader("Location", "/brickfremd/bild.png"))
+        server.enqueue(MockResponse().setBody("bild"))
+        assertEquals(200, holeMitBasis("/brick", "/brick/api/v1/bild.png"))
+        assertEquals("Bearer GEHEIM", server.takeRequest().getHeader("Authorization"))
+        val fremd = server.takeRequest()
+        assertEquals("/fremd/bild.png", fremd.path)
+        assertNull("Der Token verliess den Basispfad", fremd.getHeader("Authorization"))
+        // Segmentweise: /brick deckt /brickfremd nicht.
+        assertEquals(200, holeMitBasis("/brick", "/brick/a.png"))
+        server.takeRequest()
+        val nachbar = server.takeRequest()
+        assertEquals("/brickfremd/bild.png", nachbar.path)
+        assertNull("Der Token ging an /brickfremd", nachbar.getHeader("Authorization"))
     }
 
     @Test
-    fun `nur genau diese Hosts, nur ueber https auf 443`() {
-        assertTrue(istErlaubterBildHost("https://img.bricklink.com/a.png".toHttpUrl()))
-        assertTrue(istErlaubterBildHost("https://IMAGES.brickset.com/a.png".toHttpUrl()))
-        assertFalse(istErlaubterBildHost("http://cdn.rebrickable.com/a.png".toHttpUrl()))
-        assertFalse(istErlaubterBildHost("https://cdn.rebrickable.com:8443/a.png".toHttpUrl()))
-        assertFalse(istErlaubterBildHost("https://x.cdn.rebrickable.com/a.png".toHttpUrl()))
-        assertFalse(istErlaubterBildHost("https://cdn.rebrickable.com.evil.example/a.png".toHttpUrl()))
+    fun `eine Umleitung innerhalb des Basispfads behaelt den Token`() {
+        server.enqueue(MockResponse().setResponseCode(302).setHeader("Location", "/brick/bilder/b.png"))
+        server.enqueue(MockResponse().setBody("bild"))
+        assertEquals(200, holeMitBasis("/brick", "/brick/api/v1/bild.png"))
+        server.takeRequest()
+        val ziel = server.takeRequest()
+        assertEquals("/brick/bilder/b.png", ziel.path)
+        assertEquals("Bearer GEHEIM", ziel.getHeader("Authorization"))
     }
 
     /** Derselbe Wächter, wie NetzModule ihn baut, im Release- und im Debug-Build. */

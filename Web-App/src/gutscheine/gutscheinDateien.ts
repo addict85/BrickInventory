@@ -1,8 +1,8 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { DATA_DIR } from '../infra/appPaths';
-import { verschluesselePuffer, entschluesselePuffer, istVerschluesselterPuffer, altenPufferLesen, kontext } from '../infra/geheimnis';
-import { ohneFehlendeDatei } from '../infra/httpError';
+import { verschluesselePuffer, entschluesselePuffer, istVerschluesselterPuffer, altenPufferLesen, kontext, pufferUmschluesseln } from '../infra/geheimnis';
+import { ohneFehlendeDatei } from '../infra/fehler';
 
 /** Die PDFs tragen Kartennummer und PIN im Klartext; verschlüsselt gibt eine
  * Kopie von data/ ohne Schlüssel sie nicht preis. */
@@ -24,9 +24,13 @@ function dateiKontext(datei: string) {
 
 /** Erst die fertige Datei bekommt ihren Namen. */
 export async function schreibeGutscheinPdf(datei: string, pdf: Buffer): Promise<void> {
+  await ersetzeDatei(datei, verschluesselePuffer(pdf, dateiKontext(datei)));
+}
+
+async function ersetzeDatei(datei: string, inhalt: Buffer): Promise<void> {
   await fs.promises.mkdir(path.dirname(datei), { recursive: true, mode: 0o700 });
   const teil = `${datei}.${process.pid}.teil`;
-  await fs.promises.writeFile(teil, verschluesselePuffer(pdf, dateiKontext(datei)), { mode: 0o600 });
+  await fs.promises.writeFile(teil, inhalt, { mode: 0o600 });
   await fs.promises.rename(teil, datei);
 }
 
@@ -41,8 +45,9 @@ export async function liesGutscheinPdfOderNichts(datei: string | null): Promise<
   return liesGutscheinPdf(datei).catch(ohneFehlendeDatei('gutschein:pdf lesen', null));
 }
 
-/** Unverschlüsselte und BIENC1-Dateien auf BIENC2, bei jedem Start; BIENC2 bleibt. */
-export async function verschluesseleGutscheinAltbestand(): Promise<number> {
+/** Unverschlüsselte und BIENC1-Dateien auf BIENC2, bei jedem Start; BIENC2 bleibt,
+ * ausser `alle` (Schlüsselwechsel): Dann kommt, was nur der vorige öffnet, neu. */
+export async function verschluesseleGutscheinAltbestand(o: { alle?: boolean } = {}): Promise<number> {
   if (!fs.existsSync(VOUCHER_DIR)) return 0;
   let n = 0;
   for (const konto of fs.readdirSync(VOUCHER_DIR).filter(k => /^\d+$/.test(k))) {
@@ -51,7 +56,11 @@ export async function verschluesseleGutscheinAltbestand(): Promise<number> {
     for (const name of fs.readdirSync(ordner).filter(f => /^\d+\.pdf$/.test(f))) {
       const datei = path.join(ordner, name);
       const roh = await fs.promises.readFile(datei);
-      if (istVerschluesselterPuffer(roh)) continue;
+      if (istVerschluesselterPuffer(roh)) {
+        const neu = o.alle ? pufferUmschluesseln(roh, dateiKontext(datei)) : undefined;
+        if (neu) { await ersetzeDatei(datei, neu); n++; }
+        continue;
+      }
       const klar = altenPufferLesen(roh, dateiKontext(datei));
       if (!klar) continue;
       await schreibeGutscheinPdf(datei, klar);

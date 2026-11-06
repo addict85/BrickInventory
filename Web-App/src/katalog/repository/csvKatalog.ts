@@ -56,5 +56,5 @@ export async function ersetzeTeilfarbenbild(partNumber: string, colorId: number,
     INSERT INTO part_color_catalog (part_number, color_id, image_url)
     VALUES ($1, $2, $3)
     ON CONFLICT (part_number, color_id) DO UPDATE
-      SET image_url = EXCLUDED.image_url, bild_von = NULL, updated_at = NOW()`, [partNumber, colorId, url]);
+      SET image_url = EXCLUDED.image_url, updated_at = NOW()`, [partNumber, colorId, url]);
 }

@@ -3,7 +3,6 @@ package ch.brickinventoryapp.util
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
-import android.os.Build
 import android.os.Handler
 import android.os.Looper
 import android.os.PersistableBundle
@@ -17,7 +16,7 @@ import java.util.UUID
  * Der Schlüssel als Text, weil ClipDescription.EXTRA_IS_SENSITIVE erst ab API 33
  * existiert und ältere Geräte ihn ebenso lesen dürfen.
  */
-fun geheimerClip(etikett: String, text: String, kennung: String? = null): ClipData =
+internal fun geheimerClip(etikett: String, text: String, kennung: String? = null): ClipData =
     ClipData.newPlainText(etikett, text).apply {
         description.extras = PersistableBundle().apply {
             putBoolean(IST_GEHEIM, true)
@@ -26,7 +25,7 @@ fun geheimerClip(etikett: String, text: String, kennung: String? = null): ClipDa
     }
 
 /** Derselbe Wert wie ClipDescription.EXTRA_IS_SENSITIVE. */
-const val IST_GEHEIM = "android.content.extra.IS_SENSITIVE"
+internal const val IST_GEHEIM = "android.content.extra.IS_SENSITIVE"
 private const val GEHEIM_KENNUNG = "ch.brickinventoryapp.geheim_kennung"
 
 /**
@@ -51,14 +50,13 @@ object GeheimeZwischenablage {
     fun pruefe(ctx: Context) {
         val cm = ctx.applicationContext.getSystemService(ClipboardManager::class.java) ?: return
         val clip = runCatching { cm.primaryClip }.getOrNull()
-        val lesbar = clip != null || Build.VERSION.SDK_INT < Build.VERSION_CODES.Q
+        val lesbar = clip != null
         val imClip = clip?.description?.extras?.getString(GEHEIM_KENNUNG)
         when (geheimSchritt(kennung, faelligAb, SystemClock.elapsedRealtime(), lesbar, imClip)) {
             GeheimSchritt.WARTEN -> Unit
             GeheimSchritt.VERGESSEN -> kennung = null
             GeheimSchritt.LEEREN -> {
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) cm.clearPrimaryClip()
-                else cm.setPrimaryClip(ClipData.newPlainText("", ""))
+                cm.clearPrimaryClip()
                 kennung = null
             }
         }

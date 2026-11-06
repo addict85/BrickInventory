@@ -1,28 +1,7 @@
 /**
  * Der Preisverlauf einer Minifigur findet ihre Preise auch unter der
  * BrickLink-Nummer.
- *
- * ── Der Befund ──────────────────────────────────────────────────────────────
- * Für Teile ist das in Nachtrag 143 beschrieben und behoben: Preise stehen
- * unter der BrickLink-Nummer, Erfassungen unter der des Benutzers, also
- * braucht die Abfrage ZWEI Schlüssel. Für Minifiguren stand ein Schlüssel für
- * beides — und der Kommentar an manualPriceHistory behauptete ausdrücklich,
- * bei Minifiguren stimmten beide überein.
- *
- * Sie stimmen nicht überein, sobald eine Figur eine eigene bl_fig_number
- * trägt. getCurrentFigMarketPrice versucht `[blFigNumber, figNumber]` der
- * Reihe nach; fetchMinifigPrice legt Cache und Verlauf unter der Nummer ab,
- * mit der der Abruf geklappt hat. Gesucht wurde unter der Nummer des
- * Benutzers.
- *
- * Sichtbar wie bei den Teilen: In der Finanzliste steht ein Marktpreis, im
- * Detailfenster ein „—", und das Diagramm bleibt leer.
- *
- * ── Warum gegen eine echte Datenbank ────────────────────────────────────────
- * Die Aussage ist, welche Zeilen eine Abfrage findet. Am Quelltext wäre es die
- * Frage, ob irgendwo zwei Parameter stehen.
- *
- * Voraussetzung: Test-DB via TEST_DATABASE_URL.
+ * Ausführlich: docs/begruendungen/test/figur-preisverlauf-nummern-db.test.js.md#kopf
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -30,17 +9,13 @@ const assert = require('node:assert/strict');
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
 const _req = require('./helpers/sources').buildAndRequire();
+const { dbOderSkip } = require('./helpers/db');
 const db = _req('db/database.js');
 const { getMinifigPriceHistory } = _req('src/finanzen/priceHistory.js');
 const { haeltFigur } = require('./helpers/bestand');
 
 test('der Figuren-Preisverlauf findet die Preise unter der BrickLink-Nummer', { concurrency: 1 }, async (t) => {
-  try { await db.initSchema(); }
-  catch (e) {
-    if (process.env.REQUIRE_DB === '1')
-      throw new Error(`REQUIRE_DB=1, aber die Test-DB ist nicht erreichbar: ${e.message}`);
-    t.skip('Test-DB nicht erreichbar'); return;
-  }
+  if (!await dbOderSkip(t, _req, { migrieren: false })) return;
   // minifig_price_history steht bewusst NUR in db/migrations/0003 (siehe die
   // Abgrenzung oben in db/schema.sql). initSchema() legt sie nicht an; ohne
   // diesen Schritt liefe der Test gegen ein Schema, das es im Betrieb nicht
@@ -100,13 +75,8 @@ test('der Figuren-Preisverlauf findet die Preise unter der BrickLink-Nummer', { 
     assert.ok(v.history_new.length >= 1,
       'Der Verlauf ist leer — dann bleibt das Diagramm leer, obwohl Punkte da sind');
 
-    // ── Und die andere Hälfte: die EIGENE Nummer darf nicht wegfallen ───────
-    //
-    // Ohne diesen Fall wäre die Regel halb bewiesen: Eine Fassung, die NUR
-    // die BrickLink-Nummer abfragt, käme oben durch. Der Schätzpfad
-    // (estimateFigPriceFromParts) legt aber ausdrücklich unter der Nummer des
-    // Benutzers ab, und ältere Zeilen stammen aus der Zeit vor der
-    // bl_fig_number.
+    // Und die andere Hälfte: die EIGENE Nummer darf nicht wegfallen
+    // Ausführlich: docs/begruendungen/test/figur-preisverlauf-nummern-db.test.js.md#stelle
     await haeltFigur(db, uid, OHNE_BL, { menge: 0 });  // Menge 0: die Erfassung dahinter traegt sie
     await db.run(
       `INSERT INTO minifig_acquisitions (user_id,fig_number,quantity,unit_price,condition)

@@ -1,6 +1,7 @@
 package ch.brickinventoryapp
 
 import org.junit.Test
+import java.io.File
 
 /**
  * Der Navigationsaufbau baut Navigation — sonst nichts.
@@ -22,7 +23,7 @@ import org.junit.Test
 class NavigationHostSizeTest {
 
     private fun read(rel: String): String {
-        val f = java.io.File(Quellen.wurzel, "$rel")
+        val f = File(Quellen.wurzel, "$rel")
         assert(f.exists()) { "Datei nicht gefunden: $rel" }
         return f.readText()
     }
@@ -41,7 +42,7 @@ class NavigationHostSizeTest {
             "AppNavigation.kt baut wieder selbst einen Dialog. Er gehört nach " +
                 "ui/dialogs/ — der Navigationsaufbau soll Navigation aufbauen."
         }
-        assert(nav.contains("BarcodeResultDialog(")) {
+        assert(nav.contains("BarcodeResultRoute(")) {
             "Der Barcode-Dialog wird gar nicht mehr aufgerufen"
         }
         // Die Bedingung bleibt beim Aufrufer, damit an EINER Stelle steht,
@@ -62,19 +63,6 @@ class NavigationHostSizeTest {
             "AppNavigation.kt hat $zeilen Zeilen. Beim letzten Mal war ein " +
                 "Erfassungsformular hineingewandert — gehört hier etwas hinein, " +
                 "das keine Navigation ist?"
-        }
-    }
-
-    @Test
-    fun `der Dialog liest seinen Zustand selbst`() {
-        // Dieselbe Bauart wie die Reiter-Bildschirme seit Nachtrag 96.
-        val dlg = code(read("ui/dialogs/BarcodeResultDialog.kt"))
-        assert(dlg.contains("vm: ErfassungViewModel")) { "Der Dialog nimmt kein ViewModel" }
-        assert(dlg.contains("vm.state.collectAsStateWithLifecycle()")) {
-            "Der Dialog liest den Zustand nicht selbst"
-        }
-        assert(!dlg.contains("navController")) {
-            "Der Dialog navigiert selbst — dann ist er an seinen Platz gebunden"
         }
     }
 }

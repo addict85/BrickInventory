@@ -16,6 +16,9 @@
  *   C  die Prüfung auf anzahlAnleitungen() entfernt → rot: „wer das Set hat,
  *      ersetzt keine geteilte Anleitung“ (200 statt 403)
  *   D  loescheAnleitungen() wieder für alle → rot: „ein fremdes Konto“ und C
+ * Seit 05.11.2026 lädt ein Auftrag, die Route antwortet 202. Gegenprobe:
+ *   E  anleitungEinreihen() in der Route nicht gerufen → rot: „das Neuladen
+ *      steht als Auftrag an“
  *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL.
  */
@@ -27,6 +30,7 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 process.env.SESSION_SECRET = 'test-secret-lang-genug-fuer-die-pruefung';
 
 const _req = require('./helpers/sources').buildAndRequire();
+const { dbOderSkip } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
 const { haeltSet } = require('./helpers/bestand');
 
@@ -40,14 +44,7 @@ const SET = '99072-1', URL_A = 'https://quelle.example/99072.pdf';
 const NAMEN = ['anl_halter', 'anl_fremd'].map(n => `${n}_${process.pid}`);
 
 test('Anleitungen neu laden', { concurrency: 1 }, async (t) => {
-  try { await db.initSchema(); }
-  catch (e) {
-    if (process.env.REQUIRE_DB === '1')
-      throw new Error(`REQUIRE_DB=1, aber die Test-DB ist nicht erreichbar: ${e.message}`);
-    t.skip('Test-DB nicht erreichbar'); return;
-  }
-  const client = await db.pool.connect();
-  try { await _req('db/migrate.js').runMigrations(client); } finally { client.release(); }
+  if (!await dbOderSkip(t, _req)) return;
 
   await db.run('DELETE FROM users WHERE username = ANY($1)', [NAMEN]);
   const ids = [];
@@ -92,18 +89,20 @@ test('Anleitungen neu laden', { concurrency: 1 }, async (t) => {
 
   await t.test('wer das Set hat, holt eine fehlende einmal am Tag', async () => {
     await db.run('DELETE FROM shared_instructions WHERE set_number = $1', [SET]);
-    assert.equal(await neuLaden({ userId: ids[0], isAdmin: false }), 200);
+    assert.equal(await neuLaden({ userId: ids[0], isAdmin: false }), 202);
     assert.equal(await neuLaden({ userId: ids[0], isAdmin: false }), 429);
     await db.run(`UPDATE rate_limit_attempts SET first_at = NOW() - INTERVAL '25 hours' WHERE key = $1`, [`anleitung-neu|${SET}`]);
-    assert.equal(await neuLaden({ userId: ids[0], isAdmin: false }), 200, 'nach einem Tag geht es wieder');
+    assert.equal(await neuLaden({ userId: ids[0], isAdmin: false }), 202, 'nach einem Tag geht es wieder');
   });
 
   await t.test('der Verwalter ersetzt', async () => {
     await anleitung();
-    assert.equal(await neuLaden({ userId: ids[1], isAdmin: true }), 200);
+    assert.equal(await neuLaden({ userId: ids[1], isAdmin: true }), 202);
     assert.ok(!await vorhanden(), 'der Verwalter hat die alte Zeile nicht ersetzt');
+    const auftrag = await db.get(`SELECT status FROM auftraege WHERE art = 'anleitung' AND schluessel = $1`, [`anleitung:${SET}`]);
+    assert.equal(auftrag?.status, 'offen', 'das Neuladen steht als Auftrag an');
     await anleitung();
-    assert.equal(await neuLaden({ userId: ids[1], isAdmin: true }), 200, 'den Verwalter hält die Drossel nicht');
+    assert.equal(await neuLaden({ userId: ids[1], isAdmin: true }), 202, 'den Verwalter hält die Drossel nicht');
   });
 
   await t.test('eine Nummer mit Pfadteilen', async () => {

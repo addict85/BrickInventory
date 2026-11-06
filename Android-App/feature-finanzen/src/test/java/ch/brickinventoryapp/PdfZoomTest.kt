@@ -1,7 +1,7 @@
 package ch.brickinventoryapp
 
-import ch.brickinventoryapp.ui.screens.PDF_BITMAP_MAX_PX
-import ch.brickinventoryapp.ui.screens.bitmapMasse
+import ch.brickinventoryapp.ui.pdf.PDF_BITMAP_MAX_PX
+import ch.brickinventoryapp.ui.pdf.bitmapMasse
 import ch.brickinventoryapp.ui.screens.renderStufe
 import org.junit.Test
 
@@ -163,17 +163,27 @@ class PdfZoomTest {
     @Test
     fun `beim Stufenwechsel bleibt die alte Seite stehen`() {
         // remember OHNE die Renderbreite, LaunchedEffect MIT ihr: nur so wird neu
-        // gerendert, ohne dass die Anzeige vorher leer wird.
-        assert(Regex("""var bitmap by remember\(file, index\)""").containsMatchIn(quelle)) {
-            "Der Bitmap-Zustand haengt nicht mehr nur an (file, index). Haengt er " +
+        // gerendert, ohne dass die Anzeige vorher leer wird. Verglichen werden die
+        // Schluessel mit den Parametern von PdfPage, nicht feste Namen.
+        // Gegenprobe: gegenproben/pdf-bitmap-an-renderbreite.patch → rot hier.
+        val kopf = Regex("""fun PdfPage\((\w+): PdfQuelle, (\w+): Int, (\w+): Int[,)]""").find(quelle)
+        assert(kopf != null) { "PdfPage(quelle: PdfQuelle, index: Int, renderBreite: Int) nicht gefunden." }
+        val (pdf, seite, breite) = kopf!!.destructured
+        fun schluessel(muster: String) =
+            Regex(muster).find(quelle)?.groupValues?.get(1)?.split(",")?.map { it.trim() }
+        val gemerkt = schluessel("""var bitmap by remember\(([^)]*)\)""")
+        assert(gemerkt == listOf(pdf, seite)) {
+            "Der Bitmap-Zustand haengt an $gemerkt statt nur an ($pdf, $seite). Haengt er " +
                 "auch an der Renderbreite, wird er beim Stufenwechsel zurueckgesetzt: " +
                 "auf allen sichtbaren Seiten blitzt der Ladekreis auf, und weil leere " +
                 "Seiten eine andere Hoehe haben als gerenderte, verliert man beim " +
                 "Zoomen die Stelle."
         }
-        assert(Regex("""LaunchedEffect\(file, index, renderBreitePx\)""").containsMatchIn(quelle)) {
-            "Der LaunchedEffect haengt nicht an renderBreitePx — dann wird beim " +
-                "Zoomen nie in hoeherer Aufloesung nachgerendert und das Bild bleibt grob."
+        val neuGerendert = schluessel("""LaunchedEffect\(([^)]*\b$breite\b[^)]*)\)""")
+        assert(neuGerendert?.toSet() == setOf(pdf, seite, breite)) {
+            "Der LaunchedEffect haengt nicht an ($pdf, $seite, $breite), sondern an $neuGerendert — " +
+                "ohne $breite wird beim Zoomen nie in hoeherer Aufloesung nachgerendert " +
+                "und das Bild bleibt grob."
         }
         assert(Regex("""if \(neu != null\) bitmap = neu""").containsMatchIn(quelle)) {
             "Die neue Bitmap wird nicht mehr nur bei Erfolg uebernommen. Scheitert " +
@@ -206,7 +216,6 @@ class PdfZoomTest {
                 "Wert aus der ersten Komposition:\n$tipp"
         }
     }
-
 
     @Test
     fun `waehrend einer Zwei-Finger-Geste rollt die Liste nicht`() {

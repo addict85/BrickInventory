@@ -1,0 +1,17 @@
+Gegenprobe: Beim Speichern bleibt der alte Klartext-Eintrag stehen
+Modul: core-data
+Test: ch.brickinventoryapp.TokenTresorTest
+Rot: Speichern legt nur noch verschluesselt ab
+
+diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/TokenAblage.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/TokenAblage.kt
+index f79cce3..86c2984 100644
+--- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/TokenAblage.kt
++++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/TokenAblage.kt
+@@ -259,7 +259,6 @@ class TokenAblage @Inject constructor(
+         val geheim = tresor.verschluessle(token)
+         dataStore.edit {
+             it[AUTH_TOKEN_ENC] = geheim
+-            it.remove(AUTH_TOKEN)
+             if (herkunft != null) it[TOKEN_HERKUNFT] = herkunft else it.remove(TOKEN_HERKUNFT)
+             if (angemeldetAm != null) it[ANGEMELDET_AM] = angemeldetAm
+         }

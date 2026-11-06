@@ -14,8 +14,8 @@ export interface SetValue {
 }
 
 /** `"0.00"` aus NUMERIC ergibt 0, nicht truthy. */
-function num(v: any): number {
-  const n = parseFloat(v);
+function num(v: unknown): number {
+  const n = parseFloat(String(v));
   return Number.isFinite(n) && n > 0 ? n : 0;
 }
 
@@ -29,7 +29,7 @@ export async function loadConditionPrices(
   if (!list.length) return out;
 
   const ttlClause = ttlHours ? ' AND fetched_at > NOW() - make_interval(hours => $3)' : '';
-  const params: any[] = [list, currency];
+  const params: (string[] | string | number)[] = [list, currency];
   if (ttlHours) params.push(ttlHours);
 
   // avg_price, NICHT qty_avg_price: BrickLinks angezeigter Preis.
@@ -129,13 +129,26 @@ export interface AcquisitionValueRow {
   wert_gesamt: number | null;
   pnl_pct: string | null;
   pnl_prozent: number | null;
-  created_at: any;
+  created_at: Date | string | null;
+  /** Ein Kaufpreis in fremder Währung ohne Kurs: Er zählt nicht mit, steht aber da. */
+  kaufpreis_original?: number;
+  kaufpreis_waehrung?: string;
+  price_estimated?: true;
+}
+
+/** Was eine Erfassung für ihren Wert mitbringt; purchase_price bei Sets, unit_price sonst. */
+export interface ErfassungFuerWert {
+  id: number; condition?: string | null; quantity: number | string;
+  purchase_price?: number | string | null; unit_price?: number | string | null;
+  created_at?: Date | string | null; currency?: string | null;
+  kaufpreis_fremd?: boolean | null; kaufpreis_original?: number | string | null;
+  price_estimated?: boolean | null;
 }
 
 /** @param prices Map "setNumber|condition" → avg_price (loadConditionPrices) */
 export function valueAcquisitionRows(
   setNumber: string,
-  acquisitions: any[],
+  acquisitions: ErfassungFuerWert[],
   prices: Map<string, number>
 ): AcquisitionValueRow[] {
   return (acquisitions || []).map(a => {
@@ -158,6 +171,9 @@ export function valueAcquisitionRows(
       pnl_pct: pnlPct(purchase, unit),
       pnl_prozent: pnlProzent(purchase, unit),
       created_at: a.created_at ?? null,
+      ...(a.kaufpreis_fremd && a.kaufpreis_original != null
+        ? { kaufpreis_original: parseFloat(String(a.kaufpreis_original)), kaufpreis_waehrung: String(a.currency) } : {}),
+      ...(a.price_estimated && purchase != null ? { price_estimated: true as const } : {}),
     };
   });
 }
@@ -171,6 +187,8 @@ export function weightedPurchase(rows: AcquisitionValueRow[]): number | null {
   return withCost.reduce((s, r) => s + (r.purchase_price as number) * r.quantity, 0) / qty;
 }
 
+export interface KachelWert { kachel_preis: number | null; kachel_pnl_pct: number | null; kachel_quelle: 'markt' | 'kauf' | null }
+
 export interface KachelQuelle {
   set_number: string; quantity: number; current_price: number | null;
   purchase_price: number | null; baseline_price: number | null;
@@ -179,10 +197,10 @@ export interface KachelQuelle {
 
 /** Im Haushalt zählt der nach Menge gewichtete Basispreis: „Irgendeine Zeile"
  * ergäbe je nach Reihenfolge eine andere Prozentzahl. */
-export function kachelWerte(zeilen: KachelQuelle[]): Map<string, { kachel_preis: number | null; kachel_pnl_pct: number | null }> {
+export function kachelWerte(zeilen: KachelQuelle[]): Map<string, KachelWert> {
   const jeSet = new Map<string, KachelQuelle[]>();
   for (const z of zeilen) jeSet.set(z.set_number, [...(jeSet.get(z.set_number) || []), z]);
-  const aus = new Map<string, { kachel_preis: number | null; kachel_pnl_pct: number | null }>();
+  const aus = new Map<string, KachelWert>();
   for (const [nr, zs] of jeSet) {
     const markt = Number(zs[0]?.current_price) || 0;
     const gewichtet = (feld: 'baseline_price' | 'purchase_price') => {
@@ -205,8 +223,9 @@ export function kachelWerte(zeilen: KachelQuelle[]): Map<string, { kachel_preis:
       pct = e == null ? null : Math.round(e * 10) / 10;
     }
     const kauf = gewichtet('purchase_price');
-    aus.set(nr, { kachel_preis: markt > 0 ? aufRappen(inZehntel4(markt) ?? 0) : (kauf != null ? aufRappen(inZehntel4(kauf) ?? 0) : null),
-                  kachel_pnl_pct: pct });
+    const quelle = markt > 0 ? 'markt' : kauf != null ? 'kauf' : null;
+    aus.set(nr, { kachel_preis: quelle === 'markt' ? aufRappen(inZehntel4(markt) ?? 0) : (kauf != null ? aufRappen(inZehntel4(kauf) ?? 0) : null),
+                  kachel_pnl_pct: pct, kachel_quelle: quelle });
   }
   return aus;
 }

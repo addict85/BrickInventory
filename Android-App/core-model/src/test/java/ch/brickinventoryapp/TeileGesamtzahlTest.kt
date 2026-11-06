@@ -14,7 +14,7 @@ import org.junit.Test
  * Gesamtzahl samt Aufschlüsselung, wie die Webapp („394 — 144 aus Sets · 250
  * einzeln“). Gelesen wird aus echten Antworten des Servers (Stand 45210d5).
  *
- * Gegenproben (01.11.2026, modbau/kotlinc):
+ * Gegenproben:
  *   A  in PartsStats.alsAnsicht() `+ (manualParts ?: 0)` entfernt → rot
  *      „Teile-Reiter und Sammlung zeigen dieselbe Zahl“ (144 statt 394)
  *   B  in DashboardStats.alsAnsicht() den Rückfall `?: manualParts?.let …`

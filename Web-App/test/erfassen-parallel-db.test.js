@@ -1,19 +1,9 @@
 /**
  * Erfassen: gleichzeitig, und mit unsinnigen Eingaben.
- *
- * ── Warum echte Nebenläufigkeit ─────────────────────────────────────────────
- * Der Fehler war am laufenden Server sichtbar: Zehn parallele Erfassungen
- * desselben Sets ergaben sets.quantity = 10, aber drei Erfassungszeilen mit
- * Summe 7 — drei verlorene Exemplare und drei Tageszeilen, wo genau eine
- * erlaubt ist. Eine Quelltextprüfung („steht withInventoryLock im
- * Erfassen-Pfad?") würde das erste Symptom bemerken, aber nicht das zweite,
- * und sie sagt nichts darüber, ob die Sperre auch GREIFT.
+ * Ausführlich: docs/begruendungen/test/erfassen-parallel-db.test.js.md#kopf
  *
  * Deshalb hier: echte parallele Aufrufe gegen echte Postgres-Verbindungen.
  * Ohne Sperre schlagen die Prüfungen sofort an — nachgewiesen per Gegenprobe.
- *
- * Voraussetzung: Test-DB (Inhalt wird geleert!) via TEST_DATABASE_URL.
- * Ohne DB: skip.
  */
 const test   = require('node:test');
 const assert = require('node:assert/strict');
@@ -108,14 +98,16 @@ test('Mengen und Preise werden geprüft', () => {
   assert.equal(V.acquisitionQuantity('3'), 3);
   assert.equal(V.acquisitionQuantity(undefined), 1);
 
-  // Preis: leer heisst „kein Preis", negativ wird abgelehnt.
-  assert.equal(V.optionalPrice(''), null);
-  assert.equal(V.optionalPrice(null), null);
-  assert.equal(V.optionalPrice('49,90'), 49.9, 'Komma als Dezimaltrenner');
-  assert.equal(V.optionalPrice(0), 0, '0 ist ein gültiger Preis, kein fehlender');
-  assert.throws(() => V.optionalPrice(-20), /negativ/,
+  // Preis: leer heisst „kein Preis", negativ wird abgelehnt (src/infra/geld.ts).
+  const { geldEingabe } = _req('src/infra/geld.js');
+  assert.equal(geldEingabe('', 'Preis'), null);
+  assert.equal(geldEingabe(null, 'Preis'), null);
+  assert.equal(geldEingabe('49,90', 'Preis'), 49.9, 'Komma als Dezimaltrenner');
+  assert.equal(geldEingabe(0, 'Preis'), 0, '0 ist ein gültiger Preis, kein fehlender');
+  assert.throws(() => geldEingabe(-20, 'Preis'), /negativ/,
     'ein negativer Kaufpreis senkt stillschweigend den Gesamtwert der Sammlung');
-  assert.throws(() => V.optionalPrice(5_000_000), /unplausibel/);
+  assert.throws(() => geldEingabe(5_000_000, 'Preis'), /unplausibel/);
+  assert.throws(() => geldEingabe('abc', 'Preis'), /Ungültiger Betrag/, 'Text ist kein Preis, auch kein fehlender');
 });
 
 test('alle Erfassen-Wege nutzen dieselbe Prüfung', () => {
@@ -123,25 +115,23 @@ test('alle Erfassen-Wege nutzen dieselbe Prüfung', () => {
   const path = require('node:path');
   const { ROOT, ohneKommentare } = require('./helpers/sources');
 
-  // Sets (Webapp und App teilen sich die Routen) wie manuelle Einträge — eine Regel.
-  for (const rel of ['routes/api_v1/sets.ts', 'src/teile/manuelleTeile.ts', 'src/figuren/manuelleFiguren.ts']) {
+  // Manuelle Einträge prüfen im Dienst, Sets im Vertrag (eingabe.stueckzahl und
+  // eingabe.preis rufen dieselben Prüfer) — eine Regel.
+  for (const rel of ['src/teile/manuelleTeile.ts', 'src/figuren/manuelleFiguren.ts']) {
     const src = ohneKommentare(fs.readFileSync(path.join(ROOT, rel), 'utf8'));
     assert.match(src, /acquisitionQuantity\(/, `${rel}: Menge ungeprüft`);
-    assert.match(src, /optionalPrice\(/,       `${rel}: Preis ungeprüft`);
+    assert.match(src, /geldEingabe\(/,         `${rel}: Preis ungeprüft`);
   }
+  const vertrag = ohneKommentare(fs.readFileSync(path.join(ROOT, 'src/infra/vertrag/sets.ts'), 'utf8'));
+  assert.match(vertrag, /const NeuesSet = [^;]*quantity: eingabe\.stueckzahl\(\)[^;]*purchase_price: eingabe\.geld\(/,
+    'Sets: Menge oder Preis ungeprüft');
 
   // Und der Erfassen-Pfad schreibt gesperrt.
   const sets = ohneKommentare(require('./helpers/sources').setKernQuelle());
   // Nur der Rumpf von addSet(): bis zur NÄCHSTEN Funktion auf oberster Ebene.
   // Ein Schnitt bis addSetWithDate() umfasste 1200 Zeilen samt fremder Routen
   // und zählte deren Sperren mit.
-  //
-  // Gelesen wird addSetIntern(): Seit dem 24.09. traegt addSet() nur noch die
-  // Huelle, die den Lagerort setzt (Marcos Befund „beim Hinzufuegen kann ich
-  // den Lagerort nicht waehlen"), und reicht alles Weitere an addSetIntern
-  // durch. Der Rumpf mit den Erfassungen und der Sperre steht dort. Wuerde
-  // hier weiter die Huelle gelesen, faende die Regel null Schreibstellen und
-  // waere still zufrieden — genau das hat sie beim Umbau gemeldet.
+  // Ausführlich: docs/begruendungen/test/erfassen-parallel-db.test.js.md#addsetintern
   const beginn = sets.indexOf('async function addSetIntern(');
   const naechste = sets.slice(beginn + 10).search(/\n(?:async )?function [a-zA-Z_$]/);
   const addSet = sets.slice(beginn, beginn + 10 + naechste);
@@ -185,18 +175,19 @@ test('alle drei Importwege melden übersprungene Zeilen', () => {
   const fs = require('node:fs');
   const path = require('node:path');
   const { ROOT, ohneKommentare } = require('./helpers/sources');
-  // ── Zwei Wege zum selben Ziel (Nachtrag 144) ────────────────────────────
+  // ── Zwei Wege zum selben Ziel ────────────────────────────
   //
   // Der Set-Import liest selbst und antwortet selbst; Teile und Minifiguren
-  // gehen über csvZeilenAusAnfrage() und csvImportAntwort() in
-  // src/infra/csvExport.ts. Je Weg zählen Route und Dienst zusammen.
+  // gehen über csvZeilenAusAnfrage() und csvImportBericht() in
+  // src/infra/csvExport.ts. Je Weg zählen Route, Dienst und Auftrag zusammen.
   for (const [rel, dienst] of [['routes/api_v1/sets.ts', 'src/sets/dienst.ts'],
                                ['routes/api_v1/parts.ts', 'src/teile/manuelleTeile.ts'],
                                ['routes/api_v1/minifigs.ts', 'src/figuren/manuelleFiguren.ts']]) {
     const src = ohneKommentare(fs.readFileSync(path.join(ROOT, rel), 'utf8')
-      + '\n' + fs.readFileSync(path.join(ROOT, dienst), 'utf8'));
+      + '\n' + fs.readFileSync(path.join(ROOT, dienst), 'utf8')
+      + '\n' + fs.readFileSync(path.join(ROOT, 'jobs/importAuftraege.ts'), 'utf8'));
     assert.match(src, /csvEinlesen\(|csvZeilenAusAnfrage\(/, `${rel}: liest noch selbst`);
-    assert.match(src, /skipped_hint|csvImportAntwort\(/,
+    assert.match(src, /skipped_hint|csvImportBericht\(/,
       `${rel}: sagt dem Nutzer nichts über übersprungene Zeilen`);
   }
   // Und die gemeinsame Fassung tut wirklich beides — sonst genügte oben der
@@ -204,10 +195,11 @@ test('alle drei Importwege melden übersprungene Zeilen', () => {
   const geteilt = ohneKommentare(fs.readFileSync(path.join(ROOT, 'src/infra/csvExport.ts'), 'utf8'));
   assert.match(geteilt, /function csvZeilenAusAnfrage[\s\S]*?csvEinlesen\(/,
     'csvZeilenAusAnfrage() liest die Datei nicht mehr ein');
-  assert.match(geteilt, /function csvImportAntwort[\s\S]*?skipped_hint/,
-    'csvImportAntwort() meldet die übersprungenen Zeilen nicht mehr');
+  assert.match(geteilt, /function csvImportBericht[\s\S]*?skipped_hint/,
+    'csvImportBericht() meldet die übersprungenen Zeilen nicht mehr');
   // Und die Oberfläche zeigt den Hinweis auch an.
-  for (const rel of ['public/js/02-gallery.js', 'public/js/06-minifigs.js']) {
+  // Sets in der Galerie, Teile/Figuren/Merkliste/Alarme über csvHochladen().
+  for (const rel of ['public/js/02-gallery.js', 'public/js/01-bausteine.js']) {
     const src = ohneKommentare(fs.readFileSync(path.join(ROOT, rel), 'utf8'));
     assert.match(src, /skipped_hint/, `${rel}: Hinweis kommt an, wird aber nicht gezeigt`);
   }
@@ -219,13 +211,8 @@ test('die Teileliste liefert, was sie meldet', () => {
   const { ROOT, ohneKommentare } = require('./helpers/sources');
   const H = require('./helpers/sources').handlerModul(_req);
 
-  // ── Die Teileliste EINES Sets darf mehr als eine normale Seite liefern ────
-  //
-  // Die Set-Detailansicht der App fragt page_size=2000 und holt nur Seite 1.
-  // clampPageSize deckelte auf 500: Ein Set mit 915 Teilezeilen kam als 500
-  // Zeilen an — und die Antwort meldete „page_size: 2000", spiegelte also die
-  // Anfrage zurück. Damit konnte kein Client merken, dass Teile fehlen. Auch
-  // die PDF-Teileliste baut auf dieser Antwort auf.
+  // Die Teileliste EINES Sets darf mehr als eine normale Seite liefern
+  // Ausführlich: docs/begruendungen/test/erfassen-parallel-db.test.js.md#stelle
   assert.ok(H.SET_PARTS_MAX_PAGE_SIZE > H.MAX_PAGE_SIZE,
     'Ein einzelnes Set braucht eine höhere Grenze als die allgemeine Liste');
   assert.ok(H.SET_PARTS_MAX_PAGE_SIZE >= 5000,
@@ -254,13 +241,8 @@ test('die Teileliste liefert, was sie meldet', () => {
   assert.doesNotMatch(antwort, /page_size:\s*(parseInt\()?(String\()?req\.query/,
     'Die Antwort spiegelt wieder die Anfrage zurück statt zu sagen, was geliefert wurde');
 
-  // ── Und die SET-Liste bleibt unbegrenzt ──────────────────────────────────
-  //
-  // Nicht mehr, weil die App nicht blättern könnte — sie kann es längst
-  // (SetsRepository.getSets nimmt page und pageSize). Sondern weil der Weg
-  // ohne page_size absichtlich offen bleibt: Skripte und ältere App-Stände
-  // holen darüber alles, und eine stille Grenze unterschlüge ihnen ab dem
-  // Grenzwert Sets. Die Begründung steht einmal, in routes/api_v1/sets.ts.
+  // Und die SET-Liste bleibt unbegrenzt
+  // Ausführlich: docs/begruendungen/test/erfassen-parallel-db.test.js.md#setliste
   const getSets = src.slice(src.indexOf('async function setListe'));
   assert.match(getSets, /if \(f\.seite\) \{/,
     'Die Set-Liste darf ohne page_size NICHT gedeckelt werden — Aufrufer ohne ' +

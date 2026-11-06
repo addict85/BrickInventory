@@ -3,7 +3,7 @@ import * as db from '../../../db/database';
 /** Getrennt von den Einstellungen, damit Export, Sicherung und Einstellungen
  * keine Zwischenstände von Jobs zeigen. */
 export async function liesZustand(schluessel: string): Promise<string | null> {
-  const z = await db.get('SELECT wert FROM laufzustand WHERE schluessel = $1', [schluessel]);
+  const z = await db.get<{ wert: unknown }>('SELECT wert FROM laufzustand WHERE schluessel = $1', [schluessel]);
   return z ? String(z.wert) : null;
 }
 
@@ -27,6 +27,3 @@ export async function zaehleZustand(schluessel: string, delta: number): Promise<
     [schluessel, String(Math.max(0, delta)), delta]);
 }
 
-export async function zustaendeMitPraefix(praefix: string): Promise<Array<{ schluessel: string; wert: string }>> {
-  return db.all('SELECT schluessel, wert FROM laufzustand WHERE starts_with(schluessel, $1)', [praefix]);
-}

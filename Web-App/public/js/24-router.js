@@ -1,19 +1,17 @@
-import { G, ME, toast, verwirfToasts } from './01-core.js';
+import { G } from './01-dom.js';
+import { toast, verwirfToasts } from './01-meldungen.js';
 import { tRaw } from '../i18n.js';
 import { beiDialogWechsel, istOffen, obersterDialog } from './01-dialoge.js';
-import { oeffneSicht } from './02-gallery.js';
-import { openModal } from './07-admin.js';
-import { einstAbschnitt } from './05-settings.js';
+import { springe } from './00-ziele.js';
+import { ME } from './00-zustand.js';
 
-// ═══ Adresse und Verlauf ════════════════════════════════════════════════════
-//
-// Jede Ansicht steht als `#/pfad` in der Adresse, Filter als Query dahinter.
-// Ein Hash-Router, damit der Server für Unterseiten nichts ausliefern muss
-// und die Anmeldelinks (?token=, ?set=) unverändert bleiben. Jeder offene
-// Dialog ist ein Verlaufseintrag: Die Zurück-Geste schliesst ihn, statt die
-// App zu verlassen.
+// Jede Ansicht als #/pfad, Filter als Query dahinter: Ein Hash-Router braucht keine Serverrouten, und
+// Anmeldelinks (?token=, ?set=) bleiben unberührt. Offene Dialoge sind Verlaufseinträge, damit „Zurück“ sie
+// schliesst.
+// Ausführlich: docs/begruendungen/public/js/24-router.js.md#jede-ansicht-steht-als-pfad-in-der-adres
 
 /** Ansicht (data-tab bzw. Sicht) → Pfad in der Adresse. */
+/** @type {Record<string, string>} */
 export const PFADE = {
   gallery: 'sammlung', parts: 'teile', minifigs: 'minifiguren', partslist: 'bauliste',
   finance: 'finanzen', wanted: 'merkliste', catalog: 'katalog', monitor: 'hintergrund',
@@ -25,6 +23,7 @@ const SICHTEN = new Set(['profil', 'gutscheine', 'alarme', 'lagerorte', 'haushal
 const NUR_VERWALTER = new Set(['monitor', 'settings']);
 
 /** Abschnitte der Einstellungen: Element-ID ↔ Pfad. */
+/** @type {Record<string, string>} */
 const ABSCHNITTE = {
   'einst-design': 'erscheinungsbild', 'einst-bl': 'bricklink', 'einst-rb': 'rebrickable',
   'einst-bs': 'brickset', usermgmt: 'benutzer', 'einst-smtp': 'e-mail', 'einst-konfig': 'konfiguration',
@@ -32,6 +31,7 @@ const ABSCHNITTE = {
 const ABSCHNITT_ID = Object.fromEntries(Object.entries(ABSCHNITTE).map(([i, p]) => [p, i]));
 
 /** Filterfelder je Ansicht → Name des Query-Parameters. */
+/** @type {Record<string, Record<string, string>>} */
 const FILTER = {
   gallery: { gs: 'suche', gtheme: 'thema', gsort: 'sortierung' },
   catalog: { 'cat-search': 'suche', 'cat-theme': 'thema', 'cat-year-from': 'von', 'cat-year-to': 'bis', 'cat-sort': 'sortierung' },
@@ -42,6 +42,9 @@ const FILTER = {
 const FILTERFELD = new Map(Object.entries(FILTER).flatMap(([a, f]) => Object.keys(f).map(id => [id, a])));
 /** Werte, die beim Laden in den Feldern stehen: Sie gehören nicht in die Adresse. */
 const _vorgabe = new Map();
+/**
+ * @param {string} id
+ */
 function vorgabe(id) {
   if (!_vorgabe.has(id)) {
     const el = G(id);
@@ -53,6 +56,7 @@ function vorgabe(id) {
 let _ansicht = 'gallery';
 let _wendeAn = 0;          // > 0, solange der Router selbst umschaltet (kein neuer Eintrag)
 let _eigeneZurueck = 0;    // eigene history.back() nach dem Schliessen eines Dialogs
+/** @type {(() => void)[]} */
 let _danach = [];          // Einträge, die erst nach diesem Zurück gesetzt werden dürfen
 let _gestartet = false;
 
@@ -76,6 +80,9 @@ export function leseAdresse(hash = location.hash) {
   return { ansicht, unter: set ? '' : (teile[1] || ''), set, filter };
 }
 
+/**
+ * @param {string} ansicht
+ */
 function filterVon(ansicht) {
   const q = new URLSearchParams();
   for (const [id, name] of Object.entries(FILTER[ansicht] || {})) {
@@ -101,7 +108,10 @@ function offeneDialoge() {
   return /** @type {string[]} */ (history.state?.dlg || []).slice();
 }
 
-/** Eine Ansicht wurde gewechselt (Reiter, Menü, Umschalter). */
+/**
+ * Eine Ansicht wurde gewechselt (Reiter, Menü, Umschalter).
+ * @param {string} ansicht
+ */
 export function meldeAnsicht(ansicht) {
   if (!PFADE[ansicht]) return;
   const neu = ansicht !== _ansicht;
@@ -127,6 +137,9 @@ export function meldeFilter() {
   history.replaceState({ ...(history.state || {}), brick: 1, ansicht: _ansicht }, '', adresse());
 }
 
+/**
+ * @param {string} id
+ */
 function dialogAdresse(id) {
   if (id === 'set-modal') {
     const nr = G('set-modal')?.dataset.nummer;
@@ -136,10 +149,10 @@ function dialogAdresse(id) {
 }
 
 /**
- * Öffnen und Schliessen jedes Dialogs (aus 01-dialoge.js, also nach einer
- * Mikroaufgabe). Ob der Eintrag schon stimmt, sagt deshalb der Verlauf selbst,
- * nicht ein Merker: Nach „Zurück“ fehlt der Dialog dort bereits.
+ * Öffnen und Schliessen jedes Dialogs (aus 01-dialoge.js, also nach einer Mikroaufgabe). Ob der Eintrag schon
+ * stimmt, sagt deshalb der Verlauf selbst, nicht ein Merker: Nach „Zurück“ fehlt der Dialog dort bereits.
  */
+/** @param {HTMLElement} dialog @param {boolean} offen */
 function dialogGewechselt(dialog, offen) {
   if (!_gestartet || !dialog.id) return;
   if (_eigeneZurueck > 0) { _danach.push(() => dialogGewechselt(dialog, offen)); return; }
@@ -149,18 +162,22 @@ function dialogGewechselt(dialog, offen) {
     history.pushState(zustand({ dlg: [...stapel, dialog.id] }), '', dialogAdresse(dialog.id));
     return;
   }
-  // Vom Nutzer geschlossen (Knopf, Escape, Speichern): den eigenen Eintrag
-  // wieder abnehmen, sonst bräuchte „Zurück“ einen leeren Schritt.
+  // Vom Nutzer geschlossen (Knopf, Escape, Speichern): den eigenen Eintrag wieder abnehmen, sonst bräuchte
+  // „Zurück“ einen leeren Schritt.
   if (stapel.at(-1) === dialog.id) { _eigeneZurueck++; history.back(); }
   else if (stapel.includes(dialog.id))
     history.replaceState(zustand({ dlg: stapel.filter(d => d !== dialog.id) }), '', location.href);
 }
 
+/** @param {() => void} fn */
 function mitRouter(fn) {
   _wendeAn++;
   try { return fn(); } finally { _wendeAn--; }
 }
 
+/**
+ * @param {HTMLElement} dialog
+ */
 function schliesse(dialog) {
   const zu = /** @type {HTMLElement|null} */ (dialog.querySelector('[data-dialog-zu]'));
   mitRouter(() => {
@@ -170,17 +187,18 @@ function schliesse(dialog) {
 }
 
 /**
- * Ansicht öffnen, ohne einen Eintrag anzulegen. Eine Verwalterseite öffnet für
- * andere Konten die Sammlung; true heisst „abgewiesen“, damit der Aufrufer die
- * Adresse dazu passend setzt und es sagt.
+ * Ansicht öffnen, ohne einen Eintrag anzulegen. Eine Verwalterseite öffnet für andere Konten die Sammlung;
+ * true heisst „abgewiesen“, damit der Aufrufer die Adresse dazu passend setzt und es sagt.
+ * @param {string} ansicht
+ * @param {string} unter
  */
 function zeigeAnsicht(ansicht, unter) {
   const abgewiesen = NUR_VERWALTER.has(ansicht) && !ME?.isAdmin;
   if (abgewiesen) ansicht = 'gallery';
   mitRouter(() => {
-    if (ansicht === 'settings' && ABSCHNITT_ID[unter]) einstAbschnitt(ABSCHNITT_ID[unter]);
+    if (ansicht === 'settings' && ABSCHNITT_ID[unter]) springe('einstAbschnitt', ABSCHNITT_ID[unter]);
     if (ansicht !== _ansicht || !document.getElementById('tab-' + ansicht)?.classList.contains('active')) {
-      if (SICHTEN.has(ansicht)) oeffneSicht(ansicht);
+      if (SICHTEN.has(ansicht)) springe('sicht', ansicht);
       else /** @type {HTMLElement|null} */ (document.querySelector(`.ntab[data-tab="${ansicht}"]`))?.click();
     }
   });
@@ -189,14 +207,20 @@ function zeigeAnsicht(ansicht, unter) {
   return abgewiesen;
 }
 
-/** Die Adresse zeigte etwas anderes als die Ansicht: sagen, warum. */
+/**
+ * Die Adresse zeigte etwas anderes als die Ansicht: sagen, warum.
+ * @param {string} grund
+ */
 function sageUmleitung(grund) {
+  // Eine Umleitung ersetzt die vorige: Mehrere falsche Adressen hintereinander stapelten sonst Hinweise.
+  verwirfToasts();
   toast(tRaw(grund === 'verwalter' ? 'router.nur_verwalter' : 'router.unbekannt'), 'info');
 }
 /** `#/…` ist ein Pfad der App; `#inhalt` oder `#` (Sprungverweis) nicht. */
 const istAppPfad = (hash = location.hash) => /^#\/./.test(hash);
 
 /** Filter aus der Adresse in die Felder; fehlt eine Option noch, folgt sie nach. */
+/** @param {string} ansicht @param {Record<string, string>} filter */
 function setzeFilter(ansicht, filter) {
   const felder = FILTER[ansicht];
   if (!felder) return false;
@@ -214,6 +238,7 @@ function setzeFilter(ansicht, filter) {
   return geaendert;
 }
 
+/** @param {HTMLSelectElement} sel @param {string} wert */
 function wennOption(sel, wert) {
   const b = new MutationObserver(() => {
     if (![...sel.options].some(o => o.value === wert)) return;
@@ -225,8 +250,10 @@ function wennOption(sel, wert) {
   setTimeout(() => b.disconnect(), 15000);
 }
 
-/** Den Zustand eines Verlaufseintrags herstellen (Zurück, Vor, Start). */
-/** @returns {boolean} true, wenn die Ansicht abgewiesen wurde (Verwalterseite) */
+/**
+ * Den Zustand eines Verlaufseintrags herstellen (Zurück, Vor, Start).
+ * @param {NonNullable<ReturnType<typeof leseAdresse>>} ziel @param {string[]} dlg
+ * @returns {boolean} true, wenn die Ansicht abgewiesen wurde (Verwalterseite) */
 function wendeAn(ziel, dlg) {
   // Dialoge, die im Ziel nicht offen sind, von oben her schliessen.
   for (let d = obersterDialog(), n = 0; d && n < 10; d = obersterDialog(), n++) {
@@ -234,10 +261,10 @@ function wendeAn(ziel, dlg) {
     schliesse(d);
     if (obersterDialog() === d) break;
   }
-  const abgewiesen = zeigeAnsicht(ziel.ansicht, ziel.unter);
+  const abgewiesen = zeigeAnsicht(ziel.ansicht, ziel.unter ?? '');
   if (abgewiesen) return true;
   setzeFilter(ziel.ansicht, ziel.filter || {});
-  if (ziel.set && !G('set-modal')?.classList.contains('open')) mitRouter(() => openModal(ziel.set));
+  if (ziel.set && !G('set-modal')?.classList.contains('open')) mitRouter(() => springe('setDetail', ziel.set));
   return false;
 }
 
@@ -249,8 +276,8 @@ window.addEventListener('popstate', (ev) => {
   }
   const ziel = leseAdresse();
   if (!ziel) {
-    // Ein Sprungverweis (#inhalt, href="#") ist kein Ziel: Adresse zurückstellen.
-    // Ein unbekannter Pfad dagegen zeigt die Sammlung und sagt es.
+    // Ein Sprungverweis (#inhalt, href="#") ist kein Ziel: Adresse zurückstellen. Ein unbekannter Pfad
+    // dagegen zeigt die Sammlung und sagt es.
     const unbekannt = istAppPfad();
     if (unbekannt) zeigeAnsicht('gallery', '');
     history.replaceState(zustand(), '', adresse());
@@ -282,7 +309,7 @@ export function routeBeimStart() {
   history.replaceState({ brick: 1, ansicht: _ansicht, dlg: [] }, '', adresse());
   if (abgewiesen) { sageUmleitung('verwalter'); return; }
   // Ein Set-Link öffnet den Dialog über der Ansicht; „Zurück“ schliesst ihn.
-  if (ziel.set) openModal(ziel.set);
+  if (ziel.set) springe('setDetail', ziel.set);
 }
 
 // Filtereingaben laufen über die Felder; die Adresse folgt nach.

@@ -1,8 +1,9 @@
+import { fehlertext } from '../../infra/fehler';
 import { konfig } from '../../infra/konfig';
 import path from 'path';
 import fs from 'fs';
-import { holeHttps, AbrufFehler } from '../../infra/abruf';
-import { ERLAUBTE_BILD_HOSTS } from '../../infra/fremdeAdressen';
+import { AbrufFehler } from '../../infra/abruf';
+import { holeBild, BILD_KOPFZEILEN } from '../quellen';
 import { SET_IMAGES_DIR } from '../../infra/appPaths';
 import { appVersion } from '../../infra/appVersion';
 
@@ -26,13 +27,9 @@ export async function downloadSetImage(url: string, setNumber: string, info?: { 
     const localPath = path.join(SET_IMAGES_DIR, `${safe}.jpg`);
     const relPath = `/images/sets/${safe}.jpg`;
     if (await fs.promises.access(localPath).then(() => true, () => false)) return relPath;
-    const buf = await holeHttps(url, {
-      hosts: ERLAUBTE_BILD_HOSTS, maxBytes: SET_IMG_MAX_BYTES, zeitlimitMs: 30_000,
-      kopfzeilen: {
-        'User-Agent': bildUserAgent(),
-        'Referer':    'https://rebrickable.com/',
-        'Accept':     'image/avif,image/webp,image/apng,image/*,*/*;q=0.8',
-      },
+    const buf = await holeBild(url, {
+      maxBytes: SET_IMG_MAX_BYTES, zeitlimitMs: 30_000,
+      kopfzeilen: { ...BILD_KOPFZEILEN, 'User-Agent': bildUserAgent() },
     }).then(r => {
       if (r.status === 200) return r.koerper;
       // „404" und „403 Bot-Erkennung" verlangen verschiedene Massnahmen; ohne
@@ -55,10 +52,10 @@ export async function downloadSetImage(url: string, setNumber: string, info?: { 
     }
     await fs.promises.writeFile(localPath, buf);
     return relPath;
-  } catch (e: any) {
+  } catch (e) {
     // Letzte Auffanglinie, aber mit Spur: Stille hat die Fehlersuche bei Bildern
     // zuvor über Tage gestreckt.
-    console.error(`[set-img] ${setNumber}: Download fehlgeschlagen: ${e?.message || e}`);
+    console.error(`[set-img] ${setNumber}: Download fehlgeschlagen: ${fehlertext(e)}`);
     return null;
   }
 }

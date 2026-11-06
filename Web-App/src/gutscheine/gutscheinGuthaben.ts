@@ -1,13 +1,12 @@
 // Ausführlich: docs/begruendungen/src/gutscheine/gutscheinGuthaben.ts.md#abschnitt
+import { meldeUndLiefere } from '../infra/fehler';
 import { hostErlaubt } from '../infra/fremdeAdressen';
-import { holeHttps } from '../infra/abruf';
+import { legoAbruf, ERLAUBTE_GUTHABEN_HOSTS, type LegoAbruf } from '../katalog/quellen';
 
 /** Aus dem Prototyp übernommen, nicht geraten — der Teil, den niemand herleiten kann. */
 const ENDPUNKT = 'https://www.lego.com/api/graphql/giftCardBalanceQuery';
 const LOGIN    = 'https://www.lego.com/api/graphql/Login';
 
-/** Genau ein Host, exakt: Der Abruf trägt Kartennummer und PIN. */
-const ERLAUBTE_GUTHABEN_HOSTS = ['www.lego.com'] as const;
 
 /** Hier statt in der Oberfläche, weil auch die Route den gespeicherten Wert prüft.
  * Ausführlich: docs/begruendungen/src/gutscheine/gutscheinGuthaben.ts.md#laender */
@@ -16,6 +15,11 @@ export const LAENDER = [
 ] as const;
 
 export const LAND_STANDARD = 'de-CH';
+
+/** Ohne gespeichertes Ausgabeland das Land zur Kontowährung — dieselbe Regel wie in 05-settings.js. */
+export function landFuerWaehrung(waehrung: unknown): string {
+  return ({ CHF: 'de-CH', EUR: 'de-DE', GBP: 'en-GB', USD: 'en-US' } as Record<string, string>)[String(waehrung)] ?? LAND_STANDARD;
+}
 
 export function landErlaubt(land: unknown): boolean {
   return typeof land === 'string' && (LAENDER as readonly string[]).includes(land);
@@ -39,25 +43,7 @@ const ABFRAGE = `query giftCardBalanceQuery($cardNumber: String!, $pin: String!)
   }
 }`;
 
-/** Damit Tests ihn ersetzen können, ohne lego.com anzufassen. */
-export type Abruf = (url: string, init?: Record<string, unknown>) => Promise<{
-  ok: boolean; status: number;
-  text: () => Promise<string>;
-  json: () => Promise<unknown>;
-  headers: { getSetCookie?: () => string[] };
-}>;
-
-/** Über abruf.ts: auch nach einer Umleitung nur www.lego.com, Zeit und Grösse begrenzt. */
-const legoAbruf: Abruf = async (url, init = {}) => {
-  const methode = init.method === 'POST' ? 'POST' : 'GET';
-  const r = await holeHttps(url, { hosts: ERLAUBTE_GUTHABEN_HOSTS, methode, zeitlimitMs: 20_000,
-    maxBytes: methode === 'POST' ? 512 * 1024 : 4 * 1024 * 1024,
-    kopfzeilen: (init.headers ?? {}) as Record<string, string>,
-    ...(typeof init.body === 'string' ? { rumpf: init.body } : {}) });
-  const text = r.koerper.toString('utf8'), kekse = r.kopf['set-cookie'] ?? [];
-  return { ok: r.status >= 200 && r.status < 300, status: r.status, text: async () => text,
-           json: async () => JSON.parse(text) as unknown, headers: { getSetCookie: () => [...kekse] } };
-};
+export type Abruf = LegoAbruf;
 
 /** Der Token ist abgelaufen oder die Karte/PIN stimmt nicht. */
 export class NichtAngemeldet extends Error {}
@@ -244,7 +230,7 @@ async function frageAb(
 
   if (res.status === 401) throw new NichtAngemeldet('Nicht angemeldet');
   if (!res.ok) {
-    const text = await res.text().catch(() => '');
+    const text = await res.text().catch(meldeUndLiefere('guthaben:antworttext', ''));
     // verdecke() auch auf den FREMDEN Text: Eine Fehlermeldung, die die Eingabe
     // zurückwirft, brächte die PIN sonst ins Protokoll.
     const sicher = verdecke(text.slice(0, 300), nummer, pin);

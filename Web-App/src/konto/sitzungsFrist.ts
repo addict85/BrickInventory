@@ -12,9 +12,11 @@ export const SITZUNG_LEERLAUF_SEK = Math.round(SITZUNG_LEERLAUF_MS / 1000);
 // angemeldet. Die Höchstdauer zählt ab der Anmeldung.
 export const SITZUNG_HOECHST_MS = konfig().sitzungHoechstStd * 3_600_000;
 
+type SitzungMitFrist = { userId?: number; angemeldetAm?: number; destroy(f: (e?: unknown) => void): void };
+
 /** Ältere Sitzungen ohne Anmeldezeitpunkt beginnen ihre Frist beim ersten Treffer. */
 export function sitzungsHoechstdauer(hoechstMs = SITZUNG_HOECHST_MS) {
-  return (req: any, _res: any, next: (e?: unknown) => void) => {
+  return (req: { session?: SitzungMitFrist }, _res: unknown, next: (e?: unknown) => void) => {
     const s = req.session;
     if (!s?.userId) return next();
     const jetzt = Date.now();

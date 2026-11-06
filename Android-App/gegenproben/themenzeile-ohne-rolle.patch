@@ -1,0 +1,18 @@
+Gegenprobe: ThemeRow ohne Optionsfeld-Rolle
+Modul: app
+Test: ch.brickinventoryapp.BarrierefreiheitBefundeTest
+Rot: M12 Themen- und Jahreswahl melden Rolle und Wahl
+
+diff --git a/Android-App/feature-katalog/src/main/java/ch/brickinventoryapp/ui/screens/CatalogScreen.kt b/Android-App/feature-katalog/src/main/java/ch/brickinventoryapp/ui/screens/CatalogScreen.kt
+index db4ec14..311ea48 100644
+--- a/Android-App/feature-katalog/src/main/java/ch/brickinventoryapp/ui/screens/CatalogScreen.kt
++++ b/Android-App/feature-katalog/src/main/java/ch/brickinventoryapp/ui/screens/CatalogScreen.kt
+@@ -414,7 +414,7 @@ fun ThemeRow(label: String, selected: Boolean, onClick: () -> Unit) {
+         shape = Formen.kachel,
+         color = if (selected) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f)
+                 else androidx.compose.ui.graphics.Color.Transparent,
+-        modifier = Modifier.fillMaxWidth().fokusRahmen(Formen.kachel).semantics { role = Role.RadioButton }
++        modifier = Modifier.fillMaxWidth().fokusRahmen(Formen.kachel)
+     ) {
+         Row(
+             Modifier.padding(horizontal = Abstaende.mittel, vertical = 11.dp),

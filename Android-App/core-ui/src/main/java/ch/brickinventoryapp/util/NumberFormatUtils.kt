@@ -4,6 +4,7 @@ import androidx.appcompat.app.AppCompatDelegate
 import java.text.NumberFormat
 import java.util.Currency
 import java.util.Locale
+import ch.brickinventoryapp.data.model.istGutscheinMaske
 
 /*
  * Zahlen und Beträge — eine Fassung für die ganze App, gleichgezogen mit der
@@ -56,6 +57,17 @@ fun fmtMoney(amount: Double, currencyCode: String?): String {
     }
 }
 
+/** Ganzer Betrag mit Währung („CHF 1'720“) — für Diagrammachsen, wie sie der Server liefert. */
+fun fmtMoneyGanz(amount: Double, currencyCode: String?): String = try {
+    val nf = NumberFormat.getCurrencyInstance(appNumberLocale())
+    nf.currency = Currency.getInstance(currencyCode ?: "EUR")
+    nf.minimumFractionDigits = 0
+    nf.maximumFractionDigits = 0
+    mitWaehrungsAbstand(nf.format(amount))
+} catch (_: IllegalArgumentException) {
+    "${currencyCode.orEmpty()}\u00A0${fmtAmount(amount, 0, 0)}".trim()
+}
+
 /**
  * Ein Code aus Buchstaben („CHF“) klebt in en-GB am Betrag („CHF812.50“), Intl im
  * Web schreibt „CHF 812.50“. Ein festes Leerzeichen dazwischen, damit beide gleich
@@ -74,7 +86,7 @@ fun fmtTag(iso: String?, jahr: DatumJahr = DatumJahr.VOLL): String? = fmtDatum(i
 fun inVierergruppen(nummer: String): String =
     // Die Maske des Servers („…1234“) bleibt, wie sie ist: gefiltert hiesse sie „1234“
     // und sähe aus wie eine ganze, kurze Nummer.
-    if (ch.brickinventoryapp.data.model.istGutscheinMaske(nummer)) nummer
+    if (istGutscheinMaske(nummer)) nummer
     else nummer.filter { it.isLetterOrDigit() }.chunked(4).joinToString(" ")
 
 /** Wie fmtMoney, aber aus dem String der API — `null`/unlesbar ergibt „—". */

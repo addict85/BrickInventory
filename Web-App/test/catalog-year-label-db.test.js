@@ -1,33 +1,6 @@
 /**
  * Das Jahres-Etikett am Scrollbalken nennt das Jahr, das dort WIRKLICH steht.
- *
- * ── Marcos Befund ───────────────────────────────────────────────────────────
- * „Wenn dann die Bilder geladen werden, erscheinen sie von einem anderen Jahr,
- * als rechts im Scrollbalken angezeigt wird. Es wurden die Sets von 1999
- * geladen, obwohl rechts 1965 steht."
- *
- * ── Die Annahme, die niemand ausgesprochen hatte ────────────────────────────
- * Das Etikett rechnete die Position LINEAR auf den Jahresbereich um — als läge
- * zwischen 1949 und 2027 in jedem Jahr gleich viel. Tatsächlich stammt der
- * weitaus grösste Teil des Katalogs aus den letzten Jahrzehnten. Wer neun
- * Zehntel hinunterzieht, ist deshalb noch lange nicht bei den Sechzigern.
- *
- * Gemessen an einer schiefen Verteilung wie im echten Katalog (1960–1969 je 2
- * Sets, 1990–1999 je 20, 2010–2019 je 100):
- *
- *     Position   dort steht   Etikett neu   Etikett alt (linear)
- *          25%         2016          2016                   2004
- *          50%         2013          2013                   1990
- *          75%         2010          2010                   1975
- *          90%         1995          1995                   1966
- *
- * ── Was dieser Test prüft ───────────────────────────────────────────────────
- * Nicht die Verteilung für sich, sondern dass sie TRIFFT: Zu jeder Position
- * wird das Set an dieser laufenden Nummer aus der echten Liste geholt und sein
- * Jahr mit dem verglichen, was das Etikett sagen würde. Ein Test auf „die Route
- * liefert Jahre" hätte die lineare Schätzung nie auffliegen lassen.
- *
- * Voraussetzung: Test-DB via TEST_DATABASE_URL.
+ * Ausführlich: docs/begruendungen/test/catalog-year-label-db.test.js.md#kopf
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -37,19 +10,13 @@ const ROOT = path.join(__dirname, '..');
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
 const _req = require('./helpers/sources').buildAndRequire();
+const { dbOderSkip } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
 const db = _req('db/database.js');
 const express = require(path.join(ROOT, 'node_modules', 'express'));
 
 test('das Jahres-Etikett trifft die Stelle', { concurrency: 1 }, async (t) => {
-  try { await db.initSchema(); }
-  catch (e) {
-    if (process.env.REQUIRE_DB === '1')
-      throw new Error(`REQUIRE_DB=1, aber die Test-DB ist nicht erreichbar: ${e.message}`);
-    t.skip('Test-DB nicht erreichbar'); return;
-  }
-  const mc = await db.pool.connect();
-  try { await _req('db/migrate.js').runMigrations(mc); } finally { mc.release(); }
+  if (!await dbOderSkip(t, _req)) return;
 
   const NUTZER = `jv-${process.pid}`;
   await db.run(`CREATE TABLE IF NOT EXISTS rb_themes (id INT PRIMARY KEY, name TEXT, parent_id INT)`);

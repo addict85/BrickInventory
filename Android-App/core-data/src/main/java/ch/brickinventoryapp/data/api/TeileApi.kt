@@ -3,6 +3,7 @@ package ch.brickinventoryapp.data.api
 import ch.brickinventoryapp.data.model.*
 import retrofit2.Response
 import retrofit2.http.*
+import ch.brickinventoryapp.data.model.ManualPartsResponse
 
 /**
  * Die Teileliste abfragen — für den Teile-Reiter und den Inhalt eines Sets;
@@ -184,5 +185,5 @@ interface TeileApi : TeileAbfrageApi {
         @Query("accounts") accounts: String? = null,
         @Query("search") search: String? = null,
         @Query("storage") storage: String? = null
-    ): Response<ch.brickinventoryapp.data.model.ManualPartsResponse>
+    ): Response<ManualPartsResponse>
 }

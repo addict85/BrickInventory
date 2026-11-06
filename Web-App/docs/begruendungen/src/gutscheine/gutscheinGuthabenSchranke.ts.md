@@ -45,7 +45,7 @@ belegen; alle anderen sehen ihn belegt.
 Der erste Entwurf legte die zwei Zeitpunkte in der zentralen
 Schlüssel-Wert-Tabelle der globalen Einstellungen ab, wie die `api_calls_*`.
 scripts/check-global-settings.js hat das zurückgewiesen, und beim Nachsehen
-zu Recht: Dort gilt, dass diese Tabelle über src/konto/settings.ts angefasst
+zu Recht: Dort gilt, dass diese Tabelle über src/einstellungen/settings.ts angefasst
 wird, und genau das geht hier nicht — getGlobalSetting() hat seine eigene
 Verbindung und gäbe die Sperre auf, um die es geht. Die eigene Tabelle
 (Migration 0039) ist dafür der richtige Ort und spart zugleich zwei

@@ -1,4 +1,5 @@
 import * as db from '../../../db/database';
+import type { ErfassungsZeile } from '../../../db/bestandsmenge';
 
 /** Preis und Zustand stehen in der NEUESTEN Erfassung, die Stückzahl ist die
  * Summe der Erfassungen — die Bestandszeile trägt nur den Schlüssel. */
@@ -45,7 +46,7 @@ export async function setzeTeilzustandNeueste(uid: number, partNumber: string, c
 }
 
 export function teilErfassungen(uids: number[], partNumber: string, colorId: number) {
-  return db.all(
+  return db.all<ErfassungsZeile>(
     `SELECT a.id, a.quantity, a.unit_price,
             COALESCE(a.condition, 'N') AS condition, a.price_estimated, a.currency,
             a.created_at, a.user_id AS owner_user_id

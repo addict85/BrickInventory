@@ -1,23 +1,27 @@
 package ch.brickinventoryapp
 
-import ch.brickinventoryapp.ressourcen.R
 import org.junit.Test
+import java.io.File
 
 /**
  * Absicherung der Aufräumrunde: lokalisierte Service-Benachrichtigungen,
- * Status-Icon, eingegrenzter FileProvider und der vom api-Client abgeleitete
- * PDF-Download.
+ * Status-Icon, die Teileliste ohne FileProvider und der vom api-Client
+ * abgeleitete PDF-Download.
  *
  * Alle Prüfungen lesen nur Quell- und Ressourcendateien.
+ *
+ * Gegenprobe: im Manifest den FileProvider neben den
+ * TeilelistenProvider gestellt → rot „die Teileliste geht nur ueber den eigenen
+ * Provider“ (gegenproben/fileprovider-extern.patch).
  */
 class ServicePolishTest {
 
     private fun read(rel: String): String {
         // Quellen und Ressourcen über alle Module; das Manifest liegt in app/.
         val f = when {
-            rel.startsWith("java/ch/brickinventoryapp/") -> java.io.File(Quellen.wurzel, rel.removePrefix("java/ch/brickinventoryapp/"))
-            rel.startsWith("res/") -> java.io.File(Quellen.res, rel.removePrefix("res/"))
-            else -> java.io.File(Quellen.projekt, "app/src/main/$rel")
+            rel.startsWith("java/ch/brickinventoryapp/") -> File(Quellen.wurzel, rel.removePrefix("java/ch/brickinventoryapp/"))
+            rel.startsWith("res/") -> File(Quellen.res, rel.removePrefix("res/"))
+            else -> File(Quellen.projekt, "app/src/main/$rel")
         }
         assert(f.exists()) { "Datei nicht gefunden: $rel" }
         return f.readText()
@@ -91,7 +95,7 @@ class ServicePolishTest {
 
     @Test
     fun `Benachrichtigungen benutzen das monochrome Status-Icon`() {
-        assert(java.io.File(Quellen.res, "drawable/ic_stat_brick.xml").exists()) {
+        assert(File(Quellen.res, "drawable/ic_stat_brick.xml").exists()) {
             "drawable/ic_stat_brick.xml fehlt"
         }
         for (rel in listOf(
@@ -110,48 +114,39 @@ class ServicePolishTest {
         }
     }
 
-    // ── FileProvider-Eingrenzung ─────────────────────────────────────────────
+    // ── Teileliste ohne Klartext-Freigabe ────────────────────────────────────
 
     @Test
-    fun `FileProvider teilt nur das pdf-Unterverzeichnis`() {
-        val fp = code(read("res/xml/file_paths.xml"))
-        assert(!fp.contains("path=\".\"")) {
-            "file_paths.xml gibt wieder ein Wurzelverzeichnis frei — damit ist auch der " +
-                "API-Cache (Inventar im Klartext-JSON) über die Provider-Authority erreichbar"
+    fun `die Teileliste geht nur ueber den eigenen Provider, kein FileProvider`() {
+        val manifest = code(read("AndroidManifest.xml"))
+        assert(!manifest.contains("FileProvider")) {
+            "Das Manifest trägt wieder einen FileProvider — er gibt nur Klartext-Dateien weiter, " +
+                "die Teileliste läge dann wieder offen in filesDir"
         }
-        assert(!fp.contains("cache-path")) {
-            "file_paths.xml teilt den Cache — dort liegt nichts, das über den Provider " +
-                "weitergegeben wird"
+        val eintrag = Regex("""<provider[^>]*TeilelistenProvider[^>]*>""").find(manifest)?.value
+            ?: error("Der TeilelistenProvider fehlt im Manifest")
+        assert(eintrag.contains("android:exported=\"false\"")) { "Der TeilelistenProvider ist exportiert" }
+        assert(eintrag.contains("android:grantUriPermissions=\"true\"")) {
+            "Ohne grantUriPermissions öffnet die gewählte App die Teileliste nicht"
         }
-        assert(fp.contains("path=\"pdf/\"")) {
-            "file_paths.xml deckt das pdf/-Verzeichnis nicht mehr ab — das Öffnen des " +
-                "exportierten Teilelisten-PDFs bricht dann mit SecurityException ab"
-        }
-        // Und der Export muss auch dort ablegen, wo der Provider hinzeigt; wohin
-        // teilelistenAblage() legt, prüft TeilelistenAblageTest (core-data).
-        val mgr = code(read("java/ch/brickinventoryapp/service/PdfExportManager.kt"))
-        assert(mgr.contains("teilelistenAblage(context.filesDir")) {
-            "PdfExportManager legt die Teileliste nicht über teilelistenAblage() in filesDir/pdf ab — " +
-                "ausserhalb des freigegebenen Pfads wirft FileProvider.getUriForFile()"
-        }
+        assert(!File(Quellen.res, "xml/file_paths.xml").exists()) { "file_paths.xml ist zurück" }
     }
 
     // ── PdfViewer-Client ─────────────────────────────────────────────────────
 
     @Test
     fun `der PdfViewer leitet seinen Client vom api-Client ab`() {
-        val pv = code(read("java/ch/brickinventoryapp/ui/screens/PdfViewerScreen.kt"))
+        val pv = code(read("java/ch/brickinventoryapp/data/AnleitungsRepository.kt"))
         assert(!pv.contains("OkHttpClient.Builder()")) {
-            "PdfViewerScreen baut wieder einen eigenständigen OkHttpClient. Der läuft am " +
+            "Der AnleitungsLader baut wieder einen eigenständigen OkHttpClient. Der läuft am " +
                 "DI-Interceptor vorbei: kein Bearer-Token, kein Klartext-Verbot, keine " +
                 "401-Meldung — jede dieser Regeln müsste dort von Hand nachgezogen werden."
         }
         assert(pv.contains(".newBuilder()")) {
-            "PdfViewerScreen leitet den Download-Client nicht per newBuilder() ab"
+            "Der AnleitungsLader leitet den Download-Client nicht per newBuilder() ab"
         }
-        assert(code(read("java/ch/brickinventoryapp/ui/AppViewModel.kt"))
-            .contains("apiHttpClient")) {
-            "Das AppViewModel stellt den api-Client nicht mehr bereit"
+        assert(pv.contains("""@param:ApiClient""")) {
+            "Der AnleitungsLader bekommt nicht den api-Client"
         }
     }
 
@@ -160,7 +155,7 @@ class ServicePolishTest {
     @Test
     fun `keine tote Gson-Regel in ProGuard`() {
         // proguard-rules.pro liegt im Modulwurzelverzeichnis, nicht unter src/
-        val f = java.io.File("proguard-rules.pro")
+        val f = File("proguard-rules.pro")
         assert(f.exists()) { "proguard-rules.pro nicht gefunden" }
         assert(!f.readText().contains("SerializedName")) {
             "Die Gson-Keep-Regel ist zurück — das Projekt serialisiert mit " +

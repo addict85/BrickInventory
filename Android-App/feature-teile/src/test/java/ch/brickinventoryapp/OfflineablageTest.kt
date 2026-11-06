@@ -1,5 +1,6 @@
 package ch.brickinventoryapp
 
+import ch.brickinventoryapp.data.repository.GutscheineRepositoryImpl
 import ch.brickinventoryapp.data.lokal.Bearbeitung
 import ch.brickinventoryapp.data.lokal.Faecher
 import ch.brickinventoryapp.data.lokal.Offlineablage
@@ -13,7 +14,6 @@ import ch.brickinventoryapp.data.model.Merkposten
 import ch.brickinventoryapp.data.model.PartValuationItem
 import ch.brickinventoryapp.data.model.SetItem
 import ch.brickinventoryapp.data.model.UpdateManualItemRequest
-import ch.brickinventoryapp.data.repository.GutscheineRepository
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
@@ -26,7 +26,7 @@ import org.junit.Test
  * eine Serverantwort ersetzt die Liste, und was noch wartet, liegt danach
  * wieder darüber. Je Konto getrennt.
  *
- * Gegenproben (30.10.2026, gemessen):
+ * Gegenproben:
  *   A  in Offlineablage.uebernimm die Schleife über den Ausgang entfernt → rot
  *      „eine Serverantwort verschluckt keine wartende Änderung“ (Menge 1 statt 2)
  *   B  in Offlineablage.puffere `wendeAn` weggelassen → rot „offline Bearbeitetes
@@ -111,7 +111,7 @@ class OfflineablageTest {
 
     @Test
     fun `ein Gutschein liegt ohne PIN und volle Nummer`() {
-        val g = GutscheineRepository.ohneGeheimnis(Gutschein(id = 1, number = "1234567890123456", pin = "4711", amount = 50.0))
+        val g = GutscheineRepositoryImpl.ohneGeheimnis(Gutschein(id = 1, number = "1234567890123456", pin = "4711", amount = 50.0))
         assertEquals("…3456", g.number)
         assertNull(g.pin)
         assertEquals(50.0, g.amount, 0.0)

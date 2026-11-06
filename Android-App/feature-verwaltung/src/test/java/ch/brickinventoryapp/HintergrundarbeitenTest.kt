@@ -1,23 +1,25 @@
 package ch.brickinventoryapp
 
 import ch.brickinventoryapp.ressourcen.R
+import ch.brickinventoryapp.data.MeldungsKanal
 import ch.brickinventoryapp.data.cache.ResponseCache
-import ch.brickinventoryapp.data.repository.BrickRepository
-import ch.brickinventoryapp.data.repository.FigurenRepository
-import ch.brickinventoryapp.data.repository.FinanzenRepository
-import ch.brickinventoryapp.data.repository.GutscheineRepository
-import ch.brickinventoryapp.data.repository.HaushaltRepository
-import ch.brickinventoryapp.data.repository.KatalogRepository
 import ch.brickinventoryapp.data.repository.KontoRepository
-import ch.brickinventoryapp.data.repository.Result
-import ch.brickinventoryapp.data.repository.SetsRepository
-import ch.brickinventoryapp.data.repository.TeileRepository
+import ch.brickinventoryapp.data.repository.Ergebnis
 import ch.brickinventoryapp.data.repository.VerwaltungRepository
 import ch.brickinventoryapp.ui.model.AuftragStatus
 import ch.brickinventoryapp.ui.screens.auftragsArtText
 import ch.brickinventoryapp.ui.viewmodel.MonitoringViewModel
 import ch.brickinventoryapp.ui.viewmodel.Texte
+import androidx.lifecycle.viewModelScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.test.UnconfinedTestDispatcher
+import kotlinx.coroutines.test.resetMain
+import kotlinx.coroutines.test.setMain
+import kotlinx.coroutines.withTimeout
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -29,21 +31,24 @@ import java.io.File
  * Die Hintergrundarbeiten im Monitoring: laden, abbrechen, wiederholen — das
  * ViewModel gegen einen Testserver mit den Antworten der Auftragstabelle.
  *
- * Gegenproben (30.10.2026, gemessen):
+ * Gegenproben:
  *   A  in HintergrundAnsichten `abbrechbar` auch für FEHLER → rot „was man mit
  *      einem Auftrag tun darf, steht schon fest“
  *   B  in MonitoringViewModel.nachAuftrag das Neuladen entfernt → rot „Abbrechen
  *      meldet Erfolg und lädt neu“ (nur eine GET-Anfrage)
- *   C  bei Result.Error den Erfolgssatz statt texte.meldung → rot „ein 409
+ *   C  bei Ergebnis.Error den Erfolgssatz statt texte.meldung → rot „ein 409
  *      zeigt den Satz des Servers“
  *   D  `jobProzessLaeuft = true` fest → rot „ohne Job-Prozess steht die Warnung an“
+ * Gegenprobe: melde()
+ *   startet die Aktion, legt den Satz aber nicht in den Kanal → rot „eine Aktion
+ *   laeuft im ViewModel …“
  */
 class HintergrundarbeitenTest {
 
     private object Saetze : Texte {
         override fun text(id: Int, vararg args: Any?) = "t$id(${args.joinToString()})"
         override fun menge(id: Int, anzahl: Int, vararg args: Any?) = "m$id:$anzahl"
-        override fun meldung(fehler: Result.Error) = "Server: ${fehler.message}"
+        override fun meldung(fehler: Ergebnis.Error) = "Server: ${fehler.message}"
         override fun angemeldet() = true
     }
 
@@ -62,15 +67,10 @@ class HintergrundarbeitenTest {
 
     private val pfade = PfadServer("/api/v1/admin/auftraege" to liste)
     private val dir = File(System.getProperty("java.io.tmpdir"), "bim-hg-${System.nanoTime()}")
+    private val kanal = MeldungsKanal()
     private val vm = TestApi.fuer(pfade.server).let { api ->
         val cache = ResponseCache { dir }
-        MonitoringViewModel(BrickRepository(
-            sets = SetsRepository(api, cache), teile = TeileRepository(api, cache),
-            finanzen = FinanzenRepository(api, cache), haushalt = HaushaltRepository(api, cache),
-            figuren = FigurenRepository(api, cache), konto = KontoRepository(api, cache),
-            verwaltung = VerwaltungRepository(api, cache), katalog = KatalogRepository(api, cache),
-            gutscheine = GutscheineRepository(api, cache), cache = cache,
-        ), Saetze)
+        MonitoringViewModel(VerwaltungRepository(api, cache), KontoRepository(api, cache), Saetze, kanal)
     }
 
     @After
@@ -97,6 +97,22 @@ class HintergrundarbeitenTest {
     fun `ohne Job-Prozess steht die Warnung an`() = runBlocking {
         vm.ladeHintergrund()
         assertFalse(vm.hintergrund.value.ansicht!!.jobProzessLaeuft)
+    }
+
+    /** Die Aktion läuft im viewModelScope; der Satz kommt über den Meldungskanal, nicht über den Bildschirm. */
+    @OptIn(ExperimentalCoroutinesApi::class)
+    @Test
+    fun `eine Aktion laeuft im ViewModel und meldet ueber den Zustand`() = runBlocking {
+        pfade.antworten["/api/v1/admin/auftraege/17/abbrechen"] = """{"success":true,"id":"17","status":"abgebrochen"}"""
+        Dispatchers.setMain(UnconfinedTestDispatcher())
+        try {
+            vm.auftragAbbrechen("17")
+            val satz = withTimeout(5_000) { kanal.meldung.first { it != null } }
+            assertEquals("t${R.string.hintergrund_abgebrochen_ok}()", satz)
+        } finally {
+            vm.viewModelScope.cancel()
+            Dispatchers.resetMain()
+        }
     }
 
     @Test

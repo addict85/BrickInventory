@@ -1,18 +1,15 @@
 package ch.brickinventoryapp.ui.viewmodel
 
-import android.content.Context
+import ch.brickinventoryapp.ui.fehlerklasse
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import ch.brickinventoryapp.ui.model.KatalogSetAnsicht
 import ch.brickinventoryapp.ui.model.alsAnsicht
-import ch.brickinventoryapp.data.repository.BrickRepository
-import ch.brickinventoryapp.data.repository.Result
+import ch.brickinventoryapp.data.repository.KatalogRepository
+import ch.brickinventoryapp.data.repository.Ergebnis
 import ch.brickinventoryapp.ui.CatalogUiState
-import ch.brickinventoryapp.ui.fehlerTextBrauchtCode
-import ch.brickinventoryapp.ui.fehlerTextId
 import ch.brickinventoryapp.ui.retryOnNetwork
 import dagger.hilt.android.lifecycle.HiltViewModel
-import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -21,11 +18,19 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 import ch.brickinventoryapp.ressourcen.R
+import ch.brickinventoryapp.data.MeldungsKanal
 
 // Interaktive Katalog-Calls: schnell scheitern statt still minutenlang
 // weiterversuchen — der Fehlerzustand hat einen Retry-Button.
 private const val CATALOG_RETRIES = 2
 private const val CATALOG_RETRY_DELAY_MS = 500L
+
+/**
+ * Wie lange die Liste ruhig stehen muss, bevor ihre sichtbaren Seiten geholt werden:
+ * 150 ms wie in der Webapp (`_ladeSichtbareSeiten`). Ein Zug über die ganze Leiste
+ * fällt so auf einen Abruf zusammen; kürzer als ein Berührungsabstand entprellte nichts.
+ */
+internal const val SICHTFENSTER_RUHE_MS = 150L
 
 /**
  * Der Katalog als eigenes ViewModel: Suche, Liste und Detail haben Jobs und eine
@@ -36,32 +41,14 @@ private const val CATALOG_RETRY_DELAY_MS = 500L
  */
 @HiltViewModel
 class CatalogViewModel @Inject constructor(
-    private val repo: BrickRepository,
-    @param:ApplicationContext private val ctx: Context,
-    meldungen: ch.brickinventoryapp.data.MeldungsKanal,
-    // Nur fuer die EINE Frage „liegt ein Token vor?“ — siehe
-    // meldungFuerSnackbar() weiter unten.
-    private val prefs: ch.brickinventoryapp.data.PreferencesManager,
-) : ViewModel() {
+    private val katalog: KatalogRepository,
+    private val meldungen: MeldungsKanal,
+    /** Texte in der Sprache der App und Fehlermeldungen wie überall (AppTexte). */
+    private val texte: Texte,
+) : ViewModel(), KatalogAktionen {
 
     private val _catalogState = MutableStateFlow(CatalogUiState())
     val state = _catalogState.asStateFlow()
-
-    /**
-     * Meldungen für die Snackbar — derselbe Fluss wie in allen ViewModels
-     * (MeldungsKanal.kt), damit kein Ziel des Graphen sie weiterleiten muss.
-     */
-    private val _snackbar = meldungen.fluss
-
-    /**
-     * Text in der Sprache der App, wie AppTexte.text(): Den Application-Context
-     * lokalisiert setApplicationLocales() unter Android 13 nicht, ctx.getString() gäbe
-     * die Systemsprache aus.
-     */
-    private fun text(id: Int, vararg args: Any?): String {
-        val c = ch.brickinventoryapp.util.LanguageManager.localizedContext(ctx)
-        return if (args.isEmpty()) c.getString(id) else c.getString(id, *args)
-    }
 
     // Entprellte Suche: pro Tastendruck wird der vorherige Lade-Job
     // abgebrochen, geladen wird erst 350ms nach dem letzten.
@@ -80,39 +67,15 @@ class CatalogViewModel @Inject constructor(
     // neue Liste angehaengt wird (gemischte Inhalte + doppelte LazyGrid-Keys).
     private var catalogGeneration = 0
 
-    /**
-     * Derselbe Satz wie in AppTexte.meldung(), über dieselbe Zuordnung fehlerTextId().
-     * Die Servermeldung hat Vorrang — sie kennt ihren Fall genauer und kommt in der
-     * Sprache des Kontos.
-     */
-    /**
-     * Wie Texte.meldungFuerSnackbar() — null heisst: Der Kanal schweigt. Ein 401 ist
-     * hier schon von der Sitzungsschicht behandelt (util/Abgewiesen.kt). „Angemeldet“
-     * heisst: Es liegt ein Token vor — dieselbe Quelle, die der Interceptor liest,
-     * nicht ein Flag der Oberfläche, das beim Anmelden zu früh wahr ist.
-     */
-    private fun meldungFuerSnackbar(fehler: Result.Error): String? =
-        if (ch.brickinventoryapp.util.meldetDieSitzungsschicht(
-                fehler.unauthorized,
-                prefs.authTokenState.value?.isNotBlank() == true)) null
-        else meldung(fehler)
-
-    private fun meldung(fehler: Result.Error): String {
-        if (fehler.message.isNotBlank()) return fehler.message
-        val id = fehlerTextId(fehler.art)
-        return if (fehlerTextBrauchtCode(fehler.art)) text(id, fehler.httpCode ?: 0)
-        else text(id)
-    }
-
-    fun loadCatalogMeta() {
+    override fun loadCatalogMeta() {
         viewModelScope.launch {
-            when (val r = retryOnNetwork { repo.katalog.getCatalogMeta() }) {
-                is Result.Success -> if (r.data.success) _catalogState.update {
+            when (val r = retryOnNetwork { katalog.getCatalogMeta() }) {
+                is Ergebnis.Success -> if (r.data.success) _catalogState.update {
                     it.copy(
                         themes = r.data.themes.map { t -> t.alsAnsicht() }, yearMin = r.data.yearMin, yearMax = r.data.yearMax
                     )
                 }
-                is Result.Error -> { /* Meta ist optional — Filter bleiben leer, Liste geht trotzdem */ }
+                is Ergebnis.Error -> { /* Meta ist optional — Filter bleiben leer, Liste geht trotzdem */ }
             }
         }
     }
@@ -121,36 +84,36 @@ class CatalogViewModel @Inject constructor(
      * Erste Seite mit den aktuellen Filtern laden (ersetzt alles Geladene).
      * Bricht eine laufende Ladung ab (cancel-and-replace).
      */
-    fun loadCatalogSets() {
+    override fun loadCatalogSets() {
         val gen = ++catalogGeneration
         catalogListJob?.cancel()
         catalogListJob = viewModelScope.launch {
             _catalogState.update {
                 // Auch die gemerkte Position zurücksetzen: Nach einem Filterwechsel
                 // zeigte sie auf Sets, die es in der neuen Liste nicht mehr gibt.
-                it.copy(isLoading = true, error = null,
+                it.copy(isLoading = true, error = null, fehlerKlasse = null,
                         loadedPages = emptyMap(), loadingPages = emptySet(), scrollTo = null,
                         scrollIndex = 0, scrollOffset = 0, jahrVerteilung = emptyList())
             }
             ladeJahrVerteilung(gen)
             val s = _catalogState.value
             val r = retryOnNetwork(maxAttempts = CATALOG_RETRIES, delayMs = CATALOG_RETRY_DELAY_MS) {
-                repo.katalog.getCatalogSets(
+                katalog.getCatalogSets(
                     q = s.query.ifBlank { null }, themeId = s.themeId,
                     yearFrom = s.year, yearTo = s.year, sort = s.sort, page = 1
                 )
             }
             if (gen != catalogGeneration) return@launch   // inzwischen neuer Filter
             when (r) {
-                is Result.Success -> {
+                is Ergebnis.Success -> {
                     if (r.data.success) _catalogState.update {
                         it.copy(isLoading = false, loadedPages = mapOf(1 to r.data.sets.map { s -> s.alsAnsicht() }),
                                 total = r.data.total)
                     } else _catalogState.update { it.copy(isLoading = false, error = r.data.error) }
                 }
-                is Result.Error -> {
-                    _catalogState.update { it.copy(isLoading = false, error = meldung(r)) }
-                    if (_catalogState.value.loadedPages.isNotEmpty()) _snackbar.value = meldungFuerSnackbar(r)
+                is Ergebnis.Error -> {
+                    _catalogState.update { it.copy(isLoading = false, error = texte.meldung(r), fehlerKlasse = fehlerklasse(r)) }
+                    if (_catalogState.value.loadedPages.isNotEmpty()) meldungen.zeige(texte.meldungFuerSnackbar(r))
                 }
             }
         }
@@ -162,6 +125,11 @@ class CatalogViewModel @Inject constructor(
      * übersprungen; Antworten einer älteren Filter-Generation verworfen, sonst hinge
      * eine späte Seite des alten Filters in der neuen Liste.
      */
+    private val sichtfenster = Sichtfensterlader(viewModelScope, SICHTFENSTER_RUHE_MS, ::ensureCatalogPage)
+
+    /** Was das Raster gerade zeigt (Seiten, 1-basiert); geladen wird erst, wenn es ruht. */
+    override fun catalogSichtbar(ersteSeite: Int, letzteSeite: Int) = sichtfenster.sichtbar(ersteSeite, letzteSeite)
+
     fun ensureCatalogPage(seite: Int) {
         if (seite < 1) return
         val s = _catalogState.value
@@ -170,7 +138,7 @@ class CatalogViewModel @Inject constructor(
         _catalogState.update { it.copy(loadingPages = it.loadingPages + seite) }
         viewModelScope.launch {
             val r = retryOnNetwork(maxAttempts = CATALOG_RETRIES, delayMs = CATALOG_RETRY_DELAY_MS) {
-                repo.katalog.getCatalogSets(
+                katalog.getCatalogSets(
                     q = s.query.ifBlank { null }, themeId = s.themeId,
                     yearFrom = s.year, yearTo = s.year, sort = s.sort, page = seite
                 )
@@ -179,12 +147,12 @@ class CatalogViewModel @Inject constructor(
             _catalogState.update { st ->
                 val ohne = st.loadingPages - seite
                 when (r) {
-                    is Result.Success ->
+                    is Ergebnis.Success ->
                         if (r.data.success) st.copy(loadingPages = ohne,
                             loadedPages = st.loadedPages + (seite to r.data.sets.map { s -> s.alsAnsicht() }),
                             total = if (r.data.total > 0) r.data.total else st.total)
                         else st.copy(loadingPages = ohne)
-                    is Result.Error -> st.copy(loadingPages = ohne)
+                    is Ergebnis.Error -> st.copy(loadingPages = ohne)
                 }
             }
         }
@@ -198,10 +166,10 @@ class CatalogViewModel @Inject constructor(
     private fun ladeJahrVerteilung(gen: Int) {
         viewModelScope.launch {
             val s = _catalogState.value
-            val r = repo.katalog.getCatalogYearVerteilung(
+            val r = katalog.getCatalogYearVerteilung(
                 q = s.query.ifBlank { null }, themeId = s.themeId, sort = s.sort)
             if (gen != catalogGeneration) return@launch
-            if (r is Result.Success && r.data.success) {
+            if (r is Ergebnis.Success && r.data.success) {
                 // Jahrgaenge OHNE Jahr wegwerfen — genau wie die Webapp es tut.
                 // Ihre Zahl bleibt in `total` enthalten; siehe
                 // CatalogYearMath.jahrAnPosition.
@@ -215,7 +183,7 @@ class CatalogViewModel @Inject constructor(
      * Zustand an die Ansicht, weil dort gerollt wird; catalogScrollConsumed() setzt
      * sie zurück, sonst liesse sich dieselbe Stelle kein zweites Mal anfahren.
      */
-    fun scrollCatalogTo(nummer: Int) {
+    override fun scrollCatalogTo(nummer: Int) {
         _catalogState.update { it.copy(scrollTo = nummer) }
     }
 
@@ -223,16 +191,16 @@ class CatalogViewModel @Inject constructor(
      * Die Ansicht meldet laufend ihre Rollposition; nur der Zustand wird gesetzt, kein
      * Abruf. Beim Zurückkehren von der Detailseite stellt sie daraus wieder her.
      */
-    fun setCatalogScrollPos(index: Int, offset: Int) {
+    override fun setCatalogScrollPos(index: Int, offset: Int) {
         _catalogState.update { it.copy(scrollIndex = index, scrollOffset = offset) }
     }
 
     /** Die Ansicht meldet, dass sie gesprungen ist. */
-    fun catalogScrollConsumed() {
+    override fun catalogScrollConsumed() {
         _catalogState.update { it.copy(scrollTo = null) }
     }
 
-    fun setCatalogQuery(q: String) {
+    override fun setCatalogQuery(q: String) {
         _catalogState.update { it.copy(query = q) }
         catalogSearchJob?.cancel()
         catalogSearchJob = viewModelScope.launch {
@@ -241,17 +209,17 @@ class CatalogViewModel @Inject constructor(
         }
     }
 
-    fun setCatalogTheme(themeId: Int?) {
+    override fun setCatalogTheme(themeId: Int?) {
         _catalogState.update { it.copy(themeId = themeId) }
         loadCatalogSets()
     }
 
-    fun setCatalogYear(year: Int?) {
+    override fun setCatalogYear(year: Int?) {
         _catalogState.update { it.copy(year = year) }
         loadCatalogSets()
     }
 
-    fun setCatalogSort(sort: String) {
+    override fun setCatalogSort(sort: String) {
         _catalogState.update { it.copy(sort = sort) }
         loadCatalogSets()
     }
@@ -261,18 +229,18 @@ class CatalogViewModel @Inject constructor(
         catalogDetailJob?.cancel()
         catalogDetailJob = viewModelScope.launch {
             _catalogState.update { it.copy(detailLoading = true, detail = null) }
-            when (val r = retryOnNetwork(maxAttempts = CATALOG_RETRIES, delayMs = CATALOG_RETRY_DELAY_MS) { repo.katalog.getCatalogSetDetail(setNumber) }) {
-                is Result.Success -> {
+            when (val r = retryOnNetwork(maxAttempts = CATALOG_RETRIES, delayMs = CATALOG_RETRY_DELAY_MS) { katalog.getCatalogSetDetail(setNumber) }) {
+                is Ergebnis.Success -> {
                     if (r.data.success && r.data.set != null)
                         _catalogState.update { it.copy(detailLoading = false, detail = r.data.set?.alsAnsicht()) }
                     else {
                         _catalogState.update { it.copy(detailLoading = false) }
-                        _snackbar.value = r.data.error ?: text(R.string.err_set_not_found)
+                        meldungen.zeige(r.data.error ?: texte.text(R.string.err_set_not_found))
                     }
                 }
-                is Result.Error -> {
+                is Ergebnis.Error -> {
                     _catalogState.update { it.copy(detailLoading = false) }
-                    _snackbar.value = meldungFuerSnackbar(r)
+                    meldungen.zeige(texte.meldungFuerSnackbar(r))
                 }
             }
         }

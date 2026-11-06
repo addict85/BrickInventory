@@ -1,0 +1,18 @@
+Gegenprobe: Einrichten geht auch ohne Passwort
+Modul: app
+Test: ch.brickinventoryapp.ZweiterFaktorMaskeTest
+Rot: ohne Passwort richtet
+
+diff --git a/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/ui/screens/ZweiterFaktorPflichtMaske.kt b/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/ui/screens/ZweiterFaktorPflichtMaske.kt
+index 05f60fe..17f972b 100644
+--- a/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/ui/screens/ZweiterFaktorPflichtMaske.kt
++++ b/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/ui/screens/ZweiterFaktorPflichtMaske.kt
+@@ -188,7 +188,7 @@ fun ZweiterFaktorPflichtMaske(
+                         // Gleich danach steht der Schlüssel im Klartext da: erst die Gerätesperre.
+                         Button(
+                             onClick = { schutz.bestaetige(codesGrund) { onEinrichten(pwAktuell) } },
+-                            enabled = pwAktuell.isNotEmpty() && !zustand.laedt,
++                            enabled = !zustand.laedt,
+                             modifier = Modifier.fillMaxWidth(),
+                         // „Weiter“ wie Schritt 1 von 3: Eingerichtet ist danach noch nichts.
+                         ) { Text(stringResource(R.string.setup_continue)) }

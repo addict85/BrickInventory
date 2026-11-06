@@ -1,19 +1,33 @@
 package ch.brickinventoryapp.ui.screens
 
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.material3.SnackbarDuration
+import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.SnackbarResult
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.runtime.LaunchedEffect
+import ch.brickinventoryapp.ui.LagerUiState
+import ch.brickinventoryapp.ui.MerkpostenDetailUiState
+import ch.brickinventoryapp.ui.MerklisteUiState
+import ch.brickinventoryapp.ui.BlickfeldUiState
+import ch.brickinventoryapp.ui.AppUiState
+import ch.brickinventoryapp.ui.viewmodel.MerklisteAktionen
+import ch.brickinventoryapp.ui.components.nebenKnopfFarben
+import ch.brickinventoryapp.ui.components.nebenKnopfRand
 import androidx.compose.ui.draw.clip
-import ch.brickinventoryapp.ui.components.AuswahlChip
 import ch.brickinventoryapp.ui.model.MerkpostenAnsicht
 import ch.brickinventoryapp.ui.model.MitgliedAnsicht
 import androidx.compose.foundation.clickable
 import androidx.compose.ui.semantics.Role
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.selected
 import ch.brickinventoryapp.ui.components.Bewegt
+import ch.brickinventoryapp.ui.components.ansagen
 import ch.brickinventoryapp.ui.components.HinweisText
 import ch.brickinventoryapp.ui.components.KeinTrefferHinweis
 import ch.brickinventoryapp.ui.components.Ladezustand
@@ -21,7 +35,6 @@ import ch.brickinventoryapp.ui.Ladeanzeige
 import ch.brickinventoryapp.ui.ladeanzeige
 import androidx.compose.material.icons.filled.BookmarkBorder
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.Sort
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material3.*
@@ -40,18 +53,24 @@ import ch.brickinventoryapp.data.repository.MERKLISTE_DEFAULT_SORT
 import ch.brickinventoryapp.ui.viewmodel.MerklisteViewModel
 import ch.brickinventoryapp.ui.theme.Abstaende
 import ch.brickinventoryapp.ui.theme.Formen
-import ch.brickinventoryapp.ui.theme.LocalIsBrickTheme
-import ch.brickinventoryapp.ui.theme.mittigBis
 import ch.brickinventoryapp.util.NumericInput
 import ch.brickinventoryapp.util.resolveThumbUrl
 import androidx.compose.material.icons.filled.NotificationsActive
 import androidx.compose.material.icons.filled.Alarm
+import ch.brickinventoryapp.data.ScopeFilter
+import ch.brickinventoryapp.ui.components.BarcodeSymbol
+import ch.brickinventoryapp.ui.components.ErfassenDialog
+import ch.brickinventoryapp.ui.components.ErfassenFab
+import ch.brickinventoryapp.ui.components.FabPlatz
+import ch.brickinventoryapp.ui.components.KnopfStapel
+import ch.brickinventoryapp.ui.components.ListeUndDetail
+import ch.brickinventoryapp.ui.components.ProduktBild
+import ch.brickinventoryapp.ui.components.ScanKnopf
+import ch.brickinventoryapp.ui.components.SegmentWahl
+import ch.brickinventoryapp.ui.components.SortierMenue
+import ch.brickinventoryapp.ui.components.mitSchrift
+import ch.brickinventoryapp.util.fmtMoney
 
-/**
- * Die Merkliste — als Liste, weil sie gelesen und abgearbeitet wird: Nummer, Jahr,
- * Zustand und Preisalarm nebeneinander, wie in der Webapp. Die Regeln stehen am
- * Server (utils/merkliste.ts); der Bildschirm zeigt und ruft.
- */
 /**
  * Der Schlüssel einer Zeile: Nummer, Zustand und Konto. Dasselbe Set kann neu und
  * gebraucht und bei zwei Konten dastehen; mit der Nummer allein verlöre Compose
@@ -59,34 +78,107 @@ import androidx.compose.material.icons.filled.Alarm
  */
 private fun merkpostenSchluessel(w: MerkpostenAnsicht) = "${w.setNumber}|${w.condition}|${w.userId}"
 
+/** Was Merkliste und Merkposten-Detail zeigen; die Route sammelt es aus den Flüssen. */
+data class MerklisteZustand(
+    val appState: AppUiState,
+    val blick: BlickfeldUiState,
+    val liste: MerklisteUiState,
+    val detail: MerkpostenDetailUiState,
+    val lagerZustand: LagerUiState,
+)
+
+/** Merkliste und Detail am Navigationsziel: ein ViewModel für beide Hälften. */
+@Composable
+fun MerklisteRoute(
+    vm: MerklisteViewModel,
+    imageLoader: coil3.ImageLoader,
+    onScan: () -> Unit,
+    onOeffnenEinzeln: (String, String) -> Unit,
+    nebeneinander: Boolean = false,
+) {
+    val appState by vm.state.collectAsStateWithLifecycle()
+    val blick by vm.blickfeld.collectAsStateWithLifecycle()
+    val liste by vm.merklisteState.collectAsStateWithLifecycle()
+    val detail by vm.merkpostenDetailState.collectAsStateWithLifecycle()
+    val lagerZustand by vm.lagerState.collectAsStateWithLifecycle()
+    val ansicht = MerklisteZustand(appState, blick, liste, detail, lagerZustand)
+    MerklisteUndDetail(ansicht, vm, imageLoader, nebeneinander, onScan, onOeffnenEinzeln)
+}
+
+/**
+ * „von der Merkliste genommen“ mit „Rückgängig“. Gelöscht wird erst, wenn die Snackbar
+ * ohne Rückgängig endet — auch wenn sie verschwindet, weil man die Merkliste verlässt.
+ */
+@Composable
+fun MerkpostenRueckgaengigRoute(vm: MerklisteViewModel, snackbarHostState: SnackbarHostState) {
+    val vorgemerkt by vm.vorgemerkt.collectAsStateWithLifecycle()
+    val text = vorgemerkt?.let { stringResource(R.string.wanted_deleted, it.name) }
+    val rueckgaengig = stringResource(R.string.common_undo)
+    LaunchedEffect(vorgemerkt) {
+        val v = vorgemerkt ?: return@LaunchedEffect
+        var zurueck = false
+        try {
+            zurueck = snackbarHostState.showSnackbar(text ?: v.name, rueckgaengig,
+                duration = SnackbarDuration.Long) ==
+                SnackbarResult.ActionPerformed
+        } finally {
+            if (zurueck) vm.merkpostenRueckgaengig(v) else vm.merkpostenLoeschenAusfuehren(v)
+        }
+    }
+}
+
+/** Das Merkposten-Detail als eigene Seite (Telefon). */
+@Composable
+fun MerkpostenDetailRoute(
+    vm: MerklisteViewModel,
+    setNumber: String,
+    condition: String,
+    imageLoader: coil3.ImageLoader,
+    onBack: () -> Unit,
+) {
+    val appState by vm.state.collectAsStateWithLifecycle()
+    val blick by vm.blickfeld.collectAsStateWithLifecycle()
+    val liste by vm.merklisteState.collectAsStateWithLifecycle()
+    val detail by vm.merkpostenDetailState.collectAsStateWithLifecycle()
+    val lagerZustand by vm.lagerState.collectAsStateWithLifecycle()
+    val ansicht = MerklisteZustand(appState, blick, liste, detail, lagerZustand)
+    MerkpostenDetailScreen(ansicht, vm, setNumber, condition, imageLoader, onBack)
+}
+
+/**
+ * Die Merkliste — als Liste, weil sie gelesen und abgearbeitet wird: Nummer, Jahr,
+ * Zustand und Preisalarm nebeneinander, wie in der Webapp. Die Regeln stehen am
+ * Server (utils/merkliste.ts); der Bildschirm zeigt und ruft.
+ */
 @Composable
 fun MerklisteScreen(
-    vm: MerklisteViewModel,
+    ansicht: MerklisteZustand,
+    aktionen: MerklisteAktionen,
     imageLoader: coil3.ImageLoader,
     onScan: () -> Unit,
     onOeffnen: (String, String) -> Unit,
     /** Setnummer und Zustand des Merkpostens, dessen Detail daneben offen ist. */
     gewaehlt: Pair<String, String>? = null,
 ) {
-    val zustand by vm.merklisteState.collectAsStateWithLifecycle()
+    val zustand = ansicht.liste
     // Die Bildadressen zeigen auf den eigenen Server (Proxy), nicht roh aufs
     // CDN — dieselbe Regel wie in Galerie, Teilen und Finanzen.
-    val appState by vm.state.collectAsStateWithLifecycle()
-    val blick by vm.blickfeld.collectAsStateWithLifecycle()
+    val appState = ansicht.appState
+    val blick = ansicht.blick
 
     // Übernommen wird über das Detail (MerkpostenDetailScreen), wo Anzahl, Kaufpreis
     // und Zustand zur Wahl stehen; die Zeile zeigt dafür den Marktpreis.
     var maskeOffen by rememberSaveable { mutableStateOf(false) }
 
-    LaunchedEffect(Unit) { vm.ladeMerkliste() }
+    LaunchedEffect(Unit) { aktionen.ladeMerkliste() }
 
     // ── Der Filter ──
     //
     // Dieselben Bausteine in derselben Reihenfolge wie in der Galerie: Kontofilter,
     // Suchfeld, Chips. Kein Lagerortfilter — was man nicht hat, liegt nirgends; dafür
     // der Zustand, weil dasselbe Set neu und gebraucht dastehen kann.
-    val scopeModus = blick.scopeModes[ch.brickinventoryapp.data.ScopeFilter.View.MERKLISTE.key]
-        ?: ch.brickinventoryapp.data.ScopeFilter.ALL
+    val scopeModus = blick.scopeModes[ScopeFilter.View.MERKLISTE.key]
+        ?: ScopeFilter.ALL
     // Das Eingabefeld haelt seinen Text selbst (Tippen bleibt fluessig); die
     // Entprellung liegt im ViewModel. Wechselt der Wert von aussen, zieht das
     // Feld nach — dieselbe Zeile wie in der Galerie.
@@ -96,17 +188,16 @@ fun MerklisteScreen(
     // „nichts gefunden“ über den Filter; ein Ladefehler eine dritte.
     val gefiltert = zustand.query.isNotBlank() ||
         zustand.zustandFilter.isNotBlank() ||
-        scopeModus != ch.brickinventoryapp.data.ScopeFilter.ALL
+        scopeModus != ScopeFilter.ALL
     val anzeige = ladeanzeige(zustand.merkposten.isNotEmpty(), zustand.laedt, zustand.fehler, gefiltert)
     Box(Modifier.fillMaxSize()) {
         // Volle Breite wie jedes Raster (Lesebreite.kt): Mittig auf 840 dp stand der Preis
         // auf dem Tablet 1200 px vom Titel entfernt; im Raster bleibt er neben ihm.
         Column(Modifier.fillMaxSize()) {
-
             ScopeFilterZeile(
                 members  = blick.householdMembers,
                 current  = scopeModus,
-                onSelect = { vm.setScope(ch.brickinventoryapp.data.ScopeFilter.View.MERKLISTE, it) },
+                onSelect = { aktionen.setScope(ScopeFilter.View.MERKLISTE, it) },
             )
 
             // Scannen neben der Suche wie in der Galerie: unten schwebt nur EIN Knopf. Im
@@ -120,31 +211,31 @@ fun MerklisteScreen(
             ) {
                 Suchfeld(
                     wert = sucheInput,
-                    onWert = { sucheInput = it; vm.setzeMerklisteSuche(it) },
+                    onWert = { sucheInput = it; aktionen.setzeMerklisteSuche(it) },
                     platzhalter = stringResource(R.string.wanted_search),
                     modifier = Modifier.weight(1f),
                 )
                 // Dieselben Werte wie MERK_SORTS am Server und dieselbe Auswahl wie in
                 // der Webapp. qty_* fehlt in beiden: Ein Merkposten hat keine Anzahl.
-                ch.brickinventoryapp.ui.components.SortierMenue(
+                SortierMenue(
                     optionen = listOf("added_desc", "added_asc", "name_asc", "num_asc",
                                       "year_desc", "price_desc", "price_asc").map { it to gallerySortLabel(it) },
                     gewaehlt = zustand.sortierung,
-                    onWahl = { vm.setzeMerklisteSortierung(it) },
+                    onWahl = { aktionen.setzeMerklisteSortierung(it) },
                     modifier = Modifier.padding(end = Abstaende.winzig),
                     vorgabe = MERKLISTE_DEFAULT_SORT,
                 )
-                ch.brickinventoryapp.ui.components.ScanKnopf({ onScan() }, Modifier.padding(end = 14.dp))
+                ScanKnopf({ onScan() }, Modifier.padding(end = 14.dp))
             }
 
             // Der Zustand ist eine Einfachwahl mit drei Antworten — „beide“ ist die
             // Vorgabe, weil ein Filter sie immer hat (Zustandszeile kennt nur zwei).
-            if (mitKopf) ch.brickinventoryapp.ui.components.SegmentWahl(
+            if (mitKopf) SegmentWahl(
                 optionen = listOf("" to stringResource(R.string.filter_condition_all),
                                   "N" to stringResource(R.string.condition_new),
                                   "U" to stringResource(R.string.condition_used)),
                 gewaehlt = zustand.zustandFilter,
-                onWahl = { vm.setzeMerklisteZustand(it) },
+                onWahl = { aktionen.setzeMerklisteZustand(it) },
                 modifier = Modifier.padding(horizontal = Abstaende.rand).padding(bottom = Abstaende.klein),
             )
 
@@ -152,41 +243,46 @@ fun MerklisteScreen(
                 Ladezustand(
                     anzeige = anzeige,
                     fehler = zustand.fehler,
-                    onErneut = { vm.ladeMerkliste() },
+                    onErneut = { aktionen.ladeMerkliste() },
                     // Wie die leere Galerie: sagen, wozu die Liste da ist, und beide Wege
                     // zum ersten Eintrag anbieten — dieselben wie die Knöpfe unten rechts.
                     leer = {
                         HinweisText(Icons.Default.BookmarkBorder, stringResource(R.string.wanted_empty),
                             stringResource(R.string.wanted_empty_hint))
-                        Button(onClick = { maskeOffen = true }, shape = Formen.knopf) {
-                            Icon(Icons.Default.Add, null, Modifier.size(18.dp))
-                            Spacer(Modifier.width(Abstaende.klein))
-                            Text(stringResource(R.string.wanted_add_first))
-                        }
-                        OutlinedButton(onClick = { onScan() }, shape = Formen.knopf) {
-                            Icon(ch.brickinventoryapp.ui.components.BarcodeSymbol, null, Modifier.size(18.dp))
-                            Spacer(Modifier.width(Abstaende.klein))
-                            Text(stringResource(R.string.gallery_scan_barcode))
+                        KnopfStapel {
+                            Button(onClick = { maskeOffen = true }, modifier = Modifier.fillMaxWidth()) {
+                                Icon(Icons.Default.Add, null, Modifier.size(mitSchrift(18.dp)))
+                                Spacer(Modifier.width(Abstaende.klein))
+                                Text(stringResource(R.string.wanted_add_first))
+                            }
+                            OutlinedButton(onClick = { onScan() }, modifier = Modifier.fillMaxWidth(), colors = nebenKnopfFarben(), border = nebenKnopfRand()) {
+                                Icon(BarcodeSymbol, null, Modifier.size(mitSchrift(18.dp)))
+                                Spacer(Modifier.width(Abstaende.klein))
+                                Text(stringResource(R.string.gallery_scan_barcode))
+                            }
                         }
                     },
                     keineTreffer = { KeinTrefferHinweis(stringResource(R.string.wanted_no_results)) },
                     fehlerKlasse = zustand.fehlerKlasse,
                 ) {
-                    androidx.compose.foundation.lazy.grid.LazyVerticalGrid(
-                        columns = androidx.compose.foundation.lazy.grid.GridCells.Adaptive(340.dp),
+                    BoxWithConstraints {
+                    val mehrspaltig = maxWidth >= MERKLISTE_SPALTE * 2
+                    LazyVerticalGrid(
+                        columns = GridCells.Adaptive(MERKLISTE_SPALTE),
                         modifier = Modifier.fillMaxSize(),
                         verticalArrangement = Arrangement.spacedBy(Abstaende.klein),
                         horizontalArrangement = Arrangement.spacedBy(Abstaende.klein),
                         // Platz für den Erfassen-Knopf: Ohne ihn verdeckt er die letzte Zeile.
-                        contentPadding = PaddingValues(bottom = ch.brickinventoryapp.ui.components.FabPlatz),
+                        contentPadding = PaddingValues(bottom = FabPlatz),
                     ) {
                         items(zustand.merkposten, key = ::merkpostenSchluessel) { w ->
                             Bewegt {
                                 MerkpostenZeile(w, appState.serverUrl, imageLoader,
                                     gewaehlt = gewaehlt == w.setNumber to w.condition,
-                                    onOeffnen = { onOeffnen(w.setNumber, w.condition) })
+                                    onOeffnen = { onOeffnen(w.setNumber, w.condition) }, mehrspaltig = mehrspaltig)
                             }
                         }
+                    }
                     }
                 }
             }
@@ -194,7 +290,7 @@ fun MerklisteScreen(
 
         // Ein Knopf wie in der Galerie; Scannen steht neben der Suche. Im Fehlerzustand
         // nicht, und leer auch nicht: Dort steht „Set merken“ schon mitten im Bild.
-        if (anzeige != Ladeanzeige.FEHLER && anzeige != Ladeanzeige.LEER) ch.brickinventoryapp.ui.components.ErfassenFab(
+        if (anzeige != Ladeanzeige.FEHLER && anzeige != Ladeanzeige.LEER) ErfassenFab(
             stringResource(R.string.wanted_add_title), { maskeOffen = true },
             Modifier.align(Alignment.BottomEnd).padding(Abstaende.gross),
         )
@@ -206,12 +302,11 @@ fun MerklisteScreen(
             defaultCondition = appState.userDefaultCondition ?: "N",
             onDismiss = { maskeOffen = false },
             onAnlegen = { nummer, zustandWahl, besitzer ->
-                vm.legeMerkpostenAn(nummer, zustandWahl, besitzer)
+                aktionen.legeMerkpostenAn(nummer, zustandWahl, besitzer)
                 maskeOffen = false
             },
         )
     }
-
 }
 
 /**
@@ -221,7 +316,8 @@ fun MerklisteScreen(
  */
 @Composable
 fun MerklisteUndDetail(
-    vm: MerklisteViewModel,
+    ansicht: MerklisteZustand,
+    aktionen: MerklisteAktionen,
     imageLoader: coil3.ImageLoader,
     nebeneinander: Boolean,
     onScan: () -> Unit,
@@ -230,17 +326,17 @@ fun MerklisteUndDetail(
     var offen by rememberSaveable { mutableStateOf<List<String>?>(null) }
     val auswahl = offen?.let { it[0] to it[1] }
     val liste: @Composable () -> Unit = {
-        MerklisteScreen(vm = vm, imageLoader = imageLoader, onScan = onScan,
+        MerklisteScreen(ansicht = ansicht, aktionen = aktionen, imageLoader = imageLoader, onScan = onScan,
             onOeffnen = { sn, z -> if (nebeneinander) offen = listOf(sn, z) else onOeffnenEinzeln(sn, z) },
             gewaehlt = auswahl.takeIf { nebeneinander })
     }
     if (nebeneinander && auswahl != null) {
-        ch.brickinventoryapp.ui.components.ListeUndDetail(
+        ListeUndDetail(
             liste = liste,
             detail = {
                 // key: Ein anderer Merkposten ist ein anderes Detail (Dialoge, Zoom zu).
                 androidx.compose.runtime.key(auswahl) {
-                    MerkpostenDetailScreen(vm = vm, setNumber = auswahl.first, condition = auswahl.second,
+                    MerkpostenDetailScreen(ansicht = ansicht, aktionen = aktionen, setNumber = auswahl.first, condition = auswahl.second,
                         imageLoader = imageLoader, onBack = { offen = null })
                 }
             },
@@ -270,7 +366,7 @@ internal fun UebernahmeDialog(
     // Schluessel ist die Vorgabe — dieselbe Begruendung wie im Katalog-Dialog.
     var lagerort by rememberSaveable(lagerortVorgabe) { mutableStateOf(lagerortVorgabe) }
 
-    ch.brickinventoryapp.ui.components.ErfassenDialog(
+    ErfassenDialog(
         titel = stringResource(R.string.wanted_take),
         bestaetigen = stringResource(R.string.wanted_take),
         onBestaetigen = { onUebernehmen(anzahl.toIntOrNull() ?: 1, preis, zustand,
@@ -282,6 +378,7 @@ internal fun UebernahmeDialog(
             // NumericInput statt eigener Filterung: Die Regel, was eine Zahl ist (genau ein
             // Trennzeichen), steht einmal in util/NumericInput.kt.
             OutlinedTextField(
+                shape = Formen.feld,
                 value = anzahl,
                 onValueChange = { anzahl = NumericInput.quantity(it) },
                 label = { Text(stringResource(R.string.common_quantity)) },
@@ -290,6 +387,7 @@ internal fun UebernahmeDialog(
                 modifier = Modifier.weight(1f),
             )
             OutlinedTextField(
+                shape = Formen.feld,
                 value = preis,
                 onValueChange = { preis = NumericInput.price(it) },
                 label = { Text(stringResource(R.string.gallery_purchase_price)) },
@@ -326,20 +424,25 @@ private fun MerkpostenErfassenDialog(
         mutableStateOf(householdMembers.firstOrNull { it.isSelf }?.id)
     }
 
+    // „Auf die Merkliste“ bleibt antippbar und markiert dann das leere Feld: Grau ohne
+    // Grund liess raten, warum nichts geschah.
+    var nummerFehlt by rememberSaveable { mutableStateOf(false) }
     val nummerFokus = remember { FocusRequester() }
     LaunchedEffect(Unit) {
         kotlinx.coroutines.delay(120)
         try { nummerFokus.requestFocus() } catch (_: Exception) { /* Dialog schon zu */ }
     }
 
-    ch.brickinventoryapp.ui.components.ErfassenDialog(
+    ErfassenDialog(
         titel = stringResource(R.string.wanted_add_title),
         bestaetigen = stringResource(R.string.wanted_add_submit),
         // Nur mitschicken, wenn es ueberhaupt eine Wahl gab — sonst schreibt der
         // Server auf das eigene Konto.
-        onBestaetigen = { onAnlegen(nummer, zustand, if (householdMembers.size > 1) besitzer else null) },
+        onBestaetigen = {
+            if (nummer.isBlank()) nummerFehlt = true
+            else onAnlegen(nummer, zustand, if (householdMembers.size > 1) besitzer else null)
+        },
         onAbbrechen = onDismiss,
-        bestaetigenAn = nummer.isNotBlank(),
     ) {
         OutlinedTextField(
             value = nummer,
@@ -347,9 +450,13 @@ private fun MerkpostenErfassenDialog(
             label = { Text(stringResource(R.string.gallery_set_number)) },
             // Als Hilfetext statt Platzhalter: Der Platzhalter verschwand mit dem
             // Fokus, und der Dialog fokussiert das Feld sofort.
-            supportingText = { Text(stringResource(R.string.gallery_set_number_placeholder)) },
+            isError = nummerFehlt && nummer.isBlank(),
+            supportingText = {
+                if (nummerFehlt && nummer.isBlank()) Text(stringResource(R.string.erfassen_nummer_fehlt), Modifier.ansagen())
+                else Text(stringResource(R.string.gallery_set_number_placeholder))
+            },
             singleLine = true,
-            shape = Formen.knopf,
+            shape = Formen.feld,
             // Dieselbe Tastatur wie im AddSetDialog. Ein Zahlenfeld
             // ohne Tastaturwahl oeffnet die Buchstabentastatur — die
             // Regel dazu steht in NumericInputTest.
@@ -364,14 +471,14 @@ private fun MerkpostenErfassenDialog(
     }
 }
 
-
-
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun MerkpostenZeile(
     w: MerkpostenAnsicht, serverUrl: String, imageLoader: coil3.ImageLoader,
     gewaehlt: Boolean,
     onOeffnen: () -> Unit,
+    /** Im Raster mit Nachbarn: gleiche Höhe erzwingen. Auf dem Telefon nicht — dort blieb eine Leerzeile. */
+    mehrspaltig: Boolean = false,
 ) {
     // Die ganze Karte öffnet das Detail — wie die Kachel in der Galerie. Sie
     // trägt keinen Knopf, tut also auf ihrer ganzen Fläche dasselbe;
@@ -381,17 +488,21 @@ private fun MerkpostenZeile(
         Modifier.fillMaxWidth()
             .semantics { selected = gewaehlt }
             .clickable(role = Role.Button, onClick = onOeffnen),
-        border = if (gewaehlt) androidx.compose.foundation.BorderStroke(2.dp, MaterialTheme.colorScheme.primary) else null,
+        border = if (gewaehlt) BorderStroke(2.dp, MaterialTheme.colorScheme.primary) else null,
         // Dieselbe Karte wie Galerie und Finanzen (AppKarte): Die graue Fläche der
         // Vorgabe-Card war ein dritter Kartenstil für dieselbe Ebene.
-        shape = ch.brickinventoryapp.ui.theme.Formen.karte,
+        shape = Formen.karte,
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        elevation = CardDefaults.cardElevation(defaultElevation = ch.brickinventoryapp.ui.theme.Formen.karteErhebung),
+        elevation = CardDefaults.cardElevation(defaultElevation = Formen.karteErhebung),
     ) {
+        // Ohne Preis im Cache war der Preisjob seit dem Eintragen noch nicht da. „Preis
+        // folgt“ steht dann in der Zeile mit Nummer und Jahr: Allein rechts unten liess es
+        // eine leere Zeile in der Karte.
+        val preis = w.marktpreis
         Column(Modifier.padding(Abstaende.mittel), verticalArrangement = Arrangement.spacedBy(Abstaende.winzig)) {
             Row(horizontalArrangement = Arrangement.spacedBy(Abstaende.klein),
                 verticalAlignment = Alignment.CenterVertically) {
-                ch.brickinventoryapp.ui.components.ProduktBild(
+                ProduktBild(
                     model = resolveThumbUrl(serverUrl, w.imageLocal, w.imageUrl),
                     contentDescription = null,
                     imageLoader = imageLoader,
@@ -403,13 +514,17 @@ private fun MerkpostenZeile(
                     // Kein Name heisst: Der Katalog kennt das Set nicht. Der
                     // benannte Preis dafuer, dass die Merkliste keine zweite
                     // Kopie der Stammdaten fuehrt (Migration 0021).
-                    Text(w.name ?: w.setNumber, fontWeight = FontWeight.SemiBold, maxLines = 2)
+                    // Immer zwei Zeilen Platz wie in der Galerie: Im Tablet-Raster stand eine
+                    // Karte mit kurzem Namen niedriger als ihre Nachbarn.
+                    Text(w.name ?: w.setNumber, fontWeight = FontWeight.SemiBold, minLines = if (mehrspaltig) 2 else 1, maxLines = 2,
+                        overflow = TextOverflow.Ellipsis)
                     Text(
                         listOfNotNull(
                             w.setNumber,
                             w.year?.toString(),
                             stringResource(if (w.condition == "U") R.string.condition_used
                                            else R.string.condition_new),
+                            if (preis == null) stringResource(R.string.detail_price_none_yet) else null,
                         ).joinToString(" · "),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -417,14 +532,14 @@ private fun MerkpostenZeile(
                 }
             }
             // FlowRow: Bei grosser Schrift rückt der Preis unter die Plaketten, statt sie zu quetschen.
-            // Mindesthöhe einer Plakette: Karten mit und ohne Plakette sind dann gleich hoch.
-            FlowRow(Modifier.heightIn(min = 32.dp),
+            // Mindesthöhe einer Plakette, auch ohne Inhalt: Karten mit und ohne Plakette sind gleich hoch.
+            FlowRow(if (mehrspaltig) Modifier.heightIn(min = 32.dp) else Modifier,
                     horizontalArrangement = Arrangement.spacedBy(Abstaende.klein),
                     verticalArrangement = Arrangement.spacedBy(Abstaende.winzig)) {
                 w.alarm?.let { a ->
                     InfoPlakette(
                         stringResource(if (a.richtung == "ueber") R.string.wanted_alert_above else R.string.wanted_alert_below,
-                                       ch.brickinventoryapp.util.fmtMoney(a.schwelle, w.waehrung)),
+                                       fmtMoney(a.schwelle, w.waehrung)),
                         icon = if (a.ausgeloest) Icons.Default.NotificationsActive else Icons.Default.Alarm,
                     )
                 }
@@ -432,19 +547,15 @@ private fun MerkpostenZeile(
                 // Grossvater heisst „ich habe es" auch „der Enkel hat es".
                 if (w.owned) InfoPlakette(stringResource(R.string.wanted_owned), icon = Icons.Default.Check)
                 Spacer(Modifier.weight(1f))
-                // ── Marktpreis statt Knopf ──
-                //
-                // In die Galerie übernommen wird im Merkposten-Detail. Ohne Preis im Cache war der
-                // Preisjob seit dem Eintragen noch nicht da — das sagt der Text, ein Strich sagte nichts.
-                val preis = w.marktpreis
+                // Marktpreis statt Knopf: In die Sammlung übernommen wird im Merkposten-Detail.
                 if (preis != null) {
-                    Text(ch.brickinventoryapp.util.fmtMoney(preis, w.waehrung), fontWeight = FontWeight.Bold,
+                    Text(fmtMoney(preis, w.waehrung), fontWeight = FontWeight.Bold,
                          maxLines = 1, softWrap = false, modifier = Modifier.align(Alignment.CenterVertically))
-                } else {
-                    Text(stringResource(R.string.wanted_price_pending), style = MaterialTheme.typography.bodySmall,
-                         color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
         }
     }
 }
+
+/** Mindestbreite einer Spalte der Merkliste. */
+private val MERKLISTE_SPALTE = 340.dp

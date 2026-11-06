@@ -20,6 +20,7 @@ const path = require('node:path');
 
 const ROOT = path.join(__dirname, '..');
 const jsdom = require(path.join(ROOT, 'node_modules', 'jsdom'));
+const { warte } = require('./helpers/zeit');
 const HTML = fs.readFileSync(path.join(ROOT, 'public', 'index.html'), 'utf8');
 const BUNDLE = fs.readFileSync(path.join(ROOT, 'public', 'js', 'app.bundle.js'), 'utf8');
 
@@ -35,7 +36,8 @@ async function fenster() {
   return w;
 }
 
-const takt = () => new Promise(r => setTimeout(r, 0));   // MutationObserver nachlaufen lassen
+/** MutationObserver nachlaufen lassen. */
+function takt() { return warte(0); }
 const taste = (w, key, shiftKey = false) =>
   w.document.dispatchEvent(new w.KeyboardEvent('keydown', { key, shiftKey, bubbles: true }));
 

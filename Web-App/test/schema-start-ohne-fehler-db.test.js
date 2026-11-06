@@ -7,40 +7,12 @@ const assert = require('node:assert/strict');
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
 const _req = require('./helpers/sources').buildAndRequire();
+const { dbOderSkip } = require('./helpers/db');
 const db = _req('db/database.js');
 
 /**
  * Der Schemastart darf keinen Fehler verschlucken.
- *
- * ── Wie das aufgefallen ist ─────────────────────────────────────────────────
- * Beim Umstellen der stillen catch-Bloecke auf `logAndContinue` protokollierte
- * der Start plötzlich zwei Zeilen, die vorher niemand sah:
- *
- *   [weiter-trotz-fehler] start:erfassungen fuer Teile nachtragen:
- *       syntax error at or near "das"
- *   [weiter-trotz-fehler] start:erfassungen fuer Minifiguren nachtragen:
- *       column m.added_at does not exist
- *
- * Beides waren echte Fehler, und beide liefen seit jeher ins Leere:
- *
- *  - Der Teile-Nachtrag stand VOR den ALTER TABLEs, die parts.added_at und
- *    parts.condition anlegen. Auf jeder Datenbank ohne diese Spalten — also
- *    bei jedem Hochziehen von einem aelteren Stand — scheiterte er und lief
- *    erst beim naechsten Start.
- *  - Der Minifiguren-Nachtrag las m.added_at. Diese Spalte gibt es GAR NICHT:
- *    weder im Schema noch in einer Migration. Manuell erfasste Minifiguren aus
- *    der Zeit vor den Erfassungen haben deshalb bis heute keine
- *    Erst-Erfassung; ihr Kaufpreis fehlt in Historie und Finanzansicht.
- *
- * ── Warum als VERHALTEN und nicht als Quelltextpruefung ─────────────────────
- * Eine Regex haette weder das eine noch das andere gefunden. Der eine Fehler
- * war ein Kommentar INNERHALB der Zeichenkette, der andere eine Spalte, die es
- * anderswo sehr wohl gibt (parts.added_at). Beides sagt einem nur die
- * Datenbank selbst. Deshalb wird hier der Start wirklich ausgefuehrt und
- * mitgehoert, was er meldet.
- *
- * Der Test gilt fuer ALLE Aufrufe von logAndContinue im Schemastart, nicht nur
- * fuer diese zwei — jeder kuenftige verschluckte Fehler faellt hier auf.
+ * Ausführlich: docs/begruendungen/test/schema-start-ohne-fehler-db.test.js.md#der-schemastart-meldet-keinen-verschluck
  */
 test('der Schemastart meldet keinen verschluckten Fehler', async (t) => {
   // Der Pool wird IM NACHLAUF geschlossen, nicht am Ende des Rumpfes: Sonst
@@ -58,12 +30,7 @@ test('der Schemastart meldet keinen verschluckten Fehler', async (t) => {
   };
 
   try {
-    try { await db.initSchema(); }
-    catch (e) {
-      if (process.env.REQUIRE_DB === '1')
-        throw new Error(`REQUIRE_DB=1, aber die Test-DB ist nicht erreichbar: ${e.message}`);
-      t.skip('Test-DB nicht erreichbar'); return;
-    }
+    if (!await dbOderSkip(t, _req, { migrieren: false })) return;
   } finally {
     console.warn = echtesWarn;
   }

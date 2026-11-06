@@ -3,12 +3,7 @@
  * Menge. Der Server sortiert in beiden Wegen (Live-Abfrage und
  * Zusammenfassung, einzeln und im Haushalt) gleich, und die Oberfläche
  * zeichnet ungruppiert keine Farbkacheln.
- *
- * Die drei Teile sind so gewählt, dass jede Reihenfolge eine andere ist:
- *   Farbe: Blau ORD2, Gelb ORD3, Rot ORD1
- *   Name:  Axle ORD3, Brick ORD1, Plate ORD2
- *   Menge: ORD1 (9), ORD3 (7, im Haushalt 8), ORD2 (1)
- * Eigene Nummern, damit keine BrickLink-Zuordnung aus anderen Tests greift.
+ * Ausführlich: docs/begruendungen/test/teile-ordnung-db.test.js.md#kopf
  *
  * Gegenproben (am 29.10.2026 gemessen):
  *   A  in ordnungSql() den Zweig 'name' entfernt (fällt auf Farbe zurück)
@@ -57,7 +52,7 @@ test('Reihenfolge der Teileliste', { concurrency: 1 }, async (t) => {
   for (const [id, name] of [[U, 'ordnung_a'], [U2, 'ordnung_b']])
     await db.run('INSERT INTO users (id, username, password_hash) VALUES ($1, $2, $3)', [id, name, 'x']);
   await db.run(`INSERT INTO part_catalog (part_number, part_name) VALUES ('ORD1','Brick'),('ORD2','Plate'),('ORD3','Axle')
-                ON CONFLICT (part_number) DO UPDATE SET part_name = EXCLUDED.part_name, name_von = NULL`);
+                ON CONFLICT (part_number) DO UPDATE SET part_name = EXCLUDED.part_name`);
   await db.run(`INSERT INTO part_color_catalog (part_number, color_id, color_name) VALUES ('ORD1',5,'Rot'),('ORD2',1,'Blau'),('ORD3',3,'Gelb')
                 ON CONFLICT (part_number, color_id) DO UPDATE SET color_name = EXCLUDED.color_name`);
   await haeltSet(db, U, 'ORD-1', 1);

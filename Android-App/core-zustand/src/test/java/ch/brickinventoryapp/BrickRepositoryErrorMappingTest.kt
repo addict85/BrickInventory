@@ -1,12 +1,12 @@
 package ch.brickinventoryapp
 
+import ch.brickinventoryapp.util.NetworkPolicy
 import ch.brickinventoryapp.data.api.BrickApiService
 import ch.brickinventoryapp.data.cache.ResponseCache
 import ch.brickinventoryapp.data.repository.KontoRepository
 import ch.brickinventoryapp.data.repository.Fehlerart
-import ch.brickinventoryapp.data.repository.Result
+import ch.brickinventoryapp.data.repository.Ergebnis
 import kotlinx.coroutines.test.runTest
-import kotlinx.serialization.json.Json
 import com.jakewharton.retrofit2.converter.kotlinx.serialization.asConverterFactory
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
@@ -19,6 +19,9 @@ import org.junit.Test
 import retrofit2.Retrofit
 import java.io.File
 import java.util.concurrent.TimeUnit
+import ch.brickinventoryapp.data.api.ApiJson
+import ch.brickinventoryapp.di.ServerWaechter
+import ch.brickinventoryapp.di.Zugangslage
 
 /**
  * Der erste Test in diesem Projekt, der VERHALTEN ausführt statt Quelltext zu
@@ -29,10 +32,6 @@ import java.util.concurrent.TimeUnit
  * `testImplementation(libs.junit)` war die einzige Testabhängigkeit. Ohne
  * Testbibliothek für Koroutinen und ohne HTTP-Attrappe blieb nur, den
  * Quelltext nach Mustern abzusuchen — daher lasen 41 von 47 Testdateien Text.
- * Das findet, ob eine Regel im Code STEHT, nie, ob sie WIRKT. In Nachtrag 48
- * hat genau das sieben Nachträge lang eine kaputte Vorschau-Erzeugung
- * verdeckt: Der Test prüfte, dass „tmp + rename" im Code steht, und sah nie
- * nach, ob am Ende eine Datei lag.
  *
  * Hier läuft jetzt ein echter HTTP-Server im Test, und geprüft wird die
  * Abbildung, die Nachtrag 116 eingeführt hat: Was macht das Repository aus
@@ -60,7 +59,7 @@ class BrickRepositoryErrorMappingTest {
             .build()
         // Dieselbe Json-Konfiguration wie in di/AppModule — sonst prüfte der
         // Test eine Nachsicht, die es in der App nicht gibt.
-        val json = ch.brickinventoryapp.data.api.ApiJson
+        val json = ApiJson
         val api = Retrofit.Builder()
             .baseUrl(server.url("/"))
             .client(client)
@@ -89,9 +88,9 @@ class BrickRepositoryErrorMappingTest {
         cacheDir.deleteRecursively()
     }
 
-    private fun fehler(r: Result<*>): Result.Error {
-        assert(r is Result.Error) { "Erwartet wurde ein Fehler, kam aber: $r" }
-        return r as Result.Error
+    private fun fehler(r: Ergebnis<*>): Ergebnis.Error {
+        assert(r is Ergebnis.Error) { "Erwartet wurde ein Fehler, kam aber: $r" }
+        return r as Ergebnis.Error
     }
 
     @Test
@@ -153,18 +152,18 @@ class BrickRepositoryErrorMappingTest {
     /**
      * Eine gespeicherte http-Adresse: Der Wächter des Release-Builds lehnt ab, und
      * daraus wird ein eigener Satz mit Anleitung statt „keine Verbindung“.
-     * Gegenprobe (01.11.2026, gemessen): den Zweig für KlartextAbgelehnt in
+     * Gegenprobe: den Zweig für KlartextAbgelehnt in
      * sicherAufrufen() entfernt → rot (Art NETZ, transient).
      */
     @Test
     fun `eine abgelehnte http-Anfrage ist kein Netzfehler und nicht voruebergehend`() = runTest {
-        val lage = object : ch.brickinventoryapp.di.Zugangslage {
+        val lage = object : Zugangslage {
             override fun serverUrl() = server.url("/").toString()
             override fun token() = "geheim"
-            override fun tokenHerkunft(): String? = null
+            override fun tokenHerkunft(): String? = NetworkPolicy.herkunft(serverUrl())
             override fun generation() = 0L
         }
-        val waechter = ch.brickinventoryapp.di.ServerWaechter(lage, false, entwicklung = false, sitzungAbgelaufen = {})
+        val waechter = ServerWaechter(lage, false, entwicklung = false, sitzungAbgelaufen = {})
         val e = fehler(baueRepo(waechter = waechter).getMe())
         assert(e.art == Fehlerart.KLARTEXT) { "Art war ${e.art}" }
         assert(!e.transient) { "Ein zweiter Versuch ginge genauso an http" }
@@ -179,11 +178,11 @@ class BrickRepositoryErrorMappingTest {
             MockResponse().setResponseCode(200)
                 .setBody("""{"success":true,"user":{"id":1,"username":"marco"}}""")
         )
-        // `when` statt Cast: Result hat genau zwei Varianten, also ist es
+        // `when` statt Cast: Ergebnis hat genau zwei Varianten, also ist es
         // erschöpfend — und der Smart Cast im Zweig liefert den Typ mit.
         when (val r = repo.getMe()) {
-            is Result.Success -> assert(r.data.success) { "success war false" }
-            is Result.Error   -> assert(false) { "Erwartet wurde Erfolg, kam: $r" }
+            is Ergebnis.Success -> assert(r.data.success) { "success war false" }
+            is Ergebnis.Error   -> assert(false) { "Erwartet wurde Erfolg, kam: $r" }
         }
     }
 }

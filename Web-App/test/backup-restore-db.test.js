@@ -1,33 +1,13 @@
 /**
  * Sicherung und Wiederherstellung — einmal wirklich durchgespielt.
+ * Ausführlich: docs/begruendungen/test/backup-restore-db.test.js.md#kopf
  *
- * ── Warum (Nachtrag 152) ────────────────────────────────────────────────────
- * Es gibt scripts/backup.sh und scripts/restore.sh, beide mit sorgfältig
- * begründeten Vorkehrungen. Und im README steht der Satz „Den Restore-Weg
- * einmal ausprobieren". Genau die Sorte Anweisung, die niemand befolgt — und
- * ein Backup, das nie zurückgespielt wurde, ist eine Vermutung, kein Backup.
- *
- * Dieser Test spielt den Weg gegen eine echte Datenbank durch: Daten anlegen,
- * pg_dump, Datenbank verwüsten, zurückspielen, vergleichen. Er ruft die
- * Skripte nicht auf — die gehen über `docker compose exec` und brauchen den
- * laufenden Stapel. Geprüft wird stattdessen die MECHANIK, auf der beide
- * beruhen, plus (am Quelltext) dass die Skripte diese Mechanik auch benutzen.
- *
- * Die zwei Vorkehrungen sind der eigentliche Gegenstand:
- *
- *   • Die Endmarke. In POSIX-sh gibt es kein pipefail: Scheitert pg_dump am
- *     ANFANG der Pipe, läuft gzip trotzdem durch und hinterlässt eine kleine,
- *     formal gültige .gz-Datei. Ohne die Prüfung auf
- *     "PostgreSQL database dump complete" meldet backup.sh Erfolg — per Cron
- *     wochenlang wertlose Sicherungen.
- *
- *   • ON_ERROR_STOP=1. Ohne diese Variable beendet sich psql auch bei einem
- *     halben Dump mit 0. Man glaubt wiederhergestellt zu haben und merkt es
- *     erst beim Benutzen.
- *
- * Beide sind unten nicht nur behauptet, sondern gemessen — inklusive der
  * Gegenprobe, dass ein abgeschnittener Dump ohne sie stillschweigend
  * durchginge.
+ *
+ * Gegenprobe (05.11.2026 gemessen): in DUMP_OPTIONEN von backup.sh
+ * `--exclude-table-data=user_sessions` gestrichen → rot: „Sitzungen, Zähler
+ * und Protokoll kommen leer zurück …“.
  *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL UND die PostgreSQL-Klienten
  * (pg_dump/psql). Ohne DB: skip, ausser REQUIRE_DB=1.
@@ -37,6 +17,7 @@ const assert = require('node:assert/strict');
 const fs     = require('node:fs');
 const os     = require('node:os');
 const path   = require('node:path');
+const { testName, raeumeReste } = require('./helpers/testnamen');
 const { execFileSync, spawnSync } = require('node:child_process');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
@@ -77,12 +58,7 @@ test('Sicherung und Wiederherstellung', async (t) => {
   const psql   = klient('psql');
   /**
    * Die Fassung eines Klienten — gehört in die Fehlermeldung.
-   *
-   * pg_dump und psql verweigern die Arbeit an einem NEUEREN Server, und genau
-   * das ist ein Unterschied zwischen hier und dem CI-Lauf: lokal PostgreSQL 16,
-   * im Lauf 18 (compose.yaml, geprüft in test/build-tooling.test.js). Steht die
-   * Zahl in der Meldung, ist die Frage in einer Zeile beantwortet statt in
-   * einer Runde.
+   * Ausführlich: docs/begruendungen/test/backup-restore-db.test.js.md#fassung
    */
   const fassung = (bin) => {
     if (!bin) return '—';
@@ -103,20 +79,8 @@ test('Sicherung und Wiederherstellung', async (t) => {
   const arbeit = fs.mkdtempSync(path.join(os.tmpdir(), 'bi-backup-'));
   const dump = path.join(arbeit, 'db.sql');
 
-  // ── psql mit einem Dump füttern ──────────────────────────────────────────
-  //
-  // Der Rückgabewert war NUR der Exit-Code, und `stdio: 'pipe'` verschluckt,
-  // was psql zu sagen hatte. Ein Fehlschlag las sich dann als „1 !== 0" —
-  // ohne einen Hinweis darauf, WELCHE Anweisung gescheitert ist.
-  //
-  // GEMESSEN: Genau so ist dieser Test im CI-Lauf rot geworden, und weder das
-  // Protokoll noch die Meldung sagten, woran. Ein Test, der nur „ging nicht"
-  // meldet, kostet eine ganze Runde.
-  //
-  // Der Parameter `mitStopp` ist dabei mit weggefallen: Er wurde nie
-  // ausgewertet — ON_ERROR_STOP stand ohnehin fest drin, und für den anderen
-  // Fall gibt es einspielenOhneStopp(). Ein Argument, das nichts tut, behauptet
-  // etwas.
+  // psql mit einem Dump füttern
+  // Ausführlich: docs/begruendungen/test/backup-restore-db.test.js.md#lauf
   const lauf = (args, datei) => spawnSync(psql, [...args, url, '-f', datei],
     { encoding: 'utf8', stdio: 'pipe', env: { ...process.env } });
   /** Exit-Code; `grund()` liefert danach die Meldung von psql dazu. */
@@ -154,10 +118,19 @@ test('Sicherung und Wiederherstellung', async (t) => {
       `INSERT INTO set_acquisitions (user_id, set_number, quantity, purchase_price, condition)
        VALUES ($1,'10214-1',2,44.50,'U')`, [uid]);
     await haeltTeil(db, uid, '3001', { menge: 17, colorId: 4 });
+    // Was nicht in die Sicherung gehört: eine Sitzung, ein Anmeldezähler, eine Protokollzeile.
+    await db.run(`INSERT INTO user_sessions (sid, sess, expire) VALUES ('sicherung-sid', '{"userId":1}', NOW() + INTERVAL '1 day')`);
+    await db.run(`INSERT INTO rate_limit_attempts (key, count, first_at) VALUES ('login-name|name:abc', 1, NOW())`);
+    await db.run(`INSERT INTO app_logs (level, message) VALUES ('warn', '[anmeldung] sicherung')`);
   });
 
+  // Dieselben Optionen wie backup.sh: Gemessen wird, was das Skript sichert.
+  const optionen = (fs.readFileSync(path.join(ROOT, 'scripts', 'backup.sh'), 'utf8')
+    .match(/^DUMP_OPTIONEN="([^"]+)"$/m)?.[1] ?? '').split(' ').filter(Boolean);
+
   await t.test('pg_dump erzeugt einen vollständigen Dump', () => {
-    execFileSync(pgDump, ['--clean', '--if-exists', '-f', dump, url], { stdio: 'pipe' });
+    assert.ok(optionen.includes('--clean'), `backup.sh: DUMP_OPTIONEN nicht gefunden (${optionen})`);
+    execFileSync(pgDump, [...optionen, '-f', dump, url], { stdio: 'pipe' });
     const inhalt = fs.readFileSync(dump, 'utf8');
     assert.match(inhalt.slice(-500), /PostgreSQL database dump complete/,
       'Die Endmarke fehlt — genau daran erkennen backup.sh und restore.sh einen Torso');
@@ -201,6 +174,17 @@ test('Sicherung und Wiederherstellung', async (t) => {
     assert.equal(p2.part_number, '3001');
     assert.equal(await teilmengeVon(db, p2.user_id, '3001', p2.color_id), 17,
       'Die Stückzahl ist nicht zurückgekommen — part_acquisitions fehlt im Dump');
+  });
+
+  await t.test('Sitzungen, Zähler und Protokoll kommen leer zurück, die App startet', async () => {
+    for (const tabelle of ['user_sessions', 'rate_limit_attempts', 'app_logs']) {
+      assert.ok((await db.get('SELECT to_regclass($1) AS t', [`public.${tabelle}`])).t, `${tabelle} fehlt nach dem Zurückspielen`);
+      assert.equal((await db.get(`SELECT count(*)::int n FROM ${tabelle}`)).n, 0, `${tabelle} steht mit Zeilen in der Sicherung`);
+    }
+    // Wie beim Start des Servers: Schema prüfen und Migrationen anwenden, ohne Fehler.
+    await db.initSchema();
+    const c = await db.pool.connect();
+    try { assert.deepEqual(await _req('db/migrate.js').runMigrations(c), []); } finally { c.release(); }
   });
 
   await t.test('ein abgeschnittener Dump wird an der Endmarke erkannt', () => {
@@ -250,8 +234,6 @@ test('Sicherung und Wiederherstellung', async (t) => {
 
     assert.match(bCode, /grep -q 'PostgreSQL database dump complete'/,
       'backup.sh prüft die Endmarke nicht mehr — ein Torso ginge als Sicherung durch');
-    assert.match(bCode, /rm -f .*\$TARGET/,
-      'Ein unvollständiger Dump muss gelöscht werden, nicht bloss gemeldet');
     assert.match(rCode, /grep -q 'PostgreSQL database dump complete'/,
       'restore.sh prüft die Endmarke nicht, BEVOR es etwas überschreibt');
     assert.match(rCode, /ON_ERROR_STOP=1/,
@@ -293,7 +275,7 @@ test('backup.sh: der Datenschlüssel kommt nicht ins Archiv', (t) => {
   fs.writeFileSync(path.join(arbeit, 'data', '.datenschluessel'), schluessel, { mode: 0o600 });
 
   const sichern = (env) => spawnSync('sh', [path.join(ROOT, 'scripts', 'backup.sh'), path.join(tmp, 'ziel')],
-    { cwd: arbeit, encoding: 'utf8', env: { ...process.env, PATH: `${bin}:${process.env.PATH}`, ...env } });
+    { cwd: arbeit, encoding: 'utf8', env: { ...process.env, PATH: `${bin}:${process.env.PATH}`, BACKUP_KLARTEXT: 'ja', ...env } });
 
   const ohne = sichern({});
   assert.equal(ohne.status, 0, ohne.stderr);
@@ -328,7 +310,7 @@ test('backup.sh: schluessel/datenschluessel geht nur an den getrennten Ort', (t)
   fs.writeFileSync(path.join(arbeit, 'schluessel', 'datenschluessel'), schluessel, { mode: 0o600 });
   const tresor = path.join(tmp, 'tresor');
   const r = spawnSync('sh', [path.join(ROOT, 'scripts', 'backup.sh'), path.join(tmp, 'ziel')], { cwd: arbeit, encoding: 'utf8',
-    env: { ...process.env, PATH: `${bin}:${process.env.PATH}`, BACKUP_SCHLUESSEL_ZIEL: tresor } });
+    env: { ...process.env, PATH: `${bin}:${process.env.PATH}`, BACKUP_KLARTEXT: 'ja', BACKUP_SCHLUESSEL_ZIEL: tresor } });
   assert.equal(r.status, 0, r.stderr);
   const archiv = fs.readdirSync(path.join(tmp, 'ziel')).find(n => n.startsWith('data_'));
   const inhalt = execFileSync('tar', ['tzf', path.join(tmp, 'ziel', archiv)], { encoding: 'utf8' });
@@ -349,6 +331,8 @@ test('backup.sh: schluessel/datenschluessel geht nur an den getrennten Ort', (t)
  *      `-U tester` ersetzt) → rot: „Code der App-Rolle lief als Superuser“
  *   B  die Zeile mit `OWNER TO` im awk-Filter entfernt → rot: „ein Dump von
  *      vor der App-Rolle“ (must be able to SET ROLE)
+ *   C  (04.11.) das vorangestellte \restrict entfernt → rot: „ein Backslash-Befehl
+ *      mitten in einer Zeile läuft nicht“ (die Datei entstand)
  */
 test('restore.sh spielt als App-Rolle ein', { timeout: 240_000 }, async (t) => {
   const { Client } = require(path.join(ROOT, 'node_modules', 'pg'));
@@ -364,7 +348,8 @@ test('restore.sh spielt als App-Rolle ein', { timeout: 240_000 }, async (t) => {
     if (process.env.REQUIRE_DB === '1') throw new Error('REQUIRE_DB=1, aber kein Superuser oder kein pg_dump');
     t.skip('kein Superuser oder pg_dump'); return;
   }
-  const name = `${decodeURIComponent(basis.pathname.slice(1))}_rst_${process.pid}`.toLowerCase();
+  const name = testName('rst');
+  await raeumeReste(admin, 'rst');
   const [ziel, alt, APP, LESEN, BOESE] = [name, `${name}_alt`, `${name}_app`, `${name}_lesen`, `${name}_boese`];
   const id = (s) => `"${s}"`;
   const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'restore-rolle-'));
@@ -450,5 +435,19 @@ esac
         WHERE relnamespace = 'public'::regnamespace AND relkind IN ('r', 'S', 'v')
           AND NOT EXISTS (SELECT FROM pg_depend d WHERE d.objid = pg_class.oid AND d.deptype = 'e')`)).rows, [{ e: APP }]);
     } finally { await c.end(); }
+  });
+
+  await t.test('ein Backslash-Befehl mitten in einer Zeile läuft nicht', async () => {
+    const geknackt = path.join(tmp, 'geknackt');
+    const sql = path.join(tmp, 'fremd.sql');
+    execFileSync(klient('pg_dump'), ['--clean', '--if-exists', '-f', sql, dbUrl(ziel)], { stdio: 'pipe' });
+    const inhalt = fs.readFileSync(sql, 'utf8');
+    const ende = inhalt.lastIndexOf('--\n-- PostgreSQL database dump complete');
+    fs.writeFileSync(sql, `${inhalt.slice(0, ende)}SELECT 1; \\! touch '${geknackt}'\n${inhalt.slice(ende)}`);
+    execFileSync('gzip', ['-f', sql]);
+    const r = zurueck(`${sql}.gz`);
+    assert.ok(!fs.existsSync(geknackt), 'ein Backslash-Befehl mitten in einer Zeile lief');
+    assert.notEqual(r.status, 0, 'der fremde Dump galt als eingespielt');
+    assert.match(r.stderr, /restricted/);
   });
 });

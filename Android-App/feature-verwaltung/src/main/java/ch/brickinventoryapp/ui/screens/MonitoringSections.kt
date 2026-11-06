@@ -1,5 +1,7 @@
 package ch.brickinventoryapp.ui.screens
 
+import ch.brickinventoryapp.ui.components.nebenKnopfFarben
+import ch.brickinventoryapp.ui.components.nebenKnopfRand
 import ch.brickinventoryapp.ui.components.AuswahlChip
 import ch.brickinventoryapp.ui.model.BricksetEintragAnsicht
 import ch.brickinventoryapp.ui.model.KontingentAnsicht
@@ -9,7 +11,6 @@ import ch.brickinventoryapp.ui.theme.AppKarte
 import ch.brickinventoryapp.ui.theme.LocalStatusFarben
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
@@ -17,11 +18,9 @@ import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
-import ch.brickinventoryapp.data.PreferencesManager
+import ch.brickinventoryapp.data.VorwaermNetz
 import ch.brickinventoryapp.ui.model.*
 import androidx.compose.ui.res.stringResource
 import ch.brickinventoryapp.ressourcen.R
@@ -29,14 +28,18 @@ import ch.brickinventoryapp.util.fmtUhrzeit
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
-import ch.brickinventoryapp.ui.AppViewModel
-import ch.brickinventoryapp.ui.viewmodel.MonitoringViewModel
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import ch.brickinventoryapp.ui.viewmodel.MonitoringAktionen
+import ch.brickinventoryapp.ui.viewmodel.MonitoringUiState
 import ch.brickinventoryapp.ui.*
 import kotlinx.coroutines.launch
 import ch.brickinventoryapp.util.NumericInput
 import ch.brickinventoryapp.ui.theme.Abstaende
+import ch.brickinventoryapp.ui.DESIGN_NAMEN
+import ch.brickinventoryapp.ui.components.Abschnittstitel
+import ch.brickinventoryapp.ui.components.MitTooltip
+import ch.brickinventoryapp.ui.components.SegmentWahl
+import ch.brickinventoryapp.ui.components.WahlChips
+import ch.brickinventoryapp.ui.components.mitSchrift
 
 /**
  * Die Abschnitte der Überwachungsseite unterhalb der Job-Liste — ganze Funktionen
@@ -69,21 +72,25 @@ internal fun BricksetQueueRow(
                             color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                     Text(stringResource(R.string.monitoring_retry_attempt, entry.attempts, entry.retryAfter ?: "—"),
-                        style = MaterialTheme.typography.labelSmall,
+                        style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
                 Row(horizontalArrangement = Arrangement.spacedBy(Abstaende.winzig)) {
-                    FilledTonalIconButton(onClick = { onRetry(entry.setNumber) }) {
-                        Icon(Icons.Default.Refresh, stringResource(R.string.monitoring_icon_retry), Modifier.size(14.dp))
+                    MitTooltip(stringResource(R.string.monitoring_icon_retry)) {
+                        FilledTonalIconButton(onClick = { onRetry(entry.setNumber) }) {
+                            Icon(Icons.Default.Refresh, stringResource(R.string.monitoring_icon_retry), Modifier.size(mitSchrift(14.dp)))
+                        }
                     }
-                    FilledTonalIconButton(
-                        onClick = { onDelete(entry.setNumber) },
-                        colors = IconButtonDefaults.filledTonalIconButtonColors(
-                            containerColor = MaterialTheme.colorScheme.errorContainer
-                        )
-                    ) {
-                        Icon(Icons.Default.Delete, stringResource(R.string.common_delete), Modifier.size(14.dp),
-                            tint = MaterialTheme.colorScheme.onErrorContainer)
+                    MitTooltip(stringResource(R.string.common_delete)) {
+                        FilledTonalIconButton(
+                            onClick = { onDelete(entry.setNumber) },
+                            colors = IconButtonDefaults.filledTonalIconButtonColors(
+                                containerColor = MaterialTheme.colorScheme.errorContainer
+                            )
+                        ) {
+                            Icon(Icons.Default.Delete, stringResource(R.string.common_delete), Modifier.size(mitSchrift(14.dp)),
+                                tint = MaterialTheme.colorScheme.onErrorContainer)
+                        }
                     }
                 }
             }
@@ -98,7 +105,7 @@ internal fun BricksetQueueRow(
                     modifier = Modifier.heightIn(min = 24.dp)
                 ) {
                     Text(if (showError) stringResource(R.string.monitoring_hide_error) else stringResource(R.string.monitoring_show_error),
-                        style = MaterialTheme.typography.labelSmall,
+                        style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.error)
                 }
                 AnimatedVisibility(showError) {
@@ -108,7 +115,7 @@ internal fun BricksetQueueRow(
                     ) {
                         Text(
                             letzterFehler,
-                            style = MaterialTheme.typography.labelSmall,
+                            style = MaterialTheme.typography.bodySmall,
                             fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
                             color = MaterialTheme.colorScheme.error,
                             modifier = Modifier.padding(Abstaende.klein)
@@ -120,35 +127,36 @@ internal fun BricksetQueueRow(
     }
 }
 
+/** Was der Cache-Abschnitt auslöst; MonitoringRoute verdrahtet die ViewModels. */
+class CacheEreignisse(
+    val vorgabeZustand: (String) -> Unit,
+    val ablageLeeren: () -> Unit,
+    val netz: (VorwaermNetz, Boolean) -> Unit,
+    val design: (String) -> Unit,
+    val cacheDauer: (Int) -> Unit,
+    val cacheLeeren: (Boolean) -> Unit,
+    val grenzwerte: (rebrickable: Int, bricklink: Int, brickset: Int) -> Unit,
+)
+
 // ExperimentalLayoutApi: fuer die FlowRow der Design-Auswahl weiter unten.
 // Seit es vier Designs gibt, passen die Chips nicht mehr in eine Zeile.
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-fun CacheAndLimitsSection(vm: AppViewModel, onSnack: (String) -> Unit = {}) {
-    val scope = rememberCoroutineScope()
-    val cacheSavedMsg  = stringResource(R.string.monitoring_cache_saved)
-    val cacheGeleertMsg = stringResource(R.string.monitoring_cache_cleared)
+fun CacheAndLimitsSection(
+    monState: MonitoringUiState,
+    /** Die Netzerlaubnisse fürs Vorwärmen (WLAN, mobil, Roaming), Geräte-Einstellungen. */
+    netze: Map<VorwaermNetz, Boolean>,
+    /** Das wirksame Design, wenn der Server noch keine Vorgabe nannte. */
+    wirksamesDesign: String,
+    ablageBytes: Long,
+    ereignisse: CacheEreignisse,
+) {
     var zeigeLeerenFrage by rememberSaveable { mutableStateOf(false) }
     var leerenAlles by rememberSaveable { mutableStateOf(false) }
-    val limitsSavedMsg = stringResource(R.string.monitoring_limits_saved)
-
-    // Die drei Netzerlaubnisse direkt aus den Einstellungen, nicht über AppUiState: Es
-    // sind Geräte-Einstellungen, und eine Kopie im gemeinsamen Zustand wäre eine
-    // zweite Fassung derselben Wahrheit. hiltViewModel() liefert im selben Ziel
-    // dieselbe Instanz wie MonitoringScreen.
-    val netzWlan    by vm.prefs.vorwaermenWlan.collectAsStateWithLifecycle(initialValue = true)
-    val netzMobil   by vm.prefs.vorwaermenMobil.collectAsStateWithLifecycle(initialValue = false)
-    val netzRoaming by vm.prefs.vorwaermenRoaming.collectAsStateWithLifecycle(initialValue = false)
-
-    val mon: MonitoringViewModel = hiltViewModel()
-    val monState by mon.state.collectAsStateWithLifecycle()
     val cacheStats = monState.cacheStats
     val apiLimits  = monState.apiLimits
     val cacheTtl   = monState.cacheTtl
     val defaultCondition = monState.vorgabeZustand
-    // Das wirksame Design steht im App-Zustand; die Auswahl hier zeigt aber die
-    // Vorgabe des Verwalters, die mit einem eigenen Design des Kontos abweicht.
-    val appState by vm.state.collectAsStateWithLifecycle()
 
     // Bedienzustand: was gerade bearbeitet und halb eingetippt ist. Bleibt hier
     // und speicherbar — das ueberlebt auch den Prozesstod, ein ViewModel nicht.
@@ -158,8 +166,6 @@ fun CacheAndLimitsSection(vm: AppViewModel, onSnack: (String) -> Unit = {}) {
     var rbInput    by rememberSaveable { mutableStateOf("0") }
     var blInput    by rememberSaveable { mutableStateOf("0") }
     var bsInput    by rememberSaveable { mutableStateOf("0") }
-
-    LaunchedEffect(Unit) { mon.ladeCacheUndGrenzen(); mon.ladeDesignVorgabe() }
 
     // Die Eingabefelder mit den geladenen Werten vorbelegen — aber nur, solange
     // NICHT bearbeitet wird. Das Speichern laedt die Grenzwerte selbst neu; ohne
@@ -181,11 +187,7 @@ fun CacheAndLimitsSection(vm: AppViewModel, onSnack: (String) -> Unit = {}) {
     // ── Price Cache ───────────────────────────────────────────────────────────
     AppKarte(Modifier.padding(horizontal = Abstaende.gross, vertical = 5.dp)) {
         Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            Text(stringResource(R.string.monitoring_price_cache).uppercase(),
-                style = MaterialTheme.typography.labelSmall,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                letterSpacing = 0.8.sp)
+            Abschnittstitel(stringResource(R.string.monitoring_price_cache))
 
             cacheStats?.let { cs ->
                 Row(Modifier.fillMaxWidth(), Arrangement.SpaceAround) {
@@ -205,16 +207,9 @@ fun CacheAndLimitsSection(vm: AppViewModel, onSnack: (String) -> Unit = {}) {
                 Text(stringResource(R.string.monitoring_default_condition),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant)
-                ch.brickinventoryapp.ui.screens.ConditionToggle(
+                ConditionToggle(
                     selected = defaultCondition,
-                    onSelect = { newCond ->
-                        scope.launch {
-                            if (mon.setzeVorgabeZustand(newCond)) {
-                                vm.loadSettings()
-                                onSnack(cacheSavedMsg)
-                            }
-                        }
-                    }
+                    onSelect = ereignisse.vorgabeZustand
                 )
             }
 
@@ -228,7 +223,6 @@ fun CacheAndLimitsSection(vm: AppViewModel, onSnack: (String) -> Unit = {}) {
             // sie hier sehen und leeren können. `remember`, nicht `rememberSaveable`: Die Zahl
             // ist eine Messung der Platte und stünde nach einem Prozesstod falsch da
             // (BildschirmZustandTest, Sorte „gemessen“).
-            var ablageBytes by remember { mutableStateOf(vm.vorschauAblageBytes()) }
             Row(
                 Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically,
@@ -241,17 +235,13 @@ fun CacheAndLimitsSection(vm: AppViewModel, onSnack: (String) -> Unit = {}) {
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.weight(1f),
                 )
-                TextButton(onClick = {
-                    vm.vorschauAblageLeeren()
-                    ablageBytes = vm.vorschauAblageBytes()
-                    onSnack(cacheSavedMsg)
-                }) { Text(stringResource(R.string.monitoring_vorschau_leeren), style = MaterialTheme.typography.labelMedium) }
+                TextButton(onClick = ereignisse.ablageLeeren) { Text(stringResource(R.string.monitoring_vorschau_leeren), style = MaterialTheme.typography.labelMedium) }
             }
 
             // ── In welchen Netzen darf vorgewärmt werden ──
             //
             // Drei unabhängige Chips, je einer für eine Lage; die Begründung steht an den
-            // Schlüsseln in PreferencesManager.
+            // Schlüsseln in GeraeteAblage (VORWAERMEN_*).
             Text(stringResource(R.string.monitoring_vorwaermen_netz),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -259,21 +249,15 @@ fun CacheAndLimitsSection(vm: AppViewModel, onSnack: (String) -> Unit = {}) {
                 horizontalArrangement = Arrangement.spacedBy(Abstaende.klein),
                 verticalArrangement = Arrangement.spacedBy(Abstaende.klein),
             ) {
-                for ((erlaubt, schluessel, text) in listOf(
-                    Triple(netzWlan, PreferencesManager.VORWAERMEN_WLAN,
-                        R.string.monitoring_vorwaermen_wlan),
-                    Triple(netzMobil, PreferencesManager.VORWAERMEN_MOBIL,
-                        R.string.monitoring_vorwaermen_mobil),
-                    Triple(netzRoaming, PreferencesManager.VORWAERMEN_ROAMING,
-                        R.string.monitoring_vorwaermen_roaming),
+                for ((netz, text) in listOf(
+                    VorwaermNetz.WLAN to R.string.monitoring_vorwaermen_wlan,
+                    VorwaermNetz.MOBIL to R.string.monitoring_vorwaermen_mobil,
+                    VorwaermNetz.ROAMING to R.string.monitoring_vorwaermen_roaming,
                 )) {
+                    val erlaubt = netze[netz] == true
                     AuswahlChip(
                         selected = erlaubt,
-                        onClick = {
-                            scope.launch {
-                                vm.prefs.saveVorwaermenNetz(schluessel, !erlaubt)
-                            }
-                        },
+                        onClick = { ereignisse.netz(netz, !erlaubt) },
                         label = { Text(stringResource(text), style = MaterialTheme.typography.labelMedium) },
                     )
                 }
@@ -293,71 +277,26 @@ fun CacheAndLimitsSection(vm: AppViewModel, onSnack: (String) -> Unit = {}) {
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant)
             // Eine Wahl aus mehreren: dieselben Radio-Chips wie in den Einstellungen.
-            ch.brickinventoryapp.ui.components.WahlChips(
-                optionen = ch.brickinventoryapp.ui.DESIGN_NAMEN.map { (wert, text) -> wert to stringResource(text) },
-                gewaehlt = monState.vorgabeDesign ?: appState.appTheme,
-                onWahl = { wert ->
-                    scope.launch {
-                        if (mon.setzeDesign(wert)) {
-                            vm.loadSettings()
-                            onSnack(cacheSavedMsg)
-                        }
-                    }
-                },
+            WahlChips(
+                optionen = DESIGN_NAMEN.map { (wert, text) -> wert to stringResource(text) },
+                gewaehlt = monState.vorgabeDesign ?: wirksamesDesign,
+                onWahl = ereignisse.design,
             )
             // Die Netze darüber sind Schalter (mehrere zugleich), das Design eine
             // Einfachwahl: zwei Bauformen, weil es zwei Entscheidungen sind.
 
             // Cache TTL
-            Row(
-                Modifier.fillMaxWidth(),
-                Arrangement.SpaceBetween,
-                Alignment.CenterVertically
-            ) {
-                Text(stringResource(R.string.monitoring_cache_duration),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant)
-                if (editingTtl) {
-                    Row(
-                        horizontalArrangement = Arrangement.spacedBy(6.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        OutlinedTextField(
-                            value = ttlInput,
-                            onValueChange = { ttlInput = NumericInput.quantity(it) },
-                            suffix = { Text("h") },
-                            modifier = Modifier.width(90.dp),
-                            singleLine = true,
-                            shape = Formen.kachel,
-                    keyboardOptions = NumericInput.ganzzahlTastatur()
-                )
-                        FilledTonalButton(
-                            onClick = {
-                                scope.launch {
-                                    val h = ttlInput.toIntOrNull() ?: 24
-                                    if (mon.setzeCacheDauer(h)) onSnack(cacheSavedMsg)
-                                    editingTtl = false
-                                }
-                            },
-                            shape = Formen.kachel,
-                            contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp)
-                        ) { Text("OK", style = MaterialTheme.typography.labelMedium) }
-                        IconButton(onClick = { editingTtl = false }) {
-                            Icon(Icons.Default.Close, stringResource(R.string.common_cancel))
-                        }
-                    }
-                } else {
-                    Row(
-                        horizontalArrangement = Arrangement.spacedBy(Abstaende.klein),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text(stringResource(R.string.monitoring_cache_ttl_hours, cacheTtl), fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.bodyMedium)
-                        FilledTonalIconButton(
-                            onClick = { editingTtl = true },
-                        ) { Icon(Icons.Default.Edit, stringResource(R.string.cd_edit_cache_ttl), Modifier.size(14.dp)) }
-                    }
-                }
-            }
+            CacheDauerZeile(
+                dauer = cacheTtl,
+                bearbeiten = editingTtl,
+                onBearbeiten = { editingTtl = it },
+                eingabe = ttlInput,
+                onEingabe = { ttlInput = it },
+                onSpeichern = {
+                    ereignisse.cacheDauer(ttlInput.toIntOrNull() ?: 24)
+                    editingTtl = false
+                },
+            )
 
             // ── Leeren ──
             //
@@ -369,80 +308,170 @@ fun CacheAndLimitsSection(vm: AppViewModel, onSnack: (String) -> Unit = {}) {
             ) {
                 OutlinedButton(
                     onClick = { leerenAlles = false; zeigeLeerenFrage = true },
-                    shape = Formen.kachel,
                     contentPadding = PaddingValues(horizontal = Abstaende.mittel, vertical = 6.dp),
+                    colors = nebenKnopfFarben(),
+                    border = nebenKnopfRand(),
                 ) { Text(stringResource(R.string.monitoring_cache_clear_prices), style = MaterialTheme.typography.labelMedium) }
                 OutlinedButton(
                     onClick = { leerenAlles = true; zeigeLeerenFrage = true },
-                    shape = Formen.kachel,
                     contentPadding = PaddingValues(horizontal = Abstaende.mittel, vertical = 6.dp),
+                    colors = nebenKnopfFarben(),
+                    border = nebenKnopfRand(),
                 ) { Text(stringResource(R.string.monitoring_cache_clear_all), style = MaterialTheme.typography.labelMedium) }
             }
         }
     }
 
     if (zeigeLeerenFrage) {
-        AlertDialog(
-            onDismissRequest = { zeigeLeerenFrage = false },
-            icon = { Icon(Icons.Default.Delete, null, tint = MaterialTheme.colorScheme.error) },
-            title = { Text(stringResource(
-                if (leerenAlles) R.string.monitoring_cache_clear_all
-                else R.string.monitoring_cache_clear_prices)) },
-            text = { Text(stringResource(R.string.monitoring_cache_clear_hint)) },
-            confirmButton = {
-                TextButton(onClick = {
-                    zeigeLeerenFrage = false
-                    scope.launch { if (mon.leereCache(leerenAlles)) onSnack(cacheGeleertMsg) }
-                }) {
-                    Text(stringResource(R.string.monitoring_cache_clear_confirm),
-                        color = MaterialTheme.colorScheme.error)
-                }
+        CacheLeerenFrage(
+            alles = leerenAlles,
+            onSchliessen = { zeigeLeerenFrage = false },
+            onLeeren = {
+                zeigeLeerenFrage = false
+                ereignisse.cacheLeeren(leerenAlles)
             },
-            dismissButton = {
-                TextButton(onClick = { zeigeLeerenFrage = false }) {
-                    Text(stringResource(R.string.common_cancel))
-                }
-            }
         )
     }
 
     // ── API Rate Limits ───────────────────────────────────────────────────────
+    KontingentKarte(
+        kontingente = cacheStats?.rateLimits,
+        bearbeiten = editingLimits,
+        onBearbeitenUmschalten = { editingLimits = !editingLimits },
+        eingaben = Triple(bsInput, blInput, rbInput),
+        onBrickset = { bsInput = it },
+        onBricklink = { blInput = it },
+        onRebrickable = { rbInput = it },
+        onSpeichern = {
+            // Das Nachladen der Grenzwerte steht im ViewModel.
+            ereignisse.grenzwerte(rbInput.toIntOrNull() ?: 0, blInput.toIntOrNull() ?: 0, bsInput.toIntOrNull() ?: 0)
+            editingLimits = false
+        },
+    )
+}
+
+/** Cache-Dauer in Stunden: angezeigt oder, nach „Bearbeiten“, als Eingabefeld. */
+@Composable
+private fun CacheDauerZeile(
+    dauer: String,
+    bearbeiten: Boolean,
+    onBearbeiten: (Boolean) -> Unit,
+    eingabe: String,
+    onEingabe: (String) -> Unit,
+    onSpeichern: () -> Unit,
+) {
+    Row(
+        Modifier.fillMaxWidth(),
+        Arrangement.SpaceBetween,
+        Alignment.CenterVertically
+    ) {
+        Text(stringResource(R.string.monitoring_cache_duration),
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant)
+        if (bearbeiten) {
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                OutlinedTextField(
+                    value = eingabe,
+                    onValueChange = { onEingabe(NumericInput.quantity(it)) },
+                    suffix = { Text("h") },
+                    modifier = Modifier.width(90.dp),
+                    singleLine = true,
+                    shape = Formen.kachel,
+                    keyboardOptions = NumericInput.ganzzahlTastatur()
+                )
+                FilledTonalButton(
+                    onClick = onSpeichern,
+                    contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp)
+                ) { Text("OK", style = MaterialTheme.typography.labelMedium) }
+                MitTooltip(stringResource(R.string.common_cancel)) {
+                    IconButton(onClick = { onBearbeiten(false) }) {
+                        Icon(Icons.Default.Close, stringResource(R.string.common_cancel))
+                    }
+                }
+            }
+        } else {
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(Abstaende.klein),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(stringResource(R.string.monitoring_cache_ttl_hours, dauer), fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.bodyMedium)
+                MitTooltip(stringResource(R.string.cd_edit_cache_ttl)) {
+                    FilledTonalIconButton(
+                        onClick = { onBearbeiten(true) },
+                    ) { Icon(Icons.Default.Edit, stringResource(R.string.cd_edit_cache_ttl), Modifier.size(mitSchrift(14.dp))) }
+                }
+            }
+        }
+    }
+}
+
+/** Rückfrage vor dem Leeren: Jeder Neuaufbau kostet Anfragen aus dem gemeinsamen Tageskontingent. */
+@Composable
+private fun CacheLeerenFrage(alles: Boolean, onSchliessen: () -> Unit, onLeeren: () -> Unit) {
+    AlertDialog(
+        onDismissRequest = onSchliessen,
+        icon = { Icon(Icons.Default.Delete, null, tint = MaterialTheme.colorScheme.error) },
+        title = { Text(stringResource(
+            if (alles) R.string.monitoring_cache_clear_all
+            else R.string.monitoring_cache_clear_prices)) },
+        text = { Text(stringResource(R.string.monitoring_cache_clear_hint)) },
+        confirmButton = {
+            TextButton(onClick = onLeeren) {
+                Text(stringResource(R.string.monitoring_cache_clear_confirm),
+                    color = MaterialTheme.colorScheme.error)
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onSchliessen) {
+                Text(stringResource(R.string.common_cancel))
+            }
+        }
+    )
+}
+
+/**
+ * Die Tageskontingente der drei Dienste; im Bearbeiten-Modus mit Eingabefeldern für
+ * die Grenzen. [eingaben] in der Reihenfolge Brickset, BrickLink, Rebrickable.
+ */
+@Composable
+private fun KontingentKarte(
+    kontingente: KontingenteAnsicht?,
+    bearbeiten: Boolean,
+    onBearbeitenUmschalten: () -> Unit,
+    eingaben: Triple<String, String, String>,
+    onBrickset: (String) -> Unit,
+    onBricklink: (String) -> Unit,
+    onRebrickable: (String) -> Unit,
+    onSpeichern: () -> Unit,
+) {
+    val (bsInput, blInput, rbInput) = eingaben
     AppKarte(Modifier.padding(horizontal = Abstaende.gross, vertical = 5.dp)) {
         Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(Abstaende.klein)) {
             Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween, Alignment.CenterVertically) {
-                Text(stringResource(R.string.monitoring_api_calls).uppercase(),
-                    style = MaterialTheme.typography.labelSmall,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    letterSpacing = 0.8.sp)
-                FilledTonalIconButton(
-                    onClick = { editingLimits = !editingLimits },
-                ) { Icon(if (editingLimits) Icons.Default.Close else Icons.Default.Edit, stringResource(R.string.cd_edit_limits), Modifier.size(14.dp)) }
+                Abschnittstitel(stringResource(R.string.monitoring_api_calls))
+                MitTooltip(stringResource(R.string.cd_edit_limits)) {
+                    FilledTonalIconButton(
+                        onClick = onBearbeitenUmschalten,
+                    ) { Icon(if (bearbeiten) Icons.Default.Close else Icons.Default.Edit, stringResource(R.string.cd_edit_limits), Modifier.size(mitSchrift(14.dp))) }
+                }
             }
 
-            cacheStats?.rateLimits?.let { rl ->
-                RateLimitRow("Brickset",    rl.brickset,    if (editingLimits) bsInput else null, { bsInput = it })
-                RateLimitRow("BrickLink",   rl.bricklink,   if (editingLimits) blInput else null, { blInput = it })
-                RateLimitRow("Rebrickable", rl.rebrickable, if (editingLimits) rbInput else null, { rbInput = it })
+            kontingente?.let { rl ->
+                RateLimitRow("Brickset",    rl.brickset,    if (bearbeiten) bsInput else null, onBrickset)
+                RateLimitRow("BrickLink",   rl.bricklink,   if (bearbeiten) blInput else null, onBricklink)
+                RateLimitRow("Rebrickable", rl.rebrickable, if (bearbeiten) rbInput else null, onRebrickable)
             }
 
-            if (editingLimits) {
+            if (bearbeiten) {
                 FilledTonalButton(
-                    onClick = {
-                        scope.launch {
-                            val rb = rbInput.toIntOrNull() ?: 0
-                            val bl = blInput.toIntOrNull() ?: 0
-                            val bs = bsInput.toIntOrNull() ?: 0
-                            // Das Nachladen der Grenzwerte steht im ViewModel.
-                            if (mon.setzeGrenzwerte(rb, bl, bs)) onSnack(limitsSavedMsg)
-                            editingLimits = false
-                        }
-                    },
+                    onClick = onSpeichern,
                     modifier = Modifier.fillMaxWidth(),
-                    shape = Formen.kachel,
                     contentPadding = PaddingValues(vertical = Abstaende.klein)
                 ) {
-                    Icon(Icons.Default.Save, null, Modifier.size(16.dp))
+                    Icon(Icons.Default.Save, null, Modifier.size(mitSchrift(16.dp)))
                     Spacer(Modifier.width(6.dp))
                     Text(stringResource(R.string.monitoring_limits_save), style = MaterialTheme.typography.bodyMedium)
                 }
@@ -455,7 +484,7 @@ fun CacheAndLimitsSection(vm: AppViewModel, onSnack: (String) -> Unit = {}) {
 private fun CacheStatCell(label: String, value: String) {
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
         Text(value, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium)
-        Text(label, style = MaterialTheme.typography.labelSmall,
+        Text(label, style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }
@@ -527,8 +556,7 @@ private fun RateLimitRow(
 // ergeben.
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-internal fun ProtokollSection(mon: MonitoringViewModel) {
-    val verwaltung by mon.verwaltungState.collectAsStateWithLifecycle()
+internal fun ProtokollSection(verwaltung: VerwaltungUiState, aktionen: MonitoringAktionen) {
     val protokollScope = rememberCoroutineScope()
     var offen by rememberSaveable { mutableStateOf(false) }
     // Beides gehoert dem Menschen und uebersteht deshalb eine Drehung — die
@@ -545,14 +573,17 @@ internal fun ProtokollSection(mon: MonitoringViewModel) {
                     if (verwaltung.protokollLaden) {
                         CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp)
                     } else if (offen) {
-                        IconButton(onClick = { protokollScope.launch { mon.ladeProtokoll() } }) {
-                            Icon(Icons.Default.Refresh, stringResource(R.string.admin_log_reload),
-                                Modifier.size(18.dp))
+                        MitTooltip(stringResource(R.string.admin_log_reload)) {
+                            IconButton(onClick = { protokollScope.launch { aktionen.ladeProtokoll(verwaltung.protokollMinuten) } }) {
+                                Icon(Icons.Default.Refresh, stringResource(R.string.admin_log_reload),
+                                    Modifier.size(18.dp))
+                            }
                         }
                     }
+                    MitTooltip(stringResource(if (offen) R.string.common_collapse else R.string.common_expand)) {
                     IconButton(onClick = {
                         offen = !offen
-                        if (offen && verwaltung.protokoll.isEmpty()) protokollScope.launch { mon.ladeProtokoll() }
+                        if (offen && verwaltung.protokoll.isEmpty()) protokollScope.launch { aktionen.ladeProtokoll(verwaltung.protokollMinuten) }
                     }) {
                         // Beschreibt die WIRKUNG des Tippens, nicht das
                         // gezeigte Zeichen — genau das braucht TalkBack.
@@ -561,6 +592,7 @@ internal fun ProtokollSection(mon: MonitoringViewModel) {
                             stringResource(
                                 if (offen) R.string.common_collapse else R.string.common_expand))
                     }
+                    }
                 }
             }
 
@@ -568,15 +600,15 @@ internal fun ProtokollSection(mon: MonitoringViewModel) {
                 Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                     // Dieselben Spannen wie die Webapp anbietet. Der Server
                     // begrenzt selbst auf 2880 Minuten.
-                    ch.brickinventoryapp.ui.components.SegmentWahl(
+                    SegmentWahl(
                         optionen = listOf(15, 60, 240, 1440).map { it to stringResource(R.string.admin_log_minutes, it) },
                         gewaehlt = verwaltung.protokollMinuten,
-                        onWahl = { min -> protokollScope.launch { mon.ladeProtokoll(min) } },
+                        onWahl = { min -> protokollScope.launch { aktionen.ladeProtokoll(min) } },
                     )
                     // Der Fehler statt der Leermeldung: „keine Einträge“ wäre falsch, wenn der
                     // Abruf scheiterte.
                     if (verwaltung.fehler != null) {
-                        Text(verwaltung.fehler!!, style = MaterialTheme.typography.bodySmall,
+                        Text(verwaltung.fehler, style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.error)
                     } else if (verwaltung.protokoll.isEmpty() && !verwaltung.protokollLaden) {
                         Text(stringResource(R.string.admin_log_empty),
@@ -601,7 +633,7 @@ internal fun ProtokollSection(mon: MonitoringViewModel) {
                                             else versteckteStufen + stufe
                                     },
                                     label = { Text(stufe.uppercase(),
-                                                   style = MaterialTheme.typography.labelSmall) })
+                                                   style = MaterialTheme.typography.bodySmall) })
                             }
                         }
                     }
@@ -629,12 +661,12 @@ internal fun ProtokollSection(mon: MonitoringViewModel) {
                             // gezeigt; ohne sie ist eine Protokollzeile kaum zu
                             // gebrauchen.
                             Text(fmtUhrzeit(zeile.loggedAt) ?: "",
-                                style = MaterialTheme.typography.labelSmall,
+                                style = MaterialTheme.typography.bodySmall,
                                 fontFamily = FontFamily.Monospace,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 modifier = Modifier.width(58.dp))
                             Text(zeile.level.orEmpty().uppercase(),
-                                style = MaterialTheme.typography.labelSmall,
+                                style = MaterialTheme.typography.bodySmall,
                                 fontWeight = FontWeight.Bold,
                                 color = when (zeile.level?.lowercase()) {
                                     "error" -> MaterialTheme.colorScheme.error
@@ -663,7 +695,7 @@ internal fun ProtokollSection(mon: MonitoringViewModel) {
 fun ZeitplanZeile(
     jobKey: String,
     plan: ZeitplanAnsicht,
-    mon: ch.brickinventoryapp.ui.viewmodel.MonitoringViewModel,
+    aktionen: MonitoringAktionen,
     onSnack: (String) -> Unit,
 ) {
     val scope = rememberCoroutineScope()
@@ -681,7 +713,7 @@ fun ZeitplanZeile(
         Text(
             stringResource(if (taeglich) R.string.monitoring_schedule_daily
                            else R.string.monitoring_schedule_every),
-            style = MaterialTheme.typography.labelSmall,
+            style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
         if (bearbeiten) {
@@ -707,17 +739,18 @@ fun ZeitplanZeile(
                 FilledTonalButton(
                     onClick = {
                         scope.launch {
-                            val ok = if (taeglich) mon.setzeJobZeitplan(jobKey, zeit = eingabe.trim())
-                                     else mon.setzeJobZeitplan(jobKey, minuten = eingabe.toIntOrNull() ?: 60)
+                            val ok = if (taeglich) aktionen.setzeJobZeitplan(jobKey, zeit = eingabe.trim())
+                                     else aktionen.setzeJobZeitplan(jobKey, minuten = eingabe.toIntOrNull() ?: 60)
                             if (ok) onSnack(gespeichert)
                             bearbeiten = false
                         }
                     },
-                    shape = Formen.kachel,
                     contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp),
                 ) { Text("OK", style = MaterialTheme.typography.labelMedium) }
-                IconButton(onClick = { bearbeiten = false }) {
-                    Icon(Icons.Default.Close, stringResource(R.string.common_cancel))
+                MitTooltip(stringResource(R.string.common_cancel)) {
+                    IconButton(onClick = { bearbeiten = false }) {
+                        Icon(Icons.Default.Close, stringResource(R.string.common_cancel))
+                    }
                 }
             }
         } else {
@@ -728,9 +761,11 @@ fun ZeitplanZeile(
                     else stringResource(R.string.monitoring_schedule_minutes, plan.minutes ?: 60),
                     fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.bodyMedium,
                 )
-                FilledTonalIconButton(
-                    onClick = { bearbeiten = true },
-                ) { Icon(Icons.Default.Edit, stringResource(R.string.cd_edit_schedule), Modifier.size(14.dp)) }
+                MitTooltip(stringResource(R.string.cd_edit_schedule)) {
+                    FilledTonalIconButton(
+                        onClick = { bearbeiten = true },
+                    ) { Icon(Icons.Default.Edit, stringResource(R.string.cd_edit_schedule), Modifier.size(mitSchrift(14.dp))) }
+                }
             }
         }
     }

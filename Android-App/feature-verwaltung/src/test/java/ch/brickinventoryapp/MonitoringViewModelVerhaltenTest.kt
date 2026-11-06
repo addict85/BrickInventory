@@ -1,21 +1,13 @@
 package ch.brickinventoryapp
 
+import ch.brickinventoryapp.data.MeldungsKanal
 import ch.brickinventoryapp.data.api.BrickApiService
 import ch.brickinventoryapp.data.cache.ResponseCache
-import ch.brickinventoryapp.data.repository.FigurenRepository
-import ch.brickinventoryapp.data.repository.KatalogRepository
 import ch.brickinventoryapp.data.repository.KontoRepository
 import ch.brickinventoryapp.data.repository.VerwaltungRepository
-import ch.brickinventoryapp.data.repository.BrickRepository
-import ch.brickinventoryapp.data.repository.FinanzenRepository
-import ch.brickinventoryapp.data.repository.GutscheineRepository
-import ch.brickinventoryapp.data.repository.HaushaltRepository
-import ch.brickinventoryapp.data.repository.SetsRepository
-import ch.brickinventoryapp.data.repository.TeileRepository
 import ch.brickinventoryapp.ui.viewmodel.MonitoringViewModel
 import com.jakewharton.retrofit2.converter.kotlinx.serialization.asConverterFactory
 import kotlinx.coroutines.test.runTest
-import kotlinx.serialization.json.Json
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.mockwebserver.MockResponse
@@ -26,6 +18,7 @@ import org.junit.Test
 import retrofit2.Retrofit
 import java.io.File
 import java.util.concurrent.TimeUnit
+import ch.brickinventoryapp.data.api.ApiJson
 
 /**
  * Das Monitoring-ViewModel, AUSGEFÜHRT statt gelesen.
@@ -39,9 +32,6 @@ import java.util.concurrent.TimeUnit
  *   1. Ein Anker veraltet stillschweigend. In dieser Reihe sind vier Tests an
  *      einer Umbenennung oder einer Typannotation zerbrochen, einer davon
  *      OHNE zu melden, dass er nichts mehr fand.
- *   2. Ein `!contains("alterName")` bleibt nach einer Umbenennung für immer
- *      grün und prüft in Wahrheit gar nichts mehr. Das ist die schlimmere
- *      Richtung, weil niemand hinsieht.
  *
  * Möglich wurde dieser Test durch die Aufteilung: MonitoringViewModel nimmt
  * genau ein BrickRepository entgegen und ist eine gewöhnliche Klasse — keine
@@ -56,7 +46,7 @@ import java.util.concurrent.TimeUnit
  * MockWebServer liefert der Reihe nach, unabhängig vom Pfad; die Tests legen
  * deshalb genau so viele Antworten hin, wie das ViewModel Abrufe macht.
  *
- * Gegenprobe (31.10.2026, gemessen): in ladeJobs() `zugriffEntzogen` nicht
+ * Gegenprobe: in ladeJobs() `zugriffEntzogen` nicht
  * gesetzt → rot „ein 403 nur_admins beendet die Abfrage …“.
  */
 class MonitoringViewModelVerhaltenTest {
@@ -80,7 +70,7 @@ class MonitoringViewModelVerhaltenTest {
             .readTimeout(2, TimeUnit.SECONDS).connectTimeout(2, TimeUnit.SECONDS).build()
         // Dieselbe Json-Konfiguration wie in di/AppModule — sonst prüfte der
         // Test eine Nachsicht, die es in der App nicht gibt.
-        val json = ch.brickinventoryapp.data.api.ApiJson
+        val json = ApiJson
         val api = Retrofit.Builder()
             .baseUrl(server.url("/"))
             .client(client)
@@ -99,18 +89,7 @@ class MonitoringViewModelVerhaltenTest {
         // Mit Namen ist die Reihenfolge gleichgueltig: Das naechste Teil kommt
         // dazu, ohne dass hier etwas bricht — und faellt eines WEG, bricht es
         // sofort und an der richtigen Stelle.
-        vm = MonitoringViewModel(BrickRepository(
-            sets = SetsRepository(api, cache),
-            teile = TeileRepository(api, cache),
-            finanzen = FinanzenRepository(api, cache),
-            haushalt = HaushaltRepository(api, cache),
-            figuren = FigurenRepository(api, cache),
-            konto = KontoRepository(api, cache),
-            verwaltung = VerwaltungRepository(api, cache),
-            katalog = KatalogRepository(api, cache),
-            gutscheine = GutscheineRepository(api, cache),
-            cache = cache,
-        ), NummernTexte)
+        vm = MonitoringViewModel(VerwaltungRepository(api, cache), KontoRepository(api, cache), NummernTexte, MeldungsKanal())
     }
 
     @After

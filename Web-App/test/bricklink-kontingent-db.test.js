@@ -23,6 +23,7 @@ const { Readable } = require('node:stream');
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
 const _req = require('./helpers/sources').buildAndRequire();
+const { dbOderSkip } = require('./helpers/db');
 const db = _req('db/database.js');
 
 /** @type {string[]} */
@@ -47,14 +48,7 @@ const zaehler = async () => Number((await db.get(
   [new Date().toISOString().slice(0, 10)]))?.anzahl || 0);
 
 test('BrickLink-Kontingent je HTTP-Aufruf', { concurrency: 1 }, async (t) => {
-  try { await db.initSchema(); }
-  catch (e) {
-    if (process.env.REQUIRE_DB === '1')
-      throw new Error(`REQUIRE_DB=1, aber die Test-DB ist nicht erreichbar: ${e.message}`);
-    t.skip('Test-DB nicht erreichbar'); return;
-  }
-  const mc = await db.pool.connect();
-  try { await _req('db/migrate.js').runMigrations(mc); } finally { mc.release(); }
+  if (!await dbOderSkip(t, _req)) return;
 
   const SN = `91${process.pid % 10000}-1`;
   const heute = new Date().toISOString().slice(0, 10);
@@ -69,7 +63,7 @@ test('BrickLink-Kontingent je HTTP-Aufruf', { concurrency: 1 }, async (t) => {
   const zugang = ['bricklink_consumer_key', 'bricklink_consumer_secret', 'bricklink_token', 'bricklink_token_secret'];
   const alterZugang = await db.all('SELECT key, value FROM global_settings WHERE key = ANY($1)', [zugang]);
   for (const k of zugang) await setze(k, 'test');
-  await _req('src/konto/settings.js').verschluesseleGlobaleAltwerte();
+  await _req('src/einstellungen/settings.js').verschluesseleGlobaleAltwerte();
   const { fetchPrice } = _req('src/finanzen/financeCalc.js');
   t.after(async () => {
     await setze('api_limit_bricklink', vorher?.value ?? '4000');

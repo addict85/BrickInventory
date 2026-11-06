@@ -5,7 +5,7 @@ import ch.brickinventoryapp.data.api.SetsApi
 import ch.brickinventoryapp.data.api.TeileApi
 import ch.brickinventoryapp.data.model.UpdateQuantityRequest
 import ch.brickinventoryapp.data.repository.Fehlerart
-import ch.brickinventoryapp.data.repository.Result
+import ch.brickinventoryapp.data.repository.Ergebnis
 import ch.brickinventoryapp.data.repository.sicherAufrufen
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -31,16 +31,16 @@ fun interface Bearbeitungssender {
  * Bearbeitung — nach erneuter Anmeldung oder etwas Warten gelingt sie. Ein 2xx
  * ohne Rumpf ist angekommen.
  */
-fun einordnen(r: Result<*>): Sendeergebnis = when (r) {
-    is Result.Success -> Sendeergebnis.Angenommen
-    is Result.Error -> einordnenFehler(r)
+fun einordnen(r: Ergebnis<*>): Sendeergebnis = when (r) {
+    is Ergebnis.Success -> Sendeergebnis.Angenommen
+    is Ergebnis.Error -> einordnenFehler(r)
 }
 
 /** Beim Löschen ist „gibt es nicht (mehr)“ das Ziel: Ein 404 ist angekommen, nicht abgelehnt. */
-fun einordnenLoeschen(r: Result<*>): Sendeergebnis =
-    if (r is Result.Error && r.httpCode == 404) Sendeergebnis.Angenommen else einordnen(r)
+fun einordnenLoeschen(r: Ergebnis<*>): Sendeergebnis =
+    if (r is Ergebnis.Error && r.httpCode == 404) Sendeergebnis.Angenommen else einordnen(r)
 
-private fun einordnenFehler(r: Result.Error): Sendeergebnis {
+private fun einordnenFehler(r: Ergebnis.Error): Sendeergebnis {
     if (r.art == Fehlerart.LEERE_ANTWORT) return Sendeergebnis.Angenommen
     if (r.transient) return Sendeergebnis.Spaeter
     val code = r.httpCode ?: return Sendeergebnis.Spaeter
@@ -76,6 +76,9 @@ class Abgleich @Inject constructor(
     private suspend fun lauf(bereich: String, betroffen: MutableSet<Bestandsart>): Abgleichsergebnis {
         var p = ablage.ausgang.erster(bereich)
         while (p != null) {
+            // Unmittelbar vor jedem Senden: Der Wächter hängt das Token an, das JETZT
+            // gilt. Nach einem Konto-Wechsel ginge der Posten sonst unter fremdem Konto raus.
+            if (ablage.bereich() != bereich) return Abgleichsergebnis.NICHT_ANGEMELDET
             when (val e = sender.sende(p.bearbeitung, p.schluessel)) {
                 Sendeergebnis.Angenommen -> {
                     ablage.ausgang.entferne(p.id)
@@ -90,8 +93,6 @@ class Abgleich @Inject constructor(
                     verwirf(p, "", null, betroffen)
                 }
             }
-            // Abgemeldet oder Konto gewechselt: Der Rest gehört nicht mehr diesem Lauf.
-            if (ablage.bereich() != bereich) return Abgleichsergebnis.NICHT_ANGEMELDET
             p = ablage.ausgang.erster(bereich)
         }
         return Abgleichsergebnis.FERTIG

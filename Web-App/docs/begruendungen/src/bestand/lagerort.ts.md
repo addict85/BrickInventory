@@ -87,30 +87,6 @@ fertige Menge und fragt nicht nach.
 @returns wie viele Zeilen betroffen waren (0 = es gibt nichts zu setzen)
 ```
 
-<a id="setzelagerort-setzen"></a>
-## `setzen`
-
-```text
-── Die Zuordnung ist seit Migration 0031 eine ID ────────────────────────
-
-Aufgelöst wird sie in einer Unterabfrage je ZEILE und nicht einmal
-vorher. Das hat einen Grund, der im Haushalt sichtbar wird: Derselbe
-Name kann in zwei Konten liegen, und jedes hat seine eigene Zeile im
-Vorrat (ein Regal ist ein Regal in EINER Wohnung, Migration 0020). Die
-Unterabfrage greift über `l.user_id = t.user_id` genau die des
-Besitzers — eine vorher aufgelöste ID träfe für das zweite Konto die
-falsche Wohnung.
-
-`lower(...)`: Der Vorrat ist ohne Rücksicht auf Gross-/Kleinschreibung
-eindeutig. Genau hier lag der Fehler des alten Entwurfs — er schrieb die
-GETIPPTE Schreibweise an den Bestand, und die musste nicht die des
-Vorrats sein (nachgestellt in der Migration).
-
-Dieselbe Anweisung leert auch: Mit `ort = null` ist `lower($2)` NULL, die
-Unterabfrage findet nichts und setzt NULL. Eine zweite Anweisung dafür
-wäre eine zweite Stelle, die stimmen muss.
-```
-
 <a id="setzelagerort-2"></a>
 ## Abschnitt
 
@@ -322,4 +298,30 @@ NUR beim Anlegen: Die drei PUT-Wege …/storage setzen und loeschen einen Ort
 und rufen weiterhin normalisiereLagerort() direkt. Dort heisst leer
 „loeschen" — eine Vorgabe, die sich in ein Loeschen hineindraengt, waere ein
 Ort, den niemand wegbekommt.
+```
+
+<a id="lagerkonten"></a>
+## `lagerKonten`
+
+```text
+/api/v1/storage/locations — der VORRAT an Lagerorten, je Konto.
+
+── Wessen Liste man sieht ──────────────────────────────────────────────────
+
+Marcos Festlegung: „Der Grossvater soll die Werte der Enkel fuer die
+entsprechenden Sets sehen und waehlen koennen."
+
+Ein Lagerort ist ein Regal in einer Wohnung. Beim Set des Enkels gehoeren
+die Regale des ENKELS zur Wahl, nicht die eigenen — ein Set des Enkels in
+„Grossvaters Keller" waere eine Aussage ueber die falsche Wohnung.
+
+Deshalb sagt der Aufrufer mit `owner`, wessen Liste er will. Beide
+Oberflaechen wissen das: Eine Set-Kachel traegt ihre `owners` schon.
+
+── Lesen weit, Schreiben eng ───────────────────────────────────────────────
+
+Lesen gegen scopeIds() (alles, was im Blickfeld liegt), Schreiben gegen
+writableIds() (alles, wofuer man verantwortlich ist). Dieselbe Trennung wie
+ueberall im Baum — und sie ist hier nicht theoretisch: Ein Enkel sieht
+seinen Grossvater nicht, der Grossvater aber den Enkel.
 ```

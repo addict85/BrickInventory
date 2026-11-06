@@ -1,0 +1,18 @@
+Gegenprobe: passtZumPin prüft die EKU des Blatts nicht (Stand vor sec10 H8)
+Modul: core-data
+Test: ch.brickinventoryapp.PinZweckTest
+Rot: ein Zertifikat fuer einen anderen Zweck passt nicht zum Pin
+
+diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/util/ServerVertrauen.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/util/ServerVertrauen.kt
+index cfb6f3f..16c6c9d 100644
+--- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/util/ServerVertrauen.kt
++++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/util/ServerVertrauen.kt
+@@ -299,7 +299,7 @@ fun auftragsVertrauen(
+  */
+ fun passtZumPin(chain: Array<X509Certificate>, pin: String): Boolean {
+     val i = chain.indexOfFirst { spkiFingerabdruck(it) == pin }
+-    if (i < 0 || !fuerServer(chain[0])) return false
++    if (i < 0) return false
+     if (i == 0) return runCatching { chain[0].checkValidity() }.isSuccess
+     return runCatching {
+         val pfad = CertificateFactory.getInstance("X.509").generateCertPath(chain.take(i))

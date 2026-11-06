@@ -1,9 +1,9 @@
 import fs from 'fs';
 import * as pgNotify from '../db/pgNotify';
 import { HAUSHALT_KANAL, leereHaushaltCache } from '../src/haushalt/haushalt';
-import { meldeStartZustand } from '../src/infra/startZustand';
+import { meldeStartZustand } from '../src/auftraege/startZustand';
 import { setzeZustand } from '../src/auftraege/laufzustand';
-import { logAndContinue, meldeUndWeiter } from '../src/infra/httpError';
+import { logAndContinue, meldeUndWeiter } from '../src/infra/fehler';
 import { stelleAuftragEin } from '../src/auftraege/dienst';
 import { planeAlle, ziehePlanVor } from '../src/auftraege/zeitplan';
 import { bildbedarfAnstossen, offenerBildbedarf } from '../src/katalog/bilder/bildbedarf';
@@ -16,9 +16,15 @@ export const LEBENSZEICHEN_DATEI = '/tmp/brickinventory-jobs.lebt';
 /** Die Verwaltung sieht am selben Stempel in laufzustand, ob ein Job-Prozess läuft. */
 export const LEBENSZEICHEN_SCHLUESSEL = 'jobs_lebenszeichen';
 const LEBENSZEICHEN_MS = 30_000;
+/** Dreht der Worker so lange keine Runde mehr, bleibt das Lebenszeichen aus. */
+const STILL_HOECHSTENS_MS = 2 * LEBENSZEICHEN_MS;
 let _lebenszeichen: NodeJS.Timeout | null = null;
+let _worker: { letzteRunde(): number } | null = null;
 
-function schreibeLebenszeichen(): void {
+/** Nur ein Worker, der seine Runden dreht, gilt als lebendig: Ein Intervall
+ * allein meldete auch einen Prozess, dessen Start gescheitert ist. */
+export function erneuereLebenszeichen(): void {
+  if (!_worker || Date.now() - _worker.letzteRunde() > STILL_HOECHSTENS_MS) return;
   fs.writeFile(LEBENSZEICHEN_DATEI, String(Date.now()), (e) => { if (e) meldeUndWeiter('jobs:lebenszeichen', e); });
   setzeZustand(LEBENSZEICHEN_SCHLUESSEL, new Date().toISOString()).catch(logAndContinue('jobs:lebenszeichen'));
 }
@@ -31,9 +37,6 @@ function schreibeLebenszeichen(): void {
  * Aufträge belegt jeder nur mit SKIP LOCKED.
  */
 export async function starteJobs(beides: boolean): Promise<void> {
-  schreibeLebenszeichen();
-  _lebenszeichen = setInterval(schreibeLebenszeichen, LEBENSZEICHEN_MS);
-  _lebenszeichen.unref();
   // Nur ein getrennter Job-Prozess hält eigene Haushalt-Caches, die der Web-Prozess ändert.
   if (!beides) pgNotify.listen(HAUSHALT_KANAL, () => leereHaushaltCache());
 
@@ -48,12 +51,16 @@ export async function starteJobs(beides: boolean): Promise<void> {
     await stelleAuftragEin('nachlauf', { schritt }, { schluessel: `nachlauf:${schritt}`, nachSekunden, maxVersuche: 3 });
   if (await offenerBildbedarf()) await bildbedarfAnstossen();
   await planeKursabruf();
-  starteAuftragsWorker();
+  _worker = starteAuftragsWorker();
+  erneuereLebenszeichen();
+  _lebenszeichen ??= setInterval(erneuereLebenszeichen, LEBENSZEICHEN_MS);
+  _lebenszeichen.unref();
 }
 
 /** Beim Herunterfahren: laufende Aufträge zu Ende führen oder zurückgeben. */
 export async function stoppeJobs(): Promise<void> {
   if (_lebenszeichen) clearInterval(_lebenszeichen);
   _lebenszeichen = null;
+  _worker = null;
   await stoppeAuftragsWorker().catch(logAndContinue('shutdown:auftraege'));
 }

@@ -1,0 +1,22 @@
+Gegenprobe: Detail neben der Liste mit Zurück-Pfeil statt Schliessen
+Modul: app
+Test: ch.brickinventoryapp.OberflaechenRegelnTest
+Rot: Tablet zeigt Merkliste und Detail nebeneinander
+
+diff --git a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/ListeUndDetail.kt b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/ListeUndDetail.kt
+index 32a3e98..bdb8fd3 100644
+--- a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/ListeUndDetail.kt
++++ b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/ListeUndDetail.kt
+@@ -82,10 +82,10 @@ fun detailSchluessel(art: String, nummer: String, farbe: Int? = null) = "$art|$n
+  */
+ @Composable
+ fun ZurueckKnopf(onClick: () -> Unit, schliessen: Boolean = LocalImDetailBereich.current) {
+-    val text = stringResource(if (schliessen) R.string.detail_close else R.string.common_back)
++    val text = stringResource(if (false) R.string.detail_close else R.string.common_back)
+     MitTooltip(text) {
+         IconButton(onClick = onClick) {
+-            Icon(if (schliessen) Icons.Default.Close else Icons.AutoMirrored.Filled.ArrowBack, contentDescription = text)
++            Icon(if (false) Icons.Default.Close else Icons.AutoMirrored.Filled.ArrowBack, contentDescription = text)
+         }
+     }
+ }

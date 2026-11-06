@@ -1,8 +1,8 @@
 /** Als Auftrag, damit ein Fehlschlag wiederholt wird und sichtbar bleibt. */
 import { stelleAuftragEin } from '../auftraege/dienst';
-import { EZB_HISTORIE, EZB_TAGESKURSE, ezbAbruf, ersteZipDatei, historieLesen, tageskurseLesen,
-         type Abruf, type Kurs } from '../../clients/ezb';
+import { EZB_HISTORIE, EZB_TAGESKURSE, ezbAbruf, ersteZipDatei, historieLesen, tageskurseLesen, type Abruf, type Kurs } from '../katalog/quellen';
 import * as repo from './repository/wechselkurse';
+import type { AuftragsLauf } from '../auftraege/auftraege';
 
 const BLOCK = 5000;
 
@@ -17,11 +17,11 @@ export async function speichereKurse(kurse: Kurs[]): Promise<number> {
   return n;
 }
 
-export async function kurseNachladen(abruf: Abruf = ezbAbruf): Promise<{ quelle: 'historie' | 'tag'; kurse: number }> {
+export async function kurseNachladen(abruf: Abruf = ezbAbruf, signal?: AbortSignal): Promise<{ quelle: 'historie' | 'tag'; kurse: number }> {
   const leer = !(await repo.gibtEsKurse());
   const kurse = leer
-    ? historieLesen(ersteZipDatei(await abruf(EZB_HISTORIE)).toString('utf8'))
-    : tageskurseLesen((await abruf(EZB_TAGESKURSE)).toString('utf8'));
+    ? historieLesen(ersteZipDatei(await abruf(EZB_HISTORIE, signal)).toString('utf8'))
+    : tageskurseLesen((await abruf(EZB_TAGESKURSE, signal)).toString('utf8'));
   if (!kurse.length) throw new Error(`EZB lieferte keine Kurse (${leer ? 'Historie' : 'Tageskurse'})`);
   return { quelle: leer ? 'historie' : 'tag', kurse: await speichereKurse(kurse) };
 }
@@ -36,8 +36,8 @@ export async function planeKursabruf(jetzt = new Date(), morgen = false): Promis
 }
 
 /** Erst den nächsten Tag einplanen, dann laden: Scheitert das Laden, steht der Plan schon. */
-export async function kursauftrag(abruf: Abruf = ezbAbruf): Promise<void> {
+export async function kursauftrag(abruf: Abruf = ezbAbruf, lauf?: AuftragsLauf): Promise<void> {
   await planeKursabruf(new Date(), true);
-  const r = await kurseNachladen(abruf);
+  const r = await kurseNachladen(abruf, lauf?.signal);
   console.log(`[wechselkurse] ${r.kurse} Kurse aus der EZB-${r.quelle === 'historie' ? 'Historie' : 'Tagesdatei'}`);
 }

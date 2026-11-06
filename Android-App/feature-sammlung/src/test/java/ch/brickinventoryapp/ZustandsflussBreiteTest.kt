@@ -13,7 +13,7 @@ import java.lang.reflect.Modifier
  * nicht wieder. Geprüft an den übersetzten Klassen, nicht am Quelltext; „wer
  * einen Fluss sammelt, benutzt ihn auch“ steht in UiStateFieldsTest.
  *
- * Gegenproben (31.10.2026, gemessen):
+ * Gegenproben:
  *   A  `val sets: List<SetAnsicht> = emptyList()` in AppUiState ergänzt → rot
  *      „Diese Galerie-Felder stehen wieder in AppUiState: sets“
  *   B  fünf Probefelder in AppUiState ergänzt → rot „AppUiState hat 16 Felder

@@ -1,5 +1,11 @@
 package ch.brickinventoryapp.ui.screens
 
+import ch.brickinventoryapp.ui.components.Rueckfrage
+import ch.brickinventoryapp.ui.components.DetailTopAppBar
+import ch.brickinventoryapp.ui.ManualItemDetailUiState
+import ch.brickinventoryapp.ui.BlickfeldUiState
+import ch.brickinventoryapp.ui.AppUiState
+import ch.brickinventoryapp.ui.viewmodel.KaeufeAktionen
 import ch.brickinventoryapp.ui.model.KaufAnsicht
 import ch.brickinventoryapp.ui.theme.Formen
 import androidx.compose.foundation.clickable
@@ -9,11 +15,8 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -22,21 +25,21 @@ import androidx.compose.ui.Modifier
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.focus.onFocusChanged
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
-import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import ch.brickinventoryapp.ressourcen.R
 import ch.brickinventoryapp.ui.viewmodel.KaeufeViewModel
 import ch.brickinventoryapp.util.fmtMoney
 import ch.brickinventoryapp.util.NumericInput
 import ch.brickinventoryapp.ui.theme.Abstaende
+import ch.brickinventoryapp.ui.components.MitTooltip
+import ch.brickinventoryapp.ui.model.OHNE_FARBE
+import ch.brickinventoryapp.util.fmtEingabe
 
 /**
  * Eigener Screen für die Kaufpreis-Verwaltung — analog zum acq-modal der Webapp,
@@ -44,22 +47,43 @@ import ch.brickinventoryapp.ui.theme.Abstaende
  * editierbaren Zeilen stehen in dieser Datei (AcquisitionManagementRow weiter
  * unten).
  */
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun AcquisitionManagementScreen(
+fun AcquisitionManagementRoute(
     vm: KaeufeViewModel,
-    type: String,           // "set" | "part" | "fig"
-    id: String,             // setNumber / partNumber / figNumber
-    colorId: Int = ch.brickinventoryapp.ui.model.OHNE_FARBE,
+    type: String,
+    id: String,
+    colorId: Int = OHNE_FARBE,
     title: String,
     onBack: () -> Unit
 ) {
     val state by vm.state.collectAsStateWithLifecycle()
     val blick by vm.blickfeld.collectAsStateWithLifecycle()
-    val currency = state.currency
-
-    // Ein Zustand für Sets, Teile und Figuren (KaeufeViewModel).
     val manDetailState by vm.manDetailState.collectAsStateWithLifecycle()
+    AcquisitionManagementScreen(KaeufeZustand(state, blick, manDetailState), vm, type, id, colorId, title, onBack)
+}
+
+/** Was die Kaufverwaltung zeigt: ein Zustand für Sets, Teile und Figuren. */
+data class KaeufeZustand(
+    val state: AppUiState,
+    val blick: BlickfeldUiState,
+    val manDetailState: ManualItemDetailUiState,
+)
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun AcquisitionManagementScreen(
+    zustand: KaeufeZustand,
+    aktionen: KaeufeAktionen,
+    type: String,           // "set" | "part" | "fig"
+    id: String,             // setNumber / partNumber / figNumber
+    colorId: Int = OHNE_FARBE,
+    title: String,
+    onBack: () -> Unit
+) {
+    val state = zustand.state
+    val blick = zustand.blick
+    val currency = state.currency
+    val manDetailState = zustand.manDetailState
 
     val acquisitions = manDetailState.acquisitions
     // Summe vom Server — die Rechnung stand vorher hier und noch dreimal
@@ -68,9 +92,8 @@ fun AcquisitionManagementScreen(
     // Rückmeldung nach einem Eigentümerwechsel — der Server sagt, ob und was
     // mitgewandert ist.
     var moveMessage by remember { mutableStateOf<String?>(null) }
-    // Für die Erfolgsmeldung mit den echten Zahlen aus der Antwort.
-    val ctx = LocalContext.current
-    // Nicht `ctx.getString`: Ein gegriffener Context liefert nach einem
+    // Für die Erfolgsmeldung mit den echten Zahlen aus der Antwort. Nicht
+    // `LocalContext.current.getString`: Ein gegriffener Context liefert nach einem
     // Konfigurationswechsel veraltete Werte (Lint: LocalContextGetResourceValueCall).
     // `stringResource` geht nicht, weil die Zahlen erst in der Antwort entstehen;
     // LocalResources ist die konfigurationsbewusste Form.
@@ -79,21 +102,15 @@ fun AcquisitionManagementScreen(
 
     LaunchedEffect(type, id, colorId) {
         when (type) {
-            "set"  -> vm.loadAcquisitions(id)
-            else   -> vm.loadManualAcquisitions(type, id, colorId)
+            "set"  -> aktionen.loadAcquisitions(id)
+            else   -> aktionen.loadManualAcquisitions(type, id, colorId)
         }
     }
 
     Scaffold(
         topBar = {
-            TopAppBar(
-                title = { Text(title, fontWeight = FontWeight.Bold, maxLines = 1) },
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(R.string.common_back))
-                    }
-                }
-            )
+            // Der Titel ist ein Teile- oder Setname: zweizeilig statt hart abgeschnitten.
+            DetailTopAppBar(title, onBack, schliessen = false)
         }
     ) { innerPadding ->
         if (isLoading && acquisitions.isEmpty()) {
@@ -158,20 +175,20 @@ fun AcquisitionManagementScreen(
                     currency = currency,
                     onSave = { price, cond, qty, date ->
                         when (type) {
-                            "set"  -> vm.updateAcquisition(id, acq.id, price, cond, qty, date)
-                            else   -> vm.updateManualAcquisition(type, id, colorId, acq.id, price, cond, qty, date)
+                            "set"  -> aktionen.updateAcquisition(id, acq.id, price, cond, qty, date)
+                            else   -> aktionen.updateManualAcquisition(type, id, colorId, acq.id, price, cond, qty, date)
                         }
                         // Reload after save to reflect server-side changes (e.g. market price fill);
                         // Datumsänderungen lädt das ViewModel bereits selbst neu.
                         if (price == null && date == null) {
-                            if (type == "set") vm.loadAcquisitions(id)
-                            else vm.loadManualAcquisitions(type, id, colorId)
+                            if (type == "set") aktionen.loadAcquisitions(id)
+                            else aktionen.loadManualAcquisitions(type, id, colorId)
                         }
                     },
                     onDelete = {
                         when (type) {
-                            "set"  -> vm.deleteAcquisition(id, acq.id)
-                            else   -> vm.deleteManualAcquisition(type, id, colorId, acq.id)
+                            "set"  -> aktionen.deleteAcquisition(id, acq.id)
+                            else   -> aktionen.deleteManualAcquisition(type, id, colorId, acq.id)
                         }
                     }
                 )
@@ -187,13 +204,13 @@ fun AcquisitionManagementScreen(
                         onSelect = { target ->
                             // acq.ownerUserId nur für den Vergleich — der
                             // Server ermittelt den Absender aus der Zeile.
-                            if (target != acq.ownerUserId) vm.changeAcquisitionOwner(
+                            if (target != acq.ownerUserId) aktionen.changeAcquisitionOwner(
                                 type, id, colorId, acq.id, target
                             ) { err, teile, figuren ->
                                 // Nach dem Wechsel stimmt die Liste nicht mehr:
                                 // Die Zeile liegt jetzt beim anderen Konto.
-                                if (type == "set") vm.loadAcquisitions(id)
-                                else vm.loadManualAcquisitions(type, id, colorId)
+                                if (type == "set") aktionen.loadAcquisitions(id)
+                                else aktionen.loadManualAcquisitions(type, id, colorId)
                                 // Die Zahlen kommen aus der Antwort, sonst sagte die Meldung „0
                                 // Teile“, auch wenn hunderte wandern. Zwei Zahlen, zwei
                                 // Übereinstimmungen: Ein <plurals> stimmt nur mit einer überein,
@@ -245,7 +262,7 @@ private fun AcquisitionManagementRow(
 ) {
     var qtyText   by remember(acquisition.id) { mutableStateOf(acquisition.quantity.toString()) }
     var priceText by remember(acquisition.id) {
-        mutableStateOf(acquisition.effectivePrice?.let { ch.brickinventoryapp.util.fmtEingabe(it) } ?: "")
+        mutableStateOf(acquisition.effectivePrice?.let { fmtEingabe(it) } ?: "")
     }
     var condition by remember(acquisition.id) { mutableStateOf(acquisition.condition) }
     val geschaetztText = stringResource(R.string.acq_preis_geschaetzt)
@@ -256,7 +273,7 @@ private fun AcquisitionManagementRow(
     // DisposableEffect fürs Zurücknavigieren. lastSaved verhindert doppeltes Speichern
     // und das Löschen durch blosses Antippen eines leeren Feldes.
     var lastSavedPrice by remember(acquisition.id) {
-        mutableStateOf(acquisition.effectivePrice?.let { ch.brickinventoryapp.util.fmtEingabe(it) } ?: "")
+        mutableStateOf(acquisition.effectivePrice?.let { fmtEingabe(it) } ?: "")
     }
     var lastSavedQty by remember(acquisition.id) { mutableStateOf(acquisition.quantity.toString()) }
 
@@ -282,21 +299,12 @@ private fun AcquisitionManagementRow(
     DisposableEffect(acquisition.id) { onDispose { flushPending() } }
 
     if (showDeleteConfirm) {
-        AlertDialog(
-            onDismissRequest = { showDeleteConfirm = false },
-            title = { Text(stringResource(R.string.acq_delete_title), fontWeight = FontWeight.Bold) },
-            text  = { Text(stringResource(R.string.acq_delete_text)) },
-            confirmButton = {
-                TextButton(onClick = { showDeleteConfirm = false; onDelete() }) {
-                    Text(stringResource(R.string.common_delete),
-                        color = MaterialTheme.colorScheme.error)
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { showDeleteConfirm = false }) {
-                    Text(stringResource(R.string.common_cancel))
-                }
-            }
+        Rueckfrage(
+            titel = stringResource(R.string.acq_delete_title),
+            text = stringResource(R.string.acq_delete_text),
+            bestaetigen = stringResource(R.string.common_delete),
+            onBestaetigen = { showDeleteConfirm = false; onDelete() },
+            onAbbrechen = { showDeleteConfirm = false },
         )
     }
 
@@ -312,7 +320,7 @@ private fun AcquisitionManagementRow(
     }
     Text(
         dateLabel ?: "—",
-        style = MaterialTheme.typography.labelSmall,
+        style = MaterialTheme.typography.bodySmall,
         color = MaterialTheme.colorScheme.primary,
         modifier = Modifier
             .padding(top = Abstaende.klein, bottom = Abstaende.haar)
@@ -381,14 +389,14 @@ private fun AcquisitionManagementRow(
                 .weight(1f)
                 .onFocusChanged { st -> if (!st.isFocused) flushPending() },
             singleLine = true,
-            placeholder = { Text(stringResource(R.string.detail_price_placeholder), style = MaterialTheme.typography.labelSmall) },
+            placeholder = { Text(stringResource(R.string.detail_price_placeholder), style = MaterialTheme.typography.bodySmall) },
             // Ein Marktpreis, den der Server eingesetzt hat, ist kein bezahlter
             // Betrag; das „≈" sagt es, bis jemand den echten Preis einträgt.
             prefix = if (acquisition.priceEstimated && priceText.isNotEmpty()) {
                 { Text("≈", modifier = Modifier.semantics {
                     contentDescription = geschaetztText }) }
             } else null,
-            suffix = acquisition.currency?.let { w -> { Text(w, style = MaterialTheme.typography.labelSmall) } },
+            suffix = acquisition.currency?.let { w -> { Text(w, style = MaterialTheme.typography.bodySmall) } },
             keyboardOptions = NumericInput.preisTastatur(),
             keyboardActions = KeyboardActions(
                 onDone = { focusManager.clearFocus(); flushPending() }
@@ -397,9 +405,11 @@ private fun AcquisitionManagementRow(
         )
 
         // Delete
-        IconButton(onClick = { showDeleteConfirm = true }) {
-            Icon(Icons.Default.Delete, stringResource(R.string.acq_delete_title),
-                tint = MaterialTheme.colorScheme.error, modifier = Modifier.size(20.dp))
+        MitTooltip(stringResource(R.string.acq_delete_title)) {
+            IconButton(onClick = { showDeleteConfirm = true }) {
+                Icon(Icons.Default.Delete, stringResource(R.string.acq_delete_title),
+                    tint = MaterialTheme.colorScheme.error, modifier = Modifier.size(20.dp))
+            }
         }
     }
     // Der Zustand unter Anzahl und Preis über die volle Breite: In der Zeile liess

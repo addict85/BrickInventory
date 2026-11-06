@@ -8,9 +8,8 @@ import org.junit.Test
  * ── Der Fehler, den diese Regel verhindert ──────────────────────────────────
  * `AppCompatDelegate.setApplicationLocales()` lokalisiert nur
  * AppCompat-ACTIVITIES. Der Application-Context behält unterhalb von
- * Android 13 die SYSTEM-Sprache — minSdk ist 26, betroffen sind also
- * Android 8 bis 12. Das steht seit Langem in LanguageManager.localizedContext()
- * und war für die Foreground-Services auch umgesetzt.
+ * Android 13 die SYSTEM-Sprache — minSdk ist 30, betroffen sind also
+ * Android 11 und 12. Das steht seit Langem in LanguageManager.localizedContext()
  *
  * Die ViewModels waren die Lücke: dort standen zweiunddreissig direkte
  * `ctx.getString(...)` auf dem Application-Context. Wer sein Telefon auf
@@ -105,9 +104,9 @@ class SpracheDerMeldungenTest {
     }
 
     @Test
-    fun `die ViewModels haben den Helfer und benutzen ihn`() {
+    fun `AppTexte hat den Helfer und benutzt ihn`() {
         // Ohne den Helfer schreibt der naechste Aufrufer wieder ctx.getString().
-        for (datei in listOf("ui/viewmodel/AppTexte.kt", "ui/viewmodel/CatalogViewModel.kt")) {
+        for (datei in listOf("ui/viewmodel/AppTexte.kt")) {
             val s = Quellen.ohneKommentare(Quellen.lies(datei))
             assert(Regex("""fun text\(id: Int, vararg args: Any\?\)""").containsMatchIn(s)) {
                 "$datei hat keinen text()-Helfer mehr"
@@ -124,7 +123,7 @@ class SpracheDerMeldungenTest {
         // einzelnen Prozentzeichen — etwa eine Prozentangabe — wuerde dort eine
         // Ausnahme werfen statt angezeigt zu werden, und zwar erst zur Laufzeit
         // und nur fuer genau diesen Text.
-        for (datei in listOf("ui/viewmodel/AppTexte.kt", "ui/viewmodel/CatalogViewModel.kt")) {
+        for (datei in listOf("ui/viewmodel/AppTexte.kt")) {
             val s = Quellen.ohneKommentare(Quellen.lies(datei))
             assert(s.contains("if (args.isEmpty()) c.getString(id) else c.getString(id, *args)")) {
                 "$datei formatiert auch ohne Argumente — siehe AppTexte.text()"

@@ -1,6 +1,7 @@
 package ch.brickinventoryapp.di
 
 import ch.brickinventoryapp.data.api.Fehlerrumpf
+import ch.brickinventoryapp.data.model.Fehlercode
 import ch.brickinventoryapp.util.APP_API_VERSION
 import ch.brickinventoryapp.util.KlartextAbgelehnt
 import ch.brickinventoryapp.util.NetworkPolicy
@@ -15,14 +16,14 @@ import okhttp3.Response
 import java.util.concurrent.atomic.AtomicBoolean
 
 /**
- * Was der Wächter je Anfrage wissen muss. Im Gerät liefern es PreferencesManager
+ * Was der Wächter je Anfrage wissen muss. Im Gerät liefern es TokenAblage
  * und Context (ServerClient.kt); als Schnittstelle läuft der Wächter auf der JVM
  * gegen einen Testserver.
  */
 interface Zugangslage {
     fun serverUrl(): String
     fun token(): String
-    /** Die Herkunft, an die der Token gebunden ist; null bei Altbestand ohne Bindung. */
+    /** Die Herkunft, an die der Token gebunden ist; null heisst: an keinen Server senden. */
     fun tokenHerkunft(): String?
     /**
      * Zählt Anmelden, Abmelden und Serverwechsel (data/TokenSchranke). Wird vor dem
@@ -33,7 +34,7 @@ interface Zugangslage {
 }
 
 /** Platzhalter, auf den Retrofit gebaut ist; der Wächter schreibt ihn auf den Server um. */
-const val PLATZHALTER_BASIS = "http://localhost:3000/"
+internal const val PLATZHALTER_BASIS = "http://localhost:3000/"
 
 /**
  * Der Tausch des Tokens, von aussen gesehen (data/TokenTausch). [faellig]
@@ -53,14 +54,8 @@ private const val ROTATIONS_PFAD = "/api/v1/auth/token-rotieren"
  * 401 mit diesen Codes heisst „Bestätigung falsch oder fehlt“, nicht „Token
  * ungültig“: Der Dialog fragt erneut nach dem Passwort, statt abzumelden.
  */
-private val BESTAETIGUNG_NOETIG = setOf("aktuelles_passwort_falsch", "aktuelles_passwort_erforderlich",
-    "zweiter_faktor_falsch", "zweiter_faktor_noetig", "passkey_ungueltig")
-
-/** 403 mit diesem Code: Das Konto oder der Token hat keine Verwalterrechte (mehr). */
-const val NUR_ADMINS = "nur_admins"
-
-/** 403 mit diesem Code: Erst das Startpasswort ersetzen (data/PasswortPflicht). */
-const val PASSWORT_WECHSEL_NOETIG = "passwort_wechsel_noetig"
+private val BESTAETIGUNG_NOETIG = setOf(Fehlercode.AKTUELLES_PASSWORT_FALSCH, Fehlercode.AKTUELLES_PASSWORT_ERFORDERLICH,
+    Fehlercode.ZWEITER_FAKTOR_FALSCH, Fehlercode.ZWEITER_FAKTOR_NOETIG, Fehlercode.PASSKEY_UNGUELTIG)
 
 /**
  * Token, Sprache und das Klartext-Verbot für alle Anfragen der Server-Clients.
@@ -81,6 +76,8 @@ class ServerWaechter(
     private val rechteEntzogen: () -> Unit = {},
     /** Ein 403 `passwort_wechsel_noetig`: Die App zeigt die Maske für das Startpasswort. */
     private val passwortWechselNoetig: () -> Unit = {},
+    /** Ein 403 `zweiter_faktor_pflicht`: Die App zeigt die Einrichtung des zweiten Faktors. */
+    private val zweiterFaktorPflicht: () -> Unit = {},
 ) : Interceptor {
 
     private val versionGemeldet = AtomicBoolean(false)
@@ -111,9 +108,9 @@ class ServerWaechter(
             NetworkPolicy.imBasisPfad(finalUrl, serverUrl)
         // Umleitungen eigener Anfragen nur innerhalb des Pfads: Sie tragen den Token weiter.
         val basis = if (unserServer) NetworkPolicy.basisPfad(serverUrl).orEmpty() else ""
-        // Nach einem Serverwechsel trägt der alte Token nichts beim neuen aus.
+        // Ein Token geht nur an die Herkunft, an die er gebunden ist; ohne Bindung an keine.
         val herkunft = lage.tokenHerkunft()
-        val tokenGehoertHierher = herkunft == null || herkunft == NetworkPolicy.herkunft(finalUrl.toString())
+        val tokenGehoertHierher = herkunft != null && herkunft == NetworkPolicy.herkunft(finalUrl.toString())
         val mitToken = token.isNotBlank() && unserServer && tokenGehoertHierher
         if (mitToken && original.header("Authorization") == null) {
             reqBuilder.header("Authorization", "Bearer $token")
@@ -153,10 +150,10 @@ class ServerWaechter(
         val rotierbar = rotation != null && tokenMitgeschickt && unserServer &&
             !ausgehend.url.encodedPath.endsWith(ROTATIONS_PFAD)
         if (rotierbar && antwort.code == 401) {
-            val code = runCatching { Fehlerrumpf.lies(antwort.peekBody(16_384).string()).code }.getOrNull()
+            val code = runCatching { Fehlerrumpf.lies(antwort.peekBody(16_384).string()).fehlercode }.getOrNull()
             val alt = gesendet.header("Authorization")?.removePrefix("Bearer ")?.trim().orEmpty()
             val herkunftDerAnfrage = NetworkPolicy.herkunft(gesendet.url.toString())
-            if (code == "token_rotation_noetig") rotation.noetig(alt, herkunftDerAnfrage, sitzung)
+            if (code == Fehlercode.TOKEN_ROTATION_NOETIG) rotation.noetig(alt, herkunftDerAnfrage, sitzung)
                 ?.takeIf { dieselbeSitzung() }?.let { neu ->
                     // Der neue Token ist gespeichert; diese Anfrage geht einmal mit ihm.
                     antwort.close()
@@ -168,10 +165,11 @@ class ServerWaechter(
 
         // Ein 401 oder 403 des vorigen Servers betrifft die neue Sitzung nicht.
         if ((antwort.code == 401 || antwort.code == 403) && tokenMitgeschickt && unserServer && dieselbeSitzung()) {
-            val code = runCatching { Fehlerrumpf.lies(antwort.peekBody(16_384).string()).code }.getOrNull()
+            val code = runCatching { Fehlerrumpf.lies(antwort.peekBody(16_384).string()).fehlercode }.getOrNull()
             if (antwort.code == 401 && code !in BESTAETIGUNG_NOETIG) sitzungAbgelaufen()
-            if (antwort.code == 403 && code == NUR_ADMINS) rechteEntzogen()
-            if (antwort.code == 403 && code == PASSWORT_WECHSEL_NOETIG) passwortWechselNoetig()
+            if (antwort.code == 403 && code == Fehlercode.NUR_ADMINS) rechteEntzogen()
+            if (antwort.code == 403 && code == Fehlercode.PASSWORT_WECHSEL_NOETIG) passwortWechselNoetig()
+            if (antwort.code == 403 && code == Fehlercode.ZWEITER_FAKTOR_PFLICHT) zweiterFaktorPflicht()
         }
 
         val melden = versionsMeldung
@@ -193,7 +191,7 @@ class ServerWaechter(
         val g = lage.generation()
         val server = lage.serverUrl().trim().trimEnd('/')
         val token = lage.token()
-        val herkunft = lage.tokenHerkunft() ?: NetworkPolicy.herkunft(server)
+        val herkunft = lage.tokenHerkunft() ?: return null
         val passt = token.isNotBlank() && server.isNotBlank() && NetworkPolicy.isSameOrigin(ziel, server) &&
             NetworkPolicy.imBasisPfad(ziel, server) && herkunft == NetworkPolicy.herkunft(ziel.toString())
         return if (passt && lage.generation() == g) token to g else null

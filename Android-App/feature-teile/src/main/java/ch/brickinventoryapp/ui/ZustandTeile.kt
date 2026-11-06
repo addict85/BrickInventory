@@ -97,3 +97,24 @@ data class SetItemUiState(
 ) {
     val offen: Boolean get() = art != null
 }
+
+/**
+ * Die Bauliste im ViewModel: Eine Drehung baut den Bildschirm neu, die erzeugte Liste
+ * und ein laufender Abruf bleiben. Die Setnummern überleben auch das Prozessende
+ * (SavedStateHandle), die Teile nicht — tausend Zeilen sprengten das Bundle.
+ */
+data class TeilelisteUiState(
+    val sets: List<PlSet> = emptyList(),
+    val parts: List<PlPart> = emptyList(),
+    val generated: Boolean = false,
+    val isLoading: Boolean = false,
+    /** Fortschritt, Ergebnis oder Fehler der letzten Handlung, in der Sprache der App. */
+    val status: String = "",
+    val nurLose: Boolean = false,
+    val mitUnterkonten: Boolean = false,
+    val bestandLaeuft: Boolean = false,
+    val isExporting: Boolean = false,
+    val pdfError: String? = null,
+    /** Fertiges PDF, das der Bildschirm einmal zum Öffnen anbietet. */
+    val pdfDatei: java.io.File? = null,
+)

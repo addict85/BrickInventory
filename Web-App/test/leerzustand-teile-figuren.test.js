@@ -27,7 +27,7 @@ async function teile(antworten) {
   const o = await oeffneOberflaeche(antworten);
   await reiter(o.w, 'parts');
   await warte(() => !o.d.querySelector('#parts-main .loading, #parts-main .lade'), 3000);
-  await takt(150);
+  await o.ruhig();
   return o;
 }
 
@@ -47,7 +47,7 @@ test('Teile: beide leer — genau ein Leerzustand, der leere Kasten verschwindet
     const leer = d.querySelectorAll('#tab-parts .leer');
     assert.equal(leer.length, 1, `${leer.length} Leerzustände`);
     assert.ok(text(leer[0]).includes('Noch keine Teile'));
-    assert.ok(leer[0].querySelector('[data-click="oeffneErfassen"][data-arg="part"]'), 'Der Leerzustand bietet das Erfassen an');
+    assert.ok(d.querySelector('#tab-parts .erfassen-leiste [data-click="oeffneErfassen"][data-arg="part"]'), 'Die Leiste bietet das Erfassen an');
     // Dasselbe Symbol wie der Reiter „Teile" — kein Puzzleteil.
     assert.equal(leer[0].querySelector('.leer-ico use')?.getAttribute('href'),
       d.querySelector('.sammlung-wahl [data-arg="parts"] use')?.getAttribute('href'));
@@ -65,7 +65,7 @@ test('Teile: nur aus Sets — kein leerer Kasten für manuelle', async () => {
 });
 
 test('Farbfilter steht über den Listen und wirkt auf beide Listen', async () => {
-  const { w, d, aufrufe } = await teile({ '/v1/parts/manual': { success: true, parts: [ROT, BLAU] } });
+  const { w, d, aufrufe, ruhig } = await teile({ '/v1/parts/manual': { success: true, parts: [ROT, BLAU] } });
   try {
     const wahl = d.getElementById('parts-color');
     assert.ok(sichtbar(wahl), 'Das Farbfeld ist verborgen, obwohl es zwei Farben gibt');
@@ -76,7 +76,7 @@ test('Farbfilter steht über den Listen und wirkt auf beide Listen', async () =>
     assert.deepEqual([...wahl.options].map(o => o.textContent), ['Alle Farben', 'Rot', 'Blau']);
     wahl.value = 'Blue';
     wahl.dispatchEvent(new w.Event('change', { bubbles: true }));
-    await takt(100);
+    await ruhig();
     const namen = [...d.querySelectorAll('#manual-parts-list .man-tile-name')].map(text);
     assert.deepEqual(namen, ['Brick 2 x 2'], 'Farbfilter wirkt auf beide Listen');
     assert.ok(aufrufe.some(a => a.url.includes('/v1/parts?') && a.url.includes('color=Blue')),
@@ -87,7 +87,7 @@ test('Farbfilter steht über den Listen und wirkt auf beide Listen', async () =>
 async function figuren(antworten) {
   const o = await oeffneOberflaeche(antworten);
   await reiter(o.w, 'minifigs');
-  await takt(300);
+  await o.ruhig();
   return o;
 }
 

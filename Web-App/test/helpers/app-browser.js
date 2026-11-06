@@ -14,10 +14,20 @@ const { spawn } = require('node:child_process');
 const ROOT = path.join(__dirname, '..', '..');
 const warte = (ms) => new Promise(r => setTimeout(r, ms));
 
+/**
+ * Pfad zu Chrome oder null (der Test überspringt). Mit REQUIRE_BROWSER=1 wirft
+ * ein fehlender Browser, wie REQUIRE_DB=1 bei der Datenbank: In der CI wäre
+ * ein grüner Lauf ohne Browser-Tests sonst kein Beleg.
+ * Gegenprobe (04.11.2026): CHROME_BIN leer, REQUIRE_BROWSER=1 → telefon-browser
+ * und anmeldefelder-leer-browser rot; ohne die Variable übersprungen.
+ */
 function chrome() {
   const kandidaten = [process.env.CHROME_BIN, '/usr/bin/google-chrome', '/usr/bin/google-chrome-stable',
     '/usr/bin/chromium', '/usr/bin/chromium-browser', '/opt/pw-browsers/chromium-1194/chrome-linux/chrome'];
-  return kandidaten.find(k => k && fs.existsSync(k)) ?? null;
+  const bin = kandidaten.find(k => k && fs.existsSync(k)) ?? null;
+  if (!bin && process.env.REQUIRE_BROWSER === '1')
+    throw new Error(`REQUIRE_BROWSER=1, aber kein Chrome gefunden (CHROME_BIN=${process.env.CHROME_BIN || 'leer'})`);
+  return bin;
 }
 
 const freierPort = () => new Promise(r => { const s = net.createServer().listen(0, () => { const p = s.address().port; s.close(() => r(p)); }); });
@@ -96,12 +106,20 @@ async function starteApp(t, opt = {}) {
   const uid = (await db.get(`INSERT INTO users (username, email, password_hash, is_active, email_verified, is_admin)
     VALUES ($1, $2, $3, true, true, true) RETURNING id`, [NAME, `${NAME}@example.org`, await bcrypt.hash(PASS, 4)])).id;
   await db.run(`INSERT INTO user_settings (user_id, key, value) VALUES ($1, 'language', $2)`, [uid, opt.sprache || 'de']);
+  // Ohne diesen Wert ginge der Einrichtungsassistent über leerer Sammlung auf und
+  // jeder Test müsste erst auf ihn warten; wer ihn prüft, löscht den Wert in `bestand`.
+  await db.run(`INSERT INTO global_settings (key, value) VALUES ('einrichtung_erledigt', '1')
+                ON CONFLICT (key) DO UPDATE SET value = '1'`);
   if (opt.bestand) await opt.bestand(db, uid);
+  // Verwalter ohne Code-Generator kämen nur bis zu dessen Einrichtung; angemeldet
+  // wird mit einem Wiederherstellungscode im Codefeld.
+  const verwalter = (await db.get('SELECT is_admin FROM users WHERE id = $1', [uid])).is_admin;
+  const [wiederherstellung = '', ...weitereCodes] = verwalter ? await require('./verwalter').verwalterMitFaktor(_req, uid) : [];
   for (const k of ['rb_csv_last_sync', 'rb_part_categories_last_sync', 'rb_catalog_extras_last_sync'])
     await db.run(`INSERT INTO laufzustand (schluessel, wert) VALUES ($1, to_char(NOW(), 'YYYY-MM-DD'))
                   ON CONFLICT (schluessel) DO UPDATE SET wert = EXCLUDED.wert`, [k]);
   t.after(async () => {
-    await db.run('DELETE FROM users WHERE id = $1', [uid]).catch(() => {});
+    await db.run(`DELETE FROM users WHERE id = $1 OR username LIKE $2`, [uid, `${NAME.replace(/_/g, '\\_')}\\_%`]).catch(() => {});
     await db.pool.end().catch(() => {});
   });
 
@@ -114,9 +132,12 @@ async function starteApp(t, opt = {}) {
   for (let i = 0; i < 240 && !/localhost:\d+|Startup complete/.test(server.log()); i++) await warte(250);
   for (let i = 0; i < 40 && (await fetch(`http://127.0.0.1:${port}/api/v1/`).catch(() => null)) === null; i++) await warte(250);
 
-  const profil = fs.mkdtempSync(path.join(os.tmpdir(), 'app-browser-'));
+  // Chrome legt unter TMPDIR einen Unix-Socket an (höchstens 107 Zeichen); bei langem
+  // TMPDIR bräche es mit „Socket path too long“ ab, also Profil und TMPDIR dann unter /tmp.
+  const basis = os.tmpdir().length > 60 && fs.existsSync('/tmp') ? '/tmp' : os.tmpdir();
+  const profil = fs.mkdtempSync(path.join(basis, 'app-browser-'));
   const browser = starte(t, bin, ['--headless=new', '--no-sandbox', '--disable-gpu', '--remote-debugging-port=0',
-    `--user-data-dir=${profil}`, '--window-size=1280,900', 'about:blank'], { detached: true });
+    `--user-data-dir=${profil}`, '--window-size=1280,900', 'about:blank'], { detached: true, env: { ...process.env, TMPDIR: basis } });
   // Erst nach Chromes Ende löschen: t.after läuft in Registrierreihenfolge, und
   // ein Hook, der wirft, lässt die folgenden aus — Chrome liefe dann weiter.
   t.after(() => { try { fs.rmSync(profil, { recursive: true, force: true, maxRetries: 5 }); } catch { /* tmp räumt das System */ } });
@@ -126,7 +147,10 @@ async function starteApp(t, opt = {}) {
   for (let i = 0; i < 300 && !wsUrl && browser.p.exitCode === null && browser.p.signalCode === null; i++) {
     wsUrl = /DevTools listening on (ws:\/\/\S+)/.exec(browser.log())?.[1]; if (!wsUrl) await warte(100);
   }
-  if (!wsUrl) throw new Error(`Chrome meldet keinen DevTools-Zugang (Ende: ${browser.p.exitCode ?? browser.p.signalCode ?? 'läuft'}):\n`
+  // Die Ursache steht in Chromes erster FATAL-Zeile; sie gehört an den Anfang der Meldung.
+  const ursache = /^.*(?:FATAL|Socket path too long).*$/m.exec(browser.log())?.[0]?.trim();
+  if (!wsUrl) throw new Error(`Chrome meldet keinen DevTools-Zugang (Ende: ${browser.p.exitCode ?? browser.p.signalCode ?? 'läuft'})`
+    + `${ursache ? ` — ${ursache}` : ''}:\n`
     + browser.log().slice(-1500));
   const b = await cdp(wsUrl);
   t.after(() => b.schliessen());
@@ -136,9 +160,13 @@ async function starteApp(t, opt = {}) {
   // nennt der Test damit die Anfrage, die die Sitzung beendet hat.
   const abgewiesen = [];
   await b.tab('Network.enable');
+  // Laufende fetch/XHR-Anfragen für ruhig(); Bilder zählen nicht, sie hängen am CDN.
+  const laufend = new Set();
   b.hoerer.push((d) => {
     if (d.method === 'Network.responseReceived' && d.params.response.status === 401)
       abgewiesen.push(d.params.response.url.replace(/^https?:\/\/[^/]+/, ''));
+    if (d.method === 'Network.requestWillBeSent' && ['Fetch', 'XHR'].includes(d.params.type)) laufend.add(d.params.requestId);
+    if (d.method === 'Network.loadingFinished' || d.method === 'Network.loadingFailed') laufend.delete(d.params.requestId);
   });
   if (opt.abfangen?.length) {
     await b.tab('Fetch.enable', { patterns: opt.abfangen.map(a => ({ urlPattern: a.muster, requestStage: 'Request' })) });
@@ -166,12 +194,17 @@ async function starteApp(t, opt = {}) {
     for (let i = 0; i < versuche; i++) { if (await b.auswerten(ausdruck).catch(() => false)) return; await warte(100); }
     const zustand = await b.auswerten(`document.body.innerText.slice(0, 300)`).catch(e => e.message);
     const s401 = abgewiesen.length ? `\n401 auf: ${abgewiesen.join(', ')}` : '';
-    throw new Error(`Zeitüberschreitung: ${was} — ${zustand}${s401}\nServer:\n${server.log().slice(-3000)}`);
+    // Ausnahmen der Seite (etwa Trusted Types): ohne sie zeigt ein CI-Lauf nur die Zeitüberschreitung.
+    const ausnahmen = b.ereignisse.filter(e => e.method === 'Runtime.exceptionThrown')
+      .slice(-5).map(e => e.params.exceptionDetails.exception?.description ?? e.params.exceptionDetails.text);
+    const sAus = ausnahmen.length ? `\nAusnahmen der Seite:\n${ausnahmen.join('\n')}` : '';
+    throw new Error(`Zeitüberschreitung: ${was} — ${zustand}${s401}${sAus}\nServer:\n${server.log().slice(-3000)}`);
   };
   await b.tab('Page.navigate', { url: `http://127.0.0.1:${port}/` });
   await bis(`typeof document.getElementById('btn-login')?.onclick === 'function'`, 'Anmeldemaske');
   await b.auswerten(`document.getElementById('lu').value = ${JSON.stringify(NAME)};
     document.getElementById('lp').value = ${JSON.stringify(PASS)};
+    document.getElementById('lc').value = ${JSON.stringify(wiederherstellung)};
     document.getElementById('btn-login').click(); true`);
   // 30 s wie beim Chrome-Start: Die Anmeldung rechnet bcrypt mit 12 Runden und
   // schreibt die Sitzung; auf einem ausgelasteten Läufer dauerte das über 10 s.
@@ -184,7 +217,13 @@ async function starteApp(t, opt = {}) {
     if (document.querySelector('.ntab[data-tab="settings"]')?.classList.contains('active')) return true;
     const g = document.getElementById('gallery');
     return !!g && g.children.length > 0 && !g.querySelector('.skelett-raster'); })()`, 'Start abgeschlossen');
-  return { b, bis, warte, port, uid, db, abgewiesen };
+  /** Bis keine Anfrage mehr läuft (zweimal hintereinander) und zwei Bilder gezeichnet sind. */
+  const ruhig = async (ms = 10_000) => {
+    const ende = Date.now() + ms;
+    for (let still = 0; still < 2 && Date.now() < ende; await warte(50)) still = laufend.size ? 0 : still + 1;
+    await b.auswerten('new Promise(r => requestAnimationFrame(() => requestAnimationFrame(() => r(true))))');
+  };
+  return { b, bis, warte, ruhig, port, uid, db, abgewiesen, weitereCodes };
 }
 
-module.exports = { starteApp, warte };
+module.exports = { starteApp, warte, chrome };

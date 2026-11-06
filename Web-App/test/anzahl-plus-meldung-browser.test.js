@@ -29,9 +29,9 @@ test('Anzahl „+“ meldet das neue Exemplar mit Preis', { concurrency: 1, time
     },
   });
   if (app.grund) { t.skip(app.grund); return; }
-  const { b, bis, db, uid } = app;
-  await warte(1200);
-  await b.auswerten(`document.querySelector('#einrichtung-modal.open [data-click="einrichtungSpaeter"]')?.click(); true`);
+  const { b, bis, db, uid, ruhig } = app;
+  // Der Start lädt Einstellungen und Preise nach; erst danach ist der Zustand fest.
+  await ruhig();
   await b.auswerten(`location.hash = '#/sammlung/set/21318-1'; true`);
   await bis(`document.getElementById('set-modal')?.classList.contains('open') && !!document.getElementById('m-qty')`, 'Set-Detail');
   await b.auswerten(`document.querySelector('#set-modal [data-click="mQtyInc"]').click(); true`);

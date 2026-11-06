@@ -23,20 +23,22 @@ const KT_API    = require('../scripts/kotlin-vertrag.js').apiQuelltext(path.join
 const KT_FEAT   = lies(path.join(__dirname, '..', '..', 'Android-App', 'feature-sammlung', 'src', 'main', 'java', 'ch', 'brickinventoryapp', 'ui', 'Preisalarmeingabe.kt'));
 const KT_SECT   = lies(path.join(__dirname, '..', '..', 'Android-App', 'feature-sammlung', 'src', 'main', 'java', 'ch', 'brickinventoryapp', 'ui', 'screens', 'SetDetailSections.kt'));
 const KT_ABHOL  = lies(path.join(__dirname, '..', '..', 'Android-App', 'core-data', 'src', 'main', 'java', 'ch', 'brickinventoryapp', 'alarm', 'Alarmabholung.kt'));
-const KT_WORKER = lies(path.join(__dirname, '..', '..', 'Android-App', 'core-data', 'src', 'main', 'java', 'ch', 'brickinventoryapp', 'alarm', 'PreisalarmWorker.kt'));
+const KT_WORKER = lies(path.join(__dirname, '..', '..', 'Android-App', 'core-data', 'src', 'main', 'java', 'ch', 'brickinventoryapp', 'alarm', 'PreisalarmWorker.kt'))
+                + lies(path.join(__dirname, '..', '..', 'Android-App', 'core-data', 'src', 'main', 'java', 'ch', 'brickinventoryapp', 'alarm', 'PreisalarmDurchgang.kt'));
 const KT_START  = lies(path.join(APP, 'java', 'ch', 'brickinventoryapp', 'BrickInventoryApp.kt'));
 const KT_ALARMEINGABE = lies(path.join(__dirname, '..', '..', 'Android-App', 'core-data', 'src', 'main', 'java', 'ch', 'brickinventoryapp', 'alarm', 'Alarmeingabe.kt'));
 const KT_VM     = lies(path.join(__dirname, '..', '..', 'Android-App', 'feature-sammlung', 'src', 'main', 'java', 'ch', 'brickinventoryapp', 'ui', 'viewmodel', 'SetDetailViewModel.kt'));
 // Die Einstellungen der App liegen in mehreren Dateien: Der Bildschirm
 // selbst traegt nur die Liste, jede Rubrik hat ihre eigene Seite
 // (EinstellungenUnterseiten.kt) mit der Karte in Einstellungen*.kt. Gelesen
-// werden deshalb alle, die es betrifft — die
-// Zusicherung lautet „die App tut das in ihren Einstellungen" und nicht
-// „in dieser Datei".
+// werden deshalb alle, die es betrifft — die …
+// Ausführlich: docs/begruendungen/test/preisalarm-beide.test.js.md#kt-einst
 const KT_EINST  = lies(path.join(__dirname, '..', '..', 'Android-App', 'feature-konto', 'src', 'main', 'java', 'ch', 'brickinventoryapp', 'ui', 'screens', 'SettingsScreen.kt'))
                 + lies(path.join(__dirname, '..', '..', 'Android-App', 'feature-konto', 'src', 'main', 'java', 'ch', 'brickinventoryapp', 'ui', 'screens', 'EinstellungenUnterseiten.kt'))
                 + lies(path.join(__dirname, '..', '..', 'Android-App', 'feature-konto', 'src', 'main', 'java', 'ch', 'brickinventoryapp', 'ui', 'screens', 'EinstellungenAlarme.kt'))
                 + lies(path.join(__dirname, '..', '..', 'Android-App', 'feature-konto', 'src', 'main', 'java', 'ch', 'brickinventoryapp', 'ui', 'screens', 'EinstellungenLagerorte.kt'));
+const KT_GERAET = lies(path.join(__dirname, '..', '..', 'Android-App', 'core-zustand', 'src', 'main', 'java', 'ch', 'brickinventoryapp', 'ui', 'viewmodel', 'GeraeteEinstellungenViewModel.kt'));
+const KT_PLANER = lies(path.join(__dirname, '..', '..', 'Android-App', 'core-data', 'src', 'main', 'java', 'ch', 'brickinventoryapp', 'alarm', 'WorkManagerAlarmPlaner.kt'));
 const XML_EN    = lies(path.join(__dirname, '..', '..', 'Android-App', 'core-ressourcen', 'src', 'main', 'res', 'values', 'strings.xml'));
 const XML_DE    = lies(path.join(__dirname, '..', '..', 'Android-App', 'core-ressourcen', 'src', 'main', 'res', 'values-de', 'strings.xml'));
 
@@ -46,7 +48,7 @@ test('beide Oberflächen sprechen dieselben drei Endpunkte an', () => {
     assert.match(route, new RegExp(`router\\.${m}\\('/sets/:setNumber/alert'`),
       `Der Endpunkt ${m.toUpperCase()} fehlt`);
   }
-  const js = web('public/js/07-admin.js');
+  const js = web('public/js/02-detailfelder.js');
   assert.match(js, /\/alert`\)/,  'Die Webapp liest den Alarm nicht');
   assert.match(js, /'PUT', `\/v1\/sets\/\$\{encodeURIComponent\(sn\)\}\/alert`/, 'Die Webapp setzt ihn nicht');
   assert.match(js, /'DELETE', `\/v1\/sets\/\$\{encodeURIComponent\(sn\)\}\/alert\?condition=/, 'Die Webapp löscht ihn nicht');
@@ -80,11 +82,8 @@ test('ein leeres Feld löscht — in beiden', () => {
   // Die natürliche Geste, einen Alarm loszuwerden, ist das Feld zu leeren.
   // Ein eigener Knopf daneben wäre ein zweiter Weg für dieselbe Absicht, und
   // eine „Schwelle 0" wäre ein Alarm, der nie oder immer meldet.
-  //
-  // Beide entscheiden es an derselben Stelle: „ist das eine Zahl > 0?". Die
-  // Webapp misst es zusätzlich am Verhalten (test/alarm-entprellt.test.js),
-  // die App an der Umrechnung (AlarmeingabeTest).
-  assert.match(web('public/js/07-admin.js'), /const loeschen = !\(zahl > 0\);/,
+  // Ausführlich: docs/begruendungen/test/preisalarm-beide.test.js.md#stelle
+  assert.match(web('public/js/02-detailfelder.js'), /const loeschen = (zahl == null|!\((zahl != null && )?zahl > 0\));/,
     'Die Webapp löscht bei leerem Feld nicht');
   assert.match(KT_ALARMEINGABE, /return if \(z > 0\.0\) z else null/,
     'Die App löscht bei leerem Feld nicht');
@@ -100,7 +99,7 @@ test('beide speichern beim TIPPEN, entprellt, mit derselben Ruhezeit', () => {
   //
   // Beide hingen am Verlassen des Feldes. Am Telefon tippt man die Zahl,
   // schliesst die Tastatur und geht zurück — dieser Fokuswechsel kommt nie.
-  const js = require('./helpers/sources').ohneKommentare(web('public/js/07-admin.js'));
+  const js = require('./helpers/sources').ohneKommentare(web('public/js/02-detailfelder.js'));
   assert.match(js, /data-input="alarmGetippt"/,
     'Das Schwellenfeld der Webapp hängt nicht am Tippen');
   assert.doesNotMatch(js, /id="m-alert-val"[^>]*data-change/,
@@ -108,14 +107,8 @@ test('beide speichern beim TIPPEN, entprellt, mit derselben Ruhezeit', () => {
   // Geprüft wird die BEHAUPTUNG — beim Tippen wird gespeichert —, nicht der
   // Wortlaut der Zeile. Vorher stand hier die ganze Zeile als Muster; am
   // 28.09. bekam das Feld einen NumericInput-Filter, der Aufruf rückte in
-  // einen mehrzeiligen Lambda, und der Test wurde rot, obwohl er weiter beim
-  // Tippen speichert. Das ist der dritte Test in diesem Projekt, der die
-  // Schreibweise statt der Aussage festgehalten hat.
-  //
-  // Was weiterhin festgehalten wird, und zwar das Wesentliche: Der Aufruf
-  // steht IN `onValueChange` und nicht irgendwo sonst, und er bekommt den
-  // gerade getippten Wert — nicht die Zustandsvariable `schwelle`, die zu
-  // diesem Zeitpunkt noch den vorigen Stand trägt.
+  // einen mehrzeiligen Lambda, und der Test wurde rot, obwohl er weiter beim …
+  // Ausführlich: docs/begruendungen/test/preisalarm-beide.test.js.md#stelle-2
   assert.match(require('./helpers/sources').ohneKommentare(KT_SECT),
     /onValueChange = \{[\s\S]{0,400}?onSetze\(setNumber, richtung, (?!schwelle\b)\w+, zustand\)/,
     'Das Schwellenfeld der App hängt nicht am Tippen');
@@ -154,7 +147,7 @@ test('beide zeigen, ob schon gemeldet wurde', () => {
   // Der Unterschied zwischen „der Alarm steht" und „der Alarm hat gefeuert".
   // Ohne diese Zeile fragt man sich, warum keine Mail mehr kommt — und die
   // Antwort (Hysterese) steht nirgends auf dem Bildschirm.
-  assert.match(web('public/js/07-admin.js'), /a\.ausgeloest \? tRaw\('detail\.alert_fired'\)/,
+  assert.match(web('public/js/02-detailfelder.js'), /a\.ausgeloest \? tRaw\('detail\.alert_fired'\)/,
     'Die Webapp zeigt den Merker nicht');
   assert.match(KT_SECT, /alarm\.ausgeloest\) R\.string\.detail_alert_fired/,
     'Die App zeigt den Merker nicht');
@@ -199,56 +192,36 @@ test('die Prüfung hängt am Ende des Preislaufs, nicht an jedem Preisabruf', ()
 });
 
 // ═══ Das Melden: die App fragt stündlich nach, die Webapp beim Öffnen ═══════
-//
-// Marcos Auftrag: „Ja gerne. Das Intervall aber bitte auf Stunde setzen."
-//
-// Echtes Push hiesse Firebase — ein Google-Projekt, eine Konfigurationsdatei
-// im Baum, und jede Meldung liefe über fremde Server. Für eine selbst
-// gehostete Sammlung ist das eine schwere Abhängigkeit für eine leichte
-// Nachricht, und sie kauft fast nichts: Der Preislauf läuft selbst stündlich.
+// Ausführlich: docs/begruendungen/test/preisalarm-beide.test.js.md#beide-holen-dieselbe-liste-beim-selben-e
 
 test('beide holen dieselbe Liste beim selben Endpunkt ab', () => {
   assert.match(web('routes/api_v1/sets.ts'), /router\.get\('\/alerts\/pending'/,
     'Der Endpunkt fehlt');
-  assert.match(web('public/js/07-admin.js'), /'\/v1\/alerts\/pending'/,
+  assert.match(web('public/js/02-detailfelder.js'), /['`]\/v1\/alerts\/pending['`$]/,
     'Die Webapp fragt nicht nach');
   assert.match(KT_API, /@GET\("api\/v1\/alerts\/pending"\)/,
     'Die App fragt nicht nach');
   // Und die Webapp fragt auch TATSÄCHLICH — ein Aufruf, den niemand aufruft,
   // ist genau die Sorte Halbfertiges, die hier schon zweimal stehen blieb.
+  // Ausführlich: docs/begruendungen/test/preisalarm-beide.test.js.md#stelle-3
   //
   // ohneKommentare(): Die Gegenprobe zu dieser Zeile blieb GRÜN. Über dem
   // Aufruf in showApp() steht seine Begründung, und darin kommt der Name
   // vor — die Prüfung fand also ihre eigene Erklärung und hätte auch einen
   // gelöschten Aufruf durchgehen lassen. Dieselbe Falle wie in
   // household.test.js und ratschen.test.js.
-  assert.match(require('./helpers/sources').ohneKommentare(web('public/js/01-core.js')),
+  assert.match(require('./helpers/sources').ohneKommentare(web('public/js/26-sitzung.js')),
     /zeigeOffeneAlarme/,
     'zeigeOffeneAlarme() wird beim Anmelden nicht aufgerufen');
 });
 
 test('beide fragen auch beim Nach-vorn-Kommen, nicht nur im Hintergrund', () => {
-  // ── Marcos Befund vom 25.09. ─────────────────────────────────────────────
-  //
-  //   „In der Android-App kommt trotz aktivem Preisalarm keine
-  //    notification."
-  //
-  // Abgeholt hat in der App AUSSCHLIESSLICH der stündliche Auftrag. Wer sie
-  // öffnete, erfuhr nichts — im schlechtesten Fall eine Stunde lang.
-  //
-  // Die Webapp machte es die ganze Zeit richtig (zeigeOffeneAlarme() beim
-  // Anmelden), und die Prüfung darüber hält genau das fest. Sie hat den
-  // Rückstand der App nur nicht gemeldet, weil sie nach der Webapp-Hälfte
-  // gefragt hat und nach der App-Hälfte nicht. Eine Regel über „beide" muss
-  // beide Richtungen kennen.
-  //
-  // Doppelte Meldungen kann das nicht geben: Dafür sorgt die Marke, nicht der
-  // Aufrufer — jeder Durchgang fragt „was hat seit `marke` ausgelöst?" und
-  // schreibt den Zeitpunkt des Servers zurück.
+  // Marcos Befund vom 25.09.
+  // Ausführlich: docs/begruendungen/test/preisalarm-beide.test.js.md#ohne
   const ohne = require('./helpers/sources').ohneKommentare;
 
   // Webapp: beim Anmelden (die Zeile selbst prüft die Regel darüber).
-  assert.match(ohne(web('public/js/01-core.js')), /zeigeOffeneAlarme/,
+  assert.match(ohne(web('public/js/26-sitzung.js')), /zeigeOffeneAlarme/,
     'Die Webapp fragt beim Anmelden nicht nach');
 
   // App: beim Nach-vorn-Kommen der Activity.
@@ -256,21 +229,21 @@ test('beide fragen auch beim Nach-vorn-Kommen, nicht nur im Hintergrund', () => 
   assert.match(act, /override fun onStart\(\)/,
     'Die App fragt nur noch im Hintergrund nach — wer sie öffnet, wartet bis zu einer Stunde.');
   const i = act.indexOf('override fun onStart()');
-  assert.match(act.slice(i, i + 400), /PreisalarmWorker\.durchgang\(/,
+  assert.match(act.slice(i, i + 400), /(?:PreisalarmWorker|preisalarme)\.durchgang\(/,
     'onStart() holt die ausgelösten Alarme nicht ab.');
 
   // onStart und nicht onCreate: onCreate läuft einmal je Activity. Wer die App
   // eine Woche liegen lässt und zurückkommt, durchläuft es NICHT — und genau
   // dann ist die Frage am interessantesten.
-  assert.ok(!/override fun onCreate[\s\S]{0,600}?PreisalarmWorker\.durchgang\(/.test(act),
+  assert.ok(!/override fun onCreate[\s\S]{0,600}?(?:PreisalarmWorker|preisalarme)\.durchgang\(/.test(act),
     'Der Abruf hängt an onCreate — dann trifft er das Zurückkommen aus dem Hintergrund nicht.');
 
   // Und der Rumpf steht EINMAL: Der stündliche Auftrag und der Abruf beim
   // Öffnen müssen dasselbe tun, sonst laufen sie auseinander.
-  assert.match(KT_WORKER, /suspend fun durchgang\(context: Context\)/,
+  assert.match(KT_WORKER, /suspend fun durchgang\((?:context: Context)?\)/,
     'Der gemeinsame Rumpf fehlt — dann steht das Abholen zweimal da.');
   const dw = KT_WORKER.slice(KT_WORKER.indexOf('override suspend fun doWork'));
-  assert.match(dw.slice(0, 300), /durchgang\(applicationContext\)/,
+  assert.match(dw.slice(0, 300), /durchgang\((?:applicationContext)?\)/,
     'doWork() benutzt den gemeinsamen Rumpf nicht.');
 });
 
@@ -282,7 +255,7 @@ test('die Marke kommt vom SERVER, nicht von der eigenen Uhr', () => {
   assert.match(web('src/finanzen/repository/preisalarme.ts'), /SELECT NOW\(\) AS jetzt/,
     'Der Server reicht seinen Zeitpunkt nicht mit');
 
-  const js = require('./helpers/sources').ohneKommentare(web('public/js/07-admin.js'));
+  const js = require('./helpers/sources').ohneKommentare(web('public/js/02-detailfelder.js'));
   const i = js.indexOf('export async function zeigeOffeneAlarme');
   assert.ok(i > 0, 'zeigeOffeneAlarme() nicht gefunden');
   const block = js.slice(i, js.indexOf('\nexport ', i + 10));
@@ -303,7 +276,7 @@ test('der erste Durchgang meldet NICHTS — in beiden', () => {
   // sind. Der Server liefert ohne `since` schon eine leere Liste; beide
   // Oberflächen sagen es trotzdem selbst, damit es im Code steht und nicht
   // nur als Nebenwirkung einer Serverantwort existiert.
-  const js = require('./helpers/sources').ohneKommentare(web('public/js/07-admin.js'));
+  const js = require('./helpers/sources').ohneKommentare(web('public/js/02-detailfelder.js'));
   const i = js.indexOf('export async function zeigeOffeneAlarme');
   assert.match(js.slice(i, js.indexOf('\nexport ', i + 10)), /if \(!marke\) return;/,
     'Die Webapp meldet beim ersten Besuch');
@@ -324,8 +297,13 @@ test('der Abruf der App steht auf einer Stunde und ist abschaltbar', () => {
     'Ein häufig geöffneter App verschiebt den Abruf endlos');
   // Der Schalter muss den Auftrag SOFORT einplanen und abbestellen — sonst
   // wäre „eingeschaltet" eine Stunde lang eine Behauptung ohne Wirkung.
-  assert.match(KT_EINST, /PreisalarmWorker\.einplanen\(context, neu\)/,
+  // Der Weg: Schalter → GeraeteEinstellungenViewModel → AlarmPlaner → Worker.
+  assert.match(KT_EINST, /PreisalarmCard\(an, geraet::alarmMeldungen\)/,
+    'Der Schalter meldet den Wunsch nicht an das ViewModel');
+  assert.match(KT_GERAET, /fun alarmMeldungen\(an: Boolean\)[\s\S]{0,200}?planer\.einplanen\(an\)/,
     'Der Schalter plant den Auftrag nicht ein');
+  assert.match(KT_PLANER, /PreisalarmWorker\.einplanen\(context, an\)/,
+    'Der AlarmPlaner plant den Auftrag nicht ein');
   // `return@runCatching` und nicht mehr `return`: einplanen() faengt seit dem
   // 25.09. selbst, weil derselbe Aufruf am Schalter ungesichert stand und die
   // App schloss (test/alarm-einplanen-faellt-nicht.test.js). Der Rumpf liegt
@@ -335,10 +313,8 @@ test('der Abruf der App steht auf einer Stunde und ist abschaltbar', () => {
   // Und beim Start wieder einplanen: WorkManager überlebt Neustarts, aber
   // nicht ein Zurücksetzen der App-Daten oder ein „Force Stop", nach dem
   // manche Hersteller die Aufträge verwerfen.
-  // Der Aufruf steht seit dem 25.09. über zwei Zeilen, weil er sein Ergebnis
-  // auswertet (einplanen() gibt den Fehler zurück, statt ihn zu werfen). Das
-  // Muster erlaubt den Umbruch deshalb ausdrücklich — geprüft wird, DASS beim
-  // Start wieder eingeplant wird, nicht wie der Aufruf umbricht.
+  // Der Aufruf steht seit dem 25.09. über zwei Zeilen, weil er sein Ergebnis …
+  // Ausführlich: docs/begruendungen/test/preisalarm-beide.test.js.md#stelle-4
   assert.match(KT_START, /PreisalarmWorker\s*\n?\s*\.einplanen\(this@BrickInventoryApp, true\)/,
     'Nach einem Zurücksetzen käme nie wieder eine Meldung');
 });
@@ -350,7 +326,7 @@ test('beide formulieren die Meldung gleich', () => {
   // jener Währung gesetzt, und 200 CHF sind nicht 200 EUR.
   assert.match(KT_ABHOL, /a\.currencyCode/, 'Die App nimmt nicht die Währung des Alarms');
   assert.match(KT_ABHOL, /"%\.2f"/, 'Die App rundet nicht auf zwei Stellen');
-  const js = web('public/js/07-admin.js');
+  const js = web('public/js/02-detailfelder.js');
   assert.match(js, /a\.currency_code/, 'Die Webapp nimmt nicht die Währung des Alarms');
   assert.match(js, /toFixed\(2\)/, 'Die Webapp rundet nicht auf zwei Stellen');
   // Dieselben zwei Richtungstexte wie im Detailfenster, nicht zwei neue.
@@ -377,17 +353,9 @@ test('die Benachrichtigung der App ist gepflegt und erklärt sich', () => {
 });
 
 test('der Alarm gilt für einen ZUSTAND, und der ist wählbar — in beiden', () => {
-  // ── Was hier vorher stand ─────────────────────────────────────────────────
-  //
-  // `const ALARM_ZUSTAND = 'N'` in beiden Oberflächen, mit der Begründung:
-  // „Die Oberfläche bietet vorerst den für NEU an … ein zweites Auswahlfeld
-  // hier ist dagegen eine Zeile."
-  //
-  // Server und Tabelle konnten es die ganze Zeit: `price_alerts` führt den
-  // Zustand im Schlüssel, und test/preisalarm-db.test.js prüft seit jeher
-  // „der Zustand trennt die Alarme". Nur wählen liess er sich nicht. Neu und
-  // gebraucht liegen oft um ein Vielfaches auseinander.
-  const js = require('./helpers/sources').ohneKommentare(web('public/js/07-admin.js'));
+  // Was hier vorher stand
+  // Ausführlich: docs/begruendungen/test/preisalarm-beide.test.js.md#js-stelle
+  const js = require('./helpers/sources').ohneKommentare(web('public/js/02-detailfelder.js'));
   assert.doesNotMatch(js, /const ALARM_ZUSTAND = /,
     'Die Webapp hat den Zustand wieder festgenagelt');
   // Der Anker ist gewandert: Das Markup lag inline im Set-Dialog und trug

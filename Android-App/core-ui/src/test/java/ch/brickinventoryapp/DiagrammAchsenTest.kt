@@ -13,11 +13,11 @@ import java.util.Locale
  * Die Achsen der Wertentwicklung folgen der App-Sprache statt der festen
  * Schweizer Form des Servers („03.10“, „CHF 1'234“).
  *
- * Gegenproben (01.11.2026, modbau/kotlinc):
+ * Gegenproben:
  *   A  lokaleAchse gibt `punkte` unverändert zurück → rot: die beiden Tagesfälle
  *      und „Monatsaufloesung zeigt Monat und Jahr“
  *   C  maximumFractionDigits = 2 in lokaleWerte → rot: „y-Achse ganze Beträge …“
- * Gegenproben (02.11.2026, kotlinc): Tagesbeschriftung wieder "MMM d" → rot
+ * Gegenproben: Tagesbeschriftung wieder "MMM d" → rot
  * „englisch Tag vor Monat wie jedes Datum“; mitWaehrungsAbstand in lokaleWerte
  * entfernt → rot „y-Achse ganze Beträge …“ („CHF1,234“).
  */
@@ -33,7 +33,7 @@ class DiagrammAchsenTest {
     @Test
     fun `englisch Tag vor Monat wie jedes Datum`() {
         val l = lokaleAchse(punkte, tage, Locale.forLanguageTag("en-GB")).map { it.xLabel }
-        assertEquals(listOf("03/10", "", "05/10"), l)
+        assertEquals(listOf("3 Oct", "", "5 Oct"), l)
     }
 
     @Test

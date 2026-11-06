@@ -1,0 +1,21 @@
+Gegenprobe: Das ViewModel reicht eine eigene Seitenquelle statt der eingespritzten
+Modul: feature-finanzen
+Test: ch.brickinventoryapp.PdfBetrachterViewModelTest
+Rot: eine Seite rendert die Seitenquelle
+
+diff --git a/Android-App/feature-finanzen/src/main/java/ch/brickinventoryapp/ui/viewmodel/PdfBetrachterViewModel.kt b/Android-App/feature-finanzen/src/main/java/ch/brickinventoryapp/ui/viewmodel/PdfBetrachterViewModel.kt
+index 01b8b6b..117f45d 100644
+--- a/Android-App/feature-finanzen/src/main/java/ch/brickinventoryapp/ui/viewmodel/PdfBetrachterViewModel.kt
++++ b/Android-App/feature-finanzen/src/main/java/ch/brickinventoryapp/ui/viewmodel/PdfBetrachterViewModel.kt
+@@ -32,9 +32,10 @@ import javax.inject.Inject
+ class PdfBetrachterViewModel @Inject constructor(
+     private val lader: PdfLader,
+     /** Rendert die Seiten für den Bildschirm; hier nur durchgereicht. */
+-    val seiten: PdfSeitenQuelle,
++    @Suppress("UNUSED_PARAMETER") eingespritzt: PdfSeitenQuelle,
+     @param:Dispatcher(BrickDispatchers.IO) private val io: CoroutineDispatcher,
+ ) : ViewModel() {
++    val seiten = PdfSeitenQuelle { _, _, _ -> null }
+ 
+     private val _state = MutableStateFlow<PdfLoadState>(PdfLoadState.Downloading(0, 0, 0))
+     val state: StateFlow<PdfLoadState> = _state.asStateFlow()

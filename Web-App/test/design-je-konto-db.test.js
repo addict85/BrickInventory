@@ -1,16 +1,7 @@
 /**
  * Design je Konto: Der Verwalter setzt die Vorgabe, jedes Konto darf sie
  * überschreiben — über den echten Router und die echte Datenbank.
- *
- *   - GET /api/v1/settings/theme liefert ohne Anmeldung die Vorgabe, mit
- *     Sitzung ODER Token (App) das Design des Kontos; `theme` bleibt der
- *     wirksame Wert, dazu `vorgabe` und `eigenes`.
- *   - POST /settings/user/theme setzt das eigene Design; leer löscht es, dann
- *     folgt das Konto wieder der Vorgabe (auch einem späteren Wechsel).
- *   - Ein unbekanntes Design wird abgewiesen.
- *   - /settings/raw und GET /api/v1/settings (App) nennen das wirksame Design.
- *   - Die ausgelieferte index.html trägt das Design des Kontos, ohne Konto
- *     die Vorgabe — auch für „noppe“ (vorher kannte sie nur classic/brick).
+ * Ausführlich: docs/begruendungen/test/design-je-konto-db.test.js.md#kopf
  *
  * Gegenproben (am 29.10.2026 gemessen):
  *   A  in designFuer `eigenes` immer null → rot: „Konto mit eigenem Design“
@@ -49,7 +40,7 @@ test('Design je Konto', { concurrency: 1 }, async (t) => {
   const ids = [];
   for (const n of namen) ids.push((await db.get(`INSERT INTO users (username, password_hash, is_active) VALUES ($1, 'x', true) RETURNING id`, [n])).id);
   const vorher = (await db.get(`SELECT value FROM global_settings WHERE key = 'app_theme'`))?.value ?? null;
-  const { setGlobalSetting } = _req('src/konto/settings.js');
+  const { setGlobalSetting } = _req('src/einstellungen/settings.js');
   await setGlobalSetting('app_theme', 'noppe');
   _req('src/konto/indexHtml.js').invalidateTheme();
   t.after(async () => {

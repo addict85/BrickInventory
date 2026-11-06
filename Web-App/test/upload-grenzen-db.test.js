@@ -17,6 +17,12 @@
  *      PDF-Auftrags darf grösser sein“ (413 statt 200)
  *   E  sein Limit auf alle Pfade (app.use statt app.post auf den Pfad) → rot:
  *      „… andere Routen nicht“ (200 statt 413)
+ * Gegenproben (04.11.2026 gemessen):
+ *   F  rumpfLesen wieder vor Sitzung und Eingang (server.ts) → rot: „ohne
+ *      Anmeldung wird kein Rumpf gelesen“ und „die Teileliste …“ (vor der
+ *      Sitzung gilt jede Anfrage als unangemeldet)
+ *   G  in rumpfLesen die 16-KB-Grenze für Unangemeldete gestrichen → rot:
+ *      „… und auf den Anmelderouten höchstens 16 KB“ (401 statt 413)
  *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL.
  */
@@ -30,19 +36,13 @@ const URL_DB = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhos
 process.env.DATABASE_URL = URL_DB;
 const ROOT = path.join(__dirname, '..');
 const _req = require('./helpers/sources').buildAndRequire();
+const { dbOderSkip } = require('./helpers/db');
 const db = _req('db/database.js');
-const warte = (ms) => new Promise(r => setTimeout(r, ms));
+const { warte } = require('./helpers/zeit');
 const freierPort = () => new Promise(r => { const s = net.createServer().listen(0, () => { const p = s.address().port; s.close(() => r(p)); }); });
 
 test('Grenzen beim Hochladen', { concurrency: 1, timeout: 180_000 }, async (t) => {
-  try { await db.initSchema(); }
-  catch (e) {
-    if (process.env.REQUIRE_DB === '1')
-      throw new Error(`REQUIRE_DB=1, aber die Test-DB ist nicht erreichbar: ${e.message}`);
-    t.skip('Test-DB nicht erreichbar'); return;
-  }
-  const c = await db.pool.connect();
-  try { await _req('db/migrate.js').runMigrations(c); } finally { c.release(); }
+  if (!await dbOderSkip(t, _req)) return;
 
   const NAME = `upload_${process.pid}`, SN = `UG${process.pid}-1`;
   await db.run('DELETE FROM users WHERE username = $1', [NAME]);
@@ -122,5 +122,24 @@ test('Grenzen beim Hochladen', { concurrency: 1, timeout: 180_000 }, async (t) =
 
   await t.test('… andere Routen nicht', async () => {
     assert.deepEqual(await json('/settings', { currency: 'EUR', ballast: teile }), { status: 413, code: 'anfrage_zu_gross' });
+  });
+
+  const anonym = async (pfad, rumpf) => {
+    const r = await fetch(`http://127.0.0.1:${port}/api/v1${pfad}`, { method: 'POST',
+      headers: { 'content-type': 'application/json' }, body: rumpf });
+    const j = await r.json().catch(() => null);
+    return { status: r.status, code: j?.code ?? null };
+  };
+
+  await t.test('ohne Anmeldung wird kein Rumpf gelesen', async () => {
+    // Kaputtes JSON: Gelesen gäbe es 400, ungelesen bleibt es bei der 401 des Eingangs.
+    assert.equal((await anonym('/sets/partslist-pdf', '{' + ' '.repeat(1024 * 1024))).status, 401);
+  });
+
+  await t.test('… und auf den Anmelderouten höchstens 16 KB', async () => {
+    // Der Ballast im Feld `label`: Ein unbekanntes Feld wäre vor der Anmeldung schon 400.
+    const mit = (n) => JSON.stringify({ username: 'niemand', password: 'x'.repeat(20), label: 'y'.repeat(n) });
+    assert.equal((await anonym('/auth/login', mit(10 * 1024))).status, 401, 'eine gewöhnliche Anmeldung passt');
+    assert.deepEqual(await anonym('/auth/login', mit(20 * 1024)), { status: 413, code: 'anfrage_zu_gross' });
   });
 });

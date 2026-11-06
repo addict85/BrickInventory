@@ -19,19 +19,31 @@ import javax.inject.Inject
  * und ein Nachladen der betroffenen Listen, wenn gesendet wurde — die lokale
  * Annahme wird so durch den Serverstand ersetzt.
  */
-class Ausgangsmelder @Inject constructor(
+interface Ausgangsmelder {
+    fun starte(scope: CoroutineScope): StateFlow<Int>
+}
+
+/** Für Tests ohne Hilt. */
+fun Ausgangsmelder(
+    ablage: Offlineablage,
+    bestand: Bestandssignal,
+    meldungen: MeldungsKanal,
+    texte: Texte,
+): Ausgangsmelder = AusgangsBeobachter(ablage, bestand, meldungen, texte)
+
+class AusgangsBeobachter @Inject constructor(
     private val ablage: Offlineablage,
     private val bestand: Bestandssignal,
     private val meldungen: MeldungsKanal,
     private val texte: Texte,
-) {
+) : Ausgangsmelder {
     /** Einmal je Prozess starten (AppViewModel); liefert die Zahl offener Änderungen. */
-    fun starte(scope: CoroutineScope): StateFlow<Int> {
+    override fun starte(scope: CoroutineScope): StateFlow<Int> {
         val offene = ablage.offene().stateIn(scope, SharingStarted.Eagerly, 0)
         scope.launch {
             var vorher = 0
             offene.collect { n ->
-                if (n > vorher) meldungen.fluss.value = texte.menge(R.plurals.offline_ausgang, n, n)
+                if (n > vorher) meldungen.zeige(texte.menge(R.plurals.offline_ausgang, n, n))
                 vorher = n
             }
         }
@@ -47,8 +59,8 @@ class Ausgangsmelder @Inject constructor(
                 val signale = e.arten.mapNotNull { signal(it) }.distinct()
                 if (signale.isNotEmpty()) bestand.melde(*signale.toTypedArray())
             }
-            is Abgleichsereignis.Verworfen -> meldungen.fluss.value = texte.text(R.string.offline_verworfen,
-                e.bearbeitung.ziel, e.meldung.ifBlank { texte.text(R.string.offline_verworfen_ohne_grund) })
+            is Abgleichsereignis.Verworfen -> meldungen.zeige(texte.text(R.string.offline_verworfen,
+                e.bearbeitung.ziel, e.meldung.ifBlank { texte.text(R.string.offline_verworfen_ohne_grund) }))
         }
     }
 
@@ -59,4 +71,9 @@ class Ausgangsmelder @Inject constructor(
         Bestandsart.FIGUREN, Bestandsart.MANUELLE_FIGUREN -> Aenderung.Figuren
         Bestandsart.GUTSCHEINE -> null
     }
+}
+
+/** Das Startbildschirm-Widget neu zeichnen; die App setzt es (AppModule), core-zustand kennt es nicht. */
+fun interface Widgetanstoss {
+    suspend fun aktualisiere()
 }

@@ -2,10 +2,7 @@
  * Eine frische Datenbank, aufgebaut wie beim ersten Start: Jede Kontospalte
  * hat einen Fremdschlüssel auf users, ein Konto lässt sich samt allem löschen,
  * und ein zweiter Start ändert am Schema nichts.
- *
- * Das Schema entsteht aus schema.sql, den Schritten in db/database.ts und den
- * Migrationen. Sieben Tabellen hatten so keinen Fremdschlüssel; beim Löschen
- * eines Kontos blieben ihre Zeilen stehen, bei den Erfassungen samt Kaufpreisen.
+ * Ausführlich: docs/begruendungen/test/schema-frisch-db.test.js.md#kopf
  *
  * Gegenproben (am 27.10. gemessen):
  *   A  Migration 0043 umbenannt in .sql.aus → rot: „jede Kontospalte hat einen
@@ -33,7 +30,8 @@ const path   = require('node:path');
 
 const ROOT = path.join(__dirname, '..');
 const BASIS = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
-const NAME = `schema_frisch_${process.pid}`;
+const { testName, raeumeReste, id } = require('./helpers/testnamen');
+const NAME = testName('schema_frisch');
 const ziel = new URL(BASIS); ziel.pathname = '/' + NAME;
 process.env.DATABASE_URL = ziel.toString();
 
@@ -65,8 +63,9 @@ test('frische Datenbank', { concurrency: 1, timeout: 180_000 }, async (t) => {
       throw new Error(`REQUIRE_DB=1, aber die Test-DB ist nicht erreichbar: ${e.message}`);
     t.skip('Test-DB nicht erreichbar'); return;
   }
-  await admin.query(`DROP DATABASE IF EXISTS ${NAME}`);
-  await admin.query(`CREATE DATABASE ${NAME}`);
+  await raeumeReste(admin, 'schema_frisch');
+  await admin.query(`DROP DATABASE IF EXISTS ${id(NAME)}`);
+  await admin.query(`CREATE DATABASE ${id(NAME)}`);
 
   const db = _req('db/database.js');
   // Derselbe Weg wie beim Serverstart: initSchema nur beim ersten Mal, die
@@ -74,7 +73,7 @@ test('frische Datenbank', { concurrency: 1, timeout: 180_000 }, async (t) => {
   const starte = () => db.initSchemaOnce();
   t.after(async () => {
     await db.pool.end().catch(() => {});
-    await admin.query(`DROP DATABASE IF EXISTS ${NAME}`).catch(() => {});
+    await admin.query(`DROP DATABASE IF EXISTS ${id(NAME)} WITH (FORCE)`).catch(() => {});
     await admin.end().catch(() => {});
   });
 

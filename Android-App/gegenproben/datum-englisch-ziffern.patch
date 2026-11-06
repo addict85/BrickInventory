@@ -1,0 +1,18 @@
+Gegenprobe: Englisches Datum wieder als Ziffern „01/08/2026“
+Modul: core-model
+Test: ch.brickinventoryapp.DatumFormatTest
+Rot: je Sprache eine Form wie im Web
+
+diff --git a/Android-App/core-model/src/main/java/ch/brickinventoryapp/util/DatumFormat.kt b/Android-App/core-model/src/main/java/ch/brickinventoryapp/util/DatumFormat.kt
+index 24c52ab..a458b9b 100644
+--- a/Android-App/core-model/src/main/java/ch/brickinventoryapp/util/DatumFormat.kt
++++ b/Android-App/core-model/src/main/java/ch/brickinventoryapp/util/DatumFormat.kt
+@@ -20,7 +20,7 @@ fun fmtDatum(iso: String?, locale: java.util.Locale, jahr: DatumJahr = DatumJahr
+     if (!(j + m + t).all { it.isDigit() }) return null
+     val jj = when (jahr) { DatumJahr.VOLL -> j; DatumJahr.KURZ -> j.takeLast(2); DatumJahr.OHNE -> "" }
+     return if (locale.language != "en") (if (jahr == DatumJahr.OHNE) "$t.$m." else "$t.$m.$jj")
+-    else englisch(t.toInt(), m.toInt(), jj, us = locale.country == "US")
++    else (if (jahr == DatumJahr.OHNE) "$t/$m" else "$t/$m/$jj")
+ }
+ 
+ /** Englisch mit Monatsnamen: „01/08/2026“ hiesse für US-Leser der 8. Januar. */

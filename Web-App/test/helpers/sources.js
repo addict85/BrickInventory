@@ -12,7 +12,8 @@ const ROOT = path.join(__dirname, '..', '..');
  *  Wer den Start meint, nimmt startQuelle(). */
 const serverOnly = () => fs.readFileSync(path.join(ROOT, 'server.ts'), 'utf8');
 
-const imgProxy = () => fs.readFileSync(path.join(ROOT, 'routes/imgProxy.ts'), 'utf8');
+const imgProxy = () => fs.readFileSync(path.join(ROOT, 'src/katalog/http/bildProxy.ts'), 'utf8')
+  + '\n' + fs.readFileSync(path.join(ROOT, 'routes/imgProxy.ts'), 'utf8');
 
 /** Server, Bild-Proxy und Vorschau-Weg: für „kommt X irgendwo vor". Die
  *  Reihenfolge über Dateigrenzen ist bedeutungslos — für indexOf-Vergleiche
@@ -77,24 +78,32 @@ function distIsFresh() {
   return distAt >= srcAt;
 }
 
+/** dist/ auf den Stand der Quellen bringen, ohne etwas daraus zu laden. */
+function baueDist() {
+  if (_built) return;
+  if (!distIsFresh()) {
+    const { execFileSync } = require('node:child_process');
+    execFileSync(process.execPath,
+      [path.join(ROOT, 'scripts', 'build-ts.js'), '--outdir', path.join(ROOT, 'dist')],
+      { stdio: 'ignore' });
+  }
+  _built = true;
+}
+
 function buildAndRequire() {
   // Jede Antwort einer Route mit Vertrag läuft in Tests durch ihr Schema (src/infra/vertrag/pruefen.ts).
   process.env.VERTRAG_PRUEFEN ??= '1';
-  if (!_built) {
-    if (!distIsFresh()) {
-      const { execFileSync } = require('node:child_process');
-      execFileSync(process.execPath,
-        [path.join(ROOT, 'scripts', 'build-ts.js'), '--outdir', path.join(ROOT, 'dist')],
-        { stdio: 'ignore' });
-    }
-    _built = true;
-  }
+  // Ohne NODE_ENV gelten die Regeln des Betriebs (Superuser-Verbot, APP_BASE_URL);
+  // die Test-DB läuft als Superuser, und gestartete Server erben diese Umgebung.
+  process.env.NODE_ENV ??= 'test';
+  baueDist();
   // Wie server.ts: Ohne Verdrahtung prüften Tests eine stumme Fassung der Nacharbeit.
   require(path.join(ROOT, 'dist', 'jobs/verdrahtung.js')).verdrahte();
   return rel => require(path.join(ROOT, 'dist', rel));
 }
 
 module.exports.buildAndRequire = buildAndRequire;
+module.exports.baueDist = baueDist;
 module.exports.DIST = path.join(ROOT, 'dist');
 
 /** Beide Sprachdateien zusammen: i18n.js allein liefert ein leeres I18N.
@@ -139,17 +148,18 @@ module.exports.ohneKommentare = ohneKommentare;
 function proxyThumbQuelle() {
   const path = require('path'), fs = require('fs');
   const ROOT = path.join(__dirname, '..', '..');
-  return ['routes/imgProxy.ts', 'src/katalog/bilder/proxyThumbs.ts', 'src/katalog/bilder/imgCacheServe.ts']
+  return ['src/katalog/http/bildProxy.ts', 'routes/imgProxy.ts', 'src/katalog/bilder/proxyThumbs.ts', 'src/katalog/bilder/imgCacheServe.ts']
     .map(dienstQuelle).join('\n');
 }
 module.exports.proxyThumbQuelle = proxyThumbQuelle;
 
-/** Die Oberfläche rund um Erfassungen: js/07-admin.js samt Kaufpreis-Modal und
- *  Detailfenstern. */
+/** Die Oberfläche rund um Erfassungen: Set-Detail, Kaufpreis-Modal, Detailfenster
+ *  und ihre Bausteine (Lagerort, Preisalarm, Diagramme, Rückfragen). */
 function adminQuelle() {
   const path = require('path'), fs = require('fs');
   const ROOT = path.join(__dirname, '..', '..');
-  return ['07-admin.js', '13-acquisition-modals.js']
+  return ['07-admin.js', '07-set-detail.js', '02-detailfelder.js', '01-diagramme.js', '01-rueckfrage.js',
+          '13-acquisition-modals.js', '13-kaufpreis-anzeige.js']
     .map(f => fs.readFileSync(path.join(ROOT, 'public', 'js', f), 'utf8'))
     .join('\n');
 }
@@ -170,7 +180,7 @@ function setKernQuelle() {
 module.exports.setKernQuelle = setKernQuelle;
 
 /** Die Leseabfragen je Fachbereich als EIN Quelltext. */
-const HANDLER_MODULE = ['src/bestand/gemeinsam', 'src/teile/abfragen', 'src/sets/abfragen',
+const HANDLER_MODULE = ['src/bestand/gemeinsam', 'src/haushalt/haushalt', 'src/teile/abfragen', 'src/sets/abfragen',
   'src/figuren/abfragen', 'src/bestand/kennzahlen'];
 function handlerQuelle() {
   const path = require('path'), fs = require('fs');
@@ -225,8 +235,9 @@ function coreQuelle() {
   const dir = path.join(__dirname, '..', '..', 'public', 'js');
   // 00-escapen.js VORNE: esc() gehört zur Grundausstattung, und
   // test/frontend-escaping.test.js schneidet seinen Sandkasten ab `function esc(s)`.
-  return ['00-escapen.js', '01-core.js', '01-fortschritt.js', '01-monitor.js',
-          '14-scope.js', '15-scrollbar.js']
+  return ['00-escapen.js', '00-zustand.js', '00-ereignisse.js', '01-dom.js', '01-format.js', '01-meldungen.js',
+          '01-verbindung.js', '01-api.js', '01-bilder.js', '01-formular.js', '01-konto.js', '01-fortschritt.js',
+          '01-monitor.js', '14-scope.js', '15-scrollbar.js', '26-sitzung.js']
     .map(f => fs.readFileSync(path.join(dir, f), 'utf8')).join('\n');
 }
 module.exports.coreQuelle = coreQuelle;
@@ -238,7 +249,8 @@ module.exports.coreQuelle = coreQuelle;
  * @returns {string} z.B. "function f(a, b: string | null = null)"
  */
 function funktionsKopf(src, name) {
-  const i = src.indexOf(`function ${name}(`);
+  // Auch mit Typparametern (`function f<T>(`).
+  const i = Math.max(src.indexOf(`function ${name}(`), src.indexOf(`function ${name}<`));
   if (i < 0) throw new Error(`Funktion ${name} gibt es nicht (mehr)`);
   let depth = 0;
   for (let j = src.indexOf('(', i); j < src.length; j++) {
@@ -305,7 +317,8 @@ module.exports.pruefeParameter = pruefeParameter;
  * @returns [{ mount: '/api/v1/sets', datei: '<abs>/routes/sets.ts', name: 'sets' }]
  *          ohne routes/api_v1/* — das ist der Index selbst.
  */
-function routerEinhaengungen() {
+/** @param {{ ohneTeile?: boolean }} [o] ohneTeile: nur die eingehängten Module, nicht die Dateien eines Zusammenbaus */
+function routerEinhaengungen(o = {}) {
   const src = ohneKommentare(fs.readFileSync(path.join(ROOT, 'server.ts'), 'utf8'));
   // `import xRouter = require('./routes/x')` oben, `app.use('/api/…', xRouter)` unten.
   const dateiJeName = new Map([...src.matchAll(/import\s+(\w+)\s*=\s*require\(\s*['"]\.\/(routes\/[^'"]+)['"]\s*\)/g)]
@@ -316,6 +329,12 @@ function routerEinhaengungen() {
     if (!datei || datei.startsWith('routes/api_v1')) continue;
     out.push({ mount: m[1].replace(/\/+$/, ''), datei: path.join(ROOT, datei + '.ts'),
                name: datei.replace(/^routes\//, '') });
+    // Ein Zusammenbau (routes/auth.ts) hängt seine Teile unter derselben Adresse ein.
+    const teile = path.join(ROOT, datei);
+    if (!o.ohneTeile && fs.existsSync(teile) && fs.statSync(teile).isDirectory())
+      for (const n of fs.readdirSync(teile).filter(n => n.endsWith('.ts')).sort())
+        out.push({ mount: m[1].replace(/\/+$/, ''), datei: path.join(teile, n),
+                   name: `${datei.replace(/^routes\//, '')}/${n.replace(/\.ts$/, '')}` });
   }
   return out;
 }
@@ -422,7 +441,9 @@ function v1Routen() {
   };
   for (const f of fs.readdirSync(path.join(ROOT, 'routes/api_v1')).filter(f => f.endsWith('.ts')))
     lies(`routes/api_v1/${f}`, '/api/v1');
-  lies('routes/auth.ts', '/api/v1/auth');
+  // Die in server.ts eingehängten Router (auth samt Teilen, gesundheit).
+  for (const r of routerEinhaengungen().filter(r => r.mount.startsWith('/api/v1')))
+    lies(path.relative(ROOT, r.datei), r.mount);
   lies('server.ts', '');
   return gefunden.filter(([, p]) => p.startsWith('/api/v1'));
 }
@@ -455,3 +476,31 @@ function dienstQuelle(rel) {
   return [s, ...[...repos].map(r => fs.readFileSync(path.join(ROOT, r), 'utf8'))].join('\n');
 }
 module.exports.dienstQuelle = dienstQuelle;
+
+/** Alle Quellen der Oberfläche (public/js ohne Bündel, dazu i18n.js) als EIN
+ *  Text: für Prüfungen, die nicht an der Datei hängen sollen, in der eine
+ *  Funktion gerade steht. */
+function frontendQuelle() {
+  const path = require('path'), fs = require('fs');
+  const pub = path.join(__dirname, '..', '..', 'public');
+  return [...fs.readdirSync(path.join(pub, 'js')).filter(f => /^\d\d-.*\.js$/.test(f)).sort().map(f => path.join(pub, 'js', f)),
+          path.join(pub, 'i18n.js')].map(f => fs.readFileSync(f, 'utf8')).join('\n');
+}
+module.exports.frontendQuelle = frontendQuelle;
+
+/** Die Anmelderouten: routes/auth.ts setzt sie aus routes/auth/*.ts zusammen. */
+function anmeldeQuelle() {
+  const teile = fs.readdirSync(path.join(ROOT, 'routes', 'auth')).filter(n => n.endsWith('.ts')).sort();
+  return ['routes/auth.ts', ...teile.map(n => `routes/auth/${n}`)]
+    .map(f => fs.readFileSync(path.join(ROOT, f), 'utf8')).join('\n');
+}
+module.exports.anmeldeQuelle = anmeldeQuelle;
+
+/** Alle Dateien einer Ansicht (z. B. '05' für 05-*.js) als EIN Text: Wird eine Ansicht geteilt, bleibt die Prüfung gleich. */
+function ansichtQuelle(/** @type {string} */ nummer) {
+  const js = path.join(ROOT, 'public', 'js');
+  const teile = fs.readdirSync(js).filter(f => f.startsWith(nummer + '-') && f.endsWith('.js')).sort();
+  if (!teile.length) throw new Error(`ansichtQuelle(${nummer}): keine Datei gefunden`);
+  return teile.map(f => fs.readFileSync(path.join(js, f), 'utf8')).join('\n');
+}
+module.exports.ansichtQuelle = ansichtQuelle;

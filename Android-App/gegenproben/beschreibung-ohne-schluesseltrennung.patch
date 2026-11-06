@@ -1,0 +1,18 @@
+Gegenprobe: kennt die App einen Beschreibungsschlüssel, gilt die Signatur mit dem APK-Schlüssel trotzdem (keine Schlüsseltrennung, Stand vor sec11 H1)
+Modul: core-data
+Test: ch.brickinventoryapp.UpdateSignaturTest
+Rot: kennt die App einen Beschreibungsschluessel, gilt die APK-Signatur nicht mehr
+
+diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/util/UpdateSignatur.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/util/UpdateSignatur.kt
+index f0aa601..9abb438 100644
+--- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/util/UpdateSignatur.kt
++++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/util/UpdateSignatur.kt
+@@ -35,7 +35,7 @@ data class SignierteBeschreibung(
+ fun gepruefteBeschreibung(roh: String, zertifikate: List<ByteArray>, schluessel: List<ByteArray>): UpdateBeschreibung? {
+     val huelle = runCatching { beschreibungsJson.decodeFromString<SignierteBeschreibung>(roh) }.getOrNull() ?: return null
+     val daten = runCatching { Base64.getDecoder().decode(huelle.daten) }.getOrNull() ?: return null
+-    val echt = if (schluessel.isNotEmpty()) {
++    val echt = if (schluessel.isNotEmpty() && huelle.signatur.isEmpty()) {
+         val signatur = runCatching { Base64.getDecoder().decode(huelle.beschreibungssignatur) }.getOrNull() ?: return null
+         schluessel.any { beschreibungsSignaturGilt(daten, signatur, it) }
+     } else {

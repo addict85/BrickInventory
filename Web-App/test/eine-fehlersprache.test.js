@@ -1,25 +1,6 @@
 /**
  * Der Server antwortet in der Sprache, die der Anfragende ZEIGT.
- *
- * ── Der Befund (Nachtrag 130) ───────────────────────────────────────────────
- *
- * Beide Oberflächen sind zweisprachig — die Webapp mit 724 Übersetzungszeilen,
- * die Android-App mit 452 Texten. Der Server, der sie füttert, sprach nur
- * Deutsch: GEMESSEN 125 Stellen mit fester Zeichenkette, 80 verschiedene Texte,
- * davon 54 eindeutig deutsch. Und beide Clients zeigen sie unverändert an.
- *
- * Ein englischsprachiger Nutzer hatte damit eine vollständig englische
- * Oberfläche — bis etwas schiefging.
- *
- * ── Was hier geprüft wird ───────────────────────────────────────────────────
- *
- * GESUCHT, nicht aufgezählt: Jede `.ts` unter routes/ und utils/ wird gelesen.
- * Wer eine feste Zeichenkette als `error:` verschickt, steht in ERLAUBT — mit
- * dem Grund. Eine neue Route erbt die Regel damit von selbst.
- *
- * Und: Jeder Eintrag der Tabelle muss BEIDE Sprachen haben, und die
- * Platzhalter müssen in beiden dieselben sein — sonst steht in der einen
- * Sprache ein `{name}` auf dem Bildschirm.
+ * Ausführlich: docs/begruendungen/test/eine-fehlersprache.test.js.md#kopf
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -39,27 +20,8 @@ const ERLAUBT = {
     'unterscheidet — wird nirgends angezeigt.',
 };
 
-// ── Drei Eintraege standen hier und beschrieben nichts mehr ─────────────────
-//
-// Nachgemessen, nicht vermutet: Die neue Pruefung am Ende des Tests belegt
-// fuer jeden Eintrag, dass er wirklich einen Treffer verdeckt. Diese drei
-// taten es nicht:
-//
-//   src/infra/fehlerTexte.ts       „Die Tabelle selbst." — die Tabelle fuehrt
-//                              ihre Texte als `{ de: '…', en: '…' }`, nie als
-//                              `error: '…'`. Der Eintrag nahm ausgerechnet
-//                              die Datei mit ALLEN Fehlertexten von der
-//                              Pruefung aus, ohne je gebraucht zu werden.
-//   jobs/csvImportWorker.ts    schickt `error: \`Unbekannte Aufgabe: …\`` —
-//                              mit Backtick, und Backticks sieht das Muster
-//                              bewusst nicht (siehe unten).
-//   routes/api_v1/admin.ts     schickt `error: 'timeout'`; das faellt schon
-//                              durch den Filter „nur Kleinbuchstaben ist kein
-//                              Satz".
-//
-// Die Begruendungen waren nicht falsch, sie waren nur gegenstandslos. Und ein
-// gegenstandsloser Eintrag ist gefaehrlicher als keiner: Er nimmt die Datei
-// dauerhaft aus der Pruefung, auch fuer alles, was spaeter dazukommt.
+// Drei Eintraege standen hier und beschrieben nichts mehr
+// Ausführlich: docs/begruendungen/test/eine-fehlersprache.test.js.md#stelle
 
 /** Alle .ts unter den angegebenen Ordnern, auch in Unterordnern. */
 function tsDateien(dir, praefix = '') {
@@ -90,9 +52,8 @@ test('keine Route verschickt einen festen Fehlersatz', () => {
     // KEIN Backtick und KEIN Zeilenumbruch im Text: Der erste Entwurf nahm
     // beides und lief damit über Zeilenenden hinweg — er meldete sechs Stellen,
     // an denen `error:` mitten in einem PROTOKOLLTEXT steht
-    // (`console.error(\`[pdf] error: \`, e.message)`). Sechs Fehlalarme für
-    // null echte Funde; genau die Sorte Prüfung, die abgeschaltet statt
-    // befolgt wird.
+    // (`console.error(\`[pdf] error: \`, e.message)`). Sechs Fehlalarme für …
+    // Ausführlich: docs/begruendungen/test/eine-fehlersprache.test.js.md#for-stelle
     for (const m of src.matchAll(/error:\s*(['"])((?:[^\\\n]|\\.)*?)\1/g)) {
       const text = m[2];
       // Variablen und leere Werte sind keine Sätze.
@@ -157,9 +118,9 @@ test('jeder Eintrag der Tabelle hat beide Sprachen und dieselben Platzhalter', (
 test('beide Oberflächen sagen dem Server, welche Sprache sie zeigen', () => {
   // Ohne diesen Kopf nützt die Tabelle nichts — der Server fiele auf Deutsch
   // zurück, und alles oben wäre wirkungslos.
-  const web = fs.readFileSync(path.join(ROOT, 'public', 'js', '01-core.js'), 'utf8');
+  const web = fs.readFileSync(path.join(ROOT, 'public', 'js', '01-api.js'), 'utf8');
   assert.match(web, /'Accept-Language'\s*:\s*LANG/,
-    'Die Webapp schickt Accept-Language nicht mit (public/js/01-core.js, api()).');
+    'Die Webapp schickt Accept-Language nicht mit (public/js/01-api.js, api()).');
 
   const app = fs.readFileSync(
     path.join(__dirname, '..', '..', 'Android-App', 'core-data', 'src', 'main', 'java', 'ch', 'brickinventoryapp', 'di', 'ServerClient.kt'), 'utf8');

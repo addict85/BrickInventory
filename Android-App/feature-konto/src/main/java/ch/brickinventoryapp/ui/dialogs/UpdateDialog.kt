@@ -2,37 +2,37 @@ package ch.brickinventoryapp.ui.dialogs
 
 // Sammel-Importe wie in den Nachbardialogen (BarcodeResultDialog.kt,
 // SetPruefungDialog.kt) — siehe die Begruendung dort.
+import ch.brickinventoryapp.ui.UpdateUiState
+import ch.brickinventoryapp.ui.viewmodel.UpdateAktionen
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import ch.brickinventoryapp.ressourcen.R
 import ch.brickinventoryapp.ui.theme.Abstaende
 import ch.brickinventoryapp.ui.viewmodel.UpdateViewModel
+import ch.brickinventoryapp.ui.components.LocalAppFassung
+import ch.brickinventoryapp.ui.components.Ueberdeckungsschutz
+import ch.brickinventoryapp.util.erlaubnisAbsicht
 
 /**
  * „Es gibt eine neue Fassung — jetzt aktualisieren?“ Ein Dialog beim Start, weil
  * ein Punkt am Konto-Symbol leicht übersehen wird. Geladen wird trotzdem nie von
  * allein: Der Dialog fragt, der Ladevorgang beginnt erst auf „Jetzt aktualisieren“
  * — fragen ist nicht automatisch handeln.
- *
- * Er bleibt offen, während geladen wird: Wer hier „Ja“ sagt, hat den Vorgang hier
- * angestossen; der Fortschritt stünde sonst nur in den Einstellungen, wo dieser
- * Nutzer gerade nicht ist. Er begleitet den Weg: fragen, laden, installieren
- * lassen.
- *
- * Er erscheint nicht, solange nichts gefunden wurde, und nicht mehr nach „Später“
- * (für diesen App-Lauf, siehe UpdateUiState.dialogAbgelehnt). Während des Ladens
- * schliesst ihn kein Tippen daneben — ein halb geladenes APK ohne sichtbaren
- * Vorgang wäre schlechter als ein Dialog, der stehen bleibt.
+ * Ausführlich: docs/begruendungen/feature-konto/ui/dialogs/UpdateDialog.kt.md#updateroute
  */
 @Composable
-fun UpdateDialog(selbstUpdate: UpdateViewModel) {
+fun UpdateRoute(selbstUpdate: UpdateViewModel) {
     val zustand by selbstUpdate.updateState.collectAsStateWithLifecycle()
+    UpdateDialog(zustand, selbstUpdate)
+}
+
+@Composable
+fun UpdateDialog(zustand: UpdateUiState, selbstUpdate: UpdateAktionen) {
     val neuere = zustand.neuereFassung ?: return
     if (zustand.dialogAbgelehnt) return
     val ctx = LocalContext.current
@@ -45,10 +45,10 @@ fun UpdateDialog(selbstUpdate: UpdateViewModel) {
         onDismissRequest = { if (!laedt) schliessen() },
         title = { Text(stringResource(R.string.update_dialog_title)) },
         text = {
-            ch.brickinventoryapp.ui.components.Ueberdeckungsschutz()
+            Ueberdeckungsschutz()
             Column {
                 Text(stringResource(R.string.update_dialog_text,
-                    neuere.versionName, ch.brickinventoryapp.ui.components.LocalAppFassung.current.name))
+                    neuere.versionName, LocalAppFassung.current.name))
                 zustand.fortschritt?.let { p ->
                     Spacer(Modifier.height(Abstaende.mittel))
                     Text(stringResource(R.string.update_downloading, p),
@@ -77,7 +77,7 @@ fun UpdateDialog(selbstUpdate: UpdateViewModel) {
                 // Die Systemerlaubnis fehlt: Der einzige Knopf, der jetzt
                 // weiterhilft, fuehrt in die Systemeinstellungen.
                 zustand.erlaubnisFehlt -> TextButton(onClick = {
-                    ctx.startActivity(ch.brickinventoryapp.util.erlaubnisAbsicht(ctx))
+                    ctx.startActivity(erlaubnisAbsicht(ctx))
                 }) { Text(stringResource(R.string.update_permission_grant)) }
                 // Liegt schon auf der Platte (etwa weil der System-Installer
                 // abgebrochen wurde): nicht noch einmal laden.

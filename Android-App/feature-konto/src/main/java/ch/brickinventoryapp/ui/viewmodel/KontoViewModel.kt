@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.ui.viewmodel
 
+import ch.brickinventoryapp.data.model.Fehlercode
 import ch.brickinventoryapp.ui.model.alsAnsicht
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -7,13 +8,13 @@ import ch.brickinventoryapp.ressourcen.R
 import ch.brickinventoryapp.data.MeldungsKanal
 import ch.brickinventoryapp.data.model.ProfilAenderung
 import ch.brickinventoryapp.data.repository.KontoRepository
-import ch.brickinventoryapp.data.repository.Result
+import ch.brickinventoryapp.data.repository.Ergebnis
 import ch.brickinventoryapp.ui.model.alsGeraet
 import ch.brickinventoryapp.ui.DesignWahl
 import ch.brickinventoryapp.ui.GeraeteUiState
 import ch.brickinventoryapp.ui.KontoUiState
 import ch.brickinventoryapp.ui.Sitzung
-import ch.brickinventoryapp.ui.setzeDesign
+import ch.brickinventoryapp.ui.SitzungsRepository
 import ch.brickinventoryapp.ui.ZweiterFaktorUiState
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -21,6 +22,8 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
+import ch.brickinventoryapp.data.model.AppThemeResponse
+import ch.brickinventoryapp.util.otpauthAdresse
 
 /**
  * Das eigene Konto: Profil, Passwort, angemeldete Geräte, zweiter Faktor.
@@ -33,8 +36,9 @@ import javax.inject.Inject
 class KontoViewModel @Inject constructor(
     private val konto: KontoRepository,
     private val texte: Texte,
-    meldungen: MeldungsKanal,
+    private val meldungen: MeldungsKanal,
     private val sitzung: Sitzung,
+    private val sitzungsDienst: SitzungsRepository,
 ) : ViewModel() {
 
     private val _kontoState = MutableStateFlow(KontoUiState())
@@ -44,20 +48,23 @@ class KontoViewModel @Inject constructor(
     private val _zweiterFaktorState = MutableStateFlow(ZweiterFaktorUiState())
     val zweiterFaktorState = _zweiterFaktorState.asStateFlow()
 
-    private val _snackbar = meldungen.fluss
-
     // ── Profil und Passwort ──────────────────────────────────────────────────
 
     fun ladeProfil() {
         viewModelScope.launch {
             _kontoState.update { it.copy(laedt = true, fehler = null) }
-            when (val r = konto.getProfil()) {
-                is Result.Success -> _kontoState.update {
-                    it.copy(laedt = false, profil = r.data.user?.alsAnsicht(),
-                            fehler = if (r.data.user == null) r.data.error ?: texte.text(R.string.err_generic) else null)
-                }
-                is Result.Error -> _kontoState.update { it.copy(laedt = false, fehler = texte.meldung(r)) }
+            holeProfil()
+        }
+    }
+
+    /** Lässt einen Fehler stehen, den das Speichern davor gesetzt hat (Mail nicht gesendet). */
+    private suspend fun holeProfil() {
+        when (val r = konto.getProfil()) {
+            is Ergebnis.Success -> _kontoState.update {
+                it.copy(laedt = false, profil = r.data.user?.alsAnsicht(),
+                        fehler = if (r.data.user == null) r.data.error ?: texte.text(R.string.err_generic) else it.fehler)
             }
+            is Ergebnis.Error -> _kontoState.update { it.copy(laedt = false, fehler = texte.meldung(r)) }
         }
     }
 
@@ -65,6 +72,11 @@ class KontoViewModel @Inject constructor(
         benutzername: String, email: String, vorname: String, nachname: String, passwort: String? = null,
         code: String? = null,
     ) {
+        // Der Server verlangt das Passwort für jede Profiländerung; ohne es gar nicht erst fragen.
+        if (passwort.isNullOrBlank()) {
+            _kontoState.update { it.copy(fehler = texte.text(R.string.konto_profil_password_needed), meldung = null) }
+            return
+        }
         viewModelScope.launch {
             _kontoState.update { it.copy(speichert = true, fehler = null, meldung = null) }
             val aenderung = ProfilAenderung(
@@ -73,20 +85,30 @@ class KontoViewModel @Inject constructor(
                 // Leer heisst „nicht angegeben", nicht „leerer Vorname".
                 firstName = vorname.trim().ifBlank { null },
                 lastName = nachname.trim().ifBlank { null },
-                passwordCurrent = passwort?.ifBlank { null },
+                passwordCurrent = passwort,
                 code = code?.trim()?.ifBlank { null },
             )
             when (val r = konto.updateProfil(aenderung)) {
-                is Result.Success ->
+                is Ergebnis.Success ->
                     if (r.data.success) {
-                        _kontoState.update { it.copy(speichert = false, codeNoetig = false, meldung = texte.text(R.string.konto_saved)) }
+                        // Eine neue Adresse gilt erst nach dem Link: „gespeichert“ allein liesse
+                        // glauben, sie gelte schon, und ohne Mail wartet sie umsonst.
+                        val neueAdresse = r.data.emailChanged == true
+                        val ohneMail = neueAdresse && r.data.emailSent != true
+                        _kontoState.update { it.copy(speichert = false, codeNoetig = false,
+                            meldung = when {
+                                ohneMail -> null
+                                neueAdresse -> texte.text(R.string.konto_email_link_gesendet, aenderung.email)
+                                else -> texte.text(R.string.konto_saved)
+                            },
+                            fehler = if (ohneMail) texte.text(R.string.konto_email_nicht_gesendet) else null) }
                         // Neu holen: Der Server normalisiert, die Karte zeigt seinen Stand.
-                        ladeProfil()
+                        holeProfil()
                     } else {
                         _kontoState.update { it.copy(speichert = false,
                             fehler = r.data.error ?: texte.text(R.string.err_generic)) }
                     }
-                is Result.Error -> abgelehnt(r)
+                is Ergebnis.Error -> abgelehnt(r)
             }
         }
     }
@@ -96,30 +118,30 @@ class KontoViewModel @Inject constructor(
      * Code. Fehlt er, merkt sich der Zustand das; die Oberfläche zeigt das Feld,
      * und die nächste Anfrage trägt ihn mit. Ein falscher Code lässt das Feld stehen.
      */
-    private fun abgelehnt(r: Result.Error) = _kontoState.update {
+    private fun abgelehnt(r: Ergebnis.Error) = _kontoState.update {
         it.copy(speichert = false, fehler = texte.meldung(r),
-            codeNoetig = it.codeNoetig || r.code == "zweiter_faktor_noetig" || r.code == "zweiter_faktor_falsch")
+            codeNoetig = it.codeNoetig || r.code == Fehlercode.ZWEITER_FAKTOR_NOETIG || r.code == Fehlercode.ZWEITER_FAKTOR_FALSCH)
     }
 
     /**
      * Passwort ändern. Der Server verwirft danach ALLE Token des Kontos, auch
-     * diesen; [abmelden] geht deshalb den vollen Abmeldeweg der App. Die
+     * diesen; deshalb geht es danach den vollen Abmeldeweg der App. Die
      * Erklärung kommt in den Snackbar — die Kontokarte ist danach weg.
      */
-    fun aenderePasswort(aktuell: String, neu: String, code: String? = null, abmelden: () -> Unit) {
+    fun aenderePasswort(aktuell: String, neu: String, code: String? = null) {
         viewModelScope.launch {
             _kontoState.update { it.copy(speichert = true, fehler = null, meldung = null) }
             when (val r = konto.changePassword(aktuell, neu, code?.trim()?.ifBlank { null })) {
-                is Result.Success ->
+                is Ergebnis.Success ->
                     if (r.data.success) {
-                        abmelden()
-                        _snackbar.value = texte.text(R.string.konto_password_changed)
+                        sitzungsDienst.abmelden()
+                        meldungen.zeige(texte.text(R.string.konto_password_changed))
                         _kontoState.value = KontoUiState()
                     } else {
                         _kontoState.update { it.copy(speichert = false,
                             fehler = r.data.error ?: texte.text(R.string.err_generic)) }
                     }
-                is Result.Error -> abgelehnt(r)
+                is Ergebnis.Error -> abgelehnt(r)
             }
         }
     }
@@ -130,7 +152,7 @@ class KontoViewModel @Inject constructor(
     fun ladeDesign() {
         viewModelScope.launch {
             val r = konto.getAppTheme()
-            if (r is Result.Success && r.data.success) _kontoState.update { it.copy(design = designWahl(r.data)) }
+            if (r is Ergebnis.Success && r.data.success) _kontoState.update { it.copy(design = designWahl(r.data)) }
         }
     }
 
@@ -141,18 +163,18 @@ class KontoViewModel @Inject constructor(
     fun waehleDesign(eigenes: String) {
         viewModelScope.launch {
             when (val r = konto.setzeEigenesDesign(eigenes)) {
-                is Result.Success ->
+                is Ergebnis.Success ->
                     if (r.data.success) {
                         sitzung.setzeDesign(r.data.theme)
                         _kontoState.update { it.copy(design = designWahl(r.data), fehler = null) }
                     } else _kontoState.update { it.copy(fehler = r.data.error ?: texte.text(R.string.err_generic)) }
-                is Result.Error -> _kontoState.update { it.copy(fehler = texte.meldung(r)) }
+                is Ergebnis.Error -> _kontoState.update { it.copy(fehler = texte.meldung(r)) }
             }
         }
     }
 
     /** Ohne `vorgabe` ist der Server älter und kennt kein Design je Konto: dann keine Auswahl. */
-    private fun designWahl(a: ch.brickinventoryapp.data.model.AppThemeResponse) =
+    private fun designWahl(a: AppThemeResponse) =
         a.vorgabe?.let { DesignWahl(a.theme, it, a.eigenes) }
 
     /** Meldung/Fehler der Kontokarte wegräumen, wenn der Nutzer weitertippt. */
@@ -164,10 +186,10 @@ class KontoViewModel @Inject constructor(
         viewModelScope.launch {
             _geraeteState.update { it.copy(laedt = true, fehler = null) }
             when (val r = konto.getTokens()) {
-                is Result.Success ->
+                is Ergebnis.Success ->
                     if (r.data.success) _geraeteState.update { it.copy(laedt = false, geraete = r.data.tokens.map { it.alsGeraet() }, fehler = null) }
                     else _geraeteState.update { it.copy(laedt = false, fehler = r.data.error) }
-                is Result.Error -> _geraeteState.update { it.copy(laedt = false, fehler = texte.meldung(r)) }
+                is Ergebnis.Error -> _geraeteState.update { it.copy(laedt = false, fehler = texte.meldung(r)) }
             }
         }
     }
@@ -176,12 +198,12 @@ class KontoViewModel @Inject constructor(
         viewModelScope.launch {
             _geraeteState.update { it.copy(laedt = true, fehler = null) }
             when (val r = konto.revokeToken(tokenId)) {
-                is Result.Success -> {
+                is Ergebnis.Success -> {
                     // deleted = 0: schon weg (anderes Gerät war schneller) — die Liste stimmt danach wieder.
-                    _snackbar.value = texte.text(if (r.data.deleted > 0) R.string.tokens_revoked else R.string.tokens_already_gone)
+                    meldungen.zeige(texte.text(if (r.data.deleted > 0) R.string.tokens_revoked else R.string.tokens_already_gone))
                     ladeGeraete()
                 }
-                is Result.Error -> _geraeteState.update { it.copy(laedt = false, fehler = texte.meldung(r)) }
+                is Ergebnis.Error -> _geraeteState.update { it.copy(laedt = false, fehler = texte.meldung(r)) }
             }
         }
     }
@@ -198,11 +220,11 @@ class KontoViewModel @Inject constructor(
                 return@launch
             }
             val andere = liste.filter { !it.aktuell }
-            if (andere.isEmpty()) { _snackbar.value = texte.text(R.string.tokens_no_others); return@launch }
+            if (andere.isEmpty()) { meldungen.zeige(texte.text(R.string.tokens_no_others)); return@launch }
             _geraeteState.update { it.copy(laedt = true, fehler = null) }
             var weg = 0
-            for (g in andere) if (((konto.revokeToken(g.tokenId) as? Result.Success)?.data?.deleted ?: 0) > 0) weg++
-            _snackbar.value = texte.menge(R.plurals.tokens_revoked_n, weg, weg)
+            for (g in andere) if (((konto.revokeToken(g.tokenId) as? Ergebnis.Success)?.data?.deleted ?: 0) > 0) weg++
+            meldungen.zeige(texte.menge(R.plurals.tokens_revoked_n, weg, weg))
             ladeGeraete()
         }
     }
@@ -214,7 +236,7 @@ class KontoViewModel @Inject constructor(
     }
 
     fun richteZweitenFaktorEin(passwort: String) = zweiterFaktor({ konto.zweiterFaktorEinrichten(passwort) }) { s, d ->
-        s.copy(geheimnis = d.geheimnis, otpauth = ch.brickinventoryapp.util.otpauthAdresse(d.otpauth))
+        s.copy(geheimnis = d.geheimnis, otpauth = otpauthAdresse(d.otpauth))
     }
 
     fun bestaetigeZweitenFaktor(code: String) =
@@ -236,18 +258,18 @@ class KontoViewModel @Inject constructor(
 
     /** Ein Schritt: laden anzeigen, fragen, Ergebnis eintragen oder Fehler zeigen. */
     private fun <T> zweiterFaktor(
-        abruf: suspend () -> Result<T>,
+        abruf: suspend () -> Ergebnis<T>,
         erfolgText: Int? = null,
         danach: (ZweiterFaktorUiState, T) -> ZweiterFaktorUiState,
     ) {
         viewModelScope.launch {
             _zweiterFaktorState.update { it.copy(laedt = true, fehler = null) }
             when (val r = abruf()) {
-                is Result.Success -> {
-                    erfolgText?.let { _snackbar.value = texte.text(it) }
+                is Ergebnis.Success -> {
+                    erfolgText?.let { meldungen.zeige(texte.text(it)) }
                     _zweiterFaktorState.update { danach(it, r.data).copy(laedt = false) }
                 }
-                is Result.Error -> _zweiterFaktorState.update { it.copy(laedt = false, fehler = texte.meldung(r)) }
+                is Ergebnis.Error -> _zweiterFaktorState.update { it.copy(laedt = false, fehler = texte.meldung(r)) }
             }
         }
     }

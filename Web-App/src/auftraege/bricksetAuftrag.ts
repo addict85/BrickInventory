@@ -32,7 +32,7 @@ export async function bricksetJetzt(sn?: string): Promise<void> {
   await zieheVor('brickset', sn ? schluessel(sn) : undefined);
 }
 
-export function bricksetListe(): Promise<any[]> {
+export function bricksetListe() {
   return repo.bricksetWiedervorlage();
 }
 

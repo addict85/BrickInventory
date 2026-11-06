@@ -1,6 +1,14 @@
 package ch.brickinventoryapp.ui
 
 import ch.brickinventoryapp.data.model.*
+import ch.brickinventoryapp.ui.model.CsvErgebnisAnsicht
+import ch.brickinventoryapp.ui.model.CsvImportArt
+import ch.brickinventoryapp.ui.model.GeraetAnsicht
+import ch.brickinventoryapp.ui.model.HaushaltStatusAnsicht
+import ch.brickinventoryapp.ui.model.PreisalarmAnsicht
+import ch.brickinventoryapp.ui.model.ProfilAnsicht
+import ch.brickinventoryapp.util.UpdateBeschreibung
+import ch.brickinventoryapp.util.UpdateFrische
 
 /**
  * Das eigene Konto in den Einstellungen — eigener Zustand, weil nur ein Bildschirm
@@ -10,7 +18,7 @@ import ch.brickinventoryapp.data.model.*
  */
 data class KontoUiState(
     val laedt: Boolean = false,
-    val profil: ch.brickinventoryapp.ui.model.ProfilAnsicht? = null,
+    val profil: ProfilAnsicht? = null,
     val speichert: Boolean = false,
     val meldung: String? = null,
     val fehler: String? = null,
@@ -44,7 +52,7 @@ data class ZweiterFaktorUiState(
  */
 data class GeraeteUiState(
     val laedt: Boolean = false,
-    val geraete: List<ch.brickinventoryapp.ui.model.GeraetAnsicht> = emptyList(),
+    val geraete: List<GeraetAnsicht> = emptyList(),
     /** Meldung des Servers oder der Verbindung; null = nichts zu sagen. */
     val fehler: String? = null,
 )
@@ -52,9 +60,11 @@ data class GeraeteUiState(
 /** Zustand der Haushalts-Karte in den Einstellungen. */
 data class HouseholdUiState(
     val isLoading: Boolean = false,
-    val status: ch.brickinventoryapp.ui.model.HaushaltStatusAnsicht? = null,
+    val status: HaushaltStatusAnsicht? = null,
     /** Zuletzt erzeugter Einladungscode — nur bis zum Verlassen der Ansicht. */
     val inviteCode: String? = null,
+    /** Bis wann der Code gilt (Millisekunden seit 1970); null, wenn der Server es nicht sagt. */
+    val inviteGueltigBis: Long? = null,
     /** Meldung des Servers (Währung weicht ab, schon verknüpft, zweite Stufe). */
     val message: String? = null,
     /** Das Passwort beim Einlösen war falsch; das Feld zeigt es an. */
@@ -76,8 +86,8 @@ data class HouseholdUiState(
 data class CsvHochladenUiState(
     val laeuft: Boolean = false,
     /** Welche Art gerade hochgeladen wird — fuer die Anzeige am richtigen Knopf. */
-    val art: ch.brickinventoryapp.ui.model.CsvImportArt? = null,
-    val ergebnis: ch.brickinventoryapp.ui.model.CsvErgebnisAnsicht? = null,
+    val art: CsvImportArt? = null,
+    val ergebnis: CsvErgebnisAnsicht? = null,
     val fehler: String? = null,
 )
 
@@ -92,7 +102,7 @@ data class UpdateUiState(
     /** Wurde in dieser Sitzung schon nachgesehen? */
     val geprueft: Boolean = false,
     /** Die neuere Fassung, oder null: es gibt keine. */
-    val neuereFassung: ch.brickinventoryapp.util.UpdateBeschreibung? = null,
+    val neuereFassung: UpdateBeschreibung? = null,
     /** 0..100 waehrend des Ladens, null = es laedt nichts. */
     val fortschritt: Int? = null,
     /** Das geladene APK wartet auf die Zustimmung des Nutzers. */
@@ -106,6 +116,14 @@ data class UpdateUiState(
      */
     val dialogAbgelehnt: Boolean = false,
     val fehler: String? = null,
+    /**
+     * Wie frisch die zuletzt geprüfte Beschreibung war; null vor der ersten Prüfung.
+     * Auch nach der stillen Prüfung gesetzt: Ein Zurückhalten soll man in den
+     * Einstellungen sehen, ohne erst den Knopf zu drücken.
+     */
+    val frische: UpdateFrische? = null,
+    /** Schalter „Beim Start nach Updates suchen“ (je Gerät). */
+    val startpruefung: Boolean = true,
 )
 
 /**
@@ -114,6 +132,6 @@ data class UpdateUiState(
  * gebe keine Alarme.
  */
 data class AlarmUebersichtUiState(
-    val alarme: List<ch.brickinventoryapp.ui.model.PreisalarmAnsicht> = emptyList(),
+    val alarme: List<PreisalarmAnsicht> = emptyList(),
     val geladen: Boolean = false,
 )

@@ -1,10 +1,12 @@
 import type { DbSchnittstelle } from '../../../db/database';
 import * as db from '../../../db/database';
 import { inKontowaehrung, kontowaehrungJoin, teilmengeAus, teilmengeJoin } from '../../../db/bestandsmenge';
+import { teilSichtJoin, figurSichtJoin, TEIL, FIGUR } from '../../../db/katalogSicht';
 
 /** Kaufpreis mengengewichtet in Kontowährung. */
 export function erfassungsKennzahlen(art: 'part' | 'fig', uids: number[]) {
-  return db.all(art === 'part'
+  return db.all<{ part_number?: string; color_id?: number | null; fig_number?: string;
+                  acq_count: string; used_count: string; avg_purchase_price: number | null }>(art === 'part'
     ? `SELECT part_number, color_id,
                 COUNT(*) AS acq_count,
                 COUNT(*) FILTER (WHERE condition = 'U') AS used_count,
@@ -23,43 +25,45 @@ export function erfassungsKennzahlen(art: 'part' | 'fig', uids: number[]) {
           GROUP BY fig_number`, [uids]);
 }
 
-export function benutzerNamen(uids: number[]) {
-  return db.all('SELECT id, username FROM users WHERE id = ANY($1)', [uids]);
-}
-
 /** Spalten, über die gesucht werden darf. Siehe verwendendeSets(). */
 const SUCHSPALTEN = new Set(['part_number', 'color_id', 'fig_number']);
 
 /** Figuren haben weder Farbe noch Kategorie; feste NULL, damit beide Zweige
  * dieselbe Form liefern. */
 const KOPFFELDER = {
-  parts: `x.part_number AS nummer, MAX(pc.part_name) AS name,
-          MAX(x.color_id) AS color_id, MAX(pcc.color_name) AS color_name,
-          MAX(pcc.color_hex) AS color_hex, MAX(pc.category_name) AS category_name,
-          MAX(pcc.image_local) AS teil_image_local, MAX(pcc.image_url) AS teil_image_url,
+  parts: `x.part_number AS nummer, MAX(${TEIL.name}) AS name,
+          MAX(x.color_id) AS color_id, MAX(${TEIL.farbname}) AS color_name,
+          MAX(${TEIL.farbcode}) AS color_hex, MAX(${TEIL.kategorie}) AS category_name,
+          MAX(${TEIL.bildDatei}) AS teil_image_local, MAX(${TEIL.bild}) AS teil_image_url,
           bool_or(COALESCE(spc.is_spare, false)) AS is_spare,
           NULLIF(STRING_AGG(DISTINCT lo.name, ', '), '') AS storage`,
-  minifigs: `x.fig_number AS nummer, MAX(mc.fig_name) AS name,
+  minifigs: `x.fig_number AS nummer, MAX(${FIGUR.name}) AS name,
           NULL::int AS color_id, NULL::text AS color_name,
           NULL::text AS color_hex, NULL::text AS category_name,
-          MAX(mc.image_local) AS teil_image_local, MAX(mc.image_url) AS teil_image_url,
+          MAX(${FIGUR.bildDatei}) AS teil_image_local, MAX(${FIGUR.bild}) AS teil_image_url,
           false AS is_spare, NULL::text AS storage`,
 } as const;
 
-// Ausführlich: docs/begruendungen/src/bestand/gemeinsam.ts.md#katalogjoin
+// Ausführlich: docs/begruendungen/src/bestand/repository/gemeinsam.ts.md#katalogjoin
 const KATALOGJOIN = {
-  parts: `LEFT JOIN part_catalog pc ON pc.part_number = x.part_number
-          LEFT JOIN part_color_catalog pcc ON pcc.part_number = x.part_number
-                                          AND pcc.color_id    = x.color_id
+  parts: `${teilSichtJoin('x.user_id', 'x.part_number', 'x.color_id')}
           LEFT JOIN set_teile spc ON spc.set_number  = x.set_number
                                          AND spc.part_number = x.part_number
                                          AND spc.color_id    = x.color_id`,
-  minifigs: `LEFT JOIN minifigs_catalog mc ON mc.fig_number = x.fig_number`,
+  minifigs: figurSichtJoin('x.user_id', 'x.fig_number'),
 } as const;
 
 const SCHLUESSELSPALTE = { parts: 'x.part_number', minifigs: 'x.fig_number' } as const;
 
 const ART = { parts: 'part', minifigs: 'fig' } as const;
+
+/** Ein Set, das den Bestandteil enthält, mit den Kopffeldern des Bestandteils. */
+export interface VerwendungsZeile {
+  set_number: string; owner_user_id: number; quantity: number; set_name: string | null;
+  set_image_local: string | null; set_image_url: string | null; nummer: string; name: string | null;
+  color_id: number | null; color_name: string | null; color_hex: string | null; category_name: string | null;
+  teil_image_local: string | null; teil_image_url: string | null; is_spare: unknown; storage: string | null;
+}
 
 export async function setsMitBestandteil(uids: number[], tabelle: 'parts' | 'minifigs', schluessel: Record<string, string | number>) {
   const spalten = Object.keys(schluessel);
@@ -68,9 +72,9 @@ export async function setsMitBestandteil(uids: number[], tabelle: 'parts' | 'min
   for (const sp of spalten) {
     if (!SUCHSPALTEN.has(sp)) throw new Error(`verwendendeSets: unerlaubte Spalte ${sp}`);
   }
-  const params: any[] = [uids];
+  const params: (number[] | string | number | undefined)[] = [uids];
   const bedingungen = spalten.map(sp => `x.${sp} = $${params.push(schluessel[sp])}`);
-  return db.all(
+  return db.all<VerwendungsZeile>(
     `SELECT x.set_number,
             x.user_id            AS owner_user_id,
             -- Die Stückzahl der Bestandszeile (Migration 0038): Fuer ein

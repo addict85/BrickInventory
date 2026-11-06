@@ -1,0 +1,17 @@
+Gegenprobe: ein Gutschein-PDF ohne Längenangabe wird ohne Obergrenze in den Speicher geladen
+Modul: core-data
+Test: ch.brickinventoryapp.PdfImSpeicherTest
+Rot: eine Antwort ueber der Grenze wird abgelehnt
+
+diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/util/PdfImSpeicher.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/util/PdfImSpeicher.kt
+index 9bf151c..c989682 100644
+--- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/util/PdfImSpeicher.kt
++++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/util/PdfImSpeicher.kt
+@@ -34,7 +34,6 @@ suspend fun ladePdfInDenSpeicher(
+                 currentCoroutineContext().ensureActive()
+                 val n = ein.read(stueck)
+                 if (n < 0) break
+-                if (inhalt.size() + n > grenze) throw IOException("PDF zu gross: über $grenze Bytes")
+                 inhalt.write(stueck, 0, n)
+                 fortschritt(inhalt.size().toLong(), gesamt)
+             }

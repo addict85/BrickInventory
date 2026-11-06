@@ -1,0 +1,18 @@
+Gegenprobe: GedrosselteAnsage gibt jeden Wortlaut sofort weiter
+Modul: app
+Test: ch.brickinventoryapp.BarrierefreiheitBefundeTest
+Rot: M7 Statusmeldungen sind Live-Regionen und Fortschritt wird gedrosselt angesagt
+
+diff --git a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/Ansage.kt b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/Ansage.kt
+index 2e68ccf..0866e68 100644
+--- a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/Ansage.kt
++++ b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/Ansage.kt
+@@ -37,7 +37,7 @@ fun GedrosselteAnsage(text: String, abstandMs: Long = ANSAGE_ABSTAND_MS) {
+             ansageFortschritt = aktuell
+         }
+     }
+-    Ansage(ansageFortschritt)
++    Ansage(text)
+ }
+ 
+ /** Zehn Sekunden zwischen zwei Ansagen eines laufenden Vorgangs. */

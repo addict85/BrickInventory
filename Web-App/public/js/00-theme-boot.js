@@ -1,58 +1,44 @@
-// ═══ Theme-Boot ═══════════════════════════════════════════════════════════
-// Läuft als blockierendes Skript im <head>, also VOR dem ersten Paint — und
-// bewusst vor 01-core.js.
-//
-// Vorher wurde applyTheme() ausschliesslich aus showApp() heraus aufgerufen,
-// also erst NACH erfolgreichem Login. Login- und Startup-Screen bekamen
-// dadurch nie ein data-theme und blieben im Standard-Design, obwohl das Design
-// global (global_settings.app_theme) für alle gilt.
-//
-// Zwei Stufen, damit es weder blinkt noch veraltet:
-//   1. Sofort: der zuletzt bekannte Wert aus localStorage. Kein Netzwerk, kein
-//      Aufblitzen des falschen Designs.
-//   2. Gleich danach asynchron: GET /api/v1/settings/theme (öffentlich, siehe
-//      routes/settings.ts). Weicht der Serverwert ab — anderer Browser, anderes
-//      Gerät, Admin hat gerade umgestellt — wird korrigiert und gecacht.
-//
-// Der Server liefert das Design des angemeldeten Kontos (oder die Vorgabe des
-// Verwalters); der Cache merkt sich den zuletzt gelieferten Wert je Browser.
+// Läuft blockierend im <head>, vor dem ersten Paint: Auch Anmelde- und Startseite tragen so sofort das
+// richtige Design. Erst der letzte bekannte Wert, dann der Abgleich mit dem Server — so blinkt nichts und
+// nichts veraltet.
+// Ausführlich: docs/begruendungen/public/js/00-theme-boot.js.md#laeuft-als-blockierendes-skript-im-head
 
 (function () {
   var KEY = 'bim_theme';
-  // Muss mit DESIGNS in src/konto/settings.ts uebereinstimmen — eine
-  // Pruefung haelt beide zusammen (theme.test.js).
+  // Muss mit DESIGNS in src/konto/settings.ts uebereinstimmen — eine Pruefung haelt beide zusammen
+  // (theme.test.js).
   var ALLOWED = ['classic', 'brick', 'werkbank', 'farbfaecher', 'noppe', 'hochglanz'];
 
   /**
-   * Wendet ein Design an. Unbekannte Werte (null, '', undefined) bedeuten
-   * "keine Information" und ändern NICHTS.
-   *
-   * Vorher fielen sie auf 'classic' zurück. Das war die Ursache des Flackerns
-   * beim Login: showApp() ruft applyTheme(d.settings.app_theme) auf, und wenn
-   * dieser Wert fehlte oder leer war, schaltete die Seite sichtbar von 'brick'
-   * auf 'classic' zurück — und schrieb 'classic' obendrein in den Cache, sodass
-   * der nächste Seitenaufruf schon falsch startete und beim Server-Abgleich
-   * erneut umsprang.
+   * Wendet ein Design an. Ein leerer Wert heisst „keine Auskunft“ und ändert nichts: Ein Rückfall auf classic
+   * liess die Seite beim Anmelden umspringen und schrieb den falschen Wert in den Cache.
+   * Ausführlich: docs/begruendungen/public/js/00-theme-boot.js.md#apply
+   * @param {string | null | undefined} theme
    */
   function apply(theme) {
-    if (ALLOWED.indexOf(theme) === -1) return null;
+    if (!theme || ALLOWED.indexOf(theme) === -1) return null;
     serverDesign = theme;
     document.documentElement.setAttribute('data-theme', wirksam(theme));
     return theme;
   }
 
   // ── Dunkel nach System, je Gerät (Profil-Einstellungen) ────────────────────
-  // Ob ein GERÄT dunkel will, weiss nur das Gerät. Vorgabe ist „system“: Bei
-  // dunklem System die dunkle Variante DESSELBEN Designs (data-dunkel, Farben
-  // aus tokens.css). Wer „server“ wählt, behält das Design ohne Variante.
+  // Ob ein GERÄT dunkel will, weiss nur das Gerät. Vorgabe ist „system“: Bei dunklem System die dunkle
+  // Variante DESSELBEN Designs (data-dunkel, Farben aus tokens.css). Wer „server“ wählt, behält das Design
+  // ohne Variante.
   var DUNKEL_KEY = 'bim_dunkel';
   var systemDunkel = window.matchMedia ? window.matchMedia('(prefers-color-scheme: dark)') : null;
+  /** @type {string | null} */
   var serverDesign = null;
-  function folgtSystem() {
-    try { return localStorage.getItem(DUNKEL_KEY) !== 'server'; } catch (_) { return true; }
+  /** 'system', 'server' (nie dunkel) oder 'immer'. */
+  function wahl() {
+    try { var w = localStorage.getItem(DUNKEL_KEY); return w === 'server' || w === 'immer' ? w : 'system'; } catch (_) { return 'system'; }
   }
+  /** @param {string} theme */
   function wirksam(theme) {
-    var dunkel = folgtSystem() && systemDunkel && systemDunkel.matches && theme !== 'werkbank';
+    var w = wahl();
+    // „Immer dunkel“ auch bei hellem System: Sonst bekam den Dunkelmodus nur, wer Werkbank wählte.
+    var dunkel = theme !== 'werkbank' && (w === 'immer' || (w === 'system' && !!systemDunkel && systemDunkel.matches));
     if (dunkel) document.documentElement.setAttribute('data-dunkel', '');
     else document.documentElement.removeAttribute('data-dunkel');
     return theme;
@@ -62,17 +48,17 @@
   }
   if (systemDunkel && systemDunkel.addEventListener) systemDunkel.addEventListener('change', neuAnwenden);
   window.__bimDunkel = function (wert) {
-    try { localStorage.setItem(DUNKEL_KEY, wert === 'system' ? 'system' : 'server'); } catch (_) {}
+    try { localStorage.setItem(DUNKEL_KEY, wert === 'immer' || wert === 'server' ? wert : 'system'); } catch (_) {}
     neuAnwenden();
   };
-  window.__bimDunkelWert = function () { return folgtSystem() ? 'system' : 'server'; };
+  window.__bimDunkelWert = wahl;
   // Hat ein Design keine helle Fassung? Die Einstellungen sagen es dann dazu.
   window.__bimNurDunkel = function (theme) { return theme === 'werkbank'; };
 
   /**
-   * Setter für 01-core.js und den Admin-Speichern-Handler. Nur gültige Werte
-   * werden angewendet UND gecacht — ein leerer oder fehlender Wert darf den
-   * Cache nicht überschreiben.
+   * Setter für 01-konto.js und den Admin-Speichern-Handler. Nur gültige Werte werden angewendet UND gecacht —
+   * ein leerer oder fehlender Wert darf den Cache nicht überschreiben.
+   * @param {string} theme
    */
   function applier(theme) {
     var val = apply(theme);
@@ -86,7 +72,7 @@
   //    nachführen — kein Anwenden, kein Abgleich, also weder ein sichtbarer
   //    Sprung noch eine zusätzliche Anfrage pro Seitenaufruf.
   var served = document.documentElement.getAttribute('data-theme');
-  if (ALLOWED.indexOf(served) !== -1) {
+  if (served && ALLOWED.indexOf(served) !== -1) {
     try { localStorage.setItem(KEY, served); } catch (_) {}
     serverDesign = served;
     neuAnwenden();
@@ -97,6 +83,7 @@
   // 1) Fallback, wenn der Server nichts gesetzt hat (statisch ausgelieferte
   //    Datei, vorgelagerter Cache, Renderfehler): zuletzt bekanntes Design
   //    sofort anwenden, danach gegen den Server abgleichen.
+  /** @type {string | null} */
   var cached = null;
   try { cached = localStorage.getItem(KEY); } catch (_) {}
   apply(cached);
@@ -115,9 +102,8 @@
       .catch(function () { /* offline oder Server startet noch — Cache bleibt gültig */ });
   }
 
-  // Der Server nimmt Anfragen erst nach initSchemaOnce() an; ein Fehlschlag hier
-  // ist unkritisch, weil checkAuth() ohnehin auf den Startup wartet und
-  // applyTheme() nach dem Login den Serverwert erneut setzt.
+  // Der Server nimmt Anfragen erst nach initSchemaOnce() an; ein Fehlschlag hier ist unkritisch, weil
+  // checkAuth() ohnehin auf den Startup wartet und applyTheme() nach dem Login den Serverwert erneut setzt.
   sync();
 
   window.__bimApplyTheme = applier;

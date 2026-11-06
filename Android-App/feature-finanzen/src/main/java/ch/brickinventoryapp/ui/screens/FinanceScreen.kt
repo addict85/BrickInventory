@@ -1,24 +1,19 @@
 package ch.brickinventoryapp.ui.screens
 
+import ch.brickinventoryapp.ui.viewmodel.FinanzAktionen
 import ch.brickinventoryapp.ui.theme.Formen
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import ch.brickinventoryapp.ressourcen.R
 import ch.brickinventoryapp.ui.viewmodel.FinanzViewModel
@@ -30,11 +25,43 @@ import androidx.compose.ui.res.stringResource
 import ch.brickinventoryapp.ui.theme.Abstaende
 import ch.brickinventoryapp.ui.components.LeerSymbol
 import ch.brickinventoryapp.ui.components.Ladezustand
+import ch.brickinventoryapp.ui.components.vorgelesenAls
+import ch.brickinventoryapp.data.ScopeFilter
+import ch.brickinventoryapp.ui.components.grosseSchrift
+import ch.brickinventoryapp.ui.components.mitSchrift
+import ch.brickinventoryapp.ui.components.stueckzahl
+import ch.brickinventoryapp.ui.mengeManuell
+import ch.brickinventoryapp.util.fmtMoney
+import ch.brickinventoryapp.util.fmtMoneyOrDash
+import ch.brickinventoryapp.util.zahlenLocale
+
+/** Was der Finanzen-Reiter zeigt; die Route sammelt es aus den Flüssen. */
+data class FinanzZustand(
+    val state: AppUiState,
+    val blick: BlickfeldUiState,
+    val financeState: FinanceUiState,
+)
+
+/** Der Finanzen-Reiter am Navigationsziel: reicht Zustand und Aktionen an [FinanceScreen]. */
+@Composable
+fun FinanceRoute(
+    vm: FinanzViewModel,
+    imageLoader: ImageLoader,
+    onSetClick: (String) -> Unit = {},
+    onManualClick: (type: String, id: String, colorId: Int, name: String?) -> Unit = { _, _, _, _ -> },
+    listState: LazyListState = rememberLazyListState(),
+) {
+    val state by vm.state.collectAsStateWithLifecycle()
+    val blick by vm.blickfeld.collectAsStateWithLifecycle()
+    val financeState by vm.financeState.collectAsStateWithLifecycle()
+    FinanceScreen(FinanzZustand(state, blick, financeState), vm, imageLoader, onSetClick, onManualClick, listState)
+}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun FinanceScreen(
-    vm: FinanzViewModel,
+    zustand: FinanzZustand,
+    aktionen: FinanzAktionen,
     imageLoader: ImageLoader,
     /** Klick auf ein Set — nur der Graph kennt den NavController. */
     onSetClick: (String) -> Unit = {},
@@ -43,12 +70,9 @@ fun FinanceScreen(
     /** Scroll-Zustand von aussen: Das Ziel wird beim Öffnen eines Details verworfen. */
     listState: LazyListState = rememberLazyListState(),
 ) {
-    // Zustand und Aktionen vom ViewModel statt über einundzwanzig Parameter —
-    // Begründung bei PartsScreen. Die Namen bleiben dieselben, damit der Rumpf
-    // darunter unverändert bleibt.
-    val state by vm.state.collectAsStateWithLifecycle()
-    val blick by vm.blickfeld.collectAsStateWithLifecycle()
-    val financeState by vm.financeState.collectAsStateWithLifecycle()
+    val state = zustand.state
+    val blick = zustand.blick
+    val financeState = zustand.financeState
 
     val valuation = financeState.valuation
     val isLoading = financeState.valuationLoading
@@ -61,31 +85,33 @@ fun FinanceScreen(
     // Sprachwechsel neu formatiert, ohne neu zu laden.
     val konfig = androidx.compose.ui.platform.LocalConfiguration.current
     val zahlen = remember(konfig) {
-        ch.brickinventoryapp.util.zahlenLocale(konfig.locales[0], java.util.Locale.getDefault())
+        zahlenLocale(konfig.locales[0], java.util.Locale.getDefault())
     }
     val historyPoints = remember(financeState.historyPoints, financeState.historyTage, zahlen) {
         lokaleAchse(financeState.historyPoints, financeState.historyTage, zahlen)
     }
-    val historyYAxis = remember(financeState.historyYAxis, financeState.historyWaehrung, valuation?.currency, zahlen) {
+    // Bei grosser Schrift kurz („1,7k“): Ausgeschrieben nahm die Achse ein Drittel der Breite.
+    val kompakt = grosseSchrift()
+    val historyYAxis = remember(financeState.historyYAxis, financeState.historyWaehrung, valuation?.currency, zahlen, kompakt) {
         val w = financeState.historyWaehrung ?: valuation?.currency
-        if (w == null) financeState.historyYAxis else lokaleWerte(financeState.historyYAxis, w, zahlen)
+        if (w == null) financeState.historyYAxis else lokaleWerte(financeState.historyYAxis, w, zahlen, kompakt)
     }
     val partsValuation = financeState.partsValuation
     val figsValuation = financeState.figsValuation
     val pnl = financeState.pnl
     val householdMembers = blick.householdMembers
-    val scopeMode = blick.scopeModes[ch.brickinventoryapp.data.ScopeFilter.View.FINANCE.key]
-        ?: ch.brickinventoryapp.data.ScopeFilter.ALL
+    val scopeMode = blick.scopeModes[ScopeFilter.View.FINANCE.key]
+        ?: ScopeFilter.ALL
 
-    val onScopeChange: (String) -> Unit = { vm.setScope(ch.brickinventoryapp.data.ScopeFilter.View.FINANCE, it) }
-    val onPeriodChange: (String) -> Unit = { vm.loadPortfolioHistory(it) }
-    val onRefresh: () -> Unit = { vm.loadValuation(); vm.loadPortfolioHistory(financeState.historyPeriod) }
+    val onScopeChange: (String) -> Unit = { aktionen.setScope(ScopeFilter.View.FINANCE, it) }
+    val onPeriodChange: (String) -> Unit = { aktionen.loadPortfolioHistory(it) }
+    val onRefresh: () -> Unit = { aktionen.loadValuation(); aktionen.loadPortfolioHistory(financeState.historyPeriod) }
 
     val currencyCode = valuation?.currency ?: "EUR"
     // Gemeinsame Fassung (util/NumberFormatUtils.kt): Die Stellung von Symbol und
     // Betrag entscheidet die Sprache, wie in der Webapp.
-    fun fmtPrice(v: String?): String = ch.brickinventoryapp.util.fmtMoneyOrDash(v, currencyCode)
-    fun fmtWert(v: Double?): String = v?.let { ch.brickinventoryapp.util.fmtMoney(it, currencyCode) } ?: "—"
+    fun fmtPrice(v: String?): String = fmtMoneyOrDash(v, currencyCode)
+    fun fmtWert(v: Double?): String = v?.let { fmtMoney(it, currencyCode) } ?: "—"
 
     // Ohne Bewertung: laden, gescheitert (mit Grund und neuem Versuch) oder
     // wirklich keine Preise — vorher sah ein Fehler aus wie „keine Preisdaten“.
@@ -107,8 +133,8 @@ fun FinanceScreen(
             leer = {
                 LeerSymbol(Icons.Default.Savings, 48.dp)
                 Text(stringResource(R.string.finance_no_data), fontWeight = FontWeight.SemiBold)
-                Button(onClick = onRefresh, shape = Formen.knopf) {
-                    Icon(Icons.Default.Refresh, null, Modifier.size(16.dp))
+                Button(onClick = onRefresh) {
+                    Icon(Icons.Default.Refresh, null, Modifier.size(mitSchrift(16.dp)))
                     Spacer(Modifier.width(6.dp))
                     Text(stringResource(R.string.finance_load_prices))
                 }
@@ -129,8 +155,9 @@ fun FinanceScreen(
       BoxWithConstraints(Modifier.fillMaxSize()) {
         val rand = PaddingValues(horizontal = Abstaende.gross, vertical = Abstaende.mittel)
         val abstand = Arrangement.spacedBy(10.dp)
-        // Überblick: Kontofilter, Verlauf, Kopfkachel und Summe.
-        val ueberblick: androidx.compose.foundation.lazy.LazyListScope.(mitSumme: Boolean) -> Unit = { mitSumme ->
+        // Überblick: Kontofilter, Kopfkachel, dann der Verlauf — der Marktwert ist die erste
+        // Frage, die Kurve erklärt ihn. Die Summe steht nach den Zeilen.
+        val ueberblick: androidx.compose.foundation.lazy.LazyListScope.() -> Unit = {
             // Kontofilter — erscheint nur bei einem Hauptkonto mit Unterkonten. Er gilt für
             // ALLE Zahlen dieses Reiters: Kurve, Kacheln, Sets, Teile und Minifiguren.
             if (householdMembers.size > 1) {
@@ -142,23 +169,25 @@ fun FinanceScreen(
                     }
                 }
             }
+            financeSummaryCards(valuation, partsValuation, figsValuation, pnl, ::fmtPrice)
             item {
+                // Ohne Marktwert keine Entwicklung, wie im Web: Der Verlauf trüge dann nur
+                // Kaufpreise, und „+0.0 %“ neben „—“ behauptete Stillstand.
+                val mitWert = finanzKopf(valuation, partsValuation, figsValuation, pnl).wert.signum() > 0
                 PortfolioChart(
                     points = historyPoints, yAxis = historyYAxis,
                     currency = currencyCode, isLoading = historyLoading,
-                    selectedPeriod = historyPeriod, periodChangePct = historyPeriodChangePct,
+                    selectedPeriod = historyPeriod, periodChangePct = historyPeriodChangePct.takeIf { mitWert },
                     onPeriodChange = onPeriodChange
                 )
             }
-            financeSummaryCards(valuation, partsValuation, figsValuation, pnl, ::fmtPrice)
-            if (mitSumme) financeGrandTotal(valuation, partsValuation, figsValuation, pnl, ::fmtPrice)
         }
         // Die Zeilen: Filter, Sets, Teile, Minifiguren.
         val zeilen: androidx.compose.foundation.lazy.LazyListScope.() -> Unit = {
             financeCategoryFilter(
                 aktive = kategorien,
-                onUmschalten = { vm.finanzKategorieUmschalten(it) },
-                onAlle = { vm.finanzKategorienZuruecksetzen() },
+                onUmschalten = { aktionen.finanzKategorieUmschalten(it) },
+                onAlle = { aktionen.finanzKategorienZuruecksetzen() },
             )
             financeSetRows(valuation, showSets, serverUrl, imageLoader, ::fmtWert, onSetClick)
             financePartRows(partsValuation, showParts, serverUrl, imageLoader, ::fmtPrice, ::fmtWert, onManualClick)
@@ -166,17 +195,22 @@ fun FinanceScreen(
         }
         // Ab Tabletbreite zwei Spalten wie die Set-Detailseite: links der Überblick, rechts
         // die Zeilen. Einspaltig lagen Betrag und Bezeichnung einer Zeile eine Armlänge auseinander.
+        // Die Summe schliesst die Zeilen rechts ab: Links unter dem Überblick stand sie
+        // neben einer halb leeren rechten Spalte.
         if (zweiSpaltig(maxWidth.value)) {
             Row(Modifier.fillMaxSize()) {
                 LazyColumn(Modifier.weight(1f).fillMaxHeight(), contentPadding = rand, verticalArrangement = abstand) {
-                    ueberblick(true)
+                    ueberblick()
                 }
                 LazyColumn(Modifier.weight(1f).fillMaxHeight(), state = listState, contentPadding = rand,
-                    verticalArrangement = abstand) { zeilen() }
+                    verticalArrangement = abstand) {
+                    zeilen()
+                    financeGrandTotal(valuation, partsValuation, figsValuation, pnl, ::fmtPrice)
+                }
             }
         } else {
             LazyColumn(state = listState, contentPadding = rand, verticalArrangement = abstand) {
-                ueberblick(false)
+                ueberblick()
                 zeilen()
                 financeGrandTotal(valuation, partsValuation, figsValuation, pnl, ::fmtPrice)
             }
@@ -226,10 +260,12 @@ fun ManualFinanceRow(
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(1.dp)) {
                 Text(title, fontWeight = FontWeight.SemiBold,
                     maxLines = 2, style = MaterialTheme.typography.bodyMedium)
-                Text(blId, style = MaterialTheme.typography.labelSmall,
+                Text(blId, style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.primary)
                 if (quantity > 1)
-                    Text(ch.brickinventoryapp.ui.mengeManuell(quantity), style = MaterialTheme.typography.labelSmall,
+                    Text(mengeManuell(quantity),
+                        Modifier.vorgelesenAls(stueckzahl(quantity)),
+                        style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant)
                 // Bei mehreren Zeilen desselben Eintrags ist die Plakette das
                 // einzige Unterscheidungsmerkmal.
@@ -249,7 +285,7 @@ fun ManualFinanceRow(
                     Text(
                         if (purchaseGesamt) stringResource(R.string.finance_purchase_total, it)
                         else stringResource(R.string.finance_purchase_short, it),
-                        style = MaterialTheme.typography.labelSmall,
+                        style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
@@ -284,7 +320,7 @@ fun SubtotalRow(label: String, value: String) {
 @Composable
 fun PriceColumn(label: String, value: String, farbe: androidx.compose.ui.graphics.Color = MaterialTheme.colorScheme.onPrimary) {
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-        Text(label, style = MaterialTheme.typography.labelSmall, color = farbe)
+        Text(label, style = MaterialTheme.typography.bodySmall, color = farbe)
         Text(value, fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.bodyMedium, color = farbe)
     }
 }

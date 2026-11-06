@@ -1,0 +1,27 @@
+Gegenprobe: die Vorschau-Ablage schreibt und liest wieder Klartext (Stand vor sec11 N1)
+Modul: core-data
+Test: ch.brickinventoryapp.VorschauVerschluesseltTest
+Rot: ein Vorschaubild liegt nicht im Klartext
+
+diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/cache/VorschauSpeicher.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/cache/VorschauSpeicher.kt
+index 0e08ab0..b287185 100644
+--- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/cache/VorschauSpeicher.kt
++++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/cache/VorschauSpeicher.kt
+@@ -111,7 +111,7 @@ class VorschauSpeicher(
+         val f = datei(adresse)
+         if (!f.isFile || f.length() == 0L) return null
+         val roh = runCatching { f.readBytes() }.getOrNull() ?: return null
+-        return chiffre.entschluessle(roh, bindung(f)) ?: run { f.delete(); null }
++        return roh
+     }
+ 
+     /**
+@@ -123,7 +123,7 @@ class VorschauSpeicher(
+         runCatching {
+             val ziel = datei(adresse)
+             val temp = File(ordner, "${ziel.name}.tmp")
+-            temp.writeBytes(chiffre.verschluessle(bytes, bindung(ziel)))
++            temp.writeBytes(bytes)
+             if (!temp.renameTo(ziel)) temp.delete()
+             // Vorgewaermtes altert sofort — Begruendung an SPEKULATIV_ZEIT.
+             else if (spekulativ) ziel.setLastModified(SPEKULATIV_ZEIT)

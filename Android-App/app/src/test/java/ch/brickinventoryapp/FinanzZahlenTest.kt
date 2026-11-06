@@ -19,6 +19,8 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Test
 import java.math.BigDecimal
+import ch.brickinventoryapp.ui.FinanzZeile
+import ch.brickinventoryapp.ui.finanzKopf
 
 /**
  * Die Finanzseite zeigt die Zahlenfelder des Servers (wert_gesamt,
@@ -26,7 +28,7 @@ import java.math.BigDecimal
  * Geldsummen in BigDecimal. Die Textfelder im Testdatensatz tragen absichtlich
  * andere Werte: Liest die App sie, wird der Test rot.
  *
- * Gegenproben (30.10.2026, gemessen mit kt-b2/bau.sh):
+ * Gegenproben:
  *   A  in setZeilen() `wert = acq?.wertGesamt ?: s.wertGesamt` durch
  *      `acq?.totalAvg?.toDoubleOrNull()` ersetzt → rot „jede Erfassung zeigt
  *      ihren eigenen Wert und ihre G&V als Zahl“ (999.99 statt 240.67)
@@ -38,6 +40,13 @@ import java.math.BigDecimal
  *      → rot „Gutscheine in zwei Währungen ergeben keine Summe“
  *   E  Patch finanzen-kauf-je-stueck: kaufGesamt ohne Menge → rot „Kauf und Gewinn
  *      stehen auf der Grundlage des Marktwerts“ (400.0 statt 800.0); nur CI
+ *   F  finanzKopf nimmt purchase und grand_total statt der Basis (wie Patch
+ *      finanzen-kopf-ohne-basis, dort gegen OberflaechenRegelnTest gemessen) → rot
+ *      „die Kopfkarte rechnet auf der Basis des Servers“ (Einstand 1680 statt 1500);
+ *      von Hand durchgespielt, kein Android-SDK in der Sitzung
+ *   G  in finanzKopf() die Rückkehr für ältere Server entfernt → rot „ohne
+ *      Basisfelder bleibt die Kopfkarte wie bisher“ (basisBekannt true); von Hand
+ *      durchgespielt, nicht gemessen (kein Android-SDK in der Sitzung)
  */
 class FinanzZahlenTest {
 
@@ -135,7 +144,7 @@ class FinanzZahlenTest {
      */
     @Test
     fun `Kauf und Gewinn stehen auf der Grundlage des Marktwerts`() {
-        val zwei = ch.brickinventoryapp.ui.FinanzZeile("t", menge = 2, wert = 899.9, kaufpreis = 400.0,
+        val zwei = FinanzZeile("t", menge = 2, wert = 899.9, kaufpreis = 400.0,
             zustand = "N", pnlProzent = 12.5)
         assertEquals(800.0, zwei.kaufGesamt!!, 0.0)
         assertEquals(99.9, zwei.gewinn!!, 0.0)
@@ -145,5 +154,56 @@ class FinanzZahlenTest {
         assertEquals(0.2, eins.gewinn!!, 0.0)
         assertNull(zwei.copy(wert = null).gewinn)
         assertNull(zwei.copy(kaufpreis = null).kaufGesamt)
+    }
+
+    private fun pnl(totals: String) =
+        ApiJson.decodeFromString(PnlResponse.serializer(), """{"success": true, "totals": $totals}""").alsAnsicht()
+
+    /**
+     * Einstand, Marktwert und G/V der Kopfkarte aus der Basis des Servers: Aus allen
+     * Positionen gerechnet stünde Einstand 1680 neben Marktwert 1712.40 und +14.2 %.
+     */
+    @Test
+    fun `die Kopfkarte rechnet auf der Basis des Servers`() {
+        val k = finanzKopf(bewertung, null, null, pnl("""{"purchase": "1680.00",
+            "current": "1712.40", "grand_total": "1712.40", "pnl_prozent": 14.2, "positionen": 3,
+            "positionen_bewertet": 2, "positionen_ohne_marktpreis": 1, "positionen_ohne_kaufpreis": 0,
+            "basis_einstand": "1500.00", "basis_marktwert": "1712.40", "basis_guv_betrag": "212.40",
+            "ohne_marktpreis_einstand": "180.00", "ohne_kaufpreis_marktwert": "0.00"}"""))
+        assertEquals(0, BigDecimal("1500.00").compareTo(k.einstand!!))
+        assertEquals(0, BigDecimal("1712.40").compareTo(k.wert))
+        assertEquals(0, BigDecimal("212.40").compareTo(k.guvBetrag!!))
+        assertEquals(0, k.einstand!!.add(k.guvBetrag!!).compareTo(k.wert))
+        assertEquals(14.2, k.guvProzent!!, 0.0)
+        assertEquals(listOf(3, 2, 1, 0), listOf(k.gesamt, k.bewertet, k.ohneMarkt, k.ohneKauf))
+        assertEquals(0, BigDecimal("180.00").compareTo(k.ohneMarktEinstand))
+        assertEquals(true, k.basisZeileSichtbar)
+    }
+
+    @Test
+    fun `ohne Basisfelder bleibt die Kopfkarte wie bisher`() {
+        val k = finanzKopf(bewertung, null, null,
+            pnl("""{"purchase": "1680.00", "current": "1712.40", "grand_total": "1712.40", "pnl_prozent": 1.9}"""))
+        assertEquals(false, k.basisBekannt)
+        assertNull("kein Einstand: die alte Karte zeigte keinen", k.einstand)
+        assertNull(k.guvBetrag)
+        assertEquals(0, BigDecimal("1712.40").compareTo(k.wert))
+        assertEquals(1.9, k.guvProzent!!, 0.0)
+        assertEquals(false, k.basisZeileSichtbar)
+    }
+
+    /** Keine Position mit beiden Preisen: Summen aller Positionen, keine G/V gegen nichts. */
+    @Test
+    fun `ohne bewertete Position gibt es keine G und V`() {
+        val k = finanzKopf(bewertung, null, null, pnl("""{"purchase": "180.00",
+            "current": "0.00", "grand_total": "0.00", "pnl_prozent": null, "positionen": 1,
+            "positionen_bewertet": 0, "positionen_ohne_marktpreis": 1, "positionen_ohne_kaufpreis": 0,
+            "basis_einstand": "0.00", "basis_marktwert": "0.00", "basis_guv_betrag": "0.00",
+            "ohne_marktpreis_einstand": "180.00", "ohne_kaufpreis_marktwert": "0.00"}"""))
+        assertEquals(false, k.mitBasis)
+        assertEquals(0, BigDecimal("180.00").compareTo(k.einstand!!))
+        assertNull(k.guvBetrag)
+        assertNull(k.guvProzent)
+        assertEquals(false, k.basisZeileSichtbar)
     }
 }

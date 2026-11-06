@@ -1,12 +1,20 @@
 /** Hier fällt die Entscheidung, unter welcher Art (Set, Gear, Buch) gefragt
  * wird; der Katalog merkt sich die Antwort, damit der nächste Abruf gleich
  * richtig fragt. */
-import { bricklinkRequest } from '../../clients/bricklink';
-import { alsAbrufFehler } from '../../clients/abrufFehler';
-import { hatPreis } from '../finanzen/preisRegel';
-import { mitVersion, ohneBricklinkPreis, ohneVersion } from '../sets/setNummer';
+import { bricklinkRequest, alsAbrufFehler } from './quellen';
+import { mitVersion, ohneBricklinkPreis, ohneVersion } from '../infra/setNummer';
 import * as repo from './repository/katalogCache';
+import { fehlerWerfen } from '../infra/fehlerTexte';
 import type { KatalogEintrag } from './repository/katalogCache';
+
+// Ausführlich: docs/begruendungen/src/katalog/bricklinkPreise.ts.md#preisdatensatz
+export type PreisDatensatz = { avg_price?: unknown; qty_avg_price?: unknown } | null | undefined;
+
+/** parseFloat(String(...)): Dieselbe Funktion bekommt auch rohe
+ * BrickLink-Antworten, und die tragen Text. */
+export function hatPreis(row: PreisDatensatz): boolean {
+  return parseFloat(String(row?.avg_price ?? '')) > 0;
+}
 
 export type { KatalogEintrag };
 
@@ -26,7 +34,7 @@ async function getPriceGuideRaw(setNumber: string, condition = 'N', guideType = 
   const cached = await katalogEintrag(n);
   if (cached?.bl_type === 'GEAR') return await bricklinkRequest('GET', `/items/gear/${bare}/price`, params);
   if (cached?.bl_type === 'BOOK') return await bricklinkRequest('GET', `/items/book/${bare}/price`, params);
-  if (ohneBricklinkPreis(cached)) throw new Error(`${n} — kein BrickLink-Preis verfügbar`);
+  if (ohneBricklinkPreis(cached)) fehlerWerfen('kein_bricklink_preis', 404);
   try {
     return await bricklinkRequest('GET', `/items/set/${n}/price`, params);
   } catch (e) {

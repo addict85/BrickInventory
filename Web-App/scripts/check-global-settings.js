@@ -1,28 +1,7 @@
 #!/usr/bin/env node
 /**
- * `global_settings` wird über src/konto/settings.ts angefasst, nicht direkt.
- *
- * ── Der Befund ──────────────────────────────────────────────────────────────
- * NACHGEMESSEN: Die Tabelle wurde aus 22 Dateien direkt gelesen — in VIER
- * verschiedenen Schreibweisen für dasselbe (`key=`, `key=$1`, `key = $1`,
- * `SELECT key, value` über alles) — und aus neun Stellen mit je eigenem
- * INSERT geschrieben. Genau EINE davon setzte `updated_at`; in den übrigen
- * acht blieb das Feld auf dem Wert des allerersten Anlegens stehen.
- *
- * `getGlobalSetting()` gab es schon, benutzt haben es fünf Dateien.
- *
- * ── Warum eine Liste statt eines Verbots ────────────────────────────────────
- * Dasselbe Muster wie bei check-noimplicitany.js: Ein Schalter, der sofort 94
- * Meldungen erzeugt, wird nicht befolgt, sondern übergangen. Die Liste hält
- * den Bestand fest und darf nur KÜRZER werden — jede neue Stelle fällt sofort
- * auf, und der Bestand lässt sich in Ruhe abbauen.
- *
- * ── Was NICHT auf die Liste gehört ──────────────────────────────────────────
- * db/database.ts (legt die Tabelle an) und jobs/csvImportWorker.ts (eigener
- * Prozess mit eigenem Verbindungspool, kann utils/ nicht laden) sind
- * dauerhafte Ausnahmen und stehen deshalb unten separat.
- *
- * Stand messen:  node scripts/check-global-settings.js
+ * `global_settings` wird über src/einstellungen/settings.ts angefasst, nicht direkt.
+ * Ausführlich: docs/begruendungen/scripts/check-global-settings.js.md#kopf
  */
 const fs = require('node:fs');
 const path = require('node:path');
@@ -33,22 +12,16 @@ const ROOT = path.join(__dirname, '..');
 const ERLAUBT = new Map([
   ['db/database.ts', 'legt die Tabelle an und migriert sie'],
   ['jobs/csvImportWorker.ts', 'eigener Prozess mit eigenem Pool — kann utils/ nicht laden'],
-  ['src/konto/settings.ts', 'DIE zentrale Stelle'],
-  ['src/konto/repository/einstellungen.ts', 'das SQL hinter settings.ts — nur dort aufgerufen'],
+  ['src/einstellungen/settings.ts', 'DIE zentrale Stelle'],
+  ['src/einstellungen/repository.ts', 'das SQL hinter settings.ts — nur dort aufgerufen'],
 ]);
 
 /**
  * Der Rest-Bestand. Diese Zahlen duerfen nur SINKEN.
  * Wer eine Datei leerraeumt, streicht ihre Zeile.
- *
- * Beim Einfuehren der Pruefung standen hier 22 Dateien mit 92 Fundstellen. Was
- * jetzt noch uebrig ist, sind Erwaehnungen in Kommentaren. Die zaehlt die Pruefung mit,
- * weil sie nur nach dem Tabellennamen sucht — Absicht: lieber eine Zahl zu
- * hoch als eine echte Fundstelle uebersehen.
+ * Ausführlich: docs/begruendungen/scripts/check-global-settings.js.md#offen
  */
-const OFFEN = new Map([
-  ['routes/api_v1/admin.ts', 1],
-]);
+const OFFEN = new Map([]);
 
 function dateien() {
   const out = [];
@@ -82,7 +55,7 @@ const fehler = [];
 for (const [datei, n] of gefunden) {
   const erlaubt = OFFEN.get(datei);
   if (erlaubt === undefined) {
-    fehler.push(`NEU: ${datei} (${n}x). global_settings gehört über src/konto/settings.ts — ` +
+    fehler.push(`NEU: ${datei} (${n}x). global_settings gehört über src/einstellungen/settings.ts — ` +
       `getGlobalSetting() / setGlobalSetting(). Nur so ist updated_at einheitlich ` +
       `und ein späterer Umbau der Tabelle EINE Änderung statt zwanzig.`);
   } else if (n > erlaubt) {

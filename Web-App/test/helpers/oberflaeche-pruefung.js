@@ -2,18 +2,8 @@
  * Die ganze Oberfläche in Chrome, für ein Design und ein Gerät (Rechner
  * 1280 × 900 oder Telefon 390 × 844), hell und dunkel: jeder Reiter, alle
  * Abschnitte der Einstellungen, die Seiten hinter dem Menü und die
- * wichtigsten Dialoge. Je Zustand:
- *   - axe-core: kein Verstoss der Stufe serious oder critical;
- *   - Layout (layout-messung.js): kein waagrechter Überlauf, jedes Tippziel
- *     ≥ 44 × 44 px am Telefon und ≥ 24 × 24 px am Rechner, keine überlappenden
- *     Bedienelemente, kein abgeschnittener Text ohne „…“, Text und Platzhalter
- *     ≥ 4,5:1 (gross 3:1), Feldgrenzen, Sinnbild-Knöpfe, Knopfgrenzen und
- *     aktive Zustände (Ansicht, Sammlungswahl, Zeitraum, Reiter) ≥ 3:1;
- *   - in jedem Dialog: Tab erreicht jedes Bedienelement, jede Klickfläche
- *     nimmt den Fokus, und der Fokus bleibt im Dialog.
- * Gemessen werden Eigenschaften statt Bilder: Pixelvergleiche hingen an den
- * Schriften der Maschine. Je Design und Gerät eine Testdatei, damit jede
- * unter der Zeitgrenze einer Datei (60 s) bleibt.
+ * wichtigsten Dialoge. Je Zustand: axe-core ohne Verstoss jeder Stufe, Layout, Tastatur …
+ * Ausführlich: docs/begruendungen/test/helpers/oberflaeche-pruefung.js.md#kopf
  *
  * Gegenproben (30.10.2026, zusammen angewendet; welche Datei rot war, steht
  * in ihrem Kopf):
@@ -36,16 +26,51 @@
  *      „Minifiguren“, „Benutzermenü“, „Import-Menü“ (aktiver Zustand „Karten“)
  *   M  noppe dunkel .ntab.active ohne hellen Rand → noppe/rechner „Sammlung“,
  *      „Teileliste“, „Finanzen“ u. a. (aktiver Zustand 1,13:1)
+ * Gegenproben (04.11.2026, zusammen angewendet, classic/telefon und schmal):
+ *   N  Merklisten-Zeile ohne eigene Zeile für Etikett und Preis → „Merkliste“
+ *      (schmal 0 px, 7 Zeilen: .mk-titel)
+ *   O  Seitentitel der Sammlung ohne min-height 44px → „Teile“ (verdeckt:
+ *      Untertitel unter „Importieren“)
+ *   P  (einzeln, 320 px Seitenschrift 200 %) Finanzzeile ohne die
+ *      Container-Abfrage 17rem → „Finanzen“ (schmal 0 px: .fin-name)
+ * Gegenproben (04.11.2026, Bestand mit Unterkonto, musterHaushalt):
+ *   Q  .toast-aktion wieder --b500, .pl-chip-name wieder --mut →
+ *      classic/rechner „Toast mit Aktion“ (3,67:1) und „Bauliste mit Sets“ (4,37:1)
+ *   R  .haushalt-liste wieder max-content max-content ohne Umbruch des Knopfs
+ *      → 390 px Seitenschrift 200 % „Sicht haushalt“ (Überlauf 432 px);
+ *      mit musterSammlung statt musterHaushalt blieb dieselbe Prüfung grün —
+ *      die Lücke, durch die der Befund der UI-Prüfung 12 rutschte.
+ * Gegenproben (04.11.2026, je einzeln; Wortbruch, Zeichenfläche, Auswahlfeld):
+ *   S  Zeitraumknöpfe wieder im 2×2-Raster ohne nowrap, Diagrammkarte mit
+ *      vollem Innenrand → 320 px Seitenschrift 200 % „Finanzen“ (Wortbruch
+ *      „Woch|e“, „Mona|t“); nur Raster und nowrap zurück blieb grün, weil der
+ *      schmalere Innenrand allein schon Platz schafft
+ *   T  achsenLage immer aussen → 320 px Seitenschrift 200 % „Finanzen“
+ *      (schmal (Diagramm) -2 px Kurve) und „Set-Detail“ (101 px)
+ *   U  Merklisten-Filter wieder je halbe Zeile → 320 px EN „Merkliste“
+ *      (Auswahl gekürzt „All conditions“)
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const { starteApp, warte } = require('./app-browser');
-const { musterSammlung } = require('./bestand');
+const { musterHaushalt } = require('./bestand');
 const { AXE_LAUF, LAYOUT, tabPruefung } = require('./layout-messung');
 
 const GERAETE = { rechner: [1280, 900, false], telefon: [390, 844, true] };
 
 const klick = (sel) => `document.querySelector(${JSON.stringify(sel)})?.click(); true`;
+/** Eine Datei in ein verstecktes Dateifeld legen und `change` auslösen. */
+const datei = (sel, name, typ, inhalt) => `(() => { const f = document.querySelector(${JSON.stringify(sel)}); if (!f) return true;
+  const dt = new DataTransfer(); dt.items.add(new File([${JSON.stringify(inhalt)}], ${JSON.stringify(name)}, { type: ${JSON.stringify(typ)} }));
+  f.files = dt.files; f.dispatchEvent(new Event('change', { bubbles: true })); return true; })()`;
+const WANTED_XML = `<INVENTORY>
+<ITEM><ITEMTYPE>P</ITEMTYPE><ITEMID>3001</ITEMID><COLOR>11</COLOR><MINQTY>4</MINQTY><MAXPRICE>0.25</MAXPRICE></ITEM>
+<ITEM><ITEMTYPE>S</ITEMTYPE><ITEMID>10294-1</ITEMID><MINQTY>1</MINQTY></ITEM>
+<ITEM><ITEMTYPE>P</ITEMTYPE><ITEMID>99999zz</ITEMID><COLOR>5</COLOR><MINQTY>2</MINQTY></ITEM>
+</INVENTORY>`;
+/** Kleinstes gültiges PDF mit einer Seite; PDF.js baut die Querverweise selbst. */
+const PDF = '%PDF-1.4\n1 0 obj<</Type/Catalog/Pages 2 0 R>>endobj\n2 0 obj<</Type/Pages/Kids[3 0 R]/Count 1>>endobj\n'
+  + '3 0 obj<</Type/Page/Parent 2 0 R/MediaBox[0 0 300 400]>>endobj\ntrailer<</Root 1 0 R>>\n%%EOF\n';
 const reiter = (r) => klick(`.ntab[data-tab="${r}"]`);
 const ANSICHTEN = [
   ['Sammlung', [reiter('gallery')]],
@@ -71,20 +96,39 @@ const ANSICHTEN = [
   ['Teil aus Set', [reiter('parts'), klick('.part-card[data-click="openSetItemDetail"]')]],
   ['Merkposten-Detail', [reiter('wanted'), klick('.mk-zeile[data-click="oeffneMerkpostenDetail"]')]],
   ['Löschen bestätigen', [reiter('parts'), klick('.man-tile .delbtn')]],
+  // Ein Toast mit Knopf und die Bauliste mit Chips, darunter einer, den der Katalog nicht kennt.
+  ['Toast mit Aktion', [reiter('gallery'), `location.hash = '#/sammlung/set/99999-9'; true`]],
+  ['Bauliste mit Sets', [reiter('partslist'), `(() => { document.getElementById('pl-setnr').value = '10294-1, 99999-1';
+    document.querySelector('[data-click="plAddSet"]').click(); return true; })()`, klick('#btn-pl-gen')]],
+  // Dateidialoge ohne Datei auf der Platte: DataTransfer legt sie dem Feld unter, wie eine Wahl im Dialog.
+  ['Wanted-XML', [reiter('parts'), datei('#wanted-xml-part', 'wanted.xml', 'text/xml', WANTED_XML)]],
+  ['CSV-Fortschritt', [reiter('gallery'), datei('#csv-file', 'sets.csv', 'text/csv', 'set_number,quantity\n75192-1,1\n99999-1,abc\n'),
+    `new Promise(r => { const t0 = Date.now(); (function w() { const c = document.getElementById('confirm-modal');
+      if (c && c.style.display === 'flex') { document.getElementById('cd-confirm').click(); r(true); }
+      else if (document.getElementById('progress-overlay').classList.contains('open') || Date.now() - t0 > 5000) r(true); else setTimeout(w, 100); })(); })`,
+    `new Promise(r => { const t0 = Date.now(); (function w() { const f = document.getElementById('prog-footer');
+      if (/fertig|abgeschlossen|Fehler|done|finished/i.test(f?.textContent || '') || Date.now() - t0 > 8000) r(true); else setTimeout(w, 200); })(); })`]],
+  ['PDF-Betrachter', [reiter('gallery'), klick('#gallery [data-click="openModal"]'),
+    `document.getElementById('instr-file') ? true : new Promise(r => setTimeout(() => r(true), 800))`,
+    datei('#instr-file', 'anleitung.pdf', 'application/pdf', PDF),
+    `new Promise(r => { const t0 = Date.now(); (function w() { if (document.querySelector('#set-modal [data-click="openPdfViewerLink"]') || Date.now() - t0 > 8000) r(true); else setTimeout(w, 200); })(); })`,
+    klick('#set-modal [data-click="openPdfViewerLink"]'),
+    `new Promise(r => { const t0 = Date.now(); (function w() { if (document.querySelector('#pdf-viewer-pages [role="img"]') || Date.now() - t0 > 8000) r(true); else setTimeout(w, 200); })(); })`]],
 ];
 
 const SCHLIESSEN = `(() => {
   document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
   document.querySelectorAll('.ovl.open').forEach(o => o.querySelector('[data-click^="close"], [data-click^="schliesse"], .mx')?.click());
   document.querySelectorAll('.ovl.open').forEach(o => o.classList.remove('open'));
-  document.querySelectorAll('details[open]').forEach(d => { d.open = false; });
+  document.querySelectorAll('details[open]:not(#mk-kasten):not(#pl-optionen)').forEach(d => { d.open = false; });
+  document.querySelectorAll('#toasts .toast').forEach(x => x.remove());
   const pop = document.getElementById('umenu-pop'); if (pop) pop.style.display = 'none';
   return true; })()`;
 
 /** Registriert den Test für ein Design und ein Gerät. */
 function pruefeOberflaeche(design, geraet) {
   test(`Oberfläche ${design}, ${geraet}: axe und Layout`, { concurrency: 1, timeout: 300_000 }, async (t) => {
-    const app = await starteApp(t, { name: `ofl_${design}_${geraet}_${process.pid}`, bestand: musterSammlung });
+    const app = await starteApp(t, { name: `ofl_${design}_${geraet}_${process.pid}`, bestand: musterHaushalt });
     if (app.grund) { t.skip(app.grund); return; }
     const { b } = app;
     const [w, h, mobil] = GERAETE[geraet];
@@ -120,24 +164,25 @@ function pruefeOberflaeche(design, geraet) {
   });
 }
 
-/** Funde, die grosse Schrift betreffen: Überlauf, Abschneiden, Überlappung, Tippziel, Leiste. */
-const GROSS = /^(Überlauf|abgeschnitten|Überlappung|Tippziel|Leiste)/;
+/** Funde, die grosse Schrift betreffen: Überlauf, Abschneiden, Überlappung, Tippziel, Leiste, schmaler oder verdeckter Text, Wortbruch.
+ * Ein gekürztes Auswahlfeld zählt nur bei normaler Schrift: Bei 200 % passt nicht jeder Eintrag in 320 px. */
+const GROSS = /^(Überlauf|abgeschnitten|Überlappung|Tippziel|Leiste|schmal|verdeckt|Wortbruch)/;
 const LEISTE = `[...document.querySelectorAll('nav .ntab')].filter(t => t.checkVisibility()).map(t => t.querySelector('.tab-label'))
   .filter(l => l.getBoundingClientRect().width <= 1 || l.scrollWidth > l.clientWidth + 1).map(l => 'Leiste: „' + l.textContent.trim() + '“ abgeschnitten')`;
 
 /**
- * Alle Ansichten bei 320 px und 200 % Schrift, in allen sechs Designs hell
+ * Alle Ansichten bei 320 px (oder `breite`) und 200 % Schrift, in allen sechs Designs hell
  * und dunkel. `modus` 'browser' vergrössert wie die Browsereinstellung
  * (Page.setFontSizes), 'seite' setzt die Grundschrift der Seite auf 200 %,
  * 'schmal' misst 320 px bei normaler Schrift auf Englisch.
  */
-function pruefeGrosseSchrift(modus) {
-  test(`Oberfläche 320 px (${modus}): alle Ansichten`, { concurrency: 1, timeout: 300_000 }, async (t) => {
+function pruefeGrosseSchrift(modus, breite = 320) {
+  test(`Oberfläche ${breite} px (${modus}): alle Ansichten`, { concurrency: 1, timeout: 300_000 }, async (t) => {
     // Schmal auf Englisch: Die längeren Beschriftungen sind dort der enge Fall.
-    const app = await starteApp(t, { name: `ofl_gross_${modus}_${process.pid}`, bestand: musterSammlung, sprache: modus === 'schmal' ? 'en' : 'de' });
+    const app = await starteApp(t, { name: `ofl_gross_${modus}_${process.pid}`, bestand: musterHaushalt, sprache: modus === 'schmal' ? 'en' : 'de' });
     if (app.grund) { t.skip(app.grund); return; }
     const { b } = app;
-    await b.tab('Emulation.setDeviceMetricsOverride', { width: 320, height: 640, deviceScaleFactor: 1, mobile: true });
+    await b.tab('Emulation.setDeviceMetricsOverride', { width: breite, height: 640, deviceScaleFactor: 1, mobile: true });
     await warte(1000);
     await b.auswerten(klick('#einrichtung-modal.open [data-click="einrichtungSpaeter"]'));
     if (modus === 'browser') await b.tab('Page.setFontSizes', { fontSizes: { standard: 32, fixed: 26 } });
@@ -149,11 +194,13 @@ function pruefeGrosseSchrift(modus) {
       await b.auswerten(SCHLIESSEN);
       for (const s of schritte) { await b.auswerten(s); await warte(250); }
       await warte(400);
+      // Gemessen wird der geladene Inhalt, nicht das Gerüst davor (Marktpreis im Set-Dialog).
+      await app.bis(`!document.querySelector('.ovl.open .skelett-zeile, .tab.active .skelett-zeile')`, 'Inhalt geladen', 40).catch(() => {});
       for (const design of designs) for (const dunkel of [false, true]) {
         await b.auswerten(`document.documentElement.setAttribute('data-theme', '${design}'); document.documentElement.toggleAttribute('data-dunkel', ${dunkel}); true`);
         await b.auswerten(`new Promise(r => requestAnimationFrame(() => requestAnimationFrame(() => r(true))))`);
         const wo = `${design} ${dunkel ? 'dunkel' : 'hell'}`;
-        for (const f of [...await b.auswerten(LAYOUT(true)), ...await b.auswerten(LEISTE)]) if (GROSS.test(f)) funde.push(`${wo}: ${f}`);
+        for (const f of [...await b.auswerten(LAYOUT(true)), ...await b.auswerten(LEISTE)]) if (GROSS.test(f) || (modus === 'schmal' && f.startsWith('Auswahl'))) funde.push(`${wo}: ${f}`);
       }
       await t.test(ansicht, () => assert.deepEqual(funde, []));
     }

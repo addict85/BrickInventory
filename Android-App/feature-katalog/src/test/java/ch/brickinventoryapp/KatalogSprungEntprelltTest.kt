@@ -2,6 +2,16 @@ package ch.brickinventoryapp
 
 import ch.brickinventoryapp.ui.CatalogYearMath
 import ch.brickinventoryapp.data.repository.CATALOG_PAGE_SIZE
+import ch.brickinventoryapp.ui.viewmodel.SICHTFENSTER_RUHE_MS
+import ch.brickinventoryapp.ui.viewmodel.Sichtfensterlader
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.test.StandardTestDispatcher
+import kotlinx.coroutines.test.advanceTimeBy
+import kotlinx.coroutines.test.advanceUntilIdle
+import kotlinx.coroutines.test.runTest
+import org.junit.Assert.assertEquals
 import org.junit.Test
 
 /**
@@ -16,9 +26,6 @@ import org.junit.Test
  * Ursache festnageln:
  *   • Der Bereich ist in dieser Zeit GANZ LEER — es fehlen die Seitendaten,
  *     nicht die Bilder.
- *   • Beim ZWEITEN Besuch desselben Jahres dauert es genauso lange — also
- *     kein Cache-Problem.
- *   • In der Webapp geht dasselbe sofort — also kein Server-Problem.
  *
  * ── Was gemessen wurde, bevor etwas geaendert wurde ─────────────────────────
  * Zuerst war die Datenbank verdaechtig — ein `ORDER BY year DESC … LIMIT 60
@@ -49,12 +56,17 @@ import org.junit.Test
  * (js/09-catalog.js, `_ladeSichtbareSeiten`, 150 ms) — und genau deshalb ist
  * die Webapp schnell.
  *
- * ── Warum die Pruefungen am Quelltext haengen ───────────────────────────────
- * Ein Compose-Effekt laesst sich ohne Android-Laufzeit nicht ausfuehren. Die
- * REIHENFOLGE („warten, dann laden") und die STELLE dagegen sind Tatsachen der
- * Datei. Das Verhalten selbst ist auf der Webapp-Seite gemessen, wo derselbe
- * Mechanismus in jsdom laufen kann: katalog-zug-entprellt.test.js, 2 Abrufe
- * mit Ruhe gegen 48 ohne.
+ * ── Wie geprueft wird ───────────────────────────────────────────────────────
+ * Die Ruhe steht seit arch14 (M1) im ViewModel (Sichtfensterlader) und laeuft
+ * hier mit StandardTestDispatcher: ein Zug mit hundert Fenstern, virtuelle Zeit,
+ * gezaehlte Abrufe. Dass die Leiste selbst nicht laedt, bleibt am Quelltext.
+ *
+ * Gegenproben:
+ *   A  `collectLatest` durch `collect` ersetzt
+ *      (gegenproben/sichtfenster-ohne-entprellung.patch) → rot „der
+ *      Sichtfenster-Lader wartet …“ (jedes Fenster des Zuges wird geladen)
+ *   B  `delay(ruheMs)` entfernt → rot, derselbe Fall (laedt vor der Ruhe)
+ *   C  den Vorlauf `(von - 1)..(bis + 1)` auf `von..bis` verkuerzt → rot, derselbe Fall
  */
 class KatalogSprungEntprelltTest {
 
@@ -96,45 +108,27 @@ class KatalogSprungEntprelltTest {
         assert(gesamtSeiten > 100) { "Katalog zu klein fuer diese Aussage — Rechnung veraltet?" }
     }
 
+    @OptIn(ExperimentalCoroutinesApi::class)
     @Test
-    fun `der Sichtfenster-Lader wartet, bis die Liste ruhig steht`() {
-        // ── Diese Pruefung stand einmal genau ANDERSHERUM ────────────────────
-        // Sie hiess „das Sichtfenster laedt weiterhin unmittelbar" und verlangte
-        // den Abruf ohne jede Wartezeit — mit der Begruendung, beim
-        // gewoehnlichen Scrollen sei nie etwas falsch gewesen. Das stimmt, ist
-        // aber nicht der ganze Fall: Beim Ziehen an der Leiste laeuft derselbe
-        // Lader, nur hundertfach. Die Regel schrieb damit die Ursache fest.
-        //
-        // Sie steht hier bewusst als umgedrehte Fassung und nicht als neue
-        // Datei: Wer sie kuenftig wieder „auf sofort" stellen will, soll den
-        // Grund lesen, warum das schon einmal falsch war.
-        val src = Quellen.ohneKommentare(Quellen.lies("ui/screens/CatalogScreen.kt"))
-
-        val ab = src.indexOf("snapshotFlow {")
-        assert(ab > 0) { "Der Sichtfenster-Lader ist nicht mehr zu finden" }
-        val lader = src.substring(ab, minOf(ab + 900, src.length))
-
-        // `collectLatest`, nicht `collect`: Nur damit bricht ein neues
-        // Sichtfenster den wartenden Durchlauf ab. Mit `collect` wuerde jeder
-        // Punkt des Zuges bloss VERZOEGERT geladen — dieselbe Zahl Abrufe, nur
-        // spaeter. Das ist der Unterschied zwischen entprellen und aufschieben.
-        assert(lader.contains(".collectLatest {")) {
-            "Der Sichtfenster-Lader sammelt wieder mit `collect`. Dann wird jeder " +
-                "Punkt eines Zuges nur aufgeschoben statt verworfen, und es bleibt " +
-                "bei ueber hundert Abrufen je Zug."
+    fun `der Sichtfenster-Lader wartet, bis die Liste ruhig steht`() = runTest {
+        val geladen = mutableListOf<Int>()
+        val bereich = CoroutineScope(StandardTestDispatcher(testScheduler))
+        val lader = Sichtfensterlader(bereich, SICHTFENSTER_RUHE_MS) { geladen += it }
+        // Ein Zug ueber die Leiste: hundert Fenster, alle 10 ms eines, Seite fuer Seite.
+        for (seite in 1..100) {
+            lader.sichtbar(seite, seite + 1)
+            advanceTimeBy(10)
         }
-        // Und die Reihenfolge: erst warten, dann laden.
-        val warten = lader.indexOf("delay(")
-        val laden = lader.indexOf("onEnsurePage")
-        assert(warten > 0 && laden > 0) { "Warten oder Laden fehlt im Sichtfenster-Lader" }
-        assert(warten < laden) {
-            "Es wird geladen, bevor gewartet wird — dann entprellt nichts"
-        }
-        // Vorlauf in beide Richtungen bleibt: nach einem Sprung fehlte sonst
-        // alles oberhalb der Sprungstelle.
-        assert(lader.contains("(von - 1)..(bis + 1)")) {
-            "Der Vorlauf in beide Richtungen ist verschwunden"
-        }
+        assertEquals("Waehrend des Zuges wird nichts geladen", emptyList<Int>(), geladen)
+        advanceUntilIdle()
+        assertEquals("Nur das letzte Fenster, mit einer Seite Vorlauf in beide Richtungen",
+            listOf(99, 100, 101, 102), geladen)
+        // Seite 1 hat keinen Vorgaenger: kein Abruf fuer Seite 0.
+        geladen.clear()
+        lader.sichtbar(1, 1)
+        advanceUntilIdle()
+        assertEquals(listOf(1, 2), geladen)
+        bereich.cancel()
     }
 
     @Test

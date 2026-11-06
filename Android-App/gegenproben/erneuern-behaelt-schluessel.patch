@@ -1,0 +1,17 @@
+Gegenprobe: Ablageschluessel.erneuere() vergisst den Schlüssel im Speicher nicht
+Modul: core-data
+Test: ch.brickinventoryapp.AblageVerschluesselungTest
+Rot: nach dem Erneuern ist alles Alte unlesbar
+
+diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/util/Ablageschluessel.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/util/Ablageschluessel.kt
+index e3f3664..5414bb2 100644
+--- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/util/Ablageschluessel.kt
++++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/util/Ablageschluessel.kt
+@@ -61,7 +61,6 @@ class Ablageschluessel(private val datei: File, private val tresor: TokenVerschl
+         vorErneuerung.forEach { it() }
+         datei.delete()
+         runCatching { tresor.vergiss() }
+-        bekannt = null
+         stand++
+         hole()
+     }

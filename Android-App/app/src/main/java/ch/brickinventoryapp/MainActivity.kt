@@ -1,8 +1,7 @@
 package ch.brickinventoryapp
 
-import android.app.Application
+import ch.brickinventoryapp.util.fangeAusserAbbruch
 import android.os.Bundle
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 import androidx.activity.compose.setContent
@@ -10,70 +9,69 @@ import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.compose.foundation.layout.*
-import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
-import androidx.compose.material.icons.automirrored.filled.Logout
-import androidx.compose.material.icons.automirrored.filled.OpenInNew
-import androidx.compose.material.icons.automirrored.filled.ListAlt
 import androidx.compose.material3.*
-import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.draw.clip
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.ui.window.Dialog
 import androidx.compose.runtime.*
-import androidx.compose.ui.Alignment
-import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.font.FontWeight
-import androidx.navigation.NavDestination.Companion.hierarchy
-import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.compose.*
 import ch.brickinventoryapp.ui.*
-import ch.brickinventoryapp.ui.AppUiState
 import ch.brickinventoryapp.ui.screens.*
 import ch.brickinventoryapp.ui.theme.BrickInventoryManagerTheme
 import ch.brickinventoryapp.ui.theme.darstellung
 import androidx.compose.foundation.isSystemInDarkTheme
 import coil3.ImageLoader
-import androidx.compose.foundation.Image
-import androidx.compose.ui.res.painterResource
 import androidx.compose.runtime.CompositionLocalProvider
 import ch.brickinventoryapp.ressourcen.R
 import ch.brickinventoryapp.ui.components.LocalAppFassung
 import ch.brickinventoryapp.util.AppFassung
-import ch.brickinventoryapp.ui.viewmodel.CatalogViewModel
-import androidx.compose.ui.res.vectorResource
-import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.graphics.Color
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Column
-import androidx.compose.material3.LinearProgressIndicator
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import android.content.Intent
 import androidx.lifecycle.lifecycleScope
 import kotlinx.coroutines.launch
 import dagger.hilt.android.AndroidEntryPoint
-import androidx.compose.ui.res.stringResource
-import dagger.hilt.android.HiltAndroidApp
 import javax.inject.Inject
-
+import ch.brickinventoryapp.alarm.PreisalarmRepository
+import ch.brickinventoryapp.ui.Meldungseingang
+import ch.brickinventoryapp.ui.components.GeraeteSchrittschutz
+import ch.brickinventoryapp.ui.components.LocalSchrittschutz
+import ch.brickinventoryapp.ui.components.NutzerCaDialog
+import ch.brickinventoryapp.ui.components.OhneSperreWarnung
+import ch.brickinventoryapp.ui.components.Sichtschutz
+import ch.brickinventoryapp.ui.components.TastaturOhneLernen
+import ch.brickinventoryapp.ui.components.ZertifikatDialog
+import ch.brickinventoryapp.ui.screens.StartpasswortMaske
+import ch.brickinventoryapp.ui.screens.ZweiterFaktorPflichtMaske
+import ch.brickinventoryapp.ui.viewmodel.DarstellungViewModel
+import ch.brickinventoryapp.ui.viewmodel.KontoViewModel
+import ch.brickinventoryapp.ui.viewmodel.VertrauenViewModel
+import ch.brickinventoryapp.ui.viewmodel.AnmeldungViewModel
+import ch.brickinventoryapp.ui.viewmodel.CsvImportViewModel
+import ch.brickinventoryapp.ui.viewmodel.ErfassungViewModel
+import ch.brickinventoryapp.ui.viewmodel.GutscheinViewModel
+import ch.brickinventoryapp.ui.viewmodel.UpdateViewModel
+import ch.brickinventoryapp.nav.AktivitaetsZustand
+import ch.brickinventoryapp.util.GeheimeZwischenablage
+import ch.brickinventoryapp.util.LanguageManager
+import ch.brickinventoryapp.util.Protokoll
 
 @AndroidEntryPoint
 class MainActivity : NurLauncherStart() {
     private val vm: AppViewModel by viewModels()
+    private val darstellung: DarstellungViewModel by viewModels()
+    private val vertrauen: VertrauenViewModel by viewModels()
+    private val erfassung: ErfassungViewModel by viewModels()
+    private val selbstUpdate: UpdateViewModel by viewModels()
+    private val csvImport: CsvImportViewModel by viewModels()
+    private val anmeldung: AnmeldungViewModel by viewModels()
+    private val gutschein: GutscheinViewModel by viewModels()
 
-    // Hier gehalten und nicht ueber hiltViewModel() geholt: Katalogliste und
-    // Katalogdetail sind zwei NavHost-Ziele, und an den Backstack-Eintrag
-    // gebunden waeren es zwei Instanzen — das Detail setzt „besitze ich“,
-    // und die Liste bekaeme es nie zu sehen.
-    private val katalogVm: CatalogViewModel by viewModels()
+    /** Einmal hier geholt, damit kein Ziel selbst im ViewModelStore der Activity sucht. */
+    private fun aktivitaetsZustand() = AktivitaetsZustand(
+        app = vm, erfassung = erfassung, update = selbstUpdate, csvImport = csvImport,
+        anmeldung = anmeldung, gutschein = gutschein, darstellung = darstellung, vertrauen = vertrauen,
+    )
 
-    // Ebenso: Eine Guthabenabfrage über alle Karten soll weiterlaufen, wenn
-    // man die Gutschein-Seite verlässt.
-    private val gutscheinVm: ch.brickinventoryapp.ui.viewmodel.GutscheinViewModel by viewModels()
-    // Nur für die Maske „Startpasswort ersetzen“, die über allem liegt.
-    private val startKontoVm: ch.brickinventoryapp.ui.viewmodel.KontoViewModel by viewModels()
+    // Nur für die Pflichtmasken (Startpasswort, zweiter Faktor), die über allem liegen.
+    private val startKontoVm: KontoViewModel by viewModels()
 
     // ImageLoader als Hilt-Singleton aus NetzModule — eine Instanz je Prozess statt je
     // Activity: Sonst verlöre jede Drehung den Memory-Cache, und zwei
@@ -82,14 +80,19 @@ class MainActivity : NurLauncherStart() {
 
     /** Rückfrage per Gerätesperre vor heiklen Schritten; gilt bis die App in den Hintergrund geht. */
     private val schrittschutz by lazy {
-        ch.brickinventoryapp.ui.components.GeraeteSchrittschutz(this) {
-            ch.brickinventoryapp.util.LanguageManager.localizedContext(this)
+        GeraeteSchrittschutz(this, keinSchluessel = {
+            android.widget.Toast.makeText(this, LanguageManager.localizedContext(this).getString(R.string.schritt_kein_schluessel),
+                android.widget.Toast.LENGTH_LONG).show()
+        }) {
+            LanguageManager.localizedContext(this)
                 .getString(R.string.schritt_untertitel)
         }
     }
 
     /** Das Ziel einer angetippten Meldung; abgelegt nur vom nicht exportierten MeldungsEinstieg. */
-    @Inject lateinit var meldungseingang: ch.brickinventoryapp.ui.Meldungseingang
+    @Inject lateinit var meldungseingang: Meldungseingang
+
+    @Inject lateinit var preisalarme: PreisalarmRepository
 
     /**
      * Eine angetippte Meldung, waehrend die App schon laeuft (singleTop). Das
@@ -115,8 +118,8 @@ class MainActivity : NurLauncherStart() {
     override fun onStart() {
         super.onStart()
         lifecycleScope.launch {
-            runCatching { ch.brickinventoryapp.alarm.PreisalarmWorker.durchgang(applicationContext) }
-                .onFailure { ch.brickinventoryapp.util.Protokoll.warnung("Preisalarm", "Abruf beim Oeffnen fehlgeschlagen", it) }
+            fangeAusserAbbruch { preisalarme.durchgang() }
+                .onFailure { Protokoll.warnung("Preisalarm", "Abruf beim Oeffnen fehlgeschlagen", it) }
         }
     }
 
@@ -128,7 +131,7 @@ class MainActivity : NurLauncherStart() {
     /** Ein abgelaufenes Geheimnis lässt sich ab Android 10 erst mit Fokus aus der Zwischenablage nehmen. */
     override fun onWindowFocusChanged(hasFocus: Boolean) {
         super.onWindowFocusChanged(hasFocus)
-        if (hasFocus) ch.brickinventoryapp.util.GeheimeZwischenablage.pruefe(this)
+        if (hasFocus) GeheimeZwischenablage.pruefe(this)
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -145,58 +148,73 @@ class MainActivity : NurLauncherStart() {
             // sammeln: Der komplette AppUiState an dieser Stelle hätte bei
             // jeder Zustandsänderung die Wurzel der Composition invalidiert
             // und darüber die ganze App rekomponiert.
-            val theme by vm.appTheme.collectAsStateWithLifecycle()
-            val helligkeit by vm.helligkeit.collectAsStateWithLifecycle()
-            val systemfarben by vm.systemfarben.collectAsStateWithLifecycle()
+            val theme by darstellung.appTheme.collectAsStateWithLifecycle()
+            val helligkeit by darstellung.helligkeit.collectAsStateWithLifecycle()
+            val systemfarben by darstellung.systemfarben.collectAsStateWithLifecycle()
             // Über den Zähler von Sichtschutz, damit ein Bildschirm, der ihn selbst
             // setzt, beim Verlassen den Wunsch des Nutzers nicht aufhebt.
-            val vorschauVerbergen by vm.vorschauVerbergen.collectAsStateWithLifecycle()
-            if (vorschauVerbergen) ch.brickinventoryapp.ui.components.Sichtschutz()
+            val vorschauVerbergen by darstellung.vorschauVerbergen.collectAsStateWithLifecycle()
+            if (vorschauVerbergen) Sichtschutz(ueberdeckung = false)
             val sicht = darstellung(theme, helligkeit, isSystemInDarkTheme(), systemfarben, android.os.Build.VERSION.SDK_INT)
             BrickInventoryManagerTheme(theme = sicht.design, dunkel = sicht.dunkel, systemfarben = sicht.systemfarben) {
                 // Die Fassung kennt nur dieses Modul; die Bereiche lesen sie hier.
                 CompositionLocalProvider(
                     LocalAppFassung provides AppFassung(BuildConfig.VERSION_NAME, BuildConfig.VERSION_CODE),
-                    ch.brickinventoryapp.ui.components.LocalSchrittschutz provides schrittschutz,
-                ) {
-                    BrickInventoryManagerApp(vm, katalogVm, gutscheinVm, imageLoader)
+                    LocalSchrittschutz provides schrittschutz,
+                ) { TastaturOhneLernen {
+                    // App-weit: Gutschein-Nummer und PIN, Passwörter, Codes und
+                    // Einladungen; Setnamen lernt die Tastatur dafür auch nicht mit.
+                    BrickInventoryRoute(aktivitaetsZustand(), imageLoader)
+                    // Ohne Displaysperre fragt der Schrittschutz hier nach, statt still durchzulassen.
+                    OhneSperreWarnung(schrittschutz.ohneSperre)
                     // Mit Startpasswort weist der Server alles ab: nur die Maske, bis es ersetzt ist.
-                    val startpasswort by vm.passwortPflicht.noetig.collectAsStateWithLifecycle()
+                    val startpasswort by vm.startpasswortNoetig.collectAsStateWithLifecycle()
                     // Startwert false: Die Maske erscheint erst mit beiden Zuständen,
                     // und StateFlow.value in der Komposition verbietet Lint.
                     val angemeldet by remember { vm.state.map { it.isLoggedIn }.distinctUntilChanged() }
                         .collectAsStateWithLifecycle(false)
+                    // Ebenso Verwalterrechte ohne zweiten Faktor; das Startpasswort kommt zuerst.
+                    val faktorPflicht by vm.zweiterFaktorNoetig.collectAsStateWithLifecycle()
                     if (startpasswort && angemeldet) {
                         val kontoZustand by startKontoVm.kontoState.collectAsStateWithLifecycle()
-                        ch.brickinventoryapp.ui.screens.StartpasswortMaske(
+                        StartpasswortMaske(
                             kontoZustand = kontoZustand,
-                            onErsetzen = { alt, neu, code -> startKontoVm.aenderePasswort(alt, neu, code) { vm.logout() } },
+                            onErsetzen = { alt, neu, code -> startKontoVm.aenderePasswort(alt, neu, code) },
                             onAbmelden = { vm.logout() },
+                        )
+                    } else if (faktorPflicht && angemeldet) {
+                        val faktorZustand by startKontoVm.zweiterFaktorState.collectAsStateWithLifecycle()
+                        LaunchedEffect(Unit) { startKontoVm.ladeZweitenFaktor() }
+                        ZweiterFaktorPflichtMaske(
+                            zustand = faktorZustand,
+                            onEinrichten = startKontoVm::richteZweitenFaktorEin,
+                            onBestaetigen = startKontoVm::bestaetigeZweitenFaktor,
+                            onWeiter = { startKontoVm.zweiterFaktorZurueck(); vm.zweiterFaktorEingerichtet() },
+                            onAbmelden = { startKontoVm.zweiterFaktorZurueck(); vm.logout() },
                         )
                     }
                     // Über allem: Ein unbekanntes Zertifikat kann jeder Abruf treffen.
-                    val zertifikat by vm.zertifikatsFrage.offen.collectAsStateWithLifecycle()
-                    val nutzerCa by vm.nutzerCa.an.collectAsStateWithLifecycle()
+                    val zertifikat by vertrauen.zertifikat.collectAsStateWithLifecycle()
+                    val nutzerCa by vertrauen.nutzerCa.an.collectAsStateWithLifecycle()
                     zertifikat?.let { frage ->
-                        ch.brickinventoryapp.ui.components.ZertifikatDialog(
+                        ZertifikatDialog(
                             frage = frage,
                             nutzerCaAn = nutzerCa,
-                            onVertrauen = vm::zertifikatVertrauen,
-                            onNutzerCa = { vm.nutzerCa.anfragen(); vm.zertifikatsFrage.verwerfen() },
-                            onAbbrechen = vm.zertifikatsFrage::verwerfen,
+                            onVertrauen = vertrauen::zertifikatVertrauen,
+                            onNutzerCa = { vertrauen.nutzerCa.anfragen(); vertrauen.zertifikatVerwerfen() },
+                            onAbbrechen = vertrauen::zertifikatVerwerfen,
                         )
                     }
                     // Hier und nicht in den Einstellungen: Auch der Zertifikatsdialog fragt an.
-                    val nutzerCaFrage by vm.nutzerCa.frage.collectAsStateWithLifecycle()
+                    val nutzerCaFrage by vertrauen.nutzerCa.frage.collectAsStateWithLifecycle()
                     if (nutzerCaFrage) {
-                        ch.brickinventoryapp.ui.components.NutzerCaDialog(
-                            onJa = vm.nutzerCa::bestaetigen,
-                            onAbbrechen = vm.nutzerCa::abbrechen,
+                        NutzerCaDialog(
+                            onJa = vertrauen.nutzerCa::bestaetigen,
+                            onAbbrechen = vertrauen.nutzerCa::abbrechen,
                         )
                     }
-                }
+                } }
             }
         }
     }
 }
-

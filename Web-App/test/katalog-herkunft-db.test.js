@@ -1,18 +1,17 @@
 /**
- * Was ein Konto eintippt, ist im gemeinsamen Katalog nur ein Platzhalter:
- * Ein anderes Konto fragt trotzdem Rebrickable, und dessen Antwort ersetzt
- * ihn. Eingetippte Bilder kommen nur von den Hosts, die der Bild-Proxy zeigt.
+ * Was ein Konto eintippt, gehört ihm (teil_eigen, teil_farbe_eigen,
+ * figur_eigen) und nie dem gemeinsamen Katalog: Ein anderes Konto zählt es
+ * nicht als bekannt und fragt Rebrickable; der geprüfte Wert hat Vorrang.
+ * Eingetippte Bilder kommen nur von den Hosts, die der Bild-Proxy zeigt.
  *
- * Gegenproben (am 28.10.2026 gemessen, je eine Änderung, danach zurück):
- *   A  in mitHerkunft() `ersetzt` immer falsch (`… AND FALSE`) → rot: „ein
- *      anderes Konto ersetzt den Platzhalter …“, „eine spätere Eingabe …“
- *      und „Figuren: …“
- *   B  in katalogTeil() Name, Kategorie und Bild ohne Herkunftsfilter → rot:
- *      „ein anderes Konto ersetzt den Platzhalter …“ (kein Abruf). Nur der
- *      Name allein bleibt grün: Annas Bild löst den Abruf schon aus.
+ * Gegenproben (am 03.11.2026 gemessen, je eine Änderung, danach zurück):
+ *   A  merkeTeil()/merkeTeilFarbe()/merkeFigur() ohne den Zweig für `von`
+ *      (Eingabe in den gemeinsamen Katalog) → rot: alle fünf Teiltests
+ *   B  teilAusKatalog() verbindet teil_eigen und teil_farbe_eigen ohne
+ *      `user_id = $3` → rot: „ein anderes Konto fragt trotzdem Rebrickable“
+ *      und „der geprüfte Wert hat Vorrang …“ (nur der Name allein bleibt
+ *      grün: Annas Bild fehlt Bruno und löst den Abruf schon aus)
  *   C  bildEingabe() gibt jede URL zurück → rot: „ein fremder Bild-Host …“
- *   D  in addManualPartIntern die Eingabe ohne `uid` geschrieben → rot:
- *      „die Eingabe steht als Platzhalter …“
  *
  * REQUIRE_DB=1.
  */
@@ -68,54 +67,58 @@ test('der gemeinsame Katalog', { concurrency: 1 }, async (t) => {
 
   const { addManualPart } = _req('src/teile/manuelleTeile.js');
   const { addManualFig }  = _req('src/figuren/manuelleFiguren.js');
-  const teil = (nr) => db.get(
-    `SELECT pc.part_name, pc.name_von, pcc.image_url, pcc.bild_von
-       FROM part_catalog pc LEFT JOIN part_color_catalog pcc
-         ON pcc.part_number = pc.part_number AND pcc.color_id = 4
-      WHERE pc.part_number = $1`, [nr]);
+  const { katalogTeil }   = _req('src/katalog/katalogPflege.js');
+  const gemeinsam = (nr) => db.get(
+    `SELECT pc.part_name, pcc.image_url
+       FROM (SELECT $1::text AS nr) q
+       LEFT JOIN part_catalog pc ON pc.part_number = q.nr
+       LEFT JOIN part_color_catalog pcc ON pcc.part_number = q.nr AND pcc.color_id = 4`, [nr]);
+  const eigen = (uid, nr) => db.get(
+    `SELECT te.part_name, tfe.image_url
+       FROM (SELECT $1::int AS u, $2::text AS nr) q
+       LEFT JOIN teil_eigen te ON te.user_id = q.u AND te.part_number = q.nr
+       LEFT JOIN teil_farbe_eigen tfe ON tfe.user_id = q.u AND tfe.part_number = q.nr AND tfe.color_id = 4`, [uid, nr]);
 
-  await t.test('die Eingabe steht als Platzhalter mit ihrem Konto da', async () => {
+  await t.test('die Eingabe steht in den eigenen Angaben, nicht im gemeinsamen Katalog', async () => {
     abrufe = [];
     await addManualPart(A, { part_number: '3001', color_id: 4, quantity: 1,
       part_name: 'Annas Name', image_url: 'https://cdn.rebrickable.com/media/anna.jpg' });
     assert.deepEqual(abrufe, [], 'mit Namen wird nicht nachgeschlagen');
-    const z = await teil('3001');
-    assert.equal(z.part_name, 'Annas Name');
-    assert.equal(z.name_von, A);
-    assert.equal(z.bild_von, A);
+    assert.deepEqual({ ...await eigen(A, '3001') },
+      { part_name: 'Annas Name', image_url: 'https://cdn.rebrickable.com/media/anna.jpg' });
+    assert.deepEqual({ ...await gemeinsam('3001') }, { part_name: null, image_url: null });
   });
 
-  await t.test('ein anderes Konto ersetzt den Platzhalter durch Rebrickable', async () => {
+  await t.test('ein anderes Konto fragt trotzdem Rebrickable', async () => {
     abrufe = [];
     await addManualPart(B, { part_number: '3001', color_id: 4, quantity: 1 });
     assert.deepEqual(abrufe, ['lookupPart 3001'], 'Annas Eingabe zählt für Bruno nicht als bekannt');
-    const z = await teil('3001');
-    assert.equal(z.part_name, 'Brick 2 x 4');
-    assert.equal(z.name_von, null);
-    assert.equal(z.image_url, 'https://cdn.rebrickable.com/media/parts/3001.jpg');
-    assert.equal(z.bild_von, null);
+    assert.deepEqual({ ...await gemeinsam('3001') },
+      { part_name: 'Brick 2 x 4', image_url: 'https://cdn.rebrickable.com/media/parts/3001.jpg' });
+    assert.equal((await katalogTeil('3001', 4, B)).name, 'Brick 2 x 4');
   });
 
-  await t.test('eine spätere Eingabe ändert den geprüften Wert nicht', async () => {
+  await t.test('der geprüfte Wert hat Vorrang, die eigene Angabe bleibt erhalten', async () => {
     await addManualPart(A, { part_number: '3001', color_id: 4, quantity: 1, part_name: 'Neuer Name' });
-    assert.equal((await teil('3001')).part_name, 'Brick 2 x 4');
+    assert.equal((await katalogTeil('3001', 4, A)).name, 'Brick 2 x 4');
+    assert.equal((await gemeinsam('3001')).part_name, 'Brick 2 x 4');
+    assert.equal((await eigen(A, '3001')).part_name, 'Annas Name');
   });
 
-  await t.test('ein fremder Bild-Host kommt nicht in den Katalog', async () => {
+  await t.test('ein fremder Bild-Host kommt nicht in die eigenen Angaben', async () => {
     await addManualPart(A, { part_number: '3002', color_id: 4, quantity: 1,
       part_name: 'Mit Zählpixel', image_url: 'https://zaehler.example/pixel.png' });
-    const z = await teil('3002');
+    const z = await eigen(A, '3002');
     assert.equal(z.part_name, 'Mit Zählpixel');
     assert.equal(z.image_url ?? null, null);
   });
 
-  await t.test('Figuren: der Platzhalter weicht der geprüften Quelle', async () => {
+  await t.test('Figuren: die Eingabe bleibt beim Konto, die geprüfte Quelle füllt den Katalog', async () => {
     await addManualFig(A, { fig_number: 'sw0011', quantity: 1, fig_name: 'Annas Figur' });
     abrufe = [];
     await addManualFig(B, { fig_number: 'sw0011', quantity: 1 });
     assert.deepEqual(abrufe, ['getMinifigInfo sw0011']);
-    const z = await db.get('SELECT fig_name, name_von FROM minifigs_catalog WHERE fig_number = $1', ['sw0011']);
-    assert.equal(z.fig_name, 'Chewbacca');
-    assert.equal(z.name_von, null);
+    assert.equal((await db.get('SELECT fig_name FROM minifigs_catalog WHERE fig_number = $1', ['sw0011'])).fig_name, 'Chewbacca');
+    assert.equal((await db.get('SELECT fig_name FROM figur_eigen WHERE user_id = $1 AND fig_number = $2', [A, 'sw0011'])).fig_name, 'Annas Figur');
   });
 });

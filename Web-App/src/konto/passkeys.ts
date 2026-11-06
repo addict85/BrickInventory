@@ -10,7 +10,7 @@ import { decodeClientDataJSON } from '@simplewebauthn/server/helpers';
 import * as repo from './repository/passkeys';
 import { basisUrl } from '../infra/basisUrl';
 import { androidHerkuenfte } from './androidApp';
-import { fehlertext } from '../infra/httpError';
+import { fehlertext } from '../infra/fehler';
 
 function abgewiesen(e: unknown): null {
   console.warn('[passkey] Antwort abgewiesen:', fehlertext(e));

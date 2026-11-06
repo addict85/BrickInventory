@@ -1,0 +1,16 @@
+Gegenprobe: Ein Gutschein-PDF im Betrachter setzt keinen Sichtschutz
+Modul: app
+Test: ch.brickinventoryapp.GutscheinSichtschutzAnzeigeTest
+Rot: ein Gutschein-PDF ist geschuetzt
+
+diff --git a/Android-App/feature-finanzen/src/main/java/ch/brickinventoryapp/ui/screens/GutscheinPdfSchutz.kt b/Android-App/feature-finanzen/src/main/java/ch/brickinventoryapp/ui/screens/GutscheinPdfSchutz.kt
+index dbf1b0d..2805b63 100644
+--- a/Android-App/feature-finanzen/src/main/java/ch/brickinventoryapp/ui/screens/GutscheinPdfSchutz.kt
++++ b/Android-App/feature-finanzen/src/main/java/ch/brickinventoryapp/ui/screens/GutscheinPdfSchutz.kt
+@@ -7,5 +7,5 @@ import ch.brickinventoryapp.ui.viewmodel.zeigtGutscheine
+ /** Ein Gutschein-PDF trägt Nummer und PIN: kein Bildschirmfoto, solange es angezeigt wird. */
+ @Composable
+ fun GutscheinPdfSchutz(pdfUrl: String) {
+-    if (zeigtGutscheine(pdfUrl)) Sichtschutz()
++    if (zeigtGutscheine(pdfUrl)) Unit
+ }

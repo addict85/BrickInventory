@@ -21,6 +21,7 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 
 const quellen = require('./helpers/sources');
 const _req = quellen.buildAndRequire();
+const { importWorker } = require('./helpers/auftraege');
 const { testServer } = require('./helpers/server');
 
 const GEHEIM = 'relation "geheime_tabelle" does not exist';
@@ -31,10 +32,11 @@ const ersetze = (rel, zusatz) => {
 };
 const { dateiFehler, fehlerText } = _req('src/infra/fehlerTexte.js');
 // Vor dem Laden der Routen: Die Dienste werfen, was im Betrieb aus der Datenbank käme.
+// Die Merkliste eine Ebene tiefer: Der Import läuft als Auftrag und ruft den Dienst intern.
+ersetze('src/merkliste/repository/merkliste.js', { merkeSetVor: async () => { throw new Error(GEHEIM); } });
 ersetze('src/sets/setService.js', { addSet: async (sn) => {
   throw sn === 'FACH-1' ? dateiFehler('setnummer_ungueltig', 400) : new Error(GEHEIM);
 } });
-ersetze('src/merkliste/merkliste.js', { legeMerkpostenAn: async () => { throw new Error(GEHEIM); } });
 
 const db = _req('db/database.js');
 
@@ -55,6 +57,7 @@ test('kein interner Fehlertext an den Client', { concurrency: 1 }, async (t) => 
     await db.pool.end().catch(() => {});
   });
 
+  importWorker(t, _req);
   const { base } = testServer(_req, { sitzung: { userId: uid }, t, routen: { '/api/v1': 'routes/api_v1/index.js' } });
   const strom = async (setNumber, sprache = 'de') => {
     const r = await fetch(`${base}/api/v1/sets/add-stream`, { method: 'POST',

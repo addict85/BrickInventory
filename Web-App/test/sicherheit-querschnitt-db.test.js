@@ -14,6 +14,11 @@
  *   D  /register antwortet bei vergebenem Benutzernamen wieder 409
  *      benutzername_vergeben → rot: „ein vergebener Name antwortet wie ein
  *      neuer" (gemessen 01.11.2026)
+ *   E  in server.ts wieder `res.status(404).json({ success: false, error:
+ *      'Endpoint nicht gefunden' })` statt unbekannterApiPfad → rot: „ein
+ *      unbekannter API-Pfad antwortet in der Form jeder Fehlerantwort"
+ *   F  handleRouteError() ohne `code` bei 5xx → rot: „ein Serverfehler in
+ *      Produktion nennt keine Interna" (E und F gemessen 05.11.2026)
  *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL.
  */
@@ -27,25 +32,19 @@ const URL_DB = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhos
 process.env.DATABASE_URL = URL_DB;
 // Links in Mails gibt es nur mit fester Adresse (routes/auth.ts, getBaseUrl).
 process.env.APP_BASE_URL = 'http://localhost';
-// Die Konsole zeigt die Empfängeradresse sonst nur maskiert (src/infra/mailer.ts).
-process.env.MAIL_KONSOLE_MIT_TOKEN = '1';
 const ROOT = path.join(__dirname, '..');
 const _req = require('./helpers/sources').buildAndRequire();
+const { dbOderSkip } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
+const { mailAttrappe, mailserverEintragen } = require('./helpers/mail-attrappe');
+const gesendet = mailAttrappe();
 const db = _req('db/database.js');
 const bcrypt = require(path.join(ROOT, 'node_modules', 'bcryptjs'));
-const warte = (ms) => new Promise(r => setTimeout(r, ms));
+const { warte } = require('./helpers/zeit');
 const freierPort = () => new Promise(r => { const s = net.createServer().listen(0, () => { const p = s.address().port; s.close(() => r(p)); }); });
 
 test('Sicherheit im Querschnitt', { concurrency: 1, timeout: 180_000 }, async (t) => {
-  try { await db.initSchema(); }
-  catch (e) {
-    if (process.env.REQUIRE_DB === '1')
-      throw new Error(`REQUIRE_DB=1, aber die Test-DB ist nicht erreichbar: ${e.message}`);
-    t.skip('Test-DB nicht erreichbar'); return;
-  }
-  const c = await db.pool.connect();
-  try { await _req('db/migrate.js').runMigrations(c); } finally { c.release(); }
+  if (!await dbOderSkip(t, _req)) return;
   const NAME = `quer_${process.pid}`, PASS = 'Quer-Passwort-1', MAIL = `quer_${process.pid}@example.org`;
   const NEU = `quer_neu_${process.pid}`;
   await db.run('DELETE FROM users WHERE username = ANY($1)', [[NAME, NEU]]);
@@ -54,7 +53,9 @@ test('Sicherheit im Querschnitt', { concurrency: 1, timeout: 180_000 }, async (t
   const regVorher = await db.get("SELECT value FROM global_settings WHERE key = 'registration_enabled'");
   await db.run("INSERT INTO global_settings (key, value) VALUES ('registration_enabled', '1') ON CONFLICT (key) DO UPDATE SET value = '1'");
   await db.run("DELETE FROM rate_limit_attempts WHERE key LIKE 'register|%' OR key LIKE '%quer_%'");
+  const mailZurueck = await mailserverEintragen(db);
   t.after(async () => {
+    await mailZurueck();
     await db.run("DELETE FROM global_settings WHERE key = 'registration_enabled'");
     if (regVorher) await db.run("INSERT INTO global_settings (key, value) VALUES ('registration_enabled', $1)", [regVorher.value]);
     await db.run('DELETE FROM users WHERE username = ANY($1)', [[NAME, NEU]]);
@@ -92,6 +93,11 @@ test('Sicherheit im Querschnitt', { concurrency: 1, timeout: 180_000 }, async (t
     }
   });
 
+  await t.test('ein unbekannter API-Pfad antwortet in der Form jeder Fehlerantwort', async () => {
+    const r = await fetch(`${basis}/api/gibt-es-nicht`, { headers: { 'accept-language': 'en' } });
+    assert.deepEqual([r.status, await r.json()], [404, { success: false, code: 'nicht_gefunden', error: 'Not found' }]);
+  });
+
   await t.test('das Sitzungscookie ist httpOnly und SameSite=Lax', async () => {
     const r = await fetch(`${basis}/api/v1/auth/login`, { method: 'POST', headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ username: NAME, password: PASS, ohne_token: true }) });
@@ -103,48 +109,41 @@ test('Sicherheit im Querschnitt', { concurrency: 1, timeout: 180_000 }, async (t
 
   await t.test('eine vergebene Adresse antwortet wie eine neue', async () => {
     const { base } = testServer(_req, { routen: { '/api/v1/auth': 'routes/auth.js' }, t });
-    const meldungen = [], echt = console.log;
-    console.log = (...a) => { meldungen.push(a.join(' ')); };
     const registriere = (username, email) => fetch(`${base}/api/v1/auth/register`, { method: 'POST',
       headers: { 'content-type': 'application/json' }, body: JSON.stringify({ username, email, password: 'Neues-Passwort-1' }) })
       .then(async r => ({ status: r.status, body: await r.json() }));
-    try {
-      const vergeben = await registriere(NEU, MAIL.toUpperCase());
-      assert.equal(vergeben.status, 200, JSON.stringify(vergeben.body));
-      assert.equal(await db.get('SELECT id FROM users WHERE username = $1', [NEU]), undefined, 'Konto angelegt');
-      assert.ok(meldungen.some(m => m.includes(MAIL)), 'Der Inhaber bekommt keinen Hinweis');
-      const neu = await registriere(NEU, `anders_${MAIL}`);
-      assert.deepEqual(vergeben.body, neu.body);
-    } finally { console.log = echt; }
+    const vergeben = await registriere(NEU, MAIL.toUpperCase());
+    assert.equal(vergeben.status, 200, JSON.stringify(vergeben.body));
+    assert.equal(await db.get('SELECT id FROM users WHERE username = $1', [NEU]), undefined, 'Konto angelegt');
+    assert.ok(gesendet.some(m => m.to === MAIL), 'Der Inhaber bekommt keinen Hinweis');
+    const neu = await registriere(NEU, `anders_${MAIL}`);
+    assert.deepEqual(vergeben.body, neu.body);
   });
 
   await t.test('ein vergebener Name antwortet wie ein neuer, die Adresse erfährt es per Mail', async () => {
     const { base } = testServer(_req, { routen: { '/api/v1/auth': 'routes/auth.js' }, t });
     await db.run("DELETE FROM rate_limit_attempts WHERE key LIKE 'register|%'");
-    const meldungen = [], echt = console.log;
-    console.log = (...a) => { meldungen.push(a.join(' ')); };
     const registriere = (username, email) => fetch(`${base}/api/v1/auth/register`, { method: 'POST',
       headers: { 'content-type': 'application/json' }, body: JSON.stringify({ username, email, password: 'Neues-Passwort-1' }) })
       .then(async r => ({ status: r.status, body: await r.json() }));
-    try {
-      const andere = `name_${MAIL}`;
-      const vergeben = await registriere(NAME, andere);
-      assert.equal(vergeben.status, 200, JSON.stringify(vergeben.body));
-      assert.equal(await db.get('SELECT id FROM users WHERE email = $1', [andere]), undefined, 'Konto angelegt');
-      assert.ok(meldungen.some(m => m.includes(andere)) && meldungen.some(m => /Benutzername schon vergeben/.test(m)), meldungen.join(' | '));
-      const NEU2 = `${NEU}_2`;
-      const neu = await registriere(NEU2, `neu2_${MAIL}`);
-      await db.run('DELETE FROM users WHERE username = $1', [NEU2]);
-      assert.deepEqual(vergeben.body, neu.body);
-    } finally { console.log = echt; }
+    const andere = `name_${MAIL}`;
+    const vergeben = await registriere(NAME, andere);
+    assert.equal(vergeben.status, 200, JSON.stringify(vergeben.body));
+    assert.equal(await db.get('SELECT id FROM users WHERE email = $1', [andere]), undefined, 'Konto angelegt');
+    assert.ok(gesendet.some(m => m.to === andere && /Benutzername schon vergeben/.test(m.subject)), gesendet.map(m => m.subject).join(' | '));
+    const NEU2 = `${NEU}_2`;
+    const neu = await registriere(NEU2, `neu2_${MAIL}`);
+    await db.run('DELETE FROM users WHERE username = $1', [NEU2]);
+    assert.deepEqual(vergeben.body, neu.body);
   });
 });
 
 test('ein Serverfehler in Produktion nennt keine Interna', () => {
-  const skript = `const { handleRouteError } = require(${JSON.stringify(path.join(ROOT, 'dist/src/infra/httpError.js'))});
+  const skript = `const { handleRouteError } = require(${JSON.stringify(path.join(ROOT, 'dist/src/infra/httpAntwort.js'))});
     console.error = () => {};
     const res = { headersSent: false, status(s) { this.s = s; return this; }, json(b) { process.stdout.write(JSON.stringify([this.s, b])); } };
     handleRouteError(res, new Error('relation "geheim" at /app/dist/x.js:1'), undefined, { method: 'GET', originalUrl: '/x' });`;
   const aus = execFileSync(process.execPath, ['-e', skript], { env: { ...process.env, NODE_ENV: 'production' } }).toString();
-  assert.deepEqual(JSON.parse(aus), [500, { success: false, error: 'Interner Serverfehler' }]);
+  assert.deepEqual(JSON.parse(aus), [500, { success: false, code: 'interner_fehler',
+    error: 'Interner Fehler — Einzelheiten stehen im Protokoll.' }]);
 });

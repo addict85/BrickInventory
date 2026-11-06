@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.ui.screens
 
+import ch.brickinventoryapp.ui.components.ansagen
 import android.Manifest
 import android.content.Context
 import android.content.pm.PackageManager
@@ -23,7 +24,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Surface
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.unit.sp
 import ch.brickinventoryapp.ui.theme.Formen
 import androidx.compose.material3.Button
 import androidx.compose.material3.Text
@@ -86,18 +86,11 @@ fun KameraErlaubnisHinweis(onErlauben: () -> Unit) {
 }
 
 /**
- * Die Überlagerung über dem Kamerabild: Rahmen in der Mitte, darunter ein dunkles
- * Schild mit dem Hinweistext — eine Gestaltung für Barcode-Scanner und QR-Aufbau
- * (Gewichtung 0.2 / 0.8, damit der Rahmen etwas über der Mitte sitzt; Schwarz mit
- * 72 % Deckung, Formen.kachel, weisse Schrift in 13 sp). Nur der Rahmen ist
- * verschieden: ein breites Rechteck mit Eckwinkeln für den Strichcode, ein Quadrat
- * für den QR-Code.
- *
- * @param rahmen Was in der Mitte steht; bekommt den ColumnScope, damit ein Rahmen
- *         sich darin ausrichten kann.
- * @param unten  Was unter dem Schild noch dazugehört — im Barcode-Scanner der
- *         Lampenknopf, im QR-Aufbau nichts. Den Abstand nach oben setzt der
- *         Aufrufer, weil nur er weiss, ob etwas kommt.
+ * Die Überlagerung über dem Kamerabild: Rahmen in der Mitte, darunter ein dunkles Schild mit
+ * dem Hinweistext — eine Gestaltung für Barcode-Scanner und QR-Aufbau (Gewichtung 0.2 / 0.8,
+ * damit der Rahmen etwas über der Mitte sitzt; Schwarz mit 72 % Deckung, Formen.kachel,
+ * weisse Schrift in 13 sp).
+ * Ausführlich: docs/begruendungen/core-ui/ui/screens/KameraErlaubnis.kt.md#kameraueberlagerung
  */
 @Composable
 fun KameraUeberlagerung(
@@ -116,7 +109,7 @@ fun KameraUeberlagerung(
         Surface(color = Color.Black.copy(alpha = 0.72f), shape = Formen.kachel) {
             Text(
                 hinweis,
-                Modifier.padding(horizontal = 18.dp, vertical = 10.dp),
+                Modifier.padding(horizontal = 18.dp, vertical = 10.dp).ansagen(),
                 color = Color.White, style = MaterialTheme.typography.bodyMedium,
                 textAlign = TextAlign.Center,
             )

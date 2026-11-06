@@ -1,13 +1,12 @@
 package ch.brickinventoryapp.ui.screens
 
+import androidx.compose.ui.graphics.luminance
+import ch.brickinventoryapp.ui.components.nebenKnopfFarben
+import ch.brickinventoryapp.ui.components.nebenKnopfRand
 import ch.brickinventoryapp.ui.model.KaufAnsicht
 import ch.brickinventoryapp.ui.model.KontoAnsicht
-import ch.brickinventoryapp.ui.model.MitgliedAnsicht
 import ch.brickinventoryapp.ui.theme.Formen
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.foundation.background
@@ -23,16 +22,10 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.runtime.DisposableEffect
-import androidx.compose.ui.focus.onFocusChanged
-import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.text.input.ImeAction
-import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import ch.brickinventoryapp.ressourcen.R
 import ch.brickinventoryapp.util.fmtMoney
 import ch.brickinventoryapp.ui.theme.LocalIsBrickTheme
@@ -40,6 +33,14 @@ import ch.brickinventoryapp.ui.theme.BrickSage
 import ch.brickinventoryapp.ui.theme.BrickSageText
 import ch.brickinventoryapp.util.NumericInput
 import ch.brickinventoryapp.ui.theme.Abstaende
+import ch.brickinventoryapp.ui.components.stueckzahl
+import ch.brickinventoryapp.ui.components.vorgelesenAls
+import ch.brickinventoryapp.ui.components.MitTooltip
+import ch.brickinventoryapp.ui.components.ProduktBild
+import ch.brickinventoryapp.ui.components.bewegungReduziert
+import ch.brickinventoryapp.ui.components.grosseSchrift
+import ch.brickinventoryapp.ui.components.mitSchrift
+import ch.brickinventoryapp.ui.mengeManuell
 
 /**
  * Gemeinsame Composables für manuell erfasste Teile UND Minifiguren.
@@ -56,7 +57,7 @@ fun AcquisitionSummarySection(
 ) {
     // Bei grosser Schrift die Käufe UNTER die Bezeichnung: Neben ihr blieb für
     // „CHF 700.00“ so wenig Breite, dass der Betrag Ziffer für Ziffer umbrach.
-    val untereinander = ch.brickinventoryapp.ui.components.grosseSchrift()
+    val untereinander = grosseSchrift()
     val ausrichtung = if (untereinander) Alignment.Start else Alignment.End
     val kaeufe: @Composable () -> Unit = {
         Column(horizontalAlignment = ausrichtung) {
@@ -69,8 +70,10 @@ fun AcquisitionSummarySection(
             Spacer(Modifier.height(Abstaende.winzig))
             OutlinedButton(onClick = onEditPrices,
                 contentPadding = PaddingValues(horizontal = 10.dp, vertical = Abstaende.haar),
-                modifier = Modifier.heightIn(min = 28.dp)) {
-                Icon(Icons.Default.Edit, null, Modifier.size(ch.brickinventoryapp.ui.components.mitSchrift(14.dp)))
+                modifier = Modifier.heightIn(min = 28.dp),
+                colors = nebenKnopfFarben(),
+                border = nebenKnopfRand()) {
+                Icon(Icons.Default.Edit, null, Modifier.size(mitSchrift(14.dp)))
                 Spacer(Modifier.width(Abstaende.winzig))
                 Text(stringResource(R.string.detail_edit_prices), style = MaterialTheme.typography.labelMedium)
             }
@@ -109,8 +112,9 @@ fun AcquisitionSummarySection(
 private fun KaufZeile(acq: KaufAnsicht, currency: String) {
     FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
         val mitte = Modifier.align(Alignment.CenterVertically)
-        Text(ch.brickinventoryapp.ui.mengeManuell(acq.quantity), style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = mitte)
+        Text(mengeManuell(acq.quantity), mitte.vorgelesenAls(stueckzahl(acq.quantity)),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant)
         Box(mitte) { ConditionBadge(acq.condition) }
         // Ohne Betrag sagt die Zeile, dass keiner erfasst ist; sonst stand „×2 Neu“ allein da.
         val preis = acq.effectivePrice
@@ -143,7 +147,8 @@ fun ConditionBadges(conditions: List<String>, fallback: String? = null) {
 @Composable
 fun ConditionBadge(condition: String) {
     val isUsed = condition == "U"
-    val isBrick = LocalIsBrickTheme.current
+    // Salbei nur im hellen Stein-Design: Im Dunkeln leuchtete die helle Pille auf der dunklen Karte.
+    val isBrick = LocalIsBrickTheme.current && MaterialTheme.colorScheme.surface.luminance() > 0.5f
     val bgColor = when {
         isUsed  -> MaterialTheme.colorScheme.secondaryContainer
         isBrick -> BrickSage
@@ -195,7 +200,7 @@ fun InfoPlakette(text: String, modifier: Modifier = Modifier, icon: androidx.com
             contentColor = MaterialTheme.colorScheme.onSecondaryContainer, modifier = modifier) {
         Row(Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
             verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-            if (icon != null) Icon(icon, null, Modifier.size(16.dp))
+            if (icon != null) Icon(icon, null, Modifier.size(mitSchrift(16.dp)))
             Text(text, style = MaterialTheme.typography.labelMedium)
         }
     }
@@ -223,7 +228,7 @@ fun InfoPlakette(text: String, modifier: Modifier = Modifier, icon: androidx.com
 fun ManuelleKachelFuss(preis: Double?, waehrung: String) {
     Text(
         if (preis != null) fmtMoney(preis, waehrung) else "—",
-        style = MaterialTheme.typography.labelSmall,
+        style = MaterialTheme.typography.bodySmall,
         fontWeight = FontWeight.Bold,
         color = MaterialTheme.colorScheme.primary,
         maxLines = 1,
@@ -258,7 +263,7 @@ fun ErfassungsFelder(
         value = anzahl, onValueChange = { onAnzahl(NumericInput.quantity(it)) },
         label = { Text(stringResource(R.string.common_quantity)) },
         modifier = Modifier.fillMaxWidth(), singleLine = true,
-        shape = Formen.knopf,
+        shape = Formen.feld,
         keyboardOptions = NumericInput.ganzzahlTastatur(),
     )
     OutlinedTextField(
@@ -266,7 +271,7 @@ fun ErfassungsFelder(
         label = { Text(stringResource(R.string.common_unit_price)) },
         placeholder = { Text(stringResource(R.string.common_unit_price_placeholder)) },
         modifier = Modifier.fillMaxWidth(), singleLine = true,
-        shape = Formen.knopf,
+        shape = Formen.feld,
         keyboardOptions = NumericInput.preisTastatur(),
     )
     Zustandszeile(zustand = zustand, onZustand = onZustand)
@@ -305,10 +310,11 @@ fun ManuelleKachel(
     ) {
         Column {
             Box(Modifier.fillMaxWidth().height(76.dp)) {
-                ch.brickinventoryapp.ui.components.ProduktBild(
-                    model = bildUrl?.let { ImageRequest.Builder(ctx).data(it).crossfade(true).build() },
+                ProduktBild(
+                    model = bildUrl?.let { ImageRequest.Builder(ctx).data(it).crossfade(!bewegungReduziert()).build() },
                     imageLoader = imageLoader,
-                    contentDescription = name,
+                    // Ohne Beschreibung: Der Name steht darunter, TalkBack las ihn sonst zweimal.
+                    contentDescription = null,
                     onState = { st ->
                         if (st is coil3.compose.AsyncImagePainter.State.Error) onBildFehler()
                     },
@@ -325,7 +331,7 @@ fun ManuelleKachel(
                     // „N×" auf einer Kachel aus einem Set. Das ist keine Laune,
                     // sondern die Regel der Webapp — `man-tile` traegt dort ein
                     // `qbadge` mit ×N, `part-card` ein `part-qty` mit N×.
-                    Text(ch.brickinventoryapp.ui.mengeManuell(menge), Modifier.padding(horizontal = Abstaende.winzig, vertical = 1.dp),
+                    Text(mengeManuell(menge), Modifier.padding(horizontal = Abstaende.winzig, vertical = 1.dp).vorgelesenAls(stueckzahl(menge)),
                         color = MaterialTheme.colorScheme.onPrimary,
                         style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold)
                 }
@@ -334,19 +340,21 @@ fun ManuelleKachel(
                         .clip(CircleShape).background(farbe))
                 }
                 Row(Modifier.align(Alignment.TopStart).padding(Abstaende.haar)) {
-                    IconButton(onClick = onEdit) {
-                        Icon(Icons.Default.Edit, stringResource(R.string.common_edit),
-                            Modifier.size(14.dp), tint = MaterialTheme.colorScheme.primary)
+                    MitTooltip(stringResource(R.string.common_edit)) {
+                        IconButton(onClick = onEdit) {
+                            Icon(Icons.Default.Edit, stringResource(R.string.common_edit),
+                                Modifier.size(14.dp), tint = MaterialTheme.colorScheme.primary)
+                        }
                     }
                 }
                 // Kein Papierkorb auf der Kachel: Die Karte öffnet das Detail, und dort steht er
                 // an derselben Stelle wie beim Set.
             }
             Column(Modifier.padding(horizontal = 6.dp, vertical = Abstaende.winzig)) {
-                Text(name, style = MaterialTheme.typography.labelSmall,
+                Text(name, style = MaterialTheme.typography.bodySmall,
                     fontWeight = FontWeight.SemiBold, maxLines = 2, overflow = TextOverflow.Ellipsis)
                 if (farbname != null) {
-                    Text(farbname, style = MaterialTheme.typography.labelSmall,
+                    Text(farbname, style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         maxLines = 1, overflow = TextOverflow.Ellipsis)
                 }

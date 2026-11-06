@@ -1,37 +1,6 @@
 /**
  * Das Menü oben rechts trägt in BEIDEN Oberflächen dieselben Symbole.
- *
- * ── Marcos Vorgabe ──────────────────────────────────────────────────────────
- *
- * 17.10.: „Bitte sicherstellen dass in der Webapp und der Android-App im Menü
- * oben rechts die gleichen Icons verwendet werden."
- *
- * ── Was dabei NICHT geht, und warum es trotzdem eine Prüfung gibt ───────────
- *
- * Buchstäblich dieselben Zeichen können es nicht sein: Die Webapp zeichnet
- * ihre eigene Symbolfamilie (das Sprite in index.html), die App
- * Material-Symbole. `#i-gutschein` und `Icons.Default.Redeem` sind
- * verschiedene Dateien aus verschiedenen Systemen — gleich ist das GEMEINTE.
- * (Bis zum 25.10. stand im Web ein Emoji im Sprachtext; die Tabelle hält
- * seither die Symbol-IDs.)
- *
- * Genau deshalb braucht es hier eine Tabelle und keine Gleichheitsprüfung:
- * Die Zuordnung „welcher Eintrag trägt welches Sinnbild" ist eine
- * Entscheidung, und eine Entscheidung, die nirgends steht, läuft auseinander.
- * Sie stand bisher nirgends — und war auseinandergelaufen:
- *
- *     GEMESSEN am 17.10.: Die Webapp benutzte 📦 ZWEIMAL — für „Lagerorte"
- *     und für „Daten exportieren". In der App sind das `Inventory2` und
- *     `UploadFile`, also zwei verschiedene Sinnbilder. Im Web war derselbe
- *     Karton einmal ein Lagerort und einmal ein Datenpaket.
- *
- * ── Warum die Prüfung hier liegt und nicht in der App ───────────────────────
- *
- * Dieselbe Entscheidung wie bei test/lagerort-beide.test.js und
- * test/preisalarm-beide.test.js: Eine Zusicherung über BEIDE Oberflächen
- * gehört an EINE Stelle, sonst gibt es sie zweimal und die beiden Fassungen
- * driften. Die Web-Suite läuft hier und kann die Kotlin-Quellen mitlesen; die
- * App-Tests können das umgekehrt nicht.
+ * Ausführlich: docs/begruendungen/test/menue-icons-beide.test.js.md#kopf
  *
  * ── Gegenproben (durchgeführt, Ergebnisse abgeschrieben) ────────────────────
  *
@@ -62,25 +31,18 @@ const lies = p => fs.readFileSync(p, 'utf8');
 
 /**
  * Die ZUORDNUNG — die einzige Stelle, an der sie steht.
- *
- * `web` ist der i18n-Schlüssel der Webapp, `app` der R.string-Schlüssel der
- * App, `sinnbild` das, was beide zeigen sollen, und `glyph`/`vektor` die
- * vereinbarten Zeichen.
- *
- * Einstellungen und Monitoring stehen in der App auf der Seite „Mehr“, in der
- * Webapp als REITER. Sie sind trotzdem hier, denn Marcos Frage gilt dem, was man oben
- * rechts sieht — und ein Zahnrad soll in beiden Oberflächen ein Zahnrad sein.
+ * Ausführlich: docs/begruendungen/test/menue-icons-beide.test.js.md#zuordnung
  */
 const ZUORDNUNG = [
-  { web: 'settings.group.profile', app: 'konto_title',          sinnbild: 'Person',       symbol: 'i-profil',        vektor: 'Icons.Default.AccountCircle' },
-  { web: 'vouchers.group',         app: 'vouchers_title',       sinnbild: 'Gutschein',    symbol: 'i-gutschein',     vektor: 'Icons.Default.Redeem' },
-  { web: 'alerts.group',           app: 'alerts_group',         sinnbild: 'Glocke',       symbol: 'i-alarm',         vektor: 'Icons.Default.NotificationsActive' },
-  { web: 'storage.group',          app: 'storage_manage',       sinnbild: 'Kiste',        symbol: 'i-lagerort',      vektor: 'Icons.Default.Inventory2' },
-  { web: 'household.group',        app: 'household_title',      sinnbild: 'Gruppe',       symbol: 'i-haushalt',      vektor: 'Icons.Default.Group' },
-  { web: 'settings.data_export',   app: 'csv_upload_title',     sinnbild: 'Datei+Pfeil',  symbol: 'i-daten',         vektor: 'Icons.Default.UploadFile' },
-  { web: 'nav.settings',           app: 'nav_settings',         sinnbild: 'Zahnrad',      symbol: 'i-einstellungen', vektor: 'Icons.Default.Settings' },
-  { web: 'nav.monitoring',         app: 'main_menu_monitoring', sinnbild: 'Diagramm',     symbol: 'i-monitoring',    vektor: 'Icons.Default.Assessment' },
-  { web: 'settings.logout',        app: 'main_menu_logout',     sinnbild: 'Hinausgehen',  symbol: 'i-abmelden',      vektor: 'Icons.AutoMirrored.Filled.Logout' },
+  { web: 'settings.group.profile', app: 'konto_title',          sinnbild: 'Person',       symbol: 'i-profil',        vektor: 'Icons.Outlined.AccountCircle' },
+  { web: 'vouchers.group',         app: 'vouchers_title',       sinnbild: 'Gutschein',    symbol: 'i-gutschein',     vektor: 'Icons.Outlined.Redeem' },
+  { web: 'alerts.group',           app: 'alerts_group',         sinnbild: 'Glocke',       symbol: 'i-alarm',         vektor: 'Icons.Outlined.NotificationsActive' },
+  { web: 'storage.group',          app: 'storage_manage',       sinnbild: 'Kiste',        symbol: 'i-lagerort',      vektor: 'Icons.Outlined.Inventory2' },
+  { web: 'household.group',        app: 'household_title',      sinnbild: 'Gruppe',       symbol: 'i-haushalt',      vektor: 'Icons.Outlined.Group' },
+  { web: 'settings.data_export',   app: 'csv_upload_title',     sinnbild: 'Datei+Pfeil',  symbol: 'i-daten',         vektor: 'Icons.Outlined.UploadFile' },
+  { web: 'nav.settings',           app: 'nav_settings',         sinnbild: 'Zahnrad',      symbol: 'i-einstellungen', vektor: 'Icons.Outlined.Settings' },
+  { web: 'nav.monitoring',         app: 'main_menu_monitoring', sinnbild: 'Diagramm',     symbol: 'i-monitoring',    vektor: 'Icons.Outlined.Assessment' },
+  { web: 'settings.logout',        app: 'main_menu_logout',     sinnbild: 'Hinausgehen',  symbol: 'i-abmelden',      vektor: 'Icons.AutoMirrored.Outlined.Logout' },
 ];
 
 /** Einträge, die es nur auf EINER Seite gibt — ausdrücklich, mit Grund. */

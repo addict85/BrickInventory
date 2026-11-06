@@ -1,30 +1,56 @@
 import express from 'express';
+import type { z } from 'zod';
 import type { Request, Response, NextFunction } from 'express';
 import { konfig } from '../konfig';
 import { routeZu } from './index';
+import { FLACHE_EINGABE, Fehler, PFAD } from './grund';
 import { GROESSTE_ID, idWert } from '../validate';
 import { sendeFehler } from '../fehlerTexte';
-import { handleRouteError } from '../httpError';
+import { handleRouteError } from '../httpAntwort';
 
 /** Ein Abfragewert ist ein Text: Wiederholt (?a=1&a=2) wird er zur Liste, und
  * `.trim()` oder eine Regex darauf verwechselte den Typ. */
 const ABFRAGE_HOECHSTENS = 4000;
 
 /** Im Betrieb, unmittelbar vor der Route: Abfrage und Rumpf gegen den Vertrag.
- * Ohne das kam z. B. username:["abc"] an USERNAME_RE vorbei (test() macht
- * daraus "abc") bis ins SQL. Die Prüfer aus validate.ts melden ihren eigenen
- * Fehler, damit die Antwort dieselbe bleibt wie aus der Route. */
+ * Die Route bekommt das Ergebnis (req.abfrage, req.eingabe), nicht den rohen
+ * Rumpf: Was das Schema umwandelt oder abweist, sieht sie nie anders. */
+const KENNUNGEN = new Set(['id', 'acqId', 'instrId']);
+
 export function eingabePruefen(req: Request, res: Response, next: NextFunction): void {
   for (const [name, wert] of Object.entries(req.query ?? {}))
     if (typeof wert !== 'string' || wert.length > ABFRAGE_HOECHSTENS)
       return sendeFehler(req, res, 400, 'eingabe_ungueltig', { feld: name.slice(0, 40) });
   const route = req.route ? routeZu(`${req.method} ${req.baseUrl}${req.route.path}`) : undefined;
-  if (!route?.eingabe || route.formular) return next();
-  const r = route.eingabe.safeParse(req.body ?? {});
-  if (r.success) return next();
-  const erste = r.error.issues[0];
+  const geprueft = req as unknown as { eingabe: unknown; abfrage: unknown; pfad: Record<string, unknown> };
+  geprueft.pfad = {};
+  if (route) for (const [name, wert] of Object.entries(req.params ?? {})) {
+    const schema = (PFAD as Record<string, z.ZodType>)[name];
+    const r = schema?.safeParse(wert);
+    if (!r?.success) return KENNUNGEN.has(name) ? sendeFehler(req, res, 400, 'id_ungueltig')
+      : sendeFehler(req, res, 400, 'eingabe_ungueltig', { feld: name.slice(0, 40) });
+    geprueft.pfad[name] = r.data;
+  }
+  if (route?.abfrage) {
+    const q = route.abfrage.safeParse(req.query ?? {});
+    if (!q.success) return meldeAbweichung(req, res, q.error);
+    geprueft.abfrage = q.data;
+  } else geprueft.abfrage = {};
+  geprueft.eingabe = {};
+  if (!route?.eingabe && (route?.formular || req.method === 'GET')) return next();
+  const r = (route?.eingabe ?? FLACHE_EINGABE).safeParse(req.body ?? {});
+  if (!r.success) return meldeAbweichung(req, res, r.error);
+  geprueft.eingabe = r.data;
+  next();
+}
+
+/** Die Prüfer aus validate.ts melden ihren eigenen Fehler, ein unbekanntes Feld seinen Code. */
+function meldeAbweichung(req: Request, res: Response, fehler: z.ZodError): void {
+  const erste = fehler.issues[0];
   const eigener = (erste as { params?: { fehler?: unknown } } | undefined)?.params?.fehler;
   if (eigener) return handleRouteError(res, eigener, 400, req);
+  if (erste?.code === 'unrecognized_keys')
+    return sendeFehler(req, res, 400, 'feld_unbekannt', { feld: [...(erste.path ?? []), erste.keys[0] ?? ''].join('.').slice(0, 40) });
   sendeFehler(req, res, 400, 'eingabe_ungueltig', { feld: (erste?.path ?? []).join('.').slice(0, 40) || '$' });
 }
 
@@ -49,8 +75,10 @@ export function vertragPruefen(req: Request, res: Response, next: NextFunction):
     if (route) {
       // Geprüft wird, was hinausgeht: Ein Date wird erst in res.json zum ISO-Text.
       pruefe('Antwort', route.antwort, JSON.parse(JSON.stringify(rumpf ?? null)));
-      if (!route.formular) pruefe('Anfrage', route.eingabe, req.body);
+      if (!route.formular) pruefe('Anfrage', route.eingabe, req.body ?? {});
     }
+    // Auch der Fehlerweg hat eine Form; ohne Prüfung fiel eine 404 ohne Code nicht auf.
+    if (res.statusCode >= 400) pruefe('Fehlerantwort', Fehler, JSON.parse(JSON.stringify(rumpf ?? null)));
     if (!fehler.length) return senden(rumpf);
     console.error(`[vertrag] ${schluessel}: ${fehler.join(' | ')}`);
     res.status(500);
@@ -59,10 +87,27 @@ export function vertragPruefen(req: Request, res: Response, next: NextFunction):
   next();
 }
 
+/** Middleware, die dem Rest der Kette einen engeren Request zusichert (z. B.
+ * AuthedRequest hinter requireToken). Die Marke `sichert` hat nur, was mit
+ * waechter() gebaut ist: Eine beliebige Funktion an erster Stelle sichert nichts zu. */
+export type Waechter<R extends Request> = ((req: Request, res: Response, next: NextFunction) => void) & { readonly sichert: (r: R) => R };
+export function waechter<R extends Request>(f: (req: Request, res: Response, next: NextFunction) => void): Waechter<R> {
+  return Object.assign(f, { sichert: (r: R) => r });
+}
+type Schritt<R extends Request, S extends Response> = (req: R & Geprueft, res: S, next: NextFunction) => unknown;
+/** Was eingabePruefen setzt, passt zu jedem Anfrage<K>: Den Typ nennt der Vertrag der Route. */
+type Geprueft = { eingabe: never; abfrage: never; pfad: never };
+type Bewacht = <R extends Request, S extends Response>(pfad: string, w: Waechter<R>, ...schritte: Schritt<R, S>[]) => VertragsRouter;
+type Offen = <S extends Response>(pfad: string, ...schritte: Schritt<Request, S>[]) => VertragsRouter;
+/** Wie express.Router; steht ein Wächter vorn, bekommen die Schritte dahinter seinen Request-Typ. */
+export type VertragsRouter = express.Router
+  & { get: Bewacht & Offen; post: Bewacht & Offen; put: Bewacht & Offen; patch: Bewacht & Offen; delete: Bewacht & Offen };
+
 /** Ein Router, der Eingaben im Betrieb und seine Antworten in Tests gegen den
  * Vertrag prüft — auch dort, wo ein Test ihn ohne routes/api_v1/index.ts einhängt. */
-export function vertragsRouter(o: { grosseIds?: boolean } = {}): express.Router {
-  const router = express.Router();
+export function vertragsRouter(o: { grosseIds?: boolean } = {}): VertragsRouter {
+  // Wie der Vertrag: Eine andere Schreibung ist eine andere Route (404), nicht dieselbe ohne Eintrag.
+  const router = express.Router({ caseSensitive: true });
   router.use(vertragPruefen);
   // Als letzter Schritt vor der Route, nach Anmeldung und Drossel: Deren
   // Antworten (401, 429) bleiben, wie sie sind.
@@ -78,5 +123,5 @@ export function vertragsRouter(o: { grosseIds?: boolean } = {}): express.Router 
     router.param(name, (req, res, next, wert) =>
       idWert(wert, hoechstens) === null ? sendeFehler(req, res, 400, 'id_ungueltig') : next());
   }
-  return router;
+  return router as VertragsRouter;
 }

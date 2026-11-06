@@ -1,109 +1,14 @@
 /**
- * Die Verschiebung eines Sets serialisiert über das QUELLKONTO.
+ * Die Verschiebung eines Sets serialisiert über das QUELLKONTO — geprüft über
+ * die echte Route, nicht am Quelltext.
+ * Ausführlich: docs/begruendungen/test/sperre-beim-verschieben-db.test.js.md#kopf
  *
- * ── Die Zusicherung, um die es geht ─────────────────────────────────────────
- *
- * test/household.test.js:387 sagt:
- *
- *     assert.ok(src.includes('withInventoryLock(fromId, sn'),
- *               'Serialisiert über das Quellkonto');
- *
- * Das liest den Quelltext. Es beweist, dass jemand die Zeile hingeschrieben
- * hat — nicht, dass die Sperre greift, und schon gar nicht, dass sie auf dem
- * richtigen Schlüssel greift. Genau diese Form hat an einem Tag zwei Fehler
- * durchgelassen (der Lagerortfilter kam nie an der Route an;
- * moveManualAcquisition löschte beim Absender alles), und daraus kam die Regel:
- *
- *     Eine Behauptung der Form „der Weg A → B lebt" braucht einen Lauf über
- *     diesen Weg.
- *
- * Von 26 solchen Zusicherungen über Routen-Quelltext war diese die letzte ohne
- * Lauf. Ich hatte sie als „ein Lauf wäre wackelig" stehengelassen. Das galt
- * für die naheliegende Bauart, nicht für die Sache.
- *
- * ── Warum das hier NICHT wackelt ────────────────────────────────────────────
- *
- * Die naheliegende Bauart schickt zwei Verschiebungen gleichzeitig los und
- * hofft, dass eine verliert. Das ist ein Wettlauf: Er hängt davon ab, wie
- * schnell die Maschine gerade ist, und er kann grün sein, ohne dass eine
- * Sperre existiert.
- *
- * Hier läuft kein Wettlauf. Die Sperre wird von einer EIGENEN Verbindung
- * genommen — mit genau derselben Anweisung, die db/txLock.ts benutzt — und
- * dann gehalten. Danach wird die echte Route angestossen und in `pg_locks`
- * nachgesehen, ob dort ein WARTER steht. Das ist ein ZUSTAND, keine Dauer:
- *
- *   * Nimmt die Route die Sperre, kann sie nicht fertig werden, solange der
- *     Halter sie hat — der Warter erscheint und bleibt.
- *   * Nimmt sie sie NICHT, wird sie sofort fertig, und zwar während der Halter
- *     noch hält. Das wird direkt festgestellt, nicht an einer Zeit gemessen.
- *
- * Beide Fälle sind einander logisch ausschliessend. Es gibt kein Zeitfenster,
- * in dem beides oder keines zutrifft, und deshalb keinen Zufall im Befund.
- *
- * ── Wie ein Warter in pg_locks aussieht (GEMESSEN, nicht angenommen) ────────
- *
- * Zwei psql-Sitzungen, die zweite will dieselbe Sperre:
- *
- *      locktype | classid |   objid    | objsubid | granted
- *     ----------+---------+------------+----------+---------
- *      advisory |       7 | 3504355179 |        2 | t        ← Halter
- *      advisory |       7 | 3504355179 |        2 | f        ← Warter
- *
- * `pg_advisory_xact_lock(a, b)` ist die ZWEITEILIGE Fassung, daher
- * `objsubid = 2`. `classid` ist das Konto, `objid` der Hash des Schlüssels:
- * hashtext('75192-1') = -790612117, und `objid` ist vom Typ `oid` (ohne
- * Vorzeichen), also 3504355179. Deshalb steht im Prädikat unten
- * `hashtext($2)::oid` — ein Vergleich gegen die vorzeichenbehaftete Zahl
- * fände nie etwas.
- *
- * ── Warum DREI Fälle und nicht einer ────────────────────────────────────────
- *
- * „Die Route wartet" allein wäre auch erfüllt, wenn sie eine GLOBALE Sperre
- * nähme oder grundsätzlich hinge. Die Zusicherung sagt aber mehr, nämlich
- * `(fromId, sn)` — beide Teile:
- *
- *   A. Sperre auf (Quellkonto, Set)         → die Verschiebung wartet
- *   B. Sperre auf (Quellkonto, ANDERES Set) → sie wartet NICHT
- *   C. Sperre auf (ZIELkonto, Set)          → sie wartet NICHT
- *
- * Was jeder Fall für sich fängt — GEMESSEN an fünf verdrehten Fassungen der
- * Route, nicht überlegt (die Befunde stehen unten):
- *
- *   * A fängt die fehlende Sperre und jeden Schlüssel, der nicht auf
- *     (Quellkonto, Set) kommt — eine Konstante, das falsche Konto.
- *   * B fängt einen Schlüssel, der nicht davon abhängt, WELCHES Set wandert:
- *     Steht dort eine feste Setnummer, wartet die Verschiebung eines anderen
- *     Sets mit — und alle Verschiebungen eines Kontos stehen hintereinander
- *     an. A ist in diesem Fall grün.
- *   * C fängt eine Sperre auf dem ZIELkonto, und auch eine auf beiden Konten:
- *     dann wäre A grün und nur C rot.
- *
- * Erst zusammen sagen sie dasselbe wie die Textregel, nur geprüft. Einzeln
- * sagt keiner davon „der Schlüssel ist (fromId, sn)" — A und B zusammen sagen
- * es: DERSELBE gehaltene Schlüssel hält die eine Verschiebung auf und die
- * andere nicht, also hängt der Schlüssel der Route am wandernden Set.
- *
- * ── Die Textregel bleibt ────────────────────────────────────────────────────
- *
- * Sie fängt eine gelöschte Zeile, und das ist etwas anderes als ein Lauf.
- * Ergänzt, nicht ersetzt.
- *
- * ── Gegenproben (durchgeführt, Befunde gemessen) ────────────────────────────
- *
+ * Gegenproben (gemessen):
  *   a) withInventoryLock → db.transaction (Sperre weg)  → A rot, B+C grün
  *   b) fromId → toId                                    → A+C rot, B grün
  *   c) Schlüssel 'alle' statt sn                        → A rot, B+C grün
  *   d) Schlüssel fest '75192-1' statt sn                → B rot, A+C grün
  *   e) Sperre auf BEIDEN Konten (fromId und toId)       → C rot, A+B grün
- *
- * Bei (c) hatte ich B rot VORHERGESAGT und lag falsch: Ein konstanter
- * Schlüssel kollidiert mit keinem der gehaltenen, also wartet in B nichts —
- * rot wird A, weil die Verschiebung dort durchläuft. Festgehalten, weil die
- * Begründung eines Falls so lange nicht stimmt, wie sie nicht gemessen ist:
- * Mein erster Kommentar behauptete, B fange „eine globale oder kontoweite
- * Sperre". Tut es nicht — die kollidiert mit nichts. B fängt (d), und das
- * fängt sonst keiner.
  *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL. Ohne DB: skip, ausser
  * REQUIRE_DB=1.
@@ -152,11 +57,7 @@ async function sperrZeilen(userId, scopeKey, erteilt) {
 /**
  * Wartet, bis auf genau diesem Schlüssel ein Warter steht — oder bis die
  * Route fertig ist.
- *
- * Der Rückgabewert ist der BEFUND, nicht ein Erfolg: 'wartet', 'fertig'
- * (die Route lief durch, obwohl die Sperre gehalten wurde — also keine
- * Sperre) oder 'nichts' (sie blockiert, aber nicht auf diesem Schlüssel).
- * Alle drei sind aussagekräftig, deshalb wirft diese Funktion nicht selbst.
+ * Ausführlich: docs/begruendungen/test/sperre-beim-verschieben-db.test.js.md#befundwarter
  */
 async function befundWarter(userId, scopeKey, istFertig, grenzeMs = 5000) {
   const bis = Date.now() + grenzeMs;
@@ -315,9 +216,8 @@ test('die Verschiebung sperrt auf (Quellkonto, Set)', { concurrency: 1 }, async 
     // Das ist der eigentliche Inhalt von `fromId`: Serialisiert wird über das
     // Konto, aus dem etwas WEGgeht — dort wird gelesen, gerechnet und
     // gelöscht. GEMESSEN: Steht `toId` in der Route, werden A UND dieser Fall
-    // rot. Und allein fängt dieser Fall eine Sperre auf BEIDEN Konten: auch
-    // GEMESSEN (Gegenprobe e) — A und B bleiben dabei grün, weil (fromId, sn)
-    // ja mitgenommen wird, und nur dieser Fall wird rot.
+    // rot. Und allein fängt dieser Fall eine Sperre auf BEIDEN Konten: auch …
+    // Ausführlich: docs/begruendungen/test/sperre-beim-verschieben-db.test.js.md#acq-stelle
     const acq = await erfassungsIds(HAUPT, SN_C);
     assert.equal(acq.length, 1, `Vorbedingung: eine Erfassung für ${SN_C}`);
 

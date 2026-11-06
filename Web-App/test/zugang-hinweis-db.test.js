@@ -11,6 +11,13 @@
  *      „ernannter Verwalter"
  *   D  in aktiveVerwalter() `is_admin AND` entfernt → rot: „neues
  *      Verwalterkonto" (die Mail ging auch an das gewöhnliche Konto)
+ *   E  hinweisNebenher() in PUT /users/:id/password entfernt → rot:
+ *      „fremdes Passwort durch einen Verwalter“
+ * Gegenprobe (04.11.2026 gemessen):
+ *   F  hinweisNebenher() in angemeldetAntworten() (routes/auth.ts) entfernt →
+ *      rot: „Token aus der Anmeldung (neues Gerät)“
+ *   G  hinweisNebenher() in /zweiter-faktor/bestaetigen bzw. /abschalten
+ *      entfernt → rot: „eigener zweiter Faktor eingerichtet und abgeschaltet“
  *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL.
  */
@@ -28,8 +35,8 @@ const _req = S.buildAndRequire();
 const { testServer } = require('./helpers/server');
 
 const gesendet = [];
-const echterMailer = _req('src/infra/mailer.js');
-require.cache[require.resolve(path.join(S.DIST, 'src/infra/mailer.js'))].exports = Object.assign({}, echterMailer, {
+const echterMailer = _req('src/mail/mailer.js');
+require.cache[require.resolve(path.join(S.DIST, 'src/mail/mailer.js'))].exports = Object.assign({}, echterMailer, {
   mailEingerichtet: async () => true,
   sendKontoHinweisMail: async (an, _name, art, o) => { gesendet.push({ an, art, ...o }); return { success: true }; },
 });
@@ -60,7 +67,9 @@ test('Mails bei neuen Zugängen', { concurrency: 1 }, async (t) => {
   const ruf = async (methode, weg, body) => {
     const r = await fetch(`${base}/api/v1/auth${weg}`, { method: methode, headers: { 'content-type': 'application/json' },
       body: JSON.stringify(body) });
-    assert.equal(r.status, 200, `${weg}: ${await r.text()}`);
+    const text = await r.text();
+    assert.equal(r.status, 200, `${weg}: ${text}`);
+    return JSON.parse(text);
   };
   /** Die Mails gehen nebenher; bis sie da sind, kurz warten. */
   const mails = async (art, anzahl) => {
@@ -99,5 +108,28 @@ test('Mails bei neuen Zugängen', { concurrency: 1 }, async (t) => {
     assert.deepEqual((await mails('zweiter_faktor_entfernt', 1)).map(m => [m.an, m.durch]), [[NAMEN[1], NAMEN[0]]]);
     assert.deepEqual((await mails('verwaltung_faktor_entfernt', 3)).map(m => [m.an, m.konto]),
       [[NAMEN[0], NAMEN[1]], [NAMEN[2], NAMEN[1]], [NAMEN[1], NAMEN[1]]]);
+  });
+
+  await t.test('fremdes Passwort durch einen Verwalter', async () => {
+    await ruf('PUT', `/users/${zwei}/password`, { password: 'Neues-Langes-Passwort-9', admin_password: PASS });
+    assert.deepEqual((await mails('passwort_durch_verwalter', 1)).map(m => [m.an, m.durch]), [[NAMEN[1], NAMEN[0]]]);
+    assert.deepEqual((await mails('verwaltung_passwort_gesetzt', 3)).map(m => [m.an, m.konto]),
+      [[NAMEN[0], NAMEN[1]], [NAMEN[2], NAMEN[1]], [NAMEN[1], NAMEN[1]]]);
+  });
+
+  await t.test('Token aus der Anmeldung (neues Gerät)', async () => {
+    gesendet.length = 0;
+    await ruf('POST', '/login', { username: NAMEN[2], password: PASS, label: 'Handy' });
+    assert.deepEqual(await mails('token_neu', 1), [{ an: NAMEN[2], konto: undefined, durch: undefined, name: 'Handy' }]);
+  });
+
+  await t.test('eigener zweiter Faktor eingerichtet und abgeschaltet', async () => {
+    const zf = _req('src/konto/zweiterFaktor.js');
+    const { geheimnis } = await ruf('POST', '/zweiter-faktor/einrichten', { password: PASS });
+    const code = (versatz) => zf.hotp(zf.ausBase32(geheimnis), zf.zeitschritt() + versatz);
+    await ruf('POST', '/zweiter-faktor/bestaetigen', { code: code(0) });
+    assert.deepEqual((await mails('zweiter_faktor_eingerichtet', 1)).map(m => m.an), [NAMEN[0]]);
+    await ruf('POST', '/zweiter-faktor/abschalten', { password: PASS, code: code(1) });
+    assert.deepEqual((await mails('zweiter_faktor_abgeschaltet', 1)).map(m => m.an), [NAMEN[0]]);
   });
 });

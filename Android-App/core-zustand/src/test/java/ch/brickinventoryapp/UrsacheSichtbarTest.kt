@@ -5,6 +5,7 @@ import ch.brickinventoryapp.ui.mitTechnischerUrsache
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import ch.brickinventoryapp.ui.qrFehler
 
 /**
  * „Etwas ist schiefgelaufen" muss sagen, WAS schiefgelaufen ist.
@@ -27,10 +28,6 @@ import org.junit.Test
  *
  *  1. Bei UNBEKANNT wird die Ursache ANGEHÄNGT — sonst ist die Meldung wieder
  *     nichtssagend.
- *  2. Bei jeder anderen Ursache wird sie WEGGELASSEN. Nachtrag 116 hat
- *     englischen Bibliothekstext bewusst aus den Meldungen verbannt; „kein
- *     Netz" und „Sitzung abgelaufen" sind fertige Sätze, denen ein
- *     „Socket closed" nichts hinzufügt.
  */
 class UrsacheSichtbarTest {
 
@@ -89,7 +86,7 @@ class QrZweiterAnlaufTest {
 
     @Test
     fun `angemeldet - kein Fehler`() {
-        assertEquals(null, ch.brickinventoryapp.ui.qrFehler(true, "Ungültiges oder abgelaufenes Token"))
+        assertEquals(null, qrFehler(true, "Ungültiges oder abgelaufenes Token"))
     }
 
     @Test
@@ -99,6 +96,6 @@ class QrZweiterAnlaufTest {
         // abgelaufener Code beim ERSTEN Versuch) für den Nutzer unsichtbar —
         // er stünde vor einem Anmeldebildschirm, der nichts sagt.
         assertEquals("Ungültiges oder abgelaufenes Token",
-            ch.brickinventoryapp.ui.qrFehler(false, "Ungültiges oder abgelaufenes Token"))
+            qrFehler(false, "Ungültiges oder abgelaufenes Token"))
     }
 }

@@ -2,15 +2,27 @@
  * Standarddesign aufblitzt.
  * Ausführlich: docs/begruendungen/src/konto/indexHtml.ts.md#abschnitt */
 import { konfig } from '../infra/konfig';
-import { meldeUndLiefere } from '../infra/httpError';
+import { meldeUndLiefere, meldeUndWeiter } from '../infra/fehler';
 import fs from 'fs';
+import { createHash } from 'crypto';
 import {  PUBLIC_DIR } from '../infra/appPaths';
 import path from 'path';
-import { DESIGNS, designFuer, nutzerEinstellungen } from './settings';
-import { getGlobalSetting } from './settings';
+import { DESIGNS, designFuer, nutzerEinstellungen, getGlobalSetting } from '../einstellungen/settings';
 import { stempleAssetsGecacht } from '../infra/assetStempel';
+import { appVersion } from '../infra/appVersion';
 
 const INDEX_PATH = path.join(PUBLIC_DIR, 'index.html');
+
+let _stil: { mtime: number; hash: string } | null = null;
+
+/** CSP-Quelle für den einen Inline-Block <style id="startstil"> (Startgerüst), sonst ''. */
+export function startStilHash(): string {
+  const mtime = konfig().produktion && _stil ? _stil.mtime : fs.statSync(INDEX_PATH, { throwIfNoEntry: false })?.mtimeMs ?? 0;
+  if (_stil && _stil.mtime === mtime) return _stil.hash;
+  const m = /<style id="startstil">([\s\S]*?)<\/style>/.exec(fs.existsSync(INDEX_PATH) ? fs.readFileSync(INDEX_PATH, 'utf8') : '');
+  _stil = { mtime, hash: m ? `'sha256-${createHash('sha256').update(m[1] ?? '').digest('base64')}'` : '' };
+  return _stil.hash;
+}
 
 let _html: string | null = null;
 let _mtime = 0;
@@ -33,6 +45,13 @@ async function readIndex(): Promise<string> {
   return _html;
 }
 
+/** Die Anmeldemaske nennt den ausgelieferten Stand. Eine feste Zahl in index.html blieb stehen, während
+ * längst ein neuerer Commit lief; ohne bekannte Version bleibt die Zeile leer. */
+export function versionEinsetzen(html: string, version: string): string {
+  const v = version && version !== 'unbekannt' ? `Version ${version.replace(/[^\w.+-]/g, '')}` : '';
+  return html.replace(/(<div class="start-fuss" data-version>)[^<]*(<\/div>)/, `$1${v}$2`);
+}
+
 /** Entwicklerkommentare gehören in den Quelltext, nicht in jede Auslieferung. */
 export function ohneKommentare(html: string): string {
   return html.replace(/[ \t]*<!--[\s\S]*?-->[ \t]*\n?/g, '');
@@ -46,7 +65,7 @@ async function currentTheme(userId?: number): Promise<string> {
   }
   if (_theme !== null && Date.now() - _themeAt < THEME_TTL_MS) return _theme;
   const gespeichert = await getGlobalSetting('app_theme').catch(meldeUndLiefere('index-html:getGlobalSetting', null));
-  const gewaehlt: string = DESIGNS.includes(gespeichert) ? gespeichert : 'classic';
+  const gewaehlt: string = gespeichert && DESIGNS.includes(gespeichert) ? gespeichert : 'classic';
   _theme = gewaehlt;
   _themeAt = Date.now();
   return gewaehlt;
@@ -81,8 +100,17 @@ export async function renderIndexHtml(userId?: number): Promise<string> {
 
     // ZULETZT stempeln: Sonst hinge der Stempel der deutschen Sprachdatei an der
     // englischen.
+    out = versionEinsetzen(out, appVersion());
     return stempleAssetsGecacht(out, PUBLIC_DIR);
   } catch (_) {
     return html;
   }
+}
+
+/** Renderer statt sendFile, sonst gingen die Assets ohne Stempel hinaus. Fällt
+ * das Rendern aus, geht die Datei unverändert; js/00-theme-boot.js übernimmt. */
+export async function sendeStartseite(res: { type(t: string): { send(b: string): unknown }; sendFile(f: string, o: { root: string }): void },
+                                      userId?: number): Promise<void> {
+  await renderIndexHtml(userId).then(html => { res.type('html').send(html); },
+    (e: unknown) => { meldeUndWeiter('startseite:rendern', e); res.sendFile('index.html', { root: PUBLIC_DIR }); });
 }

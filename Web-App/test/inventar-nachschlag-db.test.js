@@ -1,31 +1,6 @@
 /**
  * Ein Rebrickable-Inventar wird ueberall nach denselben Kandidaten gesucht.
- *
- * ── Der Fehler, den das verhindert ──────────────────────────────────────────
- * `SELECT id FROM rb_inventories WHERE set_num=$1 OR set_num=$2 ORDER BY
- * version DESC LIMIT 1` stand an ACHT Stellen. Das SQL war ueberall gleich —
- * die beiden Kandidaten nicht. Fuer die Eingabe „9999" (Set-Nummer ohne
- * Versionsanhang) ergab sich:
- *
- *   src/katalog/katalogAbgleich, src/katalog/teileAnreicherung,
- *   clients/rebrickable, routes/api_v1/sets (2x)   '9999-1' ODER '9999'
- *   src/teile/abfragen.ts                        '9999-1' ODER '9999-1'
- *   routes/api_v1/catalog.ts                       nur '9999-1'
- *
- * Die beiden Abweichler finden eine Zeile, die unter der blanken Nummer
- * abgelegt ist, also nicht — die anderen sechs schon. In parts.ts war der
- * zweite Kandidat sogar wortgleich mit dem ersten: Die Abfrage fragte zweimal
- * dasselbe. Und in catalog.ts stand ueber der einkandidatigen Fassung
- * „analog catalogSync", waehrend catalogSync zwei prueft.
- *
- * In parts.ts schlug dieselbe Fehlbildung noch ein zweites Mal durch: Die
- * Rebrickable-Ersatzquelle laeuft darunter ueber `for (const sn of [n, alt])`
- * und holte damit denselben Satz zweimal ueber die Leitung — ein Abruf des
- * dortigen Tageskontingents fuer nichts.
- *
- * Seit Migration 0074 legt die Datenbank jede Set-Nummer mit Versionsanhang
- * ab; es gibt nur noch einen Kandidaten. Die Aussage bleibt: Eine blank
- * geschriebene Nummer wird gefunden, gleich wie der Aufrufer sie schreibt.
+ * Ausführlich: docs/begruendungen/test/inventar-nachschlag-db.test.js.md#kopf
  *
  * Gegenproben (durchgefuehrt): siehe unten am jeweiligen Teilschritt.
  *
@@ -40,16 +15,12 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 
 const ROOT = path.join(__dirname, '..');
 const _req = require('./helpers/sources').buildAndRequire();
+const { dbOderSkip } = require('./helpers/db');
 const db = _req('db/database.js');
 const { neuestesInventar } = _req('src/katalog/rbInventar.js');
 
 test('ein Inventar wird unter beiden Schreibweisen gefunden', { concurrency: 1 }, async (t) => {
-  try { await db.initSchema(); }
-  catch (e) {
-    if (process.env.REQUIRE_DB === '1')
-      throw new Error(`REQUIRE_DB=1, aber die Test-DB ist nicht erreichbar: ${e.message}`);
-    t.skip('Test-DB nicht erreichbar'); return;
-  }
+  if (!await dbOderSkip(t, _req, { migrieren: false })) return;
 
   // rb_inventories.id ist kein SERIAL — die Nummern kommen aus der CSV.
   const idBlank = 900000 + (process.pid % 10000) * 2;

@@ -10,6 +10,7 @@ button{font-family:monospace;font-size:var(--fs-2);padding:4px 10px;border-radiu
 @media (hover:hover){button:hover{background:#30363d}}button.active{background:#1f6feb;border-color:#388bfd;color:#fff}
 .sep{color:#30363d;font-size:var(--fs-2)}#status{font-size:var(--fs-1);color:#8b949e;white-space:nowrap}
 #log-wrap{flex:1;overflow-y:auto;padding:4px 0}
+.vh{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
 .ll{padding:1px 14px;font-size:var(--fs-1);line-height:1.55;white-space:pre-wrap;word-break:break-all;border-left:3px solid transparent;display:flex;gap:8px}
 @media (hover:hover){.ll:hover{background:#161b22}}.ll.warn{color:#e3b341;border-left-color:#e3b341}
 .ll.error{color:#f85149;border-left-color:#f85149;background:#16040a}

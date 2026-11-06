@@ -1,0 +1,18 @@
+Gegenprobe: Der Alarmschalter speichert nur und plant nicht ein
+Modul: core-zustand
+Test: ch.brickinventoryapp.GeraeteEinstellungenViewModelTest
+Rot: der Schalter speichert und plant ein
+
+diff --git a/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/ui/viewmodel/GeraeteEinstellungenViewModel.kt b/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/ui/viewmodel/GeraeteEinstellungenViewModel.kt
+index 216ac25..ee88800 100644
+--- a/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/ui/viewmodel/GeraeteEinstellungenViewModel.kt
++++ b/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/ui/viewmodel/GeraeteEinstellungenViewModel.kt
+@@ -48,7 +48,7 @@ class GeraeteEinstellungenViewModel @Inject constructor(
+     fun alarmMeldungen(an: Boolean) {
+         viewModelScope.launch {
+             einstellungen.setzeAlarmMeldungen(an)
+-            val fehler = planer.einplanen(an) ?: return@launch
++            val fehler: Throwable = return@launch
+             meldungen.zeige(texte.text(R.string.alert_schedule_failed,
+                 "${fehler::class.java.simpleName}: ${fehler.message ?: "—"}"))
+         }

@@ -1,68 +1,21 @@
 /**
- * Seitenweises Laden der Galerie (Punkt 4 der Optimierungsliste).
- *
- * Vorher holte `/sets` alle Sets samt aller Anleitungen, und der Browser
- * filterte und sortierte über das komplette Array. Beides zusammen geht mit
- * seitenweisem Laden nicht: Ein Filter hätte nur die geladene Seite durchsucht.
- * Filtern und Sortieren liegen deshalb jetzt auf dem Server.
- *
- * Ohne `page_size` verhält sich der Endpunkt wie bisher — die Android-App ruft
- * ihn so auf und bleibt unverändert lauffähig.
+ * Seitenweise Listen am Server: Sortier-Whitelist, gebundene Parameter,
+ * Themenliste, Zähler. Ohne page_size liefert /sets alles (Android-App).
+ * Das Verhalten der Oberfläche prüft test/listen-paging-oberflaeche.test.js.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
-const { abschnitt } = require('./helpers/sources');
-
-/**
- * import-/export-Syntax aus einer Moduldatei entfernen.
- *
- * Diese Tests werten den Quelltext in einer vm-Sandbox bzw. in jsdom als
- * KLASSISCHES Skript aus. Seit der Umstellung auf ES-Module enthalten die
- * Dateien import- und export-Anweisungen, die dort einen SyntaxError erzeugen
- * ("Cannot use import statement outside a module"). Die geprüfte Logik ändert
- * sich dadurch nicht — nur die Modulverpackung muss weg.
- *
- * @param {string} src
- * @returns {string}
- */
-function stripModuleSyntax(src) {
-  const body = src
-    .replace(/^import[^;]*;\s*$/gm, '')   // import { a, b } from '…';
-    .replace(/^export\s+/gm, '');          // export function/const/let/class
-  // registerActions() kommt sonst aus js/00-registry.js und ist nach dem
-  // Entfernen der Importe nicht definiert. In der Sandbox interessiert die
-  // Anmeldung nicht — dass sie aufgerufen WIRD, prüfen test/csp-actions.test.js
-  // und test/bundle-smoke.test.js gegen den echten Quelltext.
-  // tRaw() lebt in i18n.js und wird hier nicht mitgeladen. In der Sandbox
-  // genügt die Weiterleitung an t(): Der Unterschied liegt allein in der
-  // Maskierung der eingesetzten Werte, die diese Tests nicht prüfen.
-  return 'function registerActions() {}\n'
-       + 'function tRaw(k, v) { return typeof t === "function" ? t(k, v) : k; }\n'
-       + body;
-}
 
 const ROOT = path.join(__dirname, '..');
 const H_SRC = require('./helpers/sources').handlerQuelle();
-const GAL   = stripModuleSyntax(fs.readFileSync(path.join(ROOT, 'public', 'js', '02-gallery.js'), 'utf8'));
-const HTML  = fs.readFileSync(path.join(ROOT, 'public', 'index.html'), 'utf8');
 
 test('die Sortierung ist eine Whitelist, kein interpolierter Parameter', () => {
   assert.match(H_SRC, /const SET_SORTS = \{/,
     'Ohne Whitelist landet der Wert eines <select> ungeprüft in der ORDER BY-Klausel');
-  // Geprüft wird die AUSSAGE, nicht der Wortlaut (Nachtrag 155).
-  //
-  // Vorher stand hier der Ausdruck `SET_SORTS[sort] || SET_SORTS.added_desc`
-  // wörtlich. Als dieser Zugriff auf ausTabelle() umgestellt wurde — weil der
-  // direkte Zugriff auch GEERBTE Eigenschaften lieferte und `|| Vorgabe` die
-  // eben NICHT abfing —, wurde der Test rot, obwohl die geprüfte Zusage nicht
-  // nur galt, sondern strenger geworden war.
-  //
-  // Zwei Dinge werden verlangt, beide als Sachverhalt:
-  //   1. Kein direkter Index auf die Tabelle mehr (das war die Lücke).
-  //   2. Der Wert geht durch ausTabelle() MIT Vorgabe (das ist die Zusage).
-  // Das Verhalten von ausTabelle() selbst prüft test/austabelle.test.js.
+  // Geprüft wird die AUSSAGE, nicht der Wortlaut.
+  // Ausführlich: docs/begruendungen/test/gallery-paging.test.js.md#ohnekommentare
   const ohneKommentare = H_SRC.split('\n')
     .filter(z => !z.trim().startsWith('//') && !z.trim().startsWith('*'))
     .join('\n');
@@ -72,7 +25,7 @@ test('die Sortierung ist eine Whitelist, kein interpolierter Parameter', () => {
     'Unbekannte Werte müssen auf die Vorgabe fallen');
   // Der Suchbegriff gehört als Parameter gebunden, nicht in den String
   const fn = require('./helpers/sources').funktionsRumpf(H_SRC, 'setListe');
-  assert.match(fn, /params\.push\(`%\$\{String\(search\)\.toLowerCase\(\)\}%`\)/,
+  assert.match(fn, /params\.push\(enthaeltMuster\(String\(search\)\.toLowerCase\(\)\)\)/,
     'Der Suchbegriff muss als Parameter gebunden werden');
 });
 
@@ -80,7 +33,7 @@ test('ohne page_size bleibt alles wie bisher', () => {
   // Die Seite rechnet getSets aus page_size; ohne sie ist f.seite null.
   const fn = require('./helpers/sources').funktionsRumpf(H_SRC, 'setListe');
   assert.match(fn, /if \(f\.seite\) \{/, 'LIMIT darf nur bei gesetztem page_size greifen');
-  assert.match(fn, /f\.seite \? db\.get\(/, 'der Zähler kostet sonst unnötig Zeit');
+  assert.match(fn, /f\.seite \? db\.get(?:<[^>]*>)?\(/, 'der Zähler kostet sonst unnötig Zeit');
   assert.match(require('./helpers/sources').funktionsRumpf(H_SRC, 'getSets'), /const size = page_size \?/);
   // Der Test pinnte hier den Wortlaut eines Kommentars („Android-App sendet
   // kein page_size"). Der stimmt nicht mehr: Seit Marcos Vorgabe blättert auch
@@ -88,10 +41,8 @@ test('ohne page_size bleibt alles wie bisher', () => {
   // alle vier Parameter durch, und ohne page_size bleibt die Liste unbegrenzt.
   const v1 = fs.readFileSync(path.join(ROOT, 'routes/api_v1/sets.ts'), 'utf8');
   const route = v1.slice(v1.indexOf("router.get('/sets', requireToken"), v1.indexOf("router.get('/sets/:setNumber'"));
-  // req.query als GANZES: Eine Auswahl daneben liess einst `storage` fallen.
-  // (Bis hierher prüfte diese Zeile die alte Auswahl — sie stand nur noch als
-  // Beispiel in einem Kommentar.)
-  assert.match(route, /await getSets\([^;]*\breq\.query\)/,
+  // Die geprüfte Abfrage als GANZES: Eine Auswahl daneben liess einst `storage` fallen.
+  assert.match(route, /await getSets\([^;]*\breq\.abfrage\)/,
     'Die Route muss alle Filterparameter durchreichen — sonst filtert der Client wieder selbst');
 });
 
@@ -105,62 +56,19 @@ test('die Themenliste kommt vom Server und nur auf Seite 1', () => {
   assert.match(H_SRC, /WHERE s\.user_id = ANY\(\$1\) AND c\.theme IS NOT NULL/,
     'Die Themenliste muss auf das Blickfeld eingeschränkt sein');
   assert.match(H_SRC, /parseInt\(page\) <= 1/, 'Folgeseiten brauchen die Liste nicht');
-  assert.match(GAL, /Array\.isArray\(d\.themes\)/, 'Der Client muss die Serverliste verwenden');
-  assert.match(GAL, /esc\(th\)/, 'Themennamen stammen aus Fremddaten und müssen escaped werden');
-});
-
-test('renderGallery filtert und sortiert nicht mehr selbst', () => {
-  // abschnitt(): Hier stehen nur doesNotMatch-Zusicherungen — auf leerem
-  // Ausschnitt waeren sie gruen. Siehe die Begruendung an abschnitt().
-  const fn = abschnitt(GAL, 'function renderGallery()', 'function updateGalleryPrices',
-                       'Galerie zeichnet ohne Clientfilter');
-  assert.doesNotMatch(fn, /allSets\.filter/, 'ein Clientfilter sähe nur die geladene Seite');
-  assert.doesNotMatch(fn, /list\.sort\(/, 'Sortieren über eine Teilmenge ergibt eine falsche Reihenfolge');
-});
-
-test('Suche, Sortierung und Themenfilter lösen einen Neuaufbau aus', () => {
-  assert.match(GAL, /_t=setTimeout\(loadGallery,250\)/, 'Suche muss neu laden, nicht neu zeichnen');
-  assert.match(GAL, /G\('gsort'\)\.addEventListener\('change',loadGallery\)/, 'Sortierung ebenso');
-  assert.match(GAL, /themeEl\.addEventListener\('change', loadGallery\)/, 'Themenfilter ebenso');
-});
-
-test('Endlos-Scroll nach demselben Muster wie Katalog und Teile', () => {
-  assert.match(GAL, /_galGen/, 'Generationszähler gegen späte Antworten');
-  assert.match(GAL, /if \(gen !== _galGen\) return/, 'Antworten verworfener Filter dürfen nicht landen');
-  assert.match(GAL, /rootMargin: '600px'/, 'ohne Vorlauf ruckelt das Nachladen');
-  assert.match(GAL, /requestAnimationFrame\(maybeLoadMoreGallery\)/,
-    'füllt die erste Seite den Bildschirm nicht, gäbe es nie ein Scroll-Ereignis');
-  const fn = GAL.slice(GAL.indexOf('function maybeLoadMoreGallery'));
-  assert.match(fn.slice(0, 260), /tab-gallery[\s\S]{0,80}classList\.contains\('active'\)/,
-    'sonst lädt der Sentinel im Hintergrund weiter');
-});
-
-test('der Sentinel steht neben #gallery, nicht darin', () => {
-  const g = HTML.indexOf('id="gallery"');
-  const sIdx = HTML.indexOf('id="gallery-sentinel"');
-  assert.ok(g > 0 && sIdx > g, 'gallery-sentinel fehlt');
-  assert.match(HTML.slice(g, sIdx), /<\/div>/,
-    '#gallery wird bei jedem Filterwechsel ersetzt — der Observer verlöre sein Ziel');
-});
-
-test('Folgeseiten hängen an, statt alles neu zu bauen', () => {
-  assert.match(GAL, /function appendGallery/, 'Anhängen fehlt');
-  assert.match(GAL, /insertAdjacentHTML\('beforeend'/,
-    'Ein renderGallery() je Seite würde alle Bilder neu laden lassen');
 });
 
 // ── Minifiguren und manuelle Listen ────────────────────────────────────────
-const FIGS = stripModuleSyntax(fs.readFileSync(path.join(ROOT, 'public', 'js', '06-minifigs.js'), 'utf8'));
-
 test('Minifiguren laden seitenweise', () => {
   // Auf die Parameter geprüft, nicht auf den Wortlaut des Kopfes: Eine
   // Typannotation an userId sagt über das Blättern nichts. Derselbe Fall wie
-  // in Nachtrag 148 — dort brachen fünf solcher Muster, ohne dass sich am
+  // in einer früheren Runde — dort brachen fünf solcher Muster, ohne dass sich am
   // Verhalten etwas geändert hatte.
   const { funktionsKopf } = require('./helpers/sources');
   const figKopf = funktionsKopf(H_SRC, 'getMinifigs');
   for (const p of ['userId', 'search', 'source', 'set_number', 'page', 'page_size']) {
-    assert.match(figKopf, new RegExp(`\\b${p}\\b`),
+    // userId heisst seit dem 05.11.2026 userIdWahl (Sicht oder IDs).
+    assert.match(figKopf, new RegExp(`\\b${p}(Wahl)?\\b`),
       `getMinifigs nimmt '${p}' nicht mehr entgegen: ${figKopf}`);
   }
   assert.match(figKopf, /page\s*=\s*1/,   'page muss auf 1 vorbelegt sein');
@@ -168,39 +76,11 @@ test('Minifiguren laden seitenweise', () => {
     'Ohne page_size-Vorgabe null könnte ein Aufrufer ungewollt blättern');
   assert.match(H_SRC, /SELECT 1 FROM minifigs m[\s\S]{0,220}GROUP BY LOWER\(TRIM\(m\.fig_number\)\), m\.source\) g/,
     'Der Zähler muss über die Gruppen laufen — eine Figur aus fünf Sets zählt sonst fünfmal');
-  assert.match(FIGS, /_figGen/, 'Generationszähler fehlt');
-  assert.match(FIGS, /rootMargin: '600px'/, 'Endlos-Scroll fehlt');
-});
-
-test('der Ausschluss manueller Figuren passiert auf dem Server', () => {
-  assert.doesNotMatch(FIGS, /\.filter\(f => f\.source !== 'manual'\)/,
-    'Clientseitig gefiltert könnte eine ganze Seite wegfallen und die Liste bliebe leer');
-  // Geprüft wird, dass die Quelle ALS PARAMETER an den Server geht — nicht,
-  // wie der Wert zustande kommt. Hier stand die exakte Schreibweise
-  // `G('fig-source')?.value || 'set'` als Zusicherung; damit hielt der Test
-  // ein Auswahlfeld fest, das genau eine Option trug, von nirgends gefüllt
-  // wurde und dessen change-Ereignis nie eintreten konnte. Ein Test, der eine
-  // Schreibweise festnagelt statt einer Regel, verteidigt irgendwann genau das
-  // Falsche.
-  assert.match(FIGS, /p\.set\('source',\s*'set'\)/,
-    'Die Quelle gehört als Parameter an den Server');
-});
-
-test('der Minifiguren-Filter lädt neu statt clientseitig zu filtern', () => {
-  const fn = FIGS.slice(FIGS.indexOf('function filterFigs'), FIGS.indexOf('function filterFigs') + 400);
-  assert.doesNotMatch(fn, /allFigsCache\.filter/, 'ein Clientfilter sähe nur die geladene Seite');
-  assert.match(fn, /loadMinifigs\(\)/, 'der Filter muss einen Neuaufbau auslösen');
 });
 
 test('auch die manuellen Listen können seitenweise', () => {
-  // ── Der Rumpf GANZ, nicht die ersten 900 Zeichen (20.10., GEMESSEN) ──────
-  //
-  // Hier stand `H_SRC.slice(i, i + 900)`. Am 20.10. bekam getManualParts einen
-  // Suchfilter samt Begründung, und diese Prüfung meldete „LIMIT/OFFSET müssen
-  // gebunden werden, nicht interpoliert" — die Zeile stand unverändert da, nur
-  // ab Zeichen 1100. Eine Prüfung, die richtigen Code anmeckert, wird
-  // abgeschaltet statt befolgt; funktionsRumpf() schneidet deshalb an der
-  // schliessenden Klammer (test/helpers/sources.js, dort steht die Lehre).
+  // Der Rumpf GANZ, nicht die ersten 900 Zeichen (20.10., GEMESSEN)
+  // Ausführlich: docs/begruendungen/test/gallery-paging.test.js.md#stelle
   const { funktionsRumpf } = require('./helpers/sources');
   for (const [f, liste] of [['getManualParts', 'manuelleTeile'], ['getManualMinifigs', 'manuelleFigurenListe']]) {
     assert.match(funktionsRumpf(H_SRC, f), /page_size/, `${f} kennt kein page_size`);
@@ -210,20 +90,9 @@ test('auch die manuellen Listen können seitenweise', () => {
   }
 });
 
-test('die Sentinels stehen jeweils neben ihrer Liste', () => {
-  const l = HTML.indexOf('id="figs-list"');
-  const sIdx = HTML.indexOf('id="figs-sentinel"');
-  assert.ok(l > 0 && sIdx > l, 'figs-sentinel fehlt');
-  assert.match(HTML.slice(l, sIdx), /<\/div>/, 'der Sentinel darf nicht in #figs-list liegen');
-});
-
 test('nach Anzahl lässt sich in beide Richtungen sortieren', () => {
-  // ── Warum ein zweiter Sortierschlüssel nötig ist ──────────────────────────
-  // Die allermeisten Sets stehen mit genau einem Exemplar im Bestand. Ohne
-  // festen Zweitschlüssel wäre die Reihenfolge innerhalb dieser grossen Gruppe
-  // von Postgres nicht definiert — und weil die Galerie seitenweise lädt,
-  // könnte dasselbe Set beim Blättern zweimal oder gar nicht erscheinen. Das
-  // ist dieselbe Falle wie bei jeder anderen nicht eindeutigen Sortierung.
+  // Warum ein zweiter Sortierschlüssel nötig ist
+  // Ausführlich: docs/begruendungen/test/gallery-paging.test.js.md#handlers
   const handlers = require('./helpers/sources').handlerQuelle();
   const sorts = handlers.slice(handlers.indexOf('const SET_SORTS'),
                                handlers.indexOf('};', handlers.indexOf('const SET_SORTS')));

@@ -1,0 +1,18 @@
+Gegenprobe: Teilename wieder in labelSmall (11 sp)
+Modul: app
+Test: ch.brickinventoryapp.KachelVorlesenTest
+Rot: Name Farbe und zweite Zeile stehen in mindestens 12 sp
+
+diff --git a/Android-App/feature-teile/src/main/java/ch/brickinventoryapp/ui/screens/PartsScreen.kt b/Android-App/feature-teile/src/main/java/ch/brickinventoryapp/ui/screens/PartsScreen.kt
+index 5fd88a0..f272753 100644
+--- a/Android-App/feature-teile/src/main/java/ch/brickinventoryapp/ui/screens/PartsScreen.kt
++++ b/Android-App/feature-teile/src/main/java/ch/brickinventoryapp/ui/screens/PartsScreen.kt
+@@ -502,7 +502,7 @@ fun PartCard(part: TeilAnsicht, serverUrl: String, imageLoader: ImageLoader,
+                 fontWeight = FontWeight.SemiBold)
+             Text(part.partName?.let { katalogName(it) }
+                     ?: androidx.compose.ui.text.AnnotatedString(stringResource(R.string.name_unknown)),
+-                style = MaterialTheme.typography.bodySmall,
++                style = MaterialTheme.typography.labelSmall,
+                 color = if (part.partName == null) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurface,
+                 // Im Raster immer zwei Zeilen Platz: Kacheln einer Reihe sind gleich hoch,
+                 // auch wenn ein Name kurz ist. Die Zeile muss niemandem gleichen.

@@ -131,7 +131,7 @@ test('das Gutschein-PDF öffnet erst nach Bestätigung, mit dem Ticket', async (
   const { w, d } = await oeffneOberflaeche({
     '/v1/vouchers': { success: true, vouchers: [{ id: 3, number: '…9012', pin: '•••', amount: 50, currency: 'CHF', hat_pdf: true }] },
     '/v1/vouchers/3/pdf-freigabe': (_u, o) => { freigaben.push(JSON.parse(o.body)); return { success: true, ticket: 'T-123', gueltig_sek: 60 }; },
-    '/v1/vouchers/3/pdf': (u) => { abrufe.push(String(u)); return { $status: 403, success: false, error: 'abgelehnt' }; },
+    '/v1/vouchers/3/pdf': (u) => { abrufe.push(String(u)); return { $status: 403, success: false, error: 'abgelehnt', code: 'kein_zugriff_konto' }; },
   });
   try {
     await sicht(w, 'gutscheine');

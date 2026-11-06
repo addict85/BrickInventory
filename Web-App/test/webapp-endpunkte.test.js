@@ -1,5 +1,6 @@
 /**
  * Jede Adresse, die die Webapp aufruft, muss es auf dem Server geben.
+ * Ausführlich: docs/begruendungen/test/webapp-endpunkte.test.js.md#kopf
  *
  * ── Warum es diese Prüfung gibt ─────────────────────────────────────────────
  * Für die Android-App steht das seit test/app-endpunkte.test.js fest — dort
@@ -8,17 +9,6 @@
  * ist: Ein falscher Pfad im Browser scheitert erst zur Laufzeit, und etliche
  * Aufrufe enden auf `.catch(() => null)` — dann fehlt einfach ein Diagramm,
  * ohne dass irgendwo etwas rot wird.
- *
- * ── Was das Parsen schwierig macht (und schon dreimal danebenlag) ───────────
- * 1. Der Pfad ist oft ein Template-Literal mit VERSCHACHTELTEN Ausdrücken:
- *    `/v1/parts/${nr}/${farbe}${owner ? `?owner=${owner}` : ''}`
- *    Wer zuerst am `?` abschneidet, zerschneidet den Ausdruck und behält ein
- *    `${owner ` übrig. Erst die `${…}` auflösen (innerste zuerst, bis nichts
- *    mehr passt), DANN am `?` kappen.
- * 2. `fetch()` ist nicht immer GET — die Methode steht im zweiten Argument.
- * 3. Drei Routen stehen direkt in server.ts, nicht in einem Router.
- * Alle drei Punkte haben beim Nachmessen falsche Treffer erzeugt; sie stehen
- * hier, damit die nächste Fassung nicht wieder daran scheitert.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -36,13 +26,7 @@ function form(p) {
 
 /**
  * Template-Ausdrücke auflösen, dann den Abfrageteil abschneiden.
- *
- * Die Auflösung selbst steht seit dem 19.10. in test/helpers/sources.js —
- * test/frontend-api-paths.test.js brauchte sie auch und hatte eine eigene,
- * naive Fassung, die bei verschachtelten Ausdrücken Müll lieferte und
- * trotzdem grün war. Die Begründung, die früher hier stand (drei Anläufe, die
- * danebenlagen), steht jetzt beim Helfer; hier bleibt nur das Formen der
- * Platzhalter.
+ * Ausführlich: docs/begruendungen/test/webapp-endpunkte.test.js.md#pfadformv1
  */
 function pfadFormV1(roh) {
   return form(pfadForm(roh));
@@ -79,7 +63,7 @@ function webAufrufe() {
     const src = ohneKommentare(fs.readFileSync(path.join(JS, datei), 'utf8'));
     const zeileVon = (i) => src.slice(0, i).split('\n').length;
 
-    for (const m of src.matchAll(/api\(\s*'(GET|POST|PUT|DELETE)'\s*,\s*/g)) {
+    for (const m of src.matchAll(/\bapi(?:Roh)?\(\s*'(GET|POST|PUT|DELETE)'\s*,\s*/g)) {
       const lit = leseLiteral(src, m.index + m[0].length);
       if (!lit || !lit.text.startsWith('/')) continue;
       out.push({ datei, zeile: zeileVon(m.index), verb: m[1], pfad: pfadFormV1('/api' + lit.text) });
@@ -116,20 +100,8 @@ test('jede Adresse der Webapp existiert auf dem Server', () => {
 });
 
 /**
- * ── Und die Gegenrichtung: Was kann nur die Webapp? ─────────────────────────
- *
- * Die Prüfung oben und app-endpunkte.test.js fragen beide „gibt es die Route?".
- * Die Frage, die dieses Projekt seit Nachtrag 129 begleitet, ist eine andere:
- * WELCHE Adresse ruft nur die eine Oberfläche auf — und ist das Absicht?
- *
- * Sie wurde bisher von Hand beantwortet, bei jeder Messung neu. Genau das ist
- * die Form, die sich als brüchig erwiesen hat: eine Liste im Kopf, die
- * niemand nachprüft (siehe die vier toten Ausnahmeeinträge in Nachtrag 158).
- * Deshalb steht sie jetzt hier, mit Begründung je Eintrag — und der Test
- * besteht darauf, dass jede Begründung noch einen Gegenstand hat.
- *
- * NACHGEMESSEN sind es genau diese sieben. Jede ist geprüft worden, nicht
- * vermutet:
+ * Und die Gegenrichtung: Was kann nur die Webapp?
+ * Ausführlich: docs/begruendungen/test/webapp-endpunkte.test.js.md#papierkorb
  */
 const PAPIERKORB =
   'Papierkorb: vorerst nur in der Webapp. Löschen in der App landet trotzdem ' +
@@ -175,9 +147,14 @@ const NUR_WEB = new Map([
    'Telefon, das sich selbst einen Code zum Abscannen anzeigt, hat niemand.'],
   ['/api/v1/auth/reset-password',
    'Setzt das Passwort mit dem Token aus der E-Mail. Der Link darin zeigt auf ' +
-   'die WEBSEITE (src/infra/mailer.ts: `${baseUrl}/reset-password?token=`), also ' +
+   'die WEBSEITE (src/mail/mailer.ts: `${baseUrl}/reset-password?token=`), also ' +
    'landet auch ein App-Nutzer dort. Was die App braucht, hat sie: ' +
    '/auth/forgot-password löst die Mail aus.'],
+  ['/api/v1/auth/email-bestaetigen',
+   'Der Knopf auf der Seite hinter dem Link aus der Mail (/verify). Der Link ' +
+   'öffnet die Webseite, auch auf dem Telefon; die App hat dafür keinen Bildschirm.'],
+  ['/api/v1/auth/email-bestaetigen/vorschau',
+   'Nennt auf derselben Seite (/verify) vor dem Knopf das Konto des Links.'],
   ['/api/v1/auth/bestaetigung-erneut',
    'Neuer Bestätigungslink; er zeigt auf die Webseite (/verify), dort wird bestätigt. ' +
    'Neu seit Runde 6 – die App kann den Knopf nachziehen, bis dahin hilft die Webseite.'],
@@ -188,6 +165,7 @@ const NUR_WEB = new Map([
   ['/api/v1/auth/users/:X/admin',  'Verwalterrecht umschalten — siehe /auth/users.'],
   ['/api/v1/auth/users/:X/password', 'Fremdes Passwort zurücksetzen — siehe /auth/users.'],
   ['/api/v1/auth/users/:X/aktiv',  'Fremdes Konto deaktivieren — siehe /auth/users.'],
+  ['/api/v1/auth/users/:X/freischalten', 'Offene Registrierung ohne Mail freischalten — siehe /auth/users.'],
   ['/api/v1/wanted-list/import/xml',
    'BrickLink-Wanted-Liste einlesen. NOCH NICHT in der App, und der Grund ' +
    'steht hier, damit ihn der Naechste nicht neu herleitet: Dieser Import ist ' +
@@ -231,18 +209,8 @@ const NUR_WEB = new Map([
    'kein SMTP ein; ohne die Formularfelder daneben hätte der Knopf nichts zu ' +
    'prüfen.'],
 
-  // ── Vier Adressen, die die App KANNTE und nicht mehr aufruft ──────────────
-  //
-  // Marcos Ansage: „bitte entferne folgende Punkte aus der Android App:
-  // bricklink.xml Funktionalität aus dem Reiter Teileliste, Teile neu einlesen
-  // auf dem Detail Dialog der Sets, neu laden bei den Anleitungen auf dem
-  // Detail Dialog der Sets."
-  //
-  // Das ist ein anderer Grund als bei den zehn darüber: Dort ist die App nie
-  // hingekommen und es gab jeweils ein Argument dafür. Hier war sie schon da,
-  // und der Eigentümer hat sich dagegen entschieden. Der Unterschied gehört
-  // festgehalten — sonst liest der Nächste diese vier als „hat noch niemand
-  // nachgezogen" und baut sie wieder ein.
+  // Vier Adressen, die die App KANNTE und nicht mehr aufruft
+  // Ausführlich: docs/begruendungen/test/webapp-endpunkte.test.js.md#stelle
   ['/api/v1/sets/:X/instructions',
    'Verwirft die hinterlegten Anleitungen eines Sets und lässt die ' +
    'automatische Suche noch einmal laufen. War im Set-Detail der App und ist ' +
@@ -274,6 +242,12 @@ const NUR_WEB = new Map([
    EINRICHTUNG],
   ['/api/v1/bestand',
    ALLES_LOESCHEN],
+  ['/api/v1/auth/konto',
+   'Das eigene Konto endgültig löschen (Sicherheitsprüfung Runde 9, H4): mit Passwort und ' +
+   'zweitem Faktor in der Webapp; in der App wäre ein Fehlgriff auf dem Telefon zu teuer.'],
+  ['/api/v1/settings/household/redeem/pruefen',
+   'Nennt vor dem Annehmen einer Haushaltseinladung das einladende Konto (UI-Prüfung 13, M2). ' +
+   'Die App fragt beim Annehmen nur das Passwort ab; sie bekommt die Prüfung mit ihrem eigenen Befund.'],
   ['/api/v1/vouchers/:X/pdf',
    'Die App holt das Gutschein-PDF nicht über Retrofit, sondern über seine Adresse im ' +
    'PdfViewerScreen (gutscheinPdfAdresse); die Webapp lädt es seit dem Einmal-Ticket per fetch.'],

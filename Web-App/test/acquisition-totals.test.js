@@ -1,32 +1,15 @@
 /**
  * Die Summenzeile der Erfassungen rechnet der SERVER — einmal.
- *
- * ── Woher dieser Test kommt (Marcos Frage) ──────────────────────────────────
- * „Kannst du sicherstellen, dass Berechnungen zentral in einer Komponente für
- * Webapp und Android-App durchgeführt werden, damit die GUIs nur das Rendering
- * übernehmen müssen?"
- *
- * Die Summe unter einer Erfassungsliste stand VIERMAL in den Oberflächen:
- * zweimal in `public/js/07-admin.js` (Set-Dialog und Dialog für manuelle
- * Einträge) und zweimal in der App (`AcquisitionManagementScreen`,
- * `ManualItemComposables`). Und die vier waren sich nicht einig, aus welchem
- * Feld der Preis kommt: Die Webapp las je nach Dialog fest `purchase_price`
- * ODER fest `unit_price`, die App hatte dafür eine Rückfallregel
- * (`purchasePrice ?: unitPrice`), die es in der Webapp gar nicht gibt. Dass
- * die Zahlen übereinstimmten, lag allein daran, dass die Abfragen je Art nur
- * EINES der beiden Felder füllen.
- *
- * Der Test hat zwei Teile, und beide werden gebraucht:
- *   • die RECHNUNG selbst (src/bestand/acquisitions.ts) — Randfälle inklusive
- *   • die REGEL, dass keine Oberfläche sie nochmal anstellt. Ohne den zweiten
- *     Teil wäre der erste in dem Moment wertlos, in dem jemand die Summe
- *     „schnell im Frontend" wieder einbaut.
+ * Ausführlich: docs/begruendungen/test/acquisition-totals.test.js.md#kopf
  *
  * Gegenprobe (durchgeführt): `amount` in acquisitionTotals() auf 0 statt null
  * bei fehlenden Preisen → der Randfall-Teilschritt wird rot. Und ein
  * eingefügtes `acqs.reduce(...)` in 07-admin.js → der Regel-Teilschritt.
  * Am 30.10.2026 gemessen: `totals` aus der Teile-Antwort in
  * routes/api_v1/acquisitions.ts entfernt → rot: „parts“ im Routen-Teilschritt.
+ * Seit 05.11.2026 fehlt `amount` ohne bekannten Preis (Geld hat einen Typ);
+ * gemessen: die Route ohne das Weglassen → rot: „minifigs“ (amount: null
+ * verletzt den Vertrag, die Antwort hat keine Erfassungen).
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -34,6 +17,7 @@ const assert = require('node:assert/strict');
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 const { ohneKommentare } = require('./helpers/sources');
 const _req = require('./helpers/sources').buildAndRequire();
+const { dbOderSkip } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
 const { acquisitionTotals } = _req('src/bestand/acquisitions.js');
 
@@ -97,18 +81,13 @@ test('leere Liste', () => {
 
 test('alle drei Erfassungs-Routen liefern die Summe mit', { concurrency: 1 }, async (t) => {
   const db = _req('db/database.js');
-  try { await db.initSchema(); }
-  catch (e) {
-    if (process.env.REQUIRE_DB === '1')
-      throw new Error(`REQUIRE_DB=1, aber die Test-DB ist nicht erreichbar: ${e.message}`);
-    t.skip('Test-DB nicht erreichbar'); return;
-  }
-  const mc = await db.pool.connect();
-  try { await _req('db/migrate.js').runMigrations(mc); } finally { mc.release(); }
+  if (!await dbOderSkip(t, _req)) return;
   const P = process.pid, NAME = `summen-${P}`, SN = `${P}7-1`, PN = `su${P}`, FN = `fig-su${P}`;
   await db.run('DELETE FROM users WHERE username=$1', [NAME]);
   const uid = (await db.get(`INSERT INTO users (username,password_hash) VALUES ($1,'x') RETURNING id`, [NAME])).id;
   t.after(async () => { await db.run('DELETE FROM users WHERE id=$1', [uid]).catch(() => {}); await db.pool.end().catch(() => {}); });
+  // Die Kontowährung ist die der Käufe: So bleibt die Summe ohne Umrechnung nachrechenbar.
+  await db.run("INSERT INTO user_settings (user_id, key, value) VALUES ($1, 'currency', 'CHF')", [uid]);
   await db.run('INSERT INTO sets (user_id, set_number) VALUES ($1,$2)', [uid, SN]);
   await db.run(`INSERT INTO set_acquisitions (user_id, set_number, quantity, purchase_price, condition, currency, created_at)
                 VALUES ($1,$2,2,7.41,'N','CHF','2026-01-01'), ($1,$2,1,9.48,'N','CHF','2026-01-02')`, [uid, SN]);
@@ -122,9 +101,9 @@ test('alle drei Erfassungs-Routen liefern die Summe mit', { concurrency: 1 }, as
   const { base } = testServer(_req, { sitzung: { userId: uid }, apiNutzer: { user_id: uid, is_admin: 0 },
                                      routen: { '/api/v1': 'routes/api_v1/index.js' }, t });
   for (const [art, pfad, erwartet] of [
-    ['sets', `sets/${SN}/acquisitions`, { quantity: 3, amount: 24.3, priced_rows: 2 }],
-    ['parts', `parts/${PN}/4/acquisitions`, { quantity: 3, amount: 1.8, priced_rows: 1 }],
-    ['minifigs', `minifigs/${FN}/acquisitions`, { quantity: 2, amount: null, priced_rows: 0 }],
+    ['sets', `sets/${SN}/acquisitions`, { quantity: 3, amount: 24.3, priced_rows: 2, currency: 'CHF', ohne_kurs: 0 }],
+    ['parts', `parts/${PN}/4/acquisitions`, { quantity: 3, amount: 1.8, priced_rows: 1, currency: 'CHF', ohne_kurs: 0 }],
+    ['minifigs', `minifigs/${FN}/acquisitions`, { quantity: 2, priced_rows: 0, currency: 'CHF', ohne_kurs: 0 }],
   ]) {
     const r = await (await fetch(`${base}/api/v1/${pfad}`)).json();
     assert.equal(r.acquisitions?.length > 0, true, `${art}: keine Erfassungen in der Antwort`);
@@ -133,7 +112,7 @@ test('alle drei Erfassungs-Routen liefern die Summe mit', { concurrency: 1 }, as
 });
 
 test('keine Oberfläche rechnet die Summe noch einmal', () => {
-  // Fundort seit Nachtrag 130: Das Kaufpreis-Modal liegt in
+  // Fundort seit einer früheren Runde: Das Kaufpreis-Modal liegt in
   // js/13-acquisition-modals.js. Der Helfer nimmt beide Dateien, damit die
   // Prüfung ihre Aussage behält, egal wo die Zeile künftig steht.
   const js = ohneKommentare(require('./helpers/sources').adminQuelle());

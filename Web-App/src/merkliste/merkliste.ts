@@ -1,18 +1,22 @@
 /** Die Merkliste — was man haben MÖCHTE, getrennt vom Bestand. Ein Helfer
  * statt Code in den Routen, weil beide Oberflächen und mehrere Erfassungswege
  * dieselben Regeln brauchen. */
+import { blickfeldAus } from '../haushalt/haushalt';
+import type { Sicht } from '../haushalt/haushalt';
 import { nacharbeit } from '../auftraege/nacharbeit';
+import { LIKE_ESCAPE, enthaeltMuster } from '../../db/likeSuche';
 import { addSet, sanitizeSetNumber } from '../sets/setService';
 import { findSetInScope } from '../sets/setAdd';
 import { loescheAlarm } from '../finanzen/preisalarm';
 import * as V from '../infra/validate';
-import { nutzerStandardZustand } from '../konto/settings';
-import { meldeUndWeiter, meldeUndLiefere } from '../infra/httpError';
-import { fuerSet } from '../finanzen/preisvergleich';
+import { fehlerWerfen } from '../infra/fehlerTexte';
+import { geldEingabe } from '../infra/geld';
+import { nutzerStandardZustand, getSetting } from '../einstellungen/settings';
+import { meldeUndWeiter, meldeUndLiefere, oeffentlicherFehler } from '../infra/fehler';
+import { fuerSet } from '../katalog/preisvergleich';
 import { resolveIfExists } from '../katalog/bilder/images';
-import { toCsv } from '../infra/csvExport';
+import { toCsv, csvZeilenAusAnfrage, parseCsvDate } from '../infra/csvExport';
 import * as repo from './repository/merkliste';
-import { getSetting } from '../konto/settings';
 import { fetchPrice } from '../finanzen/financeCalc';
 
 /** Jeder Zustand für sich: Kennt BrickLink einen nicht, kommt der andere
@@ -25,7 +29,8 @@ export async function preiseBeiderZustaende(uid: number, setNumber: string) {
   for (const c of ['N', 'U']) {
     const pd = await fetchPrice(setNumber, c, guideType, currency, ttlHours)
       .catch(meldeUndLiefere(`merkliste:preis ${setNumber} ${c}`, null));
-    if (pd) current[c] = { condition: c, avg_price: pd.avg_price, min_price: pd.min_price, max_price: pd.max_price };
+    // Ein Ersatzpreis des anderen Zustands stünde sonst als „Marktpreis (Neuware)“ da, die Liste sagt „keiner“.
+    if (pd && !pd.is_fallback) current[c] = { condition: c, avg_price: pd.avg_price, min_price: pd.min_price, max_price: pd.max_price };
   }
   return { currency, current };
 }
@@ -132,8 +137,9 @@ export interface MerkFilter {
 /** `userIds`: Die Merkliste folgt dem Kontenbaum wie alles andere.
  * Ausführlich: docs/begruendungen/src/merkliste/merkliste.ts.md#merkpostenvon */
 export async function merkpostenVon(
-  userIds: number[], nurSet?: string, waehrung = 'EUR', filter?: MerkFilter,
+  userIdsWahl: Sicht | number[], nurSet?: string, waehrung = 'EUR', filter?: MerkFilter,
 ): Promise<Merkposten[]> {
+  const userIds = await blickfeldAus(userIdsWahl);
   if (!userIds?.length) return [];
   const params: unknown[] = [userIds];
   let wo = '';
@@ -142,12 +148,9 @@ export async function merkpostenVon(
   // Nummer UND Name, wie in der Galerie; der Name kommt aus dem JOIN auf rb_sets.
   const suche = String(filter?.suche ?? '').trim();
   if (suche) {
-    // %, _ und \ maskieren, sonst fände ein Prozentzeichen jeden Eintrag. ESCAPE
-    // ausdrücklich, damit es nicht an standard_conforming_strings hängt.
-    const roh = suche.replace(/[\\%_]/g, (z) => '\\' + z);
-    params.push(`%${roh}%`);
-    wo += ` AND (w.set_number ILIKE $${params.length} ESCAPE '\\'`
-        + ` OR COALESCE(rb.name, sc.name) ILIKE $${params.length} ESCAPE '\\')`;
+    params.push(enthaeltMuster(suche));
+    wo += ` AND (w.set_number ILIKE $${params.length}${LIKE_ESCAPE}`
+        + ` OR COALESCE(rb.name, sc.name) ILIKE $${params.length}${LIKE_ESCAPE})`;
   }
 
   // Unbekannt heisst „beide", nicht „keine": Eine geleerte Liste sähe aus wie
@@ -211,6 +214,8 @@ export async function uebernimm(
   // Zwei Zustände: `condition` ist der Schlüssel des Merkpostens, der
   // verschwindet; `eingabe.condition` der, in dem das Set erfasst wird.
   const merkpostenZustand = await zustandOder(condition, besitzerId);
+  // Übernommen wird ein Merkposten; ohne ihn wäre das ein zweiter Weg zum Erfassen.
+  if (!await repo.istVorgemerkt(besitzerId, sn, merkpostenZustand)) fehlerWerfen('nicht_gefunden', 404);
   const zustand = eingabe.condition == null
     ? merkpostenZustand
     : await zustandOder(eingabe.condition, besitzerId);
@@ -221,7 +226,7 @@ export async function uebernimm(
   const ergebnis = vorhanden
     ? { action: 'exists', set_number: sn }
     : await addSet(sn, V.acquisitionQuantity(eingabe.quantity ?? 1), besitzerId, null,
-                   V.optionalPrice(eingabe.purchase_price, 'Kaufpreis'), zustand,
+                   geldEingabe(eingabe.purchase_price, 'Kaufpreis'), zustand,
                    eingabe.storage == null ? null : String(eingabe.storage));
 
   // Nach dem MERKPOSTEN-Zustand: Es geht um die Zeile, die man erfüllt hat.
@@ -236,4 +241,34 @@ export async function buildMerklisteCsv(uid: number): Promise<string> {
   const rows = await repo.merklisteFuerExport(uid);
 
   return toCsv(['set_number', 'condition', 'created_at'], rows);
+}
+
+/** Das Gegenstück zu buildMerklisteCsv(); läuft als Auftrag (jobs/importAuftraege.ts). */
+export async function importiereMerklisteCsv(owner: number, text: string) {
+  const { records, bereinigt, uebersprungen } =
+    csvZeilenAusAnfrage(text);
+
+  let added = 0, updated = 0, errors = 0;
+  const results: any[] = [];
+
+  for (const row of bereinigt) {
+    // Letzter Rückfall: eine Datei ohne Kopfzeile, erste Spalte = Setnummer —
+    // dieselbe Nachsicht wie beim Minifiguren-Import.
+    const setNumber = String(row.set_number || row['Setnummer'] || row['set_num']
+                             || Object.values(row)[0] || '').trim();
+    if (!setNumber) continue;
+
+    const condition = String(row.condition || row['zustand'] || row['Zustand'] || '').trim();
+    const am = parseCsvDate(row.created_at || row['aufgenommen_am'] || row['Auf der Liste seit']);
+
+    try {
+      const { war_neu } = await legeMerkpostenAn(owner, setNumber, condition, am);
+      if (war_neu) { added++; results.push({ set_number: setNumber, action: 'added' }); }
+      else         { updated++; results.push({ set_number: setNumber, action: 'exists' }); }
+    } catch (e) {
+      errors++;
+      results.push({ set_number: setNumber, action: 'error', error: oeffentlicherFehler(e, 'wanted-csv:zeile').error });
+    }
+  }
+  return { added, updated, errors, records, results, uebersprungen };
 }

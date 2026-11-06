@@ -1,10 +1,12 @@
 import { mengeSkalar } from '../../../db/bestandsmenge';
 import { blJoin, blNummerSql } from '../../../db/blZuordnungSql';
-import type { KatalogTeil, ListenTeil, SetStamm } from '../dienst';
+import type { KatalogTeil, ListenTeil, SetStamm } from '../zeilen';
 import * as db from '../../../db/database';
 
 export function setStamm(setNumber: string) {
-  return db.get<SetStamm>('SELECT name, year, theme, pieces, image_url, image_local FROM set_stamm WHERE set_number = $1', [setNumber]);
+  return db.get<SetStamm>(`SELECT name, year, theme, pieces, image_url, image_local,
+    name = 'Set ' || set_number AND year IS NULL AND theme IS NULL AND pieces IS NULL AS platzhalter
+    FROM set_stamm WHERE set_number = $1`, [setNumber]);
 }
 
 export function setKatalog(setNumber: string) {
@@ -20,7 +22,7 @@ export function katalogCacheEintrag(setNumber: string) {
 }
 
 export function ersterKatalogTreffer(nummern: string[]) {
-  return db.get('SELECT set_number, name FROM catalog_cache WHERE set_number = ANY($1) LIMIT 1', [nummern]);
+  return db.get<{ set_number: string; name: string | null }>('SELECT set_number, name FROM catalog_cache WHERE set_number = ANY($1) LIMIT 1', [nummern]);
 }
 
 export function katalogCacheNachNummer(setNumber: string) {
@@ -31,7 +33,7 @@ export function katalogTeileDesSets(setNumber: string) {
   return db.all<KatalogTeil>(`SELECT c.part_number, c.color_id, ${blNummerSql('c.part_number')} AS bl_part_number,
             c.part_name, c.color_name, c.color_hex, c.image_url, c.image_local
        FROM set_parts_catalog c
-       ${blJoin('c.part_number', 'part')}
+       ${blJoin('c.part_number', 'part', null)}
       WHERE c.set_number = $1`, [setNumber]);
 }
 
@@ -49,7 +51,7 @@ export function inventarTeileDesSets(invId: number) {
 }
 
 export function inventarFigurenDesSets(invId: number) {
-  return db.all(`SELECT ip.part_num AS fig_number, ip.quantity, COALESCE(mc.fig_name, ip.part_num) AS fig_name, mc.image_url
+  return db.all<{ fig_number: string; fig_name: string | null; quantity: number; image_url: string | null }>(`SELECT ip.part_num AS fig_number, ip.quantity, COALESCE(mc.fig_name, ip.part_num) AS fig_name, mc.image_url
          FROM rb_inventory_parts ip
          LEFT JOIN minifigs_catalog mc ON mc.fig_number = ip.part_num
         WHERE ip.inventory_id = $1 AND ip.part_num LIKE 'fig-%'`, [invId]);

@@ -1,7 +1,6 @@
 package ch.brickinventoryapp
 
 import ch.brickinventoryapp.ressourcen.R
-import android.net.Uri
 import ch.brickinventoryapp.data.MeldungsKanal
 import ch.brickinventoryapp.data.cache.ResponseCache
 import ch.brickinventoryapp.data.repository.GutscheineRepository
@@ -9,6 +8,7 @@ import ch.brickinventoryapp.ui.GutscheinPdfZiel
 import ch.brickinventoryapp.ui.GutscheinSchritt
 import ch.brickinventoryapp.ui.Kopierauftrag
 import ch.brickinventoryapp.ui.viewmodel.DateiLeser
+import ch.brickinventoryapp.ui.viewmodel.DateiRef
 import ch.brickinventoryapp.ui.viewmodel.GutscheinViewModel
 import ch.brickinventoryapp.ui.viewmodel.eingabeUeberMaske
 import ch.brickinventoryapp.ui.viewmodel.gutscheinPdfAdresse
@@ -33,7 +33,7 @@ import java.io.File
  * Gutscheine mit maskierter Liste: Nummer und PIN, PDF und Löschen erst nach
  * Passwort (und Code), der Klartext nur im ViewModel. Gegen einen Testserver.
  *
- * Gegenproben (03.11.2026, kotlinc lokal gemessen):
+ * Gegenproben:
  *  A  In bestaetige() `codeNoetig = … || fehler.code in FAKTOR_CODES` auf
  *     `it.bestaetigung.codeNoetig` zurückgesetzt → rot „PIN aufdecken …“
  *     (Codefeld erscheint nicht).
@@ -75,7 +75,7 @@ class GutscheinKlartextTest {
         vm = GutscheinViewModel(
             repo = GutscheineRepository(TestApi.fuer(server), ResponseCache { cacheDir }),
             texte = NummernTexte,
-            leser = object : DateiLeser { override suspend fun lies(uri: Uri): Pair<String?, ByteArray>? = null },
+            leser = object : DateiLeser { override suspend fun lies(datei: DateiRef): Pair<String?, ByteArray>? = null },
             meldungen = kanal,
         )
         server.enqueue(antwort(maskiert))
@@ -141,7 +141,7 @@ class GutscheinKlartextTest {
         assertEquals("geheim", rumpf.getString("password"))
         assertEquals("654321", rumpf.getString("code"))
         assertNull(vm.state.value.bestaetigung)
-        assertEquals("t${R.string.vouchers_deleted}", kanal.fluss.value)
+        assertEquals("t${R.string.vouchers_deleted}", kanal.meldung.value)
     }
 
     @Test

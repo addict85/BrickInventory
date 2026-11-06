@@ -1,8 +1,8 @@
 package ch.brickinventoryapp
 
-import android.net.Uri
 import androidx.lifecycle.SavedStateHandle
 import ch.brickinventoryapp.ui.viewmodel.DateiLeser
+import ch.brickinventoryapp.ui.viewmodel.DateiRef
 import ch.brickinventoryapp.data.cache.ResponseCache
 import ch.brickinventoryapp.data.repository.KatalogRepository
 import ch.brickinventoryapp.data.repository.FinanzenRepository
@@ -28,16 +28,17 @@ import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Before
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
  * Laden, Fehler, Leer und Kein Treffer sind verschiedene Zustände — und jeder
  * Bildschirm mit geladenem Inhalt erfährt den Fehler. Vorher zeigten Merkliste,
  * Finanzen, Teile, Figuren und Gutscheine nach einem Fehler „leer“, das
- * Set-Detail einen Kringel ohne Ende. Ausgeführt gegen einen Testserver, der
+ * Set-Detail einen Kringel ohne Ende. Ausgeführt gegen einen PfadServer ohne Netz, der
  * zuerst 404 antwortet und nach „Erneut versuchen“ Inhalt liefert.
  *
- * Gegenproben (30.10.2026, gemessen):
+ * Gegenproben:
  *   A  ladeanzeige(): `fehler != null` hinter `gefiltert` → rot „ein Fehler geht
  *      vor Leer und Kein Treffer …“
  *   B  MerklisteViewModel: `fehler = meldung(r)` entfernt → rot „die Merkliste …“
@@ -46,7 +47,7 @@ import org.junit.Test
  *   D  Teile: `partsFehler = beschreibeFehler(r)` entfernt → rot „Teile und Figuren …“
  *   E  SetDetailViewModel: `setDetailFehler = meldung(r)` entfernt → rot „das Set-Detail …“
  *   F  GutscheinViewModel: `fehler = texte.meldung(r)` entfernt → rot „die Gutscheine …“
- * Gegenproben (02.11.2026, kotlinc): in FinanzViewModel `valuationFehlerKlasse = …`
+ * Gegenproben: in FinanzViewModel `valuationFehlerKlasse = …`
  *   entfernt → rot „die Bewertung …“; in Teile.kt `minifigsFehlerKlasse = …`
  *   entfernt → rot „Teile und Figuren …“.
  */
@@ -60,7 +61,7 @@ class FehlerZustandTest {
     fun auf() {
         Dispatchers.setMain(UnconfinedTestDispatcher())
         pfade = PfadServer()
-        t = TestDienste(pfade.server)
+        t = TestDienste(pfade.imTakt(), io = Dispatchers.Main)
     }
 
     @After
@@ -81,39 +82,39 @@ class FehlerZustandTest {
 
     @Test
     fun `die Merkliste meldet den Fehler und vergisst ihn beim Neuladen`() {
-        val vm = t.merke(MerklisteViewModel(t.dienste, SetsRepository(t.api, t.cache), KatalogRepository(t.api, t.cache),
+        val vm = t.merke(MerklisteViewModel(t.sitzung, t.filter(), t.hinweise, t.bestand, SetsRepository(t.api, t.cache), KatalogRepository(t.api, t.cache),
             FinanzenRepository(t.api, t.cache), SavedStateHandle()))
         vm.ladeMerkliste()
-        TestApi.warteBis("Fehler") { vm.merklisteState.value.fehler != null }
+        assertTrue("Fehler", vm.merklisteState.value.fehler != null)
         assertEquals("fehler", vm.merklisteState.value.fehler)
         assertEquals("404 ohne Rumpf ist ein Serverfehler", Fehlerklasse.SERVER, vm.merklisteState.value.fehlerKlasse)
 
         pfade.antworten["/api/v1/wanted"] = """{"success":true,"merkposten":[{"set_number":"10294-1","condition":"N","user_id":1}]}"""
         vm.ladeMerkliste()
-        TestApi.warteBis("Inhalt") { vm.merklisteState.value.merkposten.isNotEmpty() }
+        assertTrue("Inhalt", vm.merklisteState.value.merkposten.isNotEmpty())
         assertNull(vm.merklisteState.value.fehler)
     }
 
     @Test
     fun `die Bewertung meldet den Fehler und vergisst ihn beim Neuladen`() {
-        val vm = t.merke(FinanzViewModel(t.dienste, FinanzenRepository(t.api, t.cache), SavedStateHandle()))
+        val vm = t.merke(FinanzViewModel(t.sitzung, t.filter(), t.hinweise, t.bestand, FinanzenRepository(t.api, t.cache), SavedStateHandle()))
         vm.loadValuation()
-        TestApi.warteBis("Fehler") { vm.financeState.value.valuationFehler != null }
+        assertTrue("Fehler", vm.financeState.value.valuationFehler != null)
         assertEquals(Fehlerklasse.SERVER, vm.financeState.value.valuationFehlerKlasse)
 
         pfade.antworten["/api/v1/finance/valuation"] = """{"success":true,"currency":"CHF"}"""
         vm.loadValuation()
-        TestApi.warteBis("Bewertung") { vm.financeState.value.valuation != null }
+        assertTrue("Bewertung", vm.financeState.value.valuation != null)
         assertNull(vm.financeState.value.valuationFehler)
     }
 
     @Test
     fun `Teile und Figuren melden den Fehler je fuer sich`() {
-        val vm = t.merke(TeileViewModel(t.dienste, TeileRepository(t.api, t.cache), FigurenRepository(t.api, t.cache), SavedStateHandle()))
+        val vm = t.merke(TeileViewModel(t.sitzung, t.filter(), t.hinweise, t.bestand, t.scrollMemory, TeileRepository(t.api, t.cache), FigurenRepository(t.api, t.cache), SavedStateHandle()))
         vm.loadParts()
-        TestApi.warteBis("Teilefehler") { vm.partsState.value.partsFehler != null }
+        assertTrue("Teilefehler", vm.partsState.value.partsFehler != null)
         vm.loadMinifigs()
-        TestApi.warteBis("Figurenfehler") { vm.partsState.value.minifigsFehler != null }
+        assertTrue("Figurenfehler", vm.partsState.value.minifigsFehler != null)
         assertEquals("fehler", vm.partsState.value.partsFehler)
         assertEquals(Fehlerklasse.SERVER, vm.partsState.value.partsFehlerKlasse)
         assertEquals(Fehlerklasse.SERVER, vm.partsState.value.minifigsFehlerKlasse)
@@ -121,11 +122,11 @@ class FehlerZustandTest {
 
     @Test
     fun `das Set-Detail meldet den Fehler statt ewig zu laden`() {
-        val leser = object : DateiLeser { override suspend fun lies(uri: Uri): Pair<String?, ByteArray>? = null }
-        val vm = t.merke(SetDetailViewModel(t.dienste, SetsRepository(t.api, t.cache), FinanzenRepository(t.api, t.cache),
+        val leser = object : DateiLeser { override suspend fun lies(datei: DateiRef): Pair<String?, ByteArray>? = null }
+        val vm = t.merke(SetDetailViewModel(t.sitzung, t.filter(), t.hinweise, t.bestand, SetsRepository(t.api, t.cache), FinanzenRepository(t.api, t.cache),
             HaushaltRepository(t.api, t.cache), leser, SavedStateHandle(mapOf("setNumber" to "75192-1"))))
         vm.loadSetDetail("75192-1")
-        TestApi.warteBis("Fehler") { vm.setDetailState.value.setDetailFehler != null }
+        assertTrue("Fehler", vm.setDetailState.value.setDetailFehler != null)
         assertEquals(false, vm.setDetailState.value.setDetailLoading)
         assertEquals(Fehlerklasse.SERVER, vm.setDetailState.value.setDetailFehlerKlasse)
     }
@@ -135,11 +136,11 @@ class FehlerZustandTest {
         val vm = GutscheinViewModel(
             repo = GutscheineRepository(t.api, ResponseCache { t.cacheDir }),
             texte = NummernTexte,
-            leser = object : DateiLeser { override suspend fun lies(uri: Uri): Pair<String?, ByteArray>? = null },
+            leser = object : DateiLeser { override suspend fun lies(datei: DateiRef): Pair<String?, ByteArray>? = null },
             meldungen = t.meldungen,
         )
         vm.ladeGutscheine()
-        TestApi.warteBis("Fehler") { vm.state.value.fehler != null }
+        assertTrue("Fehler", vm.state.value.fehler != null)
         assertEquals("fehler", vm.state.value.fehler)
     }
 }

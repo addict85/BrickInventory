@@ -1,0 +1,21 @@
+Gegenprobe: Kennzahlen in einer Zeile ohne Umbruch
+Modul: app
+Test: ch.brickinventoryapp.GeruestUndFormularTest
+Rot: Kennzahlen der Sammlung brechen bei 200 Prozent um
+
+diff --git a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/screens/GalleryStatChip.kt b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/screens/GalleryStatChip.kt
+index b98893b..e4ae11a 100644
+--- a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/screens/GalleryStatChip.kt
++++ b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/screens/GalleryStatChip.kt
+@@ -54,10 +54,9 @@ fun GalleryStatChip(anzahl: Int, plural: Int, detail: String? = null) {
+ @Composable
+ fun KennzahlenReihe(modifier: Modifier = Modifier, inhalt: @Composable () -> Unit) {
+     Surface(modifier.fillMaxWidth(), shape = Formen.leiste, color = MaterialTheme.colorScheme.surfaceContainerLow) {
+-        FlowRow(
++        Row(
+             Modifier.padding(horizontal = Abstaende.rand, vertical = Abstaende.klein),
+             horizontalArrangement = Arrangement.spacedBy(Abstaende.gross),
+-            verticalArrangement = Arrangement.spacedBy(Abstaende.winzig),
+         ) { inhalt() }
+     }
+ }

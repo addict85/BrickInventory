@@ -1,0 +1,18 @@
+Gegenprobe: Kachel des offenen Teils nicht markiert
+Modul: app
+Test: ch.brickinventoryapp.FeinschliffRegelnTest
+Rot: Tablet zeigt Teil und Liste nebeneinander
+
+diff --git a/Android-App/app/src/main/java/ch/brickinventoryapp/nav/CollectionGraph.kt b/Android-App/app/src/main/java/ch/brickinventoryapp/nav/CollectionGraph.kt
+index af8391a..b1de2e3 100644
+--- a/Android-App/app/src/main/java/ch/brickinventoryapp/nav/CollectionGraph.kt
++++ b/Android-App/app/src/main/java/ch/brickinventoryapp/nav/CollectionGraph.kt
+@@ -344,7 +344,7 @@ internal fun TeileListeUndDetailRoute(
+             ListeUndDetail(
+                 liste = {
+                     androidx.compose.runtime.CompositionLocalProvider(
+-                        LocalOffenesDetail provides offenesTeil) {
++                        LocalOffenesDetail provides null) {
+                         liste(oeffneManuell)
+                     }
+                 },

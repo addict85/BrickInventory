@@ -2,9 +2,10 @@ import path from 'path';
 import crypto from 'crypto';
 import fsp from 'fs/promises';
 import { PDF_JOB_DIR } from '../infra/appPaths';
-import { meldeUndLiefere, meldeUndWeiter, ohneFehlendeDatei } from '../infra/httpError';
+import { meldeUndLiefere, meldeUndWeiter, ohneFehlendeDatei } from '../infra/fehler';
 import { stelleAuftragEin } from './dienst';
-import { mitVersion } from '../sets/setNummer';
+import type { NutzlastEingabe } from './nutzlasten';
+import { mitVersion } from '../infra/setNummer';
 import * as repo from './repository/pdfAuftraege';
 
 /** Jeder Statuswechsel weckt die Statusströme über AUFTRAG_STAND_KANAL. */
@@ -93,8 +94,8 @@ async function fehlendeBilder(sets: Array<{ set_number?: unknown }>, parts: Arra
 }
 
 /** Laufen schon MAX_JOBS_PRO_BENUTZER, gibt es keine Kennung, sondern deren Zahl. */
-export async function pdfAuftragStarten(uid: number, sets: Array<{ set_number?: unknown }>,
-                                        parts: Array<{ image_local?: string | null | undefined; image_url?: string | null | undefined }>)
+export async function pdfAuftragStarten(uid: number, sets: NutzlastEingabe<'pdf'>['sets'],
+                                        parts: NutzlastEingabe<'pdf'>['parts'])
   : Promise<{ jobId: string } | { laufend: number }> {
   const laufend = await laufendeAuftraege(uid, PDF_JOB_TTL);
   if (laufend >= MAX_JOBS_PRO_BENUTZER) return { laufend };

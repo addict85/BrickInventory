@@ -1,5 +1,10 @@
 import { konfig } from './konfig';
 import multer from 'multer';
+import crypto from 'crypto';
+import type { Request } from 'express';
+import { ausTabelle } from './validate';
+import { dateiFehler } from './fehlerTexte';
+import { ohneFehlendeDatei } from './fehler';
 import fs from 'fs';
 import path from 'path';
 
@@ -35,12 +40,12 @@ const KENNUNG: Record<string, Buffer> = {
 
 /** Den MIME-Typ setzt der Absender; ohne diesen Blick läge unter `.pdf`
  * beliebiger Inhalt, den der Server als application/pdf ausliefert. */
-export function inhaltPasstZuTyp(datei: string, mime: string): boolean {
+export async function inhaltPasstZuTyp(datei: string, mime: string): Promise<boolean> {
   const kennung = Object.hasOwn(KENNUNG, mime) ? KENNUNG[mime] : undefined;
   if (!kennung) return false;
   const kopf = Buffer.alloc(kennung.length);
-  const fd = fs.openSync(datei, 'r');
-  try { fs.readSync(fd, kopf, 0, kopf.length, 0); } finally { fs.closeSync(fd); }
+  const fd = await fs.promises.open(datei, 'r');
+  try { await fd.read(kopf, 0, kopf.length, 0); } finally { await fd.close(); }
   return kopf.equals(kennung);
 }
 
@@ -50,9 +55,51 @@ export function uploadKontingentBytes(): number {
   return konfig().uploadKontingentMb * 1024 * 1024;
 }
 
-export function belegterPlatz(ordner: string): number {
+export async function belegterPlatz(ordner: string): Promise<number> {
+  const eintraege = await fs.promises.readdir(ordner, { withFileTypes: true }).catch(ohneFehlendeDatei('upload:ordner', []));
   let summe = 0;
-  for (const e of fs.readdirSync(ordner, { withFileTypes: true }))
-    if (e.isFile()) summe += fs.statSync(path.join(ordner, e.name)).size;
+  for (const e of eintraege) if (e.isFile()) summe += (await fs.promises.stat(path.join(ordner, e.name))).size;
   return summe;
+}
+
+/** Hochgeladenes kann privat sein (Rechnungen): nur für den Dienst lesbar, auch
+ * wenn der Ordner schon mit lockereren Rechten bestand. */
+export async function privaterOrdner(wurzel: string, name: string): Promise<string> {
+  const ordner = path.join(wurzel, name);
+  await fs.promises.mkdir(ordner, { recursive: true, mode: 0o700 });
+  for (const o of [wurzel, ordner]) await fs.promises.chmod(o, 0o700);
+  return ordner;
+}
+
+/** Eine Datei in den privaten Ordner eines Kontos: Endung aus dem MIME-Typ, nie
+ * aus dem Namen des Clients; der Name zufällig, damit er sich nicht erraten lässt. */
+export function privaterEmpfang(o: { ordner: (req: Request) => Promise<string>; praefix: (req: Request) => string;
+                                     typen: Record<string, string>; maxBytes: number }) {
+  return multer({
+    storage: multer.diskStorage({
+      destination: (req, _file, cb) => { o.ordner(req).then(d => cb(null, d), (e: Error) => cb(e, '')); },
+      filename: (req, file, cb) => {
+        const ext = ausTabelle(o.typen, file.mimetype);
+        if (!ext) return cb(dateiFehler('datei_typ_falsch', 415), '');
+        cb(null, `${o.praefix(req).replace(/[^a-z0-9-]/gi, '_')}_${crypto.randomBytes(12).toString('hex')}${ext}`);
+      },
+    }),
+    limits: { ...FORMULAR_GRENZEN, fileSize: o.maxBytes },
+    fileFilter: (_req, file, cb) => { if (ausTabelle(o.typen, file.mimetype)) cb(null, true); else cb(dateiFehler('datei_typ_falsch', 415)); },
+  });
+}
+
+/** Vor dem Schreiben: Content-Length schliesst die Formularhülle ein, ist also nie kleiner. */
+export async function kontingentReichtFuer(ordner: string, laenge: number): Promise<boolean> {
+  return await belegterPlatz(ordner) + laenge <= uploadKontingentBytes();
+}
+
+/** Nach dem Schreiben: nur für den Dienst lesbar, Inhalt passt zum Typ, und das
+ * Kontingent hält auch ohne Content-Length (chunked). Sonst ist die Datei wieder weg. */
+export async function pruefeEmpfangeneDatei(datei: string, mime: string): Promise<null | 'datei_inhalt_falsch' | 'upload_kontingent_voll'> {
+  await fs.promises.chmod(datei, 0o600);
+  const grund = !await inhaltPasstZuTyp(datei, mime) ? 'datei_inhalt_falsch' as const
+    : await belegterPlatz(path.dirname(datei)) > uploadKontingentBytes() ? 'upload_kontingent_voll' as const : null;
+  if (grund) await fs.promises.rm(datei, { force: true });
+  return grund;
 }

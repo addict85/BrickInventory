@@ -1,36 +1,7 @@
 /**
  * Die Mindestlaenge eines Passworts — an allen Stellen dieselbe, und nirgends
  * vergessen.
- *
- * ── Woher das kommt ─────────────────────────────────────────────────────────
- * Sechs Routen in routes/auth.ts setzen ein Passwort. VIER prueften die
- * Laenge, und zwar in zwei Schreibweisen (`password.length < 8` und
- * `String(password).length < 8`), jede von Hand hingeschrieben. Zwei prueften
- * gar nicht:
- *
- *     PUT  /profile           (Passwort-Zweig)
- *     POST /change-password
- *
- * Das waren ausgerechnet die zwei Wege, die einem BEREITS ANGEMELDETEN Konto
- * offenstehen — und damit war die Regel wirkungslos: Man registriert sich mit
- * acht Zeichen und aendert danach auf eines. Ein per Sitzungsuebernahme
- * gekapertes Konto liess sich so dauerhaft schwach machen.
- *
- * Der Grund fuer die Luecke war die fehlende Konstante: Wo eine Regel an jeder
- * Stelle neu getippt wird, gibt es keine Stelle, die man vergessen KOENNTE.
- *
- * ── Und die zweite Haelfte: die beiden Oberflaechen ─────────────────────────
- * Die Android-App prueft die Laenge in ihrer Oberflaeche (SettingsScreen,
- * LoginScreen). Die Webapp prueft an KEINER ihrer fuenf Stellen. Wer im
- * Browser ein zu kurzes Passwort eingab, lief in einen Serverfehler, wo die
- * App den Knopf gar nicht erst freigibt.
- *
- * ── Warum die Zahl trotzdem dreimal existiert ───────────────────────────────
- * Server, Webapp und App teilen keinen Code — drei Laufzeiten, drei Fassungen.
- * Das ist unvermeidbar; das AUSEINANDERLAUFEN ist es nicht. Genau dafuer gibt
- * es diesen Test.
- *
- * Ausfuehren: npm test
+ * Ausführlich: docs/begruendungen/test/passwortlaenge.test.js.md#kopf
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -47,8 +18,9 @@ const { PASSWORT_MIN_ZEICHEN, passwortZuKurz } = _req('src/konto/auth.js');
 // test/baumbruecken.test.js, das diese Bruecken statisch aufloest.
 
 test('die Regel selbst haelt auch das, was kein String ist', () => {
-  assert.equal(passwortZuKurz('1234567'), true);
-  assert.equal(passwortZuKurz('12345678'), false);
+  // Seit dem 04.11.2026 zwölf statt acht.
+  assert.equal(passwortZuKurz('12345678901'), true);
+  assert.equal(passwortZuKurz('123456789012'), false);
   assert.equal(passwortZuKurz(''), true);
   assert.equal(passwortZuKurz(null), true);
   assert.equal(passwortZuKurz(undefined), true);
@@ -62,11 +34,11 @@ test('die Regel selbst haelt auch das, was kein String ist', () => {
   // kurz" beweist: Aus der Zahl wird ihre Ziffernfolge, und die ist lang
   // genug. (Hier stand zuerst `true` — ein Irrtum beim Schreiben dieses
   // Tests, nicht im Code: `String(123456789)` hat neun Zeichen.)
-  assert.equal(passwortZuKurz(123456789), false);
+  assert.equal(passwortZuKurz(123456789012), false);
 });
 
 test('alle fuenf Routen, die ein Passwort setzen, pruefen die Laenge', () => {
-  const quelle = ohneKommentare(read('routes/auth.ts'));
+  const quelle = ohneKommentare(require('./helpers/sources').anmeldeQuelle());
 
   // Gezaehlt wird ueber das SETZEN: Gehasht wird nur im Kontodienst
   // (src/konto/konten.ts), jede Route, die ein Passwort setzt, ruft ihn.
@@ -76,7 +48,8 @@ test('alle fuenf Routen, die ein Passwort setzen, pruefen die Laenge', () => {
   const pruefungen = (quelle.match(/passwortMangel\(/g) || []).length;
   assert.equal(hashes, 5,   // PUT /profile setzt seit dem 27.10. keines mehr
     `${hashes} Stellen setzen ein Passwort — die Zahl hat sich geaendert, der Test muss mit`);
-  assert.equal(pruefungen, hashes,
+  // Mehr Prüfungen als Stellen sind erlaubt: /reset-password prüft zweimal, erst ohne, dann mit Namen.
+  assert.ok(pruefungen >= hashes,
     `Nur ${pruefungen} von ${hashes} Stellen pruefen die Laenge. Genau so entstand die ` +
     'Luecke: PUT /profile und POST /change-password prueften nicht, und damit war ' +
     'die Regel wirkungslos.');
@@ -87,7 +60,7 @@ test('alle fuenf Routen, die ein Passwort setzen, pruefen die Laenge', () => {
 });
 
 test('Server, Webapp und App nennen dieselbe Zahl', () => {
-  const web = ohneKommentare(read('public/js/01-core.js'));
+  const web = ohneKommentare(read('public/js/01-formular.js'));
   const webZahl = /export const PASSWORT_MIN_ZEICHEN = (\d+)/.exec(web);
   assert.ok(webZahl, 'Die Webapp fuehrt keine Konstante mehr — dann steht die Zahl wieder verstreut');
   assert.equal(Number(webZahl[1]), PASSWORT_MIN_ZEICHEN,
@@ -98,13 +71,8 @@ test('Server, Webapp und App nennen dieselbe Zahl', () => {
   // `const val`, nicht bloss der Name: Der erste Entwurf dieser Datei schrieb
   // `const PASSWORT_MIN_ZEICHEN = 8` — ohne `val`, und das ist kein gueltiges
   // Kotlin. Dieser Regex traf die Zeichenkette trotzdem, der Test blieb gruen,
-  // und der Fehler fiel erst im Android-Lauf auf (Lauf 140, nach 83 Sekunden
-  // Abbruch). Eine Pruefung, die eine Zeichenkette sucht statt die Sache,
-  // findet auch eine kaputte Sache.
-  //
-  // Der Android-Compiler laeuft in dieser Umgebung nicht (dl.google.com
-  // antwortet mit 403); der Lauf in CI ist der einzige Uebersetzer. Umso mehr
-  // muss das, was hier ohne ihn pruefbar ist, genau pruefen.
+  // und der Fehler fiel erst im Android-Lauf auf (Lauf 140, nach 83 Sekunden …
+  // Ausführlich: docs/begruendungen/test/passwortlaenge.test.js.md#appzahl
   const appZahl = /const val PASSWORT_MIN_ZEICHEN = (\d+)\b/.exec(fs.readFileSync(kotlinDatei, 'utf8'));
   assert.ok(appZahl,
     'Die App fuehrt keine Konstante mehr — oder nicht als `const val` (ohne `val` ' +
@@ -139,17 +107,21 @@ test('beide Oberflaechen pruefen vor dem Absenden', () => {
   // Ohne diese Haelfte waere die Webapp weiterhin die unbequemere von beiden:
   // Sie schickte ab und zeigte den Serverfehler, waehrend die App den Knopf
   // gar nicht erst freigibt.
-  const core = ohneKommentare(read('public/js/01-core.js'));
-  const settings = ohneKommentare(read('public/js/05-settings.js'));
+  const core = ohneKommentare(read('public/js/01-formular.js'));
+  const settings = ohneKommentare(require('./helpers/sources').ansichtQuelle('05'));
+  // Anmelden, Registrieren und Zurücksetzen stehen seit dem Umbau in 26-sitzung.js.
+  const sitzung = ohneKommentare(read('public/js/26-sitzung.js'));
   const webAufrufe = (core.match(/passwortRegelText\(/g) || []).length
-                   + (settings.match(/passwortRegelText\(/g) || []).length;
+                   + (settings.match(/passwortRegelText\(/g) || []).length
+                   + (sitzung.match(/passwortRegelText\(/g) || []).length;
   // Fuenf Stellen setzen in der Webapp ein Passwort: Registrieren,
   // Zuruecksetzen, Aendern, Konto anlegen, Konto-Passwort zuruecksetzen.
-  // Dazu die Definition selbst in 01-core.js.
+  // Dazu die Definition selbst in 01-formular.js.
   assert.ok(webAufrufe >= 6,
     `Nur ${webAufrufe} Vorkommen — nicht alle fuenf Formulare pruefen vor dem Absenden`);
 
-  // ── Gezaehlt, nicht bloss gesucht ────────────────────────────────────────
+  // Gezaehlt, nicht bloss gesucht
+  // Ausführlich: docs/begruendungen/test/passwortlaenge.test.js.md#for-stelle
   //
   // Hier stand `assert.match(quelle, /passwortZuKurz\(/)` — also „kommt in der
   // Datei vor". SettingsScreen benutzt die Regel an DREI Stellen derselben
@@ -157,19 +129,12 @@ test('beide Oberflaechen pruefen vor dem Absenden', () => {
   // schaltete eine davon ab, und der Test blieb gruen: Er traf die Datei statt
   // der Stelle — dieselbe Fehlerart wie beim Bruecken-Test, wo der Basisordner
   // statt der Kotlin-Datei geprueft wurde.
-  //
-  // Die Zahlen sind GEMESSEN, nicht gesetzt. Wer eine Stelle hinzufuegt, muss
-  // hier mitziehen — das ist der Preis dafuer, dass das Wegfallen einer Stelle
-  // auffaellt.
-  // Jedes path.join() mit AUSGESCHRIEBENEN Segmenten: test/baumbruecken.test.js
-  // loest die Bruecken in den Android-Baum statisch auf und kann ein variables
-  // Segment nicht sehen. Der erste Entwurf hatte den Dateinamen als
-  // Schleifenvariable — und wurde von jener Pruefung prompt gemeldet, zum
-  // zweiten Mal in dieser Sitzung.
   for (const [voll, anzahl, name] of [
     // Seit dem 16.10. steht die Kontokarte auf ihrer eigenen Seite: Der
     // Einstellungsbildschirm traegt nur noch die Liste dorthin.
-    [path.join(__dirname, '..', '..', 'Android-App', 'feature-konto', 'src', 'main', 'java', 'ch', 'brickinventoryapp', 'ui', 'screens', 'EinstellungenKonto.kt'), 3, 'Passwort aendern'],
+    [path.join(__dirname, '..', '..', 'Android-App', 'feature-konto', 'src', 'main', 'java', 'ch', 'brickinventoryapp', 'ui', 'screens', 'EinstellungenKonto.kt'), 2, 'Passwort aendern'],
+    // Hinweis und Fehlermarkierung teilen sich seit dem PasswortFeld einen Wert.
+    [path.join(__dirname, '..', '..', 'Android-App', 'feature-konto', 'src', 'main', 'java', 'ch', 'brickinventoryapp', 'ui', 'screens', 'StartpasswortMaske.kt'), 1, 'Startpasswort'],
     [path.join(__dirname, '..', '..', 'Android-App', 'feature-anmeldung', 'src', 'main', 'java', 'ch', 'brickinventoryapp', 'ui', 'screens', 'LoginScreen.kt'),    1, 'Registrieren'],
   ]) {
     const kurz = path.basename(voll);

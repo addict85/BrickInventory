@@ -1,36 +1,7 @@
 /**
  * Die App am Telefon (390 × 844, mobile) — gemessen in Chrome am echten
  * Server mit den echten Stylesheets.
- *
- *   - Erster Tab-Halt (Dokumentreihenfolge) ist der Sprunglink „Zum Inhalt“, mit Fokus sichtbar;
- *     Enter setzt den Fokus auf <main>. Je Reiter ist genau eine h1 sichtbar
- *     (der Seitentitel; vorher war die einzige h1 der Markenname).
- *   - In jedem Reiter ist jedes sichtbare Bedienelement mindestens 44 × 44 px
- *     und jeder Text mindestens 12 px groß.
- *   - Teile und Minifiguren: Am Telefon nennt „Sammlung“ in der Leiste die
- *     offene Ansicht („Teile“); am Rechner wie am Telefon wechselt der
- *     Umschalter auf der Seite, die Leiste hat nur „Sammlung“.
- *   - Teile: ein Raster; jede Farbe beginnt mit einer Überschrift über die
- *     volle Breite (seit 30.10., UX-Prüfung), ihre Teile stehen darunter in
- *     einer Reihe; die Filter liegen hinter dem Knopf „Filter“ und sind
- *     geöffnet gleich breit.
- *   - Merkliste: Nummer, Zustand, „Auf die Merkliste“ und CSV sind gleich
- *     hoch und stehen am Rechner auf einer Linie.
- *   - Set-Detail: „Löschen“ steht hinter „Weitere Aktionen“; die drei Felder
- *     des Preisalarms stehen unter der Beschriftung in einer Zeile über
- *     (fast) die volle Breite, jedes mindestens 44 px hoch.
- *   - Während die Teile laden, steht ein Skelett aus zwölf Kacheln
- *     (role="status") da; Dialoge und Reiter blenden ein, ausser bei
- *     prefers-reduced-motion: reduce.
- *   - Einstellungen: Es steht genau ein Abschnitt da, die Leiste darüber in
- *     einer Zeile ohne die Seite zu verbreitern; ein Klick wechselt ihn, und
- *     die Wahl bleibt im Browser.
- *   - Diagramme: Jede Beschriftung im Wertdiagramm (Finanzen) und im
- *     Preisverlauf (Set-Ansicht) ist mindestens 11 px groß, und jedes
- *     Diagramm hat role="img" mit einer Zusammenfassung als aria-label.
- *
- * Ohne Chrome (CHROME_BIN, google-chrome, chromium) wird übersprungen.
- * Voraussetzung: Test-DB via TEST_DATABASE_URL.
+ * Ausführlich: docs/begruendungen/test/telefon-app-browser.test.js.md#kopf
  *
  * Gegenproben (am 28.10.2026 gemessen):
  *   A  diagrammBreite() liefert immer 700 → rot: „Diagrammschrift
@@ -114,7 +85,7 @@ test('Telefon', { concurrency: 1, timeout: 240_000 }, async (t) => {
     },
   });
   if (app.grund) { t.skip(app.grund); return; }
-  const { b, bis } = app;
+  const { b, bis, ruhig } = app;
   // Gemessen wird der Endzustand: Ein Dialog, der gerade aufgeht (etwa die
   // Einrichtung nach der Anmeldung), steht im ersten Bild auf scale(.985).
   const ruhe = () => b.auswerten(`Promise.all(document.getAnimations()
@@ -174,7 +145,7 @@ test('Telefon', { concurrency: 1, timeout: 240_000 }, async (t) => {
     assert.ok(fokus.oben >= 0 && fokus.hoehe >= 24, `Der Sprunglink ist mit Fokus nicht sichtbar: ${JSON.stringify(fokus)}`);
     await b.tab('Input.dispatchKeyEvent', { type: 'keyDown', key: 'Enter', code: 'Enter', windowsVirtualKeyCode: 13 });
     await b.tab('Input.dispatchKeyEvent', { type: 'keyUp', key: 'Enter', code: 'Enter', windowsVirtualKeyCode: 13 });
-    await warte(100);
+    await ruhig();
     assert.equal(await b.auswerten(`document.activeElement.id`), 'inhalt');
   });
 
@@ -192,7 +163,7 @@ test('Telefon', { concurrency: 1, timeout: 240_000 }, async (t) => {
     assert.equal(vorher.navZeilen, 1, 'am Telefon steht die Leiste in einer Zeile');
     assert.ok(vorher.seitenBreite <= 390, `Seite ${vorher.seitenBreite} px breit`);
     await b.auswerten(`document.querySelector('.einst-nav a[data-arg="einst-smtp"]').click(); true`);
-    await warte(100);
+    await ruhig();
     const nachher = await stand();
     assert.deepEqual([nachher.sichtbar, nachher.aktuell], [['einst-smtp'], 'einst-smtp']);
     assert.equal(await b.auswerten(`localStorage.getItem('bim_einst_abschnitt')`), 'einst-smtp');
@@ -201,7 +172,7 @@ test('Telefon', { concurrency: 1, timeout: 240_000 }, async (t) => {
   await t.test('Teile und Minifiguren in der Leiste auffindbar', async () => {
     await reiter('gallery');
     await b.auswerten(`document.querySelector('#tab-gallery .sammlung-wahl [data-arg="parts"]').click(); true`);
-    await warte(300);
+    await ruhig();
     const telefon = await b.auswerten(`(() => { const s = document.querySelector('.ntab[data-tab="gallery"]');
       return { text: s.innerText.trim(), aktuell: s.getAttribute('aria-current'),
                teileSichtbar: document.querySelector('.ntab[data-tab="parts"]').getClientRects().length > 0 }; })()`);
@@ -212,13 +183,15 @@ test('Telefon', { concurrency: 1, timeout: 240_000 }, async (t) => {
     // Am Rechner EINE Navigation: „Sammlung“ in der Leiste, Sets/Teile/
     // Minifiguren nur im Umschalter auf der Seite (vorher beides).
     await b.tab('Emulation.setDeviceMetricsOverride', { width: 1280, height: 900, deviceScaleFactor: 1, mobile: false });
-    await warte(200);
+    await bis('innerWidth === 1280', 'Fensterbreite');
+    await ruhig();
     const rechner = await b.auswerten(`(() => { const r = n => document.querySelector('.ntab[data-tab="' + n + '"]');
       return { teile: r('parts').getClientRects().length > 0, figuren: r('minifigs').getClientRects().length > 0,
                umschalter: document.querySelector('#tab-parts .sammlung-wahl').getClientRects().length > 0,
                sammlungAktiv: r('gallery').classList.contains('gruppe-aktiv') }; })()`);
     await b.tab('Emulation.setDeviceMetricsOverride', { width: 390, height: 844, deviceScaleFactor: 2, mobile: true });
-    await warte(200);
+    await bis('innerWidth === 390', 'Fensterbreite');
+    await ruhig();
     assert.deepEqual(rechner, { teile: false, figuren: false, umschalter: true, sammlungAktiv: true });
     await reiter('gallery');
     assert.equal(await b.auswerten(`document.querySelector('.ntab[data-tab="gallery"]').innerText.trim()`), 'Sammlung');
@@ -260,7 +233,8 @@ test('Telefon', { concurrency: 1, timeout: 240_000 }, async (t) => {
     })`);
     for (const [breite, hoehe, mobil] of [[1280, 900, false], [390, 844, true]]) {
       await b.tab('Emulation.setDeviceMetricsOverride', { width: breite, height: hoehe, deviceScaleFactor: mobil ? 2 : 1, mobile: mobil });
-      await warte(200);
+      await bis(`innerWidth === ${breite}`, 'Fensterbreite');
+      await ruhig();
       const m = await messen();
       // Am Telefon brechen die Felder um; dort zählt nur die gleiche Höhe.
       const zeile = mobil ? m : m.filter(x => x.oben === m[0].oben);
@@ -276,7 +250,7 @@ test('Telefon', { concurrency: 1, timeout: 240_000 }, async (t) => {
     assert.ok(d.anzahl >= 4, `nur ${d.anzahl} Beschriftungen`);
     assert.ok(d.kleinste >= 11, `kleinste Beschriftung ${d.kleinste.toFixed(1)} px`);
     assert.equal(d.rolle, 'img');
-    assert.match(d.name, /Wertentwicklung Portfolio, .+ bis .+: von .+ auf .+/);
+    assert.match(d.name, /Wert der Sammlung, .+ bis .+: von .+ auf .+/);
   });
 
   await t.test('Set-Ansicht: Diagramm, Löschen, Preisalarm', async () => {
@@ -293,18 +267,20 @@ test('Telefon', { concurrency: 1, timeout: 240_000 }, async (t) => {
     const sichtbar = (sel) => `!!document.querySelector('${sel}')?.checkVisibility({ contentVisibilityAuto: true })`;
     assert.equal(await b.auswerten(sichtbar('#btn-md')), false, 'Löschen steht offen im Fuss');
     await b.auswerten(`document.querySelector('#set-modal .mehr-menue > summary').click(); true`);
-    await warte(150);
+    await ruhig();
     assert.equal(await b.auswerten(sichtbar('#btn-md')), true, 'Löschen ist hinter „Weitere Aktionen“ nicht zu finden');
     const alarm = await b.auswerten(`(() => {
       const zeile = document.querySelector('#set-modal .alarm-zeile');
       const titel = zeile.querySelector('.dl').getBoundingClientRect();
       const felder = [...zeile.querySelectorAll('.alarm-feld')].map(f => f.getBoundingClientRect());
       const z = zeile.getBoundingClientRect();
-      return { unterTitel: felder.every(f => f.top >= titel.bottom - 1), eineZeile: new Set(felder.map(f => Math.round(f.top))).size,
-               hoehe: Math.min(...felder.map(f => f.height)), breite: Math.round((felder.at(-1).right - felder[0].left) / z.width * 100) };
+      const preis = zeile.querySelector('.alarm-preis');
+      return { unterTitel: felder.every(f => f.top >= titel.bottom - 1), zeilen: new Set(felder.map(f => Math.round(f.top))).size,
+               beschriftung: preis?.textContent.trim(), hoehe: Math.min(...felder.map(f => f.height)),
+               breite: Math.round((felder[1].right - felder[0].left) / z.width * 100) };
     })()`);
-    assert.deepEqual({ ...alarm, breite: alarm.breite >= 90 }, { unterTitel: true, eineZeile: 1, hoehe: alarm.hoehe, breite: true },
-      `Preisalarm: ${JSON.stringify(alarm)}`);
+    assert.deepEqual({ ...alarm, breite: alarm.breite >= 90 },
+      { unterTitel: true, zeilen: 2, beschriftung: 'Grenzpreis', hoehe: alarm.hoehe, breite: true }, `Preisalarm: ${JSON.stringify(alarm)}`);
     assert.ok(alarm.hoehe >= 44, `Preisalarm-Felder ${alarm.hoehe} px hoch`);
     await b.auswerten(`document.querySelector('#set-modal [data-click="closeModal"]')?.click(); true`);
   });
@@ -312,7 +288,7 @@ test('Telefon', { concurrency: 1, timeout: 240_000 }, async (t) => {
     // Ein Probe-Dialog ohne role="dialog", damit die Fokusführung der echten
     // Dialoge (js/01-dialoge.js) nicht anspringt.
     const dauer = () => b.auswerten(`(() => { const o = document.createElement('div');
-      o.className = 'ovl open'; o.innerHTML = '<div class="modal"></div>'; document.body.append(o);
+      o.className = 'ovl open'; const m = document.createElement('div'); m.className = 'modal'; o.append(m); document.body.append(o);
       const d = getComputedStyle(o.firstElementChild).animationDuration; o.remove();
       return { dialog: parseFloat(d), reiter: parseFloat(getComputedStyle(document.querySelector('.tab.active')).animationDuration) }; })()`);
     const ruhig = await dauer();

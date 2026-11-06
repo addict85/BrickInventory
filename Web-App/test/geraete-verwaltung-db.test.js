@@ -1,23 +1,6 @@
 /**
  * Angemeldete Geräte: auflisten und aussperren — beide Wege, echte Datenbank.
- *
- * ── Warum es diese Datei gibt ───────────────────────────────────────────────
- * Die Endpunkte /api/v1/settings/tokens gab es lange, einen Weg dorthin nicht.
- * test/api-aufrufer.test.js führte sie als ausdrücklich unbequeme Ausnahme:
- * „Oberfläche FEHLT — die Route bleibt, damit sie gebaut werden kann, statt
- * sie zu löschen und die Lücke damit unsichtbar zu machen." Wer sein Telefon
- * verlor, kam an den Zugang nur über einen Passwortwechsel — und der sperrt
- * ALLE Geräte aus, nicht nur das eine.
- *
- * Zwei Dinge mussten sich dafür ändern, und beide sind hier nachgemessen:
- *
- *  1. Die Endpunkte waren SITZUNGSGEBUNDEN und damit für die App unerreichbar.
- *     Jetzt nehmen sie Sitzung ODER Bearer-Token, wie der Rest von /api/v1.
- *  2. Sie sagten nicht, WELCHE Zeile zum Fragenden gehört. Ohne das kann man
- *     sich mit dem eigenen Knopf aussperren, ohne es zu merken.
- *
- * Voraussetzung: Test-DB (Inhalt wird angefasst!) via TEST_DATABASE_URL.
- * Ohne DB: skip. Ausführen: REQUIRE_DB=1 npm test
+ * Ausführlich: docs/begruendungen/test/geraete-verwaltung-db.test.js.md#kopf
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -115,13 +98,7 @@ test('Zugänge auflisten und aussperren — über Sitzung UND über Token',
     assert.equal(perToken.body.tokens.length, 3);
     assert.equal(perToken.body.tokens.find(x => x.aktuell)?.label, 'Pixel 8');
     // Und die Laufzeiten stehen richtig drin — daran hängt die Anzeige.
-    //
-    // Beide Zeilen tragen jetzt ein Datum: Auch der App-Token hat seit der
-    // Gleitfrist ein echtes Ablaufdatum (src/konto/auth.ts), es rueckt bei jeder
-    // Benutzung nur nach. Fuer die Anzeige heisst das: Webapp und App zeigen
-    // in der Spalte „Laeuft ab" ein Datum statt „nie" — und das ist genau die
-    // Auskunft, die vorher fehlte. „nie" war ein Versprechen, das der
-    // Aufraeumjob nach 90 Tagen gebrochen hat.
+    // Ausführlich: docs/begruendungen/test/geraete-verwaltung-db.test.js.md#for-stelle
     for (const label of ['Pixel 8', 'webapp-session']) {
       const zeile = perToken.body.tokens.find(x => x.label === label);
       assert.equal(zeile.never_expires, false, `${label}: kein Token laeuft mehr „nie" ab`);
@@ -134,13 +111,8 @@ test('Zugänge auflisten und aussperren — über Sitzung UND über Token',
       new Date(perToken.body.tokens.find(x => x.label === 'webapp-session').expires_at),
       'Der App-Token muss laenger laufen als die sieben Tage des Browsers');
 
-    // ── 3. Ein fremdes Gerät aussperren ─────────────────────────────────────
-    //
-    // Vorbedingung: Der Token des Tablets muss IM CACHE liegen, sonst prüft
-    // der Test darunter nichts. validateToken() legt einen Token erst beim
-    // ERSTEN Gebrauch ab — ein frisch ausgestellter, nie benutzter steht nicht
-    // drin, und dann wäre die Prüfung „gilt nicht mehr" auch ohne
-    // Cache-Leerung grün. Genau das ist beim Gegenprobieren herausgekommen.
+    // 3. Ein fremdes Gerät aussperren
+    // Ausführlich: docs/begruendungen/test/geraete-verwaltung-db.test.js.md#aufwaermen
     const aufwaermen = await ruf(AUTH + '/me',
       { headers: { authorization: `Bearer ${tablet.body.token}` } });
     assert.equal(aufwaermen.body.loggedIn, true,
@@ -188,7 +160,8 @@ test('Zugänge auflisten und aussperren — über Sitzung UND über Token',
     // des Kontos auf einmal.
     const alles = await ruf(SETTINGS + '/tokens/' + encodeURIComponent('%'),
       { method: 'DELETE', headers: { authorization: `Bearer ${telefon.body.token}` } });
-    assert.equal(alles.body.deleted, 0,
+    // Seit 05.11.2026 weist schon der Vertrag (PFAD) die Kennung ab.
+    assert.equal(alles.status, 400,
       'Ein "%" als Token-Kennung darf nicht alle Zugänge auf einmal löschen');
   } finally {
     await new Promise(r => srv.close(r));

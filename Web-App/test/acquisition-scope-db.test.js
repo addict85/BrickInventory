@@ -1,29 +1,6 @@
 /**
  * Kaufpreis einer Erfassung des UNTERKONTOS ändern — beide Routenfamilien.
- *
- * ── Woher dieser Test kommt (Marcos Fehlerbericht, Nachtrag 45) ─────────────
- * „Wenn ich den Kaufpreis im Kaufpreis-Dialog anpasse (Android oder Webapp),
- * wird er nicht gespeichert. In der Webapp kommt die Meldung Not found."
- * Sein Server-Log zeigte zwei 404 aus derselben Wurzel:
- *   routes/sets.js:1225            → „Not found" (heute src/bestand/erfassungen.ts)
- *   routes/api_v1/acquisitions.js  → „Erfassung nicht gefunden"
- *
- * Ursache: Beide Wege suchten die Zeile mit `WHERE id=$1 AND user_id=$2` und
- * der EIGENEN Betrachter-ID. Im Haushalt gehört die Erfassung aber oft einem
- * Unterkonto — das Hauptkonto darf sie sehen UND ändern, fand sie hier aber
- * nicht. Wieder das Muster „Regel fehlt am zweiten Weg", diesmal an vier
- * Stellen gleichzeitig (Ändern und Löschen, Webapp und App).
- *
- * Bewusst NICHT scopeIds(): Das ist das LESE-Blickfeld und enthält für ein
- * Unterkonto auch dessen Hauptkonto — damit dürfte es rückwärts schreiben.
- * writableIds() ist enger und deckt sich mit canWriteFor(). Die Asymmetrie
- * „Lesen weit, Schreiben eng" prüft der letzte Teilschritt ausdrücklich mit.
- *
- * Zweiter Teil des Fixes: Nach dem Finden zählt der BESITZER der Zeile, nicht
- * der Betrachter. Sonst liefe die Spiegelung nach `sets` (Menge, Preis,
- * Zustand) in das falsche Konto. Beim ersten Anlauf hatte ich genau das
- * übersehen — drei `latest`-Abfragen suchten weiter mit der Betrachter-ID, und
- * die Spiegelung blieb still auf dem alten Wert stehen.
+ * Ausführlich: docs/begruendungen/test/acquisition-scope-db.test.js.md#kopf
  *
  * Gegenprobe (durchgeführt): writableIds in routes/sets.ts zurück auf die
  * eigene ID → der erste Teilschritt endet wieder in 404.
@@ -38,6 +15,7 @@ const ROOT = path.join(__dirname, '..');
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
 const _req = require('./helpers/sources').buildAndRequire();
+const { dbOderSkip } = require('./helpers/db');
 const { haeltSet } = require('./helpers/bestand');
 const db = _req('db/database.js');
 const express = require(path.join(ROOT, 'node_modules', 'express'));
@@ -45,14 +23,7 @@ const express = require(path.join(ROOT, 'node_modules', 'express'));
 test('das Hauptkonto kann den Kaufpreis einer Unterkonto-Erfassung ändern',
   { concurrency: 1 }, async (t) => {
 
-  try { await db.initSchema(); }
-  catch (e) {
-    if (process.env.REQUIRE_DB === '1')
-      throw new Error(`REQUIRE_DB=1, aber die Test-DB ist nicht erreichbar: ${e.message}`);
-    t.skip('Test-DB nicht erreichbar'); return;
-  }
-  const mc = await db.pool.connect();
-  try { await _req('db/migrate.js').runMigrations(mc); } finally { mc.release(); }
+  if (!await dbOderSkip(t, _req)) return;
 
   const HAUPT = 'acqscope-haupt', SUB = 'acqscope-sub', SET = '60445-1';
   await db.run(`DELETE FROM users WHERE username IN ($1,$2)`, [HAUPT, SUB]);

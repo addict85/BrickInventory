@@ -1,10 +1,10 @@
 import { blJoin, blNummerSql } from '../../../db/blZuordnungSql';
-import type { FigurTeil, KatalogZeile } from '../dienst';
+import type { FigurTeil, KatalogZeile } from '../zeilen';
 import * as db from '../../../db/database';
 
 export function katalogTeileDerFigur(figNumber: string) {
   return db.all<KatalogZeile>(`SELECT c.part_number, c.color_id, ${blNummerSql('c.part_number')} AS bl_part_number, c.image_url, c.image_local
-       FROM set_parts_catalog c ${blJoin('c.part_number', 'part')}
+       FROM set_parts_catalog c ${blJoin('c.part_number', 'part', null)}
       WHERE c.set_number = $1`, [figNumber]);
 }
 

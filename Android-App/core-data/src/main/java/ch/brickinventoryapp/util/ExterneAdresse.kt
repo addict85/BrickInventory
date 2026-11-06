@@ -9,7 +9,7 @@ import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
  * `content:` darin öffnete sonst beliebige Ziele im Gerät. Den eigenen Server
  * öffnet die App selbst, dafür braucht es hier kein http.
  */
-fun externeAdresse(url: String?): HttpUrl? =
+internal fun externeAdresse(url: String?): HttpUrl? =
     url?.trim()?.toHttpUrlOrNull()?.takeIf { it.isHttps }
 
 /**
@@ -27,7 +27,7 @@ fun eigeneAdresse(serverUrl: String, pfad: String): String? {
 
 /**
  * Lädt der In-App-Betrachter diese Adresse? Nur vom eigenen Server: Er lädt mit
- * dem Token-Client, und PdfRenderer läuft im Prozess der App ohne Abschottung.
+ * dem Token-Client. Gerendert wird isoliert (PdfRenderDienst), geladen aber hier.
  * Fremde PDFs öffnet das System (oeffneExtern), wie es SetDetailSections tut.
  */
 fun pdfImBetrachter(pdfUrl: String, serverUrl: String): Boolean {

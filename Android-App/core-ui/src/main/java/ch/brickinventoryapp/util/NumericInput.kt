@@ -7,17 +7,7 @@ import androidx.compose.ui.text.input.KeyboardType
 /**
  * Zahlenfelder — eine Fassung für Tastatur und erlaubte Zeichen, für Setnummer,
  * Preise und Anzahlen.
- *
- * Beides gehört zusammen: Die Tastaturwahl ist eine Bitte an die Tastatur-App,
- * keine Zusicherung — viele zeigen trotzdem eine Umschalttaste zu Buchstaben, und
- * über die Zwischenablage kommt alles herein. Ohne Filter landete Text im Feld;
- * ohne Tastaturwahl müsste man jedes Mal zu den Zahlen wechseln. Die Aufrufer
- * nehmen immer das Paar.
- *
- * Der Bindestrich bei der Setnummer bleibt erlaubt: LEGO-Setnummern tragen eine
- * Variante hinter dem Strich (10179-2, 75192-1), ohne ihn liesse sich nur die
- * erste erfassen. Die App ergänzt „-1“ nur, wenn keine Variante angegeben ist; das
- * Zahlenpad zeigt den Strich praktisch überall mit an.
+ * Ausführlich: docs/begruendungen/core-ui/util/NumericInput.kt.md#numericinput
  */
 object NumericInput {
 

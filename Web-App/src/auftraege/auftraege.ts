@@ -3,13 +3,24 @@
 export const AUFTRAGS_ARTEN = [
   'nacharbeit', 'bilder', 'pdf', 'csv_import', 'wechselkurse',
   'anleitung', 'brickset', 'bildbedarf', 'bilder_neu_laden', 'nachlauf',
-  'csv_sync', 'preise', 'bild_nachlauf', 'aufraeumen', 'aufraeumen_taeglich',
+  'csv_sync', 'preise', 'bild_nachlauf', 'aufraeumen', 'aufraeumen_taeglich', 'preise_nachladen',
 ] as const;
 export type AuftragsArt = typeof AUFTRAGS_ARTEN[number];
 
 export type AuftragsStatus = 'offen' | 'laeuft' | 'erledigt' | 'fehler' | 'abgebrochen';
 
 export interface Fortschritt { erledigt?: number; gesamt?: number; text?: string | null; [k: string]: unknown }
+
+/** Was ein Dienst vom laufenden Auftrag braucht: Stand melden, am Signal aufhören. */
+export interface AuftragsLauf {
+  readonly signal?: AbortSignal;
+  fortschritt?(f: Fortschritt): Promise<boolean>;
+}
+
+/** Wirft den Grund des Abbruchs; zwischen zwei Schritten eines langen Laufs. */
+export function pruefeAbbruch(lauf: AuftragsLauf | undefined): void {
+  lauf?.signal?.throwIfAborted();
+}
 
 export interface AuftragsZeile {
   id: string;

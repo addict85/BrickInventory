@@ -1,148 +1,113 @@
 package ch.brickinventoryapp
 
+import androidx.compose.foundation.ScrollState
+import androidx.compose.foundation.lazy.LazyListState
+import androidx.compose.foundation.lazy.grid.LazyGridState
+import androidx.compose.material3.SnackbarHostState
+import androidx.compose.ui.test.hasClickAction
+import androidx.compose.ui.test.hasText
+import androidx.compose.ui.test.junit4.v2.createComposeRule
+import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
+import androidx.navigation.NavDestination
+import androidx.navigation.NavGraph
+import androidx.navigation.NavHostController
+import androidx.navigation.compose.rememberNavController
+import androidx.navigation.createGraph
+import androidx.test.core.app.ApplicationProvider
+import ch.brickinventoryapp.nav.Reiter
+import ch.brickinventoryapp.nav.Rollzustaende
+import ch.brickinventoryapp.nav.ZielUmgebung
 import ch.brickinventoryapp.ressourcen.R
+import ch.brickinventoryapp.ui.Screen
+import ch.brickinventoryapp.ui.StartZiel
+import kotlinx.serialization.descriptors.StructureKind
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
+import org.junit.Rule
 import org.junit.Test
+import org.junit.runner.RunWith
+import org.robolectric.RobolectricTestRunner
+import android.content.Context
 
 /**
- * Jeder eingehaengte Bildschirm muss auch erreichbar sein.
+ * Jedes Ziel steht im Graphen der App, und zu jedem Ziel ohne Werte führt ein Weg.
+ * Die Liste der Ziele kommt aus der Serialisierung von [Screen], nicht von Hand;
+ * der Graph ist derselbe, den der NavHost baut ([alleZiele]).
  *
- * ── Woher dieser Test kommt ─────────────────────────────────────────────────
- *
- * Marcos Frage: „wo finde ich die Einstellungen in der Android-App?" Die
- * Antwort war: nirgends. `Screen.Settings` stand seit dem ersten Commit im
- * Navigationsgraphen (nav/ToolsGraph.kt) und kam im ganzen Hauptbaum GENAU
- * EINMAL vor — in seiner eigenen Registrierung. Kein Reiter, kein Menuepunkt,
- * kein Deep-Link.
- *
- * Unerreichbar waren damit Waehrung, Standard-Zustand, Preis-Zustand, Sprache,
- * Haushalt, Konto, CSV-Import, angemeldete Geraete und die Update-Pruefung —
- * alles gebaut, alles uebersetzt, nichts davon zu sehen.
- *
- * Der Uebersetzer kann das nicht melden: Ein registrierter Bildschirm ohne
- * Aufrufer ist gueltiges Kotlin. Auffallen kann es nur hier oder beim
- * Benutzen.
- *
- * ── Warum die Regel ZWEI Wege kennen muss ───────────────────────────────────
- *
- * NACHGEMESSEN: Die naheliegende Fassung — „zu jedem `composable(Screen.X)`
- * muss es ein `navigate(Screen.X)` geben" — meldet SECHS Bildschirme, die
- * voellig in Ordnung sind:
- *
- *     Catalog, Comparison, Finance, Minifigs, Parts, PartsList
- *
- * Sie sind die Reiter der unteren Leiste, und dorthin navigiert
- * MainScaffold ueber die LISTE (`bottomNavItems.forEach { (screen, …) }`),
- * nicht ueber einen ausgeschriebenen Namen. Ein Test, der sechs gesunde
- * Bildschirme anmeckert und einen kranken, wird abgeschaltet statt befolgt —
- * dieselbe Erfahrung wie bei der Schichtregel im Manager: Eine Regel, die
- * Gesundes als Verstoss fuehrt, ist schlimmer als keine.
- *
- * Deshalb zaehlt hier BEIDES als Weg: ein ausgeschriebenes
- * `navigate(Screen.X.route)` oder ein Platz in der unteren Leiste
- * (`Triple(Screen.X, …)`). Mit dieser Fassung bleibt genau ein Befund uebrig —
- * der, um den es ging. Gegengeprobt am Stand vor der Behebung: `[Settings]`.
+ * Gegenproben (nur in der CI messbar, Robolectric):
+ *   ziel-nicht-registriert   composable<Screen.Konto> fehlt im Graphen
+ *                            → rot „jedes Ziel steht im Graphen der App“
+ *   ziel-ohne-weg            der Eintrag „CSV-Import“ fehlt auf „Mehr“
+ *                            → rot „zu jedem Ziel ohne Werte führt ein Weg“
  */
+@RunWith(RobolectricTestRunner::class)
 class ErreichbareRoutenTest {
 
-    private val quelle: String by lazy {
-        Quellen.alle().joinToString("\n") { Quellen.ohneKommentare(it.readText()) }
+    @get:Rule
+    val compose = createComposeRule()
+
+    private val ctx: Context = ApplicationProvider.getApplicationContext()
+
+    /** Serienname je Ziel; für Ziele ohne Werte zugleich der Name ihrer Route. */
+    private val ziele = Screen.serializer().descriptor.getElementDescriptor(1).let { d ->
+        (0 until d.elementsCount).associate { d.getElementName(it) to d.getElementDescriptor(it).kind }
     }
 
-    private fun namen(muster: Regex): Set<String> =
-        muster.findAll(quelle).map { it.groupValues[1] }.toSet()
+    private fun name(ziel: Screen) = checkNotNull(ziel::class.qualifiedName)
 
-    @Test
-    fun `jeder registrierte Bildschirm hat einen Weg dorthin`() {
-        val registriert = namen(Regex("""composable\(\s*Screen\.(\w+)\.route"""))
-        val angesteuert = namen(Regex("""navigate\(\s*Screen\.(\w+)\.route"""))
-        val inDerLeiste  = namen(Regex("""Triple\(\s*Screen\.(\w+)\s*,"""))
-        // Dritter Weg seit dem 25.10.: der Umschalter der Sammlung (Sets | Teile |
-        // Minifiguren) in MainScaffold, eine Liste `Screen.X to R.string.…`.
-        val imUmschalter = namen(Regex("""Screen\.(\w+)\s+to\s+R\.string\."""))
-
-        // ── Untergrenzen, damit ein kaputtes Suchmuster nicht still gruen ist ──
-        //
-        // Findet die erste Suche nichts, ist die Differenz leer und der Test
-        // bestaende, ohne etwas geprueft zu haben. Genau die Falle, gegen die
-        // Quellen.alle() seine eigene Untergrenze hat. Die Zahlen sind
-        // grosszuegig: gemessen sind es 12 registrierte und 7 Reiter.
-        assertTrue(
-            "Nur ${registriert.size} registrierte Bildschirme gefunden — vermutlich passt das " +
-                "Suchmuster nicht mehr. Ohne Treffer waere diese Pruefung stillschweigend gruen.",
-            registriert.size >= 8
-        )
-        assertTrue(
-            "Nur ${inDerLeiste.size} Reiter in der unteren Leiste gefunden — siehe oben.",
-            inDerLeiste.size >= 5
-        )
-
-        assertTrue("Der Umschalter der Sammlung ist nicht zu finden — umbenannt?", imUmschalter.size >= 3)
-
-        val ohneWeg = (registriert - angesteuert - inDerLeiste - imUmschalter).sorted()
-        assertTrue(
-            "Diese Bildschirme sind im Navigationsgraphen eingehaengt, aber von nirgendwo " +
-                "erreichbar: $ohneWeg. Entweder fehlt der Menuepunkt/Reiter dorthin, oder der " +
-                "Bildschirm gehoert geloescht — ein Bildschirm, den niemand oeffnen kann, ist " +
-                "kein Bildschirm, sondern toter Code mit Uebersetzungskosten.",
-            ohneWeg.isEmpty()
-        )
+    private fun routen(graph: NavGraph): List<String> = graph.flatMap { ziel: NavDestination ->
+        if (ziel is NavGraph) routen(ziel) else listOfNotNull(ziel.route)
     }
 
-    /**
-     * Der Server gehoert zu den Einstellungen, nicht auf „Mehr“.
-     *
-     * Marcos Entscheidung: Die Serveradresse ist eine Einstellung wie Waehrung
-     * und Sprache — etwas, das man einmal setzt. Im alten Kontomenue stand sie neben
-     * „Abmelden", also neben einer Handlung an der laufenden Sitzung.
-     *
-     * Die Regel oben (jeder Bildschirm erreichbar) bliebe auch dann gruen, wenn
-     * der Weg zurueck ins Menue wanderte — sie fragt nur, OB es einen Weg gibt,
-     * nicht wo er anfaengt.
-     */
     @Test
-    fun `der Serverwechsel steht in den Einstellungen`() {
-        val einstellungen = Quellen.ohneKommentare(Quellen.lies("ui/screens/SettingsScreen.kt"))
-        assertTrue(
-            "SettingsScreen.kt kennt onServerWechseln nicht — dann fuehrt von den Einstellungen " +
-                "kein Weg zur Server-Einrichtung.",
-            einstellungen.contains("onServerWechseln")
-        )
-        val geruest = Quellen.ohneKommentare(Quellen.lies("MainScaffold.kt"))
-        assertTrue(
-            "MainScaffold.kt navigiert wieder selbst zu Screen.Setup. Der Serverwechsel soll " +
-                "an EINER Stelle stehen — in den Einstellungen; zwei Wege dorthin sind zwei " +
-                "Stellen, die auseinanderlaufen koennen.",
-            !geruest.contains("navigate(Screen.Setup.route)") &&
-                !Quellen.ohneKommentare(Quellen.lies("MehrBildschirm.kt")).contains("Screen.Setup")
-        )
+    fun `jedes Ziel steht im Graphen der App`() {
+        lateinit var nav: NavHostController
+        compose.setContent { nav = rememberNavController() }
+        val graph = compose.runOnIdle {
+            val umgebung = ZielUmgebung(nav, coil3.ImageLoader.Builder(ctx).build(), emptyList(), SnackbarHostState(),
+                Rollzustaende(LazyGridState(), LazyGridState(), LazyGridState(), LazyListState(), LazyListState(), ScrollState(0))) {
+                // Den Zustand holen erst die Ziele beim Zeichnen; der Graph allein braucht ihn nicht.
+                error("Ziele werden hier nicht gezeichnet")
+            }
+            nav.createGraph(startDestination = Screen.Setup) { alleZiele(umgebung) }
+        }
+        val registriert = routen(graph).map { it.substringBefore('/').substringBefore('?') }.toSet()
+        assertTrue("Nur ${ziele.size} Ziele gefunden — liest die Suche die Serialisierung noch?", ziele.size >= 20)
+        assertEquals("Ziele ohne Platz im Graphen", emptySet<String>(), ziele.keys - registriert)
     }
 
-    /**
-     * Und der Weg zu den Einstellungen im Besonderen.
-     *
-     * Die Regel oben ist allgemein und wuerde auch dann gruen, wenn jemand die
-     * Einstellungen ueber irgendeinen anderen Bildschirm erreichbar machte. Der
-     * Ort ist aber eine Entscheidung: Die Seite „Mehr“ ist die Stelle fuer alles,
-     * was kein Bestandsreiter ist — EIN Ort, nicht Schublade und Kontomenue
-     * nebeneinander. Ein Umzug soll auffallen und bewusst geschehen.
-     */
     @Test
-    fun `die Einstellungen stehen auf der Seite Mehr`() {
-        val mehr = Quellen.ohneKommentare(Quellen.lies("MehrBildschirm.kt"))
-        assertTrue(
-            "MehrBildschirm.kt navigiert nicht zu Screen.Settings — dann sind Waehrung, Sprache, " +
-                "Haushalt, Konto und die Update-Pruefung wieder unerreichbar.",
-            mehr.contains("navigate(Screen.Settings.route)")
-        )
-        assertTrue(
-            "Der Eintrag traegt nicht R.string.nav_settings. Derselbe Text wie die " +
-                "Ueberschrift des Bildschirms ist Absicht: Zwei Schluessel fuer dasselbe Wort " +
-                "sind zwei Stellen, an denen Eintrag und Ziel auseinanderlaufen koennen.",
-            mehr.contains("R.string.nav_settings")
-        )
-        val geruest = Quellen.ohneKommentare(Quellen.lies("MainScaffold.kt"))
-        assertTrue("MainScaffold.kt fuehrt wieder selbst zu den Einstellungen — dann gibt es zwei Orte.",
-            !geruest.contains("navigate(Screen.Settings.route)"))
+    fun `zu jedem Ziel ohne Werte führt ein Weg`() {
+        val vonMehr = mutableListOf<Screen>()
+        lateinit var leiste: List<Reiter>
+        compose.setContent {
+            leiste = reiterDerLeiste()
+            MehrBildschirm(onZiel = { vonMehr += it }, isAdmin = true, updateVerfuegbar = false, onAbmelden = {})
+        }
+        val eintraege = compose.onAllNodes(hasClickAction() and !hasText(ctx.getString(R.string.main_menu_logout)))
+        val anzahl = eintraege.fetchSemanticsNodes().size
+        for (i in 0 until anzahl) {
+            eintraege[i].performScrollTo().performClick()
+        }
+        compose.waitForIdle()
+        // Material sieht höchstens fünf Reiter vor: die Bestandsziele in der Folge der
+        // Webapp (Merkliste vor Katalog) und „Mehr“.
+        assertEquals(listOf(Screen.Gallery, Screen.Finance, Screen.Wanted, Screen.Catalog, Screen.Mehr),
+            leiste.map { it.first })
+        assertEquals("Jeder Eintrag auf „Mehr“ nennt genau ein Ziel", anzahl, vonMehr.size)
+        assertTrue("Die Einstellungen stehen auf „Mehr“", Screen.Settings in vonMehr)
+        assertFalse("Der Serverwechsel gehört in die Einstellungen, nicht auf „Mehr“", Screen.Setup in vonMehr)
+
+        // Den Scanner öffnen Galerie, Merkliste und Teileliste mit ihrem Knopf; er hat
+        // keinen eigenen Eintrag.
+        val ueberRueckruf = listOf<Screen>(Screen.BarcodeScanner)
+        val erreicht = (vonMehr + leiste.map { it.first } + SAMMLUNGS_ZIELE +
+            StartZiel.entries.map(::startRoute) + ueberRueckruf).map(::name).toSet()
+        // Ziele mit Werten öffnet nur, wer die Werte hat (eine Kachel, eine Zeile).
+        val ohneWerte = ziele.filterValues { it == StructureKind.OBJECT }.keys
+        assertTrue("Nur ${ohneWerte.size} Ziele ohne Werte gefunden", ohneWerte.size >= 15)
+        assertEquals("Ziele ohne Weg dorthin", emptySet<String>(), ohneWerte - erreicht)
     }
 }

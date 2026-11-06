@@ -82,20 +82,21 @@ object Beispielfueller {
         for (g in getter) {
             val gegen = dto.javaClass.methods.firstOrNull { it.name == g.name && it.parameterCount == 0 }
             if (gegen == null) { ohne += "${dto.javaClass.simpleName}.${g.name}"; continue }
-            val a = g.invoke(ansicht)
-            val d = gegen.invoke(dto)
-            n += when {
-                a is List<*> && d is List<*> -> {
-                    assertEquals("$pfad.${g.name} (Länge)", d.size, a.size)
-                    a.indices.sumOf { vergleiche(d[it], a[it], "$pfad.${g.name}[$it]", ohne) }
-                }
-                a is Map<*, *> && d is Map<*, *> -> {
-                    assertEquals("$pfad.${g.name} (Schlüssel)", d.keys, a.keys)
-                    a.keys.sumOf { vergleiche(d[it], a[it], "$pfad.${g.name}[$it]", ohne) }
-                }
-                else -> vergleiche(d, a, "$pfad.${g.name}", ohne)
-            }
+            n += vergleicheWert(gegen.invoke(dto), g.invoke(ansicht), "$pfad.${g.name}", ohne)
         }
         return n
+    }
+
+    /** Listen und Maps Eintrag für Eintrag, alles andere über [vergleiche]. */
+    private fun vergleicheWert(d: Any?, a: Any?, pfad: String, ohne: MutableSet<String>): Int = when {
+        a is List<*> && d is List<*> -> {
+            assertEquals("$pfad (Länge)", d.size, a.size)
+            a.indices.sumOf { vergleiche(d[it], a[it], "$pfad[$it]", ohne) }
+        }
+        a is Map<*, *> && d is Map<*, *> -> {
+            assertEquals("$pfad (Schlüssel)", d.keys, a.keys)
+            a.keys.sumOf { vergleiche(d[it], a[it], "$pfad[$it]", ohne) }
+        }
+        else -> vergleiche(d, a, pfad, ohne)
     }
 }

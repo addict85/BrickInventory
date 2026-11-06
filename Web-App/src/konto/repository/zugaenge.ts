@@ -1,5 +1,5 @@
 import * as db from '../../../db/database';
-import type { DbSchnittstelle } from '../../../db/database';
+import type { Zeile, DbSchnittstelle } from '../../../db/database';
 /** Tokens stehen nur als SHA-256 in der Tabelle; jede Funktion nimmt den Hash,
  * nie den Klartext. */
 
@@ -94,6 +94,19 @@ export function tauschQuelleSperren(tx: DbSchnittstelle, hash: string) {
       FOR UPDATE`, [hash]);
 }
 
+/** Der noch unbenutzte Nachfolger eines Tausches: wann und aus welchem Netz er entstand. */
+export function unbenutzterNachfolger(tx: DbSchnittstelle, nachfolger: string, alt: string) {
+  return tx.get<{ alter_s: number; ip_bereich: string | null }>(
+    `SELECT EXTRACT(EPOCH FROM NOW() - rotiert_am)::float AS alter_s, ip_bereich
+       FROM api_tokens WHERE token = $1 AND vorgaenger = $2`, [nachfolger, alt]);
+}
+
+/** Die ganze Familie eines Tokens (gleiches created_at), samt Nachfolger. */
+export async function loescheFamilie(tx: DbSchnittstelle, userId: number, seit: Date): Promise<void> {
+  await tx.run(`DELETE FROM api_tokens WHERE user_id = $1 AND ${familie('created_at')} = ${familie('$2::timestamptz')}`,
+    [userId, seit]);
+}
+
 export async function loescheUnbenutztenNachfolger(tx: DbSchnittstelle, nachfolger: string, alt: string): Promise<void> {
   await tx.run('DELETE FROM api_tokens WHERE token = $1 AND vorgaenger = $2', [nachfolger, alt]);
 }
@@ -145,6 +158,19 @@ export async function loescheTokensDesKontos(userId: number, ausser: string | nu
   else await db.run('DELETE FROM api_tokens WHERE user_id = $1', [userId]);
 }
 
+/** Behält die `behalten` zuletzt benutzten neben `eigene`; die übrigen fallen. */
+export async function kappeSitzungen(userId: number, eigene: string, behalten: number): Promise<number> {
+  return (await db.run(`DELETE FROM user_sessions WHERE sid IN (SELECT sid FROM user_sessions
+    WHERE sess::jsonb->>'userId' = $1 AND sid <> $2 ORDER BY expire DESC OFFSET $3)`, [String(userId), eigene, behalten])).changes || 0;
+}
+
+/** Zählt nur Tokens ohne Nachfolger: Ein getauschter in seiner Überlappung ist dasselbe Gerät. */
+export async function kappeTokens(userId: number, eigener: string, behalten: number): Promise<number> {
+  return (await db.run(`DELETE FROM api_tokens WHERE token IN (SELECT token FROM api_tokens
+    WHERE user_id = $1 AND token <> $2 AND ersetzt_durch IS NULL
+    ORDER BY COALESCE(last_used, created_at) DESC OFFSET $3)`, [userId, eigener, behalten])).changes || 0;
+}
+
 export async function loescheSitzungenDesKontos(userId: number, ausser: string | null = null): Promise<void> {
   if (ausser === null) await db.run("DELETE FROM user_sessions WHERE sess::jsonb->>'userId' = $1", [String(userId)]);
   else await db.run("DELETE FROM user_sessions WHERE sess::jsonb->>'userId' = $1 AND sid IS DISTINCT FROM $2",
@@ -188,20 +214,10 @@ export async function loescheUngenutzte(leerlaufTage: number): Promise<number> {
         AND COALESCE(last_used, created_at) < NOW() - make_interval(days => $1)`, [leerlaufTage])).changes || 0;
 }
 
-export function kontoZuEmailToken(hash: string) {
-  return db.get<{ id: number }>(
-    'SELECT id FROM users WHERE verification_token = $1 AND token_expires > NOW() AND NOT email_verified', [hash]);
-}
-
-/** Token-Felder mit abräumen: Ein zweiter Klick meldet keinen zweiten Erfolg. */
-export async function bestaetigeEmail(id: number): Promise<void> {
-  await db.run('UPDATE users SET email_verified=true, verification_token=NULL, token_expires=NULL WHERE id=$1', [id]);
-}
-
 /** Zwei Treffer (ein Name gleich der Adresse eines anderen Kontos, nur im
  * Altbestand möglich) heissen „kein Konto": Welches gemeint war, ist nicht zu entscheiden. */
 export async function kontoZurAnmeldung(name: string) {
-  const treffer = await db.all('SELECT * FROM users WHERE LOWER(username) = LOWER($1) OR LOWER(email) = LOWER($1) LIMIT 2', [name]);
+  const treffer = await db.all<Zeile<{ id: number; password_hash: string; is_active: boolean; email_verified: boolean; is_admin: boolean; email: string | null; registrierung_offen: boolean }>>('SELECT * FROM users WHERE LOWER(username) = LOWER($1) OR LOWER(email) = LOWER($1) LIMIT 2', [name]);
   if (treffer.length > 1) console.warn('[anmeldung] Name passt auf zwei Konten (Benutzername und Adresse) — Anmeldung abgewiesen');
   return treffer.length === 1 ? treffer[0] : undefined;
 }

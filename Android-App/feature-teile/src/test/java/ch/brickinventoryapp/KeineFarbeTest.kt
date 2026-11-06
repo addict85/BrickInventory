@@ -10,11 +10,13 @@ import ch.brickinventoryapp.data.model.PartValuationItem
 import ch.brickinventoryapp.data.repository.TeileRepository
 import ch.brickinventoryapp.data.repository.FigurenRepository
 import ch.brickinventoryapp.ui.ManualItemDetailUiState
+import ch.brickinventoryapp.ui.Postenart
 import ch.brickinventoryapp.ui.Screen
 import ch.brickinventoryapp.ui.farbName
 import ch.brickinventoryapp.ui.ohneKeineFarbe
 import ch.brickinventoryapp.ui.viewmodel.TeileViewModel
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.setMain
@@ -30,7 +32,7 @@ import org.junit.Test
  * 0 ist Schwarz. Die App schickt für ein Teil ohne Farbe 9999, zeigt 9999 als
  * „keine Farbe“ und nimmt ein fehlendes color_id nicht als Schwarz.
  *
- * Gegenproben (30.10.2026, gemessen mit kt-b2/bau.sh):
+ * Gegenproben:
  *   A  in TeileViewModel.addPart die Vorgabe `colorId = 0` → rot „ein Teil
  *      ohne Farbe geht als 9999 hinaus“ ("color_id":0)
  *   B  in TeileRepository.setPartColor den Namen auch bei KEINE_FARBE
@@ -41,13 +43,14 @@ import org.junit.Test
  *   E  Part.colorId wieder mit Vorgabe 0 → rot „ein fehlendes color_id ist
  *      keine Farbe, nicht Schwarz“
  */
+@OptIn(ExperimentalCoroutinesApi::class)
 class KeineFarbeTest {
 
     private val pfade = PfadServer(
         "/api/v1/parts" to """{"success":true,"action":"added","part_number":"3001"}""",
         "/api/v1/parts/3001/5/color" to """{"success":true}""",
     )
-    private val t = TestDienste(pfade.server)
+    private val t = TestDienste(pfade.imTakt(), io = Dispatchers.Main)
 
     @Before
     fun auf() = Dispatchers.setMain(UnconfinedTestDispatcher())
@@ -59,7 +62,7 @@ class KeineFarbeTest {
         pfade.server.shutdown()
     }
 
-    private fun vm() = t.merke(TeileViewModel(t.dienste, TeileRepository(t.api, t.cache), FigurenRepository(t.api, t.cache), SavedStateHandle()))
+    private fun vm() = t.merke(TeileViewModel(t.sitzung, t.filter(), t.hinweise, t.bestand, t.scrollMemory, TeileRepository(t.api, t.cache), FigurenRepository(t.api, t.cache), SavedStateHandle()))
 
     private fun koerperZu(methodeUndPfad: String): String {
         val i = pfade.anfragen.indexOfFirst { it == methodeUndPfad }
@@ -70,12 +73,12 @@ class KeineFarbeTest {
     @Test
     fun `ein Teil ohne Farbe geht als 9999 hinaus`() {
         vm().addPart("3001")
-        TestApi.warteBis("Teil erfasst") { pfade.anfragenAn("POST /api/v1/parts").isNotEmpty() }
+        assertTrue("Teil erfasst", pfade.anfragenAn("POST /api/v1/parts").isNotEmpty())
         val k = koerperZu("POST /api/v1/parts")
         assertTrue(k, k.contains("\"color_id\":9999"))
         // Auch ein mitgegebener Name gehört nicht zu „keine Farbe“.
         vm().addPart("3002", KEINE_FARBE, "[No Color/Any Color]", "05131D")
-        TestApi.warteBis("zweites Teil") { pfade.anfragenAn("POST /api/v1/parts").size == 2 }
+        assertTrue("zweites Teil", pfade.anfragenAn("POST /api/v1/parts").size == 2)
         val k2 = pfade.koerper[pfade.anfragen.indexOfLast { it == "POST /api/v1/parts" }]
         assertFalse(k2, k2.contains("No Color") || k2.contains("05131D"))
     }
@@ -84,7 +87,7 @@ class KeineFarbeTest {
     fun `keine Farbe als neue Farbe schickt keinen Namen mit`() {
         var neu: Int? = null
         vm().setzeTeilFarbe("3001", 5, KEINE_FARBE, "Keine Farbe", null) { neu = it }
-        TestApi.warteBis("geändert") { neu != null }
+        assertTrue("geändert", neu != null)
         val k = koerperZu("PUT /api/v1/parts/3001/5/color")
         assertTrue(k, k.contains("\"color_id\":9999"))
         assertFalse(k, k.contains("Keine Farbe"))
@@ -108,6 +111,6 @@ class KeineFarbeTest {
         assertEquals(KEINE_FARBE, ApiJson.decodeFromString(PartValuationItem.serializer(), """{"part_number":"3001"}""").colorId)
         assertEquals(0, ApiJson.decodeFromString(Part.serializer(), """{"part_number":"3001","color_id":0}""").colorId)
         assertEquals(KEINE_FARBE, ManualItemDetailUiState().colorId)
-        assertTrue(Screen.ManualItemDetail.createRoute("fig", "sw0001", title = "Luke").contains("/9999/"))
+        assertEquals(KEINE_FARBE, Screen.ManualItemDetail(Postenart.FIG, "sw0001", title = "Luke").colorId)
     }
 }

@@ -1,79 +1,123 @@
+/**
+ * Kein Bild bekommt ein leeres `src`: Der Browser löste es gegen die Adresse
+ * der Seite auf, lüde sie als Bild und der Fehlerlauscher meldete das in der
+ * Konsole. Beobachtet wird in jsdom jede Änderung eines src-Attributs, beim
+ * Start, beim Wiederholversuch nach einem Ladefehler und beim Zoom.
+ *
+ * Gegenproben (05.11.2026, je einzeln, Bündel neu gebaut):
+ *   A  closeImageLightbox() mit `G('lightbox-img').src = ''` → „Zoom schliessen …“ rot
+ *   B  11-actions.js Wiederholversuch mit `el.src = ''` statt removeAttribute
+ *      → „ein Ladefehler …“ rot
+ *   C  `<img id="lightbox-img" src="">` in index.html → „beim Start …“ rot
+ */
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const fs = require('node:fs');
-const path = require('node:path');
+const { oeffneOberflaeche } = require('./helpers/oberflaeche');
 
-const WEB = path.join(__dirname, '..');
+/** Öffnet die Oberfläche und zeichnet jedes leere src auf, auch das aus dem Markup. */
+async function mitBeobachter(antworten = {}) {
+  const leer = [];
+  const o = await oeffneOberflaeche(antworten, {
+    vorher(w) {
+      new w.MutationObserver(ms => {
+        for (const m of ms) {
+          const ziel = /** @type {any} */ (m.target);
+          // oldValue fängt auch ein leeres src, das im selben Takt wieder überschrieben wurde.
+          if (
+            m.type === 'attributes' &&
+            ziel.tagName === 'IMG' &&
+            (ziel.getAttribute('src') === '' || m.oldValue === '')
+          )
+            leer.push(ziel.outerHTML.slice(0, 120));
+          for (const n of m.addedNodes || [])
+            for (const img of n.querySelectorAll ? [n, ...n.querySelectorAll('img')] : [])
+              if (img.tagName === 'IMG' && img.getAttribute('src') === '') leer.push(img.outerHTML.slice(0, 120));
+        }
+      }).observe(w.document, {
+        subtree: true,
+        childList: true,
+        attributes: true,
+        attributeOldValue: true,
+        attributeFilter: ['src'],
+      });
+    },
+  });
+  for (const img of o.d.querySelectorAll('img'))
+    if (img.getAttribute('src') === '') leer.push(img.outerHTML.slice(0, 120));
+  return { ...o, leer };
+}
 
-/**
- * Ein leeres `src` ist keine leere Adresse — es ist die Adresse der SEITE.
- *
- * ── Was Marco in der Konsole gesehen hat ────────────────────────────────────
- *
- *     [img] konnte nicht geladen werden: https://lego.bigolin.online/
- *
- * Die Meldung kommt aus dem Fehlerlauscher in js/11-actions.js und ist echt:
- * Der Browser hat wirklich versucht, die Startseite als Bild zu laden, und ist
- * daran gescheitert. Die Adresse im Text ist der einzige Hinweis darauf, was
- * passiert ist — sie ist die Seite selbst.
- *
- * Der Grund: Zu einem `<img src="">` loest der Browser das leere src gegen die
- * Dokumentadresse auf. Es gab drei Quellen dafuer:
- *
- *   1. fuenf `<img src="">` in index.html (fuenf Fehlversuche bei JEDEM
- *      Seitenaufruf, vier davon still, weil der Rueckfall gleich das
- *      Platzhalterbild nachlud),
- *   2. `closeImageLightbox()` setzte beim Schliessen des Zooms `src=''`,
- *   3. der Wiederholversuch im Fehlerlauscher selbst setzte `src=''`, um das
- *      Nachladen zu erzwingen.
- *
- * Richtig ist in allen drei Faellen `removeAttribute('src')` bzw. gar kein
- * Attribut: Ohne src laedt der Browser nichts und meldet auch nichts.
- *
- * ── Warum das nicht nur Kosmetik ist ────────────────────────────────────────
- *
- * Die Konsole ist das Werkzeug, mit dem man einen echten Fehler findet. Eine
- * Meldung, die bei jedem Schliessen des Zooms erscheint und nie etwas
- * bedeutet, macht genau dieses Werkzeug unbrauchbar — man hoert auf
- * hinzusehen. Dazu kamen fuenf ueberfluessige Anfragen an den Server pro
- * Seitenaufruf.
- */
-
-test('kein <img> in index.html startet mit leerem src', () => {
-  const html = fs.readFileSync(path.join(WEB, 'public', 'index.html'), 'utf8');
-  // Selbstbeweis: Findet die Suche ueberhaupt Bilder? GEMESSEN sind es
-  // mehrere; ohne diesen Schritt waere die Zusicherung darunter still gruen,
-  // sobald sich die Schreibweise der Attribute aendert.
-  const bilder = [...html.matchAll(/<img\b[^>]*>/g)].map(m => m[0]);
-  assert.ok(bilder.length >= 5, `Nur ${bilder.length} <img> gefunden — greift die Suche noch?`);
-
-  const leer = bilder.filter(b => /\ssrc=(""|'')/.test(b));
-  assert.deepEqual(leer, [],
-    'Diese Bilder starten mit einem leeren src. Der Browser loest das gegen die ' +
-    'Seitenadresse auf, laedt die Startseite als Bild und scheitert daran — ' +
-    'einmal je Bild und Seitenaufruf. Das Attribut einfach weglassen.');
+test('beim Start und in der Galerie hat kein Bild ein leeres src', async () => {
+  const { w, d, warte, leer } = await mitBeobachter({
+    '/v1/sets': {
+      success: true,
+      sets: [
+        {
+          set_number: '10294-1',
+          name: 'Titanic',
+          quantity: 1,
+          image_url: 'https://cdn.rebrickable.com/media/sets/10294-1.jpg',
+        },
+      ],
+      count: 1,
+      total: 1,
+    },
+  });
+  try {
+    assert.ok(await warte(() => d.querySelector('#gallery img')));
+    assert.ok(d.querySelectorAll('img').length >= 5, 'greift die Suche noch?');
+    assert.deepEqual(leer, []);
+  } finally {
+    w.close();
+  }
 });
 
-test('kein Skript setzt ein src auf den leeren Text', () => {
-  const ordner = path.join(WEB, 'public', 'js');
-  // app.bundle.js ist das ERZEUGNIS dieser Dateien und wird nicht von Hand
-  // geschrieben — es hier mitzupruefen hiesse, denselben Fund zweimal zu
-  // melden, und beim naechsten Bauen verschwaende er von selbst.
-  const dateien = fs.readdirSync(ordner)
-    .filter(n => n.endsWith('.js') && n !== 'app.bundle.js');
-  assert.ok(dateien.length >= 10, `Nur ${dateien.length} Skripte — greift die Suche noch?`);
-
-  const treffer = [];
-  for (const name of dateien) {
-    const zeilen = fs.readFileSync(path.join(ordner, name), 'utf8').split('\n');
-    zeilen.forEach((z, i) => {
-      if (/^\s*\/\//.test(z)) return;                 // Kommentare erklaeren die Regel
-      if (/\.src\s*=\s*(''|""|``)\s*[;,)]/.test(z)) treffer.push(`${name}:${i + 1}  ${z.trim()}`);
-    });
+test('ein Ladefehler wiederholt ohne leeres src', async () => {
+  const { w, d, warte, leer } = await mitBeobachter({
+    '/v1/sets': {
+      success: true,
+      sets: [
+        {
+          set_number: '10294-1',
+          name: 'Titanic',
+          quantity: 1,
+          image_url: 'https://cdn.rebrickable.com/media/sets/10294-1.jpg',
+        },
+      ],
+      count: 1,
+      total: 1,
+    },
+  });
+  try {
+    assert.ok(await warte(() => d.querySelector('#gallery img[src]')));
+    const img = d.querySelector('#gallery img[src]');
+    const vorher = img.src;
+    let wechsel = 0;
+    new w.MutationObserver(ms => {
+      wechsel += ms.length;
+    }).observe(img, { attributes: true, attributeFilter: ['src'] });
+    img.dispatchEvent(new w.Event('error'));
+    assert.equal(img.dataset.retried, '1');
+    // Der Wiederholversuch nimmt die Adresse nach einer Sekunde weg und setzt sie neu.
+    assert.ok(await warte(() => wechsel >= 2, 3000), 'kein Wiederholversuch');
+    assert.equal(img.src, vorher);
+    assert.deepEqual(leer, []);
+  } finally {
+    w.close();
   }
-  assert.deepEqual(treffer, [],
-    'Hier wird ein src auf den leeren Text gesetzt. Das ist keine leere ' +
-    'Adresse, sondern die Adresse der Seite: Der Browser laedt sie als Bild ' +
-    'und der Fehlerlauscher meldet sie in der Konsole. Richtig ist ' +
-    "removeAttribute('src').");
+});
+
+test('Zoom schliessen entfernt das Bild, statt src zu leeren', async () => {
+  const { w, d, leer } = await mitBeobachter();
+  try {
+    const bild = d.getElementById('lightbox-img');
+    bild.setAttribute('src', '/api/v1/img-proxy?url=x');
+    d.getElementById('img-lightbox').classList.add('open');
+    d.querySelector('#img-lightbox [data-click="closeImageLightbox"]').click();
+    assert.equal(d.getElementById('img-lightbox').classList.contains('open'), false);
+    assert.equal(bild.hasAttribute('src'), false);
+    assert.deepEqual(leer, []);
+  } finally {
+    w.close();
+  }
 });

@@ -38,7 +38,8 @@ function routen(router, praefix = '') {
 /** Router-Einhängungen in server.ts: Pfad → Router-Modul. */
 function einhaengungen() {
   const v1 = { mount: '/api/v1', datei: path.join(ROOT, 'routes/api_v1/index.ts'), name: 'api_v1/index' };
-  return [v1, ...routerEinhaengungen()];
+  // Die Teile von routes/auth.ts stecken schon in dessen Stapel.
+  return [v1, ...routerEinhaengungen({ ohneTeile: true })];
 }
 
 test('ein Router je Einhängepunkt', () => {
@@ -48,7 +49,11 @@ test('ein Router je Einhängepunkt', () => {
   for (const m of server.matchAll(/app\.use\(\s*'(\/api[^']*)'\s*,\s*(\w+Router)\s*\)/g))
     je.set(m[1], [...(je.get(m[1]) || []), m[2]]);
   assert.ok(je.size >= 2, `nur ${je.size} Router-Einhängungen in server.ts gefunden`);
-  const doppelt = [...je].filter(([, r]) => r.length > 1).map(([p, r]) => `${p}: ${r.join(', ')}`);
+  // Gesundheit und Startstatus antworten VOR dem Eingang (anmeldungAmEingang),
+  // der Router der API dahinter: zwei Stellen im Stapel, deshalb zwei Router.
+  const VOR_DEM_EINGANG = new Set(['gesundheitRouter']);
+  const doppelt = [...je].map(([p, r]) => [p, r.filter(n => !VOR_DEM_EINGANG.has(n))])
+    .filter(([, r]) => r.length > 1).map(([p, r]) => `${p}: ${r.join(', ')}`);
   assert.deepEqual(doppelt, []);
 });
 

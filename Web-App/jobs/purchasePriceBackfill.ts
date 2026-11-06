@@ -1,11 +1,9 @@
-import { getCurrentMarketPrice } from '../src/finanzen/marketPrice';
+import { getCurrentMarketPrice, getCurrentFigMarketPrice, getCurrentPartMarketPrice } from '../src/finanzen/marketPrice';
 import { setzeGeschaetztenPreis, setErfassungenOhnePreis, teilErfassungenOhnePreis, figurErfassungenOhnePreis } from '../src/bestand/acquisitions';
 import { teilfarbenbilderNachtragen } from '../src/katalog/katalogAbgleich';
-import { getCurrentFigMarketPrice, getCurrentPartMarketPrice } from '../src/finanzen/marketPrice';
 import { blAbrufNummer } from '../src/katalog/blZuordnung';
-import { fehlertext, meldeUndWeiter, meldeUndLiefere } from '../src/infra/httpError';
-import { sleep } from '../clients/rebrickable';
-'use strict';
+import { fehlertext, meldeUndWeiter, meldeUndLiefere } from '../src/infra/fehler';
+import { sleep } from '../src/katalog/quellen';
 
 // Idempotent: Erfassungen ohne Kaufpreis bekommen den Marktpreis, wie beim
 // Erfassen ohne Kaufpreis.
@@ -64,10 +62,10 @@ async function backfillFigurenErfassungen() {
   let done = 0;
   for (const row of rows) {
     try {
-      // Die BrickLink-Nummer hängt an der Figur, nicht am Konto.
+      // Die eigene BrickLink-Nummer des Kontos vor der gemeinsamen.
       const price = await getCurrentFigMarketPrice(
         row.fig_number, row.user_id,
-        await blAbrufNummer('fig', row.fig_number), row.condition || null);
+        await blAbrufNummer('fig', row.fig_number, row.user_id), row.condition || null);
       if (price) {
         if (await setzeGeschaetztenPreis('fig', row.id, price)) done++;
       }

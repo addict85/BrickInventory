@@ -11,11 +11,7 @@ import androidx.compose.ui.unit.dp
 /**
  * Die eine Regel für breite Fenster — vorher standen Raster linksbündig, Listen
  * mittig und Werkzeugleisten endeten mitten im Bild:
- *
- *  - Raster (Galerie, Teile, Figuren, Katalog, Merkliste) nutzen die volle Breite;
- *    Such- und Filterleiste sind so breit wie das Raster darunter.
- *  - Liste und Detail stehen ab „expanded“ nebeneinander (ListeUndDetail).
- *  - Formulare und Textseiten stehen mittig auf ihrer Lesebreite ([mittigBis]).
+ * Ausführlich: docs/begruendungen/core-ui/ui/theme/Lesebreite.kt.md#lesebreite
  */
 object Lesebreite {
     /** Formulare: Anmelden, Einrichten, Einstellungen, „Mehr“. */
@@ -23,6 +19,15 @@ object Lesebreite {
 
     /** Unterseiten mit Zeilen aus Bezeichnung und Wert. */
     val liste = 840.dp
+
+    /**
+     * Eine Zeile aus Bezeichnung und Wert in einer Detailkarte. Über die ganze Tablet-
+     * spalte gezogen, lagen 500 dp zwischen „Jahr“ und „2022“, und das Auge verlor die Zeile.
+     */
+    val wertzeile = 440.dp
+
+    /** Knöpfe und Eingabefelder in Detailkarten: Mit Telefon-Proportionen über 900 dp wirkten sie unfertig. */
+    val bedienung = 400.dp
 }
 
 /** Volle Breite bis [max], darüber mittig. */

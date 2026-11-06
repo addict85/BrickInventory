@@ -1,6 +1,7 @@
 import { z } from 'zod';
-import { type Route, zeit, ganz } from './grund';
+import { type Route, zeit, ganz, OHNE_RUMPF, TEXT, JA_NEIN, abfrage, Q, SEITE, SEITEN_ANGABE } from './grund';
 import { GenericAdminResponse } from './gemeinsam';
+import { GLOBALE_REGELN } from './globaleRegeln';
 
 export const ApiLimits = z.looseObject({
   rebrickable: z.number().int(),
@@ -27,12 +28,11 @@ export const Auftrag = z.looseObject({
   max_versuche: z.number().int(),
   faellig_ab: zeit.nullable(),
   frist_bis: zeit.nullable(),
-  gestartet: z.string().nullable(),
-  erstellt: z.string().nullable(),
-  aktualisiert: z.string().nullable(),
+  gestartet: zeit.nullable(),
+  erstellt: zeit.nullable(),
+  aktualisiert: zeit.nullable(),
   fortschritt: AuftragFortschritt.nullable(),
   fehler: z.string().nullable(),
-  user_id: z.number().int().nullable(),
   geplant: z.boolean(),
   set_number: z.string().nullable(),
 });
@@ -92,6 +92,7 @@ export const BricksetQueueEntry = z.looseObject({
 
 export const BricksetQueueResponse = z.looseObject({
   success: z.boolean(),
+  ...SEITEN_ANGABE,
   count: z.number().int(),
   entries: z.array(BricksetQueueEntry),
 });
@@ -132,6 +133,7 @@ export const CsvImportStatus = z.looseObject({
   warn: z.number().int().nullable().optional(),
   err: z.number().int().nullable().optional(),
   error: z.string().nullable().optional(),
+  beendet_am: zeit.optional(),
 });
 
 export const JobSchedule = z.looseObject({
@@ -146,6 +148,8 @@ export const JobStatus = z.looseObject({
   progress: z.number().int(),
   total: z.number().int(),
   sub: z.string().nullable().optional(),
+  sub_teile: z.array(z.object({ code: z.string(), werte: z.record(z.string(), z.union([z.string(), z.number()])).optional(),
+    vor: z.literal('bestand').optional() })).optional(),
 });
 
 export const JobsResponse = z.looseObject({
@@ -179,7 +183,8 @@ export const PreisJobStand = z.looseObject({
 export const ProtokollEintraege = z.looseObject({ success: z.literal(true), eintraege: z.array(z.record(z.string(), z.unknown())) });
 export const BildDiagnose = z.looseObject({
   success: z.literal(true), set_number: z.string(), hinweise: z.array(z.string()),
-  datenbank: z.looseObject({ zeilen: z.array(z.looseObject({ user_id: ganz })), katalog_bild: z.string().nullable() }),
+  datenbank: z.looseObject({ anzahl_konten: ganz, image_local: z.string().nullable(), image_url: z.string().nullable(),
+    katalog_bild: z.string().nullable() }),
   lokal: z.looseObject({ original: z.looseObject({ vorhanden: z.boolean(), bytes: ganz }),
     vorschau: z.looseObject({ vorhanden: z.boolean(), bytes: ganz }) }),
   proxy: z.looseObject({ gecacht: z.boolean() }),
@@ -201,35 +206,36 @@ export const VerwaltungDesign = GenericAdminResponse.extend({ theme: z.string() 
 
 export const routen = {
   'GET /api/v1/sets/import/csv/status': { antwort: CsvImportStatus },
-  'GET /api/v1/admin/logs': { antwort: ProtokollResponse },
+  'GET /api/v1/admin/logs': { klein: true, antwort: ProtokollResponse, abfrage: abfrage({ minutes: Q.zahl() }) },
   'GET /api/v1/admin/jobs': { antwort: JobsResponse },
-  'GET /api/v1/admin/brickset-queue': { antwort: BricksetQueueResponse },
+  'GET /api/v1/admin/brickset-queue': { antwort: BricksetQueueResponse, abfrage: abfrage(SEITE) },
   'GET /api/v1/admin/cache-stats': { antwort: CacheStatsResponse },
   'GET /api/v1/admin/cache-ttl': { antwort: CacheTtlResponse },
   'GET /api/v1/admin/api-limits': { antwort: ApiLimitsResponse },
-  'GET /api/v1/admin/auftraege': { antwort: AuftraegeResponse },
-  'POST /api/v1/sets/import/csv/cancel': { antwort: GenericAdminResponse },
-  'POST /api/v1/admin/job-schedule': { antwort: GenericAdminResponse },
-  'POST /api/v1/admin/catalog-images': { antwort: GenericAdminResponse },
-  'POST /api/v1/admin/brickset-queue/:setNumber/retry': { antwort: VerwaltungSet },
-  'DELETE /api/v1/admin/brickset-queue/:setNumber': { antwort: VerwaltungSet },
-  'POST /api/v1/admin/cache-ttl': { antwort: VerwaltungTtl },
-  'POST /api/v1/admin/cache-clear': { antwort: VerwaltungMeldung },
-  'PUT /api/v1/admin/api-limits': { antwort: GenericAdminResponse },
-  'POST /api/v1/admin/redownload-missing-images': { antwort: VerwaltungGestartet },
-  'POST /api/v1/admin/auftraege/:id/abbrechen': { antwort: AuftragAenderung },
-  'POST /api/v1/admin/auftraege/:id/wiederholen': { antwort: AuftragAenderung },
-  'POST /api/v1/admin/auftraege/art/:art/jetzt': { antwort: AuftragsArtStart },
-  'DELETE /api/v1/admin/auftraege/art/:art': { antwort: AuftragsArtLeerung },
-  'POST /api/v1/admin/trigger-csv-sync': { antwort: VerwaltungMeldung },
-  'POST /api/v1/admin/reimport-instructions': { antwort: VerwaltungMeldung },
-  'POST /api/v1/admin/trigger-price-job': { antwort: VerwaltungGestartet },
-  'POST /api/v1/admin/default-condition': { antwort: VerwaltungZustand },
+  'GET /api/v1/admin/auftraege': { klein: true, antwort: AuftraegeResponse, abfrage: abfrage({ status: Q.text(20), art: Q.text(40) }) },
+  'POST /api/v1/sets/import/csv/cancel': { eingabe: OHNE_RUMPF, antwort: GenericAdminResponse },
+  'POST /api/v1/admin/job-schedule': { eingabe: z.strictObject({ name: TEXT(40), time: TEXT(5).nullable().optional(), minutes: GLOBALE_REGELN.price_job_interval_minutes.nullable().optional() }), antwort: GenericAdminResponse },
+  'POST /api/v1/admin/catalog-images': { eingabe: z.strictObject({ alle_erneut: JA_NEIN.optional() }), antwort: GenericAdminResponse },
+  'POST /api/v1/admin/brickset-queue/:setNumber/retry': { eingabe: OHNE_RUMPF, antwort: VerwaltungSet },
+  'DELETE /api/v1/admin/brickset-queue/:setNumber': { eingabe: OHNE_RUMPF, antwort: VerwaltungSet },
+  'POST /api/v1/admin/cache-ttl': { eingabe: z.strictObject({ ttl: GLOBALE_REGELN.price_cache_ttl }), antwort: VerwaltungTtl },
+  'POST /api/v1/admin/cache-clear': { eingabe: z.strictObject({ all: JA_NEIN.optional() }), antwort: VerwaltungMeldung },
+  'PUT /api/v1/admin/api-limits': { eingabe: z.strictObject({ rebrickable: GLOBALE_REGELN.api_limit_rebrickable.optional(),
+    bricklink: GLOBALE_REGELN.api_limit_bricklink.optional(), brickset: GLOBALE_REGELN.api_limit_brickset.optional() }), antwort: GenericAdminResponse },
+  'POST /api/v1/admin/redownload-missing-images': { eingabe: OHNE_RUMPF, antwort: VerwaltungGestartet },
+  'POST /api/v1/admin/auftraege/:id/abbrechen': { eingabe: OHNE_RUMPF, antwort: AuftragAenderung },
+  'POST /api/v1/admin/auftraege/:id/wiederholen': { eingabe: OHNE_RUMPF, antwort: AuftragAenderung },
+  'POST /api/v1/admin/auftraege/art/:art/jetzt': { eingabe: OHNE_RUMPF, antwort: AuftragsArtStart },
+  'DELETE /api/v1/admin/auftraege/art/:art': { eingabe: OHNE_RUMPF, antwort: AuftragsArtLeerung },
+  'POST /api/v1/admin/trigger-csv-sync': { eingabe: OHNE_RUMPF, antwort: VerwaltungMeldung },
+  'POST /api/v1/admin/reimport-instructions': { eingabe: OHNE_RUMPF, antwort: VerwaltungMeldung },
+  'POST /api/v1/admin/trigger-price-job': { eingabe: OHNE_RUMPF, antwort: VerwaltungGestartet },
+  'POST /api/v1/admin/default-condition': { eingabe: z.strictObject({ condition: GLOBALE_REGELN.default_price_condition }), antwort: VerwaltungZustand },
   'GET /api/v1/admin/job-status': { antwort: PreisJobStand },
-  'GET /api/v1/admin/protokoll': { antwort: ProtokollEintraege },
-  'GET /api/v1/admin/image-diag/:setNumber': { antwort: BildDiagnose },
-  'POST /api/v1/admin/forget-image-misses': { antwort: BildMerkerVergessen },
-  'GET /api/v1/admin/img-probe': { antwort: Diagnose },
-  'GET /api/v1/admin/price-probe': { antwort: Diagnose },
+  'GET /api/v1/admin/protokoll': { klein: true, antwort: ProtokollEintraege },
+  'GET /api/v1/admin/image-diag/:setNumber': { klein: true, antwort: BildDiagnose },
+  'POST /api/v1/admin/forget-image-misses': { eingabe: z.strictObject({ set_numbers: z.array(TEXT(40)).max(10_000).optional(), thumbs: JA_NEIN.optional() }), antwort: BildMerkerVergessen },
+  'GET /api/v1/admin/img-probe': { antwort: Diagnose, abfrage: abfrage({ url: Q.text(2048) }) },
+  'GET /api/v1/admin/price-probe': { antwort: Diagnose, abfrage: abfrage({ set: Q.text(64), live: Q.schalter }) },
   'GET /api/v1/': { antwort: Endpunkte },
 } satisfies Record<string, Route>;

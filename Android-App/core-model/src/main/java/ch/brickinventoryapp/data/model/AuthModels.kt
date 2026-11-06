@@ -77,7 +77,12 @@ data class LoginResponse(
 data class User(
     val id: Int,
     val username: String,
-    @SerialName("is_admin") val isAdmin: Boolean = false
+    @SerialName("is_admin") val isAdmin: Boolean = false,
+    /**
+     * Anmeldung und /auth/me: Verwalterrechte ohne zweiten Faktor. Bis er eingerichtet
+     * ist, beantwortet der Server nur /auth/me und die Einrichtung (ZweiterFaktorPflicht).
+     */
+    val zweiterFaktorPflicht: Boolean = false,
 )
 
 @Serializable
@@ -245,6 +250,20 @@ data class Profil(
     @SerialName("last_name") val lastName: String? = null,
     /** Ist die E-Mail-Adresse bestätigt? Seit API-Fassung 2 ein Wahrheitswert. */
     @SerialName("email_verified") val emailVerified: Boolean = false,
+    /** Beantragt, aber noch nicht über den Link bestätigt; bis dahin gilt [email]. */
+    @SerialName("email_neu") val emailNeu: String? = null,
+)
+
+/**
+ * Antwort auf PUT /api/v1/auth/profile. Eine neue Adresse gilt erst nach dem Link;
+ * [emailSent] sagt, ob die Mail dafür hinausging — ohne sie wartet die Änderung umsonst.
+ */
+@Serializable
+data class ProfilGespeichert(
+    val success: Boolean,
+    val error: String? = null,
+    val emailChanged: Boolean? = null,
+    val emailSent: Boolean? = null,
 )
 
 @Serializable
@@ -256,7 +275,7 @@ data class ProfilResponse(
 
 /**
  * Profil ändern — PUT /api/v1/auth/profile. Das Passwort ändert nur
- * /change-password; eine neue E-Mail-Adresse verlangt `passwordCurrent`.
+ * /change-password; jede Änderung verlangt `passwordCurrent`.
  */
 @Serializable
 data class ProfilAenderung(
@@ -264,9 +283,9 @@ data class ProfilAenderung(
     val email: String,
     @SerialName("first_name") val firstName: String? = null,
     @SerialName("last_name") val lastName: String? = null,
-    /** Nur bei neuer E-Mail-Adresse: Der Server verlangt dann das Passwort. */
+    /** Das aktuelle Passwort: Der Server bestätigt damit jede Profiländerung. */
     @SerialName("password_current") val passwordCurrent: String? = null,
-    /** Bei aktivem zweitem Faktor und neuer E-Mail-Adresse: TOTP- oder Wiederherstellungscode. */
+    /** Bei aktivem zweitem Faktor: TOTP- oder Wiederherstellungscode. */
     val code: String? = null,
 )
 

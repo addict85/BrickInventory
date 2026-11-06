@@ -1,36 +1,6 @@
 /**
  * Ausgehende Umleitungen: begrenzt, nur https, ohne Geheimnisse.
- *
- * ── Woher das kommt ─────────────────────────────────────────────────────────
- * Der Baum hatte die Regel an zwei Stellen richtig und an zwei Stellen gar
- * nicht:
- *
- *   RICHTIG   routes/imgProxy.ts holt mit `https.get`, das von sich aus keiner
- *             Umleitung folgt — plus eine Host-Allowlist.
- *   RICHTIG   Die Android-App baut ihren Update-Client mit
- *             `followSslRedirects(false)` (di/NetzModule.kt).
- *   FEHLTE    clients/rebrickable.ts folgte Umleitungen von Hand, an zwei
- *             Stellen, und pruefte dabei nichts.
- *
- * Drei Folgen, alle nachgemessen:
- *
- *  1. DER SCHLUESSEL WANDERTE MIT. Neun der zwoelf Aufrufer von
- *     httpsGetRobust schicken `Authorization: key <REBRICKABLE_API_KEY>`
- *     (rebrickable.ts 122/217/312/352/384, routes/parts.ts 125/149,
- *     src/teile/abfragen.ts 533, jobs/rebrickableCsvSync.ts 281). Der Kopf
- *     ging unveraendert an das Umleitungsziel.
- *  2. HTTPS -> HTTP war erlaubt (`protocol === 'https:' ? https : http`) —
- *     derselbe Schluessel im Klartext.
- *  3. KEIN ENDE: httpsGetRobust hatte keinen Umleitungszaehler. Eine Schleife
- *     A -> B -> A lief unbegrenzt, ausloesbar allein vom fremden Server.
- *
- * Geprueft wird hier die REGEL selbst (sie ist rein und damit direkt
- * aufrufbar) UND dass die beiden Stellen sie wirklich benutzen. Nur das eine
- * zu pruefen reichte in diesem Baum noch nie: Die frueheren Token-Regeln waren
- * jahrelang gruen, weil nur ihr Vorhandensein geprueft wurde und nie ihr
- * Gebrauch.
- *
- * Ausfuehren: npm test
+ * Ausführlich: docs/begruendungen/test/umleitungen.test.js.md#kopf
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -139,15 +109,7 @@ test('Hostprüfung: nur Standardport, keine Userinfo, Eimer exakt', () => {
 
 /**
  * Die Anleitungen der BrickLink Designer Programme.
- *
- * ── Marcos Serverprotokoll ─────────────────────────────────────────────────
- *
- *     [download] Adresse nicht in der Liste erlaubter Hosts:
- *                https://bdpinstructions.s3.amazonaws.com/11010.pdf
- *
- * Seitenweise, fuer jedes BDP-Set. Diese Adresse baut der Baum SELBST
- * (src/katalog/instructions.ts, Rueckfall 2) und lehnte sie dann ab: Der Rueckfall
- * konnte nie etwas holen, seit es ihn gibt.
+ * Ausführlich: docs/begruendungen/test/umleitungen.test.js.md#der-bdp-eimer-darf-geholt-werden-aber-nu
  */
 test('der BDP-Eimer darf geholt werden — aber nur er', () => {
   assert.ok(hostErlaubt('https://bdpinstructions.s3.amazonaws.com/11010.pdf',
@@ -155,13 +117,8 @@ test('der BDP-Eimer darf geholt werden — aber nur er', () => {
     'Der Rueckfall in src/katalog/instructions.ts baut genau diese Adresse — sie hier ' +
     'abzulehnen heisst, ihn bauen zu lassen und ins Leere laufen zu lassen');
 
-  // ── Und NICHT der halbe Anbieter ─────────────────────────────────────────
-  //
-  // Der Punkt dieses Falls. `amazonaws.com` in die Liste zu schreiben waere
-  // die bequeme Fassung gewesen — und die Erlaubnis fuer jeden fremden
-  // S3-Eimer der Welt, denn hostErlaubt() laesst echte Subdomains durch und
-  // ein Eimername IST eine Subdomain. Ohne diese Haelfte waere der Fall
-  // darueber auch mit der bequemen Fassung gruen.
+  // Und NICHT der halbe Anbieter
+  // Ausführlich: docs/begruendungen/test/umleitungen.test.js.md#for-stelle
   for (const fremd of ['https://amazonaws.com/x.pdf',
                        'https://s3.amazonaws.com/x.pdf',
                        'https://boeser-eimer.s3.amazonaws.com/x.pdf',
@@ -197,16 +154,17 @@ test('Abrufe nach draussen gehen nur über src/infra/abruf.ts', () => {
     'downloadFile prueft die Umleitungsziele nicht mehr — die Datei wird ausgeliefert');
 
   // ── Und die Liste steht nur noch an EINER Stelle ──────────────────────────
-  const proxy = ohneKommentare(read('routes/imgProxy.ts'));
+  const proxy = ohneKommentare(read('src/katalog/http/bildProxy.ts'));
   assert.doesNotMatch(proxy, /const ALLOWED_IMAGE_HOSTS = \[/,
-    'Die Bild-Allowlist ist zurueck in der Route — sie gehoert nach utils/, ' +
+    'Die Bild-Allowlist ist zurueck in der Route — sie gehoert nach src/infra/fremdeAdressen.ts, ' +
     'weil clients/ sie braucht und ein Client nicht von einer Route abhaengen soll');
   // Dies ist eine MUSTERregel: Sie faengt eine geloeschte Zeile. Dass der
   // Weg wirklich lebt, laeuft in test/verdrahtung-laeuft-db.test.js —
   // beides zusammen, nicht eines statt des anderen.
   assert.match(proxy, /hostErlaubt\(url, ERLAUBTE_BILD_HOSTS\)/,
     'Der Bild-Proxy prueft nicht mehr ueber die gemeinsame Regel');
-  assert.match(ohneKommentare(read('routes/api_v1/admin.ts')), /hostErlaubt\(url, ERLAUBTE_BILD_HOSTS\)/,
+  // Die Bild-Diagnose steht seit 05.11.2026 im Verwaltungsdienst.
+  assert.match(ohneKommentare(read('src/verwaltung/dienst.ts')), /hostErlaubt\(url, ERLAUBTE_BILD_HOSTS\)/,
     'Die Bild-Diagnose prueft nicht mehr ueber die gemeinsame Regel');
 });
 

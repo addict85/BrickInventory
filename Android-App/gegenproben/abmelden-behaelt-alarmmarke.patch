@@ -1,0 +1,17 @@
+Gegenprobe: Abmelden lässt die Marke des Preisalarms für das nächste Konto stehen
+Modul: core-data
+Test: ch.brickinventoryapp.AbmeldenRaeumtAllesTest
+Rot: nach dem Abmelden ist jede Ablage leer
+
+diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/TokenAblage.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/TokenAblage.kt
+index f79cce3..9b45289 100644
+--- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/TokenAblage.kt
++++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/TokenAblage.kt
+@@ -346,7 +346,6 @@ class TokenAblage @Inject constructor(
+             it.remove(USERNAME)
+             it.remove(ANGEMELDET_AM)
+             // Die Marke des Preisalarms gehört dem Konto; das nächste bekäme sonst dessen Stand.
+-            it.remove(GeraeteAblage.ALARM_MARKE)
+         }
+     }
+ }

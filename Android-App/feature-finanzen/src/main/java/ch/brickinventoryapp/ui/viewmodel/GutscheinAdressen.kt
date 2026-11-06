@@ -1,5 +1,7 @@
 package ch.brickinventoryapp.ui.viewmodel
 
+import ch.brickinventoryapp.ui.GutscheinPdfZiel
+
 /**
  * Die Adressen für den vorhandenen PDF-Betrachter. Er lädt sie mit dem
  * angemeldeten Client; eine eigene Kopie im Cache des Geräts wäre ein zweiter
@@ -12,7 +14,7 @@ fun gutscheinPdfAdresse(serverUrl: String, id: Int, ticket: String? = null): Str
 fun gutscheinExportAdresse(serverUrl: String, ticket: String? = null): String =
     mitTicket(serverUrl.trimEnd('/') + "/api/v1/vouchers/export/pdf", ticket)
 
-fun gutscheinPdfAdresse(serverUrl: String, ziel: ch.brickinventoryapp.ui.GutscheinPdfZiel): String =
+fun gutscheinPdfAdresse(serverUrl: String, ziel: GutscheinPdfZiel): String =
     if (ziel.id == null) gutscheinExportAdresse(serverUrl, ziel.ticket) else gutscheinPdfAdresse(serverUrl, ziel.id, ziel.ticket)
 
 /** Trägt die Adresse ein Ticket? Dann lädt der Betrachter in einem Zug, ohne Wiederholung. */

@@ -1,6 +1,8 @@
 package ch.brickinventoryapp.widget
 
+import ch.brickinventoryapp.util.fangeAusserAbbruch
 import android.content.Context
+import android.util.Base64
 import androidx.core.content.edit
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.unit.dp
@@ -33,77 +35,109 @@ import androidx.work.WorkManager
 import androidx.work.WorkerParameters
 import ch.brickinventoryapp.MainActivity
 import ch.brickinventoryapp.ressourcen.R
-import ch.brickinventoryapp.data.PreferencesManager
+import androidx.hilt.work.HiltWorker
+import ch.brickinventoryapp.data.Darstellungsablage
+import ch.brickinventoryapp.data.Zugangsdaten
+import dagger.assisted.Assisted
+import dagger.assisted.AssistedInject
 import ch.brickinventoryapp.data.api.ApiJson
 import ch.brickinventoryapp.data.repository.FinanzenRepository
+import ch.brickinventoryapp.util.AblageChiffre
+import ch.brickinventoryapp.util.Ablageschluessel
 import ch.brickinventoryapp.util.LanguageManager
-import ch.brickinventoryapp.util.fmtMoney
 import dagger.hilt.EntryPoint
 import dagger.hilt.InstallIn
 import dagger.hilt.android.EntryPointAccessors
 import dagger.hilt.components.SingletonComponent
 import java.util.concurrent.TimeUnit
-
+import ch.brickinventoryapp.data.repository.Ergebnis
 /**
  * Die zuletzt geholten Zahlen. Das Widget liest nur hier und zeigt so auch ohne
- * Netz den letzten Stand; holen tut allein [WidgetArbeiter].
+ * Netz den letzten Stand; holen tut allein [WidgetArbeiter]. Verschlüsselt wie die
+ * übrigen Ablagen; ein Klartext-Altbestand gilt als leer.
  */
 internal object WidgetAblage {
     private const val DATEI = "widget"
     private const val SCHLUESSEL = "zahlen"
 
-    fun lies(ctx: Context): WidgetZahlen? = runCatching {
-        ctx.getSharedPreferences(DATEI, Context.MODE_PRIVATE).getString(SCHLUESSEL, null)
-            ?.let { ApiJson.decodeFromString(WidgetZahlen.serializer(), it) }
-    }.getOrNull()
+    private fun chiffre(ctx: Context) = AblageChiffre {
+        EntryPointAccessors.fromApplication(ctx, WidgetZugang::class.java).ablage().fuer("widget")
+    }
+
+    /** Zweck und Schlüssel als AAD, wie im Antwort-Cache. */
+    private const val BINDUNG = "$DATEI/$SCHLUESSEL"
+
+    fun lies(ctx: Context): WidgetZahlen? {
+        val roh = ctx.getSharedPreferences(DATEI, Context.MODE_PRIVATE).getString(SCHLUESSEL, null) ?: return null
+        return runCatching {
+            val daten = Base64.decode(roh, Base64.NO_WRAP)
+            val verfahren = chiffre(ctx)
+            // Ein Stand ohne Bindung (ältere Fassung) wird einmal übernommen und gebunden neu abgelegt.
+            val text = verfahren.entschluessle(daten, BINDUNG)
+                ?: verfahren.entschluessleUngebunden(daten)?.also { ablegen(ctx, verfahren, it) }
+            text?.let { ApiJson.decodeFromString(WidgetZahlen.serializer(), it.toString(Charsets.UTF_8)) }
+        }.getOrNull()
+    }
 
     fun leeren(ctx: Context) {
         ctx.getSharedPreferences(DATEI, Context.MODE_PRIVATE).edit { remove(SCHLUESSEL) }
     }
 
-    fun schreibe(ctx: Context, z: WidgetZahlen) {
+    fun schreibe(ctx: Context, z: WidgetZahlen) =
+        ablegen(ctx, chiffre(ctx), ApiJson.encodeToString(WidgetZahlen.serializer(), z).toByteArray(Charsets.UTF_8))
+
+    private fun ablegen(ctx: Context, verfahren: AblageChiffre, text: ByteArray) {
         ctx.getSharedPreferences(DATEI, Context.MODE_PRIVATE).edit {
-            putString(SCHLUESSEL, ApiJson.encodeToString(WidgetZahlen.serializer(), z))
+            putString(SCHLUESSEL, Base64.encodeToString(verfahren.verschluessle(text, BINDUNG), Base64.NO_WRAP))
         }
     }
 }
 
 /**
- * Holt die Zahlen stündlich über die Repositories — mit deren Plattenspeicher
- * als Rückfall, wenn der Server schweigt. EntryPoint statt @HiltWorker wie beim
- * Preisalarm: weniger Apparat für einen Arbeiter.
+ * Was Glance-Widget und Ablage ausserhalb von Hilt brauchen. Ein Widget hat keinen
+ * Konstruktor, den Hilt füllen könnte; dort ist der EntryPoint der vorgesehene Weg.
  */
-class WidgetArbeiter(context: Context, params: WorkerParameters) : CoroutineWorker(context, params) {
+@EntryPoint
+@InstallIn(SingletonComponent::class)
+interface WidgetZugang {
+    fun zugangsdaten(): Zugangsdaten
+    fun darstellung(): Darstellungsablage
+    fun ablage(): Ablageschluessel
+}
 
-    @EntryPoint
-    @InstallIn(SingletonComponent::class)
-    interface Zugang {
-        fun finanzen(): FinanzenRepository
-        fun prefs(): PreferencesManager
-    }
+/**
+ * Holt die Zahlen stündlich über die Repositories — mit deren Plattenspeicher
+ * als Rückfall, wenn der Server schweigt.
+ */
+@HiltWorker
+class WidgetArbeiter @AssistedInject constructor(
+    @Assisted context: Context,
+    @Assisted params: WorkerParameters,
+    private val finanzen: FinanzenRepository,
+    private val zugang: Zugangsdaten,
+) : CoroutineWorker(context, params) {
 
     override suspend fun doWork(): androidx.work.ListenableWorker.Result =
-        runCatching { aktualisiere(applicationContext) }.fold(
+        fangeAusserAbbruch { aktualisiere(applicationContext) }.fold(
             { androidx.work.ListenableWorker.Result.success() },
             { androidx.work.ListenableWorker.Result.retry() },
         )
 
+    private suspend fun aktualisiere(ctx: Context) {
+        // Abgemeldet gibt es nichts zu zeigen; der alte Stand bliebe sonst fremd sichtbar.
+        if (zugang.tokenJetzt().isBlank()) {
+            WidgetAblage.leeren(ctx)
+            SammlungsWidget().updateAll(ctx)
+            return
+        }
+        val pnl = (finanzen.getPnl() as? Ergebnis.Success)?.data
+        val verlauf = (finanzen.getPortfolioHistory("week") as? Ergebnis.Success)?.data
+        widgetZahlen(pnl, verlauf, System.currentTimeMillis())?.let { WidgetAblage.schreibe(ctx, it) }
+        SammlungsWidget().updateAll(ctx)
+    }
+
     companion object {
         private const val NAME = "sammlungs-widget"
-
-        suspend fun aktualisiere(ctx: Context) {
-            val zugang = EntryPointAccessors.fromApplication(ctx, Zugang::class.java)
-            // Abgemeldet gibt es nichts zu zeigen; der alte Stand bliebe sonst fremd sichtbar.
-            if (zugang.prefs().tokenJetzt().isBlank()) {
-                WidgetAblage.leeren(ctx)
-                SammlungsWidget().updateAll(ctx)
-                return
-            }
-            val pnl = (zugang.finanzen().getPnl() as? ch.brickinventoryapp.data.repository.Result.Success)?.data
-            val verlauf = (zugang.finanzen().getPortfolioHistory("week") as? ch.brickinventoryapp.data.repository.Result.Success)?.data
-            widgetZahlen(pnl, verlauf, System.currentTimeMillis())?.let { WidgetAblage.schreibe(ctx, it) }
-            SammlungsWidget().updateAll(ctx)
-        }
 
         fun einplanen(ctx: Context) = runCatching {
             val auftrag = PeriodicWorkRequestBuilder<WidgetArbeiter>(1, TimeUnit.HOURS)
@@ -119,19 +153,20 @@ class WidgetArbeiter(context: Context, params: WorkerParameters) : CoroutineWork
 /** Sammlungswert, G&V heute und gesamt; ein Tipp öffnet die App. */
 class SammlungsWidget : GlanceAppWidget() {
     override suspend fun provideGlance(context: Context, id: GlanceId) {
-        val angemeldet = runCatching {
-            EntryPointAccessors.fromApplication(context, WidgetArbeiter.Zugang::class.java)
-                .prefs().tokenJetzt().isNotBlank()
-        }.getOrDefault(false)
+        val zugang = runCatching { EntryPointAccessors.fromApplication(context, WidgetZugang::class.java) }.getOrNull()
+        val angemeldet = fangeAusserAbbruch { zugang?.zugangsdaten()?.tokenJetzt()?.isNotBlank() == true }.getOrDefault(false)
+        // Geldwerte nur, wenn der Nutzer sie auf dem Startbildschirm erlaubt.
+        val zeigen = zugang?.darstellung()?.widgetWerteZeigen() == true
         val zahlen = widgetAnzeige(WidgetAblage.lies(context), angemeldet)
         // Die Texte in der Sprache der App, nicht des Systems (LanguageManager).
         val ctx = LanguageManager.localizedContext(context)
         val titel = ctx.getString(R.string.widget_titel)
         val zeilen = zahlen?.let {
+            val (wert, heute, gesamt) = widgetWerte(it, zeigen)
             listOf(
-                ctx.getString(R.string.widget_wert) to (it.wert?.let { w -> fmtMoney(w, it.waehrung) } ?: "—"),
-                ctx.getString(R.string.widget_heute) to gvText(it.heute, it.heuteProzent, it.waehrung),
-                ctx.getString(R.string.widget_gesamt) to gvText(it.gesamt, it.gesamtProzent, it.waehrung),
+                ctx.getString(R.string.widget_wert) to wert,
+                ctx.getString(R.string.widget_heute) to heute,
+                ctx.getString(R.string.widget_gesamt) to gesamt,
             )
         }
         val leer = ctx.getString(R.string.widget_leer)
@@ -149,7 +184,7 @@ class SammlungsWidget : GlanceAppWidget() {
             if (zeilen == null) {
                 Text(leer, style = TextStyle(fontSize = 12.sp, color = GlanceTheme.colors.onSurfaceVariant))
             } else for ((name, wert) in zeilen) {
-                Text(name, style = TextStyle(fontSize = 11.sp, color = GlanceTheme.colors.onSurfaceVariant))
+                Text(name, style = TextStyle(fontSize = 12.sp, color = GlanceTheme.colors.onSurfaceVariant))
                 Text(wert, style = TextStyle(fontSize = 15.sp, fontWeight = FontWeight.Medium, color = GlanceTheme.colors.onSurface))
             }
         }

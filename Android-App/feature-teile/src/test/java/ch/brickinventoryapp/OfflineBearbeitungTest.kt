@@ -12,7 +12,7 @@ import ch.brickinventoryapp.data.lokal.Offlineablage
 import ch.brickinventoryapp.data.lokal.ServerSender
 import ch.brickinventoryapp.data.lokal.SpeicherAusgang
 import ch.brickinventoryapp.data.lokal.SpeicherBestand
-import ch.brickinventoryapp.data.repository.Result
+import ch.brickinventoryapp.data.repository.Ergebnis
 import ch.brickinventoryapp.data.repository.FigurenRepository
 import ch.brickinventoryapp.data.repository.SetsRepository
 import ch.brickinventoryapp.data.repository.TeileRepository
@@ -29,25 +29,29 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.io.File
 import java.util.Collections
+import ch.brickinventoryapp.data.api.ApiJson
+import ch.brickinventoryapp.data.api.BrickApiService
+import java.net.ConnectException
+import java.net.SocketTimeoutException
 
 /**
  * Offline bearbeiten von Anfang bis Ende: Repository, Ausgang und Sender gegen
  * einen Testserver, der die Verbindung auf Wunsch abreisst.
  *
- * Gegenproben (30.10.2026, gemessen):
+ * Gegenproben:
  *   A  in RepoBasis.schreibe den Zweig für transiente Fehler entfernt → rot
- *      „ohne Verbindung geht die Menge in den Ausgang“ (Result.Error statt gepuffert)
+ *      „ohne Verbindung geht die Menge in den Ausgang“ (Ergebnis.Error statt gepuffert)
  *   B  in RepoBasis.schreibe die Prüfung `ablage.wartet()` entfernt → rot
  *      „wartet etwas, geht Neues dahinter“ (die zweite Änderung ging direkt raus)
  *   C  in ServerSender für SetMenge `quantity = schritt` statt `quantityDelta` →
  *      rot „gesendet wird der Schritt“
  *   D  in RepoBasis.abgeglichen den Rückfall auf die Ablage entfernt → rot
  *      „ohne Verbindung kommt die Liste aus der Ablage“
- *   (E–I gemessen am 31.10.2026)
+ *   (E–I gemessen)
  *   E  in RepoBasis.schreibe beim Puffern nach dem direkten Versuch einen neuen
  *      Schlüssel nehmen (`puffere(bearbeitung)`) → rot „… denselben Schlüssel“
  *   F  in TeileRepository.deletePart wieder direkt `safeCall` statt `schreibe` →
- *      rot „offline gelöscht …“ (Result.Error statt gepuffert)
+ *      rot „offline gelöscht …“ (Ergebnis.Error statt gepuffert)
  *   G  in LokaleAnwendung bei TeilLoeschen `filterNot` → `filter` → rot „… verschwindet sofort“
  *   H  in TeileRepository.updatePart `quantityDelta = null` → rot „… als Menge und Schritt“
  *   I  in ServerSender beim Löschen `einordnen` statt `einordnenLoeschen` → rot
@@ -63,7 +67,7 @@ class OfflineBearbeitungTest {
         /** Je Anfrage „METHODE pfad“ → Idempotency-Key, null ohne. */
         val schluessel: MutableList<Pair<String, String?>> = Collections.synchronizedList(mutableListOf())
         val codes: MutableMap<String, Pair<Int, String>> = Collections.synchronizedMap(mutableMapOf())
-        val server = MockWebServer().apply {
+        val mock = MockWebServer().apply {
             dispatcher = object : Dispatcher() {
                 override fun dispatch(request: RecordedRequest): MockResponse {
                     val pfad = request.path.orEmpty().substringBefore('?')
@@ -92,19 +96,19 @@ class OfflineBearbeitungTest {
     private val cacheDir = File(System.getProperty("java.io.tmpdir"), "bim-offline-${System.nanoTime()}")
     private val ablage = Offlineablage(SpeicherBestand(), SpeicherAusgang(), { "konto" })
     /** Ohne Netz: Die Verbindung kommt gar nicht erst zustande, wie im Funkloch. */
-    private val api = retrofit2.Retrofit.Builder().baseUrl(s.server.url("/"))
+    private val api = retrofit2.Retrofit.Builder().baseUrl(s.mock.url("/"))
         .client(okhttp3.OkHttpClient.Builder().addInterceptor { kette ->
-            if (s.offline) throw java.net.ConnectException("kein Netz")
+            if (s.offline) throw ConnectException("kein Netz")
             val antwort = kette.proceed(kette.request())
             if (s.antwortVerlieren) {
                 s.antwortVerlieren = false
                 antwort.close()
-                throw java.net.SocketTimeoutException("Antwort verloren")
+                throw SocketTimeoutException("Antwort verloren")
             }
             antwort
         }.build())
-        .addConverterFactory(ch.brickinventoryapp.data.api.ApiJson.asConverterFactory("application/json".toMediaType()))
-        .build().create(ch.brickinventoryapp.data.api.BrickApiService::class.java)
+        .addConverterFactory(ApiJson.asConverterFactory("application/json".toMediaType()))
+        .build().create(BrickApiService::class.java)
     private val repo = SetsRepository(api, ResponseCache { cacheDir }, ablage)
     private val teile = TeileRepository(api, ResponseCache { cacheDir }, ablage)
     private val figuren = FigurenRepository(api, ResponseCache { cacheDir }, ablage)
@@ -112,16 +116,16 @@ class OfflineBearbeitungTest {
 
     @After
     fun zu() {
-        s.server.shutdown()
+        s.mock.shutdown()
         cacheDir.deleteRecursively()
     }
 
     @Test
     fun `ohne Verbindung geht die Menge in den Ausgang und gesendet wird der Schritt`() = runBlocking {
-        assertTrue(repo.getSets() is Result.Success)
+        assertTrue(repo.getSets() is Ergebnis.Success)
         s.offline = true
         val r = repo.aendereMengeUm("10001-1", 1)
-        assertTrue("Erwartet: offline gespeichert, kam $r", r is Result.Success && r.gepuffert)
+        assertTrue("Erwartet: offline gespeichert, kam $r", r is Ergebnis.Success && r.gepuffert)
         assertEquals(2, ablage.lies(Faecher.SETS)!!.liste.single().quantity)
         assertEquals(listOf(Bearbeitung.SetMenge("10001-1", 1)), ablage.ausgang.alle("konto").map { it.bearbeitung })
 
@@ -138,8 +142,8 @@ class OfflineBearbeitungTest {
         s.offline = true
         repo.aendereMengeUm("10001-1", 1)
         val r = repo.getSets()
-        assertTrue("Erwartet: Erfolg aus der Ablage, kam $r", r is Result.Success && r.veraltet)
-        assertEquals(2, (r as Result.Success).data.sets.single().quantity)
+        assertTrue("Erwartet: Erfolg aus der Ablage, kam $r", r is Ergebnis.Success && r.veraltet)
+        assertEquals(2, (r as Ergebnis.Success).data.sets.single().quantity)
     }
 
     @Test
@@ -151,7 +155,7 @@ class OfflineBearbeitungTest {
         // Der Server ist wieder da, aber der Ausgang ist noch nicht gesendet:
         // Eine direkte Anfrage überholte die erste Änderung.
         val r = repo.aendereMengeUm("10001-1", 1)
-        assertTrue(r is Result.Success && r.gepuffert)
+        assertTrue(r is Ergebnis.Success && r.gepuffert)
         assertEquals(emptyList<String>(), s.anfragen.filter { it.startsWith("PUT") })
         abgleich.sende()
         assertEquals(2, s.anfragen.count { it.startsWith("PUT /api/v1/sets/10001-1") })
@@ -161,7 +165,7 @@ class OfflineBearbeitungTest {
     fun `online geht eine Änderung direkt und steht auch lokal`() = runBlocking {
         repo.getSets()
         val r = repo.aendereMengeUm("10001-1", 2)
-        assertTrue(r is Result.Success && !r.gepuffert)
+        assertTrue(r is Ergebnis.Success && !r.gepuffert)
         assertEquals(1, s.anfragen.count { it.startsWith("PUT") })
         assertEquals(3, ablage.lies(Faecher.SETS)!!.liste.single().quantity)
     }
@@ -189,7 +193,7 @@ class OfflineBearbeitungTest {
         repo.getSets()
         s.antwortVerlieren = true
         val r = repo.aendereMengeUm("10001-1", 1)
-        assertTrue("Erwartet: gepuffert nach verlorener Antwort, kam $r", r is Result.Success && r.gepuffert)
+        assertTrue("Erwartet: gepuffert nach verlorener Antwort, kam $r", r is Ergebnis.Success && r.gepuffert)
         assertEquals(Abgleichsergebnis.FERTIG, abgleich.sende())
         val puts = s.schluessel.filter { it.first == "PUT /api/v1/sets/10001-1" }.map { it.second }
         assertEquals(2, puts.size)
@@ -203,13 +207,13 @@ class OfflineBearbeitungTest {
         s.offline = true
         for (r in listOf(teile.deletePart("3001", 5, owner = 7), figuren.deleteMinifig("sw0001", owner = 7),
                          repo.loescheMerkposten("20001-1", "N", 7)))
-            assertTrue("Erwartet: offline gespeichert, kam $r", r is Result.Success && r.gepuffert)
+            assertTrue("Erwartet: offline gespeichert, kam $r", r is Ergebnis.Success && r.gepuffert)
         assertEquals("das gelöschte Teil verschwindet sofort", listOf("3002"),
             ablage.lies(Faecher.MANUELLE_TEILE)!!.liste.map { it.partNumber })
         assertEquals(emptyList<String>(), ablage.lies(Faecher.MANUELLE_FIGUREN)!!.liste.map { it.figNumber })
         assertEquals(emptyList<String>(), ablage.lies(Faecher.MERKLISTE)!!.liste.map { it.setNumber })
         val offline = teile.getManualParts()
-        assertTrue(offline is Result.Success && offline.data.parts.map { it.partNumber } == listOf("3002"))
+        assertTrue(offline is Ergebnis.Success && offline.data.parts.map { it.partNumber } == listOf("3002"))
 
         s.offline = false
         assertEquals(Abgleichsergebnis.FERTIG, abgleich.sende())
@@ -240,8 +244,8 @@ class OfflineBearbeitungTest {
     @Test
     fun `eine Mengenänderung an Teil und Figur reist als Menge und Schritt`() = runBlocking {
         teile.getManualParts(); figuren.getManualMinifigs()
-        assertTrue(teile.updatePart("3001", 5, quantity = 7, unitPrice = null) is Result.Success)
-        assertTrue(figuren.updateMinifig("sw0001", quantity = 1, unitPrice = null) is Result.Success)
+        assertTrue(teile.updatePart("3001", 5, quantity = 7, unitPrice = null) is Ergebnis.Success)
+        assertTrue(figuren.updateMinifig("sw0001", quantity = 1, unitPrice = null) is Ergebnis.Success)
         val teil = s.anfragen.single { it.startsWith("PUT /api/v1/parts/3001/5") }
         assertTrue(teil, "\"quantity\":7" in teil && "\"quantity_delta\":2" in teil)
         val figur = s.anfragen.single { it.startsWith("PUT /api/v1/minifigs/sw0001") }

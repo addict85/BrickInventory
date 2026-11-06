@@ -3,9 +3,7 @@
  * Ersatzteil; Name, Kategorie, Farbe und Bild stehen in den Katalogen. Die View
  * set_parts_catalog zeigt den Lesestellen dieselben Spalten — und wie vorher
  * nur geprüfte Werte, keinen eingetippten Platzhalter eines Kontos.
- *
- * Die Migration läuft hier auf einem Altbestand in einem eigenen Schema
- * (search_path), damit die echte Datenbank unberührt bleibt.
+ * Ausführlich: docs/begruendungen/test/set-teile-schlank-db.test.js.md#kopf
  *
  * Gegenproben (am 28.10.2026 gemessen):
  *   A  im View den Filter `CASE WHEN pc.name_von IS NULL …` weggelassen
@@ -24,17 +22,13 @@ const path = require('node:path');
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
 const _req = require('./helpers/sources').buildAndRequire();
+const { dbOderSkip } = require('./helpers/db');
 const db = _req('db/database.js');
 const MIGRATION = fs.readFileSync(path.join(__dirname, '..', 'db/migrations/0062-set-teile-schlank.sql'), 'utf8');
 const SCHEMA = `probe0062_${process.pid}`;
 
 test('Migration 0062: schlanke Setliste', { concurrency: 1 }, async (t) => {
-  try { await db.initSchema(); }
-  catch (e) {
-    if (process.env.REQUIRE_DB === '1')
-      throw new Error(`REQUIRE_DB=1, aber die Test-DB ist nicht erreichbar: ${e.message}`);
-    t.skip('Test-DB nicht erreichbar'); return;
-  }
+  if (!await dbOderSkip(t, _req, { migrieren: false })) return;
   const c = await db.pool.connect();
   t.after(async () => {
     await c.query(`DROP SCHEMA IF EXISTS ${SCHEMA} CASCADE`).catch(() => {});
@@ -47,6 +41,9 @@ test('Migration 0062: schlanke Setliste', { concurrency: 1 }, async (t) => {
   // Der Altbestand: Kataloge wie heute, die Setliste in ihrer Form vor 0062.
   await c.query(`CREATE TABLE part_catalog (LIKE public.part_catalog INCLUDING ALL)`);
   await c.query(`CREATE TABLE part_color_catalog (LIKE public.part_color_catalog INCLUDING ALL)`);
+  // Die Herkunftsspalten von 0060 bis 0093.
+  await c.query(`ALTER TABLE part_catalog ADD COLUMN name_von integer, ADD COLUMN kategorie_von integer`);
+  await c.query(`ALTER TABLE part_color_catalog ADD COLUMN farbname_von integer, ADD COLUMN farbcode_von integer, ADD COLUMN bild_von integer`);
   await c.query(`CREATE TABLE set_parts_catalog (
     set_number text NOT NULL, part_number text NOT NULL, part_name text, color_id integer NOT NULL,
     color_name text, color_hex text, category_name text, image_url text, image_local text,

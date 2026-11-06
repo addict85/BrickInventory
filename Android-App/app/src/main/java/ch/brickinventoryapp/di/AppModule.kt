@@ -14,6 +14,7 @@ import dagger.Provides
 import dagger.hilt.InstallIn
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
+import ch.brickinventoryapp.ui.Widgetanstoss
 
 /**
  * Was nur die App kennt: ihre Activity und ihr Widget. Die Module darunter sehen
@@ -34,6 +35,10 @@ object AppModule {
     fun provideAppFassung(): AppFassung = AppFassung(BuildConfig.VERSION_NAME, BuildConfig.VERSION_CODE)
 
     /** Das Widget zeigt nach dem Abmelden sonst die Zahlen des alten Kontos. */
+    @Provides
+    fun provideWidgetanstoss(@ApplicationContext ctx: Context): Widgetanstoss =
+        Widgetanstoss { SammlungsWidget().updateAll(ctx) }
+
     @Provides
     fun provideAbmeldehaken(@ApplicationContext ctx: Context): Abmeldehaken = Abmeldehaken {
         WidgetAblage.leeren(ctx)

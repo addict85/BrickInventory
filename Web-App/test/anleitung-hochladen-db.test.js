@@ -11,6 +11,9 @@
  *   D  vorDemUpload aus der Route entfernt → rot: „abgewiesen, bevor der
  *      Inhalt ankommt“ (keine Antwort, solange der Inhalt fehlt) und „für ein
  *      Set, das das Konto nicht hat“ — die Besitzprüfung steht jetzt dort (28.10.2026)
+ *   E  (04.11.2026) chmod der Datei im Upload entfernt → rot: „nur für den Dienst
+ *      lesbar“ (0644); privaterOrdner() ohne chmod → rot: dieselbe Prüfung
+ *      (der schon bestehende Ordner blieb 0755)
  *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL.
  */
@@ -23,6 +26,7 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 process.env.SESSION_SECRET = 'test-secret-lang-genug-fuer-die-pruefung';
 
 const _req = require('./helpers/sources').buildAndRequire();
+const { dbOderSkip } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
 const { DATA_DIR } = _req('src/infra/appPaths.js');
 const db = _req('db/database.js');
@@ -30,14 +34,7 @@ const SET = '99073-1', NAME = `anl_hoch_${process.pid}`;
 const PDF = Buffer.from('%PDF-1.4\n1 0 obj<<>>endobj\ntrailer<<>>\n%%EOF\n');
 
 test('Anleitung hochladen', { concurrency: 1 }, async (t) => {
-  try { await db.initSchema(); }
-  catch (e) {
-    if (process.env.REQUIRE_DB === '1')
-      throw new Error(`REQUIRE_DB=1, aber die Test-DB ist nicht erreichbar: ${e.message}`);
-    t.skip('Test-DB nicht erreichbar'); return;
-  }
-  const client = await db.pool.connect();
-  try { await _req('db/migrate.js').runMigrations(client); } finally { client.release(); }
+  if (!await dbOderSkip(t, _req)) return;
 
   await db.run('DELETE FROM users WHERE username = $1', [NAME]);
   const uid = (await db.get(`INSERT INTO users (username, password_hash, is_active, email_verified)
@@ -68,6 +65,16 @@ test('Anleitung hochladen', { concurrency: 1 }, async (t) => {
     const r = await hochladen(PDF, 'application/pdf', 'anleitung.pdf');
     assert.equal(r.status, 200, JSON.stringify(r.body));
     assert.equal(dateien().length, 1);
+  });
+
+  await t.test('nur für den Dienst lesbar, auch in einem älteren Ordner', async () => {
+    for (const o of [path.dirname(ordner), ordner]) fs.chmodSync(o, 0o755);
+    const r = await hochladen(PDF, 'application/pdf', 'zweite.pdf');
+    assert.equal(r.status, 200, JSON.stringify(r.body));
+    const rechte = (p) => (fs.statSync(p).mode & 0o777).toString(8);
+    const datei = path.join(ordner, path.basename(r.body.instruction.url));
+    assert.deepEqual([rechte(datei), rechte(ordner), rechte(path.dirname(ordner))], ['600', '700', '700']);
+    fs.rmSync(datei);
   });
 
   await t.test('ein Text als PDF', async () => {

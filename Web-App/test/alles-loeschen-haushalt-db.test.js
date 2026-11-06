@@ -1,37 +1,6 @@
 /**
  * „Alle meine Sets löschen" löscht MEINE Sets — nicht die des Haushalts.
- *
- * ── Der Befund ──────────────────────────────────────────────────────────────
- * Der Knopf in den Einstellungen tat zwei Dinge:
- *
- *     const s = await api('GET','/v1/sets');
- *     for (const set of s.sets||[]) await api('DELETE', `/v1/sets/${…}`);
- *
- * Beides ohne Blickfeld. `/v1/sets` liefert ohne `accounts` den ganzen
- * HAUSHALT, und `DELETE /v1/sets/:nr` löschte mit writableIds(), also im
- * vollen Schreib-Blickfeld.
- *
- * NACHGEMESSEN mit zwei verknüpften Konten (Hauptkonto besitzt 75192-1, das
- * Unterkonto 75192-1 und 21318-1 samt Teilen und Minifiguren):
- *
- *     „Alle meine Sets loeschen" listet: [75192-1, 21318-1]
- *     DELETE laeuft ueber writableIds(haupt) = [2, 3]
- *     NACHHER  haupt: Sets [], kind: Sets [], Teile 0, Figuren 0
- *
- * Das Unterkonto verlor seine gesamte Sammlung — darunter ein Set, das das
- * Hauptkonto nie besass. Der Knopf heisst „Alle MEINE Sets löschen", der
- * Text verspricht „Deine gesamte Sammlung".
- *
- * ── Warum der Test gegen die ECHTE Route läuft ──────────────────────────────
- * Eine Quelltextprüfung hätte hier nur die beiden `accounts=own` bestätigt.
- * Der Schaden entsteht aber erst aus dem Zusammenspiel von Auflisten und
- * Löschen — und genau das prüft nur ein Durchlauf gegen die Datenbank.
- *
- * ── Seit dem Papierkorb ─────────────────────────────────────────────────────
- * Der Knopf ruft jetzt EINEN Endpunkt (DELETE /api/v1/bestand), der Sets,
- * manuelle Teile und Figuren des EIGENEN Kontos in den Papierkorb legt. Die
- * Regel „nur meine" steht damit am Server; geprüft wird sie hier am selben
- * Haushalt wie zuvor.
+ * Ausführlich: docs/begruendungen/test/alles-loeschen-haushalt-db.test.js.md#kopf
  *
  * Gegenprobe (01.11.2026 gemessen): bestaetigePasswort() aus DELETE /bestand
  * entfernt → rot: „ohne Passwort gelöscht“ (Code fehlt in der Antwort).
@@ -65,18 +34,8 @@ test('Alles-Loeschen fasst die verknuepften Konten nicht an', async (t) => {
   await db.run('DROP SCHEMA public CASCADE');
   await db.run('CREATE SCHEMA public');
   await db.initSchemaOnce();
-  // ── Und die MIGRATIONEN, nicht nur das Schema ───────────────────────────
-  //
-  // Diese Datei loescht das Schema und baut es neu auf. initSchemaOnce()
-  // laeuft dabei voll durch (die Marke in schema_meta ist mit weg), bleibt
-  // aber auf dem Stand von db/schema.sql — also VOR allen Migrationen. Das
-  // ist nicht nur fuer diese Datei falsch, sondern fuer jede danach: Sie erbt
-  // eine halbe Datenbank.
-  //
-  // GEMESSEN beim Umzug der Teilemengen (Migration 0038): db/schema.sql legt
-  // `parts.quantity DEFAULT 1` an, die Katalogzeilen tragen die echte Zahl.
-  // Die naechste Datei, die die Migrationen laufen liess, brach ab — „Bei 8
-  // Set-Teilen weicht parts.quantity vom Katalog ab". Der Riegel hatte recht.
+  // Und die MIGRATIONEN, nicht nur das Schema
+  // Ausführlich: docs/begruendungen/test/alles-loeschen-haushalt-db.test.js.md#stelle
   {
     const mc = await db.pool.connect();
     try { await _req('db/migrate.js').runMigrations(mc); } finally { mc.release(); }
@@ -137,12 +96,15 @@ test('Alles-Loeschen fasst die verknuepften Konten nicht an', async (t) => {
 
 test('accounts kann das Loesch-Blickfeld nur einschraenken, nie erweitern', () => {
   // Ein Blickfeld-Parameter, der etwas ÖFFNEN kann, wäre ein Zugriffsweg statt
-  // einer Sicherung. Die Route schneidet deshalb gegen writableIds().
+  // einer Sicherung. Der Dienst schneidet deshalb gegen writableIds(); die
+  // Route gibt nur die Sicht weiter (Verhalten: blickfeld-dienste-db.test.js).
   const src = fs.readFileSync(path.join(ROOT, 'routes/api_v1/sets.ts'), 'utf8');
   const i = src.indexOf("router.delete('/sets/:setNumber'");
   assert.ok(i > 0, 'Löschroute nicht gefunden');
-  const rumpf = src.slice(i, i + 900);
-  assert.match(rumpf, /schreibbar\.includes\(/,
+  assert.match(src.slice(i, i + 900), /loescheSetFuer\(sichtVon\(req\)/, 'Die Route löscht nicht über den Dienst');
+  const dienst = require('./helpers/sources').funktionsRumpf(
+    fs.readFileSync(path.join(ROOT, 'src/sets/abfragen.ts'), 'utf8'), 'loescheSetFuer');
+  assert.match(dienst, /schreibbar\.includes\(/,
     'Die gewählte Menge muss gegen writableIds() geschnitten werden');
 });
 
@@ -156,7 +118,7 @@ test('der Knopf überlässt die Auswahl dem Server', () => {
   const block = src.slice(i, src.indexOf('\n};', i));
   assert.match(block, /api\('DELETE','\/v1\/bestand',\s*\{\s*password\b/, 'Der Knopf ruft DELETE /v1/bestand mit Passwort');
   assert.doesNotMatch(block, /\/v1\/sets/, 'Der Knopf listet und löscht wieder selbst');
-  const loeschen = fs.readFileSync(path.join(ROOT, 'src/bestand/loeschen.ts'), 'utf8');
+  const loeschen = fs.readFileSync(path.join(ROOT, 'src/sammlung/loeschen.ts'), 'utf8');
   assert.match(loeschen, /deleteSet\(\[uid\]/, 'Sets werden nur im EIGENEN Konto gelöscht');
 });
 

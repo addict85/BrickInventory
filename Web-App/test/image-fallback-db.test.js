@@ -1,26 +1,10 @@
 /**
  * Bildadresse: Rückfall auf den gemeinsamen Katalog — gegen echte Datenbank.
  *
- * ── Woher dieser Test kommt (Marcos Bericht, Nachtrag 36) ───────────────────
- * Symptom: Bei einem neu erfassten Set wurde das Bild NIRGENDS angezeigt —
- * weder in der Android-App noch in der Webapp, weder in der Liste noch in der
- * Detailansicht. Marcos Erwartung, wörtlich: „Wenn das Bild lokal noch nicht
- * vorhanden ist, soll dieses direkt via Proxy vom CDN geholt und angezeigt
- * werden."
- *
- * Ursache: Die Liste las die Bildadresse ausschliesslich aus der EIGENEN
- * sets-Zeile. Steht dort nichts — der Download beim Erfassen lief in seine
- * 15-Sekunden-Frist, das Set kam über CSV-Import oder Barcode-Scan, oder eine
- * ältere Zeile hat das Feld nie gefüllt —, lieferte die API image_url: null
- * UND image_local: null. Beide Clients hatten damit nichts in der Hand und
- * zeigten den Platzhalter, obwohl die CDN-Adresse im set_catalog längst
- * bekannt war.
- *
- * set_catalog wird beim Erfassen jedes Sets gefüllt und ist kontoübergreifend
- * — der Rückfall greift deshalb auch für Sets, die ein anderes
- * Haushaltsmitglied zuerst erfasst hat. Die Auflösung zum Proxy machen die
- * Clients danach von selbst (imgUrl() in der Webapp, resolveThumbUrl() in der
- * App); beide brauchen dafür nur eine nicht-leere Adresse.
+ * Fehlt die Bildadresse in der eigenen sets-Zeile (Download-Frist, CSV-Import,
+ * Barcode), kommt sie aus dem kontoübergreifenden set_catalog. Ohne den
+ * Rückfall lieferte die API image_url: null, und beide Clients zeigten den
+ * Platzhalter, obwohl die CDN-Adresse bekannt war; den Proxy wählen sie selbst.
  *
  * Gegenprobe (durchgeführt): COALESCE wieder auf s.image_url zurückgedreht →
  * der erste Teilschritt hier wird rot.
@@ -33,18 +17,14 @@ const assert = require('node:assert/strict');
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
 const _req = require('./helpers/sources').buildAndRequire();
+const { dbOderSkip } = require('./helpers/db');
 const db = _req('db/database.js');
 const { haeltSet } = require('./helpers/bestand');
 
 test('fehlt die Bildadresse am Set, kommt sie aus dem gemeinsamen Katalog',
   { concurrency: 1 }, async (t) => {
 
-  try { await db.initSchema(); }
-  catch (e) {
-    if (process.env.REQUIRE_DB === '1')
-      throw new Error(`REQUIRE_DB=1, aber die Test-DB ist nicht erreichbar: ${e.message}`);
-    t.skip('Test-DB nicht erreichbar'); return;
-  }
+  if (!await dbOderSkip(t, _req, { migrieren: false })) return;
 
   const USERNAME = 'img-fallback-test';
   const OHNE = '60445-1';   // Bild nur im Katalog
@@ -59,17 +39,8 @@ test('fehlt die Bildadresse am Set, kommt sie aus dem gemeinsamen Katalog',
   await db.run(`DELETE FROM sets WHERE set_number = ANY($1)`, [[OHNE, MIT]]);
   await db.run(`DELETE FROM set_catalog WHERE set_number = ANY($1)`, [[OHNE, MIT]]);
 
-  // ── Was Migration 0033 an diesem Aufbau geaendert hat ──────────────────
-  //
-  // Vorher gab es ZWEI Orte fuer die Bildadresse: die eigene sets-Zeile und
-  // den Katalog. Der Test stellte beide Faelle her — Zeile leer (der Katalog
-  // muss einspringen) und Zeile gefuellt (sie darf nicht ueberschrieben
-  // werden). Genau diesen Rueckfall gibt es nicht mehr: Die Adresse steht nur
-  // im Katalog.
-  //
-  // Geblieben ist die Aussage, auf die es Marco ankam („wenn das Bild lokal
-  // noch nicht vorhanden ist, soll es direkt via Proxy vom CDN geholt
-  // werden"): Ein Set ohne lokale Datei muss die CDN-Adresse mitliefern.
+  // Was Migration 0033 an diesem Aufbau geaendert hat
+  // Ausführlich: docs/begruendungen/test/image-fallback-db.test.js.md#stelle
   await haeltSet(db, uid, OHNE, 1);
   await db.run(`INSERT INTO set_catalog (set_number,name,image_url) VALUES ($1,'F1 Truck',$2)
                 ON CONFLICT (set_number) DO UPDATE SET image_url=EXCLUDED.image_url`, [OHNE, CDN]);

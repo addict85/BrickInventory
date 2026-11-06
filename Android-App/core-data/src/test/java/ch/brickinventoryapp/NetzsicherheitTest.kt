@@ -13,21 +13,24 @@ import javax.xml.parsers.DocumentBuilderFactory
  * Release-Build verbietet sie Klartext überall, im Debug-Build erlaubt sie ihn
  * genau zu den Hosts, die auch der Wächter durchlässt.
  *
- * Gegenproben (01.11.2026, gemessen):
+ * Gegenproben:
  *   A  in src/main die base-config wieder auf cleartextTrafficPermitted="true" →
  *      rot „der Release-Build erlaubt nirgends Klartext“
  *   B  in src/debug einen weiteren Host (192.168.1.50) mit Klartext → rot „der
  *      Debug-Build erlaubt Klartext nur …“
  *   C  in src/main ein <certificates src="user" /> → rot „beide Fassungen
  *      vertrauen nur System-CAs“
- *   D  in data_extraction_rules.xml unter device-transfer die Zeile widget.xml
- *      entfernt → rot „Kontodaten verlassen das Geraet nicht“
- *   E  in backup_rules.xml die Zeile files/vorschau entfernt → rot (dieselbe Prüfung)
- *   F  (02.11.2026) in backup_rules.xml die Zeile design_spiegel.xml entfernt →
- *      rot „Kontodaten verlassen das Geraet nicht“ (Pins, Schalter Nutzer-CA)
- *   G  (03.11.2026) in buildInterceptorClient `.followRedirects(false)` entfernt →
+ *   G  in buildInterceptorClient `.followRedirects(false)` entfernt →
  *      rot „die Server-Clients folgen keiner Umleitung selbst“. Was der Wächter
  *      stattdessen tut, prüft UmleitungTest ausgeführt.
+ *   H  in src/main die Zeile
+ *      <certificateTransparency> der base-config entfernt → rot „der Release-Build
+ *      verlangt Certificate Transparency“
+ *   J  gegenproben/debug-ohne-ct.patch: in
+ *      src/debug <certificateTransparency> der base-config entfernt → rot „der Debug-Build …“
+ *   I  in data_extraction_rules.xml unter device-transfer `database` entfernt → rot
+ *      „Kontodaten verlassen das Geraet nicht“; gegenproben/workdb-wird-uebertragen.patch
+ *   K  in backup_rules.xml `root` entfernt → rot, derselbe Test
  */
 class NetzsicherheitTest {
 
@@ -64,6 +67,24 @@ class NetzsicherheitTest {
     }
 
     @Test
+    fun `der Release-Build verlangt Certificate Transparency`() {
+        val cfg = lies("main")
+        val bereiche = cfg.kinder("domain-config") + cfg.kinder("base-config")
+        val ohne = bereiche.filter { b -> b.kinder("certificateTransparency").none { it.getAttribute("enabled") == "true" } }
+        assertTrue("Ohne Certificate Transparency: " + ohne.map { it.tagName }, bereiche.isNotEmpty() && ohne.isEmpty())
+    }
+
+    /** Wie Release, ausser für die Entwicklungshosts im Klartext; sonst prüfte der Debug-Bau eine andere Kette. */
+    @Test
+    fun `der Debug-Build verlangt Certificate Transparency wie Release`() {
+        val cfg = lies("debug")
+        val bereiche = (cfg.kinder("domain-config") + cfg.kinder("base-config"))
+            .filter { it.getAttribute("cleartextTrafficPermitted") != "true" }
+        val ohne = bereiche.filter { b -> b.kinder("certificateTransparency").none { it.getAttribute("enabled") == "true" } }
+        assertTrue("Ohne Certificate Transparency: " + ohne.map { it.tagName }, bereiche.size == 2 && ohne.isEmpty())
+    }
+
+    @Test
     fun `beide Fassungen vertrauen nur System-CAs`() {
         for (variante in listOf("main", "debug")) {
             val quellen = lies(variante).alle("certificates").map { it.getAttribute("src") }
@@ -91,8 +112,8 @@ class NetzsicherheitTest {
     /** Die dritte Linie: Was zum Konto gehört, wandert weder per Transfer noch per Sicherung mit. */
     @Test
     fun `Kontodaten verlassen das Geraet nicht`() {
-        val noetig = setOf("file:datastore", "database:bestand.db", "sharedpref:widget.xml",
-            "sharedpref:design_spiegel.xml", "file:vorschau", "file:pdf", "file:update", "external:pdf")
+        // Ganze Domänen (sec17 B-N13): Eine neue Ablage geht nicht mit, nur weil sie hier fehlt.
+        val noetig = setOf("root:.", "file:.", "database:.", "external:.", "device_root:.")
         val r = regeln("data_extraction_rules.xml")
         val listen = mapOf(
             "cloud-backup" to r.alle("cloud-backup").single().ausgenommen(),

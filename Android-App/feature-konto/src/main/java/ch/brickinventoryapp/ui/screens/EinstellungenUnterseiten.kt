@@ -1,28 +1,23 @@
 package ch.brickinventoryapp.ui.screens
 
-import androidx.compose.ui.semantics.heading
-import androidx.compose.ui.semantics.semantics
+import ch.brickinventoryapp.ui.viewmodel.EinstellungenAktionen
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
-import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import ch.brickinventoryapp.ressourcen.R
 import coil3.ImageLoader
-import ch.brickinventoryapp.ui.AppViewModel
 import ch.brickinventoryapp.ui.viewmodel.EinstellungenViewModel
 import ch.brickinventoryapp.ui.viewmodel.HaushaltViewModel
-import ch.brickinventoryapp.ui.viewmodel.aktivitaetsViewModel
+import ch.brickinventoryapp.ui.viewmodel.GeraeteEinstellungenViewModel
 import ch.brickinventoryapp.ui.*
-import ch.brickinventoryapp.ui.theme.Abstaende
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import ch.brickinventoryapp.ui.components.Ueberdeckungsschutz
+import ch.brickinventoryapp.ui.theme.Lesebreite
+import ch.brickinventoryapp.ui.viewmodel.KontoViewModel
+import ch.brickinventoryapp.ui.viewmodel.DateiRef
 
 /**
  * Die Unterseiten der Einstellungen: je Rubrik eine Seite mit Titel und
@@ -30,41 +25,69 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
  * Karten liegen je Rubrik in Einstellungen*.kt.
  */
 
+/** Der Melde-Schalter mit den Geräte-Einstellungen verdrahtet. */
+@Composable
+fun PreisalarmSchalterRoute(geraet: GeraeteEinstellungenViewModel = hiltViewModel()) {
+    val an by geraet.alarmMeldungenAn.collectAsStateWithLifecycle()
+    PreisalarmCard(an, geraet::alarmMeldungen)
+}
+
 /**
  * Preisalarme — die Übersicht und der Melde-Schalter auf einer Seite: zwei Karten
  * mit fast demselben Namen wären zwei Rubriken, und der Schalter steht dort, wo
  * man ihn sucht.
  */
 @Composable
-fun PreisalarmeUnterseite(
+fun PreisalarmeRoute(
     vm: EinstellungenViewModel,
     imageLoader: ImageLoader,
     serverUrl: String,
     snackbarHostState: SnackbarHostState,
     onSetClick: (String) -> Unit,
     onZurueck: () -> Unit,
+    /** Der Melde-Schalter; als Platz, weil er sein eigenes ViewModel holt. */
+    meldeSchalter: @Composable () -> Unit = { PreisalarmSchalterRoute() },
 ) {
-    Unterseite(stringResource(R.string.alerts_group), snackbarHostState, onZurueck) {
-        PreisalarmCard(aktivitaetsViewModel())
-        PreisalarmeCard(vm, imageLoader, serverUrl, onSetClick)
+    val uebersicht by vm.alarmUebersicht.collectAsStateWithLifecycle()
+    LaunchedEffect(Unit) { vm.ladeAlarmUebersicht() }
+    PreisalarmeUnterseite(uebersicht, vm, imageLoader, serverUrl, snackbarHostState, onSetClick, onZurueck, meldeSchalter)
+}
+
+@Composable
+fun PreisalarmeUnterseite(
+    uebersicht: AlarmUebersichtUiState,
+    aktionen: EinstellungenAktionen,
+    imageLoader: ImageLoader,
+    serverUrl: String,
+    snackbarHostState: SnackbarHostState,
+    onSetClick: (String) -> Unit,
+    onZurueck: () -> Unit,
+    meldeSchalter: @Composable () -> Unit,
+) {
+    Unterseite(stringResource(R.string.alerts_group), snackbarHostState, onZurueck,
+        breite = Lesebreite.formular) {
+        meldeSchalter()
+        PreisalarmeCard(uebersicht, aktionen, imageLoader, serverUrl, onSetClick)
     }
 }
 
 /** Lagerorte. */
 @Composable
-fun LagerorteUnterseite(
+fun LagerorteRoute(
     vm: EinstellungenViewModel,
     snackbarHostState: SnackbarHostState,
     onZurueck: () -> Unit,
 ) {
+    val lager by vm.lagerState.collectAsStateWithLifecycle()
+    LaunchedEffect(Unit) { vm.ladeEigeneLagerorte() }
     Unterseite(stringResource(R.string.storage_manage), snackbarHostState, onZurueck) {
-        LagerorteCard(vm)
+        LagerorteCard(lager, vm)
     }
 }
 
 /** Haushalt — Konten verknuepfen. */
 @Composable
-fun HaushaltUnterseite(
+fun HaushaltRoute(
     vm: HaushaltViewModel,
     snackbarHostState: SnackbarHostState,
     onZurueck: () -> Unit,
@@ -72,7 +95,7 @@ fun HaushaltUnterseite(
     val haushalt by vm.householdState.collectAsStateWithLifecycle()
     LaunchedEffect(Unit) { vm.loadHouseholdStatus() }
     // Einladung einlösen und Konten trennen: kein Tipp durch eine Überlagerung.
-    ch.brickinventoryapp.ui.components.Ueberdeckungsschutz()
+    Ueberdeckungsschutz()
     Unterseite(stringResource(R.string.household_title), snackbarHostState, onZurueck) {
         HouseholdCard(
             state = haushalt,
@@ -87,12 +110,11 @@ fun HaushaltUnterseite(
 
 /** Konto und angemeldete Geraete — beides betrifft den Zugang. */
 @Composable
-fun KontoUnterseite(
-    vm: AppViewModel,
+fun KontoRoute(
     snackbarHostState: SnackbarHostState,
     // An das Ziel gebunden: Profil, Geräte und ein halb eingerichteter
     // zweiter Faktor leben nur, solange die Seite offen ist.
-    konto: ch.brickinventoryapp.ui.viewmodel.KontoViewModel = hiltViewModel(),
+    konto: KontoViewModel = hiltViewModel(),
     onZurueck: () -> Unit,
 ) {
     val kontoZustand by konto.kontoState.collectAsStateWithLifecycle()
@@ -103,12 +125,13 @@ fun KontoUnterseite(
     LaunchedEffect(Unit) { konto.ladeZweitenFaktor() }
     LaunchedEffect(Unit) { konto.ladeDesign() }
     // Passwort, zweiter Faktor, Geräte: Ein untergeschobener Tipp schaltete hier Schutz ab.
-    ch.brickinventoryapp.ui.components.Ueberdeckungsschutz()
-    Unterseite(stringResource(R.string.konto_title), snackbarHostState, onZurueck) {
+    Ueberdeckungsschutz()
+    Unterseite(stringResource(R.string.konto_title), snackbarHostState, onZurueck,
+        breite = Lesebreite.formular) {
         KontoCard(
             kontoZustand = kontoZustand,
             onSpeichern = { b, e, v, n, p, c -> konto.speichereProfil(b, e, v, n, p, c) },
-            onPasswort = { alt, neu, c -> konto.aenderePasswort(alt, neu, c) { vm.logout() } },
+            onPasswort = { alt, neu, c -> konto.aenderePasswort(alt, neu, c) },
             onMeldungWeg = { konto.kontoMeldungWeg() },
         )
         DesignCard(design = kontoZustand.design, onWahl = { konto.waehleDesign(it) })
@@ -131,7 +154,7 @@ fun KontoUnterseite(
 
 /** CSV importieren. */
 @Composable
-fun CsvImportUnterseite(
+fun CsvImportRoute(
     vm: EinstellungenViewModel,
     snackbarHostState: SnackbarHostState,
     onZurueck: () -> Unit,
@@ -140,7 +163,7 @@ fun CsvImportUnterseite(
     Unterseite(stringResource(R.string.csv_upload_title), snackbarHostState, onZurueck) {
         CsvImportCard(
             csvZustand = csvZustand,
-            onDatei = { art, uri -> vm.ladeCsvHoch(art, uri) },
+            onDatei = { art, uri -> vm.ladeCsvHoch(art, DateiRef(uri.toString())) },
             onSchliessen = { vm.csvHochladenWeg() },
         )
     }

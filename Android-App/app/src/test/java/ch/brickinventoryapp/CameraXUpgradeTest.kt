@@ -1,6 +1,7 @@
 package ch.brickinventoryapp
 
 import org.junit.Test
+import java.io.File
 
 /**
  * Absicherung des CameraX-Sprungs 1.3.4 → 1.6.1.
@@ -18,12 +19,6 @@ class CameraXUpgradeTest {
         "ui/screens/SetupScreen.kt",
     )
 
-    private fun read(rel: String): String {
-        val f = java.io.File(Quellen.wurzel, "$rel")
-        assert(f.exists()) { "Datei nicht gefunden: $rel" }
-        return f.readText()
-    }
-
     private fun code(src: String): String {
         val s = src.replace(Regex("""/\*.*?\*/""", RegexOption.DOT_MATCHES_ALL), "")
         return s.lines().filterNot { it.trim().startsWith("//") }.joinToString("\n")
@@ -34,7 +29,7 @@ class CameraXUpgradeTest {
 
     @Test
     fun `CameraX steht auf einer 16-KB-tauglichen Fassung`() {
-        val toml = java.io.File("../gradle/libs.versions.toml")
+        val toml = File("../gradle/libs.versions.toml")
         assert(toml.exists()) { "gradle/libs.versions.toml nicht gefunden" }
         val m = Regex("""camerax\s*=\s*"(\d+)\.(\d+)\.(\d+)"""").find(toml.readText())
         assert(m != null) { "camerax-Version nicht in libs.versions.toml gefunden" }
@@ -75,7 +70,6 @@ class CameraXUpgradeTest {
     // Aufgefallen ist die Doppelung, als der Kamera-Aufbau zusammengefasst
     // wurde und diese Pruefung rot wurde — nicht weil die Regel verletzt war,
     // sondern weil sie an Kopien gemessen hat, die es nicht mehr gibt.
-
 
     /**
      * Die Analyse läuft auf YUV. Wird das auf RGBA umgestellt, greift CameraX

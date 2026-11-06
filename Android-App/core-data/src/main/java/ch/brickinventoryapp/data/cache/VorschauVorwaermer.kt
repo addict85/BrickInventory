@@ -1,7 +1,9 @@
 package ch.brickinventoryapp.data.cache
 
+import ch.brickinventoryapp.di.BildClient
 import ch.brickinventoryapp.data.Netzlage
-import ch.brickinventoryapp.data.PreferencesManager
+import ch.brickinventoryapp.data.GeraeteEinstellungen
+import ch.brickinventoryapp.data.VorwaermNetz
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
@@ -10,7 +12,6 @@ import kotlinx.coroutines.flow.first
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import javax.inject.Inject
-import javax.inject.Named
 import javax.inject.Singleton
 
 /**
@@ -31,8 +32,8 @@ object Vorwaermung
 class VorschauVorwaermer @Inject constructor(
     private val vorschau: VorschauSpeicher,
     private val netz: Netzlage,
-    private val prefs: PreferencesManager,
-    @param:Named("image") private val bildClient: OkHttpClient,
+    private val prefs: GeraeteEinstellungen,
+    @param:BildClient private val bildClient: OkHttpClient,
 ) {
     companion object {
         /**
@@ -58,9 +59,9 @@ class VorschauVorwaermer @Inject constructor(
      */
     private suspend fun netzErlaubt(): Boolean = when (netz.aktuell()) {
         Netzlage.Art.KEIN_NETZ -> false
-        Netzlage.Art.WLAN      -> prefs.vorwaermenWlan.first()
-        Netzlage.Art.MOBIL     -> prefs.vorwaermenMobil.first()
-        Netzlage.Art.ROAMING   -> prefs.vorwaermenRoaming.first()
+        Netzlage.Art.WLAN      -> prefs.vorwaermenErlaubt(VorwaermNetz.WLAN).first()
+        Netzlage.Art.MOBIL     -> prefs.vorwaermenErlaubt(VorwaermNetz.MOBIL).first()
+        Netzlage.Art.ROAMING   -> prefs.vorwaermenErlaubt(VorwaermNetz.ROAMING).first()
     }
 
     /**

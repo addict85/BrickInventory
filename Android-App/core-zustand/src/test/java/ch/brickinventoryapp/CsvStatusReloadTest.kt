@@ -44,10 +44,9 @@ import org.junit.Test
  *
  * Seit die Entscheidung als [csvFolge] in einer eigenen Datei steht, braucht
  * sie keinen `Context` — der Test führt sie aus und geht die ganze
- * Übergangstabelle durch. Was `handleCsvStatus()` weiterhin nur der Quelltext
- * zeigen kann, ist die REIHENFOLGE (die Entscheidung muss vor dem
- * Überschreiben des Zustands fallen); genau das prüft der letzte Test hier,
- * und nur das.
+ * Übergangstabelle durch. Die Reihenfolge in `handleCsvStatus()` (erst
+ * entscheiden, dann den Zustand überschreiben) und das Nachladen prüft
+ * CsvImportViewModelTest am ausgeführten ViewModel.
  *
  * ── Gegenprobe (ausgeführt, Lauf 33632359947) ───────────────────────────────
  * Im Gegenprobe-Commit gab `csvFolge()` im Fall „fertig" immer NACHLADEN
@@ -123,37 +122,5 @@ class CsvStatusReloadTest {
         // status == null heisst nicht „fertig", sondern „unvollständige Meldung".
         assert(csvFolge(warVorherAktiv = true, status = null) == CsvFolge.NICHTS)
         assert(csvFolge(warVorherAktiv = false, status = null) == CsvFolge.NICHTS)
-    }
-
-    @Test
-    fun `die Entscheidung faellt VOR dem Ueberschreiben des Zustands`() {
-        // Das Einzige, was hier Quelltext bleiben muss: csvFolge() ist nur so
-        // gut wie das, was hineingereicht wird. Wird _csvImportState zuerst
-        // überschrieben, ist `warVorherAktiv` immer der NEUE Wert — die ganze
-        // Übergangstabelle oben liefe dann ins Leere.
-        val src = Quellen.ohneKommentare(Quellen.lies("ui/AppViewModel.kt"))
-        val start = src.indexOf("suspend fun handleCsvStatus(")
-        assert(start >= 0) { "handleCsvStatus() nicht gefunden" }
-        val fn = src.substring(start, src.indexOf("\n    }", start))
-
-        val entschieden = fn.indexOf("csvFolge(")
-        val geschrieben = fn.indexOf("_csvImportState.value = CsvImportUiState(")
-        assert(entschieden >= 0) { "handleCsvStatus() benutzt csvFolge() nicht mehr" }
-        assert(geschrieben >= 0) { "handleCsvStatus() setzt _csvImportState nicht mehr" }
-        assert(entschieden < geschrieben) {
-            "csvFolge() wird erst nach dem Überschreiben von _csvImportState " +
-                "aufgerufen und bekommt damit immer den neuen Zustand als \"vorher\"."
-        }
-    }
-
-    @Test
-    fun `finishCsvImport laedt die Daten neu`() {
-        // Der Sinn der Sache — sonst bliebe nach einem Import die alte Liste stehen.
-        val src = Quellen.ohneKommentare(Quellen.lies("ui/AppViewModel.kt"))
-        val i = src.indexOf("private suspend fun finishCsvImport()")
-        assert(i >= 0) { "finishCsvImport() nicht gefunden" }
-        val fn = src.substring(i, src.indexOf("\n    }", i))
-        // Nachgeladen wird über das Bestandssignal: Die Galerie lädt darauf selbst.
-        assert(fn.contains("bestand.melde(Aenderung.Sets)")) { "Nach einem Import wird nicht mehr nachgeladen" }
     }
 }

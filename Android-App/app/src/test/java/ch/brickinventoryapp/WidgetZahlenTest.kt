@@ -3,9 +3,11 @@ package ch.brickinventoryapp
 import ch.brickinventoryapp.data.api.ApiJson
 import ch.brickinventoryapp.data.model.PnlResponse
 import ch.brickinventoryapp.data.model.PortfolioHistoryResponse
+import ch.brickinventoryapp.widget.WIDGET_VERDECKT
 import ch.brickinventoryapp.widget.WidgetZahlen
 import ch.brickinventoryapp.widget.gvText
 import ch.brickinventoryapp.widget.widgetAnzeige
+import ch.brickinventoryapp.widget.widgetWerte
 import ch.brickinventoryapp.widget.widgetZahlen
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
@@ -16,13 +18,19 @@ import org.junit.Test
  * Die Zahlen des Startbildschirm-Widgets, gerechnet aus echten Antworten des
  * Servers (G&V-Übersicht und Wochenverlauf), und ihre Ablage als Text.
  *
- * Gegenproben (30.10.2026, gemessen gegen widget/WidgetZahlen.kt):
+ * Gegenproben:
  *   A  heute aus dem ERSTEN statt dem vorletzten Punkt → rot „heute ist die
  *      Differenz der letzten zwei Tage“
  *   B  gesamt = wert statt wert - kauf → rot „gesamt ist Wert minus Kaufpreis“
  *   C  in gvText() das Pluszeichen entfernt → rot „ein Gewinn trägt ein Plus“
- *   D  (01.11.2026) widgetAnzeige() gibt immer `abgelegt` zurück → rot
+ *   D  widgetAnzeige() gibt immer `abgelegt` zurück → rot
  *      „abgemeldet zeigt das Widget keine Zahlen“
+ *   E  widgetWerte() ohne die Abfrage von
+ *      `zeigen` → rot „ohne Erlaubnis sind die Betraege verdeckt“;
+ *      gegenproben/widget-zeigt-betraege.patch
+ *   F  gegenproben/widget-guv-aus-allen.patch: Basis
+ *      übergangen → rot „mit Basis stehen Wert und G&V wie in der Finanzkarte“
+ *      (32.40 statt 212.40)
  */
 class WidgetZahlenTest {
 
@@ -69,6 +77,30 @@ class WidgetZahlenTest {
         assertTrue(gvText(250.5, 25.05, "CHF").contains("%"))
         assertTrue(gvText(-3.0, null, "CHF").contains("3.00") || gvText(-3.0, null, "CHF").contains("3,00"))
         assertTrue(!gvText(-3.0, null, "CHF").startsWith("+"))
+    }
+
+    @Test
+    fun `ohne Erlaubnis sind die Betraege verdeckt`() {
+        val z = widgetZahlen(pnl, verlauf, jetzt = 7)!!
+        val verdeckt = widgetWerte(z, zeigen = false)
+        assertEquals(Triple(WIDGET_VERDECKT, WIDGET_VERDECKT, WIDGET_VERDECKT), verdeckt)
+        val offen = widgetWerte(z, zeigen = true)
+        assertTrue("Mit Erlaubnis steht der Wert da", offen.first.contains("1") && offen.first != WIDGET_VERDECKT)
+        assertTrue(offen.third.startsWith("+"))
+    }
+
+    /** Die Prozentzahl rechnet der Server auf der Basis; der Betrag daneben muss es auch. */
+    @Test
+    fun `mit Basis stehen Wert und G&V wie in der Finanzkarte`() {
+        val basis = ApiJson.decodeFromString(PnlResponse.serializer(), """{"success":true,"currency":"CHF","totals":{
+            "purchase":"1680.00","current":"1712.40","pnl_prozent":14.2,"positionen":3,"positionen_bewertet":2,
+            "positionen_ohne_marktpreis":1,"positionen_ohne_kaufpreis":0,"basis_einstand":"1500.00",
+            "basis_marktwert":"1712.40","basis_guv_betrag":"212.40","ohne_marktpreis_einstand":"180.00",
+            "ohne_kaufpreis_marktwert":"0.00"}}""")
+        val z = widgetZahlen(basis, verlauf, jetzt = 7)!!
+        assertEquals(1712.4, z.wert!!, 1e-9)
+        assertEquals(212.4, z.gesamt!!, 1e-9)
+        assertEquals(14.2, z.gesamtProzent!!, 1e-9)
     }
 
     @Test

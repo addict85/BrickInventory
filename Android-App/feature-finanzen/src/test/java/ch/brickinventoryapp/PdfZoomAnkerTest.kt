@@ -26,7 +26,6 @@ class PdfZoomAnkerTest {
 
     private val rand = 16
     private val abstand = 16
-    private val sichtHoehe = 2000f
     private val basisHoehe = 1400f      // Seitenhoehe bei 1x
 
     /** Die Liste bei Zoom [z], erste Seite [erste] um [versatz] nach oben gerollt. */

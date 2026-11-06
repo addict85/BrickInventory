@@ -1,0 +1,18 @@
+Gegenprobe: Die Prüfung beim Start fragt den Schalter des Geräts nicht
+Modul: feature-konto
+Test: ch.brickinventoryapp.UpdateViewModelTest
+Rot: ausgeschaltet fragt der Start nicht bei GitHub
+
+diff --git a/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/ui/viewmodel/UpdateViewModel.kt b/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/ui/viewmodel/UpdateViewModel.kt
+index adffda1..0edd625 100644
+--- a/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/ui/viewmodel/UpdateViewModel.kt
++++ b/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/ui/viewmodel/UpdateViewModel.kt
+@@ -85,7 +85,7 @@ class UpdateViewModel @Inject constructor(
+      *        Knopfdruck `false` — dann sieht der Nutzer beides.
+      */
+     override fun pruefeBeimStart() {
+-        if (updateStand.startpruefungAn()) pruefeAufUpdate(still = true)
++        pruefeAufUpdate(still = true)
+     }
+ 
+     override fun setzeStartpruefung(an: Boolean) {

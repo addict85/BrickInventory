@@ -1,32 +1,6 @@
 /**
  * Farbfilter und Kategoriefilter zaehlen dasselbe Blickfeld.
- *
- * ── Der Befund (Nachtrag 134) ───────────────────────────────────────────────
- *
- * Der Teile-Reiter hat zwei Filterlisten uebereinander, beide mit Zaehlwerten,
- * beide ueber DERSELBEN Liste:
- *
- *     /api/v1/parts/colors      → src/teile/abfragen.ts, getPartsColors
- *     /api/v1/parts/categories  → routes/parts.ts, inline
- *
- * Die erste las das Blickfeld (`accounts` → scopeIds), die zweite die eigene
- * Konto-ID. Im Haushalt zaehlte die Farbliste also die Teile ALLER Konten, die
- * Kategorienliste nur die eigenen — und wer nach einer Kategorie filterte,
- * bekam eine Liste, die zu keiner der beiden Zahlen darueber passte.
- *
- * Aufgefallen ist es beim Bauen der Filter fuer die Android-App: Sie ruft
- * beide Adressen mit demselben `accounts`, und dabei war nachzusehen, was der
- * Server damit macht.
- *
- * ── Warum verglichen und nicht festgeschrieben ──────────────────────────────
- *
- * Eine feste Erwartung („3 Teile") waere beim naechsten Umbau der Gruppierung
- * genauso falsch wie die alte Zahl. Verglichen wird deshalb, was beide Listen
- * ueber DENSELBEN Bestand sagen: Die Summe der Teile ueber alle Farben muss
- * die Summe ueber alle Kategorien sein — es sind dieselben Teile, zweimal
- * gruppiert.
- *
- * Voraussetzung: Test-DB via TEST_DATABASE_URL.
+ * Ausführlich: docs/begruendungen/test/teile-filter-blickfeld-db.test.js.md#kopf
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -36,6 +10,7 @@ const ROOT = path.join(__dirname, '..');
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
 const _req = require('./helpers/sources').buildAndRequire();
+const { dbOderSkip } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
 const { haeltSet, haeltTeil } = require('./helpers/bestand');
 const db = _req('db/database.js');
@@ -45,14 +20,7 @@ test.after(async () => { await db.pool.end().catch(() => {}); });
 test('Farb- und Kategorienliste sehen im Haushalt denselben Bestand',
   { concurrency: 1 }, async (t) => {
 
-  try { await db.initSchema(); }
-  catch (e) {
-    if (process.env.REQUIRE_DB === '1')
-      throw new Error(`REQUIRE_DB=1, aber die Test-DB ist nicht erreichbar: ${e.message}`);
-    t.skip('Test-DB nicht erreichbar'); return;
-  }
-  const mc = await db.pool.connect();
-  try { await _req('db/migrate.js').runMigrations(mc); } finally { mc.release(); }
+  if (!await dbOderSkip(t, _req)) return;
 
   const hauptName = `tfhaupt-${process.pid}`, kindName = `tfkind-${process.pid}`;
   for (const n of [hauptName, kindName])
@@ -71,12 +39,8 @@ test('Farb- und Kategorienliste sehen im Haushalt denselben Bestand',
     // Je Konto ein Teil, VERSCHIEDENE Farben: Waere die Farbe gleich, faenden
     // beide Zaehlungen zufaellig dieselbe Zahl und der Test pruefte nichts.
     // Name, Farbbezeichnung und Kategorie stehen seit Migration 0034 in den
-    // Katalogen — und sie sind hier der Kern der Sache: Beide Listen dieses
-    // Tests gruppieren danach. VERSCHIEDENE Kategorien je Teil, aus demselben
-    // Grund wie bei den Farben.
-    // ON CONFLICT DO NOTHING: Die Kataloge haengen an keinem Konto, und diese
-    // Datei laeuft auf der gemeinsamen Test-Datenbank — eine andere Datei kann
-    // dieselben Teilenummern schon eingetragen haben.
+    // Katalogen — und sie sind hier der Kern der Sache: Beide Listen dieses …
+    // Ausführlich: docs/begruendungen/test/teile-filter-blickfeld-db.test.js.md#stelle
     await db.run(`INSERT INTO part_catalog (part_number, part_name, category_name) VALUES
         ('3001','Brick 2x4','Bricks'), ('3002','Plate 1x2','Plates')
         ON CONFLICT (part_number) DO UPDATE SET category_name = EXCLUDED.category_name`);

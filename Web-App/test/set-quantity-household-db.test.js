@@ -1,31 +1,6 @@
 /**
  * Die Anzahl zeigt den HAUSHALT — geändert wird das EIGENE Konto.
- *
- * ── Marcos Vorgabe ──────────────────────────────────────────────────────────
- * „Die Anzahl soll immer von allen angezeigt werden. Wenn ich diese erhöhe,
- * soll es für meinen Account einen neuen Kaufpreis-Eintrag erstellen. Analog
- * der bestehenden Logik. Jeweils die Logik im Server implementieren."
- *
- * ── Was vorher war ──────────────────────────────────────────────────────────
- * Zwei Stellen, die sich widersprachen:
- *
- *   • Das DETAIL las `SELECT * FROM sets WHERE user_id = ANY(blickfeld)` und
- *     nahm irgendeine Zeile — welche, entschied die Reihenfolge in der
- *     Tabelle. Marco sah „Anzahl 0" für ein Set, von dem das Unterkonto ein
- *     Exemplar hält. Die LISTE summierte längst; nur das Detail nicht.
- *   • Die ÄNDERUNG schrieb auf den Besitzer eben dieser Zeile. Ein „+" auf
- *     einem Set des Unterkontos erhöhte dessen Bestand, und die neue Erfassung
- *     entstand in einem fremden Konto.
- *
- * ── Die Regel ───────────────────────────────────────────────────────────────
- * Angezeigt wird die Summe über das Blickfeld. Gesendet wird eine
- * Gesamtmenge; geschrieben wird die DIFFERENZ, und zwar auf das eigene Konto.
- * Nach unten bei den eigenen Exemplaren gedeckelt — fremde lassen sich nicht
- * wegnehmen. Die Antwort trägt die tatsächliche Gesamtmenge zurück.
- *
- * „Analog der bestehenden Logik" heisst wörtlich dieselbe Funktion:
- * adjustAcquisitionsToQuantity() legt die Erfassung an, holt den Marktpreis
- * und beachtet die Tagesregel — unverändert, nur mit anderem Ziel.
+ * Ausführlich: docs/begruendungen/test/set-quantity-household-db.test.js.md#kopf
  *
  * Gegenprobe (durchgeführt): Ziel wieder auf `ownerId` gestellt → der
  * Erhöhungs-Teilschritt wird rot (die Exemplare landen beim Unterkonto).
@@ -40,20 +15,14 @@ const ROOT = path.join(__dirname, '..');
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
 const _req = require('./helpers/sources').buildAndRequire();
+const { dbOderSkip } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
 const { haeltSet, mengeVon } = require('./helpers/bestand');
 const db = _req('db/database.js');
 const express = require(path.join(ROOT, 'node_modules', 'express'));
 
 test('Menge: Anzeige = Haushalt, Änderung = eigenes Konto', { concurrency: 1 }, async (t) => {
-  try { await db.initSchema(); }
-  catch (e) {
-    if (process.env.REQUIRE_DB === '1')
-      throw new Error(`REQUIRE_DB=1, aber die Test-DB ist nicht erreichbar: ${e.message}`);
-    t.skip('Test-DB nicht erreichbar'); return;
-  }
-  const mc = await db.pool.connect();
-  try { await _req('db/migrate.js').runMigrations(mc); } finally { mc.release(); }
+  if (!await dbOderSkip(t, _req)) return;
 
   const HAUPT = `mh-${process.pid}`, SUB = `ms-${process.pid}`;
   const SN = `78${process.pid % 900 + 100}-1`;
@@ -137,7 +106,7 @@ test('Menge: Anzeige = Haushalt, Änderung = eigenes Konto', { concurrency: 1 },
       await setzen(1);
       assert.equal(await menge(hauptId), 0, 'die eigenen Exemplare gehen zuerst');
       assert.equal(await menge(subId), 1, 'das fremde bleibt');
-      // Nachtrag 84: Bleibt nichts übrig, verschwindet die eigene Zeile ganz.
+      // Bleibt nichts übrig, verschwindet die eigene Zeile ganz.
       const eigene = await db.get(
         `SELECT COUNT(*)::int c FROM sets WHERE user_id=$1 AND set_number=$2`, [hauptId, SN]);
       assert.equal(eigene.c, 0, 'eine eigene Zeile mit Menge 0 bleibt zurück');

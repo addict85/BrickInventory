@@ -1,0 +1,27 @@
+Gegenprobe: Der Ausgang prüft den Bereich erst nach dem Senden, wie vor sec13 H6
+Modul: core-zustand
+Test: ch.brickinventoryapp.AusgangAbgleichTest
+Rot: ein Konto-Wechsel vor dem Senden
+
+diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/lokal/Abgleich.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/lokal/Abgleich.kt
+index bf2d889..effdc08 100644
+--- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/lokal/Abgleich.kt
++++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/lokal/Abgleich.kt
+@@ -76,9 +76,6 @@ class Abgleich @Inject constructor(
+     private suspend fun lauf(bereich: String, betroffen: MutableSet<Bestandsart>): Abgleichsergebnis {
+         var p = ablage.ausgang.erster(bereich)
+         while (p != null) {
+-            // Unmittelbar vor jedem Senden: Der Wächter hängt das Token an, das JETZT
+-            // gilt. Nach einem Konto-Wechsel ginge der Posten sonst unter fremdem Konto raus.
+-            if (ablage.bereich() != bereich) return Abgleichsergebnis.NICHT_ANGEMELDET
+             when (val e = sender.sende(p.bearbeitung, p.schluessel)) {
+                 Sendeergebnis.Angenommen -> {
+                     ablage.ausgang.entferne(p.id)
+@@ -93,6 +90,7 @@ class Abgleich @Inject constructor(
+                     verwirf(p, "", null, betroffen)
+                 }
+             }
++            if (ablage.bereich() != bereich) return Abgleichsergebnis.NICHT_ANGEMELDET
+             p = ablage.ausgang.erster(bereich)
+         }
+         return Abgleichsergebnis.FERTIG

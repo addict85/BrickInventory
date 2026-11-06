@@ -21,7 +21,7 @@ const session = require(path.join(ROOT, 'node_modules', 'express-session'));
 const { sitzungsHoechstdauer } = _req('src/konto/sitzungsFrist.js');
 const { establishSession } = _req('src/konto/http/anmeldung.js');
 
-const warte = (ms) => new Promise(r => setTimeout(r, ms));
+const { warte } = require('./helpers/zeit');
 
 function testApp(hoechstMs) {
   const app = express();
@@ -37,7 +37,10 @@ function testApp(hoechstMs) {
 }
 
 test('Höchstdauer der Webapp-Sitzung', async (t) => {
-  const { srv, base } = testApp(600);
+  // Grosszügige Frist und Wartezeiten ab dem gemessenen Anmeldezeitpunkt: Unter
+  // Last dauert ein Aufruf hunderte Millisekunden, feste Schritte kippten dann.
+  const FRIST = 3_000;
+  const { srv, base } = testApp(FRIST);
   t.after(() => new Promise(r => srv.close(r)));
   const r = await fetch(base + '/anmelden', { method: 'POST' });
   const anmeldung = await r.json();   // die Sitzung steht erst nach dem letzten Byte im Speicher
@@ -50,10 +53,11 @@ test('Höchstdauer der Webapp-Sitzung', async (t) => {
   });
 
   await t.test('trotz Betrieb endet die Sitzung nach der Höchstdauer', async () => {
+    const bis = (ms) => warte(Math.max(0, anmeldung.am + ms - Date.now()));
     assert.equal(await wer(), 7);
-    await warte(350);
+    await bis(FRIST / 3);
     assert.equal(await wer(), 7, 'innerhalb der Frist gilt sie');
-    await warte(350);
+    await bis(FRIST + 200);
     assert.equal(await wer(), null, 'nach der Frist ist niemand mehr angemeldet');
     assert.equal(await wer(), null, 'und die Sitzung ist gelöscht, nicht nur übersprungen');
   });

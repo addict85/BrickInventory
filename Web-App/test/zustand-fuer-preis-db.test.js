@@ -1,24 +1,6 @@
 /**
  * Die Zustands-Staffelung Eingabe → Bestand → Standard, ausgeführt.
- *
- * ── Woher die Regel kommt ───────────────────────────────────────────────────
- * Nachträge 146 und 147. Der Kern steht als Kommentar in routes/parts.ts:
- * „Zustand der neuen Erfassung folgt dem Teil selbst (bzw. dem User-Default),
- * nicht hartkodiert 'N' — sonst bekäme ein als \"Gebraucht\" geführtes Teil bei
- * jeder Mengen-Erhöhung eine \"Neu\"-Erfassung."
- *
- * Die Staffelung stand VIERMAL im Baum, in zwei Fassungen: beim Bearbeiten mit
- * Eingabe, beim Erfassen ohne. Das ist nicht zweierlei Regel, sondern derselbe
- * Fall mit und ohne ersten Schritt. Dass es zwei getrennte Wege sind, hat schon
- * einmal Arbeit gekostet: 146 hat das Bearbeiten behoben, 147 musste das
- * Erfassen nachziehen.
- *
- * ── Warum gegen eine echte Datenbank ────────────────────────────────────────
- * Der letzte Schritt liest aus zwei Tabellen (user_settings, global_settings)
- * mit einer eigenen Vorrangregel. Ein Test mit erfundenen Werten prüfte davon
- * nichts. Und der interessanteste Fall ist gerade ein DB-Zustand: Die leere
- * Zeichenkette, die das Formular schreibt, darf den globalen Standard NICHT
- * verdrängen.
+ * Ausführlich: docs/begruendungen/test/zustand-fuer-preis-db.test.js.md#kopf
  *
  * ── Gegenproben (durchgeführt, siehe Kommentar im Commit) ───────────────────
  *   a) `if (bisher) return bisher;` → `if (bisher != null) return bisher;`
@@ -38,16 +20,13 @@ const assert = require('node:assert/strict');
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
 const _req = require('./helpers/sources').buildAndRequire();
+const { dbOderSkip } = require('./helpers/db');
 const db = _req('db/database.js');
-const { zustandFuerPreis, setGlobalSetting, setUserSetting } = _req('src/konto/settings.js');
+const { zustandFuerPreis, setGlobalSetting } = _req('src/einstellungen/settings.js');
+const { setUserSetting } = _req('src/konto/nutzerEinstellung.js');
 
 test('Zustand für den Marktpreis: Eingabe → Bestand → Standard', { concurrency: 1 }, async (t) => {
-  try { await db.initSchema(); }
-  catch (e) {
-    if (process.env.REQUIRE_DB === '1')
-      throw new Error(`REQUIRE_DB=1, aber die Test-DB ist nicht erreichbar: ${e.message}`);
-    t.skip('Test-DB nicht erreichbar'); return;
-  }
+  if (!await dbOderSkip(t, _req, { migrieren: false })) return;
 
   // Eigener Nutzer je Prozess — der Test läuft neben anderen auf derselben DB.
   const name = `zfp_${process.pid}`;
@@ -71,7 +50,7 @@ test('Zustand für den Marktpreis: Eingabe → Bestand → Standard', { concurre
     // ── Der Bestand schlägt den Standard ────────────────────────────────────
     assert.equal(await zustandFuerPreis(undefined, 'N', uid), 'N',
       'ein als "Neu" geführter Bestand darf nicht auf den Standard zurückfallen — ' +
-      'genau das war der Fehler aus Nachtrag 147, nur andersherum');
+      'genau das war der Fehler aus einer früheren Runde, nur andersherum');
 
     // ── Die Eingabe schlägt beides ──────────────────────────────────────────
     assert.equal(await zustandFuerPreis('N', 'U', uid), 'N', 'die Eingabe gewinnt');

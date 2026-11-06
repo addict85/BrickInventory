@@ -1,0 +1,41 @@
+Gegenprobe: Aufnehmen und Merken wieder nebeneinander, je eine Zeile mit Auslassung
+Modul: app
+Test: ch.brickinventoryapp.UmbruchWaechterTest
+Rot: Katalog-Detail bei 100 Prozent
+
+diff --git a/Android-App/feature-katalog/src/main/java/ch/brickinventoryapp/ui/screens/CatalogDetailScreen.kt b/Android-App/feature-katalog/src/main/java/ch/brickinventoryapp/ui/screens/CatalogDetailScreen.kt
+index 72046c9..e5ee675 100644
+--- a/Android-App/feature-katalog/src/main/java/ch/brickinventoryapp/ui/screens/CatalogDetailScreen.kt
++++ b/Android-App/feature-katalog/src/main/java/ch/brickinventoryapp/ui/screens/CatalogDetailScreen.kt
+@@ -264,18 +264,19 @@ private fun ColumnScope.KatalogAngaben(
+     // häufigere Handlung und steht oben und gefüllt, Merken darunter umrandet.
+     // Höchstens Bedienbreite: Auf dem Tablet liefen die Knöpfe sonst über die ganze Spalte.
+     val knopf = Modifier.widthIn(max = Lesebreite.bedienung).fillMaxWidth()
+-    Button(onClick = onAufnehmen, modifier = knopf) {
+-        Icon(Icons.Default.Add, null, Modifier.size(mitSchrift(18.dp)))
+-        Spacer(Modifier.width(Abstaende.klein))
+-        Text(stringResource(if (detail.owned) R.string.catalog_add_again else R.string.catalog_add_to_gallery),
+-            textAlign = TextAlign.Center)
+-    }
+-    // Gemerkt: zum Merkposten statt ein zweites Mal merken.
+-    OutlinedButton(onClick = onMerken, modifier = knopf, colors = nebenKnopfFarben(), border = nebenKnopfRand()) {
+-        Icon(if (gemerkt != null) Icons.Default.Bookmark else Icons.Default.BookmarkAdd, null, Modifier.size(mitSchrift(18.dp)))
+-        Spacer(Modifier.width(Abstaende.klein))
+-        Text(stringResource(if (gemerkt != null) R.string.catalog_merkposten_oeffnen else R.string.wanted_add_submit),
+-            textAlign = TextAlign.Center)
++    Row(knopf, horizontalArrangement = Arrangement.spacedBy(Abstaende.klein)) {
++        Button(onClick = onAufnehmen, modifier = Modifier.weight(1f)) {
++            Icon(Icons.Default.Add, null, Modifier.size(mitSchrift(18.dp)))
++            Spacer(Modifier.width(Abstaende.klein))
++            Text(stringResource(if (detail.owned) R.string.catalog_add_again else R.string.catalog_add_to_gallery),
++                textAlign = TextAlign.Center, maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
++        }
++        OutlinedButton(onClick = onMerken, modifier = Modifier.weight(1f), colors = nebenKnopfFarben(), border = nebenKnopfRand()) {
++            Icon(if (gemerkt != null) Icons.Default.Bookmark else Icons.Default.BookmarkAdd, null, Modifier.size(mitSchrift(18.dp)))
++            Spacer(Modifier.width(Abstaende.klein))
++            Text(stringResource(if (gemerkt != null) R.string.catalog_merkposten_oeffnen else R.string.wanted_add_submit),
++                textAlign = TextAlign.Center, maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
++        }
+     }
+     if (detail.owned) {
+         OutlinedButton(onClick = { onOpenInGallery(detail.setNumber) }, modifier = knopf, colors = nebenKnopfFarben(), border = nebenKnopfRand()) {

@@ -1,0 +1,18 @@
+Gegenprobe: Die Pflicht aus /auth/me wird nicht gemeldet
+Modul: core-zustand
+Test: ch.brickinventoryapp.ZweiterFaktorUebernahmeTest
+Rot: auth me mit Pflicht
+
+diff --git a/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/ui/Sitzung.kt b/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/ui/Sitzung.kt
+index a2c8b56..4fd8223 100644
+--- a/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/ui/Sitzung.kt
++++ b/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/ui/Sitzung.kt
+@@ -145,7 +145,7 @@ suspend fun Sitzung.kontoUebernehmen(
+     if (me !is Ergebnis.Success) return
+     val nutzer = me.data.user
+     verwalterGeaendert(nutzer?.isAdmin == true)
+-    if (nutzer?.zweiterFaktorPflicht == true) faktorPflicht.melde()
++    if (nutzer?.zweiterFaktorPflicht == true) faktorPflicht.erledigt()
+ }
+ 
+ /**

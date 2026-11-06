@@ -1,0 +1,17 @@
+Gegenprobe: Die Vorschau-Ablage wird beim Leeren nicht geleert
+Modul: core-zustand
+Test: ch.brickinventoryapp.GeraeteEinstellungenViewModelTest
+Rot: die Vorschau-Ablage laesst sich sehen und leeren
+
+diff --git a/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/ui/viewmodel/GeraeteEinstellungenViewModel.kt b/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/ui/viewmodel/GeraeteEinstellungenViewModel.kt
+index 216ac25..34e68de 100644
+--- a/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/ui/viewmodel/GeraeteEinstellungenViewModel.kt
++++ b/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/ui/viewmodel/GeraeteEinstellungenViewModel.kt
+@@ -65,7 +65,6 @@ class GeraeteEinstellungenViewModel @Inject constructor(
+ 
+     /** Füllt sich beim Blättern wieder; offline ist danach nichts mehr da. */
+     fun ablageLeeren() {
+-        vorschau.leeren()
+         _ablageBytes.value = vorschau.belegt()
+         meldungen.zeige(texte.text(R.string.monitoring_cache_saved))
+     }

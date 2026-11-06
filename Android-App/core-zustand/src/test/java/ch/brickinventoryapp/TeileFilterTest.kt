@@ -1,17 +1,17 @@
 package ch.brickinventoryapp
 
-import ch.brickinventoryapp.ressourcen.R
 import ch.brickinventoryapp.data.cache.ResponseCache
 import ch.brickinventoryapp.data.repository.SetsRepository
 import ch.brickinventoryapp.data.repository.TeileRepository
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Test
+import java.io.File
 
 /** Ein Repository gegen einen Testserver; [block] bekommt beides. */
 private fun <T> mitServer(block: (PfadServer, ResponseCache) -> T): T {
     val pfade = PfadServer()
-    val ordner = java.io.File(System.getProperty("java.io.tmpdir"), "bim-filter-${System.nanoTime()}").apply { mkdirs() }
+    val ordner = File(System.getProperty("java.io.tmpdir"), "bim-filter-${System.nanoTime()}").apply { mkdirs() }
     try { return block(pfade, ResponseCache { ordner }) } finally { pfade.server.shutdown(); ordner.deleteRecursively() }
 }
 
@@ -44,7 +44,7 @@ private fun <T> mitServer(block: (PfadServer, ResponseCache) -> T): T {
  * die Filter aus dem Zustand mitreisen und die Scrollstelle vergessen, prüft
  * TeileTest.
  *
- * Gegenprobe (29.10.2026, gemessen): in TeileRepository.getPartsFilterColors
+ * Gegenprobe: in TeileRepository.getPartsFilterColors
  * `accounts` nicht weitergereicht → rot „die App ruft beide Filterlisten …“.
  */
 class TeileFilterTest {
@@ -77,7 +77,7 @@ class TeileFilterTest {
 class CsvAbbruchTest {
 
     private fun read(rel: String) =
-        java.io.File(Quellen.wurzel, "$rel").readText()
+        File(Quellen.wurzel, "$rel").readText()
     private fun code(s: String) = s.lines()
         .joinToString("\n") { if (it.trim().startsWith("//") || it.trim().startsWith("*")) "" else it }
 
@@ -88,35 +88,17 @@ class CsvAbbruchTest {
     }
 
     @Test
-    fun `der Abbruch meldet seinen Fehler`() {
-        // Dieselbe Regel wie fuer jede andere aendernde Handlung
-        // (AktionMeldetFehlerTest): Scheitert sie lautlos, tippt der Nutzer
-        // weiter und wundert sich, dass der Balken laeuft.
-        val s = code(read("ui/AppViewModel.kt"))
-        val ab = s.indexOf("fun cancelCsvImport(")
-        assert(ab > 0) { "cancelCsvImport fehlt" }
-        val rumpf = s.substring(ab, minOf(ab + 500, s.length))
-        // meldungFuerSnackbar statt meldung: Seit Marcos Befund („Sitzung
-        // abgelaufen" beim Anmelden) geht JEDE Snackbar ueber diesen Trichter.
-        // Er reicht den Satz durch — ausser bei einem 401, den die
-        // Sitzungsschicht schon behandelt hat. Die REGEL hier ist unveraendert:
-        // Der Abbruch darf nicht lautlos scheitern.
-        assert(rumpf.contains("_snackbar.value = texte.meldungFuerSnackbar(r)")) {
-            "Der Abbruch scheitert lautlos"
-        }
-    }
-
-    @Test
     fun `der Knopf steht in der Kopfzeile, nicht im aufgeklappten Teil`() {
         // Wer abbrechen will, soll nicht erst herausfinden muessen, dass der
         // Balken sich aufklappen laesst. In der Webapp steht der Knopf
         // dauerhaft da (btn-cancel-import).
+        // Kopfzeile und aufgeklappte Zahlen sind eigene Funktionen; der Knopf gehört in die erste.
         val s = code(read("ui/screens/CsvImportBanner.kt"))
-        val knopf = s.indexOf("R.string.csv_cancel")
-        val aufgeklappt = s.indexOf("if (expanded) {")
-        assert(knopf > 0) { "Der Abbrechen-Knopf fehlt" }
-        assert(aufgeklappt > 0) { "Der aufklappbare Teil fehlt — Test veraltet?" }
-        assert(knopf < aufgeklappt) {
+        val kopf = s.substringAfter("fun CsvKopfzeile(", "").substringBefore("fun CsvImportZahlen(")
+        val zahlen = s.substringAfter("fun CsvImportZahlen(", "")
+        assert(s.contains("if (expanded) CsvImportZahlen(")) { "Der aufklappbare Teil fehlt — Test veraltet?" }
+        assert(kopf.contains("R.string.csv_cancel")) { "Der Abbrechen-Knopf fehlt in der Kopfzeile" }
+        assert(!zahlen.contains("R.string.csv_cancel")) {
             "Der Abbrechen-Knopf steht im aufgeklappten Teil und ist damit versteckt"
         }
     }

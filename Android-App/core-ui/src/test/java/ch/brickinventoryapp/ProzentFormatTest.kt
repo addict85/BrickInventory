@@ -8,12 +8,13 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.text.NumberFormat
 import java.util.Locale
+import java.io.File
 
 /**
  * Prozente kommen aus fmtProzent(): eine Nachkommastelle, Vorzeichen bei ≠ 0,
  * Zeichen und Abstand nach der App-Sprache.
  *
- * Gegenproben (28.10.2026, gemessen mit kotlinc gegen util/NumberFormatUtils.kt):
+ * Gegenproben:
  *   A  das Runden vor dem Vorzeichen entfernt → rot „was auf null rundet, …“
  *      („-0.0%“)
  *   B  das Plus weggelassen → rot „ein Gewinn trägt ein Plus …“
@@ -67,7 +68,7 @@ class ProzentFormatTest {
 
     @Test
     fun `kein Bildschirm formatiert Prozente selbst`() {
-        val schirme = java.io.File(Quellen.wurzel, "ui/screens").listFiles().orEmpty()
+        val schirme = File(Quellen.wurzel, "ui/screens").listFiles().orEmpty()
         val vonHand = Regex("""%\.1f%%|"%\.1f"\s*,\s*pct|\+\s*" %"""")
         val treffer = schirme.filter { vonHand.containsMatchIn(it.readText()) }.map { it.name }
         assertEquals("Prozente laufen über fmtProzent()", emptyList<String>(), treffer)

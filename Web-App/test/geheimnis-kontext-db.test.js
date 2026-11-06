@@ -32,12 +32,13 @@ fs.writeFileSync(path.join(SANDKASTEN, 'package.json'), '{"name":"sandkasten"}')
 process.env.APP_ROOT = SANDKASTEN;
 
 const _req = require('./helpers/sources').buildAndRequire();
+const { dbOderSkip } = require('./helpers/db');
 const db = _req('db/database.js');
 const g = _req('src/infra/geheimnis.js');
 const gr = _req('src/gutscheine/repository/gutscheine.js');
 const dateien = _req('src/gutscheine/gutscheinDateien.js');
 const zf = _req('src/konto/zweiterFaktor.js');
-const settings = _req('src/konto/settings.js');
+const settings = _req('src/einstellungen/settings.js');
 const idem = _req('src/idempotenz/dienst.js');
 
 /** Das Format vor dem Kontext: AES-GCM mit dem Rohschlüssel, ohne AAD. */
@@ -50,14 +51,7 @@ const alsV1 = (klar) => 'v1:' + roh1(Buffer.from(klar, 'utf8')).toString('base64
 const PDF = Buffer.from('%PDF-1.4\nGutschein 5045076374450099999 PIN 4711\n%%EOF\n');
 
 test('Geheimnisse mit Kontext', { concurrency: 1, timeout: 120_000 }, async (t) => {
-  try { await db.initSchema(); }
-  catch (e) {
-    if (process.env.REQUIRE_DB === '1')
-      throw new Error(`REQUIRE_DB=1, aber die Test-DB ist nicht erreichbar: ${e.message}`);
-    t.skip('Test-DB nicht erreichbar'); return;
-  }
-  const c = await db.pool.connect();
-  try { await _req('db/migrate.js').runMigrations(c); } finally { c.release(); }
+  if (!await dbOderSkip(t, _req)) return;
   const namen = [`kontext_a_${process.pid}`, `kontext_b_${process.pid}`];
   await db.run('DELETE FROM users WHERE username = ANY($1)', [namen]);
   const ids = [];

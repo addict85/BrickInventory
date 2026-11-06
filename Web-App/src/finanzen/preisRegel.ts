@@ -1,14 +1,5 @@
-// Ausführlich: docs/begruendungen/src/finanzen/preisRegel.ts.md#preisdatensatz
-
-import { zustandFuerPreis } from '../konto/settings';
-
-export type PreisDatensatz = { avg_price?: unknown; qty_avg_price?: unknown } | null | undefined;
-
-/** parseFloat(String(...)): Dieselbe Funktion bekommt auch rohe
- * BrickLink-Antworten, und die tragen Text. */
-export function hatPreis(row: PreisDatensatz): boolean {
-  return parseFloat(String(row?.avg_price ?? '')) > 0;
-}
+import { zustandFuerPreis } from '../einstellungen/settings';
+import { geldEingabe } from '../infra/geld';
 
 /** Für Teile UND Figuren an einer Stelle: Die Regel musste schon zweimal
  * nachgezogen werden. Leer heisst „nimm den Marktpreis", nicht „Preis null".
@@ -22,8 +13,8 @@ export async function kaufpreisAusEingabe(
   nutzerId: number,
   marktpreis: (zustand: string) => Promise<number | null>,
 ): Promise<{ unitPrice: number | null; purchasePrice: number | null }> {
-  const zahl = (roh === null || roh === '' || roh === undefined) ? null : parseFloat(String(roh));
-  if (zahl !== null && !isNaN(zahl)) return { unitPrice: zahl, purchasePrice: zahl };
+  const zahl = geldEingabe(roh, 'Preis');
+  if (zahl !== null) return { unitPrice: zahl, purchasePrice: zahl };
   const zustand = await zustandFuerPreis(zustandRoh, zustandJetzt, nutzerId);
   return { unitPrice: null, purchasePrice: await marktpreis(zustand) };
 }
@@ -46,10 +37,7 @@ export async function manuellerKaufpreis(
   preisAusZustand: string | null;
   geschaetzt: boolean;
 }> {
-  const roh = eingabe.unitPrice;
-  const getippt = (roh !== undefined && roh !== null && String(roh).trim() !== '')
-    ? parseFloat(String(roh).replace(',', '.')) : null;
-  const unitPrice = (getippt !== null && !isNaN(getippt)) ? getippt : null;
+  const unitPrice = geldEingabe(eingabe.unitPrice, 'Stückpreis');
 
   const zustand = await zustandFuerPreis(eingabe.condition ?? null, null, nutzerId);
 

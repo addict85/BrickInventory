@@ -4,7 +4,6 @@ import { AUFTRAGS_ARTEN, type AuftragsArt } from './auftraege';
 import { zieheVor, leereArt, wiederhole, brichAb, beendePause } from './dienst';
 import * as repo from './repository/auftraege';
 import { hatZeitplan, planeNaechsten, ziehePlanVor } from './zeitplan';
-import { leereBildbedarf, offenerBildbedarf } from '../katalog/bilder/bildbedarf';
 import { fehlerWerfen } from '../infra/fehlerTexte';
 
 const LEBENSZEICHEN_GILT_SEK = 120;
@@ -16,21 +15,20 @@ function pruefeArt(art: string): AuftragsArt {
 }
 
 /** Nutzlasten bleiben draussen: Sie tragen ganze Listen. */
-export async function auftragsUebersicht(filter: { status?: string | undefined; art?: string | undefined } = {}) {
+export async function auftraegeImUeberblick(filter: { status?: string | undefined; art?: string | undefined } = {}) {
   const status = (filter.status ? filter.status.split(',') : ['offen', 'laeuft', 'fehler', 'abgebrochen'])
     .filter(s => (STATUS as readonly string[]).includes(s));
   const art = filter.art ? pruefeArt(filter.art) : null;
-  const [auftraege, zusammenfassung, pausen, lebenszeichen, bildbedarf] = await Promise.all([
+  const [auftraege, zusammenfassung, pausen, lebenszeichen] = await Promise.all([
     repo.auftragsListe(status, art),
     repo.zahlenJeArtUndStatus(),
     repo.laufendePausen(),
     liesZustand('jobs_lebenszeichen'),
-    offenerBildbedarf(),
   ]);
   const alterSek = lebenszeichen ? Math.round((Date.now() - new Date(lebenszeichen).getTime()) / 1000) : null;
   return {
     success: true,
-    auftraege, zusammenfassung, pausen, bildbedarf,
+    auftraege, zusammenfassung, pausen,
     job_prozess: { lebenszeichen, alter_sekunden: alterSek, laeuft: alterSek !== null && alterSek < LEBENSZEICHEN_GILT_SEK },
   };
 }
@@ -48,11 +46,10 @@ export async function auftragWiederholen(id: string) {
   return { success: true, id, status: 'offen' };
 }
 
-/** Geplante Termine bleiben; beim Bildbedarf gehen auch die Notizen. */
-export async function auftragsArtLeeren(artRoh: string) {
+/** Geplante Termine bleiben. */
+export async function leereAuftragsArt(artRoh: string) {
   const art = pruefeArt(artRoh);
-  const entfernt = await leereArt(art) + (art === 'bildbedarf' ? await leereBildbedarf() : 0);
-  return { success: true, art, entfernt };
+  return { success: true, art, entfernt: await leereArt(art) };
 }
 
 export async function auftragsArtJetzt(artRoh: string) {

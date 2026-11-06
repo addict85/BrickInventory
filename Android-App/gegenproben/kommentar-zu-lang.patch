@@ -1,0 +1,22 @@
+Gegenprobe: ein Kommentar mit sechs Zeilen Prosa
+Modul: app
+Test: ch.brickinventoryapp.QuelltextRatscheTest
+Rot: kein Kommentar hat mehr als fuenf Zeilen Prosa
+
+diff --git a/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/ui/AppViewModel.kt b/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/ui/AppViewModel.kt
+index 80c50e4..6849f43 100644
+--- a/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/ui/AppViewModel.kt
++++ b/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/ui/AppViewModel.kt
+@@ -17,6 +17,12 @@ import javax.inject.Inject
+  * angetippten Meldung. Die Arbeit der Sitzung macht der [SitzungsRepository]; er
+  * lebt im Bereich der App, damit kein Bildschirm dieses ViewModel dafür braucht.
+  */
++// Eins.
++// Zwei.
++// Drei.
++// Vier.
++// Fünf.
++// Sechs.
+ @HiltViewModel
+ class AppViewModel @Inject constructor(
+     private val sitzungsDienst: SitzungsRepository,

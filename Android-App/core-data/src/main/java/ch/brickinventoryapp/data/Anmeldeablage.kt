@@ -2,7 +2,7 @@ package ch.brickinventoryapp.data
 
 /**
  * Was die Anmeldung im Gerät ablegt: Serveradresse, Token, Benutzername und den
- * Pin aus dem QR-Code. Im Gerät der [PreferencesManager]; die Schnittstelle lässt
+ * Pin aus dem QR-Code. Im Gerät die [KontoAblage]; die Schnittstelle lässt
  * die Anmeldung ohne DataStore prüfen.
  */
 interface Anmeldeablage {

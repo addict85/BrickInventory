@@ -1,25 +1,29 @@
 /** Hier und nicht in einer Route, weil Sitzungsroute und v1-Fabrik beide darauf
  * zugreifen — eine Route soll keine andere importieren. */
-import { meldeUndLiefere, oeffentlicherFehler } from '../infra/httpError';
+import { blickfeldAus } from '../haushalt/haushalt';
+import type { Sicht } from '../haushalt/haushalt';
+import { meldeUndLiefere, oeffentlicherFehler } from '../infra/fehler';
 import { csvGemeinsameFelder, csvZeilenAusAnfrage } from '../infra/csvExport';
 import * as db from '../../db/database';
 import { recordAcquisitionForDay } from '../bestand/acquisitions';
 import { mengenwunsch, passeManuelleMengeAn } from '../bestand/manuelleMenge';
 import * as repo from './repository/manuelleTeile';
 import { kaufpreisAusEingabe, manuellerKaufpreis } from '../finanzen/preisRegel';
-import { zustandFuerPreis } from '../konto/settings';
+import { zustandFuerPreis } from '../einstellungen/settings';
 import { resolvePartCondition, marktpreisMitHerkunft, getCurrentPartMarketPrice } from '../finanzen/marketPrice';
-import { lookupPart } from '../../clients/rebrickable';
+import { lookupPart } from '../katalog/quellen';
 import { farbliste, KEINE_FARBE } from '../katalog/farben';
 import { setzeLagerort, ortFuerNeuerfassung } from '../bestand/lagerort';
 import { merkeTeil, merkeTeilFarbe, katalogTeil } from '../katalog/katalogPflege';
 import * as V0 from '../infra/validate';
+import { geldEingabe } from '../infra/geld';
+import { fehlerWerfen } from '../infra/fehlerTexte';
 
 export const getPartColorList = farbliste;
 
 // Ausführlich: docs/begruendungen/src/teile/manuelleTeile.ts.md#resolvemanualpartpurchase
 export async function resolveManualPartPurchase(uid: number, { partNumber, colorId, unitPrice = null, condition = null }:
-  { partNumber: string; colorId: number; unitPrice?: any; condition?: string | null }) {
+  { partNumber: string; colorId: number; unitPrice?: unknown; condition?: string | null }) {
   // Die Regel steht in src/finanzen/preisRegel.ts; hier bleibt nur, was ein
   // TEIL anders macht als eine Figur: der Schlüssel der Abfrage.
   const r = await manuellerKaufpreis(uid, { unitPrice, condition },
@@ -51,7 +55,7 @@ export async function addManualPart(uid: number, rawBody: Record<string, unknown
   return ergebnis;
 }
 
-async function addManualPartIntern(uid: number, rawBody: any) {
+async function addManualPartIntern(uid: number, rawBody: Record<string, unknown>) {
   // Alle Felder geprüft: Sie werden später gerendert, ungeprüft waren sie die
   // Server-Hälfte einer Stored-XSS-Kette. image_url ist zwingend https.
   const V = V0;
@@ -62,9 +66,9 @@ async function addManualPartIntern(uid: number, rawBody: any) {
   const quantity    = V.acquisitionQuantity(rawBody?.quantity, 1);
   const condition   = V.optionalCondition(rawBody?.condition);
   // Negative Beträge wanderten sonst in die Summen des Finanzreiters.
-  const unit_price  = V.optionalPrice(rawBody?.unit_price, 'Stückpreis');
+  const unit_price  = geldEingabe(rawBody?.unit_price, 'Stückpreis');
   // Erlaubt mehrere Erfassungen desselben Teils zu verschiedenen Zeitpunkten.
-  const acquiredAt  = (rawBody?.acquired_at || '').trim() || null;
+  const acquiredAt  = String(rawBody?.acquired_at || '').trim() || null;
 
   let part_name = V.optionalText(rawBody?.part_name, 200);
   let image_url = V.optionalImageUrl(rawBody?.image_url);
@@ -106,17 +110,16 @@ async function addManualPartIntern(uid: number, rawBody: any) {
 
   if (existing) {
     const reCond = condition && ['N','U'].includes(condition) ? condition
-      : await resolvePartCondition(uid, part_number, color_id).catch(() => 'N');
-    const reEntered = (unit_price !== undefined && unit_price !== null && String(unit_price) !== '')
-      ? parseFloat(String(unit_price)) : null;
-    const rePrice = (reEntered !== null && !isNaN(reEntered))
+      : await resolvePartCondition(uid, part_number, color_id).catch(meldeUndLiefere('teile:zustand', 'N'));
+    const reEntered = unit_price;
+    const rePrice = reEntered !== null
       ? reEntered
       : await getCurrentPartMarketPrice(part_number, color_id, uid, reCond);
 
     // Pro Tag und Zustand EINE Erfassung (src/bestand/acquisitions.ts).
     await recordAcquisitionForDay('part', uid, [part_number, color_id], {
       quantity, price: ((rePrice ?? 0) > 0 ? rePrice : null), condition: reCond, createdAt: acquiredAt,
-      geschaetzt: reEntered === null || isNaN(reEntered),
+      geschaetzt: reEntered === null,
     });
 
     return { action: 'updated', part_number };
@@ -149,9 +152,9 @@ async function addManualPartIntern(uid: number, rawBody: any) {
 
 /** Für Webapp und App derselbe Weg.
  * @returns die Menge danach, wenn sie Teil der Anfrage war */
-export async function updateManualPart(uid: number, partNumber: string, colorId: number, body: any): Promise<{ quantity?: number }> {
+export async function updateManualPart(uid: number, partNumber: string, colorId: number, body: Record<string, unknown>): Promise<{ quantity?: number }> {
   const existing = await repo.teilZeileMitZustand(uid, partNumber, colorId);
-  if (!existing) { const e = Object.assign(new Error('Teil nicht gefunden oder nicht manuell hinzugefügt'), { status: 404 }); throw e; }
+  if (!existing) fehlerWerfen('teil_nicht_manuell', 404);
 
   const raus: { quantity?: number } = {};
   const wunsch = mengenwunsch(body);
@@ -172,13 +175,14 @@ export async function updateManualPart(uid: number, partNumber: string, colorId:
     await repo.setzeTeilpreisNeueste(uid, partNumber, colorId, unitPrice);
   }
   if (body.condition !== undefined && body.condition !== null) {
-    const cond = ['N','U'].includes(body.condition) ? body.condition : 'N';
+    const cond = body.condition === 'U' ? 'U' : 'N';
     await repo.setzeTeilzustandNeueste(uid, partNumber, colorId, cond);
   }
   return raus;
 }
 
-export async function getPartAcquisitions(uid: number[], partNumber: string, colorId: string | number) {
+export async function getPartAcquisitions(uidWahl: Sicht | number[], partNumber: string, colorId: string | number) {
+  const uid = await blickfeldAus(uidWahl);
   // Das BLICKFELD: Je Zeile kommt der Eigentümer mit, sonst wüsste die Auswahl
   // im Dialog nicht, worauf sie steht.
   return repo.teilErfassungen(uid, partNumber, V0.colorId(colorId));

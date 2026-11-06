@@ -1,6 +1,8 @@
 package ch.brickinventoryapp.ui.components
 
+import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButtonDefaults
@@ -9,6 +11,8 @@ import androidx.compose.material3.OutlinedIconButton
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.compositionLocalOf
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
@@ -27,6 +31,13 @@ import ch.brickinventoryapp.ui.theme.LocalIsBrickTheme
 val FabPlatz = 56.dp + 16.dp * 2
 
 /**
+ * Wie hoch die Snackbar des Gerüsts gerade über dem Inhalt steht. Der Erfassen-Knopf
+ * liegt im Inhalt, nicht im Fab-Platz des Gerüsts, und stiege sonst nicht über sie —
+ * ausgerechnet während „Rückgängig“ wäre die Haupthandlung verdeckt.
+ */
+val LocalSnackbarPlatz = compositionLocalOf { 0.dp }
+
+/**
  * Der eine schwebende Knopf eines Bildschirms: Erfassen. Scannen sitzt als Symbol neben
  * der Suche (ScanKnopf) — zwei gestapelte Knöpfe verdeckten das Listenende, und welcher
  * der wichtigere ist, sagte nur ihre Grösse.
@@ -34,9 +45,10 @@ val FabPlatz = 56.dp + 16.dp * 2
 @Composable
 fun ErfassenFab(beschreibung: String, onClick: () -> Unit, modifier: Modifier = Modifier) {
     val brick = LocalIsBrickTheme.current
+    val ueberSnackbar by animateDpAsState(LocalSnackbarPlatz.current, label = "fab-ueber-snackbar")
     FloatingActionButton(
         onClick = onClick,
-        modifier = modifier,
+        modifier = modifier.padding(bottom = ueberSnackbar),
         containerColor = if (brick) MaterialTheme.colorScheme.secondary else MaterialTheme.colorScheme.primary,
         contentColor = if (brick) MaterialTheme.colorScheme.onSecondary else MaterialTheme.colorScheme.onPrimary,
         shape = Formen.fab,
@@ -46,12 +58,13 @@ fun ErfassenFab(beschreibung: String, onClick: () -> Unit, modifier: Modifier = 
 /** Scannen als Symbolknopf neben einem Eingabefeld — mit Rand in `outline` (≥ 3:1). */
 @Composable
 fun ScanKnopf(onClick: () -> Unit, modifier: Modifier = Modifier, beschreibung: String = stringResource(R.string.gallery_scan_barcode)) {
-    OutlinedIconButton(
-        onClick = onClick,
-        modifier = modifier,
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
-        colors = IconButtonDefaults.outlinedIconButtonColors(contentColor = MaterialTheme.colorScheme.primary),
-    ) { Icon(BarcodeSymbol, contentDescription = beschreibung) }
+    MitTooltip(beschreibung, modifier) {
+        OutlinedIconButton(
+            onClick = onClick,
+            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
+            colors = IconButtonDefaults.outlinedIconButtonColors(contentColor = MaterialTheme.colorScheme.primary),
+        ) { Icon(BarcodeSymbol, contentDescription = beschreibung) }
+    }
 }
 
 /**

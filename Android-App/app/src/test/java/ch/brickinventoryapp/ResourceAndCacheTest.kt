@@ -1,6 +1,7 @@
 package ch.brickinventoryapp
 
 import org.junit.Test
+import java.io.File
 
 /**
  * Absicherung der Aufräumrunde: Kamera-Ressourcen, PDF-Cache-Budget,
@@ -10,7 +11,7 @@ import org.junit.Test
 class ResourceAndCacheTest {
 
     private fun read(rel: String): String {
-        val f = java.io.File(Quellen.wurzel, "$rel")
+        val f = File(Quellen.wurzel, "$rel")
         assert(f.exists()) { "Datei nicht gefunden: $rel" }
         return f.readText()
     }
@@ -46,12 +47,11 @@ class ResourceAndCacheTest {
     // Thema dieser Datei (Aufraeumen von Ressourcen) und steht jetzt
     // vollstaendig in CameraFocusConfigTest.
 
-
     // ── PDF-Cache ────────────────────────────────────────────────────────────
 
     @Test
     fun `der PDF-Ansichts-Cache hat eine Obergrenze`() {
-        val src = code(read("ui/screens/PdfViewerScreen.kt"))
+        val src = code(read("data/AnleitungsRepository.kt"))
         assert(src.contains("private fun prunePdfCache")) {
             "Kein Aufräumen des PDF-Caches. Angesehene Anleitungen bleiben absichtlich " +
                 "liegen (Resume, erneutes Öffnen ohne Neudownload) — bei bis zu 300 MB " +
@@ -71,11 +71,11 @@ class ResourceAndCacheTest {
 
     @Test
     fun `beim Abmelden werden API- UND Bild-Cache geleert`() {
-        val src = code(read("ui/AppViewModel.kt"))
-        assert(src.contains("repo.clearCache()")) { "API-Cache wird nicht geleert" }
+        val src = code(read("data/SitzungsBereinigung.kt"))
+        assert(src.contains("kontoDaten.loesche()")) { "API-Cache wird nicht geleert" }
         assert(src.contains("imageLoader.diskCache?.clear()")) {
             "Der Coil-Disk-Cache bleibt beim Abmelden liegen — inkonsistent zur " +
-                "Begründung, mit der repo.clearCache() eingeführt wurde"
+                "Begründung, mit der kontoDaten.loesche() eingeführt wurde"
         }
         val mem = src.indexOf("memoryCache?.clear()")
         val disk = src.indexOf("diskCache?.clear()")
@@ -89,7 +89,7 @@ class ResourceAndCacheTest {
 
     @Test
     fun `Debug-Builds haben eine feste Version`() {
-        val bg = java.io.File("build.gradle.kts")
+        val bg = File("build.gradle.kts")
         assert(bg.exists()) { "app/build.gradle.kts nicht gefunden" }
         val src = code(bg.readText())
         assert(src.contains("withBuildType(\"debug\")")) {
@@ -105,12 +105,12 @@ class ResourceAndCacheTest {
 
     /**
      * Derselbe Commit ergibt dieselbe Version; die CI holt dafür die ganze
-     * Historie. Gegenprobe (30.10.2026, gemessen): `fetch-depth: 0` aus
+     * Historie. Gegenprobe: `fetch-depth: 0` aus
      * android.yml entfernt → rot; `LocalDateTime.now()` zurück → rot.
      */
     @Test
     fun `die Version kommt aus Git, nicht aus der Uhr`() {
-        val src = code(java.io.File("build.gradle.kts").readText())
+        val src = code(File("build.gradle.kts").readText())
         assert(src.contains("git(\"rev-list\", \"--count\", \"HEAD\")") && src.contains("\"describe\", \"--tags\"")) {
             "versionCode/-Name kommen nicht aus Git"
         }

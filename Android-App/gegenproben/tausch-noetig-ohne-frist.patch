@@ -1,0 +1,18 @@
+Gegenprobe: noetigWartend() wartet ohne Frist auf den Tausch
+Modul: core-data
+Test: ch.brickinventoryapp.TokenTauschTest
+Rot: noetig wartet hoechstens die Frist, der Tausch laeuft weiter
+
+diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/TokenTausch.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/TokenTausch.kt
+index 44f91b2..c0da6ed 100644
+--- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/TokenTausch.kt
++++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/TokenTausch.kt
+@@ -133,7 +133,7 @@ class TokenTausch(
+      */
+     suspend fun noetigWartend(alterToken: String, herkunft: String?, generation: Long): String? {
+         val tausch = hintergrund.async { tausche(alterToken) }
+-        return when (withTimeoutOrNull(warten) { tausch.await() }) {
++        return when (tausch.await() as Tauschergebnis?) {
+             null -> null
+             Tauschergebnis.GETAUSCHT, Tauschergebnis.SCHON_GETAUSCHT -> stand()
+                 .takeIf { herkunft != null && it.herkunft == herkunft && it.generation == generation }

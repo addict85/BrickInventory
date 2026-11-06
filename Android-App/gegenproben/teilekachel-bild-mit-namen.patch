@@ -1,0 +1,19 @@
+Gegenprobe: Bild der Teilekachel wieder mit dem Namen beschrieben
+Modul: app
+Test: ch.brickinventoryapp.KachelVorlesenTest
+Rot: Teilekachel liest Name einmal
+
+diff --git a/Android-App/feature-teile/src/main/java/ch/brickinventoryapp/ui/screens/PartsScreen.kt b/Android-App/feature-teile/src/main/java/ch/brickinventoryapp/ui/screens/PartsScreen.kt
+index 5fd88a0..8327934 100644
+--- a/Android-App/feature-teile/src/main/java/ch/brickinventoryapp/ui/screens/PartsScreen.kt
++++ b/Android-App/feature-teile/src/main/java/ch/brickinventoryapp/ui/screens/PartsScreen.kt
+@@ -467,8 +467,7 @@ fun PartCard(part: TeilAnsicht, serverUrl: String, imageLoader: ImageLoader,
+             ProduktBild(
+                 model = imageUrl?.let { ImageRequest.Builder(ctx).data(it).crossfade(weich).build() },
+                 imageLoader = imageLoader,
+-                // Ohne Beschreibung: Der Name steht darunter, TalkBack las ihn sonst zweimal.
+-                contentDescription = null,
++                contentDescription = part.partName,
+                 onState = { st ->
+                     if (st is coil3.compose.AsyncImagePainter.State.Error) onImageError()
+                 },

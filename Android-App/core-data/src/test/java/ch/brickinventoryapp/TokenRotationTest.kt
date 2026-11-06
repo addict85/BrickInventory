@@ -23,9 +23,18 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import retrofit2.Retrofit
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
 import java.io.File
 import java.util.Collections
 import java.util.concurrent.TimeUnit
+import ch.brickinventoryapp.data.api.ApiJson
+import ch.brickinventoryapp.data.repository.Ergebnis
+import ch.brickinventoryapp.di.PLATZHALTER_BASIS
+import java.io.IOException
+import okhttp3.mockwebserver.SocketPolicy
 
 /**
  * Der Tausch des Tokens im echten Netzweg: Wächter, Konto-Repository und
@@ -33,7 +42,7 @@ import java.util.concurrent.TimeUnit
  * abweist oder den Tausch per Kopfzeile verlangt. Der Testserver spricht http
  * auf localhost; der Wächter läuft darum wie im Debug-Build (entwicklung = true).
  *
- * Gegenproben (30.10.2026, gemessen):
+ * Gegenproben:
  *   A  in ServerWaechter den Zweig für 401 `token_rotation_noetig` entfernt →
  *      rot „ein abgewiesener alter Token wird getauscht und die Anfrage wiederholt“
  *      (401 statt 200, Sitzung abgelaufen gemeldet)
@@ -43,7 +52,7 @@ import java.util.concurrent.TimeUnit
  *      rot „gleichzeitig abgewiesene Anfragen blockieren den Tausch nicht“
  *      (Zeitüberschreitung: beide Plätze warten auf den Tausch, der Tausch auf
  *      einen Platz)
- * Gegenproben (02.11.2026, gemessen mit kotlinc lokal):
+ * Gegenproben:
  *   D  in TokenTausch die Prüfung `stand() != vorher` vor der Wiederholung
  *      entfernt → rot „ein Serverwechsel waehrend der Wiederholung …“ (SPAETER)
  *   E  im Wächter wieder die alte Regel (Kopf nur weg, wenn er der jetzige Token
@@ -68,10 +77,12 @@ class TokenRotationTest {
     private val lage = object : Zugangslage {
         override fun serverUrl() = adresse()
         override fun token() = gespeichert
-        override fun tokenHerkunft(): String? = null
+        override fun tokenHerkunft(): String? = NetworkPolicy.herkunft(serverUrl())
         override fun generation() = schranke.generation
     }
     private val schranke = TokenSchranke()
+    /** Echte Fäden: Der Tausch läuft hier gegen einen echten Testserver. */
+    private val hintergrund = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
     /** Wie PreferencesManager.tokenStand(): ohne Bindung gilt die eingetragene Adresse. */
     private fun stand() = TokenStand(gespeichert, NetworkPolicy.herkunft(adresse()), schranke.generation)
@@ -81,6 +92,7 @@ class TokenRotationTest {
         ersetze = { vorher, neu, h -> schranke.ersetzeFalls(vorher, h, { stand() }) { speichern(neu) } },
         rotiere = { k().tokenRotieren(it) },
         pausen = listOf(50, 50, 50),
+        hintergrund = hintergrund,
     )
 
     init {
@@ -105,20 +117,21 @@ class TokenRotationTest {
         server.start()
     }
 
-    private lateinit var konto: KontoRepository
+    private val konto: KontoRepository
     private val tausch = tauschFuer({ konto }) { ereignisse += "speichere $it"; gespeichert = it }
     private val client = OkHttpClient.Builder()
         .addInterceptor(ServerWaechter(lage, true, entwicklung = true, sitzungAbgelaufen = { abgelaufen++ }, rotation = tausch))
         .readTimeout(2, TimeUnit.SECONDS).build()
 
     init {
-        konto = KontoRepository(Retrofit.Builder().baseUrl(ch.brickinventoryapp.di.PLATZHALTER_BASIS).client(client)
-            .addConverterFactory(ch.brickinventoryapp.data.api.ApiJson.asConverterFactory("application/json".toMediaType()))
+        konto = KontoRepository(Retrofit.Builder().baseUrl(PLATZHALTER_BASIS).client(client)
+            .addConverterFactory(ApiJson.asConverterFactory("application/json".toMediaType()))
             .build().create(KontoApi::class.java), ResponseCache { dir })
     }
 
     @After
     fun zu() {
+        hintergrund.cancel()
         server.shutdown()
         dir.deleteRecursively()
     }
@@ -146,12 +159,12 @@ class TokenRotationTest {
             .addInterceptor(ServerWaechter(lage, true, entwicklung = true, sitzungAbgelaufen = { abgelaufen++ }, rotation = t))
             .readTimeout(2, TimeUnit.SECONDS).build()
         k = KontoRepository(Retrofit.Builder().baseUrl(server.url("/")).client(c)
-            .addConverterFactory(ch.brickinventoryapp.data.api.ApiJson.asConverterFactory("application/json".toMediaType()))
+            .addConverterFactory(ApiJson.asConverterFactory("application/json".toMediaType()))
             .build().create(KontoApi::class.java), ResponseCache { dir })
         val codes: MutableList<Int> = Collections.synchronizedList(mutableListOf())
         repeat(2) {
             c.newCall(Request.Builder().url(server.url("/api/v1/sets")).build()).enqueue(object : okhttp3.Callback {
-                override fun onFailure(call: okhttp3.Call, e: java.io.IOException) { codes += -1 }
+                override fun onFailure(call: okhttp3.Call, e: IOException) { codes += -1 }
                 override fun onResponse(call: okhttp3.Call, response: okhttp3.Response) { response.use { codes += it.code } }
             })
         }
@@ -191,7 +204,7 @@ class TokenRotationTest {
                 kotlinx.coroutines.runBlocking {
                     schranke.schreibe { gespeichert = ""; umgezogen = neuer.url("/").toString().trimEnd('/') }
                 }
-                MockResponse().setSocketPolicy(okhttp3.mockwebserver.SocketPolicy.DISCONNECT_AFTER_REQUEST)
+                MockResponse().setSocketPolicy(SocketPolicy.DISCONNECT_AFTER_REQUEST)
             }
             val ergebnis = kotlinx.coroutines.runBlocking { tausch.tausche("alt") }
             assertEquals(Tauschergebnis.VERWORFEN, ergebnis)
@@ -219,7 +232,7 @@ class TokenRotationTest {
             gespeichert = ""
             umgezogen = neuer.url("/").toString().trimEnd('/')
             val r = kotlinx.coroutines.runBlocking { konto.tokenRotieren("alt") }
-            assertTrue(r is ch.brickinventoryapp.data.repository.Result.Error)
+            assertTrue(r is Ergebnis.Error)
             assertEquals(listOf<String?>(null), dort.toList())
         } finally {
             neuer.shutdown()

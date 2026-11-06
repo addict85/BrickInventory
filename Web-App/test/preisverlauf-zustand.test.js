@@ -1,12 +1,7 @@
 'use strict';
 /**
  * Der Preisverlauf zeichnet nur Zustände, zu denen es eine Erfassung gibt.
- *
- * Marco: „Das gezeigte Teil hat nur einen Kaufpreis mit dem Zustand gebraucht.
- * Trotzdem wird im Preisverlauf auch eine Linie mit 'neu' angezeigt." Für Sets
- * galt die Regel schon, für manuelle Teile und Figuren nicht. Geprüft wird am
- * Verlauf einer Figur mit Preisen in beiden Zuständen und nur einer
- * Gebraucht-Erfassung.
+ * Ausführlich: docs/begruendungen/test/preisverlauf-zustand.test.js.md#test
  *
  * Gegenproben (am 30.10.2026 gemessen):
  *   A  in manualPriceHistory() wieder beide Zustände fest gezeichnet
@@ -20,17 +15,11 @@ const assert = require('node:assert/strict');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 const _req = require('./helpers/sources').buildAndRequire();
+const { dbOderSkip } = require('./helpers/db');
 
 test('ohne Erfassung kein Zustand im Diagramm, die Rohdaten bleiben', { concurrency: 1 }, async (t) => {
   const db = _req('db/database.js');
-  try { await db.initSchema(); }
-  catch (e) {
-    if (process.env.REQUIRE_DB === '1')
-      throw new Error(`REQUIRE_DB=1, aber die Test-DB ist nicht erreichbar: ${e.message}`);
-    t.skip('Test-DB nicht erreichbar'); return;
-  }
-  const mc = await db.pool.connect();
-  try { await _req('db/migrate.js').runMigrations(mc); } finally { mc.release(); }
+  if (!await dbOderSkip(t, _req)) return;
   const { getMinifigPriceHistory, zustaendeFuerVerlauf } = _req('src/finanzen/priceHistory.js');
   const NAME = `verlauf-${process.pid}`, FN = `fig-vl${process.pid}`;
   const weg = async () => {

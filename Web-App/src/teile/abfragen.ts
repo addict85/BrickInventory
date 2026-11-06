@@ -1,32 +1,31 @@
 import * as repo from './repository/teileListe';
 import { resolveImageLocal } from '../katalog/bilder/images';
-import { asIds } from '../haushalt/haushalt';
-import type { BlickfeldEingabe } from '../haushalt/haushalt';
+import { asIds, withOwners, blickfeldAus, type Sicht } from '../haushalt/haushalt';
+import type { BlickfeldEingabe, BlickfeldEingabe as Blickfeld } from '../haushalt/haushalt';
 import { istErsatzteil, colorId } from '../infra/validate';
 import { ensureFresh } from './partsSummary';
 import { fetchMissingBlIds } from '../katalog/partsImport';
-import type { RbSetTeil } from '../../clients/rebrickable';
-import { getRbKey, httpsGetRobust } from '../../clients/rebrickable';
+import type { RbSetTeil } from '../katalog/quellen';
+import { getRbKey, httpsGetRobust } from '../katalog/quellen';
 import { getAllSetParts } from '../katalog/rebrickableKatalog';
-import { clampPageSize, applyManualCondition, withOwners, MAX_PAGE_SIZE, UNPAGED_LIMIT, SET_PARTS_MAX_PAGE_SIZE } from '../bestand/gemeinsam';
-import { meldeUndWeiter, logAndContinue, meldeUndLiefere } from '../infra/httpError';
+import { clampPageSize, applyManualCondition, MAX_PAGE_SIZE, UNPAGED_LIMIT, SET_PARTS_MAX_PAGE_SIZE } from '../bestand/gemeinsam';
+import { meldeUndWeiter, logAndContinue, meldeUndLiefere } from '../infra/fehler';
 import { farbkarte as blFarbkarte } from '../finanzen/financeCalc';
-import { getGlobalSetting } from '../konto/settings';
+import { getGlobalSetting } from '../einstellungen/settings';
 import { neuestesInventar } from '../katalog/rbInventar';
-import { mitVersion, ohneVersion } from '../sets/setNummer';
+import { mitVersion, ohneVersion } from '../infra/setNummer';
 import { merkeBlFarbnummer, blFarbnummerAus } from '../katalog/blZuordnung';
 
 /** Mit Ausweichebenen (CSV-Zwischenspeicher, Rebrickable), damit ein Set auch
  * ohne eigene Zeilen eine Teileliste zeigt.
  * Ausführlich: docs/begruendungen/src/teile/abfragen.ts.md#abschnitt */
 
-import type { BlickfeldEingabe as Blickfeld } from '../haushalt/haushalt';
-import * as httpError from '../infra/httpError';
 import { marktpreiseAusCacheFuerTeile } from '../finanzen/marketPrice';
 
 /** Ohne manuelle Positionen — die haben eine eigene Ansicht. Hex-Rückfall aus
  * rb_colors für Teile ohne eigenen Wert. */
-export async function getPartsColors(userId: Blickfeld) {
+export async function getPartsColors(userIdWahl: Sicht | Blickfeld) {
+  const userId = await blickfeldAus(userIdWahl);
   // asIds(), damit ältere Aufrufer mit einer nackten ID weiter gehen.
   const uids = asIds(userId);
   // Aus der Zusammenfassung (die Mengen sind dort schon mit der Set-Anzahl
@@ -116,12 +115,13 @@ export async function tryPartsSummary(userId: Blickfeld, o: Record<string, unkno
     return { parts: zeilen.map(teilAlsAntwort), total, source: 'summary', page_size: size };
   } catch (e) {
     // Ein Rückfall, kein Fehler: Wie bei fehlender Frische übernimmt die Live-Abfrage.
-    httpError.meldeUndWeiter('teile:zusammenfassung', e);
+    meldeUndWeiter('teile:zusammenfassung', e);
     return null;
   }
 }
 
-export async function getParts(userId: Blickfeld, query: Record<string, unknown> = {}) {
+export async function getParts(userIdWahl: Sicht | Blickfeld, query: Record<string, unknown> = {}) {
+  const userId = await blickfeldAus(userIdWahl);
   const uids = asIds(userId);
   const filter = teileFilter(query);
   const page = query.page ?? 1;
@@ -160,12 +160,14 @@ export async function getParts(userId: Blickfeld, query: Record<string, unknown>
 
 /** Die Kategorie aus dem eigenen Katalog, sonst aus rb_parts: Rebrickables
  * Set-Teile-Antwort liefert meist keine, die Liste bestünde sonst aus „Unbekannt". */
-export async function getPartsCategories(userId: Blickfeld) {
+export async function getPartsCategories(userIdWahl: Sicht | Blickfeld) {
+  const userId = await blickfeldAus(userIdWahl);
   const uids = asIds(userId);
   return repo.kategorien(uids, await ensureFresh(uids, { strict: true }));
 }
 
-export async function getPartsStats(userId: Blickfeld) {
+export async function getPartsStats(userIdWahl: Sicht | Blickfeld) {
+  const userId = await blickfeldAus(userIdWahl);
   const uids = asIds(userId);
   // Aus der Zusammenfassung nur, wenn sie frisch ist: Webapp und App zeigen
   // dieselben Zahlen.
@@ -192,7 +194,7 @@ export async function getBlColorMap() {
     const { status, body } = await httpsGetRobust(
       `https://rebrickable.com/api/v3/lego/colors/?page_size=200&page=${page}`,
       { Authorization: `key ${key}` }, 15000
-    ).catch(() => ({ status: 0, body: '' }));
+    ).catch(meldeUndLiefere('teile:abruf', { status: 0, body: '' }));
     if (status !== 200) break;
     const data = JSON.parse(body);
     for (const c of (data.results || [])) {
@@ -211,9 +213,10 @@ export async function getBlColorMap() {
 /** @param viewerId Wessen EINSTELLUNGEN gelten (Währung) — getrennt von
  *   `userId`, das sagt, wessen DATEN gelesen werden.
  * @param search  Suchtext der Filterleiste; er wirkt auf beide Listen. */
-export async function getManualParts(userId: Blickfeld, viewerId: number,
+export async function getManualParts(userIdWahl: Sicht | Blickfeld, viewerId: number,
   { page = 1, page_size = null, search = null, storage = null }:
     { page?: unknown; page_size?: unknown; search?: string | null; storage?: string | null } = {}) {
+  const userId = await blickfeldAus(userIdWahl);
   const uids = asIds(userId);
   const groesse = page_size ? clampPageSize(page_size, 60) : null;
   const seite = groesse ? { groesse, versatz: (Math.max(1, parseInt(String(page)) || 1) - 1) * groesse } : null;
@@ -230,10 +233,10 @@ export async function getManualParts(userId: Blickfeld, viewerId: number,
 export const BESTAND_MAX_TEILE = 5000;
 
 export async function getOwnedQuantities(
-  blickfeld: BlickfeldEingabe,
-  teile: Array<{ part_number?: string; color_id?: number | string }>,
+  blickfeldWahl: Sicht | BlickfeldEingabe,
+  teile: Array<{ part_number?: string | number | undefined; color_id?: number | string | null | undefined }>,
 ): Promise<Record<string, { gesamt: number; lose: number }>> {
-  const uids = asIds(blickfeld);
+  const uids = await blickfeldAus(blickfeldWahl);
   // Doppelte Schlüssel fallen weg: Eine Liste über mehrere Sets fragt dasselbe
   // Teil sonst mehrfach.
   const gesehen = new Set<string>();

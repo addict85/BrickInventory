@@ -3,6 +3,8 @@ package ch.brickinventoryapp.ui.dialogs
 // Sammel-Importe wie im Nachbardialog (BarcodeResultDialog.kt): `Modifier.size`
 // steckt in foundation.layout, und das `by` vor collectAsStateWithLifecycle
 // braucht runtime.getValue — beides kommt über die Sternchen mit.
+import ch.brickinventoryapp.ui.ErfassungUiState
+import ch.brickinventoryapp.ui.viewmodel.ErfassungAktionen
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -19,23 +21,16 @@ import ch.brickinventoryapp.ui.theme.Abstaende
 /**
  * „Wird geprüft“ — die Anzeige zwischen Scan und Zwischendialog. Ein Dialog statt
  * einer Snackbar, weil eine Snackbar:
- *
- *   1. nach ein paar Sekunden verschwindet, während die Prüfung weiterläuft — der Bildschirm sähe untätig aus;
- *   2. nichts anhält: Der Scanner ist schon geschlossen (nav/ToolsGraph.kt ruft `popBackStack()` vor der Auflösung), man könnte das nächste Set scannen, während das vorige noch geprüft wird;
- *   3. beim Texterkennungs-Weg nichts nennt.
- *
- * Der Dialog bleibt, solange die Frage offen ist, legt sich über den Weg zurück
- * zum Scanner und nennt die Nummer.
- *
- * Das Erfassen selbst zeigt er nicht: Es läuft im Hintergrund. Sobald die
- * Bestandsfrage beantwortet ist, ist er weg; Teile, Anleitungen und Preise lädt
- * der Server ohnehin nach. Der Bildschirm holt nichts selbst
- * (BildschirmHoltDatenNichtSelbstTest); er liest einen Fluss und ruft eine
- * ViewModel-Funktion.
+ * Ausführlich: docs/begruendungen/feature-sammlung/ui/dialogs/SetPruefungDialog.kt.md#setpruefungroute
  */
 @Composable
-fun SetPruefungDialog(vm: ErfassungViewModel) {
+fun SetPruefungRoute(vm: ErfassungViewModel) {
     val erfassung by vm.erfassungState.collectAsStateWithLifecycle()
+    SetPruefungDialog(erfassung, vm)
+}
+
+@Composable
+fun SetPruefungDialog(erfassung: ErfassungUiState, aktionen: ErfassungAktionen) {
     val schritt = erfassung.pruefung ?: return
 
     AlertDialog(
@@ -74,7 +69,7 @@ fun SetPruefungDialog(vm: ErfassungViewModel) {
             // Kein „OK": Es gibt nichts zu bestätigen. Der einzige sinnvolle
             // Ausweg ist das Abbrechen — und der gehört an die Stelle, an der
             // man ihn erwartet.
-            TextButton(onClick = { vm.brichPruefungAb() }) {
+            TextButton(onClick = { aktionen.brichPruefungAb() }) {
                 Text(stringResource(R.string.common_cancel))
             }
         }

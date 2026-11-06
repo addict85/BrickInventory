@@ -1,5 +1,6 @@
 import * as db from '../../../db/database';
 import { blJoin, blNummerSql } from '../../../db/blZuordnungSql';
+import type { ErfassungsZeile } from '../../../db/bestandsmenge';
 
 /** Die BrickLink-Nummer hängt an der Figur (bl_zuordnung), nicht am Exemplar. */
 
@@ -14,7 +15,7 @@ export function figurZeileMitZustand(uid: number, figNumber: string) {
               WHERE a.user_id = m.user_id AND a.fig_number = m.fig_number
               ORDER BY a.created_at DESC, a.id DESC LIMIT 1) AS condition
        FROM minifigs m
-       ${blJoin('m.fig_number', 'fig', 'z')}
+       ${blJoin('m.fig_number', 'fig', 'm.user_id', 'z')}
       WHERE m.user_id=$1 AND m.fig_number=$2 AND m.source='manual'`, [uid, figNumber]);
 }
 
@@ -38,7 +39,7 @@ export async function setzeFigurzustandNeueste(uid: number, figNumber: string, z
 }
 
 export function figurErfassungen(uids: number[], figNumber: string) {
-  return db.all(
+  return db.all<ErfassungsZeile>(
     `SELECT a.id, a.quantity, a.unit_price,
             COALESCE(a.condition, 'N') AS condition, a.price_estimated, a.currency,
             a.created_at, a.user_id AS owner_user_id

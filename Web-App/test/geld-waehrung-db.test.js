@@ -25,6 +25,7 @@ const assert = require('node:assert/strict');
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
 const _req = require('./helpers/sources').buildAndRequire();
+const { dbOderSkip } = require('./helpers/db');
 const db = _req('db/database.js');
 
 test('Rappen erst am Ende, Währungen ehrlich', { concurrency: 1 }, async (t) => {
@@ -41,14 +42,7 @@ test('Rappen erst am Ende, Währungen ehrlich', { concurrency: 1 }, async (t) =>
     assert.equal(v.unit_price, 120.33);
   });
 
-  try { await db.initSchema(); }
-  catch (e) {
-    if (process.env.REQUIRE_DB === '1')
-      throw new Error(`REQUIRE_DB=1, aber die Test-DB ist nicht erreichbar: ${e.message}`);
-    t.skip('Test-DB nicht erreichbar'); return;
-  }
-  const mc = await db.pool.connect();
-  try { await _req('db/migrate.js').runMigrations(mc); } finally { mc.release(); }
+  if (!await dbOderSkip(t, _req)) return;
 
   const NAME = `geld-${process.pid}`, SN = `GW${process.pid}-1`;
   const TEIL_EUR = `gwe${process.pid}`, TEIL_CHF = `gwc${process.pid}`, FIG = `gwf${process.pid}`;
@@ -133,8 +127,8 @@ test('Rappen erst am Ende, Währungen ehrlich', { concurrency: 1 }, async (t) =>
       { set_number: 'A', quantity: 1, current_price: 750, purchase_price: 600, baseline_price: 600, pnl_pct: '25.0', baseline_pnl_pct: '25.0' },
       { set_number: 'B', quantity: 2, current_price: 0, purchase_price: 40, baseline_price: 40, pnl_pct: null, baseline_pnl_pct: null },
     ]);
-    assert.deepEqual(w.get('A'), { kachel_preis: 750, kachel_pnl_pct: 114.3 });
-    assert.deepEqual(w.get('B'), { kachel_preis: 40, kachel_pnl_pct: null });
+    assert.deepEqual(w.get('A'), { kachel_preis: 750, kachel_pnl_pct: 114.3, kachel_quelle: 'markt' });
+    assert.deepEqual(w.get('B'), { kachel_preis: 40, kachel_pnl_pct: null, kachel_quelle: 'kauf' });
   });
 
   await t.test('ohne Kontowährung gilt die der Installation — für Erfassungen und Gutscheine', async () => {

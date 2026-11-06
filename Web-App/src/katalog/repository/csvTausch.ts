@@ -1,7 +1,7 @@
 import type { PoolClient } from 'pg';
 import { pflegeTabelle } from '../../../db/tabellePflegen';
 import { LOCKS } from '../../infra/lockNamespaces';
-import { logAndContinue } from '../../infra/httpError';
+import { logAndContinue } from '../../infra/fehler';
 
 /** Auf EINER Verbindung, weil Sitzungssperre, Schatten und Transaktion an ihr
  * hängen. Tabellen- und Spaltennamen kommen nur aus dem Quelltext. */
@@ -13,11 +13,14 @@ function sperrschluessel(tabelle: string): number {
 }
 
 export async function sperreTabelle(c: PoolClient, tabelle: string): Promise<void> {
+  // Ein laufender Tausch derselben Tabelle darf länger dauern als lock_timeout.
+  await c.query('SET lock_timeout = 0');
   await c.query('SELECT pg_advisory_lock($1, $2)', [LOCKS.CSV_IMPORT, sperrschluessel(tabelle)]);
 }
 
 export async function gibTabelleFrei(c: PoolClient, tabelle: string): Promise<void> {
   await c.query('SELECT pg_advisory_unlock($1, $2)', [LOCKS.CSV_IMPORT, sperrschluessel(tabelle)]);
+  await c.query('RESET lock_timeout');
 }
 
 /** Mit Schlüsseln und Indizes: ON CONFLICT in den Blöcken braucht sie. */

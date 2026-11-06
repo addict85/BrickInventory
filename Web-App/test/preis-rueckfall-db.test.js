@@ -1,11 +1,7 @@
 /**
  * Finanzen: Ein gebrauchtes Set ohne Gebraucht-Preis bekommt den Preis für
  * „Neu" — auch wenn der nur noch alt im Cache liegt.
- *
- * Fall vom 25.10. (Holiday House, 2026): Für „Gebraucht" stand ein frischer
- * Eintrag ohne Preis, der Neu-Preis war älter als die Cache-Dauer. Die
- * Detailansicht zeigte ihn (sie liest jeden Cache-Eintrag), Finanzen zeigte
- * „—": fetchPrice sah im frischen Cache nach „Neu" nach und rief es nie ab.
+ * Ausführlich: docs/begruendungen/test/preis-rueckfall-db.test.js.md#kopf
  *
  * Gegenproben (am 25.10. gemessen):
  *   A  der Abruf des anderen Zustands im Null-Zweig entfernt (der Stand vor
@@ -20,6 +16,11 @@
  *   C  die Frist in ohneBricklinkPreis() entfernt → rot: „alte Markierung
  *      verhindert den Abruf"
  *
+ * Seit 05.11.2026 liest die Bewertung nur den Cache; geholt wird im Auftrag
+ * preise_nachladen (hier von Hand ausgeführt). Gegenprobe (gemessen):
+ *   D  in setPreisAusVorrat() den Rückfall auf den anderen Zustand entfernt →
+ *      rot: „kein Marktpreis“
+ *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL.
  */
 const test   = require('node:test');
@@ -30,6 +31,7 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 
 const ROOT = path.join(__dirname, '..');
 const _req = require('./helpers/sources').buildAndRequire();
+const { dbOderSkip } = require('./helpers/db');
 const db = _req('db/database.js');
 const { haeltSet } = require('./helpers/bestand');
 
@@ -47,6 +49,16 @@ require.cache[blPfad].exports = Object.assign({}, echt, {
   },
 });
 
+/** Führt den Auftrag aus, den die Bewertung für fehlende Preise eingestellt hat. */
+async function nachladen() {
+  const a = await db.get(`SELECT id, nutzlast FROM auftraege WHERE art = 'preise_nachladen' AND status = 'offen' ORDER BY id DESC LIMIT 1`);
+  if (!a) return false;
+  const { preiseNachladen } = _req('jobs/preiseNachladen.js');
+  await preiseNachladen(a.nutzlast, { signal: new AbortController().signal, fortschritt: async () => true });
+  await db.run(`DELETE FROM auftraege WHERE art = 'preise_nachladen'`);
+  return true;
+}
+
 /** Ein Konto mit einem gebrauchten Set, Währung EUR. */
 async function konto(name, set) {
   await db.run('DELETE FROM users WHERE username = $1', [name]).catch(() => {});
@@ -61,14 +73,7 @@ async function konto(name, set) {
 }
 
 test('gebrauchtes Set ohne Gebraucht-Preis: Neu-Preis wird geholt', { concurrency: 1 }, async (t) => {
-  try { await db.initSchema(); }
-  catch (e) {
-    if (process.env.REQUIRE_DB === '1')
-      throw new Error(`REQUIRE_DB=1, aber die Test-DB ist nicht erreichbar: ${e.message}`);
-    t.skip('Test-DB nicht erreichbar'); return;
-  }
-  const client = await db.pool.connect();
-  try { await _req('db/migrate.js').runMigrations(client); } finally { client.release(); }
+  if (!await dbOderSkip(t, _req)) return;
 
   const NAME = `rueckfall_${process.pid}`, SET = `9${process.pid % 10000}-1`;
   const aufraeumen = async () => {
@@ -86,6 +91,10 @@ test('gebrauchtes Set ohne Gebraucht-Preis: Neu-Preis wird geholt', { concurrenc
 
   const { computeSetsValuation } = _req('src/finanzen/financeCalc.js');
   abrufe = [];
+  const vorher = await computeSetsValuation(uid, [uid]);
+  assert.deepEqual(abrufe, [], 'die Bewertung ruft selbst BrickLink ab');
+  assert.equal(vorher.preise_ausstehend, 1, 'der fehlende Preis steht nicht als Auftrag an');
+  assert.ok(await nachladen());
   const zeile = (await computeSetsValuation(uid, [uid])).sets.find(s => s.set_number === SET);
   assert.ok(zeile, 'Set fehlt in der Bewertung');
   assert.equal(zeile.avg_price, 111, `kein Marktpreis: ${JSON.stringify({ avg: zeile.avg_price, no_price: zeile.no_price, abrufe })}`);
@@ -93,6 +102,7 @@ test('gebrauchtes Set ohne Gebraucht-Preis: Neu-Preis wird geholt', { concurrenc
 
   // Jetzt sind beide frisch — der nächste Aufruf kommt ohne BrickLink aus.
   abrufe = [];
+  assert.equal(await nachladen(), false, 'ein frischer Preis stellt keinen Auftrag ein');
   const zweite = (await computeSetsValuation(uid, [uid])).sets.find(s => s.set_number === SET);
   assert.equal(zweite.avg_price, 111);
   assert.deepEqual(abrufe, [], 'ruft BrickLink erneut ab, obwohl beide Zustände frisch im Cache liegen');
@@ -101,6 +111,7 @@ test('gebrauchtes Set ohne Gebraucht-Preis: Neu-Preis wird geholt', { concurrenc
   await db.run(`UPDATE price_cache SET avg_price = 0, min_price = 0, max_price = 0, qty_avg_price = 0, fetched_at = NOW() WHERE set_number = $1`, [SET]);
   abrufe = [];
   const dritte = (await computeSetsValuation(uid, [uid])).sets.find(s => s.set_number === SET);
+  assert.equal(await nachladen(), false, 'beide frisch ohne Preis: kein Auftrag');
   assert.equal(dritte.avg_price, 0);
   assert.deepEqual(abrufe, [], 'ruft BrickLink erneut ab, obwohl beide Zustände frisch ohne Preis sind');
 });
@@ -130,7 +141,8 @@ test('„BrickLink kennt das Set nicht" gilt nur eine Weile', { concurrency: 1 }
   // Zehn Tage alt: Es wird wieder gefragt, und der Preis kommt an.
   await db.run(`UPDATE catalog_cache SET fetched_at = NOW() - INTERVAL '10 days' WHERE set_number = $1`, [SET]);
   abrufe = [];
+  await bewerte();
+  assert.ok(await nachladen() && abrufe.length > 0, 'alte Markierung verhindert den Abruf — das Set bliebe für immer ohne Preis');
   const alt = await bewerte();
-  assert.ok(abrufe.length > 0, 'alte Markierung verhindert den Abruf — das Set bliebe für immer ohne Preis');
   assert.equal(alt.avg_price, 111);
 });

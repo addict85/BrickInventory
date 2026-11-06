@@ -106,6 +106,7 @@ CREATE TABLE auftraege (
   frist_bis timestamp with time zone,
   gestartet timestamp with time zone,
   fortschritt jsonb,
+  ergebnis jsonb,
   CONSTRAINT auftraege_max_versuche_check CHECK ((max_versuche > 0)),
   CONSTRAINT auftraege_pkey PRIMARY KEY (id),
   CONSTRAINT auftraege_status_check CHECK ((status = ANY (ARRAY['offen'::text, 'laeuft'::text, 'erledigt'::text, 'fehler'::text, 'abgebrochen'::text]))),
@@ -116,6 +117,12 @@ CREATE INDEX idx_auftraege_frist ON auftraege USING btree (frist_bis) WHERE (sta
 CREATE INDEX idx_auftraege_offen_faellig ON auftraege USING btree (faellig_ab) WHERE (status = 'offen'::text);
 CREATE UNIQUE INDEX idx_auftraege_schluessel ON auftraege USING btree (schluessel) WHERE (status = 'offen'::text);
 CREATE INDEX idx_auftraege_user ON auftraege USING btree (user_id) WHERE (user_id IS NOT NULL);
+CREATE TRIGGER auftrag_exklusiv BEFORE UPDATE OF status, belegt_von ON auftraege FOR EACH ROW WHEN (((new.status = 'laeuft'::text) AND (new.belegt_von IS DISTINCT FROM old.belegt_von))) EXECUTE FUNCTION auftrag_exklusiv_belegen();
+
+CREATE TABLE auftrag_exklusiv (
+  art text NOT NULL,
+  CONSTRAINT auftrag_exklusiv_pkey PRIMARY KEY (art)
+);
 
 CREATE TABLE auftrag_pausen (
   art text NOT NULL,
@@ -138,6 +145,21 @@ CREATE TRIGGER trg_teilekatalog_del AFTER DELETE ON bl_zuordnung REFERENCING OLD
 CREATE TRIGGER trg_teilekatalog_ins AFTER INSERT ON bl_zuordnung REFERENCING NEW TABLE AS neu FOR EACH STATEMENT EXECUTE FUNCTION merke_teilekatalog_neu();
 CREATE TRIGGER trg_teilekatalog_upd AFTER UPDATE ON bl_zuordnung REFERENCING OLD TABLE AS alt NEW TABLE AS neu FOR EACH STATEMENT EXECUTE FUNCTION merke_teilekatalog_beide();
 
+CREATE TABLE bl_zuordnung_eigen (
+  user_id integer NOT NULL,
+  art text NOT NULL,
+  rb_id text NOT NULL,
+  bl_id text NOT NULL,
+  updated_at timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT bl_zuordnung_eigen_art CHECK ((art = ANY (ARRAY['part'::text, 'fig'::text, 'set'::text]))),
+  CONSTRAINT bl_zuordnung_eigen_pkey PRIMARY KEY (user_id, art, rb_id),
+  CONSTRAINT bl_zuordnung_eigen_user_id_fkey FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+CREATE INDEX idx_bl_zuordnung_eigen_bl ON bl_zuordnung_eigen USING btree (user_id, art, bl_id);
+CREATE TRIGGER trg_teilekatalog_del AFTER DELETE ON bl_zuordnung_eigen REFERENCING OLD TABLE AS alt FOR EACH STATEMENT EXECUTE FUNCTION merke_teilekatalog_alt();
+CREATE TRIGGER trg_teilekatalog_ins AFTER INSERT ON bl_zuordnung_eigen REFERENCING NEW TABLE AS neu FOR EACH STATEMENT EXECUTE FUNCTION merke_teilekatalog_neu();
+CREATE TRIGGER trg_teilekatalog_upd AFTER UPDATE ON bl_zuordnung_eigen REFERENCING OLD TABLE AS alt NEW TABLE AS neu FOR EACH STATEMENT EXECUTE FUNCTION merke_teilekatalog_beide();
+
 CREATE TABLE catalog_cache (
   set_number text NOT NULL,
   name text,
@@ -152,6 +174,16 @@ CREATE TABLE catalog_cache (
   CONSTRAINT catalog_cache_setnummer_mit_version CHECK ((set_number ~ '-[0-9]+$'::text))
 );
 CREATE TRIGGER catalog_cache_setnummer BEFORE INSERT OR UPDATE OF set_number ON catalog_cache FOR EACH ROW EXECUTE FUNCTION setnummer_normalisieren();
+
+CREATE TABLE figur_eigen (
+  user_id integer NOT NULL,
+  fig_number text NOT NULL,
+  fig_name text,
+  image_url text,
+  updated_at timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT figur_eigen_pkey PRIMARY KEY (user_id, fig_number),
+  CONSTRAINT figur_eigen_user_id_fkey FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
 
 CREATE TABLE global_settings (
   key text NOT NULL,
@@ -339,8 +371,6 @@ CREATE TABLE minifigs_catalog (
   image_url text,
   image_local text,
   updated_at timestamp with time zone DEFAULT now(),
-  name_von integer,
-  bild_von integer,
   CONSTRAINT minifigs_catalog_pkey PRIMARY KEY (fig_number)
 );
 CREATE INDEX idx_minifigs_catalog_bild_stamm ON minifigs_catalog USING btree (bild_stamm(image_local)) WHERE (image_local IS NOT NULL);
@@ -389,8 +419,6 @@ CREATE TABLE part_catalog (
   part_name text,
   category_name text,
   updated_at timestamp with time zone DEFAULT now(),
-  name_von integer,
-  kategorie_von integer,
   CONSTRAINT part_catalog_pkey PRIMARY KEY (part_number)
 );
 CREATE INDEX idx_part_catalog_category ON part_catalog USING btree (category_name);
@@ -407,9 +435,6 @@ CREATE TABLE part_color_catalog (
   image_url text,
   image_local text,
   updated_at timestamp with time zone DEFAULT now(),
-  farbname_von integer,
-  farbcode_von integer,
-  bild_von integer,
   CONSTRAINT part_color_catalog_pkey PRIMARY KEY (part_number, color_id)
 );
 CREATE INDEX idx_part_color_catalog_bild_stamm ON part_color_catalog USING btree (bild_stamm(image_local)) WHERE (image_local IS NOT NULL);
@@ -832,6 +857,34 @@ CREATE TABLE subsets_cache (
   CONSTRAINT subsets_cache_pkey PRIMARY KEY (set_number)
 );
 
+CREATE TABLE teil_eigen (
+  user_id integer NOT NULL,
+  part_number text NOT NULL,
+  part_name text,
+  category_name text,
+  updated_at timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT teil_eigen_pkey PRIMARY KEY (user_id, part_number),
+  CONSTRAINT teil_eigen_user_id_fkey FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+CREATE TRIGGER trg_teilekatalog_del AFTER DELETE ON teil_eigen REFERENCING OLD TABLE AS alt FOR EACH STATEMENT EXECUTE FUNCTION merke_teilekatalog_alt();
+CREATE TRIGGER trg_teilekatalog_ins AFTER INSERT ON teil_eigen REFERENCING NEW TABLE AS neu FOR EACH STATEMENT EXECUTE FUNCTION merke_teilekatalog_neu();
+CREATE TRIGGER trg_teilekatalog_upd AFTER UPDATE ON teil_eigen REFERENCING OLD TABLE AS alt NEW TABLE AS neu FOR EACH STATEMENT EXECUTE FUNCTION merke_teilekatalog_beide();
+
+CREATE TABLE teil_farbe_eigen (
+  user_id integer NOT NULL,
+  part_number text NOT NULL,
+  color_id integer NOT NULL,
+  color_name text,
+  color_hex text,
+  image_url text,
+  updated_at timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT teil_farbe_eigen_pkey PRIMARY KEY (user_id, part_number, color_id),
+  CONSTRAINT teil_farbe_eigen_user_id_fkey FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+CREATE TRIGGER trg_teilekatalog_del AFTER DELETE ON teil_farbe_eigen REFERENCING OLD TABLE AS alt FOR EACH STATEMENT EXECUTE FUNCTION merke_teilekatalog_alt();
+CREATE TRIGGER trg_teilekatalog_ins AFTER INSERT ON teil_farbe_eigen REFERENCING NEW TABLE AS neu FOR EACH STATEMENT EXECUTE FUNCTION merke_teilekatalog_neu();
+CREATE TRIGGER trg_teilekatalog_upd AFTER UPDATE ON teil_farbe_eigen REFERENCING OLD TABLE AS alt NEW TABLE AS neu FOR EACH STATEMENT EXECUTE FUNCTION merke_teilekatalog_beide();
+
 CREATE TABLE user_sessions (
   sid character varying NOT NULL,
   sess json NOT NULL,
@@ -866,6 +919,10 @@ CREATE TABLE users (
   must_change_password boolean NOT NULL DEFAULT false,
   created_at timestamp with time zone DEFAULT now(),
   sitzungs_version integer NOT NULL DEFAULT 0,
+  registrierung_offen boolean NOT NULL DEFAULT false,
+  email_neu text,
+  email_neu_token text,
+  email_neu_bis timestamp with time zone,
   CONSTRAINT users_pkey PRIMARY KEY (id),
   CONSTRAINT users_username_key UNIQUE (username)
 );
@@ -891,7 +948,7 @@ CREATE TABLE vouchers (
   user_id integer NOT NULL,
   number text NOT NULL,
   pin text,
-  amount numeric(12,2) NOT NULL,
+  amount numeric(12,4) NOT NULL,
   currency text NOT NULL,
   pdf_path text,
   created_at timestamp with time zone NOT NULL DEFAULT now(),
@@ -961,6 +1018,21 @@ CREATE TABLE zweiter_faktor_codes (
   CONSTRAINT zweiter_faktor_codes_user_id_fkey FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
 CREATE INDEX idx_zweiter_faktor_codes_konto ON zweiter_faktor_codes USING btree (user_id);
+
+CREATE OR REPLACE FUNCTION auftrag_exklusiv_belegen()
+ RETURNS trigger
+ LANGUAGE plpgsql
+AS $function$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM auftrag_exklusiv e WHERE e.art = NEW.art) THEN RETURN NEW; END IF;
+  -- Belegt gerade ein anderer: diese Zeile nicht, ohne zu warten.
+  IF NOT pg_try_advisory_xact_lock(59, hashtext(NEW.art)) THEN RETURN NULL; END IF;
+  IF EXISTS (SELECT 1 FROM auftraege l
+              WHERE l.art = NEW.art AND l.status = 'laeuft' AND l.frist_bis >= NOW() AND l.id <> NEW.id) THEN
+    RETURN NULL;
+  END IF;
+  RETURN NEW;
+END $function$;
 
 CREATE OR REPLACE FUNCTION bild_stamm(pfad text)
  RETURNS text
@@ -1094,7 +1166,7 @@ CREATE OR REPLACE FUNCTION merke_teilekatalog_alt()
  LANGUAGE plpgsql
 AS $function$
 BEGIN
-  IF TG_TABLE_NAME = 'bl_zuordnung' THEN
+  IF TG_TABLE_NAME IN ('bl_zuordnung', 'bl_zuordnung_eigen') THEN
     INSERT INTO parts_katalog_offen (nummer)
     SELECT DISTINCT x FROM alt, LATERAL (VALUES (alt.rb_id), (alt.bl_id)) v(x)
      WHERE alt.art = 'part' AND x IS NOT NULL;
@@ -1109,7 +1181,7 @@ CREATE OR REPLACE FUNCTION merke_teilekatalog_beide()
  LANGUAGE plpgsql
 AS $function$
 BEGIN
-  IF TG_TABLE_NAME = 'bl_zuordnung' THEN
+  IF TG_TABLE_NAME IN ('bl_zuordnung', 'bl_zuordnung_eigen') THEN
     INSERT INTO parts_katalog_offen (nummer)
     SELECT DISTINCT x FROM (SELECT art, rb_id, bl_id FROM alt UNION ALL SELECT art, rb_id, bl_id FROM neu) z,
            LATERAL (VALUES (z.rb_id), (z.bl_id)) v(x)
@@ -1126,7 +1198,7 @@ CREATE OR REPLACE FUNCTION merke_teilekatalog_neu()
  LANGUAGE plpgsql
 AS $function$
 BEGIN
-  IF TG_TABLE_NAME = 'bl_zuordnung' THEN
+  IF TG_TABLE_NAME IN ('bl_zuordnung', 'bl_zuordnung_eigen') THEN
     INSERT INTO parts_katalog_offen (nummer)
     SELECT DISTINCT x FROM neu, LATERAL (VALUES (neu.rb_id), (neu.bl_id)) v(x)
      WHERE neu.art = 'part' AND x IS NOT NULL;

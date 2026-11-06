@@ -1,22 +1,12 @@
 /**
  * Kein doppelter Neuaufbau des Inhalts beim Neuladen / nach dem Login.
+ * Ausführlich: docs/begruendungen/test/no-reload-flicker.test.js.md#kopf
  *
- * Fehlerbild (aus einem Bildschirmvideo, Frames bei 10 fps ausgewertet): Rund
- * 3 Sekunden nach dem Laden wurde der Inhaltsbereich zweimal ausgeräumt und neu
- * gebaut — Inhalt → leer → Inhalt → leer → Inhalt. Layout und Design standen
- * durchgehend, es war also KEIN Theme-Wechsel.
- *
- * Zwei Ursachen, die sich addierten:
- *
- *   1. applyLang() lud am Ende den aktiven Tab neu, für die Galerie sogar
- *      `renderGallery(); loadGallery();`. Der Block lief bei JEDEM Aufruf —
- *      beim Start also zweimal (checkAuth und showApp), obwohl sich die
- *      Sprache gar nicht geändert hatte.
- *   2. loadGallery() setzte das Grid sofort auf einen Spinner, bevor die
- *      Anfrage überhaupt draussen war. Beim Auffrischen verschwanden dadurch
- *      gültige Kacheln für die Dauer eines Roundtrips.
- *
- * Ausführen: npm test
+ * Gegenproben (05.11.2026, je einzeln, Bündel neu gebaut):
+ *   A  25-navigation.js: bei Sprachwechsel loadGallery() statt renderGallery()
+ *      → „ein echter Sprachwechsel …“ rot
+ *   B  25-navigation.js ohne `if (!echterWechsel) return;` → „der Start lädt …“ rot
+ *   C  loadGallery zeigt die Ladeanzeige immer (`if (true)`) → „Auffrischen …“ rot
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -25,81 +15,86 @@ const path = require('node:path');
 
 /**
  * import-/export-Syntax aus einer Moduldatei entfernen.
- *
- * Diese Tests werten den Quelltext in einer vm-Sandbox bzw. in jsdom als
- * KLASSISCHES Skript aus. Seit der Umstellung auf ES-Module enthalten die
- * Dateien import- und export-Anweisungen, die dort einen SyntaxError erzeugen
- * ("Cannot use import statement outside a module"). Die geprüfte Logik ändert
- * sich dadurch nicht — nur die Modulverpackung muss weg.
- *
+ * Ausführlich: docs/begruendungen/test/no-reload-flicker.test.js.md#stripmodulesyntax
  * @param {string} src
  * @returns {string}
  */
 function stripModuleSyntax(src) {
   const body = src
-    .replace(/^import[^;]*;\s*$/gm, '')   // import { a, b } from '…';
-    .replace(/^export\s+/gm, '');          // export function/const/let/class
+    .replace(/^import[^;]*;\s*$/gm, '') // import { a, b } from '…';
+    .replace(/^export\s+/gm, ''); // export function/const/let/class
   // registerActions() kommt sonst aus js/00-registry.js und ist nach dem
   // Entfernen der Importe nicht definiert. In der Sandbox interessiert die
   // Anmeldung nicht — dass sie aufgerufen WIRD, prüfen test/csp-actions.test.js
-  // und test/bundle-smoke.test.js gegen den echten Quelltext.
-  // tRaw() lebt in i18n.js und wird hier nicht mitgeladen. In der Sandbox
-  // genügt die Weiterleitung an t(): Der Unterschied liegt allein in der
-  // Maskierung der eingesetzten Werte, die diese Tests nicht prüfen.
-  return 'function registerActions() {}\n'
-       + 'function tRaw(k, v) { return typeof t === "function" ? t(k, v) : k; }\n'
-       + body;
+  // und test/bundle-smoke.test.js gegen den echten Quelltext. …
+  // Ausführlich: docs/begruendungen/test/no-reload-flicker.test.js.md#registeractions
+  return (
+    'function registerActions() {}\n' + 'function tRaw(k, v) { return typeof t === "function" ? t(k, v) : k; }\n' + body
+  );
 }
 
 const PUB = path.join(__dirname, '..', 'public');
-const i18n = require('./helpers/sources').i18nAll();
-const gallery = stripModuleSyntax(fs.readFileSync(path.join(PUB, 'js', '02-gallery.js'), 'utf8'));
 
-test('applyLang ist bei gleicher Sprache ein No-Op', () => {
-  assert.match(i18n, /_langApplied/,
-    'Ohne Merker läuft die volle Neuübersetzung beim Start zweimal');
-  assert.match(i18n, /if \(_langApplied === lang && !persist\) return;/,
-    'Wiederholte Aufrufe mit derselben Sprache müssen früh aussteigen');
+const { oeffneOberflaeche } = require('./helpers/oberflaeche');
+
+const SETS = { success: true, sets: [{ set_number: '10294-1', name: 'Titanic', quantity: 1 }], count: 1, total: 1 };
+const setsAufrufe = aufrufe => aufrufe.filter(a => a.method === 'GET' && /\/api\/v1\/sets\?/.test(a.url)).length;
+const kachel = d => d.querySelector('#gallery [data-price-for="10294-1"]')?.closest('[data-click="openModal"], .sc');
+
+test('der Start lädt die Galerie einmal, und gleiche Sprache baut nichts neu', async () => {
+  const { w, d, warte, ruhig, aufrufe } = await oeffneOberflaeche({ '/v1/sets': SETS });
+  try {
+    assert.ok(await warte(() => kachel(d)));
+    await ruhig();
+    assert.equal(setsAufrufe(aufrufe), 1, 'die Galerie wurde beim Start mehrfach geladen');
+    const vorher = kachel(d);
+    const wahl = d.getElementById('lang-select');
+    wahl.value = 'de';
+    wahl.dispatchEvent(new w.Event('change', { bubbles: true }));
+    await ruhig();
+    assert.equal(kachel(d), vorher, 'gleiche Sprache hat die Kacheln neu gezeichnet');
+    assert.equal(setsAufrufe(aufrufe), 1);
+  } finally {
+    w.close();
+  }
 });
 
-test('nur ein echter Sprachwechsel baut den aktiven Tab neu auf', () => {
-  assert.match(i18n, /const isRealSwitch = _langApplied !== null && _langApplied !== lang;/,
-    'Der erste Aufruf ist kein Wechsel — da lädt der normale Startpfad ohnehin alles');
-  assert.match(i18n, /if \(!isRealSwitch\) return;/,
-    'Der Neuaufbau-Block darf beim Start nicht laufen');
+test('ein echter Sprachwechsel zeichnet die Galerie neu, ohne sie neu zu laden', async () => {
+  const { w, d, warte, ruhig, aufrufe } = await oeffneOberflaeche({ '/v1/sets': SETS });
+  try {
+    assert.ok(await warte(() => kachel(d)));
+    await ruhig();
+    const vorher = kachel(d);
+    const wahl = d.getElementById('lang-select');
+    wahl.value = 'en';
+    wahl.dispatchEvent(new w.Event('change', { bubbles: true }));
+    assert.ok(await warte(() => kachel(d) && kachel(d) !== vorher), 'Kacheln nicht neu gezeichnet');
+    await ruhig();
+    assert.equal(setsAufrufe(aufrufe), 1, 'ein Sprachwechsel hat die Galerie neu geladen');
+  } finally {
+    w.close();
+  }
 });
 
-test('ein Sprachwechsel lädt die Galerie nicht neu', () => {
-  const block = i18n.slice(i18n.indexOf('if (!isRealSwitch) return;'));
-  const galleryBranch = block.slice(block.indexOf("activeTab === 'gallery'"));
-  assert.doesNotMatch(galleryBranch.slice(0, 200), /loadGallery\(\)/,
-    'Ein Sprachwechsel ändert keine Daten — renderGallery() aus dem Cache genügt');
-  assert.match(galleryBranch.slice(0, 200), /renderGallery\(\)/,
-    'Die Kacheln müssen aber neu gezeichnet werden, damit Beschriftungen umschalten');
-});
-
-test('loadGallery zeigt den Spinner nur beim ersten Laden', () => {
-  // Anker ohne Klammerinhalt: Die Signatur hat seit Nachtrag 34 einen
-  // Parameter (loadGallery(opts = {})). Die geprüfte REGEL ist unverändert.
-  const fn = gallery.slice(gallery.indexOf('async function loadGallery('),
-                           gallery.indexOf('function renderGallery()'));
-  assert.match(fn, /if \(!allSets\.length \|\| !gal\.querySelector\(/,
-    'Der Spinner darf bestehende Kacheln nicht ersetzen, solange nur aufgefrischt wird');
-  // Der Spinner muss innerhalb der Bedingung stehen, nicht davor.
-  //
-  // Gesucht wird BEIDE Schreibweisen: Seit die Ladeanzeige ein Baustein ist
-  // (01-bausteine.js), steht an der Stelle `ladeAnzeige(...)` statt des
-  // Markups. Die Regel ist dieselbe geblieben — nur die Fundstelle sieht
-  // anders aus, und ein Test, der auf einer Schreibweise beharrt, meldet den
-  // Umzug als Fehler statt die Regel zu prüfen.
-  // Seit dem 29.10. ist die Ladeanzeige ein Skelett (skelettKacheln()).
-  const spinnerAt = Math.max(fn.indexOf('class="loading"'), fn.indexOf('ladeAnzeige('), fn.indexOf('skelettKacheln('));
-  const guardAt = fn.indexOf('if (!allSets.length');
-  assert.ok(spinnerAt > 0,
-    'In loadGallery ist keine Ladeanzeige mehr zu finden — weder als Markup ' +
-    'noch als ladeAnzeige() oder skelettKacheln(). Ohne sie prüft der Vergleich unten nichts.');
-  assert.ok(guardAt > 0 && guardAt < spinnerAt,
-    'Die Bedingung muss VOR dem Leeren stehen, sonst ist sie wirkungslos');
+test('Auffrischen lässt die Kacheln stehen, bis die neue Antwort da ist', async () => {
+  let n = 0;
+  let los;
+  const spaeter = new Promise(r => {
+    los = r;
+  });
+  const { w, d, warte } = await oeffneOberflaeche({ '/v1/sets': () => (++n === 1 ? SETS : spaeter.then(() => SETS)) });
+  try {
+    assert.ok(await warte(() => kachel(d)));
+    d.getElementById('gsort').value = 'name_asc';
+    d.getElementById('gsort').dispatchEvent(new w.Event('change'));
+    assert.ok(await warte(() => n === 2), 'kein zweiter Abruf');
+    assert.ok(kachel(d), 'die Kacheln wurden durch eine Ladeanzeige ersetzt');
+    assert.equal(d.querySelector('#gallery .skelett-raster'), null);
+    los();
+    assert.ok(await warte(() => kachel(d)));
+  } finally {
+    w.close();
+  }
 });
 
 test('die Import-Abfrage läuft nicht ungebremst und nicht vor dem Login', () => {
@@ -108,13 +103,13 @@ test('die Import-Abfrage läuft nicht ungebremst und nicht vor dem Login', () =>
   // bei einem Neustart eine HTML-Fehlerseite; r.json() warf dann bei jedem
   // Versuch "Unexpected token '<'".
   const core = stripModuleSyntax(require('./helpers/sources').coreQuelle());
-  const fn = core.slice(core.indexOf('async function gibCheckOnLoad'),
-                        core.indexOf('let _gibCheckTimer = null;'));
+  const fn = core.slice(core.indexOf('async function gibCheckOnLoad'), core.indexOf('let _gibCheckTimer = null;'));
   assert.match(fn, /if \(!ME\) return;/, 'Ohne Anmeldung gibt es nichts zu prüfen');
-  assert.match(fn, /ct\.includes\('application\/json'\)/,
-    'Die Antwort muss vor dem Parsen geprüft werden');
-  assert.match(fn, /setInterval\(doCheck, 30000\)/,
-    'Nach mehreren Fehlschlägen muss die Abfrage langsamer werden');
-  assert.doesNotMatch(fn, /\.then\(r=>r\.json\(\)\)/,
-    'Direktes json() ohne Statusprüfung erzeugt bei HTML-Antworten einen Parsefehler');
+  assert.match(fn, /ct\.includes\('application\/json'\)/, 'Die Antwort muss vor dem Parsen geprüft werden');
+  assert.match(fn, /setInterval\(doCheck, 30000\)/, 'Nach mehreren Fehlschlägen muss die Abfrage langsamer werden');
+  assert.doesNotMatch(
+    fn,
+    /\.then\(r=>r\.json\(\)\)/,
+    'Direktes json() ohne Statusprüfung erzeugt bei HTML-Antworten einen Parsefehler',
+  );
 });

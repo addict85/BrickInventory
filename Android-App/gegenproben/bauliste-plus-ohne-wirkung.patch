@@ -1,0 +1,18 @@
+Gegenprobe: „+“ im Setnummernfeld nimmt das Set nicht auf
+Modul: app
+Test: ch.brickinventoryapp.UnterseitenTest
+Rot: Bauliste nimmt Sets ueber das Plus im Feld
+
+diff --git a/Android-App/feature-teile/src/main/java/ch/brickinventoryapp/ui/screens/PartsListScreen.kt b/Android-App/feature-teile/src/main/java/ch/brickinventoryapp/ui/screens/PartsListScreen.kt
+index b07baa6..0a77cfd 100644
+--- a/Android-App/feature-teile/src/main/java/ch/brickinventoryapp/ui/screens/PartsListScreen.kt
++++ b/Android-App/feature-teile/src/main/java/ch/brickinventoryapp/ui/screens/PartsListScreen.kt
+@@ -217,7 +217,7 @@ fun PartsListScreen(
+                         shape = MaterialTheme.shapes.large,
+                         trailingIcon = {
+                             if (setInput.isNotBlank()) MitTooltip(stringResource(R.string.partslist_add_set)) {
+-                                IconButton(onClick = { addSet(setInput) }) {
++                                IconButton(onClick = { }) {
+                                     Icon(Icons.Default.Add, stringResource(R.string.partslist_add_set))
+                                 }
+                             }

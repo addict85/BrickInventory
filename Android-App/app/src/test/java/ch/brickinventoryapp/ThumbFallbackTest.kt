@@ -1,6 +1,5 @@
 package ch.brickinventoryapp
 
-import ch.brickinventoryapp.ressourcen.R
 import ch.brickinventoryapp.util.IMG_PROXY
 import ch.brickinventoryapp.util.resolveFullUrl
 import ch.brickinventoryapp.util.resolveFullUrlViaProxy
@@ -9,6 +8,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertNull
 import org.junit.Test
+import java.io.File
 
 /** Serveradresse mit Schrägstrich am Ende: Die Helfer schneiden ihn ab. */
 private const val SERVER = "http://nas:3000/"
@@ -30,7 +30,7 @@ private const val SERVER = "http://nas:3000/"
 class ThumbFallbackTest {
 
     private fun read(rel: String): String {
-        val f = java.io.File(Quellen.wurzel, "$rel")
+        val f = File(Quellen.wurzel, "$rel")
         assert(f.exists()) { "Datei nicht gefunden: $rel" }
         return f.readText()
     }
@@ -67,9 +67,6 @@ class ThumbFallbackTest {
         // ── Nachgezogen (Nachtrag 38) ───────────────────────────────────────
         // Hier standen zwei Verbote: kein `retryNonce`, kein `setParameter`
         // (das hiess in Coil 2 so; heute `memoryCacheKeyExtra`).
-        // Sie stammen aus einer Phase, in der ein Wiederholversuch als
-        // wirkungslos verworfen wurde („fragt bei einer echt fehlenden Datei
-        // zweimal dieselbe 404 an"). Das galt für den DAMALIGEN Fall.
         //
         // Inzwischen ist der Ablauf ein anderer: Direkt nach dem Erfassen
         // erzeugt der Server die Vorschau erst noch — der zweite Versuch nach
@@ -161,7 +158,6 @@ class FullResolutionBypassesProxyTest {
         assertEquals("http://nas:3000$IMG_PROXY?url=https%3A%2F%2Fcdn.rebrickable.com%2Fx.jpg&thumb=1",
             resolveThumbUrl(SERVER, null, "https://cdn.rebrickable.com/x.jpg"))
     }
-
 }
 
 /**
@@ -172,7 +168,7 @@ class FullResolutionBypassesProxyTest {
  */
 class PartsMinifigsFullResBypassProxyTest {
     private fun read(rel: String): String {
-        val f = java.io.File(Quellen.wurzel, "$rel")
+        val f = File(Quellen.wurzel, "$rel")
         assert(f.exists()) { "Datei nicht gefunden: $rel" }
         return f.readText()
     }
@@ -241,7 +237,7 @@ class PartsMinifigsFullResBypassProxyTest {
  */
 class SetDetailUsesFullResolutionTest {
     private fun read(rel: String): String {
-        val f = java.io.File(Quellen.wurzel, "$rel")
+        val f = File(Quellen.wurzel, "$rel")
         assert(f.exists()) { "Datei nicht gefunden: $rel" }
         return f.readText()
     }
@@ -276,12 +272,10 @@ class SetDetailUsesFullResolutionTest {
  * fullUrl() in der Webapp (public/js/01-core.js).
  *
  * Die Adress-Prüfungen dieser Datei rufen die Helfer auf, statt ihren Quelltext
- * zu lesen. Gegenproben (31.10.2026, gemessen):
+ * zu lesen. Gegenproben:
  *   A  in resolveImageUrl das Entfernen von `_thumb` weggelassen → rot „resolveFullUrl
  *      entfernt …“ und „Vorschau und volle Aufloesung …“
  *   B  `&thumb=1` beim Vorschaubild weggelassen → rot „Vorschaubild laeuft …“
- *   C  im Zweig der vollen Auflösung den Proxy umgangen (`imageUrl` direkt) → rot
- *      „resolveFullUrl leitet …“ und NoDirectCdnAccessTest „resolveImageUrl-Helfer …“
  */
 class FullResolutionStripsThumbSuffixTest {
 
@@ -305,5 +299,4 @@ class FullResolutionStripsThumbSuffixTest {
         val pfad = "/images/sets/10283-1_thumb.jpg"
         assertNotEquals(resolveThumbUrl(SERVER, pfad, null), resolveFullUrl(SERVER, pfad, null))
     }
-
 }

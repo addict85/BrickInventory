@@ -1,19 +1,31 @@
+import type { z } from 'zod';
 import { konfig } from '../src/infra/konfig';
+import type { SetCsvNutzlast } from '../src/auftraege/nutzlasten';
 import { addSetWithDate, nacharbeitEinstellen } from '../src/sets/setService';
 import { emitJobStatus, jobUpdate, setzeImportFort, type ImportErgebnis } from '../src/auftraege/importAuftrag';
-import { fehlertext } from '../src/infra/httpError';
-import { fehlerText } from '../src/infra/fehlerTexte';
+import { fehlertext } from '../src/infra/fehler';
+import { Fachfehler, fehlerText, type FehlerCode } from '../src/infra/fehlerTexte';
 import { AuftragUnterbrochen, type AuftragsKontext } from './auftragsWorker';
 
 /** Nach jedem Set steht der Stand in import_stand; ein Neustart setzt dort
  * fort. Steht `current` nach einem Absturz noch da, ist ungewiss, ob das Set
  * gebucht wurde — es wird nicht noch einmal gebucht, sondern gemeldet. */
-export type CsvZeile = { sn: string; qty: number; purchasePrice: number | null; condition: string | null; acquiredAt: string | null };
-export interface CsvNutzlast { user_id: number; lauf: string; rows: CsvZeile[] }
+export type CsvNutzlast = z.output<typeof SetCsvNutzlast>;
+export type CsvZeile = CsvNutzlast['rows'][number];
 
 const zeilenFrist = () => konfig().csvZeileFristMs;
 
 async function importiereZeile(z: CsvZeile, userId: number): Promise<ImportErgebnis> {
+  const wo = z.zeile ? { zeile: z.zeile } : {};
+  if (z.fehler) {
+    const vars = z.fehler.wert !== undefined ? { wert: z.fehler.wert } : undefined;
+    return { set_number: z.sn, ...wo, success: false, code: z.fehler.code, ...(vars ? { vars } : {}),
+             error: fehlerText(z.fehler.code, 'de', vars) };
+  }
+  return { ...await bucheZeile(z, userId), ...wo };
+}
+
+async function bucheZeile(z: CsvZeile, userId: number): Promise<ImportErgebnis> {
   for (let versuch = 1; ; versuch++) {
     let wecker: NodeJS.Timeout | undefined;
     try {
@@ -22,7 +34,8 @@ async function importiereZeile(z: CsvZeile, userId: number): Promise<ImportErgeb
         new Promise<never>((_, rej) => { wecker = setTimeout(() => rej(new Error('Timeout')), zeilenFrist()); }),
       ]).finally(() => clearTimeout(wecker));
       await nacharbeitEinstellen(r.set_number ?? z.sn, userId, 'csv');
-      return { set_number: z.sn, success: true, action: r.action };
+      return { set_number: z.sn, success: true, action: r.action, menge: z.qty,
+               ...('katalog_offen' in r && r.katalog_offen ? { katalog_offen: true } : {}) };
     } catch (e) {
       const msg = fehlertext(e) || 'Unbekannter Fehler';
       const isTimeout = msg.includes('Timeout');
@@ -36,7 +49,10 @@ async function importiereZeile(z: CsvZeile, userId: number): Promise<ImportErgeb
       }
       const isWarning = isTimeout || isRateLimit;
       console[isWarning ? 'warn' : 'error'](`CSV: ${z.sn} ${isWarning ? 'WARNING' : 'FAILED'}: ${msg}`);
-      return { set_number: z.sn, success: false, error: msg, isWarning };
+      const code: FehlerCode | undefined = e instanceof Fachfehler ? e.code
+        : isTimeout ? 'import_zeitueberschreitung' : isRateLimit ? 'import_kontingent' : undefined;
+      return { set_number: z.sn, success: false, error: msg, isWarning,
+               ...(code ? { code, ...(e instanceof Fachfehler && e.vars ? { vars: e.vars } : {}) } : {}) };
     }
   }
 }
@@ -50,14 +66,13 @@ async function fuehreCsvImportAus(n: CsvNutzlast, k: AuftragsKontext): Promise<v
 
   if (stand.current && results.length < rows.length) {
     results.push({ set_number: rows[results.length]!.sn, success: false, isWarning: true,
-                   error: fehlerText('import_zeile_unterbrochen', 'de') });
+                   code: 'import_zeile_unterbrochen', error: fehlerText('import_zeile_unterbrochen', 'de') });
     if (!await schreibe()) return;
   }
   for (let i = results.length; i < rows.length; i++) {
     if (k.beendet) throw new AuftragUnterbrochen();
     const z = rows[i]!;
-    // Abgebrochen, abgelöst oder anderswo vergeben: aufhören, ohne in fremde
-    // Zeilen zu schreiben.
+    // Abgebrochen, abgelöst oder anderswo vergeben: aufhören, ohne in fremde Zeilen zu schreiben.
     if (!await k.lebenszeichen() || !await jobUpdate(userId, { current: z.sn }, lauf)) return;
     await emitJobStatus(userId);
     results.push(await importiereZeile(z, userId));

@@ -1,42 +1,6 @@
 /**
  * Fünf Verdrahtungen, die bisher nur als Textmuster zugesichert waren.
- *
- * ── Woher das kommt ─────────────────────────────────────────────────────────
- *
- * An einem Tag sind zwei Fehler durchgerutscht, und beide hatten dieselbe
- * Form: Eine Prüfung las den QUELLTEXT und bestand, während die Funktion das
- * Falsche tat (der Lagerortfilter kam nie an der Route an;
- * moveManualAcquisition löschte beim Absender alles). Die Regel daraus:
- *
- *     Eine Behauptung der Form „der Weg A → B lebt" braucht einen Lauf über
- *     diesen Weg. Ein Muster, das den Aufruf im Quelltext findet, beweist nur,
- *     dass jemand ihn hingeschrieben hat.
- *
- * Gemessen wurden 26 solche Zusicherungen über Routen-Quelltext in sechs
- * Dateien. Davon sind acht durch test/kontowechsel-ueber-die-route-db.test.js
- * abgedeckt und vier sind KEINE Verdrahtungsbehauptungen (sie sagen „diese
- * Zeile darf nicht zurückkommen" — das kann kein Lauf prüfen).
- *
- * Eine betraf eine Sperre (withInventoryLock). Hier stand „für die ein Lauf
- * wackelig wäre" — das galt für die naheliegende Bauart (zwei Verschiebungen
- * gleichzeitig losschicken und hoffen, dass eine verliert), nicht für die
- * Sache: test/sperre-beim-verschieben-db.test.js hält die Sperre von einer
- * eigenen Verbindung und liest in pg_locks nach, ob ein Warter steht. Das ist
- * ein Zustand, keine Dauer, und damit kein Wettlauf.
- *
- * Die fünf hier übrigen laufen jetzt:
- *
- *   1. media-auth.test.js:123   — der PDF-Download trägt requireToken
- *   2. umleitungen.test.js:187  — der Bild-Proxy prüft den Host
- *   3. passwortlaenge.test.js   — die Routen benutzen passwortZuKurz()
- *   4. manual-acq-refresh:126   — die Tagesprüfung gilt für alle drei Arten
- *   5. household.test.js:643    — Verschieben ohne acquisition_ids wird abgelehnt
- *
- * Die Musterregeln bleiben, wo sie stehen: Sie fangen eine gelöschte Zeile,
- * und das ist etwas anderes als ein Lauf. Ergänzt, nicht ersetzt.
- *
- * Voraussetzung: Test-DB via TEST_DATABASE_URL. Ohne DB: skip, ausser
- * REQUIRE_DB=1.
+ * Ausführlich: docs/begruendungen/test/verdrahtung-laeuft-db.test.js.md#kopf
  */
 const test   = require('node:test');
 const assert = require('node:assert/strict');
@@ -47,6 +11,8 @@ const _req = require('./helpers/sources').buildAndRequire();
 const db = _req('db/database.js');
 const { testServer } = require('./helpers/server');
 const { haeltSet } = require('./helpers/bestand');
+const { mailAttrappe, mailserverEintragen } = require('./helpers/mail-attrappe');
+mailAttrappe();
 
 test.after(async () => { await db.pool.end().catch(() => {}); });
 
@@ -132,43 +98,43 @@ test('die fünf Verdrahtungen über ihre echten Adressen', { concurrency: 1 }, a
     // die Routen die Funktion NENNEN.
     await db.run(`INSERT INTO global_settings (key,value) VALUES ('registration_enabled','1')
                   ON CONFLICT (key) DO UPDATE SET value='1'`);
+    await mailserverEintragen(db);
+    const basisVorher = process.env.APP_BASE_URL;
+    process.env.APP_BASE_URL = 'http://localhost';
+    t.after(() => { if (basisVorher === undefined) delete process.env.APP_BASE_URL; else process.env.APP_BASE_URL = basisVorher; });
     const r = await fetch(`${mit.base}/api/v1/auth/register`, {
       method: 'POST', headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ username: 'neuling', email: 'n@example.org',
-                             password: '1234567', language: 'de' }),
+                             password: '12345678901', language: 'de' }),
     });
     const b = await r.json().catch(() => ({}));
     assert.equal(r.status, 400, `Erwartet 400, bekam ${r.status}: ${JSON.stringify(b)}`);
     // Die Antwort traegt den uebersetzten SATZ, nicht den Schluessel — die
     // Fehlersprache liegt zentral (src/infra/fehlerTexte.ts). Geprueft wird
     // deshalb der Satz; er nennt die Zahl, auf die es ankommt.
-    assert.match(String(b.error || ''), /mindestens 8 Zeichen/,
+    assert.match(String(b.error || ''), /mindestens 12 Zeichen/,
       `Abgelehnt wurde mit „${b.error}" — erwartet die Passwortlänge. Ein anderer ` +
       'Grund hiesse, die Länge wurde gar nicht geprüft.');
     assert.equal((await db.get(`SELECT COUNT(*)::int c FROM users WHERE username='neuling'`)).c, 0,
       'Das Konto wurde trotz Ablehnung angelegt');
 
-    // Gegenrichtung: acht Zeichen gehen durch. Ohne sie wäre die Regel auch
+    // Gegenrichtung: zwölf Zeichen gehen durch. Ohne sie wäre die Regel auch
     // erfüllt, wenn JEDE Registrierung scheiterte.
     const r2 = await fetch(`${mit.base}/api/v1/auth/register`, {
       method: 'POST', headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ username: 'neuling2', email: 'n2@example.org',
-                             password: 'acht8Zch', language: 'de' }),
+                             password: 'zwoelf12Zchn', language: 'de' }),
     });
     assert.notEqual(r2.status, 400,
-      'Auch acht Zeichen wurden mit 400 abgelehnt — dann ist die Grenze nicht acht');
+      'Auch zwölf Zeichen wurden mit 400 abgelehnt — dann ist die Grenze nicht zwölf');
   });
 
   await t.test('4. ein Datum, an dem schon ein Kauf steht, wird abgelehnt', async () => {
     // findSameDayAcquisition() sitzt im ÄNDERN-Weg: Wer das Datum einer
     // Erfassung auf einen Tag schiebt, an dem für dieselbe Position schon
     // eine steht, bekommt 409. Ohne die Prüfung liefe es in den eindeutigen
-    // Index (seit 0047 idx_set_acq_tag_merkmale) und käme als 500 zurück.
-    // Kollision heisst seit 0047: gleicher Tag, Zustand, Preis und Währung —
-    // deshalb tragen beide Käufe denselben Preis.
-    //
-    // Zugesichert war bisher, dass `kind: 'set'|'part'|'fig'` im Quelltext
-    // der Fabrik steht — nicht, dass die Prüfung für eine davon greift.
+    // Index (seit 0047 idx_set_acq_tag_merkmale) und käme als 500 zurück. …
+    // Ausführlich: docs/begruendungen/test/verdrahtung-laeuft-db.test.js.md#heute
     const heute  = new Date().toISOString().slice(0, 10);
     const gestern = new Date(Date.now() - 864e5).toISOString().slice(0, 10);
     await db.run(`DELETE FROM set_acquisitions WHERE set_number=$1`, [SN]);

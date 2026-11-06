@@ -1,11 +1,14 @@
 
-// CSV mit richtigem Quoting, damit ein Export mit dem passenden Import
-// unverändert wieder eingelesen werden kann.
+// CSV mit richtigem Quoting, damit ein Export mit dem passenden Import unverändert wieder eingelesen werden kann.
 import { parse } from 'csv-parse/sync';
+import { fehlerText, type Sprache } from './fehlerTexte';
 
 /** Tabulator und Wagenrücklauf gehören dazu: Excel liest sie als Trennzeichen
- * und behandelt das folgende Feld wieder als Formel. */
-const FORMEL_START = /^[=+\-@\t\r]/;
+ * und behandelt das folgende Feld wieder als Formel. Auch nach Leerraum und in
+ * voller Breite (＝＋－＠): Manche Programme trimmen oder falten sie. */
+const FORMEL_START = /^[\s\u3000]*[=+\-@\uFF1D\uFF0B\uFF0D\uFF20]|^[\t\r\n]/;
+/** Komma, Semikolon (deutsches Excel) und Tabulator trennen Felder, CR und LF Zeilen. */
+const MUSS_IN_ANFUEHRUNG = /[",;\t\r\n]/;
 
 /** Ein Ausschnitt statt @types/express: Er sagt genauer, was diese Datei tut. */
 type ExpressAntwort = {
@@ -13,14 +16,10 @@ type ExpressAntwort = {
   send(body: string | Buffer): unknown;
 };
 
-type ExpressJsonAntwort = {
-  json(body: unknown): unknown;
-};
-
 // Ausführlich: docs/begruendungen/src/infra/csvExport.ts.md#entschaerfe
 export function entschaerfe(s: string): string {
   if (!FORMEL_START.test(s)) return s;
-  if (/^-?\d+([.,]\d+)?$/.test(s)) return s;   // reine Zahl, auch negativ
+  if (/^\s*-?\d+([.,]\d+)?\s*$/.test(s)) return s;   // reine Zahl, auch negativ
   return "'" + s;
 }
 
@@ -44,7 +43,7 @@ export function csvZeilenBereinigen(records: any[]): any[] {
 export function csvField(v: unknown) {
   if (v === null || v === undefined) return '';
   const s = entschaerfe(String(v));
-  if (/[",\n]/.test(s)) return '"' + s.replace(/"/g, '""') + '"';
+  if (MUSS_IN_ANFUEHRUNG.test(s)) return '"' + s.replace(/"/g, '""') + '"';
   return s;
 }
 
@@ -78,8 +77,7 @@ export function parseCsvDate(raw: unknown) {
     let year = parseInt((m[3] ?? ''));
     if ((m[3] ?? '').length === 2) year += year < 70 ? 2000 : 1900;
     if (day < 1 || day > 31 || mon < 1 || mon > 12) return null;
-    // Über ein echtes Datum prüfen: 31.02. gibt es nicht; Date rollt ihn in den
-    // Folgemonat, und das fällt hier auf.
+    // Über ein echtes Datum prüfen: 31.02. gibt es nicht; Date rollt ihn in den Folgemonat, und das fällt hier auf.
     const probe = new Date(Date.UTC(year, mon - 1, day));
     if (probe.getUTCFullYear() !== year || probe.getUTCMonth() !== mon - 1 ||
         probe.getUTCDate() !== day) return null;
@@ -92,7 +90,8 @@ export function parseCsvDate(raw: unknown) {
  * Ausführlich: docs/begruendungen/src/infra/csvExport.ts.md#gefaehrliche-spalten */
 const GEFAEHRLICHE_SPALTEN = new Set(['__proto__', 'constructor', 'prototype']);
 
-export function csvEinlesen(csvText: string): { records: any[]; delimiter: string; uebersprungen: number[] } {
+/** `zeilen[i]` ist die Zeile der Datei, in der `records[i]` steht: Leerzeilen verschieben sonst die Zählung. */
+export function csvEinlesen(csvText: string): { records: any[]; delimiter: string; uebersprungen: number[]; zeilen: number[] } {
   const text = String(csvText || '').replace(/^\uFEFF/, '');
   const firstLine = text.split('\n')[0] || '';
   const delimiter = firstLine.split(';').length > firstLine.split(',').length ? ';' : ',';
@@ -112,26 +111,29 @@ export function csvEinlesen(csvText: string): { records: any[]; delimiter: strin
     // Krumme Zeilen und verirrte Anführungszeichen überspringen statt alles abzubrechen.
     relax_column_count: true,
     relax_quotes: true,
-  });
+    info: true,
+  }) as { record: any; info: { lines: number } }[];
 
-  // Zeilen ohne Inhalt gelten als übersprungen — das macht `relax_column_count`
-  // aus einer krummen Zeile.
+  // Zeilen ohne Inhalt gelten als übersprungen — das macht `relax_column_count` aus einer krummen Zeile.
   const brauchbar: any[] = [];
-  records.forEach((r: any, i: number) => {
+  const zeilen: number[] = [];
+  records.forEach(({ record: r, info }) => {
     const werte = Object.values(r).map(v => String(v ?? '').trim());
-    if (werte.some(v => v !== '')) brauchbar.push(r);
-    else uebersprungen.push(i + 2);   // +2: Kopfzeile plus 1-basiert
+    if (werte.some(v => v !== '')) { brauchbar.push(r); zeilen.push(info.lines); }
+    else uebersprungen.push(info.lines);
   });
 
-  return { records: brauchbar, delimiter, uebersprungen };
+  return { records: brauchbar, delimiter, uebersprungen, zeilen };
 }
 
 /** Höchstens zehn Zeilennummern, sonst wird die Meldung länger als hilfreich. */
-export function uebersprungenHinweis(zeilen: number[]): string | null {
+export function zeilenListe(zeilen: number[]): string {
+  return zeilen.slice(0, 10).join(', ') + (zeilen.length > 10 ? ', …' : '');
+}
+
+export function uebersprungenHinweis(zeilen: number[], sprache: Sprache = 'de'): string | null {
   if (!zeilen.length) return null;
-  const liste = zeilen.slice(0, 10).join(', ');
-  const rest  = zeilen.length > 10 ? ` und ${zeilen.length - 10} weitere` : '';
-  return `${zeilen.length} Zeile(n) übersprungen (Zeile ${liste}${rest})`;
+  return fehlerText('csv_uebersprungen', sprache, { anzahl: zeilen.length, zeilen: zeilenListe(zeilen) });
 }
 
 // Ausführlich: docs/begruendungen/src/infra/csvExport.ts.md#csvgemeinsamefelder
@@ -167,15 +169,17 @@ export function csvZeilenAusAnfrage(text: string): {
 }
 
 /** An einer Stelle, damit beide Oberflächen dieselben Felder bekommen. */
-export function csvImportAntwort(res: ExpressJsonAntwort, d: {
+/** Was jeder CSV-Import antwortet; `records` zählt nur. */
+export function csvImportBericht(d: {
   added: number; updated: number; errors: number;
-  records: any[]; results: any[]; uebersprungen: number[];
+  records: unknown[]; results: unknown[]; uebersprungen: number[];
 }) {
-  res.json({
-    success: true, added: d.added, updated: d.updated, errors: d.errors,
+  return {
+    success: true as const, added: d.added, updated: d.updated, errors: d.errors,
     total: d.records.length, results: d.results,
     skipped: d.uebersprungen.length || undefined,
     skipped_hint: uebersprungenHinweis(d.uebersprungen) || undefined,
-  });
+  };
 }
+export type CsvImportBericht = ReturnType<typeof csvImportBericht>;
 

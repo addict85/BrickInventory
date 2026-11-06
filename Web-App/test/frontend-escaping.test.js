@@ -1,57 +1,21 @@
 /**
  * Statischer XSS-Regressionstest für public/js/.
- *
- * Hintergrund: Die Listen- und Detailansichten werden per innerHTML aus
- * Template-Literalen gebaut. Solange das so ist, ist jedes Datenfeld, das
- * ungeescaped in ein Attribut oder in einen JS-String im Attribut wandert, ein
- * Stored-XSS-Vektor — und genau das war an ~20 Stellen der Fall (Bild-URLs
- * manueller Teile, Set-Nummern in onclick, Farb- und Teilenamen).
- *
- * Dieser Test prüft ohne DB und ohne Browser:
- *   1. Die Escaping-Helfer verhalten sich in ihrem jeweiligen Kontext korrekt.
- *   2. Es gibt keine neuen ungeschützten Sinks in den Frontend-Dateien.
- *
- * Punkt 2 ist der eigentliche Wert: Der Fix von heute hält nur, wenn die
- * nächste Zeile `src="${x}"` beim Testlauf rot wird statt in Produktion.
- *
- * Ausführen: npm test
+ * Ausführlich: docs/begruendungen/test/frontend-escaping.test.js.md#kopf
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
-const vm = require('node:vm');
 
 const JS_DIR = path.join(__dirname, '..', 'public', 'js');
 const FILES = fs.readdirSync(JS_DIR).filter(f => /^\d\d-.*\.js$/.test(f)).sort();
 
-// ── Helfer aus 01-core.js in einer Sandbox laden ────────────────────────────
-function loadHelpers() {
-  // Seit der Umstellung auf ES-Module tragen die Deklarationen ein
-  // vorangestelltes `export`. Das wird für die Sandbox entfernt — dort läuft
-  // der Ausschnitt als klassisches Skript, und `export` wäre ein Syntaxfehler.
-  // `export` UND `import` heraus: In der Sandbox laeuft der Ausschnitt als
-  // klassisches Skript, beide waeren dort ein Syntaxfehler.
-  //
-  // Die import-Zeilen kamen am 20.10. dazu: esc() liegt seither in
-  // js/00-escapen.js (DOM-frei, damit der BrickLink-Export es benutzen kann),
-  // und der Ausschnitt unten laeuft deshalb ueber eine Dateigrenze hinweg —
-  // mitten in den Kopf von js/01-core.js mit seinen Einfuhren. GEMESSEN:
-  // „Cannot use import statement outside a module", vier Faelle rot.
-  // Gebraucht werden sie nicht: Der Ausschnitt enthaelt nur die vier Helfer,
-  // und die kommen ohne aus.
-  const src = require('./helpers/sources').coreQuelle()
-    .replace(/^export /gm, '')
-    .replace(/^import .*;$/gm, '');
-  const block = src.slice(src.indexOf('function esc(s)'), src.indexOf('const escHtml'));
-  const ctx = {};
-  vm.createContext(ctx);
-  vm.runInContext(block + '\n;({ esc, escJs, escUrl, escHex })', ctx);
-  return vm.runInContext('({ esc, escJs, escUrl, escHex })', ctx);
-}
+// Die Helfer selbst, nicht nachgebaut: 00-escapen.js ist DOM-frei und lädt in Node.
+const helfer = import(require('node:url').pathToFileURL(path.join(JS_DIR, '00-escapen.js')).href);
+const loadHelpers = () => helfer;
 
-test('esc() neutralisiert alle HTML-Metazeichen inkl. Apostroph', () => {
-  const { esc } = loadHelpers();
+test('esc() neutralisiert alle HTML-Metazeichen inkl. Apostroph', async () => {
+  const { esc } = await loadHelpers();
   assert.equal(esc('<script>'), '&lt;script&gt;');
   assert.equal(esc('a"b'), 'a&quot;b');
   assert.equal(esc("a'b"), 'a&#39;b');
@@ -60,8 +24,8 @@ test('esc() neutralisiert alle HTML-Metazeichen inkl. Apostroph', () => {
   assert.equal(esc(undefined), '');
 });
 
-test('escJs() bricht nicht aus onclick="fn(\'…\')" aus', () => {
-  const { escJs } = loadHelpers();
+test('escJs() bricht nicht aus onclick="fn(\'…\')" aus', async () => {
+  const { escJs } = await loadHelpers();
   // Der klassische Ausbruch: Apostroph schliesst den JS-String, danach Code.
   const payload = "');alert(1);//";
   const out = escJs(payload);
@@ -71,8 +35,8 @@ test('escJs() bricht nicht aus onclick="fn(\'…\')" aus', () => {
   assert.equal(escJs('a\\'), 'a\\\\');
 });
 
-test('escUrl() lässt nur relative Pfade und http(s) durch', () => {
-  const { escUrl } = loadHelpers();
+test('escUrl() lässt nur relative Pfade und http(s) durch', async () => {
+  const { escUrl } = await loadHelpers();
   assert.equal(escUrl('https://cdn.rebrickable.com/x.jpg'), 'https://cdn.rebrickable.com/x.jpg');
   assert.equal(escUrl('/data/part_images/x.jpg'), '/data/part_images/x.jpg');
   assert.equal(escUrl('javascript:alert(1)'), '');
@@ -83,8 +47,8 @@ test('escUrl() lässt nur relative Pfade und http(s) durch', () => {
   assert.ok(!escUrl('https://a/" onerror="alert(1)').includes('"'));
 });
 
-test('escHex() akzeptiert ausschliesslich 6 Hex-Ziffern', () => {
-  const { escHex } = loadHelpers();
+test('escHex() akzeptiert ausschliesslich 6 Hex-Ziffern', async () => {
+  const { escHex } = await loadHelpers();
   assert.equal(escHex('FF0000'), '#FF0000');
   assert.equal(escHex('#00ff00'), '#00ff00');
   assert.equal(escHex('red;background:url(x)'), 'var(--s300)');
@@ -92,7 +56,7 @@ test('escHex() akzeptiert ausschliesslich 6 Hex-Ziffern', () => {
 });
 
 // ── Statische Sink-Prüfung ──────────────────────────────────────────────────
-const SAFE = /^\s*(esc|escJs|escUrl|escHex|escHtml|encodeURIComponent|t)\s*\(/;
+const SAFE = /^\s*(esc|escJs|escUrl|sichereUrl|escHex|escHtml|encodeURIComponent|t)\s*\(/;
 const DATA_FIELD = /(set_number|part_number|bl_part_number|fig_number|bl_fig_number|part_name|fig_name|color_name|category_name|image_url|image_local|note|username|theme|last_error)\b/;
 
 function interpolations(attrValue) {
@@ -103,7 +67,7 @@ test('kein src/href/data-orig mit ungeprüfter URL', () => {
   const bad = [];
   for (const f of FILES) {
     const src = fs.readFileSync(path.join(JS_DIR, f), 'utf8');
-    for (const m of src.matchAll(/\b(src|href|data-orig)="([^"]*\$\{[^"]*)"/g)) {
+    for (const m of src.matchAll(/\b(src|href|data-orig)="([^"#]*\$\{[^"]*)"/g)) {
       for (const expr of interpolations(m[2])) {
         if (!SAFE.test(expr)) bad.push(`${f}: ${m[1]}="…\${${expr}}…"`);
       }
@@ -126,18 +90,10 @@ test('kein onXxx-Handler mit ungeprüftem Datenfeld', () => {
 });
 
 test('esc/escJs/escUrl/escHex sind genau einmal definiert', () => {
-  // ── Die Regel ist „EINMAL", nicht „in 01-core.js" ───────────────────────
-  //
-  // esc() liegt seit dem 20.10. in js/00-escapen.js. Der Grund steht dort:
-  // Der BrickLink-Export (js/19-bricklink-xml.js) muss maskieren und ist
-  // bewusst DOM-frei, js/01-core.js laesst sich aber ohne Dokument nicht
-  // laden. Die Wahl war, esc() zu KOPIEREN — also genau das, was diese
-  // Pruefung verbietet — oder es dorthin zu legen, wo beide es erreichen.
-  //
-  // Was NICHT nachgegeben wurde: die Zahl. Jeder dieser vier Namen hat
-  // weiterhin GENAU EINE Deklaration; js/01-core.js reicht esc() nur weiter.
-  const zuhause = { esc: '00-escapen.js', escJs: '01-core.js',
-                    escUrl: '01-core.js', escHex: '01-core.js' };
+  // Alle Maskierer liegen in 00-escapen.js (DOM-frei, auch der BrickLink-Export
+  // lädt es). Zwei Fassungen desselben Maskierers liefen schon einmal auseinander.
+  const zuhause = { esc: '00-escapen.js', escJs: '00-escapen.js',
+                    escUrl: '00-escapen.js', escHex: '00-escapen.js' };
   for (const [name, datei] of Object.entries(zuhause)) {
     const defs = FILES.filter(f =>
       new RegExp(`function\\s+${name}\\s*\\(`).test(fs.readFileSync(path.join(JS_DIR, f), 'utf8')));
@@ -150,17 +106,8 @@ test('esc/escJs/escUrl/escHex sind genau einmal definiert', () => {
 });
 
 test('Übersetzungen für reinen Text laufen über tRaw(), nicht über t()', () => {
-  // ── Woher dieser Test kommt ──────────────────────────────────────────────
-  // t() maskiert die eingesetzten Werte, weil das Ergebnis meist in innerHTML
-  // landet. Geht es dagegen nach textContent, erscheint die Maskierung
-  // WÖRTLICH: Aus der Schweizer Tausendertrennung 9'325 wurde im Katalog
-  // sichtbar "9&#39;325 Sets im Katalog".
-  //
-  // Die Regel lautet deshalb: HTML-Ziel → t(), Textziel → tRaw().
-  //
-  // Bewusst auch dort angewandt, wo gerade keine Variable übergeben wird —
-  // ohne Variablen sind beide identisch, aber so bricht die Stelle nicht
-  // erneut, sobald jemand einen Wert ergänzt.
+  // Woher dieser Test kommt
+  // Ausführlich: docs/begruendungen/test/frontend-escaping.test.js.md#jsdir
   const jsDir = path.join(__dirname, '..', 'public', 'js');
   const offenders = [];
   for (const f of fs.readdirSync(jsDir)) {
@@ -178,37 +125,21 @@ test('Übersetzungen für reinen Text laufen über tRaw(), nicht über t()', () 
 });
 
 test('serverseitige Fehlermeldungen laufen im HTML-Kontext durch esc()', () => {
-  // ── Woher dieser Test kommt (Nachtrag 30) ────────────────────────────────
-  // Die Finanztabelle setzte den Fehlertext eines Sets roh in innerHTML:
-  //     `<td …>${s.error ? s.error : fmtN(total, cur)}</td>`
-  // Diese Meldung kommt nicht aus dem eigenen Haus: clients/bricklink.ts baut
-  // sie bei einer Nicht-JSON-Antwort aus dem ANTWORTKÖRPER —
-  //     `BrickLink non-JSON (HTTP ${status}): ${body.substring(0, 200)}`
-  // Liefert BrickLink (oder ein Proxy, ein Portal, eine CDN-Fehlerseite) HTML
-  // statt JSON, landen dessen erste 200 Zeichen unmaskiert im DOM. Mit
-  // `<img src=x onerror=…>` in diesen 200 Zeichen ist das ein aktiver Handler
-  // in der Seite des Nutzers — die Kette wurde nachgestellt, bevor sie
-  // gemeldet wurde.
-  //
-  // Die Regeln oben decken Attribut- und Handler-Kontexte ab. Diese hier
-  // deckt den TEXTkontext ab, und zwar nur für Felder, deren Inhalt von aussen
-  // kommen kann (.error/.message).
-  //
-  // Bewusst NICHT gemeldet werden:
-  //   • Zeilen ohne HTML-Tag — dort geht der Wert an textContent oder in eine
-  //     Variable, die an ihrer Einsetzstelle maskiert wird (nachgeprüft für
-  //     addCsvLog in 02-gallery.js und priceStatusBadge in 04-finance.js)
-  //   • Vorkommen in BEDINGUNGSstellung (`s.error ? … : …`) — dort entscheidet
-  //     der Wert nur, ausgegeben wird er nicht
-  //   • Zeichenkettenliterale wie t('settings.error') — Übersetzungsschlüssel
+  // Woher dieser Test kommt
+  // Ausführlich: docs/begruendungen/test/frontend-escaping.test.js.md#bad-stelle
   const bad = [];
   const FELD = /\w+\.(?:error|message)\b/g;
   for (const f of FILES) {
     const src = fs.readFileSync(path.join(JS_DIR, f), 'utf8');
+    let ab = 0;
     src.split('\n').forEach((line, i) => {
+      const zeileAb = ab; ab += line.length + 1;
       if (/^\s*(\/\/|\*)/.test(line)) return;
       if (!/<\w/.test(line)) return;                       // kein HTML-Kontext
       for (const m of line.matchAll(/\$\{([^}]*)\}/g)) {
+        // In html`` maskiert die Vorlage selbst — ausser der Wert geht durch ungeprueft().
+        const vor = src.lastIndexOf('`', zeileAb + (m.index ?? 0));
+        if (src.slice(vor - 4, vor) === 'html' && !/ungeprueft\(/.test(m[1])) continue;
         // Zeichenkettenliterale entfernen, damit Übersetzungsschlüssel
         // ('…error') nicht als Datenfeld gelten.
         const ausdruck = m[1].replace(/'[^']*'|"[^"]*"|`[^`]*`/g, "''");

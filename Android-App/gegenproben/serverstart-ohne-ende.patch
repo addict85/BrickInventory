@@ -1,0 +1,18 @@
+Gegenprobe: Die Abfrage des Serverstarts hört nicht auf, wenn der Server bereit ist
+Modul: core-zustand
+Test: ch.brickinventoryapp.SitzungsDienstTest
+Rot: der Serverstart wird im Takt verfolgt
+
+diff --git a/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/ui/SitzungsDienst.kt b/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/ui/SitzungsDienst.kt
+index 79f1f8e..34841fb 100644
+--- a/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/ui/SitzungsDienst.kt
++++ b/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/ui/SitzungsDienst.kt
+@@ -203,7 +203,7 @@ class SitzungsDienst @Inject constructor(
+         if (prefs.serverUrlJetzt().isBlank()) return
+         while (true) {
+             val r = verwaltung.getStartupStatus()
+-            if (r !is Ergebnis.Success || r.data.ready) {
++            if (r !is Ergebnis.Success) {
+                 sitzung.serverstartGeaendert(null)
+                 return
+             }

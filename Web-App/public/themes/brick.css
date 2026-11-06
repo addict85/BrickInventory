@@ -355,3 +355,6 @@
    Inline-Styles in index.html verwenden seit diesem Fix var(--b600) bzw.
    var(--g500) und folgen dem Design damit von allein. */
 [data-theme="brick"] #startup-screen .spin{border-top-color:var(--b600)}
+
+/* Fokusring auf der blauen Kopfleiste: weiss (Ring #2F4763 lag bei 1,35:1). */
+[data-theme="brick"]{--fokus-kopf:#fff}

@@ -8,6 +8,8 @@ import ch.brickinventoryapp.data.model.ValuationResponse
 import ch.brickinventoryapp.ui.finanzSummen
 import org.junit.Assert.assertEquals
 import org.junit.Test
+import java.io.File
+import java.math.BigDecimal
 
 /**
  * Die App rechnet keine Geldbeträge nach — sie zeigt, was der Server liefert.
@@ -28,35 +30,9 @@ import org.junit.Test
  */
 class ClientRendersOnlyTest {
 
-    private fun entkleide(src: String): String {
-        val out = StringBuilder()
-        var i = 0
-        while (i < src.length) {
-            when {
-                src.startsWith("//", i) -> {
-                    val j = src.indexOf('\n', i).let { if (it < 0) src.length else it }
-                    repeat(j - i) { out.append(' ') }; i = j
-                }
-                src.startsWith("/*", i) -> {
-                    val j = src.indexOf("*/", i + 2).let { if (it < 0) src.length else it + 2 }
-                    for (c in src.substring(i, j)) out.append(if (c == '\n') '\n' else ' '); i = j
-                }
-                src[i] == '"' -> {
-                    var j = i + 1
-                    while (j < src.length && src[j] != '"') j += if (src[j] == '\\') 2 else 1
-                    j++
-                    for (c in src.substring(i, minOf(j, src.length))) out.append(if (c == '\n') '\n' else ' ')
-                    i = j
-                }
-                else -> { out.append(src[i]); i++ }
-            }
-        }
-        return out.toString()
-    }
-
     @Test
     fun `die Oberflaeche summiert keine Geldbetraege selbst`() {
-        val wurzel = java.io.File(Quellen.wurzel, "ui")
+        val wurzel = File(Quellen.wurzel, "ui")
         val geld = Regex("""sumOf\s*\{[^}]{0,120}?\.(price|Price|value|Value|total|Total|purchase|Purchase)\w*""")
         val treffer = mutableListOf<String>()
         // Untergrenze (Nachtrag 118): Ein Dateilauf, der nichts findet, lässt
@@ -65,7 +41,7 @@ class ClientRendersOnlyTest {
             "Zu wenige Kotlin-Dateien unter ${'$'}{wurzel.path} — Pfad veraltet?"
         }
         for (f in wurzel.walkTopDown().filter { it.extension == "kt" }) {
-            val code = entkleide(f.readText())
+            val code = Quellen.entkleide(f.readText())
             for (m in geld.findAll(code)) {
                 val zeile = code.substring(0, m.range.first).count { it == '\n' } + 1
                 treffer += "${f.name}:$zeile — ${m.value.take(60)}"
@@ -88,8 +64,8 @@ class ClientRendersOnlyTest {
         val summen = finanzSummen(ValuationResponse(success = true).alsAnsicht(),
             PartsValuationResponse(success = true, totalValue = "0.20").alsAnsicht(),
             null, PnlResponse(success = true, totals = PnlTotals(purchase = "0.00", current = "0.00", grandTotal = "4894.77")).alsAnsicht())
-        assertEquals(0, java.math.BigDecimal("4894.77").compareTo(summen.gesamt))
-        val sections = java.io.File(Quellen.wurzel,
+        assertEquals(0, BigDecimal("4894.77").compareTo(summen.gesamt))
+        val sections = File(Quellen.wurzel,
             "ui/screens/FinanceSections.kt").readText()
         assert(Regex("""finanzSummen\(valuation, partsValuation, figsValuation, pnl\)""").findAll(sections).count() == 2) {
             "Eine Kopfkarte liest den Gesamtwert nicht mehr über finanzSummen() — dann rechnet " +
@@ -98,7 +74,7 @@ class ClientRendersOnlyTest {
         // Das Modellfeld muss es geben, sonst liest der Ausdruck oben ins Leere.
         // Alle Modelldateien (Nachtrag 155): Vorher stand hier ein Dateiname,
         // und die Klassen liegen seither nach Sachgebieten verteilt.
-        val models = java.io.File(Quellen.wurzel, "data/model")
+        val models = File(Quellen.wurzel, "data/model")
             .listFiles { f -> f.extension == "kt" }
             .orEmpty().sortedBy { it.name }
             .joinToString("\n") { it.readText() }

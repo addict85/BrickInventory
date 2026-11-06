@@ -1,29 +1,7 @@
 /**
  * Eine Meldung führt zum SET — angetippt auf dem Telefon, angeklickt in der
  * Mail.
- *
- * ── Marcos Wunsch vom 25.09. ────────────────────────────────────────────────
- *
- *   „Kannst du noch umsetzen, dass ich in der Android App die notification
- *    anklicken kann und dann die App sowie das Set im Detaildialog geöffnet
- *    wird. Bei den Mails wäre es schön wenn es ebenfalls einen direkt link auf
- *    die Webapp mit dem entsprechenden Set geben würde."
- *
- * ── Warum das eine Regel über BEIDE ist ─────────────────────────────────────
- *
- * Es sind zwei Wege zum selben Ziel, und jeder besteht aus zwei Hälften, die
- * unabhängig voneinander kaputtgehen können:
- *
- *     Meldung trägt ein Ziel   +   die App löst es ein
- *     Mail trägt einen Link    +   die Webapp löst ihn ein
- *
- * Genau daran ist es schon einmal gescheitert, und zwar an MIR: Ich habe am
- * 25.09. den Knopf in die Mail gebaut, der auf `/?set=<nummer>` zeigt — ohne
- * nachzusehen, ob die Webapp diesen Parameter überhaupt liest. Sie las ihn
- * nicht. Der Knopf öffnete die Startseite, und das sah aus wie ein Link, der
- * funktioniert.
- *
- * Eine halbe Brücke ist schlimmer als keine: Sie verspricht etwas.
+ * Ausführlich: docs/begruendungen/test/alarm-direktlink-beide.test.js.md#kopf
  *
  * ── Gegenproben (durchgeführt, Ergebnis im Commit) ──────────────────────────
  *   a) setContentIntent aus der Benachrichtigung entfernt → Schritt 1 rot.
@@ -48,10 +26,11 @@ const app = (rel) => ohneKommentare(fs.readFileSync(androidDatei(rel), 'utf8'));
 const web = (rel) => ohneKommentare(fs.readFileSync(path.join(ROOT, rel), 'utf8'));
 
 test('1. die Benachrichtigung trägt ein Ziel', () => {
-  const w = app('alarm/PreisalarmWorker.kt');
+  // Seit @HiltWorker baut PreisalarmDurchgang die Meldung, der Worker ruft ihn.
+  const w = app('alarm/PreisalarmWorker.kt') + app('alarm/PreisalarmDurchgang.kt');
   assert.match(w, /\.setContentIntent\(/,
     'Ohne setContentIntent tut ein Antippen NICHTS — die Meldung bleibt stehen.');
-  assert.match(w, /putExtra\(EXTRA_SET, a\.setNumber\)/,
+  assert.match(w, /putExtra\((?:PreisalarmWorker\.)?EXTRA_SET, a\.setNumber\)/,
     'Die Meldung sagt nicht, WELCHES Set sie meint.');
 
   // Die Klasse direkt, nicht ihr Name als Zeichenkette: Ein Name ist für R8
@@ -92,17 +71,17 @@ test('2. und die App löst es ein', () => {
 
   // Und der NavHost navigiert.
   const nav = app('AppNavigation.kt');
-  assert.match(nav, /Screen\.SetDetail\.createRoute\(/,
+  assert.match(nav, /Screen\.SetDetail\(/,
     'Die App springt nicht ins Set-Detail.');
   assert.match(nav, /setAusMeldungQuittieren\(\)/,
     'Ohne Quittieren springt die App bei jeder Rekomposition erneut.');
   // Nicht im abgemeldeten Zustand: Das Detail kann dann nichts laden.
-  assert.match(nav, /startDest == Screen\.Gallery\.route/,
+  assert.match(nav, /startDest == Screen\.Gallery\b/,
     'Der Sprung prüft nicht, ob überhaupt jemand angemeldet ist.');
 });
 
 test('3. die Mail trägt einen Link', () => {
-  const m = web('src/infra/mailer.ts');
+  const m = web('src/mail/mailer.ts');
   const i = m.indexOf('async function baueAlarmMail(');
   assert.ok(i > 0, 'baueAlarmMail() nicht gefunden');
   const body = m.slice(i, m.indexOf('\n// ──', i) < 0 ? undefined : m.indexOf('\n// ──', i));
@@ -116,13 +95,13 @@ test('3. die Mail trägt einen Link', () => {
 
 test('4. und die Webapp löst ihn ein', () => {
   // DER Schritt, der am 25.09. gefehlt hat.
-  const core = web('public/js/01-core.js');
+  const core = web('public/js/26-sitzung.js');
   const i = core.indexOf('function showApp()');
   assert.ok(i > 0, 'showApp() nicht gefunden');
   const block = core.slice(i, i + 3000);
   assert.match(block, /new URLSearchParams\(location\.search\)\.get\('set'\)/,
     'Die Webapp liest ?set= nicht — der Knopf in der Mail öffnet nur die Startseite.');
-  assert.match(block, /openModal\?\.\(/, 'Die Webapp öffnet das Set-Detail nicht.');
+  assert.match(block, /openModal\(setAusLink\)/, 'Die Webapp öffnet das Set-Detail nicht.');
   assert.match(block, /history\.replaceState/,
     'Die Adresse wird nicht bereinigt — ein F5 reisst das Detail erneut auf.');
 });

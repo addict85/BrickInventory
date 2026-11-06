@@ -10,6 +10,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import ch.brickinventoryapp.data.api.ApiJson
 
 /**
  * Client-seitiger API-Vertrag: Die Katalog-Modelle müssen echte
@@ -22,7 +23,7 @@ import org.junit.Test
 class CatalogSerializationTest {
 
     // Gleiche Konfiguration wie AppModule.provideJson()
-    private val json = ch.brickinventoryapp.data.api.ApiJson
+    private val json = ApiJson
 
     @Test
     fun `meta-Antwort wird geparst`() {

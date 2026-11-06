@@ -31,7 +31,7 @@
     <string name="settings_condition_new">New</string>
     <string name="settings_condition_used">Used</string>
     <string name="settings_save">Save</string>
-    <string name="settings_logout">Log out</string>
+    <string name="settings_logout">Sign out</string>
     <string name="settings_language">Language</string>
     <string name="settings_language_system">Follow system</string>
     <string name="settings_language_en">English</string>
@@ -42,6 +42,8 @@
     <string name="login_username">Username</string>
     <string name="login_password">Password</string>
     <string name="login_button">Sign in</string>
+    <string name="login_missing_credentials">Enter user name and password to sign in.</string>
+    <string name="login_missing_code">Enter the code from your authenticator app to sign in.</string>
     <string name="login_code">Code from your authenticator app</string>
     <string name="login_code_hint">Or one of your recovery codes</string>
     <string name="login_passkey">Sign in with a passkey</string>
@@ -59,10 +61,10 @@
     <string name="setup_qr_ziel">The QR code points to this server:</string>
     <string name="setup_qr_hinweis">The app will only send your login there. Continue only if this is your server.</string>
     <string name="setup_qr_international" tools:ignore="TypographyDashes">The server name contains characters from other alphabets and is shown in its technical form (xn--…). Such letters can look exactly like familiar ones: compare the name character by character with your server.</string>
-    <string name="setup_qr_anderer_server">This code leads to a different server than the current one (%1$s). If you continue, you will be logged out there and everything you enter from now on goes to the new server.</string>
+    <string name="setup_qr_anderer_server">This code leads to a different server than the current one (%1$s). If you continue, you will be signed out there and everything you enter from now on goes to the new server.</string>
     <string name="setup_url_benutzerangabe">An address with a user name (…@…) is not accepted. Enter only the server address, e.g. https://brick.fritz.box</string>
     <string name="setup_url_zusatz">The address must not contain spaces, line breaks, \\, ? or #. Enter only the server address, e.g. https://brick.fritz.box</string>
-    <string name="setup_qr_uebernehmen">Use and log in</string>
+    <string name="setup_qr_uebernehmen">Use and sign in</string>
 
     <!-- ══════════════ CSV import banner ══════════════ -->
     <string name="csv_ok_count">%1$d OK</string>
@@ -88,8 +90,6 @@
     <!-- „75192-1“ ist eine Setnummer, kein Bereich: kein Gedankenstrich. -->
     <string name="comparison_search_placeholder" tools:ignore="TypographyDashes">e.g. 75192-1 or barcode</string>
     <string name="comparison_search">Search</string>
-    <string name="comparison_scan_new">New</string>
-    <string name="comparison_scan">Scan</string>
     <string name="comparison_barcode_label">Barcode: %1$s</string>
     <string name="comparison_title">Price comparison</string>
     <string name="comparison_hint">Enter a set number or barcode, or scan one.\nThe search opens toppreise.ch in the browser.</string>
@@ -126,23 +126,19 @@
     <string name="setup_qr_scan_hint">Scan the BrickInventory QR code</string>
 
     <!-- ══════════════ Gallery screen ══════════════ -->
-    <string name="gallery_stat_sets">Sets</string>
-    <string name="gallery_stat_units">Copies</string>
-    <string name="gallery_stat_parts">Parts</string>
-    <string name="gallery_stat_minifigs">Minifigures</string>
-    <string name="gallery_stat_instructions">Instructions</string>
     <string name="gallery_search_placeholder">Search…</string>
-    <string name="gallery_all">All</string>
     <string name="gallery_no_sets">No sets yet</string>
     <string name="gallery_empty_hint">Add your first set by its number or scan the barcode on the box.</string>
     <string name="gallery_add_first">Add your first set</string>
-    <string name="gallery_refresh">Refresh</string>
     <string name="gallery_no_results">No results for “%1$s”</string>
     <string name="gallery_quantity_badge">×%1$d</string>
     <string name="gallery_price_each">each</string>
+    <string name="gallery_pnl_gewinn">Gain %1$s</string>
+    <string name="gallery_pnl_verlust">Loss %1$s</string>
+    <string name="gallery_card_market">Market price</string>
+    <string name="gallery_card_paid">Purchase price</string>
     <string name="gallery_delete_title">Delete set?</string>
     <string name="gallery_delete_text">%1$s and its parts will be removed. You can still undo it for a moment afterwards.</string>
-    <string name="gallery_set_deleted_undo">%1$s deleted</string>
     <string name="common_undo">Undo</string>
     <string name="gallery_pieces_suffix"> parts</string>
     <string name="gallery_scan_barcode">Scan barcode</string>
@@ -150,8 +146,8 @@
     <string name="offline_verworfen">Not applied: %1$s – %2$s</string>
     <string name="offline_verworfen_ohne_grund">the server did not accept the change</string>
     <plurals name="offline_ausgang">
-        <item quantity="one">Saved offline – %1$d change will be sent</item>
-        <item quantity="other">Saved offline – %1$d changes will be sent</item>
+        <item quantity="one">Saved offline – %1$d change will be sent on the next connection</item>
+        <item quantity="other">Saved offline – %1$d changes will be sent on the next connection</item>
     </plurals>
     <string name="gallery_add_set">Add set</string>
     <string name="gallery_add_set_title">Add set</string>
@@ -161,14 +157,10 @@
     <string name="gallery_add">Add</string>
 
     <!-- ══════════════ Minifigs screen ══════════════ -->
-    <string name="minifigs_stat_types">Figure types</string>
-    <string name="minifigs_stat_total">Figures in total</string>
-    <string name="minifigs_stat_manual">Added by you</string>
     <string name="minifigs_search_placeholder">Search…</string>
     <string name="minifigs_manual_section">Manually added minifigures</string>
     <string name="minifigs_sets_section">From sets</string>
     <string name="minifigs_none">No minifigures</string>
-    <string name="minifigs_loaded_on_import">Minifigures are loaded when sets are imported</string>
     <string name="minifigs_no_results">No results</string>
     <string name="minifigs_add">Add minifigure</string>
     <string name="minifigs_add_title">Add minifigure</string>
@@ -188,6 +180,10 @@
         <item quantity="one">%1$d set in the list</item>
         <item quantity="other">%1$d sets in the list</item>
     </plurals>
+    <plurals name="partslist_generate_anzahl">
+        <item quantity="one">(%1$d set)</item>
+        <item quantity="other">(%1$d sets)</item>
+    </plurals>
     <string name="partslist_loading_set">Loading %1$s (%2$d/%3$d)…</string>
     <string name="partslist_error_for_set">Error for %1$s</string>
     <string name="partslist_summary">%1$s · %2$s</string>
@@ -199,8 +195,8 @@
         <item quantity="one">%1$d part</item>
         <item quantity="other">%1$d parts</item>
     </plurals>
-    <string name="partslist_scan">Scan</string>
-    <string name="partslist_generate">Generate</string>
+    <string name="partslist_add_set">Add set to the build list</string>
+    <string name="partslist_generate">Create build list</string>
     <string name="partslist_pdf_error_title">PDF error</string>
     <string name="partslist_ok">OK</string>
     <string name="partslist_reset">Reset</string>
@@ -210,8 +206,6 @@
     <string name="storage_new">New storage location</string>
     <string name="storage_add">Add</string>
     <string name="storage_empty">No storage locations yet.</string>
-    <string name="storage_default_set">Set as default when adding</string>
-    <string name="storage_default_is">Default when adding — tap to switch off</string>
     <string name="storage_default_label">Preselected when adding</string>
     <string name="storage_add_button">Add storage location</string>
     <string name="storage_name">Location name</string>
@@ -232,17 +226,26 @@
     <string name="detail_alert_above">rises above</string>
     <string name="detail_alert_chip_below">Falls below</string>
     <string name="detail_alert_chip_above">Rises above</string>
-    <string name="detail_alert_armed">armed</string>
-    <string name="detail_alert_fired">sent — armed again once the price moves back</string>
+    <string name="detail_alert_armed">active</string>
+    <string name="detail_alert_fired">triggered — active again once the price moves back</string>
     <string name="detail_alert_threshold">Threshold (%1$s)</string>
     <string name="detail_alert_hint">Saved automatically after typing</string>
     <string name="detail_alert_saved">Saved: price %1$s %2$s · %3$s</string>
     <string name="detail_price_none_yet">no price yet</string>
     <string name="detail_purchase_none">not recorded</string>
     <string name="detail_storage_ph">e.g. box 3</string>
+    <string name="detail_storage_choose">Pick from the list or type a new one</string>
     <string name="detail_storage_none">No storage location</string>
     <string name="filter_condition_all">All</string>
     <string name="filter_storage_all">All locations</string>
+    <plurals name="filter_lagerort_sets">
+        <item quantity="one">%1$s · %2$d set</item>
+        <item quantity="other">%1$s · %2$d sets</item>
+    </plurals>
+    <plurals name="filter_lagerort_teile">
+        <item quantity="one">%1$s · %2$d part</item>
+        <item quantity="other">%1$s · %2$d parts</item>
+    </plurals>
     <string name="filter_button">Filter</string>
     <string name="filter_title">Filter</string>
     <string name="filter_reset">Reset</string>
@@ -267,7 +270,7 @@
         <item quantity="other">%1$d distinct</item>
     </plurals>
     <string name="partslist_owned_error">Could not load your inventory.</string>
-    <string name="partslist_empty_hint">Add one or more sets above and tap “Generate” — for rebuilding or ordering what is missing.</string>
+    <string name="partslist_empty_hint">Enter a set number and tap “Create build list”. Once you have typed one, the plus in the field adds more sets — for rebuilding or ordering what is missing.</string>
     <string name="partslist_empty_title">No build list yet</string>
     <string name="partslist_no_color">(No color)</string>
     <plurals name="partslist_group_summary">
@@ -282,7 +285,7 @@
     <string name="finance_price_error">Price error</string>
     <string name="finance_no_sets">No sets</string>
     <string name="finance_load_prompt">→ Load prices</string>
-    <string name="finance_total_pnl">%1$s vs. purchase price</string>
+    <string name="finance_total_pnl">%1$s vs. total paid</string>
     <string name="finance_parts_extra">incl. parts &amp; minifigures: %1$s</string>
     <plurals name="finance_fremde_waehrung">
         <item quantity="one">%1$d purchase price in another currency not included</item>
@@ -305,11 +308,27 @@
     <string name="finance_total_manual_minifigs">Manually added minifigures</string>
     <string name="finance_grand_total">Total</string>
     <string name="finance_market_avg">Collection market value</string>
+    <string name="finance_einstand_zeile">Total paid: %1$s</string>
+    <string name="finance_guv_zeile">Profit/loss: %1$s</string>
+    <string name="finance_pnl_needs_prices">needs purchase and market prices</string>
+    <plurals name="finance_basis_gerechnet">
+        <item quantity="one">Based on %1$d of %2$d item with purchase and market price.</item>
+        <item quantity="other">Based on %1$d of %2$d items with purchase and market price.</item>
+    </plurals>
+    <plurals name="finance_basis_ohne_markt">
+        <item quantity="one">%1$d item without market price not included (total paid %2$s)</item>
+        <item quantity="other">%1$d items without market price not included (total paid %2$s)</item>
+    </plurals>
+    <plurals name="finance_basis_ohne_kauf">
+        <item quantity="one">%1$d item without purchase price not included (market value %2$s)</item>
+        <item quantity="other">%1$d items without purchase price not included (market value %2$s)</item>
+    </plurals>
+    <plurals name="finance_summe_ohne_markt">
+        <item quantity="one">The total excludes %1$d item without a market price.</item>
+        <item quantity="other">The total excludes %1$d items without a market price.</item>
+    </plurals>
 
     <!-- ══════════════ Parts screen ══════════════ -->
-    <string name="parts_stat_types">Part types</string>
-    <string name="parts_stat_colors">Colors</string>
-    <string name="parts_stat_total">Pieces in total</string>
     <string name="parts_manual_section">Manually added parts</string>
     <string name="parts_sets_section">From sets</string>
     <string name="parts_none">No parts</string>
@@ -356,7 +375,7 @@
 
     <!-- ══════════════ Set detail screen ══════════════ -->
     <string name="detail_year">Year</string>
-    <string name="detail_pieces">Pieces</string>
+    <string name="detail_pieces">Parts</string>
     <string name="detail_minifigs">Minifigures</string>
     <string name="detail_theme">Theme</string>
     <string name="detail_section_details">Set details</string>
@@ -371,8 +390,9 @@
     <string name="detail_instructions">Instructions</string>
     <string name="detail_instruction_default">Instruction</string>
     <string name="detail_close">Close</string>
-    <string name="detail_price_low">Low</string>
-    <string name="detail_price_high">High</string>
+    <string name="price_chart_low_high">Low %1$s · High %2$s</string>
+    <string name="price_chart_too_few">Not enough history yet: the chart appears from three data points.</string>
+    <string name="detail_section_price_history">Price history</string>
 
     <!-- ══════════════ Navigation & Main ══════════════ -->
     <string name="settings_dark_label">Appearance on this device</string>
@@ -380,7 +400,6 @@
     <string name="settings_hell_hell">Light</string>
     <string name="settings_hell_dunkel">Dark</string>
     <string name="nav_collection">Collection</string>
-    <string name="nav_gallery">Gallery</string>
     <string name="nav_parts">Parts</string>
     <string name="nav_minifigs">Minifigures</string>
     <string name="name_unknown">Name unknown</string>
@@ -405,15 +424,15 @@
     <string name="main_barcode_pieces">Pieces</string>
     <string name="main_barcode_figs">Minifigures</string>
     <string name="main_menu_monitoring">Background work</string>
-    <string name="main_menu_logout">Log out</string>
-    <string name="logout_confirm_title">Log out?</string>
-    <string name="logout_confirm_text">You will be logged out on this device. To continue, log in again with your password.</string>
+    <string name="main_menu_logout">Sign out</string>
+    <string name="logout_confirm_title">Sign out?</string>
+    <string name="logout_confirm_text">You will be signed out on this device. To continue, sign in again with your password.</string>
     <string name="update_badge">Update available</string>
     <string name="main_menu_change_server">Change server</string>
     <string name="vm_settings_saved">Settings saved</string>
 
     <!-- ══════════════ ViewModel messages ══════════════ -->
-    <string name="vm_barcode_not_found">No set found for barcode %1$s</string>
+    <string name="vm_barcode_not_found">No set found for “%1$s”</string>
 
     <!-- Nachtrag i18n-Pass: zuvor hartkodierte Strings -->
     <string name="parts_search_placeholder">Search…</string>
@@ -441,9 +460,9 @@
     <string name="vm_saved">Saved</string>
     <string name="vm_part_deleted">Part deleted</string>
     <string name="vm_minifig_deleted">Minifigure deleted</string>
-    <string name="vm_set_deleted">%1$s deleted</string>
-    <string name="vm_added">%1$s added</string>
-    <string name="vm_updated">%1$s updated</string>
+    <string name="vm_set_deleted">“%1$s” deleted</string>
+    <string name="vm_added">“%1$s” added</string>
+    <string name="vm_updated">“%1$s” updated</string>
     <string name="pruef_titel">Checking…</string>
     <string name="pruef_barcode">Resolving barcode %1$s…</string>
     <string name="pruef_bestand">Checking whether %1$s is already in your collection…</string>
@@ -451,13 +470,15 @@
     <string name="pruef_anlegen_bild">Downloading the image for %1$s…</string>
     <string name="pruef_anlegen_abschluss">Finishing %1$s…</string>
     <string name="pruef_hinweis">Adding then happens in the background — just a moment before the next scan.</string>
-    <string name="vm_barcode_no_set">No set found for: %1$s</string>
-    <string name="vm_set_added">%1$s added!</string>
+    <string name="vm_set_added">“%1$s” added</string>
     <string name="vm_set_added_no_catalog">Set %1$s saved — name and image will follow once the catalog is reachable.</string>
     <string name="vm_error">Error: %1$s</string>
     <string name="vm_anmeldung_zu_alt">You signed in more than 180 days ago. Please sign in again.</string>
-    <string name="vm_session_expired">Session expired — please log in again</string>
-    <string name="vm_abmelden_nachgeholt">Logged out. The server could not be reached, so the app will invalidate the login there as soon as it is online. To be sure, check “Signed-in devices” in the web app.</string>
+    <string name="vm_session_expired">Session expired — please sign in again</string>
+    <string name="vm_abmelden_nachgeholt">Signed out. The server could not be reached, so the app will invalidate the login there as soon as it is online. To be sure, check “Signed-in devices” in the web app.</string>
+    <string name="abmeldung_kanal">Sign-out</string>
+    <string name="abmeldung_gescheitert_titel">Sign-out not confirmed</string>
+    <string name="abmeldung_gescheitert_text">This device could not sign out at %1$s. The login may still be valid there: revoke it in the web app under “Signed-in devices”.</string>
     <string name="vm_rechte_entzogen">Your administrator rights no longer apply — the administration areas are hidden.</string>
 
     <!-- Foreground-Service-Benachrichtigungen (CSV-Import / PDF-Export) -->
@@ -531,10 +552,10 @@
     </plurals>
     <string name="catalog_no_results">No sets found</string>
     <string name="catalog_owned">Owned</string>
-    <string name="catalog_add_to_gallery">Add to gallery</string>
+    <string name="catalog_add_to_gallery">Add to collection</string>
     <string name="catalog_add_again">Add again</string>
     <string name="catalog_add_confirm">Add</string>
-    <string name="catalog_open_in_gallery">Open in gallery</string>
+    <string name="catalog_open_in_gallery">Open in collection</string>
     <string name="catalog_detail_year">Year</string>
     <string name="catalog_detail_theme">Theme</string>
     <string name="catalog_detail_parts">Parts</string>
@@ -547,8 +568,8 @@
     <string name="catalog_sort_parts_asc">Parts ↑</string>
     <string name="catalog_buy_bricklink">Buy on BrickLink</string>
     <string name="catalog_search_bricklink">Search on BrickLink</string>
-    <string name="finance_purchase_short">Purchase: %1$s</string>
-    <string name="finance_purchase_total">Purchase total: %1$s</string>
+    <string name="finance_purchase_short">Purchase price: %1$s</string>
+    <string name="finance_purchase_total">Total paid: %1$s</string>
     <string name="household_scope_label">Accounts</string>
     <string name="household_scope_all">All accounts</string>
     <string name="household_scope_own">Own</string>
@@ -571,7 +592,7 @@
     <string name="household_former_via">previously via %1$s</string>
     <string name="household_former_dismiss">Dismiss</string>
     <string name="household_invite_create">Create invitation code</string>
-    <string name="household_invite_hint">Enter the code in the other account under “Household”. Valid for 24 hours, usable once.</string>
+    <string name="household_invite_hint">Enter the code in the other account under “Household”. Valid for 24 hours, usable once.</string>
     <string name="household_invite_copy">Copy</string>
     <string name="household_invite_label">Invitation code</string>
     <string name="household_redeem_title">Accept an invitation</string>
@@ -635,6 +656,9 @@
     <string name="err_session_expired">Session expired — please sign in again</string>
     <string name="err_klartext">The server address is unencrypted (http). The app only connects via https – please enter the https address under “Change server” or scan the QR code again.</string>
     <string name="err_unknown">Something went wrong</string>
+    <string name="err_upload_laeuft">An upload of this kind is already running for this account. Please wait until it has finished.</string>
+    <string name="err_zu_viele_verbindungen">Too many open connections for this account. Please close other windows or devices and try again shortly.</string>
+    <string name="err_pdf_zu_viele_seiten">The PDF has too many pages. Please split it into smaller files.</string>
     <string name="pdfview_print">Print</string>
     <string name="pdfview_zoom_in">Zoom in</string>
     <string name="pdfview_zoom_out">Zoom out</string>
@@ -654,7 +678,6 @@
     <string name="pdfview_no_target">No storage location available</string>
     <string name="pdfview_write_failed">File could not be written</string>
     <string name="pdfview_default_name">Instructions</string>
-    <string name="pdfview_share">Share PDF</string>
     <!-- Angemeldete Geraete (Token-Verwaltung) -->
     <string name="tokens_title">Signed-in devices</string>
     <string name="tokens_hint">Every sign-in — in the browser, in the app or via QR code — issues an access token. Lock out a lost or sold device here, without changing your password.</string>
@@ -698,7 +721,7 @@
     <string name="register_password_repeat">Repeat password</string>
     <string name="register_button">Register</string>
     <string name="register_req_fields">Username, email and password are required.</string>
-    <string name="register_password_short">Password must be at least 8 characters.</string>
+    <string name="register_password_short">Password must be at least 12 characters.</string>
     <string name="register_password_mismatch">The passwords do not match.</string>
     <string name="register_done">Account created. Please confirm your email address.</string>
     <string name="register_console_hint">SMTP is not configured — the confirmation link is in the server console.</string>
@@ -711,9 +734,12 @@
     <!-- ══════════════ Account card (profile / password) ══════════════ -->
     <string name="konto_title">Account</string>
     <string name="konto_email_unverified">Email address not confirmed</string>
-    <string name="konto_email_password">Current password (for the new email address)</string>
+    <string name="konto_profil_password_needed">To save, enter your current password.</string>
     <string name="konto_save">Save profile</string>
     <string name="konto_saved">Profile saved</string>
+    <string name="konto_email_ausstehend">Pending: %1$s. It takes effect once you open the link sent to it; until then the current address stays.</string>
+    <string name="konto_email_link_gesendet">Confirmation link sent to %1$s. Until you open it, your current address stays valid.</string>
+    <string name="konto_email_nicht_gesendet">Saved, but the confirmation to the new address could not be sent. Please ask the administrator.</string>
     <string name="konto_password_title">Change password</string>
     <string name="konto_password_current">Current password</string>
     <string name="konto_password_new">New password</string>
@@ -722,18 +748,29 @@
     <string name="konto_password_button">Change password</string>
     <string name="startpasswort_titel">Replace the initial password</string>
     <string name="startpasswort_text">This account still uses the initial password it was created with. Choose your own password before you continue. Afterwards you sign in again with the new one.</string>
-    <string name="startpasswort_wiederholen">Repeat new password</string>
+    <string name="startpasswort_wiederholen">Repeat</string>
     <string name="startpasswort_verschieden">The two entries differ.</string>
     <string name="konto_design_hint">Applies to this account on every device.</string>
+    <string name="design_text_classic">Light and plain, blue accents.</string>
+    <string name="design_text_brick">Strong blue, cards like bricks with a stud edge.</string>
+    <string name="design_text_werkbank">Always dark, regardless of light or dark mode. Similar to Classic in dark mode, with brass in hints and badges.</string>
+    <string name="design_text_farbfaecher">Each view in its own colour.</string>
+    <string name="design_text_noppe">Colourful and playful: studded bars, thick edges, hard shadows.</string>
+    <string name="design_text_hochglanz">Calm and sleek: smooth surfaces, soft gradients, subtle sheen.</string>
     <string name="konto_design_vorgabe">Default: %1$s</string>
 
     <!-- ══════════════ CSV upload ══════════════ -->
     <string name="csv_upload_title">Import CSV</string>
-    <string name="csv_format_sets">Columns: set_number, quantity, purchase_price, condition, acquired_at</string>
-    <string name="csv_format_parts">Columns: part_number, quantity, color_id, color_name, unit_price, condition, acquired_at</string>
-    <string name="csv_format_figs">Columns: fig_number, bl_fig_number, quantity, unit_price, condition, acquired_at</string>
-    <string name="csv_format_wanted">Columns: set_number, condition, created_at</string>
-    <string name="csv_format_alerts">Columns: set_number, condition, richtung, schwelle, currency_code</string>
+    <string name="csv_format_sets">Columns in the file: set_number, quantity, purchase_price, condition, acquired_at</string>
+    <string name="csv_format_parts">Columns in the file: part_number, quantity, color_id, color_name, unit_price, condition, acquired_at</string>
+    <string name="csv_format_figs">Columns in the file: fig_number, bl_fig_number, quantity, unit_price, condition, acquired_at</string>
+    <string name="csv_format_wanted">Columns in the file: set_number, condition, created_at</string>
+    <string name="csv_format_alerts">Columns in the file: set_number, condition, richtung, schwelle, currency_code</string>
+    <string name="csv_desc_sets">Set number, quantity, purchase price, condition and purchase date</string>
+    <string name="csv_desc_parts">Part number, quantity, colour, unit price, condition and purchase date</string>
+    <string name="csv_desc_figs">Figure number (Rebrickable or BrickLink), quantity, unit price, condition and purchase date</string>
+    <string name="csv_desc_wanted">Set number, condition and since when it is on the list</string>
+    <string name="csv_desc_alerts">Set number, condition, direction (below/above), threshold and currency</string>
     <string name="csv_upload_sets">Import sets …</string>
     <string name="csv_upload_parts">Import parts …</string>
     <string name="csv_upload_figs">Import minifigures …</string>
@@ -807,8 +844,13 @@
     <string name="update_signatur_falsch">The downloaded app is not signed with the same key as this one and was deleted. It was not installed.</string>
     <string name="update_fassung_falsch">The downloaded app carries a different version than announced and was deleted. It was not installed.</string>
     <string name="update_fremde_adresse">The update points to an address outside our release. Nothing was downloaded.</string>
+    <string name="update_beschreibung_unsigniert">The update description is not signed with this app’s key. Nothing is offered.</string>
+    <string name="update_pruefsumme_falsch">The downloaded app is not the one announced in the signed description and was deleted. It was not installed.</string>
     <string name="update_installer_fehlt">The installation could not be started.</string>
     <string name="update_installation_fehlgeschlagen">The installation failed: %1$s</string>
+    <string name="update_installer_fremd">The confirmation does not lead to the system installer. Nothing was opened.</string>
+    <string name="update_quelle_abgelaufen">The update description has expired: it was not re-signed in time. Either nothing has been released for a long while, or someone is holding updates back. That is why the app is not offering an update right now. Check the project\'s release page and this device\'s date and time.</string>
+    <string name="update_quelle_zurueckgesetzt">The update description is older than one this app has already seen. The update source is outdated or has been tampered with, and newer versions may be withheld from you. That is why the app is not offering an update right now. Check the project\'s release page.</string>
 
     <string name="price_from_other_condition_new">Purchase price taken from the "new" market price — BrickLink has no price for "used".</string>
     <string name="price_from_other_condition_used">Purchase price taken from the "used" market price — BrickLink has no price for "new".</string>
@@ -816,32 +858,29 @@
 
     <!-- Merkliste (Nachtrag 179) -->
     <string name="nav_wanted">Wanted</string>
-    <string name="wanted_add_title">Add a wanted item</string>
+    <string name="wanted_add_title">Add a set to the list</string>
     <string name="wanted_add_submit">Add to wanted list</string>
     <string name="wanted_search">Search…</string>
-    <string name="wanted_no_results">No wanted items found</string>
+    <string name="wanted_no_results">No saved set found</string>
     <string name="wanted_empty">Your wanted list is empty</string>
     <string name="wanted_owned">Already owned</string>
     <string name="wanted_alert_below">Alert below %1$s</string>
     <string name="wanted_alert_above">Alert above %1$s</string>
-    <string name="wanted_price_pending">Price pending</string>
     <string name="wanted_added">Added to the wanted list</string>
     <string name="wanted_already">Already on the wanted list</string>
-    <string name="wanted_deleted">Removed from the wanted list</string>
-    <string name="wanted_take">Add to gallery</string>
-    <string name="wanted_taken">Moved into the gallery</string>
-    <string name="wanted_taken_existing">Was already in the gallery — taken off the wanted list</string>
+    <string name="wanted_deleted">“%1$s” removed from the wanted list</string>
+    <string name="wanted_take">Add to collection</string>
+    <string name="wanted_taken">Moved into the collection</string>
+    <string name="wanted_taken_existing">Was already in the collection — taken off the wanted list</string>
     <string name="wanted_need_number">Please enter a set number</string>
     <string name="wanted_threshold">Threshold (optional)</string>
     <string name="detail_compare">Compare prices</string>
     <string name="wanted_since">On the list since</string>
     <string name="alerts_group">Price alerts</string>
-    <string name="alerts_intro">Every threshold you have set. You can change the value here or remove the alert. You are notified once per crossing — the same alert can only fire again after the price has moved back to the other side.</string>
-    <string name="alerts_empty">No price alert set yet. You set one in the detail view of a set.</string>
-    <string name="alerts_below">falls below</string>
-    <string name="alerts_above">rises above</string>
-    <string name="alerts_armed">● armed</string>
-    <string name="alerts_fired">○ not armed</string>
+    <string name="alerts_intro">Create alerts here, change their threshold and direction, or remove them.</string>
+    <string name="alerts_empty">No price alert yet. Create one below or in the detail view of a set.</string>
+    <string name="alerts_armed">Active</string>
+    <string name="alerts_fired">Triggered</string>
     <string name="alerts_last">last %1$s</string>
     <string name="alerts_bad_value">The threshold must be greater than 0.</string>
     <string name="alerts_delete">Remove price alert</string>
@@ -866,10 +905,14 @@
     <string name="vouchers_pin_show">Show PIN</string>
     <string name="schritt_untertitel">Confirm with fingerprint, face or your device lock</string>
     <string name="schritt_entsperren">Confirm</string>
+    <string name="schritt_kein_schluessel">The device lock cannot be checked right now. Please try again later.</string>
+    <string name="schritt_ohne_sperre_titel">No screen lock</string>
+    <string name="schritt_ohne_sperre_text">This step (%1$s) normally asks for the screen lock. This device has none: anyone holding the phone can get to voucher PINs, recovery codes and administration without further ado. Set up a PIN, pattern or password in the system settings under Security.</string>
+    <string name="schritt_ohne_sperre_weiter">Continue unprotected</string>
     <string name="schritt_gutschein">Show voucher PIN</string>
     <string name="schritt_codes">Recovery codes</string>
     <string name="schritt_verwaltung">Open administration</string>
-    <string name="schritt_voller_zugriff">Sign in with admin rights</string>
+    <string name="schritt_voller_zugriff">Sign in with administrator rights</string>
     <string name="vouchers_pin_hide">Hide PIN</string>
     <string name="vouchers_delete_confirm">Really delete voucher %1$s? The stored PDF goes with it.</string>
     <string name="vouchers_saved">Voucher saved</string>
@@ -919,13 +962,21 @@
     <string name="zf_disable">Turn off</string>
     <string name="zf_enabled">Two-factor authentication set up</string>
     <string name="zf_disabled">Two-factor authentication turned off</string>
+    <string name="zf_pflicht_titel">Set up two-factor authentication</string>
+    <string name="zf_pflicht_text">Besides the password, the server then asks for a code from an authenticator app. Until it is set up, the rest of the app stays locked.</string>
+    <string name="zf_pflicht_passwort">First confirm with your password; then the app shows the key for your authenticator app.</string>
+    <string name="zf_pflicht_codes_titel">Codes for emergencies</string>
+    <string name="zf_pflicht_weiter">Continue to the app</string>
     <plurals name="zf_active">
         <item quantity="one">Set up · %d recovery code left</item>
         <item quantity="other">Set up · %d recovery codes left</item>
     </plurals>
     <string name="acq_preis_geschaetzt">Estimated: market price, not the amount paid</string>
     <string name="setup_qr_pin">The code also names the server\'s certificate. The app remembers it for this address and from then on accepts only this one. Only continue if you have just created the code yourself in your web app; under Settings → Server certificate it shows the same beginning.</string>
-    <string name="setup_altbestand_text">The saved address is %1$s – an unencrypted one. This version only connects via https, so nobody on the Wi-Fi can read your access.\n\nHow to continue:\n1. In the web app, create the QR code for the Android app under Settings and scan it with the button below.\n2. Or enter your server\'s https address below, e.g. https://brick.fritz.box.\n\nThen sign in once more.</string>
+    <string name="setup_altbestand_text">The saved address is %1$s – an unencrypted one. This version only connects via https, so nobody on the Wi-Fi can read your access.</string>
+    <string name="setup_altbestand_schritt_qr">In the web app, create the QR code for the Android app under Settings and scan it with the button below.</string>
+    <string name="setup_altbestand_schritt_adresse">Or enter your server\'s https address below, e.g. https://brick.fritz.box.</string>
+    <string name="setup_altbestand_danach">Then sign in once more.</string>
     <string name="setup_altbestand_titel">Encrypted connections only</string>
     <string name="setup_qr_klartext_abgelehnt">This QR code names an unencrypted address (http). The app only connects via https: switch the server to https (README, “HTTPS with your own CA”) and create the code again.</string>
     <string name="setup_url_unlesbar">This address cannot be read. Example: https://brick.fritz.box</string>
@@ -934,11 +985,13 @@
     <string name="settings_systemfarben_hint">Colors from your wallpaper instead of the design\'s colors. Shapes and fonts stay.</string>
     <string name="settings_vorschau_verbergen">Hide preview in the app overview</string>
     <string name="settings_vorschau_verbergen_hint">No preview in the recent apps overview and no screenshots of the app. Applies to this device.</string>
+    <string name="settings_widget_werte">Show amounts in the widget</string>
+    <string name="settings_widget_werte_hint">Otherwise the collection value and gains are hidden on the home screen, where anyone who sees the phone can read them. Applies to this device.</string>
     <string name="zert_titel_erstkontakt">Trust this server?</string>
     <string name="zert_titel_unbekannt">Unknown certificate</string>
     <string name="zert_titel_geaendert">The server\'s certificate has changed</string>
     <string name="zert_text_erstkontakt">This is the first encrypted connection to %1$s. Compare the fingerprint character by character with the one the web app shows under Settings → Server certificate. Only after your yes does the app remember it, and from then on it accepts only certificates that match it.</string>
-    <string name="zert_text_unbekannt">The certificate of %1$s was not issued by a known authority – it is self-issued or comes from your own authority. That is normal for a server at home, but it could also be someone in between. That is why one tap is not enough here: copy the last 24 characters of the fingerprint from the web app (Settings → Server certificate); this screen only shows its beginning. Scanning the web app\'s QR code is easier, it carries the fingerprint.</string>
+    <string name="zert_text_unbekannt">The certificate of %1$s was not issued by a known authority – it is self-issued or comes from your own authority. That is normal for a server at home, but it could also be someone in between. That is why one tap is not enough here: copy the last 24 characters of the fingerprint from the web app (Settings → Server certificate); this screen only shows its beginning.</string>
     <string name="zert_text_geaendert">%1$s shows a different certificate than the one you confirmed. That happens when the server gets a new key – or when someone is listening in between. Nothing has been sent. Only accept it if you changed the server yourself: the new fingerprint is shown only by the web app (Settings → Server certificate); copy its last 24 characters from there.</string>
     <string name="zert_fingerabdruck">Fingerprint (SHA-256 of the public key)</string>
     <string name="zert_bisher">Previously confirmed</string>
@@ -950,11 +1003,13 @@
     <string name="zert_unbekannt_eingabe">Last 24 characters of the fingerprint, copied from the web app (Settings → Server certificate) or from your browser\'s certificate details (public key SHA-256)</string>
     <string name="zert_eingabe_falsch">That does not match this server\'s fingerprint.</string>
     <string name="zert_beginnt_mit">Fingerprint starts with (for orientation only)</string>
-    <string name="zert_text_nutzer_ca">The certificate of %1$s is valid only through an authority installed on this device. That may be your own – or one that someone with access to the device slipped in. That is why one tap is not enough here: copy the last 24 characters of the fingerprint from the web app (Settings → Server certificate); this screen only shows its beginning. Scanning the web app\'s QR code is easier.</string>
+    <string name="zert_text_nutzer_ca">The certificate of %1$s is valid only through an authority installed on this device. That may be your own – or one that someone with access to the device slipped in. That is why one tap is not enough here: copy the last 24 characters of the fingerprint from the web app (Settings → Server certificate); this screen only shows its beginning.</string>
     <string name="zert_titel_nutzer_ca">Certificate from an installed authority</string>
     <string name="setup_qr_pin_geaendert">This code names a different certificate than the one confirmed for this server. Continue only if you changed the server yourself – the web app then shows the new fingerprint under Settings → Server certificate; copy its last 24 characters below.</string>
-    <string name="setup_qr_pin_uebernehmen">Accept the new certificate and log in</string>
+    <string name="setup_qr_pin_uebernehmen">Accept the new certificate and sign in</string>
     <string name="setup_qr_pin_wechsel_abgelehnt">The QR code names a different certificate than the confirmed one. Nothing was changed.</string>
+    <string name="setup_qr_pin_abtippen">The code also names the certificate of your own authority. From then on the app would trust only this key for this address – but a code from someone else could name theirs just the same. So copy the last 24 characters of the fingerprint from your web app (Settings → Server certificate); this screen only shows its beginning.</string>
+    <string name="setup_qr_pin_abtippen_abgelehnt">Without the last 24 characters of the fingerprint from the web app, the certificate from the QR code is not accepted. Nothing was sent.</string>
     <string name="common_load_failed">Could not be loaded</string>
     <string name="common_retry">Try again</string>
     <string name="common_no_results">Nothing found</string>
@@ -972,12 +1027,12 @@
     <string name="vouchers_cd_copy_number">Copy number %1$s</string>
     <string name="nav_group_account">Account and app</string>
     <string name="nav_group_tools">Tools</string>
-    <string name="detail_pnl_tile">Gain/loss</string>
+    <string name="detail_pnl_tile">Profit/loss</string>
     <string name="chart_change_max">%1$s overall</string>
     <string name="chart_change_year">%1$s this year</string>
     <string name="chart_change_month">%1$s this month</string>
     <string name="chart_change_week">%1$s this week</string>
-    <string name="finance_range_label">Range today: all sets at their lowest or highest price</string>
+    <string name="finance_range_label">Today’s price range – cheapest to dearest case</string>
     <string name="wanted_add_first">Add a set to the list</string>
     <string name="wanted_empty_hint">Note the sets you still want to buy. The app shows their market price and can alert you when it changes.</string>
     <string name="fehler_anmeldung_text">Your session has expired.</string>
@@ -1037,4 +1092,125 @@
         <item quantity="one">%1$d copy of %2$s and its parts will be removed. You can still undo it for a moment afterwards.</item>
         <item quantity="other">All %1$d copies of %2$s and their parts will be removed. You can still undo it for a moment afterwards.</item>
     </plurals>
+    <plurals name="offline_warten">
+        <item quantity="one">%1$d change is waiting and will be sent on the next connection</item>
+        <item quantity="other">%1$d changes are waiting and will be sent on the next connection</item>
+    </plurals>
+    <plurals name="passwort_mindestens">
+        <item quantity="one">At least %1$d character</item>
+        <item quantity="other">At least %1$d characters</item>
+    </plurals>
+    <string name="login_erweitert">Advanced</string>
+    <!-- UI-Prüfung 11 (Android) -->
+    <string name="login_server_aendern">Change server: %1$s</string>
+    <string name="zf_codes_gesichert">I have stored the codes safely</string>
+    <string name="zf_schritt_passwort">Password</string>
+    <string name="zf_schritt_app">Authenticator app</string>
+    <string name="zf_schritt_codes">Recovery codes</string>
+    <string name="konto_profil_titel">Profile</string>
+    <string name="alerts_liste_titel">Your alerts</string>
+    <string name="alerts_delete_fuer">Remove price alert for %1$s</string>
+    <string name="storage_vorgabe_cd">Default when adding: %1$s</string>
+    <string name="aktion_fuer">%1$s: %2$s</string>
+    <string name="finance_positionen">Items</string>
+    <plurals name="zf_schritt">
+        <item quantity="one">Step %1$d of %2$d: %3$s</item>
+        <item quantity="other">Step %1$d of %2$d: %3$s</item>
+    </plurals>
+    <string name="alerts_intro_more">You are notified once per crossing — the same alert can only fire again after the price has moved back to the other side.</string>
+    <string name="zf_pflicht_kurz">Administrator rights require a second factor.</string>
+    <string name="zf_share">Share</string>
+    <string name="zf_share_title">Recovery codes</string>
+    <string name="passwort_aendern_fehlt">Enter the current password, the new one and its repetition, then change it.</string>
+    <string name="erfassen_nummer_fehlt">Enter a set number first.</string>
+    <string name="zustand_eingeklappt">collapsed</string>
+    <string name="zustand_ausgeklappt">expanded</string>
+    <string name="nav_sets">Sets</string>
+    <plurals name="gallery_stat_sets">
+        <item quantity="one">%1$s set</item>
+        <item quantity="other">%1$s sets</item>
+    </plurals>
+    <plurals name="gallery_stat_units">
+        <item quantity="one">%1$s copy</item>
+        <item quantity="other">%1$s copies</item>
+    </plurals>
+    <plurals name="gallery_stat_parts">
+        <item quantity="one">%1$s part</item>
+        <item quantity="other">%1$s parts</item>
+    </plurals>
+    <plurals name="gallery_stat_minifigs">
+        <item quantity="one">%1$s minifigure</item>
+        <item quantity="other">%1$s minifigures</item>
+    </plurals>
+    <plurals name="gallery_stat_instructions">
+        <item quantity="one">%1$s manual</item>
+        <item quantity="other">%1$s manuals</item>
+    </plurals>
+    <plurals name="minifigs_stat_types">
+        <item quantity="one">%1$s minifigure type</item>
+        <item quantity="other">%1$s minifigure types</item>
+    </plurals>
+    <plurals name="minifigs_stat_total">
+        <item quantity="one">%1$s minifigure in total</item>
+        <item quantity="other">%1$s minifigures in total</item>
+    </plurals>
+    <plurals name="minifigs_stat_manual">
+        <item quantity="one">%1$s added by you</item>
+        <item quantity="other">%1$s added by you</item>
+    </plurals>
+    <plurals name="parts_stat_types">
+        <item quantity="one">%1$s part type</item>
+        <item quantity="other">%1$s part types</item>
+    </plurals>
+    <plurals name="parts_stat_colors">
+        <item quantity="one">%1$s color</item>
+        <item quantity="other">%1$s colors</item>
+    </plurals>
+    <plurals name="parts_stat_total">
+        <item quantity="one">%1$s part in total</item>
+        <item quantity="other">%1$s parts in total</item>
+    </plurals>
+    <plurals name="cd_stueck">
+        <item quantity="one">%1$s piece</item>
+        <item quantity="other">%1$s pieces</item>
+    </plurals>
+    <string name="cd_teil_nummer">Part %1$s</string>
+    <string name="cd_figur_nummer">Minifigure %1$s</string>
+    <string name="cd_set_nummer">Set %1$s</string>
+    <string name="cd_jahr">Year %1$s</string>
+    <plurals name="cd_in_sammlung">
+        <item quantity="one">In the collection, %1$s copy</item>
+        <item quantity="other">In the collection, %1$s copies</item>
+    </plurals>
+    <string name="update_beim_start">Check for updates on start</string>
+    <string name="update_beim_start_hint">Asks GitHub once per start whether a newer version exists; GitHub sees the IP address of the device. Applies to this device.</string>
+    <string name="datenschutz_titel">Privacy</string>
+    <string name="datenschutz_text">The app talks to:\n• your own server, which stores everything you enter;\n• GitHub, only to look for updates (on start if switched on, otherwise when you tap “Check”);\n• Google Play services for barcode scanning and passkeys; on-device text recognition (ML Kit) may send usage statistics to Google;\n• other websites (BrickLink, instructions) only when you tap a link, in the browser.\nNo tracking, no advertising, no analytics.</string>
+    <plurals name="csv_fortschritt">
+        <item quantity="one">%1$d of %2$d set</item>
+        <item quantity="other">%1$d of %2$d sets</item>
+    </plurals>
+    <string name="csv_details_zeigen">Show details</string>
+    <string name="csv_details_verbergen">Hide details</string>
+    <string name="cd_details_oeffnen">Open details</string>
+    <string name="cd_bild_vergroessern">Enlarge image</string>
+    <string name="cd_set_oeffnen">Open set</string>
+    <string name="erklaer_mehr_zu">More about %1$s</string>
+    <string name="erklaer_weniger">Less</string>
+    <string name="filter_reset_all">Reset filters</string>
+    <string name="catalog_leer_titel">The catalog is empty</string>
+    <string name="catalog_leer_text">Sets appear here once the server has loaded the catalog.</string>
+    <string name="parts_leer_text">Parts come with your sets, or you add single parts yourself.</string>
+    <string name="minifigs_leer_text">Minifigures come with your sets, or you add them yourself.</string>
+    <string name="search_clear_all">Clear search and filters</string>
+    <string name="catalog_auf_merkliste">On the wanted list</string>
+    <string name="catalog_merkposten_oeffnen">Open wanted item</string>
+    <string name="barcode_schon_besessen">Already in your collection (×%1$d)</string>
+    <string name="alerts_anlegen_titel">Create price alert</string>
+    <string name="alerts_anlegen">Create alert</string>
+    <string name="alerts_anlegen_sperrgrund">Enter the set number and threshold, then create.</string>
+    <string name="household_invite_teilen">Share</string>
+    <string name="household_invite_gueltig_bis">Valid until %1$s</string>
+    <string name="household_redeem_sperrgrund">Enter code and password, then link.</string>
+    <string name="household_redeem_sperrgrund_faktor">Enter code, password and second-factor code, then link.</string>
 </resources>

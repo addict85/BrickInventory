@@ -1,14 +1,9 @@
 /**
  * Einzelne Bedienbefunde in Chrome, an der echten App:
  *   - Bestätigungsdialog: Escape gibt den Fokus an den Auslöser zurück; ist
- *     „Weitere Aktionen“ inzwischen zugeklappt, an dessen <summary>;
- *   - Set-Ansicht: „Teile neu importieren“ (unter „Weitere Aktionen“) ist ein
- *     beschrifteter Knopf von mindestens 24 × 24 px ohne Inline-Stil;
- *   - Konto: das Häkchen „Auch alle Passkeys entfernen“ ist selbst 24 × 24 px;
- *   - jede :hover-Regel der geladenen Stylesheets steht in @media (hover:hover):
- *     Auf Touchgeräten bleibt sonst der Hover-Zustand nach dem Tippen kleben;
- *   - Anmeldemaske in allen sechs Designs hell und dunkel: Knöpfe und Felder
- *     grenzen sich 3:1 ab („Mit Passkey anmelden“), Text 4,5:1.
+ *     „Weitere Aktionen“ zugeklappt (es klappt bei der Wahl zu), an dessen <summary>;
+ *   - Set-Ansicht: „Teile neu importieren“ (unter „Weitere Aktionen“) ist ein …
+ * Ausführlich: docs/begruendungen/test/bedienung-browser.test.js.md#kopf
  *
  * Gegenproben (02.11.2026 gemessen, je einzeln):
  *   A  rueckziel() in 01-dialoge.js gibt nur `el` zurück → rot:
@@ -21,6 +16,9 @@
  *      „Hover nur bei Zeigergeräten“
  *   E  .bs wieder mit border var(--bdr) → rot: „Anmeldemaske“ classic, brick,
  *      werkbank, farbfaecher (Knopfgrenze „Mit Passkey anmelden“)
+ *   F  (04.11.) im Set-Dialog die Klasse v-mehr entfernt (Menü bleibt bei
+ *      der Wahl offen) → rot: „Escape im Bestätigungsdialog: Fokus zurück
+ *      auf Weitere Aktionen“ („Menü klappt bei der Wahl zu“)
  *   (Erstlauf: rot an „Passwort vergessen?“ 131×20, „Build …“ 2,97:1 und
  *   brick dunkel „Anmelden“ 2,11:1 — behoben, siehe Commit.)
  */
@@ -35,15 +33,15 @@ const ESC = { key: 'Escape', code: 'Escape', windowsVirtualKeyCode: 27 };
 test('Bedienung: Fokus, Zielgrössen, Hover, Anmeldemaske', { timeout: 240_000 }, async (t) => {
   const app = await starteApp(t, { name: `bedien_${process.pid}`, bestand: musterSammlung });
   if (app.grund) { t.skip(app.grund); return; }
-  const { b, bis } = app;
-  await warte(1000);
-  await b.auswerten(`document.querySelector('#einrichtung-modal.open [data-click="einrichtungSpaeter"]')?.click(); true`);
+  const { b, bis, ruhig } = app;
+  // Der Start lädt Einstellungen und Preise nach; erst danach ist der Zustand fest.
+  await ruhig();
   await b.auswerten(`document.querySelector('.ntab[data-tab="gallery"]').click(); true`);
   await bis(`document.querySelectorAll('#gallery .sc').length >= 4`, 'Kacheln');
   const escape = async () => {
     await b.tab('Input.dispatchKeyEvent', { type: 'rawKeyDown', ...ESC });
     await b.tab('Input.dispatchKeyEvent', { type: 'keyUp', ...ESC });
-    await warte(150);
+    await ruhig();
   };
   const fokus = () => b.auswerten(`(() => { const a = document.activeElement; return a.id || a.tagName.toLowerCase() + '.' + a.className; })()`);
 
@@ -59,12 +57,15 @@ test('Bedienung: Fokus, Zielgrössen, Hover, Anmeldemaske', { timeout: 240_000 }
     assert.equal(k.stil, null);
   });
 
-  await t.test('Escape im Bestätigungsdialog: Fokus zurück auf „Löschen“', async () => {
+  await t.test('Escape im Bestätigungsdialog: Fokus zurück auf „Weitere Aktionen“', async () => {
+    // Das Menü klappt bei der Wahl zu; der sichtbare Auslöser ist dann sein Knopf.
     await b.auswerten(`document.querySelector('#set-modal details.mehr-menue').open = true; document.getElementById('btn-md').focus(); document.getElementById('btn-md').click(); true`);
     await bis(`document.getElementById('confirm-modal').style.display !== 'none'`, 'Bestätigung');
+    assert.equal(await b.auswerten(`document.querySelector('#set-modal details.mehr-menue').open`), false, 'Menü klappt bei der Wahl zu');
     await escape();
     assert.equal(await b.auswerten(`document.getElementById('confirm-modal').style.display`), 'none');
-    assert.equal(await fokus(), 'btn-md');
+    assert.equal(await b.auswerten(`document.activeElement === document.querySelector('#set-modal details.mehr-menue > summary')`), true,
+      `Fokus auf ${await fokus()}`);
   });
 
   await t.test('Escape bei zugeklapptem Menü: Fokus auf Weitere Aktionen', async () => {
@@ -100,7 +101,9 @@ test('Bedienung: Fokus, Zielgrössen, Hover, Anmeldemaske', { timeout: 240_000 }
   await bis(`getComputedStyle(document.getElementById('login-screen')).display !== 'none'`, 'Anmeldemaske');
   // Der Testserver hat keine Domäne in APP_BASE_URL und blendet Passkey und
   // „Passwort vergessen?“ aus; gemessen wird die volle Maske.
-  await bis(`document.getElementById('link-forgot').hidden`, 'Anmeldewege abgefragt');
+  // Erst wenn die jüngste Antwort eingetragen ist: Eine spätere blendete sonst
+  // den eben eingeblendeten Passkey-Knopf wieder aus.
+  await bis(`document.getElementById('login-screen').dataset.anmeldewege === 'geladen'`, 'Anmeldewege abgefragt');
   await b.auswerten(`document.getElementById('btn-passkey').hidden = false; document.getElementById('link-forgot').hidden = false; true`);
   for (const design of ['classic', 'brick', 'werkbank', 'farbfaecher', 'noppe', 'hochglanz']) {
     await t.test(`Anmeldemaske ${design}`, async () => {

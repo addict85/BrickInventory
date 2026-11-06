@@ -1,22 +1,6 @@
 /**
  * Frontend-Tests für public/js/09-catalog.js in jsdom (devDependency).
- *
- * ── Was sich geändert hat (Nachtrag 90) ─────────────────────────────────────
- * Dieser Test war ganz um den Von-Bis-Schieber gebaut. Den gibt es nicht mehr:
- * Marcos Vorgabe war, dass die Jahres-Leiste rechts SPRINGT statt zu filtern,
- * „analog wie es in der Android-Galerie-Foto-App der Fall ist" — und dass der
- * Schieber entsprechend entfallen kann.
- *
- * Damit ändert sich auch das Laden: Kein Endlos-Scroll mehr, der anhängt,
- * sondern ein Block je Seite über das GANZE Ergebnis; geladen wird der Block,
- * der ins Bild kommt — vorwärts wie rückwärts. Ohne das könnte ein Sprung
- * mitten in den Bestand nirgends landen.
- *
- * Geprüft wird jetzt genau das, plus: Der Jahresfilter über die beiden
- * Auswahlfelder bleibt (die Leiste ersetzt ihn NICHT), und der Sprung fragt
- * den Server statt selbst zu rechnen.
- *
- * Ausführen: npm test   (oder: node --test test/catalog-frontend.test.js)
+ * Ausführlich: docs/begruendungen/test/catalog-frontend.test.js.md#kopf
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -26,13 +10,7 @@ const { JSDOM } = require('jsdom');
 
 /**
  * import-/export-Syntax aus einer Moduldatei entfernen.
- *
- * Diese Tests werten den Quelltext in einer vm-Sandbox bzw. in jsdom als
- * KLASSISCHES Skript aus. Seit der Umstellung auf ES-Module enthalten die
- * Dateien import- und export-Anweisungen, die dort einen SyntaxError erzeugen
- * ("Cannot use import statement outside a module"). Die geprüfte Logik ändert
- * sich dadurch nicht — nur die Modulverpackung muss weg.
- *
+ * Ausführlich: docs/begruendungen/test/catalog-frontend.test.js.md#stripmodulesyntax
  * @param {string} src
  * @returns {string}
  */
@@ -43,24 +21,15 @@ function stripModuleSyntax(src) {
   // registerActions() kommt sonst aus js/00-registry.js und ist nach dem
   // Entfernen der Importe nicht definiert. In der Sandbox interessiert die
   // Anmeldung nicht — dass sie aufgerufen WIRD, prüfen test/csp-actions.test.js
-  // und test/bundle-smoke.test.js gegen den echten Quelltext.
-  // tRaw() lebt in i18n.js und wird hier nicht mitgeladen. In der Sandbox
-  // genügt die Weiterleitung an t(): Der Unterschied liegt allein in der
-  // Maskierung der eingesetzten Werte, die diese Tests nicht prüfen.
+  // und test/bundle-smoke.test.js gegen den echten Quelltext. …
+  // Ausführlich: docs/begruendungen/test/catalog-frontend.test.js.md#registeractions
   return 'function registerActions() {}\n'
        + 'function tRaw(k, v) { return typeof t === "function" ? t(k, v) : k; }\n'
        + body;
 }
 
 // Die Ansichts-Bausteine kommen MIT in die Sandbox, nicht als Attrappe.
-//
-// 09-catalog.js baut seine Detailzeilen seit dem Zusammenziehen über
-// detailZeile()/ladeAnzeige() aus 01-bausteine.js. Nach dem Entfernen der
-// Importe waeren sie undefiniert — der Test scheiterte mit
-// „ladeAnzeige is not defined", ohne dass am Katalog etwas kaputt war.
-//
-// Eingesetzt wird der ECHTE Baustein: Dieser Test prueft unter anderem, was
-// im Katalogfenster steht; mit einer Attrappe pruefte er die Attrappe.
+// Ausführlich: docs/begruendungen/test/catalog-frontend.test.js.md#bausteine
 const BAUSTEINE = stripModuleSyntax(fs.readFileSync(path.join(__dirname, '..', 'public', 'js', '01-bausteine.js'), 'utf8'));
 const CODE = BAUSTEINE + '\n' + stripModuleSyntax(fs.readFileSync(path.join(__dirname, '..', 'public', 'js', '09-catalog.js'), 'utf8'));
 const dom = new JSDOM(`<!doctype html><html><body>
@@ -122,21 +91,23 @@ function fakeApi(_method, url) {
   return Promise.resolve({ success: false, error: 'unbekannt: ' + url });
 }
 
-// ── Globale Stubs, wie sie 01-core/i18n bereitstellen ────────────────────────
+// ── Globale Stubs, wie sie 01-*/i18n bereitstellen ────────────────────────
+Object.assign(w, require('./helpers/markup').markupHelfer());
 w.eval(`
   window.G = id => document.getElementById(id);
+  window.alle = (s, w = document) => [...w.querySelectorAll(s)]; window.eins = (s, w = document) => w.querySelector(s);
   window.t = (k, v) => { let s = k; if (v) for (const [a,b] of Object.entries(v)) s += ' ' + b; return s; };
-  window.esc = s => String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
   window.locale = () => 'de-CH';
-  window.toast = () => {};
+  window.toast = () => {}; window.meldeTreffer = () => {};
+  window.PLATZHALTER_SET = '/assets/set-placeholder.svg'; window.setzeDialogbild = (img, src) => { img.src = src; };
   // Das Teile-Symbol kommt aus 02-gallery.js und wird hier nur als Marke
   // gebraucht: Der Test prüft die Katalog-Kachel, nicht das Bild darin.
-  // Seit Nachtrag 89 steht es dort statt des Puzzleteil-Emojis.
+  // Seit einer früheren Runde steht es dort statt des Puzzleteil-Emojis.
   window.PARTS_ICON_SVG = '<svg data-test-parts-icon></svg>';
-  // Bild und Platzhalter kommen aus 01-core.js; hier zählt nur die Kachel.
+  // Bild und Platzhalter kommen aus 01-bilder.js; hier zählt nur die Kachel.
   window.bildTag = o => '<img src="' + o.src + '" alt="">';
   window.platzhalterInhalt = () => '';
-  // Den gemeinsamen Scrollbalken stellt js/01-core.js; hier zählt nur, DASS
+  // Den gemeinsamen Scrollbalken stellt js/15-scrollbar.js; hier zählt nur, DASS
   // der Katalog sein Etikett dort anmeldet.
   window.__scrollLabelFn = undefined;
   window.setScrollLabel = fn => { window.__scrollLabelFn = fn; };
@@ -158,7 +129,7 @@ w.eval(`
   Element.prototype.scrollIntoView = function () { window.__scrollZiele.push(this); };
 `);
 w.eval(CODE);
-const sleep = ms => new Promise(r => setTimeout(r, ms));
+const { warte: sleep } = require('./helpers/zeit');
 const fire = (el, type) => el.dispatchEvent(new w.Event(type, { bubbles: true }));
 const problems = [];
 const check = (name, cond, extra) => {
@@ -186,9 +157,8 @@ test('Katalog-Frontend: Seitenblöcke, Jahresfilter, eigener Scrollbalken', asyn
   // jsdom rechnet KEIN Layout: getBoundingClientRect() liefert überall Nullen,
   // also hält _ladeSichtbareSeiten() jeden Block für sichtbar und lädt sofort
   // alles. Im Browser passiert das nicht — dort haben die Blöcke echte
-  // Koordinaten. Geprüft wird hier deshalb das ERGEBNIS des Nachladens; dass
-  // Platzhalter überhaupt eine Höhe bekommen, prüft die Quelltextregel weiter
-  // unten.
+  // Koordinaten. Geprüft wird hier deshalb das ERGEBNIS des Nachladens; dass …
+  // Ausführlich: docs/begruendungen/test/catalog-frontend.test.js.md#stelle
   await sleep(80);
   check('alle Seiten geladen (85 Kacheln)', echteKacheln() === 85, echteKacheln());
   check('keine Platzhalter mehr übrig', platzhalter() === 0, platzhalter());
@@ -211,16 +181,8 @@ test('Katalog-Frontend: Seitenblöcke, Jahresfilter, eigener Scrollbalken', asyn
   await sleep(80);
   check('ohne Filter wieder alles', hasYearFilter(lastSetsReq()) === false, lastSetsReq());
 
-  // ── Der Scrollbalken gehört der ganzen Anwendung ────────────────────────
-  //
-  // Marcos Vorgabe: „Der rechte Scrollbalken ist der vom Browser, der durch den
-  // eigenen ersetzt werden soll. Gerne gleich in der ganzen App."
-  //
-  // Meine vorige Fassung war ein eigener Scrollkasten NUR im Katalog. Der sass
-  // mitten im Fenster statt am Rand — und schlimmer: Der Beobachter mass gegen
-  // diesen Kasten, weshalb beim Scrollen nach unten nichts nachkam. Jetzt rollt
-  // die Seite, der Balken ist fest am Fensterrand, und der Katalog steuert nur
-  // das Etikett bei.
+  // Der Scrollbalken gehört der ganzen Anwendung
+  // Ausführlich: docs/begruendungen/test/catalog-frontend.test.js.md#css-stelle
   const css = fs.readFileSync(path.join(__dirname, '..', 'public', 'styles.css'), 'utf8');
   check('Browser-Balken ausgeblendet (Firefox)', /html\{scrollbar-width:none/.test(css), null);
   check('Browser-Balken ausgeblendet (WebKit)', /html::-webkit-scrollbar\{width:0/.test(css), null);
@@ -257,19 +219,15 @@ test('Katalog-Frontend: Seitenblöcke, Jahresfilter, eigener Scrollbalken', asyn
     /addEventListener\('scroll', beiBewegung/.test(quelle), null);
   check('gedrosselt über requestAnimationFrame',
     /requestAnimationFrame\([\s\S]{0,120}_ladeSichtbareSeiten/.test(quelle), null);
-  // ── Die Last beim Ziehen (Nachtrag 96) ──────────────────────────────────
-  // Zwei Regeln, die zusammen verhindern, dass ein Zug über die ganze Leiste
-  // den Rechner blockiert:
-  //
-  // 1. Die Lagen der Blöcke werden EINMAL gemessen, nicht bei jedem Bild. Bei
-  //    über vierhundert Blöcken zwingt jede Abfrage den Browser zu einer
-  //    Layout-Neuberechnung — sechzigmal je Sekunde.
+  // Die Last beim Ziehen
+  // Ausführlich: docs/begruendungen/test/catalog-frontend.test.js.md#check
   check('Blocklagen kommen aus dem Gedächtnis',
     /_catBlockLagen/.test(quelle) && /function _messeBloecke/.test(quelle), null);
   check('beim Rollen wird NICHT neu gemessen',
     !/requestAnimationFrame\([\s\S]{0,160}_messeBloecke/.test(quelle), null);
   // 2. Geladen wird erst, wenn das Rollen zur Ruhe kommt. Sonst fordert ein Zug
   //    über die Leiste hunderte Seiten an, von denen nur die letzte zählt.
+  // Ausführlich: docs/begruendungen/test/catalog-frontend.test.js.md#check-2
   //
   //    Das hier ist eine Aussage über den TEXT: die Zeile steht da. Dass sie
   //    auch WIRKT, misst katalog-zug-entprellt.test.js — dort fährt ein
@@ -291,15 +249,8 @@ test('Katalog-Frontend: Seitenblöcke, Jahresfilter, eigener Scrollbalken', asyn
   check('keine lineare Schätzung mehr',
     !/_catYearMax - anteil \* spanne/.test(quelle), null);
 
-  // ── Und dasselbe in der App (Marcos Vorgabe: „die gleiche Leiste") ────────
-  //
-  // Die Leiste der Android-App rechnete bis zuletzt LINEAR zwischen yearMin
-  // und yearMax — genau das Modell, das hier oben schon einmal danebenlag.
-  // Die Regel steht deshalb ueber BEIDEN Baeumen: Wer die eine Oberflaeche
-  // wieder auf eine Schaetzung zurueckdreht, faellt hier auf.
-  //
-  // Gefunden, nicht aufgezaehlt: Die App-Quellen werden gesucht, und ein
-  // leerer Fund gilt nicht (Selbstnachweis unten).
+  // Und dasselbe in der App (Marcos Vorgabe: „die gleiche Leiste")
+  // Ausführlich: docs/begruendungen/test/catalog-frontend.test.js.md#kotlin
   const kotlin = [];
   const gehen = (d) => {
     if (!fs.existsSync(d)) return;

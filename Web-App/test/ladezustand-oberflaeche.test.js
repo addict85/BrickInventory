@@ -41,7 +41,7 @@ test('Set-Detail: geschlossen bleibt geschlossen', async () => {
   try {
     await detail(o);
     o.d.getElementById('set-modal').classList.remove('open');
-    await takt(600);
+    assert.ok(await o.ruhig(), 'die Antwort kam nicht');
     assert.equal(o.d.getElementById('set-modal').classList.contains('open'), false);
   } finally { o.w.close(); }
 });

@@ -1,36 +1,34 @@
 /** SQL, Rebrickable und Aufträge stehen nur hier und darunter, damit die Routen
  * nur Anfrage und Antwort kennen. */
-import { logAndContinue, meldeUndLiefere, meldeUndWeiter, vorDem, fehlertext, ohneFehlendeDatei, oeffentlicherFehler } from '../infra/httpError';
+import { blickfeldAus } from '../haushalt/haushalt';
+import type { Sicht } from '../haushalt/haushalt';
+import { logAndContinue, meldeUndLiefere, meldeUndWeiter, vorDem, fehlertext, ohneFehlendeDatei, oeffentlicherFehler } from '../infra/fehler';
 import fs from 'fs';
 import path from 'path';
 import { APP_ROOT } from '../infra/appPaths';
 import { stelleAuftragEin } from '../auftraege/dienst';
 import { resolveImageLocal, proxyImageUrl } from '../katalog/bilder/images';
-import { getSetting } from '../konto/settings';
+import { getSetting } from '../einstellungen/settings';
 import { normalizeSetNumber } from './setAdd';
 import { istErsatzteil } from '../infra/validate';
 import { istVermutung } from '../katalog/barcodeQuelle';
 import { setnummerKandidaten } from '../katalog/produkttitel';
 import { fetchPrice, resolveSetCondition } from '../finanzen/financeCalc';
 import { neuestesInventar } from '../katalog/rbInventar';
-import { mitVersion, ohneVersion } from './setNummer';
+import { mitVersion, ohneVersion } from '../infra/setNummer';
 import { figurenAusKatalog } from '../katalog/minifigsImport';
-import { csvEinlesen, entschaerfungRueckgaengig, parseCsvDate, uebersprungenHinweis } from '../infra/csvExport';
+import { csvEinlesen, entschaerfungRueckgaengig, parseCsvDate, zeilenListe } from '../infra/csvExport';
 import { jobGet, jobSet, jobUpdate, emitJobStatus } from '../auftraege/importAuftrag';
-import { getSetByBarcode, getSetByEan } from '../../clients/brickset';
-import { getMinifigInfo, getSetMinifigs, rebrickableJson } from '../../clients/rebrickable';
+import { getSetByBarcode, getSetByEan, getMinifigInfo, getSetMinifigs, rebrickableJson, produktTitel } from '../katalog/quellen';
 import { getAllSetParts } from '../katalog/rebrickableKatalog';
-import type { RbSetTeil } from '../../clients/rebrickable';
-import { produktTitel } from '../../clients/upcitemdb';
+import type { RbSetTeil } from '../katalog/quellen';
 import { fehlerWerfen } from '../infra/fehlerTexte';
 import { merkeFigur, merkeSetFiguren } from '../katalog/katalogPflege';
 import { randomUUID } from 'crypto';
 import * as repo from './repository/setDetail';
+import type { KatalogTeil, ListenTeil, SetStamm } from './zeilen';
+export type { KatalogTeil, ListenTeil, SetStamm } from './zeilen';
 
-export interface SetStamm {
-  name: string | null; year: number | null; theme: string | null; pieces: number | null;
-  minifigs?: number | null; image_url: string | null; image_local: string | null;
-}
 
 /** Ohne Eintrag null. */
 export async function setInfo(setNumber: string): Promise<SetStamm | null> {
@@ -125,15 +123,6 @@ export async function setZumBarcode(rohBarcode: string): Promise<BarcodeTreffer 
   return null;
 }
 
-export interface ListenTeil {
-  part_number: string; color_id: number; total_quantity: number | string; is_spare: unknown;
-  bl_part_number?: string | null; part_name?: string | null; rb_image_url?: string | null;
-  color_name?: string | null; color_hex?: string | null; bl_color_id?: number | null;
-}
-export interface KatalogTeil {
-  part_number: string; color_id: number; bl_part_number: string | null; part_name: string | null;
-  color_name: string | null; color_hex: string | null; image_url: string | null; image_local: string | null;
-}
 
 function katalogDesSets(setNumber: string): Promise<KatalogTeil[]> {
   return repo.katalogTeileDesSets(mitVersion(setNumber));
@@ -233,11 +222,11 @@ async function figurenMerken(n: string, figs: Array<{ fig_number: string; fig_na
 }
 
 /** Im Zustand des Bestands. null: kein Set im Blickfeld. */
-export async function setPreis(uid: number, blickfeld: number[], sn: string) {
+export async function setPreis(uid: number, blickfeldWahl: Sicht | number[], sn: string) {
+  const blickfeld = await blickfeldAus(blickfeldWahl);
   const set = await repo.setImFeld(sn, blickfeld);
   if (!set) return null;
-  // Die Währung aus der Einstellung: Die App schickte ihren lokalen Startwert
-  // mit, bevor sie die Einstellung kannte.
+  // Die Währung aus der Einstellung: Die App schickte ihren lokalen Startwert mit, bevor sie die Einstellung kannte.
   const currency  = await getSetting(uid, 'currency', 'EUR');
   const guideType = await getSetting(uid, 'price_guide_type', 'sold');
   const ttlHours  = await getSetting(uid, 'price_cache_ttl', '24');
@@ -282,7 +271,17 @@ export async function anleitungLoeschen(uid: number, id: string): Promise<boolea
   return true;
 }
 
-export interface ImportZeile { sn: string; qty: number; purchasePrice: number | null; condition: string | null; acquiredAt: string | null }
+export interface ImportZeile {
+  sn: string; qty: number; purchasePrice: number | null; condition: string | null; acquiredAt: string | null;
+  zeile?: number; fehler?: { code: 'csv_menge_ungueltig' | 'csv_keine_setnummer'; wert?: string };
+}
+
+/** Aus „x“ eine 1 und aus „-2“ eine 2 zu machen buchte still etwas anderes, als in der Datei steht. */
+function csvMenge(roh: string): number | null {
+  const s = roh.trim();
+  if (s === '') return 1;
+  return /^\d{1,6}$/.test(s) && Number(s) >= 1 ? Number(s) : null;
+}
 
 /** Spaltennamen ohne Gross/klein und BOM. */
 export function setCsvZeilen(text: string): { rows: ImportZeile[]; uebersprungen: number[] } {
@@ -290,22 +289,25 @@ export function setCsvZeilen(text: string): { rows: ImportZeile[]; uebersprungen
   try { gelesen = csvEinlesen(text); }
   catch (e) { fehlerWerfen('csv_parse_fehler', 400, { grund: fehlertext(e) }); }
   if (!gelesen.records.length) {
-    throw Object.assign(new Error(gelesen.uebersprungen.length
-      ? `Keine brauchbare Zeile gefunden — ${uebersprungenHinweis(gelesen.uebersprungen)}`
-      : 'Keine Datenzeilen in der Datei'), { status: 400 });
+    if (gelesen.uebersprungen.length) fehlerWerfen('csv_keine_brauchbare_zeile', 400, { zeilen: zeilenListe(gelesen.uebersprungen) });
+    fehlerWerfen('csv_keine_datenzeilen', 400);
   }
   const rows: ImportZeile[] = [];
-  for (const roh of gelesen.records) {
+  for (const [i, roh] of gelesen.records.entries()) {
+    const zeile = gelesen.zeilen[i];
     const row: Record<string, string> = {};
     for (const [k, v] of Object.entries(roh)) row[k.toLowerCase().trim().replace(/^\uFEFF/, '')] = String(entschaerfungRueckgaengig(v) ?? '');
     const rawSn = row.set_number || row['setnummer'] || row['set'] || Object.values(row)[0];
-    const sn = rawSn ? vorDem(String(rawSn), ';').trim() : null;
-    if (!sn) continue;
-    const qty = parseInt(String(row.quantity || row['anzahl'] || row['qty'] || row['menge'] || '1').replace(/[^0-9]/g, '') || '1') || 1;
+    const sn = rawSn ? vorDem(String(rawSn), ';').trim() : '';
+    const leer = { sn, qty: 0, purchasePrice: null, condition: null, acquiredAt: null, ...(zeile ? { zeile } : {}) };
+    if (!sn) { rows.push({ ...leer, fehler: { code: 'csv_keine_setnummer' } }); continue; }
+    const mengeRoh = String(row.quantity ?? row['anzahl'] ?? row['qty'] ?? row['menge'] ?? '');
+    const qty = csvMenge(mengeRoh);
+    if (qty === null) { rows.push({ ...leer, fehler: { code: 'csv_menge_ungueltig', wert: mengeRoh.trim().slice(0, 20) } }); continue; }
     const rawPrice = row.purchase_price ?? row['kaufpreis'] ?? row['einkaufspreis'] ?? row['price'] ?? '';
     const preis = String(rawPrice).trim() !== '' ? parseFloat(String(rawPrice).replace(',', '.')) : null;
     const zustand = String(row.condition || row['zustand'] || row['kondition'] || '').trim().toUpperCase();
-    rows.push({ sn, qty, purchasePrice: preis !== null && !isNaN(preis) ? preis : null,
+    rows.push({ sn, qty, ...(zeile ? { zeile } : {}), purchasePrice: preis !== null && !isNaN(preis) ? preis : null,
       condition: ['N', 'U'].includes(zustand) ? zustand : null,
       // 05.03.2026 ist der 5. März, nicht der 3. Mai.
       acquiredAt: parseCsvDate(row.acquired_at || row['erfassungsdatum'] || row['datum']) });
@@ -313,11 +315,20 @@ export function setCsvZeilen(text: string): { rows: ImportZeile[]; uebersprungen
   return { rows, uebersprungen: gelesen.uebersprungen };
 }
 
-/** Ein laufender Import desselben Kontos wird abgebrochen. */
-export async function setCsvImportStarten(userId: number, text: string) {
+/** Der Import erhöht bei vorhandenen Sets die Menge, das Einzel-Erfassen lehnt sie ab: Die Oberfläche fragt. */
+async function schonVorhanden(userId: number, rows: ImportZeile[]): Promise<string[]> {
+  const da = new Set((await repo.setsMitMenge(userId)).map(s => s.set_number));
+  const treffer = rows.filter(r => !r.fehler).map(r => normalizeSetNumber(r.sn)).filter(sn => da.has(sn));
+  return [...new Set(treffer)];
+}
+
+/** Ein laufender Import desselben Kontos wird abgebrochen; `nurPruefen` liest nur. */
+export async function setCsvImportStarten(userId: number, text: string, nurPruefen = false) {
+  const { rows, uebersprungen } = setCsvZeilen(text);
+  const vorhanden = await schonVorhanden(userId, rows);
+  if (nurPruefen) return { total: rows.length, uebersprungen, vorhanden, gestartet: false };
   const laufend = await jobGet(userId);
   if (laufend && laufend.status === 'running') await jobUpdate(userId, { status: 'cancelled' });
-  const { rows, uebersprungen } = setCsvZeilen(text);
   const lauf = randomUUID();
   await jobSet(userId, { status: 'running', total: rows.length, done: 0, current: null,
     results: JSON.stringify([]), error: null, run_id: lauf });
@@ -328,7 +339,7 @@ export async function setCsvImportStarten(userId: number, text: string) {
     throw e;
   }
   await emitJobStatus(userId);
-  return { total: rows.length, uebersprungen };
+  return { total: rows.length, uebersprungen, vorhanden, gestartet: true };
 }
 
 export async function setCsvImportAbbrechen(userId: number) {

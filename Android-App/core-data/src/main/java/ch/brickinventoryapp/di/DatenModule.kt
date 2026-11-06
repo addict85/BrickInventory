@@ -1,6 +1,11 @@
 package ch.brickinventoryapp.di
 
-import ch.brickinventoryapp.data.PreferencesManager
+import androidx.datastore.preferences.preferencesDataStoreFile
+import androidx.datastore.preferences.core.PreferenceDataStoreFactory
+import androidx.datastore.preferences.core.Preferences
+import androidx.datastore.core.DataStore
+import ch.brickinventoryapp.data.KontoAblage
+import ch.brickinventoryapp.data.TokenAblage
 import ch.brickinventoryapp.util.KeystoreTokenTresor
 import ch.brickinventoryapp.util.TokenVerschluesselung
 import dagger.Module
@@ -9,35 +14,60 @@ import dagger.hilt.InstallIn
 import dagger.hilt.components.SingletonComponent
 import kotlinx.serialization.json.Json
 import javax.inject.Singleton
+import ch.brickinventoryapp.data.Anmeldeablage
+import ch.brickinventoryapp.data.SetAnlegenSseClient
+import ch.brickinventoryapp.data.SetAnleger
+import ch.brickinventoryapp.data.TokenTausch
+import ch.brickinventoryapp.data.api.ApiJson
+import ch.brickinventoryapp.data.repository.KontoRepository
+import ch.brickinventoryapp.util.Ablageschluessel
+import ch.brickinventoryapp.data.Entwertungsquelle
+import ch.brickinventoryapp.data.cache.CacheBesitzer
 
 /** Schnittstellen der Datenschicht und ihre Umsetzungen, wo die Datenschicht sie kennt. */
 @Module
 @InstallIn(SingletonComponent::class)
-object DatenModule {
+internal object DatenModule {
 
     /**
      * Die Token-Verschlüsselung als Schnittstelle bereitstellen, nicht als konkrete
      * Klasse: Die Umsetzung braucht den Android-Keystore und läuft nur auf einem
-     * Gerät. Fest daran gebunden liesse sich die Übernahme-Logik des
-     * PreferencesManagers nicht auf der JVM prüfen — und die entscheidet, ob
+     * Gerät. Fest daran gebunden liesse sich die Übernahme-Logik der
+     * TokenAblage nicht auf der JVM prüfen — und die entscheidet, ob
      * bestehende Installationen beim Update angemeldet bleiben.
      */
     @Provides
     @Singleton
     fun provideTokenVerschluesselung(): TokenVerschluesselung = KeystoreTokenTresor()
 
+    /** Der Schlüssel der lokalen Ablagen; umhüllt unter eigenem Alias, abgelegt ohne Sicherung. */
     @Provides
     @Singleton
-    fun provideJson(): Json = ch.brickinventoryapp.data.api.ApiJson
+    fun provideAblageschluessel(
+        @dagger.hilt.android.qualifiers.ApplicationContext context: android.content.Context,
+    ): Ablageschluessel = Ablageschluessel(
+        java.io.File(context.noBackupFilesDir, "ablage.schluessel"), KeystoreTokenTresor("brickinventory_ablage"),
+    )
 
     @Provides
-    fun provideAnmeldeablage(p: ch.brickinventoryapp.data.PreferencesManager): ch.brickinventoryapp.data.Anmeldeablage = p
+    @Singleton
+    fun provideJson(): Json = ApiJson
+
+    /** Ein DataStore je Datei und Prozess; über Hilt statt über eine Erweiterung an Context. */
+    @Provides
+    @Singleton
+    fun provideDataStore(
+        @dagger.hilt.android.qualifiers.ApplicationContext context: android.content.Context,
+    ): DataStore<Preferences> = PreferenceDataStoreFactory.create { context.preferencesDataStoreFile("app_prefs") }
 
     @Provides
-    fun provideEntwertungsquelle(p: ch.brickinventoryapp.data.PreferencesManager): ch.brickinventoryapp.data.Entwertungsquelle = p
+    fun provideAnmeldeablage(p: KontoAblage): Anmeldeablage = p
 
     @Provides
-    fun provideCacheBesitzer(p: ch.brickinventoryapp.data.PreferencesManager): ch.brickinventoryapp.data.cache.CacheBesitzer = p
+    fun provideEntwertungsquelle(p: TokenAblage): Entwertungsquelle = p
+
+    @Provides
+    fun provideCacheBesitzer(p: TokenAblage): CacheBesitzer = p
 
     /**
      * Der Tausch des Tokens. Provider statt direkt: Das Konto-Repository hängt am
@@ -46,14 +76,16 @@ object DatenModule {
     @Provides
     @javax.inject.Singleton
     fun provideTokenTausch(
-        p: ch.brickinventoryapp.data.PreferencesManager,
-        konto: javax.inject.Provider<ch.brickinventoryapp.data.repository.KontoRepository>,
-    ): ch.brickinventoryapp.data.TokenTausch = ch.brickinventoryapp.data.TokenTausch(
+        p: TokenAblage,
+        konto: javax.inject.Provider<KontoRepository>,
+        @ApplicationScope bereich: kotlinx.coroutines.CoroutineScope,
+    ): TokenTausch = TokenTausch(
         stand = { p.tokenStand() },
         ersetze = { vorher, neu, herkunft -> p.ersetzeGetauschtenToken(vorher, neu, herkunft) },
         rotiere = { konto.get().tokenRotieren(it) },
+        hintergrund = bereich,
     )
 
     @Provides
-    fun provideSetAnleger(c: ch.brickinventoryapp.data.SetAnlegenSseClient): ch.brickinventoryapp.data.SetAnleger = c
+    fun provideSetAnleger(c: SetAnlegenSseClient): SetAnleger = c
 }

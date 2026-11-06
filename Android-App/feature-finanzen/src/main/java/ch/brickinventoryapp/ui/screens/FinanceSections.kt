@@ -15,35 +15,36 @@ import ch.brickinventoryapp.ui.model.TeileBewertungAnsicht
 import ch.brickinventoryapp.ui.theme.Formen
 import androidx.compose.foundation.lazy.LazyListScope
 import coil3.ImageLoader
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.luminance
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import ch.brickinventoryapp.ressourcen.R
 import ch.brickinventoryapp.ui.*
 import ch.brickinventoryapp.util.fmtProzent
 import ch.brickinventoryapp.util.resolveThumbUrl
 import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Info
 import ch.brickinventoryapp.ui.theme.Abstaende
 import ch.brickinventoryapp.ui.theme.LocalStatusFarben
+import ch.brickinventoryapp.ui.components.vorgelesenAls
+import ch.brickinventoryapp.ui.components.Abschnittstitel
+import ch.brickinventoryapp.ui.components.mitSchrift
+import ch.brickinventoryapp.ui.components.stueckzahl
+import ch.brickinventoryapp.ui.mengeManuell
+import ch.brickinventoryapp.ui.model.OHNE_FARBE
 
-/** Gesamt-Total: Sets + manuell erfasste Teile + Minifiguren. */
 /**
- * `valuation` ist hier nicht nullbar: FinanceScreen() steigt bei `null` vorher
+ * Gesamt-Total: Sets + manuell erfasste Teile + Minifiguren. `valuation` ist hier nicht nullbar: FinanceScreen() steigt bei `null` vorher
  * aus. Die Signatur verlangt den Nicht-Null-Typ, statt im Rumpf `?.` einzustreuen
  * — das hiesse „darf fehlen“ statt „ist hier immer da“.
  */
@@ -71,6 +72,13 @@ fun LazyListScope.financeGrandTotal(valuation: BewertungAnsicht, partsValuation:
                     BezeichnungUndWert(stringResource(R.string.finance_grand_total), fmtPrice(summen.gesamt.toPlainString()),
                         stil = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
                         bezeichnungFarbe = MaterialTheme.colorScheme.onSurface, wertGewicht = FontWeight.Bold)
+                    // Wie die Fussnote im Web: Ohne den Hinweis las sich das Total als Wert aller Positionen.
+                    val ohneMarkt = finanzKopf(valuation, partsValuation, figsValuation, pnl).ohneMarkt
+                    if (ohneMarkt > 0) Text(
+                        pluralStringResource(R.plurals.finance_summe_ohne_markt, ohneMarkt, ohneMarkt),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
                 }
             }
         }
@@ -82,12 +90,8 @@ fun LazyListScope.financeFigRows(figsValuation: FigurenBewertungAnsicht?, showFi
     val figsItems = figsValuation?.figs ?: emptyList()
     if (figsItems.isNotEmpty() && showFigs) {
         item {
-            Text(stringResource(R.string.finance_section_minifigs).uppercase(),
-                style = MaterialTheme.typography.labelSmall,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                letterSpacing = 0.8.sp,
-                modifier = Modifier.padding(top = Abstaende.klein, bottom = Abstaende.haar, start = Abstaende.winzig))
+            Abschnittstitel(stringResource(R.string.finance_section_minifigs),
+                Modifier.padding(top = Abstaende.klein, bottom = Abstaende.haar, start = Abstaende.winzig))
         }
         items(figurZeilen(figsItems), key = { it.second.schluessel }) { (fig, zeile) ->
             // Bild über image_local und den Server-Proxy, nicht roh über fig.imageUrl — sonst
@@ -98,7 +102,7 @@ fun LazyListScope.financeFigRows(figsValuation: FigurenBewertungAnsicht?, showFi
             ManualFinanceRow(
                 imageUrl = figImg,
                 imageLoader = imageLoader,
-                onClick = { onManualClick("fig", fig.figNumber, ch.brickinventoryapp.ui.model.OHNE_FARBE, fig.figName) },
+                onClick = { onManualClick("fig", fig.figNumber, OHNE_FARBE, fig.figName) },
                 title = fig.figName ?: fig.figNumber,
                 blId = fig.blFigNumber ?: fig.figNumber,
                 quantity = zeile.menge,
@@ -116,7 +120,6 @@ fun LazyListScope.financeFigRows(figsValuation: FigurenBewertungAnsicht?, showFi
                 fmtPrice(figsValuation?.totalValue))
         }
     }
-
 }
 
 /** Manuell erfasste Teile, einzeln aufgelistet. */
@@ -125,12 +128,8 @@ fun LazyListScope.financePartRows(partsValuation: TeileBewertungAnsicht?, showPa
     val partsItems = partsValuation?.parts ?: emptyList()
     if (partsItems.isNotEmpty() && showParts) {
         item {
-            Text(stringResource(R.string.finance_section_parts).uppercase(),
-                style = MaterialTheme.typography.labelSmall,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                letterSpacing = 0.8.sp,
-                modifier = Modifier.padding(top = Abstaende.klein, bottom = Abstaende.haar, start = Abstaende.winzig))
+            Abschnittstitel(stringResource(R.string.finance_section_parts),
+                Modifier.padding(top = Abstaende.klein, bottom = Abstaende.haar, start = Abstaende.winzig))
         }
         // Wie bei den Sets: eine vollständige Zeile je Kaufpreis. Ein
         // Teil, das einmal neu und einmal gebraucht gekauft wurde,
@@ -163,7 +162,6 @@ fun LazyListScope.financePartRows(partsValuation: TeileBewertungAnsicht?, showPa
                 fmtPrice(partsValuation?.totalValue))
         }
     }
-
 }
 
 /** Eine vollständige Karte JE KAUFPREIS — siehe die Begründung im Rumpf. */
@@ -171,22 +169,14 @@ fun LazyListScope.financeSetRows(valuation: BewertungAnsicht, showSets: Boolean,
     // Section header
     if (showSets) {
     item {
-        Text(stringResource(R.string.finance_section_sets).uppercase(),
-            style = MaterialTheme.typography.labelSmall,
-            fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            letterSpacing = 0.8.sp,
-            modifier = Modifier.padding(top = Abstaende.winzig, bottom = Abstaende.haar, start = Abstaende.winzig))
+        Abschnittstitel(stringResource(R.string.finance_section_sets),
+            Modifier.padding(top = Abstaende.winzig, bottom = Abstaende.haar, start = Abstaende.winzig))
     }
 
-    // ── Eine vollständige Karte je Kaufpreis ──
-    //
-    // Ein Set mit einem Kaufpreis für „Neu“ und einem für „Gebraucht“ erscheint
-    // zweimal, jede Karte mit dem Marktpreis ihres Zustands — sonst würde das neu
-    // gekaufte Exemplar mit dem Gebrauchtpreis bewertet. Gleichrangige Karten statt
-    // Unterzeilen, weil jede für einen eigenen Kauf steht; Unterzeilen läsen sich wie
-    // die Aufschlüsselung einer Summe. Zusammengehalten durch Bild und Setnummer,
-    // unterschieden durch die Zustands-Plakette.
+    // Ein Set mit einem Kaufpreis für „Neu“ und einem für „Gebraucht“ erscheint zweimal, jede
+    // Karte mit dem Marktpreis ihres Zustands — sonst würde das neu gekaufte Exemplar mit dem
+    // Gebrauchtpreis bewertet.
+    // Ausführlich: docs/begruendungen/feature-finanzen/ui/screens/FinanceSections.kt.md#items
     items(setZeilen(valuation.sets), key = { it.second.schluessel }) { (set, zeile) ->
         val priceStr    = fmtWert(zeile.wert)
         val rowQty      = zeile.menge
@@ -206,10 +196,12 @@ fun LazyListScope.financeSetRows(valuation: BewertungAnsicht, showSets: Boolean,
                 Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(1.dp)) {
                     Text(set.name ?: set.setNumber, fontWeight = FontWeight.SemiBold,
                         maxLines = 2, style = MaterialTheme.typography.bodyMedium)
-                    Text(set.setNumber, style = MaterialTheme.typography.labelSmall,
+                    Text(set.setNumber, style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.primary)
                     if (rowQty > 1)
-                        Text(ch.brickinventoryapp.ui.mengeManuell(rowQty), style = MaterialTheme.typography.labelSmall,
+                        Text(mengeManuell(rowQty),
+                            Modifier.vorgelesenAls(stueckzahl(rowQty)),
+                            style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant)
                     // Zustand dieser Erfassung — bei mehreren Karten
                     // desselben Sets das einzige Unterscheidungsmerkmal.
@@ -238,7 +230,7 @@ fun LazyListScope.financeSetRows(valuation: BewertungAnsicht, showSets: Boolean,
                         Text(
                             if (rowQty > 1) stringResource(R.string.finance_purchase_total, fmtWert(it))
                             else stringResource(R.string.finance_purchase_short, fmtWert(it)),
-                            style = MaterialTheme.typography.labelSmall,
+                            style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
@@ -252,7 +244,6 @@ fun LazyListScope.financeSetRows(valuation: BewertungAnsicht, showSets: Boolean,
         }
     }
     } // showSets
-
 }
 
 /**
@@ -266,6 +257,12 @@ fun LazyListScope.financeCategoryFilter(
     onUmschalten: (String) -> Unit,
     onAlle: () -> Unit,
 ) {
+    item {
+        // Beschriftet und direkt über den Zeilen: Unter dem Diagramm war unklar, ob die
+        // Chips auch die Kurve filtern. Sie wählen nur die Positionen darunter.
+        Abschnittstitel(stringResource(R.string.finance_positionen),
+            Modifier.padding(top = Abstaende.klein))
+    }
     item {
         LazyRow(
             contentPadding = PaddingValues(horizontal = 0.dp),
@@ -326,11 +323,14 @@ fun LazyListScope.financeSummaryCards(valuation: BewertungAnsicht, partsValuatio
                 // totals.avg statt qtyAvg: Marktpreis ist avg_price, der mengengewichtete
                 // Schnitt liegt systematisch darunter (gleiche Umstellung wie in der Webapp).
                 val summen = finanzSummen(valuation, partsValuation, figsValuation, pnl)
+                // Einstand, Marktwert und G/V aus einer Basis (finanzKopf), sonst passten die drei
+                // Zahlen nicht zusammen; ältere Server ohne Basis zeigen den Gesamtwert wie bisher.
+                val kopf = finanzKopf(valuation, partsValuation, figsValuation, pnl)
                 // FlowRow: Bei grosser Schrift rückt die Gewinn-Plakette unter den Betrag,
                 // statt ihn zu quetschen.
                 FlowRow(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                     Text(
-                        if (summen.gesamt.signum() > 0) fmtPrice(summen.gesamt.toPlainString())
+                        if (kopf.wert.signum() > 0) fmtPrice(kopf.wert.toPlainString())
                         else if (valuation.sets.any { it.error != null }) stringResource(R.string.finance_price_error)
                         else if (valuation.sets.isEmpty()) stringResource(R.string.finance_no_sets)
                         else stringResource(R.string.finance_load_prompt),
@@ -339,10 +339,10 @@ fun LazyListScope.financeSummaryCards(valuation: BewertungAnsicht, partsValuatio
                         style = MaterialTheme.typography.headlineMedium,
                         modifier = Modifier.align(Alignment.CenterVertically)
                     )
-                    val pnlPct = pnl?.totals?.pnlProzent
+                    val pnlPct = kopf.guvProzent
                     if (pnlPct != null) {
                         // Gewinn grün, Verlust rot wie überall sonst; auf weissem Grund, weil die
-                        // Statusfarben nur auf surface 4,5:1 zusagen (TextKontrastTest), nicht auf primary.
+                        // Statusfarben nur auf surface 4,5:1 zusagen, nicht auf primary.
                         val status = LocalStatusFarben.current
                         Surface(
                             shape = Formen.chip,
@@ -359,23 +359,33 @@ fun LazyListScope.financeSummaryCards(valuation: BewertungAnsicht, partsValuatio
                         }
                     }
                 }
-                if (summen.teileUndFiguren.signum() > 0) {
+                // „davon Teile“ nur ohne Basis: Der Basis-Marktwert lässt Positionen ohne
+                // Kaufpreis aus, ein „davon“ aus allen Teilen könnte grösser sein als er.
+                if (!kopf.mitBasis && summen.teileUndFiguren.signum() > 0) {
                     Spacer(Modifier.height(Abstaende.winzig))
                     Text(
                         stringResource(R.string.finance_parts_extra, fmtPrice(summen.teileUndFiguren.toPlainString())),
                         color = auf,
-                        style = MaterialTheme.typography.labelSmall
+                        style = MaterialTheme.typography.bodySmall
                     )
                 }
-                // Wie das Web (finance.fremde_waehrung_n): fehlende Kaufpreise nennen statt still weglassen.
-                val fremde = fremdeKaufpreise(valuation, partsValuation, figsValuation, pnl)
-                if (fremde > 0) {
+                // Kaufsumme und G/V in einer Zeile, die bei Bedarf umbricht: Untereinander waren
+                // es mit Betrag, Bezeichnung und Rechenhinweis vier Textebenen in einer Kachel.
+                if (kopf.basisBekannt) {
                     Spacer(Modifier.height(Abstaende.winzig))
-                    Text(
-                        pluralStringResource(R.plurals.finance_fremde_waehrung, fremde, fremde),
-                        color = auf,
-                        style = MaterialTheme.typography.labelSmall
-                    )
+                    FlowRow(horizontalArrangement = Arrangement.spacedBy(Abstaende.mittel)) {
+                        kopf.einstand?.let {
+                            Text(stringResource(R.string.finance_einstand_zeile, fmtPrice(it.toPlainString())),
+                                color = auf, style = MaterialTheme.typography.bodySmall)
+                        }
+                        val guv = kopf.guvBetrag
+                        Text(
+                            stringResource(R.string.finance_guv_zeile,
+                                if (guv == null) stringResource(R.string.finance_pnl_needs_prices)
+                                else (if (guv.signum() > 0) "+" else "") + fmtPrice(guv.toPlainString())),
+                            color = auf, style = MaterialTheme.typography.bodySmall,
+                        )
+                    }
                 }
                 Spacer(Modifier.height(Abstaende.gross))
                 HorizontalDivider(color = auf.copy(alpha = 0.2f))
@@ -392,6 +402,34 @@ fun LazyListScope.financeSummaryCards(valuation: BewertungAnsicht, partsValuatio
                     if (summen.teileUndFiguren.signum() > 0)
                         PriceColumn(stringResource(R.string.finance_avg_label), fmtPrice(valuation.totals.avg), auf)
                     PriceColumn(stringResource(R.string.finance_max_label), fmtPrice(valuation.totals.max), auf)
+                }
+            }
+        }
+    }
+    item {
+        // Wie gerechnet wurde, unter der Kachel statt in ihr: Sie trägt die Zahlen, der
+        // Hinweis die Herkunft — wie die Zeile im Web (fin-basis), nur leiser.
+        val kopf = finanzKopf(valuation, partsValuation, figsValuation, pnl)
+        val ohneMarkt = if (kopf.ohneMarkt > 0) pluralStringResource(R.plurals.finance_basis_ohne_markt,
+            kopf.ohneMarkt, kopf.ohneMarkt, fmtPrice(kopf.ohneMarktEinstand.toPlainString())) else null
+        val ohneKauf = if (kopf.ohneKauf > 0) pluralStringResource(R.plurals.finance_basis_ohne_kauf,
+            kopf.ohneKauf, kopf.ohneKauf, fmtPrice(kopf.ohneKaufWert.toPlainString())) else null
+        // Wie das Web (finance.fremde_waehrung_n): fehlende Kaufpreise nennen statt still weglassen.
+        val fremde = fremdeKaufpreise(valuation, partsValuation, figsValuation, pnl)
+        val zeilen = listOfNotNull(
+            if (kopf.basisZeileSichtbar) pluralStringResource(R.plurals.finance_basis_gerechnet, kopf.gesamt,
+                kopf.bewertet, kopf.gesamt) + " " + listOfNotNull(ohneMarkt, ohneKauf).joinToString(" · ") else null,
+            if (fremde > 0) pluralStringResource(R.plurals.finance_fremde_waehrung, fremde, fremde) else null,
+        )
+        if (zeilen.isNotEmpty()) Row(
+            Modifier.fillMaxWidth().padding(horizontal = Abstaende.winzig),
+            horizontalArrangement = Arrangement.spacedBy(Abstaende.klein),
+        ) {
+            Icon(Icons.Outlined.Info, null, Modifier.size(mitSchrift(16.dp)),
+                tint = MaterialTheme.colorScheme.onSurfaceVariant)
+            Column(verticalArrangement = Arrangement.spacedBy(Abstaende.haar)) {
+                zeilen.forEach {
+                    Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
         }

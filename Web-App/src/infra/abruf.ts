@@ -6,7 +6,7 @@ import { PassThrough, type Readable } from 'stream';
 import type { IncomingHttpHeaders, IncomingMessage, ClientRequest } from 'http';
 import { hostErlaubt, naechsteUmleitung, UMLEITUNGS_GRENZE } from './fremdeAdressen';
 
-export type AbrufGrund = 'adresse' | 'umleitung' | 'zu-gross' | 'zeitlimit' | 'netz';
+export type AbrufGrund = 'adresse' | 'umleitung' | 'zu-gross' | 'zeitlimit' | 'netz' | 'abgebrochen';
 
 export class AbrufFehler extends Error {
   readonly grund: AbrufGrund;
@@ -32,6 +32,8 @@ export interface AbrufOptionen {
   /** POST folgt keiner Umleitung: Ein 303 hiesse GET, ein 307 sendete den Rumpf weiter. */
   methode?: 'GET' | 'POST';
   rumpf?: string;
+  /** Ein Auftrag, der abgebrochen wird, beendet auch seinen Abruf samt Körper. */
+  signal?: AbortSignal;
 }
 
 export interface AbrufKopf {
@@ -76,6 +78,9 @@ function laufe(start: string, o: AbrufOptionen): Promise<Lauf> {
     const frist = setTimeout(() => abbrechen(new AbrufFehler('zeitlimit',
       `Zeitlimit ${o.zeitlimitMs} ms: ${adresseKurz(start)}`)), o.zeitlimitMs);
     frist.unref?.();
+    const beiAbbruch = () => abbrechen(new AbrufFehler('abgebrochen', `Abgebrochen: ${adresseKurz(start)}`, o.signal?.reason));
+    if (o.signal?.aborted) return beiAbbruch();
+    o.signal?.addEventListener('abort', beiAbbruch, { once: true });
 
     const sprung = (u: string, kopf: Record<string, string>, rest: number) => {
       if (!u.startsWith('https://') || !hostErlaubt(u, o.hosts))

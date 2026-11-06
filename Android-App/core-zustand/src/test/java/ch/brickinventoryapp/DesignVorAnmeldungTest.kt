@@ -1,11 +1,11 @@
 package ch.brickinventoryapp
 
-import ch.brickinventoryapp.ressourcen.R
 import ch.brickinventoryapp.data.repository.KontoRepository
 import ch.brickinventoryapp.data.repository.VerwaltungRepository
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Test
+import java.io.File
 
 /**
  * Das Design des Servers steht schon vor der Anmeldung fest.
@@ -41,10 +41,8 @@ import org.junit.Test
  * Gegenstueck sind SharedPreferences — synchron lesbar, und genau dafuer
  * benutzt Android sie selbst.
  *
- * Entscheidend ist, WO der Wert landet: im Startwert des Zustands, nicht in
- * einer Korrektur danach. `appTheme` wird als
- * `stateIn(..., _state.value.appTheme)` abgeleitet, und Kotlin wertet diese
- * Eigenschaft VOR dem init-Block aus.
+ * Dass der Zustand MIT dem gemerkten Design geboren wird, prüft
+ * DarstellungUndVertrauenTest am ausgeführten DarstellungViewModel.
  *
  * Gefunden durch Messen: Ein Vergleich der Server-Adressen beider Clients
  * meldete /v1/settings/theme als eine der Adressen, die nur die Webapp ruft.
@@ -54,13 +52,13 @@ import org.junit.Test
 class DesignVorAnmeldungTest {
 
     private fun read(rel: String) =
-        java.io.File(Quellen.wurzel, "$rel").readText()
+        File(Quellen.wurzel, "$rel").readText()
     private fun code(s: String) = s.lines()
         .joinToString("\n") { if (it.trim().startsWith("//") || it.trim().startsWith("*")) "" else it }
 
     @Test
     fun `Stufe null - der gemerkte Wert ist SYNCHRON zu haben`() {
-        val prefs = code(read("data/PreferencesManager.kt"))
+        val prefs = code(read("data/GeraeteAblage.kt"))
         // Synchron heisst hier: SharedPreferences. DataStore kann es nicht,
         // und `runBlocking` auf dem Hauptthread waere die Wiederholung des
         // Fehlers, den der Bild-Interceptor schon einmal hatte.
@@ -88,34 +86,14 @@ class DesignVorAnmeldungTest {
     }
 
     @Test
-    fun `Stufe null - der Zustand wird MIT dem Design geboren`() {
-        val vm = code(read("ui/AppViewModel.kt"))
-        // Der Startwert, nicht eine Korrektur danach: `appTheme` leitet sich
-        // ueber `stateIn(..., sitzung.state.value.appTheme)` ab. Der gemerkte
-        // Wert muss in der Sitzung stehen, BEVOR diese Eigenschaft entsteht —
-        // sonst haette MainActivity schon im Vorgabe-Design komponiert.
-        val gesetzt = vm.indexOf("sitzung.aendere { it.copy(appTheme = prefs.gemerktesDesign()) }")
-        val abgeleitet = vm.indexOf("val appTheme = ")
-        assert(gesetzt in 0 until abgeleitet) {
-            "Der Zustand startet wieder im Vorgabe-Design. Ein Wert, der erst im " +
-                "init-Block gesetzt wird, kommt nach der ersten Komposition — " +
-                "genau das war Marcos aufblitzendes Design."
-        }
-    }
-
-    @Test
     fun `Stufe eins - das Design wird gemerkt`() {
-        val prefs = code(read("data/PreferencesManager.kt"))
+        val prefs = code(read("data/GeraeteAblage.kt"))
         assert(prefs.contains("stringPreferencesKey(\"app_theme\")")) {
             "Das Design wird nicht gemerkt — jeder Kaltstart faengt wieder im Standard an"
         }
         // Unbekannte Werte duerfen den gemerkten Wert NICHT loeschen: "" oder
         // null heisst „keine Information", nicht „classic". Dieselbe Regel wie
         // applyTheme() in 00-theme-boot.js.
-        // Hier stand die Liste woertlich ("classic" || "brick"). Seit es vier
-        // Designs gibt, steht sie als ERLAUBTE_DESIGNS an einer Stelle — und
-        // eine Pruefung im Web-Baum (theme.test.js) haelt sie mit den drei
-        // anderen Listen zusammen. Hier bleibt nur: Es WIRD gefiltert.
         assert(prefs.contains("if (theme in ERLAUBTE_DESIGNS)")) {
             "saveAppTheme schreibt auch unbekannte Werte — ein leerer Wert loescht dann das Design"
         }
@@ -126,8 +104,8 @@ class DesignVorAnmeldungTest {
     }
 
     /**
-     * Die Abfrage gegen einen Testserver, das Einbinden ins AppViewModel als
-     * Quelltext. Gegenprobe (29.10.2026, gemessen): `@GET("api/v1/settings/theme")`
+     * Die Abfrage gegen einen Testserver; das Einbinden ins AppViewModel führt
+     * AppViewModelTest aus. Gegenprobe: `@GET("api/v1/settings/theme")`
      * auf "…/design" → rot.
      */
     @Test
@@ -135,27 +113,6 @@ class DesignVorAnmeldungTest {
         mitRepo(::KontoRepository) { pfade, admin ->
             runBlocking { admin.getAppTheme() }
             assertEquals(listOf("GET /api/v1/settings/theme"), pfade.anfragen.toList())
-        }
-        val vm = code(read("ui/AppViewModel.kt"))
-        assert(vm.contains("prefs.appTheme.first()")) {
-            "Der gemerkte Wert wird beim Start nicht gelesen"
-        }
-        assert(vm.contains("loadAppTheme()")) {
-            "Die zweite Stufe fehlt — ein Wechsel am Server erreicht die App erst nach dem Anmelden"
-        }
-    }
-
-    /**
-     * Sonst gilt Stufe eins nur fuer den Weg, der zufaellig zuletzt lief. Seit das
-     * Design je Konto gilt, kommt es auf zwei Wegen (/settings/theme, Wahl im Konto);
-     * gemerkt wird an EINER Stelle, die jede Aenderung der Sitzung sieht.
-     * Gegenprobe (30.10.2026, gemessen): das Sammeln entfernt → rot.
-     */
-    @Test
-    fun `jede Aenderung des Designs wird gemerkt`() {
-        val s = code(read("ui/AppViewModel.kt"))
-        assert(Regex("""sitzung\.state\.map \{ it\.appTheme \}[^\n]*\.collect \{ prefs\.saveAppTheme\(it\) \}""").containsMatchIn(s)) {
-            "Das Design wird nicht aus der Sitzung gemerkt — eine Wahl im Konto ueberlebte den Kaltstart nicht"
         }
     }
 }
@@ -174,12 +131,12 @@ class DesignVorAnmeldungTest {
 class CacheLeerenTest {
 
     private fun read(rel: String) =
-        java.io.File(Quellen.wurzel, "$rel").readText()
+        File(Quellen.wurzel, "$rel").readText()
     private fun code(s: String) = s.lines()
         .joinToString("\n") { if (it.trim().startsWith("//") || it.trim().startsWith("*")) "" else it }
 
     /**
-     * Gegen einen Testserver. Gegenprobe (29.10.2026, gemessen): in
+     * Gegen einen Testserver. Gegenprobe: in
      * VerwaltungRepository.clearCache immer `emptyMap()` → rot.
      */
     @Test

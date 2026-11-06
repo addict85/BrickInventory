@@ -23,15 +23,15 @@ test('Verwalterseiten und unbekannte Pfade für normale Konten', { concurrency: 
     bestand: async (db, uid) => { await db.run('UPDATE users SET is_admin = false WHERE id = $1', [uid]); },
   });
   if (app.grund) { t.skip(app.grund); return; }
-  const { b, bis } = app;
-  await warte(1200);
+  const { b, bis, ruhig } = app;
+  await ruhig();
   const toasts = () => b.auswerten(`[...document.querySelectorAll('#toasts .toast')].map(x => x.textContent)`);
   const leeren = () => b.auswerten(`document.querySelectorAll('#toasts .toast').forEach(x => x.remove()); true`);
 
   await t.test('Verwalterseite: Adresse und Hinweis', async () => {
     await leeren();
     await b.auswerten(`location.hash = '#/einstellungen'; true`);
-    await warte(800);
+    await ruhig();
     const z = await b.auswerten(`({ hash: location.hash, sammlung: document.getElementById('tab-gallery')?.classList.contains('active'),
       einst: document.getElementById('tab-settings')?.classList.contains('active') })`);
     assert.deepEqual(z, { hash: '#/sammlung', sammlung: true, einst: false });
@@ -41,7 +41,7 @@ test('Verwalterseiten und unbekannte Pfade für normale Konten', { concurrency: 
   await t.test('unbekannter Pfad: Hinweis', async () => {
     await leeren();
     await b.auswerten(`location.hash = '#/gibt-es-nicht'; true`);
-    await warte(800);
+    await ruhig();
     assert.equal(await b.auswerten(`location.hash`), '#/sammlung');
     assert.ok((await toasts()).some(x => /gibt es nicht/.test(x)), JSON.stringify(await toasts()));
   });
@@ -49,7 +49,7 @@ test('Verwalterseiten und unbekannte Pfade für normale Konten', { concurrency: 
   await t.test('Sprungverweis bleibt still', async () => {
     await leeren();
     await b.auswerten(`location.hash = '#inhalt'; true`);
-    await warte(800);
+    await ruhig();
     assert.deepEqual(await toasts(), []);
   });
 });

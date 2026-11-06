@@ -1,6 +1,6 @@
 package ch.brickinventoryapp.di
 
-import ch.brickinventoryapp.data.PreferencesManager
+import ch.brickinventoryapp.util.UpdateUmleitungen
 import ch.brickinventoryapp.util.NetworkPolicy
 import com.jakewharton.retrofit2.converter.kotlinx.serialization.asConverterFactory
 import dagger.Module
@@ -16,9 +16,25 @@ import okhttp3.OkHttpClient
 import retrofit2.Retrofit
 import java.io.IOException
 import java.util.concurrent.TimeUnit
-import javax.inject.Named
 import javax.inject.Singleton
 import okio.Path.Companion.toOkioPath
+import ch.brickinventoryapp.data.Entwerter
+import ch.brickinventoryapp.data.MeldungsKanal
+import ch.brickinventoryapp.data.PasswortPflicht
+import ch.brickinventoryapp.data.RechteSignal
+import ch.brickinventoryapp.data.SessionExpiredSignal
+import ch.brickinventoryapp.data.TokenTausch
+import ch.brickinventoryapp.data.ZweiterFaktorPflicht
+import ch.brickinventoryapp.data.cache.VorschauSpeicher
+import ch.brickinventoryapp.data.cache.Vorwaermung
+import ch.brickinventoryapp.util.AblageChiffre
+import ch.brickinventoryapp.util.Ablageschluessel
+import ch.brickinventoryapp.util.BildHostWaechter
+import ch.brickinventoryapp.util.VerschluesseltesDateisystem
+import ch.brickinventoryapp.util.ZertifikatsFrage
+import ch.brickinventoryapp.util.istEigenerBildServer
+import ch.brickinventoryapp.data.Verbindungsabwurf
+import ch.brickinventoryapp.util.SystemWurzeln
 
 /** OkHttp-Clients, Bildlader und Retrofit — alles, was über das Netz geht. */
 @Module
@@ -27,19 +43,21 @@ object NetzModule {
 
     @Provides
     @Singleton
-    @Named("api")
+    @ApiClient
     fun provideApiOkHttpClient(
         @dagger.hilt.android.qualifiers.ApplicationContext context: android.content.Context,
-        prefs: PreferencesManager,
-        sessionExpired: ch.brickinventoryapp.data.SessionExpiredSignal,
-        meldungen: ch.brickinventoryapp.data.MeldungsKanal,
-        frage: ch.brickinventoryapp.util.ZertifikatsFrage,
-        tausch: ch.brickinventoryapp.data.TokenTausch,
-        rechte: ch.brickinventoryapp.data.RechteSignal,
-        pflicht: ch.brickinventoryapp.data.PasswortPflicht,
+        prefs: Netzablagen,
+        sessionExpired: SessionExpiredSignal,
+        meldungen: MeldungsKanal,
+        frage: ZertifikatsFrage,
+        tausch: TokenTausch,
+        rechte: RechteSignal,
+        pflicht: PasswortPflicht,
+        faktorPflicht: ZweiterFaktorPflicht,
     ): OkHttpClient =
         buildInterceptorClient(prefs, isApiClient = true, sessionExpired = sessionExpired, ctx = context,
-            meldungen = meldungen, frage = frage, rotation = tausch, rechte = rechte, pflicht = pflicht)
+            meldungen = meldungen, frage = frage, rotation = tausch, rechte = rechte, pflicht = pflicht,
+            faktorPflicht = faktorPflicht)
 
     /**
      * Der Client für die Selbstaktualisierung — bewusst blank: Server, Bearer-Token
@@ -50,15 +68,14 @@ object NetzModule {
      */
     @Provides
     @Singleton
-    @Named("update")
+    @UpdateClient
     fun provideUpdateOkHttpClient(): OkHttpClient =
         OkHttpClient.Builder()
-            // ── Keine Umleitung von https auf http ──
-            //
-            // Die Umleitung von github.com auf *.githubusercontent.com muss gehen;
-            // followSslRedirects betrifft nur den Wechsel des Schemas. Zusammen mit
-            // network_security_config, die für beide Hosts keinen Klartext erlaubt.
+            // Umleitungen (github.com → *.githubusercontent.com) folgt der Wächter selbst,
+            // nur zu GitHub über https; OkHttp folgte ihnen sonst zu jedem Host.
+            .followRedirects(false)
             .followSslRedirects(false)
+            .addInterceptor(UpdateUmleitungen())
             .connectTimeout(15, TimeUnit.SECONDS)
             .readTimeout(120, TimeUnit.SECONDS)
             .build()
@@ -86,23 +103,24 @@ object NetzModule {
 
     @Provides
     @Singleton
-    @Named("image")
+    @BildClient
     fun provideImageOkHttpClient(
         // Context für den HTTP-Zwischenspeicher unten — dieselbe Schreibweise
         // wie bei provideImageLoader in dieser Datei.
         @dagger.hilt.android.qualifiers.ApplicationContext context: android.content.Context,
-        prefs: PreferencesManager,
-        sessionExpired: ch.brickinventoryapp.data.SessionExpiredSignal,
-        vorschau: ch.brickinventoryapp.data.cache.VorschauSpeicher,
-        frage: ch.brickinventoryapp.util.ZertifikatsFrage,
+        prefs: Netzablagen,
+        sessionExpired: SessionExpiredSignal,
+        vorschau: VorschauSpeicher,
+        frage: ZertifikatsFrage,
+        ablage: Ablageschluessel,
     ): OkHttpClient =
         buildInterceptorClient(prefs, isApiClient = false, sessionExpired = sessionExpired, ctx = context, frage = frage)
             .newBuilder()
             // ── Dauerhafte Ablage der Vorschaubilder ──
             //
             // Zuerst in der Kette, damit der Abgriff das Endergebnis sieht — der
-            // Offline-Rückfall unten ist der innere. Er ergänzt die beiden
-            // LRU-Zwischenspeicher unter `cacheDir`, die Android jederzeit leeren darf; diese
+            // Offline-Rückfall unten ist der innere. Er ergänzt den
+            // LRU-Zwischenspeicher unter `cacheDir`, den Android jederzeit leeren darf; diese
             // Ablage liegt unter `filesDir` und räumt nur selbst (VorschauSpeicher).
             .addInterceptor { chain ->
                 val anfrage = chain.request()
@@ -132,7 +150,7 @@ object NetzModule {
                                 // das Tag (VorschauVorwaermer); ein vorgewärmtes Bild wird beim
                                 // ersten echten Aufruf von selbst zu einem gebrauchten.
                                 val spekulativ = anfrage.tag(
-                                    ch.brickinventoryapp.data.cache.Vorwaermung::class.java
+                                    Vorwaermung::class.java
                                 ) != null
                                 vorschau.schreibe(adresse, bytes, spekulativ)
                             }
@@ -148,11 +166,14 @@ object NetzModule {
                     }
                 }
             }
-            // Nur eigener Server und die Bild-CDNs (util/BildHosts.kt); Umleitungen prüft
+            // Nur der eigene Server (util/BildHosts.kt); Umleitungen prüft
             // der Wächter selbst, OkHttp folgte ihnen sonst an ihm vorbei.
-            .addInterceptor(ch.brickinventoryapp.util.BildHostWaechter { url ->
-                ch.brickinventoryapp.util.istEigenerBildServer(url, prefs.serverUrlState.value ?: "", NetworkPolicy.entwicklung)
-            })
+            .addInterceptor(BildHostWaechter(
+                eigenerServer = { url ->
+                    istEigenerBildServer(url, prefs.token.serverUrlState.value ?: "", NetworkPolicy.entwicklung)
+                },
+                basisPfad = { NetworkPolicy.basisPfad(prefs.token.serverUrlState.value.orEmpty()).orEmpty() },
+            ))
             .followRedirects(false)
             // Bild-Downloads drosseln, aber nicht so eng, dass Kacheln verhungern: Dies ist
             // der eine ImageLoader der App. Bei 3 Verbindungen je Host warteten Kacheln, Coil
@@ -162,9 +183,15 @@ object NetzModule {
                 maxRequests = 12
                 maxRequestsPerHost = 6
             })
-            // HTTP-Zwischenspeicher für Bilder: Coils Plattencache hält nur fertige Bytes; für
-            // bedingte Anfragen und den Offline-Rückfall braucht es ETag und Ablaufdatum.
-            .cache(okhttp3.Cache(context.cacheDir.resolve("image_http_cache"), 50L * 1024 * 1024))
+            // HTTP-Zwischenspeicher für Bilder: Für bedingte Anfragen und den Offline-Rückfall
+            // braucht es ETag und Ablaufdatum. Verschlüsselt wie Bestand und Antworten, denn die
+            // Bilder zeigen, welche Sets jemand besitzt.
+            .cache(okhttp3.Cache(
+                VerschluesseltesDateisystem(
+                    okio.FileSystem.SYSTEM, AblageChiffre { ablage.fuer("bilder") }, "bilder"),
+                context.cacheDir.resolve("image_http_cache").toOkioPath(),
+                50L * 1024 * 1024,
+            ))
             // Offline-Rückfall: Ist der Server nicht erreichbar, kommen die Bilder aus dem
             // Cache. Am Fehler festgemacht, nicht am Verbindungsstatus — im WLAN kann der
             // Heimserver trotzdem schweigen. FORCE_CACHE liefert die Kopie ohne Rücksicht auf
@@ -173,7 +200,7 @@ object NetzModule {
                 val req = chain.request()
                 try {
                     chain.proceed(req)
-                } catch (e: java.io.IOException) {
+                } catch (_: java.io.IOException) {
                     chain.proceed(
                         req.newBuilder()
                             .cacheControl(okhttp3.CacheControl.FORCE_CACHE)
@@ -194,7 +221,7 @@ object NetzModule {
     @Singleton
     fun provideImageLoader(
         @dagger.hilt.android.qualifiers.ApplicationContext context: android.content.Context,
-        @Named("image") client: OkHttpClient
+        @BildClient client: OkHttpClient
     ): coil3.ImageLoader =
         coil3.ImageLoader.Builder(context)
             // ── Das Netz ist in Coil 3 ein eigenes Bauteil ──
@@ -212,15 +239,9 @@ object NetzModule {
                     .maxSizePercent(context, 0.15) // 15 % des App-Speichers
                     .build()
             }
-            .diskCache {
-                coil3.disk.DiskCache.Builder()
-                    // directory() nimmt in Coil 3 einen okio.Path statt einer
-                    // java.io.File. Derselbe Ordner wie bisher, damit ein
-                    // bestehender Zwischenspeicher nicht verwaist.
-                    .directory(context.cacheDir.resolve("image_cache").toOkioPath())
-                    .maxSizeBytes(50L * 1024 * 1024) // 50 MB auf der Platte
-                    .build()
-            }
+            // Kein eigener Plattencache: Er hielte dieselben Bytes wie der HTTP-Zwischenspeicher
+            // des Clients, aber im Klartext. Ohne diese Zeile legte Coil 3 seinen eigenen an.
+            .diskCache { null }
             // Cache-Köpfe beachten (ein falsches Bild soll sich vom Server erneuern lassen)
             // ist in Coil 3 keine Einstellung mehr: Die einzige CacheStrategy, DEFAULT, ist
             // die Vorgabe der Fabrik oben. Ob sie sich im Einzelnen wie
@@ -234,13 +255,13 @@ object NetzModule {
      */
     @Provides
     @Singleton
-    @Named("sse")
+    @SseClient
     fun provideSseOkHttpClient(
         @dagger.hilt.android.qualifiers.ApplicationContext context: android.content.Context,
-        prefs: PreferencesManager,
-        sessionExpired: ch.brickinventoryapp.data.SessionExpiredSignal,
-        frage: ch.brickinventoryapp.util.ZertifikatsFrage,
-        tausch: ch.brickinventoryapp.data.TokenTausch,
+        prefs: Netzablagen,
+        sessionExpired: SessionExpiredSignal,
+        frage: ZertifikatsFrage,
+        tausch: TokenTausch,
     ): OkHttpClient =
         buildInterceptorClient(prefs, isApiClient = true, sessionExpired = sessionExpired, ctx = context, frage = frage,
             rotation = tausch)
@@ -253,18 +274,29 @@ object NetzModule {
     @Provides
     @Singleton
     fun provideEntwerter(
-        prefs: PreferencesManager,
-        frage: ch.brickinventoryapp.util.ZertifikatsFrage,
-    ): ch.brickinventoryapp.data.Entwerter =
-        ch.brickinventoryapp.data.Entwerter(buildEntwertungsBasis(prefs, frage), NetworkPolicy.entwicklung)
+        prefs: Netzablagen,
+        frage: ZertifikatsFrage,
+    ): Entwerter =
+        Entwerter(buildEntwertungsBasis(prefs, frage), NetworkPolicy.entwicklung,
+            vertrauenFuer = auftragsVertrauenFabrik(prefs.vertrauen))
+
+    /** Für die QR-Anmeldung: Ein `fp` auf eine System-Wurzel gilt ohne Abtippen. */
+    @Provides
+    @Singleton
+    fun provideSystemWurzeln(): SystemWurzeln = systemWurzeln()
 
     // Kein unqualifiziertes OkHttpClient-Binding: Es lieferte still den api-Client
-    // auch an Bild- und SSE-Wege aus. Wer einen Client braucht, nennt @Named("api"),
-    // @Named("image") oder @Named("sse").
+    // auch an Bild- und SSE-Wege aus. Wer einen Client braucht, nennt @ApiClient,
+    // @BildClient oder @SseClient.
+
+    /** Nach einer Änderung des Vertrauens: Offene Verbindungen trugen das alte. */
+    @Provides
+    fun provideVerbindungsabwurf(@ApiClient client: OkHttpClient): Verbindungsabwurf =
+        Verbindungsabwurf { client.connectionPool.evictAll() }
 
     @Provides
     @Singleton
-    fun provideRetrofit(json: Json, @Named("api") client: OkHttpClient): Retrofit =
+    fun provideRetrofit(json: Json, @ApiClient client: OkHttpClient): Retrofit =
         Retrofit.Builder()
             .baseUrl("http://localhost:3000/")
             .client(client)

@@ -10,21 +10,9 @@ import javax.crypto.SecretKey
 import javax.crypto.spec.GCMParameterSpec
 
 /**
- * Verschlüsselung für das Bearer-Token. Das Token öffnet ein Konto auf dem Server
- * und läuft erst nach TOKEN_IDLE_DAYS Untätigkeit ab. `allowBackup="false"`
- * verschliesst `adb backup`; bei einem gerooteten Gerät oder einem ausgelesenen
- * Datenverzeichnis wäre Klartext sofort verwendbar, Geheimtext nicht — der
- * Schlüssel verlässt den Android-Keystore nie.
- *
- * Eine eigene Hülle statt androidx.security: AES/GCM und der Keystore sind seit
- * API 23 Teil der Plattform (minSdk 26) — siebzig lesbare Zeilen statt einer
- * Abhängigkeit, deren Pflegezustand offen ist.
- *
- * Ist der Schlüssel weg (Wiederherstellung auf ein anderes Gerät, zurückgesetzte
- * App-Daten), schlägt das Entschlüsseln fehl, und das heisst „kein gültiges Token
- * da“: null und die Anmeldemaske. Still auf Klartext zurückzufallen höbe den Sinn
- * auf. Antwortet der Keystore nur gerade nicht, heisst das nicht „weg“ (oeffne,
- * util/Tresorbefund.kt).
+ * Verschlüsselung für das Bearer-Token. Das Token öffnet ein Konto auf dem Server und läuft
+ * erst nach TOKEN_IDLE_DAYS Untätigkeit ab.
+ * Ausführlich: docs/begruendungen/core-data/util/TokenTresor.kt.md#z12
  */
 
 /**
@@ -35,24 +23,23 @@ import javax.crypto.spec.GCMParameterSpec
  * nur, dass er sich nicht wiederholt, und dafür sorgt der Keystore selbst
  * (setRandomizedEncryptionRequired ist Vorgabe und bleibt an).
  */
-class KeystoreTokenTresor : TokenVerschluesselung {
+// [alias]: Die lokalen Ablagen umhüllen ihren Schlüssel unter einem eigenen (Ablageschluessel).
+internal class KeystoreTokenTresor(private val alias: String = ALIAS) : TokenVerschluesselung {
 
     private fun schluessel(): SecretKey {
         val ks = KeyStore.getInstance(KEYSTORE).apply { load(null) }
-        (ks.getEntry(ALIAS, null) as? KeyStore.SecretKeyEntry)?.let { return it.secretKey }
+        (ks.getEntry(alias, null) as? KeyStore.SecretKeyEntry)?.let { return it.secretKey }
 
         val gen = KeyGenerator.getInstance(KeyProperties.KEY_ALGORITHM_AES, KEYSTORE)
         // StrongBox (eigener Sicherheitschip) wo vorhanden: Der Schlüssel bleibt
         // auch bei einer kompromittierten TEE im Chip. Ohne Chip wirft generateKey,
         // dann gilt der Keystore wie bisher. Ein bestehender Schlüssel bleibt, wo er
         // ist. Der Chip ist langsam; entschlüsselt wird nur bei neuem Geheimtext.
-        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.P) {
-            try {
-                gen.init(spezifikation().setIsStrongBoxBacked(true).build())
-                return gen.generateKey()
-            } catch (_: java.security.ProviderException) {
-                // StrongBoxUnavailableException ist eine davon; weiter ohne Chip.
-            }
+        try {
+            gen.init(spezifikation().setIsStrongBoxBacked(true).build())
+            return gen.generateKey()
+        } catch (_: java.security.ProviderException) {
+            // StrongBoxUnavailableException ist eine davon; weiter ohne Chip.
         }
         gen.init(spezifikation().build())
         return gen.generateKey()
@@ -65,7 +52,7 @@ class KeystoreTokenTresor : TokenVerschluesselung {
      * Token heisst hier „abgemeldet“ (siehe oben) — die App meldete sich selbst ab.
      */
     private fun spezifikation() = KeyGenParameterSpec.Builder(
-        ALIAS,
+        alias,
         KeyProperties.PURPOSE_ENCRYPT or KeyProperties.PURPOSE_DECRYPT,
     )
         .setBlockModes(KeyProperties.BLOCK_MODE_GCM)
@@ -97,6 +84,10 @@ class KeystoreTokenTresor : TokenVerschluesselung {
             )
             String(c.doFinal(roh, IV_LAENGE, roh.size - IV_LAENGE), Charsets.UTF_8)
         }
+    }
+
+    override fun vergiss() {
+        KeyStore.getInstance(KEYSTORE).apply { load(null) }.deleteEntry(alias)
     }
 
     private companion object {

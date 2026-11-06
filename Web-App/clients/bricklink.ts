@@ -1,22 +1,15 @@
-// ── Warum diese Datei nicht mehr in routes/ liegt ────────────
-//
-// Wie rebrickable.ts und brickset.ts: KEINE einzige Route, nie
-// als Router montiert — ein reiner API-Client. Aufgefallen ist es erst jetzt,
-// weil src/sets/setService.ts von hier getItemImageUrl() braucht und ein Modul
-// unter utils/ keinen Router importieren soll.
-//
-
+// Ein API-Client, kein Router: Schlüssel und Kontingent kommen über ./zugang.
 import crypto from 'crypto';
 import { holeHttps, auszug } from '../src/infra/abruf';
-import { getGlobalSetting } from '../src/konto/settings';
-import { mitVersion } from '../src/sets/setNummer';
-import { checkAndIncrementRateLimit } from '../src/katalog/apiKontingent';
+import { zugang } from './zugang';
+import type { SchluesselName } from './zugang';
+import { mitVersion } from '../src/infra/setNummer';
 
 const BASE = 'https://api.bricklink.com/api/store/v1';
 
 async function getCredentials() {
-  const schluessel = ['bricklink_consumer_key', 'bricklink_consumer_secret', 'bricklink_token', 'bricklink_token_secret'];
-  const rows = await Promise.all(schluessel.map(async key => ({ key, value: await getGlobalSetting(key) })));
+  const schluessel: SchluesselName[] = ['bricklink_consumer_key', 'bricklink_consumer_secret', 'bricklink_token', 'bricklink_token_secret'];
+  const rows = await Promise.all(schluessel.map(async key => ({ key, value: await zugang().schluessel(key) })));
   const c: Record<string, string> = {};
   rows.forEach(r => { c[r.key] = r.value; });
   return c;
@@ -74,7 +67,7 @@ async function bricklinkRequest(method: string, path: string,
   const roh = await getCredentials();
   if (!roh.bricklink_consumer_key || !roh.bricklink_consumer_secret ||
       !roh.bricklink_token || !roh.bricklink_token_secret)
-    throw new Error('BrickLink API Zugangsdaten nicht vollständig.');
+    throw Object.assign(new Error('BrickLink API Zugangsdaten nicht vollständig.'), { code: 'bricklink_zugang_fehlt' });
   // Der Waechter darueber prueft genau diese vier Felder — er soll den Typ
   // deshalb auch HERSTELLEN und nicht nur behaupten. getCredentials() liefert
   // ein Record<string,string>, und aus Wahrheitspruefungen kann der Uebersetzer
@@ -91,8 +84,7 @@ async function bricklinkRequest(method: string, path: string,
     ? '?' + Object.keys(queryParams).sort().map(k => pct(k) + '=' + pct(queryParams[k])).join('&') : '';
   // Gezählt wird hier, am einzigen Ausgang zu BrickLink: Rückfälle (sold →
   // stock, set → gear → book) sind eigene Aufrufe und kosten eigenes Kontingent.
-  // Lazy require wie in src/katalog/rateLimiter.ts — preise.ts importiert diese Datei.
-  const rl = await checkAndIncrementRateLimit('bricklink');
+  const rl = await zugang().zaehle('bricklink');
   if (!rl.allowed) throw new Error(`BrickLink Tageslimit erreicht (${rl.limit} Aufrufe/Tag)`);
   const { status, body } = await httpsGet(baseUrl + qs, buildAuthHeader(method, baseUrl, queryParams, creds));
   let data;

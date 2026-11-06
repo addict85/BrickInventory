@@ -3,29 +3,7 @@
 
 /**
  * Bündelt und minifiziert das Frontend.
- *
- * ── Von Verkettung zu echtem Bundling ───────────────────────────────────────
- * Vorher wurden die Dateien nur ANEINANDERGEHÄNGT, weil sie sich einen globalen
- * Namensraum teilten und ein Modul-Bundler die gegenseitigen Zugriffe zerrissen
- * hätte. Seit der Umstellung auf ES-Module ist das anders: Jede Datei benennt
- * ihre Importe und Exporte, und esbuild löst den Graphen selbst auf.
- *
- * Das bringt drei Dinge, die die Verkettung nicht konnte:
- *   • Tree-Shaking — ungenutzte Exporte fallen raus.
- *   • Echte Modulgrenzen — ein `const x` in einer Datei kollidiert nicht mehr
- *     mit einem gleichnamigen in einer anderen (genau so hat sich der Fehler
- *     "PARTS_ICON_SVG ist schon deklariert" seinerzeit gezeigt).
- *   • Die Auswertungsreihenfolge folgt dem Importgraphen statt der
- *     Dateinamen-Nummerierung.
- *
- * Ausgabe ist bewusst format=iife und KEIN type="module" im Browser: Das
- * Bündel läuft damit als ein einziges klassisches Skript, was die
- * Ladereihenfolge gegenüber 00-theme-boot.js und den Sprachdateien unverändert
- * lässt.
- *
- * Aufruf:
- *   node scripts/build-frontend.js          → public/js/app.bundle.js
- *   node scripts/build-frontend.js --check  → prüft nur die Dateizuordnung
+ * Ausführlich: docs/begruendungen/scripts/build-frontend.js.md#stelle
  */
 
 const { execFileSync } = require('child_process');
@@ -103,6 +81,28 @@ function erlaubteStile() {
   return [...werte].sort();
 }
 
+/** Bündelt nach `outAbs` (Auslieferung, test-lauf.js). */
+/**
+ * @param {string} outAbs
+ * @param {{ quellkarte?: boolean }} [opt]  quellkarte: Sourcemap eingebettet, nur für die
+ *   Abdeckungsmessung (test-lauf.js --abdeckung); das ausgelieferte Bündel bleibt ohne.
+ */
+function baueBuendel(outAbs, opt = {}) {
+  // Lokales esbuild statt npx — siehe die Begründung in scripts/build-ts.js.
+  const local = path.join(ROOT, 'node_modules', '.bin',
+    process.platform === 'win32' ? 'esbuild.cmd' : 'esbuild');
+  const [cmd, prefix] = fs.existsSync(local)
+    ? [local, []]
+    : ['npx', ['--yes', `esbuild@${ESBUILD_VERSION}`]];
+  execFileSync(cmd, [
+    ...prefix, path.join(PUBLIC, ENTRY),
+    '--bundle', '--format=iife', ...(opt.quellkarte ? [] : ['--minify']), '--charset=utf8',
+    `--define:__ERLAUBTE_STILE__=${JSON.stringify(erlaubteStile())}`,
+    `--outfile=${outAbs}`,
+    ...(opt.quellkarte ? ['--sourcemap=inline', '--sources-content=true'] : []),
+  ], { stdio: ['ignore', 'ignore', 'inherit'] });
+}
+
 function main() {
   checkComplete();
   if (process.argv.includes('--check')) {
@@ -110,28 +110,21 @@ function main() {
     return;
   }
 
-  // Lokales esbuild statt npx — siehe die Begründung in scripts/build-ts.js.
-  const local = path.join(ROOT, 'node_modules', '.bin',
-    process.platform === 'win32' ? 'esbuild.cmd' : 'esbuild');
-  const [cmd, prefix] = fs.existsSync(local)
-    ? [local, []]
-    : ['npx', ['--yes', `esbuild@${ESBUILD_VERSION}`]];
-
+  // --outfile=…: nur bündeln, an einen anderen Ort (test/buendel-aktuell.test.js).
+  const ziel = process.argv.find(a => a.startsWith('--outfile='))?.slice('--outfile='.length);
+  if (ziel) { baueBuendel(path.resolve(ziel)); return; }
   const outAbs = path.join(PUBLIC, OUT_REL);
-  execFileSync(cmd, [
-    ...prefix, path.join(PUBLIC, ENTRY),
-    '--bundle', '--format=iife', '--minify', '--charset=utf8',
-    `--define:__ERLAUBTE_STILE__=${JSON.stringify(erlaubteStile())}`,
-    `--outfile=${outAbs}`,
-  ], { stdio: ['ignore', 'ignore', 'inherit'] });
+  baueBuendel(outAbs);
 
   const after = fs.statSync(outAbs).size;
   console.log(`[build-frontend] ${ENTRY} → ${OUT_REL}: ${(after / 1024).toFixed(0)} KB`);
 
   const pdfjs = require('./pdfjs-kopieren').kopierePdfjs();
   if (pdfjs) console.log(`[build-frontend] PDF.js ${pdfjs} aus pdfjs-dist → public/vendor/pdfjs/`);
+  const qr = require('./qrcode-kopieren').kopiereQrcode();
+  if (qr) console.log(`[build-frontend] QRCode.js ${qr} aus qrcodejs → public/vendor/qrcode/`);
 }
 
 if (require.main === module) main();
 
-module.exports = { ENTRY, OUT_REL, STANDALONE, erlaubteStile };
+module.exports = { ENTRY, OUT_REL, STANDALONE, erlaubteStile, baueBuendel };

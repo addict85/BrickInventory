@@ -23,6 +23,24 @@ SET row_security = off;
 CREATE EXTENSION IF NOT EXISTS pg_trgm WITH SCHEMA public;
 
 --
+-- Name: auftrag_exklusiv_belegen(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.auftrag_exklusiv_belegen() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM auftrag_exklusiv e WHERE e.art = NEW.art) THEN RETURN NEW; END IF;
+  -- Belegt gerade ein anderer: diese Zeile nicht, ohne zu warten.
+  IF NOT pg_try_advisory_xact_lock(59, hashtext(NEW.art)) THEN RETURN NULL; END IF;
+  IF EXISTS (SELECT 1 FROM auftraege l
+              WHERE l.art = NEW.art AND l.status = 'laeuft' AND l.frist_bis >= NOW() AND l.id <> NEW.id) THEN
+    RETURN NULL;
+  END IF;
+  RETURN NEW;
+END $$;
+
+--
 -- Name: bild_stamm(text); Type: FUNCTION; Schema: public; Owner: -
 --
 
@@ -186,7 +204,7 @@ CREATE FUNCTION public.merke_teilekatalog_alt() RETURNS trigger
     LANGUAGE plpgsql
     AS $$
 BEGIN
-  IF TG_TABLE_NAME = 'bl_zuordnung' THEN
+  IF TG_TABLE_NAME IN ('bl_zuordnung', 'bl_zuordnung_eigen') THEN
     INSERT INTO parts_katalog_offen (nummer)
     SELECT DISTINCT x FROM alt, LATERAL (VALUES (alt.rb_id), (alt.bl_id)) v(x)
      WHERE alt.art = 'part' AND x IS NOT NULL;
@@ -204,7 +222,7 @@ CREATE FUNCTION public.merke_teilekatalog_beide() RETURNS trigger
     LANGUAGE plpgsql
     AS $$
 BEGIN
-  IF TG_TABLE_NAME = 'bl_zuordnung' THEN
+  IF TG_TABLE_NAME IN ('bl_zuordnung', 'bl_zuordnung_eigen') THEN
     INSERT INTO parts_katalog_offen (nummer)
     SELECT DISTINCT x FROM (SELECT art, rb_id, bl_id FROM alt UNION ALL SELECT art, rb_id, bl_id FROM neu) z,
            LATERAL (VALUES (z.rb_id), (z.bl_id)) v(x)
@@ -224,7 +242,7 @@ CREATE FUNCTION public.merke_teilekatalog_neu() RETURNS trigger
     LANGUAGE plpgsql
     AS $$
 BEGIN
-  IF TG_TABLE_NAME = 'bl_zuordnung' THEN
+  IF TG_TABLE_NAME IN ('bl_zuordnung', 'bl_zuordnung_eigen') THEN
     INSERT INTO parts_katalog_offen (nummer)
     SELECT DISTINCT x FROM neu, LATERAL (VALUES (neu.rb_id), (neu.bl_id)) v(x)
      WHERE neu.art = 'part' AND x IS NOT NULL;
@@ -339,6 +357,17 @@ CREATE TABLE public.api_tokens (
 );
 
 --
+-- Name: api_tokens_verbraucht; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.api_tokens_verbraucht (
+    token text NOT NULL,
+    user_id integer NOT NULL,
+    familie timestamp with time zone NOT NULL,
+    verbraucht_am timestamp with time zone DEFAULT now() NOT NULL
+);
+
+--
 -- Name: app_logs; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -387,6 +416,7 @@ CREATE TABLE public.auftraege (
     frist_bis timestamp with time zone,
     gestartet timestamp with time zone,
     fortschritt jsonb,
+    ergebnis jsonb,
     CONSTRAINT auftraege_max_versuche_check CHECK ((max_versuche > 0)),
     CONSTRAINT auftraege_status_check CHECK ((status = ANY (ARRAY['offen'::text, 'laeuft'::text, 'erledigt'::text, 'fehler'::text, 'abgebrochen'::text])))
 );
@@ -407,6 +437,14 @@ CREATE SEQUENCE public.auftraege_id_seq
 --
 
 ALTER SEQUENCE public.auftraege_id_seq OWNED BY public.auftraege.id;
+
+--
+-- Name: auftrag_exklusiv; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.auftrag_exklusiv (
+    art text NOT NULL
+);
 
 --
 -- Name: auftrag_pausen; Type: TABLE; Schema: public; Owner: -
@@ -432,6 +470,19 @@ CREATE TABLE public.bl_zuordnung (
 );
 
 --
+-- Name: bl_zuordnung_eigen; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.bl_zuordnung_eigen (
+    user_id integer NOT NULL,
+    art text NOT NULL,
+    rb_id text NOT NULL,
+    bl_id text NOT NULL,
+    updated_at timestamp with time zone DEFAULT now() NOT NULL,
+    CONSTRAINT bl_zuordnung_eigen_art CHECK ((art = ANY (ARRAY['part'::text, 'fig'::text, 'set'::text])))
+);
+
+--
 -- Name: catalog_cache; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -446,6 +497,18 @@ CREATE TABLE public.catalog_cache (
     bl_type text,
     fetched_at timestamp with time zone DEFAULT now(),
     CONSTRAINT catalog_cache_setnummer_mit_version CHECK ((set_number ~ '-[0-9]+$'::text))
+);
+
+--
+-- Name: figur_eigen; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.figur_eigen (
+    user_id integer NOT NULL,
+    fig_number text NOT NULL,
+    fig_name text,
+    image_url text,
+    updated_at timestamp with time zone DEFAULT now() NOT NULL
 );
 
 --
@@ -722,9 +785,7 @@ CREATE TABLE public.minifigs_catalog (
     fig_name text,
     image_url text,
     image_local text,
-    updated_at timestamp with time zone DEFAULT now(),
-    name_von integer,
-    bild_von integer
+    updated_at timestamp with time zone DEFAULT now()
 );
 
 --
@@ -827,9 +888,7 @@ CREATE TABLE public.part_catalog (
     part_number text NOT NULL,
     part_name text,
     category_name text,
-    updated_at timestamp with time zone DEFAULT now(),
-    name_von integer,
-    kategorie_von integer
+    updated_at timestamp with time zone DEFAULT now()
 );
 
 --
@@ -843,10 +902,7 @@ CREATE TABLE public.part_color_catalog (
     color_hex text,
     image_url text,
     image_local text,
-    updated_at timestamp with time zone DEFAULT now(),
-    farbname_von integer,
-    farbcode_von integer,
-    bild_von integer
+    updated_at timestamp with time zone DEFAULT now()
 );
 
 --
@@ -1397,15 +1453,9 @@ CREATE TABLE public.set_figuren (
 CREATE VIEW public.set_minifigs_catalog AS
  SELECT f.set_number,
     f.fig_number,
-        CASE
-            WHEN (mc.name_von IS NULL) THEN mc.fig_name
-            ELSE NULL::text
-        END AS fig_name,
+    mc.fig_name,
     f.quantity,
-        CASE
-            WHEN (mc.bild_von IS NULL) THEN mc.image_url
-            ELSE NULL::text
-        END AS image_url,
+    mc.image_url,
     mc.image_local,
     f.updated_at
    FROM (public.set_figuren f
@@ -1432,27 +1482,12 @@ CREATE TABLE public.set_teile (
 CREATE VIEW public.set_parts_catalog AS
  SELECT t.set_number,
     t.part_number,
-        CASE
-            WHEN (pc.name_von IS NULL) THEN pc.part_name
-            ELSE NULL::text
-        END AS part_name,
+    pc.part_name,
     t.color_id,
-        CASE
-            WHEN (pcc.farbname_von IS NULL) THEN pcc.color_name
-            ELSE NULL::text
-        END AS color_name,
-        CASE
-            WHEN (pcc.farbcode_von IS NULL) THEN pcc.color_hex
-            ELSE NULL::text
-        END AS color_hex,
-        CASE
-            WHEN (pc.kategorie_von IS NULL) THEN pc.category_name
-            ELSE NULL::text
-        END AS category_name,
-        CASE
-            WHEN (pcc.bild_von IS NULL) THEN pcc.image_url
-            ELSE NULL::text
-        END AS image_url,
+    pcc.color_name,
+    pcc.color_hex,
+    pc.category_name,
+    pcc.image_url,
     pcc.image_local,
     t.is_spare,
     t.quantity,
@@ -1595,6 +1630,32 @@ CREATE TABLE public.subsets_cache (
 );
 
 --
+-- Name: teil_eigen; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.teil_eigen (
+    user_id integer NOT NULL,
+    part_number text NOT NULL,
+    part_name text,
+    category_name text,
+    updated_at timestamp with time zone DEFAULT now() NOT NULL
+);
+
+--
+-- Name: teil_farbe_eigen; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.teil_farbe_eigen (
+    user_id integer NOT NULL,
+    part_number text NOT NULL,
+    color_id integer NOT NULL,
+    color_name text,
+    color_hex text,
+    image_url text,
+    updated_at timestamp with time zone DEFAULT now() NOT NULL
+);
+
+--
 -- Name: user_sessions; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -1634,7 +1695,12 @@ CREATE TABLE public.users (
     reset_token text,
     reset_token_expires timestamp with time zone,
     must_change_password boolean DEFAULT false NOT NULL,
-    created_at timestamp with time zone DEFAULT now()
+    created_at timestamp with time zone DEFAULT now(),
+    sitzungs_version integer DEFAULT 0 NOT NULL,
+    registrierung_offen boolean DEFAULT false NOT NULL,
+    email_neu text,
+    email_neu_token text,
+    email_neu_bis timestamp with time zone
 );
 
 --
@@ -1665,7 +1731,8 @@ CREATE TABLE public.verwaltungsprotokoll (
     verwalter_id integer,
     ziel_id integer,
     ziel_name text,
-    aktion text NOT NULL
+    aktion text NOT NULL,
+    einzelheiten text
 );
 
 --
@@ -1695,7 +1762,7 @@ CREATE TABLE public.vouchers (
     user_id integer NOT NULL,
     number text NOT NULL,
     pin text,
-    amount numeric(12,2) NOT NULL,
+    amount numeric(12,4) NOT NULL,
     currency text NOT NULL,
     pdf_path text,
     created_at timestamp with time zone DEFAULT now() NOT NULL,
@@ -2018,6 +2085,13 @@ ALTER TABLE ONLY public.api_tokens
     ADD CONSTRAINT api_tokens_pkey PRIMARY KEY (token);
 
 --
+-- Name: api_tokens_verbraucht api_tokens_verbraucht_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.api_tokens_verbraucht
+    ADD CONSTRAINT api_tokens_verbraucht_pkey PRIMARY KEY (token);
+
+--
 -- Name: app_logs app_logs_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -2032,11 +2106,25 @@ ALTER TABLE ONLY public.auftraege
     ADD CONSTRAINT auftraege_pkey PRIMARY KEY (id);
 
 --
+-- Name: auftrag_exklusiv auftrag_exklusiv_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.auftrag_exklusiv
+    ADD CONSTRAINT auftrag_exklusiv_pkey PRIMARY KEY (art);
+
+--
 -- Name: auftrag_pausen auftrag_pausen_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.auftrag_pausen
     ADD CONSTRAINT auftrag_pausen_pkey PRIMARY KEY (art);
+
+--
+-- Name: bl_zuordnung_eigen bl_zuordnung_eigen_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.bl_zuordnung_eigen
+    ADD CONSTRAINT bl_zuordnung_eigen_pkey PRIMARY KEY (user_id, art, rb_id);
 
 --
 -- Name: bl_zuordnung bl_zuordnung_pkey; Type: CONSTRAINT; Schema: public; Owner: -
@@ -2058,6 +2146,13 @@ ALTER TABLE ONLY public.catalog_cache
 
 ALTER TABLE ONLY public.import_stand
     ADD CONSTRAINT csv_import_jobs_pkey PRIMARY KEY (user_id);
+
+--
+-- Name: figur_eigen figur_eigen_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.figur_eigen
+    ADD CONSTRAINT figur_eigen_pkey PRIMARY KEY (user_id, fig_number);
 
 --
 -- Name: global_settings global_settings_pkey; Type: CONSTRAINT; Schema: public; Owner: -
@@ -2445,6 +2540,20 @@ ALTER TABLE ONLY public.subsets_cache
     ADD CONSTRAINT subsets_cache_pkey PRIMARY KEY (set_number);
 
 --
+-- Name: teil_eigen teil_eigen_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.teil_eigen
+    ADD CONSTRAINT teil_eigen_pkey PRIMARY KEY (user_id, part_number);
+
+--
+-- Name: teil_farbe_eigen teil_farbe_eigen_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.teil_farbe_eigen
+    ADD CONSTRAINT teil_farbe_eigen_pkey PRIMARY KEY (user_id, part_number, color_id);
+
+--
 -- Name: user_sessions user_sessions_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -2484,7 +2593,7 @@ ALTER TABLE ONLY public.verwaltungsprotokoll
 --
 
 ALTER TABLE public.vouchers
-    ADD CONSTRAINT vouchers_nummer_verschluesselt CHECK (((number ~~ 'v1:%'::text) AND (nummer_suche IS NOT NULL))) NOT VALID;
+    ADD CONSTRAINT vouchers_nummer_verschluesselt CHECK (((number ~~ 'v2:%'::text) AND (nummer_suche IS NOT NULL))) NOT VALID;
 
 --
 -- Name: vouchers vouchers_pkey; Type: CONSTRAINT; Schema: public; Owner: -
@@ -2579,6 +2688,12 @@ CREATE INDEX idx_api_tokens_idle ON public.api_tokens USING btree (last_used) WH
 CREATE INDEX idx_api_tokens_user_created ON public.api_tokens USING btree (user_id, created_at DESC);
 
 --
+-- Name: idx_api_tokens_verbraucht_familie; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_api_tokens_verbraucht_familie ON public.api_tokens_verbraucht USING btree (user_id, familie);
+
+--
 -- Name: idx_app_logs_logged_at; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -2619,6 +2734,12 @@ CREATE INDEX idx_auftraege_user ON public.auftraege USING btree (user_id) WHERE 
 --
 
 CREATE INDEX idx_bl_zuordnung_bl ON public.bl_zuordnung USING btree (art, bl_id);
+
+--
+-- Name: idx_bl_zuordnung_eigen_bl; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_bl_zuordnung_eigen_bl ON public.bl_zuordnung_eigen USING btree (user_id, art, bl_id);
 
 --
 -- Name: idx_household_former_sub; Type: INDEX; Schema: public; Owner: -
@@ -3023,6 +3144,18 @@ CREATE UNIQUE INDEX storage_locations_konto_name ON public.storage_locations USI
 CREATE UNIQUE INDEX users_email_lower ON public.users USING btree (lower(email));
 
 --
+-- Name: users_username_lower; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX users_username_lower ON public.users USING btree (lower(username));
+
+--
+-- Name: auftraege auftrag_exklusiv; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER auftrag_exklusiv BEFORE UPDATE OF status, belegt_von ON public.auftraege FOR EACH ROW WHEN (((new.status = 'laeuft'::text) AND (new.belegt_von IS DISTINCT FROM old.belegt_von))) EXECUTE FUNCTION public.auftrag_exklusiv_belegen();
+
+--
 -- Name: catalog_cache catalog_cache_setnummer; Type: TRIGGER; Schema: public; Owner: -
 --
 
@@ -3191,6 +3324,12 @@ CREATE TRIGGER trg_bump_parts_version_upd AFTER UPDATE ON public.storage_locatio
 CREATE TRIGGER trg_teilekatalog_del AFTER DELETE ON public.bl_zuordnung REFERENCING OLD TABLE AS alt FOR EACH STATEMENT EXECUTE FUNCTION public.merke_teilekatalog_alt();
 
 --
+-- Name: bl_zuordnung_eigen trg_teilekatalog_del; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER trg_teilekatalog_del AFTER DELETE ON public.bl_zuordnung_eigen REFERENCING OLD TABLE AS alt FOR EACH STATEMENT EXECUTE FUNCTION public.merke_teilekatalog_alt();
+
+--
 -- Name: part_catalog trg_teilekatalog_del; Type: TRIGGER; Schema: public; Owner: -
 --
 
@@ -3209,10 +3348,28 @@ CREATE TRIGGER trg_teilekatalog_del AFTER DELETE ON public.part_color_catalog RE
 CREATE TRIGGER trg_teilekatalog_del AFTER DELETE ON public.set_teile REFERENCING OLD TABLE AS alt FOR EACH STATEMENT EXECUTE FUNCTION public.merke_teilekatalog_alt();
 
 --
+-- Name: teil_eigen trg_teilekatalog_del; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER trg_teilekatalog_del AFTER DELETE ON public.teil_eigen REFERENCING OLD TABLE AS alt FOR EACH STATEMENT EXECUTE FUNCTION public.merke_teilekatalog_alt();
+
+--
+-- Name: teil_farbe_eigen trg_teilekatalog_del; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER trg_teilekatalog_del AFTER DELETE ON public.teil_farbe_eigen REFERENCING OLD TABLE AS alt FOR EACH STATEMENT EXECUTE FUNCTION public.merke_teilekatalog_alt();
+
+--
 -- Name: bl_zuordnung trg_teilekatalog_ins; Type: TRIGGER; Schema: public; Owner: -
 --
 
 CREATE TRIGGER trg_teilekatalog_ins AFTER INSERT ON public.bl_zuordnung REFERENCING NEW TABLE AS neu FOR EACH STATEMENT EXECUTE FUNCTION public.merke_teilekatalog_neu();
+
+--
+-- Name: bl_zuordnung_eigen trg_teilekatalog_ins; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER trg_teilekatalog_ins AFTER INSERT ON public.bl_zuordnung_eigen REFERENCING NEW TABLE AS neu FOR EACH STATEMENT EXECUTE FUNCTION public.merke_teilekatalog_neu();
 
 --
 -- Name: part_catalog trg_teilekatalog_ins; Type: TRIGGER; Schema: public; Owner: -
@@ -3233,10 +3390,28 @@ CREATE TRIGGER trg_teilekatalog_ins AFTER INSERT ON public.part_color_catalog RE
 CREATE TRIGGER trg_teilekatalog_ins AFTER INSERT ON public.set_teile REFERENCING NEW TABLE AS neu FOR EACH STATEMENT EXECUTE FUNCTION public.merke_teilekatalog_neu();
 
 --
+-- Name: teil_eigen trg_teilekatalog_ins; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER trg_teilekatalog_ins AFTER INSERT ON public.teil_eigen REFERENCING NEW TABLE AS neu FOR EACH STATEMENT EXECUTE FUNCTION public.merke_teilekatalog_neu();
+
+--
+-- Name: teil_farbe_eigen trg_teilekatalog_ins; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER trg_teilekatalog_ins AFTER INSERT ON public.teil_farbe_eigen REFERENCING NEW TABLE AS neu FOR EACH STATEMENT EXECUTE FUNCTION public.merke_teilekatalog_neu();
+
+--
 -- Name: bl_zuordnung trg_teilekatalog_upd; Type: TRIGGER; Schema: public; Owner: -
 --
 
 CREATE TRIGGER trg_teilekatalog_upd AFTER UPDATE ON public.bl_zuordnung REFERENCING OLD TABLE AS alt NEW TABLE AS neu FOR EACH STATEMENT EXECUTE FUNCTION public.merke_teilekatalog_beide();
+
+--
+-- Name: bl_zuordnung_eigen trg_teilekatalog_upd; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER trg_teilekatalog_upd AFTER UPDATE ON public.bl_zuordnung_eigen REFERENCING OLD TABLE AS alt NEW TABLE AS neu FOR EACH STATEMENT EXECUTE FUNCTION public.merke_teilekatalog_beide();
 
 --
 -- Name: part_catalog trg_teilekatalog_upd; Type: TRIGGER; Schema: public; Owner: -
@@ -3255,6 +3430,18 @@ CREATE TRIGGER trg_teilekatalog_upd AFTER UPDATE ON public.part_color_catalog RE
 --
 
 CREATE TRIGGER trg_teilekatalog_upd AFTER UPDATE ON public.set_teile REFERENCING OLD TABLE AS alt NEW TABLE AS neu FOR EACH STATEMENT EXECUTE FUNCTION public.merke_teilekatalog_beide();
+
+--
+-- Name: teil_eigen trg_teilekatalog_upd; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER trg_teilekatalog_upd AFTER UPDATE ON public.teil_eigen REFERENCING OLD TABLE AS alt NEW TABLE AS neu FOR EACH STATEMENT EXECUTE FUNCTION public.merke_teilekatalog_beide();
+
+--
+-- Name: teil_farbe_eigen trg_teilekatalog_upd; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER trg_teilekatalog_upd AFTER UPDATE ON public.teil_farbe_eigen REFERENCING OLD TABLE AS alt NEW TABLE AS neu FOR EACH STATEMENT EXECUTE FUNCTION public.merke_teilekatalog_beide();
 
 --
 -- Name: vouchers vouchers_waehrung; Type: TRIGGER; Schema: public; Owner: -
@@ -3304,6 +3491,13 @@ ALTER TABLE ONLY public.api_tokens
     ADD CONSTRAINT api_tokens_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id) ON DELETE CASCADE;
 
 --
+-- Name: api_tokens_verbraucht api_tokens_verbraucht_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.api_tokens_verbraucht
+    ADD CONSTRAINT api_tokens_verbraucht_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id) ON DELETE CASCADE;
+
+--
 -- Name: auftraege auftraege_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -3311,11 +3505,25 @@ ALTER TABLE ONLY public.auftraege
     ADD CONSTRAINT auftraege_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id) ON DELETE CASCADE;
 
 --
+-- Name: bl_zuordnung_eigen bl_zuordnung_eigen_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.bl_zuordnung_eigen
+    ADD CONSTRAINT bl_zuordnung_eigen_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id) ON DELETE CASCADE;
+
+--
 -- Name: import_stand csv_import_jobs_user_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.import_stand
     ADD CONSTRAINT csv_import_jobs_user_fk FOREIGN KEY (user_id) REFERENCES public.users(id) ON DELETE CASCADE;
+
+--
+-- Name: figur_eigen figur_eigen_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.figur_eigen
+    ADD CONSTRAINT figur_eigen_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id) ON DELETE CASCADE;
 
 --
 -- Name: household_former_links household_former_links_main_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
@@ -3500,6 +3708,20 @@ ALTER TABLE ONLY public.storage_locations
     ADD CONSTRAINT storage_locations_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id) ON DELETE CASCADE;
 
 --
+-- Name: teil_eigen teil_eigen_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.teil_eigen
+    ADD CONSTRAINT teil_eigen_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id) ON DELETE CASCADE;
+
+--
+-- Name: teil_farbe_eigen teil_farbe_eigen_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.teil_farbe_eigen
+    ADD CONSTRAINT teil_farbe_eigen_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id) ON DELETE CASCADE;
+
+--
 -- Name: user_settings user_settings_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -3565,6 +3787,21 @@ SET check_function_bodies = false;
 SET xmloption = content;
 SET client_min_messages = warning;
 SET row_security = off;
+
+--
+-- Data for Name: auftrag_exklusiv; Type: TABLE DATA; Schema: public; Owner: -
+--
+
+INSERT INTO public.auftrag_exklusiv (art) VALUES ('anleitung');
+INSERT INTO public.auftrag_exklusiv (art) VALUES ('brickset');
+INSERT INTO public.auftrag_exklusiv (art) VALUES ('bildbedarf');
+INSERT INTO public.auftrag_exklusiv (art) VALUES ('bilder_neu_laden');
+INSERT INTO public.auftrag_exklusiv (art) VALUES ('csv_sync');
+INSERT INTO public.auftrag_exklusiv (art) VALUES ('preise');
+INSERT INTO public.auftrag_exklusiv (art) VALUES ('bild_nachlauf');
+INSERT INTO public.auftrag_exklusiv (art) VALUES ('aufraeumen');
+INSERT INTO public.auftrag_exklusiv (art) VALUES ('aufraeumen_taeglich');
+INSERT INTO public.auftrag_exklusiv (art) VALUES ('preise_nachladen');
 
 --
 -- Data for Name: global_settings; Type: TABLE DATA; Schema: public; Owner: -
@@ -3686,6 +3923,19 @@ INSERT INTO public.schema_migrations (name, applied_at, pruefsumme) VALUES ('008
 INSERT INTO public.schema_migrations (name, applied_at, pruefsumme) VALUES ('0085-schalter-als-boolean.sql', '2026-10-31 19:10:56.786936+00', '5da15115eebe8334a72a5a0bc4b425fd1c02b102d969641b5738c905a1795c58');
 INSERT INTO public.schema_migrations (name, applied_at, pruefsumme) VALUES ('0086-idempotenz-ohne-klartext.sql', '2026-11-01 09:10:18.811298+00', 'cbcd0f300429ef0c1e27f2b0e6421aef9702fca8acd87b7d6d17551d603060b1');
 INSERT INTO public.schema_migrations (name, applied_at, pruefsumme) VALUES ('0087-gutscheinnummer-verschluesselt.sql', '2026-11-01 09:10:18.815944+00', '9f3ffc42db4fbbcaac460126f8843345d84a9a31c2513c715c8c324894fb92d6');
+INSERT INTO public.schema_migrations (name, applied_at, pruefsumme) VALUES ('0088-geheimnisse-mit-kontext.sql', '2026-11-03 20:20:13.921331+00', '601a6c52d5ff42e087acd4729cdb9626619ca5cefa76d9384944b1e7968e656e');
+INSERT INTO public.schema_migrations (name, applied_at, pruefsumme) VALUES ('0089-verwaltungsprotokoll-einzelheiten.sql', '2026-11-03 20:20:13.924986+00', 'b9b94c373c26bec72a3fba6b84d51a0b21156e905a604610606af9e3d6b63667');
+INSERT INTO public.schema_migrations (name, applied_at, pruefsumme) VALUES ('0090-benutzername-ohne-gross-klein.sql', '2026-11-03 20:20:13.928033+00', '9227a86f52e27abab96e16d1b2e338cefd2c80afdf2554d753030d97875d7fd5');
+INSERT INTO public.schema_migrations (name, applied_at, pruefsumme) VALUES ('0091-sitzungsversion.sql', '2026-11-03 20:20:13.933782+00', 'ca9dfc3af01f04fd13a1ee6b1a081a4cf065edb8471e04312fd00c7fb63b8840');
+INSERT INTO public.schema_migrations (name, applied_at, pruefsumme) VALUES ('0092-token-verbraucht.sql', '2026-11-03 20:20:13.935606+00', 'f7910c81958ecfd35655a392a4b68adcf4e969fbfb94d05a1afb71bdaff0ac46');
+INSERT INTO public.schema_migrations (name, applied_at, pruefsumme) VALUES ('0093-eigene-katalogangaben.sql', '2026-11-03 20:20:13.943402+00', '6606e72e54fc2b3fe3abad35e3d2236d9bcf4d4a7bddbabc5d5b81bcf6167d46');
+INSERT INTO public.schema_migrations (name, applied_at, pruefsumme) VALUES ('0094-bl-zuordnung-eigen.sql', '2026-11-04 00:03:46.442444+00', '9bdbdba4a0b83487d236fc8e8e6e3953a075112da3ecc40b9058b2d28ff91fed');
+INSERT INTO public.schema_migrations (name, applied_at, pruefsumme) VALUES ('0095-registrierung-offen.sql', '2026-11-04 00:57:21.00727+00', '707e2679155f70b7d64048fe8bd01ebbad13e95e4d7a98e875a5d741677a3c88');
+INSERT INTO public.schema_migrations (name, applied_at, pruefsumme) VALUES ('0096-email-neu.sql', '2026-11-04 16:14:17.013655+00', '01bf63d8a31f98e576e7c46c7023743fae6cba6d8e8cacee8c846d2c710d2c7a');
+INSERT INTO public.schema_migrations (name, applied_at, pruefsumme) VALUES ('0097-registrierung-ausstehend.sql', '2026-11-05 06:06:22.870077+00', 'e33185a316d352398c5dd3c392f462d1494233c261d33e368f98bef3eec8cff8');
+INSERT INTO public.schema_migrations (name, applied_at, pruefsumme) VALUES ('0098-auftrag-ergebnis.sql', '2026-11-05 06:06:22.87462+00', 'dba73f3660407e202cbad6ca49ad5f3406dd45b758bc6a14cb9c54d0b97bdeea');
+INSERT INTO public.schema_migrations (name, applied_at, pruefsumme) VALUES ('0099-auftrag-exklusiv.sql', '2026-11-05 19:45:56.053488+00', 'a44f1f7e2c0f28df52c9695cd677fc73b8129cde61adabfefda2f36ce3ab21ac');
+INSERT INTO public.schema_migrations (name, applied_at, pruefsumme) VALUES ('0100-preise-nachladen-schema.sql', '2026-11-05 20:38:44.34808+00', '9a7da05eae906cb0c73cab8fd8cc3d0942d660d65df1228f1d59a3b08cb574eb');
 
 --
 -- PostgreSQL database dump complete

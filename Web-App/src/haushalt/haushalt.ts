@@ -1,8 +1,8 @@
 // Ausführlich: docs/begruendungen/src/haushalt/haushalt.ts.md#abschnitt
-import { logAndContinue, meldeUndLiefere } from '../infra/httpError';
+import { logAndContinue, meldeUndLiefere } from '../infra/fehler';
 import * as db from '../../db/database';
 import { sperreHaushaltswaehrung } from '../../db/txLock';
-import { getSetting } from '../konto/settings';
+import { getSetting } from '../einstellungen/settings';
 import * as repo from './repository';
 import type { ErfassungsArt } from './repository';
 import { fehlerWerfen } from '../infra/fehlerTexte';
@@ -82,9 +82,23 @@ export async function householdMembers(uid: number) {
     .map(r => ({ id: r.id, username: r.username, is_self: r.id === self, tiefe: r.id === self ? 0 : 1 }));
 }
 
+/** Ohne 0/O, 1/I/L: Der Code wird oft abgetippt. 16 Zeichen tragen rund 79 Bit. */
+const CODE_ZEICHEN = '23456789ABCDEFGHJKMNPQRSTUVWXYZ';
+
+function neuerCode(): string {
+  const z = Array.from({ length: 16 }, () => CODE_ZEICHEN[crypto.randomInt(CODE_ZEICHEN.length)]).join('');
+  return z.match(/.{4}/g)!.join('-');
+}
+
+/** Neue Codes ohne Striche und Gross/Klein; ältere (base64url) bleiben wörtlich gültig. */
+function einladungsSchluessel(code: string): string {
+  const kurz = code.trim().replace(/[\s-]/g, '').toUpperCase();
+  return new RegExp(`^[${CODE_ZEICHEN}]{16}$`).test(kurz) ? kurz : code.trim();
+}
+
 /** Im Klartext steht der Code nirgends. */
 function hash(token: string) {
-  return crypto.createHash('sha256').update(token).digest('hex');
+  return crypto.createHash('sha256').update(einladungsSchluessel(token)).digest('hex');
 }
 
 /** Abgelaufene und verbrauchte Codes werden dabei entsorgt; die Tabelle bleibt
@@ -99,9 +113,21 @@ export async function createInvite(uid: number) {
   if (await repo.offeneEinladungen(id) >= OFFENE_EINLADUNGEN_MAX)
     return { fehler: 'einladungen_zu_viele' as const, vars: { n: OFFENE_EINLADUNGEN_MAX } };
 
-  const code = crypto.randomBytes(24).toString('base64url');
+  const code = neuerCode();
   await repo.legeEinladungAn(hash(code), id, new Date(Date.now() + INVITE_TTL_MS));
   return { code, expires_in: INVITE_TTL_MS / 1000 };
+}
+
+/** Wer einlädt, bevor jemand mit dem Passwort zustimmt; nur wer den Code hat, erfährt den Namen. */
+export async function pruefeEinladung(uid: number, code: string) {
+  if (typeof code !== 'string' || code.trim().length < 8) return { fehler: 'einladungscode_ungueltig' as const };
+  const subId = parseInt(String(uid));
+  const mainId = await repo.einladenderZuCode(hash(code));
+  if (mainId === null) return { fehler: 'einladungscode_abgelaufen' as const };
+  if (mainId === subId) return { fehler: 'konto_mit_sich_selbst' as const };
+  if (await repo.istVerknuepft(mainId, subId)) return { fehler: 'konto_bereits_verknuepft' as const };
+  if (await repo.istVerknuepft(subId, mainId)) return { fehler: 'verknuepfung_erzeugt_kreis' as const };
+  return { inviter: { id: mainId, username: (await repo.kontoName(mainId)) || String(mainId) } };
 }
 
 // Ausführlich: docs/begruendungen/src/haushalt/haushalt.ts.md#redeeminvite
@@ -110,7 +136,7 @@ export async function redeemInvite(uid: number, code: string) {
   if (typeof code !== 'string' || code.length < 8) {
     return { fehler: 'einladungscode_ungueltig' as const };
   }
-  const th = hash(code.trim());
+  const th = hash(code);
 
   const mainId = await repo.belegeEinladung(th, subId).catch(meldeUndLiefere('haushalt:claimed', null));
   if (mainId === null) return { fehler: 'einladungscode_abgelaufen' as const };
@@ -206,7 +232,7 @@ export type ScopeMode = 'all' | 'own' | 'subs' | number;
 
 /** Unbekanntes ergibt 'all'. Eine Zahl wird NICHT hier geprüft: Ob sie zum
  * Haushalt gehört, weiss erst scopeIds(). */
-export function parseScopeMode(v: any): ScopeMode {
+export function parseScopeMode(v: unknown): ScopeMode {
   if (v === 'own' || v === 'subs') return v;
   const n = parseInt(String(v));
   return Number.isFinite(n) && n > 0 ? n : 'all';
@@ -238,11 +264,39 @@ export function asIds(v: BlickfeldEingabe): Blickfeld {
   return Array.isArray(v) ? v.map(x => parseInt(String(x))) : [parseInt(String(v))];
 }
 
+/** Wer fragt und welche Konten seines Haushalts er sehen will (`accounts`). Den
+ * Bereich löst der Dienst auf, nicht die Route: Jeder Aufrufer bekommt dieselbe Regel. */
+export interface Sicht { readonly nutzer: number; readonly konten?: string | undefined }
+/** Wer schreibt; sein Schreibbereich sind er selbst und seine Unterkonten. */
+export interface Schreiber { readonly schreiber: number }
+
+/** IDs kommen nur von innen (Jobs, andere Dienste); von aussen kommt eine Sicht. */
+export async function blickfeldAus(v: Sicht | BlickfeldEingabe): Promise<Blickfeld> {
+  return typeof v === 'object' && !Array.isArray(v) ? scopeIds(v.nutzer, parseScopeMode(v.konten)) : asIds(v);
+}
+
+export async function schreibbereichAus(v: Schreiber | number[]): Promise<number[]> {
+  return Array.isArray(v) ? v : writableIds(v.schreiber);
+}
+
+/** Hauptkonten sehen die Dateien ihrer Unterkonten, nicht umgekehrt. */
+export async function siehtKonto(nutzer: number, besitzer: number): Promise<boolean> {
+  return besitzer === nutzer || (await scopeIds(nutzer)).includes(besitzer);
+}
+
+/** Für wen geschrieben wird; ohne Recht 403 mit dem Code der Route. */
+export async function schreibziel(nutzer: number, wunsch: unknown,
+                                  absage: 'kein_schreibrecht' | 'kein_zugriff_konto' = 'kein_schreibrecht'): Promise<number> {
+  const ziel = await resolveWriteTarget(nutzer, wunsch);
+  if (ziel === null) fehlerWerfen(absage, 403);
+  return ziel;
+}
+
 /** Prüft die RICHTUNG (Haupt- für Unterkonto), nicht nur die Mitgliedschaft.
  * Ausführlich: docs/begruendungen/src/haushalt/haushalt.ts.md#resolvewritetarget
  * @returns die Ziel-ID, oder null wenn nicht erlaubt (Aufrufer antwortet 403) */
 export async function resolveWriteTarget(
-  actorId: number, requested: any
+  actorId: number, requested: unknown
 ): Promise<number | null> {
   if (requested === undefined || requested === null || requested === '') return actorId;
   const target = parseInt(String(requested));
@@ -251,16 +305,29 @@ export async function resolveWriteTarget(
 }
 
 /** Aus der Erfassungszeile, nicht aus der Anfrage: Die Datenbank weiss besser
- * als jeder Dialog, wem die Zeile gehört.
- * Ausführlich: docs/begruendungen/src/haushalt/haushalt.ts.md#acquisitionmovesource
- * @throws mit e.status 404 (Zeile existiert nicht) oder 403 (keine Richtung) */
+ * als jeder Dialog, wem die Zeile gehört. Eine fremde Zeile antwortet wie eine
+ * fehlende, sonst verriete 403 neben 404, welche IDs vergeben sind.
+ * @throws 404 kaufpreis_nicht_gefunden, wenn die Zeile fehlt oder nicht beschreibbar ist */
 export async function acquisitionMoveSource(
   actorId: number, kind: ErfassungsArt, acqId: number
 ): Promise<number> {
   const owner = await repo.besitzerDerErfassung(kind, acqId);
-  if (owner === null) fehlerWerfen('kaufpreis_nicht_gefunden', 404);
-  if (!(await canWriteFor(actorId, owner))) {
-    fehlerWerfen('kein_schreibrecht', 403);
-  }
+  if (owner === null || !(await canWriteFor(actorId, owner))) fehlerWerfen('kaufpreis_nicht_gefunden', 404);
   return owner;
+}
+
+/** Beide Formen hier, damit die Namensauflösung nur einmal existiert.
+ * Ausführlich: docs/begruendungen/src/haushalt/haushalt.ts.md#withowners */
+export async function withOwners(uids: number[], rows: any[]) {
+  if (uids.length < 2 || !rows?.length) return rows;
+  const owners = await repo.benutzerNamen(uids);
+  const nameById = new Map<number, string>(owners.map(u => [parseInt(String(u.id)), u.username]));
+  const platte = (id: number) => ({ id, username: nameById.get(id) || String(id) });
+  return rows.map(r => {
+    // array_agg liefert NULL, wenn der FILTER alles ausschliesst — dann eine
+    // LEERE Plakettenliste, nicht keine.
+    if ('owner_ids' in r) return { ...r, owners: (r.owner_ids || []).map((n: unknown) => platte(parseInt(String(n)))) };
+    if (r.user_id != null) return { ...r, owners: [platte(parseInt(String(r.user_id)))] };
+    return r;
+  });
 }

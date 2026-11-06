@@ -1,24 +1,6 @@
 /**
  * Marktpreis und Preisverlauf für HAUSHALTS-Sets — gegen echte Routen.
- *
- * ── Woher dieser Test kommt (Marcos Fehlerbericht, Nachtrag 33) ─────────────
- * Screenshot aus dem Betrieb: Set 42200-1 gehört dem Unterkonto, Marco (Haupt-
- * konto) öffnet die Detailansicht der App — Marktpreis „—", kein Preischart.
- * Finanzübersicht und Galerie-Kachel zeigten denselben Preis korrekt.
- *
- * Ursache, am laufenden System nachgestellt: Die Detailroute nutzt scopeIds()
- * seit jeher, die PREISroute prüfte stur `user_id = eigene ID` → für jedes
- * fremde Haushalts-Set kam 404 „Set not found", BEVOR irgendeine Preislogik
- * lief. Und getSetPriceHistory() las Set und Erfassungen nur mit der
- * Betrachter-ID → by_condition leer, kein Kaufpreis-Punkt. Wieder das Muster
- * „Regel fehlt am zweiten Weg" — dieselbe Klasse wie requireAdmin (125) und
- * forgot-password (141). resolveSetCondition() konnte das Blickfeld immer
- * schon; es kam nur nie an.
- *
- * Der gemeinsame Helfer ist bewusst der Fix-Ort (Marcos Wunsch: Webapp und
- * App teilen dieselbe Logik): src/finanzen/priceHistory.ts nimmt jetzt das Blickfeld,
- * ALLE sechs Aufrufer (Webapp + v1, Sets/Teile/Minifiguren) reichen
- * scopeIds() durch.
+ * Ausführlich: docs/begruendungen/test/household-price-db.test.js.md#kopf
  *
  * Gegenprobe (durchgeführt): scopeIds in der Preisroute wieder durch die
  * nackte ID ersetzt → der 404-Schritt hier wird rot.
@@ -34,6 +16,7 @@ const ROOT = path.join(__dirname, '..');
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
 const _req = require('./helpers/sources').buildAndRequire();
+const { dbOderSkip } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
 const { haeltSet } = require('./helpers/bestand');
 const db = _req('db/database.js');
@@ -42,12 +25,7 @@ const express = require(path.join(ROOT, 'node_modules', 'express'));
 test('das Hauptkonto sieht Marktpreis und Verlauf eines Unterkonto-Sets',
   { concurrency: 1 }, async (t) => {
 
-  try { await db.initSchema(); }
-  catch (e) {
-    if (process.env.REQUIRE_DB === '1')
-      throw new Error(`REQUIRE_DB=1, aber die Test-DB ist nicht erreichbar: ${e.message}`);
-    t.skip('Test-DB nicht erreichbar'); return;
-  }
+  if (!await dbOderSkip(t, _req, { migrieren: false })) return;
   // account_links kommt aus den Migrationen, nicht aus initSchema
   // (Muster wie in test/household-db.test.js).
   const mc = await db.pool.connect();

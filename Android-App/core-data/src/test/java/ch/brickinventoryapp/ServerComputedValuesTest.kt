@@ -5,6 +5,7 @@ import ch.brickinventoryapp.data.model.AcquisitionsResponse
 import ch.brickinventoryapp.data.model.GenericResponse
 import org.junit.Assert.assertEquals
 import org.junit.Test
+import java.io.File
 
 /**
  * Die Oberflächen rechnen nicht — sie zeigen an.
@@ -22,7 +23,6 @@ import org.junit.Test
  *     Preis aus verschiedenen Feldern.
  *   • Die drei Kacheln im Minifiguren-Reiter. Sie rechneten über `figs`, und
  *     diese Liste ist gefiltert (`source != "manual"`). „Manuell erfasst"
- *     konnte damit gar nichts anderes als 0 ergeben.
  *
  * Der Test hält das Ergebnis nicht fest (das prüft die Serverseite), sondern
  * die REGEL: Diese Zahlen kommen aus der Antwort, nicht aus einer Schleife
@@ -36,7 +36,7 @@ import org.junit.Test
 class ServerComputedValuesTest {
 
     private fun read(rel: String) =
-        java.io.File(Quellen.wurzel, "$rel").readText()
+        File(Quellen.wurzel, "$rel").readText()
 
     /** Kommentare zeilenweise ausblenden — sonst hält der eigene Erklärtext die Prüfung grün. */
     private fun code(s: String) = s.lines()
@@ -65,7 +65,7 @@ class ServerComputedValuesTest {
     }
 
     /**
-     * Ausgeführt mit dem Json der App. Gegenprobe (29.10.2026, gemessen): die
+     * Ausgeführt mit dem Json der App. Gegenprobe: die
      * Vorgabe `= AcquisitionTotals()` entfernt → rot.
      */
     @Test

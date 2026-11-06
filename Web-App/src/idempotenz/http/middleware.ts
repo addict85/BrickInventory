@@ -4,27 +4,27 @@
 import type { Request, Response, NextFunction } from 'express';
 import { nutzerId } from '../../konto/http/anmeldung';
 import { sendeFehler } from '../../infra/fehlerTexte';
-import { meldeUndWeiter } from '../../infra/httpError';
+import { meldeUndWeiter } from '../../infra/fehler';
 import * as dienst from '../dienst';
+import { routeFuerAnfrage } from '../../infra/vertrag';
+import { nichtWiederholbar } from '../../infra/vertrag/grund';
 
 const SCHREIBEND = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
 
-/** Antworten mit Zugängen oder Codes landen nie in der Tabelle, auch nicht
- * verschlüsselt. Ihre Wiederholung bekommt 409 statt eines zweiten Laufs: der
- * prägte einen weiteren gültigen Zugang oder entwertete die eben gezeigten Codes. */
-const GEHEIME_ANTWORTEN: readonly RegExp[] = [
-  /^\/auth\/(login|qr-login|qr-token|token-create|token-rotieren|passkey\/anmelden)$/,
-  /^\/auth\/zweiter-faktor\/(einrichten|bestaetigen|codes)$/,
-  /^\/settings\/household\/invite$/,
-];
-
-export function antwortIstGeheim(pfad: string): boolean {
-  return GEHEIME_ANTWORTEN.some(re => re.test(pfad));
+/** Antworten geheimer oder bestätigter Routen (Vertrag: `geheim`,
+ * `bestaetigung`) landen nie in der Tabelle, auch nicht verschlüsselt. Ihre
+ * Wiederholung bekommt 409 statt eines zweiten Laufs oder der alten Antwort. */
+export function antwortIstGeheim(methode: string, pfad: string): boolean {
+  return nichtWiederholbar(routeFuerAnfrage(methode, pfad));
 }
 
+/** Nur Routen mit Vertragseintrag: Ohne ihn ist nicht bekannt, ob die Antwort
+ * geheim ist, also wird nichts gespeichert und nichts wiederholt. */
 export async function idempotenz(req: Request, res: Response, next: NextFunction) {
   const schluessel = req.get('Idempotency-Key');
   if (schluessel === undefined || !SCHREIBEND.has(req.method)) return next();
+  const route = routeFuerAnfrage(req.method, req.baseUrl + req.path);
+  if (!route) return next();
   if (!dienst.SCHLUESSEL_MUSTER.test(schluessel)) return sendeFehler(req, res, 400, 'idempotenz_schluessel_ungueltig');
   const uid = nutzerId(req);
   if (uid === null) return next();
@@ -38,12 +38,12 @@ export async function idempotenz(req: Request, res: Response, next: NextFunction
     return res.status(ausgang.status).type('application/json').send(ausgang.antwort);
   }
 
-  const geheim = antwortIstGeheim(req.path);
+  const geheim = nichtWiederholbar(route);
   let gemerkt = false;
   const json = res.json.bind(res);
   res.json = (rumpf: unknown) => {
     gemerkt = true;
-    dienst.beende(uid, schluessel, res.statusCode, geheim ? null : JSON.stringify(rumpf))
+    void dienst.beende(uid, schluessel, res.statusCode, geheim ? null : JSON.stringify(rumpf))
       .catch((e: unknown) => meldeUndWeiter('idempotenz:merken', e))
       .finally(() => json(rumpf));
     return res;

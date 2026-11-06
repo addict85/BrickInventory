@@ -1,5 +1,6 @@
 package ch.brickinventoryapp
 
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import org.junit.Assert.assertTrue
 import kotlinx.coroutines.test.setMain
 import kotlinx.coroutines.test.resetMain
@@ -29,8 +30,6 @@ import org.junit.Test
  *     Abfrage, der Endlos-Scroll rechnete also gegen eine fremde Zahl.
  *   - `onRefresh` gab ausdruecklich `search = null` — die Liste sprang auf den
  *     ganzen Bestand, waehrend das Suchfeld daneben den Text weiter zeigte.
- *   - Nach dem Loeschen eines manuellen Teils, nach einem Wechsel des
- *     Kontofilters und beim Betreten des Reiters ebenso.
  *
  * Dieselbe Form wie beim zweiten Galerie-Lader (GalerieLaedtGefiltertTest):
  * Ein Weg fuehrt den Filter mit, ein zweiter nicht. Solange der Filter ein
@@ -41,14 +40,13 @@ import org.junit.Test
  * `search`, `theme`, `sort` sind die Filter, die eine LISTE einschraenken und
  * neben denen eine Gesamtzahl steht. Genau daraus entsteht der Schaden:
  * geblaetterte Seiten und eine Gesamtzahl aus verschiedenen Abfragen.
- * `loadPortfolioHistory(period)` ist bewusst nicht gemeint — der Verlauf wird
- * vollstaendig ersetzt, blaettert nicht und fuehrt keine Gesamtzahl.
  *
  * Geprueft werden ALLE Lader unter ui/, nicht nur die des MainViewModel:
  * CatalogViewModel blaettert genauso (ensureCatalogPage) und haelt seine
  * Filter ebenfalls im Zustand. Waere die Regel auf MainViewModel begrenzt,
  * duerfte ausgerechnet der zweite blaetternde Bildschirm sie brechen.
  */
+@OptIn(ExperimentalCoroutinesApi::class)
 class ListenfilterImZustandTest {
 
     @Test
@@ -92,8 +90,8 @@ class ListenfilterImZustandTest {
 
     /**
      * Ausgeführt: Erste Seite, Nachladen und der Abschnitt der manuellen Teile
-     * tragen Blickfeld und Suchtext (TeileViewModel gegen einen Testserver).
-     * Gegenprobe (31.10.2026, gemessen): in TeileViewModel.manuelleTeile
+     * tragen Blickfeld und Suchtext (TeileViewModel gegen einen PfadServer ohne Netz).
+     * Gegenprobe: in TeileViewModel.manuelleTeile
      * `teileSicht` → `null` → rot „… ohne accounts=own“.
      */
     @Test
@@ -102,16 +100,16 @@ class ListenfilterImZustandTest {
         val pfade = PfadServer(
             "/api/v1/parts" to """{"success":true,"total":900,"parts":[{"part_number":"3001"}]}""",
             "/api/v1/parts/manual" to """{"success":true,"parts":[{"part_number":"3002"}]}""")
-        val t = TestDienste(pfade.server)
+        val t = TestDienste(pfade.imTakt(), io = Dispatchers.Main)
         try {
-            val vm = t.merke(TeileViewModel(t.dienste, TeileRepository(t.api, t.cache),
+            val vm = t.merke(TeileViewModel(t.sitzung, t.filter(), t.hinweise, t.bestand, t.scrollMemory, TeileRepository(t.api, t.cache),
                 FigurenRepository(t.api, t.cache), SavedStateHandle(mapOf("teile_suche" to "Stein"))))
             vm.setScope(ScopeFilter.View.PARTS, "own")
             // Seite 1 zieht die manuellen Teile nach; erst danach blättern, sonst
             // bricht das Nachladen diesen Abruf ab.
-            TestApi.warteBis("manuelle Teile") { vm.partsState.value.manualParts != null }
+            assertTrue("manuelle Teile", vm.partsState.value.manualParts != null)
             vm.loadParts(page = 2)
-            TestApi.warteBis("zweite Seite") { pfade.anfragenAn("page=2").isNotEmpty() }
+            assertTrue("zweite Seite", pfade.anfragenAn("page=2").isNotEmpty())
             val abrufe = pfade.anfragenAn("GET /api/v1/parts?") + pfade.anfragenAn("GET /api/v1/parts/manual")
             assertTrue("Keine zwei Seiten: $abrufe", abrufe.count { it.startsWith("GET /api/v1/parts?") } >= 2)
             for (a in abrufe) for (teil in listOf("accounts=own", "search=Stein")) assertTrue("$a ohne $teil", teil in a)
@@ -128,14 +126,15 @@ class ListenfilterImZustandTest {
      */
     @Test
     fun `jeder Abruf der Teileliste fuehrt Blickfeld und Suchtext mit`() {
-        val aufruf = "repo.teile.getParts("
+        // Das TeileViewModel ruft sein Repository `repo`, das Vorwärmen seines `teile`.
+        val aufrufe = listOf("repo.getParts(", "teile.getParts(")
         // theme und sort kennt die Teile-API nicht (utils/handlers/parts.ts,
         // getParts liest color, category, search, spare, set_number, page).
         val pflicht = listOf("accounts", "search")
         val fehlend = mutableListOf<String>()
         var gefunden = 0
 
-        for (datei in Quellen.alle()) {
+        for (datei in Quellen.alle()) for (aufruf in aufrufe) {
             val src = Quellen.ohneKommentare(datei.readText())
             var i = src.indexOf(aufruf)
             while (i >= 0) {
@@ -161,7 +160,7 @@ class ListenfilterImZustandTest {
             }
         }
 
-        assert(gefunden >= 1) { "Kein Aufruf von '$aufruf' gefunden — Muster veraltet?" }
+        assert(gefunden >= 2) { "Weniger als zwei Aufrufe von $aufrufe gefunden — Muster veraltet?" }
         assert(fehlend.isEmpty()) {
             "Diese Abrufe der Teileliste lassen etwas weg:\n  " + fehlend.joinToString("\n  ")
         }
@@ -181,8 +180,6 @@ class ListenfilterImZustandTest {
      * utils/handlers/minifigs.ts. Und sie waren nicht deckungsgleich: Der
      * Server sucht VOR der Gruppierung ueber jede fig_name-Zeile, der
      * Bildschirm danach nur ueber die eine, die MAX(fig_name) uebrig laesst.
-     * Dieselbe Figur, die in zwei Sets unter zwei Namen steht, fand die Webapp
-     * und das Telefon nicht.
      *
      * ── Was geprueft wird ───────────────────────────────────────────────────
      * Ein `.filter { … contains(…, ignoreCase = true) … }` unter ui/ ist die

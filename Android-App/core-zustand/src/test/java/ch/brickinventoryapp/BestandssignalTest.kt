@@ -17,7 +17,7 @@ import java.util.concurrent.TimeUnit
  * Das Bestandssignal verliert nichts, auch wenn ein Sammler gerade beschäftigt
  * ist, und fasst gleiche Meldungen zusammen.
  *
- * Gegenproben (29.10.2026, gemessen gegen ui/Bestandssignal.kt):
+ * Gegenproben:
  *   A  die alte Fassung (MutableSharedFlow, extraBufferCapacity = 32, tryEmit)
  *      → rot „ein beschäftigter Sammler verliert keine Meldung“ (die 42 Meldungen
  *      kommen nie an), „je Art kommt die neueste Meldung einmal“ und „die

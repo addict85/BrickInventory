@@ -1,5 +1,6 @@
 package ch.brickinventoryapp
 
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import androidx.lifecycle.SavedStateHandle
 import ch.brickinventoryapp.data.ScopeFilter
 import ch.brickinventoryapp.data.repository.FinanzenRepository
@@ -37,14 +38,15 @@ import org.junit.Test
  *
  * ── Was geprueft wird ───────────────────────────────────────────────────────
  * Ausgeführt: Erste Seite und Nachladen der Galerie tragen Blickfeld, Lager
- * und die drei Filter (GalerieViewModel gegen einen Testserver). Dazu als
+ * und die drei Filter (GalerieViewModel gegen einen PfadServer ohne Netz). Dazu als
  * Struktur: Jeder Aufruf von `sets.getSets(` nennt das Blickfeld und die drei
  * Filter — GEFUNDEN, nicht aufgezählt, damit ein dritter Lader (das
  * Vorwärmen, ui/Vorwaermen.kt, ist im JVM-Bau nicht übersetzbar) mitgeprüft ist.
  *
- * Gegenprobe (29.10.2026, gemessen): in GalerieViewModel.holeSeite `search =
+ * Gegenprobe: in GalerieViewModel.holeSeite `search =
  * null` → rot „erste Seite und Nachladen tragen dieselben Filter“.
  */
+@OptIn(ExperimentalCoroutinesApi::class)
 class GalerieLaedtGefiltertTest {
 
     @Test
@@ -53,16 +55,16 @@ class GalerieLaedtGefiltertTest {
         val pfade = PfadServer("/api/v1/sets" to """{"success":true,"total":5,"sets":[
             {"set_number":"75192-1","name":"Falke"},{"set_number":"10294-1","name":"Titanic"}]}""",
             "/api/v1/stats" to """{"success":true,"stats":{"total_sets":5,"total_quantity":5,"total_pieces":0,"total_instructions":0,"total_parts":0,"total_minifigs":0}}""")
-        val t = TestDienste(pfade.server)
+        val t = TestDienste(pfade.imTakt(), io = Dispatchers.Main)
         try {
             val gemerkt = SavedStateHandle(mapOf("galerie_suche" to "Falke",
                 "galerie_thema" to "Star Wars", "galerie_sortierung" to "year_desc"))
-            val vm = t.merke(GalerieViewModel(t.dienste, SetsRepository(t.api, t.cache),
+            val vm = t.merke(GalerieViewModel(t.sitzung, t.filter(), t.hinweise, t.bestand, t.scrollMemory, SetsRepository(t.api, t.cache),
                 FinanzenRepository(t.api, t.cache), gemerkt))
             vm.setScope(ScopeFilter.View.GALLERY, "own")
-            TestApi.warteBis("erste Seite") { vm.galleryState.value.sets.isNotEmpty() }
+            assertTrue("erste Seite", vm.galleryState.value.sets.isNotEmpty())
             vm.loadMoreSets()
-            TestApi.warteBis("zweite Seite") { pfade.anfragenAn("page=2").isNotEmpty() }
+            assertTrue("zweite Seite", pfade.anfragenAn("page=2").isNotEmpty())
             val abrufe = pfade.anfragenAn("GET /api/v1/sets?")
             assertTrue("Keine zwei Seiten: $abrufe", abrufe.size >= 2)
             for (a in abrufe) for (teil in listOf("accounts=own", "search=Falke", "theme=Star%20Wars", "sort=year_desc")) {

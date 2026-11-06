@@ -40,7 +40,7 @@ class DesignTokensTest {
         assert(fehler.isEmpty()) {
             "Feste Eckenradien ausserhalb von $themeOrdner/ (${fehler.size}):\n  " +
                 fehler.joinToString("\n  ") +
-                "\nDafür gibt es Formen.karte/chip/knopf/kachel/leiste/etikett/marke/fab/strich. " +
+                "\nDafür gibt es Formen.karte/chip/feld/kachel/leiste/etikett/marke/fab/strich. " +
                 "Passt keine, gehört eine NEUE dorthin — sonst ist die nächste " +
                 "Designänderung wieder eine Suche über den ganzen Baum."
         }
@@ -100,6 +100,76 @@ class DesignTokensTest {
         assert(zweige >= 2) {
             "Nur $zweige StatusFarben-Zweig(e) in Theme.kt — dann teilt sich " +
                 "mindestens ein Design die Farben eines anderen"
+        }
+    }
+
+    /**
+     * Kein Eingabefeld steht in der eckigen Material-Vorgabe: Lagerort- und Auswahlfelder
+     * standen eckig neben runden Textfeldern. Jedes nennt seine Form aus dem Design
+     * (Formen.feld; Suchleisten und Tabellenfelder bewusst eine eigene).
+     * Gegenprobe (gegenproben/lagerort-feld-eckig.patch): `shape = Formen.feld` am
+     * Lagerortfeld entfernt → rot mit „LagerortFeld.kt“.
+     */
+    @Test
+    fun `kein Eingabefeld steht in der eckigen Vorgabe`() {
+        val aufruf = Regex("""\b(OutlinedTextField|TextField)\(""")
+        val fehler = mutableListOf<String>()
+        var gesehen = 0
+        for (datei in Quellen.alle()) {
+            val s = Quellen.ohneKommentare(datei.readText())
+                .replace(Regex(""""(?:\\.|[^"\\\n])*""""), "\"\"")
+            for (m in aufruf.findAll(s)) {
+                var tiefe = 0
+                var ende = m.range.last
+                while (ende < s.length) {
+                    if (s[ende] == '(') tiefe++ else if (s[ende] == ')' && --tiefe == 0) break
+                    ende++
+                }
+                gesehen++
+                val argumente = s.substring(m.range.last, minOf(ende + 1, s.length))
+                if (!Regex("""\bshape\s*=\s*(ch\.brickinventoryapp\.ui\.theme\.)?(Formen|MaterialTheme\.shapes)\.""").containsMatchIn(argumente)) {
+                    fehler += "${datei.name}:${s.substring(0, m.range.first).count { it == '\n' } + 1}"
+                }
+            }
+        }
+        assert(gesehen >= 30) { "Nur $gesehen Eingabefelder gefunden — greift die Suche noch?" }
+        assert(fehler.isEmpty()) {
+            "Eingabefelder in der eckigen Vorgabe (${fehler.size}):\n  " + fehler.joinToString("\n  ") +
+                "\nshape = Formen.feld setzen — wie jedes andere Feld."
+        }
+    }
+
+    /**
+     * Eine Knopfform für die ganze App: die Pille der Material-Vorgabe. Im Ablauf
+     * Einrichten → Anmelden wechselte sie sonst von Bildschirm zu Bildschirm (12 dp,
+     * 14 dp, Pille). Gegenprobe: `shape = Formen.feld` am Knopf in LoginScreen.LadeKnopf
+     * → rot mit „LoginScreen.kt“ (Gegenprobe knopf-mit-eigener-form).
+     */
+    @Test
+    fun `Knoepfe tragen alle dieselbe Form`() {
+        val aufruf = Regex("""\b(Button|OutlinedButton|FilledTonalButton|ElevatedButton|TextButton)\(""")
+        val fehler = mutableListOf<String>()
+        for (datei in Quellen.alle()) {
+            // Zeichenketten leeren: Eine Klammer darin würfe die Klammerbilanz um.
+            val s = Quellen.ohneKommentare(datei.readText())
+                .replace(Regex(""""(?:\\.|[^"\\\n])*""""), "\"\"")
+            for (m in aufruf.findAll(s)) {
+                // Die Argumentliste bis zur passenden Klammer; der Inhalt (Lambda) folgt danach.
+                var tiefe = 0
+                var ende = m.range.last
+                while (ende < s.length) {
+                    if (s[ende] == '(') tiefe++ else if (s[ende] == ')' && --tiefe == 0) break
+                    ende++
+                }
+                val argumente = s.substring(m.range.last, minOf(ende + 1, s.length))
+                if (Regex("""\bshape\s*=""").containsMatchIn(argumente)) {
+                    fehler += "${datei.name}:${s.substring(0, m.range.first).count { it == '\n' } + 1}  ${m.value}"
+                }
+            }
+        }
+        assert(fehler.isEmpty()) {
+            "Knöpfe mit eigener Form (${fehler.size}):\n  " + fehler.joinToString("\n  ") +
+                "\nKnöpfe tragen die Vorgabe des Themas; Formen.feld gilt nur für Eingabefelder."
         }
     }
 }

@@ -5,7 +5,7 @@ import path from 'path';
 import readline from 'readline';
 import type { Pool } from 'pg';
 import { istJa } from '../infra/validate';
-import { logAndContinue } from '../infra/httpError';
+import { logAndContinue } from '../infra/fehler';
 import { DATA_DIR } from '../infra/appPaths';
 import * as repo from './repository/csvTausch';
 
@@ -13,7 +13,7 @@ export type Meldung = { type: 'progress'; total: number; pct: number; filename: 
 
 const sp = (c: string[], i: number): string => c[i] ?? '';
 
-// Ausführlich: docs/begruendungen/jobs/csvImportWorker.ts.md#parsecsvline
+// Ausführlich: docs/begruendungen/src/katalog/csvImport.ts.md#parsecsvline
 export function parseCsvLine(line: string): string[] {
   const result: string[] = [];
   let cur = '', inQuotes = false;
@@ -61,7 +61,7 @@ interface Tausch {
   chunkSize?: number; mapRow: (c: string[]) => unknown[];
 }
 
-// Ausführlich: docs/begruendungen/jobs/csvImportWorker.ts.md#importieremittausch
+// Ausführlich: docs/begruendungen/src/katalog/csvImport.ts.md#importieremittausch
 async function importiereMitTausch(pool: Pool, melde: (m: Meldung) => void, t: Tausch): Promise<number> {
   const schatten = `${t.tabelle}_import`;
   const client = await pool.connect();

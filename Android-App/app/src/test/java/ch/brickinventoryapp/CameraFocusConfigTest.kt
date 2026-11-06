@@ -1,6 +1,7 @@
 package ch.brickinventoryapp
 
 import org.junit.Test
+import java.io.File
 
 /**
  * Die Fokus-Einstellungen des Barcodescanners.
@@ -25,21 +26,22 @@ import org.junit.Test
 class CameraFocusConfigTest {
 
     private fun scanner(): String =
-        java.io.File(Quellen.wurzel, "ui/screens/BarcodeScannerScreen.kt").readText()
-
-    private fun analyzer(): String =
-        java.io.File(Quellen.wurzel, "ui/screens/BarcodeAnalyzer.kt").readText()
-
-    private fun setup(): String =
-        java.io.File(Quellen.wurzel, "ui/screens/SetupScreen.kt").readText()
+        File(Quellen.wurzel, "ui/screens/BarcodeScannerScreen.kt").readText()
 
     private fun code(src: String) = src.lines()
         .joinToString("\n") { val t = it.trim(); if (t.startsWith("//") || t.startsWith("*") || t.startsWith("/*")) "" else it }
 
+    private fun aufbau(): String = code(Quellen.lies("ui/screens/KameraAufbau.kt"))
+
     @Test
     fun `genau EIN Tap-to-Focus-Listener`() {
-        val c = code(scanner())
-        val anzahl = Regex("""previewView\.setOnTouchListener""").findAll(c).count()
+        // Seit der Tipper in KameraAufbau.kt steht (tippZumFokus), setzt ihn jeder
+        // Scanner genau einmal und keiner einen eigenen daneben.
+        val anzahl = Regex("""\.setOnTouchListener""").findAll(aufbau()).count() +
+            Regex("""\.setOnTouchListener""").findAll(code(scanner())).count()
+        assert(Regex("""\btippZumFokus\(""").findAll(code(scanner())).count() == 1) {
+            "Der Barcodescanner setzt den Tipper nicht genau einmal"
+        }
         assert(anzahl == 1) {
             "$anzahl Touch-Listener auf previewView. setOnTouchListener ERSETZT — " +
                 "der zuletzt gesetzte gewinnt, und welcher das ist, hängt davon ab, " +
@@ -73,10 +75,10 @@ class CameraFocusConfigTest {
      * Vergleich gleicher Codeblöcke über den ganzen Baum. Eine Regel, die an
      * zwei Stellen steht, sieht an jeder einzelnen Stelle richtig aus.
      */
-    private fun mitTapToFocus(): List<java.io.File> {
-        val ordner = java.io.File(Quellen.wurzel, "ui/screens")
+    private fun mitTapToFocus(): List<File> {
+        val ordner = File(Quellen.wurzel, "ui/screens")
         val treffer = ordner.listFiles { f -> f.extension == "kt" }
-            ?.filter { code(it.readText()).contains("startFocusAndMetering(") }
+            ?.filter { code(it.readText()).let { c -> c.contains("tippZumFokus(") || c.contains("startFocusAndMetering(") } }
             ?: emptyList()
         assert(treffer.size >= 2) {
             "Nur ${treffer.size} Datei(en) mit Tap-to-Focus gefunden. Erwartet " +
@@ -90,7 +92,8 @@ class CameraFocusConfigTest {
     @Test
     fun `der Tap-to-Focus haelt den Fokus`() {
         for (datei in mitTapToFocus()) {
-            val c = code(datei.readText())
+            // Der Tipper selbst steht in KameraAufbau.kt; geprüft wird er dort für jeden Nutzer.
+            val c = code(datei.readText()) + "\n" + aufbau()
             assert(c.contains("disableAutoCancel()")) {
                 "${datei.name}: Ohne disableAutoCancel() fällt die Kamera nach " +
                     "wenigen Sekunden auf ihre eigene Wahl zurück — der Nutzer " +
@@ -109,10 +112,6 @@ class CameraFocusConfigTest {
      * ── Warum die Regel schaerfer wurde ─────────────────────────────────────
      * Ganz zuerst zaehlte dieser Test das Vorkommen der Zeichenfolge
      * `CONTROL_AF_MODE_CONTINUOUS_PICTURE` in den einzelnen Bildschirmdateien:
-     * einmal im Scanner, einmal im Analyzer, ZWEIMAL im SetupScreen. Das
-     * pruefte die Formulierung an jeder Kopie — und dass es Kopien gab, war der
-     * eigentliche Fehler. Genau in dieser Doppelung hat die Behebung aus
-     * Nachtrag 112 eine Kopie nicht erreicht.
      *
      * Dann hiess sie „wer eine Vorschau baut, muss den AF-Modus setzen" —
      * die Fassung fuer eine Welt mit zwei Kopien. Seit auch die BINDUNG
@@ -127,7 +126,7 @@ class CameraFocusConfigTest {
      */
     @Test
     fun `der Kamera-Aufbau steht nur in KameraAufbau`() {
-        val ordner = java.io.File(Quellen.wurzel, "ui/screens")
+        val ordner = File(Quellen.wurzel, "ui/screens")
         val dateien = (ordner.listFiles { f -> f.extension == "kt" } ?: emptyArray()).toList()
         assert(dateien.size >= 5) {
             "Nur ${dateien.size} Bildschirmdateien gefunden — der Pfad stimmt nicht, und ein " +
@@ -167,7 +166,7 @@ class CameraFocusConfigTest {
     fun `beide Scanner holen ihre Kamera dort`() {
         // Sonst nützt die Regel oben nichts: Wer sich die Kamera selbst bindet,
         // umgeht autofokusDauerhaft() — und sieht dabei richtig aus.
-        val ordner = java.io.File(Quellen.wurzel, "ui/screens")
+        val ordner = File(Quellen.wurzel, "ui/screens")
         val nutzer = (ordner.listFiles { f -> f.extension == "kt" } ?: emptyArray())
             .filter { it.name != "KameraAufbau.kt" }
             .filter { code(it.readText()).contains("kameraBinden(") }
@@ -179,15 +178,21 @@ class CameraFocusConfigTest {
     }
 
     @Test
+    fun `der Tipper steht nur in KameraAufbau`() {
+        // Wie Vorschau und Bindung: Eine Kopie im Bildschirm verfehlte die nächste Behebung.
+        val eigene = mitTapToFocus().filter { it.name != "KameraAufbau.kt" && code(it.readText()).contains("startFocusAndMetering(") }
+        assert(eigene.isEmpty()) { "Eigener Tap-to-Focus statt tippZumFokus(): ${eigene.joinToString { it.name }}" }
+        assert(aufbau().contains("startFocusAndMetering(")) { "KameraAufbau.kt fokussiert beim Tippen nicht mehr" }
+    }
+
+    @Test
     fun `kein periodisches Nachfokussieren`() {
         // Ein im Takt laufendes startFocusAndMetering unterbricht den
         // kontinuierlichen Autofokus immer wieder. Fokussiert wird NUR beim
         // Antippen.
         val pump = Regex(
-            """(while\s*\(|delay\s*\(|Timer\(|fixedRate|LaunchedEffect)[\s\S]{0,400}?startFocusAndMetering""")
-        val ordner = java.io.File(Quellen.wurzel, "ui/screens")
-        val dateien = (ordner.listFiles { f -> f.extension == "kt" } ?: emptyArray())
-            .filter { code(it.readText()).contains("startFocusAndMetering") }
+            """(while\s*\(|delay\s*\(|Timer\(|fixedRate|LaunchedEffect)[\s\S]{0,400}?(startFocusAndMetering|tippZumFokus)""")
+        val dateien = mitTapToFocus()
         assert(dateien.size >= 2) {
             "Nur ${dateien.size} Datei(en) mit startFocusAndMetering gefunden — " +
                 "erwartet werden mindestens Barcodescanner und SetupScreen. " +

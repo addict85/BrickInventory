@@ -4,11 +4,10 @@ import ch.brickinventoryapp.data.api.BrickApiService
 import ch.brickinventoryapp.data.cache.ResponseCache
 import ch.brickinventoryapp.data.model.SetsResponse
 import ch.brickinventoryapp.data.repository.GALLERY_DEFAULT_SORT
-import ch.brickinventoryapp.data.repository.Result
+import ch.brickinventoryapp.data.repository.Ergebnis
 import ch.brickinventoryapp.data.repository.SetsRepository
 import com.jakewharton.retrofit2.converter.kotlinx.serialization.asConverterFactory
 import kotlinx.coroutines.test.runTest
-import kotlinx.serialization.json.Json
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.mockwebserver.MockResponse
@@ -19,6 +18,7 @@ import org.junit.Test
 import retrofit2.Retrofit
 import java.io.File
 import java.util.concurrent.TimeUnit
+import ch.brickinventoryapp.data.api.ApiJson
 
 /**
  * Was die Galerie beim Server BESTELLT — und was davon auf der Platte landet.
@@ -33,11 +33,6 @@ import java.util.concurrent.TimeUnit
  *     weitergereicht wird. Der Quelltext liest sich richtig, der Server sieht
  *     nichts, und die Galerie zeigt den vollen Bestand — für den Nutzer sieht
  *     das aus, als täte der Filter nichts.
- *   • Eine GEFILTERTE Antwort, die unter dem Schlüssel der ungefilterten Sicht
- *     abgelegt wird. Das fällt nicht sofort auf, sondern beim NÄCHSTEN Start:
- *     Die App zeigt dann eine gefilterte Liste als vollen Bestand an, ohne dass
- *     ein Filter gesetzt wäre. Der Wortlaut `ungefiltert` im Quelltext sagt
- *     darüber nichts — die Bedingung könnte falsch herum stehen.
  *
  * Beides sind Aussagen über den ABLAUF (welche Anfrage geht raus, was liegt
  * danach auf der Platte), und die zeigt nur ein Aufruf. Aufbau wie in
@@ -49,17 +44,10 @@ import java.util.concurrent.TimeUnit
  *   Lauf 1 (fec5f68), zwei unabhängige Brüche gleichzeitig:
  *     a) `search` im gefilterten Zweig durch `null` ersetzt.
  *     c) `page == 1` aus der Bedingung `ungefiltert` gestrichen.
- *     → „336 tests completed, 2 failed": Teilschritt 1 (Zeile 101) und
- *       Teilschritt 4 (Zeile 159). Genau die beiden und keine anderen — die
- *       Brüche greifen also getrennt, und kein anderer Test im Baum merkt
- *       davon etwas.
  *
  *   Lauf 2 (283e64d), ein Bruch:
  *     b) Die Bedingung `ungefiltert` durch `true` ersetzt, sodass auch
  *        gefilterte Abrufe über den Cache laufen.
- *     → „336 tests completed, 3 failed": Teilschritt 3 (Zeile 137) — der
- *       gesuchte Fall — sowie 1 und 4. Das ist stimmig: Der Cache-Zweig ruft
- *       ohne Filter und mit Seite 1 ab, verletzt also alle drei Aussagen.
  */
 class GalerieAbfrageTest {
 
@@ -82,7 +70,7 @@ class GalerieAbfrageTest {
         cacheDir.mkdirs()
         val client = OkHttpClient.Builder()
             .readTimeout(1, TimeUnit.SECONDS).connectTimeout(1, TimeUnit.SECONDS).build()
-        val json = ch.brickinventoryapp.data.api.ApiJson
+        val json = ApiJson
         val api = Retrofit.Builder()
             .baseUrl(server.url("/")).client(client)
             .addConverterFactory(json.asConverterFactory("application/json".toMediaType()))
@@ -96,12 +84,12 @@ class GalerieAbfrageTest {
         cacheDir.deleteRecursively()
     }
 
-    private fun daten(r: Result<SetsResponse>): SetsResponse {
-        assert(r is Result.Success) { "Erwartet wurde ein Erfolg, kam aber: $r" }
-        return (r as Result.Success).data
+    private fun daten(r: Ergebnis<SetsResponse>): SetsResponse {
+        assert(r is Ergebnis.Success) { "Erwartet wurde ein Erfolg, kam aber: $r" }
+        return (r as Ergebnis.Success).data
     }
 
-    private fun nummern(r: Result<SetsResponse>) = daten(r).sets.map { it.setNumber }
+    private fun nummern(r: Ergebnis<SetsResponse>) = daten(r).sets.map { it.setNumber }
 
     @Test
     fun `jeder Filter steht in der Anfrage an den Server`() = runTest {
@@ -150,7 +138,7 @@ class GalerieAbfrageTest {
         //    einem Neustart eine gefilterte Liste als vollen Bestand.
         server.enqueue(MockResponse().setResponseCode(500))
         val r = repo.getSets()
-        if (r is Result.Success) {
+        if (r is Ergebnis.Success) {
             assert(r.data.sets.isEmpty()) {
                 "Die gefilterte Antwort liegt unter dem Schluessel der vollen Sicht. " +
                     "Nach dem naechsten Start zeigt die Galerie sie als Gesamtbestand an. " +
@@ -172,7 +160,7 @@ class GalerieAbfrageTest {
 
         server.enqueue(MockResponse().setResponseCode(500))
         val r = repo.getSets()
-        if (r is Result.Success) {
+        if (r is Ergebnis.Success) {
             assert(r.data.sets.isEmpty()) {
                 "Seite 2 liegt im Cache der ersten Seite. Bekommen: " +
                     "${r.data.sets.map { it.setNumber }}"
@@ -185,7 +173,7 @@ class GalerieAbfrageTest {
         // Das Gegenstueck: Genau EIN Fall darf auf die Platte, und der muss es
         // auch wirklich tun — sonst startet die App ohne Netz mit leerer Galerie.
         // Netzausfall = die Verbindung bricht ab; ein 500 ist eine Auskunft des
-        // Servers und traegt seit dem 28.10.2026 nicht mehr (RepoCacheRueckfallTest).
+        // Servers und traegt nicht mehr (RepoCacheRueckfallTest).
         server.enqueue(MockResponse().setResponseCode(200).setBody(antwort("10-1", "11-1")))
         assert(nummern(repo.getSets()) == listOf("10-1", "11-1"))
 

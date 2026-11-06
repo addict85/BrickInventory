@@ -1,12 +1,12 @@
 import { resolveOne } from '../katalog/bricklinkLink';
-import { meldeUndWeiter, meldeUndLiefere } from '../infra/httpError';
-import { fuerSet } from '../finanzen/preisvergleich';
+import { meldeUndWeiter, meldeUndLiefere } from '../infra/fehler';
+import { fuerSet } from '../katalog/preisvergleich';
 import * as db from '../../db/database';
 import * as repo from './repository/sets';
 import type { DbSchnittstelle } from '../../db/database';
 import { resolveImageLocal } from '../katalog/bilder/images';
-import { asIds } from '../haushalt/haushalt';
-import { clampPageSize, conditionFromAcquisitions, conditionsFromAcquisitions, withOwners } from '../bestand/gemeinsam';
+import { asIds, withOwners, blickfeldAus, writableIds, type Sicht } from '../haushalt/haushalt';
+import { clampPageSize, conditionFromAcquisitions, conditionsFromAcquisitions } from '../bestand/gemeinsam';
 import { anleitungenZuSet, anleitungenZusammenlegen } from '../katalog/instructions';
 import { legeInPapierkorb } from '../bestand/papierkorb';
 
@@ -17,7 +17,8 @@ import type { BlickfeldEingabe as Blickfeld } from '../haushalt/haushalt';
 
 /** Filtern und Sortieren auf dem Server, damit sie mit seitenweisem Laden
  * zusammengehen. Ohne page_size alles — so ruft die Android-App. */
-export async function getSets(userId: Blickfeld, query: any = {}) {
+export async function getSets(userIdWahl: Sicht | Blickfeld, query: any = {}) {
+  const userId = await blickfeldAus(userIdWahl);
   // asIds(), damit ältere Aufrufer mit einer nackten ID weiter gehen.
   const uids = asIds(userId);
   // Ausdrückliche Spalten statt SELECT *: Die Antwort trägt nur, was die
@@ -72,7 +73,7 @@ export async function getSets(userId: Blickfeld, query: any = {}) {
   // Mit Gesamtzahl für den Endlos-Scroll; ohne Paginierung ist total die Länge.
   return {
     sets: mitBesitzern,
-    total: countRow ? parseInt(countRow.c) : mapped.length,
+    total: countRow ? countRow.c : mapped.length,
     ...(themeRows ? { themes: themeRows.map(r => r.theme) } : {}),
   };
 }
@@ -81,8 +82,8 @@ export async function getSets(userId: Blickfeld, query: any = {}) {
 export async function getSetConditionAggregate(userId: Blickfeld, setNumber: string) {
   const uids = asIds(userId);
   const acq = await repo.setErfassungsKennzahlen(uids, setNumber);
-  const acqCount  = parseInt(acq?.acq_count) || 0;
-  const usedCount = parseInt(acq?.used_count) || 0;
+  const acqCount  = Number(acq?.acq_count) || 0;
+  const usedCount = Number(acq?.used_count) || 0;
   return {
     condition: conditionFromAcquisitions(acqCount, usedCount),
     // Dieselben Felder wie getSets(): Die Kachel wird nach dem Speichern ohne
@@ -103,7 +104,8 @@ export async function withSetAggregate<T extends object>(userId: Blickfeld, setN
   return agg ? { ...payload, set: { set_number: setNumber, ...agg } } : payload;
 }
 
-export async function getSet(userId: Blickfeld, setNumber: string) {
+export async function getSet(userIdWahl: Sicht | Blickfeld, setNumber: string) {
+  const userId = await blickfeldAus(userIdWahl);
   const uids = asIds(userId);
   const [set, shared, uploaded] = await Promise.all([
     // Die eigene Zeile gewinnt für Zustand und Kaufpreis; die MENGE ist die Summe
@@ -137,6 +139,13 @@ export async function getSet(userId: Blickfeld, setNumber: string) {
 // Ausführlich: docs/begruendungen/src/sets/abfragen.ts.md#deletesetrows
 export async function deleteSetRows(tx: DbSchnittstelle, uids: number[], setNumber: string) {
   await repo.entferneSetZeilen(tx, uids, setNumber);
+}
+
+/** Standardmässig im ganzen Schreibbereich; eine Kontenwahl schränkt ihn ein, erweitert ihn nie. */
+export async function loescheSetFuer(s: Sicht, setNumber: string) {
+  const schreibbar = await writableIds(s.nutzer);
+  const gewaehlt = s.konten === undefined ? schreibbar : await blickfeldAus(s);
+  return deleteSet(gewaehlt.filter(id => schreibbar.includes(id)), setNumber);
 }
 
 export async function deleteSet(userId: Blickfeld, setNumber: string) {

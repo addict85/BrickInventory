@@ -1,24 +1,6 @@
 /**
  * Passwortwechsel gegen echte Datenbank und echten Session-Store.
- *
- * ── Warum es diese Datei gibt ───────────────────────────────────────────────
- * Die Regel „ein Passwortwechsel beendet alle offenen Zugänge" war bisher NUR
- * über Quelltext-Prüfungen abgesichert (auth-parity.test.js). Genau diese Sorte
- * Test hatte die Lücke davor FESTGESCHRIEBEN statt gefunden: Er verlangte
- * ausdrücklich einen Test auf `to_regclass('public.session')` — eine Tabelle,
- * die es nie gab, weil der Store auf `user_sessions` läuft. Der Ausdruck stand
- * im Code, der Test war grün, und das DELETE lief nie. Ein Administrator konnte
- * das Passwort eines übernommenen Kontos zurücksetzen, während die Sitzung des
- * Angreifers weiterlief.
- *
- * Eine Quelltext-Prüfung kann das nicht merken — sie sieht Zeichen, kein
- * Verhalten. Deshalb hier: echter connect-pg-simple-Store, echte Routen, echte
- * Cookies. Die statischen Prüfungen bleiben daneben bestehen; sie erklären die
- * Regel und fangen ein versehentliches Löschen des Aufrufs. Aber ob sie WIRKT,
- * beantwortet nur diese Datei.
- *
- * Voraussetzung: Test-DB (Inhalt wird geleert!) via TEST_DATABASE_URL.
- * Ohne DB: skip.
+ * Ausführlich: docs/begruendungen/test/auth-sessions-db.test.js.md#kopf
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -29,6 +11,7 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 process.env.SESSION_SECRET = 'test-secret-lang-genug-fuer-die-pruefung';
 
 const _req = require('./helpers/sources').buildAndRequire();
+const { dbOderSkip } = require('./helpers/db');
 // Die Adresse aus server.ts LESEN, nicht abschreiben: Ein eigener Pruefstand
 // mit fester Adresse bleibt gruen, waehrend der Router laengst woanders haengt.
 const AUTH = require('./helpers/sources').einhaengung('auth');
@@ -41,14 +24,7 @@ const bcrypt      = require(path.join(ROOT, 'node_modules', 'bcryptjs'));
 test('ein Passwortwechsel beendet Sitzungen UND Token — gegen echten Store',
   { concurrency: 1 }, async (t) => {
 
-  try { await db.initSchema(); }
-  catch (e) {
-    if (process.env.REQUIRE_DB === '1')
-      throw new Error(`REQUIRE_DB=1, aber die Test-DB ist nicht erreichbar: ${e.message}`);
-    t.skip('Test-DB nicht erreichbar'); return;
-  }
-  const client = await db.pool.connect();
-  try { await _req('db/migrate.js').runMigrations(client); } finally { client.release(); }
+  if (!await dbOderSkip(t, _req)) return;
 
   // ── Aufbau: ein Administrator, ein Opfer ────────────────────────────────
   for (const name of ['pw_chef', 'pw_opfer']) {
@@ -121,7 +97,7 @@ test('ein Passwortwechsel beendet Sitzungen UND Token — gegen echten Store',
 
       const r = await fetch(`${basis}${AUTH}/change-password`, {
         method: 'POST', headers: { 'content-type': 'application/json', cookie: fensterA.cookie },
-        body: JSON.stringify({ current: 'altesPasswort1', newPassword: 'nochNeuer12' }),
+        body: JSON.stringify({ current: 'altesPasswort1', newPassword: 'nochNeuer1234' }),
       });
       assert.equal(r.status, 200, await r.text());
 
@@ -143,13 +119,13 @@ test('ein Passwortwechsel beendet Sitzungen UND Token — gegen echten Store',
         [hashToken(tok), opferId]);
       assert.ok(await validateToken(tok), 'Vorbedingung: Token gilt');
 
-      // 'nochNeuer12' — der Subtest davor hat es geändert.
-      const chef = await anmelden('pw_chef', 'nochNeuer12');
+      // 'nochNeuer1234' — der Subtest davor hat es geändert.
+      const chef = await anmelden('pw_chef', 'nochNeuer1234');
       // Das Passwort des OPFERS wurde im ersten Subtest geändert — hier zählt nur, dass
       // der Reset läuft; der Admin-Weg verlangt kein altes Passwort.
       const r = await fetch(`${basis}${AUTH}/users/${opferId}/password`, {
         method: 'PUT', headers: { 'content-type': 'application/json', cookie: chef.cookie },
-        body: JSON.stringify({ password: 'wiederNeu123', admin_password: 'nochNeuer12' }),
+        body: JSON.stringify({ password: 'wiederNeu123', admin_password: 'nochNeuer1234' }),
       });
       assert.equal(r.status, 200, await r.text());
       assert.equal(await validateToken(tok), null,

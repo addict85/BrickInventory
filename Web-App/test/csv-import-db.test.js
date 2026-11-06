@@ -43,17 +43,8 @@ test('Katalog-Import tauscht, statt zu leeren', async (t) => {
   await db.run('DROP SCHEMA public CASCADE');
   await db.run('CREATE SCHEMA public');
   await db.initSchema();
-  // ── Und die MIGRATIONEN, nicht nur das Schema ───────────────────────────
-  //
-  // Diese Datei loescht das Schema und baut es neu auf. Ohne die Migrationen
-  // bleibt die Datenbank auf dem Stand von db/schema.sql stehen — also VOR
-  // allen Migrationen —, und das ist nicht nur fuer sie selbst falsch,
-  // sondern fuer jede Datei danach: Sie erbt eine halbe Datenbank.
-  //
-  // GEMESSEN beim Umzug der Teilemengen (Migration 0038): db/schema.sql legt
-  // `parts.quantity DEFAULT 1` an, die Katalogzeilen tragen die echte Zahl.
-  // Die naechste Datei, die die Migrationen laufen liess, brach ab — „Bei 8
-  // Set-Teilen weicht parts.quantity vom Katalog ab". Der Riegel hatte recht.
+  // Und die MIGRATIONEN, nicht nur das Schema
+  // Ausführlich: docs/begruendungen/test/csv-import-db.test.js.md#stelle
   {
     const mc = await db.pool.connect();
     try { await _req('db/migrate.js').runMigrations(mc); } finally { mc.release(); }
@@ -152,17 +143,16 @@ test('Katalog-Import tauscht, statt zu leeren', async (t) => {
   await db.pool.end().catch(() => {});
 });
 
-test('der CSV-Download hat ein Zeitlimit', () => {
-  const src = ohneKommentare(fs.readFileSync(path.join(ROOT, 'jobs/rebrickableCsvSync.ts'), 'utf8'));
-  const dl = src.slice(src.indexOf('async function downloadToTmp'), src.indexOf('async function runWorker'));
-  // Diese eine Prüfung liest Quelltext statt Verhalten: Ein echter Nachweis
-  // bräuchte einen TLS-Server, der die Verbindung annimmt und dann schweigt.
-  // Deshalb wenigstens die Form festhalten — der Aufruf muss eine eigene
-  // Anweisung sein. Ein `if (false) req.setTimeout(…)` fällt damit auf, was
-  // eine blosse Namenssuche nicht könnte (siehe Nachtrag 11).
-  assert.match(dl, /^\s*req\.setTimeout\(/m,
-    'ohne Frist bleibt eine hängende Verbindung für immer stehen — beim Erststart hängt dann die Startanzeige');
-  assert.match(dl, /destroy\(/, 'die Frist bricht die Anfrage nicht ab');
+test('der CSV-Download geht über abruf.ts, mit Frist, Deckel und Host-Liste', () => {
+  // Quelltext statt Verhalten: Frist und Deckel selbst prüft test/abruf-helfer.test.js
+  // an abruf.ts; hier nur, dass der Download diesen Weg nimmt.
+  const src = ohneKommentare(fs.readFileSync(path.join(ROOT, 'clients/rebrickableCsv.ts'), 'utf8'));
+  const aufruf = src.slice(src.indexOf('await oeffneHttps('), src.indexOf('});', src.indexOf('await oeffneHttps(')));
+  for (const feld of ['hosts:', 'maxBytes:', 'zeitlimitMs:', 'signal'])
+    assert.ok(aufruf.includes(feld), `der Download ruft oeffneHttps ohne ${feld}`);
+  assert.doesNotMatch(ohneKommentare(fs.readFileSync(path.join(ROOT, 'jobs/rebrickableCsvSync.ts'), 'utf8')),
+    /from 'https'/, 'der Job lädt nicht mehr selbst');
+
 });
 
 test('die entpackten Zwischendateien werden aufgeräumt', () => {

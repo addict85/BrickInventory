@@ -38,7 +38,7 @@ class TabOpensAtTopTest {
         // Er muss VOR der Navigation laufen — danach ist der Bildschirm unter
         // Umständen schon zusammengesetzt und hat die alte Stelle gelesen.
         val ruf = ms.indexOf("onTabAngetippt(screen)")
-        val nav = ms.indexOf("navController.zuReiter(screen.route)")
+        val nav = ms.indexOf("navController.zuReiter(screen)")
         assert(nav > 0) { "Die Leiste navigiert nicht mehr über zuReiter() — Test veraltet?" }
         assert(ruf in 0 until nav) {
             "onTabAngetippt läuft nicht VOR der Navigation — dann kann der " +
@@ -74,7 +74,7 @@ class TabOpensAtTopTest {
 
         val geruest = code(lies("MainScaffold.kt"))
         assert(geruest.contains("fun ReiterGeruest(")) { "ReiterGeruest fehlt" }
-        assert(geruest.contains("onTabAngetippt = { ziel -> vm.scrollMemory.vergissReiter(ziel.route) }")) {
+        assert(geruest.contains("onTabAngetippt = { ziel -> vm.scrollMemory.vergissReiter(ziel.rollSchluessel) }")) {
             "Das Geruest verwirft die Rollposition nicht mehr — dann beginnt der Reiter " +
                 "je nach Herkunft mal oben und mal in der Mitte."
         }

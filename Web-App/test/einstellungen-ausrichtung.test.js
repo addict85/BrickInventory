@@ -1,33 +1,6 @@
 /**
  * Die Einstellungen richten ihre Spalten aneinander aus, nicht an der Textlänge.
- *
- * ── Marcos Befunde (mit Bildern) ────────────────────────────────────────────
- *
- *   1. „Kannst du einen kleinen Abstand zwischen dem Einladungscode und dem
- *      Verknüpfen Button einfügen? die sind zu nahe bei einander."
- *   2. „Kannst du sicherstellen dass die Felder alle schön gleich ausgerichtet
- *      sind wie in einer Tabelle? aktuell sind sie alle unterschiedlich lang."
- *      (Lagerorte)
- *   3. „dass alle Entfernen Buttons schön in einer Spalte sind? aktuell sind
- *      sie nicht alle gleich ausgerichtet."
- *
- * 2 und 3 haben dieselbe Ursache: Jede Zeile war ein EIGENES Flexfeld. Damit
- * beginnt die nächste Spalte dort, wo der Inhalt der vorigen aufhört — und
- * „emily.bigolin" endet woanders als „alessio.bigolin", „406 Sets, 0
- * Teilesorten, 0 Figuren" woanders als „leer".
- *
- * Die Abhilfe ist dieselbe: Das Raster steht auf der LISTE, die Zeilen sind
- * `display:contents`. Nur so teilen sich alle Zeilen DIESELBEN Spaltenbreiten.
- * Wäre jede Zeile ein eigenes Raster, hätte jede wieder ihre eigenen Breiten —
- * also genau den Zustand von vorher. Genau diesen Unterschied prüfen die Fälle
- * unten: Es reicht nicht, dass irgendwo „grid" steht.
- *
- * ── Warum das hier prüfbar IST ──────────────────────────────────────────────
- *
- * jsdom rechnet kein Layout — eine Breite in Pixeln liesse sich hier nicht
- * messen. Was die Ausrichtung entscheidet, steht aber vollständig im Markup:
- * WO das Raster sitzt und ob die Zeilen einen eigenen Kasten erzeugen. Genau
- * das wird geprüft, und zwar an der ERZEUGTEN Struktur, nicht am Quelltext.
+ * Ausführlich: docs/begruendungen/test/einstellungen-ausrichtung.test.js.md#kopf
  *
  * ── Gegenproben (durchgeführt) ──────────────────────────────────────────────
  *
@@ -42,7 +15,7 @@ const vm = require('node:vm');
 const { JSDOM } = require('jsdom');
 
 const ROOT = path.join(__dirname, '..');
-const QUELLE = fs.readFileSync(path.join(ROOT, 'public', 'js', '05-settings.js'), 'utf8');
+const QUELLE = require('./helpers/sources').ansichtQuelle('05');
 const HTML = fs.readFileSync(path.join(ROOT, 'public', 'index.html'), 'utf8');
 
 /** Wie in test/catalog-frontend.test.js: die Modulverpackung weg. */
@@ -59,7 +32,7 @@ function ohneModul(src) {
  */
 function fuehreAus(funktionsName, umgebung) {
   const start = QUELLE.indexOf(`function ${funktionsName}(`);
-  assert.ok(start > 0, `${funktionsName}() steht nicht mehr in public/js/05-settings.js`);
+  assert.ok(start > 0, `${funktionsName}() steht nicht mehr in public/js/05-*.js`);
   // Bis zur Klammer auf Spalte 0 — so sind diese Dateien geschrieben.
   const ende = QUELLE.indexOf('\n}\n', start) + 3;
   const code = ohneModul(QUELLE.slice(start, ende));
@@ -75,7 +48,7 @@ function gestell(dom, zielId) {
   return {
     document: d,
     G: (id) => d.getElementById(id),
-    esc: (s) => String(s ?? ''),
+    ...require('./helpers/markup').markupHelfer(),
     echt: () => '',
     t:    (k, v) => k + (v ? ' ' + JSON.stringify(v) : ''),
     tRaw: (k) => k,
@@ -106,11 +79,15 @@ test('die verknüpften Konten stehen in zwei Spalten, nicht je Zeile neu', () =>
 
   const liste = dom.window.document.querySelector('#household-state ul');
   assert.ok(liste, 'Die Liste der verknüpften Konten wurde nicht erzeugt');
-  const stil = liste.getAttribute('data-stil') || '';
+  // Das Raster steht in styles.css (.haushalt-liste); minmax(0, …) lässt die
+  // Spalten bei grosser Schrift schrumpfen, statt die Seite zu verbreitern.
+  assert.ok(liste.classList.contains('haushalt-liste'), 'Die Liste trägt die Klasse haushalt-liste nicht');
+  const css = fs.readFileSync(path.join(__dirname, '..', 'public', 'styles.css'), 'utf8');
+  const stil = (css.match(/\n\.haushalt-liste\{([^}]*)\}/) || [])[1] || '';
   assert.match(stil, /display\s*:\s*grid/,
-    `Die LISTE trägt kein Raster (data-stil="${stil}") — dann richtet sich jede Zeile ` +
+    `Die LISTE trägt kein Raster („${stil}“) — dann richtet sich jede Zeile ` +
     'für sich aus, und die Knöpfe stehen versetzt.');
-  assert.match(stil, /grid-template-columns\s*:\s*max-content\s+max-content/,
+  assert.match(stil, /grid-template-columns\s*:\s*minmax\(0,\s*max-content\)\s+minmax\(0,\s*max-content\)/,
     'Die Liste hat keine zwei Inhaltsspalten — ohne sie teilen sich die Zeilen ' +
     'keine gemeinsame Breite');
 
@@ -147,11 +124,12 @@ test('die Lagerorte stehen wie in einer Tabelle', () => {
   const sandbox = {
     document: d,
     G: (id) => d.getElementById(id),
-    esc: (s) => String(s ?? ''),
+    ...require('./helpers/markup').markupHelfer(),
     echt: () => '',
     ico: (n) => `<svg class="ico"><use href="#i-${n}"/></svg>`,
     t: (k, v) => k + ' ' + JSON.stringify(v || {}),
     tRaw: (k) => k,
+    ladeLagerorte: async () => {},
     // success: true, sonst kehrt die Funktion gleich am Anfang um. Und die
     // Belegung schluesselt auf `ort`, nicht auf `name` — genau Marcos Lage:
     // drei Orte mit Inhalt, einer leer, damit die Spalte „Belegung" wirklich

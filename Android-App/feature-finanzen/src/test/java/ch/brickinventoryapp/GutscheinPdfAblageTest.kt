@@ -7,39 +7,48 @@ import ch.brickinventoryapp.ui.viewmodel.zeigtGutscheine
 import ch.brickinventoryapp.util.PDF_VERTRAULICH_ORDNER
 import ch.brickinventoryapp.util.pdfAblage
 import ch.brickinventoryapp.util.raeumeVertraulichePdfsAuf
-import ch.brickinventoryapp.util.vergissPdf
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.io.File
 
 /**
- * Ein Gutschein-PDF (Nummer und PIN) bleibt nicht im Zwischenspeicher liegen:
- * Es kommt in einen eigenen Ordner, verschwindet beim Verlassen des Betrachters
- * samt Teildatei und beim Abmelden und Start ganz. Anleitungen bleiben.
+ * Ein Gutschein-PDF (Nummer und PIN) kommt nie auf die Platte: Der
+ * Betrachter bekommt dafür keine Datei, lädt in den Speicher und rendert aus einem
+ * memfd. Was ältere Fassungen in ihren Ordner legten, verschwindet beim Abmelden und
+ * Start. Anleitungen bleiben im Zwischenspeicher.
  *
- * Ausgeführt: Ablage und Löschen gegen ein echtes Verzeichnis. Dass der
- * Betrachter, das Abmelden und der Start sie rufen, braucht ein Gerät; das
- * hält die Struktur-Prüfung unten fest.
+ * Ausgeführt: Ablage und Löschen gegen ein echtes Verzeichnis; das Laden in den
+ * Speicher prüft PdfImSpeicherTest (core-data). Dass der Betrachter diesen Weg nimmt,
+ * braucht ein Gerät; das hält die Struktur-Prüfung unten fest.
  *
- * Gegenproben (30.10.2026, gemessen mit kt-b2/bau.sh):
+ * Gegenproben (30.10.2026, gemessen mit kt-b2/bau.sh; B und C galten der Datei, die
+ * es seit sec11 nicht mehr gibt):
  *   A  in pdfAblage() `vertraulich` übergangen (immer cacheDir) → rot „ein
- *      Gutschein-PDF liegt abseits der Anleitungen“ und „Abmelden und Start
- *      leeren den Ordner …“
- *   B  in vergissPdf() die Teildatei nicht gelöscht → rot „Verlassen löscht
- *      das PDF samt Teildatei …“
- *   C  im PdfViewerScreen das `onDispose { … vergissPdf(ablage) }` entfernt →
- *      rot „Betrachter, Abmelden und Start räumen auf“
- *   D  (01.11.2026) pdfDarfGespeichertWerden() immer true → rot „ein
+ *      Gutschein-PDF bekommt keine Datei …“
+ *   D  pdfDarfGespeichertWerden() immer true → rot „ein
  *      Gutschein-PDF laesst sich nicht herunterladen …“
- *   E  (01.11.2026) im PdfViewerScreen `if (speicherbar)` um den Knopf entfernt
+ *   E  im PdfViewerScreen `if (speicherbar)` um den Knopf entfernt
  *      → rot „Betrachter, Abmelden und Start räumen auf“ (Knopf ungeschützt)
- *   F  (02.11.2026) in pdfAblage() wieder `pdfUrl.hashCode()` als Name → rot
+ *   F  in pdfAblage() wieder `pdfUrl.hashCode()` als Name → rot
  *      „der Dateiname haengt an der ganzen Adresse …“
- *   G  (02.11.2026) zeigtGutscheine() wieder `"/api/v1/vouchers/" in pdfUrl` →
+ *   G  zeigtGutscheine() wieder `"/api/v1/vouchers/" in pdfUrl` →
  *      rot „Gutscheine erkennt der Pfad …“
+ * Gegenproben:
+ *   H  pdfAblage() gibt auch für vertrauliche PDFs eine Datei im Zwischenspeicher
+ *      → rot „ein Gutschein-PDF bekommt keine Datei …“;
+ *      gegenproben/gutschein-pdf-auf-platte.patch
+ *   I  im Lader (damals PdfViewerScreen) `if (ablage == null)` durch `if (false)` ersetzt → rot
+ *      „Betrachter, Abmelden und Start raeumen auf“ (Speicherweg nicht gewählt)
+ * Gegenproben:
+ *   J  im PdfViewerScreen den Drucken-Knopf vor `if (speicherbar)` gezogen → rot
+ *      „Betrachter, Abmelden und Start raeumen auf“ (Drucken ungeschützt);
+ *      gegenproben/gutschein-drucken.patch
+ *   K  in logout() die Zeile `raeumeAnleitungenAuf(` gestrichen → rot „Betrachter,
+ *      Abmelden und Start raeumen auf“ (Anleitungen überleben das Abmelden)
  */
 class GutscheinPdfAblageTest {
 
@@ -50,14 +59,13 @@ class GutscheinPdfAblageTest {
     @After
     fun zu() { cache.deleteRecursively() }
 
-    private fun anlegen(f: File) = f.apply { parentFile.mkdirs(); writeText("PIN 1234") }
+    private fun anlegen(f: File) = f.apply { parentFile!!.mkdirs(); writeText("PIN 1234") }
 
     @Test
-    fun `ein Gutschein-PDF liegt abseits der Anleitungen`() {
-        val g = pdfAblage(cache, gutschein, zeigtGutscheine(gutschein))
-        val a = pdfAblage(cache, anleitung, zeigtGutscheine(anleitung))
-        assertEquals(File(cache, PDF_VERTRAULICH_ORDNER), g.parentFile)
-        assertEquals(cache, a.parentFile)
+    fun `ein Gutschein-PDF bekommt keine Datei, eine Anleitung liegt im Zwischenspeicher`() {
+        assertNull(pdfAblage(cache, gutschein, zeigtGutscheine(gutschein)))
+        assertNull(pdfAblage(cache, gutscheinExportAdresse("https://brick.example/"), true))
+        assertEquals(cache, pdfAblage(cache, anleitung, zeigtGutscheine(anleitung))?.parentFile)
     }
 
     /** Zwei Adressen mit gleichem hashCode() teilten sich sonst eine Datei. */
@@ -66,8 +74,8 @@ class GutscheinPdfAblageTest {
         val x = "https://brick.example/api/v1/vouchers/Aa/pdf"
         val y = "https://brick.example/api/v1/vouchers/BB/pdf"
         assertEquals("Die Probe braucht zwei Adressen mit gleichem hashCode()", x.hashCode(), y.hashCode())
-        assertTrue(pdfAblage(cache, x, true) != pdfAblage(cache, y, true))
-        assertEquals("pdfview_e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855.pdf", pdfAblage(cache, "", false).name)
+        assertTrue(pdfAblage(cache, x, false) != pdfAblage(cache, y, false))
+        assertEquals("anleitung_e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855.bin", pdfAblage(cache, "", false)?.name)
     }
 
     @Test
@@ -80,21 +88,11 @@ class GutscheinPdfAblageTest {
         assertFalse("Die Abfrage ist kein Pfad", zeigtGutscheine("$anleitung?von=/api/v1/vouchers/7"))
     }
 
-    @Test
-    fun `Verlassen loescht das PDF samt Teildatei, ein anderes bleibt`() {
-        val g = anlegen(pdfAblage(cache, gutschein, true))
-        val teil = anlegen(File(g.path + ".part"))
-        val anderer = anlegen(pdfAblage(cache, gutscheinPdfAdresse("https://brick.example", 8), true))
-        vergissPdf(g)
-        assertFalse(g.exists())
-        assertFalse(teil.exists())
-        assertTrue("Das PDF eines anderen, noch offenen Betrachters bleibt", anderer.exists())
-    }
-
+    /** Gutschein-PDFs, die ältere Fassungen im eigenen Ordner ablegten. */
     @Test
     fun `Abmelden und Start leeren den Ordner, Anleitungen bleiben`() {
-        val g = anlegen(pdfAblage(cache, gutschein, true))
-        val a = anlegen(pdfAblage(cache, anleitung, false))
+        val g = anlegen(File(File(cache, PDF_VERTRAULICH_ORDNER), "pdfview_alt.pdf"))
+        val a = anlegen(pdfAblage(cache, anleitung, false)!!)
         raeumeVertraulichePdfsAuf(cache)
         assertFalse(g.exists())
         assertFalse(File(cache, PDF_VERTRAULICH_ORDNER).exists())
@@ -111,16 +109,29 @@ class GutscheinPdfAblageTest {
     @Test
     fun `Betrachter, Abmelden und Start raeumen auf`() {
         val betrachter = Quellen.ohneKommentare(Quellen.lies("ui/screens/PdfViewerScreen.kt"))
-        assertTrue("Der Betrachter löscht ein Gutschein-PDF beim Verlassen nicht",
-            Regex("""onDispose\s*\{\s*if \(vertraulich\) vergissPdf\(ablage\)""").containsMatchIn(betrachter))
-        assertTrue("Der Betrachter legt nicht über pdfAblage() ab", betrachter.contains("pdfAblage(ctx.cacheDir, pdfUrl, vertraulich)"))
+        // Laden und Halten liegen seit M1 (arch14) im Lader und im ViewModel.
+        val lader = Quellen.ohneKommentare(Quellen.lies("ui/pdf/AnleitungsLader.kt") + Quellen.lies("ui/pdf/PdfQuelle.kt") +
+            Quellen.lies("data/AnleitungsRepository.kt"))
+        val vm = Quellen.ohneKommentare(Quellen.lies("ui/viewmodel/PdfBetrachterViewModel.kt"))
+        assertTrue("Der Betrachter legt nicht über pdfAblage() ab", lader.contains("pdfAblage(ctx.cacheDir, pdfUrl, vertraulich)"))
+        assertTrue("Ohne Datei nimmt der Betrachter nicht den Weg über den Speicher",
+            Regex("""if \(ablage == null\) \{\s*ladeInDenSpeicherUndZaehle\(""").containsMatchIn(lader))
+        assertTrue("Der Speicherweg lädt nicht über ladePdfInDenSpeicher()", lader.contains("ladePdfInDenSpeicher(ladeClient(httpClient), url"))
+        assertTrue("Das Gutschein-PDF liegt nicht in einem memfd", lader.contains("Os.memfd_create("))
+        assertTrue("Der Speicherbereich bleibt nach dem Verlassen offen",
+            Regex("""override fun onCleared\(\)\s*\{\s*offen\.close\(\)""").containsMatchIn(vm))
         assertTrue("Herunterladen steht ohne Prüfung da",
-            Regex("""if \(speicherbar\) \{\s*IconButton\(onClick = \{ savePdfToDownloads\(""").containsMatchIn(betrachter))
-        val abmelden = Quellen.funktion(Quellen.ohneKommentare(Quellen.lies("ui/AppViewModel.kt")), "fun logout(")
+            Regex("""if \(speicherbar\) \{\s*((?:ch\.brickinventoryapp\.ui\.components\.)?MitTooltip\([^\n]*\{\s*)?IconButton\(onClick = \{ (melde\()?savePdfToDownloads\(""").containsMatchIn(betrachter))
+        // Der Druckdialog bietet „Als PDF speichern“: Drucken nur, wo auch Speichern erlaubt ist.
+        val geschuetzt = betrachter.substringAfter("if (speicherbar) {").substringBefore("\n                    }\n")
+        assertTrue("Drucken steht ohne Prüfung da", betrachter.split("printPdf(ctx,").size == 2 && "printPdf(ctx," in geschuetzt)
+        val abmelden = Quellen.funktion(Quellen.ohneKommentare(Quellen.lies("data/SitzungsBereinigung.kt")), "suspend fun raeumeAuf(")
         assertTrue("Abmelden lässt Gutschein-PDFs liegen", abmelden.contains("raeumeVertraulichePdfsAuf("))
+        assertTrue("Abmelden lässt Anleitungen liegen", abmelden.contains("raeumeAnleitungenAuf(ctx.cacheDir)"))
         assertTrue("Abmelden lässt Teileliste und Update in filesDir liegen",
             abmelden.contains("raeumeKontoDateienAuf(ctx.filesDir, ctx.getExternalFilesDir(null))"))
-        assertTrue("Der Start räumt Reste nicht weg",
-            Quellen.lies("BrickInventoryApp.kt").contains("raeumeVertraulichePdfsAuf(cacheDir)"))
+        val start = Quellen.lies("BrickInventoryApp.kt")
+        assertTrue("Der Start räumt Reste nicht weg", start.contains("raeumeVertraulichePdfsAuf(cacheDir)"))
+        assertTrue("Der Start lässt Klartext-Anleitungen liegen", start.contains("raeumeKlartextAnleitungenAuf(cacheDir)"))
     }
 }

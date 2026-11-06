@@ -1,6 +1,7 @@
 package ch.brickinventoryapp
 
 import org.junit.Test
+import java.io.File
 
 /**
  * Bedienelemente, die NUR aus einem Symbol bestehen, brauchen eine Beschriftung.
@@ -29,10 +30,8 @@ class IconButtonLabelTest {
     // Tests sechs weitere Stellen zutage gefoerdert, an die vorher niemand
     // dachte: die Mengen-Knoepfe (+/-) in den beiden Detail-Ansichten und zwei
     // Bearbeiten-Knoepfe im Monitoring. Die Mengen-Knoepfe trugen "+" und "-"
-    // als Beschreibung — das liest TalkBack als "Plus", nicht als "Menge
-    // erhoehen".
 
-    private fun screens(): List<java.io.File> =
+    private fun screens(): List<File> =
         Quellen.wurzel
             .walkTopDown().filter { it.isFile && it.extension == "kt" }.toList()
             .also {
@@ -71,12 +70,36 @@ class IconButtonLabelTest {
         }
     }
 
+    /**
+     * Jeder reine Symbolknopf liegt in MitTooltip: Sehende Nutzer konnten Filter und
+     * Sortieren (beides Linien) nur raten, Material zeigt den Namen beim langen Drücken.
+     * Der Aufruf steht auf derselben Zeile oder bis zu zwei Zeilen darüber. Ausnahme ist
+     * nur MitTooltip.kt selbst, das den Knopf als Inhalt bekommt.
+     *
+     * Gegenprobe (gegenproben/symbolknopf-ohne-tooltip.patch): der Zurück-Pfeil der
+     * Unterseite ohne MitTooltip → rot mit Unterseite.kt.
+     */
+    @Test
+    fun `jeder Symbolknopf zeigt seinen Namen als Tooltip`() {
+        val ohne = mutableListOf<String>()
+        for (datei in screens()) {
+            if (datei.name == "MitTooltip.kt") continue
+            val zeilen = Quellen.ohneKommentare(datei.readText()).lines()
+            zeilen.forEachIndexed { i, zeile ->
+                if (!zeile.contains("IconButton(")) return@forEachIndexed
+                val davor = zeilen.subList(maxOf(0, i - 2), i + 1).joinToString("\n")
+                if (!davor.contains("MitTooltip(")) ohne += "${datei.name}:${i + 1}"
+            }
+        }
+        assert(ohne.isEmpty()) { "Symbolknopf ohne Tooltip (MitTooltip): $ohne" }
+    }
+
     @Test
     fun `die Beschriftungen liegen in beiden Sprachen vor`() {
         // Ein fehlender Eintrag in values-de führt nicht zum Fehler, sondern
         // still zum englischen Text — genau die Sorte Lücke, die niemand meldet.
-        val en = java.io.File(Quellen.res, "values/strings.xml").readText()
-        val de = java.io.File(Quellen.res, "values-de/strings.xml").readText()
+        val en = File(Quellen.res, "values/strings.xml").readText()
+        val de = File(Quellen.res, "values-de/strings.xml").readText()
         val namen = listOf(
             "cd_search_clear", "cd_password_show", "cd_password_hide", "cd_set_delete",
             "cd_qty_increase", "cd_qty_decrease", "cd_edit_cache_ttl", "cd_edit_limits",

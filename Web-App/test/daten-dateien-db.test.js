@@ -13,6 +13,10 @@
  *   B  scopeIds-Abfrage entfernt (nur eigene ID) → rot: „Hauptkonto liest Unterkonto"
  *   C  (28.10.) die Verwalter-Ausnahme wieder eingebaut → rot: „auch ein
  *      Verwalter liest fremde Uploads nicht"
+ *   D  (03.11.) für fremde Konten wieder 403 „Kein Zugriff“ → rot: „fremd und
+ *      fehlend antworten gleich“ und die drei Teiltests davor
+ *   E  (05.11.) alsAnhang() in beiden Routen entfernt → rot: „als Anhang in
+ *      einer Sandbox“ (beide Wege, Kopf fehlt)
  *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL.
  */
@@ -29,20 +33,14 @@ process.env.APP_ROOT = WURZEL;
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
 const _req = require('./helpers/sources').buildAndRequire();
+const { dbOderSkip } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
 const db = _req('db/database.js');
 
 const NAMEN = ['dd_haupt', 'dd_unter', 'dd_fremd'].map(n => `${n}_${process.pid}`);
 
 test('Uploads: Haushalt ja, Fremde nein, %2F nie', { concurrency: 1 }, async (t) => {
-  try { await db.initSchema(); }
-  catch (e) {
-    if (process.env.REQUIRE_DB === '1')
-      throw new Error(`REQUIRE_DB=1, aber die Test-DB ist nicht erreichbar: ${e.message}`);
-    t.skip('Test-DB nicht erreichbar'); return;
-  }
-  const client = await db.pool.connect();
-  try { await _req('db/migrate.js').runMigrations(client); } finally { client.release(); }
+  if (!await dbOderSkip(t, _req)) return;
 
   await db.run('DELETE FROM users WHERE username = ANY($1)', [NAMEN]);
   const ids = [];
@@ -56,6 +54,10 @@ test('Uploads: Haushalt ja, Fremde nein, %2F nie', { concurrency: 1 }, async (t)
     fs.writeFileSync(path.join(WURZEL, 'data', 'uploads', String(id), 'a.pdf'), `pdf von ${id}`);
   }
   fs.writeFileSync(path.join(WURZEL, 'data', 'uploads', 'lose.pdf'), 'ohne Benutzerordner');
+  const SN = `7${process.pid % 100000}-1`;
+  await db.run('INSERT INTO sets (user_id, set_number) VALUES ($1, $2)', [H, SN]);
+  fs.mkdirSync(path.join(WURZEL, 'data', 'instructions'), { recursive: true });
+  fs.writeFileSync(path.join(WURZEL, 'data', 'instructions', `${SN}_1.pdf`), '%PDF-1.4\n<html><script>x</script>');
 
   const sitzung = {};
   const { base } = testServer(_req, { sitzung, routen: { '/': 'routes/datenDateien.js' }, t });
@@ -63,7 +65,7 @@ test('Uploads: Haushalt ja, Fremde nein, %2F nie', { concurrency: 1 }, async (t)
     sitzung.userId = als;
     sitzung.isAdmin = verwalter;
     const r = await fetch(base + weg);
-    return { status: r.status, text: await r.text() };
+    return { status: r.status, text: await r.text(), kopf: r.headers };
   };
 
   t.after(async () => {
@@ -84,16 +86,32 @@ test('Uploads: Haushalt ja, Fremde nein, %2F nie', { concurrency: 1 }, async (t)
   });
 
   await t.test('Unterkonto liest Hauptkonto nicht', async () => {
-    assert.equal((await hole(U, `/data/uploads/${H}/a.pdf`)).status, 403);
+    assert.equal((await hole(U, `/data/uploads/${H}/a.pdf`)).status, 404);
   });
 
   await t.test('Fremde lesen nicht', async () => {
-    assert.equal((await hole(F, `/data/uploads/${H}/a.pdf`)).status, 403);
+    assert.equal((await hole(F, `/data/uploads/${H}/a.pdf`)).status, 404);
+  });
+
+  await t.test('fremd und fehlend antworten gleich', async () => {
+    const ohneKopf = ({ kopf, ...r }) => { void kopf; return r; };
+    const fremd = await hole(F, `/data/uploads/${H}/a.pdf`);
+    const fehlt = await hole(F, `/data/uploads/${F}/gibt-es-nicht.pdf`);
+    assert.deepEqual(ohneKopf(fremd), ohneKopf(fehlt));
+  });
+
+  await t.test('als Anhang in einer Sandbox', async () => {
+    for (const weg of [`/data/uploads/${U}/a.pdf`, `/data/instructions/${SN}_1.pdf`]) {
+      const r = await hole(H, weg);
+      assert.equal(r.status, 200, `${weg}: ${r.text}`);
+      assert.match(r.kopf.get('content-security-policy') ?? '', /^sandbox\b.*default-src 'none'/, weg);
+      assert.match(r.kopf.get('content-disposition') ?? '', /^attachment; filename="[^"]+\.pdf"$/, weg);
+    }
   });
 
   await t.test('auch ein Verwalter liest fremde Uploads nicht', async () => {
     await db.run('UPDATE users SET is_admin = true WHERE id = $1', [F]);
-    assert.equal((await hole(F, `/data/uploads/${H}/a.pdf`, true)).status, 403,
+    assert.equal((await hole(F, `/data/uploads/${H}/a.pdf`, true)).status, 404,
       'Rechnungen und Gutscheine anderer gehen die Kontoverwaltung nichts an');
   });
 

@@ -1,4 +1,4 @@
-# 🧱 BrickInventory Manager v3.0
+# 🧱 BrickInventory Manager
 
 Vollständige Node.js Webapp zur Verwaltung deiner Klemmbaustein-Sammlung.
 
@@ -12,29 +12,64 @@ Vollständige Node.js Webapp zur Verwaltung deiner Klemmbaustein-Sammlung.
 
 ## Docker (empfohlen)
 
+Im Ordner mit `compose.yaml`, Schritt für Schritt:
+
 ```bash
-cp .env.example .env    # SESSION_SECRET, DB_PASSWORD, DB_APP_PASSWORD und BRICK_HOST eintragen
-sudo sh scripts/ca-einrichten.sh   # eigene CA, die nur für BRICK_HOST gilt (siehe unten)
-docker compose up -d --build
-# → https://<BRICK_HOST>   (Port 80 leitet auf HTTPS um)
+cp .env.example .env
+echo BRICK_HOST=nas.example.lan >> .env   # Name oder IP-Adresse des Servers
+sh scripts/geheimnisse-einrichten.sh      # Sitzungsgeheimnis und DB-Passwörter nach ./geheimnisse/
+sudo sh scripts/ca-einrichten.sh          # eigene CA, die nur für BRICK_HOST gilt (siehe unten)
+sh scripts/image-pruefen.sh               # Signatur prüfen, Image als Digest in .env, pull (braucht cosign)
+docker compose up -d
+docker compose logs app jobs | grep -A2 Standard-Admin   # Erstpasswort von admin
 ```
 
-Pflicht in `.env`: `SESSION_SECRET`, `DB_PASSWORD` (Superuser der Datenbank),
-`DB_APP_PASSWORD` (Rolle der App, ein anderer Wert) und `BRICK_HOST` — der
-Name oder die IP-Adresse, unter der Geräte den Server erreichen.
+Danach unter `https://<BRICK_HOST>` (Port 80 leitet auf HTTPS um). Was dabei
+entsteht und warum:
+
+1. **`.env`** braucht nur `BRICK_HOST`: den Namen oder die IP-Adresse, unter
+   der Geräte den Server erreichen (für Passkeys ein Name). Alle anderen
+   Variablen haben Vorgaben (`.env.example`).
+2. **`./geheimnisse/`** (Ordner 700) hält Sitzungsgeheimnis und Passwörter als
+   Dateien; `compose.yaml` hängt sie als Docker-Secrets unter `/run/secrets/`
+   ein, `docker inspect` zeigt sie so nicht. In `.env` gehören sie nicht.
+3. **`./caddy/ca/`** hält die eigene CA (Abschnitt unten). Ohne sie startet
+   Caddy nur mit `BRICK_TLS=acme` (öffentlicher Name, Let's Encrypt) oder dem
+   ausdrücklichen Schalter `CA_OHNE_NAMENSBESCHRAENKUNG=ja` (UPGRADE.md,
+   Abschnitt 33). Die App selbst veröffentlicht keinen Port.
+4. **Das Image** `addict85/brickinventory` gilt für `app`, `jobs` und
+   `schluessel`. `scripts/image-pruefen.sh` prüft mit `cosign verify` die
+   Signatur des Tags (`BRICK_TAG`, Vorgabe `latest`), trägt den geprüften
+   Digest als `BRICK_IMAGE` in `.env` ein und zieht ihn; ohne `BRICK_IMAGE`
+   startet compose nicht. cosign muss dafür installiert sein (UPGRADE.md,
+   Abschnitt 42). Wer selbst baut, setzt `BRICK_IMAGE=brickinventory:lokal`
+   und nimmt `docker compose up -d --build`.
+5. **Das Konto `admin`** bekommt beim allerersten Start ein Zufallspasswort,
+   das nur in diesem Protokoll steht und bei der ersten Anmeldung geändert
+   werden muss. Den ersten Start migriert `app` oder `jobs`, je nachdem, wer
+   zuerst kommt; deshalb beide Protokolle.
+
+**Update:** `sh scripts/image-pruefen.sh && docker compose up -d` (selbst gebaut:
+`docker compose up -d --build`). Vorher `UPGRADE.md` lesen; die Abschnitte
+stehen in zeitlicher Reihenfolge.
 
 ### HTTPS mit eigener CA (Caddy)
 
 Vor der App steht Caddy (`compose.yaml`, `Caddyfile`). Er macht TLS mit einer
 eigenen, lokalen CA (`tls internal`) für `BRICK_HOST` und leitet an die App
-weiter; die App selbst veröffentlicht keinen Port mehr. Die CA liegt unter
+weiter; die App selbst veröffentlicht keinen Port mehr. Caddy entsteht beim
+ersten `docker compose up -d` auf dem Rechner selbst (`Dockerfile.caddy`:
+offizielle Basis per Digest, Go-Module nachgezogen); das dauert einige Minuten. Die CA liegt unter
 `./caddy/data/` — mitsichern. Der App-Container sieht davon nur das öffentliche
 Wurzelzertifikat (Volume `ca-wurzel`), nie den Schlüssel der CA.
 
 Damit Browser und Telefone dem Zertifikat vertrauen, kommt das
 **Wurzelzertifikat** einmal auf jedes Gerät: Es liegt unter
-`https://<BRICK_HOST>/ca.crt` (auch über `http://`, ohne Umleitung). Der
-Fingerabdruck steht in den Einstellungen unter „Sicherheit“ zum Abgleich; die
+`https://<BRICK_HOST>/ca.crt` (auch über `http://`, ohne Umleitung). Über
+HTTP kann es unterwegs ausgetauscht werden; **vor dem Installieren den
+SHA-256-Fingerabdruck auf dem Gerät mit dem auf dem Server vergleichen**
+(`docker compose logs caddy | grep Fingerabdruck` oder die Ausgabe von
+`scripts/ca-einrichten.sh`). Er steht auch in den Einstellungen unter „Sicherheit“; die
 Android-App braucht das nicht: Sie pinnt den Fingerabdruck aus dem QR-Code und
 vertraut der Wurzel ohne systemweite Installation. Schritt für
 Schritt: `UPGRADE.md`, Abschnitt 14.
@@ -52,10 +87,10 @@ Wurzel verwirft das Skript; wer ihn behalten will, gibt mit
 `sudo WURZEL_SCHLUESSEL=/media/usb/wurzel.key sh scripts/ca-einrichten.sh` einen Ort ausserhalb des Servers
 an. Auf dem Server liegt dann nur der Schlüssel der Zwischenstelle
 (`./caddy/ca/zwischen.key`, wie ein Passwort behandeln); auch er taugt nur
-für `BRICK_HOST`. Ohne `./caddy/ca/` läuft alles wie bisher mit Caddys
-uneingeschränkter CA. Wer nur im Browser arbeitet, kann statt einer Wurzel
-auch je Seite eine Ausnahme bestätigen oder einen echten Namen mit ACME
-(DNS-01) nehmen. Umstieg einer bestehenden Installation: `UPGRADE.md`,
+für `BRICK_HOST`. Ohne `./caddy/ca/` startet Caddy nicht — ausser mit
+`BRICK_TLS=acme` (ein öffentlicher Name, Zertifikat von Let's Encrypt, keine
+eigene Wurzel auf den Geräten) oder ausdrücklich mit
+`CA_OHNE_NAMENSBESCHRAENKUNG=ja` (Caddys unbeschränkte CA). Umstieg einer bestehenden Installation: `UPGRADE.md`,
 Abschnitt 32.
 
 ### Ohne HTTPS (bewusste Ausnahme)
@@ -64,7 +99,9 @@ Wer ohne TLS betreiben will (etwa zum Ausprobieren auf `localhost`), nimmt in
 `compose.yaml` beim Dienst `app` die Zeilen `ports:` ein und setzt in `.env`
 `COOKIE_SECURE=0` und `APP_BASE_URL=http://…`. Passwort, Sitzung und App-Token
 gehen dann lesbar durchs Netz; „Unbegrenzt“ beim QR-Code und Passkeys gibt es
-dann nicht.
+dann nicht. Browser erreichen den Server dann nur unter dem Namen aus
+`APP_BASE_URL` (oder `localhost`); ein anderer Name oder die blosse IP-Adresse
+bekommt 421 (UPGRADE.md, Abschnitt 35).
 
 ### Pfade anpassen
 
@@ -78,25 +115,24 @@ Bilder brauchen **kein eigenes Volume**: Sie liegen unter `data/images/`
 jeweils als `<name>_thumb.jpg` daneben. Ein Backup von `data/` erfasst damit
 alles.
 
-### Datenbankpasswort ändern
-Für eine **neue** Installation vor dem ersten Start eine Datei `.env` neben
-`compose.yaml` anlegen:
-```
-DB_PASSWORD=mein-sicheres-passwort
-DB_APP_PASSWORD=ein-anderes-passwort
-```
-`DB_PASSWORD` gehört dem Superuser `brickinventory`; nur die Datenbank und der
-Dienst `db-rolle` bekommen es. App und Jobs verbinden sich als
-`brickinventory_app` ohne Superuser-Rechte mit `DB_APP_PASSWORD`; `db-rolle`
-legt die Rolle bei jedem `docker compose up` an und übergibt ihr die Tabellen.
-Fehlt einer der Werte, bricht `docker compose up` ab. Eine **bestehende**
-Datenbank behält ihr Passwort aus dem ersten Start; dort den bisherigen Wert
-für `DB_PASSWORD` eintragen.
+### Datenbankpasswörter
+`scripts/geheimnisse-einrichten.sh` legt in `./geheimnisse/` je eine Datei an:
+`db_password` (Superuser `brickinventory`, nur `postgres` und `db-rolle`),
+`db_app_password` (Rolle `brickinventory_app` ohne Superuser-Rechte, mit der
+sich App und Jobs verbinden), `session_secret` und das der Leserolle.
+Vorhandene Dateien bleiben; fehlende übernimmt es aus einer alten `.env`
+(`DB_PASSWORD`, `DB_APP_PASSWORD`, `SESSION_SECRET`) oder
+erzeugt sie zufällig. Eine **bestehende** Datenbank behält ihr Passwort aus dem
+ersten Start: Liegt `./pgdata18` schon da und steht kein `DB_PASSWORD` in
+`.env`, bricht das Skript ab, statt ein unpassendes zu erzeugen. `db-rolle`
+setzt das Passwort der App-Rolle bei jedem `docker compose up` neu; zum
+Wechseln genügt es, `geheimnisse/db_app_password` zu ersetzen.
 
 Läuft die Datenbank noch mit dem alten Beispielpasswort `brickinventory_secret`,
 verweigert der Server in Produktion den Start. Ändern: `docker compose exec
 postgres psql -U brickinventory -c "ALTER USER brickinventory PASSWORD
-'neues-passwort'"`, dann `DB_PASSWORD` in `.env` setzen und `docker compose up
+'neues-passwort'"`, dann den Wert in `geheimnisse/db_password` schreiben
+(`printf %s 'neues-passwort' > geheimnisse/db_password`) und `docker compose up
 -d` ausführen.
 
 ### Web- und Job-Prozess
@@ -121,18 +157,60 @@ environment:
 ## Manuell starten (ohne Compose)
 
 ```bash
-npm ci             # exakt die Lockfile (statt npm install)
+npm ci --ignore-scripts && npm rebuild esbuild   # exakt die Lockfile, Install-Skripte nur für esbuild
 npm run build      # .ts → dist/, Frontend → public/js/app.bundle.js
-npm start          # → node dist/server.js
+npm start          # → node dist/server.js, NODE_ENV=production
 # → http://localhost:3000  (PostgreSQL muss separat laufen)
 ```
 
-Zum Entwickeln:
+`npm start` verlangt wie im Betrieb `SESSION_SECRET` (mindestens 32 Zeichen),
+`APP_BASE_URL` und eine Datenbank. Die Verbindung kommt aus `DATABASE_URL`
+oder aus `PGHOST`, `PGPORT`, `PGUSER`, `PGPASSWORD`, `PGDATABASE`; ohne beides
+ist der Host `postgres`, den es nur im Compose-Netz gibt.
+
+## Lokal entwickeln
+
 ```bash
-npm run dev        # tsx watch, baut das Frontend-Bündel selbst
-npm run typecheck
-npm test
+# PostgreSQL 18 lokal (eigene Installation oder ein Container mit veröffentlichtem Port)
+export DATABASE_URL=postgres://bim:geheim@127.0.0.1:5432/bim
+npm ci --ignore-scripts && npm rebuild esbuild
+npm run dev        # baut das Bündel, startet den Server mit tsx watch (NODE_ENV=development)
+# → http://localhost:3000, Konto `admin`: Passwort aus ADMIN_PASSWORD oder einmalig im Log
 ```
+
+Ohne `npm run dev` geht es auch gebaut: `npm run build`, dann
+`NODE_ENV=development node dist/server.js`. In der Entwicklung sind
+`SESSION_SECRET` und `APP_BASE_URL` nicht Pflicht.
+
+## Entwickeln
+
+```bash
+npm run dev             # tsx watch, baut das Frontend-Bündel selbst
+npm run typecheck       # Server; :frontend Oberfläche, :tests Tests (Ratsche)
+npm run lint            # Biome, Ratsche: Funde dürfen nur weniger werden
+npm run format:pruefen  # Biome, Ratsche: nicht formatierte Dateien
+npm test                # siehe „Tests“
+npm run check-contract  # Vertrag gegen einen laufenden Server (BASE_URL), nur von Hand
+```
+
+Lint und Format sind Ratschen (`scripts/lint-schranken.json`): Neuer Code ist
+sauber und formatiert (`npx biome format --write <datei>`), der Bestand wird
+nach und nach nachgezogen. Den Bestand auf einmal formatiert `npm run
+format:alles`; danach `format` in `scripts/lint-schranken.json` auf 0 setzen,
+den Commit-Hash in `.git-blame-ignore-revs` (Wurzel) eintragen und
+`git config blame.ignoreRevsFile .git-blame-ignore-revs` empfehlen.
+
+**Fassungen.** Massgeblich ist, was ausgeliefert und in der CI geprüft wird:
+
+| | Image (`Dockerfile`, `compose.yaml`) | CI (`web-ci.yml`) | lokal |
+|---|---|---|---|
+| Node | 26 | 26 | `.nvmrc` nennt 26 (`nvm use`) |
+| PostgreSQL | 18 | 18 (Dienst), `pg_dump` 18 | auch 16 läuft; `db-rolle-db` braucht `psql` ab 15, `backup-restore-db` ein `pg_dump` in der Hauptversion des Servers |
+
+Ein lokaler Lauf mit einer älteren Fassung (etwa Node 22, PostgreSQL 16) ist
+eine Plausibilisierung; ein Unterschied zwischen den Hauptversionen zeigt sich
+erst in der CI. `test/build-tooling.test.js` hält Dockerfile, CI, `.nvmrc` und
+`@types/node` auf derselben Node-Hauptversion.
 
 Nach Änderungen an `public/js/*` oder `public/i18n.js` muss
 `npm run build:frontend` laufen — der Server liefert das gebündelte
@@ -141,8 +219,14 @@ Nach Änderungen an `public/js/*` oder `public/i18n.js` muss
 ## Sicherung
 
 ```bash
-./scripts/backup.sh            # pg_dump + data/ nach ./backups
+./scripts/backup.sh            # pg_dump + data/ nach ./backups, mit age verschlüsselt
 ```
+Sicherungen sind **immer verschlüsselt**: Die öffentlichen age-Schlüssel der
+Empfänger stehen in `./backup-empfaenger.txt` (einer je Zeile); der private
+Schlüssel liegt auf einem anderen Rechner und wird nur zum Wiederherstellen
+gebraucht (`BACKUP_AGE_IDENTITAET=… ./scripts/restore.sh …`). Ohne Empfänger
+sichert das Skript nichts, ausser mit ausdrücklichem `BACKUP_KLARTEXT=ja`.
+Einrichten: UPGRADE.md, Abschnitt 33.
 Ein Dateikopie-Backup von `pgdata/` bei laufendem PostgreSQL ist **wertlos**.
 
 **Regelmässig sichern** — der Server tut es nicht von selbst. Ein Eintrag in
@@ -176,15 +260,15 @@ anderes Laufwerk als das der Sicherungen); ohne die Angabe meldet es bei jedem
 Lauf, dass der Schlüssel fehlt. `restore.sh` fragt nach, bevor es ohne
 `schluessel/datenschluessel` neu startet. Die Passwort-Hashes stehen trotzdem im Dump. `backup.sh` legt die Dateien deshalb nur für den
 Besitzer lesbar an (`umask 077`) und warnt, wenn das Zielverzeichnis für
-andere offen ist. Wer `backups/` auf ein NAS oder in eine Cloud kopiert,
-verschlüsselt es vorher (z. B. `gpg -c` oder `age`).
+andere offen ist.
 
 ### Automatische Kopie vor einem Update
 
 Bringt ein Update neue Migrationen mit, kopiert der Server vorher alle
 Tabellen mit Nutzerdaten (`users`, jede Tabelle mit `user_id` und jede mit Fremdschlüssel auf `users`, etwa die Haushaltsverknüpfungen) in ein
 eigenes Schema `vor_migration_<Datum Uhrzeit>` derselben Datenbank. Die drei
-jüngsten bleiben. Das ersetzt `backup.sh` nicht — Katalog und Bilder fehlen
+jüngsten bleiben, keine länger als 30 Tage; ein gelöschtes Konto verschwindet
+auch aus ihnen, und `backup.sh` nimmt sie nicht mit. Das ersetzt `backup.sh` nicht — Katalog und Bilder fehlen
 darin —, aber ein misslungenes Update lässt sich damit zurücknehmen:
 
 ```bash
@@ -239,49 +323,40 @@ einer Kachel abliest, deren Teil intern `3002` heisst, muss `3002` eintragen
 (`SELECT rb_id, bl_id FROM bl_zuordnung WHERE art='part'` zeigt die
 Abweichungen).
 
-## Datenbank im Browser ansehen (pgweb)
+## Datenbank ansehen
 
-Optionales Werkzeug, startet **nicht** mit `docker compose up -d`:
+Ein Werkzeug im Browser gibt es nicht mehr (pgweb lief auf Debian 11 ohne
+Pflege). Zum Nachsehen dient `psql` im Postgres-Container, am besten als
+Leserolle `brickinventory_lesen`: nur `SELECT`, ohne Passwort-Hashes, Tokens,
+Sitzungen, Schlüssel des zweiten Faktors und Einstellungswerte.
 
 ```bash
-docker compose --profile tools up -d pgweb    # starten  → http://localhost:8081
-docker compose --profile tools down pgweb     # wieder abschalten
+PGWEB=ja sh scripts/geheimnisse-einrichten.sh   # einmal: Passwort der Leserolle
+docker compose up -d db-rolle                    # setzt es
+docker compose exec postgres psql -h 127.0.0.1 -U brickinventory_lesen -d brickinventory
 ```
 
-pgweb liest als eigene Rolle `brickinventory_lesen`: nur `SELECT`, ohne
-Passwort-Hashes, Tokens, Sitzungen, Schlüssel des zweiten Faktors und
-Einstellungswerte (API-Schlüssel). Reparaturen gehen nicht über pgweb, sondern
-mit `psql` als App-Rolle.
-
-Die Seite fragt nach Benutzer und Passwort (HTTP-Basic): `PGWEB_USER`
-(Vorgabe `pgweb`) und `PGWEB_PASSWORD` in `.env`; dazu `PGWEB_DB_PASSWORD`
-für die Leserolle. Fehlt eines davon, startet pgweb nicht und meldet das im
-Protokoll (`docker compose logs pgweb`).
-
-> **Wichtig:** Wer sich an pgweb anmeldet, sieht fast die ganze Datenbank. Der Port
-> ist deshalb zusätzlich an `127.0.0.1` gebunden und nur auf dem Server selbst
-> erreichbar — diese Bindung bitte nicht ändern. Von einem anderen Rechner aus
-> geht es per SSH-Tunnel:
->
-> ```bash
-> ssh -L 8081:127.0.0.1:8081 <benutzer>@<server>
-> ```
->
-> Danach im lokalen Browser `http://localhost:8081` öffnen. Nach getaner Arbeit
-> den Dienst wieder herunterfahren.
+Das Passwort steht in `./geheimnisse/pgweb_db_password` (der Name stammt aus
+der Zeit von pgweb). Was die Leserolle sieht, steht als Allowlist je Tabelle in
+`postgres/app-rolle.sh` (`LESEN_SPALTEN`). Reparaturen gehen nicht über die
+Leserolle, sondern mit `psql` als App-Rolle.
 
 ## Empfohlene Umgebungsvariablen
 
 | Variable | Wirkung |
 |---|---|
-| `APP_BASE_URL` | Die Adresse, unter der der Server von **aussen** erreichbar ist (z. B. `https://lego.example.org`). Sie steckt in den Links der E-Mails und im **QR-Code zur Verknüpfung der App**. Ohne sie gehen **keine Links per Mail** hinaus (die Adresse wird nie aus dem Host-Header abgeleitet — ein gefälschter bekäme sonst den Reset-Link), Passwort-vergessen antwortet 503; der QR-Code wird **gar nicht erst erzeugt** — er trüge sonst die Adresse aus der Browserzeile, und die App fände den Server ausserhalb des Heimnetzes nie wieder. |
+| `APP_BASE_URL` | Die Adresse, unter der der Server von **aussen** erreichbar ist (z. B. `https://lego.example.org`). Sie steckt in den Links der E-Mails und im **QR-Code zur Verknüpfung der App**. Ohne sie gehen **keine Links per Mail** hinaus (die Adresse wird nie aus dem Host-Header abgeleitet — ein gefälschter bekäme sonst den Reset-Link), Passwort-vergessen antwortet 503; der QR-Code wird **gar nicht erst erzeugt** — er trüge sonst die Adresse aus der Browserzeile, und die App fände den Server ausserhalb des Heimnetzes nie wieder. Ist sie gesetzt, antwortet die App nur unter diesem Namen (sonst 421; frei bleiben `localhost`, App-Token, `/ca.crt` und die Gesundheitspfade). |
+| `APP_BASE_URL_FEHLT_OK` | Nur `1`: Im Betrieb (`NODE_ENV=production`) startet der Web-Prozess ohne `APP_BASE_URL` sonst nicht, weil der Host-Filter fehlte. `compose.yaml` setzt `APP_BASE_URL` immer. |
 | `TRUST_PROXY` | Wem der Server `X-Forwarded-For`/`-Proto` glaubt — nur **ausdrücklich genannten** Adressen. `compose.yaml` setzt die feste Adresse von Caddy (`172.28.73.10`). Ohne Angabe (ausserhalb von Compose) **nur Loopback** (`127.0.0.0/8`, `::1`). Steht ein Proxy davor, seine **feste** Adresse eintragen: im Compose-Netz `brickinventory-net` (`172.28.73.0/24`) z. B. `172.28.73.10` per `ipv4_address`, auf einem anderen Rechner z. B. `192.168.1.5`. Mehrere durch Komma; Netze nur klein (IPv4 ab `/16`, IPv6 ab `/64`). `false` schaltet es ganz ab. `docker`, `true` und Hop-Zahlen verweigern den Start: Damit könnte jeder Container oder Client im Netz seine Absenderadresse selbst angeben und die Anmeldesperre umgehen. |
 | `UPLOAD_KONTINGENT_MB` | Wie viel Platz eigene Anleitungen (PDF/JPG/PNG) je Konto belegen dürfen, in MB (Vorgabe `2048`). Der Inhalt jeder Datei wird geprüft; eine Datei, deren Inhalt nicht zum Typ passt, wird abgewiesen. |
 | `DATA_KEY` | Schlüssel (32 Byte, Base64) für die verschlüsselten Geheimnisse in der Datenbank: `openssl rand -base64 32`. Geht `DATA_KEY_FILE` vor. |
 | `DATA_KEY_FILE` | Datei mit dem Schlüssel, ausserhalb von `data/` (compose.yaml: `/app/schluessel/datenschluessel`, Vorgabe `<APP_ROOT>/schluessel/datenschluessel`). Fehlt sie, legt der erste Start sie an (nur für den Besitzer lesbar). |
-| `ADMIN_PASSWORD` | Passwort des beim ersten Start angelegten Admins. Sonst wird ein Zufallspasswort erzeugt und **einmalig** ins Log geschrieben. |
-| `SESSION_SECRET` | Pflicht in Produktion (der Start bricht sonst ab). |
-| `MAIL_KONSOLE_MIT_TOKEN` | Ohne SMTP schreibt der Server jede Mail ins Log, den Link darin **ohne Token** — das Log sieht jeder Verwalter, und ein Rücksetz-Link ist ein Zugang zum Konto. Die Empfängeradresse steht dort maskiert (`m…@example.org`). `1` zeigt den vollständigen Link und die volle Adresse, etwa auf einem Entwicklungsrechner ohne Mailserver. Nur dort setzen. |
+| `ADMIN_PASSWORD` | Passwort des beim ersten Start angelegten Admins (nur `npm start`; `compose.yaml` reicht es nicht durch). Sonst wird ein Zufallspasswort erzeugt und **einmalig** ins Log geschrieben. |
+| `SESSION_SECRET` | Pflicht in Produktion (der Start bricht sonst ab). Mit Docker als Datei: `SESSION_SECRET_FILE` (setzt `compose.yaml`). |
+| `NODE_ENV` | Nur `development` und `test` lockern die Regeln (Startverbote, Superuser-Verbot, Fehlertexte, sicheres Cookie). **Ohne Angabe gelten die Regeln des Betriebs** wie mit `production`. |
+| `PGSSLMODE` | TLS zur Datenbank. Liegt sie auf einem anderen Rechner (nicht `postgres`, nicht Loopback), `verify-full` setzen (oder `sslmode=verify-full` in `DATABASE_URL`); sonst warnt der Start mit `[datenbank]`. |
+| `DATA_KEY_ALT_FILE` | Nur während eines Schlüsselwechsels: der vorige Datenschlüssel (`scripts/datenschluessel-wechseln.sh`, UPGRADE.md Abschnitt 43). |
+| `MAIL_KONSOLE_MIT_TOKEN` | Ohne SMTP schreibt der Server jede Mail ins Log, den Link darin **ohne Token** — das Log sieht jeder Verwalter, und ein Rücksetz-Link ist ein Zugang zum Konto. Die Empfängeradresse steht dort maskiert (`m…@example.org`). `1` zeigt den vollständigen Link und die volle Adresse, etwa auf einem Entwicklungsrechner ohne Mailserver. Mit `NODE_ENV=production` verweigert der Server damit den Start. |
 | `BRICK_HOST` | Name oder IP-Adresse des Servers für Caddy (Pflicht mit `compose.yaml`). Ohne `APP_BASE_URL` gilt `https://BRICK_HOST`. Passkeys brauchen einen Namen, keine IP-Adresse. |
 | `CA_ZERTIFIKAT` | Pfad zum Wurzelzertifikat der internen CA (setzt `compose.yaml`). Daraus kommen `/ca.crt` und der Fingerabdruck `fp` im QR-Code. |
 | `TOKEN_IDLE_DAYS` | Tage ohne Nutzung, nach denen ein Gerätezugang (Token) verfällt (Vorgabe `90`, mindestens `1`). Jede Nutzung schiebt die Frist nach; geschrieben wird höchstens einmal je Tag. Ohne Ablauf gibt es nur die Wahl „Unbegrenzt“ beim QR-Code, nur über HTTPS und mit Rotation. |
@@ -307,65 +382,54 @@ set_number,quantity
 ## Tests
 
 ```bash
-npm test            # komplette Suite (Node-Test-Runner, keine Zusatz-Tools nötig)
-npm run test:api    # nur die Postgres-Integrationstests
+export TEST_DATABASE_URL=postgres://tester:tester@127.0.0.1:5432/cattest
+REQUIRE_DB=1 npm test                         # ganze Suite, parallel
+REQUIRE_DB=1 npm test -- test/datei.test.js   # einzelne Dateien, gleicher Aufbau
+npm run test:seriell                          # alles nacheinander auf der Basis-DB
 ```
 
-### Zwei Arten von Tests — und wofür jede taugt
+`npm test` (`scripts/test-lauf.js`) baut einmal nach `dist/`, legt aus
+`TEST_DATABASE_URL` eine Vorlage-Datenbank `<name>_vorlage` an (Basis und
+Migrationen) und gibt jeder Testdatei eine eigene Kopie davon. Die Dateien
+laufen parallel (`TEST_PARALLEL`, Vorgabe doppelte Kernzahl, höchstens 8),
+Browser-Tests und Dateien mit der Marke `@einzeln` danach einzeln. Was die
+Suite an Datenbanken und Rollen anlegt, heisst `<name>_vorlage_…`; der nächste
+Lauf räumt Reste davon ab. Der Benutzer der Test-DB braucht `CREATEDB`, einige
+Dateien (Datenbankrolle, Sicherung) Superuser-Rechte.
 
-Der grössere Teil der Suite prüft den **Quelltext**: liest eine Datei und
-verlangt ein Muster darin. Das ist billig, braucht keine Datenbank und eignet
-sich, um eine Regel samt Begründung dort festzuhalten, wo sie gilt.
+| Variable | Wirkung |
+|---|---|
+| `TEST_DATABASE_URL` | Basis-Datenbank. Ohne sie laufen nur die Tests ohne Datenbank. |
+| `REQUIRE_DB=1` | Eine fehlende Datenbank (oder fehlende Rechte, `psql`, `pg_dump`) ist ein Fehler statt eines Überspringens. In der CI gesetzt. |
+| `REQUIRE_BROWSER=1` | Dasselbe für Chrome: Ohne Browser schlagen die Browser-Tests fehl, statt still zu überspringen. In der CI gesetzt. |
+| `CHROME_BIN` | Pfad zu Chrome/Chromium, falls nicht unter `/usr/bin/google-chrome` oder `/usr/bin/chromium`. |
+| `CADDY_BIN` | Pfad zu `caddy` für die Caddyfile-Tests; ohne ihn übersprungen. |
+| `REQUIRE_CADDY=1` | Ein fehlender Caddy ist ein Fehler. In der CI gesetzt (Caddy aus dem Image in `compose.yaml`). |
+| `TEST_PARALLEL_BROWSER` | Browser-Dateien gleichzeitig (Vorgabe 1; je Datei eigene Datenbank, Port und Chrome-Profil). In der CI 2. |
+| `TEST_NACHLAUF=aus` | Eine Fristüberschreitung ist rot. Sonst läuft die Datei einzeln nach und erscheint als Warnung am Ende des Laufs. |
 
-Es hat eine Grenze, die man kennen muss: Eine Quelltext-Prüfung sieht Zeichen,
-kein Verhalten. Sie kann grün bleiben, während die Regel nicht mehr wirkt.
-Genau das ist passiert — ein Test verlangte einen Ausdruck
-(`to_regclass('public.session')`), der auf eine Tabelle zeigte, die es nie gab.
-Der Ausdruck stand im Code, der Test war grün, und ein Passwort-Reset beendete
-die Sitzung des Angreifers nicht. Der Test hatte die Lücke *festgeschrieben*
-statt sie zu finden.
+Ohne `REQUIRE_DB=1` und `REQUIRE_BROWSER=1` ist ein grüner Lauf kein Beleg:
+Die betroffenen Dateien überspringen sich dann selbst.
 
-Daraus zwei Regeln für neue Tests:
+**Aufbau** (flach in `test/`; die Zahlen nennt `ls test/*.test.js` bzw. die Ratschen):
 
-1. **Sicherheitsregeln brauchen einen Verhaltenstest.** Nicht „das DELETE steht
-   im Code", sondern „die Sitzung ist danach wirklich weg" — gegen echte
-   Datenbank und echten Store (`test/auth-sessions-db.test.js`,
-   `test/household-db.test.js`). Die Quelltext-Prüfung darf daneben stehen und
-   die Begründung tragen; sie ersetzt den Nachweis nicht.
-2. **Keine Namen von Zwischenvariablen festnageln.** Ein Muster wie
-   `String(curMain) !== String(curSub)` macht eine folgenlose Umbenennung rot.
-   Ein Test, der bei harmlosen Umbenennungen anschlägt, wird beim nächsten
-   Refactoring angepasst statt gelesen — und verliert die Warnwirkung, für die
-   er da ist. Auf die Struktur zielen, nicht auf die Schreibweise.
+| Art | Woran erkennbar |
+|---|---|
+| mit Datenbank | Name endet auf `-db.test.js` |
+| im echten Chrome (Layout, Tastatur, CSP) | Name endet auf `-browser.test.js`, `helpers/app-browser` |
+| Oberfläche in jsdom | `helpers/oberflaeche` (Antworten gegen den API-Vertrag geprüft) |
+| liest nur Quelltext (Struktur, Verbote) | Ratschen in `test/ratschen.test.js`, dürfen nur sinken |
 
-Die Gegenprobe für beides ist billig und lohnt sich bei jedem neuen Test:
-Regel im Code brechen und schauen, ob er rot wird. Wird er es nicht, prüft er
-etwas anderes als gedacht.
+**Abdeckung:** `npm run abdeckung` (= `npm test -- --abdeckung`) misst Server
+(`dist/`) und Oberfläche (über ein Mess-Bündel mit Sourcemap bis `public/js/`)
+und schreibt `coverage/lcov.info`, `coverage-summary.json` und
+`coverage/bereiche.json`. `node scripts/abdeckung.js pruefen` vergleicht die
+Bereiche mit `scripts/abdeckung-schranken.json`; die CI macht beides.
 
-- **test/auth-sessions-db.test.js** — Passwortwechsel gegen echten
-  connect-pg-simple-Store: Admin-Reset, eigener Wechsel und Bearer-Token. Prüft
-  das VERHALTEN (Sitzung danach wirklich weg), nicht den Wortlaut im Code —
-  siehe Abschnitt oben.
-- **test/api-inventory.test.js** — API-Inventar: parst beide Router-Familien und
-  verlangt für JEDEN Endpunkt eine Klassifikation (paritaet / paritaet-schreib /
-  paar-extern / nur-v1 / nur-web). Neue Endpunkte ohne Einordnung machen die
-  Suite rot — keine API kommt mehr ungeprüft dazu.
-- **test/api-parity.test.js** — Paritätstest über alle Lese-Endpunkte: die
-  Session-Routen der Webapp (/api/...) und die Token-Routen der Android-App
-  (/api/v1/...) müssen für dieselben Daten dieselben Informationen liefern
-  (Envelope-Felder wie success/count/page werden ignoriert, der Rest muss
-  deep-equal sein). Läuft gegen den echten Stack (beide Router-Familien,
-  gemeinsame Handler, echte DB, echte Auth-Middlewares — nur die Session wird
-  injiziert) und prüft zusätzlich den Bearer-Token-Pfad der Android-App
-  end-to-end. Enthält zudem Schreib-Paritäten (PUT Set, PUT Erfassung,
-  DELETE Set über beide Familien -> gleicher DB-Effekt). Gleiche
-  DB-Voraussetzung wie catalog-api.
-- **test/catalog-api.test.js** — Integrationstest der /api/v1/catalog-Endpunkte gegen
-  echtes PostgreSQL (nur Auth gestubbt). Braucht eine Test-DB (Inhalt wird geleert!):
-  `TEST_DATABASE_URL`, Default `postgres://tester:test@localhost/cattest`.
-  Ohne erreichbare DB wird die Suite übersprungen, nicht rot.
-- **test/catalog-frontend.test.js** — jsdom-Test des Katalog-Frontends
-  (Von-Bis-Slider, Filter, Debounce, Platzhalter, Reset) gegen ein Mini-Backend.
-- **test/dom-ids.test.js** — jede statisch per `G('...')` referenzierte ID muss in
-  index.html oder einem JS-Template existieren.
-- **test/i18n.test.js** — DE/EN-Schlüsselparität und Platzhalter-Konsistenz.
+Die API gibt es nur unter `/api/v1/`. Ihr Vertrag (zod-Schemata in
+`src/infra/vertrag/`) wird im Testlauf an jeder Antwort geprüft; der Abgleich
+mit der Android-App liest deren Retrofit-Schnittstelle (`app-endpunkte`).
+
+Regeln für neue Tests stehen in `CLAUDE.md` im Wurzelordner: Ein Test prüft
+Verhalten, nicht Quelltext; er nennt im Kopf seine Gegenprobe (was kaputt
+gemacht wurde und welcher Teil dann rot war); leere Listen prüfen nichts.

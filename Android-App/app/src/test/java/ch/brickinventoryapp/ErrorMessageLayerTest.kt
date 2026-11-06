@@ -8,12 +8,6 @@ import org.junit.Test
  * ── Woher dieser Test kommt (Nachtrag 116) ──────────────────────────────────
  *
  * `BrickRepository.safeCall()` formulierte seine Meldungen selbst:
- * „Netzwerkfehler", „Zeitüberschreitung", „Leere Antwort vom Server". Deutsche
- * Sätze in einer Schicht, die keinen Context hat und also gar nicht übersetzen
- * KANN. Für einen englischsprachigen Nutzer war damit jede Fehlermeldung der
- * App deutsch, egal wie sauber der Bildschirm darüber lokalisiert war —
- * dieselbe Ursache wie beim PDF-Betrachter in Nachtrag 115, nur an der Stelle,
- * die alle Fehler formuliert.
  *
  * Von 36 Snackbar-Zuweisungen liefen damals 19 über `getString`; der Rest
  * reichte durch, was aus der Datenschicht kam. Es waren also zwei Sprachregime
@@ -26,17 +20,17 @@ class ErrorMessageLayerTest {
 
     private val datenschicht = listOf(
         // Alle Dateien der Datenschicht (Nachtrag 155) — vorher nur die eine.
-        "data/repository/BrickRepository.kt",
+        "data/repository/Ergebnis.kt",
         "data/repository/RepoBasis.kt",
-        "data/repository/SetsRepository.kt",
-        "data/repository/TeileRepository.kt",
-        "data/repository/FinanzenRepository.kt",
-        "data/repository/HaushaltRepository.kt",
-        "data/repository/FigurenRepository.kt",
-        "data/repository/KontoRepository.kt",
-        "data/repository/VerwaltungRepository.kt",
-        "data/repository/KatalogRepository.kt",
-        "data/repository/GutscheineRepository.kt",
+        "data/repository/SetsRepositoryImpl.kt",
+        "data/repository/TeileRepositoryImpl.kt",
+        "data/repository/FinanzenRepositoryImpl.kt",
+        "data/repository/HaushaltRepositoryImpl.kt",
+        "data/repository/FigurenRepositoryImpl.kt",
+        "data/repository/KontoRepositoryImpl.kt",
+        "data/repository/VerwaltungRepositoryImpl.kt",
+        "data/repository/KatalogRepositoryImpl.kt",
+        "data/repository/GutscheineRepositoryImpl.kt",
         "data/CsvImportSseClient.kt",
     )
 
@@ -48,9 +42,9 @@ class ErrorMessageLayerTest {
         val fehler = mutableListOf<String>()
         for (rel in datenschicht) {
             val s = Quellen.ohneKommentare(Quellen.lies(rel))
-            Regex("""Result\.Error\(\s*"([^"]+)"""").findAll(s).forEach { m ->
+            Regex("""Ergebnis\.Error\(\s*"([^"]+)"""").findAll(s).forEach { m ->
                 val zeile = s.substring(0, m.range.first).count { it == '\n' } + 1
-                fehler += "$rel:$zeile  Result.Error(\"${m.groupValues[1]}\")"
+                fehler += "$rel:$zeile  Ergebnis.Error(\"${m.groupValues[1]}\")"
             }
         }
         assert(fehler.isEmpty()) {

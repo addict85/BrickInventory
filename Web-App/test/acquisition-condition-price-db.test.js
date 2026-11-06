@@ -7,7 +7,7 @@
  * Preis des Sammelzustands.
  *
  * Gegenproben (am 30.10.2026 gemessen):
- *   A  in src/bestand/erfassungen.ts den Zustand an resolvePrice durch null
+ *   A  in src/sammlung/erfassungen.ts den Zustand an resolvePrice durch null
  *      ersetzt → rot bei „set“ (100 statt 60)
  *   B  in ARTEN.part.resolvePrice cond nicht weitergegeben → rot bei „part“
  *      (100 statt 60); „set“ bleibt grün
@@ -20,18 +20,12 @@ const { ohneKommentare } = require('./helpers/sources');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 const _req = require('./helpers/sources').buildAndRequire();
+const { dbOderSkip } = require('./helpers/db');
 
 test('ein geleerter Kaufpreis wird im Zustand der Zeile nachgefüllt', { concurrency: 1 }, async (t) => {
   const db = _req('db/database.js');
-  try { await db.initSchema(); }
-  catch (e) {
-    if (process.env.REQUIRE_DB === '1')
-      throw new Error(`REQUIRE_DB=1, aber die Test-DB ist nicht erreichbar: ${e.message}`);
-    t.skip('Test-DB nicht erreichbar'); return;
-  }
-  const mc = await db.pool.connect();
-  try { await _req('db/migrate.js').runMigrations(mc); } finally { mc.release(); }
-  const { erfassungAendern } = _req('src/bestand/erfassungen.js');
+  if (!await dbOderSkip(t, _req)) return;
+  const { erfassungAendern } = _req('src/sammlung/erfassungen.js');
   const P = process.pid;
   const NAME = `zustandpreis-${P}`, SN = `${P}9-1`, PN = `zp${P}`, FN = `fig-zp${P}`;
   const weg = async () => {
@@ -72,19 +66,8 @@ test('ein geleerter Kaufpreis wird im Zustand der Zeile nachgefüllt', { concurr
 });
 
 test('jeder Marktpreis-Abruf bekommt einen Zustand mit', () => {
-  // ── Zweimal dieselbe Lücke (Nachträge 146 und 147) ────────────────────────
-  //
-  // 146 hat das BEARBEITEN behoben (resolvePrice in den Erfassungsrouten).
-  // Marcos nächster Befund zeigte, dass das ERFASSEN denselben Fehler hatte:
-  // Zwei heute angelegte Einträge derselben Figur, „Neu" und „Gebraucht",
-  // beide Kaufpreis CHF 2.18 — obwohl die Marktpreise 2.18 und 2.20 sind.
-  //
-  // Beim Anlegen der zweiten Zeile gab es erst die erste; der ohne Zustand
-  // geholte Preis leitete sich also aus ihr ab.
-  //
-  // Ich hatte beim ersten Mal nur die Stellen angesehen, die im Fehlerbericht
-  // vorkamen. Diese Prüfung sieht ALLE — auch die, die noch niemand gemeldet
-  // hat.
+  // Zweimal dieselbe Lücke
+  // Ausführlich: docs/begruendungen/test/acquisition-condition-price-db.test.js.md#fs-stelle
   const fs = require('node:fs');
   const path = require('node:path');
 const { ohneKommentare } = require('./helpers/sources');

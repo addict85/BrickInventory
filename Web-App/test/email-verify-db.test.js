@@ -1,27 +1,16 @@
 /**
  * E-Mail-Verifikation gegen eine ECHTE Datenbank.
+ * Ausführlich: docs/begruendungen/test/email-verify-db.test.js.md#kopf
  *
- * test/email-verify.test.js hält am Quelltext fest, dass die Logik nur noch
- * an einer Stelle steht. Das sagt nichts darüber, ob sie das Richtige TUT.
- * Genau dort lagen die Fehler, die man sonst erst im Betrieb sieht: ein Token,
- * der nach Ablauf noch gilt; einer, der sich zweimal einlösen lässt; ein
- * Feld, das beim Einlösen stehen bleibt.
- *
- * ── Warum die Browser-Route nicht mitgestartet wird ─────────────────────────
- * server.ts exportiert seine App nicht und beginnt beim Einbinden zu lauschen
- * — samt Session-Speicher, Mailversand und Cluster-Logik. Sie hier zu booten
- * hiesse, den halben Betrieb im Test hochzufahren. Stattdessen wird die
- * gemeinsame Funktion direkt geprüft (sie IST die Logik beider Routen), die
- * API-Route echt über Express angesprochen, und test/email-verify.test.js
- * hält fest, dass server.ts genau diese Funktion ruft und ihre beiden
- * Ausgänge auf ?verified=1 bzw. ?verified=invalid abbildet.
- *
- * ── Gegenprobe (durchgeführt) ───────────────────────────────────────────────
- * In verifiziereEmailToken() wurde die Bedingung `AND NOT email_verified`
- * versuchsweise entfernt — der Riegel, der einen zweiten Klick auf denselben
- * Link verhindert. Ergebnis: „ein bereits verifiziertes Konto nimmt keinen
- * Token mehr an" wird rot. Riegel zurückgebaut, wieder 12 von 12 grün. Eine
- * Prüfung, die man nicht rot gesehen hat, ist eine Behauptung.
+ * ── Gegenproben (04.11.2026 gemessen, je einzeln) ───────────────────────────
+ * Seit Runde 13 trägt eine Registrierung Adresse und Link in email_neu*.
+ *   A  in uebernimmEmailNeu() `AND email_neu_bis > NOW()` gestrichen → rot:
+ *      „abgelaufener Token wird abgelehnt …“
+ *   B  uebernimmEmailNeu() ohne `registrierung_offen = false` → rot: „gültiger
+ *      Token …“ (die Registrierung bliebe offen und gesperrt)
+ *   C  uebernimmEmailNeu() ohne erneute Vergabeprüfung UND ohne den Fang von
+ *      23505 → rot: „die erste Bestätigung gewinnt …“ (Fehler aus dem Index;
+ *      jede der beiden allein hält)
  *
  * Voraussetzung: Test-DB (Inhalt wird geleert!) via TEST_DATABASE_URL.
  * Ohne DB: skip — ausser REQUIRE_DB=1, dann Fehler.
@@ -46,40 +35,27 @@ async function seed() {
   await db.run('DROP SCHEMA public CASCADE');
   await db.run('CREATE SCHEMA public');
   await db.initSchema();
-  // ── Und die MIGRATIONEN, nicht nur das Schema ───────────────────────────
-  //
-  // Diese Datei loescht das Schema und baut es neu auf. Ohne die Migrationen
-  // bleibt die Datenbank auf dem Stand von db/schema.sql stehen — also VOR
-  // allen Migrationen —, und das ist nicht nur fuer sie selbst falsch,
-  // sondern fuer jede Datei danach: Sie erbt eine halbe Datenbank.
-  //
-  // GEMESSEN beim Umzug der Teilemengen (Migration 0038): db/schema.sql legt
-  // `parts.quantity DEFAULT 1` an, die Katalogzeilen tragen die echte Zahl.
-  // Die naechste Datei, die die Migrationen laufen liess, brach ab — „Bei 8
-  // Set-Teilen weicht parts.quantity vom Katalog ab". Der Riegel hatte recht.
+  // Und die MIGRATIONEN, nicht nur das Schema
+  // Ausführlich: docs/begruendungen/test/email-verify-db.test.js.md#stelle
   {
     const mc = await db.pool.connect();
     try { await _req('db/migrate.js').runMigrations(mc); } finally { mc.release(); }
   }
 }
 
-/**
- * Ein Konto mit offenem Verifikations-Token anlegen.
- * `minutenGueltig` negativ = bereits abgelaufen.
- * Gibt den ROHEN Token zurück — in der DB steht nur sein SHA-256.
- */
-async function neuerNutzer(name, { minutenGueltig = 60, schonVerifiziert = false } = {}) {
+/** Eine offene Registrierung wie POST /register sie anlegt. `minutenGueltig` negativ =
+ * abgelaufen. Gibt den ROHEN Token zurück — in der DB steht nur sein SHA-256. */
+async function neuerNutzer(name, { minutenGueltig = 60, email = `${name}@example.ch` } = {}) {
   const token = crypto.randomBytes(16).toString('hex');
-  await db.run(
-    `INSERT INTO users (username, password_hash, email, email_verified, verification_token, token_expires)
-     VALUES ($1, 'x', $2, $3, $4, NOW() + ($5 || ' minutes')::interval)`,
-    [name, `${name}@example.ch`, schonVerifiziert ? 1 : 0, hashToken(token), String(minutenGueltig)]);
-  const { id } = await db.get('SELECT id FROM users WHERE username=$1', [name]);
+  const { id } = await db.get(
+    `INSERT INTO users (username, password_hash, email_neu, email_neu_token, email_neu_bis, registrierung_offen)
+     VALUES ($1, 'x', $2, $3, NOW() + ($4 || ' minutes')::interval, true) RETURNING id`,
+    [name, email, hashToken(token), String(minutenGueltig)]);
   return { id, token };
 }
 
 const zustand = (id) =>
-  db.get('SELECT email_verified, verification_token, token_expires FROM users WHERE id=$1', [id]);
+  db.get('SELECT email, email_verified, registrierung_offen, email_neu, email_neu_token, email_neu_bis FROM users WHERE id=$1', [id]);
 
 test('E-Mail-Verifikation gegen echte Datenbank', async (t) => {
   if (!(await dbReachable())) {
@@ -96,12 +72,8 @@ test('E-Mail-Verifikation gegen echte Datenbank', async (t) => {
     const u = await neuerNutzer('gueltig');
     const e = await verifiziereEmailToken(u.token);
     assert.equal(e.ok, true, 'Ein frischer Token muss eingelöst werden können');
-    const z = await zustand(u.id);
-    assert.equal(Number(z.email_verified), 1, 'email_verified wurde nicht gesetzt');
-    // Beide Token-Felder MÜSSEN leer sein. Bliebe der Hash stehen, wäre er
-    // ein unnötig lange gültiges Geheimnis in der Datenbank.
-    assert.equal(z.verification_token, null, 'verification_token blieb stehen');
-    assert.equal(z.token_expires, null, 'token_expires blieb stehen');
+    assert.deepEqual(await zustand(u.id), { email: 'gueltig@example.ch', email_verified: true, registrierung_offen: false,
+      email_neu: null, email_neu_token: null, email_neu_bis: null });
   });
 
   await t.test('abgelaufener Token wird abgelehnt und ändert nichts', async () => {
@@ -110,8 +82,8 @@ test('E-Mail-Verifikation gegen echte Datenbank', async (t) => {
     assert.equal(e.ok, false);
     assert.equal(e.grund, 'ungueltig');
     const z = await zustand(u.id);
-    assert.equal(Number(z.email_verified), 0, 'Ein abgelaufener Token hat trotzdem verifiziert');
-    assert.notEqual(z.verification_token, null, 'Die Felder wurden fälschlich abgeräumt');
+    assert.deepEqual([z.email, z.email_verified, z.registrierung_offen], [null, false, true], 'Ein abgelaufener Token hat bestätigt');
+    assert.notEqual(z.email_neu_token, null, 'Die Felder wurden fälschlich abgeräumt');
   });
 
   await t.test('unbekannter Token wird abgelehnt', async () => {
@@ -136,30 +108,17 @@ test('E-Mail-Verifikation gegen echte Datenbank', async (t) => {
     assert.equal(e2.grund, 'ungueltig');
   });
 
-  await t.test('ein bereits verifiziertes Konto nimmt keinen Token mehr an', async () => {
-    // Der Riegel ist `NOT email_verified` in der Abfrage. Fiele er weg, liesse
-    // sich ein altes, nie benutztes Token später erneut einlösen.
-    const u = await neuerNutzer('schondrin', { schonVerifiziert: true });
-    const e = await verifiziereEmailToken(u.token);
-    assert.equal(e.ok, false);
+  await t.test('die erste Bestätigung gewinnt, die zweite Registrierung bleibt offen', async () => {
+    const erste = await neuerNutzer('erste', { email: 'geteilt@example.ch' });
+    const zweite = await neuerNutzer('zweite', { email: 'GETEILT@example.ch' });
+    assert.equal((await verifiziereEmailToken(erste.token)).ok, true);
+    assert.deepEqual(await verifiziereEmailToken(zweite.token), { ok: false, grund: 'vergeben', userId: zweite.id });
+    const z = await zustand(zweite.id);
+    assert.deepEqual([z.email, z.registrierung_offen, z.email_neu_token], [null, true, null]);
   });
 
-  // ── Die fuenf Faelle ueber die API-Route sind ENTFERNT ───────────────────
-  //
-  // GET /api/auth/verify gibt es nicht mehr: Sie hatte keinen Aufrufer — der
-  // Link aus der Verifikationsmail zeigt auf die Frontend-Seite /verify, die
-  // server.ts bedient. Dass sie keinen Aufrufer hat, stand seit Nachtrag 154
-  // als Kommentar in der Route selbst.
-  //
-  // Verloren geht dadurch nichts: Die fuenf Faelle pruefen dieselben Regeln
-  // wie die sechs darueber (gueltig, abgelaufen, unbekannt, fehlend, zweimal),
-  // nur durch eine HTTP-Huelle hindurch. Was die Huelle zusaetzlich sagte —
-  // 400 gegen 410 statt einer Weiterleitung — betraf einen Aufrufer, den es
-  // nie gab.
-  //
-  // Der Weg, den es WIRKLICH gibt, bleibt geprueft: test/email-verify.test.js
-  // haelt fest, dass server.ts dieselbe Funktion ruft und ihre beiden
-  // Ausgaenge auf ?verified=1 bzw. ?verified=invalid abbildet.
+  // Die fuenf Faelle ueber die API-Route sind ENTFERNT
+  // Ausführlich: docs/begruendungen/test/email-verify-db.test.js.md#stelle-2
 
   await db.pool.end().catch(() => {});
 });

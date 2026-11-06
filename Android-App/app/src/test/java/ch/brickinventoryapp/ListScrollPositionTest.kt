@@ -1,6 +1,7 @@
 package ch.brickinventoryapp
 
 import org.junit.Test
+import java.io.File
 
 /**
  * Der Scroll-Zustand einer Liste überlebt den Abstecher in eine Detailansicht.
@@ -37,7 +38,7 @@ import org.junit.Test
 class ListScrollPositionTest {
 
     private fun read(rel: String): String {
-        val f = java.io.File(Quellen.wurzel, "$rel")
+        val f = File(Quellen.wurzel, "$rel")
         assert(f.exists()) { "Datei nicht gefunden: $rel" }
         return f.readText()
     }
@@ -146,8 +147,8 @@ class ListScrollPositionTest {
     @Test
     fun `die Zustaende liegen oberhalb des NavHost und werden durchgereicht`() {
         val nav = code(read("AppNavigation.kt"))
-        for (name in listOf("galleryGridState", "partsGridState", "minifigsGridState")) {
-            assert(nav.contains("val $name")) {
+        for (name in listOf("galerie", "teile", "minifiguren")) {
+            assert(nav.contains("$name = androidx.compose.foundation.lazy.grid.rememberLazyGridState()")) {
                 "$name wird nicht oberhalb des NavHost angelegt — dort ist die einzige " +
                     "Ebene, die beim Navigieren nicht verlassen wird"
             }
@@ -161,8 +162,8 @@ class ListScrollPositionTest {
             assert(graph.contains(paar)) { "CollectionGraph übergibt `$paar` nicht" }
         }
 
-        for (name in listOf("financeListState", "partsListState")) {
-            assert(nav.contains("val $name")) { "$name wird nicht oberhalb des NavHost angelegt" }
+        for (name in listOf("finanzen", "teileliste")) {
+            assert(nav.contains("$name = androidx.compose.foundation.lazy.rememberLazyListState()")) { "$name wird nicht oberhalb des NavHost angelegt" }
         }
         val tools = code(read("nav/ToolsGraph.kt"))
         for (paar in listOf("listState = financeListState", "listState = partsListState")) {
@@ -186,12 +187,12 @@ class ListScrollPositionTest {
         // umgesetzt in ScrollMemory.kt statt dreimal abgeschrieben.
         val col = code(read("nav/CollectionGraph.kt"))
         val tools = code(read("nav/ToolsGraph.kt"))
-        for (schluessel in listOf("\"gallery\"", "\"parts\"", "\"minifigs\"")) {
+        for (schluessel in listOf("Screen.Gallery.rollSchluessel", "Screen.Parts.rollSchluessel", "Screen.Minifigs.rollSchluessel")) {
             assert(col.contains("ScrollPositionKeeper(") && col.contains(schluessel)) {
                 "Für $schluessel wird die Position nicht ausdrücklich wiederhergestellt"
             }
         }
-        assert(tools.contains("ScrollPositionKeeper(") && tools.contains("\"finance\"")) {
+        assert(tools.contains("ScrollPositionKeeper(") && tools.contains("Screen.Finance.rollSchluessel")) {
             "Die Finanz-Liste stellt ihre Position nicht ausdrücklich wieder her"
         }
 

@@ -1,0 +1,18 @@
+Gegenprobe: Titel der Detail- und Unterseitenleiste wieder einzeilig
+Modul: app
+Test: ch.brickinventoryapp.BarrierefreiheitBefundeTest
+Rot: M14 lange Titel brechen bei 200 Prozent um und sind Ueberschriften
+
+diff --git a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/ListeUndDetail.kt b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/ListeUndDetail.kt
+index 87bd9ca..f706680 100644
+--- a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/ListeUndDetail.kt
++++ b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/ListeUndDetail.kt
+@@ -115,7 +115,7 @@ fun DetailTopAppBar(
+         title = {
+             Column {
+                 // Bei grosser Schrift drei Zeilen: Ein Teilename mit 30 Zeichen brauchte sie bei 200 %.
+-                Text(titel, fontWeight = FontWeight.SemiBold, maxLines = if (grosseSchrift()) 3 else 2, overflow = TextOverflow.Ellipsis,
++                Text(titel, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis,
+                     onTextLayout = { zeilen = it.lineCount }, modifier = Modifier.semantics { heading() })
+                 if (untertitel != null) Text(untertitel, style = typo.bodySmall, maxLines = 1,
+                     overflow = TextOverflow.Ellipsis)

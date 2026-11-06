@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.ui.viewmodel
 
+import ch.brickinventoryapp.ui.abgeleitet
 import androidx.lifecycle.SavedStateHandle
 import ch.brickinventoryapp.ui.model.alsAnsicht
 import androidx.lifecycle.viewModelScope
@@ -9,7 +10,7 @@ import ch.brickinventoryapp.data.ScopeFilter
 import ch.brickinventoryapp.data.repository.KatalogRepository
 import ch.brickinventoryapp.data.repository.FinanzenRepository
 import ch.brickinventoryapp.data.repository.MERKLISTE_DEFAULT_SORT
-import ch.brickinventoryapp.data.repository.Result
+import ch.brickinventoryapp.data.repository.Ergebnis
 import ch.brickinventoryapp.data.repository.SetsRepository
 import ch.brickinventoryapp.ui.Aenderung
 import ch.brickinventoryapp.ui.MerklisteUiState
@@ -24,6 +25,11 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
+import ch.brickinventoryapp.ui.fehlerklasse
+import androidx.lifecycle.ViewModel
+import ch.brickinventoryapp.ui.AppUiState
+import ch.brickinventoryapp.ui.Sitzung
+import ch.brickinventoryapp.ui.Bestandssignal
 
 /**
  * Merkliste und Merkposten-Detail — was man haben möchte, getrennt vom Besitz.
@@ -34,19 +40,53 @@ import javax.inject.Inject
  */
 @HiltViewModel
 class MerklisteViewModel @Inject constructor(
-    dienste: AppDienste,
+    private val sitzung: Sitzung,
+    private val filter: Filterwahl,
+    private val meldungen: Meldungen,
+    private val bestand: Bestandssignal,
     private val sets: SetsRepository,
     private val katalogRepo: KatalogRepository,
     private val finanzen: FinanzenRepository,
     private val gemerkt: SavedStateHandle,
-) : BereichsViewModel(dienste) {
+) : ViewModel(), Filterwahl by filter, MerklisteAktionen {
+
+    val state: StateFlow<AppUiState> = sitzung.state
+
+    init {
+        folgeAbmeldung(sitzung) { zuruecksetzen() }
+        folgeBestand(bestand) { beiAenderung(it) }
+    }
+
+    override fun setScope(view: ScopeFilter.View, value: String) {
+        viewModelScope.launch {
+            filter.setzeKonto(view, value)
+            nachFilter(view)
+        }
+    }
+
+    override fun setLagerFilter(view: ScopeFilter.View, value: String) {
+        viewModelScope.launch {
+            filter.setzeLager(view, value)
+            nachFilter(view)
+        }
+    }
 
     private val _merklisteState = MutableStateFlow(MerklisteUiState(
         query = gemerkt[SUCHE] ?: "",
         zustandFilter = gemerkt[ZUSTAND] ?: "",
         sortierung = gemerkt[SORTIERUNG] ?: MERKLISTE_DEFAULT_SORT,
     ))
-    val merklisteState: StateFlow<MerklisteUiState> = _merklisteState.asStateFlow()
+    /** Ein Merkposten, der erst gelöscht wird, wenn die Snackbar ohne „Rückgängig“ endet. */
+    data class VorgemerkterMerkposten(val setNumber: String, val zustand: String, val besitzer: Int?, val name: String)
+
+    private val _vorgemerkt = MutableStateFlow<VorgemerkterMerkposten?>(null)
+    val vorgemerkt: StateFlow<VorgemerkterMerkposten?> = _vorgemerkt.asStateFlow()
+
+    /** Die Liste ohne den vorgemerkten Posten, auch wenn sie inzwischen neu kam (wie die Galerie). */
+    val merklisteState: StateFlow<MerklisteUiState> = _merklisteState
+        .abgeleitet(_vorgemerkt) { st, v ->
+            if (v == null) st else st.copy(merkposten = st.merkposten.filterNot { it.setNumber == v.setNumber && it.condition == v.zustand })
+        }
 
     private val _merkpostenDetailState = MutableStateFlow(MerkpostenDetailUiState())
     val merkpostenDetailState: StateFlow<MerkpostenDetailUiState> = _merkpostenDetailState.asStateFlow()
@@ -69,19 +109,19 @@ class MerklisteViewModel @Inject constructor(
     }
 
     private fun ungefiltert(f: MerklisteUiState) = f.query.isBlank() && f.zustandFilter.isBlank() &&
-        (f.sortierung.isBlank() || f.sortierung == MERKLISTE_DEFAULT_SORT) && scopeFor(ScopeFilter.View.MERKLISTE) == null
+        (f.sortierung.isBlank() || f.sortierung == MERKLISTE_DEFAULT_SORT) && filter.kontoFuer(ScopeFilter.View.MERKLISTE) == null
 
     private val alarmEingabe = Preisalarmeingabe(
         scope = viewModelScope, sets = sets,
-        melde = { _snackbar.value = it },
-        beschreibe = { meldungFuerSnackbar(it) },
+        melde = { meldungen.zeige(it) },
+        beschreibe = { meldungen.meldungFuerSnackbar(it) },
         gespeichert = { sn ->
             if (_merkpostenDetailState.value.setNumber == sn) loadPreisalarme(sn)
-            dienste.bestand.melde(Aenderung.Alarme)
+            bestand.melde(Aenderung.Alarme)
         },
     )
 
-    fun ladeMerkliste() {
+    override fun ladeMerkliste() {
         viewModelScope.launch {
             val f = _merklisteState.value
             _merklisteState.update { it.copy(laedt = true, fehler = null) }
@@ -89,21 +129,21 @@ class MerklisteViewModel @Inject constructor(
                 search    = f.query.trim().ifBlank { null },
                 condition = f.zustandFilter.ifBlank { null },
                 sort      = f.sortierung.ifBlank { null },
-                accounts  = scopeFor(ScopeFilter.View.MERKLISTE),
+                accounts  = filter.kontoFuer(ScopeFilter.View.MERKLISTE),
             )
             when (r) {
-                is Result.Success ->
+                is Ergebnis.Success ->
                     _merklisteState.update { it.copy(merkposten = r.data.merkposten.map { m -> m.alsAnsicht() }, laedt = false) }
-                is Result.Error -> {
-                    _merklisteState.update { it.copy(laedt = false, fehler = meldung(r),
-                        fehlerKlasse = ch.brickinventoryapp.ui.fehlerklasse(r)) }
-                    _snackbar.value = meldungFuerSnackbar(r)?.let { text(R.string.vm_error, it) }
+                is Ergebnis.Error -> {
+                    _merklisteState.update { it.copy(laedt = false, fehler = meldungen.meldung(r),
+                        fehlerKlasse = fehlerklasse(r)) }
+                    meldungen.zeige(meldungen.meldungFuerSnackbar(r)?.let { meldungen.text(R.string.vm_error, it) })
                 }
             }
         }
     }
 
-    fun setzeMerklisteSuche(q: String) {
+    override fun setzeMerklisteSuche(q: String) {
         gemerkt[SUCHE] = q
         _merklisteState.update { it.copy(query = q) }
         suchJob?.cancel()
@@ -113,72 +153,97 @@ class MerklisteViewModel @Inject constructor(
         }
     }
 
-    fun setzeMerklisteZustand(zustand: String) {
+    override fun setzeMerklisteZustand(zustand: String) {
         gemerkt[ZUSTAND] = zustand
         _merklisteState.update { it.copy(zustandFilter = zustand) }
         ladeMerkliste()
     }
 
-    fun setzeMerklisteSortierung(sortierung: String) {
+    override fun setzeMerklisteSortierung(sortierung: String) {
         gemerkt[SORTIERUNG] = sortierung
         _merklisteState.update { it.copy(sortierung = sortierung) }
         ladeMerkliste()
     }
 
-    fun legeMerkpostenAn(setNumber: String, zustand: String, besitzer: Int? = null) {
+    override fun legeMerkpostenAn(setNumber: String, zustand: String, besitzer: Int?) {
         val nummer = setNumber.trim()
-        if (nummer.isBlank()) { _snackbar.value = text(R.string.wanted_need_number); return }
+        if (nummer.isBlank()) { meldungen.zeige(meldungen.text(R.string.wanted_need_number)); return }
         viewModelScope.launch {
-            _snackbar.value = merkpostenAnlegen(sets, dienste.texte, nummer, zustand, besitzer)
-            dienste.bestand.melde(Aenderung.Merkliste)
+            meldungen.zeige(merkpostenAnlegen(sets, meldungen, nummer, zustand, besitzer))
+            bestand.melde(Aenderung.Merkliste)
         }
     }
 
-    fun verschiebeMerkposten(setNumber: String, zustand: String, vonId: Int, zuId: Int) {
+    override fun verschiebeMerkposten(setNumber: String, zustand: String, vonId: Int, zuId: Int) {
         if (vonId == zuId) return
         viewModelScope.launch {
             when (val r = sets.verschiebeMerkposten(setNumber, zustand, vonId, zuId)) {
-                is Result.Success -> {
-                    if (!r.data.success) { _snackbar.value = r.data.error ?: text(R.string.err_unknown); return@launch }
-                    _snackbar.value = text(
-                        if (r.data.zusammengefuehrt) R.string.wanted_already else R.string.vm_saved)
-                    dienste.bestand.melde(Aenderung.Merkliste)
+                is Ergebnis.Success -> {
+                    if (!r.data.success) { meldungen.zeige(r.data.error ?: meldungen.text(R.string.err_unknown)); return@launch }
+                    meldungen.zeige(meldungen.text(
+                        if (r.data.zusammengefuehrt) R.string.wanted_already else R.string.vm_saved))
+                    bestand.melde(Aenderung.Merkliste)
                 }
-                is Result.Error -> _snackbar.value = meldungFuerSnackbar(r)?.let { text(R.string.vm_error, it) }
+                is Ergebnis.Error -> meldungen.zeige(meldungen.meldungFuerSnackbar(r)?.let { meldungen.text(R.string.vm_error, it) })
             }
         }
     }
 
-    fun loescheMerkposten(setNumber: String, zustand: String, besitzer: Int?) {
+    /**
+     * Löschen mit „Rückgängig“ wie in der Galerie: Der Posten verschwindet sofort, der
+     * Server erfährt es erst mit [merkpostenLoeschenAusfuehren]. Mit ihm gingen Schwelle,
+     * Richtung und „auf der Liste seit“ verloren. Ein früher vorgemerkter wird zuerst gelöscht.
+     */
+    override fun loescheMerkposten(setNumber: String, zustand: String, besitzer: Int?) {
+        merkpostenLoeschenAusfuehren()
+        val name = _merklisteState.value.merkposten
+            .firstOrNull { it.setNumber == setNumber && it.condition == zustand }?.name ?: setNumber
+        _vorgemerkt.value = VorgemerkterMerkposten(setNumber, zustand, besitzer, name)
+    }
+
+    /** Der vorgemerkte Posten bleibt; die Liste kommt neu vom Server, wo er nie fehlte. */
+    fun merkpostenRueckgaengig(nur: VorgemerkterMerkposten? = null) {
+        if (_vorgemerkt.value == null || (nur != null && _vorgemerkt.value != nur)) return
+        _vorgemerkt.value = null
+        ladeMerkliste()
+    }
+
+    /** [nur]: nur diesen Posten — eine abgelöste Snackbar führt nicht den nächsten aus. */
+    fun merkpostenLoeschenAusfuehren(nur: VorgemerkterMerkposten? = null) {
+        val v = _vorgemerkt.value ?: return
+        if (nur != null && v != nur) return
+        _vorgemerkt.value = null
         viewModelScope.launch {
-            when (val r = sets.loescheMerkposten(setNumber, zustand, besitzer)) {
-                is Result.Success -> {
-                    _snackbar.value = text(R.string.wanted_deleted)
-                    dienste.bestand.melde(Aenderung.Merkliste)
+            when (val r = sets.loescheMerkposten(v.setNumber, v.zustand, v.besitzer)) {
+                // „genommen“ stand schon in der Snackbar mit „Rückgängig“.
+                is Ergebnis.Success -> {
+                    _merklisteState.update { st -> st.copy(merkposten = st.merkposten
+                        .filterNot { it.setNumber == v.setNumber && it.condition == v.zustand }) }
+                    bestand.melde(Aenderung.Merkliste)
                 }
-                is Result.Error -> _snackbar.value = meldungFuerSnackbar(r)?.let { text(R.string.vm_error, it) }
+                is Ergebnis.Error -> meldungen.zeige(meldungen.meldungFuerSnackbar(r)?.let { meldungen.text(R.string.vm_error, it) })
             }
         }
     }
 
     /** Aus dem Merkposten wird Besitz; der Server entscheidet, was mit Eintrag und Alarm geschieht. */
-    fun uebernimmMerkposten(
+    override fun uebernimmMerkposten(
         setNumber: String, zustand: String, besitzer: Int?,
-        anzahl: Int = 1, kaufpreisRoh: String = "", erfasstAls: String? = null,
-        lagerort: String? = null,
+        anzahl: Int, kaufpreisRoh: String, erfasstAls: String?,
+        lagerort: String?,
     ) {
         viewModelScope.launch {
             val preis = Alarmeingabe.zahl(kaufpreisRoh)
             when (val r = sets.uebernimmMerkposten(setNumber, zustand, anzahl, preis,
                                                    erfasstAls, besitzer,
                                                    lagerort?.trim()?.takeIf { it.isNotEmpty() })) {
-                is Result.Success -> {
-                    _snackbar.value = text(
+                is Ergebnis.Success -> {
+                    meldungen.zeige(meldungen.text(
                         if (r.data.action == "exists") R.string.wanted_taken_existing
-                        else R.string.wanted_taken)
-                    dienste.bestand.melde(Aenderung.Merkliste, Aenderung.Sets)
+                        else R.string.wanted_taken))
+                    bestand.melde(Aenderung.Merkliste, Aenderung.Sets)
                 }
-                is Result.Error -> _snackbar.value = meldungFuerSnackbar(r)?.let { text(R.string.vm_error, it) }
+                is Ergebnis.Error -> meldungen.zeige(meldungen.meldungFuerSnackbar(r)?.let { meldungen.text(R.string.vm_error, it) })
             }
         }
     }
@@ -190,34 +255,34 @@ class MerklisteViewModel @Inject constructor(
     ) {
         viewModelScope.launch {
             when (val r = sets.legeMerkpostenAn(setNumber, zustand, besitzer)) {
-                is Result.Error -> {
-                    _snackbar.value = meldungFuerSnackbar(r)?.let { text(R.string.vm_error, it) }
+                is Ergebnis.Error -> {
+                    meldungen.zeige(meldungen.meldungFuerSnackbar(r)?.let { meldungen.text(R.string.vm_error, it) })
                     return@launch
                 }
-                is Result.Success -> {
+                is Ergebnis.Success -> {
                     val schwelle = Alarmeingabe.zahl(schwelleRoh)
                     if (schwelle != null) sets.setPreisalarm(setNumber, richtung, schwelle, zustand)
-                    _snackbar.value = text(
-                        if (r.data.warNeu) R.string.wanted_added else R.string.wanted_already)
-                    dienste.bestand.melde(Aenderung.Merkliste, Aenderung.Alarme)
+                    meldungen.zeige(meldungen.text(
+                        if (r.data.warNeu) R.string.wanted_added else R.string.wanted_already))
+                    bestand.melde(Aenderung.Merkliste, Aenderung.Alarme)
                 }
             }
         }
     }
 
     /** Katalogdaten, Preise und Verlauf eines Merkpostens — je für sich, was fehlt, bleibt leer. */
-    fun ladeMerkpostenDetail(setNumber: String) {
+    override fun ladeMerkpostenDetail(setNumber: String) {
         viewModelScope.launch {
             _merkpostenDetailState.value = MerkpostenDetailUiState(setNumber = setNumber, laedt = true)
             if (_merklisteState.value.merkposten.isEmpty()) ladeMerkliste()
             loadPreisalarme(setNumber)
-            val katalog = (katalogRepo.getCatalogSetDetail(setNumber) as? Result.Success)
+            val katalog = (katalogRepo.getCatalogSetDetail(setNumber) as? Ergebnis.Success)
                 ?.data?.takeIf { it.success }?.set
             _merkpostenDetailState.update { it.copy(katalog = katalog?.alsAnsicht()) }
-            val preise = (sets.getMerkpostenPreise(setNumber) as? Result.Success)
+            val preise = (sets.getMerkpostenPreise(setNumber) as? Ergebnis.Success)
                 ?.data?.takeIf { it.success }
             _merkpostenDetailState.update { it.copy(preise = preise?.alsAnsicht()) }
-            val historie = (finanzen.getSetPriceHistory(setNumber) as? Result.Success)
+            val historie = (finanzen.getSetPriceHistory(setNumber) as? Ergebnis.Success)
                 ?.data?.takeIf { it.success }
             _merkpostenDetailState.update { it.copy(historie = historie?.alsAnsicht(), laedt = false) }
         }
@@ -226,23 +291,23 @@ class MerklisteViewModel @Inject constructor(
     fun loadPreisalarme(setNumber: String) {
         viewModelScope.launch {
             val r = sets.getPreisalarme(setNumber)
-            val alarme = (r as? Result.Success)?.data?.takeIf { it.success }?.alerts?.map { it.alsAnsicht() } ?: emptyList()
+            val alarme = (r as? Ergebnis.Success)?.data?.takeIf { it.success }?.alerts?.map { it.alsAnsicht() } ?: emptyList()
             _merkpostenDetailState.update { if (it.setNumber == setNumber) it.copy(preisalarme = alarme) else it }
         }
     }
 
-    fun setzePreisalarm(setNumber: String, richtung: String, roh: String, zustand: String) =
+    override fun setzePreisalarm(setNumber: String, richtung: String, roh: String, zustand: String) =
         alarmEingabe.setze(setNumber, richtung, roh, zustand)
 
-    override fun nachFilter(view: ScopeFilter.View) {
+    private fun nachFilter(view: ScopeFilter.View) {
         if (view == ScopeFilter.View.MERKLISTE) ladeMerkliste()
     }
 
-    override fun beiAenderung(aenderung: Aenderung) {
+    private fun beiAenderung(aenderung: Aenderung) {
         if (aenderung == Aenderung.Merkliste) ladeMerkliste()
     }
 
-    override fun zuruecksetzen() {
+    private fun zuruecksetzen() {
         suchJob?.cancel()
         _merklisteState.value = MerklisteUiState()
         _merkpostenDetailState.value = MerkpostenDetailUiState()
@@ -263,6 +328,6 @@ class MerklisteViewModel @Inject constructor(
 internal suspend fun merkpostenAnlegen(
     sets: SetsRepository, texte: Texte, setNumber: String, zustand: String, besitzer: Int?,
 ): String? = when (val r = sets.legeMerkpostenAn(setNumber, zustand, besitzer)) {
-    is Result.Success -> texte.text(if (r.data.warNeu) R.string.wanted_added else R.string.wanted_already)
-    is Result.Error -> texte.meldungFuerSnackbar(r)?.let { texte.text(R.string.vm_error, it) }
+    is Ergebnis.Success -> texte.text(if (r.data.warNeu) R.string.wanted_added else R.string.wanted_already)
+    is Ergebnis.Error -> texte.meldungFuerSnackbar(r)?.let { texte.text(R.string.vm_error, it) }
 }

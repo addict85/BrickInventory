@@ -3,16 +3,16 @@ Modul: app
 Test: ch.brickinventoryapp.GeraeteSchutzTest
 Rot: eine neue Installation verbirgt die Vorschau
 
-diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/PreferencesManager.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/PreferencesManager.kt
-index 45a9413..4657372 100644
---- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/PreferencesManager.kt
-+++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/PreferencesManager.kt
-@@ -464,7 +464,7 @@ class PreferencesManager @Inject constructor(
+diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/GeraeteAblage.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/GeraeteAblage.kt
+index 13a1176..ba6a155 100644
+--- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/GeraeteAblage.kt
++++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/GeraeteAblage.kt
+@@ -269,7 +269,7 @@ class GeraeteAblage @Inject constructor(
       * an: Die Übersicht zeigt Bestand, Preise und Konto jedem, der das Telefon kurz
       * in der Hand hat. Wer Bildschirmfotos braucht, schaltet es aus.
       */
--    fun vorschauVerbergen(): Boolean = designSpiegel.getBoolean(VORSCHAU_VERBERGEN, true)
-+    fun vorschauVerbergen(): Boolean = designSpiegel.getBoolean(VORSCHAU_VERBERGEN, false)
-     fun setzeVorschauVerbergen(an: Boolean) {
+-    override fun vorschauVerbergen(): Boolean = designSpiegel.getBoolean(VORSCHAU_VERBERGEN, true)
++    override fun vorschauVerbergen(): Boolean = designSpiegel.getBoolean(VORSCHAU_VERBERGEN, false)
+     override fun setzeVorschauVerbergen(an: Boolean) {
          designSpiegel.edit { putBoolean(VORSCHAU_VERBERGEN, an) }
      }

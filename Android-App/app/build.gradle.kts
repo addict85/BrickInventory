@@ -1,14 +1,15 @@
+import com.android.build.api.artifact.SingleArtifact
 import java.io.File
 
 plugins {
     // Built-in Kotlin: Seit AGP 9 kompiliert com.android.application Kotlin
     // selbst — org.jetbrains.kotlin.android darf nicht mehr angewendet werden
     // (führt sonst zu "extension 'kotlin' already registered").
-    alias(libs.plugins.android.application)
-    alias(libs.plugins.kotlin.compose)
-    alias(libs.plugins.hilt)
+    alias(libs.plugins.brickinventory.android.application)
+    alias(libs.plugins.brickinventory.android.unittests)
+    alias(libs.plugins.brickinventory.android.compose)
+    alias(libs.plugins.brickinventory.android.hilt)
     alias(libs.plugins.kotlin.serialization)
-    alias(libs.plugins.ksp)
     alias(libs.plugins.roborazzi)
 }
 
@@ -19,15 +20,10 @@ roborazzi {
     outputDir.set(file("src/test/bildschirmfotos"))
 }
 
-// ── Version aus Git ───────────────────────────────────────────────────────────
-// Derselbe Stand ergibt dieselbe Version, egal wann gebaut wird:
-//   versionName = `git describe` am letzten Tag v* (ohne „v“), ohne Tag
-//                 „<Commits>-g<Kurzhash>“
-//   versionCode = VERSION_CODE_BASE + Anzahl Commits
-// Die Basis liegt über allen früheren, aus der Uhrzeit gebildeten Codes (100 Mio. +
-// Minuten seit 2020, Ende 2026 ≈ 103,6 Mio.), sonst lehnte Android das Update als
-// Downgrade ab. Ohne Git (Quell-Archiv) gilt der feste Rückfall.
-// Die CI braucht dafür die volle Historie (android.yml: fetch-depth: 0).
+// Version aus Git, damit derselbe Stand dieselbe Version ergibt: versionName aus
+// `git describe` (Tag v*), versionCode = Basis + Anzahl Commits. Die Basis liegt über
+// den früheren, aus der Uhrzeit gebildeten Codes, sonst wäre ein Update ein Downgrade.
+// Die CI klont dafür die volle Historie (android.yml: fetch-depth: 0).
 val VERSION_CODE_BASE = 200_000_000
 fun git(vararg args: String): String? = runCatching {
     val lauf = providers.exec {
@@ -52,95 +48,22 @@ ksp {
 }
 
 android {
-    // JVM-Unit-Tests: android.util.Log & Co. sind im Test-Jar nur Attrappen und
-    // WERFEN standardmässig ("Method w in android.util.Log not mocked").
-    // returnDefaultValues lässt solche Aufrufe still ins Leere laufen, damit ein
-    // Test nicht an einer Protokollzeile scheitert statt an der geprüften Regel.
-    testOptions {
-        unitTests.isReturnDefaultValues = true
-        // Robolectric liest Ressourcen, Schriften und Manifest der App.
-        unitTests.isIncludeAndroidResources = true
-        // Der volle Stack im CI-Protokoll: Der Testbericht liegt als Artefakt, das
-        // aus der Entwicklungsumgebung nicht lesbar ist, und „NullPointerException
-        // at Datei:Zeile“ allein sagt nicht, wo es wirklich brach.
-        unitTests.all { test ->
-            test.testLogging {
-                exceptionFormat = org.gradle.api.tasks.testing.logging.TestExceptionFormat.FULL
-                showCauses = true
-                showStackTraces = true
-            }
-        }
-    }
+    // Robolectric liest Ressourcen, Schriften und Manifest der App.
+    testOptions.unitTests.isIncludeAndroidResources = true
 
     namespace  = "ch.brickinventoryapp"
-    // compileSdk = targetSdk: gegen SDK 37 (Android 17) kompilieren UND das
-    // Verhalten von 37 übernehmen. Ein compileSdk über dem targetSdk wäre
-    // ebenfalls zulässig, verdeckt aber, welche Verhaltensänderungen bereits
-    // aktiv sind — hier bewusst gleichgezogen.
-    //
-    // ── Warum 37 und nicht weiter 36 ────────────────────────────────────────
-    //
-    // Nicht der Neuheit wegen, sondern weil zwei Bibliotheken es verlangen.
-    // GEMESSEN an ihren AAR-Metadaten:
-    //   okhttp-android 5.5.0      → minCompileSdk=37
-    //   coil-core-android 3.6.x   → minCompileSdk=37
-    // Mit compileSdk 36 bricht `checkDebugAarMetadata` ab, bevor ein
-    // einziger Test läuft — das ist in diesem Baum schon einmal passiert.
-    compileSdk = 37
 
+    // compileSdk, minSdk und targetSdk setzt brickinventory.android.application.
     defaultConfig {
         applicationId = "ch.brickinventoryapp"
-        minSdk        = 26
-        // targetSdk 37 (Android 17). Relevante Verhaltensänderungen gegenüber 36
-        // sind hier NICHT aufgezählt, und das ist eine Lücke, die benannt
-        // gehört: Die Liste darunter beschreibt den Schritt 35 → 36. Was 37
-        // mitbringt, liess sich in dieser Umgebung nicht nachlesen —
-        // developer.android.com ist erreichbar, dl.google.com nicht, und die
-        // Verhaltensänderungen stehen in den Release-Notes zum SDK.
-        //
-        // Der Sprung erfolgt, weil okhttp 5.5.0 und coil 3.6.x ihn verlangen
-        // (siehe compileSdk oben). Was er am VERHALTEN ändert, muss am Gerät
-        // nachgeprüft werden; ein grüner Lauf sagt dazu nichts.
-        //
-        // Die Änderungen von 35 → 36, weiterhin gültig:
-        //  - Vorhersagendes Zurück ("predictive back") ist standardmässig AN.
-        //    Unkritisch hier: Die App hat keinen einzigen BackHandler und
-        //    überlässt Zurück komplett der Navigation-Compose-Voreinstellung.
-        //    Falls die Animation doch stört, unten im Manifest
-        //    android:enableOnBackInvokedCallback auf "false" setzen.
-        //  - Bildschirmausrichtung lässt sich auf grossen Displays nicht mehr
-        //    erzwingen. Ebenfalls unkritisch: Das Manifest setzt weder
-        //    screenOrientation noch resizeableActivity.
-        //  - Edge-to-edge war schon unter 35 erzwungen, ändert sich also nicht.
-        targetSdk     = 37
         versionCode   = generatedVersionCode
         versionName   = generatedVersionName
     }
 
-    // ── Signatur für Release ─────────────────────────────────────────────────
-    //
-    // Aus UMGEBUNGSVARIABLEN, nicht aus einer Datei im Projekt (Nachtrag 121):
-    // Ein Schlüsselspeicher gehört nie ins Repository, und eine
-    // keystore.properties daneben wird beim nächsten `git add -A` genauso
-    // versehentlich mitgenommen. Auf GitHub Actions kommen die vier Werte aus
-    // den Repository-Secrets.
-    //
-    // Fehlen sie — also bei jedem lokalen Bau ohne gesetzte Variablen —, gibt
-    // es KEINE Signaturkonfiguration und `assembleRelease` erzeugt wie bisher
-    // ein unsigniertes APK. Das ist Absicht: Ein lokaler Bau soll nicht daran
-    // scheitern, dass jemand die Variablen nicht gesetzt hat.
-    // Zwei Quellen, in dieser Reihenfolge:
-    //
-    //  1. Umgebungsvariable — so liefert GitHub Actions die Werte.
-    //  2. Gradle-Property — so hinterlegt man sie EINMAL lokal, in
-    //     ~/.gradle/gradle.properties (Windows: C:\Users\<name>\.gradle\).
-    //     Diese Datei liegt AUSSERHALB des Projekts und kann deshalb nicht
-    //     versehentlich mitcommittet werden. Eine keystore.properties neben
-    //     dem Buildskript wäre beim nächsten `git add -A` dabei.
-    //
-    // Nirgends eine Vorgabe: Ein fest eingetragenes Passwort im Buildskript
-    // wäre schlimmer als gar keine Signatur, weil es aussieht, als wäre es
-    // geschützt.
+    // Signatur aus Umgebungsvariablen oder ~/.gradle/gradle.properties, nie aus einer
+    // Datei im Projekt: Die läge beim nächsten `git add -A` im Repository. Ohne Werte
+    // entsteht ein unsigniertes APK, damit ein lokaler Bau nicht daran scheitert. Eine
+    // Vorgabe gibt es nicht; ein fest eingetragenes Passwort sähe nur geschützt aus.
     fun signaturWert(umgebung: String, property: String): String? =
         System.getenv(umgebung) ?: providers.gradleProperty(property).orNull
 
@@ -155,10 +78,12 @@ android {
                 storePassword = signaturWert("BRICK_KEYSTORE_PASSWORT", "brickKeystorePasswort")
                 keyAlias      = signaturWert("BRICK_KEY_ALIAS", "brickKeyAlias")
                 keyPassword   = signaturWert("BRICK_KEY_PASSWORT", "brickKeyPasswort")
-                // Beide Schemata: v1 für Android 6 und älter (minSdk ist 26,
-                // also eigentlich entbehrlich), v2/v3 für alles darüber.
-                enableV1Signing = true
+                // Wie die CI (apksigner im Job signieren): kein v1 — ab minSdk 30
+                // prüft kein Gerät mehr die JAR-Signatur —, v3 für eine spätere
+                // Schlüsselrotation.
+                enableV1Signing = false
                 enableV2Signing = true
+                enableV3Signing = true
             }
         }
     }
@@ -179,11 +104,6 @@ android {
         }
     }
 
-    compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_17
-        targetCompatibility = JavaVersion.VERSION_17
-    }
-
     lint {
         // Lint läuft auf Release-Builds und bricht bei einem Fehler ab: Ein
         // Befund der Stufe Error ist kein Bericht, sondern ein Mangel. Warnungen
@@ -200,24 +120,12 @@ android {
 
     packaging {
         jniLibs {
-            // useLegacyPackaging = false (Standard ab minSdk 23) — bewusst NICHT
-            // mehr auf true gesetzt.
-            //
-            // Der frühere Kommentar hier ("legacy packaging for third-party libs
-            // that don't support 16KB alignment yet") beruhte auf einem
-            // Missverständnis: Legacy Packaging komprimiert die .so-Dateien und
-            // entpackt sie bei der Installation. An der ELF-Ausrichtung IM
-            // Bibliothekskörper ändert das nichts — es verschiebt das Problem
-            // nur aus dem Zip-Archiv in das Dateisystem. Unkomprimiert
-            // (useLegacyPackaging = false) richtet AGP ab 8.5.1 die Dateien im
-            // Archiv auf 16 KB aus, und genau das ist der empfohlene Weg.
+            // Unkomprimiert richtet AGP die .so im Archiv auf 16 KB aus; Legacy Packaging
+            // verschöbe das Problem nur ins Dateisystem des Geräts.
             useLegacyPackaging = false
         }
-        // Nur noch libandroidx.graphics.path.so (über Compose) lässt sich nicht
-        // strippen. ML Kit ist nicht mehr gebündelt (Play-Dienste liefern das
-        // Modell), CameraX 1.6.1 und DataStore 1.1.7 sind ausgerichtet — ihre
-        // Einträge sind hier deshalb entfallen. Wieder aufnehmen, falls der
-        // Build "Unable to strip the following libraries…" meldet.
+        // Nur libandroidx.graphics.path.so (über Compose) lässt sich nicht strippen. Weitere
+        // aufnehmen, falls der Bau „Unable to strip the following libraries…“ meldet.
         jniLibs.keepDebugSymbols += setOf(
             "**/libandroidx.graphics.path.so"
         )
@@ -231,43 +139,27 @@ android {
     }
 
     buildFeatures {
-        compose = true
         // BuildConfig wird fuer BuildConfig.DEBUG benoetigt (Logging nur im Debug-Build)
         buildConfig = true
     }
 }
 
-// ── DataStore auf EINE Fassung festnageln ─────────────────────────────────────
-//
-// Der Riegel bleibt, die Zahl wandert: 1.1.7 → 1.2.1 → 1.3.0. Sein Zweck war nie die
-// bestimmte Nummer, sondern dass eine TRANSITIVE Anhebung (über eine andere
-// Abhängigkeit) die 16-KB-Tauglichkeit nicht still wieder kaputt macht.
-//
-// Ob eine Fassung ausgerichtet ist, war in dieser Umgebung nicht nachzusehen —
-// dl.google.com ist gesperrt, das AAR also nicht herunterladbar. Statt es zu
-// hoffen, misst es jetzt die Action am GEBAUTEN APK:
-// tools/apk-ausrichtung.py liest die ELF-Köpfe aller mitgelieferten .so und
-// meldet jede Ausrichtung unter 16 KB. Das ist der Nachweis, den der
-// Kommentar hier vorher nur verlangt hat.
+// DataStore auf die Fassung des Katalogs festnageln: Eine transitive Anhebung ergäbe
+// ein anderes APK als das geprüfte. Die 16-KB-Ausrichtung misst tools/apk-ausrichtung.py
+// am gebauten APK.
+val datastore = libs.versions.datastore.get()
 configurations.configureEach {
     resolutionStrategy {
-        force("androidx.datastore:datastore:1.3.0")
-        force("androidx.datastore:datastore-android:1.3.0")
-        force("androidx.datastore:datastore-core:1.3.0")
-        force("androidx.datastore:datastore-core-android:1.3.0")
-        force("androidx.datastore:datastore-preferences:1.3.0")
-        force("androidx.datastore:datastore-preferences-android:1.3.0")
+        listOf(
+            "datastore", "datastore-android", "datastore-core", "datastore-core-android",
+            "datastore-preferences", "datastore-preferences-android",
+        ).forEach { force("androidx.datastore:$it:$datastore") }
     }
 }
 
-// ── Feste Version für Debug-Builds ────────────────────────────────────────────
-// versionCode/-Name kommen oben aus Git und wechseln mit jedem Commit; für Debug
-// hiesse das: Die Manifest-Tasks wären nach jedem Commit "out of date". Die
-// Variant-API überschreibt beide Felder (ein versionNameSuffix reichte nicht).
-//
-// versionCode = 1 liegt bewusst weit unter VERSION_CODE_BASE, damit ein
-// Debug-Build nie versehentlich als Update über eine installierte
-// Release-Fassung geht.
+// Debug-Builds mit fester Version: Aus Git wären die Manifest-Aufgaben nach jedem Commit
+// veraltet. versionCode 1 liegt unter jeder Release-Fassung, damit ein Debug-Build nie
+// als Update über eine installierte Release-Fassung geht.
 androidComponents {
     onVariants(selector().withBuildType("debug")) { variant ->
         variant.outputs.forEach { output ->
@@ -277,76 +169,33 @@ androidComponents {
     }
 }
 
-// Ersetzt das veraltete kotlinOptions { jvmTarget = "17" } im android-Block
-// (Deprecation-Warnung seit Kotlin 2.x, wird mit KGP 3.0 entfernt).
-kotlin {
-    compilerOptions {
-        jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17)
-    }
-}
-
-// ── APK-Dateiname ─────────────────────────────────────────────────────────────
-// Das als Release gebaute APK soll als "BrickInventory.apk" bereitstehen
-// (statt nur des Standardnamens app-release.apk). Die alte
-// applicationVariants-API zum Umbenennen wurde in AGP 9 entfernt; stattdessen
-// wird über die öffentliche Artifacts-API der Ausgabeordner der Release-APK
-// ermittelt und die erzeugte Datei danach als BrickInventory.apk bereitgestellt.
-//
-// Wichtig: AGP legt neben der APK eine output-metadata.json ab, die auf den
-// Originalnamen verweist. Damit nachgelagerte Schritte (Signieren, Bundle,
-// Install) nicht brechen, wird die Original-APK NICHT umbenannt, sondern eine
-// Kopie mit dem Wunschnamen daneben abgelegt.
-//
-// ── Eine Regel, eine Fassung ─────────────────────────────────────────────────
-// Bis hierher gab es diese Regel ZWEIMAL, in zwei Schreibweisen: Gradle legte
-// "Brickinventory.apk" ab (kleines i), der Workflow benannte danach
-// app-release.apk in "BrickInventory.apk" um (grosses I). Auf Linux sind das
-// zwei Dateien — im Protokoll des Laufs lagen beide nebeneinander, gleich gross.
-// Hochgeladen wurde nur die des Workflows; die Gradle-Kopie war totes Gewicht,
-// und die README beschrieb beide Namen an verschiedenen Stellen.
-//
-// Schlimmer als der doppelte Name war, was die zweite Fassung tat: Der Workflow
-// verschob (mv) genau die Original-APK, die der Absatz oben ausdrücklich stehen
-// lassen will. Heute geht das gut, weil Bundle und Lint vorher laufen — das ist
-// aber eine Reihenfolge, auf die sich niemand verlassen sollte.
-//
-// Jetzt benennt nur noch Gradle; der Workflow prüft bloss, was dabei
-// herausgekommen ist. Der Name steht damit an genau einer Stelle.
+// Das Release-APK zusätzlich als BrickInventory.apk daneben; das Original bleibt, weil
+// output-metadata.json darauf zeigt. Nur Gradle vergibt den Namen, der Workflow prüft ihn.
 androidComponents {
     onVariants(selector().withBuildType("release")) { variant ->
-        val apkDir = variant.artifacts.get(com.android.build.api.artifact.SingleArtifact.APK)
+        val apkDir = variant.artifacts.get(SingleArtifact.APK)
         val renameTask = tasks.register("copyReleaseApkAsBrickInventory") {
-            inputs.dir(apkDir)
+            // Ein- und Ausgabe benannt: Ohne Änderung bleibt die Aufgabe UP-TO-DATE.
+            inputs.files(apkDir.map { it.asFileTree.matching { exclude("BrickInventory.apk") } })
+            outputs.file(apkDir.map { it.file("BrickInventory.apk") })
             doLast {
                 val dir = apkDir.get().asFile
                 val target = File(dir, "BrickInventory.apk")
-                // Die Release-APK finden — unabhängig vom Standardnamen — und
-                // als BrickInventory.apk kopieren.
-                //
-                // Die Reihenfolge ist FEST und nicht "die neueste Datei": Ohne
-                // Signierschlüssel heisst die Ausgabe app-release-unsigned.apk,
-                // mit Schlüssel app-release.apk. Liegen nach einem Wechsel
-                // beide im Ordner, soll immer die signierte gewinnen — nach
-                // Zeitstempel wäre das Zufall, und ein unsigniertes APK lässt
-                // sich nicht installieren.
+                // Signiert vor unsigniert: Liegen nach einem Schlüsselwechsel beide da,
+                // gewinnt die installierbare, nicht die neueste.
                 val built = File(dir, "app-release.apk").takeIf { it.isFile }
                     ?: File(dir, "app-release-unsigned.apk").takeIf { it.isFile }
                     ?: dir.listFiles { f -> f.name.endsWith(".apk") && f.name != target.name }
                         ?.maxByOrNull { it.lastModified() }
-                if (built != null) {
-                    built.copyTo(target, overwrite = true)
-                    println("Release-APK bereitgestellt als: ${target.absolutePath}")
-                }
+                if (built != null) built.copyTo(target, overwrite = true)
             }
         }
-        // Nach dem Packen der Release-APK automatisch ausführen.
-        afterEvaluate {
-            tasks.findByName("package${variant.name.replaceFirstChar { it.uppercase() }}")
-                ?.finalizedBy(renameTask)
-        }
+        // Nach dem Packen der Release-APK ausführen; matching statt afterEvaluate,
+        // damit die Aufgabe erst angelegt wird, wenn sie gebraucht wird.
+        val packen = "package${variant.name.replaceFirstChar { it.uppercase() }}"
+        tasks.matching { it.name == packen }.configureEach { finalizedBy(renameTask) }
     }
 }
-
 
 dependencies {
     // Die App setzt zusammen: Navigation, Hilt-Einstieg, Widget. Alles andere
@@ -367,106 +216,35 @@ dependencies {
     implementation(libs.androidx.core.ktx)
     // Startbild statt weissem Fenster beim Kaltstart (MainActivity.installSplashScreen).
     implementation(libs.androidx.core.splashscreen)
-    testImplementation(libs.junit)
-    // Nachtrag 117: Damit Verhalten prüfbar wird statt nur Quelltext.
-    //  - coroutines-test: runTest für suspend-Funktionen, ohne Thread.sleep
-    //  - mockwebserver: ein echter HTTP-Server im Test. Damit lässt sich die
-    //    Fehlerabbildung des Repositories gegen echte Antworten prüfen —
-    //    404 mit Fehlerrumpf, 500 ohne, Zeitüberschreitung, leerer Rumpf.
-    //    Kommt aus derselben OkHttp-Version wie der Produktionsclient, es gibt
-    //    also keine zweite Netzwerkbibliothek im Testpfad.
-    // org.json — NUR für Tests.
-    //
-    // BrickRepository liest den Fehlerrumpf des Servers mit
-    // org.json.JSONObject. Auf dem Gerät ist das die Fassung aus Android; im
-    // JVM-Test liefert android.jar nur eine Attrappe, und zusammen mit
-    // testOptions { unitTests.isReturnDefaultValues = true } gibt
-    // optString("error") stillschweigend "" zurück statt zu parsen.
-    //
-    // Folge: BrickRepositoryErrorMappingTest sah nie die Servermeldung und
-    // meldete rot, obwohl App UND Test richtig sind. Diese echte Fassung liegt
-    // im Klassenpfad VOR android.jar und macht die Prüfung damit aussagekräftig.
-    //
-    // Alternative wäre, im Repository auf kotlinx.serialization umzustellen
-    // (ohnehin Abhängigkeit) — das wäre eine Änderung am Produktionscode und
-    // gehört nicht in denselben Schritt wie das Reparieren der Tests.
-    testImplementation(libs.json)
-    testImplementation(libs.kotlinx.coroutines.test)
-    testImplementation(libs.okhttp.mockwebserver)
-    testImplementation(libs.retrofit)
-    testImplementation(libs.retrofit.kotlinx.serialization)
+    // junit, org.json, coroutines-test und mockwebserver: brickinventory.android.unittests;
+    // Retrofit samt Konverter kommt mit core-testing.
+    // Compose-BOM und die Gruppe compose (ui, material3, hilt-navigation-compose,
+    // coil-compose …): brickinventory.android.compose; Hilt: …android.hilt.
     implementation(libs.androidx.lifecycle.runtime.ktx)
-    implementation(libs.androidx.lifecycle.viewmodel.compose)
-    implementation(libs.androidx.lifecycle.runtime.compose)
-    implementation(libs.androidx.activity.compose)
-    implementation(platform(libs.androidx.compose.bom))
-    implementation(libs.androidx.ui)
-    implementation(libs.androidx.ui.graphics)
-    implementation(libs.androidx.ui.tooling.preview)
-    implementation(libs.androidx.material3)
-    implementation(libs.androidx.material.icons.extended)
     implementation(libs.androidx.navigation.compose)
 
-    // Hilt — KSP (kein kapt mehr)
-    implementation(libs.hilt.android)
-    ksp(libs.hilt.compiler)
-    implementation(libs.hilt.navigation.compose)
-
-    // Network
-    implementation(libs.retrofit)
-    implementation(libs.okhttp.logging)
-    implementation(libs.okhttp.sse)
+    // Netz, DataStore, Kamera und ML Kit bringen core-data und die Features mit;
+    // hier steht nur, was app/src/main selbst importiert.
     implementation(libs.kotlinx.serialization.json)
-    implementation(libs.retrofit.kotlinx.serialization)
-
-    // Storage & async
-    implementation(libs.androidx.datastore)
     // WorkManager: der stuendliche Abruf der ausgeloesten Preisalarme.
     // Keine native Bibliothek — die 16-KB-Ausrichtung bleibt unberuehrt.
     implementation(libs.androidx.work)
+    // HiltWorkerFactory in BrickInventoryApp, @HiltWorker beim Widget-Arbeiter.
+    implementation(libs.androidx.hilt.work)
+    ksp(libs.androidx.hilt.compiler)
     // Per-app language switching (AppCompatDelegate.setApplicationLocales)
     implementation(libs.androidx.appcompat)
     implementation(libs.kotlinx.coroutines.android)
-    // Installiert die Baseline-Profile der Libraries (v.a. Compose) beim
-    // ersten Start — AOT-kompiliert die Hot-Paths und beschleunigt den
-    // Kaltstart typ. um 20-30%, ohne dass ein eigenes Profil nötig ist.
-    // profileinstaller ENTFERNT (Nachtrag 118): Die Bibliothek installiert ein
-    // Baseline-Profil in die ART-Laufzeit — im Baum gab es aber keins
-    // (kein baseline-prof.txt, kein :macrobenchmark-Modul). Sie kostete damit
-    // APK-Grösse und eine Initialisierung beim Start, ohne etwas zu tun.
-    //
-    // ZURÜCKHOLEN lohnt sich, sobald ein Profil da ist — bei einer
-    // Compose-App mit fünfzehn Bildschirmen bringt es beim Kaltstart
-    // spürbar etwas. Der Weg dahin: ein Modul :macrobenchmark mit
-    // BaselineProfileRule, ein Lauf auf einem echten Gerät, das Ergebnis nach
-    // app/src/main/baseline-prof.txt, dann diese Zeile wieder aktivieren:
-    //   implementation(libs.androidx.profileinstaller)
 
-    // graphics-path kommt sonst transitiv über Compose (ui-graphics) in einer
-    // 1.0.x-Fassung herein, deren libandroidx.graphics.path.so 4-KB-ausgerichtet
-    // ist. Hier direkt auf die neueste Linie gehoben — bewusst OHNE die
-    // Compose-BOM anzufassen: graphics-path hat eine eigene Versionslinie, ein
-    // BOM-Sprung wäre eine breite Änderung quer durch die gesamte Oberfläche.
-    //
-    // Ob 1.1.0 die Ausrichtung tatsächlich behebt, zeigt erst das fertige APK
-    // (check_elf_alignment.sh / APK Analyzer). Falls nicht: Der Eintrag schadet
-    // nicht und kann bleiben, bis eine ausgerichtete Fassung erscheint.
+    // kostet er nur Grösse und eine Initialisierung beim Start.
+
+    // graphics-path käme über Compose in einer 1.0.x-Fassung mit 4-KB-ausgerichteter .so.
+    // Direkt gehoben statt über die BOM, die die ganze Oberfläche verschöbe.
     implementation(libs.androidx.graphics.path)
 
-    // Image loading
-    implementation(libs.coil.compose)
-    // Siehe den Kommentar im Versionskatalog: Coil 3 laedt ohne dieses
-    // Artefakt NICHT aus dem Netz. Das Fehlen ergaebe keine Fehlermeldung,
-    // sondern leere Bildflaechen.
+    // Coil 3 lädt ohne dieses Artefakt nicht aus dem Netz, und zwar ohne Fehlermeldung:
+    // Die Bildflächen blieben leer.
     implementation(libs.coil.network.okhttp)
-
-    // Barcode scanner
-    implementation(libs.camerax.core)
-    implementation(libs.camerax.camera2)
-    implementation(libs.camerax.lifecycle)
-    implementation(libs.camerax.view)
-    implementation(libs.mlkit.barcode)
-    implementation(libs.mlkit.textrec)
 
     debugImplementation(libs.androidx.ui.tooling)
 

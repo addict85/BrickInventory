@@ -10,7 +10,7 @@ import org.junit.Test
  * Die Abfrage selbst (BiometricPrompt) braucht ein Gerät; die Gutscheinseite prüft
  * AblaufTest mit einem Schrittschutz, der nie bestätigt.
  *
- * Gegenproben (03.11.2026, gemessen mit kotlinc lokal):
+ * Gegenproben:
  *   A  gilt() mit `<=` statt `<` → rot „nach einer Minute wird wieder gefragt“
  *   B  vergiss() ohne Wirkung → rot „wer die App verlaesst, wird wieder gefragt“
  *   C  gilt() ohne Bestätigung `true` (`bis?.let { … } != false`) → rot „ohne

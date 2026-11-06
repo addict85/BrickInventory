@@ -28,9 +28,10 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 process.env.DATA_KEY = Buffer.alloc(32, 9).toString('base64');
 
 const _req = require('./helpers/sources').buildAndRequire();
+const { dbOderSkip } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
 const db = _req('db/database.js');
-const mailer = _req('src/infra/mailer.js');
+const mailer = _req('src/mail/mailer.js');
 const bcrypt = require(path.join(__dirname, '..', 'node_modules', 'bcryptjs'));
 
 /** Selbst signiert, mit dem angegebenen subjectAltName. */
@@ -71,14 +72,7 @@ function smtpServer(z) {
 }
 
 test('SMTP über TLS nur mit geprüftem Zertifikat', { concurrency: 1, timeout: 120_000 }, async (t) => {
-  try { await db.initSchema(); }
-  catch (e) {
-    if (process.env.REQUIRE_DB === '1')
-      throw new Error(`REQUIRE_DB=1, aber die Test-DB ist nicht erreichbar: ${e.message}`);
-    t.skip('Test-DB nicht erreichbar'); return;
-  }
-  const c = await db.pool.connect();
-  try { await _req('db/migrate.js').runMigrations(c); } finally { c.release(); }
+  if (!await dbOderSkip(t, _req)) return;
 
   const SCHLUESSEL = ['smtp_host', 'smtp_port', 'smtp_user', 'smtp_pass', 'smtp_secure', 'smtp_from',
     'smtp_tls_ca', 'smtp_tls_fingerprint', 'smtp_insecure_tls'];
@@ -104,7 +98,7 @@ test('SMTP über TLS nur mit geprüftem Zertifikat', { concurrency: 1, timeout: 
     await db.run('DELETE FROM global_settings WHERE key = ANY($1)', [SCHLUESSEL]);
     const alle = { smtp_host: '127.0.0.1', smtp_user: 'u', smtp_pass: 'p', smtp_secure: '1', smtp_from: 'test@example.org', ...werte };
     for (const [k, v] of Object.entries(alle)) await db.run('INSERT INTO global_settings (key, value) VALUES ($1, $2)', [k, String(v)]);
-    await _req('src/konto/settings.js').verschluesseleGlobaleAltwerte();
+    await _req('src/einstellungen/settings.js').verschluesseleGlobaleAltwerte();
   };
   let nr = 0;
   const sende = async (server) => {

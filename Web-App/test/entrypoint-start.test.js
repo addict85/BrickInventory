@@ -7,19 +7,7 @@ const ep = fs.readFileSync(path.join(__dirname, '..', 'docker-entrypoint.sh'), '
 
 /**
  * Der Start des Containers schweigt nicht, und er arbeitet nicht umsonst.
- *
- * ── Marcos Befund ───────────────────────────────────────────────────────────
- * „Das Docker-Image scheint allgemein extrem lange zu benoetigen bis es
- * startet. Die anderen sind viel schneller gestartet. Meist dauert es um die
- * 5min bis der 1. Log-Eintrag erscheint."
- *
- * ── Die Beweiskette ─────────────────────────────────────────────────────────
- * Die erste Zeile des Servers steht unmittelbar nach den Importen, und
- * console.log schreibt synchron nach stdout (server.ts, _intercept). Minuten
- * ohne Ausgabe koennen also nicht vom Server kommen — sie kommen von dem, was
- * VOR ihm laeuft. Dazwischen stand genau ein Schritt, der mit der Zahl der
- * Dateien waechst: `chown -R` ueber das ganze Datenverzeichnis, bei jedem
- * Start, obwohl nach dem ersten Mal alles laengst richtig ist.
+ * Ausführlich: docs/begruendungen/test/entrypoint-start.test.js.md#der-start-sagt-was-er-tut
  */
 
 test('der Start sagt, was er tut', () => {
@@ -86,19 +74,8 @@ test('die angelegten Verzeichnisse legt der Dienst selbst an, nicht root', () =>
 });
 
 test('ein normaler Start geht gar nicht erst durch die Dateien', () => {
-  // ── Marcos Rueckfrage ────────────────────────────────────────────────────
-  // „Kann dieser Schritt mit den Dateien nicht erfolgen nachdem der Server
-  // gestartet ist?"
-  //
-  // Durch den Server nicht: Er laeuft via su-exec als brickinv und darf nicht
-  // chownen. Die Frage DAHINTER — warum kostet ein normaler Start ueberhaupt
-  // etwas? — hat aber eine bessere Antwort als Nebenlaeufigkeit: gar nicht
-  // erst suchen.
-  //
-  // Die Suche schreibt zwar nichts, laeuft aber ueber jede Datei. Auf einem
-  // Netzlaufwerk ist schon das Durchgehen teuer: jede Abfrage ein Paket.
-  // Deshalb eine Marke — nach einem erfolgreichen Durchgang steht die Ziel-UID
-  // in einer Datei, und der naechste Start liest sie statt zu suchen.
+  // Marcos Rueckfrage
+  // Ausführlich: docs/begruendungen/test/entrypoint-start.test.js.md#stelle
   assert.match(ep, /MARKE=\/app\/data\/\.\w+/,
     'Die Marke fehlt — dann laeuft bei JEDEM Start die Suche ueber den ganzen ' +
     'Datenbestand, auch wenn nichts zu tun ist');
@@ -183,4 +160,26 @@ test('die Marke schreibt nicht durch einen Symlink', (t) => {
   assert.equal(fs.readFileSync(fremd, 'utf8'), 'unberuehrt');
   assert.equal(fs.lstatSync(marke).isSymbolicLink(), false);
   assert.equal(fs.readFileSync(marke, 'utf8'), '1234');
+});
+
+// Gegenproben (04.11.2026 gemessen, Runde 12 H2): nach `umask 077` wieder
+// `umask 022` → rot (neue Ordner 755); das chmod der Uploads gestrichen → rot
+// (alte Datei 644).
+test('was der Dienst anlegt und hochgeladen hat, liest nur er', (t) => {
+  const os = require('node:os');
+  const { spawnSync } = require('node:child_process');
+  const ordner = fs.mkdtempSync(path.join(os.tmpdir(), 'bi-umask-'));
+  t.after(() => fs.rmSync(ordner, { recursive: true, force: true }));
+  const daten = path.join(ordner, 'data'), alt = path.join(daten, 'uploads', '3', 'rechnung.pdf');
+  fs.mkdirSync(path.dirname(alt), { recursive: true });
+  fs.writeFileSync(alt, '%PDF');
+  fs.chmodSync(alt, 0o644);
+  fs.mkdirSync(path.join(ordner, 'bin'));
+  fs.writeFileSync(path.join(ordner, 'bin', 'su-exec'), '#!/bin/sh\nshift\nexec "$@"\n', { mode: 0o755 });
+  const teil = ep.slice(ep.indexOf('umask 077'), ep.indexOf('echo "[entrypoint] Server wird gestartet')).replaceAll('/app/data', daten);
+  const r = spawnSync('sh', ['-c', `umask 022\n${teil}`],
+    { env: { PATH: `${path.join(ordner, 'bin')}:${process.env.PATH}` }, encoding: 'utf8' });
+  assert.equal(r.status, 0, r.stderr);
+  const rechte = (p) => (fs.statSync(p).mode & 0o777).toString(8);
+  assert.deepEqual([rechte(path.join(daten, 'images', 'sets')), rechte(alt), rechte(path.dirname(alt))], ['700', '600', '700']);
 });

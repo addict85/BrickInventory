@@ -1,6 +1,6 @@
 package ch.brickinventoryapp.ui.viewmodel
 
-import android.net.Uri
+import ch.brickinventoryapp.data.model.Fehlercode
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import ch.brickinventoryapp.ressourcen.R
@@ -11,7 +11,7 @@ import ch.brickinventoryapp.data.model.ZweiterFaktorAnfrage
 import ch.brickinventoryapp.ui.model.alsAnsicht
 import ch.brickinventoryapp.data.model.GutscheinRequest
 import ch.brickinventoryapp.data.repository.GutscheineRepository
-import ch.brickinventoryapp.data.repository.Result
+import ch.brickinventoryapp.data.repository.Ergebnis
 import ch.brickinventoryapp.ui.GuthabenLauf
 import ch.brickinventoryapp.ui.GutscheinBestaetigung
 import ch.brickinventoryapp.ui.GutscheinPdfZiel
@@ -26,6 +26,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
+import ch.brickinventoryapp.util.fmtMoney
 
 /**
  * Gutscheine im eigenen Profil. Das PDF liest und die Werte prüft der Server, einmal
@@ -37,13 +38,12 @@ class GutscheinViewModel @Inject constructor(
     private val repo: GutscheineRepository,
     private val texte: Texte,
     private val leser: DateiLeser,
-    meldungen: MeldungsKanal,
+    private val meldungen: MeldungsKanal,
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(GutscheinUiState())
     val state = _state.asStateFlow()
 
-    private val _snackbar = meldungen.fluss
     private var guthabenJob: Job? = null
 
     fun ladeGutscheine() {
@@ -53,10 +53,10 @@ class GutscheinViewModel @Inject constructor(
     private suspend fun lade() {
         _state.update { it.copy(laedt = true, fehler = null) }
         when (val r = repo.liste()) {
-            is Result.Success -> _state.update { it.copy(gutscheine = r.data.vouchers.map { v -> v.alsAnsicht() }, laedt = false) }
-            is Result.Error -> {
+            is Ergebnis.Success -> _state.update { it.copy(gutscheine = r.data.vouchers.map { v -> v.alsAnsicht() }, laedt = false) }
+            is Ergebnis.Error -> {
                 _state.update { it.copy(laedt = false, fehler = texte.meldung(r)) }
-                _snackbar.value = texte.meldungFuerSnackbar(r)
+                meldungen.zeige(texte.meldungFuerSnackbar(r))
             }
         }
     }
@@ -111,37 +111,7 @@ class GutscheinViewModel @Inject constructor(
         _state.update { it.copy(bestaetigung = b.copy(laeuft = true, fehler = null)) }
         val anfrage = ZweiterFaktorAnfrage(password = passwort, code = code?.trim()?.ifEmpty { null })
         viewModelScope.launch {
-            val fehler: Result.Error? = when (b.schritt) {
-                GutscheinSchritt.PDF, GutscheinSchritt.EXPORT -> when (val r = repo.pdfFreigabe(b.id, anfrage)) {
-                    is Result.Success -> {
-                        if (nochOffen(b)) _state.update { it.copy(bestaetigung = null, pdfZiel = GutscheinPdfZiel(b.id, r.data.ticket)) }
-                        null
-                    }
-                    is Result.Error -> r
-                }
-                GutscheinSchritt.LOESCHEN -> when (val r = repo.loeschen(b.id ?: return@launch, anfrage)) {
-                    is Result.Success -> {
-                        _state.update { it.copy(bestaetigung = null, klartext = it.klartext - b.id,
-                            pinSichtbar = it.pinSichtbar - b.id) }
-                        melde(R.string.vouchers_deleted)
-                        lade()
-                        null
-                    }
-                    is Result.Error -> r
-                }
-                GutscheinSchritt.PIN_ZEIGEN, GutscheinSchritt.NUMMER_KOPIEREN, GutscheinSchritt.PIN_KOPIEREN ->
-                    when (val r = repo.klartext(b.id ?: return@launch, anfrage)) {
-                        is Result.Success -> {
-                            // Inzwischen verlassen oder abgebrochen: Der Klartext bleibt nicht liegen.
-                            if (nochOffen(b)) {
-                                _state.update { it.copy(bestaetigung = null, klartext = it.klartext + (b.id to r.data.alsAnsicht())) }
-                                fuehreAus(b.schritt, r.data.alsAnsicht())
-                            }
-                            null
-                        }
-                        is Result.Error -> r
-                    }
-            }
+            val fehler = fuehreSchrittAus(b, anfrage)
             if (fehler != null) _state.update {
                 it.copy(bestaetigung = it.bestaetigung?.copy(
                     laeuft = false,
@@ -152,6 +122,40 @@ class GutscheinViewModel @Inject constructor(
             }
         }
     }
+
+    /** Der Schritt der Rückfrage an seiner Route; null heisst erledigt (oder ohne Karte nichts zu tun). */
+    private suspend fun fuehreSchrittAus(b: GutscheinBestaetigung, anfrage: ZweiterFaktorAnfrage): Ergebnis.Error? =
+        when (b.schritt) {
+            GutscheinSchritt.PDF, GutscheinSchritt.EXPORT -> when (val r = repo.pdfFreigabe(b.id, anfrage)) {
+                is Ergebnis.Success -> {
+                    if (nochOffen(b)) _state.update { it.copy(bestaetigung = null, pdfZiel = GutscheinPdfZiel(b.id, r.data.ticket)) }
+                    null
+                }
+                is Ergebnis.Error -> r
+            }
+            GutscheinSchritt.LOESCHEN -> when (val r = repo.loeschen(b.id ?: return null, anfrage)) {
+                is Ergebnis.Success -> {
+                    _state.update { it.copy(bestaetigung = null, klartext = it.klartext - b.id,
+                        pinSichtbar = it.pinSichtbar - b.id) }
+                    melde(R.string.vouchers_deleted)
+                    lade()
+                    null
+                }
+                is Ergebnis.Error -> r
+            }
+            GutscheinSchritt.PIN_ZEIGEN, GutscheinSchritt.NUMMER_KOPIEREN, GutscheinSchritt.PIN_KOPIEREN ->
+                when (val r = repo.klartext(b.id ?: return null, anfrage)) {
+                    is Ergebnis.Success -> {
+                        // Inzwischen verlassen oder abgebrochen: Der Klartext bleibt nicht liegen.
+                        if (nochOffen(b)) {
+                            _state.update { it.copy(bestaetigung = null, klartext = it.klartext + (b.id to r.data.alsAnsicht())) }
+                            fuehreAus(b.schritt, r.data.alsAnsicht())
+                        }
+                        null
+                    }
+                    is Ergebnis.Error -> r
+                }
+        }
 
     private fun nochOffen(b: GutscheinBestaetigung) =
         _state.value.bestaetigung.let { it != null && it.schritt == b.schritt && it.id == b.id }
@@ -212,9 +216,9 @@ class GutscheinViewModel @Inject constructor(
      * Mit Datei liest der Server daraus, was die Felder nicht hergeben; man
      * kann also ein PDF schicken UND den Betrag selbst eintragen.
      */
-    fun speichereGutschein(uri: Uri?) = speichere(uri?.let { u -> suspend { leser.lies(u) } })
+    fun speichereGutschein(datei: DateiRef?) = speichere(datei?.let { d -> suspend { leser.lies(d) } })
 
-    /** Die Datei als Lesefunktion — so prüft der Test den PDF-Weg ohne Uri. */
+    /** Die Datei als Lesefunktion — so prüft der Test den PDF-Weg ohne Leser. */
     internal fun speichere(datei: (suspend () -> Pair<String?, ByteArray>?)?) {
         viewModelScope.launch {
             val s = _state.value
@@ -242,7 +246,7 @@ class GutscheinViewModel @Inject constructor(
                         nummer = s.nummer, pin = s.pin, betrag = s.betrag.replace(',', '.'),
                         waehrung = s.waehrung,
                     )
-                    if (r is Result.Success && !r.data.success) {
+                    if (r is Ergebnis.Success && !r.data.success) {
                         // 422: Was der Server lesen konnte, kommt ins Formular —
                         // der Nutzer ergänzt den Rest und schickt dieselbe Datei.
                         val g = r.data.gelesen
@@ -271,24 +275,24 @@ class GutscheinViewModel @Inject constructor(
         }
     }
 
-    private suspend fun behandleAntwort(r: Result<GutscheinAntwort>) {
+    private suspend fun behandleAntwort(r: Ergebnis<GutscheinAntwort>) {
         when (r) {
-            is Result.Success -> {
+            is Ergebnis.Success -> {
                 if (!r.data.success) {
-                    _snackbar.value = r.data.error ?: texte.text(R.string.vouchers_save_error)
+                    meldungen.zeige(r.data.error ?: texte.text(R.string.vouchers_save_error))
                     return
                 }
                 val stapel = r.data.mehrere
                 // Zwei Mengenformen statt „%1$d angelegt": Lint meldet sonst
                 // PluralsCandidate, und der Baum zählt die Lint-Befunde.
-                _snackbar.value = if (stapel == null) texte.text(R.string.vouchers_saved)
+                meldungen.zeige(if (stapel == null) texte.text(R.string.vouchers_saved)
                 else texte.text(R.string.vouchers_import_done,
                     texte.menge(R.plurals.csv_upload_new, stapel.added, stapel.added),
-                    texte.menge(R.plurals.csv_upload_updated, stapel.updated, stapel.updated))
+                    texte.menge(R.plurals.csv_upload_updated, stapel.updated, stapel.updated)))
                 leereGutscheinFormular()
                 lade()
             }
-            is Result.Error -> _snackbar.value = texte.meldungFuerSnackbar(r)
+            is Ergebnis.Error -> meldungen.zeige(texte.meldungFuerSnackbar(r))
         }
     }
 
@@ -303,21 +307,21 @@ class GutscheinViewModel @Inject constructor(
             _state.update { it.copy(guthabenLaeuft = id) }
             try {
                 when (val r = repo.guthaben(id)) {
-                    is Result.Success -> {
+                    is Ergebnis.Success -> {
                         val d = r.data
                         val v = d.voucher
                         if (!d.success || v == null) {
-                            _snackbar.value = d.error ?: texte.text(R.string.err_generic)
+                            meldungen.zeige(d.error ?: texte.text(R.string.err_generic))
                             return@launch
                         }
-                        val betrag = d.angezeigt ?: ch.brickinventoryapp.util.fmtMoney(v.amount, v.currency)
+                        val betrag = d.angezeigt ?: fmtMoney(v.amount, v.currency)
                         var satz = texte.text(R.string.vouchers_balance_done, v.number, betrag)
                         // Angehängt statt als zweite Meldung, die die erste überschriebe.
                         if (d.waehrungGeaendert) satz += " " + texte.text(R.string.vouchers_balance_currency, v.currency)
-                        _snackbar.value = satz
+                        meldungen.zeige(satz)
                         lade()
                     }
-                    is Result.Error -> _snackbar.value = texte.meldungFuerSnackbar(r)
+                    is Ergebnis.Error -> meldungen.zeige(texte.meldungFuerSnackbar(r))
                 }
             } finally {
                 _state.update { it.copy(guthabenLaeuft = null) }
@@ -350,25 +354,26 @@ class GutscheinViewModel @Inject constructor(
                                 nummer = g.number, wartenSek = 0))
                         }
                         when (val r = repo.guthaben(g.id)) {
-                            is Result.Success -> {
+                            is Ergebnis.Success -> {
                                 val d = r.data
-                                if (d.success) { fertig++; erledigt = true }
-                                else if (d.grund == "abstand" && (d.wartenSek ?: 0) > 0) {
+                                if (d.success) {
+                                    fertig++; erledigt = true
+                                } else if (d.grund == "abstand" && (d.wartenSek ?: 0) > 0) {
                                     warteSichtbar(d.wartenSek ?: 0, g.number)
                                     versuch++
                                 } else {
                                     fehler++
                                     erledigt = true
-                                    _snackbar.value = d.error ?: texte.text(R.string.err_generic)
+                                    meldungen.zeige(d.error ?: texte.text(R.string.err_generic))
                                     // Bot-Schutz gilt für alle, die Kontogrenze für dieses Konto:
                                     // Weitere Karten liefen in dieselbe Absage.
                                     if (d.grund == "botschutz" || d.grund == "konto") return@launch
                                 }
                             }
-                            is Result.Error -> {
+                            is Ergebnis.Error -> {
                                 fehler++
                                 erledigt = true
-                                _snackbar.value = texte.meldungFuerSnackbar(r)
+                                meldungen.zeige(texte.meldungFuerSnackbar(r))
                             }
                         }
                     }
@@ -383,8 +388,8 @@ class GutscheinViewModel @Inject constructor(
                 // würde jeder suspendierende Aufruf sofort scheitern.
                 _state.update { it.copy(guthabenLaeuft = null, guthabenLauf = null) }
                 ladeGutscheine()
-                _snackbar.value = texte.text(R.string.vouchers_balance_alle_fertig,
-                    fertig.toString(), fehler.toString())
+                meldungen.zeige(texte.text(R.string.vouchers_balance_alle_fertig,
+                    fertig.toString(), fehler.toString()))
             }
         }
     }
@@ -412,14 +417,14 @@ class GutscheinViewModel @Inject constructor(
     fun oeffneGutscheinExport() = verlange(GutscheinSchritt.EXPORT, null)
     fun gutscheinPdfQuittieren() = _state.update { it.copy(pdfZiel = null) }
 
-    private fun melde(id: Int) { _snackbar.value = texte.text(id) }
+    private fun melde(id: Int) { meldungen.zeige(texte.text(id)) }
 }
 
 /** Schritte, die der Klartext erledigt; PDF und Löschen fragen jedes Mal. */
 private val KLARTEXT_SCHRITTE = setOf(GutscheinSchritt.PIN_ZEIGEN, GutscheinSchritt.NUMMER_KOPIEREN, GutscheinSchritt.PIN_KOPIEREN)
 
 /** Mit diesen Codes verlangt der Server den zweiten Faktor oder weist ihn ab. */
-private val FAKTOR_CODES = setOf("zweiter_faktor_noetig", "zweiter_faktor_falsch")
+private val FAKTOR_CODES = setOf(Fehlercode.ZWEITER_FAKTOR_NOETIG, Fehlercode.ZWEITER_FAKTOR_FALSCH)
 
 /** Höchstens so oft dieselbe Karte erneut versuchen, wenn die Schranke bremst. */
 private const val ABSTAND_VERSUCHE = 4

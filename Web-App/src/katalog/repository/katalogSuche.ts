@@ -1,4 +1,5 @@
 import * as db from '../../../db/database';
+import { LIKE_ESCAPE as E, enthaeltMuster } from '../../../db/likeSuche';
 import { mengeJoin, mengeAus } from '../../../db/bestandsmenge';
 import { ausTabelle } from '../../infra/validate';
 
@@ -27,7 +28,7 @@ export interface KatalogWahl { q: string; themenIds: number[] | null; vonJahr?: 
 function katalogWo(f: KatalogWahl, params: unknown[]): string {
   const where: string[] = [];
   // "75192" trifft auch "75192-1".
-  if (f.q) { params.push(`%${f.q}%`); where.push(`(rb.set_num ILIKE $${params.length} OR rb.name ILIKE $${params.length})`); }
+  if (f.q) { params.push(enthaeltMuster(f.q)); where.push(`(rb.set_num ILIKE $${params.length}${E} OR rb.name ILIKE $${params.length}${E})`); }
   if (f.themenIds) { params.push(f.themenIds); where.push(`rb.theme_id = ANY($${params.length})`); }
   if (f.vonJahr) { params.push(f.vonJahr); where.push(`rb.year >= $${params.length}`); }
   if (f.bisJahr) { params.push(f.bisJahr); where.push(`rb.year <= $${params.length}`); }
@@ -54,36 +55,43 @@ export interface KatalogSet {
   image_url: string | null; owned: boolean; owned_quantity: number;
 }
 const SET_SPALTEN = `rb.set_num AS set_number, rb.name, rb.year, rb.theme_id, rb.num_parts, rb.set_img_url AS image_url,
-            (s.set_number IS NOT NULL) AS owned, ${mengeAus('sm', 0)}::int AS owned_quantity`;
+            (b.set_number IS NOT NULL) AS owned, COALESCE(b.menge, 0)::int AS owned_quantity`;
+/** Besitz über das Blickfeld ($1) wie in Merkliste und Sammlung; eine Zeile je Set, Mengen summiert. */
+const BESITZ_JOIN = `LEFT JOIN (SELECT s.set_number, SUM(${mengeAus('sm', 0)})::int AS menge
+                    FROM sets s ${mengeJoin('s', 'sm', '= ANY($1)')}
+                   WHERE s.user_id = ANY($1)
+                   GROUP BY s.set_number) b ON b.set_number = rb.set_num`;
 
 export async function katalogAnzahl(f: KatalogWahl): Promise<number> {
   const params: unknown[] = [];
   return (await db.get<{ n: number }>(`SELECT COUNT(*)::int AS n FROM rb_sets rb ${katalogWo(f, params)}`, params))?.n ?? 0;
 }
 
-export function katalogZeilen(userId: number, f: KatalogWahl, ordnung: unknown, limit: number, offset: number) {
+export function katalogZeilen(konten: number[], f: KatalogWahl, ordnung: unknown, limit: number, offset: number) {
   // ausTabelle: ?sort=constructor darf keine geerbte Eigenschaft liefern.
   const sortSql = ausTabelle(ORDNUNGEN, ordnung, ORDNUNGEN.year_desc);
-  const params: unknown[] = [userId];
+  const params: unknown[] = [konten];
   const wo = katalogWo(f, params);
   params.push(limit, offset);
   return db.all<KatalogSet>(
     `SELECT ${SET_SPALTEN}
        FROM rb_sets rb
-       LEFT JOIN sets s ON s.user_id = $1 AND s.set_number = rb.set_num
-       ${mengeJoin('s', 'sm', '= $1')}
+       ${BESITZ_JOIN}
        ${wo}
       ORDER BY ${sortSql}
       LIMIT $${params.length - 1} OFFSET $${params.length}`, params);
 }
 
-export function katalogZeile(userId: number, setNumber: string) {
+export function katalogZeile(konten: number[], setNumber: string) {
   return db.get<KatalogSet>(
     `SELECT ${SET_SPALTEN}
        FROM rb_sets rb
-       LEFT JOIN sets s ON s.user_id = $1 AND s.set_number = rb.set_num
-       ${mengeJoin('s', 'sm', '= $1')}
-      WHERE rb.set_num = $2`, [userId, setNumber]);
+       ${BESITZ_JOIN}
+      WHERE rb.set_num = $2`, [konten, setNumber]);
+}
+
+export async function katalogLeer(): Promise<boolean> {
+  return !(await db.get<{ x: number }>('SELECT 1 AS x FROM rb_sets LIMIT 1'));
 }
 
 export function figurenImInventar(inventarId: number) {

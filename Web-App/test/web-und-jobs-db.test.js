@@ -5,7 +5,7 @@
  * Gegenproben (am 30.10.2026 gemessen):
  *   A  in server.ts `const jobs = k.rolle !== 'web'` durch `true` ersetzt →
  *      rot: „der Web-Prozess arbeitet keine Aufträge ab“
- *   B  in aktuellerStartZustand (src/infra/startZustand.ts) das Nachlesen aus
+ *   B  in aktuellerStartZustand (src/auftraege/startZustand.ts) das Nachlesen aus
  *      laufzustand entfernt → rot: „der Web-Prozess sieht den Startzustand des
  *      Job-Prozesses“
  *   C  in server.ts app.use(nurEigeneHerkunft) entfernt → rot: „weist
@@ -29,10 +29,11 @@ process.env.DATABASE_URL = URL_DB;
 
 const ROOT = path.join(__dirname, '..');
 const _req = require('./helpers/sources').buildAndRequire();
+const { dbOderSkip } = require('./helpers/db');
 const db = _req('db/database.js');
 const bcrypt = require(path.join(ROOT, 'node_modules', 'bcryptjs'));
 
-const warte = (ms) => new Promise(r => setTimeout(r, ms));
+const { warte } = require('./helpers/zeit');
 
 function freierPort() {
   return new Promise((auf, ab) => {
@@ -67,7 +68,7 @@ function starte(rolle, port) {
   const p = spawn(process.execPath, [path.join(ROOT, 'dist', 'server.js')], {
     cwd: ROOT, stdio: ['ignore', 'pipe', 'pipe'],
     env: { ...process.env, DATABASE_URL: URL_DB, SESSION_SECRET: 'rollen-test-geheimnis-lang-genug-1234',
-           PORT: String(port), ROLLE: rolle, NODE_ENV: 'production', AUFTRAG_FRIST_SEK: '600' },
+           PORT: String(port), ROLLE: rolle, NODE_ENV: 'production', AUFTRAG_FRIST_SEK: '600', DB_SUPERUSER_ERLAUBT: '1', APP_BASE_URL_FEHLT_OK: '1' },
   });
   p.log = '';
   p.stdout.on('data', d => { p.log += d; });
@@ -82,14 +83,7 @@ async function beende(p) {
 }
 
 test('Web- und Job-Prozess', { concurrency: 1, timeout: 180_000 }, async (t) => {
-  try { await db.initSchema(); }
-  catch (e) {
-    if (process.env.REQUIRE_DB === '1')
-      throw new Error(`REQUIRE_DB=1, aber die Test-DB ist nicht erreichbar: ${e.message}`);
-    t.skip('Test-DB nicht erreichbar'); return;
-  }
-  const client = await db.pool.connect();
-  try { await _req('db/migrate.js').runMigrations(client); } finally { client.release(); }
+  if (!await dbOderSkip(t, _req)) return;
 
   // Ohne heutige Stempel lädt der Job-Prozess den Rebrickable-Katalog herunter.
   for (const k of ['rb_csv_last_sync', 'rb_part_categories_last_sync', 'rb_catalog_extras_last_sync'])

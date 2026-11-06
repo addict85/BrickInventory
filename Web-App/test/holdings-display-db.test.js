@@ -1,29 +1,6 @@
 /**
  * Diagramm und Besitzer-Label folgen dem TATSÄCHLICHEN Bestand.
- *
- * ── Marcos zwei Befunde ─────────────────────────────────────────────────────
- * 1. „Das Diagramm sollte nur den Wert der eingetragenen Status anzeigen. In
- *    diesem Fall ist nur ein gebrauchtes. Somit sollte der Verlauf von Neu
- *    nicht angezeigt werden."
- * 2. „Ich habe den Kaufpreis für den Marco gelöscht. Somit sollte auch das
- *    Label auf der Kachel von Marco nicht mehr angezeigt werden."
- *
- * ── Was dahinter steckte ────────────────────────────────────────────────────
- * Zu 1: Die Regel „nur Zustände, die auch im Bestand liegen" gab es bereits —
- * für `by_condition`. Der Diagramm-Aufbau stand im selben Modul ein paar
- * Zeilen davor und kannte sie nicht; er nahm immer beide Reihen. Dieselbe
- * Regel, zwei Stellen, eine davon vergessen. Es hing mehr daran als die
- * Legende: In der App speisen sich „Tief", „Aktuell" und „Hoch" aus den
- * Diagrammwerten, standen also auf den NEU-Preisen, während die Zeile darüber
- * korrekt den Gebrauchtpreis auswies.
- *
- * Zu 2: Beim Löschen der letzten Erfassung setzt `parentQuantitySql` die Menge
- * auf 0 und lässt die sets-Zeile stehen (bewusst — 0 ist ein gültiger Zustand,
- * etwa über den Mengenregler). `array_agg(DISTINCT s.user_id)` nahm sie
- * trotzdem mit, und das Konto stand weiter als Besitzer auf der Kachel.
- *
- * Beide Fixes liegen auf dem SERVER und wirken damit in Webapp und App
- * zugleich.
+ * Ausführlich: docs/begruendungen/test/holdings-display-db.test.js.md#kopf
  *
  * Gegenproben (durchgeführt): Diagramm wieder fest auf beide Reihen → erster
  * Teilschritt rot (Reihen N,U statt U). FILTER entfernt → Besitzer-Teilschritt
@@ -37,18 +14,12 @@ const assert = require('node:assert/strict');
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
 const _req = require('./helpers/sources').buildAndRequire();
+const { dbOderSkip } = require('./helpers/db');
 const db = _req('db/database.js');
 const { haeltSet, erfasse } = require('./helpers/bestand');
 
 test('Diagramm und Besitzer folgen dem Bestand', { concurrency: 1 }, async (t) => {
-  try { await db.initSchema(); }
-  catch (e) {
-    if (process.env.REQUIRE_DB === '1')
-      throw new Error(`REQUIRE_DB=1, aber die Test-DB ist nicht erreichbar: ${e.message}`);
-    t.skip('Test-DB nicht erreichbar'); return;
-  }
-  const mc = await db.pool.connect();
-  try { await _req('db/migrate.js').runMigrations(mc); } finally { mc.release(); }
+  if (!await dbOderSkip(t, _req)) return;
 
   const HAUPT = `bh-${process.pid}`, SUB = `bs-${process.pid}`;
   const SN = `83${process.pid % 900 + 100}-1`;
@@ -138,9 +109,8 @@ test('Diagramm und Besitzer folgen dem Bestand', { concurrency: 1 }, async (t) =
       // Ohne diese Gegenrichtung wäre der Test auch grün, wenn das Label ganz
       // verschwände.
       // „Wieder ein Exemplar halten" heisst seit Migration 0036: eine
-      // Erfassung anlegen. Hier stand `UPDATE sets SET quantity=2` — die
-      // Spalte gibt es nicht mehr, und das war auch vorher schon die falsche
-      // Richtung: Die Menge war ein Spiegel der Erfassungen.
+      // Erfassung anlegen. Hier stand `UPDATE sets SET quantity=2` — die …
+      // Ausführlich: docs/begruendungen/test/holdings-display-db.test.js.md#stelle
       await erfasse(db, hauptId, SN, 2);
       const r = await getSets([hauptId, subId], {});
       const namen = (r.sets.find(s => s.set_number === SN).owners || []).map(o => o.username).sort();

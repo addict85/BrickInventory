@@ -1,26 +1,6 @@
 /**
  * Wiederkehrende Ansichtsteile stehen an EINER Stelle.
- *
- * ── Der Befund ──────────────────────────────────────────────────────────────
- * 01-core.js sammelt WERKZEUGE: Escaping, Bild-URLs, Formatierung, Toasts,
- * Theme. Was fehlte, waren Bausteine für die ANSICHT — und die standen deshalb
- * als HTML-Zeichenkette in jedem Modul neu:
- *
- *   Detailzeile   15× in vier Modulen
- *   Ladeanzeige    5× in vier Modulen
- *
- * Wer die Detailzeile ändern will — Abstand, Trennlinie, Verhalten auf dem
- * Telefon —, musste alle fünfzehn finden. Und wer eine neue Detailansicht
- * baute, schrieb die sechzehnte ab, samt der Frage, ob `dl` oder `dt` die
- * richtige Klasse war.
- *
- * ── Was hier geprüft wird ───────────────────────────────────────────────────
- * Das Markup steht nur noch in 01-bausteine.js. Gefunden statt aufgezählt: Ein
- * neues Modul, das die Zeile wieder von Hand schreibt, fällt auf.
- *
- * KEIN Test auf den Wortlaut der Klassennamen — `dr`/`dl`/`dv` sind eine
- * innere Angelegenheit des Bausteins und dürfen sich ändern, solange CSS und
- * Baustein zusammenpassen.
+ * Ausführlich: docs/begruendungen/test/frontend-bausteine.test.js.md#kopf
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -72,11 +52,12 @@ test('der Baustein erzeugt das Markup, das die Stylesheets erwarten', () => {
   // müssen so herauskommen, wie styles.css sie anspricht — sonst sieht die
   // Zeile nach dem Umzug anders aus, und das fällt an keinem anderen Test auf.
   const src = fs.readFileSync(path.join(JS, BAUSTEIN), 'utf8');
-  for (const klasse of ['class="dr"', 'class="dl"', 'class="dv"', 'class="loading"', 'class="spin"']) {
-    assert.ok(src.includes(klasse), `${BAUSTEIN} erzeugt ${klasse} nicht mehr`);
+  // `class="dr${zKlasse}"`: die Zeile kann eine Zusatzklasse tragen.
+  for (const klasse of [/class="dr[$"]/, /class="dl"/, /class="dv"/, /class="lade-geruest/, /class="skelett-zeile"/]) {
+    assert.match(src, klasse, `${BAUSTEIN} erzeugt ${klasse} nicht mehr`);
   }
   const css = fs.readFileSync(path.join(__dirname, '..', 'public', 'styles.css'), 'utf8');
-  for (const regel of ['.dr', '.dl', '.dv', '.loading', '.spin']) {
+  for (const regel of ['.dr', '.dl', '.dv', '.lade-geruest', '.skelett-zeile']) {
     assert.ok(new RegExp('\\' + regel + '[\\s,{:]').test(css),
       `styles.css kennt ${regel} nicht — Baustein und Stylesheet passen nicht zusammen`);
   }

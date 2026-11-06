@@ -1,30 +1,44 @@
 import { echt, registerActions } from './00-registry.js';
-import { t, tRaw } from '../i18n.js';
-import { ico, G, api, esc, toast, fmtDatum, ME } from './01-core.js';
-import { bestaetigeMitPasswort, mitZweitemFaktor, setzePasskeyHolen } from './07-admin.js';
+import { tRaw } from '../i18n.js';
+import { api } from './01-api.js';
+import { ico, G, setzeHtml } from './01-dom.js';
+import { fmtDatum } from './01-format.js';
+import { toast } from './01-meldungen.js';
+import { ME } from './00-zustand.js';
+import { html } from './00-escapen.js';
+import { bestaetigeMitPasswort, mitZweitemFaktor, setzePasskeyHolen } from './01-rueckfrage.js';
 
 // ═══ Passkeys (Server: src/konto/passkeys.ts, routes/passkeys.ts) ═══════════════
-// Ohne Fremdskript: Der Server schickt die Optionen als JSON (Base64URL), der
-// Browser braucht ArrayBuffer — die Umwandlung in beide Richtungen steht hier.
+// Ohne Fremdskript: Der Server schickt die Optionen als JSON (Base64URL), der Browser braucht ArrayBuffer —
+// die Umwandlung in beide Richtungen steht hier.
 
-const zuPuffer = (b64u) => {
+const zuPuffer = (/** @type {string} */ b64u) => {
   const b64 = b64u.replace(/-/g, '+').replace(/_/g, '/').padEnd(Math.ceil(b64u.length / 4) * 4, '=');
   return Uint8Array.from(atob(b64), c => c.charCodeAt(0)).buffer;
 };
-const zuText = (puffer) => {
+const zuText = (/** @type {ArrayBuffer} */ puffer) => {
   let s = '';
   for (const b of new Uint8Array(puffer)) s += String.fromCharCode(b);
   return btoa(s).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 };
-const mitIds = (liste) => (liste || []).map(c => ({ ...c, id: zuPuffer(c.id) }));
+/**
+ * Die Optionen des Servers als JSON: Puffer stehen als Base64url da. Der Vertrag (PasskeyOptionen) lässt ihre
+ * Felder offen; das sind die von WebAuthn.
+ * @typedef {{ id: string, type?: string, transports?: string[] }} KennungJson
+ * @typedef {{ challenge: string, user?: { id: string, name: string, displayName: string },
+ *   excludeCredentials?: KennungJson[], allowCredentials?: KennungJson[], [feld: string]: unknown }} OptionenJson
+ */
+const mitIds = (/** @type {KennungJson[] | null | undefined} */ liste) =>
+  /** @type {PublicKeyCredentialDescriptor[]} */ ((liste || []).map(c => ({ ...c, id: zuPuffer(c.id) })));
 
 /** Kann dieser Browser Passkeys? (Nur in einem sicheren Kontext, also über HTTPS.) */
 export const passkeysMoeglich = () => !!(window.PublicKeyCredential && window.isSecureContext && navigator.credentials);
 
+/** @param {OptionenJson & { user: { id: string, name: string, displayName: string } }} o */
 async function erzeuge(o) {
-  const c = /** @type {PublicKeyCredential} */ (await navigator.credentials.create({ publicKey: {
+  const c = /** @type {PublicKeyCredential} */ (await navigator.credentials.create({ publicKey: /** @type {PublicKeyCredentialCreationOptions} */ ({
     ...o, challenge: zuPuffer(o.challenge), user: { ...o.user, id: zuPuffer(o.user.id) },
-    excludeCredentials: mitIds(o.excludeCredentials) } }));
+    excludeCredentials: mitIds(o.excludeCredentials) }) }));
   const r = /** @type {AuthenticatorAttestationResponse} */ (c.response);
   return { id: c.id, rawId: zuText(c.rawId), type: c.type, clientExtensionResults: c.getClientExtensionResults(),
     authenticatorAttachment: c.authenticatorAttachment ?? undefined,
@@ -32,16 +46,19 @@ async function erzeuge(o) {
       transports: r.getTransports ? r.getTransports() : [] } };
 }
 
-/** Eine Anmeldeantwort für `zweck` holen; null, wenn abgebrochen. */
+/**
+ * Eine Anmeldeantwort für `zweck` holen; null, wenn abgebrochen.
+ * @param {string} zweck
+ */
 async function bestaetige(zweck) {
   const o = await api('POST', '/v1/auth/passkey/anmelden/optionen', { zweck });
   if (!o?.success) { toast(o?.error || tRaw('settings.error'), 'error'); return null; }
-  const p = o.optionen;
+  const p = /** @type {OptionenJson} */ (o.optionen);
   /** @type {PublicKeyCredential} */
   let c;
   try {
-    c = /** @type {PublicKeyCredential} */ (await navigator.credentials.get({ publicKey: { ...p,
-      challenge: zuPuffer(p.challenge), allowCredentials: mitIds(p.allowCredentials) } }));
+    c = /** @type {PublicKeyCredential} */ (await navigator.credentials.get({ publicKey: /** @type {PublicKeyCredentialRequestOptions} */ ({ ...p,
+      challenge: zuPuffer(p.challenge), allowCredentials: mitIds(p.allowCredentials) }) }));
   } catch { toast(tRaw('pk.abgebrochen'), 'info'); return null; }
   const r = /** @type {AuthenticatorAssertionResponse} */ (c.response);
   return { id: c.id, rawId: zuText(c.rawId), type: c.type, clientExtensionResults: c.getClientExtensionResults(),
@@ -80,25 +97,23 @@ export async function ladePasskeys() {
   const f = flaeche();
   if (!f) return;
   const [d, zf] = await Promise.all([api('GET', '/v1/auth/passkeys'), api('GET', '/v1/auth/zweiter-faktor')]);
-  if (!d?.success || !Array.isArray(d.passkeys)) { f.innerHTML = `<div class="voucher-leer">${t('settings.error')}</div>`; return; }
+  if (!d?.success || !Array.isArray(d.passkeys)) { setzeHtml(f, html`<div class="voucher-leer">${tRaw('settings.error')}</div>`); return; }
   const liste = d.passkeys.length
-    ? `<div class="tw"><table class="dt"><thead><tr><th>${t('pk.col.name')}</th><th>${t('tokens.col.created')}</th>
-        <th>${t('tokens.col.last_used')}</th><th>${t('users.col.actions')}</th></tr></thead><tbody>${
-        d.passkeys.map(p => `<tr><td><strong>${esc(p.name || '—')}</strong></td>
+    ? html`<div class="tw"><table class="dt" aria-label="${tRaw('pk.title')}"><thead><tr><th>${tRaw('pk.col.name')}</th><th>${tRaw('tokens.col.created')}</th>
+        <th>${tRaw('tokens.col.last_used')}</th><th>${tRaw('users.col.actions')}</th></tr></thead><tbody>${d.passkeys.map(p => html`<tr><td><strong>${p.name || '—'}</strong></td>
           <td>${fmtDatum(p.created_at, 'tagzeit')}</td>
           <td>${p.last_used ? fmtDatum(p.last_used, 'tagzeit') : '—'}</td>
-          <td><button class="btn bd btn-sm" data-click="passkeyLoeschen"${echt()} data-arg="${esc(p.id)}" data-arg2="${esc(p.name || '')}" aria-label="${esc(tRaw('common.delete'))}">${ico('loeschen')}</button></td></tr>`).join('')
-      }</tbody></table></div>`
-    : `<p class="hinweis-absatz">${t('pk.none')}</p>`;
-  const neu = !d.verfuegbar ? `<p class="text-klein hinweis-warnung">${t(ME?.isAdmin ? 'pk.ohne_domain_verwalter' : 'pk.ohne_domain')}</p>`
-    : !passkeysMoeglich() ? `<p class="text-klein hinweis-warnung">${t('pk.browser')}</p>`
-    : `<form class="sform abstand-o-075" data-submit="pk-neu" data-stil="max-width:420px">
-        <div class="fg"><label for="pk-name">${t('pk.name')}</label><input type="text" id="pk-name" maxlength="60" /></div>
-        <div class="fg"><label for="pk-pw">${t('settings.password.current')}</label><input type="password" id="pk-pw" autocomplete="current-password" /></div>
-        ${zf?.aktiv ? `<div class="fg"><label for="pk-code">${t('login.code')}</label><input type="text" id="pk-code" inputmode="numeric" autocomplete="one-time-code" maxlength="24" /></div>` : ''}
-        <div><button type="button" class="btn bp btn-sm" id="pk-neu" data-click="passkeyHinzufuegen"${echt()}>${t('pk.add')}</button></div>
+          <td><button class="btn bd btn-sm" data-click="passkeyLoeschen"${echt()} data-arg="${p.id}" data-arg2="${p.name || ''}" aria-label="${tRaw('common.delete')}">${ico('loeschen')}</button></td></tr>`)}</tbody></table></div>`
+    : html`<p class="hinweis-absatz">${tRaw('pk.none')}</p>`;
+  const neu = !d.verfuegbar ? html`<p class="text-klein hinweis-warnung">${tRaw(ME?.isAdmin ? 'pk.ohne_domain_verwalter' : 'pk.ohne_domain')}</p>`
+    : !passkeysMoeglich() ? html`<p class="text-klein hinweis-warnung">${tRaw('pk.browser')}</p>`
+    : html`<form class="sform abstand-o-075" data-submit="pk-neu" data-stil="max-width:420px">
+        <div class="fg"><label for="pk-name">${tRaw('pk.name')}</label><input type="text" id="pk-name" maxlength="60" /></div>
+        <div class="fg"><label for="pk-pw">${tRaw('settings.password.current')}</label><input type="password" id="pk-pw" autocomplete="current-password" /></div>
+        ${zf?.aktiv ? html`<div class="fg"><label for="pk-code">${tRaw('login.code')}</label><input type="text" id="pk-code" inputmode="numeric" autocomplete="one-time-code" maxlength="24" /></div>` : ''}
+        <div><button type="button" class="btn bp btn-sm" id="pk-neu" data-click="passkeyHinzufuegen"${echt()}>${tRaw('pk.add')}</button></div>
       </form>`;
-  f.innerHTML = liste + neu;
+  setzeHtml(f, html`${liste}${neu}`);
 }
 
 export async function passkeyHinzufuegen() {
@@ -108,7 +123,7 @@ export async function passkeyHinzufuegen() {
   for (const id of ['pk-pw', 'pk-code']) if (G(id)) G(id).value = '';
   if (!o?.success) { toast(o?.error || tRaw('settings.error'), 'error'); return; }
   let antwort;
-  try { antwort = await erzeuge(o.optionen); }
+  try { antwort = await erzeuge(/** @type {OptionenJson & { user: { id: string, name: string, displayName: string } }} */ (o.optionen)); }
   catch { toast(tRaw('pk.abgebrochen'), 'info'); return; }
   const d = await api('POST', '/v1/auth/passkey/registrieren', { antwort, name: G('pk-name')?.value || '' });
   if (!d?.success) { toast(d?.error || tRaw('settings.error'), 'error'); return; }
@@ -116,8 +131,9 @@ export async function passkeyHinzufuegen() {
   ladePasskeys();
 }
 
+/** @param {string} id @param {string} name */
 export async function passkeyLoeschen(id, name) {
-  const password = await bestaetigeMitPasswort(tRaw('pk.delete_title'), tRaw('pk.delete_text', { name: name || '—' }), 'schluessel');
+  const password = await bestaetigeMitPasswort(tRaw('pk.delete_title'), tRaw('pk.delete_text', { name: name || '—' }), 'schluessel', { knopf: 'confirm.btn.entfernen', art: 'bd' });
   if (password === null) return;
   const d = await mitZweitemFaktor(z => api('DELETE', `/v1/auth/passkeys/${encodeURIComponent(id)}`, { password, ...z }));
   if (!d) return;

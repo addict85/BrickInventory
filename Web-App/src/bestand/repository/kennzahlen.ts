@@ -2,7 +2,7 @@ import { mengeAus, mengeJoin, teilmengeAus, teilmengeJoin } from '../../../db/be
 import * as db from '../../../db/database';
 
 export function setZahlen(uids: number[]) {
-  return db.get(`SELECT COUNT(DISTINCT s.set_number) AS total_sets,
+  return db.get<{ total_sets: string; total_quantity: string }>(`SELECT COUNT(DISTINCT s.set_number) AS total_sets,
                    COALESCE(SUM(${mengeAus()}), 0) AS total_quantity
               FROM sets s
               ${mengeJoin('s', 'sm', '= ANY($1)')}
@@ -10,7 +10,7 @@ export function setZahlen(uids: number[]) {
 }
 
 export function anleitungsZahlen(uids: number[], eigene: number[]) {
-  return db.get(`
+  return db.get<{ total_instructions: string }>(`
       SELECT
         (SELECT COUNT(*) FROM shared_instructions si
            JOIN sets s ON s.set_number = si.set_number AND s.user_id = ANY($1)) +
@@ -18,28 +18,28 @@ export function anleitungsZahlen(uids: number[], eigene: number[]) {
 }
 
 export function teileImBestand(uids: number[]) {
-  return db.get(`SELECT SUM(${teilmengeAus('p', 'part')}*${mengeAus('sm', 1)}) AS t
+  return db.get<{ t: string | null }>(`SELECT SUM(${teilmengeAus('p', 'part')}*${mengeAus('sm', 1)}) AS t
               FROM parts p ${mengeJoin('p', 'sm', '= ANY($1)')} ${teilmengeJoin('p', 'part')}
              WHERE p.user_id = ANY($1)`, [uids]);
 }
 
 /** Nur die einzeln erfassten Teile, für die Aufschlüsselung „aus Sets · einzeln“. */
 export function teileEinzeln(uids: number[]) {
-  return db.get(`SELECT SUM(${teilmengeAus('p', 'part')}*${mengeAus('sm', 1)}) AS t
+  return db.get<{ t: string | null }>(`SELECT SUM(${teilmengeAus('p', 'part')}*${mengeAus('sm', 1)}) AS t
               FROM parts p ${mengeJoin('p', 'sm', '= ANY($1)')} ${teilmengeJoin('p', 'part')}
              WHERE p.user_id = ANY($1) AND p.source = 'manual'`, [uids]);
 }
 
 export function figurenImBestand(uids: number[]) {
-  return db.get(`SELECT SUM(${teilmengeAus('m', 'fig')}*${mengeAus('sm', 1)}) AS t
+  return db.get<{ t: string | null }>(`SELECT SUM(${teilmengeAus('m', 'fig')}*${mengeAus('sm', 1)}) AS t
               FROM minifigs m ${mengeJoin('m', 'sm', '= ANY($1)')} ${teilmengeJoin('m', 'fig')}
              WHERE m.user_id = ANY($1)`, [uids]);
 }
 
 export function waehrungImBlickfeld(uids: number[]) {
-  return db.get("SELECT value FROM user_settings WHERE user_id = ANY($1) AND key = 'currency'", [uids]);
+  return db.get<{ value: string }>("SELECT value FROM user_settings WHERE user_id = ANY($1) AND key = 'currency'", [uids]);
 }
 
 export function vorgabeZustandImBlickfeld(uids: number[]) {
-  return db.get("SELECT value FROM user_settings WHERE user_id = ANY($1) AND key='user_default_condition'", [uids]);
+  return db.get<{ value: string }>("SELECT value FROM user_settings WHERE user_id = ANY($1) AND key='user_default_condition'", [uids]);
 }

@@ -1,0 +1,17 @@
+Gegenprobe: PartsScreen nimmt wieder ein ViewModel
+Modul: app
+Test: ch.brickinventoryapp.ScreenViewModelWiringTest
+Rot: kein Composable ausser einer Route nimmt ein ViewModel
+
+diff --git a/Android-App/feature-teile/src/main/java/ch/brickinventoryapp/ui/screens/PartsScreen.kt b/Android-App/feature-teile/src/main/java/ch/brickinventoryapp/ui/screens/PartsScreen.kt
+index 07c4d84..4dddfd9 100644
+--- a/Android-App/feature-teile/src/main/java/ch/brickinventoryapp/ui/screens/PartsScreen.kt
++++ b/Android-App/feature-teile/src/main/java/ch/brickinventoryapp/ui/screens/PartsScreen.kt
+@@ -91,6 +91,7 @@ fun PartsScreen(
+      * oben.
+      */
+     gridState: LazyGridState = rememberLazyGridState(),
++    vm: TeileViewModel? = null,
+ ) {
+     val state = zustand.state
+     val blick = zustand.blick

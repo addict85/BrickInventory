@@ -1,21 +1,21 @@
 import fs from 'fs';
 import path from 'path';
 import * as repo from './repository/bildlage';
-import { getSetInfo } from '../../clients/brickset';
+import { getSetInfo } from './quellen';
 import { downloadSetImage } from './bilder/setImages';
 import { generateThumb } from './bilder/thumbs';
 import { anleitungEinreihen } from '../auftraege/anleitungsAuftrag';
 import { APP_ROOT, IMAGES_DIR } from '../infra/appPaths';
-import { fehlertext, logAndContinue, meldeUndLiefere } from '../infra/httpError';
+import { fehlertext, logAndContinue, meldeUndLiefere } from '../infra/fehler';
 import { KEINE_FARBE } from '../infra/validate';
 
 export async function bilderFuerNachlauf() {
   const [sets, teile, figuren] = await Promise.all([
     repo.setsMitFehlendenKatalogbildern().catch(meldeUndLiefere('bild-nachlauf:sets', [])),
-    // Nur geprüfte Adressen (bild_von IS NULL): Die Datei gilt für alle Konten.
-    // Ausführlich: docs/begruendungen/server.ts.md#electprimaryworker-manualparts
+    // Der gemeinsame Katalog führt nur geprüfte Adressen: Die Datei gilt für alle Konten.
+    // Ausführlich: docs/begruendungen/src/katalog/bildlage.ts.md#electprimaryworker-manualparts
     repo.manuelleTeileOhneBild().catch(meldeUndLiefere('bild-nachlauf:manualParts', [])),
-    // Ausführlich: docs/begruendungen/server.ts.md#electprimaryworker-figstofetch
+    // Ausführlich: docs/begruendungen/src/katalog/bildlage.ts.md#electprimaryworker-figstofetch
     repo.figurenOhneBild().catch(meldeUndLiefere('bild-nachlauf:figsToFetch', [])),
   ]);
   return { sets, teile, figuren };
@@ -30,7 +30,7 @@ export async function fuelleAusBrickset(setNumber: string): Promise<boolean> {
   return true;
 }
 
-export type Bildposten = { part_number: string; color_id?: number | null; image_url?: string | null; image_local?: string | null };
+export type Bildposten = { part_number: string; color_id?: number | null | undefined; image_url?: string | null | undefined; image_local?: string | null | undefined };
 
 /** Nur aus geprüfter Quelle: Die Dateien gelten für alle Konten, ein Bild vom
  * Client landete sonst bei allen anderen. */

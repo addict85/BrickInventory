@@ -1,6 +1,10 @@
 package ch.brickinventoryapp.ui
 
 import ch.brickinventoryapp.data.model.*
+import ch.brickinventoryapp.ui.model.LagerortAnsicht
+import ch.brickinventoryapp.ui.model.LagerortEintragAnsicht
+import ch.brickinventoryapp.ui.model.MitgliedAnsicht
+import ch.brickinventoryapp.ui.model.StartzustandAnsicht
 
 /*
  * Die Zustandsklassen liegen je Bereich in ui/Zustand*.kt; hier die der
@@ -18,12 +22,8 @@ data class AppUiState(
     val serverUrl: String = "",
     val isLoggedIn: Boolean = false,
     val isAdmin: Boolean = false,
-    // `username` stand hier und wurde aus den Einstellungen gefuellt — gelesen
-    // hat es niemand. Was die Oberflaeche zeigt, ist `HouseholdMember.username`
-    // aus der Haushalts-Antwort, ein anderer Wert. Gefunden von der Regel
-    // „kein Zustandsfeld wird geschrieben, ohne je gelesen zu werden"
-    // (UiStateFieldsTest).
-    val authToken: String = "",
+    // Kein Token hier: Ihn liest allein der Interceptor (TokenAblage); im
+    // Zustand stünde er für jede Oberfläche offen, als zweite Wahrheit.
     val currency: String = "EUR",
     val priceCondition: String = "N",
     val defaultPriceCondition: String = "N", // server-side default condition for new items (N=New, U=Used)
@@ -35,7 +35,7 @@ data class AppUiState(
      * die Anmeldung dann einen Fortschrittsbalken wie die Webapp. null heisst: durch
      * oder gar nicht erreichbar.
      */
-    val startupStatus: ch.brickinventoryapp.ui.model.StartzustandAnsicht? = null,
+    val startupStatus: StartzustandAnsicht? = null,
     val language: String = "system",
 )
 
@@ -52,7 +52,7 @@ data class BlickfeldUiState(
      * mit Unterkonten — erst dann erscheinen Kontofilter, Kontoauswahl beim
      * Erfassen und der Verschieben-Weg.
      */
-    val householdMembers: List<ch.brickinventoryapp.ui.model.MitgliedAnsicht> = emptyList(),
+    val householdMembers: List<MitgliedAnsicht> = emptyList(),
 )
 
 /**
@@ -65,20 +65,20 @@ data class LagerUiState(
     /** Gewaehlter Lagerort JE ANSICHT — leer heisst „nicht gefiltert". */
     val modi: Map<String, String> = emptyMap(),
     /** Die belegten Lagerorte im Blickfeld — speist den FILTER. */
-    val orte: List<ch.brickinventoryapp.ui.model.LagerortAnsicht> = emptyList(),
+    val orte: List<LagerortAnsicht> = emptyList(),
     /**
      * Der Vorrat für das gerade offene Detail — was zur Wahl steht. Nicht [orte]
      * (belegte Orte des Blickfelds), sondern die wählbaren Orte des Besitzers; beim
      * Set des Enkels die seinen.
      */
-    val vorrat: List<ch.brickinventoryapp.ui.model.LagerortEintragAnsicht> = emptyList(),
+    val vorrat: List<LagerortEintragAnsicht> = emptyList(),
     /** Die EIGENEN Orte — fuer die Verwaltung in den Einstellungen. */
-    val eigene: List<ch.brickinventoryapp.ui.model.LagerortEintragAnsicht> = emptyList(),
+    val eigene: List<LagerortEintragAnsicht> = emptyList(),
     /**
      * Der Ort, der beim Erfassen schon dasteht (der Stern); null heisst keine Vorgabe.
      * Kommt mit [eigene] aus derselben Antwort — Vorrat und Stern sind eine Auskunft.
      */
-    val vorgabe: ch.brickinventoryapp.ui.model.LagerortEintragAnsicht? = null,
+    val vorgabe: LagerortEintragAnsicht? = null,
 )
 
 /**
