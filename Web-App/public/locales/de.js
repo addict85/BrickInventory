@@ -810,6 +810,7 @@ window.I18N_DE = {
   'wanted.cancelled': 'Abgebrochen — der Rest der Liste wurde nicht übernommen. Was schon angelegt ist, bleibt.',
   'wanted.progress_write': 'Posten {done} von {total}',
   'wanted.progress_rb': 'Nummern bei Rebrickable nachgefragt: {done} von {total}',
+  'wanted.progress_label': 'Fortschritt des Imports',
 
   'wanted.preview_title': 'Wanted-Liste prüfen',
   'wanted.reload': '↻ Neu einlesen',

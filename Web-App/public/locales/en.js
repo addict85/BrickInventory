@@ -804,6 +804,7 @@ window.I18N_EN = {
   'wanted.cancelled': 'Cancelled — the rest of the list was not imported. What is already added stays.',
   'wanted.progress_write': 'Item {done} of {total}',
   'wanted.progress_rb': 'Numbers looked up at Rebrickable: {done} of {total}',
+  'wanted.progress_label': 'Import progress',
 
   'wanted.preview_title': 'Check the wanted list',
   'wanted.reload': '↻ Read again',
