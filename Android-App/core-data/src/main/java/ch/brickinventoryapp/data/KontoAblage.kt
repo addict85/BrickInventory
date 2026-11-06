@@ -18,6 +18,7 @@ internal class KontoAblage @Inject constructor(
     override val currency: Flow<String> get() = geraet.currency
     override val language: Flow<String> get() = geraet.language
     override suspend fun serverUrlJetzt(): String = token.serverUrlJetzt()
+    override suspend fun tokenJetzt(): String = token.tokenJetzt()
     override suspend fun anmeldungAbgelaufen(jetzt: Long): Boolean = token.anmeldungAbgelaufen(jetzt)
     override suspend fun saveAppTheme(theme: String) = geraet.saveAppTheme(theme)
     override suspend fun saveCurrency(cur: String) = geraet.saveCurrency(cur)

@@ -273,4 +273,9 @@ function vergleiche(t, schema, modelle, aufloesen, ort = '$', o = {}) {
 /** @param {KTyp} t */
 const beschreibe = (t) => t.art === 'klasse' ? t.name : t.art;
 
-module.exports = { kotlinModelle, apiRouten, schreibRouten, vergleiche, typ, FEHLEN_ERLAUBT, apiQuelltext };
+/** Die Kennungen der Aufzählung Fehlercode (core-model): `NAME("kennung")` je Zeile. */
+function kotlinFehlercodes(datei) {
+  return [...fs.readFileSync(datei, 'utf8').matchAll(/^\s+[A-Z_]+\("([a-z][a-z0-9_]*)"\)/gm)].map((m) => m[1]);
+}
+
+module.exports = { kotlinModelle, kotlinFehlercodes, apiRouten, schreibRouten, vergleiche, typ, FEHLEN_ERLAUBT, apiQuelltext };

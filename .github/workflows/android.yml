@@ -1175,7 +1175,6 @@ jobs:
           for f in "$NEU"/verification-keyring.*; do install -m 644 "$f" Android-App/gradle/; done
           git add Android-App/gradle/verification-metadata.xml Android-App/gradle/verification-keyring.*
           if git diff --cached --quiet; then echo "Prüfsummen unverändert." >> "$GITHUB_STEP_SUMMARY"; exit 0; fi
-          # Auch im Protokoll: Artefakte und Zweig sind nicht von überall erreichbar.
           git diff --cached -U2 -- Android-App/gradle/verification-metadata.xml
           ZWEIG="pruefsummen/$GITHUB_RUN_ID"
           git switch -c "$ZWEIG"

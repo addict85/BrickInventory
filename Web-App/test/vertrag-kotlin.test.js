@@ -28,7 +28,7 @@ const assert = require('node:assert/strict');
 const path = require('node:path');
 
 const _req = require('./helpers/sources').buildAndRequire();
-const { kotlinModelle, apiRouten, schreibRouten, vergleiche, FEHLEN_ERLAUBT } = require('../scripts/kotlin-vertrag.js');
+const { kotlinModelle, kotlinFehlercodes, apiRouten, schreibRouten, vergleiche, FEHLEN_ERLAUBT } = require('../scripts/kotlin-vertrag.js');
 const { quellwurzeln, ANDROID } = require('./helpers/android');
 
 const API = path.join(ANDROID, 'core-data', 'src', 'main', 'java', 'ch', 'brickinventoryapp', 'data', 'api');
@@ -124,7 +124,7 @@ test('der Vergleich schlägt an, wo die App nicht lesen kann', () => {
 
 test('jeder Fehlercode der App steht im Vertrag', () => {
   const datei = path.join(ANDROID, 'core-model', 'src', 'main', 'java', 'ch', 'brickinventoryapp', 'data', 'model', 'Fehlercode.kt');
-  const kennungen = [...require('node:fs').readFileSync(datei, 'utf8').matchAll(/^\s+[A-Z_]+\("([a-z][a-z0-9_]*)"\)/gm)].map((m) => m[1]);
+  const kennungen = kotlinFehlercodes(datei);
   assert.ok(kennungen.length >= 10, `nur ${kennungen.length} Fehlercodes in Fehlercode.kt gelesen`);
   const imVertrag = new Set(dok.components.schemas.Fehlercode?.enum ?? []);
   assert.deepEqual(kennungen.filter((k) => !imVertrag.has(k)), []);

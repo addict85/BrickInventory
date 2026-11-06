@@ -66,6 +66,7 @@ class SpeicherSitzungsablage : Sitzungsablage {
     override val currency: Flow<String> = waehrung
     override val language: Flow<String> = sprache
     override suspend fun serverUrlJetzt() = server.value
+    override suspend fun tokenJetzt() = token.value
     override suspend fun anmeldungAbgelaufen(jetzt: Long) = abgelaufen
     override suspend fun saveAppTheme(theme: String) { design.value = theme }
     override suspend fun saveCurrency(cur: String) { waehrung.value = cur }

@@ -14,6 +14,7 @@ interface Sitzungsablage {
     val currency: Flow<String>
     val language: Flow<String>
     suspend fun serverUrlJetzt(): String
+    suspend fun tokenJetzt(): String
 
     /** Älter, als der Server eine Anmeldung gelten lässt: dann abmelden statt laden. */
     suspend fun anmeldungAbgelaufen(jetzt: Long = System.currentTimeMillis()): Boolean
