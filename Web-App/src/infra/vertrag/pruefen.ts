@@ -23,7 +23,7 @@ export function eingabePruefen(req: Request, res: Response, next: NextFunction):
       return sendeFehler(req, res, 400, 'eingabe_ungueltig', { feld: name.slice(0, 40) });
   const route = req.route ? routeZu(`${req.method} ${req.baseUrl}${req.route.path}`) : undefined;
   const geprueft = req as unknown as { eingabe: unknown; abfrage: unknown; pfad: Record<string, unknown> };
-  geprueft.pfad = {};
+  geprueft.pfad = Object.create(null) as Record<string, unknown>;
   if (route) for (const [name, wert] of Object.entries(req.params ?? {})) {
     const schema = (PFAD as Record<string, z.ZodType>)[name];
     const r = schema?.safeParse(wert);

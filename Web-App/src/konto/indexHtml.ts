@@ -54,7 +54,10 @@ export function versionEinsetzen(html: string, version: string): string {
 
 /** Entwicklerkommentare gehören in den Quelltext, nicht in jede Auslieferung. */
 export function ohneKommentare(html: string): string {
-  return html.replace(/[ \t]*<!--[\s\S]*?-->[ \t]*\n?/g, '');
+  // Wiederholt: Ein Rest wie „<!<!---->--“ ergäbe nach einem Durchgang einen neuen Kommentar.
+  let vorher: string;
+  do { vorher = html; html = html.replace(/[ \t]*<!--[\s\S]*?-->[ \t]*\n?/g, ''); } while (html !== vorher);
+  return html;
 }
 
 /** Nur die Vorgabe liegt im Zwischenspeicher; angemeldet zählt das eigene Design. */

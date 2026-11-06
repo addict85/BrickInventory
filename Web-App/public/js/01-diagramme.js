@@ -465,6 +465,9 @@ function preisLinie(sd, gid, xOf, yOf, unten, f) {
       <polyline points="${pts.join(' ')}" fill="none" stroke="${sd.color}" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>`;
 }
 
+/** Kennungen der Verläufe im SVG; ein Zähler genügt, sie müssen nur auf der Seite eindeutig sein. */
+let _naechsteKennung = 0;
+
 /**
  * Preisverlauf mit zwei Linien (neu und gebraucht) auf gemeinsamer Skala. Die x-Position kommt vom Datum,
  * nicht vom Index: Gebrauchtpreise setzen oft später ein, und gestreckte Reihen zeigten einen Vergleich, den
@@ -475,7 +478,7 @@ function preisLinie(sd, gid, xOf, yOf, unten, f) {
  * @param {number} [breite]
  * @returns {import('./00-escapen.js').SicheresHtml} SVG-Markup oder ein Hinweistext
  */
-export function priceChartSVG(data, uid = String(Math.random()).slice(2, 8), breite = 700) {
+export function priceChartSVG(data, uid = `p${++_naechsteKennung}`, breite = 700) {
   const axis  = data?.chart?.x || [];
   const series = preisReihen(data);
 

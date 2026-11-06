@@ -20,8 +20,8 @@ const { handleRouteError } = _req('src/infra/httpAntwort.js');
 function protokolliereMitStufe(fehler, req) {
   const zeilen = [];
   const echt = { error: console.error, warn: console.warn };
-  console.error = (...teile) => zeilen.push({ stufe: 'error', zeile: teile.map(String).join(' ') });
-  console.warn = (...teile) => zeilen.push({ stufe: 'warn', zeile: teile.map(String).join(' ') });
+  console.error = (...teile) => zeilen.push({ stufe: 'error', zeile: require('node:util').format(...teile) });
+  console.warn = (...teile) => zeilen.push({ stufe: 'warn', zeile: require('node:util').format(...teile) });
   // Eine Antwort, die nur so viel kann, wie handleRouteError braucht.
   const res = { headersSent: false, status() { return this; }, json() { return this; } };
   try { handleRouteError(res, fehler, undefined, req); }

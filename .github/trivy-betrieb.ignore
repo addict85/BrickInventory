@@ -11,8 +11,8 @@
 # Nach dem Datum gilt die Ausnahme nicht mehr und der Lauf wird wieder rot.
 # Eine Ausnahme ersetzt nie den neuen Digest, sie überbrückt nur die Zeit bis dahin.
 
-# postgres:18-alpine (neuester Digest am 03.11.2026): stdlib-Lücken stecken in gosu, das nur beim
-# Start die Rechte abgibt; libcurl/brotli nutzt der Server ohne OAuth-Anmeldung nicht.
+# postgres:18-alpine (neuester Digest am 06.11.2026): Die Go-stdlib-Lücken stecken in gosu, das nur
+# beim Start die Rechte abgibt und kein Netz spricht; behoben erst mit einem neuen Bau des Images.
 CVE-2025-61726 exp:2026-12-01
 CVE-2025-61729 exp:2026-12-01
 CVE-2025-68121 exp:2026-12-01
@@ -35,3 +35,7 @@ CVE-2026-56858 exp:2026-12-01
 CVE-2026-56859 exp:2026-12-01
 CVE-2026-56860 exp:2026-12-01
 CVE-2026-56862 exp:2026-12-01
+CVE-2026-111943 exp:2026-12-01
+CVE-2026-78667 exp:2026-12-01
+CVE-2026-78669 exp:2026-12-01
+CVE-2026-97031 exp:2026-12-01
