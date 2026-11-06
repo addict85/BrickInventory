@@ -352,7 +352,9 @@ export function startWarnungen(env: NodeJS.ProcessEnv = process.env): string[] {
   return w;
 }
 
-/** Klartext nur auf demselben Rechner (Dienst `postgres`, Loopback, Socket). */
+/** Klartext nur auf demselben Rechner: Loopback, Socket oder ein Name ohne Punkt.
+ * Den vergibt Docker für Dienste und Container im eigenen Netz (`postgres`,
+ * `db-brickinventory`); ein Rechner im LAN hat in der Regel einen Namen mit Domain. */
 function dbOhneTls(env: NodeJS.ProcessEnv): boolean {
   let host = env.PGHOST?.trim() || 'postgres', modus = env.PGSSLMODE?.trim() || '';
   if (env.DATABASE_URL) {
@@ -362,6 +364,6 @@ function dbOhneTls(env: NodeJS.ProcessEnv): boolean {
       modus = u.searchParams.get('sslmode') || modus;
     } catch { return false; }
   }
-  const nah = ['postgres', 'localhost', '127.0.0.1', '::1'].includes(host.toLowerCase()) || host.startsWith('/');
+  const nah = ['127.0.0.1', '::1'].includes(host) || host.startsWith('/') || /^[a-z0-9_-]+$/i.test(host);
   return !nah && !/^verify-(ca|full)$/.test(modus);
 }

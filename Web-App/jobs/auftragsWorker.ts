@@ -1,4 +1,4 @@
-import { randomUUID } from 'crypto';
+import { belegKennung } from '../src/auftraege/prozess';
 import {
   type AuftragsArt, type AuftragsZeile, type Fortschritt,
 } from '../src/auftraege/auftraege';
@@ -149,7 +149,7 @@ function erzeugeWorker(bearbeiter: Bearbeitertabelle, o: WorkerOptionen = {}) {
 
   async function belegeUndStarte(): Promise<Lauf | null> {
     await exklusivGemerkt;
-    const a = await belegeAuftrag(arten, fristSek, randomUUID(), exklusiv, [...laufend.keys()]);
+    const a = await belegeAuftrag(arten, fristSek, belegKennung(), exklusiv, [...laufend.keys()]);
     if (!a) return null;
     if (beendet) { await gibZurueck(a).catch(logAndContinue('auftraege:zurückgeben')); return null; }
     const ac = new AbortController();

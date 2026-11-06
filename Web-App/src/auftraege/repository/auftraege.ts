@@ -1,5 +1,6 @@
 import * as db from '../../../db/database';
 import { randomUUID } from 'node:crypto';
+import { LOCKS } from '../../infra/lockNamespaces';
 import type { AuftragsArt, Einstellen, AuftragsZeile, Belegung, Fortschritt, Pause, AuftragsStatus } from '../auftraege';
 
 /** Hier nur das SQL; Wecken, Wartezeiten und das Arbeiten im Namen eines Kontos
@@ -98,6 +99,34 @@ export function setzeVerschoben(a: Belegung, endgueltig: boolean, bis: Date, gru
       WHERE id = $1 AND belegt_von = $2 AND status = 'laeuft' RETURNING COALESCE(schluessel, id::text) AS s`,
     [a.id, a.belegt_von, endgueltig ? 'fehler' : 'offen', grund.slice(0, 2000), bis, zaehlt]);
 }
+type Abfrager = Pick<import('pg').ClientBase, 'query'>;
+
+export async function halteProzessSperre(c: Abfrager, prozess: string): Promise<void> {
+  await c.query('SELECT pg_advisory_lock($1, hashtext($2))', [LOCKS.JOB_PROZESS, prozess]);
+}
+
+/** Belegungen anderer Prozesse, deren Sperre frei ist: Der Prozess lebt nicht mehr
+ * (die Sperre endet mit seiner Verbindung). Der Versuch zählt wie nach einer Frist.
+ * @returns zurückgegebene Aufträge */
+export async function gibVerwaisteZurueck(c: Abfrager, prozess: string): Promise<number> {
+  const { rows } = await c.query<{ p: string }>(
+    `SELECT DISTINCT split_part(belegt_von, '/', 1) AS p FROM auftraege
+      WHERE status = 'laeuft' AND belegt_von LIKE '%/%' AND split_part(belegt_von, '/', 1) <> $1`, [prozess]);
+  let n = 0;
+  for (const { p } of rows) {
+    const frei = (await c.query<{ ok: boolean }>('SELECT pg_try_advisory_lock($1, hashtext($2)) AS ok', [LOCKS.JOB_PROZESS, p])).rows[0]?.ok;
+    if (!frei) continue;
+    try {
+      n += (await c.query(
+        `UPDATE auftraege SET status = 'offen', belegt_von = NULL, frist_bis = NULL, faellig_ab = NOW(), aktualisiert = NOW()
+          WHERE status = 'laeuft' AND split_part(belegt_von, '/', 1) = $1 AND belegt_von LIKE '%/%'`, [p])).rowCount ?? 0;
+    } finally {
+      await c.query('SELECT pg_advisory_unlock($1, hashtext($2))', [LOCKS.JOB_PROZESS, p]);
+    }
+  }
+  return n;
+}
+
 /** Der Versuch zählt nicht. */
 export async function gibZurueck(a: Belegung): Promise<void> {
   await db.run(

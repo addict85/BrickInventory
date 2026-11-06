@@ -1949,3 +1949,22 @@ mit zweitem Faktor neue Codes.
 `docker-publish.yml` baut das signierte Image ohne Cache und prüft den Digest
 vor der Signatur mit Trivy; `web-ci.yml` prüft die Registry-Signaturen der
 npm-Pakete (`npm audit signatures`).
+
+## 44. Nachbesserungen aus dem Betrieb
+
+- **Katalog-Import:** Set-Nummern ohne Versionsendung in der Rebrickable-Datei
+  (etwa in `inventories.csv`) brechen den Import nicht mehr ab; sie bekommen
+  wie im übrigen Bestand `-1`. Nichts zu tun, der nächste Abgleich lädt alles.
+- **`db-rolle` übernimmt auch die Kopien `vor_migration_*`.** Wer die App-Rolle
+  schon von Hand eingerichtet hat und beim Start „must be owner of schema
+  vor_migration_…“ sah: `postgres/app-rolle.sh` einmal erneut ausführen
+  (Abschnitt 29) oder einfach `docker compose up -d`.
+- **TLS-Warnung zur Datenbank:** Ein Hostname ohne Punkt (Docker-Dienst oder
+  -Container wie `db-brickinventory`) gilt als derselbe Rechner und löst die
+  Warnung nicht mehr aus. Eine Adresse oder ein Name mit Domain weiter schon.
+- **Preislauf am Tageslimit:** Eine Zeile im Protokoll statt einer je Set; die
+  übrigen Sets folgen im nächsten Lauf.
+- **Harter Abbruch eines Job-Prozesses** (Speicher, Strom): Seine laufenden
+  Aufträge, etwa der Katalog-Abgleich, übernimmt der nächste Start sofort statt
+  nach fünf Minuten. Aufträge, die noch die Version vor diesem Update belegt
+  hat, laufen wie bisher erst nach ihrer Frist weiter.

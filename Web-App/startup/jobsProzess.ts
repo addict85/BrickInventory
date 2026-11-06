@@ -9,6 +9,7 @@ import { planeAlle, ziehePlanVor } from '../src/auftraege/zeitplan';
 import { bildbedarfAnstossen, offenerBildbedarf } from '../src/katalog/bilder/bildbedarf';
 import { planeKursabruf } from '../src/finanzen/wechselkurse';
 import { starteAuftragsWorker, stoppeAuftragsWorker } from '../jobs/auftraegeStarten';
+import { meldeProzessAn, meldeProzessAb } from '../src/auftraege/prozess';
 import { NACHLAEUFE, type Nachlauf } from '../jobs/startNachlaeufe';
 
 /** Der Healthcheck des Dienstes `jobs` (compose.yaml) sieht auf das Alter dieser Datei. */
@@ -40,6 +41,8 @@ export async function starteJobs(beides: boolean): Promise<void> {
   // Nur ein getrennter Job-Prozess hält eigene Haushalt-Caches, die der Web-Prozess ändert.
   if (!beides) pgNotify.listen(HAUSHALT_KANAL, () => leereHaushaltCache());
 
+  const uebernommen = await meldeProzessAn();
+  if (uebernommen) console.log(`[auftraege] ${uebernommen} Aufträge eines beendeten Prozesses übernommen`);
   await meldeStartZustand({ ready: false, step: 'CSV wird geladen...', progress: 0, total: 6 });
   await planeAlle();
   await ziehePlanVor('csv_sync', 0, { beimStart: true });
@@ -63,4 +66,5 @@ export async function stoppeJobs(): Promise<void> {
   _lebenszeichen = null;
   _worker = null;
   await stoppeAuftragsWorker().catch(logAndContinue('shutdown:auftraege'));
+  meldeProzessAb();
 }

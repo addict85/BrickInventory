@@ -23,10 +23,12 @@ export async function gibTabelleFrei(c: PoolClient, tabelle: string): Promise<vo
   await c.query('RESET lock_timeout');
 }
 
-/** Mit Schlüsseln und Indizes: ON CONFLICT in den Blöcken braucht sie. */
+/** Mit Schlüsseln und Indizes: ON CONFLICT in den Blöcken braucht sie. Ohne
+ * CHECKs: Die Trigger der Zieltabelle (etwa die Versionsendung der Set-Nummer)
+ * kommen nicht mit; geprüft wird erst beim Tausch, nach den Triggern. */
 export async function legeSchattenAn(c: PoolClient, tabelle: string, schatten: string): Promise<void> {
   await c.query(`DROP TABLE IF EXISTS ${schatten}`);
-  await c.query(`CREATE UNLOGGED TABLE ${schatten} (LIKE ${tabelle} INCLUDING ALL)`);
+  await c.query(`CREATE UNLOGGED TABLE ${schatten} (LIKE ${tabelle} INCLUDING ALL EXCLUDING CONSTRAINTS)`);
 }
 
 /** Ein abgewiesener Block bricht den Import ab. */

@@ -53,7 +53,7 @@ async function fetchAndCachePrice(setNumber: string, condition: string, guideTyp
   if (cacheUsable(vorhanden, ttl)) return 'skipped';
 
   const rl = await kontingentFrei('bricklink');
-  if (!rl.allowed) { log(`BrickLink Tageslimit erreicht (${rl.limit}/Tag) — Job pausiert`); return 'rate_limited'; }
+  if (!rl.allowed) return 'rate_limited';
 
   const fallback = condition === 'N' ? 'U' : 'N';
   let g;
@@ -84,7 +84,9 @@ async function runPriceRefresh(k?: AuftragsKontext) {
   const releaseLock = await acquireRunLock();
   if (!releaseLock) throw new AuftragVerschieben(new Date(Date.now() + 60_000), 'Läuft bereits in einem anderen Prozess');
 
-  const t0 = Date.now(); let updated=0, skipped=0, errors=0;
+  const t0 = Date.now(); let updated=0, skipped=0, errors=0, ausgelassen=0;
+  // Ist das Kontingent aufgebraucht, käme jedes weitere Set mit derselben Antwort zurück.
+  let limitErreicht = false;
   const fortschritt = { current:0, total:0, set:null as string | null };
   await k?.fortschritt({ erledigt: 0, gesamt: 0, text: 'Starte…' });
   try {
@@ -118,6 +120,7 @@ async function runPriceRefresh(k?: AuftragsKontext) {
       const tasks = valid.map(sn => async () => {
         fortschritt.current++; fortschritt.set = sn;
         k?.signal.throwIfAborted();
+        if (limitErreicht) { ausgelassen++; return 'rate_limited'; }
         if (k && fortschritt.current % 10 === 1)
           await k.fortschritt({ erledigt: fortschritt.current, gesamt: fortschritt.total, text: `${sn} (${fortschritt.current}/${fortschritt.total})` });
         const conditions = zustaende.get(sn) ?? ['N'];
@@ -126,7 +129,10 @@ async function runPriceRefresh(k?: AuftragsKontext) {
           try {
             const r = await fetchAndCachePrice(sn, c, guideType, currency, ttlHours);
             if (r === 'updated') { updated++; last = 'updated'; }
-            else if (r === 'rate_limited') { errors++; return 'rate_limited'; }
+            else if (r === 'rate_limited') {
+              if (!limitErreicht) log('BrickLink-Tageslimit erreicht — die übrigen Sets folgen im nächsten Lauf');
+              limitErreicht = true; ausgelassen++; return 'rate_limited';
+            }
             else if (last !== 'updated') { skipped++; }
           } catch (e) { errors++; log(`Error ${sn} (${c}): ${fehlertext(e).substring(0,80)}`); last = 'error'; }
         }
@@ -135,7 +141,7 @@ async function runPriceRefresh(k?: AuftragsKontext) {
       await parallelLimit(tasks, 5);
     }
     const dur = Date.now() - t0;
-    log(`Done: ${updated} updated, ${skipped} skipped, ${errors} errors — ${(dur/1000).toFixed(1)}s`);
+    log(`Done: ${updated} updated, ${skipped} skipped, ${errors} errors${ausgelassen ? `, ${ausgelassen} wegen Tageslimit ausgelassen` : ''} — ${(dur/1000).toFixed(1)}s`);
     const lastRun = new Date().toISOString();
     await merkeStand({ lastRun, lastDuration: dur, lastUpdated: updated, lastErrors: errors });
     await k?.fortschritt({ erledigt: fortschritt.total, gesamt: fortschritt.total, text: `${updated} aktualisiert, ${errors} Fehler — ${(dur/1000).toFixed(1)}s` });
@@ -216,7 +222,10 @@ async function refreshPriceForSet(setNumber: string, userId: number, hintConditi
     const conditions = await conditionsNeededFor(setNumber, userId, hintCondition);
     log(`Immediate price fetch: ${setNumber} (${conditions.join('+')})`);
     for (const c of conditions) {
-      await fetchAndCachePrice(setNumber, c, guideType, currency, 0);
+      if (await fetchAndCachePrice(setNumber, c, guideType, currency, 0) === 'rate_limited') {
+        log(`BrickLink-Tageslimit erreicht — ${setNumber} folgt im nächsten Lauf`);
+        break;
+      }
     }
     log(`Immediate price done: ${setNumber}`);
   } catch (e) {
