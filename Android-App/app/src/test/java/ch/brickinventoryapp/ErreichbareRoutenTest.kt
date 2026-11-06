@@ -67,7 +67,10 @@ class ErreichbareRoutenTest {
         compose.setContent { nav = rememberNavController() }
         val graph = compose.runOnIdle {
             val umgebung = ZielUmgebung(nav, coil3.ImageLoader.Builder(ctx).build(), emptyList(), SnackbarHostState(),
-                Rollzustaende(LazyGridState(), LazyGridState(), LazyGridState(), LazyListState(), LazyListState(), ScrollState(0)))
+                Rollzustaende(LazyGridState(), LazyGridState(), LazyGridState(), LazyListState(), LazyListState(), ScrollState(0))) {
+                // Den Zustand holen erst die Ziele beim Zeichnen; der Graph allein braucht ihn nicht.
+                error("Ziele werden hier nicht gezeichnet")
+            }
             nav.createGraph(startDestination = Screen.Setup) { alleZiele(umgebung) }
         }
         val registriert = routen(graph).map { it.substringBefore('/').substringBefore('?') }.toSet()

@@ -19,6 +19,7 @@ import ch.brickinventoryapp.ui.PartsUiState
 import ch.brickinventoryapp.ui.Teile
 import ch.brickinventoryapp.ui.TeileAbfrage
 import ch.brickinventoryapp.ui.TeileQuelle
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.advanceTimeBy
@@ -48,6 +49,7 @@ import org.junit.Test
  *   E  teileJob?.cancel() in laden() entfernt → rot: „eine langsame alte
  *      Antwort überschreibt die neuere nicht"
  */
+@OptIn(ExperimentalCoroutinesApi::class)
 class TeileTest {
 
     private class Quelle : TeileQuelle {
