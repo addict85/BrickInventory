@@ -1058,6 +1058,8 @@ class BildschirmFotoVariantenTest {
 
     private val keinUpdate = object : UpdateAktionen {
         override fun pruefeAufUpdate(still: Boolean) = Unit
+        override fun pruefeBeimStart() = Unit
+        override fun setzeStartpruefung(an: Boolean) = Unit
         override fun updateHinweisSchliessen() = Unit
         override fun ladeUpdate() = Unit
         override fun starteInstallation() = Unit
