@@ -211,8 +211,9 @@ class BildschirmFotoVariantenTest {
         }
         RuntimeEnvironment.setQualifiers(if (sprache != null) "$sprache-$maske" else maske)
         // Die Schrift auch in der Konfiguration: Ein Dialog hat sein eigenes Fenster und
-        // nimmt die Dichte von dort, LocalDensity unten reicht nicht hinein (M2).
-        if (schrift != 1f) RuntimeEnvironment.setFontScale(schrift)
+        // nimmt die Dichte von dort, LocalDensity unten reicht nicht hinein (M2). Auch 1:
+        // Sonst erbt ein Dialog die 200 % eines früheren Tests und kommt nie zur Ruhe.
+        RuntimeEnvironment.setFontScale(schrift)
         if (sprache != null) Locale.setDefault(Locale.forLanguageTag(sprache.replace("-r", "-")))
         if (warten) bereitstellen(name, bereit, zustand)
         compose.setContent {
