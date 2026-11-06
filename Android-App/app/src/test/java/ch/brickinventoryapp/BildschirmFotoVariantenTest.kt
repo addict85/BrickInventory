@@ -506,6 +506,12 @@ class BildschirmFotoVariantenTest {
         bild.captureRoboImage(pfad(name, design, dunkel, geraet))
     }
 
+    /** Das Dialogfenster entsteht über den Hauptlooper, nicht über die Compose-Uhr. */
+    private fun dialogVorstellen() = repeat(3) {
+        compose.mainClock.advanceTimeBy(200)
+        Shadows.shadowOf(Looper.getMainLooper()).idle()
+    }
+
     /** Die Compose-Wurzel in einem Fensterbaum, ohne auf Ruhe zu warten. */
     private fun composeWurzel(v: View): ViewRootForTest? = when (v) {
         is ViewRootForTest -> v
@@ -661,19 +667,15 @@ class BildschirmFotoVariantenTest {
     @Test fun dialogSetErfassenTablet() = dialogSetErfassenFoto("dialog-set-erfassen", 1f, geraet = "tablet")
 
     private fun dialogSetErfassenFoto(name: String, schrift: Float, geraet: String = "telefon") {
-        // Ohne sofortigen Fokus: Ein blinkender Cursor liesse Compose nie zur Ruhe kommen.
-        // setContent wartet auf Ruhe, darum geht der Dialog erst danach auf.
-        val offen = androidx.compose.runtime.mutableStateOf(false)
+        // Die Uhr steht schon vor setContent: Ein Textfeld im Dialogfenster kommt unter
+        // Robolectric nie zur Ruhe, und ein von hier aus gesetzter Schalter erreichte den
+        // Dialog nicht. So entsteht er mit dem ersten Bild und wird schrittweise gezeichnet.
+        compose.mainClock.autoAdvance = false
         zeige(name, geraet = geraet, schrift = schrift, warten = false) {
-            if (offen.value) AddSetDialog(onDismiss = {},
+            AddSetDialog(onDismiss = {},
                 onAdd = { _, _, _, _, _, _ -> }, lagerorte = listOf("Keller", "Estrich"), sofortFokus = false)
         }
-        compose.mainClock.autoAdvance = false
-        offen.value = true
-        repeat(3) {
-            compose.mainClock.advanceTimeBy(200)
-            Shadows.shadowOf(Looper.getMainLooper()).idle()
-        }
+        dialogVorstellen()
         dialogFoto(name, "classic", false, geraet, schrift)
         if (schrift == 1f && geraet == "telefon") {
             // Ein Muster für alle Erfassungen: Der Lagerort ist so breit wie die Set-Nummer.
@@ -1125,10 +1127,12 @@ class BildschirmFotoVariantenTest {
     private fun barcodeFoto(dunkel: Boolean) {
         val zustand = BarcodeDialogZustand(AppUiState(), BlickfeldUiState(),
             BarcodeUiState(result = "75192-1", setName = "Millennium Falcon", besitzMenge = 1), LagerUiState())
+        // Wie „Set erfassen“: Mit laufender Uhr wartete setContent ewig auf Ruhe.
+        compose.mainClock.autoAdvance = false
         zeige("dialog-barcode-ergebnis", dunkel = dunkel, warten = false) {
             BarcodeResultDialog(zustand, erfassung(), bilder)
         }
-        compose.waitForIdle()
+        dialogVorstellen()
         dialogFoto("dialog-barcode-ergebnis", "classic", dunkel, "telefon", 1f)
     }
 
