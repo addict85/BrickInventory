@@ -65,4 +65,17 @@ async function belegeSitzungsSperre(schluessel: number): Promise<(() => Promise<
   };
 }
 
-export { withInventoryLock, bestandsSchluessel, sperreHaushaltswaehrung, mitSitzungsSperre, belegeSitzungsSperre };
+type Abfrager = Pick<import('pg').ClientBase, 'query'>;
+
+/** Sitzungssperre ohne Warten; der zweite Wert ist hashtext(schluessel). */
+async function versucheSchluesselSperre(c: Abfrager, namensraum: number, schluessel: string): Promise<boolean> {
+  const { rows } = await c.query<{ ok: boolean }>('SELECT pg_try_advisory_lock($1, hashtext($2)) AS ok', [namensraum, schluessel]);
+  return !!rows[0]?.ok;
+}
+
+async function gibSchluesselSperreFrei(c: Abfrager, namensraum: number, schluessel: string): Promise<void> {
+  await c.query('SELECT pg_advisory_unlock($1, hashtext($2))', [namensraum, schluessel]);
+}
+
+export { withInventoryLock, bestandsSchluessel, sperreHaushaltswaehrung, mitSitzungsSperre, belegeSitzungsSperre,
+  versucheSchluesselSperre, gibSchluesselSperreFrei };

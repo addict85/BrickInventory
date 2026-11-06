@@ -40,6 +40,8 @@
  *      bleiben unlesbar“ (users.neues_geheimnis lesbar)
  *   N  in app-rolle.sh `aus_datei DB_APP_PASSWORD` gestrichen → rot:
  *      „Passwörter aus Dateien“ (DB_APP_PASSWORD fehlt)
+ *   P  (06.11.2026) die Schleife über vor_migration_* entfernt → rot:
+ *      „bestehende Installation“ (permission denied for schema vor_migration_…)
  *
  * Voraussetzung: TEST_DATABASE_URL mit Superuser (legt Datenbanken und eine
  * Rolle an) und psql ab Version 15 (\getenv).
@@ -131,6 +133,13 @@ test('Datenbankrolle der App', { concurrency: 1, timeout: 180_000 }, async (t) =
     // einem Abbruch ist so kein anmeldbarer Superuser.
     await admin.query(`CREATE ROLE ${id(ROLLE)} NOLOGIN SUPERUSER CREATEROLE`);
     await admin.query(`GRANT pg_execute_server_program TO ${id(ROLLE)}`);
+    // Eine Kopie vor Migrationen, die noch der Superuser angelegt hat.
+    const kopie = new Client({ connectionString: url(alt) });
+    await kopie.connect();
+    try {
+      await kopie.query('CREATE SCHEMA vor_migration_20261029195422666');
+      await kopie.query('CREATE TABLE vor_migration_20261029195422666.users AS TABLE public.users');
+    } finally { await kopie.end(); }
 
     const r = rolleEinrichten(alt);
     assert.equal(r.status, 0, r.stderr);
@@ -150,6 +159,9 @@ test('Datenbankrolle der App', { concurrency: 1, timeout: 180_000 }, async (t) =
       await app.query('ALTER TABLE users ADD COLUMN rollenprobe int');
       await app.query('ALTER TABLE users DROP COLUMN rollenprobe');
       await assert.rejects(app.query("COPY (SELECT 1) TO PROGRAM 'true'"), /permission denied|must be superuser/);
+      // Die App räumt alte Kopien selbst weg und löscht Konten auch daraus.
+      await app.query('DELETE FROM vor_migration_20261029195422666.users WHERE id = -1');
+      await app.query('DROP SCHEMA vor_migration_20261029195422666 CASCADE');
     } finally { await app.end(); }
     const m = schemaAlsKonto(url(alt, ROLLE, PASSWORT), 'initSchema');
     assert.equal(m.status, 0, `Schema und Migrationen als App: ${m.stderr}`);

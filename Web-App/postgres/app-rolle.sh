@@ -138,6 +138,7 @@ DECLARE
   db    text := pg_catalog.current_database();
   ziel  oid;
   r     record;
+  kopie record;
 BEGIN
   IF NOT (SELECT rolsuper FROM pg_catalog.pg_roles WHERE rolname = current_user) THEN
     RAISE EXCEPTION 'db-rolle muss als Superuser laufen, nicht als %', current_user;
@@ -192,6 +193,16 @@ BEGIN
               AND NOT EXISTS (SELECT FROM pg_catalog.pg_depend d WHERE d.classid = 'pg_catalog.pg_type'::pg_catalog.regclass
                                 AND d.objid = t.oid AND d.deptype = 'e') LOOP
     EXECUTE pg_catalog.format('ALTER %s %s OWNER TO %I', CASE r.typtype WHEN 'd' THEN 'DOMAIN' ELSE 'TYPE' END, r.name, rolle);
+  END LOOP;
+  -- Die Kopien vor Migrationen räumt die App selbst weg (DROP SCHEMA) und löscht
+  -- daraus gelöschte Konten; sie muss ihnen also auch gehören.
+  FOR r IN SELECT n.oid, n.nspname FROM pg_catalog.pg_namespace n
+            WHERE n.nspname OPERATOR(pg_catalog.~) '^vor_migration_[0-9]+$' LOOP
+    EXECUTE pg_catalog.format('ALTER SCHEMA %I OWNER TO %I', r.nspname, rolle);
+    FOR kopie IN SELECT c.oid::pg_catalog.regclass AS name FROM pg_catalog.pg_class c
+              WHERE c.relnamespace = r.oid AND c.relkind = 'r' AND c.relowner <> ziel LOOP
+      EXECUTE pg_catalog.format('ALTER TABLE %s OWNER TO %I', kopie.name, rolle);
+    END LOOP;
   END LOOP;
 
   -- Leserolle für pgweb: nur SELECT auf die Allowlist oben.

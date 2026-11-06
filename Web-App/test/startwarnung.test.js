@@ -14,6 +14,8 @@
  *   M  den Zweig zu HSTS_MAX_AGE in startWarnungen() entfernt → rot:
  *      „HSTS_MAX_AGE=0 …“
  *   N  dbOhneTls() liefert immer false → rot: „entfernte Datenbank …“
+ *   O  (06.11.2026) in dbOhneTls() die Regel für Namen ohne Punkt gestrichen →
+ *      rot: „entfernte Datenbank …“ ({"PGHOST":"db-brickinventory"})
  */
 const test   = require('node:test');
 const assert = require('node:assert/strict');
@@ -73,6 +75,8 @@ test('entfernte Datenbank ohne geprüftes TLS: Warnung', () => {
   assert.equal(tls({ DATABASE_URL: 'postgres://u:p@db.example.org/x?sslmode=require' }).length, 1);
   assert.deepEqual(tls({ PGHOST: 'db.example.org', PGSSLMODE: 'verify-full' }), []);
   assert.deepEqual(tls({ DATABASE_URL: 'postgres://u:p@db.example.org/x?sslmode=verify-full' }), []);
-  for (const nah of [{}, { PGHOST: 'postgres' }, { PGHOST: '127.0.0.1' }, { DATABASE_URL: 'postgres://u:p@localhost/x' }])
+  assert.equal(tls({ PGHOST: '192.168.1.20' }).length, 1, 'eine Adresse im LAN');
+  for (const nah of [{}, { PGHOST: 'postgres' }, { PGHOST: '127.0.0.1' }, { DATABASE_URL: 'postgres://u:p@localhost/x' },
+    { PGHOST: 'db-brickinventory' }, { DATABASE_URL: 'postgres://u:p@db-brickinventory:5432/x' }])
     assert.deepEqual(tls(nah), [], JSON.stringify(nah));
 });

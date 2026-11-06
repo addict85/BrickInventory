@@ -11,6 +11,10 @@
  * zwei echten Verbindungen prüfen — am Quelltext wäre es bloss die Frage, ob
  * irgendwo „BEGIN" steht.
  *
+ * Gegenprobe (06.11.2026): legeSchattenAn wieder mit INCLUDING ALL ohne
+ * EXCLUDING CONSTRAINTS → rot: „Set-Nummern ohne Versionsendung bekommen sie
+ * beim Tausch“ (rb_inventories_setnummer_mit_version in der Schattentabelle).
+ *
  * Voraussetzung: Test-DB (Inhalt wird geleert!) via TEST_DATABASE_URL.
  * Ohne DB: skip.
  */
@@ -111,9 +115,8 @@ test('Katalog-Import tauscht, statt zu leeren', async (t) => {
   await t.test('ein fehlerhafter Block bricht den Import ab, statt Zeilen zu verlieren', async () => {
     await db.run('DELETE FROM rb_colors');
     await db.run(`INSERT INTO rb_colors (id, name, rgb, is_trans) VALUES (1,'bestand','FFFFFF','f')`);
-    // Einen Insert-Fehler erzwingen, ohne den Worker zu verbiegen: eine
-    // Bedingung, die der Bestand erfüllt und die neue Zeile nicht. Die
-    // Schattentabelle übernimmt sie über LIKE … INCLUDING ALL.
+    // Einen Fehler erzwingen, ohne den Worker zu verbiegen: eine Bedingung,
+    // die der Bestand erfüllt und die neue Zeile nicht. Sie greift beim Tausch.
     await db.run(`ALTER TABLE rb_colors ADD CONSTRAINT rb_colors_name_kurz CHECK (length(name) < 10)`);
     csvSchreiben('colors.csv.tmp', ['id,name,rgb,is_trans', '1,viel-zu-langer-name,C91A09,f']);
 
@@ -123,6 +126,14 @@ test('Katalog-Import tauscht, statt zu leeren', async (t) => {
     const übrig = await db.get('SELECT count(*)::int AS c FROM rb_colors');
     assert.equal(übrig.c, 1, 'der alte Bestand ist trotz Abbruch verschwunden');
     await db.run(`ALTER TABLE rb_colors DROP CONSTRAINT rb_colors_name_kurz`);
+  });
+
+  await t.test('Set-Nummern ohne Versionsendung bekommen sie beim Tausch', async () => {
+    csvSchreiben('inventories.csv.tmp', ['id,version,set_num', '1,1,75192-1', '2,1,llca8', '3,2,fig-000001']);
+    const worker = _req('jobs/csvImportWorker.js');
+    assert.equal(await worker.TASKS.inventories(), 3);
+    const zeilen = await db.all('SELECT id, set_num FROM rb_inventories ORDER BY id');
+    assert.deepEqual(zeilen.map(z => z.set_num), ['75192-1', 'llca8-1', 'fig-000001']);
   });
 
   await t.test('verdoppelte Anführungszeichen bleiben ein Anführungszeichen', async () => {

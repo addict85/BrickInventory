@@ -1,6 +1,7 @@
 import * as db from '../../../db/database';
 import type { PoolClient } from 'pg';
 import { LOCKS } from '../../infra/lockNamespaces';
+import { versucheSchluesselSperre, gibSchluesselSperreFrei } from '../../../db/txLock';
 
 export type InventarTeil = { part_num: string; color_id: number | null; quantity: number };
 
@@ -86,12 +87,11 @@ export function sperrVerbindung(): Promise<PoolClient> {
 }
 
 export async function versucheBildSperre(c: PoolClient, setNumber: string): Promise<boolean> {
-  const { rows } = await c.query<{ ok: boolean }>('SELECT pg_try_advisory_lock($1, hashtext($2)) AS ok', [LOCKS.BILD_DOWNLOAD, setNumber]);
-  return !!rows[0]?.ok;
+  return versucheSchluesselSperre(c, LOCKS.BILD_DOWNLOAD, setNumber);
 }
 
 export async function gibBildSperreFrei(c: PoolClient, setNumber: string): Promise<void> {
-  await c.query('SELECT pg_advisory_unlock($1, hashtext($2))', [LOCKS.BILD_DOWNLOAD, setNumber]);
+  await gibSchluesselSperreFrei(c, LOCKS.BILD_DOWNLOAD, setNumber);
 }
 
 export async function versucheNachlaufSperre(c: PoolClient): Promise<boolean> {
