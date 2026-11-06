@@ -1,7 +1,7 @@
 package ch.brickinventoryapp.ui.viewmodel
 
 import android.content.Context
-import android.net.Uri
+import androidx.core.net.toUri
 import ch.brickinventoryapp.data.Anmeldestand
 import ch.brickinventoryapp.data.api.fehlerTextZuCode
 import ch.brickinventoryapp.data.repository.Ergebnis
@@ -45,7 +45,7 @@ class AppDateiLeser @Inject constructor(
     @param:Dispatcher(BrickDispatchers.IO) private val io: CoroutineDispatcher,
 ) : DateiLeser {
     override suspend fun lies(datei: DateiRef): Pair<String?, ByteArray>? = withContext(io) {
-        val uri = Uri.parse(datei.wert)
+        val uri = datei.wert.toUri()
         runCatching {
             val bytes = ctx.contentResolver.openInputStream(uri)?.use { it.readBytes() }
             bytes?.let { ctx.contentResolver.getType(uri) to it }
@@ -53,7 +53,7 @@ class AppDateiLeser @Inject constructor(
     }
 
     override suspend fun name(datei: DateiRef): String? = withContext(io) {
-        val uri = Uri.parse(datei.wert)
+        val uri = datei.wert.toUri()
         runCatching {
             ctx.contentResolver.query(uri, null, null, null, null)?.use { c ->
                 val i = c.getColumnIndex(android.provider.OpenableColumns.DISPLAY_NAME)
