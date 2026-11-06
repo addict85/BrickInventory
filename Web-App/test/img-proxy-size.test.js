@@ -25,7 +25,7 @@ test('die Cache-Grenze deckt hochauflösende Katalogbilder ab', () => {
 
 test('der Abbruch wird protokolliert, nicht verschwiegen', () => {
   const i = code.indexOf('const verwirf = ');
-  assert.ok(i > 0 && /bytes > PROXY_CACHE_MAX_BYTES\) \{ verwirf\(/.test(code), 'der Abbruch läuft nicht über verwirf()');
+  assert.ok(i > 0 && /bytes > PROXY_CACHE_MAX_BYTES\)\s*\{\s*verwirf\(/.test(code), 'der Abbruch läuft nicht über verwirf()');
   const block = code.slice(i, i + 800);
   assert.ok(/console\.error/.test(block),
     'ein übergrosses Bild muss eine Spur hinterlassen — sonst ist der Fall ohne ' +

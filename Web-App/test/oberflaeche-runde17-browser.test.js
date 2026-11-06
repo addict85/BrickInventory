@@ -23,12 +23,14 @@
  *      „Protokollfenster“
  *   D  in mobile.css die Regel `.kopf-weg .knopf-schwebend` entfernt → rot:
  *      „Masse“ (Knopf breiter als 56 px)
+ *   E  (06.11.2026) in logviewer.js ein <img> ohne alt angehängt → rot:
+ *      „Protokollfenster“ (axe im Rahmen); C am 06.11. im Rahmen wiederholt.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const { starteApp, warte } = require('./helpers/app-browser');
 const { musterHaushalt } = require('./helpers/bestand');
-const { AXE_LAUF } = require('./helpers/layout-messung');
+const { AXE, AXE_LAUF } = require('./helpers/layout-messung');
 
 const TAB = { key: 'Tab', code: 'Tab', windowsVirtualKeyCode: 9 };
 const taste = async (b, t) => {
@@ -107,21 +109,51 @@ async function csvFortschritt(t, a) {
 }
 
 async function protokollfenster(t, a) {
-  const { b, bis, ruhig } = a;
+  const { b, bis } = a;
   await b.auswerten(`document.querySelector('.ntab[data-tab="monitor"]').click(); true`);
   await bis(`!!document.querySelector('[data-click="openLogViewer"]')`, 'Hintergrundarbeiten');
-  // Das Fenster schreibt sein Markup in window.open(); hier ist es dieselbe Seite, damit axe sie misst.
-  await b.auswerten(`window.open = () => window; document.querySelector('[data-click="openLogViewer"]').click(); true`);
-  await bis(`!!document.getElementById('log-wrap') && !!document.getElementById('btn-info')`, 'Protokollfenster');
-  await ruhig();
-  assert.deepEqual(await b.auswerten(AXE_LAUF), []);
+  // Ein eigenes Fenster wie window.open(), aber im Rahmen derselben Seite: mit eigenen
+  // Trusted-Types-Richtlinien (logviewer.js legt „app“ selbst an) und für axe erreichbar.
+  await b.auswerten(`window.open = () => { const f = document.createElement('iframe'); f.id = 'lv-rahmen';
+    f.title = 'Protokoll'; f.style.cssText = 'position:fixed;inset:0;width:100vw;height:100vh;border:0;z-index:2147483647';
+    document.body.append(f); return f.contentWindow; };
+    document.querySelector('[data-click="openLogViewer"]').click(); true`);
+  const im = (/** @type {string} */ ausdruck) =>
+    `(() => { const document = window.document.getElementById('lv-rahmen')?.contentDocument; return !!document && (${ausdruck}); })()`;
+  await bis(im(`!!document.getElementById('log-wrap') && !!document.getElementById('btn-info')`), 'Protokollfenster');
+  // logviewer.js lädt nach; erst seine erste Liste zeigt, dass die Knöpfe verdrahtet sind.
+  await bis(im(`/^\\d+ \\/ \\d+/.test(document.getElementById('status')?.textContent || '')`), 'Protokoll geladen');
+  // axe in einer eigenen Welt des Rahmens: Dort gilt die CSP des Rahmens nicht für eval.
+  const { frameTree } = await b.tab('Page.getFrameTree');
+  const rahmen = (frameTree.childFrames || []).at(-1)?.frame;
+  assert.ok(rahmen, 'kein Rahmen für das Protokollfenster');
+  const { executionContextId } = await b.tab('Page.createIsolatedWorld', { frameId: rahmen.id, worldName: 'axe' });
+  await b.tab('Runtime.evaluate', { contextId: executionContextId, expression: `${AXE};0` });
+  const { result } = await b.tab('Runtime.evaluate', {
+    contextId: executionContextId,
+    awaitPromise: true,
+    returnByValue: true,
+    expression: `axe.run(document, { resultTypes: ['violations'] }).then(r =>
+      r.violations.flatMap(v => v.nodes.slice(0, 4).map(n => v.id + ': ' + n.target.join(' '))))`,
+  });
+  const axe = result.value;
+  assert.deepEqual(axe, []);
   const stufen = await b.auswerten(
-    `[...document.querySelectorAll('.lvbtn')].map(k => [k.id, k.classList.contains('active'), k.getAttribute('aria-pressed')])`,
+    im(
+      `[...document.querySelectorAll('.lvbtn')].map(k => [k.id, k.classList.contains('active'), k.getAttribute('aria-pressed')])`,
+    ),
   );
+  assert.ok(stufen.length >= 3, `nur ${stufen.length} Stufenknöpfe`);
   for (const [id, aktiv, gedrueckt] of stufen) assert.equal(gedrueckt, String(aktiv), id);
-  await b.auswerten(`document.getElementById('btn-info').click(); true`);
-  assert.equal(await b.auswerten(`document.getElementById('btn-info').getAttribute('aria-pressed')`), 'true');
-  assert.equal(await b.auswerten(`document.getElementById('status').getAttribute('role')`), 'status');
+  const vorher = await b.auswerten(im(`document.getElementById('btn-info').getAttribute('aria-pressed')`));
+  await b.auswerten(im(`document.getElementById('btn-info').click() ?? true`));
+  assert.equal(
+    await b.auswerten(im(`document.getElementById('btn-info').getAttribute('aria-pressed')`)),
+    String(vorher !== 'true'),
+    'der Info-Knopf meldet seinen Zustand nicht',
+  );
+  assert.equal(await b.auswerten(im(`document.getElementById('status').getAttribute('role')`)), 'status');
+  await b.auswerten(`document.getElementById('lv-rahmen').remove(); true`);
 }
 
 async function masse(t, a) {

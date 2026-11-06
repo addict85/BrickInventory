@@ -319,4 +319,4 @@ async function tabPruefung(b) {
   return [...new Set(funde)];
 }
 
-module.exports = { AXE_LAUF, LAYOUT, tabPruefung };
+module.exports = { AXE, AXE_LAUF, LAYOUT, tabPruefung };
