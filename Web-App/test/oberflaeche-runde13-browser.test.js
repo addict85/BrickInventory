@@ -105,9 +105,13 @@ test('UI-Prüfung 13: Haushalt, Dialoge, Finanzen', { timeout: 280_000 }, async 
   await t.test('Lösch-Kreuz: Entf auf der Karte', async () => {
     await geh('sammlung');
     await bis(`!!document.querySelector('#gallery .sc')`, 'Sammlung');
+    // Erst wenn die Sammlung fertig geladen ist: Ein späterer Neuaufbau ersetzte die
+    // fokussierte Karte, und Entf ginge an den Körper der Seite.
+    await ruhig();
     const z = await b.auswerten(`(() => { const k = document.querySelector('#gallery .sc'); k.focus();
-      return { taste: k.getAttribute('aria-keyshortcuts'), kreuz: k.querySelector('.delbtn').getAttribute('aria-hidden') }; })()`);
-    assert.deepEqual(z, { taste: 'Delete', kreuz: 'true' });
+      return { taste: k.getAttribute('aria-keyshortcuts'), kreuz: k.querySelector('.delbtn').getAttribute('aria-hidden'),
+        fokus: document.activeElement === k }; })()`);
+    assert.deepEqual(z, { taste: 'Delete', kreuz: 'true', fokus: true });
     for (const type of ['rawKeyDown', 'keyUp']) await b.tab('Input.dispatchKeyEvent', { type, key: 'Delete', code: 'Delete', windowsVirtualKeyCode: 46 });
     await bis(offen, 'Löschdialog');
     assert.match(await b.auswerten(text('#cd-title')), /löschen/i);
