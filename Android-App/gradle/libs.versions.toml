@@ -1,5 +1,5 @@
 [versions]
-camerax                     = "1.3.4"
+camerax                     = "1.6.2"
 mlkitBarcode                = "18.3.1"   # unbundled: das Modell liefern die Play-Dienste
 # Texterkennung fest eingebaut (com.google.mlkit): kein Nachladen über Play, sofort
 # offline nutzbar; kostet rund 4 MB APK.
