@@ -129,7 +129,9 @@ class SelbstUpdateTest {
     fun `die Pruefung beim Start ist still`() {
         // Marcos Vorgabe: beim Start pruefen, nie von allein laden.
         val nav = quelle("AppNavigation.kt")
-        assert(nav.contains("pruefeAufUpdate(still = true)")) {
+        // Der Start fragt über pruefeBeimStart(), das nur bei gesetztem Schalter still prüft.
+        val vm = Quellen.funktion(Quellen.ohneKommentare(Quellen.lies("ui/viewmodel/UpdateViewModel.kt")), "fun pruefeBeimStart(")
+        assert(nav.contains("selbstUpdate.pruefeBeimStart()") && vm.contains("pruefeAufUpdate(still = true)")) {
             "Beim Start wird nicht (mehr) still nach einem Update gesehen"
         }
         // Und sie laedt nichts: ladeUpdate() hat genau einen Ausloeser, den Knopf.
@@ -338,7 +340,7 @@ class SelbstUpdateTest {
         }
         // Und der Start stoesst weiterhin nur die PRUEFUNG an.
         val nav = Quellen.ohneKommentare(Quellen.lies("AppNavigation.kt"))
-        assert(nav.contains("selbstUpdate.pruefeAufUpdate(still = true)")) {
+        assert(nav.contains("selbstUpdate.pruefeBeimStart()")) {
             "Die stille Pruefung beim Start ist weg"
         }
         assert(!nav.contains("ladeUpdate")) {
