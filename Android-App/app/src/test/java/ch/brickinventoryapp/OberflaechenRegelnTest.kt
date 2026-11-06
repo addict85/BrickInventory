@@ -354,7 +354,10 @@ class OberflaechenRegelnTest {
             }
             warte("Set-Detail") { vm.setDetailState.value.let { it.setPrice != null && it.priceHistory != null && !it.setPriceLoading } }
             compose.onNodeWithText(ctx.getString(R.string.detail_pnl_tile), useUnmergedTree = true).assertIsDisplayed()
-            compose.onNodeWithText(fmtProzent(16.1), useUnmergedTree = true).assertIsDisplayed()
+            // Die G&V-Kachel nennt Betrag und Prozent (812.50 − 700.00); der Prozentwert allein steht
+            // weiter unten in der Plakette je Zustand.
+            compose.onNodeWithText("+" + fmtMoney(112.5, "CHF") + " · " + fmtProzent(16.1), useUnmergedTree = true)
+                .assertIsDisplayed()
             compose.onAllNodesWithText(fmtMoney(812.5, "CHF"), useUnmergedTree = true)[0].assertIsDisplayed()
         } finally {
             welt.close()

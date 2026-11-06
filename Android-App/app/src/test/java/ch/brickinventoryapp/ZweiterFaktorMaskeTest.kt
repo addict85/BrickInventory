@@ -16,6 +16,7 @@ import androidx.compose.ui.test.hasClickAction
 import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
@@ -143,7 +144,8 @@ class ZweiterFaktorMaskeTest {
     fun `nach der Bestaetigung stehen die Notfallcodes da, weiter erst mit dem Haken gesichert`() {
         zustand.value = codes
         zeige()
-        compose.onNodeWithText("aaaa-bbbb\ncccc-dddd").assertExists()
+        // Der Codetext liest sich Zeichen für Zeichen (vorgelesenAls); sein Text steht nicht im Baum.
+        compose.onNodeWithContentDescription("a a a a - b b b b, c c c c - d d d d").assertExists()
         assertTrue("Die Codes stehen im Klartext da: kein Bildschirmfoto", geschuetzt())
         knopf(R.string.zf_pflicht_weiter).assertIsNotEnabled()
         knopf(R.string.zf_codes_gesichert).performScrollTo().performClick()

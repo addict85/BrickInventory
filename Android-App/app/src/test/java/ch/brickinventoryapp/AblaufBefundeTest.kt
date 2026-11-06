@@ -58,6 +58,7 @@ import ch.brickinventoryapp.ui.theme.BrickInventoryManagerTheme
 import ch.brickinventoryapp.ui.viewmodel.ErfassungAktionen
 import ch.brickinventoryapp.ui.viewmodel.HaushaltViewModel
 import ch.brickinventoryapp.ui.viewmodel.KatalogAktionen
+import ch.brickinventoryapp.util.fmtMoney
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -136,6 +137,10 @@ class AblaufBefundeTest {
                 }
             }
         }
+        // fmtMoney setzt ein festes Leerzeichen zwischen Code und Betrag.
+        val alarm = ctx.getString(R.string.wanted_alert_below, fmtMoney(349.0, "CHF"))
+        compose.onAllNodesWithText(alarm, substring = true).fetchSemanticsNodes()
+            .let { assertTrue("Alarm vor dem Löschen", it.isNotEmpty()) }
         compose.onNode(hasText("Lion Knights' Castle", substring = true) and hasClickAction()).performClick()
         warte("Detail") { !vm.merkpostenDetailState.value.laedt }
         // Ab hier die Uhr von Hand: Sonst liefe die Snackbar im Takt der Testuhr sofort ab.
@@ -149,7 +154,7 @@ class AblaufBefundeTest {
         schritt()
         warte("zurück") { vm.merklisteState.value.merkposten.any { it.setNumber == "10305-1" } }
         schritt()
-        compose.onAllNodesWithText(ctx.getString(R.string.wanted_alert_below, "CHF 349.00"), substring = true)
+        compose.onAllNodesWithText(alarm, substring = true)
             .fetchSemanticsNodes().let { assertTrue("Alarm wieder sichtbar", it.isNotEmpty()) }
         assertTrue("Nach Rückgängig nie gelöscht", welt.pfade.anfragenAn("DELETE").isEmpty())
     }

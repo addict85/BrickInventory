@@ -283,7 +283,7 @@ object Beispiele {
             "theme":"Star Wars","quantity":1,"num_parts":7541,"minifigs":7,"added_at":"2026-03-14T10:00:00Z","avg_purchase_price":700.0}}""",
         "/api/v1/sets/75192-1/price" to """{"success":true,"set_number":"75192-1","currency":"CHF","avg_price":812.5,"min_price":760.0,"max_price":880.0,"qty_avg_price":812.5}""",
         "/api/v1/sets/75192-1/price-history" to """{"success":true,"set_number":"75192-1","currency":"CHF",
-            "by_condition":{"N":{"market_price":812.5,"purchase_price":700.0,"pnl_pct":16.1}},
+            "by_condition":{"N":{"market_price":812.5,"purchase_price":700.0,"pnl_pct":"16.1","pnl_prozent":16.1}},
             "chart":{"values":[{"name":"N","values":[{"x":"2026-08-01","y":790.0},{"x":"2026-09-01","y":801.0},{"x":"2026-10-01","y":812.5}],"firstRealIndex":0}],
                      "x":["2026-08-01","2026-09-01","2026-10-01"]},
             "pnl_prozent":16.1,"purchase_price":700.0}""",

@@ -6,6 +6,11 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.foundation.layout.Column
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.width
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SnackbarHostState
@@ -154,11 +159,15 @@ class BarrierefreiheitBefundeTest {
         return ergebnis.single()
     }
 
-    /** Text oder Beschreibung je Knoten, in der Reihenfolge des Baums unter [n]. */
+    /**
+     * Text oder Beschreibung je Knoten, in der Reihenfolge des Baums unter [n]. Unter
+     * clearAndSetSemantics nichts: Der ungefasste Baum führt die ersetzten Kinder noch,
+     * TalkBack liest sie nicht (wie SemanticsNode.mergeConfig).
+     */
     private fun vorgelesen(n: SemanticsNode): List<String> {
         val eigen = n.config.getOrNull(SemanticsProperties.ContentDescription).orEmpty() +
             n.config.getOrNull(SemanticsProperties.Text).orEmpty().map { it.text }
-        return eigen + n.children.flatMap { vorgelesen(it) }
+        return if (n.config.isClearingSemantics) eigen else eigen + n.children.flatMap { vorgelesen(it) }
     }
 
     private fun pruefeSchalter(text: String, erwartet: Role, an: Boolean) {
@@ -327,13 +336,19 @@ class BarrierefreiheitBefundeTest {
     @Test
     fun `M9 Tastaturfokus zeigt einen Rahmen in der Hauptfarbe`() {
         var hauptfarbe = 0
+        val ablage = FocusRequester()
         compose.setContent {
             BrickInventoryManagerTheme(theme = "classic") {
                 hauptfarbe = MaterialTheme.colorScheme.primary.toArgb()
                 val modus = LocalInputModeManager.current
                 LaunchedEffect(Unit) { modus.requestInputMode(InputMode.Keyboard) }
                 Surface(color = MaterialTheme.colorScheme.background) {
-                    AppKarte(Modifier.width(200.dp), onClick = {}) { Text("Millennium Falcon", Modifier.width(200.dp)) }
+                    Column {
+                        // Im Tastaturbetrieb setzt Compose den Anfangsfokus auf das erste
+                        // Fokussierbare; ohne diese Ablage trug die Karte ihn schon zu Beginn.
+                        Box(Modifier.size(8.dp).focusRequester(ablage).focusable())
+                        AppKarte(Modifier.width(200.dp), onClick = {}) { Text("Millennium Falcon", Modifier.width(200.dp)) }
+                    }
                 }
             }
         }
@@ -343,10 +358,15 @@ class BarrierefreiheitBefundeTest {
             val bild = karte.captureToImage().toPixelMap()
             return bild[2, bild.height / 2].toArgb()
         }
+        compose.runOnIdle { ablage.requestFocus() }
+        compose.waitForIdle()
         assertTrue("Ohne Fokus schon ein Rahmen", randFarbe() != hauptfarbe)
         karte.performSemanticsAction(SemanticsActions.RequestFocus)
         compose.waitForIdle()
         assertEquals("Fokusrahmen fehlt", hauptfarbe, randFarbe())
+        compose.runOnIdle { ablage.requestFocus() }
+        compose.waitForIdle()
+        assertTrue("Rahmen bleibt nach dem Fokus", randFarbe() != hauptfarbe)
     }
 
     @Test

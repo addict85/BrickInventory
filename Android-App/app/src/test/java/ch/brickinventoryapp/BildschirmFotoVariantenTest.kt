@@ -323,7 +323,7 @@ class BildschirmFotoVariantenTest {
             "image_local":"/beispiel/set1.png","name":"Millennium Falcon","year":2017,"theme":"Star Wars","quantity":1,
             "num_parts":7541,"minifigs":7,"added_at":"2026-03-14T10:00:00Z","avg_purchase_price":1049.0}}"""
         welt.pfade.antworten["/api/v1/sets/75192-1/price-history"] = """{"success":true,"set_number":"75192-1","currency":"CHF",
-            "by_condition":{"N":{"market_price":1249.9,"purchase_price":1049.0,"pnl_pct":19.2}},
+            "by_condition":{"N":{"market_price":1249.9,"purchase_price":1049.0,"pnl_pct":"19.2","pnl_prozent":19.2}},
             "chart":{"values":[{"name":"N","values":[{"x":"2026-08-01","y":1210.0},{"x":"2026-09-01","y":1231.0},{"x":"2026-10-01","y":1249.9}],"firstRealIndex":0}],
                      "x":["2026-08-01","2026-09-01","2026-10-01"]},
             "pnl_prozent":19.2,"purchase_price":1049.0}"""
