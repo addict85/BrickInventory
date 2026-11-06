@@ -26,6 +26,7 @@ class AndroidLibraryKonvention : Plugin<Project> {
         android.compileSdk = Sdk.compileSdk
         android.defaultConfig.minSdk = Sdk.minSdk
         target.java17(android.compileOptions)
+        target.guavaMindestens()
     }
 }
 
@@ -39,6 +40,7 @@ class AndroidApplicationKonvention : Plugin<Project> {
         android.defaultConfig.minSdk = Sdk.minSdk
         android.defaultConfig.targetSdk = Sdk.targetSdk
         target.java17(android.compileOptions)
+        target.guavaMindestens()
     }
 }
 

@@ -33,6 +33,9 @@ retrofitKotlinxSerialization = "1.0.0"
 graphicsPath                = "1.1.0"   # 16 KB, siehe app/build.gradle.kts
 # Die 16-KB-Ausrichtung prüft tools/apk-ausrichtung.py am gebauten APK, nicht die Nummer.
 datastore                   = "1.3.0"
+# Mindestfassung für Guava, das andere Bibliotheken mitbringen (CVE-2026-102554,
+# behoben in 33.7.2). Gesetzt in build-logic, Gemeinsam.kt.
+guavaMindestens             = "33.7.2-android"
 appcompat                   = "1.8.0"
 # Rückfrage per Gerätesperre vor heiklen Schritten (core-ui, Schrittschutz).
 biometric                   = "1.1.0"

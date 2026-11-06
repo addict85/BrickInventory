@@ -50,9 +50,9 @@ internal suspend fun bildAdressenDerSammlung(
         seite++
     }
 
-    val figuren = figuren.getMinifigs(blickfeld.kontoFuer(ScopeFilter.View.MINIFIGS))
-    if (figuren is Ergebnis.Success) {
-        figuren.data.figs.mapTo(roh) { resolveThumbUrl(basis, it.imageLocal, it.imageUrl) }
+    val figurenAntwort = figuren.getMinifigs(blickfeld.kontoFuer(ScopeFilter.View.MINIFIGS))
+    if (figurenAntwort is Ergebnis.Success) {
+        figurenAntwort.data.figs.mapTo(roh) { resolveThumbUrl(basis, it.imageLocal, it.imageUrl) }
     }
     val mTeile = teile.getManualParts(blickfeld.kontoFuer(ScopeFilter.View.PARTS))
     if (mTeile is Ergebnis.Success) {

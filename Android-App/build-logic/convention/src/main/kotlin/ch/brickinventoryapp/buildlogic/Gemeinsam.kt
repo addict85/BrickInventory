@@ -24,6 +24,15 @@ internal fun Project.bibliothek(konfiguration: String, alias: String) {
     dependencies.add(konfiguration, libs.findLibrary(alias).get())
 }
 
+/**
+ * Guava kommt nur mittelbar in die App. Eine Einschränkung statt force: Sie hebt
+ * eine ältere Fassung an, fügt Guava aber keinem Modul hinzu, das es nicht braucht.
+ */
+internal fun Project.guavaMindestens() {
+    val fassung = libs.findVersion("guavaMindestens").get().requiredVersion
+    dependencies.constraints.add("implementation", "com.google.guava:guava:$fassung")
+}
+
 internal fun Project.gruppe(konfiguration: String, alias: String) {
     dependencies.add(konfiguration, libs.findBundle(alias).get())
 }
