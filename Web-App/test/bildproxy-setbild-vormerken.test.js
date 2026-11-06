@@ -37,12 +37,12 @@ test('Bild-Proxy merkt Set-Bilder für images/sets vor', async t => {
   const imCache = url => {
     const f = path.join(cacheDir, proxyCacheSchluessel(proxyAdresse(url) ?? url));
     lege(f);
-    lege(`${f}.ct`, 'image/jpeg');
+    lege(`${f}.ct`, Buffer.from('image/jpeg'));
   };
 
   const app = express();
   app.get('/p', (req, res) => {
-    req.session = { userId: 1 };
+    Object.assign(req, { session: { userId: 1 } });
     return bildDurchreichen(req, res);
   });
   const server = app.listen(0);
@@ -53,7 +53,9 @@ test('Bild-Proxy merkt Set-Bilder für images/sets vor', async t => {
   });
   const hole = async url => {
     notizen.length = 0;
-    const r = await fetch(`http://127.0.0.1:${server.address().port}/p?url=${encodeURIComponent(url)}`);
+    const r = await fetch(
+      `http://127.0.0.1:${/** @type {import('node:net').AddressInfo} */ (server.address()).port}/p?url=${encodeURIComponent(url)}`,
+    );
     await r.arrayBuffer();
     return r.status;
   };
