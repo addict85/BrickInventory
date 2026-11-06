@@ -56,10 +56,19 @@ function buildAuthHeader(method: string, baseUrl: string,
   return `OAuth realm="", ${parts}`;
 }
 
-async function httpsGet(url: string, authHeader: string): Promise<{ status: number; body: string }> {
-  const r = await holeHttps(url, { hosts: ['api.bricklink.com'], maxBytes: 8 * 1024 * 1024, zeitlimitMs: 20_000,
+/** Wartung: BrickLink leitet jede Anfrage um; kein Fehler des einzelnen Sets. */
+class BricklinkNichtErreichbar extends Error {
+  code = 'bricklink_nicht_erreichbar';
+}
+
+async function httpsGet(url: string, authHeader: string): Promise<{ status: number; body: string; ziel: string }> {
+  const r = await holeHttps(url, { hosts: ['api.bricklink.com'], maxBytes: 8 * 1024 * 1024, zeitlimitMs: 20_000, umleitungen: 0,
     kopfzeilen: { Authorization: authHeader, Accept: 'application/json', 'User-Agent': 'BrickManager/3.0' } });
-  return { status: r.status, body: r.koerper.toString('utf8') };
+  return { status: r.status, body: r.koerper.toString('utf8'), ziel: String(r.kopf.location ?? '') };
+}
+
+function zielHost(ziel: string): string {
+  try { return new URL(ziel).hostname; } catch { return 'unbekannt'; }
 }
 
 async function bricklinkRequest(method: string, path: string,
@@ -86,7 +95,9 @@ async function bricklinkRequest(method: string, path: string,
   // stock, set → gear → book) sind eigene Aufrufe und kosten eigenes Kontingent.
   const rl = await zugang().zaehle('bricklink');
   if (!rl.allowed) throw new Error(`BrickLink Tageslimit erreicht (${rl.limit} Aufrufe/Tag)`);
-  const { status, body } = await httpsGet(baseUrl + qs, buildAuthHeader(method, baseUrl, queryParams, creds));
+  const { status, body, ziel } = await httpsGet(baseUrl + qs, buildAuthHeader(method, baseUrl, queryParams, creds));
+  if (status >= 300 && status < 400)
+    throw new BricklinkNichtErreichbar(`BrickLink nicht erreichbar (Umleitung ${status} nach ${zielHost(ziel)}, vermutlich Wartung)`);
   let data;
   try { data = JSON.parse(body); } catch (_) { throw new Error(`BrickLink non-JSON (HTTP ${status}): ${auszug(body)}`); }
   if (data?.meta && data.meta.code !== 200) {
@@ -106,4 +117,4 @@ async function pruefeBricklinkZugang(): Promise<void> {
   await bricklinkRequest('GET', '/colors/1');
 }
 
-export { pruefeBricklinkZugang, bricklinkRequest, getItemImageUrl };
+export { pruefeBricklinkZugang, bricklinkRequest, getItemImageUrl, BricklinkNichtErreichbar };

@@ -20,6 +20,13 @@ export function bildUserAgent(): string {
   return `BrickInventoryManager/${appVersion()} (self-hosted; +https://github.com/brickinventory)`;
 }
 
+/** Liegen Bild und Vorschau schon in images/sets, braucht der Bild-Job nichts mehr. */
+export async function setBildVollstaendig(setNumber: string): Promise<boolean> {
+  const safe = setNumber.replace(/[^a-z0-9-]/gi, '_');
+  const da = (datei: string) => fs.promises.access(path.join(SET_IMAGES_DIR, datei)).then(() => true, () => false);
+  return (await da(`${safe}.jpg`)) && (await da(`${safe}_thumb.jpg`));
+}
+
 export async function downloadSetImage(url: string, setNumber: string, info?: { status?: number }) {
   if (!url) return null;
   try {

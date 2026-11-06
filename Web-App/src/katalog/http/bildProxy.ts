@@ -20,6 +20,7 @@ import { AbrufFehler, type AbrufStrom } from '../../infra/abruf';
 import { oeffneBild, BILD_KOPFZEILEN, BILD_KOPFZEILEN_OHNE_REFERER } from '../quellen';
 import zlib from 'zlib';
 import { nacharbeit } from '../../auftraege/nacharbeit';
+import { setBildVollstaendig } from '../bilder/setImages';
 import { ERLAUBTE_BILD_HOSTS, hostErlaubt } from '../../infra/fremdeAdressen';
 
 import { einmalDekodiert, urlOderNull } from '../../infra/validate';
@@ -239,6 +240,10 @@ export async function bildDurchreichen(req: Request, res: Response) {
     if (sn) nacharbeit().bildVormerken(String(url), sn);
   };
   const thumbFile = cacheFile + '_thumb.jpg';
+  // Ein Set-Bild gehört samt Vorschau nach images/sets; der Bild-Job holt es,
+  // sobald es einmal über den Proxy gefragt war.
+  const setNummer = setAusUrl();
+  if (setNummer && !(await setBildVollstaendig(setNummer))) nacharbeit().bildVormerken(String(url), setNummer);
 
   if (
     await liefereAusCache({

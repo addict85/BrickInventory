@@ -110,7 +110,9 @@ test('Stile unter style-src ohne unsafe-inline', { concurrency: 1, timeout: 180_
   assert.match(csp, /style-src 'self'( 'sha256-[A-Za-z0-9+/]+=*')?(;|$)/, `Die CSP erlaubt Inline-Stile: ${csp}`);
 
   const profil = fs.mkdtempSync(path.join(os.tmpdir(), 'stile-'));
-  t.after(() => fs.rmSync(profil, { recursive: true, force: true }));
+  // Chrome schreibt beim Beenden noch ins Profil; ein Fehler hier liesse die
+  // übrigen Aufräumschritte aus und Chrome weiterlaufen.
+  t.after(() => { try { fs.rmSync(profil, { recursive: true, force: true, maxRetries: 5 }); } catch { /* tmp räumt das System */ } });
   const browser = starte(t, bin, ['--headless=new', '--no-sandbox', '--disable-gpu', '--remote-debugging-port=0',
     `--user-data-dir=${profil}`, '--window-size=1280,900', 'about:blank'], {});
   let wsUrl = null;
