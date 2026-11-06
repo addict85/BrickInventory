@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.util
 
+import java.util.concurrent.CopyOnWriteArrayList
 import java.io.File
 import java.io.IOException
 import java.security.SecureRandom
@@ -42,6 +43,30 @@ class Ablageschluessel(private val datei: File, private val tresor: TokenVerschl
         return neu
     }
 
+    /** Zählt die Erneuerungen; wer einen abgeleiteten Schlüssel hält, merkt so, dass er veraltet ist. */
+    @Volatile var stand: Long = 0
+        private set
+
+    private val vorErneuerung = CopyOnWriteArrayList<() -> Unit>()
+
+    /** Für Ablagen, die den Schlüssel länger halten als einen Zugriff (die Datenbank): zu und weg damit. */
+    fun vorErneuerung(hoerer: () -> Unit) { vorErneuerung += hoerer }
+
+    /**
+     * Krypto-Shredding beim Abmelden: Ein neuer Schlüssel macht alles unlesbar, was mit dem
+     * alten verschlüsselt lag, auch gelöschte Reste auf dem Flash. Unter der Sperre, damit
+     * niemand dazwischen mit dem alten Schlüssel neu öffnet.
+     */
+    @Synchronized
+    fun erneuere() {
+        vorErneuerung.forEach { it() }
+        datei.delete()
+        runCatching { tresor.vergiss() }
+        bekannt = null
+        stand++
+        hole()
+    }
+
     /** Abgeleitet mit HMAC-SHA256: Datenbank und Dateien teilen keinen Schlüssel. */
     fun fuer(zweck: String): ByteArray = Mac.getInstance("HmacSHA256").run {
         init(SecretKeySpec(hole(), "HmacSHA256"))
@@ -59,7 +84,7 @@ class Ablageschluessel(private val datei: File, private val tresor: TokenVerschl
 /**
  * AES-256-GCM für Dateien der App. Format: Kennung ‖ IV ‖ Geheimtext samt Tag. Die
  * Bindung (Zweck und Dateiname) geht als AAD ein: Eine Datei unter fremdem Namen
- * scheitert an der Prüfung, statt als die andere gelesen zu werden (sec10 H7). Ohne
+ * scheitert an der Prüfung, statt als die andere gelesen zu werden. Ohne
  * Kennung gilt eine Datei als Altbestand im Klartext; der Aufrufer verwirft sie.
  */
 class AblageChiffre(private val schluessel: () -> ByteArray) {

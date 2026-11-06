@@ -19,7 +19,7 @@ import java.io.InputStream
  * Das Kopieren für den Druck (PdfDruckAdapter) läuft abseits des Hauptfadens und
  * endet, sobald der Auftrag abgebrochen ist, statt die ganze Anleitung zu schreiben.
  *
- * Gegenprobe (05.11.2026, gemessen mit kotlinc lokal): in kopiereAbbrechbar() die
+ * Gegenprobe: in kopiereAbbrechbar() die
  * Prüfung `ensureActive()` gestrichen → rot „ein Abbruch beendet das Kopieren …“
  * (gegenproben/druck-kopiert-weiter.patch).
  */

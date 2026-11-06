@@ -16,7 +16,7 @@ import org.junit.Test
  * ServerWaechterTest; die Abfrageschleife der Verwaltung
  * MonitoringViewModelVerhaltenTest.
  *
- * Gegenproben (31.10.2026, gemessen mit kotlinc):
+ * Gegenproben:
  *   A  die Abfrage `if (!state.value.isAdmin) return false` entfernt → rot
  *      „ein entzogenes Recht wird einmal nachgezogen …“ (zweiter /me-Abruf)
  *   B  ohne Antwort das Recht behalten (`me !is Success -> return false`) → rot

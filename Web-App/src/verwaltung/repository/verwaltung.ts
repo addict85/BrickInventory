@@ -6,7 +6,7 @@ import { mengeSkalar } from '../../../db/bestandsmenge';
 export { getPoolStats } from '../../../db/database';
 
 type Bildzeile = { image_url: string | null; image_local: string | null };
-export type KontoBildzeile = { user_id: number } & Bildzeile;
+export type KontoBildzeile = { anzahl_konten: number } & Bildzeile;
 type Fehlanzeige = { checked_at: Date; reason: string | null };
 type Schluessel = { cache_key: string };
 
@@ -23,13 +23,13 @@ export async function leerePreisCache(): Promise<void> {
   await db.run('DELETE FROM price_cache');
 }
 
-/** Die Bildspalten kommen aus dem Katalog, gleich für alle Konten. */
-export function bildZeilenDerKonten(sn: string): Promise<KontoBildzeile[]> {
-  return db.all(
-    `SELECT s.user_id, c.image_local, c.image_url
+/** Nur die Zahl der Konten: Welches ein Set führt, geht auch den Verwalter nichts an. */
+export async function bildZeilenDerKonten(sn: string): Promise<KontoBildzeile> {
+  const z = await db.get<KontoBildzeile>(
+    `SELECT COUNT(DISTINCT s.user_id)::int AS anzahl_konten, MAX(c.image_local) AS image_local, MAX(c.image_url) AS image_url
        FROM sets s LEFT JOIN set_catalog c ON c.set_number = s.set_number
-      WHERE s.set_number = $1 ORDER BY s.user_id`, [sn]
-  );
+      WHERE s.set_number = $1`, [sn]);
+  return z ?? { anzahl_konten: 0, image_local: null, image_url: null };
 }
 
 export function katalogBild(sn: string): Promise<Bildzeile | undefined> {
@@ -111,7 +111,8 @@ export function setsOhneAnleitung(): Promise<{ set_number: string }[]> {
 
 export function protokollSeit(minuten: number): Promise<{ id: number; level: string; message: string; logged_at: Date }[]> {
   return db.all(
-    `SELECT id, level, message, logged_at
+    // bigint käme als Text; der Vertrag (und das Protokollfenster) nennt eine Zahl.
+    `SELECT id::float8 AS id, level, message, logged_at
        FROM app_logs
        WHERE logged_at >= NOW() - ($1 || ' minutes')::INTERVAL
        ORDER BY logged_at ASC

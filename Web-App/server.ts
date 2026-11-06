@@ -126,7 +126,7 @@ function grundschutz(app: express.Express): void {
   app.use(merkeAnfrage);
 
   // Sonst glaubt Express X-Forwarded-Proto nie und setzt kein secure-Cookie (src/infra/proxyVertrauen.ts).
-  if (konfig().produktion) {
+  if (konfig().betrieb) {
     app.set('trust proxy', proxyVertrauen(konfig().trustProxy));
   }
   // Auch ausserhalb der Produktion: Er meldet ein verworfenes X-Forwarded-For.
@@ -200,6 +200,9 @@ function sicherheitsKoepfe(req: Request, res: Response, next: NextFunction): voi
     "form-action 'self'",
     "base-uri 'none'",
     "object-src 'none'",
+    // Markup nur über setzeHtml() (Richtlinie app); `default` lässt nur eigene Skript-Adressen durch.
+    "require-trusted-types-for 'script'",
+    "trusted-types app default",
   ].join('; '));
   next();
 }
@@ -426,7 +429,7 @@ async function herunterfahren(signal: string, httpServer: Server | null, jobs: b
 /** Ein Prozess je Rolle (ROLLE=web|jobs|beides); initSchemaOnce lässt nur einen migrieren. */
 async function starte(): Promise<void> {
   const k = konfig();
-  if (k.produktion) {
+  if (k.betrieb) {
     const verbote = startVerbote();
     if (verbote.length) { for (const v of verbote) console.error(`❌ ${v}`); process.exit(1); }
     for (const w of startWarnungen()) console.warn(`⚠️ ${w}`);
@@ -434,7 +437,7 @@ async function starte(): Promise<void> {
   for (const v of k.veraltet) console.warn(`⚠️ [start] ${v} wird nicht mehr ausgewertet und kann weg (siehe UPGRADE.md).`);
   if (!k.appBaseUrl) hinweisOhneBasisUrl('start', 'Mails enthalten keine Links (Bestätigung, Passwort vergessen), Passkeys und QR-Code der App sind aus.');
   const web = k.rolle !== 'jobs', jobs = k.rolle !== 'web';
-  if (!k.appBaseUrl && k.produktion && web) console.error('❌ [start] APP_BASE_URL fehlt im Betrieb (APP_BASE_URL_FEHLT_OK=1): '
+  if (!k.appBaseUrl && k.betrieb && web) console.error('❌ [start] APP_BASE_URL fehlt im Betrieb (APP_BASE_URL_FEHLT_OK=1): '
     + 'Der Host-Filter gegen DNS-Rebinding ist aus, jede Webseite im Heimnetz erreicht die Anmeldung.');
   if (web) sitzungsGeheimnis();   // vor der Datenbank: Ein Startverbot soll nicht auf sie warten
   console.log(`[start] Prozess ${process.pid}, Rolle ${k.rolle}`);

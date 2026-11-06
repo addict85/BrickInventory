@@ -26,12 +26,12 @@ import javax.crypto.spec.GCMParameterSpec
 import javax.crypto.spec.SecretKeySpec
 
 /**
- * Lokale Ablagen liegen verschlüsselt (sec8 N5): Antwort-Cache und Widget mit
+ * Lokale Ablagen liegen verschlüsselt: Antwort-Cache und Widget mit
  * AES-GCM, der Bestand mit SQLCipher; der gemeinsame Schlüssel nur vom Keystore
  * umhüllt. Hier steht eine Attrappe für den Keystore, die den Klartext sichtbar
  * verändert; SQLCipher selbst läuft nur auf dem Gerät.
  *
- * Gegenproben (03.11.2026, gemessen mit kotlinc lokal):
+ * Gegenproben:
  *   A  ResponseCache.put() schreibt wieder `text` statt des Geheimtexts → rot „der
  *      Antwort-Cache liegt nicht im Klartext auf der Platte“;
  *      gegenproben/antwort-cache-klartext.patch
@@ -40,11 +40,13 @@ import javax.crypto.spec.SecretKeySpec
  *   C  Ablageschluessel.fuer() gibt den gemeinsamen Schlüssel statt eines
  *      abgeleiteten zurück → rot „der Schluessel entsteht einmal …“ und „Klartext
  *      und fremde Daten gelten nicht“ (Widget und Cache teilten einen Schlüssel)
- *   D  (sec10 H7) in AblageChiffre beide `updateAAD(…)` gestrichen → rot „eine
+ *   D  in AblageChiffre beide `updateAAD(…)` gestrichen → rot „eine
  *      Datei unter fremdem Namen gilt nicht“; gegenproben/ablage-ohne-bindung.patch
  *   E  im Antwort-Cache den Aufruf uebernimm(…) gestrichen → rot „der Bestand ohne
  *      Bindung wird uebernommen …“ (der Cache war nach dem Update leer);
  *      gegenproben/antwort-cache-ohne-uebernahme.patch
+ *   F in erneuere() `bekannt = null` gestrichen →
+ *      rot „nach dem Erneuern ist alles Alte unlesbar …“
  */
 class AblageVerschluesselungTest {
 
@@ -77,6 +79,22 @@ class AblageVerschluesselungTest {
         assertArrayEquals("Nach dem Neustart derselbe", k, zweiter.hole())
         assertFalse(zweiter.neuAngelegt)
         assertNotEquals("Je Zweck ein eigener", zweiter.fuer("bestand.db").toList(), zweiter.fuer("antworten").toList())
+    }
+
+    @Test
+    fun `nach dem Erneuern ist alles Alte unlesbar, auch nach einem Neustart`() {
+        val k = Ablageschluessel(datei, tresor)
+        var geschlossen = 0
+        k.vorErneuerung { geschlossen++ }
+        val alt = k.hole().copyOf()
+        val geheim = AblageChiffre { k.fuer("antworten") }.verschluessle("Kaufpreis 499.99".toByteArray(), "a")
+        k.erneuere()
+        assertEquals("Wer den Schlüssel hält, schliesst vorher", 1, geschlossen)
+        assertNotEquals(alt.toList(), k.hole().toList())
+        assertTrue("Der neue Schlüssel ist als neu gemeldet", k.neuAngelegt)
+        assertNull(AblageChiffre { k.fuer("antworten") }.entschluessle(geheim, "a"))
+        assertNull("Auch die Platte hat nur den neuen",
+            AblageChiffre { Ablageschluessel(datei, tresor).fuer("antworten") }.entschluessle(geheim, "a"))
     }
 
     @Test
@@ -131,7 +149,7 @@ class AblageVerschluesselungTest {
         assertNull("Vertauscht gelesen", cache.getMitStand("konto", "wunsch", liste))
     }
 
-    /** Wie AblageChiffre vor sec10 H7: Kennung 1, ohne AAD. */
+    /** Wie die ältere AblageChiffre: Kennung 1, ohne AAD. */
     private fun ungebunden(schluessel: ByteArray, klartext: ByteArray): ByteArray {
         val iv = ByteArray(12) { it.toByte() }
         val c = Cipher.getInstance("AES/GCM/NoPadding")
@@ -146,7 +164,7 @@ class AblageVerschluesselungTest {
         val name = ResponseCache.bereichsName("konto")
         val stand = System.currentTimeMillis() - 3_600_000
         File(ordner, "api-3/$name/sets.json").apply {
-            parentFile.mkdirs()
+            parentFile!!.mkdirs()
             writeBytes(ungebunden(k.fuer("antworten"), """["Millennium Falcon 75192"]""".toByteArray()))
             setLastModified(stand)
         }
@@ -165,7 +183,7 @@ class AblageVerschluesselungTest {
     fun `der Antwort-Cache liegt nicht im Klartext auf der Platte`() = runBlocking {
         val k = Ablageschluessel(datei, tresor)
         // Ein Altbestand der Klartext-Fassung liegt daneben und wird geräumt.
-        File(ordner, "api-2/fach/sets.json").apply { parentFile.mkdirs(); writeText("""["Millennium Falcon"]""") }
+        File(ordner, "api-2/fach/sets.json").apply { parentFile!!.mkdirs(); writeText("""["Millennium Falcon"]""") }
         val cache = ResponseCache(chiffre = AblageChiffre { k.fuer("antworten") }) { ordner }
         val liste = ListSerializer(String.serializer())
         cache.put("konto", "sets", liste, listOf("Millennium Falcon 75192"))

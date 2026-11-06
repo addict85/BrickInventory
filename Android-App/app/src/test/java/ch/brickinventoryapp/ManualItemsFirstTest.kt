@@ -17,10 +17,6 @@ import org.junit.Test
  *  2. Das Raster zeigt sie, Position 0.
  *  3. Die manuellen Teile treffen ein und werden mit zwei Zwischenüberschriften
  *     OBEN eingefügt.
- *  4. LazyGrid hält beim Ändern der Daten den SICHTBAREN Eintrag fest, nicht
- *     den Index — es sucht den Schlüssel des ersten sichtbaren Elements in der
- *     neuen Liste wieder. Beim Nachladen UNTEN ist das genau richtig; hier
- *     landet alles neu Eingefügte über dem Sichtfenster.
  *
  * Die Anordnung im Raster war also nie falsch, und ein Test, der nur sie prüft,
  * wäre die ganze Zeit grün geblieben. Deshalb prüft dieser Test beides: die

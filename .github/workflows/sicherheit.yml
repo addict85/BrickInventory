@@ -57,9 +57,12 @@ jobs:
         working-directory: Android-App
         run: python3 tools/gradle-wrapper-pruefen.py gradle/wrapper/gradle-wrapper.properties
 
+      # Nur lesen: Den Gradle-Cache schreibt allein der Baujob von android.yml (sec17 M1).
       - name: Gradle einrichten
         if: matrix.bau == 'manual'
         uses: gradle/actions/setup-gradle@8da46b539cd8fe6ab27ca75128919a18d757604c # v6
+        with:
+          cache-read-only: true
 
       - uses: github/codeql-action/init@9b3254085494b55a0f7c4c2b3d2d52cc712ce370 # v4.39.1
         with:
@@ -189,6 +192,29 @@ jobs:
             echo "::warning title=Lücken in ${IMAGE%%@*}::Trivy meldet behebbare Lücken ab high, siehe Zusammenfassung."
           fi
 
+  # ── Hier gebaute Betriebs-Images (Caddy aus Dockerfile.caddy) ─────────────
+  # Ohne Ausnahmeliste: Für einen eigenen Bau gibt es keinen Grund, auf einen
+  # fremden Digest zu warten.
+  trivy-eigenbau:
+    name: Trivy (Caddy, eigener Bau)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+      - name: Caddy bauen
+        run: docker build -f Web-App/Dockerfile.caddy -t brickinventory-caddy:pruefung Web-App
+      - name: Bekannte Lücken
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          scan-type: image
+          image-ref: brickinventory-caddy:pruefung
+          scanners: vuln
+          severity: HIGH,CRITICAL
+          ignore-unfixed: true
+          exit-code: '1'
+
   zap:
     name: ZAP-Baseline
     runs-on: ubuntu-latest
@@ -274,13 +300,14 @@ jobs:
   # Trivy liest Gradle nur aus gradle.lockfile, und der Bau hat kein Locking.
   # Ein Init-Skript schreibt die Lockfiles hier für die Laufzeit-Klassenpfade
   # (dieselben Auflösungen wie das Release, also deckt verification-metadata
-  # sie ab). Vorerst nur ein Bericht: Er bricht nicht, bis ein Lauf gezeigt hat,
-  # was er findet.
+  # sie ab). Sperrend wie die Prüfung der Web-App (sec17 M2): Eine behebbare
+  # Lücke ab „high“ ist rot, und der Signierjob in android.yml signiert kein
+  # Etikett, dessen Commit hier nicht grün war. Ausnahmen mit Grund und Frist:
+  # .github/trivy-android.ignore.
   android-abhaengigkeiten:
-    name: Trivy (Android-Abhängigkeiten, nur Bericht)
+    name: Trivy (Android-Abhängigkeiten)
     runs-on: ubuntu-latest
     timeout-minutes: 30
-    continue-on-error: true
     defaults:
       run:
         working-directory: Android-App
@@ -294,28 +321,62 @@ jobs:
           java-version: '17'
       - run: python3 tools/gradle-wrapper-pruefen.py gradle/wrapper/gradle-wrapper.properties
       - uses: gradle/actions/setup-gradle@8da46b539cd8fe6ab27ca75128919a18d757604c # v6
+        with:
+          cache-read-only: true
       - name: Lockfiles schreiben
         run: |
           chmod +x gradlew
           ./gradlew --no-daemon --no-configuration-cache --init-script tools/abhaengigkeiten-sperren.init.gradle \
             abhaengigkeitenSperren --write-locks
           ls */gradle.lockfile
+
+      # Gegenprobe in jedem Lauf: Ein Lockfile mit einer bekannt verwundbaren Fassung
+      # (log4j-core 2.14.1, CVE-2021-44228) muss rot sein. Sonst prüfte der Schritt
+      # darunter nichts — etwa weil Trivy das Format nicht mehr liest.
+      - name: Gegenprobe vorbereiten
+        working-directory: .
+        run: |
+          mkdir -p "$RUNNER_TEMP/gegenprobe/modul"
+          printf '%s\n' 'org.apache.logging.log4j:log4j-core:2.14.1=releaseRuntimeClasspath' 'empty=' \
+            > "$RUNNER_TEMP/gegenprobe/modul/gradle.lockfile"
+      - name: Gegenprobe (muss rot sein)
+        id: gegenprobe
+        continue-on-error: true
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          scan-type: fs
+          scan-ref: ${{ runner.temp }}/gegenprobe
+          scanners: vuln
+          severity: HIGH,CRITICAL
+          ignore-unfixed: true
+          exit-code: '1'
+      - name: Gegenprobe war rot
+        working-directory: .
+        env:
+          ERGEBNIS: ${{ steps.gegenprobe.outcome }}
+        run: |
+          if [ "$ERGEBNIS" != failure ]; then
+            echo "::error title=Lückenprüfung blind::Ein Lockfile mit log4j-core 2.14.1 blieb grün ($ERGEBNIS); die Prüfung der App-Abhängigkeiten sieht nichts."
+            exit 1
+          fi
+
       - name: Bekannte Lücken
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         with:
           scan-type: fs
           scan-ref: Android-App
           scanners: vuln
-          severity: MEDIUM,HIGH,CRITICAL
+          severity: HIGH,CRITICAL
+          ignore-unfixed: true
           format: table
           output: trivy-android.txt
-          exit-code: '0'
+          exit-code: '1'
+          trivyignores: .github/trivy-android.ignore
+          # Trivy ist von der Gegenprobe schon eingerichtet.
+          skip-setup-trivy: true
       - name: Bericht
         if: always()
         working-directory: .
         run: |
           [ -f trivy-android.txt ] || exit 0
           { echo '## Android-Abhängigkeiten (Trivy)'; echo '```'; cat trivy-android.txt; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
-          if grep -qE 'Total: [1-9]' trivy-android.txt; then
-            echo "::warning title=Android-Abhängigkeiten::Trivy meldet bekannte Lücken, siehe Zusammenfassung."
-          fi

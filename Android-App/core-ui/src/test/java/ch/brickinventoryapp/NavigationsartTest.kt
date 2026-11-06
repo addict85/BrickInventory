@@ -13,8 +13,8 @@ import org.junit.Test
  * Gegenproben (gemessen am 28.10., kotlinc gegen ui/Navigationsart.kt):
  *   A  `>=` durch `>` ersetzt → rot: „genau an der Schwelle steht die Seitenleiste"
  *   B  Schwelle auf 840 gesetzt → rot: dieselbe Prüfung und „ein kleines Tablet"
- *   C  (01.11.2026) GROSSE_BREITE_DP auf 600 → rot „zwei Spalten erst ab 840 dp“
- *   D  (03.11.2026, modbau) in listeUndDetail() `>` statt `>=` → rot „Liste und
+ *   C  GROSSE_BREITE_DP auf 600 → rot „zwei Spalten erst ab 840 dp“
+ *   D  in listeUndDetail() `>` statt `>=` → rot „Liste und
  *      Detail nebeneinander ab 840 dp“
  */
 class NavigationsartTest {

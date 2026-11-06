@@ -21,7 +21,7 @@
  *      „jedes Feld, das die App schickt, kennt der Vertrag“ (LoginRequest.label)
  *   G  (05.11.2026) im Vertrag die Abfrage von GET /api/v1/sets ohne `page_size`
  *      → rot: „jeder Abfrageparameter der App steht im Vertrag“
- *   H  (05.11.2026) in Fehlercode.kt BARCODE_KEIN_SET("barcode_kein_satz") →
+ *   H  in Fehlercode.kt BARCODE_KEIN_SET("barcode_kein_satz") →
  *      rot: „jeder Fehlercode der App steht im Vertrag“ nennt barcode_kein_satz
  */
 const test = require('node:test');

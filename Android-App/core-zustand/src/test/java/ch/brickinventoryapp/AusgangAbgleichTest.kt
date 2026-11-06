@@ -29,7 +29,7 @@ import java.util.Collections
  * Läuft gegen die Logik ([Abgleich], [Offlineablage]) mit Ablagen im Speicher
  * und einem Sender, der aufschreibt, was er bekommt.
  *
- * Gegenproben (30.10.2026, gemessen):
+ * Gegenproben:
  *   A  in SpeicherAusgang.erster `minByOrNull` → `maxByOrNull` → rot u. a. „eine
  *      Ablehnung verwirft …“ (gesendet [3, 2, 1] statt [1, 2, 3])
  *   B  in Abgleich bei Spaeter `return` weggelassen (weiter mit dem nächsten) →
@@ -40,7 +40,7 @@ import java.util.Collections
  *      Sitzung verwirft nichts“
  *   E  in Abgleich.verwirf die Meldung weggelassen → rot „eine Ablehnung verwirft
  *      und meldet“
- *   (F und G gemessen am 31.10.2026)
+ *   (F und G gemessen)
  *   F  in Abgleich.lauf `p.schluessel` → `java.util.UUID.randomUUID().toString()`
  *      → rot „Die Wiederholung trägt denselben Schlüssel“
  *   G  in einordnenLoeschen die 404-Ausnahme entfernt → rot „beim Löschen …“

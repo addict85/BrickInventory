@@ -250,7 +250,7 @@ class AnmeldungViewModel @Inject constructor(
     /**
      * Muss der Fingerabdruck des Codes aus der Webapp abgetippt werden? Ohne Abtippen
      * gilt nur der schon bestätigte Pin oder eine System-Wurzel: Deren Kette muss
-     * ohnehin öffentlich gültig sein, ein fremder Schlüssel aus dem Code nicht (sec10 N2).
+     * ohnehin öffentlich gültig sein, ein fremder Schlüssel aus dem Code nicht.
      */
     fun mussAbtippen(serverUrl: String, fingerabdruck: String?): Boolean {
         if (fingerabdruck == null) return false

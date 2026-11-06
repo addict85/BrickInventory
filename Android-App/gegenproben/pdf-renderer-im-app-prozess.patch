@@ -1,0 +1,17 @@
+Gegenprobe: Der PDF-Render-Dienst läuft ohne isolatedProcess
+Modul: app
+Test: ch.brickinventoryapp.BibliotheksKomponentenTest
+Rot: der PDF-Renderer laeuft isoliert
+
+diff --git a/Android-App/app/src/main/AndroidManifest.xml b/Android-App/app/src/main/AndroidManifest.xml
+index 85621b9..4e76a4b 100644
+--- a/Android-App/app/src/main/AndroidManifest.xml
++++ b/Android-App/app/src/main/AndroidManifest.xml
+@@ -266,7 +266,6 @@
+         <!-- PDFs von Dritten rendert pdfium ohne Rechte, Dateien und Konto (ui/pdf/PdfRenderDienst). -->
+         <service
+             android:name="ch.brickinventoryapp.ui.pdf.PdfRenderDienst"
+-            android:isolatedProcess="true"
+             android:process=":pdf"
+             android:exported="false" />
+ 

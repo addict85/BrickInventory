@@ -1,18 +1,11 @@
 package ch.brickinventoryapp.ui.pdf
 
-import ch.brickinventoryapp.util.fangeAusserAbbruch
 import android.graphics.Bitmap
-import android.graphics.Color as AndroidColor
-import android.graphics.pdf.PdfRenderer
-import android.os.ParcelFileDescriptor
-import androidx.core.graphics.createBitmap
 import ch.brickinventoryapp.di.BrickDispatchers
 import ch.brickinventoryapp.di.Dispatcher
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.withContext
 import javax.inject.Inject
-import kotlinx.coroutines.sync.Mutex
-import kotlinx.coroutines.sync.withLock
 import kotlin.math.sqrt
 
 /**
@@ -49,41 +42,11 @@ fun interface PdfSeitenQuelle {
     suspend fun seite(quelle: PdfQuelle, index: Int, breitePx: Int): Bitmap?
 }
 
-/** PdfRenderer liest von der Platte und rechnet, beides nicht auf Main. */
+/** Gerendert im isolierten Prozess; der Aufruf dorthin blockiert, also nicht auf Main. */
 class PdfRendererSeiten @Inject constructor(
+    private val renderer: PdfRenderVerbindung,
     @param:Dispatcher(BrickDispatchers.IO) private val io: CoroutineDispatcher,
 ) : PdfSeitenQuelle {
     override suspend fun seite(quelle: PdfQuelle, index: Int, breitePx: Int): Bitmap? =
-        withContext(io) { renderPdfPage(quelle, index, breitePx) }
+        withContext(io) { renderer.seite(quelle, index, breitePx) }
 }
-
-// PdfRenderer ist nicht thread-safe und öffnet nur eine Seite gleichzeitig →
-// alle Render-Zugriffe serialisieren.
-private val pdfRenderMutex = Mutex()
-
-/** Eine Seite in der Breite [targetWidthPx]; null, wenn PdfRenderer sie nicht lesen kann. */
-internal suspend fun renderPdfPage(quelle: PdfQuelle, index: Int, targetWidthPx: Int): Bitmap? =
-    pdfRenderMutex.withLock {
-        var pfd: ParcelFileDescriptor? = null
-        var renderer: PdfRenderer? = null
-        try {
-            fangeAusserAbbruch {
-            val geoeffnet = quelle.oeffne().also { pfd = it }
-            val leser = PdfRenderer(geoeffnet).also { renderer = it }
-            if (index >= leser.pageCount) return@withLock null
-            val page = leser.openPage(index)
-            val ratio = page.height.toFloat() / page.width.toFloat().coerceAtLeast(1f)
-            val (w, h) = bitmapMasse(targetWidthPx, ratio)
-            // KTX-Form; ARGB_8888 ist dort die Vorbelegung (gelesen in
-            // androidx.core.graphics.Bitmap.kt).
-            val bmp = createBitmap(w, h)
-            bmp.eraseColor(AndroidColor.WHITE)
-            page.render(bmp, null, null, PdfRenderer.Page.RENDER_MODE_FOR_DISPLAY)
-            page.close()
-            bmp
-            }.getOrNull()
-        } finally {
-            renderer?.close()
-            pfd?.close()
-        }
-    }

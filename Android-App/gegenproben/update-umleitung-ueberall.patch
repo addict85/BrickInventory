@@ -1,0 +1,17 @@
+Gegenprobe: Der Update-Client folgt Umleitungen zu jedem Host
+Modul: core-data
+Test: ch.brickinventoryapp.UpdateUmleitungTest
+Rot: eine Umleitung auf einen fremden Host
+
+diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/util/UpdateUmleitungen.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/util/UpdateUmleitungen.kt
+index df5e602..f64cc15 100644
+--- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/util/UpdateUmleitungen.kt
++++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/util/UpdateUmleitungen.kt
+@@ -18,7 +18,6 @@ internal class UpdateUmleitungen(private val erlaubt: (HttpUrl) -> Boolean = ::u
+     override fun intercept(chain: Interceptor.Chain): Response {
+         var anfrage = chain.request()
+         repeat(MAX_UMLEITUNGEN + 1) {
+-            if (!erlaubt(anfrage.url)) throw IOException("Update-Ziel nicht erlaubt: ${anfrage.url.host}")
+             val antwort = chain.proceed(anfrage)
+             val ziel = antwort.header("Location")?.takeIf { antwort.isRedirect }?.let(antwort.request.url::resolve)
+                 ?: return antwort

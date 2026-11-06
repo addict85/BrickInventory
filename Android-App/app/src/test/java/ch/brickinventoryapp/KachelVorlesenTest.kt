@@ -6,7 +6,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.semantics.getOrNull
 import androidx.compose.ui.test.hasClickAction
-import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.test.core.app.ApplicationProvider
 import ch.brickinventoryapp.ui.model.FigurAnsicht
 import ch.brickinventoryapp.ui.model.KatalogSetAnsicht
@@ -27,6 +27,9 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
 import java.util.Locale
+import androidx.compose.foundation.layout.Column
+import androidx.compose.ui.semantics.SemanticsActions
+import androidx.compose.ui.text.TextLayoutResult
 
 /**
  * Was TalkBack an Teile-, Figuren- und Katalogkachel und an der Tabellenzeile liest
@@ -41,7 +44,7 @@ import java.util.Locale
  */
 @RunWith(RobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
-@Config(sdk = [35], qualifiers = "de-rCH-w411dp-h891dp-port-xxhdpi")
+@Config(qualifiers = "de-rCH-w411dp-h891dp-port-xxhdpi")
 class KachelVorlesenTest {
 
     @get:Rule
@@ -102,9 +105,9 @@ class KachelVorlesenTest {
 
     /** Schriftgrösse in sp, wie der Text tatsächlich gesetzt wurde. */
     private fun groesse(text: String): Float {
-        val ergebnis = mutableListOf<androidx.compose.ui.text.TextLayoutResult>()
+        val ergebnis = mutableListOf<TextLayoutResult>()
         compose.onNode(androidx.compose.ui.test.hasText(text), useUnmergedTree = true).fetchSemanticsNode()
-            .config[androidx.compose.ui.semantics.SemanticsActions.GetTextLayoutResult].action?.invoke(ergebnis)
+            .config[SemanticsActions.GetTextLayoutResult].action?.invoke(ergebnis)
         return ergebnis.single().layoutInput.style.fontSize.value
     }
 
@@ -112,7 +115,7 @@ class KachelVorlesenTest {
     fun `Name Farbe und zweite Zeile stehen in mindestens 12 sp`() {
         val teil = TeilAnsicht(partNumber = "3001", partName = "Brick 2 x 4", colorName = "Red", totalQuantity = 12)
         vorgelesen {
-            androidx.compose.foundation.layout.Column {
+            Column {
                 PartCard(teil, serverUrl = "", imageLoader = bilder)
                 TabellenZeile(bildUrl = null, nummer = "3002", name = "Brick 2 x 3", menge = 2, imageLoader = bilder,
                     zweiteZeile = "Bricks", onClick = {})

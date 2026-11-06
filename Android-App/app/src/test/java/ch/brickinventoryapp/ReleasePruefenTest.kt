@@ -4,27 +4,32 @@ import org.junit.Assert.assertEquals
 import org.junit.Test
 import java.io.File
 import java.util.concurrent.TimeUnit
+import java.security.KeyPairGenerator
+import java.security.MessageDigest
+import java.util.Base64
 
 /**
- * Die Prüfungen vor dem Veröffentlichen (tools/release-pruefen.py, sec7 N6),
+ * Die Prüfungen vor dem Veröffentlichen (tools/release-pruefen.py),
  * ausgeführt gegen Ausgaben im Format von `apksigner verify --print-certs` und
  * gegen version.json-Dateien wie die des Release `apk-neuste`.
  *
- * Gegenproben (03.11.2026, gemessen, kotlinc und python3 lokal):
+ * Gegenproben:
  *   A  in zertifikat() `fremd = []` → rot „ein fremdes Zertifikat …“
  *   B  in fassung() `neu >= alt_code` ohne Commit-Vergleich → rot „ein älterer
  *      oder gleich alter Stand …“
  *   C  das Muster auf `SHA256 digest` statt `SHA-256 digest` → rot „das hinterlegte
  *      Zertifikat wird angenommen“ (Rückgabe 2 statt 0)
  *   D  tools/release-zertifikat.sha256 ohne Wert → rot „die hinterlegte Datei nennt …“
- *   E  (sec8 N4) in beschreibung() `apkSha256` aus `soll` gestrichen → rot „die
+ *   E  in beschreibung() `apkSha256` aus `soll` gestrichen → rot „die
  *      signierte Beschreibung muss genau dieses APK nennen“ (ein anderes APK ging durch)
- *   F  (sec10 N1) in beschreibung() die Zeile `falsch += frist(…)` gestrichen → rot
+ *   F  in beschreibung() die Zeile `falsch += frist(…)` gestrichen → rot
  *      „eine Beschreibung ohne gueltige Frist wird nicht veroeffentlicht“;
  *      gegenproben/beschreibung-ohne-frist.patch
- *   G  (04.11.2026, sec11 H1) in schluessel() die Zeile `if geliefert[0] not in app`
+ *   G  in schluessel() die Zeile `if geliefert[0] not in app`
  *      samt Rückgabe gestrichen → rot „ein Beschreibungsschluessel, den die App nicht
  *      kennt, wird abgelehnt“; gegenproben/beschreibungsschluessel-ungeprueft.patch
+ *   H der Übergangsweg wieder mit Rückgabe 0 →
+ *      rot „ein Beschreibungsschluessel, den die App nicht kennt …“ (Übergang unsichtbar)
  */
 class ReleasePruefenTest {
 
@@ -32,9 +37,9 @@ class ReleasePruefenTest {
 
     /** Ein öffentlicher EC-Schlüssel als PEM, wie `openssl pkey -pubout` ihn schreibt. */
     private fun pem(): String {
-        val paar = java.security.KeyPairGenerator.getInstance("EC").apply { initialize(256) }.generateKeyPair()
+        val paar = KeyPairGenerator.getInstance("EC").apply { initialize(256) }.generateKeyPair()
         return "-----BEGIN PUBLIC KEY-----\n" +
-            java.util.Base64.getMimeEncoder(64, "\n".toByteArray()).encodeToString(paar.public.encoded) +
+            Base64.getMimeEncoder(64, "\n".toByteArray()).encodeToString(paar.public.encoded) +
             "\n-----END PUBLIC KEY-----\n"
     }
     private val fremd = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
@@ -83,7 +88,8 @@ class ReleasePruefenTest {
         assertEquals("Einer der beiden Schlüssel der App", 0, pruefe("schluessel", datei(neu).path, app))
         assertEquals("Ein fremder Schlüssel", 1, pruefe("schluessel", datei(pem()).path, app))
         assertEquals("Keine Beschreibungssignatur, obwohl die App eine verlangt", 1, pruefe("schluessel", "/gibt/es/nicht.pem", app))
-        assertEquals("Die App kennt noch keinen: Übergangsweg", 0, pruefe("schluessel", datei(neu).path, datei("# leer\n").path))
+        assertEquals("Die App kennt noch keinen: Übergangsweg, eigens gemeldet", 3,
+            pruefe("schluessel", datei(neu).path, datei("# leer\n").path))
         assertEquals("Ein kaputter Block", 2, pruefe("schluessel", datei(neu).path, datei("-----BEGIN PUBLIC KEY-----\n%%%\n-----END PUBLIC KEY-----").path))
     }
 
@@ -117,7 +123,7 @@ class ReleasePruefenTest {
         val meta = datei("""{"elements":[{"versionCode":200001445,"versionName":"1.2.3"}]}""").path
         val ablage = "https://github.com/addict85/BrickInventory/releases/download/android-v1.2.3"
         // sha256("apk-inhalt"), Länge 10
-        val sha = java.security.MessageDigest.getInstance("SHA-256").digest("apk-inhalt".toByteArray())
+        val sha = MessageDigest.getInstance("SHA-256").digest("apk-inhalt".toByteArray())
             .joinToString("") { "%02x".format(it) }
         fun daten(code: Long = 200001445, url: String = "$ablage/BrickInventory-200001445.apk", pruefsumme: String = sha) = datei(
             """{"versionCode":$code,"versionName":"1.2.3","commit":"bbb","apkUrl":"$url","apkSize":10,"apkSha256":"$pruefsumme",""" +
@@ -141,7 +147,7 @@ class ReleasePruefenTest {
         val apk = datei("apk-inhalt")
         val meta = datei("""{"elements":[{"versionCode":200001445,"versionName":"1.2.3"}]}""").path
         val ablage = "https://github.com/addict85/BrickInventory/releases/download/android-v1.2.3"
-        val sha = java.security.MessageDigest.getInstance("SHA-256").digest("apk-inhalt".toByteArray())
+        val sha = MessageDigest.getInstance("SHA-256").digest("apk-inhalt".toByteArray())
             .joinToString("") { "%02x".format(it) }
         fun mit(frist: String) = pruefe("beschreibung", datei(
             """{"versionCode":200001445,"versionName":"1.2.3","commit":"bbb","apkUrl":"$ablage/BrickInventory-200001445.apk",""" +

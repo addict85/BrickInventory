@@ -4,6 +4,7 @@ import ch.brickinventoryapp.util.UPDATE_RELEASE_BASIS
 import ch.brickinventoryapp.util.istErlaubteApkAdresse
 import ch.brickinventoryapp.util.istNeuer
 import org.junit.Test
+import java.io.File
 
 /**
  * Die App aktualisiert sich selbst — und tut es vorsichtig.
@@ -128,7 +129,9 @@ class SelbstUpdateTest {
     fun `die Pruefung beim Start ist still`() {
         // Marcos Vorgabe: beim Start pruefen, nie von allein laden.
         val nav = quelle("AppNavigation.kt")
-        assert(nav.contains("pruefeAufUpdate(still = true)")) {
+        // Der Start fragt über pruefeBeimStart(), das nur bei gesetztem Schalter still prüft.
+        val vm = Quellen.funktion(Quellen.ohneKommentare(Quellen.lies("ui/viewmodel/UpdateViewModel.kt")), "fun pruefeBeimStart(")
+        assert(nav.contains("selbstUpdate.pruefeBeimStart()") && vm.contains("pruefeAufUpdate(still = true)")) {
             "Beim Start wird nicht (mehr) still nach einem Update gesehen"
         }
         // Und sie laedt nichts: ladeUpdate() hat genau einen Ausloeser, den Knopf.
@@ -158,7 +161,7 @@ class SelbstUpdateTest {
     @Test
     fun `die Aktualisierung vertraut nur System-Zertifikaten`() {
         // Von GitHub kommt ein APK: nur System-CAs, kein Klartext.
-        val cfg = java.io.File(Quellen.res, "xml/network_security_config.xml").readText()
+        val cfg = File(Quellen.res, "xml/network_security_config.xml").readText()
         val ab = cfg.indexOf("<domain-config")
         assert(ab > 0) {
             "Es gibt keinen eigenen domain-config-Block mehr — dann gilt fuer GitHub " +
@@ -337,7 +340,7 @@ class SelbstUpdateTest {
         }
         // Und der Start stoesst weiterhin nur die PRUEFUNG an.
         val nav = Quellen.ohneKommentare(Quellen.lies("AppNavigation.kt"))
-        assert(nav.contains("selbstUpdate.pruefeAufUpdate(still = true)")) {
+        assert(nav.contains("selbstUpdate.pruefeBeimStart()")) {
             "Die stille Pruefung beim Start ist weg"
         }
         assert(!nav.contains("ladeUpdate")) {

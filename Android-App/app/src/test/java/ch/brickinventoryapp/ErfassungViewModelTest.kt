@@ -14,6 +14,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.test.TestCoroutineScheduler
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.setMain
@@ -28,7 +29,7 @@ import ch.brickinventoryapp.data.repository.Ergebnis
 /**
  * Das Erfassungs-ViewModel: Scan, Erfassen über die Setnummer, Prüfanzeige.
  * Der Ereignisstrom des Anlegens ist nachgebaut ([SetAnleger]), alles andere
- * läuft gegen einen Testserver.
+ * läuft im Takt gegen einen PfadServer; „unterwegs“ heisst zurückgehalten.
  *
  * Gegenproben (am 28.10.2026 gemessen, kotlinc gegen ErfassungViewModel.kt):
  *   A  in zeigeVorhandenes() `exists` ignoriert (immer false) → rot „ein
@@ -63,8 +64,16 @@ import ch.brickinventoryapp.data.repository.Ergebnis
 @OptIn(ExperimentalCoroutinesApi::class)
 class ErfassungViewModelTest {
 
+    private val uhr = TestCoroutineScheduler()
+    private val takt = UnconfinedTestDispatcher(uhr)
     private lateinit var pfade: PfadServer
     private lateinit var t: TestDienste
+
+    /** Lässt die Testuhr laufen, bis nichts mehr ansteht, und prüft dann [bedingung]. */
+    private fun bis(was: String, bedingung: () -> Boolean) {
+        uhr.advanceUntilIdle()
+        assertTrue(was, bedingung())
+    }
 
     /** Wie NummernTexte, aber mit den Argumenten — der Test prüft auch, WAS eingesetzt wurde. */
     private object TexteMitArgumenten : Texte {
@@ -93,13 +102,13 @@ class ErfassungViewModelTest {
 
     @Before
     fun auf() {
-        Dispatchers.setMain(UnconfinedTestDispatcher())
+        Dispatchers.setMain(takt)
         pfade = PfadServer(
             "/api/v1/sets/barcode/5702016616316" to """{"success":true,"set_number":"75192-1","name":"Falke"}""",
             "/api/v1/sets/exists/75192-1" to """{"success":true,"exists":true,"set_number":"75192-1"}""",
             "/api/v1/wanted" to """{"success":true,"war_neu":true}""",
         )
-        t = TestDienste(pfade.server, TexteMitArgumenten)
+        t = TestDienste(pfade.imTakt(), TexteMitArgumenten, io = takt)
     }
 
     @After
@@ -114,9 +123,9 @@ class ErfassungViewModelTest {
         val vm = vm()
         vm.setScannerSource("gallery_search")
         vm.resolveBarcode("5702016616316")
-        TestApi.warteBis("gefunden") { vm.barcodeState.value.gefundenesSet == "75192-1" }
+        bis("gefunden") { vm.barcodeState.value.gefundenesSet == "75192-1" }
         assertNull("Kein Bestätigungsdialog", vm.barcodeState.value.result)
-        TestApi.warteBis("Prüfanzeige weg") { vm.erfassungState.value.pruefung == null }
+        bis("Prüfanzeige weg") { vm.erfassungState.value.pruefung == null }
     }
 
     @Test
@@ -125,9 +134,9 @@ class ErfassungViewModelTest {
         pfade.codes["/api/v1/sets/barcode/0000"] = 404
         val vm = vm()
         vm.resolveBarcode("0000")
-        TestApi.warteBis("manuell") { vm.barcodeState.value.manuelleErfassungAnfordern }
+        bis("manuell") { vm.barcodeState.value.manuelleErfassungAnfordern }
         assertEquals("t${R.string.vm_barcode_not_found}|0000", t.meldungen.meldung.value)
-        TestApi.warteBis("Prüfanzeige weg") { vm.erfassungState.value.pruefung == null }
+        bis("Prüfanzeige weg") { vm.erfassungState.value.pruefung == null }
     }
 
     @Test
@@ -136,7 +145,7 @@ class ErfassungViewModelTest {
         pfade.codes["/api/v1/sets/barcode/0001"] = 500
         val vm = vm()
         vm.resolveBarcode("0001")
-        TestApi.warteBis("manuell") { vm.barcodeState.value.manuelleErfassungAnfordern }
+        bis("manuell") { vm.barcodeState.value.manuelleErfassungAnfordern }
         assertEquals("fehler", t.meldungen.meldung.value)
     }
 
@@ -149,7 +158,7 @@ class ErfassungViewModelTest {
         val vm = vm(anleger)
         val liste = t.gemeldet(1) {
             vm.addSet("75192")
-            TestApi.warteBis("fertig") { vm.erfassungState.value.pruefung == null && t.meldungen.meldung.value != null }
+            bis("fertig") { vm.erfassungState.value.pruefung == null && t.meldungen.meldung.value != null }
         }
         assertEquals(listOf(Pruefphase.ANLEGEN_STAMMDATEN, Pruefphase.ANLEGEN_BILD, Pruefphase.ANLEGEN_ABSCHLUSS),
             anleger.gesehen.take(3))
@@ -166,7 +175,7 @@ class ErfassungViewModelTest {
         val vm = vm(Anleger(listOf(SetAnlegenSchritt.Fertig(
             AddSetResponse(action = "added", setNumber = "99999-1", katalogOffen = true)))))
         vm.addSet("99999")
-        TestApi.warteBis("Meldung") { t.meldungen.meldung.value != null }
+        bis("Meldung") { t.meldungen.meldung.value != null }
         assertEquals("t${R.string.vm_set_added_no_catalog}|99999-1", t.meldungen.meldung.value)
     }
 
@@ -175,7 +184,7 @@ class ErfassungViewModelTest {
         val vm = vm(Anleger(listOf(SetAnlegenSchritt.Fertig(AddSetResponse(action = "exists", setNumber = "75192-1")))))
         val liste = t.gemeldet(0) {
             vm.addSet("75192-1")
-            TestApi.warteBis("gefunden") { vm.barcodeState.value.gefundenesSet == "75192-1" }
+            bis("gefunden") { vm.barcodeState.value.gefundenesSet == "75192-1" }
         }
         assertTrue(liste.isEmpty())
     }
@@ -184,7 +193,7 @@ class ErfassungViewModelTest {
     fun `ein abgebrochener Ereignisstrom ist ein Netzfehler, kein Satz des Servers`() {
         val vm = vm(Anleger(listOf(SetAnlegenSchritt.Fehler(""))))
         vm.addSet("75192-1")
-        TestApi.warteBis("gemeldet") { t.meldungen.meldung.value != null }
+        bis("gemeldet") { t.meldungen.meldung.value != null }
         // Ein Netzfehler wird über meldung() formuliert ("fehler"); ein Satz
         // des Servers käme unverändert — hier leer — und sagte nichts.
         assertEquals("t${R.string.vm_add_failed}|75192-1|fehler", t.meldungen.meldung.value)
@@ -196,7 +205,7 @@ class ErfassungViewModelTest {
         vm.setScannerSource("wanted")
         val liste = t.gemeldet(1) {
             vm.confirmAddBarcode("10294-1", condition = "U")
-            TestApi.warteBis("gemeldet") { t.meldungen.meldung.value != null }
+            bis("gemeldet") { t.meldungen.meldung.value != null }
         }
         assertEquals(listOf(Aenderung.Merkliste), liste)
         assertEquals("t${R.string.wanted_added}", t.meldungen.meldung.value)
@@ -208,14 +217,14 @@ class ErfassungViewModelTest {
     private fun bisZumDialog(): ErfassungViewModel {
         val vm = vm()
         vm.resolveBarcode("5702016616316")
-        TestApi.warteBis("Dialog") { vm.barcodeState.value.result == "75192-1" }
+        bis("Dialog") { vm.barcodeState.value.result == "75192-1" }
         return vm
     }
 
     @Test
     fun `ein zweiter Klick auf Bestaetigen legt das Set nicht zweimal an`() {
         pfade.antworten["/api/v1/sets"] = """{"success":true,"action":"added","set_number":"75192-1"}"""
-        pfade.verzoegert["/api/v1/sets"] = 300
+        pfade.ausbleibend += "/api/v1/sets"
         val vm = bisZumDialog()
         val liste = t.gemeldet(1) {
             vm.confirmAddBarcode("75192-1", ownerUserId = 2)
@@ -224,7 +233,8 @@ class ErfassungViewModelTest {
             assertTrue(vm.barcodeState.value.adding)
             assertNull(vm.erfassungState.value.pruefung)
             vm.confirmAddBarcode("75192-1", ownerUserId = 2)
-            TestApi.warteBis("fertig") { !vm.barcodeState.value.adding }
+            pfade.freigeben()
+            bis("fertig") { !vm.barcodeState.value.adding }
         }
         assertEquals(listOf(Aenderung.Sets), liste)
         assertEquals(1, pfade.anfragenAn("POST /api/v1/sets").size)
@@ -237,9 +247,9 @@ class ErfassungViewModelTest {
         pfade.codes["/api/v1/sets"] = 500
         val vm = bisZumDialog()
         vm.confirmAddBarcode("75192-1")
-        TestApi.warteBis("gemeldet") { t.meldungen.meldung.value?.startsWith("t${R.string.vm_add_failed}") == true }
+        bis("gemeldet") { t.meldungen.meldung.value?.startsWith("t${R.string.vm_add_failed}") == true }
         assertEquals("t${R.string.vm_add_failed}|75192-1|fehler", t.meldungen.meldung.value)
-        TestApi.warteBis("frei") { !vm.barcodeState.value.adding }
+        bis("frei") { !vm.barcodeState.value.adding }
     }
 
     @Test
@@ -247,22 +257,23 @@ class ErfassungViewModelTest {
         val vm = vm()
         vm.setScannerSource("partslist")
         vm.resolveBarcode("5702016616316")
-        TestApi.warteBis("Dialog") { vm.barcodeState.value.result == "75192-1" }
+        bis("Dialog") { vm.barcodeState.value.result == "75192-1" }
         vm.confirmAddBarcode("75192-1")
         assertEquals("75192-1", vm.barcodeState.value.fuerTeileliste)
         assertNull(vm.barcodeState.value.result)
-        Thread.sleep(200)
+        uhr.advanceUntilIdle()
         assertTrue(pfade.anfragenAn("POST /api/v1/sets").isEmpty())
     }
 
     @Test
     fun `die Texterkennung fragt den Server, zeigt das an und oeffnet ein vorhandenes Set`() {
-        pfade.verzoegert["/api/v1/sets/exists/75192-1"] = 300
+        pfade.ausbleibend += "/api/v1/sets/exists/75192-1"
         val vm = vm()
         vm.useScannedSetNumber("75192")
         assertEquals(Pruefphase.BESTAND, vm.erfassungState.value.pruefung?.phase)
-        TestApi.warteBis("gefunden") { vm.barcodeState.value.gefundenesSet == "75192-1" }
-        TestApi.warteBis("Prüfanzeige weg") { vm.erfassungState.value.pruefung == null }
+        pfade.freigeben()
+        bis("gefunden") { vm.barcodeState.value.gefundenesSet == "75192-1" }
+        bis("Prüfanzeige weg") { vm.erfassungState.value.pruefung == null }
         assertTrue("Ein vorhandenes Set fragt den Katalog nicht", pfade.anfragenAn("/catalog/").isEmpty())
     }
 
@@ -271,8 +282,8 @@ class ErfassungViewModelTest {
         pfade.codes["/api/v1/sets/exists/10294-1"] = 500
         val vm = vm()
         vm.useScannedSetNumber("10294")
-        TestApi.warteBis("gemeldet") { t.meldungen.meldung.value == "fehler" }
-        TestApi.warteBis("Prüfanzeige weg") { vm.erfassungState.value.pruefung == null }
+        bis("gemeldet") { t.meldungen.meldung.value == "fehler" }
+        bis("Prüfanzeige weg") { vm.erfassungState.value.pruefung == null }
         assertNull(vm.barcodeState.value.result)
         assertTrue("Nach einem Fehler wird nicht auf gut Glück weitergefragt", pfade.anfragenAn("/catalog/").isEmpty())
     }
@@ -294,33 +305,35 @@ class ErfassungViewModelTest {
         for ((name, weg) in wege) {
             vm.manuelleErfassungQuittieren()
             weg()
-            TestApi.warteBis(name) { vm.barcodeState.value.manuelleErfassungAnfordern }
-            TestApi.warteBis("$name: Prüfanzeige weg") { vm.erfassungState.value.pruefung == null }
+            bis(name) { vm.barcodeState.value.manuelleErfassungAnfordern }
+            bis("$name: Prüfanzeige weg") { vm.erfassungState.value.pruefung == null }
         }
     }
 
     @Test
     fun `der Abbruch beendet den Abruf und nicht nur die Anzeige`() {
-        pfade.verzoegert["/api/v1/sets/exists/75192-1"] = 400
+        pfade.ausbleibend += "/api/v1/sets/exists/75192-1"
         val vm = vm()
         vm.useScannedSetNumber("75192")
         assertTrue(vm.erfassungState.value.pruefung != null)
         vm.brichPruefungAb()
         assertNull(vm.erfassungState.value.pruefung)
-        Thread.sleep(700)
+        pfade.freigeben()
+        uhr.advanceUntilIdle()
         assertNull("Der abgebrochene Abruf öffnet hinterher doch noch das Set",
             vm.barcodeState.value.gefundenesSet)
     }
 
     @Test
     fun `das Abmelden raeumt die Pruefanzeige mit`() {
-        pfade.verzoegert["/api/v1/sets/exists/75192-1"] = 400
+        pfade.ausbleibend += "/api/v1/sets/exists/75192-1"
         val vm = vm()
         vm.useScannedSetNumber("75192")
         assertTrue(vm.erfassungState.value.pruefung != null)
         t.sitzung.abgemeldet()
-        TestApi.warteBis("geräumt") { vm.erfassungState.value.pruefung == null }
-        Thread.sleep(700)
+        bis("geräumt") { vm.erfassungState.value.pruefung == null }
+        pfade.freigeben()
+        uhr.advanceUntilIdle()
         assertNull(vm.barcodeState.value.gefundenesSet)
     }
 }

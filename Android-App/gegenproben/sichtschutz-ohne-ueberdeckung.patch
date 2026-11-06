@@ -4,14 +4,14 @@ Test: ch.brickinventoryapp.GeraeteSchutzTest
 Rot: heikle Seiten sind vor Ueberlagerung
 
 diff --git a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/Sichtschutz.kt b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/Sichtschutz.kt
-index da1de61..d0e0086 100644
+index 43bf367..93e665a 100644
 --- a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/Sichtschutz.kt
 +++ b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/Sichtschutz.kt
-@@ -23,7 +23,6 @@ import ch.brickinventoryapp.ressourcen.R
+@@ -19,7 +19,6 @@ import ch.brickinventoryapp.ressourcen.R
   */
  @Composable
  fun Sichtschutz(ueberdeckung: Boolean = true) {
 -    if (ueberdeckung) Ueberdeckungsschutz()
-     val activity = LocalContext.current.findActivity() ?: return
-     DisposableEffect(activity) {
-         val fenster = activity.window
+     val view = LocalView.current
+     val activity = LocalContext.current.findActivity()
+     DisposableEffect(view, activity) {

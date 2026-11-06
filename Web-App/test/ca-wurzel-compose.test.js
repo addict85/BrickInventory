@@ -22,7 +22,7 @@ const { spawn } = require('node:child_process');
 const ROOT = path.join(__dirname, '..');
 const compose = fs.readFileSync(path.join(ROOT, 'compose.yaml'), 'utf8');
 
-/** Die Zeilen eines Dienstes ohne Kommentare (wie test/compose-pgweb.test.js). */
+/** Die Zeilen eines Dienstes ohne Kommentare (wie test/compose-haertung.test.js). */
 function dienst(name) {
   const zeilen = compose.split('\n');
   const start = zeilen.findIndex(l => new RegExp(`^  ${name}:\\s*$`).test(l));

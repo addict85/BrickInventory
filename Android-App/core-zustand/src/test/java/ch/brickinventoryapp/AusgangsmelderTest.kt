@@ -1,5 +1,6 @@
 package ch.brickinventoryapp
 
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import ch.brickinventoryapp.ressourcen.R
 import ch.brickinventoryapp.data.MeldungsKanal
 import ch.brickinventoryapp.data.lokal.Abgleichsereignis
@@ -24,7 +25,7 @@ import org.junit.Test
  * wurde; Nachladen, wenn gesendet wurde; ein Satz mit Grund, wenn der Server
  * ablehnte.
  *
- * Gegenproben (30.10.2026, gemessen):
+ * Gegenproben:
  *   A  in Ausgangsmelder.starte den Hinweis bei steigender Zahl entfernt → rot
  *      „offline Gespeichertes wird gemeldet“
  *   B  für MANUELLE_TEILE `null` statt Aenderung.Teile → rot „gesendet lädt die
@@ -32,6 +33,7 @@ import org.junit.Test
  *   C  `e.meldung` statt `e.meldung.ifBlank { … }` → rot „ohne Grund vom Server
  *      steht ein eigener Satz da“
  */
+@OptIn(ExperimentalCoroutinesApi::class)
 class AusgangsmelderTest {
 
     /** Schreibt Ressource und Argumente auf, damit sichtbar ist, WAS gemeldet wurde. */

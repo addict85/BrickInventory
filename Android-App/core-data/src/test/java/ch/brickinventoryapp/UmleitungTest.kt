@@ -1,5 +1,6 @@
 package ch.brickinventoryapp
 
+import ch.brickinventoryapp.util.NetworkPolicy
 import ch.brickinventoryapp.di.ServerWaechter
 import ch.brickinventoryapp.di.Zugangslage
 import okhttp3.OkHttpClient
@@ -21,7 +22,7 @@ import java.util.concurrent.TimeUnit
  * innerhalb derselben Herkunft. Zwei Testserver auf verschiedenen Ports sind
  * zwei Herkünfte.
  *
- * Gegenproben (03.11.2026, gemessen mit kotlinc lokal):
+ * Gegenproben:
  *   A  in naechsteUmleitung() die Prüfung der Herkunft entfernt → rot „eine
  *      Umleitung zu einem anderen Host erreicht ihn nicht“ (200 von B statt 307)
  *   B  senden() folgt keiner Umleitung (nur `chain.proceed`) → rot „eine
@@ -38,7 +39,7 @@ class UmleitungTest {
     private val lage = object : Zugangslage {
         override fun serverUrl() = a.url("/").toString().trimEnd('/')
         override fun token() = "geheim"
-        override fun tokenHerkunft(): String? = null
+        override fun tokenHerkunft(): String? = NetworkPolicy.herkunft(serverUrl())
         override fun generation() = 0L
     }
     private val client = OkHttpClient.Builder()

@@ -27,7 +27,7 @@ fun eigeneAdresse(serverUrl: String, pfad: String): String? {
 
 /**
  * Lädt der In-App-Betrachter diese Adresse? Nur vom eigenen Server: Er lädt mit
- * dem Token-Client, und PdfRenderer läuft im Prozess der App ohne Abschottung.
+ * dem Token-Client. Gerendert wird isoliert (PdfRenderDienst), geladen aber hier.
  * Fremde PDFs öffnet das System (oeffneExtern), wie es SetDetailSections tut.
  */
 fun pdfImBetrachter(pdfUrl: String, serverUrl: String): Boolean {

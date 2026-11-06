@@ -17,7 +17,7 @@ import org.junit.Test
  * Der erste Test liest den Quelltext (wer hält den Zustand), der zweite führt
  * jeden Schritt aus und vergleicht die Felder davor und danach.
  *
- * Gegenproben (05.11.2026, gemessen mit kotlinc lokal):
+ * Gegenproben:
  *   A  in GalerieViewModel `MutableStateFlow(AppUiState())` ergänzt → rot
  *      „nur die Sitzung hält den gemeinsamen Zustand“
  *   B  in waehrungUebernommen() `priceCondition` mitgeschrieben → rot

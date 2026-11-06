@@ -9,15 +9,16 @@ import org.junit.Test
 import java.security.KeyPairGenerator
 import java.security.Signature
 import java.security.spec.ECGenParameterSpec
+import java.security.PrivateKey
 
 /**
- * Die Rückfrage per Gerätesperre ist an den Keystore gebunden (sec8 N3): Weiter geht
+ * Die Rückfrage per Gerätesperre ist an den Keystore gebunden: Weiter geht
  * es nur mit einer Signatur, die zum öffentlichen Schlüssel passt. Der Keystore selbst
  * (Freigabe erst nach Sperre oder starker Biometrie) läuft nur auf dem Gerät; hier
  * steht ein gewöhnliches EC-Schlüsselpaar dafür, und „nicht freigegeben“ ist eine
  * Signatur, die nicht signieren kann oder mit einem anderen Schlüssel signiert.
  *
- * Gegenproben (03.11.2026, gemessen mit kotlinc lokal):
+ * Gegenproben:
  *   A  Schrittfreigabe.gilt() nimmt jede vorhandene Signatur → rot „ein anderer Schluessel
  *      zaehlt nicht“ und „eine Signatur ohne Freigabe zaehlt nicht“;
  *      gegenproben/schrittschutz-ohne-signatur.patch
@@ -31,7 +32,7 @@ class SchrittfreigabeTest {
     private val geraet = paar()
     private val freigabe = Schrittfreigabe({ geraet.public })
 
-    private fun signatur(mit: java.security.PrivateKey) =
+    private fun signatur(mit: PrivateKey) =
         Signature.getInstance(Schrittfreigabe.SIGNATURVERFAHREN).apply { initSign(mit) }
 
     @Test

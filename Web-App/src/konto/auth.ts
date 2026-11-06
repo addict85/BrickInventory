@@ -8,8 +8,8 @@ import * as pgNotify from '../../db/pgNotify';
 import crypto from 'crypto';
 import bcrypt from 'bcryptjs';
 import { passwortPasst, BcryptUeberlast } from './bcryptSchranke';
-import { checkLoginAllowed, bekannteAnmeldung, gibAnmeldeplatzFrei, recordLoginFailure, recordLoginSuccess, meldeAnmeldeereignis, MAX_ATTEMPTS } from './loginLimiter';
-import type { Anmeldeereignis } from './loginLimiter';
+import { checkLoginAllowed, bekannteAnmeldung, gibAnmeldeplatzFrei, recordLoginFailure, recordLoginSuccess, meldeAnmeldeereignis, meldeAnmeldung, MAX_ATTEMPTS } from './loginLimiter';
+import type { Anmeldeereignis, Anmeldeweg } from './loginLimiter';
 import { kontoGedrosselt } from './zielDrossel';
 import * as zf from './zweiterFaktor';
 import * as passkeys from './passkeys';
@@ -249,6 +249,14 @@ export function nameGueltig(v: unknown): boolean {
   return s.length <= 100 && !/[\p{Cc}\u2028\u2029]/u.test(s) && !/:\/\/|www\.|https?:/i.test(s);
 }
 
+/** Geräte- und Passkey-Namen stehen wörtlich in den Hinweismails: Ohne Adressen und
+ * Anführungszeichen fügt ein Eindringling dort keinen entwarnenden Satz mit Link an. */
+export function geraeteNameGueltig(v: unknown): boolean {
+  if (!nameGueltig(v)) return false;
+  const s = String(v ?? '');
+  return !/["'`«»„“”‚‘’<>]/u.test(s) && !/[\p{L}\d-]\.\p{L}{2,}(?![\p{L}\d])/u.test(s);
+}
+
 export const EMAIL_RE = V.EMAIL_RE, emailGueltig: typeof V.emailGueltig = V.emailGueltig;
 
 /** Name ODER E-Mail, weil die Anmeldung in beiden Spalten sucht.
@@ -335,9 +343,11 @@ export async function pruefeAnmeldedaten(herkunft: Herkunft, username: unknown, 
     return absage(401, 'anmeldedaten_ungueltig');
   }
 
+  let zugang: Anmeldeweg = 'passwort';
   if (await zf.istAktiv(user.id)) {
     // Ein Passkey ersetzt den Code — gebunden an DIESES Konto, dessen Passwort stimmte.
     const mitPasskey = passkeyAntwort !== undefined && passkeyAntwort !== null;
+    zugang = mitPasskey ? 'passwort+passkey' : 'passwort+code';
     const hatPasskey = await passkeys.hatPasskeys(user.id);
     const ergaenzt = (e: AnmeldeErgebnis) => { if (!e.ok && hatPasskey) e.absage.passkey = true; return e; };
     if (!mitPasskey && !String(code ?? '').trim()) {
@@ -354,6 +364,7 @@ export async function pruefeAnmeldedaten(herkunft: Herkunft, username: unknown, 
     }
   }
   await recordLoginSuccess(ip, name);
+  meldeAnmeldung({ ip, konto: Number(user.id), zugang });
   return { ok: true, user };
 }
 
@@ -430,17 +441,27 @@ export interface Tausch {
   alt_gueltig_bis: Date;
 }
 
-/** Der alte gilt danach höchstens UEBERLAPPUNG_MS, bis zur ersten Nutzung des
- * neuen; ein zweiter Tausch mit dem alten (Antwort verloren) ersetzt den
- * unbenutzten Nachfolger.
- * @returns null, wenn der alte Token nicht (mehr) gilt. */
-export async function rotiereToken(alt: string, ip?: string | null): Promise<Tausch | null> {
+/** Ein zweiter Tausch so kurz danach ist gleichzeitig (409), keine verlorene Antwort. */
+export const TAUSCH_SPERRE_S = 30;
+
+/** Der alte gilt danach höchstens UEBERLAPPUNG_MS. Ein zweiter Tausch ersetzt den unbenutzten
+ * Nachfolger nur aus demselben Netz (sonst Kopie: Familie endet) und erst nach TAUSCH_SPERRE_S. */
+export async function rotiereToken(alt: string, ip?: string | null): Promise<Tausch | null | 'laeuft'> {
   const altHash = hashToken(alt);
   const neu = crypto.randomBytes(32).toString('hex');
   const neuHash = hashToken(neu);
+  let kopie: { user_id: number; label: string | null } | null = null;
   const ergebnis = await db.transaction(async (tx) => {
     const z = await repo.tauschQuelleSperren(tx, altHash);
     if (!z) return null;
+    const offen = z.ersetzt_durch ? await repo.unbenutzterNachfolger(tx, z.ersetzt_durch, altHash) : undefined;
+    const bereich = ipBereich(ip);
+    if (offen && offen.ip_bereich && bereich && offen.ip_bereich !== bereich) {
+      await repo.loescheFamilie(tx, z.user_id, z.created_at);
+      kopie = { user_id: z.user_id, label: z.label };
+      return null;
+    }
+    if (offen && offen.alter_s < TAUSCH_SPERRE_S) return 'laeuft' as const;
     if (z.ersetzt_durch) await repo.loescheUnbenutztenNachfolger(tx, z.ersetzt_durch, altHash);
     const zeile = await repo.legeNachfolgerAn(tx, neuHash, altHash, z, TOKEN_IDLE_DAYS, ipBereich(ip));
     const vorher = await repo.befristeVorgaenger(tx, altHash, neuHash, UEBERLAPPUNG_MS / 1000);
@@ -448,7 +469,12 @@ export async function rotiereToken(alt: string, ip?: string | null): Promise<Tau
              never_expires: z.never_expires, rotiert_am: zeile!.rotiert_am,
              alt_gueltig_bis: vorher!.expires_at };
   });
-  if (ergebnis) leereTokenCache();
+  if (ergebnis || kopie) leereTokenCache();
+  if (kopie) {
+    const k: { user_id: number; label: string | null } = kopie;
+    console.warn(`[tokens] zweiter Tausch aus einem anderen Netz — Familie von Konto ${k.user_id} gesperrt`);
+    hinweisNebenher(k.user_id, 'token_wiederverwendet', k.label ?? undefined);
+  }
   return ergebnis;
 }
 

@@ -65,6 +65,27 @@ export function datenSchluessel(): Buffer {
   finally { fs.rmSync(tmp, { force: true }); }
 }
 
+/** Der vorige Schlüssel eines Wechsels: Was nur er öffnet, bleibt lesbar, bis der Start
+ * es neu schreibt (scripts/datenschluessel-wechseln.sh). Fehlende Datei: kein Wechsel. */
+let alt: Buffer | null | undefined;
+export function altSchluessel(): Buffer | null {
+  if (alt !== undefined) return alt;
+  const k = konfig();
+  const roh = k.datenSchluesselAlt ? Buffer.from(k.datenSchluesselAlt, 'base64')
+    : k.datenSchluesselAltDatei ? liesSchluessel(k.datenSchluesselAltDatei) : null;
+  if (roh && roh.equals(datenSchluessel())) {
+    console.warn('⚠️ [geheimnis] DATA_KEY_ALT ist derselbe Schlüssel wie der aktuelle — kein Wechsel.');
+    return (alt = null);
+  }
+  return (alt = roh);
+}
+
+let altV2: Buffer | null = null;
+function altV2Schluessel(): Buffer | null {
+  const a = altSchluessel();
+  return a ? (altV2 ??= Buffer.from(crypto.hkdfSync('sha256', a, Buffer.alloc(0), 'brickinventory/geheimnis/v2', 32))) : null;
+}
+
 /** Wofür und für welche Zeile ein Geheimtext gilt (AAD in AES-GCM): In eine andere
  * Spalte, ein anderes Konto oder eine andere Zeile kopiert, ist er unlesbar. */
 export type Kontext = string & { readonly __kontext: true };
@@ -114,9 +135,15 @@ export function entschluessele(wert: string | null | undefined, k: Kontext): str
   if (wert === null || wert === undefined) return null;
   if (wert === '') return '';
   if (!istVerschluesselt(wert)) { warne('Ein gespeicherter Wert ohne v2-Verschlüsselung'); return null; }
-  const klar = oeffne(v2Schluessel(), Buffer.from(wert.slice(V2.length), 'base64'), k);
+  const roh = Buffer.from(wert.slice(V2.length), 'base64');
+  const klar = oeffne(v2Schluessel(), roh, k) ?? mitAltSchluessel(roh, k);
   if (klar === null) warne('Ein gespeichertes Geheimnis');
   return klar === null ? null : klar.toString('utf8');
+}
+
+function mitAltSchluessel(roh: Buffer, k: Kontext): Buffer | null {
+  const a = altV2Schluessel();
+  return a ? oeffne(a, roh, k) : null;
 }
 
 /** Für das Umschlüsseln: v2, v1 (ohne Kontext) und Klartext von vor der Verschlüsselung. */
@@ -131,7 +158,13 @@ export function altwertLesen(wert: string | null | undefined, k: Kontext): strin
 
 /** Der neue Wert; undefined, wenn nichts zu tun ist oder er unlesbar ist (Zeile bleibt). */
 export function umschluesseln(wert: string | null | undefined, k: Kontext): string | null | undefined {
-  if (!wert || istVerschluesselt(wert)) return undefined;
+  if (!wert) return undefined;
+  if (istVerschluesselt(wert)) {
+    const roh = Buffer.from(wert.slice(V2.length), 'base64');
+    if (!altV2Schluessel() || oeffne(v2Schluessel(), roh, k) !== null) return undefined;
+    const klar = mitAltSchluessel(roh, k);
+    return klar === null ? undefined : verschluessele(klar.toString('utf8'), k);
+  }
   const klar = altwertLesen(wert, k);
   return klar === null ? undefined : verschluessele(klar, k);
 }
@@ -139,7 +172,17 @@ export function umschluesseln(wert: string | null | undefined, k: Kontext): stri
 /** HMAC statt Hash: Kleine Wertebereiche (Kartennummern mit festem Präfix)
  * liessen sich sonst durchprobieren. Ein Schlüssel je Zweck. */
 export function suchwert(zweck: string, wert: string): string {
-  const k = Buffer.from(crypto.hkdfSync('sha256', datenSchluessel(), Buffer.alloc(0), `brickinventory/suche/${zweck}`, 32));
+  return suchwertMit(datenSchluessel(), zweck, wert);
+}
+
+/** Derselbe Suchwert unter dem vorigen Schlüssel, solange ein Wechsel läuft. */
+export function suchwertAlt(zweck: string, wert: string): string | null {
+  const a = altSchluessel();
+  return a ? suchwertMit(a, zweck, wert) : null;
+}
+
+function suchwertMit(schluessel: Buffer, zweck: string, wert: string): string {
+  const k = Buffer.from(crypto.hkdfSync('sha256', schluessel, Buffer.alloc(0), `brickinventory/suche/${zweck}`, 32));
   return crypto.createHmac('sha256', k).update(wert, 'utf8').digest('hex');
 }
 
@@ -158,9 +201,19 @@ export function verschluesselePuffer(daten: Buffer, k: Kontext): Buffer {
 
 /** Nur BIENC2 mit passendem Kontext; sonst null. */
 export function entschluesselePuffer(daten: Buffer, k: Kontext): Buffer | null {
-  const klar = istVerschluesselterPuffer(daten) ? oeffne(v2Schluessel(), daten.subarray(KOPF2.length), k) : null;
+  const roh = daten.subarray(KOPF2.length);
+  const klar = istVerschluesselterPuffer(daten) ? oeffne(v2Schluessel(), roh, k) ?? mitAltSchluessel(roh, k) : null;
   if (klar === null) warne('Eine verschlüsselte Datei');
   return klar;
+}
+
+/** Eine BIENC2-Datei, die nur der vorige Schlüssel öffnet, mit dem neuen; sonst undefined. */
+export function pufferUmschluesseln(daten: Buffer, k: Kontext): Buffer | undefined {
+  if (!istVerschluesselterPuffer(daten) || !altV2Schluessel()) return undefined;
+  const roh = daten.subarray(KOPF2.length);
+  if (oeffne(v2Schluessel(), roh, k) !== null) return undefined;
+  const klar = mitAltSchluessel(roh, k);
+  return klar === null ? undefined : verschluesselePuffer(klar, k);
 }
 
 /** Für das Umschlüsseln: BIENC2, BIENC1 und unverschlüsselte Dateien. */
@@ -172,4 +225,4 @@ export function altenPufferLesen(daten: Buffer, k: Kontext): Buffer | null {
   return klar;
 }
 
-export function _vergissSchluessel() { geladen = null; v2 = null; }
+export function _vergissSchluessel() { geladen = null; v2 = null; alt = undefined; altV2 = null; }

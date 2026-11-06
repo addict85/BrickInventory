@@ -4,15 +4,15 @@ Test: ch.brickinventoryapp.ManifestPruefenTest
 Rot: ein debuggable APK
 
 diff --git a/Android-App/tools/manifest-pruefen.py b/Android-App/tools/manifest-pruefen.py
-index 547ee2f..38e9241 100644
+index 691eb15..a0362db 100644
 --- a/Android-App/tools/manifest-pruefen.py
 +++ b/Android-App/tools/manifest-pruefen.py
-@@ -66,8 +66,6 @@ def pruefe(xmltree, erlaubt):
+@@ -72,8 +72,6 @@ def pruefe(xmltree, erlaubt, rechte=frozenset()):
          return ['kein <application> im Manifest gefunden — Format von aapt2 geaendert?']
      app = apps[0][1]
      fehler = []
 -    if app.get('debuggable') in WAHR:
 -        fehler.append('android:debuggable ist gesetzt')
-     if app.get('allowBackup') not in ('false', '0x0', '(type 0x12)0x0'):
-         fehler.append(f'android:allowBackup ist nicht false ({app.get("allowBackup")})')
-     if app.get('usesCleartextTraffic') in WAHR:
+     if app.get('testOnly') in WAHR:
+         fehler.append('android:testOnly ist gesetzt')
+     for art in ('uses-permission', 'uses-permission-sdk-23'):

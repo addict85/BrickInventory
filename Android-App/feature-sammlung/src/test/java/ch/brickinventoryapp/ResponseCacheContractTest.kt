@@ -10,6 +10,7 @@ import org.junit.Assert.assertNotNull
 import org.junit.Test
 import ch.brickinventoryapp.data.model.FigValuationItem
 import ch.brickinventoryapp.data.model.Minifig
+import java.io.File
 
 /**
  * Der Plattenspeicher (data/cache/ResponseCache.kt) legt API-Antworten als JSON
@@ -174,7 +175,7 @@ class MinifigImageFieldTest {
 class ImageConcurrencyConfigTest {
 
     private fun read(rel: String): String {
-        val f = java.io.File(Quellen.wurzel, rel)
+        val f = File(Quellen.wurzel, rel)
         assert(f.exists()) { "Datei nicht gefunden: $rel" }
         return f.readText()
     }
@@ -211,7 +212,7 @@ class ImageConcurrencyConfigTest {
 class GalleryImageRetryTest {
 
     private fun read(rel: String): String {
-        val f = java.io.File(Quellen.wurzel, rel)
+        val f = File(Quellen.wurzel, rel)
         assert(f.exists()) { "Datei nicht gefunden: $rel" }
         return f.readText()
     }
@@ -255,7 +256,7 @@ class GalleryImageRetryTest {
 class ImageRequestHeadersTest {
 
     private fun read(rel: String): String {
-        val f = java.io.File(Quellen.wurzel, rel)
+        val f = File(Quellen.wurzel, rel)
         assert(f.exists()) { "Datei nicht gefunden: $rel" }
         return f.readText()
     }

@@ -5,7 +5,7 @@ import java.io.File
 
 /**
  * Welche Schicht welche Importe nicht haben darf. ModulgrenzenTest prüft die
- * Build-Dateien; hier steht, was innerhalb der Module gilt (arch17 H3, M2, M7, M11).
+ * Build-Dateien; hier steht, was innerhalb der Module gilt.
  * Eine Strukturprüfung: Sie liest Importzeilen, keine Kommentare.
  *
  * Gegenproben (05.11.2026, gemessen mit kotlinc lokal, je ein Patch in gegenproben/):

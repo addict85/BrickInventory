@@ -1,6 +1,7 @@
 package ch.brickinventoryapp
 
 import org.junit.Test
+import java.io.File
 
 /**
  * Bilder und PDFs brauchen serverseitig eine Anmeldung — die App muss sie
@@ -32,7 +33,7 @@ class MediaAuthTest {
     }
 
     private fun read(rel: String): String {
-        val f = java.io.File(Quellen.wurzel, "$rel")
+        val f = File(Quellen.wurzel, "$rel")
         assert(f.exists()) { "Datei nicht gefunden: $rel" }
         return f.readText()
     }
@@ -71,14 +72,7 @@ class MediaAuthTest {
         }
     }
 
-    @Test
-    fun `der Bild-Cache wird beim Abmelden geleert`() {
-        val session = code(read("data/SitzungsBereinigung.kt"))
-        assert(session.contains("imageLoader.memoryCache?.clear()")) { "Memory-Cache bleibt stehen" }
-        assert(session.contains("imageLoader.diskCache?.clear()")) {
-            "Sonst sieht der nächste Nutzer auf demselben Gerät die Bilder des vorherigen"
-        }
-    }
+    // Dass Abmelden den Bild-Cache leert, prüft AbmeldenRaeumtAllesTest (app) ausgeführt.
 
     // ── PDFs ─────────────────────────────────────────────────────────────────
 

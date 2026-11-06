@@ -94,6 +94,7 @@ const GEMEINSAM = {
 
 /** Dateien mit Tabellennamen aus einer Variablen: Wohin sie schreiben, steht daneben. */
 const DYNAMISCH = {
+  'db/migrate.ts':                             'Kopien vor Migrationen (vor_migration_*, Spalten mit user_id)',
   'src/bestand/repository/kaufErfassungen.ts': 'set_/part_/minifig_acquisitions (user_id)',
   'src/bestand/repository/lagerort.ts':        'sets/parts/minifigs (user_id)',
   'src/bestand/repository/manuelleMengen.ts':  'part_/minifig_acquisitions (user_id)',

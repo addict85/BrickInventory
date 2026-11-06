@@ -32,7 +32,6 @@ export const Auftrag = z.looseObject({
   aktualisiert: z.string().nullable(),
   fortschritt: AuftragFortschritt.nullable(),
   fehler: z.string().nullable(),
-  user_id: z.number().int().nullable(),
   geplant: z.boolean(),
   set_number: z.string().nullable(),
 });
@@ -179,7 +178,8 @@ export const PreisJobStand = z.looseObject({
 export const ProtokollEintraege = z.looseObject({ success: z.literal(true), eintraege: z.array(z.record(z.string(), z.unknown())) });
 export const BildDiagnose = z.looseObject({
   success: z.literal(true), set_number: z.string(), hinweise: z.array(z.string()),
-  datenbank: z.looseObject({ zeilen: z.array(z.looseObject({ user_id: ganz })), katalog_bild: z.string().nullable() }),
+  datenbank: z.looseObject({ anzahl_konten: ganz, image_local: z.string().nullable(), image_url: z.string().nullable(),
+    katalog_bild: z.string().nullable() }),
   lokal: z.looseObject({ original: z.looseObject({ vorhanden: z.boolean(), bytes: ganz }),
     vorschau: z.looseObject({ vorhanden: z.boolean(), bytes: ganz }) }),
   proxy: z.looseObject({ gecacht: z.boolean() }),

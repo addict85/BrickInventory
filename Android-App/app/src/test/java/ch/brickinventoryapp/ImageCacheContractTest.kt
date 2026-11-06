@@ -46,11 +46,6 @@ import org.junit.Test
  * Ob DefaultCacheStrategy sich im Einzelnen wie respectCacheHeaders(true)
  * verhält, steht in ihrem Rumpf, den ich nicht gelesen habe — diese Probe
  * gehört auf ein Gerät: ein Bild auf dem Server austauschen und nachsehen.
- *   2. ein HTTP-Zwischenspeicher am Bild-Client — ohne ihn gäbe es nichts, aus
- *      dem der Offline-Fall bedient werden könnte.
- *   3. der Rückfall auf FORCE_CACHE bei einer IOException — bewusst am
- *      FEHLER festgemacht, nicht am Verbindungsstatus des Geräts: Ein Gerät
- *      kann im WLAN sein und den Heimserver trotzdem nicht erreichen.
  *
  * Der Test liest nur die Quelldatei — kein Gerät, kein Netz, kein Compose.
  */

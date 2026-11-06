@@ -275,7 +275,7 @@ function appendParts(parts){
   if (G('parts-view').value === 'table'){
     const tb = G('parts-main').querySelector('tbody.parts-body');
     if (!tb) return;
-    fuegeHtmlEin(tb, 'beforeend', ungeprueft(parts.map(partsTableRow).join('')));
+    fuegeHtmlEin(tb, 'beforeend', parts.map(partsTableRow));
     if (typeof observeLazyImages === 'function') observeLazyImages(tb);
     if (typeof window.__bimLabelTables === 'function') window.__bimLabelTables(tb.closest('table'));
     return;
@@ -285,7 +285,7 @@ function appendParts(parts){
   if (!list) return;
   // Ungruppiert: dasselbe Raster ohne Farbkacheln, die Reihenfolge kommt vom Server.
   if (G('parts-ordnung').value !== 'farbe'){
-    fuegeHtmlEin(list, 'beforeend', ungeprueft(parts.map(partsCard).join('')));
+    fuegeHtmlEin(list, 'beforeend', parts.map(partsCard));
     if (typeof observeLazyImages === 'function') observeLazyImages(list);
     return;
   }
@@ -309,7 +309,7 @@ function appendParts(parts){
     if (g.color === _partsLastColor){
       const lastGrid = list.querySelector('.parts-group:last-child .parts-grid');
       if (lastGrid){
-        fuegeHtmlEin(lastGrid, 'beforeend', ungeprueft(g.parts.map(partsCard).join('')));
+        fuegeHtmlEin(lastGrid, 'beforeend', g.parts.map(partsCard));
         bumpGroupCount(lastGrid.closest('.parts-group'), g.parts.length);
         if (typeof observeLazyImages === 'function') observeLazyImages(lastGrid);
         continue;
@@ -321,7 +321,7 @@ function appendParts(parts){
         <span class="group-title">${g.color ? colorName(g.color) : tRaw('parts.farbe_unbekannt')}</span>
         <span class="group-sub">${tRaw('parts.group_types', { n: g.parts.length })}</span>
       </div>
-      <div class="parts-grid">${ungeprueft(g.parts.map(partsCard).join(''))}</div>
+      <div class="parts-grid">${g.parts.map(partsCard)}</div>
     </div>`}`;
     _partsLastColor = g.color;
   }
@@ -373,7 +373,7 @@ function partsCard(p){
     <div class="part-num" title="${p.part_number}">${p.bl_part_number||p.part_number}</div>
     <div class="part-name">${p.part_name || '—'}</div>
     <div class="part-color"><div class="color-dot" data-farbe="${escHex(p.color_hex, 'var(--s300)')}"></div>${colorName(p.color_name)}</div>
-    <div class="part-qty">×${ungeprueft((p.total_quantity||0).toLocaleString(locale()))}</div>
+    <div class="part-qty">×${(p.total_quantity||0).toLocaleString(locale())}</div>
     ${ersatzteilPlakette(p)}
   </div>`;
 }
@@ -388,7 +388,7 @@ function partsTableRow(p){
     <td data-stil="max-width:200px">${p.part_name || '—'} ${ersatzteilPlakette(p)}</td>
     <td><div data-stil="display:flex;align-items:center;gap:5px"><div class="color-dot" data-farbe="${escHex(p.color_hex, 'var(--s300)')}"></div>${colorName(p.color_name)}</div></td>
     <td>${catLabel(p.category_name)}</td>
-    <td><span data-stil="font-family:var(--mono);font-weight:600;color:var(--b700)">${ungeprueft((p.total_quantity||0).toLocaleString(locale()))}</span></td>
+    <td><span data-stil="font-family:var(--mono);font-weight:600;color:var(--b700)">${(p.total_quantity||0).toLocaleString(locale())}</span></td>
     <td data-stil="font-size:var(--fs-1);color:var(--mut)">${(p.in_sets||'').replace(/,/g,', ')}</td>
   </tr>`;
 }

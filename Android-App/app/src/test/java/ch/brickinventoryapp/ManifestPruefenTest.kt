@@ -7,13 +7,17 @@ import java.io.File
 import java.util.concurrent.TimeUnit
 
 /**
- * tools/manifest-pruefen.py (sec16 N7) gegen Ausgaben im Format von
+ * tools/manifest-pruefen.py gegen Ausgaben im Format von
  * `aapt2 dump xmltree --file AndroidManifest.xml`, mit der echten Positivliste.
  *
- * Gegenproben (05.11.2026, gemessen, kotlinc und python3 lokal):
+ * Gegenproben:
  *   manifest-export-ungeprueft  der Vergleich mit der Positivliste gestrichen → rot
  *                               „eine fremde exportierte Komponente …“
  *   manifest-debuggable-egal    die Prüfung auf debuggable gestrichen → rot „ein debuggable …“
+ * ProfileInstallReceiver wieder in manifest-exportiert.txt →
+ *                               rot „herausgenommene Bibliothekskomponenten …“
+ * die Schleife über uses-permission gestrichen →
+ *                               rot „eine Berechtigung ausserhalb der Liste …“
  */
 class ManifestPruefenTest {
 
@@ -24,10 +28,16 @@ class ManifestPruefenTest {
         if (recht != null) append("        A: http://schemas.android.com/apk/res/android:permission(0x01010006)=\"$recht\" (Raw: \"$recht\")\n")
     }
 
-    private fun manifest(vararg komponenten: String, anwendung: String = "") =
+    private fun recht(name: String) =
+        "    E: uses-permission (line=16)\n" +
+            "      A: http://schemas.android.com/apk/res/android:name(0x01010003)=\"$name\" (Raw: \"$name\")\n"
+
+    private fun manifest(vararg komponenten: String, anwendung: String = "", rechte: List<String> = listOf(
+        "android.permission.INTERNET", "android.permission.CAMERA")) =
         "N: android=http://schemas.android.com/apk/res/android (line=2)\n" +
             "  E: manifest (line=2)\n" +
             "    A: package=\"ch.brickinventoryapp\" (Raw: \"ch.brickinventoryapp\")\n" +
+            rechte.joinToString("") { recht(it) } +
             "    E: application (line=80)\n" +
             "      A: http://schemas.android.com/apk/res/android:allowBackup(0x01010280)=false\n" +
             anwendung + komponenten.joinToString("")
@@ -41,7 +51,8 @@ class ManifestPruefenTest {
 
     private fun pruefe(text: String): Pair<Int, String> {
         val f = File.createTempFile("manifest", ".txt").apply { deleteOnExit(); writeText(text) }
-        val p = ProcessBuilder("python3", "../tools/manifest-pruefen.py", f.path, "../tools/manifest-exportiert.txt")
+        val p = ProcessBuilder("python3", "../tools/manifest-pruefen.py", f.path, "../tools/manifest-exportiert.txt",
+            "../tools/manifest-berechtigungen.txt")
             .redirectErrorStream(true).start()
         val ausgabe = p.inputStream.bufferedReader().readText()
         check(p.waitFor(30, TimeUnit.SECONDS)) { ausgabe }
@@ -65,6 +76,19 @@ class ManifestPruefenTest {
         assertTrue(text2, "BIND_APPWIDGET" in text2)
     }
 
+    /** CI-Lauf 42086613735: Beide kamen aus Bibliotheken; das Manifest nimmt sie heraus. */
+    @Test
+    fun `herausgenommene Bibliothekskomponenten stehen nicht in der Positivliste`() {
+        for ((art, name, recht) in listOf(
+            Triple("receiver", "androidx.profileinstaller.ProfileInstallReceiver", "android.permission.DUMP"),
+            Triple("service", "com.google.android.gms.auth.api.signin.RevocationBoundService",
+                "com.google.android.gms.auth.api.signin.permission.REVOCATION_NOTIFICATION"),
+        )) {
+            val (code, text) = pruefe(manifest(*gut, komponente(art, name, true, recht)))
+            assertEquals(text, 1, code)
+        }
+    }
+
     @Test
     fun `ein debuggable APK, Sicherung oder Klartext fallen auf`() {
         val debuggable = "      A: http://schemas.android.com/apk/res/android:debuggable(0x0101000f)=true\n"
@@ -79,5 +103,14 @@ class ManifestPruefenTest {
     fun `ohne erkennbare Komponenten ist das Format falsch, nicht das Manifest gut`() {
         assertEquals(1, pruefe(manifest()).first)
         assertEquals(1, pruefe("irgendwas\n").first)
+    }
+
+    @Test
+    fun `eine Berechtigung ausserhalb der Liste oder testOnly faellt auf`() {
+        val (code, text) = pruefe(manifest(*gut, rechte = listOf("android.permission.INTERNET", "android.permission.READ_PHONE_STATE")))
+        assertEquals(text, 1, code)
+        assertTrue(text, "READ_PHONE_STATE" in text)
+        val testOnly = "      A: http://schemas.android.com/apk/res/android:testOnly(0x01010272)=true\n"
+        assertEquals(1, pruefe(manifest(*gut, anwendung = testOnly)).first)
     }
 }

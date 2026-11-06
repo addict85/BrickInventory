@@ -9,6 +9,8 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import ch.brickinventoryapp.data.repository.Ergebnis
+import java.io.File
+import org.json.JSONObject
 
 /**
  * Gutscheine — LEGO-Geschenkkarten im eigenen Profil.
@@ -19,8 +21,6 @@ import ch.brickinventoryapp.data.repository.Ergebnis
  *    Betrag hinterlegt werden können. Für die Erfassung soll dies entweder
  *    manuell möglich sein für die 3 Werte oder das PDF des Gutscheins soll
  *    hochgeladen werden können und die App soll daraus die Werte extrahieren.
- *    […] Bitte die Login jeweils nur 1x im Backend bauen. Beide Apps sollen
- *    die gleichen Services des Backends verwenden."
  *
  * ── Was dieser Test prueft, und was NICHT ───────────────────────────────────
  *
@@ -34,12 +34,12 @@ import ch.brickinventoryapp.data.repository.Ergebnis
  * die App dieselben Dienste benutzt und keine eigenen baut. Genau das war
  * Marcos Vorgabe, und genau das laeuft erfahrungsgemaess auseinander.
  *
- * Gegenproben (29.10.2026, gemessen): in GutscheineRepository.liste() den Abruf
+ * Gegenproben: in GutscheineRepository.liste() den Abruf
  * mit cached("gutscheine", …) umhüllt → rot „die Liste wird nicht
  * zwischengespeichert“; @PUT("api/v1/vouchers/{id}") auf POST → rot „die App
  * ruft dieselben Adressen wie die Webapp“.
  *
- * Gegenproben (03.11.2026, kotlinc lokal, Runde 8):
+ * Gegenproben:
  *  - Löschen wieder als @DELETE ohne Rumpf (Bestätigung nicht mitgeschickt) → rot
  *    „Löschen, Klartext und PDF-Freigabe tragen Passwort und Code“.
  *  - pdfFreigabe() ruft für id=null die Route des einzelnen PDFs (mit id 0) → rot
@@ -50,7 +50,7 @@ import ch.brickinventoryapp.data.repository.Ergebnis
 class GutscheineContractTest {
 
     private fun lies(rel: String): String {
-        val f = java.io.File(Quellen.wurzel, rel)
+        val f = File(Quellen.wurzel, rel)
         assert(f.exists()) { "Datei nicht gefunden: $rel" }
         return f.readText()
     }
@@ -65,10 +65,10 @@ class GutscheineContractTest {
     private val karte by lazy { code(lies("ui/screens/GutscheineCard.kt")) }
 
     /** Gutscheine gegen einen Testserver, mit Plattenablage in einem Wegwerf-Ordner. */
-    private fun <T> mitServer(block: (PfadServer, GutscheineRepository, java.io.File) -> T): T {
+    private fun <T> mitServer(block: (PfadServer, GutscheineRepository, File) -> T): T {
         val pfade = PfadServer("/api/v1/vouchers" to """{"success":true,"vouchers":[
             {"id":5,"number":"1234-5678","pin":"9876","amount":50.0,"currency":"CHF"}]}""")
-        val ordner = java.io.File(System.getProperty("java.io.tmpdir"), "bim-gutschein-${System.nanoTime()}").apply { mkdirs() }
+        val ordner = File(System.getProperty("java.io.tmpdir"), "bim-gutschein-${System.nanoTime()}").apply { mkdirs() }
         try {
             return block(pfade, GutscheineRepository(TestApi.fuer(pfade.server), ResponseCache { ordner }), ordner)
         } finally {
@@ -111,7 +111,7 @@ class GutscheineContractTest {
         }
         assertEquals(4, pfade.koerper.size)
         for ((i, k) in pfade.koerper.withIndex()) {
-            val o = org.json.JSONObject(k)
+            val o = JSONObject(k)
             assertEquals("${pfade.anfragen[i]}: Passwort", "geheim", o.getString("password"))
             assertEquals("${pfade.anfragen[i]}: Code", "123456", o.getString("code"))
         }

@@ -57,7 +57,9 @@ stehen in zeitlicher Reihenfolge.
 
 Vor der App steht Caddy (`compose.yaml`, `Caddyfile`). Er macht TLS mit einer
 eigenen, lokalen CA (`tls internal`) für `BRICK_HOST` und leitet an die App
-weiter; die App selbst veröffentlicht keinen Port mehr. Die CA liegt unter
+weiter; die App selbst veröffentlicht keinen Port mehr. Caddy entsteht beim
+ersten `docker compose up -d` auf dem Rechner selbst (`Dockerfile.caddy`:
+offizielle Basis per Digest, Go-Module nachgezogen); das dauert einige Minuten. Die CA liegt unter
 `./caddy/data/` — mitsichern. Der App-Container sieht davon nur das öffentliche
 Wurzelzertifikat (Volume `ca-wurzel`), nie den Schlüssel der CA.
 
@@ -117,9 +119,9 @@ alles.
 `scripts/geheimnisse-einrichten.sh` legt in `./geheimnisse/` je eine Datei an:
 `db_password` (Superuser `brickinventory`, nur `postgres` und `db-rolle`),
 `db_app_password` (Rolle `brickinventory_app` ohne Superuser-Rechte, mit der
-sich App und Jobs verbinden), `session_secret` und die beiden für pgweb.
+sich App und Jobs verbinden), `session_secret` und das der Leserolle.
 Vorhandene Dateien bleiben; fehlende übernimmt es aus einer alten `.env`
-(`DB_PASSWORD`, `DB_APP_PASSWORD`, `SESSION_SECRET`, `PGWEB_PASSWORD`) oder
+(`DB_PASSWORD`, `DB_APP_PASSWORD`, `SESSION_SECRET`) oder
 erzeugt sie zufällig. Eine **bestehende** Datenbank behält ihr Passwort aus dem
 ersten Start: Liegt `./pgdata18` schon da und steht kein `DB_PASSWORD` in
 `.env`, bricht das Skript ab, statt ein unpassendes zu erzeugen. `db-rolle`
@@ -236,7 +238,8 @@ andere offen ist.
 Bringt ein Update neue Migrationen mit, kopiert der Server vorher alle
 Tabellen mit Nutzerdaten (`users`, jede Tabelle mit `user_id` und jede mit Fremdschlüssel auf `users`, etwa die Haushaltsverknüpfungen) in ein
 eigenes Schema `vor_migration_<Datum Uhrzeit>` derselben Datenbank. Die drei
-jüngsten bleiben. Das ersetzt `backup.sh` nicht — Katalog und Bilder fehlen
+jüngsten bleiben, keine länger als 30 Tage; ein gelöschtes Konto verschwindet
+auch aus ihnen, und `backup.sh` nimmt sie nicht mit. Das ersetzt `backup.sh` nicht — Katalog und Bilder fehlen
 darin —, aber ein misslungenes Update lässt sich damit zurücknehmen:
 
 ```bash
@@ -291,43 +294,23 @@ einer Kachel abliest, deren Teil intern `3002` heisst, muss `3002` eintragen
 (`SELECT rb_id, bl_id FROM bl_zuordnung WHERE art='part'` zeigt die
 Abweichungen).
 
-## Datenbank im Browser ansehen (pgweb)
+## Datenbank ansehen
 
-Optionales Werkzeug, startet **nicht** mit `docker compose up -d`:
+Ein Werkzeug im Browser gibt es nicht mehr (pgweb lief auf Debian 11 ohne
+Pflege). Zum Nachsehen dient `psql` im Postgres-Container, am besten als
+Leserolle `brickinventory_lesen`: nur `SELECT`, ohne Passwort-Hashes, Tokens,
+Sitzungen, Schlüssel des zweiten Faktors und Einstellungswerte.
 
 ```bash
-docker compose --profile tools up -d pgweb    # starten  → http://localhost:8081
-docker compose --profile tools down pgweb     # wieder abschalten
+PGWEB=ja sh scripts/geheimnisse-einrichten.sh   # einmal: Passwort der Leserolle
+docker compose up -d db-rolle                    # setzt es
+docker compose exec postgres psql -h 127.0.0.1 -U brickinventory_lesen -d brickinventory
 ```
 
-pgweb liest als eigene Rolle `brickinventory_lesen`: nur `SELECT`, ohne
-Passwort-Hashes, Tokens, Sitzungen, Schlüssel des zweiten Faktors und
-Einstellungswerte (API-Schlüssel). Reparaturen gehen nicht über pgweb, sondern
-mit `psql` als App-Rolle.
-
-Die Seite fragt nach Benutzer und Passwort (HTTP-Basic): `PGWEB_USER`
-(Vorgabe `pgweb`) und das Passwort aus `./geheimnisse/pgweb_password`. Beide
-Passwörter (Anmeldung und Leserolle) legt
-`PGWEB=ja sh scripts/geheimnisse-einrichten.sh` an, danach einmal
-`docker compose up -d db-rolle`. Fehlen sie, startet pgweb nicht und meldet
-das im Protokoll (`docker compose logs pgweb`). pgweb läuft als
-Nicht-root, schreibgeschützt und in einem eigenen Netz nur mit `postgres`.
-
-Was die Leserolle sieht, steht als Allowlist je Tabelle in
-`postgres/app-rolle.sh` (`LESEN_SPALTEN`). Eine neue Tabelle oder Spalte ist
-für pgweb unlesbar, bis sie dort eingetragen ist.
-
-> **Wichtig:** Wer sich an pgweb anmeldet, sieht fast die ganze Datenbank. Der Port
-> ist deshalb zusätzlich an `127.0.0.1` gebunden und nur auf dem Server selbst
-> erreichbar — diese Bindung bitte nicht ändern. Von einem anderen Rechner aus
-> geht es per SSH-Tunnel:
->
-> ```bash
-> ssh -L 8081:127.0.0.1:8081 <benutzer>@<server>
-> ```
->
-> Danach im lokalen Browser `http://localhost:8081` öffnen. Nach getaner Arbeit
-> den Dienst wieder herunterfahren.
+Das Passwort steht in `./geheimnisse/pgweb_db_password` (der Name stammt aus
+der Zeit von pgweb). Was die Leserolle sieht, steht als Allowlist je Tabelle in
+`postgres/app-rolle.sh` (`LESEN_SPALTEN`). Reparaturen gehen nicht über die
+Leserolle, sondern mit `psql` als App-Rolle.
 
 ## Empfohlene Umgebungsvariablen
 
@@ -341,6 +324,9 @@ für pgweb unlesbar, bis sie dort eingetragen ist.
 | `DATA_KEY_FILE` | Datei mit dem Schlüssel, ausserhalb von `data/` (compose.yaml: `/app/schluessel/datenschluessel`, Vorgabe `<APP_ROOT>/schluessel/datenschluessel`). Fehlt sie, legt der erste Start sie an (nur für den Besitzer lesbar). |
 | `ADMIN_PASSWORD` | Passwort des beim ersten Start angelegten Admins (nur `npm start`; `compose.yaml` reicht es nicht durch). Sonst wird ein Zufallspasswort erzeugt und **einmalig** ins Log geschrieben. |
 | `SESSION_SECRET` | Pflicht in Produktion (der Start bricht sonst ab). Mit Docker als Datei: `SESSION_SECRET_FILE` (setzt `compose.yaml`). |
+| `NODE_ENV` | Nur `development` und `test` lockern die Regeln (Startverbote, Superuser-Verbot, Fehlertexte, sicheres Cookie). **Ohne Angabe gelten die Regeln des Betriebs** wie mit `production`. |
+| `PGSSLMODE` | TLS zur Datenbank. Liegt sie auf einem anderen Rechner (nicht `postgres`, nicht Loopback), `verify-full` setzen (oder `sslmode=verify-full` in `DATABASE_URL`); sonst warnt der Start mit `[datenbank]`. |
+| `DATA_KEY_ALT_FILE` | Nur während eines Schlüsselwechsels: der vorige Datenschlüssel (`scripts/datenschluessel-wechseln.sh`, UPGRADE.md Abschnitt 43). |
 | `MAIL_KONSOLE_MIT_TOKEN` | Ohne SMTP schreibt der Server jede Mail ins Log, den Link darin **ohne Token** — das Log sieht jeder Verwalter, und ein Rücksetz-Link ist ein Zugang zum Konto. Die Empfängeradresse steht dort maskiert (`m…@example.org`). `1` zeigt den vollständigen Link und die volle Adresse, etwa auf einem Entwicklungsrechner ohne Mailserver. Mit `NODE_ENV=production` verweigert der Server damit den Start. |
 | `BRICK_HOST` | Name oder IP-Adresse des Servers für Caddy (Pflicht mit `compose.yaml`). Ohne `APP_BASE_URL` gilt `https://BRICK_HOST`. Passkeys brauchen einen Namen, keine IP-Adresse. |
 | `CA_ZERTIFIKAT` | Pfad zum Wurzelzertifikat der internen CA (setzt `compose.yaml`). Daraus kommen `/ca.crt` und der Fingerabdruck `fp` im QR-Code. |

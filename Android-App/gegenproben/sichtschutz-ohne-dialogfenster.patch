@@ -1,0 +1,18 @@
+Gegenprobe: Sichtschutz setzt FLAG_SECURE nur auf das Fenster der Activity, nicht auf das Dialogfenster
+Modul: app
+Test: ch.brickinventoryapp.DialogSichtschutzTest
+Rot: ein aufgedecktes Passwort im Dialog
+
+diff --git a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/Sichtschutz.kt b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/Sichtschutz.kt
+index 43bf367..7c358eb 100644
+--- a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/Sichtschutz.kt
++++ b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/Sichtschutz.kt
+@@ -25,7 +25,7 @@ fun Sichtschutz(ueberdeckung: Boolean = true) {
+     DisposableEffect(view, activity) {
+         // Ein Dialog hat ein eigenes Fenster und übernimmt FLAG_SECURE vom Fenster darunter
+         // erst bei seinem nächsten Neuaufbau. Darum beide sofort, und beide gezählt.
+-        val fenster = listOfNotNull(activity?.window, (view.parent as? DialogWindowProvider)?.window).distinct()
++        val fenster = listOfNotNull(activity?.window)
+         fenster.forEach(::sichere)
+         onDispose { fenster.forEach(::gibFrei) }
+     }

@@ -1,6 +1,7 @@
 package ch.brickinventoryapp
 
 import org.junit.Test
+import java.io.File
 
 /**
  * Ersatz für den Compiler: Verweist irgendwo Code auf ein Zustandsfeld, das es
@@ -9,9 +10,6 @@ import org.junit.Test
  * ── Woher dieser Test kommt ─────────────────────────────────────────────────
  * Beim Umbau des Katalogs auf das Fensterladen (Nachtrag 86) ist
  * `CatalogUiState.sets` entfallen — ersetzt durch `loadedPages` und `total`.
- * Eine Stelle blieb zurück: `CatalogGraph.kt` prüfte weiter `catalogState.sets`
- * und liess sich nicht mehr übersetzen. Marco hat den Übersetzungsfehler
- * gemeldet, nicht ich.
  *
  * Kotlin lässt sich in der Prüfumgebung nicht übersetzen; die üblichen
  * Behelfe (Klammerbilanz, Textsuche) finden so etwas nicht. Dieser Test tut
@@ -92,12 +90,6 @@ class UiStateFieldsTest {
             // (Nachtrag 96/115), haben keinen Parameter mehr, an dem der Typ
             // ablesbar wäre — die Angabe steht in der Zeile
             //   val katalog by vm.catalogState.collectAsStateWithLifecycle()
-            // Welcher Fluss welchen Zustand trägt, verraten die ViewModels
-            // selbst; die Zuordnung wird deshalb dort gelesen und nicht hier
-            // gepflegt. Ohne das hielte der Test `state` in CatalogScreen
-            // wieder für den App-Zustand und meldete vierzig Fehlalarme —
-            // genau das, wogegen der Kommentar oben schon einmal geschrieben
-            // wurde.
             Regex("""\bval\s+(\w+)\s+by\s+vm\.(\w+)\.collectAsStateWithLifecycle""")
                 .findAll(s).forEach { m ->
                     fluesse[m.groupValues[2]]?.let { lokal[m.groupValues[1]] = it }
@@ -226,14 +218,6 @@ class UiStateFieldsTest {
      *     kein Teile-Bildschirm es liest. Wirkung hatte es nur in FREMDEN
      *     Domänen: Die Galerie sah beschäftigt aus, und ihr Nachladen war
      *     gesperrt, solange man ein Teil erfasste.
-     *   • `priceHistoryLoading` in SetDetailUiState und
-     *     ManualItemDetailUiState — an sechs Stellen geschrieben, nirgends
-     *     gelesen. Der Marktpreis-Abschnitt erschien deshalb erst, wenn die
-     *     Antwort da war; bis dahin war nicht zu unterscheiden, ob noch geladen
-     *     wird oder ob es zu diesem Teil keine Preise gibt. Jetzt verdrahtet.
-     *   • `AppUiState.username`, `CatalogUiState.yearCounts` und
-     *     `ManualItemDetailUiState.newQuantity` — gesetzt, nie gelesen, und
-     *     auch nicht gebraucht. Gelöscht.
      *
      * Der Unterschied ist wichtig: Die Antwort auf diesen Test ist mal „lies es
      * endlich" und mal „lösch es", aber nur im seltensten Fall „trag es unten
@@ -267,8 +251,8 @@ class UiStateFieldsTest {
         // Fluss-Deklarationen des AppViewModels und der Grundlage der Bereiche.
         // Ein baumweiter Lauf wäre hier falsch — MonitoringViewModel nennt
         // seinen eigenen Fluss ebenfalls `_state`, und der trägt MonitoringUiState.
-        val mvm = ohneKommentare(java.io.File(wurzel, "ui/AppViewModel.kt").readText() + "\n" +
-            java.io.File(wurzel, "ui/viewmodel/Bereichshelfer.kt").readText())
+        val mvm = ohneKommentare(File(wurzel, "ui/AppViewModel.kt").readText() + "\n" +
+            File(wurzel, "ui/viewmodel/Bereichshelfer.kt").readText())
         val privGlobal = Regex("""val\s+_(\w+)\s*=\s*MutableStateFlow\((\w+UiState)\(""")
             .findAll(mvm).associate { it.groupValues[1] to it.groupValues[2] }
         val oeffentlich = Regex("""val\s+(\w+)\s*=\s*_(\w+)\.asStateFlow\(\)""")

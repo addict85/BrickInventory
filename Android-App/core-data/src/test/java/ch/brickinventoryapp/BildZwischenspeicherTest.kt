@@ -23,11 +23,11 @@ import java.io.File
 import java.io.IOException
 
 /**
- * Der HTTP-Zwischenspeicher der Bilder liegt verschlüsselt (sec11 N1): Auf der Platte
+ * Der HTTP-Zwischenspeicher der Bilder liegt verschlüsselt: Auf der Platte
  * stehen weder die Bilder noch ihre Adressen, und offline liefert er trotzdem.
  * Ausgeführt mit einem echten OkHttp-Cache gegen einen Testserver.
  *
- * Gegenproben (04.11.2026, gemessen mit kotlinc lokal):
+ * Gegenproben:
  *   A  VerschluesseltesDateisystem reicht source/sink/appendingSink unverändert durch
  *      → rot „der Zwischenspeicher liegt verschluesselt …“;
  *      gegenproben/bildcache-klartext.patch
@@ -35,7 +35,7 @@ import java.io.IOException
  *      Namen gilt nicht …“
  *   C  raeumeKlartextBildcachesAuf() ohne die Zeile `if (klartext) http.deleteRecursively()`
  *      → rot „ein Klartext-Zwischenspeicher aelterer Fassungen verschwindet …“
- *   D  (04.11.2026, sec12 H9, kotlinc lokal) im Eingang `if (!abgeschlossen) throw …`
+ *   D  im Eingang `if (!abgeschlossen) throw …`
  *      gestrichen → rot „eine hinten gekuerzte Datei gilt nicht …“;
  *      gegenproben/bildcache-ohne-endmarker.patch
  */
@@ -87,7 +87,7 @@ class BildZwischenspeicherTest {
         val cacheDir = File(ordner, "cache")
         val http = File(cacheDir, "image_http_cache")
         val coil = File(cacheDir, "image_cache").apply { mkdirs() }
-        File(http, "journal").apply { parentFile.mkdirs(); writeText("libcore.io.DiskLruCache\n1\n201105\n2\n") }
+        File(http, "journal").apply { parentFile!!.mkdirs(); writeText("libcore.io.DiskLruCache\n1\n201105\n2\n") }
         File(http, "abc.1").writeText("SAMMLUNG-75192")
         File(coil, "x.1").writeText("SAMMLUNG-75192")
         raeumeKlartextBildcachesAuf(cacheDir)

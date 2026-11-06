@@ -176,8 +176,9 @@ jobs:
           # merge-Job, sonst wuerde die zweite Architektur die erste
           # ueberschreiben statt sich dazuzustellen.
           outputs: type=image,name=${{ env.IMAGE }},push-by-digest=true,name-canonical=true,push=true
-          cache-from: type=gha,scope=${{ matrix.plattform }}
-          cache-to: type=gha,mode=max,scope=${{ matrix.plattform }}
+          # Ohne Zwischenspeicher: Den GHA-Cache auf main beschreibt auch die CI
+          # mit allen Entwicklungspaketen; eine vergiftete Schicht trüge sonst die Signatur.
+          no-cache: true
           # Herkunft (SLSA) und Stückliste je Plattform hängen am Image. Der
           # Scanner der Stückliste fest per Digest wie jedes andere Image hier.
           provenance: mode=max
@@ -285,6 +286,18 @@ jobs:
           fi
           echo "Alle erwarteten Plattformen sind im Manifest."
           docker buildx imagetools inspect "$TAG"
+
+      # Vor der Signatur: Eine behebbare Lücke ab high hält die Veröffentlichung
+      # auf, auch wenn der Workflow „Sicherheit“ für diesen Stand noch läuft.
+      - name: Lücken im veröffentlichten Digest
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          scan-type: image
+          image-ref: ${{ env.IMAGE }}@${{ steps.manifest.outputs.digest }}
+          scanners: vuln
+          severity: HIGH,CRITICAL
+          ignore-unfixed: true
+          exit-code: '1'
 
       # Keyless signiert: Die Signatur bindet den Digest an diesen Workflow auf
       # main, nachprüfbar ohne Schlüsselaustausch (Befehl im README, Abschnitt

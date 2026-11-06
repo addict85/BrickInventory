@@ -28,7 +28,7 @@ import java.io.IOException
  * fängt über fangeAusserAbbruch; kotlinx-serialization verpackt Ausnahmen aus einem
  * Serializer, deshalb wird die Hilfe selbst geprüft und am Cache nur das Schlucken.
  *
- * Gegenproben (05.11.2026):
+ * Gegenproben:
  *   fang-schluckt-abbruch   fangeAusserAbbruch ohne Abbruch-Zweig → rot „fangeAusserAbbruch reicht …“
  *   strom-schluckt-abbruch  folgeStrom mit `catch (_: Exception)`  → rot „folgeStrom reicht …“
  *   cache-schluckt-abbruch  put mit `catch (_: Throwable)` → rot in QuelltextRatscheTest

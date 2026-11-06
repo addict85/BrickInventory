@@ -46,7 +46,7 @@ import java.util.Base64
  * Signatur, Fassung und Installer, mit einem Gerät im Speicher, einem Client ohne
  * Netz und virtueller Zeit.
  *
- * Gegenproben (05.11.2026, gemessen mit kotlinc lokal):
+ * Gegenproben:
  *   update-angebot-ohne-frische  Angebot mit istNeuer statt anzubietendeFassung →
  *                                rot „eine zurueckgesetzte Beschreibung bietet nichts an“
  *   update-signatur-ungeprueft   die Signaturprüfung nach dem Download entfernt →
@@ -57,6 +57,8 @@ import java.util.Base64
  *                                rot „mehr als angekuendigt wird nicht geschrieben“
  *   update-still-mit-fehler      die stille Prüfung meldet Fehler →
  *                                rot „eine unsignierte Beschreibung meldet sich nur auf Knopfdruck“
+ *   update-start-ohne-schalter   pruefeBeimStart() fragt den Schalter nicht (sec17 A-N7) →
+ *                                rot „ausgeschaltet fragt der Start nicht bei GitHub“
  *   update-abmelden-behaelt      kein Zurücksetzen beim Abmelden → rot „beim Abmelden verfaellt …“
  */
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -71,7 +73,10 @@ class UpdateViewModelTest {
 
     /** Antwort je Adresse; der Client geht nie ins Netz. */
     private val antworten = mutableMapOf<String, Pair<Int, ByteArray>>()
+    /** Jede Anfrage des Update-Clients; ins Netz geht keine. */
+    private val angefragt = mutableListOf<String>()
     private val client = OkHttpClient.Builder().addInterceptor { kette ->
+        angefragt += kette.request().url.toString()
         val (code, rumpf) = antworten[kette.request().url.toString()] ?: (404 to ByteArray(0))
         Response.Builder().request(kette.request()).protocol(Protocol.HTTP_1_1).code(code).message("x")
             .body(rumpf.toResponseBody("application/octet-stream".toMediaType())).build()
@@ -96,6 +101,9 @@ class UpdateViewModelTest {
         var stand: UpdateStand? = null
         override suspend fun updateStand() = stand
         override suspend fun merkeUpdateStand(stand: UpdateStand) { this.stand = stand }
+        var beimStart = true
+        override fun startpruefungAn() = beimStart
+        override fun setzeStartpruefung(an: Boolean) { beimStart = an }
     }
     private val token = MutableStateFlow<String?>("token")
     private val geraet = Geraet()
@@ -255,5 +263,18 @@ class UpdateViewModelTest {
         token.value = ""
         advanceUntilIdle()
         assertEquals("beim Abmelden verfaellt der Zustand", UpdateUiState(), zustand())
+    }
+
+    @Test
+    fun `ausgeschaltet fragt der Start nicht bei GitHub, eingeschaltet genau einmal`() = runTest(takt) {
+        vm.setzeStartpruefung(false)
+        assertFalse("Der Schalter steht im Zustand", vm.updateState.value.startpruefung)
+        vm.pruefeBeimStart()
+        advanceUntilIdle()
+        assertEquals("Ausgeschaltet ging eine Anfrage hinaus", emptyList<String>(), angefragt)
+        vm.setzeStartpruefung(true)
+        vm.pruefeBeimStart()
+        advanceUntilIdle()
+        assertEquals(listOf(UPDATE_VERSION_URL), angefragt)
     }
 }

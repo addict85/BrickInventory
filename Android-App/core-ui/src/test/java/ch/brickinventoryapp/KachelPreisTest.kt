@@ -15,7 +15,7 @@ import org.junit.Test
  * Preis und G&V auf der Galeriekachel: vom Server (kachel_preis,
  * kachel_pnl_pct), bei älteren Servern die frühere Rechnung der App (Übergang).
  *
- * Gegenproben (30.10.2026, gemessen mit kt-b2/bau.sh):
+ * Gegenproben:
  *   S  in kachelPreise() immer kachelPreisVorServer() genommen → rot „die
  *      Kachel nimmt Betrag und G&V des Servers“ (800,0 statt 812,5)
  *   T  die Bedingung auf `e.kachelPreis != null` verkürzt → rot ebenda am
@@ -29,7 +29,7 @@ import org.junit.Test
  *   C  in kachelBetrag() den Kaufpreis vor den Marktpreis gestellt → rot
  *      „der Marktpreis geht vor …“
  *
- * Gegenprobe (03.11.2026, von Hand durchgespielt, kein SDK in der Sitzung):
+ * Gegenprobe:
  *   Q  in kachelQuelle() `preis.quelle == "kauf"` nicht beachtet → rot „die
  *      Quelle des Servers …“ (MARKT statt KAUF); in der Oberfläche misst es
  *      gegenproben/kachel-quelle-ignoriert.patch

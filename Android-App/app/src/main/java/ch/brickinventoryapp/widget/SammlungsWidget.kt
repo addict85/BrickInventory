@@ -54,7 +54,7 @@ import ch.brickinventoryapp.data.repository.Ergebnis
 /**
  * Die zuletzt geholten Zahlen. Das Widget liest nur hier und zeigt so auch ohne
  * Netz den letzten Stand; holen tut allein [WidgetArbeiter]. Verschlüsselt wie die
- * übrigen Ablagen (sec8 N5); ein Klartext-Altbestand gilt als leer.
+ * übrigen Ablagen; ein Klartext-Altbestand gilt als leer.
  */
 internal object WidgetAblage {
     private const val DATEI = "widget"
@@ -64,7 +64,7 @@ internal object WidgetAblage {
         EntryPointAccessors.fromApplication(ctx, WidgetZugang::class.java).ablage().fuer("widget")
     }
 
-    /** Zweck und Schlüssel als AAD (sec10 H7), wie im Antwort-Cache. */
+    /** Zweck und Schlüssel als AAD, wie im Antwort-Cache. */
     private const val BINDUNG = "$DATEI/$SCHLUESSEL"
 
     fun lies(ctx: Context): WidgetZahlen? {
@@ -72,7 +72,7 @@ internal object WidgetAblage {
         return runCatching {
             val daten = Base64.decode(roh, Base64.NO_WRAP)
             val verfahren = chiffre(ctx)
-            // Ein Stand ohne Bindung (vor sec10 H7) wird einmal übernommen und gebunden neu abgelegt.
+            // Ein Stand ohne Bindung (ältere Fassung) wird einmal übernommen und gebunden neu abgelegt.
             val text = verfahren.entschluessle(daten, BINDUNG)
                 ?: verfahren.entschluessleUngebunden(daten)?.also { ablegen(ctx, verfahren, it) }
             text?.let { ApiJson.decodeFromString(WidgetZahlen.serializer(), it.toString(Charsets.UTF_8)) }
@@ -155,7 +155,7 @@ class SammlungsWidget : GlanceAppWidget() {
     override suspend fun provideGlance(context: Context, id: GlanceId) {
         val zugang = runCatching { EntryPointAccessors.fromApplication(context, WidgetZugang::class.java) }.getOrNull()
         val angemeldet = fangeAusserAbbruch { zugang?.zugangsdaten()?.tokenJetzt()?.isNotBlank() == true }.getOrDefault(false)
-        // Geldwerte nur, wenn der Nutzer sie auf dem Startbildschirm erlaubt (sec8 H5).
+        // Geldwerte nur, wenn der Nutzer sie auf dem Startbildschirm erlaubt.
         val zeigen = zugang?.darstellung()?.widgetWerteZeigen() == true
         val zahlen = widgetAnzeige(WidgetAblage.lies(context), angemeldet)
         // Die Texte in der Sprache der App, nicht des Systems (LanguageManager).

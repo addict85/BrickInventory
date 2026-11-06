@@ -36,7 +36,7 @@ den Commits, nicht hier.
 ### Transport (1)
 - HTTPS als Standard: Caddy vor der App, die App veröffentlicht keinen Port;
   Port 80 leitet um und liefert nur `/ca.crt`: `compose.yaml`, `Caddyfile` —
-  `compose-pgweb`.
+  `compose-haertung`.
 - Keine CA ohne Namensbeschränkung als stiller Rückfall: Caddy startet nur mit
   eigener, auf `BRICK_HOST` beschränkter CA (`scripts/ca-einrichten.sh`), mit
   `BRICK_TLS=acme` (öffentlicher Name) oder ausdrücklich mit
@@ -61,9 +61,9 @@ den Commits, nicht hier.
   `sicherheit-runde11-db`.
 - Die Wurzel signiert die Blätter (`sign_with_root`) und steht in der
   ausgelieferten Kette; die App pinnt ihren SPKI-Fingerabdruck aus dem QR-Code
-  (`fp`): `utils/tlsWurzel.ts`, `routes/auth.ts` — `tls-wurzel-db`.
+  (`fp`): `src/infra/tlsWurzel.ts`, `routes/auth.ts` — `tls-wurzel-db`.
 - `TRUST_PROXY` nennt genau Caddy; dahinter Cookie mit `Secure` und HSTS:
-  `utils/konfig.ts` (`cookieSicher`), `server.ts` — `tls-wurzel-db`, `hsts`.
+  `src/infra/konfig.ts` (`cookieSicher`), `server.ts` — `tls-wurzel-db`, `hsts`.
 - Die Schlüssel der CA bleiben bei Caddy: Die App sieht den Ordner nur lesend
   und als Nicht-root nur die vom Entrypoint kopierte Wurzel.
 
@@ -85,10 +85,10 @@ den Commits, nicht hier.
   `POST /auth/bestaetigung-erneut` mit gleicher Antwort und Dauer für jede
   Adresse — `konto-deaktivieren-db`.
 - Sperre je Adresse und je Konto mit wachsender Wartezeit:
-  `utils/loginLimiter.ts` — `anmeldesperre-db`, `ip-drossel-parallel-db`.
+  `src/konto/loginLimiter.ts` — `anmeldesperre-db`, `ip-drossel-parallel-db`.
 - Sitzung: `httpOnly`, `sameSite=lax`, `secure` hinter TLS, Leerlauf- und
-  Höchstdauer, neue Sitzungs-ID beim Anmelden: `utils/sitzungsFrist.ts`,
-  `utils/auth.ts` — `sitzung-leerlauf-db`, `sitzung-hoechstdauer`, `auth-sessions-db`.
+  Höchstdauer, neue Sitzungs-ID beim Anmelden: `src/konto/sitzungsFrist.ts`,
+  `src/konto/auth.ts` — `sitzung-leerlauf-db`, `sitzung-hoechstdauer`, `auth-sessions-db`.
 - Passwortwechsel und Kontolöschung beenden Sitzungen und Tokens —
   `auth-sessions-db`, `token-laufzeit-db`.
 - Beendete Sitzungen bleiben beendet: Jede Sitzung trägt
@@ -105,11 +105,11 @@ den Commits, nicht hier.
   Verwalterrouten verlangen Sitzung oder Scope `voll`. Gleitender Ablauf
   (90 Tage), Tausch über `/auth/token-rotieren` mit 5 min Überlappung;
   „unbegrenzt“ nur über HTTPS und mit Tauschpflicht nach 60 Tagen;
-  Geräteliste mit Scope, Netz und Ablauf: `utils/auth.ts` —
+  Geräteliste mit Scope, Netz und Ablauf: `src/konto/auth.ts` —
   `token-scope-rotation-db`, `token-gleitfrist-db`.
 - Passkeys (WebAuthn) ohne Passwort und als zweiter Faktor; Challenge nur
-  einmal gültig, Zähler, Herkunft aus `APP_BASE_URL`: `utils/passkeys.ts` —
-  `passkeys-db`. TOTP: `utils/zweiterFaktor.ts` — `zweiter-faktor-db`.
+  einmal gültig, Zähler, Herkunft aus `APP_BASE_URL`: `src/konto/passkeys.ts` —
+  `passkeys-db`. TOTP: `src/konto/zweiterFaktor.ts` — `zweiter-faktor-db`.
 - Kein Weg am zweiten Faktor vorbei: Es gibt genau einen Bestätigungsweg,
   `bestaetigeMitFaktor` (`src/konto/http/anmeldung.ts`). Bei aktivem TOTP
   verlangt er immer Code oder Passkey-Antwort, auch mit dem
@@ -144,20 +144,20 @@ den Commits, nicht hier.
 - „Alle meine Daten löschen" nur mit Passwort — `alles-loeschen-haushalt-db`.
 - Mailadressen stehen im Protokoll nur maskiert — `haushalt-beitreten-db`.
 - In Produktion kein Start mit Beispiel-`SESSION_SECRET` oder
-  Beispiel-Datenbankpasswort: `server.ts`, `utils/konfig.ts` (`startVerbote`) — `startverbot`.
+  Beispiel-Datenbankpasswort: `server.ts`, `src/infra/konfig.ts` (`startVerbote`) — `startverbot`.
 - `/api/v1/startup-status` nennt Schritt und Unterstand nur angemeldet — `gesundheit-db`.
 
 ### Herkunft der Client-Adresse (1)
 - `TRUST_PROXY` vertraut nur ausdrücklich genannten Adressen oder kleinen
   Netzen; Vorgabe Loopback, `docker`/`true`/Hop-Zahlen verweigern den Start:
-  `utils/proxyVertrauen.ts` — `anmeldesperre-db`, `proxy-hinweis`, `startverbot`.
+  `src/infra/proxyVertrauen.ts` — `anmeldesperre-db`, `proxy-hinweis`, `startverbot`.
 - `compose.yaml`: festes Netz `172.28.73.0/24`; ein Reverse-Proxy bekommt
-  darin eine feste Adresse, und genau die steht in `TRUST_PROXY` — `compose-pgweb`.
+  darin eine feste Adresse, und genau die steht in `TRUST_PROXY` — `compose-haertung`.
 
 ### CSRF (2)
 - Ändernde Anfragen: `Sec-Fetch-Site`, sonst `Origin`/`Referer` gegen Host
   und `APP_BASE_URL`; Cookie-Sitzung ohne Herkunft wird abgelehnt, Bearer
-  ohne Cookie ausgenommen: `utils/herkunft.ts` — `herkunft`.
+  ohne Cookie ausgenommen: `src/infra/herkunft.ts` — `herkunft`.
 - Mit `APP_BASE_URL` antwortet die App nur unter deren Namen (sonst 421
   `fremder_host`), gegen DNS-Rebinding im Klartextbetrieb. Frei bleiben
   Loopback, Bearer-Token, `/ca.crt` und die Gesundheitspfade:
@@ -168,7 +168,7 @@ den Commits, nicht hier.
 
 ### Zugriff auf fremde Daten (3)
 - Jede Abfrage über `scopeIds()`/`writableIds()` (Haushalt):
-  `utils/household.ts` — `erfassung-fremd-loeschen-db`, `gutscheine-db`, `pdf-jobs-db`.
+  `src/haushalt/haushalt.ts` — `erfassung-fremd-loeschen-db`, `gutscheine-db`, `pdf-jobs-db`.
 - Uploads nur für Besitzer und Hauptkonto: `routes/datenDateien.ts` — `daten-dateien-db`, `media-auth`.
 - Kaufpreis umhängen: Eine fremde Erfassungs-ID antwortet wie eine fehlende
   (404 `kaufpreis_nicht_gefunden`), kein Orakel für vergebene IDs:
@@ -184,12 +184,12 @@ den Commits, nicht hier.
 - Die Haushaltswährung stellt nur das Hauptkonto (Unterkonto: 403
   `waehrung_nur_hauptkonto`) und nur für seinen Haushalt abwärts; hängt ein
   Unterkonto auch an einem fremden Hauptkonto mit anderer Währung: 409
-  `waehrung_geteiltes_unterkonto`: `src/konto/settings.ts` — `haushalt-waehrung-db`.
+  `waehrung_geteiltes_unterkonto`: `src/konto/nutzerEinstellung.ts` — `haushalt-waehrung-db`.
 - Gutscheine nie über den Haushalt, auch nicht für Verwalter — `gutscheine-db`.
 
 ### Gemeinsame Daten (3)
 - Bildcache nur aus geprüften Katalogadressen (`bild_von IS NULL`), nie aus
-  Angaben des Clients: `jobs/pdfErzeugung.ts`, `startup/bildNachlauf.ts` —
+  Angaben des Clients: `jobs/pdfErzeugung.ts`, `jobs/bildNachlauf.ts` —
   `bildcache-quelle-db`.
 - Setnummer für den Bild-Job nur aus einer reinen Rebrickable-Setadresse:
   `routes/imgProxy.ts` — `bildcache-quelle-db`.
@@ -199,10 +199,10 @@ den Commits, nicht hier.
 
 ### Uploads (4)
 - Typ aus dem Inhalt, Endung aus dem MIME-Typ, Name zufällig, Kontingent je
-  Konto: `routes/api_v1/sets.ts`, `utils/dateiEmpfang.ts` — `upload-grenzen-db`.
-- Gutschein-PDF höchstens 2 MB, Entpackgrenze: `utils/gutscheinPdf.ts` — `gutschein-pdf-bombe-db`.
+  Konto: `routes/api_v1/sets.ts`, `src/infra/dateiEmpfang.ts` — `upload-grenzen-db`.
+- Gutschein-PDF höchstens 2 MB, Entpackgrenze: `src/gutscheine/gutscheinPdf.ts` — `gutschein-pdf-bombe-db`.
 - Gutschein-PDFs verschlüsselt, Konto löschen entfernt Uploads und
-  Gutscheine: `utils/gutscheinDateien.ts` — `konto-dateien-db`.
+  Gutscheine: `src/gutscheine/gutscheinDateien.ts` — `konto-dateien-db`.
 
 ### Abrufe nach aussen (SSRF, 5)
 - Die Guthaben-Abfrage bei lego.com geht über `src/infra/abruf.ts`: nur
@@ -241,7 +241,7 @@ den Commits, nicht hier.
 - Vor-/Nachname ohne Steuerzeichen und Webadressen (`nameGueltig`). Mails an
   unbestätigte Adressen (Bestätigung, Rücksetzen, „Name vergeben“) grüssen
   ohne Namen; die Konsole zeigt nur den vom Absender übergebenen Link:
-  `src/infra/mailer.ts` — `mail-fremder-text-db`, `mail-link-konsole`.
+  `src/mail/mailer.ts` — `mail-fremder-text-db`, `mail-link-konsole`.
 
 ### Ausgabe und Kopfzeilen (2)
 - CSP ohne Inline-Skripte, `X-Frame-Options`, `nosniff`, HSTS nur bei
@@ -249,7 +249,7 @@ den Commits, nicht hier.
   `X-Forwarded-Proto`: `server.ts` — `csp-actions`, `hsts`, `frontend-escaping`.
 - Ströme und Sammelberichte (Erfassungsstrom, CSV-/XML-Importe) melden
   Fachfehler mit Code, alles andere als `interner_fehler`; der Text steht nur
-  im Protokoll: `oeffentlicherFehler` in `src/infra/httpError.ts` — `fehlertext-intern-db`.
+  im Protokoll: `oeffentlicherFehler` in `src/infra/fehler.ts` — `fehlertext-intern-db`.
 - 4xx ohne Code nennen nie den Text einer Bibliothek (Parser, Dateipfad,
   zlib), sondern `anfrage_ungueltig`, `nicht_gefunden` oder
   `anfrage_zu_gross`; eigene Sätze tragen die Klasse `Meldung`:
@@ -267,10 +267,10 @@ den Commits, nicht hier.
   Grenzen passiert hat: `src/gutscheine/gutscheinGuthabenSchranke.ts` —
   `gutschein-guthaben-db`.
 - `X-Request-Id` nur aus `[A-Za-z0-9._:-]{1,64}`, sonst eigene Kennung;
-  Caddy setzt je Anfrage eine neue: `utils/protokoll.ts` — `protokoll`.
+  Caddy setzt je Anfrage eine neue: `src/infra/protokoll.ts` — `protokoll`.
 - Fremdkontingent: je Nicht-Verwalter ein Viertel, alle zusammen die Hälfte;
   Aufträge zählen beim Konto, das sie eingestellt hat:
-  `utils/apiKontingent.ts`, `utils/auftraege.ts` — `api-kontingent-konto-db`.
+  `src/katalog/apiKontingent.ts`, `src/auftraege/auftraege.ts` — `api-kontingent-konto-db`.
 - Je Zieladresse (gehasht): Registrierung 3/h (429), „Passwort vergessen“ 3/h
   (still keine Mail): `src/konto/zielDrossel.ts` — `mail-fremder-text-db`.
 - Prüfung eines Haushaltscodes (`redeem/pruefen`) 30/h je Konto —
@@ -289,14 +289,14 @@ den Commits, nicht hier.
 - Der Fingerabdruck eines `Idempotency-Key` enthält keine Passwort-, Code-,
   PIN- oder Schlüsselfelder und ist ein HMAC mit eigenem Teilschlüssel des
   Datenschlüssels — `idempotenz-geheim-db`.
-- Geheimnisse und Gutschein-PDFs mit dem Datenschlüssel: `utils/geheimnis.ts`
+- Geheimnisse und Gutschein-PDFs mit dem Datenschlüssel: `src/infra/geheimnis.ts`
   — `geheimnisse-verschluesselt-db`, `konto-dateien-db`.
-- Mail-Links ohne Token in den Protokollen: `utils/mailer.ts`.
+- Mail-Links ohne Token in den Protokollen: `src/mail/mailer.ts`.
 
 ### Lieferkette (5)
-- Actions per Commit-SHA, Images per Digest — `workflow-ort`, `compose-pgweb`.
-  Dependabot schlägt neue Fassungen vor: Actions, Dockerfiles und die Dienste
-  in `compose.yaml` (`docker-compose`); npm und Gradle über Renovate
+- Actions per Commit-SHA, Images per Digest — `workflow-ort`, `compose-haertung`.
+  Renovate schlägt neue Fassungen vor: Actions, Dockerfiles (auch
+  `Dockerfile.caddy`) und die Dienste in `compose.yaml` (`docker-compose`), npm und Gradle
   (`renovate.json` im Wurzelverzeichnis), frühestens drei Tage nach
   Erscheinen (`minimumReleaseAge`).
 - `npm ci --ignore-scripts` aus dem Lockfile (Dockerfile, CI); Install-Skripte
@@ -341,10 +341,16 @@ den Commits, nicht hier.
 - `su-exec` im Laufzeit-Image mit fester Fassung — `dockerfile`.
 - `.github/workflows/sicherheit.yml`: CodeQL (TypeScript, Kotlin), Trivy
   (Abhängigkeiten, Image), ZAP-Baseline gegen den Produktionsserver. Die
-  Images aus `compose.yaml` (Caddy, Postgres, pgweb) liest der Lauf aus der
-  Datei und prüft sie mit Trivy; eine behebbare Lücke ab high ist rot,
-  ausser sie steht mit Ablaufdatum in `.github/trivy-betrieb.ignore`. Ein
-  Digest, der hinter seinem Tag zurückliegt, wird gemeldet — `workflow-ort`.
+  fremden Images aus `compose.yaml` (Postgres) liest der Lauf aus der Datei
+  und prüft sie mit Trivy; eine behebbare Lücke ab high ist rot, ausser sie
+  steht mit Ablaufdatum in `.github/trivy-betrieb.ignore`. Caddy baut
+  `Dockerfile.caddy`; der Job `trivy-eigenbau` prüft das Ergebnis ohne
+  Ausnahmen. Ein Digest, der hinter seinem Tag zurückliegt, wird gemeldet —
+  `workflow-ort`, `compose-betrieb`.
+- `docker-publish.yml` baut ohne Cache (`no-cache: true`): Den GHA-Cache auf
+  `main` beschreibt auch die CI mit allen Entwicklungspaketen. Vor `cosign
+  sign` prüft Trivy den veröffentlichten Digest; `web-ci.yml` prüft nach
+  `npm ci` die Registry-Signaturen (`npm audit signatures`) — `workflow-ort`.
 
 ## Betrieb
 
@@ -353,7 +359,7 @@ den Commits, nicht hier.
   `pg_execute_server_program` & Co.; die Rolle besitzt Datenbank, Tabellen und
   Funktionen (Migrationen). Den Superuser kennen nur Postgres und der
   einmalige Dienst `db-rolle` (`postgres/app-rolle.sh`). Läuft die App doch als
-  Superuser, warnt der Start — `db-rolle-db`, `compose-pgweb`.
+  Superuser, warnt der Start — `db-rolle-db`, `compose-haertung`.
 - `db-rolle` läuft als Superuser in einer Datenbank, die der App-Rolle gehört.
   Deshalb fester `search_path=pg_catalog,pg_temp` und `role=none` schon beim
   Verbinden (PGOPTIONS), nur `pg_catalog.`-Funktionen, zuerst
@@ -371,10 +377,23 @@ den Commits, nicht hier.
   nur als bewusste Ausnahme (Port 3000 in `compose.yaml` einkommentieren,
   `COOKIE_SECURE=0`).
 - `caddy/data/` mitsichern und wie ein Passwort behandeln (Schlüssel der CA).
-- pgweb nur auf `127.0.0.1`, nur mit Profil `tools`, nur mit Anmeldung und
-  als Leserolle `brickinventory_lesen`; als uid 1000, `read_only`, ohne
-  Capabilities und in einem eigenen Netz nur mit `postgres` —
-  `compose-pgweb`, `compose-geheimnisse`. Die Leserolle liest nur eine
+- Postgres hängt nur im internen Netz `db-net` (ohne Weg nach draussen),
+  schreibt nur in Daten und Socket (`read_only`); jedes tmpfs ist `noexec`,
+  `nosuid`, `nodev` und begrenzt; jeder Dienst schreibt sein Docker-Protokoll
+  mit `driver: local`, höchstens 5 × 10 MB — `compose-betrieb`.
+- Ohne `NODE_ENV` gelten alle Regeln des Betriebs (Startverbote, Superuser-
+  Verbot, verborgene 5xx-Texte, sicheres Cookie); nur `development` und
+  `test` lockern sie — `betrieb-ohne-node-env-db`.
+- Der Datenschlüssel lässt sich wechseln (`scripts/datenschluessel-wechseln.sh`,
+  `DATA_KEY_ALT_FILE`); der Start schreibt alles mit dem neuen neu —
+  `datenschluessel-wechsel-db`.
+- Gelöschte Konten verschwinden auch aus den Kopien `vor_migration_*`; diese
+  verfallen nach 30 Tagen, das Verwaltungsprotokoll nach einem Jahr —
+  `konto-loeschen-spuren-db`. Sicherungen enthalten Sitzungen,
+  Anmeldezähler und Protokollzeilen nicht — `backup-restore-db`.
+- Kein Datenbank-Werkzeug im Browser: pgweb (Debian 11 ohne Pflege) ist
+  entfernt — `compose-betrieb`. Zum Nachsehen dient `psql` als Leserolle
+  `brickinventory_lesen` im Postgres-Container. Die Leserolle liest nur eine
   Allowlist je Tabelle (`LESEN_SPALTEN` in `postgres/app-rolle.sh`): eine neue
   Tabelle oder Spalte bleibt unlesbar, bis sie dort steht; Tokens, Sitzungen,
   Passwort-Hashes, TOTP, Einstellungswerte und Gutschein-PINs stehen nicht
@@ -396,6 +415,27 @@ den Commits, nicht hier.
   Sicherung, ausser mit ausdrücklichem `BACKUP_KLARTEXT=ja`. Der private
   Schlüssel liegt nicht auf dem Server — `backup-verschluesselt`.
 
+## Android: Resilienz (MASVS)
+
+Angestrebt ist **MASVS L1 ohne RESILIENCE (Profil „L1“, nicht „R“)**, mit einzelnen
+L2-Massnahmen dort, wo Daten des Kontos liegen (sec17 B-N11):
+
+- Keine Root-, Debugger-, Hook- oder Play-Integrity-Erkennung und kein Abgleich
+  der eigenen Signatur zur Laufzeit. Die App ist quelloffen und selbst verteilt;
+  wer sie auf seinem Gerät untersucht, ist meist ihr Besitzer. Solche Prüfungen
+  lassen sich mit Frida oder Magisk umgehen und sperrten Nutzer eigener ROMs aus,
+  ohne Daten zu schützen.
+- Was sie schützen sollten, liegt an anderer Stelle: Der Server prüft jeden
+  Zugriff; Token und lokale Ablagen sind im Keystore bzw. mit einem davon
+  umhüllten Schlüssel verschlüsselt, beim Abmelden wird dieser erneuert; Updates
+  sind signiert und werden vor der Installation geprüft; PDFs von Dritten
+  rendert ein isolierter Prozess.
+- R8 verkleinert und benennt um, auch die API-Modelle; Keep-Regeln nur, wo
+  Reflexion oder das Framework es verlangen (`Android-App/app/proguard-rules.pro`).
+
+Einzelheiten: `Android-App/README.md`, Abschnitte „Manipulationsschutz“ und
+„Daten auf dem Gerät“. Eine Änderung dieser Entscheidung gehört hierher.
+
 ## Bekannte Restrisiken
 
 - **Erste Kopplung des Wurzelzertifikats**: Wer `/ca.crt` bei der ersten
@@ -406,7 +446,9 @@ den Commits, nicht hier.
 - **Reichweite der internen CA**: Ein Gerät, das die Wurzel installiert,
   vertraut ihr für jede Adresse. Wer `caddy/data/` (Schlüssel) erbeutet, kann
   diesen Geräten jede Seite vortäuschen. Die App vertraut nur dem gepinnten
-  Schlüssel. Caddy kennt keine Namensbeschränkung für seine CA.
+  Schlüssel. Die eigene CA aus `scripts/ca-einrichten.sh` ist auf `BRICK_HOST`
+  namensbeschränkt; nur mit `CA_OHNE_NAMENSBESCHRAENKUNG=ja` gilt Caddys eigene
+  CA für jede Adresse.
 - **Klartext**: Wer Port 3000 wieder veröffentlicht, schickt im Browser
   Passwort und Sitzung unverschlüsselt. Die Android-App verbindet sich nur
   über HTTPS; eine `http://`-Adresse lehnt sie ab.
@@ -434,9 +476,11 @@ den Commits, nicht hier.
   Adresse und Konto.
 - **Geheimnisse auf demselben Rechner**: `./geheimnisse/` ist nur für seinen
   Besitzer offen; wer root auf dem Server ist, liest sie trotzdem.
-- **Anfrage-Raten am Rand**: Caddy begrenzt die gleichzeitigen Anmeldungen,
-  zählt aber keine Raten je Adresse (kein Modul im Standard-Image). Eine Flut
-  verlangsamt deshalb die Anmeldung für alle, statt den Server zu belegen.
+- **Anfrage-Raten am Rand**: Caddy begrenzt bei den Anmeldewegen nur Grösse
+  und Tempo des Rumpfs, weder gleichzeitige Anmeldungen noch Raten je Adresse.
+  Die Zahl gleichzeitiger Passwortprüfungen begrenzt der Server (Schranke mit
+  Vorrang bekannter Anmeldungen, 503 bei Überlast); eine Flut verlangsamt die
+  Anmeldung für alle, statt den Server zu belegen.
 - **Altbestand im Bildcache**: Bilder, die vor dieser Fassung aus Angaben
   eines Clients geladen wurden, bleiben liegen, bis sie neu geladen werden.
 - **Fremdkontingent**: Nicht-Verwalter bekommen zusammen höchstens die Hälfte;
@@ -450,7 +494,8 @@ den Commits, nicht hier.
   dass es jemand auf dem Server erfasst hat — nur das Bild nicht mehr. Ebenso
   erscheinen geteilte Anleitungen eines selbst erfassten Sets sofort, wenn sie
   schon jemand geladen hatte.
-- **Bilder der Container** (`postgres`, `caddy`, `pgweb`, ZAP) sind per Digest
-  fest und veralten damit; Dependabot schlägt neue Fassungen vor (ZAP und die
-  Dienst-Container der Workflows nicht). Eine hingenommene Lücke steht mit
-  Ablaufdatum in `.github/trivy-betrieb.ignore`.
+- **Bilder der Container** (`postgres`, die Basis von `Dockerfile.caddy`, ZAP)
+  sind per Digest fest und veralten damit; Renovate schlägt neue Fassungen vor
+  (ZAP und die Dienst-Container der Workflows nicht). Eine hingenommene Lücke
+  in `postgres` steht mit Ablaufdatum in `.github/trivy-betrieb.ignore`; Caddy
+  prüft der Job `trivy-eigenbau` ohne Ausnahmen.

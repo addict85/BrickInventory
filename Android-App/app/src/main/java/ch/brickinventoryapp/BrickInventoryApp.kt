@@ -2,6 +2,7 @@ package ch.brickinventoryapp
 
 import ch.brickinventoryapp.util.fangeAusserAbbruch
 import android.app.Application
+import android.os.Process
 import androidx.work.Configuration
 import dagger.hilt.android.HiltAndroidApp
 import javax.inject.Inject
@@ -19,12 +20,17 @@ import ch.brickinventoryapp.util.raeumeAlteTeilelisteAuf
 import ch.brickinventoryapp.util.raeumeKlartextAnleitungenAuf
 import ch.brickinventoryapp.util.raeumeKlartextBildcachesAuf
 import ch.brickinventoryapp.util.raeumeVertraulichePdfsAuf
+import android.os.Build
 
 @HiltAndroidApp
 class BrickInventoryApp : Application(), Configuration.Provider {
-    @Inject lateinit var tokenuebernahme: Tokenuebernahme
-    @Inject lateinit var alarme: Alarmablage
-    @Inject lateinit var sprache: Sprachablage
+    // Lazy: Der isolierte PDF-Prozess erzeugt auch eine Application, darf aber keine Dateien öffnen.
+    @Inject lateinit var tokenuebernahmeLazy: dagger.Lazy<Tokenuebernahme>
+    @Inject lateinit var alarmeLazy: dagger.Lazy<Alarmablage>
+    @Inject lateinit var spracheLazy: dagger.Lazy<Sprachablage>
+    private val tokenuebernahme get() = tokenuebernahmeLazy.get()
+    private val alarme get() = alarmeLazy.get()
+    private val sprache get() = spracheLazy.get()
     @Inject lateinit var bereiche: Anwendungsbereiche
     @Inject lateinit var workerFabrik: HiltWorkerFactory
 
@@ -38,6 +44,8 @@ class BrickInventoryApp : Application(), Configuration.Provider {
 
     override fun onCreate() {
         super.onCreate()
+        // Im Render-Prozess (ui/pdf/PdfRenderDienst) gibt es weder Dateien noch Konto.
+        if (Process.isIsolated()) return
 
         // Ein Klartext-Token älterer Fassungen einmalig verschlüsselt ablegen, im
         // Hintergrund: Der Lesepfad kommt auch ohne Übernahme an das alte Token.
@@ -65,7 +73,7 @@ class BrickInventoryApp : Application(), Configuration.Provider {
         // Aus dem synchronen Spiegel statt per runBlocking aus dem DataStore; fehlt er
         // (gespeichert vor dem Spiegel), einmal nachziehen — AppCompat erneuert dann die
         // Activity. Ab 13 merkt sich das System die Sprache selbst.
-        if (android.os.Build.VERSION.SDK_INT < 33) {
+        if (Build.VERSION.SDK_INT < 33) {
             val gemerkt = sprache.gemerkteSprache()
             if (gemerkt != null) {
                 LanguageManager.applyLanguage(gemerkt)

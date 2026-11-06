@@ -1,5 +1,6 @@
 package ch.brickinventoryapp
 
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import ch.brickinventoryapp.ui.model.SetAnsicht
 import ch.brickinventoryapp.data.lokal.Lokal
 import ch.brickinventoryapp.data.model.SetItem
@@ -17,12 +18,13 @@ import org.junit.Test
  * Ohne Filter zeigt die Galerie die lokale Liste (Room): Was offline geändert
  * wird, erscheint sofort. Mit Filter gilt die Antwort des Servers.
  *
- * Gegenproben (30.10.2026, gemessen):
+ * Gegenproben:
  *   A  in Galerie.init die Bedingung `ungefiltert(g)` entfernt → rot „mit Filter
  *      bleibt die Serverantwort stehen“
  *   B  die Bedingung `l.stand != null` entfernt → rot „eine nie geladene Liste
  *      leert die Galerie nicht“
  */
+@OptIn(ExperimentalCoroutinesApi::class)
 class GalerieLokalTest {
 
     private fun set(nr: Int, menge: Int = 1) = SetItem(setNumber = "$nr-1", quantity = menge)

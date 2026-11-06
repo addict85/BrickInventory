@@ -2,7 +2,6 @@ package ch.brickinventoryapp.ui.pdf
 
 import ch.brickinventoryapp.util.fangeAusserAbbruch
 import android.content.Context
-import android.graphics.pdf.PdfRenderer
 import ch.brickinventoryapp.di.BrickDispatchers
 import ch.brickinventoryapp.di.Dispatcher
 import ch.brickinventoryapp.ui.viewmodel.pdfMitEinmalTicket
@@ -46,6 +45,8 @@ class AnleitungsLader @Inject constructor(
     private val netz: AnleitungsRepository,
     private val anleitungen: AnleitungsAblage,
     @param:Dispatcher(BrickDispatchers.IO) private val io: CoroutineDispatcher,
+    /** Zählt die Seiten im isolierten Prozess (PdfRenderDienst), zugleich die Lesbarkeitsprobe. */
+    private val renderer: PdfRenderVerbindung,
 ) : PdfLader {
 
     override suspend fun lade(pdfUrl: String, offen: PdfHalter, onZustand: (PdfLoadState) -> Unit): Pair<PdfQuelle, Int> {
@@ -85,7 +86,7 @@ class AnleitungsLader @Inject constructor(
                 return withContext(io) {
                     val quelle = PdfBereich.anleitung(anleitungen, cacheFile, anzeige)
                     if (!offen.halte(quelle)) throw CancellationException("Betrachter verlassen")
-                    quelle to seitenzahl(quelle)
+                    quelle to renderer.seitenzahl(quelle)
                 }
             }.onFailure { e ->
                 if (versuch >= 2 || pdfMitEinmalTicket(url)) throw e
@@ -115,22 +116,7 @@ class AnleitungsLader @Inject constructor(
         return withContext(io) {
             val quelle = PdfBereich.speicher(inhalt)
             if (!offen.halte(quelle)) throw CancellationException("Betrachter verlassen")
-            quelle to seitenzahl(quelle)
+            quelle to renderer.seitenzahl(quelle)
         }
-    }
-}
-
-/** Seitenzahl über einen eigenen Deskriptor; zugleich die Probe, dass PdfRenderer das PDF lesen kann. */
-private fun seitenzahl(quelle: PdfQuelle): Int {
-    val pfd = quelle.oeffne()
-    try {
-        val renderer = PdfRenderer(pfd)
-        try {
-            return renderer.pageCount
-        } finally {
-            renderer.close()
-        }
-    } finally {
-        pfd.close()
     }
 }

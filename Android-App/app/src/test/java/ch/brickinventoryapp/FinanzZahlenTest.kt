@@ -28,7 +28,7 @@ import ch.brickinventoryapp.ui.finanzKopf
  * Geldsummen in BigDecimal. Die Textfelder im Testdatensatz tragen absichtlich
  * andere Werte: Liest die App sie, wird der Test rot.
  *
- * Gegenproben (30.10.2026, gemessen mit kt-b2/bau.sh):
+ * Gegenproben:
  *   A  in setZeilen() `wert = acq?.wertGesamt ?: s.wertGesamt` durch
  *      `acq?.totalAvg?.toDoubleOrNull()` ersetzt → rot „jede Erfassung zeigt
  *      ihren eigenen Wert und ihre G&V als Zahl“ (999.99 statt 240.67)

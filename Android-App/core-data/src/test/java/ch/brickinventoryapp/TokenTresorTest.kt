@@ -1,185 +1,136 @@
 package ch.brickinventoryapp
 
+import android.content.Context
+import androidx.datastore.preferences.core.PreferenceDataStoreFactory
+import androidx.datastore.preferences.core.Preferences
+import androidx.datastore.preferences.core.edit
+import androidx.test.core.app.ApplicationProvider
+import ch.brickinventoryapp.data.GeraeteAblage
+import ch.brickinventoryapp.data.TokenAblage
+import ch.brickinventoryapp.util.KeystoreTokenTresor
 import ch.brickinventoryapp.util.TokenVerschluesselung
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.runBlocking
+import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
-import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import org.junit.runner.RunWith
+import org.robolectric.RobolectricTestRunner
+import org.robolectric.annotation.Config
 import java.io.File
 
 /**
- * Verschlüsseltes Bearer-Token und die Übernahme der Altbestände (Nachtrag 155).
+ * Das Token liegt nur verschlüsselt, ein Klartext älterer Fassungen wird einmal
+ * übernommen, und Abmelden räumt beide Einträge weg — ausgeführt an der echten
+ * TokenAblage; ein Neustart ist eine neue Instanz auf derselben Platte.
  *
- * ── Was hier WIE geprüft wird ───────────────────────────────────────────────
- *
- * Die echte Verschlüsselung braucht den Android-Keystore und läuft nur auf
- * einem Gerät. Deshalb steht sie hinter der Schnittstelle
- * TokenVerschluesselung, und geprüft wird hier das, was ohne Gerät prüfbar UND
- * entscheidend ist: die ÜBERNAHME-REGEL. Sie bestimmt, ob eine bestehende
- * Installation nach dem Update noch angemeldet ist — ein Fehler dort meldet
- * jeden Nutzer ab.
- *
- * Die Regel ist hier als ausführbares Modell nachgebaut, mit derselben
- * Reihenfolge wie in PreferencesManager. Zusätzlich prüfen Quelltext-Zusagen
- * weiter unten, dass der echte Code diese Reihenfolge auch hat — ein Modell,
- * das vom Original abweicht, prüft sonst sich selbst.
+ * Gegenproben (Robolectric, misst die CI; Job `gegenproben`):
+ *   klartext-bleibt-nach-speichern  saveAuthToken() ohne remove(AUTH_TOKEN) → rot
+ *                                   „Speichern legt nur noch verschluesselt ab“
+ *   abmelden-laesst-geheimtext      clearSession() ohne remove(AUTH_TOKEN_ENC) → rot
+ *                                   „Abmelden entfernt beide Eintraege“
  */
+@RunWith(RobolectricTestRunner::class)
+@Config(sdk = [35])
 class TokenTresorTest {
 
-    /** Attrappe: umkehrbar, aber erkennbar anders als der Klartext. */
-    private class Attrappe(var kaputt: Boolean = false) : TokenVerschluesselung {
+    /** Umkehrbar, aber erkennbar anders als der Klartext; [kaputt]: Schlüssel weg. */
+    private class Attrappe(val kaputt: Boolean = false) : TokenVerschluesselung {
         override fun verschluessle(klartext: String) = "ENC(" + klartext.reversed() + ")"
-        override fun entschluessle(gespeichert: String): String? {
-            if (kaputt) return null
-            if (!gespeichert.startsWith("ENC(") || !gespeichert.endsWith(")")) return null
-            return gespeichert.removePrefix("ENC(").removeSuffix(")").reversed()
-        }
+        override fun entschluessle(gespeichert: String): String? =
+            if (kaputt || !gespeichert.startsWith("ENC(") || !gespeichert.endsWith(")")) null
+            else gespeichert.removePrefix("ENC(").removeSuffix(")").reversed()
     }
 
-    /** Nachbau des Ablagemodells: dieselben zwei Schlüssel wie im DataStore. */
-    private class Ablage(
-        val tresor: TokenVerschluesselung,
-        var klartext: String? = null,
-        var geheim: String? = null,
-    ) {
-        /** Entspricht PreferencesManager.authToken */
-        fun lies(): String = geheim?.let { tresor.entschluessle(it) } ?: klartext ?: ""
+    private val ctx = ApplicationProvider.getApplicationContext<Context>()
+    private val bereiche = mutableListOf<CoroutineScope>()
 
-        /** Entspricht PreferencesManager.saveAuthToken */
-        fun schreibe(token: String) {
-            geheim = tresor.verschluessle(token)
-            klartext = null
-        }
+    /** Je Test eine eigene Datei; DataStore erlaubt je Datei nur eine Instanz im Prozess. */
+    private val store = PreferenceDataStoreFactory.create { File(ctx.filesDir, "tresor-${System.nanoTime()}.preferences_pb") }
 
-        /** Entspricht PreferencesManager.uebernehmeAltesToken */
-        fun uebernimm(): Boolean {
-            val alt = klartext
-            return when {
-                alt != null && alt.isNotEmpty() -> {
-                    geheim = tresor.verschluessle(alt); klartext = null; true
-                }
-                alt != null -> { klartext = null; false }
-                else -> false
-            }
-        }
-
-        /** Entspricht PreferencesManager.clearSession */
-        fun melde_ab() { klartext = null; geheim = null }
+    private fun start(tresor: TokenVerschluesselung = Attrappe()): TokenAblage {
+        val bereich = CoroutineScope(SupervisorJob() + Dispatchers.IO).also { bereiche += it }
+        return TokenAblage(store, tresor, GeraeteAblage(ctx, store), bereich).also { it.warteAufStart() }
     }
+
+    private fun platte(): Preferences = runBlocking { store.data.first() }
+
+    private fun lege(klartext: String? = null, geheim: String? = null) = runBlocking {
+        store.edit {
+            it[TokenAblage.SERVER_URL] = "https://brick.example"
+            klartext?.let { k -> it[TokenAblage.AUTH_TOKEN] = k }
+            geheim?.let { g -> it[TokenAblage.AUTH_TOKEN_ENC] = g }
+        }
+        Unit
+    }
+
+    @After
+    fun zu() = bereiche.forEach { it.cancel() }
 
     @Test
-    fun `ein bestehendes Klartext-Token bleibt nach dem Update lesbar`() {
-        // Der wichtigste Fall: Wer die App schon benutzt, darf nicht abgemeldet
-        // werden, nur weil die Ablage sich ändert.
-        val a = Ablage(Attrappe(), klartext = "altes-token-123")
-        assertEquals("altes-token-123", a.lies())
-    }
-
-    @Test
-    fun `die Uebernahme verschluesselt und entfernt den Klartext`() {
-        val a = Ablage(Attrappe(), klartext = "altes-token-123")
-        assertTrue("es gab etwas zu uebernehmen", a.uebernimm())
-        assertNull("der Klartext muss weg sein — sonst war die Uebung Zierde", a.klartext)
-        assertNotEquals("es darf nicht der Klartext sein", "altes-token-123", a.geheim)
-        assertEquals("und es muss weiterhin lesbar sein", "altes-token-123", a.lies())
-    }
-
-    @Test
-    fun `die Uebernahme laeuft nicht zweimal`() {
-        val a = Ablage(Attrappe(), klartext = "t")
-        assertTrue(a.uebernimm())
-        assertFalse("beim zweiten Start gibt es nichts mehr zu tun", a.uebernimm())
-        assertEquals("t", a.lies())
+    fun `ein bestehendes Klartext-Token bleibt nach dem Update lesbar und wird einmal uebernommen`() {
+        lege(klartext = "altes-token-123")
+        val prefs = start()
+        assertEquals("altes-token-123", runBlocking { prefs.tokenJetzt() })
+        assertTrue("Es gab etwas zu übernehmen", runBlocking { prefs.uebernehmeAltesToken() })
+        assertNull("Der Klartext muss weg sein", platte()[TokenAblage.AUTH_TOKEN])
+        assertEquals("ENC(321-nekot-setla)", platte()[TokenAblage.AUTH_TOKEN_ENC])
+        assertFalse("Beim zweiten Start gibt es nichts mehr zu tun", runBlocking { prefs.uebernehmeAltesToken() })
+        assertEquals("altes-token-123", runBlocking { start().tokenJetzt() })
     }
 
     @Test
     fun `ein leerer Alteintrag wird entfernt, gilt aber nicht als Uebernahme`() {
-        val a = Ablage(Attrappe(), klartext = "")
-        assertFalse(a.uebernimm())
-        assertNull(a.klartext)
-        assertEquals("", a.lies())
+        lege(klartext = "")
+        val prefs = start()
+        assertFalse(runBlocking { prefs.uebernehmeAltesToken() })
+        assertFalse(TokenAblage.AUTH_TOKEN in platte().asMap())
+        assertEquals("", runBlocking { prefs.tokenJetzt() })
     }
 
     @Test
     fun `Speichern legt nur noch verschluesselt ab`() {
-        val a = Ablage(Attrappe(), klartext = "alt")
-        a.schreibe("neu")
-        assertNull("der alte Klartext muss beim Schreiben mit verschwinden", a.klartext)
-        assertEquals("neu", a.lies())
-    }
-
-    @Test
-    fun `Abmelden entfernt BEIDE Eintraege`() {
-        // Bliebe der alte stehen, waere man nach dem Abmelden ueber den
-        // Altbestand wieder angemeldet.
-        val a = Ablage(Attrappe(), klartext = "alt", geheim = "ENC(uen)")
-        a.melde_ab()
-        assertEquals("", a.lies())
-        assertNull(a.klartext)
-        assertNull(a.geheim)
-    }
-
-    @Test
-    fun `ein nicht entschluesselbarer Eintrag gilt als kein Token`() {
-        // Geraetewechsel, geloeschter Keystore-Schluessel: Das Entschluesseln
-        // schlaegt fehl. Richtig ist die Anmeldemaske — NICHT ein stiller
-        // Rueckfall auf irgendetwas anderes.
-        val a = Ablage(Attrappe(kaputt = true), geheim = "ENC(sinnlos)")
-        assertEquals("", a.lies())
-    }
-
-    // ── Zusagen an den echten Code ──────────────────────────────────────────
-    //
-    // Damit das Modell oben nicht bloss sich selbst prueft.
-
-    private fun quelle(rel: String): String =
-        File(Quellen.wurzel, "$rel").readText()
-
-    @Test
-    fun `saveAuthToken schreibt verschluesselt und raeumt den Klartext weg`() {
-        val src = quelle("data/TokenAblage.kt")
-        val fn = src.substring(
-            src.indexOf("suspend fun saveAuthToken"),
-            src.indexOf("suspend fun uebernehmeAltesToken"),
-        )
-        assertTrue("saveAuthToken verschluesselt nicht", fn.contains("tresor.verschluessle"))
-        assertTrue("AUTH_TOKEN_ENC wird nicht gesetzt", fn.contains("AUTH_TOKEN_ENC]"))
-        assertTrue("der alte Klartext wird nicht entfernt", fn.contains("remove(AUTH_TOKEN)"))
-    }
-
-    @Test
-    fun `clearSession entfernt beide Token-Eintraege`() {
-        val src = quelle("data/TokenAblage.kt")
-        val fn = src.substring(src.indexOf("suspend fun clearSession"))
-        assertTrue(fn.contains("remove(AUTH_TOKEN)"))
-        assertTrue("nur der alte wird entfernt — der neue bleibt stehen",
-            fn.contains("remove(AUTH_TOKEN_ENC)"))
+        lege(klartext = "alt")
+        val prefs = start()
+        runBlocking { prefs.saveAuthToken("neu") }
+        assertNull("Der alte Klartext verschwindet beim Schreiben", platte()[TokenAblage.AUTH_TOKEN])
+        assertEquals("ENC(uen)", platte()[TokenAblage.AUTH_TOKEN_ENC])
+        assertEquals("neu", runBlocking { start().tokenJetzt() })
     }
 
     @Test
     fun `der Lesepfad versucht zuerst den verschluesselten Wert`() {
-        val src = quelle("data/TokenAblage.kt")
-        val fn = src.substring(
-            src.indexOf("val authToken: Flow<String>"),
-            src.indexOf("val username:"),
-        )
-        val enc = fn.indexOf("AUTH_TOKEN_ENC")
-        val alt = fn.indexOf("prefs[AUTH_TOKEN]")
-        assertTrue("AUTH_TOKEN_ENC kommt im Lesepfad nicht vor", enc >= 0)
-        assertTrue("der Klartext-Rueckfall fehlt — bestehende Nutzer waeren abgemeldet", alt >= 0)
-        assertTrue("der verschluesselte Wert muss VOR dem Klartext versucht werden", enc < alt)
+        lege(klartext = "alt", geheim = "ENC(uen)")
+        assertEquals("neu", runBlocking { start().tokenJetzt() })
     }
 
     @Test
-    fun `die Verschluesselung haengt nicht am Klartext-Rueckfall`() {
-        // Der Tresor darf bei einem Fehlschlag NICHT still Klartext liefern.
-        val src = quelle("util/TokenTresor.kt")
-        val fn = src.substring(src.indexOf("override fun entschluessle"))
-        assertTrue("entschluessle gibt bei einem Fehler nicht null zurueck",
-            fn.contains("null"))
-        assertFalse("es darf kein Rueckfall auf den Eingabewert geben",
-            fn.contains("return gespeichert"))
+    fun `Abmelden entfernt beide Eintraege`() {
+        lege(klartext = "alt", geheim = "ENC(uen)")
+        val prefs = start()
+        runBlocking { prefs.clearSession() }
+        assertFalse(TokenAblage.AUTH_TOKEN in platte().asMap())
+        assertFalse(TokenAblage.AUTH_TOKEN_ENC in platte().asMap())
+        assertEquals("Über den Altbestand wieder angemeldet", "", runBlocking { start().tokenJetzt() })
+    }
+
+    @Test
+    fun `ein nicht entschluesselbarer Eintrag gilt als kein Token`() {
+        lege(geheim = "ENC(sinnlos)")
+        assertEquals("", runBlocking { start(Attrappe(kaputt = true)).tokenJetzt() })
+    }
+
+    @Test
+    fun `der Keystore-Tresor gibt Unlesbares nie als Klartext zurueck`() {
+        // Robolectric hat keinen AndroidKeyStore: Jeder Versuch scheitert, und das darf
+        // nur „nicht lesbar“ heissen, nie der Eingabewert.
+        assertNull(KeystoreTokenTresor("test_alias").entschluessle("klartext-statt-geheimtext"))
     }
 }

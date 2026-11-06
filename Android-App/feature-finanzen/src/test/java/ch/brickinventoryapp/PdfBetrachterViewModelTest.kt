@@ -7,6 +7,7 @@ import ch.brickinventoryapp.ui.pdf.PdfHalter
 import ch.brickinventoryapp.ui.pdf.PdfLader
 import ch.brickinventoryapp.ui.pdf.PdfLoadState
 import ch.brickinventoryapp.ui.pdf.PdfQuelle
+import ch.brickinventoryapp.ui.pdf.PdfSeitenQuelle
 import ch.brickinventoryapp.ui.viewmodel.PdfBetrachterViewModel
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
@@ -30,7 +31,7 @@ import java.io.InputStream
  * oeffne() erneut, der Download läuft weiter und beginnt nicht von vorn. Mit
  * StandardTestDispatcher und advanceUntilIdle, ohne Netz und ohne Warten.
  *
- * Gegenproben (05.11.2026, gemessen mit kotlinc lokal):
+ * Gegenproben:
  *   A  in oeffne() die Abfrage `pdfUrl == adresse` entfernt
  *      (gegenproben/pdf-drehung-laedt-neu.patch) → rot „eine Drehung laedt nicht neu“
  *   B  den Fortschritt nicht weitergereicht (`{ }` statt `{ _state.value = it }`) →
@@ -38,6 +39,8 @@ import java.io.InputStream
  *   C  die Prüfung pdfImBetrachter() entfernt → rot „eine fremde Adresse wird nicht geladen …“
  *   D  in PdfHalter.halte() die Abfrage `if (zu)` entfernt → rot „eine Quelle, die nach
  *      dem Verlassen ankommt, wird sofort geschlossen“
+ *   E  (sec17 A-N6) gegenproben/pdf-seite-am-renderer-vorbei.patch → rot „eine Seite
+ *      rendert der Lader …“
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 class PdfBetrachterViewModelTest {
@@ -75,7 +78,21 @@ class PdfBetrachterViewModelTest {
         }
     }
 
-    private fun vm(lader: Lader) = PdfBetrachterViewModel(lader, { _, _, _ -> null }, takt)
+    /** Der Renderer als Attrappe: Gerendert wird im isolierten Prozess, hier nur gezählt. */
+    private val gerendert = mutableListOf<Int>()
+    private val seitenquelle = PdfSeitenQuelle { _, index, _ -> gerendert += index; null }
+
+    private fun vm(lader: Lader) = PdfBetrachterViewModel(lader, seitenquelle, takt)
+
+    @Test
+    fun `eine Seite rendert die Seitenquelle im eigenen Prozess, nicht das ViewModel`() = runTest(takt) {
+        val lader = Lader()
+        val vm = vm(lader)
+        vm.oeffne(ANLEITUNG, SERVER)
+        advanceUntilIdle()
+        vm.seiten.seite(lader.quelle, 3, 1080)
+        assertEquals(listOf(3), gerendert)
+    }
 
     @Test
     fun `eine Drehung laedt nicht neu`() = runTest(takt) {

@@ -151,7 +151,9 @@ test('signiert und veröffentlicht wird nur aus einem Etikett auf main, und Grad
 // entfernt → rot „… erst nach Freigabe“; die Fehlermeldung wieder mit „oder
 // als Repository-Secret“ → rot „… nur aus der Environment“.
 // Gegenprobe (03.11.2026): den Schritt „Herkunft des APK bescheinigen“ entfernt
-// → rot „… die Herkunft des APK wird bescheinigt“.
+// → rot „… die Herkunft des APK wird bescheinigt“. Seit sec17 B-N7 bescheinigt der Job
+// `bescheinigen` über android-bescheinigung.yml; Gegenprobe (05.11.2026): `uses:` dort
+// entfernt → rot, derselbe Satz.
 test('signiert wird in einem eigenen Job ohne Projektcode, geprüft und veröffentlicht danach', () => {
   const yml = fs.readFileSync(path.join(ROOT, '..', '.github', 'workflows', 'android.yml'), 'utf8')
     .split('\n').filter(z => !z.trimStart().startsWith('#')).join('\n');
@@ -178,12 +180,16 @@ test('signiert wird in einem eigenen Job ohne Projektcode, geprüft und veröffe
   assert.doesNotMatch(pruefen, /secrets\./);
 
   const release = job('release');
-  assert.match(release, /\n    needs: \[signieren, apk-pruefen\]\n/, 'veröffentlicht nur das geprüfte, signierte APK');
+  assert.match(release, /\n    needs: \[signieren, apk-pruefen, bescheinigen\]\n/, 'veröffentlicht nur das geprüfte, signierte APK');
   assert.match(release, /name: apk-signiert/);
   assert.match(release, /\n    environment: release\n/, 'das Release mit Schreibrecht läuft erst nach Freigabe in der Environment release');
-  assert.match(release, /\n    permissions:\n      contents: write\n      id-token: write\n      attestations: write\n/);
-  assert.match(release, /uses: actions\/attest-build-provenance@[0-9a-f]{40}/, 'die Herkunft des APK wird bescheinigt');
-  assert.match(release, /subject-path: Android-App\/app\/build\/outputs\/apk\/release\/BrickInventory\.apk/);
+  assert.match(release, /\n    permissions:\n      contents: write\n    defaults:/, 'der Release-Job schreibt nur, er bescheinigt nicht');
+  const bescheinigen = job('bescheinigen');
+  assert.match(bescheinigen, /\n    needs: \[signieren, apk-pruefen\]\n/);
+  assert.match(bescheinigen, /uses: \.\/\.github\/workflows\/android-bescheinigung\.yml/, 'die Herkunft des APK wird bescheinigt');
+  const aussteller = fs.readFileSync(path.join(ROOT, '..', '.github', 'workflows', 'android-bescheinigung.yml'), 'utf8');
+  assert.match(aussteller, /uses: actions\/attest-build-provenance@[0-9a-f]{40}/, 'die Herkunft des APK wird bescheinigt');
+  assert.match(aussteller, /subject-path: \|\n\s+\$\{\{ runner\.temp \}\}\/signiert\/apk\/release\/BrickInventory\.apk/);
   assert.doesNotMatch(signieren, /oder als Repository-Secret/, 'die Signier-Secrets kommen nur aus der Environment');
 });
 
@@ -209,8 +215,10 @@ test('Prüfsummen kommen als Pull-Request, Bildschirmfotos nur als PNG', () => {
   assert.match(vorschlag, /gh pr create --base "\$GITHUB_REF_NAME" --head "\$ZWEIG"/);
   assert.doesNotMatch(vorschlag, /HEAD:\$GITHUB_REF_NAME/, 'nie auf den Zweig des Laufs');
   assert.doesNotMatch(vorschlag, /python|gradlew/, 'mit Schreibrecht läuft kein Werkzeug aus dem Repository');
-  assert.match(job('pruefsummen'), /tools\/pruefsummen-vergleich\.py/, 'die Zusammenfassung entsteht ohne Schreibrecht');
-  for (const name of ['build', 'signieren', 'apk-pruefen', 'release', 'gegenproben', 'pruefsummen',
+  // Seit sec17 B-N2 ohne Schreibrecht UND ohne Gradle, in einem eigenen Job.
+  assert.match(job('pruefsummen-zusammenfassen'), /tools\/pruefsummen-vergleich\.py/, 'die Zusammenfassung entsteht ohne Schreibrecht');
+  assert.match(job('pruefsummen-zusammenfassen'), /\n    permissions:\n      contents: read\n/);
+  for (const name of ['build', 'signieren', 'apk-pruefen', 'release', 'gegenproben', 'pruefsummen', 'pruefsummen-zusammenfassen',
     'bildschirmfotos', 'bildschirmfotos-einchecken'])
     assert.doesNotMatch(job(name), /pull-requests: write/, `${name}: nur der vorschlagende Job legt Pull-Requests an`);
   const bilder = job('bildschirmfotos-einchecken');

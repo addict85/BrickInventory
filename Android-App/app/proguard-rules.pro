@@ -1,5 +1,7 @@
 -keepattributes *Annotation*
--keep class ch.brickinventoryapp.data.model.** { *; }
+# Die API-Modelle werden umbenannt wie jede Klasse (sec17 B-N10): Die Feldnamen im JSON
+# stehen im erzeugten Serializer, Companion und serializer() hält die Regel der Bibliothek.
+# tools/apk-pruefen.py prüft am fertigen APK, dass ein Modell umbenannt ist.
 -keepnames class kotlinx.serialization.** { *; }
 -keepclassmembers class kotlinx.serialization.** { *; }
 
@@ -16,6 +18,8 @@
 -keep class com.google.android.gms.internal.mlkit_vision_barcode.** { *; }
 -keep class com.google.android.gms.internal.mlkit_vision_common.** { *; }
 -keep class com.google.android.gms.internal.mlkit_common.** { *; }
+# Bewusst breit (sec17 B-N10 geprüft): Code von Google, kein eigener; sein Klartext verrät
+# nichts über die App. Enger gefasst kamen die beiden Abstürze oben.
 -keep class com.google.android.gms.common.** { *; }
 -keep class * implements com.google.firebase.components.ComponentRegistrar {
     <init>();

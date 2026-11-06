@@ -14,6 +14,8 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import javax.inject.Inject
 import javax.inject.Singleton
+import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.CopyOnWriteArrayList
 
 /**
  * Einstellungen dieses Geräts, nicht des Kontos: Darstellung, Vertrauen, Pins, Widget,
@@ -123,7 +125,7 @@ class GeraeteAblage @Inject constructor(
         designSpiegel.edit { KlartextReste.SPIEGEL.forEach { remove(it) } }
     }
 
-    private val nutzerCaHoerer = java.util.concurrent.CopyOnWriteArrayList<() -> Unit>()
+    private val nutzerCaHoerer = CopyOnWriteArrayList<() -> Unit>()
 
     /** Nach dem Umschalten der Nutzer-CAs: neuer TLS-Kontext, offene Verbindungen weg (di/ServerClient). */
     override fun beimNutzerCaWechsel(hoerer: () -> Unit) { nutzerCaHoerer += hoerer }
@@ -247,7 +249,7 @@ class GeraeteAblage @Inject constructor(
     }
     fun halteVor(schluessel: String, fingerabdruck: String) { vorgehalten[schluessel] = fingerabdruck }
     fun vergissVorgehaltenen(schluessel: String) { vorgehalten.remove(schluessel) }
-    private val vorgehalten = java.util.concurrent.ConcurrentHashMap<String, String>()
+    private val vorgehalten = ConcurrentHashMap<String, String>()
 
     /**
      * Geldwerte im Startbildschirm-Widget zeigen? Je Gerät, Vorgabe aus: Das Widget

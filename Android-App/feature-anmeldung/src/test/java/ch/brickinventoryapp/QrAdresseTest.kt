@@ -20,13 +20,14 @@ import org.junit.Before
 import org.junit.Test
 import ch.brickinventoryapp.data.repository.HaushaltRepository
 import ch.brickinventoryapp.ui.Blickfeld
+import java.util.Collections
 
 /**
  * Der QR-Dialog ist die einzige Hürde gegen einen untergeschobenen Code. Geprüft
  * mit den Eingaben aus dem Nachweis der Sicherheitsprüfung (sec7, M1): Jede sah
  * im Dialog nach `brick.meinserver.ch` aus und führte woandershin.
  *
- * Gegenproben (03.11.2026, kotlinc lokal gemessen):
+ * Gegenproben:
  *   A  NetworkPolicy.adressfehler() auf den Stand ad4a297 (nur UNLESBAR/KLARTEXT)
  *      → rot „Benutzerangabe, Zeilenumbruch und Rueckstrich …“ und „das ViewModel
  *      nimmt eine Adresse mit Benutzerangabe nicht an“
@@ -97,7 +98,7 @@ class QrAdresseTest {
     // ── Das ViewModel als zweite Linie ─────────────────────────────────────────
 
     private class Ablage : Anmeldeablage {
-        val protokoll = java.util.Collections.synchronizedList(mutableListOf<String>())
+        val protokoll = Collections.synchronizedList(mutableListOf<String>())
         override suspend fun serverUrlJetzt() = "https://brick.meinserver.ch"
         override suspend fun saveServerUrl(url: String) { protokoll += "url:$url" }
         override suspend fun saveAuthToken(token: String) { protokoll += "token:$token" }

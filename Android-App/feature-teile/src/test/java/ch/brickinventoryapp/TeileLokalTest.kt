@@ -31,7 +31,7 @@ import org.junit.Test
  * Galerie: Was offline erfasst, geändert oder gelöscht wird, steht sofort da.
  * Mit Suchtext oder Konto gilt die Antwort des Servers.
  *
- * Gegenproben (31.10.2026, gemessen):
+ * Gegenproben:
  *   A  in Teile.init bei den manuellen Teilen die Bedingung `partsQuery.isNotBlank()`
  *      entfernt → rot „mit Suchtext bleibt die Serverantwort stehen“
  *   B  in Teile.folge die Prüfung `l.stand != null` entfernt → rot „eine nie

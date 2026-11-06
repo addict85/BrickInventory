@@ -38,13 +38,13 @@ import org.junit.Test
  *      die Liste → je rot „erfasste Teile laden die Kennzahlen …“
  *   F  vergissScroll auf "parts" statt "gallery" → rot „ein Filterwechsel
  *      vergisst die Rollposition der Galerie und nur sie“
- *   G  (30.10.2026) kachelPreise() ohne kachel_preis/kachel_pnl_pct → rot „die
+ *   G  kachelPreise() ohne kachel_preis/kachel_pnl_pct → rot „die
  *      Kennzahlen bringen Preis und G&V …“ (800,0 statt 812,5)
  *   G  in loadStats() ladePreise() entfernt → rot „die Kennzahlen bringen
  *      Preis und G&V …“
- *   H  (03.11.2026, modbau) in loeschenVormerken() sofort deleteSet() aufgerufen →
+ *   H  in loeschenVormerken() sofort deleteSet() aufgerufen →
  *      rot „vorgemerktes Loeschen …“ und „Rueckgaengig …“ (DELETE schon gesendet)
- *   I  (03.11.2026, modbau) in rueckgaengig() loadSets() entfernt → rot
+ *   I  in rueckgaengig() loadSets() entfernt → rot
  *      „Rueckgaengig holt das Set zurueck …“
  */
 @OptIn(ExperimentalCoroutinesApi::class)

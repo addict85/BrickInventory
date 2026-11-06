@@ -20,8 +20,6 @@ import org.junit.Test
  *     eine neue.
  *   * Wird beim ersten Durchgang gemeldet, schlaegt eine frisch eingerichtete
  *     App mit Schwellen auf, die vor Wochen gerissen sind.
- *   * Wird nach einem Fehlschlag trotzdem markiert, ist die Meldung fuer
- *     immer verloren.
  *
  * Alle drei sind Aussagen ueber eine FOLGE von Durchgaengen. Am Quelltext
  * waere nur zu sehen, dass es eine Marke gibt.

@@ -30,13 +30,14 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 import retrofit2.Retrofit
 import ch.brickinventoryapp.data.api.ApiJson
+import java.lang.reflect.Method
 
 /**
  * Die Schnittstelle zum Server ist nach Bereichen geteilt: Jedes Repository
  * sieht nur seinen, jede Adresse steht in genau einem, und Retrofit baut die
  * Bereiche samt geerbter Adressen.
  *
- * Gegenproben (29.10.2026, gemessen):
+ * Gegenproben:
  *   A  SetsRepository wieder mit `api: BrickApiService` → rot „jedes Repository
  *      sieht nur seinen Bereich“
  *   B  getMe zusätzlich in GutscheineApi deklariert → rot „jede Adresse steht in
@@ -44,7 +45,7 @@ import ch.brickinventoryapp.data.api.ApiJson
  *   C  `: BestandsInhaltApi` an SetsApi entfernt → übersetzt nicht mehr
  *      (SetsRepository ruft getParts) — die Vererbung trägt
  *
- * Seit der Teilung in neun Bereiche (30.10.2026, gemessen):
+ * Seit der Teilung in neun Bereiche :
  *   D  KatalogRepository mit `api: KontoApi` → übersetzt nicht (unresolved reference
  *      'getCatalogSets' …) — der Bereich ist im Typ, nicht nur im Namen
  *   E  getMinifigs zusätzlich in FigurenApi → rot „jede Adresse steht in genau einem
@@ -76,7 +77,7 @@ class ApiBereicheTest {
     @Test
     fun `jede Adresse steht in genau einem Bereich`() {
         // Ohne die Hilfsmethoden, die Kotlin für Vorgabewerte erzeugt (…$default).
-        fun adressen(m: Array<java.lang.reflect.Method>) = m.filter { '$' !in it.name && !it.isSynthetic }.map { it.name }
+        fun adressen(m: Array<Method>) = m.filter { '$' !in it.name && !it.isSynthetic }.map { it.name }
         val namen = bereiche.flatMap { b -> adressen(b.java.declaredMethods) }
         val doppelt = namen.groupingBy { it }.eachCount().filterValues { it > 1 }
         assertTrue("Doppelt deklariert: $doppelt", doppelt.isEmpty())

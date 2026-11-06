@@ -1,0 +1,25 @@
+# Berechtigungen, die das fertige Release-APK verlangen darf (sec17 B-N12), je Zeile eine.
+# Geprüft von tools/manifest-pruefen.py im Job apk-pruefen am zusammengeführten Manifest:
+# Bibliotheken bringen eigene mit. Eine neue Zeile nur mit Grund darüber.
+
+# Eigene (app/src/main/AndroidManifest.xml): Server, Netzlage, Scannen, PDF-Export im
+# Vordergrunddienst, Preisalarm-Meldungen, WLAN wachhalten beim Download, Selbst-Update.
+android.permission.INTERNET
+android.permission.ACCESS_NETWORK_STATE
+android.permission.CAMERA
+android.permission.FOREGROUND_SERVICE
+android.permission.FOREGROUND_SERVICE_DATA_SYNC
+android.permission.POST_NOTIFICATIONS
+android.permission.WAKE_LOCK
+android.permission.REQUEST_INSTALL_PACKAGES
+
+# WorkManager: Aufträge nach einem Neustart wieder einplanen.
+android.permission.RECEIVE_BOOT_COMPLETED
+
+# androidx.biometric: Gerätesperre für heikle Schritte (Schrittfreigabe).
+android.permission.USE_BIOMETRIC
+android.permission.USE_FINGERPRINT
+
+# androidx.core: Signatur-Berechtigung, mit der nicht exportierte dynamische Empfänger
+# geschützt werden; nur Apps mit demselben Schlüssel halten sie.
+ch.brickinventoryapp.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION

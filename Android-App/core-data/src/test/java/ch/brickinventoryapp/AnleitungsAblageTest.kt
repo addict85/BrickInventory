@@ -16,12 +16,12 @@ import java.io.File
 import java.io.IOException
 
 /**
- * Bauanleitungen liegen verschlüsselt im Zwischenspeicher (sec12 N1): Auf der Platte steht
+ * Bauanleitungen liegen verschlüsselt im Zwischenspeicher: Auf der Platte steht
  * weder das PDF noch die Setnummer, ein abgebrochener Download lässt sich am richtigen
  * Klartext-Byte fortsetzen, und Abmelden wie Start räumen auf. Ausgeführt gegen ein echtes
  * Verzeichnis; das Entschlüsseln in den memfd braucht ein Gerät (PdfViewerScreen).
  *
- * Gegenproben (04.11.2026, gemessen mit kotlinc lokal):
+ * Gegenproben:
  *   A  AnleitungsAblage schreibt und liest über FileSystem.SYSTEM statt über
  *      VerschluesseltesDateisystem → rot „eine Anleitung liegt verschluesselt …“;
  *      gegenproben/anleitung-klartext.patch

@@ -32,7 +32,7 @@ import java.io.File
  * eine Drehung, die Setnummern auch das Prozessende. Ohne Netz (Doubles für
  * Quelle und Export) und mit StandardTestDispatcher statt Warten.
  *
- * Gegenproben (05.11.2026, gemessen mit kotlinc lokal):
+ * Gegenproben:
  *   A  in erstelle() den Schlüssel `"${p.blPartNumber ?: p.partNumber}|${p.colorName}"`
  *      durch `"${p.partNumber}|${p.colorName}|${combined.size}"` ersetzt
  *      (gegenproben/bauliste-ohne-zusammenfassen.patch) → rot „gleiche Teile

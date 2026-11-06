@@ -23,14 +23,14 @@ import java.io.File
  * Der Fehlercode des Servers (`code` im Rumpf) kommt in `Ergebnis.Error.code` an
  * und entscheidet dort, wo nach dem Fall verzweigt wird.
  *
- * Gegenproben (28.10.2026, gemessen mit kotlinc gegen die Datenschicht):
+ * Gegenproben:
  *   A  in safeCall() `code = rumpf.code` weggelassen → rot „der Code des
  *      Servers kommt im Fehler an“
  *   B  in guthaben() wieder nach Status 429 statt nach Code verzweigt → rot
  *      „eine andere 429 bleibt ein Fehler mit Satz und Code“
  *   C  in guthaben() den gelesenen Rumpf nicht neu übergeben → rot „eine
  *      andere 429 …“ (Code fehlt)
- * Gegenproben (04.11.2026, misst die CI — tools/gegenproben.py):
+ * Gegenproben:
  *   fehlercode-ohne-verbindungstext   `zu_viele_verbindungen` aus fehlerTextZuCode()
  *      gestrichen → rot „Upload-Sperre, Verbindungsgrenze und Seitengrenze …“
  *   pdf-seitengrenze-als-gelesen      der Code in ausPdf() verfehlt → rot „ein PDF über

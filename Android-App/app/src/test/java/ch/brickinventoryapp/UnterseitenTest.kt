@@ -14,7 +14,7 @@ import androidx.compose.ui.test.hasClickAction
 import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.isDialog
-import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
@@ -59,6 +59,11 @@ import ch.brickinventoryapp.ui.viewmodel.EinstellungenViewModel
 import ch.brickinventoryapp.ui.viewmodel.HaushaltViewModel
 import ch.brickinventoryapp.ui.viewmodel.KontoViewModel
 import ch.brickinventoryapp.ui.viewmodel.TeilelisteViewModel
+import android.content.Context
+import android.os.Looper
+import java.util.Locale
+import org.robolectric.Shadows
+import org.robolectric.shadows.ShadowDialog
 
 /**
  * Die Unterseiten unter „Mehr“ und die Rückfragen vor Aktionen ohne Weg zurück:
@@ -84,21 +89,21 @@ import ch.brickinventoryapp.ui.viewmodel.TeilelisteViewModel
  */
 @RunWith(RobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
-@Config(sdk = [35], qualifiers = "de-rCH-w411dp-h891dp-port-xxhdpi")
+@Config(qualifiers = "de-rCH-w411dp-h891dp-port-xxhdpi")
 class UnterseitenTest {
 
     @get:Rule
     val compose = createComposeRule()
 
-    private val ctx: android.content.Context = ApplicationProvider.getApplicationContext()
-    private val vorher = java.util.Locale.getDefault()
+    private val ctx: Context = ApplicationProvider.getApplicationContext()
+    private val vorher = Locale.getDefault()
     private val welt = Beispiele.Welt(KontextTexte())
 
-    init { java.util.Locale.setDefault(java.util.Locale.forLanguageTag("de-CH")) }
+    init { Locale.setDefault(Locale.forLanguageTag("de-CH")) }
 
     @After
     fun zu() {
-        java.util.Locale.setDefault(vorher)
+        Locale.setDefault(vorher)
         welt.close()
     }
 
@@ -111,14 +116,9 @@ class UnterseitenTest {
         compose.waitForIdle()
     }
 
-    /** Antworten des Testservers kommen über den Hauptlooper; ihn selbst treiben. */
+    /** Die Welt antwortet im Takt; den Hauptlooper treiben, bis [fertig] gilt. */
     private fun warte(name: String, fertig: () -> Boolean) {
-        val ende = System.nanoTime() + 10_000_000_000L
-        while (!fertig()) {
-            check(System.nanoTime() < ende) { "$name nach 10 s nicht da" }
-            org.robolectric.Shadows.shadowOf(android.os.Looper.getMainLooper()).idle()
-            Thread.sleep(10)
-        }
+        treibeBis(name, bereit = fertig)
         compose.waitForIdle()
     }
 
@@ -133,7 +133,7 @@ class UnterseitenTest {
     private fun imDialog(text: String) = compose.onNode(hasText(text) and hasClickAction() and hasAnyAncestor(isDialog()))
 
     private fun einstellungen() = welt.t.merke(EinstellungenViewModel(welt.t.sitzung, welt.t.filter(), welt.t.hinweise, welt.t.bestand,
-        KontoRepository(welt.t.api, welt.t.cache),
+        KontoRepository(welt.t.api, welt.t.cache, welt.t.io),
         VerwaltungRepository(welt.t.api, welt.t.cache),
         SetsRepository(welt.t.api, welt.t.cache),
         TeileRepository(welt.t.api, welt.t.cache),
@@ -190,7 +190,7 @@ class UnterseitenTest {
             "sub_accounts":[{"id":2,"username":"lena"},{"id":3,"username":"tim"}],"open_invites":1}"""
         val vm = welt.t.merke(HaushaltViewModel(welt.t.sitzung, welt.t.filter(), welt.t.hinweise, welt.t.bestand,
             HaushaltRepository(welt.t.api, welt.t.cache),
-            KontoRepository(welt.t.api, welt.t.cache))).also { it.loadHouseholdStatus() }
+            KontoRepository(welt.t.api, welt.t.cache, welt.t.io))).also { it.loadHouseholdStatus() }
         zeige { HaushaltRoute(vm, remember { SnackbarHostState() }, onZurueck = {}) }
         warte("Haushalt") { vm.householdState.value.status != null }
 
@@ -253,7 +253,7 @@ class UnterseitenTest {
             "sub_accounts":[{"id":2,"username":"lena"},{"id":3,"username":"tim"}],"open_invites":1}"""
         val vm = welt.t.merke(HaushaltViewModel(welt.t.sitzung, welt.t.filter(), welt.t.hinweise, welt.t.bestand,
             HaushaltRepository(welt.t.api, welt.t.cache),
-            KontoRepository(welt.t.api, welt.t.cache))).also { it.loadHouseholdStatus() }
+            KontoRepository(welt.t.api, welt.t.cache, welt.t.io))).also { it.loadHouseholdStatus() }
         zeige { HaushaltRoute(vm, remember { SnackbarHostState() }, onZurueck = {}) }
         warte("Haushalt") { vm.householdState.value.status != null }
         val entfernen = ctx.getString(R.string.household_remove)
@@ -287,7 +287,7 @@ class UnterseitenTest {
         welt.pfade.antworten["/api/v1/auth/profile"] = """{"success":true,"user":{"id":1,"username":"marco",
             "email":"marco@example.org","first_name":"Marco","last_name":"Muster","email_verified":true}}"""
         val konto = welt.t.merke(KontoViewModel(
-            KontoRepository(welt.t.api, welt.t.cache), KontextTexte(),
+            KontoRepository(welt.t.api, welt.t.cache, welt.t.io), KontextTexte(),
             welt.t.meldungen, welt.t.sitzung, SitzungsAttrappe()))
         zeige {
             KontoRoute(onAbmelden = {}, snackbarHostState = remember { SnackbarHostState() },
@@ -314,7 +314,7 @@ class UnterseitenTest {
             "email":"marco@example.org","first_name":"Marco","last_name":"Muster","email_verified":true,
             "email_neu":"neu@example.org"}}"""
         val konto = welt.t.merke(KontoViewModel(
-            KontoRepository(welt.t.api, welt.t.cache), KontextTexte(),
+            KontoRepository(welt.t.api, welt.t.cache, welt.t.io), KontextTexte(),
             welt.t.meldungen, welt.t.sitzung, SitzungsAttrappe()))
         zeige {
             KontoRoute(onAbmelden = {}, snackbarHostState = remember { SnackbarHostState() },
@@ -332,7 +332,7 @@ class UnterseitenTest {
         welt.pfade.antworten["/api/v1/auth/profile"] = """{"success":true,"user":{"id":1,"username":"marco",
             "email":"marco@example.org","first_name":"Marco","last_name":"Muster","email_verified":true}}"""
         val konto = welt.t.merke(KontoViewModel(
-            KontoRepository(welt.t.api, welt.t.cache), KontextTexte(),
+            KontoRepository(welt.t.api, welt.t.cache, welt.t.io), KontextTexte(),
             welt.t.meldungen, welt.t.sitzung, SitzungsAttrappe()))
         zeige {
             KontoRoute(onAbmelden = {}, snackbarHostState = remember { SnackbarHostState() },
@@ -351,13 +351,13 @@ class UnterseitenTest {
         speichern.performClick()
         repeat(3) {
             compose.mainClock.advanceTimeBy(200)
-            org.robolectric.Shadows.shadowOf(android.os.Looper.getMainLooper()).idle()
+            Shadows.shadowOf(Looper.getMainLooper()).idle()
         }
-        val dialog = org.robolectric.shadows.ShadowDialog.getLatestDialog()
+        val dialog = ShadowDialog.getLatestDialog()
         assertTrue("Kein Passwortdialog beim Speichern", dialog?.isShowing == true)
         assertTrue("Gespeichert ohne Passwort: ${welt.pfade.anfragen}", welt.pfade.anfragen.none { it.startsWith("PUT") })
         dialog?.dismiss()
-        org.robolectric.Shadows.shadowOf(android.os.Looper.getMainLooper()).idle()
+        Shadows.shadowOf(Looper.getMainLooper()).idle()
     }
 
     @Test

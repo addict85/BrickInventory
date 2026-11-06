@@ -35,30 +35,32 @@ import ch.brickinventoryapp.ui.lokaleAchse
 import ch.brickinventoryapp.ui.lokaleWerte
 import ch.brickinventoryapp.ui.setZeilen
 import ch.brickinventoryapp.ui.viewmodel.Texte
+import java.math.BigDecimal
+import java.util.Locale
 
 /**
- * Beispieldaten für Bildschirmfotos und Oberflächentests: ein Testserver mit
+ * Beispieldaten für Bildschirmfotos und Oberflächentests: ein PfadServer im Takt mit
  * echten Antworten und die ViewModels der Hauptbildschirme dagegen. Dieser Test
  * prüft auf der JVM, dass jede Liste wirklich ankommt — ein Bildschirmfoto einer
  * leeren Liste zeigte nichts.
  *
- * Gegenprobe (30.10.2026, gemessen): in [Beispiele.ANTWORTEN] den Pfad
+ * Gegenprobe: in [Beispiele.ANTWORTEN] den Pfad
  * "/api/v1/wanted" vertippt → rot „jeder Hauptbildschirm bekommt Inhalt“.
- * Gegenproben (01.11.2026, kotlinc): im Detailpreis avg_price 799 statt 812.5 →
+ * Gegenproben: im Detailpreis avg_price 799 statt 812.5 →
  * rot „die Beispiele sind stimmig“; „chart“ aus der Wertentwicklung entfernt →
  * ebenso rot (es blieben die Schweizer Achsentexte des Servers stehen).
- * Gegenproben (02.11.2026, kotlinc): bei den Figuren wieder "name" statt
+ * Gegenproben: bei den Figuren wieder "name" statt
  * "fig_name" → rot „Teile und Figuren tragen echte Namen“; den Pfad
  * /api/v1/minifigs/stats entfernt → ebenso rot (keine Kennzahlen).
- * Gegenproben (02.11.2026, kotlinc): beim Falcon jedes "wert_gesamt" entfernt → rot
+ * Gegenproben: beim Falcon jedes "wert_gesamt" entfernt → rot
  * „jede Finanzzeile trägt …“ (wert=null); im FinanzViewModel die Punkte wieder beim
  * Laden mit Locale.getDefault() übersetzt → rot „die Finanzachse wird erst beim
  * Zeichnen formatiert“ ([10/27, , 10/29]) und „die Beispiele sind stimmig“.
- * Gegenprobe (02.11.2026, kotlinc): bei den Teilen wieder "quantity" statt
+ * Gegenprobe: bei den Teilen wieder "quantity" statt
  * "total_quantity" → rot „die Teilekacheln ergeben die Gesamtzahl“ (82 gegen 0).
- * Gegenprobe (02.11.2026, kotlinc): beim Teil 3039 "image_local" entfernt → rot
+ * Gegenprobe: beim Teil 3039 "image_local" entfernt → rot
  * „jede Kachel hat ein Beispielbild“ ([(3039, null)]).
- * Gegenprobe (03.11.2026, von Hand durchgespielt, kein SDK): das Baumhaus aus
+ * Gegenprobe: das Baumhaus aus
  * /finance/valuation entfernt → rot „jede Finanzzeile trägt …“ (2 statt 3 Zeilen).
  */
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -78,6 +80,9 @@ class BeispieldatenTest {
         Dispatchers.resetMain()
     }
 
+    /** Im Takt ist alles schon geladen, wenn der Aufruf zurückkehrt. */
+    private fun da(was: String, bedingung: () -> Boolean) = assertTrue(was, bedingung())
+
     @Test
     fun `jeder Hauptbildschirm bekommt Inhalt`() {
         val galerie = welt.galerie().also { it.loadSets() }
@@ -85,12 +90,12 @@ class BeispieldatenTest {
         val finanzen = welt.finanzen().also { it.loadValuation() }
         val merkliste = welt.merkliste().also { it.ladeMerkliste() }
         val detail = welt.setDetail().also { it.loadSetDetail(Beispiele.SET) }
-        TestApi.warteBis("Galerie") { galerie.galleryState.value.sets.size == 3 }
-        TestApi.warteBis("Teile") { teile.partsState.value.parts.isNotEmpty() }
-        TestApi.warteBis("Figuren") { teile.partsState.value.minifigs.isNotEmpty() }
-        TestApi.warteBis("Finanzen") { finanzen.financeState.value.valuation != null }
-        TestApi.warteBis("Merkliste") { merkliste.merklisteState.value.merkposten.isNotEmpty() }
-        TestApi.warteBis("Detail") { detail.setDetailState.value.setDetail != null }
+        da("Galerie") { galerie.galleryState.value.sets.size == 3 }
+        da("Teile") { teile.partsState.value.parts.isNotEmpty() }
+        da("Figuren") { teile.partsState.value.minifigs.isNotEmpty() }
+        da("Finanzen") { finanzen.financeState.value.valuation != null }
+        da("Merkliste") { merkliste.merklisteState.value.merkposten.isNotEmpty() }
+        da("Detail") { detail.setDetailState.value.setDetail != null }
         assertEquals("Millennium Falcon", detail.setDetailState.value.setDetail?.name)
         assertTrue(finanzen.financeState.value.valuation!!.sets.isNotEmpty())
     }
@@ -99,7 +104,7 @@ class BeispieldatenTest {
     @Test
     fun `Teile und Figuren tragen echte Namen`() {
         val teile = welt.teile().also { it.loadParts(); it.loadMinifigs() }
-        TestApi.warteBis("Teile und Figuren") { teile.partsState.value.let {
+        da("Teile und Figuren") { teile.partsState.value.let {
             it.parts.isNotEmpty() && it.minifigs.isNotEmpty() && it.minifigStats.types > 0 } }
         val z = teile.partsState.value
         assertTrue(z.parts.toString(), z.parts.all { !it.partName.isNullOrBlank() })
@@ -115,8 +120,8 @@ class BeispieldatenTest {
     fun `die Beispiele sind stimmig`() {
         val finanzen = welt.finanzen().also { it.loadValuation(); it.loadPortfolioHistory("week") }
         val detail = welt.setDetail().also { it.ladeAlles() }
-        TestApi.warteBis("Finanzen") { finanzen.financeState.value.let { it.valuation != null && it.historyPoints.isNotEmpty() } }
-        TestApi.warteBis("Detail") { detail.setDetailState.value.let { it.setPrice != null && it.acquisitions.isNotEmpty() } }
+        da("Finanzen") { finanzen.financeState.value.let { it.valuation != null && it.historyPoints.isNotEmpty() } }
+        da("Detail") { detail.setDetailState.value.let { it.setPrice != null && it.acquisitions.isNotEmpty() } }
         val falcon = finanzen.financeState.value.valuation!!.sets.first { it.setNumber == Beispiele.SET }
         assertEquals(falcon.avgPrice, detail.setDetailState.value.setPrice?.avgPrice)
         assertEquals(listOf("CHF"), listOf(welt.t.sitzung.state.value.currency))
@@ -124,8 +129,8 @@ class BeispieldatenTest {
         // Die Achse trägt Daten, keine Wochentage — chart.x passt Punkt für Punkt, und
         // übersetzt wird erst in der Sprache der Anzeige.
         val f = finanzen.financeState.value
-        val de = lokaleAchse(f.historyPoints, f.historyTage, java.util.Locale.forLanguageTag("de-CH"))
-        val en = lokaleAchse(f.historyPoints, f.historyTage, java.util.Locale.forLanguageTag("en-GB"))
+        val de = lokaleAchse(f.historyPoints, f.historyTage, Locale.forLanguageTag("de-CH"))
+        val en = lokaleAchse(f.historyPoints, f.historyTage, Locale.forLanguageTag("en-GB"))
         assertEquals(listOf("27.10.", "29.10."), de.map { it.xLabel }.filter { it.isNotBlank() })
         assertEquals(listOf("27 Oct", "29 Oct"), en.map { it.xLabel }.filter { it.isNotBlank() })
     }
@@ -136,19 +141,19 @@ class BeispieldatenTest {
      */
     @Test
     fun `die Finanzachse wird erst beim Zeichnen formatiert`() {
-        val vorher = java.util.Locale.getDefault()
-        java.util.Locale.setDefault(java.util.Locale.US)
+        val vorher = Locale.getDefault()
+        Locale.setDefault(Locale.US)
         try {
             val finanzen = welt.finanzen().also { it.loadValuation(); it.loadPortfolioHistory("week") }
-            TestApi.warteBis("Verlauf") { finanzen.financeState.value.historyPoints.isNotEmpty() }
+            da("Verlauf") { finanzen.financeState.value.historyPoints.isNotEmpty() }
             val f = finanzen.financeState.value
             assertEquals(listOf("27.10", "", "29.10"), f.historyPoints.map { it.xLabel })
             assertEquals("CHF", f.historyWaehrung)
-            val y = lokaleWerte(f.historyYAxis, f.historyWaehrung!!, java.util.Locale.forLanguageTag("de-CH"))
+            val y = lokaleWerte(f.historyYAxis, f.historyWaehrung!!, Locale.forLanguageTag("de-CH"))
             val label = y.last().label.replace(' ', ' ')
             assertTrue(label, label == "CHF 1’720" || label == "CHF 1'720")
         } finally {
-            java.util.Locale.setDefault(vorher)
+            Locale.setDefault(vorher)
         }
     }
 
@@ -162,7 +167,7 @@ class BeispieldatenTest {
         val teile = welt.teile().also { it.loadParts(); it.loadMinifigs() }
         val merkliste = welt.merkliste().also { it.ladeMerkliste() }
         val finanzen = welt.finanzen().also { it.loadValuation() }
-        TestApi.warteBis("alles") {
+        da("alles") {
             galerie.galleryState.value.sets.isNotEmpty() && teile.partsState.value.parts.isNotEmpty() &&
                 teile.partsState.value.minifigs.isNotEmpty() && merkliste.merklisteState.value.merkposten.isNotEmpty() &&
                 finanzen.financeState.value.valuation != null
@@ -183,7 +188,7 @@ class BeispieldatenTest {
     @Test
     fun `die Teilekacheln ergeben die Gesamtzahl`() {
         val teile = welt.teile().also { it.loadParts() }
-        TestApi.warteBis("Teile") { teile.partsState.value.let { it.parts.isNotEmpty() && it.partsStats != null } }
+        da("Teile") { teile.partsState.value.let { it.parts.isNotEmpty() && it.partsStats != null } }
         val z = teile.partsState.value
         assertEquals(z.partsStats!!.teileGesamt, z.parts.sumOf { it.totalQuantity })
     }
@@ -195,7 +200,7 @@ class BeispieldatenTest {
     @Test
     fun `jede Finanzzeile trägt Preis, Kaufpreis, Zustand und G&V`() {
         val finanzen = welt.finanzen().also { it.loadValuation() }
-        TestApi.warteBis("Finanzen") { finanzen.financeState.value.let { it.valuation != null && it.pnl != null } }
+        da("Finanzen") { finanzen.financeState.value.let { it.valuation != null && it.pnl != null } }
         val z = finanzen.financeState.value
         val zeilen = setZeilen(z.valuation!!.sets).map { it.second }
         // Zwei bewertete Zeilen und das Baumhaus ohne Marktpreis — der Fall der Basiszeile.
@@ -205,7 +210,7 @@ class BeispieldatenTest {
         assertTrue(bewertet.toString(), bewertet.all { it.kaufpreis != null && it.zustand != null && it.pnlProzent != null })
         assertTrue("ohne Marktpreis, mit Kaufpreis", zeilen.single { it.wert == null }.kaufpreis != null)
         val kopf = finanzSummen(z.valuation!!, z.partsValuation, z.figsValuation, z.pnl).gesamt
-        assertEquals(0, kopf.compareTo(bewertet.sumOf { java.math.BigDecimal.valueOf(it.wert!!) }))
+        assertEquals(0, kopf.compareTo(bewertet.sumOf { BigDecimal.valueOf(it.wert!!) }))
     }
 }
 
@@ -290,7 +295,7 @@ object Beispiele {
     /** Ein eigener Server je Test; [close] räumt ihn wieder ab. */
     class Welt(texte: Texte = NummernTexte) : AutoCloseable {
         val pfade = PfadServer(*ANTWORTEN)
-        val t = TestDienste(pfade.server, texte).also { d -> d.sitzung.waehrungUebernommen("CHF") }
+        val t = TestDienste(pfade.imTakt(), texte, io = Dispatchers.Main).also { d -> d.sitzung.waehrungUebernommen("CHF") }
 
         fun galerie() = t.merke(GalerieViewModel(t.sitzung, t.filter(), t.hinweise, t.bestand, t.scrollMemory, SetsRepository(t.api, t.cache),
             FinanzenRepository(t.api, t.cache), SavedStateHandle()))

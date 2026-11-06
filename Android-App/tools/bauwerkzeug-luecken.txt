@@ -1,0 +1,19 @@
+# Bekannte Lücken in Artefakten, die nur der Bau lädt (AGP, Lint, detekt, Robolectric) und die
+# nie ins APK gehen (sec17 B-N5). Ausnutzbar wären sie nur mit präparierter Eingabe zur Bauzeit.
+# Heben geht erst mit neuen Prüfsummen (Workflow pruefsummen=true), also über AGP- und Lint-Fassungen.
+#
+# Eine Zeile je Lücke, darüber der Grund:  gruppe:name:fassung  CVE-…  bis:JJJJ-MM-TT
+# Nach dem Datum ist ModulgrenzenTest rot; steht die Fassung nicht mehr in
+# gradle/verification-metadata.xml, ebenfalls: Dann gehört die Zeile gestrichen.
+
+# commons-lang3 über Lint/AGP: ClassUtils.getClass kann bei sehr langen Namen überlaufen. Lint liest
+# nur den Code dieses Repositorys; ein Angreifer bräuchte Schreibrecht, und dann hätte er mehr.
+org.apache.commons:commons-lang3:3.16.0 CVE-2025-48924 bis:2027-02-01
+
+# jdom2 über AGP: XXE beim Einlesen fremder XML-Dateien. AGP liest nur XML aus dem Repository und
+# aus geprüften Artefakten (verification-metadata), keine Eingabe von aussen.
+org.jdom:jdom2:2.0.6 CVE-2021-33813 bis:2027-02-01
+
+# httpclient über AGP/Lint: falsche Hostauswertung bestimmter URIs. Der Bau spricht nur mit festen
+# Repositories, und jede geladene Datei wird gegen ihre Prüfsumme verglichen.
+org.apache.httpcomponents:httpclient:4.5.6 CVE-2020-13956 bis:2027-02-01

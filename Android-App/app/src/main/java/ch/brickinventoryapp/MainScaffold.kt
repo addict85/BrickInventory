@@ -63,7 +63,6 @@ fun MainScaffold(
      * weil dieses Gerüst nur Zustand und Rückrufe bekommt, kein ViewModel.
      */
     onCsvAbbrechen: () -> Unit,
-    @Suppress("UNUSED_PARAMETER") serverUrl: String,
     /**
      * Liegt eine neuere Version bereit? Die Prüfung läuft app-weit beim Start; das
      * Gerüst zeigt den Befund als Punkt am Ziel „Mehr“, dort steht er an den
@@ -238,7 +237,7 @@ fun MainScaffold(
 
 /**
  * Das Gerüst für ein Reiter-Ziel mit allem, was in jedem Ziel gleich ist
- * (Verwerfen der Rollposition, `serverUrl`, Update-Punkt). Ein neues Ziel kann so
+ * (Verwerfen der Rollposition, Update-Punkt). Ein neues Ziel kann so
  * nichts vergessen, weil es nichts weiterzureichen gibt. MainScaffold selbst bleibt
  * für Ziele, die abweichen müssen.
  */
@@ -249,7 +248,6 @@ fun ReiterGeruest(
     content: @Composable () -> Unit
 ) {
     val vm = umgebung.aktivitaet.app
-    val state by vm.state.collectAsStateWithLifecycle()
     val selbstUpdate = umgebung.aktivitaet.update
     val updateZustand by selbstUpdate.updateState.collectAsStateWithLifecycle()
     val offen by vm.offeneAenderungen.collectAsStateWithLifecycle()
@@ -263,7 +261,6 @@ fun ReiterGeruest(
         onCsvAbbrechen = { csvImport.cancelCsvImport() },
         // Reiter angetippt → oben anfangen.
         onTabAngetippt = { ziel -> vm.scrollMemory.vergissReiter(ziel.rollSchluessel) },
-        serverUrl = state.serverUrl,
         // Der stille Start-Test hat ein Ergebnis — hier bekommt es einen Ort.
         updateVerfuegbar = updateZustand.neuereFassung != null,
         offeneAenderungen = offen,

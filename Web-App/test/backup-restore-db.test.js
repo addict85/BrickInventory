@@ -29,6 +29,10 @@
  * Gegenprobe, dass ein abgeschnittener Dump ohne sie stillschweigend
  * durchginge.
  *
+ * Gegenprobe (05.11.2026 gemessen): in DUMP_OPTIONEN von backup.sh
+ * `--exclude-table-data=user_sessions` gestrichen → rot: „Sitzungen, Zähler
+ * und Protokoll kommen leer zurück …“.
+ *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL UND die PostgreSQL-Klienten
  * (pg_dump/psql). Ohne DB: skip, ausser REQUIRE_DB=1.
  */
@@ -155,10 +159,19 @@ test('Sicherung und Wiederherstellung', async (t) => {
       `INSERT INTO set_acquisitions (user_id, set_number, quantity, purchase_price, condition)
        VALUES ($1,'10214-1',2,44.50,'U')`, [uid]);
     await haeltTeil(db, uid, '3001', { menge: 17, colorId: 4 });
+    // Was nicht in die Sicherung gehört: eine Sitzung, ein Anmeldezähler, eine Protokollzeile.
+    await db.run(`INSERT INTO user_sessions (sid, sess, expire) VALUES ('sicherung-sid', '{"userId":1}', NOW() + INTERVAL '1 day')`);
+    await db.run(`INSERT INTO rate_limit_attempts (key, count, first_at) VALUES ('login-name|name:abc', 1, NOW())`);
+    await db.run(`INSERT INTO app_logs (level, message) VALUES ('warn', '[anmeldung] sicherung')`);
   });
 
+  // Dieselben Optionen wie backup.sh: Gemessen wird, was das Skript sichert.
+  const optionen = (fs.readFileSync(path.join(ROOT, 'scripts', 'backup.sh'), 'utf8')
+    .match(/^DUMP_OPTIONEN="([^"]+)"$/m)?.[1] ?? '').split(' ').filter(Boolean);
+
   await t.test('pg_dump erzeugt einen vollständigen Dump', () => {
-    execFileSync(pgDump, ['--clean', '--if-exists', '-f', dump, url], { stdio: 'pipe' });
+    assert.ok(optionen.includes('--clean'), `backup.sh: DUMP_OPTIONEN nicht gefunden (${optionen})`);
+    execFileSync(pgDump, [...optionen, '-f', dump, url], { stdio: 'pipe' });
     const inhalt = fs.readFileSync(dump, 'utf8');
     assert.match(inhalt.slice(-500), /PostgreSQL database dump complete/,
       'Die Endmarke fehlt — genau daran erkennen backup.sh und restore.sh einen Torso');
@@ -202,6 +215,17 @@ test('Sicherung und Wiederherstellung', async (t) => {
     assert.equal(p2.part_number, '3001');
     assert.equal(await teilmengeVon(db, p2.user_id, '3001', p2.color_id), 17,
       'Die Stückzahl ist nicht zurückgekommen — part_acquisitions fehlt im Dump');
+  });
+
+  await t.test('Sitzungen, Zähler und Protokoll kommen leer zurück, die App startet', async () => {
+    for (const tabelle of ['user_sessions', 'rate_limit_attempts', 'app_logs']) {
+      assert.ok((await db.get('SELECT to_regclass($1) AS t', [`public.${tabelle}`])).t, `${tabelle} fehlt nach dem Zurückspielen`);
+      assert.equal((await db.get(`SELECT count(*)::int n FROM ${tabelle}`)).n, 0, `${tabelle} steht mit Zeilen in der Sicherung`);
+    }
+    // Wie beim Start des Servers: Schema prüfen und Migrationen anwenden, ohne Fehler.
+    await db.initSchema();
+    const c = await db.pool.connect();
+    try { assert.deepEqual(await _req('db/migrate.js').runMigrations(c), []); } finally { c.release(); }
   });
 
   await t.test('ein abgeschnittener Dump wird an der Endmarke erkannt', () => {

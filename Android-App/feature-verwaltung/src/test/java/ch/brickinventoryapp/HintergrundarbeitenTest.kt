@@ -31,7 +31,7 @@ import java.io.File
  * Die Hintergrundarbeiten im Monitoring: laden, abbrechen, wiederholen — das
  * ViewModel gegen einen Testserver mit den Antworten der Auftragstabelle.
  *
- * Gegenproben (30.10.2026, gemessen):
+ * Gegenproben:
  *   A  in HintergrundAnsichten `abbrechbar` auch für FEHLER → rot „was man mit
  *      einem Auftrag tun darf, steht schon fest“
  *   B  in MonitoringViewModel.nachAuftrag das Neuladen entfernt → rot „Abbrechen
@@ -39,7 +39,7 @@ import java.io.File
  *   C  bei Ergebnis.Error den Erfolgssatz statt texte.meldung → rot „ein 409
  *      zeigt den Satz des Servers“
  *   D  `jobProzessLaeuft = true` fest → rot „ohne Job-Prozess steht die Warnung an“
- * Gegenprobe (05.11.2026, gegenproben/auftrag-meldung-verloren.patch): melde()
+ * Gegenprobe: melde()
  *   startet die Aktion, legt den Satz aber nicht in den Kanal → rot „eine Aktion
  *   laeuft im ViewModel …“
  */

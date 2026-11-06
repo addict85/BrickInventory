@@ -83,7 +83,7 @@ class HaushaltViewModel @Inject constructor(
                 is Ergebnis.Success -> {
                     _householdState.update { it.copy(isLoading = false, message = r.data.error,
                         eingeloest = if (r.data.success) it.eingeloest + 1 else it.eingeloest) }
-                    if (r.data.success) kontenGeaendert(bestand = false)
+                    if (r.data.success) kontenGeaendert(bestandGeaendert = false)
                 }
                 // Kennt die App den zweiten Faktor noch nicht, zeigt erst diese Antwort das Codefeld.
                 is Ergebnis.Error -> _householdState.update { it.copy(isLoading = false,
@@ -117,7 +117,7 @@ class HaushaltViewModel @Inject constructor(
     fun unlinkHousehold(subUserId: Int? = null, mainUserId: Int? = null) {
         viewModelScope.launch {
             when (val r = haushalt.unlinkHousehold(subUserId, mainUserId)) {
-                is Ergebnis.Success -> kontenGeaendert(bestand = true)
+                is Ergebnis.Success -> kontenGeaendert(bestandGeaendert = true)
                 // Ohne Meldung tippt man auf „lösen“, und sichtbar geschieht nichts.
                 is Ergebnis.Error -> _householdState.update { it.copy(message = meldungen.meldung(r)) }
             }
@@ -135,10 +135,10 @@ class HaushaltViewModel @Inject constructor(
     }
 
     /** Neue Konten im Haushalt: Status, Kontofilter und — beim Lösen — der sichtbare Bestand. */
-    private suspend fun kontenGeaendert(bestand: Boolean) {
+    private suspend fun kontenGeaendert(bestandGeaendert: Boolean) {
         loadHouseholdStatus()
         filter.ladeMitglieder()
-        if (bestand) bestand.melde(Aenderung.Sets, Aenderung.Teile, Aenderung.Figuren)
+        if (bestandGeaendert) bestand.melde(Aenderung.Sets, Aenderung.Teile, Aenderung.Figuren)
     }
 
     private fun zuruecksetzen() {

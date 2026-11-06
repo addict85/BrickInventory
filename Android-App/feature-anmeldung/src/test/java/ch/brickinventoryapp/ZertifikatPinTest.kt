@@ -35,13 +35,16 @@ import javax.net.ssl.SSLContext
 import javax.net.ssl.TrustManagerFactory
 import javax.net.ssl.X509ExtendedTrustManager
 import ch.brickinventoryapp.util.ErneuerbareTlsFabrik
+import java.net.Socket
+import java.security.cert.CertificateException
+import javax.net.ssl.SSLEngine
 
 /**
  * Pinning des eigenen Servers, über echtes TLS gegen einen Testserver: Wurzel →
  * Zwischenstelle → Blatt „localhost“, dazu ein fremdes selbst signiertes Blatt.
  * Die Zertifikate sind feste Testdaten (100 Jahre gültig).
  *
- * Gegenproben (30.10.2026, gemessen gegen util/ServerVertrauen.kt):
+ * Gegenproben:
  *   A  in pruefe() ohne Pin `return kettenPruefung()` statt nachzufragen → rot
  *      „ohne Pin geht beim ersten Kontakt nichts hinaus“
  *   B  passtZumPin() nur `indexOfFirst >= 0` (ohne Pfadprüfung) → rot „ein
@@ -52,13 +55,13 @@ import ch.brickinventoryapp.util.ErneuerbareTlsFabrik
  *      „fremde Hosts prüft nur die Kette“
  *   E  parseQrPayload() übernimmt ein unlesbares fp → rot „ein QR-Code mit
  *      unlesbarem Fingerabdruck gilt nicht“
- *   F  (01.11.2026) in pruefe() wieder `chain[0]` statt `chain.last()` → rot
+ *   F  in pruefe() wieder `chain[0]` statt `chain.last()` → rot
  *      „ohne Pin geht beim ersten Kontakt nichts hinaus …“ (Blatt statt
  *      Zwischenstelle) und „ein erneuertes Blatt unter der bestätigten Wurzel …“
  *      (nach der Erneuerung GEAENDERT)
- *   G  (01.11.2026) fingerabdruckLesbar() wieder in Vierergruppen → rot „der
+ *   G  fingerabdruckLesbar() wieder in Vierergruppen → rot „der
  *      Fingerabdruck steht da wie in der Webapp“
- *   H  (01.11.2026) in pruefe() fremde Hosts wieder mit `kette` statt
+ *   H  in pruefe() fremde Hosts wieder mit `kette` statt
  *      `fremdeHosts` → rot „Nutzer-CAs gelten nur fuer den eigenen Server …“
  *   I  in pruefe() wieder `spkiFingerabdruck(chain.last())` statt der Wurzel
  *      aus dem System → rot „eine oeffentliche CA bietet ihre Wurzel an …“
@@ -66,11 +69,11 @@ import ch.brickinventoryapp.util.ErneuerbareTlsFabrik
  *   J  in ZertifikatsFrage.bestaetige() die Bedingung für GEAENDERT entfernt →
  *      rot „ein geaenderter Schluessel gilt erst mit abgeschriebenem …“
  *   K  bestaetigtFingerabdruck() mit `>= 4` statt `>= 16` → rot „ein
- *      geaenderter Schluessel …“ (vier getippte Zeichen genügten); am 02.11.2026
+ *      geaenderter Schluessel …“ (vier getippte Zeichen genügten); ebenso
  *      FINGERABDRUCK_ABTIPPEN = 16 statt 24 → rot dort („16 Zeichen (64 Bit) …“)
  *   L  in bestaetige() wieder nur GEAENDERT prüfen (`f.art == GEAENDERT &&`)
  *      → rot „ohne bekannte CA genuegt ein Tipp nicht …“
- *   M  (02.11.2026) die Zeile `if (pin != null && oeffentlich && pin in
+ *   M  die Zeile `if (pin != null && oeffentlich && pin in
  *      systemWurzeln) return` entfernt → rot „ein oeffentlicher Pin uebersteht
  *      …“ („Neue Wurzel, öffentlich gültig“), „eine oeffentliche CA …“, „ein
  *      geaenderter Schluessel …“
@@ -82,12 +85,12 @@ import ch.brickinventoryapp.util.ErneuerbareTlsFabrik
  *   P  in checkServerTrusted ohne Socket `if (!passtZumPin(chain, pin))` →
  *      `if (pin.isEmpty())` → rot „ohne Host faellt ein gepinnter Server …“
  *   Q  fingerabdruckAnfang() ohne `.take(11)` → rot „der gezeigte Anfang …“
- * Gegenproben (03.11.2026, gemessen mit kotlinc lokal; pruef6 H1, H3):
+ * Gegenproben:
  *   R  in pruefe() ohne Handshake-Sitzung wieder `mit(fremdeHosts)` → rot „ohne
  *      Handshake-Sitzung gilt der Pin des eigenen Servers“
  *   S  ErneuerbareTlsFabrik.erneuere() ohne Wirkung → rot „nach dem Erneuern prueft
  *      eine neue Verbindung die Kette wieder“ (die Sitzung wurde wiederaufgenommen)
- * Gegenprobe (04.11.2026, gemessen mit kotlinc lokal; sec11 H6):
+ * Gegenprobe:
  *   T  in pruefe() wieder `if (pin != null && passtZumPin(chain, pin)) return` (auch
  *      für eine System-Wurzel) → rot „ein Pin auf eine System-Wurzel gilt nur mit der
  *      System-Pruefung …“; gegenproben/wurzelpin-ohne-ct.patch
@@ -187,7 +190,7 @@ class ZertifikatPinTest {
     /**
      * Caddy mit `sign_with_root`: Die Kette ist Blatt + Wurzel, und der QR-Code
      * trägt den Fingerabdruck der WURZEL. Sie genügt als Pin.
-     * Gegenprobe (30.10.2026, gemessen): in passtZumPin nur das Blatt prüfen
+     * Gegenprobe: in passtZumPin nur das Blatt prüfen
      * (`indexOfFirst { … }` → `if (spkiFingerabdruck(chain[0]) == pin) 0 else -1`) → rot.
      */
     @Test
@@ -387,12 +390,12 @@ class ZertifikatPinTest {
         starte(WURZEL_BLATT_KEY, listOf(WURZEL_BLATT, WURZEL))
         val basis = system(WURZEL)
         val ohneCt = object : X509ExtendedTrustManager() {
-            private fun nein(): Nothing = throw java.security.cert.CertificateException("nicht in den CT-Protokollen")
-            override fun checkServerTrusted(c: Array<X509Certificate>, a: String, s: java.net.Socket?) { nein() }
-            override fun checkServerTrusted(c: Array<X509Certificate>, a: String, e: javax.net.ssl.SSLEngine?) { nein() }
+            private fun nein(): Nothing = throw CertificateException("nicht in den CT-Protokollen")
+            override fun checkServerTrusted(c: Array<X509Certificate>, a: String, s: Socket?) { nein() }
+            override fun checkServerTrusted(c: Array<X509Certificate>, a: String, e: SSLEngine?) { nein() }
             override fun checkServerTrusted(c: Array<X509Certificate>, a: String) { nein() }
-            override fun checkClientTrusted(c: Array<X509Certificate>, a: String, s: java.net.Socket?) = basis.checkClientTrusted(c, a, s)
-            override fun checkClientTrusted(c: Array<X509Certificate>, a: String, e: javax.net.ssl.SSLEngine?) = basis.checkClientTrusted(c, a, e)
+            override fun checkClientTrusted(c: Array<X509Certificate>, a: String, s: Socket?) = basis.checkClientTrusted(c, a, s)
+            override fun checkClientTrusted(c: Array<X509Certificate>, a: String, e: SSLEngine?) = basis.checkClientTrusted(c, a, e)
             override fun checkClientTrusted(c: Array<X509Certificate>, a: String) = basis.checkClientTrusted(c, a)
             override fun getAcceptedIssuers(): Array<X509Certificate> = basis.acceptedIssuers
         }
@@ -421,13 +424,13 @@ class ZertifikatPinTest {
     @Test
     fun `ohne Handshake-Sitzung gilt der Pin des eigenen Servers`() {
         val tm = PinVertrauen(system(FREMD), pins, eigenerServer = { "nas:8443" }, frage = frage, fremdeHosts = system(FREMD))
-        tm.checkServerTrusted(arrayOf(zert(FREMD)), "ECDHE_ECDSA", null as java.net.Socket?)
+        tm.checkServerTrusted(arrayOf(zert(FREMD)), "ECDHE_ECDSA", null as Socket?)
         pins.merkePin("nas:8443", spkiFingerabdruck(zert(INTER)))
         val abgelehnt = runCatching {
-            tm.checkServerTrusted(arrayOf(zert(FREMD)), "ECDHE_ECDSA", null as java.net.Socket?)
+            tm.checkServerTrusted(arrayOf(zert(FREMD)), "ECDHE_ECDSA", null as Socket?)
         }.isFailure
         assertTrue("Eine System-CA ersetzt den Pin nicht", abgelehnt)
-        tm.checkServerTrusted(arrayOf(zert(LEAF), zert(INTER)), "ECDHE_ECDSA", null as java.net.Socket?)
+        tm.checkServerTrusted(arrayOf(zert(LEAF), zert(INTER)), "ECDHE_ECDSA", null as Socket?)
     }
 
     /**
@@ -441,16 +444,16 @@ class ZertifikatPinTest {
         val basis = system(ROOT)
         var erlaubt = true
         val tm = object : X509ExtendedTrustManager() {
-            private fun darf() { if (!erlaubt) throw java.security.cert.CertificateException("entzogen") }
-            override fun checkServerTrusted(c: Array<X509Certificate>, a: String, s: java.net.Socket?) {
+            private fun darf() { if (!erlaubt) throw CertificateException("entzogen") }
+            override fun checkServerTrusted(c: Array<X509Certificate>, a: String, s: Socket?) {
                 darf(); basis.checkServerTrusted(c, a, s)
             }
-            override fun checkServerTrusted(c: Array<X509Certificate>, a: String, e: javax.net.ssl.SSLEngine?) {
+            override fun checkServerTrusted(c: Array<X509Certificate>, a: String, e: SSLEngine?) {
                 darf(); basis.checkServerTrusted(c, a, e)
             }
             override fun checkServerTrusted(c: Array<X509Certificate>, a: String) { darf(); basis.checkServerTrusted(c, a) }
-            override fun checkClientTrusted(c: Array<X509Certificate>, a: String, s: java.net.Socket?) = basis.checkClientTrusted(c, a, s)
-            override fun checkClientTrusted(c: Array<X509Certificate>, a: String, e: javax.net.ssl.SSLEngine?) = basis.checkClientTrusted(c, a, e)
+            override fun checkClientTrusted(c: Array<X509Certificate>, a: String, s: Socket?) = basis.checkClientTrusted(c, a, s)
+            override fun checkClientTrusted(c: Array<X509Certificate>, a: String, e: SSLEngine?) = basis.checkClientTrusted(c, a, e)
             override fun checkClientTrusted(c: Array<X509Certificate>, a: String) = basis.checkClientTrusted(c, a)
             override fun getAcceptedIssuers(): Array<X509Certificate> = basis.acceptedIssuers
         }
@@ -513,7 +516,7 @@ class ZertifikatPinTest {
         const val INTER = "MIIBlzCCAT2gAwIBAgIUQyjZ8Us4p6zbuUu9OD8NEe+rg0IwCgYIKoZIzj0EAwIwFzEVMBMGA1UEAwwMQnJpY2sgV3VyemVsMCAXDTI2MTAzMDE1NDI1OFoYDzIxMjYxMDA2MTU0MjU4WjAZMRcwFQYDVQQDDA5CcmljayBad2lzY2hlbjBZMBMGByqGSM49AgEGCCqGSM49AwEHA0IABKHmNbAOfGEGwyrPGQynBjdkBGW5x/8pNc/Lcpad3cW5GqsvY5WChv5QSJhnj/3jWqC/9hIcIgoOR6w1OsgpN16jYzBhMA8GA1UdEwEB/wQFMAMBAf8wDgYDVR0PAQH/BAQDAgEGMB0GA1UdDgQWBBS/HkuEroFohODqD2wk4HPnlSdDQDAfBgNVHSMEGDAWgBRcYO1aHTY3j2D5gX04SSq+egLUSDAKBggqhkjOPQQDAgNIADBFAiAb/nz4SUy5/d2t/ci7w0eBD9c7HadJ4CcVtCs4ugUuFwIhAJAxMmuBap9q2jYYNRmSymGdOBt78fT12KETYQ4uWnaO"
         const val LEAF = "MIIBxDCCAWqgAwIBAgIUGKFt31uRyQEpo2/dyXJUnyNBQvQwCgYIKoZIzj0EAwIwGTEXMBUGA1UEAwwOQnJpY2sgWndpc2NoZW4wIBcNMjYxMDMwMTU0MjU4WhgPMjEyNjEwMDYxNTQyNThaMBQxEjAQBgNVBAMMCWxvY2FsaG9zdDBZMBMGByqGSM49AgEGCCqGSM49AwEHA0IABMRphX3E9F+1CxrClvKYvhQLC1GyRMM0KV6hemBqhqJ4ErxTmWWsCmCaLxc9ai0HRRVGcwRaTUYN2zwUwOruxrqjgZIwgY8wDAYDVR0TAQH/BAIwADAOBgNVHQ8BAf8EBAMCB4AwEwYDVR0lBAwwCgYIKwYBBQUHAwEwGgYDVR0RBBMwEYIJbG9jYWxob3N0hwR/AAABMB8GA1UdIwQYMBaAFL8eS4SugWiE4OoPbCTgc+eVJ0NAMB0GA1UdDgQWBBTYiTrV8idg50suxhBOzVR4ehDuXjAKBggqhkjOPQQDAgNIADBFAiEAqVWMQNoCR/Qv0iDKhwjlSmbIpcj4QkkvEwOLQJjmWVkCIHbT27kp+E5rJEcyBRHjRi8lrrqHGMcGJY3hZQXm0rOc"
         /** Nur für diesen Test erzeugt; schützt nichts. */
-        /** Caddy sign_with_root: Blatt direkt von der Wurzel signiert (openssl, 30.10.2026). */
+        /** Caddy sign_with_root: Blatt direkt von der Wurzel signiert (openssl). */
         const val WURZEL = "MIIBlTCCATugAwIBAgIUWfsD4SFXkS/uYDWYXA+OWZbAS0owCgYIKoZIzj0EAwIwFzEVMBMGA1UEAwwMQ2FkZHkgV3VyemVsMCAXDTI2MTAzMDIyMjg0NFoYDzIxMjYxMDA2MjIyODQ0WjAXMRUwEwYDVQQDDAxDYWRkeSBXdXJ6ZWwwWTATBgcqhkjOPQIBBggqhkjOPQMBBwNCAASudcnAk+7NFzlNgXJlzLpv1WNLgSrYkYdxzHKOI9CAGktSDWCmqhJfXKbJezy/XJtJhb8No+g98CcCX+K4RZ7wo2MwYTAdBgNVHQ4EFgQULpDKa+iFWhIS/Vl4s94pdZYH43QwHwYDVR0jBBgwFoAULpDKa+iFWhIS/Vl4s94pdZYH43QwDwYDVR0TAQH/BAUwAwEB/zAOBgNVHQ8BAf8EBAMCAQYwCgYIKoZIzj0EAwIDSAAwRQIgDuvgqOOE7zjj0LE3ZMADdJ6CbM9zLc9uZyPLXQIcJ24CIQDvseM//f4Ymtat2eDiE0guayf6MFBXQwVmUEAs/h5jsA=="
         const val WURZEL_BLATT = "MIIBwjCCAWigAwIBAgIUJ5bQK16akXTtVJGiddkeeCeimhAwCgYIKoZIzj0EAwIwFzEVMBMGA1UEAwwMQ2FkZHkgV3VyemVsMCAXDTI2MTAzMDIyMjg0NFoYDzIxMjYxMDA2MjIyODQ0WjAUMRIwEAYDVQQDDAlsb2NhbGhvc3QwWTATBgcqhkjOPQIBBggqhkjOPQMBBwNCAAQkCXdFDKqjNGrBKlNNRxL4eL+CDWRzYEeNTxLPedxdqAmZELd0QILkTpIU3gnrMSNC92sr9JqJMj6bI6rbtqwHo4GSMIGPMAwGA1UdEwEB/wQCMAAwDgYDVR0PAQH/BAQDAgeAMBMGA1UdJQQMMAoGCCsGAQUFBwMBMBoGA1UdEQQTMBGCCWxvY2FsaG9zdIcEfwAAATAdBgNVHQ4EFgQUAZczQX6xjqiWuzi8ceAiL8aMRSgwHwYDVR0jBBgwFoAULpDKa+iFWhIS/Vl4s94pdZYH43QwCgYIKoZIzj0EAwIDSAAwRQIhAIDDuQsj3wEuClpl1bZMDbJQ1fnXG3pDWbfkcK9Nbkj1AiAoe+I71U9V5jog/wz5Y5bOc2YbEAw1q+grLMsqMP1jUA=="
         const val WURZEL_BLATT_KEY = "MIGHAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBG0wawIBAQQgqZs7tPJIE6CpMc2pY0PdwG3yxUHoNpKYXMHNMTymB+KhRANCAAQkCXdFDKqjNGrBKlNNRxL4eL+CDWRzYEeNTxLPedxdqAmZELd0QILkTpIU3gnrMSNC92sr9JqJMj6bI6rbtqwH"
@@ -525,7 +528,7 @@ class ZertifikatPinTest {
         const val ERNEUERT_BLATT1_KEY = "MIGHAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBG0wawIBAQQghRyFpO/jlqgF52U0y5wFGuYiEhYlqjn1ua2/I+YlOlKhRANCAARo3O3gBYVKoZ258LnBNzokFNZYa9re0sQVASwdqdtSNmwkXYr3Oin1u7J8CHuUKU5Wnj239xhxTcysx1s75gkA"
         const val ERNEUERT_BLATT2 = "MIIByTCCAW6gAwIBAgIUNED1j2vQniFdnw4NBBoyn5y9NswwCgYIKoZIzj0EAwIwIDEeMBwGA1UEAwwVQ2FkZHkgV3VyemVsIEVybmV1ZXJ0MCAXDTI2MTEwMTA3MjY1MVoYDzIxMjYxMDA4MDcyNjUxWjAUMRIwEAYDVQQDDAlsb2NhbGhvc3QwWTATBgcqhkjOPQIBBggqhkjOPQMBBwNCAARW/sryEYeErhUzXKqmM/ZH8rtumVlk4/NOugkM98U5wWirXfFozbsceyOHTb6cZdwtsOb+R3MjM1T8yhe8ZBHYo4GPMIGMMAkGA1UdEwQCMAAwDgYDVR0PAQH/BAQDAgeAMBMGA1UdJQQMMAoGCCsGAQUFBwMBMBoGA1UdEQQTMBGCCWxvY2FsaG9zdIcEfwAAATAdBgNVHQ4EFgQUrufLzJG5jvOE0ZNVIgUuFsKOjt8wHwYDVR0jBBgwFoAUqmjAp54LnvWA/rxJuUqmA46NfbUwCgYIKoZIzj0EAwIDSQAwRgIhALePJ9a9k9vdjKBxDuPGn9kIP5juXHCBuHjy49hb5EH1AiEA/qkkQkBKdBYF7ECQnwAnobnpIyIcGyfQ/MN1UO/z2dE="
         const val ERNEUERT_BLATT2_KEY = "MIGHAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBG0wawIBAQQgSfcmm6eyJEzmbUxAk9UHevRKVQMhEqMn242fIEhY7aWhRANCAARW/sryEYeErhUzXKqmM/ZH8rtumVlk4/NOugkM98U5wWirXfFozbsceyOHTb6cZdwtsOb+R3MjM1T8yhe8ZBHY"
-        /** Öffentliche CA im Kleinen: eine Wurzel, zwei Zwischenstellen mit je einem Blatt (openssl, 01.11.2026). */
+        /** Öffentliche CA im Kleinen: eine Wurzel, zwei Zwischenstellen mit je einem Blatt (openssl). */
         const val OEFF_WURZEL = "MIIBpDCCAUmgAwIBAgIUZIFCnfxNIQRpMPTNwW7BSSFDv80wCgYIKoZIzj0EAwIwHjEcMBoGA1UEAwwTT2VmZmVudGxpY2hlIFd1cnplbDAgFw0yNjExMDExNTU3MDdaGA8yMTI2MTAwODE1NTcwN1owHjEcMBoGA1UEAwwTT2VmZmVudGxpY2hlIFd1cnplbDBZMBMGByqGSM49AgEGCCqGSM49AwEHA0IABMYW+yzOBBNjAat0l/sP4W3ZgRVDK5kCmFCH5Dv7185TkPr5k7scjn/974EXTVvZDYU1LPsZmW3gXy0FNGysUC+jYzBhMB0GA1UdDgQWBBRCHCEEa57KCCRJiaZxWSJ9GDEjCTAfBgNVHSMEGDAWgBRCHCEEa57KCCRJiaZxWSJ9GDEjCTAPBgNVHRMBAf8EBTADAQH/MA4GA1UdDwEB/wQEAwIBBjAKBggqhkjOPQQDAgNJADBGAiEAp6GVM9JkGHL6UnRaaidFdJ2KXTkT5dVarFiyfXTEfDACIQDl6sX2VT243lSNJtFFpU3znF+GxV7T8KstC/lIGpQA/g=="
         const val OEFF_WURZEL_HEX = "F4:5D:D3:BE:46:44:4D:61:F1:CD:DE:03:92:B3:C5:8A:73:F3:33:DC:60:9D:AC:42:BD:C0:BB:CC:FE:19:E0:FB"
         const val OEFF_ZW_A = "MIIBoDCCAUagAwIBAgIUAQU1sXdBgqFF38Hi+ijuOG1hvwYwCgYIKoZIzj0EAwIwHjEcMBoGA1UEAwwTT2VmZmVudGxpY2hlIFd1cnplbDAgFw0yNjExMDExNTU3MDdaGA8yMTI2MTAwODE1NTcwN1owGzEZMBcGA1UEAwwQWndpc2NoZW5zdGVsbGUgYTBZMBMGByqGSM49AgEGCCqGSM49AwEHA0IABOWdioVQKAOBRw6UiEyIXBhIl95junXb8p6oGzTDkKJWw4zE7efq82EiL0JrvnkWQziXaTCAzYqVk3xnwHqv4KSjYzBhMA8GA1UdEwEB/wQFMAMBAf8wDgYDVR0PAQH/BAQDAgEGMB0GA1UdDgQWBBTQ5IolVueozviLke93UtJ6G3Y0EDAfBgNVHSMEGDAWgBRCHCEEa57KCCRJiaZxWSJ9GDEjCTAKBggqhkjOPQQDAgNIADBFAiEA/5LLzEGDA7tkDnrGKtFmUDSyWyNizCD47OaVWdjPKjsCIFH/YtymGArW/cxrFfMpLjvPzmV3bh2fen18oGROYQLj"
@@ -534,7 +537,7 @@ class ZertifikatPinTest {
         const val OEFF_BLATT_A_KEY = "MIGHAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBG0wawIBAQQgHVYb+/H8EyhvizzUS3y9TAt7FlkQtQTQ67/8+ih/YaihRANCAASOpGFJ/GekpbxJWldr609pG3pWXCrYKa2WsGaazUsOLCHRbmeivSOaYgB/4MrYGsqkCDN21M+zKXGZOMgamd7O"
         const val OEFF_BLATT_B = "MIIBxjCCAWygAwIBAgIUMZo/EI4H/XOHp4BTSLv9bt1IR58wCgYIKoZIzj0EAwIwGzEZMBcGA1UEAwwQWndpc2NoZW5zdGVsbGUgYjAgFw0yNjExMDExNTU3MDdaGA8yMTI2MTAwODE1NTcwN1owFDESMBAGA1UEAwwJbG9jYWxob3N0MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAE2E8WBySJmiIWknMzbepPni3bP68iZpP3c2WwBCqoEMZb8ppgaIFnfP4x8FfQwxmbblOfnAK9qIpIMMOKcqJLhKOBkjCBjzAMBgNVHRMBAf8EAjAAMA4GA1UdDwEB/wQEAwIHgDATBgNVHSUEDDAKBggrBgEFBQcDATAaBgNVHREEEzARgglsb2NhbGhvc3SHBH8AAAEwHQYDVR0OBBYEFG5BwbuRc8QPiyQocRkuaHnm7J03MB8GA1UdIwQYMBaAFD+g/sw4Ni1an0bLOzoy0M8GYkgwMAoGCCqGSM49BAMCA0gAMEUCIQCvJtbBc2pqUGlh8evmznKK1G/O8iW531jJlET2gYW5KwIgDINFCTJgae8SPreE2VipqiyzSncwBRglIT3Sw1EcC6M="
         const val OEFF_BLATT_B_KEY = "MIGHAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBG0wawIBAQQg7LsVCGLBPHR5qR7tBe+zQWeT/RemLJNrPJ7SFpGNHwyhRANCAATYTxYHJImaIhaSczNt6k+eLds/ryJmk/dzZbAEKqgQxlvymmBogWd8/jHwV9DDGZtuU5+cAr2oikgww4pyokuE"
-        /** Eine zweite öffentliche Wurzel mit Blatt, für den Wurzelwechsel (openssl, 02.11.2026). */
+        /** Eine zweite öffentliche Wurzel mit Blatt, für den Wurzelwechsel (openssl). */
         const val OEFF2_WURZEL = "MIIBqDCCAU2gAwIBAgIUeQfiSvXaOs9VQ7JOTGuYq9+9io8wCgYIKoZIzj0EAwIwIDEeMBwGA1UEAwwVT2VmZmVudGxpY2hlIFd1cnplbCAyMCAXDTI2MTEwMjA0NDcyMFoYDzIxMjYxMDA5MDQ0NzIwWjAgMR4wHAYDVQQDDBVPZWZmZW50bGljaGUgV3VyemVsIDIwWTATBgcqhkjOPQIBBggqhkjOPQMBBwNCAARXPBIUHUcx0gndNtCFWOsc9VK1UCPYVdTt/elmdGtOr+QqU+2kj82x5bM5PwwxyeTMI0l/0m7+IhRHasjTD3wAo2MwYTAdBgNVHQ4EFgQUNiOkY9V+q2qKkLNO3YzYDvJSMtgwHwYDVR0jBBgwFoAUNiOkY9V+q2qKkLNO3YzYDvJSMtgwDwYDVR0TAQH/BAUwAwEB/zAOBgNVHQ8BAf8EBAMCAQYwCgYIKoZIzj0EAwIDSQAwRgIhAOtFyStygsxuZ82WUpQfgs4yEc9yd5SHXzEeM5gxXWiHAiEAxq1QdZDQEZLbpSZkktaMa/gUng+ruXUCb7bbSSw+VW4="
         const val OEFF2_BLATT = "MIIByjCCAXGgAwIBAgIUBZldxIW8pDuyAwDmNEUH+CvVA/8wCgYIKoZIzj0EAwIwIDEeMBwGA1UEAwwVT2VmZmVudGxpY2hlIFd1cnplbCAyMCAXDTI2MTEwMjA0NDcyMFoYDzIxMjYxMDA5MDQ0NzIwWjAUMRIwEAYDVQQDDAlsb2NhbGhvc3QwWTATBgcqhkjOPQIBBggqhkjOPQMBBwNCAAR3UZCup1reCVwcdpUWXuBroLN2Ae2orBEjO/63RFn9ppwOTZcXNQbuX2J20HqKFM7F5pgpPdZWoCx5CuuTDLkco4GSMIGPMAwGA1UdEwEB/wQCMAAwDgYDVR0PAQH/BAQDAgeAMBMGA1UdJQQMMAoGCCsGAQUFBwMBMBoGA1UdEQQTMBGCCWxvY2FsaG9zdIcEfwAAATAdBgNVHQ4EFgQU0+JHa2fUKgS1c8Qpf2MPvkf10x0wHwYDVR0jBBgwFoAUNiOkY9V+q2qKkLNO3YzYDvJSMtgwCgYIKoZIzj0EAwIDRwAwRAIgaI3NXaJqaJPF9F3F5MA/uHYXmLEMDGlz2rerz62IXIACIGGccRCorHmF04MB3oFogbyx7s3cjhOWNIM2PivVGTsj"
         const val OEFF2_BLATT_KEY = "MIGHAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBG0wawIBAQQgkJUGxWpt9r1Mxq/Kodx7mWejKYEWCr0nz2zAkQCUrm2hRANCAAR3UZCup1reCVwcdpUWXuBroLN2Ae2orBEjO/63RFn9ppwOTZcXNQbuX2J20HqKFM7F5pgpPdZWoCx5CuuTDLkc"

@@ -4,16 +4,16 @@ Test: ch.brickinventoryapp.GeraeteSchutzTest
 Rot: ein anderer Pfad auf demselben Host verwirft den Token
 
 diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/TokenAblage.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/TokenAblage.kt
-index c062e66..1a5b7c9 100644
+index f79cce3..723686b 100644
 --- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/TokenAblage.kt
 +++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/TokenAblage.kt
-@@ -189,8 +189,7 @@ class TokenAblage @Inject constructor(
-             // Host ist eine andere Anwendung, also zählt die bisherige Adresse mit.
-             val herkunft = _tokenHerkunftState.value ?: serverUrlJetzt()
-             val anderer = tokenJetzt().isNotBlank() &&
+@@ -197,8 +197,7 @@ class TokenAblage @Inject constructor(
+             val herkunft = platte[TOKEN_HERKUNFT] ?: _tokenHerkunftState.value ?: alteAdresse
+             val hatToken = platte[AUTH_TOKEN_ENC] != null || !platte[AUTH_TOKEN].isNullOrEmpty() || tokenJetzt().isNotBlank()
+             val anderer = hatToken &&
 -                (!NetworkPolicy.gleicheHerkunft(herkunft, normalized) ||
--                    !NetworkPolicy.gleicherServer(serverUrlJetzt(), normalized))
+-                    !NetworkPolicy.gleicherServer(alteAdresse, normalized))
 +                !NetworkPolicy.gleicheHerkunft(herkunft, normalized)
-             if (anderer) { _authTokenState.value = ""; _tokenHerkunftState.value = null }
-             _serverUrlState.value = normalized
-             dataStore.edit {
+             if (anderer) {
+                 verwaistesToken(platte, alteAdresse)?.let { runCatching { entwertung.get().plane(it) } }
+                 _authTokenState.value = ""; _tokenHerkunftState.value = null

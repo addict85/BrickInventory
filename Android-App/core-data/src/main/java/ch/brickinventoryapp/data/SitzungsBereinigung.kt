@@ -1,11 +1,13 @@
 package ch.brickinventoryapp.data
 
 import android.content.Context
+import androidx.core.app.NotificationManagerCompat
 import ch.brickinventoryapp.data.cache.VorschauSpeicher
 import ch.brickinventoryapp.data.repository.KontoDatenLoescher
 import ch.brickinventoryapp.di.BildClient
 import ch.brickinventoryapp.di.BrickDispatchers
 import ch.brickinventoryapp.di.Dispatcher
+import ch.brickinventoryapp.util.Ablageschluessel
 import ch.brickinventoryapp.util.fangeAusserAbbruch
 import ch.brickinventoryapp.util.raeumeAnleitungenAuf
 import ch.brickinventoryapp.util.raeumeKontoDateienAuf
@@ -38,6 +40,7 @@ internal class GeraeteBereinigung @Inject constructor(
     private val vorschau: VorschauSpeicher,
     private val imageLoader: ImageLoader,
     @param:Dispatcher(BrickDispatchers.IO) private val io: CoroutineDispatcher,
+    private val ablage: Ablageschluessel,
 ) : SitzungsBereinigung {
     @OptIn(ExperimentalCoilApi::class)
     override suspend fun raeumeAuf() {
@@ -57,5 +60,9 @@ internal class GeraeteBereinigung @Inject constructor(
             imageLoader.memoryCache?.clear()
             imageLoader.diskCache?.clear()
         }
+        // Preisalarme nennen Sets und Preise; die Leiste gehört dem abgemeldeten Konto.
+        fangeAusserAbbruch { NotificationManagerCompat.from(ctx).cancelAll() }
+        // Zuletzt ein neuer Ablageschlüssel: Reste auf dem Flash sind danach nicht mehr lesbar.
+        withContext(io) { fangeAusserAbbruch { ablage.erneuere() } }
     }
 }

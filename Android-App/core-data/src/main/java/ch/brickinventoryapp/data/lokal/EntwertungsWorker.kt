@@ -56,8 +56,10 @@ class EntwertungsWorker @AssistedInject constructor(
         val server = inputData.getString(SERVER) ?: return Result.success()
         val geheim = inputData.getString(TOKEN) ?: return Result.success()
         val pin = inputData.getString(PIN)
+        // Aufträge älterer Fassungen tragen keine Herkunft; sie galten dem eingetragenen Server.
+        val herkunft = inputData.getString(HERKUNFT) ?: NetworkPolicy.herkunft(server)
         val schritt = withContext(bereiche.io) {
-            entwertungsSchritt(tresor.oeffne(geheim), runAttemptCount) { entwerter.entwerte(server, it, pin) }
+            entwertungsSchritt(tresor.oeffne(geheim), runAttemptCount) { entwerter.entwerte(server, it, pin, herkunft) }
         }
         return when (schritt) {
             Entwertungsschritt.FERTIG -> Result.success()
@@ -76,6 +78,7 @@ class EntwertungsWorker @AssistedInject constructor(
         const val SERVER = "server"
         const val TOKEN = "token_geheim"
         const val PIN = "pin"
+        const val HERKUNFT = "herkunft"
         private const val KANAL = "abmeldung"
 
         /** Der Hinweis, den Nutzer in der Webapp unter „Angemeldete Geräte“ abzumelden. */
@@ -109,7 +112,8 @@ internal class WorkManagerEntwertung @Inject constructor(
         val arbeit = OneTimeWorkRequestBuilder<EntwertungsWorker>()
             .setInputData(Data.Builder().putString(EntwertungsWorker.SERVER, auftrag.serverUrl)
                 .putString(EntwertungsWorker.TOKEN, auftrag.tokenGeheim)
-                .putString(EntwertungsWorker.PIN, auftrag.pin).build())
+                .putString(EntwertungsWorker.PIN, auftrag.pin)
+                .putString(EntwertungsWorker.HERKUNFT, auftrag.herkunft).build())
             .setConstraints(Constraints.Builder().setRequiredNetworkType(NetworkType.CONNECTED).build())
             .setBackoffCriteria(BackoffPolicy.EXPONENTIAL, 30, TimeUnit.SECONDS)
             .build()

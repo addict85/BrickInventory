@@ -1,7 +1,7 @@
 // Beide Seiten der Überwachung beieinander: die Liste der Dienste und das Protokollfenster.
 // Ausführlich: docs/begruendungen/public/js/01-monitor.js.md#dieser-block-lag-in-js-01-core-js-deren
 import { echt, registerActions } from './00-registry.js';
-import { escHtmlAttr, esc, html, ungeprueft } from './00-escapen.js';
+import { alsHtml, escHtmlAttr, esc, html, ungeprueft } from './00-escapen.js';
 import { api, apiDaten } from './01-api.js';
 import { ico, G, setzeHtml } from './01-dom.js';
 import { fmtDatum } from './01-format.js';
@@ -72,7 +72,7 @@ function openLogViewer() {
     '<script src="/js/logviewer.js?v=' + (window.__APP_VERSION || Date.now()) + '"><\/script>' +
     '</body></html>';
 
-  win.document.write(markup);
+  win.document.write(alsHtml(markup));
   win.document.close();
 }
 
@@ -341,7 +341,7 @@ async function zeigeAuftraege() {
       <summary class="mon-untertitel">${tRaw('monitor.auftraege.einzeln')} <span class="mon-leise">(${d.auftraege.length})</span></summary>
       <div class="tw"><table class="dt mon-tabelle">
       <thead><tr><th>${tRaw('monitor.col.auftrag')}</th><th>${tRaw('monitor.col.zustand')}</th><th>${tRaw('monitor.col.zeit')}</th><th>${tRaw('monitor.col.hinweis')}</th><th>${tRaw('monitor.col.aktionen')}</th></tr></thead>
-      <tbody>${ungeprueft(d.auftraege.slice(0, 40).map(zeile).join(''))}</tbody></table></div>
+      <tbody>${d.auftraege.slice(0, 40).map(zeile)}</tbody></table></div>
       ${mehr > 0 ? html`<p class="mon-leise">${tRaw('monitor.auftraege.mehr', { n: mehr })}</p>` : ''}</details>` : html`<h3 class="mon-untertitel">${tRaw('monitor.auftraege.einzeln')}</h3><p class="mon-leise">${tRaw('monitor.auftraege.leer')}</p>`}`);
 }
 /**

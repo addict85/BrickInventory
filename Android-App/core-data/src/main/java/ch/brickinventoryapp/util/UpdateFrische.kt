@@ -11,6 +11,10 @@ data class UpdateStand(val hoechsterCode: Int, val ausgestellt: Long)
 interface UpdateStandAblage {
     suspend fun updateStand(): UpdateStand?
     suspend fun merkeUpdateStand(stand: UpdateStand)
+
+    /** Beim Start still bei GitHub nachsehen? Je Gerät, Vorgabe an; GitHub sieht dabei die IP. */
+    fun startpruefungAn(): Boolean = true
+    fun setzeStartpruefung(an: Boolean) = Unit
 }
 
 /** Wie frisch eine signierte Beschreibung ist ([bewerteFrische]). */

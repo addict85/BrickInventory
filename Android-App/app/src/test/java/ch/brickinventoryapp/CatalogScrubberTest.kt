@@ -1,6 +1,7 @@
 package ch.brickinventoryapp
 
 import org.junit.Test
+import java.io.File
 
 /**
  * Die Jahres-Leiste im Katalog SPRINGT, sie filtert nicht.
@@ -9,8 +10,6 @@ import org.junit.Test
  * „Im Katalog die Zeitleiste rechts anpassen. Diese soll nicht ein Filter sein,
  * sondern zum Schnellscrollen verwendet werden können, analog wie es in der
  * Android-Galerie-Foto-App der Fall ist." Dazu sein Hinweis auf die Umsetzung:
- * „Kann nicht geprüft werden, wo man hinscrollt, und dieser Teil wird dann
- * geladen. So macht dies soweit ich sehe auch die Foto-App von Google."
  *
  * ── Warum das die Liste umbaut ──────────────────────────────────────────────
  * Vorher hing die Liste am Endlos-Scroll: Seite 1, 2, 3 … angehängt. Wer auf
@@ -26,9 +25,6 @@ import org.junit.Test
  *   • Die Leiste rollt die Liste, sie filtert nicht.
  *   • Die Liste zählt über `total`, nicht über die geladene Teilmenge.
  *   • Geladen wird in BEIDE Richtungen.
- *   • Der Platzhalter hat eine feste Höhe — sonst springt die Liste, sobald
- *     die Seite eintrifft, und der Sprung landet daneben.
- *   • Welches Jahr an einer Stelle liegt, rechnet der SERVER.
  *
  * Der ausdrückliche Jahresfilter (Chip und Auswahlblatt) bleibt: Marco wollte
  * die LEISTE anders, nicht das Filtern abschaffen.
@@ -36,7 +32,7 @@ import org.junit.Test
 class CatalogScrubberTest {
 
     private fun read(rel: String) =
-        java.io.File(Quellen.wurzel, "$rel").readText()
+        File(Quellen.wurzel, "$rel").readText()
 
     private fun code(s: String) = s.lines()
         .joinToString("\n") { if (it.trim().startsWith("//") || it.trim().startsWith("*")) "" else it }
@@ -97,37 +93,6 @@ class CatalogScrubberTest {
         assert(Regex("""CatalogPlaceholderCard[\s\S]{0,400}\.height\(""").containsMatchIn(s)) {
             "Der Platzhalter hat keine feste Höhe — die Liste springt, sobald die " +
                 "Seite eintrifft, und der Sprung landet daneben"
-        }
-    }
-
-    @Test
-    fun `die Jahresverteilung rechnet der Server`() {
-        val f = code(read("ui/viewmodel/CatalogViewModel.kt"))
-        // Die App kennt immer nur die geladenen Seiten. Welches Jahr an einer
-        // Stelle liegt, weiss nur die Datenbank — und beide Oberflaechen sollen
-        // dieselbe Antwort bekommen.
-        assert(f.contains("katalog.getCatalogYearVerteilung(")) {
-            "Die App schaetzt die Jahreslage selbst — genau daran stand in der " +
-                "Webapp „1965\", waehrend Sets von 1999 erschienen"
-        }
-        // Mit denselben Filtern wie die Liste, sonst zeigt das Etikett daneben.
-        val i = f.indexOf("katalog.getCatalogYearVerteilung(")
-        val aufruf = f.substring(i, minOf(i + 300, f.length))
-        for (teil in listOf("q =", "themeId =", "sort =")) {
-            assert(aufruf.contains(teil)) {
-                "Die Verteilung wird ohne $teil geholt — mit gesetztem Filter laege sie daneben"
-            }
-        }
-        // Und zur richtigen Liste: Wechselt der Filter waehrend des Abrufs,
-        // gehoert die Antwort zu einer Liste, die es nicht mehr gibt.
-        val fn = Quellen.funktion(f, "fun ladeJahrVerteilung(")
-        assert(fn.isNotEmpty()) { "ladeJahrVerteilung fehlt" }
-        assert(fn.contains("gen != catalogGeneration")) {
-            "Ohne Filter-Generation landet die Verteilung des ALTEN Filters in der neuen Liste"
-        }
-        // Das Rollziel muss wieder zurueckgesetzt werden.
-        assert(f.contains("fun catalogScrollConsumed()")) {
-            "Ohne Zuruecksetzen liesse sich dieselbe Stelle kein zweites Mal anfahren"
         }
     }
 

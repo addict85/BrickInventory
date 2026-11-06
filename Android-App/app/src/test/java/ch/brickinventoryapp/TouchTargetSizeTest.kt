@@ -40,8 +40,6 @@ class TouchTargetSizeTest {
     // herausgefallen: Ihre kleinen Knöpfe standen in AcquisitionEditRow und
     // AcquisitionRow — beides Funktionen ohne Aufrufer, die dabei entfernt
     // wurden. Gemeldet hat es die zweite Behauptung dieses Tests, nicht ich.
-    // Leer seit dem 28.10.: Der letzte Eintrag, Abbrechen im CSV-Balken
-    // (24 dp), trägt jetzt die Standardgrösse.
     private val bekannt = emptyMap<String, String>()
 
     @Test

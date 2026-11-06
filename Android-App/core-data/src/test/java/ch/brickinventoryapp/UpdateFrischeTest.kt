@@ -18,7 +18,7 @@ import org.junit.Test
 import java.util.Base64
 
 /**
- * Frische der Update-Beschreibung (sec10 N1): Wer Schreibrecht am Repository hat,
+ * Frische der Update-Beschreibung: Wer Schreibrecht am Repository hat,
  * kann eine ältere, echt signierte version-signiert.json wieder hochladen. Die App
  * merkt sich den höchsten gesehenen Stand und meldet eine ältere oder abgelaufene
  * Beschreibung, statt „aktuell“ zu sagen.
@@ -32,7 +32,7 @@ import java.util.Base64
  *      gegenproben/update-ohne-frist.patch
  *   C  in pruefeFrische() den Stand auch ohne AKTUELL fortgeschrieben → rot
  *      „eine abgelaufene oder fristlose …“ (eine abgelaufene setzte die Messlatte)
- *   D  (04.11.2026, sec12 H2, kotlinc lokal) in anzubietendeFassung() die Bedingung
+ *   D  in anzubietendeFassung() die Bedingung
  *      `frische == UpdateFrische.AKTUELL &&` gestrichen → rot „aus einer
  *      zurueckgesetzten oder abgelaufenen Beschreibung wird nichts angeboten“;
  *      gegenproben/update-angebot-trotz-zuruecksetzen.patch
@@ -45,7 +45,7 @@ class UpdateFrischeTest {
     }
 
     private val tag = 86_400L
-    private val jetzt = 1_793_750_400L // 04.11.2026
+    private val jetzt = 1_793_750_400L // 4. November 2026
 
     private fun beschreibung(code: Int, ausgestellt: Long = jetzt - tag, gueltig: Long = 30 * tag) =
         UpdateBeschreibung(versionCode = code, versionName = "1.$code", apkUrl = "https://x/a.apk",

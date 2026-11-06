@@ -359,7 +359,7 @@ private fun QrVorschlagDialog(
                         style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
                 } else if (fp != null) {
                     // Erstes Einrichten: Ohne Tippen gilt nur eine System-Wurzel; einen eigenen
-                    // Schlüssel könnte der Code eines Fremden genauso nennen (sec10 N2).
+                    // Schlüssel könnte der Code eines Fremden genauso nennen.
                     Text(stringResource(if (abtippen) R.string.setup_qr_pin_abtippen else R.string.setup_qr_pin),
                         color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
                     Text(stringResource(R.string.zert_beginnt_mit), style = MaterialTheme.typography.labelMedium)

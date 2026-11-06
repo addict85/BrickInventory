@@ -23,7 +23,7 @@ import java.util.concurrent.TimeUnit
  * Hinter einem gemeinsamen Reverse-Proxy liegt unter `/andere-app` eine andere
  * Anwendung. Ein Testserver, die App unter `/brick`.
  *
- * Gegenproben (03.11.2026, kotlinc lokal gemessen):
+ * Gegenproben:
  *   A  im Wächter `unserServer` ohne imBasisPfad() → rot „eine Anfrage ausserhalb
  *      des Pfads geht ohne Token“ (Bearer an /andere-app)
  *   B  in naechsteUmleitung() die Pfadprüfung entfernt → rot „eine Umleitung aus

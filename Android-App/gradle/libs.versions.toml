@@ -1,221 +1,65 @@
 [versions]
 camerax                     = "1.6.2"
-mlkitBarcode                = "18.3.1"   # unbundled (Play-Dienste) — siehe 16-KB-Hinweis in app/build.gradle.kts
-# Texterkennung FEST EINGEBAUT (com.google.mlkit statt com.google.android.gms):
-# Marcos Wunsch — kein Nachladen über Play, funktioniert sofort und offline.
-# Kostet rund 4 MB APK, dafür keine Überraschung beim ersten Scan.
-mlkitTextRec                = "16.0.1"   # bundled — liegt IM APK, kein Play-Nachladen
-
-# 9.5.0 bleibt aus: Damit fehlten im Release-APK Texte, die erreichbarer Code
-# benutzt (Monitoring, Kaufpreise) – die Prüfung „APK gegen R8-Verluste“ war
-# rot, mit 9.4.1 auf demselben Stand nicht. Erst heben, wenn das geklärt ist.
-# Die hoechste Fassung meldet der CI-Schritt „Fassungen“ gegen
-# dl.google.com/dl/android/maven2/com/android/application/group-index.xml —
-# aus der Entwicklungsumgebung ist dieses Verzeichnis nicht abrufbar, vom
-# Runner sehr wohl (tools/fassungen-pruefen.py).
+mlkitBarcode                = "18.3.1"   # unbundled: das Modell liefern die Play-Dienste
+# Texterkennung fest eingebaut (com.google.mlkit): kein Nachladen über Play, sofort
+# offline nutzbar; kostet rund 4 MB APK.
+mlkitTextRec                = "16.0.1"
+# 9.5.0 bleibt aus: Dem Release-APK fehlten damit Texte, die erreichbarer Code benutzt
+# („APK gegen R8-Verluste“ rot, mit 9.4.1 grün). Erst heben, wenn das geklärt ist.
 agp                         = "9.4.1"
-# ── Die Nummern der beiden muessen NICHT uebereinstimmen ────────────────
-#
-# Hier stand: „KSP 2.3.7 und hoeher erwartet Kotlin 2.3.20", gelesen aus der
-# kotlin-stdlib-Zeile in der POM von symbol-processing-api. Das war ein
-# FEHLSCHLUSS, und er hat die Werkzeugkette eine Nebenrunde lang
-# kuenstlich festgehalten.
-#
-# Richtig ist: Das galt fuer KSP 1. Das war ein Compiler-Plugin und musste
-# genau zum Uebersetzer passen — daher die alte Schreibweise
-# `<kotlin>-1.0.x`, die bei `2.1.20-RC3-1.0.31` endet. KSP 2 laeuft
-# EIGENSTAENDIG; seine kotlin-stdlib-Zeile ist seine eigene Laufzeit, keine
-# Bindung an den Uebersetzer.
-#
-# BELEG, nicht Schlussfolgerung: Die Schnellstart-Seite von Kotlin selbst
-# (kotlinlang.org/docs/ksp-quickstart.html, gelesen am 06.10.) zeigt im
-# Beispiel genau diese Paarung —
-#
-#   kotlin("jvm") version "2.4.20"
-#   id("com.google.devtools.ksp") version "2.3.10"
-#
-# Eine KSP-Fassung mit 2.4 gibt es nicht und wird auch nicht gebraucht.
-# GEMESSEN am 06.10. an zwei unabhaengigen Quellen: das aus dem echten
-# Inhalt erzeugte Verzeichnis auf Maven Central endet bei 2.3.12, und das
-# Gradle-Plugin-Portal nennt <latest> und <release> ebenfalls 2.3.12.
-# Die hoechste Fassung meldet seither der CI-Schritt „Fassungen“.
-#
-# ── Das Risiko, das sich hier nicht pruefen laesst ──────────────────────
-#
-# Der Compose-Compiler ist ein Kotlin-Plugin und traegt dieselbe Nummer
-# (siehe [plugins] unten: kotlin-compose → version.ref = "kotlin"). Er
-# verlangt eine Mindestfassung der Compose-LAUFZEIT, und die kommt aus der
-# BOM, die hier auf 2024.09.03 steht. Ob 2.4.20 damit zufrieden ist, konnte
-# ich nicht nachsehen: Die BOM liegt auf Google-Maven, und das ist aus
-# diesem Container nicht erreichbar (HTTP 000; Maven Central geht).
-# Die GitHub-Action ist an dieser Stelle die einzige Auskunft.
-# ── 2.4.20 -> 2.4.21, und zwar nicht der Neuheit wegen ──────────────────
-#
-# Lint meldete zwei NewerVersionAvailable (kotlin-compose und
-# kotlin-serialization, beide ueber version.ref = "kotlin"). Damit stand die
-# Lint-Warnungszahl auf 28 bei einer Obergrenze von 26 — der Lauf war rot,
-# und zwar auf ZWEI voneinander unabhaengigen Zweigen gleich (Android-App
-# auf claude/android-zoom-anker und claude/android-gutscheine-oben, 18
-# Befundgruppen, Zeichen fuer Zeichen dieselbe Liste). Das kam also von
-# aussen: Jetbrains hat 2.4.21 veroeffentlicht.
-#
-# Die Obergrenze hochzusetzen waere hier falsch gewesen. Sie faengt
-# „etwas ist dazugekommen", und dazugekommen ist keine Entscheidung, die
-# man begruenden koennte, sondern ein Rueckstand, den ein Zeichen Arbeit
-# aufhebt. Dasselbe wurde in diesem Baum schon einmal so entschieden, als
-# Gradle 9.8.1 erschien: der Wrapper wurde gehoben, nicht der Riegel.
-#
-# Eine Flickfassung (dritte Stelle), kein Sprachstand-Wechsel. KSP bleibt
-# bei 2.3.12 — KSP 2 ist nicht an die Uebersetzernummer gebunden, siehe
-# den Block darueber.
+# KSP 2 läuft eigenständig und muss nicht zur Kotlin-Nummer passen (das galt für KSP 1).
+# Compose-Compiler und Serialisierung tragen die Kotlin-Nummer (version.ref = "kotlin").
 kotlin                      = "2.4.21"
 ksp                         = "2.3.13"
 coreKtx                     = "1.19.1"
-# Startbild auf allen Fassungen ab minSdk 26. 1.2.0 ist laut den Release Notes
-# (developer.android.com, gelesen am 28.10.2026) die neueste stabile, vom
-# 05.11.2025; tools/fassungen-pruefen.py misst es in der CI nach.
 coreSplashscreen            = "1.2.0"
 lifecycleRuntimeKtx         = "2.11.0"
 activityCompose             = "1.13.0"
-# 2026.09.00, ebenfalls aus dem Lauf 37536799223 gemessen. Die BOM setzt die
-# Fassungen der Compose-Artefakte; graphics-path bleibt davon unberuehrt, weil
-# es direkt festgelegt ist (siehe graphicsPath weiter unten und
-# SixteenKbAlignmentTest).
+# Setzt die Fassungen der Compose-Artefakte; graphics-path steht unten eigens.
 composeBom                  = "2026.09.00"
-# Gehoben von 2.59 auf 2.60.1, und zwar NICHT der Neuheit wegen, sondern
-# weil Kotlin 2.4.20 es verlangt. GEMESSEN an den POMs von hilt-compiler:
-#
-#   2.59    → kotlin-metadata-jvm 2.2.20
-#   2.59.2  → kotlin-metadata-jvm 2.2.20
-#   2.60.1  → kotlin-metadata-jvm 2.3.21
-#
-# Mit dieser Bibliothek liest Hilts Prozessor die @Metadata-Annotationen
-# UNSERER eigenen Klassen. Sie weigert sich, Metadaten zu lesen, die neuer
-# sind als sie selbst — und Kotlin 2.4.20 schreibt Metadaten der 2.4er
-# Reihe. 2.60.1 ist die hoechste, die es gibt, und liest bis 2.3.21.
-#
-# Ob das fuer 2.4er-Metadaten reicht, ist damit NICHT bewiesen. Es ist die
-# wahrscheinlichste Stelle, an der dieser Sprung scheitert, und es ist der
-# Grund, warum Hilt hier mitgeht statt stehen zu bleiben: Mit 2.59 waere
-# der Abstand noch eine ganze Nebenversion groesser. Die GitHub-Action
-# entscheidet; der frueher an dieser Stelle vermutete Grund (KSP muesse zur
-# Kotlin-Nummer passen) war falsch, siehe den Block bei `kotlin`.
+# Hilts Prozessor liest die Kotlin-Metadaten unserer Klassen; 2.60.1 bringt
+# kotlin-metadata-jvm 2.3.21 mit, ältere Fassungen lesen die von Kotlin 2.4 nicht.
 hilt                        = "2.60.1"
 hiltNavigationCompose       = "1.4.0"
 navigationCompose           = "2.10.2"
-# NACHGESEHEN in der Metadatei von 3.0.0: Retrofit 3 verlangt okhttp
-# 4.12.0 und kotlin-stdlib 2.1.21 — beides als `requires`, also WEICH.
-# Gradle nimmt bei einem Streit die hoehere Fassung, hier also unsere
-# okhttp 5.3.0 unten; es gibt keinen Zwangsabstieg auf 4.12.0.
-#
-# Dass Retrofit 3 mit okhttp 5 laeuft, ist damit NICHT bewiesen, nur
-# nicht verboten: Retrofit 3 ist gegen die API von okhttp 4.12.0
-# uebersetzt. Belegt wird es erst von den Tests, die mockwebserver
-# benutzen und bei dieser Zusammenfuehrung erstmals beide Spruenge
-# gemeinsam durchlaufen.
-#
-# Der Konverter (retrofitKotlinxSerialization) bleibt auf 1.0.0: Eine
-# neuere gibt es nicht, und seine POM nennt retrofit 2.9.0 als Mindestmass.
-# Die benutzte Stelle ist asConverterFactory() auf einer Converter.Factory,
-# und die Schnittstelle ist in Retrofit 3 unveraendert.
+# Retrofit 3 verlangt okhttp 4.12 nur weich; Gradle nimmt okhttp 5 unten. Der Konverter
+# bleibt 1.0.0 (neuer gibt es nicht), asConverterFactory ist in Retrofit 3 unverändert.
 retrofit                    = "3.0.0"
-# Deckt vier Artefakte ab, alle ueber dieselbe Referenz: okhttp,
-# okhttp-sse, logging-interceptor und mockwebserver.
-#
-# ── Der Deckel war compileSdk, nicht okhttp ─────────────────────────────
-#
-# Hier stand lange 5.3.0 mit der Begruendung, 5.5.0 verlange
-# `minCompileSdk=37` und wir faehrten 36. Das stimmte; mit dem Sprung auf
-# compileSdk/targetSdk 37 (build-logic, Sdk.kt) ist es gegenstandslos.
-#
-# GEMESSEN an den AAR-Metadaten von okhttp-android, alle 5.x der Reihe nach:
-#   5.3.0, 5.3.1, 5.3.2 → minCompileSdk=1
-#   5.4.0               → minCompileSdk=36
-#   5.5.0               → minCompileSdk=37
-#
-# Beim ersten Versuch mit 5.5.0 hatte ich nur die Endpunkte gemessen und
-# bin auf die naechstniedrigere HAUPTfassung zurueckgegangen — 5.4.0 waere
-# schon damals gegangen. Deshalb steht die ganze Reihe hier.
+# Für okhttp, okhttp-sse, logging-interceptor und mockwebserver. Ab 5.5 verlangt
+# okhttp-android compileSdk 37 (siehe build-logic, Sdk.kt).
 okhttp                      = "5.5.1"
-# GEMESSEN aus den Gradle-Metadaten der Artefakte selbst:
-#   serialization-json 1.10.0 → kotlin-stdlib 2.3.0
-#   serialization-json 1.11.0 → kotlin-stdlib 2.3.20
-#
-# 1.10.0 stand hier, solange unser Uebersetzer Kotlin 2.3.0 war. Mit 2.4.20
-# ist 1.11.0 erreichbar; 1.12.0 meldet der CI-Schritt „Fassungen“ als hoechste.
 kotlinxSerializationJson    = "1.12.0"
 retrofitKotlinxSerialization = "1.0.0"
-graphicsPath                = "1.1.0"   # 16-KB-Versuch, siehe app/build.gradle.kts
-# 1.1.7 stand hier, weil libdatastore_shared_counter.so in 1.2.0 wieder
-# 4-KB-ausgerichtet war. Geprueft wird das jetzt nicht mehr an der ZAHL,
-# sondern am gebauten APK: tools/apk-ausrichtung.py liest die ELF-Kopfe
-# aller mitgelieferten .so und meldet jede Ausrichtung unter 16 KB. Faellt
-# eine Fassung zurueck, wird der Lauf rot — egal welche Nummer sie traegt.
+graphicsPath                = "1.1.0"   # 16 KB, siehe app/build.gradle.kts
+# Die 16-KB-Ausrichtung prüft tools/apk-ausrichtung.py am gebauten APK, nicht die Nummer.
 datastore                   = "1.3.0"
 appcompat                   = "1.8.0"
-profileinstaller            = "1.4.1"
-# Rückfrage per Gerätesperre vor heiklen Schritten (core-ui, Schrittschutz). 1.1.0 ist
-# die neueste stabile und kam schon vorher transitiv in den Graphen der App; ihre
-# Prüfsummen (aar, module) stehen darum bereits in verification-metadata.xml.
+# Rückfrage per Gerätesperre vor heiklen Schritten (core-ui, Schrittschutz).
 biometric                   = "1.1.0"
-# Passkey-Anmeldung (feature-anmeldung). play-services-auth reicht den Aufruf auf
-# Geräten vor Android 14 an die Play-Dienste weiter; ohne ihn gäbe es dort keine Passkeys.
+# Passkeys (feature-anmeldung); play-services-auth reicht sie vor Android 14 an Play weiter.
 credentials                 = "1.6.0"
-# ── Auch hier war der Deckel compileSdk ────────────────────────────────
-#
-# Hier stand 3.3.0, zuerst wegen Kotlin (3.6.3 verlangt kotlin-stdlib
-# 2.4.10) und danach wegen des SDK. Beides ist weg: Kotlin steht auf 2.4.20,
-# compileSdk auf 37.
-#
-# GEMESSEN an den AAR-Metadaten von coil-core-android:
-#   3.3.0 → minCompileSdk=1     3.4.0 → 35    3.5.0 → 36
-#   3.6.0 bis 3.6.3            → minCompileSdk=37
-#
-# NACHGESEHEN in den Quellen von 3.6.3, weil die Pruefung von 3.3.0 dafuer
-# nicht gilt: `OkHttpNetworkFetcherFactory`, `memoryCacheKeyExtra`,
-# `crossfade(Boolean)`, `MemoryCache.Builder.maxSizePercent(PlatformContext,
-# Double)` und `DiskCache.Builder.directory(Path)` heissen unveraendert.
+# Ab 3.6 verlangt coil-core-android compileSdk 37 (siehe build-logic, Sdk.kt).
 coil                        = "3.6.3"
-# 1.11.0 verlangt kotlin-stdlib 2.2.20, liegt also UNTER unseren 2.3.20 —
-# anders als serialization oben kein Konflikt. Ebenfalls aus den
-# Gradle-Metadaten gelesen, nicht geschaetzt.
 coroutines                  = "1.11.0"
-# WorkManager fuer den stuendlichen Preisalarm-Abruf. Reine Java-/Kotlin-
-# Bibliothek — sie bringt KEINE native .so mit und beruehrt die
-# 16-KB-Ausrichtung deshalb nicht (siehe INVARIANTEN.md). Room und
-# androidx.sqlite kommen transitiv mit, nutzen aber das SQLite des Systems;
-# das gebuendelte SQLite waere ein eigener, hier nicht gezogener Artefakt.
+# Preisalarm-Abruf. Ohne native .so, die 16-KB-Ausrichtung bleibt unberührt.
 work                        = "2.12.0"
-# Lokale Ablage und Ausgang (data/lokal/room). Mindestens die Fassung, die
-# WorkManager schon mitbringt (room-runtime 2.7.0 in verification-metadata.xml).
+# Lokale Ablage und Ausgang; mindestens die Fassung, die WorkManager mitbringt.
 room                        = "2.8.5"
-# Verschlüsselte Ablage des Bestands (sec8 N5). Auf Maven Central, signiert von
-# Zetetic (Schlüssel 61DE…0CEC in verification-keyring.keys); 4.19.1 vom 29.09.2026,
-# .so auf 16 KB ausgerichtet. Zieht androidx.sqlite 2.7.0 zur Laufzeit nach.
+# Verschlüsselte Ablage des Bestands; Maven Central, signiert von Zetetic
+# (verification-keyring.keys), .so auf 16 KB ausgerichtet.
 sqlcipher                   = "4.19.1"
 junit                       = "4.13.2"
 # org.json steckt in android.jar nur als Attrappe; mit isReturnDefaultValues gäbe
-# optString("error") still "" zurück. Die echte Fassung (Gruppe unit-tests) liegt
-# im Testklassenpfad vor android.jar, damit Fehlerrümpfe im Test gelesen werden.
+# optString("error") still "". Die echte Fassung liegt im Testklassenpfad davor.
 orgJson                     = "20260814"
-# Oberflächentests auf der JVM: Robolectric stellt Android, Roborazzi macht die
-# Bildschirmfotos. Beide liegen auf Maven Central (4.17 bzw. 1.77.0, gelesen am
-# 30.10.2026 aus maven-metadata.xml).
 robolectric                 = "4.17"
 roborazzi                   = "1.77.0"
 androidxTestJunit           = "1.3.0"
-# Startbildschirm-Widget. 1.2.0 ist laut tools/fassungen-pruefen.py (CI-Lauf
-# 41095331814) die neueste stabile.
 glance                      = "1.2.0"
-# Kotlin-Prüfung (build-logic, Detekt.kt). detekt 1.23 läuft nur mit dem Kotlin, gegen
-# das es gebaut ist (2.0.21 laut seiner POM); die Konvention hält es darauf fest.
-# 2.0 gibt es nur als alpha.
+# detekt 1.23 läuft nur mit dem Kotlin, gegen das es gebaut ist (2.0.21 laut POM);
+# die Konvention hält es darauf fest. detekt 2 gibt es nur als alpha.
 detekt                      = "1.23.8"
 detektKotlin                = "2.0.21"
-# Testabhängigkeiten (Nachtrag 117). Bis dahin war JUnit die EINZIGE, weshalb
-# 41 von 47 Testdateien Quelltext lesen mussten statt Verhalten auszuführen.
-# coroutinesTest folgt bewusst der coroutines-Version — die beiden müssen
-# zusammenpassen, sonst scheitert runTest zur Laufzeit statt beim Übersetzen.
 
 [libraries]
 junit                               = { group = "junit",                      name = "junit",                             version.ref = "junit" }
@@ -255,17 +99,13 @@ androidx-room-compiler              = { group = "androidx.room",              na
 sqlcipher-android                   = { group = "net.zetetic",                name = "sqlcipher-android",                 version.ref = "sqlcipher" }
 androidx-graphics-path              = { group = "androidx.graphics",          name = "graphics-path",                     version.ref = "graphicsPath" }
 androidx-appcompat                  = { group = "androidx.appcompat",         name = "appcompat",                         version.ref = "appcompat" }
-androidx-profileinstaller           = { group = "androidx.profileinstaller",  name = "profileinstaller",                  version.ref = "profileinstaller" }
 androidx-biometric                  = { group = "androidx.biometric",         name = "biometric",                         version.ref = "biometric" }
 androidx-credentials                = { group = "androidx.credentials",       name = "credentials",                       version.ref = "credentials" }
 androidx-credentials-play-services  = { group = "androidx.credentials",       name = "credentials-play-services-auth",    version.ref = "credentials" }
 coil-compose                        = { group = "io.coil-kt.coil3",           name = "coil-compose",                      version.ref = "coil" }
-# Coil 3 ist mehrplattformfaehig und laedt deshalb NICHT mehr von sich aus
-# aus dem Netz — der Weg ueber http(s) steckt in einem eigenen Artefakt.
-# Ohne das zeigt die App stumm keine Bilder mehr.
+# Coil 3 lädt ohne dieses Artefakt nicht aus dem Netz, und zwar stumm.
 coil-network-okhttp                 = { group = "io.coil-kt.coil3",           name = "coil-network-okhttp",               version.ref = "coil" }
-# ImageLoader steht in der öffentlichen Schnittstelle der Datenschicht (NetzModule);
-# bisher nur über coil-compose geholt, jetzt beim Namen, weil core-data kein Compose hat.
+# ImageLoader steht in der Schnittstelle der Datenschicht, und core-data hat kein Compose.
 coil-core                           = { group = "io.coil-kt.coil3",           name = "coil-core",                         version.ref = "coil" }
 kotlinx-coroutines-android          = { group = "org.jetbrains.kotlinx",      name = "kotlinx-coroutines-android",        version.ref = "coroutines" }
 androidx-ui-tooling                 = { group = "androidx.compose.ui",        name = "ui-tooling" }
@@ -317,3 +157,4 @@ brickinventory-android-compose     = { id = "brickinventory.android.compose" }
 brickinventory-android-hilt        = { id = "brickinventory.android.hilt" }
 brickinventory-android-feature     = { id = "brickinventory.android.feature" }
 brickinventory-detekt              = { id = "brickinventory.detekt" }
+brickinventory-jvm-library         = { id = "brickinventory.jvm.library" }

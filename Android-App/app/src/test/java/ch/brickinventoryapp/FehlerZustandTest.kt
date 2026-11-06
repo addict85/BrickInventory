@@ -38,7 +38,7 @@ import org.junit.Test
  * Set-Detail einen Kringel ohne Ende. Ausgeführt gegen einen PfadServer ohne Netz, der
  * zuerst 404 antwortet und nach „Erneut versuchen“ Inhalt liefert.
  *
- * Gegenproben (30.10.2026, gemessen):
+ * Gegenproben:
  *   A  ladeanzeige(): `fehler != null` hinter `gefiltert` → rot „ein Fehler geht
  *      vor Leer und Kein Treffer …“
  *   B  MerklisteViewModel: `fehler = meldung(r)` entfernt → rot „die Merkliste …“
@@ -47,7 +47,7 @@ import org.junit.Test
  *   D  Teile: `partsFehler = beschreibeFehler(r)` entfernt → rot „Teile und Figuren …“
  *   E  SetDetailViewModel: `setDetailFehler = meldung(r)` entfernt → rot „das Set-Detail …“
  *   F  GutscheinViewModel: `fehler = texte.meldung(r)` entfernt → rot „die Gutscheine …“
- * Gegenproben (02.11.2026, kotlinc): in FinanzViewModel `valuationFehlerKlasse = …`
+ * Gegenproben: in FinanzViewModel `valuationFehlerKlasse = …`
  *   entfernt → rot „die Bewertung …“; in Teile.kt `minifigsFehlerKlasse = …`
  *   entfernt → rot „Teile und Figuren …“.
  */

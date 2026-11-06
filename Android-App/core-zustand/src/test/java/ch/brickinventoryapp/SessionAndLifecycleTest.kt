@@ -7,6 +7,7 @@ import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import java.io.File
 
 /**
  * Absicherung der Review-Runde: abgelaufene Sitzung, ImageLoader-Lebensdauer,
@@ -18,13 +19,13 @@ import org.junit.Test
 class SessionAndLifecycleTest {
 
     private fun read(rel: String): String {
-        val f = java.io.File(Quellen.wurzel, "$rel")
+        val f = File(Quellen.wurzel, "$rel")
         assert(f.exists()) { "Datei nicht gefunden: $rel" }
         return f.readText()
     }
 
     private fun exists(rel: String) =
-        java.io.File(Quellen.wurzel, "$rel").exists()
+        File(Quellen.wurzel, "$rel").exists()
 
     /** Kommentare ausblenden — die Erklärtexte nennen die geprüften Muster selbst. */
     private fun code(src: String): String {
@@ -39,7 +40,7 @@ class SessionAndLifecycleTest {
     /**
      * Ein 401 ist von einem gewöhnlichen Serverfehler unterscheidbar — sonst bliebe
      * ein abgelaufener Token unerkannt. Ausgeführt gegen einen Testserver.
-     * Gegenprobe (29.10.2026, gemessen): in RepoBasis.safeCall `unauthorized =
+     * Gegenprobe: in RepoBasis.safeCall `unauthorized =
      * false` → rot.
      */
     @Test
@@ -48,7 +49,7 @@ class SessionAndLifecycleTest {
         pfade.codes["/api/v1/stats"] = 401
         pfade.codes["/api/v1/finance/pnl"] = 500
         try {
-            val finanzen = FinanzenRepository(TestApi.fuer(pfade.server), ResponseCache { java.io.File(System.getProperty("java.io.tmpdir"), "bim-401") })
+            val finanzen = FinanzenRepository(TestApi.fuer(pfade.server), ResponseCache { File(System.getProperty("java.io.tmpdir"), "bim-401") })
             val abgelaufen = runBlocking { finanzen.getStats() } as Ergebnis.Error
             val kaputt = runBlocking { finanzen.getPnl() } as Ergebnis.Error
             assertTrue("Ein 401 trägt das Kennzeichen nicht", abgelaufen.unauthorized)

@@ -23,7 +23,7 @@ import java.util.concurrent.atomic.AtomicBoolean
 interface Zugangslage {
     fun serverUrl(): String
     fun token(): String
-    /** Die Herkunft, an die der Token gebunden ist; null bei Altbestand ohne Bindung. */
+    /** Die Herkunft, an die der Token gebunden ist; null heisst: an keinen Server senden. */
     fun tokenHerkunft(): String?
     /**
      * Zählt Anmelden, Abmelden und Serverwechsel (data/TokenSchranke). Wird vor dem
@@ -108,9 +108,9 @@ class ServerWaechter(
             NetworkPolicy.imBasisPfad(finalUrl, serverUrl)
         // Umleitungen eigener Anfragen nur innerhalb des Pfads: Sie tragen den Token weiter.
         val basis = if (unserServer) NetworkPolicy.basisPfad(serverUrl).orEmpty() else ""
-        // Nach einem Serverwechsel trägt der alte Token nichts beim neuen aus.
+        // Ein Token geht nur an die Herkunft, an die er gebunden ist; ohne Bindung an keine.
         val herkunft = lage.tokenHerkunft()
-        val tokenGehoertHierher = herkunft == null || herkunft == NetworkPolicy.herkunft(finalUrl.toString())
+        val tokenGehoertHierher = herkunft != null && herkunft == NetworkPolicy.herkunft(finalUrl.toString())
         val mitToken = token.isNotBlank() && unserServer && tokenGehoertHierher
         if (mitToken && original.header("Authorization") == null) {
             reqBuilder.header("Authorization", "Bearer $token")
@@ -191,7 +191,7 @@ class ServerWaechter(
         val g = lage.generation()
         val server = lage.serverUrl().trim().trimEnd('/')
         val token = lage.token()
-        val herkunft = lage.tokenHerkunft() ?: NetworkPolicy.herkunft(server)
+        val herkunft = lage.tokenHerkunft() ?: return null
         val passt = token.isNotBlank() && server.isNotBlank() && NetworkPolicy.isSameOrigin(ziel, server) &&
             NetworkPolicy.imBasisPfad(ziel, server) && herkunft == NetworkPolicy.herkunft(ziel.toString())
         return if (passt && lage.generation() == g) token to g else null

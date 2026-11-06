@@ -13,7 +13,7 @@ import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.semantics.SemanticsNode
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.semantics.getOrNull
-import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.unit.Density
@@ -41,7 +41,6 @@ import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.RuntimeEnvironment
 import org.robolectric.Shadows.shadowOf
-import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
 import java.util.Locale
 import ch.brickinventoryapp.data.repository.VerwaltungRepository
@@ -67,7 +66,6 @@ import ch.brickinventoryapp.ui.viewmodel.DateiRef
  */
 @RunWith(RobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
-@Config(sdk = [35])
 class UmbruchWaechterTest {
 
     @get:Rule
@@ -83,19 +81,9 @@ class UmbruchWaechterTest {
         welt.close()
     }
 
-    /** Wie BildschirmFotoTest: den Hauptlooper treiben, bis die Daten da sind und der Server ruht. */
-    private fun treiben(name: String, bereit: () -> Boolean) {
-        val ende = System.nanoTime() + 10_000_000_000L
-        var anfragen = welt.pfade.anfragen.size
-        var ruhigSeit = System.nanoTime()
-        while (!bereit() || System.nanoTime() - ruhigSeit < 300_000_000L) {
-            if (System.nanoTime() > ende) throw AssertionError("$name: Daten nach 10 s nicht da")
-            shadowOf(Looper.getMainLooper()).idle()
-            Thread.sleep(10)
-            val jetzt = welt.pfade.anfragen.size
-            if (jetzt != anfragen) { anfragen = jetzt; ruhigSeit = System.nanoTime() }
-        }
-    }
+    /** Wie BildschirmFotoTest: den Hauptlooper treiben, bis die Daten da sind und die Welt ruht. */
+    private fun treiben(name: String, bereit: () -> Boolean) =
+        treibeBis(name, anfragen = { welt.pfade.anfragen.size }, bereit = bereit)
 
     private fun pruefe(name: String, schrift: Float, bereit: () -> Boolean = { true }, inhalt: @Composable () -> Unit) {
         RuntimeEnvironment.setQualifiers("de-rCH-w411dp-h891dp-port-xxhdpi")
@@ -180,7 +168,7 @@ class UmbruchWaechterTest {
         }))
 
     private fun einstellungen() = welt.t.merke(EinstellungenViewModel(welt.t.sitzung, welt.t.filter(), welt.t.hinweise, welt.t.bestand,
-        KontoRepository(welt.t.api, welt.t.cache),
+        KontoRepository(welt.t.api, welt.t.cache, welt.t.io),
         VerwaltungRepository(welt.t.api, welt.t.cache),
         SetsRepository(welt.t.api, welt.t.cache),
         TeileRepository(welt.t.api, welt.t.cache),

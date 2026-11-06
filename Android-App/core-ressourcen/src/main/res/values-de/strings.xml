@@ -1168,4 +1168,8 @@
         <item quantity="one">In der Sammlung, %1$s Exemplar</item>
         <item quantity="other">In der Sammlung, %1$s Exemplare</item>
     </plurals>
+    <string name="update_beim_start">Beim Start nach Updates suchen</string>
+    <string name="update_beim_start_hint">Fragt bei jedem Start einmal bei GitHub nach einer neueren Version; GitHub sieht dabei die IP-Adresse des Geräts. Gilt für dieses Gerät.</string>
+    <string name="datenschutz_titel">Datenschutz</string>
+    <string name="datenschutz_text">Die App spricht mit:\n• deinem eigenen Server, der alles speichert, was du erfasst;\n• GitHub, nur für die Update-Prüfung (beim Start, wenn eingeschaltet, sonst auf „Prüfen“);\n• den Google Play-Diensten für Barcode-Scan und Passkeys; die Texterkennung auf dem Gerät (ML Kit) kann Nutzungsstatistiken an Google senden;\n• anderen Websites (BrickLink, Anleitungen) nur auf Tipp, im Browser.\nKein Tracking, keine Werbung, keine Auswertung.</string>
 </resources>

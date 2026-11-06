@@ -14,6 +14,9 @@ interface TokenVerschluesselung {
     /** Wie [entschluessle], trennt aber „weg“ von „gerade nicht“. Attrappen kennen nur „weg“. */
     fun oeffne(gespeichert: String): Tresorbefund =
         entschluessle(gespeichert)?.let { Tresorbefund.Lesbar(it) } ?: Tresorbefund.Weg
+
+    /** Den Schlüssel selbst löschen: Was er umhüllt hat, ist danach nirgends mehr lesbar. */
+    fun vergiss() = Unit
 }
 
 /** Was beim Öffnen des Tokens herauskam. */

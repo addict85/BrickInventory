@@ -94,6 +94,19 @@ export function tauschQuelleSperren(tx: DbSchnittstelle, hash: string) {
       FOR UPDATE`, [hash]);
 }
 
+/** Der noch unbenutzte Nachfolger eines Tausches: wann und aus welchem Netz er entstand. */
+export function unbenutzterNachfolger(tx: DbSchnittstelle, nachfolger: string, alt: string) {
+  return tx.get<{ alter_s: number; ip_bereich: string | null }>(
+    `SELECT EXTRACT(EPOCH FROM NOW() - rotiert_am)::float AS alter_s, ip_bereich
+       FROM api_tokens WHERE token = $1 AND vorgaenger = $2`, [nachfolger, alt]);
+}
+
+/** Die ganze Familie eines Tokens (gleiches created_at), samt Nachfolger. */
+export async function loescheFamilie(tx: DbSchnittstelle, userId: number, seit: Date): Promise<void> {
+  await tx.run(`DELETE FROM api_tokens WHERE user_id = $1 AND ${familie('created_at')} = ${familie('$2::timestamptz')}`,
+    [userId, seit]);
+}
+
 export async function loescheUnbenutztenNachfolger(tx: DbSchnittstelle, nachfolger: string, alt: string): Promise<void> {
   await tx.run('DELETE FROM api_tokens WHERE token = $1 AND vorgaenger = $2', [nachfolger, alt]);
 }

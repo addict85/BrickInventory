@@ -56,7 +56,7 @@ class FarbrollenTest {
     )
 
     /**
-     * Gegenprobe (28.10.2026, ohne Android-SDK an der WCAG-Formel gemessen):
+     * Gegenprobe:
      * mit dem alten #16A34A rot für classic (3,30:1 auf surface), farbfaecher
      * und noppe; mit #15803D rot für noppe (4,43:1 auf background).
      */
@@ -113,7 +113,7 @@ class FarbrollenTest {
 
     /**
      * Das Ladeskelett (Skelett.kt) zeichnet skelettTon auf background.
-     * Gegenprobe (02.11.2026, thema.py): in skelettTon surfaceVariant zurückgegeben →
+     * Gegenprobe: in skelettTon surfaceVariant zurückgegeben →
      * rot „Ladekacheln heben sich …“ (classic 1,05, brick 1,03, farbfaecher 1,05, noppe 1,07).
      */
     @Test

@@ -120,6 +120,8 @@ data class UpdateUiState(
      * Einstellungen sehen, ohne erst den Knopf zu drücken.
      */
     val frische: UpdateFrische? = null,
+    /** Schalter „Beim Start nach Updates suchen“ (je Gerät). */
+    val startpruefung: Boolean = true,
 )
 
 /**

@@ -73,6 +73,11 @@ export async function antwortenUmschluesseln(): Promise<number> {
   return n;
 }
 
+/** Nach einem Schlüsselwechsel: Abdrücke und Antworten gehören zum vorigen Schlüssel. */
+export function alleVergessen(): Promise<number> {
+  return repo.loescheAelterAls(0);
+}
+
 export function raeumeIdempotenzAuf(): Promise<number> {
   return repo.loescheAelterAls(FRIST_STUNDEN);
 }

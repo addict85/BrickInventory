@@ -18,6 +18,12 @@
   const el = (id) => /** @type {HTMLElement} */ (document.getElementById(id));
   /** @param {string} k */
   const tx = (k) => L[k] || k;
+  // Das Fenster erbt die CSP samt Trusted Types: eigene Richtlinie für das schon maskierte Markup.
+  const tt = /** @type {{ trustedTypes?: { createPolicy(n: string, r: object): { createHTML(s: string): string } } }} */ (
+    /** @type {unknown} */ (window)).trustedTypes;
+  const richtlinie = tt ? tt.createPolicy('app', { createHTML: (/** @type {string} */ s) => s }) : null;
+  /** @param {string} s @returns {string} */
+  const alsHtml = (s) => richtlinie ? richtlinie.createHTML(s) : s;
   /** @param {string} s */
   const esc = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 
@@ -55,13 +61,13 @@
     const wrap = el('log-wrap');
     const treffer = _logs.filter(l => _levels.has(l.level) && (!suche || l.message.toLowerCase().includes(suche)));
     el('status').textContent = treffer.length + ' / ' + _logs.length + ' ' + tx('log.entries');
-    if (!treffer.length) { wrap.innerHTML = '<div class="leer">' + tx('log.none_found') + '</div>'; return; }
-    wrap.innerHTML = treffer.map(l => {
+    if (!treffer.length) { wrap.innerHTML = alsHtml('<div class="leer">' + esc(tx('log.none_found')) + '</div>'); return; }
+    wrap.innerHTML = alsHtml(treffer.map(l => {
       const zeit = new Date(l.logged_at).toLocaleTimeString('de-CH', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
       const stufe = esc(l.level);
       return `<div class="ll ${stufe}"><span class="ts">${zeit}</span>` +
         `<span class="lv ${stufe}">${stufe}</span><span class="msg">${highlight(l.message, suche)}</span></div>`;
-    }).join('');
+    }).join(''));
     wrap.scrollTop = wrap.scrollHeight;
   }
 

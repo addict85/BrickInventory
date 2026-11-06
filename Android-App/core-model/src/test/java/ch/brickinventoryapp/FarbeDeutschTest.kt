@@ -9,7 +9,7 @@ import java.io.File
  * Farbnamen auf Deutsch wie in der Webapp: „Trans-Clear“ hiess in der App
  * „Trans-Clear“, in der Webapp „Trans-Klar“.
  *
- * Gegenproben (03.11.2026, modbau):
+ * Gegenproben:
  *   A  in uebersetze() die Vorsilben nicht angehängt → rot „zusammengesetzte
  *      Farben …“ (Dunkel Bläulich Grau)
  *   B  im Wortschatz "tan" entfernt → rot „derselbe Wortschatz …“

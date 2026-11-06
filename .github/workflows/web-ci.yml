@@ -123,6 +123,11 @@ jobs:
       - name: Abhängigkeiten installieren
         run: npm ci --ignore-scripts && npm rebuild esbuild
 
+      # Registry-Signaturen und, wo vorhanden, Herkunftsnachweise jedes
+      # installierten Pakets: Ein Tarball, den die Registry nicht signiert hat, ist rot.
+      - name: Signaturen der Pakete
+        run: npm audit signatures
+
       - name: Typprüfung
         run: npx tsc --noEmit
 

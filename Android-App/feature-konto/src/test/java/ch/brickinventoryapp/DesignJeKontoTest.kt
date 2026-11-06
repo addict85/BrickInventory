@@ -1,5 +1,6 @@
 package ch.brickinventoryapp
 
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import ch.brickinventoryapp.data.repository.KontoRepository
 import ch.brickinventoryapp.ui.DesignWahl
 import ch.brickinventoryapp.ui.ladeEinstellungen
@@ -22,7 +23,7 @@ import org.junit.Test
  * Vorgabe). Die Wahl gilt sofort in der Sitzung, und das Abmelden lässt das
  * Design stehen, bis die Vorgabe des Servers da ist.
  *
- * Gegenproben (30.10.2026, gemessen mit kt-b2/bau.sh):
+ * Gegenproben:
  *   A  in KontoViewModel.waehleDesign() `sitzung.setzeDesign(…)` entfernt → rot
  *      „die Wahl gilt sofort in der ganzen App“ (classic statt noppe)
  *   B  in KontoRepository.setzeEigenesDesign den Schlüssel "design" statt
@@ -34,6 +35,7 @@ import org.junit.Test
  *   E  in Sitzung.ladeEinstellungen() wieder `appTheme = e.appTheme` → rot „die
  *      Einstellungen überschreiben das Design des Kontos nicht“ (classic statt noppe)
  */
+@OptIn(ExperimentalCoroutinesApi::class)
 class DesignJeKontoTest {
 
     private val pfade = PfadServer(

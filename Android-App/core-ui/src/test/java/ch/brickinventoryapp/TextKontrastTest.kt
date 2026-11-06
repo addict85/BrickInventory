@@ -18,7 +18,7 @@ import org.junit.Test
  * 4,5:1 (WCAG 1.4.3) — in allen sechs Designs, hell und in der dunklen Fassung.
  * Dazu sind Fehler- und Hauptfarbe unterscheidbar, damit Rot nicht doppelt spricht.
  *
- * Gegenproben (01.11.2026, kotlinc gegen Compose Desktop, Theme.kt ohne Composable):
+ * Gegenproben:
  *   A  alte Farben: beide ersten Tests rot, 33 Paare unter 4,5:1, darunter
  *      brick.onSurfaceVariant/background 3,91, classic …/surfaceContainerHighest 3,85,
  *      noppe.primary/background 4,44, onError/error in allen dunklen Fassungen 4,48;
@@ -26,11 +26,11 @@ import org.junit.Test
  *   B  brick.onSurfaceVariant zurück auf #6B7785 → rot (3,91 auf background)
  *   C  noppe.primary zurück auf NoppeRot → rot: „Hauptfarbe zu nah …“ (0,13)
  *
- * Diagrammfarben (02.11.2026, thema.py gegen Compose Desktop):
+ * Diagrammfarben :
  *   D  in diagrammFarben() gedaempft wieder fest #94A3B8 → rot „Diagrammschrift …“
  *      mit classic 2,56 auf surface und 2,07 auf surfaceContainerHighest
  *
- * Akzentflächen (03.11.2026, thema.py gegen Compose Desktop):
+ * Akzentflächen :
  *   E  in akzentflaechen() die Stein-Flächen auch im Dunkeln (wie vor M5: Leisten in
  *      primary/secondary, Marktwert Petrol) → rot „im Dunkeln leuchtet …“ mit
  *      brick/dunkel.leiste 0,45, .detailLeiste 0,63, .markt 0,17

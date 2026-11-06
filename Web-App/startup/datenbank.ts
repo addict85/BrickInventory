@@ -2,18 +2,18 @@ import * as db from '../db/database';
 import { logAndContinue } from '../src/infra/fehler';
 import { initImageMisses } from '../src/katalog/bilder/imageMisses';
 import { initImageQueue } from '../jobs/imageQueue';
-import { kopienVerschluesseln, nummernNachverschluesseln } from '../src/gutscheine/dienst';
+import { gutscheineNeuVerschluesseln, kopienVerschluesseln, nummernNachverschluesseln } from '../src/gutscheine/dienst';
 import { verschluesseleGutscheinAltbestand } from '../src/gutscheine/gutscheinDateien';
 import { verschluesseleAltbestand } from '../src/konto/geheimnisAltbestand';
-import { antwortenUmschluesseln, alteAbdrueckeLoeschen } from '../src/idempotenz/dienst';
-import { datenSchluessel } from '../src/infra/geheimnis';
+import { antwortenUmschluesseln, alteAbdrueckeLoeschen, alleVergessen } from '../src/idempotenz/dienst';
+import { altSchluessel, datenSchluessel } from '../src/infra/geheimnis';
 import { konfig } from '../src/infra/konfig';
 import { liesZustand, setzeZustand } from '../src/auftraege/laufzustand';
 
 /** Ein Superuser erreicht COPY … PROGRAM und jede Datenbank des Servers: In
- * Produktion ein Startverbot, ausser DB_SUPERUSER_ERLAUBT=1 (UPGRADE.md). */
+ * Betrieb (auch ohne NODE_ENV) ein Startverbot, ausser DB_SUPERUSER_ERLAUBT=1 (UPGRADE.md). */
 export async function warneBeiSuperuser(): Promise<boolean> {
-  if (!konfig().produktion || !await db.alsSuperuserVerbunden()) return false;
+  if (!konfig().betrieb || !await db.alsSuperuserVerbunden()) return false;
   if (!konfig().dbSuperuserErlaubt) {
     console.error('❌ [datenbank] Die App verbindet sich als Superuser — Start verweigert. Eigene Rolle: UPGRADE.md, '
       + 'Abschnitt 29; wer es bewusst so betreibt, setzt DB_SUPERUSER_ERLAUBT=1 (Abschnitt 34).');
@@ -41,6 +41,20 @@ export async function altbestandAufruesten(): Promise<{ umgeschluesselt: number;
   return { umgeschluesselt: n, abdruecke: alt };
 }
 
+/** Steht der vorige Schlüssel bereit (DATA_KEY_ALT_FILE), schreibt jeder Start
+ * alles, was nur er öffnet, mit dem neuen neu. Gleichzeitig laufende Prozesse
+ * stören sich nicht: Jede Zeile wird nur ersetzt, wenn sie unverändert ist. */
+export async function schluesselWechsel(): Promise<number | null> {
+  if (!altSchluessel()) return null;
+  const n = await verschluesseleAltbestand({ alle: true }) + await gutscheineNeuVerschluesseln()
+    + await kopienVerschluesseln(true) + await verschluesseleGutscheinAltbestand({ alle: true });
+  // Antworten und Abdrücke gelten 24 Stunden und hängen am Schlüssel; neu rechnen lohnt nicht.
+  await alleVergessen();
+  console.log(`[geheimnis] Schlüsselwechsel: ${n} Werte mit dem neuen Schlüssel geschrieben. Der vorige `
+    + '(DATA_KEY_ALT_FILE) kann weg, sobald jedes Konto mit zweitem Faktor neue Wiederherstellungscodes hat (UPGRADE.md).');
+  return n;
+}
+
 /**
  * Schema und Migrationen, danach die Bild-Hilfsdienste — in JEDEM
  * Arbeitsprozess, weil sie prozess-lokal sind (Bestand im Speicher, Takt des
@@ -53,6 +67,7 @@ export async function bereiteDatenbankVor(): Promise<void> {
   await warneBeiSuperuser();
   await db.initSchemaOnce();
   await altbestandAufruesten();
+  await schluesselWechsel();
   await initImageMisses().catch(logAndContinue('db:image_misses'));
   await initImageQueue().catch(logAndContinue('db:image_wanted'));
 }

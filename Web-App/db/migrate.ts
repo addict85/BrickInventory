@@ -82,6 +82,51 @@ async function pruefeAngewandte(client: import('pg').ClientBase, dir: string, ro
 }
 
 const SICHERUNGEN_BEHALTEN = 3;
+/** Länger braucht niemand eine Kopie, um ein misslungenes Update zurückzunehmen;
+ * danach wäre sie nur ein Ort, an dem gelöschte Konten weiterleben. */
+export const SICHERUNG_FRIST_TAGE = 30;
+const SICHERUNG_SCHEMA = '^vor_migration_[0-9]{17}$';
+
+type Abfrager = Pick<import('./database').DbSchnittstelle, 'all' | 'run'>;
+const ueberClient = (c: import('pg').ClientBase): Abfrager => ({
+  all: async <T>(q: string, p?: unknown[]) => (await c.query(q, p)).rows as T[],
+  run: async (q: string, p?: unknown[]) => ({ changes: (await c.query(q, p)).rowCount ?? 0 }),
+});
+
+/** Kopien älter als `tage` (Datum steht im Schemanamen, UTC). @returns gelöschte Schemas */
+export async function raeumeAlteSicherungenAuf(c: Abfrager, tage = SICHERUNG_FRIST_TAGE): Promise<number> {
+  const rows = await c.all<{ nspname: string }>(`
+    SELECT nspname FROM pg_namespace WHERE nspname ~ '${SICHERUNG_SCHEMA}'
+       AND to_timestamp(substr(nspname, 15, 14), 'YYYYMMDDHH24MISS') AT TIME ZONE 'UTC'
+           < NOW() - make_interval(days => $1)`, [tage]);
+  for (const { nspname } of rows) await c.run(`DROP SCHEMA "${nspname}" CASCADE`);
+  return rows.length;
+}
+
+/** Ein gelöschtes Konto auch aus den Kopien: Spalten `user_id`, `*_user_id`, jede
+ * Spalte, die in public auf users zeigt, und `users.id`. In der Transaktion des
+ * Löschens, damit keine Kopie das Konto überlebt. */
+export async function entferneKontoAusSicherungen(c: Abfrager, uid: number): Promise<number> {
+  const rows = await c.all<{ schema: string; tabelle: string; spalte: string }>(`
+    WITH fk AS (
+      SELECT r.relname, a.attname FROM pg_constraint k
+        JOIN pg_class r ON r.oid = k.conrelid
+        JOIN pg_namespace n ON n.oid = r.relnamespace AND n.nspname = 'public'
+        JOIN pg_attribute a ON a.attrelid = r.oid AND a.attnum = ANY (k.conkey)
+       WHERE k.contype = 'f' AND k.confrelid = 'public.users'::regclass)
+    SELECT n.nspname AS schema, c.relname AS tabelle, a.attname AS spalte
+      FROM pg_namespace n
+      JOIN pg_class c ON c.relnamespace = n.oid AND c.relkind = 'r'
+      JOIN pg_attribute a ON a.attrelid = c.oid AND a.attnum > 0 AND NOT a.attisdropped
+     WHERE n.nspname ~ '^vor_migration_[0-9]+$'
+       AND (a.attname ~ '(^|_)user_id$' OR (c.relname = 'users' AND a.attname = 'id')
+            OR (c.relname, a.attname) IN (SELECT relname, attname FROM fk))
+       AND format_type(a.atttypid, a.atttypmod) IN ('integer', 'bigint')`);
+  let n = 0;
+  const id = (x: string) => `"${x.replace(/"/g, '""')}"`;
+  for (const z of rows) n += (await c.run(`DELETE FROM ${id(z.schema)}.${id(z.tabelle)} WHERE ${id(z.spalte)} = $1`, [uid])).changes;
+  return n;
+}
 
 /** Vor offenen Migrationen die Nutzerdaten (users, Tabellen mit user_id oder
  * Fremdschlüssel auf users) in ein eigenes Schema kopieren: Der Container hat
@@ -119,6 +164,7 @@ async function sichereNutzerdaten(client: import('pg').ClientBase, offen: string
     SELECT nspname FROM pg_namespace WHERE nspname ~ '^vor_migration_[0-9]+$'
      ORDER BY nspname DESC OFFSET ${SICHERUNGEN_BEHALTEN}`);
   for (const { nspname } of alt.rows) await client.query(`DROP SCHEMA ${client.escapeIdentifier(nspname)} CASCADE`);
+  await raeumeAlteSicherungenAuf(ueberClient(client));
   console.log(`  💾 ${rows.length} Tabellen mit Nutzerdaten nach ${schema} gesichert`);
   return schema;
 }

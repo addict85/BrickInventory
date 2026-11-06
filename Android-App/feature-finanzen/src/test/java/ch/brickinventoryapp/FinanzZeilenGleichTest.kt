@@ -7,6 +7,7 @@ import ch.brickinventoryapp.ui.figurZeilen
 import ch.brickinventoryapp.ui.teilZeilen
 import org.junit.Assert.assertEquals
 import org.junit.Test
+import java.io.File
 
 /**
  * Die zwei Zeilen der Finanztabelle zeigen dasselbe.
@@ -30,14 +31,14 @@ import org.junit.Test
  * Die Wahl des Kaufpreises (Erfassung vor Eintrag) läuft in ui/Finanzzeilen.kt
  * und wird ausgeführt; dass die Karte ihn zeigt, prüft der Quelltext.
  *
- * Gegenprobe (30.10.2026, gemessen): in teilZeilen() `acq?.purchasePrice ?:
+ * Gegenprobe: in teilZeilen() `acq?.purchasePrice ?:
  * p.purchasePrice` durch `p.purchasePrice` ersetzt → rot „beide Aufrufstellen
  * reichen den Kaufpreis durch“ (150.0 statt 120.0).
  */
 class FinanzZeilenGleichTest {
 
     private fun read(rel: String) =
-        java.io.File(Quellen.wurzel, "$rel").readText()
+        File(Quellen.wurzel, "$rel").readText()
     private fun code(s: String) = s.lines()
         .joinToString("\n") { if (it.trim().startsWith("//") || it.trim().startsWith("*")) "" else it }
 

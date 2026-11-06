@@ -1,6 +1,6 @@
 package ch.brickinventoryapp
 
-import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -14,7 +14,6 @@ import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
-import org.robolectric.annotation.Config
 
 /**
  * Hin- und Rückweg jeder Route mit Werten durch einen echten NavHost: Was ein Ziel
@@ -27,7 +26,6 @@ import org.robolectric.annotation.Config
  *   Postenart.aus() liefert immer SET → rot „jede Postenart kommt als dieselbe an“
  */
 @RunWith(RobolectricTestRunner::class)
-@Config(sdk = [35])
 class RoutenRundwegTest {
 
     @get:Rule

@@ -9,7 +9,7 @@ import org.junit.Test
  * Wo die App beginnt. Wer noch eine http-Adresse gespeichert hat, landet in der
  * Einrichtung mit der Anleitung zu https, auch wenn ein Token da ist.
  *
- * Gegenprobe (01.11.2026, gemessen): in startZiel() die Bedingung
+ * Gegenprobe: in startZiel() die Bedingung
  * klartextAltbestand() entfernt → rot „eine alte http-Adresse führt in die
  * Einrichtung …“ (SAMMLUNG statt EINRICHTUNG).
  */

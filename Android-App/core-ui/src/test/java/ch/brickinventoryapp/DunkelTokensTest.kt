@@ -12,6 +12,7 @@ import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.io.File
+import java.awt.Color
 
 /**
  * Die dunkle Fassung je Design kommt aus denselben Tokens wie im Web
@@ -22,14 +23,14 @@ import java.io.File
  * mit baueKotlinDunkel() („erzeugt = Quelle“). Der Wert-für-Wert-Vergleich, der
  * hier für die Abschrift stand, ist damit entfallen.
  *
- * Gegenproben (29.10.2026, gemessen gegen ui/theme/DunkelTokens.kt):
+ * Gegenproben:
  *   B  den Eintrag "farbfaecher" umbenannt → rot „jedes Design der Quelle hat
  *      seine dunkle Fassung“
  *   C  in dunkelToken() `erbt` nicht aufgelöst → rot „hochglanz erbt die Farben
  *      von noppe“ und die drei Prüfungen der Rollen (b600 fehlt, es greift classic)
  *   D  outline auf s400 statt s500 → rot „Rahmen heben sich mit 3 zu 1 ab“
  *   E  onPrimary auf "txt" statt "auf-primaer" → rot „Text auf Flächen ist lesbar“
- * Gegenproben (30.10.2026, gemessen mit kt-b2/bau.sh gegen DunkleRollen.kt):
+ * Gegenproben:
  *   F  dunkleSteinDekor() mit den hellen Noppen (#6d94b8) → rot „die
  *      Stein-Dekoration wird im Dunkeln dunkel“
  *   G  die Schrift auf der Schieferkachel weiss gelassen → rot ebenda
@@ -120,15 +121,13 @@ class DunkelTokensTest {
      * Ein Akzent je Design: Gewählte Chips und der Tonal-Knopf (secondaryContainer)
      * stehen im Dunkeln im Farbton der Hauptfarbe oder neutral — classic und brick
      * zeigten Bernstein neben Hellblau („Weiter“ braun/gold unter dem blauen QR-Knopf).
-     * Gegenprobe (02.11.2026, kotlinc): classic wieder auf a100/a-schrift → rot.
-     * Gegenprobe (03.11.2026, thema.py): brick wieder auf a100/a-schrift → rot
-     * „brick dunkel: Zweitfläche 171° neben der Hauptfarbe“.
+     * Gegenprobe: classic wieder auf a100/a-schrift → rot.
      */
     @Test
     fun `im Dunkeln traegt jedes Design einen Akzent`() {
         fun hsb(argb: Long): FloatArray {
             val c = argb.toInt()
-            return java.awt.Color.RGBtoHSB((c shr 16) and 0xFF, (c shr 8) and 0xFF, c and 0xFF, null)
+            return Color.RGBtoHSB((c shr 16) and 0xFF, (c shr 8) and 0xFF, c and 0xFF, null)
         }
         for (design in DunkelTokens.designs.keys) {
             val r = dunkleRollen(design)

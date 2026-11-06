@@ -86,6 +86,10 @@ internal class KeystoreTokenTresor(private val alias: String = ALIAS) : TokenVer
         }
     }
 
+    override fun vergiss() {
+        KeyStore.getInstance(KEYSTORE).apply { load(null) }.deleteEntry(alias)
+    }
+
     private companion object {
         const val KEYSTORE = "AndroidKeyStore"
         const val ALIAS = "brickinventory_auth_token"

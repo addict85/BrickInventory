@@ -40,25 +40,27 @@ import ch.brickinventoryapp.util.VersionsHinweis
  *      wird auf den Server samt Pfad umgeschrieben“
  *   G  eigeneKoepfe() nicht aufgerufen → rot „der eigene Server bekommt Sprache
  *      und Fassung“
- *   I  (01.11.2026) die Prüfung verbindungErlaubt() im Wächter entfernt → rot
+ *   I  die Prüfung verbindungErlaubt() im Wächter entfernt → rot
  *      „im Release-Build erreicht keine http-Anfrage den Server …“ und „auch der
  *      Debug-Build schickt http nur …“
- *   K  (01.11.2026) im Wächter `entwicklung` fest auf true → rot „im
+ *   K  im Wächter `entwicklung` fest auf true → rot „im
  *      Release-Build erreicht keine http-Anfrage den Server …“
- *   H  (30.10.2026) /settings/theme vom Token ausgenommen (`mitToken` falsch für
+ *   H  /settings/theme vom Token ausgenommen (`mitToken` falsch für
  *      Pfade auf "/settings/theme") → rot „das Design des Kontos wird mit Token geholt“
- *   J  (31.10.2026) im Wächter die Meldung über versionsHinweis() entfernt → rot „ein
+ *   J  im Wächter die Meldung über versionsHinweis() entfernt → rot „ein
  *      Server mit hoeherer Mindestfassung meldet App zu alt …“ (leere Liste statt APP_ZU_ALT)
- *   L  (31.10.2026) rechteEntzogen() bei jedem 403 → rot „ein 403 nur_admins …“
- *   M  (31.10.2026) BESTAETIGUNG_NOETIG nicht beachtet (jeder 401 meldet ab) →
+ *   L  rechteEntzogen() bei jedem 403 → rot „ein 403 nur_admins …“
+ *   M  BESTAETIGUNG_NOETIG nicht beachtet (jeder 401 meldet ab) →
  *      rot „eine falsche Passwortbestaetigung meldet nicht ab“
- *   N  (01.11.2026) im Wächter die Zeile für PASSWORT_WECHSEL_NOETIG entfernt →
+ *   N  im Wächter die Zeile für PASSWORT_WECHSEL_NOETIG entfernt →
  *      rot „ein 403 passwort_wechsel_noetig verlangt das neue Passwort …“
- *   O  (02.11.2026) wieder die alte Regel (selbst gesetzter Kopf nur weg, wenn er
+ *   O  wieder die alte Regel (selbst gesetzter Kopf nur weg, wenn er
  *      der jetzige Token ist) → rot „ein selbst gesetzter Kopf mit einem aelteren
  *      Token …“ und „nach dem Abmelden geht kein selbst gesetzter Kopf hinaus …“
  *   P  nur `!tokenGehoertHierher` statt `!mitToken` → rot „nach dem Abmelden …“
- *   Q  (04.11.2026, misst die CI) gegenproben/waechter-ohne-faktorpflicht.patch nimmt
+ *   R  wieder `herkunft == null ||` in tokenGehoertHierher →
+ *      rot „ein Token ohne Bindung geht an keinen Server“ (gegenproben/token-ohne-bindung-gesendet.patch)
+ *   Q  gegenproben/waechter-ohne-faktorpflicht.patch nimmt
  *      die Zeile für ZWEITER_FAKTOR_PFLICHT heraus → rot „ein 403 zweiter_faktor_pflicht …“
  */
 class ServerWaechterTest {
@@ -77,10 +79,12 @@ class ServerWaechterTest {
         var url: String,
         var tokens: ArrayDeque<String> = ArrayDeque(listOf(TOKEN)),
         var herkunft: String? = null,
+        /** false: ein Token älterer Fassungen ohne Bindung. */
+        val gebunden: Boolean = true,
     ) : Zugangslage {
         override fun serverUrl() = url
         override fun token(): String = if (tokens.size > 1) tokens.removeFirst() else tokens.first()
-        override fun tokenHerkunft() = herkunft
+        override fun tokenHerkunft() = if (gebunden) herkunft ?: NetworkPolicy.herkunft(url) else null
         override fun generation() = 0L
     }
 
@@ -112,6 +116,18 @@ class ServerWaechterTest {
         c.newCall(Request.Builder().url(url).build()).execute().use { it.code }
 
     private fun anfragenAn(teil: String) = synchronized(anfragen) { anfragen.filter { teil in it.first } }
+
+    @Test
+    fun `ein Token ohne Bindung geht an keinen Server`() {
+        codes["/api/v1/sets"] = 401
+        val c = client(Lage(basis(), gebunden = false))
+        assertEquals(401, hole(c, "http://localhost:3000/api/v1/sets"))
+        c.newCall(Request.Builder().url(basis() + "/api/v1/pdf").header("Authorization", "Bearer $TOKEN").build())
+            .execute().close()
+        assertEquals("Ein ungebundener Token ging hinaus", listOf<String?>(null, null),
+            synchronized(anfragen) { anfragen.map { it.second } })
+        assertEquals("Ohne Token meldet ein 401 nicht ab", 0, abgelaufen.get())
+    }
 
     @Test
     fun `ein 401 auf den Token meldet die abgelaufene Sitzung`() {

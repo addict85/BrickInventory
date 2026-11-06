@@ -20,13 +20,14 @@ import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import java.io.File
 
 /**
  * Die Abbildungen von Server-Modellen auf UI-Modelle (ui/model): Was die
  * Oberfläche bekommt, ist schon aufbereitet — Anteile gerechnet, Richtung als
  * Wahrheitswert, die CSV-Art hin und zurück verlustfrei.
  *
- * Gegenproben (30.10.2026, gemessen):
+ * Gegenproben:
  *   A  in StartzustandAnsicht.anteil die Prüfung `gesamt > 0` entfernt → rot
  *      „ohne Gesamtzahl gibt es keinen Anteil“ (Infinity statt null)
  *   B  in CsvImportArt.alsDaten TEILE → CsvArt.SETS → rot „jede CSV-Art kommt
@@ -37,7 +38,7 @@ import org.junit.Test
  *   E  „TeileAnsichten“ aus Beispielfueller.ABBILDUNGSDATEIEN gestrichen → rot
  *      „jede Datei mit Abbildungen steht in der Liste“ und „Nur 48 Abbildungen“
  *   F  in Profil.alsAnsicht `emailBestaetigt = emailVerified` → `= !emailVerified`
- *      → rot „Profil, Haushalt und CSV-Stand …“ (31.10.2026 nachgemessen); elternkonten aus `parents` → rot „ohne parents gilt linked_to“
+ *      → rot „Profil, Haushalt und CSV-Stand …“; elternkonten aus `parents` → rot „ohne parents gilt linked_to“
  */
 class UiModellAbbildungTest {
 
@@ -102,7 +103,7 @@ class UiModellAbbildungTest {
 
     @Test
     fun `jede Datei mit Abbildungen steht in der Liste`() {
-        val ordner = java.io.File("src/main/java/ch/brickinventoryapp/ui/model")
+        val ordner = File("src/main/java/ch/brickinventoryapp/ui/model")
         val mitAbbildung = ordner.listFiles().orEmpty()
             .filter { f -> f.name.endsWith(".kt") && Regex("""fun \S+\.alsAnsicht\(""").containsMatchIn(f.readText()) }
             .map { it.name.removeSuffix(".kt") }.sorted()

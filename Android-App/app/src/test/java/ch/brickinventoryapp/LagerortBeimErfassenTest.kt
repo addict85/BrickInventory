@@ -11,11 +11,6 @@ import org.junit.Test
  *    Account nicht waehlen. Wenn ich aus dem Katalog etwas in die Galerie
  *    aufnehme, kann ich den Lagerort nicht setzen. Wenn ich etwas aus der
  *    Merkliste in die Galerie aufnehme, kann ich den Lagerort nicht setzen.
- *    Wenn ich ein Set in der Galerie hinzufuegen will, kann ich den Lagerort
- *    nicht waehlen. Egal ob ich des manuell oder per Barcode hinzufuege. Bei
- *    den manuell erfassten Teilen kann ich beim Erfassen keinen Lagerort
- *    setzten. Bei manuelle erfassten Minifiguren kann ich beim Erfassen keinen
- *    Lagerort setzen."
  *
  * ── Das Muster dahinter ─────────────────────────────────────────────────────
  *

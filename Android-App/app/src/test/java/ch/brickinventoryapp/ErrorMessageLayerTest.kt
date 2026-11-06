@@ -8,12 +8,6 @@ import org.junit.Test
  * ── Woher dieser Test kommt (Nachtrag 116) ──────────────────────────────────
  *
  * `BrickRepository.safeCall()` formulierte seine Meldungen selbst:
- * „Netzwerkfehler", „Zeitüberschreitung", „Leere Antwort vom Server". Deutsche
- * Sätze in einer Schicht, die keinen Context hat und also gar nicht übersetzen
- * KANN. Für einen englischsprachigen Nutzer war damit jede Fehlermeldung der
- * App deutsch, egal wie sauber der Bildschirm darüber lokalisiert war —
- * dieselbe Ursache wie beim PDF-Betrachter in Nachtrag 115, nur an der Stelle,
- * die alle Fehler formuliert.
  *
  * Von 36 Snackbar-Zuweisungen liefen damals 19 über `getString`; der Rest
  * reichte durch, was aus der Datenschicht kam. Es waren also zwei Sprachregime

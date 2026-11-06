@@ -29,7 +29,7 @@ import androidx.compose.ui.test.swipeUp
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.platform.testTag
 import androidx.compose.material3.Text
-import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithContentDescription
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
@@ -79,6 +79,19 @@ import ch.brickinventoryapp.ui.screens.WertKacheln
 import ch.brickinventoryapp.ui.setZeilen
 import ch.brickinventoryapp.ui.viewmodel.ErfassungViewModel
 import ch.brickinventoryapp.util.inVierergruppen
+import android.content.Context
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.test.SemanticsMatcher
+import androidx.compose.ui.text.intl.LocaleList
+import coil3.intercept.Interceptor
+import coil3.request.ErrorResult
+import java.math.BigDecimal
+import java.util.Locale
 
 /**
  * Was die Bildschirmfotos zeigen, hier als Regel ausgeführt: Bei 200 % Schrift bricht
@@ -120,19 +133,19 @@ import ch.brickinventoryapp.util.inVierergruppen
  */
 @RunWith(RobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
-@Config(sdk = [35], qualifiers = "de-rCH-w411dp-h891dp-port-xxhdpi")
+@Config(qualifiers = "de-rCH-w411dp-h891dp-port-xxhdpi")
 class OberflaechenRegelnTest {
 
     @get:Rule
     val compose = createComposeRule()
 
-    private val vorher = java.util.Locale.getDefault()
-    private val ctx: android.content.Context = ApplicationProvider.getApplicationContext()
+    private val vorher = Locale.getDefault()
+    private val ctx: Context = ApplicationProvider.getApplicationContext()
 
-    init { java.util.Locale.setDefault(java.util.Locale.forLanguageTag("de-CH")) }
+    init { Locale.setDefault(Locale.forLanguageTag("de-CH")) }
 
     @After
-    fun zu() = java.util.Locale.setDefault(vorher)
+    fun zu() = Locale.setDefault(vorher)
 
     private fun zeige(schrift: Float = 1f, inhalt: @Composable () -> Unit) {
         compose.setContent {
@@ -230,7 +243,7 @@ class OberflaechenRegelnTest {
                 title = "Sammlung", navController = nav, bottomNavItems = reiter,
                 snackbarHostState = remember { SnackbarHostState() },
                 csvImportState = remember { MutableStateFlow(CsvImportUiState()) },
-                onCsvAbbrechen = {}, serverUrl = "", onTabAngetippt = {},
+                onCsvAbbrechen = {}, onTabAngetippt = {},
             ) {
                 NavHost(nav, startDestination = Screen.Gallery) { composable<Screen.Gallery> { } }
             }
@@ -256,11 +269,11 @@ class OberflaechenRegelnTest {
                 title = "Finanzen", navController = nav, bottomNavItems = reiter,
                 snackbarHostState = remember { SnackbarHostState() },
                 csvImportState = remember { MutableStateFlow(CsvImportUiState()) },
-                onCsvAbbrechen = {}, serverUrl = "", onTabAngetippt = {},
+                onCsvAbbrechen = {}, onTabAngetippt = {},
             ) {
                 NavHost(nav, startDestination = Screen.Finance) {
                     composable<Screen.Finance> {
-                        androidx.compose.foundation.lazy.LazyColumn(Modifier.testTag("liste")) {
+                        LazyColumn(Modifier.testTag("liste")) {
                             items(80) { i -> Text("Zeile $i", Modifier.padding(16.dp)) }
                         }
                     }
@@ -292,7 +305,7 @@ class OberflaechenRegelnTest {
                 title = "Sammlung", navController = nav, bottomNavItems = reiter,
                 snackbarHostState = remember { SnackbarHostState() },
                 csvImportState = remember { MutableStateFlow(CsvImportUiState()) },
-                onCsvAbbrechen = {}, serverUrl = "", onTabAngetippt = {},
+                onCsvAbbrechen = {}, onTabAngetippt = {},
             ) {
                 NavHost(nav, startDestination = Screen.Gallery) {
                     composable<Screen.Gallery> { }
@@ -324,14 +337,9 @@ class OberflaechenRegelnTest {
         compose.onNodeWithText("Serverfehler (500)").fetchSemanticsNode()
     }
 
-    /** Antworten des Testservers kommen über den Hauptlooper; ihn selbst treiben. */
+    /** Die Welt antwortet im Takt; den Hauptlooper treiben, bis [fertig] gilt. */
     private fun warte(name: String, fertig: () -> Boolean) {
-        val ende = System.nanoTime() + 10_000_000_000L
-        while (!fertig()) {
-            check(System.nanoTime() < ende) { "$name nach 10 s nicht geladen" }
-            org.robolectric.Shadows.shadowOf(android.os.Looper.getMainLooper()).idle()
-            Thread.sleep(10)
-        }
+        treibeBis(name, bereit = fertig)
         compose.waitForIdle()
     }
 
@@ -390,7 +398,7 @@ class OberflaechenRegelnTest {
      * Erfassen in die Zeile unter der Suche; ein schwebender Knopf liegt unterhalb des
      * Listenanfangs, auch wenn die Liste bei wenigen Sets kürzer ist als der Bildschirm.
      */
-    private fun erfassenNichtUeberListe(beschreibung: String): List<androidx.compose.ui.geometry.Rect> {
+    private fun erfassenNichtUeberListe(beschreibung: String): List<Rect> {
         val liste = compose.onNode(androidx.compose.ui.test.hasScrollToNodeAction()).fetchSemanticsNode().boundsInRoot
         val knoepfe = compose.onAllNodesWithContentDescription(beschreibung).fetchSemanticsNodes().map { it.boundsInRoot }
         assertTrue("Erfassen ist da", knoepfe.isNotEmpty())
@@ -455,7 +463,7 @@ class OberflaechenRegelnTest {
                 title = "Seite", navController = nav, bottomNavItems = reiter,
                 snackbarHostState = remember { SnackbarHostState() },
                 csvImportState = remember { MutableStateFlow(CsvImportUiState()) },
-                onCsvAbbrechen = {}, serverUrl = "", onTabAngetippt = {},
+                onCsvAbbrechen = {}, onTabAngetippt = {},
             ) {
                 NavHost(nav, startDestination = Screen.Gallery) {
                     composable<Screen.Gallery> { }
@@ -493,9 +501,9 @@ class OberflaechenRegelnTest {
         try {
             // Jede Anfrage scheitert, wie offline oder bei fehlender Vorschau.
             val kaputt = coil3.ImageLoader.Builder(ctx).components {
-                add(object : coil3.intercept.Interceptor {
-                    override suspend fun intercept(chain: coil3.intercept.Interceptor.Chain) =
-                        coil3.request.ErrorResult(null, chain.request, IllegalStateException("kein Bild"))
+                add(object : Interceptor {
+                    override suspend fun intercept(chain: Interceptor.Chain) =
+                        ErrorResult(null, chain.request, IllegalStateException("kein Bild"))
                 })
             }.build()
             galerieMit(welt, kaputt)
@@ -603,9 +611,9 @@ class OberflaechenRegelnTest {
             }
             compose.onAllNodesWithText("Trans-Clear", useUnmergedTree = true).assertCountEquals(0)
             val name = compose.onNodeWithText("Brick 2 x 4", useUnmergedTree = true).fetchSemanticsNode()
-                .config[androidx.compose.ui.semantics.SemanticsProperties.Text].single()
+                .config[SemanticsProperties.Text].single()
             assertTrue("Teilename als Englisch ausgezeichnet: ${name.spanStyles}",
-                name.spanStyles.any { it.item.localeList == androidx.compose.ui.text.intl.LocaleList("en") })
+                name.spanStyles.any { it.item.localeList == LocaleList("en") })
         } finally {
             welt.close()
         }
@@ -673,8 +681,8 @@ class OberflaechenRegelnTest {
             warte("Merkliste") { vm.merklisteState.value.merkposten.isNotEmpty() }
             val segmente = listOf(R.string.filter_condition_all, R.string.condition_new, R.string.condition_used).map {
                 compose.onNode(hasText(ctx.getString(it)) and
-                    androidx.compose.ui.test.SemanticsMatcher.expectValue(androidx.compose.ui.semantics.SemanticsProperties.Role,
-                        androidx.compose.ui.semantics.Role.RadioButton)).fetchSemanticsNode().boundsInRoot
+                    SemanticsMatcher.expectValue(SemanticsProperties.Role,
+                        Role.RadioButton)).fetchSemanticsNode().boundsInRoot
             }
             val dichte = ctx.resources.displayMetrics.density
             segmente.zipWithNext().forEach { (a, b) ->
@@ -717,7 +725,7 @@ class OberflaechenRegelnTest {
             val liste = compose.onNode(hasText("Lion Knights' Castle", substring = true) and hasClickAction()).fetchSemanticsNode().boundsInRoot
             assertTrue("Das Detail steht rechts der Liste ($liste / $zurueck)", zurueck.left >= liste.right)
             compose.onNode(hasText("Titanic", substring = true) and hasClickAction() and
-                androidx.compose.ui.test.SemanticsMatcher.expectValue(androidx.compose.ui.semantics.SemanticsProperties.Selected, true))
+                SemanticsMatcher.expectValue(SemanticsProperties.Selected, true))
                 .fetchSemanticsNode()
         } finally {
             welt.close()
@@ -731,13 +739,7 @@ class OberflaechenRegelnTest {
             welt.pfade.antworten["/api/v1/wanted"] = """{"success":true,"merkposten":[]}"""
             val vm = welt.merkliste().also { it.ladeMerkliste() }
             zeige { MerklisteRoute(vm = vm, imageLoader = coil3.ImageLoader.Builder(ctx).build(), onScan = {}, onOeffnenEinzeln = { _, _ -> }) }
-            // Die Antwort kommt über den Hauptlooper; ihn selbst treiben wie BildschirmFotoTest.
-            val ende = System.nanoTime() + 10_000_000_000L
-            while (welt.pfade.anfragen.none { "/api/v1/wanted" in it } || vm.merklisteState.value.laedt) {
-                check(System.nanoTime() < ende) { "Merkliste nach 10 s nicht geladen" }
-                org.robolectric.Shadows.shadowOf(android.os.Looper.getMainLooper()).idle()
-                Thread.sleep(10)
-            }
+            treibeBis("Merkliste", bereit = { !(welt.pfade.anfragen.none { "/api/v1/wanted" in it } || vm.merklisteState.value.laedt) })
             compose.waitForIdle()
             compose.onNodeWithText(ctx.getString(R.string.wanted_add_first)).fetchSemanticsNode()
             compose.onNodeWithText(ctx.getString(R.string.gallery_scan_barcode)).fetchSemanticsNode()
@@ -770,7 +772,7 @@ class OberflaechenRegelnTest {
         val zeitraum = listOf(R.string.chart_period_week, R.string.chart_period_month, R.string.chart_period_year,
             R.string.chart_period_max).map { ctx.getString(it) }
         zeige(schrift = 2f) {
-            androidx.compose.foundation.layout.Column(Modifier.width(360.dp).padding(horizontal = 16.dp)) {
+            Column(Modifier.width(360.dp).padding(horizontal = 16.dp)) {
                 SegmentWahl(zustaende.map { it to it }, zustaende[0], {})
                 SegmentWahl(zeitraum.map { it to it }, zeitraum[0], {})
             }
@@ -789,7 +791,7 @@ class OberflaechenRegelnTest {
             theme = "Icons", pieces = 9090, condition = "N")
         val karg = SetAnsicht(setNumber = "1-1", name = "Box")
         zeige {
-            androidx.compose.foundation.layout.Row(Modifier.width(380.dp)) {
+            Row(Modifier.width(380.dp)) {
                 Box(Modifier.weight(1f)) {
                     SetCard(voll, "", bilder, {}, preis = KachelPreis(449.95, 12.5), waehrung = "CHF")
                 }
@@ -812,10 +814,10 @@ class OberflaechenRegelnTest {
             val zeile = setZeilen(vm.financeState.value.valuation!!.sets).map { it.second }
                 .first { it.menge > 1 && it.kaufpreis != null && it.wert != null }
             // Selbst gerechnet, nicht aus kaufGesamt/gewinn: Sonst prüfte der Test die Rechnung mit sich selbst.
-            val gesamt = java.math.BigDecimal.valueOf(zeile.kaufpreis!!).multiply(java.math.BigDecimal(zeile.menge)).toDouble()
+            val gesamt = BigDecimal.valueOf(zeile.kaufpreis!!).multiply(BigDecimal(zeile.menge)).toDouble()
             val kauf = ctx.getString(R.string.finance_purchase_total, fmtMoney(gesamt, "CHF"))
             compose.onNodeWithText(kauf, useUnmergedTree = true).fetchSemanticsNode()
-            val gewinn = java.math.BigDecimal.valueOf(zeile.wert!!).subtract(java.math.BigDecimal.valueOf(gesamt)).toDouble()
+            val gewinn = BigDecimal.valueOf(zeile.wert!!).subtract(BigDecimal.valueOf(gesamt)).toDouble()
             compose.onAllNodesWithText(fmtMoney(gewinn, "CHF"), substring = true, useUnmergedTree = true)
                 .fetchSemanticsNodes().let { assertTrue("Gewinn als Betrag steht da", it.isNotEmpty()) }
         } finally {
@@ -839,9 +841,9 @@ class OberflaechenRegelnTest {
             warte("Finanzen") { vm.financeState.value.let { it.valuation != null && it.pnl != null && !it.valuationLoading } }
             compose.waitForIdle()
             // Die Zahlen der Beispiele, nicht aus finanzKopf: Sonst prüfte der Test die Rechnung mit sich selbst.
-            val einstand = java.math.BigDecimal("1500.00")
-            val guv = java.math.BigDecimal("212.40")
-            val wert = java.math.BigDecimal("1712.40")
+            val einstand = BigDecimal("1500.00")
+            val guv = BigDecimal("212.40")
+            val wert = BigDecimal("1712.40")
             assertEquals(0, einstand.add(guv).compareTo(wert))
             val einstandText = ctx.getString(R.string.finance_einstand_zeile, fmtMoney(einstand.toDouble(), "CHF"))
             assertTrue(einstandText, stehtDa(einstandText))
@@ -867,7 +869,7 @@ class OberflaechenRegelnTest {
         val markt = ctx.getString(R.string.gallery_card_market)
         val kauf = ctx.getString(R.string.gallery_card_paid)
         zeige {
-            androidx.compose.foundation.layout.Row(Modifier.width(380.dp)) {
+            Row(Modifier.width(380.dp)) {
                 Box(Modifier.weight(1f)) {
                     SetCard(SetAnsicht(setNumber = "21318-1", name = "Baumhaus"), "", bilder, {},
                         preis = KachelPreis(180.0, null, "kauf"), waehrung = "CHF")

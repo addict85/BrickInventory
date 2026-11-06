@@ -23,6 +23,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
+import kotlinx.coroutines.CoroutineScope
 
 /**
  * Das Merklisten-ViewModel, ausgeführt gegen einen PfadServer ohne Netz. Die Wartezeiten
@@ -37,9 +38,9 @@ import org.junit.Test
  *      Übernahme meldet Merkliste und Sets“
  *   D  im Preisalarm das Nachladen der Alarme des offenen Postens entfernt →
  *      rot „ein Preisalarm im Merkposten wird entprellt gespeichert …“
- *   E  (31.10.2026) im init-Sammler die Bedingung `ungefiltert(f)` entfernt →
+ *   E  im init-Sammler die Bedingung `ungefiltert(f)` entfernt →
  *      rot „mit Suchtext bleibt die Serverantwort stehen“
- *   F  (31.10.2026) den init-Sammler entfernt → rot „offline gelöscht“ (Zeitüberschreitung)
+ *   F  den init-Sammler entfernt → rot „offline gelöscht“ (Zeitüberschreitung)
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 class MerklisteViewModelTest {
@@ -107,7 +108,7 @@ class MerklisteViewModelTest {
     fun `eine Uebernahme meldet Merkliste und Sets und die Liste laedt neu`() {
         val vm = vm()
         val gemeldet = mutableListOf<Aenderung>()
-        val sammler = kotlinx.coroutines.CoroutineScope(Dispatchers.Main).launch { t.bestand.aenderungen.toList(gemeldet) }
+        val sammler = CoroutineScope(Dispatchers.Main).launch { t.bestand.aenderungen.toList(gemeldet) }
         vm.uebernimmMerkposten("10294-1", "N", besitzer = null, kaufpreisRoh = "499,90")
         assertTrue("Liste nachgeladen", vm.merklisteState.value.merkposten.isNotEmpty())
         sammler.cancel()

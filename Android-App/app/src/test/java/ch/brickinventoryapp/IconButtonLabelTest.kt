@@ -1,6 +1,7 @@
 package ch.brickinventoryapp
 
 import org.junit.Test
+import java.io.File
 
 /**
  * Bedienelemente, die NUR aus einem Symbol bestehen, brauchen eine Beschriftung.
@@ -29,10 +30,8 @@ class IconButtonLabelTest {
     // Tests sechs weitere Stellen zutage gefoerdert, an die vorher niemand
     // dachte: die Mengen-Knoepfe (+/-) in den beiden Detail-Ansichten und zwei
     // Bearbeiten-Knoepfe im Monitoring. Die Mengen-Knoepfe trugen "+" und "-"
-    // als Beschreibung — das liest TalkBack als "Plus", nicht als "Menge
-    // erhoehen".
 
-    private fun screens(): List<java.io.File> =
+    private fun screens(): List<File> =
         Quellen.wurzel
             .walkTopDown().filter { it.isFile && it.extension == "kt" }.toList()
             .also {
@@ -99,8 +98,8 @@ class IconButtonLabelTest {
     fun `die Beschriftungen liegen in beiden Sprachen vor`() {
         // Ein fehlender Eintrag in values-de führt nicht zum Fehler, sondern
         // still zum englischen Text — genau die Sorte Lücke, die niemand meldet.
-        val en = java.io.File(Quellen.res, "values/strings.xml").readText()
-        val de = java.io.File(Quellen.res, "values-de/strings.xml").readText()
+        val en = File(Quellen.res, "values/strings.xml").readText()
+        val de = File(Quellen.res, "values-de/strings.xml").readText()
         val namen = listOf(
             "cd_search_clear", "cd_password_show", "cd_password_hide", "cd_set_delete",
             "cd_qty_increase", "cd_qty_decrease", "cd_edit_cache_ttl", "cd_edit_limits",

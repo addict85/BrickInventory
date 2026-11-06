@@ -433,9 +433,9 @@ test('Markup kommt nur über setzeHtml()/fuegeHtmlEin() in die Seite', () => {
 
 test('ungeprueft() wird weniger, nie mehr', () => {
   // html`` maskiert jeden eingesetzten Wert; ungeprueft() setzt eine Zeichenkette als Markup ein, die
-  // vor dem Umbau schon maskiert gebaut wurde. Gemessen nach dem Umbau: 170. Wer eine Stelle auf
-  // html`` umstellt, senkt die Schranke. Gegenprobe: `${ungeprueft(x)}` in 01-dom.js ergänzt → rot mit 171.
-  const SCHRANKE = 170;
+  // vor dem Umbau schon maskiert gebaut wurde. Wer eine Stelle auf html`` umstellt, senkt die Schranke.
+  // Gegenprobe: `${ungeprueft(x)}` in 01-dom.js ergänzt → rot mit 159.
+  const SCHRANKE = 158;
   const ist = oberflaechenCode().reduce((n, x) => n + (x.z.match(/(?<![\w.])ungeprueft\(/g) || []).length
     - (/export function ungeprueft\(/.test(x.z) ? 1 : 0), 0);
   assert.ok(ist > 0, 'kein ungeprueft() gefunden — greift die Suche noch?');

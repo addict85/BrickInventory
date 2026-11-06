@@ -162,10 +162,10 @@ class MainActivity : NurLauncherStart() {
                     LocalAppFassung provides AppFassung(BuildConfig.VERSION_NAME, BuildConfig.VERSION_CODE),
                     LocalSchrittschutz provides schrittschutz,
                 ) { TastaturOhneLernen {
-                    // App-weit (sec8 H4): Gutschein-Nummer und PIN, Passwörter, Codes und
+                    // App-weit: Gutschein-Nummer und PIN, Passwörter, Codes und
                     // Einladungen; Setnamen lernt die Tastatur dafür auch nicht mit.
                     BrickInventoryRoute(aktivitaetsZustand(), imageLoader)
-                    // Ohne Displaysperre fragt der Schrittschutz hier nach, statt still durchzulassen (sec10 H3).
+                    // Ohne Displaysperre fragt der Schrittschutz hier nach, statt still durchzulassen.
                     OhneSperreWarnung(schrittschutz.ohneSperre)
                     // Mit Startpasswort weist der Server alles ab: nur die Maske, bis es ersetzt ist.
                     val startpasswort by vm.startpasswortNoetig.collectAsStateWithLifecycle()

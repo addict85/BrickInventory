@@ -54,7 +54,8 @@ fun FigurenRepository(api: FigurenApi, cache: ResponseCache, ablage: Offlineabla
 fun GutscheineRepository(api: GutscheineApi, cache: ResponseCache): GutscheineRepository =
     GutscheineRepositoryImpl(api, cache, Offlineablage.fluechtig())
 
-fun KontoRepository(api: KontoApi, cache: ResponseCache): KontoRepository = KontoRepositoryImpl(api, cache, Dispatchers.IO)
+fun KontoRepository(api: KontoApi, cache: ResponseCache, io: CoroutineDispatcher = Dispatchers.IO): KontoRepository =
+    KontoRepositoryImpl(api, cache, io)
 
 fun FinanzenRepository(api: FinanzenApi, cache: ResponseCache): FinanzenRepository = FinanzenRepositoryImpl(api, cache)
 

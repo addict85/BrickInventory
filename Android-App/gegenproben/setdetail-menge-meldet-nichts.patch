@@ -1,0 +1,17 @@
+Gegenprobe: Eine geänderte Menge im Set-Detail wird nicht gemeldet
+Modul: feature-sammlung
+Test: ch.brickinventoryapp.SetDetailViewModelTest
+Rot: eine geaenderte Menge
+
+diff --git a/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/ui/viewmodel/SetDetailViewModel.kt b/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/ui/viewmodel/SetDetailViewModel.kt
+index a514417..0b1aefc 100644
+--- a/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/ui/viewmodel/SetDetailViewModel.kt
++++ b/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/ui/viewmodel/SetDetailViewModel.kt
+@@ -172,7 +172,6 @@ class SetDetailViewModel @Inject constructor(
+                                 st.copy(setDetail = st.setDetail.copy(quantity = echt)) else st
+                         }
+                     }
+-                    bestand.melde(Aenderung.Sets)
+                 }
+                 is Ergebnis.Error -> meldungen.zeige(meldungen.meldungFuerSnackbar(r)?.let { meldungen.text(R.string.vm_error, it) })
+             }

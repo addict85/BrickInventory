@@ -6,15 +6,16 @@ import * as K from '../src/konto/konten';
 import { meldeHaushaltsaenderung } from '../src/haushalt/haushalt';
 import { logAndContinue, meldeUndWeiter, fehlertext, meldeUndLiefere } from '../src/infra/fehler';
 import { fehlerAntwort, pfadParam } from '../src/infra/httpAntwort';
-import { hashToken, createToken, pruefeToken, assertLoginAllowed, revokeAllSessions, deleteToken, USERNAME_RE, emailGueltig, leereTokenCache, laufzeitTage, rotiereToken, rotationFaellig, UNBEGRENZT, UEBERLAPPUNG_MS, nameGueltig } from '../src/konto/auth';
+import { hashToken, createToken, pruefeToken, assertLoginAllowed, revokeAllSessions, deleteToken, USERNAME_RE, emailGueltig, leereTokenCache, laufzeitTage, rotiereToken, rotationFaellig, UNBEGRENZT, UEBERLAPPUNG_MS, nameGueltig, geraeteNameGueltig } from '../src/konto/auth';
 import { kontoGedrosselt } from '../src/konto/zielDrossel';
+import { meldeAnmeldung } from '../src/konto/loginLimiter';
 import { perSitzung, anmelden, establishSession, requireLoginOrToken, nutzerId, angemeldeteNutzerId, ipThrottle, bestaetigeMitFaktor, zweiterFaktorPflicht } from '../src/konto/http/anmeldung';
 import type { TokenScope } from '../src/konto/auth';
 import { tlsStand } from '../src/infra/tlsWurzel';
 import { hinweisNebenher } from '../src/konto/kontoHinweis';
 import crypto from 'crypto';
 import { passwortMangel } from '../src/infra/passwortRegel';
-import { sendEmailGeaendertMail, sendVerificationMail } from '../src/mail/mailer';
+import { sendEmailGeaendertMail, sendRegistrierungsVersuchMail, sendVerificationMail } from '../src/mail/mailer';
 import type { Request, Response } from 'express';
 import { getSetting } from '../src/einstellungen/settings';
 import { requireApiAdmin } from './api_v1/middleware';
@@ -91,7 +92,7 @@ async function angemeldetAntworten(req: Request, res: Response, user: Angemeldet
   res.json({ success: true, ...(token ? { token } : {}), ...(token ? { token_info: await tokenAngaben(token) } : {}),
     never_expires: false,
     user: { id: user.id, username: user.username, is_admin: user.is_admin,
-    // Nur beim automatisch erzeugten Admin-Passwort gesetzt (db/database.ts).
+    // Startpasswort (db/database.ts) oder vom Verwalter vergeben (routes/auth/benutzer.ts).
     mustChangePassword: user.must_change_password,
     zweiterFaktorPflicht: verwalter && !await zf.istAktiv(uid) } });
 }
@@ -100,6 +101,7 @@ async function angemeldetAntworten(req: Request, res: Response, user: Angemeldet
  * Ausführlich: docs/begruendungen/routes/auth.ts.md#post-login */
 router.post('/login', async (req: OffeneAnfrage<'POST /api/v1/auth/login'>, res: Antwort<'POST /api/v1/auth/login'>) => {
   const { username, password, code: zweiterCode, ohne_token, passkey } = req.eingabe;
+  if (!geraeteNameGueltig(req.eingabe.label)) return sendeFehler(req, res, 400, 'geraetename_ungueltig');
   const pruefung = await anmelden(req, username, password, zweiterCode, passkey);
   if (!pruefung.ok) {
     const { status, code, vars, unverified, zweiterFaktor, passkey: mitPasskey } = pruefung.absage;
@@ -183,6 +185,7 @@ router.post('/token-rotieren', ipThrottle('token-rotieren', 120, 60 * 60 * 1000)
   if (!alt || !(await pruefeToken(alt, { ip: req.ip, zweck: 'rotation' })).nutzer)
     return sendeFehler(req, res, 401, 'token_ungueltig');
   const t = await rotiereToken(alt, req.ip);
+  if (t === 'laeuft') return sendeFehler(req, res, 409, 'tausch_laeuft');
   if (!t) return sendeFehler(req, res, 401, 'token_ungueltig');
   res.json({ success: true, token: t.token,
     token_info: { scope: t.scope, expires_at: t.expires_at, hard_expires_at: t.hard_expires_at,
@@ -194,6 +197,7 @@ router.post('/token-rotieren', ipThrottle('token-rotieren', 120, 60 * 60 * 1000)
  * erbeuteter Zugang einen dauerhaften. Die Mail meldet ihn dem Inhaber. */
 router.post('/token-create', requireLogin, async (req: OffeneAnfrage<'POST /api/v1/auth/token-create'>, res: Antwort<'POST /api/v1/auth/token-create'>) => {
   if (!req.session?.userId) return sendeFehler(req, res, 403, 'nur_mit_sitzung');
+  if (!geraeteNameGueltig(req.eingabe.label)) return sendeFehler(req, res, 400, 'geraetename_ungueltig');
   const userId = angemeldeteNutzerId(req);
   if (!await bestaetigeMitFaktor(req, res, userId, req.eingabe.password)) return;
   const label = tokenLabel(req.eingabe.label, 'Android App');
@@ -238,7 +242,6 @@ router.put('/profile', requireLogin, async (req: OffeneAnfrage<'PUT /api/v1/auth
     if (zuOft) return sendeFehler(req, res, 429, 'zu_viele_anfragen', { minuten: zuOft.waitMin });
     // Case-insensitiv und auch gegen die E-Mail-Spalte, weil der Login mit LOWER() beide vergleicht.
     if (nameNeu && await K.nameVergeben(username, user.id)) return sendeFehler(req, res, 400, 'benutzername_vergeben');
-    if (emailChanged && await K.emailVergeben(email, user.id)) return sendeFehler(req, res, 400, 'email_vergeben');
   }
 
   const felder: Record<string, unknown> = {};
@@ -256,7 +259,14 @@ router.put('/profile', requireLogin, async (req: OffeneAnfrage<'PUT /api/v1/auth
     let emailSent = false;
     const lang = String(await getSetting(user.id, 'language', 'de').catch(meldeUndLiefere('anmeldung:sprache', 'de')));
     const basis = mailBasisUrl();
-    if (basis) emailSent = await sendVerificationMail(email, token, basis, lang, 'adresse')
+    // Belegt antwortet wie frei, sonst liessen sich Adressen abfragen; der Inhaber
+    // bekommt einen Hinweis statt des Links (uebernimmEmailNeu() wiese ihn ab).
+    const inhaber = await K.kontoMitEmail(email);
+    if (inhaber && inhaber.id !== user.id) {
+      const sprache = String(await getSetting(inhaber.id, 'language', 'de').catch(meldeUndLiefere('anmeldung:sprache', 'de')));
+      if (basis) emailSent = await sendRegistrierungsVersuchMail(inhaber.email, sprache, 'adresse')
+        .then(r => r.success, meldeUndLiefere('anmeldung:versuchsmail', false));
+    } else if (basis) emailSent = await sendVerificationMail(email, token, basis, lang, 'adresse')
       .then(r => r.success, meldeUndLiefere('anmeldung:bestaetigungsmail', false));
     // Die alte Adresse erfährt davon — war es nicht der Inhaber, merkt er es so.
     if (user.email) await sendEmailGeaendertMail(user.email, user.username, email, lang)
@@ -358,6 +368,7 @@ router.post('/qr-login', ipThrottle('qr-login', 30, 60 * 60 * 1000), async (req:
   if (!user) return sendeFehler(req, res, 401, 'token_ungueltig');
   const blocked = assertLoginAllowed(user);
   if (blocked) return sendeFehler(req, res, blocked.status, blocked.code);
+  meldeAnmeldung({ ip: req.ip, konto: user.id, zugang: 'qr' });
 
   // Keine Sitzung: Sie trüge die vollen Rechte des Kontos an Scope `app` vorbei.
   // Die Laufzeit kommt aus der Zeile der Nonce, nicht aus der Anfrage.
@@ -391,6 +402,7 @@ router.post('/passkey/registrieren/optionen', requireLoginOrToken, async (req: O
 
 router.post('/passkey/registrieren', requireLoginOrToken, async (req: OffeneAnfrage<'POST /api/v1/auth/passkey/registrieren'>, res: Antwort<'POST /api/v1/auth/passkey/registrieren'>) => {
   if (!perSitzung(req)) return sendeFehler(req, res, 403, 'nur_mit_sitzung');
+  if (!geraeteNameGueltig(req.eingabe.name)) return sendeFehler(req, res, 400, 'geraetename_ungueltig');
   const neu = await P.registrierungPruefen(angemeldeteNutzerId(req), req.eingabe.antwort, passkeyName(req.eingabe.name));
   if (!neu) return sendeFehler(req, res, 400, 'passkey_ungueltig');
   hinweisNebenher(angemeldeteNutzerId(req), 'passkey_neu', neu.name);
@@ -415,12 +427,14 @@ router.post('/passkey/anmelden/optionen', ipThrottle('passkey-optionen', 60, 60 
 
 /** Die Sitzung für den Browser; einen Token nur auf `mit_token`, wie ihn die App braucht. */
 router.post('/passkey/anmelden', ipThrottle('passkey-anmelden', 30, 60 * 60 * 1000), async (req: OffeneAnfrage<'POST /api/v1/auth/passkey/anmelden'>, res: Antwort<'POST /api/v1/auth/passkey/anmelden'>) => {
+  if (!geraeteNameGueltig(req.eingabe.label)) return sendeFehler(req, res, 400, 'geraetename_ungueltig');
   const uid = await P.anmeldungPruefen(req.eingabe.antwort, 'anmelden');
   if (!uid) return sendeFehler(req, res, 401, 'passkey_ungueltig');
   const user = await K.kontoVoll(uid);
   if (!user) return sendeFehler(req, res, 401, 'passkey_ungueltig');
   const gesperrt = assertLoginAllowed(user);
   if (gesperrt) return sendeFehler(req, res, gesperrt.status, gesperrt.code);
+  meldeAnmeldung({ ip: req.ip, konto: user.id, zugang: 'passkey' });
   await angemeldetAntworten(req, res, user, req.eingabe, req.eingabe.mit_token === true);
 });
 

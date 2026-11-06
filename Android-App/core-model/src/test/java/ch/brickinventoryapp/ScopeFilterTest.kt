@@ -107,11 +107,6 @@ class ScopeFilterTest {
         // „merkliste" ist am 24.09. dazugekommen — Marcos Vorgabe: „In der
         // Merkliste noch einen Filter analog den Sets einbauen inkl. Inhaber."
         // Diese Prüfung hat den Umbau gemeldet, und genau dafür steht sie hier:
-        // Die Schlüssel sind der VERTRAG mit der Webapp (SCOPE_VIEWS in
-        // public/js/14-scope.js) und mit DataStore. Ein anderer Name hiesse,
-        // dass die App die Wahl unter einem Schlüssel speichert, den niemand
-        // sonst kennt — sichtbar würde das erst als „der Filter merkt sich
-        // nichts".
         val keys = ScopeFilter.View.entries.map { it.key }
         assertEquals(listOf("gallery", "parts", "minifigs", "finance", "merkliste"), keys)
         assertEquals(keys.size, keys.toSet().size)

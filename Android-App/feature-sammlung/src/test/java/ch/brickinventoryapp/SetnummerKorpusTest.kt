@@ -3,6 +3,7 @@ package ch.brickinventoryapp
 import ch.brickinventoryapp.ui.screens.setNumberCandidates
 import org.json.JSONObject
 import org.junit.Test
+import java.io.File
 
 /**
  * Der GEMEINSAME Korpus: Web-App und Android-App muessen dieselbe Setnummer
@@ -39,7 +40,7 @@ class SetnummerKorpusTest {
 
     /** Pfad relativ zum Modulverzeichnis `Android-App/app` — wie in ApkNameTest. */
     private val korpus by lazy {
-        JSONObject(java.io.File("../../shared/setnummer-korpus.json").readText())
+        JSONObject(File("../../shared/setnummer-korpus.json").readText())
             .getJSONArray("faelle")
     }
 

@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.di
 
+import ch.brickinventoryapp.util.UpdateUmleitungen
 import ch.brickinventoryapp.util.NetworkPolicy
 import com.jakewharton.retrofit2.converter.kotlinx.serialization.asConverterFactory
 import dagger.Module
@@ -70,12 +71,11 @@ object NetzModule {
     @UpdateClient
     fun provideUpdateOkHttpClient(): OkHttpClient =
         OkHttpClient.Builder()
-            // ── Keine Umleitung von https auf http ──
-            //
-            // Die Umleitung von github.com auf *.githubusercontent.com muss gehen;
-            // followSslRedirects betrifft nur den Wechsel des Schemas. Zusammen mit
-            // network_security_config, die für beide Hosts keinen Klartext erlaubt.
+            // Umleitungen (github.com → *.githubusercontent.com) folgt der Wächter selbst,
+            // nur zu GitHub über https; OkHttp folgte ihnen sonst zu jedem Host.
+            .followRedirects(false)
             .followSslRedirects(false)
+            .addInterceptor(UpdateUmleitungen())
             .connectTimeout(15, TimeUnit.SECONDS)
             .readTimeout(120, TimeUnit.SECONDS)
             .build()
@@ -166,7 +166,7 @@ object NetzModule {
                     }
                 }
             }
-            // Nur eigener Server und die Bild-CDNs (util/BildHosts.kt); Umleitungen prüft
+            // Nur der eigene Server (util/BildHosts.kt); Umleitungen prüft
             // der Wächter selbst, OkHttp folgte ihnen sonst an ihm vorbei.
             .addInterceptor(BildHostWaechter(
                 eigenerServer = { url ->
@@ -280,7 +280,7 @@ object NetzModule {
         Entwerter(buildEntwertungsBasis(prefs, frage), NetworkPolicy.entwicklung,
             vertrauenFuer = auftragsVertrauenFabrik(prefs.vertrauen))
 
-    /** Für die QR-Anmeldung: Ein `fp` auf eine System-Wurzel gilt ohne Abtippen (sec10 N2). */
+    /** Für die QR-Anmeldung: Ein `fp` auf eine System-Wurzel gilt ohne Abtippen. */
     @Provides
     @Singleton
     fun provideSystemWurzeln(): SystemWurzeln = systemWurzeln()

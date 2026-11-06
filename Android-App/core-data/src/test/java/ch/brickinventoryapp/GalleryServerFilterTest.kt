@@ -7,6 +7,7 @@ import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import java.io.File
 
 /**
  * Galerie: Suchen, Filtern, Sortieren und Blättern macht der SERVER.
@@ -32,12 +33,12 @@ import org.junit.Test
  * Gegenproben: in GalleryScreen wieder ein `sets.filter { … }` eingesetzt → der
  * erste Teilschritt wird rot (durchgeführt). In SetsRepository.getSets die
  * Bedingung `ungefiltert` auf `true` gesetzt → rot „der Ablage-Cache greift nur
- * ungefiltert“ (29.10.2026, gemessen).
+ * ungefiltert“ .
  */
 class GalleryServerFilterTest {
 
     private fun read(rel: String) =
-        java.io.File(Quellen.wurzel, "$rel").readText()
+        File(Quellen.wurzel, "$rel").readText()
 
     /** Kommentare ausblenden — die Erklärtexte nennen die geprüften Muster selbst. */
     private fun code(s: String) = s.lines()
@@ -72,7 +73,6 @@ class GalleryServerFilterTest {
         // (Nachtrag 96/115) ist es ein Feld des Galerie-Zustands. Geprueft
         // wird deshalb die ABSICHT — Herkunft Zustand, keine eigene Ableitung
         // aus `sets` — statt der damaligen Schreibweise.
-        // Wieder das FELD statt des Zustandsnamens — siehe AddExistingSetTest.
         assert(Regex("""\w+\.galleryThemes""").containsMatchIn(s)) {
             "Die Themenliste kommt nicht mehr aus dem Zustand (…galleryThemes)"
         }
@@ -101,7 +101,7 @@ class GalleryServerFilterTest {
     @Test
     fun `der Ablage-Cache greift nur ungefiltert`() {
         val pfade = PfadServer("/api/v1/sets" to """{"success":true,"total":1,"sets":[{"set_number":"75192-1","name":"Falke"}]}""")
-        val ordner = java.io.File(System.getProperty("java.io.tmpdir"), "bim-galerie-${System.nanoTime()}").apply { mkdirs() }
+        val ordner = File(System.getProperty("java.io.tmpdir"), "bim-galerie-${System.nanoTime()}").apply { mkdirs() }
         try {
             val sets = SetsRepository(TestApi.fuer(pfade.server), ResponseCache { ordner })
             runBlocking { sets.getSets(search = "Falke") }

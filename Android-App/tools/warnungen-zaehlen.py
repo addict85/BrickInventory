@@ -51,6 +51,13 @@ GRADLE_EIGENSCHAFTEN = "gradle.properties"
 ORT = re.compile(r"^w:\s*(?:file://)?(\S*?)(:\d+:\d+)?\s+(.*)$")
 JAVA_ORT = re.compile(r"^(\S+?)(:\d+)?:\s*warning:\s*(.*)$")
 
+# Kotlin 2.x meldet Warnungen der Testübersetzung über Gradles Problem-Schnittstelle:
+# „Problem found: Kotlin compiler: ART (id: kotlin:compiler:warning:ART)“, die Stelle
+# drei Zeilen später als „Location: /pfad/Datei.kt:53“. Ohne diese Form zählte
+# test.log 45 Warnungen als 0.
+PROBLEM = re.compile(r"Problem found: Kotlin compiler: (\w+) \(id: kotlin:compiler:warning:\w+\)")
+PROBLEM_ORT = re.compile(r"^\s*Location:\s*(\S+?)(:\d+)?\s*$")
+
 # Eine einzelne Gradle-Veraltung. Wortlaute aus Gradles
 # DeprecationMessageBuilder.java, nicht aus dem Gedaechtnis.
 VERALTET = re.compile(
@@ -80,8 +87,21 @@ def warnungen(zeilen):
     """
     gesehen = set()
     kotlin, ksp, java, gradle = [], [], [], []
+    problem = None
     for z in zeilen:
         z = z.rstrip("\r\n")
+        p = PROBLEM.search(z)
+        if p:
+            problem = p.group(1)
+            continue
+        if problem and PROBLEM_ORT.match(z):
+            m = PROBLEM_ORT.match(z)
+            schluessel = ("kotlin", os.path.basename(m.group(1)), m.group(2) or "", problem)
+            if schluessel not in gesehen:
+                gesehen.add(schluessel)
+                kotlin.append((os.path.basename(m.group(1)), problem))
+            problem = None
+            continue
         if z.startswith("w: "):
             m = ORT.match(z)
             if m:

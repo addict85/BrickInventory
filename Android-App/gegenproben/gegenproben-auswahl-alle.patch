@@ -1,0 +1,19 @@
+Gegenprobe: Die Auswahl auf einem Push misst wieder alle Patches
+Modul: app
+Test: ch.brickinventoryapp.GegenprobenWerkzeugTest
+Rot: auf einem Push misst es nur die Patches
+
+diff --git a/Android-App/tools/gegenproben.py b/Android-App/tools/gegenproben.py
+index 77876c0..ac90e0f 100644
+--- a/Android-App/tools/gegenproben.py
++++ b/Android-App/tools/gegenproben.py
+@@ -130,8 +130,7 @@ def betroffen(projekt, wurzel, patches, basis):
+         if klasse and k.get('Modul'):
+             muster = os.path.join(projekt, k['Modul'], 'src', 'test', '**', klasse + '.kt')
+             ziele |= {os.path.relpath(t, wurzel).replace(os.sep, '/') for t in glob.glob(muster, recursive=True)}
+-        if ziele & geaendert:
+-            auswahl.append(patch)
++        auswahl.append(patch)
+     return auswahl
+ 
+ 

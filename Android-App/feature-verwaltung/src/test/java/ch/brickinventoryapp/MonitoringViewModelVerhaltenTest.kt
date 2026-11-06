@@ -32,9 +32,6 @@ import ch.brickinventoryapp.data.api.ApiJson
  *   1. Ein Anker veraltet stillschweigend. In dieser Reihe sind vier Tests an
  *      einer Umbenennung oder einer Typannotation zerbrochen, einer davon
  *      OHNE zu melden, dass er nichts mehr fand.
- *   2. Ein `!contains("alterName")` bleibt nach einer Umbenennung für immer
- *      grün und prüft in Wahrheit gar nichts mehr. Das ist die schlimmere
- *      Richtung, weil niemand hinsieht.
  *
  * Möglich wurde dieser Test durch die Aufteilung: MonitoringViewModel nimmt
  * genau ein BrickRepository entgegen und ist eine gewöhnliche Klasse — keine
@@ -49,7 +46,7 @@ import ch.brickinventoryapp.data.api.ApiJson
  * MockWebServer liefert der Reihe nach, unabhängig vom Pfad; die Tests legen
  * deshalb genau so viele Antworten hin, wie das ViewModel Abrufe macht.
  *
- * Gegenprobe (31.10.2026, gemessen): in ladeJobs() `zugriffEntzogen` nicht
+ * Gegenprobe: in ladeJobs() `zugriffEntzogen` nicht
  * gesetzt → rot „ein 403 nur_admins beendet die Abfrage …“.
  */
 class MonitoringViewModelVerhaltenTest {

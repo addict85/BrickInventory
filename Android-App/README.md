@@ -52,7 +52,7 @@ Danach:
 
 | Befehl | Ergebnis |
 | --- | --- |
-| `./gradlew testDebugUnitTest` | JVM-Unit-Tests, Bericht unter `app/build/reports/tests/` |
+| `./gradlew testDebugUnitTest :core-model:test` | JVM-Unit-Tests aller Module (core-model ist reines Kotlin und hat `test`), Bericht je Modul unter `*/build/reports/tests/` |
 | `./gradlew assembleDebug` | `app/build/outputs/apk/debug/app-debug.apk` — mit dem Debug-Schlüssel signiert, direkt installierbar |
 | `./gradlew assembleRelease` | `app/build/outputs/apk/release/BrickInventory.apk` — minifiziert; signiert nur, wenn die Schlüsselwerte gesetzt sind (siehe unten) |
 | `./gradlew lintRelease` | `app/build/reports/lint-results-release.html` |
@@ -89,11 +89,22 @@ Benötigte Hosts — hinter einem restriktiven Proxy müssen diese erreichbar se
 
 ### Continuous Integration
 
-`.github/workflows/android.yml` im Wurzelverzeichnis des Repositories macht auf
-einem `ubuntu-latest`-Runner dasselbe wie oben beschrieben: prüfen, ob der
-Wrapper vollständig im Repository liegt, dann `testDebugUnitTest`,
-`assembleRelease` und `lintRelease`. Die Test- und Lint-Berichte hängen als
-Artefakt am Lauf (auch bei rotem Lauf — gerade dann werden sie gebraucht).
+`.github/workflows/android.yml` im Wurzelverzeichnis des Repositories läuft auf
+jedem Push, der `Android-App/` berührt. Der Job `build` macht nacheinander:
+
+1. Wrapper und Gradle-Prüfsumme prüfen
+2. `testDebugUnitTest :core-model:test` samt Bildschirmfotos (`verifyRoborazziDebug`,
+   ohne eingecheckte Referenzen `recordRoborazziDebug`)
+3. Room-Schema eingecheckt?
+4. `assembleRelease bundleRelease`, danach `:app:lintRelease`
+5. Warnungen der Test- und Release-Übersetzung zählen (`tools/warnungen-obergrenze.txt`)
+   und Lint-Befunde zählen (`tools/lint-obergrenze.txt`)
+6. `detekt` gegen `config/detekt/baseline.xml`
+7. Rückstand der Abhängigkeiten melden (`tools/fassungen-pruefen.py`)
+
+Daneben misst der Job `gegenproben` die Patches unter `gegenproben/`: auf einem
+Push nur die betroffenen, nachts und von Hand alle. Die Test- und Lint-Berichte
+hängen als Artefakt am Lauf (auch bei rotem Lauf — gerade dann werden sie gebraucht).
 
 Die APK **nicht**: Sie wird als Anhang am Release `apk-neuste` abgelegt und
 ist damit direkt herunterladbar —
@@ -149,6 +160,20 @@ nach der Freigabe eines Prüfers. Siehe *Release signieren*.
 ## API
 Die App kommuniziert ausschliesslich über `/api/v1/` mit Bearer-Token-Authentifizierung.
 Token-Verwaltung erfolgt über das Web-Interface unter Einstellungen → Mobile API.
+
+## Datenschutz: mit wem die App spricht
+
+- **Dein Server** — alles, was zum Konto gehört. Auch Bilder kommen nur über seinen
+  Proxy; der Bild-Client lässt keine Anfrage an ein CDN durch (`util/BildHosts.kt`).
+- **GitHub** — nur die Update-Prüfung (`util/AppUpdate.kt`): beim Start, solange
+  der Geräteschalter „Beim Start nach Updates suchen“ an ist (Vorgabe an), sonst auf
+  Knopfdruck. Umleitungen folgt der Update-Client nur zu GitHub-Hosts.
+- **Google Play-Dienste** — Barcode-Scan (ML Kit, nachgeladen) und Passkeys
+  (Credential Manager). Die eingebaute Texterkennung kann Nutzungsstatistiken an
+  Google senden.
+- **Browser-Ziele** (BrickLink, Hersteller-Anleitungen) — nur auf Tipp.
+
+Dieselbe Liste zeigt die App unter Einstellungen → Datenschutz.
 
 ## Sicherheit im Netz
 
@@ -211,6 +236,13 @@ steckt; er vergeht mit dem Betrachter oder dem Prozess. Drucken und
 Herunterladen gibt es nur für Anleitungen, nicht für Gutscheine (der
 Druckdialog kann „Als PDF speichern“).
 
+**Abmelden:** Token, Antwort-Cache, Bestand und Ausgang, Vorschauen, beide
+Bildcaches, PDFs, Update-APK, Widget-Zahlen und alle Meldungen der App sind danach
+weg, die Marke des Preisalarms ebenfalls. Zuletzt erneuert `Ablageschluessel` den
+Schlüssel (Datei und Keystore-Alias neu): Was mit dem alten verschlüsselt war, auch
+gelöschte Reste auf dem Flash, ist nicht mehr lesbar. `AbmeldenRaeumtAllesTest`
+prüft das ausgeführt.
+
 **Token-Schlüssel ohne `setUnlockedDeviceRequired`:** Preisalarm, Widget und
 Ausgang senden im Hintergrund, auch bei gesperrtem Gerät (Begründung in
 `util/TokenTresor.kt`). Abgefedert durch die Rotation mit Wiederverwendungs-
@@ -241,15 +273,16 @@ Installation geprüft.
 
 R8 verkleinert und benennt um. Die eigenen Keep-Regeln (`app/proguard-rules.pro`)
 halten nur, was über Reflexion oder das Framework erreicht wird: bei Workern
-Konstruktor und `doWork()`, Rooms Datenbank-Konstruktoren und die Modelle unter
-`data.model`. Die Modelle bleiben ganz, weil Retrofit ihre Serializer zur
-Laufzeit über den Typ sucht; das prüft keine Probe am fertigen APK, und die Namen
-stehen ohnehin im Vertrag mit dem Server.
+Konstruktor und `doWork()` und Rooms Datenbank-Konstruktoren. Die API-Modelle
+werden umbenannt; ihre Serializer hält die Regel von kotlinx.serialization, und
+`tools/apk-pruefen.py` prüft am fertigen APK, dass `data.model.SetItem` nicht
+mehr unter seinem Namen steht.
 
-**PDFs im App-Prozess:** `PdfRenderer` (pdfium) öffnet nur PDFs des eigenen
-Servers (`pdfImBetrachter`). Ein kompromittierter eigener Server liegt
-ausserhalb des Bedrohungsmodells; pdfium gehört zum System und wird mit dessen
-Updates gepflegt, nicht mit der App.
+**PDFs im isolierten Prozess:** `PdfRenderer` (pdfium) läuft nur in
+`ui/pdf/PdfRenderDienst`, einem Dienst mit `isolatedProcess`: ohne
+Berechtigungen, Dateien, Token und Ablageschlüssel. Er bekommt den Deskriptor
+und gibt Bitmaps zurück. Anleitungen stammen inhaltlich von Dritten; eine
+pdfium-Lücke träfe so nur den leeren Render-Prozess.
 
 **TOTP-Geheimnis an die Authenticator-App:** immer über die Systemauswahl
 (`oeffneMitAuswahl`), nur `otpauth://totp|hotp`. Eine fremde App bekommt das
@@ -278,12 +311,13 @@ Modulkanten und echte Zusatzabhängigkeiten:
 | `brickinventory.android.compose` | Compose-Übersetzer, `buildFeatures.compose`, BOM und Gruppe `compose` |
 | `brickinventory.android.hilt` | KSP, Hilt, `hilt-android` und `hilt-compiler` |
 | `brickinventory.android.feature` | die vier oben und `core-ktx` — ein Bereich |
-| `brickinventory.detekt` | Aufgabe `detekt` (Regeln in `config/detekt/detekt.yml`, ohne Baseline); kommt mit library/application, `core-model` nennt es selbst |
+| `brickinventory.detekt` | Aufgabe `detekt` (Regeln in `config/detekt/detekt.yml`, Länge und Verzweigung alter Funktionen in `baseline.xml`, Obergrenze `tools/detekt-obergrenze.txt`); kommt mit library/application/jvm.library |
+| `brickinventory.jvm.library` | `org.jetbrains.kotlin.jvm`, Java und Kotlin 17, Testprotokoll, detekt — für `core-model` |
 
 Modulkanten (`project(":…")`) trägt keine Konvention ein; sie stehen im Skript
 des Moduls, wo `ModulgrenzenTest` sie liest. Ein SDK-Sprung ist eine Zeile in
 `build-logic/convention/src/main/kotlin/ch/brickinventoryapp/buildlogic/Sdk.kt`.
-`core-model` bleibt reines Kotlin und braucht ausser detekt keine Konvention.
+`core-model` bleibt reines Kotlin (`brickinventory.jvm.library`).
 
 | Modul | Inhalt |
 | --- | --- |
@@ -316,11 +350,15 @@ Die Tests liegen neben dem Code ihres Moduls; was mehrere Bereiche zusammen
 prüft (Bildschirmfotos, Abläufe, Struktur), liegt in `app/src/test`. Robolectric
 und Roborazzi laufen auf der JVM, ein Gerät braucht kein Test.
 
-- `QuelltextRatscheTest` hält fest, wie viele Testdateien nur Quelltext lesen;
-  die Zahl darf sinken, nie steigen (siehe *Zwei Arten von Tests*).
-- `gegenproben/` enthält je Test einen Patch, der etwas kaputt macht; der
-  CI-Job `gegenproben` misst, dass der genannte Test dann rot wird
-  (`tools/gegenproben.py`).
+- `QuelltextRatscheTest` hält fest, wie viele Testfunktionen Quelltext lesen,
+  wie oft Tests in Echtzeit warten und wie viele Namen voll qualifiziert stehen;
+  jede Zahl steht genau auf dem gemessenen Wert und darf nur sinken.
+- `gegenproben/` enthält Patches, die etwas kaputt machen; der CI-Job
+  `gegenproben` misst, dass der im Kopf genannte Test dann rot wird
+  (`tools/gegenproben.py`). Nicht jede Testklasse hat einen; wer einen Test
+  schreibt, legt seinen dazu.
+- ViewModel- und Oberflächentests laufen im Takt: `PfadServer.imTakt()` antwortet
+  ohne Netz im aufrufenden Faden und liest jede Antwort gegen das DTO der Methode.
 
 ## Abhängigkeiten und Lieferkette
 
@@ -417,7 +455,7 @@ gibt, meldet der CI-Schritt „Sind die Abhängigkeiten auf der neuesten Fassung
 
 ## Zwei Arten von Tests
 
-Seit Nachtrag 117 gibt es beide, und der Unterschied ist wichtig:
+Der Unterschied ist wichtig:
 
 **Verhaltenstests** führen Code aus. `BrickRepositoryErrorMappingTest` startet
 einen echten HTTP-Server (MockWebServer) und prüft, was das Repository aus
@@ -425,16 +463,13 @@ einer Antwort macht — 409 mit Fehlerrumpf, 500 ohne, Zeitüberschreitung,
 Verbindungsabriss. `FehlerTexteTest` ruft die Zuordnung Ursache → Text direkt
 auf. Solche Tests sind die wertvollen: Sie finden, ob eine Regel WIRKT.
 
-**Quelltextlesende Tests** suchen Muster im Code. Sie sind der Behelf für alles,
-was ohne Android-Laufzeit nicht ausführbar ist (Compose-Bildschirme,
-Navigation, DataStore) — und sie finden nur, ob eine Regel im Code STEHT. In
-Nachtrag 48 hat genau das sieben Nachträge lang eine kaputte
-Vorschau-Erzeugung verdeckt: Der Test prüfte, dass „tmp + rename" im Code
-steht, und sah nie nach, ob am Ende eine Datei lag.
+**Quelltextlesende Tests** suchen Muster im Code und finden nur, ob eine Regel im
+Code STEHT, nicht ob sie wirkt. Sie bleiben für Struktur (Dateien, Abhängigkeiten,
+Verbote). Compose-Bildschirme, Navigation und DataStore laufen mit Robolectric und
+der Compose-Testregel auf der JVM und bekommen Verhaltenstests.
 
-Faustregel: Lässt sich etwas ohne `Context` aufrufen, gehört ein
-Verhaltenstest hin. Braucht es Android, ist ein quelltextlesender Test besser
-als keiner — aber die Frage lohnt sich vorher: Was schwer prüfbar ist, ist
+Faustregel: Was sich aufrufen lässt, bekommt einen Verhaltenstest. Die Frage lohnt
+sich auch, wo es schwer scheint: Was schwer prüfbar ist, ist
 meistens nicht zu kompliziert, sondern nur mit etwas verwoben, das es nicht
 braucht. `fehlerTextId()` und der Ordner-Parameter von `ResponseCache` sind
 beides Beispiele dafür.
@@ -551,7 +586,48 @@ Ablaufdatum statt klassischer PATs mit `repo`-Scope.
 braucht sie nicht mehr; solange sie bestehen, könnte jeder Job auf `main` sie
 lesen, auch ohne Freigabe.
 
+### Was ein Etikett vor dem Signieren erfüllen muss (sec17)
+
+Der Job `signieren` bricht ab, statt zu signieren, wenn eine dieser Bedingungen fehlt;
+die Meldung nennt jeweils die Einstellung:
+
+- **Environment `release`:** mindestens ein Pflichtprüfer, nur das Etikett `android-v*`
+  und *Allow administrators to bypass* **aus** (`can_admins_bypass: false`).
+  *Prevent self-review* ergibt nur eine Warnung, solange nur eine Person prüft.
+- **`main` geschützt per Ruleset** (Settings → Rules → Rulesets → New branch ruleset,
+  Ziel `main`): *Require a pull request before merging*, *Require status checks to
+  pass* (Android-App, Sicherheit) und *Block force pushes*. Gelesen wird
+  `GET /repos/{repo}/rules/branches/main`; klassische Branch Protection allein zählt
+  dort nicht.
+- **Sicherheitslauf grün:** Der Job `Trivy (Android-Abhängigkeiten)` in `sicherheit.yml`
+  muss für genau den Commit des Etiketts grün sein (läuft bei jedem Push auf `main`).
+  Ist er noch nicht fertig, den Android-Lauf danach neu starten. Ausnahmen nur mit
+  Grund und Frist in `.github/trivy-android.ignore`.
+- **Werkzeuge:** `zipalign` und `apksigner.jar` aus `build-tools/37.0.0` des Images
+  `ubuntu-24.04`, gegen feste Prüfsummen. Verschwindet die Fassung aus dem Image,
+  bricht der Schritt ab; die neuen Werte stehen dann im Protokoll eines Probelaufs und
+  werden nach Prüfung im Schritt „Signieren“ eingetragen.
+
+Etiketten bauen ohne Gradle-Cache aus anderen Läufen und mit leerem
+Gradle-Benutzerverzeichnis; den Cache schreibt sonst nur der Baujob. Ausserhalb von
+Etiketten liegt das probe-signierte APK als `BrickInventory.apk.probe-nicht-installieren`
+im Artefakt. Die Herkunft bescheinigt `.github/workflows/android-bescheinigung.yml`
+(APK, Beschreibung, Bundle); `release` veröffentlicht nur Dateien mit den Prüfsummen,
+die `signieren` ausgab.
+
 ### Release-Zertifikat und Fassung
+
+**Vor einer Neuinstallation prüfen** (der feste Link `apk-neuste` kann von jedem mit
+Schreibrecht ersetzt werden; ein Update prüft die App selbst): Das Release-APK ist
+mit dem Zertifikat
+
+    SHA-256 a51ff2f425d94b6f31a06b7805013cc801791b28e58404dc26c7c8298380af06
+
+signiert. `apksigner verify --print-certs BrickInventory.apk` muss in der Zeile
+„certificate SHA-256 digest“ genau diesen Wert zeigen; derselbe steht im Text jedes
+Release. Herkunft: `gh attestation verify BrickInventory.apk --repo addict85/BrickInventory
+--signer-workflow addict85/BrickInventory/.github/workflows/android-bescheinigung.yml`
+(ebenso für `version-signiert.json` und das Bundle).
 
 Vor dem Veröffentlichen prüft der Job `apk-pruefen` zweierlei
 (`tools/release-pruefen.py`):
@@ -610,6 +686,11 @@ APKs, die Beschreibung bekommt einen eigenen ECDSA-Schlüssel (P-256). Kennt die
 App einen solchen Schlüssel (`core-ressourcen/src/main/res/raw/beschreibungs_schluessel.pem`),
 nimmt sie nur noch dessen Signatur an; solange die Datei leer ist, gilt der
 Übergangsweg über die Signierer der App.
+
+**Stand:** Die Datei ist noch leer (Betreiberaufgabe). Jeder CI-Lauf warnt
+„Beschreibungsschlüssel fehlt“, und ein Etikett `android-v…` bricht im Job
+`apk-pruefen` ab, bis die Schritte unten erledigt sind; danach meldet derselbe
+Schritt „Beschreibungsschlüssel steht in der App.“
 
 Einrichten (einmalig, in dieser Reihenfolge):
 

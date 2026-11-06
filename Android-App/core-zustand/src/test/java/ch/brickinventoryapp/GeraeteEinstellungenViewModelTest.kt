@@ -26,6 +26,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Before
 import org.junit.Test
+import java.nio.file.Files
 
 /**
  * Der Alarmschalter und die Vorwärm-Netze schreiben über das ViewModel: Der Wunsch
@@ -68,7 +69,7 @@ class GeraeteEinstellungenViewModelTest {
     private val ablage = Ablage()
     private val planer = Planer()
     private val kanal = MeldungsKanal()
-    private val wurzel = java.nio.file.Files.createTempDirectory("vorschau").toFile()
+    private val wurzel = Files.createTempDirectory("vorschau").toFile()
     private val vorschau = VorschauSpeicher({ wurzel }, AblageChiffre { ByteArray(32) { 4 } })
     private lateinit var vm: GeraeteEinstellungenViewModel
     private lateinit var sammler: Job

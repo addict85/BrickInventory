@@ -1,0 +1,17 @@
+Gegenprobe: Ein Token älterer Fassungen bleibt beim Start ohne Bindung
+Modul: core-data
+Test: ch.brickinventoryapp.TokenBindungGesperrtTest
+Rot: ein Token aelterer Fassungen
+
+diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/TokenAblage.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/TokenAblage.kt
+index f79cce3..954d5fe 100644
+--- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/TokenAblage.kt
++++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/TokenAblage.kt
+@@ -164,7 +164,6 @@ class TokenAblage @Inject constructor(
+         prefsScope.launch {
+             try {
+                 geraet.bereiteVor()
+-                fangeAusserAbbruch { bindeAltbestand() }
+                 // Aufräumen ist Nebensache: Scheitert es, startet die App trotzdem.
+                 fangeAusserAbbruch { dataStore.edit { KlartextReste.entferne(it) } }
+             } finally {

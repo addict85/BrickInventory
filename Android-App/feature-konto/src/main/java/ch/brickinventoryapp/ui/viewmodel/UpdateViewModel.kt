@@ -51,7 +51,7 @@ class UpdateViewModel @Inject constructor(
     @param:Dispatcher(BrickDispatchers.IO) private val io: CoroutineDispatcher,
 ) : ViewModel(), UpdateAktionen {
 
-    private val _state = MutableStateFlow(UpdateUiState())
+    private val _state = MutableStateFlow(UpdateUiState(startpruefung = updateStand.startpruefungAn()))
     val updateState = _state.asStateFlow()
 
     /** Der laufende Download; [ladeAbbrechen] beendet ihn samt Teildatei. */
@@ -63,7 +63,7 @@ class UpdateViewModel @Inject constructor(
         viewModelScope.launch {
             anmeldestand.authTokenState.map { it.isNullOrBlank() }.distinctUntilChanged().drop(1)
                 .filter { abgemeldet -> abgemeldet }
-                .collect { _state.value = UpdateUiState() }
+                .collect { _state.value = UpdateUiState(startpruefung = updateStand.startpruefungAn()) }
         }
         // Die Installer-Sitzung antwortet an einen Empfänger, nicht hierher (util/AppUpdate.kt).
         viewModelScope.launch {
@@ -80,6 +80,15 @@ class UpdateViewModel @Inject constructor(
      * @param still Beim Start `true`: kein Ladebalken, keine Fehlermeldung. Auf
      *        Knopfdruck `false` — dann sieht der Nutzer beides.
      */
+    override fun pruefeBeimStart() {
+        if (updateStand.startpruefungAn()) pruefeAufUpdate(still = true)
+    }
+
+    override fun setzeStartpruefung(an: Boolean) {
+        updateStand.setzeStartpruefung(an)
+        _state.update { it.copy(startpruefung = an) }
+    }
+
     override fun pruefeAufUpdate(still: Boolean) {
         viewModelScope.launch {
             _state.update { it.copy(laedtPruefung = !still, fehler = null) }
