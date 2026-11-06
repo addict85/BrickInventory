@@ -290,7 +290,7 @@ class UnterseitenTest {
             KontoRepository(welt.t.api, welt.t.cache, welt.t.io), KontextTexte(),
             welt.t.meldungen, welt.t.sitzung, SitzungsAttrappe()))
         zeige {
-            KontoRoute(onAbmelden = {}, snackbarHostState = remember { SnackbarHostState() },
+            KontoRoute(snackbarHostState = remember { SnackbarHostState() },
                 konto = konto, onZurueck = {})
         }
         warte("Profil") { konto.kontoState.value.profil != null }
@@ -317,7 +317,7 @@ class UnterseitenTest {
             KontoRepository(welt.t.api, welt.t.cache, welt.t.io), KontextTexte(),
             welt.t.meldungen, welt.t.sitzung, SitzungsAttrappe()))
         zeige {
-            KontoRoute(onAbmelden = {}, snackbarHostState = remember { SnackbarHostState() },
+            KontoRoute(snackbarHostState = remember { SnackbarHostState() },
                 konto = konto, onZurueck = {})
         }
         warte("Profil") { konto.kontoState.value.profil != null }
@@ -335,7 +335,7 @@ class UnterseitenTest {
             KontoRepository(welt.t.api, welt.t.cache, welt.t.io), KontextTexte(),
             welt.t.meldungen, welt.t.sitzung, SitzungsAttrappe()))
         zeige {
-            KontoRoute(onAbmelden = {}, snackbarHostState = remember { SnackbarHostState() },
+            KontoRoute(snackbarHostState = remember { SnackbarHostState() },
                 konto = konto, onZurueck = {})
         }
         warte("Profil") { konto.kontoState.value.profil != null }

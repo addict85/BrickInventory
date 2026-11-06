@@ -7,12 +7,11 @@ diff --git a/Android-App/app/src/main/java/ch/brickinventoryapp/nav/ToolsGraph.k
 index 6fce398..fd0a5bc 100644
 --- a/Android-App/app/src/main/java/ch/brickinventoryapp/nav/ToolsGraph.kt
 +++ b/Android-App/app/src/main/java/ch/brickinventoryapp/nav/ToolsGraph.kt
-@@ -254,8 +254,4 @@ private fun NavGraphBuilder.einstellungsZiele(u: ZielUmgebung) {
+@@ -249,7 +249,4 @@ private fun NavGraphBuilder.einstellungsZiele(u: ZielUmgebung) {
          CsvImportRoute(hiltViewModel<EinstellungenViewModel>(), snackbarHostState) { navController.popBackStack() }
      }
  
 -    composable<Screen.Konto> {
--        val vm = u.aktivitaet.app
--        KontoRoute({ vm.logout() }, snackbarHostState) { navController.popBackStack() }
+-        KontoRoute(snackbarHostState) { navController.popBackStack() }
 -    }
  }

@@ -765,7 +765,7 @@ class BildschirmFotoVariantenTest {
             KontoRepository(welt.t.api, welt.t.cache, welt.t.io), KontextTexte(),
             welt.t.meldungen, welt.t.sitzung, SitzungsAttrappe()))
         zeige(name, dunkel = dunkel, geraet = geraet) {
-            KontoRoute(onAbmelden = {}, snackbarHostState = remember { SnackbarHostState() },
+            KontoRoute(snackbarHostState = remember { SnackbarHostState() },
                 konto = konto, onZurueck = {})
         }
         anhalten()

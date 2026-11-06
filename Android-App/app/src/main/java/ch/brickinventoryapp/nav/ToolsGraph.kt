@@ -250,7 +250,6 @@ private fun NavGraphBuilder.einstellungsZiele(u: ZielUmgebung) {
     }
 
     composable<Screen.Konto> {
-        val vm = u.aktivitaet.app
-        KontoRoute({ vm.logout() }, snackbarHostState) { navController.popBackStack() }
+        KontoRoute(snackbarHostState) { navController.popBackStack() }
     }
 }

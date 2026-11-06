@@ -111,8 +111,6 @@ fun HaushaltRoute(
 /** Konto und angemeldete Geraete — beides betrifft den Zugang. */
 @Composable
 fun KontoRoute(
-    /** Nach einem geänderten Passwort abmelden — der Rest der Sitzung gilt dann nicht mehr. */
-    onAbmelden: () -> Unit,
     snackbarHostState: SnackbarHostState,
     // An das Ziel gebunden: Profil, Geräte und ein halb eingerichteter
     // zweiter Faktor leben nur, solange die Seite offen ist.
@@ -133,7 +131,7 @@ fun KontoRoute(
         KontoCard(
             kontoZustand = kontoZustand,
             onSpeichern = { b, e, v, n, p, c -> konto.speichereProfil(b, e, v, n, p, c) },
-            onPasswort = { alt, neu, c -> konto.aenderePasswort(alt, neu, c) { onAbmelden() } },
+            onPasswort = { alt, neu, c -> konto.aenderePasswort(alt, neu, c) },
             onMeldungWeg = { konto.kontoMeldungWeg() },
         )
         DesignCard(design = kontoZustand.design, onWahl = { konto.waehleDesign(it) })
