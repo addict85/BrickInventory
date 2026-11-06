@@ -55,7 +55,7 @@ export function versionEinsetzen(html: string, version: string): string {
 /** Entwicklerkommentare gehören in den Quelltext, nicht in jede Auslieferung. */
 export function ohneKommentare(html: string): string {
   // Wiederholt: Ein Rest wie „<!<!---->--“ ergäbe nach einem Durchgang einen neuen Kommentar.
-  let vorher;
+  let vorher: string;
   do { vorher = html; html = html.replace(/[ \t]*<!--[\s\S]*?-->[ \t]*\n?/g, ''); } while (html !== vorher);
   return html;
 }
