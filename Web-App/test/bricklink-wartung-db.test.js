@@ -66,7 +66,7 @@ test('BrickLink in Wartung', { concurrency: 1 }, async t => {
   await t.test('eine Umleitung ist „nicht erreichbar“', async () => {
     await assert.rejects(bricklinkRequest('GET', '/items/set/10305-1/price'), (/** @type {Error} */ e) => {
       assert.ok(e instanceof BricklinkNichtErreichbar, String(e?.message));
-      assert.match(e.message, /maintenance\.bricklink\.com/);
+      assert.ok(e.message.includes('nach maintenance.bricklink.com'), e.message);
       return true;
     });
   });
