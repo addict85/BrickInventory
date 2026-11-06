@@ -18,6 +18,8 @@ import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.snapshots.Snapshot
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.getOrNull
 import androidx.compose.ui.test.isDialog
@@ -507,10 +509,27 @@ class BildschirmFotoVariantenTest {
         bild.captureRoboImage(pfad(name, design, dunkel, geraet))
     }
 
-    /** Das Dialogfenster entsteht über den Hauptlooper, nicht über die Compose-Uhr. */
-    private fun dialogVorstellen() = repeat(3) {
-        compose.mainClock.advanceTimeBy(200)
-        Shadows.shadowOf(Looper.getMainLooper()).idle()
+    /**
+     * Ein Dialog mit Textfeld kommt unter Robolectric nie zur Ruhe, wenn er schon beim
+     * Aufbau dasteht. Darum wie beim Antippen: erst die Fläche, dann bei angehaltener Uhr
+     * auf dem UI-Faden öffnen und schrittweise vorstellen; das Fenster entsteht über den
+     * Hauptlooper, nicht über die Compose-Uhr.
+     */
+    private fun zeigeDialog(
+        name: String, dunkel: Boolean = false, geraet: String = "telefon", schrift: Float = 1f,
+        dialog: @Composable () -> Unit,
+    ) {
+        val offen = mutableStateOf(false)
+        zeige(name, dunkel = dunkel, geraet = geraet, schrift = schrift, warten = false) { if (offen.value) dialog() }
+        compose.mainClock.autoAdvance = false
+        compose.runOnUiThread {
+            offen.value = true
+            Snapshot.sendApplyNotifications()
+        }
+        repeat(3) {
+            compose.mainClock.advanceTimeBy(200)
+            Shadows.shadowOf(Looper.getMainLooper()).idle()
+        }
     }
 
     /** Die Compose-Wurzel in einem Fensterbaum, ohne auf Ruhe zu warten. */
@@ -668,15 +687,10 @@ class BildschirmFotoVariantenTest {
     @Test fun dialogSetErfassenTablet() = dialogSetErfassenFoto("dialog-set-erfassen", 1f, geraet = "tablet")
 
     private fun dialogSetErfassenFoto(name: String, schrift: Float, geraet: String = "telefon") {
-        // Die Uhr steht schon vor setContent: Ein Textfeld im Dialogfenster kommt unter
-        // Robolectric nie zur Ruhe, und ein von hier aus gesetzter Schalter erreichte den
-        // Dialog nicht. So entsteht er mit dem ersten Bild und wird schrittweise gezeichnet.
-        compose.mainClock.autoAdvance = false
-        zeige(name, geraet = geraet, schrift = schrift, warten = false) {
+        zeigeDialog(name, geraet = geraet, schrift = schrift) {
             AddSetDialog(onDismiss = {},
                 onAdd = { _, _, _, _, _, _ -> }, lagerorte = listOf("Keller", "Estrich"), sofortFokus = false)
         }
-        dialogVorstellen()
         dialogFoto(name, "classic", false, geraet, schrift)
         if (schrift == 1f && geraet == "telefon") {
             // Ein Muster für alle Erfassungen: Der Lagerort ist so breit wie die Set-Nummer.
@@ -1128,46 +1142,12 @@ class BildschirmFotoVariantenTest {
     private fun barcodeFoto(dunkel: Boolean) {
         val zustand = BarcodeDialogZustand(AppUiState(), BlickfeldUiState(),
             BarcodeUiState(result = "75192-1", setName = "Millennium Falcon", besitzMenge = 1), LagerUiState())
-        // Wie „Set erfassen“: Mit laufender Uhr wartete setContent ewig auf Ruhe.
-        compose.mainClock.autoAdvance = false
-        zeige("dialog-barcode-ergebnis", dunkel = dunkel, warten = false) {
-            BarcodeResultDialog(zustand, erfassung(), bilder)
-        }
-        dialogVorstellen()
+        zeigeDialog("dialog-barcode-ergebnis", dunkel = dunkel) { BarcodeResultDialog(zustand, erfassung(), bilder) }
         dialogFoto("dialog-barcode-ergebnis", "classic", dunkel, "telefon", 1f)
     }
 
     @Test fun dialogBarcodeErgebnis() = barcodeFoto(false)
     @Test fun dialogBarcodeErgebnisDunkel() = barcodeFoto(true)
-
-    // DIAGNOSE (vorübergehend): Welcher Baustein hält den Erfassen-Dialog auf dem Telefon wach?
-    private fun diagnose(name: String, inhalt: @Composable () -> Unit) {
-        compose.mainClock.autoAdvance = false
-        zeige(name, warten = false, inhalt = inhalt)
-        dialogVorstellen()
-        throw AssertionError("DIAG $name: ruhig")
-    }
-    @Test fun diagLeer() = diagnose("leer") {
-        ch.brickinventoryapp.ui.components.ErfassenDialog("T", "OK", {}, {}) { }
-    }
-    @Test fun diagTextfeld() = diagnose("textfeld") {
-        ch.brickinventoryapp.ui.components.ErfassenDialog("T", "OK", {}, {}) {
-            androidx.compose.material3.OutlinedTextField("1", {}, label = { androidx.compose.material3.Text("Menge") })
-        }
-    }
-    @Test fun diagZustand() = diagnose("zustand") {
-        ch.brickinventoryapp.ui.components.ErfassenDialog("T", "OK", {}, {}) {
-            ch.brickinventoryapp.ui.screens.Zustandszeile("N", {})
-        }
-    }
-    @Test fun diagLagerort() = diagnose("lagerort") {
-        ch.brickinventoryapp.ui.components.ErfassenDialog("T", "OK", {}, {}) {
-            ch.brickinventoryapp.ui.screens.LagerortErfassung("", emptyList(), {})
-        }
-    }
-    @Test fun diagZustandOhneDialog() = diagnose("zustand-ohne-dialog") {
-        ch.brickinventoryapp.ui.screens.Zustandszeile("N", {})
-    }
 
     private fun kaeufe() = welt.t.merke(KaeufeViewModel(welt.t.sitzung, welt.t.filter(), welt.t.hinweise, welt.t.bestand, HaushaltRepository(welt.t.api, welt.t.cache),
         FinanzenRepository(welt.t.api, welt.t.cache), TeileRepository(welt.t.api, welt.t.cache),
