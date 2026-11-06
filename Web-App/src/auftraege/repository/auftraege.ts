@@ -1,6 +1,7 @@
 import * as db from '../../../db/database';
 import { randomUUID } from 'node:crypto';
 import { LOCKS } from '../../infra/lockNamespaces';
+import { versucheSchluesselSperre, gibSchluesselSperreFrei } from '../../../db/txLock';
 import type { AuftragsArt, Einstellen, AuftragsZeile, Belegung, Fortschritt, Pause, AuftragsStatus } from '../auftraege';
 
 /** Hier nur das SQL; Wecken, Wartezeiten und das Arbeiten im Namen eines Kontos
@@ -114,14 +115,13 @@ export async function gibVerwaisteZurueck(c: Abfrager, prozess: string): Promise
       WHERE status = 'laeuft' AND belegt_von LIKE '%/%' AND split_part(belegt_von, '/', 1) <> $1`, [prozess]);
   let n = 0;
   for (const { p } of rows) {
-    const frei = (await c.query<{ ok: boolean }>('SELECT pg_try_advisory_lock($1, hashtext($2)) AS ok', [LOCKS.JOB_PROZESS, p])).rows[0]?.ok;
-    if (!frei) continue;
+    if (!await versucheSchluesselSperre(c, LOCKS.JOB_PROZESS, p)) continue;
     try {
       n += (await c.query(
         `UPDATE auftraege SET status = 'offen', belegt_von = NULL, frist_bis = NULL, faellig_ab = NOW(), aktualisiert = NOW()
           WHERE status = 'laeuft' AND split_part(belegt_von, '/', 1) = $1 AND belegt_von LIKE '%/%'`, [p])).rowCount ?? 0;
     } finally {
-      await c.query('SELECT pg_advisory_unlock($1, hashtext($2))', [LOCKS.JOB_PROZESS, p]);
+      await gibSchluesselSperreFrei(c, LOCKS.JOB_PROZESS, p);
     }
   }
   return n;

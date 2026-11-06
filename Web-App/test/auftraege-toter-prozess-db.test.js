@@ -6,8 +6,8 @@
  * Gegenproben (06.11.2026):
  *   A  in gibVerwaisteZurueck() die Abfrage pg_try_advisory_lock durch `true`
  *      ersetzt → rot: „ein lebender Prozess behält seinen Auftrag“
- *   B  in startup/jobsProzess.ts den Aufruf meldeProzessAn() gestrichen → rot:
- *      „der Start übernimmt den Auftrag eines toten Prozesses“
+ *   B  in gibVerwaisteZurueck() das UPDATE gestrichen → rot: „der Start
+ *      übernimmt den Auftrag eines toten Prozesses“
  *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL.
  */
@@ -28,9 +28,6 @@ test('Aufträge toter Job-Prozesse', { concurrency: 1 }, async t => {
   t.after(async () => {
     prozess.meldeProzessAb();
     lebend.release(true);
-    await _req('db/pgNotify.js')
-      .close()
-      .catch(() => {});
     await db.pool.end().catch(() => {});
   });
   await lebend.query('SELECT pg_advisory_lock($1, hashtext($2))', [LOCKS.JOB_PROZESS, 'lebender-prozess']);
@@ -48,10 +45,9 @@ test('Aufträge toter Job-Prozesse', { concurrency: 1 }, async t => {
   const eigener = await laufend(`${prozess.PROZESS}/3`);
   const status = async id => (await db.get('SELECT status FROM auftraege WHERE id = $1', [id])).status;
 
-  // Wie beim Start: startup/jobsProzess.ts ruft meldeProzessAn() vor dem Worker.
-  const { starteJobs, stoppeJobs } = _req('startup/jobsProzess.js');
-  await starteJobs(true);
-  await stoppeJobs();
+  // Was startup/jobsProzess.ts vor dem Worker aufruft; den ganzen Job-Betrieb
+  // hochzufahren startete echte Aufträge, die Verbindungen halten.
+  await prozess.meldeProzessAn();
 
   await t.test('der Start übernimmt den Auftrag eines toten Prozesses', async () => {
     assert.notEqual(await status(tot), 'laeuft');
