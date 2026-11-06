@@ -1140,6 +1140,35 @@ class BildschirmFotoVariantenTest {
     @Test fun dialogBarcodeErgebnis() = barcodeFoto(false)
     @Test fun dialogBarcodeErgebnisDunkel() = barcodeFoto(true)
 
+    // DIAGNOSE (vorübergehend): Welcher Baustein hält den Erfassen-Dialog auf dem Telefon wach?
+    private fun diagnose(name: String, inhalt: @Composable () -> Unit) {
+        compose.mainClock.autoAdvance = false
+        zeige(name, warten = false, inhalt = inhalt)
+        dialogVorstellen()
+        throw AssertionError("DIAG $name: ruhig")
+    }
+    @Test fun diagLeer() = diagnose("leer") {
+        ch.brickinventoryapp.ui.components.ErfassenDialog("T", "OK", {}, {}) { }
+    }
+    @Test fun diagTextfeld() = diagnose("textfeld") {
+        ch.brickinventoryapp.ui.components.ErfassenDialog("T", "OK", {}, {}) {
+            androidx.compose.material3.OutlinedTextField("1", {}, label = { androidx.compose.material3.Text("Menge") })
+        }
+    }
+    @Test fun diagZustand() = diagnose("zustand") {
+        ch.brickinventoryapp.ui.components.ErfassenDialog("T", "OK", {}, {}) {
+            ch.brickinventoryapp.ui.screens.Zustandszeile("N", {})
+        }
+    }
+    @Test fun diagLagerort() = diagnose("lagerort") {
+        ch.brickinventoryapp.ui.components.ErfassenDialog("T", "OK", {}, {}) {
+            ch.brickinventoryapp.ui.screens.LagerortErfassung("", emptyList(), {})
+        }
+    }
+    @Test fun diagZustandOhneDialog() = diagnose("zustand-ohne-dialog") {
+        ch.brickinventoryapp.ui.screens.Zustandszeile("N", {})
+    }
+
     private fun kaeufe() = welt.t.merke(KaeufeViewModel(welt.t.sitzung, welt.t.filter(), welt.t.hinweise, welt.t.bestand, HaushaltRepository(welt.t.api, welt.t.cache),
         FinanzenRepository(welt.t.api, welt.t.cache), TeileRepository(welt.t.api, welt.t.cache),
         FigurenRepository(welt.t.api, welt.t.cache)))
