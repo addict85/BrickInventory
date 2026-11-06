@@ -16,7 +16,7 @@ router.get('/papierkorb', requireToken, async (req: Anfrage<'GET /api/v1/papierk
 });
 
 router.post('/papierkorb/:id/wiederherstellen', requireToken, async (req: Anfrage<'POST /api/v1/papierkorb/:id/wiederherstellen'>, res: Antwort<'POST /api/v1/papierkorb/:id/wiederherstellen'>) => {
-  const id = Number(req.params.id);
+  const id = req.pfad.id;
   if (!Number.isInteger(id)) return sendeFehler(req, res, 400, 'id_ungueltig');
   const r = await stelleWiederHer({ schreiber: req.apiUser.user_id }, id);
   if (!r.ok) return sendeFehler(req, res, r.code === 'nicht_gefunden' ? 404 : 409, r.code);
@@ -25,7 +25,7 @@ router.post('/papierkorb/:id/wiederherstellen', requireToken, async (req: Anfrag
 
 // Bestätigt wie /bestand: Sonst leerte ein erbeutetes Token alles Stück für Stück, unumkehrbar.
 router.delete('/papierkorb/:id', requireToken, async (req: Anfrage<'DELETE /api/v1/papierkorb/:id'>, res: Antwort<'DELETE /api/v1/papierkorb/:id'>) => {
-  const id = Number(req.params.id);
+  const id = req.pfad.id;
   if (!Number.isInteger(id)) return sendeFehler(req, res, 400, 'id_ungueltig');
   if (!await bestaetigeMitFaktor(req, res, req.apiUser.user_id, req.eingabe.password)) return;
   if (!await loescheEndgueltig({ schreiber: req.apiUser.user_id }, id))

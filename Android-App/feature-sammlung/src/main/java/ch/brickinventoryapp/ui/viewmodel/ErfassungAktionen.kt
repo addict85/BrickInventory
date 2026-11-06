@@ -6,7 +6,7 @@ package ch.brickinventoryapp.ui.viewmodel
  */
 interface ErfassungAktionen {
     fun confirmAddBarcode(setNum: String, purchasePrice: Double? = null, condition: String? = null,
-                          ownerUserId: Int? = null, storage: String? = null)
+                          ownerUserId: Int? = null, storage: String? = null, quantity: Int = 1)
     fun cancelBarcode()
     fun brichPruefungAb()
 }

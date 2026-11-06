@@ -236,7 +236,7 @@ export async function buildPreisalarmeCsv(uid: number): Promise<string> {
 
   return toCsv(['set_number', 'condition', 'richtung', 'schwelle', 'currency_code'],
     // Number(): sonst stünde „200.0000" im Export.
-    rows.map((r: any) => ({ ...r, schwelle: Number(r.schwelle) })));
+    rows.map(r => ({ ...r, schwelle: Number(r.schwelle) })));
 }
 
 /** Schwellen gelten in der Kontowährung; eine andere in der Datei wird

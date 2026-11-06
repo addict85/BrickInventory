@@ -49,11 +49,12 @@ export function mengeSummeSql(konten: 'eines' | 'blickfeld'): string {
              AND a.set_number = $2`;
 }
 
+import type { DbSchnittstelle } from './database';
 import * as db from './database';
 import { colorId } from '../src/infra/validate';
 
 /** Was ein Leser hier können muss, und nicht mehr: `db` oder eine Transaktion. */
-type Schreiber = { get: (sql: string, params?: unknown[]) => Promise<any> };
+type Schreiber = Pick<DbSchnittstelle, 'get'>;
 
 /**
  * Die Stückzahl EINER Set-Zeile — als Zahl, nicht als SQL-Schnipsel.
@@ -64,7 +65,7 @@ export async function mengeDesSets(
   setNumber: string,
   dbh: Schreiber = db,
 ): Promise<number | null> {
-  const zeile = await dbh.get(
+  const zeile = await dbh.get<{ menge: unknown }>(
     `SELECT ${mengeSkalar('s')} AS menge
        FROM sets s WHERE s.user_id = $1 AND s.set_number = $2`,
     [userId, setNumber]);
@@ -75,6 +76,12 @@ export async function mengeDesSets(
 // trägt. Ausführlich: docs/begruendungen/db/bestandsmenge.ts.md#bestandsart
 
 /** Welcher Bestand. Sets stehen hier nicht: ihre Spalte ist seit 0036 weg. */
+export interface ErfassungsZeile {
+  id: number; quantity: number; purchase_price?: number | null; unit_price?: number | null;
+  condition: string; price_estimated: boolean; currency: string | null;
+  created_at: Date | null; owner_user_id: number;
+}
+
 export type Bestandsart = 'part' | 'fig';
 
 /** Je Art: Tabellen, Schluessel und Spaltennamen. Einmal, als Tabelle. */
@@ -138,13 +145,13 @@ export async function mengeDerPosition(
   art: Bestandsart,
   userId: number,
   keys: (string | number | null)[],
-  dbh: { get: (sql: string, params?: unknown[]) => Promise<any> } = db,
+  dbh: Pick<DbSchnittstelle, 'get'> = db,
 ): Promise<number | null> {
   const a = ART[art];
   const farbe = a.farbe ? ' AND b.color_id = $3' : '';
   const farbErf = a.farbe ? ' AND x.color_id = $3' : '';
   const params = a.farbe ? [userId, keys[0], colorId(keys[1])] : [userId, keys[0]];
-  const zeile = await dbh.get(
+  const zeile = await dbh.get<{ menge: unknown }>(
     `SELECT COALESCE((SELECT SUM(x.quantity) FROM ${a.erfassung} x
                        WHERE x.user_id = $1 AND x.${a.nummer} = $2${farbErf}), 0)::int AS menge
        FROM ${a.bestand} b

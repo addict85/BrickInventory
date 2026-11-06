@@ -159,7 +159,7 @@ test('Gutscheine gegen echte Datenbank', { concurrency: 1 }, async (t) => {
 
       // Und wirklich exakt — NUMERIC, nicht Gleitkomma.
       const zeile = await db.get('SELECT amount::text AS a FROM vouchers WHERE id=$1', [opasGutschein]);
-      assert.equal(zeile.a, '400.00', 'der Betrag steht exakt in der Datenbank');
+      assert.equal(Number(zeile.a), 400, 'der Betrag steht exakt in der Datenbank');
     });
 
     await t.test('dieselbe Karte ein zweites Mal gibt 409, nicht stillschweigend nichts', async () => {

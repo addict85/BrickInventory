@@ -1,5 +1,13 @@
 package ch.brickinventoryapp.ui.screens
 
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.material3.SnackbarDuration
+import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.SnackbarResult
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.runtime.LaunchedEffect
 import ch.brickinventoryapp.ui.LagerUiState
 import ch.brickinventoryapp.ui.MerkpostenDetailUiState
 import ch.brickinventoryapp.ui.MerklisteUiState
@@ -95,6 +103,28 @@ fun MerklisteRoute(
     val lagerZustand by vm.lagerState.collectAsStateWithLifecycle()
     val ansicht = MerklisteZustand(appState, blick, liste, detail, lagerZustand)
     MerklisteUndDetail(ansicht, vm, imageLoader, nebeneinander, onScan, onOeffnenEinzeln)
+}
+
+/**
+ * „von der Merkliste genommen“ mit „Rückgängig“. Gelöscht wird erst, wenn die Snackbar
+ * ohne Rückgängig endet — auch wenn sie verschwindet, weil man die Merkliste verlässt.
+ */
+@Composable
+fun MerkpostenRueckgaengigRoute(vm: MerklisteViewModel, snackbarHostState: SnackbarHostState) {
+    val vorgemerkt by vm.vorgemerkt.collectAsStateWithLifecycle()
+    val text = vorgemerkt?.let { stringResource(R.string.wanted_deleted, it.name) }
+    val rueckgaengig = stringResource(R.string.common_undo)
+    LaunchedEffect(vorgemerkt) {
+        val v = vorgemerkt ?: return@LaunchedEffect
+        var zurueck = false
+        try {
+            zurueck = snackbarHostState.showSnackbar(text ?: v.name, rueckgaengig,
+                duration = SnackbarDuration.Long) ==
+                SnackbarResult.ActionPerformed
+        } finally {
+            if (zurueck) vm.merkpostenRueckgaengig(v) else vm.merkpostenLoeschenAusfuehren(v)
+        }
+    }
 }
 
 /** Das Merkposten-Detail als eigene Seite (Telefon). */
@@ -235,8 +265,10 @@ fun MerklisteScreen(
                     keineTreffer = { KeinTrefferHinweis(stringResource(R.string.wanted_no_results)) },
                     fehlerKlasse = zustand.fehlerKlasse,
                 ) {
-                    androidx.compose.foundation.lazy.grid.LazyVerticalGrid(
-                        columns = androidx.compose.foundation.lazy.grid.GridCells.Adaptive(340.dp),
+                    BoxWithConstraints {
+                    val mehrspaltig = maxWidth >= MERKLISTE_SPALTE * 2
+                    LazyVerticalGrid(
+                        columns = GridCells.Adaptive(MERKLISTE_SPALTE),
                         modifier = Modifier.fillMaxSize(),
                         verticalArrangement = Arrangement.spacedBy(Abstaende.klein),
                         horizontalArrangement = Arrangement.spacedBy(Abstaende.klein),
@@ -247,9 +279,10 @@ fun MerklisteScreen(
                             Bewegt {
                                 MerkpostenZeile(w, appState.serverUrl, imageLoader,
                                     gewaehlt = gewaehlt == w.setNumber to w.condition,
-                                    onOeffnen = { onOeffnen(w.setNumber, w.condition) })
+                                    onOeffnen = { onOeffnen(w.setNumber, w.condition) }, mehrspaltig = mehrspaltig)
                             }
                         }
+                    }
                     }
                 }
             }
@@ -444,6 +477,8 @@ private fun MerkpostenZeile(
     w: MerkpostenAnsicht, serverUrl: String, imageLoader: coil3.ImageLoader,
     gewaehlt: Boolean,
     onOeffnen: () -> Unit,
+    /** Im Raster mit Nachbarn: gleiche Höhe erzwingen. Auf dem Telefon nicht — dort blieb eine Leerzeile. */
+    mehrspaltig: Boolean = false,
 ) {
     // Die ganze Karte öffnet das Detail — wie die Kachel in der Galerie. Sie
     // trägt keinen Knopf, tut also auf ihrer ganzen Fläche dasselbe;
@@ -453,7 +488,7 @@ private fun MerkpostenZeile(
         Modifier.fillMaxWidth()
             .semantics { selected = gewaehlt }
             .clickable(role = Role.Button, onClick = onOeffnen),
-        border = if (gewaehlt) androidx.compose.foundation.BorderStroke(2.dp, MaterialTheme.colorScheme.primary) else null,
+        border = if (gewaehlt) BorderStroke(2.dp, MaterialTheme.colorScheme.primary) else null,
         // Dieselbe Karte wie Galerie und Finanzen (AppKarte): Die graue Fläche der
         // Vorgabe-Card war ein dritter Kartenstil für dieselbe Ebene.
         shape = Formen.karte,
@@ -481,15 +516,15 @@ private fun MerkpostenZeile(
                     // Kopie der Stammdaten fuehrt (Migration 0021).
                     // Immer zwei Zeilen Platz wie in der Galerie: Im Tablet-Raster stand eine
                     // Karte mit kurzem Namen niedriger als ihre Nachbarn.
-                    Text(w.name ?: w.setNumber, fontWeight = FontWeight.SemiBold, minLines = 2, maxLines = 2,
-                        overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
+                    Text(w.name ?: w.setNumber, fontWeight = FontWeight.SemiBold, minLines = if (mehrspaltig) 2 else 1, maxLines = 2,
+                        overflow = TextOverflow.Ellipsis)
                     Text(
                         listOfNotNull(
                             w.setNumber,
                             w.year?.toString(),
                             stringResource(if (w.condition == "U") R.string.condition_used
                                            else R.string.condition_new),
-                            if (preis == null) stringResource(R.string.wanted_price_pending) else null,
+                            if (preis == null) stringResource(R.string.detail_price_none_yet) else null,
                         ).joinToString(" · "),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -498,7 +533,7 @@ private fun MerkpostenZeile(
             }
             // FlowRow: Bei grosser Schrift rückt der Preis unter die Plaketten, statt sie zu quetschen.
             // Mindesthöhe einer Plakette, auch ohne Inhalt: Karten mit und ohne Plakette sind gleich hoch.
-            FlowRow(Modifier.heightIn(min = 32.dp),
+            FlowRow(if (mehrspaltig) Modifier.heightIn(min = 32.dp) else Modifier,
                     horizontalArrangement = Arrangement.spacedBy(Abstaende.klein),
                     verticalArrangement = Arrangement.spacedBy(Abstaende.winzig)) {
                 w.alarm?.let { a ->
@@ -521,3 +556,6 @@ private fun MerkpostenZeile(
         }
     }
 }
+
+/** Mindestbreite einer Spalte der Merkliste. */
+private val MERKLISTE_SPALTE = 340.dp

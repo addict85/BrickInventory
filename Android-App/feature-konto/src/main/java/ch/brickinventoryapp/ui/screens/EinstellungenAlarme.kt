@@ -1,5 +1,14 @@
 package ch.brickinventoryapp.ui.screens
 
+import android.os.Build
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.heading
+import ch.brickinventoryapp.ui.components.SperrGrund
+import ch.brickinventoryapp.ui.components.SegmentWahl
+import ch.brickinventoryapp.ui.components.Rueckfrage
+import ch.brickinventoryapp.ui.components.Ansage
+import ch.brickinventoryapp.ui.components.SchalterZeile
 import ch.brickinventoryapp.ui.theme.Formen
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
@@ -56,7 +65,8 @@ internal fun PreisalarmeCard(
         icon = Icons.Default.NotificationsActive,
     ) {
         ErklaerText(stringResource(R.string.alerts_intro),
-            stringResource(R.string.alerts_intro_more), stil = MaterialTheme.typography.bodySmall)
+            stringResource(R.string.alerts_intro_more), stil = MaterialTheme.typography.bodySmall,
+            thema = stringResource(R.string.alerts_group))
 
         // `geladen` und nicht nur „Liste leer": Beim Aufbau stuende sonst kurz
         // „keine Alarme gesetzt", obwohl noch gar nichts abgerufen wurde.
@@ -81,7 +91,7 @@ internal fun PreisalarmeCard(
             // ohne `clickable` heisst zugleich: kein Wellenschlag beim Tippen, also
             // sieht man dem Eintrag an, dass da nichts kommt.
             val zeile = if (a.besitzt)
-                Modifier.fillMaxWidth().clickable(role = Role.Button) { onSetClick(a.setNumber) }
+                Modifier.fillMaxWidth().clickable(onClickLabel = stringResource(R.string.cd_set_oeffnen), role = Role.Button) { onSetClick(a.setNumber) }
             else Modifier.fillMaxWidth()
             // Abstand innerhalb eines Alarms: Er ist ein Kind der Karte, deren Abstände hier
             // nicht greifen. Aussen zwischen Kopf und Schwelle, innen haarfein zwischen
@@ -131,6 +141,14 @@ internal fun PreisalarmeCard(
                 // Zeile darunter bestätigt. Die Richtung steht als Beschriftung im Feld, so
                 // beginnen alle Felder an derselben Stelle.
                 val zahl = Alarmeingabe.zahl(wert)
+                // Die Richtung umschaltbar wie in der Web-App; gespeichert wird sofort.
+                SegmentWahl(
+                    optionen = listOf("unter" to stringResource(R.string.detail_alert_chip_below),
+                                      "ueber" to stringResource(R.string.detail_alert_chip_above)),
+                    gewaehlt = a.richtung,
+                    onWahl = { neu -> if (neu != a.richtung) aktionen.aendereAlarmSchwelle(a.setNumber, a.condition, neu, zahl ?: a.schwelle) },
+                    modifier = Modifier.widthIn(max = BETRAG_BREITE),
+                )
                 OutlinedTextField(
                     value = wert,
                     onValueChange = { roh ->
@@ -160,33 +178,65 @@ internal fun PreisalarmeCard(
                     // Ein Betrag, keine Zeile Text: auf dem Tablet nicht über die ganze Karte.
                     modifier = Modifier.widthIn(max = BETRAG_BREITE).fillMaxWidth(),
                 )
+                Ansage(if (zahl == a.schwelle) stringResource(R.string.vm_saved) else null)
             }
         }
+        AlarmAnlegen(aktionen)
     }
 
     // Rueckfrage vor dem Loeschen — wie in der Webapp. Ein Alarm ist mit einem
     // Fingertipp weg und kommt nicht wieder; die Schwelle muesste man neu suchen.
     fragtLoeschen?.let { a ->
-        AlertDialog(
-            onDismissRequest = { fragtLoeschen = null },
-            title = { Text(stringResource(R.string.alerts_delete)) },
-            text = { Text(stringResource(R.string.alerts_confirm_delete, a.name ?: a.setNumber)) },
-            confirmButton = {
-                TextButton(onClick = {
-                    fragtLoeschen = null
-                    aktionen.loescheAlarm(a.setNumber, a.condition)
-                }) {
-                    Text(stringResource(R.string.common_delete),
-                         color = MaterialTheme.colorScheme.error)
-                }
+        Rueckfrage(
+            titel = stringResource(R.string.alerts_delete),
+            text = stringResource(R.string.alerts_confirm_delete, a.name ?: a.setNumber),
+            bestaetigen = stringResource(R.string.common_delete),
+            onBestaetigen = {
+                fragtLoeschen = null
+                aktionen.loescheAlarm(a.setNumber, a.condition)
             },
-            dismissButton = {
-                TextButton(onClick = { fragtLoeschen = null }) {
-                    Text(stringResource(R.string.common_cancel))
-                }
-            },
+            onAbbrechen = { fragtLoeschen = null },
         )
     }
+}
+
+/**
+ * „Preisalarm anlegen“ wie in der Web-App: Setnummer, Zustand, Richtung und Schwelle.
+ * Ohne Nummer oder Schwelle bleibt der Knopf gesperrt, und der Satz darüber sagt warum.
+ */
+@Composable
+private fun AlarmAnlegen(aktionen: EinstellungenAktionen) {
+    var nummer by rememberSaveable { mutableStateOf("") }
+    var zustand by rememberSaveable { mutableStateOf("N") }
+    var richtung by rememberSaveable { mutableStateOf("unter") }
+    var schwelle by rememberSaveable { mutableStateOf("") }
+    HorizontalDivider()
+    Text(stringResource(R.string.alerts_anlegen_titel), style = MaterialTheme.typography.titleSmall,
+        fontWeight = FontWeight.SemiBold, modifier = Modifier.semantics { heading() })
+    OutlinedTextField(
+        value = nummer, onValueChange = { nummer = NumericInput.setNumber(it) },
+        label = { Text(stringResource(R.string.gallery_set_number)) }, singleLine = true,
+        keyboardOptions = NumericInput.ganzzahlTastatur(), shape = Formen.feld,
+        modifier = Modifier.widthIn(max = BETRAG_BREITE).fillMaxWidth(),
+    )
+    Zustandszeile(zustand = zustand, onZustand = { zustand = it }, modifier = Modifier.widthIn(max = BETRAG_BREITE))
+    SegmentWahl(
+        optionen = listOf("unter" to stringResource(R.string.detail_alert_chip_below),
+                          "ueber" to stringResource(R.string.detail_alert_chip_above)),
+        gewaehlt = richtung, onWahl = { richtung = it }, modifier = Modifier.widthIn(max = BETRAG_BREITE),
+    )
+    OutlinedTextField(
+        value = schwelle, onValueChange = { schwelle = NumericInput.price(it) },
+        label = { Text(stringResource(R.string.wanted_threshold)) }, singleLine = true,
+        keyboardOptions = NumericInput.preisTastatur(), shape = Formen.feld,
+        modifier = Modifier.widthIn(max = BETRAG_BREITE).fillMaxWidth(),
+    )
+    val bereit = nummer.isNotBlank() && (Alarmeingabe.zahl(schwelle) ?: 0.0) > 0.0
+    if (!bereit) SperrGrund(stringResource(R.string.alerts_anlegen_sperrgrund))
+    Button(
+        onClick = { aktionen.legeAlarmAn(nummer, zustand, richtung, schwelle); nummer = ""; schwelle = "" },
+        enabled = bereit, modifier = Modifier.widthIn(max = BETRAG_BREITE).fillMaxWidth(),
+    ) { Text(stringResource(R.string.alerts_anlegen)) }
 }
 
 /** Breite eines Betragsfelds: Platz für Beschriftung, fünf Stellen und Währung. */
@@ -235,38 +285,22 @@ private fun AlarmZustandPlakette(ausgeloest: Boolean) {
  * es zu“ — wer sie später erteilt, bekommt die Meldungen ohne weiteres Zutun.
  */
 @Composable
-internal fun PreisalarmCard(an: Boolean, onUmschalten: (Boolean) -> Unit) {
+fun PreisalarmCard(an: Boolean, onUmschalten: (Boolean) -> Unit) {
     val frage = androidx.activity.compose.rememberLauncherForActivityResult(
-        androidx.activity.result.contract.ActivityResultContracts.RequestPermission()
+        ActivityResultContracts.RequestPermission()
     ) { /* Antwort egal — Begruendung im Kommentar ueber dieser Funktion. */ }
 
     SettingsCard(
         title = stringResource(R.string.detail_alert),
         icon = Icons.Default.Notifications,
     ) {
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(Abstaende.mittel),
-            modifier = Modifier.fillMaxWidth(),
-        ) {
-            Column(Modifier.weight(1f)) {
-                Text(stringResource(R.string.alert_notify), style = MaterialTheme.typography.bodyMedium)
-                Text(stringResource(R.string.alert_notify_hint),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant)
+        SchalterZeile(stringResource(R.string.alert_notify), an, { neu ->
+            // Die Berechtigung ZUERST und auf dem Hauptthread: Sie öffnet einen
+            // Systemdialog, und der gehört nicht hinter eine Hintergrundarbeit.
+            if (neu && Build.VERSION.SDK_INT >= 33) {
+                frage.launch(android.Manifest.permission.POST_NOTIFICATIONS)
             }
-            Switch(
-                checked = an,
-                onCheckedChange = { neu ->
-                    // Die Berechtigung ZUERST und auf dem Hauptthread: Sie
-                    // oeffnet einen Systemdialog, und der gehoert nicht hinter
-                    // eine Hintergrundarbeit.
-                    if (neu && android.os.Build.VERSION.SDK_INT >= 33) {
-                        frage.launch(android.Manifest.permission.POST_NOTIFICATIONS)
-                    }
-                    onUmschalten(neu)
-                },
-            )
-        }
+            onUmschalten(neu)
+        }, hinweis = stringResource(R.string.alert_notify_hint))
     }
 }

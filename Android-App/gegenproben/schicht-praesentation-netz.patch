@@ -4,12 +4,12 @@ Test: ch.brickinventoryapp.SchichtregelnTest
 Rot: Praesentation holt nichts selbst am Netz
 
 diff --git a/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/ui/screens/GalleryScreen.kt b/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/ui/screens/GalleryScreen.kt
-index b31c912..c99d6ce 100644
+index d46c92b..5e0c76d 100644
 --- a/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/ui/screens/GalleryScreen.kt
 +++ b/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/ui/screens/GalleryScreen.kt
-@@ -1,6 +1,7 @@
- package ch.brickinventoryapp.ui.screens
+@@ -2,6 +2,7 @@ package ch.brickinventoryapp.ui.screens
  
+ import androidx.compose.ui.semantics.clearAndSetSemantics
  import ch.brickinventoryapp.ui.components.nebenKnopfFarben
 +import retrofit2.Response
  import ch.brickinventoryapp.ui.components.nebenKnopfRand

@@ -6,6 +6,10 @@
 export const LOCKS = {
   /** Zweiter Wert: hashtext(Setnummer). */
   BILD_DOWNLOAD:      42,
+  /** Zweiter Wert: hashtext(art). Steht als Zahl im Trigger aus Migration 0099. */
+  AUFTRAG_EXKLUSIV:   59,
+  /** Haushaltswährung und Verknüpfung prüfen dieselbe Regel; zweiter Wert 0. */
+  HAUSHALT_WAEHRUNG:  62,
   /** Läuft Minuten, deshalb Sitzungs- und keine Transaktionssperre. */
   PREIS_JOB:          55,
   ANLEITUNGS_QUEUE:   56,

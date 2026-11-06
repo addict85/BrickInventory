@@ -175,7 +175,9 @@ export async function bestaetigeMitFaktor(req: Request, res: Response, uid: numb
   const schluessel = req.route ? `${req.method} ${req.baseUrl}${req.route.path}` : '';
   if (konfig().vertragPruefen && routeZu(schluessel) && !routeZu(schluessel)?.bestaetigung)
     throw new Error(`${schluessel} bestätigt, ohne \`bestaetigung\` im Vertrag`);
-  const faktor: Faktor = { code: req.body?.[codeFeld], passkey: req.body?.passkey };
+  // Der geprüfte Rumpf (eingabePruefen): Felder der Bestätigung stehen im Vertrag (bestaetigt()).
+  const eingabe = ((req as Request & { eingabe?: Record<string, unknown> }).eingabe ?? {});
+  const faktor = { code: eingabe[codeFeld], passkey: eingabe.passkey } as Faktor;
   const absage = await pruefeBestaetigung(uid, zugangVon(req), passwort, faktor);
   if (absage) absagen(req, res, absage);
   return !absage;

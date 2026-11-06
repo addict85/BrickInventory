@@ -1,6 +1,8 @@
 package ch.brickinventoryapp.ui.viewmodel
 
 import ch.brickinventoryapp.ui.abgeleitet
+import ch.brickinventoryapp.ui.model.SetAnsicht
+import ch.brickinventoryapp.ui.model.KennzahlenAnsicht
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.viewModelScope
 import ch.brickinventoryapp.ressourcen.R
@@ -87,7 +89,7 @@ class GalerieViewModel @Inject constructor(
         },
     )
     /** Ein gelöschtes Set, das sich noch zurückholen lässt — die Snackbar „Rückgängig“. */
-    data class VorgemerktesLoeschen(val setNumber: String, val name: String)
+    data class VorgemerktesLoeschen(val setNumber: String, val name: String, val set: SetAnsicht? = null)
 
     private val _vorgemerkt = MutableStateFlow<VorgemerktesLoeschen?>(null)
     val vorgemerkt: StateFlow<VorgemerktesLoeschen?> = _vorgemerkt.asStateFlow()
@@ -98,7 +100,11 @@ class GalerieViewModel @Inject constructor(
      * gelöscht wird.
      */
     val galleryState: StateFlow<GalleryUiState> = galerie.state
-        .abgeleitet(_vorgemerkt) { st, v -> if (v == null) st else st.copy(sets = st.sets.filterNot { it.setNumber == v.setNumber }) }
+        .abgeleitet(_vorgemerkt) { st, v ->
+            // Die Kennzahlen ebenso: Neben zwei Kacheln stand sonst noch „3 Sets“.
+            if (v == null) st else st.copy(sets = st.sets.filterNot { it.setNumber == v.setNumber },
+                stats = st.stats?.let { k -> v.set?.let { ohneSet(k, it) } ?: k })
+        }
 
     private val _preise = MutableStateFlow<Map<String, KachelPreis>>(emptyMap())
     /** Marktpreis und G&V je Set; eigener Fluss, weil er nach der Liste kommt. */
@@ -167,8 +173,9 @@ class GalerieViewModel @Inject constructor(
      */
     fun loeschenVormerken(setNumber: String, name: String) {
         loeschenAusfuehren()
+        val set = galerie.state.value.sets.firstOrNull { it.setNumber == setNumber }
         galerie.entferne(setNumber)
-        _vorgemerkt.value = VorgemerktesLoeschen(setNumber, name)
+        _vorgemerkt.value = VorgemerktesLoeschen(setNumber, name, set)
     }
 
     /** Das vorgemerkte Set bleibt; die Liste kommt neu vom Server, auf dem es nie fehlte. */
@@ -238,12 +245,25 @@ class GalerieViewModel @Inject constructor(
     }
 }
 
+/** Die Kennzahlen ohne [set] — solange sein Löschen vorgemerkt ist. */
+internal fun ohneSet(k: KennzahlenAnsicht, set: SetAnsicht): KennzahlenAnsicht {
+    val teile = (set.pieces ?: 0) * set.quantity
+    return k.copy(
+        totalSets = (k.totalSets - 1).coerceAtLeast(0),
+        totalQuantity = (k.totalQuantity - set.quantity).coerceAtLeast(0),
+        totalParts = (k.totalParts - teile).coerceAtLeast(0),
+        teileAusSets = k.teileAusSets?.let { (it - teile).coerceAtLeast(0) },
+        totalMinifigs = (k.totalMinifigs - (set.minifigs ?: 0) * set.quantity).coerceAtLeast(0),
+        totalInstructions = (k.totalInstructions - set.instructions.size).coerceAtLeast(0),
+    )
+}
+
 /**
  * Ein Set löschen: gelungen, und der Satz für den Meldungskanal. Geteilt mit
  * dem Set-Detail, das denselben Weg anbietet.
  */
-internal suspend fun setLoeschen(sets: SetsRepository, texte: Texte, setNumber: String): Pair<Boolean, String?> =
+internal suspend fun setLoeschen(sets: SetsRepository, texte: Texte, setNumber: String, name: String = setNumber): Pair<Boolean, String?> =
     when (val r = sets.deleteSet(setNumber)) {
-        is Ergebnis.Success -> true to texte.text(R.string.vm_set_deleted, setNumber)
+        is Ergebnis.Success -> true to texte.text(R.string.vm_set_deleted, name)
         is Ergebnis.Error -> false to texte.meldungFuerSnackbar(r)
     }

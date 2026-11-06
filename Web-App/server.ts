@@ -6,16 +6,14 @@ import { konfig } from './startup/konfigPruefen';
 import { installiereProtokoll, protokollInDieDatenbank, leereProtokoll, anfrageKontext, anfrageKennung } from './src/infra/protokoll';
 installiereProtokoll();
 
-import fs from 'fs';
 import http, { type Server } from 'http';
 import express from 'express';
 import session from 'express-session';
 import compression from 'compression';
 import connectPgSimple from 'connect-pg-simple';
 import * as db from './db/database';
-import { fehlertext, logAndContinue, meldeUndWeiter, meldeUndLiefere } from './src/infra/fehler';
+import { fehlertext, logAndContinue } from './src/infra/fehler';
 import { fehlerAntwort, unbekannterApiPfad } from './src/infra/httpAntwort';
-import { fehlerText, antwortSprache } from './src/infra/fehlerTexte';
 import { startVerbote, startWarnungen } from './src/infra/konfig';
 import { hinweisOhneBasisUrl } from './src/infra/basisUrl';
 import { sitzungsKeksName, sitzungsKeksOptionen } from './src/infra/sitzungsKeks';
@@ -25,21 +23,14 @@ import { verdrahte } from './jobs/verdrahtung';
 import { drossleBeruehren } from './src/konto/sitzungsBeruehrung';
 import { SITZUNG_LEERLAUF_SEK, sitzungsHoechstdauer } from './src/konto/sitzungsFrist';
 import { sitzungsVersionPruefen } from './src/konto/http/sitzungsPruefung';
-import { antwortAufDateiFehler, liefereDatei, sendeDatei } from './src/infra/dateiAusliefern';
-import { cdnFuerFehlendesBild } from './src/katalog/bilder/bildNachschlagen';
-import { bildFreigegeben } from './src/katalog/bilder/bildBlickfeld';
-import { aktuellerStartZustand, oeffentlicherStartZustand } from './src/auftraege/startZustand';
 import { merkeAnfrage } from './src/infra/anfrageKonto';
 import { proxyVertrauen, proxyHinweis } from './src/infra/proxyVertrauen';
 import { nurEigeneHerkunft, nurEigenerHost } from './src/infra/herkunft';
 import { API_VERSION, API_MIN_APP, appFassungPruefen } from './src/infra/apiVersion';
-import { resolveUserId, istVerwalter } from './src/konto/http/anmeldung';
 import { PUBLIC_DIR } from './src/infra/appPaths';
-import { IMG_PROXY_PFAD } from './src/katalog/bilder/images';
-import { safeDataPath } from './src/infra/datenPfad';
-import { generateThumb } from './src/katalog/bilder/thumbs';
+import { HTTP_FRISTEN } from './src/infra/httpFristen';
 import { closeAllSse } from './src/infra/sseRegistry';
-import { renderIndexHtml, startStilHash } from './src/konto/indexHtml';
+import { sendeStartseite, startStilHash } from './src/konto/indexHtml';
 import { meldeSmtpAltlast } from './src/mail/mailer';
 import { meldeUngueltigeAdressen, meldeAusstehendeAdressen } from './src/konto/konten';
 import { horcheAufTokenWiderruf } from './src/konto/auth';
@@ -53,9 +44,8 @@ import apiV1Router = require('./routes/api_v1/index');
 import authRouter = require('./routes/auth');
 import zertifikatRouter = require('./routes/zertifikat');
 import wellKnownRouter = require('./routes/wellKnown');
-
-/** Mit benanntem `params`, sonst wäre der erfasste Pfad implizit `any`. */
-type WildcardRequest = Request<{ pfad: string[] }>;
+import gesundheitRouter = require('./routes/gesundheit');
+import seitenRouter = require('./routes/seiten');
 
 process.on('unhandledRejection', (reason: unknown) => {
   console.error('[unhandledRejection] Unhandled promise rejection:', fehlertext(reason));
@@ -246,10 +236,7 @@ function dateienUndBilder(app: express.Express): void {
   app.use(wellKnownRouter);
   registerImgProxy(app);
 
-  // EINE authentifizierte Route für alle Bilder: Eigene Uploads dürfen nicht
-  // ohne Anmeldung hinaus.
-  // Ausführlich: docs/begruendungen/server.ts.md#abschnitt-4
-  app.get('/images/*pfad', liefereBild);
+  app.use(seitenRouter);
   app.use(express.static(PUBLIC_DIR, {
     // `/` geht über den Renderer (src/konto/indexHtml.ts), nicht als Datei.
     index: false,
@@ -264,85 +251,10 @@ function dateienUndBilder(app: express.Express): void {
 
 }
 
-async function liefereBild(req: WildcardRequest, res: Response) {
-  const imgUserId = await resolveUserId(req);
-  if (!imgUserId) return res.status(401).send('Nicht angemeldet');
-
-  const segments = req.params.pfad.filter(Boolean);
-  const filePath = safeDataPath('images', segments);
-  // Fremdes Set-Bild wie fehlendes: 404, sonst verriete die Antwort den Bestand.
-  if (!filePath || !await bildFreigegeben(imgUserId, segments).catch(meldeUndLiefere('bilder:blickfeld', false)))
-    return res.status(404).send('Datei nicht gefunden');
-
-  // private: Die Antwort hängt an einer Anmeldung und darf nicht in einen
-  // geteilten Zwischenspeicher. max-age=0, damit ein ersetztes Bild sofort gilt.
-  // Ausführlich: docs/begruendungen/server.ts.md#lookupcdnformissingimage
-  res.setHeader('Cache-Control', 'private, max-age=0');
-
-  sendeDatei(res, filePath, async err => {
-    if (!err || res.headersSent) return;
-
-    // Ein Fehler MIT eigener Zahl (416, 403) ist keine fehlende Datei: Die
-    // Ausweichwege unten suchten eine andere Datei und verdeckten die Ursache.
-    if ((err as { status?: number }).status && (err as { status?: number }).status !== 404) {
-      return antwortAufDateiFehler(res, err);
-    }
-
-    // Fehlt die Vorschau, geht sofort das Original hinaus, statt auf sie zu warten.
-    const rohPfad = segments.join('/');
-    const thumbTreffer = /_thumb(\.[^.]+)$/.exec(rohPfad);
-    if (thumbTreffer) {
-      const originalSegs = rohPfad.replace(/_thumb(\.[^.]+)$/, '$1').split('/').filter(Boolean);
-      const originalPfad = safeDataPath('images', originalSegs);
-      if (originalPfad && fs.existsSync(originalPfad)) {
-        // Nachziehen: Scheiterte sie beim Erfassen, gäbe es sonst keinen zweiten Anlauf.
-        // Ausführlich: docs/begruendungen/server.ts.md#lookupcdnformissingimage-webpfadoriginal
-        const webPfadOriginal = '/images/' + originalSegs.join('/');
-        setImmediate(() => {
-          try { generateThumb(webPfadOriginal).catch(logAndContinue('server:generateThumb')); }
-          catch (e) { meldeUndWeiter('server:vorschau-erzeugen', e); }
-        });
-        return liefereDatei(res, originalPfad);
-      }
-    }
-
-    // Fehlt die Datei, über den Bild-Proxy zur CDN-Adresse: heilt ohne Aufräumen in der DB.
-    const webPath = '/images/' + segments.join('/');
-    const cdn = await cdnFuerFehlendesBild(webPath);
-    if (cdn && !res.headersSent) {
-      return res.redirect(302, IMG_PROXY_PFAD + '?url=' + encodeURIComponent(cdn));
-    }
-    antwortAufDateiFehler(res, err);
-  });
-}
-
 function apiRouten(app: express.Express): void {
   app.use('/api/v1', vertragPruefen);
-  // Direkt hier: Gefragt wird, bevor Schema, Migrationen und /api/v1-Router stehen.
-  app.get('/api/v1/startup-status', async (req, res) => {
-    res.set('Cache-Control', 'no-store, no-cache, must-revalidate');
-    res.set('Pragma', 'no-cache');
-    res.set('Expires', '0');
-    const angemeldet = !!(await resolveUserId(req).catch(logAndContinue('startup-status:anmeldung')));
-    res.json(oeffentlicherStartZustand(await aktuellerStartZustand(), angemeldet));
-  });
-
-  // Ohne Anmeldung (compose.yaml): anonym nur der Status; live = Prozess, ready = Datenbank.
-  app.get('/api/v1/health/live', (_req, res) => { res.json({ status: 'ok' }); });
-  app.get('/api/v1/health/ready', async (req, res) => {
-    if (await db.datenbankAntwortet()) return void res.json({ status: 'ok' });
-    res.status(503).json({ success: false, code: 'datenbank_nicht_erreichbar', status: 'unavailable',
-      error: fehlerText('datenbank_nicht_erreichbar', antwortSprache(req)) });
-  });
-  app.get('/api/v1/health', async (req, res) => {
-    // Klemmt die Datenbank, bleibt der Bericht erreichbar — nur ohne Details.
-    const verwalter = !!(await resolveUserId(req).catch(logAndContinue('health:anmeldung'))) && istVerwalter(req);
-    const start = await aktuellerStartZustand();
-    res.json({
-      status: start.ready ? 'ok' : 'starting',
-      ...(verwalter ? { startup: start, db_pool: db.getPoolStats(), uptime_seconds: Math.floor(process.uptime()) } : {}),
-    });
-  });
+  // Vor dem Eingang: Gefragt wird, bevor Schema, Migrationen und /api/v1-Router stehen.
+  app.use('/api/v1',          gesundheitRouter);
 
   // EIN Eingang: anmeldungAmEingang verlangt Sitzung oder Token für alles unter
   // /api/v1 ausser den ausdrücklich öffentlichen Pfaden. Der Schutz je Route
@@ -357,18 +269,6 @@ function apiRouten(app: express.Express): void {
 }
 
 function rueckfaelle(app: express.Express): void {
-  // Links aus einer E-Mail: Erst ein Knopf auf der Seite wirkt (POST), sonst
-  // bestätigte schon der Link-Scanner des Mailanbieters eine fremde Adresse.
-  app.get(['/verify', '/reset-password'], async (_req, res) => {
-    // Renderer statt sendFile, sonst gingen die Assets ohne Stempel hinaus.
-    res.set('Cache-Control', 'no-store');
-    try {
-      res.type('html').send(await renderIndexHtml());
-    } catch {
-      res.sendFile('index.html', { root: PUBLIC_DIR });
-    }
-  });
-
   // VOR dem SPA-Catch-all: Sonst bekäme ein Tippfehler im API-Pfad die
   // index.html mit 200. Ohne Rücksicht auf die Schreibung, die Routen davor achten darauf.
   app.use((req, res, next) => /^\/api(\/|$)/i.test(req.path) ? unbekannterApiPfad(req, res) : next());
@@ -378,12 +278,7 @@ function rueckfaelle(app: express.Express): void {
   // Ausführlich: docs/begruendungen/server.ts.md#abschnitt-8
   app.get('/{*splat}', async (req, res) => {
     res.set('Cache-Control', 'no-cache');
-    try {
-      res.type('html').send(await renderIndexHtml(req.session?.userId));
-    } catch {
-      // Fällt das Rendern aus, geht die Datei unverändert hinaus; js/00-theme-boot.js übernimmt.
-      res.sendFile('index.html', { root: PUBLIC_DIR });
-    }
+    await sendeStartseite(res, req.session?.userId);
   });
 
   // Für Fehler, die an den Route-Catches vorbeikommen: loggt voll, antwortet generisch.
@@ -457,9 +352,7 @@ async function starte(): Promise<void> {
   if (web) horcheAufTokenWiderruf();
 
   // Erst nach dem Schema Anfragen annehmen: Der Sitzungsspeicher braucht user_sessions.
-  // Fünf Minuten für 50-MB-Uploads; ohne kurzes Prüfintervall griffe die Kopffrist erst nach 45 s.
-  const fristen = { headersTimeout: 15_000, requestTimeout: 300_000, connectionsCheckingInterval: 1_000 };
-  const httpServer = web ? http.createServer(fristen, baueApp()).listen(k.port, () => {
+  const httpServer = web ? http.createServer({ ...HTTP_FRISTEN }, baueApp()).listen(k.port, () => {
     console.log(`🧱 BrickInventory Manager — http://localhost:${k.port}`);
   }) : null;
   process.on('SIGTERM', () => { void herunterfahren('SIGTERM', httpServer, jobs); });

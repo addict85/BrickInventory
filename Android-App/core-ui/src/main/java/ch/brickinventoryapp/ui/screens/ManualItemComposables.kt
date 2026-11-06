@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.ui.screens
 
+import androidx.compose.ui.graphics.luminance
 import ch.brickinventoryapp.ui.components.nebenKnopfFarben
 import ch.brickinventoryapp.ui.components.nebenKnopfRand
 import ch.brickinventoryapp.ui.model.KaufAnsicht
@@ -146,7 +147,8 @@ fun ConditionBadges(conditions: List<String>, fallback: String? = null) {
 @Composable
 fun ConditionBadge(condition: String) {
     val isUsed = condition == "U"
-    val isBrick = LocalIsBrickTheme.current
+    // Salbei nur im hellen Stein-Design: Im Dunkeln leuchtete die helle Pille auf der dunklen Karte.
+    val isBrick = LocalIsBrickTheme.current && MaterialTheme.colorScheme.surface.luminance() > 0.5f
     val bgColor = when {
         isUsed  -> MaterialTheme.colorScheme.secondaryContainer
         isBrick -> BrickSage

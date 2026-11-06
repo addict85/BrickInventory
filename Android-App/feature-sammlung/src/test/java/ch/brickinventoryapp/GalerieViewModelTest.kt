@@ -46,6 +46,9 @@ import org.junit.Test
  *      rot „vorgemerktes Loeschen …“ und „Rueckgaengig …“ (DELETE schon gesendet)
  *   I  in rueckgaengig() loadSets() entfernt → rot
  *      „Rueckgaengig holt das Set zurueck …“
+ *   J in galleryState die Kennzahlen nicht angepasst
+ *      (gegenproben/galerie-kennzahlen-beim-loeschen.patch) → rot „die Kennzahlen
+ *      zaehlen das vorgemerkte Set nicht …“ (2 statt 1 Set)
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 class GalerieViewModelTest {
@@ -153,6 +156,27 @@ class GalerieViewModelTest {
         vm.loeschenAusfuehren()
         assertTrue("DELETE gesendet", pfade.anfragenAn("DELETE /api/v1/sets/10294-1").isNotEmpty())
         assertEquals(null, vm.vorgemerkt.value)
+    }
+
+    @Test
+    fun `die Kennzahlen zaehlen das vorgemerkte Set nicht und nach Rueckgaengig wieder`() {
+        pfade.antworten["/api/v1/sets"] = """{"success":true,"total":2,"sets":[
+            {"set_number":"75192-1","name":"Falke","pieces":7541,"minifigs":7,"quantity":1},
+            {"set_number":"10294-1","name":"Titanic","pieces":9090,"minifigs":0,"quantity":2}]}"""
+        pfade.antworten["/api/v1/stats"] = """{"success":true,"stats":{"total_sets":2,"total_quantity":3,"total_pieces":25721,
+            "total_instructions":0,"total_parts":25721,"total_minifigs":7}}"""
+        val vm = vm()
+        vm.loadSets(); vm.loadStats()
+        assertEquals(2, vm.galleryState.value.stats?.totalSets)
+        vm.loeschenVormerken("10294-1", "Titanic")
+        val k = vm.galleryState.value.stats
+        assertEquals("Sets", 1, k?.totalSets)
+        assertEquals("Exemplare", 1, k?.totalQuantity)
+        assertEquals("Teile", 7541, k?.totalParts)
+        assertEquals("Figuren", 7, k?.totalMinifigs)
+        vm.rueckgaengig()
+        assertEquals("nach Rückgängig wieder vollständig", 2, vm.galleryState.value.stats?.totalSets)
+        assertEquals(3, vm.galleryState.value.stats?.totalQuantity)
     }
 
     @Test

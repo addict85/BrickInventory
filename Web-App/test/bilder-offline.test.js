@@ -49,13 +49,16 @@ const BAUM = path.join(__dirname, '..', '..');
 // Zeile 4 und nennt sie dabei woertlich — die erste Fassung dieser Pruefung
 // fand diese Erwaehnung statt der Route und meldete, es gebe gar kein
 // Cache-Control mehr. Dieselbe Falle, wegen der es diesen Helfer gibt.
-const SERVER = ohneKommentare(fs.readFileSync(path.join(__dirname, '..', 'server.ts'), 'utf8'));
+// Die Route steht in routes/seiten.ts, ihr Rumpf in src/katalog/http/bildAuslieferung.ts.
+const lies = (rel) => ohneKommentare(fs.readFileSync(path.join(__dirname, '..', rel), 'utf8'));
+const ROUTE = lies('routes/seiten.ts');
+const SERVER = lies('src/katalog/http/bildAuslieferung.ts');
 
 /** Die Cache-Control-Zeile der /images-Route — aus der Datei gelesen. */
 function bilderKopfzeile() {
   // Die Route verweist auf liefereBild; dessen Rumpf setzt den Kopf.
   const ab = SERVER.indexOf("async function liefereBild(");
-  assert.ok(SERVER.includes("app.get('/images/*pfad', liefereBild)"), 'Die /images-Route liefert nicht mehr über liefereBild');
+  assert.ok(ROUTE.includes("router.get('/images/*pfad', liefereBild)"), 'Die /images-Route liefert nicht mehr über liefereBild');
   assert.ok(ab > 0, 'Die /images-Route ist nicht mehr zu finden');
   const abschnitt = SERVER.slice(ab, ab + 4000);
   const m = abschnitt.match(/setHeader\('Cache-Control',\s*'([^']+)'\)/);

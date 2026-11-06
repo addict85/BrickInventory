@@ -3,12 +3,16 @@
  * EIN Pfadsegment. Roh eingesetzt führte `x/../../users` mit dem API-Schlüssel
  * des Servers an eine andere Stelle der API, `?…` hängte eigene Parameter an.
  *
- * Geprüft über GET /sets/:setNumber/parts-list mit abgefangenem https.get.
+ * Geprüft zweimal: GET /sets/:setNumber/parts-list weist solche Nummern am
+ * Eingang ab (Vertrag: PFAD), und dahinter baut holeSetTeile() die Adresse mit
+ * abgefangenem https.get.
  *
  * Gegenproben (am 30.10.2026 gemessen):
  *   A  in getAllSetPartsApi() wieder `${n}` statt `${pfadSegment(n)}` → rot:
  *      „verlässt das Pfadsegment“
  *   B  pfadSegment() ohne die Prüfung auf Punktsegmente → rot: „„..“ geht durch“
+ *   C  (05.11.2026) setNumber in PFAD ohne Muster (TEXT) → rot: „kommt am
+ *      Eingang durch“
  *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL.
  */
@@ -66,9 +70,12 @@ test('Setnummer aus der Anfrage bleibt ein Pfadsegment', { concurrency: 1 }, asy
   const { base } = testServer(_req, { sitzung: { userId: 1 }, apiNutzer: { user_id: 1, is_admin: 0 },
     routen: { '/api/v1': 'routes/api_v1/index.js' }, t });
   let geprueft = 0;
+  const { holeSetTeile } = _req('src/katalog/quellen.js');
   for (const roh of ['x%2F..%2F..%2Fusers', '10294-1%3Fsearch%3Dboese', '%2E%2E%2Fcolors']) {
+    const r = await fetch(`${base}/api/v1/sets/${roh}/parts-list`);
+    assert.equal(r.status, 400, `${roh}: kommt am Eingang durch`);
     abgerufen.length = 0;
-    await fetch(`${base}/api/v1/sets/${roh}/parts-list`);
+    await holeSetTeile(decodeURIComponent(roh));
     const api = abgerufen.filter(u => u.includes('/api/v3/'));
     for (const u of api) {
       geprueft++;

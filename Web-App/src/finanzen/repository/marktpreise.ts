@@ -36,6 +36,18 @@ export function teilepreiseAusCache(nummern: string[], waehrung: string, ttlStun
         AND fetched_at > NOW() - make_interval(hours => $3)`, [nummern, waehrung, ttlStunden]);
 }
 
+/** Wie geschaetzterFigurenpreis für viele Figuren in einer Abfrage; Schlüssel `nummer|zustand`. */
+export async function geschaetzteFigurenpreise(figuren: string[], waehrung: string, ttlStunden: number) {
+  const aus = new Map<string, { preis: number; abdeckung: number | null }>();
+  if (!figuren.length) return aus;
+  const zeilen = await db.all<{ fig_number: string; condition: string; avg_price: string; abdeckung: string | null }>(
+    `SELECT fig_number, condition, avg_price, abdeckung FROM minifig_price_cache
+      WHERE fig_number = ANY($1) AND currency_code = $2 AND geschaetzt AND avg_price > 0
+        AND fetched_at > NOW() - make_interval(hours => $3)`, [[...new Set(figuren)], waehrung, ttlStunden]);
+  for (const z of zeilen) aus.set(`${z.fig_number}|${z.condition}`, { preis: Number(z.avg_price), abdeckung: z.abdeckung == null ? null : Number(z.abdeckung) });
+  return aus;
+}
+
 export function geschaetzterFigurenpreis(figNumber: string, zustand: string, waehrung: string, ttlStunden: number) {
   return db.get<{ avg_price: string | null; abdeckung: string | null }>(
     `SELECT avg_price, abdeckung FROM minifig_price_cache

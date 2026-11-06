@@ -278,7 +278,7 @@ test('ein gecachter Null-Preis blockiert den Rückfall nicht dauerhaft', () => {
   // parseFloat-Ausdrücken. Beide gibt es nicht mehr — die Regel liegt in
   // src/finanzen/preisRegel.ts. Die Aussage bleibt und wird jetzt an der Regel selbst
   // gemessen: Der Treffer mit Preis kommt vor dem Zweig ohne.
-  const idxOk   = fc.indexOf('if (hatPreis(cached))');
+  const idxOk   = fc.indexOf('if (cached && hatPreis(cached))');
   const idxZero = fc.indexOf('cached && !hatPreis(cached)');
   assert.ok(idxOk > 0 && idxZero > 0 && idxOk < idxZero,
     'Ein vorhandener Preis muss vor jeder Ausweichlogik zurückgegeben werden');

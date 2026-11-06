@@ -1,0 +1,22 @@
+Gegenprobe: Die Einladung lässt sich nur kopieren, nicht teilen
+Modul: app
+Test: ch.brickinventoryapp.AblaufBefundeTest
+Rot: M8 die Einladung laesst sich teilen und kopieren
+
+diff --git a/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/ui/screens/EinstellungenHaushalt.kt b/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/ui/screens/EinstellungenHaushalt.kt
+index de8b0e2..1b5257c 100644
+--- a/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/ui/screens/EinstellungenHaushalt.kt
++++ b/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/ui/screens/EinstellungenHaushalt.kt
+@@ -157,12 +157,6 @@ internal fun HouseholdCard(
+             // Der Code gehört auf ein anderes Gerät: teilen wie kopieren, beide gleich gewichtet.
+             val teilenTitel = stringResource(R.string.household_invite_section)
+             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(Abstaende.klein)) {
+-                OutlinedButton(onClick = { teileCodes(kontext, teilenTitel, listOf(c)) }, modifier = Modifier.weight(1f),
+-                    colors = nebenKnopfFarben(), border = nebenKnopfRand()) {
+-                    Icon(Icons.Default.Share, null, Modifier.size(mitSchrift(18.dp)))
+-                    Spacer(Modifier.width(Abstaende.klein))
+-                    Text(stringResource(R.string.household_invite_teilen))
+-                }
+                 OutlinedButton(onClick = { GeheimeZwischenablage.kopiere(kontext, einladungEtikett, c) },
+                     modifier = Modifier.weight(1f), colors = nebenKnopfFarben(), border = nebenKnopfRand()) {
+                     Icon(Icons.Default.ContentCopy, null, Modifier.size(mitSchrift(18.dp)))

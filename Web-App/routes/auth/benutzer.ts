@@ -3,7 +3,7 @@
 import { protokolliere } from '../../src/verwaltung/dienst';
 import * as K from '../../src/konto/konten';
 import { meldeHaushaltsaenderung } from '../../src/haushalt/haushalt';
-import { fehlerAntwort, pfadParam } from '../../src/infra/httpAntwort';
+import { fehlerAntwort } from '../../src/infra/httpAntwort';
 import { revokeAllSessions, USERNAME_RE, leereTokenCache } from '../../src/konto/auth';
 import { nutzerId, angemeldeteNutzerId, bestaetigeMitFaktor, nutzerName } from '../../src/konto/http/anmeldung';
 import { hinweisNebenher, verwalterHinweisNebenher } from '../../src/konto/kontoHinweis';
@@ -48,7 +48,7 @@ router.post('/users', requireAdmin, async (req: OffeneAnfrage<'POST /api/v1/auth
 });
 
 router.put('/users/:id/admin', requireAdmin, async (req: OffeneAnfrage<'PUT /api/v1/auth/users/:id/admin'>, res: Antwort<'PUT /api/v1/auth/users/:id/admin'>) => {
-  const targetId = parseInt(pfadParam(req, 'id'));
+  const targetId = req.pfad.id;
   // Streng: "false" ist in JavaScript wahr und entzöge sonst keine Rechte.
   const soll = req.eingabe.is_admin;
   if (targetId === nutzerId(req) && !soll)
@@ -68,7 +68,7 @@ router.put('/users/:id/admin', requireAdmin, async (req: OffeneAnfrage<'PUT /api
 });
 
 router.put('/users/:id/aktiv', requireAdmin, async (req: OffeneAnfrage<'PUT /api/v1/auth/users/:id/aktiv'>, res: Antwort<'PUT /api/v1/auth/users/:id/aktiv'>) => {
-  const targetId = parseInt(pfadParam(req, 'id'));
+  const targetId = req.pfad.id;
   const soll = req.eingabe.is_active;
   if (!Number.isInteger(targetId)) return sendeFehler(req, res, 400, 'id_ungueltig');
   if (targetId === nutzerId(req)) return sendeFehler(req, res, 400, 'eigenes_konto_deaktivieren');
@@ -82,7 +82,7 @@ router.put('/users/:id/aktiv', requireAdmin, async (req: OffeneAnfrage<'PUT /api
 
 // Für Registrierungen, deren Bestätigungsmail nie ankam: Der Verwalter bürgt für die Adresse.
 router.put('/users/:id/freischalten', requireAdmin, async (req: OffeneAnfrage<'PUT /api/v1/auth/users/:id/freischalten'>, res: Antwort<'PUT /api/v1/auth/users/:id/freischalten'>) => {
-  const targetId = parseInt(pfadParam(req, 'id'));
+  const targetId = req.pfad.id;
   if (!Number.isInteger(targetId) || !await K.kontoExistiert(targetId)) return sendeFehler(req, res, 404, 'benutzer_nicht_gefunden');
   if (!await bestaetigeMitFaktor(req, res, angemeldeteNutzerId(req), req.eingabe.admin_password)) return;
   const r = await K.schalteRegistrierungFrei(targetId);
@@ -95,7 +95,7 @@ router.put('/users/:id/freischalten', requireAdmin, async (req: OffeneAnfrage<'P
  * Ausführlich: docs/begruendungen/routes/auth/benutzer.ts.md#put-users-id-password */
 router.put('/users/:id/password', requireAdmin, async (req: OffeneAnfrage<'PUT /api/v1/auth/users/:id/password'>, res: Antwort<'PUT /api/v1/auth/users/:id/password'>) => {
   const { password } = req.eingabe || {};
-  const targetId = parseInt(pfadParam(req, 'id'));
+  const targetId = req.pfad.id;
   if (!targetId || targetId === nutzerId(req))
     return sendeFehler(req, res, 400, 'eigenes_konto_passwort');
   const mangel = passwortMangel(password, (await K.kontoKurz(targetId))?.username);
@@ -115,7 +115,7 @@ router.put('/users/:id/password', requireAdmin, async (req: OffeneAnfrage<'PUT /
 });
 
 router.delete('/users/:id', requireAdmin, async (req: OffeneAnfrage<'DELETE /api/v1/auth/users/:id'>, res: Antwort<'DELETE /api/v1/auth/users/:id'>) => {
-  const targetId = parseInt(pfadParam(req, 'id'));
+  const targetId = req.pfad.id;
   if (!await bestaetigeMitFaktor(req, res, angemeldeteNutzerId(req), req.eingabe.admin_password)) return;
   if (targetId !== nutzerId(req) && await K.kontoExistiert(targetId))
     await protokolliere(angemeldeteNutzerId(req), targetId, 'konto_geloescht');
@@ -136,7 +136,7 @@ router.delete('/users/:id', requireAdmin, async (req: OffeneAnfrage<'DELETE /api
 
 // Notausgang, wenn Telefon UND Wiederherstellungscodes weg sind.
 router.delete('/users/:id/zweiter-faktor', requireAdmin, async (req: OffeneAnfrage<'DELETE /api/v1/auth/users/:id/zweiter-faktor'>, res: Antwort<'DELETE /api/v1/auth/users/:id/zweiter-faktor'>) => {
-  const id = parseInt(pfadParam(req, 'id'));
+  const id = req.pfad.id;
   if (!Number.isInteger(id)) return sendeFehler(req, res, 400, 'id_ungueltig');
   if (id === nutzerId(req)) return sendeFehler(req, res, 400, 'eigener_zweiter_faktor');
   if (!await bestaetigeMitFaktor(req, res, angemeldeteNutzerId(req), req.eingabe.admin_password)) return;

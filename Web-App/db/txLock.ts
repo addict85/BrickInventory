@@ -32,7 +32,7 @@ function bestandsSchluessel(kind: 'set' | 'part' | 'fig', keys: unknown[]): stri
 
 /** Sperre für Haushaltswährung und Verknüpfung: Beide prüfen bzw. ändern dieselbe Regel. */
 async function sperreHaushaltswaehrung(tx: DbSchnittstelle): Promise<void> {
-  await tx.run("SELECT pg_advisory_xact_lock(hashtext('haushalt-waehrung'))");
+  await tx.run('SELECT pg_advisory_xact_lock($1, 0)', [LOCKS.HAUSHALT_WAEHRUNG]);
 }
 
 /**

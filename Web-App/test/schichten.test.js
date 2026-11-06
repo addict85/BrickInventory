@@ -235,16 +235,16 @@ test('keine Route importiert aus jobs/ oder clients/', () => {
   assert.deepEqual(treffer, []);
 });
 
-test('nur der Bild-Proxy ruft aus einer Route selbst ins Netz', () => {
-  // Der Bild-Proxy reicht CDN-Antworten durch; das Durchreichen ist seine
-  // Aufgabe. Jeder andere Abruf gehört in einen Client oder Dienst.
-  // Gegenprobe (29.10.2026): `import https from 'https'` in api_v1/admin.ts → rot.
-  const ERLAUBT = new Set(['routes/imgProxy.ts']);
-  const treffer = [];
-  for (const d of routenDateien().filter(d => !ERLAUBT.has(d)))
-    for (const ziel of importe(d).filter(z => /^(?:node:)?https?$/.test(z))) treffer.push(`${d} -> ${ziel}`);
+test('ins Netz geht nur clients/ über src/infra/abruf.ts', () => {
+  // Host-Liste, Grössendeckel, Frist und Abbruch stehen in abruf.ts; die Klienten
+  // legen Hosts und Kopfzeilen fest. Ein Abruf daneben hätte nichts davon.
+  // Gegenprobe (05.11.2026): `import { holeHttps } from '../infra/abruf'` in
+  // src/katalog/partsImport.ts zurück → rot: „src/katalog/partsImport.ts“.
+  const ERLAUBT = new Set(['src/infra/abruf.ts']);
+  const treffer = tsUnter('src', 'routes', 'jobs', 'startup', 'db').concat('server.ts')
+    .filter(d => !ERLAUBT.has(d))
+    .filter(d => /\b(holeHttps|oeffneHttps)\b|from '(?:node:)?https'|\bfetch\(/.test(quelltext(d)));
   assert.deepEqual(treffer, []);
-  for (const d of ERLAUBT) assert.ok(fs.existsSync(path.join(ROOT, d)), `${d} gibt es nicht mehr — Ausnahme streichen`);
 });
 
 test('startup/ importiert nichts aus routes/', () => {
@@ -465,11 +465,8 @@ test('nur Routen, Server und HTTP-Seiten importieren eine HTTP-Seite', () => {
   assert.deepEqual(treffer, []);
 });
 
-/** Routen, die etwas anderes tun als antworten (Strom, Teilergebnis, Aufräumen) — je Datei die Zahl. */
-const TRY_IN_ROUTEN = new Map([
-  ['routes/auth.ts', 2], ['routes/imgProxy.ts', 3],
-  ['routes/api_v1/sets.ts', 1], ['routes/api_v1/wanted.ts', 1],
-]);
+/** Routen fangen nichts: Ströme reichen ihren Fehler mit .then(…, …) als letztes Ereignis weiter. */
+const TRY_IN_ROUTEN = new Map([]);
 
 test('Routen fangen keine Fehler — der Fehlerweg des Routers antwortet', () => {
   // Gegenprobe (31.10.2026): eine Route in routes/api_v1/minifigs.ts wieder in

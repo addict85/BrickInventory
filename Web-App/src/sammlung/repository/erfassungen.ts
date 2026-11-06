@@ -1,9 +1,7 @@
 import * as db from '../../../db/database';
 import type { DbSchnittstelle } from '../../../db/database';
 import { erfassungsTagSql, ERFASSUNGS_TABELLEN as SHAPES } from '../../../db/bestandsmenge';
-import type { ErfassungsArt } from '../../../db/bestandsmenge';
-import type { z } from 'zod';
-import type { Acquisition } from '../../infra/vertrag/bestand';
+import type { ErfassungsArt, ErfassungsZeile } from '../../../db/bestandsmenge';
 
 export async function kontoDerErfassung(art: ErfassungsArt, id: number): Promise<number | null> {
   const r = await db.get<{ user_id: number }>(`SELECT user_id FROM ${SHAPES[art].table} WHERE id = $1`, [id]);
@@ -48,7 +46,7 @@ export async function loescheErfassung(tx: DbSchnittstelle, art: ErfassungsArt, 
 }
 
 export function setErfassungenImBlickfeld(blickfeld: number[], setNumber: string) {
-  return db.all<z.infer<typeof Acquisition>>(
+  return db.all<ErfassungsZeile>(
     `SELECT id, quantity, purchase_price, COALESCE(condition, 'N') AS condition, price_estimated, currency,
             created_at, user_id AS owner_user_id FROM set_acquisitions
       WHERE user_id = ANY($1) AND set_number=$2 ORDER BY created_at ASC, id ASC`, [blickfeld, setNumber]);

@@ -71,9 +71,9 @@ export function neuerPool(groesse: number, datei = path.join(__dirname, 'bcryptA
         hauptthread = true;
         console.warn('[bcrypt] Worker-Thread startet nicht, Prüfungen laufen im Hauptthread:', grund?.message ?? 'beendet');
       }
-      if (l) (hauptthread ? imHauptthread(l.o.auftrag) : Promise.reject(grund ?? new Error('bcrypt-Arbeiter beendet')))
+      if (l) void (hauptthread ? imHauptthread(l.o.auftrag) : Promise.reject(grund ?? new Error('bcrypt-Arbeiter beendet')))
         .then(l.o.ok, l.o.fehler);
-      for (const o of schlange.splice(0)) auftrag(o.auftrag).then(o.ok, o.fehler);
+      for (const o of schlange.splice(0)) void auftrag(o.auftrag).then(o.ok, o.fehler);
     });
     return w;
   };

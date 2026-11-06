@@ -1,5 +1,7 @@
 package ch.brickinventoryapp.ui.screens
 
+import ch.brickinventoryapp.ui.components.zeichenweise
+import ch.brickinventoryapp.ui.components.vorgelesenAls
 import ch.brickinventoryapp.ui.components.nebenKnopfFarben
 import ch.brickinventoryapp.ui.components.nebenKnopfRand
 import androidx.compose.foundation.background
@@ -115,7 +117,8 @@ fun ZweiterFaktorPflichtMaske(
                         Sichtschutz()
                         AnmeldeTitel(stringResource(R.string.zf_pflicht_codes_titel))
                         Text(stringResource(R.string.zf_codes_hint), style = MaterialTheme.typography.bodyMedium)
-                        Text(zustand.codes.joinToString("\n"), fontFamily = FontFamily.Monospace)
+                        Text(zustand.codes.joinToString("\n"), fontFamily = FontFamily.Monospace,
+                            modifier = Modifier.vorgelesenAls(zustand.codes.joinToString(", ") { zeichenweise(it) }))
                         OutlinedButton(
                             onClick = { GeheimeZwischenablage.kopiere(kontext, etikett, zustand.codes.joinToString("\n")) },
                             modifier = Modifier.fillMaxWidth(),
@@ -182,7 +185,8 @@ fun ZweiterFaktorPflichtMaske(
                         // Der Grund kurz, die Einzelheiten auf Wunsch: Bei 200 % Schrift
                         // füllten drei Absätze den Bildschirm vor dem Passwortfeld.
                         ErklaerText(stringResource(R.string.zf_pflicht_kurz),
-                            stringResource(R.string.zf_pflicht_text), farbe = MaterialTheme.colorScheme.onSurface)
+                            stringResource(R.string.zf_pflicht_text), farbe = MaterialTheme.colorScheme.onSurface,
+                            thema = stringResource(R.string.zf_title))
                         Text(stringResource(R.string.zf_pflicht_passwort), style = MaterialTheme.typography.bodyMedium)
                         PasswortFeld(pwAktuell, { pwAktuell = it }, stringResource(R.string.konto_password_current),
                             Modifier.fillMaxWidth())

@@ -1,0 +1,18 @@
+Gegenprobe: „+“ der Teile auch im Fehlerzustand
+Modul: app
+Test: ch.brickinventoryapp.AblaufBefundeTest
+Rot: N1 im Fehlerzustand steht kein Erfassen-Knopf
+
+diff --git a/Android-App/feature-teile/src/main/java/ch/brickinventoryapp/ui/screens/PartsScreen.kt b/Android-App/feature-teile/src/main/java/ch/brickinventoryapp/ui/screens/PartsScreen.kt
+index 50d1959..e77fa55 100644
+--- a/Android-App/feature-teile/src/main/java/ch/brickinventoryapp/ui/screens/PartsScreen.kt
++++ b/Android-App/feature-teile/src/main/java/ch/brickinventoryapp/ui/screens/PartsScreen.kt
+@@ -311,7 +311,7 @@ fun PartsScreen(
+ 
+         // Eine Regel für alle Reiter (wie Galerie und Merkliste): Kein „+“ im Fehlerzustand,
+         // und leer steht der Knopf schon mitten im Bild.
+-        if (!gross && anzeige != Ladeanzeige.FEHLER && anzeige != Ladeanzeige.LEER) ErfassenFab(
++        if (!gross && anzeige != Ladeanzeige.LEER) ErfassenFab(
+             erfassenText, { showAddDialog = true },
+             Modifier.align(Alignment.BottomEnd).padding(Abstaende.gross),
+         )

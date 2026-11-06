@@ -1,5 +1,14 @@
 package ch.brickinventoryapp.ui.screens
 
+import androidx.compose.ui.platform.LocalContext
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
+import androidx.compose.material.icons.filled.Share
+import ch.brickinventoryapp.ui.components.mitSchrift
+import ch.brickinventoryapp.ui.components.nebenKnopfRand
+import ch.brickinventoryapp.ui.components.nebenKnopfFarben
+import ch.brickinventoryapp.ui.components.SperrGrund
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
@@ -8,6 +17,7 @@ import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.foundation.text.KeyboardOptions
@@ -26,7 +36,6 @@ import ch.brickinventoryapp.ui.theme.Abstaende
 import ch.brickinventoryapp.ui.theme.Formen
 import ch.brickinventoryapp.ui.HouseholdUiState
 import ch.brickinventoryapp.ui.components.ErklaerText
-import ch.brickinventoryapp.ui.components.MitTooltip
 import ch.brickinventoryapp.util.GeheimeZwischenablage
 
 /**
@@ -55,7 +64,7 @@ internal fun HouseholdCard(
     LaunchedEffect(state.eingeloest) { if (state.eingeloest > 0) code = "" }
     // Über GeheimeZwischenablage statt LocalClipboard: Sie nimmt den Code nach
     // einer Minute wieder heraus, auch wenn die Seite dann schon zu ist.
-    val kontext = androidx.compose.ui.platform.LocalContext.current
+    val kontext = LocalContext.current
     // Das Etikett eines ClipData ist auf manchen Android-Oberflächen sichtbar und
     // gehört darum in die Sprachdateien. Geholt hier, weil der Klick-Rumpf nicht
     // @Composable ist.
@@ -69,7 +78,7 @@ internal fun HouseholdCard(
     // Zwei Sätze vorn, der Rest auf Wunsch: Sechs Zeilen Erklärung vor dem ersten
     // Knopf las niemand.
     ErklaerText(stringResource(R.string.household_intro),
-        stringResource(R.string.household_intro_more))
+        stringResource(R.string.household_intro_more), thema = stringResource(R.string.household_title))
 
     // Ein Konto kann zugleich Unterkonto (auch mehrerer Hauptkonten) und
     // Hauptkonto eigener Unterkonten sein: beide Listen unabhängig.
@@ -143,14 +152,28 @@ internal fun HouseholdCard(
                 value = c, onValueChange = {}, readOnly = true, singleLine = true,
                 label = { Text(stringResource(R.string.household_invite_label)) },
                 modifier = Modifier.fillMaxWidth(), shape = Formen.feld,
-                trailingIcon = {
-                    MitTooltip(stringResource(R.string.household_invite_copy)) {
-                        IconButton(onClick = {
-                            GeheimeZwischenablage.kopiere(kontext, einladungEtikett, c)
-                        }) { Icon(Icons.Default.ContentCopy, stringResource(R.string.household_invite_copy)) }
-                    }
-                }
             )
+            state.inviteGueltigBis?.let { bis ->
+                Text(stringResource(R.string.household_invite_gueltig_bis,
+                        SimpleDateFormat("dd.MM. HH:mm", Locale.getDefault()).format(Date(bis))),
+                    style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+            // Der Code gehört auf ein anderes Gerät: teilen wie kopieren, beide gleich gewichtet.
+            val teilenTitel = stringResource(R.string.household_invite_section)
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(Abstaende.klein)) {
+                OutlinedButton(onClick = { teileCodes(kontext, teilenTitel, listOf(c)) }, modifier = Modifier.weight(1f),
+                    colors = nebenKnopfFarben(), border = nebenKnopfRand()) {
+                    Icon(Icons.Default.Share, null, Modifier.size(mitSchrift(18.dp)))
+                    Spacer(Modifier.width(Abstaende.klein))
+                    Text(stringResource(R.string.household_invite_teilen))
+                }
+                OutlinedButton(onClick = { GeheimeZwischenablage.kopiere(kontext, einladungEtikett, c) },
+                    modifier = Modifier.weight(1f), colors = nebenKnopfFarben(), border = nebenKnopfRand()) {
+                    Icon(Icons.Default.ContentCopy, null, Modifier.size(mitSchrift(18.dp)))
+                    Spacer(Modifier.width(Abstaende.klein))
+                    Text(stringResource(R.string.household_invite_copy))
+                }
+            }
         }
     }
 
@@ -185,18 +208,20 @@ internal fun HouseholdCard(
                 shape = Formen.feld,
             )
         }
+        // Meldung des Servers (Währung weicht ab, schon verknüpft) direkt über dem Knopf,
+        // nicht am Seitenende unter allen Abschnitten.
+        state.message?.takeUnless { state.passwortFalsch || state.faktorFalsch }?.let {
+            Text(it, Modifier.ansagen(), style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.error)
+        }
+        val bereit = code.isNotBlank() && passwort.isNotEmpty() && (!state.faktorNoetig || faktorCode.isNotBlank())
+        // Wie bei der Anmeldung: Ein gesperrter Knopf sagt, was fehlt.
+        if (!bereit) SperrGrund(stringResource(if (state.faktorNoetig) R.string.household_redeem_sperrgrund_faktor
+                                              else R.string.household_redeem_sperrgrund))
         Button(onClick = { onRedeemInvite(code, passwort, faktorCode.takeIf { state.faktorNoetig }); passwort = ""; faktorCode = "" },
-               enabled = code.isNotBlank() && passwort.isNotEmpty() && (!state.faktorNoetig || faktorCode.isNotBlank()) &&
-                   !state.isLoading, modifier = Modifier.fillMaxWidth()) {
+               enabled = bereit && !state.isLoading, modifier = Modifier.fillMaxWidth()) {
             Text(stringResource(R.string.household_redeem_submit))
         }
-    }
-
-    // Meldung des Servers — Währung weicht ab, Konten schon oder
-    // umgekehrt verknüpft. Wortlaut unverändert übernommen.
-    state.message?.takeUnless { state.passwortFalsch || state.faktorFalsch }?.let {
-        Text(it, Modifier.ansagen(), style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.error)
     }
 
     trennen?.let { id ->

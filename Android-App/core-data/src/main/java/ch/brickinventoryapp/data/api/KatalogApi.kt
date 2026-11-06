@@ -22,7 +22,7 @@ interface KatalogApi {
         @Query("year_to") yearTo: Int? = null,
         @Query("sort") sort: String = "year_desc",
         @Query("page") page: Int = 1,
-        @Query("limit") limit: Int = 60
+        @Query("page_size") limit: Int = 60
     ): Response<CatalogSetsResponse>
 
     @GET("api/v1/catalog/sets/{setNumber}")

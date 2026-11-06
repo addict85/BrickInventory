@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.ui.screens
 
+import ch.brickinventoryapp.ui.components.SchalterZeile
 import ch.brickinventoryapp.ui.viewmodel.VertrauenViewModel
 import ch.brickinventoryapp.ui.viewmodel.DarstellungViewModel
 import ch.brickinventoryapp.ui.viewmodel.DarstellungAktionen
@@ -337,20 +338,9 @@ private fun ServerCard(
         }
         // Je Gerät und sofort wirksam (util/ServerVertrauen.kt); ausgeschaltet nur System-CAs.
         // Nur für den eigenen Server; Updates und fremde Hosts prüfen immer gegen das System.
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(Abstaende.mittel),
-            modifier = Modifier.fillMaxWidth(),
-        ) {
-            Column(Modifier.weight(1f)) {
-                Text(stringResource(R.string.settings_nutzer_ca), style = MaterialTheme.typography.bodyMedium)
-                // In der Fehlerfarbe: Es ist ein Risiko, keine Komforteinstellung.
-                Text(stringResource(R.string.settings_nutzer_ca_hint),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.error)
-            }
-            Switch(checked = nutzerCa, onCheckedChange = onNutzerCa)
-        }
+        // Hinweis in der Fehlerfarbe: Es ist ein Risiko, keine Komforteinstellung.
+        SchalterZeile(stringResource(R.string.settings_nutzer_ca), nutzerCa, onNutzerCa,
+            hinweis = stringResource(R.string.settings_nutzer_ca_hint), hinweisFarbe = MaterialTheme.colorScheme.error)
     }
 }
 

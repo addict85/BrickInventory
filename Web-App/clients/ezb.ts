@@ -16,13 +16,14 @@ export const ERLAUBTE_KURS_HOSTS = ['www.ecb.europa.eu'] as const;
 export interface Kurs { tag: string; waehrung: string; je_eur: number }
 
 /** Lädt eine Adresse; im Test ersetzt durch einen lokalen Server. */
-export type Abruf = (url: string) => Promise<Buffer>;
+export type Abruf = (url: string, signal?: AbortSignal) => Promise<Buffer>;
 
 /** Der echte Abruf: lehnt alles ausser HTTPS auf den Host der EZB ab. */
-export const ezbAbruf: Abruf = async (url) => {
+export const ezbAbruf: Abruf = async (url, signal) => {
   if (!url.startsWith('https://') || !hostErlaubt(url, ERLAUBTE_KURS_HOSTS))
     throw new Error(`Kursabruf nur von https://${ERLAUBTE_KURS_HOSTS.join(', ')}: ${url.slice(0, 120)}`);
-  const r = await holeHttps(url, { hosts: ERLAUBTE_KURS_HOSTS, maxBytes: 16 * 1024 * 1024, zeitlimitMs: 60_000, umleitungen: 0 });
+  const r = await holeHttps(url, { hosts: ERLAUBTE_KURS_HOSTS, maxBytes: 16 * 1024 * 1024, zeitlimitMs: 60_000, umleitungen: 0,
+    ...(signal ? { signal } : {}) });
   if (r.status !== 200) throw new Error(`EZB ${r.status} für ${url}`);
   return r.koerper;
 };

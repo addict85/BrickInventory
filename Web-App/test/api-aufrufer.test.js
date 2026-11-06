@@ -109,6 +109,9 @@ function clientQuellen() {
 // sieht geprueft aus. Wer hier eine Zeile eintraegt, soll den Aufrufer
 // benennen koennen.
 const OHNE_AUFRUFER = new Map([
+  ['GET /api/v1/health', 'Für Überwachung von aussen (Status, Details nur für Verwalter).'],
+  ['GET /api/v1/health/live', 'Lebenszeichen des Prozesses für eine Überwachung von aussen.'],
+  ['GET /api/v1/health/ready', 'Gesundheitsprüfung von compose.yaml (node -e im Container).'],
   // ── Die beiden Token-Routen sind hier RAUS, und das ist der Punkt ────────
   // Sie standen als ausdrücklich unbequeme Ausnahme da: „Oberfläche FEHLT —
   // die Route bleibt, damit sie gebaut werden kann, statt sie zu löschen und

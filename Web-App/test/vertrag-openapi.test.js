@@ -13,6 +13,8 @@
  *      ohne Route“
  *   D  denselben Schlüssel in sets.ts und teile.ts → rot: „kein Schlüssel
  *      doppelt“ (der spätere überschriebe den früheren still)
+ *   E  (05.11.2026) `klein: true` an 'GET /api/v1/storage' entfernt → rot:
+ *      „jede lange Liste nimmt Seiten“ nennt /api/v1/storage
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -56,4 +58,22 @@ test('kein Schlüssel doppelt', () => {
 test('die eingecheckte openapi.json ist erzeugt', () => {
   assert.ok(fs.readFileSync(DATEI, 'utf8') === alsText(openapi()),
     'docs/openapi.json weicht vom Vertrag ab — `npm run vertrag:openapi` ausführen und einchecken');
+});
+
+test('jede lange Liste nimmt Seiten', () => {
+  // Eine Liste ohne Seiten wächst mit dem Bestand; `klein` sagt, dass sie das nicht tut.
+  const o = openapi();
+  const schema = (s) => (s?.$ref ? o.components.schemas[s.$ref.split('/').pop()] : s);
+  const ohne = [], limit = [];
+  for (const [p, ops] of Object.entries(o.paths)) {
+    const get = ops.get;
+    if (!get) continue;
+    const antwort = schema(get.responses[200].content['application/json']?.schema);
+    const listen = Object.values(antwort?.properties ?? {}).filter(v => schema(v)?.type === 'array');
+    const namen = (get.parameters ?? []).map(x => x.name);
+    if (listen.length && !get['x-klein'] && !namen.includes('page_size')) ohne.push(p);
+    if ((get.parameters ?? []).some(x => x.name === 'limit' && !x.deprecated)) limit.push(p);
+  }
+  assert.deepEqual(ohne, []);
+  assert.deepEqual(limit, [], 'Seitengrösse heisst page_size; limit nur noch veraltet');
 });

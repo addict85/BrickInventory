@@ -1,5 +1,7 @@
 package ch.brickinventoryapp.ui.components
 
+import androidx.compose.ui.semantics.liveRegion
+import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
@@ -76,7 +78,7 @@ fun SkelettRaster(
         start = Offset(weg, 0f), end = Offset(weg + 600f, 600f))
     LazyVerticalGrid(
         columns = spalten,
-        modifier = modifier.fillMaxSize().semantics { contentDescription = laedt },
+        modifier = modifier.fillMaxSize().semantics { contentDescription = laedt; liveRegion = LiveRegionMode.Polite },
         contentPadding = innenabstand,
         horizontalArrangement = Arrangement.spacedBy(abstand),
         verticalArrangement = Arrangement.spacedBy(abstand),

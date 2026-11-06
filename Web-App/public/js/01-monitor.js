@@ -245,6 +245,7 @@ const ARTNAMEN = {
   nachlauf: () => t('monitor.art.nachlauf'),
   csv_sync: () => t('monitor.art.csv_sync'),
   preise: () => t('monitor.art.preise'),
+  preise_nachladen: () => t('monitor.art.preise_nachladen'),
   bild_nachlauf: () => t('monitor.art.bild_nachlauf'),
   aufraeumen: () => t('monitor.art.aufraeumen'),
   aufraeumen_taeglich: () => t('monitor.art.aufraeumen_taeglich'),

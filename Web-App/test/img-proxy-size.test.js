@@ -27,7 +27,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 
 const ROOT = path.join(__dirname, '..');
-const src = fs.readFileSync(path.join(ROOT, 'routes/imgProxy.ts'), 'utf8');
+const src = fs.readFileSync(path.join(ROOT, 'src/katalog/http/bildProxy.ts'), 'utf8');
 const code = src.split('\n').filter(l => !l.trim().startsWith('//') && !l.trim().startsWith('*')).join('\n');
 
 test('die Cache-Grenze deckt hochauflösende Katalogbilder ab', () => {

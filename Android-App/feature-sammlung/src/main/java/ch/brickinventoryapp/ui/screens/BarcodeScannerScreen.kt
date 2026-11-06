@@ -41,7 +41,9 @@ fun BarcodeScannerScreen(
     ocrEnabled: Boolean = false,
     /** Per Texterkennung gelesene SETNUMMER — nur relevant, wenn ocrEnabled. */
     onSetNumberResult: (String) -> Unit = onResult,
-    onDismiss: () -> Unit
+    onDismiss: () -> Unit,
+    /** Nur die Überlagerung ohne Kamerabild — für Bildschirmfotos, wo es keine Kamera gibt. */
+    ohneKamera: Boolean = false,
 ) {
     val cameraPermission = rememberKameraErlaubnis()
     val defaultHint = stringResource(R.string.scanner_hint_default)
@@ -55,7 +57,7 @@ fun BarcodeScannerScreen(
     var cameraCtrl by remember { mutableStateOf<CameraControl?>(null) }
 
     LaunchedEffect(Unit) {
-        if (!cameraPermission.erteilt) cameraPermission.anfragen()
+        if (!ohneKamera && !cameraPermission.erteilt) cameraPermission.anfragen()
     }
 
     // Toggle torch when state changes
@@ -76,8 +78,8 @@ fun BarcodeScannerScreen(
 
     Box(Modifier.fillMaxSize().background(Color.Black)) {
         when {
-            cameraPermission.erteilt -> {
-                CameraPreviewBarcode(
+            ohneKamera || cameraPermission.erteilt -> {
+                if (!ohneKamera) CameraPreviewBarcode(
                     frozen = frozen,
                     ocrEnabled = ocrEnabled,
                     onBarcodeFound = { value ->
@@ -115,8 +117,10 @@ fun BarcodeScannerScreen(
                         Spacer(Modifier.height(Abstaende.gross))
                         FilledTonalButton(
                             onClick = { torchOn = !torchOn },
+                            // Deckende Flächen wie das Schild darüber: Auf hellem Motiv war Weiss
+                            // auf durchscheinendem Weiss nicht zu lesen.
                             colors = ButtonDefaults.filledTonalButtonColors(
-                                containerColor = if (torchOn) LocalStatusFarben.current.warnung else Color.White.copy(alpha = 0.15f),
+                                containerColor = if (torchOn) Color.White else Color.Black.copy(alpha = 0.72f),
                                 contentColor   = if (torchOn) Color.Black else Color.White
                             )
                         ) {

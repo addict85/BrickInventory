@@ -32,6 +32,9 @@ async function seriesFor(setNumber: string, currency: string, cond: 'N' | 'U'): 
   return repo.tagespreiseDesSets(setNumber, currency, cond);
 }
 
+/** Markt- gegen Kaufpreis in einem Zustand; pnl_pct ist die alte Textform. */
+interface ZustandsVergleich { market_price: number | null; purchase_price: number | null; pnl_pct: string | null; pnl_prozent: number | null }
+
 /** @param uid Blickfeld: Im Haushalt gehört das Set oft einem Unterkonto, mit
  *   der nackten Betrachter-ID fände die Abfrage es nicht. */
 export async function getSetPriceHistory(uidWahl: Sicht | number | number[], setNumber: string, currency: string) {
@@ -46,8 +49,8 @@ export async function getSetPriceHistory(uidWahl: Sicht | number | number[], set
 
   const currentRows = await repo.cachePreiseDesSets(setNumber, currency);
   const current = {
-    N: currentRows.find((r: any) => r.condition === 'N') || null,
-    U: currentRows.find((r: any) => r.condition === 'U') || null,
+    N: currentRows.find(r => r.condition === 'N') || null,
+    U: currentRows.find(r => r.condition === 'U') || null,
   };
 
   // Kaufpreis aus der ERSTEN Erfassung; jede Set-Zeile hat mindestens eine.
@@ -83,9 +86,9 @@ export async function getSetPriceHistory(uidWahl: Sicht | number | number[], set
   // Nur Zustände mit Erfassung, sonst stünde eine Prozentangabe gegen nichts da.
   const acqByCond = await repo.kaufschnittDesSets(uids, setNumber, currency);
 
-  const byCondition: Record<string, any> = {};
+  const byCondition: Record<string, ZustandsVergleich> = {};
   for (const cond of ['N', 'U'] as const) {
-    const acq = acqByCond.find((r: any) => (r.condition || 'N') === cond);
+    const acq = acqByCond.find(r => (r.condition || 'N') === cond);
     if (!acq) continue;                       // kein Kaufpreis-Eintrag → keine Zeile
     const market = parseFloat(String((cond === 'N' ? current.N : current.U)?.avg_price || 0)) || null;
     // null = kein Kaufpreis erfasst, 0 = Geschenk; beides ohne Prozentangabe.
@@ -94,7 +97,8 @@ export async function getSetPriceHistory(uidWahl: Sicht | number | number[], set
     byCondition[cond] = {
       market_price: market,
       purchase_price: base,
-      pnl_pct: e == null ? null : parseFloat(e.toFixed(1)),
+      pnl_pct: e == null ? null : e.toFixed(1),
+      pnl_prozent: e == null ? null : Number(e.toFixed(1)),
     };
   }
 
@@ -110,7 +114,6 @@ export async function getSetPriceHistory(uidWahl: Sicht | number | number[], set
     history_used: historyUsed,
     current,
     pnl_pct: pnlPct,
-    // pnl_pct als Zahl; das Textfeld bleibt für ältere Clients.
     pnl_prozent: pnlPct == null ? null : Number(pnlPct),
     purchase_price: hasCost ? purchasePrice : null,
     chart,
@@ -132,17 +135,18 @@ export async function conditionRows(
   const cacheRows = await repo.cachePreiseNachSchluessel(cacheTable, keySql, keyVals, currency);
   const acqRows = await repo.kaufschnitteNachSchluessel(acqTable, acqKeySql, acqKeyVals, uids, currency);
 
-  const out: Record<string, any> = {};
+  const out: Record<string, ZustandsVergleich> = {};
   for (const cond of ['N', 'U'] as const) {
-    const acq = acqRows.find((r: any) => (r.condition || 'N') === cond);
+    const acq = acqRows.find(r => (r.condition || 'N') === cond);
     if (!acq) continue;                       // kein Kaufpreis-Eintrag → keine Zeile
-    const market = parseFloat(String(cacheRows.find((r: any) => r.condition === cond)?.avg_price || 0)) || null;
+    const market = parseFloat(String(cacheRows.find(r => r.condition === cond)?.avg_price || 0)) || null;
     const base   = acq.avg_purchase == null ? null : parseFloat(String(acq.avg_purchase));
     const e = entwicklungProzent(base, market);
     out[cond] = {
       market_price: market,
       purchase_price: base,
-      pnl_pct: e == null ? null : parseFloat(e.toFixed(1)),
+      pnl_pct: e == null ? null : e.toFixed(1),
+      pnl_prozent: e == null ? null : Number(e.toFixed(1)),
     };
   }
   return out;

@@ -82,7 +82,7 @@ export function setNameAusStamm(set_number: string) {
 }
 
 export function alarmeFuerExport(uid: number) {
-  return db.all(`SELECT set_number, condition, richtung, schwelle, currency_code
+  return db.all<{ set_number: string; condition: string; richtung: string; schwelle: number | string; currency_code: string }>(`SELECT set_number, condition, richtung, schwelle, currency_code
        FROM price_alerts
       WHERE user_id = $1
       ORDER BY set_number, condition`, [uid]);

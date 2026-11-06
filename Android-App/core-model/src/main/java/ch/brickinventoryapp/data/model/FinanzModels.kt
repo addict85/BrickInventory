@@ -68,7 +68,8 @@ data class CurrentPrice(
 data class ConditionValuation(
     @SerialName("market_price") val marketPrice: Double? = null,
     @SerialName("purchase_price") val purchasePrice: Double? = null,
-    @SerialName("pnl_pct") val pnlPct: Double? = null,
+    // Die Zahl; pnl_pct ist dort Text wie in allen anderen Antworten (veraltet).
+    @SerialName("pnl_prozent") val pnlPct: Double? = null,
 )
 
 /**

@@ -43,7 +43,7 @@ export async function idempotenz(req: Request, res: Response, next: NextFunction
   const json = res.json.bind(res);
   res.json = (rumpf: unknown) => {
     gemerkt = true;
-    dienst.beende(uid, schluessel, res.statusCode, geheim ? null : JSON.stringify(rumpf))
+    void dienst.beende(uid, schluessel, res.statusCode, geheim ? null : JSON.stringify(rumpf))
       .catch((e: unknown) => meldeUndWeiter('idempotenz:merken', e))
       .finally(() => json(rumpf));
     return res;

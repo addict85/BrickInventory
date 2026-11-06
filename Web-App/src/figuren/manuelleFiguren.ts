@@ -16,6 +16,7 @@ import { setzeLagerort, ortFuerNeuerfassung } from '../bestand/lagerort';
 import { merkeFigur, katalogFigur } from '../katalog/katalogPflege';
 import { merkeEigeneBlNummer } from '../katalog/blZuordnung';
 import * as V from '../infra/validate';
+import { geldEingabe } from '../infra/geld';
 import { fehlerWerfen } from '../infra/fehlerTexte';
 
 // Ohne BrickLink-Figurennummer wird der Marktpreis aus den Teilepreisen
@@ -24,7 +25,7 @@ import { fehlerWerfen } from '../infra/fehlerTexte';
 
 // Ausführlich: docs/begruendungen/src/figuren/manuelleFiguren.ts.md#resolvemanualfigpurchase
 export async function resolveManualFigPurchase(uid: number, { figNumber, blFigNumber = null, unitPrice = null, condition = null }:
-  { figNumber: string; blFigNumber?: string | null; unitPrice?: any; condition?: string | null }) {
+  { figNumber: string; blFigNumber?: string | null; unitPrice?: unknown; condition?: string | null }) {
   // Dieselbe Regel wie bei den Teilen (src/finanzen/preisRegel.ts), damit eine
   // Figur ohne Marktpreis nicht anders zählt als ein Teil.
   const r = await manuellerKaufpreis(uid, { unitPrice, condition },
@@ -50,15 +51,15 @@ export async function addManualFig(uid: number, body: Record<string, unknown>) {
   return ergebnis;
 }
 
-async function addManualFigIntern(uid: number, body: any) {
+async function addManualFigIntern(uid: number, body: Record<string, unknown>) {
   // Gleiche Eingangsvalidierung wie bei manuellen Teilen: Die Felder werden gerendert.
     const num       = V.requireItemNumber(body?.fig_number, 'fig_number');
   const blNum     = body?.bl_fig_number ? V.requireItemNumber(body.bl_fig_number, 'bl_fig_number') : null;
   const quantity  = V.acquisitionQuantity(body?.quantity, 1);
   const condition = V.optionalCondition(body?.condition);
-  const unit_price = V.optionalPrice(body?.unit_price, 'Stückpreis');
+  const unit_price = geldEingabe(body?.unit_price, 'Stückpreis');
   // Erlaubt mehrere Erfassungen derselben Figur zu verschiedenen Zeitpunkten.
-  const acquiredAt = (body?.acquired_at || '').trim() || null;
+  const acquiredAt = String(body?.acquired_at || '').trim() || null;
   let fig_name  = V.optionalText(body?.fig_name, 200);
   let image_url = V.optionalImageUrl(body?.image_url);
   // Nur Nachgeschlagenes geht als geprüft in den Katalog.
@@ -128,7 +129,7 @@ async function addManualFigIntern(uid: number, body: any) {
 
 /** Zwilling zu updateManualPart.
  * @returns die Menge danach, wenn sie Teil der Anfrage war */
-export async function updateManualFig(uid: number, figNumber: string, body: any): Promise<{ quantity?: number }> {
+export async function updateManualFig(uid: number, figNumber: string, body: Record<string, unknown>): Promise<{ quantity?: number }> {
   const existing = await repo.figurZeileMitZustand(uid, figNumber);
   if (!existing) fehlerWerfen('minifig_nicht_manuell', 404);
 
@@ -155,7 +156,7 @@ export async function updateManualFig(uid: number, figNumber: string, body: any)
     await repo.setzeFigurpreisNeueste(uid, figNumber, unitPrice);
   }
   if (body.condition !== undefined && body.condition !== null) {
-    const cond = ['N','U'].includes(body.condition) ? body.condition : 'N';
+    const cond = body.condition === 'U' ? 'U' : 'N';
     await repo.setzeFigurzustandNeueste(uid, figNumber, cond);
   }
   return raus;

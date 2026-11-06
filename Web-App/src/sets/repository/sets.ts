@@ -149,17 +149,11 @@ export type SetListenZeile = { set_number: string; acq_count: number; used_count
 export type SetFilter = { search?: unknown; theme?: unknown; storage?: unknown; sort?: unknown;
   seite: { groesse: number; versatz: number } | null; themen: boolean };
 
-/** Mehrere Konten werden je Set zusammengefasst; der Lagerort beschreibt das
- * Exemplar und wird deshalb aufgezählt statt gewählt. */
-export async function setListe(uids: number[], f: SetFilter) {
-  const SET_COLS = ['set_number','name','year','theme','pieces','minifigs','quantity',
-                    'image_local','image_url','added_at','storage']
-                   .map(c => `s.${c}`).join(', ');
-  const { search, theme, sort, storage } = f;
-
-  // Ein Set, EINE Zeile, auch wenn zwei Kinder es besitzen: Zwei Zeilen mit
-  // demselben Bild lesen sich wie ein Fehler.
-  const setsFrom = uids.length > 1
+/** Die Sets der Konten als Unterabfrage `s`. Im Haushalt ein Set, EINE Zeile,
+ * auch wenn zwei Kinder es besitzen: Zwei Zeilen mit demselben Bild lesen sich
+ * wie ein Fehler. */
+function setsQuelle(uids: number[]): string {
+  return uids.length > 1
     ? `(SELECT s.set_number,
                MIN(c.name) AS name, MIN(c.year) AS year, MIN(c.theme) AS theme,
                MIN(c.pieces) AS pieces, MIN(c.minifigs) AS minifigs,
@@ -183,21 +177,9 @@ export async function setListe(uids: number[], f: SetFilter) {
                -- der Liste stehen muss — ein INNER JOIN liesse es verschwinden,
                -- und zwar genau die Sets, die noch nicht eingeraeumt sind.
                NULLIF(string_agg(DISTINCT lo.name, ', '), '') AS storage,
-               -- Nur Konten, die auch wirklich ein Exemplar halten.
-               --
-               -- Marcos Befund: „Ich habe den Kaufpreis für den Marco
-               -- gelöscht. Somit sollte auch das Label auf der Kachel von
-               -- Marco nicht mehr angezeigt werden."
-               --
-               -- Beim Löschen der letzten Erfassung setzt parentQuantitySql
-               -- die Menge auf 0, lässt die sets-Zeile aber stehen (bewusst —
-               -- eine Menge von 0 ist ein gültiger Zustand, etwa über den
-               -- Mengenregler). Ohne FILTER stand das Konto danach weiter als
-               -- Besitzer auf der Kachel, obwohl es nichts mehr besitzt.
-               --
-               -- Die Bedingung liest jetzt die ERFASSUNGEN (Migration 0036
-               -- hat sets.quantity geloescht) — dieselbe Summe wie in der
-               -- Mengenspalte darueber, also dieselbe Aussage wie vorher.
+               -- Nur Konten, die ein Exemplar halten: Eine Zeile mit Menge 0
+               -- bleibt nach dem Löschen der letzten Erfassung stehen, ihr
+               -- Konto besitzt aber nichts mehr.
                array_agg(DISTINCT s.user_id) FILTER (WHERE ${mengeAus('sm', 0)} > 0) AS owner_ids
           FROM sets s
           -- Der JOIN steht ausgeschrieben, nicht hinter einer Sicht: So sagt
@@ -221,9 +203,20 @@ export async function setListe(uids: number[], f: SetFilter) {
           LEFT JOIN set_catalog c ON c.set_number = s.set_number
           LEFT JOIN storage_locations lo ON lo.id = s.storage_id
           ${mengeJoin('s', 'sm', '= ANY($1)')}) s`;
+}
+
+/** Mehrere Konten werden je Set zusammengefasst; der Lagerort beschreibt das
+ * Exemplar und wird deshalb aufgezählt statt gewählt. */
+export async function setListe(uids: number[], f: SetFilter) {
+  const SET_COLS = ['set_number','name','year','theme','pieces','minifigs','quantity',
+                    'image_local','image_url','added_at','storage']
+                   .map(c => `s.${c}`).join(', ');
+  const { search, theme, sort, storage } = f;
+
+  const setsFrom = setsQuelle(uids);
   const SET_OWNER_COL = uids.length > 1 ? ', s.owner_ids' : '';
   const where = uids.length > 1 ? [] : ['s.user_id = ANY($1)'];
-  const params: any[] = [uids];
+  const params: unknown[] = [uids];
   if (theme) { params.push(theme); where.push(`s.theme = $${params.length}`); }
   // Eigener Filter statt Volltext: „Kiste 3" soll nicht jedes Set mit „Kiste"
   // im Namen zeigen.

@@ -11,6 +11,9 @@
  * Ohne erreichbare DB wird die Suite übersprungen (skip), nicht rot.
  *
  * Ausführen: npm run test:api   (baut vorher die .ts -> .js)
+ *
+ * Gegenprobe (05.11.2026 gemessen): page_size in routes/api_v1/catalog.ts
+ * nicht gelesen → rot: „Pagination“ (die Seite hat 60 statt 10 Sets).
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -206,6 +209,11 @@ test('Katalog-API (Postgres-Integration)', async (t) => {
     assert.equal(r.body.total, 85);
     assert.equal(r.body.page, 2);
     assert.equal(r.body.sets.length, 10);
+    // page_size ist der Name aller Listen; limit bleibt für ältere Apps.
+    const neu = await get('/catalog/sets?page_size=10&page=2&sort=num_asc');
+    assert.deepEqual(neu.body.sets.map(s => s.set_number), r.body.sets.map(s => s.set_number));
+    assert.equal(neu.body.page_size, 10);
+    assert.equal(neu.body.pages, 9);
   });
 
   srv.close();

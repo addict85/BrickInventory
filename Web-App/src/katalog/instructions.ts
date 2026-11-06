@@ -31,7 +31,7 @@ export async function anleitungenZuSet(setNumber: string) {
 
 /** Erst die automatisch importierten, dann die selbst hochgeladenen.
  * Ausführlich: docs/begruendungen/src/katalog/instructions.ts.md#anleitungenzusammenlegen */
-export function anleitungenZusammenlegen(geteilt: any[], eigene: any[]): any[] {
+export function anleitungenZusammenlegen<A extends object, B extends object>(geteilt: A[], eigene: B[]) {
   return [
     ...geteilt.map(i => ({ ...i, is_manual: false })),
     ...eigene.map(i => ({ ...i, is_manual: true })),
@@ -79,7 +79,7 @@ export async function scrapeInstructionsFromFallback(setNumber: string) {
       const relPath  = `/data/instructions/${pdfName}`;
       const desc     = `Anleitung ${n} (BrickInstructions)`;
       await repo.merkeAnleitung(n, pageUrl, desc, null).catch(logAndContinue('anleitung:desc'));
-      setImmediate(() => { collectAndBuildPDF(baseUrl, hdrs, fund.erstesBild, pdfDest, relPath, n).catch(logAndContinue('anleitung:collectAndBuildPDF')); });
+      setImmediate(() => { void collectAndBuildPDF(baseUrl, hdrs, fund.erstesBild, pdfDest, relPath, n).catch(logAndContinue('anleitung:collectAndBuildPDF')); });
       console.log(`[brickinstructions] Fallback triggered for ${n}`);
       return 1;
     }
@@ -100,7 +100,7 @@ export async function downloadSetInstructions(setNumber: string,
   const existing = await anzahlAnleitungen(n);
   if (existing > 0) { return existing; }
 
-  let instrList: any[] = [];
+  let instrList: Awaited<ReturnType<typeof scrapeInstructions>> = [];
   let bricksetSucceededEmpty = false;
   _letzterAbrufWarExtern = true;   // ab hier wird wirklich gefragt
   try { instrList = await scrapeInstructions(n); } catch (e) { meldeUndWeiter('anleitungen:auslesen', e); }
@@ -161,7 +161,7 @@ export async function downloadSetInstructions(setNumber: string,
       const pdfDest = path.join(instrDir, pdfName);
       const relPath = `/data/instructions/${pdfName}`;
       try { await repo.merkeAnleitung(n, instr.url, instr.description, null); saved++; } catch (e) { meldeUndWeiter('anleitungen:pdf-eintragen', e); }
-      setImmediate(() => { collectAndBuildPDF(instr.brickinstructions_base, instr.brickinstructions_hdrs, instr.brickinstructions_first, pdfDest, relPath, n).catch(logAndContinue('anleitung:collectAndBuildPDF')); });
+      setImmediate(() => { void collectAndBuildPDF(instr.brickinstructions_base, instr.brickinstructions_hdrs, instr.brickinstructions_first, pdfDest, relPath, n).catch(logAndContinue('anleitung:collectAndBuildPDF')); });
       continue;
     }
     const safeName = `${safeBase}_${i + 1}.pdf`;
@@ -199,7 +199,7 @@ async function buildImagePDF_fromBuffers(imgBuffers: Buffer[], destPath: string)
   return new Promise(resolve => {
     try {
       const doc = new PDFDocument({ autoFirstPage:false, margin:0 });
-      const chunks: any[] = [];
+      const chunks: Buffer[] = [];
       doc.on('data', (d: Buffer) => chunks.push(d));
       doc.on('end', () => { try { fs.writeFileSync(destPath, Buffer.concat(chunks)); resolve(true); } catch(_){ resolve(false); } });
       doc.on('error', () => resolve(false));

@@ -9,7 +9,7 @@ import * as repo from './repository/waehrung';
 /** Die eine Schreibstelle: Ein Währungswechsel muss den Preis-Job anstossen,
  * weil der Preis-Cache je Währung verschlüsselt ist.
  * Ausführlich: docs/begruendungen/src/konto/nutzerEinstellung.ts.md#setusersetting */
-export async function setUserSetting(userId: number, key: string, value: any) {
+export async function setUserSetting(userId: number, key: string, value: unknown) {
   if (key !== 'currency') return schreibeNutzerEinstellung(userId, key, value);
   const v = String(value).trim();
   if (!nutzerWertGueltig(key, v)) fehlerWerfen('wert_ungueltig', 400);

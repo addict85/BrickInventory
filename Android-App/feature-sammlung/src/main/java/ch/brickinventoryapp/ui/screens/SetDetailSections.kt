@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.ui.screens
 
+import androidx.compose.foundation.layout.heightIn
 import ch.brickinventoryapp.ui.components.nebenKnopfFarben
 import ch.brickinventoryapp.ui.components.nebenKnopfRand
 /**
@@ -58,7 +59,6 @@ import ch.brickinventoryapp.ui.components.bewegungReduziert
 import ch.brickinventoryapp.ui.components.grosseSchrift
 import ch.brickinventoryapp.ui.components.mitSchrift
 import ch.brickinventoryapp.ui.model.PreisalarmAnsicht
-import ch.brickinventoryapp.ui.theme.Lesebreite
 import ch.brickinventoryapp.util.eigeneAdresse
 import ch.brickinventoryapp.util.fmtEingabe
 import ch.brickinventoryapp.util.fmtInt
@@ -135,6 +135,7 @@ fun LazyListScope.setDetailInstructionsSection(
                                         // Umgekehrt blieben oben und unten je ein
                                         // paar totes Pixel.
                                         .clickable(role = Role.Button, onClick = oeffneAnleitung)
+                                        .heightIn(min = 48.dp)
                                         .padding(vertical = Abstaende.winzig),
                                     verticalAlignment = Alignment.CenterVertically,
                                     horizontalArrangement = Arrangement.spacedBy(Abstaende.mittel)
@@ -203,8 +204,7 @@ fun LazyListScope.setDetailInstructionsSection(
                         // Ansehen häufiger ist; höchstens Bedienbreite, auf dem Tablet nicht über die Spalte.
                         OutlinedButton(
                             onClick = onAnleitungWaehlen,
-                            modifier = Modifier.padding(top = Abstaende.klein)
-                                .widthIn(max = Lesebreite.bedienung).fillMaxWidth(),
+                            modifier = Modifier.padding(top = Abstaende.klein).fillMaxWidth(),
                             colors = nebenKnopfFarben(),
                             border = nebenKnopfRand(),
                         ) {
@@ -287,7 +287,7 @@ fun LazyListScope.setDetailDetailsSection(set: SetAnsicht, setNumber: String, la
                         modifier = Modifier.fillMaxWidth(),
                     )
                 }
-            } else Row(Modifier.widthIn(max = Lesebreite.wertzeile).fillMaxWidth()
+            } else Row(Modifier.fillMaxWidth()
                     .padding(vertical = Abstaende.haar),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically) {
@@ -371,11 +371,15 @@ fun LazyListScope.setDetailDetailsSection(set: SetAnsicht, setNumber: String, la
 /** Wert-Kacheln über den Angaben — in jedem Design (WertKacheln, core-ui). */
 fun LazyListScope.setDetailValueTiles(set: SetAnsicht, price: SetPreisAnsicht?, pnlPct: Double?, fmtPrice: (Double?) -> String) {
     item(key = "wertkacheln") {
+        // avg_price zuerst: Marktpreis ist der einfache Schnitt, nicht der mengengewichtete.
+        val marktpreis = price?.takeUnless { it.noPrice }?.let { it.avgPrice ?: it.qtyAvgPrice }
+        val kaufpreis = set.anzeigeKaufpreis
+        val differenz = if (marktpreis != null && kaufpreis != null) marktpreis - kaufpreis else null
         WertKacheln(
-            // avg_price zuerst: Marktpreis ist der einfache Schnitt, nicht der mengengewichtete.
-            markt = fmtPrice(price?.takeUnless { it.noPrice }?.let { it.avgPrice ?: it.qtyAvgPrice }),
-            kauf = fmtPrice(set.anzeigeKaufpreis),
+            markt = fmtPrice(marktpreis),
+            kauf = fmtPrice(kaufpreis),
             pnl = pnlPct,
+            pnlBetrag = differenz?.let { (if (it > 0) "+" else "") + fmtPrice(it) },
             modifier = Modifier.padding(horizontal = Abstaende.gross).padding(bottom = Abstaende.mittel),
         )
     }
@@ -448,7 +452,7 @@ fun LazyListScope.setDetailHeroImage(
                         .fillMaxWidth()
                         .height(200.dp)
                         .clip(Formen.chip)
-                        .clickable(enabled = imageUrl != null, role = Role.Button) { onZoom() },
+                        .clickable(enabled = imageUrl != null, onClickLabel = stringResource(R.string.cd_bild_vergroessern), role = Role.Button) { onZoom() },
                     contentScale = ContentScale.Fit,
                     ersatzGroesse = 64.dp,
                     // Weisser Grund über die ganze Kartenbreite: Das Bild stand sonst schmaler
@@ -541,8 +545,7 @@ fun LazyListScope.setDetailAlarmSection(
                 },
                 keyboardOptions = NumericInput.preisTastatur(),
                 shape = Formen.feld,
-                // Ein Betrag, keine Zeile Text: auf dem Tablet nicht über die ganze Karte.
-                modifier = Modifier.widthIn(max = Lesebreite.bedienung).fillMaxWidth(),
+                modifier = Modifier.fillMaxWidth(),
             )
         }
     }

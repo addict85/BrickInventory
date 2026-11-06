@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.ui.screens
 
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import ch.brickinventoryapp.ui.components.nebenKnopfFarben
 import ch.brickinventoryapp.ui.components.nebenKnopfRand
 import ch.brickinventoryapp.ui.model.KennzahlenAnsicht
@@ -528,6 +529,10 @@ fun SetCard(
     val zeile = grosseSchrift()
     val pct = preis?.pnlPct
     val betrag = kachelBetrag(set, preis)
+    // Was die Plaketten auf dem Bild sagen, liest TalkBack am Ende der Kachel: zuerst der Name.
+    val guvAnsage = if (pct != null && betrag != null) stringResource(
+        if (pct >= 0) R.string.gallery_pnl_gewinn else R.string.gallery_pnl_verlust, fmtProzent(pct)) else null
+    val mengeAnsage = if (set.quantity > 1) pluralStringResource(R.plurals.gallery_stat_units, set.quantity, fmtInt(set.quantity)) else null
     val guv: (@Composable () -> Unit)? = if (pct != null && betrag != null) ({
             // G&V als Marke: In der Preiszeile brach sie neben „je Stück“ um, und die Kachel
             // wurde höher als ihre Nachbarin. Pfeil und Ansage „Gewinn …“: Eine nackte Zahl
@@ -608,17 +613,24 @@ fun SetCard(
             // mit Rückfrage und danach „Rückgängig“. Plaketten mit Abstand innerhalb
             // des Bilds (PLAKETTE_RAND): Auf dessen Rand sassen sie über der Ecke.
             if (!zeile) {
-                if (guv != null) Box(Modifier.align(Alignment.TopStart).padding(PLAKETTE_RAND)) { guv() }
-                if (menge != null) Box(Modifier.align(Alignment.TopEnd).padding(PLAKETTE_RAND)) { menge() }
+                if (guv != null) Box(Modifier.align(Alignment.TopStart).padding(PLAKETTE_RAND).clearAndSetSemantics {}) { guv() }
+                if (menge != null) Box(Modifier.align(Alignment.TopEnd).padding(PLAKETTE_RAND).clearAndSetSemantics {}) { menge() }
             }
         }
     }
 
     // Zustand und Besitzer unter dem Bild statt darüber: Über dem Bild brauchten sie
     // einen freien Streifen, der als Lücke zwischen Bild und „Neu“ stand.
+    // Der Name zuerst, sichtbar wie vorgelesen: TalkBack las vorher Zustand und Nummer davor.
     val texte: @Composable (Modifier) -> Unit = { spalte ->
-        Column(spalte.padding(horizontal = 10.dp, vertical = Abstaende.klein), verticalArrangement = Arrangement.spacedBy(1.dp)) {
-            Column(Modifier.padding(bottom = Abstaende.haar), verticalArrangement = Arrangement.spacedBy(Abstaende.haar)) {
+        Box(spalte) {
+        Column(Modifier.padding(horizontal = 10.dp, vertical = Abstaende.klein), verticalArrangement = Arrangement.spacedBy(1.dp)) {
+            Text(set.name ?: set.setNumber, fontWeight = FontWeight.SemiBold,
+                maxLines = 2, minLines = if (zeile) 1 else 2, overflow = TextOverflow.Ellipsis, style = MaterialTheme.typography.bodyMedium,
+                lineHeight = 16.sp)
+            Text(set.setNumber, style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Column(Modifier.padding(vertical = Abstaende.haar), verticalArrangement = Arrangement.spacedBy(Abstaende.haar)) {
                 // In der Zeile stehen die Plaketten vor dem Zustand in einer Reihe: Jede
                 // eigene Zeile kostete bei 200 % ein Drittel der nächsten Zeile.
                 if (zeile) FlowRow(
@@ -633,13 +645,6 @@ fun SetCard(
                 // man im Haushalt das falsche.
                 OwnerBadges(set.owners)
             }
-            Text(set.setNumber, style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant)
-            // Im Raster zwei Zeilen, Thema und Preis immer: Kacheln einer Reihe sind dann
-            // gleich hoch. Die Zeile muss niemandem gleichen und spart die Leerzeilen.
-            Text(set.name ?: set.setNumber, fontWeight = FontWeight.SemiBold,
-                maxLines = 2, minLines = if (zeile) 1 else 2, overflow = TextOverflow.Ellipsis, style = MaterialTheme.typography.bodyMedium,
-                lineHeight = 16.sp)
             // Thema und Teilezahl in einer Zeile: Getrennt stand meist eine davon leer.
             // Im Farbfächer ein Punkt im Ton der Kartenleiste davor: So liest sich die
             // Leiste als Thema, nicht nur als Farbe.
@@ -679,6 +684,10 @@ fun SetCard(
                     maxLines = 1, softWrap = false, modifier = Modifier.align(Alignment.CenterVertically))
             } else if (!zeile) Text("", style = MaterialTheme.typography.labelMedium)
         }
+        // Ohne Fläche: nur die Ansage der Bildplaketten, nach dem Preis.
+        val plaketten = listOfNotNull(guvAnsage, mengeAnsage).takeIf { !zeile && it.isNotEmpty() }
+        if (plaketten != null) Box(Modifier.semantics { contentDescription = plaketten.joinToString(", ") })
+        }
     }
 
     // Die Noppen stehen über der Karte: Eine Material-Card klippt auf ihre Form.
@@ -690,7 +699,8 @@ fun SetCard(
                 .then(if (isBrick) Modifier.padding(top = NoppenMass.Stein.hoehe) else Modifier)
                 .semantics { selected = ausgewaehlt }
                 .then(if (ausgewaehlt) Modifier.border(2.dp, MaterialTheme.colorScheme.primary, Formen.karte) else Modifier),
-            onClick = { onClick(set.setNumber) }
+            onClick = { onClick(set.setNumber) },
+            onClickLabel = stringResource(R.string.cd_details_oeffnen),
         ) {
             Column {
                 // Die Steinkante mit den Massen aus themes/brick.css (NoppenMass.Stein), wie im

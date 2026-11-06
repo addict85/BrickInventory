@@ -1,10 +1,11 @@
 import { mitVersion } from '../infra/setNummer';
-import { zaehleArt, stelleAuftragEin } from './dienst';
+import { zaehleArt, stelleAuftragEin, zieheVor } from './dienst';
 
-/** Ein Set steht höchstens einmal offen. */
-export async function anleitungEinreihen(setNumber: string, o: { nurAusweichquelle?: boolean } = {}): Promise<void> {
+/** Ein Set steht höchstens einmal offen. @returns die Kennung, oder null, wenn es schon offen steht */
+export async function anleitungEinreihen(setNumber: string, o: { nurAusweichquelle?: boolean; jetzt?: boolean } = {}): Promise<string | null> {
   const n = mitVersion(setNumber);
-  await stelleAuftragEin('anleitung', { set_number: n, ...(o.nurAusweichquelle ? { nur_ausweichquelle: true } : {}) },
+  if (o.jetzt) await zieheVor('anleitung', `anleitung:${n}`);
+  return stelleAuftragEin('anleitung', { set_number: n, ...(o.nurAusweichquelle ? { nur_ausweichquelle: true } : {}) },
     { schluessel: `anleitung:${n}`, maxVersuche: 3 });
 }
 

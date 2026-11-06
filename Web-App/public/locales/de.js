@@ -760,6 +760,7 @@ window.I18N_DE = {
   'monitor.art.nachlauf': 'Nachholen nach dem Start',
   'monitor.art.csv_sync': 'Rebrickable-Katalog',
   'monitor.art.preise': 'Preise aktualisieren',
+  'monitor.art.preise_nachladen': 'Fehlende Preise holen',
   'monitor.art.bild_nachlauf': 'Bild-Download (CDN)',
   'monitor.art.aufraeumen': 'Aufräumen (stündlich)',
   'monitor.art.aufraeumen_taeglich': 'Aufräumen (täglich)',

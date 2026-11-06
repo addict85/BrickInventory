@@ -88,7 +88,7 @@ class ErfassungViewModel @Inject constructor(
                     is Ergebnis.Success -> {
                         val setNum = r.data.setNumber
                         if (setNum.isBlank()) {
-                            meldungen.zeige(meldungen.text(R.string.vm_barcode_no_set, value))
+                            meldungen.zeige(meldungen.text(R.string.vm_barcode_not_found, value))
                             _barcodeState.update { it.copy(manuelleErfassungAnfordern = true) }
                             return@launch
                         }
@@ -99,7 +99,16 @@ class ErfassungViewModel @Inject constructor(
                             imageUrl = r.data.imageUrl, imageLocal = r.data.imageLocal,
                             year = r.data.year, pieces = r.data.pieces, theme = r.data.theme,
                             minifigs = r.data.minifigs, unsicher = r.data.unsicher, adding = false,
+                            besitzMenge = 0,
                         ) }
+                        // „Schon in deiner Sammlung (×N)“: Der Katalog kennt den eigenen Bestand;
+                        // eigener Auftrag, damit die Prüfanzeige nicht auf ihn wartet.
+                        viewModelScope.launch {
+                            val antwort = katalog.getCatalogSetDetail(setNum)
+                            val besitz = if (antwort is Ergebnis.Success) antwort.data.set else null
+                            if (besitz?.owned == true && _barcodeState.value.result == setNum)
+                                _barcodeState.update { it.copy(besitzMenge = besitz.ownedQuantity.coerceAtLeast(1)) }
+                        }
                     }
                     is Ergebnis.Error -> {
                         // „Nicht gefunden“ nur, wenn der Server das sagt; ein Netzfehler
@@ -132,7 +141,7 @@ class ErfassungViewModel @Inject constructor(
                     is Ergebnis.Success -> {
                         val d = r.data.set
                         if (d == null) {
-                            meldungen.zeige(meldungen.text(R.string.vm_barcode_no_set, setNum))
+                            meldungen.zeige(meldungen.text(R.string.vm_barcode_not_found, setNum))
                             _barcodeState.update { it.copy(manuelleErfassungAnfordern = true) }
                             return@launch
                         }
@@ -142,6 +151,7 @@ class ErfassungViewModel @Inject constructor(
                             imageUrl = d.imageUrl, imageLocal = d.imageLocal,
                             year = d.year, pieces = d.numParts, theme = d.themeName,
                             minifigs = d.minifigs, unsicher = true, adding = false,
+                            besitzMenge = if (d.owned) d.ownedQuantity.coerceAtLeast(1) else 0,
                         ) }
                     }
                     is Ergebnis.Error -> {
@@ -183,7 +193,7 @@ class ErfassungViewModel @Inject constructor(
 
     /** Der Bestätigungsdialog nach einem Scan: merken, an die Teileliste geben oder anlegen. */
     override fun confirmAddBarcode(setNum: String, purchasePrice: Double?, condition: String?,
-                          ownerUserId: Int?, storage: String?) {
+                          ownerUserId: Int?, storage: String?, quantity: Int) {
         val stand = _barcodeState.value
         if (stand.adding) return
         when (stand.source) {
@@ -203,12 +213,13 @@ class ErfassungViewModel @Inject constructor(
         }
         _barcodeState.update { ohneErgebnis(it).copy(adding = true) }
         viewModelScope.launch {
-            when (val r = sets.addSet(setNum, 1, purchasePrice, condition, ownerUserId,
+            when (val r = sets.addSet(setNum, quantity.coerceAtLeast(1), purchasePrice, condition, ownerUserId,
                                       storage?.trim()?.takeIf { it.isNotEmpty() })) {
                 is Ergebnis.Success -> {
                     // Offline gespeichert: Den Hinweis gibt der Ausgangsmelder, mit Zahl.
                     if (!r.gepuffert) meldungen.zeige(meldungen.text(
-                        if (r.data.katalogOffen) R.string.vm_set_added_no_catalog else R.string.vm_set_added, setNum))
+                        if (r.data.katalogOffen) R.string.vm_set_added_no_catalog else R.string.vm_set_added,
+                        if (r.data.katalogOffen) setNum else r.data.name ?: setNum))
                     bestand.melde(Aenderung.Sets)
                 }
                 is Ergebnis.Error -> meldeFehlgeschlageneErfassung(setNum, meldungen.meldung(r))
@@ -223,7 +234,7 @@ class ErfassungViewModel @Inject constructor(
 
     private fun ohneErgebnis(b: BarcodeUiState) = b.copy(
         result = null, setName = null, imageUrl = null, imageLocal = null, year = null,
-        pieces = null, theme = null, minifigs = null, adding = false, unsicher = false)
+        pieces = null, theme = null, minifigs = null, adding = false, unsicher = false, besitzMenge = 0)
 
     fun manuelleErfassungQuittieren() {
         _barcodeState.update { it.copy(manuelleErfassungAnfordern = false) }
@@ -285,7 +296,7 @@ class ErfassungViewModel @Inject constructor(
                             r.data.katalogOffen -> R.string.vm_set_added_no_catalog
                             r.data.action == "added" -> R.string.vm_added
                             else -> R.string.vm_updated
-                        }, r.data.setNumber))
+                        }, if (r.data.katalogOffen) r.data.setNumber else r.data.name ?: r.data.setNumber))
                         bestand.melde(Aenderung.Sets)
                     }
                     else -> meldeFehlgeschlageneErfassung(sn, r.data.error)

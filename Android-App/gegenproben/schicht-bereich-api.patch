@@ -4,12 +4,12 @@ Test: ch.brickinventoryapp.SchichtregelnTest
 Rot: ein Bereich kennt die Retrofit-Schnittstellen nicht
 
 diff --git a/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/ui/viewmodel/MerklisteViewModel.kt b/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/ui/viewmodel/MerklisteViewModel.kt
-index dbfdef2..738e5f6 100644
+index c6e5061..4cd1aa6 100644
 --- a/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/ui/viewmodel/MerklisteViewModel.kt
 +++ b/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/ui/viewmodel/MerklisteViewModel.kt
-@@ -1,6 +1,7 @@
- package ch.brickinventoryapp.ui.viewmodel
+@@ -2,6 +2,7 @@ package ch.brickinventoryapp.ui.viewmodel
  
+ import ch.brickinventoryapp.ui.abgeleitet
  import androidx.lifecycle.SavedStateHandle
 +import ch.brickinventoryapp.data.api.SetsApi
  import ch.brickinventoryapp.ui.model.alsAnsicht

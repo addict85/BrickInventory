@@ -1,0 +1,18 @@
+Gegenprobe: primaryContainer im klassischen Design wieder BrandBlue50 (05.11.2026, thema.py lokal)
+Modul: core-ui
+Test: ch.brickinventoryapp.TextKontrastTest
+Rot: jede Schriftrolle erreicht 4,5 zu 1 (classic.primary/primaryContainer 4,24)
+
+diff --git a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/theme/Theme.kt b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/theme/Theme.kt
+index 8831478..730f7bc 100644
+--- a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/theme/Theme.kt
++++ b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/theme/Theme.kt
+@@ -53,7 +53,7 @@ private val LightColors = lightColorScheme(
+     primary             = BrandBlue,
+     onPrimary           = Color.White,
+     // BrandBlue50 trug primary nur mit 4,24:1; der hellere Ton hält 4,5:1.
+-    primaryContainer    = BrandBlueLight,
++    primaryContainer    = BrandBlue50,
+     onPrimaryContainer  = BrandBlueDark,
+     secondary           = BrandBlueDark,
+     onSecondary         = Color.White,

@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.ui.viewmodel
 
+import ch.brickinventoryapp.ui.fehlerklasse
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import ch.brickinventoryapp.ui.model.KatalogSetAnsicht
@@ -90,7 +91,7 @@ class CatalogViewModel @Inject constructor(
             _catalogState.update {
                 // Auch die gemerkte Position zurücksetzen: Nach einem Filterwechsel
                 // zeigte sie auf Sets, die es in der neuen Liste nicht mehr gibt.
-                it.copy(isLoading = true, error = null,
+                it.copy(isLoading = true, error = null, fehlerKlasse = null,
                         loadedPages = emptyMap(), loadingPages = emptySet(), scrollTo = null,
                         scrollIndex = 0, scrollOffset = 0, jahrVerteilung = emptyList())
             }
@@ -111,7 +112,7 @@ class CatalogViewModel @Inject constructor(
                     } else _catalogState.update { it.copy(isLoading = false, error = r.data.error) }
                 }
                 is Ergebnis.Error -> {
-                    _catalogState.update { it.copy(isLoading = false, error = texte.meldung(r)) }
+                    _catalogState.update { it.copy(isLoading = false, error = texte.meldung(r), fehlerKlasse = fehlerklasse(r)) }
                     if (_catalogState.value.loadedPages.isNotEmpty()) meldungen.zeige(texte.meldungFuerSnackbar(r))
                 }
             }

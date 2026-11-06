@@ -1,5 +1,7 @@
 package ch.brickinventoryapp.nav
 
+import androidx.compose.runtime.remember
+import ch.brickinventoryapp.ui.screens.MerkpostenRueckgaengigRoute
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
@@ -51,8 +53,10 @@ private fun NavGraphBuilder.merklisteZiele(u: ZielUmgebung) {
             val nebeneinander = listeUndDetail(maxWidth.value)
             ReiterGeruest(stringResource(R.string.nav_wanted), u) {
                 val erfassung = u.aktivitaet.erfassung
+                val merkliste = hiltViewModel<MerklisteViewModel>()
+                MerkpostenRueckgaengigRoute(merkliste, u.snackbarHostState)
                 MerklisteRoute(
-                    vm = hiltViewModel<MerklisteViewModel>(),
+                    vm = merkliste,
                     imageLoader = imageLoader,
                     nebeneinander = nebeneinander,
                     onScan = { erfassung.setScannerSource("wanted"); navController.navigate(Screen.BarcodeScanner) },
@@ -65,8 +69,11 @@ private fun NavGraphBuilder.merklisteZiele(u: ZielUmgebung) {
     }
     composable<Screen.MerkpostenDetail> { backStack ->
         val ziel = backStack.toRoute<Screen.MerkpostenDetail>()
+        // Dasselbe ViewModel wie die Liste darunter: Dort läuft die Snackbar mit
+        // „Rückgängig“, nachdem das Detail eines gelöschten Postens zurückgegangen ist.
+        val liste = remember(backStack) { runCatching { navController.getBackStackEntry<Screen.Wanted>() }.getOrNull() }
         MerkpostenDetailRoute(
-            vm = hiltViewModel<MerklisteViewModel>(),
+            vm = if (liste != null) hiltViewModel<MerklisteViewModel>(liste) else hiltViewModel<MerklisteViewModel>(),
             setNumber = ziel.setNumber,
             condition = ziel.condition,
             imageLoader = imageLoader,
@@ -99,48 +106,63 @@ private fun NavGraphBuilder.katalogZiele(u: ZielUmgebung) {
                 )
             }
         }
-        composable<Screen.CatalogDetail> { backStack ->
-            val vm = u.aktivitaet.app
-            val katalog = katalogViewModel(navController, backStack)
-            val state by vm.state.collectAsStateWithLifecycle()
-            val blick by vm.blickfeld.collectAsStateWithLifecycle()
-            val catSetNumber = backStack.toRoute<Screen.CatalogDetail>().setNumber
-            val merkliste: MerklisteViewModel = hiltViewModel()
-            val erfassung = u.aktivitaet.erfassung
-            val catalogState by katalog.state.collectAsStateWithLifecycle()
-            val lagerZustand by vm.lagerState.collectAsStateWithLifecycle()
-            // loadCatalogDetail() meldet über denselben Kanal wie alle ViewModels
-            // (data/MeldungsKanal.kt), eingesammelt in AppNavigation.kt.
-            CatalogDetailScreen(
-                setNumber = catSetNumber,
-                detail = catalogState.detail?.takeIf { it.setNumber == catSetNumber },
-                isLoading = catalogState.detailLoading,
-                imageLoader = imageLoader,
-                serverUrl = state.serverUrl,
-                defaultCondition = state.userDefaultCondition ?: "N",
-                onLoad = katalog::loadCatalogDetail,
-                householdMembers = blick.householdMembers,
-                // Der VORRAT an Lagerorten, nicht die belegten Orte: Beim
-                // Erfassen soll auch ein leeres Regal zur Wahl stehen.
-                lagerorte = lagerZustand.eigene.map { it.name },
-                lagerortVorgabe = lagerZustand.vorgabe?.name ?: "",
-                onAddToGallery = { sn, qty, price, cond, owner, ort ->
-                    // Das Aufnehmen gehört der Galerie, das „besitze ich“ dem Katalog — die
-                    // Abhängigkeit steht hier sichtbar statt versteckt in einer gemeinsamen
-                    // Funktion.
-                    erfassung.addSet(sn, qty, price, cond, owner, ort)
-                    katalog.markiereAufgenommen(sn, qty)
-                },
-                // Merkposten UND Preisalarm in einem Griff — die Regel dahinter
-                // steht im MerklisteViewModel, nicht hier.
-                onWish = { sn, zustand, richtung, schwelle, konto ->
-                    merkliste.merkpostenMitAlarm(sn, zustand, richtung, schwelle, konto)
-                },
-                onOpenInGallery = { sn -> navController.navigate(Screen.SetDetail(sn)) },
-                onBack = { navController.popBackStack() }
-            )
-        }
+        composable<Screen.CatalogDetail> { backStack -> KatalogDetailZiel(u, backStack) }
     }
+}
+
+/** Das Katalog-Detail; eigene Funktion, damit katalogZiele kurz bleibt. */
+@Composable
+private fun KatalogDetailZiel(u: ZielUmgebung, backStack: NavBackStackEntry) {
+    val navController = u.navController
+    val imageLoader = u.imageLoader
+    val vm = u.aktivitaet.app
+    val katalog = katalogViewModel(navController, backStack)
+    val state by vm.state.collectAsStateWithLifecycle()
+    val blick by vm.blickfeld.collectAsStateWithLifecycle()
+    val catSetNumber = backStack.toRoute<Screen.CatalogDetail>().setNumber
+    val merkliste: MerklisteViewModel = hiltViewModel()
+    val erfassung = u.aktivitaet.erfassung
+    val catalogState by katalog.state.collectAsStateWithLifecycle()
+    val lagerZustand by vm.lagerState.collectAsStateWithLifecycle()
+    // Steht das Set schon auf der Merkliste? Dann zeigt das Detail den Posten statt „Auf die Merkliste“.
+    val merkposten by merkliste.merklisteState.collectAsStateWithLifecycle()
+    LaunchedEffect(Unit) { merkliste.ladeMerkliste() }
+    // loadCatalogDetail() meldet über denselben Kanal wie alle ViewModels
+    // (data/MeldungsKanal.kt), eingesammelt in AppNavigation.kt.
+    CatalogDetailScreen(
+        setNumber = catSetNumber,
+        detail = catalogState.detail?.takeIf { it.setNumber == catSetNumber },
+        isLoading = catalogState.detailLoading,
+        imageLoader = imageLoader,
+        serverUrl = state.serverUrl,
+        defaultCondition = state.userDefaultCondition ?: "N",
+        onLoad = katalog::loadCatalogDetail,
+        householdMembers = blick.householdMembers,
+        // Der VORRAT an Lagerorten, nicht die belegten Orte: Beim
+        // Erfassen soll auch ein leeres Regal zur Wahl stehen.
+        lagerorte = lagerZustand.eigene.map { it.name },
+        lagerortVorgabe = lagerZustand.vorgabe?.name ?: "",
+        onAddToGallery = { sn, qty, price, cond, owner, ort ->
+            // Das Aufnehmen gehört der Galerie, das „besitze ich“ dem Katalog — die
+            // Abhängigkeit steht hier sichtbar statt versteckt in einer gemeinsamen
+            // Funktion.
+            erfassung.addSet(sn, qty, price, cond, owner, ort)
+            katalog.markiereAufgenommen(sn, qty)
+        },
+        // Merkposten UND Preisalarm in einem Griff — die Regel dahinter
+        // steht im MerklisteViewModel, nicht hier.
+        onWish = { sn, zustand, richtung, schwelle, konto ->
+            merkliste.merkpostenMitAlarm(sn, zustand, richtung, schwelle, konto)
+        },
+        onOpenInGallery = { sn -> navController.navigate(Screen.SetDetail(sn)) },
+        onBack = { navController.popBackStack() },
+        gemerkt = merkposten.merkposten.firstOrNull { it.setNumber == catSetNumber },
+        // Über die Liste: Dort läuft die Snackbar, wenn der Posten gelöscht wird.
+        onOeffneMerkposten = { sn, zustand ->
+            navController.navigate(Screen.Wanted)
+            navController.navigate(Screen.MerkpostenDetail(sn, zustand))
+        },
+    )
 }
 
 /** Das ViewModel des Teilgraphen, an dessen Eintrag gebunden. */

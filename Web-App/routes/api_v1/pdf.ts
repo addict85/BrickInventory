@@ -2,7 +2,7 @@
  * der Job-Prozess in einem eigenen Faden, damit der Web-Prozess frei bleibt.
  * Ausführlich: docs/begruendungen/routes/api_v1/pdf.ts.md#abschnitt */
 import { meldeUndWeiter, meldeUndLiefere, ohneFehlendeDatei } from '../../src/infra/fehler';
-import { fehlerAntwort, streamFileToResponse, pfadParam } from '../../src/infra/httpAntwort';
+import { fehlerAntwort, streamFileToResponse } from '../../src/infra/httpAntwort';
 import { requireToken, kontoSchranke } from './middleware';
 import { registerSse } from '../../src/infra/sseRegistry';
 import _pdfFs from 'fs/promises';
@@ -51,15 +51,15 @@ router.post('/sets/partslist-pdf', requireToken, async (req: Anfrage<'POST /api/
 });
 
 router.get('/sets/partslist-pdf/status/:jobId', requireToken, async (req: Anfrage<'GET /api/v1/sets/partslist-pdf/status/:jobId'>, res: Antwort<'GET /api/v1/sets/partslist-pdf/status/:jobId'>) => {
-  if (!validJobId(String(req.params.jobId))) return sendeFehler(req, res, 400, 'job_id_ungueltig');
-  const job = await pdfJobReadFor(pfadParam(req, 'jobId'), req.apiUser.user_id);
+  if (!validJobId(req.pfad.jobId)) return sendeFehler(req, res, 400, 'job_id_ungueltig');
+  const job = await pdfJobReadFor(req.pfad.jobId, req.apiUser.user_id);
   if (!job) return sendeFehler(req, res, 404, 'job_nicht_gefunden');
   res.json({ success: true, status: job.status, error: job.error || null, etaSeconds: job.etaSeconds ?? null, missingImages: job.missingImages ?? null });
 });
 
 // SSE statt Polling; der Rückfall sendet nur bei Änderung.
-router.get('/sets/partslist-pdf/stream/:jobId', requireToken, kontoSchranke('strom'), async (req: AuthedRequest, res) => {
-  const jobId = String(req.params.jobId);
+router.get('/sets/partslist-pdf/stream/:jobId', requireToken, kontoSchranke('strom'), async (req: Anfrage<'GET /api/v1/sets/partslist-pdf/stream/:jobId'>, res) => {
+  const jobId = req.pfad.jobId;
   if (!validJobId(jobId)) return sendeFehler(req, res, 400, 'job_id_ungueltig');
   const initial = await pdfJobReadFor(jobId, req.apiUser.user_id);
   if (!initial) return sendeFehler(req, res, 404, 'job_nicht_gefunden');
@@ -117,8 +117,8 @@ router.get('/sets/partslist-pdf/stream/:jobId', requireToken, kontoSchranke('str
   req.on('close', cleanup);
 });
 
-router.get('/sets/partslist-pdf/download/:jobId', requireToken, async (req: AuthedRequest, res) => {
-  const jobId = String(req.params.jobId);
+router.get('/sets/partslist-pdf/download/:jobId', requireToken, async (req: Anfrage<'GET /api/v1/sets/partslist-pdf/download/:jobId'>, res) => {
+  const jobId = req.pfad.jobId;
   if (!validJobId(jobId)) return sendeFehler(req, res, 400, 'job_id_ungueltig');
   const job = await pdfJobReadFor(jobId, req.apiUser.user_id);
   if (!job) return sendeFehler(req, res, 404, 'job_nicht_gefunden');

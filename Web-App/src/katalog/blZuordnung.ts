@@ -62,7 +62,8 @@ export function merkeBlFarbnummer(colorId: number, blColorId: number): Promise<v
 }
 
 /** Rebrickable liefert `ext_ids` als Liste oder die Liste direkt. */
-export function blFarbnummerAus(farbe: any): number | null {
+type ExterneNummern = { external_ids?: { BrickLink?: { ext_ids?: number[] } & number[] } } | null | undefined;
+export function blFarbnummerAus(farbe: ExterneNummern): number | null {
   const id = farbe?.external_ids?.BrickLink?.ext_ids?.[0] ?? farbe?.external_ids?.BrickLink?.[0];
   return id ?? null;
 }

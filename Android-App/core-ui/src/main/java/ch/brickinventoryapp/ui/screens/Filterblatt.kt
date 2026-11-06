@@ -1,6 +1,8 @@
 package ch.brickinventoryapp.ui.screens
 
-import ch.brickinventoryapp.ui.components.AuswahlChip
+import ch.brickinventoryapp.ui.components.WahlChip
+import androidx.compose.ui.semantics.heading
+import androidx.compose.foundation.selection.selectableGroup
 import ch.brickinventoryapp.ui.model.kontoOptionen
 import ch.brickinventoryapp.ui.model.LagerortAnsicht
 import ch.brickinventoryapp.ui.model.MitgliedAnsicht
@@ -38,12 +40,10 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import ch.brickinventoryapp.ressourcen.R
 import ch.brickinventoryapp.data.ScopeFilter
 import ch.brickinventoryapp.ui.theme.Abstaende
-import ch.brickinventoryapp.ui.theme.Formen
 import ch.brickinventoryapp.ui.components.MitTooltip
 import ch.brickinventoryapp.ui.components.ScanKnopf
 import ch.brickinventoryapp.ui.components.grosseSchrift
@@ -154,7 +154,7 @@ fun FilterBlattRahmen(
             verticalArrangement = Arrangement.spacedBy(Abstaende.gross),
         ) {
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                Text(stringResource(R.string.filter_title), Modifier.weight(1f),
+                Text(stringResource(R.string.filter_title), Modifier.weight(1f).semantics { heading() },
                     fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium)
                 if (onZuruecksetzen != null) {
                     TextButton(onClick = onZuruecksetzen) { Text(stringResource(R.string.filter_reset)) }
@@ -165,29 +165,30 @@ fun FilterBlattRahmen(
     }
 }
 
-/** Ein Abschnitt des Blatts: Überschrift und eine umbrechende Reihe Chips. */
+/**
+ * Ein Abschnitt des Blatts: Überschrift und eine umbrechende Reihe Chips. Jeder Abschnitt
+ * ist eine Einfachwahl; TalkBack springt per Überschrift von Abschnitt zu Abschnitt.
+ */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun FilterAbschnitt(titel: String, chips: @Composable () -> Unit) {
     Column(verticalArrangement = Arrangement.spacedBy(Abstaende.klein)) {
-        Text(titel, style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.SemiBold)
+        Text(titel, Modifier.semantics { heading() }, style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.SemiBold)
         FlowRow(
+            Modifier.selectableGroup(),
             horizontalArrangement = Arrangement.spacedBy(Abstaende.klein),
             verticalArrangement = Arrangement.spacedBy(Abstaende.winzig),
         ) { chips() }
     }
 }
 
-/** Ein Chip des Blatts; lange Namen (Themen, Konten) brechen nicht die Reihe. */
+/**
+ * Ein Chip des Blatts, vorgelesen als Optionsfeld. Lange Namen brechen um statt
+ * abgeschnitten zu werden; nur bei normaler Schrift ist der Chip schmal begrenzt.
+ */
 @Composable
 fun FilterWahl(text: String, gewaehlt: Boolean, onClick: () -> Unit) {
-    AuswahlChip(
-        selected = gewaehlt,
-        onClick = onClick,
-        label = { Text(text, maxLines = 1, overflow = TextOverflow.Ellipsis) },
-        modifier = Modifier.widthIn(max = 220.dp),
-        shape = Formen.chip,
-    )
+    WahlChip(text, gewaehlt, onClick, if (grosseSchrift()) Modifier else Modifier.widthIn(max = 220.dp))
 }
 
 /** Kontofilter als Abschnitt — nur, wenn es im Haushalt etwas zu wählen gibt. */

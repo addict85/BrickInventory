@@ -1,7 +1,8 @@
 /**
  * Laufzeitzustand der Jobs steht in laufzustand, nicht in global_settings:
- * Migration 0063 zieht die Schlüssel um, der Jobmonitor schreibt dorthin, und
- * der Bildzähler bleibt auch unter gleichzeitigen Aufrufen genau.
+ * Migration 0063 zieht die Schlüssel um, der Bildzähler bleibt auch unter
+ * gleichzeitigen Aufrufen genau. Die Kacheln der Verwaltung lesen den Stand
+ * eines Laufs aus der Auftragstabelle, nicht aus einem zweiten Speicher.
  *
  * Gegenproben (am 28.10.2026 gemessen):
  *   A  in der Migration `starts_with(key, 'job_monitor_')` weggelassen (im
@@ -9,6 +10,8 @@
  *      Konfiguration“
  *   B  zaehleZustand() als Lesen-dann-Schreiben (liesZustand + setzeZustand)
  *      → rot: „der Bildzähler zählt gleichzeitige Aufrufe genau“
+ * Gegenprobe (05.11.2026): in letzteJeArt() `ORDER BY art, aktualisiert DESC`
+ *   → rot: „die Kachel zeigt den laufenden Auftrag“ (der jüngere offene gewann)
  *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL.
  */
@@ -63,12 +66,17 @@ test('Laufzustand getrennt von der Konfiguration', { concurrency: 1 }, async (t)
 
   const jm = _req('src/auftraege/jobMonitor.js');
 
-  await t.test('der Jobmonitor schreibt in laufzustand', async () => {
-    await jm.update('probe', { status: 'running', progress: 3 });
-    for (let i = 0; i < 40 && !(await db.get(`SELECT 1 FROM laufzustand WHERE schluessel = 'job_monitor_probe'`)); i++)
-      await new Promise(r => setTimeout(r, 25));
-    assert.equal((await jm.all()).probe.progress, 3);
-    assert.equal(await db.get(`SELECT 1 FROM global_settings WHERE key LIKE 'job_monitor_%'`), undefined);
+  await t.test('die Kacheln lesen den Stand aus der Auftragstabelle', async () => {
+    await db.run("DELETE FROM auftraege WHERE art = 'preise'");
+    await db.run(`INSERT INTO auftraege (art, nutzlast, status, belegt_von, frist_bis, fortschritt, aktualisiert)
+                  VALUES ('preise', '{}', 'laeuft', 'p', NOW() + INTERVAL '1 min', '{"erledigt": 3, "gesamt": 9, "text": "10001-1"}',
+                          NOW() - INTERVAL '1 min')`);
+    // Der nächste geplante Lauf ist jünger, aber nicht der, der gerade arbeitet.
+    await db.run(`INSERT INTO auftraege (art, nutzlast, schluessel) VALUES ('preise', '{}', 'plan:preise')`);
+    const k = (await jm.all()).priceJob;
+    assert.deepEqual({ status: k.status, progress: k.progress, total: k.total, sub: k.sub },
+      { status: 'running', progress: 3, total: 9, sub: '10001-1' }, 'die Kachel zeigt den laufenden Auftrag');
+    await db.run("DELETE FROM auftraege WHERE art = 'preise'");
   });
 
   await t.test('der Bildzähler zählt gleichzeitige Aufrufe genau', async () => {

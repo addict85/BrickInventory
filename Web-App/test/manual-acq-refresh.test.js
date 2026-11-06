@@ -184,8 +184,9 @@ test('Teile und Minifiguren stehen in den Finanzen je Kaufpreis in einer Zeile',
   const fc = require('./helpers/sources').finanzQuelle();
   // Drei: Sets, manuelle Teile, manuelle Minifiguren — alle drei Tabellen im
   // Finanzen-Reiter zeigen dieselbe Form.
+  // Teile und Figuren teilen sich bewerteManuell(); zusammen mit bewerteSet() drei Wege.
   const acqLines = [...fc.matchAll(/acquisitions: rows,/g)];
-  assert.equal(acqLines.length, 3,
+  assert.equal(acqLines.length + (fc.match(/= bewerteManuell\(|\.\.\.bewerteManuell\(/g) || []).length - 1, 3,
     'Alle drei Bewertungen müssen die Einzelzeilen mitliefern');
 
   const fin = read('public/js/04-finance.js');

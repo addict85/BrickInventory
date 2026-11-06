@@ -375,7 +375,7 @@ private fun BildKarte(imageUrl: String?, imageLoader: ImageLoader, title: String
                 .fillMaxWidth()
                 .height(200.dp)
                 .clip(Formen.chip)
-                .clickable(enabled = imageUrl != null, role = Role.Button, onClick = onZoom)
+                .clickable(enabled = imageUrl != null, onClickLabel = stringResource(R.string.cd_bild_vergroessern), role = Role.Button, onClick = onZoom)
                 .padding(Abstaende.mittel),
             contentScale = ContentScale.Fit,
             ersatzGroesse = 64.dp,

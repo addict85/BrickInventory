@@ -48,7 +48,7 @@ export function loescheAltenVerlauf(tage: string) {
 
 
 /** `table` und `keySql` sind feste Ausdrücke der Aufrufer, keine Eingaben. */
-export function manualSeries(table: string, keySql: string, keyVals: any[], currency: string, cond: 'N' | 'U') {
+export function manualSeries(table: string, keySql: string, keyVals: unknown[], currency: string, cond: 'N' | 'U') {
   return db.all<{ avg_price: number | null; qty_avg_price: number | null; recorded_at: string }>(
     `SELECT DISTINCT ON (to_char(recorded_at, 'YYYY-MM-DD'))
             avg_price, qty_avg_price, to_char(recorded_at, 'YYYY-MM-DD') AS recorded_at
