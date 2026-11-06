@@ -22,6 +22,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshots.Snapshot
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.graphics.toPixelMap
@@ -308,7 +309,9 @@ class BarrierefreiheitBefundeTest {
             .fetchSemanticsNode("Laden wird nicht angesagt")
         // Die Uhr von Hand: Die Ansage darf erst nach zehn Sekunden wechseln.
         compose.mainClock.autoAdvance = false
-        fortschritt = "Noch 29 s"
+        // Auf dem UI-Faden und sofort gemeldet: Sonst kam die Änderung erst mit der Uhr an,
+        // und auch eine ungedrosselte Ansage zeigte nach 5 s noch den alten Wortlaut.
+        compose.runOnUiThread { fortschritt = "Noch 29 s"; Snapshot.sendApplyNotifications() }
         compose.mainClock.advanceTimeBy(5_000)
         compose.onNode(hasContentDescription("Noch 30 s") and live).fetchSemanticsNode("Nach 5 s schon neu angesagt")
         compose.mainClock.advanceTimeBy(6_000)
