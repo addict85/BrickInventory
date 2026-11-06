@@ -316,6 +316,9 @@ test('Gutscheine gegen echte Datenbank', { concurrency: 1 }, async (t) => {
       const form = new FormData();
       form.append('file', new Blob([Buffer.from('kein PDF')], { type: 'text/plain' }), 'x.txt');
       const r = await hole('/api/v1/vouchers/pdf', keksOpa, { method: 'POST', body: form });
+      // Ganz lesen: Bis die Sitzung gespeichert ist, hält der Server das Ende der
+      // Antwort und damit den Upload-Platz des Kontos; der nächste Fall bekäme 429.
+      await r.arrayBuffer();
       assert.notEqual(r.status, 200, 'eine Textdatei darf nicht als Gutschein durchgehen');
     });
 
