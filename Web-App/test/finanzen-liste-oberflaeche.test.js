@@ -24,26 +24,62 @@ function sets(n) {
   return Array.from({ length: n }, (_, i) => {
     const nr = String(10000 + i);
     const wert = 10 + i;
-    return { set_number: `${nr}-1`, name: i === 217 ? 'Seltene Burg' : `Set ${nr}`, quantity: 1, avg_price: wert, wert_gesamt: wert,
-      from_cache: true, is_fallback: false, no_price: false, mixed: false, purchase_price: 5 + (i % 7), pnl_prozent: i % 13,
-      acquisitions: [] };
+    return {
+      set_number: `${nr}-1`,
+      name: i === 217 ? 'Seltene Burg' : `Set ${nr}`,
+      quantity: 1,
+      avg_price: wert,
+      wert_gesamt: wert,
+      from_cache: true,
+      is_fallback: false,
+      no_price: false,
+      mixed: false,
+      purchase_price: 5 + (i % 7),
+      pnl_prozent: i % 13,
+      acquisitions: [],
+    };
   });
 }
 
 async function oeffneFinanzen(anzahl) {
   const liste = sets(anzahl);
-  const o = await oeffneOberflaeche({
-    '/v1/finance/valuation': { success: true, currency: 'EUR', condition: 'N', total_value: '1', kaufpreise_fremde_waehrung: 0,
-      totals: { min: '0', avg: '1', max: '0', qty_avg: '1' }, sets: liste },
-    '/v1/finance/pnl': { success: true, currency: 'EUR', sets: [], totals: { purchase: '1', current: '1', kaufpreise_fremde_waehrung: 0,
-      positionen: anzahl, positionen_bewertet: anzahl, positionen_ohne_marktpreis: 0, positionen_ohne_kaufpreis: 0,
-      basis_einstand: '1', basis_marktwert: '1', basis_guv_betrag: '0', pnl_prozent: 0 } },
-  }, { browserSprache: 'de-DE' });
+  const o = await oeffneOberflaeche(
+    {
+      '/v1/finance/valuation': {
+        success: true,
+        currency: 'EUR',
+        condition: 'N',
+        total_value: '1',
+        kaufpreise_fremde_waehrung: 0,
+        totals: { min: '0', avg: '1', max: '0', qty_avg: '1' },
+        sets: liste,
+      },
+      '/v1/finance/pnl': {
+        success: true,
+        currency: 'EUR',
+        sets: [],
+        totals: {
+          purchase: '1',
+          current: '1',
+          kaufpreise_fremde_waehrung: 0,
+          positionen: anzahl,
+          positionen_bewertet: anzahl,
+          positionen_ohne_marktpreis: 0,
+          positionen_ohne_kaufpreis: 0,
+          basis_einstand: '1',
+          basis_marktwert: '1',
+          basis_guv_betrag: '0',
+          pnl_prozent: 0,
+        },
+      },
+    },
+    { browserSprache: 'de-DE' },
+  );
   await reiter(o.w, 'finance');
   await warte(() => o.d.querySelectorAll('#fin-tbl tbody tr[data-arg]').length > 0, 4000);
   return o;
 }
-const zeilen = (o) => [...o.d.querySelectorAll('#fin-tbl [data-fin-art="sets"] tbody tr[data-arg]')];
+const zeilen = o => [...o.d.querySelectorAll('#fin-tbl [data-fin-art="sets"] tbody tr[data-arg]')];
 
 test('blockweise mit Weitere-Knopf', async () => {
   const o = await oeffneFinanzen(250);
@@ -55,7 +91,9 @@ test('blockweise mit Weitere-Knopf', async () => {
     mehr.click();
     await takt(10);
     assert.equal(zeilen(o).length, 200);
-  } finally { o.w.close(); }
+  } finally {
+    o.w.close();
+  }
 });
 
 test('Suche über alle Positionen', async () => {
@@ -68,7 +106,9 @@ test('Suche über alle Positionen', async () => {
     assert.ok(await warte(() => zeilen(o).length === 1, 1500), `Zeilen: ${zeilen(o).length}`);
     assert.equal(zeilen(o)[0].dataset.arg, '10217-1', 'Treffer liegt hinter dem ersten Block');
     assert.equal(o.d.querySelector('#fin-tbl [data-click="finMehr"]'), null);
-  } finally { o.w.close(); }
+  } finally {
+    o.w.close();
+  }
 });
 
 test('Sortierköpfe mit aria-sort', async () => {
@@ -86,7 +126,9 @@ test('Sortierköpfe mit aria-sort', async () => {
     await takt(10);
     assert.equal(knopf().closest('th').getAttribute('aria-sort'), 'ascending');
     assert.equal(zeilen(o)[0].dataset.arg, '10000-1');
-  } finally { o.w.close(); }
+  } finally {
+    o.w.close();
+  }
 });
 
 test('Legende zeigt Zeichen', async () => {
@@ -96,5 +138,7 @@ test('Legende zeigt Zeichen', async () => {
     assert.ok(legende, 'Legende fehlt');
     assert.doesNotMatch(legende.textContent, /<span/);
     assert.equal(legende.querySelectorAll('.legende-zeichen').length, 3);
-  } finally { o.w.close(); }
+  } finally {
+    o.w.close();
+  }
 });

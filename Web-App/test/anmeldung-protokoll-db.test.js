@@ -135,7 +135,7 @@ test('Anmeldeereignisse im Protokoll', { concurrency: 1 }, async (t) => {
   await t.test('die Mail höchstens einmal am Tag', async () => {
     await db.run(`DELETE FROM rate_limit_attempts WHERE key LIKE 'login%'`);
     for (let i = 0; i < 5; i++) await anmelden(NAME, FALSCH);
-    await new Promise(r => setTimeout(r, 300));
+    await warteAufMails(2); // eine zweite Mail käme hier an
     assert.equal(mails.length, 1, JSON.stringify(mails));
   });
 

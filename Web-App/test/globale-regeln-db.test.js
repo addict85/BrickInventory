@@ -19,16 +19,26 @@ const _req = require('./helpers/sources').buildAndRequire();
 const { dbOderSkip } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
 
-test('globale Einstellungen: eine Regel je Schlüssel', { concurrency: 1 }, async (t) => {
+test('globale Einstellungen: eine Regel je Schlüssel', { concurrency: 1 }, async t => {
   const db = await dbOderSkip(t, _req);
   if (!db) return;
   t.after(() => db.pool.end().catch(() => {}));
-  const uid = (await db.get(`INSERT INTO users (username, password_hash, is_admin, is_active, email_verified)
-    VALUES ($1, 'x', true, true, true) RETURNING id`, [`regeln_${process.pid}`])).id;
-  const { base } = testServer(_req, { t, sitzung: { userId: uid, username: 'v', isAdmin: true },
-    apiNutzer: { user_id: uid, username: 'v', is_admin: 1 }, routen: { '/api/v1': 'routes/api_v1/index.js' } });
-  const wert = async (k) => (await db.get('SELECT value FROM global_settings WHERE key = $1', [k]))?.value ?? null;
-  const schicke = (m, p, body) => fetch(base + p, { method: m, headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) });
+  const uid = (
+    await db.get(
+      `INSERT INTO users (username, password_hash, is_admin, is_active, email_verified)
+    VALUES ($1, 'x', true, true, true) RETURNING id`,
+      [`regeln_${process.pid}`],
+    )
+  ).id;
+  const { base } = testServer(_req, {
+    t,
+    sitzung: { userId: uid, username: 'v', isAdmin: true },
+    apiNutzer: { user_id: uid, username: 'v', is_admin: 1 },
+    routen: { '/api/v1': 'routes/api_v1/index.js' },
+  });
+  const wert = async k => (await db.get('SELECT value FROM global_settings WHERE key = $1', [k]))?.value ?? null;
+  const schicke = (m, p, body) =>
+    fetch(base + p, { method: m, headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) });
 
   await t.test('ungültige Grenzwerte ergeben 400 und ändern nichts', async () => {
     const r0 = await schicke('PUT', '/api/v1/admin/api-limits', { bricklink: 4000 });
@@ -46,22 +56,37 @@ test('globale Einstellungen: eine Regel je Schlüssel', { concurrency: 1 }, asyn
 
   await t.test('ein Import mit ungültigem Limit ändert nichts', async () => {
     const form = new FormData();
-    form.append('file', new Blob([JSON.stringify({ version: '3.0', global: { api_limit_bricklink: 'NaN' } })]), 'k.json');
+    form.append(
+      'file',
+      new Blob([JSON.stringify({ version: '3.0', global: { api_limit_bricklink: 'NaN' } })]),
+      'k.json',
+    );
     const r = await fetch(`${base}/api/v1/settings/import`, { method: 'POST', body: form });
     assert.equal(r.status, 400, 'ein Import mit ungültigem Limit …');
     assert.equal(await wert('api_limit_bricklink'), '4000');
     const kaputt = new FormData();
     kaputt.append('file', new Blob([JSON.stringify({ global: 'kein Objekt' })]), 'k.json');
-    assert.equal((await fetch(`${base}/api/v1/settings/import`, { method: 'POST', body: kaputt })).status, 400,
-      'eine Importdatei ausserhalb des Schemas');
+    assert.equal(
+      (await fetch(`${base}/api/v1/settings/import`, { method: 'POST', body: kaputt })).status,
+      400,
+      'eine Importdatei ausserhalb des Schemas',
+    );
   });
 
   await t.test('jeder geschriebene Schlüssel hat eine Regel', () => {
     const { GLOBALE_REGELN } = _req('src/infra/vertrag/globaleRegeln.js');
     const { GLOBALE_EINSTELLUNGEN } = _req('src/infra/vertrag/einstellungen.js');
     const { DAILY_JOBS } = _req('src/auftraege/zeitplan.js');
-    const geschrieben = [...GLOBALE_EINSTELLUNGEN, ...DAILY_JOBS.map(j => `job_time_${j.name}`), 'app_theme', 'einrichtung_erledigt'];
-    assert.deepEqual(geschrieben.filter(k => !Object.hasOwn(GLOBALE_REGELN, k)), []);
+    const geschrieben = [
+      ...GLOBALE_EINSTELLUNGEN,
+      ...DAILY_JOBS.map(j => `job_time_${j.name}`),
+      'app_theme',
+      'einrichtung_erledigt',
+    ];
+    assert.deepEqual(
+      geschrieben.filter(k => !Object.hasOwn(GLOBALE_REGELN, k)),
+      [],
+    );
     assert.ok(require('node:fs').existsSync(path.join(ROOT, 'src/infra/vertrag/globaleRegeln.ts')));
   });
 });

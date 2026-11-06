@@ -23,18 +23,31 @@ const _req = require('./helpers/sources').buildAndRequire();
 const { dbOderSkip } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
 
-test('Servertexte in der Sprache der Anfrage', { concurrency: 1 }, async (t) => {
+test('Servertexte in der Sprache der Anfrage', { concurrency: 1 }, async t => {
   const db = _req('db/database.js');
-  if (!await dbOderSkip(t, _req)) return;
+  if (!(await dbOderSkip(t, _req))) return;
   const NAME = `sprache-${process.pid}`;
   await db.run('DELETE FROM users WHERE username=$1', [NAME]);
-  const uid = (await db.get(`INSERT INTO users (username,password_hash,is_admin) VALUES ($1,'x',true) RETURNING id`, [NAME])).id;
-  t.after(async () => { await db.run('DELETE FROM users WHERE id=$1', [uid]).catch(() => {}); await db.pool.end().catch(() => {}); });
+  const uid = (
+    await db.get(`INSERT INTO users (username,password_hash,is_admin) VALUES ($1,'x',true) RETURNING id`, [NAME])
+  ).id;
+  t.after(async () => {
+    await db.run('DELETE FROM users WHERE id=$1', [uid]).catch(() => {});
+    await db.pool.end().catch(() => {});
+  });
   await db.run('INSERT INTO sets (user_id, set_number) VALUES ($1,$2)', [uid, '10294-1']);
-  await db.run(`INSERT INTO set_acquisitions (user_id, set_number, quantity, purchase_price, condition) VALUES ($1,'10294-1',1,600,'N')`, [uid]);
-  const { base } = testServer(_req, { sitzung: { userId: uid, isAdmin: 1 }, apiNutzer: { user_id: uid, is_admin: 1 },
-    routen: { '/api/v1': 'routes/api_v1/index.js' }, t });
-  const hole = async (pfad, sprache) => (await fetch(`${base}/api/v1/${pfad}`, { headers: { 'Accept-Language': sprache } })).json();
+  await db.run(
+    `INSERT INTO set_acquisitions (user_id, set_number, quantity, purchase_price, condition) VALUES ($1,'10294-1',1,600,'N')`,
+    [uid],
+  );
+  const { base } = testServer(_req, {
+    sitzung: { userId: uid, isAdmin: 1 },
+    apiNutzer: { user_id: uid, is_admin: 1 },
+    routen: { '/api/v1': 'routes/api_v1/index.js' },
+    t,
+  });
+  const hole = async (pfad, sprache) =>
+    (await fetch(`${base}/api/v1/${pfad}`, { headers: { 'Accept-Language': sprache } })).json();
 
   await t.test('Preisfehler auf Englisch', async () => {
     const en = (await hole('finance/valuation', 'en')).sets.find(s => s.set_number === '10294-1');
@@ -49,7 +62,7 @@ test('Servertexte in der Sprache der Anfrage', { concurrency: 1 }, async (t) => 
     const jobs = (await hole('admin/jobs', 'en')).jobs;
     assert.deepEqual(jobs.bricksetRetry.sub_teile, [{ code: 'keine_ausstehenden' }]);
     assert.deepEqual(jobs.pdfJobs?.sub_teile ?? [{ code: 'no_active' }], [{ code: 'no_active' }]);
-    for (const [name, k] of Object.entries(jobs)) if (k.sub_teile) for (const s of k.sub_teile)
-      assert.match(s.code, /^[a-z_]+$/, `${name}: ${s.code}`);
+    for (const [name, k] of Object.entries(jobs))
+      if (k.sub_teile) for (const s of k.sub_teile) assert.match(s.code, /^[a-z_]+$/, `${name}: ${s.code}`);
   });
 });

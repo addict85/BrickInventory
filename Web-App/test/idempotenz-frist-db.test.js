@@ -16,22 +16,34 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 const _req = require('./helpers/sources').buildAndRequire();
 const { dbOderSkip } = require('./helpers/db');
 
-test('Idempotenz: die Frist folgt der längsten Anfrage', { concurrency: 1 }, async (t) => {
+test('Idempotenz: die Frist folgt der längsten Anfrage', { concurrency: 1 }, async t => {
   const db = await dbOderSkip(t, _req);
   if (!db) return;
   t.after(() => db.pool.end().catch(() => {}));
   const dienst = _req('src/idempotenz/dienst.js');
   const { HTTP_FRISTEN } = _req('src/infra/httpFristen.js');
-  assert.ok(dienst.VERWAIST_NACH_S * 1000 > HTTP_FRISTEN.requestTimeout, 'die Frist ist kürzer als die längste Anfrage');
+  assert.ok(
+    dienst.VERWAIST_NACH_S * 1000 > HTTP_FRISTEN.requestTimeout,
+    'die Frist ist kürzer als die längste Anfrage',
+  );
 
-  const uid = (await db.get(`INSERT INTO users (username, password_hash) VALUES ($1, 'x') RETURNING id`, [`idem_${process.pid}`])).id;
+  const uid = (
+    await db.get(`INSERT INTO users (username, password_hash) VALUES ($1, 'x') RETURNING id`, [`idem_${process.pid}`])
+  ).id;
   t.after(() => db.run('DELETE FROM users WHERE id = $1', [uid]).catch(() => {}));
   const abdruck = dienst.fingerabdruck('POST', '/api/v1/sets', { set_number: '10294-1' });
   assert.deepEqual(await dienst.beginne(uid, 'k1', abdruck), { art: 'neu' });
   // Die Uhr der ersten Anfrage um 130 s zurück: Sie läuft noch (bis 300 s erlaubt).
   await db.run(`UPDATE idempotenz SET angelegt = NOW() - INTERVAL '130 seconds' WHERE user_id = $1`, [uid]);
-  assert.deepEqual(await dienst.beginne(uid, 'k1', abdruck), { art: 'laeuft' }, 'nach 130 s läuft die erste Anfrage noch');
+  assert.deepEqual(
+    await dienst.beginne(uid, 'k1', abdruck),
+    { art: 'laeuft' },
+    'nach 130 s läuft die erste Anfrage noch',
+  );
   // Nach der Frist ist sie verwaist und darf neu belegt werden.
-  await db.run(`UPDATE idempotenz SET angelegt = NOW() - make_interval(secs => $2) WHERE user_id = $1`, [uid, dienst.VERWAIST_NACH_S + 1]);
+  await db.run(`UPDATE idempotenz SET angelegt = NOW() - make_interval(secs => $2) WHERE user_id = $1`, [
+    uid,
+    dienst.VERWAIST_NACH_S + 1,
+  ]);
   assert.deepEqual(await dienst.beginne(uid, 'k1', abdruck), { art: 'neu' }, 'eine verwaiste Anfrage wird neu belegt');
 });

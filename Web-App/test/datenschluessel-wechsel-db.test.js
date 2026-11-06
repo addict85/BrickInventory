@@ -17,18 +17,19 @@
  *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL.
  */
-const test   = require('node:test');
+const test = require('node:test');
 const assert = require('node:assert/strict');
 const crypto = require('node:crypto');
-const fs     = require('node:fs');
-const os     = require('node:os');
-const path   = require('node:path');
+const fs = require('node:fs');
+const os = require('node:os');
+const path = require('node:path');
 
 const WURZEL = fs.mkdtempSync(path.join(os.tmpdir(), 'schluesselwechsel-'));
 fs.writeFileSync(path.join(WURZEL, 'package.json'), '{}');
 process.env.APP_ROOT = WURZEL;
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
-const A = crypto.randomBytes(32).toString('base64'), B = crypto.randomBytes(32).toString('base64');
+const A = crypto.randomBytes(32).toString('base64'),
+  B = crypto.randomBytes(32).toString('base64');
 process.env.DATA_KEY = A;
 
 const _req = require('./helpers/sources').buildAndRequire();
@@ -42,17 +43,23 @@ const { schluesselWechsel } = _req('startup/datenbank.js');
 /** Schlüssel umstellen, wie ein Neustart mit anderer Umgebung. */
 function schluessel(aktuell, vorig) {
   process.env.DATA_KEY = aktuell;
-  if (vorig) process.env.DATA_KEY_ALT = vorig; else delete process.env.DATA_KEY_ALT;
+  if (vorig) process.env.DATA_KEY_ALT = vorig;
+  else delete process.env.DATA_KEY_ALT;
   G._vergissSchluessel();
 }
 
-test('Datenschlüssel wechseln', { concurrency: 1 }, async (t) => {
+test('Datenschlüssel wechseln', { concurrency: 1 }, async t => {
   const db = await dbOderSkip(t, _req);
   if (!db) return;
   const NAME = `wechsel_${process.pid}`;
   await db.run('DELETE FROM users WHERE username = $1', [NAME]);
-  const uid = (await db.get(`INSERT INTO users (username, password_hash, is_active, email_verified)
-    VALUES ($1, 'x', true, true) RETURNING id`, [NAME])).id;
+  const uid = (
+    await db.get(
+      `INSERT INTO users (username, password_hash, is_active, email_verified)
+    VALUES ($1, 'x', true, true) RETURNING id`,
+      [NAME],
+    )
+  ).id;
   t.after(async () => {
     schluessel(A, null);
     await db.run(`DELETE FROM global_settings WHERE key = 'rebrickable_api_key'`).catch(() => {});
@@ -64,8 +71,11 @@ test('Datenschlüssel wechseln', { concurrency: 1 }, async (t) => {
   // ── unter A schreiben ────────────────────────────────────────────────────
   schluessel(A, null);
   const apiKontext = G.kontext('global_settings.value', 'rebrickable_api_key');
-  await db.run(`INSERT INTO global_settings (key, value) VALUES ('rebrickable_api_key', $1)
-    ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value`, [G.verschluessele('api-geheim-123', apiKontext)]);
+  await db.run(
+    `INSERT INTO global_settings (key, value) VALUES ('rebrickable_api_key', $1)
+    ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value`,
+    [G.verschluessele('api-geheim-123', apiKontext)],
+  );
   const geheimnis = await zf.beginneEinrichtung(uid);
   const codes = await zf.bestaetigeEinrichtung(uid, zf.hotp(zf.ausBase32(geheimnis), zf.zeitschritt()));
   const g = await gut.gutscheinAnlegen(uid, { number: '6299-1234-5678', pin: '4711', amount: 25, currency: 'CHF' });
@@ -78,12 +88,23 @@ test('Datenschlüssel wechseln', { concurrency: 1 }, async (t) => {
     const faktor = (await db.get('SELECT geheimnis FROM zweiter_faktor WHERE user_id = $1', [uid])).geheimnis;
     const v = await db.get('SELECT number, pin, nummer_suche FROM vouchers WHERE id = $1', [g.id]);
     const datei = G.entschluesselePuffer(fs.readFileSync(pdf), G.kontext('gutschein-pdf', `${uid}/${g.id}.pdf`));
-    return { api: G.entschluessele(api, apiKontext), faktor: G.entschluessele(faktor, zf.faktorKontext(uid)),
-      nummer: G.entschluessele(v.number, gut.nummerKontext(uid, g.id)), pin: G.entschluessele(v.pin, gut.pinKontext(uid, g.id)),
-      pdf: datei?.toString() ?? null, suchePasst: v.nummer_suche === gut.nummerSuche(uid, '6299-1234-5678') };
+    return {
+      api: G.entschluessele(api, apiKontext),
+      faktor: G.entschluessele(faktor, zf.faktorKontext(uid)),
+      nummer: G.entschluessele(v.number, gut.nummerKontext(uid, g.id)),
+      pin: G.entschluessele(v.pin, gut.pinKontext(uid, g.id)),
+      pdf: datei?.toString() ?? null,
+      suchePasst: v.nummer_suche === gut.nummerSuche(uid, '6299-1234-5678'),
+    };
   };
-  const KLAR = { api: 'api-geheim-123', faktor: geheimnis, nummer: '6299-1234-5678', pin: '4711',
-    pdf: '%PDF-1.4 Gutschein', suchePasst: true };
+  const KLAR = {
+    api: 'api-geheim-123',
+    faktor: geheimnis,
+    nummer: '6299-1234-5678',
+    pin: '4711',
+    pdf: '%PDF-1.4 Gutschein',
+    suchePasst: true,
+  };
   assert.deepEqual(await liesAlles(), KLAR, 'Vorbedingung: A liest alles');
 
   // ── Start mit B und dem vorigen A ────────────────────────────────────────
@@ -91,9 +112,14 @@ test('Datenschlüssel wechseln', { concurrency: 1 }, async (t) => {
   await t.test('ein Wiederherstellungscode von vor dem Wechsel gilt, solange A bereitsteht', async () => {
     assert.equal(await zf.pruefeCode(uid, codes[0]), 'wiederherstellung');
   });
-  const warn = console.warn; console.warn = () => {};
+  const warn = console.warn;
+  console.warn = () => {};
   let geschrieben;
-  try { geschrieben = await schluesselWechsel(); } finally { console.warn = warn; }
+  try {
+    geschrieben = await schluesselWechsel();
+  } finally {
+    console.warn = warn;
+  }
 
   await t.test('B allein liest alles, der Suchwert der Nummer passt zu B', async () => {
     schluessel(B, null);
@@ -103,9 +129,19 @@ test('Datenschlüssel wechseln', { concurrency: 1 }, async (t) => {
 
   await t.test('A allein liest nichts mehr', async () => {
     schluessel(A, null);
-    const warn2 = console.warn; console.warn = () => {};
+    const warn2 = console.warn;
+    console.warn = () => {};
     try {
-      assert.deepEqual(await liesAlles(), { api: null, faktor: null, nummer: null, pin: null, pdf: null, suchePasst: false });
-    } finally { console.warn = warn2; }
+      assert.deepEqual(await liesAlles(), {
+        api: null,
+        faktor: null,
+        nummer: null,
+        pin: null,
+        pdf: null,
+        suchePasst: false,
+      });
+    } finally {
+      console.warn = warn2;
+    }
   });
 });

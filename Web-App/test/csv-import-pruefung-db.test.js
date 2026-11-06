@@ -27,15 +27,17 @@ const _echtesRequire = Module.prototype.require;
 Module.prototype.require = function (name) {
   const m = _echtesRequire.apply(this, arguments);
   if (typeof name === 'string' && /[/\\]setService(\.js)?$/.test(name))
-    return new Proxy(m, { get: (t, k) => {
-      if (k === 'nacharbeitEinstellen') return async () => {};
-      if (k !== 'addSetWithDate') return t[k];
-      return async (sn, qty) => {
-        if (sn === 'abc') throw new Error('Das ist keine Setnummer');
-        gebucht.push(`${sn}×${qty}`);
-        return { action: 'added', set_number: sn, ...(sn === '99999-1' ? { katalog_offen: true } : {}) };
-      };
-    } });
+    return new Proxy(m, {
+      get: (t, k) => {
+        if (k === 'nacharbeitEinstellen') return async () => {};
+        if (k !== 'addSetWithDate') return t[k];
+        return async (sn, qty) => {
+          if (sn === 'abc') throw new Error('Das ist keine Setnummer');
+          gebucht.push(`${sn}×${qty}`);
+          return { action: 'added', set_number: sn, ...(sn === '99999-1' ? { katalog_offen: true } : {}) };
+        };
+      },
+    });
   return m;
 };
 
@@ -43,12 +45,12 @@ const _req = require('./helpers/sources').buildAndRequire();
 const { dbOderSkip } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
 const db = _req('db/database.js');
-const warte = (ms) => new Promise(r => setTimeout(r, ms));
+const { bis } = require('./helpers/zeit');
 
 const DATEI = 'Set Number,Quantity\n10200-1,1\n10305-1,2\nabc,1\n10312-1,x\n99999-1,1\n,3\n10319-1,-2\n10326-1,1\n';
 
-test('CSV-Import: Prüfung, Zeilen und Summen', { concurrency: 1 }, async (t) => {
-  if (!await dbOderSkip(t, _req)) return;
+test('CSV-Import: Prüfung, Zeilen und Summen', { concurrency: 1 }, async t => {
+  if (!(await dbOderSkip(t, _req))) return;
   const NAME = `csvpruef-${process.pid}`;
   await db.run('DELETE FROM users WHERE username=$1', [NAME]);
   const uid = (await db.get(`INSERT INTO users (username,password_hash) VALUES ($1,'x') RETURNING id`, [NAME])).id;
@@ -62,7 +64,7 @@ test('CSV-Import: Prüfung, Zeilen und Summen', { concurrency: 1 }, async (t) =>
     await db.pool.end().catch(() => {});
   });
 
-  const sende = async (pruefen) => {
+  const sende = async pruefen => {
     const fd = new FormData();
     fd.append('file', new Blob([DATEI]), 'import-fehler.csv');
     const r = await fetch(`${base}/api/v1/sets/import/csv${pruefen ? '?pruefen=1' : ''}`, { method: 'POST', body: fd });
@@ -81,17 +83,26 @@ test('CSV-Import: Prüfung, Zeilen und Summen', { concurrency: 1 }, async (t) =>
 
   await sende(false);
   let s;
-  for (let i = 0; i < 100; i++) {
+  await bis(async () => {
     s = await (await fetch(`${base}/api/v1/sets/import/csv/status`)).json();
-    if (s.status !== 'running') break;
-    await warte(50);
-  }
+    return s.status !== 'running';
+  });
 
   await t.test('jede Zeile mit ihrem Ergebnis', () => {
     assert.equal(s.status, 'done');
-    const kurz = s.results.map(r => `${r.zeile}:${r.set_number}:${r.success ? (r.katalog_offen ? 'warn' : 'ok') : r.code || 'fehler'}`);
-    assert.deepEqual(kurz, ['2:10200-1:ok', '3:10305-1:ok', '4:abc:fehler', '5:10312-1:csv_menge_ungueltig',
-      '6:99999-1:warn', '7::csv_keine_setnummer', '8:10319-1:csv_menge_ungueltig', '9:10326-1:ok']);
+    const kurz = s.results.map(
+      r => `${r.zeile}:${r.set_number}:${r.success ? (r.katalog_offen ? 'warn' : 'ok') : r.code || 'fehler'}`,
+    );
+    assert.deepEqual(kurz, [
+      '2:10200-1:ok',
+      '3:10305-1:ok',
+      '4:abc:fehler',
+      '5:10312-1:csv_menge_ungueltig',
+      '6:99999-1:warn',
+      '7::csv_keine_setnummer',
+      '8:10319-1:csv_menge_ungueltig',
+      '9:10326-1:ok',
+    ]);
     assert.match(s.results[3].error, /Menge „x“ ungültig/);
     assert.match(s.results[6].error, /Menge „-2“ ungültig/);
     assert.deepEqual(gebucht, ['10200-1×1', '10305-1×2', '99999-1×1', '10326-1×1'], 'nur gültige Zeilen gebucht');

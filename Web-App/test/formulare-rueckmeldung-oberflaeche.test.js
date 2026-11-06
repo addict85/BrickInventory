@@ -34,14 +34,22 @@ const SN = '10305-1';
 const loeschen = (o, pfad) => o.aufrufe.filter(a => a.method === 'DELETE' && a.url.includes(pfad));
 
 test('Alarm im Set-Detail', async () => {
-  const o = await oeffneOberflaeche({
-    [`/v1/sets/${SN}`]: { success: true, set: { set_number: SN, name: 'Burg', quantity: 1, conditions: ['U'], instructions: [] } },
-    [`/v1/sets/${SN}/alert`]: { success: true, alerts: [] },
-  }, { browserSprache: 'de-DE' });
+  const o = await oeffneOberflaeche(
+    {
+      [`/v1/sets/${SN}`]: {
+        success: true,
+        set: { set_number: SN, name: 'Burg', quantity: 1, conditions: ['U'], instructions: [] },
+      },
+      [`/v1/sets/${SN}/alert`]: { success: true, alerts: [] },
+    },
+    { browserSprache: 'de-DE' },
+  );
   try {
     const knopf = o.d.createElement('button');
-    knopf.dataset.click = 'openModal'; knopf.dataset.arg = SN;
-    o.d.body.append(knopf); knopf.click();
+    knopf.dataset.click = 'openModal';
+    knopf.dataset.arg = SN;
+    o.d.body.append(knopf);
+    knopf.click();
     await warte(() => o.d.getElementById('m-alert-val'), 4000);
     assert.equal(o.d.getElementById('m-alert-cond').value, 'U', 'gebrauchtes Set: Gebraucht vorgewählt');
     assert.match(o.d.getElementById('m-alert-val').getAttribute('aria-label'), /EUR/);
@@ -52,39 +60,72 @@ test('Alarm im Set-Detail', async () => {
     assert.equal(loeschen(o, '/alert').length, 0, 'abc löschte den Alarm');
     const fehler = o.d.getElementById('m-alert-val-fehler');
     assert.ok(fehler && !fehler.hidden && fehler.textContent.trim(), 'kein Fehler am Feld');
-  } finally { o.w.close(); }
+  } finally {
+    o.w.close();
+  }
 });
 
 test('Alarm löschen mit Dialog und Rückgängig', async () => {
-  const alarm = { set_number: SN, name: 'Burg', condition: 'N', richtung: 'unter', schwelle: 249, currency_code: 'EUR' };
-  const o = await oeffneOberflaeche({
-    '/v1/alerts': { success: true, alerts: [alarm] },
-    [`/v1/sets/${SN}/alert`]: { success: true, alerts: [alarm] },
-  }, { browserSprache: 'de-DE' });
+  const alarm = {
+    set_number: SN,
+    name: 'Burg',
+    condition: 'N',
+    richtung: 'unter',
+    schwelle: 249,
+    currency_code: 'EUR',
+  };
+  const o = await oeffneOberflaeche(
+    {
+      '/v1/alerts': { success: true, alerts: [alarm] },
+      [`/v1/sets/${SN}/alert`]: { success: true, alerts: [alarm] },
+    },
+    { browserSprache: 'de-DE' },
+  );
   let browserConfirm = 0;
-  o.w.confirm = () => { browserConfirm++; return true; };
+  o.w.confirm = () => {
+    browserConfirm++;
+    return true;
+  };
   try {
     await sicht(o.w, 'alarme');
     await warte(() => o.d.querySelector('#alerts-list [data-click="loescheAlarm"]'));
     o.d.querySelector('#alerts-list [data-click="loescheAlarm"]').click();
-    assert.ok(await warte(() => o.d.getElementById('confirm-modal').style.display === 'flex', 1500), 'kein eigener Dialog');
+    assert.ok(
+      await warte(() => o.d.getElementById('confirm-modal').style.display === 'flex', 1500),
+      'kein eigener Dialog',
+    );
     assert.equal(browserConfirm, 0);
     o.d.getElementById('cd-confirm').click();
     assert.ok(await warte(() => loeschen(o, `/sets/${SN}/alert`).length === 1));
-    const rueck = await warte(() => [...o.d.querySelectorAll('#toasts button')].some(b => /Rückgängig/.test(b.textContent)), 1500);
+    const rueck = await warte(
+      () => [...o.d.querySelectorAll('#toasts button')].some(b => /Rückgängig/.test(b.textContent)),
+      1500,
+    );
     assert.ok(rueck, 'kein Rückgängig');
     [...o.d.querySelectorAll('#toasts button')].find(b => /Rückgängig/.test(b.textContent)).click();
     assert.ok(await warte(() => o.aufrufe.some(a => a.method === 'PUT' && a.url.includes(`/sets/${SN}/alert`))));
     const rumpf = JSON.parse(o.aufrufe.find(a => a.method === 'PUT').body);
     assert.deepEqual(rumpf, { richtung: 'unter', schwelle: 249, condition: 'N' });
-  } finally { o.w.close(); }
+  } finally {
+    o.w.close();
+  }
 });
 
 test('Lagerorte', async () => {
-  const o = await oeffneOberflaeche({
-    '/v1/storage/locations': { success: true, orte: [{ id: 1, name: 'Regal A' }, { id: 2, name: 'Kiste B' }], vorgabe: null },
-    '/v1/storage': { success: true, orte: [{ ort: 'Regal A', sets: 2, teile: 0, figuren: 0 }] },
-  }, { browserSprache: 'de-DE' });
+  const o = await oeffneOberflaeche(
+    {
+      '/v1/storage/locations': {
+        success: true,
+        orte: [
+          { id: 1, name: 'Regal A' },
+          { id: 2, name: 'Kiste B' },
+        ],
+        vorgabe: null,
+      },
+      '/v1/storage': { success: true, orte: [{ ort: 'Regal A', sets: 2, teile: 0, figuren: 0 }] },
+    },
+    { browserSprache: 'de-DE' },
+  );
   try {
     await sicht(o.w, 'lagerorte');
     await warte(() => o.d.querySelectorAll('#storage-list [data-click="loescheLagerort"]').length === 2);
@@ -100,7 +141,10 @@ test('Lagerorte', async () => {
     const nochmal = o.d.querySelector('#storage-list [data-change="benenneLagerortUm"][data-arg="2"]');
     nochmal.value = '  ';
     nochmal.dispatchEvent(new o.w.Event('change', { bubbles: true }));
-    assert.ok(await warte(() => o.d.querySelector('#toasts .toast.error, #toasts .toast-error, #toasts [class*="error"]')), 'leerer Name ohne Fehler');
+    assert.ok(
+      await warte(() => o.d.querySelector('#toasts .toast.error, #toasts .toast-error, #toasts [class*="error"]')),
+      'leerer Name ohne Fehler',
+    );
 
     const neu = o.d.getElementById('storage-new');
     neu.value = 'x'.repeat(55);
@@ -108,23 +152,34 @@ test('Lagerorte', async () => {
     const zaehler = neu.nextElementSibling;
     assert.ok(zaehler?.classList.contains('zeichen-zaehler') && !zaehler.hidden, 'kein Zähler');
     assert.match(zaehler.textContent, /55.*60/);
-  } finally { o.w.close(); }
+  } finally {
+    o.w.close();
+  }
 });
 
 test('Gutscheinsumme je Währung', async () => {
-  const o = await oeffneOberflaeche({
-    '/v1/vouchers': { success: true, vouchers: [
-      { id: 1, number: '1111222233334444', amount: 50, currency: 'EUR' },
-      { id: 2, number: '5555666677778888', amount: 20, currency: 'EUR' },
-      { id: 3, number: '9999000011112222', amount: 30, currency: 'CHF' }] },
-  }, { browserSprache: 'de-DE' });
+  const o = await oeffneOberflaeche(
+    {
+      '/v1/vouchers': {
+        success: true,
+        vouchers: [
+          { id: 1, number: '1111222233334444', amount: 50, currency: 'EUR' },
+          { id: 2, number: '5555666677778888', amount: 20, currency: 'EUR' },
+          { id: 3, number: '9999000011112222', amount: 30, currency: 'CHF' },
+        ],
+      },
+    },
+    { browserSprache: 'de-DE' },
+  );
   try {
     await sicht(o.w, 'gutscheine');
     await warte(() => o.d.getElementById('vouchers-total')?.textContent.trim());
     const summe = o.d.getElementById('vouchers-total').textContent.replace(/\s+/g, ' ');
     assert.match(summe, /70,00 € · .*30,00/);
     assert.match(summe, /CHF/);
-  } finally { o.w.close(); }
+  } finally {
+    o.w.close();
+  }
 });
 
 test('Konto anlegen: Regeln am Feld vor der Passwortabfrage', async () => {
@@ -134,31 +189,54 @@ test('Konto anlegen: Regeln am Feld vor der Passwortabfrage', async () => {
     o.d.getElementById('nu-p').value = 'Lang-genug-Passwort-1';
     o.d.getElementById('btn-cu').click();
     await takt(30);
-    assert.ok(!o.d.getElementById('nu-n-fehler')?.hidden && o.d.getElementById('nu-n-fehler')?.textContent.trim(), 'Name ohne Fehler am Feld');
+    assert.ok(
+      !o.d.getElementById('nu-n-fehler')?.hidden && o.d.getElementById('nu-n-fehler')?.textContent.trim(),
+      'Name ohne Fehler am Feld',
+    );
     assert.notEqual(o.d.getElementById('confirm-modal').style.display, 'flex', 'Passwortabfrage trotz falschem Namen');
     o.d.getElementById('nu-n').value = 'bert';
     o.d.getElementById('nu-p').value = 'kurz';
     o.d.getElementById('btn-cu').click();
     await takt(30);
-    assert.ok(!o.d.getElementById('nu-p-fehler')?.hidden && o.d.getElementById('nu-p-fehler')?.textContent.trim(), 'Passwort ohne Fehler am Feld');
-    assert.match(o.d.getElementById('nu-p').getAttribute('aria-describedby'), /nu-p-regel/, 'Regelhinweis bleibt verknüpft');
+    assert.ok(
+      !o.d.getElementById('nu-p-fehler')?.hidden && o.d.getElementById('nu-p-fehler')?.textContent.trim(),
+      'Passwort ohne Fehler am Feld',
+    );
+    assert.match(
+      o.d.getElementById('nu-p').getAttribute('aria-describedby'),
+      /nu-p-regel/,
+      'Regelhinweis bleibt verknüpft',
+    );
     assert.ok(!o.aufrufe.some(a => a.method === 'POST' && a.url.includes('/auth/users')));
-  } finally { o.w.close(); }
+  } finally {
+    o.w.close();
+  }
 });
 
 test('Immer dunkel', async () => {
-  const o = await oeffneOberflaeche({}, {
-    browserSprache: 'de-DE',
-    // Das Boot-Skript steht in index.html im <head>, nicht im Bündel; hier läuft es wie dort vor allem anderen.
-    vorher: (w) => {
-      w.matchMedia = () => ({ matches: false, addEventListener() {}, removeEventListener() {} });
-      w.document.documentElement.setAttribute('data-theme', 'classic');
-      w.eval(require('node:fs').readFileSync(require('node:path').join(__dirname, '..', 'public', 'js', '00-theme-boot.js'), 'utf8'));
+  const o = await oeffneOberflaeche(
+    {},
+    {
+      browserSprache: 'de-DE',
+      // Das Boot-Skript steht in index.html im <head>, nicht im Bündel; hier läuft es wie dort vor allem anderen.
+      vorher: w => {
+        w.matchMedia = () => ({ matches: false, addEventListener() {}, removeEventListener() {} });
+        w.document.documentElement.setAttribute('data-theme', 'classic');
+        w.eval(
+          require('node:fs').readFileSync(
+            require('node:path').join(__dirname, '..', 'public', 'js', '00-theme-boot.js'),
+            'utf8',
+          ),
+        );
+      },
     },
-  });
+  );
   try {
     const wahl = o.d.getElementById('dunkel-wahl');
-    assert.ok([...wahl.options].some(x => x.value === 'immer'), 'keine Wahl „Immer dunkel“');
+    assert.ok(
+      [...wahl.options].some(x => x.value === 'immer'),
+      'keine Wahl „Immer dunkel“',
+    );
     wahl.value = 'immer';
     wahl.dispatchEvent(new o.w.Event('change', { bubbles: true }));
     await takt(10);
@@ -167,5 +245,7 @@ test('Immer dunkel', async () => {
     wahl.dispatchEvent(new o.w.Event('change', { bubbles: true }));
     await takt(10);
     assert.ok(!o.d.documentElement.hasAttribute('data-dunkel'));
-  } finally { o.w.close(); }
+  } finally {
+    o.w.close();
+  }
 });

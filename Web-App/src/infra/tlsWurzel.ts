@@ -47,7 +47,16 @@ export async function tlsStand(): Promise<TlsStand | null> {
 
 export async function tlsAuskunft() {
   const stand = await tlsStand();
-  return { https: konfig().hinterTls,
-    ...(stand ? { fp: stand.fp, fp_hex: stand.fp_hex, subject: stand.subject,
-                  gueltig_bis: stand.gueltig_bis, download: '/ca.crt' } : { fp: null }) };
+  return {
+    https: konfig().hinterTls,
+    ...(stand
+      ? {
+          fp: stand.fp,
+          fp_hex: stand.fp_hex,
+          subject: stand.subject,
+          gueltig_bis: stand.gueltig_bis,
+          download: '/ca.crt',
+        }
+      : { fp: null }),
+  };
 }

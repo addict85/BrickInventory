@@ -18,7 +18,7 @@ import { CURRENCY } from './00-zustand.js';
  * @param {Erfassungssumme | null | undefined} totals
  */
 export function acqSummary(totals) {
-  const menge  = totals?.quantity ?? 0;
+  const menge = totals?.quantity ?? 0;
   return html`<div id="acq-summary" data-stil="display:flex;flex-wrap:wrap;justify-content:space-between;gap:4px 12px;padding:.75rem .5rem 0;border-top:2px solid var(--bdr);margin-top:.25rem">
     <span data-stil="font-size:var(--fs-2);color:var(--mut)">${tRaw('detail.qty')}: <strong id="acq-total-qty">${menge}</strong></span>
     <span id="acq-total-price" class="preis preis-stark">${summenText(totals)}</span>
@@ -71,7 +71,9 @@ export function erfassungsPreis(a, betrag) {
  * @param {Erfassung[]} acqs
  */
 function legendeGeschaetzt(acqs) {
-  return acqs.some(a => a.price_estimated) ? html`<div class="acq-legende">${tRaw('acq.legende_geschaetzt')}</div>` : '';
+  return acqs.some(a => a.price_estimated)
+    ? html`<div class="acq-legende">${tRaw('acq.legende_geschaetzt')}</div>`
+    : '';
 }
 
 /**
@@ -80,18 +82,24 @@ function legendeGeschaetzt(acqs) {
  */
 export function renderAcquisitionSummary(acqs, sn) {
   if (!acqs?.length) return html`<div data-stil="color:var(--mut);font-size:var(--fs-2)">—</div>`;
-  return acqs.map(a => {
-    const cond = a.condition === 'U' ? html`<span class="cond-badge cond-used">${tRaw('common.condition_used')}</span>`
-      : html`<span class="cond-badge cond-new">${tRaw('common.condition_new')}</span>`;
-    const price = erfassungsPreis(a, a.purchase_price);
-    const dateFmt = a.created_at ? fmtDatum(a.created_at) : '';
-    return html`<div data-stil="display:flex;flex-wrap:wrap;align-items:center;gap:6px;padding:2px 0">
+  return (
+    acqs
+      .map(a => {
+        const cond =
+          a.condition === 'U'
+            ? html`<span class="cond-badge cond-used">${tRaw('common.condition_used')}</span>`
+            : html`<span class="cond-badge cond-new">${tRaw('common.condition_new')}</span>`;
+        const price = erfassungsPreis(a, a.purchase_price);
+        const dateFmt = a.created_at ? fmtDatum(a.created_at) : '';
+        return html`<div data-stil="display:flex;flex-wrap:wrap;align-items:center;gap:6px;padding:2px 0">
       <span data-stil="color:var(--mut);font-size:var(--fs-1);min-width:24px;white-space:nowrap">×${a.quantity}</span>
       ${cond}
       ${price}
       ${dateFmt ? html`<span data-stil="font-size:var(--fs-1);color:var(--mut)">${ungeprueft(dateFmt)}</span>` : ''}
     </div>`;
-  }).join('') + legendeGeschaetzt(acqs);
+      })
+      .join('') + legendeGeschaetzt(acqs)
+  );
 }
 
 // Kurzübersicht für Teile und Figuren (mit unit_price statt purchase_price)
@@ -103,19 +111,24 @@ export function renderAcquisitionSummary(acqs, sn) {
  */
 export function renderManAcqSummary(acqs, type, id, colorId) {
   if (!acqs?.length) return html`<div data-stil="color:var(--mut);font-size:var(--fs-2)">—</div>`;
-  return acqs.map(a => {
-    const cond = a.condition === 'U'
-      ? html`<span class="cond-badge cond-used">${tRaw('common.condition_used')}</span>`
-      : html`<span class="cond-badge cond-new">${tRaw('common.condition_new')}</span>`;
-    const price = erfassungsPreis(a, a.unit_price);
-    const dateFmt = a.created_at ? fmtDatum(a.created_at) : '';
-    return html`<div data-stil="display:flex;flex-wrap:wrap;align-items:center;gap:6px;padding:2px 0">
+  return (
+    acqs
+      .map(a => {
+        const cond =
+          a.condition === 'U'
+            ? html`<span class="cond-badge cond-used">${tRaw('common.condition_used')}</span>`
+            : html`<span class="cond-badge cond-new">${tRaw('common.condition_new')}</span>`;
+        const price = erfassungsPreis(a, a.unit_price);
+        const dateFmt = a.created_at ? fmtDatum(a.created_at) : '';
+        return html`<div data-stil="display:flex;flex-wrap:wrap;align-items:center;gap:6px;padding:2px 0">
       <span data-stil="color:var(--mut);font-size:var(--fs-1);min-width:24px;white-space:nowrap">×${a.quantity}</span>
       ${cond}
       ${price}
       ${dateFmt ? html`<span data-stil="font-size:var(--fs-1);color:var(--mut)">${ungeprueft(dateFmt)}</span>` : ''}
     </div>`;
-  }).join('') + legendeGeschaetzt(acqs);
+      })
+      .join('') + legendeGeschaetzt(acqs)
+  );
 }
 
 /** Kurzfassung im Set-Detail samt Knopf zum Kaufpreis-Dialog.

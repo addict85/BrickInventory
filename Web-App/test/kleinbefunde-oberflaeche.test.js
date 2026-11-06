@@ -43,50 +43,88 @@ const path = require('node:path');
 const { oeffneOberflaeche, warte, takt, reiter } = require('./helpers/oberflaeche');
 
 test('Kennzahlen mit Trennzeichen, auch englisch ganz', async () => {
-  const stats = { '/v1/stats': { success: true, stats: { total_sets: 1565, total_quantity: 3095, total_parts: 10828, total_minifigs: 19, total_instructions: 0 } } };
+  const stats = {
+    '/v1/stats': {
+      success: true,
+      stats: { total_sets: 1565, total_quantity: 3095, total_parts: 10828, total_minifigs: 19, total_instructions: 0 },
+    },
+  };
   const de = await oeffneOberflaeche(stats, { browserSprache: 'de-DE' });
   try {
-    assert.ok(await warte(() => /1\.565 verschiedene/.test(de.d.getElementById('tab-gallery').textContent)),
-      de.d.querySelector('#bstat-sets')?.parentElement?.textContent);
-  } finally { de.w.close(); }
+    assert.ok(
+      await warte(() => /1\.565 verschiedene/.test(de.d.getElementById('tab-gallery').textContent)),
+      de.d.querySelector('#bstat-sets')?.parentElement?.textContent,
+    );
+  } finally {
+    de.w.close();
+  }
   const en = await oeffneOberflaeche(stats, { sprache: 'en', browserSprache: 'en-US' });
   try {
     assert.ok(await warte(() => en.d.getElementById('bstat-parts').textContent !== '—'));
     assert.equal(en.d.getElementById('bstat-parts').textContent, '10,828');
-  } finally { en.w.close(); }
+  } finally {
+    en.w.close();
+  }
   assert.doesNotMatch(fs.readFileSync(path.join(__dirname, '..', 'public', 'locales', 'en.js'), 'utf8'), /colour/i);
 });
 
 test('Titel ohne weiche Trennstriche', async () => {
-  const o = await oeffneOberflaeche({
-    '/v1/admin/job-status': { success: true, job: { running: false } },
-    '/v1/admin/jobs': { success: true, jobs: {}, schedules: {}, db: { csvCache: {}, blMapping: {} } },
-    '/v1/admin/auftraege': { success: true, auftraege: [], zusammenfassung: [], job_prozess: { laeuft: true }, bildbedarf: 0, pausen: [] },
-  }, { browserSprache: 'de-DE' });
+  const o = await oeffneOberflaeche(
+    {
+      '/v1/admin/job-status': { success: true, job: { running: false } },
+      '/v1/admin/jobs': { success: true, jobs: {}, schedules: {}, db: { csvCache: {}, blMapping: {} } },
+      '/v1/admin/auftraege': {
+        success: true,
+        auftraege: [],
+        zusammenfassung: [],
+        job_prozess: { laeuft: true },
+        bildbedarf: 0,
+        pausen: [],
+      },
+    },
+    { browserSprache: 'de-DE' },
+  );
   try {
     await reiter(o.w, 'monitor');
     assert.ok(await warte(() => /Hintergrund/.test(o.d.title), 2000), o.d.title);
     assert.doesNotMatch(o.d.title, /­/);
-  } finally { o.w.close(); }
+  } finally {
+    o.w.close();
+  }
 });
 
 test('admin ohne (Admin)', async () => {
-  const o = await oeffneOberflaeche({ '/v1/auth/me': { loggedIn: true, user: { id: 1, username: 'admin', is_admin: true } } },
-    { sprache: 'en', browserSprache: 'en-US' });
+  const o = await oeffneOberflaeche(
+    { '/v1/auth/me': { loggedIn: true, user: { id: 1, username: 'admin', is_admin: true } } },
+    { sprache: 'en', browserSprache: 'en-US' },
+  );
   try {
     assert.ok(await warte(() => o.d.getElementById('ubadge').textContent.trim()));
     assert.equal(o.d.getElementById('ubadge').textContent, 'admin');
-  } finally { o.w.close(); }
+  } finally {
+    o.w.close();
+  }
 });
 
 test('Protokoll mit fmtDatum', async () => {
-  const o = await oeffneOberflaeche({ '/v1/admin/protokoll': { success: true, eintraege: [
-    { zeit: '2026-11-05T17:29:38Z', verwalter_name: 'anna', aktion: 'konto_angelegt', konto_name: 'bert' }] } }, { browserSprache: 'de-DE' });
+  const o = await oeffneOberflaeche(
+    {
+      '/v1/admin/protokoll': {
+        success: true,
+        eintraege: [
+          { zeit: '2026-11-05T17:29:38Z', verwalter_name: 'anna', aktion: 'konto_angelegt', konto_name: 'bert' },
+        ],
+      },
+    },
+    { browserSprache: 'de-DE' },
+  );
   try {
     await reiter(o.w, 'settings');
     assert.ok(await warte(() => o.d.querySelector('#vw-protokoll tbody td')));
     assert.match(o.d.querySelector('#vw-protokoll tbody td').textContent, /^\d{2}\.\d{2}\.\d{4}/);
-  } finally { o.w.close(); }
+  } finally {
+    o.w.close();
+  }
 });
 
 test('leere Zugangsdaten melden „Zugang entfernt“', async () => {
@@ -94,20 +132,29 @@ test('leere Zugangsdaten melden „Zugang entfernt“', async () => {
   try {
     o.d.getElementById('rb-key').value = '';
     o.d.getElementById('btn-sav-rb').click();
-    assert.ok(await warte(() => /Zugang entfernt/.test(o.d.getElementById('toasts').textContent), 2000),
-      o.d.getElementById('toasts').textContent);
+    assert.ok(
+      await warte(() => /Zugang entfernt/.test(o.d.getElementById('toasts').textContent), 2000),
+      o.d.getElementById('toasts').textContent,
+    );
     assert.doesNotMatch(o.d.getElementById('toasts').textContent, /gespeichert/i);
-  } finally { o.w.close(); }
+  } finally {
+    o.w.close();
+  }
 });
 
 test('Wiederherstellungscodes: gesichert und als Datei', async () => {
-  const o = await oeffneOberflaeche({ '/v1/auth/zweiter-faktor/bestaetigen': { success: true, codes: ['aaaa-bbbb', 'cccc-dddd'] } },
-    { browserSprache: 'de-DE' });
+  const o = await oeffneOberflaeche(
+    { '/v1/auth/zweiter-faktor/bestaetigen': { success: true, codes: ['aaaa-bbbb', 'cccc-dddd'] } },
+    { browserSprache: 'de-DE' },
+  );
   try {
     o.w.URL.createObjectURL = () => 'blob:probe';
     o.w.URL.revokeObjectURL = () => {};
-    const feld = o.d.createElement('input'); feld.id = 'zf-code'; feld.value = '123456';
-    const knopf = o.d.createElement('button'); knopf.dataset.click = 'zfBestaetigen';
+    const feld = o.d.createElement('input');
+    feld.id = 'zf-code';
+    feld.value = '123456';
+    const knopf = o.d.createElement('button');
+    knopf.dataset.click = 'zfBestaetigen';
     o.d.getElementById('zf-bereich')?.append(feld, knopf) ?? o.d.body.append(feld, knopf);
     knopf.click();
     assert.ok(await warte(() => o.d.getElementById('zf-gespeichert')));
@@ -115,27 +162,50 @@ test('Wiederherstellungscodes: gesichert und als Datei', async () => {
     const datei = o.d.querySelector('[data-click="zfCodesSpeichern"]');
     assert.ok(datei, 'kein Knopf „Als Datei speichern“');
     let geladen = '';
-    o.w.HTMLAnchorElement.prototype.click = function () { geladen = this.download; };
+    o.w.HTMLAnchorElement.prototype.click = function () {
+      geladen = this.download;
+    };
     datei.click();
     assert.match(geladen, /\.txt$/);
-  } finally { o.w.close(); }
+  } finally {
+    o.w.close();
+  }
 });
 
 test('Minifiguren: Gekauft am und Gesamtzahl zuerst', async () => {
-  const o = await oeffneOberflaeche({ '/v1/minifigs': { success: true, total: 1, figs: [
-    { fig_number: 'fig-000001', fig_name: 'Ritter', quantity: 2, source: 'set', set_added_at: '2026-03-04T12:00:00Z' }] } },
-  { browserSprache: 'de-DE' });
+  const o = await oeffneOberflaeche(
+    {
+      '/v1/minifigs': {
+        success: true,
+        total: 1,
+        figs: [
+          {
+            fig_number: 'fig-000001',
+            fig_name: 'Ritter',
+            quantity: 2,
+            source: 'set',
+            set_added_at: '2026-03-04T12:00:00Z',
+          },
+        ],
+      },
+    },
+    { browserSprache: 'de-DE' },
+  );
   try {
     await reiter(o.w, 'minifigs');
     const erste = o.d.querySelector('#tab-minifigs .brick-stats .bstat .bstat-l');
     assert.equal(erste.textContent.trim(), 'Figuren gesamt');
     assert.ok(await warte(() => /Gekauft am 04\.03\.2026/.test(o.d.getElementById('tab-minifigs').textContent), 2000));
-  } finally { o.w.close(); }
+  } finally {
+    o.w.close();
+  }
 });
 
 test('ein Knopf „Set öffnen“ bei vorhandenem Set', async () => {
-  const o = await oeffneOberflaeche({ '/v1/sets/10305-1': { success: true, set: { set_number: '10305-1', name: 'Burg', quantity: 2 } } },
-    { browserSprache: 'de-DE' });
+  const o = await oeffneOberflaeche(
+    { '/v1/sets/10305-1': { success: true, set: { set_number: '10305-1', name: 'Burg', quantity: 2 } } },
+    { browserSprache: 'de-DE' },
+  );
   try {
     o.d.querySelector('[data-click="oeffneErfassen"][data-arg="set"]').click();
     await takt(10);
@@ -144,36 +214,62 @@ test('ein Knopf „Set öffnen“ bei vorhandenem Set', async () => {
     assert.ok(await warte(() => !o.d.getElementById('add-unbekannt').hidden));
     const knoepfe = [...o.d.querySelectorAll('#add-set-modal button')].filter(b => /Set öffnen/.test(b.textContent));
     assert.equal(knoepfe.length, 1);
-  } finally { o.w.close(); }
+  } finally {
+    o.w.close();
+  }
 });
 
 test('Merken nennt die Sammlung', async () => {
-  const o = await oeffneOberflaeche({
-    '/v1/wanted': (_u, opt) => opt?.method === 'POST' ? { success: true, war_neu: true } : { success: true, items: [] },
-    '/v1/sets/10305-1': { success: true, set: { set_number: '10305-1', name: 'Burg', quantity: 3 } },
-  }, { browserSprache: 'de-DE' });
+  const o = await oeffneOberflaeche(
+    {
+      '/v1/wanted': (_u, opt) =>
+        opt?.method === 'POST' ? { success: true, war_neu: true } : { success: true, items: [] },
+      '/v1/sets/10305-1': { success: true, set: { set_number: '10305-1', name: 'Burg', quantity: 3 } },
+    },
+    { browserSprache: 'de-DE' },
+  );
   try {
     o.d.getElementById('mk-num').value = '10305-1';
-    const knopf = o.d.createElement('button'); knopf.dataset.click = 'merkpostenHinzufuegen';
-    o.d.body.append(knopf); knopf.click();
-    assert.ok(await warte(() => /Sammlung \(×3\)/.test(o.d.getElementById('toasts').textContent), 2000),
-      o.d.getElementById('toasts').textContent);
-  } finally { o.w.close(); }
+    const knopf = o.d.createElement('button');
+    knopf.dataset.click = 'merkpostenHinzufuegen';
+    o.d.body.append(knopf);
+    knopf.click();
+    assert.ok(
+      await warte(() => /Sammlung \(×3\)/.test(o.d.getElementById('toasts').textContent), 2000),
+      o.d.getElementById('toasts').textContent,
+    );
+  } finally {
+    o.w.close();
+  }
 });
 
 test('Haushalt im Titel', async () => {
-  const o = await oeffneOberflaeche({ '/v1/sets/household-members': { success: true, members: [
-    { id: 1, username: 'anna', is_self: true, tiefe: 0 }, { id: 2, username: 'ben', is_self: false, tiefe: 1 }] } }, { browserSprache: 'de-DE' });
+  const o = await oeffneOberflaeche(
+    {
+      '/v1/sets/household-members': {
+        success: true,
+        members: [
+          { id: 1, username: 'anna', is_self: true, tiefe: 0 },
+          { id: 2, username: 'ben', is_self: false, tiefe: 1 },
+        ],
+      },
+    },
+    { browserSprache: 'de-DE' },
+  );
   try {
     assert.ok(await warte(() => o.d.getElementById('scope-gallery').style.display !== 'none'));
-    o.w.eval("document.querySelector('.ntab[data-tab=\"gallery\"]').click()");
-    assert.ok(await warte(() => /Haushalt/.test(o.d.getElementById('gallery-titel').textContent), 2000),
-      o.d.getElementById('gallery-titel').textContent);
+    o.w.eval('document.querySelector(\'.ntab[data-tab="gallery"]\').click()');
+    assert.ok(
+      await warte(() => /Haushalt/.test(o.d.getElementById('gallery-titel').textContent), 2000),
+      o.d.getElementById('gallery-titel').textContent,
+    );
     const wahl = o.d.getElementById('scope-gallery');
     wahl.value = 'own';
     wahl.dispatchEvent(new o.w.Event('change', { bubbles: true }));
     assert.ok(await warte(() => o.d.getElementById('gallery-titel').textContent === 'Meine Sammlung', 2000));
-  } finally { o.w.close(); }
+  } finally {
+    o.w.close();
+  }
 });
 
 test('Version in der Anmeldemaske', () => {

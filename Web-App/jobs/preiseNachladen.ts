@@ -25,7 +25,9 @@ async function preiseNachladen(n: Nutzlast<'preise_nachladen'>, k: AuftragsKonte
     pruefeAbbruch(k);
     if (!(await kontingentFrei('bricklink')).allowed)
       throw new AuftragVerschieben(new Date(Date.now() + 6 * 3600_000), 'BrickLink-Tageskontingent erschöpft');
-    await holeEinen(p, n.user_id, n.waehrung, ttl).catch((e: unknown) => meldeUndWeiter(`preise-nachladen:${p.art} ${p.nummer}`, e));
+    await holeEinen(p, n.user_id, n.waehrung, ttl).catch((e: unknown) =>
+      meldeUndWeiter(`preise-nachladen:${p.art} ${p.nummer}`, e),
+    );
     if (i % 10 === 9) await k.fortschritt({ erledigt: i + 1, gesamt: n.posten.length });
   }
 }

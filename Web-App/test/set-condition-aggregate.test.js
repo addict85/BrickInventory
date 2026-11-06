@@ -584,39 +584,33 @@ test('genau EINE Zustandsauflösung für Einzelsets — resolveSetCondition', ()
 // Die Datenbank-Sperre des Neuaufbaus prüft test/teile-zusammenfassung-sperre-db.test.js.
 
 test('CDN-Anfragen erzwingen IPv4', () => {
-  // Gemeldet: mehrere völlig unterschiedliche Set-Nummern liefen ALLE exakt
-  // bis zur eingestellten Zeitgrenze, ohne je eine Antwort zu bekommen — kein
-  // Fehler, kein TCP-Reset, einfach nichts. Das ist das typische Bild einer
-  // kaputten oder nicht gerouteten IPv6-Verbindung des Hosters: Node versucht …
+  // Ohne IPv6-Route liefen Bildabrufe stumm bis zur Frist. Der Set-Bild-Download
+  // beim Import geht über den gemeinsamen Abrufhelfer; dass der und der Pool
+  // der Bild-CDNs IPv4 erzwingen, prüft der Test darunter am laufenden Code.
   // Ausführlich: docs/begruendungen/test/set-condition-aggregate.test.js.md#server
-  // Der Verbindungspool der Bild-CDNs steht in clients/bildCdn.ts.
-  const cdn = fs.readFileSync(path.join(ROOT, 'clients/bildCdn.ts'), 'utf8');
-  const agentBlock = cdn.slice(cdn.indexOf('const POOL ='), cdn.indexOf('const POOL =') + 400);
-  assert.match(agentBlock, /family: 4\b/,
-    'Der Bild-Proxy muss IPv4 für CDN-Anfragen erzwingen');
-
-  // Der lokale Set-Bild-Download liegt seit einer früheren Runde in src/katalog/bilder/setImages.ts.
-  // Er läuft über den gemeinsamen Abrufhelfer; der erzwingt IPv4 (Test darunter).
   const setsFile = fs.readFileSync(path.join(ROOT, 'src/katalog/bilder/setImages.ts'), 'utf8');
   assert.match(setsFile, /await hole(?:Https|Bild)\(url, \{/,
     'Der Hintergrund-Download beim Import muss ebenfalls IPv4 erzwingen — dieselbe Ursache, derselbe Ort');
 });
 
-test('IPv4 wird an ALLEN ausgehenden HTTPS-Aufrufen erzwungen, nicht nur beim Bild-Proxy', () => {
-  // Bestätigt per curl auf dem Server selbst: "Immediate connect fail ...
-  // Network is unreachable" für IPv6 — der Server hat GAR KEINE IPv6-Route.
-  // Das betrifft jede ausgehende Verbindung dieses Prozesses, nicht nur
-  // Bilder. Jede Stelle, die roh gegen Rebrickable, BrickLink, Brickset oder …
+test('IPv4 wird an ALLEN ausgehenden HTTPS-Aufrufen erzwungen, nicht nur beim Bild-Proxy', async () => {
+  // Der Server hat keine IPv6-Route; ohne family: 4 hängt jede ausgehende
+  // Verbindung stumm bis zur Frist. abruf.ts ist der eine Weg nach draussen.
   // Ausführlich: docs/begruendungen/test/set-condition-aggregate.test.js.md#ohne
-  const ohne = [];
-  let gefunden = 0;
-  const src = ohneKommentare(fs.readFileSync(path.join(ROOT, 'src/infra/abruf.ts'), 'utf8'));
-  for (const m of src.matchAll(/\bhttps\.(?:get|request)\(\s*[^,()]*,\s*\{([^}]*)\}/g)) {
-    gefunden++;
-    if (!/family:\s*4/.test(m[1])) ohne.push(m[0].slice(0, 70));
-  }
-  assert.equal(gefunden, 2, `${gefunden} Aufrufe in abruf.ts erkannt — das Muster greift nicht mehr`);
-  assert.deepEqual(ohne, [], `ausgehende Aufrufe ohne family: 4:\n  ${ohne.join('\n  ')}`);
+  // Gegenprobe (05.11.2026): family: 4 aus https.get in abruf.ts oder aus dem Pool gestrichen → rot.
+  const _req = require('./helpers/sources').buildAndRequire();
+  const { holeHttps } = _req('src/infra/abruf.js');
+  const { oeffneBild } = _req('clients/bildCdn.js');
+  const { mitschnitt } = require('./helpers/https-mitschnitt');
+  const hosts = ['cdn.rebrickable.com'];
+  const url = 'https://cdn.rebrickable.com/media/sets/1-1.jpg';
+  const aufrufe = await mitschnitt(async () => {
+    await holeHttps(url, { hosts, maxBytes: 1000, zeitlimitMs: 5000 }).catch(() => {});
+    await holeHttps(url, { hosts, maxBytes: 1000, zeitlimitMs: 5000, methode: 'POST', rumpf: '{}' }).catch(() => {});
+    await oeffneBild(url, { maxBytes: 1000, pool: true }).catch(() => {});
+  });
+  assert.deepEqual(aufrufe.map(a => [a.art, a.optionen.family]), [['get', 4], ['request', 4], ['get', 4]]);
+  assert.equal(aufrufe[2].optionen.agent?.options?.family, 4, 'der Pool der Bild-CDNs erzwingt IPv4 nicht');
 });
 
 test('der Hintergrund-Job für Teile und Minifiguren erzeugt jetzt Vorschaubilder', () => {

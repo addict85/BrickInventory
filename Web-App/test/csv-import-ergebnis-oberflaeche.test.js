@@ -36,41 +36,65 @@ const ERGEBNISSE = [
   { zeile: 7, set_number: '', success: false, code: 'csv_keine_setnummer', error: 'keine Set-Nummer' },
   { success: true, action: 'updated' },
 ];
-const FERTIG = { success: true, status: 'done', total: 8, done: 8, current: null, ok: 1, warn: 1, err: 3,
-  results: ERGEBNISSE, beendet_am: new Date().toISOString() };
+const FERTIG = {
+  success: true,
+  status: 'done',
+  total: 8,
+  done: 8,
+  current: null,
+  ok: 1,
+  warn: 1,
+  err: 3,
+  results: ERGEBNISSE,
+  beendet_am: new Date().toISOString(),
+};
 
 /** Eine Datei wählen, wie der Browser es täte. */
 function waehleDatei(w, d) {
   const feld = d.getElementById('csv-file');
-  Object.defineProperty(feld, 'files', { configurable: true, value: [new w.File(['Set Number,Quantity\n'], 'import.csv')] });
+  Object.defineProperty(feld, 'files', {
+    configurable: true,
+    value: [new w.File(['Set Number,Quantity\n'], 'import.csv')],
+  });
   feld.dispatchEvent(new w.Event('change', { bubbles: true }));
 }
 
 test('vorhandene Sets: erst fragen, Abbrechen startet nichts', async () => {
   const posts = [];
-  const { w, d } = await oeffneOberflaeche({
-    '/v1/sets/import/csv': (u) => { posts.push(new URL(u, 'http://x').searchParams.get('pruefen')); return { success: true, total: 8, gestartet: false, vorhanden: 2, vorhanden_nummern: ['10305-1', '10200-1'] }; },
+  const { w, d, ruhig } = await oeffneOberflaeche({
+    '/v1/sets/import/csv': u => {
+      posts.push(new URL(u, 'http://x').searchParams.get('pruefen'));
+      return { success: true, total: 8, gestartet: false, vorhanden: 2, vorhanden_nummern: ['10305-1', '10200-1'] };
+    },
   });
   try {
     waehleDatei(w, d);
     assert.ok(await warte(() => d.getElementById('confirm-modal').style.display === 'flex'), 'Rückfrage erscheint');
     assert.match(d.getElementById('cd-msg').textContent, /2 Sets .* schon in der Sammlung \(10305-1, 10200-1\)/);
     d.getElementById('cd-cancel').click();
-    await takt(100);
+    await ruhig();
     assert.deepEqual(posts, ['1'], 'nur die Prüfung lief');
     assert.ok(!d.getElementById('progress-overlay').classList.contains('open'));
-  } finally { w.close(); }
+  } finally {
+    w.close();
+  }
 });
 
 test('Ergebnisliste mit Zeilen, Farben und gelesenen Zeilen', async () => {
-  let abrufe = 0, gestartet = false;
+  let abrufe = 0,
+    gestartet = false;
   const { w, d } = await oeffneOberflaeche({
-    '/v1/sets/import/csv': (u) => (u.includes('pruefen=1') ? { success: true, total: 8, gestartet: false, vorhanden: 0 }
-      : (gestartet = true, { success: true, total: 8, gestartet: true })),
+    '/v1/sets/import/csv': u =>
+      u.includes('pruefen=1')
+        ? { success: true, total: 8, gestartet: false, vorhanden: 0 }
+        : ((gestartet = true), { success: true, total: 8, gestartet: true }),
     // Vor dem Start läuft nichts; danach erst ein wartender Auftrag, dann das Ergebnis.
-    '/v1/sets/import/csv/status': () => (!gestartet ? { success: false, code: 'kein_import_laeuft' } : ++abrufe < 2
-      ? { success: true, status: 'running', total: 8, done: 0, current: null, ok: 0, warn: 0, err: 0, results: [] }
-      : FERTIG),
+    '/v1/sets/import/csv/status': () =>
+      !gestartet
+        ? { success: false, code: 'kein_import_laeuft' }
+        : ++abrufe < 2
+          ? { success: true, status: 'running', total: 8, done: 0, current: null, ok: 0, warn: 0, err: 0, results: [] }
+          : FERTIG,
   });
   try {
     waehleDatei(w, d);
@@ -86,7 +110,9 @@ test('Ergebnisliste mit Zeilen, Farben und gelesenen Zeilen', async () => {
     assert.ok(await warte(() => /Wartet/.test(d.getElementById('prog-set-name').textContent), 2500), 'Wartetext');
 
     assert.ok(await warte(() => d.querySelectorAll('#csv-log .csv-log-line').length >= 5, 5000), 'Ergebnis da');
-    const zeilen = [...d.querySelectorAll('#csv-log .csv-log-line')].map(z => `${z.className.replace('csv-log-line ', '')}|${z.textContent}`);
+    const zeilen = [...d.querySelectorAll('#csv-log .csv-log-line')].map(
+      z => `${z.className.replace('csv-log-line ', '')}|${z.textContent}`,
+    );
     assert.deepEqual(zeilen, [
       'ok|Zeile 2 · 10200-1 – hinzugefügt',
       'er|Zeile 4 · abc: Das ist keine Setnummer',
@@ -96,7 +122,9 @@ test('Ergebnisliste mit Zeilen, Farben und gelesenen Zeilen', async () => {
     ]);
     assert.match(d.getElementById('prog-footer').textContent, /8 Zeilen gelesen · 1 ok, 1 Warnung, 3 Fehler/);
     assert.equal(d.getElementById('prog-bar-wrap').getAttribute('aria-valuenow'), '100');
-  } finally { w.close(); }
+  } finally {
+    w.close();
+  }
 });
 
 test('nach dem Neuladen: der letzte Import im Menü', async () => {
@@ -108,14 +136,18 @@ test('nach dem Neuladen: der letzte Import im Menü', async () => {
     knopf.click();
     assert.ok(await warte(() => d.getElementById('progress-overlay').classList.contains('open')));
     assert.ok(d.getElementById('csv-log').textContent.includes('abc'), 'Ergebnisliste enthält abc');
-  } finally { w.close(); }
+  } finally {
+    w.close();
+  }
 });
 
 test('ein alter Import bleibt aus dem Menü', async () => {
   const alt = { ...FERTIG, beendet_am: new Date(Date.now() - 25 * 3600_000).toISOString() };
-  const { w, d } = await oeffneOberflaeche({ '/v1/sets/import/csv/status': alt });
+  const { w, d, ruhig } = await oeffneOberflaeche({ '/v1/sets/import/csv/status': alt });
   try {
-    await takt(300);
+    await ruhig();
     assert.equal(d.getElementById('letzter-import').hidden, true);
-  } finally { w.close(); }
+  } finally {
+    w.close();
+  }
 });

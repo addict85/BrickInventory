@@ -21,21 +21,40 @@ export interface CsvLaden {
 
 /** Lädt `datei` (z. B. parts.csv.gz) entpackt nach `ziel`. */
 export async function ladeKatalogCsv(datei: string, ziel: string, o: CsvLaden = {}): Promise<void> {
-  if (!/^[a-z_]+\.csv\.gz$/.test(datei)) throw new AbrufFehler('adresse', `Unbekannte Katalogdatei: ${datei.slice(0, 60)}`);
+  if (!/^[a-z_]+\.csv\.gz$/.test(datei))
+    throw new AbrufFehler('adresse', `Unbekannte Katalogdatei: ${datei.slice(0, 60)}`);
   const a = await oeffneHttps(CSV_BASIS + datei, {
-    hosts: CSV_HOSTS, maxBytes: GEPACKT_HOECHSTENS, zeitlimitMs: FRIST_MS, ...(o.signal ? { signal: o.signal } : {}),
+    hosts: CSV_HOSTS,
+    maxBytes: GEPACKT_HOECHSTENS,
+    zeitlimitMs: FRIST_MS,
+    ...(o.signal ? { signal: o.signal } : {}),
   });
-  if (a.status !== 200) { a.verwerfen(); throw new AbrufFehler('netz', `HTTP ${a.status} für ${datei}`); }
+  if (a.status !== 200) {
+    a.verwerfen();
+    throw new AbrufFehler('netz', `HTTP ${a.status} für ${datei}`);
+  }
   const gesamt = Number(a.kopf['content-length']) || 0;
-  let gelesen = 0, entpackt = 0;
-  const zaehler = new Transform({ transform(stueck: Buffer, _k, weiter) {
-    gelesen += stueck.length; o.beiFortschritt?.(gelesen, gesamt); weiter(null, stueck);
-  } });
+  let gelesen = 0,
+    entpackt = 0;
+  const zaehler = new Transform({
+    transform(stueck: Buffer, _k, weiter) {
+      gelesen += stueck.length;
+      o.beiFortschritt?.(gelesen, gesamt);
+      weiter(null, stueck);
+    },
+  });
   // Eine Gzip-Bombe endet am Deckel, nicht an der Platte.
-  const deckel = new Transform({ transform(stueck: Buffer, _k, weiter) {
-    entpackt += stueck.length;
-    weiter(entpackt > ENTPACKT_HOECHSTENS ? new AbrufFehler('zu-gross', `${datei} entpackt über ${ENTPACKT_HOECHSTENS} Byte`) : null, stueck);
-  } });
+  const deckel = new Transform({
+    transform(stueck: Buffer, _k, weiter) {
+      entpackt += stueck.length;
+      weiter(
+        entpackt > ENTPACKT_HOECHSTENS
+          ? new AbrufFehler('zu-gross', `${datei} entpackt über ${ENTPACKT_HOECHSTENS} Byte`)
+          : null,
+        stueck,
+      );
+    },
+  });
   // Ein Abbruch beendet den Abruf (abruf.ts) und damit die ganze Kette.
   await pipeline(a.strom(), zaehler, createGunzip(), deckel, fs.createWriteStream(ziel));
 }

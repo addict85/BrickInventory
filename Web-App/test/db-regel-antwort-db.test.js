@@ -18,18 +18,20 @@ const _req = require('./helpers/sources').buildAndRequire();
 const { dbOderSkip } = require('./helpers/db');
 const express = require(path.join(ROOT, 'node_modules', 'express'));
 
-test('Regelverletzungen der Datenbank werden zu 4xx mit Code', async (t) => {
+test('Regelverletzungen der Datenbank werden zu 4xx mit Code', async t => {
   const db = await dbOderSkip(t, _req, { migrieren: false });
   if (!db) return;
   t.after(() => db.pool.end().catch(() => {}));
   const { fehlerAntwort } = _req('src/infra/httpAntwort.js');
   const app = express();
   // Echte Fehler aus PostgreSQL, nicht nachgebaute Objekte.
-  app.get('/:regel', async (req) => { await db.run(`DO $$ BEGIN RAISE ${req.params.regel}; END $$`); });
+  app.get('/:regel', async req => {
+    await db.run(`DO $$ BEGIN RAISE ${req.params.regel}; END $$`);
+  });
   app.use(fehlerAntwort);
   const srv = app.listen(0);
   t.after(() => new Promise(r => srv.close(r)));
-  const hole = async (regel) => {
+  const hole = async regel => {
     const r = await fetch(`http://127.0.0.1:${srv.address().port}/${regel}`);
     return { status: r.status, code: (await r.json()).code };
   };

@@ -99,21 +99,28 @@ test('abgebrochene Client-Anfragen geben die CDN-Verbindung frei', () => {
     'res.destroyed ist der belastbare Hinweis auf einen echten Abbruch');
   assert.match(SERVER, /Client hat abgebrochen, Verbindung freigegeben/,
     'Ein Abbruch muss sichtbar sein — stilles Abschiessen war die Ursache');
-  assert.match(SERVER, /r\.verwerfen\(\); r = await holen\(HEADER_SETS\[1\]\)/,
+  assert.match(SERVER, /r\.verwerfen\(\);\s*r = await holen\(HEADER_SETS\[1\]\)/,
     'Beim Rückfall ohne Referer muss die erste Antwort freigegeben werden');
 });
 
-test('der Verbindungs-Pool ist weit genug', () => {
+test('der Verbindungs-Pool ist weit genug', async () => {
   // Mit 8 wartete ein einzeln geöffnetes Bild hinter 60 Kachel-Anfragen
   // 1195 ms; mit 32 sind es 282 ms, ohne Grenze 153 ms.
   // Der Pool steht im Klienten (clients/bildCdn.ts), der Proxy nimmt ihn mit `pool: true`.
-  const cdn = fs.readFileSync(path.join(ROOT, 'clients/bildCdn.ts'), 'utf8');
-  const agent = cdn.slice(cdn.indexOf('const POOL = new'), cdn.indexOf('const POOL = new') + 220);
+  // Gegenprobe (05.11.2026): maxSockets 8 in clients/bildCdn.ts → rot.
+  const { oeffneBild } = require('./helpers/sources').buildAndRequire()('clients/bildCdn.js');
+  const { mitschnitt } = require('./helpers/https-mitschnitt');
+  const url = 'https://cdn.rebrickable.com/media/sets/1-1.jpg';
+  const [mitPool, ohnePool] = await mitschnitt(async () => {
+    await oeffneBild(url, { maxBytes: 1000, pool: true }).catch(() => {});
+    await oeffneBild(url, { maxBytes: 1000 }).catch(() => {});
+  });
+  const agent = mitPool?.optionen.agent;
+  assert.ok(agent, 'der Proxy-Abruf nimmt den Pool nicht');
+  assert.ok(agent.maxSockets >= 32, `maxSockets ${agent.maxSockets} ist zu eng — Einzelabrufe warten spürbar`);
+  assert.equal(agent.keepAlive, true, 'Wiederverwendung spart den TLS-Handshake');
+  assert.equal(ohnePool?.optionen.agent, undefined, 'ein Einzelabruf hält keine Verbindung offen');
   assert.match(SERVER, /pool: true/, 'der Proxy nimmt den Pool nicht');
-  const m = /maxSockets: (\d+)/.exec(agent);
-  assert.ok(m, 'Pool-Konfiguration nicht gefunden');
-  assert.ok(parseInt(m[1]) >= 32, `maxSockets ${m[1]} ist zu eng — Einzelabrufe warten spürbar`);
-  assert.match(agent, /keepAlive: true/, 'Wiederverwendung spart den TLS-Handshake');
 });
 
 test('Fehler werden gezählt und protokolliert', () => {

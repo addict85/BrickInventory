@@ -22,7 +22,8 @@ export const GELD_TEXT = /^\s*-?\d{1,12}(?:[.,]\d{1,4})?\s*$/;
  * @returns null für „kein Betrag“ (fehlt, null, leer), sonst der Betrag auf vier Stellen */
 export function geldEingabe(v: unknown, feld: string, max = 1_000_000, einCode?: FehlerCode): number | null {
   if (v === null || v === undefined || (typeof v === 'string' && v.trim() === '')) return null;
-  const n = typeof v === 'number' ? v : typeof v === 'string' && GELD_TEXT.test(v) ? Number(v.trim().replace(',', '.')) : NaN;
+  const n =
+    typeof v === 'number' ? v : typeof v === 'string' && GELD_TEXT.test(v) ? Number(v.trim().replace(',', '.')) : NaN;
   // Ein eigener Code (Gutscheine) gilt für jede Abweisung, den kennen die Apps dort.
   if (!Number.isFinite(n)) fehlerWerfen(einCode ?? 'betrag_ungueltig', 400);
   if (n < 0) fehlerWerfen(einCode ?? 'feld_negativ', 400, { feld });

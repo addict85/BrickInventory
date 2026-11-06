@@ -63,12 +63,9 @@ test('Teile- und Figurenbilder landen in getrennten Ordnern', async (t) => {
 });
 
 test('die Bildroute behält Anmeldepflicht und CDN-Heilung', () => {
-  // Seit der Vereinheitlichung gibt es EINE Route für den ganzen Baum unter
-  // data/images/ — vorher war sie zweigeteilt: Teile und Figuren
-  // authentifiziert, Sets über express.static ohne Prüfung. Dass gar kein
-  // statischer Mount mehr auf das Datenverzeichnis zeigt, prüft
-  // test/media-auth.test.js. strip() vor dem Schneiden, sonst schiebt ein
-  // Erklärtext in der Route die geprüfte Zeile aus dem Fenster.
+  // EINE Route für den ganzen Baum unter data/images/, damit kein Teil ohne
+  // Anmeldung ausgeliefert wird (kein statischer Mount: test/media-auth.test.js).
+  // strip() vor dem Schneiden, sonst schiebt ein Erklärtext die Zeile hinaus.
   // Ausführlich: docs/begruendungen/test/data-layout.test.js.md#src-stelle
   assert.match(strip(read('routes/seiten.ts')), /router\.get\('\/images\/\*pfad', liefereBild\)/, 'Bildroute nicht gefunden');
   const src = strip(read('src/katalog/http/bildAuslieferung.ts'));

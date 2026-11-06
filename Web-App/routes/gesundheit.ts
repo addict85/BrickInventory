@@ -20,11 +20,17 @@ router.get('/startup-status', async (req, res) => {
 });
 
 // live = Prozess, ready = Datenbank.
-router.get('/health/live', (_req, res) => { res.json({ status: 'ok' }); });
+router.get('/health/live', (_req, res) => {
+  res.json({ status: 'ok' });
+});
 router.get('/health/ready', async (req, res) => {
   if (await datenbankBereit()) return void res.json({ status: 'ok' });
-  res.status(503).json({ success: false, code: 'datenbank_nicht_erreichbar', status: 'unavailable',
-    error: fehlerText('datenbank_nicht_erreichbar', antwortSprache(req)) });
+  res.status(503).json({
+    success: false,
+    code: 'datenbank_nicht_erreichbar',
+    status: 'unavailable',
+    error: fehlerText('datenbank_nicht_erreichbar', antwortSprache(req)),
+  });
 });
 // Klemmt die Datenbank, bleibt der Bericht erreichbar — nur ohne Details.
 router.get('/health', async (req, res) => {

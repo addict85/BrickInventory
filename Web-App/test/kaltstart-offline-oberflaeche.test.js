@@ -16,10 +16,16 @@ const { oeffneOberflaeche, warte, takt } = require('./helpers/oberflaeche');
 
 test('ohne Server: Hinweis und Erneut versuchen', async () => {
   const stand = { weg: true };
-  const o = await oeffneOberflaeche({
-    '/v1/startup-status': () => { if (stand.weg) throw new TypeError('Failed to fetch'); return { ready: true }; },
-    '/v1/auth/me': { loggedIn: false },
-  }, { angemeldet: false, browserSprache: 'de-DE' });
+  const o = await oeffneOberflaeche(
+    {
+      '/v1/startup-status': () => {
+        if (stand.weg) throw new TypeError('Failed to fetch');
+        return { ready: true };
+      },
+      '/v1/auth/me': { loggedIn: false },
+    },
+    { angemeldet: false, browserSprache: 'de-DE' },
+  );
   try {
     const hinweis = o.d.getElementById('start-offline');
     assert.ok(hinweis.hidden, 'nicht gleich beim ersten Fehlschlag');
@@ -33,9 +39,14 @@ test('ohne Server: Hinweis und Erneut versuchen', async () => {
     const vorher = o.aufrufe.length;
     knopf.click();
     // Der normale Takt nach einem Fehler sind zwei Sekunden; der Knopf muss schneller sein.
-    assert.ok(await warte(() => o.d.getElementById('login-screen').style.display === 'flex', 500), 'Knopf holt den Start nicht sofort nach');
+    assert.ok(
+      await warte(() => o.d.getElementById('login-screen').style.display === 'flex', 500),
+      'Knopf holt den Start nicht sofort nach',
+    );
     assert.ok(o.aufrufe.length > vorher);
     assert.ok(hinweis.hidden, 'Hinweis bleibt nach dem Start stehen');
     await takt(10);
-  } finally { o.w.close(); }
+  } finally {
+    o.w.close();
+  }
 });

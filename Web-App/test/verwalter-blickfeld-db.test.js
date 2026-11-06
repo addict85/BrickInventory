@@ -27,8 +27,10 @@ const { routeZu } = _req('src/infra/vertrag/index.js');
 const { z } = require('zod');
 
 /** Kommt ein Schlüssel irgendwo im JSON vor? */
-const enthaeltSchluessel = (wert, name) => wert && typeof wert === 'object'
-  && (Object.prototype.hasOwnProperty.call(wert, name) || Object.values(wert).some(v => enthaeltSchluessel(v, name)));
+const enthaeltSchluessel = (wert, name) =>
+  wert &&
+  typeof wert === 'object' &&
+  (Object.prototype.hasOwnProperty.call(wert, name) || Object.values(wert).some(v => enthaeltSchluessel(v, name)));
 
 test('kein Antwortschema der Verwaltung nennt user_id', () => {
   for (const r of ['GET /api/v1/admin/auftraege', 'GET /api/v1/admin/image-diag/:setNumber']) {
@@ -37,26 +39,42 @@ test('kein Antwortschema der Verwaltung nennt user_id', () => {
   }
 });
 
-test('Verwalterwerkzeuge verraten keine Besitzer', { concurrency: 1 }, async (t) => {
+test('Verwalterwerkzeuge verraten keine Besitzer', { concurrency: 1 }, async t => {
   const db = await dbOderSkip(t, _req);
   if (!db) return;
-  const P = process.pid, SN = `9${P % 100000}-1`;
+  const P = process.pid,
+    SN = `9${P % 100000}-1`;
   const namen = [`vbf_chef_${P}`, `vbf_fremd_${P}`];
   await db.run('DELETE FROM users WHERE username = ANY($1)', [namen]);
   const ids = [];
   for (const [i, n] of namen.entries())
-    ids.push((await db.get(`INSERT INTO users (username, password_hash, is_admin, is_active, email_verified)
-      VALUES ($1, 'x', $2, true, true) RETURNING id`, [n, i === 0])).id);
+    ids.push(
+      (
+        await db.get(
+          `INSERT INTO users (username, password_hash, is_admin, is_active, email_verified)
+      VALUES ($1, 'x', $2, true, true) RETURNING id`,
+          [n, i === 0],
+        )
+      ).id,
+    );
   await db.run('INSERT INTO sets (user_id, set_number) VALUES ($1, $2)', [ids[1], SN]);
-  const auftrag = (await db.get(`INSERT INTO auftraege (art, nutzlast, user_id, status) VALUES ('brickset', $1, $2, 'fehler') RETURNING id`,
-    [JSON.stringify({ set_number: SN }), ids[1]])).id;
+  const auftrag = (
+    await db.get(
+      `INSERT INTO auftraege (art, nutzlast, user_id, status) VALUES ('brickset', $1, $2, 'fehler') RETURNING id`,
+      [JSON.stringify({ set_number: SN }), ids[1]],
+    )
+  ).id;
   t.after(async () => {
     await db.run('DELETE FROM auftraege WHERE id = $1', [auftrag]).catch(() => {});
     await db.run('DELETE FROM users WHERE id = ANY($1)', [ids]).catch(() => {});
     await db.pool.end().catch(() => {});
   });
-  const { base } = testServer(_req, { sitzung: { userId: ids[0], username: namen[0], isAdmin: true },
-    apiNutzer: { user_id: ids[0], is_admin: 1 }, routen: { '/api/v1': 'routes/api_v1/index.js' }, t });
+  const { base } = testServer(_req, {
+    sitzung: { userId: ids[0], username: namen[0], isAdmin: true },
+    apiNutzer: { user_id: ids[0], is_admin: 1 },
+    routen: { '/api/v1': 'routes/api_v1/index.js' },
+    t,
+  });
 
   await t.test('die Bild-Diagnose zählt Konten, nennt sie aber nicht', async () => {
     const r = await fetch(`${base}/api/v1/admin/image-diag/${SN}`);

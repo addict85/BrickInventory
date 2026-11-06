@@ -711,9 +711,11 @@ test('der Kommentaranteil der Betriebsdateien sinkt, nie steigt', () => {
   if (anteil < SCHRANKE - 0.5) console.log(`  ℹ Kommentaranteil Betrieb: ${anteil} % (Schranke ${SCHRANKE}) — Schranke nachziehen`);
 });
 
-/** Kommentarblöcke mit mehr als fünf Zeilen Prosa (vor dem ersten @-Tag), wie im Prüfbericht gezählt. */
+/** Kommentarblöcke mit mehr als fünf Zeilen Prosa (vor dem ersten @-Tag), wie im Prüfbericht gezählt.
+ * Eine Liste der Gegenproben zählt nicht mit: Sie gehört nach CLAUDE.md in den Kopf eines Tests. */
 function langeBloecke(/** @type {string} */ text) {
   const z = text.split('\n');
+  const GEGENPROBEN = /^\s*(\*|\/\/)\s*Gegenprobe/;
   let n = 0;
   for (let i = 0; i < z.length; i++) {
     const t = z[i].trim();
@@ -730,6 +732,8 @@ function langeBloecke(/** @type {string} */ text) {
       if (tag > 0) innen = innen.slice(0, tag);
       prosa = innen.filter(l => !/^\s*(\/\*\*?|\*\/)\s*$/.test(l));
     }
+    const liste = prosa ? prosa.findIndex(l => GEGENPROBEN.test(l)) : -1;
+    if (prosa && liste >= 0) prosa = prosa.slice(0, liste);
     if (prosa) {
       if (prosa.filter(l => l.replace(/^\s*(\/\/|\*|\/\*\*?)\s?/, '').trim()).length > 5) n++;
       i = j;

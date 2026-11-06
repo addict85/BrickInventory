@@ -24,24 +24,37 @@ const _req = require('./helpers/sources').buildAndRequire();
 const { dbOderSkip } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
 
-test('Kaufpreise in fremder Währung und geschätzte', { concurrency: 1 }, async (t) => {
+test('Kaufpreise in fremder Währung und geschätzte', { concurrency: 1 }, async t => {
   const db = _req('db/database.js');
-  if (!await dbOderSkip(t, _req)) return;
-  const P = process.pid, NAME = `waehrung-${P}`, SN = '10326-1', GS = '10305-1';
+  if (!(await dbOderSkip(t, _req))) return;
+  const P = process.pid,
+    NAME = `waehrung-${P}`,
+    SN = '10326-1',
+    GS = '10305-1';
   await db.run('DELETE FROM users WHERE username=$1', [NAME]);
   const uid = (await db.get(`INSERT INTO users (username,password_hash) VALUES ($1,'x') RETURNING id`, [NAME])).id;
-  t.after(async () => { await db.run('DELETE FROM users WHERE id=$1', [uid]).catch(() => {}); await db.pool.end().catch(() => {}); });
+  t.after(async () => {
+    await db.run('DELETE FROM users WHERE id=$1', [uid]).catch(() => {});
+    await db.pool.end().catch(() => {});
+  });
   await db.run("INSERT INTO user_settings (user_id, key, value) VALUES ($1, 'currency', 'EUR')", [uid]);
   await db.run(`INSERT INTO wechselkurse (tag, waehrung, je_eur) VALUES ('2019-03-04', 'USD', 1.25), ('2019-03-04', 'JPY', 120)
                 ON CONFLICT (waehrung, tag) DO UPDATE SET je_eur = EXCLUDED.je_eur`);
   await db.run('INSERT INTO sets (user_id, set_number) VALUES ($1,$2), ($1,$3)', [uid, SN, GS]);
-  await db.run(`INSERT INTO set_acquisitions (user_id, set_number, quantity, purchase_price, condition, currency, created_at, tag)
+  await db.run(
+    `INSERT INTO set_acquisitions (user_id, set_number, quantity, purchase_price, condition, currency, created_at, tag)
                 VALUES ($1,$2,3,260.66,'N','USD','2019-03-04 12:00','2019-03-04'), ($1,$2,2,354.50,'N','EUR','2019-03-05 12:00','2019-03-05'),
-                       ($1,$3,4,308,'N','EUR','2026-11-05 12:00','2026-11-05')`, [uid, SN, GS]);
+                       ($1,$3,4,308,'N','EUR','2026-11-05 12:00','2026-11-05')`,
+    [uid, SN, GS],
+  );
   await db.run(`UPDATE set_acquisitions SET price_estimated = true WHERE user_id=$1 AND set_number=$2`, [uid, GS]);
-  const { base } = testServer(_req, { sitzung: { userId: uid }, apiNutzer: { user_id: uid, is_admin: 0 },
-    routen: { '/api/v1': 'routes/api_v1/index.js' }, t });
-  const hole = async (pfad) => (await fetch(`${base}/api/v1/${pfad}`)).json();
+  const { base } = testServer(_req, {
+    sitzung: { userId: uid },
+    apiNutzer: { user_id: uid, is_admin: 0 },
+    routen: { '/api/v1': 'routes/api_v1/index.js' },
+    t,
+  });
+  const hole = async pfad => (await fetch(`${base}/api/v1/${pfad}`)).json();
 
   await t.test('Summe in Kontowährung wie die Finanzen', async () => {
     const r = await hole(`sets/${SN}/acquisitions`);
@@ -58,8 +71,11 @@ test('Kaufpreise in fremder Währung und geschätzte', { concurrency: 1 }, async
   });
 
   await t.test('ohne Kurs nicht eingerechnet, sondern gezählt', async () => {
-    await db.run(`INSERT INTO set_acquisitions (user_id, set_number, quantity, purchase_price, condition, currency, created_at, tag)
-                  VALUES ($1,$2,1,9000,'U','JPY','2010-01-01 12:00','2010-01-01')`, [uid, SN]);
+    await db.run(
+      `INSERT INTO set_acquisitions (user_id, set_number, quantity, purchase_price, condition, currency, created_at, tag)
+                  VALUES ($1,$2,1,9000,'U','JPY','2010-01-01 12:00','2010-01-01')`,
+      [uid, SN],
+    );
     const r = await hole(`sets/${SN}/acquisitions`);
     assert.equal(r.totals.ohne_kurs, 1);
     assert.equal(r.totals.amount, 1334.58);
@@ -69,7 +85,10 @@ test('Kaufpreise in fremder Währung und geschätzte', { concurrency: 1 }, async
   await t.test('geschätzte Kaufpreise sind gekennzeichnet', async () => {
     const v = await hole('finance/valuation');
     const geschaetzt = v.sets.find(s => s.set_number === GS).acquisitions;
-    assert.deepEqual(geschaetzt.map(a => a.price_estimated), [true]);
+    assert.deepEqual(
+      geschaetzt.map(a => a.price_estimated),
+      [true],
+    );
     assert.ok(v.sets.find(s => s.set_number === SN).acquisitions.every(a => !a.price_estimated));
     const liste = await hole('sets');
     assert.equal(liste.sets.find(s => s.set_number === GS).kaufpreis_geschaetzt, true);

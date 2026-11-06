@@ -29,26 +29,56 @@ const { oeffneOberflaeche, warte, takt, reiter } = require('./helpers/oberflaech
 
 const SN = '10326-1';
 /** Text mit einfachen Leerzeichen: Intl setzt schmale geschützte Leerzeichen vor das Währungszeichen. */
-const text = (s) => String(s || '').replace(/\s+/g, ' ');
+const text = s => String(s || '').replace(/\s+/g, ' ');
 const ERFASSUNGEN = [
-  { id: 1, quantity: 3, condition: 'N', purchase_price: 260.66, currency: 'USD', preis_konto: 208.528, price_estimated: false, created_at: '2019-03-04T12:00:00Z' },
-  { id: 2, quantity: 2, condition: 'N', purchase_price: 354.5, currency: 'EUR', preis_konto: 354.5, price_estimated: false, created_at: '2019-03-05T12:00:00Z' },
+  {
+    id: 1,
+    quantity: 3,
+    condition: 'N',
+    purchase_price: 260.66,
+    currency: 'USD',
+    preis_konto: 208.528,
+    price_estimated: false,
+    created_at: '2019-03-04T12:00:00Z',
+  },
+  {
+    id: 2,
+    quantity: 2,
+    condition: 'N',
+    purchase_price: 354.5,
+    currency: 'EUR',
+    preis_konto: 354.5,
+    price_estimated: false,
+    created_at: '2019-03-05T12:00:00Z',
+  },
 ];
 
 /** Set-Detail und Erfassungen; die Summe wechselt nach dem ersten PUT. */
 function antworten(stand) {
   return {
-    [`/v1/sets/${SN}`]: { success: true, set: { set_number: SN, name: 'Natural History Museum', quantity: 5, conditions: ['N'], instructions: [] } },
-    [`/v1/sets/${SN}/acquisitions`]: () => ({ success: true, owner_user_id: 1, acquisitions: ERFASSUNGEN,
-      totals: { quantity: 5, amount: stand.betrag, priced_rows: 2, currency: 'EUR', ohne_kurs: 0 } }),
-    [`/v1/sets/${SN}/acquisitions/2`]: () => { stand.betrag = 1309.58; return { success: true }; },
+    [`/v1/sets/${SN}`]: {
+      success: true,
+      set: { set_number: SN, name: 'Natural History Museum', quantity: 5, conditions: ['N'], instructions: [] },
+    },
+    [`/v1/sets/${SN}/acquisitions`]: () => ({
+      success: true,
+      owner_user_id: 1,
+      acquisitions: ERFASSUNGEN,
+      totals: { quantity: 5, amount: stand.betrag, priced_rows: 2, currency: 'EUR', ohne_kurs: 0 },
+    }),
+    [`/v1/sets/${SN}/acquisitions/2`]: () => {
+      stand.betrag = 1309.58;
+      return { success: true };
+    },
   };
 }
 
 async function oeffneSet(o) {
   const knopf = o.d.createElement('button');
-  knopf.dataset.click = 'openModal'; knopf.dataset.arg = SN;
-  o.d.body.append(knopf); knopf.click();
+  knopf.dataset.click = 'openModal';
+  knopf.dataset.arg = SN;
+  o.d.body.append(knopf);
+  knopf.click();
   await warte(() => o.d.querySelector('#set-modal [data-click="openAcqModal"]'), 4000);
 }
 
@@ -59,7 +89,7 @@ test('Kaufpreis-Dialog: Währung je Zeile, Summe zieht nach', async () => {
     await oeffneSet(o);
     o.d.querySelector('#set-modal [data-click="openAcqModal"]').click();
     await warte(() => o.d.getElementById('acq-preis-2'));
-    const zeile = (id) => text(o.d.getElementById(`acq-row-${id}`).textContent);
+    const zeile = id => text(o.d.getElementById(`acq-row-${id}`).textContent);
     assert.match(zeile(1), /USD/);
     assert.match(zeile(1), /≈ 208,53 €/);
     assert.match(zeile(2), /EUR/);
@@ -67,9 +97,13 @@ test('Kaufpreis-Dialog: Währung je Zeile, Summe zieht nach', async () => {
     const feld = o.d.getElementById('acq-preis-2');
     feld.value = '342,04';
     feld.dispatchEvent(new o.w.FocusEvent('blur'));
-    assert.ok(await warte(() => text(o.d.getElementById('acq-total-price').textContent) === '1.309,58 €', 1500),
-      `Summe: ${o.d.getElementById('acq-total-price').textContent}`);
-  } finally { o.w.close(); }
+    assert.ok(
+      await warte(() => text(o.d.getElementById('acq-total-price').textContent) === '1.309,58 €', 1500),
+      `Summe: ${o.d.getElementById('acq-total-price').textContent}`,
+    );
+  } finally {
+    o.w.close();
+  }
 });
 
 test('Escape gibt den Fokus an den Auslöser zurück', async () => {
@@ -81,9 +115,13 @@ test('Escape gibt den Fokus an den Auslöser zurück', async () => {
     ausloeser.click();
     await warte(() => o.d.getElementById('acq-modal').classList.contains('open') && o.d.getElementById('acq-preis-1'));
     o.d.dispatchEvent(new o.w.KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
-    assert.ok(await warte(() => o.d.activeElement?.matches?.('#set-modal [data-click="openAcqModal"]'), 2000),
-      `Fokus auf ${o.d.activeElement?.outerHTML?.slice(0, 80)}`);
-  } finally { o.w.close(); }
+    assert.ok(
+      await warte(() => o.d.activeElement?.matches?.('#set-modal [data-click="openAcqModal"]'), 2000),
+      `Fokus auf ${o.d.activeElement?.outerHTML?.slice(0, 80)}`,
+    );
+  } finally {
+    o.w.close();
+  }
 });
 
 test('Set-Detail: ein USD-Kauf nennt USD und den umgerechneten Betrag', async () => {
@@ -94,21 +132,80 @@ test('Set-Detail: ein USD-Kauf nennt USD und den umgerechneten Betrag', async ()
     const inhalt = text(o.d.getElementById('m-acq-summary').textContent);
     assert.match(inhalt, /260,66 USD/);
     assert.match(inhalt, /≈ 208,53 €/);
-  } finally { o.w.close(); }
+  } finally {
+    o.w.close();
+  }
 });
 
 test('Finanzen: ≈ und Zahl der Schätzungen', async () => {
-  const kauf = (id, preis, geschaetzt) => ({ id, condition: 'N', quantity: 4, purchase_price: preis, avg_price: 310, wert_gesamt: 1240,
-    pnl_prozent: 0.6, created_at: '2026-11-05T12:00:00Z', ...(geschaetzt ? { price_estimated: true } : {}) });
-  const o = await oeffneOberflaeche({
-    '/v1/finance/valuation': { success: true, currency: 'EUR', condition: 'N', total_value: '2480', kaufpreise_fremde_waehrung: 0,
-      totals: { min: '0', avg: '2480', max: '0', qty_avg: '2480' }, sets: [
-        { set_number: '10305-1', name: 'Burg', quantity: 4, avg_price: 310, wert_gesamt: 1240, from_cache: true, is_fallback: false, no_price: false, mixed: false, acquisitions: [kauf(1, 308, true)] },
-        { set_number: '10294-1', name: 'Titanic', quantity: 4, avg_price: 310, wert_gesamt: 1240, from_cache: true, is_fallback: false, no_price: false, mixed: false, acquisitions: [kauf(2, 300, false)] }] },
-    '/v1/finance/pnl': { success: true, currency: 'EUR', sets: [], totals: { purchase: '2432', current: '2480', kaufpreise_fremde_waehrung: 0,
-      positionen: 2, positionen_bewertet: 2, positionen_ohne_marktpreis: 0, positionen_ohne_kaufpreis: 0,
-      basis_einstand: '2432', basis_marktwert: '2480', basis_guv_betrag: '48', pnl_prozent: 2 } },
-  }, { browserSprache: 'de-DE' });
+  const kauf = (id, preis, geschaetzt) => ({
+    id,
+    condition: 'N',
+    quantity: 4,
+    purchase_price: preis,
+    avg_price: 310,
+    wert_gesamt: 1240,
+    pnl_prozent: 0.6,
+    created_at: '2026-11-05T12:00:00Z',
+    ...(geschaetzt ? { price_estimated: true } : {}),
+  });
+  const o = await oeffneOberflaeche(
+    {
+      '/v1/finance/valuation': {
+        success: true,
+        currency: 'EUR',
+        condition: 'N',
+        total_value: '2480',
+        kaufpreise_fremde_waehrung: 0,
+        totals: { min: '0', avg: '2480', max: '0', qty_avg: '2480' },
+        sets: [
+          {
+            set_number: '10305-1',
+            name: 'Burg',
+            quantity: 4,
+            avg_price: 310,
+            wert_gesamt: 1240,
+            from_cache: true,
+            is_fallback: false,
+            no_price: false,
+            mixed: false,
+            acquisitions: [kauf(1, 308, true)],
+          },
+          {
+            set_number: '10294-1',
+            name: 'Titanic',
+            quantity: 4,
+            avg_price: 310,
+            wert_gesamt: 1240,
+            from_cache: true,
+            is_fallback: false,
+            no_price: false,
+            mixed: false,
+            acquisitions: [kauf(2, 300, false)],
+          },
+        ],
+      },
+      '/v1/finance/pnl': {
+        success: true,
+        currency: 'EUR',
+        sets: [],
+        totals: {
+          purchase: '2432',
+          current: '2480',
+          kaufpreise_fremde_waehrung: 0,
+          positionen: 2,
+          positionen_bewertet: 2,
+          positionen_ohne_marktpreis: 0,
+          positionen_ohne_kaufpreis: 0,
+          basis_einstand: '2432',
+          basis_marktwert: '2480',
+          basis_guv_betrag: '48',
+          pnl_prozent: 2,
+        },
+      },
+    },
+    { browserSprache: 'de-DE' },
+  );
   try {
     await reiter(o.w, 'finance');
     await warte(() => o.d.querySelectorAll('#fin-tbl tbody tr').length >= 2, 4000);
@@ -122,7 +219,9 @@ test('Finanzen: ≈ und Zahl der Schätzungen', async () => {
     assert.match(burg.querySelector('.fin-unter').textContent, /Kaufpreis geschätzt/, 'auch in der Telefonzeile');
     assert.ok(await warte(() => !o.d.getElementById('fin-basis').hidden));
     assert.match(o.d.getElementById('fin-basis').textContent, /1 geschätzter Kaufpreis/);
-  } finally { o.w.close(); }
+  } finally {
+    o.w.close();
+  }
 });
 
 test('Set hinzufügen schickt Währung und Datum', async () => {
@@ -139,8 +238,13 @@ test('Set hinzufügen schickt Währung und Datum', async () => {
     o.d.getElementById('btn-add').click();
     await warte(() => o.aufrufe.some(a => a.url.includes('/sets/add-stream')));
     const rumpf = JSON.parse(o.aufrufe.find(a => a.url.includes('/sets/add-stream')).body);
-    assert.deepEqual({ p: rumpf.purchase_price, c: rumpf.currency, d: rumpf.date }, { p: 260.66, c: 'USD', d: '2019-03-04' });
-  } finally { o.w.close(); }
+    assert.deepEqual(
+      { p: rumpf.purchase_price, c: rumpf.currency, d: rumpf.date },
+      { p: 260.66, c: 'USD', d: '2019-03-04' },
+    );
+  } finally {
+    o.w.close();
+  }
 });
 
 test('Erfassen-Dialoge einheitlich', async () => {
@@ -150,8 +254,12 @@ test('Erfassen-Dialoge einheitlich', async () => {
     for (const id of ['add-set-modal', 'add-part-modal', 'add-fig-modal']) {
       const dialog = o.d.getElementById(id);
       assert.ok(dialog.querySelector('input[type=date]'), `${id}: kein Datumsfeld`);
-      const sichtbar = dialog.textContent + [...dialog.querySelectorAll('[placeholder]')].map(e => e.getAttribute('placeholder')).join(' ');
+      const sichtbar =
+        dialog.textContent +
+        [...dialog.querySelectorAll('[placeholder]')].map(e => e.getAttribute('placeholder')).join(' ');
       assert.doesNotMatch(sichtbar, /z\.B\.|\(opt\.\)/, id);
     }
-  } finally { o.w.close(); }
+  } finally {
+    o.w.close();
+  }
 });

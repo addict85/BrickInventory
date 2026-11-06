@@ -19,10 +19,22 @@ import { IMG_PROXY_PFAD } from '../bilder/images';
 async function originalStattVorschau(res: Response, segmente: string[]): Promise<boolean> {
   const rohPfad = segmente.join('/');
   if (!/_thumb(\.[^.]+)$/.test(rohPfad)) return false;
-  const originalSegs = rohPfad.replace(/_thumb(\.[^.]+)$/, '$1').split('/').filter(Boolean);
+  const originalSegs = rohPfad
+    .replace(/_thumb(\.[^.]+)$/, '$1')
+    .split('/')
+    .filter(Boolean);
   const originalPfad = safeDataPath('images', originalSegs);
-  if (!originalPfad || !await fs.promises.access(originalPfad).then(() => true, () => false)) return false;
-  setImmediate(() => { void generateThumb('/images/' + originalSegs.join('/')).catch(logAndContinue('bilder:vorschau')); });
+  if (
+    !originalPfad ||
+    !(await fs.promises.access(originalPfad).then(
+      () => true,
+      () => false,
+    ))
+  )
+    return false;
+  setImmediate(() => {
+    void generateThumb('/images/' + originalSegs.join('/')).catch(logAndContinue('bilder:vorschau'));
+  });
   liefereDatei(res, originalPfad);
   return true;
 }
@@ -32,7 +44,7 @@ export async function liefereBild(req: Request, res: Response) {
   if (!imgUserId) return res.status(401).send('Nicht angemeldet');
   const segmente = pfadSegmente(req, 'pfad');
   const filePath = safeDataPath('images', segmente);
-  if (!filePath || !await bildFreigegeben(imgUserId, segmente).catch(meldeUndLiefere('bilder:blickfeld', false)))
+  if (!filePath || !(await bildFreigegeben(imgUserId, segmente).catch(meldeUndLiefere('bilder:blickfeld', false))))
     return res.status(404).send('Datei nicht gefunden');
   // private: Die Antwort hängt an einer Anmeldung. max-age=0, damit ein ersetztes Bild sofort gilt.
   // Ausführlich: docs/begruendungen/src/katalog/http/bildAuslieferung.ts.md#lookupcdnformissingimage
