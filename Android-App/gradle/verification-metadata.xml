@@ -45,6 +45,8 @@
             <trusting group="androidx.compose.ui"/>
             <trusting group="com.android"/>
             <trusting group="com.android.application"/>
+            <trusting group="com.android.library"/>
+            <trusting group="com.android.lint"/>
             <trusting group="com.android.databinding"/>
             <trusting group="com.android.tools"/>
             <trusting group="com.android.tools.analytics-library"/>
