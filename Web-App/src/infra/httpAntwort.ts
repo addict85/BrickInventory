@@ -23,8 +23,8 @@ export function handleRouteError(res: FehlerZiel, fehler: unknown, status?: numb
   const isServerError = code >= 500;
   // Ein 4xx ist eine Antwort, kein Serverfehler: Mit Stack füllte jede falsche
   // Eingabe das Protokoll und verdeckte die echten Fehler.
-  if (isServerError) console.error(`[route-error] ${anfrage}${code}:`, e?.stack || e?.message || e);
-  else console.warn(`[route-warnung] ${anfrage}${code}: ${fehlertext(fehler)}`);
+  if (isServerError) console.error('[route-error] %s%d:', anfrage, code, e?.stack || e?.message || e);
+  else console.warn('[route-warnung] %s%d: %s', anfrage, code, fehlertext(fehler));
   if (res.headersSent) return;
   // Helfer werfen den GRUND (Code), erst hier wird daraus ein Satz in der
   // Sprache des Anfragenden.

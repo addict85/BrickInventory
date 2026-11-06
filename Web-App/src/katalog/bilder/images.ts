@@ -48,10 +48,18 @@ export function istProxyPfad(src: string): boolean {
   return src.startsWith(IMG_PROXY_PFAD) || src.startsWith(IMG_PROXY_PFAD_ALT);
 }
 
+/** Nur Bilder von Rebrickable gehen über den Proxy; ein Teilstring passte auch auf fremde Hosts. */
+function istRebrickableBild(url: string): boolean {
+  try {
+    const h = new URL(url).hostname;
+    return h === 'rebrickable.com' || h.endsWith('.rebrickable.com');
+  } catch { return false; }
+}
+
 export function proxyImageUrl(url: string | null | undefined) {
   if (!url) return null;
   if (url.startsWith('/')) return url;
-  if (url.includes('rebrickable.com')) return `${IMG_PROXY_PFAD}?url=${encodeURIComponent(url)}`;
+  if (istRebrickableBild(url)) return `${IMG_PROXY_PFAD}?url=${encodeURIComponent(url)}`;
   return url;
 }
 
