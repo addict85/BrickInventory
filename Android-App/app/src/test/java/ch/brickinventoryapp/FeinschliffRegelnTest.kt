@@ -172,7 +172,7 @@ class FeinschliffRegelnTest {
                 title = "Titel", navController = nav, bottomNavItems = reiter,
                 snackbarHostState = remember { SnackbarHostState() },
                 csvImportState = remember { MutableStateFlow(CsvImportUiState()) },
-                onCsvAbbrechen = {}, serverUrl = "", onTabAngetippt = {},
+                onCsvAbbrechen = {}, onTabAngetippt = {},
             ) {
                 NavHost(nav, startDestination = Screen.Wanted) { composable<Screen.Wanted> { } }
             }
