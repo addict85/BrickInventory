@@ -58,7 +58,7 @@ class GalerieViewModelTest {
     private lateinit var t: TestDienste
 
     private fun vm(gemerkt: SavedStateHandle = SavedStateHandle(), t: TestDienste = this.t) = t.merke(GalerieViewModel(
-        t.dienste, SetsRepository(t.api, t.cache), FinanzenRepository(t.api, t.cache), gemerkt))
+        t.sitzung, t.filter(), t.hinweise, t.bestand, t.scrollMemory, SetsRepository(t.api, t.cache), FinanzenRepository(t.api, t.cache), gemerkt))
 
     private fun abrufe(pfade: PfadServer = this.pfade) =
         pfade.anfragenAn("GET /api/v1/sets?") + pfade.anfragenAn("GET /api/v1/sets ")

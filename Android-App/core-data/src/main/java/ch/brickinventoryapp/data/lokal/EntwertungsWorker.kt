@@ -18,7 +18,7 @@ import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkManager
 import androidx.work.WorkerParameters
 import ch.brickinventoryapp.data.Entwerter
-import ch.brickinventoryapp.data.PreferencesManager
+import ch.brickinventoryapp.data.Entwertungsprotokoll
 import ch.brickinventoryapp.data.Entwertungsauftrag
 import ch.brickinventoryapp.data.EntwertungsPlaner
 import ch.brickinventoryapp.data.Entwertungsschritt
@@ -29,11 +29,10 @@ import ch.brickinventoryapp.util.LanguageManager
 import ch.brickinventoryapp.util.NetworkPolicy
 import ch.brickinventoryapp.util.Protokoll
 import ch.brickinventoryapp.util.TokenVerschluesselung
-import dagger.hilt.EntryPoint
-import dagger.hilt.InstallIn
-import dagger.hilt.android.EntryPointAccessors
+import androidx.hilt.work.HiltWorker
+import dagger.assisted.Assisted
+import dagger.assisted.AssistedInject
 import dagger.hilt.android.qualifiers.ApplicationContext
-import dagger.hilt.components.SingletonComponent
 import kotlinx.coroutines.withContext
 import java.util.concurrent.TimeUnit
 import javax.inject.Inject
@@ -41,18 +40,17 @@ import javax.inject.Inject
 /**
  * Entwertet ein Token, dessen Abmelden am Server nicht gleich gelang. WorkManager
  * hält den Auftrag über Neustarts und wartet auf Netz; die Entscheidungen stehen in
- * data/Entwertung.kt. EntryPoint statt @HiltWorker wie beim AusgangWorker.
+ * data/Entwertung.kt.
  */
-class EntwertungsWorker(context: Context, params: WorkerParameters) : CoroutineWorker(context, params) {
-
-    @EntryPoint
-    @InstallIn(SingletonComponent::class)
-    interface Zugang {
-        fun entwerter(): Entwerter
-        fun tresor(): TokenVerschluesselung
-        fun prefs(): PreferencesManager
-        fun bereiche(): Anwendungsbereiche
-    }
+@HiltWorker
+class EntwertungsWorker @AssistedInject constructor(
+    @Assisted context: Context,
+    @Assisted params: WorkerParameters,
+    private val entwerter: Entwerter,
+    private val tresor: TokenVerschluesselung,
+    private val protokoll: Entwertungsprotokoll,
+    private val bereiche: Anwendungsbereiche,
+) : CoroutineWorker(context, params) {
 
     override suspend fun doWork(): Result {
         val server = inputData.getString(SERVER) ?: return Result.success()
@@ -60,9 +58,8 @@ class EntwertungsWorker(context: Context, params: WorkerParameters) : CoroutineW
         val pin = inputData.getString(PIN)
         // Aufträge älterer Fassungen tragen keine Herkunft; sie galten dem eingetragenen Server.
         val herkunft = inputData.getString(HERKUNFT) ?: NetworkPolicy.herkunft(server)
-        val zugang = EntryPointAccessors.fromApplication(applicationContext, Zugang::class.java)
-        val schritt = withContext(zugang.bereiche().io) {
-            entwertungsSchritt(zugang.tresor().oeffne(geheim), runAttemptCount) { zugang.entwerter().entwerte(server, it, pin, herkunft) }
+        val schritt = withContext(bereiche.io) {
+            entwertungsSchritt(tresor.oeffne(geheim), runAttemptCount) { entwerter.entwerte(server, it, pin, herkunft) }
         }
         return when (schritt) {
             Entwertungsschritt.FERTIG -> Result.success()
@@ -70,7 +67,7 @@ class EntwertungsWorker(context: Context, params: WorkerParameters) : CoroutineW
             Entwertungsschritt.AUFGEGEBEN -> {
                 Protokoll.warnung("Abmelden", "Token am Server nicht entwertet, Auftrag aufgegeben")
                 // Still aufzugeben hiesse: Das Token gilt am Server weiter, und niemand weiss es.
-                zugang.prefs().merkeGescheiterteEntwertung(server)
+                protokoll.merkeGescheiterteEntwertung(server)
                 zeigeMeldung(applicationContext, server)
                 Result.failure()
             }
@@ -108,7 +105,7 @@ class EntwertungsWorker(context: Context, params: WorkerParameters) : CoroutineW
 }
 
 /** Ein Auftrag je Abmeldung; ohne Netz wartet er, gescheitert kommt er mit Rückzug wieder. */
-class WorkManagerEntwertung @Inject constructor(
+internal class WorkManagerEntwertung @Inject constructor(
     @param:ApplicationContext private val context: Context,
 ) : EntwertungsPlaner {
     override fun plane(auftrag: Entwertungsauftrag) {

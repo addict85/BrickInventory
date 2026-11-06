@@ -6,7 +6,7 @@ import java.io.File
  * Was mit einer zwischengespeicherten Anleitung als Nächstes zu tun ist.
  * Ausführlich: docs/begruendungen/core-data/util/PdfCache.kt.md#pdfschritt
  */
-sealed class PdfSchritt {
+internal sealed class PdfSchritt {
     /** Die Datei liegt vollstaendig vor. Nichts holen. */
     object Fertig : PdfSchritt()
 
@@ -23,7 +23,7 @@ sealed class PdfSchritt {
  * @param fertigeGroesse Groesse der fertigen Datei, 0 wenn es sie nicht gibt.
  * @param teilGroesse    Groesse der Teildatei, 0 wenn es sie nicht gibt.
  */
-fun pdfSchritt(fertigeGroesse: Long, teilGroesse: Long): PdfSchritt = when {
+internal fun pdfSchritt(fertigeGroesse: Long, teilGroesse: Long): PdfSchritt = when {
     // Die fertige Datei schlaegt alles. Liegt daneben noch eine Teildatei,
     // ist sie ein Ueberbleibsel und wird beim naechsten Aufraeumen entsorgt.
     fertigeGroesse > 0L -> PdfSchritt.Fertig

@@ -1,91 +1,38 @@
 package ch.brickinventoryapp.data.repository
 
-import ch.brickinventoryapp.data.api.FigurenApi
-import ch.brickinventoryapp.data.cache.ResponseCache
-import ch.brickinventoryapp.data.lokal.Bearbeitung
-import ch.brickinventoryapp.data.lokal.Faecher
 import ch.brickinventoryapp.data.lokal.Lokal
-import ch.brickinventoryapp.data.lokal.Offlineablage
 import ch.brickinventoryapp.data.model.*
-import kotlinx.coroutines.flow.Flow
-import javax.inject.Inject
-import javax.inject.Singleton
 import ch.brickinventoryapp.data.model.MinifigStatsResponse
+import kotlinx.coroutines.flow.Flow
 
 /**
- * Minifiguren aus Sets und manuell erfasste. Erreichbar über `repo.figuren.…`.
+ * Minifiguren: Bestand und manuell erfasste Figuren.
+ * Eine Schnittstelle, damit ViewModels und Tests nicht an der Umsetzung mit
+ * Retrofit und Ablage hängen (FigurenRepositoryImpl).
  */
-@Singleton
-class FigurenRepository @Inject constructor(
-    api: FigurenApi,
-    cache: ResponseCache,
-    ablage: Offlineablage,
-) : RepoBasis<FigurenApi>(api, cache, ablage) {
+interface FigurenRepository {
+    suspend fun getMinifigs(accounts: String? = null, search: String? = null): Ergebnis<MinifigsResponse>
 
-    /**
-     * Set-Figuren der Übersicht; Suche beim Server wie im Web, weil er vor der
-     * Gruppierung über jede fig_name-Zeile sucht. Gecacht wird nur die ungefilterte
-     * Sicht, sonst wäre ein Suchergebnis nach dem Neustart die ganze Sammlung.
-     */
-    suspend fun getMinifigs(accounts: String? = null, search: String? = null): Result<MinifigsResponse> =
-        if (accounts == null && search.isNullOrBlank())
-            abgeglichen(Faecher.FIGUREN, { it.figs }, { MinifigsResponse(success = true, figs = it) }) {
-                safeCall { api.getMinifigs(source = "set") }
-            }
-        else safeCall { api.getMinifigs(source = "set", accounts = accounts,
-                                        search = search?.ifBlank { null }) }
+    fun beobachteFiguren(): Flow<Lokal<Minifig>>
 
-    /** Die lokalen Listen (ungefiltert), wie TeileRepository.beobachteTeile. */
-    fun beobachteFiguren(): Flow<Lokal<Minifig>> = ablage.beobachte(Faecher.FIGUREN)
-    fun beobachteManuelleFiguren(): Flow<Lokal<FigValuationItem>> = ablage.beobachte(Faecher.MANUELLE_FIGUREN)
+    fun beobachteManuelleFiguren(): Flow<Lokal<FigValuationItem>>
 
     suspend fun getManualMinifigs(accounts: String? = null,
-                                  search: String? = null): Result<ManualFigsResponse> =
-        if (accounts == null && search.isNullOrBlank())
-            abgeglichen(Faecher.MANUELLE_FIGUREN, { it.figs }, { ManualFigsResponse(success = true, figs = it) }) {
-                safeCall { api.getManualMinifigs(accounts, search) }
-            }
-        else safeCall { api.getManualMinifigs(accounts, search) }
+                                  search: String? = null): Ergebnis<ManualFigsResponse>
 
-    /** Dasselbe fuer eine Minifigur — sie hat keine Farbe (Migration 0024). */
-    suspend fun setFigStorage(figNumber: String, ort: String): Result<LagerortResponse> =
-        safeCall { api.setFigStorage(figNumber, LagerortRequest(ort)) }
+    suspend fun setFigStorage(figNumber: String, ort: String): Ergebnis<LagerortResponse>
 
     suspend fun addMinifig(figNumber: String, blFigNumber: String? = null, quantity: Int = 1,
                            unitPrice: Double? = null, condition: String? = null,
                            ownerUserId: Int? = null,
-                           storage: String? = null): Result<AddMinifigResponse> =
-        AddMinifigRequest(figNumber, blFigNumber, quantity, unitPrice, condition, ownerUserId, storage).let { anfrage ->
-            schreibe(Bearbeitung.FigurErfassen(anfrage),
-                { AddMinifigResponse(success = true, action = "gepuffert", figNumber = figNumber) }) { schluessel ->
-                safeCall { api.addMinifig(anfrage, schluessel) }
-            }
-        }
+                           storage: String? = null): Ergebnis<AddMinifigResponse>
 
-    /**
-     * Wie TeileRepository.updatePart: die Menge auch als Schritt.
-     *
-     * @param owner Besitzer der Karte; null = eigenes Konto.
-     */
-    suspend fun updateMinifig(figNumber: String, quantity: Int, unitPrice: Double?, blFigNumber: String? = null, condition: String? = null, owner: Int? = null): Result<GenericResponse> {
-        val bisher = ablage.lies(Faecher.MANUELLE_FIGUREN)?.liste
-            ?.firstOrNull { it.figNumber == figNumber && (owner == null || it.userId == owner) }?.quantity
-        val anfrage = UpdateManualItemRequest(quantity, unitPrice, blFigNumber, condition, quantityDelta = bisher?.let { quantity - it })
-        return schreibe(Bearbeitung.FigurAendern(figNumber, anfrage, owner), { GenericResponse(success = true) }) { schluessel ->
-            safeCall { api.updateMinifig(figNumber, anfrage, owner, schluessel) }
-        }
-    }
+    suspend fun updateMinifig(figNumber: String, quantity: Int, unitPrice: Double?, blFigNumber: String? = null, condition: String? = null, owner: Int? = null): Ergebnis<GenericResponse>
 
-    /** Auch offline, wie TeileRepository.deletePart. */
-    suspend fun deleteMinifig(figNumber: String, owner: Int? = null): Result<GenericResponse> =
-        schreibe(Bearbeitung.FigurLoeschen(figNumber, owner), { GenericResponse(success = true) }) { schluessel ->
-            safeCall { api.deleteMinifig(figNumber, owner, schluessel) }
-        }
+    suspend fun deleteMinifig(figNumber: String, owner: Int? = null): Ergebnis<GenericResponse>
 
-    suspend fun getMinifigStats(accounts: String? = null): Result<MinifigStatsResponse> =
-        safeCall { api.getMinifigStats(accounts) }
+    suspend fun getMinifigStats(accounts: String? = null): Ergebnis<MinifigStatsResponse>
 
     suspend fun getSetsMitFigur(figNumber: String,
-                                accounts: String? = null): Result<VerwendendeSetsResponse> =
-        safeCall { api.getSetsMitFigur(figNumber, accounts) }
+                                accounts: String? = null): Ergebnis<VerwendendeSetsResponse>
 }

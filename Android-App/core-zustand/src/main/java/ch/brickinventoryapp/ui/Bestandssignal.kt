@@ -27,8 +27,16 @@ sealed interface Aenderung {
  * Zusammenfassung): Ein beschäftigter Sammler verliert so nichts, und die
  * Ablage wächst nicht. Ein Puffer mit tryEmit verwarf bei Überlauf still.
  */
+interface Bestandssignal {
+    val aenderungen: Flow<Aenderung>
+    fun melde(vararg was: Aenderung)
+}
+
+/** Für Tests ohne Hilt. */
+fun Bestandssignal(): Bestandssignal = BestandsVerteiler()
+
 @Singleton
-class Bestandssignal @Inject constructor() {
+class BestandsVerteiler @Inject constructor() : Bestandssignal {
 
     private class Sammler {
         val offen = LinkedHashMap<Any, Aenderung>()
@@ -37,7 +45,7 @@ class Bestandssignal @Inject constructor() {
 
     private val sammler = CopyOnWriteArrayList<Sammler>()
 
-    val aenderungen: Flow<Aenderung> = flow {
+    override val aenderungen: Flow<Aenderung> = flow {
         val s = Sammler()
         sammler += s
         try {
@@ -51,7 +59,7 @@ class Bestandssignal @Inject constructor() {
         }
     }
 
-    fun melde(vararg was: Aenderung) {
+    override fun melde(vararg was: Aenderung) {
         for (s in sammler) {
             synchronized(s) {
                 for (a in was) {

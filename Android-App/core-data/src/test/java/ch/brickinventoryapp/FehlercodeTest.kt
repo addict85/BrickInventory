@@ -1,12 +1,13 @@
 package ch.brickinventoryapp
 
+import ch.brickinventoryapp.data.model.Fehlercode
 import ch.brickinventoryapp.data.api.Fehlerrumpf
 import ch.brickinventoryapp.data.api.fehlerTextZuCode
 import ch.brickinventoryapp.data.cache.ResponseCache
 import ch.brickinventoryapp.data.repository.KontoRepository
 import ch.brickinventoryapp.data.repository.Fehlerart
 import ch.brickinventoryapp.data.repository.GutscheineRepository
-import ch.brickinventoryapp.data.repository.Result
+import ch.brickinventoryapp.data.repository.Ergebnis
 import kotlinx.coroutines.test.runTest
 import okhttp3.mockwebserver.MockResponse
 import okhttp3.mockwebserver.MockWebServer
@@ -19,7 +20,7 @@ import org.junit.Test
 import java.io.File
 
 /**
- * Der Fehlercode des Servers (`code` im Rumpf) kommt in `Result.Error.code` an
+ * Der Fehlercode des Servers (`code` im Rumpf) kommt in `Ergebnis.Error.code` an
  * und entscheidet dort, wo nach dem Fall verzweigt wird.
  *
  * Gegenproben:
@@ -58,9 +59,9 @@ class FehlercodeTest {
     private fun admin() = KontoRepository(TestApi.fuer(server), ResponseCache { cacheDir })
     private fun gutscheine() = GutscheineRepository(TestApi.fuer(server), ResponseCache { cacheDir })
 
-    private fun fehler(r: Result<*>): Result.Error {
-        assert(r is Result.Error) { "Erwartet wurde ein Fehler, kam: $r" }
-        return r as Result.Error
+    private fun fehler(r: Ergebnis<*>): Ergebnis.Error {
+        assert(r is Ergebnis.Error) { "Erwartet wurde ein Fehler, kam: $r" }
+        return r as Ergebnis.Error
     }
 
     @Test
@@ -68,7 +69,7 @@ class FehlercodeTest {
         server.enqueue(TestApi.antwort(
             """{"success":false,"error":"Aktuelles Passwort falsch","code":"aktuelles_passwort_falsch"}""", 400))
         val e = fehler(admin().getMe())
-        assertEquals("aktuelles_passwort_falsch", e.code)
+        assertEquals(Fehlercode.AKTUELLES_PASSWORT_FALSCH, e.code)
         assertEquals("Aktuelles Passwort falsch", e.message)
         assertEquals(400, e.httpCode)
     }
@@ -90,11 +91,11 @@ class FehlercodeTest {
         server.enqueue(TestApi.antwort(
             """{"success":false,"code":"guthaben_abstand","error":"Bitte warten","grund":"abstand","wartenSek":30}""", 429))
         when (val r = gutscheine().guthaben(1)) {
-            is Result.Success -> {
+            is Ergebnis.Success -> {
                 assertEquals("abstand", r.data.grund)
                 assertEquals(30, r.data.wartenSek)
             }
-            is Result.Error -> throw AssertionError("Die Wartezeit ging verloren: $r")
+            is Ergebnis.Error -> throw AssertionError("Die Wartezeit ging verloren: $r")
         }
     }
 
@@ -103,16 +104,16 @@ class FehlercodeTest {
         server.enqueue(TestApi.antwort(
             """{"success":false,"code":"zu_viele_anfragen","error":"Zu viele Anfragen"}""", 429))
         val e = fehler(gutscheine().guthaben(1))
-        assertEquals("zu_viele_anfragen", e.code)
+        assertEquals(Fehlercode.ZU_VIELE_ANFRAGEN, e.code)
         assertEquals("Zu viele Anfragen", e.message)
     }
 
     @Test
     fun `Upload-Sperre, Verbindungsgrenze und Seitengrenze haben je einen eigenen Satz`() {
-        val texte = listOf("upload_laeuft", "zu_viele_verbindungen", "pdf_zu_viele_seiten").map { fehlerTextZuCode(it) }
+        val texte = listOf(Fehlercode.UPLOAD_LAEUFT, Fehlercode.ZU_VIELE_VERBINDUNGEN, Fehlercode.PDF_ZU_VIELE_SEITEN).map { fehlerTextZuCode(it) }
         assertTrue("jeder dieser Codes hat einen Satz der App: $texte", texte.all { it != null })
         assertEquals("keine zwei teilen sich einen Satz", 3, texte.toSet().size)
-        assertNull("sonst gilt der Satz des Servers", fehlerTextZuCode("zu_viele_anfragen"))
+        assertNull("sonst gilt der Satz des Servers", fehlerTextZuCode(Fehlercode.ZU_VIELE_ANFRAGEN))
         assertNull(fehlerTextZuCode(null))
     }
 
@@ -121,7 +122,7 @@ class FehlercodeTest {
         server.enqueue(TestApi.antwort(
             """{"success":false,"code":"pdf_zu_viele_seiten","error":"Das PDF hat 40 Seiten, höchstens 20 sind möglich."}""", 422))
         val e = fehler(gutscheine().ausPdf("karten.pdf", "application/pdf", byteArrayOf(37, 80, 68, 70)))
-        assertEquals("pdf_zu_viele_seiten", e.code)
+        assertEquals(Fehlercode.PDF_ZU_VIELE_SEITEN, e.code)
         assertEquals("Das PDF hat 40 Seiten, höchstens 20 sind möglich.", e.message)
         assertEquals(422, e.httpCode)
     }

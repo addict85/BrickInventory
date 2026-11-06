@@ -15,18 +15,15 @@ import androidx.compose.ui.res.stringResource
 import androidx.navigation.NavGraphBuilder
 import androidx.navigation.NavHostController
 import ch.brickinventoryapp.*
-import ch.brickinventoryapp.ui.AppViewModel
 import ch.brickinventoryapp.ui.viewmodel.MerklisteViewModel
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.navigation.NavBackStackEntry
 import androidx.navigation.toRoute
 import kotlinx.serialization.Serializable
-import ch.brickinventoryapp.ui.viewmodel.aktivitaetsViewModel
 import ch.brickinventoryapp.ui.viewmodel.CatalogViewModel
 import ch.brickinventoryapp.ui.listeUndDetail
 import ch.brickinventoryapp.ui.screens.MerklisteRoute
 import ch.brickinventoryapp.ui.screens.MerkpostenDetailRoute
-import ch.brickinventoryapp.ui.viewmodel.ErfassungViewModel
 
 /**
  * Liste und Detail des Katalogs als eigener Teilgraph: Beide holen ihr ViewModel
@@ -55,7 +52,7 @@ private fun NavGraphBuilder.merklisteZiele(u: ZielUmgebung) {
         androidx.compose.foundation.layout.BoxWithConstraints {
             val nebeneinander = listeUndDetail(maxWidth.value)
             ReiterGeruest(stringResource(R.string.nav_wanted), u) {
-                val erfassung = aktivitaetsViewModel<ErfassungViewModel>()
+                val erfassung = u.aktivitaet.erfassung
                 val merkliste = hiltViewModel<MerklisteViewModel>()
                 MerkpostenRueckgaengigRoute(merkliste, u.snackbarHostState)
                 MerklisteRoute(
@@ -91,7 +88,7 @@ private fun NavGraphBuilder.katalogZiele(u: ZielUmgebung) {
     val imageLoader = u.imageLoader
     navigation<KatalogBereich>(startDestination = Screen.Catalog) {
         composable<Screen.Catalog> { eintrag ->
-            val vm: AppViewModel = aktivitaetsViewModel()
+            val vm = u.aktivitaet.app
             val katalog = katalogViewModel(navController, eintrag)
             val state by vm.state.collectAsStateWithLifecycle()
             val catalogState by katalog.state.collectAsStateWithLifecycle()
@@ -118,13 +115,13 @@ private fun NavGraphBuilder.katalogZiele(u: ZielUmgebung) {
 private fun KatalogDetailZiel(u: ZielUmgebung, backStack: NavBackStackEntry) {
     val navController = u.navController
     val imageLoader = u.imageLoader
-    val vm: AppViewModel = aktivitaetsViewModel()
+    val vm = u.aktivitaet.app
     val katalog = katalogViewModel(navController, backStack)
     val state by vm.state.collectAsStateWithLifecycle()
     val blick by vm.blickfeld.collectAsStateWithLifecycle()
     val catSetNumber = backStack.toRoute<Screen.CatalogDetail>().setNumber
     val merkliste: MerklisteViewModel = hiltViewModel()
-    val erfassung = aktivitaetsViewModel<ErfassungViewModel>()
+    val erfassung = u.aktivitaet.erfassung
     val catalogState by katalog.state.collectAsStateWithLifecycle()
     val lagerZustand by vm.lagerState.collectAsStateWithLifecycle()
     // Steht das Set schon auf der Merkliste? Dann zeigt das Detail den Posten statt „Auf die Merkliste“.

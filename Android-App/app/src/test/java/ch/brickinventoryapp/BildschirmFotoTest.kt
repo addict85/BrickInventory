@@ -39,7 +39,7 @@ import org.junit.runner.RunWith
 import org.robolectric.ParameterizedRobolectricTestRunner
 import org.robolectric.RuntimeEnvironment
 import org.robolectric.annotation.GraphicsMode
-import ch.brickinventoryapp.data.repository.Result
+import ch.brickinventoryapp.data.repository.Ergebnis
 import ch.brickinventoryapp.ui.fehlerTextBrauchtCode
 import ch.brickinventoryapp.ui.fehlerTextId
 import ch.brickinventoryapp.ui.viewmodel.Texte
@@ -116,7 +116,7 @@ class BildschirmFotoTest(private val design: String, private val dunkel: Boolean
         compose.onRoot().captureRoboImage("src/test/bildschirmfotos/${name}_${design}_${hell}_$geraet.png")
     }
 
-    private fun erfassung() = welt.t.merke(ErfassungViewModel(welt.t.dienste, SetsRepository(welt.t.api, welt.t.cache),
+    private fun erfassung() = welt.t.merke(ErfassungViewModel(welt.t.sitzung, welt.t.filter(), welt.t.hinweise, welt.t.bestand, SetsRepository(welt.t.api, welt.t.cache),
         KatalogRepository(welt.t.api, welt.t.cache), object : SetAnleger {
             override fun anlegen(setNumber: String, quantity: Int, purchasePrice: Double?, condition: String?,
                                  ownerUserId: Int?, storage: String?): Flow<SetAnlegenSchritt> = emptyFlow()
@@ -258,7 +258,7 @@ internal class KontextTexte(
         if (args.isEmpty()) ctx.getString(id) else ctx.getString(id, *args)
     override fun menge(id: Int, anzahl: Int, vararg args: Any?): String =
         ctx.resources.getQuantityString(id, anzahl, *args)
-    override fun meldung(fehler: Result.Error): String {
+    override fun meldung(fehler: Ergebnis.Error): String {
         if (fehler.message.isNotBlank()) return fehler.message
         val id = fehlerTextId(fehler.art)
         return if (fehlerTextBrauchtCode(fehler.art)) text(id, fehler.httpCode ?: 0) else text(id)

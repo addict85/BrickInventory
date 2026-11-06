@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.data
 
+import ch.brickinventoryapp.di.SseClient
 import ch.brickinventoryapp.data.model.AddSetResponse
 import ch.brickinventoryapp.di.BrickDispatchers
 import ch.brickinventoryapp.di.Dispatcher
@@ -16,7 +17,6 @@ import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
 import javax.inject.Inject
-import javax.inject.Named
 import javax.inject.Singleton
 
 /**
@@ -26,8 +26,8 @@ import javax.inject.Singleton
  * Ausführlich: docs/begruendungen/core-data/data/SetAnlegenSseClient.kt.md#constructor
  */
 @Singleton
-class SetAnlegenSseClient @Inject constructor(
-    @Named("sse") private val client: OkHttpClient,
+internal class SetAnlegenSseClient @Inject constructor(
+    @SseClient private val client: OkHttpClient,
     private val prefs: Zugangsdaten,
     @param:Dispatcher(BrickDispatchers.IO) private val io: CoroutineDispatcher,
 ) : SetAnleger {

@@ -26,8 +26,7 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.compose.ui.res.stringResource
-import ch.brickinventoryapp.ui.viewmodel.aktivitaetsViewModel
-import ch.brickinventoryapp.ui.viewmodel.UpdateViewModel
+import ch.brickinventoryapp.nav.AktivitaetsZustand
 import ch.brickinventoryapp.util.NetworkPolicy
 import ch.brickinventoryapp.nav.Reiter
 import ch.brickinventoryapp.nav.Rollzustaende
@@ -36,8 +35,6 @@ import ch.brickinventoryapp.ui.components.UebergangsRahmen
 import ch.brickinventoryapp.ui.dialogs.BarcodeResultRoute
 import ch.brickinventoryapp.ui.dialogs.SetPruefungRoute
 import ch.brickinventoryapp.ui.dialogs.UpdateRoute
-import ch.brickinventoryapp.ui.viewmodel.CsvImportViewModel
-import ch.brickinventoryapp.ui.viewmodel.ErfassungViewModel
 
 // Die Navigationsziele liegen seit der Aufteilung in nav/ (eigenes Paket).
 
@@ -49,16 +46,17 @@ import ch.brickinventoryapp.ui.viewmodel.ErfassungViewModel
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun BrickInventoryRoute(
-    vm: AppViewModel,
+    aktivitaet: AktivitaetsZustand,
     imageLoader: coil3.ImageLoader,
 ) {
+    val vm = aktivitaet.app
     // collectAsStateWithLifecycle: Collection stoppt, wenn die App im
     // Hintergrund ist — kein unnötiges Recomposition-/State-Processing mehr.
     val state by vm.state.collectAsStateWithLifecycle()
-    val erfassung: ErfassungViewModel = aktivitaetsViewModel()
+    val erfassung = aktivitaet.erfassung
     val barcodeState by erfassung.barcodeState.collectAsStateWithLifecycle()
-    val selbstUpdate: UpdateViewModel = aktivitaetsViewModel()
-    val csvImport: CsvImportViewModel = aktivitaetsViewModel()
+    val selbstUpdate = aktivitaet.update
+    val csvImport = aktivitaet.csvImport
     val navController = rememberNavController()
     val snackbarHostState = remember { SnackbarHostState() }
     // Rollzustände oberhalb des NavHost (siehe Rollzustaende). Der Katalog merkt sich
@@ -163,14 +161,14 @@ fun BrickInventoryRoute(
         // Kein Zustand hinein: Der NavHost-Builder läuft nur einmal, ein durchgereichter
         // Wert bliebe die Momentaufnahme des ersten Frames. Die Ziele lesen selbst.
         alleZiele(ZielUmgebung(navController, imageLoader, bottomNavItems,
-            snackbarHostState, rollen))
+            snackbarHostState, rollen) { aktivitaet })
     }
     }
 }
 
 /** Alle Ziele der App; der NavHost und ErreichbareRoutenTest bauen denselben Graphen. */
 internal fun androidx.navigation.NavGraphBuilder.alleZiele(u: ZielUmgebung) {
-    authGraph(u.navController)
+    authGraph(u)
     collectionGraph(u)
     catalogGraph(u)
     toolsGraph(u)

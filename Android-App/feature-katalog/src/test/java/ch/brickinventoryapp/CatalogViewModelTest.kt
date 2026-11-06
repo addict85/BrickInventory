@@ -4,6 +4,9 @@ import androidx.lifecycle.viewModelScope
 import ch.brickinventoryapp.data.model.CatalogSetDetailResponse
 import ch.brickinventoryapp.data.model.CatalogSetItem
 import ch.brickinventoryapp.data.model.CatalogSetsResponse
+import ch.brickinventoryapp.data.model.CatalogYearVerteilungResponse
+import ch.brickinventoryapp.data.model.JahrAnzahl
+import ch.brickinventoryapp.ui.model.JahrAnzahlAnsicht
 import ch.brickinventoryapp.ressourcen.R
 import ch.brickinventoryapp.ui.viewmodel.CatalogViewModel
 import kotlinx.coroutines.Dispatchers
@@ -31,6 +34,7 @@ import org.junit.Test
  *   katalog-suche-ohne-entprellen  setCatalogQuery() lädt sofort → rot „die Suche wartet …“
  *   katalog-seite-doppelt          ensureCatalogPage() ohne Prüfung „lädt schon“ → rot „eine Seite …“
  *   katalog-filter-behaelt-rolle   loadCatalogSets() ohne `scrollIndex = 0` → rot „ein Filterwechsel …“
+ *   katalog-verteilung-ohne-filter ladeJahrVerteilung() ohne `themeId` → rot „die Jahresverteilung …“
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 class CatalogViewModelTest {
@@ -53,7 +57,7 @@ class CatalogViewModelTest {
         CatalogSetsResponse(success = true, total = 120, sets = nummern.map { CatalogSetItem(setNumber = it, name = "Set $it") })
 
     private fun mitVm(block: suspend TestScope.(CatalogViewModel) -> Unit) = runTest(takt) {
-        val vm = CatalogViewModel(fake.repo(t.cache), t.meldungen, NummernTexte)
+        val vm = CatalogViewModel(KatalogRepository(fake.api, t.cache), t.meldungen, NummernTexte)
         try {
             block(vm)
         } finally {
@@ -127,5 +131,20 @@ class CatalogViewModelTest {
         advanceUntilIdle()
         assertEquals("t${R.string.err_set_not_found}", t.meldungen.meldung.value)
         assertNull(vm.state.value.detail)
+    }
+
+    /** Die Jahre liegen nur auf dem Server; geholt mit denselben Filtern wie die Liste. */
+    @Test
+    fun `die Jahresverteilung kommt vom Server, mit den Filtern der Liste`() = mitVm { vm ->
+        fake.antworten["getCatalogSets"] = seite("10294-1")
+        fake.antworten["getCatalogYearVerteilung"] = CatalogYearVerteilungResponse(
+            success = true, years = listOf(JahrAnzahl(1999, 4), JahrAnzahl(null, 2), JahrAnzahl(2024, 7)))
+        vm.setCatalogSort("year_desc")
+        vm.setCatalogTheme(158)
+        advanceUntilIdle()
+        val abrufe = synchronized(fake.argumente) { fake.argumente.filter { it.first == "getCatalogYearVerteilung" } }
+        assertEquals(listOf<Any?>(null, 158, "year_desc"), abrufe.last().second)
+        assertEquals("Jahrgänge ohne Jahr fallen weg, wie in der Webapp",
+            listOf(JahrAnzahlAnsicht(1999, 4), JahrAnzahlAnsicht(2024, 7)), vm.state.value.jahrVerteilung)
     }
 }

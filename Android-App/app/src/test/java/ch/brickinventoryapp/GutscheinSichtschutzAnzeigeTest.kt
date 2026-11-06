@@ -1,6 +1,6 @@
 package ch.brickinventoryapp
 
-import android.net.Uri
+import ch.brickinventoryapp.ui.viewmodel.DateiRef
 import android.view.WindowManager
 import androidx.activity.ComponentActivity
 import androidx.compose.material3.SnackbarHostState
@@ -50,7 +50,7 @@ class GutscheinSichtschutzAnzeigeTest {
         val vm = GutscheinViewModel(
             repo = GutscheineRepository(pfade.imTakt(), ResponseCache { File(compose.activity.cacheDir, "g") }),
             texte = NummernTexte,
-            leser = object : DateiLeser { override suspend fun lies(uri: Uri): Pair<String?, ByteArray>? = null },
+            leser = object : DateiLeser { override suspend fun lies(datei: DateiRef): Pair<String?, ByteArray>? = null },
             meldungen = MeldungsKanal(),
         )
         val sichtbar = mutableStateOf(true)

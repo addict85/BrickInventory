@@ -54,12 +54,12 @@ import ch.brickinventoryapp.ui.screens.PartsListRoute
 import ch.brickinventoryapp.ui.screens.PartsListScreen
 import ch.brickinventoryapp.ui.screens.PreisalarmeRoute
 import ch.brickinventoryapp.ui.viewmodel.DateiLeser
+import ch.brickinventoryapp.ui.viewmodel.DateiRef
 import ch.brickinventoryapp.ui.viewmodel.EinstellungenViewModel
 import ch.brickinventoryapp.ui.viewmodel.HaushaltViewModel
 import ch.brickinventoryapp.ui.viewmodel.KontoViewModel
 import ch.brickinventoryapp.ui.viewmodel.TeilelisteViewModel
 import android.content.Context
-import android.net.Uri
 import android.os.Looper
 import java.util.Locale
 import org.robolectric.Shadows
@@ -132,13 +132,13 @@ class UnterseitenTest {
 
     private fun imDialog(text: String) = compose.onNode(hasText(text) and hasClickAction() and hasAnyAncestor(isDialog()))
 
-    private fun einstellungen() = welt.t.merke(EinstellungenViewModel(welt.t.dienste,
+    private fun einstellungen() = welt.t.merke(EinstellungenViewModel(welt.t.sitzung, welt.t.filter(), welt.t.hinweise, welt.t.bestand,
         KontoRepository(welt.t.api, welt.t.cache, welt.t.io),
         VerwaltungRepository(welt.t.api, welt.t.cache),
         SetsRepository(welt.t.api, welt.t.cache),
         TeileRepository(welt.t.api, welt.t.cache),
         object : DateiLeser {
-            override suspend fun lies(uri: Uri): Pair<String?, ByteArray>? = null
+            override suspend fun lies(datei: DateiRef): Pair<String?, ByteArray>? = null
         }))
 
     @Test
@@ -188,7 +188,7 @@ class UnterseitenTest {
     fun `Haushalt gliedert Einladen und Annehmen und entfernt erst nach Rueckfrage`() {
         welt.pfade.antworten["/api/v1/settings/household"] = """{"success":true,"is_main":true,"currency":"CHF",
             "sub_accounts":[{"id":2,"username":"lena"},{"id":3,"username":"tim"}],"open_invites":1}"""
-        val vm = welt.t.merke(HaushaltViewModel(welt.t.dienste,
+        val vm = welt.t.merke(HaushaltViewModel(welt.t.sitzung, welt.t.filter(), welt.t.hinweise, welt.t.bestand,
             HaushaltRepository(welt.t.api, welt.t.cache),
             KontoRepository(welt.t.api, welt.t.cache, welt.t.io))).also { it.loadHouseholdStatus() }
         zeige { HaushaltRoute(vm, remember { SnackbarHostState() }, onZurueck = {}) }
@@ -251,7 +251,7 @@ class UnterseitenTest {
     fun `Entfernen nennt das Konto im Haushalt`() {
         welt.pfade.antworten["/api/v1/settings/household"] = """{"success":true,"is_main":true,"currency":"CHF",
             "sub_accounts":[{"id":2,"username":"lena"},{"id":3,"username":"tim"}],"open_invites":1}"""
-        val vm = welt.t.merke(HaushaltViewModel(welt.t.dienste,
+        val vm = welt.t.merke(HaushaltViewModel(welt.t.sitzung, welt.t.filter(), welt.t.hinweise, welt.t.bestand,
             HaushaltRepository(welt.t.api, welt.t.cache),
             KontoRepository(welt.t.api, welt.t.cache, welt.t.io))).also { it.loadHouseholdStatus() }
         zeige { HaushaltRoute(vm, remember { SnackbarHostState() }, onZurueck = {}) }
@@ -288,7 +288,7 @@ class UnterseitenTest {
             "email":"marco@example.org","first_name":"Marco","last_name":"Muster","email_verified":true}}"""
         val konto = welt.t.merke(KontoViewModel(
             KontoRepository(welt.t.api, welt.t.cache, welt.t.io), KontextTexte(),
-            welt.t.meldungen, welt.t.sitzung))
+            welt.t.meldungen, welt.t.sitzung, SitzungsAttrappe()))
         zeige {
             KontoRoute(onAbmelden = {}, snackbarHostState = remember { SnackbarHostState() },
                 konto = konto, onZurueck = {})
@@ -315,7 +315,7 @@ class UnterseitenTest {
             "email_neu":"neu@example.org"}}"""
         val konto = welt.t.merke(KontoViewModel(
             KontoRepository(welt.t.api, welt.t.cache, welt.t.io), KontextTexte(),
-            welt.t.meldungen, welt.t.sitzung))
+            welt.t.meldungen, welt.t.sitzung, SitzungsAttrappe()))
         zeige {
             KontoRoute(onAbmelden = {}, snackbarHostState = remember { SnackbarHostState() },
                 konto = konto, onZurueck = {})
@@ -333,7 +333,7 @@ class UnterseitenTest {
             "email":"marco@example.org","first_name":"Marco","last_name":"Muster","email_verified":true}}"""
         val konto = welt.t.merke(KontoViewModel(
             KontoRepository(welt.t.api, welt.t.cache, welt.t.io), KontextTexte(),
-            welt.t.meldungen, welt.t.sitzung))
+            welt.t.meldungen, welt.t.sitzung, SitzungsAttrappe()))
         zeige {
             KontoRoute(onAbmelden = {}, snackbarHostState = remember { SnackbarHostState() },
                 konto = konto, onZurueck = {})

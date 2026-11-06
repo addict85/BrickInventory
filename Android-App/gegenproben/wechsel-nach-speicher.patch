@@ -3,12 +3,12 @@ Modul: core-data
 Test: ch.brickinventoryapp.TokenBindungGesperrtTest
 Rot: ein gesperrter Keystore beim Serverwechsel
 
-diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/PreferencesManager.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/PreferencesManager.kt
-index 23815f2..a38081b 100644
---- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/PreferencesManager.kt
-+++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/PreferencesManager.kt
-@@ -297,7 +297,7 @@ class PreferencesManager @Inject constructor(
-             val platte = context.dataStore.data.first()
+diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/TokenAblage.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/TokenAblage.kt
+index f79cce3..711aeea 100644
+--- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/TokenAblage.kt
++++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/TokenAblage.kt
+@@ -195,7 +195,7 @@ class TokenAblage @Inject constructor(
+             val platte = dataStore.data.first()
              val alteAdresse = serverUrlJetzt()
              val herkunft = platte[TOKEN_HERKUNFT] ?: _tokenHerkunftState.value ?: alteAdresse
 -            val hatToken = platte[AUTH_TOKEN_ENC] != null || !platte[AUTH_TOKEN].isNullOrEmpty() || tokenJetzt().isNotBlank()

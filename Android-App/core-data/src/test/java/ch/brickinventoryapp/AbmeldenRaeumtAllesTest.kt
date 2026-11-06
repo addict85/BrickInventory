@@ -2,28 +2,27 @@ package ch.brickinventoryapp
 
 import android.Manifest
 import android.app.Application
+import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.content.Context
+import androidx.core.app.NotificationCompat
+import androidx.datastore.preferences.core.PreferenceDataStoreFactory
 import androidx.test.core.app.ApplicationProvider
-import ch.brickinventoryapp.alarm.PreisalarmWorker
 import ch.brickinventoryapp.data.Abmeldeweg
 import ch.brickinventoryapp.data.Abmeldung
 import ch.brickinventoryapp.data.PasswortPflicht
-import ch.brickinventoryapp.data.PreferencesManager
+import ch.brickinventoryapp.data.GeraeteAblage
+import ch.brickinventoryapp.data.GeraeteBereinigung
+import ch.brickinventoryapp.data.TokenAblage
 import ch.brickinventoryapp.data.ZweiterFaktorPflicht
 import ch.brickinventoryapp.data.cache.VorschauSpeicher
-import ch.brickinventoryapp.data.dataStore
+import ch.brickinventoryapp.data.cache.ResponseCache
 import ch.brickinventoryapp.data.lokal.Faecher
 import ch.brickinventoryapp.data.lokal.Offlineablage
-import ch.brickinventoryapp.data.model.Preisalarm
 import ch.brickinventoryapp.data.model.SetItem
 import ch.brickinventoryapp.data.lokal.Bearbeitung
-import ch.brickinventoryapp.data.repository.BrickRepository
-import ch.brickinventoryapp.data.repository.FinanzenRepository
-import ch.brickinventoryapp.data.repository.HaushaltRepository
-import ch.brickinventoryapp.data.repository.KatalogRepository
-import ch.brickinventoryapp.data.repository.VerwaltungRepository
-import ch.brickinventoryapp.di.AppModule
+import ch.brickinventoryapp.data.repository.KontoDatenLoeschung
+import ch.brickinventoryapp.ui.Abmeldehaken
 import ch.brickinventoryapp.ui.Abmelden
 import ch.brickinventoryapp.ui.Blickfeld
 import ch.brickinventoryapp.ui.Sitzung
@@ -60,9 +59,10 @@ import org.robolectric.annotation.Config
 import java.io.File
 
 /**
- * Nach dem Abmelden bleibt nichts vom Konto (sec17 A-N3/N4/N5): Abmelden.ausfuehren()
- * mit echten Ablagen, jede vorher befüllt, danach leer — und was mit dem alten
- * Ablageschlüssel verschlüsselt lag, ist nicht mehr lesbar.
+ * Nach dem Abmelden bleibt nichts vom Konto: Abmelden.ausfuehren() mit der echten
+ * GeraeteBereinigung und echten Ablagen, jede vorher befüllt, danach leer — und was mit
+ * dem alten Ablageschlüssel verschlüsselt lag, ist nicht mehr lesbar. Hier in core-data,
+ * weil die Bereinigung modulintern ist; den Widget-Haken vertritt eine Attrappe.
  *
  * Gegenproben (Robolectric, misst die CI; Job `gegenproben`):
  *   abmelden-laesst-vorschau     vorschau.leeren() entfernt → rot „… Vorschau“
@@ -106,18 +106,23 @@ class AbmeldenRaeumtAllesTest {
             datei(ctx.cacheDir, "anleitung_x.bin"))
         ctx.getSharedPreferences("widget", Context.MODE_PRIVATE).edit().putString("zahlen", "geheim").commit()
         shadowOf(ctx).grantPermissions(Manifest.permission.POST_NOTIFICATIONS)
-        PreisalarmWorker.zeige(ctx, listOf(Preisalarm(setNumber = "10294-1", schwelle = 500.0, currencyCode = "CHF")))
+        val nm = ctx.getSystemService(NotificationManager::class.java)
+        nm.createNotificationChannel(NotificationChannel("preisalarm", "Preisalarm", NotificationManager.IMPORTANCE_DEFAULT))
+        nm.notify(1, NotificationCompat.Builder(ctx, "preisalarm").setSmallIcon(android.R.drawable.ic_dialog_info)
+            .setContentTitle("10294-1 unter 500 CHF").build())
         return dateien
     }
 
     @Test
     fun `nach dem Abmelden ist jede Ablage leer und der alte Schluessel wertlos`() = runBlocking {
         val adresse = server.url("/").toString().trimEnd('/')
-        val prefs = PreferencesManager(ctx, Klartresor, bereich).also { it.warteAufStart() }
+        val store = PreferenceDataStoreFactory.create { File(ctx.filesDir, "abmelden-${System.nanoTime()}.preferences_pb") }
+        val geraet = GeraeteAblage(ctx, store)
+        val prefs = TokenAblage(store, Klartresor, geraet, bereich).also { it.warteAufStart() }
         prefs.saveServerUrl(adresse)
         prefs.saveAuthToken("token-marco")
         prefs.saveUsername("marco")
-        prefs.setzeAlarmMarke("2026-11-05T10:00:00Z")
+        geraet.setzeAlarmMarke("2026-11-05T10:00:00Z")
 
         val ablage = Ablageschluessel(File(ctx.noBackupFilesDir, "test.schluessel"), Klartresor)
         val geheim = AblageChiffre { ablage.fuer("x") }.verschluessle("Sammlung von marco".toByteArray(), "x/1")
@@ -128,9 +133,6 @@ class AbmeldenRaeumtAllesTest {
         val offline = Offlineablage.fluechtig()
         offline.uebernimm(Faecher.SETS, listOf(SetItem(setNumber = "10294-1")))
         offline.puffere(Bearbeitung.MerkpostenLoeschen("10294-1", "N", 1))
-        val repo = BrickRepository(SetsRepository(api, cache), TeileRepository(api, cache), FinanzenRepository(api, cache),
-            FigurenRepository(api, cache), HaushaltRepository(api, cache), KontoRepository(api, cache),
-            VerwaltungRepository(api, cache), KatalogRepository(api, cache), GutscheineRepository(api, cache), cache, offline)
         val vorschau = VorschauSpeicher({ File(ctx.filesDir, "vorschau") }, AblageChiffre { ablage.fuer("vorschau") })
         vorschau.schreibe("$adresse/images/sets/10294-1_thumb.jpg", "vorschaubild".toByteArray())
         val bildClient = OkHttpClient.Builder().cache(Cache(File(ctx.cacheDir, "bild-http"), 1_000_000)).build()
@@ -146,16 +148,19 @@ class AbmeldenRaeumtAllesTest {
         val sitzung = Sitzung().apply { angemeldet(admin = false) }
         val alterSchluessel = ablage.hole().copyOf()
 
-        val abmelden = Abmelden(ctx, prefs, repo, PasswortPflicht(), ZweiterFaktorPflicht(), bildClient, vorschau, loader,
-            AppModule.provideAbmeldehaken(ctx), sitzung,
+        val bereinigung = GeraeteBereinigung(ctx, prefs, KontoDatenLoeschung(cache, offline), PasswortPflicht(),
+            ZweiterFaktorPflicht(), bildClient, vorschau, loader, Dispatchers.IO, ablage)
+        // Der echte Haken (AppModule) leert die Widget-Zahlen; er liegt in der App.
+        val widget = Abmeldehaken { ctx.getSharedPreferences("widget", Context.MODE_PRIVATE).edit().clear().commit() }
+        val abmelden = Abmelden(bereinigung, widget, sitzung,
             Blickfeld(SpeicherAblage(), HaushaltRepository(api, cache), TeileRepository(api, cache)),
-            Abmeldung(KontoRepository(api, cache), prefs) { }, Dispatchers.IO, ablage)
+            Abmeldung(KontoRepository(api, cache), prefs) { })
         assertEquals(Abmeldeweg.SOFORT, abmelden.ausfuehren())
 
-        val platte = ctx.dataStore.data.first()
+        val platte = store.data.first()
         assertEquals("Token", "", prefs.tokenJetzt())
-        assertFalse("Benutzername", PreferencesManager.USERNAME in platte.asMap())
-        assertFalse("Marke des Preisalarms", PreferencesManager.ALARM_MARKE in platte.asMap())
+        assertFalse("Benutzername", TokenAblage.USERNAME in platte.asMap())
+        assertFalse("Marke des Preisalarms", GeraeteAblage.ALARM_MARKE in platte.asMap())
         assertTrue("Antwort-Cache", antwortOrdner.walkTopDown().none { it.isFile })
         assertNull("Bestand", offline.lies(Faecher.SETS)?.liste?.takeIf { it.isNotEmpty() })
         assertFalse("Ausgang", offline.wartet())

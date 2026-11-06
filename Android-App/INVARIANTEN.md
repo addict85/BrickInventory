@@ -45,7 +45,7 @@ zurücksetzen, sonst bleibt der Knopf nach einem Fehler dauerhaft gesperrt.
 
 ## Abgelaufene Sitzung (HTTP 401)
 
-**Dateien:** `data/repository/BrickRepository.kt`, `di/AppModule.kt`,
+**Dateien:** `data/repository/RepoBasis.kt`, `di/AppModule.kt`,
 `data/SessionExpiredSignal.kt`, `ui/MainViewModel.kt`
 **Test:** `SessionAndLifecycleTest`
 
@@ -199,9 +199,9 @@ laufen (`androidComponents { onVariants … }`): In `buildTypes { debug { … } 
 liesse sich nur ein `versionNameSuffix` setzen, der Name selbst wechselte
 weiter minütlich.
 
-## Result hat genau zwei Varianten — kein `else`
+## Ergebnis hat genau zwei Varianten — kein `else`
 
-**Datei:** `data/repository/BrickRepository.kt`
+**Datei:** `data/repository/Ergebnis.kt`
 **Test:** `ResultAndStateSplitTest`
 
 `safeCall()` liefert nur `Success` oder `Error`. Die frühere dritte Variante

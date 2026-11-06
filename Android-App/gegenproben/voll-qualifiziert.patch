@@ -4,15 +4,15 @@ Test: ch.brickinventoryapp.QuelltextRatscheTest
 Rot: kein voll qualifizierter Projektname im Code
 
 diff --git a/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/ui/Vorwaermen.kt b/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/ui/Vorwaermen.kt
-index d4cf7a3..1e0eda2 100644
+index b4b5eca..40d2584 100644
 --- a/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/ui/Vorwaermen.kt
 +++ b/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/ui/Vorwaermen.kt
-@@ -88,7 +88,7 @@ class SammlungVorwaermen @Inject constructor(
+@@ -94,7 +94,7 @@ class SammlungVorwaermen @Inject constructor(
              delay(VorschauVorwaermer.ANLAUF_MS)
              // Erst Netzlage und Platz prüfen, sonst kostet jeder Start vier Listenabrufe umsonst.
              if (!vorwaermer.darfStarten()) return@launch
 -            val basis = fangeAusserAbbruch { prefs.serverUrlJetzt() }.getOrNull().orEmpty()
 +            val basis = ch.brickinventoryapp.util.fangeAusserAbbruch { prefs.serverUrlJetzt() }.getOrNull().orEmpty()
              if (basis.isBlank()) return@launch
-             vorwaermer.vorwaermen(bildAdressenDerSammlung(repo, blickfeld, basis))
+             vorwaermer.vorwaermen(bildAdressenDerSammlung(sets, teile, figuren, blickfeld, basis))
          }

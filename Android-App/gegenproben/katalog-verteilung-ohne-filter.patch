@@ -1,0 +1,18 @@
+Gegenprobe: Die Jahresverteilung wird ohne das Thema geholt
+Modul: feature-katalog
+Test: ch.brickinventoryapp.CatalogViewModelTest
+Rot: die Jahresverteilung kommt vom Server, mit den Filtern der Liste
+
+diff --git a/Android-App/feature-katalog/src/main/java/ch/brickinventoryapp/ui/viewmodel/CatalogViewModel.kt b/Android-App/feature-katalog/src/main/java/ch/brickinventoryapp/ui/viewmodel/CatalogViewModel.kt
+index 12c5653..9d258d6 100644
+--- a/Android-App/feature-katalog/src/main/java/ch/brickinventoryapp/ui/viewmodel/CatalogViewModel.kt
++++ b/Android-App/feature-katalog/src/main/java/ch/brickinventoryapp/ui/viewmodel/CatalogViewModel.kt
+@@ -166,7 +166,7 @@ class CatalogViewModel @Inject constructor(
+         viewModelScope.launch {
+             val s = _catalogState.value
+             val r = katalog.getCatalogYearVerteilung(
+-                q = s.query.ifBlank { null }, themeId = s.themeId, sort = s.sort)
++                q = s.query.ifBlank { null }, themeId = null, sort = s.sort)
+             if (gen != catalogGeneration) return@launch
+             if (r is Ergebnis.Success && r.data.success) {
+                 // Jahrgaenge OHNE Jahr wegwerfen — genau wie die Webapp es tut.

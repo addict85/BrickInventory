@@ -13,7 +13,7 @@ import kotlinx.coroutines.flow.combine
 import javax.inject.Inject
 
 /** [LokalerBestand] über Room: Zeilen und Stand je Bereich und Art. */
-class RoomBestand @Inject constructor(private val db: BestandDatenbank) : LokalerBestand {
+internal class RoomBestand @Inject constructor(private val db: BestandDatenbank) : LokalerBestand {
     private val dao get() = db.bestand()
 
     override fun beobachte(bereich: String, art: Bestandsart): Flow<LokaleListe> =
@@ -45,7 +45,7 @@ class RoomBestand @Inject constructor(private val db: BestandDatenbank) : Lokale
  * [Ausgang] über Room. Ein Posten, der sich nicht mehr lesen lässt (Format einer
  * älteren App), wird beim Lesen entfernt — er blockierte sonst alles dahinter.
  */
-class RoomAusgang @Inject constructor(private val db: BestandDatenbank) : Ausgang {
+internal class RoomAusgang @Inject constructor(private val db: BestandDatenbank) : Ausgang {
     private val dao get() = db.ausgang()
 
     override fun anzahl(bereich: String) = dao.anzahl(bereich)

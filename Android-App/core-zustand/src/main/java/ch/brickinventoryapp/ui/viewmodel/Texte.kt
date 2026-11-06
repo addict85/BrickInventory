@@ -1,7 +1,6 @@
 package ch.brickinventoryapp.ui.viewmodel
 
-import android.net.Uri
-import ch.brickinventoryapp.data.repository.Result
+import ch.brickinventoryapp.data.repository.Ergebnis
 import ch.brickinventoryapp.util.meldetDieSitzungsschicht
 
 /**
@@ -15,17 +14,25 @@ interface Texte {
     fun text(id: Int, vararg args: Any?): String
     fun menge(id: Int, anzahl: Int, vararg args: Any?): String
     /** Für Fehlerfelder in Formularen — dort ist „nichts zu sagen" keine Antwort. */
-    fun meldung(fehler: Result.Error): String
+    fun meldung(fehler: Ergebnis.Error): String
     /** Null heisst: Die Sitzungsschicht hat den Fehler schon gemeldet. */
-    fun meldungFuerSnackbar(fehler: Result.Error): String? =
+    fun meldungFuerSnackbar(fehler: Ergebnis.Error): String? =
         if (meldetDieSitzungsschicht(fehler.unauthorized, angemeldet())) null else meldung(fehler)
     /** Liegt ein Token vor? Dieselbe Quelle, die der Interceptor liest. */
     fun angemeldet(): Boolean
 }
 
+/**
+ * Eine vom Nutzer gewählte Datei, wie die Oberfläche sie nennt (die Zeichenkette
+ * einer content://-Adresse). Kein android.net.Uri: Das ViewModel reicht sie nur an
+ * den [DateiLeser] weiter und bleibt so ohne Android-Typen prüfbar.
+ */
+@JvmInline
+value class DateiRef(val wert: String)
+
 /** Liest eine vom Nutzer gewählte Datei: Medientyp und Inhalt, oder null. */
 interface DateiLeser {
-    suspend fun lies(uri: Uri): Pair<String?, ByteArray>?
+    suspend fun lies(datei: DateiRef): Pair<String?, ByteArray>?
     /** Der angezeigte Dateiname, oder null, wenn ihn die Quelle nicht nennt. */
-    suspend fun name(uri: Uri): String? = null
+    suspend fun name(datei: DateiRef): String? = null
 }

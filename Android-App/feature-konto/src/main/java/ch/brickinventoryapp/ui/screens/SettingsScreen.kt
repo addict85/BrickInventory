@@ -35,7 +35,6 @@ import ch.brickinventoryapp.ui.theme.Abstaende
 import ch.brickinventoryapp.ui.theme.Helligkeit
 import ch.brickinventoryapp.ui.theme.mittigBis
 import ch.brickinventoryapp.ui.components.WahlChips
-import ch.brickinventoryapp.ui.viewmodel.aktivitaetsViewModel
 import ch.brickinventoryapp.ui.viewmodel.UpdateViewModel
 import ch.brickinventoryapp.util.quelleVeraltet
 import ch.brickinventoryapp.ui.components.LocalAppFassung
@@ -66,9 +65,9 @@ fun SettingsRoute(
     onLogout: () -> Unit,
     onServerWechseln: () -> Unit,
     scrollState: ScrollState,
-    selbstUpdate: UpdateViewModel = aktivitaetsViewModel(),
-    darstellung: DarstellungViewModel = aktivitaetsViewModel(),
-    vertrauen: VertrauenViewModel = aktivitaetsViewModel(),
+    selbstUpdate: UpdateViewModel,
+    darstellung: DarstellungViewModel,
+    vertrauen: VertrauenViewModel,
 ) {
     val appState by vm.state.collectAsStateWithLifecycle()
     val updateZustand by selbstUpdate.updateState.collectAsStateWithLifecycle()

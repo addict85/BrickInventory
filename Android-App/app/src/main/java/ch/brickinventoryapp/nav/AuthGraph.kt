@@ -9,33 +9,30 @@ import ch.brickinventoryapp.ui.*
 import ch.brickinventoryapp.ui.screens.*
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavGraphBuilder
-import androidx.navigation.NavHostController
 import ch.brickinventoryapp.*
-import ch.brickinventoryapp.ui.viewmodel.AnmeldungViewModel
-import ch.brickinventoryapp.ui.viewmodel.aktivitaetsViewModel
 import ch.brickinventoryapp.ui.CredentialManagerAbfrage
 import ch.brickinventoryapp.ui.screens.ServerStartAnzeige
 
-/** Navigationsziele der Anmeldung; die ViewModels holt jedes Ziel selbst. */
-fun NavGraphBuilder.authGraph(navController: NavHostController) {
-    einrichtungsZiel(navController)
-    anmeldeZiel(navController)
+/** Navigationsziele der Anmeldung; das AnmeldungViewModel lebt an der Activity. */
+fun NavGraphBuilder.authGraph(u: ZielUmgebung) {
+    einrichtungsZiel(u)
+    anmeldeZiel(u)
 }
 
 /** Serveradresse eintragen oder per QR-Code übernehmen. */
-private fun NavGraphBuilder.einrichtungsZiel(navController: NavHostController) {
+private fun NavGraphBuilder.einrichtungsZiel(u: ZielUmgebung) {
+    val navController = u.navController
         composable<Screen.Setup> {
-            val vm: AppViewModel = aktivitaetsViewModel()
             // Zustand INNERHALB des Ziels lesen — als Parameter wäre es eine
             // Momentaufnahme vom Aufbau des Graphen (der NavHost-Builder läuft nur einmal).
-            val anmeldungVm: AnmeldungViewModel = aktivitaetsViewModel()
+            val anmeldungVm = u.aktivitaet.anmeldung
             val state by anmeldungVm.state.collectAsStateWithLifecycle()
             SetupScreen(
                 currentUrl = state.serverUrl,
                 // Ein anderer Server meldet über den vollen Weg der App ab, bevor die
                 // neue Adresse gilt (AnmeldungViewModel.saveServerUrl).
                 onSave = { url ->
-                    if (anmeldungVm.saveServerUrl(url, abmelden = { vm.logout().join() })) {
+                    if (anmeldungVm.saveServerUrl(url)) {
                         navController.navigate(Screen.Login) {
                             popUpTo<Screen.Setup> { inclusive = true }
                         }
@@ -44,8 +41,7 @@ private fun NavGraphBuilder.einrichtungsZiel(navController: NavHostController) {
                 // Erst nach der Bestätigung im Einrichtungsbildschirm; die Anmeldung
                 // springt nach Erfolg in die Galerie.
                 onQrScanned = { qr, pinEingabe ->
-                    anmeldungVm.loginWithQrToken(qr.url, qr.token,
-                        abmelden = { vm.logout().join() }, fingerabdruck = qr.fingerabdruck,
+                    anmeldungVm.loginWithQrToken(qr.url, qr.token, fingerabdruck = qr.fingerabdruck,
                         pinWechselEingabe = pinEingabe)
                     navController.navigate(Screen.Login) {
                         popUpTo<Screen.Setup> { inclusive = true }
@@ -58,11 +54,12 @@ private fun NavGraphBuilder.einrichtungsZiel(navController: NavHostController) {
 }
 
 /** Anmelden, Registrieren und Passkey; während der Server startet, sein Fortschritt. */
-private fun NavGraphBuilder.anmeldeZiel(navController: NavHostController) {
+private fun NavGraphBuilder.anmeldeZiel(u: ZielUmgebung) {
+    val navController = u.navController
         composable<Screen.Login> {
             // Zustand INNERHALB des Ziels lesen — als Parameter wäre es eine
             // Momentaufnahme vom Aufbau des Graphen (der NavHost-Builder läuft nur einmal).
-            val anmeldungVm: AnmeldungViewModel = aktivitaetsViewModel()
+            val anmeldungVm = u.aktivitaet.anmeldung
             val state by anmeldungVm.state.collectAsStateWithLifecycle()
             val anmeldung by anmeldungVm.anmeldeState.collectAsStateWithLifecycle()
             val aktivitaet = androidx.compose.ui.platform.LocalContext.current

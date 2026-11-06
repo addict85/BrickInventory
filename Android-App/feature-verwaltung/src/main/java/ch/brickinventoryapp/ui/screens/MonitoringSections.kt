@@ -241,7 +241,7 @@ fun CacheAndLimitsSection(
             // ── In welchen Netzen darf vorgewärmt werden ──
             //
             // Drei unabhängige Chips, je einer für eine Lage; die Begründung steht an den
-            // Schlüsseln in PreferencesManager (VORWAERMEN_*).
+            // Schlüsseln in GeraeteAblage (VORWAERMEN_*).
             Text(stringResource(R.string.monitoring_vorwaermen_netz),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant)

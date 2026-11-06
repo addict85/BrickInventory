@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.data
 
+import ch.brickinventoryapp.di.SseClient
 import ch.brickinventoryapp.data.model.CsvImportStatus
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
@@ -12,7 +13,6 @@ import okhttp3.sse.EventSource
 import okhttp3.sse.EventSourceListener
 import okhttp3.sse.EventSources
 import javax.inject.Inject
-import javax.inject.Named
 import javax.inject.Singleton
 
 /** Die Schritte eines CSV-Imports, solange jemand sammelt; im Test eine Folge aus dem Speicher. */
@@ -29,7 +29,7 @@ class CsvImportSseClient @Inject constructor(
     // @param: explizit — Kotlin 2.2+ ändert das Default-Ziel von Annotationen auf
     // val-Konstruktorparametern (künftig Parameter UND Property). Für Dagger/Hilt
     // zählt der Parameter; der Use-Site-Target macht das eindeutig.
-    @param:Named("sse") private val client: OkHttpClient,
+    @param:SseClient private val client: OkHttpClient,
     private val prefs: Zugangsdaten,
     private val json: Json
 ) : CsvImportStrom {

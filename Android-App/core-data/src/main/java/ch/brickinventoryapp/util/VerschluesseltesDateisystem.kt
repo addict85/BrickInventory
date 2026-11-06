@@ -20,7 +20,7 @@ import java.io.IOException
  * Zweck, Dateiname und Lage gebunden. Ein Endmarker nach jedem flush und close macht eine
  * hinten gekürzte Datei unlesbar, statt sie als kürzere gelten zu lassen.
  */
-class VerschluesseltesDateisystem(
+internal class VerschluesseltesDateisystem(
     delegate: FileSystem,
     private val chiffre: AblageChiffre,
     private val zweck: String,

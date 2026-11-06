@@ -83,6 +83,9 @@ androidx-navigation-compose         = { group = "androidx.navigation",        na
 hilt-android                        = { group = "com.google.dagger",          name = "hilt-android",                      version.ref = "hilt" }
 hilt-compiler                       = { group = "com.google.dagger",          name = "hilt-android-compiler",             version.ref = "hilt" }
 hilt-navigation-compose             = { group = "androidx.hilt",              name = "hilt-navigation-compose",           version.ref = "hiltNavigationCompose" }
+# Dieselbe Reihe wie hilt-navigation-compose: androidx.hilt erscheint nur gemeinsam.
+androidx-hilt-work                  = { group = "androidx.hilt",              name = "hilt-work",                         version.ref = "hiltNavigationCompose" }
+androidx-hilt-compiler              = { group = "androidx.hilt",              name = "hilt-compiler",                     version.ref = "hiltNavigationCompose" }
 retrofit                            = { group = "com.squareup.retrofit2",      name = "retrofit",                          version.ref = "retrofit" }
 okhttp-logging                      = { group = "com.squareup.okhttp3",       name = "logging-interceptor",               version.ref = "okhttp" }
 okhttp-sse                          = { group = "com.squareup.okhttp3",       name = "okhttp-sse",                        version.ref = "okhttp" }

@@ -3,16 +3,8 @@ package ch.brickinventoryapp
 import ch.brickinventoryapp.data.MeldungsKanal
 import ch.brickinventoryapp.data.api.BrickApiService
 import ch.brickinventoryapp.data.cache.ResponseCache
-import ch.brickinventoryapp.data.repository.FigurenRepository
-import ch.brickinventoryapp.data.repository.KatalogRepository
 import ch.brickinventoryapp.data.repository.KontoRepository
 import ch.brickinventoryapp.data.repository.VerwaltungRepository
-import ch.brickinventoryapp.data.repository.BrickRepository
-import ch.brickinventoryapp.data.repository.FinanzenRepository
-import ch.brickinventoryapp.data.repository.GutscheineRepository
-import ch.brickinventoryapp.data.repository.HaushaltRepository
-import ch.brickinventoryapp.data.repository.SetsRepository
-import ch.brickinventoryapp.data.repository.TeileRepository
 import ch.brickinventoryapp.ui.viewmodel.MonitoringViewModel
 import com.jakewharton.retrofit2.converter.kotlinx.serialization.asConverterFactory
 import kotlinx.coroutines.test.runTest
@@ -97,18 +89,7 @@ class MonitoringViewModelVerhaltenTest {
         // Mit Namen ist die Reihenfolge gleichgueltig: Das naechste Teil kommt
         // dazu, ohne dass hier etwas bricht — und faellt eines WEG, bricht es
         // sofort und an der richtigen Stelle.
-        vm = MonitoringViewModel(BrickRepository(
-            sets = SetsRepository(api, cache),
-            teile = TeileRepository(api, cache),
-            finanzen = FinanzenRepository(api, cache),
-            haushalt = HaushaltRepository(api, cache),
-            figuren = FigurenRepository(api, cache),
-            konto = KontoRepository(api, cache),
-            verwaltung = VerwaltungRepository(api, cache),
-            katalog = KatalogRepository(api, cache),
-            gutscheine = GutscheineRepository(api, cache),
-            cache = cache,
-        ), NummernTexte, MeldungsKanal())
+        vm = MonitoringViewModel(VerwaltungRepository(api, cache), KontoRepository(api, cache), NummernTexte, MeldungsKanal())
     }
 
     @After

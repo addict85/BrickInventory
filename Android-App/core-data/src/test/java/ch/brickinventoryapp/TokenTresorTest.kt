@@ -1,11 +1,12 @@
 package ch.brickinventoryapp
 
 import android.content.Context
+import androidx.datastore.preferences.core.PreferenceDataStoreFactory
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.edit
 import androidx.test.core.app.ApplicationProvider
-import ch.brickinventoryapp.data.PreferencesManager
-import ch.brickinventoryapp.data.dataStore
+import ch.brickinventoryapp.data.GeraeteAblage
+import ch.brickinventoryapp.data.TokenAblage
 import ch.brickinventoryapp.util.KeystoreTokenTresor
 import ch.brickinventoryapp.util.TokenVerschluesselung
 import kotlinx.coroutines.CoroutineScope
@@ -19,16 +20,16 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
-import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
+import java.io.File
 
 /**
  * Das Token liegt nur verschlüsselt, ein Klartext älterer Fassungen wird einmal
- * übernommen, und Abmelden räumt beide Einträge weg — ausgeführt am echten
- * PreferencesManager; ein Neustart ist eine neue Instanz auf derselben Platte.
+ * übernommen, und Abmelden räumt beide Einträge weg — ausgeführt an der echten
+ * TokenAblage; ein Neustart ist eine neue Instanz auf derselben Platte.
  *
  * Gegenproben (Robolectric, misst die CI; Job `gegenproben`):
  *   klartext-bleibt-nach-speichern  saveAuthToken() ohne remove(AUTH_TOKEN) → rot
@@ -51,24 +52,24 @@ class TokenTresorTest {
     private val ctx = ApplicationProvider.getApplicationContext<Context>()
     private val bereiche = mutableListOf<CoroutineScope>()
 
-    private fun start(tresor: TokenVerschluesselung = Attrappe()): PreferencesManager {
+    /** Je Test eine eigene Datei; DataStore erlaubt je Datei nur eine Instanz im Prozess. */
+    private val store = PreferenceDataStoreFactory.create { File(ctx.filesDir, "tresor-${System.nanoTime()}.preferences_pb") }
+
+    private fun start(tresor: TokenVerschluesselung = Attrappe()): TokenAblage {
         val bereich = CoroutineScope(SupervisorJob() + Dispatchers.IO).also { bereiche += it }
-        return PreferencesManager(ctx, tresor, bereich).also { it.warteAufStart() }
+        return TokenAblage(store, tresor, GeraeteAblage(ctx, store), bereich).also { it.warteAufStart() }
     }
 
-    private fun platte(): Preferences = runBlocking { ctx.dataStore.data.first() }
+    private fun platte(): Preferences = runBlocking { store.data.first() }
 
     private fun lege(klartext: String? = null, geheim: String? = null) = runBlocking {
-        ctx.dataStore.edit {
-            it[PreferencesManager.SERVER_URL] = "https://brick.example"
-            klartext?.let { k -> it[PreferencesManager.AUTH_TOKEN] = k }
-            geheim?.let { g -> it[PreferencesManager.AUTH_TOKEN_ENC] = g }
+        store.edit {
+            it[TokenAblage.SERVER_URL] = "https://brick.example"
+            klartext?.let { k -> it[TokenAblage.AUTH_TOKEN] = k }
+            geheim?.let { g -> it[TokenAblage.AUTH_TOKEN_ENC] = g }
         }
         Unit
     }
-
-    @Before
-    fun leer() = runBlocking { ctx.dataStore.edit { it.clear() }; Unit }
 
     @After
     fun zu() = bereiche.forEach { it.cancel() }
@@ -79,8 +80,8 @@ class TokenTresorTest {
         val prefs = start()
         assertEquals("altes-token-123", runBlocking { prefs.tokenJetzt() })
         assertTrue("Es gab etwas zu übernehmen", runBlocking { prefs.uebernehmeAltesToken() })
-        assertNull("Der Klartext muss weg sein", platte()[PreferencesManager.AUTH_TOKEN])
-        assertEquals("ENC(321-nekot-setla)", platte()[PreferencesManager.AUTH_TOKEN_ENC])
+        assertNull("Der Klartext muss weg sein", platte()[TokenAblage.AUTH_TOKEN])
+        assertEquals("ENC(321-nekot-setla)", platte()[TokenAblage.AUTH_TOKEN_ENC])
         assertFalse("Beim zweiten Start gibt es nichts mehr zu tun", runBlocking { prefs.uebernehmeAltesToken() })
         assertEquals("altes-token-123", runBlocking { start().tokenJetzt() })
     }
@@ -90,7 +91,7 @@ class TokenTresorTest {
         lege(klartext = "")
         val prefs = start()
         assertFalse(runBlocking { prefs.uebernehmeAltesToken() })
-        assertFalse(PreferencesManager.AUTH_TOKEN in platte().asMap())
+        assertFalse(TokenAblage.AUTH_TOKEN in platte().asMap())
         assertEquals("", runBlocking { prefs.tokenJetzt() })
     }
 
@@ -99,8 +100,8 @@ class TokenTresorTest {
         lege(klartext = "alt")
         val prefs = start()
         runBlocking { prefs.saveAuthToken("neu") }
-        assertNull("Der alte Klartext verschwindet beim Schreiben", platte()[PreferencesManager.AUTH_TOKEN])
-        assertEquals("ENC(uen)", platte()[PreferencesManager.AUTH_TOKEN_ENC])
+        assertNull("Der alte Klartext verschwindet beim Schreiben", platte()[TokenAblage.AUTH_TOKEN])
+        assertEquals("ENC(uen)", platte()[TokenAblage.AUTH_TOKEN_ENC])
         assertEquals("neu", runBlocking { start().tokenJetzt() })
     }
 
@@ -115,8 +116,8 @@ class TokenTresorTest {
         lege(klartext = "alt", geheim = "ENC(uen)")
         val prefs = start()
         runBlocking { prefs.clearSession() }
-        assertFalse(PreferencesManager.AUTH_TOKEN in platte().asMap())
-        assertFalse(PreferencesManager.AUTH_TOKEN_ENC in platte().asMap())
+        assertFalse(TokenAblage.AUTH_TOKEN in platte().asMap())
+        assertFalse(TokenAblage.AUTH_TOKEN_ENC in platte().asMap())
         assertEquals("Über den Altbestand wieder angemeldet", "", runBlocking { start().tokenJetzt() })
     }
 

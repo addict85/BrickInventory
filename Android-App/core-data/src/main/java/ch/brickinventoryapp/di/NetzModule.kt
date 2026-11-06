@@ -1,7 +1,6 @@
 package ch.brickinventoryapp.di
 
 import ch.brickinventoryapp.util.UpdateUmleitungen
-import ch.brickinventoryapp.data.PreferencesManager
 import ch.brickinventoryapp.util.NetworkPolicy
 import com.jakewharton.retrofit2.converter.kotlinx.serialization.asConverterFactory
 import dagger.Module
@@ -17,7 +16,6 @@ import okhttp3.OkHttpClient
 import retrofit2.Retrofit
 import java.io.IOException
 import java.util.concurrent.TimeUnit
-import javax.inject.Named
 import javax.inject.Singleton
 import okio.Path.Companion.toOkioPath
 import ch.brickinventoryapp.data.Entwerter
@@ -45,10 +43,10 @@ object NetzModule {
 
     @Provides
     @Singleton
-    @Named("api")
+    @ApiClient
     fun provideApiOkHttpClient(
         @dagger.hilt.android.qualifiers.ApplicationContext context: android.content.Context,
-        prefs: PreferencesManager,
+        prefs: Netzablagen,
         sessionExpired: SessionExpiredSignal,
         meldungen: MeldungsKanal,
         frage: ZertifikatsFrage,
@@ -70,7 +68,7 @@ object NetzModule {
      */
     @Provides
     @Singleton
-    @Named("update")
+    @UpdateClient
     fun provideUpdateOkHttpClient(): OkHttpClient =
         OkHttpClient.Builder()
             // Umleitungen (github.com → *.githubusercontent.com) folgt der Wächter selbst,
@@ -105,12 +103,12 @@ object NetzModule {
 
     @Provides
     @Singleton
-    @Named("image")
+    @BildClient
     fun provideImageOkHttpClient(
         // Context für den HTTP-Zwischenspeicher unten — dieselbe Schreibweise
         // wie bei provideImageLoader in dieser Datei.
         @dagger.hilt.android.qualifiers.ApplicationContext context: android.content.Context,
-        prefs: PreferencesManager,
+        prefs: Netzablagen,
         sessionExpired: SessionExpiredSignal,
         vorschau: VorschauSpeicher,
         frage: ZertifikatsFrage,
@@ -172,9 +170,9 @@ object NetzModule {
             // der Wächter selbst, OkHttp folgte ihnen sonst an ihm vorbei.
             .addInterceptor(BildHostWaechter(
                 eigenerServer = { url ->
-                    istEigenerBildServer(url, prefs.serverUrlState.value ?: "", NetworkPolicy.entwicklung)
+                    istEigenerBildServer(url, prefs.token.serverUrlState.value ?: "", NetworkPolicy.entwicklung)
                 },
-                basisPfad = { NetworkPolicy.basisPfad(prefs.serverUrlState.value.orEmpty()).orEmpty() },
+                basisPfad = { NetworkPolicy.basisPfad(prefs.token.serverUrlState.value.orEmpty()).orEmpty() },
             ))
             .followRedirects(false)
             // Bild-Downloads drosseln, aber nicht so eng, dass Kacheln verhungern: Dies ist
@@ -223,7 +221,7 @@ object NetzModule {
     @Singleton
     fun provideImageLoader(
         @dagger.hilt.android.qualifiers.ApplicationContext context: android.content.Context,
-        @Named("image") client: OkHttpClient
+        @BildClient client: OkHttpClient
     ): coil3.ImageLoader =
         coil3.ImageLoader.Builder(context)
             // ── Das Netz ist in Coil 3 ein eigenes Bauteil ──
@@ -257,10 +255,10 @@ object NetzModule {
      */
     @Provides
     @Singleton
-    @Named("sse")
+    @SseClient
     fun provideSseOkHttpClient(
         @dagger.hilt.android.qualifiers.ApplicationContext context: android.content.Context,
-        prefs: PreferencesManager,
+        prefs: Netzablagen,
         sessionExpired: SessionExpiredSignal,
         frage: ZertifikatsFrage,
         tausch: TokenTausch,
@@ -276,11 +274,11 @@ object NetzModule {
     @Provides
     @Singleton
     fun provideEntwerter(
-        prefs: PreferencesManager,
+        prefs: Netzablagen,
         frage: ZertifikatsFrage,
     ): Entwerter =
         Entwerter(buildEntwertungsBasis(prefs, frage), NetworkPolicy.entwicklung,
-            vertrauenFuer = auftragsVertrauenFabrik(prefs))
+            vertrauenFuer = auftragsVertrauenFabrik(prefs.vertrauen))
 
     /** Für die QR-Anmeldung: Ein `fp` auf eine System-Wurzel gilt ohne Abtippen. */
     @Provides
@@ -288,17 +286,17 @@ object NetzModule {
     fun provideSystemWurzeln(): SystemWurzeln = systemWurzeln()
 
     // Kein unqualifiziertes OkHttpClient-Binding: Es lieferte still den api-Client
-    // auch an Bild- und SSE-Wege aus. Wer einen Client braucht, nennt @Named("api"),
-    // @Named("image") oder @Named("sse").
+    // auch an Bild- und SSE-Wege aus. Wer einen Client braucht, nennt @ApiClient,
+    // @BildClient oder @SseClient.
 
     /** Nach einer Änderung des Vertrauens: Offene Verbindungen trugen das alte. */
     @Provides
-    fun provideVerbindungsabwurf(@Named("api") client: OkHttpClient): Verbindungsabwurf =
+    fun provideVerbindungsabwurf(@ApiClient client: OkHttpClient): Verbindungsabwurf =
         Verbindungsabwurf { client.connectionPool.evictAll() }
 
     @Provides
     @Singleton
-    fun provideRetrofit(json: Json, @Named("api") client: OkHttpClient): Retrofit =
+    fun provideRetrofit(json: Json, @ApiClient client: OkHttpClient): Retrofit =
         Retrofit.Builder()
             .baseUrl("http://localhost:3000/")
             .client(client)

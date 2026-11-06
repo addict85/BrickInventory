@@ -4,7 +4,7 @@ import ch.brickinventoryapp.ui.model.alsAnsicht
 import ch.brickinventoryapp.data.model.SetItem
 import ch.brickinventoryapp.data.model.SetsResponse
 import ch.brickinventoryapp.data.model.StatsResponse
-import ch.brickinventoryapp.data.repository.Result
+import ch.brickinventoryapp.data.repository.Ergebnis
 import ch.brickinventoryapp.ui.Galerie
 import ch.brickinventoryapp.ui.GalerieAnzeige
 import ch.brickinventoryapp.ui.GalleryUiState
@@ -37,7 +37,7 @@ import org.junit.Test
  *      werden doppelte Sets ausgesiebt"
  *
  * Gegenproben Fehler/leer (am 28.10. gemessen, kotlinc gegen Galerie.kt;
- * Result und Fehlerart dafür wörtlich aus BrickRepository.kt herausgeschnitten,
+ * Ergebnis und Fehlerart dafür wörtlich aus BrickRepository.kt herausgeschnitten,
  * weil die Datei Retrofit braucht):
  *   D  in laden() `galleryFehler = beschreibeFehler(r)` entfernt → rot „ein
  *      Ladefehler wird zur Fehleranzeige mit Grund"
@@ -58,16 +58,16 @@ class GalerieTest {
         val bestellt = mutableListOf<Pair<Int, String>>()   // Seite, Thema
     }
 
-    private fun TestScope.galerie(a: Abruf, fehler: () -> Result.Error? = { null }) = Galerie(
+    private fun TestScope.galerie(a: Abruf, fehler: () -> Ergebnis.Error? = { null }) = Galerie(
         scope = this,
         holeSeite = { g: GalleryUiState, seite: Int ->
             a.bestellt += seite to g.galleryTheme
             delay(a.dauer(seite))
             val nummern = if (seite == 1) listOf(1, 2) else a.seite2
-            fehler() ?: Result.Success(SetsResponse(success = true, sets = nummern.map { SetItem(setNumber = "$it-1") }, total = 4))
+            fehler() ?: Ergebnis.Success(SetsResponse(success = true, sets = nummern.map { SetItem(setNumber = "$it-1") }, total = 4))
         },
         beschreibeFehler = { "Grund: ${it.message}" },
-        holeKennzahlen = { Result.Success(StatsResponse(success = true)) },
+        holeKennzahlen = { Ergebnis.Success(StatsResponse(success = true)) },
         meldeFehler = {},
         vergissScroll = {},
     )
@@ -129,7 +129,7 @@ class GalerieTest {
 
     @Test
     fun `ein Ladefehler wird zur Fehleranzeige mit Grund`() = runTest {
-        val g = galerie(Abruf()) { Result.Error("Zeitüberschreitung") }
+        val g = galerie(Abruf()) { Ergebnis.Error("Zeitüberschreitung") }
         g.laden(); advanceUntilIdle()
         val st = g.state.value
         assertEquals("Grund: Zeitüberschreitung", st.galleryFehler)
@@ -139,7 +139,7 @@ class GalerieTest {
     @Test
     fun `ein erfolgreicher neuer Versuch raeumt den Fehler weg`() = runTest {
         var kaputt = true
-        val g = galerie(Abruf()) { if (kaputt) Result.Error("Netz") else null }
+        val g = galerie(Abruf()) { if (kaputt) Ergebnis.Error("Netz") else null }
         g.laden(); advanceUntilIdle()
         kaputt = false
         g.laden(); advanceUntilIdle()
@@ -165,8 +165,8 @@ class GalerieTest {
         var stand: Long? = 1_700_000_000_000
         val g = Galerie(
             scope = this,
-            holeSeite = { _, _ -> Result.Success(SetsResponse(success = true, sets = listOf(set(1)), total = 1), stand = stand) },
-            holeKennzahlen = { Result.Success(StatsResponse(success = true)) },
+            holeSeite = { _, _ -> Ergebnis.Success(SetsResponse(success = true, sets = listOf(set(1)), total = 1), stand = stand) },
+            holeKennzahlen = { Ergebnis.Success(StatsResponse(success = true)) },
             meldeFehler = {}, vergissScroll = {},
         )
         g.laden(); advanceUntilIdle()

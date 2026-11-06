@@ -9,7 +9,7 @@ import androidx.datastore.preferences.core.stringSetPreferencesKey
  * es nicht mehr; es geht weg, damit keine alte Freigabe für Hosts und Netze liegen
  * bleibt, die ein späterer Stand versehentlich wieder auswerten könnte.
  */
-object KlartextReste {
+internal object KlartextReste {
     /** Im DataStore: freigegebene Hosts, bekannte Netze, die Übernahmemarke. */
     private val DATASTORE = listOf(
         stringSetPreferencesKey("klartext_hosts"),

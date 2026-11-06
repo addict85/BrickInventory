@@ -4,13 +4,14 @@ Test: ch.brickinventoryapp.SetDetailViewModelTest
 Rot: eine geaenderte Menge
 
 diff --git a/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/ui/viewmodel/SetDetailViewModel.kt b/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/ui/viewmodel/SetDetailViewModel.kt
+index a514417..0b1aefc 100644
 --- a/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/ui/viewmodel/SetDetailViewModel.kt
 +++ b/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/ui/viewmodel/SetDetailViewModel.kt
-@@ -159,7 +159,6 @@
+@@ -172,7 +172,6 @@ class SetDetailViewModel @Inject constructor(
                                  st.copy(setDetail = st.setDetail.copy(quantity = echt)) else st
                          }
                      }
--                    dienste.bestand.melde(Aenderung.Sets)
+-                    bestand.melde(Aenderung.Sets)
                  }
-                 is Result.Error -> zeigeMeldung(meldungFuerSnackbar(r)?.let { text(R.string.vm_error, it) })
+                 is Ergebnis.Error -> meldungen.zeige(meldungen.meldungFuerSnackbar(r)?.let { meldungen.text(R.string.vm_error, it) })
              }

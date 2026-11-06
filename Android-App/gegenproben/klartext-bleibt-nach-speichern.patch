@@ -3,13 +3,13 @@ Modul: core-data
 Test: ch.brickinventoryapp.TokenTresorTest
 Rot: Speichern legt nur noch verschluesselt ab
 
-diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/PreferencesManager.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/PreferencesManager.kt
-index 23815f2..fc991ac 100644
---- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/PreferencesManager.kt
-+++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/PreferencesManager.kt
-@@ -361,7 +361,6 @@ class PreferencesManager @Inject constructor(
+diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/TokenAblage.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/TokenAblage.kt
+index f79cce3..86c2984 100644
+--- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/TokenAblage.kt
++++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/TokenAblage.kt
+@@ -259,7 +259,6 @@ class TokenAblage @Inject constructor(
          val geheim = tresor.verschluessle(token)
-         context.dataStore.edit {
+         dataStore.edit {
              it[AUTH_TOKEN_ENC] = geheim
 -            it.remove(AUTH_TOKEN)
              if (herkunft != null) it[TOKEN_HERKUNFT] = herkunft else it.remove(TOKEN_HERKUNFT)

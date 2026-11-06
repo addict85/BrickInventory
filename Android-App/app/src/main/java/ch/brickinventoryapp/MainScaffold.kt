@@ -43,8 +43,6 @@ import androidx.navigation.compose.*
 import ch.brickinventoryapp.ressourcen.R
 import ch.brickinventoryapp.ui.*
 import ch.brickinventoryapp.ui.screens.*
-import ch.brickinventoryapp.ui.viewmodel.aktivitaetsViewModel
-import ch.brickinventoryapp.ui.viewmodel.UpdateViewModel
 import ch.brickinventoryapp.nav.ZielUmgebung
 import ch.brickinventoryapp.ui.components.AusgangLeiste
 import ch.brickinventoryapp.ui.components.LocalOffeneAenderungen
@@ -55,7 +53,6 @@ import ch.brickinventoryapp.ui.components.SegmentWahl
 import ch.brickinventoryapp.ui.components.UpdatePunkt
 import ch.brickinventoryapp.ui.theme.Abstaende
 import ch.brickinventoryapp.ui.theme.LocalAkzentflaechen
-import ch.brickinventoryapp.ui.viewmodel.CsvImportViewModel
 
 /**
  * Gemeinsames Gerüst aller eingeloggten Screens: obere Leiste mit Titel und
@@ -222,7 +219,7 @@ fun MainScaffold(
 
 /**
  * Das Gerüst für ein Reiter-Ziel mit allem, was in jedem Ziel gleich ist
- * (Verwerfen der Rollposition, `serverUrl`, Update-Punkt). Ein neues Ziel kann so
+ * (Verwerfen der Rollposition, Update-Punkt). Ein neues Ziel kann so
  * nichts vergessen, weil es nichts weiterzureichen gibt. MainScaffold selbst bleibt
  * für Ziele, die abweichen müssen.
  */
@@ -232,11 +229,11 @@ fun ReiterGeruest(
     umgebung: ZielUmgebung,
     content: @Composable () -> Unit
 ) {
-    val vm: AppViewModel = aktivitaetsViewModel()
-    val selbstUpdate: UpdateViewModel = aktivitaetsViewModel()
+    val vm = umgebung.aktivitaet.app
+    val selbstUpdate = umgebung.aktivitaet.update
     val updateZustand by selbstUpdate.updateState.collectAsStateWithLifecycle()
     val offen by vm.offeneAenderungen.collectAsStateWithLifecycle()
-    val csvImport: CsvImportViewModel = aktivitaetsViewModel()
+    val csvImport = umgebung.aktivitaet.csvImport
     MainScaffold(
         title = titel,
         navController = umgebung.navController,

@@ -4,14 +4,15 @@ Test: ch.brickinventoryapp.KaeufeViewModelTest
 Rot: meldet seine Zusammenfassung
 
 diff --git a/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/ui/viewmodel/KaeufeViewModel.kt b/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/ui/viewmodel/KaeufeViewModel.kt
+index 63eae34..c47ab99 100644
 --- a/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/ui/viewmodel/KaeufeViewModel.kt
 +++ b/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/ui/viewmodel/KaeufeViewModel.kt
-@@ -126,7 +126,7 @@
+@@ -140,7 +140,7 @@ class KaeufeViewModel @Inject constructor(
       */
      private fun setGeaendert(agg: SetAggregate?) {
          if (agg != null && agg.setNumber.isNotBlank()) {
--            dienste.bestand.melde(Aenderung.SetZusammenfassung(agg))
-+            dienste.bestand.melde(Aenderung.Sets)
+-            bestand.melde(Aenderung.SetZusammenfassung(agg))
++            bestand.melde(Aenderung.Sets)
          } else {
              neuLaden()
-             dienste.bestand.melde(Aenderung.Sets)
+             bestand.melde(Aenderung.Sets)

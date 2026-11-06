@@ -110,12 +110,13 @@ class GutscheinPdfAblageTest {
     fun `Betrachter, Abmelden und Start raeumen auf`() {
         val betrachter = Quellen.ohneKommentare(Quellen.lies("ui/screens/PdfViewerScreen.kt"))
         // Laden und Halten liegen seit M1 (arch14) im Lader und im ViewModel.
-        val lader = Quellen.ohneKommentare(Quellen.lies("ui/pdf/AnleitungsLader.kt") + Quellen.lies("ui/pdf/PdfQuelle.kt"))
+        val lader = Quellen.ohneKommentare(Quellen.lies("ui/pdf/AnleitungsLader.kt") + Quellen.lies("ui/pdf/PdfQuelle.kt") +
+            Quellen.lies("data/AnleitungsRepository.kt"))
         val vm = Quellen.ohneKommentare(Quellen.lies("ui/viewmodel/PdfBetrachterViewModel.kt"))
         assertTrue("Der Betrachter legt nicht über pdfAblage() ab", lader.contains("pdfAblage(ctx.cacheDir, pdfUrl, vertraulich)"))
         assertTrue("Ohne Datei nimmt der Betrachter nicht den Weg über den Speicher",
             Regex("""if \(ablage == null\) \{\s*ladeInDenSpeicherUndZaehle\(""").containsMatchIn(lader))
-        assertTrue("Der Speicherweg lädt nicht über ladePdfInDenSpeicher()", lader.contains("ladePdfInDenSpeicher(ladeClient(httpClient), url)"))
+        assertTrue("Der Speicherweg lädt nicht über ladePdfInDenSpeicher()", lader.contains("ladePdfInDenSpeicher(ladeClient(httpClient), url"))
         assertTrue("Das Gutschein-PDF liegt nicht in einem memfd", lader.contains("Os.memfd_create("))
         assertTrue("Der Speicherbereich bleibt nach dem Verlassen offen",
             Regex("""override fun onCleared\(\)\s*\{\s*offen\.close\(\)""").containsMatchIn(vm))
@@ -124,7 +125,7 @@ class GutscheinPdfAblageTest {
         // Der Druckdialog bietet „Als PDF speichern“: Drucken nur, wo auch Speichern erlaubt ist.
         val geschuetzt = betrachter.substringAfter("if (speicherbar) {").substringBefore("\n                    }\n")
         assertTrue("Drucken steht ohne Prüfung da", betrachter.split("printPdf(ctx,").size == 2 && "printPdf(ctx," in geschuetzt)
-        val abmelden = Quellen.funktion(Quellen.ohneKommentare(Quellen.lies("ui/Abmelden.kt")), "suspend fun ausfuehren(")
+        val abmelden = Quellen.funktion(Quellen.ohneKommentare(Quellen.lies("data/SitzungsBereinigung.kt")), "suspend fun raeumeAuf(")
         assertTrue("Abmelden lässt Gutschein-PDFs liegen", abmelden.contains("raeumeVertraulichePdfsAuf("))
         assertTrue("Abmelden lässt Anleitungen liegen", abmelden.contains("raeumeAnleitungenAuf(ctx.cacheDir)"))
         assertTrue("Abmelden lässt Teileliste und Update in filesDir liegen",

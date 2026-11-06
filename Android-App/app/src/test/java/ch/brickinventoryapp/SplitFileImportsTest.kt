@@ -400,8 +400,8 @@ class SplitFileImportsTest {
             for (m in Regex(
                 """^(?:@\w+\s+)?(?:internal |public |private )?(?:const )?(?:suspend |inline )?""" +
                 // `fun interface` vor `fun`, sonst gilt „interface“ als Name.
-                """(?:fun interface|fun|val|var|class|object|interface|enum class|data class|annotation class|sealed class|sealed interface|abstract class|typealias)""" +
-                """\s+(?:<[^>]*>\s*)?(?:\w+\.)?(\w+)""",
+                """(?:fun interface|fun|val|var|class|object|interface|enum class|data class|value class|annotation class|sealed class|sealed interface|abstract class|typealias)""" +
+                """\s+(?:<[^>]*>\s*)?(?:\w+(?:<[^>]*>)?\??\.)?(\w+)""",
                 RegexOption.MULTILINE).findAll(src)) {
                 deklariert += "$paket.${m.groupValues[1]}"
             }

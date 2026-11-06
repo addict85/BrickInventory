@@ -86,10 +86,10 @@ import ch.brickinventoryapp.ui.screens.StatChipV2
 import ch.brickinventoryapp.ui.screens.ZweiterFaktorPflichtMaske
 import ch.brickinventoryapp.ui.theme.Lesebreite
 import ch.brickinventoryapp.ui.viewmodel.DateiLeser
+import ch.brickinventoryapp.ui.viewmodel.DateiRef
 import ch.brickinventoryapp.ui.viewmodel.EinstellungenViewModel
 import ch.brickinventoryapp.util.fmtInt
 import android.content.Context
-import android.net.Uri
 import android.os.Looper
 import android.provider.Settings
 import androidx.compose.ui.semantics.Role
@@ -224,13 +224,13 @@ class GeruestUndFormularTest {
         try {
             welt.pfade.antworten["/api/v1/alerts"] = """{"success":true,"alerts":[
                 {"set_number":"75192-1","condition":"N","richtung":"unter","schwelle":750.0,"currency_code":"CHF"}]}"""
-            val vm = welt.t.merke(EinstellungenViewModel(welt.t.dienste,
+            val vm = welt.t.merke(EinstellungenViewModel(welt.t.sitzung, welt.t.filter(), welt.t.hinweise, welt.t.bestand,
                 KontoRepository(welt.t.api, welt.t.cache, welt.t.io),
                 VerwaltungRepository(welt.t.api, welt.t.cache),
                 SetsRepository(welt.t.api, welt.t.cache),
                 TeileRepository(welt.t.api, welt.t.cache),
                 object : DateiLeser {
-                    override suspend fun lies(uri: Uri): Pair<String?, ByteArray>? = null
+                    override suspend fun lies(datei: DateiRef): Pair<String?, ByteArray>? = null
                 }))
             zeige {
                 PreisalarmeRoute(vm = vm,
@@ -305,13 +305,13 @@ class GeruestUndFormularTest {
         try {
             welt.pfade.antworten["/api/v1/alerts"] = """{"success":true,"alerts":[
                 {"set_number":"75192-1","condition":"N","richtung":"unter","schwelle":750.0,"currency_code":"CHF","name":"Millennium Falcon"}]}"""
-            val vm = welt.t.merke(EinstellungenViewModel(welt.t.dienste,
+            val vm = welt.t.merke(EinstellungenViewModel(welt.t.sitzung, welt.t.filter(), welt.t.hinweise, welt.t.bestand,
                 KontoRepository(welt.t.api, welt.t.cache, welt.t.io),
                 VerwaltungRepository(welt.t.api, welt.t.cache),
                 SetsRepository(welt.t.api, welt.t.cache),
                 TeileRepository(welt.t.api, welt.t.cache),
                 object : DateiLeser {
-                    override suspend fun lies(uri: Uri): Pair<String?, ByteArray>? = null
+                    override suspend fun lies(datei: DateiRef): Pair<String?, ByteArray>? = null
                 }))
             zeige {
                 PreisalarmeRoute(vm = vm,

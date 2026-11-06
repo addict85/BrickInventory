@@ -1,7 +1,7 @@
 package ch.brickinventoryapp
 
 import ch.brickinventoryapp.data.api.BrickApiService
-import ch.brickinventoryapp.data.repository.Result
+import ch.brickinventoryapp.data.repository.Ergebnis
 import ch.brickinventoryapp.ui.viewmodel.Texte
 import com.jakewharton.retrofit2.converter.kotlinx.serialization.asConverterFactory
 import okhttp3.MediaType.Companion.toMediaType
@@ -24,7 +24,8 @@ import ch.brickinventoryapp.ui.Blickfeld
 import ch.brickinventoryapp.ui.FilterAblage
 import ch.brickinventoryapp.ui.ScrollMemory
 import ch.brickinventoryapp.ui.Sitzung
-import ch.brickinventoryapp.ui.viewmodel.AppDienste
+import ch.brickinventoryapp.ui.viewmodel.Filterwahl
+import ch.brickinventoryapp.ui.viewmodel.Meldungen
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
@@ -85,7 +86,7 @@ object TestApi {
 object NummernTexte : Texte {
     override fun text(id: Int, vararg args: Any?) = "t$id"
     override fun menge(id: Int, anzahl: Int, vararg args: Any?) = "m$id:$anzahl"
-    override fun meldung(fehler: Result.Error) = "fehler"
+    override fun meldung(fehler: Ergebnis.Error) = "fehler"
     override fun angemeldet() = true
 }
 
@@ -250,7 +251,17 @@ class TestDienste(val api: BrickApiService, texte: Texte = NummernTexte, val io:
     val meldungen = MeldungsKanal()
     val bestand = Bestandssignal()
     val scrollMemory = ScrollMemory()
-    val dienste = AppDienste(sitzung, blickfeld, meldungen, texte, bestand, scrollMemory)
+    val hinweise = Meldungen(meldungen, texte)
+
+    /**
+     * Filter setzen läuft wie in der App ausserhalb des ViewModels; [aufraeumen] beendet es.
+     * Erst beim ersten Filter: Tests legen TestDienste vor setMain() an.
+     */
+    private val filterBereichLazy = lazy {
+        kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.SupervisorJob() + kotlinx.coroutines.Dispatchers.Main.immediate)
+    }
+    private val filterBereich by filterBereichLazy
+    fun filter(): Filterwahl = Filterwahl(blickfeld, filterBereich)
 
     /**
      * Sammelt die Meldungen ans Bestandssignal, während [block] läuft, und
@@ -283,6 +294,7 @@ class TestDienste(val api: BrickApiService, texte: Texte = NummernTexte, val io:
     fun aufraeumen() {
         val jobs = erzeugt.mapNotNull { it.viewModelScope.coroutineContext[kotlinx.coroutines.Job] }
         erzeugt.forEach { it.viewModelScope.cancel() }
+        if (filterBereichLazy.isInitialized()) filterBereich.cancel()
         // Abbrechen allein reicht nicht: Eine Antwort, die schon unterwegs ist,
         // beendet ihre Koroutine erst danach auf Main. Kommt sie nach resetMain(),
         // wirft sie im gerade laufenden fremden Test.

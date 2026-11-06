@@ -1,6 +1,5 @@
 package ch.brickinventoryapp
 
-import android.net.Uri
 import androidx.lifecycle.SavedStateHandle
 import ch.brickinventoryapp.data.model.SetAggregate
 import ch.brickinventoryapp.data.repository.FinanzenRepository
@@ -8,6 +7,7 @@ import ch.brickinventoryapp.data.repository.HaushaltRepository
 import ch.brickinventoryapp.data.repository.SetsRepository
 import ch.brickinventoryapp.ui.Aenderung
 import ch.brickinventoryapp.ui.viewmodel.DateiLeser
+import ch.brickinventoryapp.ui.viewmodel.DateiRef
 import ch.brickinventoryapp.ui.viewmodel.SetDetailViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -44,10 +44,10 @@ class SetDetailViewModelTest {
     private lateinit var pfade: PfadServer
     private lateinit var t: TestDienste
 
-    private val keinLeser = object : DateiLeser { override suspend fun lies(uri: Uri): Pair<String?, ByteArray>? = null }
+    private val keinLeser = object : DateiLeser { override suspend fun lies(datei: DateiRef): Pair<String?, ByteArray>? = null }
 
     private fun vm(setNumber: String = "75192-1") = t.merke(SetDetailViewModel(
-        t.dienste, SetsRepository(t.api, t.cache), FinanzenRepository(t.api, t.cache),
+        t.sitzung, t.filter(), t.hinweise, t.bestand, SetsRepository(t.api, t.cache), FinanzenRepository(t.api, t.cache),
         HaushaltRepository(t.api, t.cache), keinLeser, SavedStateHandle(mapOf("setNumber" to setNumber))))
 
     @Before

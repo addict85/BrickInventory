@@ -3,16 +3,16 @@ Modul: core-zustand
 Test: ch.brickinventoryapp.CsvImportViewModelTest
 Rot: ein abgerissener Strom fragt einmal nach
 
-diff --git a/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/ui/viewmodel/CsvImportViewModel.kt b/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/ui/viewmodel/CsvImportViewModel.kt
-index 4bdd5d9..8cca602 100644
---- a/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/ui/viewmodel/CsvImportViewModel.kt
-+++ b/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/ui/viewmodel/CsvImportViewModel.kt
-@@ -88,7 +88,7 @@ class CsvImportViewModel @Inject constructor(
-                 if (sseFailed) {
-                     abfrageStattStrom()
-                     delay(backoffMs)
--                    backoffMs = minOf(backoffMs * 2, BACKOFF_MAX_MS)
-+                    backoffMs = minOf(backoffMs, BACKOFF_MAX_MS)
-                 }
-                 // Sauber geschlossen (Neustart des Servers): sofort neu verbinden.
+diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/CsvImportRepository.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/CsvImportRepository.kt
+index b6a8811..6476002 100644
+--- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/CsvImportRepository.kt
++++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/CsvImportRepository.kt
+@@ -49,7 +49,7 @@ class CsvImportBeobachter @Inject constructor(
+                 // Einmal nachsehen, damit der Balken nicht auf dem letzten Stand hängt.
+                 frageAb()
+                 delay(rueckzugMs)
+-                rueckzugMs = minOf(rueckzugMs * 2, RUECKZUG_MAX_MS)
++                rueckzugMs = minOf(rueckzugMs, RUECKZUG_MAX_MS)
              }
+         }
+     }

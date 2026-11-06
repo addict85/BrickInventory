@@ -109,7 +109,7 @@ fun PdfViewerRoute(
         title = title,
         speicherbar = remember(pdfUrl) { pdfDarfGespeichertWerden(pdfUrl) },
         onBack = onBack,
-        rendereSeite = vm::seite,
+        rendereSeite = vm.seiten::seite,
         schreibe = vm.schreiber,
     )
 }
@@ -122,7 +122,7 @@ fun PdfViewerScreen(
     /** Herunterladen und Drucken nur, wo die Datei das Gerät verlassen darf (keine Gutscheine). */
     speicherbar: Boolean,
     onBack: () -> Unit,
-    /** Rendert eine Seite abseits des Hauptfadens (PdfBetrachterViewModel.seite). */
+    /** Rendert eine Seite abseits des Hauptfadens (PdfSeitenQuelle). */
     rendereSeite: SeitenRenderer,
     /** Schreibt die Datei für den Druck, abseits des Hauptfadens (PdfBetrachterViewModel.schreiber). */
     schreibe: PdfSchreiber,

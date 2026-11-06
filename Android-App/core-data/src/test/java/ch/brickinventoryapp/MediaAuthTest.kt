@@ -109,8 +109,8 @@ class MediaAuthTest {
 
     @Test
     fun `die Anzeige selbst laeuft ueber den authentifizierten Client`() {
-        // Geladen wird im AnleitungsLader (ViewModel), nicht mehr im Bildschirm.
-        val viewer = code(read("ui/pdf/AnleitungsLader.kt"))
+        // Geladen wird in der Datenschicht (AnleitungsRepository), nicht im Bildschirm.
+        val viewer = code(read("data/AnleitungsRepository.kt"))
         // Geprüft wird die AUSSAGE, nicht der Wortlaut des Aufrufs: Der
         // Download läuft über den injizierten Client. Die frühere Fassung
         // suchte die Argumentliste zeichengenau und wurde in Nachtrag 115 rot,
@@ -125,7 +125,7 @@ class MediaAuthTest {
         assert(!viewer.contains("OkHttpClient()")) {
             "Ein frei gebauter Client kennt den Bearer-Token nicht"
         }
-        assert(viewer.contains("""@param:Named("api") private val httpClient: OkHttpClient""")) {
+        assert(viewer.contains("""@param:ApiClient private val httpClient: OkHttpClient""")) {
             "Der Lader bekommt nicht den api-Client mit Token und Klartext-Verbot"
         }
     }
@@ -163,7 +163,7 @@ class MediaAuthTest {
         for (f in Quellen.wurzel.walkTopDown()
                 .filter { it.extension == "kt" }) {
             val src = f.readText()
-            var idx = src.indexOf("is Result.Success")
+            var idx = src.indexOf("is Ergebnis.Success")
             while (idx >= 0) {
                 val block = src.substring(idx, minOf(idx + 2000, src.length))
                 val end = block.indexOf("\n            }")
@@ -182,7 +182,7 @@ class MediaAuthTest {
                     "${f.name}: else-Zweig in einem when über Result — " +
                     "stattdessen einen expliziten null-Zweig ergänzen"
                 }
-                idx = src.indexOf("is Result.Success", idx + 1)
+                idx = src.indexOf("is Ergebnis.Success", idx + 1)
             }
         }
     }

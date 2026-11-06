@@ -63,7 +63,7 @@ class AktionMeldetFehlerTest {
         val aendernd = Regex(
             """\b(?:repo|sets|teile|finanzen|haushalt|admin|konto|gutscheine)\.(?:\w+\.)?(add|delete|update|unlink|invite|redeem|create|remove|save|move|change)\w*\(""",
             RegexOption.IGNORE_CASE)
-        val still = Regex("""is Result\.Error\s*->\s*\{\s*\}""")
+        val still = Regex("""is Ergebnis\.Error\s*->\s*\{\s*\}""")
 
         val stumm = mutableListOf<String>()
         var geprueft = 0

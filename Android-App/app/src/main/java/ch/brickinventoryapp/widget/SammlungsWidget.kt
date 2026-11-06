@@ -35,7 +35,11 @@ import androidx.work.WorkManager
 import androidx.work.WorkerParameters
 import ch.brickinventoryapp.MainActivity
 import ch.brickinventoryapp.ressourcen.R
-import ch.brickinventoryapp.data.PreferencesManager
+import androidx.hilt.work.HiltWorker
+import ch.brickinventoryapp.data.Darstellungsablage
+import ch.brickinventoryapp.data.Zugangsdaten
+import dagger.assisted.Assisted
+import dagger.assisted.AssistedInject
 import ch.brickinventoryapp.data.api.ApiJson
 import ch.brickinventoryapp.data.repository.FinanzenRepository
 import ch.brickinventoryapp.util.AblageChiffre
@@ -46,8 +50,7 @@ import dagger.hilt.InstallIn
 import dagger.hilt.android.EntryPointAccessors
 import dagger.hilt.components.SingletonComponent
 import java.util.concurrent.TimeUnit
-import ch.brickinventoryapp.data.repository.Result as Ergebnis
-
+import ch.brickinventoryapp.data.repository.Ergebnis
 /**
  * Die zuletzt geholten Zahlen. Das Widget liest nur hier und zeigt so auch ohne
  * Netz den letzten Stand; holen tut allein [WidgetArbeiter]. Verschlüsselt wie die
@@ -58,7 +61,7 @@ internal object WidgetAblage {
     private const val SCHLUESSEL = "zahlen"
 
     private fun chiffre(ctx: Context) = AblageChiffre {
-        EntryPointAccessors.fromApplication(ctx, WidgetArbeiter.Zugang::class.java).ablage().fuer("widget")
+        EntryPointAccessors.fromApplication(ctx, WidgetZugang::class.java).ablage().fuer("widget")
     }
 
     /** Zweck und Schlüssel als AAD, wie im Antwort-Cache. */
@@ -91,19 +94,28 @@ internal object WidgetAblage {
 }
 
 /**
- * Holt die Zahlen stündlich über die Repositories — mit deren Plattenspeicher
- * als Rückfall, wenn der Server schweigt. EntryPoint statt @HiltWorker wie beim
- * Preisalarm: weniger Apparat für einen Arbeiter.
+ * Was Glance-Widget und Ablage ausserhalb von Hilt brauchen. Ein Widget hat keinen
+ * Konstruktor, den Hilt füllen könnte; dort ist der EntryPoint der vorgesehene Weg.
  */
-class WidgetArbeiter(context: Context, params: WorkerParameters) : CoroutineWorker(context, params) {
+@EntryPoint
+@InstallIn(SingletonComponent::class)
+interface WidgetZugang {
+    fun zugangsdaten(): Zugangsdaten
+    fun darstellung(): Darstellungsablage
+    fun ablage(): Ablageschluessel
+}
 
-    @EntryPoint
-    @InstallIn(SingletonComponent::class)
-    interface Zugang {
-        fun finanzen(): FinanzenRepository
-        fun prefs(): PreferencesManager
-        fun ablage(): Ablageschluessel
-    }
+/**
+ * Holt die Zahlen stündlich über die Repositories — mit deren Plattenspeicher
+ * als Rückfall, wenn der Server schweigt.
+ */
+@HiltWorker
+class WidgetArbeiter @AssistedInject constructor(
+    @Assisted context: Context,
+    @Assisted params: WorkerParameters,
+    private val finanzen: FinanzenRepository,
+    private val zugang: Zugangsdaten,
+) : CoroutineWorker(context, params) {
 
     override suspend fun doWork(): androidx.work.ListenableWorker.Result =
         fangeAusserAbbruch { aktualisiere(applicationContext) }.fold(
@@ -111,22 +123,21 @@ class WidgetArbeiter(context: Context, params: WorkerParameters) : CoroutineWork
             { androidx.work.ListenableWorker.Result.retry() },
         )
 
+    private suspend fun aktualisiere(ctx: Context) {
+        // Abgemeldet gibt es nichts zu zeigen; der alte Stand bliebe sonst fremd sichtbar.
+        if (zugang.tokenJetzt().isBlank()) {
+            WidgetAblage.leeren(ctx)
+            SammlungsWidget().updateAll(ctx)
+            return
+        }
+        val pnl = (finanzen.getPnl() as? Ergebnis.Success)?.data
+        val verlauf = (finanzen.getPortfolioHistory("week") as? Ergebnis.Success)?.data
+        widgetZahlen(pnl, verlauf, System.currentTimeMillis())?.let { WidgetAblage.schreibe(ctx, it) }
+        SammlungsWidget().updateAll(ctx)
+    }
+
     companion object {
         private const val NAME = "sammlungs-widget"
-
-        suspend fun aktualisiere(ctx: Context) {
-            val zugang = EntryPointAccessors.fromApplication(ctx, Zugang::class.java)
-            // Abgemeldet gibt es nichts zu zeigen; der alte Stand bliebe sonst fremd sichtbar.
-            if (zugang.prefs().tokenJetzt().isBlank()) {
-                WidgetAblage.leeren(ctx)
-                SammlungsWidget().updateAll(ctx)
-                return
-            }
-            val pnl = (zugang.finanzen().getPnl() as? Ergebnis.Success)?.data
-            val verlauf = (zugang.finanzen().getPortfolioHistory("week") as? Ergebnis.Success)?.data
-            widgetZahlen(pnl, verlauf, System.currentTimeMillis())?.let { WidgetAblage.schreibe(ctx, it) }
-            SammlungsWidget().updateAll(ctx)
-        }
 
         fun einplanen(ctx: Context) = runCatching {
             val auftrag = PeriodicWorkRequestBuilder<WidgetArbeiter>(1, TimeUnit.HOURS)
@@ -142,10 +153,10 @@ class WidgetArbeiter(context: Context, params: WorkerParameters) : CoroutineWork
 /** Sammlungswert, G&V heute und gesamt; ein Tipp öffnet die App. */
 class SammlungsWidget : GlanceAppWidget() {
     override suspend fun provideGlance(context: Context, id: GlanceId) {
-        val prefs = runCatching { EntryPointAccessors.fromApplication(context, WidgetArbeiter.Zugang::class.java).prefs() }.getOrNull()
-        val angemeldet = runCatching { prefs?.tokenJetzt()?.isNotBlank() == true }.getOrDefault(false)
+        val zugang = runCatching { EntryPointAccessors.fromApplication(context, WidgetZugang::class.java) }.getOrNull()
+        val angemeldet = fangeAusserAbbruch { zugang?.zugangsdaten()?.tokenJetzt()?.isNotBlank() == true }.getOrDefault(false)
         // Geldwerte nur, wenn der Nutzer sie auf dem Startbildschirm erlaubt.
-        val zeigen = prefs?.widgetWerteZeigen() == true
+        val zeigen = zugang?.darstellung()?.widgetWerteZeigen() == true
         val zahlen = widgetAnzeige(WidgetAblage.lies(context), angemeldet)
         // Die Texte in der Sprache der App, nicht des Systems (LanguageManager).
         val ctx = LanguageManager.localizedContext(context)

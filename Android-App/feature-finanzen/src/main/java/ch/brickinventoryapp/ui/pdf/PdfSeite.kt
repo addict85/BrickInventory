@@ -1,6 +1,11 @@
 package ch.brickinventoryapp.ui.pdf
 
 import android.graphics.Bitmap
+import ch.brickinventoryapp.di.BrickDispatchers
+import ch.brickinventoryapp.di.Dispatcher
+import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.withContext
+import javax.inject.Inject
 import kotlin.math.sqrt
 
 /**
@@ -31,3 +36,17 @@ internal fun bitmapMasse(breitePx: Int, ratio: Float): Pair<Int, Int> {
 
 /** Rendert Seite (Quelle, Index, Breite in Pixeln); der Bildschirm bekommt sie vom ViewModel. */
 typealias SeitenRenderer = suspend (PdfQuelle, Int, Int) -> Bitmap?
+
+/** Eine Seite als Bild; das ViewModel reicht die Quelle nur durch und kennt kein Bitmap. */
+fun interface PdfSeitenQuelle {
+    suspend fun seite(quelle: PdfQuelle, index: Int, breitePx: Int): Bitmap?
+}
+
+/** Gerendert im isolierten Prozess; der Aufruf dorthin blockiert, also nicht auf Main. */
+class PdfRendererSeiten @Inject constructor(
+    private val renderer: PdfRenderVerbindung,
+    @param:Dispatcher(BrickDispatchers.IO) private val io: CoroutineDispatcher,
+) : PdfSeitenQuelle {
+    override suspend fun seite(quelle: PdfQuelle, index: Int, breitePx: Int): Bitmap? =
+        withContext(io) { renderer.seite(quelle, index, breitePx) }
+}

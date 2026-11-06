@@ -163,7 +163,7 @@ object Quellen {
      * Ausführlich: docs/begruendungen/core-testing/Quellen.kt.md#zustandsfluesse
      */
     fun zustandsFluesse(): Map<String, String> {
-        val src = lies("ui/AppViewModel.kt") + "\n" + lies("ui/viewmodel/BereichsViewModel.kt")
+        val src = lies("ui/AppViewModel.kt") + "\n" + lies("ui/viewmodel/Bereichshelfer.kt")
         // Zweite Form: ein Fluss, den eine eigene Klasse hält (Galerie), steht
         // mit seinem Typ da — `val galleryState: StateFlow<GalleryUiState> = …`.
         return (Regex("""_(\w+)\s*=\s*MutableStateFlow\((\w+UiState)\(""").findAll(src) +
@@ -193,11 +193,13 @@ object Quellen {
             Regex("""\bval\s+(\w+)\s*:\s*[\w.]*StateFlow<(\w+UiState)>""").findAll(src).forEach { m ->
                 namen[m.groupValues[1]] = m.groupValues[2]
             }
-            // Was die Grundlage der Bereiche anbietet, haben alle Bereiche.
-            if (src.contains(": BereichsViewModel(")) erbt += klasse
+            // Was die Filterwahl anbietet, reicht ein Bereich per Delegation durch.
+            if (src.contains("Filterwahl by filter")) erbt += klasse
             ergebnis[klasse] = namen
         }
-        val grundlage = ergebnis["BereichsViewModel"].orEmpty()
+        val filter = ohneKommentare(lies("ui/viewmodel/Bereichshelfer.kt"))
+        val grundlage = Regex("""\bval\s+(\w+)\s*:\s*[\w.]*StateFlow<(\w+UiState)>""").findAll(filter)
+            .associate { it.groupValues[1] to it.groupValues[2] }
         for (k in erbt) ergebnis[k] = grundlage + ergebnis.getValue(k)
         return ergebnis
     }

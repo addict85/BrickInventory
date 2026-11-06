@@ -1,0 +1,16 @@
+Gegenprobe: core-zustand importiert Context
+Modul: app
+Test: ch.brickinventoryapp.SchichtregelnTest
+Rot: core-zustand kennt keinen Context
+
+diff --git a/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/ui/Sitzung.kt b/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/ui/Sitzung.kt
+index 774f15c..703ad99 100644
+--- a/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/ui/Sitzung.kt
++++ b/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/ui/Sitzung.kt
+@@ -1,5 +1,6 @@
+ package ch.brickinventoryapp.ui
+ 
++import android.content.Context
+ import kotlinx.coroutines.flow.MutableStateFlow
+ import kotlinx.coroutines.flow.StateFlow
+ import kotlinx.coroutines.flow.asStateFlow

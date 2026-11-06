@@ -3,8 +3,9 @@ package ch.brickinventoryapp.ui.viewmodel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import ch.brickinventoryapp.data.MeldungsKanal
-import ch.brickinventoryapp.data.repository.BrickRepository
-import ch.brickinventoryapp.data.repository.Result
+import ch.brickinventoryapp.data.repository.KontoRepository
+import ch.brickinventoryapp.data.repository.VerwaltungRepository
+import ch.brickinventoryapp.data.repository.Ergebnis
 import ch.brickinventoryapp.ui.VerwaltungUiState
 import ch.brickinventoryapp.ui.model.ApiGrenzenAnsicht
 import ch.brickinventoryapp.ui.model.BricksetEintragAnsicht
@@ -19,7 +20,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
-import ch.brickinventoryapp.di.NUR_ADMINS
+import ch.brickinventoryapp.data.model.Fehlercode
 import ch.brickinventoryapp.ui.model.HintergrundAnsicht
 
 /**
@@ -47,7 +48,7 @@ data class MonitoringUiState(
     val zugriffEntzogen: Boolean = false,
 )
 
-private fun entzogen(r: Result<*>) = r is Result.Error && r.code == NUR_ADMINS
+private fun entzogen(r: Ergebnis<*>) = r is Ergebnis.Error && r.code == Fehlercode.NUR_ADMINS
 
 /** Die Hintergrundarbeiten (Auftragstabelle); [fehler] ist der Satz des Servers, etwa bei 403 oder 409. */
 data class HintergrundUiState(
@@ -63,7 +64,8 @@ data class HintergrundUiState(
  */
 @HiltViewModel
 class MonitoringViewModel @Inject constructor(
-    private val repo: BrickRepository,
+    private val verwaltung: VerwaltungRepository,
+    private val konto: KontoRepository,
     private val texte: Texte,
     private val meldungen: MeldungsKanal,
 ) : ViewModel(), MonitoringAktionen {
@@ -80,12 +82,12 @@ class MonitoringViewModel @Inject constructor(
 
     override suspend fun ladeProtokoll(minuten: Int) {
         _verwaltungState.update { it.copy(protokollLaden = true, protokollMinuten = minuten, fehler = null) }
-        when (val r = repo.verwaltung.getProtokoll(minuten)) {
-            is Result.Success -> _verwaltungState.update {
+        when (val r = verwaltung.getProtokoll(minuten)) {
+            is Ergebnis.Success -> _verwaltungState.update {
                 it.copy(protokollLaden = false, protokoll = r.data.logs.map { it.alsAnsicht() },
                         fehler = if (r.data.success) null else r.data.error)
             }
-            is Result.Error -> _verwaltungState.update { it.copy(protokollLaden = false, fehler = texte.meldung(r)) }
+            is Ergebnis.Error -> _verwaltungState.update { it.copy(protokollLaden = false, fehler = texte.meldung(r)) }
         }
     }
 
@@ -94,9 +96,9 @@ class MonitoringViewModel @Inject constructor(
 
     suspend fun ladeHintergrund() {
         _hintergrund.update { it.copy(laedt = true) }
-        when (val r = repo.verwaltung.getAuftraege()) {
-            is Result.Success -> _hintergrund.update { HintergrundUiState(ansicht = r.data.alsAnsicht()) }
-            is Result.Error -> {
+        when (val r = verwaltung.getAuftraege()) {
+            is Ergebnis.Success -> _hintergrund.update { HintergrundUiState(ansicht = r.data.alsAnsicht()) }
+            is Ergebnis.Error -> {
                 _hintergrund.update { it.copy(laedt = false, fehler = texte.meldung(r)) }
                 if (entzogen(r)) _state.update { it.copy(zugriffEntzogen = true) }
             }
@@ -109,18 +111,18 @@ class MonitoringViewModel @Inject constructor(
      * inzwischen nicht mehr passt. Danach wird die Liste neu geholt, so oder so.
      */
     internal suspend fun brichAuftragAb(id: String): String =
-        nachAuftrag(repo.verwaltung.brichAuftragAb(id)) { texte.text(R.string.hintergrund_abgebrochen_ok) }
+        nachAuftrag(verwaltung.brichAuftragAb(id)) { texte.text(R.string.hintergrund_abgebrochen_ok) }
 
     internal suspend fun wiederholeAuftrag(id: String): String =
-        nachAuftrag(repo.verwaltung.wiederholeAuftrag(id)) { texte.text(R.string.hintergrund_wiederholt_ok) }
+        nachAuftrag(verwaltung.wiederholeAuftrag(id)) { texte.text(R.string.hintergrund_wiederholt_ok) }
 
     internal suspend fun starteAuftragsArt(art: String, name: String): String =
-        nachAuftrag(repo.verwaltung.starteAuftragsArt(art)) {
+        nachAuftrag(verwaltung.starteAuftragsArt(art)) {
             texte.text(if (it.gestartet) R.string.hintergrund_gestartet else R.string.hintergrund_nichts_gestartet, name)
         }
 
     internal suspend fun leereAuftragsArt(art: String): String =
-        nachAuftrag(repo.verwaltung.leereAuftragsArt(art)) { texte.menge(R.plurals.hintergrund_geleert, it.entfernt, it.entfernt) }
+        nachAuftrag(verwaltung.leereAuftragsArt(art)) { texte.menge(R.plurals.hintergrund_geleert, it.entfernt, it.entfernt) }
 
     // Im viewModelScope, nicht im Scope des Bildschirms: Wer die Seite verlässt,
     // bricht die Aktion nicht ab, und der Satz geht nicht am Zustand vorbei.
@@ -167,10 +169,10 @@ class MonitoringViewModel @Inject constructor(
         viewModelScope.launch { meldungen.zeige(aktion()) }
     }
 
-    private suspend fun <T> nachAuftrag(r: Result<T>, erfolg: (T) -> String): String {
+    private suspend fun <T> nachAuftrag(r: Ergebnis<T>, erfolg: (T) -> String): String {
         val satz = when (r) {
-            is Result.Success -> erfolg(r.data)
-            is Result.Error -> texte.meldung(r)
+            is Ergebnis.Success -> erfolg(r.data)
+            is Ergebnis.Error -> texte.meldung(r)
         }
         ladeHintergrund()
         return satz
@@ -178,9 +180,9 @@ class MonitoringViewModel @Inject constructor(
 
     override suspend fun ladeJobs() {
         _state.update { it.copy(aktualisiert = true) }
-        val r = repo.verwaltung.getJobs()
+        val r = verwaltung.getJobs()
         _state.update {
-            if (r is Result.Success)
+            if (r is Ergebnis.Success)
                 it.copy(jobs = r.data.jobs.mapValues { j -> j.value.alsAnsicht() },
                     jobSchedules = r.data.schedules.mapValues { z -> z.value.alsAnsicht() }, aktualisiert = false)
             else it.copy(aktualisiert = false, zugriffEntzogen = it.zugriffEntzogen || entzogen(r))
@@ -189,16 +191,16 @@ class MonitoringViewModel @Inject constructor(
 
     override suspend fun ladeWarteschlange() {
         _state.update { it.copy(queueLoading = true) }
-        val r = repo.verwaltung.getBricksetQueue()
+        val r = verwaltung.getBricksetQueue()
         _state.update {
-            if (r is Result.Success) it.copy(queue = r.data.entries.map { e -> e.alsAnsicht() }, queueLoading = false)
+            if (r is Ergebnis.Success) it.copy(queue = r.data.entries.map { e -> e.alsAnsicht() }, queueLoading = false)
             else it.copy(queueLoading = false)
         }
     }
 
     /** Wiederholt einen hängengebliebenen Eintrag; lädt die Liste danach neu. */
     override suspend fun wiederholeEintrag(setNummer: String): Boolean {
-        val ok = repo.verwaltung.retryBricksetEntry(setNummer) is Result.Success
+        val ok = verwaltung.retryBricksetEntry(setNummer) is Ergebnis.Success
         if (ok) ladeWarteschlange()
         return ok
     }
@@ -210,21 +212,21 @@ class MonitoringViewModel @Inject constructor(
      */
     override suspend fun entferneEintrag(setNummer: String): Boolean {
         _state.update { it.copy(queue = it.queue.filter { e -> e.setNumber != setNummer }) }
-        val ok = repo.verwaltung.deleteBricksetEntry(setNummer) is Result.Success
+        val ok = verwaltung.deleteBricksetEntry(setNummer) is Ergebnis.Success
         if (!ok) ladeWarteschlange()
         return ok
     }
 
     /** Anleitungen neu einlesen; zurück kommt die Zahl der eingereihten Sets, sonst null. */
     override suspend fun leseAnleitungenNeuEin(): Int? =
-        (repo.verwaltung.reimportInstructions() as? Result.Success)?.data?.enqueued
+        (verwaltung.reimportInstructions() as? Ergebnis.Success)?.data?.enqueued
 
-    override suspend fun starteCsvAbgleich(): Boolean = repo.verwaltung.triggerCsvSync() is Result.Success
+    override suspend fun starteCsvAbgleich(): Boolean = verwaltung.triggerCsvSync() is Ergebnis.Success
 
-    override suspend fun startePreislauf(): Boolean = repo.verwaltung.triggerPriceJob() is Result.Success
+    override suspend fun startePreislauf(): Boolean = verwaltung.triggerPriceJob() is Ergebnis.Success
 
     override suspend fun ladeFehlendeBilderNach(): Boolean =
-        repo.verwaltung.redownloadMissingImages() is Result.Success
+        verwaltung.redownloadMissingImages() is Ergebnis.Success
 
     /**
      * Cache-Zahlen, API-Grenzwerte, Cache-Dauer und Vorgabe-Zustand in einem Zug —
@@ -232,22 +234,22 @@ class MonitoringViewModel @Inject constructor(
      * der Zustandsänderungen aber unbestimmt.
      */
     internal suspend fun ladeCacheUndGrenzen() {
-        (repo.verwaltung.getCacheStats() as? Result.Success)?.let { r ->
+        (verwaltung.getCacheStats() as? Ergebnis.Success)?.let { r ->
             _state.update { it.copy(cacheStats = r.data.alsAnsicht()) }
         }
-        (repo.verwaltung.getApiLimits() as? Result.Success)?.let { r ->
+        (verwaltung.getApiLimits() as? Ergebnis.Success)?.let { r ->
             _state.update { it.copy(apiLimits = r.data.limits.alsAnsicht()) }
         }
-        (repo.verwaltung.getCacheTtl() as? Result.Success)?.let { r ->
+        (verwaltung.getCacheTtl() as? Ergebnis.Success)?.let { r ->
             _state.update { it.copy(cacheTtl = r.data.ttl) }
         }
-        (repo.konto.getDefaultCondition() as? Result.Success)?.let { r ->
+        (konto.getDefaultCondition() as? Ergebnis.Success)?.let { r ->
             _state.update { it.copy(vorgabeZustand = r.data.condition) }
         }
     }
 
     internal suspend fun setzeCacheDauer(stunden: Int): Boolean {
-        val ok = repo.verwaltung.setCacheTtl(stunden) is Result.Success
+        val ok = verwaltung.setCacheTtl(stunden) is Ergebnis.Success
         if (ok) _state.update { it.copy(cacheTtl = stunden.toString()) }
         return ok
     }
@@ -257,7 +259,7 @@ class MonitoringViewModel @Inject constructor(
      * nichts zeigte, dass etwas passiert ist.
      */
     internal suspend fun leereCache(alles: Boolean): Boolean {
-        val ok = repo.verwaltung.clearCache(alles) is Result.Success
+        val ok = verwaltung.clearCache(alles) is Ergebnis.Success
         if (ok) ladeCacheUndGrenzen()
         return ok
     }
@@ -267,21 +269,21 @@ class MonitoringViewModel @Inject constructor(
      * „07:05“, mindestens fünf Minuten): Es soll dastehen, was gilt.
      */
     override suspend fun setzeJobZeitplan(name: String, zeit: String?, minuten: Int?): Boolean {
-        val ok = repo.verwaltung.setJobSchedule(name, zeit, minuten) is Result.Success
+        val ok = verwaltung.setJobSchedule(name, zeit, minuten) is Ergebnis.Success
         if (ok) ladeJobs()
         return ok
     }
 
     /** Fehlende KATALOGbilder einreihen — nicht die des Bestands daneben. */
     override suspend fun reiheKatalogbilderEin(): Boolean =
-        repo.verwaltung.queueCatalogImages() is Result.Success
+        verwaltung.queueCatalogImages() is Ergebnis.Success
 
     /**
      * Die Vorgabe aus /settings/theme. Ein älterer Server kennt `vorgabe` noch
      * nicht; dort war das wirksame Design zugleich die Vorgabe.
      */
     internal suspend fun ladeDesignVorgabe() {
-        (repo.konto.getAppTheme() as? Result.Success)?.let { r ->
+        (konto.getAppTheme() as? Ergebnis.Success)?.let { r ->
             if (r.data.success) _state.update { it.copy(vorgabeDesign = r.data.vorgabe ?: r.data.theme) }
         }
     }
@@ -292,15 +294,15 @@ class MonitoringViewModel @Inject constructor(
      * Kaltstart überlebt.
      */
     internal suspend fun setzeDesign(theme: String): Boolean {
-        val ok = repo.verwaltung.setAppTheme(theme) is Result.Success
+        val ok = verwaltung.setAppTheme(theme) is Ergebnis.Success
         if (ok) _state.update { it.copy(vorgabeDesign = theme) }
         return ok
     }
 
     internal suspend fun setzeGrenzwerte(rebrickable: Int, bricklink: Int, brickset: Int): Boolean {
-        val ok = repo.verwaltung.setApiLimits(rebrickable, bricklink, brickset) is Result.Success
+        val ok = verwaltung.setApiLimits(rebrickable, bricklink, brickset) is Ergebnis.Success
         if (ok) {
-            (repo.verwaltung.getApiLimits() as? Result.Success)?.let { r ->
+            (verwaltung.getApiLimits() as? Ergebnis.Success)?.let { r ->
                 _state.update { it.copy(apiLimits = r.data.limits.alsAnsicht()) }
             }
         }
@@ -315,7 +317,7 @@ class MonitoringViewModel @Inject constructor(
     internal suspend fun setzeVorgabeZustand(zustand: String): Boolean {
         val vorher = _state.value.vorgabeZustand
         _state.update { it.copy(vorgabeZustand = zustand) }
-        val ok = repo.verwaltung.setDefaultCondition(zustand) is Result.Success
+        val ok = verwaltung.setDefaultCondition(zustand) is Ergebnis.Success
         if (!ok) _state.update { it.copy(vorgabeZustand = vorher) }
         return ok
     }

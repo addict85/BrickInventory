@@ -1,28 +1,15 @@
 package ch.brickinventoryapp.data.repository
 
-import ch.brickinventoryapp.data.api.TeileApi
-import ch.brickinventoryapp.data.cache.ResponseCache
-import ch.brickinventoryapp.data.lokal.Bearbeitung
-import ch.brickinventoryapp.data.lokal.Faecher
 import ch.brickinventoryapp.data.lokal.Lokal
-import ch.brickinventoryapp.data.lokal.Offlineablage
 import ch.brickinventoryapp.data.model.*
 import kotlinx.coroutines.flow.Flow
-import javax.inject.Inject
-import javax.inject.Singleton
 
 /**
- * Teile, Minifiguren und Farben — eines der Sachgebiete der Datenschicht,
- * erreichbar über `repo.teile.…`; die Begründung der Aufteilung steht in
- * RepoBasis.kt.
+ * Teile: Bestand, manuell erfasste Teile, Farben, Lagerorte.
+ * Eine Schnittstelle, damit ViewModels und Tests nicht an der Umsetzung mit
+ * Retrofit und Ablage hängen (TeileRepositoryImpl).
  */
-@Singleton
-class TeileRepository @Inject constructor(
-    api: TeileApi,
-    cache: ResponseCache,
-    ablage: Offlineablage,
-) : RepoBasis<TeileApi>(api, cache, ablage) {
-
+interface TeileRepository {
     suspend fun getParts(search: String? = null, color: String? = null,
                          category: String? = null, page: Int = 1,
                          accounts: String? = null,
@@ -34,157 +21,53 @@ class TeileRepository @Inject constructor(
                          /** "1" nur in der Tabellenansicht — siehe TeileApi.getParts. */
                          withSets: String? = null,
                          /** Lagerort — eigener Parameter, nicht Teil der Suche. */
-                         storage: String? = null): Result<PartsResponse> =
-        // Manuell erfasste Teile haben ihren eigenen Bereich — die Set-Teileliste
-        // schliesst sie aus (wie in der Webapp). Gecacht wird nur die ungefilterte erste
-        // Seite: Sie wird nach einem Neustart gebraucht, ein Suchergebnis im Cache belegte
-        // nur Platz. `storage` gehört in die Bedingung, sonst landete eine nach Lagerort
-        // gefilterte Antwort unter dem Schlüssel der vollen Liste.
-        if (page == 1 && listOf(color, category, accounts).all { it == null } &&
-            listOf(search, spare, withSets, storage).all { it.isNullOrBlank() })
-            abgeglichen(Faecher.TEILE, { it.parts }, { PartsResponse(success = true, total = it.size, parts = it) }) {
-                safeCall { api.getParts(null, null, null, 1, pageSize = 500, excludeManual = "1") }
-            }
-        else safeCall { api.getParts(search, color, category, page, pageSize = 500,
-                                     excludeManual = "1", accounts = accounts,
-                                     spare = spare?.ifBlank { null },
-                                     withSets = withSets?.ifBlank { null },
-                                     storage = storage?.ifBlank { null }) }
+                         storage: String? = null): Ergebnis<PartsResponse>
 
-    /** Die lokalen Listen (ungefiltert); sie ändern sich auch durch offline Bearbeitetes. */
-    fun beobachteTeile(): Flow<Lokal<Part>> = ablage.beobachte(Faecher.TEILE)
-    fun beobachteManuelleTeile(): Flow<Lokal<PartValuationItem>> = ablage.beobachte(Faecher.MANUELLE_TEILE)
+    fun beobachteTeile(): Flow<Lokal<Part>>
 
-    suspend fun getPartsStats(accounts: String? = null): Result<PartsStatsResponse> =
-        safeCall { api.getPartsStats(accounts) }
+    fun beobachteManuelleTeile(): Flow<Lokal<PartValuationItem>>
 
-    /**
-     * Die beiden Filterlisten des Teile-Reiters — Farbe und Kategorie. Ohne
-     * Zwischenspeicher: Beide tragen Zählwerte, die sich mit jedem erfassten Teil
-     * ändern; ein Cache zeigte Zahlen, die nicht zur Liste passen.
-     */
-    suspend fun getPartsFilterColors(accounts: String? = null): Result<PartsFilterColorsResponse> =
-        safeCall { api.getPartsFilterColors(accounts) }
+    suspend fun getPartsStats(accounts: String? = null): Ergebnis<PartsStatsResponse>
 
-    suspend fun getPartsCategories(accounts: String? = null): Result<PartsCategoriesResponse> =
-        safeCall { api.getPartsCategories(accounts) }
+    suspend fun getPartsFilterColors(accounts: String? = null): Ergebnis<PartsFilterColorsResponse>
 
-    /**
-     * Die manuell erfassten Teile bzw. Figuren — dieselbe Quelle wie die Webapp, damit
-     * es für dieselbe Liste nur eine Quelle gibt; siehe ManualPartsResponse.
-     */
+    suspend fun getPartsCategories(accounts: String? = null): Ergebnis<PartsCategoriesResponse>
+
     suspend fun getManualParts(accounts: String? = null, search: String? = null,
-                               storage: String? = null): Result<ManualPartsResponse> =
-        if (accounts == null && search.isNullOrBlank() && storage.isNullOrBlank())
-            abgeglichen(Faecher.MANUELLE_TEILE, { it.parts }, { ManualPartsResponse(success = true, parts = it) }) {
-                safeCall { api.getManualParts(accounts, search, storage) }
-            }
-        else safeCall { api.getManualParts(accounts, search, storage) }
+                               storage: String? = null): Ergebnis<ManualPartsResponse>
 
-    /**
-     * „Kann ich das bauen?“ — welche Teile einer Liste schon da sind. Ohne
-     * Zwischenspeicher wie getSetsMitTeil(): Die Antwort hängt an einer frei
-     * zusammengestellten Liste; ein Eintrag je Liste wäre ein Speicher, den niemand
-     * ungültig macht, wenn ein Teil dazukommt.
-     */
     suspend fun getOwnedParts(teile: List<BestandTeil>,
-                              accounts: String? = null): Result<BestandResponse> =
-        safeCall { api.getOwnedParts(BestandRequest(teile), accounts) }
+                              accounts: String? = null): Ergebnis<BestandResponse>
 
-    /** Lagerort eines Teils setzen. Leerer Text loescht ihn. */
-    suspend fun setPartStorage(partNumber: String, colorId: Int, ort: String):
-        Result<LagerortResponse> =
-        safeCall { api.setPartStorage(partNumber, colorId, LagerortRequest(ort)) }
+    suspend fun setPartStorage(partNumber: String, colorId: Int, ort: String): Ergebnis<LagerortResponse>
 
-    /**
-     * Welche Lagerorte belegt sind. Ohne Zwischenspeicher: Die Liste ist klein und
-     * ändert sich bei jedem Eintragen — ein Speicher liesse den gerade angelegten Ort
-     * im Vorschlag fehlen.
-     */
-    suspend fun getLagerorte(accounts: String? = null): Result<LagerorteResponse> =
-        safeCall { api.getLagerorte(accounts) }
+    suspend fun getLagerorte(accounts: String? = null): Ergebnis<LagerorteResponse>
 
-    // ── Der Vorrat an Lagerorten ──
-    //
-    // Getrennt von getLagerorte(): Dort die belegten Orte (für den Filter), hier die
-    // wählbaren (für Auswahlfeld und Einstellungen); ein frisch angelegter Ort steht
-    // nur hier. Ohne Zwischenspeicher, weil sich die Liste genau dann ändert, wenn
-    // jemand hier etwas einträgt.
+    suspend fun getLagerortVorrat(owner: String? = null): Ergebnis<LagerortVorratResponse>
 
-    /** @param owner Komma-Liste von Konto-IDs; leer = das eigene Konto. */
-    suspend fun getLagerortVorrat(owner: String? = null): Result<LagerortVorratResponse> =
-        safeCall { api.getLagerortVorrat(owner) }
+    suspend fun legeLagerortAn(name: String): Ergebnis<LagerortEintragResponse>
 
-    suspend fun legeLagerortAn(name: String): Result<LagerortEintragResponse> =
-        safeCall { api.legeLagerortAn(LagerortNameRequest(name)) }
+    suspend fun benenneLagerortUm(id: Int, name: String): Ergebnis<LagerortEintragResponse>
 
-    suspend fun benenneLagerortUm(id: Int, name: String): Result<LagerortEintragResponse> =
-        safeCall { api.benenneLagerortUm(id, LagerortNameRequest(name)) }
+    suspend fun loescheLagerort(id: Int): Ergebnis<LagerortResponse>
 
-    suspend fun loescheLagerort(id: Int): Result<LagerortResponse> =
-        safeCall { api.loescheLagerort(id) }
+    suspend fun setzeLagerortVorgabe(id: Int?): Ergebnis<LagerortVorgabeResponse>
 
-    /** Der vorausgewählte Lagerort (Stern) — `null` schaltet die Vorgabe ab. */
-    suspend fun setzeLagerortVorgabe(id: Int?): Result<LagerortVorgabeResponse> =
-        safeCall { api.setzeLagerortVorgabe(LagerortVorgabeRequest(id)) }
-
-    // ── In welchen Sets steckt dieses Teil / diese Figur? ──
-    //
-    // Für den Detail-Dialog. Ohne Zwischenspeicher: Die Antwort hängt an genau einem
-    // Teil und wird auf Tastendruck geholt — ein Eintrag je Teil-Farb-Paar würde nie
-    // ungültig, wenn ein Set dazukommt oder verschwindet.
     suspend fun getSetsMitTeil(partNumber: String, colorId: Int,
-                               accounts: String? = null): Result<VerwendendeSetsResponse> =
-        safeCall { api.getSetsMitTeil(partNumber, colorId, accounts) }
+                               accounts: String? = null): Ergebnis<VerwendendeSetsResponse>
 
-    suspend fun getBrickColors(): Result<BrickColorsResponse> =
-        safeCall { api.getBrickColors() }
+    suspend fun getBrickColors(): Ergebnis<BrickColorsResponse>
 
-    /** Ohne Farbe KEINE_FARBE, nie 0 (Schwarz); Name und Code gehören dann nicht dazu. */
     suspend fun addPart(partNumber: String, colorId: Int = KEINE_FARBE, colorName: String? = null, colorHex: String? = null,
                          quantity: Int = 1, unitPrice: Double? = null,
                          condition: String? = null, ownerUserId: Int? = null,
-                         storage: String? = null): Result<AddPartResponse> {
-        val ohne = colorId == KEINE_FARBE
-        val anfrage = AddPartRequest(partNumber, colorId, colorName.takeUnless { ohne },
-            colorHex.takeUnless { ohne }, quantity, unitPrice, condition, ownerUserId, storage)
-        return schreibe(Bearbeitung.TeilErfassen(anfrage),
-            { AddPartResponse(success = true, action = "gepuffert", partNumber = partNumber) }) { schluessel ->
-            safeCall { api.addPart(anfrage, schluessel) }
-        }
-    }
+                         storage: String? = null): Ergebnis<AddPartResponse>
 
-    /**
-     * Die Menge reist auch als Schritt von der Menge, die die lokale Liste zeigt
-     * (UpdateManualItemRequest.quantityDelta).
-     *
-     * @param owner Besitzer der Karte; null = eigenes Konto.
-     */
-    suspend fun updatePart(partNumber: String, colorId: Int, quantity: Int, unitPrice: Double?, condition: String? = null, owner: Int? = null): Result<GenericResponse> {
-        val bisher = ablage.lies(Faecher.MANUELLE_TEILE)?.liste
-            ?.firstOrNull { it.partNumber == partNumber && it.colorId == colorId && (owner == null || it.userId == owner) }?.quantity
-        val anfrage = UpdateManualItemRequest(quantity, unitPrice, condition = condition, quantityDelta = bisher?.let { quantity - it })
-        return schreibe(Bearbeitung.TeilAendern(partNumber, colorId, anfrage, owner), { GenericResponse(success = true) }) { schluessel ->
-            safeCall { api.updatePart(partNumber, colorId, anfrage, owner, schluessel) }
-        }
-    }
+    suspend fun updatePart(partNumber: String, colorId: Int, quantity: Int, unitPrice: Double?, condition: String? = null, owner: Int? = null): Ergebnis<GenericResponse>
 
-    /** Auch offline: Das Teil verschwindet sofort aus der Liste, der Server erfährt es später. */
-    suspend fun deletePart(partNumber: String, colorId: Int, owner: Int? = null): Result<GenericResponse> =
-        schreibe(Bearbeitung.TeilLoeschen(partNumber, colorId, owner), { GenericResponse(success = true) }) { schluessel ->
-            safeCall { api.deletePart(partNumber, colorId, owner, schluessel) }
-        }
+    suspend fun deletePart(partNumber: String, colorId: Int, owner: Int? = null): Ergebnis<GenericResponse>
 
-    /**
-     * Die Farbe eines manuell erfassten Teils nachträglich ändern.
-     *
-     * @param colorId   die alte Farbe — sie sagt, welche Zeile gemeint ist.
-     * @param neueFarbe die neue Farbe.
-     * @param owner     Besitzer der Karte; null = eigenes Konto.
-     */
     suspend fun setPartColor(partNumber: String, colorId: Int, neueFarbe: Int,
                              farbName: String? = null, farbHex: String? = null,
-                             owner: Int? = null): Result<TeilFarbeResponse> =
-        safeCall { api.setPartColor(partNumber, colorId, TeilFarbeRequest(neueFarbe,
-            farbName.takeUnless { neueFarbe == KEINE_FARBE }, farbHex.takeUnless { neueFarbe == KEINE_FARBE }), owner) }
+                             owner: Int? = null): Ergebnis<TeilFarbeResponse>
 }

@@ -9,7 +9,7 @@ import ch.brickinventoryapp.data.lokal.Bestandsart
 import ch.brickinventoryapp.data.lokal.Offlineablage
 import ch.brickinventoryapp.data.lokal.SpeicherAusgang
 import ch.brickinventoryapp.data.lokal.SpeicherBestand
-import ch.brickinventoryapp.data.repository.Result
+import ch.brickinventoryapp.data.repository.Ergebnis
 import ch.brickinventoryapp.ui.Aenderung
 import ch.brickinventoryapp.ui.Ausgangsmelder
 import ch.brickinventoryapp.ui.Bestandssignal
@@ -40,7 +40,7 @@ class AusgangsmelderTest {
     private object Aufschreiber : Texte {
         override fun text(id: Int, vararg args: Any?) = "t$id(${args.joinToString()})"
         override fun menge(id: Int, anzahl: Int, vararg args: Any?) = "m$id:$anzahl"
-        override fun meldung(fehler: Result.Error) = "fehler"
+        override fun meldung(fehler: Ergebnis.Error) = "fehler"
         override fun angemeldet() = true
     }
 

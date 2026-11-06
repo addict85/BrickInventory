@@ -181,7 +181,7 @@ class VorschauAblageTest {
         }
 
         val vw = quelle("data/cache/VorschauVorwaermer.kt")
-        val fe = quelle("ui/Vorwaermen.kt") + "\n" + quelle("ui/AppViewModel.kt")
+        val fe = quelle("ui/Vorwaermen.kt") + "\n" + quelle("ui/SitzungsDienst.kt")
 
         // Erste Stelle: VOR dem Sammeln. Ohne sie kostet ein voller Speicher
         // bei jedem App-Start vier Listenabrufe, um danach nichts zu tun.
@@ -245,7 +245,7 @@ class VorschauAblageTest {
 
     @Test
     fun `vorgewaermt wird die Sammlung, nicht der Katalog`() {
-        val fe = quelle("ui/Vorwaermen.kt") + "\n" + quelle("ui/AppViewModel.kt")
+        val fe = quelle("ui/Vorwaermen.kt") + "\n" + quelle("ui/SitzungsDienst.kt")
         // Alle Reiter, die Kacheln der EIGENEN Sammlung zeigen. Die manuell
         // erfassten Teile und Figuren erscheinen auch im Finanzen-Reiter — es
         // sind dieselben Bilder, deshalb steht Finanzen hier nicht eigens.
@@ -254,8 +254,8 @@ class VorschauAblageTest {
         // Klasse, und eine Schleifenvariable, die eine Methode verdeckt, ist
         // die Sorte Stolperstein, die erst beim naechsten Bearbeiten zubeisst.
         for (ruf in listOf(
-            "repo.sets.getSets(", "repo.teile.getParts(", "repo.figuren.getMinifigs(",
-            "repo.teile.getManualParts(", "repo.figuren.getManualMinifigs(",
+            "sets.getSets(", "teile.getParts(", "figuren.getMinifigs(",
+            "teile.getManualParts(", "figuren.getManualMinifigs(",
         )) {
             assert(fe.contains(ruf)) {
                 "Der Reiter hinter $ruf wird nicht mehr vorgewaermt — " +
@@ -322,7 +322,7 @@ class VorschauAblageTest {
         //
         // BEIDE Haelften geprueft: Das Holen steht unten, das Sammeln oben.
         val vw = quelle("data/cache/VorschauVorwaermer.kt")
-        val fe = quelle("ui/Vorwaermen.kt") + "\n" + quelle("ui/AppViewModel.kt")
+        val fe = quelle("ui/Vorwaermen.kt") + "\n" + quelle("ui/SitzungsDienst.kt")
         for (verb in listOf(".post(", ".put(", ".patch(", ".delete(")) {
             assert(!vw.contains(verb) && !fe.contains(verb)) {
                 "Das Vorwaermen benutzt $verb. Es darf ausschliesslich lesen."
@@ -352,7 +352,7 @@ class VorschauAblageTest {
 
     @Test
     fun `die Vorgabe ist WLAN, und nur WLAN`() {
-        val pm = quelle("data/PreferencesManager.kt")
+        val pm = quelle("data/GeraeteAblage.kt")
         // Auf die DEFINITION mitsamt Vorgabewert, nicht nur auf den Namen —
         // dieselbe Lehre wie bei MAX_BYTES und GRENZE_VORWAERMEN weiter oben.
         // Eine Zusicherung, die „vorwaermenWlan" irgendwo findet, bliebe gruen,

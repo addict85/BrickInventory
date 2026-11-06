@@ -1,5 +1,7 @@
 package ch.brickinventoryapp
 
+import kotlinx.coroutines.test.advanceTimeBy
+import ch.brickinventoryapp.data.model.Fehlercode
 import ch.brickinventoryapp.data.GetauschterToken
 import ch.brickinventoryapp.data.TokenSchranke
 import ch.brickinventoryapp.data.TokenStand
@@ -8,7 +10,7 @@ import ch.brickinventoryapp.data.Tauschergebnis
 import ch.brickinventoryapp.data.anmeldungUeberfaellig
 import ch.brickinventoryapp.data.model.TokenRotation
 import ch.brickinventoryapp.data.repository.Fehlerart
-import ch.brickinventoryapp.data.repository.Result
+import ch.brickinventoryapp.data.repository.Ergebnis
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -55,17 +57,20 @@ import org.junit.Test
  * Gegenprobe:
  *   K  faellig() tauscht mit runBlocking im Aufrufer statt im übergebenen Bereich →
  *      rot „faellig tauscht im Anwendungsbereich und kehrt sofort zurueck“
+ * Gegenprobe (05.11.2026, gemessen mit kotlinc lokal; tausch-noetig-ohne-frist.patch):
+ *   L  noetigWartend() wartet ohne withTimeoutOrNull auf den Tausch → rot „noetig
+ *      wartet hoechstens die Frist, der Tausch laeuft weiter“ (keine Rückkehr nach der Frist)
  */
 class TokenTauschTest {
 
     /** [hintergrund] nimmt faellig() auf; ohne Angabe ein Bereich, den niemand abarbeitet. */
-    private class Welt(hintergrund: CoroutineScope = CoroutineScope(Job())) {
+    private class Welt(hintergrund: CoroutineScope = CoroutineScope(Job()), warten: Long = TokenTausch.NOETIG_WARTEN_MS) {
         var gespeichert = "alt"
         var herkunft: String? = HIER
         var antwortHerkunft: String? = HIER
         val schranke = TokenSchranke()
         val protokoll = mutableListOf<String>()
-        var antworten: MutableList<Result<TokenRotation>> = mutableListOf()
+        var antworten: MutableList<Ergebnis<TokenRotation>> = mutableListOf()
         var bremse: CompletableDeferred<Unit>? = null
         /** Läuft in jedem Aufruf des Servers, nach der Bremse. */
         var beimRotieren: suspend () -> Unit = {}
@@ -85,17 +90,18 @@ class TokenTauschTest {
                 protokoll += "rotiere $alt"
                 bremse?.await()
                 beimRotieren()
-                when (val r = antworten.removeFirstOrNull() ?: Result.Success(TokenRotation(success = true, token = "neu"))) {
-                    is Result.Success -> Result.Success(GetauschterToken(r.data, antwortHerkunft))
-                    is Result.Error -> r
+                when (val r = antworten.removeFirstOrNull() ?: Ergebnis.Success(TokenRotation(success = true, token = "neu"))) {
+                    is Ergebnis.Success -> Ergebnis.Success(GetauschterToken(r.data, antwortHerkunft))
+                    is Ergebnis.Error -> r
                 }
             },
             pausen = listOf(1, 1, 1),
             hintergrund = hintergrund,
+            warten = warten,
         )
     }
 
-    private val verloren = Result.Error("", transient = true, art = Fehlerart.NETZ)
+    private val verloren = Ergebnis.Error("", transient = true, art = Fehlerart.NETZ)
 
     @Test
     fun `der neue Token ist gespeichert, bevor der Tausch endet`() = runTest {
@@ -126,7 +132,7 @@ class TokenTauschTest {
 
     @Test
     fun `gilt der alte nicht mehr, muss neu gekoppelt werden`() = runTest {
-        val w = Welt().apply { antworten = mutableListOf(verloren, Result.Error("", httpCode = 401, code = "token_ungueltig")) }
+        val w = Welt().apply { antworten = mutableListOf(verloren, Ergebnis.Error("", httpCode = 401, code = Fehlercode.TOKEN_UNGUELTIG)) }
         assertEquals(Tauschergebnis.NEU_KOPPELN, w.tausch.tausche("alt"))
         assertEquals("alt", w.gespeichert)
     }
@@ -191,6 +197,22 @@ class TokenTauschTest {
         // Dieselbe Sitzung: Eine andere Anfrage hat eben getauscht, ihr Token gilt.
         assertEquals("vom-neuen", w.tausch.noetig("alt", "https://neu.example:443", w.schranke.generation))
         assertFalse(w.protokoll.toString(), w.protokoll.any { it.startsWith("rotiere") })
+    }
+
+    /** Ein stummer Server hält den Netz-Thread nicht länger als die Frist; gespeichert wird trotzdem. */
+    @OptIn(ExperimentalCoroutinesApi::class)
+    @Test
+    fun `noetig wartet hoechstens die Frist, der Tausch laeuft weiter`() = runTest {
+        val w = Welt(CoroutineScope(StandardTestDispatcher(testScheduler)), warten = 1_000).apply { bremse = CompletableDeferred() }
+        val wartend = async { w.tausch.noetigWartend("alt", HIER, w.schranke.generation) }
+        advanceTimeBy(999)
+        assertFalse("Vor der Frist wartet noetig noch", wartend.isCompleted)
+        advanceTimeBy(2)
+        assertTrue("Nach der Frist kehrt noetig zurück", wartend.isCompleted)
+        assertEquals(null, wartend.await())
+        w.bremse?.complete(Unit)
+        advanceUntilIdle()
+        assertEquals("Der Tausch lief im Anwendungsbereich weiter", "neu", w.gespeichert)
     }
 
     /** Mit dem Testtakt statt Warten: Der Tausch läuft erst, wenn der Bereich ihn abarbeitet. */

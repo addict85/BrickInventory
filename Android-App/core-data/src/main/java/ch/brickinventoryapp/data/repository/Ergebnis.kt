@@ -1,24 +1,20 @@
 package ch.brickinventoryapp.data.repository
 
-import ch.brickinventoryapp.data.cache.ResponseCache
-import ch.brickinventoryapp.data.lokal.Offlineablage
 import ch.brickinventoryapp.data.model.*
-import javax.inject.Inject
-import javax.inject.Singleton
 
 /**
  * Ergebnis eines Serveraufrufs — genau zwei Fälle, damit jedes `when` erschöpfend
  * ist und eine neue Variante an jeder Stelle bricht, die sie behandeln muss. Bitte
  * keinen `else`-Zweig nachrüsten: Er verschluckte künftige Fälle still.
  */
-sealed class Result<out T> {
+sealed class Ergebnis<out T> {
     /**
      * [stand] ist gesetzt, wenn die Daten aus der lokalen Ablage kommen
      * (Millisekunden seit 1970, Zeitpunkt der Ablage) — sonst sähe ein alter Stand aus
      * wie ein frischer. [gepuffert]: Die Änderung liegt im Ausgang und geht raus,
      * sobald der Server erreichbar ist; [data] ist dann ein Ersatz, keine Serverantwort.
      */
-    data class Success<T>(val data: T, val stand: Long? = null, val gepuffert: Boolean = false) : Result<T>() {
+    data class Success<T>(val data: T, val stand: Long? = null, val gepuffert: Boolean = false) : Ergebnis<T>() {
         val veraltet: Boolean get() = stand != null
     }
     // unauthorized = true bei HTTP 401: Der Token ist ungültig/abgelaufen. Von
@@ -43,14 +39,14 @@ sealed class Result<out T> {
          * Nach ihm wird verzweigt, nicht nach [message] oder [httpCode]: Der
          * Satz wechselt mit der Sprache, der Status ist für viele Fälle derselbe.
          */
-        val code: String? = null,
+        val code: Fehlercode? = null,
         /**
          * Technischer Text der Ursache, nur fürs Log: Bibliothekstexte wie „unexpected end
          * of stream“ sind englisch, wechseln mit der Version und gehören nicht in eine
          * Oberfläche.
          */
         val technisch: String? = null
-    ) : Result<Nothing>()
+    ) : Ergebnis<Nothing>()
 }
 
 /**
@@ -104,36 +100,3 @@ const val MERKLISTE_DEFAULT_SORT = "added_desc"
 
 /** Status eines PDF-Export-Jobs inkl. geschätzter Restdauer (aus fehlenden Bildern). */
 data class PdfJobStatus(val status: String, val etaSeconds: Int?)
-
-/**
- * Die Anlaufstelle zur Datenschicht, nur noch ein Haltepunkt: Die Funktionen
- * liegen in Klassen nach Sachgebieten, und der Zugriff nennt das Gebiet mit
- * (`repo.sets.getSets(...)`, `repo.teile.getParts(...)`,
- * `repo.finanzen.getPnl(...)`). Keine Weiterreich-Fassade, weil die Klasse sonst
- * ihre 78 Mitglieder behielte.
- */
-@Singleton
-class BrickRepository @Inject constructor(
-    val sets: SetsRepository,
-    val teile: TeileRepository,
-    val finanzen: FinanzenRepository,
-    val figuren: FigurenRepository,
-    val haushalt: HaushaltRepository,
-    val konto: KontoRepository,
-    val verwaltung: VerwaltungRepository,
-    val katalog: KatalogRepository,
-    val gutscheine: GutscheineRepository,
-    private val cache: ResponseCache,
-    private val ablage: Offlineablage,
-) {
-
-    /**
-     * Beim Abmelden aufrufen: Platte, lokale Listen und Ausgang gehören dem
-     * angemeldeten Konto. Was noch im Ausgang wartet, geht dabei verloren — ein
-     * anderes Konto darf es nicht senden.
-     */
-    suspend fun clearCache() {
-        cache.clear()
-        ablage.leere()
-    }
-}

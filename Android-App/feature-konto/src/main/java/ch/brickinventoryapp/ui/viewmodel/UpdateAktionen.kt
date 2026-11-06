@@ -8,5 +8,6 @@ interface UpdateAktionen {
     fun setzeStartpruefung(an: Boolean)
     fun updateHinweisSchliessen()
     fun ladeUpdate()
+    fun ladeAbbrechen()
     fun starteInstallation()
 }

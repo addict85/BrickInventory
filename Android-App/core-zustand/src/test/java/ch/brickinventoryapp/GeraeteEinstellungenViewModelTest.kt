@@ -1,5 +1,8 @@
 package ch.brickinventoryapp
 
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.CoroutineScope
 import org.junit.Assert.assertTrue
 import ch.brickinventoryapp.util.AblageChiffre
 import ch.brickinventoryapp.data.cache.VorschauSpeicher
@@ -7,7 +10,7 @@ import ch.brickinventoryapp.data.AlarmPlaner
 import ch.brickinventoryapp.data.GeraeteEinstellungen
 import ch.brickinventoryapp.data.MeldungsKanal
 import ch.brickinventoryapp.data.VorwaermNetz
-import ch.brickinventoryapp.data.repository.Result
+import ch.brickinventoryapp.data.repository.Ergebnis
 import ch.brickinventoryapp.ressourcen.R
 import ch.brickinventoryapp.ui.viewmodel.GeraeteEinstellungenViewModel
 import ch.brickinventoryapp.ui.viewmodel.Texte
@@ -59,7 +62,7 @@ class GeraeteEinstellungenViewModelTest {
     private object Saetze : Texte {
         override fun text(id: Int, vararg args: Any?) = "t$id(${args.joinToString()})"
         override fun menge(id: Int, anzahl: Int, vararg args: Any?) = "m$id"
-        override fun meldung(fehler: Result.Error) = fehler.message
+        override fun meldung(fehler: Ergebnis.Error) = fehler.message
         override fun angemeldet() = true
     }
 
@@ -69,16 +72,22 @@ class GeraeteEinstellungenViewModelTest {
     private val wurzel = Files.createTempDirectory("vorschau").toFile()
     private val vorschau = VorschauSpeicher({ wurzel }, AblageChiffre { ByteArray(32) { 4 } })
     private lateinit var vm: GeraeteEinstellungenViewModel
+    private lateinit var sammler: Job
 
     @Before
     fun auf() {
         Dispatchers.setMain(UnconfinedTestDispatcher())
         vorschau.schreibe("https://brick.example/api/v1/proxy?u=x&thumb=1", ByteArray(500) { 1 })
         vm = GeraeteEinstellungenViewModel(ablage, planer, Saetze, kanal, vorschau)
+        sammler = CoroutineScope(Dispatchers.Main).launch {
+            launch { vm.alarmMeldungenAn.collect {} }
+            launch { vm.vorwaermen.collect {} }
+        }
     }
 
     @After
     fun zu() {
+        sammler.cancel()
         Dispatchers.resetMain()
         wurzel.deleteRecursively()
     }

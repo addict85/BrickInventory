@@ -1,7 +1,7 @@
 package ch.brickinventoryapp.data
 
 import ch.brickinventoryapp.data.model.TokenRotation
-import ch.brickinventoryapp.data.repository.Result
+import ch.brickinventoryapp.data.repository.Ergebnis
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.delay
@@ -10,7 +10,9 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.transformLatest
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.async
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import ch.brickinventoryapp.di.Rotationsanlass
@@ -99,11 +101,13 @@ internal fun anmeldungUeberfaellig(angemeldetAm: Long, jetzt: Long): Boolean =
 class TokenTausch(
     private val stand: suspend () -> TokenStand,
     private val ersetze: suspend (vorher: TokenStand, neu: String, anfrageHerkunft: String?) -> Boolean,
-    private val rotiere: suspend (alterToken: String) -> Result<GetauschterToken>,
+    private val rotiere: suspend (alterToken: String) -> Ergebnis<GetauschterToken>,
     private val uhr: () -> Long = System::currentTimeMillis,
     private val pausen: List<Long> = listOf(2_000, 10_000, 30_000),
     /** Für [faellig]: der Anwendungsbereich, damit der Tausch das Verlassen eines Bildschirms überlebt. */
     private val hintergrund: CoroutineScope,
+    /** So lange hält noetig() einen Thread des OkHttp-Dispatchers fest. */
+    private val warten: Long = NOETIG_WARTEN_MS,
 ) : Rotationsanlass {
     private val sperre = Mutex()
 
@@ -120,7 +124,17 @@ class TokenTausch(
      * Herkunft und Generation wie die abgewiesene Anfrage.
      */
     override fun noetig(alterToken: String, herkunft: String?, generation: Long): String? = runBlocking {
-        when (tausche(alterToken)) {
+        noetigWartend(alterToken, herkunft, generation)
+    }
+
+    /**
+     * Der Netz-Thread wartet höchstens [warten]; der Tausch selbst läuft im
+     * Anwendungsbereich weiter, damit ein schon erhaltener Token noch gespeichert wird.
+     */
+    suspend fun noetigWartend(alterToken: String, herkunft: String?, generation: Long): String? {
+        val tausch = hintergrund.async { tausche(alterToken) }
+        return when (withTimeoutOrNull(warten) { tausch.await() }) {
+            null -> null
             Tauschergebnis.GETAUSCHT, Tauschergebnis.SCHON_GETAUSCHT -> stand()
                 .takeIf { herkunft != null && it.herkunft == herkunft && it.generation == generation }
                 ?.token?.takeIf { it != alterToken && it.isNotBlank() }
@@ -138,8 +152,8 @@ class TokenTausch(
             // Abgemeldet oder anderer Server: Der alte Token geht nicht noch einmal hinaus.
             if (versuch > 0 && stand() != vorher) return Tauschergebnis.VERWORFEN
             when (val r = rotiere(alterToken)) {
-                is Result.Success -> return gelungen(vorher, r.data)
-                is Result.Error -> {
+                is Ergebnis.Success -> return gelungen(vorher, r.data)
+                is Ergebnis.Error -> {
                     // 401: Der alte Token gilt nicht mehr (Überlappung vorbei, widerrufen).
                     if (r.httpCode == 401) return Tauschergebnis.NEU_KOPPELN
                     if (!r.transient) return Tauschergebnis.SPAETER
@@ -161,5 +175,8 @@ class TokenTausch(
     companion object {
         /** So lange gilt der alte Token nach einem Tausch weiter (ueberlappung_sek: 300). */
         const val UEBERLAPPUNG_MS = 300_000L
+
+        /** Kürzer als das Lesezeitlimit des api-Clients (60 s), länger als ein gelungener Tausch. */
+        const val NOETIG_WARTEN_MS = 20_000L
     }
 }

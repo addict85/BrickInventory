@@ -5,8 +5,8 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import ch.brickinventoryapp.ui.model.KatalogSetAnsicht
 import ch.brickinventoryapp.ui.model.alsAnsicht
-import ch.brickinventoryapp.data.repository.BrickRepository
-import ch.brickinventoryapp.data.repository.Result
+import ch.brickinventoryapp.data.repository.KatalogRepository
+import ch.brickinventoryapp.data.repository.Ergebnis
 import ch.brickinventoryapp.ui.CatalogUiState
 import ch.brickinventoryapp.ui.retryOnNetwork
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -41,7 +41,7 @@ internal const val SICHTFENSTER_RUHE_MS = 150L
  */
 @HiltViewModel
 class CatalogViewModel @Inject constructor(
-    private val repo: BrickRepository,
+    private val katalog: KatalogRepository,
     private val meldungen: MeldungsKanal,
     /** Texte in der Sprache der App und Fehlermeldungen wie überall (AppTexte). */
     private val texte: Texte,
@@ -69,13 +69,13 @@ class CatalogViewModel @Inject constructor(
 
     override fun loadCatalogMeta() {
         viewModelScope.launch {
-            when (val r = retryOnNetwork { repo.katalog.getCatalogMeta() }) {
-                is Result.Success -> if (r.data.success) _catalogState.update {
+            when (val r = retryOnNetwork { katalog.getCatalogMeta() }) {
+                is Ergebnis.Success -> if (r.data.success) _catalogState.update {
                     it.copy(
                         themes = r.data.themes.map { t -> t.alsAnsicht() }, yearMin = r.data.yearMin, yearMax = r.data.yearMax
                     )
                 }
-                is Result.Error -> { /* Meta ist optional — Filter bleiben leer, Liste geht trotzdem */ }
+                is Ergebnis.Error -> { /* Meta ist optional — Filter bleiben leer, Liste geht trotzdem */ }
             }
         }
     }
@@ -98,20 +98,20 @@ class CatalogViewModel @Inject constructor(
             ladeJahrVerteilung(gen)
             val s = _catalogState.value
             val r = retryOnNetwork(maxAttempts = CATALOG_RETRIES, delayMs = CATALOG_RETRY_DELAY_MS) {
-                repo.katalog.getCatalogSets(
+                katalog.getCatalogSets(
                     q = s.query.ifBlank { null }, themeId = s.themeId,
                     yearFrom = s.year, yearTo = s.year, sort = s.sort, page = 1
                 )
             }
             if (gen != catalogGeneration) return@launch   // inzwischen neuer Filter
             when (r) {
-                is Result.Success -> {
+                is Ergebnis.Success -> {
                     if (r.data.success) _catalogState.update {
                         it.copy(isLoading = false, loadedPages = mapOf(1 to r.data.sets.map { s -> s.alsAnsicht() }),
                                 total = r.data.total)
                     } else _catalogState.update { it.copy(isLoading = false, error = r.data.error) }
                 }
-                is Result.Error -> {
+                is Ergebnis.Error -> {
                     _catalogState.update { it.copy(isLoading = false, error = texte.meldung(r), fehlerKlasse = fehlerklasse(r)) }
                     if (_catalogState.value.loadedPages.isNotEmpty()) meldungen.zeige(texte.meldungFuerSnackbar(r))
                 }
@@ -138,7 +138,7 @@ class CatalogViewModel @Inject constructor(
         _catalogState.update { it.copy(loadingPages = it.loadingPages + seite) }
         viewModelScope.launch {
             val r = retryOnNetwork(maxAttempts = CATALOG_RETRIES, delayMs = CATALOG_RETRY_DELAY_MS) {
-                repo.katalog.getCatalogSets(
+                katalog.getCatalogSets(
                     q = s.query.ifBlank { null }, themeId = s.themeId,
                     yearFrom = s.year, yearTo = s.year, sort = s.sort, page = seite
                 )
@@ -147,12 +147,12 @@ class CatalogViewModel @Inject constructor(
             _catalogState.update { st ->
                 val ohne = st.loadingPages - seite
                 when (r) {
-                    is Result.Success ->
+                    is Ergebnis.Success ->
                         if (r.data.success) st.copy(loadingPages = ohne,
                             loadedPages = st.loadedPages + (seite to r.data.sets.map { s -> s.alsAnsicht() }),
                             total = if (r.data.total > 0) r.data.total else st.total)
                         else st.copy(loadingPages = ohne)
-                    is Result.Error -> st.copy(loadingPages = ohne)
+                    is Ergebnis.Error -> st.copy(loadingPages = ohne)
                 }
             }
         }
@@ -166,10 +166,10 @@ class CatalogViewModel @Inject constructor(
     private fun ladeJahrVerteilung(gen: Int) {
         viewModelScope.launch {
             val s = _catalogState.value
-            val r = repo.katalog.getCatalogYearVerteilung(
+            val r = katalog.getCatalogYearVerteilung(
                 q = s.query.ifBlank { null }, themeId = s.themeId, sort = s.sort)
             if (gen != catalogGeneration) return@launch
-            if (r is Result.Success && r.data.success) {
+            if (r is Ergebnis.Success && r.data.success) {
                 // Jahrgaenge OHNE Jahr wegwerfen — genau wie die Webapp es tut.
                 // Ihre Zahl bleibt in `total` enthalten; siehe
                 // CatalogYearMath.jahrAnPosition.
@@ -229,8 +229,8 @@ class CatalogViewModel @Inject constructor(
         catalogDetailJob?.cancel()
         catalogDetailJob = viewModelScope.launch {
             _catalogState.update { it.copy(detailLoading = true, detail = null) }
-            when (val r = retryOnNetwork(maxAttempts = CATALOG_RETRIES, delayMs = CATALOG_RETRY_DELAY_MS) { repo.katalog.getCatalogSetDetail(setNumber) }) {
-                is Result.Success -> {
+            when (val r = retryOnNetwork(maxAttempts = CATALOG_RETRIES, delayMs = CATALOG_RETRY_DELAY_MS) { katalog.getCatalogSetDetail(setNumber) }) {
+                is Ergebnis.Success -> {
                     if (r.data.success && r.data.set != null)
                         _catalogState.update { it.copy(detailLoading = false, detail = r.data.set?.alsAnsicht()) }
                     else {
@@ -238,7 +238,7 @@ class CatalogViewModel @Inject constructor(
                         meldungen.zeige(r.data.error ?: texte.text(R.string.err_set_not_found))
                     }
                 }
-                is Result.Error -> {
+                is Ergebnis.Error -> {
                     _catalogState.update { it.copy(detailLoading = false) }
                     meldungen.zeige(texte.meldungFuerSnackbar(r))
                 }

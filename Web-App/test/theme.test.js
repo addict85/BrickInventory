@@ -105,8 +105,8 @@ test('fuenf Listen nennen dieselben Designs', () => {
     /var ALLOWED = \[([^\]]*)\]/, 'js/00-theme-boot.js');
   const server = liste(fs.readFileSync(path.join(__dirname, '..', 'src/infra/vertrag/globaleRegeln.ts'), 'utf8'),
     /const DESIGNS: readonly string\[\] = \[([^\]]*)\]/, 'src/infra/vertrag/globaleRegeln.ts');
-  const app = liste(fs.readFileSync(path.join(__dirname, '..', '..', 'Android-App', 'core-data', 'src', 'main', 'java', 'ch', 'brickinventoryapp', 'data', 'PreferencesManager.kt'), 'utf8'),
-    /ERLAUBTE_DESIGNS = setOf\(([^)]*)\)/, 'PreferencesManager.kt');
+  const app = liste(fs.readFileSync(path.join(__dirname, '..', '..', 'Android-App', 'core-data', 'src', 'main', 'java', 'ch', 'brickinventoryapp', 'data', 'GeraeteAblage.kt'), 'utf8'),
+    /ERLAUBTE_DESIGNS = setOf\(([^)]*)\)/, 'GeraeteAblage.kt');
 
   assert.deepEqual(boot, erwartet, 'ALLOWED im Boot-Skript weicht von den Dateien ab');
   assert.deepEqual(server, erwartet, 'Die Whitelist des Servers weicht von den Dateien ab');

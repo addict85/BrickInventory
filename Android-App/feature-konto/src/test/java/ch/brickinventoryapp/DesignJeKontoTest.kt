@@ -4,7 +4,6 @@ import kotlinx.coroutines.ExperimentalCoroutinesApi
 import ch.brickinventoryapp.data.repository.KontoRepository
 import ch.brickinventoryapp.ui.DesignWahl
 import ch.brickinventoryapp.ui.ladeEinstellungen
-import ch.brickinventoryapp.ui.setzeDesign
 import ch.brickinventoryapp.ui.viewmodel.KontoViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.runBlocking
@@ -55,7 +54,7 @@ class DesignJeKontoTest {
         pfade.server.shutdown()
     }
 
-    private fun vm() = t.merke(KontoViewModel(KontoRepository(t.api, t.cache), NummernTexte, t.meldungen, t.sitzung))
+    private fun vm() = t.merke(KontoViewModel(KontoRepository(t.api, t.cache), NummernTexte, t.meldungen, t.sitzung, SitzungsAttrappe()))
 
     @Test
     fun `das Konto zeigt Vorgabe und eigenes Design`() {

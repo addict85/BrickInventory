@@ -33,7 +33,7 @@ annotation class ApplicationScope
 
 @Module
 @InstallIn(SingletonComponent::class)
-object KoroutinenModule {
+internal object KoroutinenModule {
     @Provides
     @Dispatcher(BrickDispatchers.IO)
     fun io(): CoroutineDispatcher = Dispatchers.IO

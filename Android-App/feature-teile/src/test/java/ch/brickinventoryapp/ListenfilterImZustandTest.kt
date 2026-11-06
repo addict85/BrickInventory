@@ -100,7 +100,7 @@ class ListenfilterImZustandTest {
             "/api/v1/parts/manual" to """{"success":true,"parts":[{"part_number":"3002"}]}""")
         val t = TestDienste(pfade.imTakt(), io = Dispatchers.Main)
         try {
-            val vm = t.merke(TeileViewModel(t.dienste, TeileRepository(t.api, t.cache),
+            val vm = t.merke(TeileViewModel(t.sitzung, t.filter(), t.hinweise, t.bestand, t.scrollMemory, TeileRepository(t.api, t.cache),
                 FigurenRepository(t.api, t.cache), SavedStateHandle(mapOf("teile_suche" to "Stein"))))
             vm.setScope(ScopeFilter.View.PARTS, "own")
             // Seite 1 zieht die manuellen Teile nach; erst danach blättern, sonst
@@ -124,14 +124,15 @@ class ListenfilterImZustandTest {
      */
     @Test
     fun `jeder Abruf der Teileliste fuehrt Blickfeld und Suchtext mit`() {
-        val aufruf = "repo.teile.getParts("
+        // Das TeileViewModel ruft sein Repository `repo`, das Vorwärmen seines `teile`.
+        val aufrufe = listOf("repo.getParts(", "teile.getParts(")
         // theme und sort kennt die Teile-API nicht (utils/handlers/parts.ts,
         // getParts liest color, category, search, spare, set_number, page).
         val pflicht = listOf("accounts", "search")
         val fehlend = mutableListOf<String>()
         var gefunden = 0
 
-        for (datei in Quellen.alle()) {
+        for (datei in Quellen.alle()) for (aufruf in aufrufe) {
             val src = Quellen.ohneKommentare(datei.readText())
             var i = src.indexOf(aufruf)
             while (i >= 0) {
@@ -157,7 +158,7 @@ class ListenfilterImZustandTest {
             }
         }
 
-        assert(gefunden >= 1) { "Kein Aufruf von '$aufruf' gefunden — Muster veraltet?" }
+        assert(gefunden >= 2) { "Weniger als zwei Aufrufe von $aufrufe gefunden — Muster veraltet?" }
         assert(fehlend.isEmpty()) {
             "Diese Abrufe der Teileliste lassen etwas weg:\n  " + fehlend.joinToString("\n  ")
         }

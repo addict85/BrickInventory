@@ -1,38 +1,24 @@
 package ch.brickinventoryapp.data.repository
 
-import ch.brickinventoryapp.data.api.KatalogApi
-import ch.brickinventoryapp.data.cache.ResponseCache
 import ch.brickinventoryapp.data.model.*
-import javax.inject.Inject
-import javax.inject.Singleton
 import ch.brickinventoryapp.data.model.CatalogYearVerteilungResponse
 
 /**
- * Der Set-Katalog des Servers. Erreichbar über `repo.katalog.…`.
+ * Der Set-Katalog des Servers.
+ * Eine Schnittstelle, damit ViewModels und Tests nicht an der Umsetzung mit
+ * Retrofit und Ablage hängen (KatalogRepositoryImpl).
  */
-@Singleton
-class KatalogRepository @Inject constructor(
-    api: KatalogApi,
-    cache: ResponseCache,
-) : RepoBasis<KatalogApi>(api, cache) {
-
-    suspend fun getCatalogMeta(): Result<CatalogMetaResponse> =
-        cached("catalog-meta", CatalogMetaResponse.serializer()) { safeCall { api.getCatalogMeta() } }
+interface KatalogRepository {
+    suspend fun getCatalogMeta(): Ergebnis<CatalogMetaResponse>
 
     suspend fun getCatalogSets(
         q: String? = null, themeId: Int? = null, yearFrom: Int? = null, yearTo: Int? = null,
         sort: String = "year_desc", page: Int = 1, limit: Int = 60
-    ): Result<CatalogSetsResponse> = safeCall { api.getCatalogSets(q, themeId, yearFrom, yearTo, sort, page, limit) }
+    ): Ergebnis<CatalogSetsResponse>
 
-    suspend fun getCatalogSetDetail(setNumber: String): Result<CatalogSetDetailResponse> =
-        safeCall { api.getCatalogSetDetail(setNumber) }
+    suspend fun getCatalogSetDetail(setNumber: String): Ergebnis<CatalogSetDetailResponse>
 
-    /**
-     * Jahresverteilung zu den aktuellen Filtern — die Zahlen, aus denen die
-     * Leiste ihr Etikett rechnet. Einmal je Listenaufbau, nicht beim Rollen.
-     */
     suspend fun getCatalogYearVerteilung(
         q: String? = null, themeId: Int? = null, sort: String = "year_desc"
-    ): Result<CatalogYearVerteilungResponse> =
-        safeCall { api.getCatalogYearVerteilung(q, themeId, sort) }
+    ): Ergebnis<CatalogYearVerteilungResponse>
 }

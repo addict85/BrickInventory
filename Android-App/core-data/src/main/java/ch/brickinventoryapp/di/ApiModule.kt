@@ -23,7 +23,7 @@ import javax.inject.Singleton
  */
 @Module
 @InstallIn(SingletonComponent::class)
-object ApiModule {
+internal object ApiModule {
     @Provides @Singleton fun provideKontoApi(r: Retrofit): KontoApi = r.create(KontoApi::class.java)
     @Provides @Singleton fun provideVerwaltungApi(r: Retrofit): VerwaltungApi = r.create(VerwaltungApi::class.java)
     @Provides @Singleton fun provideKatalogApi(r: Retrofit): KatalogApi = r.create(KatalogApi::class.java)
