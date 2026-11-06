@@ -19,6 +19,10 @@ import ch.brickinventoryapp.data.model.Preisalarm
 import ch.brickinventoryapp.data.model.SetItem
 import ch.brickinventoryapp.data.lokal.Bearbeitung
 import ch.brickinventoryapp.data.repository.BrickRepository
+import ch.brickinventoryapp.data.repository.FinanzenRepository
+import ch.brickinventoryapp.data.repository.HaushaltRepository
+import ch.brickinventoryapp.data.repository.KatalogRepository
+import ch.brickinventoryapp.data.repository.VerwaltungRepository
 import ch.brickinventoryapp.di.AppModule
 import ch.brickinventoryapp.ui.Abmelden
 import ch.brickinventoryapp.ui.Blickfeld
