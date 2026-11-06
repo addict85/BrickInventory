@@ -110,6 +110,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.platform.ViewRootForTest
 import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.semantics.SemanticsNode
+import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.text.TextLayoutResult
 import java.time.Duration
 import org.junit.Assert
@@ -694,9 +695,17 @@ class BildschirmFotoVariantenTest {
         dialogFoto(name, "classic", false, geraet, schrift)
         if (schrift == 1f && geraet == "telefon") {
             // Ein Muster für alle Erfassungen: Der Lagerort ist so breit wie die Set-Nummer.
+            // Am Dialogfenster gemessen wie das Foto: Die Synchronisierung wartete ewig.
             val ctx = ApplicationProvider.getApplicationContext<Context>()
-            fun breite(label: Int) = compose.onNode(androidx.compose.ui.test.hasSetTextAction() and
-                androidx.compose.ui.test.hasText(ctx.getString(label))).fetchSemanticsNode().boundsInRoot.width
+            val wurzel = composeWurzel(ShadowDialog.getLatestDialog().window!!.decorView) ?: error("kein Compose im Dialog")
+            fun breite(label: Int): Float {
+                val gesucht = ctx.getString(label)
+                fun suche(n: SemanticsNode): SemanticsNode? =
+                    if (SemanticsActions.SetText in n.config &&
+                        n.config.getOrNull(SemanticsProperties.Text)?.any { it.text == gesucht } == true) n
+                    else n.children.firstNotNullOfOrNull { suche(it) }
+                return checkNotNull(suche(wurzel.semanticsOwner.rootSemanticsNode)) { "kein Feld „$gesucht“" }.boundsInRoot.width
+            }
             Assert.assertEquals("Lagerort so breit wie die Set-Nummer",
                 breite(R.string.gallery_set_number),
                 breite(R.string.detail_storage), 1f)
