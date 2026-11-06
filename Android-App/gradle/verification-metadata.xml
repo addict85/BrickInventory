@@ -6,13 +6,13 @@
       <keyring-format>armored</keyring-format>
       <trusted-keys>
          <trusted-key id="04543577D6A9CC626239C50C7ECBD740FF06AEB5">
-            <trusting group="org.glassfish.jaxb"/>
-            <trusting group="org.jvnet.staxex"/>
             <trusting group="com.sun.activation"/>
             <trusting group="com.sun.istack"/>
             <trusting group="com.sun.xml.bind"/>
             <trusting group="com.sun.xml.bind.mvn"/>
             <trusting group="com.sun.xml.fastinfoset"/>
+            <trusting group="org.glassfish.jaxb"/>
+            <trusting group="org.jvnet.staxex"/>
          </trusted-key>
          <trusted-key id="0785B3EFF60B1B1BEA94E0BB7C25280EAE63EBE5" group="org.apache.httpcomponents"/>
          <trusted-key id="09939C73246B4BA7444CAA453D002DBC5EA9615F" group="dev.drewhamilton.poko"/>
@@ -20,7 +20,17 @@
          <trusted-key id="0E225917414670F4442C250DFD533C07C264648F">
             <trusting group="androidx.activity"/>
             <trusting group="androidx.appcompat"/>
+            <trusting group="androidx.camera"/>
+            <trusting group="androidx.camera.featurecombinationquery"/>
+            <trusting group="androidx.camera.viewfinder"/>
             <trusting group="androidx.collection"/>
+            <trusting group="androidx.compose"/>
+            <trusting group="androidx.compose.animation"/>
+            <trusting group="androidx.compose.foundation"/>
+            <trusting group="androidx.compose.material"/>
+            <trusting group="androidx.compose.material3"/>
+            <trusting group="androidx.compose.runtime"/>
+            <trusting group="androidx.compose.ui"/>
             <trusting group="androidx.core"/>
             <trusting group="androidx.databinding"/>
             <trusting group="androidx.datastore"/>
@@ -33,21 +43,11 @@
             <trusting group="androidx.sqlite"/>
             <trusting group="androidx.tracing"/>
             <trusting group="androidx.work"/>
-            <trusting group="androidx.camera"/>
-            <trusting group="androidx.camera.featurecombinationquery"/>
-            <trusting group="androidx.camera.viewfinder"/>
-            <trusting group="androidx.compose"/>
-            <trusting group="androidx.compose.animation"/>
-            <trusting group="androidx.compose.foundation"/>
-            <trusting group="androidx.compose.material"/>
-            <trusting group="androidx.compose.material3"/>
-            <trusting group="androidx.compose.runtime"/>
-            <trusting group="androidx.compose.ui"/>
             <trusting group="com.android"/>
             <trusting group="com.android.application"/>
+            <trusting group="com.android.databinding"/>
             <trusting group="com.android.library"/>
             <trusting group="com.android.lint"/>
-            <trusting group="com.android.databinding"/>
             <trusting group="com.android.tools"/>
             <trusting group="com.android.tools.analytics-library"/>
             <trusting group="com.android.tools.androidtest"/>
@@ -64,6 +64,13 @@
             <trusting group="androidx.annotation"/>
             <trusting group="androidx.camera.viewfinder"/>
             <trusting group="androidx.collection"/>
+            <trusting group="androidx.compose"/>
+            <trusting group="androidx.compose.animation"/>
+            <trusting group="androidx.compose.foundation"/>
+            <trusting group="androidx.compose.material"/>
+            <trusting group="androidx.compose.material3"/>
+            <trusting group="androidx.compose.runtime"/>
+            <trusting group="androidx.compose.ui"/>
             <trusting group="androidx.core"/>
             <trusting group="androidx.credentials"/>
             <trusting group="androidx.exifinterface"/>
@@ -74,20 +81,13 @@
             <trusting group="androidx.room"/>
             <trusting group="androidx.savedstate"/>
             <trusting group="androidx.sqlite"/>
-            <trusting group="androidx.tracing"/>
-            <trusting group="androidx.window"/>
-            <trusting group="com.google.android.gms" name="play-services-identity-credentials" version="16.0.0-alpha08"/>
-            <trusting group="androidx.compose"/>
-            <trusting group="androidx.compose.animation"/>
-            <trusting group="androidx.compose.foundation"/>
-            <trusting group="androidx.compose.material"/>
-            <trusting group="androidx.compose.material3"/>
-            <trusting group="androidx.compose.runtime"/>
-            <trusting group="androidx.compose.ui"/>
             <trusting group="androidx.test"/>
             <trusting group="androidx.test.espresso"/>
             <trusting group="androidx.test.ext"/>
             <trusting group="androidx.test.services"/>
+            <trusting group="androidx.tracing"/>
+            <trusting group="androidx.window"/>
+            <trusting group="com.google.android.gms" name="play-services-identity-credentials" version="16.0.0-alpha08"/>
          </trusted-key>
          <trusted-key id="10F3C7A02ECA55E502BADCF3991EFB94DB91127D" group="org.ow2" name="ow2" version="1.5.1"/>
          <trusted-key id="120D6F34E627ED3A772EBBFE55C7E5E701832382" group="org.snakeyaml" name="snakeyaml-engine" version="2.7"/>
@@ -204,6 +204,7 @@
          <trusted-key id="A5BD02B93E7A40482EB1D66A5F69AD087600B22C" group="org.ow2.asm"/>
          <trusted-key id="A5F483CD733A4EBAEA378B2AE88979FB9B30ACF2">
             <trusting group="androidx.annotation"/>
+            <trusting group="androidx.camera"/>
             <trusting group="androidx.collection"/>
             <trusting group="androidx.compose.runtime"/>
             <trusting group="androidx.concurrent"/>
@@ -1168,6 +1169,11 @@
             <sha256 value="ee15ccb739fa8ab72e48649e53a3def0ee2d5a110736018e781df00437fbf2b3" origin="Generated by Gradle" reason="Artifact is not signed"/>
          </artifact>
       </component>
+      <component group="androidx.exifinterface" name="exifinterface" version="1.3.2">
+         <artifact name="exifinterface-1.3.2.module">
+            <sha256 value="10ba5b5cbea7f5c8758be4fdaec60a3545e891a1130d830a442b88cf5336a885" origin="Generated by Gradle" reason="Artifact is not signed"/>
+         </artifact>
+      </component>
       <component group="androidx.exifinterface" name="exifinterface" version="1.4.2">
          <artifact name="exifinterface-1.4.2.aar">
             <sha256 value="6bb2b68682a2023c55f35f941444ffea0157947b061e4fd7606ba935e2e77425" origin="Generated by Gradle"/>
@@ -1310,6 +1316,11 @@
          </artifact>
          <artifact name="lifecycle-livedata-core-2.11.0.module">
             <sha256 value="d1c1410c8ce9cf1463616c19ca7d8afca63bcbbac9dabd29da3121d61bd41343" origin="Generated by Gradle"/>
+         </artifact>
+      </component>
+      <component group="androidx.lifecycle" name="lifecycle-livedata-core" version="2.2.0">
+         <artifact name="lifecycle-livedata-core-2.2.0.pom">
+            <sha256 value="aa51621be3817d1f5d21336b0c0525fe96ae899cec656c13d8ea18a51ea32c2f" origin="Generated by Gradle" reason="Artifact is not signed"/>
          </artifact>
       </component>
       <component group="androidx.lifecycle" name="lifecycle-livedata-core" version="2.3.1">
