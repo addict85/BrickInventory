@@ -40,6 +40,9 @@ class HaushaltViewModel @Inject constructor(
 
     val state: StateFlow<AppUiState> = sitzung.state
 
+    /** Die Zeit, ab der eine Einladung gilt; in Tests fest, sonst wandert das Ablaufdatum im Bild. */
+    var jetzt: () -> Long = System::currentTimeMillis
+
     init {
         folgeAbmeldung(sitzung) { zuruecksetzen() }
     }
@@ -64,7 +67,7 @@ class HaushaltViewModel @Inject constructor(
             when (val r = haushalt.createHouseholdInvite()) {
                 is Ergebnis.Success ->
                     if (r.data.success) _householdState.update { it.copy(isLoading = false, inviteCode = r.data.code,
-                        inviteGueltigBis = r.data.expiresIn?.let { s -> System.currentTimeMillis() + s * 1000L }) }
+                        inviteGueltigBis = r.data.expiresIn?.let { s -> jetzt() + s * 1000L }) }
                     else _householdState.update { it.copy(isLoading = false, message = r.data.error) }
                 is Ergebnis.Error -> _householdState.update { it.copy(isLoading = false, message = meldungen.meldung(r)) }
             }

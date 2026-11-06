@@ -1252,7 +1252,7 @@ class BildschirmFotoVariantenTest {
         welt.pfade.antworten["/api/v1/settings/household/invite"] = """{"success":true,"code":"K7QF-2M9X","expires_in":86400}"""
         val vm = welt.t.merke(HaushaltViewModel(welt.t.sitzung, welt.t.filter(), welt.t.hinweise, welt.t.bestand,
             HaushaltRepository(welt.t.api, welt.t.cache),
-            KontoRepository(welt.t.api, welt.t.cache))).also { it.loadHouseholdStatus() }
+            KontoRepository(welt.t.api, welt.t.cache))).also { it.jetzt = { FESTE_ZEIT }; it.loadHouseholdStatus() }
         zeige("haushalt-code", bereit = { vm.householdState.value.status != null }, zustand = { vm.householdState.value }) {
             HaushaltRoute(vm, remember { SnackbarHostState() }, onZurueck = {})
         }
@@ -1278,3 +1278,6 @@ class BildschirmFotoVariantenTest {
     @Test fun csvImportLaeuftTelefon() = csvLaeuftFoto(false, "telefon")
     @Test fun csvImportLaeuftTabletDunkel() = csvLaeuftFoto(true, "tablet")
 }
+
+/** Ein fester Zeitpunkt für Bilder, die ein Datum zeigen (5.11.2026, 23:33 UTC). */
+private const val FESTE_ZEIT = 1_793_921_600_000L
