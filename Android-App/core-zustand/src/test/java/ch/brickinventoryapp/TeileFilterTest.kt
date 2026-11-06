@@ -92,12 +92,13 @@ class CsvAbbruchTest {
         // Wer abbrechen will, soll nicht erst herausfinden muessen, dass der
         // Balken sich aufklappen laesst. In der Webapp steht der Knopf
         // dauerhaft da (btn-cancel-import).
+        // Kopfzeile und aufgeklappte Zahlen sind eigene Funktionen; der Knopf gehört in die erste.
         val s = code(read("ui/screens/CsvImportBanner.kt"))
-        val knopf = s.indexOf("R.string.csv_cancel")
-        val aufgeklappt = s.indexOf("if (expanded) CsvImportZahlen(")
-        assert(knopf > 0) { "Der Abbrechen-Knopf fehlt" }
-        assert(aufgeklappt > 0) { "Der aufklappbare Teil fehlt — Test veraltet?" }
-        assert(knopf < aufgeklappt) {
+        val kopf = s.substringAfter("fun CsvKopfzeile(", "").substringBefore("fun CsvImportZahlen(")
+        val zahlen = s.substringAfter("fun CsvImportZahlen(", "")
+        assert(s.contains("if (expanded) CsvImportZahlen(")) { "Der aufklappbare Teil fehlt — Test veraltet?" }
+        assert(kopf.contains("R.string.csv_cancel")) { "Der Abbrechen-Knopf fehlt in der Kopfzeile" }
+        assert(!zahlen.contains("R.string.csv_cancel")) {
             "Der Abbrechen-Knopf steht im aufgeklappten Teil und ist damit versteckt"
         }
     }

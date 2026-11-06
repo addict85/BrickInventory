@@ -9,6 +9,7 @@ import ch.brickinventoryapp.ui.Galerie
 import ch.brickinventoryapp.ui.GalerieAnzeige
 import ch.brickinventoryapp.ui.GalleryUiState
 import ch.brickinventoryapp.ui.galerieAnzeige
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.advanceTimeBy
@@ -47,6 +48,7 @@ import org.junit.Test
  *   G  (28.10.) in laden() `offlineStand = r.stand` entfernt → rot „ein Stand
  *      aus dem Plattenspeicher wird als offline gezeigt …“
  */
+@OptIn(ExperimentalCoroutinesApi::class)
 class GalerieTest {
 
     private fun set(n: Int) = SetItem(setNumber = "$n-1")

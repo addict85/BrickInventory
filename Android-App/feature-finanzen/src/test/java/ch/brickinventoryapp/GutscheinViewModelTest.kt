@@ -112,7 +112,7 @@ class GutscheinViewModelTest {
         assertEquals("EUR", s.waehrung)
         assertEquals("", s.betrag)
         assertEquals("t${R.string.vouchers_pdf_incomplete}", kanal.meldung.value)
-        assertTrue(server.takeRequest().path!!.endsWith("/api/v1/vouchers/pdf"))
+        assertTrue(server.takeRequest().path.endsWith("/api/v1/vouchers/pdf"))
     }
 
     @Test

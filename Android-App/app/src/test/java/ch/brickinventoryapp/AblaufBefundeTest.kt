@@ -3,6 +3,7 @@ package ch.brickinventoryapp
 import android.content.Context
 import androidx.compose.foundation.layout.Box
 import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.semantics.getOrNull
 import androidx.compose.ui.test.ComposeTimeoutException
 import android.os.Looper
 import androidx.compose.material3.MaterialTheme
