@@ -3,10 +3,12 @@
  * ohne Schlüssel; der Eingang lässt ohne Sitzung nur diesen Pfad durch.
  *
  * Gegenproben:
- *   A  Konten-Zähler in einrichtungStand.ts entfernt → rot: „das Konto steht erst auf bereit, wenn …“
+ *   A  Konten-Zähler in einrichtungStand.ts entfernt → rot: „für den Verwalter steht das Konto erst auf bereit, …“
  *   B  Pfad aus OEFFENTLICH gestrichen               → rot: 401 statt 200
  *   C  users-Zeile in die Antwort übernommen         → rot: „keine Adressen, keine Namen“
  *   D  BrickLink-/Rebrickable-Prüfung in einrichtungStand.ts entfernt → rot: „mit hinterlegter Quelle gilt die Einrichtung als begonnen“
+ *   E  in routes/api_v1/einrichtung.ts `verwalter: true` fest gesetzt (07.11.2026)
+ *      → rot: „ohne Verwalter verrät der Stand kein Startpasswort“
  *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL.
  */
@@ -65,9 +67,21 @@ test('Einrichtungsstand ohne Anmeldung', { concurrency: 1 }, async t => {
     assert.equal(typeof s.ok, 'boolean');
     assert.equal(typeof s.pflicht, 'boolean');
   }
-  // Ein Startpasswort ist noch gesetzt: Das Konto ist nicht „bereit“.
+  // Ein Startpasswort ist noch gesetzt; ohne Verwalter heisst „konto“ nur „es gibt eines“.
   const konto = d.schritte.find(s => s.id === 'konto');
-  assert.equal(konto.ok, false, 'das Konto steht erst auf bereit, wenn das Startpasswort ersetzt ist');
+  assert.equal(konto.ok, true, 'ohne Verwalter verrät der Stand kein Startpasswort');
+  assert.equal(d.basis_url, null, 'ohne Verwalter keine Basis-URL');
+  const verwalter = testServer(_req, {
+    sitzung: { userId: uid, isAdmin: true },
+    routen: { '/api/v1': 'routes/api_v1/einrichtung.js' },
+    t,
+  });
+  const dv = await (await fetch(verwalter.base + '/api/v1/einrichtung/stand')).json();
+  assert.equal(
+    dv.schritte.find(s => s.id === 'konto').ok,
+    false,
+    'für den Verwalter steht das Konto erst auf bereit, wenn das Startpasswort ersetzt ist',
+  );
   // Keine Adressen, keine Namen, keine Schlüsselnamen.
   const text = JSON.stringify(d);
   assert.doesNotMatch(text, /@/);

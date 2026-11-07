@@ -284,8 +284,9 @@ den Commits, nicht hier.
 - `GET /api/v1/einrichtung/stand` ist ohne Anmeldung erreichbar und nennt nur
   Schalter (Datenbank, APP_BASE_URL, TLS, CA, Konto, Rebrickable), den
   Fingerabdruck der CA und den Download; Konten und Schlüssel stehen nicht
-  darin, nach `einrichtung_erledigt` nur noch „erledigt“:
-  `src/konto/einrichtungStand.ts` — `einrichtung-stand-db`.
+  darin, nach `einrichtung_erledigt` nur noch „erledigt“. Ohne Verwaltersitzung
+  fehlen die Basis-URL und das Startpasswort („Konto“ heißt dann nur „es gibt
+  eines“): `src/konto/einrichtungStand.ts` — `einrichtung-stand-db`.
 - Bestätigungslink: Vor dem Einlösen nennt `POST /auth/email-bestaetigen/vorschau`
   nur den Benutzernamen des Kontos (30/h je Adresse), die Seite und ihr Knopf
   nennen ihn; nennen mehrere offene Registrierungen die Adresse, verweist die

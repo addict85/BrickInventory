@@ -27,8 +27,10 @@ export interface EinrichtungStandAntwort {
 }
 
 /** Ein Fehler beim Prüfen ist selbst eine Auskunft: Die Zeile steht dann auf
- * „fehlt", und das Protokoll nennt den Grund. */
-export async function einrichtungStand(): Promise<EinrichtungStandAntwort> {
+ * „fehlt", und das Protokoll nennt den Grund.
+ * Ohne Verwalter (`verwalter: false`) fehlen Basis-URL und Startpasswort: Wer die
+ * Seite nur erreicht, soll nicht erfahren, dass ein Konto noch das Startpasswort trägt. */
+export async function einrichtungStand({ verwalter = false } = {}): Promise<EinrichtungStandAntwort> {
   const ca = await tlsStand();
   const k = konfig();
   // "Konfiguriert" blendet den Prüfknopf auf der Anmeldeseite aus. BrickLink zählt
@@ -51,7 +53,7 @@ export async function einrichtungStand(): Promise<EinrichtungStandAntwort> {
       ...(ca ? { fp_hex: ca.fp_hex, gueltig_bis: ca.gueltig_bis } : {}),
       download: '/ca.crt',
     },
-    basis_url: k.appBaseUrl,
+    basis_url: verwalter ? k.appBaseUrl : null,
     https: k.hinterTls,
   };
 
@@ -71,7 +73,7 @@ export async function einrichtungStand(): Promise<EinrichtungStandAntwort> {
   const konten = await kontenStand().catch(
     meldeUndLiefere('einrichtung:konten', { vorhanden: false, startpasswort: false }),
   );
-  schritte.push({ id: 'konto', ok: konten.vorhanden && !konten.startpasswort, pflicht: true });
+  schritte.push({ id: 'konto', ok: konten.vorhanden && (!verwalter || !konten.startpasswort), pflicht: true });
   schritte.push({ id: 'quelle', ok: rebrickable, pflicht: true });
 
   return { ...antwort, schritte };
