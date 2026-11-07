@@ -94,9 +94,10 @@ G('btn-test-smtp')?.addEventListener('click', async()=>{
     if (gespeichert) toast(gespeichert.error || t('settings.error'), 'error');
     return;
   }
-  const to = G('smtp-test-email')?.value?.trim() || ME?.email || '';
+  const eigene = String(ME?.email || '');
+  const to = G('smtp-test-email')?.value?.trim() || eigene;
   // Eine fremde Adresse bestätigt der Verwalter mit dem Passwort; die eigene nicht.
-  const fremd = to.toLowerCase() !== (ME?.email || '').toLowerCase();
+  const fremd = to.toLowerCase() !== eigene.toLowerCase();
   const d = fremd
     ? await mitPasswortBestaetigen(tRaw('smtp.test_confirm_title'), (password, z) => api('POST','/v1/settings/smtp-test', { to, password, ...z }), tRaw('smtp.test_confirm_text'))
     : await mitZweitemFaktor(z => api('POST','/v1/settings/smtp-test', { to, ...z }));
