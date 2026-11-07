@@ -4524,6 +4524,36 @@
         "x-klein": true
       }
     },
+    "/api/v1/einrichtung/stand": {
+      "get": {
+        "tags": [
+          "einstellungen"
+        ],
+        "responses": {
+          "200": {
+            "description": "Erfolg",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EinrichtungStand"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Fehler",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Fehler"
+                }
+              }
+            }
+          }
+        },
+        "x-klein": true
+      }
+    },
     "/api/v1/finance/minifigs-valuation": {
       "get": {
         "tags": [
@@ -16095,6 +16125,85 @@
           "offen",
           "passwort_aendern",
           "quellen"
+        ],
+        "additionalProperties": {}
+      },
+      "EinrichtungStand": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "const": true
+          },
+          "erledigt": {
+            "type": "boolean"
+          },
+          "konfiguriert": {
+            "type": "boolean"
+          },
+          "schritte": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "ok": {
+                  "type": "boolean"
+                },
+                "pflicht": {
+                  "type": "boolean"
+                }
+              },
+              "required": [
+                "id",
+                "ok",
+                "pflicht"
+              ],
+              "additionalProperties": {}
+            }
+          },
+          "ca": {
+            "type": "object",
+            "properties": {
+              "vorhanden": {
+                "type": "boolean"
+              },
+              "fp_hex": {
+                "type": "string"
+              },
+              "gueltig_bis": {
+                "type": "string"
+              },
+              "download": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "vorhanden",
+              "download"
+            ],
+            "additionalProperties": {}
+          },
+          "basis_url": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "https": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "success",
+          "erledigt",
+          "konfiguriert",
+          "schritte",
+          "ca",
+          "basis_url",
+          "https"
         ],
         "additionalProperties": {}
       },

@@ -275,6 +275,17 @@ den Commits, nicht hier.
   (still keine Mail): `src/konto/zielDrossel.ts` — `mail-fremder-text-db`.
 - Prüfung eines Haushaltscodes (`redeem/pruefen`) 30/h je Konto —
   `haushalt-beitreten-db`.
+- Jede angemeldete Anfrage zählt in ein Budget je Konto: 600 Einheiten je
+  5 Minuten, ein Leseaufruf 1, ein Katalogabruf 5, ein Auftragsstart (PDF,
+  Import, Export) 25 und zusätzlich höchstens 20 Aufträge je Fenster; 429
+  `zu_viele_anfragen` mit `Retry-After`: `src/infra/apiDrossel.ts` —
+  `api-kontingent` (Prozessspeicher, wie die Schranken in
+  `src/infra/kontoSchranke.ts`).
+- `GET /api/v1/einrichtung/stand` ist ohne Anmeldung erreichbar und nennt nur
+  Schalter (Datenbank, APP_BASE_URL, TLS, CA, Konto, Rebrickable), den
+  Fingerabdruck der CA und den Download; Konten und Schlüssel stehen nicht
+  darin, nach `einrichtung_erledigt` nur noch „erledigt“:
+  `src/konto/einrichtungStand.ts` — `einrichtung-stand-db`.
 - Bestätigungslink: Vor dem Einlösen nennt `POST /auth/email-bestaetigen/vorschau`
   nur den Benutzernamen des Kontos (30/h je Adresse), die Seite und ihr Knopf
   nennen ihn; nennen mehrere offene Registrierungen die Adresse, verweist die

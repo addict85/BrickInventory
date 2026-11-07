@@ -501,6 +501,27 @@ export type Einrichtung = {
   };
   [feld: string]: unknown;
 };
+export type EinrichtungStand = {
+  success: true;
+  erledigt: boolean;
+  konfiguriert: boolean;
+  schritte: {
+    id: string;
+    ok: boolean;
+    pflicht: boolean;
+    [feld: string]: unknown;
+  }[];
+  ca: {
+    vorhanden: boolean;
+    fp_hex?: string;
+    gueltig_bis?: string;
+    download: string;
+    [feld: string]: unknown;
+  };
+  basis_url: string | null;
+  https: boolean;
+  [feld: string]: unknown;
+};
 export type EinstellungenGespeichert = {
   success: boolean;
   error?: string | null;
@@ -2125,6 +2146,7 @@ export type Route =
   | { m: 'GET'; p: '/v1/catalog/sets'; a: CatalogSetsResponse }
   | { m: 'GET'; p: `/v1/catalog/sets/${string}`; a: CatalogSetDetailResponse }
   | { m: 'GET'; p: '/v1/catalog/year-verteilung'; a: CatalogYearVerteilungResponse }
+  | { m: 'GET'; p: '/v1/einrichtung/stand'; a: EinrichtungStand }
   | { m: 'GET'; p: '/v1/finance/minifigs-valuation'; a: FigsValuationResponse }
   | { m: 'GET'; p: '/v1/finance/parts-valuation'; a: PartsValuationResponse }
   | { m: 'GET'; p: '/v1/finance/pnl'; a: PnlResponse }

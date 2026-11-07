@@ -13,6 +13,7 @@ import { sendeFehler, fehlerText, antwortSprache } from '../../infra/fehlerTexte
 import { meldeUndLiefere } from '../../infra/fehler';
 import { sitzungsVersionAusDb } from '../sitzungsVersion';
 import { istAktiv } from '../zweiterFaktor';
+import { nutzerId, angemeldeteNutzerId } from '../../infra/nutzerId';
 
 /** Verwalterrechte ohne TOTP: Das Passwort allein soll sie nicht tragen, bis zur
  * Einrichtung geht nur diese (anmeldungAmEingang). Ein Passkey zählt nicht, denn
@@ -111,24 +112,10 @@ export function loginOrTokenGuard(opts: { timeoutMs?: number } = {}) {
 
 export const requireLoginOrToken = loginOrTokenGuard();
 
-/** EINE Antwort für Sitzung und Token: Vorher stand die Frage in zwei Reihenfolgen.
+/** Die Rechnung steht in src/infra/nutzerId: Auch die Drossel dort braucht sie,
+ * und Infra darf keine HTTP-Seite importieren. Hier bleibt der Name für die Routen.
  * Ausführlich: docs/begruendungen/src/konto/http/anmeldung.ts.md#nutzerid */
-export function nutzerId(req: Request): number | null {
-  const roh = req.session?.userId ?? req.tokenUserId ?? req.apiUser?.user_id;
-  if (roh == null) return null;
-  const n = Number(roh);
-  return Number.isFinite(n) ? n : null;
-}
-
-/** Fehlt die Anmeldung hinter einem Wächter, ist die Verdrahtung falsch, nicht
- * die Anfrage — besser als `nutzerId(req)!` überall. */
-export function angemeldeteNutzerId(req: Request): number {
-  const id = nutzerId(req);
-  if (id == null) {
-    throw new Error('angemeldeteNutzerId ohne Anmeldung — die Route steht vor ihrem Waechter');
-  }
-  return id;
-}
+export { nutzerId, angemeldeteNutzerId };
 
 /** Sitzung ODER Token: `req.session.username` ist bei Token-Anfragen undefined. */
 export function nutzerName(req: Request): string | null {

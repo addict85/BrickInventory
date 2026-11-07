@@ -124,6 +124,9 @@ const ALLES_LOESCHEN =
   'ganze Sammlung; einzelne Elemente löscht die App wie bisher.';
 
 const NUR_WEB = new Map([
+  ['/api/v1/einrichtung/stand',
+   'Die Prüfung erklärt die Installation des Wurzelzertifikats im Browser. Die App ' +
+   'richtet sich über den QR-Code ein und bekommt den Fingerabdruck dort (`fp`).'],
   ['/api/v1/settings/tls',
    'Fingerabdruck der CA zum Abgleich von Hand. Die App bekommt ihn mit dem ' +
    'QR-Code (`fp`) und pinnt ihn; eine Anzeige brächte ihr nichts.'],

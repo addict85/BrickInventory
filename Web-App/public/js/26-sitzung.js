@@ -17,6 +17,7 @@ import { routeBeimStart } from './24-router.js';
 import { plInit, resetPartsList, plRenderSets, bindGlobalErrorHandlers } from './08-init.js';
 import { gibCheckOnLoad, gibZuruecksetzen } from './01-fortschritt.js';
 import { pruefeEinrichtung } from './22-einrichtung.js';
+import { einrichtungKnopfPruefen } from './27-einrichtung-stand.js';
 import { initScrollbalken } from './15-scrollbar.js';
 import { bindTabs, seitennameAktualisieren } from './25-navigation.js';
 import { loadHouseholdMembers } from './02-konten-orte.js';
@@ -414,6 +415,9 @@ function showLogin(o = {}){
  * fragen beide; kommt die ältere Antwort zuletzt an, gilt sie nicht mehr. */
 let _anmeldewegeLauf = 0;
 async function checkRegistrationEnabled(){
+  // Derselbe Anlass wie die Anmeldewege: Wer die Anmeldeseite zeigt, soll wissen, ob die
+  // Ersteinrichtung noch offen ist — beim Start wie nach dem Abmelden.
+  einrichtungKnopfPruefen();
   const lauf = ++_anmeldewegeLauf;
   // Steht erst wieder, wenn die jüngste Antwort eingetragen ist (Browser-Tests warten darauf).
   delete G('login-screen').dataset.anmeldewege;

@@ -42,6 +42,7 @@ const ERWARTET_OFFEN = new Map([
   ['POST /api/v1/auth/email-bestaetigen/vorschau', 'Dasselbe, vor dem Bestätigen'],
   ['POST /api/v1/auth/passkey/anmelden/optionen', 'Die Anmeldung mit Passkey beginnt vor jedem Konto'],
   ['GET /api/v1/settings/theme',         'Das Design des Login-Bildschirms, vor jeder Anmeldung'],
+  ['GET /api/v1/einrichtung/stand',      'Was vor dem ersten Konto fehlt — die Anmeldeseite fragt es ab'],
   ['GET /api/v1/startup-status',         'Der Ladebildschirm vor der Anmeldung'],
   ['GET /api/v1/health',                 'Status für Überwachung, Details nur für Verwalter'],
   ['GET /api/v1/health/live',            'Lebenszeichen des Prozesses'],
