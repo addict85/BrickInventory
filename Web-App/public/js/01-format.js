@@ -104,6 +104,19 @@ export function fmtBig(n){
 }
 
 /**
+ * Ein <input type="date"> zeigt das Datum in der Sprache des Browsers. Ist die dieselbe wie die der App,
+ * braucht es keine zweite Schreibweise daneben.
+ * @param {string} iso  JJJJ-MM-TT
+ */
+export function browserSchreibtDatumWieApp(iso) {
+  if (!iso) return true;
+  const d = new Date(iso + 'T00:00:00');
+  /** @type {Intl.DateTimeFormatOptions} */
+  const o = { day: '2-digit', month: '2-digit', year: 'numeric' };
+  try { return d.toLocaleDateString(navigator.language, o) === d.toLocaleDateString(locale(), o); } catch { return false; }
+}
+
+/**
  * Ein Datum überall gleich: „05.01.2024“ (de), „5 Jan 2024“ (en). Vorher stand je Stelle toLocaleDateString()
  * („5.1.2024“) neben eigenen Formen.
  * @param {string|number|Date|null|undefined} v

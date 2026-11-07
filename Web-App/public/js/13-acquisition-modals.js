@@ -5,7 +5,7 @@ import { escHex, escJs, hexZiffern, esc, html, ungeprueft } from './00-escapen.j
 import { api } from './01-api.js';
 import { fullUrl, imgUrl } from './01-bilder.js';
 import { ico, G, aktiverReiter, setzeHtml, fuegeHtmlEin } from './01-dom.js';
-import { fmtDatum, betragFuerFeld } from './01-format.js';
+import { fmtDatum, betragFuerFeld, browserSchreibtDatumWieApp } from './01-format.js';
 import { betragAusFeld } from './01-formular.js';
 import { toast } from './01-meldungen.js';
 import { applySetAggregate, loadGallery } from './02-gallery.js';
@@ -119,15 +119,15 @@ function isoTag(v) {
 
 /**
  * Datumsfeld mit dem Datum daneben in der Sprache der Oberfläche: Das Feld selbst zeigt die Form des Browsers
- * („06/01/2026“), nicht die der App.
+ * („06/01/2026“), nicht die der App. Schreibt der Browser schon wie die App, entfällt die Zeile.
  * @param {string} attrs
  * @param {string} iso
  * @param {string} textId
  */
 function datumFeld(attrs, iso, textId) {
+  const text = browserSchreibtDatumWieApp(iso) ? '' : fmtDatum(iso, 'lang');
   return html`<span class="acq-datum"><input class="acq-feld" type="date" value="${iso}" aria-label="${tRaw('detail.added')}"
-      aria-describedby="${textId}" ${ungeprueft(attrs)} />
-    <span class="acq-datum-text" id="${textId}">${fmtDatum(iso, 'lang')}</span></span>`;
+      ${text ? html`aria-describedby="${textId}"` : ''} ${ungeprueft(attrs)} />${text ? html`<span class="acq-datum-text" id="${textId}">${text}</span>` : ''}</span>`;
 }
 
 /** Zeilen, deren letzte Änderung gespeichert ist; die Marke übersteht das Neuzeichnen. */
