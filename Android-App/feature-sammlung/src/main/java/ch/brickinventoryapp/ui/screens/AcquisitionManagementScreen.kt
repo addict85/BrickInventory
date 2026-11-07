@@ -343,7 +343,7 @@ private fun AcquisitionManagementRow(
                         val d = java.time.Instant.ofEpochMilli(ms).atZone(java.time.ZoneOffset.UTC).toLocalDate()
                         onSave(null, null, null, "%04d-%02d-%02d".format(d.year, d.monthValue, d.dayOfMonth))
                     }
-                }) { Text(stringResource(R.string.partslist_ok)) }
+                }) { Text(stringResource(R.string.common_ok)) }
             },
             dismissButton = {
                 TextButton(onClick = { showDatePicker = false }) { Text(stringResource(R.string.common_cancel)) }
@@ -363,7 +363,7 @@ private fun AcquisitionManagementRow(
         OutlinedTextField(
             value = qtyText,
             onValueChange = { qtyText = NumericInput.quantity(it) },
-            prefix = { Text("×", fontWeight = FontWeight.Bold) },
+            prefix = { Text(stringResource(R.string.common_times), fontWeight = FontWeight.Bold) },
             // onFocusChanged zusätzlich zu onDone: Wer den Wert ändert und zurücktippt, ohne
             // „Fertig“ zu drücken, verlöre die Eingabe. Gespeichert wird beim Fokusverlust
             // nur, wenn sich der Wert geändert hat.

@@ -198,7 +198,10 @@
     <string name="partslist_add_set">Add set to the build list</string>
     <string name="partslist_generate">Create build list</string>
     <string name="partslist_pdf_error_title">PDF error</string>
-    <string name="partslist_ok">OK</string>
+    <string name="common_ok">OK</string>
+    <string name="common_pdf">PDF</string>
+    <string name="common_hours_short">h</string>
+    <string name="common_times">×</string>
     <string name="partslist_reset">Reset</string>
     <string name="partslist_fill_owned">My parts</string>
     <string name="storage_manage">Storage locations</string>

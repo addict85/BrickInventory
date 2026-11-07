@@ -376,7 +376,7 @@ private fun CacheDauerZeile(
                 OutlinedTextField(
                     value = eingabe,
                     onValueChange = { onEingabe(NumericInput.quantity(it)) },
-                    suffix = { Text("h") },
+                    suffix = { Text(stringResource(R.string.common_hours_short)) },
                     modifier = Modifier.width(90.dp),
                     singleLine = true,
                     shape = Formen.kachel,
@@ -385,7 +385,7 @@ private fun CacheDauerZeile(
                 FilledTonalButton(
                     onClick = onSpeichern,
                     contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp)
-                ) { Text("OK", style = MaterialTheme.typography.labelMedium) }
+                ) { Text(stringResource(R.string.common_ok), style = MaterialTheme.typography.labelMedium) }
                 MitTooltip(stringResource(R.string.common_cancel)) {
                     IconButton(onClick = { onBearbeiten(false) }) {
                         Icon(Icons.Default.Close, stringResource(R.string.common_cancel))
@@ -746,7 +746,7 @@ fun ZeitplanZeile(
                         }
                     },
                     contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp),
-                ) { Text("OK", style = MaterialTheme.typography.labelMedium) }
+                ) { Text(stringResource(R.string.common_ok), style = MaterialTheme.typography.labelMedium) }
                 MitTooltip(stringResource(R.string.common_cancel)) {
                     IconButton(onClick = { bearbeiten = false }) {
                         Icon(Icons.Default.Close, stringResource(R.string.common_cancel))
