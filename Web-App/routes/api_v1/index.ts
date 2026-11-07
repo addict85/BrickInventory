@@ -14,10 +14,12 @@ import catalogRouter from './catalog';
 import wantedRouter from './wanted';
 import vouchersRouter from './vouchers';
 import papierkorbRouter from './papierkorb';
+import einrichtungRouter from './einrichtung';
 import { vertragsRouter } from '../../src/infra/vertrag/pruefen';
 
 const router = vertragsRouter();
 
+router.use(einrichtungRouter);  // /einrichtung/stand — öffentlich, vor der Anmeldung
 router.use(pdfRouter);          // /sets/partslist-pdf/* (literale Pfade)
 router.use(setsRouter);         // /sets, /sets/barcode, /sets/:setNumber/*
 router.use(acquisitionsRouter); // Kaufpreis-Erfassungen für Sets/Teile/Figuren

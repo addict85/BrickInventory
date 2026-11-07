@@ -198,6 +198,9 @@
         <span class="text-mut" id="forgot-verwalter" data-i18n="login.forgot_admin" hidden>Passwort vergessen? Der Verwalter kann es zurücksetzen.</span>
         <span id="link-register-wrap" data-stil="display:none"><span data-i18n="login.register_prompt">Neu hier?</span> <a href="#" id="link-register" data-stil="color:var(--b600);font-weight:600" data-i18n="login.register_link">Registrieren</a></span>
       </div>
+      <div class="login-fuss">
+        <button type="button" class="btn bs btn-sm" id="btn-einrichtung-pruefen" hidden data-click="einrichtungPruefen" data-i18n="es.link">Erste Einrichtung prüfen</button>
+      </div>
       <div class="start-fuss" data-version></div>
       <div id="verified-msg" role="status" data-stil="display:none;margin-top:.75rem;padding:.65rem .9rem;background:var(--g50);border:1px solid var(--g300);border-radius:7px;font-size:var(--fs-2);color:var(--g700)"><span data-i18n="verify.success" data-ico="ok">E-Mail erfolgreich bestätigt. Du kannst dich jetzt anmelden.</span></div>
     </div>
@@ -1853,7 +1856,33 @@
   <img id="lightbox-img" alt="" data-onerror="keep" class="bild-gross" />
 </div>
 
-<!-- Einrichtung beim ersten Start — Ablauf in js/22-einrichtung.js -->
+<div class="ovl" id="einrichtung-stand-modal" role="dialog" aria-modal="true" aria-labelledby="es-titel">
+  <div class="modal max-560">
+    <div class="mhd"><h2 class="mtit" id="es-titel" data-i18n="es.title">Einrichtung prüfen</h2><button class="btn bs btn-sm" data-click="einrichtungStandSchliessen" data-dialog-zu aria-label="Schliessen" data-i18n="common.close" data-i18n-attr="aria-label"><svg class="ico" aria-hidden="true"><use href="#i-schliessen"/></svg></button></div>
+    <div class="es-banner" id="es-banner" role="status" aria-live="polite" hidden></div>
+    <p class="text-klein abstand-u-075" data-i18n="es.intro">Diese Seite prüft, was für den Betrieb noch fehlt. Sie zeigt keine Konten und keine Schlüssel.</p>
+    <ul class="es-liste" id="es-liste"></ul>
+    <section class="es-ca">
+      <h3 data-i18n="es.ca_title">Wurzelzertifikat installieren</h3>
+      <p class="text-klein" data-i18n="es.ca_hint">Der Server verschlüsselt mit einer eigenen Zertifizierungsstelle. Damit Browser und App ihm vertrauen, muss ihr Zertifikat einmal je Gerät installiert werden.</p>
+      <p class="text-klein" data-i18n="es.ca_fp">SHA-256-Fingerabdruck</p>
+      <p class="es-fp" id="es-ca-fp"></p>
+      <p class="text-klein" id="es-ca-zeit"></p>
+      <a class="btn bs btn-sm" id="es-ca-link" href="/ca.crt" download data-i18n="es.ca_download">Zertifikat herunterladen</a>
+      <details><summary data-i18n="es.platform_android">Android-Gerät</summary><p data-i18n="es.how_android"></p></details>
+      <details><summary data-i18n="es.platform_ios">iPhone und iPad</summary><p data-i18n="es.how_ios"></p></details>
+      <details><summary data-i18n="es.platform_windows">Windows-Rechner</summary><p data-i18n="es.how_windows"></p></details>
+      <details><summary data-i18n="es.platform_macos">macOS-Gerät</summary><p data-i18n="es.how_macos"></p></details>
+      <details><summary data-i18n="es.platform_linux">Linux und Firefox</summary><p data-i18n="es.how_linux"></p></details>
+    </section>
+    <div class="mfooter ew-fuss">
+      <button type="button" class="btn bs" data-click="einrichtungStandSchliessen" data-i18n="es.close">Schliessen</button>
+      <span class="ew-fuss-rechts"><button type="button" class="btn bp" id="es-neu" data-click="einrichtungStandNeu" data-i18n="es.recheck">Erneut prüfen</button></span>
+    </div>
+  </div>
+</div>
+
+<!-- Einrichtung: Stand vor der Anmeldung (js/27-einrichtung-stand.js) und Assistent beim ersten Start (js/22-einrichtung.js) -->
 <div class="ovl" id="einrichtung-modal" role="dialog" aria-modal="true" aria-labelledby="ew-titel">
   <div class="modal max-560">
     <div class="mhd"><h2 class="mtit" id="ew-titel" data-i18n="setup.title">Willkommen — BrickInventory einrichten</h2><button class="btn bs btn-sm" data-click="einrichtungSpaeter" data-dialog-zu aria-label="Schliessen" data-i18n="common.close" data-i18n-attr="aria-label"><svg class="ico" aria-hidden="true"><use href="#i-schliessen"/></svg></button></div>

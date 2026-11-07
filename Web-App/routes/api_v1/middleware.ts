@@ -25,6 +25,8 @@ export function bearerToken(req: { headers: { authorization?: string | undefined
  * ihren eigenen Schutz vergisst, ist damit zu und nicht offen. */
 const OEFFENTLICH: ReadonlyArray<readonly [string, RegExp]> = [
   ['GET', /^\/settings\/theme$/],
+  // Die Anmeldeseite prüft damit, was vor dem ersten Konto noch fehlt.
+  ['GET', /^\/einrichtung\/stand$/],
   ['GET', /^\/auth\/(me|registration-status)$/],
   // token-rotieren prüft selbst: Ein unbegrenzter Token nach der Pflichtfrist
   // gilt nur noch dort, und das kann der Eingang nicht wissen.

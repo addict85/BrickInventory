@@ -55,6 +55,7 @@ import './23-passkeys.js';
 import './24-router.js';
 import './25-navigation.js';
 import './26-sitzung.js';
+import './27-einrichtung-stand.js';
 
 // Gestartet wird erst nach der Auswertung aller Module.
 import { startApp } from './26-sitzung.js';

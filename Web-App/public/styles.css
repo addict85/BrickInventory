@@ -1539,6 +1539,28 @@ input.alarm-feld[inputmode=decimal]{width:7.5em}
 .fehler-details code{display:block;margin-top:.35rem;word-break:break-word}
 .lerr .fehler-details{margin:.4rem 0 0;max-width:none;color:inherit}
 .ew-stand{display:inline-flex;align-items:center}.ew-stand.ok{color:var(--g700)}.ew-stand.fehlt{color:var(--r700)}
+/* Einrichtungsstand vor der Anmeldung: eine Zeile je Prüfung, der Zustand steht
+   als Text daneben — die Farbe allein wäre keine Auskunft. */
+.es-liste{list-style:none;margin:.5rem 0 .75rem;padding:0;display:grid;gap:.35rem}
+.es-zeile{display:grid;grid-template-columns:auto 1fr auto;align-items:baseline;gap:.5rem;padding:.45rem .65rem;border:1px solid var(--bdr);border-radius:8px}
+.es-punkt{width:.6rem;height:.6rem;border-radius:50%;background:var(--r700);align-self:center}
+.es-zeile.ok .es-punkt{background:var(--g700)}
+.es-zeile .es-wert{font-size:var(--fs-1);font-weight:600;color:var(--r700)}
+.es-zeile.ok .es-wert{color:var(--g700)}
+.es-hinweis{grid-column:1 / -1;font-size:var(--fs-1);color:var(--mut)}
+.es-zeile.ok .es-hinweis{display:none}
+.es-banner{padding:.6rem .8rem;border-radius:8px;border:1px solid var(--bdr);background:var(--s50);font-size:var(--fs-2)}
+.es-banner.fertig{background:var(--g50);border-color:var(--g300);color:var(--g700)}
+.es-ca{margin-top:.5rem;border-top:1px solid var(--bdr);padding-top:.75rem}
+.es-ca h3{font-size:var(--fs-3);margin:0 0 .35rem}
+.es-fp{margin:.25rem 0;font-size:var(--fs-1);word-break:break-all}
+/* .btn setzt display:inline-flex und schlägt damit das hidden-Attribut; ohne CA verschwände der
+   Link sonst nicht und führte in ein 404. */
+#es-ca-link[hidden]{display:none}
+.es-ca details{margin-top:.4rem}
+.es-ca summary{cursor:pointer;min-height:24px;font-weight:600}
+.es-ca details p{margin:.35rem 0 0;font-size:var(--fs-2);color:var(--mut)}
+
 .empty.leer.klein{padding:1.25rem 1rem}
 .empty.leer.klein h2{font-size:var(--fs-3)}
 .empty.leer.klein .leer-ico .ico{width:2rem;height:2rem}

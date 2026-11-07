@@ -286,6 +286,9 @@ const C = {
   // die Adresse im PdfViewerScreen (derselbe angemeldete OkHttpClient). Fuer
   // dieses Inventar ist das derselbe Fall: eine Umsetzung, beide Apps.
   'GET /api/v1/vouchers/:id/pdf': 'nur-v1',
+  // Stand der Ersteinrichtung vor der Anmeldung (public/js/27-einrichtung-stand.js).
+  // Nur die Webapp zeigt ihn; die App hat ihre eigene Einrichtung.
+  'GET /api/v1/einrichtung/stand': 'nur-web',
   // Einrichtungs-Assistent (public/js/22-einrichtung.js).
   'GET /api/v1/settings/einrichtung': 'nur-v1',
   'POST /api/v1/settings/einrichtung/fertig': 'nur-v1',

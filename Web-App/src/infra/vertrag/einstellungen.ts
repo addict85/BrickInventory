@@ -58,6 +58,15 @@ export const Einrichtung = z.looseObject({
   success: z.literal(true), offen: z.boolean(), passwort_aendern: z.boolean(),
   quellen: z.looseObject({ rebrickable: z.boolean(), bricklink: z.boolean(), brickset: z.boolean() }),
 });
+/** Stand der Ersteinrichtung für die Anmeldeseite: Schalter und das öffentliche
+ * Wurzelzertifikat, keine Konten und keine Schlüssel. */
+export const EinrichtungStand = z.looseObject({
+  success: z.literal(true), erledigt: z.boolean(), konfiguriert: z.boolean(),
+  schritte: z.array(z.looseObject({ id: z.string(), ok: z.boolean(), pflicht: z.boolean() })),
+  ca: z.looseObject({ vorhanden: z.boolean(), fp_hex: z.string().optional(),
+                      gueltig_bis: z.string().optional(), download: z.string() }),
+  basis_url: z.string().nullable(), https: z.boolean(),
+});
 /** Die Einstellungen als Text, wie sie gespeichert sind; Geheimnisse maskiert. */
 export const RoheEinstellungen = z.looseObject({ success: z.literal(true), settings: z.record(z.string(), z.string()) });
 export const TlsStand = z.looseObject({
@@ -100,6 +109,8 @@ export const routen = {
   'PUT /api/v1/settings': { eingabe: EINSTELLUNGEN, antwort: EinstellungenGespeichert },
   'POST /api/v1/settings/user/default-condition': { eingabe: z.strictObject({ condition: ZUSTAND.nullable().optional() }), antwort: VerwaltungZustand },
   'POST /api/v1/settings/admin/theme': { eingabe: z.strictObject({ theme: GLOBALE_REGELN.app_theme }), antwort: VerwaltungDesign },
+  // `klein`: sechs feste Prüfschritte, die nicht mit dem Bestand wachsen.
+  'GET /api/v1/einrichtung/stand': { antwort: EinrichtungStand, klein: true },
   'GET /api/v1/settings/einrichtung': { antwort: Einrichtung },
   'POST /api/v1/settings/einrichtung/fertig': { eingabe: OHNE_RUMPF, antwort: Erfolg },
   'GET /api/v1/settings/raw': { antwort: RoheEinstellungen },

@@ -37,6 +37,7 @@ import { horcheAufTokenWiderruf } from './src/konto/auth';
 import * as pgNotify from './db/pgNotify';
 import { registerImgProxy } from './routes/imgProxy';
 import { anmeldungAmEingang, rumpfLesen } from './routes/api_v1/middleware';
+import { apiDrossel } from './src/infra/apiDrossel';
 import { idempotenz } from './src/idempotenz/http/middleware';
 import { vertragPruefen } from './src/infra/vertrag/pruefen';
 import datenDateien = require('./routes/datenDateien');
@@ -261,6 +262,9 @@ function apiRouten(app: express.Express): void {
   // bleibt als zweite Linie.
   // Ausführlich: docs/begruendungen/server.ts.md#abschnitt-7
   app.use('/api/v1',          anmeldungAmEingang);
+  // Danach das Budget je Konto, VOR dem Rumpf: Eine abgewiesene Anfrage soll
+  // ihren Rumpf nicht mehr lesen (src/infra/apiDrossel.ts).
+  app.use('/api/v1',          apiDrossel);
   // Rümpfe erst nach der Anmeldung lesen: Unangemeldet gibt es nur 16 KB (rumpfLesen).
   app.use('/api/v1',          rumpfLesen);
   app.use('/api/v1',          idempotenz);
