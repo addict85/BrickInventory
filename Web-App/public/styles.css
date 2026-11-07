@@ -484,7 +484,7 @@
     /* Auf Geräten ohne Zeigegerät gibt es kein Überfahren — dort dauerhaft
        sichtbar, sonst wäre Löschen per Touch gar nicht erreichbar. */
     @media (hover: none){ .ca{opacity:1} }
-    .delbtn{width:26px;height:26px;border-radius:6px;border:1px solid var(--bdr);cursor:pointer;background:color-mix(in srgb,var(--sur) 92%,transparent);color:var(--s500);font-size:var(--fs-1);display:flex;align-items:center;justify-content:center;transition:background .15s,color .15s,border-color .15s}
+    .delbtn{width:32px;height:32px;border-radius:6px;border:1px solid var(--bdr);cursor:pointer;background:color-mix(in srgb,var(--sur) 92%,transparent);color:var(--s500);font-size:var(--fs-1);display:flex;align-items:center;justify-content:center;transition:background .15s,color .15s,border-color .15s}
     /* Dezent bis zur Berührung: Der Knopf erscheint ohnehin erst beim
        Überfahren der Kachel (.ca opacity). Ein dauerhaft rotes Feld zog den
        Blick stärker auf sich als das Set selbst. Rot bleibt der Bestätigung
@@ -493,7 +493,7 @@
     .delbtn:focus-visible{outline:2px solid var(--s500);outline-offset:1px}
     /* Papierkorb statt ✕: Das Symbol erbt die Farbe über currentColor und
        richtet sich nach der Schriftgrösse des Knopfes. */
-    .delbtn svg{width:14px;height:14px}
+    .delbtn svg{width:16px;height:16px}
     /* Kaufpreis-Tabellen: Breiten in em, damit die Felder mit der Schrift wachsen. */
     .acq-tabelle th{padding:6px 8px;font-weight:600;font-size:var(--fs-1)}
     .acq-tabelle td{padding:6px}
