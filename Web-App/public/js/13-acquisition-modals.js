@@ -449,20 +449,16 @@ export async function openManDetail(type, id, colorId) {
   const bodyEl = G('man-detail-body');
   const imgEl  = G('man-detail-img');
 
-  // Load item from cache
-  const fromCache = () => type === 'fig'
-    ? manuelleFiguren().find(f => f.fig_number === id)
-    : manuelleTeile().find(p => p.part_number === id && (p.color_id||0) === ziel.colorId);
+  /** @param {import('./06-minifigs.js').ManuelleFigur[] | undefined} figs @param {import('./03-parts.js').ManuellesTeil[] | undefined} teile */
+  const finde = (figs, teile) => type === 'fig'
+    ? figs?.find(f => f.fig_number === id)
+    : teile?.find(p => p.part_number === id && (p.color_id||0) === ziel.colorId);
 
-  let item = fromCache();
-  // Die Caches füllen die Reiter Teile und Minifiguren. Aus der Finanztabelle heraus ist der passende Reiter
-  // oft nie geöffnet worden — dann war der Eintrag nicht im Cache und der Dialog ging stillschweigend GAR
-  // NICHT auf. Also einmal nachladen und erneut suchen.
-  if (!item) {
-    if (type === 'fig') await loadManualFigsTable().catch(() => {});
-    else                await loadManualParts().catch(() => {});
-    item = fromCache();
-  }
+  let item = finde(manuelleFiguren(), manuelleTeile());
+  // Die Caches der Reiter Teile und Minifiguren folgen deren Suche, Lagerort und Kontowahl; die Finanztabelle
+  // nicht. Fehlt der Eintrag, wird er deshalb ungefiltert gesucht — der Cache des Reiters bleibt, wie er ist.
+  if (!item && type === 'fig') item = finde((await api('GET', '/v1/minifigs/manual').catch(() => null))?.figs, undefined);
+  if (!item && type !== 'fig') item = finde(undefined, (await api('GET', '/v1/parts/manual').catch(() => null))?.parts);
   // Besitzer der KARTE merken. Im Haushalt zeigt der manuelle Bereich die Eintraege aller Konten; ohne diese
   // Angabe schrieb der Server in die Zeile des Aufrufers. NACHGEMESSEN: Das Hauptkonto setzte auf der Karte
   // des Kindes die Menge auf 99 — geaendert wurde die eigene (vorher 5|9, nachher 99|9), und die Antwort

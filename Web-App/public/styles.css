@@ -520,7 +520,6 @@
     th[aria-sort="descending"] .sort-knopf::after{content:" ▼";font-size:.8em}
     .fin-suche-zeile{display:flex;margin:0 0 .75rem}
     .fin-suche-zeile .suchfeld{flex:1 1 16rem;max-width:28rem}
-    .fin-mehr{display:flex;justify-content:center;margin:1rem 0}
     /* Eigene Regel statt Inline-Stil: 23 px hoch lag der Knopf unter der Mindestgrösse für Tippziele. */
     .prog-minimieren{position:absolute;top:.75rem;right:.75rem;background:none;border:1px solid var(--bdr);cursor:pointer;color:var(--mut);padding:1px 9px 4px;border-radius:4px;line-height:1;font-size:var(--fs-4);font-weight:400;min-width:32px;min-height:28px}
     .zf-qr{background:#fff;padding:8px;align-self:center;border-radius:8px;line-height:0}

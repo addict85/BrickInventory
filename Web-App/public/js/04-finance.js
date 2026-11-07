@@ -506,7 +506,7 @@ function zeichneFinanzTabellen() {
   const partsRows = parts.slice(0, grenzeMan).map(p => pmRows(p, `${esc(p.part_name||p.part_number)}${p.color_name?html` <span class="text-mut schrift-1">(${colorName(p.color_name)})</span>`:''}`, st.lage)).join('');
   const figsRows  = figs.slice(0, grenzeMan).map(f => pmRows(f, esc(f.fig_name||f.fig_number), st.lage)).join('');
   const rest = Math.max(0, setZeilen.length - _finGrenze) + Math.max(0, parts.length - grenzeMan) + Math.max(0, figs.length - grenzeMan);
-  const mehr = rest ? html`<div class="fin-mehr"><button type="button" class="btn bs" data-click="finMehr">${tRaw('finance.mehr', { n: rest })}</button></div>` : '';
+  const mehr = rest ? html`<div class="ladepunkt" id="fin-sentinel" aria-hidden="true"></div>` : '';
   const leer = q && !setZeilen.length && !parts.length && !figs.length ? html`<p class="text-mut">${tRaw('common.no_hits', { query: _finSuche })}</p>` : '';
   setzeHtml(G('fin-tbl'), html`${leer}${setsTabelle(setZeilen.slice(0, _finGrenze).join(''), st.einstand, st.setsQtyAvg, st.cur)}${
     manuellerAbschnitt({ art: 'parts', titel: tRaw('parts.manual_section'), symbol: 'teil', zeilen: partsRows, anzahl: parts.length, kauf: st.einstand.parts, wert: st.wert.parts, cur: st.cur })}${
@@ -515,6 +515,25 @@ function zeichneFinanzTabellen() {
   if (q) meldeTreffer(tRaw('treffer.eintraege', { n: sets.length + parts.length + figs.length }));
   // Der Filter überlebt das Neuzeichnen; sonst zeigten die Chips eine Auswahl, die die Tabelle nicht mehr hat.
   finFilterAnwenden();
+  finSentinelBinden();
+}
+
+/** @type {IntersectionObserver | null} */
+let _finIO = null;
+/** Wie im Katalog: Kommt das Ende der Tabelle in Sicht, folgt der nächste Block. Die Markierung entsteht mit
+ * jedem Neuzeichnen neu; ein neuer Beobachter meldet sofort, ob sie schon sichtbar ist (hohe Fenster). */
+function finSentinelBinden() {
+  _finIO?.disconnect();
+  const s = G('fin-sentinel');
+  if (!s) return;
+  if (typeof IntersectionObserver === 'function') {
+    _finIO = new IntersectionObserver(es => { if (es.some(e => e.isIntersecting)) finMehr(); }, { rootMargin: '600px' });
+    _finIO.observe(s);
+  } else {
+    // Ohne Beobachter gibt es kein Scrollen zu verfolgen: lieber alles zeigen als Zeilen unerreichbar lassen.
+    _finGrenze = Infinity;
+    zeichneFinanzTabellen();
+  }
 }
 
 /** @type {ReturnType<typeof setTimeout> | undefined} */
@@ -699,7 +718,6 @@ registerActions({
   loadFinance,
   finSuchen,
   finSortiere,
-  finMehr,
   loadPortfolioChart,
   setChartPeriod,
   finFilter,

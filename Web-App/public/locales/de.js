@@ -1504,7 +1504,6 @@ window.I18N_DE = {
   'users.pw_fehlt': 'Bitte ein Passwort eintragen.',
   'settings.dark.immer': 'Immer dunkel',
   'finance.suche': 'Positionen suchen…',
-  'finance.mehr': 'Weitere {n} anzeigen',
   'startup.offline_titel': 'Server nicht erreichbar',
   'startup.offline_text': 'Ein neuer Versuch läuft von selbst.',
   'startup.offline_knopf': 'Erneut versuchen',

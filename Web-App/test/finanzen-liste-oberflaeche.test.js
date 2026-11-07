@@ -1,15 +1,17 @@
 /**
  * Finanzen mit vielen Positionen (UI-Prüfung 17, Abläufe M16), echtes Bündel
  * in jsdom:
- *   - 250 Sets zeigen höchstens 100 Zeilen und „Weitere … anzeigen“; der
- *     Knopf lädt den nächsten Block.
+ *   - 250 Sets zeigen höchstens 100 Zeilen; kommt das Tabellenende in Sicht
+ *     (Markierung #fin-sentinel), folgt der nächste Block, bis alles da ist.
  *   - Die Suche filtert über alle Positionen, nicht nur die gezeigten.
  *   - Die Köpfe Name/Kaufpreis/Wert/G&V sind Knöpfe mit aria-sort; ein Klick
  *     sortiert, ein zweiter dreht die Richtung.
  *   - Die Legende zeigt ihre Zeichen als Markup, nicht als Text „<span“.
  *
  * Gegenproben (05.11.2026 gemessen, je einzeln, Bündel neu gebaut):
- *   A  FIN_BLOCK = 100000 → rot: „blockweise mit Weitere-Knopf“
+ *   A  FIN_BLOCK = 100000 → rot: „blockweise beim Scrollen“
+ *   E  (07.11.2026) in finSentinelBinden() den Beobachter nicht angelegt →
+ *      rot: „blockweise beim Scrollen“ (Zeilen bleiben bei 100)
  *   B  in zeichneFinanzTabellen die Zeile `if (_finSort.feld) sets.sort(…)`
  *      entfernt → rot: „Sortierköpfe mit aria-sort“
  *   C  passt() liefert immer true → rot: „Suche über alle Positionen“
@@ -75,22 +77,46 @@ async function oeffneFinanzen(anzahl) {
     },
     { browserSprache: 'de-DE' },
   );
+  // jsdom kennt kein Scrollen: Die Beobachter werden mitgeschrieben, der Test meldet „in Sicht“ selbst.
+  o.beobachter = [];
+  o.w.IntersectionObserver = class {
+    constructor(rueckruf) {
+      this.rueckruf = rueckruf;
+      o.beobachter.push(this);
+    }
+    observe(el) {
+      this.el = el;
+    }
+    unobserve() {}
+    disconnect() {
+      this.getrennt = true;
+    }
+  };
   await reiter(o.w, 'finance');
   await warte(() => o.d.querySelectorAll('#fin-tbl tbody tr[data-arg]').length > 0, 4000);
   return o;
 }
+/** Das Tabellenende kommt in Sicht: Der letzte lebende Beobachter der Markierung meldet es. */
+function inSicht(o) {
+  const b = o.beobachter.filter(x => !x.getrennt && x.el?.id === 'fin-sentinel').at(-1);
+  if (!b) return false;
+  b.rueckruf([{ isIntersecting: true }]);
+  return true;
+}
 const zeilen = o => [...o.d.querySelectorAll('#fin-tbl [data-fin-art="sets"] tbody tr[data-arg]')];
 
-test('blockweise mit Weitere-Knopf', async () => {
+test('blockweise beim Scrollen', async () => {
   const o = await oeffneFinanzen(250);
   try {
     assert.equal(zeilen(o).length, 100);
-    const mehr = o.d.querySelector('#fin-tbl [data-click="finMehr"]');
-    assert.ok(mehr, 'Weitere-Knopf fehlt');
-    assert.match(mehr.textContent, /150/);
-    mehr.click();
+    assert.equal(o.d.querySelector('#fin-tbl [data-click="finMehr"]'), null, 'der Weitere-Knopf ist weg');
+    assert.ok(inSicht(o), 'keine Markierung am Tabellenende');
     await takt(10);
     assert.equal(zeilen(o).length, 200);
+    assert.ok(inSicht(o));
+    await takt(10);
+    assert.equal(zeilen(o).length, 250);
+    assert.equal(o.d.getElementById('fin-sentinel'), null, 'am Ende keine Markierung mehr');
   } finally {
     o.w.close();
   }
