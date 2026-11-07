@@ -3,7 +3,7 @@
 # test/build-tooling.test.js hält sie zusammen. Nach einem Wechsel einmal eine
 # Vorschau erzeugen: Meldet das Protokoll den Jimp-Rückfall, fehlt sharp die
 # Binärdatei für diese Fassung.
-FROM node:26-alpine@sha256:40cd011b55415bc894e45b02fdd5a5dfde056921b7d23a64c74f80497af48797 AS builder
+FROM node:26-alpine@sha256:8996bb5821d62a8fd9bb27c1cb07462f3fdce6e47d640c6a881ead0b064ce216 AS builder
 
 WORKDIR /app
 
@@ -57,7 +57,7 @@ RUN npm prune --omit=dev --ignore-scripts && npm cache clean --force
 
 # ── Runtime Stage ──────────────────────────────────────────────────────────────
 # Dieselbe Zeile wie im Build-Stage oben.
-FROM node:26-alpine@sha256:40cd011b55415bc894e45b02fdd5a5dfde056921b7d23a64c74f80497af48797
+FROM node:26-alpine@sha256:8996bb5821d62a8fd9bb27c1cb07462f3fdce6e47d640c6a881ead0b064ce216
 
 WORKDIR /app
 
