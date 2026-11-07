@@ -19,6 +19,8 @@
  *   F  (04.11.) im Set-Dialog die Klasse v-mehr entfernt (Menü bleibt bei
  *      der Wahl offen) → rot: „Escape im Bestätigungsdialog: Fokus zurück
  *      auf Weitere Aktionen“ („Menü klappt bei der Wahl zu“)
+ *   G  (07.11.) `checked` am Häkchen #pw-pk in index.html entfernt → rot:
+ *      „Passwortwechsel: Passkeys-Häkchen ist vorbelegt“
  *   (Erstlauf: rot an „Passwort vergessen?“ 131×20, „Build …“ 2,97:1 und
  *   brick dunkel „Anmelden“ 2,11:1 — behoben, siehe Commit.)
  */
@@ -83,6 +85,10 @@ test('Bedienung: Fokus, Zielgrössen, Hover, Anmeldemaske', { timeout: 240_000 }
     await bis(`!!document.getElementById('pw-pk')?.checkVisibility()`, 'Konto');
     const r = await b.auswerten(`(() => { const r = document.getElementById('pw-pk').getBoundingClientRect(); return [r.width, r.height]; })()`);
     assert.ok(r[0] >= 24 && r[1] >= 24, `nur ${r[0]}×${r[1]}`);
+  });
+
+  await t.test('Passwortwechsel: Passkeys-Häkchen ist vorbelegt', async () => {
+    assert.equal(await b.auswerten(`document.getElementById('pw-pk').checked`), true);
   });
 
   await t.test('Hover nur bei Zeigergeräten', async () => {

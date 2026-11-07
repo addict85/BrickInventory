@@ -203,7 +203,7 @@ window.I18N_DE = {
   'zfpflicht.hint': 'Verwalterkonten brauchen einen zweiten Faktor. Bitte jetzt einen Code-Generator einrichten, danach öffnet sich die Anwendung.',
   'zfpflicht.logout': 'Abmelden',
   'zfpflicht.fertig': 'Der Code-Generator ist eingerichtet. Bitte jetzt die Wiederherstellungscodes sichern, danach öffnet sich die Anwendung.',
-  'settings.password.revoke_passkeys': 'Auch alle Passkeys entfernen (falls jemand Fremdes Zugang hatte)',
+  'settings.password.revoke_passkeys': 'Auch alle Passkeys entfernen (empfohlen: ein Passkey, den jemand Fremdes angelegt hat, bliebe sonst gültig; abwählen, wenn du nur dein Passwort erneuerst)',
   'settings.password.change': 'Passwort ändern',
   'settings.password.mismatch': 'Passwörter stimmen nicht überein',
   'settings.password.too_short': 'Passwort muss mindestens {n} Zeichen lang sein',

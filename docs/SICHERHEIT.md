@@ -131,7 +131,8 @@ den Commits, nicht hier.
 - Wiederherstellungscodes: 80 Bit, als HMAC mit Teilschlüssel des
   Datenschlüssels und an das Konto gebunden — `zweiter-faktor-db`.
 - Passwort zurücksetzen widerruft Tokens, Sitzungen und alle Passkeys; der
-  Wechsel Passkeys auf Wunsch. Hinweis-Mail bei neuem Passkey und bei
+  Wechsel Passkeys auf Wunsch der API (`passkeys_widerrufen`); die
+  Oberfläche belegt das Häkchen vor. Hinweis-Mail bei neuem Passkey und bei
   Passwortwechsel/-rücksetzung, mit den Konten, die die Sammlung sehen —
   `passkeys-db`.
 - „Passwort vergessen": ein Link je Konto und 15 Minuten, gleiche Antwort

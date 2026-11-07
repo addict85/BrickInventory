@@ -203,7 +203,7 @@ window.I18N_EN = {
   'zfpflicht.hint': 'Administrator accounts need a second factor. Please set up an authenticator app now; the application opens afterwards.',
   'zfpflicht.logout': 'Sign out',
   'zfpflicht.fertig': 'The authenticator app is set up. Please save the recovery codes now; the app opens afterwards.',
-  'settings.password.revoke_passkeys': 'Also remove all passkeys (if someone else had access)',
+  'settings.password.revoke_passkeys': 'Also remove all passkeys (recommended: a passkey someone else registered would otherwise stay valid; untick if you are only renewing your password)',
   'settings.password.change': 'Change password',
   'settings.password.mismatch': 'Passwords do not match',
   'settings.password.too_short': 'The password must be at least {n} characters long',

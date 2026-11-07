@@ -498,7 +498,7 @@ G('btn-sav-pw').onclick = async () => {
       return;
     }
     G('pw-n').value = G('pw-r').value = '';
-    if (G('pw-pk')) G('pw-pk').checked = false;
+    if (G('pw-pk')) G('pw-pk').checked = true;
     toast(tRaw('konto.passwort_geaendert'), 'success');
   } finally {
     btn.disabled = false;
