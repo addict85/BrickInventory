@@ -5,7 +5,7 @@ import path from 'path';
 import { APP_ROOT, PUBLIC_DIR } from '../../infra/appPaths';
 import fs from 'fs';
 import { resolveUserId } from '../../konto/http/anmeldung';
-import { vorDem, ohneFehlendeDatei, fehlertext } from '../../infra/fehler';
+import { vorDem, ohneFehlendeDatei, fehlertext, logAndContinue } from '../../infra/fehler';
 import { streamFileToResponse } from '../../infra/httpAntwort';
 import { queueThumb } from '../bilder/proxyThumbs';
 import { liefereAusCache, merkeCacheZuwachs, bildTyp } from '../bilder/imgCacheServe';
@@ -21,6 +21,7 @@ import { oeffneBild, BILD_KOPFZEILEN, BILD_KOPFZEILEN_OHNE_REFERER } from '../qu
 import zlib from 'zlib';
 import { nacharbeit } from '../../auftraege/nacharbeit';
 import { setBildVollstaendig } from '../bilder/setImages';
+import { setBildLokalEintragen } from '../bildlage';
 import { ERLAUBTE_BILD_HOSTS, hostErlaubt } from '../../infra/fremdeAdressen';
 
 import { einmalDekodiert, urlOderNull } from '../../infra/validate';
@@ -243,7 +244,11 @@ export async function bildDurchreichen(req: Request, res: Response) {
   // Ein Set-Bild gehört samt Vorschau nach images/sets; der Bild-Job holt es,
   // sobald es einmal über den Proxy gefragt war.
   const setNummer = setAusUrl();
-  if (setNummer && !(await setBildVollstaendig(setNummer))) nacharbeit().bildVormerken(String(url), setNummer);
+  if (setNummer) {
+    if (!(await setBildVollstaendig(setNummer))) nacharbeit().bildVormerken(String(url), setNummer);
+    // Liegen beide schon da, fehlt oft nur der Eintrag: Danach fragt die Oberfläche nicht mehr hier.
+    else await setBildLokalEintragen(setNummer).catch(logAndContinue('img-proxy:setBildLokal'));
+  }
 
   if (
     await liefereAusCache({
