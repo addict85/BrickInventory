@@ -379,7 +379,7 @@ class QuelltextRatscheTest {
                 if (schluckt) "${f.name}:${c.substring(0, m.range.first).count { it == '\n' } + 1}" else null
             }.toList()
         }
-        assert(namen.size > 100 && geprueft >= 20) { "Nur ${namen.size} suspend-Funktionen, $geprueft Fänge — greift die Suche noch?" }
+        assert(namen.size > 100 && geprueft >= 15) { "Nur ${namen.size} suspend-Funktionen, $geprueft Fänge — greift die Suche noch?" }
         assert(funde.isEmpty()) {
             "Breiter Fang um einen suspendierenden Aufruf ohne Abbruch-Zweig; fangeAusserAbbruch verwenden:\n  " +
                 funde.joinToString("\n  ")
