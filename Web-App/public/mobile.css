@@ -495,9 +495,12 @@
   /* Kennzahlen (alle Designs) als eine kompakte Zeile „4 Sets · 394 Teile …“:
      Als Kacheln füllten sie am Telefon den ersten Bildschirm. Die Aufschlüsselung
      darunter steht im jeweiligen Reiter. */
-  .brick-stats { display: flex; flex-wrap: wrap; gap: .4rem; margin-bottom: var(--sp-4); }
+  .brick-stats { display: flex; flex-wrap: wrap; align-items: baseline; gap: .1rem 0; margin-bottom: var(--sp-4); }
+  /* Reiner Text mit Punkt dazwischen, ohne Fläche: Als Pille sah die Zahl wie ein zweiter Umschalter
+     Sets/Teile/Minifiguren aus, bedienbar ist aber nur der obere. */
   .bstat, [data-theme="brick"] .bstat { display: inline-flex; flex-direction: row-reverse; align-items: baseline; gap: .35em;
-    flex: 0 0 auto; padding: 5px 12px; border-radius: 999px; box-shadow: none; }
+    flex: 0 0 auto; padding: 0; border: 0 !important; border-radius: 0; box-shadow: none; background: none; color: var(--mut); }
+  .bstat:not(:first-child)::after { content: "·"; margin: 0 .5em; color: var(--mut); }
   .bstat .bstat-v, [data-theme="brick"] .bstat .bstat-v { font-size: var(--fs-4); margin: 0; line-height: 1.3; }
   .bstat .bstat-l, [data-theme="brick"] .bstat .bstat-l { text-transform: none; letter-spacing: 0; font-size: var(--fs-2); }
   .bstat .bstat-s { display: none; }
@@ -608,7 +611,7 @@
 
   /* Kennzahlen umbrechend: Mit fünfstelligen Zahlen passte die Zeile nicht mehr und schob die Seite auf. */
   .brick-stats { flex-wrap: wrap; gap: .35rem; margin-bottom: var(--sp-3); }
-  .brick-stats .bstat { padding: 3px 10px; max-width: 100%; min-width: 0; }
+  .brick-stats .bstat { padding: 0; max-width: 100%; min-width: 0; }
   .brick-stats .bstat:nth-child(4) { display: none; }
   .bstat .bstat-v, [data-theme="brick"] .bstat .bstat-v { font-size: var(--fs-3); }
   .bstat .bstat-l, [data-theme="brick"] .bstat .bstat-l { font-size: var(--fs-1); }
