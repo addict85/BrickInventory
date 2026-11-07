@@ -119,7 +119,7 @@ export async function setzeGeschaetztenPreis(kind: AcquisitionKind, id: number, 
     if (ziel) await repo.legeErfassungZusammen(tx, kind, id, ziel, z.quantity);
     else await repo.setzePreisGeschaetzt(tx, kind, id, preis);
     return true;
-  });
+  }, { wiederholeBeiKonflikt: true }); // sperrt die Zeile, dann die Zielzeile: zwei Nachträge können sich kreuzen
 }
 
 export { setErfassungenOhnePreis, teilErfassungenOhnePreis, figurErfassungenOhnePreis } from './repository/nachtrag';

@@ -88,8 +88,10 @@ export async function erfassungAendern(art: ErfassungsArt, uid: number, id: numb
     const to = await resolveWriteTarget(uid, ownerReq);
     if (to === null) fehlerWerfen('kein_schreibrecht', 403);
     if (from === to) return { success: true, unchanged: true };
+    // Wie verschiebeSet(): Gegenrichtungen sperren die Zeilen beider Konten umgekehrt.
     const moved = await withInventoryLock(from, bestandsSchluessel(art, keys), (tx) =>
-      art === 'set' ? moveSetBetweenAccounts(tx, String(keys[0]), from, to, [id]) : moveManualAcquisition(tx, art, keys, id, from, to));
+      art === 'set' ? moveSetBetweenAccounts(tx, String(keys[0]), from, to, [id]) : moveManualAcquisition(tx, art, keys, id, from, to),
+      { wiederholeBeiKonflikt: true });
     return { success: true, from_user_id: from, to_user_id: to, ...moved };
   }
 

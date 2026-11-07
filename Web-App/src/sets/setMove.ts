@@ -101,5 +101,7 @@ export async function moveManualAcquisition(
 
 /** Unter der Sperre des Quellbestands, damit kein zweiter Weg dazwischen bucht. */
 export function verschiebeSet(sn: string, fromId: number, toId: number, erfassungen: number[]): Promise<MoveResult> {
-  return withInventoryLock(fromId, sn, (tx) => moveSetBetweenAccounts(tx, sn, fromId, toId, erfassungen));
+  // Zwei Verschiebungen in Gegenrichtung sperren die Zeilen beider Konten in umgekehrter Reihenfolge.
+  return withInventoryLock(fromId, sn, (tx) => moveSetBetweenAccounts(tx, sn, fromId, toId, erfassungen),
+    { wiederholeBeiKonflikt: true });
 }

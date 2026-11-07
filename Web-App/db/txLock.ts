@@ -10,7 +10,8 @@ import { LOCKS } from '../src/infra/lockNamespaces';
  * angegebenen Bestandsschlüssel hat.
  * Ausführlich: docs/begruendungen/db/txLock.ts.md#withinventorylock
  * @param scopeKey Bestandsschlüssel, z. B. die Set- oder Teilenummer */
-async function withInventoryLock<T>(userId: number, scopeKey: string | number, fn: (tx: DbSchnittstelle) => Promise<T>): Promise<T> {
+async function withInventoryLock<T>(userId: number, scopeKey: string | number, fn: (tx: DbSchnittstelle) => Promise<T>,
+                                    o: db.TxOptionen = {}): Promise<T> {
   return db.transaction(async (tx) => {
     // Eine eigene Klasse statt der user_id als erstem Wert: Sonst sperrte
     // Konto 42 beim Verschieben eines Sets den Bild-Download desselben Sets
@@ -18,7 +19,7 @@ async function withInventoryLock<T>(userId: number, scopeKey: string | number, f
     // verschiedener Schlüssel serialisieren nur, was es nicht müsste.
     await tx.run('SELECT pg_advisory_xact_lock($1, hashtext($2))', [LOCKS.INVENTAR, `${userId}|${scopeKey}`]);
     return fn(tx);
-  });
+  }, o);
 }
 
 /**
