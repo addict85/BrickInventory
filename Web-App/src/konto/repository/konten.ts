@@ -1,5 +1,6 @@
 import * as db from '../../../db/database';
 import { entferneKontoAusSicherungen } from '../../../db/migrate';
+import { LOCKS } from '../../infra/lockNamespaces';
 
 export type KontoKurz = { id: number; username: string; is_admin: boolean; must_change_password: boolean };
 
@@ -62,7 +63,7 @@ export async function uebernimmEmailNeu(hash: string): Promise<{ id: number; ok:
     const neu = await tx.get<{ email_neu: string }>(
       'SELECT email_neu FROM users WHERE id = $1 AND email_neu_token = $2 FOR UPDATE', [k.id, hash]);
     if (!neu) return false;
-    if (await tx.get('SELECT 1 FROM users WHERE id <> $2 AND (LOWER(username) = LOWER($1) OR LOWER(email) = LOWER($1))',
+    if (await tx.get<unknown>('SELECT 1 FROM users WHERE id <> $2 AND (LOWER(username) = LOWER($1) OR LOWER(email) = LOWER($1))',
       [neu.email_neu, k.id])) return false;
     await tx.run(`UPDATE users SET email = email_neu, email_verified = true, registrierung_offen = false,
                    ${OHNE_EMAIL_NEU}, ${OHNE_RUECKSETZLINK} WHERE id = $1`, [k.id]);
@@ -130,18 +131,40 @@ export async function fuegeKontoEin(username: string, hash: string, verwalter: b
   return neu ? neu.id : null;
 }
 
-export function verwalterVorher(id: number): Promise<{ is_admin: boolean } | undefined> {
-  return db.get('SELECT is_admin FROM users WHERE id = $1', [id]);
+export const LETZTER_VERWALTER = 'letzter_verwalter' as const;
+
+/** Ein anderer aktiver Verwalter als der in Parameter `$1`. */
+const ANDERER_VERWALTER = 'EXISTS (SELECT 1 FROM users v WHERE v.is_admin AND v.is_active AND v.id <> $1)';
+
+/** Ohne die Sperre sähen zwei gleichzeitige Entzüge je den anderen noch als Verwalter
+ * (READ COMMITTED), und es bliebe keiner. Sie gilt bis zum Ende der Transaktion. */
+async function unterVerwalterSperre<T>(fn: (tx: db.DbSchnittstelle) => Promise<T>): Promise<T> {
+  return db.transaction(async (tx) => {
+    await tx.get<unknown>('SELECT pg_advisory_xact_lock($1, 0)', [LOCKS.VERWALTER_BESTAND]);
+    return fn(tx);
+  });
 }
 
-export async function setzeVerwalter(id: number, ja: boolean): Promise<void> {
-  await db.run('UPDATE users SET is_admin = $1 WHERE id = $2', [ja, id]);
+/** @returns der Zustand vor der Änderung, undefined ohne Konto, oder LETZTER_VERWALTER */
+export async function setzeVerwalter(id: number, ja: boolean): Promise<{ vorher: boolean } | typeof LETZTER_VERWALTER | undefined> {
+  return unterVerwalterSperre(async (tx) => {
+    const r = await tx.get<{ vorher: boolean }>(`UPDATE users u SET is_admin = $2 FROM users alt
+      WHERE u.id = $1 AND alt.id = u.id AND ($2 OR NOT (alt.is_admin AND alt.is_active) OR ${ANDERER_VERWALTER})
+      RETURNING alt.is_admin AS vorher`, [id, ja]);
+    if (r) return r;
+    return (await tx.get<unknown>('SELECT 1 FROM users WHERE id = $1', [id])) ? LETZTER_VERWALTER : undefined;
+  });
 }
 
-/** @returns der Zustand vor der Änderung, oder undefined ohne Konto */
-export async function schreibeAktiv(id: number, ja: boolean): Promise<{ vorher: boolean } | undefined> {
-  return db.get(`UPDATE users u SET is_active = $2 FROM users alt
-                  WHERE u.id = $1 AND alt.id = u.id RETURNING alt.is_active AS vorher`, [id, ja]);
+/** @returns der Zustand vor der Änderung, undefined ohne Konto, oder LETZTER_VERWALTER */
+export async function schreibeAktiv(id: number, ja: boolean): Promise<{ vorher: boolean } | typeof LETZTER_VERWALTER | undefined> {
+  return unterVerwalterSperre(async (tx) => {
+    const r = await tx.get<{ vorher: boolean }>(`UPDATE users u SET is_active = $2 FROM users alt
+      WHERE u.id = $1 AND alt.id = u.id AND ($2 OR NOT (alt.is_admin AND alt.is_active) OR ${ANDERER_VERWALTER})
+      RETURNING alt.is_active AS vorher`, [id, ja]);
+    if (r) return r;
+    return (await tx.get<unknown>('SELECT 1 FROM users WHERE id = $1', [id])) ? LETZTER_VERWALTER : undefined;
+  });
 }
 
 /** Ein noch offener Rücksetzlink fällt mit jedem neuen Passwort: Er stammt aus
@@ -168,18 +191,22 @@ async function spurenLoeschen(tx: db.DbSchnittstelle, id: number): Promise<void>
   await entferneKontoAusSicherungen(tx, id);
 }
 
-/** Nie das eigene Konto. */
-export async function loescheKonto(id: number, eigenes: number | null): Promise<boolean> {
-  return db.transaction(async (tx) => {
-    if (!(await tx.run('DELETE FROM users WHERE id = $1 AND id != $2', [id, eigenes])).changes) return false;
-    await spurenLoeschen(tx, id);
-    return true;
+/** Nie das eigene Konto und nie den letzten aktiven Verwalter.
+ * @returns false ohne Konto oder beim eigenen */
+export async function loescheKonto(id: number, eigenes: number | null): Promise<boolean | typeof LETZTER_VERWALTER> {
+  return unterVerwalterSperre(async (tx) => {
+    if ((await tx.run(`DELETE FROM users WHERE id = $1 AND id != $2
+      AND (NOT (is_admin AND is_active) OR ${ANDERER_VERWALTER})`, [id, eigenes])).changes) {
+      await spurenLoeschen(tx, id);
+      return true;
+    }
+    return (await tx.get<unknown>('SELECT 1 FROM users WHERE id = $1 AND id != $2', [id, eigenes])) ? LETZTER_VERWALTER : false;
   });
 }
 
 /** Das eigene Konto; der letzte aktive Verwalter bleibt. */
 export async function loescheEigenesKonto(id: number): Promise<boolean> {
-  return db.transaction(async (tx) => {
+  return unterVerwalterSperre(async (tx) => {
     if (!(await tx.run(`DELETE FROM users WHERE id = $1 AND (NOT is_admin
       OR EXISTS (SELECT 1 FROM users v WHERE v.is_admin AND v.is_active AND v.id <> $1))`, [id])).changes) return false;
     await spurenLoeschen(tx, id);

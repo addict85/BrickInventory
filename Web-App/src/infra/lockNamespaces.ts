@@ -21,8 +21,10 @@ export const LOCKS = {
   /** Zweiter Wert: user_id. */
   TEILE_SUMMARY:      77,
   TEILE_KATALOG:      79,
+  /** Alles, was Verwalter entzieht, deaktiviert oder löscht; zweiter Wert 0. */
+  VERWALTER_BESTAND:  81,
   /** Zweiter Wert: hashtext('<user_id>|<schlüssel>'). */
-  INVENTAR:           61,
+  INVENTAR:          61,
   PROXY_THUMBS:       918273645,
   SCHEMA_INIT:        55667788,
 } as const;

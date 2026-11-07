@@ -57,6 +57,7 @@ router.put('/users/:id/admin', requireAdmin, async (req: OffeneAnfrage<'PUT /api
   if (!await bestaetigeMitFaktor(req, res, angemeldeteNutzerId(req), req.eingabe.admin_password)) return;
   const r = await K.setzeVerwalterRolle(targetId, soll);
   if (!r) return sendeFehler(req, res, 404, 'benutzer_nicht_gefunden');
+  if (r === K.LETZTER_VERWALTER) return sendeFehler(req, res, 409, 'verwalter_muss_bleiben');
   if (r.geaendert) await protokolliere(angemeldeteNutzerId(req), targetId, soll ? 'verwalter_ernannt' : 'verwalter_entzogen');
   if (r.geaendert && soll) verwalterHinweisNebenher('verwalter_ernannt',
     { konto: (await K.kontoKurz(targetId))?.username ?? String(targetId), durch: nutzerName(req) ?? '' });
@@ -76,6 +77,7 @@ router.put('/users/:id/aktiv', requireAdmin, async (req: OffeneAnfrage<'PUT /api
   if (!await bestaetigeMitFaktor(req, res, angemeldeteNutzerId(req), req.eingabe.admin_password)) return;
   const r = await K.setzeAktiv(targetId, soll);
   if (!r) return sendeFehler(req, res, 404, 'benutzer_nicht_gefunden');
+  if (r === K.LETZTER_VERWALTER) return sendeFehler(req, res, 409, 'verwalter_muss_bleiben');
   if (r.geaendert) await protokolliere(angemeldeteNutzerId(req), targetId, soll ? 'konto_reaktiviert' : 'konto_deaktiviert');
   res.json({ success: true, is_active: soll });
 });
@@ -119,7 +121,9 @@ router.delete('/users/:id', requireAdmin, async (req: OffeneAnfrage<'DELETE /api
   if (!await bestaetigeMitFaktor(req, res, angemeldeteNutzerId(req), req.eingabe.admin_password)) return;
   if (targetId !== nutzerId(req) && await K.kontoExistiert(targetId))
     await protokolliere(angemeldeteNutzerId(req), targetId, 'konto_geloescht');
-  if (!await K.loescheKonto(targetId, nutzerId(req))) return sendeFehler(req, res, 404, 'benutzer_nicht_gefunden_oder_eigenes');
+  const geloescht = await K.loescheKonto(targetId, nutzerId(req));
+  if (geloescht === K.LETZTER_VERWALTER) return sendeFehler(req, res, 409, 'verwalter_muss_bleiben');
+  if (!geloescht) return sendeFehler(req, res, 404, 'benutzer_nicht_gefunden_oder_eigenes');
   // user_sessions hat keinen Fremdschlüssel auf users: Die offene Sitzung des
   // gelöschten Kontos bliebe ohne diesen Aufruf gültig.
   // Ausführlich: docs/begruendungen/routes/auth/benutzer.ts.md#delete-users-id

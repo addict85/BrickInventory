@@ -88,6 +88,8 @@ export const FEHLER = {
   passwort_wechsel_noetig:     { de: 'Bitte zuerst das vorläufige Passwort ändern.', en: 'Please change the temporary password first.' },
   letzter_verwalter:           { de: 'Das letzte Verwalterkonto kann sich nicht selbst löschen. Bitte zuerst ein anderes Konto zum Verwalter machen.',
                                  en: 'The last administrator account cannot delete itself. Please make another account an administrator first.' },
+  verwalter_muss_bleiben:      { de: 'Es muss mindestens ein aktiver Verwalter bleiben.',
+                                 en: 'At least one active administrator must remain.' },
   zweiter_faktor_pflicht:      { de: 'Verwalterkonten brauchen einen zweiten Faktor. Bitte zuerst einen Code-Generator einrichten.',
                                  en: 'Administrator accounts need a second factor. Please set up an authenticator app first.' },
   alle_felder_erforderlich:    { de: 'Alle Felder erforderlich', en: 'All fields are required' },

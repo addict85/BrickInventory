@@ -7,7 +7,7 @@ import { BCRYPT_ROUNDS, leereTokenCache, revokeAllSessions, revokeAllTokens } fr
 import { erhoeheSitzungsVersion } from './sitzungsVersion';
 import { emailGueltig } from '../infra/validate';
 
-export { aendereProfil, aktivesKontoNachEmail, emailVergeben, erneuereEmailTokenWennFrei, kontoExistiert, kontoKurz, kontoMitEmail, kontoNachRuecksetzToken, kontoVoll, legeQrTokenAn, loescheEigenesKonto, loescheKonto, loeseQrTokenEin, merkeEmailNeu, mussPasswortAendern, nameVergeben, nameZuEmailToken, offeneRegistrierungen, raeumeQrTokensAuf, schalteRegistrierungFrei, setzeRuecksetzTokenWennFrei, tokenStand, zugaengeDesKontos, zugaengeLoeschen } from './repository/konten';
+export { LETZTER_VERWALTER, aendereProfil, aktivesKontoNachEmail, emailVergeben, erneuereEmailTokenWennFrei, kontoExistiert, kontoKurz, kontoMitEmail, kontoNachRuecksetzToken, kontoVoll, legeQrTokenAn, loescheEigenesKonto, loescheKonto, loeseQrTokenEin, merkeEmailNeu, mussPasswortAendern, nameVergeben, nameZuEmailToken, offeneRegistrierungen, raeumeQrTokensAuf, schalteRegistrierungFrei, setzeRuecksetzTokenWennFrei, tokenStand, zugaengeDesKontos, zugaengeLoeschen } from './repository/konten';
 
 /** Die neue Version schreibt der Aufrufer in die Sitzung, die bleibt. */
 export async function andereSitzungenBeenden(uid: number, eigeneSid: string): Promise<{ beendet: number; version: number }> {
@@ -91,9 +91,10 @@ export async function registriere(d: { username: string; email: string; first_na
 
 /** Erst sperren, dann Zugänge löschen (die Token-Abfrage prüft is_active). Sitzungen
  * fallen über die Sitzungsversion, auch eine wieder geschriebene Zeile. */
-export async function setzeAktiv(uid: number, soll: boolean): Promise<{ geaendert: boolean } | null> {
+export async function setzeAktiv(uid: number, soll: boolean): Promise<{ geaendert: boolean } | typeof repo.LETZTER_VERWALTER | null> {
   const r = await repo.schreibeAktiv(uid, soll);
   if (!r) return null;
+  if (r === repo.LETZTER_VERWALTER) return r;
   if (!soll) await zugaengeBeenden(uid);
   return { geaendert: r.vorher !== soll };
 }
@@ -101,11 +102,11 @@ export async function setzeAktiv(uid: number, soll: boolean): Promise<{ geaender
 /** Ändert sich die Rolle, enden die Browser-Sitzungen: Sie tragen die Rolle
  * seit der Anmeldung. Der Token-Cache wird nur geleert — die App soll die neue
  * Rolle sehen, nicht abgemeldet werden. */
-export async function setzeVerwalterRolle(uid: number, soll: boolean): Promise<{ geaendert: boolean } | null> {
-  const vorher = await repo.verwalterVorher(uid);
+export async function setzeVerwalterRolle(uid: number, soll: boolean): Promise<{ geaendert: boolean } | typeof repo.LETZTER_VERWALTER | null> {
+  const vorher = await repo.setzeVerwalter(uid, soll);
   if (!vorher) return null;
-  const geaendert = vorher.is_admin !== soll;
-  await repo.setzeVerwalter(uid, soll);
+  if (vorher === repo.LETZTER_VERWALTER) return vorher;
+  const geaendert = vorher.vorher !== soll;
   if (geaendert) {
     await revokeAllSessions(uid);
     leereTokenCache();
