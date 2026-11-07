@@ -2,6 +2,7 @@ import fs from 'fs';
 import path from 'path';
 import { logAndContinue, meldeUndLiefere } from '../src/infra/fehler';
 import { downloadSetImage } from '../src/katalog/bilder/setImages';
+import { setBildLokalEintragen } from '../src/katalog/bildlage';
 import { grundFuer, istBekanntFehlend, merkeFehlend } from '../src/katalog/bilder/imageMisses';
 import { generateThumb } from '../src/katalog/bilder/thumbs';
 import { SET_IMAGES_DIR } from '../src/infra/appPaths';
@@ -176,7 +177,11 @@ async function arbeiteStapel(): Promise<StapelErgebnis> {
     // in einer Anfrage blockierten schwache Hardware.
     const datei  = path.join(SET_IMAGES_DIR, `${r.set_number}.jpg`);
     const vorschau = path.join(SET_IMAGES_DIR, `${r.set_number}_thumb.jpg`);
-    if (fs.existsSync(datei)) { await nurVorschau(r.set_number, vorschau, st); continue; }   // kein zweiter Download
+    if (fs.existsSync(datei)) {   // kein zweiter Download
+      await nurVorschau(r.set_number, vorschau, st);
+      await setBildLokalEintragen(r.set_number).catch(logAndContinue('bild-job:setBildLokal'));
+      continue;
+    }
 
     // Bekannt fehlende Bilder nicht erst holen, wie der Knopf
     // „Katalogbilder holen" auch.
@@ -210,6 +215,8 @@ async function arbeiteStapel(): Promise<StapelErgebnis> {
     // Die Vorschau entsteht NICHT in downloadSetImage(); ohne diesen Aufruf bliebe
     // es bei der grossen Originaldatei.
     await vorschauErzeugen(lokal, vorschau);
+    // Erst der Eintrag lässt die Oberfläche die Datei statt des Proxys laden.
+    await setBildLokalEintragen(r.set_number).catch(logAndContinue('bild-job:setBildLokal'));
     erg.geholt++;
   }
   // Zurückgelegte Zeilen sind NICHT bearbeitet.

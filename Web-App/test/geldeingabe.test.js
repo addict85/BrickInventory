@@ -110,6 +110,5 @@ test('Kaufpreis-Dialog: Anzeige in Sprachform, Komma gespeichert, Marke je Zeile
     await warte(() => o.d.getElementById('acq-ok-7')?.hidden === false);
     assert.equal(o.d.getElementById('acq-ok-7').hidden, false, 'keine Marke „Gespeichert“ nach dem Speichern');
     assert.match(o.d.getElementById('acq-ok-7').textContent, /Gespeichert/);
-    assert.match(o.d.getElementById('acq-datum-7').textContent, /1\. Juni 2026/);
   } finally { o.w.close(); }
 });

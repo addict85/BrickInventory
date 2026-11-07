@@ -123,13 +123,20 @@ async function starteApp(t, opt = {}) {
     await db.pool.end().catch(() => {});
   });
 
-  const port = await freierPort();
-  const server = starte(t, process.execPath, [path.join(ROOT, 'dist', 'server.js')], {
-    cwd: ROOT,
-    env: { ...process.env, DATABASE_URL: URL_DB, SESSION_SECRET: 'app-test-geheimnis-lang-genug-1234',
-           PORT: String(port), TRUST_PROXY: 'false' },
-  });
-  for (let i = 0; i < 240 && !/localhost:\d+|Startup complete/.test(server.log()); i++) await warte(250);
+  // Der Port ist nur frei, bis ein paralleler Test ihn nimmt: Dann meldet der Server EADDRINUSE und bleibt ohne
+  // Port, der Test sähe den Server des anderen. Also mit neuem Port noch einmal.
+  let port = 0, server;
+  for (let versuch = 0; versuch < 4; versuch++) {
+    port = await freierPort();
+    server = starte(t, process.execPath, [path.join(ROOT, 'dist', 'server.js')], {
+      cwd: ROOT,
+      env: { ...process.env, DATABASE_URL: URL_DB, SESSION_SECRET: 'app-test-geheimnis-lang-genug-1234',
+             PORT: String(port), TRUST_PROXY: 'false' },
+    });
+    for (let i = 0; i < 240 && !/localhost:\d+|Startup complete|EADDRINUSE/.test(server.log()); i++) await warte(250);
+    if (!/EADDRINUSE/.test(server.log())) break;
+    server.p.kill('SIGKILL');
+  }
   for (let i = 0; i < 40 && (await fetch(`http://127.0.0.1:${port}/api/v1/`).catch(() => null)) === null; i++) await warte(250);
 
   // Chrome legt unter TMPDIR einen Unix-Socket an (höchstens 107 Zeichen); bei langem

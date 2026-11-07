@@ -1493,7 +1493,6 @@ window.I18N_EN = {
   'users.pw_fehlt': 'Please enter a password.',
   'settings.dark.immer': 'Always dark',
   'finance.suche': 'Search items…',
-  'finance.mehr': 'Show {n} more',
   'startup.offline_titel': 'Server not reachable',
   'startup.offline_text': 'Retrying automatically.',
   'startup.offline_knopf': 'Try again',

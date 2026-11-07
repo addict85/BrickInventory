@@ -62,6 +62,13 @@ export async function anleitungenNachtragen(): Promise<void> {
   for (const set_number of missing) await anleitungEinreihen(set_number);
 }
 
+/** Die Oberfläche lädt nur über image_local aus images/sets; ohne den Eintrag
+ * ginge jedes Set-Bild weiter über den Proxy, obwohl die Datei längst da ist. */
+export async function setBildLokalEintragen(setNumber: string): Promise<void> {
+  const safe = setNumber.replace(/[^a-z0-9-]/gi, '_');
+  await repo.merkeSetBildLokal(setNumber, `/images/sets/${safe}.jpg`);
+}
+
 export async function setBilderNachladen(): Promise<void> {
   try {
     const missing = await repo.setBilderOhneDatei().catch(meldeUndLiefere('nachlauf:missing', []));

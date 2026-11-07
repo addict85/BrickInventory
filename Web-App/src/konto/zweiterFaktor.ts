@@ -2,6 +2,7 @@
  * Authenticator-App versteht. Ohne Fremdpaket, mit node:crypto. */
 import { verschluessele, entschluessele, kontext, suchwert, suchwertAlt } from '../infra/geheimnis';
 import crypto from 'crypto';
+import { konfig } from '../infra/konfig';
 import * as db from '../../db/database';
 import type { DbSchnittstelle } from '../../db/database';
 import * as repo from './repository/zweiterFaktor';
@@ -61,10 +62,14 @@ export function passenderSchritt(geheimnis: string, code: string, jetztMs = Date
   return treffer;
 }
 
+/** `image` zeigen manche Authenticator-Apps (etwa FreeOTP) als Logo des Eintrags; sie laden es selbst,
+ * also nur mit öffentlicher Basis-URL. Authy wählt Logos nur aus eigener Sammlung. */
 export function otpauthAdresse(geheimnis: string, konto: string): string {
   const aussteller = 'BrickInventory';
+  const basis = konfig().appBaseUrl;
   return `otpauth://totp/${encodeURIComponent(`${aussteller}:${konto}`)}` +
-    `?secret=${geheimnis}&issuer=${encodeURIComponent(aussteller)}&algorithm=SHA1&digits=${STELLEN}&period=${SCHRITT_S}`;
+    `?secret=${geheimnis}&issuer=${encodeURIComponent(aussteller)}&algorithm=SHA1&digits=${STELLEN}&period=${SCHRITT_S}` +
+    (basis ? `&image=${encodeURIComponent(`${basis}/assets/logo-256.png`)}` : '');
 }
 
 function normiereCode(code: string): string {
