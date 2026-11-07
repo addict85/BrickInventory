@@ -384,7 +384,7 @@ private fun PdfKnopf(isExporting: Boolean, pdfError: String?, onExport: () -> Un
     if (pdfError != null) {
         androidx.compose.material3.AlertDialog(
             onDismissRequest = onFehlerGesehen,
-            confirmButton = { TextButton(onClick = onFehlerGesehen) { Text(stringResource(R.string.partslist_ok)) } },
+            confirmButton = { TextButton(onClick = onFehlerGesehen) { Text(stringResource(R.string.common_ok)) } },
             title = { Text(stringResource(R.string.partslist_pdf_error_title)) },
             text = { Text(pdfError) }
         )
@@ -398,7 +398,7 @@ private fun PdfKnopf(isExporting: Boolean, pdfError: String?, onExport: () -> Un
             strokeWidth = 2.dp)
         else Icon(Icons.Default.PictureAsPdf, null, Modifier.size(mitSchrift(16.dp)))
         Spacer(Modifier.width(Abstaende.winzig))
-        Text("PDF")
+        Text(stringResource(R.string.common_pdf))
     }
 }
 

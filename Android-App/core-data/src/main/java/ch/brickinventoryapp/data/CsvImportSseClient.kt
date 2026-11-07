@@ -2,16 +2,13 @@ package ch.brickinventoryapp.data
 
 import ch.brickinventoryapp.di.SseClient
 import ch.brickinventoryapp.data.model.CsvImportStatus
-import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.callbackFlow
+import kotlinx.coroutines.flow.emitAll
+import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.map
 import kotlinx.serialization.json.Json
 import okhttp3.OkHttpClient
 import okhttp3.Request
-import okhttp3.Response
-import okhttp3.sse.EventSource
-import okhttp3.sse.EventSourceListener
-import okhttp3.sse.EventSources
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -50,14 +47,13 @@ class CsvImportSseClient @Inject constructor(
      * den der Server schickt. Schließt sich nur bei Verbindungsfehler.
      * cold Flow — Verbindung wird beim Collect aufgebaut, beim Cancel geschlossen.
      */
-    override fun stream(): Flow<Event> = callbackFlow {
+    override fun stream(): Flow<Event> = flow {
         val baseUrl = prefs.serverUrlJetzt().trim().trimEnd('/')
         val token   = prefs.tokenJetzt()
 
         if (baseUrl.isBlank() || token.isBlank()) {
-            trySend(Event.Failed("no server url or token"))
-            close()
-            return@callbackFlow
+            emit(Event.Failed("no server url or token"))
+            return@flow
         }
 
         val request = Request.Builder()
@@ -67,49 +63,17 @@ class CsvImportSseClient @Inject constructor(
             .header("Accept", "text/event-stream")
             .build()
 
-        val listener = object : EventSourceListener() {
-            override fun onEvent(
-                eventSource: EventSource,
-                id: String?,
-                type: String?,
-                data: String
-            ) {
-                if (data.isBlank()) return
-                try {
-                    val status = json.decodeFromString(CsvImportStatus.serializer(), data)
-                    trySend(Event.Status(status))
-                    // Verbindung NICHT schließen — offen lassen für nächsten Import.
-                } catch (_: Exception) {
-                    // Unlesbares Event ignorieren (z. B. Heartbeat-Kommentar,
-                    // obwohl der Server `: keep-alive` als Kommentarzeile schickt
-                    // und okhttp-sse das nicht als onEvent liefert).
-                }
+        // Verbindung NICHT schließen, solange Status kommen — offen lassen für nächsten Import.
+        // Jedes andere Ende (auch ein unlesbares Ereignis) heisst Failed: Der Aufrufer
+        // reconnectet bzw. pollt, statt auf einen Status zu warten, der nie kommt.
+        val ereignisse = sseStrom(client, request) { json.decodeFromString(CsvImportStatus.serializer(), it) }
+        emitAll(ereignisse.map { e ->
+            when (e) {
+                is SseEreignis.Daten      -> Event.Status(e.wert)
+                is SseEreignis.Unlesbar   -> Event.Failed("unreadable event: ${e.technisch}")
+                is SseEreignis.Beendet    -> Event.Failed("stream closed by server")
+                is SseEreignis.Gescheitert -> Event.Failed(e.code?.let { "HTTP $it" } ?: e.technisch)
             }
-
-            override fun onClosed(eventSource: EventSource) {
-                // Server hat die Verbindung beendet (Neustart, Deploy etc.)
-                // Als Failed melden, damit der Aufrufer reconnectet.
-                trySend(Event.Failed("stream closed by server"))
-                close()
-            }
-
-            override fun onFailure(
-                eventSource: EventSource,
-                t: Throwable?,
-                response: Response?
-            ) {
-                val msg = when {
-                    response != null -> "HTTP ${response.code}"
-                    else             -> t?.message
-                }
-                trySend(Event.Failed(msg))
-                close()
-            }
-        }
-
-        val eventSource = EventSources.createFactory(client)
-            .newEventSource(request, listener)
-
-        awaitClose { eventSource.cancel() }
+        })
     }
 }

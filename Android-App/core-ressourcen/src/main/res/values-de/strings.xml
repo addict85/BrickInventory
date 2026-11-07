@@ -182,7 +182,10 @@
     <string name="partslist_add_set">Set zur Bauliste hinzufügen</string>
     <string name="partslist_generate">Bauliste erstellen</string>
     <string name="partslist_pdf_error_title">PDF Fehler</string>
-    <string name="partslist_ok">OK</string>
+    <string name="common_ok">OK</string>
+    <string name="common_pdf">PDF</string>
+    <string name="common_hours_short">h</string>
+    <string name="common_times">×</string>
     <string name="partslist_reset">Zurücksetzen</string>
     <string name="partslist_fill_owned">Mein Bestand</string>
     <string name="storage_manage">Lagerorte</string>
