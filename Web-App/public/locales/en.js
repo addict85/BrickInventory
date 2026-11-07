@@ -519,6 +519,8 @@ window.I18N_EN = {
   'smtp.ok': 'Connection successful',
   'smtp.confirm_title': 'Change mail server',
   'smtp.confirm_text': 'Password reset links are sent through this server. Please confirm with your password.',
+  'smtp.test_confirm_title': 'Send test mail to another address',
+  'smtp.test_confirm_text': 'The test mail goes to an address other than your own. Please confirm with your password.',
   'smtp.console': 'SMTP not configured — no e-mails are sent',
   'qr.valid_for': 'Valid for {t} min',
   'qr.generate': 'Generate QR code',

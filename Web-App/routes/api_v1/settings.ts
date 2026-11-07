@@ -285,17 +285,21 @@ router.post('/settings/import', kontoSchranke('upload'), importUpload.single('fi
 
 router.post('/settings/smtp-test', async (req: OffeneAnfrage<'POST /api/v1/settings/smtp-test'>, res: Antwort<'POST /api/v1/settings/smtp-test'>) => {
   if (!istVerwalter(req)) return sendeFehler(req, res, 403, 'nur_admins');
-  const verify = await testSmtp();
-  if (!verify.success) return sendeFehler(req, res, 400, verify.code, 'vars' in verify ? verify.vars : undefined);
+  const uid = angemeldeteNutzerId(req);
+  // Sonst wäre der Mailserver für eine erbeutete Verwaltersitzung ein Relais an jede Adresse.
+  const zuOft = await kontoGedrosselt('smtp-test', uid, 10, 60 * 60 * 1000);
+  if (zuOft) return sendeFehler(req, res, 429, 'zu_viele_anfragen', { minuten: zuOft.waitMin });
 
-  let to = (req.eingabe.to || '').trim();
-  if (!to) {
-    to = (await profil(angemeldeteNutzerId(req)))?.email || '';
-  }
+  const eigene = (await profil(uid))?.email || '';
+  const to = (req.eingabe.to || '').trim() || eigene;
   if (!emailGueltig(to)) {
     return sendeFehler(req, res, 400, 'keine_ziel_email');
   }
+  // Wie das Ändern der Mail-Einstellungen: an eine fremde Adresse nur mit Passwort.
+  if (to.toLowerCase() !== eigene.toLowerCase() && !await bestaetigeMitFaktor(req, res, uid, req.eingabe.password)) return;
 
+  const verify = await testSmtp();
+  if (!verify.success) return sendeFehler(req, res, 400, verify.code, 'vars' in verify ? verify.vars : undefined);
   const result = await sendMail({
     to,
     subject: 'BrickInventory Manager — SMTP Test',

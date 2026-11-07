@@ -123,6 +123,6 @@ export const routen = {
   'GET /api/v1/health/live': { antwort: Lebenszeichen },
   'GET /api/v1/health/ready': { antwort: Lebenszeichen },
   'GET /api/v1/settings/export/data': { art: 'zip' },
-  'POST /api/v1/settings/smtp-test': { eingabe: z.strictObject({ to: TEXT(320).optional() }), antwort: SmtpProbe },
+  'POST /api/v1/settings/smtp-test': { antwort: SmtpProbe, ...bestaetigt({ to: TEXT(320).optional() }) },
   'POST /api/v1/settings/quelle-testen': { eingabe: z.strictObject({ quelle: TEXT(40) }), antwort: Erfolg },
 } satisfies Record<string, Route>;

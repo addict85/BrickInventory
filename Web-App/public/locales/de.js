@@ -520,6 +520,8 @@ window.I18N_DE = {
   'smtp.ok': 'Verbindung erfolgreich',
   'smtp.confirm_title': 'Mailserver ändern',
   'smtp.confirm_text': 'Über diesen Server gehen die Links zum Passwort-Zurücksetzen. Bitte bestätige mit deinem Passwort.',
+  'smtp.test_confirm_title': 'Test-Mail an fremde Adresse',
+  'smtp.test_confirm_text': 'Die Test-Mail geht an eine andere Adresse als deine eigene. Bitte bestätige mit deinem Passwort.',
   'smtp.console': 'SMTP nicht konfiguriert — es werden keine E-Mails verschickt',
   'qr.valid_for': 'Gültig noch {t} min',
   'qr.generate': 'QR-Code generieren',

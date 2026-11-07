@@ -48,6 +48,7 @@ const ZUSATZ = {
   'PUT /api/v1/auth/profile': { email: `bv_${process.pid}@neu.example` },
   'POST /api/v1/settings/household/redeem': { code: 'EINLADUNG' },
   'POST /api/v1/settings': { smtp_host: 'mail.bv.example' },
+  'POST /api/v1/settings/smtp-test': { to: 'fremd@bv.example' },
 };
 /** Neue Zugänge prägen, Schutz abbauen, alles löschen (Bericht M1) — und die Notbremse. */
 const PFLICHT = ['POST /api/v1/auth/token-create', 'POST /api/v1/auth/qr-token', 'POST /api/v1/auth/users',
