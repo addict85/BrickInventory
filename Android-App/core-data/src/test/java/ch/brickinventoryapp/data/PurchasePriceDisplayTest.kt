@@ -92,7 +92,8 @@ class PurchasePriceDisplayTest {
     fun `die Detailansicht liest nicht mehr direkt den gespiegelten Wert`() {
         // SetDetailScreen.kt wurde aufgeteilt; die Kacheln und Karten stehen
         // in SetDetailSections.kt. Beide zusammen sind die Detailansicht.
-        val d = code(read("sammlung/ui/screens/SetDetailScreen.kt") + "\n" + read("sammlung/ui/screens/SetDetailSections.kt"))
+        val d = code(read("sammlung/ui/screens/SetDetailScreen.kt") + "\n" + read("sammlung/ui/screens/SetDetailSections.kt") +
+            "\n" + read("sammlung/ui/screens/SetDetailAnleitungen.kt"))
         assert(!d.contains("fmtPrice(set.purchasePrice)")) {
             "Die Kaufpreis-Kachel liest wieder set.purchasePrice — das ist der Preis des " +
                 "LETZTEN Kaufs, nicht der Sammlung"
@@ -108,7 +109,8 @@ class PurchasePriceDisplayTest {
         // grosse Preiszeile in der Marktpreis-Karte wiederholte sie, mit einer
         // Prozentangabe aus dem Gesamtvergleich über den Zeilen je Zustand. Beide
         // Detailseiten (Set und manueller Eintrag) halten sich gleich daran.
-        val d = code(read("sammlung/ui/screens/SetDetailScreen.kt") + "\n" + read("sammlung/ui/screens/SetDetailSections.kt"))
+        val d = code(read("sammlung/ui/screens/SetDetailScreen.kt") + "\n" + read("sammlung/ui/screens/SetDetailSections.kt") +
+            "\n" + read("sammlung/ui/screens/SetDetailAnleitungen.kt"))
         val m = code(read("teile/ui/screens/ManualItemDetailScreen.kt"))
         for ((name, src) in listOf("Set-Detail" to d, "manueller Eintrag" to m)) {
             assert(src.contains("WertKacheln(")) { "$name: Die Wert-Kacheln fehlen" }

@@ -47,6 +47,7 @@ class SplitFileImportsTest {
         "verwaltung/ui/screens/MonitoringProtokoll.kt" to "verwaltung/ui/screens/MonitoringSections.kt",
         "konto/ui/screens/EinstellungenZweiterFaktor.kt" to "konto/ui/screens/EinstellungenKonto.kt",
         "konto/ui/screens/EinstellungenGeraete.kt" to "konto/ui/screens/EinstellungenKonto.kt",
+        "sammlung/ui/screens/SetDetailAnleitungen.kt" to "sammlung/ui/screens/SetDetailSections.kt",
     )
 
     private fun wildcards(src: String) =
