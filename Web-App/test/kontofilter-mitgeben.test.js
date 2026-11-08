@@ -17,6 +17,10 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const { oeffneOberflaeche, reiter } = require('./helpers/oberflaeche');
 
+// Der CSV-Importstatus wird im Takt abgefragt, nicht vom Filterwechsel: Fällt
+// eine Abfrage in das Fenster, ist sie kein Abruf hinter dem Kontofilter.
+const HINTERGRUND = new Set(['/api/v1/sets/import/csv/status']);
+
 /** Was jeder Reiter nach dem Wechsel neu holen muss — mit dem Filter. */
 const NEU_GELADEN = {
   gallery: ['/v1/sets', '/v1/stats'],
@@ -56,7 +60,8 @@ test('jeder Abruf hinter dem Kontofilter gibt den Kontofilter mit', async () => 
       const neu = aufrufe
         .slice(ab)
         .filter(a => a.method === 'GET')
-        .map(a => new URL(a.url, 'http://localhost'));
+        .map(a => new URL(a.url, 'http://localhost'))
+        .filter(u => !HINTERGRUND.has(u.pathname));
       const geholt = new Set(neu.map(u => u.pathname.replace(/^\/api/, '')));
       assert.deepEqual(
         pfade.filter(p => !geholt.has(p)),

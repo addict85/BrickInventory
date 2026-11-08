@@ -5,7 +5,6 @@ import ch.brickinventoryapp.data.MeldungsKanal
 import ch.brickinventoryapp.data.cache.ResponseCache
 import ch.brickinventoryapp.data.repository.GutscheineRepository
 import ch.brickinventoryapp.testing.GutscheineRepository
-import ch.brickinventoryapp.testing.ResponseCache
 import ch.brickinventoryapp.zustand.ui.viewmodel.DateiLeser
 import ch.brickinventoryapp.zustand.ui.viewmodel.DateiRef
 import ch.brickinventoryapp.finanzen.ui.viewmodel.GutscheinViewModel
