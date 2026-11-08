@@ -51,21 +51,3 @@ stand sie ausgeschrieben. Was sie daraus macht, prueft
 test/quantity-response-echo.test.js — diese Stelle prueft, dass der
 Aufruf das BLICKFELD nennt und nicht ein einzelnes Konto.
 ```
-
-<a id="tabellen"></a>
-## `const TABELLEN = ['sets', 'parts', 'minifigs', 'set_acquisitions',`
-
-```text
-── Woher dieser Test kommt ─────────────────────────────────────────────
-Ein leerer Catch sagt zwei Dinge gleichzeitig: „darf scheitern" und
-„niemand erfährt davon". Das erste ist oft richtig, das zweite fast nie —
-eine Spiegelung, die seit Wochen jedes Mal scheitert, sieht von aussen
-identisch aus wie eine, die funktioniert.
-
-Für Schreibvorgänge auf den BESTANDSTABELLEN gilt deshalb: entweder den
-Fehler durchreichen (Pflichtschritt) oder logAndContinue() aus
-src/infra/fehler.ts (bewusst optionaler Schritt). Ein leerer Catch ist
-keine der beiden Möglichkeiten. Anderswo — Bild-Caches, Aufräumen,
-Fremd-APIs — bleibt er erlaubt; dieser Test greift nur die Tabellen ab,
-aus denen Bestand und Finanzsummen gelesen werden.
-```
