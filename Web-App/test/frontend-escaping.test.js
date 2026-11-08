@@ -24,6 +24,16 @@ test('esc() neutralisiert alle HTML-Metazeichen inkl. Apostroph', async () => {
   assert.equal(esc(undefined), '');
 });
 
+// Gegenprobe (08.11.2026): „\\“ und Steuerzeichen im Regex von sichereUrl() entfernt → rot: „/\\host“ kam durch.
+test('sichereUrl() lässt nur gleiche Herkunft, http(s) und Bild-Daten durch', async () => {
+  const { sichereUrl } = await loadHelpers();
+  for (const gut of ['/img/a.png', '/', 'https://cdn.example/a.png', 'http://x/y', 'data:image/png;base64,AAAA', ' /pfad '])
+    assert.equal(sichereUrl(gut), gut.trim(), `„${gut}“ fälschlich verworfen`);
+  for (const schlecht of ['//evil.example/x', '/\\evil.example/x', '/\\\\evil.example', '/\t/evil.example', '/\n/evil.example',
+    'javascript:alert(1)', 'https:\\\\evil.example', 'ftp://x', 'evil.example', '', null, undefined])
+    assert.equal(sichereUrl(schlecht), '', `„${schlecht}“ kam durch`);
+});
+
 test('escJs() bricht nicht aus onclick="fn(\'…\')" aus', async () => {
   const { escJs } = await loadHelpers();
   // Der klassische Ausbruch: Apostroph schliesst den JS-String, danach Code.
