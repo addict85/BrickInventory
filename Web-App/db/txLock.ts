@@ -5,6 +5,7 @@
 import * as db from './database';
 import type { DbSchnittstelle } from './database';
 import { LOCKS } from '../src/infra/lockNamespaces';
+import { meldeUndWeiter } from '../src/infra/fehler';
 
 /** Führt fn in einer Transaktion aus, die exklusiven Zugriff auf den
  * angegebenen Bestandsschlüssel hat.
@@ -41,12 +42,18 @@ async function sperreHaushaltswaehrung(tx: DbSchnittstelle): Promise<void> {
  */
 async function mitSitzungsSperre<T>(schluessel: number, lauf: () => Promise<T>, belegt: () => never): Promise<T> {
   const client = await db.pool.connect();
+  // Schlägt das Freigeben fehl, darf die Verbindung nicht mit gehaltener Sperre in den
+  // Pool zurück; sie wird verworfen (die Sperre endet mit der Sitzung).
+  let defekt: Error | undefined;
   try {
     const { rows } = await client.query('SELECT pg_try_advisory_lock($1, 0) AS ok', [schluessel]);
     if (!rows[0]?.ok) belegt();
     try { return await lauf(); }
-    finally { await client.query('SELECT pg_advisory_unlock($1, 0)', [schluessel]); }
-  } finally { client.release(); }
+    finally {
+      await client.query('SELECT pg_advisory_unlock($1, 0)', [schluessel])
+        .catch((e: unknown) => { defekt = e instanceof Error ? e : new Error(String(e)); meldeUndWeiter('txLock:freigabe', e); });
+    }
+  } finally { client.release(defekt); }
 }
 
 /**
@@ -60,8 +67,10 @@ async function belegeSitzungsSperre(schluessel: number): Promise<(() => Promise<
     if (!rows[0]?.ok) { client.release(); return null; }
   } catch (e) { client.release(); throw e; }
   return async () => {
-    try { await client.query('SELECT pg_advisory_unlock($1, 0)', [schluessel]); }
-    finally { client.release(); }
+    let defekt: Error | undefined;
+    await client.query('SELECT pg_advisory_unlock($1, 0)', [schluessel])
+      .catch((e: unknown) => { defekt = e instanceof Error ? e : new Error(String(e)); meldeUndWeiter('txLock:freigabe', e); });
+    client.release(defekt);
   };
 }
 
