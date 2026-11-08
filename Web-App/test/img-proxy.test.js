@@ -6,7 +6,10 @@
  * Gegenproben zu den nach bild-proxy-deckel.test.js (Typprüfung, Platzhalter)
  * und img-cache-serve.test.js (304) verlegten Fällen stehen dort; für 304 je
  * eine der beiden `req.fresh`-Zeilen in imgCacheServe.ts entfernt → dort rot
- * „bekannter Stand → 304 und KEIN Bild“ (08.11.2026).
+ * „bekannter Stand → 304 und KEIN Bild“ (08.11.2026). Doppelte Schrägstriche
+ * im Pfad → sicherheit-querschnitt-db I (Normalisierung entfernt → dort rot).
+ * Zähler und Protokoll der Fehlschläge, Inhaltsprüfung der Probe →
+ * bild-proxy-deckel.test.js I und J.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -150,35 +153,6 @@ test('der Verbindungs-Pool ist weit genug', async () => {
   assert.match(SERVER, /pool: true/, 'der Proxy nimmt den Pool nicht');
 });
 
-test('Fehler werden gezählt und protokolliert', () => {
-  // Der Zähler ist seit einer früheren Runde ein eigenes Modul (src/katalog/bilder/imgProxyStats.ts)
-  // statt einer Closure, die über `global.__imgProxyFailures` hinausgereicht
-  // wurde. Geprüft wird, dass es ihn gibt und dass er alle vier Fälle führt —
-  // nicht mehr, wie er geschrieben ist.
-  const stats = fs.readFileSync(path.join(ROOT, 'src/katalog/bilder/imgProxyStats.ts'), 'utf8');
-  for (const feld of ['timeout', 'error', 'notFound', 'other', 'lastError']) {
-    assert.match(stats, new RegExp(`${feld}:`), `Zähler-Feld fehlt: ${feld}`);
-  }
-  assert.doesNotMatch(
-    SERVER,
-    /global as any\)\.__imgProxyFailures/,
-    'Der Zähler wird wieder über `global` gereicht statt importiert',
-  );
-  for (const m of ['Zeitüberschreitung nach 25 s', 'Verbindungsfehler', 'CDN antwortete']) {
-    assert.ok(SERVER.includes(m), `Log-Meldung fehlt: ${m}`);
-  }
-  assert.match(
-    SERVER,
-    /an den Client gingen \$\{sentToClient\} von \$\{expected\} Bytes/,
-    'Eine zu kurz gelieferte Antwort muss auffallen',
-  );
-  assert.match(
-    SERVER,
-    /if \(!enc && expected > 0 && sentToClient !== expected\)/,
-    'Der Abgleich gilt nur für unentpackte Antworten',
-  );
-});
-
 test('die Diagnose-Endpunkte sind vorhanden', () => {
   const route = fs.readFileSync(path.join(ROOT, 'routes/api_v1/admin.ts'), 'utf8');
   assert.match(route, /router\.get\('\/admin\/img-probe', requireApiAdmin/, 'img-probe fehlt');
@@ -201,38 +175,6 @@ test('der ausgebaute Reparaturjob ist restlos weg', () => {
     const src = fs.readFileSync(path.join(ROOT, f), 'utf8');
     assert.doesNotMatch(src, /imgRepair|img_repair|dead_images/, `${f}: Reste vorhanden`);
   }
-});
-
-test('die Probe zeigt, WAS ausgeliefert wird', () => {
-  // Server meldet 200, CDN meldet 200, nichts im Log — und der Browser zeigt
-  // trotzdem nichts. Der einzige Blickwinkel, der fehlte, ist der tatsächliche
-  // Inhalt der ersten Bytes.
-  const admin = fs.readFileSync(path.join(ROOT, 'src/verwaltung/dienst.ts'), 'utf8');
-  assert.match(admin, /body_check: head/, 'Die Inhaltsprüfung fehlt in der Antwort');
-  assert.match(admin, /first_bytes_hex/, 'Die ersten Bytes gehören als Hex in die Antwort');
-  for (const sig of ['JPEG', 'PNG', 'gzip (komprimiert!)', 'HTML/XML statt Bild']) {
-    assert.ok(admin.includes(sig), `Erkennung für "${sig}" fehlt`);
-  }
-  assert.match(admin, /'Accept-Encoding': 'identity'/, 'Die Prüfung muss dieselbe Anforderung stellen wie der Proxy');
-});
-
-test('mehrfache Schrägstriche im Pfad brechen die Route nicht', () => {
-  // `//api/img-proxy?…` trifft die Route NICHT und landet im SPA-Catch-all:
-  // 200 mit text/html, also die leere Anwendungshülle. Für ein <img> ergibt
-  // das eine weisse Fläche bei Status 200 — ohne Log-Eintrag und ohne
-  // Cache-Schreiben. Vier Symptome, die wie ein Proxy-Fehler aussehen. …
-  // Ausführlich: docs/begruendungen/test/img-proxy.test.js.md#normalisierung
-  const normalisierung = SERVER_ONLY.slice(
-    SERVER_ONLY.indexOf("req.url.startsWith('//')"),
-    SERVER_ONLY.indexOf("req.url.startsWith('//')") + 400,
-  );
-  assert.match(normalisierung, /req\.url\s*=/, 'Pfad-Normalisierung schreibt req.url nicht zurück');
-  assert.match(normalisierung, /replace\(/, 'Pfad-Normalisierung fehlt');
-  // Muss vor den Routen stehen, sonst greift sie zu spät
-  // Reihenfolge ist nur innerhalb von server.ts aussagekräftig.
-  const norm = SERVER_ONLY.indexOf("req.url.startsWith('//')");
-  const firstRoute = SERVER_ONLY.indexOf("app.use('/api/");
-  assert.ok(norm > 0 && norm < firstRoute, 'Die Normalisierung muss vor den Route-Registrierungen laufen');
 });
 
 test('kaputte Antworten werden nicht für einen Tag im Browser festgenagelt', () => {

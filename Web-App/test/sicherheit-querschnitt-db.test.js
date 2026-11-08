@@ -25,6 +25,8 @@
  *   H  in index.html ein `<script>var x=1;</script>` bzw. ein
  *      `<link rel="stylesheet" href="https://fonts.example/x.css">` → rot:
  *      „die ausgelieferte Seite lädt nichts von fremden Hosts …“ (08.11.2026)
+ *   I  die Normalisierung doppelter Schrägstriche in server.ts entfernt → rot:
+ *      „doppelte Schrägstriche treffen dieselbe Route …“ (08.11.2026)
  *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL.
  */
@@ -110,6 +112,14 @@ test('Sicherheit im Querschnitt', { concurrency: 1, timeout: 180_000 }, async (t
     assert.deepEqual(extern, []);
     const inline = [...seite.matchAll(/<script(?![^>]*\ssrc=)[^>]*>([\s\S]*?)<\/script>/g)].map(m => m[1].trim()).filter(Boolean);
     assert.deepEqual(inline.map(b => b.slice(0, 60)), [], 'script-src ohne unsafe-inline blockiert es');
+  });
+
+  await t.test('doppelte Schrägstriche treffen dieselbe Route, nicht die Seite', async () => {
+    for (const pfad of ['//api/v1/health/live', '/api//v1/health/live?x=1', '//api/v1/img-proxy?url=https%3A%2F%2Fcdn.rebrickable.com%2Fa.jpg']) {
+      const r = await fetch(basis + pfad);
+      await r.arrayBuffer();
+      assert.match(r.headers.get('content-type') ?? '', /application\/json/, `${pfad}: ${r.status}`);
+    }
   });
 
   await t.test('ein unbekannter API-Pfad antwortet in der Form jeder Fehlerantwort', async () => {
