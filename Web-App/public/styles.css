@@ -825,8 +825,12 @@
    fest am rechten Fensterrand. Er rollt die SEITE, nicht einen Kasten darin:
    Ein eigener Scrollbereich sässe mitten im Fenster, und der Beobachter, der
    die Katalogseiten nachlädt, misst gegen das Fenster. */
-html{scrollbar-width:none;-ms-overflow-style:none}
-html::-webkit-scrollbar{width:0;height:0}
+/* Im Kontrastmodus (forced-colors) färbt das System Flächen um, und der Griff verschwände; dort bleibt die des Browsers. */
+@media not (forced-colors: active){
+  html{scrollbar-width:none;-ms-overflow-style:none}
+  html::-webkit-scrollbar{width:0;height:0}
+}
+@media (forced-colors: active){#app-scrollbar{display:none !important}}
 /* Fokus nie unter Kopf oder unterer Leiste (WCAG 2.4.11); die Höhen misst js/10-mobile.js. */
 html{scroll-padding-top:calc(var(--leiste-oben,0px) + .5rem);scroll-padding-bottom:calc(var(--leiste-unten,0px) + .5rem)}
 
@@ -840,7 +844,7 @@ html{scroll-padding-top:calc(var(--leiste-oben,0px) + .5rem);scroll-padding-bott
 }
 #app-scrollbar-thumb{
   position:absolute;right:3px;width:8px;min-height:32px;border-radius:4px;
-  background:var(--s400);cursor:grab;transition:background .15s,width .15s;
+  background:var(--s500);cursor:grab;transition:background .15s,width .15s;
 }
 @media (hover:hover){#app-scrollbar:hover #app-scrollbar-thumb{background:var(--s600);width:10px;right:2px}}
 #app-scrollbar.dragging #app-scrollbar-thumb{background:var(--p600);cursor:grabbing}
