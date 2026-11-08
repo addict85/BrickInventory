@@ -16,7 +16,8 @@
  *   H2  in acquisitionMoveSource wieder 403 kein_schreibrecht für fremde
  *       Zeilen → rot: „eine fremde Erfassung antwortet wie eine fehlende“
  *   H4  `app.use(nurEigenerHost)` in server.ts gestrichen → rot: „ein fremder
- *       Host-Kopf …“; die Ausnahme für Bearer gestrichen → rot: „… mit Bearer“
+ *       Host-Kopf …“; die Ausnahme für IP-Adressen gestrichen → rot: „IP-Host“; Bearer wieder
+ *       als Ausnahme → rot: „öffnet einen fremden Namen nicht“
  *   H5  GET /verify bestätigt wieder selbst (verifiziereEmailToken im Handler)
  *       → rot: „der Link allein bestätigt nichts“
  *
@@ -169,8 +170,13 @@ test('zehnte Sicherheitsprüfung am echten Server', { concurrency: 1, timeout: 2
     assert.equal((await mitHost(port, 'nas.example.lan', '/api/v1/auth/me')).status, 200);
     assert.equal((await mitHost(port, 'boese.example', '/api/v1/health/live')).status, 200);
     assert.notEqual((await mitHost(port, 'boese.example', '/ca.crt')).status, 421);
-    assert.equal((await mitHost(port, 'boese.example', '/api/v1/auth/me', { authorization: 'Bearer falsch' })).status, 401,
-      'ein fremder Host-Kopf mit Bearer geht an die Anmeldung');
+    assert.equal((await mitHost(port, 'boese.example', '/api/v1/auth/me', { authorization: 'Bearer falsch' })).status, 421,
+      'ein Bearer-Kopf öffnet einen fremden Namen nicht');
+    for (const ip of [`192.168.1.20:${port}`, '10.0.0.5', '[fe80::1]:8080']) {
+      assert.equal((await mitHost(port, ip, '/api/v1/auth/me', { authorization: 'Bearer falsch' })).status, 401,
+        `ein IP-Host (${ip}) geht an die Anmeldung`);
+    }
+    assert.equal((await mitHost(port, '1.2.3.4.boese.example', '/api/v1/auth/me')).status, 421, 'ein Name mit Ziffern ist keine Adresse');
   });
 
   await t.test('der Link allein bestätigt nichts, erst der POST', async () => {

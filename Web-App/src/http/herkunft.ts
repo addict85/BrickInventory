@@ -45,15 +45,16 @@ export function nurEigeneHerkunft(req: Request, res: Response, next: NextFunctio
 }
 
 const LOOPBACK = new Set(['localhost', '127.0.0.1', '[::1]']);
+const IP_ADRESSE = /^(\d{1,3}(\.\d{1,3}){3}|\[[0-9a-f:.]+\])$/;
 const FREI = /^\/(ca\.crt|api\/v1\/health(\/live|\/ready)?)$/;
 
-/** Mit APP_BASE_URL nur dieser Name, gegen DNS-Rebinding. Frei: Loopback, Bearer
- * (schickt kein Browser von selbst), Wurzelzertifikat und Gesundheit. */
+/** Mit APP_BASE_URL nur dieser Name, gegen DNS-Rebinding. Frei: Loopback, IP-Adressen
+ * (die Android-App; nur ein Name lässt sich umbiegen), Wurzelzertifikat, Gesundheit. */
 export function nurEigenerHost(req: Request, res: Response, next: NextFunction) {
   const adresse = konfig().appBaseUrl;
-  if (!adresse || FREI.test(req.path) || String(req.headers.authorization || '').startsWith('Bearer ')) return next();
+  if (!adresse || FREI.test(req.path)) return next();
   const name = (h: string) => h.toLowerCase().replace(/:\d+$/, '').replace(/\.$/, '');
   const kopf = name(String(req.headers.host || ''));
-  if (LOOPBACK.has(kopf) || kopf === name(hostVon(adresse) ?? '')) return next();
+  if (LOOPBACK.has(kopf) || IP_ADRESSE.test(kopf) || kopf === name(hostVon(adresse) ?? '')) return next();
   sendeFehler(req, res, 421, 'fremder_host', { adresse });
 }
