@@ -1,10 +1,15 @@
 # Ohne diese Datei erfasste `git add -A` node_modules, dist und data (216 MB).
-# public/js/app.bundle.js bleibt verfolgt: Es wird ausgeliefert.
 
 # Abhängigkeiten und Bauergebnisse. Ohne Schrägstrich, damit auch ein
 # Symlink namens node_modules (geteilter Arbeitsbaum) ignoriert wird.
 node_modules
 dist
+
+# Das Frontend-Bündel ist ein Erzeugnis aus public/js/ (scripts/build-frontend.js,
+# gebaut von npm run build, Dockerfile, CI und test-lauf.js). Auch Zwischendatei
+# (.tmp) und Sourcemap (.map) gehören nicht nach git.
+public/js/app.bundle.js
+public/js/app.bundle.js.*
 
 # Laufzeitdaten: Bilder, Vorschaubilder, Uploads, Zwischenstände
 data/
