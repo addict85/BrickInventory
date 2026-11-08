@@ -21,9 +21,8 @@ import ch.brickinventoryapp.testing.Quellen
  *      Debug-Build erlaubt Klartext nur …“
  *   C  in src/main ein <certificates src="user" /> → rot „beide Fassungen
  *      vertrauen nur System-CAs“
- *   G  in buildInterceptorClient `.followRedirects(false)` entfernt →
- *      rot „die Server-Clients folgen keiner Umleitung selbst“. Was der Wächter
- *      stattdessen tut, prüft UmleitungTest ausgeführt.
+ *   G  dass die Server-Clients keiner Umleitung selbst folgen, prüft ServerClientsTest
+ *      an den gebauten Clients; was der Wächter stattdessen tut, UmleitungTest.
  *   H  in src/main die Zeile
  *      <certificateTransparency> der base-config entfernt → rot „der Release-Build
  *      verlangt Certificate Transparency“
@@ -91,14 +90,6 @@ class NetzsicherheitTest {
             val quellen = lies(variante).alle("certificates").map { it.getAttribute("src") }
             assertTrue("$variante: $quellen", quellen.isNotEmpty() && quellen.all { it == "system" })
         }
-    }
-
-    /** Die Einstellung des Clients; dass der Wächter nur gleicher Herkunft folgt, prüft UmleitungTest. */
-    @Test
-    fun `die Server-Clients folgen keiner Umleitung selbst`() {
-        val fabrik = Quellen.funktion(Quellen.ohneKommentare(Quellen.di()), "internal fun buildInterceptorClient(")
-        assertTrue("OkHttp folgte Umleitungen am Wächter vorbei", fabrik.contains(".followRedirects(false)"))
-        assertTrue(fabrik.contains(".followSslRedirects(false)"))
     }
 
     private fun regeln(name: String): Element {

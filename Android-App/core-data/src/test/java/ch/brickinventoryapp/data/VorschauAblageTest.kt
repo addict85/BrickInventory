@@ -5,10 +5,10 @@ import ch.brickinventoryapp.testing.Quellen
 
 /**
  * Was an der Vorschau-Ablage nur im Aufbau zu sehen ist: die Reihenfolge im Bild-Client,
- * der API-Client ohne Zwischenspeicher, der Anlauf beim App-Start, die erschöpfende
- * Netzlage, Manifest und Hinweis. Das Verhalten prüfen ausgeführt VorschauSpeicherTest,
- * VorschauVorwaermerTest, VorschauAbgriffTest, VorschauGeraetTest (Robolectric) und
- * SammlungVorwaermenTest (core-zustand).
+ * der Anlauf beim App-Start, die erschöpfende Netzlage, Manifest und Hinweis. Das
+ * Verhalten prüfen ausgeführt VorschauSpeicherTest, VorschauVorwaermerTest,
+ * VorschauAbgriffTest, VorschauGeraetTest und SammlungVorwaermenTest (core-zustand),
+ * die Clients selbst ServerClientsTest.
  */
 class VorschauAblageTest {
 
@@ -27,7 +27,7 @@ class VorschauAblageTest {
     }
 
     @Test
-    fun `die Verdrahtung der Clients im NetzModule`() {
+    fun `der Abgriff sitzt aussen vor dem Offline-Rueckfall`() {
         val s = Quellen.ohneKommentare(Quellen.di())
         // Anwendungs-Interceptoren laufen in der gesetzten Reihenfolge: Die Ablage sitzt
         // AUSSEN, damit sie auch den 504 des Offline-Rückfalls sieht.
@@ -38,19 +38,6 @@ class VorschauAblageTest {
             "Der Ablage-Abgriff sitzt HINTER dem Offline-Rueckfall. Dann sieht " +
                 "er dessen 504 nicht und springt genau dann nicht ein, wenn es darauf ankommt."
         }
-        // Aenderungen gehen nur online: Der API-Client hat weder Cache noch Rückfall.
-        val ab = s.indexOf("fun provideApiOkHttpClient")
-        assert(ab > 0) { "Der API-Client ist nicht mehr zu finden" }
-        val bis = s.indexOf("@Provides", ab).let { if (it > 0) it else s.length }
-        val apiClient = s.substring(ab, bis)
-        assert(!apiClient.contains(".cache(")) { "Der API-Client hat einen Zwischenspeicher bekommen." }
-        assert(!apiClient.contains("FORCE_CACHE") && !apiClient.contains("onlyIfCached")) {
-            "Der API-Client hat einen Offline-Rueckfall bekommen."
-        }
-        // Das Vorwärmen holt je Schub zwei Bilder (VorschauVorwaermerTest); der Bild-Client
-        // muss mehr Verbindungen je Host haben, sonst wartet die sichtbare Kachelwand.
-        val proHost = Regex("""maxRequestsPerHost\s*=\s*(\d+)""").find(s)?.groupValues?.get(1)?.toInt()
-        assert(proHost != null && proHost > 2) { "maxRequestsPerHost ist $proHost" }
     }
 
     @Test

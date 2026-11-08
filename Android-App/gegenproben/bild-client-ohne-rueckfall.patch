@@ -1,0 +1,23 @@
+Gegenprobe: ohne Server liefert der Bild-Client nichts aus dem Zwischenspeicher
+Modul: core-data
+Test: ch.brickinventoryapp.data.ServerClientsTest
+Rot: ist der Server nicht erreichbar
+
+diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/di/NetzModule.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/di/NetzModule.kt
+--- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/di/NetzModule.kt
++++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/di/NetzModule.kt
+@@ -137,12 +137,8 @@
+                 val req = chain.request()
+                 try {
+                     chain.proceed(req)
+-                } catch (_: java.io.IOException) {
+-                    chain.proceed(
+-                        req.newBuilder()
+-                            .cacheControl(okhttp3.CacheControl.FORCE_CACHE)
+-                            .build()
+-                    )
++                } catch (e: java.io.IOException) {
++                    throw e
+                 }
+             }
+             .build()
