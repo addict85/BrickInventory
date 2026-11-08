@@ -1,4 +1,4 @@
-import { scopeIds } from '../../haushalt/haushalt';
+import { beiHaushaltsaenderung, scopeIds } from '../../haushalt/haushalt';
 import * as repo from '../repository/bildBlickfeld';
 
 /** Set-Bilder und Anleitungen liegen unter der Setnummer: Ihr Vorhandensein
@@ -7,6 +7,7 @@ export const dateiStamm = (setNumber: string) => String(setNumber).replace(/[^a-
 
 type Stand = { bilder: Set<string>; anleitungen: Set<string>; am: number };
 const _cache = new Map<number, Stand>();
+beiHaushaltsaenderung(() => _cache.clear());
 // Ein Treffer gilt eine Minute; eine Absage wird nach zwei Sekunden neu
 // gefragt, damit ein eben erfasstes Set sein Bild sofort zeigt.
 const TREFFER_MS = 60_000, ABSAGE_MS = 2_000, KONTEN_HOECHSTENS = 1000;

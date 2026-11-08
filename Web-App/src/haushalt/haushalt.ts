@@ -27,7 +27,14 @@ const HAUSHALT_TTL_MS = 5 * 60 * 1000;
 const HAUSHALT_MAX = 500;
 const _haushalte = new Map<number, { wert: Household; zeit: number }>();
 
-export function leereHaushaltCache(): void { _haushalte.clear(); }
+const _abhaengige: Array<() => void> = [];
+/** Rückruf statt Import: Module, die den Haushalt brauchen, würden sonst einen Zyklus bilden. */
+export function beiHaushaltsaenderung(leere: () => void): void { _abhaengige.push(leere); }
+
+export function leereHaushaltCache(): void {
+  _haushalte.clear();
+  for (const leere of _abhaengige) leere();
+}
 
 /** Fehler werden verschluckt: Das Signal ist die Beschleunigung, die Frist
  * die Zusicherung. */

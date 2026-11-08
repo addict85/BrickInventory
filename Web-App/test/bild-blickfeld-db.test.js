@@ -15,6 +15,8 @@
  *      „Anleitungen nur zu eigenen Sets“ und „die API nennt …“
  *   E  in GET /sets/info den Abgleich mit setBildSichtbar() entfernt → rot:
  *      „die API nennt fremde lokale Bilder nicht“
+ *   F  beiHaushaltsaenderung() in bildBlickfeld.ts nicht aufgerufen (60 s
+ *      Treffer-Frist bleibt) → rot: „nach dem Lösen der Verknüpfung …“ (200 statt 404)
  *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL.
  */
@@ -129,5 +131,17 @@ test('Bilder und Anleitungen im Blickfeld', { concurrency: 1, timeout: 180_000 }
     const info = async (sn) => JSON.parse((await hole('haupt', `/api/v1/sets/info/${sn}`)).text);
     assert.equal((await info(SN.unter)).image_local, `/images/sets/${SN.unter}.jpg`);
     assert.equal((await info(SN.fremd)).image_local, null);
+  });
+
+  await t.test('nach dem Lösen der Verknüpfung sieht das Hauptkonto das Bild und die Anleitung sofort nicht mehr', async () => {
+    assert.equal((await hole('haupt', bild(SN.unter))).status, 200, 'vorher: im Zwischenspeicher als Treffer');
+    assert.equal((await hole('haupt', `/data/instructions/${SN.unter}_1.pdf`)).status, 200);
+    const r = await fetch(`http://127.0.0.1:${port}/api/v1/settings/household/unlink`, {
+      method: 'POST', headers: { Authorization: `Bearer ${token.unter}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ main_user_id: ids[0] }),
+    });
+    assert.equal(r.status, 200, await r.text());
+    assert.equal((await hole('haupt', bild(SN.unter))).status, 404);
+    assert.equal((await hole('haupt', `/data/instructions/${SN.unter}_1.pdf`)).status, 404);
   });
 });
