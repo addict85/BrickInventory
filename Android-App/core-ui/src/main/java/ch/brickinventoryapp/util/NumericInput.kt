@@ -74,23 +74,34 @@ object NumericInput {
 
     /** (ganzer Teil ohne Gruppen, Dezimalzeichen oder null, Nachkommastellen); null, wenn es kein Betrag ist. */
     private fun zerlege(roh: String, gruppe: Char): Triple<String, Char?, String>? {
-        var s = roh.filterNot { it.isWhitespace() || it == '\'' || it == '’' }
-        if (s.isNotEmpty() && s.first() in WAEHRUNG) s = s.drop(1)
-        if (s.isNotEmpty() && s.last() in WAEHRUNG) s = s.dropLast(1)
+        val s = ohneWaehrung(roh.filterNot { it.isWhitespace() || it == '\'' || it == '’' })
         if (!BETRAGSFORM.matches(s)) return null
-        val trenner = s.filter { it == '.' || it == ',' }
         val letztes = maxOf(s.lastIndexOf(','), s.lastIndexOf('.'))
-        var dezimal: Char? = if (trenner.isNotEmpty()) s[letztes] else null
-        if (trenner.toSet().size == 1 && trenner.length > 1) dezimal = null
-        if (trenner.length == 1 && trenner[0] == gruppe && DREI_ZIFFERN.matches(s.substring(letztes + 1)) &&
-            !(s.startsWith("0.") || s.startsWith("0,"))) dezimal = null
+        val dezimal = dezimalzeichen(s, letztes, gruppe)
         val ganz = if (dezimal != null) s.substring(0, letztes) else s
         val nach = if (dezimal != null) s.substring(letztes + 1) else ""
         if (nach.any { it == '.' || it == ',' } || (dezimal != null && dezimal in ganz)) return null
         val gruppen = ganz.split('.', ',')
-        if (gruppen.size > 1 && (!ERSTE_GRUPPE.matches(gruppen[0]) || gruppen.drop(1).any { !DREI_ZIFFERN.matches(it) })) return null
+        if (gruppen.size > 1 && !gruppenGueltig(gruppen)) return null
         return Triple(gruppen.joinToString(""), dezimal, nach)
     }
+
+    private fun ohneWaehrung(s: String): String {
+        val vorn = if (s.isNotEmpty() && s.first() in WAEHRUNG) s.drop(1) else s
+        return if (vorn.isNotEmpty() && vorn.last() in WAEHRUNG) vorn.dropLast(1) else vorn
+    }
+
+    /** Das letzte Trennzeichen ist das Dezimalzeichen, ausser es steht mehrfach oder ist ein Gruppenzeichen vor drei Ziffern. */
+    private fun dezimalzeichen(s: String, letztes: Int, gruppe: Char): Char? {
+        val trenner = s.filter { it == '.' || it == ',' }
+        val mehrfachGleich = trenner.toSet().size == 1 && trenner.length > 1
+        val alsGruppe = trenner.length == 1 && trenner[0] == gruppe &&
+            DREI_ZIFFERN.matches(s.substring(letztes + 1)) && !(s.startsWith("0.") || s.startsWith("0,"))
+        return if (trenner.isEmpty() || mehrfachGleich || alsGruppe) null else s[letztes]
+    }
+
+    private fun gruppenGueltig(gruppen: List<String>): Boolean =
+        ERSTE_GRUPPE.matches(gruppen[0]) && gruppen.drop(1).all { DREI_ZIFFERN.matches(it) }
 
     /** Setnummer: Buchstaben kommen vor, also die Texttastatur, ohne Grossschreibung und Korrektur. */
     fun setnummerTastatur(imeAction: ImeAction = ImeAction.Next) =

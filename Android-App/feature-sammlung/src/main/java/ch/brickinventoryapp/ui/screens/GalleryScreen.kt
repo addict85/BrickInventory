@@ -759,6 +759,15 @@ private fun themaUndTeile(thema: String?, teile: String?): androidx.compose.ui.t
         if (teile != null) append(teile)
     }
 
+/** Ohne Haushalt gar nichts mitschicken — der Server bleibt dann beim eigenen Konto. */
+private fun eigentuemerFuerErfassung(mitglieder: List<MitgliedAnsicht>, gewaehlt: Int?): Int? =
+    if (mitglieder.size > 1) gewaehlt else null
+
+/** Ist der Dialog schon zu, wirft requestFocus; dann gibt es nichts mehr zu fokussieren. */
+private fun FocusRequester.fokusWennOffen() {
+    try { requestFocus() } catch (_: Exception) { /* Dialog schon zu */ }
+}
+
 @Composable
 fun AddSetDialog(
     onDismiss: () -> Unit,
@@ -791,7 +800,7 @@ fun AddSetDialog(
     val setFeldFokus = remember { FocusRequester() }
     if (sofortFokus) LaunchedEffect(Unit) {
         kotlinx.coroutines.delay(120)
-        try { setFeldFokus.requestFocus() } catch (_: Exception) { /* Dialog schon zu */ }
+        setFeldFokus.fokusWennOffen()
     }
     var purchasePrice by rememberSaveable { mutableStateOf("") }
     var condition by rememberSaveable { mutableStateOf(defaultCondition) }
@@ -808,14 +817,12 @@ fun AddSetDialog(
     fun submit() {
         if (setNumber.isBlank()) {
             nummerFehlt = true
-            if (sofortFokus) try { setFeldFokus.requestFocus() } catch (_: Exception) { /* Dialog schon zu */ }
+            if (sofortFokus) setFeldFokus.fokusWennOffen()
         } else if (!erfassungUngueltig(quantity, purchasePrice)) {
             // Bei unlesbarer Menge oder unlesbarem Preis bleibt der Dialog offen; die Felder zeigen den Fehler.
             onAdd(setNumber, quantity.toIntOrNull() ?: 1,
                   NumericInput.leseBetrag(purchasePrice), condition,
-                  // Ohne Haushalt gar nichts mitschicken — der Server bleibt
-                  // dann beim eigenen Konto.
-                  if (householdMembers.size > 1) owner else null,
+                  eigentuemerFuerErfassung(householdMembers, owner),
                   lagerort.trim().takeIf { it.isNotEmpty() })
         }
     }
