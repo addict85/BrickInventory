@@ -90,6 +90,7 @@ hilt-navigation-compose             = { group = "androidx.hilt",              na
 androidx-hilt-work                  = { group = "androidx.hilt",              name = "hilt-work",                         version.ref = "hiltNavigationCompose" }
 androidx-hilt-compiler              = { group = "androidx.hilt",              name = "hilt-compiler",                     version.ref = "hiltNavigationCompose" }
 retrofit                            = { group = "com.squareup.retrofit2",      name = "retrofit",                          version.ref = "retrofit" }
+okhttp                              = { group = "com.squareup.okhttp3",       name = "okhttp",                            version.ref = "okhttp" }
 okhttp-logging                      = { group = "com.squareup.okhttp3",       name = "logging-interceptor",               version.ref = "okhttp" }
 okhttp-sse                          = { group = "com.squareup.okhttp3",       name = "okhttp-sse",                        version.ref = "okhttp" }
 kotlinx-serialization-json          = { group = "org.jetbrains.kotlinx",      name = "kotlinx-serialization-json",        version.ref = "kotlinxSerializationJson" }

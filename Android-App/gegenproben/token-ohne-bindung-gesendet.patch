@@ -3,10 +3,10 @@ Modul: core-zustand
 Test: ch.brickinventoryapp.ServerWaechterTest
 Rot: ein Token ohne Bindung geht an keinen Server
 
-diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/di/ServerWaechter.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/di/ServerWaechter.kt
+diff --git a/Android-App/core-netz/src/main/java/ch/brickinventoryapp/di/ServerWaechter.kt b/Android-App/core-netz/src/main/java/ch/brickinventoryapp/di/ServerWaechter.kt
 index 404149d..f2bef75 100644
---- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/di/ServerWaechter.kt
-+++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/di/ServerWaechter.kt
+--- a/Android-App/core-netz/src/main/java/ch/brickinventoryapp/di/ServerWaechter.kt
++++ b/Android-App/core-netz/src/main/java/ch/brickinventoryapp/di/ServerWaechter.kt
 @@ -118,7 +118,7 @@ class ServerWaechter(
          val basis = if (unserServer) NetworkPolicy.basisPfad(serverUrl).orEmpty() else ""
          // Ein Token geht nur an die Herkunft, an die er gebunden ist; ohne Bindung an keine.

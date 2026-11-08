@@ -1,6 +1,6 @@
 package ch.brickinventoryapp.util
 
-import ch.brickinventoryapp.core.data.BuildConfig
+import ch.brickinventoryapp.core.netz.BuildConfig
 import okhttp3.HttpUrl
 import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 import java.io.IOException
