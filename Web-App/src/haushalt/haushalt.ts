@@ -279,9 +279,11 @@ export async function schreibbereichAus(v: Schreiber | number[]): Promise<number
   return Array.isArray(v) ? v : writableIds(v.schreiber);
 }
 
-/** Hauptkonten sehen die Dateien ihrer Unterkonten, nicht umgekehrt. */
+/** Hauptkonten sehen die Dateien ihrer Unterkonten, nicht umgekehrt. Frisch
+ * gefragt wie canWriteFor: Ein gelöstes Unterkonto soll nicht bis zum Ablauf
+ * des Gedächtnisses lesbar bleiben, falls die Benachrichtigung ausbleibt. */
 export async function siehtKonto(nutzer: number, besitzer: number): Promise<boolean> {
-  return besitzer === nutzer || (await scopeIds(nutzer)).includes(besitzer);
+  return besitzer === nutzer || repo.istVerknuepft(nutzer, besitzer);
 }
 
 /** Für wen geschrieben wird; ohne Recht 403 mit dem Code der Route. */

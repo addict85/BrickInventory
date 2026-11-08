@@ -60,6 +60,14 @@ export async function anmeldungAmEingang(req: Request, res: Response, next: Next
     if (!uid) return sendeFehler(req, res, 401, req.tokenAbsage ?? 'nicht_angemeldet');
     req.tokenUserId = uid;
   }
+  return eingangsSperre(req, res, next);
+}
+
+/** Die Sperren „Passwortwechsel nötig“ und „2. Faktor Pflicht“ für einen schon
+ * erkannten Nutzer. Auch Dateien und Bild-Proxy hängen davor, weil sie vor dem
+ * Eingang stehen und sonst an beiden Regeln vorbeiliefen. */
+export async function eingangsSperre(req: Request, res: Response, next: NextFunction) {
+  const methode = req.method === 'HEAD' ? 'GET' : req.method;
   if (!(methode === 'POST' && VOR_DEM_WECHSEL.test(req.path)) && await mussWechseln(req))
     return sendeFehler(req, res, 403, 'passwort_wechsel_noetig');
   if (!ZUR_EINRICHTUNG.some(([m, re]) => m === methode && re.test(req.path)) && await zweiterFaktorPflicht(req))

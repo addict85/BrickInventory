@@ -48,6 +48,9 @@ import wellKnownRouter = require('./routes/wellKnown');
 import gesundheitRouter = require('./routes/gesundheit');
 import seitenRouter = require('./routes/seiten');
 
+// Nur loggen: Ein abgelehntes Versprechen ist meist ein Nebenläufer ohne catch;
+// Anfragen und Jobs halten ihren Zustand in der Datenbank. Ein Neustart risse
+// dafür alle laufenden Anfragen und Ströme ab (anders als uncaughtException).
 process.on('unhandledRejection', (reason: unknown) => {
   console.error('[unhandledRejection] Unhandled promise rejection:', fehlertext(reason));
 });
