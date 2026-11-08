@@ -41,6 +41,9 @@
     var dunkel = theme !== 'werkbank' && (w === 'immer' || (w === 'system' && !!systemDunkel && systemDunkel.matches));
     if (dunkel) document.documentElement.setAttribute('data-dunkel', '');
     else document.documentElement.removeAttribute('data-dunkel');
+    // Die media-Attribute der Meta-Tags kennen „immer“ und „nie dunkel“ nicht; Werkbank ist ohne Variante dunkel.
+    var leiste = dunkel || theme === 'werkbank' ? '#14181d' : '#f8fafc';
+    document.querySelectorAll('meta[name=theme-color]').forEach((m) => { m.setAttribute('content', leiste); });
     return theme;
   }
   function neuAnwenden() {

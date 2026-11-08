@@ -1,8 +1,8 @@
 /**
  * Das Startgerüst malt in den Farben, die die Seite danach hat: Es folgt dem Attribut data-dunkel
  * (gesetzt von 00-theme-boot.js nach der Geräte-Einstellung „bim_dunkel“), nicht dem System allein.
- * Gemessen in Chrome mit dem Design „Stein (Blau)“; alle Skripte und Stile außer dem Boot-Skript
- * werden festgehalten, damit nur das Gerüst malt.
+ * Dasselbe gilt für <meta name="theme-color"> (Browserleiste). Gemessen in Chrome mit dem Design
+ * „Stein (Blau)“; alle Skripte und Stile außer dem Boot-Skript werden festgehalten, damit nur das Gerüst malt.
  *
  * Gegenproben (am 08.11.2026 gemessen):
  *   A  im Startstil wieder `@media (prefers-color-scheme:dark)` statt [data-dunkel]
@@ -10,6 +10,8 @@
  *   B  die Regel `[data-theme=brick][data-dunkel] .sg-kopf` entfernt
  *      → rot: „Stein dunkel: Kopf im dunklen Blau“
  *   C  die Regel `[data-theme=brick] .sg-kopf` entfernt → rot: „Stein hell: Kopf im Stein-Blau“
+ *   D  in 00-theme-boot.js die Zeilen zu `theme-color` entfernt
+ *      → rot: alle vier Fälle (Farbe der Browserleiste)
  *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL, Chrome.
  */
@@ -46,7 +48,8 @@ test('Startgerüst folgt der Geräte-Einstellung und dem Design', async t => {
     const f = getComputedStyle(sg).backgroundColor.match(/\\d+/g).map(Number);
     return { hell: 0.2126 * lin(f[0]) + 0.7152 * lin(f[1]) + 0.0722 * lin(f[2]),
       kopf: getComputedStyle(sg.querySelector('.sg-kopf')).backgroundColor,
-      dunkel: document.documentElement.hasAttribute('data-dunkel') }; })()`;
+      dunkel: document.documentElement.hasAttribute('data-dunkel'),
+      leiste: [...document.querySelectorAll('meta[name=theme-color]')].map(m => m.content) }; })()`;
 
   for (const fall of FAELLE) {
     await t.test(fall.name, async () => {
@@ -69,6 +72,11 @@ test('Startgerüst folgt der Geräte-Einstellung und dem Design', async t => {
       assert.ok(
         fall.dunkel ? m.hell < 0.05 : m.hell > 0.3,
         `Grund ${fall.dunkel ? 'dunkel' : 'hell'}, Helligkeit ${m.hell.toFixed(3)}`,
+      );
+      assert.deepEqual(
+        m.leiste,
+        fall.dunkel ? ['#14181d', '#14181d'] : ['#f8fafc', '#f8fafc'],
+        'Farbe der Browserleiste (theme-color)',
       );
       assert.equal(
         m.kopf,

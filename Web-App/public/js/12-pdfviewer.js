@@ -115,7 +115,7 @@ async function _renderPdfLazy(pdf, container) {
     // Die Seite ist ein Bild ohne Textebene; ihr Name sagt Vorlesern wenigstens, wo sie sind.
     ph.setAttribute('role', 'img');
     ph.setAttribute('aria-label', tRaw('pdf.seite_von', { n, m: pdf.numPages }));
-    ph.style.cssText = 'background:#fff;box-shadow:0 1px 5px rgba(0,0,0,.35);flex-shrink:0;margin:0 auto';
+    ph.style.cssText = 'background:var(--s200);box-shadow:0 1px 5px rgba(0,0,0,.35);flex-shrink:0;margin:0 auto';
     _pdfMassPlatzhalter(ph);
     container.appendChild(ph);
   }
@@ -157,7 +157,8 @@ async function _renderPdfPage(pdf, n, ph) {
     canvas.width = Math.round(vp.width); canvas.height = Math.round(vp.height);
     canvas.style.cssText = 'width:100%;height:100%;display:block';
     canvas.setAttribute('aria-hidden', 'true');
-    const task = page.render({ canvasContext: canvas.getContext('2d'), viewport: vp });
+    // Die Seite bleibt weiss, auch wenn der Platzhalter dahinter im dunklen Design gedämpft ist.
+    const task = page.render({ canvasContext: canvas.getContext('2d'), viewport: vp, background: '#fff' });
     _pdfRenderTasks.set(n, task);
     await task.promise;
     _pdfRenderTasks.delete(n);
