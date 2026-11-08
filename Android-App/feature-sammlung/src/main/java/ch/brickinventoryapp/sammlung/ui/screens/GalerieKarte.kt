@@ -186,7 +186,7 @@ private fun MengePlakette(set: SetAnsicht) {
 /** Bild der Kachel mit Spiegelung und, ausser in der Zeile, den Plaketten darauf. */
 @Composable
 private fun KachelBild(
-    flaeche: Modifier,
+    modifier: Modifier,
     set: SetAnsicht,
     imageUrl: String?,
     imageLoader: ImageLoader,
@@ -201,7 +201,7 @@ private fun KachelBild(
     val ctx = LocalContext.current
     // Weich einblenden nur, wenn Bewegung erwünscht ist (bewegungReduziert).
     val weich = !bewegungReduziert()
-    Box(flaeche) {
+    Box(modifier) {
         GemeinsamesBild(set.setNumber) { bild ->
             ProduktBild(
                 model = imageUrl?.let { ImageRequest.Builder(ctx).data(it)
@@ -248,7 +248,7 @@ private fun KachelBild(
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun KachelTexte(
-    spalte: Modifier,
+    modifier: Modifier,
     set: SetAnsicht,
     zeile: Boolean,
     ton: Color?,
@@ -260,7 +260,7 @@ private fun KachelTexte(
     /** Was die Bildplaketten sagen; TalkBack liest es nach dem Preis. */
     ansagen: List<String>,
 ) {
-    Box(spalte) {
+    Box(modifier) {
         Column(Modifier.padding(horizontal = 10.dp, vertical = Abstaende.klein), verticalArrangement = Arrangement.spacedBy(1.dp)) {
             Text(set.name ?: set.setNumber, fontWeight = FontWeight.SemiBold,
                 maxLines = 2, minLines = if (zeile) 1 else 2, overflow = TextOverflow.Ellipsis, style = MaterialTheme.typography.bodyMedium,
