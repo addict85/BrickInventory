@@ -10,12 +10,14 @@
  *   es ausführt: „der P&L-Pfad wählt je Set …“ (priceFor() immer Neupreis →
  *   dort rot) und „es gibt einen Diagnose-Endpunkt …“ (ohne price_cache → rot);
  *   „nur 404 wird negativ gemerkt, kein 403“ läuft in bild-proxy-deckel.test.js.
+ *   Am 08.11.2026 gestrichen: „getPriceGuide holt ohne Angabe den Neupreis“ und
+ *   „ohne Verkauf in sechs Monaten wird auf 'stock' ausgewichen“ →
+ *   bricklink-preisfuehrer-db.test.js (Gegenproben A–D dort).
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
-const { execFileSync } = require('node:child_process');
 
 const ROOT = path.join(__dirname, '..');
 // Nach dist/ bauen statt in-place — siehe helpers/sources.js.
@@ -133,20 +135,6 @@ test('die Sortierung "hat einen Preis vor passendem Zustand" ist überall weg', 
   }
 });
 
-test('getPriceGuide holt ohne Angabe den Neupreis', () => {
-  // Fundort: src/katalog/bricklinkPreise.ts (der Client fragt nur ab).
-  const src = fs.readFileSync(path.join(ROOT, 'src/katalog/bricklinkPreise.ts'), 'utf8');
-  const { pruefeParameter, funktionsKopf } = require('./helpers/sources');
-  pruefeParameter(src, 'getPriceGuide', ['setNumber', 'condition']);
-  // Der Punkt ist die VORGABE, nicht der Rest des Kopfes: Mit 'U' landete der
-  // Gebraucht-Preis unter dem Neu-Schlüssel im Cache.
-  assert.match(
-    funktionsKopf(src, 'getPriceGuide'),
-    /condition[^,)]*=\s*'N'/,
-    "Vorgabe 'U' hätte den Gebraucht-Preis in den Cache geschrieben",
-  );
-});
-
 test("guide_type ist überall 'sold', nicht 'stock'", () => {
   // 'sold' = tatsächlich erzielte Preise der letzten sechs Monate.
   // 'stock' wären eingestellte Angebote, also auch das, was niemand zahlt.
@@ -259,39 +247,6 @@ test('der Preisjob holt alle Zustände, die ein Set tatsächlich führt', () => 
     aufgaben,
     /db\.(all|get)\(/,
     'In der Schleife über die Sets darf keine Abfrage stehen — die Zustände ' + 'sind vorher gebündelt bestimmt',
-  );
-});
-
-test("ohne Verkauf in sechs Monaten wird auf 'stock' ausgewichen", () => {
-  // BrickLink liefert für selten gehandelte Artikel eine Antwort mit
-  // avg_price = 0 — 'sold' allein hiesse dort dauerhaft kein Marktpreis.
-  const bl = fs.readFileSync(path.join(ROOT, 'src/katalog/bricklinkPreise.ts'), 'utf8');
-  // Frueher stand hier `/function hasUsablePrice/` — ein Name. Die Pruefung
-  // heisst inzwischen hatPreis() und liegt in src/katalog/bricklinkPreise.ts, weil sie
-  // DIESELBE sein muss wie beim Lesen: Solange der Torwaechter hier weiter war
-  // als der Leser dort, unterblieb der Rueckfall auf 'stock' fuer genau die …
-  // Ausführlich: docs/begruendungen/test/set-value.test.js.md#stelle-2
-  assert.match(bl, /hatPreis/, 'Prüfung auf brauchbaren Preis fehlt');
-  assert.match(
-    bl,
-    /export function hatPreis\(/,
-    'Der Rückfall muss an derselben Regel hängen, die auch beim Lesen gilt (preise.ts liest sie von hier)',
-  );
-  assert.match(bl, /getPriceGuideRaw\(setNumber, condition, 'stock', currencyCode\)/, "Rückfall auf 'stock' fehlt");
-  assert.match(bl, /guide_used/, 'Es muss nachvollziehbar bleiben, woher der Wert kommt');
-  // Reihenfolge: sold gewinnt, wenn es einen Preis hat
-  assert.match(
-    bl,
-    /if \(hatPreis\(first\) \|\| guideType !== 'sold'\)/,
-    "'sold' muss Vorrang behalten, wenn dort ein Preis steht",
-  );
-
-  const fc = require('./helpers/sources').finanzQuelle();
-  const fallbacks = [...fc.matchAll(/guide_type: 'stock'/g)];
-  assert.equal(
-    fallbacks.length,
-    2,
-    'Teile- und Minifiguren-Pfad gehen nicht über getPriceGuide und brauchen den Rückfall selbst',
   );
 });
 

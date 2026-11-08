@@ -50,18 +50,6 @@ anderen aus — bei gemischten Sets fehlte damit dauerhaft eine Hälfte.
 in dist/ und im Repo nicht mehr vorhanden.
 ```
 
-<a id="stelle-2"></a>
-## `assert.match(bl, /hatPreis/, 'Prüfung auf brauchbaren Preis fehlt');`
-
-```text
-Frueher stand hier `/function hasUsablePrice/` — ein Name. Die Pruefung
-heisst inzwischen hatPreis() und liegt in src/katalog/bricklinkPreise.ts, weil sie
-DIESELBE sein muss wie beim Lesen: Solange der Torwaechter hier weiter war
-als der Leser dort, unterblieb der Rueckfall auf 'stock' fuer genau die
-Artikel, fuer die er gebaut wurde (siehe test/preisregel-db.test.js).
-Geprueft wird deshalb die Herkunft der Regel, nicht ihr Name.
-```
-
 <a id="src-stelle"></a>
 ## `const src = require('./helpers/sources').adminQuelle();`
 
