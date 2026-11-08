@@ -46,8 +46,10 @@ test('fehlendes oder veraltetes Bündel wird gebaut, ein frisches nicht angefass
   assert.equal(stelleBuendelSicher(ziel), false, 'frisches Bündel bleibt unberührt');
   assert.equal(fs.statSync(ziel).mtimeMs, mtime);
 
-  fs.writeFileSync(ziel, 'veraltet');
-  fs.utimesSync(ziel, 1, 1);
-  assert.equal(stelleBuendelSicher(ziel), true, 'veraltetes Bündel wird neu gebaut');
-  assert.equal(fs.statSync(ziel).size, groesse, 'und entspricht dem frischen Bau');
+  // Eine zweite, vorher nie geprüfte Datei: Schreiben nach Prüfen derselben Datei ist ein Dateisystem-Rennen.
+  const alt = path.join(dir, 'alt.bundle.js');
+  fs.writeFileSync(alt, 'veraltet');
+  fs.utimesSync(alt, 1, 1);
+  assert.equal(stelleBuendelSicher(alt), true, 'veraltetes Bündel wird neu gebaut');
+  assert.equal(fs.statSync(alt).size, groesse, 'und entspricht dem frischen Bau');
 });
