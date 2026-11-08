@@ -6,11 +6,11 @@ Rot: Konto nennt die beantragte E-Mail
 diff --git a/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/konto/ui/screens/EinstellungenKonto.kt b/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/konto/ui/screens/EinstellungenKonto.kt
 --- a/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/konto/ui/screens/EinstellungenKonto.kt
 +++ b/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/konto/ui/screens/EinstellungenKonto.kt
-@@ -127,7 +127,6 @@ internal fun KontoCard(
-                 // Eine neue Adresse wartet auf ihren Link, das Feld zeigt bis dahin die
-                 // geltende. Ohne den Hinweis sähe die Änderung nach dem Speichern verloren aus.
-                 supportingText = when {
--                    ausstehend != null -> { { Text(stringResource(R.string.konto_email_ausstehend, ausstehend)) } }
-                     !profil.emailBestaetigt -> { { Text(stringResource(R.string.konto_email_unverified)) } }
-                     else -> null
-                 },
+@@ -163,7 +163,6 @@
+         // Eine neue Adresse wartet auf ihren Link, das Feld zeigt bis dahin die
+         // geltende. Ohne den Hinweis sähe die Änderung nach dem Speichern verloren aus.
+         supportingText = when {
+-            ausstehend != null -> { { Text(stringResource(R.string.konto_email_ausstehend, ausstehend)) } }
+             !profil.emailBestaetigt -> { { Text(stringResource(R.string.konto_email_unverified)) } }
+             else -> null
+         },

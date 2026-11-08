@@ -1,4 +1,4 @@
 # Obergrenze fuer die Eintraege in config/detekt/baseline.xml (LongMethod, CyclomaticComplexMethod
 # mit detekts Vorgabe: 60 Zeilen, 15 Zweige). Darf sinken, nie steigen; geprueft in
 # QuelltextRatscheTest. Wer eine Funktion zerlegt, streicht ihren Eintrag und senkt die Zahl.
-96
+92
