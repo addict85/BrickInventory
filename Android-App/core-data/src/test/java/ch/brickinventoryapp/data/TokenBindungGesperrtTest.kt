@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.data
 
+import ch.brickinventoryapp.testing.testVertrauenschiffre
 import android.content.Context
 import androidx.datastore.preferences.core.PreferenceDataStoreFactory
 import androidx.datastore.preferences.core.edit
@@ -61,7 +62,7 @@ class TokenBindungGesperrtTest {
     /** Ein Prozessstart: neue Instanz, eigener Bereich, dieselbe Platte. */
     private fun start(tresor: TokenVerschluesselung): TokenAblage {
         val bereich = CoroutineScope(SupervisorJob() + Dispatchers.IO).also { bereiche += it }
-        return TokenAblage(store, tresor, GeraeteAblage(ctx, store), bereich) { EntwertungsPlaner { geplant += it } }
+        return TokenAblage(store, tresor, GeraeteAblage(ctx, store, testVertrauenschiffre()), bereich) { EntwertungsPlaner { geplant += it } }
             .also { it.warteAufStart() }
     }
 

@@ -32,6 +32,7 @@ import ch.brickinventoryapp.data.repository.TeileRepositoryImpl
 import ch.brickinventoryapp.data.repository.VerwaltungRepository
 import ch.brickinventoryapp.data.repository.VerwaltungRepositoryImpl
 import ch.brickinventoryapp.data.util.AblageChiffre
+import ch.brickinventoryapp.data.util.Vertrauenschiffre
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import java.io.File
@@ -73,6 +74,9 @@ fun ResponseCache(
     io: CoroutineDispatcher = Dispatchers.IO,
     ordnerQuelle: () -> File,
 ) = ResponseCache(bereichQuelle, altlast, chiffre, io, ordnerQuelle)
+
+/** Die Vertrauenschiffre der Geräteablage mit festem Schlüssel: Robolectric hat keinen Keystore. */
+fun testVertrauenschiffre(schluessel: Byte = 7): Vertrauenschiffre = Vertrauenschiffre { ByteArray(32) { schluessel } }
 
 /**
  * Der SitzungsDienst für Tests von ViewModels, die abmelden lassen: Er zählt nur

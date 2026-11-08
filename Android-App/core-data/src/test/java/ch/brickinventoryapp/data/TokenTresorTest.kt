@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.data
 
+import ch.brickinventoryapp.testing.testVertrauenschiffre
 import android.content.Context
 import androidx.datastore.preferences.core.PreferenceDataStoreFactory
 import androidx.datastore.preferences.core.Preferences
@@ -55,7 +56,7 @@ class TokenTresorTest {
 
     private fun start(tresor: TokenVerschluesselung = Attrappe()): TokenAblage {
         val bereich = CoroutineScope(SupervisorJob() + Dispatchers.IO).also { bereiche += it }
-        return TokenAblage(store, tresor, GeraeteAblage(ctx, store), bereich).also { it.warteAufStart() }
+        return TokenAblage(store, tresor, GeraeteAblage(ctx, store, testVertrauenschiffre()), bereich).also { it.warteAufStart() }
     }
 
     private fun platte(): Preferences = runBlocking { store.data.first() }

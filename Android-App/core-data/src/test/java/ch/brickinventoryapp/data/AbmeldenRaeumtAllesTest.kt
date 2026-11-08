@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.data
 
+import ch.brickinventoryapp.testing.testVertrauenschiffre
 import android.Manifest
 import android.app.Application
 import android.app.NotificationChannel
@@ -116,7 +117,7 @@ class AbmeldenRaeumtAllesTest {
     fun `nach dem Abmelden ist jede Ablage leer und der alte Schluessel wertlos`() = runBlocking {
         val adresse = server.url("/").toString().trimEnd('/')
         val store = PreferenceDataStoreFactory.create { File(ctx.filesDir, "abmelden-${System.nanoTime()}.preferences_pb") }
-        val geraet = GeraeteAblage(ctx, store)
+        val geraet = GeraeteAblage(ctx, store, testVertrauenschiffre())
         val prefs = TokenAblage(store, Klartresor, geraet, bereich).also { it.warteAufStart() }
         prefs.saveServerUrl(adresse)
         prefs.saveAuthToken("token-marco")

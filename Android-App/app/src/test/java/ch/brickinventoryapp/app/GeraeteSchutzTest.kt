@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.app
 
+import ch.brickinventoryapp.testing.testVertrauenschiffre
 import android.content.Context
 import android.os.SystemClock
 import android.view.InputDevice
@@ -166,7 +167,7 @@ class GeraeteSchutzTest {
     private fun ablagen(): Pair<TokenAblage, GeraeteAblage> {
         val ctx = ApplicationProvider.getApplicationContext<Context>()
         val store = PreferenceDataStoreFactory.create { File(ctx.filesDir, "test-${System.nanoTime()}.preferences_pb") }
-        val geraet = GeraeteAblage(ctx, store)
+        val geraet = GeraeteAblage(ctx, store, testVertrauenschiffre())
         val tresor = object : TokenVerschluesselung {
             override fun verschluessle(klartext: String) = klartext
             override fun entschluessle(gespeichert: String) = gespeichert

@@ -21,6 +21,7 @@ import ch.brickinventoryapp.data.TokenTausch
 import ch.brickinventoryapp.data.api.ApiJson
 import ch.brickinventoryapp.data.repository.KontoRepository
 import ch.brickinventoryapp.data.util.Ablageschluessel
+import ch.brickinventoryapp.data.util.Vertrauenschiffre
 import ch.brickinventoryapp.data.Entwertungsquelle
 import ch.brickinventoryapp.data.cache.CacheBesitzer
 
@@ -48,6 +49,18 @@ internal object DatenModule {
     ): Ablageschluessel = Ablageschluessel(
         java.io.File(context.noBackupFilesDir, "ablage.schluessel"), KeystoreTokenTresor("brickinventory_ablage"),
     )
+
+    /** Pins und Nutzer-CA-Schalter: eigener Schlüssel, damit das Abmelden sie nicht unlesbar macht. */
+    @Provides
+    @Singleton
+    fun provideVertrauenschiffre(
+        @dagger.hilt.android.qualifiers.ApplicationContext context: android.content.Context,
+    ): Vertrauenschiffre {
+        val schluessel = Ablageschluessel(
+            java.io.File(context.noBackupFilesDir, "vertrauen.schluessel"), KeystoreTokenTresor("brickinventory_vertrauen"),
+        )
+        return Vertrauenschiffre { schluessel.fuer("vertrauen") }
+    }
 
     @Provides
     @Singleton
