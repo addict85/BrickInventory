@@ -1,0 +1,17 @@
+Gegenprobe: der Abbrechen-Knopf des CSV-Imports erscheint erst aufgeklappt
+Modul: app
+Test: ch.brickinventoryapp.app.CsvAbbrechenKnopfTest
+Rot: ein laufender Import
+
+diff --git a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/screens/CsvImportBanner.kt b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/screens/CsvImportBanner.kt
+--- a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/screens/CsvImportBanner.kt
++++ b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/screens/CsvImportBanner.kt
+@@ -123,7 +123,7 @@
+         // dass der Balken sich aufklappen laesst. In der Webapp
+         // steht der Knopf ebenfalls dauerhaft da.
+         // Ausführlich: docs/begruendungen/core-ui/ui/screens/CsvImportBanner.kt.md#if
+-        if (running) {
++        if (running && expanded) {
+             // Volle 48 dp: Der Balken wird dadurch etwas höher, dafür
+             // trifft man das Abbrechen auch unterwegs.
+             MitTooltip(stringResource(R.string.csv_cancel)) {

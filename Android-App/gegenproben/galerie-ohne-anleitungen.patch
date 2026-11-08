@@ -1,0 +1,16 @@
+Gegenprobe: der Kopf der Galerie nennt die Anleitungen nicht
+Modul: app
+Test: ch.brickinventoryapp.app.GalerieMeldetNachObenTest
+Rot: der Kopf nennt
+
+diff --git a/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/screens/GalleryScreen.kt b/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/screens/GalleryScreen.kt
+--- a/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/screens/GalleryScreen.kt
++++ b/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/screens/GalleryScreen.kt
+@@ -363,7 +363,6 @@
+         // Alle Kennzahlen immer, auch mit 0: Eine Reihe, deren Chips je nach Bestand
+         // kommen und gehen, liest sich nicht gleich; 0 Figuren ist auch eine Auskunft.
+         GalleryStatChip(stats.totalMinifigs, R.plurals.gallery_stat_minifigs)
+-        GalleryStatChip(stats.totalInstructions, R.plurals.gallery_stat_instructions)
+     }
+ }
+ 

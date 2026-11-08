@@ -1,0 +1,16 @@
+Gegenprobe: die Figuren reichen den Kaufpreis nicht an die Zeile
+Modul: app
+Test: ch.brickinventoryapp.app.FinanzKaufpreisZeilenTest
+Rot: Teile und Figuren zeigen
+
+diff --git a/Android-App/feature-finanzen/src/main/java/ch/brickinventoryapp/finanzen/ui/screens/FinanceSections.kt b/Android-App/feature-finanzen/src/main/java/ch/brickinventoryapp/finanzen/ui/screens/FinanceSections.kt
+--- a/Android-App/feature-finanzen/src/main/java/ch/brickinventoryapp/finanzen/ui/screens/FinanceSections.kt
++++ b/Android-App/feature-finanzen/src/main/java/ch/brickinventoryapp/finanzen/ui/screens/FinanceSections.kt
+@@ -114,7 +114,6 @@
+                 blId = fig.blFigNumber ?: fig.figNumber,
+                 quantity = zeile.menge,
+                 priceStr = fmtWert(zeile.wert),
+-                purchaseStr = zeile.kaufGesamt?.let { fmtWert(it) },
+                 purchaseGesamt = zeile.menge > 1,
+                 condition = zeile.zustand,
+                 pnlProzent = zeile.pnlProzent,

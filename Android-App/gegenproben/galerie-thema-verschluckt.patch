@@ -1,0 +1,17 @@
+Gegenprobe: die Themenwahl im Galerie-Filter meldet nichts nach oben
+Modul: app
+Test: ch.brickinventoryapp.app.GalerieMeldetNachObenTest
+Rot: ein Thema aus dem Filter
+
+diff --git a/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/screens/GalerieFilter.kt b/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/screens/GalerieFilter.kt
+--- a/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/screens/GalerieFilter.kt
++++ b/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/screens/GalerieFilter.kt
+@@ -26,7 +26,7 @@
+     GalerieFilterBlatt(
+         members = zustand.blick.householdMembers, konto = zustand.kontoWahl(), onKonto = ereignisse.konto,
+         orte = zustand.lager.orte, lager = zustand.lagerWahl(), onLager = ereignisse.lagerort,
+-        themen = zustand.galerie.galleryThemes, thema = zustand.galerie.galleryTheme, onThema = ereignisse.thema,
++        themen = zustand.galerie.galleryThemes, thema = zustand.galerie.galleryTheme, onThema = {},
+         onSchliessen = onSchliessen,
+     )
+ }

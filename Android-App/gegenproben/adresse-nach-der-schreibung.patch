@@ -1,0 +1,24 @@
+Gegenprobe: die Server-Adresse gilt erst nach der Plattenschreibung
+Modul: core-data
+Test: ch.brickinventoryapp.data.TokenSpeicherwertTest
+Rot: Token und Adresse gelten
+
+diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/TokenAblage.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/TokenAblage.kt
+--- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/TokenAblage.kt
++++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/TokenAblage.kt
+@@ -206,7 +206,6 @@
+                 verwaistesToken(platte, alteAdresse)?.let { runCatching { entwertung.get().plane(it) } }
+                 _authTokenState.value = ""; _tokenHerkunftState.value = null
+             }
+-            _serverUrlState.value = normalized
+             dataStore.edit {
+                 it[SERVER_URL] = normalized
+                 if (anderer) {
+@@ -214,6 +213,7 @@
+                     it.remove(ANGEMELDET_AM)
+                 }
+             }
++            _serverUrlState.value = normalized
+         }
+     }
+ 
