@@ -111,6 +111,7 @@ test('Uploads: Haushalt ja, Fremde nein, %2F nie', { concurrency: 1 }, async (t)
 
   await t.test('auch ein Verwalter liest fremde Uploads nicht', async () => {
     await db.run('UPDATE users SET is_admin = true WHERE id = $1', [F]);
+    await db.run(`INSERT INTO zweiter_faktor (user_id, geheimnis, aktiv) VALUES ($1, 'x', TRUE)`, [F]);
     assert.equal((await hole(F, `/data/uploads/${H}/a.pdf`, true)).status, 404,
       'Rechnungen und Gutscheine anderer gehen die Kontoverwaltung nichts an');
   });

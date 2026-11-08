@@ -6,6 +6,7 @@ import { liefereDatei } from '../src/infra/dateiAusliefern';
 import { safeDataPath } from '../src/infra/datenPfad';
 
 import { requireLoginOrToken, angemeldeteNutzerId } from '../src/konto/http/anmeldung';
+import { eingangsSperre } from './api_v1/middleware';
 import { siehtKonto } from '../src/haushalt/haushalt';
 import { anleitungFreigegeben } from '../src/katalog/bilder/bildBlickfeld';
 
@@ -22,7 +23,7 @@ function alsAnhang(res: Response, datei: string): void {
 // Das Hauptkonto sieht die Uploads seiner Unterkonten, nicht umgekehrt. Ein
 // erstes Segment ohne Benutzer-ID wird abgewiesen.
 // Ausführlich: docs/begruendungen/routes/datenDateien.ts.md#servedatafile
-router.get('/data/uploads/*pfad', requireLoginOrToken, async (req: WildcardRequest, res: Response) => {
+router.get('/data/uploads/*pfad', requireLoginOrToken, eingangsSperre, async (req: WildcardRequest, res: Response) => {
   const userId = angemeldeteNutzerId(req);
   // Rechnungen und Gutscheine: nie in einen Zwischenspeicher, auch keine Absage.
   res.setHeader('Cache-Control', 'private, no-store');
@@ -39,7 +40,7 @@ router.get('/data/uploads/*pfad', requireLoginOrToken, async (req: WildcardReque
 
 // Geteilt abgelegt, aber unter der Setnummer: nur zu Sets im eigenen Blickfeld,
 // sonst dieselbe 404 wie für eine fehlende Datei.
-router.get('/data/instructions/*pfad', requireLoginOrToken, async (req: WildcardRequest, res: Response) => {
+router.get('/data/instructions/*pfad', requireLoginOrToken, eingangsSperre, async (req: WildcardRequest, res: Response) => {
   const segmente = pfadSegmente(req, 'pfad');
   const filePath = safeDataPath('instructions', segmente);
   if (!filePath || !await anleitungFreigegeben(angemeldeteNutzerId(req), segmente)) return res.status(404).send('Datei nicht gefunden');
