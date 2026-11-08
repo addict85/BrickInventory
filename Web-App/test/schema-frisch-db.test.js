@@ -18,9 +18,9 @@
  *   F  in db/schema-stand.sql eine Spalte gelöscht → rot: „db/schema-stand.sql
  *      zeigt das Schema, das entsteht"; ebenso eine neue Migration ohne neu
  *      erzeugte Datei
- *   D  in initSchemaOnce den Aufruf abgeloestesEntfernen() entfernt → rot:
- *      „auch ein erzwungener Lauf holt Gelöschtes nicht zurück" (elf Spalten
- *      und rb_bl_mapping kamen zurück)
+ *   D  (08.11.) initSchema() ohne die Prüfung auf eine leere Datenbank → rot:
+ *      „ein zweiter Start ändert am Schema nichts" und „auch ein erzwungener
+ *      Lauf …" (die Basis scheitert an vorhandenen Tabellen)
  *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL (darf Datenbanken anlegen).
  */
