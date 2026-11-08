@@ -836,7 +836,7 @@ window.I18N_EN = {
   'wanted.topped_up': 'topped up',
   'settings.data_zip_hint': 'Sets, own parts, minifigures, wishlist and price alerts as a ZIP with five CSV files. Each file is read back via “Import” on its own page. Vouchers are not included: number and PIN work like cash. You can save them as a PDF under “Vouchers” after confirming with your password.',
   'settings.data_zip_btn': 'Export sets, parts, minifigures, wishlist & alerts (ZIP)',
-  'monitor.title': 'Background work',
+  'monitor.title': 'Background jobs',
   'monitor.parts_lists': 'Build lists',
   'settings.clear_price_cache': 'Clear price cache',
   'header.sets': 'Sets',
