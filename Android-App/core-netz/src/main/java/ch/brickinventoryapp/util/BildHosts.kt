@@ -13,7 +13,7 @@ import okhttp3.ResponseBody.Companion.toResponseBody
  * Im Release-Build könnten Bild-Adressen aus einer Server-Antwort sonst Dienste
  * auf dem Gerät selbst ansprechen, an der Regel „nur der eigene Server“ vorbei.
  */
-internal fun istEigenerBildServer(url: HttpUrl, serverUrl: String, entwicklung: Boolean): Boolean =
+fun istEigenerBildServer(url: HttpUrl, serverUrl: String, entwicklung: Boolean): Boolean =
     (entwicklung && url.host == "localhost") || NetworkPolicy.isSameOrigin(url, serverUrl)
 
 /**

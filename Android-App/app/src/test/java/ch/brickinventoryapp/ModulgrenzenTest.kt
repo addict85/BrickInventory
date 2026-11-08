@@ -36,6 +36,9 @@ import java.io.File
  *      → rot „jede Lücke im Bauwerkzeug …“ (steht nicht in verification-metadata.xml)
  *   H ein `PdfRenderer(` in PdfSeite.kt →
  *      rot „PdfRenderer steht nur im isolierten Render-Dienst“
+ *   L  gegenproben/netz-haengt-an-ablage.patch: core-netz bindet Room ein →
+ *      rot „core-netz hängt an Ablage oder DI“ (Schichtung der Kernmodule);
+ *      erst die CI misst es, lokal gibt es kein Gradle
  */
 class ModulgrenzenTest {
 
@@ -79,7 +82,8 @@ class ModulgrenzenTest {
         val erlaubt = mapOf(
             "core-model" to emptySet(),
             "core-ressourcen" to emptySet(),
-            "core-data" to setOf("core-model", "core-ressourcen"),
+            "core-netz" to setOf("core-model"),
+            "core-data" to setOf("core-model", "core-ressourcen", "core-netz"),
             "core-ui" to setOf("core-model", "core-ressourcen"),
             "core-zustand" to setOf("core-model", "core-ressourcen", "core-data", "core-ui"),
             "core-testing" to setOf("core-zustand", "core-data", "core-ui"),
@@ -95,6 +99,17 @@ class ModulgrenzenTest {
             val haupt = hauptAbhaengigkeiten(bau)
             if (name != "core-testing") assertTrue("$name bindet core-testing nicht nur für Tests ein", "core-testing" !in haupt)
         }
+        // core-netz ist die untere Netz-Schicht: Ablage, Repositories und Hilt bleiben in core-data.
+        val netz = kerne.getValue("core-netz")
+        val bibliotheken = Regex("""\(libs\.([\w.]+)\)""").findAll(netz).map { it.groupValues[1] }.toList()
+        val ablage = listOf("androidx.room", "sqlcipher", "hilt", "androidx.hilt", "androidx.datastore", "androidx.work", "retrofit")
+        assertTrue("core-netz hängt an Ablage oder DI: $bibliotheken", bibliotheken.none { b -> ablage.any { b.startsWith(it) } })
+        val importe = File(projekt, "core-netz/src/main").walkTopDown().filter { it.isFile && it.extension == "kt" }.flatMap { f ->
+            Regex("""^import\s+([\w.]+)""", RegexOption.MULTILINE).findAll(f.readText()).map { "${f.name}: ${it.groupValues[1]}" }
+        }.toList()
+        assertTrue("Nur ${importe.size} Importe in core-netz — Pfad veraltet?", importe.size > 20)
+        val fremd = importe.filter { Regex(""": (androidx\.room|dagger|javax\.inject|retrofit2|ch\.brickinventoryapp\.data\.(repository|lokal|cache))\b""").containsMatchIn(it) }
+        assertTrue("core-netz importiert Ablage, Repositories oder DI: $fremd", fremd.isEmpty())
     }
 
     @Test

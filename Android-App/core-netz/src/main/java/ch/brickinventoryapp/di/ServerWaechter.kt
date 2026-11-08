@@ -34,7 +34,7 @@ interface Zugangslage {
 }
 
 /** Platzhalter, auf den Retrofit gebaut ist; der Wächter schreibt ihn auf den Server um. */
-internal const val PLATZHALTER_BASIS = "http://localhost:3000/"
+const val PLATZHALTER_BASIS = "http://localhost:3000/"
 
 /**
  * Der Tausch des Tokens, von aussen gesehen (data/TokenTausch). [faellig]
