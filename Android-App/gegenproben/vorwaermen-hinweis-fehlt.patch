@@ -1,0 +1,18 @@
+Gegenprobe: bei den Netzen des Vorwärmens fehlt der Hinweis zum gemessenen WLAN
+Modul: app
+Test: ch.brickinventoryapp.app.CacheLeerenFragtTest
+Rot: bei den Netzen steht der Hinweis
+
+diff --git a/Android-App/feature-verwaltung/src/main/java/ch/brickinventoryapp/verwaltung/ui/screens/MonitoringCache.kt b/Android-App/feature-verwaltung/src/main/java/ch/brickinventoryapp/verwaltung/ui/screens/MonitoringCache.kt
+--- a/Android-App/feature-verwaltung/src/main/java/ch/brickinventoryapp/verwaltung/ui/screens/MonitoringCache.kt
++++ b/Android-App/feature-verwaltung/src/main/java/ch/brickinventoryapp/verwaltung/ui/screens/MonitoringCache.kt
+@@ -241,9 +241,6 @@
+     // Ein gemessenes WLAN — der Hotspot eines anderen Telefons —
+     // zaehlt als Mobilfunk. Das steht hier, weil es sonst wie ein
+     // kaputter Schalter aussieht: „Ich bin doch im WLAN."
+-    Text(stringResource(R.string.monitoring_vorwaermen_hinweis),
+-        style = MaterialTheme.typography.bodySmall,
+-        color = MaterialTheme.colorScheme.onSurfaceVariant)
+ }
+ 
+ /** Die beiden Leeren-Knöpfe; sie öffnen nur die Rückfrage. */

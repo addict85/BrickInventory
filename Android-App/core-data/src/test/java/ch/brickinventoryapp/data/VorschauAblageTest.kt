@@ -64,13 +64,10 @@ class VorschauAblageTest {
     }
 
     @Test
-    fun `Manifest und Einstellungen tragen die Netzlage`() {
+    fun `das Manifest erlaubt das Lesen der Netzlage`() {
+        // Den Hinweis zum gemessenen WLAN bei den Netzen prüft CacheLeerenFragtTest (app).
         assert(Quellen.manifest.readText().contains("android.permission.ACCESS_NETWORK_STATE")) {
             "ACCESS_NETWORK_STATE fehlt im Manifest — dann kann die App die Netzlage gar nicht erkennen"
-        }
-        val ui = quelle("verwaltung/ui/screens/MonitoringCache.kt") + quelle("verwaltung/ui/screens/MonitoringScreen.kt")
-        assert(ui.contains("R.string.monitoring_vorwaermen_hinweis")) {
-            "Der Hinweis zum gemessenen WLAN fehlt in der Oberflaeche"
         }
     }
 }

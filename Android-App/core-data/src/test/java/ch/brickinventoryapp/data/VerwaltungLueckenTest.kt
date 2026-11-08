@@ -10,7 +10,6 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.io.File
 import ch.brickinventoryapp.testing.PfadServer
-import ch.brickinventoryapp.testing.Quellen
 import ch.brickinventoryapp.testing.ResponseCache
 import ch.brickinventoryapp.testing.TestApi
 import ch.brickinventoryapp.testing.VerwaltungRepository
@@ -33,14 +32,10 @@ import ch.brickinventoryapp.testing.VerwaltungRepository
  * Ein Wert, der ueber die Leitung kommt und niemanden erreicht — dieselbe Sorte
  * Fund wie „geschrieben und nie gelesen", nur von der anderen Seite.
  *
- * Der Test liest nur Quelltext: kein Geraet, kein Compose.
+ * Gegen einen Testserver; Zustand und Anzeige prüfen MonitoringNachladenTest und
+ * MonitoringJobsAnzeigeTest (app).
  */
 class VerwaltungLueckenTest {
-
-    private fun read(rel: String) =
-        File(Quellen.wurzel, "$rel").readText()
-    private fun code(s: String) = s.lines()
-        .joinToString("\n") { if (it.trim().startsWith("//") || it.trim().startsWith("*")) "" else it }
 
     /**
      * Ausgeführt gegen einen Testserver. Gegenproben:
@@ -75,23 +70,6 @@ class VerwaltungLueckenTest {
         val r = ApiJson.decodeFromString(JobsResponse.serializer(),
             """{"success":true,"jobs":{},"schedules":{"prices":{"type":"daily","time":"07:05"}}}""")
         assertEquals("07:05", r.schedules["prices"]?.time)
-        val vm = code(read("verwaltung/ui/viewmodel/MonitoringViewModel.kt"))
-        assert(vm.contains("jobSchedules = r.data.schedules")) {
-            "Der Zeitplan kommt nicht in den Zustand"
-        }
-        val ui = code(read("verwaltung/ui/screens/MonitoringScreen.kt"))
-        assert(ui.contains("schedule = monState.jobSchedules[key]")) {
-            "Die Job-Karte bekommt den Zeitplan nicht"
-        }
-    }
-
-    @Test
-    fun `die zwei Bilderknoepfe sind auseinanderzuhalten`() {
-        // Der eine holt die Bilder des BESTANDS nach, der andere die des
-        // KATALOGS. Zwei Knoepfe mit derselben Beschriftung waeren schlimmer
-        // als einer.
-        val ui = code(read("verwaltung/ui/screens/MonitoringScreen.kt"))
-        assert(ui.contains("R.string.monitoring_redownload_missing")) { "Bestandsbilder-Knopf fehlt" }
-        assert(ui.contains("R.string.monitoring_catalog_images")) { "Katalogbilder-Knopf fehlt" }
+        // In den Zustand und an die Job-Karte: MonitoringNachladenTest und MonitoringJobsAnzeigeTest (app).
     }
 }

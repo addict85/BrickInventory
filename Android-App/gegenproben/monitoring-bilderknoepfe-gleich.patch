@@ -1,0 +1,17 @@
+Gegenprobe: der Katalogbilder-Knopf lädt die Bestandsbilder nach
+Modul: app
+Test: ch.brickinventoryapp.app.MonitoringJobsAnzeigeTest
+Rot: die zwei Bilderknoepfe
+
+diff --git a/Android-App/feature-verwaltung/src/main/java/ch/brickinventoryapp/verwaltung/ui/screens/MonitoringScreen.kt b/Android-App/feature-verwaltung/src/main/java/ch/brickinventoryapp/verwaltung/ui/screens/MonitoringScreen.kt
+--- a/Android-App/feature-verwaltung/src/main/java/ch/brickinventoryapp/verwaltung/ui/screens/MonitoringScreen.kt
++++ b/Android-App/feature-verwaltung/src/main/java/ch/brickinventoryapp/verwaltung/ui/screens/MonitoringScreen.kt
+@@ -365,7 +365,7 @@
+                     onClick = {
+                         scope.launch {
+                             katMsg = startingMsg
+-                            if (aktionen.reiheKatalogbilderEin()) {
++                            if (aktionen.ladeFehlendeBilderNach()) {
+                                 katMsg = startedMsg
+                                 kotlinx.coroutines.delay(4000)
+                                 katMsg = null

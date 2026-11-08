@@ -5,9 +5,7 @@ import ch.brickinventoryapp.data.repository.VerwaltungRepository
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Test
-import java.io.File
 import ch.brickinventoryapp.testing.KontoRepository
-import ch.brickinventoryapp.testing.Quellen
 import ch.brickinventoryapp.testing.VerwaltungRepository
 import ch.brickinventoryapp.testing.mitRepo
 
@@ -83,11 +81,6 @@ class DesignVorAnmeldungTest {
  */
 class CacheLeerenTest {
 
-    private fun read(rel: String) =
-        File(Quellen.wurzel, "$rel").readText()
-    private fun code(s: String) = s.lines()
-        .joinToString("\n") { if (it.trim().startsWith("//") || it.trim().startsWith("*")) "" else it }
-
     /**
      * Gegen einen Testserver. Gegenprobe: in
      * VerwaltungRepository.clearCache immer `emptyMap()` → rot.
@@ -101,20 +94,5 @@ class CacheLeerenTest {
         assertEquals(listOf("POST /api/v1/admin/cache-clear", "POST /api/v1/admin/cache-clear"), pfade.anfragen.toList())
         assertEquals("Der Umfang (nur Preise / alles) wird nicht unterschieden",
             listOf("{}", """{"all":true}"""), pfade.koerper.toList())
-    }
-
-    @Test
-    fun `das Leeren fragt nach`() {
-        // Anders als die Webapp: Jeder Neuaufbau kostet Anfragen aus dem
-        // gemeinsamen Tageskontingent — das steht so im Kommentar der
-        // Serverroute (routes/api_v1/admin.ts). Ein Fehlgriff nimmt also allen
-        // anderen etwas weg, nicht nur dem, der danebengetippt hat.
-        val s = code(read("verwaltung/ui/screens/MonitoringCache.kt"))
-        assert(s.contains("R.string.monitoring_cache_clear_hint")) {
-            "Es gibt keine Rueckfrage vor dem Leeren"
-        }
-        assert(s.contains("zeigeLeerenFrage = true")) {
-            "Die Knoepfe leeren sofort statt nachzufragen"
-        }
     }
 }
