@@ -8,7 +8,8 @@ const fs     = require('node:fs');
 const path   = require('node:path');
 
 const ROOT   = path.join(__dirname, '..');
-const BUNDLE = path.join(ROOT, 'public', 'js', 'app.bundle.js');
+const { BUENDEL: BUNDLE, stelleBuendelSicher } = require('./helpers/buendel');
+stelleBuendelSicher();
 const HTML   = fs.readFileSync(path.join(ROOT, 'public', 'index.html'), 'utf8');
 
 /** Handler des Log-Betrachters: eigenes Popup, klassisches Skript, nicht im Bündel. */
@@ -33,8 +34,7 @@ function handlerNames() {
 }
 
 test('das Bündel ist gebaut', () => {
-  assert.ok(fs.existsSync(BUNDLE),
-    'public/js/app.bundle.js fehlt — bitte `npm run build:frontend` ausführen');
+  assert.ok(fs.existsSync(BUNDLE), 'public/js/app.bundle.js fehlt trotz stelleBuendelSicher()');
 });
 
 test('jeder Handler aus dem Markup ist bei der Registry angemeldet', () => {

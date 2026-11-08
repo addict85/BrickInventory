@@ -11,7 +11,9 @@ const { vervollstaendige } = require('./vertrag-fuellen');
 const ROOT = path.join(__dirname, '..', '..');
 const HTML = fs.readFileSync(path.join(ROOT, 'public', 'index.html'), 'utf8');
 // TEST_BUENDEL: das Bündel mit Sourcemap aus test-lauf.js --abdeckung.
-const BUNDLE_PFAD = process.env.TEST_BUENDEL || path.join(ROOT, 'public', 'js', 'app.bundle.js');
+const { BUENDEL, stelleBuendelSicher } = require('./buendel');
+stelleBuendelSicher();
+const BUNDLE_PFAD = process.env.TEST_BUENDEL || BUENDEL;
 const BUNDLE = fs.readFileSync(BUNDLE_PFAD, 'utf8');
 
 const ANMELDUNG = {
