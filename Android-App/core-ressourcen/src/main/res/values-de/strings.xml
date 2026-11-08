@@ -1103,6 +1103,7 @@
     <string name="zf_share_title">Wiederherstellungscodes</string>
     <string name="passwort_aendern_fehlt">Aktuelles Passwort, neues Passwort und Wiederholung eingeben, dann ändern.</string>
     <string name="erfassen_nummer_fehlt">Zuerst eine Setnummer eingeben.</string>
+    <string name="erfassen_nummer_ungueltig" tools:ignore="TypographyDashes">Das ist keine Setnummer. Erwartet wird z. B. 10294 oder 10294-1.</string>
     <string name="zustand_eingeklappt">eingeklappt</string>
     <string name="zustand_ausgeklappt">ausgeklappt</string>
     <string name="nav_sets">Sets</string>

@@ -133,6 +133,22 @@ class AblaufTest {
         compose.onNodeWithText(ctx.getString(R.string.erfassen_nummer_fehlt), useUnmergedTree = true).assertIsDisplayed()
     }
 
+    /**
+     * Eine Nummer, die keine Setnummer ist ("--"), wird nicht erfasst und am Feld erklärt.
+     * Gegenprobe: in nummerFehler() den Zweig `!NumericInput.istSetnummer(nummer)` entfernt
+     * → erfasst steht auf 1 und der Hinweis fehlt, beide Prüfungen rot.
+     */
+    @Test
+    fun `ein Set mit unsinniger Nummer sagt beim Hinzufuegen, was erwartet wird`() {
+        var erfasst = 0
+        zeige { AddSetDialog(onDismiss = {}, onAdd = { _, _, _, _, _, _ -> erfasst++ }, sofortFokus = false) }
+        compose.onNodeWithText(ctx.getString(R.string.gallery_set_number)).performTextInput("--")
+        compose.onNode(hasText(ctx.getString(R.string.gallery_add)) and hasClickAction()).performClick()
+        compose.waitForIdle()
+        assertEquals("Eine unsinnige Nummer wird nicht erfasst", 0, erfasst)
+        compose.onNodeWithText(ctx.getString(R.string.erfassen_nummer_ungueltig), useUnmergedTree = true).assertIsDisplayed()
+    }
+
     @Test
     fun `die Menge aendern schickt einen Schritt an den Server`() {
         val w = Beispiele.Welt().also { welt = it }
