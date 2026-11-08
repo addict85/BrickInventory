@@ -58,6 +58,8 @@ class NumberFormatTest {
         val schirme = listOf(
             "app/AppNavigation.kt",
             "teile/ui/screens/PartsScreen.kt",
+            "teile/ui/screens/TeileFilterBlatt.kt",
+            "teile/ui/screens/TeileKarte.kt",
             "finanzen/ui/screens/FinanceScreen.kt",
             "sammlung/ui/screens/SetDetailScreen.kt",
             "ui/screens/SetDetailComponents.kt",

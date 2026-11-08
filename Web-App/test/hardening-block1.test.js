@@ -135,6 +135,7 @@ test('kein Token reitet mehr in der Adresszeile', () => {
         path.join(__dirname, '..', '..', 'Android-App', 'feature-sammlung', 'src', 'main', 'java', 'ch', 'brickinventoryapp', 'sammlung', 'ui', 'screens', 'SetDetailAnleitungen.kt'),
         path.join(__dirname, '..', '..', 'Android-App', 'feature-sammlung', 'src', 'main', 'java', 'ch', 'brickinventoryapp', 'sammlung', 'ui', 'screens', 'SetDetailScreen.kt'),
         path.join(__dirname, '..', '..', 'Android-App', 'feature-finanzen', 'src', 'main', 'java', 'ch', 'brickinventoryapp', 'finanzen', 'ui', 'screens', 'PdfViewerScreen.kt'),
+        path.join(__dirname, '..', '..', 'Android-App', 'feature-finanzen', 'src', 'main', 'java', 'ch', 'brickinventoryapp', 'finanzen', 'ui', 'screens', 'PdfSeiten.kt'),
         // Geladen wird seit dem Umbau auf ein ViewModel hier, nicht mehr im Bildschirm.
         path.join(__dirname, '..', '..', 'Android-App', 'feature-finanzen', 'src', 'main', 'java', 'ch', 'brickinventoryapp', 'finanzen', 'ui', 'pdf', 'AnleitungsLader.kt')]
       .map(voll => {

@@ -111,7 +111,7 @@ class IconButtonLabelTest {
         }
     }
 
-    // Gegenprobe (am 27.10. gemessen): in MerklisteScreen.kt das
+    // Gegenprobe (am 27.10. gemessen): in MerklisteZeile.kt das
     // `role = Role.Button` wieder entfernt → rot mit genau dieser Stelle.
     @Test
     fun `jedes clickable nennt seine Rolle`() {

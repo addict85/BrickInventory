@@ -80,7 +80,7 @@ class CatalogScrubberTest {
 
     @Test
     fun `die Liste fuehrt alle Plaetze und laedt in beide Richtungen`() {
-        val s = code(read("katalog/ui/screens/CatalogScreen.kt"))
+        val s = code(Quellen.bildschirm("katalog/ui/screens/CatalogScreen.kt"))
         assert(s.contains("items(count = state.total")) {
             "Die Liste zählt über die geladene Teilmenge statt über das ganze Ergebnis — " +
                 "dann gibt es an der Sprungstelle nichts"

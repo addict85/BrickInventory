@@ -134,7 +134,7 @@ class KatalogSprungEntprelltTest {
 
     @Test
     fun `die Leiste rollt nur und laedt nicht selbst`() {
-        val src = Quellen.ohneKommentare(Quellen.lies("katalog/ui/screens/CatalogScreen.kt"))
+        val src = Quellen.ohneKommentare(Quellen.bildschirm("katalog/ui/screens/CatalogScreen.kt"))
 
         val ab = src.indexOf("onScrollTo = ")
         assert(ab > 0) { "Der Rueckruf der Jahresleiste ist nicht mehr zu finden" }

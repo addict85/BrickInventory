@@ -7,7 +7,7 @@ Regel verletzt — dann den Code korrigieren, nicht den Test.
 
 ## Kamera-Autofokus
 
-**Dateien:** `sammlung/ui/screens/BarcodeScannerScreen.kt`, `anmeldung/ui/screens/SetupScreen.kt`
+**Dateien:** `sammlung/ui/screens/BarcodeScannerScreen.kt`, `anmeldung/ui/screens/SetupQr.kt`
 **Test:** `CameraFocusConfigTest`
 
 1. `CONTROL_AF_MODE_CONTINUOUS_PICTURE` muss an **beiden** Use Cases stehen —
@@ -141,7 +141,7 @@ per `newBuilder()` vom injizierten api-Client, nicht mit einem neuen Client.
 
 ## Kamera-Screens räumen ihre Ressourcen auf
 
-**Dateien:** `sammlung/ui/screens/BarcodeScannerScreen.kt`, `anmeldung/ui/screens/SetupScreen.kt`
+**Dateien:** `sammlung/ui/screens/BarcodeScannerScreen.kt`, `anmeldung/ui/screens/SetupQr.kt`
 **Test:** `ResourceAndCacheTest`
 
 `remember { }` hat **keinen** Aufräum-Hook. Was darin erzeugt wird und
@@ -316,7 +316,7 @@ in keinem Verhältnis zu einer 40 KB grossen Bibliothek.
 ## CameraX 1.6.x — Provider absichern, Autofokus unangetastet
 
 **Dateien:** `gradle/libs.versions.toml`, `sammlung/ui/screens/BarcodeScannerScreen.kt`,
-`anmeldung/ui/screens/SetupScreen.kt`
+`anmeldung/ui/screens/SetupQr.kt`
 **Test:** `CameraXUpgradeTest`
 
 CameraX steht auf 1.6.1. Zwei Dinge gehören dazu:

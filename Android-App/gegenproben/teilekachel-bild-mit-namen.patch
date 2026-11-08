@@ -3,10 +3,10 @@ Modul: app
 Test: ch.brickinventoryapp.app.KachelVorlesenTest
 Rot: Teilekachel liest Name einmal
 
-diff --git a/Android-App/feature-teile/src/main/java/ch/brickinventoryapp/teile/ui/screens/PartsScreen.kt b/Android-App/feature-teile/src/main/java/ch/brickinventoryapp/teile/ui/screens/PartsScreen.kt
---- a/Android-App/feature-teile/src/main/java/ch/brickinventoryapp/teile/ui/screens/PartsScreen.kt
-+++ b/Android-App/feature-teile/src/main/java/ch/brickinventoryapp/teile/ui/screens/PartsScreen.kt
-@@ -497,8 +497,7 @@ fun PartCard(part: TeilAnsicht, serverUrl: String, imageLoader: ImageLoader,
+diff --git a/Android-App/feature-teile/src/main/java/ch/brickinventoryapp/teile/ui/screens/TeileKarte.kt b/Android-App/feature-teile/src/main/java/ch/brickinventoryapp/teile/ui/screens/TeileKarte.kt
+--- a/Android-App/feature-teile/src/main/java/ch/brickinventoryapp/teile/ui/screens/TeileKarte.kt
++++ b/Android-App/feature-teile/src/main/java/ch/brickinventoryapp/teile/ui/screens/TeileKarte.kt
+@@ -112,8 +112,7 @@
              ProduktBild(
                  model = imageUrl?.let { ImageRequest.Builder(ctx).data(it).crossfade(weich).build() },
                  imageLoader = imageLoader,

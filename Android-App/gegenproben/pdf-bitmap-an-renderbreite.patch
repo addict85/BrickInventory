@@ -3,10 +3,10 @@ Modul: feature-finanzen
 Test: ch.brickinventoryapp.finanzen.PdfZoomTest
 Rot: beim Stufenwechsel bleibt die alte Seite stehen
 
-diff --git a/Android-App/feature-finanzen/src/main/java/ch/brickinventoryapp/finanzen/ui/screens/PdfViewerScreen.kt b/Android-App/feature-finanzen/src/main/java/ch/brickinventoryapp/finanzen/ui/screens/PdfViewerScreen.kt
---- a/Android-App/feature-finanzen/src/main/java/ch/brickinventoryapp/finanzen/ui/screens/PdfViewerScreen.kt
-+++ b/Android-App/feature-finanzen/src/main/java/ch/brickinventoryapp/finanzen/ui/screens/PdfViewerScreen.kt
-@@ -444,7 +444,7 @@ private fun PdfPages(
+diff --git a/Android-App/feature-finanzen/src/main/java/ch/brickinventoryapp/finanzen/ui/screens/PdfSeiten.kt b/Android-App/feature-finanzen/src/main/java/ch/brickinventoryapp/finanzen/ui/screens/PdfSeiten.kt
+--- a/Android-App/feature-finanzen/src/main/java/ch/brickinventoryapp/finanzen/ui/screens/PdfSeiten.kt
++++ b/Android-App/feature-finanzen/src/main/java/ch/brickinventoryapp/finanzen/ui/screens/PdfSeiten.kt
+@@ -228,7 +228,7 @@
  
  @Composable
  private fun PdfPage(quelle: PdfQuelle, index: Int, renderBreitePx: Int, rendere: SeitenRenderer) {

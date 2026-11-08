@@ -74,7 +74,7 @@ class FarbeAlleinTest {
     private val geprueft = setOf(
         "MonitoringScreen.kt",
         "MonitoringKontingente.kt",
-        "SetupScreen.kt",
+        "SetupQr.kt",
         "BarcodeScannerScreen.kt",
         "PortfolioChart.kt",
         "SetDetailComponents.kt",

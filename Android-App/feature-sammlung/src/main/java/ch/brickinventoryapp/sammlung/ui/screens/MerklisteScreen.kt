@@ -1,12 +1,10 @@
 package ch.brickinventoryapp.sammlung.ui.screens
 
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.SnackbarResult
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.runtime.LaunchedEffect
 import ch.brickinventoryapp.zustand.ui.LagerUiState
 import ch.brickinventoryapp.sammlung.ui.MerkpostenDetailUiState
@@ -16,18 +14,11 @@ import ch.brickinventoryapp.zustand.ui.AppUiState
 import ch.brickinventoryapp.sammlung.ui.viewmodel.MerklisteAktionen
 import ch.brickinventoryapp.ui.components.nebenKnopfFarben
 import ch.brickinventoryapp.ui.components.nebenKnopfRand
-import androidx.compose.ui.draw.clip
 import ch.brickinventoryapp.model.ui.model.MerkpostenAnsicht
-import ch.brickinventoryapp.model.ui.model.MitgliedAnsicht
-import androidx.compose.foundation.clickable
-import androidx.compose.ui.semantics.Role
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.grid.items
-import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.semantics.selected
 import ch.brickinventoryapp.ui.components.Bewegt
-import ch.brickinventoryapp.ui.components.ansagen
 import ch.brickinventoryapp.ui.components.HinweisText
 import ch.brickinventoryapp.ui.components.KeinTrefferHinweis
 import ch.brickinventoryapp.ui.components.Ladezustand
@@ -36,46 +27,30 @@ import ch.brickinventoryapp.ui.ladeanzeige
 import androidx.compose.material.icons.filled.BookmarkBorder
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Check
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.focus.FocusRequester
-import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.font.FontWeight
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import ch.brickinventoryapp.ressourcen.R
 import androidx.compose.ui.unit.dp
 import ch.brickinventoryapp.data.repository.MERKLISTE_DEFAULT_SORT
 import ch.brickinventoryapp.sammlung.ui.viewmodel.MerklisteViewModel
 import ch.brickinventoryapp.ui.theme.Abstaende
-import ch.brickinventoryapp.ui.theme.Formen
-import ch.brickinventoryapp.ui.util.NumericInput
-import ch.brickinventoryapp.model.util.resolveThumbUrl
-import androidx.compose.material.icons.filled.NotificationsActive
-import androidx.compose.material.icons.filled.Alarm
 import ch.brickinventoryapp.model.data.ScopeFilter
 import ch.brickinventoryapp.ui.components.BarcodeSymbol
-import ch.brickinventoryapp.ui.components.ErfassenDialog
 import ch.brickinventoryapp.ui.components.ErfassenFab
 import ch.brickinventoryapp.ui.components.FabPlatz
 import ch.brickinventoryapp.ui.components.KnopfStapel
 import ch.brickinventoryapp.ui.components.ListeUndDetail
-import ch.brickinventoryapp.ui.components.ProduktBild
 import ch.brickinventoryapp.ui.components.ScanKnopf
 import ch.brickinventoryapp.ui.components.SegmentWahl
 import ch.brickinventoryapp.ui.components.SortierMenue
 import ch.brickinventoryapp.ui.components.mitSchrift
-import ch.brickinventoryapp.ui.util.fmtMoney
-import ch.brickinventoryapp.ui.screens.InfoPlakette
-import ch.brickinventoryapp.ui.screens.LagerortErfassung
-import ch.brickinventoryapp.ui.screens.OwnerPicker
 import ch.brickinventoryapp.ui.screens.ScopeFilterZeile
 import ch.brickinventoryapp.ui.screens.Suchfeld
-import ch.brickinventoryapp.ui.screens.Zustandszeile
 
 /**
  * Der Schlüssel einer Zeile: Nummer, Zustand und Konto. Dasselbe Set kann neu und
@@ -349,219 +324,3 @@ fun MerklisteUndDetail(
         )
     } else liste()
 }
-
-/**
- * Anzahl, Kaufpreis und Zustand vor der Übernahme — für ein gerade gekauftes Set
- * ist keine Vorgabe zuverlässig richtig. Dieselben Felder in derselben Reihenfolge
- * wie im Katalog-Dialog. Der Zustand ist mit dem des Merkpostens vorbelegt;
- * welcher Merkposten erledigt ist, entscheidet der Server.
- */
-@Composable
-internal fun UebernahmeDialog(
-    merkposten: MerkpostenAnsicht,
-    /** Vorrat an Lagerorten — leer heisst: es gibt noch keine, dann wird getippt. */
-    lagerorte: List<String> = emptyList(),
-    /** Der vorausgewählte Lagerort (Stern in den Einstellungen). Leer heisst: keine Vorgabe. */
-    lagerortVorgabe: String = "",
-    onDismiss: () -> Unit,
-    onUebernehmen: (Int, String, String, String?) -> Unit,
-) {
-    var anzahl   by rememberSaveable { mutableStateOf("1") }
-    var preis    by rememberSaveable { mutableStateOf("") }
-    var zustand  by rememberSaveable { mutableStateOf(merkposten.condition) }
-    // Schluessel ist die Vorgabe — dieselbe Begruendung wie im Katalog-Dialog.
-    var lagerort by rememberSaveable(lagerortVorgabe) { mutableStateOf(lagerortVorgabe) }
-
-    ErfassenDialog(
-        titel = stringResource(R.string.wanted_take),
-        bestaetigen = stringResource(R.string.wanted_take),
-        onBestaetigen = { onUebernehmen(anzahl.toIntOrNull() ?: 1, preis, zustand,
-                                        lagerort.trim().takeIf { it.isNotEmpty() }) },
-        onAbbrechen = onDismiss,
-    ) {
-        Text(merkposten.name ?: merkposten.setNumber, style = MaterialTheme.typography.bodyMedium)
-        Row(horizontalArrangement = Arrangement.spacedBy(Abstaende.klein)) {
-            // NumericInput statt eigener Filterung: Die Regel, was eine Zahl ist (genau ein
-            // Trennzeichen), steht einmal in util/NumericInput.kt.
-            OutlinedTextField(
-                shape = Formen.feld,
-                value = anzahl,
-                onValueChange = { anzahl = NumericInput.quantity(it) },
-                label = { Text(stringResource(R.string.common_quantity)) },
-                singleLine = true,
-                keyboardOptions = NumericInput.ganzzahlTastatur(),
-                modifier = Modifier.weight(1f),
-            )
-            OutlinedTextField(
-                shape = Formen.feld,
-                value = preis,
-                onValueChange = { preis = NumericInput.price(it) },
-                label = { Text(stringResource(R.string.gallery_purchase_price)) },
-                singleLine = true,
-                keyboardOptions = NumericInput.preisTastatur(),
-                modifier = Modifier.weight(1f),
-            )
-        }
-        // Mit Beschriftung „Zustand“: Zwei Chips ohne Überschrift sagten nicht, wonach sie fragen.
-        Zustandszeile(zustand, { zustand = it })
-        // Lagerort wie bei jeder anderen Erfassung.
-        LagerortErfassung(lagerort, lagerorte, { lagerort = it })
-    }
-}
-
-/**
- * Die Erfassungsmaske als Dialog, wie AddSetDialog in der Galerie — eine Karte
- * kostete auf jedem Bildschirm Platz. Nummer, Zustand, Konto; Anzahl und Kaufpreis
- * erst bei der Übernahme, ein Merkposten hat beides nicht. Der Cursor steht sofort
- * im Nummernfeld; die kurze Pause davor braucht es, weil das Feld beim ersten
- * Durchlauf noch nicht angeordnet ist.
- */
-@Composable
-private fun MerkpostenErfassenDialog(
-    householdMembers: List<MitgliedAnsicht>,
-    defaultCondition: String,
-    onDismiss: () -> Unit,
-    onAnlegen: (String, String, Int?) -> Unit,
-) {
-    var nummer  by rememberSaveable { mutableStateOf("") }
-    var zustand by rememberSaveable { mutableStateOf(defaultCondition) }
-    // Vorbelegt mit dem eigenen Konto — wer nichts waehlt, wuenscht fuer sich.
-    var besitzer by remember(householdMembers) {
-        mutableStateOf(householdMembers.firstOrNull { it.isSelf }?.id)
-    }
-
-    // „Auf die Merkliste“ bleibt antippbar und markiert dann das leere Feld: Grau ohne
-    // Grund liess raten, warum nichts geschah.
-    var nummerFehlt by rememberSaveable { mutableStateOf(false) }
-    val nummerFokus = remember { FocusRequester() }
-    LaunchedEffect(Unit) {
-        kotlinx.coroutines.delay(120)
-        try { nummerFokus.requestFocus() } catch (_: Exception) { /* Dialog schon zu */ }
-    }
-
-    ErfassenDialog(
-        titel = stringResource(R.string.wanted_add_title),
-        bestaetigen = stringResource(R.string.wanted_add_submit),
-        // Nur mitschicken, wenn es ueberhaupt eine Wahl gab — sonst schreibt der
-        // Server auf das eigene Konto.
-        onBestaetigen = {
-            if (nummer.isBlank()) nummerFehlt = true
-            else onAnlegen(nummer, zustand, if (householdMembers.size > 1) besitzer else null)
-        },
-        onAbbrechen = onDismiss,
-    ) {
-        OutlinedTextField(
-            value = nummer,
-            onValueChange = { nummer = NumericInput.setNumber(it) },
-            label = { Text(stringResource(R.string.gallery_set_number)) },
-            // Als Hilfetext statt Platzhalter: Der Platzhalter verschwand mit dem
-            // Fokus, und der Dialog fokussiert das Feld sofort.
-            isError = nummerFehlt && nummer.isBlank(),
-            supportingText = {
-                if (nummerFehlt && nummer.isBlank()) Text(stringResource(R.string.erfassen_nummer_fehlt), Modifier.ansagen())
-                else Text(stringResource(R.string.gallery_set_number_placeholder))
-            },
-            singleLine = true,
-            shape = Formen.feld,
-            // Dieselbe Tastatur wie im AddSetDialog. Ein Zahlenfeld
-            // ohne Tastaturwahl oeffnet die Buchstabentastatur — die
-            // Regel dazu steht in NumericInputTest.
-            keyboardOptions = NumericInput.setnummerTastatur(),
-            modifier = Modifier.fillMaxWidth().focusRequester(nummerFokus),
-        )
-        // Mit Beschriftung „Zustand“: Zwei Chips ohne Überschrift sagten nicht, wonach sie fragen.
-        Zustandszeile(zustand, { zustand = it })
-        // Derselbe Waehler wie beim Erfassen eines Sets. Bei einem
-        // Einzelkonto blendet er sich selbst aus (members.size < 2).
-        OwnerPicker(householdMembers, besitzer, { besitzer = it })
-    }
-}
-
-@OptIn(ExperimentalLayoutApi::class)
-@Composable
-private fun MerkpostenZeile(
-    w: MerkpostenAnsicht, serverUrl: String, imageLoader: coil3.ImageLoader,
-    gewaehlt: Boolean,
-    onOeffnen: () -> Unit,
-    /** Im Raster mit Nachbarn: gleiche Höhe erzwingen. Auf dem Telefon nicht — dort blieb eine Leerzeile. */
-    mehrspaltig: Boolean = false,
-) {
-    // Die ganze Karte öffnet das Detail — wie die Kachel in der Galerie. Sie
-    // trägt keinen Knopf, tut also auf ihrer ganzen Fläche dasselbe;
-    // Übernehmen und Löschen stehen im Detail. Steht das Detail daneben, trägt
-    // die geöffnete Karte einen Rahmen in der Hauptfarbe.
-    Card(
-        Modifier.fillMaxWidth()
-            .semantics { selected = gewaehlt }
-            .clickable(role = Role.Button, onClick = onOeffnen),
-        border = if (gewaehlt) BorderStroke(2.dp, MaterialTheme.colorScheme.primary) else null,
-        // Dieselbe Karte wie Galerie und Finanzen (AppKarte): Die graue Fläche der
-        // Vorgabe-Card war ein dritter Kartenstil für dieselbe Ebene.
-        shape = Formen.karte,
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        elevation = CardDefaults.cardElevation(defaultElevation = Formen.karteErhebung),
-    ) {
-        // Ohne Preis im Cache war der Preisjob seit dem Eintragen noch nicht da. „Preis
-        // folgt“ steht dann in der Zeile mit Nummer und Jahr: Allein rechts unten liess es
-        // eine leere Zeile in der Karte.
-        val preis = w.marktpreis
-        Column(Modifier.padding(Abstaende.mittel), verticalArrangement = Arrangement.spacedBy(Abstaende.winzig)) {
-            Row(horizontalArrangement = Arrangement.spacedBy(Abstaende.klein),
-                verticalAlignment = Alignment.CenterVertically) {
-                ProduktBild(
-                    model = resolveThumbUrl(serverUrl, w.imageLocal, w.imageUrl),
-                    contentDescription = null,
-                    imageLoader = imageLoader,
-                    modifier = Modifier.size(Abstaende.riesig + Abstaende.sehrGross).clip(MaterialTheme.shapes.small),
-                    ersatzGroesse = 28.dp,
-                    bildgrund = true,
-                )
-                Column(Modifier.weight(1f)) {
-                    // Kein Name heisst: Der Katalog kennt das Set nicht. Der
-                    // benannte Preis dafuer, dass die Merkliste keine zweite
-                    // Kopie der Stammdaten fuehrt (Migration 0021).
-                    // Immer zwei Zeilen Platz wie in der Galerie: Im Tablet-Raster stand eine
-                    // Karte mit kurzem Namen niedriger als ihre Nachbarn.
-                    Text(w.name ?: w.setNumber, fontWeight = FontWeight.SemiBold, minLines = if (mehrspaltig) 2 else 1, maxLines = 2,
-                        overflow = TextOverflow.Ellipsis)
-                    Text(
-                        listOfNotNull(
-                            w.setNumber,
-                            w.year?.toString(),
-                            stringResource(if (w.condition == "U") R.string.condition_used
-                                           else R.string.condition_new),
-                            if (preis == null) stringResource(R.string.detail_price_none_yet) else null,
-                        ).joinToString(" · "),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
-            }
-            // FlowRow: Bei grosser Schrift rückt der Preis unter die Plaketten, statt sie zu quetschen.
-            // Mindesthöhe einer Plakette, auch ohne Inhalt: Karten mit und ohne Plakette sind gleich hoch.
-            FlowRow(if (mehrspaltig) Modifier.heightIn(min = 32.dp) else Modifier,
-                    horizontalArrangement = Arrangement.spacedBy(Abstaende.klein),
-                    verticalArrangement = Arrangement.spacedBy(Abstaende.winzig)) {
-                w.alarm?.let { a ->
-                    InfoPlakette(
-                        stringResource(if (a.richtung == "ueber") R.string.wanted_alert_above else R.string.wanted_alert_below,
-                                       fmtMoney(a.schwelle, w.waehrung)),
-                        icon = if (a.ausgeloest) Icons.Default.NotificationsActive else Icons.Default.Alarm,
-                    )
-                }
-                // „Habe ich das inzwischen?" meint das BLICKFELD: Beim
-                // Grossvater heisst „ich habe es" auch „der Enkel hat es".
-                if (w.owned) InfoPlakette(stringResource(R.string.wanted_owned), icon = Icons.Default.Check)
-                Spacer(Modifier.weight(1f))
-                // Marktpreis statt Knopf: In die Sammlung übernommen wird im Merkposten-Detail.
-                if (preis != null) {
-                    Text(fmtMoney(preis, w.waehrung), fontWeight = FontWeight.Bold,
-                         maxLines = 1, softWrap = false, modifier = Modifier.align(Alignment.CenterVertically))
-                }
-            }
-        }
-    }
-}
-
-/** Mindestbreite einer Spalte der Merkliste. */
-private val MERKLISTE_SPALTE = 340.dp

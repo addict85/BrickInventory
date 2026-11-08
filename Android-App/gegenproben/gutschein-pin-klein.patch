@@ -3,10 +3,10 @@ Modul: app
 Test: ch.brickinventoryapp.app.OberflaechenRegelnTest
 Rot: Gutschein-Knoepfe
 
-diff --git a/Android-App/feature-finanzen/src/main/java/ch/brickinventoryapp/finanzen/ui/screens/GutscheineCard.kt b/Android-App/feature-finanzen/src/main/java/ch/brickinventoryapp/finanzen/ui/screens/GutscheineCard.kt
---- a/Android-App/feature-finanzen/src/main/java/ch/brickinventoryapp/finanzen/ui/screens/GutscheineCard.kt
-+++ b/Android-App/feature-finanzen/src/main/java/ch/brickinventoryapp/finanzen/ui/screens/GutscheineCard.kt
-@@ -514,7 +514,7 @@ private fun KopierZeile(
+diff --git a/Android-App/feature-finanzen/src/main/java/ch/brickinventoryapp/finanzen/ui/screens/GutscheinKarte.kt b/Android-App/feature-finanzen/src/main/java/ch/brickinventoryapp/finanzen/ui/screens/GutscheinKarte.kt
+--- a/Android-App/feature-finanzen/src/main/java/ch/brickinventoryapp/finanzen/ui/screens/GutscheinKarte.kt
++++ b/Android-App/feature-finanzen/src/main/java/ch/brickinventoryapp/finanzen/ui/screens/GutscheinKarte.kt
+@@ -160,7 +160,7 @@
      inhalt: @Composable RowScope.() -> Unit,
  ) {
      Row(
