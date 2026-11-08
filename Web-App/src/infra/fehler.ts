@@ -10,7 +10,7 @@ export function logAndContinue(kontext: string) {
   return (e: unknown) => {
     const roh = e instanceof Error && e.stack ? e.stack : (e as { message?: unknown } | null)?.message || e;
     // Zeilenumbrüche aus Fehlertexten fremder Herkunft würden eine zweite Protokollzeile vortäuschen.
-    console.warn(`[weiter-trotz-fehler] ${kontext}:`, String(roh).replace(/[\r\n]+/g, ' ⏎ '));
+    console.warn(`[weiter-trotz-fehler] ${kontext}:`, String(roh).replace(/\n|\r/g, ' ⏎ '));
   };
 }
 
