@@ -7,7 +7,7 @@ import { alarmeFuer, loescheAlarm, setzeAlarm } from '../finanzen/preisalarm';
 import { getSetting } from '../einstellungen/settings';
 import { importAlsAuftrag } from '../auftraege/importAlsAuftrag';
 import { anleitungEinreihen } from '../auftraege/anleitungsAuftrag';
-import { csvImportBus, buildJobStatus, jobGet, beiImportStand } from '../auftraege/importAuftrag';
+import { buildJobStatus, jobGet } from '../auftraege/importAuftrag';
 import {
   anleitungenZuSet,
   anleitungenZusammenlegen,
@@ -47,7 +47,7 @@ export async function lagerorteMitVorgabe(uid: number, owner: string | undefined
 
 // ── Preisalarm: gehört genau EINEM Konto, deshalb uid statt Blickfeld ────────
 
-export function alarmeDesSets(uid: number, sn: string) {
+export function setAlarmeLesen(uid: number, sn: string) {
   return alarmeFuer(uid, normalizeSetNumber(sn));
 }
 
@@ -59,7 +59,7 @@ export function alarmDesSetsLoeschen(uid: number, sn: string, condition: unknown
   return loescheAlarm(uid, normalizeSetNumber(sn), String(condition || 'N'));
 }
 
-export async function alarmeAusCsv(uid: number, text: string) {
+export async function alarmCsvImportStarten(uid: number, text: string) {
   return importAlsAuftrag<CsvImportBericht>(uid, 'alarme_csv', { waehrung: await waehrungVon(uid), text });
 }
 
@@ -93,25 +93,11 @@ export const ANLEITUNGS_WURZEL = path.join(DATA_DIR, 'uploads');
 
 type Kopf = { headers?: Record<string, unknown> };
 
-export async function importStand(uid: number, req: Kopf) {
+export async function csvImportStand(uid: number, req: Kopf) {
   return buildJobStatus(await jobGet(uid), req);
 }
 
 /** Im offenen Strom gibt es keinen Statuscode mehr: Ein Lesefehler wird zu „kein Import“. */
-export async function importStandFuerStrom(uid: number, req: Kopf, sprache: Sprache) {
+export async function csvImportStandFuerStrom(uid: number, req: Kopf, sprache: Sprache) {
   return buildJobStatus(await jobGet(uid).catch(meldeUndLiefere('sets:jobGet', null)), req, sprache);
-}
-
-/** Jeder neue Stand, aus diesem Prozess (Bus) wie aus anderen (LISTEN/NOTIFY). @returns Abmelden */
-export function beobachteImport(uid: number, melde: () => void): () => void {
-  const lokal = () => melde();
-  const fremd = (payload: unknown) => {
-    if (String(payload) === String(uid)) melde();
-  };
-  csvImportBus.on(`progress:${uid}`, lokal);
-  const abmelden = beiImportStand(fremd);
-  return () => {
-    csvImportBus.off(`progress:${uid}`, lokal);
-    abmelden();
-  };
 }

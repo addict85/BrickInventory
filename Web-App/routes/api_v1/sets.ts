@@ -22,6 +22,7 @@ import { setInfoFuerKonto, setZumBarcodeFuerKonto, teilelisteDesSets, figurenlis
          setGehoertKonto, anleitungMerken, anleitungLoeschen, setCsvImportStarten, setCsvImportAbbrechen } from '../../src/sets/dienst';
 import * as fassade from '../../src/sets/setFassade';
 import { registerSse } from '../../src/http/sseRegistry';
+import { csvImportBus, beiImportStand } from '../../src/auftraege/importAuftrag';
 import { loginOrTokenGuard, angemeldeteNutzerId, istVerwalter } from '../../src/konto/http/anmeldung';
 import { vertragsRouter } from '../../src/vertrag/pruefen';
 import type { Anfrage, Antwort, OffeneAnfrage } from '../../src/vertrag';
@@ -60,7 +61,7 @@ router.put('/sets/:setNumber/storage', requireToken, async (req: Anfrage<'PUT /a
  * benachrichtigt werden. Deshalb `user_id` statt scopeIds() — hier die Regel.
  * Ausführlich: docs/begruendungen/routes/api_v1/sets.ts.md#get-sets-setnumber-alert */
 router.get('/sets/:setNumber/alert', requireToken, async (req: Anfrage<'GET /api/v1/sets/:setNumber/alert'>, res: Antwort<'GET /api/v1/sets/:setNumber/alert'>) => {
-  res.json({ success: true, alerts: await fassade.alarmeDesSets(req.apiUser.user_id, req.pfad.setNumber) });
+  res.json({ success: true, alerts: await fassade.setAlarmeLesen(req.apiUser.user_id, req.pfad.setNumber) });
 });
 
 router.put('/sets/:setNumber/alert', requireToken, async (req: Anfrage<'PUT /api/v1/sets/:setNumber/alert'>, res: Antwort<'PUT /api/v1/sets/:setNumber/alert'>) => {
@@ -88,7 +89,7 @@ router.get('/alerts', requireToken, async (req: Anfrage<'GET /api/v1/alerts'>, r
 router.post('/alerts/import/csv', requireToken, kontoSchranke('upload'), csvEmpfang.single('file'),
   async (req: Anfrage<'POST /api/v1/alerts/import/csv'>, res: Antwort<'POST /api/v1/alerts/import/csv'>) => {
     if (!req.file) return sendeFehler(req, res, 400, 'keine_datei');
-    res.json(await fassade.alarmeAusCsv(req.apiUser.user_id, req.file.buffer.toString('utf-8')));
+    res.json(await fassade.alarmCsvImportStarten(req.apiUser.user_id, req.file.buffer.toString('utf-8')));
   });
 
 router.get('/storage/locations', requireToken, async (req: Anfrage<'GET /api/v1/storage/locations'>, res: Antwort<'GET /api/v1/storage/locations'>) => {
@@ -238,7 +239,7 @@ router.post('/sets/:sn/move', requireToken, async (req: Anfrage<'POST /api/v1/se
 const zustandsWaechter = loginOrTokenGuard({ timeoutMs: 3000 });
 
 router.get('/sets/import/csv/status', zustandsWaechter, async (req: OffeneAnfrage<'GET /api/v1/sets/import/csv/status'>, res: Antwort<'GET /api/v1/sets/import/csv/status'>) => {
-  res.json(await fassade.importStand(angemeldeteNutzerId(req), req));
+  res.json(await fassade.csvImportStand(angemeldeteNutzerId(req), req));
 });
 
 // Offene Ströme je Konto zählt kontoSchranke('strom') für alle Ströme gemeinsam.
@@ -267,10 +268,14 @@ router.get('/sets/import/csv/stream', zustandsWaechter, kontoSchranke('strom'), 
   // EventSource setzt keine Kopfzeilen, die Sprache kommt deshalb als ?sprache=.
   const gewaehlt = (req as express.Request & { abfrage: { sprache?: string } }).abfrage.sprache;
   const sprache = gewaehlt === 'en' || gewaehlt === 'de' ? gewaehlt : antwortSprache(req);
-  const stand = () => fassade.importStandFuerStrom(uid, req, sprache);
+  const stand = () => fassade.csvImportStandFuerStrom(uid, req, sprache);
   // Erst anmelden, dann den ersten Stand schicken: Sonst geht ein Ereignis
-  // zwischen Lesen und Anmelden verloren. Der Takt fängt Verpasstes auf.
-  const abmelden = fassade.beobachteImport(uid, async () => { send(await stand()); });
+  // zwischen Lesen und Anmelden verloren.
+  const onProgress = async () => { send(await stand()); };
+  csvImportBus.on(`progress:${uid}`, onProgress);
+  // Andere Worker melden über LISTEN/NOTIFY; der Takt fängt Verpasstes auf.
+  const onNotify = async (payload: unknown) => { if (String(payload) === String(uid)) send(await stand()); };
+  const abmelden = beiImportStand(onNotify);
   const fallbackTimer = setInterval(async () => { send(await stand()); }, 120000);
   const heartbeat = setInterval(() => { if (!closed) res.write(': keep-alive\n\n'); }, 20000);
   send(await stand());
@@ -278,6 +283,7 @@ router.get('/sets/import/csv/stream', zustandsWaechter, kontoSchranke('strom'), 
   function cleanup() {
     if (closed) return;
     closed = true;
+    csvImportBus.off(`progress:${uid}`, onProgress);
     abmelden();
     clearInterval(fallbackTimer);
     clearInterval(heartbeat);
