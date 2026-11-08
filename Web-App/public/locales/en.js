@@ -1356,7 +1356,7 @@ window.I18N_EN = {
   'monitor.auftraege.einzeln': 'Individual jobs',
   'monitor.auftraege.mehr': 'and {n} more',
   'monitor.sched.ungueltig': 'Please enter the time as HH:MM, e.g. 03:00.',
-  'rb_key.banner_short': 'No new sets without a Rebrickable key.',
+  'rb_key.banner_short': 'Rebrickable key missing',
   'rb_key.banner_link_short': 'Add key',
   'vouchers.mehr': 'More',
   'vouchers.waehrung_abweichend': 'not {w} like the country of issue',
