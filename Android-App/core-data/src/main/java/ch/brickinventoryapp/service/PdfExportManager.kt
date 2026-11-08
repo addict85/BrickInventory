@@ -206,7 +206,7 @@ class PdfExportManager @Inject constructor(
                                 obj["error"]?.jsonPrimitive?.content ?: s(R.string.pdfexp_server_error)); settle(false) }
                             "running" -> jobRunning = true  // Countdown-Anzeige übernimmt der Ticker.
                         }
-                    } catch (_: Exception) {}
+                    } catch (_: Exception) { /* Ereignis nicht lesbar — das nächste oder der Rückfall unten entscheidet */ }
                 }
                 // Stream sauber geschlossen ohne Ergebnis → Fallback
                 override fun onClosed(eventSource: EventSource) { settle(null) }

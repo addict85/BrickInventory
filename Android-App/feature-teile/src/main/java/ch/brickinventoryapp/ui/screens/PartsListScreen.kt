@@ -199,7 +199,7 @@ fun PartsListScreen(
         LaunchedEffect(manuelleErfassungAnfordern) {
             if (manuelleErfassungAnfordern) {
                 kotlinx.coroutines.delay(120)
-                try { setFeldFokus.requestFocus() } catch (_: Exception) {}
+                try { setFeldFokus.requestFocus() } catch (_: Exception) { /* Dialog schon zu */ }
                 onManuelleErfassungQuittiert()
             }
         }
