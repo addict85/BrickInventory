@@ -54,7 +54,7 @@ export async function moveSetBetweenAccounts(
       condition: a.condition, createdAt: a.created_at,
       geschaetzt: a.price_estimated, currency: a.currency,
     }, tx);
-    await repo.loescheSetErfassung(tx, a.id);
+    await repo.loescheSetErfassung(tx, a.id, [fromId]);
   }
 
   const counts = await copyContents(tx, sn, fromId, toId);
@@ -92,7 +92,7 @@ export async function moveManualAcquisition(
     condition: acq.condition, createdAt: acq.created_at,
     geschaetzt: acq.price_estimated, currency: acq.currency,
   }, tx);
-  await repo.loescheManuelleErfassung(tx, kind, acq.id);
+  await repo.loescheManuelleErfassung(tx, kind, acq.id, [fromId]);
 
   if (remaining > 0) return { quantity: movingQty, merged: !!dst, source_emptied: false };
   await repo.entferneManuell(tx, kind, fromId, keyValues, src.id);

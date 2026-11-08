@@ -45,8 +45,8 @@ export async function legeSetAn(tx: DbSchnittstelle, uid: number, sn: string, ad
   await tx.run('INSERT INTO sets (user_id, set_number, added_at) VALUES ($1,$2,$3)', [uid, sn, addedAt]);
 }
 
-export async function loescheSetErfassung(tx: DbSchnittstelle, id: number): Promise<void> {
-  await tx.run('DELETE FROM set_acquisitions WHERE id=$1', [id]);
+export async function loescheSetErfassung(tx: DbSchnittstelle, id: number, konten: number[]): Promise<void> {
+  await tx.run('DELETE FROM set_acquisitions WHERE id=$1 AND user_id = ANY($2)', [id, konten]);
 }
 
 /** Manuelle Teile und Figuren bleiben. */
@@ -98,11 +98,11 @@ export async function legeManuellAn(tx: DbSchnittstelle, art: Art, uid: number, 
     await tx.run(`INSERT INTO minifigs (user_id, fig_number, source) VALUES ($1,$2,'manual')`, [uid, ...schluessel]);
 }
 
-export async function loescheManuelleErfassung(tx: DbSchnittstelle, art: Art, id: number): Promise<void> {
-  await tx.run(`DELETE FROM ${ERF[art]} WHERE id = $1`, [id]);
+export async function loescheManuelleErfassung(tx: DbSchnittstelle, art: Art, id: number, konten: number[]): Promise<void> {
+  await tx.run(`DELETE FROM ${ERF[art]} WHERE id = $1 AND user_id = ANY($2)`, [id, konten]);
 }
 
 export async function entferneManuell(tx: DbSchnittstelle, art: Art, uid: number, schluessel: (string | number)[], zeile: number): Promise<void> {
   await tx.run(`DELETE FROM ${ERF[art]} WHERE user_id = $1 AND ${SCHLUESSEL[art]}`, [uid, ...schluessel]);
-  await tx.run(`DELETE FROM ${TAB[art]} WHERE id = $1`, [zeile]);
+  await tx.run(`DELETE FROM ${TAB[art]} WHERE id = $1 AND user_id = $2`, [zeile, uid]);
 }

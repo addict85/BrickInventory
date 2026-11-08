@@ -20,10 +20,10 @@ export function erfassungenNeuesteZuerst(tx: DbSchnittstelle, art: ManuelleArt, 
     [uid, ...schluessel]);
 }
 
-export async function entferneErfassung(tx: DbSchnittstelle, art: ManuelleArt, id: number): Promise<void> {
-  await tx.run(`DELETE FROM ${ERF[art]} WHERE id=$1`, [id]);
+export async function entferneErfassung(tx: DbSchnittstelle, art: ManuelleArt, id: number, konten: number[]): Promise<void> {
+  await tx.run(`DELETE FROM ${ERF[art]} WHERE id=$1 AND user_id = ANY($2)`, [id, konten]);
 }
 
-export async function kuerzeErfassung(tx: DbSchnittstelle, art: ManuelleArt, id: number, um: number): Promise<void> {
-  await tx.run(`UPDATE ${ERF[art]} SET quantity=quantity-$1 WHERE id=$2`, [um, id]);
+export async function kuerzeErfassung(tx: DbSchnittstelle, art: ManuelleArt, id: number, um: number, konten: number[]): Promise<void> {
+  await tx.run(`UPDATE ${ERF[art]} SET quantity=quantity-$1 WHERE id=$2 AND user_id = ANY($3)`, [um, id, konten]);
 }
