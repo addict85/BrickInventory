@@ -4,13 +4,13 @@ Test: ch.brickinventoryapp.AblaufTest
 Rot: ein Set ohne Nummer sagt beim Tippen
 
 diff --git a/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/ui/screens/GalleryScreen.kt b/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/ui/screens/GalleryScreen.kt
-index f08891b..40a14a1 100644
+index 2e57b18..4895221 100644
 --- a/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/ui/screens/GalleryScreen.kt
 +++ b/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/ui/screens/GalleryScreen.kt
-@@ -816,7 +816,6 @@ fun AddSetDialog(
+@@ -830,7 +830,6 @@ fun AddSetDialog(
  
      fun submit() {
-         if (setNumber.isBlank()) {
+         if (nummerFehler(setNumber, geprueft = true) != null) {
 -            nummerFehlt = true
              if (sofortFokus) setFeldFokus.fokusWennOffen()
          } else if (!erfassungUngueltig(quantity, purchasePrice)) {
