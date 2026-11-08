@@ -47,38 +47,3 @@ Endpunkt, eine neue Ansicht, ein neuer Zwischenaufruf — alles ist von selbst
 mitgeprüft. Eine Liste hier wäre eine zweite Wahrheit, die beim nächsten
 Umbau still veraltet.
 ```
-
-<a id="aufrufeohnefilter"></a>
-## `function aufrufeOhneFilter(name, konten, tiefe = 0, gesehen = new Set(`
-
-```text
-Trägt dieser Aufruf den Filter?
-
-Geprüft wird JE AUFRUF, nicht je Ladefunktion. Die erste Fassung dieses
-Tests fragte „steht irgendwo in der Aufrufkette ein scopeQuery()?" — und
-war damit blind für genau den zweiten Fund: `loadGallery()` baut den
-Filter über galleryParams(), ruft am Ende aber
-`enrichGalleryWithPrices()`, das /v1/finance/pnl OHNE Filter holte. Die
-Kette trug ihn, der Aufruf nicht.
-```
-
-<a id="aufruf"></a>
-## `const aufruf = aufrufText(treffer.koerper, m.index);`
-
-```text
-Der Filter darf im Aufruf selbst stehen (scopeQuery/scopeMode) oder in
-einem Helfer, dessen Ergebnis angehängt wird.
-
-── Zwei Verschärfungen vom 20.10. (GEMESSEN) ────────────────────────
-
-1. Geprüft wird der AUFRUF, nicht die nächsten 220 Zeichen. Hier stand
-   `koerper.slice(m.index, m.index + 220)`, und das Fenster reichte in
-   die NÄCHSTE Zeile: In loadManualParts() stehen zwei Abrufe im selben
-   Promise.all, und der zweite trug `scopeQuery('parts')`. Der erste
-   galt damit als geprüft, obwohl in ihm nichts davon stand — er war
-   grün durch seinen Nachbarn.
-2. Der Helfer wird am INHALT erkannt, nicht am Namen. Hier stand
-   `\w*[Pp]arams\(`. manuellQuery() baut denselben Filter für die
-   manuellen Listen und heisst nur anders — die Regel hätte einen
-   Umbau gemeldet, der sie erfüllt.
-```
