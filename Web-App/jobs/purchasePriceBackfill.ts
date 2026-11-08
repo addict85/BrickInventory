@@ -3,7 +3,7 @@ import { setzeGeschaetztenPreis, setErfassungenOhnePreis, teilErfassungenOhnePre
 import { teilfarbenbilderNachtragen } from '../src/katalog/katalogAbgleich';
 import { blAbrufNummer } from '../src/katalog/blZuordnung';
 import { fehlertext, meldeFehler, meldeUndLiefere } from '../src/infra/fehler';
-import { sleep } from '../src/katalog/quellen';
+import { setTimeout as warte } from 'node:timers/promises';
 
 // Idempotent: Erfassungen ohne Kaufpreis bekommen den Marktpreis, wie beim
 // Erfassen ohne Kaufpreis.
@@ -32,7 +32,7 @@ async function backfillAcquisitions() {
       // Eine Zeile bricht den Nachtrag nicht ab, wird aber gemeldet.
       log(`übersprungen (${row.set_number}): ${fehlertext(e)}`);
     }
-    await sleep(1500); // Tageskontingent von BrickLink schonen
+    await warte(1500); // Tageskontingent von BrickLink schonen
   }
   log(`Erfassungen nachgetragen: ${done} von ${rows.length}`);
 }
@@ -52,7 +52,7 @@ async function backfillTeileErfassungen() {
         if (await setzeGeschaetztenPreis('part', row.id, price)) done++;
       }
     } catch (e) { meldeFehler('kaufpreis-nachtrag:teil-erfassung', e); }
-    await sleep(1500);
+    await warte(1500);
   }
   log(`Teile-Erfassungen nachgetragen: ${done}/${rows.length}`);
 }
@@ -72,7 +72,7 @@ async function backfillFigurenErfassungen() {
         if (await setzeGeschaetztenPreis('fig', row.id, price)) done++;
       }
     } catch (e) { meldeFehler('kaufpreis-nachtrag:figur-erfassung', e); }
-    await sleep(1500);
+    await warte(1500);
   }
   log(`Figuren-Erfassungen nachgetragen: ${done}/${rows.length}`);
 }
