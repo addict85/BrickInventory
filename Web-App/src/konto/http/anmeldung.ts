@@ -91,6 +91,12 @@ export async function resolveUserId(req: Request): Promise<number | null> {
   return user ? user.user_id : null;
 }
 
+/** 429 statt 401: Bei 401 darf die App den Zugang verwerfen, und der gilt vielleicht. */
+export function sendeTokenAbsage(req: Request, res: Response): void {
+  if (req.tokenAbsage === 'zu_viele_anfragen') sendeFehler(req, res, 429, 'zu_viele_anfragen', { minuten: 1 });
+  else sendeFehler(req, res, 401, req.tokenAbsage ?? 'nicht_angemeldet');
+}
+
 /** @param opts.timeoutMs Antwortet nach dieser Zeit mit 503: Der Fortschritts-
  *   kanal soll bei voller Datenbank nicht stauen. */
 export function loginOrTokenGuard(opts: { timeoutMs?: number } = {}) {
@@ -106,7 +112,7 @@ export function loginOrTokenGuard(opts: { timeoutMs?: number } = {}) {
     if (timer) clearTimeout(timer);
     if (res.headersSent) return;               // Zeitlimit war schneller
     if (uid) { req.tokenUserId = uid; return next(); }
-    return sendeFehler(req, res, 401, req.tokenAbsage ?? 'nicht_angemeldet');
+    return sendeTokenAbsage(req, res);
   };
 }
 

@@ -5,7 +5,7 @@ import express from 'express';
 import type { Request, Response, NextFunction, RequestHandler } from 'express';
 import { zuGrosseId } from '../../src/infra/validate';
 import { validateToken } from '../../src/konto/auth';
-import { resolveUserId, nutzerId, zweiterFaktorPflicht } from '../../src/konto/http/anmeldung';
+import { resolveUserId, sendeTokenAbsage, nutzerId, zweiterFaktorPflicht } from '../../src/konto/http/anmeldung';
 import { belegeKontoPlatz, type Schranke } from '../../src/http/kontoSchranke';
 import { mussPasswortAendern } from '../../src/konto/konten';
 import type { Sicht } from '../../src/haushalt/haushalt';
@@ -57,7 +57,7 @@ export async function anmeldungAmEingang(req: Request, res: Response, next: Next
                     ...(req.session.username ? { username: req.session.username } : {}) };
   } else {
     const uid = await resolveUserId(req).catch(meldeUndLiefere('eingang:resolveUserId', null));
-    if (!uid) return sendeFehler(req, res, 401, req.tokenAbsage ?? 'nicht_angemeldet');
+    if (!uid) return sendeTokenAbsage(req, res);
     req.tokenUserId = uid;
   }
   return eingangsSperre(req, res, next);
