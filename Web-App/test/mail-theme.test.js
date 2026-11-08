@@ -9,7 +9,8 @@ const path = require('node:path');
 
 const ROOT = path.join(__dirname, '..');
 // Palette und Gerüst stehen in vorlage.ts, die Mailtexte in mailer.ts.
-const SRC = ['vorlage', 'mailer'].map(d => fs.readFileSync(path.join(ROOT, `src/mail/${d}.ts`), 'utf8')).join('\n');
+const SRC = fs.readFileSync(path.join(ROOT, 'src/mail/vorlage.ts'), 'utf8') + '\n'
+  + fs.readFileSync(path.join(ROOT, 'src/mail/mailer.ts'), 'utf8');
 const { pruefeParameter, funktionsKopf } = require('./helpers/sources');
 
 test('es gibt eine Palette je Design', () => {
