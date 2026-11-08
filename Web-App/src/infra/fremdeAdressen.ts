@@ -17,6 +17,10 @@ export const ERLAUBTE_DOWNLOAD_HOSTS = [
 /** JSON- und Seitenabrufe: Rebrickable, Anleitungsbilder, EAN-Suche. */
 export const ERLAUBTE_API_HOSTS = ['rebrickable.com', 'lego.brickinstructions.com', 'api.upcitemdb.com'];
 
+/** Nur dorthin geht der Rebrickable-Schlüssel: Die anderen Hosts der Liste oben brauchen ihn nicht,
+ * und eine Antwort mit `next` auf einen davon bekäme ihn sonst mit. */
+export const ERLAUBTE_REBRICKABLE_HOSTS = ['rebrickable.com'];
+
 /** Exakter Host samt Port (`u.host` lässt den Standardport weg); Subdomains nur
  * bei ausdrücklichem „*."-Eintrag, denn ein S3-Eimer „x.bdpinstructions" gehört
  * nicht dem Eimer „bdpinstructions". „evil@host" und „host:22" sehen erlaubt
