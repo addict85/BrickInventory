@@ -114,7 +114,7 @@
     <string name="setup_invalid_qr">Invalid QR code — please use a BrickInventory QR code</string>
     <string name="setup_subtitle">Server setup</string>
     <string name="setup_scan_qr">Scan QR code</string>
-    <string name="setup_or_manual">  or manually  </string>
+    <string name="setup_or_manual">or manually</string>
     <string name="setup_server_url">Server address</string>
     <string name="setup_url_label">Server address of the BrickInventory Manager web app</string>
     <string name="setup_url_placeholder">https://brick.fritz.box</string>
