@@ -42,7 +42,7 @@ import org.robolectric.ParameterizedRobolectricTestRunner
 import org.robolectric.RuntimeEnvironment
 import org.robolectric.annotation.GraphicsMode
 import ch.brickinventoryapp.data.repository.Ergebnis
-import ch.brickinventoryapp.zustand.ui.fehlerTextBrauchtCode
+import ch.brickinventoryapp.zustand.ui.fehlerTextArgument
 import ch.brickinventoryapp.zustand.ui.fehlerTextId
 import ch.brickinventoryapp.zustand.ui.viewmodel.Texte
 import android.content.Context
@@ -262,8 +262,8 @@ internal class KontextTexte(
         ctx.resources.getQuantityString(id, anzahl, *args)
     override fun meldung(fehler: Ergebnis.Error): String {
         if (fehler.message.isNotBlank()) return fehler.message
-        val id = fehlerTextId(fehler.art)
-        return if (fehlerTextBrauchtCode(fehler.art)) text(id, fehler.httpCode ?: 0) else text(id)
+        val id = fehlerTextId(fehler)
+        return fehlerTextArgument(fehler)?.let { text(id, it) } ?: text(id)
     }
     override fun angemeldet() = true
 }

@@ -1,8 +1,7 @@
 package ch.brickinventoryapp.zustand
 
-import ch.brickinventoryapp.data.repository.Fehlerart
 import ch.brickinventoryapp.ui.Fehlerklasse
-import ch.brickinventoryapp.zustand.ui.fehlerTextBrauchtCode
+import ch.brickinventoryapp.zustand.ui.fehlerTextArgument
 import ch.brickinventoryapp.zustand.ui.fehlerklasse
 import ch.brickinventoryapp.zustand.ui.fehlerTextId
 import org.junit.Test
@@ -23,73 +22,92 @@ import ch.brickinventoryapp.data.repository.Ergebnis
  * eine ganz normale Funktion. Die Lehre aus Punkt 1 der Durchsicht im Kleinen —
  * was schwer prüfbar ist, ist meistens nur mit etwas verwoben, das es nicht
  * braucht.
+ *
+ * Gegenproben:
+ *   fehlertext-zeit-wie-netz      Zeitueberschreitung auf err_network gelegt → rot
+ *                                 „jede Fehlerart hat einen eigenen Text“
+ *   fehlerklasse-401-unbekannt    Abgewiesen in fehlerklasse() auf UNBEKANNT → rot
+ *                                 „jede Fehlerart hat eine passende Klasse“
  */
 class FehlerTexteTest {
 
+    /** Je Art ein Beispiel; [name] ist erschöpfend, eine neue Art bricht dort den Build. */
+    private val beispiele = listOf(
+        Ergebnis.Error.Netz(), Ergebnis.Error.Zeitueberschreitung, Ergebnis.Error.Abgebrochen,
+        Ergebnis.Error.LeereAntwort(), Ergebnis.Error.Abgewiesen(), Ergebnis.Error.Server(500),
+        Ergebnis.Error.Klartext, Ergebnis.Error.Unbekannt(),
+    )
+
+    private fun name(f: Ergebnis.Error): String = when (f) {
+        is Ergebnis.Error.Netz -> "Netz"
+        Ergebnis.Error.Zeitueberschreitung -> "Zeitueberschreitung"
+        Ergebnis.Error.Abgebrochen -> "Abgebrochen"
+        is Ergebnis.Error.LeereAntwort -> "LeereAntwort"
+        is Ergebnis.Error.Abgewiesen -> "Abgewiesen"
+        is Ergebnis.Error.Server -> "Server"
+        Ergebnis.Error.Klartext -> "Klartext"
+        is Ergebnis.Error.Unbekannt -> "Unbekannt"
+    }
+
     @Test
     fun `jede Fehlerart hat einen eigenen Text`() {
-        val zuordnung = Fehlerart.entries.associateWith { fehlerTextId(it) }
+        assert(beispiele.map(::name).toSet().size == 8) { "Nicht jede Art hat ein Beispiel" }
+        val zuordnung = beispiele.associate { name(it) to fehlerTextId(it) }
 
         zuordnung.forEach { (art, id) ->
             assert(id != 0) { "$art hat keine Textressource" }
         }
 
-        // UNBEKANNT und ein fehlendes `art` teilen sich absichtlich denselben
-        // Text; alle anderen müssen unterscheidbar sein. Zwei Ursachen mit
-        // demselben Satz wären für den Nutzer nicht zu trennen, und die
-        // Unterscheidung ist der ganze Zweck der Aufzählung.
-        val ohneUnbekannt = zuordnung.filterKeys { it != Fehlerart.UNBEKANNT }
-        val doppelt = ohneUnbekannt.entries
+        // Ein Abriss mitten im Strom heisst für den Nutzer dasselbe wie kein Netz
+        // und teilt sich darum dessen Satz; alle anderen müssen unterscheidbar sein.
+        // Zwei Ursachen mit demselben Satz wären für den Nutzer nicht zu trennen.
+        val ohneAbriss = zuordnung.filterKeys { it != "Abgebrochen" }
+        val doppelt = ohneAbriss.entries
             .groupBy { it.value }
             .filterValues { it.size > 1 }
-            .values.map { gruppe -> gruppe.joinToString { it.key.name } }
+            .values.map { gruppe -> gruppe.joinToString { it.key } }
         assert(doppelt.isEmpty()) {
             "Diese Fehlerarten zeigen denselben Text: ${doppelt.joinToString(" | ")}"
         }
     }
 
     @Test
-    fun `ohne Angabe gilt der Unbekannt-Text`() {
-        assert(fehlerTextId(null) == fehlerTextId(Fehlerart.UNBEKANNT)) {
-            "null muss denselben Text liefern wie UNBEKANNT — sonst hängt die " +
-                "Meldung davon ab, ob eine Ursache fehlt oder als unbekannt gemeldet wurde"
+    fun `ein Abriss im Strom zeigt den Netz-Text`() {
+        assert(fehlerTextId(Ergebnis.Error.Abgebrochen) == fehlerTextId(Ergebnis.Error.Netz())) {
+            "Abgebrochen hiess bisher „kein Netz“ — ein neuer Satz wäre eine Änderung, kein Umbau"
         }
     }
 
     @Test
     fun `nur der Serverfehler braucht den HTTP-Code`() {
         // getString() mit einem überzähligen Argument wirft nicht, sondern
-        // liefert stillschweigend denselben Text — ein falsches `true` hier
-        // fiele also nirgends auf. Umgekehrt zeigte ein falsches `false` beim
+        // liefert stillschweigend denselben Text — ein falsches Argument hier
+        // fiele also nirgends auf. Umgekehrt zeigte ein fehlendes beim
         // Serverfehler den Platzhalter „%1$d" im Klartext.
-        assert(fehlerTextBrauchtCode(Fehlerart.SERVER)) { "SERVER braucht den Code" }
-        Fehlerart.entries.filter { it != Fehlerart.SERVER }.forEach {
-            assert(!fehlerTextBrauchtCode(it)) { "$it braucht keinen Code" }
+        assert(fehlerTextArgument(Ergebnis.Error.Server(503)) == 503) { "Server braucht den Status" }
+        beispiele.filter { it !is Ergebnis.Error.Server }.forEach {
+            assert(fehlerTextArgument(it) == null) { "${name(it)} braucht keinen Code" }
         }
-        assert(!fehlerTextBrauchtCode(null))
     }
 
     /**
-     * Jede Art landet in der Klasse, deren Rat zu ihr passt; ein 401 und ein 5xx
-     * auch ohne Art. Gegenprobe: `f.unauthorized ||` aus
-     * fehlerklasse() gestrichen → rot (401 ohne Art ergab UNBEKANNT); ZEIT aus dem
-     * OFFLINE-Zweig genommen → rot.
+     * Jede Art landet in der Klasse, deren Rat zu ihr passt; ein 5xx auch mit eigenem
+     * Satz, ein 4xx mit Satz ist eine Auskunft. Gegenprobe siehe Kopf
+     * (fehlerklasse-401-unbekannt).
      */
     @Test
     fun `jede Fehlerart hat eine passende Klasse`() {
-        fun fehler(art: Fehlerart?, code: Int? = null, abgemeldet: Boolean = false) =
-            Ergebnis.Error("", unauthorized = abgemeldet, art = art, httpCode = code)
         val erwartet = mapOf(
-            Fehlerart.NETZ to Fehlerklasse.OFFLINE, Fehlerart.ZEIT to Fehlerklasse.OFFLINE,
-            Fehlerart.VERBINDUNG_BEENDET to Fehlerklasse.OFFLINE, Fehlerart.SERVER to Fehlerklasse.SERVER,
-            Fehlerart.LEERE_ANTWORT to Fehlerklasse.SERVER, Fehlerart.NICHT_ANGEMELDET to Fehlerklasse.ANMELDUNG,
-            Fehlerart.SITZUNG_ABGELAUFEN to Fehlerklasse.ANMELDUNG, Fehlerart.KLARTEXT to Fehlerklasse.UNBEKANNT,
-            Fehlerart.UNBEKANNT to Fehlerklasse.UNBEKANNT,
+            "Netz" to Fehlerklasse.OFFLINE, "Zeitueberschreitung" to Fehlerklasse.OFFLINE,
+            "Abgebrochen" to Fehlerklasse.OFFLINE, "Server" to Fehlerklasse.SERVER,
+            "LeereAntwort" to Fehlerklasse.SERVER, "Abgewiesen" to Fehlerklasse.ANMELDUNG,
+            "Klartext" to Fehlerklasse.UNBEKANNT, "Unbekannt" to Fehlerklasse.UNBEKANNT,
         )
-        assert(erwartet.keys == Fehlerart.entries.toSet()) { "neue Fehlerart ohne Klasse" }
-        erwartet.forEach { (art, k) -> assert(fehlerklasse(fehler(art)) == k) { "$art ergab ${fehlerklasse(fehler(art))}" } }
-        assert(fehlerklasse(fehler(null, 401, abgemeldet = true)) == Fehlerklasse.ANMELDUNG)
-        assert(fehlerklasse(fehler(null, 503)) == Fehlerklasse.SERVER)
-        assert(fehlerklasse(fehler(null, 409)) == Fehlerklasse.UNBEKANNT)
+        assert(erwartet.keys == beispiele.map(::name).toSet()) { "neue Fehlerart ohne Klasse" }
+        beispiele.forEach { f -> assert(fehlerklasse(f) == erwartet[name(f)]) { "${name(f)} ergab ${fehlerklasse(f)}" } }
+        assert(fehlerklasse(Ergebnis.Error.Abgewiesen("Satz")) == Fehlerklasse.ANMELDUNG)
+        assert(fehlerklasse(Ergebnis.Error.Server(503, "Satz")) == Fehlerklasse.SERVER)
+        assert(fehlerklasse(Ergebnis.Error.Server(409, "Satz")) == Fehlerklasse.UNBEKANNT)
+        assert(fehlerklasse(Ergebnis.Error.Server(409)) == Fehlerklasse.SERVER)
     }
 }

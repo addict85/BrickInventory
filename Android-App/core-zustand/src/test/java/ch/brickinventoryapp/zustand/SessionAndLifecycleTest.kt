@@ -45,11 +45,10 @@ class SessionAndLifecycleTest {
     /**
      * Ein 401 ist von einem gewöhnlichen Serverfehler unterscheidbar — sonst bliebe
      * ein abgelaufener Token unerkannt. Ausgeführt gegen einen Testserver.
-     * Gegenprobe: in RepoBasis.safeCall `unauthorized =
-     * false` → rot.
+     * Gegenprobe: in sicherAufrufen() 401 als Server statt Abgewiesen → rot.
      */
     @Test
-    fun `safeCall markiert 401 als unauthorized`() {
+    fun `safeCall meldet 401 als abgewiesen`() {
         val pfade = PfadServer()
         pfade.codes["/api/v1/stats"] = 401
         pfade.codes["/api/v1/finance/pnl"] = 500
@@ -57,8 +56,8 @@ class SessionAndLifecycleTest {
             val finanzen = FinanzenRepository(TestApi.fuer(pfade.server), ResponseCache { File(System.getProperty("java.io.tmpdir"), "bim-401") })
             val abgelaufen = runBlocking { finanzen.getStats() } as Ergebnis.Error
             val kaputt = runBlocking { finanzen.getPnl() } as Ergebnis.Error
-            assertTrue("Ein 401 trägt das Kennzeichen nicht", abgelaufen.unauthorized)
-            assertFalse("Ein 500 gilt als abgelaufene Sitzung", kaputt.unauthorized)
+            assertTrue("Ein 401 trägt das Kennzeichen nicht", abgelaufen is Ergebnis.Error.Abgewiesen)
+            assertFalse("Ein 500 gilt als abgelaufene Sitzung", kaputt is Ergebnis.Error.Abgewiesen)
         } finally {
             pfade.server.shutdown()
         }

@@ -1,6 +1,6 @@
 package ch.brickinventoryapp.zustand
 
-import ch.brickinventoryapp.data.repository.Fehlerart
+import ch.brickinventoryapp.data.repository.Ergebnis
 import ch.brickinventoryapp.zustand.ui.mitTechnischerUrsache
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -13,7 +13,7 @@ import ch.brickinventoryapp.zustand.ui.qrFehler
  * ── Woher dieser Test kommt ─────────────────────────────────────────────────
  *
  * Marcos Befund: „In der Android-App werden die Teile nicht angezeigt", dazu
- * die Meldung „Etwas ist schiefgelaufen". Das ist [Fehlerart.UNBEKANNT] — der
+ * die Meldung „Etwas ist schiefgelaufen". Das ist [Ergebnis.Error.Unbekannt] — der
  * Auffangzweig in RepoBasis für JEDE geworfene Ausnahme.
  *
  * Ihre Ursache lag die ganze Zeit vor: `Result.Error(technisch = e.message)`.
@@ -33,7 +33,7 @@ class UrsacheSichtbarTest {
 
     @Test
     fun `bei unbekannter Ursache steht die technische Meldung dabei`() {
-        val satz = mitTechnischerUrsache("Etwas ist schiefgelaufen", Fehlerart.UNBEKANNT, "unexpected end of stream")
+        val satz = mitTechnischerUrsache("Etwas ist schiefgelaufen", Ergebnis.Error.Unbekannt("unexpected end of stream"))
         assertTrue(
             "Die technische Ursache fehlt — dann sagt die Meldung wieder nichts: $satz",
             satz.contains("unexpected end of stream")
@@ -46,9 +46,9 @@ class UrsacheSichtbarTest {
     fun `ohne Ursache bleibt der Satz unveraendert`() {
         // Kein technischer Text vorhanden: Es darf keine leere Klammer entstehen.
         assertEquals("Etwas ist schiefgelaufen",
-            mitTechnischerUrsache("Etwas ist schiefgelaufen", Fehlerart.UNBEKANNT, null))
+            mitTechnischerUrsache("Etwas ist schiefgelaufen", Ergebnis.Error.Unbekannt(null)))
         assertEquals("Etwas ist schiefgelaufen",
-            mitTechnischerUrsache("Etwas ist schiefgelaufen", Fehlerart.UNBEKANNT, "   "))
+            mitTechnischerUrsache("Etwas ist schiefgelaufen", Ergebnis.Error.Unbekannt("   ")))
     }
 
     @Test
@@ -57,13 +57,16 @@ class UrsacheSichtbarTest {
         // Punkt 1 prüft, wäre auch dann grün, wenn die Ursache ÜBERALL
         // angehängt würde — also genau die Regel bräche, gegen die
         // Nachtrag 116 gebaut ist.
-        for (art in listOf(Fehlerart.NETZ, Fehlerart.ZEIT, Fehlerart.SERVER,
-                           Fehlerart.SITZUNG_ABGELAUFEN, Fehlerart.LEERE_ANTWORT,
-                           Fehlerart.NICHT_ANGEMELDET, Fehlerart.VERBINDUNG_BEENDET)) {
+        // Netz und LeereAntwort tragen selbst einen technischen Text; die übrigen
+        // stehen dabei, damit eine künftige Ursache mit Text hier auffällt.
+        for (art in listOf(Ergebnis.Error.Netz("Socket closed"), Ergebnis.Error.Zeitueberschreitung,
+                           Ergebnis.Error.Server(500), Ergebnis.Error.Abgewiesen(),
+                           Ergebnis.Error.LeereAntwort("Socket closed"), Ergebnis.Error.Abgebrochen,
+                           Ergebnis.Error.Klartext)) {
             assertEquals(
                 "Bei $art darf kein englischer Bibliothekstext an den Satz geraten",
                 "Keine Verbindung",
-                mitTechnischerUrsache("Keine Verbindung", art, "Socket closed")
+                mitTechnischerUrsache("Keine Verbindung", art)
             )
         }
     }

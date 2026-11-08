@@ -115,7 +115,7 @@ class HaushaltViewModel @Inject constructor(
     private fun einloeseFehler(r: Ergebnis.Error): String = when {
         r.code == Fehlercode.AKTUELLES_PASSWORT_FALSCH -> meldungen.text(R.string.household_redeem_password_wrong)
         r.code == Fehlercode.ZWEITER_FAKTOR_FALSCH -> meldungen.text(R.string.household_redeem_code_wrong)
-        r.code == Fehlercode.ZU_VIELE_FEHLVERSUCHE || r.httpCode == 429 ->
+        r.code == Fehlercode.ZU_VIELE_FEHLVERSUCHE || (r as? Ergebnis.Error.Server)?.status == 429 ->
             r.message.ifBlank { meldungen.text(R.string.household_redeem_locked) }
         else -> meldungen.meldung(r)
     }

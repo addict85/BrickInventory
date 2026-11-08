@@ -49,11 +49,11 @@ class TeileLokalTest {
             parts = listOf(Part(partNumber = if (abfrage.suche == null) "server-${abfrage.seite}" else "treffer"))))
         override suspend fun manuelleTeile(suche: String?) = Ergebnis.Success(ManualPartsResponse(success = true,
             parts = listOf(PartValuationItem(partNumber = if (suche == null) "server" else "treffer"))))
-        override suspend fun teileKennzahlen(): Ergebnis<PartsStatsResponse> = Ergebnis.Error("aus")
+        override suspend fun teileKennzahlen(): Ergebnis<PartsStatsResponse> = Ergebnis.Error.Server(503, "aus")
         override suspend fun filterFarben() = Ergebnis.Success(PartsFilterColorsResponse(success = true))
         override suspend fun kategorien() = Ergebnis.Success(PartsCategoriesResponse(success = true))
         override suspend fun alleFarben() = Ergebnis.Success(BrickColorsResponse(success = true))
-        override suspend fun figurKennzahlen(): Ergebnis<MinifigStatsResponse> = Ergebnis.Error("aus")
+        override suspend fun figurKennzahlen(): Ergebnis<MinifigStatsResponse> = Ergebnis.Error.Server(503, "aus")
         override suspend fun figuren(suche: String?) = Ergebnis.Success(MinifigsResponse(success = true,
             figs = listOf(Minifig(figNumber = "server"))))
         override suspend fun manuelleFiguren(suche: String?) = Ergebnis.Success(ManualFigsResponse(success = true,

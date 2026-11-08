@@ -72,14 +72,14 @@ class TeileTest {
             manuelleSuchen += suche
             return Ergebnis.Success(ManualPartsResponse(success = true, parts = listOf(PartValuationItem(partNumber = "m"))))
         }
-        override suspend fun teileKennzahlen(): Ergebnis<PartsStatsResponse> = Ergebnis.Error("aus")
+        override suspend fun teileKennzahlen(): Ergebnis<PartsStatsResponse> = Ergebnis.Error.Server(503, "aus")
         override suspend fun filterFarben() = Ergebnis.Success(PartsFilterColorsResponse(success = true))
         override suspend fun kategorien() = Ergebnis.Success(PartsCategoriesResponse(success = true))
         override suspend fun alleFarben() = Ergebnis.Success(BrickColorsResponse(success = true))
         override suspend fun figurKennzahlen(): Ergebnis<MinifigStatsResponse> {
             kennzahlAbrufe++
             delay(kennzahlDauer)
-            return Ergebnis.Error("Zählung gescheitert")
+            return Ergebnis.Error.Server(500, "Zählung gescheitert")
         }
         override suspend fun figuren(suche: String?): Ergebnis<MinifigsResponse> {
             figurSuchen += suche

@@ -155,7 +155,7 @@ class TokenTausch(
                 is Ergebnis.Success -> return gelungen(vorher, r.data)
                 is Ergebnis.Error -> {
                     // 401: Der alte Token gilt nicht mehr (Überlappung vorbei, widerrufen).
-                    if (r.httpCode == 401) return Tauschergebnis.NEU_KOPPELN
+                    if (r is Ergebnis.Error.Abgewiesen) return Tauschergebnis.NEU_KOPPELN
                     if (!r.transient) return Tauschergebnis.SPAETER
                     val pause = pausen.getOrNull(versuch) ?: break
                     if (uhr() - beginn + pause > UEBERLAPPUNG_MS) break

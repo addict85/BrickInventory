@@ -7,7 +7,6 @@ import ch.brickinventoryapp.data.SetAnleger
 import ch.brickinventoryapp.data.SetAnlegenSchritt
 import ch.brickinventoryapp.model.data.model.AddSetResponse
 import ch.brickinventoryapp.data.repository.KatalogRepository
-import ch.brickinventoryapp.data.repository.Fehlerart
 import ch.brickinventoryapp.data.repository.Ergebnis
 import ch.brickinventoryapp.data.repository.SetsRepository
 import ch.brickinventoryapp.zustand.ui.Aenderung
@@ -264,7 +263,7 @@ class ErfassungViewModel @Inject constructor(
             val sn = if (eingabe.contains("-")) eingabe else "$eingabe-1"
             val gestreamt = try {
                 erfassung.zeige(sn, Pruefphase.BESTAND)
-                var letzte: Ergebnis<AddSetResponse> = Ergebnis.Error("", art = Fehlerart.LEERE_ANTWORT)
+                var letzte: Ergebnis<AddSetResponse> = Ergebnis.Error.LeereAntwort()
                 anleger.anlegen(eingabe, quantity, purchasePrice, condition, ownerUserId,
                                 storage?.trim()?.takeIf { it.isNotEmpty() })
                     .collect { schritt ->
@@ -273,9 +272,9 @@ class ErfassungViewModel @Inject constructor(
                             SetAnlegenSchritt.Bild -> erfassung.zeige(sn, Pruefphase.ANLEGEN_BILD)
                             SetAnlegenSchritt.FastFertig -> erfassung.zeige(sn, Pruefphase.ANLEGEN_ABSCHLUSS)
                             is SetAnlegenSchritt.Fertig -> letzte = Ergebnis.Success(schritt.ergebnis)
-                            SetAnlegenSchritt.KeineVerbindung -> letzte = Ergebnis.Error("", transient = true, art = Fehlerart.NETZ)
+                            SetAnlegenSchritt.KeineVerbindung -> letzte = Ergebnis.Error.Netz()
                             is SetAnlegenSchritt.Fehler -> letzte =
-                                if (schritt.meldung.isBlank()) Ergebnis.Error("", art = Fehlerart.NETZ)
+                                if (schritt.meldung.isBlank()) Ergebnis.Error.Abgebrochen
                                 else Ergebnis.Success(AddSetResponse(success = false, error = schritt.meldung))
                         }
                     }

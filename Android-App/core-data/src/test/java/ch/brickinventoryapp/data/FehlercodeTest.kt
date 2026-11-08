@@ -5,7 +5,6 @@ import ch.brickinventoryapp.netz.data.api.Fehlerrumpf
 import ch.brickinventoryapp.data.api.fehlerTextZuCode
 import ch.brickinventoryapp.data.cache.ResponseCache
 import ch.brickinventoryapp.data.repository.KontoRepository
-import ch.brickinventoryapp.data.repository.Fehlerart
 import ch.brickinventoryapp.data.repository.GutscheineRepository
 import ch.brickinventoryapp.data.repository.Ergebnis
 import kotlinx.coroutines.test.runTest
@@ -75,7 +74,7 @@ class FehlercodeTest {
         val e = fehler(admin().getMe())
         assertEquals(Fehlercode.AKTUELLES_PASSWORT_FALSCH, e.code)
         assertEquals("Aktuelles Passwort falsch", e.message)
-        assertEquals(400, e.httpCode)
+        assertEquals(Ergebnis.Error.Server(400, "Aktuelles Passwort falsch", Fehlercode.AKTUELLES_PASSWORT_FALSCH), e)
     }
 
     @Test
@@ -83,7 +82,7 @@ class FehlercodeTest {
         server.enqueue(MockResponse().setResponseCode(502).setBody("<html>Bad Gateway</html>"))
         val e = fehler(admin().getMe())
         assertNull(e.code)
-        assertEquals(Fehlerart.SERVER, e.art)
+        assertEquals("Ohne Satz bleibt nur der Status", Ergebnis.Error.Server(502), e)
 
         assertNull(Fehlerrumpf.lies("""{"success":false,"code":null,"error":""}""").code)
         assertNull(Fehlerrumpf.lies("""{"success":false,"code":null,"error":""}""").text)
@@ -128,6 +127,6 @@ class FehlercodeTest {
         val e = fehler(gutscheine().ausPdf("karten.pdf", "application/pdf", byteArrayOf(37, 80, 68, 70)))
         assertEquals(Fehlercode.PDF_ZU_VIELE_SEITEN, e.code)
         assertEquals("Das PDF hat 40 Seiten, höchstens 20 sind möglich.", e.message)
-        assertEquals(422, e.httpCode)
+        assertEquals(422, (e as Ergebnis.Error.Server).status)
     }
 }

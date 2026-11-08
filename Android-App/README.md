@@ -251,12 +251,14 @@ Ausgang senden im Hintergrund, auch bei gesperrtem Gerät (Begründung in
 `data/util/TokenTresor.kt`). Abgefedert durch die Rotation mit Wiederverwendungs-
 erkennung am Server und die harte Höchstdauer von 180 Tagen.
 
-**Pins ohne eigenen Integritätsschutz (sec12 H6):** Pins und der Schalter für
-Nutzer-CAs liegen in `design_spiegel.xml` ohne HMAC. Schreiben kann dort nur,
-wer Root hat oder Code mit der UID der App ausführt; beide können den Keystore
-der App ebenso benutzen wie die App und damit auch einen HMAC fälschen. Gegen
-das Einspielen von aussen hilft schon, dass die Datei weder gesichert noch
-übertragen wird.
+**Pins und Nutzer-CA-Schalter verschlüsselt:** Sie liegen in `design_spiegel.xml`
+als `Vertrauenschiffre` (AES-GCM, an den Namen des Eintrags gebunden) unter einem
+eigenen Ablageschlüssel (`vertrauen.schluessel`), den das Abmelden nicht erneuert:
+Ein Pin gehört zum Server, nicht zum Konto. Was sich nicht entschlüsseln lässt,
+gilt als „kein Pin“ bzw. „Schalter aus“; der Nutzer bestätigt dann neu. Klartext
+älterer Fassungen wird einmal übernommen und gelöscht, später auftauchender nur
+gelöscht (`VertrauenVerschluesseltTest`). Wer Code mit der UID der App ausführt,
+kann den Keystore weiterhin benutzen wie die App.
 
 **Update-Angebot nur aus frischer Beschreibung (sec12 H2):** Ist die signierte
 Beschreibung abgelaufen oder älter als eine schon gesehene, bietet die App kein

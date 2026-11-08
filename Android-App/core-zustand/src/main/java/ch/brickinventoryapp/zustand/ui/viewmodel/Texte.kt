@@ -17,7 +17,7 @@ interface Texte {
     fun meldung(fehler: Ergebnis.Error): String
     /** Null heisst: Die Sitzungsschicht hat den Fehler schon gemeldet. */
     fun meldungFuerSnackbar(fehler: Ergebnis.Error): String? =
-        if (meldetDieSitzungsschicht(fehler.unauthorized, angemeldet())) null else meldung(fehler)
+        if (meldetDieSitzungsschicht(fehler is Ergebnis.Error.Abgewiesen, angemeldet())) null else meldung(fehler)
     /** Liegt ein Token vor? Dieselbe Quelle, die der Interceptor liest. */
     fun angemeldet(): Boolean
 }

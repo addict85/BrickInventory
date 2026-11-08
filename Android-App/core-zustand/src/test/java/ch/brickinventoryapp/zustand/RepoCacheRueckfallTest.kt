@@ -3,7 +3,6 @@ package ch.brickinventoryapp.zustand
 import ch.brickinventoryapp.data.cache.ResponseCache
 import ch.brickinventoryapp.model.data.model.CatalogMetaResponse
 import ch.brickinventoryapp.data.repository.KatalogRepository
-import ch.brickinventoryapp.data.repository.Fehlerart
 import ch.brickinventoryapp.data.repository.Ergebnis
 import kotlinx.coroutines.test.runTest
 import okhttp3.mockwebserver.MockResponse
@@ -91,7 +90,7 @@ class RepoCacheRueckfallTest {
         cacheFuellen()
         server.enqueue(MockResponse().setResponseCode(500))
         val r = repo.getCatalogMeta()
-        assert(r is Ergebnis.Error && r.httpCode == 500 && r.art == Fehlerart.SERVER) {
+        assert(r == Ergebnis.Error.Server(500)) {
             "Ein 500 ist eine Auskunft des Servers, kein Netzausfall — er muss " +
                 "durchkommen. Bekommen: $r"
         }
@@ -110,7 +109,7 @@ class RepoCacheRueckfallTest {
         cacheFuellen()
         server.enqueue(MockResponse().setResponseCode(401))
         val r = repo.getCatalogMeta()
-        assert(r is Ergebnis.Error && r.unauthorized) {
+        assert(r is Ergebnis.Error.Abgewiesen) {
             "Bei 401 darf der Cache NICHT einspringen, sonst läuft die Abmeldung ins Leere: $r"
         }
     }

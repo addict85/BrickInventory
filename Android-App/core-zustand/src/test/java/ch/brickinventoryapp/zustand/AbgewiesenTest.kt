@@ -141,14 +141,14 @@ class AbgewiesenTest {
             override fun meldung(fehler: Ergebnis.Error) = "Satz"
             override fun angemeldet() = mitToken
         }
-        val abgewiesen = Ergebnis.Error("", unauthorized = true)
+        val abgewiesen = Ergebnis.Error.Abgewiesen()
         assert(texte(mitToken = true).meldungFuerSnackbar(abgewiesen) == null) {
             "Ein 401 bei angemeldeter App erscheint wieder als Satz in der Snackbar."
         }
         assert(texte(mitToken = false).meldungFuerSnackbar(abgewiesen) == "Satz") {
             "Ohne Token ist ein 401 ein falsches Passwort und muss gezeigt werden."
         }
-        assert(texte(mitToken = true).meldungFuerSnackbar(Ergebnis.Error("", transient = true)) == "Satz") {
+        assert(texte(mitToken = true).meldungFuerSnackbar(Ergebnis.Error.Netz()) == "Satz") {
             "Ein Netzfehler bei angemeldeter App verschwindet aus der Snackbar."
         }
     }

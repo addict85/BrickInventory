@@ -5,7 +5,7 @@ import androidx.core.net.toUri
 import ch.brickinventoryapp.data.Anmeldestand
 import ch.brickinventoryapp.data.api.fehlerTextZuCode
 import ch.brickinventoryapp.data.repository.Ergebnis
-import ch.brickinventoryapp.zustand.ui.fehlerTextBrauchtCode
+import ch.brickinventoryapp.zustand.ui.fehlerTextArgument
 import ch.brickinventoryapp.zustand.ui.fehlerTextId
 import ch.brickinventoryapp.zustand.ui.mitTechnischerUrsache
 import ch.brickinventoryapp.data.util.LanguageManager
@@ -34,9 +34,9 @@ class AppTexte @Inject constructor(
     override fun meldung(fehler: Ergebnis.Error): String {
         if (fehler.message.isNotBlank()) return fehler.message
         fehlerTextZuCode(fehler.code)?.let { return text(it) }
-        val id = fehlerTextId(fehler.art)
-        val satz = if (fehlerTextBrauchtCode(fehler.art)) text(id, fehler.httpCode ?: 0) else text(id)
-        return mitTechnischerUrsache(satz, fehler.art, fehler.technisch)
+        val id = fehlerTextId(fehler)
+        val satz = fehlerTextArgument(fehler)?.let { text(id, it) } ?: text(id)
+        return mitTechnischerUrsache(satz, fehler)
     }
 }
 

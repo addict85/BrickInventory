@@ -3,7 +3,6 @@ package ch.brickinventoryapp.data
 import kotlinx.coroutines.test.advanceTimeBy
 import ch.brickinventoryapp.model.data.model.Fehlercode
 import ch.brickinventoryapp.model.data.model.TokenRotation
-import ch.brickinventoryapp.data.repository.Fehlerart
 import ch.brickinventoryapp.data.repository.Ergebnis
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
@@ -95,7 +94,7 @@ class TokenTauschTest {
         )
     }
 
-    private val verloren = Ergebnis.Error("", transient = true, art = Fehlerart.NETZ)
+    private val verloren: Ergebnis.Error = Ergebnis.Error.Netz()
 
     @Test
     fun `der neue Token ist gespeichert, bevor der Tausch endet`() = runTest {
@@ -126,7 +125,7 @@ class TokenTauschTest {
 
     @Test
     fun `gilt der alte nicht mehr, muss neu gekoppelt werden`() = runTest {
-        val w = Welt().apply { antworten = mutableListOf(verloren, Ergebnis.Error("", httpCode = 401, code = Fehlercode.TOKEN_UNGUELTIG)) }
+        val w = Welt().apply { antworten = mutableListOf(verloren, Ergebnis.Error.Abgewiesen(code = Fehlercode.TOKEN_UNGUELTIG)) }
         assertEquals(Tauschergebnis.NEU_KOPPELN, w.tausch.tausche("alt"))
         assertEquals("alt", w.gespeichert)
     }

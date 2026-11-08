@@ -4,7 +4,6 @@ import ch.brickinventoryapp.netz.util.NetworkPolicy
 import ch.brickinventoryapp.data.api.BrickApiService
 import ch.brickinventoryapp.data.cache.ResponseCache
 import ch.brickinventoryapp.data.repository.KontoRepository
-import ch.brickinventoryapp.data.repository.Fehlerart
 import ch.brickinventoryapp.data.repository.Ergebnis
 import kotlinx.coroutines.test.runTest
 import com.jakewharton.retrofit2.converter.kotlinx.serialization.asConverterFactory
@@ -107,8 +106,8 @@ class BrickRepositoryErrorMappingTest {
         assert(e.message == "Für dieses Datum gibt es schon einen Kaufpreis") {
             "Servermeldung ging verloren: '${e.message}'"
         }
-        assert(e.art == null) {
-            "Bei vorhandener Servermeldung darf keine eigene Einordnung gesetzt sein, war: ${e.art}"
+        assert(e == Ergebnis.Error.Server(409, "Für dieses Datum gibt es schon einen Kaufpreis")) {
+            "Bei vorhandener Servermeldung bleibt es ein Serverfehler mit ihrem Satz, war: $e"
         }
     }
 
@@ -116,8 +115,7 @@ class BrickRepositoryErrorMappingTest {
     fun `Fehlercode ohne Rumpf wird als Serverfehler eingeordnet`() = runTest {
         server.enqueue(MockResponse().setResponseCode(500).setBody(""))
         val e = fehler(repo.getMe())
-        assert(e.art == Fehlerart.SERVER) { "Art war ${e.art}" }
-        assert(e.httpCode == 500) { "httpCode war ${e.httpCode}" }
+        assert(e is Ergebnis.Error.Server && e.status == 500) { "Art war $e" }
         assert(e.message.isBlank()) {
             "Die Datenschicht darf keinen Satz bauen, tat es aber: '${e.message}'"
         }
@@ -125,14 +123,13 @@ class BrickRepositoryErrorMappingTest {
 
     @Test
     fun `401 wird als abgelaufene Sitzung gemeldet und nicht als transient`() = runTest {
-        // Die Unterscheidung ist der Grund, warum es beide Felder gibt: Ein
+        // Die Unterscheidung ist der Grund für eine eigene Art: Ein
         // Wiederholen behebt einen 401 nie, und cached() darf ihn nicht mit
         // einer alten Antwort von der Platte überdecken.
         server.enqueue(MockResponse().setResponseCode(401).setBody(""))
         val e = fehler(repo.getMe())
-        assert(e.unauthorized) { "unauthorized nicht gesetzt" }
+        assert(e is Ergebnis.Error.Abgewiesen) { "Art war $e" }
         assert(!e.transient) { "401 darf nicht als vorübergehend gelten" }
-        assert(e.art == Fehlerart.SITZUNG_ABGELAUFEN) { "Art war ${e.art}" }
     }
 
     @Test
@@ -140,14 +137,14 @@ class BrickRepositoryErrorMappingTest {
         server.enqueue(MockResponse().setSocketPolicy(SocketPolicy.NO_RESPONSE))
         val e = fehler(baueRepo(leseFristMs = 300).getMe())
         assert(e.transient) { "Zeitüberschreitung muss als vorübergehend gelten" }
-        assert(e.art == Fehlerart.ZEIT) { "Art war ${e.art}" }
+        assert(e == Ergebnis.Error.Zeitueberschreitung) { "Art war $e" }
     }
 
     @Test
     fun `abgerissene Verbindung ist ein Netzfehler und voruebergehend`() = runTest {
         server.enqueue(MockResponse().setSocketPolicy(SocketPolicy.DISCONNECT_AT_START))
         val e = fehler(repo.getMe())
-        assert(e.transient) { "Abriss muss als vorübergehend gelten, war: $e" }
+        assert(e is Ergebnis.Error.Netz && e.transient) { "Abriss muss als vorübergehend gelten, war: $e" }
         assert(e.message.isBlank()) { "Kein Satz aus der Datenschicht, war: '${e.message}'" }
     }
 
@@ -155,7 +152,7 @@ class BrickRepositoryErrorMappingTest {
      * Eine gespeicherte http-Adresse: Der Wächter des Release-Builds lehnt ab, und
      * daraus wird ein eigener Satz mit Anleitung statt „keine Verbindung“.
      * Gegenprobe: den Zweig für KlartextAbgelehnt in
-     * sicherAufrufen() entfernt → rot (Art NETZ, transient).
+     * sicherAufrufen() entfernt → rot (Netz, vorübergehend).
      */
     @Test
     fun `eine abgelehnte http-Anfrage ist kein Netzfehler und nicht voruebergehend`() = runTest {
@@ -167,7 +164,7 @@ class BrickRepositoryErrorMappingTest {
         }
         val waechter = ServerWaechter(lage, false, entwicklung = false, sitzungAbgelaufen = {})
         val e = fehler(baueRepo(waechter = waechter).getMe())
-        assert(e.art == Fehlerart.KLARTEXT) { "Art war ${e.art}" }
+        assert(e == Ergebnis.Error.Klartext) { "Art war $e" }
         assert(!e.transient) { "Ein zweiter Versuch ginge genauso an http" }
         assert(server.requestCount == 0) { "Die Anfrage ging trotzdem hinaus" }
     }

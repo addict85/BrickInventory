@@ -136,7 +136,7 @@ class ServerwechselTest {
         val tausch = TokenTausch(
             stand = { TokenStand(token, herkunft, schranke.generation) },
             ersetze = { _, _, _ -> false },
-            rotiere = { Ergebnis.Error("", httpCode = 500) },
+            rotiere = { Ergebnis.Error.Server(500) },
             pausen = emptyList(),
             // Der Test wartet auf noetig(); faellig() bräuchte einen eigenen Bereich nicht.
             hintergrund = CoroutineScope(Job()),

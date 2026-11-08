@@ -129,7 +129,7 @@ class GalerieTest {
 
     @Test
     fun `ein Ladefehler wird zur Fehleranzeige mit Grund`() = runTest {
-        val g = galerie(Abruf()) { Ergebnis.Error("Zeitüberschreitung") }
+        val g = galerie(Abruf()) { Ergebnis.Error.Server(504, "Zeitüberschreitung") }
         g.laden(); advanceUntilIdle()
         val st = g.state.value
         assertEquals("Grund: Zeitüberschreitung", st.galleryFehler)
@@ -139,7 +139,7 @@ class GalerieTest {
     @Test
     fun `ein erfolgreicher neuer Versuch raeumt den Fehler weg`() = runTest {
         var kaputt = true
-        val g = galerie(Abruf()) { if (kaputt) Ergebnis.Error("Netz") else null }
+        val g = galerie(Abruf()) { if (kaputt) Ergebnis.Error.Server(503, "Netz") else null }
         g.laden(); advanceUntilIdle()
         kaputt = false
         g.laden(); advanceUntilIdle()

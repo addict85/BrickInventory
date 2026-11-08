@@ -52,10 +52,10 @@ zurücksetzen, sonst bleibt der Knopf nach einem Fehler dauerhaft gesperrt.
 
 Ein 401 ist kein gewöhnlicher Serverfehler. Drei Regeln:
 
-1. `safeCall()` markiert ihn per `unauthorized = true`. Ohne das ist er von
-   einem Netzwerkfehler nicht unterscheidbar.
+1. `safeCall()` meldet ihn als eigene Art `Ergebnis.Error.Abgewiesen`. Ohne das
+   ist er von einem Netzwerkfehler nicht unterscheidbar.
 
-2. **`cached()` darf bei `unauthorized` NICHT auf den Plattenspeicher
+2. **`cached()` darf bei `Abgewiesen` NICHT auf den Plattenspeicher
    zurückfallen.** Sonst deckt der bis zu sieben Tage alte Cache die
    abgelaufene Sitzung zu: Der Nutzer sieht eine scheinbar normale Galerie,
    obwohl er längst nicht mehr angemeldet ist. Ein Fehlerzustand, der wie
@@ -711,8 +711,9 @@ Wahrheit.
 Die Datenschicht (`BrickRepository`, `CsvImportSseClient`) formuliert KEINE
 Sätze für den Nutzer. Sie hat keinen `Context` und kann nicht übersetzen — jeder
 Satz, den sie selbst bildet, ist für die halbe Nutzerschaft in der falschen
-Sprache. Sie meldet stattdessen eine `Fehlerart`; den Satz bildet
-`AppTexte.meldung()`.
+Sprache. Sie meldet stattdessen die Art des Fehlers (geschlossene Hierarchie
+`Ergebnis.Error`: Netz, Zeitueberschreitung, Abgebrochen, LeereAntwort,
+Abgewiesen, Server, Klartext, Unbekannt); den Satz bildet `AppTexte.meldung()`.
 
 Vorrang hat immer die Meldung des SERVERS. Er kennt seine Fälle genauer als
 jede Aufzählung in der App (Kaufdatum-Konflikt, Währung passt nicht, Code schon
@@ -768,6 +769,7 @@ Handlungsmacht.
 | vertraulich | Sets, Teile, Figuren, Merkliste, Bewertungen, Gutschein-Nummer und -Betrag (Room `bestand.db`), Ausgang | SQLCipher |
 | vertraulich | API-Antworten, Widget-Zahlen, Vorschaubilder, Bild-Zwischenspeicher, Bauanleitungen | `AblageChiffre` (AES-GCM, Schlüssel aus dem Keystore umhüllt); Anleitungen angezeigt aus memfd oder namenloser Datei |
 | vertraulich | Teileliste-PDF | Klartext für die Ziel-App, nach 30 Minuten gelöscht |
+| Integrität | Zertifikat-Pins, Schalter „Nutzer-CAs vertrauen“ | `Vertrauenschiffre` (AES-GCM, eigener Ablageschlüssel, überlebt das Abmelden); unlesbar heisst „nicht vertraut“ (`VertrauenVerschluesseltTest`) |
 
 Für alle gilt: `allowBackup="false"`, Cloud-Sicherung und Geräteumzug
 ausgeschlossen (`NetzsicherheitTest`), beim Abmelden geleert, und jede Ablage
@@ -818,10 +820,10 @@ lässt `CacheBereichTest` scheitern, bis es hier eingeordnet ist.
 - **Teileliste 30 Minuten im Klartext (sec12 H4):** Die Ziel-App liest sie über
   den FileProvider und kann keinen Geheimtext lesen; gelöscht nach der Frist,
   beim Start und beim Abmelden.
-- **Pins ohne HMAC (sec12 H6), Token-Schlüssel bei gesperrtem Gerät (sec12 H7),
-  keine RESILIENCE-Prüfungen (sec12 H10):** Begründung in README, „Daten auf dem
-  Gerät“ und „Manipulationsschutz“. Wer in `shared_prefs` schreiben kann, kann
-  auch den Keystore der App benutzen; ein HMAC hielte ihn nicht auf.
+- **Token-Schlüssel bei gesperrtem Gerät (sec12 H7), keine RESILIENCE-Prüfungen
+  (sec12 H10):** Begründung in README, „Daten auf dem Gerät“ und
+  „Manipulationsschutz“. Pins liegen seit sec12 H6 verschlüsselt; wer Code mit
+  der UID der App ausführt, kann den Keystore aber weiterhin benutzen wie die App.
 - **Anleitung in einer namenlosen Datei (sec12 N1):** Über 64 MB wird zur Anzeige
   in eine Datei entschlüsselt, deren Name vor dem ersten Byte gelöscht ist. Der
   Klartext liegt dann in freien Blöcken des (dateibasiert verschlüsselten)

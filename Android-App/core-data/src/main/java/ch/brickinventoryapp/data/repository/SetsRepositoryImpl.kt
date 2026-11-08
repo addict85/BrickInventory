@@ -217,12 +217,12 @@ class SetsRepositoryImpl @Inject constructor(
                 if (bytes.size > 100) Ergebnis.Success(bytes)
                 // Zu kleine Antwort heisst in der Praxis: Fehlerseite statt PDF.
                 // Die Grösse gehört ins Log, nicht in die Meldung.
-                else Ergebnis.Error("", art = Fehlerart.LEERE_ANTWORT, technisch = "PDF ${bytes.size} bytes")
+                else Ergebnis.Error.LeereAntwort(technisch = "PDF ${bytes.size} bytes")
             } else {
-                Ergebnis.Error("", art = Fehlerart.SERVER, httpCode = response.code())
+                Ergebnis.Error.Server(response.code())
             }
         }.getOrElse { e ->
-            Ergebnis.Error("", art = Fehlerart.UNBEKANNT, technisch = e.message)
+            Ergebnis.Error.Unbekannt(technisch = e.message)
         }
     }
 
@@ -235,12 +235,12 @@ class SetsRepositoryImpl @Inject constructor(
                 val body = response.body()?.string() ?: ""
                 val jobId = org.json.JSONObject(body).optString("jobId", "")
                 if (jobId.isNotBlank()) Ergebnis.Success(jobId)
-                else Ergebnis.Error("", art = Fehlerart.LEERE_ANTWORT)
+                else Ergebnis.Error.LeereAntwort()
             } else {
-                Ergebnis.Error("", art = Fehlerart.SERVER, httpCode = response.code())
+                Ergebnis.Error.Server(response.code())
             }
         }.getOrElse { e ->
-            Ergebnis.Error("", art = Fehlerart.UNBEKANNT, technisch = e.message)
+            Ergebnis.Error.Unbekannt(technisch = e.message)
         }
     }
 
@@ -255,10 +255,10 @@ class SetsRepositoryImpl @Inject constructor(
                 val eta = if (obj.has("etaSeconds") && !obj.isNull("etaSeconds")) obj.optInt("etaSeconds") else null
                 Ergebnis.Success(PdfJobStatus(status, eta))
             } else {
-                Ergebnis.Error("", art = Fehlerart.SERVER, httpCode = response.code())
+                Ergebnis.Error.Server(response.code())
             }
         }.getOrElse { e ->
-            Ergebnis.Error("", art = Fehlerart.UNBEKANNT, technisch = e.message)
+            Ergebnis.Error.Unbekannt(technisch = e.message)
         }
     }
     /**

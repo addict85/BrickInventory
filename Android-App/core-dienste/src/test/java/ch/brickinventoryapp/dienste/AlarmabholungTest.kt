@@ -91,7 +91,7 @@ class AlarmabholungTest {
     @Test
     fun `ohne brauchbare Antwort bleibt die Marke, wie sie war`() = runTest {
         val kaputt = listOf<Pair<String, Ergebnis<PendingAlertsResponse>>>(
-            "Netz weg" to Ergebnis.Error("offline", transient = true),
+            "Netz weg" to Ergebnis.Error.Netz("offline"),
             "Server sagt nein" to Ergebnis.Success(PendingAlertsResponse(success = false)),
             // Eine aeltere Serverfassung kennt das Feld nicht. Dann lieber gar
             // keine Marke als eine falsche — es bleibt beim Mailversand.

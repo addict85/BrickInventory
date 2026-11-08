@@ -73,7 +73,7 @@ class ResultAndStateSplitTest {
                 "else-Zweig. Und `else -> {}` verschluckt stillschweigend jeden Fall, " +
                 "der später dazukommt."
         }
-        assert(src.contains("data class Success") && src.contains("data class Error")) {
+        assert(src.contains("data class Success") && src.contains("sealed class Error")) {
             "Success/Error fehlen in Ergebnis"
         }
     }

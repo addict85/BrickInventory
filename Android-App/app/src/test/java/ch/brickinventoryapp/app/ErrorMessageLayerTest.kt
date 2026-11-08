@@ -14,8 +14,12 @@ import ch.brickinventoryapp.testing.Quellen
  * reichte durch, was aus der Datenschicht kam. Es waren also zwei Sprachregime
  * nebeneinander, und welches griff, hing davon ab, wo der Fehler entstand.
  *
- * Jetzt meldet die Datenschicht nur noch die URSACHE als [Fehlerart]; den Satz
- * formuliert `AppTexte.meldung()`. Dieser Test hält beide Hälften fest.
+ * Jetzt meldet die Datenschicht nur noch die URSACHE als Art von `Ergebnis.Error`;
+ * den Satz formuliert `AppTexte.meldung()`. Dieser Test hält beide Hälften fest.
+ *
+ * Gegenprobe: gegenproben/fehler-satz-in-datenschicht.patch — sicherAufrufen()
+ * legt einen festen Satz in Ergebnis.Error.Server → rot „die Datenschicht baut
+ * keine Meldung …“.
  */
 class ErrorMessageLayerTest {
 
@@ -37,15 +41,16 @@ class ErrorMessageLayerTest {
 
     @Test
     fun `die Datenschicht baut keine Meldung fuer den Nutzer`() {
-        // Gesucht: Result.Error("irgendein Satz"). Erlaubt ist nur der leere
-        // Text — dann entscheidet die Anzeige — oder eine durchgereichte
-        // Servermeldung (eine Variable, keine Zeichenkette).
+        // Gesucht: ein fester Satz als Meldung — Server(status, "…"), Abgewiesen("…")
+        // oder message = "…". Erlaubt ist nur der leere Text — dann entscheidet die
+        // Anzeige — oder eine durchgereichte Servermeldung (eine Variable).
+        val satz = Regex("""Ergebnis\.Error\.(?:Abgewiesen\(\s*|Server\((?:[^,()]|\([^()]*\))*,\s*)"([^"]+)"|\bmessage\s*=\s*"([^"]+)"""")
         val fehler = mutableListOf<String>()
         for (rel in datenschicht) {
             val s = Quellen.ohneKommentare(Quellen.lies(rel))
-            Regex("""Ergebnis\.Error\(\s*"([^"]+)"""").findAll(s).forEach { m ->
+            satz.findAll(s).forEach { m ->
                 val zeile = s.substring(0, m.range.first).count { it == '\n' } + 1
-                fehler += "$rel:$zeile  Ergebnis.Error(\"${m.groupValues[1]}\")"
+                fehler += "$rel:$zeile  ${m.value}"
             }
         }
         assert(fehler.isEmpty()) {
