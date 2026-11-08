@@ -4,13 +4,15 @@ Test: ch.brickinventoryapp.zustand.BrickRepositoryErrorMappingTest
 Rot: 401 wird als abgelaufene Sitzung gemeldet
 
 diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/repository/RepoBasis.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/repository/RepoBasis.kt
+index 2cdc995..a12ddac 100644
 --- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/repository/RepoBasis.kt
 +++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/repository/RepoBasis.kt
-@@ -131,7 +131,6 @@ suspend fun <T> sicherAufrufen(call: suspend () -> Response<T>): Ergebnis<T> {
-                 unauthorized = response.code() == 401,
-                 art = when {
-                     rumpf.text != null -> null
--                    response.code() == 401 -> Fehlerart.SITZUNG_ABGELAUFEN
-                     else -> Fehlerart.SERVER
-                 },
-                 code = Fehlercode.aus(rumpf.code),
+@@ -126,7 +126,7 @@ suspend fun <T> sicherAufrufen(call: suspend () -> Response<T>): Ergebnis<T> {
+                 .getOrElse { Fehlerrumpf(null, null) }
+             val text = rumpf.text ?: ""
+             val code = Fehlercode.aus(rumpf.code)
+-            if (response.code() == 401) Ergebnis.Error.Abgewiesen(text, code)
++            if (response.code() == 401 && rumpf.text != null) Ergebnis.Error.Abgewiesen(text, code)
+             else Ergebnis.Error.Server(response.code(), text, code)
+         }
+     } catch (e: kotlinx.coroutines.CancellationException) {
