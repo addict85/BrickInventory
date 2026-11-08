@@ -101,6 +101,7 @@ test('Mengen und Erfassungen manueller Einträge gegen die Datenbank', { concurr
   const { recordAcquisitionForDay } = _req('src/bestand/acquisitions.js');
   const { testServer } = require('./helpers/server');
   const { base } = testServer(_req, {
+    sitzung: {},
     apiNutzer: { user_id: uid, is_admin: 0 },
     routen: { '/api/v1': 'routes/api_v1/index.js' },
     t,
