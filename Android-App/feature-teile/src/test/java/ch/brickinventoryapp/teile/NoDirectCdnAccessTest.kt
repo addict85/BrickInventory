@@ -43,7 +43,7 @@ class NoDirectCdnAccessTest {
     @Test
     fun `Screens mit Bildern benutzen resolveThumbUrl oder resolveFullUrl`() {
         val screensWithOwnResolution = listOf(
-            "sammlung/ui/screens/GalleryScreen.kt",
+            "sammlung/ui/screens/GalerieKarte.kt",
             "sammlung/ui/screens/SetDetailScreen.kt",
             "teile/ui/screens/PartsScreen.kt",
             // FinanceScreen.kt wurde aufgeteilt — die Kacheln mit den Bildern

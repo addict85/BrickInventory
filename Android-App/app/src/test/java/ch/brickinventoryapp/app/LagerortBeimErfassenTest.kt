@@ -45,7 +45,7 @@ class LagerortBeimErfassenTest {
         // Fuenf Wege, fuenf Dateien. Weniger als fuenf heisst: Die Suche greift
         // nicht mehr, und die Regel waere still zufrieden.
         val wege = listOf(
-            Triple("sammlung/ui/screens/GalleryScreen.kt", "fun AddSetDialog(", "Set hinzufuegen (Galerie)"),
+            Triple("sammlung/ui/screens/GalerieErfassen.kt", "fun AddSetDialog(", "Set hinzufuegen (Galerie)"),
             Triple("katalog/ui/screens/CatalogDetailScreen.kt", "fun CatalogAddDialog(", "Katalog → Galerie"),
             Triple("sammlung/ui/screens/MerklisteScreen.kt", "fun UebernahmeDialog(", "Merkliste → Galerie"),
             Triple("ui/screens/ManualItemComposables.kt", "fun ErfassungsFelder(", "manuelle Teile und Figuren"),
@@ -89,7 +89,7 @@ class LagerortBeimErfassenTest {
     @Test
     fun `jeder Erfassungsweg startet beim vorgegebenen Lagerort`() {
         val halter = listOf(
-            Triple("sammlung/ui/screens/GalleryScreen.kt", "fun AddSetDialog(", "Set hinzufuegen (Galerie)"),
+            Triple("sammlung/ui/screens/GalerieErfassen.kt", "fun AddSetDialog(", "Set hinzufuegen (Galerie)"),
             Triple("katalog/ui/screens/CatalogDetailScreen.kt", "fun CatalogAddDialog(", "Katalog → Galerie"),
             Triple("sammlung/ui/screens/MerklisteScreen.kt", "fun UebernahmeDialog(", "Merkliste → Galerie"),
             Triple("teile/ui/screens/PartsDialogs.kt", "fun AddPartDialog(", "manuelles Teil"),

@@ -66,7 +66,7 @@ class AddPathOwnerTest {
     fun `alle Erfassungswege fragen den Eigentuemer ab`() {
         // Wächter gegen den nächsten vergessenen Weg.
         val wege = listOf(
-            "sammlung/ui/screens/GalleryScreen.kt"   to "Set über die Galerie",
+            "sammlung/ui/screens/GalerieErfassen.kt" to "Set über die Galerie",
             "teile/ui/screens/PartsDialogs.kt"    to "manuelles Teil",
             "teile/ui/screens/MinifigsScreen.kt"  to "manuelle Minifigur",
         )

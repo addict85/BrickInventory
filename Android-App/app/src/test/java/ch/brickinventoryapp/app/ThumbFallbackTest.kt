@@ -58,7 +58,7 @@ class ThumbFallbackTest {
 
     @Test
     fun `GalleryScreen benutzt den Rückfall statt eines wirkungslosen Wiederholversuchs`() {
-        val src = read("sammlung/ui/screens/GalleryScreen.kt")
+        val src = read("sammlung/ui/screens/GalerieKarte.kt")
         assert(src.contains("rememberTileImageWithFallback(serverUrl, set.imageLocal, set.imageUrl)")) {
             "GalleryScreen muss den neuen Rückfall-Helfer benutzen"
         }
@@ -218,8 +218,8 @@ class PartsMinifigsFullResBypassProxyTest {
             }
         }
 
-        val gallery = read("sammlung/ui/screens/GalleryScreen.kt")
-        assert(!gallery.contains("fullViaProxy")) { "GalleryScreen.kt darf fullViaProxy nicht setzen — Sets bleiben direkt" }
+        val gallery = Quellen.galerie()
+        assert(!gallery.contains("fullViaProxy")) { "Die Galerie darf fullViaProxy nicht setzen — Sets bleiben direkt" }
 
         val catalog = read("katalog/ui/screens/CatalogScreen.kt")
         assert(!catalog.contains("fullViaProxy")) { "CatalogScreen.kt darf fullViaProxy nicht setzen — Katalog bleibt direkt" }

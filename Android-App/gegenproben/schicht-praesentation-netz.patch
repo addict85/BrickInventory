@@ -17,11 +17,11 @@ diff --git a/Android-App/feature-sammlung/build.gradle.kts b/Android-App/feature
 diff --git a/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/screens/GalleryScreen.kt b/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/screens/GalleryScreen.kt
 --- a/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/screens/GalleryScreen.kt
 +++ b/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/screens/GalleryScreen.kt
-@@ -2,6 +2,7 @@ package ch.brickinventoryapp.sammlung.ui.screens
+@@ -1,6 +1,7 @@
+ package ch.brickinventoryapp.sammlung.ui.screens
  
- import androidx.compose.ui.semantics.clearAndSetSemantics
  import ch.brickinventoryapp.ui.components.nebenKnopfFarben
 +import retrofit2.Response
  import ch.brickinventoryapp.ui.components.nebenKnopfRand
  import ch.brickinventoryapp.model.ui.model.KennzahlenAnsicht
- import ch.brickinventoryapp.model.ui.model.LagerortAnsicht
+ import androidx.compose.foundation.Image
