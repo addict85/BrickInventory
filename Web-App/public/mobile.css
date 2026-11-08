@@ -495,7 +495,7 @@
   /* Kennzahlen (alle Designs) als eine kompakte Zeile „4 Sets · 394 Teile …“:
      Als Kacheln füllten sie am Telefon den ersten Bildschirm. Die Aufschlüsselung
      darunter steht im jeweiligen Reiter. */
-  .brick-stats { display: flex; flex-wrap: wrap; align-items: baseline; gap: .1rem 0; margin-bottom: var(--sp-4); }
+  .brick-stats { display: flex; flex-wrap: wrap; align-items: flex-start; gap: .1rem 0; margin-bottom: var(--sp-4); }
   /* Reiner Text mit Punkt dazwischen, ohne Fläche: Als Pille sah die Zahl wie ein zweiter Umschalter
      Sets/Teile/Minifiguren aus, bedienbar ist aber nur der obere. */
   .bstat, [data-theme="brick"] .bstat { display: inline-flex; flex-direction: row-reverse; align-items: baseline; gap: .35em;
