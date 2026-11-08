@@ -125,8 +125,8 @@
        die halbe Oberfläche verschoben, um drei Elemente auszurichten. Die
        Regel gehört zu der Reihe, in der sie gilt.
 
-       28 px ist MEINE Zahl: zwischen den 24 der Plakette und den 31,5 des
-       Knopfes. Keines der drei muss dafür seine Schriftgrösse ändern — alle
+       32 px (seit 08.11.2026; vorher 28, zu klein zum Treffen am Rechner):
+       dieselbe Mindestgrösse wie .delbtn und .acq-loeschen. Keines der drei muss dafür seine Schriftgrösse ändern — alle
        drei sind inline-flex und zentrieren ihren Inhalt selbst, die
        senkrechte Polsterung wird damit bedeutungslos.
 
@@ -134,7 +134,7 @@
        mit in der Reihe, weil die Ungleichheit, die Marco sieht, die ganze
        Reihe betrifft. Soll sie kleiner bleiben, fällt sie hier einfach aus
        der Aufzählung. */
-    .umenu{display:flex;align-items:center;gap:8px;font-size:var(--fs-3);--kopf-hoehe:max(28px,1.75rem)}
+    .umenu{display:flex;align-items:center;gap:8px;font-size:var(--fs-3);--kopf-hoehe:max(32px,2rem)}
     /* `.umenu .btn` stand hier bis zum 17.10. und ist RAUS, weil der einzige
        Knopf der Reihe — „Abmelden" — in die Klappe umgezogen ist (Marcos
        Vorgabe: „Kannst du abmelden ebenfalls in das neue Menu integrieren?").
@@ -507,7 +507,7 @@
     .acq-ok{display:inline-flex;align-items:center;gap:4px;font-size:var(--fs-1);font-weight:600;color:var(--gewinn,var(--g700));margin-right:6px}
     .acq-ok[hidden]{display:inline-flex;visibility:hidden}
     /* Knopf einer anklickbaren Tabellenzeile: sieht aus wie der Zellentext, bedient sich wie ein Knopf. */
-    .zeile-oeffnen{background:none;border:0;padding:0;margin:0;font:inherit;color:inherit;text-align:inherit;cursor:pointer;min-height:24px;display:inline-flex;align-items:center;max-width:100%;overflow-wrap:anywhere;hyphens:auto}
+    .zeile-oeffnen{background:none;border:0;padding:0;margin:0;font:inherit;color:inherit;text-align:inherit;cursor:pointer;min-height:32px;display:inline-flex;align-items:center;max-width:100%;overflow-wrap:anywhere;hyphens:auto}
     .toast-zu{background:none;border:0;color:inherit;cursor:pointer;min-width:24px;min-height:24px;display:inline-flex;align-items:center;justify-content:center;margin-left:4px;border-radius:6px;flex:0 0 auto}
     .toast-zu .ico{width:1rem;height:1rem}
     .alarm-waehrung{font-size:var(--fs-1);color:var(--mut);margin-left:4px;font-weight:600}
@@ -515,7 +515,7 @@
     .alarm-stand{font-size:var(--fs-1);color:var(--mut);display:inline-block;min-width:6.5em}
     .zeichen-zaehler{display:block;font-size:var(--fs-1);color:var(--mut);margin-top:2px}
     .zeichen-zaehler[hidden]{display:none}
-    .sort-knopf{background:none;border:0;padding:0;font:inherit;color:inherit;text-align:inherit;cursor:pointer;min-height:24px;min-width:24px;text-transform:inherit;letter-spacing:inherit}
+    .sort-knopf{background:none;border:0;padding:0;font:inherit;color:inherit;text-align:inherit;cursor:pointer;min-height:32px;min-width:32px;text-transform:inherit;letter-spacing:inherit}
     th[aria-sort="ascending"] .sort-knopf::after{content:" ▲";font-size:.8em}
     th[aria-sort="descending"] .sort-knopf::after{content:" ▼";font-size:.8em}
     .fin-suche-zeile{display:flex;margin:0 0 .75rem}

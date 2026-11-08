@@ -1,4 +1,4 @@
-import { detailZeile } from './01-bausteine.js';
+import { detailZeile, heuteIso } from './01-bausteine.js';
 import { echt, registerActions } from './00-registry.js';
 import { colorName, t, tRaw } from '../i18n.js';
 import { escHex, escJs, hexZiffern, esc, html, ungeprueft } from './00-escapen.js';
@@ -6,7 +6,7 @@ import { api } from './01-api.js';
 import { fullUrl, imgUrl } from './01-bilder.js';
 import { ico, G, aktiverReiter, setzeHtml, fuegeHtmlEin } from './01-dom.js';
 import { fmtDatum, betragFuerFeld, browserSchreibtDatumWieApp } from './01-format.js';
-import { betragAusFeld } from './01-formular.js';
+import { betragAusFeld, mengeAusFeld, kaufdatumGueltig } from './01-formular.js';
 import { toast } from './01-meldungen.js';
 import { applySetAggregate, loadGallery } from './02-gallery.js';
 import { loadFinance } from './04-finance.js';
@@ -126,7 +126,7 @@ function isoTag(v) {
  */
 function datumFeld(attrs, iso, textId) {
   const text = browserSchreibtDatumWieApp(iso) ? '' : fmtDatum(iso, 'lang');
-  return html`<span class="acq-datum"><input class="acq-feld" type="date" value="${iso}" aria-label="${tRaw('detail.added')}"
+  return html`<span class="acq-datum"><input class="acq-feld" type="date" max="${heuteIso()}" value="${iso}" aria-label="${tRaw('detail.added')}"
       ${text ? html`aria-describedby="${textId}"` : ''} ${ungeprueft(attrs)} />${text ? html`<span class="acq-datum-text" id="${textId}">${text}</span>` : ''}</span>`;
 }
 
@@ -170,11 +170,11 @@ export function renderAcqModalBody(sn, acqs, totals) {
     const dateIso = isoTag(a.created_at);
     markup = html`${markup}${html`<tr id="acq-row-${a.id}">
       <td>
-        <input class="acq-feld acq-menge" inputmode="numeric" type="number" min="1" value="${a.quantity}" aria-label="${tRaw('detail.qty')}"
+        <input class="acq-feld acq-menge" id="acq-menge-${a.id}" inputmode="numeric" type="number" min="1" value="${a.quantity}" aria-label="${tRaw('detail.qty')}"
           data-blur="acqSave" data-arg="${sn}" data-arg2="${a.id}" data-arg3="qty" data-val="1"
           data-keydown="blurOnEnter" />
       </td>
-      <td>${datumFeld(`data-change="acqSave" data-arg="${esc(sn)}" data-arg2="${a.id}" data-arg3="date" data-val="1"`, dateIso, `acq-datum-${a.id}`)}</td>
+      <td>${datumFeld(`id="acq-datum-feld-${a.id}" data-change="acqSave" data-arg="${esc(sn)}" data-arg2="${a.id}" data-arg3="date" data-val="1"`, dateIso, `acq-datum-${a.id}`)}</td>
       <td>
         <select class="acq-feld" aria-label="${tRaw('common.condition')}" data-change="acqSave" data-arg="${sn}" data-arg2="${a.id}" data-arg3="cond" data-val="1">
           <option value="N" ${a.condition!=='U' ? 'selected' : ''}>${tRaw('common.condition_new')}</option>
@@ -224,8 +224,9 @@ async function acqSave(sn, id, field, value) {
     if (!preis.ok) return;
     body.purchase_price = preis.wert;
   } else if (field === 'qty') {
-    body.quantity = Math.max(1, parseInt(value) || 1);
+    const menge = mengeAusFeld(`acq-menge-${id}`); if (!menge.ok) return; body.quantity = menge.wert;
   } else if (field === 'date') {
+    if (!kaufdatumGueltig(`acq-datum-feld-${id}`)) return;
     body.date = value;
   } else if (field === 'owner') {
     // Eigentümerwechsel verschiebt genau diese Kaufpreis-Zeile, ohne from_user_id: Den Absender kennt der
@@ -703,11 +704,11 @@ function renderManAcqBody(type, id, colorId, acqs, totals) {
     const args = `data-arg="${esc(t_)}" data-arg2="${esc(i_)}" data-arg3="${esc(c_)}" data-arg4="${ai_}"`;
     markup = html`${markup}${html`<tr id="acq-row-${ai_}">
       <td>
-        <input class="acq-feld acq-menge" inputmode="numeric" type="number" min="1" value="${a.quantity}" aria-label="${tRaw('detail.qty')}"
+        <input class="acq-feld acq-menge" id="acq-menge-${ai_}" inputmode="numeric" type="number" min="1" value="${a.quantity}" aria-label="${tRaw('detail.qty')}"
           data-blur="manAcqSave" ${ungeprueft(args)} data-arg5="qty" data-val="1"
           data-keydown="blurOnEnter" />
       </td>
-      <td>${datumFeld(`data-change="manAcqSave" ${args} data-arg5="date" data-val="1"`, dateIso, `acq-datum-${ai_}`)}</td>
+      <td>${datumFeld(`id="acq-datum-feld-${ai_}" data-change="manAcqSave" ${args} data-arg5="date" data-val="1"`, dateIso, `acq-datum-${ai_}`)}</td>
       <td>
         <select class="acq-feld" aria-label="${tRaw('common.condition')}" data-change="manAcqSave" ${ungeprueft(args)} data-arg5="cond" data-val="1">
           <option value="N" ${a.condition!=='U' ? 'selected' : ''}>${tRaw('common.condition_new')}</option>
@@ -757,8 +758,8 @@ async function manAcqSave(type, id, colorId, acqId, field, value) {
       if (!preis.ok) return;
       body.unit_price = preis.wert;
     }
-    else if (field==='qty') body.quantity = Math.max(1,parseInt(value)||1);
-    else if (field==='date') body.date = value;
+    else if (field==='qty') { const menge = mengeAusFeld(`acq-menge-${acqId}`); if (!menge.ok) return; body.quantity = menge.wert; }
+    else if (field==='date') { if (!kaufdatumGueltig(`acq-datum-feld-${acqId}`)) return; body.date = value; }
     else if (field==='owner') {
       // Eigentümerwechsel = Verschieben genau dieser Kaufpreis-Zeile. Ein manuell erfasstes Teil hat keinen
       // Inhalt — es wandern nur Menge und Erfassung (src/sets/setMove.ts, moveManualAcquisition). KEIN

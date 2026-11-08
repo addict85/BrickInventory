@@ -9,7 +9,7 @@ import { api } from './01-api.js';
 import { bildTag, fullUrl, imgUrl, observeLazyImages, platzhalterInhalt, thumbUrl } from './01-bilder.js';
 import { G, leerZustand, meldeTreffer, zuruecksetzenKnopf, TRASH_ICON_SVG, aktiverReiter, setzeHtml, fuegeHtmlEin } from './01-dom.js';
 import { fmtBig, fmtN } from './01-format.js';
-import { betragAusFeld } from './01-formular.js';
+import { betragAusFeld, mengeAusFeld, kaufdatumGueltig } from './01-formular.js';
 import { toast } from './01-meldungen.js';
 import { addScopeParam, addLagerParam, scopeQuery } from './14-scope.js';
 import { allSets, CURRENCY } from './00-zustand.js';
@@ -607,12 +607,14 @@ G('btn-add-part')?.addEventListener('click', async () => {
   const colorName = colorOpt?.dataset.name || null;
   const colorHex  = colorOpt?.dataset.hex  || null;
   const preis = betragAusFeld('ap-price-inline');
-  if (!preis.ok) return;
+  const datumOk = kaufdatumGueltig('ap-date');
+  const menge = mengeAusFeld('ap-qty-inline');
+  if (!preis.ok || !menge.ok || !datumOk) return;
   const btn = G('btn-add-part'); btn.disabled=true; btn.textContent='…';
   res.style.color='var(--mut)'; res.textContent=tRaw('adding.progress');
   const d = await api('POST','/v1/parts',{
     part_number: num, color_id: colorId, color_name: colorName, color_hex: colorHex,
-    quantity: parseInt(G('ap-qty-inline')?.value)||1,
+    quantity: menge.wert,
     unit_price: preis.wert,
     condition: G('ap-condition')?.value || 'N',
     acquired_at: G('ap-date')?.value || null,

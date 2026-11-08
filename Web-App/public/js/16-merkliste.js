@@ -5,7 +5,7 @@ import { api } from './01-api.js';
 import { bildTag, platzhalterInhalt, fullUrl, imgUrl, thumbUrl, setzeDialogbild } from './01-bilder.js';
 import { leerZustand, meldeTreffer, ico, G, TRASH_ICON_SVG, knopfBesetzt, zuruecksetzenKnopf, setzeHtml } from './01-dom.js';
 import { fmtDatum, fmtN, leseBetrag } from './01-format.js';
-import { setnummerFeldGueltig, betragAusFeld } from './01-formular.js';
+import { setnummerFeldGueltig, betragAusFeld, mengeAusFeld } from './01-formular.js';
 import { toast } from './01-meldungen.js';
 import { detailZeile, listeLadefehler, skelettZeilen, csvHochladen } from './01-bausteine.js';
 import { loadGallery, loadStats } from './02-gallery.js';
@@ -299,14 +299,15 @@ export async function bestaetigeUebernahme() {
   if (!_uebernahme) return;
   const { set_number, condition, owner_user_id } = zerlege(_uebernahme);
   const preis = betragAusFeld('mk-take-price');
-  if (!preis.ok) return;
+  const menge = mengeAusFeld('mk-take-qty');
+  if (!preis.ok || !menge.ok) return;
   const frei = knopfBesetzt(G('mk-take-ok'));
   try {
     const d = await api('POST',
       `/v1/wanted/${encodeURIComponent(set_number)}/${encodeURIComponent(condition)}/uebernehmen`,
       {
         owner_user_id,
-        quantity:  parseInt(G('mk-take-qty').value) || 1,
+        quantity:  menge.wert,
         // Leer heisst „kein Kaufpreis" — der Server setzt dann den Marktpreis ein, genau wie auf dem normalen
         // Erfassungsweg.
         purchase_price: preis.wert ?? undefined,
