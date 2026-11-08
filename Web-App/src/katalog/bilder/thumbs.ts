@@ -64,7 +64,7 @@ export async function generateThumb(localPath: string) {
     return thumbWeb;
   } catch (e) {
     // NICHT still scheitern.
-    console.error(`[thumb] Vorschau fehlgeschlagen für ${localPath}: ${fehlertext(e)}`.replace(/\n|\r/g, ' ⏎ '));
+    console.error(`[thumb] Vorschau fehlgeschlagen für ${localPath}: ${fehlertext(e)}`.replace(/\r?\n/g, ' ⏎ ').replace(/\n|\r/g, ''));
     try {
       const reste = fs.readdirSync(path.dirname(fsPath))
         .filter(f => f.startsWith(path.basename(thumbFs)) && f.endsWith('.tmp.jpg'));

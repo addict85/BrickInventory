@@ -84,12 +84,12 @@ export async function frageGuthabenAb(
   } catch (e) {
     if (e instanceof BotSchutz) {
       const wartenSek = await sperreWegenBotschutz();
-      console.warn(`[guthaben] Bot-Schutz — ${BOTSCHUTZ_PAUSE_MIN} Minuten Pause: ${e.message}`.replace(/\n|\r/g, ' ⏎ '));
+      console.warn(`[guthaben] Bot-Schutz — ${BOTSCHUTZ_PAUSE_MIN} Minuten Pause: ${e.message}`.replace(/\r?\n/g, ' ⏎ ').replace(/\n|\r/g, ''));
       return { art: 'gesperrt', grund: 'botschutz', wartenSek };
     }
     // Ein Fehler der Gegenseite ist kein Serverfehler: Wer gefragt hat, soll den Grund lesen.
     const grund = verdecke(String((e as Error)?.message || e), nummer, pin);
-    console.warn(`[guthaben] Abfrage gescheitert: ${grund}`.replace(/\n|\r/g, ' ⏎ '));
+    console.warn(`[guthaben] Abfrage gescheitert: ${grund}`.replace(/\r?\n/g, ' ⏎ ').replace(/\n|\r/g, ''));
     throw new Fachfehler('guthaben_fehlgeschlagen', 502, { grund });
   }
 }

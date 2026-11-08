@@ -17,7 +17,7 @@ const SYNC_KEY = 'rb_csv_last_sync';
 const PART_CAT_KEY = 'rb_part_categories_last_sync';
 const CATALOG_EXTRAS_KEY = 'rb_catalog_extras_last_sync';
 
-function log(msg: string) { console.log(`[rb-csv-sync] ${msg}`.replace(/\n|\r/g, ' ⏎ ')); }
+function log(msg: string) { console.log(`[rb-csv-sync] ${msg}`.replace(/\r?\n/g, ' ⏎ ').replace(/\n|\r/g, '')); }
 
 // __dirname ist hier RICHTIG: Der Worker liegt neben dieser Datei, ob aus den
 // Quellen oder aus dist/; ein Pfad über die Wurzel träfe dort nichts.

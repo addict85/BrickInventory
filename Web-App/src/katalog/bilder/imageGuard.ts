@@ -52,7 +52,7 @@ export async function isDecodable(filePath: string) {
     // Eine leere oder abgeschnittene Datei ist kein Bild: Sonst liesse der Rückfall
     // „unbekanntes Format" sie durch.
     if (bytesRead < 10) {
-      console.warn(`[image-guard] ${bytesRead} Byte gelesen — keine Bilddatei: ${filePath}`.replace(/\n|\r/g, ' ⏎ '));
+      console.warn(`[image-guard] ${bytesRead} Byte gelesen — keine Bilddatei: ${filePath}`.replace(/\r?\n/g, ' ⏎ ').replace(/\n|\r/g, ''));
       return false;
     }
     const dim = readDimensions(buf.subarray(0, bytesRead));
@@ -62,7 +62,7 @@ export async function isDecodable(filePath: string) {
     if (!dim.width || !dim.height) return true;
     const pixels = dim.width * dim.height;
     if (pixels > MAX_PIXELS) {
-      console.error(`[image-guard] abgelehnt: ${dim.width}×${dim.height} = ${Math.round(pixels / 1e6)} MP > ${MAX_PIXELS / 1e6} MP — ${filePath}`.replace(/\n|\r/g, ' ⏎ '));
+      console.error(`[image-guard] abgelehnt: ${dim.width}×${dim.height} = ${Math.round(pixels / 1e6)} MP > ${MAX_PIXELS / 1e6} MP — ${filePath}`.replace(/\r?\n/g, ' ⏎ ').replace(/\n|\r/g, ''));
       return false;
     }
     return true;

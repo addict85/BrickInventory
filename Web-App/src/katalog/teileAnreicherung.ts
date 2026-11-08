@@ -233,7 +233,7 @@ async function ladeTeilbild(p: repo.Bildwunsch): Promise<void> {
       await cdnImageLimiter.acquire();
       fs.mkdirSync(PART_IMAGES_DIR, { recursive: true });
       const ok = await ladeBild(cdnUrl, dest, ERLAUBTE_BILD_HOSTS, BILD_KOPFZEILEN,
-        (text) => console.warn(`[img-dl] ${p.id}: ${text}`.replace(/\n|\r/g, ' ⏎ ')))
+        (text) => console.warn(`[img-dl] ${p.id}: ${text}`.replace(/\r?\n/g, ' ⏎ ').replace(/\n|\r/g, '')))
         .finally(() => cdnImageLimiter.release());
       if (!ok) return;
     }

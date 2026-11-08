@@ -85,7 +85,7 @@ export async function scrapeInstructionsFromFallback(setNumber: string) {
       console.log(`[brickinstructions] Fallback triggered for ${n}`);
       return 1;
     }
-  } catch (e) { console.log(`[brickinstructions] Fallback failed for ${n}: ${fehlertext(e)}`.replace(/\n|\r/g, ' ⏎ ')); }
+  } catch (e) { console.log(`[brickinstructions] Fallback failed for ${n}: ${fehlertext(e)}`.replace(/\r?\n/g, ' ⏎ ').replace(/\n|\r/g, '')); }
   return 0;
 }
 
@@ -146,7 +146,7 @@ export async function downloadSetInstructions(setNumber: string,
           brickinstructions_base:baseUrl, brickinstructions_hdrs:hdrs, brickinstructions_first:fund.erstesBild });
         
       }
-    } catch (e) { console.log(`  BrickInstructions probe failed: ${fehlertext(e)}`.replace(/\n|\r/g, ' ⏎ ')); }
+    } catch (e) { console.log(`  BrickInstructions probe failed: ${fehlertext(e)}`.replace(/\r?\n/g, ' ⏎ ').replace(/\n|\r/g, '')); }
   }
 
   if (!instrList.length) {  return 0; }

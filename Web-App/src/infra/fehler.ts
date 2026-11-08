@@ -9,7 +9,7 @@ import type { FehlerCode } from './fehlerTexte';
 export function logAndContinue(kontext: string) {
   return (e: unknown) => {
     const roh = e instanceof Error && e.stack ? e.stack : (e as { message?: unknown } | null)?.message || e;
-    console.warn(`[weiter-trotz-fehler] ${kontext}: ${String(roh)}`.replace(/\n|\r/g, ' ⏎ '));
+    console.warn(`[weiter-trotz-fehler] ${kontext}: ${String(roh)}`.replace(/\r?\n/g, ' ⏎ ').replace(/\n|\r/g, ''));
   };
 }
 

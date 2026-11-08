@@ -37,7 +37,7 @@ async function acquireRunLock(): Promise<(() => Promise<void>) | null> {
 
 function log(msg: string) {
   const line = `[${new Date().toISOString().replace('T',' ').substring(0,19)}] ${msg}`;
-  console.log(`  PriceJob: ${msg}`.replace(/\n|\r/g, ' ⏎ '));
+  console.log(`  PriceJob: ${msg}`.replace(/\r?\n/g, ' ⏎ ').replace(/\n|\r/g, ''));
   _log.unshift(line);
   if (_log.length > 50) _log.length = 50;
 }
