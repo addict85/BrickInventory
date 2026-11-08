@@ -128,22 +128,6 @@ wiedersieht, lohnt die Verkleinerung. Für 25 000 Sets, an denen man
 vorbeiscrollt, nie.
 ```
 
-<a id="server-2"></a>
-## `const server = require('./helpers/sources').serverAll();`
-
-```text
-403 kommt beim CDN auch als Drosselung vor. Es zu merken hiesse, dass
-Bilder „teilweise" fehlen, obwohl sie existieren. Diese Aussage gilt
-unverändert.
-
-Der WEG hat sich geändert (Nachtrag 98): Der Merker lag im Arbeitsspeicher
-EINES Prozesses und verfiel nach 15 Minuten. Der Server läuft im Cluster —
-dasselbe fehlende Bild wurde deshalb einmal je Arbeitsprozess geholt, nach
-jedem Neustart erneut, und nach 15 Minuten wieder. In den alten
-Katalogjahrgängen, wo fast jedes Bild fehlt, war das der Grossteil der
-Last. Jetzt steht es in der Datenbank, für alle Prozesse.
-```
-
 <a id="uses"></a>
 ## `const uses = (ph.match(/buildChart\(/g) || []).length;`
 

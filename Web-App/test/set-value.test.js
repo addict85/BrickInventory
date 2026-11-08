@@ -8,7 +8,8 @@
  *   „Bewertung und Anzeige …“; buildChart() mit firstRealIndex immer 0 oder
  *   ohne Auffüllen mit 0 → rot „die Verlaufs-Endpunkte …“. Gestrichen, weil set-zustand-aggregat-db.test.js
  *   es ausführt: „der P&L-Pfad wählt je Set …“ (priceFor() immer Neupreis →
- *   dort rot) und „es gibt einen Diagnose-Endpunkt …“ (ohne price_cache → rot).
+ *   dort rot) und „es gibt einen Diagnose-Endpunkt …“ (ohne price_cache → rot);
+ *   „nur 404 wird negativ gemerkt, kein 403“ läuft in bild-proxy-deckel.test.js.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -482,24 +483,6 @@ test('die Vorschau-Erzeugung ist gedeckelt', () => {
     /imgUrl\(thumbUrl\(src\)\|\|src, true\)/,
     'Der eigene Bestand sollte weiterhin Vorschauen bekommen',
   );
-});
-
-test('nur 404 wird negativ gemerkt, kein 403', () => {
-  // 403 kommt beim CDN auch als Drosselung vor. Es zu merken hiesse, dass
-  // Bilder „teilweise" fehlen, obwohl sie existieren. Diese Aussage gilt
-  // unverändert.
-  // Ausführlich: docs/begruendungen/test/set-value.test.js.md#server-2
-  const server = require('./helpers/sources').serverAll();
-  const merkStelle = server.indexOf('merkeFehlend(cacheKey)');
-  assert.ok(merkStelle > 0, 'Die Fehlanzeige wird nicht mehr festgehalten');
-  assert.doesNotMatch(
-    server.slice(server.indexOf('if (r.statusCode ==='), merkStelle),
-    /403/,
-    'Ein 403 darf nicht gemerkt werden',
-  );
-  // Und gelesen wird aus derselben Quelle — ein zweiter Merker daneben wäre
-  // wieder ein Gedächtnis je Prozess.
-  assert.match(server, /istBekanntFehlend\(cacheKey\)/, 'Der Proxy fragt den gemeinsamen Merker nicht ab');
 });
 
 test('Bewertung und Anzeige benutzen dieselbe Zustandsregel', () => {
