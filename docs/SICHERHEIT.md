@@ -521,3 +521,18 @@ Einzelheiten: `Android-App/README.md`, Abschnitte „Manipulationsschutz“ und
   (ZAP und die Dienst-Container der Workflows nicht). Eine hingenommene Lücke
   in `postgres` steht mit Ablaufdatum in `.github/trivy-betrieb.ignore`; Caddy
   prüft der Job `trivy-eigenbau` ohne Ausnahmen.
+- **Verwalter setzen jedes Konto zurück**: Ein Verwalter kann Passwort und
+  zweiten Faktor jedes Kontos zurücksetzen. Gedeckelt ist das durch Passwort
+  und zweiten Faktor des Verwalters selbst, eine Hinweis-Mail an den Inhaber
+  und alle Verwalter und das Verwaltungsprotokoll; verhindern lässt es sich
+  nicht, nur erkennen.
+- **Update der Android-App per Sideload**: Die App darf Pakete installieren
+  (`REQUEST_INSTALL_PACKAGES`). Abgesichert ist das durch die Signatur des
+  APK, seine SHA-256-Prüfsumme, die signierte Fassungsbeschreibung und ein
+  Frischefenster gegen alte Fassungen. Restrisiko: Der Signierschlüssel liegt
+  als Secret in einem GitHub-Environment; wer ihn dort erbeutet, kann Updates
+  signieren.
+- **Beschreibungsschlüssel noch leer**: Solange in der App kein
+  Beschreibungsschlüssel eingerichtet ist, gilt als Übergangsweg das Zertifikat
+  der installierten App; die Trennung von APK- und Beschreibungsschlüssel
+  greift erst mit der Einrichtung.
