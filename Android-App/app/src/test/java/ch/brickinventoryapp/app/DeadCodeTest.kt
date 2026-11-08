@@ -85,13 +85,16 @@ class DeadCodeTest {
     fun `jede Funktion hat einen Aufrufer`() {
         val dateien = Quellen.alle().associateWith { Quellen.ohneKommentare(it.readText()) }
         val alles = dateien.values.joinToString("\n")
+        // Die Hilfen aus core-testing sind für Tests da; ihre Aufrufer stehen dort, nicht im Hauptbaum.
+        val ausTests = alles + "\n" + Quellen.tests.walkTopDown().filter { it.extension == "kt" }
+            .joinToString("\n") { Quellen.ohneKommentare(it.readText()) }
 
         // Nur eigene Deklarationen: `override`, `operator` und Konstruktoren
         // bleiben aussen vor — die ruft das Rahmenwerk auf, nicht dieser Baum.
         val deklaration = Regex("""^(?:internal |private |public |)fun (\w+)\s*[(<]""", RegexOption.MULTILINE)
         val orte = mutableMapOf<String, MutableList<String>>()
         dateien.forEach { (datei, s) ->
-            deklaration.findAll(s).forEach { orte.getOrPut(it.groupValues[1]) { mutableListOf() } += datei.name }
+            deklaration.findAll(s).forEach { orte.getOrPut(it.groupValues[1]) { mutableListOf() } += datei.invariantSeparatorsPath }
         }
         assert(orte.size > 80) { "Nur ${orte.size} Funktionen gefunden — Muster veraltet?" }
 
@@ -100,6 +103,7 @@ class DeadCodeTest {
 
         val tot = orte.filter { (name, wo) ->
             if (name in einstiege) return@filter false
+            val text = if (wo.all { "/testing/" in it }) ausTests else alles
             // Ein Aufruf ist `name(`, eine Referenz `::name`, ein benanntes
             // Argument `name =`. Weniger Treffer als Deklarationen heisst:
             // ausser der Deklaration steht nichts da.
@@ -118,12 +122,12 @@ class DeadCodeTest {
             // GEMESSEN benutzen genau ZWEI eigene Funktionen diese Form,
             // `AppKarte` (3 Stellen) und die neue hier (2). `AppKarte` wird
             // daneben auch mit Klammern gerufen und rutschte deshalb durch.
-            val aufrufe = Regex("""\b${Regex.escape(name)}\s*\(""").findAll(alles).count()
-            val alsBlock = Regex("""\b${Regex.escape(name)}\s*\{""").findAll(alles).count()
-            val referenzen = Regex("""::${Regex.escape(name)}\b""").findAll(alles).count()
-            val benannt = Regex("""\b${Regex.escape(name)}\s*=""").findAll(alles).count()
+            val aufrufe = Regex("""\b${Regex.escape(name)}\s*\(""").findAll(text).count()
+            val alsBlock = Regex("""\b${Regex.escape(name)}\s*\{""").findAll(text).count()
+            val referenzen = Regex("""::${Regex.escape(name)}\b""").findAll(text).count()
+            val benannt = Regex("""\b${Regex.escape(name)}\s*=""").findAll(text).count()
             aufrufe <= wo.size && alsBlock == 0 && referenzen == 0 && benannt == 0
-        }.map { "${it.key} (${it.value.joinToString()})" }.sorted()
+        }.map { "${it.key} (${it.value.joinToString { p -> p.substringAfterLast('/') }})" }.sorted()
 
         assert(tot.isEmpty()) {
             "Diese Funktionen haben keinen Aufrufer (${tot.size}):\n  " + tot.joinToString("\n  ") +
