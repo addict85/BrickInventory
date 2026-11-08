@@ -16,9 +16,11 @@
        Ausführlich: docs/begruendungen/public/index.html.md#startstil -->
   <style id="startstil">
 #startgeruest{--sg-bg:#f6f7f9;--sg-sur:#fff;--sg-bdr:#e3e6ea;--sg-ph:#eceff3;--sg-txt:#1e293b;position:fixed;inset:0;z-index:2;overflow:hidden;background:var(--sg-bg);font-family:system-ui,-apple-system,"Segoe UI",sans-serif}
-@media (prefers-color-scheme:dark){#startgeruest{--sg-bg:#14181d;--sg-sur:#1b2027;--sg-bdr:#2f3843;--sg-ph:#262d36;--sg-txt:#e6e9ee}}
-[data-theme=werkbank] #startgeruest{--sg-bg:#14181d;--sg-sur:#1b2027;--sg-bdr:#2f3843;--sg-ph:#262d36;--sg-txt:#e6e9ee}
+[data-theme=brick] #startgeruest{--sg-bg:#c9d5e2}
+[data-dunkel] #startgeruest,[data-theme=werkbank] #startgeruest{--sg-bg:#14181d;--sg-sur:#1b2027;--sg-bdr:#2f3843;--sg-ph:#262d36;--sg-txt:#e6e9ee}
 .sg-kopf{display:flex;align-items:center;gap:9px;height:58px;padding:0 1.5rem;background:var(--sg-sur);border-bottom:1px solid var(--sg-bdr);color:var(--sg-txt);font-weight:800;font-size:17px}
+[data-theme=brick] .sg-kopf{background:#3d5a80;color:#fff}
+[data-theme=brick][data-dunkel] .sg-kopf{background:#273849}
 .sg-leiste{display:flex;gap:28px;height:46px;align-items:center;padding:0 1.5rem;background:var(--sg-sur);border-bottom:1px solid var(--sg-bdr)}
 .sg-leiste i,.sg-titel,.sg-karten i,.sg-kacheln i{display:block;background:var(--sg-ph);border-radius:8px}
 .sg-leiste i{width:84px;height:12px}
