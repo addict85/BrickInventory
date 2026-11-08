@@ -16,6 +16,14 @@
  *      Zeitstempel …“ (private fehlt)
  *   E  in bildDurchreichen wieder den rohen Content-Type des CDN gesetzt →
  *      rot: „eine Komma-Liste im Content-Type …“ (04.11.2026)
+ * Gegenproben (am 08.11.2026 gemessen):
+ *   F  die Typprüfung in bildDurchreichen lässt SVG durch → rot: „nur Bilder
+ *      verlassen den Bild-Proxy“
+ *   G  vomCdn antwortet auf 404 mit `res.status(404)` statt sendePlatzhalter
+ *      → rot: „ein fehlendes Bild kommt als Platzhalter …“; merkeFehlend()
+ *      entfernt → ebenda rot (zweiter Abruf beim CDN)
+ *   H  auch 403 wird gemerkt (`r.status === 404 || r.status === 403`) → rot:
+ *      „nur 404 wird gemerkt, kein 403“
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -28,6 +36,12 @@ const { EventEmitter } = require('node:events');
 
 const wurzel = fs.mkdtempSync(path.join(os.tmpdir(), 'bi-bildproxy-'));
 process.env.APP_ROOT = wurzel;
+// Der Platzhalter für fehlende Bilder liegt unter APP_ROOT/public.
+fs.mkdirSync(path.join(wurzel, 'public', 'assets'), { recursive: true });
+fs.copyFileSync(
+  path.join(__dirname, '..', 'public', 'assets', 'set-placeholder.svg'),
+  path.join(wurzel, 'public', 'assets', 'set-placeholder.svg'),
+);
 process.env.BILD_ABRUFE_JE_MINUTE = '3';
 const express = require('express');
 const _req = require('./helpers/sources').buildAndRequire();
@@ -38,31 +52,48 @@ const cacheDir = path.join(wurzel, 'data', 'img_proxy_cache');
 
 const geholt = [];
 let cdnTyp = 'image/png';
+let cdnStatus = 200;
 const echt = https.get;
 https.get = (url, _o, cb) => {
   geholt.push(String(url));
   const req = Object.assign(new EventEmitter(), { setTimeout: () => req, destroy: () => {} });
   const bild = Buffer.alloc(300, 7);
-  setImmediate(() => cb(Object.assign(Readable.from([bild]),
-    { statusCode: 200, headers: { 'content-type': cdnTyp, 'content-length': String(bild.length) } })));
+  setImmediate(() =>
+    cb(
+      Object.assign(Readable.from([bild]), {
+        statusCode: cdnStatus,
+        headers: { 'content-type': cdnTyp, 'content-length': String(bild.length) },
+      }),
+    ),
+  );
   return req;
 };
 
 const app = express();
 let konto = 0;
-app.use((req, _res, next) => { req.session = { userId: konto }; next(); });
+app.use((req, _res, next) => {
+  req.session = { userId: konto };
+  next();
+});
 app.get('/p', bildDurchreichen);
 const srv = app.listen(0);
 const basis = `http://127.0.0.1:${srv.address().port}/p?url=`;
-const hole = (adresse) => fetch(basis + encodeURIComponent(adresse))
-  .then(async r => ({ status: r.status, n: (await r.arrayBuffer()).byteLength, cache: r.headers.get('cache-control') }));
+const hole = adresse =>
+  fetch(basis + encodeURIComponent(adresse)).then(async r => ({
+    status: r.status,
+    n: (await r.arrayBuffer()).byteLength,
+    cache: r.headers.get('cache-control'),
+  }));
 // Der Cache schreibt nach der Antwort; gewartet wird auf die Dateien, nicht auf eine feste Zeit.
-const bilderImCache = () => fs.existsSync(cacheDir) ? fs.readdirSync(cacheDir).filter(f => /^[0-9a-f]{40}$/.test(f)).length : 0;
+const bilderImCache = () =>
+  fs.existsSync(cacheDir) ? fs.readdirSync(cacheDir).filter(f => /^[0-9a-f]{40}$/.test(f)).length : 0;
 
 test.after(async () => {
   https.get = echt;
   srv.close();
-  await _req('db/database.js').pool?.end?.().catch(() => {});
+  await _req('db/database.js')
+    .pool?.end?.()
+    .catch(() => {});
   fs.rmSync(wurzel, { recursive: true, force: true });
 });
 
@@ -86,7 +117,8 @@ test('ein Zeitstempel im Anfrageteil holt das Bild nicht neu', async () => {
 
 test('das vierte fremde Bild wird gedrosselt, Treffer und andere Konten nicht', async () => {
   konto = 600000 + (process.pid % 100000);
-  for (let i = 1; i <= 3; i++) assert.equal((await hole(`https://cdn.rebrickable.com/media/parts/d${i}.png`)).status, 200);
+  for (let i = 1; i <= 3; i++)
+    assert.equal((await hole(`https://cdn.rebrickable.com/media/parts/d${i}.png`)).status, 200);
   const vierte = await fetch(basis + encodeURIComponent('https://cdn.rebrickable.com/media/parts/d4.png'));
   assert.equal(vierte.status, 429);
   assert.ok(Number(vierte.headers.get('retry-after')) > 0);
@@ -97,7 +129,7 @@ test('das vierte fremde Bild wird gedrosselt, Treffer und andere Konten nicht', 
   // Der Cache schreibt nach der Antwort weiter; landet die Datei erst im
   // nächsten Test, zählt sie dort gegen den Deckel (im Volllauf so gesehen).
   const bilder = () => fs.readdirSync(cacheDir).filter(f => /^[0-9a-f]{40}$/.test(f)).length;
-  for (const ende = Date.now() + 5000; bilder() < 6 && Date.now() < ende;) await pause(100);
+  for (const ende = Date.now() + 5000; bilder() < 6 && Date.now() < ende; ) await pause(100);
   assert.equal(bilder(), 6);
 });
 
@@ -110,11 +142,85 @@ test('eine Komma-Liste im Content-Type des CDN geht nicht hinaus', async () => {
     return [r.status, r.headers.get('content-type')];
   };
   try {
-    assert.deepEqual(await typ('image/png, text/html', 'https://cdn.rebrickable.com/media/parts/k1.png'), [200, 'image/jpeg']);
-    assert.deepEqual(await typ('image/webp; q=1', 'https://cdn.rebrickable.com/media/parts/k2.webp'), [200, 'image/webp']);
-  } finally { cdnTyp = 'image/png'; }
+    assert.deepEqual(await typ('image/png, text/html', 'https://cdn.rebrickable.com/media/parts/k1.png'), [
+      200,
+      'image/jpeg',
+    ]);
+    assert.deepEqual(await typ('image/webp; q=1', 'https://cdn.rebrickable.com/media/parts/k2.webp'), [
+      200,
+      'image/webp',
+    ]);
+  } finally {
+    cdnTyp = 'image/png';
+  }
   // Der Cache schreibt nach der Antwort weiter; der Deckel unten zählt sonst mit.
-  for (const ende = Date.now() + 5000; fs.readdirSync(cacheDir).filter(f => f.endsWith('.ct')).length < 8 && Date.now() < ende;) await pause(100);
+  for (
+    const ende = Date.now() + 5000;
+    fs.readdirSync(cacheDir).filter(f => f.endsWith('.ct')).length < 8 && Date.now() < ende;
+  )
+    await pause(100);
+});
+
+test('nur Bilder verlassen den Bild-Proxy', async () => {
+  // Auf den erlaubten CDNs liegen teils Nutzer-Uploads; HTML oder SVG liefe
+  // sonst unter unserer Herkunft.
+  konto = 400000 + (process.pid % 100000);
+  try {
+    for (const [typ, adresse] of [
+      ['text/html', 'h1.png'],
+      ['image/svg+xml', 's1.svg'],
+      ['application/octet-stream', 'o1.png'],
+    ]) {
+      cdnTyp = typ;
+      const r = await fetch(basis + encodeURIComponent(`https://cdn.rebrickable.com/media/parts/${adresse}`));
+      await r.arrayBuffer();
+      assert.equal(r.status, 415, `${typ} ging als Bild hinaus`);
+    }
+  } finally {
+    cdnTyp = 'image/png';
+  }
+});
+
+test('ein fehlendes Bild kommt als Platzhalter, und der Server merkt es sich', async () => {
+  konto = 300000 + (process.pid % 100000);
+  const platzhalter = fs.readFileSync(path.join(__dirname, '..', 'public', 'assets', 'set-placeholder.svg'));
+  const adresse = 'https://cdn.rebrickable.com/media/sets/fehlt-1.jpg';
+  cdnStatus = 404;
+  try {
+    geholt.length = 0;
+    const holeRoh = async () => {
+      const r = await fetch(basis + encodeURIComponent(adresse));
+      return { status: r.status, typ: r.headers.get('content-type'), rumpf: Buffer.from(await r.arrayBuffer()) };
+    };
+    const erst = await holeRoh();
+    assert.equal(erst.status, 200, 'Ein 404 des CDN geht als Fehler an den Browser');
+    assert.equal(erst.typ, 'image/svg+xml');
+    assert.ok(erst.rumpf.equals(platzhalter), 'Ausgeliefert wird nicht der Platzhalter');
+    assert.equal(geholt.length, 2, 'Vor dem Aufgeben fragt der Proxy einmal ohne Referer nach');
+    const zweit = await holeRoh();
+    assert.ok(zweit.status === 200 && zweit.rumpf.equals(platzhalter));
+    assert.equal(geholt.length, 2, 'Das fehlende Bild wird nicht gemerkt — jede Kachel fragt das CDN erneut');
+  } finally {
+    cdnStatus = 200;
+  }
+});
+
+test('nur 404 wird gemerkt, kein 403', async () => {
+  // 403 ist beim CDN oft nur Drosselung; gemerkt fehlten Bilder, die es gibt.
+  konto = 200000 + (process.pid % 100000);
+  cdnStatus = 403;
+  try {
+    geholt.length = 0;
+    const adresse = basis + encodeURIComponent('https://cdn.rebrickable.com/media/sets/gesperrt-1.jpg');
+    for (let i = 0; i < 2; i++) {
+      const r = await fetch(adresse);
+      await r.arrayBuffer();
+      assert.equal(r.status, 403);
+    }
+    assert.equal(geholt.length, 4, 'Ein 403 wurde gemerkt — der zweite Abruf ging nicht ans CDN');
+  } finally {
+    cdnStatus = 200;
+  }
 });
 
 test('der Deckel löscht das am längsten unbenutzte Bild', async () => {
@@ -122,14 +228,27 @@ test('der Deckel löscht das am längsten unbenutzte Bild', async () => {
   fs.mkdirSync(cacheDir, { recursive: true });
   const jetzt = Date.now() / 1000;
   const lege = (schluessel, alterTage) => {
-    for (const [name, n] of [[schluessel, 1000], [`${schluessel}.ct`, 9], [`${schluessel}_thumb.jpg`, 300]]) {
+    for (const [name, n] of [
+      [schluessel, 1000],
+      [`${schluessel}.ct`, 9],
+      [`${schluessel}_thumb.jpg`, 300],
+    ]) {
       const p = path.join(cacheDir, name);
       fs.writeFileSync(p, Buffer.alloc(n));
       fs.utimesSync(p, jetzt - alterTage * 86400, jetzt - alterTage * 86400);
     }
   };
-  lege('a'.repeat(40), 20); lege('b'.repeat(40), 10); lege('c'.repeat(40), 1);
+  lege('a'.repeat(40), 20);
+  lege('b'.repeat(40), 10);
+  lege('c'.repeat(40), 1);
   assert.equal(await raeumeBildCacheAuf(4000), 0, 'unter der Grenze wird nichts gelöscht');
   assert.equal(await raeumeBildCacheAuf(3000), 3);
-  assert.deepEqual(fs.readdirSync(cacheDir).map(f => f[0]).sort().join(''), 'bbbccc');
+  assert.deepEqual(
+    fs
+      .readdirSync(cacheDir)
+      .map(f => f[0])
+      .sort()
+      .join(''),
+    'bbbccc',
+  );
 });

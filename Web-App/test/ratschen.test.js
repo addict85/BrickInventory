@@ -181,8 +181,8 @@ function reineQuelltextTests() {
 }
 
 test('reine Quelltext-Tests werden weniger, nie mehr', () => {
-  // Gemessen 84 am 06.11.2026; wie die Zahl gesunken ist, steht im git log.
-  const SCHRANKE = 84;
+  // Gemessen 81 am 08.11.2026; wie die Zahl gesunken ist, steht im git log.
+  const SCHRANKE = 81;
   const alle = fs.readdirSync(__dirname).filter(n => n.endsWith('.test.js')).length;
   assert.ok(alle >= 300, `Nur ${alle} Testdateien gefunden — greift die Suche noch?`);
   const ist = reineQuelltextTests();
@@ -201,7 +201,8 @@ test('reine Quelltext-Tests werden weniger, nie mehr', () => {
  * zählt, wenn er Quelltext liest (direkt oder über eine Quelltext-Variable der
  * Datei) und nichts ausführt. Zählweise wie im Prüfbericht arch17-web-b.
  */
-const FALL_FUEHRT_AUS = /buildAndRequire|testServer|spawn\(|spawnSync\(|execFileSync\(|fetch\(|jsdom|JSDOM|new Function|vm\.|import\(|require\(.*dist|\.request\(|agent\.|[oO]berflaeche\(|browser|seite\.|page\.|await |starte|lade\w*\(/;
+// `_req(…)` ist der require-Helfer aus buildAndRequire(): ein Aufruf lädt das gebaute Modul aus dist/.
+const FALL_FUEHRT_AUS = /buildAndRequire|\b_req\w*\(|testServer|spawn\(|spawnSync\(|execFileSync\(|fetch\(|jsdom|JSDOM|new Function|vm\.|import\(|require\(.*dist|\.request\(|agent\.|[oO]berflaeche\(|browser|seite\.|page\.|await |starte|lade\w*\(/;
 const FALL_LIEST = /readFileSync|Quelle\(|serverOnly|serverAll|i18nAll|localeSource|ohneKommentare/;
 function quelltextFaelle() {
   let n = 0, alle = 0;
@@ -221,9 +222,10 @@ function quelltextFaelle() {
 }
 
 test('Testfälle, die nur Quelltext lesen, werden weniger, nie mehr', () => {
-  // Gemessen 610 am 06.11.2026 (Prüfbericht: 632; die Ratschen selbst zählen mit).
+  // Gemessen 563 am 08.11.2026 (Prüfbericht: 632; die Ratschen selbst zählen mit).
+  // Gegenprobe (08.11.2026): `\b_req\w*\(` aus FALL_FUEHRT_AUS entfernt → rot (574).
   // Gegenprobe (05.11.2026): parts-paging.test.js auf den Stand vor den jsdom-Tests → rot.
-  const SCHRANKE = 610;
+  const SCHRANKE = 563;
   const { n, alle } = quelltextFaelle();
   assert.ok(alle > 2000, `nur ${alle} Testfälle gefunden — greift die Suche noch?`);
   assert.ok(n <= SCHRANKE, `${n} Testfälle lesen nur Quelltext, erlaubt sind ${SCHRANKE}. ` +
