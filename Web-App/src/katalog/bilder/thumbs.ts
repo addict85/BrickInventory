@@ -1,6 +1,6 @@
 // sharp rechnet ausserhalb des Event-Loops. Ausführlich: docs/begruendungen/src/katalog/bilder/thumbs.ts.md#abschnitt
 
-import { meldeFehler, fehlertext, einzeilig } from '../../infra/fehler';
+import { meldeFehler, fehlertext } from '../../infra/fehler';
 import path from 'path';
 import fs from 'fs';
 import { resolveWebPath } from '../../infra/appPaths';
@@ -64,7 +64,7 @@ export async function generateThumb(localPath: string) {
     return thumbWeb;
   } catch (e) {
     // NICHT still scheitern.
-    console.error(einzeilig(`[thumb] Vorschau fehlgeschlagen für ${localPath}: ${fehlertext(e)}`));
+    console.error(`[thumb] Vorschau fehlgeschlagen für ${localPath}: ${fehlertext(e)}`.replace(/\n|\r/g, ' ⏎ '));
     try {
       const reste = fs.readdirSync(path.dirname(fsPath))
         .filter(f => f.startsWith(path.basename(thumbFs)) && f.endsWith('.tmp.jpg'));

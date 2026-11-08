@@ -1,4 +1,4 @@
-import { fehlertext, einzeilig } from '../../infra/fehler';
+import { fehlertext } from '../../infra/fehler';
 import { konfig } from '../../infra/konfig';
 import path from 'path';
 import fs from 'fs';
@@ -50,7 +50,7 @@ export async function downloadSetImage(url: string, setNumber: string, info?: { 
     }, (e: unknown) => {
       if (e instanceof AbrufFehler && e.grund === 'zu-gross')
         console.error(`[set-img] ${setNumber}: Bild grösser als ${Math.round(SET_IMG_MAX_BYTES / 1024 / 1024)} MB — nicht lokal gespeichert: ${url}`);
-      else console.error(einzeilig(`[set-img] ${setNumber}: Abruf fehlgeschlagen (${e instanceof Error ? e.message : e}): ${url}`));
+      else console.error(`[set-img] ${setNumber}: Abruf fehlgeschlagen (${e instanceof Error ? e.message : e}): ${url}`.replace(/\n|\r/g, ' ⏎ '));
       return null;
     });
     if (!buf) return null;   // Grund wurde oben bereits genannt

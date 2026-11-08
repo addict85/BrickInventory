@@ -2,7 +2,7 @@
  * Sets Namen und Bilder hat. Bilder werden im Hintergrund geladen; bis dahin
  * gilt die CDN-Adresse. */
 import { cdnImageLimiter, rebrickableBackgroundLimiter as rebrickableLimiter, consumeRebrickableDaily } from './rateLimiter';
-import { meldeFehler, fehlertext, einzeilig, logAndContinue, meldeUndLiefere, ohneFehlendeDatei } from '../infra/fehler';
+import { meldeFehler, fehlertext, logAndContinue, meldeUndLiefere, ohneFehlendeDatei } from '../infra/fehler';
 import { neuestesInventar } from './rbInventar';
 import { mitVersion } from '../infra/setNummer';
 import { merkeBlNummer } from './blZuordnung';
@@ -233,7 +233,7 @@ async function ladeTeilbild(p: repo.Bildwunsch): Promise<void> {
       await cdnImageLimiter.acquire();
       fs.mkdirSync(PART_IMAGES_DIR, { recursive: true });
       const ok = await ladeBild(cdnUrl, dest, ERLAUBTE_BILD_HOSTS, BILD_KOPFZEILEN,
-        (text) => console.warn(einzeilig(`[img-dl] ${p.id}: ${text}`)))
+        (text) => console.warn(`[img-dl] ${p.id}: ${text}`.replace(/\n|\r/g, ' ⏎ ')))
         .finally(() => cdnImageLimiter.release());
       if (!ok) return;
     }

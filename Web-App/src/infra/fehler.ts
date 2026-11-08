@@ -3,18 +3,13 @@
 import { FEHLER, fehlerText, antwortSprache } from './fehlerTexte';
 import type { FehlerCode } from './fehlerTexte';
 
-/** Eine Protokollzeile: Umbrüche aus fremden Werten täuschten sonst eine zweite Zeile vor. */
-export function einzeilig(text: unknown): string {
-  return String(text).replace(/\n|\r/g, ' ⏎ ');
-}
-
 /** Ersatz für `.catch(() => {})`: Der Schritt soll die Anfrage nicht scheitern
  * lassen, aber eine Spur hinterlassen.
  * @param kontext kurze Herkunftsangabe, z. B. 'parts:image_local' */
 export function logAndContinue(kontext: string) {
   return (e: unknown) => {
     const roh = e instanceof Error && e.stack ? e.stack : (e as { message?: unknown } | null)?.message || e;
-    console.warn(einzeilig(`[weiter-trotz-fehler] ${kontext}: ${String(roh)}`));
+    console.warn(`[weiter-trotz-fehler] ${kontext}: ${String(roh)}`.replace(/\n|\r/g, ' ⏎ '));
   };
 }
 

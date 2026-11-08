@@ -4,7 +4,6 @@
 import * as db from '../../db/database';
 import { holeGuthaben, BotSchutz, LAND_STANDARD, verdecke, type Abruf, type Guthaben } from './gutscheinGuthaben';
 import { Fachfehler } from '../infra/fehlerTexte';
-import { einzeilig } from '../infra/fehler';
 import * as repo from './repository/guthabenSchranke';
 
 export const ABSTAND_SEK = 30;
@@ -85,12 +84,12 @@ export async function frageGuthabenAb(
   } catch (e) {
     if (e instanceof BotSchutz) {
       const wartenSek = await sperreWegenBotschutz();
-      console.warn(einzeilig(`[guthaben] Bot-Schutz — ${BOTSCHUTZ_PAUSE_MIN} Minuten Pause: ${e.message}`));
+      console.warn(`[guthaben] Bot-Schutz — ${BOTSCHUTZ_PAUSE_MIN} Minuten Pause: ${e.message}`.replace(/\n|\r/g, ' ⏎ '));
       return { art: 'gesperrt', grund: 'botschutz', wartenSek };
     }
     // Ein Fehler der Gegenseite ist kein Serverfehler: Wer gefragt hat, soll den Grund lesen.
     const grund = verdecke(String((e as Error)?.message || e), nummer, pin);
-    console.warn(einzeilig(`[guthaben] Abfrage gescheitert: ${grund}`));
+    console.warn(`[guthaben] Abfrage gescheitert: ${grund}`.replace(/\n|\r/g, ' ⏎ '));
     throw new Fachfehler('guthaben_fehlgeschlagen', 502, { grund });
   }
 }
