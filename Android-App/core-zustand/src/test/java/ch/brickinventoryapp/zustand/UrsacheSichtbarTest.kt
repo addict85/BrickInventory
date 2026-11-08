@@ -57,12 +57,12 @@ class UrsacheSichtbarTest {
         // Punkt 1 prüft, wäre auch dann grün, wenn die Ursache ÜBERALL
         // angehängt würde — also genau die Regel bräche, gegen die
         // Nachtrag 116 gebaut ist.
-        // Netz und LeereAntwort tragen selbst einen technischen Text; die übrigen
-        // stehen dabei, damit eine künftige Ursache mit Text hier auffällt.
         for (art in listOf(Ergebnis.Error.Netz("Socket closed"), Ergebnis.Error.Zeitueberschreitung,
                            Ergebnis.Error.Server(500), Ergebnis.Error.Abgewiesen(),
                            Ergebnis.Error.LeereAntwort("Socket closed"), Ergebnis.Error.Abgebrochen,
                            Ergebnis.Error.Klartext)) {
+            // Netz und LeereAntwort tragen selbst einen technischen Text; die übrigen
+            // stehen dabei, damit eine künftige Ursache mit Text hier auffällt.
             assertEquals(
                 "Bei $art darf kein englischer Bibliothekstext an den Satz geraten",
                 "Keine Verbindung",

@@ -17,6 +17,8 @@ import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 import java.io.File
+import java.io.IOException
+import java.util.Base64
 
 /**
  * Pins (TOFU) und der Schalter „Nutzer-CAs vertrauen“ liegen verschlüsselt im Spiegel
@@ -134,7 +136,7 @@ class VertrauenVerschluesseltTest {
 
     @Test
     fun `ohne Schluessel bleibt nichts im Klartext und nichts gilt als erlaubt`() {
-        val kaputt = Vertrauenschiffre { throw java.io.IOException("Keystore gerade nicht bereit") }
+        val kaputt = Vertrauenschiffre { throw IOException("Keystore gerade nicht bereit") }
         spiegel.edit(commit = true) {
             putBoolean(GeraeteAblage.NUTZER_CA_AUS_ANGEWANDT, true)
             putBoolean(GeraeteAblage.NUTZER_CA, true)
@@ -153,8 +155,8 @@ class VertrauenVerschluesseltTest {
 
     /** Ein Bit im Geheimtext umdrehen: Das Base64 bleibt gültig, der GCM-Tag nicht. */
     private fun kippe(b64: String): String {
-        val roh = java.util.Base64.getDecoder().decode(b64)
+        val roh = Base64.getDecoder().decode(b64)
         roh[roh.size - 1] = (roh[roh.size - 1].toInt() xor 1).toByte()
-        return java.util.Base64.getEncoder().encodeToString(roh)
+        return Base64.getEncoder().encodeToString(roh)
     }
 }

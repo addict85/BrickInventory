@@ -51,7 +51,7 @@ class FehlerTexteTest {
 
     @Test
     fun `jede Fehlerart hat einen eigenen Text`() {
-        assert(beispiele.map(::name).toSet().size == 8) { "Nicht jede Art hat ein Beispiel" }
+        assert(beispiele.map { name(it) }.toSet().size == 8) { "Nicht jede Art hat ein Beispiel" }
         val zuordnung = beispiele.associate { name(it) to fehlerTextId(it) }
 
         zuordnung.forEach { (art, id) ->
@@ -103,7 +103,7 @@ class FehlerTexteTest {
             "LeereAntwort" to Fehlerklasse.SERVER, "Abgewiesen" to Fehlerklasse.ANMELDUNG,
             "Klartext" to Fehlerklasse.UNBEKANNT, "Unbekannt" to Fehlerklasse.UNBEKANNT,
         )
-        assert(erwartet.keys == beispiele.map(::name).toSet()) { "neue Fehlerart ohne Klasse" }
+        assert(erwartet.keys == beispiele.map { name(it) }.toSet()) { "neue Fehlerart ohne Klasse" }
         beispiele.forEach { f -> assert(fehlerklasse(f) == erwartet[name(f)]) { "${name(f)} ergab ${fehlerklasse(f)}" } }
         assert(fehlerklasse(Ergebnis.Error.Abgewiesen("Satz")) == Fehlerklasse.ANMELDUNG)
         assert(fehlerklasse(Ergebnis.Error.Server(503, "Satz")) == Fehlerklasse.SERVER)

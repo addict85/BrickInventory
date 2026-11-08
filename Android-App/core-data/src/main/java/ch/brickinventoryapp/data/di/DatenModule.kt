@@ -22,6 +22,8 @@ import ch.brickinventoryapp.data.api.ApiJson
 import ch.brickinventoryapp.data.repository.KontoRepository
 import ch.brickinventoryapp.data.util.Ablageschluessel
 import ch.brickinventoryapp.data.util.Vertrauenschiffre
+import android.content.Context
+import java.io.File
 import ch.brickinventoryapp.data.Entwertungsquelle
 import ch.brickinventoryapp.data.cache.CacheBesitzer
 
@@ -54,10 +56,10 @@ internal object DatenModule {
     @Provides
     @Singleton
     fun provideVertrauenschiffre(
-        @dagger.hilt.android.qualifiers.ApplicationContext context: android.content.Context,
+        @dagger.hilt.android.qualifiers.ApplicationContext context: Context,
     ): Vertrauenschiffre {
         val schluessel = Ablageschluessel(
-            java.io.File(context.noBackupFilesDir, "vertrauen.schluessel"), KeystoreTokenTresor("brickinventory_vertrauen"),
+            File(context.noBackupFilesDir, "vertrauen.schluessel"), KeystoreTokenTresor("brickinventory_vertrauen"),
         )
         return Vertrauenschiffre { schluessel.fuer("vertrauen") }
     }
