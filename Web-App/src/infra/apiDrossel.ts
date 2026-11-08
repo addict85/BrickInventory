@@ -16,7 +16,7 @@ export const BUDGET = 600;
 /** Auftragsstarts je Konto und Fenster — zusätzlich zum Verbrauch oben. */
 export const AUFTRAG_BUDGET = 20;
 
-export const KOSTEN = { normal: 1, abruf: 5, auftrag: 25 } as const;
+export const KOSTEN = { normal: 1, abruf: 5, preis: 20, auftrag: 25 } as const;
 
 /** Was einen Auftrag, einen Upload oder einen mehrsekündigen Lauf startet.
  * Bewusst aufgezählt statt „alles unter /admin": Eine neue Route soll hier
@@ -38,9 +38,33 @@ const AUFTRAEGE: ReadonlyArray<readonly [string, RegExp]> = [
 /** Der Katalog fragt Rebrickable je Suche; das Tageskontingent dort ist endlich. */
 const ABRUF = /^\/catalog(\/|$)/;
 
+/** Bis zu vier BrickLink-Aufrufe je Anfrage (zwei Zustände, je ein Rückfall), alle aus
+ * dem Tageskontingent, das sich ALLE Konten teilen. */
+const PREISABRUF: ReadonlyArray<readonly [string, RegExp]> = [
+  ['GET', /^\/wanted\/[^/]+\/preise$/],
+  ['GET', /^\/sets\/[^/]+\/price$/],
+];
+
+/** Lösen je Anfrage einen Abruf bei Rebrickable, Brickset, einem Barcode-Dienst oder
+ * dem Gutschein-Shop aus. Wie die Aufträge aufgezählt: Eine neue Route soll auffallen. */
+const FREMDABRUF: ReadonlyArray<readonly [string, RegExp]> = [
+  ['GET', /^\/sets\/info\/[^/]+$/],
+  ['GET', /^\/sets\/barcode\/[^/]+$/],
+  ['POST', /^\/sets$/],
+  ['POST', /^\/sets\/[^/]+\/parts$/],
+  ['POST', /^\/sets\/[^/]+\/instructions$/],
+  ['POST', /^\/parts$/],
+  ['PUT', /^\/parts\/[^/]+\/[^/]+\/color$/],
+  ['POST', /^\/minifigs$/],
+  ['POST', /^\/wanted\/[^/]+\/[^/]+\/uebernehmen$/],
+  ['POST', /^\/vouchers\/[^/]+\/guthaben$/],
+];
+
 export function einordnung(methode: string, pfad: string): { kosten: number; auftrag: boolean } {
   const m = methode === 'HEAD' ? 'GET' : methode;
   if (AUFTRAEGE.some(([mm, re]) => mm === m && re.test(pfad))) return { kosten: KOSTEN.auftrag, auftrag: true };
+  if (PREISABRUF.some(([mm, re]) => mm === m && re.test(pfad))) return { kosten: KOSTEN.preis, auftrag: false };
+  if (FREMDABRUF.some(([mm, re]) => mm === m && re.test(pfad))) return { kosten: KOSTEN.abruf, auftrag: false };
   if (m === 'GET' && ABRUF.test(pfad)) return { kosten: KOSTEN.abruf, auftrag: false };
   return { kosten: KOSTEN.normal, auftrag: false };
 }
