@@ -346,7 +346,7 @@ function finanzenLaedt() {
   return hatteTabelle;
 }
 
-/** Ladefehler: Diagramm und Kennzahlen dürfen nicht auf „Laden…“ stehen bleiben. @param {{ status?: number } | null | undefined} d */
+/** Ladefehler: Diagramm und Kennzahlen dürfen nicht auf „Laden…“ stehen bleiben. @param {{ status?: number, networkError?: boolean } | null | undefined} d */
 function finanzenFehlen(d) {
   if (d?.status === 401) return;
   // Grund und „Erneut versuchen“ stehen schon bei der Liste darunter; ein zweiter Block sagte dasselbe.
