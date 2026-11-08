@@ -1,0 +1,18 @@
+Gegenprobe: die Teile werden ohne den Kontofilter des Blickfelds vorgewärmt
+Modul: core-zustand
+Test: ch.brickinventoryapp.zustand.SammlungVorwaermenTest
+Rot: vorgewaermt wird jeder Reiter
+
+diff --git a/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/zustand/ui/Vorwaermen.kt b/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/zustand/ui/Vorwaermen.kt
+--- a/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/zustand/ui/Vorwaermen.kt
++++ b/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/zustand/ui/Vorwaermen.kt
+@@ -42,8 +42,7 @@
+ 
+     seite = 1
+     while (seite <= MAX_SEITEN) {
+-        val a = teile.getParts(search = null, page = seite,
+-            accounts = blickfeld.kontoFuer(ScopeFilter.View.PARTS))
++        val a = teile.getParts(search = null, page = seite, accounts = null)
+         val liste = if (a is Ergebnis.Success) a.data.parts else emptyList()
+         liste.mapTo(roh) { resolveThumbUrl(basis, it.imageLocal, it.imageUrl) }
+         if (liste.size < TEILE_SEITE) break

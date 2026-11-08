@@ -1,0 +1,23 @@
+Gegenprobe: die Set-Zeile der Finanzen zeigt keinen Kaufpreis
+Modul: app
+Test: ch.brickinventoryapp.app.FinanzKaufpreisZeilenTest
+Rot: die Set-Zeile zeigt
+
+diff --git a/Android-App/feature-finanzen/src/main/java/ch/brickinventoryapp/finanzen/ui/screens/FinanceSections.kt b/Android-App/feature-finanzen/src/main/java/ch/brickinventoryapp/finanzen/ui/screens/FinanceSections.kt
+--- a/Android-App/feature-finanzen/src/main/java/ch/brickinventoryapp/finanzen/ui/screens/FinanceSections.kt
++++ b/Android-App/feature-finanzen/src/main/java/ch/brickinventoryapp/finanzen/ui/screens/FinanceSections.kt
+@@ -232,14 +232,6 @@
+                         else -> Text(priceStr, fontWeight = FontWeight.Bold,
+                             color = MaterialTheme.colorScheme.primary,
+                             style = MaterialTheme.typography.bodyMedium, maxLines = 1, softWrap = false)
+-                    }
+-                    rowPurchase?.let {
+-                        Text(
+-                            if (rowQty > 1) stringResource(R.string.finance_purchase_total, fmtWert(it))
+-                            else stringResource(R.string.finance_purchase_short, fmtWert(it)),
+-                            style = MaterialTheme.typography.bodySmall,
+-                            color = MaterialTheme.colorScheme.onSurfaceVariant
+-                        )
+                     }
+                     // Entwicklung gegen den Kaufpreis DIESER Erfassung —
+                     // vom Server, hier wird nichts nachgerechnet.

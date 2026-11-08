@@ -1,0 +1,16 @@
+Gegenprobe: Coil lädt nicht über den Bild-Client
+Modul: core-data
+Test: ch.brickinventoryapp.data.ServerClientsTest
+Rot: Coil laedt
+
+diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/di/NetzModule.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/di/NetzModule.kt
+--- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/di/NetzModule.kt
++++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/di/NetzModule.kt
+@@ -167,7 +167,6 @@
+             // OkHttpNetworkFetcherFactory(Call.Factory) ist eine freie Funktion;
+             // `OkHttpNetworkFetcher.factory` ist nur die Java-Sicht. Über den Client hängen
+             // Authentifizierung, Zeitgrenzen und der Offline-Rückfall am Bildweg.
+-            .components { add(coil3.network.okhttp.OkHttpNetworkFetcherFactory(client)) }
+             .memoryCache {
+                 // Builder() ohne Context in Coil 3; der Context wandert an
+                 // maxSizePercent, weil nur dort der Speicher des Geraets

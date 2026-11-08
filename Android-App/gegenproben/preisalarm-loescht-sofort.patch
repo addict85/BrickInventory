@@ -1,0 +1,17 @@
+Gegenprobe: der Mülleimer löscht den Preisalarm ohne Rückfrage
+Modul: app
+Test: ch.brickinventoryapp.app.PreisalarmeAnzeigeTest
+Rot: die Uebersicht holt
+
+diff --git a/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/konto/ui/screens/EinstellungenAlarme.kt b/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/konto/ui/screens/EinstellungenAlarme.kt
+--- a/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/konto/ui/screens/EinstellungenAlarme.kt
++++ b/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/konto/ui/screens/EinstellungenAlarme.kt
+@@ -136,7 +136,7 @@
+                     // Leise wie jede Zeilenaktion: Rot je Zeile übertönte die Preise; die
+                     // Rückfrage danach trägt das Gewicht.
+                     MitTooltip(stringResource(R.string.alerts_delete_fuer, a.name ?: a.setNumber)) {
+-                        IconButton(onClick = { fragtLoeschen = a }) {
++                        IconButton(onClick = { aktionen.loescheAlarm(a.setNumber, a.condition) }) {
+                             Icon(Icons.Default.Delete, stringResource(R.string.alerts_delete_fuer, a.name ?: a.setNumber),
+                                 tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                         }

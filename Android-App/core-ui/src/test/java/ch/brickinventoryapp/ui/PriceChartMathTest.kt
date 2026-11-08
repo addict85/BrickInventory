@@ -8,7 +8,6 @@ import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.util.Locale
-import ch.brickinventoryapp.testing.Quellen
 
 /**
  * Diagramm-Mathematik für den Preisverlauf (ui/PriceChartMath.kt).
@@ -23,8 +22,8 @@ import ch.brickinventoryapp.testing.Quellen
  * Dazu die Beschreibung für TalkBack. Gegenproben:
  *   A  in zusammenfassung() Anfang und Ende nach Index statt nach Tag → rot „die
  *      Beschreibung nennt je Linie Zeitraum, Anfang, Ende, Tief und Hoch“
- *   B  `.semantics { contentDescription = beschreibung }` am Canvas entfernt →
- *      rot „das Preisdiagramm trägt eine Beschreibung“
+ *   B  die Semantik am Canvas prüft PreisdiagrammBeschreibungTest (app) gezeichnet;
+ *      gegenproben/preisdiagramm-stumm.patch
  */
 class PriceChartMathTest {
 
@@ -169,13 +168,5 @@ class PriceChartMathTest {
         val gebraucht = z.getValue("U")
         assertEquals("Die aufgefüllte Null zählt nicht", "01.02.2026", gebraucht.von)
         assertEquals(70.0, gebraucht.tief, 0.0)
-    }
-
-    @Test
-    fun `das Preisdiagramm traegt eine Beschreibung`() {
-        val f = Quellen.funktion(Quellen.lies("ui/screens/SetDetailComponents.kt"), "fun PriceChart(")
-        assertTrue("PriceChart rechnet keine Beschreibung", f.contains("PriceChartMath.zusammenfassung(lines)"))
-        assertTrue("Der Canvas des Preisdiagramms hat keine Semantik",
-            Regex("""Canvas\(modifier = Modifier[^{]*\.semantics \{ contentDescription = beschreibung \}""").containsMatchIn(f))
     }
 }

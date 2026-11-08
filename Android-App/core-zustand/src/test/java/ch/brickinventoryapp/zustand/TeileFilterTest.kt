@@ -8,7 +8,6 @@ import org.junit.Assert.assertEquals
 import org.junit.Test
 import java.io.File
 import ch.brickinventoryapp.testing.PfadServer
-import ch.brickinventoryapp.testing.Quellen
 import ch.brickinventoryapp.testing.ResponseCache
 import ch.brickinventoryapp.testing.SetsRepository
 import ch.brickinventoryapp.testing.TeileRepository
@@ -79,33 +78,14 @@ class TeileFilterTest {
  * denselben Fortschrittsbalken (CsvImportBanner) und bot keinen Weg heraus —
  * ein versehentlich gestarteter Import ueber hunderte Sets holt zu jedem die
  * Stammdaten und musste ausgesessen werden.
+ *
+ * Dass der Knopf zugeklappt in der Kopfzeile steht, prüft CsvAbbrechenKnopfTest (app).
  */
 class CsvAbbruchTest {
-
-    private fun read(rel: String) =
-        File(Quellen.wurzel, "$rel").readText()
-    private fun code(s: String) = s.lines()
-        .joinToString("\n") { if (it.trim().startsWith("//") || it.trim().startsWith("*")) "" else it }
 
     @Test
     fun `die App ruft die Abbruch-Adresse`() = mitServer { pfade, cache ->
         runBlocking { SetsRepository(TestApi.fuer(pfade.server), cache).cancelCsvImport() }
         assertEquals(listOf("POST /api/v1/sets/import/csv/cancel"), pfade.anfragen.toList())
-    }
-
-    @Test
-    fun `der Knopf steht in der Kopfzeile, nicht im aufgeklappten Teil`() {
-        // Wer abbrechen will, soll nicht erst herausfinden muessen, dass der
-        // Balken sich aufklappen laesst. In der Webapp steht der Knopf
-        // dauerhaft da (btn-cancel-import).
-        // Kopfzeile und aufgeklappte Zahlen sind eigene Funktionen; der Knopf gehört in die erste.
-        val s = code(read("ui/screens/CsvImportBanner.kt"))
-        val kopf = s.substringAfter("fun CsvKopfzeile(", "").substringBefore("fun CsvImportZahlen(")
-        val zahlen = s.substringAfter("fun CsvImportZahlen(", "")
-        assert(s.contains("if (expanded) CsvImportZahlen(")) { "Der aufklappbare Teil fehlt — Test veraltet?" }
-        assert(kopf.contains("R.string.csv_cancel")) { "Der Abbrechen-Knopf fehlt in der Kopfzeile" }
-        assert(!zahlen.contains("R.string.csv_cancel")) {
-            "Der Abbrechen-Knopf steht im aufgeklappten Teil und ist damit versteckt"
-        }
     }
 }

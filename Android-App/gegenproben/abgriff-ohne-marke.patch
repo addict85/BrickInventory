@@ -1,0 +1,17 @@
+Gegenprobe: der Abgriff legt auch Vorgewärmtes als gebraucht ab
+Modul: core-data
+Test: ch.brickinventoryapp.data.VorschauAbgriffTest
+Rot: Anfrage des Vorwaermers
+
+diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/di/NetzModule.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/di/NetzModule.kt
+--- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/di/NetzModule.kt
++++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/di/NetzModule.kt
+@@ -275,7 +275,7 @@
+                     val spekulativ = anfrage.tag(
+                         Vorwaermung::class.java
+                     ) != null
+-                    vorschau.schreibe(adresse, bytes, spekulativ)
++                    vorschau.schreibe(adresse, bytes, spekulativ && false)
+                 }
+                 antwort
+             }

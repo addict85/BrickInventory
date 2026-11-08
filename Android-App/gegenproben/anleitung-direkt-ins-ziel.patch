@@ -1,0 +1,17 @@
+Gegenprobe: der Anleitungs-Download schreibt direkt in die fertige Datei
+Modul: core-data
+Test: ch.brickinventoryapp.data.AnleitungsDownloadTest
+Rot: ein abgerissener Download
+
+diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/AnleitungsRepository.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/AnleitungsRepository.kt
+--- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/AnleitungsRepository.kt
++++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/AnleitungsRepository.kt
+@@ -87,7 +87,7 @@
+         einmalig: Boolean,
+         onProgress: (downloaded: Long, total: Long) -> Unit,
+     ) {
+-        val teil = File(dest.path + ".part")
++        val teil = dest
+ 
+         // Ein Ticket gilt für genau einen Abruf: kein zweiter Versuch, kein Range-Fortsetzen.
+         val maxAttempts = if (einmalig) 1 else 8

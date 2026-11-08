@@ -1,0 +1,16 @@
+Gegenprobe: der APK-Download kennt keine Obergrenze mehr
+Modul: core-update
+Test: ch.brickinventoryapp.update.UpdateLaderTest
+Rot: ein APK, das mehr bringt
+
+diff --git a/Android-App/core-update/src/main/java/ch/brickinventoryapp/update/data/UpdateRepository.kt b/Android-App/core-update/src/main/java/ch/brickinventoryapp/update/data/UpdateRepository.kt
+--- a/Android-App/core-update/src/main/java/ch/brickinventoryapp/update/data/UpdateRepository.kt
++++ b/Android-App/core-update/src/main/java/ch/brickinventoryapp/update/data/UpdateRepository.kt
+@@ -73,7 +73,6 @@
+                             if (n < 0) break
+                             geladen += n
+                             // Abbrechen, BEVOR geschrieben wird: Sonst liegt das Zuviel schon auf der Platte.
+-                            if (geladen > obergrenze) throw IOException("Update groesser als erlaubt ($geladen > $obergrenze)")
+                             aus.write(puffer, 0, n)
+                             val p = if (gesamt > 0) ((geladen * 100) / gesamt).toInt().coerceIn(0, 100) else zuletzt
+                             if (p != zuletzt) {

@@ -1,0 +1,17 @@
+Gegenprobe: saveAppTheme schreibt auch leere und unbekannte Werte
+Modul: core-data
+Test: ch.brickinventoryapp.data.DesignAblageTest
+Rot: ein leerer oder unbekannter Wert
+
+diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/GeraeteAblage.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/GeraeteAblage.kt
+--- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/GeraeteAblage.kt
++++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/GeraeteAblage.kt
+@@ -200,7 +200,7 @@
+         // Unbekannte Werte NICHT schreiben: "" oder null heisst „keine
+         // Information" und darf den gemerkten Wert nicht loeschen — dieselbe
+         // Regel wie applyTheme() in 00-theme-boot.js.
+-        if (theme in ERLAUBTE_DESIGNS) {
++        if (theme in ERLAUBTE_DESIGNS || true) {
+             dataStore.edit { it[APP_THEME] = theme }
+             // Und in den synchron lesbaren Spiegel, siehe gemerktesDesign().
+             // Beides an EINER Stelle, damit die zwei Ablagen nicht

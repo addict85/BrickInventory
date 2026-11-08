@@ -7,8 +7,6 @@ import ch.brickinventoryapp.finanzen.ui.figurZeilen
 import ch.brickinventoryapp.finanzen.ui.teilZeilen
 import org.junit.Assert.assertEquals
 import org.junit.Test
-import java.io.File
-import ch.brickinventoryapp.testing.Quellen
 
 /**
  * Die zwei Zeilen der Finanztabelle zeigen dasselbe.
@@ -30,31 +28,14 @@ import ch.brickinventoryapp.testing.Quellen
  * `purchase_price` —, sie kam nur nie auf den Bildschirm.
  *
  * Die Wahl des Kaufpreises (Erfassung vor Eintrag) läuft in finanzen/ui/Finanzzeilen.kt
- * und wird ausgeführt; dass die Karte ihn zeigt, prüft der Quelltext.
+ * und wird hier ausgeführt; dass die Zeilen ihn zeigen, prüft FinanzKaufpreisZeilenTest
+ * (app) gezeichnet.
  *
  * Gegenprobe: in teilZeilen() `acq?.purchasePrice ?:
  * p.purchasePrice` durch `p.purchasePrice` ersetzt → rot „beide Aufrufstellen
  * reichen den Kaufpreis durch“ (150.0 statt 120.0).
  */
 class FinanzZeilenGleichTest {
-
-    private fun read(rel: String) =
-        File(Quellen.wurzel, "$rel").readText()
-    private fun code(s: String) = s.lines()
-        .joinToString("\n") { if (it.trim().startsWith("//") || it.trim().startsWith("*")) "" else it }
-
-    @Test
-    fun `die Zeile fuer manuelle Eintraege zeigt den Kaufpreis`() {
-        val s = code(read("finanzen/ui/screens/FinanceScreen.kt"))
-        assert(s.contains("purchaseStr: String? = null")) {
-            "ManualFinanceRow nimmt keinen Kaufpreis mehr entgegen — die Zeile fuer " +
-                "Teile und Minifiguren zeigt dann weniger als die Set-Zeile daneben"
-        }
-        assert(s.contains("R.string.finance_purchase_short, it")) {
-            "Der Kaufpreis wird nicht angezeigt. Dieselbe Beschriftung wie in der " +
-                "Set-Zeile ist Absicht: Beide Tabellen sollen gleich aussehen"
-        }
-    }
 
     @Test
     fun `beide Aufrufstellen reichen den Kaufpreis durch`() {
@@ -67,19 +48,5 @@ class FinanzZeilenGleichTest {
         assertEquals(listOf(120.0, 80.0), teilZeilen(listOf(teil)).map { it.second.kaufpreis })
         assertEquals(listOf(120.0, 80.0), figurZeilen(listOf(figur)).map { it.second.kaufpreis })
         assertEquals(listOf(150.0), teilZeilen(listOf(teil.copy(acquisitions = emptyList()))).map { it.second.kaufpreis })
-
-        val s = code(read("finanzen/ui/screens/FinanceSections.kt"))
-        assert(Regex("""purchaseStr = zeile\.kaufGesamt""").findAll(s).count() == 2) {
-            "Teile und Minifiguren reichen den Kaufpreis nicht durch — die Zeile bliebe leer"
-        }
-    }
-
-    @Test
-    fun `die Set-Zeile zeigt ihn weiterhin`() {
-        val s = code(read("finanzen/ui/screens/FinanceSections.kt"))
-        assert(s.contains("R.string.finance_purchase_short")) {
-            "Die Set-Zeile hat ihren Kaufpreis verloren — dann stimmt zwar wieder " +
-                "beides ueberein, aber auf der falschen Seite"
-        }
     }
 }

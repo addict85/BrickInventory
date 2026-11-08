@@ -1,0 +1,18 @@
+Gegenprobe: die Figuren werden nicht mehr vorgewärmt
+Modul: core-zustand
+Test: ch.brickinventoryapp.zustand.SammlungVorwaermenTest
+Rot: vorgewaermt wird jeder Reiter
+
+diff --git a/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/zustand/ui/Vorwaermen.kt b/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/zustand/ui/Vorwaermen.kt
+--- a/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/zustand/ui/Vorwaermen.kt
++++ b/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/zustand/ui/Vorwaermen.kt
+@@ -51,9 +51,6 @@
+     }
+ 
+     val figurenAntwort = figuren.getMinifigs(blickfeld.kontoFuer(ScopeFilter.View.MINIFIGS))
+-    if (figurenAntwort is Ergebnis.Success) {
+-        figurenAntwort.data.figs.mapTo(roh) { resolveThumbUrl(basis, it.imageLocal, it.imageUrl) }
+-    }
+     val mTeile = teile.getManualParts(blickfeld.kontoFuer(ScopeFilter.View.PARTS))
+     if (mTeile is Ergebnis.Success) {
+         mTeile.data.parts.mapTo(roh) { resolveThumbUrl(basis, it.imageLocal, it.imageUrl) }

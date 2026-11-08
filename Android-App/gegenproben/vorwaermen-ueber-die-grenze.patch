@@ -1,0 +1,16 @@
+Gegenprobe: der Platz wird nur vor dem Durchlauf gefragt, nicht je Schub
+Modul: core-data
+Test: ch.brickinventoryapp.data.VorschauVorwaermerTest
+Rot: ist die Grenze erreicht
+
+diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/cache/VorschauVorwaermer.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/cache/VorschauVorwaermer.kt
+--- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/cache/VorschauVorwaermer.kt
++++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/cache/VorschauVorwaermer.kt
+@@ -96,7 +96,6 @@
+             // Je Schub neu messen statt einmal am Anfang: Waehrenddessen legt
+             // auch der normale Betrieb Bilder ab, und ein Zaehler, der das
+             // nicht sieht, liefe an der Grenze vorbei.
+-            if (!nochPlatz()) return
+             // Die Netzlage AUCH je Schub, nicht nur am Anfang: Ein Durchlauf
+             // dauert Minuten, und wer dabei aus dem WLAN geht, soll nicht den
+             // Rest der Sammlung ueber den Datentarif bekommen. Dasselbe

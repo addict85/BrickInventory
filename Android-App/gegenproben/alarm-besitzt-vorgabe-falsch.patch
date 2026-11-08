@@ -1,0 +1,17 @@
+Gegenprobe: ein fehlendes besitzt-Feld gilt als „Set gibt es nicht“
+Modul: core-data
+Test: ch.brickinventoryapp.data.AlarmUebersichtTest
+Rot: ein fehlendes besitzt-Feld
+
+diff --git a/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/data/model/SetModels.kt b/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/data/model/SetModels.kt
+--- a/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/data/model/SetModels.kt
++++ b/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/data/model/SetModels.kt
+@@ -361,7 +361,7 @@
+      * das Feld nicht, und ein Klick, der in einer Meldung endet, ist besser als eine
+      * tote Liste.
+      */
+-    val besitzt: Boolean = true,
++    val besitzt: Boolean = false,
+ )
+ 
+ @Serializable

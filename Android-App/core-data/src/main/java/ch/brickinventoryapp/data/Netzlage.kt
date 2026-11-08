@@ -13,9 +13,10 @@ import javax.inject.Singleton
  * WLAN (Hotspot) zählt als Mobilfunk.
  */
 @Singleton
-class Netzlage @Inject constructor(
-    @param:ApplicationContext private val context: Context,
-) {
+class Netzlage internal constructor(private val messen: () -> Art) {
+    /** Die Messung über den ConnectivityManager; der interne Weg gibt Tests eine feste Lage. */
+    @Inject constructor(@ApplicationContext context: Context) : this({ miss(context) })
+
     /**
      * Die vier Lagen. Sie schliessen einander aus — das ist der Grund fuer eine
      * Aufzaehlung statt dreier Ja/Nein-Fragen: Der Aufrufer soll nicht selbst
@@ -23,31 +24,35 @@ class Netzlage @Inject constructor(
      */
     enum class Art { KEIN_NETZ, WLAN, MOBIL, ROAMING }
 
-    fun aktuell(): Art {
-        val cm = context.getSystemService(Context.CONNECTIVITY_SERVICE) as? ConnectivityManager
-            ?: return Art.KEIN_NETZ
-        val netz = cm.activeNetwork ?: return Art.KEIN_NETZ
-        val faehig = cm.getNetworkCapabilities(netz) ?: return Art.KEIN_NETZ
-        if (!faehig.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)) return Art.KEIN_NETZ
+    fun aktuell(): Art = messen()
 
-        val gemessen = !faehig.hasCapability(NetworkCapabilities.NET_CAPABILITY_NOT_METERED)
+    private companion object {
+        fun miss(context: Context): Art {
+            val cm = context.getSystemService(Context.CONNECTIVITY_SERVICE) as? ConnectivityManager
+                ?: return Art.KEIN_NETZ
+            val netz = cm.activeNetwork ?: return Art.KEIN_NETZ
+            val faehig = cm.getNetworkCapabilities(netz) ?: return Art.KEIN_NETZ
+            if (!faehig.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)) return Art.KEIN_NETZ
 
-        return when {
-            faehig.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR) ->
-                if (istRoaming(faehig)) Art.ROAMING else Art.MOBIL
-            // Ethernet zaehlt wie WLAN: fest, ungemessen, und auf einem
-            // Tablet in der Dockingstation genau das, was „zu Hause" meint.
-            faehig.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) ||
-                faehig.hasTransport(NetworkCapabilities.TRANSPORT_ETHERNET) ->
-                if (gemessen) Art.MOBIL else Art.WLAN
-            // Etwas anderes (Bluetooth-Tethering, VPN ohne erkennbaren
-            // Untergrund): vorsichtig als Mobilfunk behandeln. Bei einer
-            // Einstellung, die Datenvolumen kostet, ist die Vorgabe „lieber
-            // nicht" die richtige Richtung fuer den unbekannten Fall.
-            else -> Art.MOBIL
+            val gemessen = !faehig.hasCapability(NetworkCapabilities.NET_CAPABILITY_NOT_METERED)
+
+            return when {
+                faehig.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR) ->
+                    if (istRoaming(faehig)) Art.ROAMING else Art.MOBIL
+                // Ethernet zaehlt wie WLAN: fest, ungemessen, und auf einem
+                // Tablet in der Dockingstation genau das, was „zu Hause" meint.
+                faehig.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) ||
+                    faehig.hasTransport(NetworkCapabilities.TRANSPORT_ETHERNET) ->
+                    if (gemessen) Art.MOBIL else Art.WLAN
+                // Etwas anderes (Bluetooth-Tethering, VPN ohne erkennbaren
+                // Untergrund): vorsichtig als Mobilfunk behandeln. Bei einer
+                // Einstellung, die Datenvolumen kostet, ist die Vorgabe „lieber
+                // nicht" die richtige Richtung fuer den unbekannten Fall.
+                else -> Art.MOBIL
+            }
         }
-    }
 
-    private fun istRoaming(faehig: NetworkCapabilities): Boolean =
-        !faehig.hasCapability(NetworkCapabilities.NET_CAPABILITY_NOT_ROAMING)
+        fun istRoaming(faehig: NetworkCapabilities): Boolean =
+            !faehig.hasCapability(NetworkCapabilities.NET_CAPABILITY_NOT_ROAMING)
+    }
 }

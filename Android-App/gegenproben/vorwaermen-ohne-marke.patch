@@ -1,0 +1,16 @@
+Gegenprobe: die Anfragen des Vorwärmers tragen keine Marke
+Modul: core-data
+Test: ch.brickinventoryapp.data.VorschauVorwaermerTest
+Rot: es holt nur fehlende
+
+diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/cache/VorschauVorwaermer.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/cache/VorschauVorwaermer.kt
+--- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/cache/VorschauVorwaermer.kt
++++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/cache/VorschauVorwaermer.kt
+@@ -115,7 +115,6 @@
+         runCatching {
+             val anfrage = Request.Builder()
+                 .url(adresse)
+-                .tag(Vorwaermung::class.java, Vorwaermung)
+                 .build()
+             // Kein `?.`: `body` ist seit OkHttp 5 nicht nullbar. Der Wert
+             // wird ohnehin verworfen — gelesen wird nur, damit die Antwort

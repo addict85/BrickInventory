@@ -1,0 +1,17 @@
+Gegenprobe: ab Werk wird auch im Mobilfunk vorgewärmt
+Modul: core-data
+Test: ch.brickinventoryapp.data.VorschauGeraetTest
+Rot: ab Werk wird nur im WLAN
+
+diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/GeraeteAblage.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/GeraeteAblage.kt
+--- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/GeraeteAblage.kt
++++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/GeraeteAblage.kt
+@@ -109,7 +109,7 @@
+     // `?: false` ist hier die ganze Vorgabe — ein noch nie gesetzter Wert ist
+     // in DataStore schlicht nicht da.
+     val vorwaermenWlan:    Flow<Boolean> = dataStore.data.map { it[VORWAERMEN_WLAN]    ?: true }
+-    val vorwaermenMobil:   Flow<Boolean> = dataStore.data.map { it[VORWAERMEN_MOBIL]   ?: false }
++    val vorwaermenMobil:   Flow<Boolean> = dataStore.data.map { it[VORWAERMEN_MOBIL]   ?: true }
+     val vorwaermenRoaming: Flow<Boolean> = dataStore.data.map { it[VORWAERMEN_ROAMING] ?: false }
+     val appTheme:  Flow<String> = dataStore.data.map { it[APP_THEME]  ?: "classic" }
+ 

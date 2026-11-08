@@ -5,9 +5,7 @@ import ch.brickinventoryapp.data.repository.VerwaltungRepository
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Test
-import java.io.File
 import ch.brickinventoryapp.testing.KontoRepository
-import ch.brickinventoryapp.testing.Quellen
 import ch.brickinventoryapp.testing.VerwaltungRepository
 import ch.brickinventoryapp.testing.mitRepo
 
@@ -51,61 +49,10 @@ import ch.brickinventoryapp.testing.mitRepo
  * Gefunden durch Messen: Ein Vergleich der Server-Adressen beider Clients
  * meldete /v1/settings/theme als eine der Adressen, die nur die Webapp ruft.
  *
- * Der Test liest nur Quelltext: kein Geraet, kein Compose.
+ * Stufe null und eins (Spiegel, unbekannte Werte) prüft DesignAblageTest in core-data
+ * an der echten GeraeteAblage.
  */
 class DesignVorAnmeldungTest {
-
-    private fun read(rel: String) =
-        File(Quellen.wurzel, "$rel").readText()
-    private fun code(s: String) = s.lines()
-        .joinToString("\n") { if (it.trim().startsWith("//") || it.trim().startsWith("*")) "" else it }
-
-    @Test
-    fun `Stufe null - der gemerkte Wert ist SYNCHRON zu haben`() {
-        val prefs = code(read("data/GeraeteAblage.kt"))
-        // Synchron heisst hier: SharedPreferences. DataStore kann es nicht,
-        // und `runBlocking` auf dem Hauptthread waere die Wiederholung des
-        // Fehlers, den der Bild-Interceptor schon einmal hatte.
-        assert(prefs.contains("fun gemerktesDesign()")) {
-            "Es gibt keinen synchron lesbaren Weg zum gemerkten Design — dann " +
-                "entstehen die ersten Bilder wieder im Vorgabewert"
-        }
-        assert(prefs.contains("getSharedPreferences(")) {
-            "gemerktesDesign() liest nicht aus SharedPreferences — DataStore " +
-                "gibt den Wert nur asynchron her, und genau das war die Ursache"
-        }
-        assert(!prefs.contains("runBlocking")) {
-            "Der Wert wird mit runBlocking geholt. Auf dem Hauptthread ist das " +
-                "genau der Fehler, den der Bild-Interceptor schon einmal hatte"
-        }
-
-        // Und der Spiegel muss MIT dem DataStore geschrieben werden, sonst
-        // laufen zwei Ablagen desselben Werts auseinander.
-        val schreiben = Quellen.funktion(prefs, "suspend fun saveAppTheme(")
-        assert(schreiben.isNotEmpty()) { "saveAppTheme fehlt" }
-        assert(schreiben.contains("dataStore.edit") && schreiben.contains("designSpiegel")) {
-            "saveAppTheme schreibt nur eine der beiden Ablagen — dann zeigt der " +
-                "naechste Kaltstart das vorletzte Design"
-        }
-    }
-
-    @Test
-    fun `Stufe eins - das Design wird gemerkt`() {
-        val prefs = code(read("data/GeraeteAblage.kt"))
-        assert(prefs.contains("stringPreferencesKey(\"app_theme\")")) {
-            "Das Design wird nicht gemerkt — jeder Kaltstart faengt wieder im Standard an"
-        }
-        // Unbekannte Werte duerfen den gemerkten Wert NICHT loeschen: "" oder
-        // null heisst „keine Information", nicht „classic". Dieselbe Regel wie
-        // applyTheme() in 00-theme-boot.js.
-        assert(prefs.contains("if (theme in ERLAUBTE_DESIGNS)")) {
-            "saveAppTheme schreibt auch unbekannte Werte — ein leerer Wert loescht dann das Design"
-        }
-        assert(prefs.contains("val ERLAUBTE_DESIGNS = setOf(")) {
-            "Die Liste der Designs ist verschwunden oder heisst anders — dann " +
-                "kann theme.test.js sie nicht mehr mit den anderen dreien vergleichen"
-        }
-    }
 
     /**
      * Die Abfrage gegen einen Testserver; das Einbinden ins AppViewModel führt
@@ -134,11 +81,6 @@ class DesignVorAnmeldungTest {
  */
 class CacheLeerenTest {
 
-    private fun read(rel: String) =
-        File(Quellen.wurzel, "$rel").readText()
-    private fun code(s: String) = s.lines()
-        .joinToString("\n") { if (it.trim().startsWith("//") || it.trim().startsWith("*")) "" else it }
-
     /**
      * Gegen einen Testserver. Gegenprobe: in
      * VerwaltungRepository.clearCache immer `emptyMap()` → rot.
@@ -152,34 +94,5 @@ class CacheLeerenTest {
         assertEquals(listOf("POST /api/v1/admin/cache-clear", "POST /api/v1/admin/cache-clear"), pfade.anfragen.toList())
         assertEquals("Der Umfang (nur Preise / alles) wird nicht unterschieden",
             listOf("{}", """{"all":true}"""), pfade.koerper.toList())
-    }
-
-    @Test
-    fun `nach dem Leeren werden die Zahlen neu geholt`() {
-        // Ohne das staenden die alten Zahlen weiter da — bei einer Handlung,
-        // die man genau einmal ausloest, ist das der ganze Unterschied
-        // zwischen „hat funktioniert" und „nichts passiert".
-        val s = code(read("verwaltung/ui/viewmodel/MonitoringViewModel.kt"))
-        val ab = s.indexOf("suspend fun leereCache(")
-        assert(ab > 0) { "leereCache fehlt" }
-        val rumpf = s.substring(ab, minOf(ab + 300, s.length))
-        assert(rumpf.contains("ladeCacheUndGrenzen()")) {
-            "Nach dem Leeren werden die Cache-Zahlen nicht neu geholt"
-        }
-    }
-
-    @Test
-    fun `das Leeren fragt nach`() {
-        // Anders als die Webapp: Jeder Neuaufbau kostet Anfragen aus dem
-        // gemeinsamen Tageskontingent — das steht so im Kommentar der
-        // Serverroute (routes/api_v1/admin.ts). Ein Fehlgriff nimmt also allen
-        // anderen etwas weg, nicht nur dem, der danebengetippt hat.
-        val s = code(read("verwaltung/ui/screens/MonitoringCache.kt"))
-        assert(s.contains("R.string.monitoring_cache_clear_hint")) {
-            "Es gibt keine Rueckfrage vor dem Leeren"
-        }
-        assert(s.contains("zeigeLeerenFrage = true")) {
-            "Die Knoepfe leeren sofort statt nachzufragen"
-        }
     }
 }

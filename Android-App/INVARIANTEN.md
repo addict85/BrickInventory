@@ -131,7 +131,7 @@ niemals wieder ganze Wurzeln (`path="."`), sonst ist auch der API-Cache
 ## Ein OkHttp-Interceptor-Stack, keine Nebenclients
 
 **Dateien:** `finanzen/ui/pdf/AnleitungsLader.kt`, `zustand/ui/AppViewModel.kt`
-**Test:** `ServicePolishTest`
+**Test:** `AnleitungsDownloadTest`
 
 Jeder eigenständig gebaute `OkHttpClient.Builder()` läuft am DI-Interceptor
 vorbei: kein Bearer-Token, kein Klartext-Verbot, keine 401-Meldung — jede
@@ -726,7 +726,7 @@ Zwei Felder sind ausdrücklich NICHT für die Anzeige:
 Bibliothekstexte („unexpected end of stream"), die englisch sind und mit der
 Bibliotheksversion wechseln. Sie gehören ins Log.
 
-Gesichert durch `ErrorMessageLayerTest`.
+Gesichert durch `ErrorMessageLayerTest` und `AppTexteTest`.
 
 ## Der gemeinsame Zustand hat Domänengrenzen
 

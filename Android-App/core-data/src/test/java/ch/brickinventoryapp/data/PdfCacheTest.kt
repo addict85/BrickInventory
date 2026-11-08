@@ -3,7 +3,6 @@ package ch.brickinventoryapp.data
 import ch.brickinventoryapp.data.util.PdfSchritt
 import ch.brickinventoryapp.data.util.pdfSchritt
 import org.junit.Test
-import ch.brickinventoryapp.testing.Quellen
 
 /**
  * Eine fertig geladene Anleitung wird nicht „fortgesetzt".
@@ -71,37 +70,5 @@ class PdfCacheTest {
         // raeumt prunePdfCache weg.
         val s = pdfSchritt(fertigeGroesse = 12_000_000L, teilGroesse = 3_000_000L)
         assert(s is PdfSchritt.Fertig) { "Fertig + Teildatei ergab $s" }
-    }
-
-    /**
-     * Und die Verdrahtung: Der Download muss in die TEILDATEI schreiben.
-     *
-     * Die Funktion oben kann noch so richtig entscheiden — schriebe die
-     * Schleife weiterhin direkt in die fertige Datei, waere die Unterscheidung
-     * wertlos, weil ein abgebrochener Download dann wieder unter dem fertigen
-     * Namen laege. Das ist keine zweite Fassung derselben Regel, sondern die
-     * Voraussetzung dafuer, dass die erste ueberhaupt etwas bedeutet.
-     */
-    @Test
-    fun `der Download schreibt in die Teildatei und benennt erst am Ende um`() {
-        val src = Quellen.ohneKommentare(Quellen.lies("data/AnleitungsRepository.kt"))
-        assert(src.contains("""val teil = File(dest.path + ".part")""")) {
-            "Die Teildatei wird nicht mehr angelegt — schreibt der Download wieder direkt ins Ziel?"
-        }
-        // Verschlüsselt über die AnleitungsAblage; dass sie fortsetzen kann,
-        // prüft AnleitungsAblageTest ausgeführt.
-        assert(src.contains("anleitungen.schreibe(teil,")) {
-            "Der Download schreibt nicht in die Teildatei. Dann ist ein Abbruch " +
-                "wieder nicht von einem fertigen Download zu unterscheiden."
-        }
-        assert(!src.contains("anleitungen.schreibe(dest,") && !src.contains("RandomAccessFile(")) {
-            "Es wird (auch) direkt oder im Klartext in die Ablage geschrieben."
-        }
-        assert(src.contains("teilGroesse    = anleitungen.klartextLaenge(teil)")) {
-            "Der Fortsetzpunkt ist nicht die Zahl der Klartextbytes — der Server bekäme einen falschen Range."
-        }
-        assert(src.contains("teil.renameTo(dest)")) {
-            "Das Umbenennen am Ende fehlt — dann entsteht die fertige Datei nie."
-        }
     }
 }

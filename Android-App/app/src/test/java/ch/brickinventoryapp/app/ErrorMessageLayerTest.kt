@@ -80,49 +80,4 @@ class ErrorMessageLayerTest {
             "meldung() benutzt die gemeinsame Zuordnung nicht mehr"
         }
     }
-
-    @Test
-    fun `die Servermeldung hat Vorrang`() {
-        // Der Server kennt seine Fälle genauer als jede Aufzählung hier
-        // (Kaufdatum-Konflikt, Währung passt nicht, Code schon eingelöst) und
-        // antwortet in der Sprache des Kontos. Ginge dieser Vorrang verloren,
-        // bekäme der Nutzer statt „Für dieses Datum gibt es schon einen
-        // Kaufpreis" nur noch „Serverfehler (409)".
-        val vm = Quellen.ohneKommentare(Quellen.lies("zustand/ui/viewmodel/AppTexte.kt"))
-        val meldung = Quellen.funktion(vm, "override fun meldung(")
-        assert(meldung.contains("fehler.message.isNotBlank()")) {
-            "meldung() prüft die Servermeldung nicht mehr zuerst"
-        }
-        val vorrang = meldung.indexOf("fehler.message.isNotBlank()")
-        // Anker auf fehlerTextId(): Bis Nachtrag 116 stand hier ein `when
-        // (fehler.art)` direkt in meldung(). Seit die Zuordnung ausgelagert
-        // ist, wäre der alte Anker nie mehr zu finden gewesen — und ein Test,
-        // der ins Leere greift, ist grün, ohne etwas zu prüfen.
-        val eigene = meldung.indexOf("fehlerTextId(")
-        assert(vorrang in 0 until eigene) {
-            "Die eigene Formulierung läuft VOR der Servermeldung — dann ist die " +
-                "genauere Meldung des Servers nie zu sehen"
-        }
-
-        // ── Und KEINE Ausnahme ─────────────────────────────────────
-        //
-        // Kurz stand hier eine: Bei 401 formulierte meldung() selbst. Marco fand
-        // den Preis dafuer sofort — beim Anmelden per QR-Code stand „Sitzung
-        // abgelaufen" auf dem Schirm, obwohl die Sitzung eine Sekunde alt war.
-        //
-        // Die Entscheidung gehoert nicht hierher, weil meldung() auch die
-        // Fehlerfelder der Formulare fuellt. Sie steht jetzt in
-        // meldungFuerSnackbar(), und dort fuehrt sie zu SCHWEIGEN statt zu
-        // einem anderen Satz (siehe AbgewiesenTest).
-        //
-        // Gezaehlt statt nur gesucht: Der Vorrang der Servermeldung ist genau
-        // dann etwas wert, wenn nichts sich davordraengelt.
-        val davor = meldung.substring(0, vorrang)
-        val ausnahmen = Regex("""\breturn\b""").findAll(davor).count()
-        assert(ausnahmen == 0) {
-            "Vor der Servermeldung stehen $ausnahmen vorzeitige Rückgaben, erwartet: " +
-                "keine. Jede nimmt dem Server einen Fall weg, den er genauer kennt " +
-                "als wir — und die erste dieser Art hat beim Anmelden gelogen."
-        }
-    }
 }

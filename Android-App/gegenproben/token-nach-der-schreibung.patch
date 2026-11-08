@@ -1,0 +1,24 @@
+Gegenprobe: der Token gilt erst nach der Plattenschreibung
+Modul: core-data
+Test: ch.brickinventoryapp.data.TokenSpeicherwertTest
+Rot: Token und Adresse gelten
+
+diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/TokenAblage.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/TokenAblage.kt
+--- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/TokenAblage.kt
++++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/TokenAblage.kt
+@@ -258,7 +258,6 @@
+      */
+     private suspend fun schreibeToken(token: String, herkunft: String?, angemeldetAm: Long?) {
+         _tokenHerkunftState.value = herkunft
+-        _authTokenState.value = token
+         val geheim = tresor.verschluessle(token)
+         dataStore.edit {
+             it[AUTH_TOKEN_ENC] = geheim
+@@ -266,6 +265,7 @@
+             if (herkunft != null) it[TOKEN_HERKUNFT] = herkunft else it.remove(TOKEN_HERKUNFT)
+             if (angemeldetAm != null) it[ANGEMELDET_AM] = angemeldetAm
+         }
++        _authTokenState.value = token
+     }
+ 
+     /** Für den Wächter (di/ServerWaechter): die Generation, vor dem Token gelesen. */

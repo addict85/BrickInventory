@@ -1,0 +1,23 @@
+Gegenprobe: die Zeile für manuelle Einträge zeigt keinen Kaufpreis
+Modul: app
+Test: ch.brickinventoryapp.app.FinanzKaufpreisZeilenTest
+Rot: Teile und Figuren zeigen
+
+diff --git a/Android-App/feature-finanzen/src/main/java/ch/brickinventoryapp/finanzen/ui/screens/FinanceScreen.kt b/Android-App/feature-finanzen/src/main/java/ch/brickinventoryapp/finanzen/ui/screens/FinanceScreen.kt
+--- a/Android-App/feature-finanzen/src/main/java/ch/brickinventoryapp/finanzen/ui/screens/FinanceScreen.kt
++++ b/Android-App/feature-finanzen/src/main/java/ch/brickinventoryapp/finanzen/ui/screens/FinanceScreen.kt
+@@ -289,14 +289,6 @@
+                 // Dieselbe Stelle und dieselbe Beschriftung wie in der
+                 // Set-Zeile (FinanceSections.kt) — beide Tabellen sollen
+                 // gleich aussehen, und in der Webapp tun sie es.
+-                purchaseStr?.let {
+-                    Text(
+-                        if (purchaseGesamt) stringResource(R.string.finance_purchase_total, it)
+-                        else stringResource(R.string.finance_purchase_short, it),
+-                        style = MaterialTheme.typography.bodySmall,
+-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+-                    )
+-                }
+                 // Entwicklung wie bei den Sets — gegen den Kaufpreis dieser
+                 // Erfassung, gerechnet auf dem Server.
+                 pnlProzent?.let {

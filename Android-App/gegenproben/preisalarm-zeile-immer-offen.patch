@@ -1,0 +1,17 @@
+Gegenprobe: auch ein Alarm ohne Set in der Sammlung öffnet die Detailansicht
+Modul: app
+Test: ch.brickinventoryapp.app.PreisalarmeAnzeigeTest
+Rot: eine Zeile oeffnet
+
+diff --git a/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/konto/ui/screens/EinstellungenAlarme.kt b/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/konto/ui/screens/EinstellungenAlarme.kt
+--- a/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/konto/ui/screens/EinstellungenAlarme.kt
++++ b/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/konto/ui/screens/EinstellungenAlarme.kt
+@@ -96,7 +96,7 @@
+             // Nur anklickbar, wenn es die Detailansicht ueberhaupt gibt. `Modifier`
+             // ohne `clickable` heisst zugleich: kein Wellenschlag beim Tippen, also
+             // sieht man dem Eintrag an, dass da nichts kommt.
+-            val zeile = if (a.besitzt)
++            val zeile = if (a.besitzt || true)
+                 Modifier.fillMaxWidth().clickable(onClickLabel = stringResource(R.string.cd_set_oeffnen), role = Role.Button) { onSetClick(a.setNumber) }
+             else Modifier.fillMaxWidth()
+             // Abstand innerhalb eines Alarms: Er ist ein Kind der Karte, deren Abstände hier

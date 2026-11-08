@@ -1,0 +1,16 @@
+Gegenprobe: der Update-Client setzt einen Authorization-Kopf
+Modul: core-data
+Test: ch.brickinventoryapp.data.UpdateClientTest
+Rot: der Update-Client traegt nichts
+
+diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/di/NetzModule.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/di/NetzModule.kt
+--- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/di/NetzModule.kt
++++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/di/NetzModule.kt
+@@ -76,6 +76,7 @@
+             // nur zu GitHub über https; OkHttp folgte ihnen sonst zu jedem Host.
+             .followRedirects(false)
+             .followSslRedirects(false)
++            .addInterceptor { it.proceed(it.request().newBuilder().header("Authorization", "Bearer x").build()) }
+             .addInterceptor(UpdateUmleitungen())
+             .connectTimeout(15, TimeUnit.SECONDS)
+             .readTimeout(120, TimeUnit.SECONDS)
