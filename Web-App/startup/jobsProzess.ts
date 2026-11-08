@@ -26,7 +26,7 @@ let _worker: { letzteRunde(): number } | null = null;
  * allein meldete auch einen Prozess, dessen Start gescheitert ist. */
 export function erneuereLebenszeichen(): void {
   if (!_worker || Date.now() - _worker.letzteRunde() > STILL_HOECHSTENS_MS) return;
-  fs.writeFile(LEBENSZEICHEN_DATEI, String(Date.now()), (e) => { if (e) meldeFehler('jobs:lebenszeichen', e); });
+  fs.writeFile(LEBENSZEICHEN_DATEI, String(Date.now()), { mode: 0o600 }, (e) => { if (e) meldeFehler('jobs:lebenszeichen', e); });
   setzeZustand(LEBENSZEICHEN_SCHLUESSEL, new Date().toISOString()).catch(logAndContinue('jobs:lebenszeichen'));
 }
 

@@ -8,7 +8,9 @@ import type { FehlerCode } from './fehlerTexte';
  * @param kontext kurze Herkunftsangabe, z. B. 'parts:image_local' */
 export function logAndContinue(kontext: string) {
   return (e: unknown) => {
-    console.warn(`[weiter-trotz-fehler] ${kontext}:`, e instanceof Error && e.stack ? e.stack : (e as { message?: unknown } | null)?.message || e);
+    const roh = e instanceof Error && e.stack ? e.stack : (e as { message?: unknown } | null)?.message || e;
+    // Zeilenumbrüche aus Fehlertexten fremder Herkunft würden eine zweite Protokollzeile vortäuschen.
+    console.warn(`[weiter-trotz-fehler] ${kontext}:`, String(roh).replace(/[\r\n]+/g, ' ⏎ '));
   };
 }
 
