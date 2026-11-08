@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { eingabe } from '../validate';
+import { eingabe } from '../infra/validate';
 import { type Route, zeit, Erfolg, ganz, bestaetigt, OHNE_RUMPF, KENNUNG, TEXT, ZUSTAND, abfrage, Q } from './grund';
 /** Ein Konto oder mehrere, durch Komma getrennt (Lagerorte über den Haushalt). */
 const LAGER_KONTEN = z.string().regex(/^[0-9,]{0,200}$/);

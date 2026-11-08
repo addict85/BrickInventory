@@ -1,12 +1,12 @@
 import express from 'express';
 import type { z } from 'zod';
 import type { Request, Response, NextFunction } from 'express';
-import { konfig } from '../konfig';
+import { konfig } from '../infra/konfig';
 import { routeZu } from './index';
 import { FLACHE_EINGABE, Fehler, PFAD } from './grund';
-import { GROESSTE_ID, idWert } from '../validate';
-import { sendeFehler } from '../fehlerTexte';
-import { handleRouteError } from '../httpAntwort';
+import { GROESSTE_ID, idWert } from '../infra/validate';
+import { sendeFehler } from '../infra/fehlerTexte';
+import { handleRouteError } from '../infra/httpAntwort';
 
 /** Ein Abfragewert ist ein Text: Wiederholt (?a=1&a=2) wird er zur Liste, und
  * `.trim()` oder eine Regex darauf verwechselte den Typ. */

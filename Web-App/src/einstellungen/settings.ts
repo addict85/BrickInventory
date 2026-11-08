@@ -3,7 +3,7 @@ import * as repo from './repository';
 import { verschluessele, entschluessele, umschluesseln, kontext } from '../infra/geheimnis';
 import { fehlerWerfen, dateiFehler } from '../infra/fehlerTexte';
 import { meldeUndLiefere } from '../infra/fehler';
-import { GLOBALE_REGELN, DESIGNS, type GlobalerSchluessel } from '../infra/vertrag/globaleRegeln';
+import { GLOBALE_REGELN, DESIGNS, type GlobalerSchluessel } from '../vertrag/globaleRegeln';
 
 /** Gespeichert ist Text; mit Vorgabe ist das Ergebnis Text oder die Vorgabe, nie `any`. */
 export async function getSetting(userId: number, key: string): Promise<string | null | undefined>;

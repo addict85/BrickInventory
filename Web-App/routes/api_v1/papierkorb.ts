@@ -6,8 +6,8 @@ import { listePapierkorb, stelleWiederHer, loescheEndgueltig, leerePapierkorb } 
 import { requireToken } from './middleware';
 import { bestaetigeMitFaktor } from '../../src/konto/http/anmeldung';
 import { loescheAllesEigene } from '../../src/sammlung/loeschen';
-import { vertragsRouter } from '../../src/infra/vertrag/pruefen';
-import type { Anfrage, Antwort } from '../../src/infra/vertrag';
+import { vertragsRouter } from '../../src/vertrag/pruefen';
+import type { Anfrage, Antwort } from '../../src/vertrag';
 
 const router = vertragsRouter();
 

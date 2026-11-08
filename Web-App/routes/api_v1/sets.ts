@@ -32,8 +32,8 @@ import { csvImportBus, buildJobStatus, jobGet, beiImportStand } from '../../src/
 import { DATA_DIR } from '../../src/infra/appPaths';
 import { setBildSichtbar } from '../../src/katalog/bilder/bildBlickfeld';
 import { zaehleAnfrage } from '../../src/konto/loginLimiter';
-import { vertragsRouter } from '../../src/infra/vertrag/pruefen';
-import type { Anfrage, Antwort, OffeneAnfrage } from '../../src/infra/vertrag';
+import { vertragsRouter } from '../../src/vertrag/pruefen';
+import type { Anfrage, Antwort, OffeneAnfrage } from '../../src/vertrag';
 import { importAlsAuftrag } from '../../src/auftraege/importAlsAuftrag';
 import type { CsvImportBericht } from '../../src/infra/csvExport';
 const router = vertragsRouter();

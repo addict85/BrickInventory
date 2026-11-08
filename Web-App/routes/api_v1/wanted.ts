@@ -13,12 +13,12 @@ import { importAlsAuftrag } from '../../src/auftraege/importAlsAuftrag';
 import { WantedKorrekturen } from '../../src/auftraege/nutzlasten';
 import type { CsvImportBericht } from '../../src/infra/csvExport';
 import type { z } from 'zod';
-import type { WantedXmlErgebnis } from '../../src/infra/vertrag/merkliste';
+import type { WantedXmlErgebnis } from '../../src/vertrag/merkliste';
 
 import { jsonOderNull } from '../../src/infra/validate';
-import { vertragsRouter } from '../../src/infra/vertrag/pruefen';
+import { vertragsRouter } from '../../src/vertrag/pruefen';
 import { seiteAus } from '../../src/infra/seite';
-import type { Anfrage, Antwort } from '../../src/infra/vertrag';
+import type { Anfrage, Antwort } from '../../src/vertrag';
 const router = vertragsRouter();
 type WantedXmlBericht = z.infer<typeof WantedXmlErgebnis>;
 

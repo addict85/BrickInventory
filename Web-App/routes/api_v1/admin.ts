@@ -12,9 +12,9 @@ import { cacheStatistik, cachesLeeren, bricksetLimitGesetzt, anleitungenNeuEinre
          bildProbe, preisProbe, katalogBilderEinreihen, katalogAbgleichJetzt, bricksetListe,
          letzteEintraege, bildDiagnose, protokollSeit, setFehlanzeigen, vorschauFehlanzeigen } from '../../src/verwaltung/dienst';
 import { auftragsUebersicht, auftragAbbrechen, auftragWiederholen, auftragsArtJetzt, auftragsArtLeeren } from '../../src/verwaltung/hintergrund';
-import { vertragsRouter } from '../../src/infra/vertrag/pruefen';
+import { vertragsRouter } from '../../src/vertrag/pruefen';
 import { seiteAus } from '../../src/infra/seite';
-import type { Anfrage, Antwort } from '../../src/infra/vertrag';
+import type { Anfrage, Antwort } from '../../src/vertrag';
 const router = vertragsRouter({ grosseIds: true });
 
 

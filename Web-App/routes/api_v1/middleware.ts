@@ -14,7 +14,7 @@ import type { Sicht } from '../../src/haushalt/haushalt';
 export const sichtVon = (req: AuthedRequest & { abfrage: { accounts?: string | undefined } }): Sicht =>
   ({ nutzer: req.apiUser.user_id, konten: req.abfrage.accounts });
 import { sendeFehler } from '../../src/infra/fehlerTexte';
-import { waechter } from '../../src/infra/vertrag/pruefen';
+import { waechter } from '../../src/vertrag/pruefen';
 
 export function bearerToken(req: { headers: { authorization?: string | undefined } }): string | null {
   const auth = req.headers.authorization || '';

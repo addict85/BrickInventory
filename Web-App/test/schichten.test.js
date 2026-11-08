@@ -411,12 +411,12 @@ test('Routen lösen keine Konten auf — das tun die Dienste', () => {
 const istHttp = (rel) => /^src\/[^/]+\/http\//.test(rel);
 
 test('Dienste importieren keine Express-Typen', () => {
-  // Express kennen nur src/infra/ (Fehlerweg, Herkunft, Dateiauslieferung) und
-  // die HTTP-Seiten der Bereiche. Gegenprobe (31.10.2026): `import type {
+  // Express kennen nur src/infra/ (Fehlerweg, Herkunft, Dateiauslieferung),
+  // src/vertrag/ (Prüf-Middleware) und die HTTP-Seiten der Bereiche. Gegenprobe (31.10.2026): `import type {
   // Request } from 'express'` in src/sets/setService.ts → rot; dasselbe in
   // src/konto/loginLimiter.ts → rot.
   const treffer = tsUnter('src')
-    .filter(d => bereichVon(d) !== 'infra' && !istHttp(d))
+    .filter(d => !['infra', 'vertrag'].includes(bereichVon(d)) && !istHttp(d))
     .filter(d => /from\s+['"]express['"]|import\(\s*['"]express['"]\s*\)/.test(quelltext(d)));
   assert.deepEqual(treffer, []);
   assert.ok(tsUnter('src').some(istHttp), 'keine HTTP-Seite unter src/<bereich>/http/ gefunden');
@@ -455,6 +455,7 @@ test('Routen fangen keine Fehler — der Fehlerweg des Routers antwortet', () =>
  * eine Stufe, sonst ist der Test rot. */
 const STUFEN = [
   ['src/infra'],
+  ['src/vertrag'],
   ['db', 'clients'],
   ['src/einstellungen'],
   ['src/mail'],

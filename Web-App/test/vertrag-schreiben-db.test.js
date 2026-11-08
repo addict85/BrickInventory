@@ -1,5 +1,5 @@
 /**
- * Jede SCHREIBENDE Route der App gegen ihren Vertrag (src/infra/vertrag/):
+ * Jede SCHREIBENDE Route der App gegen ihren Vertrag (src/vertrag/):
  * Antwort und, wo der Vertrag eine nennt, die Eingabe.
  * Ausführlich: docs/begruendungen/test/vertrag-schreiben-db.test.js.md#kopf
  *

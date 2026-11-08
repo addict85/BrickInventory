@@ -2,7 +2,7 @@
 /**
  * Die Android-App, gelesen aus ihrem eigenen Quelltext: die
  * @Serializable-Datenklassen und die Routen aus data/api/ (je Bereich eine
- * Datei). Der Vertrag selbst steht im Server (src/infra/vertrag/);
+ * Datei). Der Vertrag selbst steht im Server (src/vertrag/);
  * vergleiche() prüft, ob die Modelle der App ihn lesen können.
  */
 const fs = require('fs');

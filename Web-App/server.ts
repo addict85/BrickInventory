@@ -39,7 +39,7 @@ import { registerImgProxy } from './routes/imgProxy';
 import { anmeldungAmEingang, rumpfLesen } from './routes/api_v1/middleware';
 import { apiDrossel } from './src/infra/apiDrossel';
 import { idempotenz } from './src/idempotenz/http/middleware';
-import { vertragPruefen } from './src/infra/vertrag/pruefen';
+import { vertragPruefen } from './src/vertrag/pruefen';
 import datenDateien = require('./routes/datenDateien');
 import apiV1Router = require('./routes/api_v1/index');
 import authRouter = require('./routes/auth');

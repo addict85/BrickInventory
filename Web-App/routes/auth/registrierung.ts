@@ -15,8 +15,8 @@ import { setUserSetting } from '../../src/konto/nutzerEinstellung';
 import { sendeFehler, fehlerText, antwortSprache, alsDoppelt } from '../../src/infra/fehlerTexte';
 import { basisUrl, hinweisOhneBasisUrl, mailBasisUrl } from '../../src/infra/basisUrl';
 import * as P from '../../src/konto/passkeys';
-import { vertragsRouter } from '../../src/infra/vertrag/pruefen';
-import type { Antwort, OffeneAnfrage } from '../../src/infra/vertrag';
+import { vertragsRouter } from '../../src/vertrag/pruefen';
+import type { Antwort, OffeneAnfrage } from '../../src/vertrag';
 
 const router = vertragsRouter();
 

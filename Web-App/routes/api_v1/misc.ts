@@ -1,8 +1,8 @@
 import { fehlerAntwort } from '../../src/infra/httpAntwort';
 import { requireToken, sichtVon } from './middleware';
 import { getStats } from '../../src/bestand/kennzahlen';
-import { vertragsRouter } from '../../src/infra/vertrag/pruefen';
-import type { Anfrage, Antwort } from '../../src/infra/vertrag';
+import { vertragsRouter } from '../../src/vertrag/pruefen';
+import type { Anfrage, Antwort } from '../../src/vertrag';
 const router = vertragsRouter();
 
 router.get('/stats', requireToken, async (req: Anfrage<'GET /api/v1/stats'>, res: Antwort<'GET /api/v1/stats'>) => {

@@ -10,8 +10,8 @@ import _fsSync from 'fs';
 import { liesAuftrag, loescheAuftrag, pdfSchluessel, gueltigeAuftragsKennung, pdfDateiPfad, pdfAuftragStarten } from '../../src/auftraege/pdfAuftraege';
 import { beiAuftragsStand } from '../../src/auftraege/dienst';
 import { sendeFehler, fehlerText, antwortSprache } from '../../src/infra/fehlerTexte';
-import { vertragsRouter } from '../../src/infra/vertrag/pruefen';
-import type { Anfrage, Antwort } from '../../src/infra/vertrag';
+import { vertragsRouter } from '../../src/vertrag/pruefen';
+import type { Anfrage, Antwort } from '../../src/vertrag';
 const router = vertragsRouter();
 
 type PdfJobStatus = { status?: string | undefined; error?: string | null; etaSeconds?: number | null; missingImages?: number | null };

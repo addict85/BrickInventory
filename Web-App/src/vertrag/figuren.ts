@@ -1,6 +1,6 @@
 import { OHNE_RUMPF, TEXT, ZUSTAND, KENNUNG, abfrage, Q, SEITE, SEITEN_ANGABE } from './grund';
 import { z } from 'zod';
-import { eingabe } from '../validate';
+import { eingabe } from '../infra/validate';
 import type { Route } from './grund';
 import { CsvImportErgebnis, FigValuationItem, GenericResponse, MinifigsResponse, VerwendendeSetsResponse, InDenPapierkorb } from './gemeinsam';
 

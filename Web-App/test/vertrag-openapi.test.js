@@ -1,5 +1,5 @@
 /**
- * Der Vertrag (src/infra/vertrag/) deckt jede Route unter /api/v1 ab, die
+ * Der Vertrag (src/vertrag/) deckt jede Route unter /api/v1 ab, die
  * Express wirklich kennt, und docs/openapi.json ist sein aktueller Stand.
  * Die Routen kommen aus den gebauten Routern (ihr stack), nicht aus dem
  * Quelltext: Was dort hängt, beantwortet Anfragen.
@@ -7,7 +7,7 @@
  * Gegenproben (31.10.2026 gemessen):
  *   A  in docs/openapi.json einen Feldnamen (used_count) verändert → rot: „die
  *      eingecheckte openapi.json ist erzeugt“
- *   B  den Eintrag 'GET /api/v1/parts/stats' in src/infra/vertrag/teile.ts
+ *   B  den Eintrag 'GET /api/v1/parts/stats' in src/vertrag/teile.ts
  *      umbenannt → rot: „jede Route hat einen Vertrag“ nennt ihn
  *   C  einen Eintrag 'GET /api/v1/gibt-es-nicht' ergänzt → rot: „kein Vertrag
  *      ohne Route“
@@ -22,8 +22,8 @@ const fs = require('node:fs');
 
 const _req = require('./helpers/sources').buildAndRequire();
 const { DATEI, alsText } = require('../scripts/vertrag-openapi.js');
-const { VERTRAG, BEREICHE } = _req('src/infra/vertrag/index.js');
-const { openapi } = _req('src/infra/vertrag/openapi.js');
+const { VERTRAG, BEREICHE } = _req('src/vertrag/index.js');
+const { openapi } = _req('src/vertrag/openapi.js');
 
 /** Methode und voller Pfad jeder Route eines Routers, auch in eingehängten Routern. */
 function routenVon(router, basis) {

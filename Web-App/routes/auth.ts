@@ -24,8 +24,8 @@ import { basisUrl, hinweisOhneBasisUrl, mailBasisUrl, ueberTls, unbegrenztNurMit
 import * as zf from '../src/konto/zweiterFaktor';
 import * as P from '../src/konto/passkeys';
 import { loescheKontoDateien } from '../src/gutscheine/gutscheinDateien';
-import { vertragsRouter } from '../src/infra/vertrag/pruefen';
-import type { Antwort, OffeneAnfrage } from '../src/infra/vertrag';
+import { vertragsRouter } from '../src/vertrag/pruefen';
+import type { Antwort, OffeneAnfrage } from '../src/vertrag';
 import benutzerRouter = require('./auth/benutzer');
 import zweiterFaktorRouter = require('./auth/zweiterFaktor');
 import registrierungRouter = require('./auth/registrierung');

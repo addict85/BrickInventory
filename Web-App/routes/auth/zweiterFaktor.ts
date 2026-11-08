@@ -9,8 +9,8 @@ import { bestaetigeEinrichtungGebremst } from '../../src/konto/passwortBestaetig
 import { hinweisNebenher } from '../../src/konto/kontoHinweis';
 import { sendeFehler } from '../../src/infra/fehlerTexte';
 import * as zf from '../../src/konto/zweiterFaktor';
-import { vertragsRouter } from '../../src/infra/vertrag/pruefen';
-import type { Antwort, OffeneAnfrage } from '../../src/infra/vertrag';
+import { vertragsRouter } from '../../src/vertrag/pruefen';
+import type { Antwort, OffeneAnfrage } from '../../src/vertrag';
 
 const router = vertragsRouter();
 const requireLogin = requireLoginOrToken;

@@ -8,7 +8,7 @@ import { pruefeBestaetigung, pruefeCodeBestaetigung } from '../passwortBestaetig
 import type { BestaetigungsAbsage, Faktor } from '../passwortBestaetigung';
 import { createHash } from 'crypto';
 import { konfig } from '../../infra/konfig';
-import { routeZu } from '../../infra/vertrag';
+import { routeZu } from '../../vertrag';
 import { sendeFehler, fehlerText, antwortSprache } from '../../infra/fehlerTexte';
 import { meldeUndLiefere } from '../../infra/fehler';
 import { sitzungsVersionAusDb } from '../sitzungsVersion';

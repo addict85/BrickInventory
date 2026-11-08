@@ -8,8 +8,8 @@ import { getPartAcquisitions } from '../../src/teile/manuelleTeile';
 import { getFigAcquisitions } from '../../src/figuren/manuelleFiguren';
 import { erfassungAendern, erfassungLoeschen, setErfassungen } from '../../src/sammlung/erfassungen';
 import type { ErfassungsArt } from '../../src/sammlung/erfassungen';
-import { vertragsRouter } from '../../src/infra/vertrag/pruefen';
-import type { Anfrage, Antwort } from '../../src/infra/vertrag';
+import { vertragsRouter } from '../../src/vertrag/pruefen';
+import type { Anfrage, Antwort } from '../../src/vertrag';
 const router = vertragsRouter();
 
 /** Ohne bekannten Preis fehlt der Betrag, statt null zu sein: Geld hat im Vertrag einen Typ. */

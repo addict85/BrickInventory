@@ -3,7 +3,7 @@
  * ignoreUnknownKeys). Eingaben und Abfragen sind geschlossen (strictObject):
  * Ein vertippter Feldname ist 400 statt still ignoriert. */
 import { z } from 'zod';
-import { FEHLER, type FehlerCode } from '../fehlerTexte';
+import { FEHLER, type FehlerCode } from '../infra/fehlerTexte';
 
 export interface Route {
   /** Der Rumpf einer 2xx-Antwort. Fehlt er, ist die Antwort kein JSON (`art`). */

@@ -12,8 +12,8 @@ import { requireApiAdmin } from '../api_v1/middleware';
 import { sendeFehler, alsDoppelt } from '../../src/infra/fehlerTexte';
 import * as zf from '../../src/konto/zweiterFaktor';
 import { loescheKontoDateien } from '../../src/gutscheine/gutscheinDateien';
-import { vertragsRouter } from '../../src/infra/vertrag/pruefen';
-import type { Antwort, OffeneAnfrage } from '../../src/infra/vertrag';
+import { vertragsRouter } from '../../src/vertrag/pruefen';
+import type { Antwort, OffeneAnfrage } from '../../src/vertrag';
 
 const router = vertragsRouter();
 const requireAdmin = requireApiAdmin;

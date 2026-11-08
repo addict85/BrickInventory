@@ -19,11 +19,11 @@ import { sendeFehler, fehlerText, antwortSprache } from '../../src/infra/fehlerT
 import { tlsAuskunft } from '../../src/infra/tlsWurzel';
 import { invalidateTheme } from '../../src/konto/indexHtml';
 import { emailGueltig } from '../../src/infra/validate';
-import { vertragsRouter } from '../../src/infra/vertrag/pruefen';
+import { vertragsRouter } from '../../src/vertrag/pruefen';
 import { konfigExport, datenZip, konfigImport, istHeikel } from '../../src/verwaltung/datenexport';
-import { GLOBALE_EINSTELLUNGEN, KONTO_EINSTELLUNGEN } from '../../src/infra/vertrag/einstellungen';
+import { GLOBALE_EINSTELLUNGEN, KONTO_EINSTELLUNGEN } from '../../src/vertrag/einstellungen';
 import type { Request } from 'express';
-import type { Anfrage, Antwort, OffeneAnfrage } from '../../src/infra/vertrag';
+import type { Anfrage, Antwort, OffeneAnfrage } from '../../src/vertrag';
 const router = vertragsRouter();
 
 const requireLogin = requireLoginOrToken;

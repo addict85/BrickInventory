@@ -1,5 +1,5 @@
 /**
- * Jede GET-Route der App gegen ihren Vertrag (src/infra/vertrag/): echte
+ * Jede GET-Route der App gegen ihren Vertrag (src/vertrag/): echte
  * Antworten auf einem Bestand, in dem keine Liste leer ist — ein Set mit
  * Teilen und Figur, ein manuelles Teil, eine manuelle Figur, Merkliste,
  * Lagerort, Gutschein, Preisalarm, Preise im Cache. Dass die Kotlin-Modelle
@@ -206,7 +206,7 @@ test('die Antworten der App-Routen halten ihren Vertrag', { concurrency: 1, time
 
   // Jede Route mit page_size: Seite 2 der Grösse 1 ist leer, total zählt trotzdem
   // die ganze Liste, und ohne page_size kommt alles.
-  const { openapi } = _req('src/infra/vertrag/openapi.js');
+  const { openapi } = _req('src/vertrag/openapi.js');
   const geblaettert = Object.entries(openapi().paths)
     .filter(([p, ops]) => !p.includes('{') && ops.get?.parameters?.some(x => x.name === 'page_size'))
     .map(([p]) => p);

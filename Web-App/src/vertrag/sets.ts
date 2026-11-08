@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { eingabe, GROESSTE_ID } from '../validate';
+import { eingabe, GROESSTE_ID } from '../infra/validate';
 import { KontoName, type Route, zeit, ganz, OHNE_RUMPF, KENNUNG, ZUSTAND, TEXT, abfrage, Q } from './grund';
 import { BrickLinkRef, CsvImportErgebnis, GenericResponse, MinifigsResponse, PartsResponse, InDenPapierkorb } from './gemeinsam';
 

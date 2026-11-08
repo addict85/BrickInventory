@@ -13,9 +13,9 @@ import { verwendendeSets } from '../../src/bestand/gemeinsam';
 import { sendeFehler } from '../../src/infra/fehlerTexte';
 import { normalisiereLagerort, setzeLagerort } from '../../src/bestand/lagerort';
 import { loescheTeil } from '../../src/sammlung/loeschen';
-import { vertragsRouter } from '../../src/infra/vertrag/pruefen';
+import { vertragsRouter } from '../../src/vertrag/pruefen';
 import { seiteAus } from '../../src/infra/seite';
-import type { Anfrage, Antwort } from '../../src/infra/vertrag';
+import type { Anfrage, Antwort } from '../../src/vertrag';
 const router = vertragsRouter();
 
 router.get('/parts', requireToken, async (req: Anfrage<'GET /api/v1/parts'>, res: Antwort<'GET /api/v1/parts'>) => {
