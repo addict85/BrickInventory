@@ -13,11 +13,11 @@
  *
  * REQUIRE_DB=1.
  */
-const test   = require('node:test');
+const test = require('node:test');
 const assert = require('node:assert/strict');
-const fs     = require('node:fs');
-const os     = require('node:os');
-const path   = require('node:path');
+const fs = require('node:fs');
+const os = require('node:os');
+const path = require('node:path');
 
 const WURZEL = fs.mkdtempSync(path.join(os.tmpdir(), 'datei-sperre-'));
 fs.writeFileSync(path.join(WURZEL, 'package.json'), '{}');
@@ -31,14 +31,21 @@ const db = _req('db/database.js');
 
 const NAMEN = ['ds_normal', 'ds_wechsel', 'ds_chef', 'ds_chef2fa'].map(n => `${n}_${process.pid}`);
 
-test('Dateien und Bild-Proxy: Eingangssperren', { concurrency: 1 }, async (t) => {
-  if (!await dbOderSkip(t, _req)) return;
+test('Dateien und Bild-Proxy: Eingangssperren', { concurrency: 1 }, async t => {
+  if (!(await dbOderSkip(t, _req))) return;
 
   await db.run('DELETE FROM users WHERE username = ANY($1)', [NAMEN]);
   const ids = [];
   for (const n of NAMEN)
-    ids.push((await db.get(`INSERT INTO users (username, password_hash, is_active, email_verified)
-                            VALUES ($1, 'x', true, true) RETURNING id`, [n])).id);
+    ids.push(
+      (
+        await db.get(
+          `INSERT INTO users (username, password_hash, is_active, email_verified)
+                            VALUES ($1, 'x', true, true) RETURNING id`,
+          [n],
+        )
+      ).id,
+    );
   const [normal, wechsel, chef, chef2fa] = ids;
   await db.run('UPDATE users SET must_change_password = TRUE WHERE id = $1', [wechsel]);
   await db.run('UPDATE users SET is_admin = TRUE WHERE id = ANY($1)', [[chef, chef2fa]]);
@@ -63,8 +70,12 @@ test('Dateien und Bild-Proxy: Eingangssperren', { concurrency: 1 }, async (t) =>
     return { status: r.status, body: await r.text() };
   };
   const bild = 'url=https%3A%2F%2Fcdn.rebrickable.com%2Fx.jpg';
-  const wege = (uid) => [`/data/uploads/${uid}/a.pdf`, `/data/instructions/${SN}_1.pdf`,
-                         `/api/v1/img-proxy?${bild}`, `/api/img-proxy?${bild}`];
+  const wege = uid => [
+    `/data/uploads/${uid}/a.pdf`,
+    `/data/instructions/${SN}_1.pdf`,
+    `/api/v1/img-proxy?${bild}`,
+    `/api/img-proxy?${bild}`,
+  ];
 
   t.after(async () => {
     await db.run('DELETE FROM users WHERE id = ANY($1)', [ids]).catch(() => {});

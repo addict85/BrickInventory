@@ -12,7 +12,7 @@
  *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL.
  */
-const test   = require('node:test');
+const test = require('node:test');
 const assert = require('node:assert/strict');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
@@ -21,14 +21,17 @@ const _req = require('./helpers/sources').buildAndRequire();
 const db = _req('db/database.js');
 const limiter = _req('src/konto/loginLimiter.js');
 
-test('bekannte Anmeldung: Adresse nur als Abdruck gespeichert', { concurrency: 1 }, async (t) => {
-  try { await db.initSchemaOnce(); }
-  catch (e) {
+test('bekannte Anmeldung: Adresse nur als Abdruck gespeichert', { concurrency: 1 }, async t => {
+  try {
+    await db.initSchemaOnce();
+  } catch (e) {
     if (process.env.REQUIRE_DB === '1') throw e;
-    t.skip('Test-DB nicht erreichbar'); return;
+    t.skip('Test-DB nicht erreichbar');
+    return;
   }
   const name = `bk_${process.pid}`;
-  const IP = '203.0.113.77', IP6 = '2001:db8:1:2:3:4:5:6';
+  const IP = '203.0.113.77',
+    IP6 = '2001:db8:1:2:3:4:5:6';
   await db.run('DELETE FROM users WHERE username = $1', [name]);
   const uid = (await db.get(`INSERT INTO users (username, password_hash) VALUES ($1, 'x') RETURNING id`, [name])).id;
   const aufraeumen = () => db.run(`DELETE FROM rate_limit_attempts WHERE key LIKE '%|konto:${uid}'`).catch(() => {});
@@ -42,7 +45,9 @@ test('bekannte Anmeldung: Adresse nur als Abdruck gespeichert', { concurrency: 1
   await limiter.recordLoginSuccess(IP6, name);
 
   await t.test('keine Klartext-Adresse', async () => {
-    const zeilen = await db.all(`SELECT key FROM rate_limit_attempts WHERE key LIKE 'login-bekannt|%' OR key LIKE 'login-erfolg|%'`);
+    const zeilen = await db.all(
+      `SELECT key FROM rate_limit_attempts WHERE key LIKE 'login-bekannt|%' OR key LIKE 'login-erfolg|%'`,
+    );
     const meine = zeilen.filter(z => z.key.endsWith(`|konto:${uid}`));
     assert.equal(meine.length, 4, 'je Adresse eine Bekannt- und eine Erfolgszeile');
     for (const { key } of meine) {

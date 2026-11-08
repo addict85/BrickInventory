@@ -6,7 +6,10 @@ import { ausTabelle } from '../infra/validate';
 
 /** `unknown`: Hier laufen Werte aus Datenbank und Formularen hinein. */
 export function esc(s: unknown) {
-  return String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  return String(s || '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
 }
 
 // Das Logo als HTML-Tabellen: Outlook und Gmail rendern kein SVG.
@@ -67,26 +70,26 @@ export type MailTheme = typeof MAIL_THEMES.classic;
 
 export const MAIL_THEMES = {
   classic: {
-    primary:  '#2563eb',   // --b600
+    primary: '#2563eb', // --b600
     primaryD: '#1d4ed8',
-    bg:       '#f1f5f9',   // --s100
-    surface:  '#ffffff',
-    text:     '#0f172a',
-    muted:    '#6b7280',
-    border:   '#e5e7eb',
-    radius:   '10px',
-    studs:    false,
+    bg: '#f1f5f9', // --s100
+    surface: '#ffffff',
+    text: '#0f172a',
+    muted: '#6b7280',
+    border: '#e5e7eb',
+    radius: '10px',
+    studs: false,
   },
   brick: {
-    primary:  '#3d5a80',   // --b600 aus themes/brick.css
-    primaryD: '#2f4763',   // --b700
-    bg:       '#c9d5e2',   // --bg
-    surface:  '#ffffff',
-    text:     '#2d4763',
-    muted:    '#5b7290',
-    border:   '#b7cbe0',   // --b200
-    radius:   '14px',      // --rad
-    studs:    true,        // Noppenleiste über dem Kopfbereich
+    primary: '#3d5a80', // --b600 aus themes/brick.css
+    primaryD: '#2f4763', // --b700
+    bg: '#c9d5e2', // --bg
+    surface: '#ffffff',
+    text: '#2d4763',
+    muted: '#5b7290',
+    border: '#b7cbe0', // --b200
+    radius: '14px', // --rad
+    studs: true, // Noppenleiste über dem Kopfbereich
   },
 };
 
@@ -97,10 +100,17 @@ export async function getMailTheme() {
     // ausTabelle: Ein Wert aus der Datenbank wie 'constructor' fände sonst ein
     // geerbtes Mitglied, und der Rückfall griffe nie.
     return ausTabelle(MAIL_THEMES, gespeichert, MAIL_THEMES.classic);
-  } catch (_) { return MAIL_THEMES.classic; }
+  } catch (_) {
+    return MAIL_THEMES.classic;
+  }
 }
 
-export function emailTemplate(title: string, preheader: string, content: string, theme: MailTheme = MAIL_THEMES.classic) {
+export function emailTemplate(
+  title: string,
+  preheader: string,
+  content: string,
+  theme: MailTheme = MAIL_THEMES.classic,
+) {
   return `<!DOCTYPE html>
 <html lang="de" xmlns="http://www.w3.org/1999/xhtml">
 <head>

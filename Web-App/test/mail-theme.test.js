@@ -41,7 +41,7 @@ test('das Design wird beim Versand geladen, nicht fest verdrahtet', () => {
   assert.match(SRC, /import \{[^}]*getGlobalSetting[^}]*\} from '(?:\.\.\/)*(?:einstellungen\/)?settings'/,
     'und zwar über die zentrale Fassung, nicht über eine eigene Abfrage');
   // Bei jedem Zweifel classic — eine E-Mail darf nie am Design scheitern
-  assert.match(SRC, /catch \(_\) \{ return MAIL_THEMES\.classic; \}/,
+  assert.match(SRC, /catch \(_\) \{\s*return MAIL_THEMES\.classic;\s*\}/,
     'Ohne Rückfall bliebe eine E-Mail bei einem Datenbankfehler aus');
 
   // Beide Versandfunktionen müssen es laden

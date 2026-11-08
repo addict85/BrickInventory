@@ -12,55 +12,83 @@ import { fehlertext } from '../infra/fehler';
 const getSetting = (key: string) => getGlobalSetting(key, '');
 
 function normiereFingerabdruck(wert: unknown): string {
-  return String(wert ?? '').replace(/[\s:]/g, '').toUpperCase();
+  return String(wert ?? '')
+    .replace(/[\s:]/g, '')
+    .toUpperCase();
 }
 
 /** Die Prüfung bleibt an: Ein selbst signiertes Zertifikat kommt als PEM herein; ein
  * Fingerabdruck nagelt genau eines fest und ersetzt den Abgleich des Hostnamens. */
 async function getTransporter() {
-  const host   = await getSetting('smtp_host');
-  const port   = parseInt(await getSetting('smtp_port') || '587');
-  const user   = await getSetting('smtp_user');
-  const pass   = await getSetting('smtp_pass');
+  const host = await getSetting('smtp_host');
+  const port = parseInt((await getSetting('smtp_port')) || '587');
+  const user = await getSetting('smtp_user');
+  const pass = await getSetting('smtp_pass');
   const secure = (await getSetting('smtp_secure')) === '1';
-  const ca     = (await getSetting('smtp_tls_ca')).trim();
-  const fp     = normiereFingerabdruck(await getSetting('smtp_tls_fingerprint'));
+  const ca = (await getSetting('smtp_tls_ca')).trim();
+  const fp = normiereFingerabdruck(await getSetting('smtp_tls_fingerprint'));
   if (!host || !user) return null;
   const pruefeGegenstelle = (name: string, zert: PeerCertificate) => {
     if (!fp) return tls.checkServerIdentity(name, zert);
     if (normiereFingerabdruck(zert.fingerprint256) === fp) return undefined;
-    return Object.assign(new Error(`Fingerabdruck ${zert.fingerprint256} ist nicht der eingetragene`), { code: 'SMTP_FINGERABDRUCK' });
+    return Object.assign(new Error(`Fingerabdruck ${zert.fingerprint256} ist nicht der eingetragene`), {
+      code: 'SMTP_FINGERABDRUCK',
+    });
   };
   // requireTLS: Ohne STARTTLS in der EHLO-Antwort fiele nodemailer sonst auf
   // Klartext zurück und schickte Passwort und Rücksetzlinks lesbar durchs Netz.
   return nodemailer.createTransport({
-    host, port, secure, requireTLS: !secure, auth: { user, pass },
-    tls: { rejectUnauthorized: true, minVersion: 'TLSv1.2', checkServerIdentity: pruefeGegenstelle, ...(ca ? { ca } : {}) },
-    connectionTimeout: 10000, greetingTimeout: 8000, socketTimeout: 10000,
+    host,
+    port,
+    secure,
+    requireTLS: !secure,
+    auth: { user, pass },
+    tls: {
+      rejectUnauthorized: true,
+      minVersion: 'TLSv1.2',
+      checkServerIdentity: pruefeGegenstelle,
+      ...(ca ? { ca } : {}),
+    },
+    connectionTimeout: 10000,
+    greetingTimeout: 8000,
+    socketTimeout: 10000,
   });
 }
 
-const ZERTIFIKATSFEHLER = new Set(['SMTP_FINGERABDRUCK', 'DEPTH_ZERO_SELF_SIGNED_CERT', 'SELF_SIGNED_CERT_IN_CHAIN',
-  'UNABLE_TO_VERIFY_LEAF_SIGNATURE', 'UNABLE_TO_GET_ISSUER_CERT_LOCALLY', 'CERT_HAS_EXPIRED', 'ERR_TLS_CERT_ALTNAME_INVALID']);
+const ZERTIFIKATSFEHLER = new Set([
+  'SMTP_FINGERABDRUCK',
+  'DEPTH_ZERO_SELF_SIGNED_CERT',
+  'SELF_SIGNED_CERT_IN_CHAIN',
+  'UNABLE_TO_VERIFY_LEAF_SIGNATURE',
+  'UNABLE_TO_GET_ISSUER_CERT_LOCALLY',
+  'CERT_HAS_EXPIRED',
+  'ERR_TLS_CERT_ALTNAME_INVALID',
+]);
 
 /** Ein Zertifikatsfehler sagt dem Verwalter, was er eintragen muss, statt nur den Code. */
 function smtpFehlertext(e: unknown): { text: string; zertifikat: boolean } {
   const code = String((e as { code?: unknown; cause?: { code?: unknown } })?.code ?? '');
   const ursache = String((e as { cause?: { code?: unknown } })?.cause?.code ?? '');
-  const zertifikat = ZERTIFIKATSFEHLER.has(code) || ZERTIFIKATSFEHLER.has(ursache) || /certificate|Fingerabdruck/i.test(fehlertext(e));
+  const zertifikat =
+    ZERTIFIKATSFEHLER.has(code) || ZERTIFIKATSFEHLER.has(ursache) || /certificate|Fingerabdruck/i.test(fehlertext(e));
   const ohneStarttls = code === 'ETLS' && /upgrading connection with STARTTLS/.test(fehlertext(e));
-  return { zertifikat, text: zertifikat
-    ? `Zertifikat des Mailservers nicht bestätigt (${fehlertext(e)}). Unter Menü → Einstellungen → E-Mail das Zertifikat (PEM) oder seinen SHA-256-Fingerabdruck eintragen.`
-    : ohneStarttls
-      ? 'Der Mailserver bietet kein STARTTLS an; unverschlüsselt wird nichts gesendet. Port 465 mit „SSL/TLS" wählen oder STARTTLS am Mailserver einschalten.'
-      : fehlertext(e) };
+  return {
+    zertifikat,
+    text: zertifikat
+      ? `Zertifikat des Mailservers nicht bestätigt (${fehlertext(e)}). Unter Menü → Einstellungen → E-Mail das Zertifikat (PEM) oder seinen SHA-256-Fingerabdruck eintragen.`
+      : ohneStarttls
+        ? 'Der Mailserver bietet kein STARTTLS an; unverschlüsselt wird nichts gesendet. Port 465 mit „SSL/TLS" wählen oder STARTTLS am Mailserver einschalten.'
+        : fehlertext(e),
+  };
 }
 
 /** Wer die entfallene Ausnahme „Zertifikat nicht prüfen" gesetzt hatte, erfährt es beim Start. */
 export async function meldeSmtpAltlast(): Promise<boolean> {
   if ((await getSetting('smtp_insecure_tls')) !== '1') return false;
-  console.warn('⚠️  [mailer] smtp_insecure_tls wird nicht mehr ausgewertet: Das Zertifikat des Mailservers wird jetzt geprüft. ' +
-    'Für ein selbst signiertes Zertifikat unter Menü → Einstellungen → E-Mail das Zertifikat (PEM) oder den SHA-256-Fingerabdruck eintragen.');
+  console.warn(
+    '⚠️  [mailer] smtp_insecure_tls wird nicht mehr ausgewertet: Das Zertifikat des Mailservers wird jetzt geprüft. ' +
+      'Für ein selbst signiertes Zertifikat unter Menü → Einstellungen → E-Mail das Zertifikat (PEM) oder den SHA-256-Fingerabdruck eintragen.',
+  );
   return true;
 }
 
@@ -72,7 +100,10 @@ async function getFrom() {
  * app_logs, und ein Reset-Link ist ein Zugang zum Konto. NODE_ENV taugt dafür
  * nicht — „development" steht schnell auf einem echten Server. Der Link kommt
  * vom Absender, nicht aus dem Text: Dort kann eine Eingabe eine fremde URL vorschieben. */
-export function linkFuerKonsole(link?: string, schalter = konfig().mailKonsoleMitToken ? '1' : undefined): string | null {
+export function linkFuerKonsole(
+  link?: string,
+  schalter = konfig().mailKonsoleMitToken ? '1' : undefined,
+): string | null {
   const url = link && /^https?:\/\/\S+$/.test(link) ? link : null;
   if (!url) return null;
   return schalter === '1' ? url : url.replace(/([?&]token=)[^&#\s]+/g, '$1…');
@@ -94,8 +125,18 @@ export function einzigerEmpfaenger(to: string): boolean {
 
 /** Ohne SMTP auf der Konsole; `html` und `text` optional, weil die Konsole
  * nur `text` liest. */
-export async function sendMail({ to, subject, html, text, link: echterLink }: {
-  to: string; subject: string; html?: string; text?: string; link?: string;
+export async function sendMail({
+  to,
+  subject,
+  html,
+  text,
+  link: echterLink,
+}: {
+  to: string;
+  subject: string;
+  html?: string;
+  text?: string;
+  link?: string;
 }) {
   if (!einzigerEmpfaenger(to)) {
     console.warn(`📧 Empfänger abgelehnt (${maskiereAdresse(to)}): keine einzelne reine Adresse`);
@@ -115,8 +156,14 @@ export async function sendMail({ to, subject, html, text, link: echterLink }: {
   }
   try {
     const absender = addressparser(from, { flatten: true })[0]?.address;
-    const info = await transporter.sendMail({ from, to, subject, text, html,
-      ...(absender ? { envelope: { from: absender, to: [to] } } : {}) });
+    const info = await transporter.sendMail({
+      from,
+      to,
+      subject,
+      text,
+      html,
+      ...(absender ? { envelope: { from: absender, to: [to] } } : {}),
+    });
     console.log(`📧 E-Mail gesendet an ${maskiereAdresse(to)}: ${info.messageId}`);
     return { success: true, mode: 'smtp', messageId: info.messageId };
   } catch (e) {
@@ -135,7 +182,8 @@ export async function testSmtp() {
     return { success: true as const, message: 'SMTP-Verbindung erfolgreich' };
   } catch (e) {
     const { text, zertifikat } = smtpFehlertext(e);
-    return zertifikat ? { success: false as const, code: 'smtp_zertifikat' as const, vars: { grund: fehlertext(e) } }
+    return zertifikat
+      ? { success: false as const, code: 'smtp_zertifikat' as const, vars: { grund: fehlertext(e) } }
       : { success: false as const, code: 'smtp_fehler' as const, vars: { grund: text } };
   }
 }

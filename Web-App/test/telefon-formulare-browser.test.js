@@ -31,12 +31,15 @@ const TEXTBREITE = `(el, texte) => { const cs = getComputedStyle(el), c = docume
   const breit = Math.max(...texte.map(x => c.measureText(x).width));
   return { id: el.id, innen: Math.round(innen), breit: Math.round(breit), passt: breit <= innen }; }`;
 
-test('Formulare und Filter am Telefon', { concurrency: 1, timeout: 300_000 }, async (t) => {
+test('Formulare und Filter am Telefon', { concurrency: 1, timeout: 300_000 }, async t => {
   const app = await starteApp(t, { name: `telform_${process.pid}`, telefon: true });
-  if (app.grund) { t.skip(app.grund); return; }
+  if (app.grund) {
+    t.skip(app.grund);
+    return;
+  }
   const { b, bis, ruhig } = app;
   await ruhig();
-  const reiter = async (name) => {
+  const reiter = async name => {
     await b.auswerten(`document.querySelector('.ntab[data-tab="${name}"]').click(); true`);
     await bis(`document.getElementById('tab-${name}').classList.contains('active')`, `Reiter ${name}`);
     await ruhig();
@@ -57,7 +60,10 @@ test('Formulare und Filter am Telefon', { concurrency: 1, timeout: 300_000 }, as
                seite: document.documentElement.scrollWidth }; })()`);
     await b.auswerten(`document.querySelector('#add-set-modal [data-click="schliesseErfassen"]').click(); true`);
     assert.ok(m.platzhalter.breit > 0, 'kein Platzhalter gemessen');
-    assert.ok(m.platzhalter.passt, `Platzhalter braucht ${m.platzhalter.breit} px, das Feld hat ${m.platzhalter.innen} px`);
+    assert.ok(
+      m.platzhalter.passt,
+      `Platzhalter braucht ${m.platzhalter.breit} px, das Feld hat ${m.platzhalter.innen} px`,
+    );
     assert.ok(m.waehrung.passt, `Währung braucht ${m.waehrung.breit} px, das Feld hat ${m.waehrung.innen} px`);
     assert.equal(m.nebeneinander, true, 'Währung steht nicht neben dem Preis');
     assert.equal(m.imDialog, true, 'Preis oder Währung ragen aus dem Dialog');
@@ -76,14 +82,22 @@ test('Formulare und Filter am Telefon', { concurrency: 1, timeout: 300_000 }, as
     assert.equal(m.zeilen, 3, `Suche, Thema und die drei kleinen Filter stehen in ${m.zeilen} Zeilen`);
     assert.equal(m.obenGleich, true, 'Von, Bis und Sortierung stehen nicht in einer Zeile');
     assert.equal(m.themaVoll, true, 'Thema ist nicht so breit wie die Suche');
-    assert.deepEqual(m.felder.filter(x => !x.passt), [], 'abgeschnittene Auswahlfelder (id, Innenbreite, Textbreite)');
+    assert.deepEqual(
+      m.felder.filter(x => !x.passt),
+      [],
+      'abgeschnittene Auswahlfelder (id, Innenbreite, Textbreite)',
+    );
     assert.ok(m.seite <= 390, `Seite ${m.seite} px breit`);
   });
 
   await t.test('Einstellungen: Pfeil als Knopf, solange rechts Abschnitte liegen', async () => {
     await reiter('settings');
-    await bis(`document.querySelector('.einst-nav')?.getClientRects().length > 0 && !!document.querySelector('.einst-nav').dataset.mehr`, 'Abschnittsleiste mit Hinweis');
-    const m = await b.auswerten(`(() => { const nav = document.querySelector('.einst-nav'), s = getComputedStyle(nav, '::after');
+    await bis(
+      `document.querySelector('.einst-nav')?.getClientRects().length > 0 && !!document.querySelector('.einst-nav').dataset.mehr`,
+      'Abschnittsleiste mit Hinweis',
+    );
+    const m =
+      await b.auswerten(`(() => { const nav = document.querySelector('.einst-nav'), s = getComputedStyle(nav, '::after');
       return { mehr: nav.dataset.mehr, inhalt: s.content, breite: parseFloat(s.width), hoehe: parseFloat(s.height),
                rand: parseFloat(s.borderTopWidth), rund: s.borderTopLeftRadius, fuellung: s.backgroundColor,
                rollt: nav.scrollWidth > nav.clientWidth, zeilen: new Set([...nav.querySelectorAll('a')].map(a => Math.round(a.getBoundingClientRect().top))).size }; })()`);
@@ -98,7 +112,9 @@ test('Formulare und Filter am Telefon', { concurrency: 1, timeout: 300_000 }, as
   });
 
   await t.test('Einstellungen: Pfeil wechselt am Ende die Seite', async () => {
-    await b.auswerten(`(() => { const nav = document.querySelector('.einst-nav'); nav.scrollLeft = nav.scrollWidth; return true; })()`);
+    await b.auswerten(
+      `(() => { const nav = document.querySelector('.einst-nav'); nav.scrollLeft = nav.scrollWidth; return true; })()`,
+    );
     await bis(`document.querySelector('.einst-nav').dataset.mehr === 'l'`, 'Hinweis nach links');
     const m = await b.auswerten(`(() => { const nav = document.querySelector('.einst-nav');
       return { vorn: getComputedStyle(nav, '::before').content, hinten: getComputedStyle(nav, '::after').content }; })()`);
