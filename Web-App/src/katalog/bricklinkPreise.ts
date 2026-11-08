@@ -7,6 +7,7 @@ import * as repo from './repository/katalogCache';
 import { fehlerWerfen } from '../infra/fehlerTexte';
 import type { KatalogEintrag } from './repository/katalogCache';
 
+// Ob ein Datensatz einen Preis hat, an einer Stelle statt in drei Fassungen.
 // Ausführlich: docs/begruendungen/src/katalog/bricklinkPreise.ts.md#preisdatensatz
 export type PreisDatensatz = { avg_price?: unknown; qty_avg_price?: unknown } | null | undefined;
 
@@ -57,6 +58,7 @@ async function getPriceGuideRaw(setNumber: string, condition = 'N', guideType = 
   throw new Error(`${n} nicht auf BrickLink gefunden (Set/Gear/Book) — kein Preis`);
 }
 
+// Erst Verkäufe, sonst Angebote: Selten gehandelte Artikel hätten sonst nie einen Preis.
 // Ausführlich: docs/begruendungen/src/katalog/bricklinkPreise.ts.md#getpriceguide
 export async function getPriceGuide(setNumber: string, condition = 'N', guideType = 'sold', currencyCode = 'EUR') {
   const first = await getPriceGuideRaw(setNumber, condition, guideType, currencyCode);
@@ -71,7 +73,7 @@ export async function getPriceGuide(setNumber: string, condition = 'N', guideTyp
   return { ...first, guide_used: guideType };
 }
 
-// Ausführlich: docs/begruendungen/src/katalog/bricklinkPreise.ts.md#clearsubsetscache
+// Ohne Nummer der ganze Speicher. Ausführlich: docs/begruendungen/src/katalog/bricklinkPreise.ts.md#clearsubsetscache
 export async function clearSubsetsCache(sn: string | null = null) {
   await repo.leereSubsetsCache(sn ? mitVersion(sn) : null);
 }

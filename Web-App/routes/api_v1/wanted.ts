@@ -22,6 +22,7 @@ import type { Anfrage, Antwort } from '../../src/vertrag';
 const router = vertragsRouter();
 type WantedXmlBericht = z.infer<typeof WantedXmlErgebnis>;
 
+// Blickfeld wie überall: Wer ein Geschenk sucht, sieht die Merkposten der Enkel.
 // Ausführlich: docs/begruendungen/routes/api_v1/wanted.ts.md#get-wanted
 router.get('/wanted', requireToken, async (req: Anfrage<'GET /api/v1/wanted'>, res: Antwort<'GET /api/v1/wanted'>) => {
   const ids = sichtVon(req);
@@ -38,8 +39,7 @@ router.get('/wanted', requireToken, async (req: Anfrage<'GET /api/v1/wanted'>, r
 });
 
 /** Alle drei Wege (Katalog, Setnummer, Barcode) landen hier, damit die Regeln
- * nicht vom Weg abhängen.
- * Ausführlich: docs/begruendungen/routes/api_v1/wanted.ts.md#post-wanted */
+ * nicht vom Weg abhängen. Ausführlich: docs/begruendungen/routes/api_v1/wanted.ts.md#post-wanted */
 router.post('/wanted', requireToken, async (req: Anfrage<'POST /api/v1/wanted'>, res: Antwort<'POST /api/v1/wanted'>) => {
   const { set_number, condition, owner_user_id } = req.eingabe;
   if (!set_number) return sendeFehler(req, res, 400, 'set_number_erforderlich');
@@ -48,6 +48,7 @@ router.post('/wanted', requireToken, async (req: Anfrage<'POST /api/v1/wanted'>,
   res.json({ success: true, war_neu, merkposten });
 });
 
+// Zwei Kontenprüfungen: heraus aus dem einen UND hinein ins andere Konto.
 // Ausführlich: docs/begruendungen/routes/api_v1/wanted.ts.md#put-wanted-setnumber-condition-inhaber
 router.put('/wanted/:setNumber/:condition/inhaber', requireToken, async (req: Anfrage<'PUT /api/v1/wanted/:setNumber/:condition/inhaber'>, res: Antwort<'PUT /api/v1/wanted/:setNumber/:condition/inhaber'>) => {
   const von = await schreibziel(req.apiUser.user_id, req.eingabe.owner_user_id);

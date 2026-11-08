@@ -4,8 +4,7 @@
 export type WantedArt = 'part' | 'fig' | 'set';
 
 // Nur P, M und S haben einen Platz im Bestand; andere Arten werden gezählt und
-// gemeldet statt still verworfen.
-// Ausführlich: docs/begruendungen/src/merkliste/wantedParser.ts.md#arten
+// gemeldet statt still verworfen. Ausführlich: docs/begruendungen/src/merkliste/wantedParser.ts.md#arten
 const ARTEN: Record<string, WantedArt> = { P: 'part', M: 'fig', S: 'set' };
 
 export interface WantedPosten {

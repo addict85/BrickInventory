@@ -1,3 +1,4 @@
+// Die Setnummer aus einem Händlertitel, nicht die erste Zahl darin (Jahr, Teilezahl).
 // Ausführlich: docs/begruendungen/src/katalog/produkttitel.ts.md#abschnitt
 
 /** Die deutschen Formen mit Dativ-Plural: „1250 Steinen" rutschte sonst durch. */

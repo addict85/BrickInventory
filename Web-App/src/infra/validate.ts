@@ -1,3 +1,4 @@
+// Frei erfassbare Katalogfelder vor der Datenbank prüfen: Dort begann Stored XSS.
 // Ausführlich: docs/begruendungen/src/infra/validate.ts.md#item-number-re
 
 /** Das, was Rebrickable und BrickLink tatsächlich vergeben. */
@@ -116,7 +117,7 @@ export function optionalCondition(value: unknown): 'N' | 'U' | null {
   return value === 'N' || value === 'U' ? value : null;
 }
 
-// Ausführlich: docs/begruendungen/src/infra/validate.ts.md#acquisitionquantity
+// Eine Milliarde Stück ist Unsinn. Ausführlich: docs/begruendungen/src/infra/validate.ts.md#acquisitionquantity
 export function acquisitionQuantity(value: unknown, fallback = 1): number {
   return positiveInt(value, fallback, 10_000);
 }
@@ -160,8 +161,7 @@ export function einzelwert(value: unknown, fallback = ''): string {
 }
 
 /** Nur EIGENE Schlüssel zählen: Ein Wert von aussen wie 'constructor' fände
- * sonst ein geerbtes Mitglied.
- * Ausführlich: docs/begruendungen/src/infra/validate.ts.md#austabelle */
+ * sonst ein geerbtes Mitglied. Ausführlich: docs/begruendungen/src/infra/validate.ts.md#austabelle */
 export function ausTabelle<T>(tabelle: Record<string, T>, schluessel: unknown, vorgabe: T): T;
 export function ausTabelle<T>(tabelle: Record<string, T>, schluessel: unknown): T | undefined;
 export function ausTabelle<T>(

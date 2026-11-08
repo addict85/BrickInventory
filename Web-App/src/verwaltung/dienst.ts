@@ -28,6 +28,7 @@ import { anfragenJeMinute, bildbedarfAnstossen } from '../katalog/bilder/bildbed
 import { fehlerWerfen, type FehlerCode } from '../infra/fehlerTexte';
 import { alsAbrufFehler, pruefeBricklinkZugang, ausRetryWarteschlange, pruefeBricksetZugang, pruefeRebrickableZugang, oeffneBild } from '../katalog/quellen';
 
+// Eine Frist für beide Kacheln; drei Minuten bei einem Takt von zwanzig Sekunden.
 // Ausführlich: docs/begruendungen/src/verwaltung/dienst.ts.md#job-frisch-ms
 const JOB_FRISCH_MS = 3 * 60_000;
 
@@ -220,6 +221,7 @@ async function bildKachel(): Promise<Kachel> {
   const reDlLaeuft = reDl?.running === true && (typeof reDl.at !== 'number' || frisch(reDl.at));
   const reDlSub = !reDlLaeuft ? null : reDl?.phase === 'scanning' ? '↻ suche fehlende Bilder…'
     : `↻ ${reDl?.done || 0}/${reDl?.total || 0} fehlende neu geladen`;
+  // „läuft“ heisst: hat kürzlich etwas getan, laut Datenbank.
   // Ausführlich: docs/begruendungen/src/verwaltung/dienst.ts.md#get-admin-jobs-letzterlauf
   const letzterLauf = await liesStand<{ zeit?: number }>('imgqueue_last_run');
   const seitLauf = letzterLauf?.zeit ? Date.now() - letzterLauf.zeit : null;

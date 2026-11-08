@@ -1,6 +1,5 @@
 /** Pro Tag, Element, Zustand, Preis und Währung genau EINE Zeile: Gleiche
- * Käufe eines Tages werden zusammengezählt.
- * Ausführlich: docs/begruendungen/src/bestand/acquisitions.ts.md#abschnitt */
+ * Käufe eines Tages werden zusammengezählt. Ausführlich: docs/begruendungen/src/bestand/acquisitions.ts.md#abschnitt */
 import * as db from '../../db/database';
 import type { DbSchnittstelle } from '../../db/database';
 import { erfassungsTagSql, preisSpalte, schluesselSpalten } from '../../db/bestandsmenge';

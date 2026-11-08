@@ -1,4 +1,4 @@
-// Ausführlich: docs/begruendungen/src/konto/sitzungsFrist.ts.md#leerlauf-vorgabe-min
+// Abmelden nach Stunden Leerlauf. Ausführlich: docs/begruendungen/src/konto/sitzungsFrist.ts.md#leerlauf-vorgabe-min
 import { konfig, VORGABE } from '../infra/konfig';
 
 export const LEERLAUF_VORGABE_MIN = VORGABE.sitzungLeerlaufMin;

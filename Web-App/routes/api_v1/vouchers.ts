@@ -1,4 +1,4 @@
-// Ausführlich: docs/begruendungen/routes/api_v1/vouchers.ts.md#abschnitt
+// Für beide Apps: Cookie und Token. Ausführlich: docs/begruendungen/routes/api_v1/vouchers.ts.md#abschnitt
 import express from 'express';
 import fs from 'fs';
 import path from 'path';
@@ -48,6 +48,7 @@ const PIN_MASKE = '•••';
 const maskiert = (z: { number: string; pin: string | null }) =>
   ({ number: '…' + z.number.slice(-4), pin: z.pin ? PIN_MASKE : null });
 
+// Betrag einmal als Zahl; `hat_pdf` statt des Pfads, der niemanden etwas angeht.
 // Ausführlich: docs/begruendungen/routes/api_v1/vouchers.ts.md#fueraussen
 function fuerAussen(z: GutscheinZeile) {
   return {
@@ -104,8 +105,7 @@ router.post('/vouchers', requireToken, async (req: Anfrage<'POST /api/v1/voucher
   res.json({ success: true, voucher: fuerAussen(zeile) });
 });
 
-/** Der Stapelfall von POST /vouchers/pdf.
- * Ausführlich: docs/begruendungen/routes/api_v1/vouchers.ts.md#stapelanlegen */
+/** Der Stapelfall von POST /vouchers/pdf. Ausführlich: docs/begruendungen/routes/api_v1/vouchers.ts.md#stapelanlegen */
 async function stapelAnlegen(
   req: AuthedRequest, res: express.Response,
   gefunden: GutscheinWerte[],

@@ -1,7 +1,6 @@
 /** Eine BrickLink-Wanted-Liste importieren: lesen (wantedParser), auflösen
  * (wantedAufloesung), schreiben (wantedSchreiber). Die Datei trägt BL-Nummern,
- * der Bestand führt RB-Nummern.
- * Ausführlich: docs/begruendungen/src/merkliste/wantedListe.ts.md#abschnitt */
+ * der Bestand führt RB-Nummern. Ausführlich: docs/begruendungen/src/merkliste/wantedListe.ts.md#abschnitt */
 import { nutzerStandardZustand } from '../einstellungen/settings';
 import { leseWantedListe } from './wantedParser';
 import type { WantedArt, WantedPosten } from './wantedParser';
@@ -36,8 +35,7 @@ export interface WantedBericht {
   /** Die Zahlen oben gelten für das, was bis zum Abbruch geschah. */
   abgebrochen?: boolean;
   /** Damit die Vorschau zeigt, was angelegt WÜRDE, auch wenn die Datei keinen
-   * Zustand nennt.
-   * Ausführlich: docs/begruendungen/src/merkliste/wantedListe.ts.md#wantedbericht */
+   * Zustand nennt. Ausführlich: docs/begruendungen/src/merkliste/wantedListe.ts.md#wantedbericht */
   standardZustand: 'N' | 'U';
   posten: PostenErgebnis[];
 }
@@ -81,8 +79,7 @@ export interface WantedOptionen extends SchreibOptionen {
 }
 
 /** Vorschau und Ernstfall gehen denselben Weg, damit die Vorschau nichts
- * verspricht, was der Import nicht tut.
- * Ausführlich: docs/begruendungen/src/merkliste/wantedListe.ts.md#abschnitt-3 */
+ * verspricht, was der Import nicht tut. Ausführlich: docs/begruendungen/src/merkliste/wantedListe.ts.md#abschnitt-3 */
 export async function importiereWantedListe(
   uid: number,
   xml: string,

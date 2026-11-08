@@ -27,16 +27,15 @@ export const DATA_DIR = path.join(APP_ROOT, 'data');
 export const PUBLIC_DIR = path.join(APP_ROOT, 'public');
 
 /** Im Volume, nicht unter public/: Das Image ist read-only und wird beim
- * Update ersetzt.
- * Ausführlich: docs/begruendungen/src/infra/appPaths.ts.md#images-dir */
+ * Update ersetzt. Ausführlich: docs/begruendungen/src/infra/appPaths.ts.md#images-dir */
 export const IMAGES_DIR = path.join(DATA_DIR, 'images');
 
-// Ausführlich: docs/begruendungen/src/infra/appPaths.ts.md#set-images-dir
+// Bilder nach Art getrennt. Ausführlich: docs/begruendungen/src/infra/appPaths.ts.md#set-images-dir
 export const SET_IMAGES_DIR     = path.join(IMAGES_DIR, 'sets');
 export const PART_IMAGES_DIR    = path.join(IMAGES_DIR, 'parts');
 export const MINIFIG_IMAGES_DIR = path.join(IMAGES_DIR, 'minifigs');
 
-// Ausführlich: docs/begruendungen/src/infra/appPaths.ts.md#instructions-dir
+// Geteilte Anleitungen; eigene in uploads/. Ausführlich: docs/begruendungen/src/infra/appPaths.ts.md#instructions-dir
 export const INSTRUCTIONS_DIR = path.join(DATA_DIR, 'instructions');
 export const PDF_JOB_DIR = path.join(DATA_DIR, 'pdf-jobs');
 

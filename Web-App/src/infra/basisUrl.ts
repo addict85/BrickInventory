@@ -7,7 +7,7 @@ export function basisUrl(): string | null {
   return konfig().appBaseUrl;
 }
 
-// Ausführlich: docs/begruendungen/src/infra/basisUrl.ts.md#gemeldet
+// Einmal je Bereich: Aufrufer laufen in Schleifen. Ausführlich: docs/begruendungen/src/infra/basisUrl.ts.md#gemeldet
 const _gemeldet = new Set<string>();
 export function hinweisOhneBasisUrl(bereich: string, folge: string): void {
   if (_gemeldet.has(bereich)) return;

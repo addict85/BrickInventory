@@ -1,4 +1,4 @@
-// Ausführlich: docs/begruendungen/src/gutscheine/gutscheinPdf.ts.md#abschnitt
+// Eigener Leser: pdfkit kann nur schreiben. Ausführlich: docs/begruendungen/src/gutscheine/gutscheinPdf.ts.md#abschnitt
 import zlib from 'zlib';
 
 export interface GutscheinWerte {
@@ -142,7 +142,7 @@ export const STROEME_MAX = 2000;
 
 export class PdfZuGross extends Error {}
 
-// Ausführlich: docs/begruendungen/src/gutscheine/gutscheinPdf.ts.md#abschnitt-2
+// Eine Zeile je Operator: Nummer allein. Ausführlich: docs/begruendungen/src/gutscheine/gutscheinPdf.ts.md#abschnitt-2
 export function pdfText(daten: Buffer): string {
   const roh = daten.toString('latin1');
   const zeilen: string[] = [];

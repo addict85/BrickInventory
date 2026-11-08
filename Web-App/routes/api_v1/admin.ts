@@ -61,6 +61,7 @@ router.get('/admin/image-diag/:setNumber', requireApiAdmin, async (req: Anfrage<
   res.json(await bildDiagnose(sn));
 });
 
+// Eine Fehlanzeige sperrte ein Bild sieben Tage, ohne Weg zurück.
 // Ausführlich: docs/begruendungen/routes/api_v1/admin.ts.md#post-admin-forget-image-misses
 router.post('/admin/forget-image-misses', requireApiAdmin, async (req: Anfrage<'POST /api/v1/admin/forget-image-misses'>, res: Antwort<'POST /api/v1/admin/forget-image-misses'>) => {
   const sets = Array.isArray(req.eingabe.set_numbers) ? req.eingabe.set_numbers.map(String) : null;
@@ -81,6 +82,7 @@ router.post('/admin/forget-image-misses', requireApiAdmin, async (req: Anfrage<'
   res.json({ success: true, entfernt, hinweis: 'Greift in allen Arbeitsprozessen binnen fünf Minuten.' });
 });
 
+// Global (price_cache gilt für alle Konten), darum nur für Verwalter.
 // Ausführlich: docs/begruendungen/routes/api_v1/admin.ts.md#post-admin-cache-clear
 router.post('/admin/cache-clear', requireApiAdmin, async (req: Anfrage<'POST /api/v1/admin/cache-clear'>, res: Antwort<'POST /api/v1/admin/cache-clear'>) => {
   await cachesLeeren(!!req.eingabe.all);
@@ -127,6 +129,7 @@ router.post('/admin/reimport-instructions', requireApiAdmin, async (_req: Authed
   res.json({ success: true, enqueued });
 });
 
+// Eine Adresse für Webapp und App; requireApiAdmin nimmt beide Ausweise.
 // Ausführlich: docs/begruendungen/routes/api_v1/admin.ts.md#get-admin-job-status
 router.get('/admin/job-status', requireApiAdmin, async (_req: AuthedRequest, res: Antwort<'GET /api/v1/admin/job-status'>) => {
   res.json(await preisJobStand()); 
@@ -136,6 +139,7 @@ router.post('/admin/trigger-price-job', requireApiAdmin, async (_req: AuthedRequ
   res.json({ success: true, started: await preisJobJetzt() }); 
 });
 
+// Füllt den Bildbestand vorab, statt nur beim Blättern.
 // Ausführlich: docs/begruendungen/routes/api_v1/admin.ts.md#post-admin-catalog-images
 router.post('/admin/catalog-images', requireApiAdmin, async (req: Anfrage<'POST /api/v1/admin/catalog-images'>, res: Antwort<'POST /api/v1/admin/catalog-images'>) => {
   res.json(await katalogBilderEinreihen(req.eingabe.alle_erneut === true));
@@ -192,8 +196,7 @@ router.get('/admin/img-probe', requireApiAdmin, async (req: Anfrage<'GET /api/v1
   res.json(await bildProbe(url));
 });
 /** Alles, was in die Marktpreis-Anzeige eines Sets einfliesst, auf Wunsch mit
- * der aktuellen BrickLink-Antwort.
- * Ausführlich: docs/begruendungen/routes/api_v1/admin.ts.md#get-admin-price-probe */
+ * der aktuellen BrickLink-Antwort. Ausführlich: docs/begruendungen/routes/api_v1/admin.ts.md#get-admin-price-probe */
 router.get('/admin/price-probe', requireApiAdmin, async (req: Anfrage<'GET /api/v1/admin/price-probe'>, res: Antwort<'GET /api/v1/admin/price-probe'>) => {
   const setNumber = (req.abfrage.set ?? '').trim();
   if (!setNumber) return sendeFehler(req, res, 400, 'parameter_set_fehlt');

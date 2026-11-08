@@ -188,6 +188,7 @@ export async function getPartPriceHistory(uidWahl: Sicht | number | number[], pa
     'part_number = $1 AND color_id = $2', [partNumber, colorId]);
 }
 
+// Preise stehen unter der BrickLink-Nummer, Erfassungen unter der eigenen; beide Schlüssel zählen.
 // Ausführlich: docs/begruendungen/src/finanzen/priceHistory.ts.md#getminifigpricehistory
 export async function getMinifigPriceHistory(uidWahl: Sicht | number | number[], figNumber: string, currency: string) {
   const uid = await blickfeldAus(uidWahl);

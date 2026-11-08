@@ -90,6 +90,7 @@ const REBRICKABLE_TAKT = { api: 'rebrickable', abstandMs: 1000 };
 export const rebrickableLimiter = new RateLimiter(1, 1500, REBRICKABLE_TAKT);
 export const rebrickableBackgroundLimiter = new RateLimiter(1, 1500, REBRICKABLE_TAKT);
 
+// Gezählt in der Datenbank: Je Prozess gezählt vervielfachte sich das Limit.
 // Ausführlich: docs/begruendungen/src/katalog/rateLimiter.ts.md#consumerebrickabledaily
 export async function consumeRebrickableDaily(): Promise<boolean> {
   const rl = await checkAndIncrementRateLimit('rebrickable').catch(meldeUndLiefere('takt:checkAndIncrementRateLimit', null));

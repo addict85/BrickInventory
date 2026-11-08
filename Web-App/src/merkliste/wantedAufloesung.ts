@@ -31,8 +31,7 @@ export interface Aufloesung {
 }
 
 /** Ohne fremden Abruf; die drei Stufen bleiben getrennt, weil sie verschieden
- * sicher sind.
- * Ausführlich: docs/begruendungen/src/merkliste/wantedAufloesung.ts.md#loeselokalauf */
+ * sicher sind. Ausführlich: docs/begruendungen/src/merkliste/wantedAufloesung.ts.md#loeselokalauf */
 export async function loeseLokalAuf(posten: WantedPosten[], uid: number | null = null): Promise<Aufloesung[]> {
   if (!posten.length) return [];
 
@@ -150,8 +149,7 @@ export interface Korrektur {
   rbId?: string | null | undefined;
   rbFarbe?: number | null | undefined;
   /** Die Werte aus der Datei, von Hand geändert, damit ein Vertipper nicht ein
-   * erneutes Einlesen erzwingt.
-   * Ausführlich: docs/begruendungen/src/merkliste/wantedAufloesung.ts.md#korrektur-2 */
+   * erneutes Einlesen erzwingt. Ausführlich: docs/begruendungen/src/merkliste/wantedAufloesung.ts.md#korrektur-2 */
   menge?: number | undefined;
   /** null heisst „Standard des Kontos". */
   zustand?: string | null | undefined;

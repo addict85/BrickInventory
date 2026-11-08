@@ -13,7 +13,7 @@ export interface FehlerQuelle { method?: string; originalUrl?: string; url?: str
 
 interface Geworfen { status?: unknown; code?: unknown; vars?: Record<string, string | number>; stack?: unknown; message?: unknown }
 
-// Ausführlich: docs/begruendungen/src/http/httpAntwort.ts.md#handlerouteerror
+// Interna ins Protokoll, nicht zum Client. Ausführlich: docs/begruendungen/src/http/httpAntwort.ts.md#handlerouteerror
 export function handleRouteError(res: FehlerZiel, fehler: unknown, status?: number, req?: FehlerQuelle): void {
   const e = alsUploadFehler(fehler) as Geworfen | null | undefined;
   const code = status || (typeof e?.status === 'number' ? e.status : 500);
@@ -81,6 +81,7 @@ function alsUploadFehler<T>(e: T): T | Error {
   return dateiFehler(zuGross ? 'datei_zu_gross' : 'upload_ungueltig', zuGross ? 413 : 400);
 }
 
+// Express 5 liefert Platzhalter auch als Array; verbunden wird mit / statt Komma.
 // Ausführlich: docs/begruendungen/src/http/httpAntwort.ts.md#pfadparam
 export function pfadParam(req: { params: Record<string, string | string[] | undefined> },
                    name: string): string {

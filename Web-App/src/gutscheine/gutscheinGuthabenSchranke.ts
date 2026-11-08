@@ -65,6 +65,7 @@ export async function vergesseSchranke(): Promise<void> {
   await repo.oeffneSchranke();
 }
 
+// Der einzige Weg zur Abfrage, damit niemand die Schranke umgeht.
 // Ausführlich: docs/begruendungen/src/gutscheine/gutscheinGuthabenSchranke.ts.md#frageguthabenab
 export async function frageGuthabenAb(
   uid: number, nummer: string, pin: string, opt: { locale?: string; abruf?: Abruf } = {},

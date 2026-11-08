@@ -1,7 +1,5 @@
-/** Was die Set-Routen aus Lagerort, Preisalarm, Anleitungen, Teile-Import und
- * CSV-Import brauchen, an einer Stelle: Die Route prüft die Eingabe, ruft hier
- * und antwortet. Absagen kommen als Fachfehler, die der Fehlerweg des Routers
- * in dieselbe Antwort übersetzt wie sendeFehler(). */
+/** Was die Set-Routen aus anderen Bereichen brauchen, damit die Route nur prüft, ruft und antwortet.
+ * Absagen sind Fachfehler: Der Fehlerweg des Routers antwortet wie sendeFehler(). */
 import path from 'path';
 import { normalizeSetNumber, findSetInScope } from './setAdd';
 import { normalisiereLagerort, setzeLagerort, orteFuer, vorgabeVon } from '../bestand/lagerort';
@@ -31,8 +29,6 @@ import type { CsvImportBericht } from '../infra/csvExport';
 export async function waehrungVon(uid: number): Promise<string> {
   return String(await getSetting(uid, 'currency', 'EUR'));
 }
-
-// ── Lagerort ────────────────────────────────────────────────────────────────
 
 /** Trifft alle Zeilen des Sets im Schreibbereich: Wer die Kiste packt, packt
  * sie für alle, die darin nachsehen. */
@@ -67,8 +63,6 @@ export async function alarmeAusCsv(uid: number, text: string) {
   return importAlsAuftrag<CsvImportBericht>(uid, 'alarme_csv', { waehrung: await waehrungVon(uid), text });
 }
 
-// ── Teile-Import ────────────────────────────────────────────────────────────
-
 /** Nur zu Sets im Blickfeld und gedrosselt: Jeder Import kann Rebrickable-Kontingent kosten. */
 export async function teileDesSetsImportieren(uid: number, sn: string): Promise<number> {
   const set = await findSetInScope(uid, sn);
@@ -77,8 +71,6 @@ export async function teileDesSetsImportieren(uid: number, sn: string): Promise<
   if (takt.count > 30) fehlerWerfen('zu_viele_anfragen', 429, { minuten: takt.waitMin });
   return importPartsForSet(set.set_number, set.owner_user_id);
 }
-
-// ── Anleitungen ─────────────────────────────────────────────────────────────
 
 /** Die Anleitungen sind geteilt: Ersetzen darf nur der Verwalter (ein leerer
  * Abruf löschte sie sonst für alle). Andere holen, was fehlt, einmal je Set und Tag. */
@@ -99,8 +91,6 @@ export async function anleitungenNeuLaden(uid: number, roh: string, verwalter: b
 /** Hochgeladene Anleitungen liegen je Konto in einem eigenen Ordner darunter. */
 export const ANLEITUNGS_WURZEL = path.join(DATA_DIR, 'uploads');
 
-// ── CSV-Import: Stand und Beobachtung ───────────────────────────────────────
-
 type Kopf = { headers?: Record<string, unknown> };
 
 export async function importStand(uid: number, req: Kopf) {
@@ -112,8 +102,7 @@ export async function importStandFuerStrom(uid: number, req: Kopf, sprache: Spra
   return buildJobStatus(await jobGet(uid).catch(meldeUndLiefere('sets:jobGet', null)), req, sprache);
 }
 
-/** Meldet jeden neuen Stand: aus diesem Prozess über den Bus, aus anderen
- * Workern über LISTEN/NOTIFY. @returns Abmelden */
+/** Jeder neue Stand, aus diesem Prozess (Bus) wie aus anderen (LISTEN/NOTIFY). @returns Abmelden */
 export function beobachteImport(uid: number, melde: () => void): () => void {
   const lokal = () => melde();
   const fremd = (payload: unknown) => {

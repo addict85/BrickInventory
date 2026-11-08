@@ -418,6 +418,7 @@ async function enrichSetMinifigs(setNumber: string) {
 // Ausführlich: docs/begruendungen/src/katalog/teileAnreicherung.ts.md#abschnitt-2
 let _redlRunning = false;
 
+// Für alle drei Bildarten; sonst verwarf der Nachlauf Set- und Figurenbilder.
 // Ausführlich: docs/begruendungen/src/katalog/teileAnreicherung.ts.md#fspathfromlocal
 function _fsPathFromLocal(imageLocal: string) {
   if (!imageLocal) return null;
@@ -437,6 +438,7 @@ function _fsPathFromLocal(imageLocal: string) {
   return null;
 }
 
+// Mit await, sonst ginge der Endstand bei einem Neustart verloren.
 // Ausführlich: docs/begruendungen/src/katalog/teileAnreicherung.ts.md#redlsetstatus
 async function _redlSetStatus(obj: Record<string, unknown>) {
   await setzeZustand('imgredl_status', JSON.stringify({ ...obj, at: Date.now() }))

@@ -69,8 +69,7 @@ export async function getPortfolioHistory(
   let bucketExpr = monatsAufloesung ? "'YYYY-MM'" : "'YYYY-MM-DD'";
 
   // Die Kurve zeigt den HEUTIGEN Bestand über die Zeit: Sonst erschiene jedes
-  // Erfassen als Kurssprung.
-  // Ausführlich: docs/begruendungen/src/finanzen/portfolioHistory.ts.md#kurve
+  // Erfassen als Kurssprung. Ausführlich: docs/begruendungen/src/finanzen/portfolioHistory.ts.md#kurve
 
   const kurve = await rekonstruiereKurve({
     db, setNumbers, setQty, placeholders, dateFilter, bucketExpr,

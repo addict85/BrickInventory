@@ -1,6 +1,5 @@
 /** Jimp dekodiert ohne Grenze; ein kleines Bild mit riesigen Abmessungen wäre
- * eine Dekompressionsbombe.
- * Ausführlich: docs/begruendungen/src/katalog/bilder/imageGuard.ts.md#abschnitt */
+ * eine Dekompressionsbombe. Ausführlich: docs/begruendungen/src/katalog/bilder/imageGuard.ts.md#abschnitt */
 import { logAndContinue } from '../../infra/fehler';
 import fs from 'fs';
 

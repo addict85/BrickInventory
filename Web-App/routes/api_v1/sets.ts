@@ -73,13 +73,14 @@ router.delete('/sets/:setNumber/alert', requireToken, async (req: Anfrage<'DELET
   res.json({ success: true, removed: n });
 });
 
+// Abholen statt Schieben; ohne Kontofilter, ein Alarm gehört einem Konto.
 // Ausführlich: docs/begruendungen/routes/api_v1/sets.ts.md#get-alerts-pending
 router.get('/alerts/pending', requireToken, async (req: Anfrage<'GET /api/v1/alerts/pending'>, res: Antwort<'GET /api/v1/alerts/pending'>) => {
   const r = await ausgeloesteSeit(req.apiUser.user_id, req.abfrage.since);
   res.json({ success: true, alerts: r.alerts, now: r.now });
 });
 
-// Ausführlich: docs/begruendungen/routes/api_v1/sets.ts.md#get-alerts
+// Was gesetzt ist; ausgelöst: /alerts/pending. Ausführlich: docs/begruendungen/routes/api_v1/sets.ts.md#get-alerts
 router.get('/alerts', requireToken, async (req: Anfrage<'GET /api/v1/alerts'>, res: Antwort<'GET /api/v1/alerts'>) => {
   res.json({ success: true, alerts: await alleAlarme(req.apiUser.user_id) });
 });
@@ -122,7 +123,7 @@ router.delete('/storage/locations/:id', requireToken, async (req: Anfrage<'DELET
   res.json({ success: true });
 });
 
-// Ausführlich: docs/begruendungen/routes/api_v1/sets.ts.md#get-storage
+// Spannt Sets und Teile, gehört keiner Familie. Ausführlich: docs/begruendungen/routes/api_v1/sets.ts.md#get-storage
 router.get('/storage', requireToken, async (req: Anfrage<'GET /api/v1/storage'>, res: Antwort<'GET /api/v1/storage'>) => {
   const ids = sichtVon(req);
   res.json({ success: true, orte: await lagerorte(ids) });
@@ -138,8 +139,7 @@ router.get('/sets/:setNumber/minifigs-list', requireToken, async (req: Anfrage<'
 
 router.get('/sets', requireToken, async (req: Anfrage<'GET /api/v1/sets'>, res: Antwort<'GET /api/v1/sets'>) => {
   // Ohne page_size bleibt die Liste absichtlich unbegrenzt — für Skripte und
-  // ältere App-Stände.
-  // Ausführlich: docs/begruendungen/routes/api_v1/sets.ts.md#get-sets-r
+  // ältere App-Stände. Ausführlich: docs/begruendungen/routes/api_v1/sets.ts.md#get-sets-r
   const r = await getSets(sichtVon(req), req.abfrage);
   const sets = r.sets;
   res.json({ success: true, count: sets.length, total: r.total, sets, ...(r.themes ? { themes: r.themes } : {}) });

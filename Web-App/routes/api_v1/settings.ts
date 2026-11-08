@@ -38,8 +38,7 @@ router.get('/settings/theme', async (req: OffeneAnfrage<'GET /api/v1/settings/th
 });
 
 // Vor router.use(requireLogin), weil requireLogin nur die Sitzung kennt und
-// die App ihre Zugänge mit Token verwaltet.
-// Ausführlich: docs/begruendungen/routes/api_v1/settings.ts.md#abschnitt
+// die App ihre Zugänge mit Token verwaltet. Ausführlich: docs/begruendungen/routes/api_v1/settings.ts.md#abschnitt
 router.get('/settings/tokens', requireLoginOrToken, async (req: OffeneAnfrage<'GET /api/v1/settings/tokens'>, res: Antwort<'GET /api/v1/settings/tokens'>) => {
   const eigener = bearerToken(req);
   const eigenerHash = eigener ? hashToken(eigener) : null;
@@ -82,8 +81,7 @@ router.post('/settings/sessions/andere-beenden', requireLogin, async (req: Offen
 });
 
 /** Ausdrücklich aufgezählt: Die App bekommt nur, was sie liest, keine globalen
- * oder Verwalterfelder.
- * Ausführlich: docs/begruendungen/routes/api_v1/settings.ts.md#app-felder */
+ * oder Verwalterfelder. Ausführlich: docs/begruendungen/routes/api_v1/settings.ts.md#app-felder */
 const APP_FELDER = ['currency', 'price_condition', 'price_cache_ttl',
                     'default_price_condition', 'user_default_condition'] as const;
 
@@ -127,6 +125,7 @@ router.get('/settings/default-condition', requireToken, async (_req: AuthedReque
   res.json({ success: true, condition: await globalDefaultCondition() });
 });
 
+// Der wirksame Wert, für Webapp und App aus einer Route.
 // Ausführlich: docs/begruendungen/routes/api_v1/settings.ts.md#get-settings-user-default-condition
 router.get('/settings/user/default-condition', requireToken, async (req: Anfrage<'GET /api/v1/settings/user/default-condition'>, res: Antwort<'GET /api/v1/settings/user/default-condition'>) => {
   res.json({ success: true, condition: await nutzerStandardZustand(req.apiUser.user_id) });

@@ -30,7 +30,7 @@ export function meldeFehler(kontext: string, e: unknown) {
   logAndContinue(kontext)(e);
 }
 
-// Ausführlich: docs/begruendungen/src/infra/fehler.ts.md#fehlertext
+// Nicht nur Error fliegt; sonst „Fehler: undefined“. Ausführlich: docs/begruendungen/src/infra/fehler.ts.md#fehlertext
 export function fehlertext(e: unknown): string {
   if (e instanceof Error && e.message) return e.message;
   if (typeof e === 'string' && e) return e;

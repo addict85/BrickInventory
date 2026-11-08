@@ -3,6 +3,7 @@ import * as repo from '../repository/portfolioKurve';
 
 /** Ein Punkt der Wertkurve; fullDay ist der genaue Tag eines Monatspunkts. */
 export interface KurvenPunkt { day: string; fullDay: string; month?: string; total: number }
+// Aus dem globalen Preisverlauf, darum stimmt die Kurve auch rückwirkend.
 // Ausführlich: docs/begruendungen/src/finanzen/portfolio/kurve.ts.md#rekonstruierekurve
 export async function rekonstruiereKurve(opts: {
   db?: unknown;

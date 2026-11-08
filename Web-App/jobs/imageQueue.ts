@@ -54,8 +54,7 @@ async function pauseVorArbeit(): Promise<void> {
 }
 
 /** Ein Fehlschlag wird gemerkt, sonst kostet jede nicht lesbare Datei bei
- * jedem Durchgang einen vergeblichen Lauf.
- * Ausführlich: docs/begruendungen/jobs/imageQueue.ts.md#vorschauerzeugen */
+ * jedem Durchgang einen vergeblichen Lauf. Ausführlich: docs/begruendungen/jobs/imageQueue.ts.md#vorschauerzeugen */
 async function vorschauErzeugen(relPfad: string, schluessel: string): Promise<boolean> {
   if (istBekanntFehlend('thumb:' + schluessel)) return false;
   const ok = await generateThumb(relPfad).catch(meldeUndLiefere('bild-job:generateThumb', false));
@@ -64,8 +63,7 @@ async function vorschauErzeugen(relPfad: string, schluessel: string): Promise<bo
 }
 
 /** Mehrere Zähler statt einer Zahl, damit das Log zeigt, welcher Ausgang
- * genommen wurde.
- * Ausführlich: docs/begruendungen/jobs/imageQueue.ts.md#stapelergebnis */
+ * genommen wurde. Ausführlich: docs/begruendungen/jobs/imageQueue.ts.md#stapelergebnis */
 export type StapelErgebnis = {
   geholt: number; vorschau: number; uebersprungen: number; gesamt: number;
   /** Jeder Weg durch die Schleife erhöht einen Zähler, damit die Summe aufgeht. */
@@ -139,8 +137,7 @@ async function nurVorschau(setNummer: string, vorschau: string, st: StapelStand)
 async function nachFehlschlag(setNummer: string, info: { status?: number }, st: StapelStand): Promise<boolean> {
   const status = info.status;
   // Eine Drosselung ist KEINE Fehlanzeige: Die Bilder gibt es, und stures
-  // Weiterfragen verlängert die Sperre.
-  // Ausführlich: docs/begruendungen/jobs/imageQueue.ts.md#arbeitestapel-2
+  // Weiterfragen verlängert die Sperre. Ausführlich: docs/begruendungen/jobs/imageQueue.ts.md#arbeitestapel-2
   if (status === 403 || status === 429) {
     const bis = new Date(Date.now() + DROSSEL_PAUSE_MS);
     await pausiereArt('bildbedarf', bis, `CDN drosselt (HTTP ${status})`);

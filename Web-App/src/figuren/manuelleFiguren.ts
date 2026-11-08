@@ -23,6 +23,7 @@ import { fehlerWerfen } from '../infra/fehlerTexte';
 // geschätzt: Für Teile ist die Zuordnung RB→BL verlässlich, für Figuren nicht.
 // Ausführlich: docs/begruendungen/src/figuren/manuelleFiguren.ts.md#abschnitt-2
 
+// Preis und Zustand einmal für Einzelerfassung und CSV-Import; ohne Preis gilt der Marktpreis.
 // Ausführlich: docs/begruendungen/src/figuren/manuelleFiguren.ts.md#resolvemanualfigpurchase
 export async function resolveManualFigPurchase(uid: number, { figNumber, blFigNumber = null, unitPrice = null, condition = null }:
   { figNumber: string; blFigNumber?: string | null; unitPrice?: unknown; condition?: string | null }) {

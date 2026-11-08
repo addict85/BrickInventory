@@ -3,7 +3,7 @@ import type { DbSchnittstelle } from '../../db/database';
 import { istErsatzteil, KEINE_FARBE } from '../infra/validate';
 import { asIds, blickfeldAus, type Sicht } from '../haushalt/haushalt';
 
-// Ausführlich: docs/begruendungen/src/bestand/gemeinsam.ts.md#abschnitt
+// Was Sets, Teile und Figuren gemeinsam brauchen. Ausführlich: docs/begruendungen/src/bestand/gemeinsam.ts.md#abschnitt
 
 /** Je Anfrage, unabhängig vom Abfrageweg — eine Stelle statt fünf Literale.
  * Ausführlich: docs/begruendungen/src/bestand/gemeinsam.ts.md#max-page-size */
@@ -48,6 +48,7 @@ export function conditionsFromAcquisitions(acqCount: Zaehlwert, usedCount: Zaehl
   return out.length ? out : ['N'];
 }
 
+// Wie bei Sets: Eine gebrauchte Erfassung macht den Eintrag gebraucht; eine Abfrage je Seite.
 // Ausführlich: docs/begruendungen/src/bestand/gemeinsam.ts.md#abschnitt-2
 type Schluessel = { part_number?: string; color_id?: number | null; fig_number?: string };
 export async function applyManualCondition<R extends Schluessel>(userId: number | number[], rows: R[], kind: 'part' | 'fig') {
@@ -80,6 +81,7 @@ export async function applyManualCondition<R extends Schluessel>(userId: number 
   });
 }
 
+// Eine Funktion für Teile und Figuren: Nur Tabelle und Schlüssel wechseln.
 // Ausführlich: docs/begruendungen/src/bestand/gemeinsam.ts.md#verwendendesset
 export interface VerwendendesSet {
   set_number: string;

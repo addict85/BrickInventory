@@ -37,6 +37,7 @@ router.put('/minifigs/:figNumber', requireToken, async (req: Anfrage<'PUT /api/v
   res.json({ success: true, ...r });
 });
 
+// Trifft alle Zeilen der Figur im Schreibbereich: Gemeint ist die Figur, nicht eine Zeile.
 // Ausführlich: docs/begruendungen/routes/api_v1/minifigs.ts.md#put-minifigs-fignumber-storage
 router.put('/minifigs/:figNumber/storage', requireToken, async (req: Anfrage<'PUT /api/v1/minifigs/:figNumber/storage'>, res: Antwort<'PUT /api/v1/minifigs/:figNumber/storage'>) => {
   const ort = normalisiereLagerort(req.eingabe.storage);
@@ -85,6 +86,7 @@ router.post('/minifigs/import/csv', requireToken, kontoSchranke('upload'), csvEm
   res.json(await importAlsAuftrag<CsvImportBericht>(req.apiUser.user_id, 'figuren_csv', { text: req.file.buffer.toString('utf-8') }));
 });
 
+// Dieselbe Abfrage wie bei Teilen (src/bestand/gemeinsam.ts), im Blickfeld des Haushalts.
 // Ausführlich: docs/begruendungen/routes/api_v1/minifigs.ts.md#get-minifigs-fignumber-sets
 router.get('/minifigs/:figNumber/sets', requireToken, async (req: Anfrage<'GET /api/v1/minifigs/:figNumber/sets'>, res: Antwort<'GET /api/v1/minifigs/:figNumber/sets'>) => {
   const uids = sichtVon(req);

@@ -110,7 +110,7 @@ async function datenbankAntwortet(): Promise<boolean> {
 }
 
 
-// Ausführlich: docs/begruendungen/db/database.ts.md#dbschnittstelle
+// Benannt, damit tx-Rückrufe geprüft werden. Ausführlich: docs/begruendungen/db/database.ts.md#dbschnittstelle
 /** Eine Zeile mit den Spalten, die der Aufrufer liest; weitere reisen als `unknown` mit. */
 export type Zeile<T extends object = object> = T & Record<string, unknown>;
 

@@ -11,8 +11,7 @@ import * as repo from './repository/anleitungen';
 const PDF_ANFANG = Buffer.from('%PDF-');
 
 /** Mehrere Quellen, weil keine allein alle Sets führt; aus Bildseiten notfalls
- * ein PDF.
- * Ausführlich: docs/begruendungen/src/katalog/instructions.ts.md#abschnitt */
+ * ein PDF. Ausführlich: docs/begruendungen/src/katalog/instructions.ts.md#abschnitt */
 
 /** Damit der Takt der Warteschlange nur nach echten Abrufen wartet.
  * Ausführlich: docs/begruendungen/src/katalog/instructions.ts.md#letzterabrufwarextern */
@@ -51,7 +50,7 @@ export async function loescheAnleitungen(setNumber: string) {
   return repo.loescheAnleitungenDesSets(mitVersion(setNumber));
 }
 
-// Ausführlich: docs/begruendungen/src/katalog/instructions.ts.md#brickinstructionsfund
+// Ein Fund für Anlegen und Suchen. Ausführlich: docs/begruendungen/src/katalog/instructions.ts.md#brickinstructionsfund
 async function brickinstructionsFund(n: string) {
   const baseNum = pfadSegment(ohneVersion(n));
   const folder  = String(Math.floor(parseInt(baseNum) / 1000) * 1000).padStart(5, '0');

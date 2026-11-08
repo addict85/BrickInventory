@@ -15,6 +15,7 @@ export function bildTyp(roh: string): string {
   return BILDTYPEN.has(typ) ? typ : 'image/jpeg';
 }
 
+// Aus dem Platten-Cache, falls vorhanden; true heisst beantwortet.
 // Ausführlich: docs/begruendungen/src/katalog/bilder/imgCacheServe.ts.md#liefereauscache
 /** Was die Auslieferung von Express braucht; die Typen von Express gehören in http/. */
 type BildAntwort = ServerResponse & { status(c: number): { end(): unknown } };

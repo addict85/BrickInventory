@@ -7,8 +7,10 @@ import { holeBild, BILD_KOPFZEILEN } from '../quellen';
 import { SET_IMAGES_DIR } from '../../infra/appPaths';
 import { appVersion } from '../../infra/appVersion';
 
+// Set-Bilder vom CDN holen; hier statt im Router, damit die Aufrufer echt importieren.
 // Ausführlich: docs/begruendungen/src/katalog/bilder/setImages.ts.md#abschnitt
 
+// Wie im Bild-Proxy; mit 5 MB blieben grosse Set-Bilder ohne lokale Datei.
 // Ausführlich: docs/begruendungen/src/katalog/bilder/setImages.ts.md#set-img-max-bytes
 export const SET_IMG_MAX_BYTES = 20 * 1024 * 1024;
 

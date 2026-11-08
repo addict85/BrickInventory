@@ -93,8 +93,7 @@ export async function setzeImportFort(userId: number, lauf: string):
 const MELDE_ABSTAND_MS = 300;
 
 /** `false`, wenn schon ein Auftrag LÄUFT: Der Balken bleibt bei dem, der zuerst
- * da war; der Import läuft trotzdem.
- * Ausführlich: docs/begruendungen/src/auftraege/importAuftrag.ts.md#starteauftrag */
+ * da war; der Import läuft trotzdem. Ausführlich: docs/begruendungen/src/auftraege/importAuftrag.ts.md#starteauftrag */
 export async function starteAuftrag(
   userId: number, angaben: { total: number; current?: string | null },
 ): Promise<boolean> {
@@ -135,6 +134,7 @@ export async function meldeAuftrag(
   await emitJobStatus(userId);
 }
 
+// Ergebnisse je Posten, sonst zeigt der Balken „0 ok“; offen bleibt ein eigener Ausgang (warn).
 // Ausführlich: docs/begruendungen/src/auftraege/importAuftrag.ts.md#beendeauftrag
 export async function beendeAuftrag(
   userId: number,
@@ -156,6 +156,7 @@ export async function beendeAuftrag(
   await emitJobStatus(userId);
 }
 
+// Ohne diese Frage hätte der Balken ein Kreuz, das lügt; auch eine fehlende Zeile heisst abgebrochen.
 // Ausführlich: docs/begruendungen/src/auftraege/importAuftrag.ts.md#istabgebrochen
 export async function istAbgebrochen(userId: number): Promise<boolean> {
   const stand = await jobGet(userId)
