@@ -50,6 +50,15 @@ class SplitFileImportsTest {
         "sammlung/ui/screens/SetDetailAnleitungen.kt" to "sammlung/ui/screens/SetDetailSections.kt",
     )
 
+    // Ein Feature darf ein anderes nicht einführen (ModulgrenzenTest); stammt die Datei aus
+    // app/, erbt sie dessen Wildcards auf fremde Features also gerade nicht.
+    private val features = setOf("anmeldung", "finanzen", "katalog", "konto", "sammlung", "teile", "verwaltung")
+
+    private fun fremdesFeature(zeile: String, datei: String): Boolean {
+        val stamm = Regex("""^import ch\.brickinventoryapp\.(\w+)\.""").find(zeile)?.groupValues?.get(1)
+        return stamm in features && stamm != datei.substringBefore('/')
+    }
+
     private fun wildcards(src: String) =
         Regex("""^import [\w.]+\.\*$""", RegexOption.MULTILINE)
             .findAll(src).map { it.value }.toSet()
@@ -58,7 +67,7 @@ class SplitFileImportsTest {
     fun `jede aufgeteilte Datei erbt die Wildcards ihrer Quelle`() {
         for ((neu, orig) in paare) {
             val n = read(neu)
-            val fehlend = wildcards(read(orig)) - wildcards(n)
+            val fehlend = (wildcards(read(orig)) - wildcards(n)).filterNot { fremdesFeature(it, neu) }
             assert(fehlend.isEmpty()) {
                 "$neu fehlen Wildcard-Importe der Quelldatei: ${fehlend.joinToString()}. " +
                     "Ohne sie muss jeder gedeckte Name einzeln erraten werden — daran " +
