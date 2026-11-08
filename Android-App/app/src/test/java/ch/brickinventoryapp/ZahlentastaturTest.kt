@@ -113,7 +113,7 @@ class ZahlentastaturTest {
 
     private val filter = Regex("""NumericInput\.(setNumber|quantity|price)\b""")
     private val tastatur = Regex(
-        """keyboardType\s*=\s*KeyboardType\.\w+|NumericInput\.(ganzzahl|preis)Tastatur""")
+        """keyboardType\s*=\s*KeyboardType\.\w+|NumericInput\.(ganzzahl|preis|setnummer)Tastatur""")
 
     /**
      * Nur die ZAHLEN-Tastaturen — Email, Password und Phone gehoeren nicht

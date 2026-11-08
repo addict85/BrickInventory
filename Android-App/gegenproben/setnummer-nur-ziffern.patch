@@ -1,0 +1,17 @@
+Gegenprobe: der Setnummer-Filter lässt wieder nur Ziffern und den Bindestrich durch
+Modul: core-ui
+Test: ch.brickinventoryapp.NumericInputTest
+Rot: Buchstaben und Ziffern
+
+diff --git a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/util/NumericInput.kt b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/util/NumericInput.kt
+--- a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/util/NumericInput.kt
++++ b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/util/NumericInput.kt
+@@ -18,7 +18,7 @@
+      * ein reiner Ziffernfilter machte sie hier unerfassbar.
+      */
+     fun setNumber(eingabe: String): String =
+-        eingabe.filter { it in '0'..'9' || it in 'a'..'z' || it in 'A'..'Z' || it == '-' }
++        eingabe.filter { it.isDigit() || it == '-' }
+ 
+     /** Menge: nur Ziffern. */
+     fun quantity(eingabe: String): String =

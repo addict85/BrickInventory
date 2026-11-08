@@ -1,5 +1,8 @@
 package ch.brickinventoryapp
 
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardCapitalization
+import androidx.compose.ui.text.input.KeyboardType
 import ch.brickinventoryapp.util.NumericInput
 import org.junit.Assert.assertEquals
 import org.junit.Test
@@ -23,6 +26,11 @@ import org.junit.Test
  * Felder an der Beschriftung erkennt. Die Sammelregel „jedes gefilterte Feld
  * zeigt auch die Zahlentastatur" steht in ZahlentastaturTest; siehe die
  * Notiz unten, wo sie vorher stand.
+ *
+ * Seit 8.11. lässt die Setnummer auch Buchstaben durch (llca30, comcon001), wie
+ * normalisiereSetNummer der Web-App; ihre Felder zeigen dafür die Texttastatur.
+ * Gegenprobe (gegenproben/setnummer-nur-ziffern.patch): der Filter wieder nur
+ * Ziffern und „-" → rot „die Setnummer laesst Buchstaben und Ziffern durch …".
  */
 class NumericInputTest {
 
@@ -32,18 +40,30 @@ class NumericInputTest {
     // ── Die Filterung ────────────────────────────────────────────────────────
 
     @Test
-    fun `die Setnummer laesst Buchstaben nicht durch`() {
+    fun `die Setnummer laesst Buchstaben und Ziffern durch, sonst nichts`() {
         assertEquals("42200", NumericInput.setNumber("42200"))
-        assertEquals("42200", NumericInput.setNumber("abc42200xyz"))
-        assertEquals("", NumericInput.setNumber("Police Truck"))
+        // Wie normalisiereSetNummer der Web-App: Buchstaben und Ziffern, Rest fällt weg.
+        assertEquals("llca30", NumericInput.setNumber("llca30"))
+        assertEquals("comcon001", NumericInput.setNumber("comcon001"))
+        assertEquals("42200xyz", NumericInput.setNumber("42 200 xyz"))
+        assertEquals("PoliceTruck", NumericInput.setNumber("Police Truck!"))
+        assertEquals("", NumericInput.setNumber("äö €#"))
+        // Nicht-ASCII-Ziffern (arabisch-indisch) und Umlaute trafen in der Web-App keine Zeile.
+        assertEquals("", NumericInput.setNumber("\u0663\u00e4"))
+    }
+
+    @Test
+    fun `die Setnummer-Tastatur ist eine Texttastatur ohne Grossschreibung`() {
+        val t = NumericInput.setnummerTastatur()
+        assertEquals(KeyboardType.Ascii, t.keyboardType)
+        assertEquals(KeyboardCapitalization.None, t.capitalization)
+        assertEquals(ImeAction.Done, NumericInput.setnummerTastatur(ImeAction.Done).imeAction)
     }
 
     @Test
     fun `der Varianten-Bindestrich bleibt erlaubt`() {
-        // „Nur Zahlen" heisst: keine BUCHSTABEN. LEGO-Setnummern tragen die
-        // Variante hinter dem Strich (10179-2). Verböte das Feld ihn, liesse
-        // sich jede Variante ausser der ersten gar nicht mehr erfassen — die
-        // App ergänzt beim Erfassen nur „-1", wenn nichts angegeben ist.
+        // LEGO-Setnummern tragen die Variante hinter dem Strich (10179-2). Verböte das
+        // Feld ihn, liesse sich jede Variante ausser der ersten nicht mehr erfassen.
         assertEquals("10179-2", NumericInput.setNumber("10179-2"))
     }
 

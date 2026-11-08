@@ -460,7 +460,7 @@ private fun MerkpostenErfassenDialog(
             // Dieselbe Tastatur wie im AddSetDialog. Ein Zahlenfeld
             // ohne Tastaturwahl oeffnet die Buchstabentastatur — die
             // Regel dazu steht in NumericInputTest.
-            keyboardOptions = NumericInput.ganzzahlTastatur(),
+            keyboardOptions = NumericInput.setnummerTastatur(),
             modifier = Modifier.fillMaxWidth().focusRequester(nummerFokus),
         )
         // Mit Beschriftung „Zustand“: Zwei Chips ohne Überschrift sagten nicht, wonach sie fragen.

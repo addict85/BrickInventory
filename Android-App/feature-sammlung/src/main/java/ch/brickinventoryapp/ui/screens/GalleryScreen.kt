@@ -842,7 +842,7 @@ fun AddSetDialog(
             },
             modifier = Modifier.fillMaxWidth().focusRequester(setFeldFokus), singleLine = true,
             shape = Formen.feld,
-            keyboardOptions = NumericInput.ganzzahlTastatur()
+            keyboardOptions = NumericInput.setnummerTastatur()
         )
         OutlinedTextField(
             value = quantity,

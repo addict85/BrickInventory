@@ -2,6 +2,7 @@ package ch.brickinventoryapp.util
 
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.KeyboardType
 
 /**
@@ -11,9 +12,13 @@ import androidx.compose.ui.text.input.KeyboardType
  */
 object NumericInput {
 
-    /** Setnummer: Ziffern und der Varianten-Bindestrich. */
+    /**
+     * Setnummer: ASCII-Buchstaben, Ziffern und der Varianten-Bindestrich — dieselben Zeichen
+     * wie normalisiereSetNummer der Web-App. Nummern wie „llca30" oder „comcon001" sind echt;
+     * ein reiner Ziffernfilter machte sie hier unerfassbar.
+     */
     fun setNumber(eingabe: String): String =
-        eingabe.filter { it.isDigit() || it == '-' }
+        eingabe.filter { it in '0'..'9' || it in 'a'..'z' || it in 'A'..'Z' || it == '-' }
 
     /** Menge: nur Ziffern. */
     fun quantity(eingabe: String): String =
@@ -38,7 +43,14 @@ object NumericInput {
         return sb.toString()
     }
 
-    /** Ganze Zahlen (Setnummer, Menge). */
+    /** Setnummer: Buchstaben kommen vor, also die Texttastatur, ohne Grossschreibung und Korrektur. */
+    fun setnummerTastatur(imeAction: ImeAction = ImeAction.Next) =
+        KeyboardOptions(
+            capitalization = KeyboardCapitalization.None, autoCorrectEnabled = false,
+            keyboardType = KeyboardType.Ascii, imeAction = imeAction,
+        )
+
+    /** Ganze Zahlen (Menge). */
     fun ganzzahlTastatur(imeAction: ImeAction = ImeAction.Next) =
         KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = imeAction)
 
