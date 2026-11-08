@@ -474,7 +474,7 @@ async function doAddSet(){
           G('add-num').value=''; if(G('add-price')) G('add-price').value=''; if(G('add-date')) G('add-date').value='';
           leereLagerortFeld('add-storage');
           if (ev.katalog_offen) toast(tRaw('gallery.added_no_catalog', { num: ev.set_number }), 'info');
-          else toast(`Set ${ev.set_number} ${ev.action==='added'?tRaw('common.added'):tRaw('common.updated')}!`,'success');
+          else toast(tRaw(ev.action==='added'?'gallery.set_hinzugefuegt':'gallery.set_aktualisiert', { num: ev.set_number }),'success');
           // Hintergrundaufträge laufen noch: alle Reiter regelmässig auffrischen
           set_lastImportAt(Date.now());
           [3000, 8000, 15000, 25000].forEach(delay => setTimeout(()=>{
@@ -611,7 +611,7 @@ function csvApplyOverlayStatus(s, ctx, fi){
       const btnClose = G('btn-close-import');
       if (btnClose) btnClose.style.display = '';
       loadGallery();
-      toast(`Import: ${zaehler}`,s.err?'error':s.warn?'info':'success');
+      toast(tRaw('csv.import_meldung', { ergebnis: zaehler }),s.err?'error':s.warn?'info':'success');
       if(fi) fi.value='';
     }
     return true;

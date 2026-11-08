@@ -603,6 +603,13 @@
   .erfassen-leiste .btn.bp.knopf-schwebend { flex: none; }
   /* Merkliste: Jeder Filter so breit wie sein längster Eintrag, sonst eine eigene Zeile („Alle Zuständ…“ bei 320 px). */
   #tab-wanted .filterzeile > select { flex: 1 1 auto; min-width: 0; }
+  /* Katalog: Thema über die ganze Zeile, darunter Von, Bis und Sortierung nebeneinander. Als Fliesstext umbrach
+     „Jahr ↓“ in eine eigene Zeile, und die kurzen Auswahlfelder schnitten ihren Text ab. */
+  #tab-catalog .filterzeile { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto; gap: 8px; }
+  #tab-catalog .filterzeile > :is(input.suchfeld, #cat-theme) { grid-column: 1 / -1; max-width: none !important; width: 100% !important; }
+  #tab-catalog .filterzeile > select { min-width: 0; width: 100%; }
+  /* Set hinzufügen: Preis und Währung brauchen die Breite der ganzen Zeile, in einer halben Spalte blieb für „z. B. 79,99“ nichts. */
+  .erfassen-raster > .fg:has(> .preis-mit-waehrung) { grid-column: 1 / -1; }
   /* Gesperrt (offline) deckend und grau: Halbtransparent lagen Knopf- und
      Kartentext übereinander und waren beide nicht zu lesen. */
   :root .btn.knopf-schwebend:disabled { opacity: 1; background: var(--s100); color: var(--mut); border-color: var(--bdr); }
@@ -628,6 +635,7 @@
    den Namen trägt aria-label. */
 @container haupt (max-width: 20.5em) {
   #tab-gallery .filterleiste > input.suchfeld { flex: 1 1 100%; }
+  #tab-catalog .filterzeile { grid-template-columns: minmax(0, 1fr); }
   .brick-stats { flex-wrap: wrap; }
   .knopf-schwebend { width: 3.5rem; min-width: 3.5rem; padding: 0; justify-content: center; }
   .knopf-schwebend > span { display: none; }

@@ -825,8 +825,12 @@
    fest am rechten Fensterrand. Er rollt die SEITE, nicht einen Kasten darin:
    Ein eigener Scrollbereich sässe mitten im Fenster, und der Beobachter, der
    die Katalogseiten nachlädt, misst gegen das Fenster. */
-html{scrollbar-width:none;-ms-overflow-style:none}
-html::-webkit-scrollbar{width:0;height:0}
+/* Im Kontrastmodus (forced-colors) färbt das System Flächen um, und der Griff verschwände; dort bleibt die des Browsers. */
+@media not (forced-colors: active){
+  html{scrollbar-width:none;-ms-overflow-style:none}
+  html::-webkit-scrollbar{width:0;height:0}
+}
+@media (forced-colors: active){#app-scrollbar{display:none !important}}
 /* Fokus nie unter Kopf oder unterer Leiste (WCAG 2.4.11); die Höhen misst js/10-mobile.js. */
 html{scroll-padding-top:calc(var(--leiste-oben,0px) + .5rem);scroll-padding-bottom:calc(var(--leiste-unten,0px) + .5rem)}
 
@@ -840,7 +844,7 @@ html{scroll-padding-top:calc(var(--leiste-oben,0px) + .5rem);scroll-padding-bott
 }
 #app-scrollbar-thumb{
   position:absolute;right:3px;width:8px;min-height:32px;border-radius:4px;
-  background:var(--s400);cursor:grab;transition:background .15s,width .15s;
+  background:var(--s500);cursor:grab;transition:background .15s,width .15s;
 }
 @media (hover:hover){#app-scrollbar:hover #app-scrollbar-thumb{background:var(--s600);width:10px;right:2px}}
 #app-scrollbar.dragging #app-scrollbar-thumb{background:var(--p600);cursor:grabbing}
@@ -1094,15 +1098,15 @@ input.suchfeld{width:220px}
 @media(max-width:700px){
   #global-settings-grid{grid-template-columns:minmax(0,1fr)}
   #global-settings-grid > .einst-nav{grid-row:auto;flex-direction:row;flex-wrap:nowrap;overflow-x:auto;position:static}
-  /* Pfeil am Rand, solange dort noch Abschnitte liegen (data-mehr aus 10-mobile.js).
-     Der frühere Verlauf blendete weisse Knöpfe in weissen Grund – unsichtbar.
-     sticky hält den Pfeil beim Rollen am Rand der Leiste. */
+  /* Pfeil am Rand, solange dort noch Abschnitte liegen (data-mehr aus 10-mobile.js): ein runder Knopf mit Rand
+     statt eines Schriftzeichens, das neben dem Text nicht auffiel. Ein Verlauf blendete weisse Knöpfe in
+     weissen Grund. sticky hält den Pfeil beim Rollen am Rand der Leiste. */
   .einst-nav[data-mehr*="r"]::after,.einst-nav[data-mehr*="l"]::before{position:sticky;flex:none;display:flex;align-items:center;
-    align-self:stretch;width:2rem;font-size:var(--fs-5);font-weight:800;color:var(--b600);pointer-events:none;z-index:1}
-  .einst-nav[data-mehr*="r"]::after{content:"›" / "";right:0;margin-left:-2rem;justify-content:flex-end;
-    background:linear-gradient(to right,transparent,var(--bg) 60%)}
-  .einst-nav[data-mehr*="l"]::before{content:"‹" / "";left:0;margin-right:-2rem;justify-content:flex-start;
-    background:linear-gradient(to left,transparent,var(--bg) 60%)}
+    justify-content:center;align-self:center;box-sizing:border-box;width:2.25rem;height:2.25rem;border-radius:50%;
+    background:var(--sur);border:2px solid var(--b600);box-shadow:var(--sh1,0 1px 4px rgba(15,23,42,.25));
+    font-size:var(--fs-5);font-weight:800;line-height:1;color:var(--b600);pointer-events:none;z-index:1}
+  .einst-nav[data-mehr*="r"]::after{content:"›" / "";right:0;margin-left:-2.25rem}
+  .einst-nav[data-mehr*="l"]::before{content:"‹" / "";left:0;margin-right:-2.25rem}
   #global-settings-grid > .einst-nav a{flex:none}
   #global-settings-grid > .ssec{grid-column:1}
 }
@@ -1137,6 +1141,7 @@ input.suchfeld{width:220px}
 h2.login-unterzeile{font-size:inherit;margin-top:0}
 .reg-mail-hinweis{margin:.25rem 0 0 24px;color:var(--a-schrift)}
 .login-fuss{text-align:center;margin-top:.85rem;font-size:var(--fs-2)}
+.login-fuss-hinweis{margin:0 0 .5rem}
 .status-zeile{min-height:1rem}
 .erfolg-box{padding:.75rem;background:var(--g50);border:1px solid var(--g300);border-radius:8px;color:var(--g700);font-size:var(--fs-3);margin-bottom:.75rem}
 .csv-status{font-size:var(--fs-3);margin-bottom:1rem;padding:.55rem .8rem;border-radius:8px}

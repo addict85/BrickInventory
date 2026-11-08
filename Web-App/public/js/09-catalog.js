@@ -453,7 +453,7 @@ async function addCatalogSetToGallery(){
         streamFertig();
         setTimeout(()=>{
           hideProgress();
-          toast(`Set ${esc(ev.set_number)} ${ev.action==='added'?t('common.added'):t('common.updated')}!`, 'success');
+          toast(tRaw(ev.action==='added'?'gallery.set_hinzugefuegt':'gallery.set_aktualisiert', { num: ev.set_number }), 'success');
           set_lastImportAt(Date.now());
           _patchCatalogOwned(num, qty); // owned-Badge in-place (kein Reload: Scroll-Position bleibt)
           loadGallery(); loadStats();   // Galerie-Daten im Hintergrund auffrischen

@@ -45,7 +45,7 @@ async function erstelle(teile, nummern = '10294') {
 test('Aufbau: Hauptknopf, Beschriftungen, Zurücksetzen nicht rot', async () => {
   const { w, d } = await oeffneOberflaeche();
   try {
-    assert.equal(text(d.querySelector('label[for="pl-setnr"]')), 'Set-Nummern (mehrere mit Komma trennen)');
+    assert.equal(text(d.querySelector('label[for="pl-setnr"]')), 'Setnummern (mehrere mit Komma trennen)');
     assert.equal(text(d.querySelector('label[for="pl-bl-condition"]')), 'Zustand für BrickLink');
     assert.ok(d.getElementById('btn-pl-gen').classList.contains('bp'), 'Erstellen ist der Hauptknopf');
     assert.equal(text(d.getElementById('btn-pl-gen')), 'Bauliste erstellen');

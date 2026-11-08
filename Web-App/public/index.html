@@ -199,7 +199,8 @@
         <span id="link-register-wrap" data-stil="display:none"><span data-i18n="login.register_prompt">Neu hier?</span> <a href="#" id="link-register" data-stil="color:var(--b600);font-weight:600" data-i18n="login.register_link">Registrieren</a></span>
       </div>
       <div class="login-fuss">
-        <button type="button" class="btn bs btn-sm" id="btn-einrichtung-pruefen" hidden data-click="einrichtungPruefen" data-i18n="es.link">Erste Einrichtung prüfen</button>
+        <p class="text-klein text-mut login-fuss-hinweis" id="einrichtung-pruefen-hinweis" hidden data-i18n="es.link_hint">Frisch installiert? Hier siehst du, ob Datenbank, HTTPS, erstes Konto und Rebrickable-Schlüssel eingerichtet sind.</p>
+        <button type="button" class="btn bs btn-sm" id="btn-einrichtung-pruefen" hidden aria-describedby="einrichtung-pruefen-hinweis" data-click="einrichtungPruefen" data-i18n="es.link">Was fehlt noch zur Einrichtung?</button>
       </div>
       <div class="start-fuss" data-version></div>
       <div id="verified-msg" role="status" data-stil="display:none;margin-top:.75rem;padding:.65rem .9rem;background:var(--g50);border:1px solid var(--g300);border-radius:7px;font-size:var(--fs-2);color:var(--g700)"><span data-i18n="verify.success" data-ico="ok">E-Mail erfolgreich bestätigt. Du kannst dich jetzt anmelden.</span></div>
@@ -480,7 +481,7 @@
       <!-- Suche/Filter unter dem Titel — analog Galerie, Teile, Minifiguren …
            Ausführlich: docs/begruendungen/public/index.html.md#cat-search -->
       <div class="filterzeile">
-          <input type="text" class="si suchfeld" id="cat-search" placeholder="Set-Nummer / Name…" data-i18n="catalog.search" data-i18n-attr="placeholder" data-i18n-aria="catalog.search_aria" aria-label="Katalog nach Set-Nummer oder Name durchsuchen">
+          <input type="text" class="si suchfeld" id="cat-search" placeholder="Setnummer / Name…" data-i18n="catalog.search" data-i18n-attr="placeholder" data-i18n-aria="catalog.search_aria" aria-label="Katalog nach Setnummer oder Name durchsuchen">
           <select class="w-auto max-240" id="cat-theme" aria-label="Thema filtern" data-i18n="gallery.theme_label" data-i18n-attr="aria-label">
             <option value="" data-i18n="catalog.filter.all_themes">Alle Themen</option>
           </select>
@@ -520,7 +521,7 @@
       <details class="merk-kasten" id="mk-kasten" open>
         <summary class="merk-kasten-kopf"><h2 class="stit" data-ico="plus" data-i18n="wanted.add.title">Zur Merkliste hinzufügen</h2></summary>
         <div class="zeile luecke-8 unten umbruch merk-erfassen">
-          <div class="fg"><label for="mk-num" data-i18n="gallery.add.number">Set-Nummer *</label><input inputmode="numeric" type="text" id="mk-num" placeholder="z. B. 75192-1" data-i18n="gallery.add.number_ph" data-i18n-attr="placeholder" /></div>
+          <div class="fg"><label for="mk-num" data-i18n="gallery.add.number">Setnummer *</label><input inputmode="numeric" type="text" id="mk-num" placeholder="z. B. 75192-1" data-i18n="gallery.add.number_ph" data-i18n-attr="placeholder" /></div>
           <div class="fg max-110"><label for="mk-cond" data-i18n="common.condition">Zustand</label><select class="auswahl-kompakt" id="mk-cond"><option value="N" data-i18n="common.condition_new">Neuware</option><option value="U" data-i18n="common.condition_used">Gebraucht</option></select></div>
           <div class="fg max-150" id="mk-owner-box" data-stil="display:none"><label for="mk-owner" data-i18n="household.for_account">Für Konto</label><select class="auswahl-kompakt" id="mk-owner"></select></div>
           <button class="btn bp" id="mk-add" data-click="merkpostenHinzufuegen" data-i18n="wanted.add.submit" data-ico="plus">Auf die Merkliste</button>
@@ -759,7 +760,7 @@
         <p class="ptitle-unter" data-i18n="pl.subtitle">Stellt die Teile eines oder mehrerer Sets zusammen — zum Nachbauen oder um Fehlendes zu bestellen.</p>
         <div class="pl-leiste">
           <div class="pl-feld">
-            <label for="pl-setnr" data-i18n="pl.feld_setnr">Set-Nummern (mehrere mit Komma trennen)</label>
+            <label for="pl-setnr" data-i18n="pl.feld_setnr">Setnummern (mehrere mit Komma trennen)</label>
             <div class="zeile mittig luecke-05">
               <input type="text" id="pl-setnr" class="pl-setnr" autocomplete="off" />
               <button class="btn bs fest" data-click="plAddSet" data-i18n="adding.button" data-ico="plus">Hinzufügen</button>
@@ -1210,7 +1211,7 @@
         <form class="sform nur-inhalt" data-submit="alarm-neu-knopf">
           <h2 class="stit" data-i18n="alerts.new_title">Preisalarm anlegen</h2>
           <div class="profil-raster">
-            <div class="fg"><label for="alarm-neu-set" data-i18n="alerts.new_set">Set-Nummer</label>
+            <div class="fg"><label for="alarm-neu-set" data-i18n="alerts.new_set">Setnummer</label>
               <input type="text" id="alarm-neu-set" list="alarm-neu-sets" autocomplete="off" inputmode="text" placeholder="z. B. 75192-1" data-i18n="alerts.set_ph" data-i18n-attr="placeholder" /></div>
             <div class="fg"><label for="alarm-neu-zustand" data-i18n="common.condition">Zustand</label>
               <select id="alarm-neu-zustand"><option value="N" data-i18n="common.condition_new">Neuware</option><option value="U" data-i18n="common.condition_used">Gebraucht</option></select></div>
@@ -1598,7 +1599,7 @@
     <!-- Ein Raster mit zwei Spalten: Beschriftungen und Felder stehen bündig,
          der Knopf schliesst rechts unten ab (vorher eine umbrechende Zeile). -->
     <div class="erfassen-raster">
-      <div class="fg"><label for="add-num" data-i18n="gallery.add.number">Set-Nummer *</label><input inputmode="numeric" type="text" id="add-num" data-erstfokus placeholder="z. B. 75192-1" data-i18n="gallery.add.number_ph" data-i18n-attr="placeholder" aria-required="true" /></div>
+      <div class="fg"><label for="add-num" data-i18n="gallery.add.number">Setnummer *</label><input inputmode="numeric" type="text" id="add-num" data-erstfokus placeholder="z. B. 75192-1" data-i18n="gallery.add.number_ph" data-i18n-attr="placeholder" aria-required="true" /></div>
       <div class="fg"><label for="add-qty" data-i18n="gallery.add.qty">Anzahl</label><input inputmode="numeric" type="number" id="add-qty" value="1" min="1" /></div>
       <div class="fg"><label for="add-price" data-i18n="gallery.add.price">Kaufpreis (optional)</label>
         <span class="preis-mit-waehrung"><input inputmode="decimal" type="text" autocomplete="off" id="add-price" placeholder="z. B. 79,99" data-i18n="gallery.add.price_ph" data-i18n-attr="placeholder" data-i18n-betrag="79.99" />
@@ -1940,7 +1941,7 @@
     <section class="ew-schritt" data-schritt="erstes-set">
       <p class="schrift-3" data-i18n="setup.first_hint">Fast fertig. Wie kommt das erste Set in die Sammlung?</p>
       <div class="spalte-05">
-        <button type="button" class="btn bs" data-click="einrichtungZiel" data-arg="nummer" data-i18n="setup.first_number" data-ico="liste">Set-Nummer eingeben</button>
+        <button type="button" class="btn bs" data-click="einrichtungZiel" data-arg="nummer" data-i18n="setup.first_number" data-ico="liste">Setnummer eingeben</button>
         <button type="button" class="btn bs" data-click="einrichtungZiel" data-arg="csv" data-i18n="setup.first_csv" data-ico="import">Liste als CSV importieren</button>
         <button type="button" class="btn bs" data-click="einrichtungZiel" data-arg="katalog" data-i18n="setup.first_catalog" data-ico="katalog">Im Katalog stöbern</button>
       </div>
