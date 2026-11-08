@@ -1126,6 +1126,8 @@
     <string name="zf_share_title">Recovery codes</string>
     <string name="passwort_aendern_fehlt">Enter the current password, the new one and its repetition, then change it.</string>
     <string name="erfassen_nummer_fehlt">Enter a set number first.</string>
+    <string name="erfassen_menge_ungueltig">Enter a whole quantity of 1 or more.</string>
+    <string name="erfassen_preis_ungueltig">Enter an amount such as 12.50 or 1,299.00.</string>
     <string name="zustand_eingeklappt">collapsed</string>
     <string name="zustand_ausgeklappt">expanded</string>
     <string name="nav_sets">Sets</string>

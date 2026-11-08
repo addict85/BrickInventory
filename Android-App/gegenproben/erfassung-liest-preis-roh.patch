@@ -1,0 +1,17 @@
+Gegenprobe: erfassungsWerte liest den Preis wieder mit replace und toDoubleOrNull
+Modul: core-ui
+Test: ch.brickinventoryapp.NumericInputTest
+Rot: die Erfassung liest den Preis
+
+diff --git a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/Erfassungswerte.kt b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/Erfassungswerte.kt
+--- a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/Erfassungswerte.kt
++++ b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/Erfassungswerte.kt
+@@ -29,7 +29,7 @@
+     haushalt: List<MitgliedAnsicht>,
+ ): ErfassungsWerte = ErfassungsWerte(
+     anzahl = anzahl.toIntOrNull() ?: 1,
+-    preis = NumericInput.leseBetrag(preis),
++    preis = preis.replace(',', '.').toDoubleOrNull(),
+     zustand = zustand,
+     besitzer = if (haushalt.size > 1) besitzer else null,
+ )

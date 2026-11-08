@@ -288,7 +288,7 @@ private fun AcquisitionManagementRow(
         val (curPrice, curQty) = pending.value
         if (curPrice != lastSavedPrice) {
             lastSavedPrice = curPrice
-            onSave(curPrice.replace(',', '.').toDoubleOrNull(), null, null, null)
+            onSave(NumericInput.leseBetrag(curPrice), null, null, null)
         }
         if (curQty != lastSavedQty) {
             lastSavedQty = curQty

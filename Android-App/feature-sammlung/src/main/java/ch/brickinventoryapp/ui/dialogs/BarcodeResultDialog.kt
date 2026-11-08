@@ -101,7 +101,7 @@ ErfassenDialog(
             aktionen.confirmAddBarcode(barcodeState.result)
         } else {
             aktionen.confirmAddBarcode(
-                barcodeState.result, barcodePriceText.replace(',', '.').toDoubleOrNull(), barcodeCondition,
+                barcodeState.result, NumericInput.leseBetrag(barcodePriceText), barcodeCondition,
                 // Ohne Haushalt gar nichts mitschicken — der Server bleibt dann beim
                 // eigenen Konto (gleiche Regel wie im Galerie-Dialog).
                 if (blick.householdMembers.size > 1) barcodeOwner else null,
