@@ -22,29 +22,54 @@ const NEU_GELADEN = {
   gallery: ['/v1/sets', '/v1/stats'],
   parts: ['/v1/parts', '/v1/parts/manual', '/v1/parts/stats', '/v1/parts/colors', '/v1/parts/categories'],
   minifigs: ['/v1/minifigs', '/v1/minifigs/manual', '/v1/minifigs/stats'],
-  finance: ['/v1/finance/valuation', '/v1/finance/parts-valuation', '/v1/finance/minifigs-valuation', '/v1/finance/pnl'],
+  finance: [
+    '/v1/finance/valuation',
+    '/v1/finance/parts-valuation',
+    '/v1/finance/minifigs-valuation',
+    '/v1/finance/pnl',
+  ],
 };
 
 test('jeder Abruf hinter dem Kontofilter gibt den Kontofilter mit', async () => {
   const { w, d, aufrufe, ruhig } = await oeffneOberflaeche({
-    '/v1/sets/household-members': { success: true, members: [
-      { id: 1, username: 'anna', is_self: true, tiefe: 0 }, { id: 2, username: 'ben', is_self: false, tiefe: 1 }] },
+    '/v1/sets/household-members': {
+      success: true,
+      members: [
+        { id: 1, username: 'anna', is_self: true, tiefe: 0 },
+        { id: 2, username: 'ben', is_self: false, tiefe: 1 },
+      ],
+    },
   });
   try {
     for (const [ansicht, pfade] of Object.entries(NEU_GELADEN)) {
       await reiter(w, ansicht);
       await ruhig();
       const filter = d.getElementById(`scope-${ansicht}`);
-      assert.ok([...filter.options].some(o => o.value === '2'), `${ansicht}: kein Unterkonto im Filter`);
+      assert.ok(
+        [...filter.options].some(o => o.value === '2'),
+        `${ansicht}: kein Unterkonto im Filter`,
+      );
       const ab = aufrufe.length;
       filter.value = '2';
       filter.dispatchEvent(new w.Event('change', { bubbles: true }));
       await ruhig();
-      const neu = aufrufe.slice(ab).filter(a => a.method === 'GET').map(a => new URL(a.url, 'http://localhost'));
+      const neu = aufrufe
+        .slice(ab)
+        .filter(a => a.method === 'GET')
+        .map(a => new URL(a.url, 'http://localhost'));
       const geholt = new Set(neu.map(u => u.pathname.replace(/^\/api/, '')));
-      assert.deepEqual(pfade.filter(p => !geholt.has(p)), [], `${ansicht}: nicht neu geladen`);
-      assert.deepEqual(neu.filter(u => u.searchParams.get('accounts') !== '2').map(u => u.pathname + u.search), [],
-        `${ansicht}: ohne Kontofilter geholt`);
+      assert.deepEqual(
+        pfade.filter(p => !geholt.has(p)),
+        [],
+        `${ansicht}: nicht neu geladen`,
+      );
+      assert.deepEqual(
+        neu.filter(u => u.searchParams.get('accounts') !== '2').map(u => u.pathname + u.search),
+        [],
+        `${ansicht}: ohne Kontofilter geholt`,
+      );
     }
-  } finally { w.close(); }
+  } finally {
+    w.close();
+  }
 });
