@@ -5,7 +5,7 @@
 import * as db from './database';
 import type { DbSchnittstelle } from './database';
 import { LOCKS } from '../src/infra/lockNamespaces';
-import { meldeUndWeiter } from '../src/infra/fehler';
+import { meldeFehler } from '../src/infra/fehler';
 
 /** Führt fn in einer Transaktion aus, die exklusiven Zugriff auf den
  * angegebenen Bestandsschlüssel hat.
@@ -52,7 +52,7 @@ async function mitSitzungsSperre<T>(schluessel: number, lauf: () => Promise<T>, 
     try { return await lauf(); }
     finally {
       await client.query('SELECT pg_advisory_unlock($1, 0)', [schluessel])
-        .catch((e: unknown) => { defekt = e instanceof Error ? e : new Error(String(e)); meldeUndWeiter('txLock:freigabe', e); });
+        .catch((e: unknown) => { defekt = e instanceof Error ? e : new Error(String(e)); meldeFehler('txLock:freigabe', e); });
     }
   } finally { client.release(defekt); }
 }
@@ -70,7 +70,7 @@ async function belegeSitzungsSperre(schluessel: number): Promise<(() => Promise<
   return async () => {
     let defekt: Error | undefined;
     await client.query('SELECT pg_advisory_unlock($1, 0)', [schluessel])
-      .catch((e: unknown) => { defekt = e instanceof Error ? e : new Error(String(e)); meldeUndWeiter('txLock:freigabe', e); });
+      .catch((e: unknown) => { defekt = e instanceof Error ? e : new Error(String(e)); meldeFehler('txLock:freigabe', e); });
     client.release(defekt);
   };
 }

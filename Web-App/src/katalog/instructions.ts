@@ -3,7 +3,7 @@ import fs from 'fs';
 import PDFDocument from 'pdfkit';
 import { INSTRUCTIONS_DIR } from '../infra/appPaths';
 import { downloadFile, scrapeInstructions, sleep, httpsGetRobust, brickset } from './quellen';
-import { meldeUndWeiter, fehlertext, logAndContinue, meldeUndLiefere } from '../infra/fehler';
+import { meldeFehler, fehlertext, logAndContinue, meldeUndLiefere } from '../infra/fehler';
 import { mitVersion, ohneVersion } from '../infra/setNummer';
 import { pfadSegment } from '../infra/fremdeAdressen';
 import * as repo from './repository/anleitungen';
@@ -105,7 +105,7 @@ export async function downloadSetInstructions(setNumber: string,
   let instrList: Awaited<ReturnType<typeof scrapeInstructions>> = [];
   let bricksetSucceededEmpty = false;
   _letzterAbrufWarExtern = true;   // ab hier wird wirklich gefragt
-  try { instrList = await scrapeInstructions(n); } catch (e) { meldeUndWeiter('anleitungen:auslesen', e); }
+  try { instrList = await scrapeInstructions(n); } catch (e) { meldeFehler('anleitungen:auslesen', e); }
   if (!instrList.length) {
     const bsResult = await brickset.getInstructions(n).catch(meldeUndLiefere('anleitungen:brickset', { instructions: [], usesFallback: true }));
     instrList = bsResult.instructions || [];
@@ -162,7 +162,7 @@ export async function downloadSetInstructions(setNumber: string,
       const pdfName = `${safeBase}_brickinstructions.pdf`;
       const pdfDest = path.join(instrDir, pdfName);
       const relPath = `/data/instructions/${pdfName}`;
-      try { await repo.merkeAnleitung(n, instr.url, instr.description, null); saved++; } catch (e) { meldeUndWeiter('anleitungen:pdf-eintragen', e); }
+      try { await repo.merkeAnleitung(n, instr.url, instr.description, null); saved++; } catch (e) { meldeFehler('anleitungen:pdf-eintragen', e); }
       setImmediate(() => { void collectAndBuildPDF(instr.brickinstructions_base, instr.brickinstructions_hdrs, instr.brickinstructions_first, pdfDest, relPath, n).catch(logAndContinue('anleitung:collectAndBuildPDF')); });
       continue;
     }
@@ -170,7 +170,7 @@ export async function downloadSetInstructions(setNumber: string,
     const dest = path.join(instrDir, safeName);
     const relPath = `/data/instructions/${safeName}`;
     const ok = await downloadFile(instr.url, dest, undefined, PDF_ANFANG);
-    try { await repo.merkeAnleitung(n, instr.url, instr.description||`Anleitung ${n}`, ok?relPath:null); saved++; } catch (e) { meldeUndWeiter('anleitungen:datei-eintragen', e); }
+    try { await repo.merkeAnleitung(n, instr.url, instr.description||`Anleitung ${n}`, ok?relPath:null); saved++; } catch (e) { meldeFehler('anleitungen:datei-eintragen', e); }
     if (i < instrList.length - 1) await sleep(200);
   }
   
@@ -205,7 +205,7 @@ async function buildImagePDF_fromBuffers(imgBuffers: Buffer[], destPath: string)
       doc.on('data', (d: Buffer) => chunks.push(d));
       doc.on('end', () => { try { fs.writeFileSync(destPath, Buffer.concat(chunks)); resolve(true); } catch(_){ resolve(false); } });
       doc.on('error', () => resolve(false));
-      for (const buf of imgBuffers) { try { doc.addPage({ size:'A4', layout:'landscape', margin:0 }); doc.image(buf, 0, 0, { fit:[doc.page.width, doc.page.height], align:'center', valign:'center' }); } catch (e) { meldeUndWeiter('anleitung:image', e); } }
+      for (const buf of imgBuffers) { try { doc.addPage({ size:'A4', layout:'landscape', margin:0 }); doc.image(buf, 0, 0, { fit:[doc.page.width, doc.page.height], align:'center', valign:'center' }); } catch (e) { meldeFehler('anleitung:image', e); } }
       doc.end();
     } catch(_){ resolve(false); }
   });

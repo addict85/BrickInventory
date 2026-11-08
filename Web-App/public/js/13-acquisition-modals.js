@@ -450,7 +450,7 @@ export async function openManDetail(type, id, colorId) {
   const bodyEl = G('man-detail-body');
   const imgEl  = G('man-detail-img');
 
-  /** @param {import('./06-minifigs.js').ManuelleFigur[] | undefined} figs @param {import('./03-parts.js').ManuellesTeil[] | undefined} teile */
+  /** @param {ManuelleFigur[] | undefined} figs @param {ManuellesTeil[] | undefined} teile */
   const finde = (figs, teile) => type === 'fig'
     ? figs?.find(f => f.fig_number === id)
     : teile?.find(p => p.part_number === id && (p.color_id||0) === ziel.colorId);

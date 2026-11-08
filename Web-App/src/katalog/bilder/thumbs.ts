@@ -1,6 +1,6 @@
 // Ausführlich: docs/begruendungen/src/katalog/bilder/thumbs.ts.md#abschnitt
 
-import { meldeUndWeiter, fehlertext } from '../../infra/fehler';
+import { meldeFehler, fehlertext } from '../../infra/fehler';
 import path from 'path';
 import fs from 'fs';
 import { resolveWebPath } from '../../infra/appPaths';
@@ -69,7 +69,7 @@ export async function generateThumb(localPath: string) {
       const reste = fs.readdirSync(path.dirname(fsPath))
         .filter(f => f.startsWith(path.basename(thumbFs)) && f.endsWith('.tmp.jpg'));
       for (const r of reste) fs.unlinkSync(path.join(path.dirname(fsPath), r));
-    } catch (e) { meldeUndWeiter('vorschau:reste', e); }
+    } catch (e) { meldeFehler('vorschau:reste', e); }
     return null;
   }
 }

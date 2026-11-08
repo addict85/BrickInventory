@@ -1,6 +1,6 @@
 import { kontingentFrei, speicherePreis, cacheUsable, preisAusCache, parallelLimit, bestandsPlaetze, merklistenPlaetze,
   erfassteZustaende, gewuenschteZustaende, schreibeTagesstand, setsMitAlarm } from '../src/finanzen/financeCalc';
-import { meldeUndWeiter, fehlertext, meldeUndLiefere, logAndContinue } from '../src/infra/fehler';
+import { meldeFehler, fehlertext, meldeUndLiefere, logAndContinue } from '../src/infra/fehler';
 import { liesZustand, setzeZustand } from '../src/auftraege/laufzustand';
 import { AuftragVerschieben, type AuftragsKontext } from './auftragsWorker';
 import { getGlobalSetting, getSetting } from '../src/einstellungen/settings';
@@ -74,7 +74,7 @@ async function fetchAndCachePrice(setNumber: string, condition: string, guideTyp
       try {
         const g2 = await getPriceGuide(setNumber, fallback, guideType, currency);
         await speicherePreis(setNumber, fallback, currency, g2);
-      } catch (e) { meldeUndWeiter('preis-job:rueckfall-zustand', e); }
+      } catch (e) { meldeFehler('preis-job:rueckfall-zustand', e); }
     }
   }
   return 'updated';

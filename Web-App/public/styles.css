@@ -1086,7 +1086,8 @@ input.suchfeld{width:220px}
 .einst-nav{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:.25rem;grid-column:1/-1;align-self:start;align-items:flex-start}
 /* Globale Einstellungen als Unterseiten: links die Abschnitte, daneben genau
    einer davon. !important, weil die Anmeldung #usermgmt inline einblendet. */
-#global-settings-grid{grid-template-columns:minmax(170px,210px) minmax(0,1fr);align-items:start}
+/* Die Spalte wächst mit der Schrift (em), sonst kürzt sie bei 200 % lange Namen. */
+#global-settings-grid{grid-template-columns:minmax(max(170px,10.7em),max(210px,13.2em)) minmax(0,1fr);align-items:start}
 #global-settings-grid > .einst-nav{grid-column:1;grid-row:1 / span 20;flex-direction:column;align-items:stretch;position:sticky;top:1rem}
 #global-settings-grid > .einst-nav a{justify-content:flex-start}
 /* Die Abschnittsleiste ist auch ein <nav>: Die Leistenfarbe der Designs (Rot,

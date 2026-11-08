@@ -103,7 +103,7 @@
     <string name="scanner_hint_detected">Detected: %1$s</string>
     <string name="scanner_hint_confirming">Barcode detected, confirming…</string>
     <string name="scanner_hint_aim">Point the camera at the barcode</string>
-    <string name="scanner_hint_error">Scan error — please try again</string>
+    <string name="scanner_hint_error">Scan failed — hold the code steady and try again</string>
     <string name="scanner_torch_off">Turn off light</string>
     <string name="scanner_torch_on">Turn on light</string>
     <string name="scanner_camera_needed">Camera access needed</string>
@@ -114,7 +114,7 @@
     <string name="setup_invalid_qr">Invalid QR code — please use a BrickInventory QR code</string>
     <string name="setup_subtitle">Server setup</string>
     <string name="setup_scan_qr">Scan QR code</string>
-    <string name="setup_or_manual">  or manually  </string>
+    <string name="setup_or_manual">or manually</string>
     <string name="setup_server_url">Server address</string>
     <string name="setup_url_label">Server address of the BrickInventory Manager web app</string>
     <string name="setup_url_placeholder">https://brick.fritz.box</string>
@@ -197,7 +197,7 @@
     </plurals>
     <string name="partslist_add_set">Add set to the build list</string>
     <string name="partslist_generate">Create build list</string>
-    <string name="partslist_pdf_error_title">PDF error</string>
+    <string name="partslist_pdf_error_title">PDF could not be created</string>
     <string name="common_ok">OK</string>
     <string name="common_pdf">PDF</string>
     <string name="common_hours_short">h</string>
@@ -285,7 +285,7 @@
     <string name="finance_loading">Prices are loading…</string>
     <string name="finance_no_data">No price data</string>
     <string name="finance_load_prices">Load prices</string>
-    <string name="finance_price_error">Price error</string>
+    <string name="finance_price_error">Price unavailable</string>
     <string name="finance_no_sets">No sets</string>
     <string name="finance_load_prompt">→ Load prices</string>
     <string name="finance_total_pnl">%1$s vs. total paid</string>
@@ -475,7 +475,7 @@
     <string name="pruef_hinweis">Adding then happens in the background — just a moment before the next scan.</string>
     <string name="vm_set_added">“%1$s” added</string>
     <string name="vm_set_added_no_catalog">Set %1$s saved — name and image will follow once the catalog is reachable.</string>
-    <string name="vm_error">Error: %1$s</string>
+    <string name="vm_error">That did not work: %1$s</string>
     <string name="vm_anmeldung_zu_alt">You signed in more than 180 days ago. Please sign in again.</string>
     <string name="vm_session_expired">Session expired — please sign in again</string>
     <string name="vm_abmelden_nachgeholt">Signed out. The server could not be reached, so the app will invalidate the login there as soon as it is online. To be sure, check “Signed-in devices” in the web app.</string>
@@ -501,7 +501,7 @@
     <!-- PDF-Export-Statustexte (PdfExportManager) -->
     <string name="pdfexp_no_data">No export data available</string>
     <string name="pdfexp_starting">Starting export…</string>
-    <string name="pdfexp_unknown_error">Unknown error</string>
+    <string name="pdfexp_unknown_error">Unknown error. Please try again.</string>
     <string name="pdfexp_oeffnen_mit">Open parts list with</string>
     <string name="pdfexp_loading_images">Loading images…</string>
     <string name="pdfexp_creating_eta">Creating PDF… ~%1$ds left</string>
@@ -535,7 +535,7 @@
     <string name="monitoring_catalog_images">Queue catalog images</string>
     <string name="monitoring_redownload_missing">Redownload missing images</string>
     <string name="monitoring_import_missing_instr">Import missing instructions</string>
-    <string name="monitoring_reimport_error">Reimport failed</string>
+    <string name="monitoring_reimport_error">Reimport not possible. Check your connection and try again.</string>
     <plurals name="monitoring_reimport_enqueued">
         <item quantity="one">%1$d set enqueued</item>
         <item quantity="other">%1$d sets enqueued</item>
@@ -672,7 +672,7 @@
     <string name="pdfview_load_failed">Could not load: %1$s</string>
     <string name="pdfview_fremder_host">This PDF is not on your server. Open it from the set page in another app.</string>
     <string name="pdfview_page">Page %1$d</string>
-    <string name="pdfview_unknown_error">Unknown error</string>
+    <string name="pdfview_unknown_error">Unknown error. Please try again.</string>
     <string name="pdfview_download_failed">Download failed</string>
     <string name="pdfview_print_failed">Printing failed: %1$s</string>
     <string name="pdfview_saved">Saved: %1$s</string>

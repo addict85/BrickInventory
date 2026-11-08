@@ -5,7 +5,7 @@ import { pipeline } from 'stream/promises';
 import { holeHttps, oeffneHttps, AbrufFehler } from '../src/infra/abruf';
 import path from 'path';
 import fs from 'fs';
-import { fehlertext, meldeUndLiefere, meldeUndWeiter } from '../src/infra/fehler';
+import { fehlertext, meldeUndLiefere, meldeFehler } from '../src/infra/fehler';
 import { mitVersion } from '../src/infra/setNummer';
 import { zugang } from './zugang';
 import { ERLAUBTE_DOWNLOAD_HOSTS, ERLAUBTE_API_HOSTS, ERLAUBTE_REBRICKABLE_HOSTS, hostErlaubt, pfadSegment } from '../src/infra/fremdeAdressen';
@@ -55,7 +55,7 @@ export function parseThrottleWait(body: string) {
     const data = typeof body === 'string' ? JSON.parse(body) : body;
     const match = data?.detail?.match(/(\d+)\s*second/);
     if (match) return parseInt(match[1]) * 1000 + 500;
-  } catch (e) { meldeUndWeiter('kontingent:retry-after-lesen', e); }
+  } catch (e) { meldeFehler('kontingent:retry-after-lesen', e); }
   return 5000;
 }
 
@@ -112,7 +112,7 @@ export async function rebrickableRoh(url: string, rbKey: string): Promise<{ stat
   return holeHttps(url, { hosts: ERLAUBTE_REBRICKABLE_HOSTS, maxBytes: API_MAX_BYTES, zeitlimitMs: 30_000,
     kopfzeilen: { Authorization: `key ${rbKey}`, 'User-Agent': 'BrickInventory/1.0' } })
     .then(r => ({ status: r.status, body: r.koerper.toString('utf8') }), (e: unknown) => {
-      meldeUndWeiter('rebrickable:abruf', e);
+      meldeFehler('rebrickable:abruf', e);
       return { status: 0, body: '' };
     });
 }
@@ -171,7 +171,7 @@ async function holeSetTeile(n: string): Promise<{ teile: any[]; verweigert: bool
     }
     if (status === 404) break;
     if (status !== 200) { console.error(`  Parts HTTP ${status}`); break; }
-    let data; try { data = JSON.parse(body); } catch (e) { meldeUndWeiter('rebrickable:teile-seite', e); break; }
+    let data; try { data = JSON.parse(body); } catch (e) { meldeFehler('rebrickable:teile-seite', e); break; }
     allParts.push(...(data.results || []));
     // Ein fremdes `next` bekäme sonst den Schlüssel.
     url = data.next && hostErlaubt(String(data.next), ERLAUBTE_REBRICKABLE_HOSTS) ? data.next : null;
@@ -370,7 +370,7 @@ async function lookupPart(partNumber: string, colorId?: number | null) {
           const cd = JSON.parse(colorResp.body);
           if (cd?.part_img_url) image_url = cd.part_img_url;
         }
-      } catch (e) { meldeUndWeiter('rebrickable:farbbild', e); }
+      } catch (e) { meldeFehler('rebrickable:farbbild', e); }
     }
 
     return {

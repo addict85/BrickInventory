@@ -1,7 +1,7 @@
 import * as db from '../../db/database';
 import type { DbSchnittstelle } from '../../db/database';
 import { lookupPart } from '../katalog/quellen';
-import { meldeUndWeiter, meldeUndLiefere } from '../infra/fehler';
+import { meldeFehler, meldeUndLiefere } from '../infra/fehler';
 import { merkeTeilFarbe, katalogTeil } from '../katalog/katalogPflege';
 import { colorId } from '../infra/validate';
 import * as repo from './repository/teilFarbe';
@@ -34,7 +34,7 @@ async function bildNachtragen(partNumber: string, farbe: number): Promise<BildQu
     await merkeTeilFarbe(partNumber, farbe, null, null, info.image_url, null);
     return 'rebrickable';
   } catch (e) {
-    meldeUndWeiter('farbwechsel:bild von Rebrickable', e);
+    meldeFehler('farbwechsel:bild von Rebrickable', e);
     return null;
   }
 }

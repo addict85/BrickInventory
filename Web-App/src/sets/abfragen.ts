@@ -1,5 +1,5 @@
 import { resolveOne } from '../katalog/bricklinkLink';
-import { meldeUndWeiter, meldeUndLiefere } from '../infra/fehler';
+import { meldeFehler, meldeUndLiefere } from '../infra/fehler';
 import { fuerSet } from '../katalog/preisvergleich';
 import * as db from '../../db/database';
 import * as repo from './repository/sets';
@@ -123,7 +123,7 @@ export async function getSet(userIdWahl: Sicht | Blickfeld, setNumber: string) {
   // Die Kaufadressen vom Server: Eine Adresse an vier Stellen wären vier Wahrheiten.
   const [bricklink, preisvergleich] = await Promise.all([
     resolveOne(setNumber).catch((e: unknown) => {
-      meldeUndWeiter('setdetail:bricklink', e);
+      meldeFehler('setdetail:bricklink', e);
       return null;
     }),
     Promise.resolve(fuerSet(setNumber, set.name)),

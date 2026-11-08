@@ -14,6 +14,8 @@
  *      Zustand nur in 00-zustand.js“
  *   E  in 01-bausteine.js `import { loadGallery } from './02-gallery.js'` → rot:
  *      „Kern importiert keine Ansicht“ (und der Kreis-Test)
+ *   G  (08.11.2026) in 06-minifigs.js wieder `import('./03-parts.js').ManuellesTeil` als JSDoc-Typ
+ *      (03-parts.js importiert 06-minifigs.js) → rot: „kein Importkreis“, der Kreis nennt beide Dateien
  *   F  im Kapitel „Oberfläche“ von docs/architektur.md `00-zustand.js` in
  *      `00-staat.js` umbenannt → rot; das Kapitel gestrichen → rot
  */
@@ -42,6 +44,16 @@ function graph() {
     const kurz = (/** @type {string} */ p) => path.relative(path.join(ROOT, 'public'), path.resolve(ROOT, p));
     for (const [datei, info] of Object.entries(inputs))
       g.set(kurz(datei), info.imports.filter(i => !i.external).map(i => kurz(i.path)));
+    // JSDoc-Typverweise `import('./x.js').Name` löscht esbuild; sie binden die Dateien für die Typprüfung
+    // trotzdem aneinander, also zählen sie als Kanten.
+    for (const [datei, ziele] of g) {
+      if (!datei.startsWith('js/')) continue;
+      const quelle = fs.readFileSync(`${path.join(ROOT, 'public')}/${datei}`, 'utf8');
+      for (const [, ziel] of quelle.matchAll(/\bimport\(\s*['"](\.{1,2}\/[^'"]+\.js)['"]\s*\)/g)) {
+        const k = kurz(path.join('public', path.dirname(datei), ziel));
+        if (g.has(k) && !ziele.includes(k)) ziele.push(k);
+      }
+    }
     return g;
   } finally {
     fs.rmSync(dir, { recursive: true, force: true });

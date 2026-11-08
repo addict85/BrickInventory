@@ -19,7 +19,6 @@ import { geloeschtMitRueckgaengig } from './20-papierkorb.js';
 import { leereLagerortFeld, selectedOwner, selectedStorage } from './02-konten-orte.js';
 import { loadFinance } from './04-finance.js';
 /** @typedef {import('../../frontend-typen/vertrag').BrickColor} Steinfarbe */
-/** @typedef {import('../../frontend-typen/vertrag').ManualPartsResponse['parts'][number]} ManuellesTeil */
 /** @typedef {import('../../frontend-typen/vertrag').GET_api_v1_sets_setNumber_parts_list['parts'][number]} TeilZeile */
 
 // ── PARTS ─────────────────────────────────────────────

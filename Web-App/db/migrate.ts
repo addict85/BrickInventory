@@ -6,7 +6,7 @@ import fs from 'fs';
 import path from 'path';
 import crypto from 'crypto';
 import type { ClientBase } from 'pg';
-import { meldeUndWeiter, fehlertext, logAndContinue } from '../src/infra/fehler';
+import { meldeFehler, fehlertext, logAndContinue } from '../src/infra/fehler';
 import type { DbSchnittstelle } from './typen';
 
 /** Alle noch nicht angewandten Migrationen; `client` ist eine eigene Verbindung, nicht der Pool.
@@ -161,7 +161,7 @@ async function sichereNutzerdaten(client: ClientBase, offen: string[]): Promise<
     await client.query(`COMMENT ON SCHEMA ${schema} IS ${client.escapeLiteral(`vor ${offen.join(', ')}`)}`);
     await client.query('COMMIT');
   } catch (e: unknown) {
-    await client.query('ROLLBACK').catch((r: unknown) => meldeUndWeiter('migration:sicherung', r));
+    await client.query('ROLLBACK').catch((r: unknown) => meldeFehler('migration:sicherung', r));
     throw new Error(`Sicherung vor den Migrationen fehlgeschlagen: ${fehlertext(e)}`);
   }
   const alt = await client.query<{ nspname: string }>(`

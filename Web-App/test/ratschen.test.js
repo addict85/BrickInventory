@@ -71,13 +71,13 @@ test('stille Faenge werden weniger, nie mehr', () => {
   const ersatz = STILLE_FAENGE[STILLE_FAENGE.length - 1];
   const trifft = (s) => (s.match(ersatz) || []).length;
   assert.equal(trifft('x.catch(() => [userId]);') + trifft('x.catch(() => new Map());') + trifft('x.catch(()=>VORGABE);'), 3);
-  assert.equal(trifft("x.catch(meldeUndLiefere('a', [1]));") + trifft('x.catch((e) => { meldeUndWeiter("a", e); });'), 0);
+  assert.equal(trifft("x.catch(meldeUndLiefere('a', [1]));") + trifft('x.catch((e) => { meldeFehler("a", e); });'), 0);
   const ist = zaehle(STILLE_FAENGE);
   assert.ok(ist <= SCHRANKE,
     `${ist} stille Faenge, erlaubt sind ${SCHRANKE}. Ein neuer \`catch {}\` ` +
     'verschluckt einen Fehler und laeuft weiter — im Betrieb sieht man dann ' +
     'ein Verhalten ohne Ursache. Entweder den Fehler behandeln, oder ihn ' +
-    'wenigstens melden (meldeUndWeiter aus src/infra/fehlerTexte).');
+    'wenigstens melden (meldeFehler aus src/infra/fehlerTexte).');
   if (ist < SCHRANKE) {
     console.log(`  ℹ stille Faenge: ${ist} (Schranke ${SCHRANKE}) — Schranke nachziehen`);
   }

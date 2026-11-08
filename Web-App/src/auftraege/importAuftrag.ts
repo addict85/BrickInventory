@@ -1,5 +1,5 @@
 import * as stand from './repository/importStand';
-import { meldeUndWeiter, logAndContinue } from '../infra/fehler';
+import { meldeFehler, logAndContinue } from '../infra/fehler';
 import { fehlerText, antwortSprache, type FehlerCode, type Sprache } from '../infra/fehlerTexte';
 
 /** EINE Zeile je Konto, damit alle Oberflächen denselben Balken zeigen.
@@ -101,7 +101,7 @@ export async function starteAuftrag(
   // Scheitert das Lesen, wird NICHT gestartet: Einen fremden Import im Zweifel
   // zu überschreiben ist der teurere Fehler.
   const laufend = await jobGet(userId)
-    .catch((e) => { meldeUndWeiter('import-auftrag:stand lesen', e); return { status: 'running' }; });
+    .catch((e) => { meldeFehler('import-auftrag:stand lesen', e); return { status: 'running' }; });
   if (laufend && (laufend.status === 'running' || laufend.status === 'pending')) return false;
   await jobSet(userId, {
     status: 'running',
@@ -159,7 +159,7 @@ export async function beendeAuftrag(
 // Ausführlich: docs/begruendungen/src/auftraege/importAuftrag.ts.md#istabgebrochen
 export async function istAbgebrochen(userId: number): Promise<boolean> {
   const stand = await jobGet(userId)
-    .catch((e) => { meldeUndWeiter('import-auftrag:abbruch pruefen', e); return null; });
+    .catch((e) => { meldeFehler('import-auftrag:abbruch pruefen', e); return null; });
   return !stand || stand.status !== 'running';
 }
 

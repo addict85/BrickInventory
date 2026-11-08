@@ -9,7 +9,7 @@ import type { RbSetTeil } from '../katalog/quellen';
 import { getRbKey, httpsGetRobust } from '../katalog/quellen';
 import { getAllSetParts } from '../katalog/rebrickableKatalog';
 import { clampPageSize, applyManualCondition, MAX_PAGE_SIZE, UNPAGED_LIMIT, SET_PARTS_MAX_PAGE_SIZE } from '../bestand/gemeinsam';
-import { meldeUndWeiter, logAndContinue, meldeUndLiefere } from '../infra/fehler';
+import { meldeFehler, logAndContinue, meldeUndLiefere } from '../infra/fehler';
 import { farbkarte as blFarbkarte } from '../finanzen/financeCalc';
 import { getGlobalSetting } from '../einstellungen/settings';
 import { neuestesInventar } from '../katalog/rbInventar';
@@ -115,7 +115,7 @@ export async function tryPartsSummary(userId: Blickfeld, o: Record<string, unkno
     return { parts: zeilen.map(teilAlsAntwort), total, source: 'summary', page_size: size };
   } catch (e) {
     // Ein Rückfall, kein Fehler: Wie bei fehlender Frische übernimmt die Live-Abfrage.
-    meldeUndWeiter('teile:zusammenfassung', e);
+    meldeFehler('teile:zusammenfassung', e);
     return null;
   }
 }
@@ -148,7 +148,7 @@ export async function getParts(userIdWahl: Sicht | Blickfeld, query: Record<stri
   setImmediate(async () => {
     try {
       if (await repo.hatUngeseheneBlNummer(uids)) fetchMissingBlIds().catch(logAndContinue('teile:fetchMissingBlIds'));
-    } catch (e) { meldeUndWeiter('teile:bl-nummern-nachladen', e); }
+    } catch (e) { meldeFehler('teile:bl-nummern-nachladen', e); }
   });
 
   if (!parts.length && query.set_number) {

@@ -190,7 +190,7 @@ fun SetupScreen(
 
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             HorizontalDivider(Modifier.weight(1f))
-            // Luft um den Text: Die Linien stiessen sonst an „oder manuell“.
+            // Der Abstand kommt aus dem Padding, nicht aus Leerzeichen im Text; sonst stiessen die Linien an.
             Text(stringResource(R.string.setup_or_manual), style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(horizontal = Abstaende.mittel))

@@ -1,6 +1,6 @@
 /** requireApiAdmin bündelt Anmeldung und is_admin, damit kein Admin-Endpunkt
  * die Prüfung versehentlich weglässt. */
-import { meldeUndLiefere, meldeUndWeiter } from '../../src/infra/fehler';
+import { meldeUndLiefere, meldeFehler } from '../../src/infra/fehler';
 import express from 'express';
 import type { Request, Response, NextFunction, RequestHandler } from 'express';
 import { zuGrosseId } from '../../src/infra/validate';
@@ -88,7 +88,7 @@ export const requireToken = waechter<AuthedRequest>((req, res, next) => {
     if (!user) return sendeFehler(req, res, 401, 'token_ungueltig');
     req.apiUser = { ...user, is_admin: user.is_admin ?? 0 };
     next();
-  }).catch((e: unknown) => { meldeUndWeiter('eingang:token', e); sendeFehler(req, res, 401, 'auth_fehler'); });
+  }).catch((e: unknown) => { meldeFehler('eingang:token', e); sendeFehler(req, res, 401, 'auth_fehler'); });
 });
 
 export const requireApiAdmin = waechter<AuthedRequest>((req, res, next) => {

@@ -8,7 +8,9 @@ import type { FehlerCode } from './fehlerTexte';
  * @param kontext kurze Herkunftsangabe, z. B. 'parts:image_local' */
 export function logAndContinue(kontext: string) {
   return (e: unknown) => {
-    console.warn(`[weiter-trotz-fehler] ${kontext}:`, (e as { message?: unknown } | null)?.message || e);
+    const roh = e instanceof Error && e.stack ? e.stack : (e as { message?: unknown } | null)?.message || e;
+    // Zeilenumbrüche aus Fehlertexten fremder Herkunft würden eine zweite Protokollzeile vortäuschen.
+    console.warn(`[weiter-trotz-fehler] ${kontext}:`, String(roh).replace(/\n|\r/g, ' ⏎ '));
   };
 }
 
@@ -24,7 +26,7 @@ export function ohneFehlendeDatei<T>(kontext: string, ersatz?: T) {
   return (e: unknown): T | undefined => { if (fehlerCode(e) !== 'ENOENT') logAndContinue(kontext)(e); return ersatz; };
 }
 
-export function meldeUndWeiter(kontext: string, e: unknown) {
+export function meldeFehler(kontext: string, e: unknown) {
   logAndContinue(kontext)(e);
 }
 
@@ -56,6 +58,6 @@ export function oeffentlicherFehler(e: unknown, kontext: string, req?: { headers
   if (code && code in FEHLER) {
     return { code: code as FehlerCode, error: fehlerText(code as FehlerCode, antwortSprache(req), (e as { vars?: Record<string, string | number> }).vars) };
   }
-  meldeUndWeiter(kontext, e);
+  meldeFehler(kontext, e);
   return { code: 'interner_fehler', error: fehlerText('interner_fehler', antwortSprache(req)) };
 }

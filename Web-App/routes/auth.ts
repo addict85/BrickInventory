@@ -4,7 +4,7 @@ import { sitzungsKeksName, sitzungsKeksOptionen } from '../src/http/sitzungsKeks
 const router  = vertragsRouter();
 import * as K from '../src/konto/konten';
 import { meldeHaushaltsaenderung } from '../src/haushalt/haushalt';
-import { logAndContinue, meldeUndWeiter, fehlertext, meldeUndLiefere } from '../src/infra/fehler';
+import { logAndContinue, meldeFehler, fehlertext, meldeUndLiefere } from '../src/infra/fehler';
 import { fehlerAntwort } from '../src/http/httpAntwort';
 import { hashToken, createToken, pruefeToken, assertLoginAllowed, revokeAllSessions, deleteToken, USERNAME_RE, emailGueltig, leereTokenCache, laufzeitTage, rotiereToken, rotationFaellig, UNBEGRENZT, UEBERLAPPUNG_MS, nameGueltig, geraeteNameGueltig, geraeteNameInhaltGueltig } from '../src/konto/auth';
 import { kontoGedrosselt } from '../src/konto/zielDrossel';
@@ -171,7 +171,7 @@ router.get('/me', async (req: OffeneAnfrage<'GET /api/v1/auth/me'>, res: Antwort
   };
   await antworte().catch((e: unknown) => {
     // Ohne Anmeldung ist die Anmeldemaske die richtige Antwort, keine Fehlerseite.
-    meldeUndWeiter('auth:me', e);
+    meldeFehler('auth:me', e);
     if (token) return ungueltig('token_ungueltig');
     return res.json({ success: true, loggedIn: false, user: null });
   });
@@ -270,7 +270,7 @@ router.put('/profile', requireLogin, async (req: OffeneAnfrage<'PUT /api/v1/auth
       .then(r => r.success, meldeUndLiefere('anmeldung:bestaetigungsmail', false));
     // Die alte Adresse erfährt davon — war es nicht der Inhaber, merkt er es so.
     if (user.email) await sendEmailGeaendertMail(user.email, user.username, email, lang)
-      .catch((e: unknown) => meldeUndWeiter('anmeldung:hinweis-alte-adresse', e));
+      .catch((e: unknown) => meldeFehler('anmeldung:hinweis-alte-adresse', e));
     return res.json({ success: true, emailChanged: true, emailSent });
   }
 

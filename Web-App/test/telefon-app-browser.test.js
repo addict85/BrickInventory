@@ -26,6 +26,8 @@
  *      „Set-Ansicht: Diagramm, Löschen, Preisalarm“ („Löschen steht offen im
  *      Fuss“); die drei .alarm-zeile-Regeln aus mobile.css entfernt → rot
  *      (Felder neben der Beschriftung)
+ *   J  (08.11.) in mobile.css `.alarm-zeile .alarm-preis` wieder flex 1 1 100% und `.alarm-waehrung`
+ *      ohne Regel → rot: „Set-Ansicht: Diagramm, Löschen, Preisalarm“ (waehrungNeben: false)
  *   I  (29.10.) in loadPartsData wieder ladeAnzeige() → rot: „Skelett beim
  *      Laden der Teile“; die prefers-reduced-motion-Regel entfernt → rot:
  *      „weniger Bewegung“ (Dialog 0,2 s); die Animation an .tab.active
@@ -277,10 +279,13 @@ test('Telefon', { concurrency: 1, timeout: 240_000 }, async (t) => {
       const preis = zeile.querySelector('.alarm-preis');
       return { unterTitel: felder.every(f => f.top >= titel.bottom - 1), zeilen: new Set(felder.map(f => Math.round(f.top))).size,
                beschriftung: preis?.textContent.trim(), hoehe: Math.min(...felder.map(f => f.height)),
+               // Die Währung steht in der Zeile des Preisfelds, nicht darunter.
+               waehrungNeben: (() => { const w = zeile.querySelector('.alarm-waehrung').getBoundingClientRect(), p = felder[2];
+                 return w.top >= p.top - 1 && w.bottom <= p.bottom + 1 && w.left >= p.right - 1; })(),
                breite: Math.round((felder[1].right - felder[0].left) / z.width * 100) };
     })()`);
     assert.deepEqual({ ...alarm, breite: alarm.breite >= 90 },
-      { unterTitel: true, zeilen: 2, beschriftung: 'Grenzpreis', hoehe: alarm.hoehe, breite: true }, `Preisalarm: ${JSON.stringify(alarm)}`);
+      { unterTitel: true, zeilen: 2, beschriftung: 'Grenzpreis', hoehe: alarm.hoehe, waehrungNeben: true, breite: true }, `Preisalarm: ${JSON.stringify(alarm)}`);
     assert.ok(alarm.hoehe >= 44, `Preisalarm-Felder ${alarm.hoehe} px hoch`);
     await b.auswerten(`document.querySelector('#set-modal [data-click="closeModal"]')?.click(); true`);
   });

@@ -2,7 +2,7 @@
  * Standarddesign aufblitzt.
  * Ausführlich: docs/begruendungen/src/konto/indexHtml.ts.md#abschnitt */
 import { konfig } from '../infra/konfig';
-import { meldeUndLiefere, meldeUndWeiter } from '../infra/fehler';
+import { meldeUndLiefere, meldeFehler } from '../infra/fehler';
 import fs from 'fs';
 import { createHash } from 'crypto';
 import {  PUBLIC_DIR } from '../infra/appPaths';
@@ -115,5 +115,5 @@ export async function renderIndexHtml(userId?: number): Promise<string> {
 export async function sendeStartseite(res: { type(t: string): { send(b: string): unknown }; sendFile(f: string, o: { root: string }): void },
                                       userId?: number): Promise<void> {
   await renderIndexHtml(userId).then(html => { res.type('html').send(html); },
-    (e: unknown) => { meldeUndWeiter('startseite:rendern', e); res.sendFile('index.html', { root: PUBLIC_DIR }); });
+    (e: unknown) => { meldeFehler('startseite:rendern', e); res.sendFile('index.html', { root: PUBLIC_DIR }); });
 }

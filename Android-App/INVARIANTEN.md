@@ -1,7 +1,8 @@
 # Invarianten — bitte vor Änderungen lesen
 
 Kurze Liste von Dingen, die in diesem Projekt schon **mehrfach** kaputtgegangen
-sind. Jeder Punkt ist durch einen Test abgesichert; schlägt einer fehl, ist die
+sind. Die genannten Dateien und Tests gibt es (`InvariantenVerweiseTest` prüft das);
+ob ein Test eine Regel noch ganz trägt, prüft das nicht. Schlägt einer fehl, ist die
 Regel verletzt — dann den Code korrigieren, nicht den Test.
 
 ## Kamera-Autofokus
@@ -25,19 +26,19 @@ wiederholt die Regel dort, wo sie gebraucht wird.
 
 ## Doppelklick-Sperre im Barcode-Dialog
 
-**Dateien:** `ui/BarcodeFeature.kt`, `ui/Zustand*.kt`, `AppNavigation.kt`
-**Test:** `BarcodeDoubleAddGuardTest`
+**Dateien:** `ui/viewmodel/ErfassungViewModel.kt`, `ui/ZustandErfassung.kt`, `ui/dialogs/BarcodeResultDialog.kt`
+**Test:** `ErfassungViewModelTest` („ein zweiter Klick auf Bestaetigen legt das Set nicht zweimal an“)
 
 Der Zwischendialog nach dem Barcode-Scan reagiert träge; Nutzer tippen deshalb
 zweimal auf „Hinzufügen", und das Set landete zweimal in der Galerie.
 
 Die Sperre muss im ViewModel liegen: `confirmAddBarcode()` prüft
-`_state.value.barcodeAdding` als Erstes und setzt das Flag **synchron vor**
+`_barcodeState.value.adding` als Erstes und setzt das Flag **synchron vor**
 `viewModelScope.launch`. Wandert die Zuweisung in den Coroutine-Block, ist das
 Rennen wieder offen — beide Klicks kommen an der Prüfung vorbei, bevor der
 erste das Flag setzt.
 
-`enabled = !state.barcodeAdding` am Knopf ist Feedback, **kein** Schutz: Es
+`bestaetigenAn = !barcodeState.adding` am Knopf ist Feedback, **kein** Schutz: Es
 greift erst nach der Rekomposition, und genau die ist ja die langsame Stelle.
 
 Jeder Ausgang von `confirmAddBarcode()` sowie `cancelBarcode()` müssen das Flag
@@ -46,7 +47,7 @@ zurücksetzen, sonst bleibt der Knopf nach einem Fehler dauerhaft gesperrt.
 ## Abgelaufene Sitzung (HTTP 401)
 
 **Dateien:** `data/repository/RepoBasis.kt`, `di/AppModule.kt`,
-`data/SessionExpiredSignal.kt`, `ui/MainViewModel.kt`
+`data/SessionExpiredSignal.kt`, `ui/SitzungsDienst.kt`
 **Test:** `SessionAndLifecycleTest`
 
 Ein 401 ist kein gewöhnlicher Serverfehler. Drei Regeln:
@@ -87,7 +88,7 @@ solange die App auf dem Screen liegt. Jede solche Schleife gehört in
 
 ## Kein zweiter Barcode-Pfad
 
-**Dateien:** `ui/BarcodeFeature.kt`, `ui/Zustand*.kt`
+**Dateien:** `ui/viewmodel/ErfassungViewModel.kt`, `ui/ZustandErfassung.kt`
 **Test:** `SessionAndLifecycleTest`
 
 Es gab lange eine komplette, nie aufgerufene Zweitimplementierung des Scanners
@@ -166,7 +167,7 @@ Aufräumen den Teil-Download, auf dem der Resume-Mechanismus aufsetzen will.
 
 ## Abmelden leert beide Caches
 
-**Datei:** `ui/SessionFeature.kt`
+**Datei:** `data/SitzungsBereinigung.kt`
 **Test:** `ResourceAndCacheTest`
 
 Zum API-Cache gehört der Bild-Cache: Beide enthalten Daten des angemeldeten
@@ -218,7 +219,7 @@ Error-Zweig des äusseren durchgeht.
 
 ## Zustand ist nach Domänen getrennt
 
-**Dateien:** `ui/Zustand*.kt`, `ui/MainViewModel.kt`, `MainActivity.kt`
+**Dateien:** `ui/Zustand*.kt`, `ui/AppViewModel.kt`, `MainActivity.kt`
 **Test:** `ResultAndStateSplitTest`
 
 `AppUiState` hält nur noch, was App-weit gilt: Sitzung, Einstellungen, Sets,
@@ -374,7 +375,7 @@ Rechnung Compose-frei in einer eigenen Datei und nicht im Canvas-Block.
 
 ## Bewertung hängt an der Erfassung, nicht am Set
 
-**Dateien:** `ui/screens/FinanceScreen.kt`, `data/model/Models.kt`
+**Dateien:** `ui/screens/FinanceScreen.kt`, `data/model/FinanzModels.kt`
 **Test:** `PriceHistorySerializationTest`
 
 Ein Set hat **keinen** einzelnen Zustand für die Bewertung. Jede Erfassung wird
@@ -555,11 +556,9 @@ Damit sind es DREI Dinge, die eine Aufteilung mitnehmen muss und die keine
 Import-Prüfung sieht: die Wildcards der Quelle, die Sichtbarkeit (`private` →
 `internal`) und die Opt-ins. Alle drei prüft `SplitFileImportsTest`.
 
-**ViewModel-Erweiterungen brauchen `import ch.brickinventoryapp.ui.*`.** Die
-Feature-Funktionen (`loadSets`, `setScope`, `addPart`, …) sind Erweiterungen auf
-`MainViewModel` im Paket `ch.brickinventoryapp.ui`. Die Screens liegen in
-`…ui.screens` — `import …ui.MainViewModel` holt nur die KLASSE, nicht ihre
-Erweiterungen.
+**ViewModel-Erweiterungen:** Es gibt keine mehr (kein `fun AppViewModel.x`); die
+Feature-Funktionen sind Methoden der Bereichs-ViewModels. Der Erweiterungs-Import
+entfällt, die Zählung unten stammt aus der Zeit davor.
 
 Damit sind es VIER Dinge, die eine Aufteilung mitnehmen muss und die keine
 gewöhnliche Import-Prüfung sieht: die Wildcards der Quelle, die Sichtbarkeit
@@ -587,7 +586,7 @@ prüft, dass jeder projekteigene Import ein Ziel hat.
 
 ## Endlos-Scroll: Sperre vor dem launch, Schlüssel beim Anhängen sieben
 
-**Datei:** `ui/GalleryFeature.kt` · **Test:** `GalleryLoadMoreRaceTest`
+**Datei:** `ui/Galerie.kt` · **Test:** `GalerieTest` („zwei Nachlade-Aufrufe im selben Takt holen Seite 2 nur einmal“)
 
 Der Auslöser hängt an einem `snapshotFlow`, dessen `LaunchedEffect` bei jeder
 Änderung von `sets.size` neu startet und sofort wieder auswertet — beim
@@ -619,7 +618,7 @@ Teilen und Minifiguren hatten längst welche (`key = "manual-header"`).
 
 ## Ein Abschluss ist ein ÜBERGANG, kein Zustand
 
-**Datei:** `ui/MainViewModel.kt` · **Test:** `CsvStatusReloadTest`
+**Datei:** `ui/viewmodel/CsvImportViewModel.kt` · **Test:** `CsvStatusReloadTest`
 
 `handleCsvStatus()` lädt die Daten nur nach, wenn vorher tatsächlich ein Import
 LIEF. Der SSE-Strom meldet den Status fortlaufend, auch lange nach dem
@@ -713,7 +712,7 @@ Die Datenschicht (`BrickRepository`, `CsvImportSseClient`) formuliert KEINE
 Sätze für den Nutzer. Sie hat keinen `Context` und kann nicht übersetzen — jeder
 Satz, den sie selbst bildet, ist für die halbe Nutzerschaft in der falschen
 Sprache. Sie meldet stattdessen eine `Fehlerart`; den Satz bildet
-`MainViewModel.meldung()`.
+`AppTexte.meldung()`.
 
 Vorrang hat immer die Meldung des SERVERS. Er kennt seine Fälle genauer als
 jede Aufzählung in der App (Kaufdatum-Konflikt, Währung passt nicht, Code schon
@@ -909,8 +908,3 @@ wäre er eine Wiederholung des Klassennamens. Am Zugriffsort steht dafür
 
 `logout()` setzt auch diesen Fluss zurück. Ohne das trüge ein offener
 Barcode-Dialog Setname, Bild und Nummer des vorigen Kontos.
-
-Eine Ausnahme bleibt und ist Absicht: `BarcodeFeature` schreibt weiterhin
-`gallerySearchFoundSetNumber` in `AppUiState`. Der Scanner findet ein Set, das
-schon im Bestand liegt, und die Galerie soll dorthin springen — die Übergabe
-ist der Zweck des Scans. Sie steht mit Begründung in `StateDomainBoundaryTest`.

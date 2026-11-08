@@ -55,7 +55,7 @@ export class RateLimiter {
   }
 }
 
-import { meldeUndWeiter, meldeUndLiefere } from '../infra/fehler';
+import { meldeFehler, meldeUndLiefere } from '../infra/fehler';
 import { checkAndIncrementRateLimit, getRateLimitStatus, REBRICKABLE_DEFAULT_DAILY } from './apiKontingent';
 import * as repo from './repository/apiTakt';
 
@@ -73,7 +73,7 @@ export async function warteAufTakt(api: string, abstandMs: number): Promise<void
     if (warte > 0) await new Promise(res => setTimeout(res, warte));
   } catch (e) {
     taktGestoertBis = Date.now() + 60_000;
-    meldeUndWeiter('drossel:gemeinsamer-takt', e);
+    meldeFehler('drossel:gemeinsamer-takt', e);
   }
 }
 
@@ -81,7 +81,7 @@ export async function warteAufTakt(api: string, abstandMs: number): Promise<void
 function taktAussetzen(api: string, waitMs: number) {
   if (Date.now() < taktGestoertBis) return;
   repo.schiebeTakt(api, waitMs)
-    .catch(e => meldeUndWeiter('drossel:takt-aussetzen', e));
+    .catch(e => meldeFehler('drossel:takt-aussetzen', e));
 }
 
 // Ein Aufruf je Sekunde für ALLE Prozesse zusammen; die Drosseln ordnen nur
