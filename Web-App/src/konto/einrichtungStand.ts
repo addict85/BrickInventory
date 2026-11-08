@@ -31,7 +31,6 @@ export interface EinrichtungStandAntwort {
 const ZWISCHENSPEICHER_MS = 5000;
 const _gemerkt = new Map<boolean, { bis: number; antwort: Promise<EinrichtungStandAntwort> }>();
 
-/** Für Tests und nach jeder Änderung eines globalen Werts. */
 export function einrichtungStandVergessen(): void {
   _gemerkt.clear();
 }
@@ -48,7 +47,6 @@ export function einrichtungStand({ verwalter = false } = {}): Promise<Einrichtun
   if (alt && alt.bis > jetzt) return alt.antwort;
   const antwort = berechne(verwalter);
   _gemerkt.set(verwalter, { bis: jetzt + ZWISCHENSPEICHER_MS, antwort });
-  // Ein Fehler soll nicht fünf Sekunden lang wiederholt ausgeliefert werden.
   antwort.catch(() => {
     if (_gemerkt.get(verwalter)?.antwort === antwort) _gemerkt.delete(verwalter);
   });
@@ -72,13 +70,10 @@ async function berechne(verwalter: boolean): Promise<EinrichtungStandAntwort> {
   const erledigt = !!(await getGlobalSetting('einrichtung_erledigt').catch(
     meldeUndLiefere('einrichtung:erledigt', null),
   ));
-  // Danach steht nichts mehr zur Wahl: Die Schlüssel müssen nicht entschlüsselt werden,
-  // und der Prüfknopf der Ersteinrichtung bleibt weg.
+  // Nach der Einrichtung entfällt das Entschlüsseln der Schlüssel.
   if (erledigt) return { ...grund, erledigt: true, konfiguriert: true, schritte: [] };
 
-  // "Konfiguriert" blendet den Prüfknopf auf der Anmeldeseite aus. BrickLink zählt
-  // wie in /settings/einrichtung erst mit allen vier Werten: Ein halber Eintrag
-  // ist keine Einrichtung, und dann soll der Weg zur Prüfung offen bleiben.
+  // BrickLink zählt erst mit allen vier Werten, wie in /settings/einrichtung.
   const da = async (key: string) => !!(await getGlobalSetting(key).catch(meldeUndLiefere('einrichtung:quelle', null)));
   const rebrickable = await da('rebrickable_api_key');
   const bricklink = (

@@ -11,7 +11,6 @@ const router = vertragsRouter();
 
 router.get(
   '/einrichtung/stand',
-  // Öffentlich, also ohne Konto zu bremsen: je Adresse, wie die anderen offenen Wege (routes/auth.ts).
   ipThrottle('einrichtung-stand', 120, 10 * 60 * 1000),
   async (req: OffeneAnfrage<'GET /api/v1/einrichtung/stand'>, res: Antwort<'GET /api/v1/einrichtung/stand'>) => {
     res.set('Cache-Control', 'no-store');
