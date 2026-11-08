@@ -1,5 +1,5 @@
 import { liesZustand, setzeZustand } from './laufzustand';
-import { logAndContinue, meldeUndWeiter } from '../infra/fehler';
+import { logAndContinue, meldeFehler } from '../infra/fehler';
 
 /** Den Katalog lädt der Job-Prozess; der Web-Prozess liest den Stand aus
  * laufzustand nach. */
@@ -28,6 +28,6 @@ export async function aktuellerStartZustand(): Promise<StartZustand> {
   try {
     const roh = await liesZustand('startup_status');
     if (roh) _stand = JSON.parse(roh) as StartZustand;
-  } catch (e) { meldeUndWeiter('start:zustand lesen', e); }
+  } catch (e) { meldeFehler('start:zustand lesen', e); }
   return _stand;
 }

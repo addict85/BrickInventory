@@ -10,7 +10,7 @@ import path from 'path';
 import * as verwaltung from './repository/verwaltung';
 import { naechsteUhrzeit, taeglicheUhrzeit, DAILY_JOBS, ziehePlanVor, zeitplanGeaendert } from '../auftraege/zeitplan';
 import { DATA_DIR, PDF_JOB_DIR, SET_IMAGES_DIR } from '../infra/appPaths';
-import { fehlertext, meldeUndWeiter, logAndContinue, meldeUndLiefere, ohneFehlendeDatei } from '../infra/fehler';
+import { fehlertext, meldeFehler, logAndContinue, meldeUndLiefere, ohneFehlendeDatei } from '../infra/fehler';
 import { fetchPrice } from '../finanzen/financeCalc';
 import { getRateLimitStatus, setzeKontingentZurueck } from '../katalog/apiKontingent';
 import { ohneBricklinkPreis } from '../infra/setNummer';
@@ -96,7 +96,7 @@ export async function anleitungenNeuEinreihen() {
 export async function preisJobStand() {
   const plan = await verwaltung.letzterLaufDerArt();
   let letzter: Record<string, any> = {};
-  try { letzter = JSON.parse(await liesZustand('preis_job_stand') ?? '{}'); } catch (e) { meldeUndWeiter('verwaltung:preis-stand', e); }
+  try { letzter = JSON.parse(await liesZustand('preis_job_stand') ?? '{}'); } catch (e) { meldeFehler('verwaltung:preis-stand', e); }
   const laeuft = plan?.status === 'laeuft';
   const job = {
     running: laeuft, lastRun: letzter.lastRun ?? null, lastDuration: letzter.lastDuration ?? null,
@@ -255,9 +255,9 @@ function pdfKachel(): Kachel {
       try {
         const j = JSON.parse(fs.readFileSync(path.join(PDF_JOB_DIR, f), 'utf8')) as { status?: string };
         if (j.status === 'running') laufend++; else if (j.status === 'done') fertig++;
-      } catch (e) { meldeUndWeiter('admin:pdf-auftrag-lesen', e); }
+      } catch (e) { meldeFehler('admin:pdf-auftrag-lesen', e); }
     }
-  } catch (e) { meldeUndWeiter('admin:auftragsordner-lesen', e); }
+  } catch (e) { meldeFehler('admin:auftragsordner-lesen', e); }
   return { label: '📄 PDF-Jobs', status: laufend > 0 ? 'running' : fertig > 0 ? 'idle' : 'done', progress: 0, total: 0, lastRun: null,
     sub: laufend > 0 ? `${laufend} PDF(s) werden erstellt` : fertig > 0 ? `${fertig} PDF(s) bereit zum Download` : 'Keine aktiven Jobs',
     sub_teile: [laufend > 0 ? teil('pdf_laufend', { n: laufend }) : fertig > 0 ? teil('pdf_bereit', { n: fertig }) : teil('no_active')] };

@@ -3,7 +3,7 @@ import path from 'path';
 import { bilderAusKatalog as katalogbilder } from '../src/katalog/bildlage';
 import { MINIFIG_IMAGES_DIR } from '../src/infra/appPaths';
 import { getMinifigInfo } from '../src/katalog/quellen';
-import { logAndContinue, meldeUndWeiter } from '../src/infra/fehler';
+import { logAndContinue, meldeFehler } from '../src/infra/fehler';
 import { pdfDateiPfad } from '../src/auftraege/pdfAuftraege';
 import { downloadImage, downloadSetImages } from '../src/katalog/teileAnreicherung';
 import { zeichnePdfImFaden, type PdfTeil } from './pdfZeichnen';
@@ -32,7 +32,7 @@ async function figurenOhneAdresse(parts: PdfTeil[]) {
       if (!info?.image_url) continue;
       p.image_url = info.image_url;
       await merkeFigurBildAdresse(p.part_number, info.image_url).catch(logAndContinue('pdf:figurbild merken'));
-    } catch (e) { meldeUndWeiter('pdf:figurbild holen', e); }
+    } catch (e) { meldeFehler('pdf:figurbild holen', e); }
   }
 }
 

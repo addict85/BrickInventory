@@ -11,7 +11,7 @@ import path from 'path';
 import bcrypt from 'bcryptjs';
 import crypto from 'crypto';
 import { LOCKS } from '../src/infra/lockNamespaces';
-import { fehlerCode, meldeUndWeiter, logAndContinue } from '../src/infra/fehler';
+import { fehlerCode, meldeFehler, logAndContinue } from '../src/infra/fehler';
 import { konfig, datenbankVerbindung } from '../src/infra/konfig';
 import { passwortMangel } from '../src/infra/passwortRegel';
 
@@ -106,7 +106,7 @@ async function alsSuperuserVerbunden(): Promise<boolean> {
 }
 
 async function datenbankAntwortet(): Promise<boolean> {
-  return pool.query('SELECT 1').then(() => true, (e: unknown) => { meldeUndWeiter('health:ready', e); return false; });
+  return pool.query('SELECT 1').then(() => true, (e: unknown) => { meldeFehler('health:ready', e); return false; });
 }
 
 
@@ -371,7 +371,7 @@ async function ruesteAltbestandAuf(client: import('pg').ClientBase): Promise<voi
     await client.query(fs.readFileSync(path.join(__dirname, 'altbestand', 'startstufen.sql'), 'utf8'));
     await client.query('COMMIT');
   } catch (e) {
-    await client.query('ROLLBACK').catch((r: unknown) => meldeUndWeiter('start:altbestand', r));
+    await client.query('ROLLBACK').catch((r: unknown) => meldeFehler('start:altbestand', r));
     throw new Error(`Startstufen für die ältere Datenbank fehlgeschlagen: ${e instanceof Error ? e.message : String(e)}`);
   }
   await runMigrations(client, { bis: ALTBESTAND_BIS });

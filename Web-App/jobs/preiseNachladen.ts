@@ -5,7 +5,7 @@ import { schaetzeFigurenpreis } from '../src/finanzen/marketPrice';
 import { kontingentFrei } from '../src/katalog/apiKontingent';
 import { getGlobalSetting } from '../src/einstellungen/settings';
 import { pruefeAbbruch } from '../src/auftraege/auftraege';
-import { meldeUndWeiter } from '../src/infra/fehler';
+import { meldeFehler } from '../src/infra/fehler';
 import { AuftragVerschieben, type AuftragsKontext } from './auftragsWorker';
 import type { Nutzlast } from '../src/auftraege/nutzlasten';
 
@@ -26,7 +26,7 @@ async function preiseNachladen(n: Nutzlast<'preise_nachladen'>, k: AuftragsKonte
     if (!(await kontingentFrei('bricklink')).allowed)
       throw new AuftragVerschieben(new Date(Date.now() + 6 * 3600_000), 'BrickLink-Tageskontingent erschöpft');
     await holeEinen(p, n.user_id, n.waehrung, ttl).catch((e: unknown) =>
-      meldeUndWeiter(`preise-nachladen:${p.art} ${p.nummer}`, e),
+      meldeFehler(`preise-nachladen:${p.art} ${p.nummer}`, e),
     );
     if (i % 10 === 9) await k.fortschritt({ erledigt: i + 1, gesamt: n.posten.length });
   }

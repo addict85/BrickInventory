@@ -4,7 +4,7 @@ import { generateThumb } from './bilder/thumbs';
 import { neuestesInventar } from './rbInventar';
 import { mitVersion } from '../infra/setNummer';
 import { merkeTeil, merkeTeilFarbe, merkeSetTeil, setzeTeilBildLokal, merkeFiguren, merkeSetFiguren } from './katalogPflege';
-import { logAndContinue, meldeUndLiefere, meldeUndWeiter } from '../infra/fehler';
+import { logAndContinue, meldeUndLiefere, meldeFehler } from '../infra/fehler';
 import { katalogBildstand, inventarTeileOhneErsatz, inventarFiguren, setsOhneTeilekatalog, manuelleFarbteile, ersetzeTeilfarbenbild } from './repository/csvKatalog';
 import path from 'path';
 import fs from 'fs';
@@ -93,7 +93,7 @@ async function teilfarbenbilderNachtragen() {
         await ersetzeTeilfarbenbild(row.part_number, row.color_id, info.image_url);
         done++;
       }
-    } catch (e) { meldeUndWeiter('kaufpreis-nachtrag:teilebild', e); }
+    } catch (e) { meldeFehler('kaufpreis-nachtrag:teilebild', e); }
     await sleep(1500);
   }
   console.log(`  [purchase-price-backfill] Teile-Bilder aktualisiert: ${done}/${rows.length}`);

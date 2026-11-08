@@ -2,7 +2,7 @@ import { getCurrentMarketPrice, getCurrentFigMarketPrice, getCurrentPartMarketPr
 import { setzeGeschaetztenPreis, setErfassungenOhnePreis, teilErfassungenOhnePreis, figurErfassungenOhnePreis } from '../src/bestand/acquisitions';
 import { teilfarbenbilderNachtragen } from '../src/katalog/katalogAbgleich';
 import { blAbrufNummer } from '../src/katalog/blZuordnung';
-import { fehlertext, meldeUndWeiter, meldeUndLiefere } from '../src/infra/fehler';
+import { fehlertext, meldeFehler, meldeUndLiefere } from '../src/infra/fehler';
 import { sleep } from '../src/katalog/quellen';
 
 // Idempotent: Erfassungen ohne Kaufpreis bekommen den Marktpreis, wie beim
@@ -49,7 +49,7 @@ async function backfillTeileErfassungen() {
       if (price) {
         if (await setzeGeschaetztenPreis('part', row.id, price)) done++;
       }
-    } catch (e) { meldeUndWeiter('kaufpreis-nachtrag:teil-erfassung', e); }
+    } catch (e) { meldeFehler('kaufpreis-nachtrag:teil-erfassung', e); }
     await sleep(1500);
   }
   log(`Teile-Erfassungen nachgetragen: ${done}/${rows.length}`);
@@ -69,7 +69,7 @@ async function backfillFigurenErfassungen() {
       if (price) {
         if (await setzeGeschaetztenPreis('fig', row.id, price)) done++;
       }
-    } catch (e) { meldeUndWeiter('kaufpreis-nachtrag:figur-erfassung', e); }
+    } catch (e) { meldeFehler('kaufpreis-nachtrag:figur-erfassung', e); }
     await sleep(1500);
   }
   log(`Figuren-Erfassungen nachgetragen: ${done}/${rows.length}`);

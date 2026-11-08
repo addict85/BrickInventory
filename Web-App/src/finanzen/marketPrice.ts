@@ -4,7 +4,7 @@ import { getSetValue } from './setValue';
 import { nutzerStandardZustand as userDefaultCondition, getGlobalSetting, getSetting } from '../einstellungen/settings';
 import { DEFAULT_PRICE_CONDITION, fetchPartPrice, fetchMinifigPrice, ladeBlNummernVor,
          resolveBlPartNumber, resolveBlColorId } from './rechnung/preise';
-import { meldeUndWeiter, fehlertext, logAndContinue, meldeUndLiefere } from '../infra/fehler';
+import { meldeFehler, fehlertext, logAndContinue, meldeUndLiefere } from '../infra/fehler';
 import { getMinifigParts } from '../katalog/rebrickableKatalog';
 import { KEINE_FARBE } from '../infra/validate';
 
@@ -41,7 +41,7 @@ export async function resolvePartCondition(userId: number, partNumber: string, c
   try {
     const row = await repo.teilErfassungsZustand(userId, partNumber, colorId);
     if (row && parseInt(row.cnt) > 0) return Number(row.any_used) > 0 ? 'U' : 'N';
-  } catch (e) { meldeUndWeiter('teile:zustand-ermitteln', e); }
+  } catch (e) { meldeFehler('teile:zustand-ermitteln', e); }
   try { return await userDefaultCondition(userId); }
   catch (e) { return meldeUndLiefere('marktpreis:standardzustand', DEFAULT_PRICE_CONDITION)(e); }
 }
@@ -212,7 +212,7 @@ export async function schaetzeFigurenpreis(figNumber: string, userId: number, co
         const priceData = await fetchPartPrice(blPartNum, p.color_id ?? KEINE_FARBE, cond, currency, 24);
         const unitPrice = (Number(priceData?.avg_price) || 0);
         if (unitPrice > 0) { total += unitPrice * (p.quantity || 1); priced++; }
-      } catch (e) { meldeUndWeiter('marktpreis:teil-in-figur', e); }
+      } catch (e) { meldeFehler('marktpreis:teil-in-figur', e); }
     }
     console.log(`[minifig-price-estimate] ${figNumber} (${cond}): ${priced}/${parts.length} Teile bepreist, geschätzt=${priced>0?total.toFixed(2):'—'}`);
     if (priced === 0) return null;
@@ -242,7 +242,7 @@ export async function figMarktpreisMitHerkunft(figNumber: string, userId: number
       try {
         const row = await repo.figurErfassungsZustand(userId, figNumber);
         if (row && parseInt(row.cnt) > 0) effCond = Number(row.any_used) > 0 ? 'U' : 'N';
-      } catch (e) { meldeUndWeiter('minifiguren:zustand-ermitteln', e); }
+      } catch (e) { meldeFehler('minifiguren:zustand-ermitteln', e); }
       if (!effCond) effCond = await userDefaultCondition(userId).catch(meldeUndLiefere('marktpreis:vorgabezustand', DEFAULT_PRICE_CONDITION));
     }
     // BrickLink zuerst, auch ohne eigene bl_fig_number: Meist stimmt die eigene

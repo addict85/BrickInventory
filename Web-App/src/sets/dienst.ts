@@ -2,7 +2,7 @@
  * nur Anfrage und Antwort kennen. */
 import { blickfeldAus } from '../haushalt/haushalt';
 import type { Sicht } from '../haushalt/haushalt';
-import { logAndContinue, meldeUndLiefere, meldeUndWeiter, vorDem, fehlertext, ohneFehlendeDatei, oeffentlicherFehler } from '../infra/fehler';
+import { logAndContinue, meldeUndLiefere, meldeFehler, vorDem, fehlertext, ohneFehlendeDatei, oeffentlicherFehler } from '../infra/fehler';
 import fs from 'fs';
 import path from 'path';
 import { APP_ROOT } from '../infra/appPaths';
@@ -257,7 +257,7 @@ export async function setPreis(uid: number, blickfeldWahl: Sicht | number[], sn:
       max_price: pd.max_price, qty_avg_price: pd.qty_avg_price, from_cache: pd.from_cache,
       no_price: !!(pd as { no_price?: boolean }).no_price };
   } catch (e) {
-    meldeUndWeiter('sets:preis', e);
+    meldeFehler('sets:preis', e);
     return { set_number: sn, currency, min_price: null, avg_price: null, max_price: null, qty_avg_price: null, no_price: true };
   }
 }

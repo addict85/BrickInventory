@@ -1,7 +1,7 @@
 import { fuelleAusBrickset } from '../src/katalog/bildlage';
 import { downloadSetInstructions, anzahlAnleitungen } from '../src/katalog/instructions';
 import { getLimitForApi, getRateLimitStatus } from '../src/finanzen/financeCalc';
-import { logAndContinue, meldeUndWeiter } from '../src/infra/fehler';
+import { logAndContinue, meldeFehler } from '../src/infra/fehler';
 import { pausiereArt } from '../src/auftraege/dienst';
 import { bricksetFaelligAb } from '../src/auftraege/bricksetAuftrag';
 import { AuftragVerschieben } from './auftragsWorker';
@@ -21,7 +21,7 @@ async function bricksetNachlauf(n: Nutzlast<'brickset'>, lauf?: AuftragsLauf): P
     }
   } catch (e) {
     if (e instanceof AuftragVerschieben) throw e;
-    meldeUndWeiter('brickset-retry:kontingent', e);
+    meldeFehler('brickset-retry:kontingent', e);
   }
 
   pruefeAbbruch(lauf);

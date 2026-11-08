@@ -2,7 +2,7 @@ import path from 'path';
 import crypto from 'crypto';
 import fsp from 'fs/promises';
 import { PDF_JOB_DIR } from '../infra/appPaths';
-import { meldeUndLiefere, meldeUndWeiter, ohneFehlendeDatei } from '../infra/fehler';
+import { meldeUndLiefere, meldeFehler, ohneFehlendeDatei } from '../infra/fehler';
 import { stelleAuftragEin } from './dienst';
 import type { NutzlastEingabe } from './nutzlasten';
 import { mitVersion } from '../infra/setNummer';
@@ -89,7 +89,7 @@ async function fehlendeBilder(sets: Array<{ set_number?: unknown }>, parts: Arra
     const r = await repo.fehlendeKatalogbilder([...nummern]);
     const c = Number(r?.c);
     if (Number.isFinite(c)) fehlend = c;
-  } catch (e) { meldeUndWeiter('pdf:wartezeit schaetzen', e); }
+  } catch (e) { meldeFehler('pdf:wartezeit schaetzen', e); }
   return fehlend;
 }
 

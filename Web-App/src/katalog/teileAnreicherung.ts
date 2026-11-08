@@ -2,7 +2,7 @@
  * Sets Namen und Bilder hat. Bilder werden im Hintergrund geladen; bis dahin
  * gilt die CDN-Adresse. */
 import { cdnImageLimiter, rebrickableBackgroundLimiter as rebrickableLimiter, consumeRebrickableDaily } from './rateLimiter';
-import { meldeUndWeiter, fehlertext, logAndContinue, meldeUndLiefere, ohneFehlendeDatei } from '../infra/fehler';
+import { meldeFehler, fehlertext, logAndContinue, meldeUndLiefere, ohneFehlendeDatei } from '../infra/fehler';
 import { neuestesInventar } from './rbInventar';
 import { mitVersion } from '../infra/setNummer';
 import { merkeBlNummer } from './blZuordnung';
@@ -71,7 +71,7 @@ async function downloadImage(
   if (fs.existsSync(dest)) return rel;
   fs.mkdirSync(IMG_DIR, { recursive: true });
   if (!await ladeBild(imgUrl, dest, ERLAUBTE_BILD_HOSTS, BILD_KOPFZEILEN)) return null;
-  try { await generateThumb(rel).catch(logAndContinue('teile-enrich:generateThumb')); } catch (e) { meldeUndWeiter('teile-enrich:vorschau', e); }
+  try { await generateThumb(rel).catch(logAndContinue('teile-enrich:generateThumb')); } catch (e) { meldeFehler('teile-enrich:vorschau', e); }
   return rel;
 }
 

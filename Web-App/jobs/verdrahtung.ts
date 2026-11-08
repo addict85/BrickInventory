@@ -3,18 +3,18 @@
  * Datenbankadresse läuft (etwa in Tests); am Pfad über ../jobs/ erkennen die
  * require-Haken der Tests die Module. */
 import { verdrahteNacharbeit } from '../src/auftraege/nacharbeit';
-import { meldeUndWeiter } from '../src/infra/fehler';
+import { meldeFehler } from '../src/infra/fehler';
 
 function verdrahte(): void {
   verdrahteNacharbeit({
     preisJobAnstossen: () => {
       import('../src/auftraege/zeitplan.js').then(z => z.ziehePlanVor('preise'))
-        .catch((e: unknown) => meldeUndWeiter('einstellungen:preis-job-anstossen', e));
+        .catch((e: unknown) => meldeFehler('einstellungen:preis-job-anstossen', e));
     },
     preisFuerSetHolen: async (sn, uid, zustand) => (await import('../jobs/priceJob.js')).refreshPriceForSet(sn, uid, zustand),
     bildVormerken: (url, sn) => {
       import('../src/katalog/bilder/bildbedarf.js').then(b => b.merkeGebraucht(url, sn))
-        .catch((e: unknown) => meldeUndWeiter('nacharbeit:bild-vormerken', e));
+        .catch((e: unknown) => meldeFehler('nacharbeit:bild-vormerken', e));
     },
     setTeileAnreichern: async (sn) => (await import('../src/katalog/teileAnreicherung.js')).enrichSetParts(sn),
     figurenAnreichern: async (sn) => (await import('../src/katalog/teileAnreicherung.js')).enrichSetMinifigs(sn),

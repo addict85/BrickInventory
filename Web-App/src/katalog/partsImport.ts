@@ -5,7 +5,7 @@ import * as db from '../../db/database';
 import { PART_IMAGES_DIR } from '../infra/appPaths';
 import { type RbSetTeil, parseThrottleWait, rebrickableRoh } from './quellen';
 import { getAllSetParts } from './rebrickableKatalog';
-import { fehlertext, logAndContinue, meldeUndWeiter } from '../infra/fehler';
+import { fehlertext, logAndContinue, meldeFehler } from '../infra/fehler';
 import { getGlobalSetting } from '../einstellungen/settings';
 import { mitVersion } from '../infra/setNummer';
 import { nummernListe } from '../infra/fremdeAdressen';
@@ -28,7 +28,7 @@ function setTeilZeilen(roh: RbSetTeil[]): SetTeilZeile[] {
       try {
         const datei = `${p.part_num}_${colorId}${path.extname(new URL(imageUrl).pathname) || '.png'}`;
         if (fs.existsSync(path.join(PART_IMAGES_DIR, datei))) imageLocal = `/images/parts/${datei}`;
-      } catch (e) { meldeUndWeiter('teile-import:bildpfad', e); }
+      } catch (e) { meldeFehler('teile-import:bildpfad', e); }
     }
     zeilen.push({
       partNumber: p.part_num, partName: p.name || '',
@@ -117,7 +117,7 @@ export async function fetchMissingBlIds(lauf: AuftragsLauf = {}) {
       }
       if (result.status !== 200) continue;
       let data: { results?: { part_num: string; external_ids?: { BrickLink?: string[] } }[] };
-      try { data = JSON.parse(result.body); } catch (e) { meldeUndWeiter('bl-nummern:antwort', e); continue; }
+      try { data = JSON.parse(result.body); } catch (e) { meldeFehler('bl-nummern:antwort', e); continue; }
       const batchDone = i + BATCH;
       await stand(batchDone);
       for (const part of (data?.results || [])) {

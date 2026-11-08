@@ -1,6 +1,6 @@
 import * as db from '../../db/database';
 import type { DbSchnittstelle } from '../../db/database';
-import { meldeUndWeiter, fehlertext, logAndContinue, meldeUndLiefere } from '../infra/fehler';
+import { meldeFehler, fehlertext, logAndContinue, meldeUndLiefere } from '../infra/fehler';
 import { scopeIds, writableIds } from '../haushalt/haushalt';
 import { recordAcquisitionForDay } from '../bestand/acquisitions';
 import { withInventoryLock } from '../../db/txLock';
@@ -171,7 +171,7 @@ async function addSetIntern(setNumber: string, quantity: number, userId: number,
   if (!massenimport) {
     try {
       bsInfo = await brickset.getSetInfo(normalized);
-    } catch (e) { meldeUndWeiter('set-anlegen:brickset-info', e); }
+    } catch (e) { meldeFehler('set-anlegen:brickset-info', e); }
     if (bsInfo) {
       if (!name) name=bsInfo.name; if (!year) year=bsInfo.year;
       if (!theme) theme=bsInfo.theme; if (!pieces) pieces=bsInfo.pieces;
@@ -185,7 +185,7 @@ async function addSetIntern(setNumber: string, quantity: number, userId: number,
   try {
     const imgTimeout = new Promise<never>((_,rej)=>setTimeout(()=>rej(new Error('Image timeout')),15000).unref());
     localImage = await Promise.race([downloadSetImage(imageUrl, normalized), imgTimeout]);
-  } catch (e) { meldeUndWeiter('set-anlegen:bild-laden', e); }
+  } catch (e) { meldeFehler('set-anlegen:bild-laden', e); }
   if (localImage) generateThumb(localImage).catch(logAndContinue('set-anlegen:vorschau'));
   // Kein Fang: Der Katalog ist die einzige Stelle mit Name, Jahr und Bild;
   // scheitert er, bricht das Erfassen mit der Meldung von Postgres ab.

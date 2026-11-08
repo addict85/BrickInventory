@@ -4,7 +4,7 @@
 import type { Request, Response, NextFunction } from 'express';
 import { nutzerId } from '../../konto/http/anmeldung';
 import { sendeFehler } from '../../infra/fehlerTexte';
-import { meldeUndWeiter } from '../../infra/fehler';
+import { meldeFehler } from '../../infra/fehler';
 import * as dienst from '../dienst';
 import { routeFuerAnfrage } from '../../vertrag';
 import { nichtWiederholbar } from '../../vertrag/grund';
@@ -44,13 +44,13 @@ export async function idempotenz(req: Request, res: Response, next: NextFunction
   res.json = (rumpf: unknown) => {
     gemerkt = true;
     void dienst.beende(uid, schluessel, res.statusCode, geheim ? null : JSON.stringify(rumpf))
-      .catch((e: unknown) => meldeUndWeiter('idempotenz:merken', e))
+      .catch((e: unknown) => meldeFehler('idempotenz:merken', e))
       .finally(() => json(rumpf));
     return res;
   };
   // Keine JSON-Antwort (Datei, Strom): nichts zu wiederholen, der Schlüssel wird frei.
   res.on('finish', () => {
-    if (!gemerkt) dienst.gibFrei(uid, schluessel).catch((e: unknown) => meldeUndWeiter('idempotenz:freigeben', e));
+    if (!gemerkt) dienst.gibFrei(uid, schluessel).catch((e: unknown) => meldeFehler('idempotenz:freigeben', e));
   });
   next();
 }

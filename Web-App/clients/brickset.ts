@@ -2,7 +2,7 @@
 
 import { holeHttps, auszug } from '../src/infra/abruf';
 import { zugang } from './zugang';
-import { fehlertext, meldeUndLiefere, meldeUndWeiter } from '../src/infra/fehler';
+import { fehlertext, meldeUndLiefere, meldeFehler } from '../src/infra/fehler';
 import { alsAbrufFehler } from './abrufFehler';
 import { mitVersion } from '../src/infra/setNummer';
 
@@ -108,7 +108,7 @@ async function checkRateLimit(setNumber: string) {
     return true;
   } catch (e) {
     // Lässt sich das Kontingent nicht lesen, wird gefragt: lieber ein Abruf zu viel als ein falsches „voll“.
-    meldeUndWeiter('brickset:kontingent', e);
+    meldeFehler('brickset:kontingent', e);
     return true;
   }
 }

@@ -1,7 +1,7 @@
 /** Der Preislauf holt die Marktpreise ohnehin; hier fehlte nur der Schritt,
  * eine Schwelle damit zu vergleichen. Ein Alarm gehört EINEM Konto.
  * Ausführlich: docs/begruendungen/src/finanzen/preisalarm.ts.md#abschnitt */
-import { meldeUndLiefere, meldeUndWeiter, fehlertext } from '../infra/fehler';
+import { meldeUndLiefere, meldeFehler, fehlertext } from '../infra/fehler';
 import { scopeIds } from '../haushalt/haushalt';
 import { fehlerWerfen } from '../infra/fehlerTexte';
 import * as mailer from '../mail/mailer';
@@ -76,7 +76,7 @@ export async function loescheAlarm(userId: number, setNumber: string, condition:
 
 export async function alarmeFuer(userId: number, setNumber: string): Promise<Preisalarm[]> {
   const rows = await repo.alarmeDesSets(userId, setNumber, await scopeIds(userId))
-    .catch(e => { meldeUndWeiter('preisalarm:lesen', e); return []; });
+    .catch(e => { meldeFehler('preisalarm:lesen', e); return []; });
   type Zeile = Omit<Preisalarm, 'schwelle' | 'zuletzt_preis'> &
                { schwelle: string | number; zuletzt_preis: string | number | null };
   return (rows as Zeile[] || []).map(r => ({
@@ -105,7 +105,7 @@ export async function alleAlarme(userId: number): Promise<AlarmMitName[]> {
   // eigenen Konto.
   const blickfeld = await scopeIds(userId);
   const rows = await repo.alarmeImBlickfeld(userId, blickfeld)
-    .catch(e => { meldeUndWeiter('preisalarm:alle', e); return []; });
+    .catch(e => { meldeFehler('preisalarm:alle', e); return []; });
   type Zeile = Omit<AlarmMitName, 'schwelle' | 'zuletzt_preis'> &
                { schwelle: string | number; zuletzt_preis: string | number | null };
   return (rows as Zeile[] || []).map(r => ({
@@ -134,7 +134,7 @@ export async function ausgeloesteSeit(userId: number, seit: unknown) {
   if (!marke || Number.isNaN(marke.getTime())) return { alerts: [], now: jetzt };
 
   const rows = await repo.alarmeDesKontos(userId, marke, await scopeIds(userId))
-    .catch(e => { meldeUndWeiter('preisalarm:abholen', e); return []; });
+    .catch(e => { meldeFehler('preisalarm:abholen', e); return []; });
 
   type Zeile = { set_number: string; condition: string; richtung: Richtung;
                  schwelle: string | number; currency_code: string; ausgeloest: boolean; besitzt: boolean;
@@ -170,12 +170,12 @@ export async function pruefeSet(setNumber: string,
   const alarme = await repo.alleAktivenAlarme(setNumber)
     // Gemeldet, nicht verschluckt: Sonst sähe man nur, dass keine Mails kommen,
     // und suchte den Fehler beim SMTP-Server.
-    .catch(e => { meldeUndWeiter('preisalarm:alarme-lesen', e); return []; });
+    .catch(e => { meldeFehler('preisalarm:alarme-lesen', e); return []; });
   if (!alarme?.length) return 0;
   let verschickt = 0;
   for (const a of alarme as AlarmZeile[]) {
     const preisZeile = await repo.cachePreisFuerAlarm(a.set_number, a.condition, a.currency_code)
-      .catch(e => { meldeUndWeiter('preisalarm:preis-lesen', e); return null; });
+      .catch(e => { meldeFehler('preisalarm:preis-lesen', e); return null; });
     const preis = preisZeile?.avg_price == null ? null : parseFloat(String(preisZeile.avg_price));
     // Kein Preis in DIESER Währung: Der Alarm bleibt, der Merker auch.
     if (preis == null || !(preis > 0)) continue;
@@ -187,7 +187,7 @@ export async function pruefeSet(setNumber: string,
       // Zurück auf die andere Seite — der nächste Übergang meldet wieder.
       if (a.ausgeloest) {
         await repo.setzeAlarmZurueck(a.user_id, a.set_number, a.condition)
-          .catch(e => meldeUndWeiter('preisalarm:merker-loeschen', e));
+          .catch(e => meldeFehler('preisalarm:merker-loeschen', e));
       }
       continue;
     }
@@ -199,14 +199,14 @@ export async function pruefeSet(setNumber: string,
         verschickt++;
       } catch (e) {
         // Merker NICHT setzen — beim nächsten Lauf erneut versuchen.
-        meldeUndWeiter('preisalarm:versand', e);
+        meldeFehler('preisalarm:versand', e);
         continue;
       }
     }
     await repo.loeseAlarmAus(a.user_id, a.set_number, a.condition, preis)
       // Ungesetzt meldet der nächste Lauf dieselbe Schwelle noch einmal — lästig,
       // aber besser als stumm.
-      .catch(e => meldeUndWeiter('preisalarm:merker-setzen', e));
+      .catch(e => meldeFehler('preisalarm:merker-setzen', e));
   }
   return verschickt;
 }

@@ -1,7 +1,7 @@
 /** Asynchron: Die Route stellt nur einen Auftrag ein; Bilder holt und zeichnet
  * der Job-Prozess in einem eigenen Faden, damit der Web-Prozess frei bleibt.
  * Ausführlich: docs/begruendungen/routes/api_v1/pdf.ts.md#abschnitt */
-import { meldeUndWeiter, meldeUndLiefere, ohneFehlendeDatei } from '../../src/infra/fehler';
+import { meldeFehler, meldeUndLiefere, ohneFehlendeDatei } from '../../src/infra/fehler';
 import { fehlerAntwort, streamFileToResponse } from '../../src/http/httpAntwort';
 import { requireToken, kontoSchranke } from './middleware';
 import { registerSse } from '../../src/http/sseRegistry';
@@ -136,7 +136,7 @@ router.get('/sets/partslist-pdf/download/:jobId', requireToken, async (req: Anfr
   // den Prozess. Aufgeräumt wird nur nach vollständiger Auslieferung.
   streamFileToResponse(res, pdfPath, () => {
     _pdfFs.unlink(pdfPath).catch(ohneFehlendeDatei('pdf:datei loeschen'));
-    loescheAuftrag(jobId).catch((e: unknown) => meldeUndWeiter('pdf:auftrag-loeschen', e));
+    loescheAuftrag(jobId).catch((e: unknown) => meldeFehler('pdf:auftrag-loeschen', e));
   }, req);
 });
 

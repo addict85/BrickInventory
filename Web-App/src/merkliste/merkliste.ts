@@ -12,7 +12,7 @@ import * as V from '../infra/validate';
 import { fehlerWerfen } from '../infra/fehlerTexte';
 import { geldEingabe } from '../infra/geld';
 import { nutzerStandardZustand, getSetting } from '../einstellungen/settings';
-import { meldeUndWeiter, meldeUndLiefere, oeffentlicherFehler } from '../infra/fehler';
+import { meldeFehler, meldeUndLiefere, oeffentlicherFehler } from '../infra/fehler';
 import { fuerSet } from '../katalog/preisvergleich';
 import { resolveIfExists } from '../katalog/bilder/images';
 import { toCsv, csvZeilenAusAnfrage, parseCsvDate } from '../infra/csvExport';
@@ -111,7 +111,7 @@ export async function verschiebeMerkposten(
   const verschoben = (r.changes ?? 0) > 0;
   // Den Alarm NUR mitnehmen, wenn der Merkposten wirklich gewandert ist.
   if (verschoben) {
-    await repo.uebertrageAlarm(zuId, vonId, sn, c).catch((e: unknown) => meldeUndWeiter('merkliste:alarm-umhaengen', e));
+    await repo.uebertrageAlarm(zuId, vonId, sn, c).catch((e: unknown) => meldeFehler('merkliste:alarm-umhaengen', e));
   }
   return { verschoben, zusammengefuehrt: false };
 }
