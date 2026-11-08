@@ -28,8 +28,14 @@ src/infra/              fachfreie Helfer
 ```
 
 - SQL steht nur in `src/<bereich>/repository*` und `db/`.
-- Routen importieren nichts aus `db/`, `jobs/` oder `clients/`; sie fangen
-  keine Fehler, der Fehlerweg des Routers antwortet.
+- Routen importieren nichts aus `db/`, `jobs/` oder `clients/`. Sie umhüllen
+  nichts mit `try/catch`; der Fehlerweg des Routers antwortet. Ein `.catch(…)`
+  gibt es nur dort, wo die Antwort einen Ersatzwert braucht (etwa der Token
+  beim Anmelden in `routes/auth.ts`: ohne Token ein eigener Fehlercode).
+- Express kennen nur die Routen, `server.ts`, `src/infra` (Fehlerweg, Herkunft,
+  Dateiauslieferung) und die HTTP-Seiten der Bereiche unter `src/<bereich>/http/`
+  (Anmeldung und Sitzung in `konto`, Bild-Proxy in `katalog`, Idempotenz-
+  Middleware). Fachdienste importieren weder Express noch eine HTTP-Seite.
 - Clients erreicht man nur über `src/katalog/quellen.ts`; Schlüssel und
   Kontingent bekommen sie dort übergeben (`clients/zugang.ts`).
 - Eine Transaktion (`db.transaction`) gilt für den ganzen Aufrufpfad, auch
