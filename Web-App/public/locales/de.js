@@ -936,6 +936,7 @@ window.I18N_DE = {
   'finance.chart.kaufpreis': 'Kaufpreis',
   'finance.chart.einstand_basis': 'Kaufpreis (nur bewertete Posten)',
   'finance.stat.value': 'Marktwert',
+  'finance.stat.offline': 'Keine Verbindung',
   'finance.stat.value_hint': 'Zum mittleren BrickLink-Preis',
   'finance.stat.value_basis': 'Marktwert der bewerteten Posten',
   'finance.stat.value_von': 'von {betrag} Marktwert insgesamt',

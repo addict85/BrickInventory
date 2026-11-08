@@ -353,7 +353,11 @@ function finanzenFehlen(d) {
   if (!_letzteKurve) setzeHtml(G('portfolio-chart'), html`<p class="fehler-zustand text-mut">${tRaw('chart.unavailable')}</p>`);
   if (!G('fin-sum').dataset.geladen) {
     G('fin-sum').removeAttribute('aria-busy');
-    for (const id of KENNZAHLEN) G(id).textContent = '—';
+    // Fehlt die Verbindung, sagen die Karten es selbst: Das gelbe Band und der Fehlerblock stehen weit weg.
+    for (const id of KENNZAHLEN) {
+      if (d?.networkError) setzeHtml(G(id), html`<span class="fval-hinweis">${tRaw('finance.stat.offline')}</span>`);
+      else G(id).textContent = '—';
+    }
   }
 }
 

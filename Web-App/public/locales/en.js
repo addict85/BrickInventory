@@ -923,6 +923,7 @@ window.I18N_EN = {
   'finance.chart.kaufpreis': 'Purchase price',
   'finance.chart.einstand_basis': 'Purchase price (valued items only)',
   'finance.stat.value': 'Market value',
+  'finance.stat.offline': 'No connection',
   'finance.stat.value_hint': 'At the average BrickLink price',
   'finance.stat.value_basis': 'Market value of priced items',
   'finance.stat.value_von': 'of {betrag} total market value',

@@ -110,6 +110,26 @@ test('offline: Das Diagramm sagt „nicht verfügbar“ mit Grund und Knopf stat
   } finally { w.close(); }
 });
 
+// Gegenprobe (08.11.2026): in finanzenFehlen() wieder immer „—“ → rot (Karten zeigten „—“ statt „Keine Verbindung“);
+// ein Serverfehler (500) statt Netzausfall zeigt weiter „—“, weil dort keine Verbindung fehlt.
+test('offline: Die Kennzahl-Karten der Finanzen sagen „Keine Verbindung“ statt „—“', async () => {
+  const netzweg = () => { throw new TypeError('Failed to fetch'); };
+  for (const [sprache, soll] of [['de', 'Keine Verbindung'], ['en', 'No connection']]) {
+    const { w, d } = await oeffneOberflaeche({ '/v1/finance/valuation': netzweg, '/v1/finance/portfolio-history': netzweg }, { sprache });
+    try {
+      await reiter(w, 'finance');
+      await warte(() => text(d.getElementById('fin-einstand')) === soll);
+      for (const id of ['fin-einstand', 'fin-wert', 'fin-total-pnl', 'portfolio-current']) assert.equal(text(d.getElementById(id)), soll, id);
+    } finally { w.close(); }
+  }
+  const { w, d } = await oeffneOberflaeche({ '/v1/finance/valuation': { $status: 500, success: false, error: 'kaputt', code: 'intern' } });
+  try {
+    await reiter(w, 'finance');
+    await warte(() => text(d.getElementById('fin-einstand')) === '—');
+    assert.equal(text(d.getElementById('fin-wert')), '—');
+  } finally { w.close(); }
+});
+
 test('Teile-Suche ohne Treffer: „Keine Treffer für …“ mit Knopf, der die Suche leert', async () => {
   const { w, d } = await oeffneOberflaeche({});
   try {
