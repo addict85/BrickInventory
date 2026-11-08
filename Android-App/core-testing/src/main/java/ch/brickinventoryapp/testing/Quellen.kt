@@ -84,7 +84,7 @@ object Quellen {
      * Netzwegs prüft, liest alle drei.
      */
     fun di(): String {
-        val dateien = alle().filter { it.parentFile.name == "di" }.sortedBy { it.name }
+        val dateien = alle().filter { it.parentFile?.name == "di" }.sortedBy { it.name }
         check(dateien.size >= 3) { "Nur ${dateien.size} Dateien in */di/ gefunden" }
         return dateien.joinToString("\n") { it.readText() }
     }
@@ -94,7 +94,7 @@ object Quellen {
      * Untergrenze, sonst prüfte ein umbenannter Ordner nichts und wäre grün.
      */
     fun zustaende(): String {
-        val dateien = alle().filter { it.parentFile.name == "ui" && it.name.startsWith("Zustand") }
+        val dateien = alle().filter { it.parentFile?.name == "ui" && it.name.startsWith("Zustand") }
             .sortedBy { it.name }
         check(dateien.size >= 5) { "Nur ${dateien.size} Zustandsdateien in */ui/ gefunden" }
         return dateien.joinToString("\n") { it.readText() }
