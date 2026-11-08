@@ -199,7 +199,8 @@
         <span id="link-register-wrap" data-stil="display:none"><span data-i18n="login.register_prompt">Neu hier?</span> <a href="#" id="link-register" data-stil="color:var(--b600);font-weight:600" data-i18n="login.register_link">Registrieren</a></span>
       </div>
       <div class="login-fuss">
-        <button type="button" class="btn bs btn-sm" id="btn-einrichtung-pruefen" hidden data-click="einrichtungPruefen" data-i18n="es.link">Erste Einrichtung prüfen</button>
+        <p class="text-klein text-mut login-fuss-hinweis" id="einrichtung-pruefen-hinweis" hidden data-i18n="es.link_hint">Frisch installiert? Hier siehst du, ob Datenbank, HTTPS, erstes Konto und Rebrickable-Schlüssel eingerichtet sind.</p>
+        <button type="button" class="btn bs btn-sm" id="btn-einrichtung-pruefen" hidden aria-describedby="einrichtung-pruefen-hinweis" data-click="einrichtungPruefen" data-i18n="es.link">Was fehlt noch zur Einrichtung?</button>
       </div>
       <div class="start-fuss" data-version></div>
       <div id="verified-msg" role="status" data-stil="display:none;margin-top:.75rem;padding:.65rem .9rem;background:var(--g50);border:1px solid var(--g300);border-radius:7px;font-size:var(--fs-2);color:var(--g700)"><span data-i18n="verify.success" data-ico="ok">E-Mail erfolgreich bestätigt. Du kannst dich jetzt anmelden.</span></div>

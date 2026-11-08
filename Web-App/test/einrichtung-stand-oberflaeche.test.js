@@ -6,6 +6,8 @@
  *   B  classList.toggle('ok', …) entfernt               → rot: „bereit steht als Text“
  *   C  `G('es-liste').hidden = !!d.erledigt` entfernt   → rot: „nach Abschluss keine Liste“
  *   D  `knopf.hidden = …konfiguriert === true` verdreht → rot: „ohne Quelle bleibt der Prüfknopf“, „mit Quelle verschwindet er“
+ *   E  die Zeile mit `hinweis.hidden = knopf.hidden` entfernt → rot: „der Stand zeigt je Prüfung …“ (der Hinweis wird nie sichtbar)
+ *   F  es.link_hint aus en.js entfernt → rot: „englisch: Knopf und Hinweis“ und „der Stand zeigt …“ (08.11.2026)
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -34,6 +36,12 @@ test('der Stand zeigt je Prüfung bereit oder fehlt', async () => {
     await ruhig();
     // Ohne hinterlegte Quelle gehört die Prüfung zur Ersteinrichtung und steht da.
     assert.equal(d.getElementById('btn-einrichtung-pruefen').hidden, false, 'ohne Quelle bleibt der Prüfknopf');
+    // Erstnutzer müssen am Knopf lesen, was geprüft wird.
+    assert.equal(d.getElementById('btn-einrichtung-pruefen').textContent.trim(), 'Was fehlt noch zur Einrichtung?');
+    const hinweis = d.getElementById('einrichtung-pruefen-hinweis');
+    assert.equal(hinweis.hidden, false, 'der Hinweis steht beim Knopf');
+    assert.match(hinweis.textContent, /Datenbank, HTTPS, erstes Konto und Rebrickable-Schlüssel/);
+    assert.equal(d.getElementById('btn-einrichtung-pruefen').getAttribute('aria-describedby'), hinweis.id);
     d.getElementById('btn-einrichtung-pruefen').click();
     await warte(() => d.getElementById('einrichtung-stand-modal').classList.contains('open'));
     await warte(() => d.querySelectorAll('#es-liste .es-zeile').length === 6);
@@ -58,6 +66,7 @@ test('mit hinterlegter Quelle verschwindet der Prüfknopf', async () => {
   try {
     await ruhig();
     assert.equal(d.getElementById('btn-einrichtung-pruefen').hidden, true, 'mit Quelle verschwindet er');
+    assert.equal(d.getElementById('einrichtung-pruefen-hinweis').hidden, true, 'mit Quelle verschwindet auch der Hinweis');
   } finally {
     w.close();
   }
@@ -71,6 +80,17 @@ test('nach Abschluss bleibt die Meldung, die Prüfliste verschwindet', async () 
     await warte(() => d.getElementById('es-banner').textContent.includes('abgeschlossen'));
     assert.equal(d.getElementById('es-liste').hidden, true, 'nach Abschluss keine Liste');
     assert.ok(d.getElementById('es-banner').classList.contains('fertig'));
+  } finally {
+    w.close();
+  }
+});
+
+test('englisch: Knopf und Hinweis', async () => {
+  const { w, d, ruhig } = await oeffneOberflaeche({ '/v1/einrichtung/stand': ANTWORT }, { angemeldet: false, sprache: 'en' });
+  try {
+    await ruhig();
+    await warte(() => d.getElementById('btn-einrichtung-pruefen').textContent.trim() === 'What is still missing in the setup?');
+    assert.match(d.getElementById('einrichtung-pruefen-hinweis').textContent, /database, HTTPS, first account and Rebrickable key/);
   } finally {
     w.close();
   }
