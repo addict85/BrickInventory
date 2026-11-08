@@ -63,7 +63,7 @@ class QuelltextRatscheTest {
 
     @Test
     fun `Testfunktionen, die Quelltext lesen, werden weniger, nie mehr`() {
-        val FUNKTIONEN = 326
+        val FUNKTIONEN = 302
         val NUR_QUELLTEXT = 53
         val alle = Quellen.tests.walkTopDown().filter { it.isFile && it.name.endsWith("Test.kt") }
             .filter { it.name != "QuelltextRatscheTest.kt" }.toList()
@@ -195,7 +195,7 @@ class QuelltextRatscheTest {
     @Test
     fun `lange Kommentare im Workflow und in Tests werden weniger`() {
         val WORKFLOW = 3
-        val TESTS = 92
+        val TESTS = 89
         val DATUM_UND_KENNUNG = 0
         val wf = File(Quellen.projekt, "../.github/workflows/android.yml").readLines()
         val wfLang = rautenBloecke(wf).filter { it.second > 5 }

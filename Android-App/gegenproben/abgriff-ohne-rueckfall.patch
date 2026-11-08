@@ -1,0 +1,17 @@
+Gegenprobe: der Abgriff springt ohne Server nicht mehr mit der Ablage ein
+Modul: core-data
+Test: ch.brickinventoryapp.data.VorschauAbgriffTest
+Rot: ohne Server kommt
+
+diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/di/NetzModule.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/di/NetzModule.kt
+--- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/di/NetzModule.kt
++++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/di/NetzModule.kt
+@@ -257,7 +257,7 @@
+         val antwort = try {
+             chain.proceed(anfrage)
+         } catch (e: java.io.IOException) {
+-            vorschauAntwort(anfrage, vorschau.lies(adresse)) ?: throw e
++            throw e
+         }
+         when {
+             antwort.isSuccessful -> {

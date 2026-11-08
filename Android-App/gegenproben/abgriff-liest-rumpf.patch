@@ -1,0 +1,17 @@
+Gegenprobe: der Abgriff liest den Rumpf selbst, statt ihn nur anzusehen
+Modul: core-data
+Test: ch.brickinventoryapp.data.VorschauAbgriffTest
+Rot: eine geholte Vorschau
+
+diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/di/NetzModule.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/di/NetzModule.kt
+--- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/di/NetzModule.kt
++++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/di/NetzModule.kt
+@@ -266,7 +266,7 @@
+                 // ihn noch. Eine Vorschau ist klein genug, um sie
+                 // nebenbei mitzunehmen.
+                 val bytes = runCatching {
+-                    antwort.peekBody(2L * 1024 * 1024).bytes()
++                    antwort.body.bytes()
+                 }.getOrNull()
+                 if (bytes != null && bytes.isNotEmpty()) {
+                     // Spekulativ oder gebraucht? Nur die Anfragen des Vorwärmers tragen

@@ -6,8 +6,8 @@ import ch.brickinventoryapp.testing.Quellen
 
 /**
  * Absicherung der Aufräumrunde: lokalisierte Service-Benachrichtigungen,
- * Status-Icon, die Teileliste ohne FileProvider und der vom api-Client
- * abgeleitete PDF-Download.
+ * Status-Icon und die Teileliste ohne FileProvider. Dass der PDF-Download über den
+ * api-Client geht, prüft AnleitungsDownloadTest ausgeführt.
  *
  * Alle Prüfungen lesen nur Quell- und Ressourcendateien.
  *
@@ -131,24 +131,6 @@ class ServicePolishTest {
             "Ohne grantUriPermissions öffnet die gewählte App die Teileliste nicht"
         }
         assert(!File(Quellen.res, "xml/file_paths.xml").exists()) { "file_paths.xml ist zurück" }
-    }
-
-    // ── PdfViewer-Client ─────────────────────────────────────────────────────
-
-    @Test
-    fun `der PdfViewer leitet seinen Client vom api-Client ab`() {
-        val pv = code(read("java/ch/brickinventoryapp/data/AnleitungsRepository.kt"))
-        assert(!pv.contains("OkHttpClient.Builder()")) {
-            "Der AnleitungsLader baut wieder einen eigenständigen OkHttpClient. Der läuft am " +
-                "DI-Interceptor vorbei: kein Bearer-Token, kein Klartext-Verbot, keine " +
-                "401-Meldung — jede dieser Regeln müsste dort von Hand nachgezogen werden."
-        }
-        assert(pv.contains(".newBuilder()")) {
-            "Der AnleitungsLader leitet den Download-Client nicht per newBuilder() ab"
-        }
-        assert(pv.contains("""@param:ApiClient""")) {
-            "Der AnleitungsLader bekommt nicht den api-Client"
-        }
     }
 
     // ── ProGuard ─────────────────────────────────────────────────────────────

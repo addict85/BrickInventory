@@ -86,18 +86,6 @@ class VerwaltungLueckenTest {
     }
 
     @Test
-    fun `nach dem Setzen wird neu geladen`() {
-        // Der Server normalisiert: „7:5" wird zu „07:05", ein Abstand unter
-        // fuenf Minuten wird auf fuenf angehoben. Ohne Nachladen stuende in der
-        // Oberflaeche, was der Nutzer getippt hat, und nicht, was gilt.
-        val vm = code(read("verwaltung/ui/viewmodel/MonitoringViewModel.kt"))
-        val ab = vm.indexOf("suspend fun setzeJobZeitplan(")
-        assert(ab > 0) { "setzeJobZeitplan fehlt" }
-        val rumpf = vm.substring(ab, minOf(ab + 300, vm.length))
-        assert(rumpf.contains("ladeJobs()")) { "Nach dem Setzen wird nicht neu geladen" }
-    }
-
-    @Test
     fun `die zwei Bilderknoepfe sind auseinanderzuhalten`() {
         // Der eine holt die Bilder des BESTANDS nach, der andere die des
         // KATALOGS. Zwei Knoepfe mit derselben Beschriftung waeren schlimmer

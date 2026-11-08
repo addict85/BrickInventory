@@ -1,0 +1,16 @@
+Gegenprobe: AppTexte.meldung() übergeht den Satz des Servers
+Modul: app
+Test: ch.brickinventoryapp.app.AppTexteTest
+Rot: der Satz des Servers
+
+diff --git a/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/zustand/ui/viewmodel/AppTexte.kt b/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/zustand/ui/viewmodel/AppTexte.kt
+--- a/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/zustand/ui/viewmodel/AppTexte.kt
++++ b/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/zustand/ui/viewmodel/AppTexte.kt
+@@ -32,7 +32,6 @@
+     override fun angemeldet() = prefs.authTokenState.value?.isNotBlank() == true
+ 
+     override fun meldung(fehler: Ergebnis.Error): String {
+-        if (fehler.message.isNotBlank()) return fehler.message
+         fehlerTextZuCode(fehler.code)?.let { return text(it) }
+         val id = fehlerTextId(fehler)
+         val satz = fehlerTextArgument(fehler)?.let { text(id, it) } ?: text(id)

@@ -1,0 +1,17 @@
+Gegenprobe: der Anleitungs-Download baut einen eigenen Client am api-Client vorbei
+Modul: core-data
+Test: ch.brickinventoryapp.data.AnleitungsDownloadTest
+Rot: ein abgerissener Download
+
+diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/AnleitungsRepository.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/AnleitungsRepository.kt
+--- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/AnleitungsRepository.kt
++++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/AnleitungsRepository.kt
+@@ -56,7 +56,7 @@
+             withContext(io) {
+                 ziel.parentFile?.mkdirs()
+                 prunePdfCache(ctx.cacheDir, keep = ziel)
+-                downloadPdfWithResume(url, ziel, ladeClient(httpClient), einmalig, fortschritt)
++                downloadPdfWithResume(url, ziel, ladeClient(OkHttpClient()), einmalig, fortschritt)
+             }
+         }
+ 

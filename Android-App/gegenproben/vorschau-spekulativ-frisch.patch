@@ -1,0 +1,17 @@
+Gegenprobe: ein vorgewärmtes Bild bekommt einen frischen Zeitstempel
+Modul: core-data
+Test: ch.brickinventoryapp.data.VorschauSpeicherTest
+Rot: vorgewaermtes Bild fliegt
+
+diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/cache/VorschauSpeicher.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/cache/VorschauSpeicher.kt
+--- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/cache/VorschauSpeicher.kt
++++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/cache/VorschauSpeicher.kt
+@@ -124,8 +124,6 @@
+             val temp = File(ordner, "${ziel.name}.tmp")
+             temp.writeBytes(chiffre.verschluessle(bytes, bindung(ziel)))
+             if (!temp.renameTo(ziel)) temp.delete()
+-            // Vorgewaermtes altert sofort — Begruendung an SPEKULATIV_ZEIT.
+-            else if (spekulativ) ziel.setLastModified(SPEKULATIV_ZEIT)
+         }
+         aufraeumenFallsNoetig()
+     }

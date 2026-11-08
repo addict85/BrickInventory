@@ -21,9 +21,10 @@ import ch.brickinventoryapp.testing.Quellen
  * wie das schiefgehen kann; faellt eine weg, faellt sie lautlos weg.
  *
  * Zwei der Pruefungen fuehren echten Code aus (istNeuer, istErlaubteApkAdresse
- * sind reine Funktionen). Die uebrigen lesen Quelltext: Verdrahtung, Netzkonfig
- * und Obergrenzen. Signatur, Prüfsumme, Fassung, Angebot und stille Prüfung des
- * UpdateViewModels prüft UpdateViewModelTest ausgeführt.
+ * sind reine Funktionen). Die uebrigen lesen Quelltext: Verdrahtung und Netzkonfig.
+ * Ausgeführt prüfen UpdateViewModelTest (Signatur, Prüfsumme, Angebot, „Später“),
+ * UpdateLaderTest (Obergrenzen), UpdateClientTest (der blanke Client) und
+ * UpdateDialogTest (geladen wird erst auf den Klick).
  */
 class SelbstUpdateTest {
 
@@ -143,23 +144,6 @@ class SelbstUpdateTest {
     }
 
     @Test
-    fun `der Update-Client traegt keinen Token`() {
-        val di = Quellen.ohneKommentare(Quellen.di())
-        val ab = di.indexOf("fun provideUpdateOkHttpClient()")
-        assert(ab > 0) { "Es gibt keinen eigenen Client fuer die Aktualisierung mehr" }
-        val bis = di.indexOf("@Provides", ab + 10).let { if (it < 0) di.length else it }
-        val block = di.substring(ab, bis)
-        assert(!block.contains("buildInterceptorClient")) {
-            "Der Update-Client geht ueber buildInterceptorClient — der kennt unseren " +
-                "Server, unseren Bearer-Token und unsere Anzeigesprache. Nichts davon " +
-                "geht GitHub etwas an."
-        }
-        assert(!block.contains("Authorization")) {
-            "Der Update-Client setzt einen Authorization-Kopf"
-        }
-    }
-
-    @Test
     fun `die Aktualisierung vertraut nur System-Zertifikaten`() {
         // Von GitHub kommt ein APK: nur System-CAs, kein Klartext.
         val cfg = File(Quellen.res, "xml/network_security_config.xml").readText()
@@ -186,50 +170,6 @@ class SelbstUpdateTest {
         val basis = cfg.substring(cfg.indexOf("<base-config"))
         assert(!basis.contains("""src="user"""")) {
             "Die base-config vertraut wieder jeder nutzerinstallierten CA"
-        }
-    }
-
-    @Test
-    fun `der Update-Client folgt keiner Umleitung von https auf http`() {
-        val di = Quellen.ohneKommentare(Quellen.di())
-        val ab = di.indexOf("fun provideUpdateOkHttpClient()")
-        assert(ab > 0) { "Es gibt keinen eigenen Client fuer die Aktualisierung mehr" }
-        val bis = di.indexOf("@Provides", ab + 10).let { if (it < 0) di.length else it }
-        assert(di.substring(ab, bis).contains("followSslRedirects(false)")) {
-            "Der Update-Client folgt wieder einer Umleitung von https auf http. " +
-                "Der Wechsel des HOSTS bleibt erlaubt (github.com -> " +
-                "githubusercontent.com) — verboten ist nur der Wechsel des Schemas."
-        }
-    }
-
-    @Test
-    fun `beide Abrufe haben eine Obergrenze`() {
-        val hilfe = quelle("update/util/AppUpdate.kt")
-        assert(hilfe.contains("const val UPDATE_MAX_BYTES") &&
-               hilfe.contains("const val UPDATE_JSON_MAX_BYTES")) {
-            "Die Obergrenzen sind nicht mehr benannt"
-        }
-        val feature = quelle("update/data/UpdateRepository.kt")
-        // version.json: peekBody liest HOECHSTENS so viele Bytes.
-        assert(feature.contains("peekBody(UPDATE_JSON_MAX_BYTES)")) {
-            "version.json wird wieder unbegrenzt gelesen — dann bringt eine manipulierte " +
-                "Antwort die App um, ohne je ein APK anfassen zu muessen."
-        }
-        // Das APK: die feste Grenze UND die angekuendigte Groesse. Die
-        // Ankuendigung allein genuegt nicht — sie stammt aus version.json und
-        // ist genau das, dem hier nicht vertraut wird.
-        assert(feature.contains("UPDATE_MAX_BYTES")) {
-            "Der APK-Download kennt keine feste Obergrenze mehr"
-        }
-        assert(feature.contains("if (geladen > obergrenze)")) {
-            "Der Download bricht nicht mehr ab, wenn mehr kommt als erlaubt"
-        }
-        // Abbruch VOR dem Schreiben — sonst liegt das Zuviel schon auf der Platte.
-        val schreiben = feature.indexOf("aus.write(puffer, 0, n)")
-        val pruefen = feature.indexOf("if (geladen > obergrenze)")
-        assert(pruefen in 1 until schreiben) {
-            "Die Grenze wird erst NACH dem Schreiben geprueft — dann liegt das Zuviel " +
-                "bereits auf der Platte."
         }
     }
 
@@ -305,10 +245,8 @@ class SelbstUpdateTest {
     // (mit Updaten, Ja/Nein), wenn es eine neue Version gibt? Aktuell wird nur
     // eine Kugel in den Einstellungen angezeigt was oft übersehen wird."
     //
-    // Der Punkt am Konto-Symbol war die vorige Antwort auf dieselbe Frage
-    // („ich sehe kein Update") und hat sie nur halb beantwortet. Diese drei
-    // Regeln halten fest, was der Dialog leisten muss und was er NICHT tun
-    // darf — der zweite Teil ist der wichtigere.
+    // Was der Dialog tut und NICHT tut (laden ohne Klick), prüft UpdateDialogTest
+    // gezeichnet; hier steht nur, dass er über der ganzen App hängt.
 
     @Test
     fun `der Dialog haengt ueber der ganzen App, nicht an einem Bildschirm`() {
@@ -317,55 +255,6 @@ class SelbstUpdateTest {
             "Der Update-Hinweis wird nirgends gezeigt. In einem einzelnen Bildschirm " +
                 "aufgerufen bekaeme ihn nur, wer ohnehin dort sitzt — genau der Fehler, " +
                 "den der Punkt in den Einstellungen schon einmal hatte."
-        }
-    }
-
-    /**
-     * Geladen wird NIE von allein.
-     *
-     * Marcos urspruengliche Vorgabe („beim Start still pruefen, nie von allein
-     * laden") gilt weiter; der Dialog ersetzt nur den Teil „nicht draengen".
-     * Ein Aufruf von ladeUpdate() ausserhalb eines Klicks waere die
-     * Verletzung, die sich am leichtesten einschleicht — etwa in einem
-     * LaunchedEffect, der es „bequemer" macht.
-     */
-    @Test
-    fun `nur ein Klick loest das Laden aus`() {
-        val dialog = Quellen.ohneKommentare(Quellen.lies("konto/ui/dialogs/UpdateDialog.kt"))
-        assert(dialog.contains("onClick = { selbstUpdate.ladeUpdate() }")) {
-            "Der Dialog bietet das Laden nicht als Klick an"
-        }
-        assert(!dialog.contains("LaunchedEffect")) {
-            "Im Update-Dialog steht ein LaunchedEffect. Von dort ist es ein Schritt " +
-                "zum Laden ohne Zutun — und genau das war nie erlaubt."
-        }
-        // Und der Start stoesst weiterhin nur die PRUEFUNG an.
-        val nav = Quellen.ohneKommentare(Quellen.lies("app/AppNavigation.kt"))
-        assert(nav.contains("selbstUpdate.pruefeBeimStart()")) {
-            "Die stille Pruefung beim Start ist weg"
-        }
-        assert(!nav.contains("ladeUpdate")) {
-            "AppNavigation.kt laedt das Update selbst — beim Start wird gefragt, nicht geladen"
-        }
-    }
-
-    /**
-     * „Spaeter" wirkt, und zwar genau so weit wie versprochen.
-     *
-     * Ohne das Merken erschiene der Dialog bei jedem Reiterwechsel neu — aus
-     * einem Hinweis wuerde eine Sperre. Gemerkt wird im Zustand und damit fuer
-     * diesen App-Lauf; beim naechsten Start fragt er wieder, sonst waere er so
-     * leicht zu uebersehen wie der Punkt, den er ergaenzt.
-     */
-    @Test
-    fun `Spaeter wird gemerkt, aber nicht dauerhaft`() {
-        val zustand = Quellen.ohneKommentare(Quellen.lies("konto/ui/ZustandKonto.kt"))
-        assert(zustand.contains("val dialogAbgelehnt: Boolean = false")) {
-            "UpdateUiState merkt sich das Wegklicken nicht"
-        }
-        val dialog = Quellen.ohneKommentare(Quellen.lies("konto/ui/dialogs/UpdateDialog.kt"))
-        assert(dialog.contains("if (zustand.dialogAbgelehnt) return")) {
-            "Der Dialog fragt trotz „Spaeter\" weiter"
         }
     }
 }

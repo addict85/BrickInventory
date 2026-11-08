@@ -1,0 +1,16 @@
+Gegenprobe: saveAppTheme schreibt den synchron lesbaren Spiegel nicht
+Modul: core-data
+Test: ch.brickinventoryapp.data.DesignAblageTest
+Rot: das gemerkte Design ist beim naechsten Start
+
+diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/GeraeteAblage.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/GeraeteAblage.kt
+--- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/GeraeteAblage.kt
++++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/GeraeteAblage.kt
+@@ -205,7 +205,6 @@
+             // Und in den synchron lesbaren Spiegel, siehe gemerktesDesign().
+             // Beides an EINER Stelle, damit die zwei Ablagen nicht
+             // auseinanderlaufen koennen.
+-            designSpiegel.edit { putString(APP_THEME_SPIEGEL, theme) }
+         }
+     }
+ 

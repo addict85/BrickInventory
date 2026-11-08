@@ -1,0 +1,16 @@
+Gegenprobe: nach dem Setzen eines Zeitplans wird nicht neu geholt
+Modul: feature-verwaltung
+Test: ch.brickinventoryapp.verwaltung.MonitoringNachladenTest
+Rot: nach dem Setzen eines Zeitplans
+
+diff --git a/Android-App/feature-verwaltung/src/main/java/ch/brickinventoryapp/verwaltung/ui/viewmodel/MonitoringViewModel.kt b/Android-App/feature-verwaltung/src/main/java/ch/brickinventoryapp/verwaltung/ui/viewmodel/MonitoringViewModel.kt
+--- a/Android-App/feature-verwaltung/src/main/java/ch/brickinventoryapp/verwaltung/ui/viewmodel/MonitoringViewModel.kt
++++ b/Android-App/feature-verwaltung/src/main/java/ch/brickinventoryapp/verwaltung/ui/viewmodel/MonitoringViewModel.kt
+@@ -271,7 +271,6 @@
+      */
+     override suspend fun setzeJobZeitplan(name: String, zeit: String?, minuten: Int?): Boolean {
+         val ok = verwaltung.setJobSchedule(name, zeit, minuten) is Ergebnis.Success
+-        if (ok) ladeJobs()
+         return ok
+     }
+ 

@@ -1,0 +1,17 @@
+Gegenprobe: die Update-Beschreibung wird unbegrenzt gelesen
+Modul: core-update
+Test: ch.brickinventoryapp.update.UpdateLaderTest
+Rot: die Beschreibung wird hoechstens
+
+diff --git a/Android-App/core-update/src/main/java/ch/brickinventoryapp/update/data/UpdateRepository.kt b/Android-App/core-update/src/main/java/ch/brickinventoryapp/update/data/UpdateRepository.kt
+--- a/Android-App/core-update/src/main/java/ch/brickinventoryapp/update/data/UpdateRepository.kt
++++ b/Android-App/core-update/src/main/java/ch/brickinventoryapp/update/data/UpdateRepository.kt
+@@ -49,7 +49,7 @@
+         abrufen(UPDATE_VERSION_URL).use { antwort ->
+             // peekBody liest höchstens so viel: Eine manipulierte Antwort soll die App nicht
+             // umbringen, ohne je ein APK anfassen zu müssen.
+-            antwort.peekBody(UPDATE_JSON_MAX_BYTES).string()
++            antwort.body.string()
+         }
+     }
+ 

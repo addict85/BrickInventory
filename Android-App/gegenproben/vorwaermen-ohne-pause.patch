@@ -1,0 +1,16 @@
+Gegenprobe: zwischen den Schüben des Vorwärmens keine Pause
+Modul: core-data
+Test: ch.brickinventoryapp.data.VorschauVorwaermerTest
+Rot: zwischen den Schueben
+
+diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/cache/VorschauVorwaermer.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/cache/VorschauVorwaermer.kt
+--- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/cache/VorschauVorwaermer.kt
++++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/cache/VorschauVorwaermer.kt
+@@ -103,7 +103,6 @@
+             // Argument wie bei der Grenze eine Zeile darueber.
+             if (!netzErlaubt()) return
+             coroutineScope { schub.map { async { hole(it) } }.awaitAll() }
+-            delay(PAUSE_MS)
+         }
+     }
+ 

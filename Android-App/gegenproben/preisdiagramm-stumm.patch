@@ -1,0 +1,17 @@
+Gegenprobe: der Canvas des Preisdiagramms trägt keine Beschreibung
+Modul: app
+Test: ch.brickinventoryapp.app.PreisdiagrammBeschreibungTest
+Rot: das Preisdiagramm beschreibt
+
+diff --git a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/screens/SetDetailComponents.kt b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/screens/SetDetailComponents.kt
+--- a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/screens/SetDetailComponents.kt
++++ b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/screens/SetDetailComponents.kt
+@@ -178,7 +178,7 @@
+     val randOben = with(androidx.compose.ui.platform.LocalDensity.current) {
+         (MaterialTheme.typography.labelSmall.lineHeight.toPx() / 2)
+     }
+-    Canvas(modifier = Modifier.weight(1f).fillMaxHeight().semantics { contentDescription = beschreibung }) {
++    Canvas(modifier = Modifier.weight(1f).fillMaxHeight()) {
+         val w = size.width
+         val h = size.height
+         // So weit eingerückt wie die halbe Zeile der Achsenbeschriftung: Die Linien
