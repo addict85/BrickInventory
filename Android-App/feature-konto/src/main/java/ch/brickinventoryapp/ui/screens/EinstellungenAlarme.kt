@@ -216,7 +216,7 @@ private fun AlarmAnlegen(aktionen: EinstellungenAktionen) {
     OutlinedTextField(
         value = nummer, onValueChange = { nummer = NumericInput.setNumber(it) },
         label = { Text(stringResource(R.string.gallery_set_number)) }, singleLine = true,
-        keyboardOptions = NumericInput.ganzzahlTastatur(), shape = Formen.feld,
+        keyboardOptions = NumericInput.setnummerTastatur(), shape = Formen.feld,
         modifier = Modifier.widthIn(max = BETRAG_BREITE).fillMaxWidth(),
     )
     Zustandszeile(zustand = zustand, onZustand = { zustand = it }, modifier = Modifier.widthIn(max = BETRAG_BREITE))

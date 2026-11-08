@@ -1,6 +1,7 @@
 package ch.brickinventoryapp.ui.screens
 
 import ch.brickinventoryapp.ui.theme.farbeAusHex
+import ch.brickinventoryapp.ui.erfassungUngueltig
 import ch.brickinventoryapp.ui.erfassungsWerte
 import ch.brickinventoryapp.ui.model.MitgliedAnsicht
 import ch.brickinventoryapp.ui.theme.Formen
@@ -55,7 +56,7 @@ fun AddPartDialog(
     }
 
     fun submit() {
-        if (partNumber.isNotBlank()) {
+        if (partNumber.isNotBlank() && !erfassungUngueltig(quantity, unitPrice)) {
             // Die Umrechnung steht in erfassungsWerte() — dieselbe wie im
             // Figuren-Dialog. Was ein leeres Feld bedeutet, ist eine
             // Entscheidung und keine Formalie; sie gehoert an eine Stelle.

@@ -36,6 +36,7 @@ import ch.brickinventoryapp.ui.theme.Abstaende
 import ch.brickinventoryapp.ui.components.stueckzahl
 import ch.brickinventoryapp.ui.components.vorgelesenAls
 import ch.brickinventoryapp.ui.components.MitTooltip
+import ch.brickinventoryapp.ui.components.ansagen
 import ch.brickinventoryapp.ui.components.ProduktBild
 import ch.brickinventoryapp.ui.components.bewegungReduziert
 import ch.brickinventoryapp.ui.components.grosseSchrift
@@ -262,6 +263,8 @@ fun ErfassungsFelder(
     OutlinedTextField(
         value = anzahl, onValueChange = { onAnzahl(NumericInput.quantity(it)) },
         label = { Text(stringResource(R.string.common_quantity)) },
+        isError = NumericInput.mengeUngueltig(anzahl),
+        supportingText = { if (NumericInput.mengeUngueltig(anzahl)) Text(stringResource(R.string.erfassen_menge_ungueltig), Modifier.ansagen()) },
         modifier = Modifier.fillMaxWidth(), singleLine = true,
         shape = Formen.feld,
         keyboardOptions = NumericInput.ganzzahlTastatur(),
@@ -270,6 +273,8 @@ fun ErfassungsFelder(
         value = preis, onValueChange = { onPreis(NumericInput.price(it)) },
         label = { Text(stringResource(R.string.common_unit_price)) },
         placeholder = { Text(stringResource(R.string.common_unit_price_placeholder)) },
+        isError = NumericInput.preisUngueltig(preis),
+        supportingText = { if (NumericInput.preisUngueltig(preis)) Text(stringResource(R.string.erfassen_preis_ungueltig), Modifier.ansagen()) },
         modifier = Modifier.fillMaxWidth(), singleLine = true,
         shape = Formen.feld,
         keyboardOptions = NumericInput.preisTastatur(),

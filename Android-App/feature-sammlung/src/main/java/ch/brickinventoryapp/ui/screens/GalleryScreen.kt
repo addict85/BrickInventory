@@ -809,9 +809,10 @@ fun AddSetDialog(
         if (setNumber.isBlank()) {
             nummerFehlt = true
             if (sofortFokus) try { setFeldFokus.requestFocus() } catch (_: Exception) { /* Dialog schon zu */ }
-        } else {
+        } else if (!erfassungUngueltig(quantity, purchasePrice)) {
+            // Bei unlesbarer Menge oder unlesbarem Preis bleibt der Dialog offen; die Felder zeigen den Fehler.
             onAdd(setNumber, quantity.toIntOrNull() ?: 1,
-                  purchasePrice.replace(',', '.').toDoubleOrNull(), condition,
+                  NumericInput.leseBetrag(purchasePrice), condition,
                   // Ohne Haushalt gar nichts mitschicken — der Server bleibt
                   // dann beim eigenen Konto.
                   if (householdMembers.size > 1) owner else null,
@@ -842,12 +843,14 @@ fun AddSetDialog(
             },
             modifier = Modifier.fillMaxWidth().focusRequester(setFeldFokus), singleLine = true,
             shape = Formen.feld,
-            keyboardOptions = NumericInput.ganzzahlTastatur()
+            keyboardOptions = NumericInput.setnummerTastatur()
         )
         OutlinedTextField(
             value = quantity,
             onValueChange = { quantity = NumericInput.quantity(it) },
             label = { Text(stringResource(R.string.common_quantity)) },
+            isError = NumericInput.mengeUngueltig(quantity),
+            supportingText = { if (NumericInput.mengeUngueltig(quantity)) Text(stringResource(R.string.erfassen_menge_ungueltig), Modifier.ansagen()) },
             modifier = Modifier.fillMaxWidth(), singleLine = true,
             shape = Formen.feld,
             keyboardOptions = NumericInput.ganzzahlTastatur()
@@ -857,6 +860,8 @@ fun AddSetDialog(
             onValueChange = { purchasePrice = NumericInput.price(it) },
             label = { Text(stringResource(R.string.gallery_purchase_price)) },
             placeholder = { Text(stringResource(R.string.common_unit_price_placeholder)) },
+            isError = NumericInput.preisUngueltig(purchasePrice),
+            supportingText = { if (NumericInput.preisUngueltig(purchasePrice)) Text(stringResource(R.string.erfassen_preis_ungueltig), Modifier.ansagen()) },
             modifier = Modifier.fillMaxWidth(), singleLine = true,
             shape = Formen.feld,
             keyboardOptions = NumericInput.preisTastatur(),

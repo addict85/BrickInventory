@@ -39,6 +39,8 @@ import java.io.File
  *   L  gegenproben/netz-haengt-an-ablage.patch: core-netz bindet Room ein →
  *      rot „core-netz hängt an Ablage oder DI“ (Schichtung der Kernmodule);
  *      erst die CI misst es, lokal gibt es kein Gradle
+ *   M  gegenproben/merge-rest-im-baum.patch: eine Datei `Rest.kt.orig` im Baum →
+ *      rot „kein Merge-Rest liegt im Baum“ (jeder Modulordner ist eingebunden …)
  */
 class ModulgrenzenTest {
 
@@ -58,7 +60,12 @@ class ModulgrenzenTest {
         abhaengigkeiten(bau).filter { !it.konfiguration.startsWith("test") }.map { it.ziel }.toSet()
 
     @Test
-    fun `jeder Modulordner ist eingebunden und jedes eingebundene Modul gibt es`() {
+    fun `jeder Modulordner ist eingebunden, jedes eingebundene Modul gibt es, und kein Merge-Rest liegt im Baum`() {
+        // Eine .orig/.rej wird nie kompiliert, zählt aber für jede Suche über den Baum mit.
+        val reste = projekt.parentFile.walkTopDown()
+            .onEnter { it.name !in setOf(".git", ".claude", ".gradle", "build", "node_modules") }
+            .filter { it.isFile && it.extension in setOf("orig", "rej") }.map { it.relativeTo(projekt.parentFile).path }.toList()
+        assertTrue("Merge-Reste im Baum, löschen: $reste", reste.isEmpty())
         val eingebunden = Regex("""include\("(:[\w-]+)"\)""")
             .findAll(File(projekt, "settings.gradle.kts").readText()).map { it.groupValues[1].removePrefix(":") }.toSet()
         val ordner = module().keys

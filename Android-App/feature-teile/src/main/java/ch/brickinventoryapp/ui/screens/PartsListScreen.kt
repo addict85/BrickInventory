@@ -214,7 +214,7 @@ fun PartsListScreen(
                         // „Fertig“ und das „+“ im Feld nehmen das Set in die Liste: ein Weg hinein,
                         // ein Knopf zum Erstellen.
                         onValueChange = { setInput = NumericInput.setNumber(it) },
-                        keyboardOptions = NumericInput.ganzzahlTastatur(ImeAction.Done),
+                        keyboardOptions = NumericInput.setnummerTastatur(ImeAction.Done),
                         keyboardActions = KeyboardActions(onDone = { if (setInput.isNotBlank()) addSet(setInput) }),
                         // Beschriftung statt Platzhalter: Der lange Platzhalter brach im Feld
                         // zweizeilig um und verschwand beim Tippen.
