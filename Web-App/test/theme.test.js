@@ -2,6 +2,19 @@
  * Das global eingestellte Design (global_settings.app_theme) muss auch VOR dem
  * Login gelten — auf Login- und Startup-Screen.
  * Ausführlich: docs/begruendungen/test/theme.test.js.md#kopf
+ *
+ * Gegenproben (08.11.2026 gemessen, jeweils zurückgenommen):
+ *   A  00-theme-boot.js: `sync();` entfernt → rot „ohne Serverwert gilt sofort
+ *      der Cache …“ (kein Abruf)
+ *   B  00-theme-boot.js: frühes `return;` im Zweig `served` entfernt → rot
+ *      „ein servergesetzter Wert gilt …“ (Abruf trotz Serverwert)
+ *   C  01-konto.js: applyTheme() gibt null zurück statt __bimApplyTheme →
+ *      rot „applyTheme läuft über den Boot-Helfer“
+ *   D  routes/api_v1/settings.ts: invalidateTheme() im Admin-Speichern
+ *      entfernt → rot „der Server setzt data-theme selbst …“ (brick statt noppe)
+ *   Gestrichen „GET /api/settings/theme ist ohne Login erreichbar“: deckt
+ *   design-je-konto-db.test.js; Route hinter requireLogin gelegt → dort rot
+ *   „ohne Anmeldung: die Vorgabe“.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -11,57 +24,107 @@ const path = require('node:path');
 const ROOT = path.join(__dirname, '..');
 const PUB = path.join(ROOT, 'public');
 const html = fs.readFileSync(path.join(PUB, 'index.html'), 'utf8');
-const settings = fs.readFileSync(path.join(ROOT, 'routes/api_v1/settings.ts'), 'utf8');
 const styles = fs.readFileSync(path.join(PUB, 'styles.css'), 'utf8');
+const BOOT = fs.readFileSync(path.join(PUB, 'js', '00-theme-boot.js'), 'utf8');
 
-test('GET /api/settings/theme ist ohne Login erreichbar', () => {
-  const route = settings.indexOf("router.get('/settings/theme'");
-  // Auf den Zeilenanfang ankern: der Erklärkommentar über der Route erwähnt
-  // router.use(requireLogin) ebenfalls, ein blosses indexOf träfe den Kommentar.
-  const gate = settings.search(/^router\.use\('\/settings', requireLogin\);/m);
-  assert.ok(route > 0, '/theme-Route nicht gefunden');
-  assert.ok(gate > 0, 'requireLogin-Gate nicht gefunden');
-  assert.ok(
-    route < gate,
-    'router.get(\'/theme\') muss VOR router.use(requireLogin) stehen — sonst kann der ' +
-    'Login-Screen das global eingestellte Design nicht laden'
+/** 00-theme-boot.js in einem leeren Fenster: Serverwert im <html>, Cache, Antwort des Servers. */
+function bootFenster({ server = '', gecacht = '', antwort = {} } = {}) {
+  const jsdom = require(path.join(ROOT, 'node_modules', 'jsdom'));
+  const attr = server ? ` data-theme="${server}"` : '';
+  const dom = new jsdom.JSDOM(`<!doctype html><html${attr}><head></head><body></body></html>`, {
+    runScripts: 'outside-only',
+    url: 'http://localhost/',
+  });
+  const w = dom.window;
+  /** @type {string[]} */
+  const abrufe = [];
+  /** @type {Promise<unknown>} */
+  let letzte = Promise.resolve();
+  w.fetch = (/** @type {string} */ url) => {
+    abrufe.push(String(url));
+    letzte = Promise.resolve({ ok: true, json: async () => antwort });
+    return letzte;
+  };
+  if (gecacht) w.localStorage.setItem('bim_theme', gecacht);
+  w.eval(BOOT);
+  const antwortDa = async () => {
+    await letzte;
+    for (let i = 0; i < 5; i++) await new Promise(r => setImmediate(r));
+  };
+  return { w, abrufe, antwortDa, thema: () => w.document.documentElement.getAttribute('data-theme') };
+}
+
+// „GET /api/v1/settings/theme ist ohne Login erreichbar" stand hier als Reihenfolge im
+// Quelltext; ausgeführt prüft es design-je-konto-db.test.js („ohne Anmeldung: die Vorgabe").
+
+test('das Boot-Skript steht vor Start- und Anmeldemarkup', () => {
+  // Struktur: Nur ein blockierendes Skript im <head> wirkt vor dem ersten Paint.
+  assert.ok(fs.existsSync(path.join(PUB, 'js', '00-theme-boot.js')), 'js/00-theme-boot.js fehlt');
+  const vorher = html.slice(0, html.indexOf('id="startup-screen"'));
+  assert.match(
+    vorher,
+    /<script src="\/js\/00-theme-boot\.js/,
+    'Das Boot-Skript muss vor Anmeldung und App geladen werden, sonst blitzt das falsche Design auf',
   );
 });
 
-test('Theme wird vor dem ersten Paint gesetzt', () => {
-  const boot = path.join(PUB, 'js', '00-theme-boot.js');
-  assert.ok(fs.existsSync(boot), 'js/00-theme-boot.js fehlt');
-
-  // Vor Start-, Anmelde- und App-Markup; davor steht nur das neutrale Startgerüst.
-  const vorher = html.slice(0, html.indexOf('id="startup-screen"'));
-  assert.match(vorher, /<script src="\/js\/00-theme-boot\.js/,
-    'Das Boot-Skript muss vor Anmeldung und App geladen werden, sonst blitzt das falsche Design auf');
-
-  const src = fs.readFileSync(boot, 'utf8');
-  assert.match(src, /setAttribute\(\s*'data-theme'/, 'Boot-Skript setzt kein data-theme');
-  // Die Adresse ist mit dem Zusammenlegen der API-Oberflaechen umgezogen:
-  // /api/settings/theme -> /api/v1/settings/theme. Geprueft wird der Pfad und
-  // nicht nur das Wort "theme", weil genau dieser Aufruf VOR dem ersten Paint
-  // laeuft — eine falsche Adresse waere hier ein 404 und ein Aufblitzen des
-  // falschen Designs, ohne Fehlermeldung.
-  assert.match(src, /\/api\/v1\/settings\/theme/, 'Boot-Skript gleicht nicht gegen den Server ab');
-  assert.match(src, /localStorage/, 'Ohne Cache blitzt beim Laden das vorige Design auf');
+test('ohne Serverwert gilt sofort der Cache, danach der Abgleich mit dem Server', async () => {
+  const b = bootFenster({ gecacht: 'brick', antwort: { success: true, theme: 'hochglanz' } });
+  assert.equal(b.thema(), 'brick', 'Der zuletzt bekannte Wert muss vor jeder Antwort gelten');
+  assert.deepEqual(b.abrufe, ['/api/v1/settings/theme'], 'Das Boot-Skript gleicht nicht gegen den Server ab');
+  await b.antwortDa();
+  assert.equal(b.thema(), 'hochglanz', 'Der Serverwert wird nicht angewendet');
+  assert.equal(b.w.localStorage.getItem('bim_theme'), 'hochglanz', 'Der Serverwert landet nicht im Cache');
 });
 
-test('applyTheme läuft über den Boot-Helfer (Cache bleibt aktuell)', () => {
-  const core = require('./helpers/sources').coreQuelle();
-  assert.match(core, /__bimApplyTheme/,
-    'applyTheme() muss an js/00-theme-boot.js durchreichen, sonst läuft der ' +
-    'localStorage-Cache nach einem Design-Wechsel des Admins aus dem Ruder');
+test('ein servergesetzter Wert gilt, ohne Abgleich und ohne Sprung', async () => {
+  const b = bootFenster({ server: 'noppe', gecacht: 'brick', antwort: { success: true, theme: 'hochglanz' } });
+  await b.antwortDa();
+  assert.equal(b.thema(), 'noppe');
+  assert.deepEqual(b.abrufe, [], 'Steht der Wert schon im HTML, ist jede Anfrage überflüssig');
+  assert.equal(b.w.localStorage.getItem('bim_theme'), 'noppe', 'Der Cache folgt dem Serverwert nicht');
+});
+
+test('applyTheme läuft über den Boot-Helfer (Cache bleibt aktuell)', async t => {
+  // Nach der Anmeldung setzt showApp() das Design aus den Einstellungen; ohne
+  // den Boot-Helfer bliebe der Cache beim alten Design.
+  const { oeffneOberflaeche, ANMELDUNG, warte } = require('./helpers/oberflaeche');
+  const { w } = await oeffneOberflaeche(
+    {
+      '/v1/settings/raw': {
+        success: true,
+        settings: { ...ANMELDUNG['/v1/settings/raw'].settings, app_theme: 'brick' },
+      },
+    },
+    {
+      vorher: fenster => {
+        fenster.eval(BOOT);
+      },
+    },
+  );
+  t.after(() => w.close());
+  await warte(() => w.document.documentElement.getAttribute('data-theme') === 'brick');
+  assert.equal(
+    w.document.documentElement.getAttribute('data-theme'),
+    'brick',
+    'applyTheme() setzt das Design der Einstellungen nicht',
+  );
+  assert.equal(
+    w.localStorage.getItem('bim_theme'),
+    'brick',
+    'applyTheme() führt den Cache nicht nach — beim nächsten Laden blitzt das alte Design auf',
+  );
 });
 
 test('Login- und Startup-Screen haben keinen hartkodierten Hintergrund', () => {
   for (const id of ['#startup-screen', '#login-screen']) {
     const rule = styles.slice(styles.indexOf(id), styles.indexOf('}', styles.indexOf(id)));
-    assert.doesNotMatch(rule, /background:\s*#/,
-      `${id} darf keinen festen Hintergrund haben — sonst kommt kein Theme daran vorbei`);
-    assert.match(rule, /background:\s*var\(--screen-bg\)/,
-      `${id} muss var(--screen-bg) verwenden`);
+    assert.doesNotMatch(
+      rule,
+      /background:\s*#/,
+      `${id} darf keinen festen Hintergrund haben — sonst kommt kein Theme daran vorbei`,
+    );
+    assert.match(rule, /background:\s*var\(--screen-bg\)/, `${id} muss var(--screen-bg) verwenden`);
   }
   assert.match(styles, /--screen-bg:/, '--screen-bg ist in :root nicht definiert');
 });
@@ -71,17 +134,18 @@ test('Startup-Screen setzt keine Farben mehr per Inline-Style', () => {
   const block = html.slice(start, html.indexOf('id="login-screen"'));
   // Der LEGO-Stein im Logo ist markenfarben und bleibt hartkodiert; alles
   // andere muss über die Design-Variablen laufen.
-  const inlineColours = [...block.matchAll(/style="[^"]*?(?:background|color):\s*(#[0-9a-fA-F]{6})/g)]
-    .map(m => m[1]);
-  assert.deepEqual(inlineColours, [],
-    `Inline-Styles überstimmen jede Theme-Regel: ${inlineColours.join(', ')}`);
+  const inlineColours = [...block.matchAll(/style="[^"]*?(?:background|color):\s*(#[0-9a-fA-F]{6})/g)].map(m => m[1]);
+  assert.deepEqual(inlineColours, [], `Inline-Styles überstimmen jede Theme-Regel: ${inlineColours.join(', ')}`);
 });
 
 test('fuenf Listen nennen dieselben Designs', () => {
   // Warum das eine eigene Pruefung ist
   // Ausführlich: docs/begruendungen/test/theme.test.js.md#alsdatei
-  const alsDatei = fs.readdirSync(path.join(PUB, 'themes'))
-    .filter(f => f.endsWith('.css')).map(f => path.basename(f, '.css')).sort();
+  const alsDatei = fs
+    .readdirSync(path.join(PUB, 'themes'))
+    .filter(f => f.endsWith('.css'))
+    .map(f => path.basename(f, '.css'))
+    .sort();
   // "classic" hat keine eigene Datei: Es IST das Grunddesign in styles.css.
   const erwartet = ['classic', ...alsDatei].sort();
   assert.ok(alsDatei.length >= 2, `Nur ${alsDatei.length} Design-Datei(en) — greift die Suche noch?`);
@@ -93,20 +157,47 @@ test('fuenf Listen nennen dieselben Designs', () => {
   };
   // Die <link>-Zeilen in index.html. Nicht ueber `liste()`: Dort steht der
   // Dateiname, nicht der Designname in Anfuehrungszeichen.
-  const verlinkt = [...html.matchAll(/<link[^>]+href="\/themes\/([a-z]+)\.css/g)]
-    .map(m => m[1]).sort();
-  assert.deepEqual(verlinkt, alsDatei,
+  const verlinkt = [...html.matchAll(/<link[^>]+href="\/themes\/([a-z]+)\.css/g)].map(m => m[1]).sort();
+  assert.deepEqual(
+    verlinkt,
+    alsDatei,
     'index.html laedt nicht genau die Stylesheets, die unter public/themes/ liegen. ' +
-    'Fehlt eines, kommen im Browser nur die Farben aus tokens.css an und keine ' +
-    'einzige Struktur — das Design sieht dann aus wie das Grunddesign mit anderer ' +
-    'Akzentfarbe.');
+      'Fehlt eines, kommen im Browser nur die Farben aus tokens.css an und keine ' +
+      'einzige Struktur — das Design sieht dann aus wie das Grunddesign mit anderer ' +
+      'Akzentfarbe.',
+  );
 
-  const boot = liste(fs.readFileSync(path.join(PUB, 'js', '00-theme-boot.js'), 'utf8'),
-    /var ALLOWED = \[([^\]]*)\]/, 'js/00-theme-boot.js');
-  const server = liste(fs.readFileSync(path.join(__dirname, '..', 'src/vertrag/globaleRegeln.ts'), 'utf8'),
-    /const DESIGNS: readonly string\[\] = \[([^\]]*)\]/, 'src/vertrag/globaleRegeln.ts');
-  const app = liste(fs.readFileSync(path.join(__dirname, '..', '..', 'Android-App', 'core-data', 'src', 'main', 'java', 'ch', 'brickinventoryapp', 'data', 'GeraeteAblage.kt'), 'utf8'),
-    /ERLAUBTE_DESIGNS = setOf\(([^)]*)\)/, 'GeraeteAblage.kt');
+  const boot = liste(
+    fs.readFileSync(path.join(PUB, 'js', '00-theme-boot.js'), 'utf8'),
+    /var ALLOWED = \[([^\]]*)\]/,
+    'js/00-theme-boot.js',
+  );
+  const server = liste(
+    fs.readFileSync(path.join(__dirname, '..', 'src/vertrag/globaleRegeln.ts'), 'utf8'),
+    /const DESIGNS: readonly string\[\] = \[([^\]]*)\]/,
+    'src/vertrag/globaleRegeln.ts',
+  );
+  const app = liste(
+    fs.readFileSync(
+      path.join(
+        __dirname,
+        '..',
+        '..',
+        'Android-App',
+        'core-data',
+        'src',
+        'main',
+        'java',
+        'ch',
+        'brickinventoryapp',
+        'data',
+        'GeraeteAblage.kt',
+      ),
+      'utf8',
+    ),
+    /ERLAUBTE_DESIGNS = setOf\(([^)]*)\)/,
+    'GeraeteAblage.kt',
+  );
 
   assert.deepEqual(boot, erwartet, 'ALLOWED im Boot-Skript weicht von den Dateien ab');
   assert.deepEqual(server, erwartet, 'Die Whitelist des Servers weicht von den Dateien ab');
@@ -118,58 +209,72 @@ test('jedes Theme unter public/themes/ deckt die Screens vor dem Login ab', () =
   for (const f of fs.readdirSync(dir).filter(f => f.endsWith('.css'))) {
     const css = fs.readFileSync(path.join(dir, f), 'utf8');
     const name = path.basename(f, '.css');
-    assert.match(css, new RegExp(`\\[data-theme="${name}"\\][^{]*#login-screen`),
-      `${f} stylt den Login-Screen nicht — das Design würde nach dem Login umspringen`);
-    assert.match(css, new RegExp(`--screen-bg\\s*:`),
-      `${f} setzt --screen-bg nicht`);
+    assert.match(
+      css,
+      new RegExp(`\\[data-theme="${name}"\\][^{]*#login-screen`),
+      `${f} stylt den Login-Screen nicht — das Design würde nach dem Login umspringen`,
+    );
+    assert.match(css, new RegExp(`--screen-bg\\s*:`), `${f} setzt --screen-bg nicht`);
   }
 });
 
-test('der Server setzt data-theme selbst — kein Sprung beim ersten Aufruf', () => {
-  const render = fs.readFileSync(path.join(ROOT, 'src/konto/indexHtml.ts'), 'utf8');
-  assert.match(render, /data-theme="\$\{theme\}"/,
-    'renderIndexHtml() muss das Attribut in das <html>-Tag schreiben');
-  assert.match(render, /invalidateTheme/,
-    'Ohne Invalidierung liefert der Server nach einem Design-Wechsel das alte Design aus');
-  assert.match(render, /THEME_TTL_MS/,
-    'Der Cache ist prozesslokal; ohne Ablauf ziehen die übrigen Cluster-Worker nie nach');
+test('der Server setzt data-theme selbst, und ein Designwechsel gilt sofort', async t => {
+  process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
+  process.env.SESSION_SECRET ??= 'test-secret-lang-genug-fuer-die-pruefung';
+  const _req = require('./helpers/sources').buildAndRequire();
+  const db = await require('./helpers/db').dbOderSkip(t, _req);
+  if (!db) return;
+  const { setGlobalSetting } = _req('src/einstellungen/settings.js');
+  const { sendeStartseite, invalidateTheme } = _req('src/konto/indexHtml.js');
+  const name = `theme_admin_${process.pid}`;
+  await db.run('DELETE FROM users WHERE username = $1', [name]);
+  const admin = (
+    await db.get(
+      `INSERT INTO users (username, password_hash, is_active, is_admin) VALUES ($1, 'x', true, true) RETURNING id`,
+      [name],
+    )
+  ).id;
+  const vorher = (await db.get(`SELECT value FROM global_settings WHERE key = 'app_theme'`))?.value ?? null;
+  t.after(async () => {
+    await db.run('DELETE FROM users WHERE id = $1', [admin]).catch(() => {});
+    if (vorher === null) await db.run(`DELETE FROM global_settings WHERE key = 'app_theme'`);
+    else await setGlobalSetting('app_theme', vorher);
+    invalidateTheme();
+    await db.pool.end().catch(() => {});
+  });
+  await setGlobalSetting('app_theme', 'brick');
+  invalidateTheme();
 
-  const server = require('./helpers/sources').serverAll();
-  // Auf den Zeilenanfang ankern: der Erklärkommentar darüber erwähnt den
-  // Catch-all ebenfalls, ein blosses indexOf träfe den Kommentar.
-  //
-  // Seit Express 5 (05.10.) heisst das Muster '/{*splat}' und nicht mehr '*'.
-  // Die geschweiften Klammern sind nicht Geschmack: Ohne sie trifft die Regel
-  // die nackte Wurzel '/' nicht mehr — gemessen gegen express 5.2.1.
-  const at = server.search(/^\s*app\.get\('\/\{\*splat\}'/m);
-  assert.ok(at > 0, "SPA-Catch-all nicht gefunden");
-  const catchAll = server.slice(at, at + 700);
-  // Argument zugelassen: renderIndexHtml() bekommt seit der Aufteilung der
-  // Übersetzungen die userId mit, um die passende Sprachdatei einzuhängen
-  // (siehe src/konto/indexHtml.ts). Geprüft wird weiterhin, DASS der Catch-all das
-  // gerenderte HTML ausliefert — nicht, mit welchen Argumenten.
-  // Der Catch-all ruft sendeStartseite() (src/konto/indexHtml.ts): rendern, im Fehlerfall die Datei.
-  assert.match(catchAll, /sendeStartseite\(/, 'Der SPA-Catch-all muss das gerenderte HTML ausliefern');
-  const start = render.slice(render.indexOf('function sendeStartseite('));
-  assert.match(start.slice(0, 600), /renderIndexHtml\([^)]*\)/,
-    'Der SPA-Catch-all muss das gerenderte HTML ausliefern');
-  assert.match(start.slice(0, 600), /sendFile/,
-    'Bei einem Renderfehler muss die Datei unverändert ausgeliefert werden');
+  const startseite = async () => {
+    let gesendet = '';
+    await sendeStartseite({
+      type: () => ({
+        send: b => {
+          gesendet = b;
+        },
+      }),
+      sendFile: () => {
+        gesendet = 'DATEI';
+      },
+    });
+    return /<html[^>]*\sdata-theme="([^"]+)"/.exec(gesendet)?.[1];
+  };
+  assert.equal(await startseite(), 'brick', 'Die Startseite trägt das Design nicht im <html>-Tag');
 
-  const settings = fs.readFileSync(path.join(ROOT, 'routes/api_v1/settings.ts'), 'utf8');
-  assert.match(settings, /invalidateTheme\(\)/,
-    'Das Speichern eines Designs muss den Server-Cache verwerfen');
-});
-
-test('das Boot-Skript vertraut einem servergesetzten Wert', () => {
-  const boot = fs.readFileSync(path.join(ROOT, 'public', 'js', '00-theme-boot.js'), 'utf8');
-  assert.match(boot, /getAttribute\('data-theme'\)/,
-    'Das Skript muss erkennen, ob der Server den Wert schon gesetzt hat');
-  // Der frühe return ist der Punkt: kein erneutes Anwenden und kein
-  // /api/settings/theme-Aufruf, wenn der Wert bereits im HTML steht.
-  const guard = boot.slice(boot.indexOf('var served'), boot.indexOf('var cached'));
-  assert.match(guard, /return;/,
-    'Steht der Wert schon im HTML, darf weder neu angewendet noch abgeglichen werden');
+  // Gespeichert über die Route: Ohne Verwerfen des Zwischenspeichers käme bis
+  // zum Ablauf (THEME_TTL_MS) das alte Design.
+  const { base } = require('./helpers/server').testServer(_req, {
+    sitzung: { userId: admin, username: name, isAdmin: true },
+    routen: { '/api/v1': 'routes/api_v1/index.js' },
+    t,
+  });
+  const r = await fetch(base + '/api/v1/settings/admin/theme', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ theme: 'noppe' }),
+  });
+  assert.equal(r.status, 200, await r.text());
+  assert.equal(await startseite(), 'noppe', 'Nach dem Speichern liefert der Server noch das alte Design aus');
 });
 
 test('die Diagrammfarben stimmen mit den Zustands-Plaketten überein', () => {
@@ -178,50 +283,60 @@ test('die Diagrammfarben stimmen mit den Zustands-Plaketten überein', () => {
   const tokens = fs.readFileSync(path.join(PUB, 'tokens.css'), 'utf8');
   const steinTeil = tokens.slice(tokens.indexOf('[data-theme="brick"]'));
   assert.ok(steinTeil, 'tokens.css fuehrt kein Stein-Design mehr');
-  const brick = [
-    steinTeil,
-    fs.readFileSync(path.join(PUB, 'themes', 'brick.css'), 'utf8'),
-  ].join('\n').replace(/\/\*[\s\S]*?\*\//g, '');
+  const brick = [steinTeil, fs.readFileSync(path.join(PUB, 'themes', 'brick.css'), 'utf8')]
+    .join('\n')
+    .replace(/\/\*[\s\S]*?\*\//g, '');
 
   const grab = (re, what) => {
     const m = brick.match(re);
     assert.ok(m, `${what} nicht gefunden`);
     return m[1].toLowerCase();
   };
-  assert.equal(grab(/--chart-new:\s*(#[0-9a-f]{6})/i, '--chart-new'),
-               grab(/\.cond-new\{background:#[0-9a-f]{6};color:(#[0-9a-f]{6})\}/i, '.cond-new'),
-               'Neu-Linie und Neu-Plakette müssen dieselbe Farbe haben');
-  assert.equal(grab(/--chart-used:\s*(#[0-9a-f]{6})/i, '--chart-used'),
-               grab(/\.cond-used\{background:#[0-9a-f]{6};color:(#[0-9a-f]{6})\}/i, '.cond-used'),
-               'Gebraucht-Linie und Gebraucht-Plakette müssen dieselbe Farbe haben');
+  assert.equal(
+    grab(/--chart-new:\s*(#[0-9a-f]{6})/i, '--chart-new'),
+    grab(/\.cond-new\{background:#[0-9a-f]{6};color:(#[0-9a-f]{6})\}/i, '.cond-new'),
+    'Neu-Linie und Neu-Plakette müssen dieselbe Farbe haben',
+  );
+  assert.equal(
+    grab(/--chart-used:\s*(#[0-9a-f]{6})/i, '--chart-used'),
+    grab(/\.cond-used\{background:#[0-9a-f]{6};color:(#[0-9a-f]{6})\}/i, '.cond-used'),
+    'Gebraucht-Linie und Gebraucht-Plakette müssen dieselbe Farbe haben',
+  );
 
   // Das Standard-Design behält Blau/Bernstein — das Paar bleibt auch bei
   // Rot-Grün-Sehschwäche unterscheidbar, weil es auf der anderen Farbachse liegt.
   const base = fs.readFileSync(path.join(PUB, 'tokens.css'), 'utf8').split('[data-theme=')[0];
-  assert.match(base, /--chart-new:\s*#2563eb;/,
-    'Der Vorgabewert der Neu-Linie fehlt');
-  assert.match(base, /--chart-used:\s*#d97706;/,
-    'Der Vorgabewert der Gebraucht-Linie fehlt');
+  assert.match(base, /--chart-new:\s*#2563eb;/, 'Der Vorgabewert der Neu-Linie fehlt');
+  assert.match(base, /--chart-used:\s*#d97706;/, 'Der Vorgabewert der Gebraucht-Linie fehlt');
 });
 
 test('nur das Boot-Skript kennt die Liste der Designs', () => {
   // Der Fehler, den diese Regel verhindert
   // Ausführlich: docs/begruendungen/test/theme.test.js.md#designs
-  const DESIGNS = ['classic', ...fs.readdirSync(path.join(PUB, 'themes'))
-    .filter(f => f.endsWith('.css')).map(f => path.basename(f, '.css'))];
+  const DESIGNS = [
+    'classic',
+    ...fs
+      .readdirSync(path.join(PUB, 'themes'))
+      .filter(f => f.endsWith('.css'))
+      .map(f => path.basename(f, '.css')),
+  ];
   assert.ok(DESIGNS.length >= 3, `Nur ${DESIGNS.length} Designs — greift die Suche noch?`);
 
   const ordner = path.join(PUB, 'js');
-  const dateien = fs.readdirSync(ordner)
+  const dateien = fs
+    .readdirSync(ordner)
     .filter(n => n.endsWith('.js') && n !== 'app.bundle.js' && n !== '00-theme-boot.js');
   assert.ok(dateien.length >= 10, `Nur ${dateien.length} Skripte — greift die Suche noch?`);
 
   // Kommentare zuerst weg: Die Begruendung oben nennt die Designs im
   // Fliesstext, und die Erklaerung in 01-konto.js ebenso. Ohne diesen Schritt
   // meldete die Regel genau den Text, der sie erklaert.
-  const ohneKommentare = js => js
-    .replace(/\/\*[\s\S]*?\*\//g, '')
-    .split('\n').filter(z => !/^\s*\/\//.test(z)).join('\n');
+  const ohneKommentare = js =>
+    js
+      .replace(/\/\*[\s\S]*?\*\//g, '')
+      .split('\n')
+      .filter(z => !/^\s*\/\//.test(z))
+      .join('\n');
 
   const treffer = [];
   for (const name of dateien) {
@@ -229,10 +344,13 @@ test('nur das Boot-Skript kennt die Liste der Designs', () => {
     const genannt = new Set(DESIGNS.filter(d => new RegExp(`['"\`]${d}['"\`]`).test(code)));
     if (genannt.size >= 2) treffer.push(`${name}: ${[...genannt].sort().join(', ')}`);
   }
-  assert.deepEqual(treffer, [],
+  assert.deepEqual(
+    treffer,
+    [],
     'Diese Dateien fuehren eine eigene Liste der Designs. Es gibt genau eine, ' +
-    'in js/00-theme-boot.js — jede weitere waechst beim naechsten Design nicht ' +
-    'mit, und der Wechsel wirkt dann erst nach einem Neuladen.');
+      'in js/00-theme-boot.js — jede weitere waechst beim naechsten Design nicht ' +
+      'mit, und der Wechsel wirkt dann erst nach einem Neuladen.',
+  );
 });
 
 /**
@@ -251,8 +369,7 @@ test('wer die Reiterleiste umbrechen lässt, verschmälert sie unbedingt', () =>
   const fehler = [];
   let betroffen = 0;
   for (const name of dateien) {
-    const css = fs.readFileSync(path.join(ordner, name), 'utf8')
-      .replace(/\/\*[\s\S]*?\*\//g, '');
+    const css = fs.readFileSync(path.join(ordner, name), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '');
     // Nur Designs, die BEIDES tun: umbrechen lassen und den Inhalt deckeln.
     if (!/nav\s*\{[^}]*flex-wrap\s*:\s*wrap/.test(css)) continue;
     if (!/#app\s*\{[^}]*max-width/.test(css)) continue;
@@ -265,11 +382,15 @@ test('wer die Reiterleiste umbrechen lässt, verschmälert sie unbedingt', () =>
       }
     }
   }
-  assert.ok(betroffen >= 1,
-    'Kein Design lässt die Reiterleiste umbrechen UND deckelt den Inhalt — ' +
-    'dann ist diese Regel leer wahr');
-  assert.deepEqual(fehler, [],
+  assert.ok(
+    betroffen >= 1,
+    'Kein Design lässt die Reiterleiste umbrechen UND deckelt den Inhalt — ' + 'dann ist diese Regel leer wahr',
+  );
+  assert.deepEqual(
+    fehler,
+    [],
     'Hier hängt die Breite der Reiter an der FENSTERbreite, obwohl sie in ' +
-    'einem gedeckelten Behälter stehen. Auf einem breiten Bildschirm greift ' +
-    'die Abfrage nicht — und genau dort brach die Leiste um.');
+      'einem gedeckelten Behälter stehen. Auf einem breiten Bildschirm greift ' +
+      'die Abfrage nicht — und genau dort brach die Leiste um.',
+  );
 });
