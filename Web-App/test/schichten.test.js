@@ -411,14 +411,19 @@ test('Routen lösen keine Konten auf — das tun die Dienste', () => {
 const istHttp = (rel) => /^src\/[^/]+\/http\//.test(rel);
 
 test('Dienste importieren keine Express-Typen', () => {
-  // Express kennen nur src/infra/ (Fehlerweg, Herkunft, Dateiauslieferung) und
-  // die HTTP-Seiten der Bereiche. Gegenprobe (31.10.2026): `import type {
+  // Express kennen nur die HTTP-Hülle in src/infra/ (siehe EXPRESS_IN_INFRA, docs/architektur.md)
+  // und die HTTP-Seiten der Bereiche. Gegenproben (31.10.2026): `import type {
   // Request } from 'express'` in src/sets/setService.ts → rot; dasselbe in
-  // src/konto/loginLimiter.ts → rot.
+  // src/konto/loginLimiter.ts → rot. (08.11.2026): dasselbe in src/infra/geld.ts → rot.
+  const nutztExpress = d => /from\s+['"]express['"]|import\(\s*['"]express['"]\s*\)/.test(quelltext(d));
   const treffer = tsUnter('src')
     .filter(d => bereichVon(d) !== 'infra' && !istHttp(d))
-    .filter(d => /from\s+['"]express['"]|import\(\s*['"]express['"]\s*\)/.test(quelltext(d)));
+    .filter(nutztExpress);
   assert.deepEqual(treffer, []);
+  // Eine neue Datei in infra, die Express kennt, ist eine bewusste Entscheidung: hier und in der Doku eintragen.
+  const EXPRESS_IN_INFRA = ['anfrageKonto', 'apiDrossel', 'apiVersion', 'dateiAusliefern', 'dateiEmpfang', 'herkunft',
+    'httpAntwort', 'nutzerId', 'proxyVertrauen', 'sitzungsKeks', 'vertrag/index', 'vertrag/pruefen'].map(n => `src/infra/${n}.ts`);
+  assert.deepEqual(tsUnter('src/infra').filter(nutztExpress).sort(), EXPRESS_IN_INFRA.sort());
   assert.ok(tsUnter('src').some(istHttp), 'keine HTTP-Seite unter src/<bereich>/http/ gefunden');
 });
 
