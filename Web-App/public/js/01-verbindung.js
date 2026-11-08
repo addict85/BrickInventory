@@ -35,21 +35,76 @@ export function zeigeVerbindung(erreichbar) {
 }
 
 // Ohne Verbindung scheitert jede Änderung. Statt erst nach dem Klick eine Meldung zu zeigen, sind die
-// schreibenden Bedienelemente gesperrt und nennen per aria-describedby das Band als Grund. Eine Regel statt
-// einer Liste: Hauptknöpfe, Datei-Wahl, Import-Menüs und jede Handlung, deren Name schreibt.
-const BEDIENT = 'button, input[type=file], .import-menue > summary';
+// schreibenden Bedienelemente gesperrt und nennen per aria-describedby das Band als Grund. Ob ein Knopf
+// schreibt, entscheidet seine Aktion, nicht ihr Name: Ein Wort im Namen verfehlte Handler wie revokeToken.
+// Jede angemeldete Aktion steht in genau einer der beiden Listen (test/offline-einstufung-oberflaeche.test.js).
+const BEDIENT = 'button, input[type=file], .import-menue > summary, [data-click]';
 
-const IMMER_SCHREIBEND = 'button.bp, button.bd, input[type=file], .import-menue > summary';
+/**
+ * Handler, die per POST/PUT/PATCH/DELETE Serverzustand ändern (auch über einen anderen Handler), dazu die
+ * Öffner von Formularen, die nur speichern können (Erfassen, Bearbeiten, Übernehmen): Offline ausgefüllt,
+ * wäre die Eingabe verloren.
+ */
+export const SCHREIBENDE_AKTIONEN = new Set([
+  'acqDelete', 'acqSave', 'aendereAlarmSchwelle', 'alarmGetippt', 'auftragAbbrechen', 'auftragsArtJetzt',
+  'auftragsArtLeeren', 'auftragWiederholen', 'autosaveSet', 'benenneLagerortUm', 'bestaetigeUebernahme',
+  'bestaetigungErneut', 'clickJobTrigger', 'createHouseholdInvite', 'deleteBricksetQueueEntry',
+  'deleteManualFig', 'deleteManualFigStop', 'deleteManualPartStop', 'delInstr', 'delSet', 'delSetStop',
+  'delUser', 'dismissFormerLink', 'einrichtungPasswort', 'einrichtungQuelle', 'guthabenAbfragen',
+  'guthabenAlleAbfragen', 'gutscheinBearbeiten', 'gutscheinLandSpeichern', 'gutscheinLoeschen',
+  'gutscheinSpeichern', 'importAlarmeCsv', 'importConfig', 'importFigsCsv', 'importMerklisteCsv',
+  'importPartsCsv', 'katalogAufMerkliste', 'kontoFreischalten', 'lagerortGewaehlt', 'lagerortTaste',
+  'legeAlarmAn', 'legeLagerortAn', 'loescheAlarm', 'loescheLagerort', 'manAcqDelete', 'manAcqSave',
+  'manQtyChange', 'manQtySave', 'merkpostenDetailLoeschen', 'merkpostenDetailUebernehmen',
+  'merkpostenHinzufuegen', 'merkpostenInhaberGewaehlt', 'merkpostenLoeschen', 'merkpostenLoeschenStop',
+  'merkpostenUebernehmen', 'mQtyDec', 'mQtyInc', 'oeffneErfassen', 'openRpw', 'papierkorbEndgueltig',
+  'papierkorbLeeren', 'papierkorbWiederherstellen', 'passkeyAnmelden', 'passkeyHinzufuegen', 'passkeyLoeschen',
+  'passkeyZweiterFaktor', 'plFuelleBestand', 'queueCatalogImages', 'redeemHouseholdInvite', 'redownloadInstr',
+  'redownloadMissingImages', 'reimportMissingInstructions', 'reimportParts', 'retryBricksetQueueEntry',
+  'revokeOtherTokens', 'revokeToken', 'saveJobMinutes', 'saveJobTime', 'saveManualFigBl', 'saveRegEnabled',
+  'schalteLagerortVorgabe', 'setLangFromEl', 'setzeEigenesDesign', 'speichereAlarm', 'speichereSetLagerort',
+  'speichereTeilFarbe', 'speichereTeilLagerort', 'speichereWaehrung', 'speichereZustand', 'startSetCsvImport',
+  'teileNeuImportieren', 'toggleAdmin', 'toggleAktiv', 'triggerCsvSync', 'unlinkFromParent', 'unlinkHousehold',
+  'uploadInstr', 'wantedXmlSchreiben', 'zfAbschalten', 'zfBestaetigen', 'zfEinrichten', 'zfNeueCodes',
+  'zfZuruecksetzen',
+]);
 
-const SCHREIB_VERBEN = /speicher|save|loesch|delete|import|hinzufueg|add|anleg|erfass|uebernehm|eintrag|abfrag|aktualis|refresh|sync|hochlad|upload|rotier|widerruf|einlad|verknuepf|aendere|bearbeit|entfern|wiederherst|restore|generier|erzeug|verschieb|qty|menge|alarm/i;
+// Lesen, Prüfen ohne Speichern (Quelle testen, Vorschau, Klartext) und alles nur Lokale bleibt offline frei.
+// einrichtungWeiter meldet erst im letzten Schritt „fertig“; davor blättert es nur.
+export const LESENDE_AKTIONEN = new Set([
+  'ansichtWaehlen', 'benutzerMenue', 'blurOnEnter', 'closeAcqModal', 'closeCatModal', 'closeImageLightbox',
+  'closeImportProgress', 'closeManDetail', 'closeModal', 'closePdfViewer', 'closePwModal', 'closeSetItemDetail',
+  'copyHouseholdInvite', 'einrichtungPruefen', 'einrichtungSpaeter', 'einrichtungStandNeu',
+  'einrichtungStandSchliessen', 'einrichtungWeiter', 'einrichtungZiel', 'einrichtungZurueck', 'einstAbschnitt',
+  'einstellungenQuellePruefen', 'erfassenZumSet', 'feldFokussieren', 'filterFigs', 'filterUmschalten',
+  'filterZuruecksetzen', 'finFilter', 'finSortiere', 'finSuchen', 'geheimUmschalten', 'gibToggle',
+  'gutscheinAbbrechen', 'gutscheinDateiGewaehlt', 'gutscheineExportieren', 'gutscheinKopieren',
+  'gutscheinPdfOeffnen', 'gutscheinPinUmschalten', 'hideProgress', 'ladeGutscheine', 'ladeMerkliste',
+  'ladePasskeys', 'ladeZweitenFaktor', 'lagerortGetippt', 'lightboxBackdrop', 'loadCatalogSets', 'loadFinance',
+  'loadGallery', 'loadMinifigs', 'loadParts', 'loadPortfolioChart', 'loadTokens', 'oeffneMerkpostenDetail',
+  'oeffneReiter', 'oeffneSicht', 'onScopeChange', 'onStorageChange', 'openAcqModal', 'openCatModal',
+  'openImageLightboxFromEl', 'openLogViewer', 'openManAcqModal', 'openManDetail', 'openModal',
+  'openPdfViewerLink', 'openSetAusItem', 'openSetItemDetail', 'pdfZoomIn', 'pdfZoomOut', 'pdfZoomReset',
+  'pflichtAbmelden', 'plAddSet', 'plExportBricklink', 'plExportPdf', 'plGenerate', 'plRemoveSet', 'plReset',
+  'printPdfViewer', 'rbHinweisOeffnen', 'rbHinweisWeg', 'renderFigsAll', 'renderGallery', 'schliesseErfassen',
+  'schliesseMerkpostenDetail', 'schliesseUebernahme', 'setCatFilter', 'setChartPeriod', 'setColorFilter',
+  'setzeDunkel', 'showPanel', 'stopEvent', 'toggleBricksetQueue', 'updateColorDot', 'waehrungPruefen',
+  'wantedKorrekturFarbe', 'wantedKorrekturNummer', 'wantedKorrekturWert', 'wantedXmlGewaehlt',
+  'wantedXmlNeuLesen', 'wantedXmlSchliessen', 'wechsleAlarmZustand', 'zeigeLetztenImport', 'zfCodesKopieren',
+  'zfCodesSpeichern', 'zfPflichtFertig',
+]);
 
-const NICHT_SPERREN = '#login-screen, .toast, [data-dialog-zu], .hinweis-zu, [data-lesend]';
+// Datei-Wahl und Import-Menü führen immer zu einem Hochladen; Knöpfe ohne data-click (per id verdrahtet)
+// tragen data-schreibend im Markup. Die Anmeldung braucht offline keine Sperre, sie zeigt ihren eigenen Fehler.
+const IMMER_SCHREIBEND = 'input[type=file], .import-menue > summary, [data-schreibend]';
+
+const NICHT_SPERREN = '#login-screen, .toast';
 
 /** @param {Element} k */
 function schreibt(k) {
   if (k.closest(NICHT_SPERREN)) return false;
   if (k.matches(IMMER_SCHREIBEND)) return true;
-  return SCHREIB_VERBEN.test(`${k.getAttribute('data-click') || ''} ${k.getAttribute('data-submit') || ''}`);
+  return SCHREIBENDE_AKTIONEN.has(k.getAttribute('data-click') || '');
 }
 
 /** @type {MutationObserver|null} */
@@ -58,20 +113,27 @@ let _sperrBeobachter = null;
 /** @param {Element|Document} wurzel */
 function sperreIn(wurzel) {
   const selbst = wurzel instanceof Element && wurzel.matches(BEDIENT) ? [wurzel] : [];
-  /** @type {HTMLButtonElement[]} */ ([...selbst, ...wurzel.querySelectorAll(BEDIENT)]).forEach(k => {
-    if (k.disabled || k.dataset.offlineGesperrt || !schreibt(k)) return;
-    if (k.tagName === 'SUMMARY') { k.setAttribute('aria-disabled', 'true'); k.parentElement?.removeAttribute('open'); }
-    else k.disabled = true;
+  /** @type {HTMLElement[]} */ ([...selbst, ...wurzel.querySelectorAll(BEDIENT)]).forEach(k => {
+    if ((kenntDisabled(k) && k.disabled) || k.dataset.offlineGesperrt || !schreibt(k)) return;
+    if (kenntDisabled(k)) k.disabled = true;
+    else { k.setAttribute('aria-disabled', 'true'); if (k.tagName === 'SUMMARY') k.parentElement?.removeAttribute('open'); }
     k.dataset.offlineGesperrt = '1';
     k.setAttribute('aria-describedby', ((k.getAttribute('aria-describedby') || '') + ' offline-band').trim());
   });
 }
 
-// Ein <summary> kennt kein disabled: Klick und Tastatur öffnen es sonst trotzdem.
+/**
+ * @param {Element} k
+ * @returns {k is HTMLButtonElement | HTMLInputElement}
+ */
+function kenntDisabled(k) { return k instanceof HTMLButtonElement || k instanceof HTMLInputElement; }
+
+// <summary> und das Löschkreuz der Kacheln (<span>) kennen kein disabled: Klick und Tastatur lösten sie sonst
+// trotzdem aus. Abgefangen wird vor der Ereignis-Delegation in 11-actions.js.
 if (typeof document !== 'undefined')
   document.addEventListener('click', e => {
     const t = /** @type {Element} */ (e.target);
-    if (t?.closest?.('summary[data-offline-gesperrt]')) { e.preventDefault(); e.stopPropagation(); }
+    if (t?.closest?.('[data-offline-gesperrt][aria-disabled]')) { e.preventDefault(); e.stopPropagation(); }
   }, true);
 
 /** @param {boolean} an */
@@ -87,8 +149,8 @@ function schreibenSperren(an) {
     return;
   }
   _sperrBeobachter?.disconnect(); _sperrBeobachter = null;
-  /** @type {NodeListOf<HTMLButtonElement>} */ (document.querySelectorAll('[data-offline-gesperrt]')).forEach(k => {
-    if (k.tagName === 'SUMMARY') k.removeAttribute('aria-disabled'); else k.disabled = false;
+  /** @type {NodeListOf<HTMLElement>} */ (document.querySelectorAll('[data-offline-gesperrt]')).forEach(k => {
+    if (kenntDisabled(k)) k.disabled = false; else k.removeAttribute('aria-disabled');
     delete k.dataset.offlineGesperrt;
     const rest = (k.getAttribute('aria-describedby') || '').split(/\s+/).filter(x => x && x !== 'offline-band');
     if (rest.length) k.setAttribute('aria-describedby', rest.join(' ')); else k.removeAttribute('aria-describedby');
