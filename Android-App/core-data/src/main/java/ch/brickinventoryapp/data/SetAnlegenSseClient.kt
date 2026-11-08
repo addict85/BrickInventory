@@ -135,7 +135,14 @@ internal class SetAnlegenSseClient @Inject constructor(
      * @return true, wenn der Vorgang damit beendet ist (fertig oder Fehler).
      */
     private fun verarbeite(nutzlast: String, sende: (SetAnlegenSchritt) -> Unit): Boolean {
-        val obj = try { json.parseToJsonElement(nutzlast).jsonObject } catch (_: Exception) { return false }
+        // Ein unlesbares Ereignis ist ein Fehler, kein Rauschen: Es könnte das „done“ sein,
+        // und ohne Abschluss sähe der Nutzer nie, ob das Set angelegt wurde.
+        val obj = try {
+            json.parseToJsonElement(nutzlast).jsonObject
+        } catch (_: IllegalArgumentException) {
+            sende(SetAnlegenSchritt.Fehler(""))
+            return true
+        }
         // Dieselben Schrittnamen wie in der Webapp (public/js/02-gallery.js →
         // handleSseEvent). Sie stehen hier ein zweites Mal, weil es ein
         // Protokoll zwischen zwei Programmen ist — aber in derselben

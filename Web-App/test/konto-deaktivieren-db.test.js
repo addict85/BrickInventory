@@ -56,7 +56,7 @@ test('Konto deaktivieren und reaktivieren', { concurrency: 1 }, async (t) => {
   app.use(express.json());
   app.use(session({ store: new pgSession({ pool: db.pool, tableName: 'user_sessions' }),
     secret: 'deaktivieren-test-geheimnis-lang-genug', resave: false, saveUninitialized: false,
-    name: _req('src/infra/sitzungsKeks.js').sitzungsKeksName() }));
+    name: _req('src/http/sitzungsKeks.js').sitzungsKeksName() }));
   app.use('/api/v1', _req('routes/api_v1/middleware.js').anmeldungAmEingang);
   app.use('/api/v1/auth', _req('routes/auth.js'));
   const srv = app.listen(0);

@@ -5,13 +5,18 @@
  *
  * Gegenprobe (am 28.10.2026 gemessen): in 02-gallery.js katalog_offen nicht
  * ausgewertet → rot: „ohne Katalogdaten“ (es kam „Set 99071-1 hinzugefügt!“).
+ *
+ * Gegenprobe (08.11.2026 gemessen): der Schlüssel gallery.set_aktualisiert aus
+ * beiden Sprachdateien entfernt → rot: „aktualisiert“ und „englisch: aktualisiert“
+ * (es erscheint der rohe Schlüssel); gallery.set_hinzugefuegt nur in en.js entfernt
+ * → rot: „englisch: hinzugefügt“.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const { oeffneOberflaeche, takt, warte } = require('./helpers/oberflaeche');
 
-async function erfasse(antwort) {
-  const o = await oeffneOberflaeche({ '/v1/sets/add-stream': antwort });
+async function erfasse(antwort, sprache = 'de') {
+  const o = await oeffneOberflaeche({ '/v1/sets/add-stream': antwort }, { sprache });
   const { d, w } = o;
   d.querySelector('[data-click="oeffneErfassen"][data-arg="set"]').click();
   await takt(20);
@@ -36,5 +41,26 @@ test('mit Katalogdaten: hinzugefügt', async () => {
   const { w, d } = await erfasse({ success: true, action: 'added', set_number: '10294-1', name: 'Titanic', katalog_offen: false });
   try {
     assert.match(d.querySelector('#toasts .toast').textContent, /10294-1 hinzugefügt!/);
+  } finally { w.close(); }
+});
+
+test('aktualisiert', async () => {
+  const { w, d } = await erfasse({ success: true, action: 'updated', set_number: '10294-1', name: 'Titanic', katalog_offen: false });
+  try {
+    assert.equal(d.querySelector('#toasts .toast .toast-text').textContent, 'Set 10294-1 aktualisiert!');
+  } finally { w.close(); }
+});
+
+test('englisch: hinzugefügt', async () => {
+  const { w, d } = await erfasse({ success: true, action: 'added', set_number: '10294-1', name: 'Titanic', katalog_offen: false }, 'en');
+  try {
+    assert.equal(d.querySelector('#toasts .toast .toast-text').textContent, 'Set 10294-1 added!');
+  } finally { w.close(); }
+});
+
+test('englisch: aktualisiert', async () => {
+  const { w, d } = await erfasse({ success: true, action: 'updated', set_number: '10294-1', name: 'Titanic', katalog_offen: false }, 'en');
+  try {
+    assert.equal(d.querySelector('#toasts .toast .toast-text').textContent, 'Set 10294-1 updated!');
   } finally { w.close(); }
 });

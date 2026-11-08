@@ -75,7 +75,7 @@ export async function moveManualAcquisition(
   tx: DbSchnittstelle, kind: 'part' | 'fig', keyValues: (string | number)[], acquisitionId: number,
   fromId: number, toId: number
 ): Promise<{ quantity: number; merged: boolean; source_emptied: boolean }> {
-  const acq = await repo.manuelleErfassung(tx, kind, acquisitionId, fromId);
+  const acq = await repo.manuelleErfassung(tx, kind, acquisitionId, fromId, keyValues);
   if (!acq) fehlerWerfen('kaufpreis_nicht_gefunden', 404);
 
   const src = await repo.manuelleZeile(tx, kind, fromId, keyValues);
@@ -101,5 +101,7 @@ export async function moveManualAcquisition(
 
 /** Unter der Sperre des Quellbestands, damit kein zweiter Weg dazwischen bucht. */
 export function verschiebeSet(sn: string, fromId: number, toId: number, erfassungen: number[]): Promise<MoveResult> {
-  return withInventoryLock(fromId, sn, (tx) => moveSetBetweenAccounts(tx, sn, fromId, toId, erfassungen));
+  // Zwei Verschiebungen in Gegenrichtung sperren die Zeilen beider Konten in umgekehrter Reihenfolge.
+  return withInventoryLock(fromId, sn, (tx) => moveSetBetweenAccounts(tx, sn, fromId, toId, erfassungen),
+    { wiederholeBeiKonflikt: true });
 }

@@ -6,8 +6,8 @@ import { nutzerId } from '../../konto/http/anmeldung';
 import { sendeFehler } from '../../infra/fehlerTexte';
 import { meldeUndWeiter } from '../../infra/fehler';
 import * as dienst from '../dienst';
-import { routeFuerAnfrage } from '../../infra/vertrag';
-import { nichtWiederholbar } from '../../infra/vertrag/grund';
+import { routeFuerAnfrage } from '../../vertrag';
+import { nichtWiederholbar } from '../../vertrag/grund';
 
 const SCHREIBEND = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
 

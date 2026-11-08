@@ -94,8 +94,15 @@ G('btn-test-smtp')?.addEventListener('click', async()=>{
     if (gespeichert) toast(gespeichert.error || t('settings.error'), 'error');
     return;
   }
-  const d = await api('POST','/v1/settings/smtp-test', { to: G('smtp-test-email')?.value?.trim() || ME?.email || '' });
+  const eigene = String(ME?.email || '');
+  const to = G('smtp-test-email')?.value?.trim() || eigene;
+  // Eine fremde Adresse bestätigt der Verwalter mit dem Passwort; die eigene nicht.
+  const fremd = to.toLowerCase() !== eigene.toLowerCase();
+  const d = fremd
+    ? await mitPasswortBestaetigen(tRaw('smtp.test_confirm_title'), (password, z) => api('POST','/v1/settings/smtp-test', { to, password, ...z }), tRaw('smtp.test_confirm_text'))
+    : await mitZweitemFaktor(z => api('POST','/v1/settings/smtp-test', { to, ...z }));
   frei();
+  if (!d) return;
   res.style.display = 'block';
   if(d.success) {
     res.style.background = 'var(--g50)'; res.style.color = 'var(--g700)'; res.style.border = '1px solid var(--g300)';
@@ -492,7 +499,7 @@ G('btn-sav-pw').onclick = async () => {
       return;
     }
     G('pw-n').value = G('pw-r').value = '';
-    if (G('pw-pk')) G('pw-pk').checked = false;
+    if (G('pw-pk')) G('pw-pk').checked = true;
     toast(tRaw('konto.passwort_geaendert'), 'success');
   } finally {
     btn.disabled = false;

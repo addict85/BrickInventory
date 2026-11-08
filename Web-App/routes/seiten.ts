@@ -1,7 +1,7 @@
 /** Die Seiten der Oberfläche: Bilder unter /images/ und die Links aus E-Mails.
  * Der Rückfall auf die Startseite bleibt als letzte Route in server.ts. */
 import express from 'express';
-import { fehlerAntwort } from '../src/infra/httpAntwort';
+import { fehlerAntwort } from '../src/http/httpAntwort';
 import { sendeStartseite } from '../src/konto/indexHtml';
 import { liefereBild } from '../src/katalog/http/bildAuslieferung';
 

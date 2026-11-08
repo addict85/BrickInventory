@@ -6,7 +6,7 @@ import { APP_ROOT, PUBLIC_DIR } from '../../infra/appPaths';
 import fs from 'fs';
 import { resolveUserId } from '../../konto/http/anmeldung';
 import { vorDem, ohneFehlendeDatei, fehlertext, logAndContinue } from '../../infra/fehler';
-import { streamFileToResponse } from '../../infra/httpAntwort';
+import { streamFileToResponse } from '../../http/httpAntwort';
 import { queueThumb } from '../bilder/proxyThumbs';
 import { liefereAusCache, merkeCacheZuwachs, bildTyp } from '../bilder/imgCacheServe';
 import { imgProxyFailures } from '../bilder/imgProxyStats';

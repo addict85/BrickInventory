@@ -2,7 +2,7 @@
  * Jede Antwort verrät gleich wenig darüber, ob es ein Konto gibt. */
 import * as K from '../../src/konto/konten';
 import { logAndContinue, meldeUndLiefere } from '../../src/infra/fehler';
-import { fehlerAntwort } from '../../src/infra/httpAntwort';
+import { fehlerAntwort } from '../../src/http/httpAntwort';
 import { hashToken, USERNAME_RE, emailGueltig, nameGueltig, verifiziereEmailToken } from '../../src/konto/auth';
 import { zielGedrosselt } from '../../src/konto/zielDrossel';
 import { ipThrottle } from '../../src/konto/http/anmeldung';
@@ -15,8 +15,8 @@ import { setUserSetting } from '../../src/konto/nutzerEinstellung';
 import { sendeFehler, fehlerText, antwortSprache, alsDoppelt } from '../../src/infra/fehlerTexte';
 import { basisUrl, hinweisOhneBasisUrl, mailBasisUrl } from '../../src/infra/basisUrl';
 import * as P from '../../src/konto/passkeys';
-import { vertragsRouter } from '../../src/infra/vertrag/pruefen';
-import type { Antwort, OffeneAnfrage } from '../../src/infra/vertrag';
+import { vertragsRouter } from '../../src/vertrag/pruefen';
+import type { Antwort, OffeneAnfrage } from '../../src/vertrag';
 
 const router = vertragsRouter();
 

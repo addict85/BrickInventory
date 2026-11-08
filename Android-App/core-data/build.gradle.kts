@@ -27,6 +27,9 @@ android {
 
 dependencies {
     api(project(":core-model"))
+    // Wächter und Netzrichtlinie: api, weil die Bereiche sie über core-data erreichen
+    // (NetworkPolicy, Zugangslage) und kein Bereich eine eigene Kante dorthin bekommt.
+    api(project(":core-netz"))
     implementation(project(":core-ressourcen"))
     implementation(libs.androidx.core.ktx)
     api(libs.kotlinx.coroutines.android)

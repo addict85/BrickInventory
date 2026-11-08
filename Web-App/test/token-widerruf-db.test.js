@@ -1,6 +1,6 @@
 /**
  * Ein Token-Widerruf wirkt sofort im Token-Cache des Web-Prozesses, nicht
- * erst nach dessen Frist (60 s). Den Cache hält nur der Web-Prozess, und nur
+ * erst nach dessen Frist (5 s). Den Cache hält nur der Web-Prozess, und nur
  * er widerruft; der Job-Prozess löscht abgelaufene Tokens, die der Cache
  * ohnehin an ihrer Frist abweist. Ein NOTIFY zwischen Prozessen braucht es
  * deshalb nicht mehr.
@@ -10,6 +10,8 @@
  *      Token-Verwaltung leert den Cache“ und „ein Passwortwechsel …“
  *   B  in invalidateToken() `_tokenCache.delete(token)` entfernt → rot:
  *      „Abmelden wirkt sofort“
+ *   C  (08.11.) TOKEN_TTL_MS wieder 60 s → rot: „ohne Benachrichtigung gilt
+ *      ein widerrufener Token höchstens die Cache-Frist“ (Token gilt nach 6 s noch)
  *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL.
  */
@@ -62,6 +64,14 @@ test('Token-Widerruf wirkt sofort', { concurrency: 1 }, async (t) => {
     const token = await auth.createToken(uid, 'Test');
     assert.ok(await auth.validateToken(token));
     await auth.revokeAllTokens(uid);
+    assert.equal(await auth.validateToken(token), null);
+  });
+
+  await t.test('ohne Benachrichtigung gilt ein widerrufener Token höchstens die Cache-Frist', async (t2) => {
+    assert.ok(auth.TOKEN_TTL_MS < 10_000, 'die Frist ist unter 10 s');
+    const token = await imCacheOhneZeile();
+    t2.mock.timers.enable({ apis: ['Date'], now: Date.now() });
+    t2.mock.timers.tick(auth.TOKEN_TTL_MS + 1000);
     assert.equal(await auth.validateToken(token), null);
   });
 });

@@ -759,6 +759,32 @@ private fun themaUndTeile(thema: String?, teile: String?): androidx.compose.ui.t
         if (teile != null) append(teile)
     }
 
+/** Ohne Haushalt gar nichts mitschicken — der Server bleibt dann beim eigenen Konto. */
+private fun eigentuemerFuerErfassung(mitglieder: List<MitgliedAnsicht>, gewaehlt: Int?): Int? =
+    if (mitglieder.size > 1) gewaehlt else null
+
+/** Ist der Dialog schon zu, wirft requestFocus; dann gibt es nichts mehr zu fokussieren. */
+private fun FocusRequester.fokusWennOffen() {
+    try { requestFocus() } catch (_: Exception) { /* Dialog schon zu */ }
+}
+
+@Composable
+private fun FokusNachPause(ziel: FocusRequester) = LaunchedEffect(Unit) {
+    kotlinx.coroutines.delay(120)
+    ziel.fokusWennOffen()
+}
+
+/**
+ * Der Hinweis am Setnummer-Feld (null: nichts zu beanstanden). Vor dem ersten Versuch zu
+ * erfassen bleibt das Feld ruhig, damit "75192-" beim Tippen nicht schon als Fehler gilt.
+ */
+private fun nummerFehler(nummer: String, geprueft: Boolean): Int? = when {
+    !geprueft -> null
+    nummer.isBlank() -> R.string.erfassen_nummer_fehlt
+    !NumericInput.istSetnummer(nummer) -> R.string.erfassen_nummer_ungueltig
+    else -> null
+}
+
 @Composable
 fun AddSetDialog(
     onDismiss: () -> Unit,
@@ -789,10 +815,7 @@ fun AddSetDialog(
     // weil das Feld beim ersten Durchlauf noch nicht angeordnet ist und requestFocus()
     // sonst ins Leere liefe.
     val setFeldFokus = remember { FocusRequester() }
-    if (sofortFokus) LaunchedEffect(Unit) {
-        kotlinx.coroutines.delay(120)
-        try { setFeldFokus.requestFocus() } catch (_: Exception) { /* Dialog schon zu */ }
-    }
+    if (sofortFokus) FokusNachPause(setFeldFokus)
     var purchasePrice by rememberSaveable { mutableStateOf("") }
     var condition by rememberSaveable { mutableStateOf(defaultCondition) }
     // Vorbelegt mit dem eigenen Konto: Wer nichts wählt, erfasst für sich —
@@ -806,15 +829,14 @@ fun AddSetDialog(
     var nummerFehlt by rememberSaveable { mutableStateOf(false) }
 
     fun submit() {
-        if (setNumber.isBlank()) {
+        if (nummerFehler(setNumber, geprueft = true) != null) {
             nummerFehlt = true
-            if (sofortFokus) try { setFeldFokus.requestFocus() } catch (_: Exception) { /* Dialog schon zu */ }
-        } else {
+            if (sofortFokus) setFeldFokus.fokusWennOffen()
+        } else if (!erfassungUngueltig(quantity, purchasePrice)) {
+            // Bei unlesbarer Menge oder unlesbarem Preis bleibt der Dialog offen; die Felder zeigen den Fehler.
             onAdd(setNumber, quantity.toIntOrNull() ?: 1,
-                  purchasePrice.replace(',', '.').toDoubleOrNull(), condition,
-                  // Ohne Haushalt gar nichts mitschicken — der Server bleibt
-                  // dann beim eigenen Konto.
-                  if (householdMembers.size > 1) owner else null,
+                  NumericInput.leseBetrag(purchasePrice), condition,
+                  eigentuemerFuerErfassung(householdMembers, owner),
                   lagerort.trim().takeIf { it.isNotEmpty() })
         }
     }
@@ -835,19 +857,21 @@ fun AddSetDialog(
             value = setNumber,
             onValueChange = { setNumber = NumericInput.setNumber(it) },
             label = { Text(stringResource(R.string.gallery_set_number)) },
-            isError = nummerFehlt && setNumber.isBlank(),
+            isError = nummerFehler(setNumber, nummerFehlt) != null,
             supportingText = {
-                if (nummerFehlt && setNumber.isBlank()) Text(stringResource(R.string.erfassen_nummer_fehlt), Modifier.ansagen())
-                else Text(stringResource(R.string.gallery_set_number_placeholder))
+                nummerFehler(setNumber, nummerFehlt)?.let { Text(stringResource(it), Modifier.ansagen()) }
+                    ?: Text(stringResource(R.string.gallery_set_number_placeholder))
             },
             modifier = Modifier.fillMaxWidth().focusRequester(setFeldFokus), singleLine = true,
             shape = Formen.feld,
-            keyboardOptions = NumericInput.ganzzahlTastatur()
+            keyboardOptions = NumericInput.setnummerTastatur()
         )
         OutlinedTextField(
             value = quantity,
             onValueChange = { quantity = NumericInput.quantity(it) },
             label = { Text(stringResource(R.string.common_quantity)) },
+            isError = NumericInput.mengeUngueltig(quantity),
+            supportingText = { if (NumericInput.mengeUngueltig(quantity)) Text(stringResource(R.string.erfassen_menge_ungueltig), Modifier.ansagen()) },
             modifier = Modifier.fillMaxWidth(), singleLine = true,
             shape = Formen.feld,
             keyboardOptions = NumericInput.ganzzahlTastatur()
@@ -857,6 +881,8 @@ fun AddSetDialog(
             onValueChange = { purchasePrice = NumericInput.price(it) },
             label = { Text(stringResource(R.string.gallery_purchase_price)) },
             placeholder = { Text(stringResource(R.string.common_unit_price_placeholder)) },
+            isError = NumericInput.preisUngueltig(purchasePrice),
+            supportingText = { if (NumericInput.preisUngueltig(purchasePrice)) Text(stringResource(R.string.erfassen_preis_ungueltig), Modifier.ansagen()) },
             modifier = Modifier.fillMaxWidth(), singleLine = true,
             shape = Formen.feld,
             keyboardOptions = NumericInput.preisTastatur(),

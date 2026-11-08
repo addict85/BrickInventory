@@ -24,12 +24,38 @@ routes/                 HTTP: Eingabe prüfen (Vertrag), Dienst rufen, antworten
 jobs/                   Hintergrundarbeit, ruft Dienste
 src/<bereich>/          Dienste (Fachlogik) und repository (SQL)
 db/, clients/           Datenbank und Aussenwelt (nur HTTP)
+src/http/               HTTP-Helfer für Routen und HTTP-Seiten (Fehlerantwort, Upload, Drossel)
+src/vertrag/            der API-Vertrag (zod-Schemas, Prüfung, OpenAPI), von allen Bereichen geteilt
 src/infra/              fachfreie Helfer
 ```
 
+`src/infra` ist die unterste Stufe: Es importiert keinen anderen Bereich (das
+prüft die Rangfolge unten). „Fachfrei" ist es nicht durchgehend, und das ist
+Absicht, solange es nur von unten gebraucht wird:
+
+- Reine Helfer ohne Bezug zu HTTP: Fehler (`fehler`, `fehlerTexte`),
+  Konfiguration (`konfig`), Geheimnisse, Protokoll, Abruf nach draussen
+  (`abruf`, `fremdeAdressen`), CSV, Validierung.
+- Kleine Fachregeln, die mehrere Bereiche teilen und deshalb nicht in einem
+  von ihnen liegen können: Setnummern (`setNummer`), Geld (`geld`),
+  Passwortregel (`passwortRegel`).
+- Die HTTP-Hülle, die jede Schicht braucht: Fehlerantwort (`sendeFehler` in
+  `fehlerTexte`, `httpAntwort`), Vertrag (`vertrag/`), Datei-Ein- und -Ausgang,
+  Budget und Schranken je Konto, Sitzungskeks, Proxy-Vertrauen. Express
+  importieren nur Dateien daraus; welche, hält der Test in
+  `test/schichten.test.js` fest. Dienste kennen Express nicht, mit einer
+  Ausnahme: `anfrageKonto` trägt die laufende Anfrage über
+  `AsyncLocalStorage` zu Zählern, die keinen Request sehen.
+
 - SQL steht nur in `src/<bereich>/repository*` und `db/`.
-- Routen importieren nichts aus `db/`, `jobs/` oder `clients/`; sie fangen
-  keine Fehler, der Fehlerweg des Routers antwortet.
+- Routen importieren nichts aus `db/`, `jobs/` oder `clients/`. Sie umhüllen
+  nichts mit `try/catch`; der Fehlerweg des Routers antwortet. Ein `.catch(…)`
+  gibt es nur dort, wo die Antwort einen Ersatzwert braucht (etwa der Token
+  beim Anmelden in `routes/auth.ts`: ohne Token ein eigener Fehlercode).
+- Express kennen nur die Routen, `server.ts`, `src/infra` (Fehlerweg, Herkunft,
+  Dateiauslieferung) und die HTTP-Seiten der Bereiche unter `src/<bereich>/http/`
+  (Anmeldung und Sitzung in `konto`, Bild-Proxy in `katalog`, Idempotenz-
+  Middleware). Fachdienste importieren weder Express noch eine HTTP-Seite.
 - Clients erreicht man nur über `src/katalog/quellen.ts`; Schlüssel und
   Kontingent bekommen sie dort übergeben (`clients/zugang.ts`).
 - Eine Transaktion (`db.transaction`) gilt für den ganzen Aufrufpfad, auch
@@ -43,25 +69,27 @@ kennen einander nicht. Von unten nach oben:
 | Stufe | Bereiche |
 |---|---|
 | 1 | `src/infra` |
-| 2 | `db`, `clients` |
-| 3 | `src/einstellungen` |
-| 4 | `src/mail` |
-| 5 | `src/auftraege` |
-| 6 | `src/haushalt` |
-| 7 | `src/konto` |
-| 8 | `src/idempotenz`, `src/katalog` |
-| 9 | `src/finanzen` |
-| 10 | `src/bestand` |
-| 11 | `src/sets` |
-| 12 | `src/teile`, `src/figuren`, `src/merkliste`, `src/gutscheine` |
-| 13 | `src/sammlung`, `src/verwaltung` |
-| 14 | `jobs`, `routes` |
-| 15 | `startup` |
-| 16 | `server.ts` |
+| 2 | `src/http` |
+| 3 | `src/vertrag` |
+| 4 | `db`, `clients` |
+| 5 | `src/einstellungen` |
+| 6 | `src/mail` |
+| 7 | `src/auftraege` |
+| 8 | `src/haushalt` |
+| 9 | `src/konto` |
+| 10 | `src/idempotenz`, `src/katalog` |
+| 11 | `src/finanzen` |
+| 12 | `src/bestand` |
+| 13 | `src/sets` |
+| 14 | `src/teile`, `src/figuren`, `src/merkliste`, `src/gutscheine` |
+| 15 | `src/sammlung`, `src/verwaltung` |
+| 16 | `jobs`, `routes` |
+| 17 | `startup` |
+| 18 | `server.ts` |
 
 ## API-Vertrag
 
-`src/infra/vertrag/` beschreibt jede Route mit zod: Antwort und, für jede
+`src/vertrag/` beschreibt jede Route mit zod: Antwort und, für jede
 schreibende Route, die Eingabe. Daraus entstehen die Routentypen (tsc),
 `docs/openapi.json` (`npm run vertrag:openapi`) und der Abgleich mit dem
 Android-Client (`test/vertrag-kotlin.test.js`).
@@ -75,8 +103,8 @@ der Code verweist mit `Ausführlich: docs/begruendungen/…#anker`.
 
 `public/` ist eine Seite (`index.html`) mit einem Bündel. `npm run build:frontend`
 (esbuild, `scripts/build-frontend.js`) macht aus `public/js/main.js` und allem,
-was es importiert, `public/js/app.bundle.js` (IIFE, minifiziert, eingecheckt;
-die CI prüft, dass es zu den Quellen passt). Ausserhalb des Bündels laufen nur
+was es importiert, `public/js/app.bundle.js` (IIFE, minifiziert; ein Erzeugnis,
+nicht in git — `npm run build`, Dockerfile, CI und `npm test` bauen es). Ausserhalb des Bündels laufen nur
 `public/js/00-theme-boot.js` (Design vor dem ersten Bild), die Wörterbücher
 `public/locales/de.js` und `public/locales/en.js`, `public/js/pdfjs-boot.js`
 und `public/js/logviewer.js`.

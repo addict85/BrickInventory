@@ -186,9 +186,30 @@ function txSchnittstelle(client: PoolClient): DbSchnittstelle {
   };
 }
 
-async function transaction<T>(fn: (tx: DbSchnittstelle) => Promise<T>): Promise<T> {
+export interface TxOptionen {
+  /** Bei Deadlock (40P01) oder Serialisierungsfehler (40001) die ganze Transaktion
+   * bis zu zweimal neu beginnen. Nur für Rümpfe ohne Wirkung nach aussen (Netz,
+   * Dateien, Mails): Sie laufen dann mehrfach. In einer äusseren Transaktion
+   * ohne Wirkung; dort entscheidet deren Option. */
+  wiederholeBeiKonflikt?: boolean;
+}
+const TX_KONFLIKT = new Set(['40P01', '40001']);
+const TX_NEUVERSUCHE = 2;
+
+async function transaction<T>(fn: (tx: DbSchnittstelle) => Promise<T>, o: TxOptionen = {}): Promise<T> {
   const aussen = txClient();
   if (aussen) return innereTransaktion(aussen, fn);
+  for (let versuch = 0; ; versuch++) {
+    try { return await einmaligeTransaktion(fn); }
+    catch (e) {
+      if (!o.wiederholeBeiKonflikt || versuch >= TX_NEUVERSUCHE || !TX_KONFLIKT.has(fehlerCode(e) ?? '')) throw e;
+      // Versetzt, damit die Gegenspieler nicht im Gleichschritt wieder aufeinandertreffen.
+      await new Promise(r => setTimeout(r, 25 * (versuch + 1) + Math.random() * 50));
+    }
+  }
+}
+
+async function einmaligeTransaktion<T>(fn: (tx: DbSchnittstelle) => Promise<T>): Promise<T> {
   const client = await pool.connect();
   const stand = { client, offen: true };
   let kaputt: Error | undefined;
@@ -302,9 +323,12 @@ async function initSchemaOnce() {
   const LOCK_ID = LOCKS.SCHEMA_INIT;
   const client = await pool.connect();
   try {
-    // Warten auf den anderen Prozess ist hier gewollt, auch länger als lock_timeout.
+    // Warten auf den anderen Prozess ist hier gewollt, auch länger als lock_timeout
+    // und statement_timeout: Eine lange Migration dort bräche den Start (57014) ab.
     await client.query('SET lock_timeout = 0');
+    await client.query('SET statement_timeout = 0');
     await client.query(`SELECT pg_advisory_lock(${LOCK_ID})`);
+    await client.query('RESET statement_timeout');
     const neu = await initSchema();
     const alt = !neu && await istAltbestand(client);
     if (alt) await ruesteAltbestandAuf(client);
@@ -317,6 +341,7 @@ async function initSchemaOnce() {
   } finally {
     await client.query(`SELECT pg_advisory_unlock(${LOCK_ID})`).catch(logAndContinue('db:pg_advisory_unlock'));
     await client.query('RESET lock_timeout').catch(logAndContinue('db:lock_timeout'));
+    await client.query('RESET statement_timeout').catch(logAndContinue('db:statement_timeout'));
     client.release();
   }
 }

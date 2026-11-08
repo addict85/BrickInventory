@@ -78,9 +78,11 @@ function distIsFresh() {
   return distAt >= srcAt;
 }
 
-/** dist/ auf den Stand der Quellen bringen, ohne etwas daraus zu laden. */
+/** dist/ und Bündel auf den Stand der Quellen bringen, ohne etwas daraus zu laden.
+ *  Das Bündel gehört dazu, weil jeder Server mit Oberfläche es ausliefert. */
 function baueDist() {
   if (_built) return;
+  require('./buendel').stelleBuendelSicher();
   if (!distIsFresh()) {
     const { execFileSync } = require('node:child_process');
     execFileSync(process.execPath,
@@ -91,7 +93,7 @@ function baueDist() {
 }
 
 function buildAndRequire() {
-  // Jede Antwort einer Route mit Vertrag läuft in Tests durch ihr Schema (src/infra/vertrag/pruefen.ts).
+  // Jede Antwort einer Route mit Vertrag läuft in Tests durch ihr Schema (src/vertrag/pruefen.ts).
   process.env.VERTRAG_PRUEFEN ??= '1';
   // Ohne NODE_ENV gelten die Regeln des Betriebs (Superuser-Verbot, APP_BASE_URL);
   // die Test-DB läuft als Superuser, und gestartete Server erben diese Umgebung.

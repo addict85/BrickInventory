@@ -17,6 +17,8 @@
  *      fehlend antworten gleich“ und die drei Teiltests davor
  *   E  (05.11.) alsAnhang() in beiden Routen entfernt → rot: „als Anhang in
  *      einer Sandbox“ (beide Wege, Kopf fehlt)
+ *   F  (08.11.) siehtKonto liest wieder über scopeIds (Gedächtnis) → rot:
+ *      „gelöstes Unterkonto ist sofort nicht mehr lesbar“ (200 statt 404)
  *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL.
  */
@@ -111,6 +113,7 @@ test('Uploads: Haushalt ja, Fremde nein, %2F nie', { concurrency: 1 }, async (t)
 
   await t.test('auch ein Verwalter liest fremde Uploads nicht', async () => {
     await db.run('UPDATE users SET is_admin = true WHERE id = $1', [F]);
+    await db.run(`INSERT INTO zweiter_faktor (user_id, geheimnis, aktiv) VALUES ($1, 'x', TRUE)`, [F]);
     assert.equal((await hole(F, `/data/uploads/${H}/a.pdf`, true)).status, 404,
       'Rechnungen und Gutscheine anderer gehen die Kontoverwaltung nichts an');
   });
@@ -125,6 +128,13 @@ test('Uploads: Haushalt ja, Fremde nein, %2F nie', { concurrency: 1 }, async (t)
 
   await t.test('kein Benutzerordner', async () => {
     assert.equal((await hole(F, '/data/uploads/lose.pdf')).status, 404);
+  });
+
+  await t.test('gelöstes Unterkonto ist sofort nicht mehr lesbar', async () => {
+    assert.equal((await hole(H, `/data/uploads/${U}/a.pdf`)).status, 200);
+    // Direkt in der Tabelle, ohne Benachrichtigung: Das Gedächtnis weiss nichts davon.
+    await db.run('DELETE FROM account_links WHERE main_user_id = $1 AND sub_user_id = $2', [H, U]);
+    assert.equal((await hole(H, `/data/uploads/${U}/a.pdf`)).status, 404);
   });
 
   await t.test('ohne Anmeldung', async () => {

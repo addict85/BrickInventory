@@ -2,15 +2,15 @@
  * Abschalten verlangen das Passwort: Wer nur eine offene Sitzung erbeutet,
  * soll das Konto weder aussperren noch den Schutz abbauen. */
 import * as K from '../../src/konto/konten';
-import { fehlerAntwort } from '../../src/infra/httpAntwort';
+import { fehlerAntwort } from '../../src/http/httpAntwort';
 import { beendeAndereZugaenge } from '../../src/konto/auth';
 import { requireLoginOrToken, angemeldeteNutzerId, bestaetigeCode, bestaetigeMitFaktor, zugangVon, zweiterFaktorPflicht, gnadenfristVerbrauchen } from '../../src/konto/http/anmeldung';
 import { bestaetigeEinrichtungGebremst } from '../../src/konto/passwortBestaetigung';
 import { hinweisNebenher } from '../../src/konto/kontoHinweis';
 import { sendeFehler } from '../../src/infra/fehlerTexte';
 import * as zf from '../../src/konto/zweiterFaktor';
-import { vertragsRouter } from '../../src/infra/vertrag/pruefen';
-import type { Antwort, OffeneAnfrage } from '../../src/infra/vertrag';
+import { vertragsRouter } from '../../src/vertrag/pruefen';
+import type { Antwort, OffeneAnfrage } from '../../src/vertrag';
 
 const router = vertragsRouter();
 const requireLogin = requireLoginOrToken;

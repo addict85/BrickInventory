@@ -261,7 +261,7 @@ class ImageRequestHeadersTest {
         return f.readText()
     }
 
-    /** Was der Wächter tut, prüft BildHostWaechterTest (core-data); hier nur, dass er drin ist. */
+    /** Was der Wächter tut, prüft BildHostWaechterTest (core-netz); hier nur, dass er drin ist. */
     @Test
     fun `der Bild-Client laeuft ueber den Host-Waechter und folgt keiner Umleitung selbst`() {
         val src = Quellen.di()

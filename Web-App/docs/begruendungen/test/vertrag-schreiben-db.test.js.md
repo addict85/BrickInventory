@@ -8,7 +8,7 @@ Commit-Nachricht (siehe CLAUDE.md).
 ## `Kopf der Datei`
 
 ```text
-Jede SCHREIBENDE Route der App gegen ihren Vertrag (src/infra/vertrag/):
+Jede SCHREIBENDE Route der App gegen ihren Vertrag (src/vertrag/):
 Antwort und, wo der Vertrag eine nennt, die Eingabe.
 
 Gegenstück zu vertrag-lesen-db (dort die GET-Routen). Die App liest

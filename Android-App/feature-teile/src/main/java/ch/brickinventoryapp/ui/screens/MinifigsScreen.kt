@@ -6,6 +6,7 @@ import ch.brickinventoryapp.ui.components.KeinTrefferHinweis
 import ch.brickinventoryapp.ui.components.HinweisText
 import ch.brickinventoryapp.ui.components.fokusRahmen
 import ch.brickinventoryapp.ui.viewmodel.TeileAktionen
+import ch.brickinventoryapp.ui.erfassungUngueltig
 import ch.brickinventoryapp.ui.erfassungsWerte
 import ch.brickinventoryapp.ui.model.FigurAnsicht
 import ch.brickinventoryapp.ui.model.FigurenKennzahlenAnsicht
@@ -323,7 +324,7 @@ fun AddMinifigDialog(
     }
 
     fun submit() {
-        if (figNumber.isNotBlank()) {
+        if (figNumber.isNotBlank() && !erfassungUngueltig(quantity, unitPrice)) {
             // Siehe erfassungsWerte() — dieselbe Umrechnung wie im Teile-Dialog.
             val w = erfassungsWerte(quantity, unitPrice, condition, owner, householdMembers)
             onAdd(

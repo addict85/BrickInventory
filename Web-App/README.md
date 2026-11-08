@@ -158,7 +158,7 @@ environment:
 
 ```bash
 npm ci --ignore-scripts && npm rebuild esbuild   # exakt die Lockfile, Install-Skripte nur für esbuild
-npm run build      # .ts → dist/, Frontend → public/js/app.bundle.js
+npm run build      # .ts → dist/, Frontend → public/js/app.bundle.js (Erzeugnis, nicht in git)
 npm start          # → node dist/server.js, NODE_ENV=production
 # → http://localhost:3000  (PostgreSQL muss separat laufen)
 ```
@@ -214,7 +214,10 @@ erst in der CI. `test/build-tooling.test.js` hält Dockerfile, CI, `.nvmrc` und
 
 Nach Änderungen an `public/js/*` oder `public/i18n.js` muss
 `npm run build:frontend` laufen — der Server liefert das gebündelte
-`app.bundle.js` aus, nicht die Einzeldateien.
+`app.bundle.js` aus, nicht die Einzeldateien. Das Bündel liegt nicht in git:
+`npm run build`, `npm run dev`, `npm test` und der Docker-Bau erzeugen es, und
+ein einzelner `node --test test/<datei>` baut es selbst, wenn es fehlt oder
+älter als die Quellen ist.
 
 ## Sicherung
 
@@ -427,7 +430,7 @@ und schreibt `coverage/lcov.info`, `coverage-summary.json` und
 Bereiche mit `scripts/abdeckung-schranken.json`; die CI macht beides.
 
 Die API gibt es nur unter `/api/v1/`. Ihr Vertrag (zod-Schemata in
-`src/infra/vertrag/`) wird im Testlauf an jeder Antwort geprüft; der Abgleich
+`src/vertrag/`) wird im Testlauf an jeder Antwort geprüft; der Abgleich
 mit der Android-App liest deren Retrofit-Schnittstelle (`app-endpunkte`).
 
 Regeln für neue Tests stehen in `CLAUDE.md` im Wurzelordner: Ein Test prüft

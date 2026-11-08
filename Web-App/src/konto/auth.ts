@@ -74,7 +74,9 @@ export async function verifiziereEmailToken(token: unknown): Promise<{ ok: boole
   return neu.ok ? { ok: true, userId: neu.id } : { ok: false, grund: 'vergeben', userId: neu.id };
 }
 
-const TOKEN_TTL_MS = 60 * 1000;       // Cache-Gültigkeit
+/** Kurz, weil ein Widerruf in einem anderen Prozess nur per NOTIFY ankommt: Bleibt
+ * es aus, gilt ein widerrufener Token höchstens so lange weiter. */
+export const TOKEN_TTL_MS = 5 * 1000;
 const TAG_MS = 86_400_000;
 
 /** Ab 30 Tagen meldet jede Antwort die Rotation; ein unbegrenzter Token gilt

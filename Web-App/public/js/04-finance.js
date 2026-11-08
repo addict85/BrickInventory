@@ -346,14 +346,18 @@ function finanzenLaedt() {
   return hatteTabelle;
 }
 
-/** Ladefehler: Diagramm und Kennzahlen dürfen nicht auf „Laden…“ stehen bleiben. @param {{ status?: number } | null | undefined} d */
+/** Ladefehler: Diagramm und Kennzahlen dürfen nicht auf „Laden…“ stehen bleiben. @param {{ status?: number, networkError?: boolean } | null | undefined} d */
 function finanzenFehlen(d) {
   if (d?.status === 401) return;
   // Grund und „Erneut versuchen“ stehen schon bei der Liste darunter; ein zweiter Block sagte dasselbe.
   if (!_letzteKurve) setzeHtml(G('portfolio-chart'), html`<p class="fehler-zustand text-mut">${tRaw('chart.unavailable')}</p>`);
   if (!G('fin-sum').dataset.geladen) {
     G('fin-sum').removeAttribute('aria-busy');
-    for (const id of KENNZAHLEN) G(id).textContent = '—';
+    // Fehlt die Verbindung, sagen die Karten es selbst: Das gelbe Band und der Fehlerblock stehen weit weg.
+    for (const id of KENNZAHLEN) {
+      if (d?.networkError) setzeHtml(G(id), html`<span class="fval-hinweis">${tRaw('finance.stat.offline')}</span>`);
+      else G(id).textContent = '—';
+    }
   }
 }
 

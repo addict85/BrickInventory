@@ -42,7 +42,7 @@ Grenze wohnten sechs Namen — nachgemessen, nicht geschaetzt:
                                                     die es nicht gibt
   src/katalog/teileAnreicherung.ts: activeDownloads       Diagnosezaehler, kein Leser
   src/sets/abfragen.ts: updateSetQuantity         ueberholte Zweitfassung
-  src/infra/sseRegistry.ts: openSseCount                „fuer Diagnose und Tests",
+  src/http/sseRegistry.ts: openSseCount                „fuer Diagnose und Tests",
                                                     kein Test benutzte sie
   src/katalog/bilder/thumbs.ts: generateThumbsBackground         seit dem ersten Commit
                                                     nie aufgerufen

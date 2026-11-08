@@ -29,7 +29,7 @@ process.env.DATABASE_URL = URL_DB;
 const ROOT = path.join(__dirname, '..');
 const _req = require('./helpers/sources').buildAndRequire();
 const db = _req('db/database.js');
-const { VERTRAG, routeFuerAnfrage } = _req('src/infra/vertrag/index.js');
+const { VERTRAG, routeFuerAnfrage } = _req('src/vertrag/index.js');
 const { antwortIstGeheim } = _req('src/idempotenz/http/middleware.js');
 const { warte } = require('./helpers/zeit');
 const freierPort = () => new Promise(r => { const s = net.createServer().listen(0, () => { const p = s.address().port; s.close(() => r(p)); }); });

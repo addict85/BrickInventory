@@ -1,10 +1,10 @@
-import { fehlerAntwort } from '../../src/infra/httpAntwort';
+import { fehlerAntwort } from '../../src/http/httpAntwort';
 import { requireToken } from './middleware';
 import { resolveMany } from '../../src/katalog/bricklinkLink';
 import { sendeFehler } from '../../src/infra/fehlerTexte';
 import { katalogMeta, jahrVerteilung, katalogSeite, katalogSet, katalogGeladen } from '../../src/katalog/dienst';
-import { vertragsRouter } from '../../src/infra/vertrag/pruefen';
-import type { Anfrage, Antwort } from '../../src/infra/vertrag';
+import { vertragsRouter } from '../../src/vertrag/pruefen';
+import type { Anfrage, Antwort } from '../../src/vertrag';
 
 const router = vertragsRouter();
 

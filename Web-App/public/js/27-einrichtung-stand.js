@@ -102,6 +102,8 @@ export async function einrichtungKnopfPruefen() {
   if (!knopf) return;
   const d = await api('GET', '/v1/einrichtung/stand');
   knopf.hidden = !!(d?.success && d.konfiguriert === true);
+  const hinweis = G('einrichtung-pruefen-hinweis');
+  if (hinweis) hinweis.hidden = knopf.hidden;
 }
 
 export async function einrichtungPruefen() {

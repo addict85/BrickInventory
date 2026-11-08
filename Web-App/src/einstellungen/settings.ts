@@ -3,7 +3,7 @@ import * as repo from './repository';
 import { verschluessele, entschluessele, umschluesseln, kontext } from '../infra/geheimnis';
 import { fehlerWerfen, dateiFehler } from '../infra/fehlerTexte';
 import { meldeUndLiefere } from '../infra/fehler';
-import { GLOBALE_REGELN, DESIGNS, type GlobalerSchluessel } from '../infra/vertrag/globaleRegeln';
+import { GLOBALE_REGELN, DESIGNS, type GlobalerSchluessel } from '../vertrag/globaleRegeln';
 
 /** Gespeichert ist Text; mit Vorgabe ist das Ergebnis Text oder die Vorgabe, nie `any`. */
 export async function getSetting(userId: number, key: string): Promise<string | null | undefined>;
@@ -87,12 +87,20 @@ export function globalerWertGueltig(key: string, value: unknown): boolean {
   return regelFuer(key)?.safeParse(value).success ?? false;
 }
 
+const _beiGlobalerAenderung: Array<() => void> = [];
+/** Für Zwischenspeicher, die aus globalen Werten rechnen: Sie leeren sich selbst,
+ * statt dass jede Schreibstelle sie kennen muss. */
+export function beiGlobalerAenderung(fn: () => void): void {
+  _beiGlobalerAenderung.push(fn);
+}
+
 /** Die EINE Schreibstelle; jeder Schlüssel braucht eine Regel in GLOBALE_REGELN.
  * Ausführlich: docs/begruendungen/src/einstellungen/settings.ts.md#setglobalsetting */
 export async function setGlobalSetting(key: string, value: unknown) {
   const r = regelFuer(key)?.safeParse(value);
   if (!r?.success) throw (r?.error.issues[0] as { params?: { fehler?: unknown } } | undefined)?.params?.fehler ?? dateiFehler('wert_ungueltig', 400);
   await repo.schreibeGlobalenWert(key, SECRET_KEYS.has(key) ? verschluessele(r.data, globalerKontext(key)) : r.data);
+  for (const fn of _beiGlobalerAenderung) fn();
 }
 
 /** Offen nur bei genau '1'; fehlt die Zeile oder ist sie unlesbar, bleibt sie zu. */

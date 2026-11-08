@@ -42,7 +42,7 @@ test('Browser ohne Token', { concurrency: 1 }, async (t) => {
     `INSERT INTO users (username, password_hash, is_active, email_verified) VALUES ($1, $2, true, true) RETURNING id`,
     [NAME, await bcrypt.hash(PASS, 4)])).id;
 
-  const KEKS = _req('src/infra/sitzungsKeks.js').sitzungsKeksName();
+  const KEKS = _req('src/http/sitzungsKeks.js').sitzungsKeksName();
   const app = express();
   app.use(express.json());
   app.use(session({

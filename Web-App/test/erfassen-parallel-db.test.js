@@ -122,7 +122,7 @@ test('alle Erfassen-Wege nutzen dieselbe Prüfung', () => {
     assert.match(src, /acquisitionQuantity\(/, `${rel}: Menge ungeprüft`);
     assert.match(src, /geldEingabe\(/,         `${rel}: Preis ungeprüft`);
   }
-  const vertrag = ohneKommentare(fs.readFileSync(path.join(ROOT, 'src/infra/vertrag/sets.ts'), 'utf8'));
+  const vertrag = ohneKommentare(fs.readFileSync(path.join(ROOT, 'src/vertrag/sets.ts'), 'utf8'));
   assert.match(vertrag, /const NeuesSet = [^;]*quantity: eingabe\.stueckzahl\(\)[^;]*purchase_price: eingabe\.geld\(/,
     'Sets: Menge oder Preis ungeprüft');
 

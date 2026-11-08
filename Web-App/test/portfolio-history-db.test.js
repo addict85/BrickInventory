@@ -231,12 +231,12 @@ test('ein Preiseintrag je Set, Zustand, Währung und Tag', { concurrency: 1 }, a
   await db2.pool.end().catch(() => {});
 });
 
-test('der Mailer schaltet die Zertifikatsprüfung nirgends ab', () => {
+test('der Mailversand schaltet die Zertifikatsprüfung nirgends ab', () => {
   // Verhalten: test/smtp-tls-festnageln-db.test.js. Hier nur das Verbot im Quelltext.
   const fs = require('node:fs');
   const path = require('node:path');
   const { ROOT, ohneKommentare } = require('./helpers/sources');
-  const src = ohneKommentare(fs.readFileSync(path.join(ROOT, 'src/mail/mailer.ts'), 'utf8'));
+  const src = ohneKommentare(fs.readFileSync(path.join(ROOT, 'src/mail/transport.ts'), 'utf8'));
   assert.doesNotMatch(src, /rejectUnauthorized:\s*(false|!)/,
     'Zertifikatsprüfung abschaltbar — SMTP-Zugangsdaten und Rücksetz-Links gingen über eine ungeprüfte Verbindung');
 });

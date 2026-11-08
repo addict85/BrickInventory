@@ -9,7 +9,7 @@ Commit-Nachricht (siehe CLAUDE.md).
 
 ```text
 API-Vertrag gegen einen laufenden Server: jede GET-Route des Vertrags
-(src/infra/vertrag/) ohne Platzhalter gegen ihr Schema. Die vollständige
+(src/vertrag/) ohne Platzhalter gegen ihr Schema. Die vollständige
 Prüfung mit Bestand steht in test/vertrag-lesen-db.test.js; dieses Skript
 ist für einen echten Bestand (nach `npm run build`).
 

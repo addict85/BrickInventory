@@ -45,8 +45,8 @@ const db = _req('db/database.js');
 const zf = _req('src/konto/zweiterFaktor.js');
 const geheimnis = _req('src/infra/geheimnis.js');
 const { idempotenz, antwortIstGeheim } = _req('src/idempotenz/http/middleware.js');
-const { nichtWiederholbar } = _req('src/infra/vertrag/grund.js');
-const { VERTRAG } = _req('src/infra/vertrag/index.js');
+const { nichtWiederholbar } = _req('src/vertrag/grund.js');
+const { VERTRAG } = _req('src/vertrag/index.js');
 const express = require(path.join(ROOT, 'node_modules', 'express'));
 const bcrypt = require(path.join(ROOT, 'node_modules', 'bcryptjs'));
 

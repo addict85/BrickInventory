@@ -39,7 +39,7 @@ test('abc wird abgewiesen, mit Meldung am Feld', async () => {
   try {
     const r = await versuche(o, 'abc');
     assert.equal(r.gesendet, false, '„abc“ ging an den Server');
-    assert.match(r.fehler, /„abc“ ist keine Set-Nummer/);
+    assert.match(r.fehler, /„abc“ ist keine Setnummer/);
     assert.equal(r.feld.getAttribute('aria-invalid'), 'true');
     assert.equal(r.feld.getAttribute('aria-describedby'), 'add-num-fehler');
     assert.equal(o.d.activeElement, r.feld, 'Der Fokus steht nicht im Feld');
@@ -50,7 +50,7 @@ test('abc wird abgewiesen, mit Meldung am Feld', async () => {
     // Leer: dieselbe Stelle, eigener Text.
     const leer = await versuche(o, '   ');
     assert.equal(leer.gesendet, false);
-    assert.match(leer.fehler, /Set-Nummer eingeben/);
+    assert.match(leer.fehler, /Setnummer eingeben/);
   } finally { o.w.close(); }
 });
 

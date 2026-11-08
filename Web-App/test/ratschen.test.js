@@ -33,6 +33,9 @@ const STILLE_FAENGE = [
   /\.catch\(\(\)\s*=>\s*(null|undefined|true|false|-?\d+|'[^']*'|"[^"]*"|\(\{[^()]*\}\))\)/g,
   // Eine leere Liste ist für den Leser keine Fehlermeldung, sondern „nichts da".
   /\.catch\(\(\)\s*=>\s*\[\]\)/g,
+  // Jeder andere Ausdruck als Ersatz (Map, Liste mit Inhalt, Vorgabe): Bei einem
+  // Datenbankfehler sähe die Antwort wie ein Ergebnis aus. meldeUndLiefere liefert dasselbe mit Log.
+  /\.catch\(\s*\(\s*\)\s*=>\s*(?!\{)(?!(?:null|undefined|true|false|-?\d+|'[^']*'|"[^"]*"|\[\])\s*\))\S/g,
 ];
 
 /**
@@ -61,8 +64,14 @@ test('die Suche findet die Quellen ueberhaupt', () => {
 
 test('stille Faenge werden weniger, nie mehr', () => {
   // Die beiden übrigen sind Rebrickable-Vermutungen, deren 404 die Antwort
-  // ist; wie die Zahl gesunken ist, steht im git log.
+  // ist; wie die Zahl gesunken ist, steht im git log. Mit dem Ersatzwert-Muster
+  // wurden am 08.11.2026 fünf weitere gefunden und behoben (Stand danach: 2).
   const SCHRANKE = 2;
+  // Selbstbeweis des letzten Musters: Es muss einen Ersatzwert ohne Meldung finden, die Meldung nicht.
+  const ersatz = STILLE_FAENGE[STILLE_FAENGE.length - 1];
+  const trifft = (s) => (s.match(ersatz) || []).length;
+  assert.equal(trifft('x.catch(() => [userId]);') + trifft('x.catch(() => new Map());') + trifft('x.catch(()=>VORGABE);'), 3);
+  assert.equal(trifft("x.catch(meldeUndLiefere('a', [1]));") + trifft('x.catch((e) => { meldeUndWeiter("a", e); });'), 0);
   const ist = zaehle(STILLE_FAENGE);
   assert.ok(ist <= SCHRANKE,
     `${ist} stille Faenge, erlaubt sind ${SCHRANKE}. Ein neuer \`catch {}\` ` +
@@ -350,7 +359,7 @@ test('kein Modul wird in einer Datei zweimal importiert', () => {
 
 test('der Kommentaranteil im Server sinkt, nie steigt', () => {
   // Gemessen 13,8 % in server.ts, routes/, src/ und jobs/; 13,2 % mit dem
-  // API-Vertrag (src/infra/vertrag/). Schranke 13,2.
+  // API-Vertrag (src/vertrag/). Schranke 13,2.
   const SCHRANKE = 13.2;
   let zeilen = 0, kommentar = 0;
   for (const f of quellen().filter(f => /[\\/](routes|src|jobs)[\\/]|[\\/]server\.ts$/.test(f))) {

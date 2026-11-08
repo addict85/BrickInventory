@@ -2,13 +2,13 @@
 'use strict';
 /**
  * API-Vertrag gegen einen laufenden Server: jede GET-Route des Vertrags
- * (src/infra/vertrag/) ohne Platzhalter gegen ihr Schema. Die vollständige
+ * (src/vertrag/) ohne Platzhalter gegen ihr Schema. Die vollständige
  * Prüfung mit Bestand steht in test/vertrag-lesen-db.test.js; dieses Skript
  * ist für einen echten Bestand (nach `npm run build`).
  * Ausführlich: docs/begruendungen/scripts/check-api-contract.js.md#path
  */
 const path = require('path');
-const { VERTRAG } = require(path.join(__dirname, '..', 'dist', 'src', 'infra', 'vertrag', 'index.js'));
+const { VERTRAG } = require(path.join(__dirname, '..', 'dist', 'src', 'vertrag', 'index.js'));
 
 const BASE = process.env.BASE_URL || 'http://localhost:3000';
 async function token() {

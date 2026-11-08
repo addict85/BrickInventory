@@ -64,8 +64,15 @@ export function drosselAdresse(ip: string): string {
 const _key = (ip: string, name: unknown) => `login|${drosselAdresse(ip)}|${einzelwert(name).toLowerCase()}`;
 const _adressKey = (ip: string) => `login-adresse|${drosselAdresse(ip)}`;
 const _nameKey = (name: unknown) => `login-name|${einzelwert(name).toLowerCase()}`;
-const _bekanntKey = (ip: string, name: unknown) => `login-bekannt|${drosselAdresse(ip)}|${einzelwert(name).toLowerCase()}`;
-const _erfolgKey = (ip: string, kennung: string) => `login-erfolg|${drosselAdresse(ip)}|${kennung}`;
+/** Die Bekannt-Zeile lebt 30 Tage und die Tabelle liest die Leserolle: Dort steht
+ * nur der HMAC der Adresse; er bleibt für dieselbe Adresse gleich und zählt weiter. */
+function adressAbdruck(ip: string): string {
+  const a = drosselAdresse(ip);
+  try { return suchwert('anmeldeadresse', a); }
+  catch { return createHash('sha256').update(`brickinventory/anmeldeadresse/${a}`).digest('hex'); }
+}
+const _bekanntKey = (ip: string, name: unknown) => `login-bekannt|${adressAbdruck(ip)}|${einzelwert(name).toLowerCase()}`;
+const _erfolgKey = (ip: string, kennung: string) => `login-erfolg|${adressAbdruck(ip)}|${kennung}`;
 
 function _prune() {
   if (_attempts.size <= 5000) return;

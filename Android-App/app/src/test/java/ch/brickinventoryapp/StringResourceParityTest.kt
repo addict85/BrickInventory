@@ -182,7 +182,8 @@ class StringResourceParityTest {
             "monitoring_vorwaermen_roaming",
             // System und Server heissen in beiden Sprachen so.
             "nav_group_server", "settings_hell_system",
-            "partslist_ok", "partslist_rb_prefix",
+            "common_ok", "common_pdf", "common_hours_short", "common_times",
+            "partslist_rb_prefix",
             "setup_build",
             "setup_url_placeholder",
             // PIN ist in beiden Sprachen PIN — ein Begriff, kein Satz.
@@ -351,8 +352,8 @@ class StringResourceParityTest {
             Regex("""contentDescription\s*=\s*"([^"]{3,})""""),
             Regex("""Toast\.makeText\([^,]+,\s*"([^"]{3,})"""),
         )
-        // Eigennamen und Abkürzungen, die in jeder Sprache gleich lauten.
-        val erlaubt = setOf("PDF")
+        // Eigennamen und Abkürzungen, die in jeder Sprache gleich lauten (z. B. PDF: common_pdf).
+        val erlaubt = emptySet<String>()
         val erlaubtGesehen = mutableSetOf<String>()
 
         val fehler = mutableListOf<String>()

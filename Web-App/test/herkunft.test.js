@@ -24,7 +24,7 @@ const assert = require('node:assert/strict');
 const path   = require('node:path');
 
 const _req = require('./helpers/sources').buildAndRequire();
-const { nurEigeneHerkunft } = _req('src/infra/herkunft.js');
+const { nurEigeneHerkunft } = _req('src/http/herkunft.js');
 const express = require(path.join(__dirname, '..', 'node_modules', 'express'));
 
 test('Herkunft schreibender Anfragen', async (t) => {

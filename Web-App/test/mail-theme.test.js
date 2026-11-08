@@ -8,7 +8,9 @@ const fs = require('node:fs');
 const path = require('node:path');
 
 const ROOT = path.join(__dirname, '..');
-const SRC = fs.readFileSync(path.join(ROOT, 'src/mail/mailer.ts'), 'utf8');
+// Palette und Gerüst stehen in vorlage.ts, die Mailtexte in mailer.ts.
+const SRC = fs.readFileSync(path.join(ROOT, 'src/mail/vorlage.ts'), 'utf8') + '\n'
+  + fs.readFileSync(path.join(ROOT, 'src/mail/mailer.ts'), 'utf8');
 const { pruefeParameter, funktionsKopf } = require('./helpers/sources');
 
 test('es gibt eine Palette je Design', () => {
@@ -39,7 +41,7 @@ test('das Design wird beim Versand geladen, nicht fest verdrahtet', () => {
   assert.match(SRC, /import \{[^}]*getGlobalSetting[^}]*\} from '(?:\.\.\/)*(?:einstellungen\/)?settings'/,
     'und zwar über die zentrale Fassung, nicht über eine eigene Abfrage');
   // Bei jedem Zweifel classic — eine E-Mail darf nie am Design scheitern
-  assert.match(SRC, /catch \(_\) \{ return MAIL_THEMES\.classic; \}/,
+  assert.match(SRC, /catch \(_\) \{\s*return MAIL_THEMES\.classic;\s*\}/,
     'Ohne Rückfall bliebe eine E-Mail bei einem Datenbankfehler aus');
 
   // Beide Versandfunktionen müssen es laden

@@ -139,7 +139,7 @@ test('Sicherheit im Querschnitt', { concurrency: 1, timeout: 180_000 }, async (t
 });
 
 test('ein Serverfehler in Produktion nennt keine Interna', () => {
-  const skript = `const { handleRouteError } = require(${JSON.stringify(path.join(ROOT, 'dist/src/infra/httpAntwort.js'))});
+  const skript = `const { handleRouteError } = require(${JSON.stringify(path.join(ROOT, 'dist/src/http/httpAntwort.js'))});
     console.error = () => {};
     const res = { headersSent: false, status(s) { this.s = s; return this; }, json(b) { process.stdout.write(JSON.stringify([this.s, b])); } };
     handleRouteError(res, new Error('relation "geheim" at /app/dist/x.js:1'), undefined, { method: 'GET', originalUrl: '/x' });`;

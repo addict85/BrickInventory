@@ -49,6 +49,9 @@ export function escUrl(u){
 /** Wie escUrl(), aber unmaskiert: für html``, das selbst maskiert. @param {unknown} u */
 export function sichereUrl(u){
   const v = String(u ?? '').trim();
+  // Browser lesen „\" wie „/" und streichen Tab und Zeilenumbruch mitten in der Adresse: „/\host" und
+  // „/<Tab>/host" wären protokollrelativ, also fremd. Beides kommt in einer echten Adresse nicht vor.
+  if ([...v].some(z => z === '\\' || z.charCodeAt(0) < 32)) return '';
   return /^(https?:\/\/|\/(?!\/)|data:image\/)/i.test(v) ? v : '';
 }
 

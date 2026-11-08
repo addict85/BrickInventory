@@ -8,10 +8,10 @@ Commit-Nachricht (siehe CLAUDE.md).
 ## `Kopf der Datei`
 
 ```text
-Die Kotlin-Modelle der App gegen den Vertrag des Servers (src/infra/vertrag/,
+Die Kotlin-Modelle der App gegen den Vertrag des Servers (src/vertrag/,
 als JSON-Schema wie in docs/openapi.json): Jede Route, die die App aufruft,
 hat einen Vertrag, und ihr Antworttyp liest jede Antwort, die der Vertrag
 erlaubt — Feldnamen (@SerialName), Typ, Nullbarkeit, Pflicht oder optional.
 Dass der Server seinen Vertrag hält, prüfen die DB-Tests (vertrag-lesen-db,
-vertrag-schreiben-db und jede Antwort über src/infra/vertrag/pruefen.ts).
+vertrag-schreiben-db und jede Antwort über src/vertrag/pruefen.ts).
 ```

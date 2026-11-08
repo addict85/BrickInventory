@@ -36,6 +36,11 @@ import java.io.File
  *      → rot „jede Lücke im Bauwerkzeug …“ (steht nicht in verification-metadata.xml)
  *   H ein `PdfRenderer(` in PdfSeite.kt →
  *      rot „PdfRenderer steht nur im isolierten Render-Dienst“
+ *   L  gegenproben/netz-haengt-an-ablage.patch: core-netz bindet Room ein →
+ *      rot „core-netz hängt an Ablage oder DI“ (Schichtung der Kernmodule);
+ *      erst die CI misst es, lokal gibt es kein Gradle
+ *   M  gegenproben/merge-rest-im-baum.patch: eine Datei `Rest.kt.orig` im Baum →
+ *      rot „kein Merge-Rest liegt im Baum“ (jeder Modulordner ist eingebunden …)
  */
 class ModulgrenzenTest {
 
@@ -55,7 +60,13 @@ class ModulgrenzenTest {
         abhaengigkeiten(bau).filter { !it.konfiguration.startsWith("test") }.map { it.ziel }.toSet()
 
     @Test
-    fun `jeder Modulordner ist eingebunden und jedes eingebundene Modul gibt es`() {
+    fun `jeder Modulordner ist eingebunden, jedes eingebundene Modul gibt es, und kein Merge-Rest liegt im Baum`() {
+        // Eine .orig/.rej wird nie kompiliert, zählt aber für jede Suche über den Baum mit.
+        val wurzel: File = checkNotNull(projekt.parentFile)
+        val reste = wurzel.walkTopDown()
+            .onEnter { it.name !in setOf(".git", ".claude", ".gradle", "build", "node_modules") }
+            .filter { it.isFile && it.extension in setOf("orig", "rej") }.map { it.relativeTo(wurzel).path }.toList()
+        assertTrue("Merge-Reste im Baum, löschen: $reste", reste.isEmpty())
         val eingebunden = Regex("""include\("(:[\w-]+)"\)""")
             .findAll(File(projekt, "settings.gradle.kts").readText()).map { it.groupValues[1].removePrefix(":") }.toSet()
         val ordner = module().keys
@@ -79,7 +90,8 @@ class ModulgrenzenTest {
         val erlaubt = mapOf(
             "core-model" to emptySet(),
             "core-ressourcen" to emptySet(),
-            "core-data" to setOf("core-model", "core-ressourcen"),
+            "core-netz" to setOf("core-model"),
+            "core-data" to setOf("core-model", "core-ressourcen", "core-netz"),
             "core-ui" to setOf("core-model", "core-ressourcen"),
             "core-zustand" to setOf("core-model", "core-ressourcen", "core-data", "core-ui"),
             "core-testing" to setOf("core-zustand", "core-data", "core-ui"),
@@ -95,6 +107,17 @@ class ModulgrenzenTest {
             val haupt = hauptAbhaengigkeiten(bau)
             if (name != "core-testing") assertTrue("$name bindet core-testing nicht nur für Tests ein", "core-testing" !in haupt)
         }
+        // core-netz ist die untere Netz-Schicht: Ablage, Repositories und Hilt bleiben in core-data.
+        val netz = kerne.getValue("core-netz")
+        val bibliotheken = Regex("""\(libs\.([\w.]+)\)""").findAll(netz).map { it.groupValues[1] }.toList()
+        val ablage = listOf("androidx.room", "sqlcipher", "hilt", "androidx.hilt", "androidx.datastore", "androidx.work", "retrofit")
+        assertTrue("core-netz hängt an Ablage oder DI: $bibliotheken", bibliotheken.none { b -> ablage.any { b.startsWith(it) } })
+        val importe = File(projekt, "core-netz/src/main").walkTopDown().filter { it.isFile && it.extension == "kt" }.flatMap { f ->
+            Regex("""^import\s+([\w.]+)""", RegexOption.MULTILINE).findAll(f.readText()).map { "${f.name}: ${it.groupValues[1]}" }
+        }.toList()
+        assertTrue("Nur ${importe.size} Importe in core-netz — Pfad veraltet?", importe.size > 20)
+        val fremd = importe.filter { Regex(""": (androidx\.room|dagger|javax\.inject|retrofit2|ch\.brickinventoryapp\.data\.(repository|lokal|cache))\b""").containsMatchIn(it) }
+        assertTrue("core-netz importiert Ablage, Repositories oder DI: $fremd", fremd.isEmpty())
     }
 
     @Test

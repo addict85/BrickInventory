@@ -1,9 +1,9 @@
 /** /api/v1/settings — ein Router für den ganzen Pfad, weil die Reihenfolge vor
  * und nach router.use(requireLogin) hier an einer Stelle entschieden wird. */
 import multer from 'multer';
-import { FORMULAR_GRENZEN } from '../../src/infra/dateiEmpfang';
+import { FORMULAR_GRENZEN } from '../../src/http/dateiEmpfang';
 import { logAndContinue, meldeUndLiefere } from '../../src/infra/fehler';
-import { fehlerAntwort } from '../../src/infra/httpAntwort';
+import { fehlerAntwort } from '../../src/http/httpAntwort';
 import { requireApiAdmin as requireAdmin, requireToken, bearerToken, kontoSchranke } from './middleware';
 import { SECRET_KEYS, isMaskedValue, readSettings, designFuer, deleteUserSetting, setGlobalSetting, globalerWertGueltig, deleteGlobalSetting, globalDefaultCondition, nutzerStandardZustand, getGlobalSetting, getSetting } from '../../src/einstellungen/settings';
 import { setzeEigenesDesign, setUserSetting } from '../../src/konto/nutzerEinstellung';
@@ -19,11 +19,11 @@ import { sendeFehler, fehlerText, antwortSprache } from '../../src/infra/fehlerT
 import { tlsAuskunft } from '../../src/infra/tlsWurzel';
 import { invalidateTheme } from '../../src/konto/indexHtml';
 import { emailGueltig } from '../../src/infra/validate';
-import { vertragsRouter } from '../../src/infra/vertrag/pruefen';
+import { vertragsRouter } from '../../src/vertrag/pruefen';
 import { konfigExport, datenZip, konfigImport, istHeikel } from '../../src/verwaltung/datenexport';
-import { GLOBALE_EINSTELLUNGEN, KONTO_EINSTELLUNGEN } from '../../src/infra/vertrag/einstellungen';
+import { GLOBALE_EINSTELLUNGEN, KONTO_EINSTELLUNGEN } from '../../src/vertrag/einstellungen';
 import type { Request } from 'express';
-import type { Anfrage, Antwort, OffeneAnfrage } from '../../src/infra/vertrag';
+import type { Anfrage, Antwort, OffeneAnfrage } from '../../src/vertrag';
 const router = vertragsRouter();
 
 const requireLogin = requireLoginOrToken;
@@ -285,17 +285,21 @@ router.post('/settings/import', kontoSchranke('upload'), importUpload.single('fi
 
 router.post('/settings/smtp-test', async (req: OffeneAnfrage<'POST /api/v1/settings/smtp-test'>, res: Antwort<'POST /api/v1/settings/smtp-test'>) => {
   if (!istVerwalter(req)) return sendeFehler(req, res, 403, 'nur_admins');
-  const verify = await testSmtp();
-  if (!verify.success) return sendeFehler(req, res, 400, verify.code, 'vars' in verify ? verify.vars : undefined);
+  const uid = angemeldeteNutzerId(req);
+  // Sonst wäre der Mailserver für eine erbeutete Verwaltersitzung ein Relais an jede Adresse.
+  const zuOft = await kontoGedrosselt('smtp-test', uid, 10, 60 * 60 * 1000);
+  if (zuOft) return sendeFehler(req, res, 429, 'zu_viele_anfragen', { minuten: zuOft.waitMin });
 
-  let to = (req.eingabe.to || '').trim();
-  if (!to) {
-    to = (await profil(angemeldeteNutzerId(req)))?.email || '';
-  }
+  const eigene = (await profil(uid))?.email || '';
+  const to = (req.eingabe.to || '').trim() || eigene;
   if (!emailGueltig(to)) {
     return sendeFehler(req, res, 400, 'keine_ziel_email');
   }
+  // Wie das Ändern der Mail-Einstellungen: an eine fremde Adresse nur mit Passwort.
+  if (to.toLowerCase() !== eigene.toLowerCase() && !await bestaetigeMitFaktor(req, res, uid, req.eingabe.password)) return;
 
+  const verify = await testSmtp();
+  if (!verify.success) return sendeFehler(req, res, 400, verify.code, 'vars' in verify ? verify.vars : undefined);
   const result = await sendMail({
     to,
     subject: 'BrickInventory Manager — SMTP Test',

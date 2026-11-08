@@ -841,7 +841,7 @@ lässt `CacheBereichTest` scheitern, bis es hier eingeordnet ist.
 ## Token nur an die eigene Herkunft
 
 Ein Token geht nur an die Herkunft (Schema, Host, Port), die ihn ausgab
-(`di/ServerWaechter.kt`). Was eine Antwort auslöst — Nachfassen mit Token,
+(`di/ServerWaechter.kt`, Modul `core-netz`). Was eine Antwort auslöst — Nachfassen mit Token,
 Tausch und Wiederholung nach `token_rotation_noetig`, Abmelden, Rechteentzug —
 gilt nur der Sitzung, in der die Anfrage hinausging: Der Wächter liest die
 Generation der `TokenSchranke` vor dem Token und vergleicht danach; beim
@@ -853,7 +853,7 @@ derselben Herkunft. Liegt der Server unter einem Pfad (`https://host/brick`),
 geht der Token nur an Adressen darunter, Umleitungen eigener Anfragen bleiben
 darunter, und ein anderer Pfad auf demselben Host gilt als anderer Server
 (`NetworkPolicy.imBasisPfad`, `gleicherServer`). Geprüft: `ServerwechselTest`,
-`UmleitungTest`, `TokenTauschTest`, `BasisPfadTest`.
+`TokenTauschTest` (core-data), `UmleitungTest` und `BasisPfadTest` (core-netz).
 
 Abmelden entwertet den Token am Server. Gelingt das in 3 s nicht (kein Netz,
 5xx), geht ein Auftrag mit dem verschlüsselten Token an WorkManager

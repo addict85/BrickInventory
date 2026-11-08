@@ -103,6 +103,33 @@ function baueBuendel(outAbs, opt = {}) {
   ], { stdio: ['ignore', 'ignore', 'inherit'] });
 }
 
+/** Neueste Änderung an allem, woraus das Bündel entsteht (auch index.html: data-stil-Werte). */
+function neuesteQuelle() {
+  const dateien = [
+    ...fs.readdirSync(path.join(PUBLIC, 'js')).filter(f => f.endsWith('.js') && f !== path.basename(OUT_REL)).map(f => path.join(PUBLIC, 'js', f)),
+    ...fs.readdirSync(path.join(PUBLIC, 'locales')).map(f => path.join(PUBLIC, 'locales', f)),
+    path.join(PUBLIC, 'i18n.js'), path.join(PUBLIC, 'index.html'), __filename,
+  ];
+  return Math.max(...dateien.map(f => fs.statSync(f).mtimeMs));
+}
+
+/**
+ * Das Bündel liegt nicht in git; wer es liest, ruft dies auf. Über Zwischendatei
+ * und rename, damit parallele Leser nie ein halbes sehen. true, wenn gebaut wurde.
+ * @param {string} [outAbs]
+ */
+function stelleBuendelSicher(outAbs = path.join(PUBLIC, OUT_REL)) {
+  if (fs.existsSync(outAbs) && fs.statSync(outAbs).mtimeMs >= neuesteQuelle()) return false;
+  const zwischen = `${outAbs}.${process.pid}.tmp`;
+  try {
+    baueBuendel(zwischen);
+    fs.renameSync(zwischen, outAbs);
+  } finally {
+    fs.rmSync(zwischen, { force: true });
+  }
+  return true;
+}
+
 function main() {
   checkComplete();
   if (process.argv.includes('--check')) {
@@ -110,7 +137,7 @@ function main() {
     return;
   }
 
-  // --outfile=…: nur bündeln, an einen anderen Ort (test/buendel-aktuell.test.js).
+  // --outfile=…: nur bündeln, an einen anderen Ort (test/buendel-gebaut.test.js).
   const ziel = process.argv.find(a => a.startsWith('--outfile='))?.slice('--outfile='.length);
   if (ziel) { baueBuendel(path.resolve(ziel)); return; }
   const outAbs = path.join(PUBLIC, OUT_REL);
@@ -127,4 +154,4 @@ function main() {
 
 if (require.main === module) main();
 
-module.exports = { ENTRY, OUT_REL, STANDALONE, erlaubteStile, baueBuendel };
+module.exports = { ENTRY, OUT_REL, STANDALONE, erlaubteStile, baueBuendel, stelleBuendelSicher, neuesteQuelle };

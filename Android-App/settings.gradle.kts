@@ -36,6 +36,7 @@ include(":app")
 // kennt einen anderen. ModulgrenzenTest prüft das an den Build-Dateien.
 include(":core-model")
 include(":core-ressourcen")
+include(":core-netz")
 include(":core-data")
 include(":core-ui")
 include(":core-zustand")

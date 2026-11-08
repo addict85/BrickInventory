@@ -9,7 +9,7 @@ import { fehlerMeldung, api, apiDaten } from './01-api.js';
 import { bildTag, fullUrl, platzhalterInhalt, imgUrl, observeLazyImages, thumbUrl } from './01-bilder.js';
 import { leerZustand, meldeTreffer, ico, G, TRASH_ICON_SVG, zuruecksetzenKnopf, aktiverReiter, alle, fuegeHtmlEin, setzeHtml } from './01-dom.js';
 import { fmtDatum, fmtBig, fmtGeld, fmtN, fmtPct, istGeschenk } from './01-format.js';
-import { setnummerFeldGueltig, betragAusFeld } from './01-formular.js';
+import { setnummerFeldGueltig, betragAusFeld, mengeAusFeld, kaufdatumGueltig } from './01-formular.js';
 import { toast } from './01-meldungen.js';
 import { gibStart, importZaehler, protokollZeile, csvPollAktiv, addCsvLog, handleSseEvent, hideProgress, setProgBar, showProgress, streamFertig, streamRequest, setzeCsvPollAktiv } from './01-fortschritt.js';
 import { addScopeParam, scopeQuery, addLagerParam, lagerModus } from './14-scope.js';
@@ -432,7 +432,7 @@ export function filterZahlZeigen() {
 
 
 async function doAddSet(){
-  const num=G('add-num').value.trim(), qty=parseInt(G('add-qty').value)||1;
+  const num=G('add-num').value.trim();
   const preis = betragAusFeld('add-price');
   const purchase_price = preis.wert;
   const condition = G('add-condition')?.value || 'N';
@@ -441,7 +441,12 @@ async function doAddSet(){
   // Zielkonto nur mitschicken, wenn die Auswahl überhaupt sichtbar ist. Ohne Haushalt schickt die Webapp gar
   // nichts, und der Server bleibt beim eigenen Konto — dieselbe Antwort wie vor der Haushaltssicht.
   const owner_user_id = selectedOwner('add-owner');
-  if(!setnummerFeldGueltig('add-num', num) || !preis.ok) return;
+  // Alle Felder prüfen, nicht beim ersten Fehler aufhören: Jedes zeigt seine Meldung, der Fokus bleibt am ersten (Set-Nummer).
+  const datumOk = kaufdatumGueltig('add-date');
+  const menge = mengeAusFeld('add-qty');
+  const nummerOk = setnummerFeldGueltig('add-num', num);
+  if(!nummerOk || !menge.ok || !preis.ok || !datumOk) return;
+  const qty = menge.wert;
   // Steht das Set schon da, heisst der Hauptknopf „Set öffnen“ und tut genau das, ohne Schreibversuch.
   const vorhanden = G('add-num').dataset.vorhanden;
   if (vorhanden && vorhanden === (/-\d+$/.test(num) ? num : num + '-1')) { erfassenZumSet(vorhanden); return; }
@@ -469,7 +474,7 @@ async function doAddSet(){
           G('add-num').value=''; if(G('add-price')) G('add-price').value=''; if(G('add-date')) G('add-date').value='';
           leereLagerortFeld('add-storage');
           if (ev.katalog_offen) toast(tRaw('gallery.added_no_catalog', { num: ev.set_number }), 'info');
-          else toast(`Set ${ev.set_number} ${ev.action==='added'?tRaw('common.added'):tRaw('common.updated')}!`,'success');
+          else toast(tRaw(ev.action==='added'?'gallery.set_hinzugefuegt':'gallery.set_aktualisiert', { num: ev.set_number }),'success');
           // Hintergrundaufträge laufen noch: alle Reiter regelmässig auffrischen
           set_lastImportAt(Date.now());
           [3000, 8000, 15000, 25000].forEach(delay => setTimeout(()=>{
@@ -606,7 +611,7 @@ function csvApplyOverlayStatus(s, ctx, fi){
       const btnClose = G('btn-close-import');
       if (btnClose) btnClose.style.display = '';
       loadGallery();
-      toast(`Import: ${zaehler}`,s.err?'error':s.warn?'info':'success');
+      toast(tRaw('csv.import_meldung', { ergebnis: zaehler }),s.err?'error':s.warn?'info':'success');
       if(fi) fi.value='';
     }
     return true;

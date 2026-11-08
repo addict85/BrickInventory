@@ -1,0 +1,14 @@
+Gegenprobe: core-netz bindet Room ein und hängt damit wieder an der Ablage
+Modul: app
+Test: ch.brickinventoryapp.ModulgrenzenTest
+Rot: Schichtung der Kernmodule
+
+diff --git a/Android-App/core-netz/build.gradle.kts b/Android-App/core-netz/build.gradle.kts
+--- a/Android-App/core-netz/build.gradle.kts
++++ b/Android-App/core-netz/build.gradle.kts
+@@ -22,4 +22,5 @@ dependencies {
+     implementation(libs.okhttp)
+     // oeffneExtern: Uri-Erweiterung.
+     implementation(libs.androidx.core.ktx)
++    implementation(libs.androidx.room.runtime)
+ }

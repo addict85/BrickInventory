@@ -15,7 +15,7 @@ import wantedRouter from './wanted';
 import vouchersRouter from './vouchers';
 import papierkorbRouter from './papierkorb';
 import einrichtungRouter from './einrichtung';
-import { vertragsRouter } from '../../src/infra/vertrag/pruefen';
+import { vertragsRouter } from '../../src/vertrag/pruefen';
 
 const router = vertragsRouter();
 

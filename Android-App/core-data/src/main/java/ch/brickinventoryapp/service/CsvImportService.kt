@@ -62,7 +62,7 @@ class CsvImportService : Service() {
         fun stop(context: Context) {
             try {
                 context.stopService(Intent(context, CsvImportService::class.java))
-            } catch (_: Exception) {}
+            } catch (_: Exception) { /* Dienst schon beendet — nichts mehr zu stoppen */ }
         }
     }
 

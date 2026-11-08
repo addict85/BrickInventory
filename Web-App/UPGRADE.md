@@ -16,7 +16,7 @@ Sie sind entfernt; der Build schreibt nach `dist/`.
 
 ```
 npm ci
-npm run build      # → dist/ + public/js/app.bundle.js
+npm run build      # → dist/ + public/js/app.bundle.js (nicht mehr in git, nur gebaut)
 npm start          # → node dist/server.js
 ```
 

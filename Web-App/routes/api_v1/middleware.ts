@@ -1,12 +1,12 @@
 /** requireApiAdmin bündelt Anmeldung und is_admin, damit kein Admin-Endpunkt
  * die Prüfung versehentlich weglässt. */
-import { meldeUndLiefere } from '../../src/infra/fehler';
+import { meldeUndLiefere, meldeUndWeiter } from '../../src/infra/fehler';
 import express from 'express';
 import type { Request, Response, NextFunction, RequestHandler } from 'express';
 import { zuGrosseId } from '../../src/infra/validate';
 import { validateToken } from '../../src/konto/auth';
 import { resolveUserId, nutzerId, zweiterFaktorPflicht } from '../../src/konto/http/anmeldung';
-import { belegeKontoPlatz, type Schranke } from '../../src/infra/kontoSchranke';
+import { belegeKontoPlatz, type Schranke } from '../../src/http/kontoSchranke';
 import { mussPasswortAendern } from '../../src/konto/konten';
 import type { Sicht } from '../../src/haushalt/haushalt';
 
@@ -14,7 +14,7 @@ import type { Sicht } from '../../src/haushalt/haushalt';
 export const sichtVon = (req: AuthedRequest & { abfrage: { accounts?: string | undefined } }): Sicht =>
   ({ nutzer: req.apiUser.user_id, konten: req.abfrage.accounts });
 import { sendeFehler } from '../../src/infra/fehlerTexte';
-import { waechter } from '../../src/infra/vertrag/pruefen';
+import { waechter } from '../../src/vertrag/pruefen';
 
 export function bearerToken(req: { headers: { authorization?: string | undefined } }): string | null {
   const auth = req.headers.authorization || '';
@@ -60,6 +60,14 @@ export async function anmeldungAmEingang(req: Request, res: Response, next: Next
     if (!uid) return sendeFehler(req, res, 401, req.tokenAbsage ?? 'nicht_angemeldet');
     req.tokenUserId = uid;
   }
+  return eingangsSperre(req, res, next);
+}
+
+/** Die Sperren „Passwortwechsel nötig“ und „2. Faktor Pflicht“ für einen schon
+ * erkannten Nutzer. Auch Dateien und Bild-Proxy hängen davor, weil sie vor dem
+ * Eingang stehen und sonst an beiden Regeln vorbeiliefen. */
+export async function eingangsSperre(req: Request, res: Response, next: NextFunction) {
+  const methode = req.method === 'HEAD' ? 'GET' : req.method;
   if (!(methode === 'POST' && VOR_DEM_WECHSEL.test(req.path)) && await mussWechseln(req))
     return sendeFehler(req, res, 403, 'passwort_wechsel_noetig');
   if (!ZUR_EINRICHTUNG.some(([m, re]) => m === methode && re.test(req.path)) && await zweiterFaktorPflicht(req))
@@ -80,7 +88,7 @@ export const requireToken = waechter<AuthedRequest>((req, res, next) => {
     if (!user) return sendeFehler(req, res, 401, 'token_ungueltig');
     req.apiUser = { ...user, is_admin: user.is_admin ?? 0 };
     next();
-  }).catch(() => sendeFehler(req, res, 401, 'auth_fehler'));
+  }).catch((e: unknown) => { meldeUndWeiter('eingang:token', e); sendeFehler(req, res, 401, 'auth_fehler'); });
 });
 
 export const requireApiAdmin = waechter<AuthedRequest>((req, res, next) => {

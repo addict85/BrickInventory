@@ -199,7 +199,7 @@ fun PartsListScreen(
         LaunchedEffect(manuelleErfassungAnfordern) {
             if (manuelleErfassungAnfordern) {
                 kotlinx.coroutines.delay(120)
-                try { setFeldFokus.requestFocus() } catch (_: Exception) {}
+                try { setFeldFokus.requestFocus() } catch (_: Exception) { /* Dialog schon zu */ }
                 onManuelleErfassungQuittiert()
             }
         }
@@ -214,7 +214,7 @@ fun PartsListScreen(
                         // „Fertig“ und das „+“ im Feld nehmen das Set in die Liste: ein Weg hinein,
                         // ein Knopf zum Erstellen.
                         onValueChange = { setInput = NumericInput.setNumber(it) },
-                        keyboardOptions = NumericInput.ganzzahlTastatur(ImeAction.Done),
+                        keyboardOptions = NumericInput.setnummerTastatur(ImeAction.Done),
                         keyboardActions = KeyboardActions(onDone = { if (setInput.isNotBlank()) addSet(setInput) }),
                         // Beschriftung statt Platzhalter: Der lange Platzhalter brach im Feld
                         // zweizeilig um und verschwand beim Tippen.
@@ -384,7 +384,7 @@ private fun PdfKnopf(isExporting: Boolean, pdfError: String?, onExport: () -> Un
     if (pdfError != null) {
         androidx.compose.material3.AlertDialog(
             onDismissRequest = onFehlerGesehen,
-            confirmButton = { TextButton(onClick = onFehlerGesehen) { Text(stringResource(R.string.partslist_ok)) } },
+            confirmButton = { TextButton(onClick = onFehlerGesehen) { Text(stringResource(R.string.common_ok)) } },
             title = { Text(stringResource(R.string.partslist_pdf_error_title)) },
             text = { Text(pdfError) }
         )
@@ -398,7 +398,7 @@ private fun PdfKnopf(isExporting: Boolean, pdfError: String?, onExport: () -> Un
             strokeWidth = 2.dp)
         else Icon(Icons.Default.PictureAsPdf, null, Modifier.size(mitSchrift(16.dp)))
         Spacer(Modifier.width(Abstaende.winzig))
-        Text("PDF")
+        Text(stringResource(R.string.common_pdf))
     }
 }
 

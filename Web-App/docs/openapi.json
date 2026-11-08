@@ -3,7 +3,7 @@
   "info": {
     "title": "BrickInventory API",
     "version": "2",
-    "description": "Erzeugt aus src/infra/vertrag/ (npm run vertrag:openapi). Nicht von Hand ändern."
+    "description": "Erzeugt aus src/vertrag/ (npm run vertrag:openapi). Nicht von Hand ändern."
   },
   "paths": {
     "/api/v1/": {
@@ -11506,12 +11506,59 @@
                   "to": {
                     "type": "string",
                     "maxLength": 320
+                  },
+                  "password": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "maxLength": 1024
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "code": {
+                    "anyOf": [
+                      {
+                        "anyOf": [
+                          {
+                            "type": "string",
+                            "maxLength": 64
+                          },
+                          {
+                            "type": "number"
+                          }
+                        ]
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "passkey": {
+                    "anyOf": [
+                      {
+                        "type": "object",
+                        "propertyNames": {
+                          "type": "string"
+                        },
+                        "additionalProperties": {}
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
                   }
                 },
                 "additionalProperties": false
               }
             }
           }
+        },
+        "x-bestaetigung": {
+          "passwort": "password",
+          "code": "code"
         }
       }
     },
@@ -16429,6 +16476,7 @@
           "aktuelles_passwort_falsch",
           "passwort_wechsel_noetig",
           "letzter_verwalter",
+          "verwalter_muss_bleiben",
           "zweiter_faktor_pflicht",
           "alle_felder_erforderlich",
           "passwort_reset_nicht_eingerichtet",

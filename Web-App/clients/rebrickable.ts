@@ -8,7 +8,7 @@ import fs from 'fs';
 import { fehlertext, meldeUndLiefere, meldeUndWeiter } from '../src/infra/fehler';
 import { mitVersion } from '../src/infra/setNummer';
 import { zugang } from './zugang';
-import { ERLAUBTE_DOWNLOAD_HOSTS, ERLAUBTE_API_HOSTS, pfadSegment } from '../src/infra/fremdeAdressen';
+import { ERLAUBTE_DOWNLOAD_HOSTS, ERLAUBTE_API_HOSTS, ERLAUBTE_REBRICKABLE_HOSTS, hostErlaubt, pfadSegment } from '../src/infra/fremdeAdressen';
 
 const BASE = 'https://rebrickable.com/api/v3';
 
@@ -84,10 +84,11 @@ const BROWSER_UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36
 
 /** Drei Anläufe bei 429 und Netzfehlern; 403 heisst bei Rebrickable „unbekannt". */
 async function httpsGetRobust(url: string, headers: Record<string, string> = {}, timeoutMs = 60000): Promise<{ status: number; body: string; buffer: Buffer }> {
+  const hosts = Object.keys(headers).some(k => k.toLowerCase() === 'authorization') ? ERLAUBTE_REBRICKABLE_HOSTS : ERLAUBTE_API_HOSTS;
   for (let versuch = 1; ; versuch++) {
     let r;
     try {
-      r = await holeHttps(url, { hosts: ERLAUBTE_API_HOSTS, maxBytes: API_MAX_BYTES, zeitlimitMs: timeoutMs,
+      r = await holeHttps(url, { hosts, maxBytes: API_MAX_BYTES, zeitlimitMs: timeoutMs,
         kopfzeilen: { 'User-Agent': BROWSER_UA, ...headers } });
     } catch (e) {
       if (e instanceof AbrufFehler && e.isTransient && versuch < 3) { await sleep(1500); continue; }
@@ -108,7 +109,7 @@ async function httpsGetRobust(url: string, headers: Record<string, string> = {},
 /** Ein Abruf ohne eigene Wiederholung: Drossel und Tageskontingent führt der
  * Aufrufer (Hintergrundläufe). Ein Netzfehler ist Status 0, kein Wurf. */
 export async function rebrickableRoh(url: string, rbKey: string): Promise<{ status: number; body: string }> {
-  return holeHttps(url, { hosts: ERLAUBTE_API_HOSTS, maxBytes: API_MAX_BYTES, zeitlimitMs: 30_000,
+  return holeHttps(url, { hosts: ERLAUBTE_REBRICKABLE_HOSTS, maxBytes: API_MAX_BYTES, zeitlimitMs: 30_000,
     kopfzeilen: { Authorization: `key ${rbKey}`, 'User-Agent': 'BrickInventory/1.0' } })
     .then(r => ({ status: r.status, body: r.koerper.toString('utf8') }), (e: unknown) => {
       meldeUndWeiter('rebrickable:abruf', e);
@@ -172,7 +173,9 @@ async function holeSetTeile(n: string): Promise<{ teile: any[]; verweigert: bool
     if (status !== 200) { console.error(`  Parts HTTP ${status}`); break; }
     let data; try { data = JSON.parse(body); } catch (e) { meldeUndWeiter('rebrickable:teile-seite', e); break; }
     allParts.push(...(data.results || []));
-    url = data.next || null;
+    // Ein fremdes `next` bekäme sonst den Schlüssel.
+    url = data.next && hostErlaubt(String(data.next), ERLAUBTE_REBRICKABLE_HOSTS) ? data.next : null;
+    if (data.next && !url) console.error(`  Parts page ${pages}: next zeigt auf einen fremden Host, ${n} bleibt unvollständig`);
     if (url) await sleep(500);
   }
   return { teile: allParts, verweigert: false };

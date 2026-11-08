@@ -47,6 +47,8 @@ import coil3.request.crossfade
 import ch.brickinventoryapp.ui.theme.Abstaende
 import ch.brickinventoryapp.ui.components.DetailTopAppBar
 import ch.brickinventoryapp.ui.components.ProduktBild
+import ch.brickinventoryapp.ui.components.ansagen
+import ch.brickinventoryapp.ui.erfassungUngueltig
 import ch.brickinventoryapp.ui.components.SegmentWahl
 import ch.brickinventoryapp.ui.components.bewegungReduziert
 import ch.brickinventoryapp.ui.components.mitSchrift
@@ -359,6 +361,8 @@ private fun CatalogAddDialog(
                     value = quantity,
                     onValueChange = { quantity = NumericInput.quantity(it) },
                     label = { Text(stringResource(R.string.common_quantity)) },
+                    isError = NumericInput.mengeUngueltig(quantity),
+                    supportingText = { if (NumericInput.mengeUngueltig(quantity)) Text(stringResource(R.string.erfassen_menge_ungueltig), Modifier.ansagen()) },
                     singleLine = true, modifier = Modifier.fillMaxWidth(),
                     keyboardOptions = NumericInput.ganzzahlTastatur()
                 )
@@ -367,6 +371,8 @@ private fun CatalogAddDialog(
                     value = purchasePrice,
                     onValueChange = { purchasePrice = NumericInput.price(it) },
                     label = { Text(stringResource(R.string.gallery_purchase_price)) },
+                    isError = NumericInput.preisUngueltig(purchasePrice),
+                    supportingText = { if (NumericInput.preisUngueltig(purchasePrice)) Text(stringResource(R.string.erfassen_preis_ungueltig), Modifier.ansagen()) },
                     singleLine = true, modifier = Modifier.fillMaxWidth(),
                     keyboardOptions = NumericInput.preisTastatur()
                 )
@@ -375,9 +381,9 @@ private fun CatalogAddDialog(
             }
         },
         confirmButton = {
-            Button(onClick = { onAdd(
+            Button(onClick = { if (!erfassungUngueltig(quantity, purchasePrice)) onAdd(
                 quantity.toIntOrNull() ?: 1,
-                purchasePrice.replace(',', '.').toDoubleOrNull(),
+                NumericInput.leseBetrag(purchasePrice),
                 condition,
                 // Ohne Haushalt gar nichts mitschicken — der Server bleibt dann
                 // beim eigenen Konto (gleiche Regel wie im Galerie-Dialog).

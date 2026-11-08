@@ -23,6 +23,8 @@
  *      Neuladen“ (Eintrag bleibt hidden)
  *   F  csvPollLoop wieder mit api() statt apiDaten() → rot: „Ergebnisliste
  *      mit Zeilen“ (api() überschreibt `status` mit 200, der Abschluss kommt nie)
+ *   G  csv.import_meldung aus de.js entfernt → rot: „Ergebnisliste mit Zeilen“
+ *      (die Meldung zeigt den rohen Schlüssel; 08.11.2026)
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -33,7 +35,7 @@ const ERGEBNISSE = [
   { zeile: 4, set_number: 'abc', success: false, error: 'Das ist keine Setnummer' },
   { zeile: 5, set_number: '10312-1', success: false, code: 'csv_menge_ungueltig', error: 'Menge „x“ ungültig' },
   { zeile: 6, set_number: '99999-1', success: true, action: 'added', menge: 1, katalog_offen: true },
-  { zeile: 7, set_number: '', success: false, code: 'csv_keine_setnummer', error: 'keine Set-Nummer' },
+  { zeile: 7, set_number: '', success: false, code: 'csv_keine_setnummer', error: 'keine Setnummer' },
   { success: true, action: 'updated' },
 ];
 const FERTIG = {
@@ -118,9 +120,10 @@ test('Ergebnisliste mit Zeilen, Farben und gelesenen Zeilen', async () => {
       'er|Zeile 4 · abc: Das ist keine Setnummer',
       'er|Zeile 5 · 10312-1: Menge „x“ ungültig',
       'warn|Zeile 6 · 99999-1 – hinzugefügt — nicht im Katalog',
-      'er|Zeile 7: keine Set-Nummer',
+      'er|Zeile 7: keine Setnummer',
     ]);
     assert.match(d.getElementById('prog-footer').textContent, /8 Zeilen gelesen · 1 ok, 1 Warnung, 3 Fehler/);
+    assert.equal(d.querySelector('#toasts .toast .toast-text')?.textContent, 'Import: 1 ok, 1 Warnung, 3 Fehler');
     assert.equal(d.getElementById('prog-bar-wrap').getAttribute('aria-valuenow'), '100');
   } finally {
     w.close();

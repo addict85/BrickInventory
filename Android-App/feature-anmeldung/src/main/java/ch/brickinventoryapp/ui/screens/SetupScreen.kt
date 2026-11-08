@@ -474,7 +474,7 @@ fun QrCameraPreview(frozen: Boolean, onQrFound: (String) -> Unit) {
     // kontinuierliche Autofokus bleibt davon unberührt.
     DisposableEffect(Unit) {
         onDispose {
-            try { scanner.close() } catch (_: Exception) {}
+            try { scanner.close() } catch (_: Exception) { /* beim Verlassen schon geschlossen */ }
             executor.shutdown()
         }
     }

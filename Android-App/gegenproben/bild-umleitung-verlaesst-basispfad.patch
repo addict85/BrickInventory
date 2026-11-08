@@ -1,12 +1,12 @@
 Gegenprobe: Der Bild-Client nimmt bei einer Umleitung auf demselben Host den Token ohne Blick auf den Basispfad mit (Stand vor sec8 N1)
-Modul: core-data
+Modul: core-netz
 Test: ch.brickinventoryapp.BildHostWaechterTest
 Rot: Basispfad heraus
 
-diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/util/BildHosts.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/util/BildHosts.kt
+diff --git a/Android-App/core-netz/src/main/java/ch/brickinventoryapp/util/BildHosts.kt b/Android-App/core-netz/src/main/java/ch/brickinventoryapp/util/BildHosts.kt
 index 947b3ff..df09de1 100644
---- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/util/BildHosts.kt
-+++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/util/BildHosts.kt
+--- a/Android-App/core-netz/src/main/java/ch/brickinventoryapp/util/BildHosts.kt
++++ b/Android-App/core-netz/src/main/java/ch/brickinventoryapp/util/BildHosts.kt
 @@ -48,7 +48,7 @@ class BildHostWaechter(
              // Köpfe (samt Token) ziehen nur mit, wo auch der ServerWaechter sie hinschickte:
              // gleiche Herkunft und unter dem Basispfad. Sonst teilt sich ein Proxy-Host mit

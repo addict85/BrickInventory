@@ -3,7 +3,7 @@
 import express from 'express';
 import path from 'path';
 import { fehlertext, meldeUndLiefere, oeffentlicherFehler } from '../../src/infra/fehler';
-import { fehlerAntwort, pfadParam } from '../../src/infra/httpAntwort';
+import { fehlerAntwort, pfadParam } from '../../src/http/httpAntwort';
 import { requireToken, kontoSchranke, sichtVon } from './middleware';
 import { getSetting } from '../../src/einstellungen/settings';
 import { findSetInScope, normalizeSetNumber } from '../../src/sets/setAdd';
@@ -13,7 +13,7 @@ import { normalisiereLagerort, setzeLagerort, lagerorte,
          orteFuer, legeOrtAn, benenneOrtUm, loescheOrt, lagerSchreibkonto,
          vorgabeVon, setzeVorgabe } from '../../src/bestand/lagerort';
 import { alarmeFuer, alleAlarme, ausgeloesteSeit, loescheAlarm, setzeAlarm } from '../../src/finanzen/preisalarm';
-import { csvEmpfang, uploadKontingentBytes, privaterOrdner, privaterEmpfang, kontingentReichtFuer, pruefeEmpfangeneDatei } from '../../src/infra/dateiEmpfang';
+import { csvEmpfang, uploadKontingentBytes, privaterOrdner, privaterEmpfang, kontingentReichtFuer, pruefeEmpfangeneDatei } from '../../src/http/dateiEmpfang';
 import { sendCsv, uebersprungenHinweis } from '../../src/infra/csvExport';
 import { addSet, updateSet } from '../../src/sets/setService';
 import { loescheSetFuer, getSet, getSets } from '../../src/sets/abfragen';
@@ -21,19 +21,18 @@ import { getSetPriceHistory } from '../../src/finanzen/priceHistory';
 import { mitVersion, normalisiereSetNummer, moeglicheSetNummer } from '../../src/infra/setNummer';
 import { sendeFehler, antwortSprache } from '../../src/infra/fehlerTexte';
 import { setTeileAnreichern } from '../../src/auftraege/nacharbeit';
-import { setInfo, setZumBarcode, teilelisteDesSets, figurenlisteDesSets, setPreis, rebrickableListe,
+import { setInfoFuerKonto, setZumBarcodeFuerKonto, teilelisteDesSets, figurenlisteDesSets, setPreis, rebrickableListe,
          setGehoertKonto, anleitungMerken, anleitungLoeschen, setCsvImportStarten, setCsvImportAbbrechen } from '../../src/sets/dienst';
 import { anleitungenZuSet, anleitungenZusammenlegen, loescheAnleitungen, anleitungNeuLadenErlaubt, anzahlAnleitungen } from '../../src/katalog/instructions';
 import { anleitungEinreihen } from '../../src/auftraege/anleitungsAuftrag';
 import { importPartsForSet } from '../../src/katalog/partsImport';
-import { registerSse } from '../../src/infra/sseRegistry';
+import { registerSse } from '../../src/http/sseRegistry';
 import { loginOrTokenGuard, angemeldeteNutzerId, istVerwalter } from '../../src/konto/http/anmeldung';
 import { csvImportBus, buildJobStatus, jobGet, beiImportStand } from '../../src/auftraege/importAuftrag';
 import { DATA_DIR } from '../../src/infra/appPaths';
-import { setBildSichtbar } from '../../src/katalog/bilder/bildBlickfeld';
 import { zaehleAnfrage } from '../../src/konto/loginLimiter';
-import { vertragsRouter } from '../../src/infra/vertrag/pruefen';
-import type { Anfrage, Antwort, OffeneAnfrage } from '../../src/infra/vertrag';
+import { vertragsRouter } from '../../src/vertrag/pruefen';
+import type { Anfrage, Antwort, OffeneAnfrage } from '../../src/vertrag';
 import { importAlsAuftrag } from '../../src/auftraege/importAlsAuftrag';
 import type { CsvImportBericht } from '../../src/infra/csvExport';
 const router = vertragsRouter();
@@ -42,15 +41,7 @@ const router = vertragsRouter();
 // Sonst liest Express „info" oder „exists" als Setnummer.
 
 router.get('/sets/info/:setNumber', requireToken, async (req: Anfrage<'GET /api/v1/sets/info/:setNumber'>, res: Antwort<'GET /api/v1/sets/info/:setNumber'>) => {
-  const n = mitVersion(req.pfad.setNumber);
-  const stamm = await setInfo(n);
-  const imBlickfeld = !!(stamm?.image_local || stamm?.platzhalter) && await setBildSichtbar(req.apiUser.user_id, n);
-  // Ein fremder Platzhalter antwortet wie eine nie erfasste Nummer; die Oberfläche zeigt dann die Nummer als Namen.
-  if (!stamm || (stamm.platzhalter && !imBlickfeld)) return res.json({ success: true, set_number: n, name: n, im_katalog: false });
-  const row = { ...stamm };
-  delete row.platzhalter;
-  if (!imBlickfeld) row.image_local = null;
-  res.json({ success: true, set_number: n, ...row, name: row.name || n, im_katalog: true });
+  res.json(await setInfoFuerKonto(req.apiUser.user_id, req.pfad.setNumber));
 });
 
 /** Nur das Blickfeld des fragenden Kontos (eigenes Konto oder Haushalt).
@@ -63,9 +54,7 @@ router.get('/sets/exists/:setNumber', requireToken, async (req: Anfrage<'GET /ap
 
 router.get('/sets/barcode/:barcode', requireToken, async (req: Anfrage<'GET /api/v1/sets/barcode/:barcode'>, res: Antwort<'GET /api/v1/sets/barcode/:barcode'>) => {
   const barcode = req.pfad.barcode.trim();
-  const treffer = await setZumBarcode(barcode);
-  // Ein fremdes Set-Bild liefert die Bildroute nicht aus (bildBlickfeld.ts).
-  if (treffer?.image_local && !await setBildSichtbar(req.apiUser.user_id, treffer.set_number)) treffer.image_local = null;
+  const treffer = await setZumBarcodeFuerKonto(req.apiUser.user_id, barcode);
   if (treffer) return res.json(treffer);
   sendeFehler(req, res, 404, 'barcode_kein_set', { barcode });
 });

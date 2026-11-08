@@ -3,7 +3,9 @@ package ch.brickinventoryapp.service
 import ch.brickinventoryapp.di.SseClient
 import ch.brickinventoryapp.util.fangeAusserAbbruch
 import android.content.Context
+import ch.brickinventoryapp.data.SseEreignis
 import ch.brickinventoryapp.data.Zugangsdaten
+import ch.brickinventoryapp.data.sseStrom
 import ch.brickinventoryapp.data.repository.SetsRepository
 import ch.brickinventoryapp.data.repository.Ergebnis
 import ch.brickinventoryapp.util.Teilelistentresor
@@ -14,24 +16,19 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.suspendCancellableCoroutine
+import kotlinx.coroutines.flow.takeWhile
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import okhttp3.OkHttpClient
 import okhttp3.Request
-import okhttp3.Response
-import okhttp3.sse.EventSource
-import okhttp3.sse.EventSourceListener
-import okhttp3.sse.EventSources
 import java.io.File
-import java.util.concurrent.atomic.AtomicBoolean
 import javax.inject.Inject
 import javax.inject.Singleton
-import kotlin.coroutines.resume
 import ch.brickinventoryapp.data.api.Fehlerrumpf
 import ch.brickinventoryapp.data.api.fehlerTextZuCode
 import ch.brickinventoryapp.util.LanguageManager
+import ch.brickinventoryapp.util.Protokoll
 import ch.brickinventoryapp.ressourcen.R
 
 sealed class PdfExportState {
@@ -178,52 +175,65 @@ class PdfExportManager @Inject constructor(
         return pollUntilDone(jobId)
     }
 
-    /** Versucht per SSE zu warten. Gibt null zurück, wenn SSE fehlschlug (Fallback nötig). */
-    private suspend fun tryWaitViaSse(
-        baseUrl: String, token: String, jobId: String
-    ): Boolean? = suspendCancellableCoroutine { cont ->
-        val settled = AtomicBoolean(false)
-        fun settle(value: Boolean?) {
-            if (settled.compareAndSet(false, true)) cont.resume(value)
-        }
-
+    /**
+     * Versucht per SSE zu warten. Gibt null zurück, wenn SSE fehlschlug (Fallback nötig).
+     * Auch ein unlesbares Ereignis heisst null: Das Polling fragt den Stand selbst ab,
+     * statt dass der Export auf ein Abschlussereignis wartet, das nie lesbar ankommt.
+     */
+    private suspend fun tryWaitViaSse(baseUrl: String, token: String, jobId: String): Boolean? {
         val request = Request.Builder()
             .url("$baseUrl/api/v1/sets/partslist-pdf/stream/$jobId")
             .header("Authorization", "Bearer $token")
             .header("Accept", "text/event-stream")
             .build()
 
-        val es = EventSources.createFactory(sseClient).newEventSource(request,
-            object : EventSourceListener() {
-                override fun onEvent(eventSource: EventSource, id: String?, type: String?, data: String) {
-                    if (data.isBlank()) return
-                    try {
-                        val obj = json.parseToJsonElement(data).jsonObject
-                        setEtaOnce(obj["etaSeconds"]?.jsonPrimitive?.content?.toIntOrNull())
-                        when (obj["status"]?.jsonPrimitive?.content) {
-                            "done"    -> { jobRunning = false; _state.value = PdfExportState.Running(s(R.string.pdfexp_finalizing)); settle(true) }
-                            "error"   -> { jobRunning = false; _state.value = PdfExportState.Error(
-                                obj["error"]?.jsonPrimitive?.content ?: s(R.string.pdfexp_server_error)); settle(false) }
-                            "running" -> jobRunning = true  // Countdown-Anzeige übernimmt der Ticker.
-                        }
-                    } catch (_: Exception) {}
+        var ergebnis: Boolean? = null
+        sseStrom(sseClient, request) { liesPdfJobMeldung(json, it) }.takeWhile { e ->
+            when (e) {
+                is SseEreignis.Daten -> {
+                    setEtaOnce(e.wert.etaSeconds)
+                    ergebnis = wendeAn(e.wert)
+                    ergebnis == null
                 }
-                // Stream sauber geschlossen ohne Ergebnis → Fallback
-                override fun onClosed(eventSource: EventSource) { settle(null) }
-                override fun onFailure(eventSource: EventSource, t: Throwable?, response: Response?) {
-                    // 404 = Endpoint nicht vorhanden → Fallback; andere Fehler = echter Fehler
-                    if (response != null && response.code != 404 && response.code != 0) {
-                        // 429 `zu_viele_verbindungen`: Der Rat steht im Code, nicht im Status.
-                        val code = runCatching { Fehlerrumpf.lies(response.peekBody(4096).string()).fehlercode }.getOrNull()
-                        _state.value = PdfExportState.Error(fehlerTextZuCode(code)?.let { s(it) }
-                            ?: s(R.string.pdfexp_http_error, response.code))
-                        settle(false)
-                    } else {
-                        settle(null) // Fallback auf Polling
-                    }
+                is SseEreignis.Unlesbar -> {
+                    Protokoll.warnung("PdfExport", "Unlesbares SSE-Ereignis: ${e.technisch}")
+                    false
                 }
-            })
-        cont.invokeOnCancellation { es.cancel() }
+                is SseEreignis.Beendet -> false
+                is SseEreignis.Gescheitert -> {
+                    ergebnis = fehlerAusHttp(e)
+                    false
+                }
+            }
+        }.collect { }
+        return ergebnis
+    }
+
+    /** true = fertig, false = Fehler (Zustand gesetzt), null = läuft noch. */
+    private fun wendeAn(m: PdfJobMeldung): Boolean? = when (m.status) {
+        "done" -> {
+            jobRunning = false
+            _state.value = PdfExportState.Running(s(R.string.pdfexp_finalizing))
+            true
+        }
+        "error" -> {
+            jobRunning = false
+            _state.value = PdfExportState.Error(m.fehler ?: s(R.string.pdfexp_server_error))
+            false
+        }
+        "running" -> { jobRunning = true; null }  // Countdown-Anzeige übernimmt der Ticker.
+        else -> null
+    }
+
+    /** 404 = Endpoint nicht vorhanden → null (Fallback); andere Fehler = echter Fehler (false). */
+    private fun fehlerAusHttp(e: SseEreignis.Gescheitert): Boolean? {
+        val code = e.code
+        if (code == null || code == 404 || code == 0) return null
+        // 429 `zu_viele_verbindungen`: Der Rat steht im Code, nicht im Status.
+        val fehlercode = runCatching { Fehlerrumpf.lies(e.rumpf).fehlercode }.getOrNull()
+        _state.value = PdfExportState.Error(fehlerTextZuCode(fehlercode)?.let { s(it) }
+            ?: s(R.string.pdfexp_http_error, code))
+        return false
     }
 
     /** 3s-Polling-Fallback wenn SSE nicht verfügbar. */
@@ -247,4 +257,16 @@ class PdfExportManager @Inject constructor(
         }
         return false
     }
+}
+
+/** Eine Meldung des Job-Stroms; die Felder fehlen, wenn der Server sie nicht schickt. */
+private data class PdfJobMeldung(val status: String?, val etaSeconds: Int?, val fehler: String?)
+
+private fun liesPdfJobMeldung(json: Json, text: String): PdfJobMeldung {
+    val obj = json.parseToJsonElement(text).jsonObject
+    return PdfJobMeldung(
+        status = obj["status"]?.jsonPrimitive?.content,
+        etaSeconds = obj["etaSeconds"]?.jsonPrimitive?.content?.toIntOrNull(),
+        fehler = obj["error"]?.jsonPrimitive?.content,
+    )
 }

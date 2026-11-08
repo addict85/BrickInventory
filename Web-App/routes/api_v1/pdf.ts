@@ -2,16 +2,16 @@
  * der Job-Prozess in einem eigenen Faden, damit der Web-Prozess frei bleibt.
  * Ausführlich: docs/begruendungen/routes/api_v1/pdf.ts.md#abschnitt */
 import { meldeUndWeiter, meldeUndLiefere, ohneFehlendeDatei } from '../../src/infra/fehler';
-import { fehlerAntwort, streamFileToResponse } from '../../src/infra/httpAntwort';
+import { fehlerAntwort, streamFileToResponse } from '../../src/http/httpAntwort';
 import { requireToken, kontoSchranke } from './middleware';
-import { registerSse } from '../../src/infra/sseRegistry';
+import { registerSse } from '../../src/http/sseRegistry';
 import _pdfFs from 'fs/promises';
 import _fsSync from 'fs';
 import { liesAuftrag, loescheAuftrag, pdfSchluessel, gueltigeAuftragsKennung, pdfDateiPfad, pdfAuftragStarten } from '../../src/auftraege/pdfAuftraege';
 import { beiAuftragsStand } from '../../src/auftraege/dienst';
 import { sendeFehler, fehlerText, antwortSprache } from '../../src/infra/fehlerTexte';
-import { vertragsRouter } from '../../src/infra/vertrag/pruefen';
-import type { Anfrage, Antwort } from '../../src/infra/vertrag';
+import { vertragsRouter } from '../../src/vertrag/pruefen';
+import type { Anfrage, Antwort } from '../../src/vertrag';
 const router = vertragsRouter();
 
 type PdfJobStatus = { status?: string | undefined; error?: string | null; etaSeconds?: number | null; missingImages?: number | null };

@@ -116,7 +116,7 @@ fun MonitoringScreen(zustand: MonitoringZustand, aktionen: MonitoringAktionen, c
     // LocalResources statt Context: Die Zahl fuer den Platzhalter ist erst im
     // Rueckruf bekannt, und ein gegriffener Context veraltet bei Konfigurationswechsel.
     val monRes = androidx.compose.ui.platform.LocalResources.current
-    val reimportLoadingMsg = stringResource(R.string.monitoring_loading)
+    val reimportLoadingMsg = stringResource(R.string.common_loading)
     val reimportErrorMsg   = stringResource(R.string.monitoring_reimport_error)
 
     LaunchedEffect(queueToggleKey) {

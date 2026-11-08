@@ -495,9 +495,12 @@
   /* Kennzahlen (alle Designs) als eine kompakte Zeile „4 Sets · 394 Teile …“:
      Als Kacheln füllten sie am Telefon den ersten Bildschirm. Die Aufschlüsselung
      darunter steht im jeweiligen Reiter. */
-  .brick-stats { display: flex; flex-wrap: wrap; gap: .4rem; margin-bottom: var(--sp-4); }
+  .brick-stats { display: flex; flex-wrap: wrap; align-items: flex-start; gap: .1rem 0; margin-bottom: var(--sp-4); }
+  /* Reiner Text mit Punkt dazwischen, ohne Fläche: Als Pille sah die Zahl wie ein zweiter Umschalter
+     Sets/Teile/Minifiguren aus, bedienbar ist aber nur der obere. */
   .bstat, [data-theme="brick"] .bstat { display: inline-flex; flex-direction: row-reverse; align-items: baseline; gap: .35em;
-    flex: 0 0 auto; padding: 5px 12px; border-radius: 999px; box-shadow: none; }
+    flex: 0 0 auto; padding: 0; border: 0 !important; border-radius: 0; box-shadow: none; background: none; color: var(--mut); }
+  .bstat:not(:first-child)::after { content: "·"; margin: 0 .5em; color: var(--mut); }
   .bstat .bstat-v, [data-theme="brick"] .bstat .bstat-v { font-size: var(--fs-4); margin: 0; line-height: 1.3; }
   .bstat .bstat-l, [data-theme="brick"] .bstat .bstat-l { text-transform: none; letter-spacing: 0; font-size: var(--fs-2); }
   .bstat .bstat-s { display: none; }
@@ -600,6 +603,13 @@
   .erfassen-leiste .btn.bp.knopf-schwebend { flex: none; }
   /* Merkliste: Jeder Filter so breit wie sein längster Eintrag, sonst eine eigene Zeile („Alle Zuständ…“ bei 320 px). */
   #tab-wanted .filterzeile > select { flex: 1 1 auto; min-width: 0; }
+  /* Katalog: Thema über die ganze Zeile, darunter Von, Bis und Sortierung nebeneinander. Als Fliesstext umbrach
+     „Jahr ↓“ in eine eigene Zeile, und die kurzen Auswahlfelder schnitten ihren Text ab. */
+  #tab-catalog .filterzeile { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto; gap: 8px; }
+  #tab-catalog .filterzeile > :is(input.suchfeld, #cat-theme) { grid-column: 1 / -1; max-width: none !important; width: 100% !important; }
+  #tab-catalog .filterzeile > select { min-width: 0; width: 100%; }
+  /* Set hinzufügen: Preis und Währung brauchen die Breite der ganzen Zeile, in einer halben Spalte blieb für „z. B. 79,99“ nichts. */
+  .erfassen-raster > .fg:has(> .preis-mit-waehrung) { grid-column: 1 / -1; }
   /* Gesperrt (offline) deckend und grau: Halbtransparent lagen Knopf- und
      Kartentext übereinander und waren beide nicht zu lesen. */
   :root .btn.knopf-schwebend:disabled { opacity: 1; background: var(--s100); color: var(--mut); border-color: var(--bdr); }
@@ -608,7 +618,7 @@
 
   /* Kennzahlen umbrechend: Mit fünfstelligen Zahlen passte die Zeile nicht mehr und schob die Seite auf. */
   .brick-stats { flex-wrap: wrap; gap: .35rem; margin-bottom: var(--sp-3); }
-  .brick-stats .bstat { padding: 3px 10px; max-width: 100%; min-width: 0; }
+  .brick-stats .bstat { padding: 0; max-width: 100%; min-width: 0; }
   .brick-stats .bstat:nth-child(4) { display: none; }
   .bstat .bstat-v, [data-theme="brick"] .bstat .bstat-v { font-size: var(--fs-3); }
   .bstat .bstat-l, [data-theme="brick"] .bstat .bstat-l { font-size: var(--fs-1); }
@@ -625,6 +635,7 @@
    den Namen trägt aria-label. */
 @container haupt (max-width: 20.5em) {
   #tab-gallery .filterleiste > input.suchfeld { flex: 1 1 100%; }
+  #tab-catalog .filterzeile { grid-template-columns: minmax(0, 1fr); }
   .brick-stats { flex-wrap: wrap; }
   .knopf-schwebend { width: 3.5rem; min-width: 3.5rem; padding: 0; justify-content: center; }
   .knopf-schwebend > span { display: none; }

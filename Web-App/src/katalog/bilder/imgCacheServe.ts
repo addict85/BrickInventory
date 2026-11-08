@@ -96,7 +96,7 @@ const CACHE_DIR = () => path.join(APP_ROOT, 'data', 'img_proxy_cache');
  * Ausführlich: docs/begruendungen/src/katalog/bilder/imgCacheServe.ts.md#startimgcachecleanup */
 export async function raeumeBildCacheAuf(maxBytes = konfig().bildCacheMaxMb * 1024 * 1024): Promise<number> {
   const cacheDir = CACHE_DIR();
-  const files = await fs.promises.readdir(cacheDir).catch(() => [] as string[]);
+  const files = await fs.promises.readdir(cacheDir).catch(ohneFehlendeDatei('bildcache:lesen', [] as string[]));
   const cutoff = Date.now() - 30 * 24 * 60 * 60 * 1000;
   const gruppen = new Map<string, { dateien: string[]; bytes: number; zuletzt: number }>();
   let weg = 0, summe = 0;
