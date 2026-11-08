@@ -8,7 +8,7 @@ import { schreibziel } from '../../src/haushalt/haushalt';
 import { legeMerkpostenAn, loescheMerkposten, verschiebeMerkposten, uebernimm, merkpostenVon, preiseBeiderZustaende } from '../../src/merkliste/merkliste';
 import { getSetting } from '../../src/einstellungen/settings';
 import { csvEmpfang, xmlEmpfang } from '../../src/http/dateiEmpfang';
-import type { Korrektur } from '../../src/merkliste/wantedListe';
+import type { Korrektur } from '../../src/merkliste/wantedAufloesung';
 import { importAlsAuftrag } from '../../src/auftraege/importAlsAuftrag';
 import { WantedKorrekturen } from '../../src/auftraege/nutzlasten';
 import type { CsvImportBericht } from '../../src/infra/csvExport';

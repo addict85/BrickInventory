@@ -14,7 +14,9 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 
 const _req = require('./helpers/sources').buildAndRequire();
 const db = _req('db/database.js');
-const { leseWantedListe, loeseLokalAuf, importiereWantedListe } = _req('src/merkliste/wantedListe.js');
+const { leseWantedListe } = _req('src/merkliste/wantedParser.js');
+const { loeseLokalAuf } = _req('src/merkliste/wantedAufloesung.js');
+const { importiereWantedListe } = _req('src/merkliste/wantedListe.js');
 
 test.after(async () => { await db.pool.end().catch(() => {}); });
 
