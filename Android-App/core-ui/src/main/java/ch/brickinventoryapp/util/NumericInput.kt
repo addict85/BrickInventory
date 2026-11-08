@@ -21,6 +21,12 @@ object NumericInput {
     fun setNumber(eingabe: String): String =
         eingabe.filter { it in '0'..'9' || it in 'a'..'z' || it in 'A'..'Z' || it == '-' }
 
+    // Dieselbe Regel wie istSetnummer() der Web-App: Der Filter oben lässt auch "-" oder "1--2" durch.
+    private val setnummerMuster = Regex("""[A-Za-z]{0,12}\d{1,8}[A-Za-z0-9]{0,8}(-\d{1,3})?""")
+
+    /** Ob [eingabe] wie eine Setnummer aussieht (z. B. 10294 oder 10294-1). */
+    fun istSetnummer(eingabe: String): Boolean = setnummerMuster.matches(eingabe.trim())
+
     /** Menge: nur Ziffern. */
     fun quantity(eingabe: String): String =
         eingabe.filter { it.isDigit() }

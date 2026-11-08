@@ -76,6 +76,17 @@ class NumericInputTest {
         assertEquals("10179-2", NumericInput.setNumber("10179-2"))
     }
 
+    /**
+     * Gegenprobe: setnummerMuster auf `\d+` verkürzt → "10294-1" rot; auf `.*` geweitet → "--" rot.
+     */
+    @Test
+    fun `eine Setnummer hat Ziffern und hoechstens eine Variante`() {
+        for (gut in listOf("10294", "10294-1", "75192-12", " 75192 ")) assertEquals(gut, true, NumericInput.istSetnummer(gut))
+        for (schlecht in listOf("", "-", "--", "10294-", "-1", "1-2-3", "10294-1234", "abc!!")) {
+            assertEquals(schlecht, false, NumericInput.istSetnummer(schlecht))
+        }
+    }
+
     @Test
     fun `die Menge nimmt nur Ziffern`() {
         assertEquals("12", NumericInput.quantity("1x2"))

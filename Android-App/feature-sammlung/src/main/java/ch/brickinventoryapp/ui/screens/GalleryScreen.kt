@@ -774,6 +774,17 @@ private fun FokusNachPause(ziel: FocusRequester) = LaunchedEffect(Unit) {
     ziel.fokusWennOffen()
 }
 
+/**
+ * Der Hinweis am Setnummer-Feld (null: nichts zu beanstanden). Vor dem ersten Versuch zu
+ * erfassen bleibt das Feld ruhig, damit "75192-" beim Tippen nicht schon als Fehler gilt.
+ */
+private fun nummerFehler(nummer: String, geprueft: Boolean): Int? = when {
+    !geprueft -> null
+    nummer.isBlank() -> R.string.erfassen_nummer_fehlt
+    !NumericInput.istSetnummer(nummer) -> R.string.erfassen_nummer_ungueltig
+    else -> null
+}
+
 @Composable
 fun AddSetDialog(
     onDismiss: () -> Unit,
@@ -818,7 +829,7 @@ fun AddSetDialog(
     var nummerFehlt by rememberSaveable { mutableStateOf(false) }
 
     fun submit() {
-        if (setNumber.isBlank()) {
+        if (nummerFehler(setNumber, geprueft = true) != null) {
             nummerFehlt = true
             if (sofortFokus) setFeldFokus.fokusWennOffen()
         } else if (!erfassungUngueltig(quantity, purchasePrice)) {
@@ -846,10 +857,10 @@ fun AddSetDialog(
             value = setNumber,
             onValueChange = { setNumber = NumericInput.setNumber(it) },
             label = { Text(stringResource(R.string.gallery_set_number)) },
-            isError = nummerFehlt && setNumber.isBlank(),
+            isError = nummerFehler(setNumber, nummerFehlt) != null,
             supportingText = {
-                if (nummerFehlt && setNumber.isBlank()) Text(stringResource(R.string.erfassen_nummer_fehlt), Modifier.ansagen())
-                else Text(stringResource(R.string.gallery_set_number_placeholder))
+                nummerFehler(setNumber, nummerFehlt)?.let { Text(stringResource(it), Modifier.ansagen()) }
+                    ?: Text(stringResource(R.string.gallery_set_number_placeholder))
             },
             modifier = Modifier.fillMaxWidth().focusRequester(setFeldFokus), singleLine = true,
             shape = Formen.feld,

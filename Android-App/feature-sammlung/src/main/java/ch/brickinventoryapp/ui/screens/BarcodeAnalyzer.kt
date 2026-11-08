@@ -72,7 +72,7 @@ fun rememberBarcodeAnalyzer(
     // entbunden.
     DisposableEffect(Unit) {
         onDispose {
-            try { barcodeScanner.close() } catch (_: Exception) {}
+            try { barcodeScanner.close() } catch (_: Exception) { /* beim Verlassen schon geschlossen */ }
             executor.shutdown()
         }
     }
