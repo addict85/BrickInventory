@@ -1,6 +1,6 @@
-# Begründungen zu `src/infra/dateiAusliefern.ts`
+# Begründungen zu `src/http/dateiAusliefern.ts`
 
-Die ausführlichen Kommentare aus `src/infra/dateiAusliefern.ts`, wörtlich. Im Code steht je
+Die ausführlichen Kommentare aus `src/http/dateiAusliefern.ts`, wörtlich. Im Code steht je
 Stelle der erste Absatz und ein Verweis hierher. Neue Geschichte gehört in die
 Commit-Nachricht (siehe CLAUDE.md).
 

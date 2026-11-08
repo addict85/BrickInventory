@@ -1,8 +1,8 @@
-import { fehlerAntwort } from '../../src/infra/httpAntwort';
+import { fehlerAntwort } from '../../src/http/httpAntwort';
 import { requireToken, kontoSchranke, sichtVon } from './middleware';
 import { schreibziel } from '../../src/haushalt/haushalt';
 import { getBlColorMap, getManualParts, getOwnedQuantities, getParts, getPartsColors, getPartsStats, getPartsCategories } from '../../src/teile/abfragen';
-import { csvEmpfang } from '../../src/infra/dateiEmpfang';
+import { csvEmpfang } from '../../src/http/dateiEmpfang';
 import { importAlsAuftrag } from '../../src/auftraege/importAlsAuftrag';
 import type { CsvImportBericht } from '../../src/infra/csvExport';
 import { addManualPart, getPartColorList, updateManualPart } from '../../src/teile/manuelleTeile';

@@ -1,6 +1,6 @@
 /** Sichtbar ist, was der Aufrufer schreiben darf: das eigene Konto und, als
  * Hauptkonto, die Unterkonten. */
-import { fehlerAntwort } from '../../src/infra/httpAntwort';
+import { fehlerAntwort } from '../../src/http/httpAntwort';
 import { sendeFehler } from '../../src/infra/fehlerTexte';
 import { listePapierkorb, stelleWiederHer, loescheEndgueltig, leerePapierkorb } from '../../src/bestand/papierkorb';
 import { requireToken } from './middleware';

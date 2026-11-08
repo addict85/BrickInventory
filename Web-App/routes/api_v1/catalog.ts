@@ -1,4 +1,4 @@
-import { fehlerAntwort } from '../../src/infra/httpAntwort';
+import { fehlerAntwort } from '../../src/http/httpAntwort';
 import { requireToken } from './middleware';
 import { resolveMany } from '../../src/katalog/bricklinkLink';
 import { sendeFehler } from '../../src/infra/fehlerTexte';

@@ -1,4 +1,4 @@
-// Ausführlich: docs/begruendungen/src/infra/sseRegistry.ts.md#offen
+// Ausführlich: docs/begruendungen/src/http/sseRegistry.ts.md#offen
 
 /** Was hier von einer offenen Antwort gebraucht wird. */
 interface Strom { writableEnded?: boolean; write(s: string): unknown; end(): unknown; on?(e: 'close', f: () => void): unknown }
@@ -14,7 +14,7 @@ export function registerSse(res: Strom): () => void {
 }
 
 /** VOR `httpServer.close()`: Offene Ströme enden nie von selbst.
- * Ausführlich: docs/begruendungen/src/infra/sseRegistry.ts.md#closeallsse */
+ * Ausführlich: docs/begruendungen/src/http/sseRegistry.ts.md#closeallsse */
 export function closeAllSse(): number {
   const anzahl = _offen.size;
   for (const res of [..._offen]) {

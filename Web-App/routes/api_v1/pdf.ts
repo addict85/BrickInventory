@@ -2,9 +2,9 @@
  * der Job-Prozess in einem eigenen Faden, damit der Web-Prozess frei bleibt.
  * Ausführlich: docs/begruendungen/routes/api_v1/pdf.ts.md#abschnitt */
 import { meldeUndWeiter, meldeUndLiefere, ohneFehlendeDatei } from '../../src/infra/fehler';
-import { fehlerAntwort, streamFileToResponse } from '../../src/infra/httpAntwort';
+import { fehlerAntwort, streamFileToResponse } from '../../src/http/httpAntwort';
 import { requireToken, kontoSchranke } from './middleware';
-import { registerSse } from '../../src/infra/sseRegistry';
+import { registerSse } from '../../src/http/sseRegistry';
 import _pdfFs from 'fs/promises';
 import _fsSync from 'fs';
 import { liesAuftrag, loescheAuftrag, pdfSchluessel, gueltigeAuftragsKennung, pdfDateiPfad, pdfAuftragStarten } from '../../src/auftraege/pdfAuftraege';

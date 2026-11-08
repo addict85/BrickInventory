@@ -1,7 +1,7 @@
 /** /api/v1/admin — jede Route über requireApiAdmin, damit kein Handler die
  * Prüfung vergessen kann. */
 import { meldeUndLiefere } from '../../src/infra/fehler';
-import { fehlerAntwort } from '../../src/infra/httpAntwort';
+import { fehlerAntwort } from '../../src/http/httpAntwort';
 import { requireApiAdmin } from './middleware';
 import { getLimitForApi } from '../../src/katalog/apiKontingent';
 import { vergissFehlend } from '../../src/katalog/bilder/imageMisses';

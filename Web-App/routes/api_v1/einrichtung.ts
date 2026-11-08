@@ -4,7 +4,7 @@
 import { einrichtungStand } from '../../src/konto/einrichtungStand';
 import { istVerwalter } from '../../src/konto/http/anmeldung';
 import { vertragsRouter } from '../../src/vertrag/pruefen';
-import { fehlerAntwort } from '../../src/infra/httpAntwort';
+import { fehlerAntwort } from '../../src/http/httpAntwort';
 import type { OffeneAnfrage, Antwort } from '../../src/vertrag';
 
 const router = vertragsRouter();

@@ -33,7 +33,7 @@ dieselbe Falle vor.
 
 ── Warum die echte Funktion und kein Nachbau ───────────────────────────────
 
-Geprueft wird `liefereDatei()` aus src/infra/dateiAusliefern.ts — genau die
+Geprueft wird `liefereDatei()` aus src/http/dateiAusliefern.ts — genau die
 Funktion, die server.ts fuer die Anleitungen und die Uploads benutzt. Ein
 nachgebauter Callback im Test wuerde beweisen, dass der NACHBAU stimmt.
 ```

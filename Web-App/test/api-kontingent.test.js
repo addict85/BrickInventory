@@ -1,5 +1,5 @@
 /**
- * Anfragebudget je Konto unter /api/v1 (src/infra/apiDrossel.ts).
+ * Anfragebudget je Konto unter /api/v1 (src/http/apiDrossel.ts).
  *
  * Gegenproben:
  *   A  KOSTEN.auftrag = 1                      → rot: „der Auftragstopf greift vor dem Budget“
@@ -16,7 +16,7 @@ const express = require('express');
 
 const _req = require('./helpers/sources').buildAndRequire();
 const { pruefeBudget, drosselLeeren, einordnung, apiDrossel, BUDGET, AUFTRAG_BUDGET, FENSTER_MS, KOSTEN } =
-  _req('src/infra/apiDrossel.js');
+  _req('src/http/apiDrossel.js');
 
 test('ein Konto hat BUDGET Einheiten je Fenster', () => {
   drosselLeeren();

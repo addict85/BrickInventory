@@ -1,4 +1,4 @@
-import { fehlerAntwort } from '../../src/infra/httpAntwort';
+import { fehlerAntwort } from '../../src/http/httpAntwort';
 import { FEHLER, antwortSprache, fehlerText, type FehlerCode } from '../../src/infra/fehlerTexte';
 import { requireToken, sichtVon } from './middleware';
 import { getPortfolioHistory } from '../../src/finanzen/portfolioHistory';

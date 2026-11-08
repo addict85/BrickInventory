@@ -1,4 +1,4 @@
-import { fehlerAntwort } from '../../src/infra/httpAntwort';
+import { fehlerAntwort } from '../../src/http/httpAntwort';
 import { requireToken, sichtVon } from './middleware';
 import { getStats } from '../../src/bestand/kennzahlen';
 import { vertragsRouter } from '../../src/vertrag/pruefen';

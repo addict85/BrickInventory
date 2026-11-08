@@ -1,11 +1,11 @@
 /** Anmeldung, Token, Profil, QR und Passkeys; setzt die Teilrouter aus
  * routes/auth/ zusammen. Alles hängt unter /api/v1/auth. */
-import { sitzungsKeksName, sitzungsKeksOptionen } from '../src/infra/sitzungsKeks';
+import { sitzungsKeksName, sitzungsKeksOptionen } from '../src/http/sitzungsKeks';
 const router  = vertragsRouter();
 import * as K from '../src/konto/konten';
 import { meldeHaushaltsaenderung } from '../src/haushalt/haushalt';
 import { logAndContinue, meldeUndWeiter, fehlertext, meldeUndLiefere } from '../src/infra/fehler';
-import { fehlerAntwort } from '../src/infra/httpAntwort';
+import { fehlerAntwort } from '../src/http/httpAntwort';
 import { hashToken, createToken, pruefeToken, assertLoginAllowed, revokeAllSessions, deleteToken, USERNAME_RE, emailGueltig, leereTokenCache, laufzeitTage, rotiereToken, rotationFaellig, UNBEGRENZT, UEBERLAPPUNG_MS, nameGueltig, geraeteNameGueltig, geraeteNameInhaltGueltig } from '../src/konto/auth';
 import { kontoGedrosselt } from '../src/konto/zielDrossel';
 import { meldeAnmeldung } from '../src/konto/loginLimiter';

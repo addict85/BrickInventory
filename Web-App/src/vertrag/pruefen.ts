@@ -6,7 +6,7 @@ import { routeZu } from './index';
 import { FLACHE_EINGABE, Fehler, PFAD } from './grund';
 import { GROESSTE_ID, idWert } from '../infra/validate';
 import { sendeFehler } from '../infra/fehlerTexte';
-import { handleRouteError } from '../infra/httpAntwort';
+import { handleRouteError } from '../http/httpAntwort';
 
 /** Ein Abfragewert ist ein Text: Wiederholt (?a=1&a=2) wird er zur Liste, und
  * `.trim()` oder eine Regex darauf verwechselte den Typ. */

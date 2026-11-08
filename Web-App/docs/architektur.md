@@ -24,6 +24,7 @@ routes/                 HTTP: Eingabe prüfen (Vertrag), Dienst rufen, antworten
 jobs/                   Hintergrundarbeit, ruft Dienste
 src/<bereich>/          Dienste (Fachlogik) und repository (SQL)
 db/, clients/           Datenbank und Aussenwelt (nur HTTP)
+src/http/               HTTP-Helfer für Routen und HTTP-Seiten (Fehlerantwort, Upload, Drossel)
 src/vertrag/            der API-Vertrag (zod-Schemas, Prüfung, OpenAPI), von allen Bereichen geteilt
 src/infra/              fachfreie Helfer
 ```
@@ -44,22 +45,23 @@ kennen einander nicht. Von unten nach oben:
 | Stufe | Bereiche |
 |---|---|
 | 1 | `src/infra` |
-| 2 | `src/vertrag` |
-| 3 | `db`, `clients` |
-| 4 | `src/einstellungen` |
-| 5 | `src/mail` |
-| 6 | `src/auftraege` |
-| 7 | `src/haushalt` |
-| 8 | `src/konto` |
-| 9 | `src/idempotenz`, `src/katalog` |
-| 10 | `src/finanzen` |
-| 11 | `src/bestand` |
-| 12 | `src/sets` |
-| 13 | `src/teile`, `src/figuren`, `src/merkliste`, `src/gutscheine` |
-| 14 | `src/sammlung`, `src/verwaltung` |
-| 15 | `jobs`, `routes` |
-| 16 | `startup` |
-| 17 | `server.ts` |
+| 2 | `src/http` |
+| 3 | `src/vertrag` |
+| 4 | `db`, `clients` |
+| 5 | `src/einstellungen` |
+| 6 | `src/mail` |
+| 7 | `src/auftraege` |
+| 8 | `src/haushalt` |
+| 9 | `src/konto` |
+| 10 | `src/idempotenz`, `src/katalog` |
+| 11 | `src/finanzen` |
+| 12 | `src/bestand` |
+| 13 | `src/sets` |
+| 14 | `src/teile`, `src/figuren`, `src/merkliste`, `src/gutscheine` |
+| 15 | `src/sammlung`, `src/verwaltung` |
+| 16 | `jobs`, `routes` |
+| 17 | `startup` |
+| 18 | `server.ts` |
 
 ## API-Vertrag
 

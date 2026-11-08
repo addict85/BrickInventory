@@ -57,7 +57,7 @@ const STELLEN = [
   ['src/katalog/repository/katalogSuche.ts', 'ORDNUNGEN', /ORDNUNGEN\s*\[/],
   ['src/sets/repository/sets.ts', 'SET_SORTS',     /SET_SORTS\s*\[/],
   // Die Endungen je MIME-Typ der Uploads stehen seit 05.11.2026 im Empfang.
-  ['src/infra/dateiEmpfang.ts', 'o.typen',         /o\.typen\s*\[/],
+  ['src/http/dateiEmpfang.ts', 'o.typen',         /o\.typen\s*\[/],
 ];
 
 for (const [datei, name, muster] of STELLEN) {

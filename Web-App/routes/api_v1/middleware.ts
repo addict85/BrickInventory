@@ -6,7 +6,7 @@ import type { Request, Response, NextFunction, RequestHandler } from 'express';
 import { zuGrosseId } from '../../src/infra/validate';
 import { validateToken } from '../../src/konto/auth';
 import { resolveUserId, nutzerId, zweiterFaktorPflicht } from '../../src/konto/http/anmeldung';
-import { belegeKontoPlatz, type Schranke } from '../../src/infra/kontoSchranke';
+import { belegeKontoPlatz, type Schranke } from '../../src/http/kontoSchranke';
 import { mussPasswortAendern } from '../../src/konto/konten';
 import type { Sicht } from '../../src/haushalt/haushalt';
 

@@ -3,17 +3,17 @@
 import fs from 'fs';
 import type { Request, Response, NextFunction } from 'express';
 import type { ServerResponse } from 'http';
-import { konfig } from './konfig';
-import { FEHLER, fehlerText, antwortSprache, dateiFehler, Meldung, sendeFehler } from './fehlerTexte';
-import type { FehlerCode } from './fehlerTexte';
-import { fehlertext } from './fehler';
+import { konfig } from '../infra/konfig';
+import { FEHLER, fehlerText, antwortSprache, dateiFehler, Meldung, sendeFehler } from '../infra/fehlerTexte';
+import type { FehlerCode } from '../infra/fehlerTexte';
+import { fehlertext } from '../infra/fehler';
 
 export interface FehlerZiel { headersSent: boolean; status(code: number): { json(body: unknown): unknown } }
 export interface FehlerQuelle { method?: string; originalUrl?: string; url?: string; headers?: Record<string, unknown> }
 
 interface Geworfen { status?: unknown; code?: unknown; vars?: Record<string, string | number>; stack?: unknown; message?: unknown }
 
-// Ausführlich: docs/begruendungen/src/infra/httpAntwort.ts.md#handlerouteerror
+// Ausführlich: docs/begruendungen/src/http/httpAntwort.ts.md#handlerouteerror
 export function handleRouteError(res: FehlerZiel, fehler: unknown, status?: number, req?: FehlerQuelle): void {
   const e = alsUploadFehler(fehler) as Geworfen | null | undefined;
   const code = status || (typeof e?.status === 'number' ? e.status : 500);
@@ -81,7 +81,7 @@ function alsUploadFehler<T>(e: T): T | Error {
   return dateiFehler(zuGross ? 'datei_zu_gross' : 'upload_ungueltig', zuGross ? 413 : 400);
 }
 
-// Ausführlich: docs/begruendungen/src/infra/httpAntwort.ts.md#pfadparam
+// Ausführlich: docs/begruendungen/src/http/httpAntwort.ts.md#pfadparam
 export function pfadParam(req: { params: Record<string, string | string[] | undefined> },
                    name: string): string {
   const wert = req.params[name];

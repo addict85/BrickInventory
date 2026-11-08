@@ -147,8 +147,8 @@ test('src/ und clients/ importieren nichts aus jobs/', () => {
 
 test('db/, clients/ und jobs/ kennen keine HTTP-Antwort', () => {
   // Fehler melden sie über src/infra/fehler.ts; den Weg zur Antwort kennt nur
-  // die HTTP-Seite (src/infra/httpAntwort.ts, Routen).
-  // Gegenprobe (05.11.2026): `import { fehlertext } from '../src/infra/httpAntwort'`
+  // die HTTP-Seite (src/http/httpAntwort.ts, Routen).
+  // Gegenprobe (05.11.2026): `import { fehlertext } from '../src/http/httpAntwort'`
   // in db/migrate.ts → rot.
   const treffer = [];
   for (const d of innereDateien().filter(f => /^(db|clients|jobs)\//.test(f)))
@@ -411,18 +411,19 @@ test('Routen lösen keine Konten auf — das tun die Dienste', () => {
 const istHttp = (rel) => /^src\/[^/]+\/http\//.test(rel);
 
 test('Dienste importieren keine Express-Typen', () => {
-  // Express kennen nur src/infra/ (Fehlerweg, Herkunft, Dateiauslieferung),
-  // src/vertrag/ (Prüf-Middleware) und die HTTP-Seiten der Bereiche. Gegenprobe (31.10.2026): `import type {
+  // Express kennen nur src/http/ (Fehlerweg, Herkunft, Dateiauslieferung),
+  // src/infra/ (Anfragekonto, Proxy-Vertrauen), src/vertrag/ (Prüf-Middleware)
+  // und die HTTP-Seiten der Bereiche. Gegenprobe (31.10.2026): `import type {
   // Request } from 'express'` in src/sets/setService.ts → rot; dasselbe in
   // src/konto/loginLimiter.ts → rot.
   const treffer = tsUnter('src')
-    .filter(d => !['infra', 'vertrag'].includes(bereichVon(d)) && !istHttp(d))
+    .filter(d => !['infra', 'http', 'vertrag'].includes(bereichVon(d)) && !istHttp(d))
     .filter(d => /from\s+['"]express['"]|import\(\s*['"]express['"]\s*\)/.test(quelltext(d)));
   assert.deepEqual(treffer, []);
   assert.ok(tsUnter('src').some(istHttp), 'keine HTTP-Seite unter src/<bereich>/http/ gefunden');
 });
 
-test('nur Routen, Server und HTTP-Seiten importieren eine HTTP-Seite', () => {
+test('nur Routen, Server und HTTP-Seiten importieren eine HTTP-Seite oder src/http', () => {
   // Ein Dienst, der die HTTP-Seite importiert, hängt wieder am Request.
   // Gegenprobe (31.10.2026): `import { adresse } from './http/anmeldung'` in
   // src/konto/auth.ts → rot.
@@ -430,6 +431,22 @@ test('nur Routen, Server und HTTP-Seiten importieren eine HTTP-Seite', () => {
   for (const d of tsUnter('src', 'jobs', 'clients').filter(d => !istHttp(d)))
     for (const z of aufgeloesteImporte(d)) if (istHttp(z)) treffer.push(`${d} -> ${z}`);
   assert.deepEqual(treffer, []);
+
+  // Dasselbe für src/http/: Die gemeinsamen Helfer hängen am Request, ein Dienst,
+  // der sie holt, hinge es auch; umgekehrt kennt src/http nur src/infra.
+  // Gegenproben (08.11.2026): `import { fehlerAntwort } from '../http/httpAntwort'`
+  // in src/konto/auth.ts → rot; `import { setKey } from '../sets/setService'` in
+  // src/http/httpAntwort.ts → rot.
+  const http = tsUnter('src').filter(d => bereichVon(d) === 'http');
+  assert.ok(http.length >= 8, `nur ${http.length} Dateien unter src/http`);
+  const nachHttp = (z) => bereichVon(z) === 'http';
+  const hinein = tsUnter('src', 'jobs', 'clients', 'db')
+    .filter(d => !nachHttp(d) && !istHttp(d) && bereichVon(d) !== 'vertrag')
+    .flatMap(d => aufgeloesteImporte(d, { mitTypen: true }).filter(nachHttp).map(z => `${d} -> ${z}`));
+  assert.deepEqual(hinein, []);
+  const hinauf = http.flatMap(d => aufgeloesteImporte(d, { mitTypen: true })
+    .filter(z => z.startsWith('src/') && !['http', 'infra'].includes(bereichVon(z))).map(z => `${d} -> ${z}`));
+  assert.deepEqual(hinauf, []);
 });
 
 /** Routen fangen nichts: Ströme reichen ihren Fehler mit .then(…, …) als letztes Ereignis weiter. */
@@ -455,6 +472,7 @@ test('Routen fangen keine Fehler — der Fehlerweg des Routers antwortet', () =>
  * eine Stufe, sonst ist der Test rot. */
 const STUFEN = [
   ['src/infra'],
+  ['src/http'],
   ['src/vertrag'],
   ['db', 'clients'],
   ['src/einstellungen'],

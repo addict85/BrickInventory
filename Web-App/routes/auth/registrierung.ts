@@ -2,7 +2,7 @@
  * Jede Antwort verrät gleich wenig darüber, ob es ein Konto gibt. */
 import * as K from '../../src/konto/konten';
 import { logAndContinue, meldeUndLiefere } from '../../src/infra/fehler';
-import { fehlerAntwort } from '../../src/infra/httpAntwort';
+import { fehlerAntwort } from '../../src/http/httpAntwort';
 import { hashToken, USERNAME_RE, emailGueltig, nameGueltig, verifiziereEmailToken } from '../../src/konto/auth';
 import { zielGedrosselt } from '../../src/konto/zielDrossel';
 import { ipThrottle } from '../../src/konto/http/anmeldung';

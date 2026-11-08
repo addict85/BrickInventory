@@ -1,13 +1,13 @@
 /** /api/v1/wanted — die Merkliste. Die Regeln stehen in src/merkliste/; hier
  * nur Blickfeld, Schreibrecht und Fehlerübersetzung. */
 import { oeffentlicherFehler } from '../../src/infra/fehler';
-import { fehlerAntwort } from '../../src/infra/httpAntwort';
+import { fehlerAntwort } from '../../src/http/httpAntwort';
 import { sendeFehler } from '../../src/infra/fehlerTexte';
 import { requireToken, kontoSchranke, sichtVon } from './middleware';
 import { schreibziel } from '../../src/haushalt/haushalt';
 import { legeMerkpostenAn, loescheMerkposten, verschiebeMerkposten, uebernimm, merkpostenVon, preiseBeiderZustaende } from '../../src/merkliste/merkliste';
 import { getSetting } from '../../src/einstellungen/settings';
-import { csvEmpfang, xmlEmpfang } from '../../src/infra/dateiEmpfang';
+import { csvEmpfang, xmlEmpfang } from '../../src/http/dateiEmpfang';
 import type { Korrektur } from '../../src/merkliste/wantedListe';
 import { importAlsAuftrag } from '../../src/auftraege/importAlsAuftrag';
 import { WantedKorrekturen } from '../../src/auftraege/nutzlasten';

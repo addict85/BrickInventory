@@ -1,9 +1,9 @@
 /** /api/v1/settings — ein Router für den ganzen Pfad, weil die Reihenfolge vor
  * und nach router.use(requireLogin) hier an einer Stelle entschieden wird. */
 import multer from 'multer';
-import { FORMULAR_GRENZEN } from '../../src/infra/dateiEmpfang';
+import { FORMULAR_GRENZEN } from '../../src/http/dateiEmpfang';
 import { logAndContinue, meldeUndLiefere } from '../../src/infra/fehler';
-import { fehlerAntwort } from '../../src/infra/httpAntwort';
+import { fehlerAntwort } from '../../src/http/httpAntwort';
 import { requireApiAdmin as requireAdmin, requireToken, bearerToken, kontoSchranke } from './middleware';
 import { SECRET_KEYS, isMaskedValue, readSettings, designFuer, deleteUserSetting, setGlobalSetting, globalerWertGueltig, deleteGlobalSetting, globalDefaultCondition, nutzerStandardZustand, getGlobalSetting, getSetting } from '../../src/einstellungen/settings';
 import { setzeEigenesDesign, setUserSetting } from '../../src/konto/nutzerEinstellung';

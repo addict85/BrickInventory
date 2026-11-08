@@ -1,7 +1,7 @@
 /** Öffentlich: Google holt es, bevor Android der App die Passkeys der Domain gibt. */
 import express from 'express';
 import { assetlinks } from '../src/konto/androidApp';
-import { fehlerAntwort } from '../src/infra/httpAntwort';
+import { fehlerAntwort } from '../src/http/httpAntwort';
 
 const router = express.Router();
 

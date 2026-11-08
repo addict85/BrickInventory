@@ -1,7 +1,7 @@
 /** Startzustand und Gesundheit: ohne Anmeldung (compose.yaml) und vor den
  * übrigen /api/v1-Routen eingehängt, gefragt wird schon während des Starts. */
 import express from 'express';
-import { fehlerAntwort } from '../src/infra/httpAntwort';
+import { fehlerAntwort } from '../src/http/httpAntwort';
 import { logAndContinue } from '../src/infra/fehler';
 import { fehlerText, antwortSprache } from '../src/infra/fehlerTexte';
 import { resolveUserId, istVerwalter } from '../src/konto/http/anmeldung';

@@ -157,11 +157,11 @@ den Commits, nicht hier.
 ### CSRF (2)
 - Ändernde Anfragen: `Sec-Fetch-Site`, sonst `Origin`/`Referer` gegen Host
   und `APP_BASE_URL`; Cookie-Sitzung ohne Herkunft wird abgelehnt, Bearer
-  ohne Cookie ausgenommen: `src/infra/herkunft.ts` — `herkunft`.
+  ohne Cookie ausgenommen: `src/http/herkunft.ts` — `herkunft`.
 - Mit `APP_BASE_URL` antwortet die App nur unter deren Namen (sonst 421
   `fremder_host`), gegen DNS-Rebinding im Klartextbetrieb. Frei bleiben
   Loopback, Bearer-Token, `/ca.crt` und die Gesundheitspfade:
-  `nurEigenerHost` in `src/infra/herkunft.ts` — `sicherheit-runde11-db`.
+  `nurEigenerHost` in `src/http/herkunft.ts` — `sicherheit-runde11-db`.
 - E-Mail-Bestätigung erst per Knopf: `GET /verify` zeigt die Seite,
   `POST /auth/email-bestaetigen` bestätigt; ein Link-Scanner bestätigt nichts
   — `sicherheit-runde11-db`.
@@ -199,7 +199,7 @@ den Commits, nicht hier.
 
 ### Uploads (4)
 - Typ aus dem Inhalt, Endung aus dem MIME-Typ, Name zufällig, Kontingent je
-  Konto: `routes/api_v1/sets.ts`, `src/infra/dateiEmpfang.ts` — `upload-grenzen-db`.
+  Konto: `routes/api_v1/sets.ts`, `src/http/dateiEmpfang.ts` — `upload-grenzen-db`.
 - Gutschein-PDF höchstens 2 MB, Entpackgrenze: `src/gutscheine/gutscheinPdf.ts` — `gutschein-pdf-bombe-db`.
 - Gutschein-PDFs verschlüsselt, Konto löschen entfernt Uploads und
   Gutscheine: `src/gutscheine/gutscheinDateien.ts` — `konto-dateien-db`.
@@ -278,9 +278,9 @@ den Commits, nicht hier.
 - Jede angemeldete Anfrage zählt in ein Budget je Konto: 600 Einheiten je
   5 Minuten, ein Leseaufruf 1, ein Katalogabruf 5, ein Auftragsstart (PDF,
   Import, Export) 25 und zusätzlich höchstens 20 Aufträge je Fenster; 429
-  `zu_viele_anfragen` mit `Retry-After`: `src/infra/apiDrossel.ts` —
+  `zu_viele_anfragen` mit `Retry-After`: `src/http/apiDrossel.ts` —
   `api-kontingent` (Prozessspeicher, wie die Schranken in
-  `src/infra/kontoSchranke.ts`).
+  `src/http/kontoSchranke.ts`).
 - `GET /api/v1/einrichtung/stand` ist ohne Anmeldung erreichbar und nennt nur
   Schalter (Datenbank, APP_BASE_URL, TLS, CA, Konto, Rebrickable), den
   Fingerabdruck der CA und den Download; Konten und Schlüssel stehen nicht

@@ -2,7 +2,7 @@
 import express from 'express';
 import { acquisitionTotals, erfassungenInKontowaehrung } from '../../src/bestand/acquisitions';
 import { meldeUndLiefere } from '../../src/infra/fehler';
-import { fehlerAntwort } from '../../src/infra/httpAntwort';
+import { fehlerAntwort } from '../../src/http/httpAntwort';
 import { requireToken, sichtVon } from './middleware';
 import { getPartAcquisitions } from '../../src/teile/manuelleTeile';
 import { getFigAcquisitions } from '../../src/figuren/manuelleFiguren';

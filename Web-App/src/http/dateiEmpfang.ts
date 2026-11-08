@@ -1,10 +1,10 @@
-import { konfig } from './konfig';
+import { konfig } from '../infra/konfig';
 import multer from 'multer';
 import crypto from 'crypto';
 import type { Request } from 'express';
-import { ausTabelle } from './validate';
-import { dateiFehler } from './fehlerTexte';
-import { ohneFehlendeDatei } from './fehler';
+import { ausTabelle } from '../infra/validate';
+import { dateiFehler } from '../infra/fehlerTexte';
+import { ohneFehlendeDatei } from '../infra/fehler';
 import fs from 'fs';
 import path from 'path';
 
@@ -17,7 +17,7 @@ export const FORMULAR_GRENZEN = { files: 1, fields: 20, fieldSize: 64 * 1024, pa
 export const CSV_MAX_BYTES = 15 * 1024 * 1024;
 
 /** memoryStorage: Die Importe zerlegen die Datei sofort und legen sie nie ab.
- * Ausführlich: docs/begruendungen/src/infra/dateiEmpfang.ts.md#csvempfang */
+ * Ausführlich: docs/begruendungen/src/http/dateiEmpfang.ts.md#csvempfang */
 export const csvEmpfang = multer({
   storage: multer.memoryStorage(),
   limits: { ...FORMULAR_GRENZEN, fileSize: CSV_MAX_BYTES },

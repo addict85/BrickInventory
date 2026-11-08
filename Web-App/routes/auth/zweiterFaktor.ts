@@ -2,7 +2,7 @@
  * Abschalten verlangen das Passwort: Wer nur eine offene Sitzung erbeutet,
  * soll das Konto weder aussperren noch den Schutz abbauen. */
 import * as K from '../../src/konto/konten';
-import { fehlerAntwort } from '../../src/infra/httpAntwort';
+import { fehlerAntwort } from '../../src/http/httpAntwort';
 import { beendeAndereZugaenge } from '../../src/konto/auth';
 import { requireLoginOrToken, angemeldeteNutzerId, bestaetigeCode, bestaetigeMitFaktor, zugangVon, zweiterFaktorPflicht, gnadenfristVerbrauchen } from '../../src/konto/http/anmeldung';
 import { bestaetigeEinrichtungGebremst } from '../../src/konto/passwortBestaetigung';

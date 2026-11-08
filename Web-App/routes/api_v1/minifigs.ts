@@ -1,4 +1,4 @@
-import { fehlerAntwort } from '../../src/infra/httpAntwort';
+import { fehlerAntwort } from '../../src/http/httpAntwort';
 import { requireToken, kontoSchranke, sichtVon } from './middleware';
 import { schreibziel } from '../../src/haushalt/haushalt';
 import { getManualMinifigs, getMinifigStats, getMinifigs } from '../../src/figuren/abfragen';
@@ -10,7 +10,7 @@ import { sendeFehler } from '../../src/infra/fehlerTexte';
 import { normalisiereLagerort, setzeLagerort } from '../../src/bestand/lagerort';
 import { loescheFigur } from '../../src/sammlung/loeschen';
 import { teileDerFigur } from '../../src/figuren/dienst';
-import { csvEmpfang } from '../../src/infra/dateiEmpfang';
+import { csvEmpfang } from '../../src/http/dateiEmpfang';
 import { importAlsAuftrag } from '../../src/auftraege/importAlsAuftrag';
 import type { CsvImportBericht } from '../../src/infra/csvExport';
 import { vertragsRouter } from '../../src/vertrag/pruefen';

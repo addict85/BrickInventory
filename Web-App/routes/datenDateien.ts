@@ -1,8 +1,8 @@
 /** Eigene Datei, damit ein Test die echten Handler einhängen kann. */
-import { fehlerAntwort, pfadSegmente } from '../src/infra/httpAntwort';
+import { fehlerAntwort, pfadSegmente } from '../src/http/httpAntwort';
 import express, { Request, Response } from 'express';
 import path from 'path';
-import { liefereDatei } from '../src/infra/dateiAusliefern';
+import { liefereDatei } from '../src/http/dateiAusliefern';
 import { safeDataPath } from '../src/infra/datenPfad';
 
 import { requireLoginOrToken, angemeldeteNutzerId } from '../src/konto/http/anmeldung';
