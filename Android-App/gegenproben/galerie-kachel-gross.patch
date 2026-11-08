@@ -3,10 +3,10 @@ Modul: app
 Test: ch.brickinventoryapp.app.OberflaechenRegelnTest
 Rot: Galerie bei 200 Prozent zeigt mehrere Sets ganz
 
-diff --git a/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/screens/GalleryScreen.kt b/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/screens/GalleryScreen.kt
---- a/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/screens/GalleryScreen.kt
-+++ b/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/screens/GalleryScreen.kt
-@@ -543,7 +543,7 @@ fun SetCard(
+diff --git a/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/screens/GalerieKarte.kt b/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/screens/GalerieKarte.kt
+--- a/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/screens/GalerieKarte.kt
++++ b/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/screens/GalerieKarte.kt
+@@ -108,7 +108,7 @@
      // Ab grosser Schrift eine Listenzeile, Bild links und Text rechts, wie die Merkliste:
      // Über die volle Breite nahm das Bild zwei Drittel der Höhe, und es stand ein Set je
      // Bildschirm. Die Plaketten rücken dann vom Bild in den Text, das Bild ist zu klein.

@@ -6,12 +6,12 @@ Rot: Konto wechselt
 diff --git a/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/konto/ui/screens/EinstellungenKonto.kt b/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/konto/ui/screens/EinstellungenKonto.kt
 --- a/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/konto/ui/screens/EinstellungenKonto.kt
 +++ b/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/konto/ui/screens/EinstellungenKonto.kt
-@@ -187,7 +187,7 @@ internal fun KontoCard(
-             FilledTonalButton(
-                 onClick = { onPasswort(pwAktuell, pwNeu, code) },
-                 enabled = !kontoZustand.speichert && pwAktuell.isNotBlank() && pwNeu.isNotEmpty() &&
--                    !passwortZuKurz(pwNeu) && pwWiederholt == pwNeu,
-+                    !passwortZuKurz(pwNeu) && pwWiederholt.length >= 0,
-                 modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)
-             ) { Text(stringResource(R.string.konto_password_button), fontWeight = FontWeight.SemiBold) }
-         }
+@@ -222,7 +222,7 @@
+         FilledTonalButton(
+             onClick = onAendern,
+             enabled = !speichert && pwAktuell.isNotBlank() && pwNeu.isNotEmpty() &&
+-                !passwortZuKurz(pwNeu) && pwWiederholt == pwNeu,
++                !passwortZuKurz(pwNeu) && pwWiederholt.length >= 0,
+             modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)
+         ) { Text(stringResource(R.string.konto_password_button), fontWeight = FontWeight.SemiBold) }
+     }

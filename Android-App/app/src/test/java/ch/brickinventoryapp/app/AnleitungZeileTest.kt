@@ -32,7 +32,7 @@ import ch.brickinventoryapp.testing.Quellen
 class AnleitungZeileTest {
 
     private val quelle by lazy {
-        Quellen.ohneKommentare(Quellen.lies("sammlung/ui/screens/SetDetailSections.kt"))
+        Quellen.ohneKommentare(Quellen.lies("sammlung/ui/screens/SetDetailAnleitungen.kt"))
     }
 
     /**

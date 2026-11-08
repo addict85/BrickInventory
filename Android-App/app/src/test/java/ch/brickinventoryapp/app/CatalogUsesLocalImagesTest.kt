@@ -123,7 +123,7 @@ class CatalogUsesLocalImagesTest {
         // resolve*Url(serverUrl, …)-Aufruf enthält, muss "serverUrl: String"
         // in DERSELBEN Signatur stehen.
         val screensToCheck = listOf(
-            "sammlung/ui/screens/GalleryScreen.kt",
+            "sammlung/ui/screens/GalerieKarte.kt",
             "sammlung/ui/screens/SetDetailScreen.kt",
             "teile/ui/screens/PartsScreen.kt",
             "finanzen/ui/screens/FinanceScreen.kt",

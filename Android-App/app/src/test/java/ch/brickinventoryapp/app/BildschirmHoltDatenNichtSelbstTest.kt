@@ -94,9 +94,9 @@ class BildschirmHoltDatenNichtSelbstTest {
 
         // Die Abschnitte bekommen Zustand und Ereignisse; das ViewModel
         // holt allein der Bildschirm.
-        val abschnitte = ohneKommentare(File(Quellen.wurzel, "verwaltung/ui/screens/MonitoringSections.kt").readText())
+        val abschnitte = ohneKommentare(Quellen.monitoringAbschnitte())
         assert(!abschnitte.contains("hiltViewModel()")) {
-            "MonitoringSections.kt holt sich wieder selbst ein ViewModel, statt Zustand zu bekommen"
+            "Ein Abschnitt der Überwachung holt sich wieder selbst ein ViewModel, statt Zustand zu bekommen"
         }
         for (rel in listOf("verwaltung/ui/screens/MonitoringScreen.kt")) {
             val src = ohneKommentare(File(Quellen.wurzel, "$rel").readText())
@@ -127,9 +127,9 @@ class BildschirmHoltDatenNichtSelbstTest {
         val fehler = mutableListOf<String>()
         // Die Abschnitte bekommen Zustand und Ereignisse; das ViewModel
         // holt allein der Bildschirm.
-        val abschnitte = ohneKommentare(File(Quellen.wurzel, "verwaltung/ui/screens/MonitoringSections.kt").readText())
+        val abschnitte = ohneKommentare(Quellen.monitoringAbschnitte())
         assert(!abschnitte.contains("hiltViewModel()")) {
-            "MonitoringSections.kt holt sich wieder selbst ein ViewModel, statt Zustand zu bekommen"
+            "Ein Abschnitt der Überwachung holt sich wieder selbst ein ViewModel, statt Zustand zu bekommen"
         }
         for (rel in listOf("verwaltung/ui/screens/MonitoringScreen.kt")) {
             val src = ohneKommentare(File(Quellen.wurzel, "$rel").readText())

@@ -134,7 +134,8 @@ class ServerComputedValuesTest {
         // obwohl der Zustand längst korrigiert ist.
         // SetDetailScreen.kt wurde aufgeteilt; die Kacheln und Karten stehen
         // in SetDetailSections.kt. Beide zusammen sind die Detailansicht.
-        val d = code(read("sammlung/ui/screens/SetDetailScreen.kt") + "\n" + read("sammlung/ui/screens/SetDetailSections.kt"))
+        val d = code(read("sammlung/ui/screens/SetDetailScreen.kt") + "\n" + read("sammlung/ui/screens/SetDetailSections.kt") +
+            "\n" + read("sammlung/ui/screens/SetDetailAnleitungen.kt"))
         assert(d.contains("remember(set.setNumber, set.quantity)")) {
             "Der Mengenregler ist nicht an set.quantity gekoppelt"
         }

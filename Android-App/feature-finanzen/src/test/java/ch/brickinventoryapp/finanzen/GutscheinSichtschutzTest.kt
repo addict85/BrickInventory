@@ -20,7 +20,7 @@ import ch.brickinventoryapp.testing.Quellen
  *   A  zeigtGutscheine() prüft "/vouchers/export" statt "/api/v1/vouchers/" → rot
  *      „ein einzelner Gutschein und der Export brauchen Sichtschutz“
  *   C  Sichtschutz() aus dem Zweig `zfZustand.geheimnis != null` in
- *      EinstellungenKonto entfernt → rot „Schlüssel und Codes des zweiten Faktors …“
+ *      EinstellungenZweiterFaktor entfernt → rot „Schlüssel und Codes des zweiten Faktors …“
  */
 class GutscheinSichtschutzTest {
 
@@ -38,7 +38,7 @@ class GutscheinSichtschutzTest {
     /** Dieselbe Regel für den TOTP-Schlüssel und die Wiederherstellungscodes. */
     @Test
     fun `Schluessel und Codes des zweiten Faktors fordern den Sichtschutz an`() {
-        val konto = Quellen.ohneKommentare(Quellen.lies("konto/ui/screens/EinstellungenKonto.kt"))
+        val konto = Quellen.ohneKommentare(Quellen.lies("konto/ui/screens/EinstellungenZweiterFaktor.kt"))
         for (zweig in listOf("zfZustand.codes.isNotEmpty() ->", "zfZustand.geheimnis != null ->")) {
             assertTrue("Ohne Sichtschutz: $zweig", Regex(Regex.escape(zweig) +
                 """\s*\{\s*(?:ch\.brickinventoryapp\.ui\.components\.)?Sichtschutz\(\)""").containsMatchIn(konto))

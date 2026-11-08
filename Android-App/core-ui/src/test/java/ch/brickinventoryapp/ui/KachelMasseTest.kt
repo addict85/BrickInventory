@@ -88,7 +88,7 @@ class KachelMasseTest {
      * Bildflächen IN der Karte dürfen fest sein.
      *
      * Gegenprobe (am 28.10.2026 gemessen, kotlinc): die Set-Karte wieder mit
-     * `Modifier.height(272.dp)` → rot mit „GalleryScreen.kt …“.
+     * `Modifier.height(272.dp)` → rot mit „GalerieKarte.kt …“.
      */
     @Test
     fun `Karten haben keine feste Hoehe`() {

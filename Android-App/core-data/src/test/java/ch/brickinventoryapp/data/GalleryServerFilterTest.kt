@@ -42,16 +42,13 @@ import ch.brickinventoryapp.testing.TestApi
  */
 class GalleryServerFilterTest {
 
-    private fun read(rel: String) =
-        File(Quellen.wurzel, "$rel").readText()
-
     /** Kommentare ausblenden — die Erklärtexte nennen die geprüften Muster selbst. */
     private fun code(s: String) = s.lines()
         .joinToString("\n") { if (it.trim().startsWith("//") || it.trim().startsWith("*")) "" else it }
 
     @Test
     fun `der Schirm filtert und sortiert die Liste nicht selbst`() {
-        val s = code(read("sammlung/ui/screens/GalleryScreen.kt"))
+        val s = code(Quellen.galerie())
         for (muster in listOf("sets.filter", "sets.sortedBy", "sets.sortedWith", "sets.mapNotNull")) {
             assert(!s.contains(muster)) {
                 "GalleryScreen bearbeitet die Liste selbst ($muster) — damit gibt es " +
@@ -66,7 +63,7 @@ class GalleryServerFilterTest {
 
     @Test
     fun `Suchtext, Thema und Sortierung werden nach oben gemeldet`() {
-        val s = code(read("sammlung/ui/screens/GalleryScreen.kt"))
+        val s = code(Quellen.galerie())
         for (r in listOf("ereignisse.suche", "ereignisse.thema", "ereignisse.sortierung", "ereignisse.mehrLaden")) {
             assert(s.contains(r)) { "Rückruf $r fehlt — der Wert käme nie beim Server an" }
         }
@@ -88,7 +85,7 @@ class GalleryServerFilterTest {
 
     @Test
     fun `die Sortierwerte sind die des Servers`() {
-        val s = code(read("sammlung/ui/screens/GalleryScreen.kt"))
+        val s = code(Quellen.galerie())
         // Genau die Schlüssel aus SET_SORTS (utils/handlers.ts). Ein Wert, den
         // der Server nicht kennt, fiele dort still auf die Vorgabe zurück —
         // die Sortierung sähe aus, als täte sie nichts.

@@ -39,6 +39,15 @@ class SplitFileImportsTest {
         "verwaltung/ui/screens/MonitoringSections.kt" to "verwaltung/ui/screens/MonitoringScreen.kt",
         "sammlung/ui/screens/BarcodeAnalyzer.kt" to "sammlung/ui/screens/BarcodeScannerScreen.kt",
         "sammlung/ui/dialogs/BarcodeResultDialog.kt" to "app/AppNavigation.kt",
+        "sammlung/ui/screens/GalerieFilter.kt" to "sammlung/ui/screens/GalleryScreen.kt",
+        "sammlung/ui/screens/GalerieKarte.kt" to "sammlung/ui/screens/GalleryScreen.kt",
+        "sammlung/ui/screens/GalerieErfassen.kt" to "sammlung/ui/screens/GalleryScreen.kt",
+        "verwaltung/ui/screens/MonitoringCache.kt" to "verwaltung/ui/screens/MonitoringSections.kt",
+        "verwaltung/ui/screens/MonitoringKontingente.kt" to "verwaltung/ui/screens/MonitoringSections.kt",
+        "verwaltung/ui/screens/MonitoringProtokoll.kt" to "verwaltung/ui/screens/MonitoringSections.kt",
+        "konto/ui/screens/EinstellungenZweiterFaktor.kt" to "konto/ui/screens/EinstellungenKonto.kt",
+        "konto/ui/screens/EinstellungenGeraete.kt" to "konto/ui/screens/EinstellungenKonto.kt",
+        "sammlung/ui/screens/SetDetailAnleitungen.kt" to "sammlung/ui/screens/SetDetailSections.kt",
     )
 
     private fun wildcards(src: String) =

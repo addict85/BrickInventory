@@ -104,7 +104,7 @@ test('Anleitungen: beide Oberflaechen haengen den Papierkorb an is_manual', () =
 
   // ── Android-App ───────────────────────────────────────────────────────────
   const kt = path.join(ROOT, '..', 'Android-App/app/src/main/java/ch/brickinventoryapp');
-  const abschnitte = fs.readFileSync(path.join(__dirname, '..', '..', 'Android-App', 'feature-sammlung', 'src', 'main', 'java', 'ch', 'brickinventoryapp', 'sammlung', 'ui', 'screens', 'SetDetailSections.kt'), 'utf8');
+  const abschnitte = fs.readFileSync(path.join(__dirname, '..', '..', 'Android-App', 'feature-sammlung', 'src', 'main', 'java', 'ch', 'brickinventoryapp', 'sammlung', 'ui', 'screens', 'SetDetailAnleitungen.kt'), 'utf8');
   const ohne = ohneKommentare(abschnitte);
 
   assert.ok(/if \(id != null && instr\.isManual\)/.test(ohne),

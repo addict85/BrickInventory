@@ -65,6 +65,9 @@ class NumberFormatTest {
             "teile/ui/screens/ManualItemDetailScreen.kt",
             "sammlung/ui/screens/AcquisitionManagementScreen.kt",
             "sammlung/ui/screens/GalleryScreen.kt",
+            "sammlung/ui/screens/GalerieFilter.kt",
+            "sammlung/ui/screens/GalerieKarte.kt",
+            "sammlung/ui/screens/GalerieErfassen.kt",
             "konto/ui/screens/EinstellungenAlarme.kt",
         )
         for (f in schirme) {

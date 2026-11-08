@@ -3,10 +3,10 @@ Modul: app
 Test: ch.brickinventoryapp.app.AblaufTest
 Rot: ein Set mit unsinniger Nummer sagt
 
-diff --git a/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/screens/GalleryScreen.kt b/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/screens/GalleryScreen.kt
---- a/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/screens/GalleryScreen.kt
-+++ b/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/screens/GalleryScreen.kt
-@@ -798,7 +798,6 @@ private fun FokusNachPause(ziel: FocusRequester) = LaunchedEffect(Unit) {
+diff --git a/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/screens/GalerieErfassen.kt b/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/screens/GalerieErfassen.kt
+--- a/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/screens/GalerieErfassen.kt
++++ b/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/screens/GalerieErfassen.kt
+@@ -66,7 +66,6 @@
  private fun nummerFehler(nummer: String, geprueft: Boolean): Int? = when {
      !geprueft -> null
      nummer.isBlank() -> R.string.erfassen_nummer_fehlt

@@ -220,7 +220,7 @@ class GalleryImageRetryTest {
 
     @Test
     fun `SetCard versucht ein fehlgeschlagenes Bild genau einmal erneut`() {
-        val src = read("sammlung/ui/screens/GalleryScreen.kt")
+        val src = read("sammlung/ui/screens/GalerieKarte.kt")
 
         assert(src.contains("var retryNonce by remember(set.setNumber, imageUrl)")) {
             "Der Wiederholzähler fehlt oder ist nicht je Kachel/Bild gebunden"

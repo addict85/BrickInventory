@@ -174,7 +174,7 @@ class CacheLeerenTest {
         // gemeinsamen Tageskontingent — das steht so im Kommentar der
         // Serverroute (routes/api_v1/admin.ts). Ein Fehlgriff nimmt also allen
         // anderen etwas weg, nicht nur dem, der danebengetippt hat.
-        val s = code(read("verwaltung/ui/screens/MonitoringSections.kt"))
+        val s = code(read("verwaltung/ui/screens/MonitoringCache.kt"))
         assert(s.contains("R.string.monitoring_cache_clear_hint")) {
             "Es gibt keine Rueckfrage vor dem Leeren"
         }

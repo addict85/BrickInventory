@@ -67,6 +67,18 @@ object Quellen {
     fun lies(rel: String): String = File(wurzel, rel).readText()
 
     /**
+     * Die Galerie, nach Abschnitten auf Geschwisterdateien verteilt: Eine Regel des
+     * Bildschirms gilt für alle, gleich in welcher Datei der Abschnitt gerade steht.
+     */
+    fun galerie(): String = listOf("GalleryScreen.kt", "GalerieFilter.kt", "GalerieKarte.kt", "GalerieErfassen.kt")
+        .joinToString("\n") { lies("sammlung/ui/screens/$it") }
+
+    /** Die Abschnitte der Überwachungsseite unterhalb der Job-Liste, ebenso verteilt. */
+    fun monitoringAbschnitte(): String =
+        listOf("MonitoringSections.kt", "MonitoringCache.kt", "MonitoringKontingente.kt", "MonitoringProtokoll.kt")
+            .joinToString("\n") { lies("verwaltung/ui/screens/$it") }
+
+    /**
      * Das Hilt-Modul samt Netz: AppModule, NetzModule und der gemeinsame
      * Interceptor (ServerClient) liegen getrennt in den di/-Ordnern der Module; wer eine Regel des
      * Netzwegs prüft, liest alle drei.
