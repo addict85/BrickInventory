@@ -18,7 +18,7 @@ export function hatPreis(row: PreisDatensatz): boolean {
 
 export type { KatalogEintrag };
 
-export function setImKatalog(setNumber: string): Promise<boolean> {
+export function setBekanntImKatalog(setNumber: string): Promise<boolean> {
   return repo.setImKatalog(mitVersion(setNumber));
 }
 

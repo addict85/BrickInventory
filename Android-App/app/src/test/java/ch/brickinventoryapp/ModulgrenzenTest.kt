@@ -62,9 +62,10 @@ class ModulgrenzenTest {
     @Test
     fun `jeder Modulordner ist eingebunden, jedes eingebundene Modul gibt es, und kein Merge-Rest liegt im Baum`() {
         // Eine .orig/.rej wird nie kompiliert, zählt aber für jede Suche über den Baum mit.
-        val reste = projekt.parentFile.walkTopDown()
+        val wurzel: File = checkNotNull(projekt.parentFile)
+        val reste = wurzel.walkTopDown()
             .onEnter { it.name !in setOf(".git", ".claude", ".gradle", "build", "node_modules") }
-            .filter { it.isFile && it.extension in setOf("orig", "rej") }.map { it.relativeTo(projekt.parentFile).path }.toList()
+            .filter { it.isFile && it.extension in setOf("orig", "rej") }.map { it.relativeTo(wurzel).path }.toList()
         assertTrue("Merge-Reste im Baum, löschen: $reste", reste.isEmpty())
         val eingebunden = Regex("""include\("(:[\w-]+)"\)""")
             .findAll(File(projekt, "settings.gradle.kts").readText()).map { it.groupValues[1].removePrefix(":") }.toSet()
